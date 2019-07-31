@@ -5257,8 +5257,8 @@ namespace dxvk {
       key.EmissiveSource = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_EMISSIVEMATERIALSOURCE] & mask);
 
       for (uint32_t i = 0; i < key.TexcoordIndices.size(); i++) {
-        key.TransformFlags[i] = m_state.textureStages[i][D3DTSS_TEXTURETRANSFORMFLAGS] & ~(D3DTTFF_PROJECTED);
-        key.TexcoordIndices[i]    = m_state.textureStages[i][D3DTSS_TEXCOORDINDEX];
+        key.TransformFlags[i]  = m_state.textureStages[i][D3DTSS_TEXTURETRANSFORMFLAGS] & ~(D3DTTFF_PROJECTED);
+        key.TexcoordIndices[i] = m_state.textureStages[i][D3DTSS_TEXCOORDINDEX];
       }
 
       EmitCs([

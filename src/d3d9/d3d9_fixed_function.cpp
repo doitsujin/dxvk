@@ -320,7 +320,11 @@ namespace dxvk {
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       uint32_t inputIndex  = m_vsKey.TexcoordIndices[i];
 
-      uint32_t transformed = m_vs.in.TEXCOORD[inputIndex];
+      uint32_t transformed;
+      if (inputIndex > 8)
+        Logger::warn(str::format("Unsupported texcoordindex flag (D3DTSS_TCI) ", inputIndex & ~0xFF, " for index ", inputIndex & 0xFF));
+
+      transformed = m_vs.in.TEXCOORD[inputIndex & 0xFF];
 
       uint32_t type = m_vsKey.TransformFlags[i];
       if (type != D3DTTFF_DISABLE) {
@@ -333,7 +337,7 @@ namespace dxvk {
         for (uint32_t i = count; i < 4; i++)
           transformed = m_module.opCompositeInsert(m_vec4Type, zero, transformed, 1, &i);
 
-        transformed = m_module.opVectorTimesMatrix(m_vec4Type, m_vs.in.TEXCOORD[inputIndex], m_vs.constants.texcoord[i]);
+        transformed = m_module.opVectorTimesMatrix(m_vec4Type, transformed, m_vs.constants.texcoord[i]);
 
         // Apply the offset on the next row. (why does this exist...)
         std::array<uint32_t, 4> indices;

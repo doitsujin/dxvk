@@ -33,7 +33,7 @@ namespace dxvk {
     D3DMATERIALCOLORSOURCE SpecularSource;
     D3DMATERIALCOLORSOURCE EmissiveSource;
 
-    std::array<uint8_t,  caps::TextureStageCount> TexcoordIndices;
+    std::array<uint32_t, caps::TextureStageCount> TexcoordIndices;
     std::array<uint32_t, caps::TextureStageCount> TransformFlags;
   };
 
