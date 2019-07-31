@@ -205,6 +205,10 @@ namespace dxvk {
     { "LOTDGame.exe", {{
       { "d3d9.hasHazards",                  "True" },
     }} },
+    /* Nostale                                    */
+    { "NostaleClientX.exe", {{
+      { "d3d9.allowLockFlagReadonly",       "False" },
+    }} },
   }};
 
 
