@@ -321,10 +321,19 @@ namespace dxvk {
       uint32_t inputIndex  = m_vsKey.TexcoordIndices[i];
 
       uint32_t transformed;
-      if (inputIndex > 8)
-        Logger::warn(str::format("Unsupported texcoordindex flag (D3DTSS_TCI) ", inputIndex & ~0xFF, " for index ", inputIndex & 0xFF));
+      if (inputIndex & D3DTSS_TCI_CAMERASPACEPOSITION) {
+          transformed = gl_Position;
 
-      transformed = m_vs.in.TEXCOORD[inputIndex & 0xFF];
+          const uint32_t wIndex = 3;
+          uint32_t w   = m_module.opCompositeExtract (m_floatType, transformed, 1, &wIndex);
+          uint32_t rhw = m_module.opFDiv             (m_floatType, m_module.constf32(1.0f), w);   // rhw = 1.0f / w
+          transformed  = m_module.opVectorTimesScalar(m_vec4Type,  transformed, rhw);             // gl_Position.xyz *= rhw
+      } else {
+        if (inputIndex > 8)
+          Logger::warn(str::format("Unsupported texcoordindex flag (D3DTSS_TCI) ", inputIndex & ~0xFF, " for index ", inputIndex & 0xFF));
+
+        transformed = m_vs.in.TEXCOORD[inputIndex & 0xFF];
+      }
 
       uint32_t type = m_vsKey.TransformFlags[i];
       if (type != D3DTTFF_DISABLE) {
