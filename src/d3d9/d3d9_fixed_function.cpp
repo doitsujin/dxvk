@@ -350,9 +350,9 @@ namespace dxvk {
 
         // Apply the offset on the next row. (why does this exist...)
         std::array<uint32_t, 4> indices;
-        for (uint32_t i = 0; i < indices.size(); i++) {
-          uint32_t column = m_module.opCompositeExtract(m_vec4Type, m_vs.constants.texcoord[i], 1, &i);
-          indices[i]      = m_module.opCompositeExtract(m_floatType, column, 1, &count);
+        for (uint32_t j = 0; j < indices.size(); j++) {
+          uint32_t column = m_module.opCompositeExtract(m_vec4Type, m_vs.constants.texcoord[i], 1, &j);
+          indices[j]      = m_module.opCompositeExtract(m_floatType, column, 1, &count);
         }
         uint32_t offset = m_module.opCompositeConstruct(m_vec4Type, indices.size(), indices.data());
         transformed = m_module.opFAdd(m_vec4Type, transformed, offset);
@@ -361,8 +361,8 @@ namespace dxvk {
         uint32_t lastIdx = count - 1;
         uint32_t projValue = m_module.opCompositeExtract(m_floatType, transformed, 1, &lastIdx);
 
-        for (uint32_t i = count; i < 4; i++)
-          transformed = m_module.opCompositeInsert(m_vec4Type, projValue, transformed, 1, &i);
+        for (uint32_t j = count; j < 4; j++)
+          transformed = m_module.opCompositeInsert(m_vec4Type, projValue, transformed, 1, &j);
       }
 
       m_module.opStore(m_vs.out.TEXCOORD[i], transformed);
