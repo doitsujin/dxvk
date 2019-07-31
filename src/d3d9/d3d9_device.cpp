@@ -4121,7 +4121,7 @@ namespace dxvk {
     }
 
     // The value returned is a 32-bit value, so we need to clamp it.
-    VkDeviceSize maxMemory = UINT32_MAX;
+    VkDeviceSize maxMemory = m_d3d9Options.maxAvailableMemory;
     availableTextureMemory = std::min(availableTextureMemory, maxMemory);
 
     return int64_t(availableTextureMemory);

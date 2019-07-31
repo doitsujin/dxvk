@@ -69,6 +69,12 @@ namespace dxvk {
     /// Enforces anisotropic filtering with the
     /// given anisotropy value for all samplers.
     int32_t samplerAnisotropy;
+
+    /// Max available memory override
+    ///
+    /// Changes the max initial value used in
+    /// tracking and GetAvailableTextureMem
+    uint32_t maxAvailableMemory;
   };
 
 }

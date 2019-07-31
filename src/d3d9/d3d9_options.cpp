@@ -46,6 +46,7 @@ namespace dxvk {
     this->hasHazards            = config.getOption<bool>   ("d3d9.hasHazards",           false);
     this->asyncPresent          = config.getOption<Tristate>("d3d9.asyncPresent", Tristate::Auto);
     this->samplerAnisotropy     = config.getOption<int32_t>("d3d9.samplerAnisotropy", -1);
+    this->maxAvailableMemory    = config.getOption<uint32_t>("d3d9.maxAvailableMemory", UINT32_MAX);
 
     // This is not necessary on Nvidia.
     if (adapter != nullptr && adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0))
