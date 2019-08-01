@@ -21,6 +21,9 @@ namespace dxvk {
     /// Shader-related options
     Tristate useRawSsbo;
     Tristate useEarlyDiscard;
+
+    /// HUD elements
+    std::string hud;
   };
 
 }
