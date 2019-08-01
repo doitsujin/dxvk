@@ -178,6 +178,10 @@ namespace dxvk {
     { "Gothic3.exe", {{
       { "d3d9.allowLockFlagReadonly",       "False" },
     }} },
+    /* Gothic 3 Forsaken Gods                     */
+    { "Gothic III Forsaken Gods.exe", {{
+      { "d3d9.allowLockFlagReadonly",       "False" },
+    }} },
     /* Risen                                      */
     { "Risen.exe", {{
       { "d3d9.allowLockFlagReadonly",       "False" },
