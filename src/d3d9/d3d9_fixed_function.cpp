@@ -292,12 +292,13 @@ namespace dxvk {
     setupVS();
 
     uint32_t gl_Position = m_vs.in.POSITION;
+    uint32_t vtx         = m_vs.in.POSITION;
 
     if (!m_vsKey.HasPositionT) {
-      uint32_t wvp = m_module.opMatrixTimesMatrix(m_mat4Type,  m_vs.constants.world, m_vs.constants.view);
-                wvp = m_module.opMatrixTimesMatrix(m_mat4Type, wvp,                  m_vs.constants.proj);
+      uint32_t wv  = m_module.opMatrixTimesMatrix(m_mat4Type, m_vs.constants.world, m_vs.constants.view);
 
-      gl_Position = m_module.opVectorTimesMatrix(m_vec4Type, gl_Position, wvp);
+      vtx         = m_module.opVectorTimesMatrix(m_vec4Type, vtx, wv);
+      gl_Position = m_module.opVectorTimesMatrix(m_vec4Type, vtx, m_vs.constants.proj);
     } else {
       gl_Position = m_module.opFMul(m_vec4Type, gl_Position, m_vs.constants.invExtent);
       gl_Position = m_module.opFAdd(m_vec4Type, gl_Position, m_vs.constants.invOffset);
@@ -322,12 +323,8 @@ namespace dxvk {
 
       uint32_t transformed;
       if (inputIndex & D3DTSS_TCI_CAMERASPACEPOSITION) {
-          transformed = gl_Position;
-
-          const uint32_t wIndex = 3;
-          uint32_t w   = m_module.opCompositeExtract (m_floatType, transformed, 1, &wIndex);
-          uint32_t rhw = m_module.opFDiv             (m_floatType, m_module.constf32(1.0f), w);   // rhw = 1.0f / w
-          transformed  = m_module.opVectorTimesScalar(m_vec4Type,  transformed, rhw);             // gl_Position.xyz *= rhw
+        const uint32_t wIndex = 3;
+        transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1.0f), vtx, 1, &wIndex);
       } else {
         if (inputIndex > 8)
           Logger::warn(str::format("Unsupported texcoordindex flag (D3DTSS_TCI) ", inputIndex & ~0xFF, " for index ", inputIndex & 0xFF));
