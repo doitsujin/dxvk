@@ -711,6 +711,10 @@ namespace dxvk {
     uint32_t opTranspose(
             uint32_t                resultType,
             uint32_t                matrix);
+
+    uint32_t opInverse(
+            uint32_t                resultType,
+            uint32_t                matrix);
     
     uint32_t opFFma(
             uint32_t                resultType,
@@ -892,6 +896,14 @@ namespace dxvk {
             uint32_t                operand);
     
     uint32_t opInverseSqrt(
+            uint32_t                resultType,
+            uint32_t                operand);
+
+    uint32_t opNormalize(
+            uint32_t                resultType,
+            uint32_t                operand);
+
+    uint32_t opLength(
             uint32_t                resultType,
             uint32_t                operand);
     
