@@ -27,4 +27,6 @@ namespace dxvk::caps {
 
   constexpr uint32_t TextureStageCount           = MaxSimultaneousTextures;
 
+  constexpr uint32_t MaxEnabledLights             = 8;
+
 }
