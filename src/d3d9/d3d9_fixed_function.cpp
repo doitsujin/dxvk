@@ -11,8 +11,8 @@
 namespace dxvk {
 
     enum FFConstantMembersVS {
-      VSConstWorldMatrix   = 0,
-      VSConstViewMatrix    = 1,
+      VSConstWorldViewMatrix   = 0,
+      VSConstNormalMatrix    = 1,
       VSConstProjMatrix,
       
       VsConstTexcoord0,
@@ -29,6 +29,15 @@ namespace dxvk {
 
       VSConstGlobalAmbient,
 
+      VSConstLight0,
+      VSConstLight1,
+      VSConstLight2,
+      VSConstLight3,
+      VSConstLight4,
+      VSConstLight5,
+      VSConstLight6,
+      VSConstLight7,
+
       VSConstMaterialDiffuse,
       VSConstMaterialAmbient,
       VSConstMaterialSpecular,
@@ -40,10 +49,11 @@ namespace dxvk {
 
   struct D3D9FFVertexData {
     uint32_t constantBuffer = 0;
+    uint32_t lightType      = 0;
 
     struct {
-      uint32_t world = { 0 };
-      uint32_t view = { 0 };
+      uint32_t worldview = { 0 };
+      uint32_t normal    = { 0 };
       uint32_t proj = { 0 };
 
       uint32_t texcoord[8] = { 0 };
@@ -62,12 +72,14 @@ namespace dxvk {
 
     struct {
       uint32_t POSITION = { 0 };
+      uint32_t NORMAL = { 0 };
       uint32_t TEXCOORD[8] = { 0 };
       uint32_t COLOR[2] = { 0 };
     } in;
 
     struct {
       uint32_t POSITION = { 0 };
+      uint32_t NORMAL = { 0 };
       uint32_t TEXCOORD[8] = { 0 };
       uint32_t COLOR[2] = { 0 };
     } out;
@@ -156,7 +168,9 @@ namespace dxvk {
     DxsoIsgn              m_osgn;
 
     uint32_t              m_floatType;
+    uint32_t              m_uint32Type;
     uint32_t              m_vec4Type;
+    uint32_t              m_vec3Type;
     uint32_t              m_mat4Type;
 
     uint32_t              m_entryPointId;
@@ -179,9 +193,11 @@ namespace dxvk {
 
 
   Rc<DxvkShader> D3D9FFShaderCompiler::compile() {
-    m_floatType = m_module.defFloatType(32);
-    m_vec4Type  = m_module.defVectorType(m_floatType, 4);
-    m_mat4Type  = m_module.defMatrixType(m_vec4Type, 4);
+    m_floatType  = m_module.defFloatType(32);
+    m_uint32Type = m_module.defIntType(32, 0);
+    m_vec4Type   = m_module.defVectorType(m_floatType, 4);
+    m_vec3Type   = m_module.defVectorType(m_floatType, 3);
+    m_mat4Type   = m_module.defMatrixType(m_vec4Type, 4);
 
     m_entryPointId = m_module.allocateId();
 
@@ -293,9 +309,13 @@ namespace dxvk {
 
     uint32_t gl_Position = m_vs.in.POSITION;
     uint32_t vtx         = m_vs.in.POSITION;
+    uint32_t normal      = m_vs.in.NORMAL;
 
     if (!m_vsKey.HasPositionT) {
-      uint32_t wv  = m_module.opMatrixTimesMatrix(m_mat4Type, m_vs.constants.world, m_vs.constants.view);
+      uint32_t wv = m_vs.constants.worldview;
+      uint32_t nrmMtx = m_vs.constants.normal;
+
+      normal = m_module.opNormalize(m_vec4Type, m_module.opMatrixTimesVector(m_vec4Type, nrmMtx, normal));
 
       vtx         = m_module.opVectorTimesMatrix(m_vec4Type, vtx, wv);
       gl_Position = m_module.opVectorTimesMatrix(m_vec4Type, vtx, m_vs.constants.proj);
@@ -317,6 +337,7 @@ namespace dxvk {
     }
 
     m_module.opStore(m_vs.out.POSITION, gl_Position);
+    m_module.opStore(m_vs.out.NORMAL,   normal);
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       uint32_t inputIndex  = m_vsKey.TexcoordIndices[i];
@@ -367,28 +388,136 @@ namespace dxvk {
           return m_vs.in.COLOR[1];
       };
 
-      uint32_t diffuse  = PickSource(m_vsKey.DiffuseSource,  m_vs.constants.materialDiffuse);
-      uint32_t ambient  = PickSource(m_vsKey.AmbientSource,  m_vs.constants.materialAmbient);
-      uint32_t emissive = PickSource(m_vsKey.EmissiveSource, m_vs.constants.materialEmissive);
-      uint32_t specular = PickSource(m_vsKey.SpecularSource, m_vs.constants.materialSpecular);
+      uint32_t diffuseValue  = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
+      uint32_t specularValue = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
+      uint32_t ambientValue  = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
 
-      // Currently we do not handle real lighting... Just darkness.
+      for (uint32_t i = 0; i < m_vsKey.LightCount; i++) {
+        uint32_t light_ptr_t = m_module.defPointerType(m_vs.lightType, spv::StorageClassUniform);
 
-      // Handle ambient.
-      uint32_t finalColor = m_module.opFFma(m_vec4Type, ambient, m_vs.constants.globalAmbient, emissive);
-      // Set alpha to zero.
-      const uint32_t alphaIndex = 3;
-      finalColor = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(0.0f), finalColor, 1, &alphaIndex);
+        uint32_t indexVal = m_module.constu32(VSConstLight0 + i);
+        uint32_t lightPtr = m_module.opAccessChain(light_ptr_t, m_vs.constantBuffer, 1, &indexVal);
 
-      // Add the diffuse
-      finalColor = m_module.opFAdd(m_vec4Type, finalColor, diffuse);
+        auto LoadLightItem = [&](uint32_t type, uint32_t idx) {
+          uint32_t typePtr = m_module.defPointerType(type, spv::StorageClassUniform);
+
+          idx = m_module.constu32(idx);
+
+          return m_module.opLoad(type,
+            m_module.opAccessChain(typePtr, lightPtr, 1, &idx));
+        };
+
+        uint32_t diffuse   = LoadLightItem(m_vec4Type,   0);
+        uint32_t specular  = LoadLightItem(m_vec4Type,   1);
+        uint32_t ambient   = LoadLightItem(m_vec4Type,   2);
+        uint32_t position  = LoadLightItem(m_vec4Type,   3);
+        uint32_t direction = LoadLightItem(m_vec4Type,   4);
+        uint32_t type      = LoadLightItem(m_uint32Type, 5);
+        uint32_t range     = LoadLightItem(m_floatType,  6);
+        uint32_t falloff   = LoadLightItem(m_floatType,  7);
+        uint32_t atten0    = LoadLightItem(m_floatType,  8);
+        uint32_t atten1    = LoadLightItem(m_floatType,  9);
+        uint32_t atten2    = LoadLightItem(m_floatType,  10);
+        uint32_t theta     = LoadLightItem(m_floatType, 11);
+        uint32_t phi       = LoadLightItem(m_floatType, 12);
+
+        uint32_t bool_t  = m_module.defBoolType();
+        uint32_t bool3_t = m_module.defVectorType(bool_t, 3);
+
+        uint32_t isPoint       = m_module.opFOrdEqual(bool_t, type, m_module.constu32(D3DLIGHT_POINT));
+        uint32_t isSpot        = m_module.opFOrdEqual(bool_t, type, m_module.constu32(D3DLIGHT_SPOT));
+        uint32_t isDirectional = m_module.opFOrdEqual(bool_t, type, m_module.constu32(D3DLIGHT_DIRECTIONAL));
+
+        std::array<uint32_t, 3> members = { isDirectional, isDirectional, isDirectional };
+
+        uint32_t isDirectional3 = m_module.opCompositeConstruct(bool3_t, members.size(), members.data());
+
+        std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
+        uint32_t vtx3      = m_module.opVectorShuffle(m_vec3Type, vtx, vtx, 3, indices.data());
+                 position  = m_module.opVectorShuffle(m_vec3Type, position, position, 3, indices.data());
+                 direction = m_module.opVectorShuffle(m_vec3Type, direction, direction, 3, indices.data());
+
+        uint32_t delta  = m_module.opFSub(m_vec3Type, position, vtx3);
+        uint32_t d      = m_module.opLength(m_floatType, delta);
+        uint32_t hitDir = m_module.opFNegate(m_vec3Type, direction);
+                 hitDir = m_module.opSelect(m_vec3Type, isDirectional3, hitDir, delta);
+                 hitDir = m_module.opNormalize(m_vec3Type, hitDir);
+
+        uint32_t atten  = m_module.opFFma  (m_floatType, d, atten2, atten1);
+                 atten  = m_module.opFFma  (m_floatType, d, atten,  atten0);
+                 atten  = m_module.opFDiv  (m_floatType, m_module.constf32(1.0f), atten);
+
+                 atten  = m_module.opSelect(m_floatType, m_module.opFOrdGreaterThan(bool_t, d, range), m_module.constf32(0.0f), atten);
+                 atten  = m_module.opSelect(m_floatType, isDirectional, m_module.constf32(1.0f), atten);
+
+        // Spot Lighting
+        {
+          uint32_t rho        = m_module.opDot (m_floatType, m_module.opFNegate(m_vec3Type, hitDir), direction);
+          uint32_t spotAtten  = m_module.opFAdd(m_floatType, rho, m_module.opFNegate(m_floatType, phi));
+                   spotAtten  = m_module.opFDiv(m_floatType, rho, m_module.opFSub(m_floatType, theta, phi));
+                   spotAtten  = m_module.opPow (m_floatType, rho, falloff);
+
+          uint32_t insideThetaAndPhi = m_module.opFOrdGreaterThanEqual(bool_t, rho, theta);
+          uint32_t insidePhi         = m_module.opFOrdGreaterThanEqual(bool_t, rho, phi);
+                   spotAtten  = m_module.opSelect(m_floatType, insidePhi,         spotAtten, m_module.constf32(0.0f));
+                   spotAtten  = m_module.opSelect(m_floatType, insideThetaAndPhi, spotAtten, m_module.constf32(1.0f));
+                   spotAtten  = m_module.opFClamp(m_floatType, spotAtten, m_module.constf32(0.0f), m_module.constf32(1.0f));
+
+                   spotAtten = m_module.opFMul(m_floatType, atten, spotAtten);
+                   atten     = m_module.opSelect(m_floatType, isSpot, spotAtten, atten);
+        }
+
+
+        uint32_t nrm3   = m_module.opVectorShuffle(m_vec3Type, normal, normal, 3, indices.data());
+        uint32_t hitDot = m_module.opDot(m_floatType, nrm3, hitDir);
+                 hitDot = m_module.opFClamp(m_floatType, hitDot, m_module.constf32(0.0f), m_module.constf32(1.0f));
+
+        uint32_t diffuseness = m_module.opFMul(m_floatType, hitDot, atten);
+
+        uint32_t mid = m_module.opNormalize(m_vec3Type, vtx3);
+                 mid = m_module.opFAdd(m_vec3Type, hitDir, m_module.opFNegate(m_vec3Type, mid));
+                 mid = m_module.opNormalize(m_vec3Type, mid);
+
+        uint32_t midDot = m_module.opDot(m_floatType, normal, mid);
+                 midDot = m_module.opFClamp(m_floatType, hitDot, m_module.constf32(0.0f), m_module.constf32(1.0f));
+        uint32_t doSpec = m_module.opFOrdGreaterThan(bool_t, midDot, m_module.constf32(0.0f));
+        uint32_t specularness = m_module.opPow(m_floatType, midDot, m_vs.constants.materialPower);
+                 specularness = m_module.opFMul(m_floatType, specularness, atten);
+                 specularness = m_module.opSelect(m_floatType, doSpec, specularness, m_module.constf32(0.0f));
+
+        uint32_t lightAmbient  = m_module.opVectorTimesScalar(m_vec4Type, ambient,  atten);
+        uint32_t lightDiffuse  = m_module.opVectorTimesScalar(m_vec4Type, diffuse,  diffuseness);
+        uint32_t lightSpecular = m_module.opVectorTimesScalar(m_vec4Type, specular, specularness);
+
+        ambientValue  = m_module.opFAdd(m_vec4Type, ambientValue,  lightAmbient);
+        diffuseValue  = m_module.opFAdd(m_vec4Type, diffuseValue,  lightDiffuse);
+        specularValue = m_module.opFAdd(m_vec4Type, specularValue, lightSpecular);
+      }
+
+      uint32_t mat_diffuse  = PickSource(m_vsKey.DiffuseSource,  m_vs.constants.materialDiffuse);
+      uint32_t mat_ambient  = PickSource(m_vsKey.AmbientSource,  m_vs.constants.materialAmbient);
+      uint32_t mat_emissive = PickSource(m_vsKey.EmissiveSource, m_vs.constants.materialEmissive);
+      uint32_t mat_specular = PickSource(m_vsKey.SpecularSource, m_vs.constants.materialSpecular);
+      
+      std::array<uint32_t, 4> alphaSwizzle = {0, 1, 2, 7};
+      uint32_t finalColor0 = m_module.opFFma(m_vec4Type, mat_ambient, m_vs.constants.globalAmbient, mat_emissive);
+               finalColor0 = m_module.opFFma(m_vec4Type, mat_ambient, ambientValue, finalColor0);
+               finalColor0 = m_module.opFFma(m_vec4Type, mat_diffuse, diffuseValue, finalColor0);
+               finalColor0 = m_module.opVectorShuffle(m_vec4Type, finalColor0, mat_diffuse, alphaSwizzle.size(), alphaSwizzle.data());
+
+      uint32_t finalColor1 = m_module.opFMul(m_vec4Type, mat_specular, specularValue);
+
       // Saturate
-      finalColor = m_module.opFClamp(m_vec4Type, finalColor,
+      finalColor0 = m_module.opFClamp(m_vec4Type, finalColor0,
         m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f),
         m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f));
 
-      m_module.opStore(m_vs.out.COLOR[0], finalColor);
-      m_module.opStore(m_vs.out.COLOR[1], specular);
+      finalColor1 = m_module.opFClamp(m_vec4Type, finalColor1,
+        m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f),
+        m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f));
+
+      m_module.opStore(m_vs.out.COLOR[0], finalColor0);
+      m_module.opStore(m_vs.out.COLOR[1], finalColor1);
     }
     else {
       m_module.opStore(m_vs.out.COLOR[0], m_vs.in.COLOR[0]);
@@ -403,6 +532,60 @@ namespace dxvk {
     m_module.enableCapability(spv::CapabilityDrawParameters);
 
     m_module.enableExtension("SPV_KHR_shader_draw_parameters");
+
+    std::array<uint32_t, 13> light_members = {
+      m_vec4Type,   // Diffuse
+      m_vec4Type,   // Specular
+      m_vec4Type,   // Ambient
+      m_vec4Type,   // Position
+      m_vec4Type,   // Direction
+      m_uint32Type, // Type
+      m_floatType,  // Range
+      m_floatType,  // Falloff
+      m_floatType,  // Attenuation0
+      m_floatType,  // Attenuation1
+      m_floatType,  // Attenuation2
+      m_floatType,  // Theta
+      m_floatType,  // Phi
+    };
+
+    m_vs.lightType =
+      m_module.defStructType(light_members.size(), light_members.data());
+
+    m_module.setDebugName(m_vs.lightType, "light_t");
+
+    uint32_t offset = 0;
+    m_module.memberDecorateOffset(m_vs.lightType, 0, offset);  offset += 4 * sizeof(float);
+    m_module.setDebugMemberName  (m_vs.lightType, 0, "Diffuse");
+    m_module.memberDecorateOffset(m_vs.lightType, 1, offset);  offset += 4 * sizeof(float);
+    m_module.setDebugMemberName  (m_vs.lightType, 1, "Specular");
+    m_module.memberDecorateOffset(m_vs.lightType, 2, offset);  offset += 4 * sizeof(float);
+    m_module.setDebugMemberName  (m_vs.lightType, 2, "Ambient");
+
+    m_module.memberDecorateOffset(m_vs.lightType, 3, offset);  offset += 4 * sizeof(float);
+    m_module.setDebugMemberName  (m_vs.lightType, 3, "Position");
+    m_module.memberDecorateOffset(m_vs.lightType, 4, offset);  offset += 4 * sizeof(float);
+    m_module.setDebugMemberName  (m_vs.lightType, 4, "Direction");
+
+    m_module.memberDecorateOffset(m_vs.lightType, 5, offset);  offset += 1 * sizeof(uint32_t);
+    m_module.setDebugMemberName  (m_vs.lightType, 5, "Type");
+
+    m_module.memberDecorateOffset(m_vs.lightType, 6, offset);  offset += 1 * sizeof(float);
+    m_module.setDebugMemberName  (m_vs.lightType, 6, "Range");
+    m_module.memberDecorateOffset(m_vs.lightType, 7, offset);  offset += 1 * sizeof(float);
+    m_module.setDebugMemberName  (m_vs.lightType, 7, "Falloff");
+
+    m_module.memberDecorateOffset(m_vs.lightType, 8, offset);  offset += 1 * sizeof(float);
+    m_module.setDebugMemberName  (m_vs.lightType, 8, "Attenuation0");
+    m_module.memberDecorateOffset(m_vs.lightType, 9, offset);  offset += 1 * sizeof(float);
+    m_module.setDebugMemberName  (m_vs.lightType, 9, "Attenuation1");
+    m_module.memberDecorateOffset(m_vs.lightType, 10, offset); offset += 1 * sizeof(float);
+    m_module.setDebugMemberName  (m_vs.lightType, 10, "Attenuation2");
+
+    m_module.memberDecorateOffset(m_vs.lightType, 11, offset); offset += 1 * sizeof(float);
+    m_module.setDebugMemberName  (m_vs.lightType, 11, "Theta");
+    m_module.memberDecorateOffset(m_vs.lightType, 12, offset); offset += 1 * sizeof(float);
+    m_module.setDebugMemberName  (m_vs.lightType, 12, "Phi");
 
     // Constant Buffer for VS.
     std::array<uint32_t, VSConstMemberCount> members = {
@@ -424,6 +607,15 @@ namespace dxvk {
 
       m_vec4Type, // Global Ambient
 
+      m_vs.lightType, // Light0
+      m_vs.lightType, // Light1
+      m_vs.lightType, // Light2
+      m_vs.lightType, // Light3
+      m_vs.lightType, // Light4
+      m_vs.lightType, // Light5
+      m_vs.lightType, // Light6
+      m_vs.lightType, // Light7
+
       m_vec4Type,  // Material Diffuse
       m_vec4Type,  // Material Ambient
       m_vec4Type,  // Material Specular
@@ -435,7 +627,7 @@ namespace dxvk {
       m_module.defStructType(members.size(), members.data());
 
     m_module.decorateBlock(structType);
-    uint32_t offset = 0;
+    offset = 0;
     for (uint32_t i = 0; i < VSConstInverseOffset; i++) {
       m_module.memberDecorateOffset(structType, i, offset);
       offset += sizeof(Matrix4);
@@ -443,7 +635,17 @@ namespace dxvk {
       m_module.memberDecorate(structType, i, spv::DecorationRowMajor);
     }
 
-    for (uint32_t i = VSConstInverseOffset; i < VSConstMaterialPower; i++) {
+    for (uint32_t i = VSConstInverseOffset; i < VSConstLight0; i++) {
+      m_module.memberDecorateOffset(structType, i, offset);
+      offset += sizeof(Vector4);
+    }
+
+    for (uint32_t i = 0; i < caps::MaxEnabledLights; i++) {
+      m_module.memberDecorateOffset(structType, VSConstLight0 + i, offset);
+      offset += sizeof(D3D9Light);
+    }
+
+    for (uint32_t i = VSConstMaterialDiffuse; i < VSConstMaterialPower; i++) {
       m_module.memberDecorateOffset(structType, i, offset);
       offset += sizeof(Vector4);
     }
@@ -453,8 +655,8 @@ namespace dxvk {
 
     m_module.setDebugName(structType, "D3D9FixedFunctionVS");
     uint32_t member = 0;
-    m_module.setDebugMemberName(structType, member++, "World");
-    m_module.setDebugMemberName(structType, member++, "View");
+    m_module.setDebugMemberName(structType, member++, "WorldView");
+    m_module.setDebugMemberName(structType, member++, "Normal");
     m_module.setDebugMemberName(structType, member++, "Projection");
 
     m_module.setDebugMemberName(structType, member++, "TexcoordTransform0");
@@ -470,6 +672,15 @@ namespace dxvk {
     m_module.setDebugMemberName(structType, member++, "ViewportInfo_InverseExtent");
 
     m_module.setDebugMemberName(structType, member++, "GlobalAmbient");
+
+    m_module.setDebugMemberName(structType, member++, "Light0");
+    m_module.setDebugMemberName(structType, member++, "Light1");
+    m_module.setDebugMemberName(structType, member++, "Light2");
+    m_module.setDebugMemberName(structType, member++, "Light3");
+    m_module.setDebugMemberName(structType, member++, "Light4");
+    m_module.setDebugMemberName(structType, member++, "Light5");
+    m_module.setDebugMemberName(structType, member++, "Light6");
+    m_module.setDebugMemberName(structType, member++, "Light7");
 
     m_module.setDebugMemberName(structType, member++, "Material_Diffuse");
     m_module.setDebugMemberName(structType, member++, "Material_Ambient");
@@ -506,8 +717,8 @@ namespace dxvk {
         m_module.opAccessChain(typePtr, m_vs.constantBuffer, 1, &offset));
     };
 
-    m_vs.constants.world = LoadConstant(m_mat4Type, VSConstWorldMatrix);
-    m_vs.constants.view  = LoadConstant(m_mat4Type, VSConstViewMatrix);
+    m_vs.constants.worldview = LoadConstant(m_mat4Type, VSConstWorldViewMatrix);
+    m_vs.constants.normal  = LoadConstant(m_mat4Type, VSConstNormalMatrix);
     m_vs.constants.proj  = LoadConstant(m_mat4Type, VSConstProjMatrix);
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++)
@@ -526,6 +737,7 @@ namespace dxvk {
 
     // Do IO
     m_vs.in.POSITION = declareIO(true, DxsoSemantic{ DxsoUsage::Position, 0 });
+    m_vs.in.NORMAL   = declareIO(true, DxsoSemantic{ DxsoUsage::Normal, 0 });
     for (uint32_t i = 0; i < caps::TextureStageCount; i++)
       m_vs.in.TEXCOORD[i] = declareIO(true, DxsoSemantic{ DxsoUsage::Texcoord, i });
 
@@ -545,6 +757,8 @@ namespace dxvk {
 
     // Declare Outputs
     m_vs.out.POSITION = declareIO(false, DxsoSemantic{ DxsoUsage::Position, 0 }, spv::BuiltInPosition);
+
+    m_vs.out.NORMAL   = declareIO(false, DxsoSemantic{ DxsoUsage::Normal, 0 });
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++)
       m_vs.out.TEXCOORD[i] = declareIO(false, DxsoSemantic{ DxsoUsage::Texcoord, i });
@@ -1199,6 +1413,8 @@ namespace dxvk {
 
     for (auto index : key.TransformFlags)
       state.add(uint32hash(index));
+
+    state.add(uint32hash(key.LightCount));
 
     return state;
   }

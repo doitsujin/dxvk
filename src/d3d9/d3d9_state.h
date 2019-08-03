@@ -49,10 +49,46 @@ namespace dxvk {
     Vector4 inverseExtent;
   };
 
+  struct D3D9Light {
+    D3D9Light(const D3DLIGHT9& light) {
+      Diffuse  = Vector4(light.Diffuse.r,  light.Diffuse.g,  light.Diffuse.b,  light.Diffuse.a);
+      Specular = Vector4(light.Specular.r, light.Specular.g, light.Specular.b, light.Specular.a);
+      Ambient  = Vector4(light.Ambient.r,  light.Ambient.g,  light.Ambient.b,  light.Ambient.a);
+
+      Position  = Vector4(light.Position.x,  light.Position.y,  light.Position.z,  0.0f);
+      Direction = Vector4(light.Direction.x, light.Direction.y, light.Direction.z, 0.0f);
+
+      Type         = light.Type;
+      Range        = light.Range;
+      Falloff      = light.Falloff;
+      Attenuation0 = light.Attenuation0;
+      Attenuation1 = light.Attenuation1;
+      Attenuation2 = light.Attenuation2;
+      Theta        = cosf(light.Theta / 2.0f);
+      Phi          = cosf(light.Phi / 2.0f);
+    }
+
+    Vector4 Diffuse;
+    Vector4 Specular;
+    Vector4 Ambient;
+
+    Vector4 Position;
+    Vector4 Direction;
+
+    D3DLIGHTTYPE Type;
+    float Range;
+    float Falloff;
+    float Attenuation0;
+    float Attenuation1;
+    float Attenuation2;
+    float Theta;
+    float Phi;
+  };
+
 
   struct D3D9FixedFunctionVS {
-    Matrix4 World;
-    Matrix4 View;
+    Matrix4 WorldView;
+    Matrix4 NormalMatrix;
     Matrix4 Projection;
 
     std::array<Matrix4, 8> TexcoordMatrices;
@@ -60,6 +96,7 @@ namespace dxvk {
     D3D9ViewportInfo ViewportInfo;
 
     Vector4 GlobalAmbient;
+    std::array<D3D9Light, caps::MaxEnabledLights> Lights;
     D3DMATERIAL9 Material;
   };
 
@@ -151,6 +188,11 @@ namespace dxvk {
 
     std::vector<std::optional<D3DLIGHT9>>            lights;
     std::array<DWORD, caps::MaxEnabledLights>        enabledLightIndices;
+
+    bool IsLightEnabled(DWORD Index) {
+      const auto& indices = enabledLightIndices;
+      return std::find(indices.begin(), indices.end(), Index) != indices.end();
+    }
   };
 
   template <

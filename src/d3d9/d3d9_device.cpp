@@ -1477,6 +1477,9 @@ namespace dxvk {
 
     m_state.lights[Index] = *pLight;
 
+    if (m_state.IsLightEnabled(Index))
+      m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
+
     return D3D_OK;
   }
 
@@ -1511,19 +1514,15 @@ namespace dxvk {
     if (!Enable)
       std::swap(searchIndex, setIndex);
 
-    bool set = false;
-
     for (auto& idx : m_state.enabledLightIndices) {
       if (idx == searchIndex) {
         idx = setIndex;
-        set = true;
+        m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
+        m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
         break;
       }
     }
 
-    if (unlikely(!set && Enable))
-      Logger::warn("D3D9DeviceEx::LightEnable: Failed to enable light.");
-      
     return D3D_OK;
   }
 
@@ -1537,11 +1536,7 @@ namespace dxvk {
     if (unlikely(Index >= m_state.lights.size() || !m_state.lights[Index]))
       return D3DERR_INVALIDCALL;
 
-    const auto& indices = m_state.enabledLightIndices;
-
-    bool enabled = std::find(indices.begin(), indices.end(), Index) != indices.end();
-
-    *pEnable = enabled ? 128 : 0; // Weird quirk but OK.
+    *pEnable = m_state.IsLightEnabled(Index) ? 128 : 0; // Weird quirk but OK.
 
     return D3D_OK;
   }
@@ -5040,6 +5035,7 @@ namespace dxvk {
 
         if (cVertexShader == nullptr) {
           ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Position, 0 };
+          ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Normal, 0 };
           for (uint32_t i = 0; i < 8; i++)
             ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Texcoord, i };
           ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Color, 0 };
@@ -5317,6 +5313,15 @@ namespace dxvk {
         key.TexcoordIndices[i] = m_state.textureStages[i][D3DTSS_TEXCOORDINDEX];
       }
 
+      key.LightCount = 0;
+
+      if (key.UseLighting) {
+        for (uint32_t i = 0; i < caps::MaxEnabledLights; i++) {
+          if (m_state.enabledLightIndices[i] != UINT32_MAX)
+            key.LightCount++;
+        }
+      }
+
       EmitCs([
         this,
         cKey     = key,
@@ -5368,10 +5373,13 @@ namespace dxvk {
         ctx->invalidateBuffer(cBuffer, cSlice);
       });
 
+      auto WorldView    = m_state.transforms[GetTransformIndex(D3DTS_VIEW)] * m_state.transforms[GetTransformIndex(D3DTS_WORLD)];
+      auto NormalMatrix = inverse(WorldView);
+
       D3D9FixedFunctionVS* data = reinterpret_cast<D3D9FixedFunctionVS*>(slice.mapPtr);
-      data->World      = m_state.transforms[GetTransformIndex(D3DTS_WORLD)];
-      data->View       = m_state.transforms[GetTransformIndex(D3DTS_VIEW)];
-      data->Projection = m_state.transforms[GetTransformIndex(D3DTS_PROJECTION)];
+      data->WorldView    = WorldView;
+      data->NormalMatrix = NormalMatrix;
+      data->Projection   = m_state.transforms[GetTransformIndex(D3DTS_PROJECTION)];
 
       for (uint32_t i = 0; i < data->TexcoordMatrices.size(); i++)
         data->TexcoordMatrices[i] = m_state.transforms[GetTransformIndex(D3DTS_TEXTURE0) + i];
@@ -5379,6 +5387,16 @@ namespace dxvk {
       data->ViewportInfo = m_viewportInfo;
       
       DecodeD3DCOLOR(m_state.renderStates[D3DRS_AMBIENT], data->GlobalAmbient.data);
+
+      uint32_t lightIdx = 0;
+      for (uint32_t i = 0; i < caps::MaxEnabledLights; i++) {
+        auto idx = m_state.enabledLightIndices[i];
+        if (idx == UINT32_MAX)
+          continue;
+
+        data->Lights[lightIdx++] = D3D9Light(m_state.lights[idx].value());
+      }
+
       data->Material = m_state.material;
     }
   }

@@ -35,6 +35,8 @@ namespace dxvk {
 
     std::array<uint32_t, caps::TextureStageCount> TexcoordIndices;
     std::array<uint32_t, caps::TextureStageCount> TransformFlags;
+
+    uint32_t LightCount;
   };
 
   constexpr uint32_t TextureArgCount = 3;
