@@ -340,8 +340,6 @@ namespace dxvk {
     if (unlikely(Subresource >= pResource->CountSubresources()))
       return E_INVALIDARG;
 
-    pResource->SetMapType(Subresource, MapType);
-
     VkFormat packedFormat = m_parent->LookupPackedFormat(
       pResource->Desc()->Format, pResource->GetFormatMode()).Format;
     
@@ -356,6 +354,9 @@ namespace dxvk {
       if (!WaitForResource(mappedImage, MapFlags))
         return DXGI_ERROR_WAS_STILL_DRAWING;
       
+      // Mark the given subresource as mapped
+      pResource->SetMapType(Subresource, MapType);
+
       // Query the subresource's memory layout and hope that
       // the application respects the returned pitch values.
       VkSubresourceLayout layout  = mappedImage->querySubresourceLayout(subresource);
@@ -397,6 +398,9 @@ namespace dxvk {
         physSlice = mappedBuffer->getSliceHandle();
       }
       
+      // Mark the given subresource as mapped
+      pResource->SetMapType(Subresource, MapType);
+
       // Set up map pointer. Data is tightly packed within the mapped buffer.
       pMappedResource->pData      = physSlice.mapPtr;
       pMappedResource->RowPitch   = formatInfo->elementSize * blockCount.width;
