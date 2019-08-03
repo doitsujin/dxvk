@@ -1462,31 +1462,87 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetLight(DWORD Index, const D3DLIGHT9* pLight) {
-    static bool s_errorShown = false;
+    D3D9DeviceLock lock = LockDevice();
 
-    if (!std::exchange(s_errorShown, true))
-      Logger::warn("D3D9DeviceEx::SetLight: Stub");
+    if (unlikely(pLight == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(ShouldRecord())) {
+      Logger::warn("D3D9DeviceEx::SetLight: State block not implemented.");
+      return D3D_OK;
+    }
+
+    if (Index >= m_state.lights.size())
+      m_state.lights.resize(Index + 1);
+
+    m_state.lights[Index] = *pLight;
+
     return D3D_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetLight(DWORD Index, D3DLIGHT9* pLight) {
-    Logger::warn("D3D9DeviceEx::GetLight: Stub");
+    D3D9DeviceLock lock = LockDevice();
+
+    if (unlikely(pLight == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(Index >= m_state.lights.size() || !m_state.lights[Index]))
+      return D3DERR_INVALIDCALL;
+
+    *pLight = m_state.lights[Index].value();
+
     return D3D_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::LightEnable(DWORD Index, BOOL Enable) {
-    static bool s_errorShown = false;
+    D3D9DeviceLock lock = LockDevice();
 
-    if (!std::exchange(s_errorShown, true))
-      Logger::warn("D3D9DeviceEx::LightEnable: Stub");
+    if (unlikely(Index >= m_state.lights.size()))
+      m_state.lights.resize(Index + 1);
+
+    if (unlikely(!m_state.lights[Index]))
+      m_state.lights[Index] = DefaultLight;
+
+    uint32_t searchIndex = UINT32_MAX;
+    uint32_t setIndex    = Index;
+
+    if (!Enable)
+      std::swap(searchIndex, setIndex);
+
+    bool set = false;
+
+    for (auto& idx : m_state.enabledLightIndices) {
+      if (idx == searchIndex) {
+        idx = setIndex;
+        set = true;
+        break;
+      }
+    }
+
+    if (unlikely(!set && Enable))
+      Logger::warn("D3D9DeviceEx::LightEnable: Failed to enable light.");
+      
     return D3D_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetLightEnable(DWORD Index, BOOL* pEnable) {
-    Logger::warn("D3D9DeviceEx::GetLightEnable: Stub");
+    D3D9DeviceLock lock = LockDevice();
+
+    if (unlikely(pEnable == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(Index >= m_state.lights.size() || !m_state.lights[Index]))
+      return D3DERR_INVALIDCALL;
+
+    const auto& indices = m_state.enabledLightIndices;
+
+    bool enabled = std::find(indices.begin(), indices.end(), Index) != indices.end();
+
+    *pEnable = enabled ? 128 : 0; // Weird quirk but OK.
+
     return D3D_OK;
   }
 

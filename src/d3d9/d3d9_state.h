@@ -7,6 +7,7 @@
 
 #include <array>
 #include <bitset>
+#include <optional>
 
 namespace dxvk {
 
@@ -81,6 +82,20 @@ namespace dxvk {
     UINT              stride = 0;
   };
 
+  constexpr D3DLIGHT9 DefaultLight = {
+    D3DLIGHT_DIRECTIONAL,     // Type
+    {1.0f, 1.0f, 1.0f, 1.0f}, // Diffuse
+    {0.0f, 0.0f, 0.0f, 0.0f}, // Specular
+    {0.0f, 0.0f, 0.0f, 0.0f}, // Ambient
+    {0.0f, 0.0f, 0.0f},       // Position
+    {0.0f, 0.0f, 0.0f},       // Direction
+    0.0f,                     // Range
+    0.0f,                     // Falloff
+    0.0f, 0.0f, 0.0f,         // Attenuations [constant, linear, quadratic]
+    0.0f,                     // Theta
+    0.0f                      // Phi
+  };
+
   struct D3D9CapturableState {
     D3D9CapturableState() {
       for (uint32_t i = 0; i < textures.size(); i++)
@@ -91,6 +106,9 @@ namespace dxvk {
 
       for (uint32_t i = 0; i < streamFreq.size(); i++)
         streamFreq[i] = 1;
+
+      for (uint32_t i = 0; i < enabledLightIndices.size(); i++)
+        enabledLightIndices[i] = UINT32_MAX;
     }
 
     D3D9VertexDecl*                                  vertexDecl = nullptr;
@@ -130,6 +148,9 @@ namespace dxvk {
     std::array<Matrix4, caps::MaxTransforms>         transforms;
 
     D3DMATERIAL9                                     material = D3DMATERIAL9();
+
+    std::vector<std::optional<D3DLIGHT9>>            lights;
+    std::array<DWORD, caps::MaxEnabledLights>        enabledLightIndices;
   };
 
   template <
