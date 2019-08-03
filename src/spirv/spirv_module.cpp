@@ -1974,6 +1974,21 @@ namespace dxvk {
   }
 
 
+  uint32_t SpirvModule::opInverse(
+    uint32_t                resultType,
+    uint32_t                matrix) {
+    uint32_t resultId = this->allocateId();
+
+    m_code.putIns(spv::OpExtInst, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450MatrixInverse);
+    m_code.putWord(matrix);
+    return resultId;
+  }
+
+
   uint32_t SpirvModule::opFFma(
           uint32_t                resultType,
           uint32_t                a,
@@ -2550,6 +2565,36 @@ namespace dxvk {
     m_code.putWord(resultId);
     m_code.putWord(m_instExtGlsl450);
     m_code.putWord(spv::GLSLstd450InverseSqrt);
+    m_code.putWord(operand);
+    return resultId;
+  }
+
+
+  uint32_t SpirvModule::opNormalize(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450Normalize);
+    m_code.putWord(operand);
+    return resultId;
+  }
+
+
+  uint32_t SpirvModule::opLength(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450Length);
     m_code.putWord(operand);
     return resultId;
   }
