@@ -343,7 +343,11 @@ namespace dxvk {
       uint32_t inputIndex  = m_vsKey.TexcoordIndices[i];
 
       uint32_t transformed;
-      if (inputIndex & D3DTSS_TCI_CAMERASPACEPOSITION) {
+      if (inputIndex & D3DTSS_TCI_CAMERASPACENORMAL) {
+        const uint32_t wIndex = 3;
+        transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1.0f), normal, 1, &wIndex);
+      }
+      else if (inputIndex & D3DTSS_TCI_CAMERASPACEPOSITION) {
         const uint32_t wIndex = 3;
         transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1.0f), vtx, 1, &wIndex);
       } else {
