@@ -3621,11 +3621,6 @@ namespace dxvk {
       }
     }
 
-    // Select the active binding mask to update
-    auto& refMask = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
-      ? m_state.gp.state.bsBindingMask
-      : m_state.cp.state.bsBindingMask;
-    
     for (uint32_t i = 0; i < layout->bindingCount(); i++) {
       const auto& binding = layout->binding(i);
       const auto& res     = m_rc[binding.slot];
@@ -3727,6 +3722,11 @@ namespace dxvk {
           Logger::err(str::format("DxvkContext: Unhandled descriptor type: ", binding.type));
       }
     }
+
+    // Select the active binding mask to update
+    auto& refMask = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+      ? m_state.gp.state.bsBindingMask
+      : m_state.cp.state.bsBindingMask;
 
     // If some resources are not bound, we may need to
     // update spec constants and rebind the pipeline
