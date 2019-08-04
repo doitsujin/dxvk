@@ -120,8 +120,6 @@ namespace dxvk {
     bool                    m_dirty = true;
     bool                    m_vsync = true;
 
-    bool                    m_asyncPresent = false;
-
     void PresentImage(UINT SyncInterval);
 
     void SynchronizePresent();
@@ -144,8 +142,6 @@ namespace dxvk {
     void DestroyGammaTexture();
     
     void CreateHud();
-
-    void InitOptions();
 
     void InitRenderState();
 

@@ -76,10 +76,6 @@ namespace dxvk {
     /// fixes issues with games that create multiple swap chains
     /// for a single window that may interfere with each other.
     bool deferSurfaceCreation;
-
-    /// Whether to use the submission thread for presentation.
-    /// May increase performance in some games with some drivers.
-    Tristate asyncPresent;
   };
   
 }
