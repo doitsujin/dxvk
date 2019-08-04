@@ -156,6 +156,7 @@ namespace dxvk {
   private:
 
     DxvkDevice*             m_device;
+    bool                    m_asyncPresent;
     
     std::atomic<bool>       m_stopped = { false };
     std::atomic<uint32_t>   m_pending = { 0u };

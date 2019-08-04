@@ -18,6 +18,9 @@ namespace dxvk {
     /// when using the state cache
     int32_t numCompilerThreads;
 
+    /// Asynchronous presentation
+    Tristate asyncPresent;
+
     /// Shader-related options
     Tristate useRawSsbo;
     Tristate useEarlyDiscard;
