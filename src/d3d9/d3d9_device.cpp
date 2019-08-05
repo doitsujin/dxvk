@@ -5394,7 +5394,7 @@ namespace dxvk {
         if (idx == UINT32_MAX)
           continue;
 
-        data->Lights[lightIdx++] = D3D9Light(m_state.lights[idx].value());
+        data->Lights[lightIdx++] = D3D9Light(m_state.lights[idx].value(), m_state.transforms[GetTransformIndex(D3DTS_VIEW)]);
       }
 
       data->Material = m_state.material;
