@@ -428,9 +428,9 @@ namespace dxvk {
         uint32_t bool_t  = m_module.defBoolType();
         uint32_t bool3_t = m_module.defVectorType(bool_t, 3);
 
-        uint32_t isPoint       = m_module.opFOrdEqual(bool_t, type, m_module.constu32(D3DLIGHT_POINT));
-        uint32_t isSpot        = m_module.opFOrdEqual(bool_t, type, m_module.constu32(D3DLIGHT_SPOT));
-        uint32_t isDirectional = m_module.opFOrdEqual(bool_t, type, m_module.constu32(D3DLIGHT_DIRECTIONAL));
+        uint32_t isPoint       = m_module.opIEqual(bool_t, type, m_module.constu32(D3DLIGHT_POINT));
+        uint32_t isSpot        = m_module.opIEqual(bool_t, type, m_module.constu32(D3DLIGHT_SPOT));
+        uint32_t isDirectional = m_module.opIEqual(bool_t, type, m_module.constu32(D3DLIGHT_DIRECTIONAL));
 
         std::array<uint32_t, 3> members = { isDirectional, isDirectional, isDirectional };
 
