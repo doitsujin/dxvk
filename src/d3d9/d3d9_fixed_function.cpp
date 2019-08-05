@@ -315,7 +315,11 @@ namespace dxvk {
       uint32_t wv = m_vs.constants.worldview;
       uint32_t nrmMtx = m_vs.constants.normal;
 
-      normal = m_module.opNormalize(m_vec4Type, m_module.opMatrixTimesVector(m_vec4Type, nrmMtx, normal));
+      normal = m_module.opMatrixTimesVector(m_vec4Type, nrmMtx, normal);
+
+      // Some games rely no normals not being normal.
+      if (m_vsKey.NormalizeNormals)
+        normal = m_module.opNormalize(m_vec4Type, normal);
 
       vtx         = m_module.opVectorTimesMatrix(m_vec4Type, vtx, wv);
       gl_Position = m_module.opVectorTimesMatrix(m_vec4Type, vtx, m_vs.constants.proj);
@@ -1406,6 +1410,7 @@ namespace dxvk {
     state.add(bhash(key.HasColor0));
     state.add(bhash(key.HasColor1));
     state.add(bhash(key.UseLighting));
+    state.add(bhash(key.NormalizeNormals));
 
     state.add(colorSourceHash(key.DiffuseSource));
     state.add(colorSourceHash(key.AmbientSource));

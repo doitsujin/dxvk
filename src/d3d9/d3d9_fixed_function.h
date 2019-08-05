@@ -28,6 +28,8 @@ namespace dxvk {
 
     bool UseLighting;
 
+    bool NormalizeNormals;
+
     D3DMATERIALCOLORSOURCE DiffuseSource;
     D3DMATERIALCOLORSOURCE AmbientSource;
     D3DMATERIALCOLORSOURCE SpecularSource;

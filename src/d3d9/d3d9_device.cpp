@@ -1735,6 +1735,7 @@ namespace dxvk {
         case D3DRS_EMISSIVEMATERIALSOURCE:
         case D3DRS_COLORVERTEX:
         case D3DRS_LIGHTING:
+        case D3DRS_NORMALIZENORMALS:
           m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
           break;
 
@@ -5301,7 +5302,8 @@ namespace dxvk {
                        | (key.HasColor1 ? D3DMCS_COLOR2 : D3DMCS_MATERIAL)
                        : 0;
 
-      key.UseLighting  = lighting;
+      key.UseLighting      = lighting;
+      key.NormalizeNormals = m_state.renderStates[D3DRS_NORMALIZENORMALS];
 
       key.DiffuseSource  = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_DIFFUSEMATERIALSOURCE]  & mask);
       key.AmbientSource  = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_AMBIENTMATERIALSOURCE]  & mask);
