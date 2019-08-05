@@ -2212,6 +2212,26 @@ namespace dxvk {
           IDirect3DVertexDeclaration9* pVertexDecl,
           DWORD                        Flags) {
     Logger::warn("D3D9DeviceEx::ProcessVertices: Stub");
+    D3D9VertexBuffer* dst = static_cast<D3D9VertexBuffer*>(pDestBuffer);
+
+    // Let's avoid some vertex explosions here...
+    // This is not an actual implementation.
+    // Just makes some games slightly more playable.
+
+    if (unlikely(dst == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    uint32_t size = dst->GetCommonBuffer()->Desc()->Size;
+
+    void* data = nullptr;
+    HRESULT hr = dst->Lock(0, size, &data, D3DLOCK_DISCARD);
+    if (FAILED(hr))
+      return D3DERR_INVALIDCALL;
+
+    std::memset(data, 0, size);
+
+    dst->Unlock();
+
     return D3D_OK;
   }
 
