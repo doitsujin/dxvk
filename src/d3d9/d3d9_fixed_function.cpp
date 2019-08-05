@@ -457,9 +457,9 @@ namespace dxvk {
         // Spot Lighting
         {
           uint32_t rho        = m_module.opDot (m_floatType, m_module.opFNegate(m_vec3Type, hitDir), direction);
-          uint32_t spotAtten  = m_module.opFAdd(m_floatType, rho, m_module.opFNegate(m_floatType, phi));
-                   spotAtten  = m_module.opFDiv(m_floatType, rho, m_module.opFSub(m_floatType, theta, phi));
-                   spotAtten  = m_module.opPow (m_floatType, rho, falloff);
+          uint32_t spotAtten  = m_module.opFSub(m_floatType, rho, phi);
+                   spotAtten  = m_module.opFDiv(m_floatType, spotAtten, m_module.opFSub(m_floatType, theta, phi));
+                   spotAtten  = m_module.opPow (m_floatType, spotAtten, falloff);
 
           uint32_t insideThetaAndPhi = m_module.opFOrdGreaterThanEqual(bool_t, rho, theta);
           uint32_t insidePhi         = m_module.opFOrdGreaterThanEqual(bool_t, rho, phi);
