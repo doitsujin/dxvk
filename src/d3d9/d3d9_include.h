@@ -86,3 +86,6 @@ typedef struct _D3DDEVINFO_RESOURCEMANAGER
 extern "C" WINUSERAPI WINBOOL WINAPI SetProcessDPIAware(VOID);
 #endif
 #endif
+
+// This is the managed pool on D3D9Ex, it's just hidden!
+#define D3DPOOL_MANAGED_EX D3DPOOL(6)

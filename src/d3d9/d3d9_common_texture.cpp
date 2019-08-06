@@ -35,7 +35,7 @@ namespace dxvk {
 
       CreateInitialViews();
 
-      if (m_desc.Pool != D3DPOOL_MANAGED) {
+      if (!IsManaged()) {
         m_size = m_image->memSize();
         if (!m_device->ChangeReportedMemory(-m_size))
           throw DxvkError("D3D9: Reporting out of memory from tracking.");
@@ -72,7 +72,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     // Using MANAGED pool with DYNAMIC usage is illegal
-    if (pDesc->Pool == D3DPOOL_MANAGED && (pDesc->Usage & D3DUSAGE_DYNAMIC))
+    if (IsPoolManaged(pDesc->Pool) && (pDesc->Usage & D3DUSAGE_DYNAMIC))
       return D3DERR_INVALIDCALL;
     
     // Use the maximum possible mip level count if the supplied
@@ -105,7 +105,7 @@ namespace dxvk {
     VkMemoryPropertyFlags memType = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                                   | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
-    if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM || m_desc.Pool == D3DPOOL_MANAGED)
+    if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM || IsManaged())
       memType |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
 
     m_buffers[Subresource] = m_device->GetDXVKDevice()->createBuffer(info, memType);

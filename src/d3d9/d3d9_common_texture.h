@@ -261,7 +261,7 @@ namespace dxvk {
      * \returns Whether a resource is managed (pool) or not
      */
     bool IsManaged() const {
-      return m_desc.Pool == D3DPOOL_MANAGED;
+      return IsPoolManaged(m_desc.Pool);
     }
 
     /**

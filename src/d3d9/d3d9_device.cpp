@@ -3779,7 +3779,7 @@ namespace dxvk {
     VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
     
     const bool systemmem = desc.Pool == D3DPOOL_SYSTEMMEM;
-    const bool managed   = desc.Pool == D3DPOOL_MANAGED;
+    const bool managed   = IsPoolManaged(desc.Pool);
     const bool scratch   = desc.Pool == D3DPOOL_SCRATCH;
 
     bool modified = pResource->GetSystemMemGPUModified();
@@ -4010,7 +4010,7 @@ namespace dxvk {
 
     // We can only respect this for these cases -- otherwise R/W OOB still get copied on native
     // and some stupid games depend on that.
-    bool respectBounds = (desc.Usage & D3DUSAGE_DYNAMIC) || desc.Pool == D3DPOOL_MANAGED;
+    bool respectBounds = (desc.Usage & D3DUSAGE_DYNAMIC) || IsPoolManaged(desc.Pool);
 
     if (SizeToLock == 0 || !respectBounds)
       SizeToLock = maxLockSize;
