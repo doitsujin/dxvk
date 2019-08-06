@@ -29,11 +29,11 @@ namespace dxvk::bit {
   }
   
   inline uint32_t tzcnt(uint32_t n) {
-    #if defined(_MSC_VER)
+    #if defined(_MSC_VER) && !defined(__clang__)
     return _tzcnt_u32(n);
     #elif defined(__BMI__)
     return __tzcnt_u32(n);
-    #elif defined(__GNUC__)
+    #elif defined(__GNUC__) || defined(__clang__)
     uint32_t res;
     uint32_t tmp;
     asm (
