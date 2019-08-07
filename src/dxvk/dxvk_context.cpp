@@ -369,27 +369,11 @@ namespace dxvk {
     if (m_execBarriers.isBufferDirty(slice, DxvkAccess::Write))
       m_execBarriers.recordCommands(m_cmd);
     
-    constexpr VkDeviceSize updateThreshold = 256;
-
-    if (length <= updateThreshold * sizeof(uint32_t)) {
-      std::array<uint32_t, updateThreshold> data;
-
-      for (uint32_t i = 0; i < length / sizeof(uint32_t); i++)
-        data[i] = value;
-      
-      m_cmd->cmdUpdateBuffer(
-        DxvkCmdBuffer::ExecBuffer,
-        slice.handle,
-        slice.offset,
-        slice.length,
-        data.data());
-    } else {
-      m_cmd->cmdFillBuffer(
-        slice.handle,
-        slice.offset,
-        slice.length,
-        value);
-    }
+    m_cmd->cmdFillBuffer(
+      slice.handle,
+      slice.offset,
+      slice.length,
+      value);
     
     m_execBarriers.accessBuffer(slice,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
