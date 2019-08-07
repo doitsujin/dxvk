@@ -45,6 +45,14 @@ namespace dxvk {
       return m_elements;
     }
 
+    UINT GetSize() const {
+      if (m_elements.size() == 0)
+        return 0;
+
+      auto& end = *m_elements.end();
+      return end.Offset + GetDecltypeSize(D3DDECLTYPE(end.Type));
+    }
+
     bool TestFlag(D3D9VertexDeclFlag flag) const {
       return m_flags.test(flag);
     }
