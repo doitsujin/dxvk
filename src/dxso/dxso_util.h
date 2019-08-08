@@ -30,6 +30,8 @@ namespace dxvk {
           DxsoBindingType bindingType,
           uint32_t        bindingIndex);
 
+  uint32_t getSWVPBufferSlot();
+
   uint32_t RegisterLinkerSlot(DxsoSemantic semantic);
 
 }

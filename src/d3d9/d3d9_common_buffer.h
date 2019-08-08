@@ -141,6 +141,8 @@ namespace dxvk {
     D3D9Range& LockRange()  { return m_lockRange; }
     D3D9Range& DirtyRange() { return m_dirtyRange; }
 
+    bool SetReadLocked(bool state) { return std::exchange(m_readLocked, state); }
+
   private:
 
     Rc<DxvkBuffer> CreateBuffer() const;
@@ -161,6 +163,7 @@ namespace dxvk {
     D3D9DeviceEx*               m_parent;
     const D3D9_BUFFER_DESC      m_desc;
     DWORD                       m_mapFlags;
+    bool                        m_readLocked = false;
 
     Rc<DxvkBuffer>              m_buffer;
     Rc<DxvkBuffer>              m_stagingBuffer;

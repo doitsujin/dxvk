@@ -21,6 +21,7 @@
 
 #include "d3d9_sampler.h"
 #include "d3d9_fixed_function.h"
+#include "d3d9_swvp_emu.h"
 
 #include <vector>
 #include <type_traits>
@@ -835,6 +836,7 @@ namespace dxvk {
     DxvkCsChunkRef                  m_csChunk;
 
     D3D9FFShaderModuleSet           m_ffModules;
+    D3D9SWVPEmulator                m_swvpEmulator;
 
     DxvkCsChunkRef AllocCsChunk() {
       DxvkCsChunk* chunk = m_csChunkPool.allocChunk(DxvkCsChunkFlag::SingleUse);

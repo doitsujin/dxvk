@@ -31,6 +31,11 @@ namespace dxvk {
     return 0;
   }
 
+  // TODO: Intergrate into compute resource slot ID/refactor all of this?
+  uint32_t getSWVPBufferSlot() {
+    return 27;
+  }
+
 
   std::mutex                   g_linkerSlotMutex;
   uint32_t                     g_linkerSlotCount = 0;

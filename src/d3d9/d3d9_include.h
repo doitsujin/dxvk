@@ -89,3 +89,5 @@ extern "C" WINUSERAPI WINBOOL WINAPI SetProcessDPIAware(VOID);
 
 // This is the managed pool on D3D9Ex, it's just hidden!
 #define D3DPOOL_MANAGED_EX D3DPOOL(6)
+
+using D3D9VertexElements = std::vector<D3DVERTEXELEMENT9>;

@@ -2211,26 +2211,75 @@ namespace dxvk {
           IDirect3DVertexBuffer9*      pDestBuffer,
           IDirect3DVertexDeclaration9* pVertexDecl,
           DWORD                        Flags) {
-    Logger::warn("D3D9DeviceEx::ProcessVertices: Stub");
-    D3D9VertexBuffer* dst = static_cast<D3D9VertexBuffer*>(pDestBuffer);
-
-    // Let's avoid some vertex explosions here...
-    // This is not an actual implementation.
-    // Just makes some games slightly more playable.
-
-    if (unlikely(dst == nullptr))
+    if (unlikely(pDestBuffer == nullptr || pVertexDecl == nullptr))
       return D3DERR_INVALIDCALL;
 
-    uint32_t size = dst->GetCommonBuffer()->Desc()->Size;
+    D3D9CommonBuffer* dst  = static_cast<D3D9VertexBuffer*>(pDestBuffer)->GetCommonBuffer();
+    D3D9VertexDecl*   decl = static_cast<D3D9VertexDecl*>  (pVertexDecl);
 
-    void* data = nullptr;
-    HRESULT hr = dst->Lock(0, size, &data, D3DLOCK_DISCARD);
-    if (FAILED(hr))
-      return D3DERR_INVALIDCALL;
+    PrepareDraw(false);
 
-    std::memset(data, 0, size);
+    if (decl == nullptr) {
+      DWORD FVF = dst->Desc()->FVF;
 
-    dst->Unlock();
+      auto iter = m_fvfTable.find(FVF);
+
+      if (iter == m_fvfTable.end()) {
+        decl = new D3D9VertexDecl(this, FVF);
+        m_fvfTable.insert(std::make_pair(FVF, decl));
+      }
+      else
+        decl = iter->second.ptr();
+    }
+
+    uint32_t offset = DestIndex * decl->GetSize();
+
+    auto slice = dst->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>();
+         slice = slice.subSlice(offset, slice.length() - offset);
+
+    EmitCs([this,
+      cDecl          = ref(decl),
+      cVertexCount   = VertexCount,
+      cStartIndex    = SrcStartIndex,
+      cInstanceCount = GetInstanceCount(),
+      cBufferSlice   = slice,
+      cIndexed       = m_state.indices != nullptr
+    ](DxvkContext* ctx) {
+      Rc<DxvkShader> shader = m_swvpEmulator.GetShaderModule(this, cDecl);
+
+      auto drawInfo = GenerateDrawInfo(D3DPT_POINTLIST, cVertexCount, cInstanceCount);
+
+      if (drawInfo.instanceCount != 1) {
+        drawInfo.instanceCount = 1;
+
+        Logger::warn("D3D9DeviceEx::ProcessVertices: instancing unsupported");
+      }
+
+      ApplyPrimitiveType(ctx, D3DPT_POINTLIST);
+
+      ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT, shader);
+      ctx->bindResourceBuffer(getSWVPBufferSlot(), cBufferSlice);
+      ctx->draw(
+        drawInfo.vertexCount, drawInfo.instanceCount,
+        cStartIndex, 0);
+      ctx->bindResourceBuffer(getSWVPBufferSlot(), DxvkBufferSlice());
+      ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT, nullptr);
+    });
+
+    if (dst->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER) {
+      uint32_t copySize = VertexCount * decl->GetSize();
+
+      EmitCs([
+        cSrcBuffer = dst->GetBuffer<D3D9_COMMON_BUFFER_TYPE_REAL>(),
+        cDstBuffer = dst->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>(),
+        cOffset    = offset,
+        cCopySize  = copySize
+      ](DxvkContext* ctx) {
+        ctx->copyBuffer(cDstBuffer, cOffset, cSrcBuffer, cOffset, cCopySize);
+      });
+    }
+
+    dst->SetReadLocked(true);
 
     return D3D_OK;
   }
@@ -3573,6 +3622,9 @@ namespace dxvk {
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor;
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor;
 
+    // ProcessVertices
+    enabled.core.features.vertexPipelineStoresAndAtomics = VK_TRUE;
+
     // DXVK Meta
     enabled.core.features.shaderStorageImageWriteWithoutFormat = VK_TRUE;
     enabled.core.features.shaderStorageImageExtendedFormats    = VK_TRUE;
@@ -4041,7 +4093,9 @@ namespace dxvk {
       if (respectBounds && pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER && !(Flags & D3DLOCK_READONLY))
         dirtyRangeOverlap = pResource->DirtyRange().overlap(pResource->LockRange());
 
-      bool skipWait = (Flags & D3DLOCK_NOOVERWRITE) || (Flags & D3DLOCK_READONLY) || !dirtyRangeOverlap;
+      bool readLocked = pResource->SetReadLocked(false);
+
+      bool skipWait = (Flags & D3DLOCK_NOOVERWRITE) || ( (Flags & D3DLOCK_READONLY) && !readLocked ) || !dirtyRangeOverlap;
 
       // Wait until the resource is no longer in use
       if (!skipWait) {
