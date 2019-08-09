@@ -120,11 +120,13 @@ namespace dxvk {
 
     D3D9FFShaderCompiler(
             Rc<DxvkDevice>     Device,
-      const D3D9FFShaderKeyVS& Key);
+      const D3D9FFShaderKeyVS& Key,
+      const std::string&       Name);
 
     D3D9FFShaderCompiler(
             Rc<DxvkDevice>     Device,
-      const D3D9FFShaderKeyFS& Key);
+      const D3D9FFShaderKeyFS& Key,
+      const std::string&       Name);
 
     Rc<DxvkShader> compile();
 
@@ -178,17 +180,21 @@ namespace dxvk {
 
   D3D9FFShaderCompiler::D3D9FFShaderCompiler(
           Rc<DxvkDevice>     Device,
-    const D3D9FFShaderKeyVS& Key) {
+    const D3D9FFShaderKeyVS& Key,
+    const std::string&       Name) {
     m_programType = DxsoProgramTypes::VertexShader;
     m_vsKey    = Key;
+    m_filename = Name;
   }
 
 
   D3D9FFShaderCompiler::D3D9FFShaderCompiler(
           Rc<DxvkDevice>     Device,
-    const D3D9FFShaderKeyFS& Key) {
+    const D3D9FFShaderKeyFS& Key,
+    const std::string& Name) {
     m_programType = DxsoProgramTypes::PixelShader;
     m_fsKey    = Key;
+    m_filename = Name;
   }
 
 
@@ -1320,15 +1326,21 @@ namespace dxvk {
   D3D9FFShader::D3D9FFShader(
           D3D9DeviceEx*         pDevice,
     const D3D9FFShaderKeyVS&    Key) {
+    Sha1Hash hash = Sha1Hash::compute(&Key, sizeof(Key));
+    DxvkShaderKey shaderKey = { VK_SHADER_STAGE_VERTEX_BIT, hash };
+
+    std::string name = str::format("FF_", shaderKey.toString());
+
     D3D9FFShaderCompiler compiler(
       pDevice->GetDXVKDevice(),
-      Key);
+      Key, name);
 
     m_shader = compiler.compile();
     m_isgn   = compiler.isgn();
 
-    Dump<false>(Key);
+    Dump(Key, name);
 
+    m_shader->setShaderKey(shaderKey);
     pDevice->GetDXVKDevice()->registerShader(m_shader);
   }
 
@@ -1336,27 +1348,33 @@ namespace dxvk {
   D3D9FFShader::D3D9FFShader(
           D3D9DeviceEx*         pDevice,
     const D3D9FFShaderKeyFS&    Key) {
+    Sha1Hash hash = Sha1Hash::compute(&Key, sizeof(Key));
+    DxvkShaderKey shaderKey = { VK_SHADER_STAGE_FRAGMENT_BIT, hash };
+
+    std::string name = str::format("FF_", shaderKey.toString());
+
     D3D9FFShaderCompiler compiler(
       pDevice->GetDXVKDevice(),
-      Key);
+      Key, name);
 
     m_shader = compiler.compile();
     m_isgn   = compiler.isgn();
 
-    Dump<true>(Key);
+    Dump(Key, name);
 
+    m_shader->setShaderKey(shaderKey);
     pDevice->GetDXVKDevice()->registerShader(m_shader);
   }
 
-  template <bool FS, typename T>
-  void D3D9FFShader::Dump(const T& Key) {
+  template <typename T>
+  void D3D9FFShader::Dump(const T& Key, const std::string& Name) {
     const std::string dumpPath = env::getEnvVar("DXVK_SHADER_DUMP_PATH");
 
     if (dumpPath.size() != 0) {
       D3D9FFShaderKeyHash hash;
 
       std::ofstream dumpStream(
-        str::format(dumpPath, "/", FS ? "FS_FF_" : "VS_FF_", hash(Key), ".spv"),
+        str::format(dumpPath, "/", Name, ".spv"),
         std::ios_base::binary | std::ios_base::trunc);
       
       m_shader->dump(dumpStream);
