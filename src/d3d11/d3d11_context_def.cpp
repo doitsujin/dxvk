@@ -140,22 +140,7 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeferredContext::Unmap(
           ID3D11Resource*             pResource,
           UINT                        Subresource) {
-    D3D10DeviceLock lock = LockContext();
-
-    auto entry = FindMapEntry(pResource, Subresource);
-    if (unlikely(entry == m_mappedResources.rend())) {
-      Logger::err("D3D11DeferredContext::Unmap: Subresource not mapped");
-      return;
-    }
-    
-    if (entry->MapType == D3D11_MAP_WRITE_DISCARD) {
-      D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
-      pResource->GetType(&resourceDim);
-      
-      (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER)
-        ? UnmapBuffer(pResource,              &(*entry))
-        : UnmapImage (pResource, Subresource, &(*entry));
-    }
+    // No-op, updates are committed in Map
   }
   
   
@@ -190,11 +175,27 @@ namespace dxvk {
       // just swap in the buffer slice as needed.
       pMapEntry->BufferSlice = pBuffer->AllocSlice();
       pMapEntry->MapPointer  = pMapEntry->BufferSlice.mapPtr;
+
+      EmitCs([
+        cDstBuffer = pBuffer->GetBuffer(),
+        cPhysSlice = pMapEntry->BufferSlice
+      ] (DxvkContext* ctx) {
+        ctx->invalidateBuffer(cDstBuffer, cPhysSlice);
+      });
     } else {
       // For GPU-writable resources, we need a data slice
       // to perform the update operation at execution time.
       pMapEntry->DataSlice   = AllocUpdateBufferSlice(pBuffer->Desc()->ByteWidth);
       pMapEntry->MapPointer  = pMapEntry->DataSlice.ptr();
+
+      EmitCs([
+        cDstBuffer = pBuffer->GetBuffer(),
+        cDataSlice = pMapEntry->DataSlice
+      ] (DxvkContext* ctx) {
+        DxvkBufferSliceHandle slice = cDstBuffer->allocSlice();
+        std::memcpy(slice.mapPtr, cDataSlice.ptr(), cDataSlice.length());
+        ctx->invalidateBuffer(cDstBuffer, slice);
+      });
     }
     
     return S_OK;
@@ -241,43 +242,7 @@ namespace dxvk {
     pMapEntry->DepthPitch   = ySize;
     pMapEntry->DataSlice    = AllocUpdateBufferSlice(zSize);
     pMapEntry->MapPointer   = pMapEntry->DataSlice.ptr();
-    return S_OK;
-  }
-  
-  
-  void D3D11DeferredContext::UnmapBuffer(
-          ID3D11Resource*               pResource,
-    const D3D11DeferredContextMapEntry* pMapEntry) {
-    D3D11Buffer* pBuffer = static_cast<D3D11Buffer*>(pResource);
-    
-    if (likely(pBuffer->Desc()->Usage == D3D11_USAGE_DYNAMIC && m_csFlags.test(DxvkCsChunkFlag::SingleUse))) {
-      EmitCs([
-        cDstBuffer = pBuffer->GetBuffer(),
-        cPhysSlice = pMapEntry->BufferSlice
-      ] (DxvkContext* ctx) {
-        ctx->invalidateBuffer(cDstBuffer, cPhysSlice);
-      });
-    } else {
-      EmitCs([
-        cDstBuffer = pBuffer->GetBuffer(),
-        cDataSlice = pMapEntry->DataSlice
-      ] (DxvkContext* ctx) {
-        DxvkBufferSliceHandle slice = cDstBuffer->allocSlice();
-        std::memcpy(slice.mapPtr, cDataSlice.ptr(), cDataSlice.length());
-        ctx->invalidateBuffer(cDstBuffer, slice);
-      });
-    }
-  }
-  
-  
-  void D3D11DeferredContext::UnmapImage(
-          ID3D11Resource*               pResource,
-          UINT                          Subresource,
-    const D3D11DeferredContextMapEntry* pMapEntry) {
-    // TODO If the texture itself is mapped to host-visible
-    // memory, write the data slice directly to the image.
-    const D3D11CommonTexture* pTexture = GetCommonTexture(pResource);
-    
+
     EmitCs([
       cImage              = pTexture->GetImage(),
       cSubresource        = pTexture->GetSubresourceFromIndex(
@@ -315,6 +280,8 @@ namespace dxvk {
           cPackedFormat);
       }
     });
+
+    return S_OK;
   }
   
   

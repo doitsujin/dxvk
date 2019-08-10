@@ -90,15 +90,6 @@ namespace dxvk {
             UINT                          MapFlags,
             D3D11DeferredContextMapEntry* pMapEntry);
     
-    void UnmapBuffer(
-            ID3D11Resource*               pResource,
-      const D3D11DeferredContextMapEntry* pMapEntry);
-    
-    void UnmapImage(
-            ID3D11Resource*               pResource,
-            UINT                          Subresource,
-      const D3D11DeferredContextMapEntry* pMapEntry);
-    
     Com<D3D11CommandList> CreateCommandList();
     
     void EmitCsChunk(DxvkCsChunkRef&& chunk);
