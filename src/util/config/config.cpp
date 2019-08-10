@@ -153,7 +153,11 @@ namespace dxvk {
     /* The Surge                                  */
     { "TheSurge.exe", {{
       { "d3d11.allowMapFlagNoWait",         "True" },
-    }} }
+    }} },
+    /* SteamVR performance test                   */
+    { "vr.exe", {{
+      { "d3d11.dcSingleUseMode",            "False" },
+    }} },
   }};
 
 
