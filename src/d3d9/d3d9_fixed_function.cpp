@@ -1005,7 +1005,7 @@ namespace dxvk {
             break;
 
           case D3DTOP_LERP:
-            dst = m_module.opFMix(m_vec4Type, arg[2], arg[0], arg[1]);
+            dst = m_module.opFMix(m_vec4Type, arg[1], arg[2], arg[0]);
             break;
 
           case D3DTOP_DISABLE:
