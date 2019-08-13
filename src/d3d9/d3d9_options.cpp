@@ -44,7 +44,6 @@ namespace dxvk {
     this->numBackBuffers        = config.getOption<int32_t>("d3d9.numBackBuffers", 0);
     this->deferSurfaceCreation  = config.getOption<bool>   ("d3d9.deferSurfaceCreation", false);
     this->hasHazards            = config.getOption<bool>   ("d3d9.hasHazards",           false);
-    this->asyncPresent          = config.getOption<Tristate>("d3d9.asyncPresent", Tristate::Auto);
     this->samplerAnisotropy     = config.getOption<int32_t>("d3d9.samplerAnisotropy", -1);
     this->maxAvailableMemory    = config.getOption<uint32_t>("d3d9.maxAvailableMemory", UINT32_MAX);
 

@@ -131,8 +131,6 @@ namespace dxvk {
     bool                    m_dirty    = true;
     bool                    m_vsync    = true;
 
-    bool                    m_asyncPresent = false;
-
     HWND                    m_window   = nullptr;
     HMONITOR                m_monitor  = nullptr;
 
@@ -162,8 +160,6 @@ namespace dxvk {
     void DestroyGammaTexture();
 
     void CreateHud();
-
-    void InitOptions();
 
     void InitRenderState();
 
