@@ -266,6 +266,13 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdNextSubpass);
     VULKAN_FN(vkCmdEndRenderPass);
     VULKAN_FN(vkCmdExecuteCommands);
+
+    #ifdef VK_KHR_create_renderpass2
+    VULKAN_FN(vkCreateRenderPass2KHR);
+    VULKAN_FN(vkCmdBeginRenderPass2KHR);
+    VULKAN_FN(vkCmdNextSubpass2KHR);
+    VULKAN_FN(vkCmdEndRenderPass2KHR);
+    #endif
     
     #ifdef VK_KHR_descriptor_update_template
     VULKAN_FN(vkCreateDescriptorUpdateTemplateKHR);
