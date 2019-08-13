@@ -2978,7 +2978,9 @@ namespace dxvk {
       dstImage->isFullSubresource(region.dstSubresource, region.extent));
 
     auto pipeInfo = m_common->metaResolve().getPipeline(
-      format, srcImage->info().sampleCount);
+      format, srcImage->info().sampleCount,
+      VK_RESOLVE_MODE_NONE_KHR,
+      VK_RESOLVE_MODE_NONE_KHR);
     
     VkDescriptorImageInfo descriptorImage;
     descriptorImage.sampler          = VK_NULL_HANDLE;
