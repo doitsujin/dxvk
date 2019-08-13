@@ -507,6 +507,10 @@ namespace dxvk {
       
       m_device->presentImage(m_presenter,
         sync.present, &m_presentStatus);
+
+      if (m_presentStatus.result != VK_NOT_READY
+       && m_presentStatus.result != VK_SUCCESS)
+        RecreateSwapChain(m_vsync);
     }
   }
 
