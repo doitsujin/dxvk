@@ -5619,8 +5619,13 @@ namespace dxvk {
     const D3D9_COMMON_TEXTURE_DESC* srcDesc = srcTextureInfo->Desc();
     const D3D9_COMMON_TEXTURE_DESC* dstDesc = dstTextureInfo->Desc();
 
-    if (unlikely(dstDesc->MultiSample > D3DMULTISAMPLE_NONMASKABLE))
+    VkSampleCountFlagBits dstSampleCount;
+    DecodeMultiSampleType(dstDesc->MultiSample, dstDesc->MultisampleQuality, &dstSampleCount);
+
+    if (unlikely(dstSampleCount != VK_SAMPLE_COUNT_1_BIT)) {
+      Logger::warn("D3D9DeviceEx::ResolveZ: dstSampleCount != 1. Discarding.");
       return;
+    }
 
     const D3D9_VK_FORMAT_MAPPING srcFormatInfo = LookupFormat(srcDesc->Format);
     const D3D9_VK_FORMAT_MAPPING dstFormatInfo = LookupFormat(dstDesc->Format);
@@ -5646,7 +5651,10 @@ namespace dxvk {
       srcSubresource.mipLevel,
       srcSubresource.arrayLayer, 1 };
 
-    if (dstDesc->MultiSample <= D3DMULTISAMPLE_NONMASKABLE) {
+    VkSampleCountFlagBits srcSampleCount;
+    DecodeMultiSampleType(srcDesc->MultiSample, srcDesc->MultisampleQuality, &srcSampleCount);
+
+    if (srcSampleCount == VK_SAMPLE_COUNT_1_BIT) {
       EmitCs([
         cDstImage  = dstTextureInfo->GetImage(),
         cSrcImage  = srcTextureInfo->GetImage(),
@@ -5665,6 +5673,11 @@ namespace dxvk {
         cDstSubres = dstSubresourceLayers,
         cSrcSubres = srcSubresourceLayers
       ] (DxvkContext* ctx) {
+        // We should resolve using the first sample according to
+        // http://amd-dev.wpengine.netdna-cdn.com/wordpress/media/2012/10/Advanced-DX9-Capabilities-for-ATI-Radeon-Cards_v2.pdf
+        // "The resolve operation copies the depth value from the *first sample only* into the resolved depth stencil texture."
+        constexpr auto resolveMode = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR;
+
         VkImageResolve region;
         region.srcSubresource = cSrcSubres;
         region.srcOffset      = VkOffset3D { 0, 0, 0 };
@@ -5672,7 +5685,7 @@ namespace dxvk {
         region.dstOffset      = VkOffset3D { 0, 0, 0 };
         region.extent         = cDstImage->mipLevelExtent(cDstSubres.mipLevel);
 
-        ctx->resolveImage(cDstImage, cSrcImage, region, cDstImage->info().format);
+        ctx->resolveDepthStencilImage(cDstImage, cSrcImage, region, resolveMode, resolveMode);
       });
     }
   }
