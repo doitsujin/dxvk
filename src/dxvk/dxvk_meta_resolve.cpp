@@ -22,8 +22,21 @@ namespace dxvk {
   : m_vkd(vkd),
     m_dstImageView(dstImageView),
     m_srcImageView(srcImageView),
-    m_renderPass  (createRenderPass(discardDst)),
-    m_framebuffer (createFramebuffer()) { }
+    m_renderPass  (createShaderRenderPass(discardDst)),
+    m_framebuffer (createShaderFramebuffer()) { }
+
+
+  DxvkMetaResolveRenderPass::DxvkMetaResolveRenderPass(
+    const Rc<vk::DeviceFn>&        vkd,
+    const Rc<DxvkImageView>&       dstImageView,
+    const Rc<DxvkImageView>&       srcImageView,
+          VkResolveModeFlagBitsKHR modeD,
+          VkResolveModeFlagBitsKHR modeS)
+  : m_vkd(vkd),
+    m_dstImageView(dstImageView),
+    m_srcImageView(srcImageView),
+    m_renderPass  (createAttachmentRenderPass(modeD, modeS)),
+    m_framebuffer (createAttachmentFramebuffer()) { }
   
 
   DxvkMetaResolveRenderPass::~DxvkMetaResolveRenderPass() {
@@ -32,7 +45,7 @@ namespace dxvk {
   }
 
 
-  VkRenderPass DxvkMetaResolveRenderPass::createRenderPass(bool discard) const {
+  VkRenderPass DxvkMetaResolveRenderPass::createShaderRenderPass(bool discard) const {
     auto formatInfo = m_dstImageView->formatInfo();
     bool isColorImage = (formatInfo->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT);
 
@@ -91,7 +104,97 @@ namespace dxvk {
   }
 
 
-  VkFramebuffer DxvkMetaResolveRenderPass::createFramebuffer() const {
+  VkRenderPass DxvkMetaResolveRenderPass::createAttachmentRenderPass(
+          VkResolveModeFlagBitsKHR modeD,
+          VkResolveModeFlagBitsKHR modeS) const {
+    std::array<VkAttachmentDescription2KHR, 2> attachments;
+    attachments[0].sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2_KHR;
+    attachments[0].pNext          = nullptr;
+    attachments[0].flags          = 0;
+    attachments[0].format         = m_srcImageView->info().format;
+    attachments[0].samples        = m_srcImageView->imageInfo().sampleCount;
+    attachments[0].loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD;
+    attachments[0].storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+    attachments[0].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_LOAD;
+    attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachments[0].initialLayout  = m_srcImageView->imageInfo().layout;
+    attachments[0].finalLayout    = m_srcImageView->imageInfo().layout;
+
+    attachments[1].sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2_KHR;
+    attachments[1].pNext          = nullptr;
+    attachments[1].flags          = 0;
+    attachments[1].format         = m_dstImageView->info().format;
+    attachments[1].samples        = VK_SAMPLE_COUNT_1_BIT;
+    attachments[1].loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD;
+    attachments[1].storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+    attachments[1].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_LOAD;
+    attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachments[1].initialLayout  = m_dstImageView->imageInfo().layout;
+    attachments[1].finalLayout    = m_dstImageView->imageInfo().layout;
+
+    if (modeD != VK_RESOLVE_MODE_NONE_KHR && modeS != VK_RESOLVE_MODE_NONE_KHR) {
+      attachments[1].loadOp         = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+      attachments[1].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+      attachments[1].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+    }
+
+    VkAttachmentReference2KHR srcRef;
+    srcRef.sType                = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2_KHR;
+    srcRef.pNext                = nullptr;
+    srcRef.attachment           = 0;
+    srcRef.layout               = m_srcImageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    srcRef.aspectMask           = m_srcImageView->formatInfo()->aspectMask;
+
+    VkAttachmentReference2KHR dstRef;
+    dstRef.sType                = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2_KHR;
+    dstRef.pNext                = nullptr;
+    dstRef.attachment           = 1;
+    dstRef.layout               = m_dstImageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+    dstRef.aspectMask           = m_dstImageView->formatInfo()->aspectMask;
+
+    VkSubpassDescriptionDepthStencilResolveKHR subpassResolve;
+    subpassResolve.sType        = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE_KHR;
+    subpassResolve.pNext        = nullptr;
+    subpassResolve.depthResolveMode   = modeD;
+    subpassResolve.stencilResolveMode = modeS;
+    subpassResolve.pDepthStencilResolveAttachment = &dstRef;
+    
+    VkSubpassDescription2KHR subpass;
+    subpass.sType               = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2_KHR;
+    subpass.pNext               = &subpassResolve;
+    subpass.flags               = 0;
+    subpass.pipelineBindPoint   = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.viewMask            = 0;
+    subpass.inputAttachmentCount = 0;
+    subpass.pInputAttachments   = nullptr;
+    subpass.colorAttachmentCount = 0;
+    subpass.pColorAttachments   = nullptr;
+    subpass.pResolveAttachments = nullptr;
+    subpass.pDepthStencilAttachment = &srcRef;
+    subpass.preserveAttachmentCount = 0;
+    subpass.pPreserveAttachments = nullptr;
+
+    VkRenderPassCreateInfo2KHR info;
+    info.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2_KHR;
+    info.pNext                  = nullptr;
+    info.flags                  = 0;
+    info.attachmentCount        = attachments.size();
+    info.pAttachments           = attachments.data();
+    info.subpassCount           = 1;
+    info.pSubpasses             = &subpass;
+    info.dependencyCount        = 0;
+    info.pDependencies          = nullptr;
+    info.correlatedViewMaskCount = 0;
+    info.pCorrelatedViewMasks   = nullptr;
+
+    VkRenderPass result = VK_NULL_HANDLE;
+    if (m_vkd->vkCreateRenderPass2KHR(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
+      throw DxvkError("DxvkMetaResolveRenderPass: Failed to create render pass");
+    return result;
+  }
+
+
+  VkFramebuffer DxvkMetaResolveRenderPass::createShaderFramebuffer() const {
     VkImageSubresourceRange dstSubresources = m_dstImageView->subresources();
     VkExtent3D              dstExtent       = m_dstImageView->mipLevelExtent(0);
     VkImageView             dstHandle       = m_dstImageView->handle();
@@ -103,6 +206,33 @@ namespace dxvk {
     fboInfo.renderPass      = m_renderPass;
     fboInfo.attachmentCount = 1;
     fboInfo.pAttachments    = &dstHandle;
+    fboInfo.width           = dstExtent.width;
+    fboInfo.height          = dstExtent.height;
+    fboInfo.layers          = dstSubresources.layerCount;
+    
+    VkFramebuffer result = VK_NULL_HANDLE;
+    if (m_vkd->vkCreateFramebuffer(m_vkd->device(), &fboInfo, nullptr, &result) != VK_SUCCESS)
+      throw DxvkError("DxvkMetaMipGenRenderPass: Failed to create target framebuffer");
+    return result;
+  }
+
+
+  VkFramebuffer DxvkMetaResolveRenderPass::createAttachmentFramebuffer() const {
+    VkImageSubresourceRange dstSubresources = m_dstImageView->subresources();
+    VkExtent3D              dstExtent       = m_dstImageView->mipLevelExtent(0);
+
+    std::array<VkImageView, 2> handles = {{
+      m_srcImageView->handle(),
+      m_dstImageView->handle(),
+    }};
+
+    VkFramebufferCreateInfo fboInfo;
+    fboInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    fboInfo.pNext           = nullptr;
+    fboInfo.flags           = 0;
+    fboInfo.renderPass      = m_renderPass;
+    fboInfo.attachmentCount = handles.size();
+    fboInfo.pAttachments    = handles.data();
     fboInfo.width           = dstExtent.width;
     fboInfo.height          = dstExtent.height;
     fboInfo.layers          = dstSubresources.layerCount;
