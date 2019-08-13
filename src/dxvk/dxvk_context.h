@@ -683,6 +683,22 @@ namespace dxvk {
             VkFormat                  format);
     
     /**
+     * \brief Resolves a multisampled depth-stencil resource
+     * 
+     * \param [in] dstImage Destination image
+     * \param [in] srcImage Source image
+     * \param [in] region Region to resolve
+     * \param [in] depthMode Resolve mode for depth aspect
+     * \param [in] stencilMode Resolve mode for stencil aspect
+     */
+    void resolveDepthStencilImage(
+      const Rc<DxvkImage>&            dstImage,
+      const Rc<DxvkImage>&            srcImage,
+      const VkImageResolve&           region,
+            VkResolveModeFlagBitsKHR  depthMode,
+            VkResolveModeFlagBitsKHR  stencilMode);
+
+    /**
      * \brief Transforms image subresource layouts
      * 
      * \param [in] dstImage Image to transform
@@ -1052,11 +1068,20 @@ namespace dxvk {
       const Rc<DxvkImage>&            srcImage,
       const VkImageResolve&           region);
     
+    void resolveImageDs(
+      const Rc<DxvkImage>&            dstImage,
+      const Rc<DxvkImage>&            srcImage,
+      const VkImageResolve&           region,
+            VkResolveModeFlagBitsKHR  depthMode,
+            VkResolveModeFlagBitsKHR  stencilMode);
+    
     void resolveImageFb(
       const Rc<DxvkImage>&            dstImage,
       const Rc<DxvkImage>&            srcImage,
       const VkImageResolve&           region,
-            VkFormat                  format);
+            VkFormat                  format,
+            VkResolveModeFlagBitsKHR  depthMode,
+            VkResolveModeFlagBitsKHR  stencilMode);
     
     void updatePredicate(
       const DxvkBufferSliceHandle&    predicate,

@@ -1790,11 +1790,66 @@ namespace dxvk {
         dstImage, srcImage, region);
     } else {
       this->resolveImageFb(
-        dstImage, srcImage, region, format);
+        dstImage, srcImage, region, format,
+        VK_RESOLVE_MODE_NONE_KHR,
+        VK_RESOLVE_MODE_NONE_KHR);
     }
   }
-  
-  
+
+
+  void DxvkContext::resolveDepthStencilImage(
+    const Rc<DxvkImage>&            dstImage,
+    const Rc<DxvkImage>&            srcImage,
+    const VkImageResolve&           region,
+          VkResolveModeFlagBitsKHR  depthMode,
+          VkResolveModeFlagBitsKHR  stencilMode) {
+    this->spillRenderPass();
+
+    // Technically legal, but no-op
+    if (!depthMode && !stencilMode)
+      return;
+
+    // Subsequent functions expect stencil mode to be None
+    // if either of the images have no stencil aspect
+    if (!(region.dstSubresource.aspectMask
+        & region.srcSubresource.aspectMask
+        & VK_IMAGE_ASPECT_STENCIL_BIT))
+      stencilMode = VK_RESOLVE_MODE_NONE_KHR;
+
+    // We can only use the depth-stencil resolve path if the
+    // extension is supported, if we are resolving a full
+    // subresource, and both images have the same format.
+    bool useFb = !m_device->extensions().khrDepthStencilResolve
+              || !dstImage->isFullSubresource(region.dstSubresource, region.extent)
+              || !srcImage->isFullSubresource(region.srcSubresource, region.extent)
+              || dstImage->info().format != srcImage->info().format;
+    
+    if (useFb) {
+      // Additionally, the given mode combination must be supported.
+      const auto& properties = m_device->properties().khrDepthStencilResolve;
+
+      useFb |= (properties.supportedDepthResolveModes   & depthMode)   != depthMode
+            || (properties.supportedStencilResolveModes & stencilMode) != stencilMode;
+      
+      if (depthMode != stencilMode) {
+        useFb |= (!depthMode || !stencilMode)
+          ? !properties.independentResolveNone
+          : !properties.independentResolve;
+      }
+    }
+
+    if (useFb) {
+      this->resolveImageFb(
+        dstImage, srcImage, region, VK_FORMAT_UNDEFINED,
+        depthMode, stencilMode);
+    } else {
+      this->resolveImageDs(
+        dstImage, srcImage, region,
+        depthMode, stencilMode);
+    }
+  }
+
+
   void DxvkContext::transformImage(
     const Rc<DxvkImage>&            dstImage,
     const VkImageSubresourceRange&  dstSubresources,
@@ -2919,12 +2974,97 @@ namespace dxvk {
     m_cmd->trackResource(srcImage);
   }
 
-  
+
+  void DxvkContext::resolveImageDs(
+    const Rc<DxvkImage>&            dstImage,
+    const Rc<DxvkImage>&            srcImage,
+    const VkImageResolve&           region,
+          VkResolveModeFlagBitsKHR  depthMode,
+          VkResolveModeFlagBitsKHR  stencilMode) {
+    auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
+    auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
+
+    if (m_execBarriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
+     || m_execBarriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
+    
+    // Create image views covering the requested subresourcs
+    DxvkImageViewCreateInfo dstViewInfo;
+    dstViewInfo.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+    dstViewInfo.format    = dstImage->info().format;
+    dstViewInfo.usage     = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    dstViewInfo.aspect    = region.dstSubresource.aspectMask;
+    dstViewInfo.minLevel  = region.dstSubresource.mipLevel;
+    dstViewInfo.numLevels = 1;
+    dstViewInfo.minLayer  = region.dstSubresource.baseArrayLayer;
+    dstViewInfo.numLayers = region.dstSubresource.layerCount;
+
+    DxvkImageViewCreateInfo srcViewInfo;
+    srcViewInfo.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+    srcViewInfo.format    = srcImage->info().format;
+    srcViewInfo.usage     = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    srcViewInfo.aspect    = region.srcSubresource.aspectMask;
+    srcViewInfo.minLevel  = region.srcSubresource.mipLevel;
+    srcViewInfo.numLevels = 1;
+    srcViewInfo.minLayer  = region.srcSubresource.baseArrayLayer;
+    srcViewInfo.numLayers = region.srcSubresource.layerCount;
+
+    Rc<DxvkImageView> dstImageView = m_device->createImageView(dstImage, dstViewInfo);
+    Rc<DxvkImageView> srcImageView = m_device->createImageView(srcImage, srcViewInfo);
+
+    // Create a framebuffer for the resolve op
+    VkExtent3D passExtent = dstImageView->mipLevelExtent(0);
+
+    Rc<DxvkMetaResolveRenderPass> fb = new DxvkMetaResolveRenderPass(
+      m_device->vkd(), dstImageView, srcImageView, depthMode, stencilMode);
+
+    VkRenderPassBeginInfo info;
+    info.sType              = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    info.pNext              = nullptr;
+    info.renderPass         = fb->renderPass();
+    info.framebuffer        = fb->framebuffer();
+    info.renderArea.offset  = { 0, 0 };
+    info.renderArea.extent  = { passExtent.width, passExtent.height };
+    info.clearValueCount    = 0;
+    info.pClearValues       = nullptr;
+
+    m_cmd->cmdBeginRenderPass(&info, VK_SUBPASS_CONTENTS_INLINE);
+    m_cmd->cmdEndRenderPass();
+
+    m_execBarriers.accessImage(
+      dstImage, dstSubresourceRange,
+      dstImage->info().layout,
+      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+      VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+      VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+      VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+      dstImage->info().layout,
+      dstImage->info().stages,
+      dstImage->info().access);
+
+    m_execBarriers.accessImage(
+      srcImage, srcSubresourceRange,
+      srcImage->info().layout,
+      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+      VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+      VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT,
+      srcImage->info().layout,
+      srcImage->info().stages,
+      srcImage->info().access);
+
+    m_cmd->trackResource(fb);
+    m_cmd->trackResource(dstImage);
+    m_cmd->trackResource(srcImage);
+  }
+
+
   void DxvkContext::resolveImageFb(
     const Rc<DxvkImage>&            dstImage,
     const Rc<DxvkImage>&            srcImage,
     const VkImageResolve&           region,
-          VkFormat                  format) {
+          VkFormat                  format,
+          VkResolveModeFlagBitsKHR  depthMode,
+          VkResolveModeFlagBitsKHR  stencilMode) {
     auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
     
@@ -2949,7 +3089,7 @@ namespace dxvk {
     // Create image views covering the requested subresourcs
     DxvkImageViewCreateInfo dstViewInfo;
     dstViewInfo.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-    dstViewInfo.format    = format;
+    dstViewInfo.format    = format ? format : dstImage->info().format;
     dstViewInfo.usage     = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     dstViewInfo.aspect    = region.dstSubresource.aspectMask;
     dstViewInfo.minLevel  = region.dstSubresource.mipLevel;
@@ -2957,11 +3097,14 @@ namespace dxvk {
     dstViewInfo.minLayer  = region.dstSubresource.baseArrayLayer;
     dstViewInfo.numLayers = region.dstSubresource.layerCount;
 
+    if (region.dstSubresource.aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
+      dstViewInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
     DxvkImageViewCreateInfo srcViewInfo;
     srcViewInfo.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-    srcViewInfo.format    = format;
+    srcViewInfo.format    = format ? format : srcImage->info().format;
     srcViewInfo.usage     = VK_IMAGE_USAGE_SAMPLED_BIT;
-    srcViewInfo.aspect    = region.srcSubresource.aspectMask;
+    srcViewInfo.aspect    = region.srcSubresource.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_COLOR_BIT);
     srcViewInfo.minLevel  = region.srcSubresource.mipLevel;
     srcViewInfo.numLevels = 1;
     srcViewInfo.minLayer  = region.srcSubresource.baseArrayLayer;
@@ -2969,18 +3112,22 @@ namespace dxvk {
 
     Rc<DxvkImageView> dstImageView = m_device->createImageView(dstImage, dstViewInfo);
     Rc<DxvkImageView> srcImageView = m_device->createImageView(srcImage, srcViewInfo);
+    Rc<DxvkImageView> srcStencilView = nullptr;
+
+    if ((region.dstSubresource.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) && stencilMode != VK_RESOLVE_MODE_NONE_KHR) {
+      srcViewInfo.aspect  = VK_IMAGE_ASPECT_STENCIL_BIT;
+      srcStencilView = m_device->createImageView(srcImage, srcViewInfo);
+    }
 
     // Create a framebuffer and pipeline for the resolve op
     VkExtent3D passExtent = dstImageView->mipLevelExtent(0);
 
     Rc<DxvkMetaResolveRenderPass> fb = new DxvkMetaResolveRenderPass(
-      m_device->vkd(), dstImageView, srcImageView,
+      m_device->vkd(), dstImageView, srcImageView, srcStencilView,
       dstImage->isFullSubresource(region.dstSubresource, region.extent));
 
     auto pipeInfo = m_common->metaResolve().getPipeline(
-      format, srcImage->info().sampleCount,
-      VK_RESOLVE_MODE_NONE_KHR,
-      VK_RESOLVE_MODE_NONE_KHR);
+      dstViewInfo.format, srcImage->info().sampleCount, depthMode, stencilMode);
     
     VkDescriptorImageInfo descriptorImage;
     descriptorImage.sampler          = VK_NULL_HANDLE;
@@ -3000,6 +3147,12 @@ namespace dxvk {
     
     descriptorWrite.dstSet = allocateDescriptorSet(pipeInfo.dsetLayout);
     m_cmd->updateDescriptorSets(1, &descriptorWrite);
+
+    if (srcStencilView != nullptr) {
+      descriptorWrite.dstBinding     = 1;
+      descriptorImage.imageView      = srcStencilView->handle();
+      m_cmd->updateDescriptorSets(1, &descriptorWrite);
+    }
 
     VkViewport viewport;
     viewport.x        = float(region.dstOffset.x);
