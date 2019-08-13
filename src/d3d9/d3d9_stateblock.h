@@ -287,7 +287,8 @@ namespace dxvk {
             &m_state,
             StartRegister,
             pConstantData,
-            Count);
+            Count,
+            false);
 
         return D3D_OK;
       };

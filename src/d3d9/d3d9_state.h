@@ -203,13 +203,17 @@ namespace dxvk {
           D3D9CapturableState* pState,
           UINT                 StartRegister,
     const T*                   pConstantData,
-          UINT                 Count) {
+          UINT                 Count,
+          bool                 FloatEmu) {
     auto UpdateHelper = [&] (auto& set) {
       if constexpr (ConstantType == D3D9ConstantType::Float) {
         auto begin = reinterpret_cast<const Vector4*>(pConstantData);
         auto end   = begin + Count;
 
-        std::transform(begin, end, set.fConsts.begin() + StartRegister, replaceNaN);
+        if (!FloatEmu)
+          std::copy(begin, end, set.fConsts.begin() + StartRegister);
+        else
+          std::transform(begin, end, set.fConsts.begin() + StartRegister, replaceNaN);
       }
       else if constexpr (ConstantType == D3D9ConstantType::Int) {
         auto begin = reinterpret_cast<const Vector4i*>(pConstantData);

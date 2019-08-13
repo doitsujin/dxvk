@@ -47,6 +47,10 @@ namespace dxvk {
     this->samplerAnisotropy     = config.getOption<int32_t>("d3d9.samplerAnisotropy", -1);
     this->maxAvailableMemory    = config.getOption<uint32_t>("d3d9.maxAvailableMemory", UINT32_MAX);
 
+    this->d3d9FloatEmulation    = true; // <-- Future Extension?
+
+    applyTristate(this->d3d9FloatEmulation, config.getOption<Tristate>("d3d9.floatEmulation", Tristate::Auto));
+
     // This is not necessary on Nvidia.
     if (adapter != nullptr && adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0))
       this->hasHazards          = false;

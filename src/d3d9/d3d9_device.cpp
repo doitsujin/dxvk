@@ -5345,7 +5345,8 @@ namespace dxvk {
       &m_state,
       StartRegister,
       pConstantData,
-      Count);
+      Count,
+      m_d3d9Options.d3d9FloatEmulation);
 
     return D3D_OK;
   }

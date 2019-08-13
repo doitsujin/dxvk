@@ -71,6 +71,9 @@ namespace dxvk {
     /// Changes the max initial value used in
     /// tracking and GetAvailableTextureMem
     uint32_t maxAvailableMemory;
+
+    /// D3D9 Floating Point Emulation (anything * 0 = 0)
+    bool d3d9FloatEmulation;
   };
 
 }

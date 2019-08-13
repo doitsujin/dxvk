@@ -32,6 +32,7 @@ namespace dxvk {
     strictConstantCopies = options.strictConstantCopies;
 
     strictPow            = options.strictPow;
+    d3d9FloatEmulation   = options.d3d9FloatEmulation;
   }
 
 }
