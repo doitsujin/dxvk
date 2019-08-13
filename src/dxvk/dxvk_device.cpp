@@ -15,7 +15,7 @@ namespace dxvk {
     m_vkd               (vkd),
     m_extensions        (extensions),
     m_features          (features),
-    m_properties        (adapter->deviceProperties()),
+    m_properties        (adapter->devicePropertiesExt()),
     m_perfHints         (getPerfHints()),
     m_objects           (this),
     m_submissionQueue   (this) {
@@ -51,8 +51,8 @@ namespace dxvk {
 
   DxvkDeviceOptions DxvkDevice::options() const {
     DxvkDeviceOptions options;
-    options.maxNumDynamicUniformBuffers = m_properties.limits.maxDescriptorSetUniformBuffersDynamic;
-    options.maxNumDynamicStorageBuffers = m_properties.limits.maxDescriptorSetStorageBuffersDynamic;
+    options.maxNumDynamicUniformBuffers = m_properties.core.properties.limits.maxDescriptorSetUniformBuffersDynamic;
+    options.maxNumDynamicStorageBuffers = m_properties.core.properties.limits.maxDescriptorSetStorageBuffersDynamic;
     return options;
   }
   
@@ -98,9 +98,9 @@ namespace dxvk {
   Rc<DxvkFramebuffer> DxvkDevice::createFramebuffer(
     const DxvkRenderTargets& renderTargets) {
     const DxvkFramebufferSize defaultSize = {
-      m_properties.limits.maxFramebufferWidth,
-      m_properties.limits.maxFramebufferHeight,
-      m_properties.limits.maxFramebufferLayers };
+      m_properties.core.properties.limits.maxFramebufferWidth,
+      m_properties.core.properties.limits.maxFramebufferHeight,
+      m_properties.core.properties.limits.maxFramebufferLayers };
     
     auto renderPassFormat = DxvkFramebuffer::getRenderPassFormat(renderTargets);
     auto renderPassObject = m_objects.renderPassPool().getRenderPass(renderPassFormat);

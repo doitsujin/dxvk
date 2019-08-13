@@ -166,6 +166,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Device properties
+     * \returns Device properties
+     */
+    const DxvkDeviceInfo& properties() const {
+      return m_properties;
+    }
+
+    /**
      * \brief Queries supported shader stages
      * \returns Supported shader pipeline stages
      */
@@ -431,7 +439,7 @@ namespace dxvk {
     DxvkDeviceExtensions        m_extensions;
 
     DxvkDeviceFeatures          m_features;
-    VkPhysicalDeviceProperties  m_properties;
+    DxvkDeviceInfo              m_properties;
     
     DxvkDevicePerfHints         m_perfHints;
     DxvkObjects                 m_objects;
