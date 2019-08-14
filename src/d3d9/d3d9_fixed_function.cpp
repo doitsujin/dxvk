@@ -928,15 +928,15 @@ namespace dxvk {
           }
 
           case D3DTOP_BLENDDIFFUSEALPHA:
-            dst = m_module.opFMix(m_vec4Type, arg[1], arg[2], AlphaReplicate(diffuse));
+            dst = m_module.opFMix(m_vec4Type, arg[2], arg[1], AlphaReplicate(diffuse));
             break;
 
           case D3DTOP_BLENDTEXTUREALPHA:
-            dst = m_module.opFMix(m_vec4Type, arg[1], arg[2], AlphaReplicate(GetTexture()));
+            dst = m_module.opFMix(m_vec4Type, arg[2], arg[1], AlphaReplicate(GetTexture()));
             break;
 
           case D3DTOP_BLENDFACTORALPHA:
-            dst = m_module.opFMix(m_vec4Type, arg[1], arg[2], AlphaReplicate(m_ps.constants.textureFactor));
+            dst = m_module.opFMix(m_vec4Type, arg[2], arg[1], AlphaReplicate(m_ps.constants.textureFactor));
             break;
 
           case D3DTOP_BLENDTEXTUREALPHAPM:
@@ -944,7 +944,7 @@ namespace dxvk {
             break;
 
           case D3DTOP_BLENDCURRENTALPHA:
-            dst = m_module.opFMix(m_vec4Type, arg[1], arg[2], AlphaReplicate(current));
+            dst = m_module.opFMix(m_vec4Type, arg[2], arg[1], AlphaReplicate(current));
             break;
 
           case D3DTOP_PREMODULATE:
@@ -1005,7 +1005,7 @@ namespace dxvk {
             break;
 
           case D3DTOP_LERP:
-            dst = m_module.opFMix(m_vec4Type, arg[1], arg[2], arg[0]);
+            dst = m_module.opFMix(m_vec4Type, arg[2], arg[1], arg[0]);
             break;
 
           case D3DTOP_DISABLE:
