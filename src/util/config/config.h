@@ -89,9 +89,10 @@ namespace dxvk {
      * \brief Retrieves default options for an app
      * 
      * \param [in] appName Name of the application
+     * \param [in] parentDir Parent directory path
      * \returns Default options for the application
      */
-    static Config getAppConfig(const std::string& appName);
+    static Config getAppConfig(const std::string& appName, const std::string& parentDir);
 
     /**
      * \brief Retrieves user configuration

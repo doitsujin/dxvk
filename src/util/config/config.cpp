@@ -324,11 +324,22 @@ namespace dxvk {
   }
 
 
-  Config Config::getAppConfig(const std::string& appName) {
+  Config Config::getAppConfig(const std::string& appName, const std::string& parentDir) {
+    // Find configs by executable name
     auto appConfig = g_appDefaults.find(appName);
+
+    // Didn't find anything?
+    // Find configs by parent directory
+    if (appConfig == g_appDefaults.end()) {
+      appConfig = std::find_if(g_appDefaults.begin(), g_appDefaults.end(),
+        [&](const auto& appDir) -> bool {
+          return parentDir.ends_with(appDir.first);
+      });
+    }
+
     if (appConfig != g_appDefaults.end()) {
       // Inform the user that we loaded a default config
-      Logger::info(str::format("Found built-in config: ", appName));
+      Logger::info(str::format("Found built-in config: ", appConfig->first));
 
       return appConfig->second;
     }

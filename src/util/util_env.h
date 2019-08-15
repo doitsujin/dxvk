@@ -16,6 +16,16 @@ namespace dxvk::env {
   std::string getEnvVar(const char* name);
   
   /**
+   * \brief Gets the executable path
+   * 
+   * Returns the the full path of the
+   * program executable, including the file extension.
+   * This function should be used to identify programs.
+   * \returns Executable path
+   */
+  std::string getExePath();
+
+  /**
    * \brief Gets the executable name
    * 
    * Returns the base name (not the full path) of the
@@ -24,6 +34,16 @@ namespace dxvk::env {
    * \returns Executable name
    */
   std::string getExeName();
+
+  /**
+   * \brief Gets the directory path
+   *
+   * Returns the parent directory path
+   * of the program executable.
+   * This function should be used to identify programs.
+   * \returns Parent directory path
+   */
+  std::string getParentDirectoryPath();
   
   /**
    * \brief Sets name of the calling thread
