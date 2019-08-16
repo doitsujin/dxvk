@@ -220,7 +220,22 @@ namespace dxvk {
           D3DDEVTYPE DeviceType,
           D3D9Format SourceFormat,
           D3D9Format TargetFormat) {
-    return IsSupportedBackBufferFormat(TargetFormat, SourceFormat, FALSE)
+    bool sourceSupported = IsSupportedBackBufferFormat(SourceFormat, FALSE);
+    bool targetSupported = TargetFormat == D3D9Format::X1R5G5B5
+                        || TargetFormat == D3D9Format::A1R5G5B5
+                        || TargetFormat == D3D9Format::R5G6B5
+                     // || TargetFormat == D3D9Format::R8G8B8 <-- We don't support R8G8B8
+                        || TargetFormat == D3D9Format::X8R8G8B8
+                        || TargetFormat == D3D9Format::A8R8G8B8
+                        || TargetFormat == D3D9Format::A2R10G10B10
+                        || TargetFormat == D3D9Format::A16B16G16R16
+                        || TargetFormat == D3D9Format::A2B10G10R10
+                        || TargetFormat == D3D9Format::A8B8G8R8
+                        || TargetFormat == D3D9Format::X8B8G8R8
+                        || TargetFormat == D3D9Format::A16B16G16R16F
+                        || TargetFormat == D3D9Format::A32B32G32R32F;
+
+    return (sourceSupported && targetSupported)
       ? D3D_OK
       : D3DERR_NOTAVAILABLE;
   }
