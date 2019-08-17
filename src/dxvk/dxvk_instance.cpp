@@ -12,7 +12,7 @@ namespace dxvk {
     Logger::info(str::format("DXVK: ", DXVK_VERSION));
 
     m_config = Config::getUserConfig();
-    m_config.merge(Config::getAppConfig(env::getExeName()));
+    m_config.merge(Config::getAppConfig(env::getExePath()));
     m_config.logOptions();
 
     g_vrInstance.initInstanceExtensions();

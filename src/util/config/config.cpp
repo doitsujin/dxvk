@@ -1,6 +1,7 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <regex>
 
 #include "config.h"
 
@@ -10,152 +11,133 @@
 
 namespace dxvk {
 
-  const static std::unordered_map<std::string, Config> g_appDefaults = {{
+  const static std::vector<std::pair<const char*, Config>> g_appDefaults = {{
     /* Anno 1800                                  */
-    { "Anno1800.exe", {{
+    { "\\\\Anno1800\\.exe$", {{
       { "d3d11.allowMapFlagNoWait",         "True" }
     }} },
     /* Assassin's Creed Syndicate: amdags issues  */
-    { "ACS.exe", {{
+    { "\\\\ACS\\.exe$", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
     /* Dishonored 2                               */
-    { "Dishonored2.exe", {{
+    { "\\\\Dishonored2\\.exe$", {{
       { "d3d11.allowMapFlagNoWait",         "True" }
     }} },
     /* Dissidia Final Fantasy NT Free Edition */
-    { "dffnt.exe", {{
+    { "\\\\dffnt\\.exe$", {{
       { "dxgi.deferSurfaceCreation",        "True" },
     }} },
     /* Elite Dangerous: Compiles weird shaders    *
      * when running on AMD hardware               */
-    { "EliteDangerous64.exe", {{
+    { "\\\\EliteDangerous64\\.exe$", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
     /* The Vanishing of Ethan Carter Redux        */
-    { "EthanCarter-Win64-Shipping.exe", {{
+    { "\\\\EthanCarter-Win64-Shipping\\.exe$", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
     /* The Evil Within: Submits command lists     * 
      * multiple times                             */
-    { "EvilWithin.exe", {{
-      { "d3d11.dcSingleUseMode",            "False" },
-    }} },
-    /* The Evil Within Demo                       */
-    { "EvilWithinDemo.exe", {{
+    { "\\\\EvilWithin(Demo)?\\.exe$", {{
       { "d3d11.dcSingleUseMode",            "False" },
     }} },
     /* Far Cry 3: Assumes clear(0.5) on an UNORM  *
      * format to result in 128 on AMD and 127 on  *
      * Nvidia. We assume that the Vulkan drivers  *
      * match the clear behaviour of D3D11.        */
-    { "farcry3_d3d11.exe", {{
-      { "dxgi.nvapiHack",                   "False" },
-    }} },
-    { "fc3_blooddragon_d3d11.exe", {{
+    { "\\\\(farcry3|fc3_blooddragon)_d3d11\\.exe$", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
     /* Far Cry 4: Same as Far Cry 3               */
-    { "FarCry4.exe", {{
+    { "\\\\FarCry4\\.exe$", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
     /* Far Cry 5: Avoid CPU <-> GPU sync          */
-    { "FarCry5.exe", {{
+    { "\\\\FarCry5\\.exe$", {{
       { "d3d11.allowMapFlagNoWait",         "True" }
     }} },
     /* Far Cry Primal: Nvidia performance         */
-    { "FCPrimal.exe", {{
+    { "\\\\FCPrimal\\.exe$", {{
       { "dxgi.nvapiHack",                   "False" },
     } }},
     /* Frostpunk: Renders one frame with D3D9     *
      * after creating the DXGI swap chain         */
-    { "Frostpunk.exe", {{
+    { "\\\\Frostpunk\\.exe$", {{
       { "dxgi.deferSurfaceCreation",        "True" },
     }} },
     /* Nioh: See Frostpunk, apparently?           */
-    { "nioh.exe", {{
+    { "\\\\nioh\\.exe$", {{
       { "dxgi.deferSurfaceCreation",        "True" },
     }} },
     /* Quantum Break: Mever initializes shared    *
      * memory in one of its compute shaders       */
-    { "QuantumBreak.exe", {{
+    { "\\\\QuantumBreak\\.exe$", {{
       { "d3d11.zeroInitWorkgroupMemory",    "True" },
     }} },
     /* Anno 2205: Random crashes with state cache */
-    { "anno2205.exe", {{
+    { "\\\\anno2205\\.exe$", {{
       { "dxvk.enableStateCache",            "False" },
     }} },
     /* Fifa '19: Binds typed buffer SRV to shader *
      * that expects raw/structured buffer SRV     */
-    { "FIFA19.exe", {{
+    { "\\\\FIFA19(_demo)?\\.exe$", {{
       { "dxvk.useRawSsbo",                  "True" },
     }} },
     /* Final Fantasy XIV: Fix random black blocks */
-    { "ffxiv_dx11.exe", {{
+    { "\\\\ffxiv_dx11\\.exe$", {{
       { "d3d11.strictDivision",             "True" },
     }} },
-    /* Fifa '19 Demo                              */
-    { "FIFA19_demo.exe", {{
-      { "dxvk.useRawSsbo",                  "True" },
-    }} },
     /* Resident Evil 2: Improve GPU performance   */
-    { "re2.exe", {{
+    { "\\\\re2\\.exe$", {{
       { "d3d11.relaxedBarriers",            "True" },
     }} },
     /* Resident Evil 7                            */
-    { "re7.exe", {{
+    { "\\\\re7\\.exe$", {{
       { "d3d11.relaxedBarriers",            "True" },
     }} },
     /* Devil May Cry 5                            */
-    { "DevilMayCry5.exe", {{
+    { "\\\\DevilMayCry5\\.exe$", {{
       { "d3d11.relaxedBarriers",            "True" },
     }} },
     /* Call of Duty WW2                           */
-    { "s2_sp64_ship.exe", {{
+    { "\\\\s2_sp64_ship\\.exe$", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
     /* Need for Speed 2015                        */
-    { "NFS16.exe", {{
+    { "\\\\NFS16\\.exe$", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
     /* Mass Effect Andromeda                      */
-    { "MassEffectAndromeda.exe", {{
+    { "\\\\MassEffectAndromeda\\.exe$", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
     /* Mirror`s Edge Catalyst: Crashes on AMD     */
-    { "MirrorsEdgeCatalyst.exe", {{
-      { "dxgi.customVendorId",              "10de" },
-    }} },
-    /* Mirror`s Edge Catalyst Trial               */
-    { "MirrorsEdgeCatalystTrial.exe", {{
+    { "\\\\MirrorsEdgeCatalyst(Trial)?\\.exe$", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
     /* Star Wars Battlefront (2015)               */
-    { "starwarsbattlefront.exe", {{
-      { "dxgi.nvapiHack",                   "False" },
-    }} },
-    /* Star Wars Battlefront (2015) Trial         */
-    { "starwarsbattlefronttrial.exe", {{
+    { "\\\\starwarsbattlefront(trial)?\\.exe$", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
     /* Dark Souls Remastered                      */
-    { "DarkSoulsRemastered.exe", {{
+    { "\\\\DarkSoulsRemastered\\.exe$", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
     }} },
     /* Grim Dawn                                  */
-    { "Grim Dawn.exe", {{
+    { "\\\\Grim Dawn\\.exe$", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
     }} },
     /* NieR:Automata                              */
-    { "NieRAutomata.exe", {{
+    { "\\\\NieRAutomata\\.exe$", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
     }} },
     /* The Surge                                  */
-    { "TheSurge.exe", {{
+    { "\\\\TheSurge\\.exe$", {{
       { "d3d11.allowMapFlagNoWait",         "True" },
     }} },
     /* SteamVR performance test                   */
-    { "vr.exe", {{
+    { "\\\\vr\\.exe$", {{
       { "d3d11.dcSingleUseMode",            "False" },
     }} },
   }};
@@ -325,11 +307,15 @@ namespace dxvk {
 
 
   Config Config::getAppConfig(const std::string& appName) {
-    auto appConfig = g_appDefaults.find(appName);
+    auto appConfig = std::find_if(g_appDefaults.begin(), g_appDefaults.end(),
+      [&appName] (const std::pair<const char*, Config>& pair) {
+        std::regex expr(pair.first, std::regex::extended | std::regex::icase);
+        return std::regex_search(appName, expr);
+      });
+    
     if (appConfig != g_appDefaults.end()) {
       // Inform the user that we loaded a default config
-      Logger::info(str::format("Found built-in config: ", appName));
-
+      Logger::info(str::format("Found built-in config:"));
       return appConfig->second;
     }
 
