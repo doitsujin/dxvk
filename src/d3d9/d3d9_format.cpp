@@ -352,7 +352,7 @@ namespace dxvk {
 
       case D3D9Format::GET1: return {}; // Unsupported
 
-      case D3D9Format::NVDB: return {}; // Unsupported
+      case D3D9Format::NVDB: return {}; // Driver hack, handled elsewhere
 
       case D3D9Format::A2M1: return {}; // Unsupported
 

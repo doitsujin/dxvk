@@ -1598,12 +1598,13 @@ namespace dxvk {
 
     if (likely(changed)) {
       const bool oldATOC = IsAlphaToCoverageEnabled();
+      const bool oldNVDB = states[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB);
 
       // AMD's driver hack for ATOC and RESZ
       if (unlikely(State == D3DRS_POINTSIZE)) {
         // ATOC
-        constexpr uint32_t AlphaToCoverageEnable  = MAKEFOURCC('A', '2', 'M', '1');
-        constexpr uint32_t AlphaToCoverageDisable = MAKEFOURCC('A', '2', 'M', '0');
+        constexpr uint32_t AlphaToCoverageEnable  = uint32_t(D3D9Format::A2M1);
+        constexpr uint32_t AlphaToCoverageDisable = uint32_t(D3D9Format::A2M0);
 
         if (Value == AlphaToCoverageEnable
          || Value == AlphaToCoverageDisable) {
@@ -1627,7 +1628,7 @@ namespace dxvk {
 
       // NV's driver hack for ATOC.
       if (unlikely(State == D3DRS_ADAPTIVETESS_Y)) {
-        constexpr uint32_t AlphaToCoverageEnable  = MAKEFOURCC('A', 'T', 'O', 'C');
+        constexpr uint32_t AlphaToCoverageEnable  = uint32_t(D3D9Format::ATOC);
         constexpr uint32_t AlphaToCoverageDisable = 0;
 
         if (Value == AlphaToCoverageEnable
@@ -1764,6 +1765,14 @@ namespace dxvk {
         case D3DRS_FOGDENSITY:
           m_flags.set(D3D9DeviceFlag::DirtyFogDensity);
           break;
+
+        case D3DRS_ADAPTIVETESS_X:
+        case D3DRS_ADAPTIVETESS_Z:
+        case D3DRS_ADAPTIVETESS_W:
+          if (states[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB) || oldNVDB) {
+            m_flags.set(D3D9DeviceFlag::DirtyDepthBounds);
+            break;
+          }
 
         default:
           static bool s_errorShown[256];
@@ -5172,6 +5181,21 @@ namespace dxvk {
         data->Stages[i].BumpEnvLScale    = bit::cast<float>(m_state.textureStages[i][D3DTSS_BUMPENVLSCALE]);
         data->Stages[i].BumpEnvLOffset   = bit::cast<float>(m_state.textureStages[i][D3DTSS_BUMPENVLOFFSET]);
       }
+    }
+
+    if (m_flags.test(D3D9DeviceFlag::DirtyDepthBounds)) {
+      m_flags.clr(D3D9DeviceFlag::DirtyDepthBounds);
+
+      DxvkDepthBounds db;
+      db.enableDepthBounds  = (m_state.renderStates[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB));
+      db.minDepthBounds     = bit::cast<float>(m_state.renderStates[D3DRS_ADAPTIVETESS_Z]);
+      db.maxDepthBounds     = bit::cast<float>(m_state.renderStates[D3DRS_ADAPTIVETESS_W]);
+
+      EmitCs([
+        cDepthBounds = db
+      ] (DxvkContext* ctx) {
+        ctx->setDepthBounds(cDepthBounds);
+      });
     }
   }
 
