@@ -26,6 +26,12 @@ namespace dxvk::env {
   std::string getExeName();
   
   /**
+   * \brief Gets full path to executable
+   * \returns Path to executable
+   */
+  std::string getExePath();
+  
+  /**
    * \brief Sets name of the calling thread
    * \param [in] name Thread name
    */

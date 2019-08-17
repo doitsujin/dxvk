@@ -13,18 +13,23 @@ namespace dxvk::env {
   
   
   std::string getExeName() {
-    std::vector<WCHAR> exePath;
-    exePath.resize(MAX_PATH + 1);
-    
-    DWORD len = ::GetModuleFileNameW(NULL, exePath.data(), MAX_PATH);
-    exePath.resize(len);
-    
-    std::string fullPath = str::fromws(exePath.data());
+    std::string fullPath = getExePath();
     auto n = fullPath.find_last_of('\\');
     
     return (n != std::string::npos)
       ? fullPath.substr(n + 1)
       : fullPath;
+  }
+
+
+  std::string getExePath() {
+    std::vector<WCHAR> exePath;
+    exePath.resize(MAX_PATH + 1);
+
+    DWORD len = ::GetModuleFileNameW(NULL, exePath.data(), MAX_PATH);
+    exePath.resize(len);
+
+    return str::fromws(exePath.data());
   }
   
   
