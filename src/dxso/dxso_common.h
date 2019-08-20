@@ -47,7 +47,7 @@ namespace dxvk {
      *
      * The \c VkShaderStageFlagBits constant
      * that corresponds to the program type.
-     * \returns Vulkan shaer stage
+     * \returns Vulkan shader stage
      */
     VkShaderStageFlagBits shaderStage() const;
 
