@@ -82,6 +82,10 @@ namespace dxvk {
       reinterpret_cast<const char*>(pShaderBytecode));
 
     DxsoModule module(reader);
+
+    if (module.info().shaderStage() != ShaderStage)
+      throw DxvkError("GetShaderModule: Bytecode does not match shader stage");
+
     DxsoAnalysisInfo info = module.analyze();
 
     Sha1Hash hash = Sha1Hash::compute(
