@@ -1755,10 +1755,11 @@ namespace dxvk {
           break;
 
         case D3DRS_FOGSTART:
-          m_flags.set(D3D9DeviceFlag::DirtyFogStart);
+          m_flags.set(D3D9DeviceFlag::DirtyFogScale);
           break;
 
         case D3DRS_FOGEND:
+          m_flags.set(D3D9DeviceFlag::DirtyFogScale);
           m_flags.set(D3D9DeviceFlag::DirtyFogEnd);
           break;
 
@@ -4453,9 +4454,12 @@ namespace dxvk {
       float end = bit::cast<float>(rs[D3DRS_FOGEND]);
       UpdatePushConstant<offsetof(D3D9RenderStateInfo, fogEnd), sizeof(float)>(&end);
     }
-    else if constexpr (Item == D3D9RenderStateItem::FogStart) {
+    else if constexpr (Item == D3D9RenderStateItem::FogScale) {
+      float end = bit::cast<float>(rs[D3DRS_FOGEND]);
       float start = bit::cast<float>(rs[D3DRS_FOGSTART]);
-      UpdatePushConstant<offsetof(D3D9RenderStateInfo, fogStart), sizeof(float)>(&start);
+
+      float scale = 1.0f / (end - start);
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, fogScale), sizeof(float)>(&scale);
     }
     else
       Logger::warn("D3D9: Invalid push constant set to update.");
@@ -4546,9 +4550,9 @@ namespace dxvk {
       }
 
       if (FogMode == D3DFOG_LINEAR) {
-        if (m_flags.test(D3D9DeviceFlag::DirtyFogStart)) {
-          m_flags.clr(D3D9DeviceFlag::DirtyFogStart);
-          UpdatePushConstant<D3D9RenderStateItem::FogStart>();
+        if (m_flags.test(D3D9DeviceFlag::DirtyFogScale)) {
+          m_flags.clr(D3D9DeviceFlag::DirtyFogScale);
+          UpdatePushConstant<D3D9RenderStateItem::FogScale>();
         }
 
         if (m_flags.test(D3D9DeviceFlag::DirtyFogEnd)) {

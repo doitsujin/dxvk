@@ -3050,8 +3050,8 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     m_module.decorate             (rsStruct, spv::DecorationBlock);
     m_module.setDebugMemberName   (rsStruct, 0, "fog_color");
     m_module.memberDecorateOffset (rsStruct, 0, offsetof(D3D9RenderStateInfo, fogColor));
-    m_module.setDebugMemberName   (rsStruct, 1, "fog_start");
-    m_module.memberDecorateOffset (rsStruct, 1, offsetof(D3D9RenderStateInfo, fogStart));
+    m_module.setDebugMemberName   (rsStruct, 1, "fog_scale");
+    m_module.memberDecorateOffset (rsStruct, 1, offsetof(D3D9RenderStateInfo, fogScale));
     m_module.setDebugMemberName   (rsStruct, 2, "fog_end");
     m_module.memberDecorateOffset (rsStruct, 2, offsetof(D3D9RenderStateInfo, fogEnd));
     m_module.setDebugMemberName   (rsStruct, 3, "fog_density");

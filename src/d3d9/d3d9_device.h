@@ -53,7 +53,7 @@ namespace dxvk {
     DirtyFogState,
     DirtyFogColor,
     DirtyFogDensity,
-    DirtyFogStart,
+    DirtyFogScale,
     DirtyFogEnd,
 
     DirtyFFVertexData,

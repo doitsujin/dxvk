@@ -23,9 +23,9 @@ namespace dxvk {
     uint32_t fogColor = spvModule.opLoad(vec4Type,
       spvModule.opAccessChain(vec4Ptr, fogCtx.RenderState, 1, &fogColorMember));
 
-    uint32_t fogStartMember = spvModule.constu32(uint32_t(D3D9RenderStateItem::FogStart));
-    uint32_t fogStart = spvModule.opLoad(floatType,
-      spvModule.opAccessChain(floatPtr, fogCtx.RenderState, 1, &fogStartMember));
+    uint32_t fogScaleMember = spvModule.constu32(uint32_t(D3D9RenderStateItem::FogScale));
+    uint32_t fogScale = spvModule.opLoad(floatType,
+      spvModule.opAccessChain(floatPtr, fogCtx.RenderState, 1, &fogScaleMember));
 
     uint32_t fogEndMember = spvModule.constu32(uint32_t(D3D9RenderStateItem::FogEnd));
     uint32_t fogEnd = spvModule.opLoad(floatType,
@@ -110,9 +110,8 @@ namespace dxvk {
 
           // (end - d) / (end - start)
           case D3DFOG_LINEAR: {
-            uint32_t fogCoeff = spvModule.opFSub(floatType, fogEnd, fogStart);
             uint32_t fogFactor = spvModule.opFSub(floatType, fogEnd, depth);
-            fogFactor = spvModule.opFDiv(floatType, fogFactor, fogCoeff);
+            fogFactor = spvModule.opFMul(floatType, fogFactor, fogScale);
             fogFactor = spvModule.opFClamp(floatType, fogFactor, spvModule.constf32(0.0f), spvModule.constf32(1.0f));
             return fogFactor;
           }
@@ -744,8 +743,8 @@ namespace dxvk {
     m_module.decorate             (rsStruct, spv::DecorationBlock);
     m_module.setDebugMemberName   (rsStruct, 0, "fog_color");
     m_module.memberDecorateOffset (rsStruct, 0, offsetof(D3D9RenderStateInfo, fogColor));
-    m_module.setDebugMemberName   (rsStruct, 1, "fog_start");
-    m_module.memberDecorateOffset (rsStruct, 1, offsetof(D3D9RenderStateInfo, fogStart));
+    m_module.setDebugMemberName   (rsStruct, 1, "fog_scale");
+    m_module.memberDecorateOffset (rsStruct, 1, offsetof(D3D9RenderStateInfo, fogScale));
     m_module.setDebugMemberName   (rsStruct, 2, "fog_end");
     m_module.memberDecorateOffset (rsStruct, 2, offsetof(D3D9RenderStateInfo, fogEnd));
     m_module.setDebugMemberName   (rsStruct, 3, "fog_density");
