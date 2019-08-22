@@ -14,6 +14,21 @@
 namespace dxvk {
 
   class D3D9DeviceEx;
+  class SpirvModule;
+
+  struct D3D9FogContext {
+    // General inputs...
+    bool     IsPixel;
+    uint32_t RenderState;
+    uint32_t vPos;
+    uint32_t vFog;
+
+    uint32_t oColor;
+  };
+
+  // Returns new oFog if VS
+  // Returns new oColor if PS
+  uint32_t DoFixedFunctionFog(SpirvModule& spvModule, const D3D9FogContext& fogCtx);
 
   struct D3D9FFShaderKeyVS {
     D3D9FFShaderKeyVS() {

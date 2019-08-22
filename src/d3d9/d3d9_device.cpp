@@ -1743,6 +1743,28 @@ namespace dxvk {
           m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
           break;
 
+        case D3DRS_FOGENABLE:
+        case D3DRS_FOGVERTEXMODE:
+        case D3DRS_FOGTABLEMODE:
+          m_flags.set(D3D9DeviceFlag::DirtyFogState);
+          break;
+
+        case D3DRS_FOGCOLOR:
+          m_flags.set(D3D9DeviceFlag::DirtyFogColor);
+          break;
+
+        case D3DRS_FOGSTART:
+          m_flags.set(D3D9DeviceFlag::DirtyFogStart);
+          break;
+
+        case D3DRS_FOGEND:
+          m_flags.set(D3D9DeviceFlag::DirtyFogEnd);
+          break;
+
+        case D3DRS_FOGDENSITY:
+          m_flags.set(D3D9DeviceFlag::DirtyFogDensity);
+          break;
+
         default:
           static bool s_errorShown[256];
 
@@ -3286,17 +3308,19 @@ namespace dxvk {
     rs[D3DRS_AMBIENT]                = 0;
     m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
 
+    rs[D3DRS_FOGCOLOR]                   = 0;
+    rs[D3DRS_FOGTABLEMODE]               = D3DFOG_NONE;
+    rs[D3DRS_FOGSTART]                   = bit::cast<DWORD>(0.0f);
+    rs[D3DRS_FOGEND]                     = bit::cast<DWORD>(1.0f);
+    rs[D3DRS_FOGDENSITY]                 = bit::cast<DWORD>(1.0f);
+    rs[D3DRS_FOGVERTEXMODE]              = D3DFOG_NONE;
+
     // Render States not implemented beyond this point.
     rs[D3DRS_SHADEMODE]                  = D3DSHADE_GOURAUD;
     rs[D3DRS_LASTPIXEL]                  = TRUE;
     rs[D3DRS_DITHERENABLE]               = FALSE;
     rs[D3DRS_FOGENABLE]                  = FALSE;
     rs[D3DRS_SPECULARENABLE]             = FALSE;
-    rs[D3DRS_FOGCOLOR]                   = 0;
-    rs[D3DRS_FOGTABLEMODE]               = D3DFOG_NONE;
-    rs[D3DRS_FOGSTART]                   = bit::cast<DWORD>(0.0f);
-    rs[D3DRS_FOGEND]                     = bit::cast<DWORD>(1.0f);
-    rs[D3DRS_FOGDENSITY]                 = bit::cast<DWORD>(1.0f);
     rs[D3DRS_RANGEFOGENABLE]             = FALSE;
     rs[D3DRS_WRAP0]                      = 0;
     rs[D3DRS_WRAP1]                      = 0;
@@ -3307,7 +3331,6 @@ namespace dxvk {
     rs[D3DRS_WRAP6]                      = 0;
     rs[D3DRS_WRAP7]                      = 0;
     rs[D3DRS_CLIPPING]                   = TRUE;
-    rs[D3DRS_FOGVERTEXMODE]              = D3DFOG_NONE;
     rs[D3DRS_LOCALVIEWER]                = TRUE;
     rs[D3DRS_NORMALIZENORMALS]           = FALSE;
     rs[D3DRS_VERTEXBLEND]                = D3DVBF_DISABLE;
@@ -4408,6 +4431,23 @@ namespace dxvk {
       float alpha = float(rs[D3DRS_ALPHAREF]) / 255.0f;
       UpdatePushConstant<offsetof(D3D9RenderStateInfo, alphaRef), sizeof(float)>(&alpha);
     }
+    else if constexpr (Item == D3D9RenderStateItem::FogColor) {
+      Vector4 color;
+      DecodeD3DCOLOR(D3DCOLOR(rs[D3DRS_FOGCOLOR]), color.data);
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, fogColor), sizeof(Vector4)>(&color);
+    }
+    else if constexpr (Item == D3D9RenderStateItem::FogDensity) {
+      float density = bit::cast<float>(rs[D3DRS_FOGDENSITY]);
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, fogDensity), sizeof(float)>(&density);
+    }
+    else if constexpr (Item == D3D9RenderStateItem::FogEnd) {
+      float end = bit::cast<float>(rs[D3DRS_FOGEND]);
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, fogEnd), sizeof(float)>(&end);
+    }
+    else if constexpr (Item == D3D9RenderStateItem::FogStart) {
+      float start = bit::cast<float>(rs[D3DRS_FOGSTART]);
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, fogStart), sizeof(float)>(&start);
+    }
     else
       Logger::warn("D3D9: Invalid push constant set to update.");
   }
@@ -4477,6 +4517,86 @@ namespace dxvk {
           // No need to search for more hazards for this texture.
           break;
         }
+      }
+    }
+  }
+
+
+  void D3D9DeviceEx::UpdateFog() {
+    auto& rs = m_state.renderStates;
+
+    bool fogEnabled = rs[D3DRS_FOGENABLE] != FALSE;
+
+    bool pixelFog   = rs[D3DRS_FOGTABLEMODE]  != D3DFOG_NONE && fogEnabled;
+    bool vertexFog  = rs[D3DRS_FOGVERTEXMODE] != D3DFOG_NONE && fogEnabled && !pixelFog;
+
+    auto UpdateFogConstants = [&](D3DFOGMODE FogMode) {
+      if (m_flags.test(D3D9DeviceFlag::DirtyFogColor)) {
+        m_flags.clr(D3D9DeviceFlag::DirtyFogColor);
+        UpdatePushConstant<D3D9RenderStateItem::FogColor>();
+      }
+
+      if (FogMode == D3DFOG_LINEAR) {
+        if (m_flags.test(D3D9DeviceFlag::DirtyFogStart)) {
+          m_flags.clr(D3D9DeviceFlag::DirtyFogStart);
+          UpdatePushConstant<D3D9RenderStateItem::FogStart>();
+        }
+
+        if (m_flags.test(D3D9DeviceFlag::DirtyFogEnd)) {
+          m_flags.clr(D3D9DeviceFlag::DirtyFogEnd);
+          UpdatePushConstant<D3D9RenderStateItem::FogEnd>();
+        }
+      }
+      else if (FogMode == D3DFOG_EXP || FogMode == D3DFOG_EXP2) {
+        if (m_flags.test(D3D9DeviceFlag::DirtyFogDensity)) {
+          m_flags.clr(D3D9DeviceFlag::DirtyFogDensity);
+          UpdatePushConstant<D3D9RenderStateItem::FogDensity>();
+        }
+      }
+    };
+
+    if (vertexFog) {
+      D3DFOGMODE mode = D3DFOGMODE(rs[D3DRS_FOGVERTEXMODE]);
+
+      UpdateFogConstants(mode);
+
+      if (m_flags.test(D3D9DeviceFlag::DirtyFogState)) {
+        m_flags.clr(D3D9DeviceFlag::DirtyFogState);
+
+        EmitCs([cMode = mode] (DxvkContext* ctx) {
+          ctx->setSpecConstant(D3D9SpecConstantId::FogEnabled,    true);
+          ctx->setSpecConstant(D3D9SpecConstantId::VertexFogMode, cMode);
+          ctx->setSpecConstant(D3D9SpecConstantId::PixelFogMode,  D3DFOG_NONE);
+        });
+      }
+    }
+    else if (pixelFog) {
+      D3DFOGMODE mode = D3DFOGMODE(rs[D3DRS_FOGTABLEMODE]);
+
+      UpdateFogConstants(mode);
+
+      if (m_flags.test(D3D9DeviceFlag::DirtyFogState)) {
+        m_flags.clr(D3D9DeviceFlag::DirtyFogState);
+
+        EmitCs([cMode = mode] (DxvkContext* ctx) {
+          ctx->setSpecConstant(D3D9SpecConstantId::FogEnabled,    true);
+          ctx->setSpecConstant(D3D9SpecConstantId::VertexFogMode, D3DFOG_NONE);
+          ctx->setSpecConstant(D3D9SpecConstantId::PixelFogMode,  cMode);
+        });
+      }
+    }
+    else {
+      if (fogEnabled)
+        UpdateFogConstants(D3DFOG_NONE);
+
+      if (m_flags.test(D3D9DeviceFlag::DirtyFogState)) {
+        m_flags.clr(D3D9DeviceFlag::DirtyFogState);
+
+        EmitCs([cEnabled = fogEnabled] (DxvkContext* ctx) {
+          ctx->setSpecConstant(D3D9SpecConstantId::FogEnabled,    cEnabled);
+          ctx->setSpecConstant(D3D9SpecConstantId::VertexFogMode, D3DFOG_NONE);
+          ctx->setSpecConstant(D3D9SpecConstantId::PixelFogMode,  D3DFOG_NONE);
+        });
       }
     }
   }
@@ -4952,6 +5072,8 @@ namespace dxvk {
     if (m_d3d9Options.hasHazards)
       CheckForHazards();
 
+    UpdateFog();
+
     if (m_flags.test(D3D9DeviceFlag::DirtyFramebuffer))
       BindFramebuffer();
 
@@ -5115,6 +5237,7 @@ namespace dxvk {
             ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Texcoord, i };
           ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Color, 0 };
           ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Color, 1 };
+          ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Fog, 0 };
         }
 
         const auto& isgn = cVertexShader != nullptr

@@ -146,7 +146,6 @@ namespace dxvk {
     // Rasterizer output registers
     DxsoRegisterPointer oPos;
     DxsoRegisterPointer oPSize;
-    DxsoRegisterPointer oFog;
   };
 
   /**
@@ -340,11 +339,16 @@ namespace dxvk {
     DxsoCompilerVsPart m_vs;
     DxsoCompilerPsPart m_ps;
 
+    DxsoRegisterPointer m_fog;
+
     //////////////////////////////////////////
     // Bit masks containing used samplers
     // and render targets for hazard tracking
     uint32_t m_usedSamplers;
     uint32_t m_usedRTs;
+
+    uint32_t m_rsBlock = 0;
+    uint32_t m_mainFuncLabel = 0;
 
     //////////////////////////////////////
     // Common function definition methods
@@ -371,7 +375,7 @@ namespace dxvk {
 
     void emitFunctionEnd();
 
-    void emitFunctionLabel();
+    uint32_t emitFunctionLabel();
 
     void emitMainFunctionBegin();
 
@@ -612,6 +616,8 @@ namespace dxvk {
     void emitInputSetup();
 
     void emitVsClipping();
+    void setupRenderStateInfo();
+    void emitFog();
     void emitPsProcessing();
     void emitOutputDepthClamp();
 

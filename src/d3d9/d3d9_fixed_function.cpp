@@ -10,6 +10,170 @@
 
 namespace dxvk {
 
+  uint32_t DoFixedFunctionFog(SpirvModule& spvModule, const D3D9FogContext& fogCtx) {
+    uint32_t boolType   = spvModule.defBoolType();
+    uint32_t floatType  = spvModule.defFloatType(32);
+    uint32_t uint32Type = spvModule.defIntType(32, 0);
+    uint32_t vec3Type   = spvModule.defVectorType(floatType, 3);
+    uint32_t vec4Type   = spvModule.defVectorType(floatType, 4);
+    uint32_t floatPtr   = spvModule.defPointerType(floatType, spv::StorageClassPushConstant);
+    uint32_t vec4Ptr    = spvModule.defPointerType(vec4Type,  spv::StorageClassPushConstant);
+
+    uint32_t fogColorMember = spvModule.constu32(uint32_t(D3D9RenderStateItem::FogColor));
+    uint32_t fogColor = spvModule.opLoad(vec4Type,
+      spvModule.opAccessChain(vec4Ptr, fogCtx.RenderState, 1, &fogColorMember));
+
+    uint32_t fogStartMember = spvModule.constu32(uint32_t(D3D9RenderStateItem::FogStart));
+    uint32_t fogStart = spvModule.opLoad(floatType,
+      spvModule.opAccessChain(floatPtr, fogCtx.RenderState, 1, &fogStartMember));
+
+    uint32_t fogEndMember = spvModule.constu32(uint32_t(D3D9RenderStateItem::FogEnd));
+    uint32_t fogEnd = spvModule.opLoad(floatType,
+      spvModule.opAccessChain(floatPtr, fogCtx.RenderState, 1, &fogEndMember));
+
+    uint32_t fogDensityMember = spvModule.constu32(uint32_t(D3D9RenderStateItem::FogDensity));
+    uint32_t fogDensity = spvModule.opLoad(floatType,
+      spvModule.opAccessChain(floatPtr, fogCtx.RenderState, 1, &fogDensityMember));
+
+    uint32_t fogMode = spvModule.specConst32(uint32Type, 0);
+
+    if (!fogCtx.IsPixel) {
+      spvModule.setDebugName(fogMode, "vertex_fog_mode");
+      spvModule.decorateSpecId(fogMode, getSpecId(D3D9SpecConstantId::VertexFogMode));
+    }
+    else {
+      spvModule.setDebugName(fogMode, "pixel_fog_mode");
+      spvModule.decorateSpecId(fogMode, getSpecId(D3D9SpecConstantId::PixelFogMode));
+    }
+
+    uint32_t fogEnabled = spvModule.specConstBool(false);
+    spvModule.setDebugName(fogEnabled, "fog_enabled");
+    spvModule.decorateSpecId(fogEnabled, getSpecId(D3D9SpecConstantId::FogEnabled));
+
+    uint32_t doFog   = spvModule.allocateId();
+    uint32_t skipFog = spvModule.allocateId();
+
+    uint32_t returnType     = fogCtx.IsPixel ? vec4Type : floatType;
+    uint32_t returnTypePtr  = spvModule.defPointerType(returnType, spv::StorageClassPrivate);
+    uint32_t returnValuePtr = spvModule.newVar(returnTypePtr, spv::StorageClassPrivate);
+    spvModule.opStore(returnValuePtr, fogCtx.IsPixel ? fogCtx.oColor : spvModule.constf32(0.0f));
+
+    // Actually do the fog now we have all the vars in-place.
+
+    spvModule.opSelectionMerge(skipFog, spv::SelectionControlMaskNone);
+    spvModule.opBranchConditional(fogEnabled, doFog, skipFog);
+
+    spvModule.opLabel(doFog);
+
+    uint32_t wIndex = 3;
+    uint32_t zIndex = 2;
+
+    uint32_t w = spvModule.opCompositeExtract(floatType, fogCtx.vPos, 1, &wIndex);
+    uint32_t z = spvModule.opCompositeExtract(floatType, fogCtx.vPos, 1, &zIndex);
+
+    uint32_t depth = 0;
+    if (fogCtx.IsPixel)
+      depth = spvModule.opFMul(floatType, z, spvModule.opFDiv(floatType, spvModule.constf32(1.0f), w));
+    else
+      depth = spvModule.opFAbs(floatType, z);
+
+    uint32_t applyFogFactor = spvModule.allocateId();
+
+    std::array<SpirvPhiLabel, 4> fogVariables;
+
+    std::array<SpirvSwitchCaseLabel, 4> fogCaseLabels = { {
+      { uint32_t(D3DFOG_NONE),      spvModule.allocateId() },
+      { uint32_t(D3DFOG_EXP),       spvModule.allocateId() },
+      { uint32_t(D3DFOG_EXP2),      spvModule.allocateId() },
+      { uint32_t(D3DFOG_LINEAR),    spvModule.allocateId() },
+    } };
+
+
+    spvModule.opSelectionMerge(applyFogFactor, spv::SelectionControlMaskNone);
+    spvModule.opSwitch(fogMode,
+      fogCaseLabels[D3DFOG_NONE].labelId,
+      fogCaseLabels.size(),
+      fogCaseLabels.data());
+
+    for (uint32_t i = 0; i < fogCaseLabels.size(); i++) {
+      spvModule.opLabel(fogCaseLabels[i].labelId);
+        
+      fogVariables[i].labelId = fogCaseLabels[i].labelId;
+      fogVariables[i].varId   = [&] {
+        auto mode = D3DFOGMODE(fogCaseLabels[i].literal);
+        switch (mode) {
+          default:
+          // vFog
+          case D3DFOG_NONE: {
+            return fogCtx.vFog;
+          }
+
+          // (end - d) / (end - start)
+          case D3DFOG_LINEAR: {
+            uint32_t fogCoeff = spvModule.opFSub(floatType, fogEnd, fogStart);
+            uint32_t fogFactor = spvModule.opFSub(floatType, fogEnd, depth);
+            fogFactor = spvModule.opFDiv(floatType, fogFactor, fogCoeff);
+            fogFactor = spvModule.opFClamp(floatType, fogFactor, spvModule.constf32(0.0f), spvModule.constf32(1.0f));
+            return fogFactor;
+          }
+
+          // 1 / (e^[d * density])^2
+          case D3DFOG_EXP2:
+          // 1 / (e^[d * density])
+          case D3DFOG_EXP: {
+            uint32_t fogFactor = spvModule.opFMul(floatType, depth, fogDensity);
+
+            if (mode == D3DFOG_EXP2)
+              fogFactor = spvModule.opFMul(floatType, fogFactor, fogFactor);
+
+            // Provides the rcp.
+            fogFactor = spvModule.opFNegate(floatType, fogFactor);
+            fogFactor = spvModule.opExp(floatType, fogFactor);
+            return fogFactor;
+          }
+        }
+      }();
+        
+      spvModule.opBranch(applyFogFactor);
+    }
+
+    spvModule.opLabel(applyFogFactor);
+
+    uint32_t fogFactor = spvModule.opPhi(floatType,
+      fogVariables.size(),
+      fogVariables.data());
+
+    uint32_t fogRetValue = 0;
+
+    // Return the new color if we are doing this in PS
+    // or just the fog factor for oFog in VS
+    if (fogCtx.IsPixel) {
+      std::array<uint32_t, 4> indices = { 0, 1, 2, 6 };
+
+      uint32_t color = fogCtx.oColor;
+
+      uint32_t color3 = spvModule.opVectorShuffle(vec3Type, color, color, 3, indices.data());
+      uint32_t fogColor3 = spvModule.opVectorShuffle(vec3Type, fogColor, fogColor, 3, indices.data());
+
+      std::array<uint32_t, 3> fogFacIndices = { fogFactor, fogFactor, fogFactor };
+      uint32_t fogFact3 = spvModule.opCompositeConstruct(vec3Type, fogFacIndices.size(), fogFacIndices.data());
+
+      uint32_t lerpedFrog = spvModule.opFMix(vec3Type, fogColor3, color3, fogFact3);
+
+      fogRetValue = spvModule.opVectorShuffle(vec4Type, lerpedFrog, color, indices.size(), indices.data());
+    }
+    else
+      fogRetValue = fogFactor;
+
+    spvModule.opStore(returnValuePtr, fogRetValue);
+
+    spvModule.opBranch(skipFog);
+
+    spvModule.opLabel(skipFog);
+
+    return spvModule.opLoad(returnType, returnValuePtr);
+  }
+
     enum FFConstantMembersVS {
       VSConstWorldViewMatrix   = 0,
       VSConstNormalMatrix    = 1,
@@ -75,6 +239,7 @@ namespace dxvk {
       uint32_t NORMAL = { 0 };
       uint32_t TEXCOORD[8] = { 0 };
       uint32_t COLOR[2] = { 0 };
+      uint32_t FOG = { 0 };
     } in;
 
     struct {
@@ -82,6 +247,7 @@ namespace dxvk {
       uint32_t NORMAL = { 0 };
       uint32_t TEXCOORD[8] = { 0 };
       uint32_t COLOR[2] = { 0 };
+      uint32_t FOG = { 0 };
     } out;
   };
 
@@ -101,6 +267,8 @@ namespace dxvk {
     struct {
       uint32_t TEXCOORD[8] = { 0 };
       uint32_t COLOR[2]    = { 0 };
+      uint32_t FOG         = { 0 };
+      uint32_t POS         = { 0 };
     } in;
 
     struct {
@@ -140,6 +308,8 @@ namespace dxvk {
 
     void compileVS();
 
+    void setupRenderStateInfo();
+
     void setupVS();
 
     void compilePS();
@@ -176,6 +346,9 @@ namespace dxvk {
     uint32_t              m_mat4Type;
 
     uint32_t              m_entryPointId;
+
+    uint32_t              m_rsBlock;
+    uint32_t              m_mainFuncLabel;
   };
 
   D3D9FFShaderCompiler::D3D9FFShaderCompiler(
@@ -227,7 +400,8 @@ namespace dxvk {
       spv::FunctionControlMaskNone);
     m_module.setDebugName(m_entryPointId, "main");
 
-    m_module.opLabel(m_module.allocateId());
+    m_mainFuncLabel = m_module.allocateId();
+    m_module.opLabel(m_mainFuncLabel);
 
     if (isVS())
       compileVS();
@@ -289,7 +463,9 @@ namespace dxvk {
     spv::StorageClass storageClass = input ?
       spv::StorageClassInput : spv::StorageClassOutput;
 
-    uint32_t ptrType = m_module.defPointerType(m_vec4Type, storageClass);
+    uint32_t type = semantic.usage == DxsoUsage::Fog ? m_floatType : m_vec4Type;
+
+    uint32_t ptrType = m_module.defPointerType(type, storageClass);
 
     uint32_t ptr = m_module.newVar(ptrType, storageClass);
 
@@ -304,7 +480,7 @@ namespace dxvk {
     m_entryPointInterfaces.push_back(ptr);
 
     if (input)
-      return m_module.opLoad(m_vec4Type, ptr);
+      return m_module.opLoad(type, ptr);
 
     return ptr;
   }
@@ -537,10 +713,56 @@ namespace dxvk {
       m_module.opStore(m_vs.out.COLOR[0], m_vs.in.COLOR[0]);
       m_module.opStore(m_vs.out.COLOR[1], m_vs.in.COLOR[1]);
     }
+
+    D3D9FogContext fogCtx;
+    fogCtx.IsPixel     = false;
+    fogCtx.RenderState = m_rsBlock;
+    fogCtx.vPos        = vtx;
+    fogCtx.vFog        = m_vs.in.FOG;
+    fogCtx.oColor      = 0;
+    m_module.opStore(m_vs.out.FOG, DoFixedFunctionFog(m_module, fogCtx));
+  }
+
+
+  void D3D9FFShaderCompiler::setupRenderStateInfo() {
+    // TODO: fix duplication of this
+
+    std::array<uint32_t, 5> rsMembers = {{
+      m_vec4Type,
+      m_floatType,
+      m_floatType,
+      m_floatType,
+      m_floatType
+    }};
+    
+    uint32_t rsStruct = m_module.defStructTypeUnique(rsMembers.size(), rsMembers.data());
+    m_rsBlock = m_module.newVar(
+      m_module.defPointerType(rsStruct, spv::StorageClassPushConstant),
+      spv::StorageClassPushConstant);
+    
+    m_module.setDebugName         (rsStruct, "render_state_t");
+    m_module.decorate             (rsStruct, spv::DecorationBlock);
+    m_module.setDebugMemberName   (rsStruct, 0, "fog_color");
+    m_module.memberDecorateOffset (rsStruct, 0, offsetof(D3D9RenderStateInfo, fogColor));
+    m_module.setDebugMemberName   (rsStruct, 1, "fog_start");
+    m_module.memberDecorateOffset (rsStruct, 1, offsetof(D3D9RenderStateInfo, fogStart));
+    m_module.setDebugMemberName   (rsStruct, 2, "fog_end");
+    m_module.memberDecorateOffset (rsStruct, 2, offsetof(D3D9RenderStateInfo, fogEnd));
+    m_module.setDebugMemberName   (rsStruct, 3, "fog_density");
+    m_module.memberDecorateOffset (rsStruct, 3, offsetof(D3D9RenderStateInfo, fogDensity));
+    m_module.setDebugMemberName   (rsStruct, 4, "alpha_ref");
+    m_module.memberDecorateOffset (rsStruct, 4, offsetof(D3D9RenderStateInfo, alphaRef));
+    
+    m_module.setDebugName         (m_rsBlock, "render_state");
+
+    m_interfaceSlots.pushConstOffset = 0;
+    m_interfaceSlots.pushConstSize = sizeof(D3D9RenderStateInfo);
   }
 
 
   void D3D9FFShaderCompiler::setupVS() {
+    setupRenderStateInfo();
+
     // VS Caps
     m_module.enableCapability(spv::CapabilityClipDistance);
     m_module.enableCapability(spv::CapabilityDrawParameters);
@@ -779,6 +1001,9 @@ namespace dxvk {
 
     m_vs.out.COLOR[0] = declareIO(false, DxsoSemantic{ DxsoUsage::Color, 0 });
     m_vs.out.COLOR[1] = declareIO(false, DxsoSemantic{ DxsoUsage::Color, 1 });
+
+    m_vs.in.FOG       = declareIO(true,  DxsoSemantic{ DxsoUsage::Fog,   0 });
+    m_vs.out.FOG      = declareIO(false, DxsoSemantic{ DxsoUsage::Fog,   0 });
   }
 
 
@@ -1066,12 +1291,22 @@ namespace dxvk {
       }
     }
 
+    D3D9FogContext fogCtx;
+    fogCtx.IsPixel     = true;
+    fogCtx.RenderState = m_rsBlock;
+    fogCtx.vPos        = m_ps.in.POS;
+    fogCtx.vFog        = m_ps.in.FOG;
+    fogCtx.oColor      = current;
+    current = DoFixedFunctionFog(m_module, fogCtx);
+
     m_module.opStore(m_ps.out.COLOR, current);
 
     alphaTestPS();
   }
 
   void D3D9FFShaderCompiler::setupPS() {
+    setupRenderStateInfo();
+
     // PS Caps
     m_module.enableCapability(spv::CapabilityDerivativeControl);
 
@@ -1083,6 +1318,9 @@ namespace dxvk {
 
     m_ps.in.COLOR[0] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 0 });
     m_ps.in.COLOR[1] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 1 });
+
+    m_ps.in.FOG      = declareIO(true, DxsoSemantic{ DxsoUsage::Fog, 0 });
+    m_ps.in.POS      = declareIO(true, DxsoSemantic{ DxsoUsage::Position, 0 }, spv::BuiltInFragCoord);
 
     m_ps.out.COLOR   = declareIO(false, DxsoSemantic{ DxsoUsage::Color, 0 });
 
@@ -1197,30 +1435,6 @@ namespace dxvk {
     uint32_t boolType = m_module.defBoolType();
     uint32_t floatPtr = m_module.defPointerType(m_floatType, spv::StorageClassPushConstant);
 
-    // Declare uniform buffer containing render states
-    enum RenderStateMember : uint32_t {
-      RsAlphaRef = 0,
-    };
-
-    std::array<uint32_t, 1> rsMembers = { {
-      m_floatType,
-    } };
-
-    uint32_t rsStruct = m_module.defStructTypeUnique(rsMembers.size(), rsMembers.data());
-    uint32_t rsBlock = m_module.newVar(
-      m_module.defPointerType(rsStruct, spv::StorageClassPushConstant),
-      spv::StorageClassPushConstant);
-
-    m_module.setDebugName(rsStruct, "render_state_t");
-    m_module.decorate(rsStruct, spv::DecorationBlock);
-    m_module.setDebugMemberName(rsStruct, 0, "alpha_ref");
-    m_module.memberDecorateOffset(rsStruct, 0, offsetof(D3D9RenderStateInfo, alphaRef));
-
-    m_module.setDebugName(rsBlock, "render_state");
-
-    m_interfaceSlots.pushConstOffset = 0;
-    m_interfaceSlots.pushConstSize = sizeof(D3D9RenderStateInfo);
-
     // Declare spec constants for render states
     uint32_t alphaTestId = m_module.specConstBool(false);
     uint32_t alphaFuncId = m_module.specConst32(m_module.defIntType(32, 0), uint32_t(VK_COMPARE_OP_ALWAYS));
@@ -1263,9 +1477,9 @@ namespace dxvk {
       1, &alphaComponentId);
 
     // Load alpha reference
-    uint32_t alphaRefMember = m_module.constu32(RsAlphaRef);
+    uint32_t alphaRefMember = m_module.constu32(uint32_t(D3D9RenderStateItem::AlphaRef));
     uint32_t alphaRefId = m_module.opLoad(m_floatType,
-      m_module.opAccessChain(floatPtr, rsBlock, 1, &alphaRefMember));
+      m_module.opAccessChain(floatPtr, m_rsBlock, 1, &alphaRefMember));
 
     // switch (alpha_func) { ... }
     m_module.opSelectionMerge(atestTestLabel, spv::SelectionControlMaskNone);

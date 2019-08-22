@@ -6,6 +6,7 @@
 #include "../d3d9/d3d9_constant_set.h"
 #include "../d3d9/d3d9_state.h"
 #include "../d3d9/d3d9_spec_constants.h"
+#include "../d3d9/d3d9_fixed_function.h"
 #include "dxso_util.h"
 
 #include "../dxvk/dxvk_spec_const.h"
@@ -54,7 +55,7 @@ namespace dxvk {
 
     m_vs.addr        = DxsoRegisterPointer{ };
     m_vs.oPos        = DxsoRegisterPointer{ };
-    m_vs.oFog        = DxsoRegisterPointer{ };
+    m_fog            = DxsoRegisterPointer{ };
     m_vs.oPSize      = DxsoRegisterPointer{ };
 
     for (uint32_t i = 0; i < m_ps.oColor.size(); i++)
@@ -411,6 +412,7 @@ namespace dxvk {
     m_module.setExecutionMode(m_entryPointId,
       spv::ExecutionModeOriginUpperLeft);
 
+
     // Main function of the pixel shader
     m_ps.functionId = m_module.allocateId();
     m_module.setDebugName(m_ps.functionId, "ps_main");
@@ -421,6 +423,7 @@ namespace dxvk {
       m_module.setDebugName(m_ps.samplerTypeSpec, "s_sampler_types");
     }
 
+    this->setupRenderStateInfo();
     this->emitPsSharedConstants();
 
     this->emitFunctionBegin(
@@ -484,8 +487,10 @@ namespace dxvk {
   }
 
 
-  void DxsoCompiler::emitFunctionLabel() {
-    m_module.opLabel(m_module.allocateId());
+  uint32_t DxsoCompiler::emitFunctionLabel() {
+    uint32_t labelId = m_module.allocateId();
+    m_module.opLabel(labelId);
+    return labelId;
   }
 
 
@@ -495,7 +500,7 @@ namespace dxvk {
       m_module.defVoidType(),
       m_module.defFunctionType(
         m_module.defVoidType(), 0, nullptr));
-    this->emitFunctionLabel();
+    m_mainFuncLabel = this->emitFunctionLabel();
   }
 
 
@@ -1021,12 +1026,29 @@ namespace dxvk {
             return m_vs.oPos;
 
           case RasterOutFog:
-            if (m_vs.oFog.id == 0) {
-              m_vs.oFog = this->emitRegisterPtr(
-                "oFog", DxsoScalarType::Float32, 4,
-                m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f));
+            if (m_fog.id == 0) {
+              bool input = m_programInfo.type() == DxsoProgramType::PixelShader;
+              DxsoSemantic semantic = DxsoSemantic{ DxsoUsage::Fog, 0 };
+
+              uint32_t slot = RegisterLinkerSlot(semantic);
+
+              uint32_t& slots = input
+                ? m_interfaceSlots.inputSlots
+                : m_interfaceSlots.outputSlots;
+
+              slots |= 1u << slot;
+
+              m_fog = this->emitRegisterPtr(
+                input ? "vFog" : "oFog",
+                DxsoScalarType::Float32, 1,
+                input ? 0 : m_module.constf32(0.0f),
+                input ? spv::StorageClassInput : spv::StorageClassOutput);
+
+              m_entryPointInterfaces.push_back(m_fog.id);
+
+              m_module.decorateLocation(m_fog.id, slot);
             }
-            return m_vs.oFog;
+            return m_fog;
 
           case RasterOutPointSize:
             if (m_vs.oPSize.id == 0) {
@@ -1592,7 +1614,8 @@ namespace dxvk {
 
   bool DxsoCompiler::isScalarRegister(DxsoRegisterId id) {
     return id == DxsoRegisterId{DxsoRegisterType::DepthOut, 0}
-        || id == DxsoRegisterId{DxsoRegisterType::RasterizerOut, RasterOutPointSize};
+        || id == DxsoRegisterId{DxsoRegisterType::RasterizerOut, RasterOutPointSize}
+        || id == DxsoRegisterId{DxsoRegisterType::RasterizerOut, RasterOutFog};
   }
 
 
@@ -1880,11 +1903,12 @@ namespace dxvk {
         uint32_t zTestY = m_module.opFOrdGreaterThanEqual(boolType, srcY, m_module.constf32(0));
         uint32_t zTest  = m_module.opLogicalAnd(boolType, zTestX, zTestY);
 
-        resultIndices[2] = m_module.opSelect(
-          scalarTypeId,
-          zTest,
-          resultIndices[2],
-          m_module.constf32(0.0f));
+        if (result.type.ccount > 2)
+          resultIndices[2] = m_module.opSelect(
+            scalarTypeId,
+            zTest,
+            resultIndices[2],
+            m_module.constf32(0.0f));
 
         if (result.type.ccount == 1)
           result.id = resultIndices[0];
@@ -3000,35 +3024,86 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         distId);
     }
   }
-  
-  void DxsoCompiler::emitPsProcessing() {
+
+
+  void DxsoCompiler::setupRenderStateInfo() {
     uint32_t boolType  = m_module.defBoolType();
     uint32_t floatType = m_module.defFloatType(32);
+    uint32_t vec4Type  = m_module.defVectorType(floatType, 4);
     uint32_t floatPtr  = m_module.defPointerType(floatType, spv::StorageClassPushConstant);
-    
-    // Declare uniform buffer containing render states
-    enum RenderStateMember : uint32_t {
-      RsAlphaRef = 0,
-    };
-    
-    std::array<uint32_t, 1> rsMembers = {{
+    uint32_t vec4Ptr   = m_module.defPointerType(vec4Type,  spv::StorageClassPushConstant);
+
+    std::array<uint32_t, 5> rsMembers = {{
+      vec4Type,
       floatType,
+      floatType,
+      floatType,
+      floatType
     }};
     
     uint32_t rsStruct = m_module.defStructTypeUnique(rsMembers.size(), rsMembers.data());
-    uint32_t rsBlock  = m_module.newVar(
+    m_rsBlock = m_module.newVar(
       m_module.defPointerType(rsStruct, spv::StorageClassPushConstant),
       spv::StorageClassPushConstant);
     
     m_module.setDebugName         (rsStruct, "render_state_t");
     m_module.decorate             (rsStruct, spv::DecorationBlock);
-    m_module.setDebugMemberName   (rsStruct, 0, "alpha_ref");
-    m_module.memberDecorateOffset (rsStruct, 0, offsetof(D3D9RenderStateInfo, alphaRef));
+    m_module.setDebugMemberName   (rsStruct, 0, "fog_color");
+    m_module.memberDecorateOffset (rsStruct, 0, offsetof(D3D9RenderStateInfo, fogColor));
+    m_module.setDebugMemberName   (rsStruct, 1, "fog_start");
+    m_module.memberDecorateOffset (rsStruct, 1, offsetof(D3D9RenderStateInfo, fogStart));
+    m_module.setDebugMemberName   (rsStruct, 2, "fog_end");
+    m_module.memberDecorateOffset (rsStruct, 2, offsetof(D3D9RenderStateInfo, fogEnd));
+    m_module.setDebugMemberName   (rsStruct, 3, "fog_density");
+    m_module.memberDecorateOffset (rsStruct, 3, offsetof(D3D9RenderStateInfo, fogDensity));
+    m_module.setDebugMemberName   (rsStruct, 4, "alpha_ref");
+    m_module.memberDecorateOffset (rsStruct, 4, offsetof(D3D9RenderStateInfo, alphaRef));
     
-    m_module.setDebugName         (rsBlock, "render_state");
+    m_module.setDebugName         (m_rsBlock, "render_state");
 
-    m_interfaceSlots.pushConstOffset = 0;
-    m_interfaceSlots.pushConstSize   = sizeof(D3D9RenderStateInfo);
+    // Only need alpha ref for PS 3.
+    // No FF fog component.
+    if (m_programInfo.majorVersion() == 3) {
+      m_interfaceSlots.pushConstOffset = offsetof(D3D9RenderStateInfo, alphaRef);
+      m_interfaceSlots.pushConstSize   = sizeof(float);
+    }
+    else {
+      m_interfaceSlots.pushConstOffset = 0;
+      m_interfaceSlots.pushConstSize   = sizeof(D3D9RenderStateInfo);
+    }
+  }
+
+
+  void DxsoCompiler::emitFog() {
+    DxsoRegister color0;
+    color0.id = DxsoRegisterId{ DxsoRegisterType::ColorOut, 0 };
+    auto oColor0Ptr = this->emitGetOperandPtr(color0);
+
+    DxsoRegister vFog;
+    vFog.id = DxsoRegisterId{ DxsoRegisterType::RasterizerOut, RasterOutFog };
+    auto vFogPtr = this->emitGetOperandPtr(vFog);
+
+    DxsoRegister vPos;
+    vPos.id = DxsoRegisterId{ DxsoRegisterType::MiscType, DxsoMiscTypeIndices::MiscTypePosition };
+    auto vPosPtr = this->emitGetOperandPtr(vPos);
+
+    D3D9FogContext fogCtx;
+    fogCtx.IsPixel     = true;
+    fogCtx.RenderState = m_rsBlock;
+    fogCtx.vPos        = m_module.opLoad(getVectorTypeId(vPosPtr.type),    vPosPtr.id);
+    fogCtx.vFog        = m_module.opLoad(getVectorTypeId(vFogPtr.type),    vFogPtr.id);
+    fogCtx.oColor      = m_module.opLoad(getVectorTypeId(oColor0Ptr.type), oColor0Ptr.id);
+
+    m_module.opStore(oColor0Ptr.id, DoFixedFunctionFog(m_module, fogCtx));
+  }
+
+  
+  void DxsoCompiler::emitPsProcessing() {
+    uint32_t boolType  = m_module.defBoolType();
+    uint32_t floatType = m_module.defFloatType(32);
+    uint32_t vec4Type  = m_module.defVectorType(floatType, 4);
+    uint32_t floatPtr  = m_module.defPointerType(floatType, spv::StorageClassPushConstant);
+    uint32_t vec4Ptr   = m_module.defPointerType(vec4Type,  spv::StorageClassPushConstant);
     
     // Declare spec constants for render states
     uint32_t alphaTestId = m_module.specConstBool(false);
@@ -3040,12 +3115,15 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     m_module.setDebugName   (alphaFuncId, "alpha_func");
     m_module.decorateSpecId (alphaFuncId, getSpecId(D3D9SpecConstantId::AlphaCompareOp));
 
-    // Implement alpha test
+    // Implement alpha test and fog
     DxsoRegister color0;
     color0.id = DxsoRegisterId{ DxsoRegisterType::ColorOut, 0 };
     auto oC0 = this->emitGetOperandPtr(color0);
     
     if (oC0.id) {
+      if (m_programInfo.majorVersion() < 3)
+        emitFog();
+
       // Labels for the alpha test
       std::array<SpirvSwitchCaseLabel, 8> atestCaseLabels = {{
         { uint32_t(VK_COMPARE_OP_NEVER),            m_module.allocateId() },
@@ -3076,9 +3154,9 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         1, &alphaComponentId);
       
       // Load alpha reference
-      uint32_t alphaRefMember = m_module.constu32(RsAlphaRef);
+      uint32_t alphaRefMember = m_module.constu32(uint32_t(D3D9RenderStateItem::AlphaRef));
       uint32_t alphaRefId = m_module.opLoad(floatType,
-        m_module.opAccessChain(floatPtr, rsBlock, 1, &alphaRefMember));
+        m_module.opAccessChain(floatPtr, m_rsBlock, 1, &alphaRefMember));
       
       // switch (alpha_func) { ... }
       m_module.opSelectionMerge(atestTestLabel, spv::SelectionControlMaskNone);
