@@ -910,6 +910,10 @@ namespace dxvk {
     uint32_t opExp2(
             uint32_t                resultType,
             uint32_t                operand);
+
+    uint32_t opExp(
+            uint32_t                resultType,
+            uint32_t                operand);
     
     uint32_t opLog2(
             uint32_t                resultType,
