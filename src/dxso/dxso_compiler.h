@@ -474,7 +474,11 @@ namespace dxvk {
             DxsoRegisterValue       value,
             DxsoRegMask             writeMask,
             bool                    saturate,
-            int8_t                  shift) {
+            int8_t                  shift,
+            DxsoRegisterId          regId) {
+      if (regId.type == DxsoRegisterType::RasterizerOut && regId.num == RasterOutFog)
+        saturate = true;
+
       if (value.type.ctype == DxsoScalarType::Float32) {
         const uint32_t typeId = getVectorTypeId(value.type);
 

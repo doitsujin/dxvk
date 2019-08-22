@@ -1655,7 +1655,7 @@ namespace dxvk {
     else // No special stuff needed!
       result.id = src0.id;
 
-    this->emitDstStore(dst, result, mask, ctx.dst.saturate, ctx.dst.shift);
+    this->emitDstStore(dst, result, mask, ctx.dst.saturate, ctx.dst.shift, ctx.dst.id);
   }
 
 
@@ -2026,7 +2026,7 @@ namespace dxvk {
         return;
     }
 
-    this->emitDstStore(dst, result, mask, ctx.dst.saturate, ctx.dst.shift);
+    this->emitDstStore(dst, result, mask, ctx.dst.saturate, ctx.dst.shift, ctx.dst.id);
   }
 
 
@@ -2095,7 +2095,7 @@ namespace dxvk {
     result.id = m_module.opCompositeConstruct(
       typeId, iterCount, indices.data());
 
-    this->emitDstStore(dst, result, mask, ctx.dst.saturate, ctx.dst.shift);
+    this->emitDstStore(dst, result, mask, ctx.dst.saturate, ctx.dst.shift, ctx.dst.id);
   }
 
 
@@ -2403,7 +2403,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     DxsoRegisterPointer dst = emitGetOperandPtr(ctx.dst);
 
-    this->emitDstStore(dst, result, ctx.dst.mask, ctx.dst.saturate, ctx.dst.shift);
+    this->emitDstStore(dst, result, ctx.dst.mask, ctx.dst.saturate, ctx.dst.shift, ctx.dst.id);
   }
 
   void DxsoCompiler::emitTextureSample(const DxsoInstructionContext& ctx) {
@@ -2599,7 +2599,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         reference,
         imageOperands);
 
-      this->emitDstStore(dst, result, ctx.dst.mask, ctx.dst.saturate, ctx.dst.shift);
+      this->emitDstStore(dst, result, ctx.dst.mask, ctx.dst.saturate, ctx.dst.shift, ctx.dst.id);
     };
 
     auto SampleType = [&](DxsoSamplerType samplerType) {
