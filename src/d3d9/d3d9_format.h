@@ -93,6 +93,21 @@ namespace dxvk {
     INTZ = MAKEFOURCC('I', 'N', 'T', 'Z'),
     RAWZ = MAKEFOURCC('R', 'A', 'W', 'Z'),
     RESZ = MAKEFOURCC('R', 'E', 'S', 'Z'),
+
+    NV11 = MAKEFOURCC('N', 'V', '1', '1'),
+    NV12 = MAKEFOURCC('N', 'V', '1', '2'),
+    P010 = MAKEFOURCC('P', '0', '1', '0'), // Same as NV12 but 10 bit
+    P016 = MAKEFOURCC('P', '0', '1', '6'), // Same as NV12 but 16 bit
+    Y210 = MAKEFOURCC('Y', '2', '1', '0'),
+    Y216 = MAKEFOURCC('Y', '2', '1', '6'),
+    Y410 = MAKEFOURCC('Y', '4', '1', '0'),
+    AYUV = MAKEFOURCC('A', 'Y', 'U', 'V'),
+    YV12 = MAKEFOURCC('Y', 'V', '1', '2'),
+    OPAQUE_420 = MAKEFOURCC('4', '2', '0', 'O'),
+
+    // Not supported but exist
+    AI44 = MAKEFOURCC('A', 'I', '4', '4'),
+    IA44 = MAKEFOURCC('I', 'A', '4', '4'),
   };
 
   inline D3D9Format EnumerateFormat(D3DFORMAT format) {
