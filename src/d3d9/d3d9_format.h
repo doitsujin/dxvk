@@ -111,6 +111,8 @@ namespace dxvk {
     R2VB = MAKEFOURCC('R', '2', 'V', 'B'),
     COPM = MAKEFOURCC('C', 'O', 'P', 'M'),
     SSAA = MAKEFOURCC('S', 'S', 'A', 'A'),
+    AL16 = MAKEFOURCC('A', 'L', '1', '6'),
+    R16  = MAKEFOURCC(' ', 'R', '1', '6'),
   };
 
   inline D3D9Format EnumerateFormat(D3DFORMAT format) {
