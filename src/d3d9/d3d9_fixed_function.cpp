@@ -663,9 +663,15 @@ namespace dxvk {
 
         uint32_t diffuseness = m_module.opFMul(m_floatType, hitDot, atten);
 
-        uint32_t mid = m_module.opNormalize(m_vec3Type, vtx3);
-                 mid = m_module.opFAdd(m_vec3Type, hitDir, m_module.opFNegate(m_vec3Type, mid));
-                 mid = m_module.opNormalize(m_vec3Type, mid);
+        uint32_t mid;
+        if (m_vsKey.LocalViewer) {
+          mid = m_module.opNormalize(m_vec3Type, vtx3);
+          mid = m_module.opFSub(m_vec3Type, hitDir, mid);
+        }
+        else
+          mid = m_module.opFSub(m_vec3Type, hitDir, m_module.constvec3f32(0.0f, 0.0f, 1.0f));
+
+        mid = m_module.opNormalize(m_vec3Type, mid);
 
         uint32_t midDot = m_module.opDot(m_floatType, nrm3, mid);
                  midDot = m_module.opFClamp(m_floatType, hitDot, m_module.constf32(0.0f), m_module.constf32(1.0f));
@@ -1642,6 +1648,7 @@ namespace dxvk {
     state.add(bhash(key.HasColor1));
     state.add(bhash(key.UseLighting));
     state.add(bhash(key.NormalizeNormals));
+    state.add(bhash(key.LocalViewer));
 
     state.add(colorSourceHash(key.DiffuseSource));
     state.add(colorSourceHash(key.AmbientSource));

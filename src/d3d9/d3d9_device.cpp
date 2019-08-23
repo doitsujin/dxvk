@@ -1743,6 +1743,7 @@ namespace dxvk {
         case D3DRS_COLORVERTEX:
         case D3DRS_LIGHTING:
         case D3DRS_NORMALIZENORMALS:
+        case D3DRS_LOCALVIEWER:
           m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
           break;
 
@@ -3319,6 +3320,7 @@ namespace dxvk {
     rs[D3DRS_EMISSIVEMATERIALSOURCE] = D3DMCS_MATERIAL;
     rs[D3DRS_LIGHTING]               = TRUE;
     rs[D3DRS_COLORVERTEX]            = TRUE;
+    rs[D3DRS_LOCALVIEWER]            = TRUE;
     m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
 
     rs[D3DRS_AMBIENT]                = 0;
@@ -3347,7 +3349,6 @@ namespace dxvk {
     rs[D3DRS_WRAP6]                      = 0;
     rs[D3DRS_WRAP7]                      = 0;
     rs[D3DRS_CLIPPING]                   = TRUE;
-    rs[D3DRS_LOCALVIEWER]                = TRUE;
     rs[D3DRS_NORMALIZENORMALS]           = FALSE;
     rs[D3DRS_VERTEXBLEND]                = D3DVBF_DISABLE;
     rs[D3DRS_CLIPPLANEENABLE]            = 0;
@@ -5538,6 +5539,7 @@ namespace dxvk {
                        : 0;
 
       key.UseLighting      = lighting;
+      key.LocalViewer      = m_state.renderStates[D3DRS_LOCALVIEWER] && lighting;
       key.NormalizeNormals = m_state.renderStates[D3DRS_NORMALIZENORMALS];
 
       key.DiffuseSource  = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_DIFFUSEMATERIALSOURCE]  & mask);
