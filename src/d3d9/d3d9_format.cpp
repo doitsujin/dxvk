@@ -354,11 +354,11 @@ namespace dxvk {
 
       case D3D9Format::NVDB: return {}; // Driver hack, handled elsewhere
 
-      case D3D9Format::A2M1: return {}; // Unsupported
+      case D3D9Format::A2M1: return {}; // Driver hack, handled elsewhere
 
-      case D3D9Format::A2M0: return {}; // Unsupported
+      case D3D9Format::A2M0: return {}; // Driver hack, handled elsewhere
 
-      case D3D9Format::ATOC: return {}; // Unsupported
+      case D3D9Format::ATOC: return {}; // Driver hack, handled elsewhere
 
       case D3D9Format::INTZ: return {
         VK_FORMAT_D24_UNORM_S8_UINT,

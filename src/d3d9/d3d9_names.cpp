@@ -85,6 +85,8 @@ namespace dxvk {
       ENUM_NAME(D3D9Format::A2M0);
       ENUM_NAME(D3D9Format::ATOC);
       ENUM_NAME(D3D9Format::INTZ);
+      ENUM_NAME(D3D9Format::RAWZ);
+      ENUM_NAME(D3D9Format::RESZ);
 
       ENUM_NAME(D3D9Format::NV11);
       ENUM_NAME(D3D9Format::NV12);
@@ -99,6 +101,9 @@ namespace dxvk {
 
       ENUM_NAME(D3D9Format::AI44);
       ENUM_NAME(D3D9Format::IA44);
+      ENUM_NAME(D3D9Format::R2VB);
+      ENUM_NAME(D3D9Format::COPM);
+      ENUM_NAME(D3D9Format::SSAA);
 
       ENUM_DEFAULT(e);
     }
