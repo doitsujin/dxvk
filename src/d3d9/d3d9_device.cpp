@@ -1636,10 +1636,16 @@ namespace dxvk {
           m_nvATOC = Value == AlphaToCoverageEnable;
 
           bool newATOC = IsAlphaToCoverageEnabled();
-          
+
           if (oldATOC != newATOC)
             m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
 
+          return D3D_OK;
+        }
+
+        if (Value == uint32_t(D3D9Format::COPM)) {
+          // UE3 calls this MinimalNVIDIADriverShaderOptimization
+          Logger::info("D3D9DeviceEx::SetRenderState: MinimalNVIDIADriverShaderOptimization is unsupported");
           return D3D_OK;
         }
       }
