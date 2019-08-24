@@ -13,131 +13,131 @@ namespace dxvk {
 
   const static std::vector<std::pair<const char*, Config>> g_appDefaults = {{
     /* Anno 1800                                  */
-    { "\\\\Anno1800\\.exe$", {{
+    { R"(\\Anno1800\.exe$)", {{
       { "d3d11.allowMapFlagNoWait",         "True" }
     }} },
     /* Assassin's Creed Syndicate: amdags issues  */
-    { "\\\\ACS\\.exe$", {{
+    { R"(\\ACS\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
     /* Dishonored 2                               */
-    { "\\\\Dishonored2\\.exe$", {{
+    { R"(\\Dishonored2\.exe$)", {{
       { "d3d11.allowMapFlagNoWait",         "True" }
     }} },
     /* Dissidia Final Fantasy NT Free Edition */
-    { "\\\\dffnt\\.exe$", {{
+    { R"(\\dffnt\.exe$)", {{
       { "dxgi.deferSurfaceCreation",        "True" },
     }} },
     /* Elite Dangerous: Compiles weird shaders    *
      * when running on AMD hardware               */
-    { "\\\\EliteDangerous64\\.exe$", {{
+    { R"(\\EliteDangerous64\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
     /* The Vanishing of Ethan Carter Redux        */
-    { "\\\\EthanCarter-Win64-Shipping\\.exe$", {{
+    { R"(\\EthanCarter-Win64-Shipping\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
     /* The Evil Within: Submits command lists     * 
      * multiple times                             */
-    { "\\\\EvilWithin(Demo)?\\.exe$", {{
+    { R"(\\EvilWithin(Demo)?\.exe$)", {{
       { "d3d11.dcSingleUseMode",            "False" },
     }} },
     /* Far Cry 3: Assumes clear(0.5) on an UNORM  *
      * format to result in 128 on AMD and 127 on  *
      * Nvidia. We assume that the Vulkan drivers  *
      * match the clear behaviour of D3D11.        */
-    { "\\\\(farcry3|fc3_blooddragon)_d3d11\\.exe$", {{
+    { R"(\\(farcry3|fc3_blooddragon)_d3d11\.exe$)", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
     /* Far Cry 4: Same as Far Cry 3               */
-    { "\\\\FarCry4\\.exe$", {{
+    { R"(\\FarCry4\.exe$)", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
     /* Far Cry 5: Avoid CPU <-> GPU sync          */
-    { "\\\\FarCry5\\.exe$", {{
+    { R"(\\FarCry5\.exe$)", {{
       { "d3d11.allowMapFlagNoWait",         "True" }
     }} },
     /* Far Cry Primal: Nvidia performance         */
-    { "\\\\FCPrimal\\.exe$", {{
+    { R"(\\FCPrimal\.exe$)", {{
       { "dxgi.nvapiHack",                   "False" },
     } }},
     /* Frostpunk: Renders one frame with D3D9     *
      * after creating the DXGI swap chain         */
-    { "\\\\Frostpunk\\.exe$", {{
+    { R"(\\Frostpunk\.exe$)", {{
       { "dxgi.deferSurfaceCreation",        "True" },
     }} },
     /* Nioh: See Frostpunk, apparently?           */
-    { "\\\\nioh\\.exe$", {{
+    { R"(\\nioh\.exe$)", {{
       { "dxgi.deferSurfaceCreation",        "True" },
     }} },
     /* Quantum Break: Mever initializes shared    *
      * memory in one of its compute shaders       */
-    { "\\\\QuantumBreak\\.exe$", {{
+    { R"(\\QuantumBreak\.exe$)", {{
       { "d3d11.zeroInitWorkgroupMemory",    "True" },
     }} },
     /* Anno 2205: Random crashes with state cache */
-    { "\\\\anno2205\\.exe$", {{
+    { R"(\\anno2205\.exe$)", {{
       { "dxvk.enableStateCache",            "False" },
     }} },
     /* Fifa '19: Binds typed buffer SRV to shader *
      * that expects raw/structured buffer SRV     */
-    { "\\\\FIFA19(_demo)?\\.exe$", {{
+    { R"(\\FIFA19(_demo)?\.exe$)", {{
       { "dxvk.useRawSsbo",                  "True" },
     }} },
     /* Final Fantasy XIV: Fix random black blocks */
-    { "\\\\ffxiv_dx11\\.exe$", {{
+    { R"(\\ffxiv_dx11\.exe$)", {{
       { "d3d11.strictDivision",             "True" },
     }} },
     /* Resident Evil 2: Improve GPU performance   */
-    { "\\\\re2\\.exe$", {{
+    { R"(\\re2\.exe$)", {{
       { "d3d11.relaxedBarriers",            "True" },
     }} },
     /* Resident Evil 7                            */
-    { "\\\\re7\\.exe$", {{
+    { R"(\\re7\.exe$)", {{
       { "d3d11.relaxedBarriers",            "True" },
     }} },
     /* Devil May Cry 5                            */
-    { "\\\\DevilMayCry5\\.exe$", {{
+    { R"(\\DevilMayCry5\.exe$)", {{
       { "d3d11.relaxedBarriers",            "True" },
     }} },
     /* Call of Duty WW2                           */
-    { "\\\\s2_sp64_ship\\.exe$", {{
+    { R"(\\s2_sp64_ship\.exe$)", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
     /* Need for Speed 2015                        */
-    { "\\\\NFS16\\.exe$", {{
+    { R"(\\NFS16\.exe$)", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
     /* Mass Effect Andromeda                      */
-    { "\\\\MassEffectAndromeda\\.exe$", {{
+    { R"(\\MassEffectAndromeda\.exe$)", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
     /* Mirror`s Edge Catalyst: Crashes on AMD     */
-    { "\\\\MirrorsEdgeCatalyst(Trial)?\\.exe$", {{
+    { R"(\\MirrorsEdgeCatalyst(Trial)?\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
     /* Star Wars Battlefront (2015)               */
-    { "\\\\starwarsbattlefront(trial)?\\.exe$", {{
+    { R"(\\starwarsbattlefront(trial)?\.exe$)", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
     /* Dark Souls Remastered                      */
-    { "\\\\DarkSoulsRemastered\\.exe$", {{
+    { R"(\\DarkSoulsRemastered\.exe$)", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
     }} },
     /* Grim Dawn                                  */
-    { "\\\\Grim Dawn\\.exe$", {{
+    { R"(\\Grim Dawn\.exe$)", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
     }} },
     /* NieR:Automata                              */
-    { "\\\\NieRAutomata\\.exe$", {{
+    { R"(\\NieRAutomata\.exe$)", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
     }} },
     /* The Surge                                  */
-    { "\\\\TheSurge\\.exe$", {{
+    { R"(\\TheSurge\.exe$)", {{
       { "d3d11.allowMapFlagNoWait",         "True" },
     }} },
     /* SteamVR performance test                   */
-    { "\\\\vr\\.exe$", {{
+    { R"(\\vr\.exe$)", {{
       { "d3d11.dcSingleUseMode",            "False" },
     }} },
   }};
