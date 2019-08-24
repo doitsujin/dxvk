@@ -1296,6 +1296,12 @@ namespace dxvk {
       }
     }
 
+    if (m_fsKey.SpecularEnable) {
+      uint32_t specular = m_module.opFMul(m_vec4Type, m_ps.in.COLOR[1], m_module.constvec4f32(1.0f, 1.0f, 1.0f, 0.0f));
+
+      current = m_module.opFAdd(m_vec4Type, current, specular);
+    }
+
     D3D9FogContext fogCtx;
     fogCtx.IsPixel     = true;
     fogCtx.RenderState = m_rsBlock;
@@ -1670,7 +1676,10 @@ namespace dxvk {
   size_t D3D9FFShaderKeyHash::operator () (const D3D9FFShaderKeyFS& key) const {
     DxvkHashState state;
 
+    std::hash<bool> boolhash;
     std::hash<uint64_t> uint64hash;
+
+    state.add(boolhash(key.SpecularEnable));
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++)
       state.add(uint64hash(key.Stages->uint64[i]));

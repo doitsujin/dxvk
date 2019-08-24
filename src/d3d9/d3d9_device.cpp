@@ -1751,6 +1751,10 @@ namespace dxvk {
           m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
           break;
 
+        case D3DRS_SPECULARENABLE:
+          m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+          break;
+
         case D3DRS_FOGENABLE:
         case D3DRS_FOGVERTEXMODE:
         case D3DRS_FOGTABLEMODE:
@@ -3323,6 +3327,9 @@ namespace dxvk {
     rs[D3DRS_LOCALVIEWER]            = TRUE;
     m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
 
+    // PS
+    rs[D3DRS_SPECULARENABLE] = FALSE;
+
     rs[D3DRS_AMBIENT]                = 0;
     m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
 
@@ -3338,7 +3345,6 @@ namespace dxvk {
     rs[D3DRS_LASTPIXEL]                  = TRUE;
     rs[D3DRS_DITHERENABLE]               = FALSE;
     rs[D3DRS_FOGENABLE]                  = FALSE;
-    rs[D3DRS_SPECULARENABLE]             = FALSE;
     rs[D3DRS_RANGEFOGENABLE]             = FALSE;
     rs[D3DRS_WRAP0]                      = 0;
     rs[D3DRS_WRAP1]                      = 0;
@@ -5676,6 +5682,8 @@ namespace dxvk {
       };
 
       D3D9FFShaderKeyFS key;
+      key.SpecularEnable = m_state.renderStates[D3DRS_SPECULARENABLE];
+
       for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
         auto& stage = key.Stages[i].data;
         auto& data  = m_state.textureStages[i];
