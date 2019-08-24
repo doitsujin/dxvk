@@ -126,11 +126,9 @@ namespace dxvk {
       return m_sliceHandle;
     }
 
-    DWORD SetMapFlags(DWORD Flags) {
-      DWORD old = m_mapFlags;
-      m_mapFlags = Flags;
-      return old;
-    }
+    DWORD GetMapFlags(DWORD Flags) { return m_mapFlags; }
+
+    DWORD SetMapFlags(DWORD Flags) { return std::exchange(m_mapFlags, Flags); }
 
     const D3D9_BUFFER_DESC* Desc() const {
       return &m_desc;
@@ -142,6 +140,14 @@ namespace dxvk {
     D3D9Range& DirtyRange() { return m_dirtyRange; }
 
     bool SetReadLocked(bool state) { return std::exchange(m_readLocked, state); }
+
+    uint32_t IncrementLockCount() { return ++m_lockCount; }
+    uint32_t DecrementLockCount() {
+      if (m_lockCount == 0)
+        return 0;
+
+      return --m_lockCount;
+    }
 
   private:
 
@@ -172,6 +178,8 @@ namespace dxvk {
 
     D3D9Range                   m_lockRange;
     D3D9Range                   m_dirtyRange;
+
+    uint32_t                    m_lockCount = 0;
 
   };
 

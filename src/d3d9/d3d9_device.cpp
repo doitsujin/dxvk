@@ -4093,7 +4093,6 @@ namespace dxvk {
     if (!(desc.Usage & D3DUSAGE_DYNAMIC))
       Flags &= ~(D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE);
 
-    pResource->SetMapFlags(Flags);
     Rc<DxvkBuffer> mappingBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
 
     DxvkBufferSliceHandle physSlice;
@@ -4108,8 +4107,6 @@ namespace dxvk {
       SizeToLock = maxLockSize;
     else
       SizeToLock = std::min(SizeToLock, maxLockSize);
-
-    pResource->LockRange() = D3D9Range(OffsetToLock, OffsetToLock + SizeToLock);
 
     if (Flags & D3DLOCK_DISCARD) {
       // Allocate a new backing slice for the buffer and set
@@ -4157,18 +4154,30 @@ namespace dxvk {
 
     *ppbData = reinterpret_cast<void*>(data);
 
+    DWORD oldFlags = pResource->GetMapFlags(Flags);
+
+    if (!(Flags & D3DLOCK_READONLY))
+      oldFlags &= ~D3DLOCK_READONLY;
+
+    pResource->SetMapFlags(Flags | oldFlags);
+    pResource->LockRange().overlap(D3D9Range(OffsetToLock, OffsetToLock + SizeToLock));
+    pResource->IncrementLockCount();
+
     return D3D_OK;
   }
 
 
   HRESULT D3D9DeviceEx::UnlockBuffer(
         D3D9CommonBuffer*       pResource) {
-    if (pResource->GetMapMode() != D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
-      return D3D_OK;
-
     D3D9DeviceLock lock = LockDevice();
 
+    if (pResource->DecrementLockCount() != 0)
+      return D3D_OK;
+
     if (pResource->SetMapFlags(0) & D3DLOCK_READONLY)
+      return D3D_OK; 
+
+    if (pResource->GetMapMode() != D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
       return D3D_OK;
 
     FlushImplicit(FALSE);
@@ -4188,6 +4197,8 @@ namespace dxvk {
         cSrcSlice.offset() + cRange.min,
         cRange.max - cRange.min);
     });
+
+    pResource->LockRange().clear();
 
     return D3D_OK;
   }
