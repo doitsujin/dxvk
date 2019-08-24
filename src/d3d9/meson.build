@@ -1,8 +1,8 @@
 d3d9_res = wrc_generator.process('version.rc')
 
 d3d9_shaders = files([
-  '../dxgi/shaders/dxgi_presenter_frag.frag',
-  '../dxgi/shaders/dxgi_presenter_vert.vert',
+  'shaders/d3d9_presenter_frag.frag',
+  'shaders/d3d9_presenter_vert.vert',
 ])
 
 d3d9_src = [

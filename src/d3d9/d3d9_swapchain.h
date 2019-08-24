@@ -122,7 +122,9 @@ namespace dxvk {
     DxvkBlendMode           m_blendMode;
 
     D3D9Surface*            m_backBuffer = nullptr;
-    VkExtent2D              m_presentExtent;
+    
+    RECT                    m_srcRect;
+    RECT                    m_dstRect;
 
     DxvkSubmitStatus        m_presentStatus;
 
@@ -196,7 +198,9 @@ namespace dxvk {
 
     void    UpdateMonitorInfo();
 
-    bool    UpdatePresentExtent(const RECT* pSourceRect);
+    bool    UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect);
+
+    VkExtent2D GetPresentExtent();
 
   };
 
