@@ -533,8 +533,14 @@ namespace dxvk {
     }
 
     m_module.opStore(m_vs.out.POSITION, gl_Position);
+
+    std::array<uint32_t, 4> outNrmIndices;
+    for (uint32_t i = 0; i < 3; i++)
+      outNrmIndices[i] = m_module.opCompositeExtract(m_floatType, normal, 1, &i);
+    outNrmIndices[3] = m_module.constf32(1.0f);
+
     m_module.opStore(m_vs.out.NORMAL,
-      m_module.opVectorShuffle(m_vec4Type, normal, m_module.constf32(1.0f), 4, indices.data()));
+      m_module.opCompositeConstruct(m_vec4Type, outNrmIndices.size(), outNrmIndices.data()));
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       uint32_t inputIndex  = m_vsKey.TexcoordIndices[i];
