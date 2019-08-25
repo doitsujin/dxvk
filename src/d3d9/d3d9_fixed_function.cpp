@@ -342,6 +342,7 @@ namespace dxvk {
     uint32_t              m_uint32Type;
     uint32_t              m_vec4Type;
     uint32_t              m_vec3Type;
+    uint32_t              m_mat3Type;
     uint32_t              m_mat4Type;
 
     uint32_t              m_entryPointId;
@@ -375,6 +376,7 @@ namespace dxvk {
     m_uint32Type = m_module.defIntType(32, 0);
     m_vec4Type   = m_module.defVectorType(m_floatType, 4);
     m_vec3Type   = m_module.defVectorType(m_floatType, 3);
+    m_mat3Type   = m_module.defMatrixType(m_vec3Type, 3);
     m_mat4Type   = m_module.defMatrixType(m_vec4Type, 4);
 
     m_entryPointId = m_module.allocateId();
@@ -488,19 +490,30 @@ namespace dxvk {
   void D3D9FFShaderCompiler::compileVS() {
     setupVS();
 
+    std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
+
     uint32_t gl_Position = m_vs.in.POSITION;
     uint32_t vtx         = m_vs.in.POSITION;
-    uint32_t normal      = m_vs.in.NORMAL;
+    uint32_t normal      = m_module.opVectorShuffle(m_vec3Type, m_vs.in.NORMAL, m_vs.in.NORMAL, 3, indices.data());
+
+    const uint32_t wIndex = 3;
 
     if (!m_vsKey.HasPositionT) {
       uint32_t wv = m_vs.constants.worldview;
       uint32_t nrmMtx = m_vs.constants.normal;
 
-      normal = m_module.opMatrixTimesVector(m_vec4Type, nrmMtx, normal);
+      std::array<uint32_t, 3> mtxIndices;
+      for (uint32_t i = 0; i < 3; i++) {
+        mtxIndices[i] = m_module.opCompositeExtract(m_vec4Type, nrmMtx, 1, &i);
+        mtxIndices[i] = m_module.opVectorShuffle(m_vec3Type, mtxIndices[i], mtxIndices[i], 3, indices.data());
+      }
+      nrmMtx = m_module.opCompositeConstruct(m_mat3Type, mtxIndices.size(), mtxIndices.data());
+
+      normal = m_module.opMatrixTimesVector(m_vec3Type, nrmMtx, normal);
 
       // Some games rely no normals not being normal.
       if (m_vsKey.NormalizeNormals)
-        normal = m_module.opNormalize(m_vec4Type, normal);
+        normal = m_module.opNormalize(m_vec3Type, normal);
 
       vtx         = m_module.opVectorTimesMatrix(m_vec4Type, vtx, wv);
       gl_Position = m_module.opVectorTimesMatrix(m_vec4Type, vtx, m_vs.constants.proj);
@@ -513,8 +526,6 @@ namespace dxvk {
       // gl_Position.w    = 1.0f / gl_Position.w
       // gl_Position.xyz *= gl_Position.w;
 
-      const uint32_t wIndex = 3;
-
       uint32_t w   = m_module.opCompositeExtract (m_floatType, gl_Position, 1, &wIndex);      // w = gl_Position.w
       uint32_t rhw = m_module.opFDiv             (m_floatType, m_module.constf32(1.0f), w);   // rhw = 1.0f / w
       gl_Position  = m_module.opVectorTimesScalar(m_vec4Type,  gl_Position, rhw);             // gl_Position.xyz *= rhw
@@ -522,7 +533,8 @@ namespace dxvk {
     }
 
     m_module.opStore(m_vs.out.POSITION, gl_Position);
-    m_module.opStore(m_vs.out.NORMAL,   normal);
+    m_module.opStore(m_vs.out.NORMAL,
+      m_module.opVectorShuffle(m_vec4Type, normal, m_module.constf32(1.0f), 4, indices.data()));
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       uint32_t inputIndex  = m_vsKey.TexcoordIndices[i];
@@ -621,7 +633,6 @@ namespace dxvk {
 
         uint32_t isDirectional3 = m_module.opCompositeConstruct(bool3_t, members.size(), members.data());
 
-        std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
         uint32_t vtx3      = m_module.opVectorShuffle(m_vec3Type, vtx, vtx, 3, indices.data());
                  position  = m_module.opVectorShuffle(m_vec3Type, position, position, 3, indices.data());
                  direction = m_module.opVectorShuffle(m_vec3Type, direction, direction, 3, indices.data());
@@ -657,8 +668,7 @@ namespace dxvk {
         }
 
 
-        uint32_t nrm3   = m_module.opVectorShuffle(m_vec3Type, normal, normal, 3, indices.data());
-        uint32_t hitDot = m_module.opDot(m_floatType, nrm3, hitDir);
+        uint32_t hitDot = m_module.opDot(m_floatType, normal, hitDir);
                  hitDot = m_module.opFClamp(m_floatType, hitDot, m_module.constf32(0.0f), m_module.constf32(1.0f));
 
         uint32_t diffuseness = m_module.opFMul(m_floatType, hitDot, atten);
@@ -673,7 +683,7 @@ namespace dxvk {
 
         mid = m_module.opNormalize(m_vec3Type, mid);
 
-        uint32_t midDot = m_module.opDot(m_floatType, nrm3, mid);
+        uint32_t midDot = m_module.opDot(m_floatType, normal, mid);
                  midDot = m_module.opFClamp(m_floatType, midDot, m_module.constf32(0.0f), m_module.constf32(1.0f));
         uint32_t doSpec = m_module.opFOrdGreaterThan(bool_t, midDot, m_module.constf32(0.0f));
         uint32_t specularness = m_module.opPow(m_floatType, midDot, m_vs.constants.materialPower);
