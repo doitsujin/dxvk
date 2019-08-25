@@ -3029,12 +3029,11 @@ void DxsoCompiler::emitControlFlowGenericLoop(
   void DxsoCompiler::setupRenderStateInfo() {
     uint32_t boolType  = m_module.defBoolType();
     uint32_t floatType = m_module.defFloatType(32);
-    uint32_t vec4Type  = m_module.defVectorType(floatType, 4);
+    uint32_t vec3Type  = m_module.defVectorType(floatType, 3);
     uint32_t floatPtr  = m_module.defPointerType(floatType, spv::StorageClassPushConstant);
-    uint32_t vec4Ptr   = m_module.defPointerType(vec4Type,  spv::StorageClassPushConstant);
 
     std::array<uint32_t, 5> rsMembers = {{
-      vec4Type,
+      vec3Type,
       floatType,
       floatType,
       floatType,

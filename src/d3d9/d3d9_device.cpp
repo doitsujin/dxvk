@@ -4471,7 +4471,7 @@ namespace dxvk {
     else if constexpr (Item == D3D9RenderStateItem::FogColor) {
       Vector4 color;
       DecodeD3DCOLOR(D3DCOLOR(rs[D3DRS_FOGCOLOR]), color.data);
-      UpdatePushConstant<offsetof(D3D9RenderStateInfo, fogColor), sizeof(Vector4)>(&color);
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, fogColor), sizeof(D3D9RenderStateInfo::fogColor)>(&color);
     }
     else if constexpr (Item == D3D9RenderStateItem::FogDensity) {
       float density = bit::cast<float>(rs[D3DRS_FOGDENSITY]);

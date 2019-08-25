@@ -17,11 +17,11 @@ namespace dxvk {
     uint32_t vec3Type   = spvModule.defVectorType(floatType, 3);
     uint32_t vec4Type   = spvModule.defVectorType(floatType, 4);
     uint32_t floatPtr   = spvModule.defPointerType(floatType, spv::StorageClassPushConstant);
-    uint32_t vec4Ptr    = spvModule.defPointerType(vec4Type,  spv::StorageClassPushConstant);
+    uint32_t vec3Ptr    = spvModule.defPointerType(vec3Type,  spv::StorageClassPushConstant);
 
     uint32_t fogColorMember = spvModule.constu32(uint32_t(D3D9RenderStateItem::FogColor));
-    uint32_t fogColor = spvModule.opLoad(vec4Type,
-      spvModule.opAccessChain(vec4Ptr, fogCtx.RenderState, 1, &fogColorMember));
+    uint32_t fogColor = spvModule.opLoad(vec3Type,
+      spvModule.opAccessChain(vec3Ptr, fogCtx.RenderState, 1, &fogColorMember));
 
     uint32_t fogScaleMember = spvModule.constu32(uint32_t(D3D9RenderStateItem::FogScale));
     uint32_t fogScale = spvModule.opLoad(floatType,
@@ -152,12 +152,11 @@ namespace dxvk {
       uint32_t color = fogCtx.oColor;
 
       uint32_t color3 = spvModule.opVectorShuffle(vec3Type, color, color, 3, indices.data());
-      uint32_t fogColor3 = spvModule.opVectorShuffle(vec3Type, fogColor, fogColor, 3, indices.data());
 
       std::array<uint32_t, 3> fogFacIndices = { fogFactor, fogFactor, fogFactor };
       uint32_t fogFact3 = spvModule.opCompositeConstruct(vec3Type, fogFacIndices.size(), fogFacIndices.data());
 
-      uint32_t lerpedFrog = spvModule.opFMix(vec3Type, fogColor3, color3, fogFact3);
+      uint32_t lerpedFrog = spvModule.opFMix(vec3Type, fogColor, color3, fogFact3);
 
       fogRetValue = spvModule.opVectorShuffle(vec4Type, lerpedFrog, color, indices.size(), indices.data());
     }
@@ -750,7 +749,7 @@ namespace dxvk {
     // TODO: fix duplication of this
 
     std::array<uint32_t, 5> rsMembers = {{
-      m_vec4Type,
+      m_vec3Type,
       m_floatType,
       m_floatType,
       m_floatType,

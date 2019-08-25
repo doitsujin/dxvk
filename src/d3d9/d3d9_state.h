@@ -32,11 +32,12 @@ namespace dxvk {
     float coeff[4];
   };
   struct D3D9RenderStateInfo {
-    Vector4 fogColor   = Vector4();
-    float   fogScale   = 0.0f;
-    float   fogEnd     = 1.0f;
-    float   fogDensity = 1.0f;
-    float   alphaRef   = 0.0f;
+    std::array<float, 3> fogColor = { };
+    float fogScale   = 0.0f;
+    float fogEnd     = 1.0f;
+    float fogDensity = 1.0f;
+
+    float alphaRef   = 0.0f;
   };
 
   enum class D3D9RenderStateItem {
