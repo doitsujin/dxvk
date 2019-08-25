@@ -158,63 +158,63 @@ namespace dxvk {
     /**********************************************/
 
     /* A Hat in Time                              */
-    { "HatinTimeGame.exe", {{
+    { R"(\\HatinTimeGame\.exe$)", {{
       { "d3d9.strictPow",                   "False" },
       { "d3d9.lenientClear",                "True" },
     }} },
     /* Borderlands: The Pre Sequel!               */
-    { "BorderlandsPreSequel.exe", {{
+    { R"(\\BorderlandsPreSequel\.exe$)", {{
       { "d3d9.lenientClear",                "True" },
     }} },
     /* Borderlands 2                              */
-    { "Borderlands2.exe", {{
+    { R"(\\Borderlands2\.exe$)", {{
       { "d3d9.lenientClear",                "True" },
     }} },
     /* Borderlands                                */
-    { "Borderlands.exe", {{
+    { R"(\\Borderlands\.exe$)", {{
       { "d3d9.lenientClear",                "True" },
     }} },
     /* Gothic 3                                   */
-    { "Gothic3.exe", {{
+    { R"(\\Gothic3\.exe$)", {{
       { "d3d9.allowLockFlagReadonly",       "False" },
     }} },
     /* Gothic 3 Forsaken Gods                     */
-    { "Gothic III Forsaken Gods.exe", {{
+    { R"(\\Gothic III Forsaken Gods\.exe$)", {{
       { "d3d9.allowLockFlagReadonly",       "False" },
     }} },
     /* Risen                                      */
-    { "Risen.exe", {{
+    { R"(\\Risen\.exe$)", {{
       { "d3d9.allowLockFlagReadonly",       "False" },
     }} },
     /* Risen 2                                    */
-    { "Risen2.exe", {{
+    { R"(\\Risen2\.exe$)", {{
       { "d3d9.allowLockFlagReadonly",       "False" },
     }} },
     /* Risen 3                                    */
-    { "Risen3.exe", {{
+    { R"(\\Risen3\.exe$)", {{
       { "d3d9.allowLockFlagReadonly",       "False" },
     }} },
     /* Star Wars: The Force Unleashed 1 & 2       */
-    { "SWTFU.exe", {{
+    { R"(\\SWTFU\.exe$)", {{
       { "d3d9.hasHazards",                  "True" },
     }} },
-    { "SWTFU2.exe", {{
+    { R"(\\SWTFU2\.exe$)", {{
       { "d3d9.hasHazards",                  "True" },
     }} },
     /* Grand Theft Auto IV                        */
-    { "GTAIV.exe", {{
+    { R"(\\GTAIV\.exe$)", {{
       { "d3d9.hasHazards",                  "True" },
     }} },
     /* Deadlight                                  */
-    { "LOTDGame.exe", {{
+    { R"(\\LOTDGame\.exe$)", {{
       { "d3d9.hasHazards",                  "True" },
     }} },
     /* Nostale                                    */
-    { "NostaleClientX.exe", {{
+    { R"(\\NostaleClientX\.exe$)", {{
       { "d3d9.allowLockFlagReadonly",       "False" },
     }} },
     /* GTA Episodes from Liberty City             */
-    { "EFLC.exe", {{
+    { R"(\\EFLC\.exe$)", {{
       { "d3d9.hasHazards",                  "True" },
     }} }
   }};
