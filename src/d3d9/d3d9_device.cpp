@@ -4663,8 +4663,32 @@ namespace dxvk {
     // D3D9 doesn't have the concept of a framebuffer object,
     // so we'll just create a new one every time the render
     // target bindings are updated. Set up the attachments.
+    VkSampleCountFlagBits sampleCount;
+    VkExtent2D extent;
+    if (likely(!m_state.renderTargets[0]->IsNull())) {
+        const DxvkImageCreateInfo& rtImageInfo = m_state.renderTargets[0]->GetCommonTexture()->GetImage()->info();
+        sampleCount   = rtImageInfo.sampleCount;
+        extent.width  = rtImageInfo.extent.width;
+        extent.height = rtImageInfo.extent.height;
+    } else if (likely(m_state.depthStencil != nullptr)) {
+        const DxvkImageCreateInfo& dsImageInfo = m_state.depthStencil->GetCommonTexture()->GetImage()->info();
+        sampleCount   = dsImageInfo.sampleCount;
+        extent.width  = dsImageInfo.extent.width;
+        extent.height = dsImageInfo.extent.height;
+    } else {
+        sampleCount   = VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
+        extent.width  = 0;
+        extent.height = 0;
+    }
+
     for (UINT i = 0; i < m_state.renderTargets.size(); i++) {
       if (m_state.renderTargets[i] != nullptr && !m_state.renderTargets[i]->IsNull()) {
+        const DxvkImageCreateInfo& rtImageInfo = m_state.renderTargets[i]->GetCommonTexture()->GetImage()->info();
+        if (unlikely(rtImageInfo.sampleCount   != sampleCount
+                  || rtImageInfo.extent.width  != extent.width
+                  || rtImageInfo.extent.height != extent.height))
+          continue;
+
         attachments.color[i] = {
           m_state.renderTargets[i]->GetRenderTargetView(srgb),
           m_state.renderTargets[i]->GetRenderTargetLayout() };
@@ -4672,9 +4696,19 @@ namespace dxvk {
     }
 
     if (m_state.depthStencil != nullptr) {
-      attachments.depth = {
-        m_state.depthStencil->GetDepthStencilView(),
-        m_state.depthStencil->GetDepthLayout() };
+      const DxvkImageCreateInfo& dsImageInfo = m_state.depthStencil->GetCommonTexture()->GetImage()->info();
+      if (likely(dsImageInfo.sampleCount   == sampleCount
+              && dsImageInfo.extent.width  >= extent.width
+              && dsImageInfo.extent.height >= extent.height)) {
+
+        if (unlikely(dsImageInfo.extent.width  > extent.width
+                  || dsImageInfo.extent.height > extent.height))
+          Logger::warn("DS is bigger than the render targets");
+
+        attachments.depth = {
+          m_state.depthStencil->GetDepthStencilView(),
+          m_state.depthStencil->GetDepthLayout() };
+      }
     }
 
     // Create and bind the framebuffer object to the context
