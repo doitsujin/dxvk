@@ -148,6 +148,10 @@ namespace dxvk {
     if (RType == D3DRTYPE_VERTEXBUFFER || RType == D3DRTYPE_INDEXBUFFER)
       return D3D_OK;
 
+    auto& options = m_parent->GetOptions();
+    if ((CheckFormat == D3D9Format::DF16 || CheckFormat == D3D9Format::DF24) && !options.supportDFFormats)
+      return D3DERR_NOTAVAILABLE;
+
     // Let's actually ask Vulkan now that we got some quirks out the way!
 
     return CheckDeviceVkFormat(mapping.FormatColor, Usage, RType);

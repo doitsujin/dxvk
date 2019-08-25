@@ -46,6 +46,7 @@ namespace dxvk {
     this->hasHazards            = config.getOption<bool>   ("d3d9.hasHazards",           false);
     this->samplerAnisotropy     = config.getOption<int32_t>("d3d9.samplerAnisotropy", -1);
     this->maxAvailableMemory    = config.getOption<uint32_t>("d3d9.maxAvailableMemory", UINT32_MAX);
+    this->supportDFFormats      = config.getOption<bool>("d3d9.supportDFFormats", true);
 
     this->d3d9FloatEmulation    = true; // <-- Future Extension?
 
