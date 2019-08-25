@@ -232,7 +232,15 @@ namespace dxvk {
   void    STDMETHODCALLTYPE D3D9DeviceEx::SetCursorPosition(int X, int Y, DWORD Flags) {
     D3D9DeviceLock lock = LockDevice();
 
-    m_cursor.UpdateCursor(X, Y, Flags & D3DCURSOR_IMMEDIATE_UPDATE);
+    // I was not able to find an instance
+    // where the cursor update was not immediate.
+
+    // Fullscreen + Windowed seem to have the same
+    // behaviour here.
+
+    // Hence we ignore the flag D3DCURSOR_IMMEDIATE_UPDATE.
+
+    m_cursor.UpdateCursor(X, Y);
   }
 
 

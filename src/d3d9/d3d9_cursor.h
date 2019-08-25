@@ -16,19 +16,13 @@ namespace dxvk {
 
   public:
 
-    void UpdateCursor(int x, int y, bool immediate);
-
-    void FlushCursor();
+    void UpdateCursor(int X, int Y);
 
     BOOL ShowCursor(BOOL bShow);
 
     HRESULT SetHardwareCursor(UINT XHotSpot, UINT YHotSpot, const CursorBitmap& bitmap);
 
   private:
-
-    bool    m_updatePending = false;
-    int     m_pendingX      = 0;
-    int     m_pendingY      = 0;
 
     BOOL    m_visible       = FALSE;
 

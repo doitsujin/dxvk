@@ -4,22 +4,8 @@
 
 namespace dxvk {
 
-  void D3D9Cursor::UpdateCursor(int x, int y, bool immediate) {
-    m_updatePending = true;
-    m_pendingX = x;
-    m_pendingY = y;
-
-    if (immediate)
-      FlushCursor();
-  }
-
-
-  void D3D9Cursor::FlushCursor() {
-    if (unlikely(m_updatePending)) {
-      ::SetCursorPos(m_pendingX, m_pendingY);
-
-      m_updatePending = false;
-    }
+  void D3D9Cursor::UpdateCursor(int X, int Y) {
+    ::SetCursorPos(X, Y);
   }
 
 
