@@ -65,7 +65,8 @@ namespace dxvk {
       Ambient  = Vector4(light.Ambient.r,  light.Ambient.g,  light.Ambient.b,  light.Ambient.a);
 
       Position  = viewMtx * Vector4(light.Position.x,  light.Position.y,  light.Position.z,  1.0f);
-      Direction = viewMtx * Vector4(light.Direction.x, light.Direction.y, light.Direction.z, 1.0f);
+      Direction = Vector4(light.Direction.x, light.Direction.y, light.Direction.z, 0.0f);
+      Direction = normalize(viewMtx * Direction);
 
       Type         = light.Type;
       Range        = light.Range;
