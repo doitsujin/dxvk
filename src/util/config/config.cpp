@@ -216,7 +216,11 @@ namespace dxvk {
     /* GTA Episodes from Liberty City             */
     { R"(\\EFLC\.exe$)", {{
       { "d3d9.hasHazards",                  "True" },
-    }} }
+    }} },
+    /* Sonic Adventure 2                          */
+    { R"(\\Sonic Adventure 2\\(launcher|sonic2app)\.exe$)", {{
+      { "d3d9.floatEmulation",              "False" },
+    }} },
   }};
 
 
