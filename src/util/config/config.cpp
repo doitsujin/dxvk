@@ -225,6 +225,11 @@ namespace dxvk {
     { R"(\\Sims2.*\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
     }} },
+    /* Dead Space uses the a NULL render target instead
+       of a 1x1 one if DF24 is NOT supported      */
+    { R"(\\Dead Space\.exe$)", {{
+      { "d3d9.supportDFFormats",                 "False" },
+    }} },
   }};
 
 
