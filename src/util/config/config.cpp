@@ -221,6 +221,10 @@ namespace dxvk {
     { R"(\\Sonic Adventure 2\\(launcher|sonic2app)\.exe$)", {{
       { "d3d9.floatEmulation",              "False" },
     }} },
+    /* The Sims 2                                 */
+    { R"(\\Sims2.*\.exe$)", {{
+      { "d3d9.customVendorId",              "10de" },
+    }} },
   }};
 
 
