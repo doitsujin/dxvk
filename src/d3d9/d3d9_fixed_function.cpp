@@ -539,8 +539,9 @@ namespace dxvk {
       outNrmIndices[i] = m_module.opCompositeExtract(m_floatType, normal, 1, &i);
     outNrmIndices[3] = m_module.constf32(1.0f);
 
-    m_module.opStore(m_vs.out.NORMAL,
-      m_module.opCompositeConstruct(m_vec4Type, outNrmIndices.size(), outNrmIndices.data()));
+    uint32_t outNrm = m_module.opCompositeConstruct(m_vec4Type, outNrmIndices.size(), outNrmIndices.data());
+
+    m_module.opStore(m_vs.out.NORMAL, outNrm);
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       uint32_t inputIndex  = m_vsKey.TexcoordIndices[i];
@@ -548,7 +549,7 @@ namespace dxvk {
       uint32_t transformed;
       if (inputIndex & D3DTSS_TCI_CAMERASPACENORMAL) {
         const uint32_t wIndex = 3;
-        transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1.0f), normal, 1, &wIndex);
+        transformed = outNrm;
       }
       else if (inputIndex & D3DTSS_TCI_CAMERASPACEPOSITION) {
         const uint32_t wIndex = 3;
