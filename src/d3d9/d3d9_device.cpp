@@ -2272,6 +2272,15 @@ namespace dxvk {
     if (unlikely(pDestBuffer == nullptr || pVertexDecl == nullptr))
       return D3DERR_INVALIDCALL;
 
+    if (!SupportsSWVP()) {
+      static bool s_errorShown = false;
+
+      if (!std::exchange(s_errorShown, true))
+        Logger::err("D3D9DeviceEx::ProcessVertices: SWVP emu unsupported (vertexPipelineStoresAndAtomics)");
+
+      return D3D_OK;
+    }
+
     D3D9CommonBuffer* dst  = static_cast<D3D9VertexBuffer*>(pDestBuffer)->GetCommonBuffer();
     D3D9VertexDecl*   decl = static_cast<D3D9VertexDecl*>  (pVertexDecl);
 
@@ -3654,6 +3663,11 @@ namespace dxvk {
   }
 
 
+  bool D3D9DeviceEx::SupportsSWVP() {
+    return m_dxvkDevice->features().core.features.vertexPipelineStoresAndAtomics;
+  }
+
+
   HWND D3D9DeviceEx::GetWindow() {
     return m_window;
   }
@@ -3691,7 +3705,7 @@ namespace dxvk {
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor;
 
     // ProcessVertices
-    enabled.core.features.vertexPipelineStoresAndAtomics = VK_TRUE;
+    enabled.core.features.vertexPipelineStoresAndAtomics = supported.core.features.vertexPipelineStoresAndAtomics;
 
     // DXVK Meta
     enabled.core.features.shaderStorageImageWriteWithoutFormat = VK_TRUE;

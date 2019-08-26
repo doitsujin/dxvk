@@ -637,6 +637,8 @@ namespace dxvk {
 
     static DxvkDeviceFeatures GetDeviceFeatures(const Rc<DxvkAdapter>& adapter);
 
+    bool SupportsSWVP();
+
     bool IsExtended();
 
     HWND GetWindow();
