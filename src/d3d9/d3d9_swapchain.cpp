@@ -319,6 +319,10 @@ namespace dxvk {
     }
 
     m_presentParams = *pPresentParams;
+
+    if (changeFullscreen)
+      SetGammaRamp(0, &m_ramp);
+
     UpdatePresentRegion(nullptr, nullptr);
     CreateBackBuffer();
     return D3D_OK;
@@ -356,7 +360,7 @@ namespace dxvk {
                  && cp[i].B == identity;
     }
 
-    if (isIdentity)
+    if (isIdentity || m_presentParams.Windowed)
       DestroyGammaTexture();
     else
       CreateGammaTexture(NumControlPoints, cp.data());
