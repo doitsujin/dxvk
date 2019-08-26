@@ -85,6 +85,8 @@ namespace dxvk {
     D3D11SamplerBindings          samplers;
     D3D11ShaderResourceBindings   shaderResources;
     D3D11UnorderedAccessBindings  unorderedAccessViews;
+
+    DxvkBindingSet<D3D11_1_UAV_SLOT_COUNT> uavMask = { };
   };
   
   

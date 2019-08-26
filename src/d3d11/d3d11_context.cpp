@@ -185,6 +185,8 @@ namespace dxvk {
       m_state.cs.unorderedAccessViews[i] = nullptr;
     }
 
+    m_state.cs.uavMask.clear();
+
     // Default ID state
     m_state.id.argBuffer = nullptr;
     
@@ -2478,6 +2480,7 @@ namespace dxvk {
 
       if (m_state.cs.unorderedAccessViews[StartSlot + i] != uav || ctr != ~0u) {
         m_state.cs.unorderedAccessViews[StartSlot + i] = uav;
+        m_state.cs.uavMask.set(StartSlot + i, uav != nullptr);
 
         BindUnorderedAccessView(
           uavSlotId + i, uav,
