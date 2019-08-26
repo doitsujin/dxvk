@@ -2406,7 +2406,7 @@ namespace dxvk {
       return D3D_OK;
 
     if (m_state.vertexDecl == nullptr)
-      return D3DERR_NOTFOUND;
+      return D3D_OK;
 
     *ppDecl = ref(m_state.vertexDecl);
 
