@@ -171,13 +171,20 @@ namespace dxvk {
     
     // Default shader resources
     for (uint32_t i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
-      m_state.vs.shaderResources[i] = nullptr;
-      m_state.hs.shaderResources[i] = nullptr;
-      m_state.ds.shaderResources[i] = nullptr;
-      m_state.gs.shaderResources[i] = nullptr;
-      m_state.ps.shaderResources[i] = nullptr;
-      m_state.cs.shaderResources[i] = nullptr;
+      m_state.vs.shaderResources.views[i] = nullptr;
+      m_state.hs.shaderResources.views[i] = nullptr;
+      m_state.ds.shaderResources.views[i] = nullptr;
+      m_state.gs.shaderResources.views[i] = nullptr;
+      m_state.ps.shaderResources.views[i] = nullptr;
+      m_state.cs.shaderResources.views[i] = nullptr;
     }
+
+    m_state.vs.shaderResources.hazardous.clear();
+    m_state.hs.shaderResources.hazardous.clear();
+    m_state.ds.shaderResources.hazardous.clear();
+    m_state.gs.shaderResources.hazardous.clear();
+    m_state.ps.shaderResources.hazardous.clear();
+    m_state.cs.shaderResources.hazardous.clear();
     
     // Default UAVs
     for (uint32_t i = 0; i < D3D11_1_UAV_SLOT_COUNT; i++) {
@@ -1806,7 +1813,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumViews; i++)
-      ppShaderResourceViews[i] = m_state.vs.shaderResources[StartSlot + i].ref();
+      ppShaderResourceViews[i] = m_state.vs.shaderResources.views[StartSlot + i].ref();
   }
   
   
@@ -1948,7 +1955,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumViews; i++)
-      ppShaderResourceViews[i] = m_state.hs.shaderResources[StartSlot + i].ref();
+      ppShaderResourceViews[i] = m_state.hs.shaderResources.views[StartSlot + i].ref();
   }
   
   
@@ -2090,7 +2097,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumViews; i++)
-      ppShaderResourceViews[i] = m_state.ds.shaderResources[StartSlot + i].ref();
+      ppShaderResourceViews[i] = m_state.ds.shaderResources.views[StartSlot + i].ref();
   }
   
   
@@ -2232,7 +2239,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumViews; i++)
-      ppShaderResourceViews[i] = m_state.gs.shaderResources[StartSlot + i].ref();
+      ppShaderResourceViews[i] = m_state.gs.shaderResources.views[StartSlot + i].ref();
   }
   
   
@@ -2374,7 +2381,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumViews; i++)
-      ppShaderResourceViews[i] = m_state.ps.shaderResources[StartSlot + i].ref();
+      ppShaderResourceViews[i] = m_state.ps.shaderResources.views[StartSlot + i].ref();
   }
   
   
@@ -2542,7 +2549,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumViews; i++)
-      ppShaderResourceViews[i] = m_state.cs.shaderResources[StartSlot + i].ref();
+      ppShaderResourceViews[i] = m_state.cs.shaderResources.views[StartSlot + i].ref();
   }
   
   
@@ -3527,8 +3534,8 @@ namespace dxvk {
     for (uint32_t i = 0; i < NumResources; i++) {
       auto resView = static_cast<D3D11ShaderResourceView*>(ppResources[i]);
       
-      if (Bindings[StartSlot + i] != resView) {
-        Bindings[StartSlot + i] = resView;
+      if (Bindings.views[StartSlot + i] != resView) {
+        Bindings.views[StartSlot + i] = resView;
         BindShaderResource(slotId + i, resView);
       }
     }
@@ -3646,8 +3653,8 @@ namespace dxvk {
           D3D11ShaderResourceBindings&      Bindings) {
     uint32_t slotId = computeSrvBinding(Stage, 0);
     
-    for (uint32_t i = 0; i < Bindings.size(); i++)
-      BindShaderResource(slotId + i, Bindings[i].ptr());
+    for (uint32_t i = 0; i < Bindings.views.size(); i++)
+      BindShaderResource(slotId + i, Bindings.views[i].ptr());
   }
   
   
