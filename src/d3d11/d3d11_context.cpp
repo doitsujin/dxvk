@@ -2469,11 +2469,21 @@ namespace dxvk {
     const UINT*                             pUAVInitialCounts) {
     D3D10DeviceLock lock = LockContext();
     
-    SetUnorderedAccessViews<DxbcProgramType::ComputeShader>(
-      m_state.cs.unorderedAccessViews,
-      StartSlot, NumUAVs,
-      ppUnorderedAccessViews,
-      pUAVInitialCounts);
+    uint32_t uavSlotId = computeUavBinding       (DxbcProgramType::ComputeShader, StartSlot);
+    uint32_t ctrSlotId = computeUavCounterBinding(DxbcProgramType::ComputeShader, StartSlot);
+
+    for (uint32_t i = 0; i < NumUAVs; i++) {
+      auto uav = static_cast<D3D11UnorderedAccessView*>(ppUnorderedAccessViews[i]);
+      auto ctr = pUAVInitialCounts ? pUAVInitialCounts[i] : ~0u;
+
+      if (m_state.cs.unorderedAccessViews[StartSlot + i] != uav || ctr != ~0u) {
+        m_state.cs.unorderedAccessViews[StartSlot + i] = uav;
+
+        BindUnorderedAccessView(
+          uavSlotId + i, uav,
+          ctrSlotId + i, ctr);
+      }
+    }
   }
   
   
@@ -3522,31 +3532,6 @@ namespace dxvk {
   }
   
   
-  template<DxbcProgramType ShaderStage>
-  void D3D11DeviceContext::SetUnorderedAccessViews(
-          D3D11UnorderedAccessBindings&     Bindings,
-          UINT                              StartSlot,
-          UINT                              NumUAVs,
-          ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
-    const UINT*                             pUAVInitialCounts) {
-    uint32_t uavSlotId = computeUavBinding       (ShaderStage, StartSlot);
-    uint32_t ctrSlotId = computeUavCounterBinding(ShaderStage, StartSlot);
-    
-    for (uint32_t i = 0; i < NumUAVs; i++) {
-      auto uav = static_cast<D3D11UnorderedAccessView*>(ppUnorderedAccessViews[i]);
-      auto ctr = pUAVInitialCounts ? pUAVInitialCounts[i] : ~0u;
-      
-      if (Bindings[StartSlot + i] != uav || ctr != ~0u) {
-        Bindings[StartSlot + i] = uav;
-        
-        BindUnorderedAccessView(
-          uavSlotId + i, uav,
-          ctrSlotId + i, ctr);
-      }
-    }
-  }
-
-
   void D3D11DeviceContext::GetConstantBuffers(
     const D3D11ConstantBufferBindings&      Bindings,
           UINT                              StartSlot,

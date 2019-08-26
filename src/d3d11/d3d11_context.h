@@ -770,14 +770,6 @@ namespace dxvk {
             UINT                              NumResources,
             ID3D11ShaderResourceView* const*  ppResources);
     
-    template<DxbcProgramType ShaderStage>
-    void SetUnorderedAccessViews(
-            D3D11UnorderedAccessBindings&     Bindings,
-            UINT                              StartSlot,
-            UINT                              NumUAVs,
-            ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
-      const UINT*                             pUAVInitialCounts);
-    
     void GetConstantBuffers(
       const D3D11ConstantBufferBindings&      Bindings,
             UINT                              StartSlot,
