@@ -4125,6 +4125,8 @@ namespace dxvk {
     else
       SizeToLock = std::min(SizeToLock, maxLockSize);
 
+    pResource->LockRange().join(D3D9Range(OffsetToLock, OffsetToLock + SizeToLock));
+
     if (Flags & D3DLOCK_DISCARD) {
       // Allocate a new backing slice for the buffer and set
       // it as the 'new' mapped slice. This assumes that the
@@ -4145,7 +4147,7 @@ namespace dxvk {
       bool dirtyRangeOverlap = true;
 
       if (respectBounds && pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER && !(Flags & D3DLOCK_READONLY))
-        dirtyRangeOverlap = pResource->DirtyRange().overlap(pResource->LockRange());
+        dirtyRangeOverlap = pResource->DirtyRange().overlaps(pResource->LockRange());
 
       bool readLocked = pResource->SetReadLocked(false);
 
@@ -4177,7 +4179,6 @@ namespace dxvk {
       oldFlags &= ~D3DLOCK_READONLY;
 
     pResource->SetMapFlags(Flags | oldFlags);
-    pResource->LockRange().overlap(D3D9Range(OffsetToLock, OffsetToLock + SizeToLock));
     pResource->IncrementLockCount();
 
     return D3D_OK;
@@ -4215,6 +4216,7 @@ namespace dxvk {
         cRange.max - cRange.min);
     });
 
+    pResource->DirtyRange().join(pResource->LockRange());
     pResource->LockRange().clear();
 
     return D3D_OK;

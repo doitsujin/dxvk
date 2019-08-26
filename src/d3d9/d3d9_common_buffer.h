@@ -43,18 +43,20 @@ namespace dxvk {
 
     bool degenerate() { return min == max; }
 
-    bool overlap(D3D9Range range) {
-      if (degenerate()) {
+    void join(D3D9Range range) {
+      if (degenerate())
         *this = range;
-        return false;
+      else {
+        min = std::min(range.min, min);
+        max = std::max(range.max, max);
       }
+    }
 
-      bool overlaps = range.max > min && range.min < max;
+    bool overlaps(D3D9Range range) {
+      if (degenerate())
+        return false;
 
-      min = std::min(range.min, min);
-      max = std::max(range.max, max);
-
-      return overlaps;
+      return range.max > min && range.min < max;;
     }
 
     void clear() { min = 0; max = 0; }
