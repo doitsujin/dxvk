@@ -36,21 +36,35 @@ namespace dxvk {
     }
     
     /**
+     * \brief Changes a single binding
+     * 
+     * \param [in] slot The binding ID
+     * \param [in] value New binding state
+     * \returns \c true if the state has changed
+     */
+    bool set(uint32_t slot, bool value) {
+      const uint32_t intId = slot / BitCount;
+      const uint32_t bitId = slot % BitCount;
+      const uint32_t bitMask = 1u << bitId;
+      
+      const uint32_t prev = m_slots[intId];
+      const uint32_t next = value
+        ? prev |  bitMask
+        : prev & ~bitMask;
+      m_slots[intId] = next;
+      return prev != next;
+    }
+
+    /**
      * \brief Marks a binding as active
      * 
      * \param [in] slot The binding ID
      * \returns \c true if the state has changed
      */
     bool set(uint32_t slot) {
-      const uint32_t intId = slot / BitCount;
-      const uint32_t bitId = slot % BitCount;
-      const uint32_t bitMask = 1u << bitId;
-      
-      const uint32_t prev = m_slots[intId];
-      m_slots[intId] = prev | bitMask;
-      return (prev & bitMask) == 0;
+      return set(slot, true);
     }
-    
+
     /**
      * \brief Marks a binding as inactive
      * 
@@ -58,13 +72,7 @@ namespace dxvk {
      * \returns \c true if the state has changed
      */
     bool clr(uint32_t slot) {
-      const uint32_t intId = slot / BitCount;
-      const uint32_t bitId = slot % BitCount;
-      const uint32_t bitMask = 1u << bitId;
-      
-      const uint32_t prev = m_slots[intId];
-      m_slots[intId] = prev & ~bitMask;
-      return (prev & bitMask) != 0;
+      return set(slot, false);
     }
     
     /**
