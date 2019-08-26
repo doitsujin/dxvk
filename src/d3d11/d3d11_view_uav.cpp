@@ -13,10 +13,15 @@ namespace dxvk {
   : m_device(pDevice), m_resource(pResource), m_desc(*pDesc) {
     ResourceAddRefPrivate(m_resource);
 
-    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
-    pResource->GetType(&resourceDim);
+    D3D11_COMMON_RESOURCE_DESC resourceDesc;
+    GetCommonResourceDesc(pResource, &resourceDesc);
     
-    if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
+    // Basic view resource info
+    m_info.pResource = pResource;
+    m_info.Dimension = resourceDesc.Dim;
+    m_info.BindFlags = resourceDesc.BindFlags;
+
+    if (resourceDesc.Dim == D3D11_RESOURCE_DIMENSION_BUFFER) {
       auto buffer = static_cast<D3D11Buffer*>(pResource);
       
       DxvkBufferViewCreateInfo viewInfo;
@@ -40,6 +45,10 @@ namespace dxvk {
       if (pDesc->Buffer.Flags & (D3D11_BUFFER_UAV_FLAG_APPEND | D3D11_BUFFER_UAV_FLAG_COUNTER))
         m_counterSlice = pDevice->AllocUavCounterSlice();
       
+      // Populate view info struct
+      m_info.Buffer.Offset = viewInfo.rangeOffset;
+      m_info.Buffer.Length = viewInfo.rangeLength;
+
       m_bufferView = pDevice->GetDXVKDevice()->createBufferView(
         buffer->GetBuffer(), viewInfo);
     } else {
@@ -98,6 +107,13 @@ namespace dxvk {
         default:
           throw DxvkError("D3D11: Invalid view dimension for image UAV");
       }
+
+      // Populate view info struct
+      m_info.Image.Aspects   = viewInfo.aspect;
+      m_info.Image.MinLevel  = viewInfo.minLevel;
+      m_info.Image.MinLayer  = viewInfo.minLayer;
+      m_info.Image.NumLevels = viewInfo.numLevels;
+      m_info.Image.NumLayers = viewInfo.numLayers;
 
       m_imageView = pDevice->GetDXVKDevice()->createImageView(
         GetCommonTexture(pResource)->GetImage(), viewInfo);

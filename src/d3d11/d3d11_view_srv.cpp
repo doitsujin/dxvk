@@ -13,10 +13,15 @@ namespace dxvk {
   : m_device(pDevice), m_resource(pResource), m_desc(*pDesc), m_d3d10(this) {
     ResourceAddRefPrivate(m_resource);
 
-    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
-    pResource->GetType(&resourceDim);
+    D3D11_COMMON_RESOURCE_DESC resourceDesc;
+    GetCommonResourceDesc(pResource, &resourceDesc);
 
-    if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
+    // Basic view resource info
+    m_info.pResource = pResource;
+    m_info.Dimension = resourceDesc.Dim;
+    m_info.BindFlags = resourceDesc.BindFlags;
+
+    if (resourceDesc.Dim == D3D11_RESOURCE_DIMENSION_BUFFER) {
       auto buffer = static_cast<D3D11Buffer*>(pResource);
 
       // Move buffer description to a common struct to
@@ -56,6 +61,10 @@ namespace dxvk {
         viewInfo.rangeOffset = formatInfo->elementSize * bufInfo.FirstElement;
         viewInfo.rangeLength = formatInfo->elementSize * bufInfo.NumElements;
       }
+
+      // Populate view info struct
+      m_info.Buffer.Offset = viewInfo.rangeOffset;
+      m_info.Buffer.Length = viewInfo.rangeLength;
 
       // Create underlying buffer view object
       m_bufferView = pDevice->GetDXVKDevice()->createBufferView(
@@ -154,6 +163,13 @@ namespace dxvk {
           throw DxvkError("D3D11: Invalid view dimension for image SRV");
       }
       
+      // Populate view info struct
+      m_info.Image.Aspects   = viewInfo.aspect;
+      m_info.Image.MinLevel  = viewInfo.minLevel;
+      m_info.Image.MinLayer  = viewInfo.minLayer;
+      m_info.Image.NumLevels = viewInfo.numLevels;
+      m_info.Image.NumLayers = viewInfo.numLayers;
+
       // Create the underlying image view object
       m_imageView = pDevice->GetDXVKDevice()->createImageView(
         GetCommonTexture(pResource)->GetImage(), viewInfo);

@@ -13,6 +13,9 @@ namespace dxvk {
   : m_device(pDevice), m_resource(pResource), m_desc(*pDesc), m_d3d10(this) {
     ResourceAddRefPrivate(m_resource);
 
+    D3D11_COMMON_RESOURCE_DESC resourceDesc;
+    GetCommonResourceDesc(pResource, &resourceDesc);
+
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.format = pDevice->LookupFormat(pDesc->Format, DXGI_VK_FORMAT_MODE_DEPTH).Format;
     viewInfo.aspect = imageFormatInfo(viewInfo.format)->aspectMask;
@@ -77,6 +80,22 @@ namespace dxvk {
       if (viewInfo.type == VK_IMAGE_VIEW_TYPE_1D_ARRAY) viewInfo.type = VK_IMAGE_VIEW_TYPE_1D;
       if (viewInfo.type == VK_IMAGE_VIEW_TYPE_2D_ARRAY) viewInfo.type = VK_IMAGE_VIEW_TYPE_2D;
     }
+
+    // Populate view info struct
+    m_info.pResource = pResource;
+    m_info.Dimension = resourceDesc.Dim;
+    m_info.BindFlags = resourceDesc.BindFlags;
+    m_info.Image.Aspects   = viewInfo.aspect;
+    m_info.Image.MinLevel  = viewInfo.minLevel;
+    m_info.Image.MinLayer  = viewInfo.minLayer;
+    m_info.Image.NumLevels = viewInfo.numLevels;
+    m_info.Image.NumLayers = viewInfo.numLayers;
+
+    if (m_desc.Flags & D3D11_DSV_READ_ONLY_DEPTH)
+      m_info.Image.Aspects &= ~VK_IMAGE_ASPECT_DEPTH_BIT;
+
+    if (m_desc.Flags & D3D11_DSV_READ_ONLY_STENCIL)
+      m_info.Image.Aspects &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
 
     // Create the underlying image view object
     m_view = pDevice->GetDXVKDevice()->createImageView(

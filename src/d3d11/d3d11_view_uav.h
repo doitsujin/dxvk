@@ -3,6 +3,7 @@
 #include "../dxvk/dxvk_device.h"
 
 #include "d3d11_device_child.h"
+#include "d3d11_view.h"
 
 namespace dxvk {
   
@@ -34,6 +35,10 @@ namespace dxvk {
     
     void STDMETHODCALLTYPE GetDesc(D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc) final;
     
+    const D3D11_VK_VIEW_INFO& GetViewInfo() const {
+      return m_info;
+    }
+
     D3D11_RESOURCE_DIMENSION GetResourceType() const {
       D3D11_RESOURCE_DIMENSION type;
       m_resource->GetType(&type);
@@ -65,6 +70,7 @@ namespace dxvk {
     Com<D3D11Device>                  m_device;
     ID3D11Resource*                   m_resource;
     D3D11_UNORDERED_ACCESS_VIEW_DESC  m_desc;
+    D3D11_VK_VIEW_INFO                m_info;
     Rc<DxvkBufferView>                m_bufferView;
     Rc<DxvkImageView>                 m_imageView;
     DxvkBufferSlice                   m_counterSlice;
