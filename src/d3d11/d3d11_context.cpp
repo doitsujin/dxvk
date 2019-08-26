@@ -3213,10 +3213,6 @@ namespace dxvk {
 
 
   void D3D11DeviceContext::BindFramebuffer(BOOL Spill) {
-    // NOTE According to the Microsoft docs, we are supposed to
-    // unbind overlapping shader resource views. Since this comes
-    // with a large performance penalty we'll ignore this until an
-    // application actually relies on this behaviour.
     DxvkRenderTargets attachments;
     
     // D3D11 doesn't have the concept of a framebuffer object,
