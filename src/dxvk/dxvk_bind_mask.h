@@ -97,6 +97,30 @@ namespace dxvk {
       }
     }
 
+    /**
+     * \brief Finds next set binding
+     *
+     * \param [in] first Fist bit to consider
+     * \returns Binding ID, or -1 if none was found
+     */
+    int32_t findNext(uint32_t first) const {
+      if (unlikely(first >= BindingCount))
+        return -1;
+
+      uint32_t intId = first / BitCount;
+      uint32_t bitId = first % BitCount;
+
+      auto mask = m_slots[intId] & ~((1 << bitId) - 1);
+
+      while (!mask && ++intId < IntCount)
+        mask = m_slots[intId];
+      
+      if (!mask)
+        return -1;
+      
+      return BitCount * intId + bit::tzcnt(mask);
+    }
+
     bool operator == (const DxvkBindingSet& other) const {
       bool eq = true;
       for (uint32_t i = 0; i < IntCount; i++)
