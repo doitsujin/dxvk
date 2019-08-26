@@ -1804,7 +1804,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumViews; i++)
-      ppShaderResourceViews[i] = m_state.vs.shaderResources.at(StartSlot + i).ref();
+      ppShaderResourceViews[i] = m_state.vs.shaderResources[StartSlot + i].ref();
   }
   
   
@@ -1815,7 +1815,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumSamplers; i++)
-      ppSamplers[i] = m_state.vs.samplers.at(StartSlot + i).ref();
+      ppSamplers[i] = m_state.vs.samplers[StartSlot + i].ref();
   }
   
   
@@ -1946,7 +1946,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumViews; i++)
-      ppShaderResourceViews[i] = m_state.hs.shaderResources.at(StartSlot + i).ref();
+      ppShaderResourceViews[i] = m_state.hs.shaderResources[StartSlot + i].ref();
   }
   
   
@@ -1957,7 +1957,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumSamplers; i++)
-      ppSamplers[i] = m_state.hs.samplers.at(StartSlot + i).ref();
+      ppSamplers[i] = m_state.hs.samplers[StartSlot + i].ref();
   }
   
   
@@ -2088,7 +2088,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumViews; i++)
-      ppShaderResourceViews[i] = m_state.ds.shaderResources.at(StartSlot + i).ref();
+      ppShaderResourceViews[i] = m_state.ds.shaderResources[StartSlot + i].ref();
   }
   
   
@@ -2099,7 +2099,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumSamplers; i++)
-      ppSamplers[i] = m_state.ds.samplers.at(StartSlot + i).ref();
+      ppSamplers[i] = m_state.ds.samplers[StartSlot + i].ref();
   }
   
   
@@ -2230,7 +2230,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumViews; i++)
-      ppShaderResourceViews[i] = m_state.gs.shaderResources.at(StartSlot + i).ref();
+      ppShaderResourceViews[i] = m_state.gs.shaderResources[StartSlot + i].ref();
   }
   
   
@@ -2241,7 +2241,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumSamplers; i++)
-      ppSamplers[i] = m_state.gs.samplers.at(StartSlot + i).ref();
+      ppSamplers[i] = m_state.gs.samplers[StartSlot + i].ref();
   }
   
   
@@ -2372,7 +2372,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumViews; i++)
-      ppShaderResourceViews[i] = m_state.ps.shaderResources.at(StartSlot + i).ref();
+      ppShaderResourceViews[i] = m_state.ps.shaderResources[StartSlot + i].ref();
   }
   
   
@@ -2383,7 +2383,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumSamplers; i++)
-      ppSamplers[i] = m_state.ps.samplers.at(StartSlot + i).ref();
+      ppSamplers[i] = m_state.ps.samplers[StartSlot + i].ref();
   }
   
   
@@ -2529,7 +2529,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumViews; i++)
-      ppShaderResourceViews[i] = m_state.cs.shaderResources.at(StartSlot + i).ref();
+      ppShaderResourceViews[i] = m_state.cs.shaderResources[StartSlot + i].ref();
   }
   
   
@@ -2540,7 +2540,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumSamplers; i++)
-      ppSamplers[i] = m_state.cs.samplers.at(StartSlot + i).ref();
+      ppSamplers[i] = m_state.cs.samplers[StartSlot + i].ref();
   }
   
   
@@ -2551,7 +2551,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumUAVs; i++)
-      ppUnorderedAccessViews[i] = m_state.cs.unorderedAccessViews.at(StartSlot + i).ref();
+      ppUnorderedAccessViews[i] = m_state.cs.unorderedAccessViews[StartSlot + i].ref();
   }
   
   
@@ -2838,7 +2838,7 @@ namespace dxvk {
     if (pViewports != nullptr) {
       for (uint32_t i = 0; i < *pNumViewports; i++) {
         if (i < m_state.rs.numViewports) {
-          pViewports[i] = m_state.rs.viewports.at(i);
+          pViewports[i] = m_state.rs.viewports[i];
         } else {
           pViewports[i].TopLeftX = 0.0f;
           pViewports[i].TopLeftY = 0.0f;
@@ -2862,7 +2862,7 @@ namespace dxvk {
     if (pRects != nullptr) {
       for (uint32_t i = 0; i < *pNumRects; i++) {
         if (i < m_state.rs.numScissors) {
-          pRects[i] = m_state.rs.scissors.at(i);
+          pRects[i] = m_state.rs.scissors[i];
         } else {
           pRects[i].left   = 0;
           pRects[i].top    = 0;
