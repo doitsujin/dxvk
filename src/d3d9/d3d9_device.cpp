@@ -4198,6 +4198,9 @@ namespace dxvk {
     if (pResource->GetMapMode() != D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
       return D3D_OK;
 
+    if (pResource->LockRange().degenerate())
+      return D3D_OK;
+
     FlushImplicit(FALSE);
 
     auto dstBuffer = pResource->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>();
