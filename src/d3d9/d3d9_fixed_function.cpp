@@ -74,8 +74,15 @@ namespace dxvk {
     uint32_t depth = 0;
     if (fogCtx.IsPixel)
       depth = spvModule.opFMul(floatType, z, spvModule.opFDiv(floatType, spvModule.constf32(1.0f), w));
-    else
-      depth = spvModule.opFAbs(floatType, z);
+    else {
+      if (fogCtx.RangeFog) {
+        std::array<uint32_t, 3> indices = { 0, 1, 2 };
+        uint32_t pos3 = spvModule.opVectorShuffle(vec3Type, fogCtx.vPos, fogCtx.vPos, indices.size(), indices.data());
+        depth = spvModule.opLength(floatType, pos3);
+      }
+      else
+        depth = spvModule.opFAbs(floatType, z);
+    }
 
     uint32_t applyFogFactor = spvModule.allocateId();
 
@@ -737,6 +744,7 @@ namespace dxvk {
 
     D3D9FogContext fogCtx;
     fogCtx.IsPixel     = false;
+    fogCtx.RangeFog    = m_vsKey.RangeFog;
     fogCtx.RenderState = m_rsBlock;
     fogCtx.vPos        = vtx;
     fogCtx.vFog        = m_vs.in.FOG;
@@ -1320,6 +1328,7 @@ namespace dxvk {
 
     D3D9FogContext fogCtx;
     fogCtx.IsPixel     = true;
+    fogCtx.RangeFog    = false;
     fogCtx.RenderState = m_rsBlock;
     fogCtx.vPos        = m_ps.in.POS;
     fogCtx.vFog        = m_ps.in.FOG;
@@ -1671,6 +1680,7 @@ namespace dxvk {
     state.add(bhash(key.UseLighting));
     state.add(bhash(key.NormalizeNormals));
     state.add(bhash(key.LocalViewer));
+    state.add(bhash(key.RangeFog));
 
     state.add(colorSourceHash(key.DiffuseSource));
     state.add(colorSourceHash(key.AmbientSource));

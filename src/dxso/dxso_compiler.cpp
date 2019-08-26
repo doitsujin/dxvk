@@ -3088,6 +3088,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     D3D9FogContext fogCtx;
     fogCtx.IsPixel     = true;
+    fogCtx.RangeFog    = false;
     fogCtx.RenderState = m_rsBlock;
     fogCtx.vPos        = m_module.opLoad(getVectorTypeId(vPosPtr.type),    vPosPtr.id);
     fogCtx.vFog        = m_module.opLoad(getVectorTypeId(vFogPtr.type),    vFogPtr.id);

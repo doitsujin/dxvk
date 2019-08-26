@@ -19,6 +19,7 @@ namespace dxvk {
   struct D3D9FogContext {
     // General inputs...
     bool     IsPixel;
+    bool     RangeFog;
     uint32_t RenderState;
     uint32_t vPos;
     uint32_t vFog;
@@ -45,6 +46,7 @@ namespace dxvk {
 
     bool NormalizeNormals;
     bool LocalViewer;
+    bool RangeFog;
 
     D3DMATERIALCOLORSOURCE DiffuseSource;
     D3DMATERIALCOLORSOURCE AmbientSource;

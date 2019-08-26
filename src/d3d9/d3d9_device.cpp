@@ -1772,6 +1772,10 @@ namespace dxvk {
           m_flags.set(D3D9DeviceFlag::DirtyFogState);
           break;
 
+        case D3DRS_RANGEFOGENABLE:
+          m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
+          break;
+
         case D3DRS_FOGCOLOR:
           m_flags.set(D3D9DeviceFlag::DirtyFogColor);
           break;
@@ -3336,6 +3340,7 @@ namespace dxvk {
     rs[D3DRS_LIGHTING]               = TRUE;
     rs[D3DRS_COLORVERTEX]            = TRUE;
     rs[D3DRS_LOCALVIEWER]            = TRUE;
+    rs[D3DRS_RANGEFOGENABLE]         = FALSE;
     m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
 
     // PS
@@ -3356,7 +3361,6 @@ namespace dxvk {
     rs[D3DRS_LASTPIXEL]                  = TRUE;
     rs[D3DRS_DITHERENABLE]               = FALSE;
     rs[D3DRS_FOGENABLE]                  = FALSE;
-    rs[D3DRS_RANGEFOGENABLE]             = FALSE;
     rs[D3DRS_WRAP0]                      = 0;
     rs[D3DRS_WRAP1]                      = 0;
     rs[D3DRS_WRAP2]                      = 0;
@@ -5613,6 +5617,8 @@ namespace dxvk {
       key.AmbientSource  = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_AMBIENTMATERIALSOURCE]  & mask);
       key.SpecularSource = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_SPECULARMATERIALSOURCE] & mask);
       key.EmissiveSource = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_EMISSIVEMATERIALSOURCE] & mask);
+
+      key.RangeFog       = m_state.renderStates[D3DRS_RANGEFOGENABLE];
 
       for (uint32_t i = 0; i < key.TexcoordIndices.size(); i++) {
         key.TransformFlags[i]  = m_state.textureStages[i][D3DTSS_TEXTURETRANSFORMFLAGS] & ~(D3DTTFF_PROJECTED);
