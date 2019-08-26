@@ -2,6 +2,7 @@
 
 #include <mutex>
 #include <vector>
+#include <unordered_map>
 
 #include "dxvk_hash.h"
 #include "dxvk_include.h"
