@@ -4717,10 +4717,6 @@ namespace dxvk {
               && dsImageInfo.extent.width  >= extent.width
               && dsImageInfo.extent.height >= extent.height)) {
 
-        if (unlikely(dsImageInfo.extent.width  > extent.width
-                  || dsImageInfo.extent.height > extent.height))
-          Logger::warn("DS is bigger than the render targets");
-
         attachments.depth = {
           m_state.depthStencil->GetDepthStencilView(),
           m_state.depthStencil->GetDepthLayout() };
