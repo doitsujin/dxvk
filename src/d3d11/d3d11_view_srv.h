@@ -37,6 +37,10 @@ namespace dxvk {
       return m_info;
     }
 
+    BOOL TestHazards() const {
+      return m_info.BindFlags & (D3D11_BIND_RENDER_TARGET | D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_UNORDERED_ACCESS);
+    }
+
     D3D11_RESOURCE_DIMENSION GetResourceType() const {
       D3D11_RESOURCE_DIMENSION type;
       m_resource->GetType(&type);

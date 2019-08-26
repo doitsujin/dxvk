@@ -73,4 +73,9 @@ namespace dxvk {
     }
   }
 
+  template<typename T1, typename T2>
+  bool CheckViewOverlap(const T1* a, const T2* b) {
+    return a && b && CheckViewOverlap(a->GetViewInfo(), b->GetViewInfo());
+  }
+
 }
