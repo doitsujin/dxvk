@@ -4125,7 +4125,7 @@ namespace dxvk {
     else
       SizeToLock = std::min(SizeToLock, maxLockSize);
 
-    pResource->LockRange().join(D3D9Range(OffsetToLock, OffsetToLock + SizeToLock));
+    pResource->LockRange().Conjoin(D3D9Range(OffsetToLock, OffsetToLock + SizeToLock));
 
     if (Flags & D3DLOCK_DISCARD) {
       // Allocate a new backing slice for the buffer and set
@@ -4147,7 +4147,7 @@ namespace dxvk {
       bool dirtyRangeOverlap = true;
 
       if (respectBounds && pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER && !(Flags & D3DLOCK_READONLY))
-        dirtyRangeOverlap = pResource->DirtyRange().overlaps(pResource->LockRange());
+        dirtyRangeOverlap = pResource->DirtyRange().Overlaps(pResource->LockRange());
 
       bool readLocked = pResource->SetReadLocked(false);
 
@@ -4156,7 +4156,7 @@ namespace dxvk {
       // Wait until the resource is no longer in use
       if (!skipWait) {
         if (!(Flags & D3DLOCK_DONOTWAIT))
-          pResource->DirtyRange().clear();
+          pResource->DirtyRange().Clear();
 
         if (!WaitForResource(mappingBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
@@ -4198,7 +4198,7 @@ namespace dxvk {
     if (pResource->GetMapMode() != D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
       return D3D_OK;
 
-    if (pResource->LockRange().degenerate())
+    if (pResource->LockRange().IsDegenerate())
       return D3D_OK;
 
     FlushImplicit(FALSE);
@@ -4219,8 +4219,8 @@ namespace dxvk {
         cRange.max - cRange.min);
     });
 
-    pResource->DirtyRange().join(pResource->LockRange());
-    pResource->LockRange().clear();
+    pResource->DirtyRange().Conjoin(pResource->LockRange());
+    pResource->LockRange().Clear();
 
     return D3D_OK;
   }

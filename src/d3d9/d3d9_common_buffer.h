@@ -36,15 +36,15 @@ namespace dxvk {
   };
 
   struct D3D9Range {
-    D3D9Range() { clear(); }
+    D3D9Range() { Clear(); }
 
     D3D9Range(uint32_t min, uint32_t max)
       : min(min), max(max) { }
 
-    bool degenerate() { return min == max; }
+    bool IsDegenerate() { return min == max; }
 
-    void join(D3D9Range range) {
-      if (degenerate())
+    void Conjoin(D3D9Range range) {
+      if (IsDegenerate())
         *this = range;
       else {
         min = std::min(range.min, min);
@@ -52,14 +52,14 @@ namespace dxvk {
       }
     }
 
-    bool overlaps(D3D9Range range) {
-      if (degenerate())
+    bool Overlaps(D3D9Range range) {
+      if (IsDegenerate())
         return false;
 
       return range.max > min && range.min < max;;
     }
 
-    void clear() { min = 0; max = 0; }
+    void Clear() { min = 0; max = 0; }
 
     uint32_t min = 0;
     uint32_t max = 0;
