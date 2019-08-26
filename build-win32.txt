@@ -8,7 +8,7 @@ strip = 'i686-w64-mingw32-strip'
 c_args=['-msse', '-msse2']
 cpp_args=['-msse', '-msse2']
 c_link_args = ['-static', '-static-libgcc']
-cpp_link_args = ['-static', '-static-libgcc', '-static-libstdc++', '-Wl,--add-stdcall-alias,--enable-stdcall-fixup']
+cpp_link_args = ['-static', '-static-libgcc', '-static-libstdc++']
 needs_exe_wrapper = true
 
 [host_machine]

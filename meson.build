@@ -1,4 +1,4 @@
-project('dxvk', ['c', 'cpp'], version : 'v1.3.2', meson_version : '>= 0.43')
+project('dxvk', ['c', 'cpp'], version : 'v1.3.2', meson_version : '>= 0.46')
 
 cpu_family = target_machine.cpu_family()
 
@@ -49,6 +49,14 @@ else
     wrc = find_program('rc')
   else
     wrc = cpu_family == 'x86_64' ? find_program('x86_64-w64-mingw32-windres') : find_program('i686-w64-mingw32-windres')
+  endif
+  if cpu_family == 'x86'
+    if dxvk_compiler.has_link_argument('-Wl,--add-stdcall-alias')
+      add_global_link_arguments('-Wl,--add-stdcall-alias', language: 'cpp')
+    endif
+    if dxvk_compiler.has_link_argument('-Wl,--enable-stdcall-fixup')
+      add_global_link_arguments('-Wl,--enable-stdcall-fixup', language: 'cpp')
+    endif
   endif
 
   lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
