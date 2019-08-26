@@ -3341,6 +3341,7 @@ namespace dxvk {
     rs[D3DRS_COLORVERTEX]            = TRUE;
     rs[D3DRS_LOCALVIEWER]            = TRUE;
     rs[D3DRS_RANGEFOGENABLE]         = FALSE;
+    rs[D3DRS_NORMALIZENORMALS]       = FALSE;
     m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
 
     // PS
@@ -3349,18 +3350,26 @@ namespace dxvk {
     rs[D3DRS_AMBIENT]                = 0;
     m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
 
+    rs[D3DRS_FOGENABLE]                  = FALSE;
     rs[D3DRS_FOGCOLOR]                   = 0;
     rs[D3DRS_FOGTABLEMODE]               = D3DFOG_NONE;
     rs[D3DRS_FOGSTART]                   = bit::cast<DWORD>(0.0f);
     rs[D3DRS_FOGEND]                     = bit::cast<DWORD>(1.0f);
     rs[D3DRS_FOGDENSITY]                 = bit::cast<DWORD>(1.0f);
     rs[D3DRS_FOGVERTEXMODE]              = D3DFOG_NONE;
+    m_flags.set(D3D9DeviceFlag::DirtyFogColor);
+    m_flags.set(D3D9DeviceFlag::DirtyFogDensity);
+    m_flags.set(D3D9DeviceFlag::DirtyFogEnd);
+    m_flags.set(D3D9DeviceFlag::DirtyFogScale);
+    m_flags.set(D3D9DeviceFlag::DirtyFogState);
+
+    rs[D3DRS_CLIPPLANEENABLE] = 0;
+    m_flags.set(D3D9DeviceFlag::DirtyClipPlanes);
 
     // Render States not implemented beyond this point.
     rs[D3DRS_SHADEMODE]                  = D3DSHADE_GOURAUD;
     rs[D3DRS_LASTPIXEL]                  = TRUE;
     rs[D3DRS_DITHERENABLE]               = FALSE;
-    rs[D3DRS_FOGENABLE]                  = FALSE;
     rs[D3DRS_WRAP0]                      = 0;
     rs[D3DRS_WRAP1]                      = 0;
     rs[D3DRS_WRAP2]                      = 0;
@@ -3370,9 +3379,7 @@ namespace dxvk {
     rs[D3DRS_WRAP6]                      = 0;
     rs[D3DRS_WRAP7]                      = 0;
     rs[D3DRS_CLIPPING]                   = TRUE;
-    rs[D3DRS_NORMALIZENORMALS]           = FALSE;
     rs[D3DRS_VERTEXBLEND]                = D3DVBF_DISABLE;
-    rs[D3DRS_CLIPPLANEENABLE]            = 0;
     rs[D3DRS_POINTSIZE]                  = bit::cast<DWORD>(1.0f);
     rs[D3DRS_POINTSIZE_MIN]              = bit::cast<DWORD>(1.0f);
     rs[D3DRS_POINTSPRITEENABLE]          = FALSE;
