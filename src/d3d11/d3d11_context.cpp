@@ -2596,7 +2596,10 @@ namespace dxvk {
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
     const UINT*                             pUAVInitialCounts) {
     D3D10DeviceLock lock = LockContext();
-    
+
+    bool needsUpdate = false;
+    bool needsSpill  = false;
+
     if (likely(NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)) {
       // Native D3D11 does not change the render targets if
       // the parameters passed to this method are invalid.
@@ -2610,6 +2613,7 @@ namespace dxvk {
         
         if (m_state.om.renderTargetViews[i] != rtv) {
           m_state.om.renderTargetViews[i] = rtv;
+          needsUpdate = true;
           TestOmSrvHazards(rtv);
         }
       }
@@ -2618,13 +2622,12 @@ namespace dxvk {
 
       if (m_state.om.depthStencilView != dsv) {
         m_state.om.depthStencilView = dsv;
+        needsUpdate = true;
         TestOmSrvHazards(dsv);
       }
       
       m_state.om.maxRtv = NumRTVs;
     }
-
-    bool spillRenderPass = false;
 
     if (unlikely(NumUAVs || m_state.om.maxUav)) {
       uint32_t uavSlotId = computeUavBinding       (DxbcProgramType::PixelShader, 0);
@@ -2652,13 +2655,14 @@ namespace dxvk {
             
             TestOmSrvHazards(uav);
 
-            spillRenderPass = true;
+            needsSpill = true;
           }
         }
       }
     }
 
-    BindFramebuffer(spillRenderPass);
+    if (needsUpdate || needsSpill)
+      BindFramebuffer(needsSpill);
   }
   
   
