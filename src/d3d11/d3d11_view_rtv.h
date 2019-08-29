@@ -37,6 +37,10 @@ namespace dxvk {
       return m_info;
     }
 
+    BOOL HasBindFlag(UINT Flags) const {
+      return m_info.BindFlags & Flags;
+    }
+
     D3D11_RESOURCE_DIMENSION GetResourceType() const {
       D3D11_RESOURCE_DIMENSION type;
       m_resource->GetType(&type);
