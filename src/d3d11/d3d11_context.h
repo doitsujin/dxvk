@@ -811,24 +811,24 @@ namespace dxvk {
             D3D11ShaderResourceView*          pView);
 
     template<DxbcProgramType ShaderStage, typename T>
-    void TestSrvHazards(
+    void ResolveSrvHazards(
             T*                                pView,
             D3D11ShaderResourceBindings&      Bindings);
     
     template<typename T>
-    void TestOmSrvHazards(
-            T*                                pView);
-    
-    bool TestOmRtvHazards(
-            D3D11UnorderedAccessView*         pView);
-    
-    void TestOmUavHazards(
-            D3D11RenderTargetView*            pView);
-    
-    template<typename T>
-    void TestCsSrvHazards(
+    void ResolveCsSrvHazards(
             T*                                pView);
 
+    template<typename T>
+    void ResolveOmSrvHazards(
+            T*                                pView);
+    
+    bool ResolveOmRtvHazards(
+            D3D11UnorderedAccessView*         pView);
+    
+    void ResolveOmUavHazards(
+            D3D11RenderTargetView*            pView);
+    
     bool ValidateRenderTargets(
             UINT                              NumViews,
             ID3D11RenderTargetView* const*    ppRenderTargetViews,
