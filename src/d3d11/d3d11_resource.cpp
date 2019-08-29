@@ -22,7 +22,7 @@ namespace dxvk {
   
 
   ULONG STDMETHODCALLTYPE D3D11DXGIResource::Release() {
-    return m_resource->AddRef();
+    return m_resource->Release();
   }
 
   
