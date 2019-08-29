@@ -800,6 +800,12 @@ namespace dxvk {
       const D3D11CommonTexture*               pTexture,
             VkImageSubresource                Subresource);
     
+    bool TestRtvUavHazards(
+            UINT                              NumRTVs,
+            ID3D11RenderTargetView* const*    ppRTVs,
+            UINT                              NumUAVs,
+            ID3D11UnorderedAccessView* const* ppUAVs);
+    
     template<DxbcProgramType ShaderStage>
     bool TestSrvHazards(
             D3D11ShaderResourceView*          pView);

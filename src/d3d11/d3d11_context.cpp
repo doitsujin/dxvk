@@ -2477,6 +2477,9 @@ namespace dxvk {
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
     const UINT*                             pUAVInitialCounts) {
     D3D10DeviceLock lock = LockContext();
+
+    if (TestRtvUavHazards(0, nullptr, NumUAVs, ppUnorderedAccessViews))
+      return;
     
     // Unbind previously bound conflicting UAVs
     uint32_t uavSlotId = computeUavBinding       (DxbcProgramType::ComputeShader, 0);
@@ -2622,6 +2625,9 @@ namespace dxvk {
     const UINT*                             pUAVInitialCounts) {
     D3D10DeviceLock lock = LockContext();
 
+    if (TestRtvUavHazards(NumRTVs, ppRenderTargetViews, NumUAVs, ppUnorderedAccessViews))
+      return;
+    
     bool needsUpdate = false;
     bool needsSpill  = false;
 
@@ -3767,6 +3773,49 @@ namespace dxvk {
     });
   }
   
+  
+  bool D3D11DeviceContext::TestRtvUavHazards(
+          UINT                              NumRTVs,
+          ID3D11RenderTargetView* const*    ppRTVs,
+          UINT                              NumUAVs,
+          ID3D11UnorderedAccessView* const* ppUAVs) {
+    if (NumRTVs == D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) NumRTVs = 0;
+    if (NumUAVs == D3D11_KEEP_UNORDERED_ACCESS_VIEWS)           NumUAVs = 0;
+
+    for (uint32_t i = 0; i < NumRTVs; i++) {
+      auto rtv = static_cast<D3D11RenderTargetView*>(ppRTVs[i]);
+
+      if (!rtv)
+        continue;
+      
+      for (uint32_t j = 0; j < i; j++) {
+        if (CheckViewOverlap(rtv, static_cast<D3D11RenderTargetView*>(ppRTVs[j])))
+          return true;
+      }
+
+      if (rtv->HasBindFlag(D3D11_BIND_UNORDERED_ACCESS)) {
+        for (uint32_t j = 0; j < NumUAVs; j++) {
+          if (CheckViewOverlap(rtv, static_cast<D3D11UnorderedAccessView*>(ppUAVs[j])))
+            return true;
+        }
+      }
+    }
+
+    for (uint32_t i = 0; i < NumUAVs; i++) {
+      auto uav = static_cast<D3D11UnorderedAccessView*>(ppUAVs[i]);
+
+      if (!uav)
+        continue;
+
+      for (uint32_t j = 0; j < i; j++) {
+        if (CheckViewOverlap(uav, static_cast<D3D11UnorderedAccessView*>(ppUAVs[j])))
+          return true;
+      }
+    }
+
+    return false;
+  }
+
   
   template<DxbcProgramType ShaderStage>
   bool D3D11DeviceContext::TestSrvHazards(
