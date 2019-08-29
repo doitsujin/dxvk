@@ -813,6 +813,12 @@ namespace dxvk {
     void TestOmSrvHazards(
             T*                                pView);
     
+    bool TestOmRtvHazards(
+            D3D11UnorderedAccessView*         pView);
+    
+    void TestOmUavHazards(
+            D3D11RenderTargetView*            pView);
+    
     template<typename T>
     void TestCsSrvHazards(
             T*                                pView);

@@ -2640,6 +2640,9 @@ namespace dxvk {
           m_state.om.renderTargetViews[i] = rtv;
           needsUpdate = true;
           TestOmSrvHazards(rtv);
+
+          if (NumUAVs == D3D11_KEEP_UNORDERED_ACCESS_VIEWS)
+            TestOmUavHazards(rtv);
         }
       }
 
@@ -2679,6 +2682,9 @@ namespace dxvk {
               ctrSlotId + i, ctr);
             
             TestOmSrvHazards(uav);
+
+            if (NumRTVs == D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)
+              needsUpdate |= TestOmRtvHazards(uav);
 
             needsSpill = true;
           }
@@ -3829,6 +3835,49 @@ namespace dxvk {
   }
 
   
+  bool D3D11DeviceContext::TestOmRtvHazards(
+          D3D11UnorderedAccessView*         pView) {
+    if (!pView || !pView->HasBindFlag(D3D11_BIND_RENDER_TARGET))
+      return false;
+
+    bool hazard = false;
+
+    if (CheckViewOverlap(pView, m_state.om.depthStencilView.ptr())) {
+      m_state.om.depthStencilView = nullptr;
+      hazard = true;
+    }
+
+    for (uint32_t i = 0; i < m_state.om.maxRtv; i++) {
+      if (CheckViewOverlap(pView, m_state.om.renderTargetViews[i].ptr())) {
+        m_state.om.renderTargetViews[i] = nullptr;
+        hazard = true;
+      }
+    }
+
+    return hazard;
+  }
+
+
+  void D3D11DeviceContext::TestOmUavHazards(
+          D3D11RenderTargetView*            pView) {
+    if (!pView || !pView->HasBindFlag(D3D11_BIND_UNORDERED_ACCESS))
+      return;
+
+    uint32_t uavSlotId = computeUavBinding       (DxbcProgramType::PixelShader, 0);
+    uint32_t ctrSlotId = computeUavCounterBinding(DxbcProgramType::PixelShader, 0);
+
+    for (uint32_t i = 0; i < m_state.om.maxUav; i++) {
+      if (CheckViewOverlap(pView, m_state.ps.unorderedAccessViews[i].ptr())) {
+        m_state.ps.unorderedAccessViews[i] = nullptr;
+
+        BindUnorderedAccessView(
+          uavSlotId + i, nullptr,
+          ctrSlotId + i, ~0u);
+      }
+    }
+  }
+
+
   template<typename T>
   void D3D11DeviceContext::TestCsSrvHazards(
           T*                                pView) {
