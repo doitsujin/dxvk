@@ -2478,9 +2478,34 @@ namespace dxvk {
     const UINT*                             pUAVInitialCounts) {
     D3D10DeviceLock lock = LockContext();
     
-    uint32_t uavSlotId = computeUavBinding       (DxbcProgramType::ComputeShader, StartSlot);
-    uint32_t ctrSlotId = computeUavCounterBinding(DxbcProgramType::ComputeShader, StartSlot);
+    // Unbind previously bound conflicting UAVs
+    uint32_t uavSlotId = computeUavBinding       (DxbcProgramType::ComputeShader, 0);
+    uint32_t ctrSlotId = computeUavCounterBinding(DxbcProgramType::ComputeShader, 0);
 
+    int32_t uavId = m_state.cs.uavMask.findNext(0);
+
+    while (uavId >= 0) {
+      if (uint32_t(uavId) < StartSlot || uint32_t(uavId) >= StartSlot + NumUAVs) {
+        for (uint32_t i = 0; i < NumUAVs; i++) {
+          auto uav = static_cast<D3D11UnorderedAccessView*>(ppUnorderedAccessViews[i]);
+
+          if (CheckViewOverlap(uav, m_state.cs.unorderedAccessViews[uavId].ptr())) {
+            m_state.cs.unorderedAccessViews[uavId] = nullptr;
+            m_state.cs.uavMask.clr(uavId);
+
+            BindUnorderedAccessView(
+              uavSlotId + uavId, nullptr,
+              ctrSlotId + uavId, ~0u);
+          }
+        }
+
+        uavId = m_state.cs.uavMask.findNext(uavId + 1);
+      } else {
+        uavId = m_state.cs.uavMask.findNext(StartSlot + NumUAVs);
+      }
+    }
+
+    // Actually bind the given UAVs
     for (uint32_t i = 0; i < NumUAVs; i++) {
       auto uav = static_cast<D3D11UnorderedAccessView*>(ppUnorderedAccessViews[i]);
       auto ctr = pUAVInitialCounts ? pUAVInitialCounts[i] : ~0u;
@@ -2490,8 +2515,8 @@ namespace dxvk {
         m_state.cs.uavMask.set(StartSlot + i, uav != nullptr);
 
         BindUnorderedAccessView(
-          uavSlotId + i, uav,
-          ctrSlotId + i, ctr);
+          uavSlotId + StartSlot + i, uav,
+          ctrSlotId + StartSlot + i, ctr);
         
         TestCsSrvHazards(uav);
       }
