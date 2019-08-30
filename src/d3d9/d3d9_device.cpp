@@ -3863,7 +3863,7 @@ namespace dxvk {
     uint32_t rowOffset;
     if (FormatInfo != nullptr) {
       uint32_t blockSize  = uint32_t(FormatInfo->blockSize.width);
-      uint32_t blockCount = (pBox->Left + blockSize - 1) / blockSize;
+      uint32_t blockCount = pBox->Left / blockSize;
       rowOffset = uint32_t(FormatInfo->elementSize) * blockCount;
     }
     else
