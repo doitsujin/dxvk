@@ -5811,6 +5811,15 @@ namespace dxvk {
         stage.Projected = data[D3DTSS_TEXTURETRANSFORMFLAGS] & D3DTTFF_PROJECTED ? 1 : 0;
       }
 
+      auto& stage0 = key.Stages[0].data;
+
+      if (stage0.ResultIsTemp &&
+          stage0.ColorOp != D3DTOP_DISABLE &&
+          stage0.AlphaOp == D3DTOP_DISABLE) {
+        stage0.AlphaOp   = D3DTOP_SELECTARG1;
+        stage0.AlphaArg1 = D3DTA_DIFFUSE;
+      }
+
       EmitCs([
         this,
         cKey     = key,
