@@ -4843,13 +4843,29 @@ namespace dxvk {
     DxvkBlendMode baseMode;
     baseMode.enableBlending = state[D3DRS_ALPHABLENDENABLE] != FALSE;
 
-    baseMode.colorSrcFactor = DecodeBlendFactor(D3DBLEND  ( state[D3DRS_SRCBLEND]  ), false);
-    baseMode.colorDstFactor = DecodeBlendFactor(D3DBLEND  ( state[D3DRS_DESTBLEND] ), false);
-    baseMode.colorBlendOp   = DecodeBlendOp    (D3DBLENDOP( state[D3DRS_BLENDOP]   )       );
+    D3D9BlendState color, alpha;
 
-    baseMode.alphaSrcFactor = DecodeBlendFactor(separateAlpha ? D3DBLEND  ( state[D3DRS_SRCBLENDALPHA]  ) : D3DBLEND  ( state[D3DRS_SRCBLEND]  ), true);
-    baseMode.alphaDstFactor = DecodeBlendFactor(separateAlpha ? D3DBLEND  ( state[D3DRS_DESTBLENDALPHA] ) : D3DBLEND  ( state[D3DRS_DESTBLEND] ), true);
-    baseMode.alphaBlendOp   = DecodeBlendOp    (separateAlpha ? D3DBLENDOP( state[D3DRS_BLENDOPALPHA]   ) : D3DBLENDOP( state[D3DRS_BLENDOP]   )      );
+    color.Src = D3DBLEND(state[D3DRS_SRCBLEND]);
+    color.Dst = D3DBLEND(state[D3DRS_DESTBLEND]);
+    color.Op  = D3DBLENDOP(state[D3DRS_BLENDOP]);
+    FixupBlendState(color);
+
+    if (separateAlpha) {
+      alpha.Src = D3DBLEND(state[D3DRS_SRCBLENDALPHA]);
+      alpha.Dst = D3DBLEND(state[D3DRS_DESTBLENDALPHA]);
+      alpha.Op  = D3DBLENDOP(state[D3DRS_BLENDOPALPHA]);
+      FixupBlendState(alpha);
+    }
+    else
+      alpha = color;
+
+    baseMode.colorSrcFactor = DecodeBlendFactor(color.Src, false);
+    baseMode.colorDstFactor = DecodeBlendFactor(color.Dst, false);
+    baseMode.colorBlendOp   = DecodeBlendOp    (color.Op);
+
+    baseMode.alphaSrcFactor = DecodeBlendFactor(alpha.Src, true);
+    baseMode.alphaDstFactor = DecodeBlendFactor(alpha.Dst, true);
+    baseMode.alphaBlendOp   = DecodeBlendOp    (alpha.Op);
 
     std::array<DxvkBlendMode, 4> modes;
     for (uint32_t i = 0; i < modes.size(); i++) {

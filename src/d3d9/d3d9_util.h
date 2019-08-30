@@ -18,6 +18,25 @@ namespace dxvk {
     VkSamplerMipmapMode MipFilter;
   };
 
+  struct D3D9BlendState {
+    D3DBLEND   Src;
+    D3DBLEND   Dst;
+    D3DBLENDOP Op;
+  };
+
+  inline void FixupBlendState(D3D9BlendState& State) {
+    // Old DirectX 6 HW feature that still exists...
+    // Yuck!
+    if (unlikely(State.Src == D3DBLEND_BOTHSRCALPHA)) {
+      State.Src = D3DBLEND_SRCALPHA;
+      State.Dst = D3DBLEND_INVSRCALPHA;
+    }
+    else if (unlikely(State.Src == D3DBLEND_BOTHINVSRCALPHA)) {
+      State.Src = D3DBLEND_INVSRCALPHA;
+      State.Dst = D3DBLEND_SRCALPHA;
+    }
+  }
+
   inline bool InvalidSampler(DWORD Sampler) {
     if (Sampler > 15 && Sampler < D3DDMAPSAMPLER)
       return true;
