@@ -74,6 +74,11 @@ namespace dxvk {
     // Using MANAGED pool with DYNAMIC usage is illegal
     if (IsPoolManaged(pDesc->Pool) && (pDesc->Usage & D3DUSAGE_DYNAMIC))
       return D3DERR_INVALIDCALL;
+
+    // RENDERTARGET and DEPTHSTENCIL must be default pool
+    constexpr DWORD incompatibleUsages = D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL;
+    if (pDesc->Pool != D3DPOOL_DEFAULT && (pDesc->Usage & incompatibleUsages))
+      return D3DERR_INVALIDCALL;
     
     // Use the maximum possible mip level count if the supplied
     // mip level count is either unspecified (0) or invalid
