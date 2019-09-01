@@ -9,7 +9,7 @@ if dxvk_compiler.get_id() == 'msvc'
   dxvk_cpp_std='c++latest'
   dxvk_msvc=true
 else
-  dxvk_cpp_std='c++1z'
+  dxvk_cpp_std='c++17'
   dxvk_msvc=false
 endif
 
