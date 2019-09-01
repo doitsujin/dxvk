@@ -518,8 +518,18 @@ namespace dxvk {
       normal = m_module.opMatrixTimesVector(m_vec3Type, nrmMtx, normal);
 
       // Some games rely no normals not being normal.
-      if (m_vsKey.NormalizeNormals)
+      if (m_vsKey.NormalizeNormals) {
+        uint32_t bool_t = m_module.defBoolType();
+        uint32_t bool3_t = m_module.defVectorType(bool_t, 3);
+
+        uint32_t isZeroNormal = m_module.opAll(bool_t, m_module.opFOrdEqual(bool3_t, normal, m_module.constvec3f32(0.0f, 0.0f, 0.0f)));
+
+        std::array<uint32_t, 3> members = { isZeroNormal, isZeroNormal, isZeroNormal };
+        uint32_t isZeroNormal3 = m_module.opCompositeConstruct(bool3_t, members.size(), members.data());
+
         normal = m_module.opNormalize(m_vec3Type, normal);
+        normal = m_module.opSelect(m_vec3Type, isZeroNormal3, m_module.constvec3f32(0.0f, 0.0f, 0.0f), normal);
+      }
 
       vtx         = m_module.opVectorTimesMatrix(m_vec4Type, vtx, wv);
       gl_Position = m_module.opVectorTimesMatrix(m_vec4Type, vtx, m_vs.constants.proj);
