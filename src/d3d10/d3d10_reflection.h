@@ -4,6 +4,7 @@
 
 #include "d3d10_include.h"
 
+#include "../util/util_targetver.h"
 #include <d3d10shader.h>
 #include <d3d11shader.h>
 

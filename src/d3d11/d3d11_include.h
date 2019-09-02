@@ -2,6 +2,7 @@
 
 #include "../dxgi/dxgi_include.h"
 
+#include "../util/util_targetver.h"
 #include <d3d11_1.h>
 
 // This is not defined in the mingw headers

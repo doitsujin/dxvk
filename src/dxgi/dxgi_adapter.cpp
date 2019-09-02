@@ -1,6 +1,7 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "../util/util_targetver.h"
 #include <d3d10_1.h>
 
 #include "dxgi_adapter.h"

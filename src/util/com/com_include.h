@@ -6,7 +6,7 @@
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 #endif // __GNUC__
 
-#define WIN32_LEAN_AND_MEAN
+#include "../util_targetver.h"
 #include <windows.h>
 #include <unknwn.h>
 

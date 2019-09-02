@@ -27,6 +27,7 @@
 #include "../util/util_math.h"
 #include "../util/util_string.h"
 
+#include "../util/util_targetver.h"
 #include <dxgi1_4.h>
 
 // For some reason, these are not exposed
