@@ -1127,7 +1127,9 @@ namespace dxvk {
   }
 
   VkExtent2D D3D9SwapChainEx::GetPresentExtent() {
-    return VkExtent2D{ uint32_t(m_dstRect.right - m_dstRect.left), uint32_t(m_dstRect.bottom - m_dstRect.top) };
+    return VkExtent2D {
+      std::max<uint32_t>(m_dstRect.right  - m_dstRect.left, 1u),
+      std::max<uint32_t>(m_dstRect.bottom - m_dstRect.top,  1u) };
   }
 
   void    D3D9SwapChainEx::UpdateMonitorInfo() {
