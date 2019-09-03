@@ -2834,9 +2834,19 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
 
   void DxsoCompiler::emitLinkerOutputSetup() {
+    bool outputtedColor0 = false;
+    bool outputtedColor1 = false;
+
     for (uint32_t i = 0; i < m_osgn.elemCount; i++) {
       const auto& elem = m_osgn.elems[i];
       const uint32_t slot = elem.slot;
+
+      if (elem.semantic.usage == DxsoUsage::Color) {
+        if (elem.semantic.usageIndex == 0)
+          outputtedColor0 = true;
+        else
+          outputtedColor1 = true;
+      }
       
       DxsoRegisterInfo info;
       info.type.ctype   = DxsoScalarType::Float32;
@@ -2945,6 +2955,35 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       m_module.opStore(outputPtr.id, workingReg.id);
     }
+
+    auto OutputZero = [&](DxsoSemantic semantic) {
+      DxsoRegisterInfo info;
+      info.type.ctype   = DxsoScalarType::Float32;
+      info.type.ccount  = 4;
+      info.type.alength = 1;
+      info.sclass       = spv::StorageClassOutput;
+
+      uint32_t slot = RegisterLinkerSlot(semantic);
+
+      uint32_t outputPtr = emitNewVariableDefault(info,
+        m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f));
+
+      m_module.decorateLocation(outputPtr, slot);
+
+      std::string name =
+        str::format("out_", semantic.usage, semantic.usageIndex, "_zero");
+
+      m_module.setDebugName(outputPtr, name.c_str());
+
+      m_interfaceSlots.outputSlots |= slot;
+      m_entryPointInterfaces.push_back(outputPtr);
+    };
+
+    if (!outputtedColor0)
+      OutputZero(DxsoSemantic{ DxsoUsage::Color, 0 });
+
+    if (!outputtedColor1)
+      OutputZero(DxsoSemantic{ DxsoUsage::Color, 1 });
   }
 
 
