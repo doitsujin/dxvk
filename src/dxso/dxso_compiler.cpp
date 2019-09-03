@@ -642,7 +642,7 @@ namespace dxvk {
       spv::Dim dimensionality;
       VkImageViewType viewType;
 
-      const char* suffix = "2d";
+      const char* suffix = "_2d";
 
       switch (type) {
         default:
@@ -653,14 +653,14 @@ namespace dxvk {
           break;
 
         case SamplerTypeTextureCube:
-          suffix = "cube";
+          suffix = "_cube";
           sampler.dimensions = 3;
           dimensionality = spv::DimCube;
           viewType = VK_IMAGE_VIEW_TYPE_CUBE;
           break;
 
         case SamplerTypeTexture3D:
-          suffix = "3d";
+          suffix = "_3d";
           sampler.dimensions = 3;
           dimensionality = spv::Dim3D;
           viewType = VK_IMAGE_VIEW_TYPE_3D;
