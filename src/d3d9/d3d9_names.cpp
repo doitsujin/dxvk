@@ -107,6 +107,11 @@ namespace dxvk {
       ENUM_NAME(D3D9Format::AL16);
       ENUM_NAME(D3D9Format::R16);
 
+      ENUM_NAME(D3D9Format::EXT1);
+      ENUM_NAME(D3D9Format::FXT1);
+      ENUM_NAME(D3D9Format::GXT1);
+      ENUM_NAME(D3D9Format::HXT1);
+
       ENUM_DEFAULT(e);
     }
   }

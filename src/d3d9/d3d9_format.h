@@ -113,6 +113,11 @@ namespace dxvk {
     SSAA = MAKEFOURCC('S', 'S', 'A', 'A'),
     AL16 = MAKEFOURCC('A', 'L', '1', '6'),
     R16  = MAKEFOURCC(' ', 'R', '1', '6'),
+
+    EXT1 = MAKEFOURCC('E', 'X', 'T', '1'),
+    FXT1 = MAKEFOURCC('F', 'X', 'T', '1'),
+    GXT1 = MAKEFOURCC('G', 'X', 'T', '1'),
+    HXT1 = MAKEFOURCC('H', 'X', 'T', '1'),
   };
 
   inline D3D9Format EnumerateFormat(D3DFORMAT format) {
