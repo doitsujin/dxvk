@@ -1,7 +1,14 @@
 #pragma once
 
 #ifndef _MSC_VER
+#if defined(__WINE__) && defined(__clang__)
+#pragma push_macro("_WIN32")
+#undef _WIN32
+#endif
 #include <x86intrin.h>
+#if defined(__WINE__) && defined(__clang__)
+#pragma pop_macro("_WIN32")
+#endif
 #else
 #include <intrin.h>
 #endif

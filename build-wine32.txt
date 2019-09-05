@@ -8,7 +8,7 @@ strip = 'strip'
 needs_exe_wrapper = true
 
 c_args=['-m32', '-msse', '-msse2', '-fvisibility=hidden']
-cpp_args=['-m32', '--no-gnu-unique', '-msse', '-msse2', '-fvisibility=hidden', '-fvisibility-inlines-hidden', '-D__WIDL_objidl_generated_name_0000000C=']
+cpp_args=['-m32', '-msse', '-msse2', '-fvisibility=hidden', '-fvisibility-inlines-hidden', '-D__WIDL_objidl_generated_name_0000000C=']
 cpp_link_args=['-m32', '-mwindows']
 
 [host_machine]
