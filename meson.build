@@ -1,8 +1,12 @@
 project('dxvk', ['c', 'cpp'], version : 'v1.3.3', meson_version : '>= 0.46')
 
+pre_args = [ ]
+cpp_args = [ ]
+link_args = [ ]
+
 cpu_family = target_machine.cpu_family()
 
-add_project_arguments('-DNOMINMAX', language : 'cpp')
+cpp_args += '-DNOMINMAX'
 
 dxvk_compiler = meson.get_compiler('cpp')
 if dxvk_compiler.get_id() == 'msvc'
@@ -14,7 +18,7 @@ else
 endif
 
 if dxvk_compiler.get_id() == 'msvc'
-  add_project_arguments('/std:' + dxvk_cpp_std, language : 'cpp')
+  cpp_args += '/std:' + dxvk_cpp_std
 endif
 
 dxvk_include_path = include_directories('./include')
@@ -33,9 +37,19 @@ dxvk_winelib = dxvk_compiler.compiles(code, name: 'winelib check')
 dxvk_extradep = [ ]
 
 if dxvk_winelib
-  if dxvk_compiler.has_argument('--no-gnu-unique')
-    add_project_arguments('--no-gnu-unique', language : ['cpp'])
+  if cpu_family == 'x86'
+    pre_args += [ '-m32', '-msse', '-msse2' ]
+    link_args += '-m32'
+  elif cpu_family == 'x86_64'
+    pre_args += '-m64'
+    link_args += '-m64'
   endif
+  if dxvk_compiler.has_argument('--no-gnu-unique')
+    cpp_args += '--no-gnu-unique'
+  endif
+  pre_args += '-fvisibility=hidden'
+  cpp_args += [ '-fvisibility-inlines-hidden', '-D__WIDL_objidl_generated_name_0000000C=' ]
+  link_args += '-mwindows'
   wrc = find_program('wrc')
   lib_vulkan  = declare_dependency(link_args: [ '-lwinevulkan' ])
   lib_d3d11   = declare_dependency(link_args: [ '-ld3d11' ])
@@ -55,10 +69,10 @@ else
   endif
   if cpu_family == 'x86'
     if dxvk_compiler.has_link_argument('-Wl,--add-stdcall-alias')
-      add_global_link_arguments('-Wl,--add-stdcall-alias', language: 'cpp')
+      link_args += '-Wl,--add-stdcall-alias'
     endif
     if dxvk_compiler.has_link_argument('-Wl,--enable-stdcall-fixup')
-      add_global_link_arguments('-Wl,--enable-stdcall-fixup', language: 'cpp')
+      link_args += '-Wl,--enable-stdcall-fixup'
     endif
   endif
 
@@ -84,6 +98,16 @@ else
 
   def_spec_ext = '.def'
 endif
+
+foreach a : pre_args
+  add_project_arguments(a, language : ['c', 'cpp'])
+endforeach
+foreach a : cpp_args
+  add_project_arguments(a, language : ['cpp'])
+endforeach
+foreach a : link_args
+  add_global_link_arguments(a, language: ['cpp'])
+endforeach
 
 glsl_compiler = find_program('glslangValidator')
 glsl_generator = generator(glsl_compiler,
