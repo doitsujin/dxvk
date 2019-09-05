@@ -33,6 +33,9 @@ dxvk_winelib = dxvk_compiler.compiles(code, name: 'winelib check')
 dxvk_extradep = [ ]
 
 if dxvk_winelib
+  if dxvk_compiler.has_argument('--no-gnu-unique')
+    add_project_arguments('--no-gnu-unique', language : ['cpp'])
+  endif
   wrc = find_program('wrc')
   lib_vulkan  = declare_dependency(link_args: [ '-lwinevulkan' ])
   lib_d3d11   = declare_dependency(link_args: [ '-ld3d11' ])
