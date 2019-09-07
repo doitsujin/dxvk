@@ -2461,7 +2461,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateVertexShader(
     const DWORD*                   pFunction,
           IDirect3DVertexShader9** ppShader) {
-    InitReturnPtr(ppShader);
+    // CreateVertexShader does not init the
+    // return ptr unlike CreatePixelShader
 
     if (unlikely(ppShader == nullptr))
       return D3DERR_INVALIDCALL;
