@@ -703,15 +703,22 @@ namespace dxvk {
         SamplerTypeFromTextureType(type);
 
       DclSampler(idx, samplerType, false, false);
-      // We could also be depth compared!
-      DclSampler(idx, samplerType, true, false);
+
+      if (samplerType != SamplerTypeTexture3D) {
+        // We could also be depth compared!
+        DclSampler(idx, samplerType, true, false);
+      }
     }
     else {
       // Could be any of these!
       // We will check with the spec constant at sample time.
       for (uint32_t i = 0; i < SamplerTypeCount; i++) {
-        for (uint32_t j = 0; j < 2; j++)
-          DclSampler(idx, (DxsoSamplerType)i, j == 1, true);
+        auto samplerType = static_cast<DxsoSamplerType>(i);
+
+        DclSampler(idx, samplerType, false, true);
+
+        if (samplerType != SamplerTypeTexture3D)
+          DclSampler(idx, samplerType, true, true);
       }
     }
     
@@ -2568,22 +2575,28 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     };
 
     auto SampleType = [&](DxsoSamplerType samplerType) {
-      uint32_t colorLabel  = m_module.allocateId();
-      uint32_t depthLabel  = m_module.allocateId();
-      uint32_t endLabel    = m_module.allocateId();
+      // Only do the check for depth comp. samplers
+      // if we aren't a 3D texture
+      if (samplerType != SamplerTypeTexture3D) {
+        uint32_t colorLabel  = m_module.allocateId();
+        uint32_t depthLabel  = m_module.allocateId();
+        uint32_t endLabel    = m_module.allocateId();
 
-      m_module.opSelectionMerge(endLabel, spv::SelectionControlMaskNone);
-      m_module.opBranchConditional(sampler.depthSpecConst, depthLabel, colorLabel);
+        m_module.opSelectionMerge(endLabel, spv::SelectionControlMaskNone);
+        m_module.opBranchConditional(sampler.depthSpecConst, depthLabel, colorLabel);
 
-      m_module.opLabel(colorLabel);
-      SampleImage(texcoordVar, sampler.color[samplerType], false);
-      m_module.opBranch(endLabel);
+        m_module.opLabel(colorLabel);
+        SampleImage(texcoordVar, sampler.color[samplerType], false);
+        m_module.opBranch(endLabel);
 
-      m_module.opLabel(depthLabel);
-      SampleImage(texcoordVar, sampler.depth[samplerType], true);
-      m_module.opBranch(endLabel);
+        m_module.opLabel(depthLabel);
+        SampleImage(texcoordVar, sampler.depth[samplerType], true);
+        m_module.opBranch(endLabel);
 
-      m_module.opLabel(endLabel);
+        m_module.opLabel(endLabel);
+      }
+      else
+        SampleImage(texcoordVar, sampler.color[samplerType], false);
     };
 
     if (m_programInfo.majorVersion() >= 2) {
