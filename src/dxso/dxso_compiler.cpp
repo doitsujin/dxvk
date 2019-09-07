@@ -45,13 +45,13 @@ namespace dxvk {
       m_rRegs.at(i)  = DxsoRegisterPointer{ };
 
     for (uint32_t i = 0; i < m_cFloat.size(); i++)
-      m_cFloat.at(i) = DxsoRegisterPointer{ };
+      m_cFloat.at(i) = 0;
 
     for (uint32_t i = 0; i < m_cInt.size(); i++)
-      m_cInt.at(i)   = DxsoRegisterPointer{ };
+      m_cInt.at(i)   = 0;
 
     for (uint32_t i = 0; i < m_cBool.size(); i++)
-      m_cBool.at(i)  = DxsoRegisterPointer{ };
+      m_cBool.at(i)  = 0;
 
     m_vs.addr        = DxsoRegisterPointer{ };
     m_vs.oPos        = DxsoRegisterPointer{ };
@@ -820,32 +820,27 @@ namespace dxvk {
         result.type = { DxsoScalarType::Float32, 4 };
 
         if (!relative) {
-          if (m_cFloat.at(reg.id.num).id != 0)
-            result.id = m_module.opLoad(getVectorTypeId(result.type), m_cFloat.at(reg.id.num).id);
+          result.id = m_cFloat.at(reg.id.num);
           m_meta.maxConstIndexF = std::max(m_meta.maxConstIndexF, reg.id.num + 1);
           // TODO: Remove me for proper SWVP impl.
           m_meta.maxConstIndexF = std::min(m_meta.maxConstIndexF, getFloatConstantCount());
         } else {
           m_meta.maxConstIndexF = getFloatConstantCount();
           m_meta.needsConstantCopies |= m_moduleInfo.options.strictConstantCopies
-                                     || m_cFloat.at(reg.id.num).id != 0;
+                                     || m_cFloat.at(reg.id.num) != 0;
         }
         break;
       
       case DxsoRegisterType::ConstInt:
         result.type = { DxsoScalarType::Sint32, 4 };
-
-        if (m_cInt.at(reg.id.num).id != 0)
-          result.id = m_module.opLoad(getVectorTypeId(result.type), m_cInt.at(reg.id.num).id);
+        result.id = m_cInt.at(reg.id.num);
         m_meta.maxConstIndexI = std::max(m_meta.maxConstIndexI, reg.id.num + 1);
         m_meta.maxConstIndexI = std::min(m_meta.maxConstIndexI, caps::MaxOtherConstants);
         break;
       
       case DxsoRegisterType::ConstBool:
         result.type = { DxsoScalarType::Bool, 1 };
-
-        if (m_cBool.at(reg.id.num).id != 0)
-          result.id = m_module.opLoad(getVectorTypeId(result.type), m_cBool.at(reg.id.num).id);
+        result.id = m_cBool.at(reg.id.num);
         m_meta.maxConstIndexB = std::max(m_meta.maxConstIndexB, reg.id.num + 1);
         m_meta.maxConstIndexB = std::min(m_meta.maxConstIndexB, caps::MaxOtherConstants);
         break;
@@ -1533,20 +1528,11 @@ namespace dxvk {
   void DxsoCompiler::emitDefF(const DxsoInstructionContext& ctx) {
     const float* data = ctx.def.float32;
 
-    DxsoRegisterInfo reg;
-    reg.type.ctype   = DxsoScalarType::Float32;
-    reg.type.ccount  = 4;
-    reg.type.alength = 1;
-    reg.sclass       = spv::StorageClassPrivate;
+    uint32_t constId = m_module.constvec4f32(data[0], data[1], data[2], data[3]);
+    m_cFloat.at(ctx.dst.id.num) = constId;
 
-    const uint32_t num = ctx.dst.id.num;
-    auto& ptr = m_cFloat.at(num);
-    ptr.type  = DxsoVectorType{ DxsoScalarType::Float32, 4 };
-    ptr.id    = this->emitNewVariableDefault(reg,
-      m_module.constvec4f32(data[0], data[1], data[2], data[3]));
-
-    std::string name = str::format("cF", num, "_def");
-    m_module.setDebugName(ptr.id, name.c_str());
+    std::string name = str::format("cF", ctx.dst.id.num, "_def");
+    m_module.setDebugName(constId, name.c_str());
 
     DxsoDefinedConstant constant;
     constant.uboIdx = ctx.dst.id.num;
@@ -1558,39 +1544,21 @@ namespace dxvk {
   void DxsoCompiler::emitDefI(const DxsoInstructionContext& ctx) {
     const int32_t* data = ctx.def.int32;
 
-    DxsoRegisterInfo reg;
-    reg.type.ctype   = DxsoScalarType::Sint32;
-    reg.type.ccount  = 4;
-    reg.type.alength = 1;
-    reg.sclass       = spv::StorageClassPrivate;
+    uint32_t constId = m_module.constvec4i32(data[0], data[1], data[2], data[3]);
+    m_cInt.at(ctx.dst.id.num) = constId;
 
-    const uint32_t num = ctx.dst.id.num;
-    auto& ptr = m_cInt.at(num);
-    ptr.type  = DxsoVectorType{ DxsoScalarType::Sint32, 4 };
-    ptr.id    = this->emitNewVariableDefault(reg,
-      m_module.constvec4i32(data[0], data[1], data[2], data[3]));
-
-    std::string name = str::format("cI", num, "_def");
-    m_module.setDebugName(ptr.id, name.c_str());
+    std::string name = str::format("cI", ctx.dst.id.num, "_def");
+    m_module.setDebugName(constId, name.c_str());
   }
 
   void DxsoCompiler::emitDefB(const DxsoInstructionContext& ctx) {
     const int32_t* data = ctx.def.int32;
 
-    DxsoRegisterInfo reg;
-    reg.type.ctype   = DxsoScalarType::Bool;
-    reg.type.ccount  = 1;
-    reg.type.alength = 1;
-    reg.sclass       = spv::StorageClassPrivate;
+    uint32_t constId = m_module.constBool(data[0] != 0);
+    m_cBool.at(ctx.dst.id.num) = constId;
 
-    const uint32_t num = ctx.dst.id.num;
-    auto& ptr = m_cBool.at(num);
-    ptr.type  = DxsoVectorType{ DxsoScalarType::Bool, 1 };
-    ptr.id    = this->emitNewVariableDefault(reg,
-      m_module.constBool(data[0] != 0));
-
-    std::string name = str::format("cB", num, "_def");
-    m_module.setDebugName(ptr.id, name.c_str());
+    std::string name = str::format("cB", ctx.dst.id.num, "_def");
+    m_module.setDebugName(constId, name.c_str());
   }
 
 
