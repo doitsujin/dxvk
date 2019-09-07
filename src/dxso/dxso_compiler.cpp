@@ -898,7 +898,7 @@ namespace dxvk {
 
       uint32_t bitfield = m_module.opLoad(typeId, ptrId);
       uint32_t bit = m_module.opBitFieldUExtract(
-        typeId, bitfield, relativeIdx, m_module.constu32(1));
+        typeId, bitfield, relativeIdx, m_module.consti32(1));
 
       result.id = m_module.opINotEqual(
         getVectorTypeId(result.type),
@@ -2616,8 +2616,8 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       uint32_t typeId = m_module.defIntType(32, 0);
 
-      uint32_t offset  = m_module.constu32(samplerIdx * 2);
-      uint32_t bitCnt  = m_module.constu32(2);
+      uint32_t offset  = m_module.consti32(samplerIdx * 2);
+      uint32_t bitCnt  = m_module.consti32(2);
       uint32_t type    = m_module.opBitFieldUExtract(typeId, m_ps.samplerTypeSpec, offset, bitCnt);
 
       m_module.opSelectionMerge(switchEndLabel, spv::SelectionControlMaskNone);
