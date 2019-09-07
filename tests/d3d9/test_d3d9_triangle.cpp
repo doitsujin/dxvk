@@ -39,10 +39,13 @@ struct PS_OUTPUT {
   float4 Colour   : COLOR;
 };
 
+sampler g_texDepth : register( s0 );
+
 PS_OUTPUT main( VS_OUTPUT IN ) {
   PS_OUTPUT OUT;
 
-  OUT.Colour = float4(0.906f, 0.278f, 0.235f, 1.0f);
+  OUT.Colour  = float4(0.906f, 0.278f, 0.235f, 1.0f);
+  OUT.Colour *= tex2D(g_texDepth, float3(-1000, -1000, 0));
 
   return OUT;
 }
@@ -122,6 +125,16 @@ public:
 
     m_device->SetVertexShader(m_vs.ptr());
     m_device->SetPixelShader(m_ps.ptr());
+
+    Com<IDirect3DTexture9> depthTexture;
+    status = m_device->CreateTexture(1, 1, 1, D3DUSAGE_DEPTHSTENCIL, D3DFMT_D24S8, D3DPOOL_DEFAULT, &depthTexture, nullptr);
+    if (FAILED(status))
+      throw DxvkError("Failed to create depth texture");
+
+    m_device->SetTexture(0, depthTexture.ptr());
+    m_device->SetSamplerState(0, D3DSAMP_ADDRESSU,    D3DTADDRESS_BORDER);
+    m_device->SetSamplerState(0, D3DSAMP_ADDRESSV,    D3DTADDRESS_BORDER);
+    m_device->SetSamplerState(0, D3DSAMP_BORDERCOLOR, D3DCOLOR_RGBA(128, 255, 255, 255));
 
     std::array<float, 9> vertices = {
       0.0f, 0.5f, 0.0f,
