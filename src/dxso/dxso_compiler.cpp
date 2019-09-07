@@ -802,8 +802,7 @@ namespace dxvk {
   }
 
 
-  DxsoRegisterPointer DxsoCompiler::emitConstantPtr(
-            DxsoRegisterType  type,
+  DxsoRegisterValue DxsoCompiler::emitLoadConstant(
       const DxsoBaseRegister& reg,
       const DxsoBaseRegister* relative) {
     // struct cBuffer_t {
@@ -814,91 +813,79 @@ namespace dxvk {
     //   int32_t  i[16];        1
     //   uint32_t boolBitmask;  2
     // }
+    DxsoRegisterValue result = { };
 
-    // Return def if we have one.
-    if (relative == nullptr) {
-      switch (type) {
-        case DxsoRegisterType::Const:
+    switch (reg.id.type) {
+      case DxsoRegisterType::Const:
+        result.type = { DxsoScalarType::Float32, 4 };
+
+        if (!relative) {
+          if (m_cFloat.at(reg.id.num).id != 0)
+            result.id = m_module.opLoad(getVectorTypeId(result.type), m_cFloat.at(reg.id.num).id);
           m_meta.maxConstIndexF = std::max(m_meta.maxConstIndexF, reg.id.num + 1);
           // TODO: Remove me for proper SWVP impl.
           m_meta.maxConstIndexF = std::min(m_meta.maxConstIndexF, getFloatConstantCount());
-          if (m_cFloat.at(reg.id.num).id != 0)
-            return m_cFloat.at(reg.id.num);
-          break;
-        
-        case DxsoRegisterType::ConstInt:
-          m_meta.maxConstIndexI = std::max(m_meta.maxConstIndexI, reg.id.num + 1);
-          m_meta.maxConstIndexI = std::min(m_meta.maxConstIndexI, caps::MaxOtherConstants);
-          if (m_cInt.at(reg.id.num).id != 0)
-            return m_cInt.at(reg.id.num);
-          break;
-        
-        case DxsoRegisterType::ConstBool:
-          m_meta.maxConstIndexB = std::max(m_meta.maxConstIndexB, reg.id.num + 1);
-          m_meta.maxConstIndexB = std::min(m_meta.maxConstIndexB, caps::MaxOtherConstants);
-          if (m_cBool.at(reg.id.num).id != 0) // Const Bool
-            return m_cBool.at(reg.id.num);
-          break;
-        
-        default:;
-      }
+        } else {
+          m_meta.maxConstIndexF = getFloatConstantCount();
+          m_meta.needsConstantCopies |= m_moduleInfo.options.strictConstantCopies
+                                     || m_cFloat.at(reg.id.num).id != 0;
+        }
+        break;
+      
+      case DxsoRegisterType::ConstInt:
+        result.type = { DxsoScalarType::Sint32, 4 };
+
+        if (m_cInt.at(reg.id.num).id != 0)
+          result.id = m_module.opLoad(getVectorTypeId(result.type), m_cInt.at(reg.id.num).id);
+        m_meta.maxConstIndexI = std::max(m_meta.maxConstIndexI, reg.id.num + 1);
+        m_meta.maxConstIndexI = std::min(m_meta.maxConstIndexI, caps::MaxOtherConstants);
+        break;
+      
+      case DxsoRegisterType::ConstBool:
+        result.type = { DxsoScalarType::Bool, 1 };
+
+        if (m_cBool.at(reg.id.num).id != 0)
+          result.id = m_module.opLoad(getVectorTypeId(result.type), m_cBool.at(reg.id.num).id);
+        m_meta.maxConstIndexB = std::max(m_meta.maxConstIndexB, reg.id.num + 1);
+        m_meta.maxConstIndexB = std::min(m_meta.maxConstIndexB, caps::MaxOtherConstants);
+        break;
+      
+      default:;
     }
 
-    DxsoRegisterPointer result;
-
-    uint32_t structIdx = 0;
-    if      (type == DxsoRegisterType::Const) {
-      structIdx = m_module.consti32(0);
-      result.type = { DxsoScalarType::Float32, 4 };
-    }
-    else if (type == DxsoRegisterType::ConstInt) {
-      structIdx = m_module.consti32(1);
-      result.type = { DxsoScalarType::Sint32, 4 };
-    }
-    else { // Const Bool
-      structIdx = m_module.consti32(2);
-      result.type = { DxsoScalarType::Bool, 1 };
-    }
+    if (result.id)
+      return result;
 
     uint32_t relativeIdx = this->emitArrayIndex(reg.id.num, relative);
 
-    // Need to do special things to read the bitmask...
-    uint32_t arrayIdx       = type != DxsoRegisterType::ConstBool
-      ? relativeIdx : m_module.consti32(0);
+    if (reg.id.type != DxsoRegisterType::ConstBool) {
+      uint32_t structIdx = reg.id.type == DxsoRegisterType::Const
+        ? m_module.constu32(0)
+        : m_module.constu32(1);
 
-    DxsoVectorType readType = type != DxsoRegisterType::ConstBool
-      ? result.type : DxsoVectorType{ DxsoScalarType::Uint32, 1 };
+      std::array<uint32_t, 2> indices = { structIdx, relativeIdx };
 
-    uint32_t indexCount = type != DxsoRegisterType::ConstBool
-      ? 2 : 1;
+      uint32_t typeId = getVectorTypeId(result.type);
+      uint32_t ptrId = m_module.opAccessChain(
+        m_module.defPointerType(typeId, spv::StorageClassUniform),
+        m_cBuffer, indices.size(), indices.data());
 
-    uint32_t indices[2] = { structIdx, arrayIdx };
+      result.id = m_module.opLoad(typeId, ptrId);
+    } else {
+      uint32_t typeId = getScalarTypeId(DxsoScalarType::Uint32);
 
-    uint32_t typeId = getVectorTypeId(readType);
-    result.id = m_module.opAccessChain(
-      m_module.defPointerType(typeId, spv::StorageClassUniform),
-      m_cBuffer, indexCount, indices);
+      uint32_t index = m_module.constu32(2);
+      uint32_t ptrId = m_module.opAccessChain(
+        m_module.defPointerType(typeId, spv::StorageClassUniform),
+        m_cBuffer, 1, &index);
 
-    if (type == DxsoRegisterType::ConstBool) {
-      // Technically this is slightly leaky/repeaty, but hopefully,
-      // the optimizer will catch it.
-      // TODO: A better way of doing this.
+      uint32_t bitfield = m_module.opLoad(typeId, ptrId);
+      uint32_t bit = m_module.opBitFieldUExtract(
+        typeId, bitfield, relativeIdx, m_module.constu32(1));
 
-      uint32_t var = m_module.opLoad(typeId, result.id);
-
-      var = m_module.opBitFieldUExtract(
-        typeId, var, relativeIdx, m_module.constu32(1));
-
-      typeId = getVectorTypeId(result.type);
-
-      var = m_module.opINotEqual(typeId,
-        var, m_module.constu32(0));
-
-      result = this->emitRegisterPtr(
-        "boolIndex", DxsoScalarType::Bool, 1, 0,
-        spv::StorageClassPrivate);
-
-      m_module.opStore(result.id, var);
+      result.id = m_module.opINotEqual(
+        getVectorTypeId(result.type),
+        bit, m_module.constu32(0));
     }
 
     return result;
@@ -934,14 +921,6 @@ namespace dxvk {
   DxsoRegisterPointer DxsoCompiler::emitGetOperandPtr(
       const DxsoBaseRegister& reg,
       const DxsoBaseRegister* relative) {
-    // Only float constants (+ io regs) may be indexed.
-    if (relative != nullptr && reg.id.type == DxsoRegisterType::Const) {
-      m_meta.maxConstIndexF = getFloatConstantCount();
-
-      if (m_moduleInfo.options.strictConstantCopies || m_cFloat.at(reg.id.num).id != 0)
-        m_meta.needsConstantCopies = true;
-    }
-
     switch (reg.id.type) {
       case DxsoRegisterType::Temp: {
         DxsoRegisterPointer& ptr = m_rRegs.at(reg.id.num);
@@ -964,11 +943,6 @@ namespace dxvk {
 
         return this->emitInputPtr(false, reg, relative);
       }
-
-      case DxsoRegisterType::Const:
-      case DxsoRegisterType::ConstInt:
-      case DxsoRegisterType::ConstBool:
-        return this->emitConstantPtr(reg.id.type, reg, relative);
 
       case DxsoRegisterType::PixelTexcoord:
       case DxsoRegisterType::Texture: {
@@ -1305,7 +1279,15 @@ namespace dxvk {
   DxsoRegisterValue DxsoCompiler::emitRegisterLoadRaw(
       const DxsoBaseRegister& reg,
       const DxsoBaseRegister* relative) {
-    return emitValueLoad(emitGetOperandPtr(reg, relative));
+    switch (reg.id.type) {
+      case DxsoRegisterType::Const:
+      case DxsoRegisterType::ConstInt:
+      case DxsoRegisterType::ConstBool:
+        return emitLoadConstant(reg, relative);
+      
+      default:
+        return emitValueLoad(emitGetOperandPtr(reg, relative));
+    }
   }
 
 

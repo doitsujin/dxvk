@@ -437,8 +437,7 @@ namespace dxvk {
             spv::StorageClass storageClass = spv::StorageClassPrivate,
             spv::BuiltIn      builtIn      = spv::BuiltInMax);
 
-    DxsoRegisterPointer emitConstantPtr(
-            DxsoRegisterType  type,
+    DxsoRegisterValue emitLoadConstant(
       const DxsoBaseRegister& reg,
       const DxsoBaseRegister* relative);
 
