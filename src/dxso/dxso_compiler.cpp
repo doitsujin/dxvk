@@ -866,6 +866,21 @@ namespace dxvk {
         m_cBuffer, indices.size(), indices.data());
 
       result.id = m_module.opLoad(typeId, ptrId);
+
+      if (relative) {
+        uint32_t constCount = m_module.constu32(getFloatConstantCount());
+
+        // Expand condition to bvec4 since the result has four components
+        uint32_t cond = m_module.opULessThan(m_module.defBoolType(), relativeIdx, constCount);
+        std::array<uint32_t, 4> condIds = { cond, cond, cond, cond };
+
+        cond = m_module.opCompositeConstruct(
+          m_module.defVectorType(m_module.defBoolType(), 4),
+          condIds.size(), condIds.data());
+
+        result.id = m_module.opSelect(typeId, cond, result.id,
+          m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f));
+      }
     } else {
       uint32_t typeId = getScalarTypeId(DxsoScalarType::Uint32);
 
