@@ -408,6 +408,12 @@ namespace dxvk {
     if (GetPackedDepthStencilFormat(m_desc.Format))
       return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
     
+    // The only way to write to compressed textures on the GPU is by
+    // using copy commands, so we might as well copy to a buffer to
+    // prevent accidentally hitting a slow path if games misuse this.
+    if (imageFormatInfo(pImageInfo->format)->flags.test(DxvkFormatFlag::BlockCompressed))
+      return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
+
     // Images that can be read by the host should be mapped directly in
     // order to avoid expensive synchronization with the GPU. This does
     // however require linear tiling, which may not be supported for all
@@ -493,8 +499,6 @@ namespace dxvk {
   }
   
   
-
-
   D3D11DXGISurface::D3D11DXGISurface(
           ID3D11Resource*     pResource,
           D3D11CommonTexture* pTexture)
