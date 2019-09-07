@@ -2529,12 +2529,16 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       uint32_t projDivider = 0;
 
+      auto GetProjectionValue = [&]() {
+        uint32_t w = 3;
+        return m_module.opCompositeExtract(
+          m_module.defFloatType(32), texcoordVar.id, 1, &w);
+      };
+
       if (opcode == DxsoOpcode::Tex
         && m_programInfo.majorVersion() >= 2) {
         if (ctx.instruction.specificData.texld == DxsoTexLdMode::Project) {
-          uint32_t w = 3;
-          projDivider = m_module.opCompositeExtract(
-            m_module.defFloatType(32), texcoordVar.id, 1, &w);
+          projDivider = GetProjectionValue();
         }
         else if (ctx.instruction.specificData.texld == DxsoTexLdMode::Bias) {
           uint32_t w = 3;
@@ -2542,6 +2546,16 @@ void DxsoCompiler::emitControlFlowGenericLoop(
             m_module.defFloatType(32), texcoordVar.id, 1, &w);
           imageOperands.flags |= spv::ImageOperandsBiasMask;
         }
+      }
+
+      if (m_programInfo.majorVersion() == 1 && depth) {
+        // Apparently this gets projected automagically..?
+        // I am unsure whether this applies to all
+        // depth comp. samples in PS 1.x
+
+        // Come back to me if there are shadow
+        // glitches in PS 1.x games!
+        projDivider = GetProjectionValue();
       }
 
       uint32_t reference = 0;
