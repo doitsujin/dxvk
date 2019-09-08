@@ -1155,41 +1155,51 @@ namespace dxvk {
           case D3DTOP_SELECTARG1:
             dst = arg[1];
             break;
+
           case D3DTOP_SELECTARG2:
             dst = arg[2];
             break;
 
           case D3DTOP_MODULATE4X:
-          case D3DTOP_MODULATE2X:
-          case D3DTOP_MODULATE:
             dst = m_module.opFMul(m_vec4Type, arg[1], arg[2]);
-            if (op == D3DTOP_MODULATE4X || op == D3DTOP_MODULATE2X) {
-              float m = op == D3DTOP_MODULATE4X ? 4.0f : 2.0f;
-              dst = m_module.opFMul(m_vec4Type, dst,
-                m_module.constvec4f32(m, m, m, m));
-            }
+            dst = m_module.opVectorTimesScalar(m_vec4Type, dst, m_module.constf32(4.0f));
             break;
 
-          // Fallthrough...
+          case D3DTOP_MODULATE2X:
+            dst = m_module.opFMul(m_vec4Type, arg[1], arg[2]);
+            dst = m_module.opVectorTimesScalar(m_vec4Type, dst, m_module.constf32(2.0f));
+            break;
+
+          case D3DTOP_MODULATE:
+            dst = m_module.opFMul(m_vec4Type, arg[1], arg[2]);
+            break;
+
           case D3DTOP_ADDSIGNED2X:
+            arg[2] = m_module.opFSub(m_vec4Type, arg[2],
+              m_module.constvec4f32(0.5f, 0.5f, 0.5f, 0.5f));
+
+            dst = m_module.opFAdd(m_vec4Type, arg[1], arg[2]);
+            dst = m_module.opVectorTimesScalar(m_vec4Type, dst, m_module.constf32(2.0f));
+            break;
+
           case D3DTOP_ADDSIGNED:
             arg[2] = m_module.opFSub(m_vec4Type, arg[2],
               m_module.constvec4f32(0.5f, 0.5f, 0.5f, 0.5f));
+
+            dst = m_module.opFAdd(m_vec4Type, arg[1], arg[2]);
+            break;
+
           case D3DTOP_ADD:
             dst = m_module.opFAdd(m_vec4Type, arg[1], arg[2]);
-            if (op == D3DTOP_ADDSIGNED2X)
-              dst = m_module.opFMul(m_vec4Type, dst, m_module.constvec4f32(2.0f, 2.0f, 2.0f, 2.0f));
             break;
 
           case D3DTOP_SUBTRACT:
             dst = m_module.opFSub(m_vec4Type, arg[1], arg[2]);
             break;
 
-          case D3DTOP_ADDSMOOTH: {
-            uint32_t comp = Complement(arg[1]);
-            dst = m_module.opFFma(m_vec4Type, comp, arg[2], arg[1]);
+          case D3DTOP_ADDSMOOTH:
+            dst = m_module.opFFma(m_vec4Type, Complement(arg[1]), arg[2], arg[1]);
             break;
-          }
 
           case D3DTOP_BLENDDIFFUSEALPHA:
             dst = m_module.opFMix(m_vec4Type, arg[2], arg[1], AlphaReplicate(diffuse));
@@ -1251,10 +1261,11 @@ namespace dxvk {
             arg[2] = m_module.opFSub(vec3Type, arg[2], m_module.constvec3f32(-0.5f, -0.5f, -0.5f));
 
             // Do the dotting!
-            dst = ScalarReplicate(m_module.opDot(m_floatType, arg[1], arg[2]));
+            dst = m_module.opDot(m_floatType, arg[1], arg[2]);
 
-            // *= 4.0f
-            dst = m_module.opFMul(m_vec4Type, dst, m_module.constvec4f32(4.0f, 4.0f, 4.0f, 4.0f));
+            // Multiply by 4 and replicate -> vec4
+            dst = m_module.opFMul(m_floatType, dst, m_module.constf32(4.0f));
+            dst = ScalarReplicate(dst);
 
             // Saturate
             dst = m_module.opFClamp(m_vec4Type, dst,
@@ -1270,10 +1281,6 @@ namespace dxvk {
 
           case D3DTOP_LERP:
             dst = m_module.opFMix(m_vec4Type, arg[2], arg[1], arg[0]);
-            break;
-
-          case D3DTOP_DISABLE:
-            Logger::warn("D3DTOP_DISABLE: this should be handled already!");
             break;
 
           default:
