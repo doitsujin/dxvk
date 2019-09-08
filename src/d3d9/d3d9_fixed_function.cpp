@@ -563,18 +563,60 @@ namespace dxvk {
       uint32_t inputIndex  = m_vsKey.TexcoordIndices[i];
 
       uint32_t transformed;
-      if (inputIndex & D3DTSS_TCI_CAMERASPACENORMAL) {
-        const uint32_t wIndex = 3;
-        transformed = outNrm;
-      }
-      else if (inputIndex & D3DTSS_TCI_CAMERASPACEPOSITION) {
-        const uint32_t wIndex = 3;
-        transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1.0f), vtx, 1, &wIndex);
-      } else {
-        if (inputIndex > 8)
-          Logger::warn(str::format("Unsupported texcoordindex flag (D3DTSS_TCI) ", inputIndex & ~0xFF, " for index ", inputIndex & 0xFF));
 
-        transformed = m_vs.in.TEXCOORD[inputIndex & 0xFF];
+      const uint32_t wIndex = 3;
+
+      switch (inputIndex & 0xffff0000) {
+        default:
+        case D3DTSS_TCI_PASSTHRU:
+          transformed = m_vs.in.TEXCOORD[inputIndex & 0xFF];
+          break;
+
+        case D3DTSS_TCI_CAMERASPACENORMAL:
+          transformed = outNrm;
+          break;
+
+        case D3DTSS_TCI_CAMERASPACEPOSITION:
+          transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1.0f), vtx, 1, &wIndex);
+          break;
+
+        case D3DTSS_TCI_CAMERASPACEREFLECTIONVECTOR: {
+          uint32_t pos3 = m_module.opVectorShuffle(m_vec3Type, gl_Position, gl_Position, 3, indices.data());
+          pos3 = m_module.opNormalize(m_vec3Type, pos3);
+          
+          uint32_t reflection = m_module.opReflect(m_vec3Type, pos3, normal);
+
+          std::array<uint32_t, 4> transformIndices;
+          for (uint32_t i = 0; i < 3; i++)
+            transformIndices[i] = m_module.opCompositeExtract(m_floatType, reflection, 1, &i);
+          transformIndices[3] = m_module.constf32(1.0f);
+
+          transformed = m_module.opCompositeConstruct(m_vec4Type, transformIndices.size(), transformIndices.data());
+          break;
+        }
+
+        case D3DTSS_TCI_SPHEREMAP: {
+          uint32_t pos3 = m_module.opVectorShuffle(m_vec3Type, gl_Position, gl_Position, 3, indices.data());
+          pos3 = m_module.opNormalize(m_vec3Type, pos3);
+
+          uint32_t reflection = m_module.opReflect(m_vec3Type, pos3, normal);
+          uint32_t m = m_module.opFAdd(m_vec3Type, reflection, m_module.constvec3f32(0, 0, 1));
+          m = m_module.opLength(m_floatType, m);
+          m = m_module.opFMul(m_floatType, m, m_module.constf32(2.0f));
+
+          std::array<uint32_t, 4> transformIndices;
+          for (uint32_t i = 0; i < 2; i++) {
+            transformIndices[i] = m_module.opCompositeExtract(m_floatType, reflection, 1, &i);
+            transformIndices[i] = m_module.opFDiv(m_floatType, transformIndices[i], m);
+            transformIndices[i] = m_module.opFAdd(m_floatType, transformIndices[i], m_module.constf32(0.5f));
+          }
+
+          transformIndices[2] = m_module.constf32(0.0f);
+          transformIndices[3] = m_module.constf32(1.0f);
+
+          transformed = m_module.opCompositeConstruct(m_vec4Type, transformIndices.size(), transformIndices.data());
+          break;
+        }
       }
 
       uint32_t type = m_vsKey.TransformFlags[i];
