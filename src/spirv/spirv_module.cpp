@@ -2585,6 +2585,23 @@ namespace dxvk {
   }
 
 
+  uint32_t SpirvModule::opReflect(
+          uint32_t                resultType,
+          uint32_t                incident,
+          uint32_t                normal) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450Reflect);
+    m_code.putWord(incident);
+    m_code.putWord(normal);
+    return resultId;
+  }
+
+
   uint32_t SpirvModule::opLength(
           uint32_t                resultType,
           uint32_t                operand) {
