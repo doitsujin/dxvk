@@ -87,6 +87,13 @@ namespace dxvk {
     D3D9FFShaderKeyFS() {
       // memcmp safety
       std::memset(this, 0, sizeof(*this));
+
+      for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
+        auto& stage = Stages[i].data;
+
+        stage.ColorOp = D3DTOP_DISABLE;
+        stage.AlphaOp = D3DTOP_DISABLE;
+      }
     }
 
     D3D9FFShaderStage Stages[caps::TextureStageCount];

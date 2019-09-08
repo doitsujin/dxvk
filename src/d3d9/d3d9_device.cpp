@@ -5772,12 +5772,10 @@ namespace dxvk {
       D3D9FFShaderKeyFS key;
       key.SpecularEnable = m_state.renderStates[D3DRS_SPECULARENABLE];
 
-      for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
-        auto& stage = key.Stages[i].data;
-        auto& data  = m_state.textureStages[i];
-
-        stage.ColorOp = D3DTOP_DISABLE;
-        stage.AlphaOp = D3DTOP_DISABLE;
+      uint32_t idx;
+      for (idx = 0; idx < caps::TextureStageCount; idx++) {
+        auto& stage = key.Stages[idx].data;
+        auto& data  = m_state.textureStages[idx];
 
         // Subsequent stages do not occur if this is true.
         if (data[D3DTSS_COLOROP] == D3DTOP_DISABLE)
@@ -5785,7 +5783,7 @@ namespace dxvk {
 
         // If the stage is invalid (ie. no texture bound),
         // this and all subsequent stages get disabled.
-        if (m_state.textures[i] == nullptr) {
+        if (m_state.textures[idx] == nullptr) {
           if (((data[D3DTSS_COLORARG0] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[D3DTSS_COLOROP]) & (1 << 0u)))
            || ((data[D3DTSS_COLORARG1] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[D3DTSS_COLOROP]) & (1 << 1u)))
            || ((data[D3DTSS_COLORARG2] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[D3DTSS_COLOROP]) & (1 << 2u))))
@@ -5803,7 +5801,7 @@ namespace dxvk {
         stage.AlphaArg1 = data[D3DTSS_ALPHAARG1];
         stage.AlphaArg2 = data[D3DTSS_ALPHAARG2];
 
-        const uint32_t samplerOffset = i * 2;
+        const uint32_t samplerOffset = idx * 2;
         stage.Type         = (m_samplerTypeBitfield >> samplerOffset) & 0xffu;
         stage.ResultIsTemp = data[D3DTSS_RESULTARG] == D3DTA_TEMP;
 
@@ -5818,6 +5816,10 @@ namespace dxvk {
         stage0.AlphaOp   = D3DTOP_SELECTARG1;
         stage0.AlphaArg1 = D3DTA_DIFFUSE;
       }
+
+      // The last stage *always* writes to current.
+      if (idx >= 1)
+        key.Stages[idx - 1].data.ResultIsTemp = false;
 
       EmitCs([
         this,
