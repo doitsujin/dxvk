@@ -1311,7 +1311,8 @@ namespace dxvk {
           alphaOp != D3DTOP_DISABLE ? GetArg(stage.AlphaArg2) : 0 };
 
       // Fast path if alpha/color path is identical.
-      if (colorOp == alphaOp && colorArgs == alphaArgs) {
+      // D3DTOP_DOTPRODUCT3 also has special quirky behaviour here.
+      if (colorOp == alphaOp && colorArgs == alphaArgs || colorOp == D3DTOP_DOTPRODUCT3) {
         if (colorOp != D3DTOP_DISABLE)
           dst = DoOp(colorOp, dst, colorArgs);
       }
