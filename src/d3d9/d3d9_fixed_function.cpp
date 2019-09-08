@@ -581,10 +581,10 @@ namespace dxvk {
           break;
 
         case D3DTSS_TCI_CAMERASPACEREFLECTIONVECTOR: {
-          uint32_t pos3 = m_module.opVectorShuffle(m_vec3Type, gl_Position, gl_Position, 3, indices.data());
-          pos3 = m_module.opNormalize(m_vec3Type, pos3);
+          uint32_t vtx3 = m_module.opVectorShuffle(m_vec3Type, vtx, vtx, 3, indices.data());
+          vtx3 = m_module.opNormalize(m_vec3Type, vtx3);
           
-          uint32_t reflection = m_module.opReflect(m_vec3Type, pos3, normal);
+          uint32_t reflection = m_module.opReflect(m_vec3Type, vtx3, normal);
 
           std::array<uint32_t, 4> transformIndices;
           for (uint32_t i = 0; i < 3; i++)
@@ -596,10 +596,10 @@ namespace dxvk {
         }
 
         case D3DTSS_TCI_SPHEREMAP: {
-          uint32_t pos3 = m_module.opVectorShuffle(m_vec3Type, gl_Position, gl_Position, 3, indices.data());
-          pos3 = m_module.opNormalize(m_vec3Type, pos3);
+          uint32_t vtx3 = m_module.opVectorShuffle(m_vec3Type, vtx, vtx, 3, indices.data());
+          vtx3 = m_module.opNormalize(m_vec3Type, vtx3);
 
-          uint32_t reflection = m_module.opReflect(m_vec3Type, pos3, normal);
+          uint32_t reflection = m_module.opReflect(m_vec3Type, vtx3, normal);
           uint32_t m = m_module.opFAdd(m_vec3Type, reflection, m_module.constvec3f32(0, 0, 1));
           m = m_module.opLength(m_floatType, m);
           m = m_module.opFMul(m_floatType, m, m_module.constf32(2.0f));
