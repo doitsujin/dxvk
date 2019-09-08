@@ -2498,7 +2498,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     DxsoSampler sampler = m_samplers.at(samplerIdx);
 
-    auto SampleImage = [this, opcode, dst, ctx](DxsoRegisterValue texcoordVar, DxsoSamplerInfo& sampler, bool depth) {
+    auto SampleImage = [this, opcode, dst, ctx](DxsoRegisterValue texcoordVar, DxsoSamplerInfo& sampler, bool depth, DxsoSamplerType samplerType) {
       DxsoRegisterValue result;
       result.type.ctype  = dst.type.ctype;
       result.type.ccount = depth ? 1 : 4;
@@ -2548,7 +2548,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         }
       }
 
-      if (m_programInfo.majorVersion() == 1 && depth) {
+      if (m_programInfo.majorVersion() == 1 && depth && samplerType != SamplerTypeTextureCube) {
         // Apparently this gets projected automagically..?
         // I am unsure whether this applies to all
         // depth comp. samples in PS 1.x
@@ -2600,17 +2600,17 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         m_module.opBranchConditional(sampler.depthSpecConst, depthLabel, colorLabel);
 
         m_module.opLabel(colorLabel);
-        SampleImage(texcoordVar, sampler.color[samplerType], false);
+        SampleImage(texcoordVar, sampler.color[samplerType], false, samplerType);
         m_module.opBranch(endLabel);
 
         m_module.opLabel(depthLabel);
-        SampleImage(texcoordVar, sampler.depth[samplerType], true);
+        SampleImage(texcoordVar, sampler.depth[samplerType], true, samplerType);
         m_module.opBranch(endLabel);
 
         m_module.opLabel(endLabel);
       }
       else
-        SampleImage(texcoordVar, sampler.color[samplerType], false);
+        SampleImage(texcoordVar, sampler.color[samplerType], false, samplerType);
     };
 
     if (m_programInfo.majorVersion() >= 2) {
