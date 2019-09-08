@@ -140,6 +140,10 @@ namespace dxvk {
     { R"(\\vr\.exe$)", {{
       { "d3d11.dcSingleUseMode",            "False" },
     }} },
+    /* Control                                    */
+    { R"(\\Control_DX11\.exe$)", {{
+      { "d3d11.allowMapFlagNoWait",         "True" }
+    }} },
   }};
 
 
