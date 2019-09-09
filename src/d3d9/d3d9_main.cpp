@@ -1,5 +1,3 @@
-#include "../dxgi/dxgi_include.h"
-
 #include "../dxvk/dxvk_instance.h"
 
 #include "d3d9_interface.h"
