@@ -3863,17 +3863,19 @@ namespace dxvk {
 
     std::array<uint32_t, 3> offsets = { pBox->Front, pBox->Top, pBox->Left };
 
+    uint32_t elementSize = 1;
+
     if (FormatInfo != nullptr) {
+      elementSize = FormatInfo->elementSize;
+
       offsets[0] = offsets[0] / FormatInfo->blockSize.depth;
       offsets[1] = offsets[1] / FormatInfo->blockSize.height;
-
-      uint32_t blockCount = offsets[2] / FormatInfo->blockSize.width;
-      offsets[2] = uint32_t(FormatInfo->elementSize) * blockCount;
+      offsets[2] = offsets[2] / FormatInfo->blockSize.width;
     }
 
     return offsets[0] * SlicePitch +
            offsets[1] * RowPitch   +
-           offsets[2];
+           offsets[2] * elementSize;
   }
 
 
