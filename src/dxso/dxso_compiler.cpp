@@ -165,6 +165,8 @@ namespace dxvk {
     case DxsoOpcode::TexBem:
     case DxsoOpcode::TexM3x2Tex:
     case DxsoOpcode::TexM3x3Tex:
+    case DxsoOpcode::TexM3x3Spec:
+    case DxsoOpcode::TexM3x3VSpec:
       return this->emitTextureSample(ctx);
     case DxsoOpcode::TexKill:
       return this->emitTextureKill(ctx);
@@ -2389,8 +2391,8 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     DxsoRegMask vec3Mask(true, true, true,  false);
     DxsoRegMask srcMask (true, true, true,  true);
 
-    if (opcode == DxsoOpcode::TexM3x2Tex || opcode == DxsoOpcode::TexM3x3Tex) {
-      const uint32_t count = opcode == DxsoOpcode::TexM3x3Tex ? 3 : 2;
+    if (opcode == DxsoOpcode::TexM3x2Tex || opcode == DxsoOpcode::TexM3x3Tex || opcode == DxsoOpcode::TexM3x3Spec || opcode == DxsoOpcode::TexM3x3VSpec) {
+      const uint32_t count = opcode == DxsoOpcode::TexM3x2Tex ? 2 : 3;
 
       auto n = emitRegisterLoad(ctx.src[0], vec3Mask);
 
@@ -2401,6 +2403,34 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         auto m = emitRegisterLoadTexcoord(reg, vec3Mask);
 
         indices[i] = m_module.opDot(getScalarTypeId(DxsoScalarType::Float32), m.id, n.id);
+      }
+
+      if (opcode == DxsoOpcode::TexM3x3Spec || opcode == DxsoOpcode::TexM3x3VSpec) {
+        uint32_t vec3Type = getVectorTypeId({ DxsoScalarType::Float32, 3 });
+        uint32_t normal = m_module.opCompositeConstruct(vec3Type, 3, indices.data());
+
+        uint32_t eyeRay;
+        // VSpec -> Create eye ray from .w of last 3 tex coords (m, m-1, m-2)
+        // Spec -> Get eye ray from src[1]
+        if (opcode == DxsoOpcode::TexM3x3VSpec) {
+          DxsoRegMask wMask(false, false, false, true);
+
+          std::array<uint32_t, 3> eyeRayIndices;
+          for (uint32_t i = 0; i < 3; i++) {
+            auto reg = ctx.dst;
+            reg.id.num -= (count - 1) - i;
+            eyeRayIndices[i] = emitRegisterLoadTexcoord(reg, wMask).id;
+          }
+
+          eyeRay = m_module.opCompositeConstruct(vec3Type, eyeRayIndices.size(), eyeRayIndices.data());
+        }
+        else
+          eyeRay = emitRegisterLoad(ctx.src[1], vec3Mask).id;
+
+        uint32_t reflection = m_module.opReflect(vec3Type, eyeRay, normal);
+
+        for (uint32_t i = 0; i < 3; i++)
+          indices[i] = m_module.opCompositeExtract(m_module.defFloatType(32), reflection, 1, &i);
       }
 
       texcoordVar.type = { DxsoScalarType::Float32, 4 };
