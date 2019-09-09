@@ -5091,7 +5091,7 @@ namespace dxvk {
 
       DxvkSamplerCreateInfo depthInfo = colorInfo;
       depthInfo.compareToDepth = VK_TRUE;
-      depthInfo.compareOp      = VK_COMPARE_OP_LESS;
+      depthInfo.compareOp      = VK_COMPARE_OP_LESS_OR_EQUAL;
       depthInfo.magFilter      = VK_FILTER_LINEAR;
       depthInfo.minFilter      = VK_FILTER_LINEAR;
 
