@@ -3861,18 +3861,19 @@ namespace dxvk {
     if (pBox == nullptr)
       return 0;
 
-    uint32_t rowOffset;
-    if (FormatInfo != nullptr) {
-      uint32_t blockSize  = uint32_t(FormatInfo->blockSize.width);
-      uint32_t blockCount = pBox->Left / blockSize;
-      rowOffset = uint32_t(FormatInfo->elementSize) * blockCount;
-    }
-    else
-      rowOffset = pBox->Left;
+    std::array<uint32_t, 3> offsets = { pBox->Front, pBox->Top, pBox->Left };
 
-    return pBox->Front * SlicePitch +
-           pBox->Top   * RowPitch   +
-           rowOffset;
+    if (FormatInfo != nullptr) {
+      offsets[0] = offsets[0] / FormatInfo->blockSize.depth;
+      offsets[1] = offsets[1] / FormatInfo->blockSize.height;
+
+      uint32_t blockCount = offsets[2] / FormatInfo->blockSize.width;
+      offsets[2] = uint32_t(FormatInfo->elementSize) * blockCount;
+    }
+
+    return offsets[0] * SlicePitch +
+           offsets[1] * RowPitch   +
+           offsets[2];
   }
 
 
@@ -4026,7 +4027,7 @@ namespace dxvk {
     const uint32_t offset = CalcImageLockOffset(
       pLockedBox->SlicePitch,
       pLockedBox->RowPitch,
-      !atiHack ? formatInfo : nullptr,
+      (!atiHack) ? formatInfo : nullptr,
       pBox);
 
     uint8_t* data = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
