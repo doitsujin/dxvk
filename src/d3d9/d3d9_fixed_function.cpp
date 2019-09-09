@@ -1354,7 +1354,8 @@ namespace dxvk {
 
       // Fast path if alpha/color path is identical.
       // D3DTOP_DOTPRODUCT3 also has special quirky behaviour here.
-      if (colorOp == alphaOp && colorArgs == alphaArgs || colorOp == D3DTOP_DOTPRODUCT3) {
+      const bool fastPath = colorOp == alphaOp && colorArgs == alphaArgs;
+      if (fastPath || colorOp == D3DTOP_DOTPRODUCT3) {
         if (colorOp != D3DTOP_DISABLE)
           dst = DoOp(colorOp, dst, colorArgs);
       }
