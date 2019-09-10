@@ -224,7 +224,7 @@ namespace dxvk {
     /* The Sims 2                                 */
     { R"(\\Sims2.*\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
-      { "d3d9.maxAvailableMemory",     "3758096384" },
+      { "d3d9.maxAvailableMemory",          "2147483648" },
     }} },
     /* Dead Space uses the a NULL render target instead
        of a 1x1 one if DF24 is NOT supported      */
