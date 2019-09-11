@@ -3985,7 +3985,42 @@ namespace dxvk {
       }
     }
     else {
-      const Rc<DxvkImage>  mappedImage = pResource->GetImage();
+      Rc<DxvkImage> mappedImage = pResource->GetImage();
+
+      // We need to resolve this, some games
+      // lock MSAA render targets even though
+      // that's entirely illegal and they explicitly
+      // tell us that they do NOT want to lock them...
+      if (unlikely(mappedImage->info().sampleCount != 1)) {
+        auto vulkanFormatInfo = mappedImage->formatInfo();
+    
+        const VkImageSubresource subresource =
+          pResource->GetSubresourceFromIndex(
+            vulkanFormatInfo->aspectMask, 0);
+    
+        const VkImageSubresourceLayers subresourceLayers = {
+          subresource.aspectMask,
+          subresource.mipLevel,
+          subresource.arrayLayer, 1 };
+
+        Rc<DxvkImage> resolveImage = pResource->GetResolveImage();
+
+        EmitCs([
+          cMainImage    = mappedImage,
+          cResolveImage = resolveImage,
+          cSubresource  = subresourceLayers
+        ] (DxvkContext* ctx) {
+          VkImageResolve region;
+          region.srcSubresource = cSubresource;
+          region.srcOffset      = VkOffset3D { 0, 0, 0 };
+          region.dstSubresource = cSubresource;
+          region.dstOffset      = VkOffset3D { 0, 0, 0 };
+          region.extent         = cMainImage->mipLevelExtent(cSubresource.mipLevel);
+          ctx->resolveImage(cResolveImage, cMainImage, region, cMainImage->info().format);
+        });
+
+        mappedImage = resolveImage;
+      }
 
       // When using any map mode which requires the image contents
       // to be preserved, and if the GPU has write access to the
