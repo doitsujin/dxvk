@@ -4010,22 +4010,44 @@ namespace dxvk {
           region.dstSubresource = cSubresource;
           region.dstOffset      = VkOffset3D { 0, 0, 0 };
           region.extent         = cMainImage->mipLevelExtent(cSubresource.mipLevel);
-          ctx->resolveImage(cResolveImage, cMainImage, region, cMainImage->info().format);
+
+          if (cSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+            ctx->resolveImage(
+              cResolveImage, cMainImage, region,
+              cMainImage->info().format);
+          }
+          else {
+            ctx->resolveDepthStencilImage(
+              cResolveImage, cMainImage, region,
+              VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR,
+              VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR);
+          }
         });
 
         mappedImage = resolveImage;
       }
 
+      VkFormat packedFormat = GetPackedDepthStencilFormat(desc.Format);
+
       EmitCs([
         cImageBuffer  = mappedBuffer,
-        cImage        = mappedImage,
+        cImage        = std::move(mappedImage),
         cSubresources = subresourceLayers,
-        cLevelExtent  = levelExtent
+        cLevelExtent  = levelExtent,
+        cPackedFormat = packedFormat
       ] (DxvkContext* ctx) {
-        ctx->copyImageToBuffer(
-          cImageBuffer, 0, VkExtent2D { 0u, 0u },
-          cImage, cSubresources, VkOffset3D { 0, 0, 0 },
-          cLevelExtent);
+        if (cSubresources.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+          ctx->copyImageToBuffer(
+            cImageBuffer, 0, VkExtent2D { 0u, 0u },
+            cImage, cSubresources, VkOffset3D { 0, 0, 0 },
+            cLevelExtent);
+        } else {
+          ctx->copyDepthStencilImageToPackedBuffer(
+            cImageBuffer, 0, cImage, cSubresources,
+            VkOffset2D { 0, 0 },
+            VkExtent2D { cLevelExtent.width, cLevelExtent.height },
+            cPackedFormat);
+        }
       });
 
       // We can't implement NOOVERWRITE for this path
