@@ -3987,22 +3987,16 @@ namespace dxvk {
     else {
       Rc<DxvkImage> mappedImage = pResource->GetImage();
 
+      // When using any map mode which requires the image contents
+      // to be preserved, and if the GPU has write access to the
+      // image, copy the current image contents into the buffer.
+      auto subresourceLayers = vk::makeSubresourceLayers(subresource);
+
       // We need to resolve this, some games
       // lock MSAA render targets even though
       // that's entirely illegal and they explicitly
       // tell us that they do NOT want to lock them...
       if (unlikely(mappedImage->info().sampleCount != 1)) {
-        auto vulkanFormatInfo = mappedImage->formatInfo();
-    
-        const VkImageSubresource subresource =
-          pResource->GetSubresourceFromIndex(
-            vulkanFormatInfo->aspectMask, 0);
-    
-        const VkImageSubresourceLayers subresourceLayers = {
-          subresource.aspectMask,
-          subresource.mipLevel,
-          subresource.arrayLayer, 1 };
-
         Rc<DxvkImage> resolveImage = pResource->GetResolveImage();
 
         EmitCs([
@@ -4021,11 +4015,6 @@ namespace dxvk {
 
         mappedImage = resolveImage;
       }
-
-      // When using any map mode which requires the image contents
-      // to be preserved, and if the GPU has write access to the
-      // image, copy the current image contents into the buffer.
-      auto subresourceLayers = vk::makeSubresourceLayers(subresource);
 
       EmitCs([
         cImageBuffer  = mappedBuffer,
