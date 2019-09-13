@@ -3219,16 +3219,27 @@ namespace dxvk {
       }
     }
     
-    EmitCs([
-      cViewportCount = viewportCount,
-      cViewports     = viewports,
-      cScissors      = scissors
-    ] (DxvkContext* ctx) {
-      ctx->setViewports(
-        cViewportCount,
-        cViewports.data(),
-        cScissors.data());
-    });
+    if (likely(viewportCount == 1)) {
+      EmitCs([
+        cViewport = viewports[0],
+        cScissor  = scissors[0]
+      ] (DxvkContext* ctx) {
+        ctx->setViewports(1,
+          &cViewport,
+          &cScissor);
+      });
+    } else {
+      EmitCs([
+        cViewportCount = viewportCount,
+        cViewports     = viewports,
+        cScissors      = scissors
+      ] (DxvkContext* ctx) {
+        ctx->setViewports(
+          cViewportCount,
+          cViewports.data(),
+          cScissors.data());
+      });
+    }
   }
 
   
