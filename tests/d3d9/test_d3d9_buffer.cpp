@@ -1,3 +1,4 @@
+#include <cstring>
 #include <d3d9.h>
 
 #include "../test_utils.h"

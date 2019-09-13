@@ -1,5 +1,6 @@
-#include <d3d9.h>
+#include <cstring>
 
+#include <d3d9.h>
 #include <d3dcompiler.h>
 
 #include "../test_utils.h"
