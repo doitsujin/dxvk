@@ -2843,7 +2843,7 @@ namespace dxvk {
     const D3D11_VIEWPORT*                   pViewports) {
     D3D10DeviceLock lock = LockContext();
 
-    if (NumViewports > m_state.rs.viewports.size())
+    if (unlikely(NumViewports > m_state.rs.viewports.size()))
       return;
     
     bool dirty = m_state.rs.numViewports != NumViewports;
@@ -2871,6 +2871,9 @@ namespace dxvk {
           UINT                              NumRects,
     const D3D11_RECT*                       pRects) {
     D3D10DeviceLock lock = LockContext();
+
+    if (unlikely(NumRects > m_state.rs.scissors.size()))
+      return;
     
     bool dirty = m_state.rs.numScissors != NumRects;
     m_state.rs.numScissors = NumRects;
