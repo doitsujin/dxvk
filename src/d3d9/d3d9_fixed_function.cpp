@@ -566,6 +566,7 @@ namespace dxvk {
 
       const uint32_t wIndex = 3;
 
+      uint32_t count = m_vsKey.TransformFlags[i];
       switch (inputIndex & 0xffff0000) {
         default:
         case D3DTSS_TCI_PASSTHRU:
@@ -574,10 +575,12 @@ namespace dxvk {
 
         case D3DTSS_TCI_CAMERASPACENORMAL:
           transformed = outNrm;
+          count = 4;
           break;
 
         case D3DTSS_TCI_CAMERASPACEPOSITION:
           transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1.0f), vtx, 1, &wIndex);
+          count = 4;
           break;
 
         case D3DTSS_TCI_CAMERASPACEREFLECTIONVECTOR: {
@@ -592,6 +595,7 @@ namespace dxvk {
           transformIndices[3] = m_module.constf32(1.0f);
 
           transformed = m_module.opCompositeConstruct(m_vec4Type, transformIndices.size(), transformIndices.data());
+          count = 4;
           break;
         }
 
@@ -615,15 +619,13 @@ namespace dxvk {
           transformIndices[3] = m_module.constf32(1.0f);
 
           transformed = m_module.opCompositeConstruct(m_vec4Type, transformIndices.size(), transformIndices.data());
+          count = 4;
           break;
         }
       }
 
       uint32_t type = m_vsKey.TransformFlags[i];
       if (type != D3DTTFF_DISABLE) {
-        // Project is already removed in the key.
-        uint32_t count = type;
-
         if (!m_vsKey.HasPositionT) {
           uint32_t one  = m_module.constf32(1.0f);
 
