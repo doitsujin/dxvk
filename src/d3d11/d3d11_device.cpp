@@ -1367,9 +1367,11 @@ namespace dxvk {
         if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_D3D11_OPTIONS2))
           return E_INVALIDARG;
 
+        const auto& features = m_dxvkDevice->features();
+
         auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS2*>(pFeatureSupportData);
         info->PSSpecifiedStencilRefSupported = FALSE; // TODO
-        info->TypedUAVLoadAdditionalFormats  = FALSE; // TODO
+        info->TypedUAVLoadAdditionalFormats  = features.core.features.shaderStorageImageReadWithoutFormat;
         info->ROVsSupported                  = FALSE;
         info->ConservativeRasterizationTier  = D3D11_CONSERVATIVE_RASTERIZATION_NOT_SUPPORTED;
         info->TiledResourcesTier             = D3D11_TILED_RESOURCES_NOT_SUPPORTED;
@@ -1591,6 +1593,7 @@ namespace dxvk {
       enabled.core.features.multiDrawIndirect                     = supported.core.features.multiDrawIndirect;
       enabled.core.features.shaderFloat64                         = supported.core.features.shaderFloat64;
       enabled.core.features.shaderInt64                           = supported.core.features.shaderInt64;
+      enabled.core.features.shaderStorageImageReadWithoutFormat   = supported.core.features.shaderStorageImageReadWithoutFormat;
       enabled.core.features.tessellationShader                    = VK_TRUE;
     }
     
