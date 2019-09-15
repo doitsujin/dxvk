@@ -4290,7 +4290,7 @@ namespace dxvk {
 
     EmitCs([
       cDstSlice = dstBuffer,
-      cSrcSlice = srcBuffer,
+      cSrcSlice = srcBuffer
     ] (DxvkContext* ctx) {
       ctx->copyBuffer(
         cDstSlice.buffer(),
