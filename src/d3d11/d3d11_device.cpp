@@ -1367,10 +1367,11 @@ namespace dxvk {
         if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_D3D11_OPTIONS2))
           return E_INVALIDARG;
 
+        const auto& extensions = m_dxvkDevice->extensions();
         const auto& features = m_dxvkDevice->features();
 
         auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS2*>(pFeatureSupportData);
-        info->PSSpecifiedStencilRefSupported = FALSE; // TODO
+        info->PSSpecifiedStencilRefSupported = extensions.extShaderStencilExport;
         info->TypedUAVLoadAdditionalFormats  = features.core.features.shaderStorageImageReadWithoutFormat;
         info->ROVsSupported                  = FALSE;
         info->ConservativeRasterizationTier  = D3D11_CONSERVATIVE_RASTERIZATION_NOT_SUPPORTED;

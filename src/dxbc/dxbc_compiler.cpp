@@ -554,6 +554,18 @@ namespace dxvk {
           "oDepth");
       } break;
       
+      case DxbcOperandType::OutputStencilRef: {
+        m_module.enableExtension("SPV_EXT_shader_stencil_export");
+        m_module.enableCapability(spv::CapabilityStencilExportEXT);
+        m_module.setExecutionMode(m_entryPointId,
+          spv::ExecutionModeStencilRefReplacingEXT);
+        m_ps.builtinStencilRef = emitNewBuiltinVariable({
+          { DxbcScalarType::Sint32, 1, 0 },
+          spv::StorageClassOutput },
+          spv::BuiltInFragStencilRefEXT,
+          "oStencilRef");
+      } break;
+
       case DxbcOperandType::OutputDepthGe: {
         m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeDepthReplacing);
         m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeDepthGreater);
@@ -4860,6 +4872,11 @@ namespace dxvk {
           { DxbcScalarType::Float32, 1 },
           m_ps.builtinDepth };
       
+      case DxbcOperandType::OutputStencilRef:
+        return DxbcRegisterPointer {
+          { DxbcScalarType::Sint32, 1 },
+          m_ps.builtinStencilRef };
+
       case DxbcOperandType::InputPrimitiveId:
         return DxbcRegisterPointer {
           { DxbcScalarType::Uint32, 1 },

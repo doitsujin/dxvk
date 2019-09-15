@@ -288,6 +288,7 @@ namespace dxvk {
     OutputDepthGe           = 38,
     OutputDepthLe           = 39,
     CycleCounter            = 40,
+    OutputStencilRef        = 41,
   };
   
   
