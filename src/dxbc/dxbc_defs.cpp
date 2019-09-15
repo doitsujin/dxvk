@@ -1075,7 +1075,12 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
     } },
     /* Msad                                 */
-    { },
+    { 4, DxbcInstClass::VectorMsad, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* DtoI                                 */
     { 2, DxbcInstClass::ConvertFloat64, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Sint32  },

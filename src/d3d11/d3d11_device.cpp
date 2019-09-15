@@ -1284,7 +1284,7 @@ namespace dxvk {
         info->MapNoOverwriteOnDynamicConstantBuffer   = TRUE;
         info->MapNoOverwriteOnDynamicBufferSRV        = TRUE;
         info->MultisampleRTVWithForcedSampleCountOne  = TRUE; /* not really */
-        info->SAD4ShaderInstructions                  = FALSE;
+        info->SAD4ShaderInstructions                  = TRUE;
         info->ExtendedDoublesShaderInstructions       = TRUE;
         info->ExtendedResourceSharing                 = TRUE; /* not really */
       } return S_OK;
