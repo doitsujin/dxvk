@@ -1363,6 +1363,20 @@ namespace dxvk {
         info->TextureCubeFaceRenderTargetWithNonCubeDepthStencilSupported = TRUE;
       } return S_OK;
 
+      case D3D11_FEATURE_D3D11_OPTIONS2: {
+        if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_D3D11_OPTIONS2))
+          return E_INVALIDARG;
+
+        auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS2*>(pFeatureSupportData);
+        info->PSSpecifiedStencilRefSupported = FALSE; // TODO
+        info->TypedUAVLoadAdditionalFormats  = FALSE; // TODO
+        info->ROVsSupported                  = FALSE;
+        info->ConservativeRasterizationTier  = D3D11_CONSERVATIVE_RASTERIZATION_NOT_SUPPORTED;
+        info->TiledResourcesTier             = D3D11_TILED_RESOURCES_NOT_SUPPORTED;
+        info->StandardSwizzle                = FALSE;
+        info->UnifiedMemoryArchitecture      = FALSE; // Maybe on some APUs?
+      } return S_OK;
+
       default:
         Logger::err(str::format(
           "D3D11Device: CheckFeatureSupport: Unknown feature: ",
