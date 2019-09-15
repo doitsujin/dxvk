@@ -204,6 +204,10 @@ namespace dxvk {
     if (!pDesc->ByteWidth)
       return E_INVALIDARG;
 
+    // We don't support tiled resources
+    if (pDesc->MiscFlags & (D3D11_RESOURCE_MISC_TILE_POOL | D3D11_RESOURCE_MISC_TILED))
+      return E_INVALIDARG;
+
     // Basic validation for structured buffers
     if ((pDesc->MiscFlags & D3D11_RESOURCE_MISC_BUFFER_STRUCTURED)
      && ((pDesc->StructureByteStride == 0)

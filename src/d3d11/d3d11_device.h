@@ -45,7 +45,7 @@ namespace dxvk {
    * Implements the ID3D11Device interfaces
    * as part of a \ref D3D11DeviceContainer.
    */
-  class D3D11Device final : public ID3D11Device1 {
+  class D3D11Device final : public ID3D11Device2 {
     /// Maximum number of resource init commands per command buffer
     constexpr static uint64_t InitCommandThreshold = 50;
   public:
@@ -206,6 +206,10 @@ namespace dxvk {
             UINT                        ContextFlags,
             ID3D11DeviceContext1**      ppDeferredContext);
 
+    HRESULT STDMETHODCALLTYPE CreateDeferredContext2(
+            UINT                        ContextFlags,
+            ID3D11DeviceContext2**      ppDeferredContext);
+
     HRESULT STDMETHODCALLTYPE CreateDeviceContextState(
             UINT                        Flags,
       const D3D_FEATURE_LEVEL*          pFeatureLevels,
@@ -238,6 +242,12 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE CheckMultisampleQualityLevels(
             DXGI_FORMAT Format,
             UINT        SampleCount,
+            UINT*       pNumQualityLevels);
+    
+    HRESULT STDMETHODCALLTYPE CheckMultisampleQualityLevels1(
+            DXGI_FORMAT Format,
+            UINT        SampleCount,
+            UINT        Flags,
             UINT*       pNumQualityLevels);
     
     void STDMETHODCALLTYPE CheckCounterInfo(
@@ -285,10 +295,22 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetImmediateContext1(
             ID3D11DeviceContext1** ppImmediateContext);
     
+    void STDMETHODCALLTYPE GetImmediateContext2(
+            ID3D11DeviceContext2** ppImmediateContext);
+    
     HRESULT STDMETHODCALLTYPE SetExceptionMode(UINT RaiseFlags);
     
     UINT STDMETHODCALLTYPE GetExceptionMode();
     
+    void STDMETHODCALLTYPE GetResourceTiling(
+            ID3D11Resource*           pTiledResource,
+            UINT*                     pNumTilesForEntireResource,
+            D3D11_PACKED_MIP_DESC*    pPackedMipDesc,
+            D3D11_TILE_SHAPE*         pStandardTileShapeForNonPackedMips,
+            UINT*                     pNumSubresourceTilings,
+            UINT                      FirstSubresourceTilingToGet,
+            D3D11_SUBRESOURCE_TILING* pSubresourceTilingsForNonPackedMips);
+
     Rc<DxvkDevice> GetDXVKDevice() {
       return m_dxvkDevice;
     }

@@ -1040,6 +1040,13 @@ namespace dxvk {
     return S_OK;
   }
   
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateDeferredContext2(
+          UINT                        ContextFlags, 
+          ID3D11DeviceContext2**      ppDeferredContext) {
+    *ppDeferredContext = ref(new D3D11DeferredContext(this, m_dxvkDevice, ContextFlags));
+    return S_OK;
+  }
+  
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateDeviceContextState(
           UINT                        Flags, 
     const D3D_FEATURE_LEVEL*          pFeatureLevels, 
@@ -1125,11 +1132,27 @@ namespace dxvk {
           DXGI_FORMAT Format,
           UINT        SampleCount,
           UINT*       pNumQualityLevels) {
+    return CheckMultisampleQualityLevels1(Format, SampleCount, 0, pNumQualityLevels);
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE D3D11Device::CheckMultisampleQualityLevels1(
+          DXGI_FORMAT Format,
+          UINT        SampleCount,
+          UINT        Flags,
+          UINT*       pNumQualityLevels) {
     // There are many error conditions, so we'll just assume
     // that we will fail and return a non-zero value in case
     // the device does actually support the format.
     if (!pNumQualityLevels)
       return E_INVALIDARG;
+    
+    // We don't support tiled resources, but it's unclear what
+    // we are supposed to return in this case. Be conservative.
+    if (Flags) {
+      *pNumQualityLevels = 0;
+      return E_FAIL;
+    }
     
     // For some reason, we can query DXGI_FORMAT_UNKNOWN
     if (Format == DXGI_FORMAT_UNKNOWN) {
@@ -1167,8 +1190,8 @@ namespace dxvk {
       *pNumQualityLevels = 1;
     return S_OK;
   }
-  
-  
+
+
   void STDMETHODCALLTYPE D3D11Device::CheckCounterInfo(D3D11_COUNTER_INFO* pCounterInfo) {
     // We basically don't support counters
     pCounterInfo->LastDeviceDependentCounter  = D3D11_COUNTER(0);
@@ -1392,7 +1415,12 @@ namespace dxvk {
   }
 
 
-  void STDMETHODCALLTYPE D3D11Device::GetImmediateContext1(ID3D11DeviceContext1 ** ppImmediateContext) {
+  void STDMETHODCALLTYPE D3D11Device::GetImmediateContext1(ID3D11DeviceContext1** ppImmediateContext) {
+    *ppImmediateContext = ref(m_context);
+  }
+  
+  
+  void STDMETHODCALLTYPE D3D11Device::GetImmediateContext2(ID3D11DeviceContext2** ppImmediateContext) {
     *ppImmediateContext = ref(m_context);
   }
   
@@ -1406,6 +1434,21 @@ namespace dxvk {
   UINT STDMETHODCALLTYPE D3D11Device::GetExceptionMode() {
     Logger::err("D3D11Device::GetExceptionMode: Not implemented");
     return 0;
+  }
+
+
+  void STDMETHODCALLTYPE D3D11Device::GetResourceTiling(
+          ID3D11Resource*           pTiledResource,
+          UINT*                     pNumTilesForEntireResource,
+          D3D11_PACKED_MIP_DESC*    pPackedMipDesc,
+          D3D11_TILE_SHAPE*         pStandardTileShapeForNonPackedMips,
+          UINT*                     pNumSubresourceTilings,
+          UINT                      FirstSubresourceTilingToGet,
+          D3D11_SUBRESOURCE_TILING* pSubresourceTilingsForNonPackedMips) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11Device::GetResourceTiling: Not implemented");
   }
   
   
@@ -1995,7 +2038,8 @@ namespace dxvk {
     }
     
     if (riid == __uuidof(ID3D11Device)
-     || riid == __uuidof(ID3D11Device1)) {
+     || riid == __uuidof(ID3D11Device1)
+     || riid == __uuidof(ID3D11Device2)) {
       *ppvObject = ref(&m_d3d11Device);
       return S_OK;
     }
