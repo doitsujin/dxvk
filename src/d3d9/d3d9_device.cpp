@@ -737,9 +737,9 @@ namespace dxvk {
           cExtent    = extent
         ] (DxvkContext* ctx) {
           ctx->copyBufferToImage(
-            cDstImage,  cDstLayers, VkOffset3D { 0, 0, 0 },
-            cExtent,    cSrcBuffer, 0,
-            { cExtent.width, cExtent.height });
+            cDstImage,  cDstLayers,
+            VkOffset3D{ 0, 0, 0 }, cExtent,
+            cSrcBuffer, 0, { 0u, 0u });
         });
       }
     }
