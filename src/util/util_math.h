@@ -18,6 +18,11 @@ namespace dxvk {
     return (what + to - 1) & ~(to - 1);
   }
 
+  template<typename T, typename U = T>
+  constexpr T alignDown(T what, U to) {
+    return (what / to) * to;
+  }
+
   // Equivalent of std::clamp for use with floating point numbers
   // Handles (-){INFINITY,NAN} cases.
   // Will return min in cases of NAN, etc.
