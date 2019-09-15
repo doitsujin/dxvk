@@ -642,63 +642,59 @@ namespace dxvk {
     if (unlikely(srcTextureInfo->Desc()->Pool != D3DPOOL_SYSTEMMEM || dstTextureInfo->Desc()->Pool != D3DPOOL_DEFAULT))
       return D3DERR_INVALIDCALL;
 
-    Rc<DxvkBuffer> srcBuffer = srcTextureInfo->GetBuffer(src->GetSubresource());
-    Rc<DxvkImage> dstImage   = dstTextureInfo->GetImage();
+    if (unlikely(srcTextureInfo->Desc()->Format != dstTextureInfo->Desc()->Format))
+      return D3DERR_INVALIDCALL;
 
-    const VkImageSubresource dstSubresource = dstTextureInfo->GetSubresourceFromIndex(VK_IMAGE_ASPECT_COLOR_BIT, dst->GetSubresource());
+    const DxvkFormatInfo* formatInfo = imageFormatInfo(dstTextureInfo->Format());
 
-    const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstImage->info().format);
+    VkOffset3D srcBlockOffset = { 0u, 0u, 0u };
+    VkOffset3D dstOffset = { 0u, 0u, 0u };
 
-    VkOffset3D srcOffset = { 0,0,0 };
-    VkOffset3D dstOffset = { 0,0,0 };
-
-    VkExtent3D srcExtent = srcTextureInfo->GetExtentMip(src->GetMipLevel());
-    VkExtent3D regExtent = srcExtent;
-
-    if (pDestPoint != nullptr) {
-      dstOffset = { align(pDestPoint->x, dstFormatInfo->blockSize.width),
-                    align(pDestPoint->y, dstFormatInfo->blockSize.height),
-                    0 };
-    }
+    VkExtent3D extent = srcTextureInfo->GetExtentMip(src->GetSubresource());
 
     if (pSourceRect != nullptr) {
-      srcOffset = { 
-        align(pSourceRect->left, dstFormatInfo->blockSize.width),
-        align(pSourceRect->top,  dstFormatInfo->blockSize.height),
-        0 };
+      srcBlockOffset = { pSourceRect->left / int32_t(formatInfo->blockSize.width),
+                         pSourceRect->top  / int32_t(formatInfo->blockSize.height),
+                         0u };
 
-      regExtent = { 
-        align(uint32_t(pSourceRect->right  - pSourceRect->left), dstFormatInfo->blockSize.width),
-        align(uint32_t(pSourceRect->bottom - pSourceRect->top),  dstFormatInfo->blockSize.height),
-        1 };
+      extent = { alignDown(uint32_t(pSourceRect->right  - pSourceRect->left), formatInfo->blockSize.width),
+                 alignDown(uint32_t(pSourceRect->bottom - pSourceRect->top),  formatInfo->blockSize.height),
+                 1u };
     }
 
-    VkImageSubresourceLayers dstLayers = {
-      dstSubresource.aspectMask,
-      dstSubresource.mipLevel,
-      dstSubresource.arrayLayer, 1 };
+    if (pDestPoint != nullptr) {
+      dstOffset = { alignDown(pDestPoint->x, formatInfo->blockSize.width),
+                    alignDown(pDestPoint->y, formatInfo->blockSize.height),
+                    0u };
+    }
 
-    VkExtent3D regBlockCount = util::computeBlockCount(regExtent, dstFormatInfo->blockSize);
+    const auto srcSubresource = vk::makeSubresourceLayers(
+      srcTextureInfo->GetSubresourceFromIndex(VK_IMAGE_ASPECT_COLOR_BIT, src->GetSubresource()));
 
-    regExtent = util::minExtent3D(regExtent, util::computeBlockExtent(regBlockCount, dstFormatInfo->blockSize));
+    const auto dstSubresource = vk::makeSubresourceLayers(
+      dstTextureInfo->GetSubresourceFromIndex(VK_IMAGE_ASPECT_COLOR_BIT, dst->GetSubresource()));
 
-    VkDeviceSize srcOffsetBytes = srcOffset.z * srcExtent.height * srcExtent.width
-                                + srcOffset.y * srcExtent.width
-                                + srcOffset.x;
+    Rc<DxvkBuffer> srcBuffer = srcTextureInfo->GetBuffer(src->GetSubresource());
+    Rc<DxvkImage>  dstImage  = dstTextureInfo->GetImage();
+
+    VkExtent3D levelExtent = srcTextureInfo->GetExtentMip(src->GetSubresource());
+    VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
+
+    VkDeviceSize srcByteOffset = srcBlockOffset.y * formatInfo->elementSize * blockCount.width
+                               + srcBlockOffset.x * formatInfo->elementSize;
 
     EmitCs([
-      cDstImage  = dstImage,
-      cSrcBuffer = srcBuffer,
-      cDstLayers = dstLayers,
+      cDstImage  = std::move(dstImage),
+      cSrcBuffer = std::move(srcBuffer),
+      cDstLayers = dstSubresource,
       cDstOffset = dstOffset,
-      cSrcOffset = srcOffsetBytes,
-      cExtent    = regExtent,
-      cSrcExtent = srcExtent
+      cSrcOffset = srcByteOffset,
+      cExtent    = extent
     ] (DxvkContext* ctx) {
       ctx->copyBufferToImage(
         cDstImage, cDstLayers, cDstOffset, cExtent,
         cSrcBuffer, cSrcOffset,
-        VkExtent2D{ cSrcExtent.width, cSrcExtent.height });
+        VkExtent2D{ 0u, 0u });
     });
 
     if (dstTextureInfo->IsAutomaticMip())
