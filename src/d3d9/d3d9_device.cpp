@@ -4291,14 +4291,13 @@ namespace dxvk {
     EmitCs([
       cDstSlice = dstBuffer,
       cSrcSlice = srcBuffer,
-      cRange    = pResource->LockRange()
     ] (DxvkContext* ctx) {
       ctx->copyBuffer(
         cDstSlice.buffer(),
-        cDstSlice.offset() + cRange.min,
+        cDstSlice.offset(),
         cSrcSlice.buffer(),
-        cSrcSlice.offset() + cRange.min,
-        cRange.max - cRange.min);
+        cSrcSlice.offset(),
+        cSrcSlice.length());
     });
 
     pResource->DirtyRange().Conjoin(pResource->LockRange());
