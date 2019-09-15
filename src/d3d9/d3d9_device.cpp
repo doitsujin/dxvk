@@ -769,29 +769,32 @@ namespace dxvk {
     D3D9CommonTexture* dstTexInfo = GetCommonTexture(dst);
     D3D9CommonTexture* srcTexInfo = GetCommonTexture(src);
 
+    if (srcTexInfo->Desc()->Format != dstTexInfo->Desc()->Format)
+      return D3DERR_INVALIDCALL;
+
     if (dstTexInfo->Desc()->Pool == D3DPOOL_DEFAULT)
       return this->StretchRect(pRenderTarget, nullptr, pDestSurface, nullptr, D3DTEXF_NONE);
 
-    Rc<DxvkImage>  image  = srcTexInfo->GetImage();
-    Rc<DxvkBuffer> buffer = dstTexInfo->GetBuffer(dst->GetSubresource());
+    Rc<DxvkBuffer> dstBuffer = dstTexInfo->GetBuffer(dst->GetSubresource());
 
-    const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(image->info().format);
-    const VkImageSubresource dstSubresource = dstTexInfo->GetSubresourceFromIndex(dstFormatInfo->aspectMask, dst->GetSubresource());
+    Rc<DxvkImage>  srcImage                 = srcTexInfo->GetImage();
+    const DxvkFormatInfo* srcFormatInfo     = imageFormatInfo(srcImage->info().format);
 
-    VkImageSubresourceLayers dstSubresourceLayers = {
-      dstSubresource.aspectMask,
-      dstSubresource.mipLevel,
-      dstSubresource.arrayLayer, 1 };
+    const VkImageSubresource srcSubresource = srcTexInfo->GetSubresourceFromIndex(srcFormatInfo->aspectMask, src->GetSubresource());
+    VkImageSubresourceLayers srcSubresourceLayers = {
+      srcSubresource.aspectMask,
+      srcSubresource.mipLevel,
+      srcSubresource.arrayLayer, 1 };
 
-    VkExtent3D levelExtent = image->mipLevelExtent(dstSubresource.mipLevel);
+    VkExtent3D srcExtent = srcTexInfo->GetExtentMip(src->GetMipLevel());
 
     dstTexInfo->MarkSystemMemGPUModified();
 
     EmitCs([
-      cBuffer       = buffer,
-      cImage        = image,
-      cSubresources = dstSubresourceLayers,
-      cLevelExtent  = levelExtent
+      cBuffer       = dstBuffer,
+      cImage        = srcImage,
+      cSubresources = srcSubresourceLayers,
+      cLevelExtent  = srcExtent
     ] (DxvkContext* ctx) {
       ctx->copyImageToBuffer(
         cBuffer, 0, VkExtent2D { 0u, 0u },
