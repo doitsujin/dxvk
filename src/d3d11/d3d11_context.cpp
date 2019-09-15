@@ -54,7 +54,8 @@ namespace dxvk {
     if (riid == __uuidof(IUnknown)
      || riid == __uuidof(ID3D11DeviceChild)
      || riid == __uuidof(ID3D11DeviceContext)
-     || riid == __uuidof(ID3D11DeviceContext1)) {
+     || riid == __uuidof(ID3D11DeviceContext1)
+     || riid == __uuidof(ID3D11DeviceContext2)) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -710,8 +711,57 @@ namespace dxvk {
         sizeof(uint32_t));
     });
   }
-  
-  
+
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::CopyTiles(
+          ID3D11Resource*                   pTiledResource,
+    const D3D11_TILED_RESOURCE_COORDINATE*  pTileRegionStartCoordinate,
+    const D3D11_TILE_REGION_SIZE*           pTileRegionSize,
+          ID3D11Buffer*                     pBuffer,
+          UINT64                            BufferStartOffsetInBytes,
+          UINT                              Flags) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::CopyTiles: Not implemented");
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DeviceContext::CopyTileMappings(
+          ID3D11Resource*                   pDestTiledResource,
+    const D3D11_TILED_RESOURCE_COORDINATE*  pDestRegionStartCoordinate,
+          ID3D11Resource*                   pSourceTiledResource,
+    const D3D11_TILED_RESOURCE_COORDINATE*  pSourceRegionStartCoordinate,
+    const D3D11_TILE_REGION_SIZE*           pTileRegionSize,
+          UINT                              Flags) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::CopyTileMappings: Not implemented");
+
+    return DXGI_ERROR_INVALID_CALL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DeviceContext::ResizeTilePool(
+          ID3D11Buffer*                     pTilePool,
+          UINT64                            NewSizeInBytes) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::ResizeTilePool: Not implemented");
+
+    return DXGI_ERROR_INVALID_CALL;
+  }
+
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::TiledResourceBarrier(
+          ID3D11DeviceChild*                pTiledResourceOrViewAccessBeforeBarrier,
+          ID3D11DeviceChild*                pTiledResourceOrViewAccessAfterBarrier) {
+    
+  }
+
+
   void STDMETHODCALLTYPE D3D11DeviceContext::ClearRenderTargetView(
           ID3D11RenderTargetView*           pRenderTargetView,
     const FLOAT                             ColorRGBA[4]) {
@@ -1249,6 +1299,39 @@ namespace dxvk {
       if (textureInfo->CanUpdateMappedBufferEarly())
         UpdateMappedBuffer(textureInfo, subresource);
     }
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DeviceContext::UpdateTileMappings(
+          ID3D11Resource*                   pTiledResource,
+          UINT                              NumTiledResourceRegions,
+    const D3D11_TILED_RESOURCE_COORDINATE*  pTiledResourceRegionStartCoordinates,
+    const D3D11_TILE_REGION_SIZE*           pTiledResourceRegionSizes,
+          ID3D11Buffer*                     pTilePool,
+          UINT                              NumRanges,
+    const UINT*                             pRangeFlags,
+    const UINT*                             pTilePoolStartOffsets,
+    const UINT*                             pRangeTileCounts,
+          UINT                              Flags) {
+    bool s_errorShown = false;
+
+    if (std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::UpdateTileMappings: Not implemented");
+
+    return DXGI_ERROR_INVALID_CALL;
+  }
+
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::UpdateTiles(
+          ID3D11Resource*                   pDestTiledResource,
+    const D3D11_TILED_RESOURCE_COORDINATE*  pDestTileRegionStartCoordinate,
+    const D3D11_TILE_REGION_SIZE*           pDestTileRegionSize,
+    const void*                             pSourceTileData,
+          UINT                              Flags) {
+    bool s_errorShown = false;
+
+    if (std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::UpdateTiles: Not implemented");
   }
   
   
@@ -3013,6 +3096,31 @@ namespace dxvk {
       if (pOffsets != nullptr)
         pOffsets[i] = m_state.so.targets[i].offset;
     }
+  }
+
+
+  BOOL STDMETHODCALLTYPE D3D11DeviceContext::IsAnnotationEnabled() {
+    // Not implemented in the backend
+    return FALSE;
+  }
+
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::SetMarkerInt(
+          LPCWSTR                           pLabel,
+          INT                               Data) {
+    // Not implemented in the backend, ignore
+  }
+
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::BeginEventInt(
+          LPCWSTR                           pLabel,
+          INT                               Data) {
+    // Not implemented in the backend, ignore
+  }
+
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::EndEvent() {
+    // Not implemented in the backend, ignore
   }
 
 

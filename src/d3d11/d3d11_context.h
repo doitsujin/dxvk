@@ -17,7 +17,7 @@ namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11DeviceContext : public D3D11DeviceChild<ID3D11DeviceContext1> {
+  class D3D11DeviceContext : public D3D11DeviceChild<ID3D11DeviceContext2> {
     friend class D3D11DeviceContextExt;
   public:
     
@@ -85,7 +85,31 @@ namespace dxvk {
             ID3D11Buffer*                     pDstBuffer,
             UINT                              DstAlignedByteOffset,
             ID3D11UnorderedAccessView*        pSrcView);
+
+    void STDMETHODCALLTYPE CopyTiles(
+            ID3D11Resource*                   pTiledResource,
+      const D3D11_TILED_RESOURCE_COORDINATE*  pTileRegionStartCoordinate,
+      const D3D11_TILE_REGION_SIZE*           pTileRegionSize,
+            ID3D11Buffer*                     pBuffer,
+            UINT64                            BufferStartOffsetInBytes,
+            UINT                              Flags);
     
+    HRESULT STDMETHODCALLTYPE CopyTileMappings(
+            ID3D11Resource*                   pDestTiledResource,
+      const D3D11_TILED_RESOURCE_COORDINATE*  pDestRegionStartCoordinate,
+            ID3D11Resource*                   pSourceTiledResource,
+      const D3D11_TILED_RESOURCE_COORDINATE*  pSourceRegionStartCoordinate,
+      const D3D11_TILE_REGION_SIZE*           pTileRegionSize,
+            UINT                              Flags);
+
+    HRESULT STDMETHODCALLTYPE ResizeTilePool(
+            ID3D11Buffer*                     pTilePool,
+            UINT64                            NewSizeInBytes);
+
+    void STDMETHODCALLTYPE TiledResourceBarrier(
+            ID3D11DeviceChild*                pTiledResourceOrViewAccessBeforeBarrier,
+            ID3D11DeviceChild*                pTiledResourceOrViewAccessAfterBarrier);
+
     void STDMETHODCALLTYPE ClearRenderTargetView(
             ID3D11RenderTargetView*           pRenderTargetView,
       const FLOAT                             ColorRGBA[4]);
@@ -129,7 +153,26 @@ namespace dxvk {
             UINT                              SrcRowPitch,
             UINT                              SrcDepthPitch,
             UINT                              CopyFlags);
-    
+
+    HRESULT STDMETHODCALLTYPE UpdateTileMappings(
+            ID3D11Resource*                   pTiledResource,
+            UINT                              NumTiledResourceRegions,
+      const D3D11_TILED_RESOURCE_COORDINATE*  pTiledResourceRegionStartCoordinates,
+      const D3D11_TILE_REGION_SIZE*           pTiledResourceRegionSizes,
+            ID3D11Buffer*                     pTilePool,
+            UINT                              NumRanges,
+      const UINT*                             pRangeFlags,
+      const UINT*                             pTilePoolStartOffsets,
+      const UINT*                             pRangeTileCounts,
+            UINT                              Flags);
+
+    void STDMETHODCALLTYPE UpdateTiles(
+            ID3D11Resource*                   pDestTiledResource,
+      const D3D11_TILED_RESOURCE_COORDINATE*  pDestTileRegionStartCoordinate,
+      const D3D11_TILE_REGION_SIZE*           pDestTileRegionSize,
+      const void*                             pSourceTileData,
+            UINT                              Flags);
+
     void STDMETHODCALLTYPE SetResourceMinLOD(
             ID3D11Resource*                   pResource,
             FLOAT                             MinLOD);
@@ -637,6 +680,18 @@ namespace dxvk {
             ID3D11Buffer**                    ppSOTargets,
             UINT*                             pOffsets);
     
+    BOOL STDMETHODCALLTYPE IsAnnotationEnabled();
+
+    void STDMETHODCALLTYPE SetMarkerInt(
+            LPCWSTR                           pLabel,
+            INT                               Data);
+
+    void STDMETHODCALLTYPE BeginEventInt(
+            LPCWSTR                           pLabel,
+            INT                               Data);
+
+    void STDMETHODCALLTYPE EndEvent();
+
     void STDMETHODCALLTYPE TransitionSurfaceLayout(
             IDXGIVkInteropSurface*    pSurface,
       const VkImageSubresourceRange*  pSubresources,
