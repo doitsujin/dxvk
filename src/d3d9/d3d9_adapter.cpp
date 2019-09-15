@@ -191,7 +191,7 @@ namespace dxvk {
       : m_adapter->deviceProperties().limits.framebufferDepthSampleCounts;
 
     if (!(availableFlags & sampleFlags))
-      return D3DERR_INVALIDCALL;
+      return D3DERR_NOTAVAILABLE;
 
     if (pQualityLevels != nullptr) {
       if (MultiSampleType == D3DMULTISAMPLE_NONMASKABLE)
