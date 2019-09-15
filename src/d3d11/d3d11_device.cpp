@@ -1298,8 +1298,47 @@ namespace dxvk {
         
         auto info = static_cast<D3D11_FEATURE_DATA_D3D9_SHADOW_SUPPORT*>(pFeatureSupportData);
         info->SupportsDepthAsTextureWithLessEqualComparisonFilter = TRUE;
-        return S_OK;
-      } break;
+      } return S_OK;
+
+      case D3D11_FEATURE_D3D11_OPTIONS1: {
+        if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_D3D11_OPTIONS1))
+          return E_INVALIDARG;
+
+        // Min/Max filtering requires Tiled Resources Tier 2 for some reason,
+        // so we cannot support it even though Vulkan exposes this feature
+        auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS1*>(pFeatureSupportData);
+        info->TiledResourcesTier                    = D3D11_TILED_RESOURCES_NOT_SUPPORTED;
+        info->MinMaxFiltering                       = FALSE;
+        info->ClearViewAlsoSupportsDepthOnlyFormats = TRUE;
+        info->MapOnDefaultBuffers                   = FALSE;
+      } return S_OK;
+
+      case D3D11_FEATURE_D3D9_SIMPLE_INSTANCING_SUPPORT: {
+        if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_D3D9_SIMPLE_INSTANCING_SUPPORT))
+          return E_INVALIDARG;
+
+        auto info = static_cast<D3D11_FEATURE_DATA_D3D9_SIMPLE_INSTANCING_SUPPORT*>(pFeatureSupportData);
+        info->SimpleInstancingSupported = TRUE;
+      } return S_OK;
+
+      case D3D11_FEATURE_MARKER_SUPPORT: {
+        if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_MARKER_SUPPORT))
+          return E_INVALIDARG;
+
+        auto info = static_cast<D3D11_FEATURE_DATA_MARKER_SUPPORT*>(pFeatureSupportData);
+        info->Profile = FALSE;
+      } return S_OK;
+
+      case D3D11_FEATURE_D3D9_OPTIONS1: {
+        if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_D3D9_OPTIONS1))
+          return E_INVALIDARG;
+
+        auto info = static_cast<D3D11_FEATURE_DATA_D3D9_OPTIONS1*>(pFeatureSupportData);
+        info->FullNonPow2TextureSupported                                 = TRUE;
+        info->DepthAsTextureWithLessEqualComparisonFilterSupported        = TRUE;
+        info->SimpleInstancingSupported                                   = TRUE;
+        info->TextureCubeFaceRenderTargetWithNonCubeDepthStencilSupported = TRUE;
+      } return S_OK;
 
       default:
         Logger::err(str::format(
