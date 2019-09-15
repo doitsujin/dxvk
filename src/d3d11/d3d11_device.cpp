@@ -1273,6 +1273,14 @@ namespace dxvk {
         auto info = static_cast<D3D11_FEATURE_DATA_ARCHITECTURE_INFO*>(pFeatureSupportData);
         info->TileBasedDeferredRenderer = FALSE;
       } return S_OK;
+
+      case D3D11_FEATURE_D3D9_OPTIONS: {
+        if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_D3D9_OPTIONS))
+          return E_INVALIDARG;
+
+        auto info = static_cast<D3D11_FEATURE_DATA_D3D9_OPTIONS*>(pFeatureSupportData);
+        info->FullNonPow2TextureSupport = TRUE;
+      } return S_OK;
       
       case D3D11_FEATURE_SHADER_MIN_PRECISION_SUPPORT: {
         if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_SHADER_MIN_PRECISION_SUPPORT))
