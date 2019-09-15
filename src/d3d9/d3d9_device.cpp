@@ -4190,16 +4190,18 @@ namespace dxvk {
 
     DxvkBufferSliceHandle physSlice;
 
-    const UINT maxLockSize = desc.Size - OffsetToLock;
-
     // We can only respect this for these cases -- otherwise R/W OOB still get copied on native
     // and some stupid games depend on that.
     bool respectBounds = (desc.Usage & D3DUSAGE_DYNAMIC) || IsPoolManaged(desc.Pool);
 
-    if (SizeToLock == 0 || !respectBounds)
-      SizeToLock = maxLockSize;
+    uint32_t ptrOffset = OffsetToLock;
+
+    if (SizeToLock == 0 || !respectBounds) {
+      OffsetToLock = 0;
+      SizeToLock   = desc.Size;
+    }
     else
-      SizeToLock = std::min(SizeToLock, maxLockSize);
+      SizeToLock = std::min(SizeToLock, desc.Size - OffsetToLock);
 
     pResource->LockRange().Conjoin(D3D9Range(OffsetToLock, OffsetToLock + SizeToLock));
 
@@ -4245,7 +4247,7 @@ namespace dxvk {
     }
 
     uint8_t* data  = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
-             data += OffsetToLock;
+             data += ptrOffset;
 
     *ppbData = reinterpret_cast<void*>(data);
 
