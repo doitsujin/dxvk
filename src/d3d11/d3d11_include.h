@@ -2,7 +2,7 @@
 
 #include "../dxgi/dxgi_include.h"
 
-#include <d3d11_1.h>
+#include <d3d11_2.h>
 
 // This is not defined in the mingw headers
 #ifndef D3D11_1_UAV_SLOT_COUNT
@@ -39,6 +39,8 @@ typedef enum D3D11_FORMAT_SUPPORT2 {
   D3D11_FORMAT_SUPPORT2_SHAREABLE                                     = 0x400,
   D3D11_FORMAT_SUPPORT2_MULTIPLANE_OVERLAY                            = 0x4000
 } D3D11_FORMAT_SUPPORT2;
+#define D3D11_RESOURCE_MISC_TILE_POOL (0x20000)
+#define D3D11_RESOURCE_MISC_TILED     (0x40000)
 #ifndef __WINE__
 
 //MinGW-Headers supports these typedefs since 6.0.0
