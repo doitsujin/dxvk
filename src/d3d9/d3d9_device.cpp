@@ -1014,15 +1014,17 @@ namespace dxvk {
 
     D3D9CommonTexture* dstTextureInfo = dst->GetCommonTexture();
 
-    VkOffset3D offset = VkOffset3D{ 0u, 0u, 0u };
-    VkExtent3D extent = dstTextureInfo->GetExtent();
+    VkExtent3D mipExtent = dstTextureInfo->GetExtentMip(dst->GetSubresource());
 
-    bool fullExtent = true;
+    VkOffset3D offset = VkOffset3D{ 0u, 0u, 0u };
+    VkExtent3D extent = mipExtent;
+
+    bool isFullExtent = true;
     if (pRect != nullptr) {
       ConvertRect(*pRect, offset, extent);
 
-      fullExtent = offset == VkOffset3D{ 0u, 0u, 0u }
-                && extent == dstTextureInfo->GetExtent();
+      isFullExtent = offset == VkOffset3D{ 0u, 0u, 0u }
+                  && extent == mipExtent;
     }
 
     Rc<DxvkImageView> imageView         = dst->GetImageView(false);
@@ -1033,7 +1035,7 @@ namespace dxvk {
 
     // Fast path for games that may use this as an
     // alternative to Clear on render targets.
-    if (fullExtent && renderTargetView != nullptr) {
+    if (isFullExtent && renderTargetView != nullptr) {
       EmitCs([
         cImageView  = renderTargetView,
         cClearValue = clearValue
