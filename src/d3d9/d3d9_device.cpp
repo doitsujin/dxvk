@@ -4192,11 +4192,11 @@ namespace dxvk {
 
     // We can only respect this for these cases -- otherwise R/W OOB still get copied on native
     // and some stupid games depend on that.
-    bool respectBounds = (desc.Usage & D3DUSAGE_DYNAMIC) || IsPoolManaged(desc.Pool);
+    bool respectBounds = SizeToLock == 0 || (desc.Usage & D3DUSAGE_DYNAMIC) || IsPoolManaged(desc.Pool) || (Flags & D3DLOCK_DISCARD);
 
     uint32_t ptrOffset = OffsetToLock;
 
-    if (SizeToLock == 0 || !respectBounds) {
+    if (!respectBounds) {
       OffsetToLock = 0;
       SizeToLock   = desc.Size;
     }
