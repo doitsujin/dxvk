@@ -110,7 +110,17 @@ namespace dxvk {
 
 
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush() {
+    Flush1(D3D11_CONTEXT_TYPE_ALL, nullptr);
+  }
+
+
+  void STDMETHODCALLTYPE D3D11ImmediateContext::Flush1(
+          D3D11_CONTEXT_TYPE          ContextType,
+          HANDLE                      hEvent) {
     m_parent->FlushInitContext();
+
+    if (hEvent)
+      Logger::warn("D3D11: Flush1: Ignoring event");
     
     D3D10DeviceLock lock = LockContext();
     

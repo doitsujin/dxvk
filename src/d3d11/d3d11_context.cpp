@@ -55,7 +55,8 @@ namespace dxvk {
      || riid == __uuidof(ID3D11DeviceChild)
      || riid == __uuidof(ID3D11DeviceContext)
      || riid == __uuidof(ID3D11DeviceContext1)
-     || riid == __uuidof(ID3D11DeviceContext2)) {
+     || riid == __uuidof(ID3D11DeviceContext2)
+     || riid == __uuidof(ID3D11DeviceContext3)) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -3121,6 +3122,27 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D11DeviceContext::EndEvent() {
     // Not implemented in the backend, ignore
+  }
+
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::GetHardwareProtectionState(
+          BOOL*                             pHwProtectionEnable) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::GetHardwareProtectionState: Not implemented");
+    
+    if (pHwProtectionEnable)
+      *pHwProtectionEnable = FALSE;
+  }
+
+  
+  void STDMETHODCALLTYPE D3D11DeviceContext::SetHardwareProtectionState(
+          BOOL                              HwProtectionEnable) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::SetHardwareProtectionState: Not implemented");
   }
 
 

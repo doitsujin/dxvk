@@ -36,6 +36,10 @@ namespace dxvk {
     
     void STDMETHODCALLTYPE Flush();
     
+    void STDMETHODCALLTYPE Flush1(
+            D3D11_CONTEXT_TYPE          ContextType,
+            HANDLE                      hEvent);
+
     void STDMETHODCALLTYPE ExecuteCommandList(
             ID3D11CommandList*  pCommandList,
             BOOL                RestoreContextState);

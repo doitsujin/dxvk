@@ -17,7 +17,7 @@ namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11DeviceContext : public D3D11DeviceChild<ID3D11DeviceContext2> {
+  class D3D11DeviceContext : public D3D11DeviceChild<ID3D11DeviceContext3> {
     friend class D3D11DeviceContextExt;
   public:
     
@@ -691,6 +691,12 @@ namespace dxvk {
             INT                               Data);
 
     void STDMETHODCALLTYPE EndEvent();
+
+    void STDMETHODCALLTYPE GetHardwareProtectionState(
+            BOOL*                             pHwProtectionEnable);
+    
+    void STDMETHODCALLTYPE SetHardwareProtectionState(
+            BOOL                              HwProtectionEnable);
 
     void STDMETHODCALLTYPE TransitionSurfaceLayout(
             IDXGIVkInteropSurface*    pSurface,

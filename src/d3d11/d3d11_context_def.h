@@ -41,14 +41,18 @@ namespace dxvk {
             UINT                              GetDataFlags);
     
     void STDMETHODCALLTYPE Flush();
-    
+
+    void STDMETHODCALLTYPE Flush1(
+            D3D11_CONTEXT_TYPE          ContextType,
+            HANDLE                      hEvent);
+
     void STDMETHODCALLTYPE ExecuteCommandList(
-            ID3D11CommandList*  pCommandList,
-            BOOL                RestoreContextState);
+            ID3D11CommandList*          pCommandList,
+            BOOL                        RestoreContextState);
     
     HRESULT STDMETHODCALLTYPE FinishCommandList(
-            BOOL                RestoreDeferredContextState,
-            ID3D11CommandList   **ppCommandList);
+            BOOL                        RestoreDeferredContextState,
+            ID3D11CommandList**         ppCommandList);
     
     HRESULT STDMETHODCALLTYPE Map(
             ID3D11Resource*             pResource,

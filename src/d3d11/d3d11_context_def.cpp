@@ -37,6 +37,13 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeferredContext::Flush() {
     Logger::err("D3D11: Flush called on a deferred context");
   }
+
+
+  void STDMETHODCALLTYPE D3D11DeferredContext::Flush1(
+          D3D11_CONTEXT_TYPE          ContextType,
+          HANDLE                      hEvent) {
+    Logger::err("D3D11: Flush1 called on a deferred context");
+  }
   
   
   void STDMETHODCALLTYPE D3D11DeferredContext::ExecuteCommandList(
