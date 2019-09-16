@@ -1625,6 +1625,34 @@ namespace dxvk {
         info->UnifiedMemoryArchitecture      = FALSE; // Maybe on some APUs?
       } return S_OK;
 
+      case D3D11_FEATURE_D3D11_OPTIONS3: {
+        if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_D3D11_OPTIONS3))
+          return E_INVALIDARG;
+
+        const auto& extensions = m_dxvkDevice->extensions();
+
+        auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS3*>(pFeatureSupportData);
+        info->VPAndRTArrayIndexFromAnyShaderFeedingRasterizer = extensions.extShaderViewportIndexLayer;
+      } return S_OK;
+
+      case D3D11_FEATURE_GPU_VIRTUAL_ADDRESS_SUPPORT: {
+        if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_GPU_VIRTUAL_ADDRESS_SUPPORT))
+          return E_INVALIDARG;
+
+        // These numbers are not accurate, but it should not have any effect on D3D11 apps
+        auto info = static_cast<D3D11_FEATURE_DATA_GPU_VIRTUAL_ADDRESS_SUPPORT*>(pFeatureSupportData);
+        info->MaxGPUVirtualAddressBitsPerResource = 32;
+        info->MaxGPUVirtualAddressBitsPerProcess  = 40;
+      } return S_OK;
+
+      case D3D11_FEATURE_D3D11_OPTIONS4: {
+        if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_D3D11_OPTIONS4))
+          return E_INVALIDARG;
+
+        auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS4*>(pFeatureSupportData);
+        info->ExtendedNV12SharedTextureSupported = FALSE;
+      } return S_OK;
+
       default:
         Logger::err(str::format(
           "D3D11Device: CheckFeatureSupport: Unknown feature: ",
