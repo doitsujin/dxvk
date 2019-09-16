@@ -46,6 +46,22 @@ namespace dxvk {
   }
   
   
+  HRESULT STDMETHODCALLTYPE D3D11DeferredContext::Signal(
+          ID3D11Fence*                pFence,
+          UINT64                      Value) {
+    Logger::err("D3D11: Signal called on a deferred context");
+    return DXGI_ERROR_INVALID_CALL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DeferredContext::Wait(
+          ID3D11Fence*                pFence,
+          UINT64                      Value) {
+    Logger::err("D3D11: Wait called on a deferred context");
+    return DXGI_ERROR_INVALID_CALL;
+  }
+
+
   void STDMETHODCALLTYPE D3D11DeferredContext::ExecuteCommandList(
           ID3D11CommandList*  pCommandList,
           BOOL                RestoreContextState) {

@@ -46,6 +46,14 @@ namespace dxvk {
             D3D11_CONTEXT_TYPE          ContextType,
             HANDLE                      hEvent);
 
+    HRESULT STDMETHODCALLTYPE Signal(
+            ID3D11Fence*                pFence,
+            UINT64                      Value);
+    
+    HRESULT STDMETHODCALLTYPE Wait(
+            ID3D11Fence*                pFence,
+            UINT64                      Value);
+
     void STDMETHODCALLTYPE ExecuteCommandList(
             ID3D11CommandList*          pCommandList,
             BOOL                        RestoreContextState);

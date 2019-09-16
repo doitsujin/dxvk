@@ -140,6 +140,22 @@ namespace dxvk {
   }
   
   
+  HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::Signal(
+          ID3D11Fence*                pFence,
+          UINT64                      Value) {
+    Logger::err("D3D11ImmediateContext::Signal: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::Wait(
+          ID3D11Fence*                pFence,
+          UINT64                      Value) {
+    Logger::err("D3D11ImmediateContext::Wait: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
   void STDMETHODCALLTYPE D3D11ImmediateContext::ExecuteCommandList(
           ID3D11CommandList*  pCommandList,
           BOOL                RestoreContextState) {

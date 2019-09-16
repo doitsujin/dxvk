@@ -17,7 +17,7 @@ namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11DeviceContext : public D3D11DeviceChild<ID3D11DeviceContext3> {
+  class D3D11DeviceContext : public D3D11DeviceChild<ID3D11DeviceContext4> {
     friend class D3D11DeviceContextExt;
   public:
     

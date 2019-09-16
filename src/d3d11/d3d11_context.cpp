@@ -56,7 +56,8 @@ namespace dxvk {
      || riid == __uuidof(ID3D11DeviceContext)
      || riid == __uuidof(ID3D11DeviceContext1)
      || riid == __uuidof(ID3D11DeviceContext2)
-     || riid == __uuidof(ID3D11DeviceContext3)) {
+     || riid == __uuidof(ID3D11DeviceContext3)
+     || riid == __uuidof(ID3D11DeviceContext4)) {
       *ppvObject = ref(this);
       return S_OK;
     }
