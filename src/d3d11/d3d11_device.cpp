@@ -122,6 +122,7 @@ namespace dxvk {
     desc.BindFlags      = pDesc->BindFlags;
     desc.CPUAccessFlags = pDesc->CPUAccessFlags;
     desc.MiscFlags      = pDesc->MiscFlags;
+    desc.TextureLayout  = D3D11_TEXTURE_LAYOUT_UNDEFINED;
     
     if (FAILED(D3D11CommonTexture::NormalizeTextureProperties(&desc)))
       return E_INVALIDARG;
@@ -162,6 +163,7 @@ namespace dxvk {
     desc.BindFlags      = pDesc->BindFlags;
     desc.CPUAccessFlags = pDesc->CPUAccessFlags;
     desc.MiscFlags      = pDesc->MiscFlags;
+    desc.TextureLayout  = D3D11_TEXTURE_LAYOUT_UNDEFINED;
     
     if (FAILED(D3D11CommonTexture::NormalizeTextureProperties(&desc)))
       return E_INVALIDARG;
@@ -202,6 +204,7 @@ namespace dxvk {
     desc.BindFlags      = pDesc->BindFlags;
     desc.CPUAccessFlags = pDesc->CPUAccessFlags;
     desc.MiscFlags      = pDesc->MiscFlags;
+    desc.TextureLayout  = D3D11_TEXTURE_LAYOUT_UNDEFINED;
     
     if (FAILED(D3D11CommonTexture::NormalizeTextureProperties(&desc)))
       return E_INVALIDARG;

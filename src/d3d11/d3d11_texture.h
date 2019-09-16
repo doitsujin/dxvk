@@ -43,6 +43,7 @@ namespace dxvk {
     UINT             BindFlags;
     UINT             CPUAccessFlags;
     UINT             MiscFlags;
+    D3D11_TEXTURE_LAYOUT TextureLayout;
   };
   
   
@@ -411,7 +412,7 @@ namespace dxvk {
   
   ///////////////////////////////////////////
   //      D 3 D 1 1 T E X T U R E 2 D
-  class D3D11Texture2D : public D3D11DeviceChild<ID3D11Texture2D> {
+  class D3D11Texture2D : public D3D11DeviceChild<ID3D11Texture2D1> {
     
   public:
     
@@ -436,7 +437,10 @@ namespace dxvk {
     void STDMETHODCALLTYPE SetEvictionPriority(UINT EvictionPriority) final;
     
     void STDMETHODCALLTYPE GetDesc(
-            D3D11_TEXTURE2D_DESC *pDesc) final;
+            D3D11_TEXTURE2D_DESC* pDesc) final;
+    
+    void STDMETHODCALLTYPE GetDesc1(
+            D3D11_TEXTURE2D_DESC1* pDesc) final;
     
     D3D11CommonTexture* GetCommonTexture() {
       return &m_texture;
@@ -459,7 +463,7 @@ namespace dxvk {
   
   ///////////////////////////////////////////
   //      D 3 D 1 1 T E X T U R E 3 D
-  class D3D11Texture3D : public D3D11DeviceChild<ID3D11Texture3D> {
+  class D3D11Texture3D : public D3D11DeviceChild<ID3D11Texture3D1> {
     
   public:
     
@@ -484,7 +488,10 @@ namespace dxvk {
     void STDMETHODCALLTYPE SetEvictionPriority(UINT EvictionPriority) final;
     
     void STDMETHODCALLTYPE GetDesc(
-            D3D11_TEXTURE3D_DESC *pDesc) final;
+            D3D11_TEXTURE3D_DESC* pDesc) final;
+    
+    void STDMETHODCALLTYPE GetDesc1(
+            D3D11_TEXTURE3D_DESC1* pDesc) final;
     
     D3D11CommonTexture* GetCommonTexture() {
       return &m_texture;

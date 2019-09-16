@@ -295,6 +295,16 @@ namespace dxvk {
     if (pDesc->MipLevels == 0 || pDesc->MipLevels > maxMipLevelCount)
       pDesc->MipLevels = maxMipLevelCount;
     
+    // Row-major is only supported for textures with one single
+    // subresource and one sample and cannot have bind flags.
+    if (pDesc->TextureLayout == D3D11_TEXTURE_LAYOUT_ROW_MAJOR
+     && (pDesc->MipLevels != 1 || pDesc->SampleDesc.Count != 1 || pDesc->BindFlags))
+      return E_INVALIDARG;
+
+    // Standard swizzle is unsupported
+    if (pDesc->TextureLayout == D3D11_TEXTURE_LAYOUT_64K_STANDARD_SWIZZLE)
+      return E_INVALIDARG;
+
     return S_OK;
   }
   
@@ -404,7 +414,8 @@ namespace dxvk {
     // 2. Since the image will most likely be read for rendering by the GPU,
     //    writing the image to device-local image may be more efficient than
     //    reading its contents from host-visible memory.
-    if (m_desc.Usage == D3D11_USAGE_DYNAMIC)
+    if (m_desc.Usage         == D3D11_USAGE_DYNAMIC
+     && m_desc.TextureLayout != D3D11_TEXTURE_LAYOUT_ROW_MAJOR)
       return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
     
     // Depth-stencil formats in D3D11 can be mapped and follow special
@@ -892,7 +903,8 @@ namespace dxvk {
     if (riid == __uuidof(IUnknown)
      || riid == __uuidof(ID3D11DeviceChild)
      || riid == __uuidof(ID3D11Resource)
-     || riid == __uuidof(ID3D11Texture2D)) {
+     || riid == __uuidof(ID3D11Texture2D)
+     || riid == __uuidof(ID3D11Texture2D1)) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -954,7 +966,7 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11Texture2D::GetDesc(D3D11_TEXTURE2D_DESC *pDesc) {
+  void STDMETHODCALLTYPE D3D11Texture2D::GetDesc(D3D11_TEXTURE2D_DESC* pDesc) {
     pDesc->Width          = m_texture.Desc()->Width;
     pDesc->Height         = m_texture.Desc()->Height;
     pDesc->MipLevels      = m_texture.Desc()->MipLevels;
@@ -965,6 +977,21 @@ namespace dxvk {
     pDesc->BindFlags      = m_texture.Desc()->BindFlags;
     pDesc->CPUAccessFlags = m_texture.Desc()->CPUAccessFlags;
     pDesc->MiscFlags      = m_texture.Desc()->MiscFlags;
+  }
+  
+  
+  void STDMETHODCALLTYPE D3D11Texture2D::GetDesc1(D3D11_TEXTURE2D_DESC1* pDesc) {
+    pDesc->Width          = m_texture.Desc()->Width;
+    pDesc->Height         = m_texture.Desc()->Height;
+    pDesc->MipLevels      = m_texture.Desc()->MipLevels;
+    pDesc->ArraySize      = m_texture.Desc()->ArraySize;
+    pDesc->Format         = m_texture.Desc()->Format;
+    pDesc->SampleDesc     = m_texture.Desc()->SampleDesc;
+    pDesc->Usage          = m_texture.Desc()->Usage;
+    pDesc->BindFlags      = m_texture.Desc()->BindFlags;
+    pDesc->CPUAccessFlags = m_texture.Desc()->CPUAccessFlags;
+    pDesc->MiscFlags      = m_texture.Desc()->MiscFlags;
+    pDesc->TextureLayout  = m_texture.Desc()->TextureLayout;
   }
   
   
@@ -995,7 +1022,8 @@ namespace dxvk {
     if (riid == __uuidof(IUnknown)
      || riid == __uuidof(ID3D11DeviceChild)
      || riid == __uuidof(ID3D11Resource)
-     || riid == __uuidof(ID3D11Texture3D)) {
+     || riid == __uuidof(ID3D11Texture3D)
+     || riid == __uuidof(ID3D11Texture3D1)) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -1049,7 +1077,7 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11Texture3D::GetDesc(D3D11_TEXTURE3D_DESC *pDesc) {
+  void STDMETHODCALLTYPE D3D11Texture3D::GetDesc(D3D11_TEXTURE3D_DESC* pDesc) {
     pDesc->Width          = m_texture.Desc()->Width;
     pDesc->Height         = m_texture.Desc()->Height;
     pDesc->Depth          = m_texture.Desc()->Depth;
@@ -1061,6 +1089,18 @@ namespace dxvk {
     pDesc->MiscFlags      = m_texture.Desc()->MiscFlags;
   }
   
+  
+  void STDMETHODCALLTYPE D3D11Texture3D::GetDesc1(D3D11_TEXTURE3D_DESC1* pDesc) {
+    pDesc->Width          = m_texture.Desc()->Width;
+    pDesc->Height         = m_texture.Desc()->Height;
+    pDesc->Depth          = m_texture.Desc()->Depth;
+    pDesc->MipLevels      = m_texture.Desc()->MipLevels;
+    pDesc->Format         = m_texture.Desc()->Format;
+    pDesc->Usage          = m_texture.Desc()->Usage;
+    pDesc->BindFlags      = m_texture.Desc()->BindFlags;
+    pDesc->CPUAccessFlags = m_texture.Desc()->CPUAccessFlags;
+    pDesc->MiscFlags      = m_texture.Desc()->MiscFlags;
+  }
   
   
   D3D11CommonTexture* GetCommonTexture(ID3D11Resource* pResource) {

@@ -443,6 +443,7 @@ namespace dxvk {
                             | D3D11_BIND_SHADER_RESOURCE;
     desc.CPUAccessFlags     = 0;
     desc.MiscFlags          = 0;
+    desc.TextureLayout      = D3D11_TEXTURE_LAYOUT_UNDEFINED;
 
     if (m_desc.BufferUsage & DXGI_USAGE_UNORDERED_ACCESS)
       desc.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
