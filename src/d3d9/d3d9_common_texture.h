@@ -321,17 +321,6 @@ namespace dxvk {
       return m_type;
     }
 
-    void MarkSystemMemGPUModified() {
-      m_systemmemModified = true;
-    }
-    void UnmarkSystemMemGPUModified() {
-      m_systemmemModified = false;
-    }
-
-    bool GetSystemMemGPUModified() {
-      return m_systemmemModified;
-    }
-
     bool MarkLocked(UINT Subresource, bool value) { return std::exchange(m_locked[Subresource], value); }
 
   private:

@@ -792,8 +792,6 @@ namespace dxvk {
 
     VkExtent3D srcExtent = srcTexInfo->GetExtentMip(src->GetMipLevel());
 
-    dstTexInfo->MarkSystemMemGPUModified();
-
     EmitCs([
       cBuffer       = dstBuffer,
       cImage        = srcImage,
@@ -805,6 +803,12 @@ namespace dxvk {
         cImage, cSubresources, VkOffset3D { 0, 0, 0 },
         cLevelExtent);
     });
+    
+    // We need to force a flush here
+    // as some applications depend on
+    // DO_NOT_WAIT not applying after
+    // this has happened.
+    Flush();
 
     return D3D_OK;
   }
@@ -3925,8 +3929,6 @@ namespace dxvk {
     const bool managed   = IsPoolManaged(desc.Pool);
     const bool scratch   = desc.Pool == D3DPOOL_SCRATCH;
 
-    bool modified = pResource->GetSystemMemGPUModified();
-
     bool fullResource = pBox == nullptr;
     if (unlikely(!fullResource)) {
       VkOffset3D lockOffset;
@@ -3979,12 +3981,11 @@ namespace dxvk {
       // that cannot get affected by GPU, therefore readonly is A-OK for NOT waiting.
       const bool noOverwrite  = Flags & D3DLOCK_NOOVERWRITE;
       const bool readOnly     = Flags & D3DLOCK_READONLY;
-      const bool skipWait = (readOnly && managed) || scratch || (readOnly && systemmem && !modified);
+      const bool skipWait = (readOnly && managed) || scratch || (readOnly && systemmem);
 
       if (alloced)
         std::memset(physSlice.mapPtr, 0, physSlice.length);
       else if (!noOverwrite && !skipWait) {
-        pResource->UnmarkSystemMemGPUModified();
         if (!WaitForResource(mappedBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
       }
