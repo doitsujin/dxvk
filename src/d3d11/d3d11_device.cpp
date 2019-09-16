@@ -1448,7 +1448,25 @@ namespace dxvk {
     static bool s_errorShown = false;
 
     if (!std::exchange(s_errorShown, true))
-      Logger::err("D3D11Device::GetResourceTiling: Not implemented");
+      Logger::err("D3D11Device::GetResourceTiling: Tiled resources not supported");
+
+    if (pNumTilesForEntireResource)
+      *pNumTilesForEntireResource = 0;
+
+    if (pPackedMipDesc)
+      *pPackedMipDesc = D3D11_PACKED_MIP_DESC();
+
+    if (pStandardTileShapeForNonPackedMips)
+      *pStandardTileShapeForNonPackedMips = D3D11_TILE_SHAPE();
+
+    if (pNumSubresourceTilings) {
+      if (pSubresourceTilingsForNonPackedMips) {
+        for (uint32_t i = 0; i < *pNumSubresourceTilings; i++)
+          pSubresourceTilingsForNonPackedMips[i] = D3D11_SUBRESOURCE_TILING();
+      }
+
+      *pNumSubresourceTilings = 0;
+    }
   }
   
   
