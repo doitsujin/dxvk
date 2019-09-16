@@ -7,9 +7,9 @@
 namespace dxvk {
   
   D3D11UnorderedAccessView::D3D11UnorderedAccessView(
-          D3D11Device*                      pDevice,
-          ID3D11Resource*                   pResource,
-    const D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc)
+          D3D11Device*                       pDevice,
+          ID3D11Resource*                    pResource,
+    const D3D11_UNORDERED_ACCESS_VIEW_DESC1* pDesc)
   : m_device(pDevice), m_resource(pResource), m_desc(*pDesc) {
     ResourceAddRefPrivate(m_resource);
 
@@ -138,7 +138,8 @@ namespace dxvk {
     if (riid == __uuidof(IUnknown)
      || riid == __uuidof(ID3D11DeviceChild)
      || riid == __uuidof(ID3D11View)
-     || riid == __uuidof(ID3D11UnorderedAccessView)) {
+     || riid == __uuidof(ID3D11UnorderedAccessView)
+     || riid == __uuidof(ID3D11UnorderedAccessView1)) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -160,13 +161,50 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11UnorderedAccessView::GetDesc(D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc) {
+    pDesc->Format            = m_desc.Format;
+    pDesc->ViewDimension     = m_desc.ViewDimension;
+
+    switch (m_desc.ViewDimension) {
+      case D3D11_UAV_DIMENSION_UNKNOWN:
+        break;
+
+      case D3D11_UAV_DIMENSION_BUFFER:
+        pDesc->Buffer = m_desc.Buffer;
+        break;
+
+      case D3D11_UAV_DIMENSION_TEXTURE1D:
+        pDesc->Texture1D = m_desc.Texture1D;
+        break;
+
+      case D3D11_UAV_DIMENSION_TEXTURE1DARRAY:
+        pDesc->Texture1DArray = m_desc.Texture1DArray;
+        break;
+
+      case D3D11_UAV_DIMENSION_TEXTURE2D:
+        pDesc->Texture2D.MipSlice = m_desc.Texture2D.MipSlice;
+        break;
+
+      case D3D11_UAV_DIMENSION_TEXTURE2DARRAY:
+        pDesc->Texture2DArray.MipSlice        = m_desc.Texture2DArray.MipSlice;
+        pDesc->Texture2DArray.FirstArraySlice = m_desc.Texture2DArray.FirstArraySlice;
+        pDesc->Texture2DArray.ArraySize       = m_desc.Texture2DArray.ArraySize;
+        break;
+
+      case D3D11_UAV_DIMENSION_TEXTURE3D:
+        pDesc->Texture3D = m_desc.Texture3D;
+        break;
+    }
+  }
+  
+  
+  void STDMETHODCALLTYPE D3D11UnorderedAccessView::GetDesc1(D3D11_UNORDERED_ACCESS_VIEW_DESC1* pDesc) {
     *pDesc = m_desc;
   }
   
   
   HRESULT D3D11UnorderedAccessView::GetDescFromResource(
-          ID3D11Resource*                   pResource,
-          D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc) {
+          ID3D11Resource*                    pResource,
+          D3D11_UNORDERED_ACCESS_VIEW_DESC1* pDesc) {
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
     
@@ -209,12 +247,14 @@ namespace dxvk {
         
         if (resourceDesc.ArraySize == 1) {
           pDesc->ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-          pDesc->Texture2D.MipSlice = 0;
+          pDesc->Texture2D.MipSlice   = 0;
+          pDesc->Texture2D.PlaneSlice = 0;
         } else {
           pDesc->ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
           pDesc->Texture2DArray.MipSlice        = 0;
           pDesc->Texture2DArray.FirstArraySlice = 0;
           pDesc->Texture2DArray.ArraySize       = resourceDesc.ArraySize;
+          pDesc->Texture2DArray.PlaneSlice      = 0;
         }
       } return S_OK;
       
@@ -237,9 +277,52 @@ namespace dxvk {
   }
   
   
+  D3D11_UNORDERED_ACCESS_VIEW_DESC1 D3D11UnorderedAccessView::PromoteDesc(
+    const D3D11_UNORDERED_ACCESS_VIEW_DESC*  pDesc) {
+    D3D11_UNORDERED_ACCESS_VIEW_DESC1 dstDesc;
+    dstDesc.Format            = pDesc->Format;
+    dstDesc.ViewDimension     = pDesc->ViewDimension;
+
+    switch (pDesc->ViewDimension) {
+      case D3D11_UAV_DIMENSION_UNKNOWN:
+        break;
+
+      case D3D11_UAV_DIMENSION_BUFFER:
+        dstDesc.Buffer = pDesc->Buffer;
+        break;
+
+      case D3D11_UAV_DIMENSION_TEXTURE1D:
+        dstDesc.Texture1D = pDesc->Texture1D;
+        break;
+
+      case D3D11_UAV_DIMENSION_TEXTURE1DARRAY:
+        dstDesc.Texture1DArray = pDesc->Texture1DArray;
+        break;
+
+      case D3D11_UAV_DIMENSION_TEXTURE2D:
+        dstDesc.Texture2D.MipSlice   = pDesc->Texture2D.MipSlice;
+        dstDesc.Texture2D.PlaneSlice = 0;
+        break;
+
+      case D3D11_UAV_DIMENSION_TEXTURE2DARRAY:
+        dstDesc.Texture2DArray.MipSlice        = pDesc->Texture2DArray.MipSlice;
+        dstDesc.Texture2DArray.FirstArraySlice = pDesc->Texture2DArray.FirstArraySlice;
+        dstDesc.Texture2DArray.ArraySize       = pDesc->Texture2DArray.ArraySize;
+        dstDesc.Texture2DArray.PlaneSlice      = 0;
+        break;
+
+      case D3D11_UAV_DIMENSION_TEXTURE3D:
+        dstDesc.Texture3D = pDesc->Texture3D;
+        break;
+    }
+
+    return dstDesc;
+  }
+
+
   HRESULT D3D11UnorderedAccessView::NormalizeDesc(
-          ID3D11Resource*                   pResource,
-          D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc) {
+          ID3D11Resource*                    pResource,
+          D3D11_UNORDERED_ACCESS_VIEW_DESC1* pDesc) {
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
     
@@ -313,9 +396,17 @@ namespace dxvk {
           pDesc->Texture1DArray.ArraySize = numLayers - pDesc->Texture1DArray.FirstArraySlice;
         break;
       
+      case D3D11_UAV_DIMENSION_TEXTURE2D:
+        if (pDesc->Texture2D.PlaneSlice != 0)
+          return E_INVALIDARG;
+        break;
+
       case D3D11_UAV_DIMENSION_TEXTURE2DARRAY:
         if (pDesc->Texture2DArray.ArraySize > numLayers - pDesc->Texture2DArray.FirstArraySlice)
           pDesc->Texture2DArray.ArraySize = numLayers - pDesc->Texture2DArray.FirstArraySlice;
+        
+        if (pDesc->Texture2DArray.PlaneSlice != 0)
+          return E_INVALIDARG;
         break;
       
       case D3D11_UAV_DIMENSION_TEXTURE3D:
