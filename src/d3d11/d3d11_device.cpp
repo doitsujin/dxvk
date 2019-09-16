@@ -977,14 +977,19 @@ namespace dxvk {
           ID3D11Query**               ppQuery) {
     InitReturnPtr(ppQuery);
 
-    if (pQueryDesc == nullptr)
+    if (!pQueryDesc)
       return E_INVALIDARG;
     
-    if (ppQuery == nullptr)
+    D3D11_QUERY_DESC1 desc;
+    desc.Query       = pQueryDesc->Query;
+    desc.MiscFlags   = pQueryDesc->MiscFlags;
+    desc.ContextType = D3D11_CONTEXT_TYPE_ALL;
+    
+    if (!ppQuery)
       return S_FALSE;
     
     try {
-      *ppQuery = ref(new D3D11Query(this, *pQueryDesc));
+      *ppQuery = ref(new D3D11Query(this, desc));
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
@@ -998,19 +1003,25 @@ namespace dxvk {
           ID3D11Predicate**           ppPredicate) {
     InitReturnPtr(ppPredicate);
     
-    if (pPredicateDesc == nullptr)
+    if (!pPredicateDesc)
       return E_INVALIDARG;
 
-    if (pPredicateDesc->Query != D3D11_QUERY_OCCLUSION_PREDICATE) {
+    D3D11_QUERY_DESC1 desc;
+    desc.Query       = pPredicateDesc->Query;
+    desc.MiscFlags   = pPredicateDesc->MiscFlags;
+    desc.ContextType = D3D11_CONTEXT_TYPE_ALL;
+
+    if (desc.Query != D3D11_QUERY_OCCLUSION_PREDICATE) {
       Logger::warn(str::format("D3D11: Unhandled predicate type: ", pPredicateDesc->Query));
       return E_INVALIDARG;
     }
     
-    if (ppPredicate == nullptr)
+    if (!ppPredicate)
       return S_FALSE;
     
     try {
-      *ppPredicate = ref(new D3D11Query(this, *pPredicateDesc));
+      *ppPredicate = D3D11Query::AsPredicate(
+        ref(new D3D11Query(this, desc)));
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());

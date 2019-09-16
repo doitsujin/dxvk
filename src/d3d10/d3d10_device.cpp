@@ -665,8 +665,7 @@ namespace dxvk {
     if (FAILED(hr) || hr == S_FALSE)
       return hr;
     
-    *ppPredicate = static_cast<D3D11Query*>(d3d11Predicate)->GetD3D10Iface();
-
+    *ppPredicate = D3D11Query::FromPredicate(d3d11Predicate)->GetD3D10Iface();
     return S_OK;
   }
 
@@ -760,7 +759,7 @@ namespace dxvk {
     D3D10Query* d3d10Predicate = static_cast<D3D10Query*>(pPredicate);
     D3D11Query* d3d11Predicate = d3d10Predicate ? d3d10Predicate->GetD3D11Iface() : nullptr;
 
-    m_context->SetPredication(d3d11Predicate, PredicateValue);
+    m_context->SetPredication(D3D11Query::AsPredicate(d3d11Predicate), PredicateValue);
   }
 
 
@@ -774,7 +773,7 @@ namespace dxvk {
       pPredicateValue);
 
     if (ppPredicate != nullptr)
-      *ppPredicate = d3d11Predicate ? static_cast<D3D11Query*>(d3d11Predicate)->GetD3D10Iface() : nullptr;
+      *ppPredicate = d3d11Predicate ? D3D11Query::FromPredicate(d3d11Predicate)->GetD3D10Iface() : nullptr;
   }
 
 
