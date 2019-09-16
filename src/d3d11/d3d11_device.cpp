@@ -340,13 +340,13 @@ namespace dxvk {
     
     // The view description is optional. If not defined, it
     // will use the resource's format and all array layers.
-    D3D11_RENDER_TARGET_VIEW_DESC desc;
+    D3D11_RENDER_TARGET_VIEW_DESC1 desc;
     
     if (pDesc == nullptr) {
       if (FAILED(D3D11RenderTargetView::GetDescFromResource(pResource, &desc)))
         return E_INVALIDARG;
     } else {
-      desc = *pDesc;
+      desc = D3D11RenderTargetView::PromoteDesc(pDesc);
       
       if (FAILED(D3D11RenderTargetView::NormalizeDesc(pResource, &desc)))
         return E_INVALIDARG;
