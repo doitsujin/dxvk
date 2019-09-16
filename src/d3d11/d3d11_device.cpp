@@ -1866,7 +1866,9 @@ namespace dxvk {
   
   
   D3D_FEATURE_LEVEL D3D11Device::GetMaxFeatureLevel(const Rc<DxvkAdapter>& Adapter) {
-    static const std::array<std::pair<std::string, D3D_FEATURE_LEVEL>, 7> s_featureLevels = {{
+    static const std::array<std::pair<std::string, D3D_FEATURE_LEVEL>, 9> s_featureLevels = {{
+      { "12_1", D3D_FEATURE_LEVEL_12_1 },
+      { "12_0", D3D_FEATURE_LEVEL_12_0 },
       { "11_1", D3D_FEATURE_LEVEL_11_1 },
       { "11_0", D3D_FEATURE_LEVEL_11_0 },
       { "10_1", D3D_FEATURE_LEVEL_10_1 },
