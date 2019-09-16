@@ -70,6 +70,8 @@ namespace dxvk {
       return &m_d3d10;
     }
 
+    static HRESULT ValidateDesc(const D3D11_QUERY_DESC1* pDesc);
+
     static ID3D11Predicate* AsPredicate(ID3D11Query* pQuery) {
       return static_cast<ID3D11Predicate*>(pQuery);
     }

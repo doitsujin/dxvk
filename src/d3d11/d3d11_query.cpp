@@ -347,5 +347,14 @@ namespace dxvk {
     VkPhysicalDeviceLimits limits = adapter->deviceProperties().limits;
     return uint64_t(1'000'000'000.0f / limits.timestampPeriod);
   }
+
+
+  HRESULT D3D11Query::ValidateDesc(const D3D11_QUERY_DESC1* pDesc) {
+    if (pDesc->Query       >= D3D11_QUERY_PIPELINE_STATISTICS
+     && pDesc->ContextType >  D3D11_CONTEXT_TYPE_3D)
+      return E_INVALIDARG;
+    
+    return S_OK;
+  }
   
 }

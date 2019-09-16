@@ -45,7 +45,7 @@ namespace dxvk {
    * Implements the ID3D11Device interfaces
    * as part of a \ref D3D11DeviceContainer.
    */
-  class D3D11Device final : public ID3D11Device2 {
+  class D3D11Device final : public ID3D11Device3 {
     /// Maximum number of resource init commands per command buffer
     constexpr static uint64_t InitCommandThreshold = 50;
   public:
@@ -80,25 +80,50 @@ namespace dxvk {
       const D3D11_SUBRESOURCE_DATA* pInitialData,
             ID3D11Texture2D**       ppTexture2D);
     
+    HRESULT STDMETHODCALLTYPE CreateTexture2D1(
+      const D3D11_TEXTURE2D_DESC1*  pDesc,
+      const D3D11_SUBRESOURCE_DATA* pInitialData,
+            ID3D11Texture2D1**      ppTexture2D);
+    
     HRESULT STDMETHODCALLTYPE CreateTexture3D(
       const D3D11_TEXTURE3D_DESC*   pDesc,
       const D3D11_SUBRESOURCE_DATA* pInitialData,
             ID3D11Texture3D**       ppTexture3D);
+    
+    HRESULT STDMETHODCALLTYPE CreateTexture3D1(
+      const D3D11_TEXTURE3D_DESC1*  pDesc,
+      const D3D11_SUBRESOURCE_DATA* pInitialData,
+            ID3D11Texture3D1**      ppTexture3D);
     
     HRESULT STDMETHODCALLTYPE CreateShaderResourceView(
             ID3D11Resource*                   pResource,
       const D3D11_SHADER_RESOURCE_VIEW_DESC*  pDesc,
             ID3D11ShaderResourceView**        ppSRView);
     
+    HRESULT STDMETHODCALLTYPE CreateShaderResourceView1(
+            ID3D11Resource*                   pResource,
+      const D3D11_SHADER_RESOURCE_VIEW_DESC1* pDesc,
+            ID3D11ShaderResourceView1**       ppSRView);
+    
     HRESULT STDMETHODCALLTYPE CreateUnorderedAccessView(
             ID3D11Resource*                   pResource,
       const D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc,
             ID3D11UnorderedAccessView**       ppUAView);
     
+    HRESULT STDMETHODCALLTYPE CreateUnorderedAccessView1(
+            ID3D11Resource*                   pResource,
+      const D3D11_UNORDERED_ACCESS_VIEW_DESC1* pDesc,
+            ID3D11UnorderedAccessView1**      ppUAView);
+    
     HRESULT STDMETHODCALLTYPE CreateRenderTargetView(
             ID3D11Resource*                   pResource,
       const D3D11_RENDER_TARGET_VIEW_DESC*    pDesc,
             ID3D11RenderTargetView**          ppRTView);
+    
+    HRESULT STDMETHODCALLTYPE CreateRenderTargetView1(
+            ID3D11Resource*                   pResource,
+      const D3D11_RENDER_TARGET_VIEW_DESC1*   pDesc,
+            ID3D11RenderTargetView1**         ppRTView);
     
     HRESULT STDMETHODCALLTYPE CreateDepthStencilView(
             ID3D11Resource*                   pResource,
@@ -182,6 +207,10 @@ namespace dxvk {
       const D3D11_RASTERIZER_DESC1*     pRasterizerDesc,
             ID3D11RasterizerState1**    ppRasterizerState);
     
+    HRESULT STDMETHODCALLTYPE CreateRasterizerState2(
+      const D3D11_RASTERIZER_DESC2*     pRasterizerDesc,
+            ID3D11RasterizerState2**    ppRasterizerState);
+    
     HRESULT STDMETHODCALLTYPE CreateSamplerState(
       const D3D11_SAMPLER_DESC*         pSamplerDesc,
             ID3D11SamplerState**        ppSamplerState);
@@ -189,6 +218,10 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE CreateQuery(
       const D3D11_QUERY_DESC*           pQueryDesc,
             ID3D11Query**               ppQuery);
+    
+    HRESULT STDMETHODCALLTYPE CreateQuery1(
+      const D3D11_QUERY_DESC1*          pQueryDesc,
+            ID3D11Query1**              ppQuery);
     
     HRESULT STDMETHODCALLTYPE CreatePredicate(
       const D3D11_QUERY_DESC*           pPredicateDesc,
@@ -210,6 +243,10 @@ namespace dxvk {
             UINT                        ContextFlags,
             ID3D11DeviceContext2**      ppDeferredContext);
 
+    HRESULT STDMETHODCALLTYPE CreateDeferredContext3(
+            UINT                        ContextFlags,
+            ID3D11DeviceContext3**      ppDeferredContext);
+
     HRESULT STDMETHODCALLTYPE CreateDeviceContextState(
             UINT                        Flags,
       const D3D_FEATURE_LEVEL*          pFeatureLevels,
@@ -218,7 +255,23 @@ namespace dxvk {
             REFIID                      EmulatedInterface,
             D3D_FEATURE_LEVEL*          pChosenFeatureLevel,
             ID3DDeviceContextState**    ppContextState);
-    
+
+    void STDMETHODCALLTYPE ReadFromSubresource(
+            void*                       pDstData,
+            UINT                        DstRowPitch,
+            UINT                        DstDepthPitch,
+            ID3D11Resource*             pSrcResource,
+            UINT                        SrcSubresource,
+      const D3D11_BOX*                  pSrcBox);
+
+    void STDMETHODCALLTYPE WriteToSubresource(
+            ID3D11Resource*             pDstResource,
+            UINT                        DstSubresource,
+      const D3D11_BOX*                  pDstBox,
+      const void*                       pSrcData,
+            UINT                        SrcRowPitch,
+            UINT                        SrcDepthPitch);
+
     HRESULT STDMETHODCALLTYPE OpenSharedResource(
             HANDLE      hResource,
             REFIID      ReturnedInterface,
@@ -297,6 +350,9 @@ namespace dxvk {
     
     void STDMETHODCALLTYPE GetImmediateContext2(
             ID3D11DeviceContext2** ppImmediateContext);
+    
+    void STDMETHODCALLTYPE GetImmediateContext3(
+            ID3D11DeviceContext3** ppImmediateContext);
     
     HRESULT STDMETHODCALLTYPE SetExceptionMode(UINT RaiseFlags);
     
