@@ -804,11 +804,12 @@ namespace dxvk {
         cLevelExtent);
     });
     
-    // We need to force a flush here
+    // We need to force a wait here
     // as some applications depend on
     // DO_NOT_WAIT not applying after
     // this has happened.
-    Flush();
+    // (this is a blocking call)
+    WaitForResource(dstBuffer, 0);
 
     return D3D_OK;
   }
