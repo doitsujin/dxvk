@@ -23,7 +23,7 @@ struct VS_OUTPUT {
 
 VS_OUTPUT main( VS_INPUT IN ) {
   VS_OUTPUT OUT;
-  OUT.Position = float4(IN.Position, 1.0f);
+  OUT.Position = float4(IN.Position, 0.6f);
 
   return OUT;
 }
@@ -45,8 +45,7 @@ sampler g_texDepth : register( s0 );
 PS_OUTPUT main( VS_OUTPUT IN ) {
   PS_OUTPUT OUT;
 
-  OUT.Colour  = float4(0.906f, 0.278f, 0.235f, 1.0f);
-  OUT.Colour *= tex2D(g_texDepth, float3(-1000, -1000, 0));
+  OUT.Colour = tex2D(g_texDepth, float2(0, 0));
 
   return OUT;
 }
@@ -127,15 +126,51 @@ public:
     m_device->SetVertexShader(m_vs.ptr());
     m_device->SetPixelShader(m_ps.ptr());
 
-    Com<IDirect3DTexture9> depthTexture;
-    status = m_device->CreateTexture(1, 1, 1, D3DUSAGE_DEPTHSTENCIL, D3DFMT_D24S8, D3DPOOL_DEFAULT, &depthTexture, nullptr);
-    if (FAILED(status))
-      throw DxvkError("Failed to create depth texture");
+    Com<IDirect3DTexture9> defaultTexture;
+    status = m_device->CreateTexture(64, 64, 1, 0, D3DFMT_DXT3, D3DPOOL_DEFAULT,   &defaultTexture, nullptr);
 
-    m_device->SetTexture(0, depthTexture.ptr());
-    m_device->SetSamplerState(0, D3DSAMP_ADDRESSU,    D3DTADDRESS_BORDER);
-    m_device->SetSamplerState(0, D3DSAMP_ADDRESSV,    D3DTADDRESS_BORDER);
-    m_device->SetSamplerState(0, D3DSAMP_BORDERCOLOR, D3DCOLOR_RGBA(128, 255, 255, 255));
+    Com<IDirect3DTexture9> sysmemTexture;
+    status = m_device->CreateTexture(64, 64, 1, 0, D3DFMT_DXT3, D3DPOOL_SYSTEMMEM, &sysmemTexture, nullptr);
+
+    Com<IDirect3DSurface9> offscreenSurface;
+    status = m_device->CreateOffscreenPlainSurfaceEx(64, 64, D3DFMT_DXT3, D3DPOOL_DEFAULT, &offscreenSurface, nullptr, 0);
+
+    D3DLOCKED_RECT offscreenLock;
+    status = offscreenSurface->LockRect(&offscreenLock, nullptr, 0);
+
+    std::memset(offscreenLock.pBits, 0xFF, offscreenLock.Pitch * (64 / 4));
+
+    status = offscreenSurface->UnlockRect();
+
+    //status = m_device->ColorFill(offscreenSurface.ptr(), nullptr, D3DCOLOR_ARGB(255, 255, 0, 0));
+
+    D3DLOCKED_RECT sysmemLock;
+    status = sysmemTexture->LockRect(0, &sysmemLock, nullptr, 0);
+
+    //D3DLOCKED_RECT offscreenLock;
+    status = offscreenSurface->LockRect(&offscreenLock, nullptr, 0);
+
+    std::memcpy(sysmemLock.pBits, offscreenLock.pBits, offscreenLock.Pitch * (64 / 4));
+
+    sysmemTexture->UnlockRect(0);
+    offscreenSurface->UnlockRect();
+
+    status = m_device->UpdateTexture(sysmemTexture.ptr(), defaultTexture.ptr());
+
+    status = m_device->SetTexture(0, defaultTexture.ptr());
+
+    /// 
+
+    Com<IDirect3DSurface9> ds;
+    //status = m_device->CreateDepthStencilSurface(1274, 695, D3DFMT_D24X8, D3DMULTISAMPLE_NONE, 0, FALSE, &ds, nullptr);
+    status = m_device->CreateDepthStencilSurface(1280, 720, D3DFMT_D24X8, D3DMULTISAMPLE_NONE, 0, FALSE, &ds, nullptr);
+
+    status = m_device->SetDepthStencilSurface(ds.ptr());
+    status = m_device->SetRenderState(D3DRS_ZWRITEENABLE, 1);
+    status = m_device->SetRenderState(D3DRS_ZENABLE, 1);
+    status = m_device->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
+
+
 
     std::array<float, 9> vertices = {
       0.0f, 0.5f, 0.0f,
@@ -190,7 +225,15 @@ public:
       nullptr,
       D3DCLEAR_TARGET,
       D3DCOLOR_RGBA(44, 62, 80, 0),
-      0.0f,
+      0,
+      0);
+
+    m_device->Clear(
+      0,
+      nullptr,
+      D3DCLEAR_ZBUFFER,
+      0,
+      0.5f,
       0);
 
     m_device->DrawPrimitive(D3DPT_TRIANGLELIST, 0, 1);

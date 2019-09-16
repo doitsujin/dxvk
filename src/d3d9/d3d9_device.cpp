@@ -650,16 +650,16 @@ namespace dxvk {
     VkOffset3D srcBlockOffset = { 0u, 0u, 0u };
     VkOffset3D dstOffset = { 0u, 0u, 0u };
 
-    VkExtent3D extent = srcTextureInfo->GetExtentMip(src->GetSubresource());
+    VkExtent3D copyExtent = srcTextureInfo->GetExtentMip(src->GetSubresource());
 
     if (pSourceRect != nullptr) {
       srcBlockOffset = { pSourceRect->left / int32_t(formatInfo->blockSize.width),
                          pSourceRect->top  / int32_t(formatInfo->blockSize.height),
                          0u };
 
-      extent = { alignDown(uint32_t(pSourceRect->right  - pSourceRect->left), formatInfo->blockSize.width),
-                 alignDown(uint32_t(pSourceRect->bottom - pSourceRect->top),  formatInfo->blockSize.height),
-                 1u };
+      copyExtent = { alignDown(uint32_t(pSourceRect->right  - pSourceRect->left), formatInfo->blockSize.width),
+                     alignDown(uint32_t(pSourceRect->bottom - pSourceRect->top),  formatInfo->blockSize.height),
+                     1u };
     }
 
     if (pDestPoint != nullptr) {
@@ -683,18 +683,22 @@ namespace dxvk {
     VkDeviceSize srcByteOffset = srcBlockOffset.y * formatInfo->elementSize * blockCount.width
                                + srcBlockOffset.x * formatInfo->elementSize;
 
+    VkExtent3D fullSrcExtent3D = srcTextureInfo->GetExtentMip(src->GetSubresource());
+    VkExtent2D fullSrcExtent = VkExtent2D{ fullSrcExtent3D.width, fullSrcExtent3D.height };
+
     EmitCs([
-      cDstImage  = std::move(dstImage),
-      cSrcBuffer = std::move(srcBuffer),
-      cDstLayers = dstSubresource,
-      cDstOffset = dstOffset,
-      cSrcOffset = srcByteOffset,
-      cExtent    = extent
+      cDstImage   = std::move(dstImage),
+      cSrcBuffer  = std::move(srcBuffer),
+      cDstLayers  = dstSubresource,
+      cDstOffset  = dstOffset,
+      cSrcOffset  = srcByteOffset,
+      cCopyExtent = copyExtent,
+      cSrcExtent  = fullSrcExtent
     ] (DxvkContext* ctx) {
       ctx->copyBufferToImage(
-        cDstImage, cDstLayers, cDstOffset, cExtent,
+        cDstImage, cDstLayers, cDstOffset, cCopyExtent,
         cSrcBuffer, cSrcOffset,
-        VkExtent2D{ 0u, 0u });
+        cSrcExtent);
     });
 
     if (dstTextureInfo->IsAutomaticMip())
