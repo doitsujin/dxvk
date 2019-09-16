@@ -1255,12 +1255,19 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::SetResourceMinLOD(
           ID3D11Resource*                   pResource,
           FLOAT                             MinLOD) {
-    Logger::err("D3D11DeviceContext::SetResourceMinLOD: Not implemented");
+    bool s_errorShown = false;
+
+    if (std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::SetResourceMinLOD: Not implemented");
   }
   
   
   FLOAT STDMETHODCALLTYPE D3D11DeviceContext::GetResourceMinLOD(ID3D11Resource* pResource) {
-    Logger::err("D3D11DeviceContext::GetResourceMinLOD: Not implemented");
+    bool s_errorShown = false;
+
+    if (std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::GetResourceMinLOD: Not implemented");
+
     return 0.0f;
   }
   
