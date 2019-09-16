@@ -1305,6 +1305,22 @@ namespace dxvk {
   }
   
 
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateFence(
+          UINT64                      InitialValue,
+          D3D11_FENCE_FLAG            Flags,
+          REFIID                      ReturnedInterface,
+          void**                      ppFence) {
+    InitReturnPtr(ppFence);
+
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11Device::CreateFence: Not implemented");
+    
+    return E_NOTIMPL;
+  }
+
+
   void STDMETHODCALLTYPE D3D11Device::ReadFromSubresource(
           void*                       pDstData,
           UINT                        DstRowPitch,
@@ -1365,7 +1381,19 @@ namespace dxvk {
     Logger::err("D3D11Device::OpenSharedResourceByName: Not implemented");
     return E_NOTIMPL;
   }
-  
+
+
+  HRESULT STDMETHODCALLTYPE D3D11Device::OpenSharedFence(
+          HANDLE      hFence,
+          REFIID      ReturnedInterface,
+          void**      ppFence) {
+    InitReturnPtr(ppFence);
+
+    Logger::err("D3D11Device::OpenSharedFence: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
   HRESULT STDMETHODCALLTYPE D3D11Device::CheckFormatSupport(
           DXGI_FORMAT Format,
           UINT*       pFormatSupport) {
@@ -2378,7 +2406,8 @@ namespace dxvk {
      || riid == __uuidof(ID3D11Device1)
      || riid == __uuidof(ID3D11Device2)
      || riid == __uuidof(ID3D11Device3)
-     || riid == __uuidof(ID3D11Device4)) {
+     || riid == __uuidof(ID3D11Device4)
+     || riid == __uuidof(ID3D11Device5)) {
       *ppvObject = ref(&m_d3d11Device);
       return S_OK;
     }

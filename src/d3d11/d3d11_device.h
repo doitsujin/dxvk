@@ -45,7 +45,7 @@ namespace dxvk {
    * Implements the ID3D11Device interfaces
    * as part of a \ref D3D11DeviceContainer.
    */
-  class D3D11Device final : public ID3D11Device4 {
+  class D3D11Device final : public ID3D11Device5 {
     /// Maximum number of resource init commands per command buffer
     constexpr static uint64_t InitCommandThreshold = 50;
   public:
@@ -256,6 +256,12 @@ namespace dxvk {
             D3D_FEATURE_LEVEL*          pChosenFeatureLevel,
             ID3DDeviceContextState**    ppContextState);
 
+    HRESULT STDMETHODCALLTYPE CreateFence(
+            UINT64                      InitialValue,
+            D3D11_FENCE_FLAG            Flags,
+            REFIID                      ReturnedInterface,
+            void**                      ppFence);
+
     void STDMETHODCALLTYPE ReadFromSubresource(
             void*                       pDstData,
             UINT                        DstRowPitch,
@@ -288,6 +294,11 @@ namespace dxvk {
             REFIID      returnedInterface,
             void**      ppResource);
     
+    HRESULT STDMETHODCALLTYPE OpenSharedFence(
+            HANDLE      hFence,
+            REFIID      ReturnedInterface,
+            void**      ppFence);
+
     HRESULT STDMETHODCALLTYPE CheckFormatSupport(
             DXGI_FORMAT Format,
             UINT*       pFormatSupport);
