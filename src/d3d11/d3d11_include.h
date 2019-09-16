@@ -2,7 +2,7 @@
 
 #include "../dxgi/dxgi_include.h"
 
-#include <d3d11_3.h>
+#include <d3d11_4.h>
 
 // This is not defined in the mingw headers
 #ifndef D3D11_1_UAV_SLOT_COUNT
