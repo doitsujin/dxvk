@@ -1765,6 +1765,27 @@ namespace dxvk {
   }
   
   
+  HRESULT STDMETHODCALLTYPE D3D11Device::RegisterDeviceRemovedEvent(
+          HANDLE                    hEvent,
+          DWORD*                    pdwCookie) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11Device::RegisterDeviceRemovedEvent: Not implemented");
+
+    return E_NOTIMPL;
+  }
+
+
+  void STDMETHODCALLTYPE D3D11Device::UnregisterDeviceRemoved(
+          DWORD                     dwCookie) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11Device::UnregisterDeviceRemovedEvent: Not implemented");
+  }
+
+
   DXGI_VK_FORMAT_INFO D3D11Device::LookupFormat(
           DXGI_FORMAT           Format,
           DXGI_VK_FORMAT_MODE   Mode) const {
@@ -2356,7 +2377,8 @@ namespace dxvk {
     if (riid == __uuidof(ID3D11Device)
      || riid == __uuidof(ID3D11Device1)
      || riid == __uuidof(ID3D11Device2)
-     || riid == __uuidof(ID3D11Device3)) {
+     || riid == __uuidof(ID3D11Device3)
+     || riid == __uuidof(ID3D11Device4)) {
       *ppvObject = ref(&m_d3d11Device);
       return S_OK;
     }

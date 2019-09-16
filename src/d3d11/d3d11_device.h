@@ -45,7 +45,7 @@ namespace dxvk {
    * Implements the ID3D11Device interfaces
    * as part of a \ref D3D11DeviceContainer.
    */
-  class D3D11Device final : public ID3D11Device3 {
+  class D3D11Device final : public ID3D11Device4 {
     /// Maximum number of resource init commands per command buffer
     constexpr static uint64_t InitCommandThreshold = 50;
   public:
@@ -366,6 +366,13 @@ namespace dxvk {
             UINT*                     pNumSubresourceTilings,
             UINT                      FirstSubresourceTilingToGet,
             D3D11_SUBRESOURCE_TILING* pSubresourceTilingsForNonPackedMips);
+
+    HRESULT STDMETHODCALLTYPE RegisterDeviceRemovedEvent(
+            HANDLE                    hEvent,
+            DWORD*                    pdwCookie);
+
+    void STDMETHODCALLTYPE UnregisterDeviceRemoved(
+            DWORD                     dwCookie);
 
     Rc<DxvkDevice> GetDXVKDevice() {
       return m_dxvkDevice;
