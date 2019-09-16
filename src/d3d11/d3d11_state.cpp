@@ -46,7 +46,7 @@ namespace dxvk {
   
   
   size_t D3D11StateDescHash::operator () (
-    const D3D11_RASTERIZER_DESC1& desc) const {
+    const D3D11_RASTERIZER_DESC2& desc) const {
     std::hash<float> fhash;
 
     DxvkHashState hash;
@@ -61,6 +61,7 @@ namespace dxvk {
     hash.add(desc.MultisampleEnable);
     hash.add(desc.AntialiasedLineEnable);
     hash.add(desc.ForcedSampleCount);
+    hash.add(desc.ConservativeRaster);
     return hash;
   }
   
@@ -144,8 +145,8 @@ namespace dxvk {
   
   
   bool D3D11StateDescEqual::operator () (
-    const D3D11_RASTERIZER_DESC1& a,
-    const D3D11_RASTERIZER_DESC1& b) const {
+    const D3D11_RASTERIZER_DESC2& a,
+    const D3D11_RASTERIZER_DESC2& b) const {
     return a.FillMode              == b.FillMode
         && a.CullMode              == b.CullMode
         && a.FrontCounterClockwise == b.FrontCounterClockwise
@@ -156,7 +157,8 @@ namespace dxvk {
         && a.ScissorEnable         == b.ScissorEnable
         && a.MultisampleEnable     == b.MultisampleEnable
         && a.AntialiasedLineEnable == b.AntialiasedLineEnable
-        && a.ForcedSampleCount     == b.ForcedSampleCount;
+        && a.ForcedSampleCount     == b.ForcedSampleCount
+        && a.ConservativeRaster    == b.ConservativeRaster;
   }
   
   

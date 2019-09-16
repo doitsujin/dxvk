@@ -910,7 +910,7 @@ namespace dxvk {
           ID3D11RasterizerState**     ppRasterizerState) {
     InitReturnPtr(ppRasterizerState);
     
-    D3D11_RASTERIZER_DESC1 desc = pRasterizerDesc != nullptr
+    D3D11_RASTERIZER_DESC2 desc = pRasterizerDesc
       ? D3D11RasterizerState::PromoteDesc(pRasterizerDesc)
       : D3D11RasterizerState::DefaultDesc();
     
@@ -929,8 +929,8 @@ namespace dxvk {
           ID3D11RasterizerState1**    ppRasterizerState) {
     InitReturnPtr(ppRasterizerState);
     
-    D3D11_RASTERIZER_DESC1 desc = pRasterizerDesc != nullptr
-      ? *pRasterizerDesc
+    D3D11_RASTERIZER_DESC2 desc = pRasterizerDesc
+      ? D3D11RasterizerState::PromoteDesc(pRasterizerDesc)
       : D3D11RasterizerState::DefaultDesc();
     
     if (FAILED(D3D11RasterizerState::NormalizeDesc(&desc)))

@@ -10,15 +10,15 @@ namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11RasterizerState : public D3D11DeviceChild<ID3D11RasterizerState1> {
+  class D3D11RasterizerState : public D3D11DeviceChild<ID3D11RasterizerState2> {
     
   public:
     
-    using DescType = D3D11_RASTERIZER_DESC1;
+    using DescType = D3D11_RASTERIZER_DESC2;
     
     D3D11RasterizerState(
             D3D11Device*                    device,
-      const D3D11_RASTERIZER_DESC1&         desc);
+      const D3D11_RASTERIZER_DESC2&         desc);
     ~D3D11RasterizerState();
     
     HRESULT STDMETHODCALLTYPE QueryInterface(
@@ -34,7 +34,10 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc1(
             D3D11_RASTERIZER_DESC1* pDesc) final;
     
-    const D3D11_RASTERIZER_DESC1* Desc() const {
+    void STDMETHODCALLTYPE GetDesc2(
+            D3D11_RASTERIZER_DESC2* pDesc) final;
+    
+    const D3D11_RASTERIZER_DESC2* Desc() const {
       return &m_desc;
     }
     
@@ -45,18 +48,21 @@ namespace dxvk {
       return &m_d3d10;
     }
     
-    static D3D11_RASTERIZER_DESC1 DefaultDesc();
+    static D3D11_RASTERIZER_DESC2 DefaultDesc();
     
-    static D3D11_RASTERIZER_DESC1 PromoteDesc(
+    static D3D11_RASTERIZER_DESC2 PromoteDesc(
       const D3D11_RASTERIZER_DESC*  pDesc);
     
+    static D3D11_RASTERIZER_DESC2 PromoteDesc(
+      const D3D11_RASTERIZER_DESC1* pDesc);
+    
     static HRESULT NormalizeDesc(
-            D3D11_RASTERIZER_DESC1* pDesc);
+            D3D11_RASTERIZER_DESC2* pDesc);
     
   private:
     
     D3D11Device* const     m_device;
-    D3D11_RASTERIZER_DESC1 m_desc;
+    D3D11_RASTERIZER_DESC2 m_desc;
     DxvkRasterizerState    m_state;
     DxvkDepthBias          m_depthBias;
     D3D10RasterizerState   m_d3d10;
