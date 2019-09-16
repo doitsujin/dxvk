@@ -238,13 +238,13 @@ namespace dxvk {
     
     // The description is optional. If omitted, we'll create
     // a view that covers all subresources of the image.
-    D3D11_SHADER_RESOURCE_VIEW_DESC desc;
+    D3D11_SHADER_RESOURCE_VIEW_DESC1 desc;
     
     if (pDesc == nullptr) {
       if (FAILED(D3D11ShaderResourceView::GetDescFromResource(pResource, &desc)))
         return E_INVALIDARG;
     } else {
-      desc = *pDesc;
+      desc = D3D11ShaderResourceView::PromoteDesc(pDesc);
       
       if (FAILED(D3D11ShaderResourceView::NormalizeDesc(pResource, &desc)))
         return E_INVALIDARG;
