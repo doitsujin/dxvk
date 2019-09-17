@@ -1606,7 +1606,7 @@ namespace dxvk {
         info->TiledResourcesTier                    = D3D11_TILED_RESOURCES_NOT_SUPPORTED;
         info->MinMaxFiltering                       = FALSE;
         info->ClearViewAlsoSupportsDepthOnlyFormats = TRUE;
-        info->MapOnDefaultBuffers                   = FALSE;
+        info->MapOnDefaultBuffers                   = TRUE;
       } return S_OK;
 
       case D3D11_FEATURE_D3D9_SIMPLE_INSTANCING_SUPPORT: {

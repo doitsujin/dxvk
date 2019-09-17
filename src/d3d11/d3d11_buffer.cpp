@@ -224,9 +224,14 @@ namespace dxvk {
       case D3D11_USAGE_DEFAULT:
         memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-        if (m_desc.BindFlags & D3D11_BIND_CONSTANT_BUFFER) {
+        if ((m_desc.BindFlags & D3D11_BIND_CONSTANT_BUFFER) || m_desc.CPUAccessFlags) {
           memoryFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                       |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        }
+
+        if (m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ) {
+          memoryFlags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+          memoryFlags &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
         }
         break;
       
