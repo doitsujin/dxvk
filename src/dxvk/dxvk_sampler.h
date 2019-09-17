@@ -77,7 +77,7 @@ namespace dxvk {
     DxvkSamplerCreateInfo m_info;
     VkSampler             m_sampler = VK_NULL_HANDLE;
 
-    VkBorderColor getBorderColor(VkClearColorValue borderColor) const;
+    VkBorderColor getBorderColor(bool depthCompare, VkClearColorValue borderColor) const;
     
   };
   
