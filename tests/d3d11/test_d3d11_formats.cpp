@@ -1,7 +1,7 @@
 #include <cstring>
 
 #include <d3dcompiler.h>
-#include <d3d11.h>
+#include <d3d11_4.h>
 
 #include <windows.h>
 #include <windowsx.h>
@@ -171,7 +171,82 @@ int WINAPI WinMain(HINSTANCE hInstance,
     std::cerr << "Failed to create D3D11 device" << std::endl;
     return 1;
   }
-  
+
+  D3D11_FEATURE_DATA_THREADING                    featureThreading     = { };
+  D3D11_FEATURE_DATA_DOUBLES                      featureDoubles       = { };
+  D3D11_FEATURE_DATA_SHADER_MIN_PRECISION_SUPPORT featureMinPrecision  = { };
+  D3D11_FEATURE_DATA_D3D11_OPTIONS                featureD3D11Options  = { };
+  D3D11_FEATURE_DATA_D3D11_OPTIONS1               featureD3D11Options1 = { };
+  D3D11_FEATURE_DATA_D3D11_OPTIONS2               featureD3D11Options2 = { };
+  D3D11_FEATURE_DATA_D3D11_OPTIONS3               featureD3D11Options3 = { };
+  D3D11_FEATURE_DATA_D3D11_OPTIONS4               featureD3D11Options4 = { };
+
+  if (SUCCEEDED(device->CheckFeatureSupport(D3D11_FEATURE_THREADING, &featureThreading, sizeof(featureThreading)))) {
+    std::cout << "D3D11_FEATURE_THREADING:" << std::endl
+              << "  DriverConcurrentCreates:          " << featureThreading.DriverConcurrentCreates << std::endl
+              << "  DriverCommandLists:               " << featureThreading.DriverCommandLists << std::endl;
+  }
+
+  if (SUCCEEDED(device->CheckFeatureSupport(D3D11_FEATURE_DOUBLES, &featureDoubles, sizeof(featureDoubles)))) {
+    std::cout << "D3D11_FEATURE_DOUBLES:" << std::endl
+              << "  DoublePrecisionFloatShaderOps:    " << featureDoubles.DoublePrecisionFloatShaderOps << std::endl;
+  }
+
+  if (SUCCEEDED(device->CheckFeatureSupport(D3D11_FEATURE_SHADER_MIN_PRECISION_SUPPORT, &featureMinPrecision, sizeof(featureMinPrecision)))) {
+    std::cout << "D3D11_FEATURE_SHADER_MIN_PRECISION_SUPPORT:" << std::endl
+              << "  PixelShaderMinPrecision:          " << featureMinPrecision.PixelShaderMinPrecision << std::endl
+              << "  AllOtherShaderStagesMinPrecision: " << featureMinPrecision.AllOtherShaderStagesMinPrecision << std::endl;
+  }
+
+  if (SUCCEEDED(device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS, &featureD3D11Options, sizeof(featureD3D11Options)))) {
+    std::cout << "D3D11_FEATURE_D3D11_OPTIONS:" << std::endl
+              << "  OutputMergerLogicOp:              " << featureD3D11Options.OutputMergerLogicOp << std::endl
+              << "  UAVOnlyRenderingForcedSampleCount: " << featureD3D11Options.UAVOnlyRenderingForcedSampleCount << std::endl
+              << "  DiscardAPIsSeenByDriver:          " << featureD3D11Options.DiscardAPIsSeenByDriver << std::endl
+              << "  FlagsForUpdateAndCopySeenByDriver: " << featureD3D11Options.FlagsForUpdateAndCopySeenByDriver << std::endl
+              << "  ClearView:                        " << featureD3D11Options.ClearView << std::endl
+              << "  CopyWithOverlap:                  " << featureD3D11Options.CopyWithOverlap << std::endl
+              << "  ConstantBufferPartialUpdate:      " << featureD3D11Options.ConstantBufferPartialUpdate << std::endl
+              << "  ConstantBufferOffsetting:         " << featureD3D11Options.ConstantBufferOffsetting << std::endl
+              << "  MapNoOverwriteOnDynamicConstantBuffer: " << featureD3D11Options.MapNoOverwriteOnDynamicConstantBuffer << std::endl
+              << "  MapNoOverwriteOnDynamicBufferSRV: " << featureD3D11Options.MapNoOverwriteOnDynamicBufferSRV << std::endl
+              << "  MultisampleRTVWithForcedSampleCountOne: " << featureD3D11Options.MultisampleRTVWithForcedSampleCountOne << std::endl
+              << "  SAD4ShaderInstructions:           " << featureD3D11Options.SAD4ShaderInstructions << std::endl
+              << "  ExtendedDoublesShaderInstructions: " << featureD3D11Options.ExtendedDoublesShaderInstructions << std::endl
+              << "  ExtendedResourceSharing:          " << featureD3D11Options.ExtendedResourceSharing << std::endl;
+  }
+
+  if (SUCCEEDED(device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS1, &featureD3D11Options1, sizeof(featureD3D11Options1)))) {
+    std::cout << "D3D11_FEATURE_D3D11_OPTIONS1:" << std::endl
+              << "  TiledResourcesTier:               " << featureD3D11Options1.TiledResourcesTier << std::endl
+              << "  MinMaxFiltering:                  " << featureD3D11Options1.MinMaxFiltering << std::endl
+              << "  ClearViewAlsoSupportsDepthOnlyFormats: " << featureD3D11Options1.ClearViewAlsoSupportsDepthOnlyFormats << std::endl
+              << "  MapOnDefaultBuffers:              " << featureD3D11Options1.MapOnDefaultBuffers << std::endl;
+
+  }
+
+  if (SUCCEEDED(device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS2, &featureD3D11Options2, sizeof(featureD3D11Options2)))) {
+    std::cout << "D3D11_FEATURE_D3D11_OPTIONS2:" << std::endl
+              << "  PSSpecifiedStencilRefSupported:   " << featureD3D11Options2.PSSpecifiedStencilRefSupported << std::endl
+              << "  TypedUAVLoadAdditionalFormats:    " << featureD3D11Options2.TypedUAVLoadAdditionalFormats << std::endl
+              << "  ROVsSupported:                    " << featureD3D11Options2.ROVsSupported << std::endl
+              << "  ConservativeRasterizationTier:    " << featureD3D11Options2.ConservativeRasterizationTier << std::endl
+              << "  MapOnDefaultTextures:             " << featureD3D11Options2.MapOnDefaultTextures << std::endl
+              << "  TiledResourcesTier:               " << featureD3D11Options2.TiledResourcesTier << std::endl
+              << "  StandardSwizzle:                  " << featureD3D11Options2.StandardSwizzle << std::endl
+              << "  UnifiedMemoryArchitecture:        " << featureD3D11Options2.UnifiedMemoryArchitecture << std::endl;
+  }
+
+  if (SUCCEEDED(device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS3, &featureD3D11Options3, sizeof(featureD3D11Options3)))) {
+    std::cout << "D3D11_FEATURE_D3D11_OPTIONS3:" << std::endl
+              << "  VPAndRTArrayIndexFromAnyShaderFeedingRasterizer: " << featureD3D11Options3.VPAndRTArrayIndexFromAnyShaderFeedingRasterizer << std::endl;
+  }
+
+  if (SUCCEEDED(device->CheckFeatureSupport(D3D11_FEATURE_D3D11_OPTIONS4, &featureD3D11Options4, sizeof(featureD3D11Options4)))) {
+    std::cout << "D3D11_FEATURE_D3D11_OPTIONS4:" << std::endl
+              << "  ExtendedNV12SharedTextureSupported: " << featureD3D11Options4.ExtendedNV12SharedTextureSupported << std::endl;
+  }
+
   for (UINT i  = UINT(DXGI_FORMAT_UNKNOWN);
             i <= UINT(DXGI_FORMAT_BC7_UNORM_SRGB);
             i++) {
