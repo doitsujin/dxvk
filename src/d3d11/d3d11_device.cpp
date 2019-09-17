@@ -1649,7 +1649,7 @@ namespace dxvk {
         info->MapOnDefaultTextures           = TRUE;
         info->TiledResourcesTier             = D3D11_TILED_RESOURCES_NOT_SUPPORTED;
         info->StandardSwizzle                = FALSE;
-        info->UnifiedMemoryArchitecture      = FALSE; // Maybe on some APUs?
+        info->UnifiedMemoryArchitecture      = IsUnifiedMemoryArch();
       } return S_OK;
 
       case D3D11_FEATURE_D3D11_OPTIONS3: {
@@ -2304,6 +2304,18 @@ namespace dxvk {
         }
       }
     }
+  }
+
+
+  BOOL D3D11Device::IsUnifiedMemoryArch() {
+    auto memory = m_dxvkAdapter->memoryProperties();
+    bool result = true;
+
+    // Report unified memory if all heaps are device-local
+    for (uint32_t i = 0; i < memory.memoryHeapCount && result; i++)
+      result &= memory.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+    
+    return result;
   }
 
 
