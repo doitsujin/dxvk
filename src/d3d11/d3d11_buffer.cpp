@@ -79,26 +79,9 @@ namespace dxvk {
         D3D11_RESOURCE_MISC_BUFFER_STRUCTURED))
       info.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     
-    // Default constant buffers may get updated frequently, in which
-    // case mapping the buffer is faster than using update commands.
-    VkMemoryPropertyFlags memoryFlags = GetMemoryFlagsForUsage(pDesc->Usage);
-
-    if ((pDesc->Usage == D3D11_USAGE_DEFAULT) && (pDesc->BindFlags & D3D11_BIND_CONSTANT_BUFFER)) {
-      info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
-      info.access |= VK_ACCESS_HOST_WRITE_BIT;
-      
-      memoryFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                  | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-    }
-    
-    // AMD cards have a device-local, host-visible memory type where
-    // we can put dynamic resources that need fast access by the GPU
-    if (pDesc->Usage == D3D11_USAGE_DYNAMIC && pDesc->BindFlags)
-      memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
     // Create the buffer and set the entire buffer slice as mapped,
     // so that we only have to update it when invalidating th buffer
-    m_buffer = m_device->GetDXVKDevice()->createBuffer(info, memoryFlags);
+    m_buffer = m_device->GetDXVKDevice()->createBuffer(info, GetMemoryFlags());
     m_mapped = m_buffer->getSliceHandle();
 
     // For Stream Output buffers we need a counter
@@ -227,6 +210,42 @@ namespace dxvk {
           VkFormatFeatureFlags  Features) const {
     VkFormatProperties properties = m_device->GetDXVKDevice()->adapter()->formatProperties(Format);
     return (properties.bufferFeatures & Features) == Features;
+  }
+
+
+  VkMemoryPropertyFlags D3D11Buffer::GetMemoryFlags() const {
+    VkMemoryPropertyFlags memoryFlags = 0;
+    
+    switch (m_desc.Usage) {
+      case D3D11_USAGE_IMMUTABLE:
+        memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        break;
+
+      case D3D11_USAGE_DEFAULT:
+        memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+        if (m_desc.BindFlags & D3D11_BIND_CONSTANT_BUFFER) {
+          memoryFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                      |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        }
+        break;
+      
+      case D3D11_USAGE_DYNAMIC:
+        memoryFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                    |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+        if (m_desc.BindFlags)
+          memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        break;
+      
+      case D3D11_USAGE_STAGING:
+        memoryFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                    |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+                    |  VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+        break;
+    }
+    
+    return memoryFlags;
   }
   
 

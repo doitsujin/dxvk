@@ -137,6 +137,8 @@ namespace dxvk {
             VkFormat              Format,
             VkFormatFeatureFlags  Features) const;
     
+    VkMemoryPropertyFlags GetMemoryFlags() const;
+
   };
 
 
