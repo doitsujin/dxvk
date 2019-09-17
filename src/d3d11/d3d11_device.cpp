@@ -1328,10 +1328,9 @@ namespace dxvk {
           ID3D11Resource*             pSrcResource,
           UINT                        SrcSubresource,
     const D3D11_BOX*                  pSrcBox) {
-    static bool s_errorShown = false;
-
-    if (!std::exchange(s_errorShown, true))
-      Logger::err("D3D11Device::ReadFromSubresource: Not implemented");
+    CopySubresourceData(
+      pDstData, DstRowPitch, DstDepthPitch,
+      pSrcResource, SrcSubresource, pSrcBox);
   }
 
 
@@ -1342,10 +1341,9 @@ namespace dxvk {
     const void*                       pSrcData,
           UINT                        SrcRowPitch,
           UINT                        SrcDepthPitch) {
-    static bool s_errorShown = false;
-
-    if (!std::exchange(s_errorShown, true))
-      Logger::err("D3D11Device::WriteToSubresource: Not implemented");
+    CopySubresourceData(
+      pSrcData, SrcRowPitch, SrcRowPitch,
+      pDstResource, DstSubresource, pDstBox);
   }
 
 
@@ -2197,6 +2195,118 @@ namespace dxvk {
   }
   
   
+  template<typename Void>
+  void D3D11Device::CopySubresourceData(
+          Void*                       pData,
+          UINT                        RowPitch,
+          UINT                        DepthPitch,
+          ID3D11Resource*             pResource,
+          UINT                        Subresource,
+    const D3D11_BOX*                  pBox) {
+    auto texture = GetCommonTexture(pResource);
+
+    if (!texture)
+      return;
+    
+    // Validate texture state and skip invalid calls
+    if (texture->Desc()->Usage != D3D11_USAGE_DEFAULT
+     || texture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_NONE
+     || texture->CountSubresources() <= Subresource
+     || texture->GetMapType(Subresource) == D3D11_MAP(~0u))
+      return;
+
+    // Retrieve image format information
+    VkFormat packedFormat = LookupPackedFormat(
+      texture->Desc()->Format,
+      texture->GetFormatMode()).Format;
+    
+    auto formatInfo = imageFormatInfo(packedFormat);
+    
+    // Validate box against subresource dimensions
+    Rc<DxvkImage> image = texture->GetImage();
+
+    auto subresource = texture->GetSubresourceFromIndex(
+      formatInfo->aspectMask, Subresource);
+    
+    VkOffset3D offset = { 0, 0, 0 };
+    VkExtent3D extent = image->mipLevelExtent(subresource.mipLevel);
+
+    if (pBox) {
+      if (pBox->left >= pBox->right
+       || pBox->top >= pBox->bottom
+       || pBox->front >= pBox->back)
+        return;  // legal, but no-op
+      
+      if (pBox->right > extent.width
+       || pBox->bottom > extent.height
+       || pBox->back > extent.depth)
+        return;  // out of bounds
+      
+      offset = VkOffset3D {
+        int32_t(pBox->left),
+        int32_t(pBox->top),
+        int32_t(pBox->front) };
+
+      extent = VkExtent3D {
+        pBox->right - pBox->left,
+        pBox->bottom - pBox->top,
+        pBox->back - pBox->front };
+    }
+
+    // We can only operate on full blocks of compressed images
+    offset = util::computeBlockOffset(offset, formatInfo->blockSize);
+    extent = util::computeBlockCount(extent, formatInfo->blockSize);
+
+    // Determine the memory layout of the image data
+    D3D11_MAPPED_SUBRESOURCE subresourceData = { };
+
+    if (texture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
+      VkSubresourceLayout layout = image->querySubresourceLayout(subresource);
+      subresourceData.pData      = image->mapPtr(layout.offset);
+      subresourceData.RowPitch   = layout.rowPitch;
+      subresourceData.DepthPitch = layout.depthPitch;
+    } else {
+      subresourceData.pData      = texture->GetMappedBuffer(Subresource)->mapPtr(0);
+      subresourceData.RowPitch   = formatInfo->elementSize * extent.width;
+      subresourceData.DepthPitch = formatInfo->elementSize * extent.width * extent.height;
+    }
+
+    if constexpr (std::is_const<Void>::value) {
+      // WriteToSubresource
+      auto src = reinterpret_cast<const char*>(pData);
+      auto dst = reinterpret_cast<      char*>(subresourceData.pData);
+
+      for (uint32_t z = 0; z < extent.depth; z++) {
+        for (uint32_t y = 0; y < extent.height; y++) {
+          std::memcpy(
+            dst + (offset.z + z) * subresourceData.DepthPitch
+                + (offset.y + y) * subresourceData.RowPitch
+                + (offset.x)     * formatInfo->elementSize,
+            src + z * DepthPitch
+                + y * RowPitch,
+            formatInfo->elementSize * extent.width);
+        }
+      }
+    } else {
+      // ReadFromSubresource
+      auto src = reinterpret_cast<const char*>(subresourceData.pData);
+      auto dst = reinterpret_cast<      char*>(pData);
+
+      for (uint32_t z = 0; z < extent.depth; z++) {
+        for (uint32_t y = 0; y < extent.height; y++) {
+          std::memcpy(
+            dst + z * DepthPitch
+                + y * RowPitch,
+            src + (offset.z + z) * subresourceData.DepthPitch
+                + (offset.y + y) * subresourceData.RowPitch
+                + (offset.x)     * formatInfo->elementSize,
+            formatInfo->elementSize * extent.width);
+        }
+      }
+    }
+  }
+
+
   D3D_FEATURE_LEVEL D3D11Device::GetMaxFeatureLevel(const Rc<DxvkAdapter>& Adapter) {
     static const std::array<std::pair<std::string, D3D_FEATURE_LEVEL>, 9> s_featureLevels = {{
       { "12_1", D3D_FEATURE_LEVEL_12_1 },
