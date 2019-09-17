@@ -1646,7 +1646,7 @@ namespace dxvk {
         info->TypedUAVLoadAdditionalFormats  = features.core.features.shaderStorageImageReadWithoutFormat;
         info->ROVsSupported                  = FALSE;
         info->ConservativeRasterizationTier  = D3D11_CONSERVATIVE_RASTERIZATION_NOT_SUPPORTED;
-        info->MapOnDefaultTextures           = FALSE;
+        info->MapOnDefaultTextures           = TRUE;
         info->TiledResourcesTier             = D3D11_TILED_RESOURCES_NOT_SUPPORTED;
         info->StandardSwizzle                = FALSE;
         info->UnifiedMemoryArchitecture      = FALSE; // Maybe on some APUs?
