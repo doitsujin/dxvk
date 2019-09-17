@@ -204,7 +204,7 @@ namespace dxvk {
           D3D11_MAPPED_SUBRESOURCE*   pMappedResource) {
     D3D10DeviceLock lock = LockContext();
 
-    if (unlikely(!pResource || !pMappedResource))
+    if (unlikely(!pResource))
       return E_INVALIDARG;
     
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
@@ -307,6 +307,9 @@ namespace dxvk {
           D3D11_MAP                   MapType,
           UINT                        MapFlags,
           D3D11_MAPPED_SUBRESOURCE*   pMappedResource) {
+    if (unlikely(!pMappedResource))
+      return E_INVALIDARG;
+
     if (unlikely(pResource->GetMapMode() == D3D11_COMMON_BUFFER_MAP_MODE_NONE)) {
       Logger::err("D3D11: Cannot map a device-local buffer");
       return E_INVALIDARG;
@@ -365,6 +368,16 @@ namespace dxvk {
 
     if (unlikely(Subresource >= pResource->CountSubresources()))
       return E_INVALIDARG;
+    
+    if (likely(pMappedResource != nullptr)) {
+      // Resources with an unknown memory layout cannot return a pointer
+      if (pResource->Desc()->Usage         == D3D11_USAGE_DEFAULT
+       && pResource->Desc()->TextureLayout == D3D11_TEXTURE_LAYOUT_UNDEFINED)
+        return E_INVALIDARG;
+    } else {
+      if (pResource->Desc()->Usage != D3D11_USAGE_DEFAULT)
+        return E_INVALIDARG;
+    }
 
     VkFormat packedFormat = m_parent->LookupPackedFormat(
       pResource->Desc()->Format, pResource->GetFormatMode()).Format;
@@ -385,10 +398,13 @@ namespace dxvk {
 
       // Query the subresource's memory layout and hope that
       // the application respects the returned pitch values.
-      VkSubresourceLayout layout  = mappedImage->querySubresourceLayout(subresource);
-      pMappedResource->pData      = mappedImage->mapPtr(layout.offset);
-      pMappedResource->RowPitch   = imageType >= VK_IMAGE_TYPE_2D ? layout.rowPitch   : layout.size;
-      pMappedResource->DepthPitch = imageType >= VK_IMAGE_TYPE_3D ? layout.depthPitch : layout.size;
+      if (pMappedResource) {
+        VkSubresourceLayout layout  = mappedImage->querySubresourceLayout(subresource);
+        pMappedResource->pData      = mappedImage->mapPtr(layout.offset);
+        pMappedResource->RowPitch   = imageType >= VK_IMAGE_TYPE_2D ? layout.rowPitch   : layout.size;
+        pMappedResource->DepthPitch = imageType >= VK_IMAGE_TYPE_3D ? layout.depthPitch : layout.size;
+      }
+
       return S_OK;
     } else {
       VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
@@ -428,9 +444,12 @@ namespace dxvk {
       pResource->SetMapType(Subresource, MapType);
 
       // Set up map pointer. Data is tightly packed within the mapped buffer.
-      pMappedResource->pData      = physSlice.mapPtr;
-      pMappedResource->RowPitch   = formatInfo->elementSize * blockCount.width;
-      pMappedResource->DepthPitch = formatInfo->elementSize * blockCount.width * blockCount.height;
+      if (pMappedResource) {
+        pMappedResource->pData      = physSlice.mapPtr;
+        pMappedResource->RowPitch   = formatInfo->elementSize * blockCount.width;
+        pMappedResource->DepthPitch = formatInfo->elementSize * blockCount.width * blockCount.height;
+      }
+
       return S_OK;
     }
   }
