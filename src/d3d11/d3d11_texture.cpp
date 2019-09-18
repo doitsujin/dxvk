@@ -415,6 +415,7 @@ namespace dxvk {
     //    writing the image to device-local image may be more efficient than
     //    reading its contents from host-visible memory.
     if (m_desc.Usage         == D3D11_USAGE_DYNAMIC
+     && m_desc.BindFlags     != 0
      && m_desc.TextureLayout != D3D11_TEXTURE_LAYOUT_ROW_MAJOR)
       return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
     
