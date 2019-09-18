@@ -12,7 +12,7 @@ namespace dxvk {
   class DxgiFactory;
   class DxgiOutput;
   
-  class DxgiAdapter : public DxgiObject<IDXGIVkAdapter> {
+  class DxgiAdapter : public DxgiObject<IDXGIDXVKAdapter> {
     
   public:
     

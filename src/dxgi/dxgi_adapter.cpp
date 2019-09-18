@@ -38,7 +38,7 @@ namespace dxvk {
      || riid == __uuidof(IDXGIAdapter1)
      || riid == __uuidof(IDXGIAdapter2)
      || riid == __uuidof(IDXGIAdapter3)
-     || riid == __uuidof(IDXGIVkAdapter)) {
+     || riid == __uuidof(IDXGIDXVKAdapter)) {
       *ppvObject = ref(this);
       return S_OK;
     }
