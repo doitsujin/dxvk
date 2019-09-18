@@ -277,6 +277,28 @@ IDXGIVkInteropDevice : public IUnknown {
 
 
 /**
+ * \brief DXGI adapter interface for Vulkan interop
+ *
+ * Provides access to the physical device and
+ * instance handles for the given DXGI adapter.
+ */
+MIDL_INTERFACE("3a6d8f2c-b0e8-4ab4-b4dc-4fd24891bfa5")
+IDXGIVkInteropAdapter : public IUnknown {
+  static const GUID guid;
+
+  /**
+   * \brief Queries Vulkan handles used by DXVK
+   * 
+   * \param [out] pInstance The Vulkan instance
+   * \param [out] pPhysDev The physical device
+   */
+  virtual void STDMETHODCALLTYPE GetVulkanHandles(
+          VkInstance*           pInstance,
+          VkPhysicalDevice*     pPhysDev) = 0;
+};
+
+
+/**
  * \brief IWineDXGISwapChainFactory device interface
  *
  * Allows a swap chain to be created from a device.
@@ -299,6 +321,7 @@ IWineDXGISwapChainFactory : public IUnknown {
 #ifdef _MSC_VER
 struct __declspec(uuid("907bf281-ea3c-43b4-a8e4-9f231107b4ff")) IDXGIDXVKAdapter;
 struct __declspec(uuid("c06a236f-5be3-448a-8943-89c611c0c2c1")) IDXGIVkMonitorInfo;
+struct __declspec(uuid("3a6d8f2c-b0e8-4ab4-b4dc-4fd24891bfa5")) IDXGIVkInteropAdapter;
 struct __declspec(uuid("e2ef5fa5-dc21-4af7-90c4-f67ef6a09323")) IDXGIVkInteropDevice;
 struct __declspec(uuid("5546cf8c-77e7-4341-b05d-8d4d5000e77d")) IDXGIVkInteropSurface;
 struct __declspec(uuid("104001a6-7f36-4957-b932-86ade9567d91")) IDXGIVkSwapChain;
@@ -306,6 +329,7 @@ struct __declspec(uuid("53cb4ff0-c25a-4164-a891-0e83db0a7aac")) IWineDXGISwapCha
 #else
 DXVK_DEFINE_GUID(IDXGIDXVKAdapter);
 DXVK_DEFINE_GUID(IDXGIVkMonitorInfo);
+DXVK_DEFINE_GUID(IDXGIVkInteropAdapter);
 DXVK_DEFINE_GUID(IDXGIVkInteropDevice);
 DXVK_DEFINE_GUID(IDXGIVkInteropSurface);
 DXVK_DEFINE_GUID(IDXGIVkSwapChain);
