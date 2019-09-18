@@ -218,13 +218,16 @@ namespace dxvk {
             dst->SetVertexShaderConstantI(i, (int*)&src->vsConsts.iConsts[i], 1);
         }
 
-        uint32_t boolMask = 0;
-        for (uint32_t i = 0; i < m_captures.vsConsts.bConsts.size(); i++) {
-          if (m_captures.vsConsts.bConsts[i])
-            boolMask |= 1u << i;
-        }
+        const uint32_t bitfieldCount = m_parent->GetVertexConstantLayout().bitmaskCount;
+        for (uint32_t i = 0; i < bitfieldCount; i++) {
+          uint32_t boolMask = 0;
+          for (uint32_t j = 0; j < 32; j++) {
+            if (m_captures.vsConsts.bConsts[i * 32 + j])
+              boolMask |= 1u << j;
+          }
 
-        dst->SetVertexBoolBitfield(boolMask, src->vsConsts.boolBitfield);
+          dst->SetVertexBoolBitfield(i, boolMask, src->vsConsts.bConsts[i]);
+        }
       }
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::PsConstants)) {
@@ -244,7 +247,7 @@ namespace dxvk {
             boolMask |= 1u << i;
         }
 
-        dst->SetPixelBoolBitfield(boolMask, src->psConsts.boolBitfield);
+        dst->SetPixelBoolBitfield(0, boolMask, src->psConsts.bConsts[0]);
       }
     }
 
@@ -298,8 +301,8 @@ namespace dxvk {
         : SetHelper(m_captures.psConsts);
     }
 
-    HRESULT SetVertexBoolBitfield(uint32_t mask, uint32_t bits);
-    HRESULT SetPixelBoolBitfield(uint32_t mask, uint32_t bits);
+    HRESULT SetVertexBoolBitfield(uint32_t idx, uint32_t mask, uint32_t bits);
+    HRESULT SetPixelBoolBitfield (uint32_t idx, uint32_t mask, uint32_t bits);
 
     inline bool IsApplying() {
       return m_applying;

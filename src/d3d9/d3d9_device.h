@@ -804,8 +804,8 @@ namespace dxvk {
     void Begin(D3D9Query* pQuery);
     void End(D3D9Query* pQuery);
 
-    void SetVertexBoolBitfield(uint32_t mask, uint32_t bits);
-    void SetPixelBoolBitfield(uint32_t mask, uint32_t bits);
+    void SetVertexBoolBitfield(uint32_t idx, uint32_t mask, uint32_t bits);
+    void SetPixelBoolBitfield (uint32_t idx, uint32_t mask, uint32_t bits);
 
     void FlushImplicit(BOOL StrongHint);
 
@@ -818,6 +818,9 @@ namespace dxvk {
     void ResolveZ();
 
     void TransitionImage(D3D9CommonTexture* pResource, VkImageLayout NewLayout);
+
+    const D3D9ConstantLayout& GetVertexConstantLayout() { return m_vsLayout; }
+    const D3D9ConstantLayout& GetPixelConstantLayout()  { return m_psLayout; }
 
   private:
 
@@ -928,6 +931,11 @@ namespace dxvk {
     bool                            m_amdATOC         = false;
     bool                            m_nvATOC          = false;
 
+    D3D9ConstantLayout              m_vsLayout;
+    D3D9ConstantLayout              m_psLayout;
+
+    void DetermineConstantLayouts(bool canSWVP);
+
     D3D9UPBufferSlice AllocUpBuffer(VkDeviceSize size);
 
     D3D9SwapChainEx* GetInternalSwapchain(UINT index);
@@ -945,21 +953,32 @@ namespace dxvk {
       return pShader != nullptr ? pShader->GetCommonShader() : nullptr;
     }
 
-    inline static constexpr uint32_t DetermineRegCount(
+    // So we don't do OOB.
+    inline static constexpr uint32_t DetermineSoftwareRegCount(
             DxsoProgramType  ProgramType,
-            D3D9ConstantType ConstantType,
-            bool             Software) {
+            D3D9ConstantType ConstantType) {
+      const bool vs = ProgramType == DxsoProgramType::VertexShader;
+
       switch (ConstantType) {
         default:
-        case D3D9ConstantType::Float:
-          if (Software)
-            return 8192;
+        case D3D9ConstantType::Float:  return vs ? caps::MaxFloatConstantsSoftware : caps::MaxFloatConstantsPS;
+        case D3D9ConstantType::Int:    return vs ? caps::MaxOtherConstantsSoftware : caps::MaxOtherConstants;
+        case D3D9ConstantType::Bool:   return vs ? caps::MaxOtherConstantsSoftware : caps::MaxOtherConstants;
+      }
+    }
 
-          return ProgramType == DxsoProgramType::VertexShader
-               ? caps::MaxFloatConstantsVS
-               : caps::MaxFloatConstantsPS;
-        case D3D9ConstantType::Int:    return Software ? 256  : 16;
-        case D3D9ConstantType::Bool:   return Software ? 256 : 16;
+    // So we don't copy more than we need.
+    inline uint32_t DetermineHardwareRegCount(
+            DxsoProgramType  ProgramType,
+            D3D9ConstantType ConstantType) const {
+      const auto& layout = ProgramType == DxsoProgramType::VertexShader
+        ? m_vsLayout : m_psLayout;
+
+      switch (ConstantType) {
+        default:
+        case D3D9ConstantType::Float:  return layout.floatCount;
+        case D3D9ConstantType::Int:    return layout.intCount;
+        case D3D9ConstantType::Bool:   return layout.boolCount;
       }
     }
 
@@ -981,8 +1000,8 @@ namespace dxvk {
             T*   pConstantData,
             UINT Count) {
       auto GetHelper = [&] (const auto& set) {
-        constexpr uint32_t regCountHardware = DetermineRegCount(ProgramType, ConstantType, false);
-        constexpr uint32_t regCountSoftware = DetermineRegCount(ProgramType, ConstantType, true);
+        const     uint32_t regCountHardware = DetermineHardwareRegCount(ProgramType, ConstantType);
+        constexpr uint32_t regCountSoftware = DetermineSoftwareRegCount(ProgramType, ConstantType);
 
         if (StartRegister + Count > regCountSoftware)
           return D3DERR_INVALIDCALL;
@@ -1011,13 +1030,14 @@ namespace dxvk {
           std::copy(begin, end, reinterpret_cast<Vector4i*>(pConstantData));
         }
         else {
-          const uint32_t& bitfield = set.boolBitfield;
-
           for (uint32_t i = 0; i < Count; i++) {
-            const uint32_t idx = StartRegister + i;
-            const uint32_t idxBit = 1u << idx;
+            const uint32_t constantIdx = StartRegister + i;
+            const uint32_t arrayIdx    = constantIdx / 32;
+            const uint32_t bitIdx      = constantIdx % 32;
 
-            bool constValue = bitfield & idxBit;
+            const uint32_t bit         = (1u << bitIdx);
+
+            bool constValue = set.bConsts[arrayIdx] & bit;
             pConstantData[i] = constValue ? TRUE : FALSE;
           }
         }

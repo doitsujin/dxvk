@@ -8,6 +8,8 @@
 #include "dxso_isgn.h"
 #include "dxso_analysis.h"
 
+#include "../d3d9/d3d9_constant_layout.h"
+
 #include <vector>
 
 namespace dxvk {
@@ -40,9 +42,10 @@ namespace dxvk {
      * \returns The compiled shader object
      */
     Rc<DxvkShader> compile(
-      const DxsoModuleInfo&   moduleInfo,
-      const std::string&      fileName,
-      const DxsoAnalysisInfo& analysis);
+      const DxsoModuleInfo&     moduleInfo,
+      const std::string&        fileName,
+      const DxsoAnalysisInfo&   analysis,
+      const D3D9ConstantLayout& layout);
 
     const DxsoIsgn& isgn() {
       return m_isgn;

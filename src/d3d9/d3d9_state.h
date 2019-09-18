@@ -232,15 +232,16 @@ namespace dxvk {
         std::copy(begin, end, set.iConsts.begin() + StartRegister);
       }
       else {
-        uint32_t& bitfield = set.boolBitfield;
-
         for (uint32_t i = 0; i < Count; i++) {
-          const uint32_t idx    = StartRegister + i;
-          const uint32_t idxBit = 1u << idx;
+          const uint32_t constantIdx = StartRegister + i;
+          const uint32_t arrayIdx    = constantIdx / 32;
+          const uint32_t bitIdx      = constantIdx % 32;
 
-          bitfield &= ~idxBit;
+          const uint32_t bit = 1u << bitIdx;
+
+          set.bConsts[arrayIdx] &= ~bit;
           if (pConstantData[i])
-            bitfield |= idxBit;
+            set.bConsts[arrayIdx] |= bit;
         }
       }
 
@@ -295,9 +296,9 @@ namespace dxvk {
       caps::TextureStageCount>                          textureStageStates;
 
     struct {
-      std::bitset<caps::MaxFloatConstantsVS>            fConsts;
-      std::bitset<caps::MaxOtherConstants>              iConsts;
-      std::bitset<caps::MaxOtherConstants>              bConsts;
+      std::bitset<caps::MaxFloatConstantsSoftware>      fConsts;
+      std::bitset<caps::MaxOtherConstantsSoftware>      iConsts;
+      std::bitset<caps::MaxOtherConstantsSoftware>      bConsts;
     } vsConsts;
 
     struct {

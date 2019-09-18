@@ -52,6 +52,14 @@ namespace dxvk {
     , m_shaderModules  ( new D3D9ShaderModuleSet )
     , m_d3d9Options    ( dxvkDevice, pAdapter->GetDXVKAdapter()->instance()->config() )
     , m_dxsoOptions    ( m_dxvkDevice, m_d3d9Options ) {
+    // If we can SWVP, then we use an extended constant set
+    // as SWVP has many more slots available than HWVP. 
+    bool canSWVP = BehaviorFlags & (D3DCREATE_MIXED_VERTEXPROCESSING | D3DCREATE_SOFTWARE_VERTEXPROCESSING);
+    DetermineConstantLayouts(canSWVP);
+
+    if (canSWVP)
+      Logger::info("D3D9DeviceEx: Using extended constant set for software vertex processing.");
+
     m_initializer      = new D3D9Initializer(m_dxvkDevice);
     m_converter        = new D3D9FormatHelper(m_dxvkDevice);
 
@@ -3758,6 +3766,19 @@ namespace dxvk {
   }
 
 
+  void D3D9DeviceEx::DetermineConstantLayouts(bool canSWVP) {
+    m_vsLayout.floatCount    = canSWVP ? caps::MaxFloatConstantsSoftware : caps::MaxFloatConstantsVS;
+    m_vsLayout.intCount      = canSWVP ? caps::MaxOtherConstantsSoftware : caps::MaxOtherConstants;
+    m_vsLayout.boolCount     = canSWVP ? caps::MaxOtherConstantsSoftware : caps::MaxOtherConstants;
+    m_vsLayout.bitmaskCount  = align(m_vsLayout.boolCount, 32) / 32;
+
+    m_psLayout.floatCount    = caps::MaxFloatConstantsPS;
+    m_psLayout.intCount      = caps::MaxOtherConstants;
+    m_psLayout.boolCount     = caps::MaxOtherConstants;
+    m_psLayout.bitmaskCount = align(m_psLayout.boolCount, 32) / 32;
+  }
+
+
   D3D9UPBufferSlice D3D9DeviceEx::AllocUpBuffer(VkDeviceSize size) {
     constexpr VkDeviceSize DefaultSize = 1 << 20;
 
@@ -4437,11 +4458,11 @@ namespace dxvk {
                                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
     info.stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
-    info.size   = sizeof(D3D9ShaderConstantsVS);
+    info.size   = m_vsLayout.totalSize();
     m_consts[DxsoProgramTypes::VertexShader].buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
 
     info.stages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    info.size   = sizeof(D3D9ShaderConstantsPS);
+    info.size   = m_psLayout.totalSize();
     m_consts[DxsoProgramTypes::PixelShader].buffer  = m_dxvkDevice->createBuffer(info, memoryFlags);
 
     info.size = caps::MaxClipPlanes * sizeof(D3D9ClipPlane);
@@ -4488,7 +4509,7 @@ namespace dxvk {
 
   template <DxsoProgramType ShaderStage>
   void D3D9DeviceEx::UploadConstants() {
-    auto UploadHelper = [&](auto& src) {
+    auto UploadHelper = [&](auto& src, auto& layout, const auto& shader) {
       D3D9ConstantSets& constSet = m_consts[ShaderStage];
 
       if (!constSet.dirty)
@@ -4498,7 +4519,7 @@ namespace dxvk {
 
       DxvkBufferSliceHandle slice = constSet.buffer->allocSlice();
 
-      auto dstData = reinterpret_cast<std::remove_reference_t<decltype(src)> *>(slice.mapPtr);
+      auto dstData = reinterpret_cast<uint8_t*>(slice.mapPtr);
       auto srcData = &src;
 
       EmitCs([
@@ -4509,33 +4530,25 @@ namespace dxvk {
       });
 
       if (constSet.meta->maxConstIndexF)
-        std::memcpy(&dstData->fConsts[0], &srcData->fConsts[0], sizeof(Vector4)  * constSet.meta->maxConstIndexF);
+        std::memcpy(dstData + layout.floatOffset(),   srcData->fConsts.data(), layout.floatSize());
       if (constSet.meta->maxConstIndexI)
-        std::memcpy(&dstData->iConsts[0], &srcData->iConsts[0], sizeof(Vector4i) * constSet.meta->maxConstIndexI);
+        std::memcpy(dstData + layout.intOffset(),     srcData->iConsts.data(), layout.intSize());
       if (constSet.meta->maxConstIndexB)
-        dstData->boolBitfield = srcData->boolBitfield;
+        std::memcpy(dstData + layout.bitmaskOffset(), srcData->bConsts.data(), layout.bitmaskSize());
 
       if (constSet.meta->needsConstantCopies) {
         Vector4* data = reinterpret_cast<Vector4*>(slice.mapPtr);
 
-        if (ShaderStage == DxsoProgramTypes::VertexShader) {
-          auto& shaderConsts = GetCommonShader(m_state.vertexShader)->GetConstants();
+        auto& shaderConsts = GetCommonShader(shader)->GetConstants();
 
-          for (const auto& constant : shaderConsts)
-            data[constant.uboIdx] = *reinterpret_cast<const Vector4*>(constant.float32);
-        }
-        else {
-          auto& shaderConsts = GetCommonShader(m_state.pixelShader)->GetConstants();
-
-          for (const auto& constant : shaderConsts)
-            data[constant.uboIdx] = *reinterpret_cast<const Vector4*>(constant.float32);
-        }
+        for (const auto& constant : shaderConsts)
+          data[constant.uboIdx] = *reinterpret_cast<const Vector4*>(constant.float32);
       }
     };
 
     return ShaderStage == DxsoProgramTypes::VertexShader
-      ? UploadHelper(m_state.vsConsts)
-      : UploadHelper(m_state.psConsts);
+      ? UploadHelper(m_state.vsConsts, m_vsLayout, m_state.vertexShader)
+      : UploadHelper(m_state.psConsts, m_psLayout, m_state.pixelShader);
   }
 
 
@@ -5587,17 +5600,17 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::SetVertexBoolBitfield(uint32_t mask, uint32_t bits) {
-    m_state.vsConsts.boolBitfield &= ~mask;
-    m_state.vsConsts.boolBitfield |= bits & mask;
+  void D3D9DeviceEx::SetVertexBoolBitfield(uint32_t idx, uint32_t mask, uint32_t bits) {
+    m_state.vsConsts.bConsts[idx] &= ~mask;
+    m_state.vsConsts.bConsts[idx] |= bits & mask;
 
     m_consts[DxsoProgramTypes::VertexShader].dirty = true;
   }
 
 
-  void D3D9DeviceEx::SetPixelBoolBitfield(uint32_t mask, uint32_t bits) {
-    m_state.psConsts.boolBitfield &= ~mask;
-    m_state.psConsts.boolBitfield |= bits & mask;
+  void D3D9DeviceEx::SetPixelBoolBitfield(uint32_t idx, uint32_t mask, uint32_t bits) {
+    m_state.psConsts.bConsts[idx] &= ~mask;
+    m_state.psConsts.bConsts[idx] |= bits & mask;
 
     m_consts[DxsoProgramTypes::PixelShader].dirty = true;
   }
@@ -5629,8 +5642,8 @@ namespace dxvk {
             UINT  StartRegister,
       const T*    pConstantData,
             UINT  Count) {
-    constexpr uint32_t regCountHardware = DetermineRegCount(ProgramType, ConstantType, false);
-    constexpr uint32_t regCountSoftware = DetermineRegCount(ProgramType, ConstantType, true);
+    const     uint32_t regCountHardware = DetermineHardwareRegCount(ProgramType, ConstantType);
+    constexpr uint32_t regCountSoftware = DetermineSoftwareRegCount(ProgramType, ConstantType);
 
     if (unlikely(StartRegister + Count > regCountSoftware))
       return D3DERR_INVALIDCALL;

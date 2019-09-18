@@ -50,7 +50,11 @@ namespace dxvk {
     // Decide whether we need to create a pass-through
     // geometry shader for vertex shader stream output
 
-    m_shader       = pModule->compile(*pDxsoModuleInfo, name, AnalysisInfo);
+    const D3D9ConstantLayout& constantLayout = pShaderKey->type() == VK_SHADER_STAGE_VERTEX_BIT
+      ? pDevice->GetVertexConstantLayout()
+      : pDevice->GetPixelConstantLayout();
+
+    m_shader       = pModule->compile(*pDxsoModuleInfo, name, AnalysisInfo, constantLayout);
     m_isgn         = pModule->isgn();
     m_usedSamplers = pModule->usedSamplers();
     m_usedRTs      = pModule->usedRTs();

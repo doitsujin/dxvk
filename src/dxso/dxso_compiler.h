@@ -5,7 +5,7 @@
 #include "dxso_modinfo.h"
 #include "dxso_isgn.h"
 
-#include "../d3d9/d3d9_caps.h"
+#include "../d3d9/d3d9_constant_layout.h"
 #include "../spirv/spirv_module.h"
 
 namespace dxvk {
@@ -215,10 +215,11 @@ namespace dxvk {
   public:
 
     DxsoCompiler(
-      const std::string&      fileName,
-      const DxsoModuleInfo&   moduleInfo,
-      const DxsoProgramInfo&  programInfo,
-      const DxsoAnalysisInfo& analysis);
+      const std::string&        fileName,
+      const DxsoModuleInfo&     moduleInfo,
+      const DxsoProgramInfo&    programInfo,
+      const DxsoAnalysisInfo&   analysis,
+      const D3D9ConstantLayout& layout);
 
     /**
      * \brief Processes a single instruction
@@ -246,6 +247,7 @@ namespace dxvk {
     DxsoModuleInfo             m_moduleInfo;
     DxsoProgramInfo            m_programInfo;
     const DxsoAnalysisInfo*    m_analysis;
+    const D3D9ConstantLayout*  m_layout;
 
     DxsoShaderMetaInfo         m_meta;
     DxsoDefinedConstants       m_constants;
@@ -453,12 +455,6 @@ namespace dxvk {
 
     DxsoRegisterValue emitValueLoad(
             DxsoRegisterPointer ptr);
-
-    uint32_t getFloatConstantCount() {
-      return m_programInfo.type() == DxsoProgramTypes::VertexShader
-             ? caps::MaxFloatConstantsVS
-             : caps::MaxFloatConstantsPS;
-    }
 
     void emitDstStore(
             DxsoRegisterPointer     ptr,

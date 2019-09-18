@@ -16,13 +16,15 @@
 namespace dxvk {
 
   DxsoCompiler::DxsoCompiler(
-    const std::string&      fileName,
-    const DxsoModuleInfo&   moduleInfo,
-    const DxsoProgramInfo&  programInfo,
-    const DxsoAnalysisInfo& analysis)
+    const std::string&        fileName,
+    const DxsoModuleInfo&     moduleInfo,
+    const DxsoProgramInfo&    programInfo,
+    const DxsoAnalysisInfo&   analysis,
+    const D3D9ConstantLayout& layout)
     : m_moduleInfo ( moduleInfo )
     , m_programInfo( programInfo )
-    , m_analysis   ( &analysis ) {
+    , m_analysis   ( &analysis )
+    , m_layout     ( &layout ) {
     // Declare an entry point ID. We'll need it during the
     // initialization phase where the execution mode is set.
     m_entryPointId = m_module.allocateId();
@@ -235,33 +237,35 @@ namespace dxvk {
 
   void DxsoCompiler::emitDclConstantBuffer() {
     std::array<uint32_t, 3> members = {
-      // float f[256 or 224]
+      // float f[256 or 224 or 8192]
       m_module.defArrayTypeUnique(
         getVectorTypeId({ DxsoScalarType::Float32, 4 }),
-        m_module.constu32(getFloatConstantCount())),
+        m_module.constu32(m_layout->floatCount)),
 
-      // int i[16]
+      // int i[16 or 2048]
       m_module.defArrayTypeUnique(
         getVectorTypeId({ DxsoScalarType::Sint32, 4 }),
-        m_module.constu32(caps::MaxOtherConstants)),
+        m_module.constu32(m_layout->intCount)),
 
-      // uint32_t boolBitmask
-      getScalarTypeId(DxsoScalarType::Uint32)
+      // uint32_t boolBitmask[1 or 2048]
+      m_module.defArrayTypeUnique(
+        getScalarTypeId(DxsoScalarType::Uint32),
+        m_module.constu32(m_layout->bitmaskCount))
     };
 
     // Decorate array strides, this is required.
     m_module.decorateArrayStride(members[0], 16);
     m_module.decorateArrayStride(members[1], 16);
+    m_module.decorateArrayStride(members[2], 4);
 
     const uint32_t structType =
       m_module.defStructType(members.size(), members.data());
 
     m_module.decorateBlock(structType);
 
-    size_t offset = 0;
-    m_module.memberDecorateOffset(structType, 0, offset); offset += getFloatConstantCount() * 4 * sizeof(float);
-    m_module.memberDecorateOffset(structType, 1, offset); offset += 16  * 4 * sizeof(int32_t);
-    m_module.memberDecorateOffset(structType, 2, offset);
+    m_module.memberDecorateOffset(structType, 0, m_layout->floatOffset());
+    m_module.memberDecorateOffset(structType, 1, m_layout->intOffset());
+    m_module.memberDecorateOffset(structType, 2, m_layout->bitmaskOffset());
 
     m_module.setDebugName(structType, "cbuffer_t");
     m_module.setDebugMemberName(structType, 0, "f");
@@ -831,10 +835,9 @@ namespace dxvk {
         if (!relative) {
           result.id = m_cFloat.at(reg.id.num);
           m_meta.maxConstIndexF = std::max(m_meta.maxConstIndexF, reg.id.num + 1);
-          // TODO: Remove me for proper SWVP impl.
-          m_meta.maxConstIndexF = std::min(m_meta.maxConstIndexF, getFloatConstantCount());
+          m_meta.maxConstIndexF = std::min(m_meta.maxConstIndexF, m_layout->floatCount);
         } else {
-          m_meta.maxConstIndexF = getFloatConstantCount();
+          m_meta.maxConstIndexF = m_layout->floatCount;
           m_meta.needsConstantCopies |= m_moduleInfo.options.strictConstantCopies
                                      || m_cFloat.at(reg.id.num) != 0;
         }
@@ -844,17 +847,17 @@ namespace dxvk {
         result.type = { DxsoScalarType::Sint32, 4 };
         result.id = m_cInt.at(reg.id.num);
         m_meta.maxConstIndexI = std::max(m_meta.maxConstIndexI, reg.id.num + 1);
-        m_meta.maxConstIndexI = std::min(m_meta.maxConstIndexI, caps::MaxOtherConstants);
+        m_meta.maxConstIndexI = std::min(m_meta.maxConstIndexI, m_layout->intCount);
         break;
       
       case DxsoRegisterType::ConstBool:
         result.type = { DxsoScalarType::Bool, 1 };
         result.id = m_cBool.at(reg.id.num);
         m_meta.maxConstIndexB = std::max(m_meta.maxConstIndexB, reg.id.num + 1);
-        m_meta.maxConstIndexB = std::min(m_meta.maxConstIndexB, caps::MaxOtherConstants);
+        m_meta.maxConstIndexB = std::min(m_meta.maxConstIndexB, m_layout->boolCount);
         break;
       
-      default:;
+      default: break;
     }
 
     if (result.id)
@@ -877,7 +880,7 @@ namespace dxvk {
       result.id = m_module.opLoad(typeId, ptrId);
 
       if (relative) {
-        uint32_t constCount = m_module.constu32(getFloatConstantCount());
+        uint32_t constCount = m_module.constu32(m_layout->floatCount);
 
         // Expand condition to bvec4 since the result has four components
         uint32_t cond = m_module.opULessThan(m_module.defBoolType(), relativeIdx, constCount);
@@ -891,16 +894,25 @@ namespace dxvk {
           m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f));
       }
     } else {
+      // Bool constants have no relative indexing, so we can do the bitfield
+      // magic for SWVP at compile time.
+
       uint32_t typeId = getScalarTypeId(DxsoScalarType::Uint32);
 
-      uint32_t index = m_module.constu32(2);
+      // Fast path if the bool count in the constant layout
+      // is not more than 32.
+      bool fastPath = m_layout->boolCount <= 32;
+
+      std::array<uint32_t, 2> indices = { m_module.constu32(2), m_module.constu32(reg.id.num / 32) };
       uint32_t ptrId = m_module.opAccessChain(
         m_module.defPointerType(typeId, spv::StorageClassUniform),
-        m_cBuffer, 1, &index);
+        m_cBuffer, indices.size(), indices.data());
+
+      uint32_t bitIdx = m_module.consti32(reg.id.num % 32);
 
       uint32_t bitfield = m_module.opLoad(typeId, ptrId);
       uint32_t bit = m_module.opBitFieldUExtract(
-        typeId, bitfield, relativeIdx, m_module.consti32(1));
+        typeId, bitfield, bitIdx, m_module.consti32(1));
 
       result.id = m_module.opINotEqual(
         getVectorTypeId(result.type),
