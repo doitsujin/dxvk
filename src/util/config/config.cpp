@@ -144,6 +144,10 @@ namespace dxvk {
     { R"(\\Control_DX11\.exe$)", {{
       { "d3d11.allowMapFlagNoWait",         "True" }
     }} },
+    /* Warhammer 2                                */
+    { R"(\\Warhammer2\.exe$)", {{
+      { "d3d11.allowMapFlagNoWait",         "True" }
+    }} },
   }};
 
 
