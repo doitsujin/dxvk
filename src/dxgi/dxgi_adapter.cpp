@@ -12,11 +12,51 @@
 
 namespace dxvk {
 
+  DxgiVkAdapter::DxgiVkAdapter(DxgiAdapter* pAdapter)
+  : m_adapter(pAdapter) {
+
+  }
+
+
+  ULONG STDMETHODCALLTYPE DxgiVkAdapter::AddRef() {
+    return m_adapter->AddRef();
+  }
+  
+
+  ULONG STDMETHODCALLTYPE DxgiVkAdapter::Release() {
+    return m_adapter->Release();
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE DxgiVkAdapter::QueryInterface(
+          REFIID                    riid,
+          void**                    ppvObject) {
+    return m_adapter->QueryInterface(riid, ppvObject);
+  }
+
+  
+  void STDMETHODCALLTYPE DxgiVkAdapter::GetVulkanHandles(
+          VkInstance*               pInstance,
+          VkPhysicalDevice*         pPhysDev) {
+    auto adapter  = m_adapter->GetDXVKAdapter();
+    auto instance = adapter->instance();
+
+    if (pInstance)
+      *pInstance = instance->handle();
+    
+    if (pPhysDev)
+      *pPhysDev = adapter->handle();
+  }
+
+
+
+
   DxgiAdapter::DxgiAdapter(
           DxgiFactory*      factory,
     const Rc<DxvkAdapter>&  adapter)
   : m_factory (factory),
-    m_adapter (adapter) {
+    m_adapter (adapter),
+    m_interop (this) {
     
   }
   
@@ -40,6 +80,11 @@ namespace dxvk {
      || riid == __uuidof(IDXGIAdapter3)
      || riid == __uuidof(IDXGIDXVKAdapter)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(IDXGIVkInteropAdapter)) {
+      *ppvObject = ref(&m_interop);
       return S_OK;
     }
     
