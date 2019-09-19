@@ -27,7 +27,7 @@
 #include "../util/util_math.h"
 #include "../util/util_string.h"
 
-#include <dxgi1_4.h>
+#include <dxgi1_5.h>
 
 // For some reason, these are not exposed
 #ifndef DXGI_RESOURCE_PRIORITY_NORMAL
