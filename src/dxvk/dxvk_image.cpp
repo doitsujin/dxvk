@@ -38,7 +38,7 @@ namespace dxvk {
     info.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
     info.queueFamilyIndexCount = 0;
     info.pQueueFamilyIndices   = nullptr;
-    info.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
+    info.initialLayout         = createInfo.initialLayout;
     
     if (m_vkd->vkCreateImage(m_vkd->device(),
           &info, nullptr, &m_image) != VK_SUCCESS) {

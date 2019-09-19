@@ -52,6 +52,9 @@ namespace dxvk {
     /// Common image layout
     VkImageLayout layout;
 
+    // Initial image layout
+    VkImageLayout initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
     // Image view formats that can
     // be used with this image
     uint32_t        viewFormatCount = 0;
