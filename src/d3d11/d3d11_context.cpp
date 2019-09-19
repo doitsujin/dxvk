@@ -101,7 +101,19 @@ namespace dxvk {
 
 
   void STDMETHODCALLTYPE D3D11DeviceContext::DiscardView(ID3D11View* pResourceView) {
+    DiscardView1(pResourceView, nullptr, 0);
+  }
+
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::DiscardView1(
+          ID3D11View*              pResourceView,
+    const D3D11_RECT*              pRects,
+          UINT                     NumRects) {
     D3D10DeviceLock lock = LockContext();
+
+    // We don't support discarding individual rectangles
+    if (!pResourceView || (NumRects && pRects))
+      return;
 
     // ID3D11View has no methods to query the exact type of
     // the view, so we'll have to check each possible class
@@ -114,25 +126,15 @@ namespace dxvk {
     if (rtv) view = rtv->GetImageView();
     if (uav) view = uav->GetImageView();
 
-    if (view != nullptr) {
-      EmitCs([cView = std::move(view)]
-      (DxvkContext* ctx) {
-        ctx->discardImage(
-          cView->image(),
-          cView->subresources());
-      });
-    }
-  }
-
-
-  void STDMETHODCALLTYPE D3D11DeviceContext::DiscardView1(
-          ID3D11View*              pResourceView, 
-    const D3D11_RECT*              pRects, 
-          UINT                     NumRects) {
-    static bool s_errorShown = false;
+    if (view == nullptr)
+      return;
     
-    if (!std::exchange(s_errorShown, true))
-      Logger::err("D3D11DeviceContext::DiscardView1: Not implemented");
+    EmitCs([cView = std::move(view)]
+    (DxvkContext* ctx) {
+      ctx->discardImage(
+        cView->image(),
+        cView->subresources());
+    });
   }
 
 
