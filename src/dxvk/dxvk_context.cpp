@@ -1610,9 +1610,10 @@ namespace dxvk {
 
   void DxvkContext::initImage(
     const Rc<DxvkImage>&           image,
-    const VkImageSubresourceRange& subresources) {
+    const VkImageSubresourceRange& subresources,
+          VkImageLayout            initialLayout) {
     m_execBarriers.accessImage(image, subresources,
-      VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
+      initialLayout, 0, 0,
       image->info().layout,
       image->info().stages,
       image->info().access);

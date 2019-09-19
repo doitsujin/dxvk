@@ -627,10 +627,12 @@ namespace dxvk {
      * while discarding any previous contents.
      * \param [in] image The image to initialize
      * \param [in] subresources Image subresources
+     * \param [in] initialLayout Initial image layout
      */
     void initImage(
       const Rc<DxvkImage>&            image,
-      const VkImageSubresourceRange&  subresources);
+      const VkImageSubresourceRange&  subresources,
+            VkImageLayout             initialLayout);
     
     /**
      * \brief Invalidates a buffer's contents
