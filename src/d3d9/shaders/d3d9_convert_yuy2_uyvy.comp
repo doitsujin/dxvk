@@ -1,0 +1,63 @@
+#version 450
+
+layout(constant_id = 1249) const bool s_is_uyvy = false;
+
+layout(
+  local_size_x = 8,
+  local_size_y = 8,
+  local_size_z = 1) in;
+
+layout(binding = 0)
+writeonly uniform image2D dst;
+
+layout(binding = 1)
+readonly buffer yuy2_buffer_t {
+  uint data[];
+} src;
+
+layout(push_constant)
+uniform u_info_t {
+  uvec2 extent;
+} u_info;
+
+mat3x4 g_yuv_to_rgb = {
+  { 298 / 256,  0,          409 / 256, 0.5 },
+  { 298 / 256, -100 / 256, -208 / 256, 0.5 },
+  { 298 / 256,  516 / 256,  0,         0.5 }
+};
+
+vec4 convertYUV(vec3 cde) {
+  vec3 value = vec4(cde, 1 / 255.0) * g_yuv_to_rgb;
+
+  return vec4(clamp(value, 0, 1), 1);
+}
+
+void main() {
+  ivec3 thread_id = ivec3(gl_GlobalInvocationID);
+
+  if (all(lessThan(thread_id.xy, u_info.extent))) {
+    uint offset = thread_id.x
+                + thread_id.y * u_info.extent.x;
+
+    vec4 data = unpackUnorm4x8(src.data[offset]);
+
+    // Flip around stuff for UYVY
+    if (s_is_uyvy)
+      data = data.yxwz;
+
+    float c0 = data.x - (16   / 255.0);
+    float d  = data.y - (128  / 255.0);
+    float c1 = data.z - (16   / 255.0);
+    float e  = data.w - (128  / 255.0);
+
+    vec4 color0 = convertYUV(vec3(c0, d, e));
+    vec4 color1 = convertYUV(vec3(c1, d, e));
+
+    // YUY2 has a macropixel of [2, 1]
+    // so we write 2 pixels in this run.
+    ivec2 writePos = thread_id.xy * ivec2(2, 1);
+    
+    imageStore(dst, ivec2(writePos.x,     writePos.y), color0);
+    imageStore(dst, ivec2(writePos.x + 1, writePos.y), color1);
+  }
+}

@@ -114,8 +114,8 @@ namespace dxvk {
      * \brief Vulkan Format
      * \returns The Vulkan format of the resource
      */
-    VkFormat Format() const {
-      return m_format;
+    const D3D9_VK_FORMAT_MAPPING GetFormatMapping() const {
+      return m_mapping;
     }
 
     /**
@@ -301,7 +301,7 @@ namespace dxvk {
      * \returns The extent of the top-level mip
      */
     VkExtent3D GetExtent() const {
-      return VkExtent3D{ m_desc.Width, m_desc.Height, m_desc.Depth };
+      return m_adjustedExtent;
     }
 
     /**
@@ -340,7 +340,9 @@ namespace dxvk {
 
     D3D9ViewSet                   m_views;
 
-    VkFormat                      m_format;
+    D3D9_VK_FORMAT_MAPPING        m_mapping;
+
+    VkExtent3D                    m_adjustedExtent;
 
     bool                          m_shadow; //< Depth Compare-ness
 

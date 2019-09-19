@@ -13,6 +13,7 @@
 #include "d3d9_monitor.h"
 #include "d3d9_spec_constants.h"
 #include "d3d9_names.h"
+#include "d3d9_format_helpers.h"
 
 #include "../dxvk/dxvk_adapter.h"
 #include "../dxvk/dxvk_instance.h"
@@ -52,6 +53,8 @@ namespace dxvk {
     , m_d3d9Options    ( dxvkDevice, pAdapter->GetDXVKAdapter()->instance()->config() )
     , m_dxsoOptions    ( m_dxvkDevice, m_d3d9Options ) {
     m_initializer      = new D3D9Initializer(m_dxvkDevice);
+    m_converter        = new D3D9FormatHelper(m_dxvkDevice);
+
     m_frameLatencyCap  = m_d3d9Options.maxFrameLatency;
 
     for (uint32_t i = 0; i < m_frameEvents.size(); i++)
@@ -82,6 +85,7 @@ namespace dxvk {
     SynchronizeCsThread();
 
     delete m_initializer;
+    delete m_converter;
 
     m_dxvkDevice->waitForIdle(); // Sync Device
   }
@@ -645,7 +649,7 @@ namespace dxvk {
     if (unlikely(srcTextureInfo->Desc()->Format != dstTextureInfo->Desc()->Format))
       return D3DERR_INVALIDCALL;
 
-    const DxvkFormatInfo* formatInfo = imageFormatInfo(dstTextureInfo->Format());
+    const DxvkFormatInfo* formatInfo = imageFormatInfo(dstTextureInfo->GetFormatMapping().FormatColor);
 
     VkOffset3D srcBlockOffset = { 0u, 0u, 0u };
     VkOffset3D dstOffset = { 0u, 0u, 0u };
@@ -3919,7 +3923,7 @@ namespace dxvk {
 
     const Rc<DxvkBuffer> mappedBuffer = pResource->GetBuffer(Subresource);
 
-    auto formatInfo = imageFormatInfo(pResource->Format());
+    auto formatInfo = imageFormatInfo(pResource->GetFormatMapping().FormatColor);
     auto subresource = pResource->GetSubresourceFromIndex(
         formatInfo->aspectMask, Subresource);
 
@@ -4143,16 +4147,26 @@ namespace dxvk {
       subresource.mipLevel,
       subresource.arrayLayer, 1 };
 
-    EmitCs([
-      cSrcBuffer      = copyBuffer,
-      cDstImage       = image,
-      cDstLayers      = subresourceLayers,
-      cDstLevelExtent = levelExtent
-    ] (DxvkContext* ctx) {
-      ctx->copyBufferToImage(cDstImage, cDstLayers,
-        VkOffset3D{ 0, 0, 0 }, cDstLevelExtent,
-        cSrcBuffer, 0, { 0u, 0u });
-    });
+    auto videoFormat = pResource->GetFormatMapping().VideoFormatInfo;
+
+    if (likely(videoFormat.FormatType == D3D9VideoFormat_None)) {
+      EmitCs([
+        cSrcBuffer      = copyBuffer,
+        cDstImage       = image,
+        cDstLayers      = subresourceLayers,
+        cDstLevelExtent = levelExtent
+      ] (DxvkContext* ctx) {
+        ctx->copyBufferToImage(cDstImage, cDstLayers,
+          VkOffset3D{ 0, 0, 0 }, cDstLevelExtent,
+          cSrcBuffer, 0, { 0u, 0u });
+      });
+    } 
+    else {
+      m_converter->ConvertVideoFormat(
+        videoFormat,
+        image, subresourceLayers,
+        copyBuffer);
+    }
 
     return D3D_OK;
   }

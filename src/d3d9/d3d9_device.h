@@ -38,6 +38,7 @@ namespace dxvk {
   class D3D9Initializer;
   class D3D9Query;
   class D3D9StateBlock;
+  class D3D9FormatHelper;
 
   enum class D3D9DeviceFlag : uint64_t {
     DirtyFramebuffer,
@@ -840,6 +841,7 @@ namespace dxvk {
       MaxFrameLatency>              m_frameEvents;
 
     D3D9Initializer*                m_initializer = nullptr;
+    D3D9FormatHelper*               m_converter   = nullptr;
 
     DxvkCsChunkRef                  m_csChunk;
 
