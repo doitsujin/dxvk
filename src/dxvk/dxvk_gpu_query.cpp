@@ -347,7 +347,7 @@ namespace dxvk {
       handle.queryPool,
       handle.queryId);
     
-    cmd->trackResource(query);
+    cmd->trackResource<DxvkAccess::None>(query);
   }
 
 
@@ -418,7 +418,7 @@ namespace dxvk {
         handle.queryId);
     }
 
-    cmd->trackResource(query);
+    cmd->trackResource<DxvkAccess::None>(query);
   }
   
   

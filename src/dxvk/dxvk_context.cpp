@@ -322,8 +322,8 @@ namespace dxvk {
       srcImage->info().stages,
       srcImage->info().access);
 
-    m_cmd->trackResource(dstImage);
-    m_cmd->trackResource(srcImage);
+    m_cmd->trackResource<DxvkAccess::Write>(dstImage);
+    m_cmd->trackResource<DxvkAccess::Read>(srcImage);
   }
 
 
@@ -381,7 +381,7 @@ namespace dxvk {
       buffer->info().stages,
       buffer->info().access);
     
-    m_cmd->trackResource(buffer);
+    m_cmd->trackResource<DxvkAccess::Write>(buffer);
   }
   
   
@@ -455,8 +455,8 @@ namespace dxvk {
       bufferView->bufferInfo().stages,
       bufferView->bufferInfo().access);
     
-    m_cmd->trackResource(bufferView);
-    m_cmd->trackResource(bufferView->buffer());
+    m_cmd->trackResource<DxvkAccess::None>(bufferView);
+    m_cmd->trackResource<DxvkAccess::Write>(bufferView->buffer());
   }
   
   
@@ -491,7 +491,7 @@ namespace dxvk {
       image->info().stages,
       image->info().access);
     
-    m_cmd->trackResource(image);
+    m_cmd->trackResource<DxvkAccess::Write>(image);
   }
   
   
@@ -532,7 +532,7 @@ namespace dxvk {
       image->info().stages,
       image->info().access);
     
-    m_cmd->trackResource(image);
+    m_cmd->trackResource<DxvkAccess::Write>(image);
   }
 
 
@@ -594,8 +594,8 @@ namespace dxvk {
       image->info().stages,
       image->info().access);
     
-    m_cmd->trackResource(image);
-    m_cmd->trackResource(stagingSlice.buffer());
+    m_cmd->trackResource<DxvkAccess::Write>(image);
+    m_cmd->trackResource<DxvkAccess::Read>(stagingSlice.buffer());
   }
   
   
@@ -807,8 +807,8 @@ namespace dxvk {
       dstBuffer->info().stages,
       dstBuffer->info().access);
 
-    m_cmd->trackResource(dstBuffer);
-    m_cmd->trackResource(srcBuffer);
+    m_cmd->trackResource<DxvkAccess::Write>(dstBuffer);
+    m_cmd->trackResource<DxvkAccess::Read>(srcBuffer);
   }
   
   
@@ -908,8 +908,8 @@ namespace dxvk {
       srcBuffer->info().stages,
       srcBuffer->info().access);
     
-    m_cmd->trackResource(dstImage);
-    m_cmd->trackResource(srcBuffer);
+    m_cmd->trackResource<DxvkAccess::Write>(dstImage);
+    m_cmd->trackResource<DxvkAccess::Read>(srcBuffer);
   }
   
   
@@ -1073,8 +1073,8 @@ namespace dxvk {
       dstBuffer->info().stages,
       dstBuffer->info().access);
     
-    m_cmd->trackResource(srcImage);
-    m_cmd->trackResource(dstBuffer);
+    m_cmd->trackResource<DxvkAccess::Write>(dstBuffer);
+    m_cmd->trackResource<DxvkAccess::Read>(srcImage);
   }
 
 
@@ -1180,11 +1180,11 @@ namespace dxvk {
       dstBuffer->info().stages,
       dstBuffer->info().access);
 
-    m_cmd->trackResource(dView);
-    m_cmd->trackResource(sView);
+    m_cmd->trackResource<DxvkAccess::None>(dView);
+    m_cmd->trackResource<DxvkAccess::None>(sView);
 
-    m_cmd->trackResource(srcImage);
-    m_cmd->trackResource(dstBuffer);
+    m_cmd->trackResource<DxvkAccess::Write>(dstBuffer);
+    m_cmd->trackResource<DxvkAccess::Read>(srcImage);
   }
   
   
@@ -1355,11 +1355,11 @@ namespace dxvk {
       dstImage->info().access);
 
     // Track all involved resources
-    m_cmd->trackResource(dstImage);
-    m_cmd->trackResource(srcBuffer);
+    m_cmd->trackResource<DxvkAccess::Write>(dstImage);
+    m_cmd->trackResource<DxvkAccess::Read>(srcBuffer);
 
-    m_cmd->trackResource(tmpBufferViewD);
-    m_cmd->trackResource(tmpBufferViewS);
+    m_cmd->trackResource<DxvkAccess::None>(tmpBufferViewD);
+    m_cmd->trackResource<DxvkAccess::None>(tmpBufferViewS);
   }
 
 
@@ -1384,7 +1384,7 @@ namespace dxvk {
       image->info().stages,
       image->info().access);
     
-    m_cmd->trackResource(image);
+    m_cmd->trackResource<DxvkAccess::Write>(image);
   }
 
 
@@ -1618,7 +1618,9 @@ namespace dxvk {
       image->info().stages,
       image->info().access);
     
-    m_cmd->trackResource(image);
+    (initialLayout == VK_IMAGE_LAYOUT_PREINITIALIZED)
+      ? m_cmd->trackResource<DxvkAccess::None> (image)
+      : m_cmd->trackResource<DxvkAccess::Write>(image);
   }
   
   
@@ -1718,8 +1720,8 @@ namespace dxvk {
       m_cmd->cmdEndRenderPass();
     }
     
-    m_cmd->trackResource(mipGenerator);
-    m_cmd->trackResource(imageView->image());
+    m_cmd->trackResource<DxvkAccess::None>(mipGenerator);
+    m_cmd->trackResource<DxvkAccess::Write>(imageView->image());
   }
   
   
@@ -1870,7 +1872,7 @@ namespace dxvk {
         dstImage->info().stages,
         dstImage->info().access);
       
-      m_cmd->trackResource(dstImage);
+      m_cmd->trackResource<DxvkAccess::Write>(dstImage);
     }
   }
   
@@ -1931,7 +1933,7 @@ namespace dxvk {
       m_cmd->cmdCopyBuffer(cmdBuffer,
         stagingHandle.handle, bufferSlice.handle, 1, &region);
       
-      m_cmd->trackResource(stagingSlice.buffer());
+      m_cmd->trackResource<DxvkAccess::Read>(stagingSlice.buffer());
     }
 
     auto& barriers = replaceBuffer
@@ -1945,7 +1947,7 @@ namespace dxvk {
       buffer->info().stages,
       buffer->info().access);
 
-    m_cmd->trackResource(buffer);
+    m_cmd->trackResource<DxvkAccess::Write>(buffer);
   }
   
   
@@ -2029,8 +2031,8 @@ namespace dxvk {
       image->info().stages,
       image->info().access);
     
-    m_cmd->trackResource(image);
-    m_cmd->trackResource(stagingSlice.buffer());
+    m_cmd->trackResource<DxvkAccess::Write>(image);
+    m_cmd->trackResource<DxvkAccess::Read>(stagingSlice.buffer());
   }
   
   
@@ -2098,8 +2100,8 @@ namespace dxvk {
       buffer->info().stages,
       buffer->info().access);
     
-    m_cmd->trackResource(stagingSlice.buffer());
-    m_cmd->trackResource(buffer);
+    m_cmd->trackResource<DxvkAccess::Read>(stagingSlice.buffer());
+    m_cmd->trackResource<DxvkAccess::Write>(buffer);
   }
 
 
@@ -2163,8 +2165,8 @@ namespace dxvk {
       image->info().stages,
       image->info().access);
     
-    m_cmd->trackResource(image);
-    m_cmd->trackResource(stagingSlice.buffer());
+    m_cmd->trackResource<DxvkAccess::Write>(image);
+    m_cmd->trackResource<DxvkAccess::Read>(stagingSlice.buffer());
   }
 
 
@@ -2384,7 +2386,7 @@ namespace dxvk {
       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 
     m_cmd->trackGpuEvent(event->reset(handle));
-    m_cmd->trackResource(event);
+    m_cmd->trackResource<DxvkAccess::None>(event);
   }
   
   
@@ -2399,7 +2401,7 @@ namespace dxvk {
     else
       updatePredicate(predicateHandle, queryHandle);
 
-    m_cmd->trackResource(predicate.buffer());
+    m_cmd->trackResource<DxvkAccess::Write>(predicate.buffer());
   }
 
 
@@ -2601,8 +2603,8 @@ namespace dxvk {
       imageView->imageInfo().stages,
       imageView->imageInfo().access);
     
-    m_cmd->trackResource(imageView);
-    m_cmd->trackResource(imageView->image());
+    m_cmd->trackResource<DxvkAccess::None>(imageView);
+    m_cmd->trackResource<DxvkAccess::Write>(imageView->image());
   }
 
   
@@ -2675,8 +2677,8 @@ namespace dxvk {
       srcImage->info().stages,
       srcImage->info().access);
     
-    m_cmd->trackResource(dstImage);
-    m_cmd->trackResource(srcImage);
+    m_cmd->trackResource<DxvkAccess::Write>(dstImage);
+    m_cmd->trackResource<DxvkAccess::Read>(srcImage);
   }
 
   
@@ -2899,9 +2901,9 @@ namespace dxvk {
       dstImage->info().stages,
       dstImage->info().access);
 
-    m_cmd->trackResource(tgtImage);
-    m_cmd->trackResource(srcImage);
-    m_cmd->trackResource(fb);
+    m_cmd->trackResource<DxvkAccess::Write>(tgtImage);
+    m_cmd->trackResource<DxvkAccess::Read>(srcImage);
+    m_cmd->trackResource<DxvkAccess::None>(fb);
     
     // If necessary, copy the temporary image
     // to the original destination image
@@ -2971,8 +2973,8 @@ namespace dxvk {
       srcImage->info().stages,
       srcImage->info().access);
     
-    m_cmd->trackResource(dstImage);
-    m_cmd->trackResource(srcImage);
+    m_cmd->trackResource<DxvkAccess::Write>(dstImage);
+    m_cmd->trackResource<DxvkAccess::Read>(srcImage);
   }
 
 
@@ -3053,9 +3055,9 @@ namespace dxvk {
       srcImage->info().stages,
       srcImage->info().access);
 
-    m_cmd->trackResource(fb);
-    m_cmd->trackResource(dstImage);
-    m_cmd->trackResource(srcImage);
+    m_cmd->trackResource<DxvkAccess::Write>(dstImage);
+    m_cmd->trackResource<DxvkAccess::Read>(srcImage);
+    m_cmd->trackResource<DxvkAccess::None>(fb);
   }
 
 
@@ -3210,9 +3212,9 @@ namespace dxvk {
       srcImage->info().stages,
       srcImage->info().access);
     
-    m_cmd->trackResource(fb);
-    m_cmd->trackResource(dstImage);
-    m_cmd->trackResource(srcImage);
+    m_cmd->trackResource<DxvkAccess::Write>(dstImage);
+    m_cmd->trackResource<DxvkAccess::Read>(srcImage);
+    m_cmd->trackResource<DxvkAccess::None>(fb);
   }
 
 
@@ -3361,11 +3363,11 @@ namespace dxvk {
     m_cmd->cmdBeginRenderPass(&info,
       VK_SUBPASS_CONTENTS_INLINE);
     
-    m_cmd->trackResource(framebuffer);
+    m_cmd->trackResource<DxvkAccess::None>(framebuffer);
 
     for (uint32_t i = 0; i < framebuffer->numAttachments(); i++) {
-      m_cmd->trackResource(framebuffer->getAttachment(i).view);
-      m_cmd->trackResource(framebuffer->getAttachment(i).view->image());
+      m_cmd->trackResource<DxvkAccess::None> (framebuffer->getAttachment(i).view);
+      m_cmd->trackResource<DxvkAccess::Write>(framebuffer->getAttachment(i).view->image());
     }
 
     m_cmd->addStatCtr(DxvkStatCounter::CmdRenderPassCount, 1);
@@ -3492,7 +3494,7 @@ namespace dxvk {
         ctrOffsets[i] = physSlice.offset;
 
         if (physSlice.handle != VK_NULL_HANDLE)
-          m_cmd->trackResource(m_state.xfb.counters[i].buffer());
+          m_cmd->trackResource<DxvkAccess::Read>(m_state.xfb.counters[i].buffer());
       }
       
       m_cmd->cmdBeginTransformFeedback(
@@ -3518,7 +3520,7 @@ namespace dxvk {
         ctrOffsets[i] = physSlice.offset;
 
         if (physSlice.handle != VK_NULL_HANDLE)
-          m_cmd->trackResource(m_state.xfb.counters[i].buffer());
+          m_cmd->trackResource<DxvkAccess::Write>(m_state.xfb.counters[i].buffer());
       }
 
       m_queryManager.endQueries(m_cmd, 
@@ -3773,13 +3775,30 @@ namespace dxvk {
             m_descInfos[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             
             if (m_rcTracked.set(binding.slot))
-              m_cmd->trackResource(res.sampler);
+              m_cmd->trackResource<DxvkAccess::None>(res.sampler);
           } else {
             bindMask.clr(i);
             m_descInfos[i].image = m_common->dummyResources().samplerDescriptor();
           } break;
         
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+          if (res.imageView != nullptr && res.imageView->handle(binding.view) != VK_NULL_HANDLE) {
+            m_descInfos[i].image.sampler     = VK_NULL_HANDLE;
+            m_descInfos[i].image.imageView   = res.imageView->handle(binding.view);
+            m_descInfos[i].image.imageLayout = res.imageView->imageInfo().layout;
+            
+            if (unlikely(res.imageView->imageHandle() == depthImage))
+              m_descInfos[i].image.imageLayout = depthLayout;
+            
+            if (m_rcTracked.set(binding.slot)) {
+              m_cmd->trackResource<DxvkAccess::None>(res.imageView);
+              m_cmd->trackResource<DxvkAccess::Read>(res.imageView->image());
+            }
+          } else {
+            bindMask.clr(i);
+            m_descInfos[i].image = m_common->dummyResources().imageViewDescriptor(binding.view);
+          } break;
+        
         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
           if (res.imageView != nullptr && res.imageView->handle(binding.view) != VK_NULL_HANDLE) {
             m_descInfos[i].image.sampler     = VK_NULL_HANDLE;
@@ -3790,8 +3809,8 @@ namespace dxvk {
               m_descInfos[i].image.imageLayout = depthLayout;
             
             if (m_rcTracked.set(binding.slot)) {
-              m_cmd->trackResource(res.imageView);
-              m_cmd->trackResource(res.imageView->image());
+              m_cmd->trackResource<DxvkAccess::None>(res.imageView);
+              m_cmd->trackResource<DxvkAccess::Write>(res.imageView->image());
             }
           } else {
             bindMask.clr(i);
@@ -3809,9 +3828,9 @@ namespace dxvk {
               m_descInfos[i].image.imageLayout = depthLayout;
             
             if (m_rcTracked.set(binding.slot)) {
-              m_cmd->trackResource(res.sampler);
-              m_cmd->trackResource(res.imageView);
-              m_cmd->trackResource(res.imageView->image());
+              m_cmd->trackResource<DxvkAccess::None>(res.sampler);
+              m_cmd->trackResource<DxvkAccess::None>(res.imageView);
+              m_cmd->trackResource<DxvkAccess::Read>(res.imageView->image());
             }
           } else {
             bindMask.clr(i);
@@ -3819,14 +3838,27 @@ namespace dxvk {
           } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+          if (res.bufferView != nullptr) {
+            res.bufferView->updateView();
+            m_descInfos[i].texelBuffer = res.bufferView->handle();
+            
+            if (m_rcTracked.set(binding.slot)) {
+              m_cmd->trackResource<DxvkAccess::None>(res.bufferView);
+              m_cmd->trackResource<DxvkAccess::Read>(res.bufferView->buffer());
+            }
+          } else {
+            bindMask.clr(i);
+            m_descInfos[i].texelBuffer = m_common->dummyResources().bufferViewDescriptor();
+          } break;
+        
         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
           if (res.bufferView != nullptr) {
             res.bufferView->updateView();
             m_descInfos[i].texelBuffer = res.bufferView->handle();
             
             if (m_rcTracked.set(binding.slot)) {
-              m_cmd->trackResource(res.bufferView);
-              m_cmd->trackResource(res.bufferView->buffer());
+              m_cmd->trackResource<DxvkAccess::None>(res.bufferView);
+              m_cmd->trackResource<DxvkAccess::Write>(res.bufferView->buffer());
             }
           } else {
             bindMask.clr(i);
@@ -3834,25 +3866,46 @@ namespace dxvk {
           } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+          if (res.bufferSlice.defined()) {
+            m_descInfos[i] = res.bufferSlice.getDescriptor();
+            
+            if (m_rcTracked.set(binding.slot))
+              m_cmd->trackResource<DxvkAccess::Read>(res.bufferSlice.buffer());
+          } else {
+            bindMask.clr(i);
+            m_descInfos[i].buffer = m_common->dummyResources().bufferDescriptor();
+          } break;
+        
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
           if (res.bufferSlice.defined()) {
             m_descInfos[i] = res.bufferSlice.getDescriptor();
             
             if (m_rcTracked.set(binding.slot))
-              m_cmd->trackResource(res.bufferSlice.buffer());
+              m_cmd->trackResource<DxvkAccess::Write>(res.bufferSlice.buffer());
           } else {
             bindMask.clr(i);
             m_descInfos[i].buffer = m_common->dummyResources().bufferDescriptor();
           } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+          if (res.bufferSlice.defined()) {
+            m_descInfos[i] = res.bufferSlice.getDescriptor();
+            m_descInfos[i].buffer.offset = 0;
+            
+            if (m_rcTracked.set(binding.slot))
+              m_cmd->trackResource<DxvkAccess::Read>(res.bufferSlice.buffer());
+          } else {
+            bindMask.clr(i);
+            m_descInfos[i].buffer = m_common->dummyResources().bufferDescriptor();
+          } break;
+        
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
           if (res.bufferSlice.defined()) {
             m_descInfos[i] = res.bufferSlice.getDescriptor();
             m_descInfos[i].buffer.offset = 0;
             
             if (m_rcTracked.set(binding.slot))
-              m_cmd->trackResource(res.bufferSlice.buffer());
+              m_cmd->trackResource<DxvkAccess::Write>(res.bufferSlice.buffer());
           } else {
             bindMask.clr(i);
             m_descInfos[i].buffer = m_common->dummyResources().bufferDescriptor();
@@ -3955,7 +4008,7 @@ namespace dxvk {
           m_state.vi.indexType);
 
         if (m_vbTracked.set(MaxNumVertexBindings))
-          m_cmd->trackResource(m_state.vi.indexBuffer.buffer());
+          m_cmd->trackResource<DxvkAccess::Read>(m_state.vi.indexBuffer.buffer());
       } else {
         m_cmd->cmdBindIndexBuffer(
           m_common->dummyResources().bufferHandle(),
@@ -3986,7 +4039,7 @@ namespace dxvk {
           offsets[i] = vbo.buffer.offset;
           
           if (m_vbTracked.set(binding))
-            m_cmd->trackResource(m_state.vi.vertexBuffers[binding].buffer());
+            m_cmd->trackResource<DxvkAccess::Read>(m_state.vi.vertexBuffers[binding].buffer());
         } else {
           buffers[i] = m_common->dummyResources().bufferHandle();
           offsets[i] = 0;
@@ -4023,7 +4076,7 @@ namespace dxvk {
         auto buffer = m_state.xfb.buffers[i].buffer();
         buffer->setXfbVertexStride(gsOptions.xfbStrides[i]);
         
-        m_cmd->trackResource(buffer);
+        m_cmd->trackResource<DxvkAccess::Write>(buffer);
       }
     }
 
@@ -4405,10 +4458,10 @@ namespace dxvk {
       m_flags.clr(DxvkContextFlag::DirtyDrawBuffer);
 
       if (m_state.id.argBuffer.defined())
-        m_cmd->trackResource(m_state.id.argBuffer.buffer());
+        m_cmd->trackResource<DxvkAccess::Read>(m_state.id.argBuffer.buffer());
 
       if (m_state.id.cntBuffer.defined())
-        m_cmd->trackResource(m_state.id.cntBuffer.buffer());
+        m_cmd->trackResource<DxvkAccess::Read>(m_state.id.cntBuffer.buffer());
     }
   }
   
