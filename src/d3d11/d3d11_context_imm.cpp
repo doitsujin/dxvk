@@ -335,7 +335,7 @@ namespace dxvk {
     } else {
       // Wait until the resource is no longer in use
       if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
-        if (!WaitForResource(pResource->GetBuffer(), MapFlags))
+        if (!WaitForResource(pResource->GetBuffer(), MapType, MapFlags))
           return DXGI_ERROR_WAS_STILL_DRAWING;
       }
 
@@ -390,7 +390,7 @@ namespace dxvk {
       const VkImageType imageType = mappedImage->info().type;
       
       // Wait for the resource to become available
-      if (!WaitForResource(mappedImage, MapFlags))
+      if (!WaitForResource(mappedImage, MapType, MapFlags))
         return DXGI_ERROR_WAS_STILL_DRAWING;
       
       // Mark the given subresource as mapped
@@ -434,7 +434,7 @@ namespace dxvk {
         }
         
         // Wait for mapped buffer to become available
-        if (!WaitForResource(mappedBuffer, MapFlags))
+        if (!WaitForResource(mappedBuffer, MapType, MapFlags))
           return DXGI_ERROR_WAS_STILL_DRAWING;
         
         physSlice = mappedBuffer->getSliceHandle();
@@ -554,18 +554,24 @@ namespace dxvk {
   
   bool D3D11ImmediateContext::WaitForResource(
     const Rc<DxvkResource>&                 Resource,
+          D3D11_MAP                         MapType,
           UINT                              MapFlags) {
-    // Some games (e.g. The Witcher 3) do not work correctly
-    // when a map fails with D3D11_MAP_FLAG_DO_NOT_WAIT set
+    // Some games might not work correctly when a map
+    // fails with D3D11_MAP_FLAG_DO_NOT_WAIT set
     if (!m_parent->GetOptions()->allowMapFlagNoWait)
       MapFlags &= ~D3D11_MAP_FLAG_DO_NOT_WAIT;
+
+    // Determine access type to wait for based on map mode
+    DxvkAccess access = MapType == D3D11_MAP_READ
+      ? DxvkAccess::Write
+      : DxvkAccess::Read;
     
     // Wait for the any pending D3D11 command to be executed
     // on the CS thread so that we can determine whether the
     // resource is currently in use or not.
     SynchronizeCsThread();
     
-    if (Resource->isInUse()) {
+    if (Resource->isInUse(access)) {
       if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT) {
         // We don't have to wait, but misbehaving games may
         // still try to spin on `Map` until the resource is
@@ -578,7 +584,7 @@ namespace dxvk {
         Flush();
         SynchronizeCsThread();
         
-        while (Resource->isInUse())
+        while (Resource->isInUse(access))
           dxvk::this_thread::yield();
       }
     }

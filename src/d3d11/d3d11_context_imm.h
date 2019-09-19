@@ -135,6 +135,7 @@ namespace dxvk {
     
     bool WaitForResource(
       const Rc<DxvkResource>&                 Resource,
+            D3D11_MAP                         MapType,
             UINT                              MapFlags);
     
     void EmitCsChunk(DxvkCsChunkRef&& chunk);
