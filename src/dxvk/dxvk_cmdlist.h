@@ -147,7 +147,7 @@ namespace dxvk {
      * completed.
      */
     void trackResource(Rc<DxvkResource> rc) {
-      m_resources.trackResource(std::move(rc));
+      m_resources.trackResource<DxvkAccess::Write>(std::move(rc));
     }
     
     /**

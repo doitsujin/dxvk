@@ -8,7 +8,7 @@ namespace dxvk {
   
   void DxvkLifetimeTracker::reset() {
     for (const auto& resource : m_resources)
-      resource->release();
+      resource.first->release(resource.second);
     m_resources.clear();
   }
   

@@ -25,9 +25,10 @@ namespace dxvk {
      * \brief Adds a resource to track
      * \param [in] rc The resource to track
      */
+    template<DxvkAccess Access>
     void trackResource(Rc<DxvkResource>&& rc) {
-      rc->acquire();
-      m_resources.emplace_back(std::move(rc));
+      rc->acquire(Access);
+      m_resources.emplace_back(std::move(rc), Access);
     }
     
     /**
@@ -40,7 +41,7 @@ namespace dxvk {
     
   private:
     
-    std::vector<Rc<DxvkResource>> m_resources;
+    std::vector<std::pair<Rc<DxvkResource>, DxvkAccess>> m_resources;
     
   };
   
