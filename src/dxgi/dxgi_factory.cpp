@@ -30,7 +30,8 @@ namespace dxvk {
      || riid == __uuidof(IDXGIFactory1)
      || riid == __uuidof(IDXGIFactory2)
      || riid == __uuidof(IDXGIFactory3)
-     || riid == __uuidof(IDXGIFactory4)) {
+     || riid == __uuidof(IDXGIFactory4)
+     || riid == __uuidof(IDXGIFactory5)) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -310,5 +311,26 @@ namespace dxvk {
   UINT STDMETHODCALLTYPE DxgiFactory::GetCreationFlags() {
     return m_flags;
   }
-  
+
+
+  HRESULT STDMETHODCALLTYPE DxgiFactory::CheckFeatureSupport(
+          DXGI_FEATURE          Feature,
+          void*                 pFeatureSupportData,
+          UINT                  FeatureSupportDataSize) {
+    switch (Feature) {
+      case DXGI_FEATURE_PRESENT_ALLOW_TEARING: {
+        auto info = static_cast<BOOL*>(pFeatureSupportData);
+
+        if (FeatureSupportDataSize != sizeof(*info))
+          return E_INVALIDARG;
+        
+        *info = TRUE;
+      } return S_OK;
+
+      default:
+        Logger::err(str::format("DxgiFactory: CheckFeatureSupport: Unknown feature: ", uint32_t(Feature)));
+        return E_INVALIDARG;
+    }
+  }
+
 }
