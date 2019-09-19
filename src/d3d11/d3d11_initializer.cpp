@@ -41,9 +41,7 @@ namespace dxvk {
   void D3D11Initializer::InitTexture(
           D3D11CommonTexture*         pTexture,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
-    VkMemoryPropertyFlags memFlags = pTexture->GetImage()->memFlags();
-    
-    (memFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+    (pTexture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT)
       ? InitHostVisibleTexture(pTexture, pInitialData)
       : InitDeviceLocalTexture(pTexture, pInitialData);
   }
@@ -196,8 +194,57 @@ namespace dxvk {
   void D3D11Initializer::InitHostVisibleTexture(
           D3D11CommonTexture*         pTexture,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
-    // TODO implement properly with memset/memcpy
-    InitDeviceLocalTexture(pTexture, pInitialData);
+    Rc<DxvkImage> image = pTexture->GetImage();
+
+    for (uint32_t layer = 0; layer < image->info().numLayers; layer++) {
+      for (uint32_t level = 0; level < image->info().mipLevels; level++) {
+        VkImageSubresource subresource;
+        subresource.aspectMask = image->formatInfo()->aspectMask;
+        subresource.mipLevel   = level;
+        subresource.arrayLayer = layer;
+
+        VkExtent3D blockCount = util::computeBlockCount(
+          image->mipLevelExtent(level),
+          image->formatInfo()->blockSize);
+
+        VkSubresourceLayout layout = image->querySubresourceLayout(subresource);
+
+        auto initialData = pInitialData
+          ? &pInitialData[D3D11CalcSubresource(level, layer, image->info().mipLevels)]
+          : nullptr;
+
+        for (uint32_t z = 0; z < blockCount.depth; z++) {
+          for (uint32_t y = 0; y < blockCount.height; y++) {
+            auto size = blockCount.width * image->formatInfo()->elementSize;
+            auto dst = image->mapPtr(layout.offset + y * layout.rowPitch + z * layout.depthPitch);
+
+            if (initialData) {
+              auto src = reinterpret_cast<const char*>(initialData->pSysMem)
+                       + y * initialData->SysMemPitch
+                       + z * initialData->SysMemSlicePitch;
+              std::memcpy(dst, src, size);
+            } else {
+              std::memset(dst, 0, size);
+            }
+          }
+        }
+      }
+    }
+
+    // Initialize the image on the GPU
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    VkImageSubresourceRange subresources;
+    subresources.aspectMask     = image->formatInfo()->aspectMask;
+    subresources.baseMipLevel   = 0;
+    subresources.levelCount     = image->info().mipLevels;
+    subresources.baseArrayLayer = 0;
+    subresources.layerCount     = image->info().numLayers;
+    
+    m_context->initImage(image, subresources, VK_IMAGE_LAYOUT_PREINITIALIZED);
+
+    m_transferCommands += 1;
+    FlushImplicit();
   }
 
 
