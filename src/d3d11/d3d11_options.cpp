@@ -5,7 +5,7 @@
 namespace dxvk {
   
   D3D11Options::D3D11Options(const Config& config) {
-    this->allowMapFlagNoWait    = config.getOption<bool>("d3d11.allowMapFlagNoWait", false);
+    this->allowMapFlagNoWait    = config.getOption<bool>("d3d11.allowMapFlagNoWait", true);
     this->dcSingleUseMode       = config.getOption<bool>("d3d11.dcSingleUseMode", true);
     this->strictDivision           = config.getOption<bool>("d3d11.strictDivision", false);
     this->constantBufferRangeCheck = config.getOption<bool>("d3d11.constantBufferRangeCheck", false);
