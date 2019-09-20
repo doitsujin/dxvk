@@ -77,6 +77,11 @@ namespace dxvk {
 
     /// Support the DF16 & DF24 texture format
     bool supportDFFormats;
+
+    /// SWVP Constant Limits
+    uint32_t swvpFloatCount;
+    uint32_t swvpIntCount;
+    uint32_t swvpBoolCount;
   };
 
 }

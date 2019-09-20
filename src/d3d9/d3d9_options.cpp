@@ -1,5 +1,7 @@
 #include "d3d9_options.h"
 
+#include "d3d9_caps.h"
+
 namespace dxvk {
 
   static int32_t parsePciId(const std::string& str) {
@@ -47,6 +49,9 @@ namespace dxvk {
     this->samplerAnisotropy     = config.getOption<int32_t>("d3d9.samplerAnisotropy", -1);
     this->maxAvailableMemory    = config.getOption<uint32_t>("d3d9.maxAvailableMemory", UINT32_MAX);
     this->supportDFFormats      = config.getOption<bool>("d3d9.supportDFFormats", true);
+    this->swvpFloatCount        = config.getOption<uint32_t>("d3d9.swvpFloatCount", caps::MaxFloatConstantsSoftware);
+    this->swvpIntCount          = config.getOption<uint32_t>("d3d9.swvpIntCount",   caps::MaxOtherConstantsSoftware);
+    this->swvpBoolCount         = config.getOption<uint32_t>("d3d9.swvpBoolCount",  caps::MaxOtherConstantsSoftware);
 
     this->d3d9FloatEmulation    = true; // <-- Future Extension?
 
