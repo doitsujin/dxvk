@@ -67,7 +67,7 @@ namespace dxvk {
     { R"(\\anno2205\.exe$)", {{
       { "dxvk.enableStateCache",            "False" },
     }} },
-    /* Fifa '19: Binds typed buffer SRV to shader *
+    /* Fifa '19+: Binds typed buffer SRV to shader *
      * that expects raw/structured buffer SRV     */
     { R"(\\FIFA(19|[2-9][0-9])(_demo)?\.exe$)", {{
       { "dxvk.useRawSsbo",                  "True" },
