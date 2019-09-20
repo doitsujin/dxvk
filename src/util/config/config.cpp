@@ -124,6 +124,13 @@ namespace dxvk {
     { R"(\\vr\.exe$)", {{
       { "d3d11.dcSingleUseMode",            "False" },
     }} },
+    /* Overwatch                                  *
+     * Broken for at least one user for unknown   *
+     * reasons, seems to work for others. Just    *
+     * disable DO_NOT_WAIT to be on the safe side */
+     { R"(\\Overwatch\.exe$)", {{
+      { "d3d11.allowMapFlagNoWait",         "False" },
+     }} },
   }};
 
 
