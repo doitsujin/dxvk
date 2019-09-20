@@ -695,8 +695,8 @@ namespace dxvk {
     VkDeviceSize srcByteOffset = srcBlockOffset.y * formatInfo->elementSize * blockCount.width
                                + srcBlockOffset.x * formatInfo->elementSize;
 
-    VkExtent3D fullSrcExtent3D = srcTextureInfo->GetExtentMip(src->GetSubresource());
-    VkExtent2D fullSrcExtent = VkExtent2D{ fullSrcExtent3D.width, fullSrcExtent3D.height };
+    VkExtent2D fullSrcExtent = VkExtent2D{ blockCount.width  * formatInfo->blockSize.width,
+                                           blockCount.height * formatInfo->blockSize.height };
 
     EmitCs([
       cDstImage   = std::move(dstImage),
