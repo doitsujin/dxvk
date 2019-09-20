@@ -2509,7 +2509,8 @@ namespace dxvk {
      || riid == __uuidof(IDXGIDevice)
      || riid == __uuidof(IDXGIDevice1)
      || riid == __uuidof(IDXGIDevice2)
-     || riid == __uuidof(IDXGIDevice3)) {
+     || riid == __uuidof(IDXGIDevice3)
+     || riid == __uuidof(IDXGIDevice4)) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -2657,18 +2658,55 @@ namespace dxvk {
           UINT                          NumResources,
           IDXGIResource* const*         ppResources,
           DXGI_OFFER_RESOURCE_PRIORITY  Priority) {
-
-    Logger::err("D3D11DXGIDevice::OfferResources: Not implemented");
-    return DXGI_ERROR_UNSUPPORTED;
+    return OfferResources1(NumResources, ppResources, Priority, 0);
   }
 
 
+  HRESULT STDMETHODCALLTYPE D3D11DXGIDevice::OfferResources1( 
+          UINT                          NumResources,
+          IDXGIResource* const*         ppResources,
+          DXGI_OFFER_RESOURCE_PRIORITY  Priority,
+          UINT                          Flags) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11DXGIDevice::OfferResources1: Stub");
+
+    return S_OK;
+  }
+
+  
   HRESULT STDMETHODCALLTYPE D3D11DXGIDevice::ReclaimResources( 
           UINT                          NumResources,
           IDXGIResource* const*         ppResources,
           BOOL*                         pDiscarded) {
-    Logger::err("D3D11DXGIDevice::ReclaimResources: Not implemented");
-    return DXGI_ERROR_UNSUPPORTED;    
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11DXGIDevice::ReclaimResources: Stub");
+
+    if (pDiscarded)
+      *pDiscarded = false;
+
+    return S_OK;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIDevice::ReclaimResources1(
+          UINT                          NumResources,
+          IDXGIResource* const*         ppResources,
+          DXGI_RECLAIM_RESOURCE_RESULTS* pResults) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11DXGIDevice::ReclaimResources1: Stub");
+
+    if (pResults) {
+      for (uint32_t i = 0; i < NumResources; i++)
+        pResults[i] = DXGI_RECLAIM_RESOURCE_RESULT_OK;
+    }
+
+    return S_OK;
   }
 
 

@@ -575,7 +575,7 @@ namespace dxvk {
    * Stores all the objects that contribute to the D3D11
    * device implementation, including the DXGI device.
    */
-  class D3D11DXGIDevice : public DxgiObject<IDXGIDevice3> {
+  class D3D11DXGIDevice : public DxgiObject<IDXGIDevice4> {
     constexpr static uint32_t DefaultFrameLatency = 3;
   public:
     
@@ -627,10 +627,21 @@ namespace dxvk {
             IDXGIResource* const*         ppResources,
             DXGI_OFFER_RESOURCE_PRIORITY  Priority) final;
         
+    HRESULT STDMETHODCALLTYPE OfferResources1( 
+            UINT                          NumResources,
+            IDXGIResource* const*         ppResources,
+            DXGI_OFFER_RESOURCE_PRIORITY  Priority,
+            UINT                          Flags) final;
+    
     HRESULT STDMETHODCALLTYPE ReclaimResources( 
             UINT                          NumResources,
             IDXGIResource* const*         ppResources,
             BOOL*                         pDiscarded) final;
+    
+    HRESULT STDMETHODCALLTYPE ReclaimResources1(
+            UINT                          NumResources,
+            IDXGIResource* const*         ppResources,
+            DXGI_RECLAIM_RESOURCE_RESULTS* pResults) final;
         
     HRESULT STDMETHODCALLTYPE EnqueueSetEvent( 
             HANDLE                hEvent) final;
