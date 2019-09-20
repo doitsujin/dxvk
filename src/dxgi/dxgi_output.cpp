@@ -56,7 +56,8 @@ namespace dxvk {
      || riid == __uuidof(IDXGIOutput1)
      || riid == __uuidof(IDXGIOutput2)
      || riid == __uuidof(IDXGIOutput3)
-     || riid == __uuidof(IDXGIOutput4)) {
+     || riid == __uuidof(IDXGIOutput4)
+     || riid == __uuidof(IDXGIOutput5)) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -416,12 +417,28 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiOutput::DuplicateOutput(
           IUnknown*                 pDevice,
           IDXGIOutputDuplication**  ppOutputDuplication) {
+    return DuplicateOutput1(pDevice, 0, 0, nullptr, ppOutputDuplication);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE DxgiOutput::DuplicateOutput1(
+          IUnknown*                 pDevice,
+          UINT                      Flags,
+          UINT                      SupportedFormatsCount,
+    const DXGI_FORMAT*              pSupportedFormats,
+          IDXGIOutputDuplication**  ppOutputDuplication) {
+    InitReturnPtr(ppOutputDuplication);
+
+    if (!pDevice)
+      return E_INVALIDARG;
+    
     static bool s_errorShown = false;
 
     if (!std::exchange(s_errorShown, true))
-      Logger::warn("DxgiOutput::DuplicateOutput: Stub");
+      Logger::err("DxgiOutput::DuplicateOutput1: Not implemented");
     
-    return E_NOTIMPL;
+    // At least return a valid error code
+    return DXGI_ERROR_UNSUPPORTED;
   }
 
 

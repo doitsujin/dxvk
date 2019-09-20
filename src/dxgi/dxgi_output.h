@@ -24,7 +24,7 @@ namespace dxvk {
   }
   
   
-  class DxgiOutput : public DxgiObject<IDXGIOutput4> {
+  class DxgiOutput : public DxgiObject<IDXGIOutput5> {
     
   public:
     
@@ -99,6 +99,13 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE DuplicateOutput(
             IUnknown*                 pDevice,
+            IDXGIOutputDuplication**  ppOutputDuplication) final;
+    
+    HRESULT STDMETHODCALLTYPE DuplicateOutput1(
+            IUnknown*                 pDevice,
+            UINT                      Flags,
+            UINT                      SupportedFormatsCount,
+      const DXGI_FORMAT*              pSupportedFormats,
             IDXGIOutputDuplication**  ppOutputDuplication) final;
     
     BOOL STDMETHODCALLTYPE SupportsOverlays() final;
