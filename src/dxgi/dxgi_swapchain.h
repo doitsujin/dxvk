@@ -17,7 +17,7 @@ namespace dxvk {
   class DxgiFactory;
   class DxgiOutput;
   
-  class DxgiSwapChain : public DxgiObject<IDXGISwapChain3> {
+  class DxgiSwapChain : public DxgiObject<IDXGISwapChain4> {
     
   public:
     
@@ -156,6 +156,11 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE SetColorSpace1(
             DXGI_COLOR_SPACE_TYPE     ColorSpace) final;
     
+    HRESULT STDMETHODCALLTYPE SetHDRMetaData(
+            DXGI_HDR_METADATA_TYPE    Type,
+            UINT                      Size,
+            void*                     pMetaData) final;
+
     HRESULT STDMETHODCALLTYPE SetGammaControl(
             UINT                      NumPoints,
       const DXGI_RGB*                 pGammaCurve);

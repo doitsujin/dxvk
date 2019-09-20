@@ -62,7 +62,8 @@ namespace dxvk {
      || riid == __uuidof(IDXGISwapChain)
      || riid == __uuidof(IDXGISwapChain1)
      || riid == __uuidof(IDXGISwapChain2)
-     || riid == __uuidof(IDXGISwapChain3)) {
+     || riid == __uuidof(IDXGISwapChain3)
+     || riid == __uuidof(IDXGISwapChain4)) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -466,18 +467,59 @@ namespace dxvk {
   
 
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::CheckColorSpaceSupport(
-    DXGI_COLOR_SPACE_TYPE           ColorSpace,
-    UINT*                           pColorSpaceSupport) {
-    Logger::err("DxgiSwapChain::CheckColorSpaceSupport: Not implemented");
+          DXGI_COLOR_SPACE_TYPE           ColorSpace,
+          UINT*                           pColorSpaceSupport) {
+    if (!pColorSpaceSupport)
+      return E_INVALIDARG;
+    
+    UINT supportFlags = 0;
 
-    *pColorSpaceSupport = 0;
-    return E_NOTIMPL;
+    if (ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709)
+      supportFlags |= DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT;
+
+    *pColorSpaceSupport = supportFlags;
+    return S_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::SetColorSpace1(DXGI_COLOR_SPACE_TYPE ColorSpace) {
-    Logger::err("DxgiSwapChain::SetColorSpace1: Not implemented");
-    return E_NOTIMPL;
+    UINT support = 0;
+
+    HRESULT hr = CheckColorSpaceSupport(ColorSpace, &support);
+
+    if (FAILED(hr))
+      return hr;
+
+    if (!support)
+      return E_INVALIDARG;
+
+    return S_OK;
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::SetHDRMetaData(
+          DXGI_HDR_METADATA_TYPE    Type,
+          UINT                      Size,
+          void*                     pMetaData) {
+    if (Size && !pMetaData)
+      return E_INVALIDARG;
+
+    switch (Type) {
+      case DXGI_HDR_METADATA_TYPE_NONE:
+        return S_OK;
+
+      case DXGI_HDR_METADATA_TYPE_HDR10:
+        if (Size != sizeof(DXGI_HDR_METADATA_HDR10))
+          return E_INVALIDARG;
+
+        // For some reason this always seems to succeed on Windows
+        Logger::warn("DXGI: HDR not supported");
+        return S_OK;
+
+      default:
+        Logger::err(str::format("DXGI: Invalid HDR metadata type: ", Type));
+        return E_INVALIDARG;
+    }
   }
   
   
