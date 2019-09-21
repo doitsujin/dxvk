@@ -253,12 +253,15 @@ namespace dxvk {
           uint32_t              binding,
     const DxvkBufferSlice&      buffer,
     const DxvkBufferSlice&      counter) {
-    this->spillRenderPass();
+    if (!m_state.xfb.buffers [binding].matches(buffer)
+     || !m_state.xfb.counters[binding].matches(counter)) {
+      this->spillRenderPass();
 
-    m_state.xfb.buffers [binding] = buffer;
-    m_state.xfb.counters[binding] = counter;
-    
-    m_flags.set(DxvkContextFlag::GpDirtyXfbBuffers);
+      m_state.xfb.buffers [binding] = buffer;
+      m_state.xfb.counters[binding] = counter;
+      
+      m_flags.set(DxvkContextFlag::GpDirtyXfbBuffers);
+    }
   }
 
 
