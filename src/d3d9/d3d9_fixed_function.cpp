@@ -277,6 +277,7 @@ namespace dxvk {
     } in;
 
     struct {
+      uint32_t texcoordCnt = 0;
       uint32_t typeId = { 0 };
       uint32_t varId  = { 0 };
       uint32_t bound  = { 0 };
@@ -1113,10 +1114,23 @@ namespace dxvk {
           SpirvImageOperands imageOperands;
           uint32_t imageVarId = m_module.opLoad(m_ps.samplers[i].typeId, m_ps.samplers[i].varId);
 
+          uint32_t texcoordCnt = m_ps.samplers[i].texcoordCnt;
+
+          // Add one for the texcoord count
+          // if we need to include the divider
           if (m_fsKey.Stages[i].data.Projected)
-            texture = m_module.opImageSampleProjImplicitLod(m_vec4Type, imageVarId, m_ps.in.TEXCOORD[i], imageOperands);
+            texcoordCnt++;
+
+          std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
+
+          uint32_t texcoord = m_ps.in.TEXCOORD[i];
+          texcoord = m_module.opVectorShuffle(m_module.defVectorType(m_floatType, texcoordCnt),
+            texcoord, texcoord, texcoordCnt, indices.data());
+
+          if (m_fsKey.Stages[i].data.Projected)
+            texture = m_module.opImageSampleProjImplicitLod(m_vec4Type, imageVarId, texcoord, imageOperands);
           else
-            texture = m_module.opImageSampleImplicitLod(m_vec4Type, imageVarId, m_ps.in.TEXCOORD[i], imageOperands);
+            texture = m_module.opImageSampleImplicitLod(m_vec4Type, imageVarId, texcoord, imageOperands);
         }
 
         processedTexture = true;
@@ -1485,14 +1499,17 @@ namespace dxvk {
         default:
         case D3DRTYPE_TEXTURE:
           dimensionality = spv::Dim2D;
+          sampler.texcoordCnt = 2;
           viewType       = VK_IMAGE_VIEW_TYPE_2D;
           break;
         case D3DRTYPE_CUBETEXTURE:
           dimensionality = spv::DimCube;
+          sampler.texcoordCnt = 3;
           viewType       = VK_IMAGE_VIEW_TYPE_CUBE;
           break;
         case D3DRTYPE_VOLUMETEXTURE:
           dimensionality = spv::Dim3D;
+          sampler.texcoordCnt = 3;
           viewType       = VK_IMAGE_VIEW_TYPE_3D;
           break;
       }
