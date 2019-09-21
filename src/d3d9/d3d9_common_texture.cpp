@@ -78,6 +78,10 @@ namespace dxvk {
     if (IsPoolManaged(pDesc->Pool) && (pDesc->Usage & D3DUSAGE_DYNAMIC))
       return D3DERR_INVALIDCALL;
 
+    // D3DUSAGE_WRITEONLY doesn't apply to textures.
+    if (pDesc->Usage & D3DUSAGE_WRITEONLY)
+      return D3DERR_INVALIDCALL;
+
     // RENDERTARGET and DEPTHSTENCIL must be default pool
     constexpr DWORD incompatibleUsages = D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL;
     if (pDesc->Pool != D3DPOOL_DEFAULT && (pDesc->Usage & incompatibleUsages))
