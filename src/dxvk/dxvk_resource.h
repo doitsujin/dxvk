@@ -36,9 +36,9 @@ namespace dxvk {
      * \returns \c true if the resource is in use
      */
     bool isInUse(DxvkAccess access = DxvkAccess::Read) const {
-      bool result = m_useCountW.load();
+      bool result = m_useCountW.load() != 0;
       if (access == DxvkAccess::Read)
-        result |= m_useCountR.load();
+        result |= m_useCountR.load() != 0;
       return result;
     }
     
