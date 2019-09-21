@@ -2344,11 +2344,19 @@ namespace dxvk {
 
 
   void DxvkContext::setSpecConstant(
+          VkPipelineBindPoint pipeline,
           uint32_t            index,
           uint32_t            value) {
-    if (m_state.gp.state.scSpecConstants[index] != value) {
-      m_state.gp.state.scSpecConstants[index] = value;
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+    auto& specConst = pipeline == VK_PIPELINE_BIND_POINT_GRAPHICS
+      ? m_state.gp.state.scSpecConstants[index]
+      : m_state.cp.state.scSpecConstants[index];
+    
+    if (specConst != value) {
+      specConst = value;
+
+      m_flags.set(pipeline == VK_PIPELINE_BIND_POINT_GRAPHICS
+        ? DxvkContextFlag::GpDirtyPipelineState
+        : DxvkContextFlag::CpDirtyPipelineState);
     }
   }
   

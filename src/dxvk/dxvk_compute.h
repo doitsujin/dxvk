@@ -27,10 +27,18 @@ namespace dxvk {
    * \brief Compute pipeline state info
    */
   struct DxvkComputePipelineStateInfo {
+    DxvkComputePipelineStateInfo();
+    DxvkComputePipelineStateInfo(
+      const DxvkComputePipelineStateInfo& other);
+    
+    DxvkComputePipelineStateInfo& operator = (
+      const DxvkComputePipelineStateInfo& other);
+
     bool operator == (const DxvkComputePipelineStateInfo& other) const;
     bool operator != (const DxvkComputePipelineStateInfo& other) const;
     
-    DxvkBindingMask bsBindingMask;
+    DxvkBindingMask                     bsBindingMask;
+    uint32_t                            scSpecConstants[MaxNumSpecConstants];
   };
 
 

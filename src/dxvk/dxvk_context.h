@@ -917,10 +917,12 @@ namespace dxvk {
      * Replaces current specialization constants with
      * the given list of constant entries. The specId
      * in the shader can be computed with \c getSpecId.
+     * \param [in] pipeline Graphics or Compute pipeline
      * \param [in] index Constant index
      * \param [in] value Constant value
      */
     void setSpecConstant(
+            VkPipelineBindPoint pipeline,
             uint32_t            index,
             uint32_t            value);
     
