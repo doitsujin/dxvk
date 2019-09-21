@@ -42,7 +42,7 @@ namespace dxvk {
 
     if (videoFormat.FormatType == D3D9VideoFormat_UYVY
      || videoFormat.FormatType == D3D9VideoFormat_YUY2) {
-      m_context->setSpecConstant(0, videoFormat.FormatType == D3D9VideoFormat_UYVY);
+      m_context->setSpecConstant(VK_PIPELINE_BIND_POINT_COMPUTE, 0, videoFormat.FormatType == D3D9VideoFormat_UYVY);
     }
 
     m_context->bindResourceView(BindingIds::Image,  tmpImageView, nullptr);
@@ -53,6 +53,9 @@ namespace dxvk {
       (imageExtent.width  / 8) + (imageExtent.width  % 8),
       (imageExtent.height / 8) + (imageExtent.height % 8),
       1);
+
+    // Reset the spec constants used...
+    m_context->setSpecConstant(VK_PIPELINE_BIND_POINT_COMPUTE, 0, 0);
     
     m_context->flushCommandList();
   }

@@ -3879,7 +3879,12 @@ namespace dxvk {
         Flush();
         SynchronizeCsThread();
 
-        while (Resource->isInUse())
+        // Determine access type to wait for based on map mode
+        DxvkAccess access = (MapFlags & D3DLOCK_READONLY)
+          ? DxvkAccess::Write
+          : DxvkAccess::Read;
+
+        while (Resource->isInUse(access))
           dxvk::this_thread::yield();
       }
     }
@@ -4734,9 +4739,9 @@ namespace dxvk {
         m_flags.clr(D3D9DeviceFlag::DirtyFogState);
 
         EmitCs([cMode = mode] (DxvkContext* ctx) {
-          ctx->setSpecConstant(D3D9SpecConstantId::FogEnabled,    true);
-          ctx->setSpecConstant(D3D9SpecConstantId::VertexFogMode, cMode);
-          ctx->setSpecConstant(D3D9SpecConstantId::PixelFogMode,  D3DFOG_NONE);
+          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::FogEnabled,    true);
+          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::VertexFogMode, cMode);
+          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::PixelFogMode,  D3DFOG_NONE);
         });
       }
     }
@@ -4749,9 +4754,9 @@ namespace dxvk {
         m_flags.clr(D3D9DeviceFlag::DirtyFogState);
 
         EmitCs([cMode = mode] (DxvkContext* ctx) {
-          ctx->setSpecConstant(D3D9SpecConstantId::FogEnabled,    true);
-          ctx->setSpecConstant(D3D9SpecConstantId::VertexFogMode, D3DFOG_NONE);
-          ctx->setSpecConstant(D3D9SpecConstantId::PixelFogMode,  cMode);
+          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::FogEnabled,    true);
+          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::VertexFogMode, D3DFOG_NONE);
+          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::PixelFogMode,  cMode);
         });
       }
     }
@@ -4763,9 +4768,9 @@ namespace dxvk {
         m_flags.clr(D3D9DeviceFlag::DirtyFogState);
 
         EmitCs([cEnabled = fogEnabled] (DxvkContext* ctx) {
-          ctx->setSpecConstant(D3D9SpecConstantId::FogEnabled,    cEnabled);
-          ctx->setSpecConstant(D3D9SpecConstantId::VertexFogMode, D3DFOG_NONE);
-          ctx->setSpecConstant(D3D9SpecConstantId::PixelFogMode,  D3DFOG_NONE);
+          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::FogEnabled,    cEnabled);
+          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::VertexFogMode, D3DFOG_NONE);
+          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::PixelFogMode,  D3DFOG_NONE);
         });
       }
     }
@@ -5066,8 +5071,8 @@ namespace dxvk {
       : VK_COMPARE_OP_ALWAYS;
     
     EmitCs([cAlphaOp = alphaOp] (DxvkContext* ctx) {
-      ctx->setSpecConstant(D3D9SpecConstantId::AlphaTestEnable, cAlphaOp != VK_COMPARE_OP_ALWAYS);
-      ctx->setSpecConstant(D3D9SpecConstantId::AlphaCompareOp,  cAlphaOp);
+      ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::AlphaTestEnable, cAlphaOp != VK_COMPARE_OP_ALWAYS);
+      ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::AlphaCompareOp,  cAlphaOp);
     });
   }
 
@@ -5947,7 +5952,7 @@ namespace dxvk {
 
   void D3D9DeviceEx::UpdateSamplerSpecConsant(uint32_t value) {
     EmitCs([cBitfield = value](DxvkContext* ctx) {
-      ctx->setSpecConstant(D3D9SpecConstantId::SamplerType, cBitfield);
+      ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::SamplerType, cBitfield);
     });
 
     m_lastSamplerTypeBitfield = value;
