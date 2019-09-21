@@ -1123,9 +1123,22 @@ namespace dxvk {
 
           std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
 
-          uint32_t texcoord = m_ps.in.TEXCOORD[i];
-          texcoord = m_module.opVectorShuffle(m_module.defVectorType(m_floatType, texcoordCnt),
+          uint32_t texcoord   = m_ps.in.TEXCOORD[i];
+          uint32_t texcoord_t = m_module.defVectorType(m_floatType, texcoordCnt);
+          texcoord = m_module.opVectorShuffle(texcoord_t,
             texcoord, texcoord, texcoordCnt, indices.data());
+
+          uint32_t projIdx = m_fsKey.Stages[i].data.ProjectedCount;
+          if (projIdx == 0)
+            projIdx = texcoordCnt;
+          else
+            projIdx--;
+
+          if (m_fsKey.Stages[i].data.Projected) {
+            uint32_t projValue = m_module.opCompositeExtract(m_floatType, m_ps.in.TEXCOORD[i], 1, &projIdx);
+            uint32_t insertIdx = texcoordCnt - 1;
+            texcoord = m_module.opCompositeInsert(texcoord_t, projValue, texcoord, 1, &insertIdx);
+          }
 
           if (m_fsKey.Stages[i].data.Projected)
             texture = m_module.opImageSampleProjImplicitLod(m_vec4Type, imageVarId, texcoord, imageOperands);
@@ -1787,8 +1800,10 @@ namespace dxvk {
 
     state.add(boolhash(key.SpecularEnable));
 
-    for (uint32_t i = 0; i < caps::TextureStageCount; i++)
-      state.add(uint64hash(key.Stages->uint64[i]));
+    for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
+      state.add(uint64hash(key.Stages[i].primitive.a));
+      state.add(uint64hash(key.Stages[i].primitive.b));
+    }
 
     return state;
   }

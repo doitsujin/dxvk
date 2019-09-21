@@ -64,22 +64,27 @@ namespace dxvk {
   struct D3D9FFShaderStage {
     union {
       struct {
-        uint16_t     ColorOp : 5;
-        uint16_t     ColorArg0 : 6;
-        uint16_t     ColorArg1 : 6;
-        uint16_t     ColorArg2 : 6;
+        uint32_t     ColorOp : 5;
+        uint32_t     ColorArg0 : 6;
+        uint32_t     ColorArg1 : 6;
+        uint32_t     ColorArg2 : 6;
 
-        uint16_t     AlphaOp : 5;
-        uint16_t     AlphaArg0 : 6;
-        uint16_t     AlphaArg1 : 6;
-        uint16_t     AlphaArg2 : 6;
+        uint32_t     AlphaOp : 5;
+        uint32_t     AlphaArg0 : 6;
+        uint32_t     AlphaArg1 : 6;
+        uint32_t     AlphaArg2 : 6;
 
-        uint16_t     Type : 2;
-        uint16_t     ResultIsTemp : 1;
-        uint16_t     Projected : 1;
+        uint32_t     Type : 2;
+        uint32_t     ResultIsTemp : 1;
+        uint32_t     Projected : 1;
+
+        uint32_t     ProjectedCount : 3;
       } data;
 
-      uint64_t uint64[8];
+      struct {
+        uint64_t a;
+        uint64_t b;
+      } primitive;
     };
   };
 
