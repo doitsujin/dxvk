@@ -52,7 +52,7 @@ namespace dxvk {
    */
   struct DxvkStateCacheHeader {
     char     magic[4]   = { 'D', 'X', 'V', 'K' };
-    uint32_t version    = 5;
+    uint32_t version    = 6;
     uint32_t entrySize  = sizeof(DxvkStateCacheEntry);
   };
 
@@ -104,12 +104,32 @@ namespace dxvk {
 
 
   /**
+   * \brief Version 5 compute pipeline state
+   */
+  struct DxvkComputePipelineStateInfoV5 {
+    DxvkBindingMask                     bsBindingMask;
+  };
+
+
+  /**
    * \brief Version 4 state cache entry
    */
   struct DxvkStateCacheEntryV4 {
     DxvkStateCacheKey               shaders;
     DxvkGraphicsPipelineStateInfoV4 gpState;
-    DxvkComputePipelineStateInfo    cpState;
+    DxvkComputePipelineStateInfoV5  cpState;
+    DxvkRenderPassFormat            format;
+    Sha1Hash                        hash;
+  };
+
+
+  /**
+   * \brief Version 5 state cache entry
+   */
+  struct DxvkStateCacheEntryV5 {
+    DxvkStateCacheKey               shaders;
+    DxvkGraphicsPipelineStateInfo   gpState;
+    DxvkComputePipelineStateInfoV5  cpState;
     DxvkRenderPassFormat            format;
     Sha1Hash                        hash;
   };

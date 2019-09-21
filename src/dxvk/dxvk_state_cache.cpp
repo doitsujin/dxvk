@@ -300,6 +300,8 @@ namespace dxvk {
 
     if (curHeader.version <= 4)
       expectedSize = sizeof(DxvkStateCacheEntryV4);
+    else if (curHeader.version <= 5)
+      expectedSize = sizeof(DxvkStateCacheEntryV5);
 
     if (curHeader.entrySize != expectedSize) {
       Logger::warn("DXVK: State cache entry size changed");
@@ -391,6 +393,13 @@ namespace dxvk {
         convertEntryV2(v4);
       
       return convertEntryV4(v4, entry);
+    } else if (version <= 5) {
+      DxvkStateCacheEntryV5 v5;
+
+      if (!readCacheEntryTyped(stream, v5))
+        return false;
+
+      return convertEntryV5(v5, entry);
     } else {
       return readCacheEntryTyped(stream, entry);
     }
@@ -428,10 +437,10 @@ namespace dxvk {
     const DxvkStateCacheEntryV4&    in,
           DxvkStateCacheEntry&      out) const {
     out.shaders = in.shaders;
-    out.cpState = in.cpState;
     out.format  = in.format;
     out.hash    = in.hash;
 
+    out.cpState.bsBindingMask           = in.cpState.bsBindingMask;
     out.gpState.bsBindingMask           = in.gpState.bsBindingMask;
     
     out.gpState.iaPrimitiveTopology     = in.gpState.iaPrimitiveTopology;
@@ -476,6 +485,19 @@ namespace dxvk {
       out.gpState.omComponentMapping[i] = in.gpState.omComponentMapping[i];
     }
 
+    return true;
+  }
+
+
+  bool DxvkStateCache::convertEntryV5(
+    const DxvkStateCacheEntryV5&    in,
+          DxvkStateCacheEntry&      out) const {
+    out.shaders = in.shaders;
+    out.gpState = in.gpState;
+    out.format  = in.format;
+    out.hash    = in.hash;
+
+    out.cpState.bsBindingMask = in.cpState.bsBindingMask;
     return true;
   }
 

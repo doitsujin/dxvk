@@ -159,6 +159,10 @@ namespace dxvk {
       const DxvkStateCacheEntryV4&    in,
             DxvkStateCacheEntry&      out) const;
     
+    bool convertEntryV5(
+      const DxvkStateCacheEntryV5&    in,
+            DxvkStateCacheEntry&      out) const;
+    
     void workerFunc();
 
     void writerFunc();
