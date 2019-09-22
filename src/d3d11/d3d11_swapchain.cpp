@@ -183,13 +183,19 @@ namespace dxvk {
     
     FlushImmediateContext();
 
+    HRESULT hr = S_OK;
+
     try {
       PresentImage(SyncInterval);
-      return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return E_FAIL;
+      hr = E_FAIL;
     }
+
+    if (m_device->getDeviceStatus() != VK_SUCCESS)
+      hr = DXGI_ERROR_DEVICE_RESET;
+
+    return hr;
   }
 
 
