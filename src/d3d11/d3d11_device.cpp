@@ -1733,12 +1733,12 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11Device::GetDeviceRemovedReason() {
-    static std::atomic<bool> s_errorShown = { false };
-    
-    if (!s_errorShown.exchange(true))
-      Logger::warn("D3D11Device::GetDeviceRemovedReason: Stub");
-    
-    return S_OK;
+    VkResult status = m_dxvkDevice->getDeviceStatus();
+
+    switch (status) {
+      case VK_SUCCESS: return S_OK;
+      default:         return DXGI_ERROR_DEVICE_RESET;
+    }
   }
   
   
