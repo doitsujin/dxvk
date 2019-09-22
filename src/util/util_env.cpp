@@ -36,13 +36,8 @@ namespace dxvk::env {
   void setThreadName(const std::string& name) {
     using SetThreadDescriptionProc = HRESULT (WINAPI *) (HANDLE, PCWSTR);
 
-    HMODULE module = ::GetModuleHandleW(L"kernel32.dll");
-
-    if (module == nullptr)
-      return;
-
-    auto proc = reinterpret_cast<SetThreadDescriptionProc>(
-      ::GetProcAddress(module, "SetThreadDescription"));
+    static auto proc = reinterpret_cast<SetThreadDescriptionProc>(
+      ::GetProcAddress(::GetModuleHandleW(L"kernel32.dll"), "SetThreadDescription"));
 
     if (proc != nullptr) {
       auto wideName = str::tows(name);
