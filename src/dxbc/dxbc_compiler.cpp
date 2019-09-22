@@ -4213,21 +4213,22 @@ namespace dxvk {
       condition, ins.controls.zeroTest());
     
     // We basically have to wrap this into an 'if' block
-    const uint32_t callLabel     = m_module.allocateId();
-    const uint32_t continueLabel = m_module.allocateId();
+    const uint32_t callLabel = m_module.allocateId();
+    const uint32_t skipLabel = m_module.allocateId();
     
-    m_module.opSelectionMerge(continueLabel,
+    m_module.opSelectionMerge(skipLabel,
       spv::SelectionControlMaskNone);
     
     m_module.opBranchConditional(
-      zeroTest.id, callLabel, continueLabel);
+      zeroTest.id, callLabel, skipLabel);
     
     m_module.opLabel(callLabel);
     m_module.opFunctionCall(
       m_module.defVoidType(),
       functionId, 0, nullptr);
 
-    m_module.opLabel(continueLabel);
+    m_module.opBranch(skipLabel);
+    m_module.opLabel(skipLabel);
   }
 
   
