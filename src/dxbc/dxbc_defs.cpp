@@ -209,7 +209,9 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32  },
     } },
     /* Label                                */
-    { },
+    { 1, DxbcInstClass::ControlFlow, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+    } },
     /* Ld                                   */
     { 3, DxbcInstClass::TextureFetch, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },

@@ -472,7 +472,7 @@ namespace dxvk {
     // Function state tracking. Required in order
     // to properly end functions in some cases.
     bool m_insideFunction = false;
-    
+
     ///////////////////////////////////////////////////////////
     // Array of input values. Since v# registers are indexable
     // in DXBC, we need to copy them into an array first.
@@ -505,6 +505,10 @@ namespace dxvk {
     // Struct type used for UAV counter buffers
     uint32_t m_uavCtrStructType  = 0;
     uint32_t m_uavCtrPointerType = 0;
+    
+    ////////////////////////////////
+    // Function IDs for subroutines
+    std::unordered_map<uint32_t, uint32_t> m_subroutines;
     
     ///////////////////////////////////////////////////
     // Entry point description - we'll need to declare
@@ -782,6 +786,15 @@ namespace dxvk {
       const DxbcShaderInstruction&  ins);
     
     void emitControlFlowDiscard(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitControlFlowLabel(
+      const DxbcShaderInstruction&  ins);
+
+    void emitControlFlowCall(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitControlFlowCallc(
       const DxbcShaderInstruction&  ins);
     
     void emitControlFlow(
@@ -1218,6 +1231,9 @@ namespace dxvk {
       const DxbcRegisterInfo& type);
     
     uint32_t getPerVertexBlockId();
+
+    uint32_t getFunctionId(
+            uint32_t          functionNr);
     
     DxbcCompilerHsForkJoinPhase* getCurrentHsForkJoinPhase();
     
