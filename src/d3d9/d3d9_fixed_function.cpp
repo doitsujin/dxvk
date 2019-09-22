@@ -1328,8 +1328,8 @@ namespace dxvk {
             arg[2] = m_module.opVectorShuffle(vec3Type, arg[2], arg[2], indices.size(), indices.data());
 
             // Bias according to spec.
-            arg[1] = m_module.opFSub(vec3Type, arg[1], m_module.constvec3f32(-0.5f, -0.5f, -0.5f));
-            arg[2] = m_module.opFSub(vec3Type, arg[2], m_module.constvec3f32(-0.5f, -0.5f, -0.5f));
+            arg[1] = m_module.opFSub(vec3Type, arg[1], m_module.constvec3f32(0.5f, 0.5f, 0.5f));
+            arg[2] = m_module.opFSub(vec3Type, arg[2], m_module.constvec3f32(0.5f, 0.5f, 0.5f));
 
             // Do the dotting!
             dst = m_module.opDot(m_floatType, arg[1], arg[2]);
