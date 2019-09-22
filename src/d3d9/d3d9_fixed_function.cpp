@@ -1371,33 +1371,44 @@ namespace dxvk {
         break;
 
       std::array<uint32_t, TextureArgCount> colorArgs = {
-          colorOp != D3DTOP_DISABLE ? GetArg(stage.ColorArg0) : 0,
-          colorOp != D3DTOP_DISABLE ? GetArg(stage.ColorArg1) : 0,
-          colorOp != D3DTOP_DISABLE ? GetArg(stage.ColorArg2) : 0};
+          stage.ColorArg0,
+          stage.ColorArg1,
+          stage.ColorArg2};
 
       D3DTEXTUREOP alphaOp = (D3DTEXTUREOP)stage.AlphaOp;
       std::array<uint32_t, TextureArgCount> alphaArgs = {
-          alphaOp != D3DTOP_DISABLE ? GetArg(stage.AlphaArg0) : 0,
-          alphaOp != D3DTOP_DISABLE ? GetArg(stage.AlphaArg1) : 0,
-          alphaOp != D3DTOP_DISABLE ? GetArg(stage.AlphaArg2) : 0 };
+          stage.AlphaArg0,
+          stage.AlphaArg1,
+          stage.AlphaArg2};
+
+      auto ProcessArgs = [&](auto op, auto& args) {
+        for (uint32_t& arg : args)
+          arg = GetArg(arg);
+      };
 
       // Fast path if alpha/color path is identical.
       // D3DTOP_DOTPRODUCT3 also has special quirky behaviour here.
       const bool fastPath = colorOp == alphaOp && colorArgs == alphaArgs;
       if (fastPath || colorOp == D3DTOP_DOTPRODUCT3) {
-        if (colorOp != D3DTOP_DISABLE)
+        if (colorOp != D3DTOP_DISABLE) {
+          ProcessArgs(colorOp, colorArgs);
           dst = DoOp(colorOp, dst, colorArgs);
+        }
       }
       else {
         std::array<uint32_t, 4> indices = { 0, 1, 2, 4 + 3 };
 
         uint32_t colorResult = dst;
         uint32_t alphaResult = dst;
-        if (colorOp != D3DTOP_DISABLE)
+        if (colorOp != D3DTOP_DISABLE) {
+          ProcessArgs(colorOp, colorArgs);
           colorResult = DoOp(colorOp, dst, colorArgs);
+        }
 
-        if (alphaOp != D3DTOP_DISABLE)
+        if (alphaOp != D3DTOP_DISABLE) {
+          ProcessArgs(alphaOp, alphaArgs);
           alphaResult = DoOp(alphaOp, dst, alphaArgs);
+        }
 
         // src0.x, src0.y, src0.z src1.w
         if (colorResult != dst)
