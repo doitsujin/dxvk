@@ -114,7 +114,8 @@ namespace dxvk {
       // Submit command buffer to device
       VkResult status = VK_NOT_READY;
 
-      { std::lock_guard<std::mutex> lock(m_mutexQueue);
+      if (m_lastError != VK_ERROR_DEVICE_LOST) {
+        std::lock_guard<std::mutex> lock(m_mutexQueue);
 
         if (entry.submit.cmdList != nullptr) {
           status = entry.submit.cmdList->submit(
@@ -124,6 +125,10 @@ namespace dxvk {
           status = entry.present.presenter->presentImage(
             entry.present.waitSync);
         }
+      } else {
+        // Don't submit anything after device loss
+        // so that drivers get a chance to recover
+        status = VK_ERROR_DEVICE_LOST;
       }
 
       if (entry.status)
@@ -135,8 +140,10 @@ namespace dxvk {
       if (status == VK_SUCCESS) {
         if (entry.submit.cmdList != nullptr)
           m_finishQueue.push(std::move(entry));
-      } else if (entry.submit.cmdList != nullptr) {
+      } else if (status == VK_ERROR_DEVICE_LOST || entry.submit.cmdList != nullptr) {
         Logger::err(str::format("DxvkSubmissionQueue: Command submission failed: ", status));
+        m_lastError = status;
+        m_device->waitForIdle();
       }
 
       m_submitQueue.pop();
@@ -168,18 +175,21 @@ namespace dxvk {
       DxvkSubmitEntry entry = std::move(m_finishQueue.front());
       lock.unlock();
       
-      VkResult status = entry.submit.cmdList->synchronize();
+      VkResult status = m_lastError.load();
       
-      if (status == VK_SUCCESS) {
-        entry.submit.cmdList->notifySignals();
-        entry.submit.cmdList->reset();
-        
-        m_device->recycleCommandList(entry.submit.cmdList);
-      } else {
-        Logger::err(str::format(
-          "DxvkSubmissionQueue: Failed to sync fence: ",
-          status));
+      if (status != VK_ERROR_DEVICE_LOST)
+        status = entry.submit.cmdList->synchronize();
+      
+      if (status != VK_SUCCESS) {
+        Logger::err(str::format("DxvkSubmissionQueue: Failed to sync fence: ", status));
+        m_lastError = status;
+        m_device->waitForIdle();
       }
+
+      entry.submit.cmdList->notifySignals();
+      entry.submit.cmdList->reset();
+
+      m_device->recycleCommandList(entry.submit.cmdList);
 
       lock = std::unique_lock<std::mutex>(m_mutex);
       m_pending -= 1;

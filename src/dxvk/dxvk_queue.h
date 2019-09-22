@@ -92,6 +92,17 @@ namespace dxvk {
     uint64_t gpuIdleTicks() const {
       return m_gpuIdle.load();
     }
+
+    /**
+     * \brief Retrieves last submission error
+     * 
+     * In case an error occured during asynchronous command
+     * submission, it will be returned by this function.
+     * \returns Last error from command submission
+     */
+    VkResult getLastError() const {
+      return m_lastError.load();
+    }
     
     /**
      * \brief Submits a command list asynchronously
@@ -157,6 +168,8 @@ namespace dxvk {
 
     DxvkDevice*             m_device;
     bool                    m_asyncPresent;
+
+    std::atomic<VkResult>   m_lastError = { VK_SUCCESS };
     
     std::atomic<bool>       m_stopped = { false };
     std::atomic<uint32_t>   m_pending = { 0u };

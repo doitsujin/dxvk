@@ -174,6 +174,17 @@ namespace dxvk {
     }
 
     /**
+     * \brief Get device status
+     * 
+     * This may report device loss in
+     * case a submission failed.
+     * \returns Device status
+     */
+    VkResult getDeviceStatus() const {
+      return m_submissionQueue.getLastError();
+    }
+
+    /**
      * \brief Queries supported shader stages
      * \returns Supported shader pipeline stages
      */
