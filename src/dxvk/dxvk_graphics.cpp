@@ -490,7 +490,12 @@ namespace dxvk {
     
     // If there are no tessellation shaders, we
     // obviously cannot use tessellation patches.
-    if ((state.iaPatchVertexCount != 0) && (m_shaders.tcs == nullptr || m_shaders.tes == nullptr))
+    if ((state.iaPrimitiveTopology == VK_PRIMITIVE_TOPOLOGY_PATCH_LIST)
+     && (m_shaders.tcs == nullptr || m_shaders.tes == nullptr))
+      return false;
+    
+    // Filter out undefined primitive topologies
+    if (state.iaPrimitiveTopology == VK_PRIMITIVE_TOPOLOGY_MAX_ENUM)
       return false;
     
     // Prevent unintended out-of-bounds access to the IL arrays
