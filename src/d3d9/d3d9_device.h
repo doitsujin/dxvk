@@ -40,7 +40,7 @@ namespace dxvk {
   class D3D9StateBlock;
   class D3D9FormatHelper;
 
-  enum class D3D9DeviceFlag : uint64_t {
+  enum class D3D9DeviceFlag : uint32_t {
     DirtyFramebuffer,
     DirtyClipPlanes,
     DirtyDepthStencilState,
