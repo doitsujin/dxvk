@@ -20,7 +20,7 @@ namespace dxvk {
    * of the graphics and compute pipelines
    * has changed and/or needs to be updated.
    */
-  enum class DxvkContextFlag : uint64_t  {
+  enum class DxvkContextFlag : uint32_t  {
     GpRenderPassBound,          ///< Render pass is currently bound
     GpCondActive,               ///< Conditional rendering is enabled
     GpXfbActive,                ///< Transform feedback is enabled
