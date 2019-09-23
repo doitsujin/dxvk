@@ -223,7 +223,7 @@ namespace dxvk {
           ID3D10ShaderResourceView**        ppSRView) {
     InitReturnPtr(ppSRView);
 
-    if (pResource == nullptr)
+    if (!pResource)
       return E_INVALIDARG;
 
     Com<ID3D11Resource> d3d11Resource;
@@ -248,7 +248,7 @@ namespace dxvk {
           ID3D10ShaderResourceView1**       ppSRView) {
     InitReturnPtr(ppSRView);
 
-    if (pResource == nullptr)
+    if (!pResource)
       return E_INVALIDARG;
 
     Com<ID3D11Resource> d3d11Resource;
@@ -273,7 +273,7 @@ namespace dxvk {
           ID3D10RenderTargetView**          ppRTView) {
     InitReturnPtr(ppRTView);
 
-    if (pResource == nullptr)
+    if (!pResource)
       return E_INVALIDARG;
 
     Com<ID3D11Resource> d3d11Resource;
@@ -298,7 +298,7 @@ namespace dxvk {
           ID3D10DepthStencilView**          ppDepthStencilView) {
     InitReturnPtr(ppDepthStencilView);
 
-    if (pResource == nullptr)
+    if (!pResource)
       return E_INVALIDARG;
 
     Com<ID3D11Resource> d3d11Resource;
@@ -753,7 +753,7 @@ namespace dxvk {
       ppPredicate ? &d3d11Predicate : nullptr,
       pPredicateValue);
 
-    if (ppPredicate != nullptr)
+    if (ppPredicate)
       *ppPredicate = d3d11Predicate ? D3D11Query::FromPredicate(d3d11Predicate)->GetD3D10Iface() : nullptr;
   }
 
@@ -767,9 +767,12 @@ namespace dxvk {
           ID3D10Resource*                   pSrcResource,
           UINT                              SrcSubresource,
     const D3D10_BOX*                        pSrcBox) {
+    if (!pDstResource || !pSrcResource)
+      return;
+    
     Com<ID3D11Resource> d3d11DstResource;
     Com<ID3D11Resource> d3d11SrcResource;
-    
+
     GetD3D11Resource(pDstResource, &d3d11DstResource);
     GetD3D11Resource(pSrcResource, &d3d11SrcResource);
 
@@ -783,6 +786,9 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::CopyResource(
           ID3D10Resource*                   pDstResource,
           ID3D10Resource*                   pSrcResource) {
+    if (!pDstResource || !pSrcResource)
+      return;
+
     Com<ID3D11Resource> d3d11DstResource;
     Com<ID3D11Resource> d3d11SrcResource;
     
@@ -802,6 +808,9 @@ namespace dxvk {
     const void*                             pSrcData,
           UINT                              SrcRowPitch,
           UINT                              SrcDepthPitch) {
+    if (!pDstResource)
+      return;
+
     Com<ID3D11Resource> d3d11DstResource;
     GetD3D11Resource(pDstResource, &d3d11DstResource);
 
@@ -827,6 +836,9 @@ namespace dxvk {
           ID3D10Resource*                   pSrcResource,
           UINT                              SrcSubresource,
           DXGI_FORMAT                       Format) {
+    if (!pDstResource || !pSrcResource)
+      return;
+
     Com<ID3D11Resource> d3d11DstResource;
     Com<ID3D11Resource> d3d11SrcResource;
     
@@ -946,8 +958,9 @@ namespace dxvk {
     ID3D11InputLayout* d3d11InputLayout = nullptr;
     m_context->IAGetInputLayout(&d3d11InputLayout);
 
-    *ppInputLayout = d3d11InputLayout ? static_cast<D3D11InputLayout*>(
-      d3d11InputLayout)->GetD3D10Iface() : nullptr;
+    *ppInputLayout = d3d11InputLayout
+      ? static_cast<D3D11InputLayout*>(d3d11InputLayout)->GetD3D10Iface()
+      : nullptr;
   }
 
 
@@ -975,7 +988,7 @@ namespace dxvk {
       ppVertexBuffers ? d3d11Buffers : nullptr,
       pStrides, pOffsets);
 
-    if (ppVertexBuffers != nullptr) {
+    if (ppVertexBuffers) {
       for (uint32_t i = 0; i < NumBuffers; i++) {
         ppVertexBuffers[i] = d3d11Buffers[i]
           ? static_cast<D3D11Buffer*>(d3d11Buffers[i])->GetD3D10Iface()
@@ -995,7 +1008,7 @@ namespace dxvk {
       pIndexBuffer ? &d3d11Buffer : nullptr,
       Format, Offset);
 
-    if (pIndexBuffer != nullptr)
+    if (pIndexBuffer)
       *pIndexBuffer = d3d11Buffer ? static_cast<D3D11Buffer*>(d3d11Buffer)->GetD3D10Iface() : nullptr;
   }
 
