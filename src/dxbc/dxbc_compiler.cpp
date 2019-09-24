@@ -7714,6 +7714,7 @@ namespace dxvk {
       members.size(), members.data());
     
     m_module.memberDecorateBuiltIn(typeId, PerVertex_Position, spv::BuiltInPosition);
+    m_module.memberDecorate       (typeId, PerVertex_Position, spv::DecorationInvariant);
 //     m_module.memberDecorateBuiltIn(typeId, PerVertex_CullDist, spv::BuiltInCullDistance);
 //     m_module.memberDecorateBuiltIn(typeId, PerVertex_ClipDist, spv::BuiltInClipDistance);
     m_module.decorateBlock(typeId);
