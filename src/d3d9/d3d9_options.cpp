@@ -33,6 +33,7 @@ namespace dxvk {
     // Fetch these as a string representing a hexadecimal number and parse it.
     this->customVendorId        = parsePciId(config.getOption<std::string>("d3d9.customVendorId"));
     this->customDeviceId        = parsePciId(config.getOption<std::string>("d3d9.customDeviceId"));
+    this->customDeviceDesc      = config.getOption<std::string>("d3d9.customDeviceDesc");
 
     this->maxFrameLatency       = config.getOption<int32_t> ("d3d9.maxFrameLatency",       0);
     this->presentInterval       = config.getOption<int32_t> ("d3d9.presentInterval",       -1);
