@@ -326,10 +326,10 @@ namespace dxvk {
           BOOL*                             pPredicateValue) {
     D3D10DeviceLock lock = LockContext();
 
-    if (ppPredicate != nullptr)
-      D3D11Query::AsPredicate(m_state.pr.predicateObject.ref());
+    if (ppPredicate)
+      *ppPredicate = D3D11Query::AsPredicate(m_state.pr.predicateObject.ref());
     
-    if (pPredicateValue != nullptr)
+    if (pPredicateValue)
       *pPredicateValue = m_state.pr.predicateValue;
   }
   
