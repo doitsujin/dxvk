@@ -73,6 +73,8 @@ namespace dxvk {
     static HRESULT ValidateDesc(const D3D11_QUERY_DESC1* pDesc);
 
     static ID3D11Predicate* AsPredicate(ID3D11Query* pQuery) {
+      // ID3D11Predicate and ID3D11Query have the same vtable. This
+      // saves us some headache in all query-related functions.
       return static_cast<ID3D11Predicate*>(pQuery);
     }
     
