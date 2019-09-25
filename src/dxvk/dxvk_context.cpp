@@ -1465,7 +1465,7 @@ namespace dxvk {
         vertexCount, instanceCount,
         firstVertex, firstInstance);
       
-      this->commitGraphicsPostBarriers();
+      this->finalizeDraw<false>();
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -1486,8 +1486,7 @@ namespace dxvk {
         descriptor.buffer.offset + offset,
         count, stride);
       
-      this->commitGraphicsPostBarriers();
-      this->trackDrawBuffer();
+      this->finalizeDraw<true>();
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -1512,8 +1511,7 @@ namespace dxvk {
         cntDescriptor.buffer.offset + countOffset,
         maxCount, stride);
       
-      this->commitGraphicsPostBarriers();
-      this->trackDrawBuffer();
+      this->finalizeDraw<true>();
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -1534,7 +1532,7 @@ namespace dxvk {
         firstIndex, vertexOffset,
         firstInstance);
       
-      this->commitGraphicsPostBarriers();
+      this->finalizeDraw<false>();
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -1555,8 +1553,7 @@ namespace dxvk {
         descriptor.buffer.offset + offset,
         count, stride);
       
-      this->commitGraphicsPostBarriers();
-      this->trackDrawBuffer();
+      this->finalizeDraw<true>();
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -1581,8 +1578,7 @@ namespace dxvk {
         cntDescriptor.buffer.offset + countOffset,
         maxCount, stride);
       
-      this->commitGraphicsPostBarriers();
-      this->trackDrawBuffer();
+      this->finalizeDraw<true>();
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -1604,7 +1600,7 @@ namespace dxvk {
         counterBias,
         counterDivisor);
       
-      this->commitGraphicsPostBarriers();
+      this->finalizeDraw<false>();
     }
 
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -4426,6 +4422,18 @@ namespace dxvk {
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         VK_ACCESS_SHADER_READ_BIT);
     }
+  }
+
+
+  template<bool Indirect>
+  void DxvkContext::finalizeDraw() {
+    if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer) && Indirect)
+      this->trackDrawBuffer();
+
+    if (m_state.gp.flags.any(
+        DxvkGraphicsPipelineFlag::HasFsStorageDescriptors,
+        DxvkGraphicsPipelineFlag::HasVsStorageDescriptors))
+      this->commitGraphicsPostBarriers();
   }
 
 

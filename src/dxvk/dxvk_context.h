@@ -1166,6 +1166,9 @@ namespace dxvk {
     
     void commitGraphicsPostBarriers();
 
+    template<bool Indirect>
+    void finalizeDraw();
+
     void emitMemoryBarrier(
             VkPipelineStageFlags      srcStages,
             VkAccessFlags             srcAccess,
@@ -1176,7 +1179,7 @@ namespace dxvk {
             VkDescriptorSetLayout     layout);
 
     void trackDrawBuffer();
-    
+
   };
   
 }
