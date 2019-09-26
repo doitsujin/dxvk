@@ -3552,32 +3552,28 @@ namespace dxvk {
   
   
   void DxvkContext::updateComputePipeline() {
-    if (m_flags.test(DxvkContextFlag::CpDirtyPipeline)) {
-      m_flags.clr(DxvkContextFlag::CpDirtyPipeline);
-      
-      m_state.cp.state.bsBindingMask.clear();
-      m_state.cp.pipeline = m_common->pipelineManager().createComputePipeline(m_state.cp.shaders);
-      
-      if (m_state.cp.pipeline != nullptr
-       && m_state.cp.pipeline->layout()->pushConstRange().size)
-        m_flags.set(DxvkContextFlag::DirtyPushConstants);
-    }
+    m_flags.clr(DxvkContextFlag::CpDirtyPipeline);
+    
+    m_state.cp.state.bsBindingMask.clear();
+    m_state.cp.pipeline = m_common->pipelineManager().createComputePipeline(m_state.cp.shaders);
+    
+    if (m_state.cp.pipeline != nullptr
+     && m_state.cp.pipeline->layout()->pushConstRange().size)
+      m_flags.set(DxvkContextFlag::DirtyPushConstants);
   }
   
   
   void DxvkContext::updateComputePipelineState() {
-    if (m_flags.test(DxvkContextFlag::CpDirtyPipelineState)) {
-      m_flags.clr(DxvkContextFlag::CpDirtyPipelineState);
-      
-      m_cpActivePipeline = m_state.cp.pipeline != nullptr
-        ? m_state.cp.pipeline->getPipelineHandle(m_state.cp.state)
-        : VK_NULL_HANDLE;
-      
-      if (m_cpActivePipeline != VK_NULL_HANDLE) {
-        m_cmd->cmdBindPipeline(
-          VK_PIPELINE_BIND_POINT_COMPUTE,
-          m_cpActivePipeline);
-      }
+    m_flags.clr(DxvkContextFlag::CpDirtyPipelineState);
+    
+    m_cpActivePipeline = m_state.cp.pipeline != nullptr
+      ? m_state.cp.pipeline->getPipelineHandle(m_state.cp.state)
+      : VK_NULL_HANDLE;
+    
+    if (m_cpActivePipeline != VK_NULL_HANDLE) {
+      m_cmd->cmdBindPipeline(
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        m_cpActivePipeline);
     }
   }
   
@@ -3602,72 +3598,67 @@ namespace dxvk {
   
   
   void DxvkContext::updateGraphicsPipeline() {
-    if (m_flags.test(DxvkContextFlag::GpDirtyPipeline)) {
-      m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
-      
-      m_state.gp.state.bsBindingMask.clear();
-      m_state.gp.pipeline = m_common->pipelineManager().createGraphicsPipeline(m_state.gp.shaders);
-      m_state.gp.flags = DxvkGraphicsPipelineFlags();
-      
-      if (m_state.gp.pipeline != nullptr) {
-        m_state.gp.flags = m_state.gp.pipeline->flags();
+    m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
+    
+    m_state.gp.state.bsBindingMask.clear();
+    m_state.gp.pipeline = m_common->pipelineManager().createGraphicsPipeline(m_state.gp.shaders);
+    m_state.gp.flags = DxvkGraphicsPipelineFlags();
+    
+    if (m_state.gp.pipeline != nullptr) {
+      m_state.gp.flags = m_state.gp.pipeline->flags();
 
-        if (m_state.gp.pipeline->layout()->pushConstRange().size)
-          m_flags.set(DxvkContextFlag::DirtyPushConstants);
-      }
+      if (m_state.gp.pipeline->layout()->pushConstRange().size)
+        m_flags.set(DxvkContextFlag::DirtyPushConstants);
     }
   }
   
   
   void DxvkContext::updateGraphicsPipelineState() {
-    if (m_flags.test(DxvkContextFlag::GpDirtyPipelineState)) {
-      m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
-      
-      this->pauseTransformFeedback();
+    m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
+    
+    this->pauseTransformFeedback();
 
-      // Set up vertex buffer strides for active bindings
-      for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
-        const uint32_t binding = m_state.gp.state.ilBindings[i].binding;
-        m_state.gp.state.ilBindings[i].stride = m_state.vi.vertexStrides[binding];
-      }
-      
-      for (uint32_t i = m_state.gp.state.ilBindingCount; i < MaxNumVertexBindings; i++)
-        m_state.gp.state.ilBindings[i].stride = 0;
-      
-      // Check which dynamic states need to be active. States that
-      // are not dynamic will be invalidated in the command buffer.
-      m_flags.clr(DxvkContextFlag::GpDynamicBlendConstants,
-                  DxvkContextFlag::GpDynamicDepthBias,
-                  DxvkContextFlag::GpDynamicDepthBounds,
-                  DxvkContextFlag::GpDynamicStencilRef);
-      
-      m_flags.set(m_state.gp.state.useDynamicBlendConstants()
-        ? DxvkContextFlag::GpDynamicBlendConstants
-        : DxvkContextFlag::GpDirtyBlendConstants);
-      
-      m_flags.set(m_state.gp.state.useDynamicDepthBias()
-        ? DxvkContextFlag::GpDynamicDepthBias
-        : DxvkContextFlag::GpDirtyDepthBias);
-      
-      m_flags.set(m_state.gp.state.useDynamicDepthBounds()
-        ? DxvkContextFlag::GpDynamicDepthBounds
-        : DxvkContextFlag::GpDirtyDepthBounds);
-      
-      m_flags.set(m_state.gp.state.useDynamicStencilRef()
-        ? DxvkContextFlag::GpDynamicStencilRef
-        : DxvkContextFlag::GpDirtyStencilRef);
-      
-      // Retrieve and bind actual Vulkan pipeline handle
-      m_gpActivePipeline = m_state.gp.pipeline != nullptr && m_state.om.framebuffer != nullptr
-        ? m_state.gp.pipeline->getPipelineHandle(m_state.gp.state,
-            m_state.om.framebuffer->getRenderPass())
-        : VK_NULL_HANDLE;
-      
-      if (m_gpActivePipeline != VK_NULL_HANDLE) {
-        m_cmd->cmdBindPipeline(
-          VK_PIPELINE_BIND_POINT_GRAPHICS,
-          m_gpActivePipeline);
-      }
+    // Set up vertex buffer strides for active bindings
+    for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
+      const uint32_t binding = m_state.gp.state.ilBindings[i].binding;
+      m_state.gp.state.ilBindings[i].stride = m_state.vi.vertexStrides[binding];
+    }
+    
+    for (uint32_t i = m_state.gp.state.ilBindingCount; i < MaxNumVertexBindings; i++)
+      m_state.gp.state.ilBindings[i].stride = 0;
+    
+    // Check which dynamic states need to be active. States that
+    // are not dynamic will be invalidated in the command buffer.
+    m_flags.clr(DxvkContextFlag::GpDynamicBlendConstants,
+                DxvkContextFlag::GpDynamicDepthBias,
+                DxvkContextFlag::GpDynamicDepthBounds,
+                DxvkContextFlag::GpDynamicStencilRef);
+    
+    m_flags.set(m_state.gp.state.useDynamicBlendConstants()
+      ? DxvkContextFlag::GpDynamicBlendConstants
+      : DxvkContextFlag::GpDirtyBlendConstants);
+    
+    m_flags.set(m_state.gp.state.useDynamicDepthBias()
+      ? DxvkContextFlag::GpDynamicDepthBias
+      : DxvkContextFlag::GpDirtyDepthBias);
+    
+    m_flags.set(m_state.gp.state.useDynamicDepthBounds()
+      ? DxvkContextFlag::GpDynamicDepthBounds
+      : DxvkContextFlag::GpDirtyDepthBounds);
+    
+    m_flags.set(m_state.gp.state.useDynamicStencilRef()
+      ? DxvkContextFlag::GpDynamicStencilRef
+      : DxvkContextFlag::GpDirtyStencilRef);
+    
+    // Retrieve and bind actual Vulkan pipeline handle
+    m_gpActivePipeline = m_state.gp.pipeline != nullptr && m_state.om.framebuffer != nullptr
+      ? m_state.gp.pipeline->getPipelineHandle(m_state.gp.state, m_state.om.framebuffer->getRenderPass())
+      : VK_NULL_HANDLE;
+    
+    if (m_gpActivePipeline != VK_NULL_HANDLE) {
+      m_cmd->cmdBindPipeline(
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        m_gpActivePipeline);
     }
   }
   
@@ -3979,86 +3970,80 @@ namespace dxvk {
   
   
   void DxvkContext::updateFramebuffer() {
-    if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer)) {
-      m_flags.clr(DxvkContextFlag::GpDirtyFramebuffer);
-      
-      this->spillRenderPass();
-      
-      auto fb = m_device->createFramebuffer(m_state.om.renderTargets);
-      
-      m_state.gp.state.msSampleCount = fb->getSampleCount();
-      m_state.om.framebuffer = fb;
+    m_flags.clr(DxvkContextFlag::GpDirtyFramebuffer);
+    
+    this->spillRenderPass();
+    
+    auto fb = m_device->createFramebuffer(m_state.om.renderTargets);
+    
+    m_state.gp.state.msSampleCount = fb->getSampleCount();
+    m_state.om.framebuffer = fb;
 
-      for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-        Rc<DxvkImageView> attachment = fb->getColorTarget(i).view;
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      Rc<DxvkImageView> attachment = fb->getColorTarget(i).view;
 
-        m_state.gp.state.omComponentMapping[i] = attachment != nullptr
-          ? util::invertComponentMapping(attachment->info().swizzle)
-          : VkComponentMapping();
-      }
-
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      m_state.gp.state.omComponentMapping[i] = attachment != nullptr
+        ? util::invertComponentMapping(attachment->info().swizzle)
+        : VkComponentMapping();
     }
+
+    m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
   
   
   void DxvkContext::updateIndexBufferBinding() {
-    if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer)) {
-      m_flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
+    m_flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
+    
+    if (m_state.vi.indexBuffer.defined()) {
+      auto bufferInfo = m_state.vi.indexBuffer.getDescriptor();
       
-      if (m_state.vi.indexBuffer.defined()) {
-        auto bufferInfo = m_state.vi.indexBuffer.getDescriptor();
-        
-        m_cmd->cmdBindIndexBuffer(
-          bufferInfo.buffer.buffer,
-          bufferInfo.buffer.offset,
-          m_state.vi.indexType);
+      m_cmd->cmdBindIndexBuffer(
+        bufferInfo.buffer.buffer,
+        bufferInfo.buffer.offset,
+        m_state.vi.indexType);
 
-        if (m_vbTracked.set(MaxNumVertexBindings))
-          m_cmd->trackResource<DxvkAccess::Read>(m_state.vi.indexBuffer.buffer());
-      } else {
-        m_cmd->cmdBindIndexBuffer(
-          m_common->dummyResources().bufferHandle(),
-          0, VK_INDEX_TYPE_UINT32);
-      }
+      if (m_vbTracked.set(MaxNumVertexBindings))
+        m_cmd->trackResource<DxvkAccess::Read>(m_state.vi.indexBuffer.buffer());
+    } else {
+      m_cmd->cmdBindIndexBuffer(
+        m_common->dummyResources().bufferHandle(),
+        0, VK_INDEX_TYPE_UINT32);
     }
   }
   
   
   void DxvkContext::updateVertexBufferBindings() {
-    if (m_flags.test(DxvkContextFlag::GpDirtyVertexBuffers)) {
-      m_flags.clr(DxvkContextFlag::GpDirtyVertexBuffers);
+    m_flags.clr(DxvkContextFlag::GpDirtyVertexBuffers);
 
-      if (unlikely(!m_state.gp.state.ilBindingCount))
-        return;
+    if (unlikely(!m_state.gp.state.ilBindingCount))
+      return;
+    
+    std::array<VkBuffer,     MaxNumVertexBindings> buffers;
+    std::array<VkDeviceSize, MaxNumVertexBindings> offsets;
+    
+    // Set buffer handles and offsets for active bindings
+    for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
+      uint32_t binding = m_state.gp.state.ilBindings[i].binding;
       
-      std::array<VkBuffer,     MaxNumVertexBindings> buffers;
-      std::array<VkDeviceSize, MaxNumVertexBindings> offsets;
-      
-      // Set buffer handles and offsets for active bindings
-      for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
-        uint32_t binding = m_state.gp.state.ilBindings[i].binding;
+      if (likely(m_state.vi.vertexBuffers[binding].defined())) {
+        auto vbo = m_state.vi.vertexBuffers[binding].getDescriptor();
         
-        if (likely(m_state.vi.vertexBuffers[binding].defined())) {
-          auto vbo = m_state.vi.vertexBuffers[binding].getDescriptor();
-          
-          buffers[i] = vbo.buffer.buffer;
-          offsets[i] = vbo.buffer.offset;
-          
-          if (m_vbTracked.set(binding))
-            m_cmd->trackResource<DxvkAccess::Read>(m_state.vi.vertexBuffers[binding].buffer());
-        } else {
-          buffers[i] = m_common->dummyResources().bufferHandle();
-          offsets[i] = 0;
-        }
+        buffers[i] = vbo.buffer.buffer;
+        offsets[i] = vbo.buffer.offset;
+        
+        if (m_vbTracked.set(binding))
+          m_cmd->trackResource<DxvkAccess::Read>(m_state.vi.vertexBuffers[binding].buffer());
+      } else {
+        buffers[i] = m_common->dummyResources().bufferHandle();
+        offsets[i] = 0;
       }
-      
-      // Vertex bindigs get remapped when compiling the
-      // pipeline, so this actually does the right thing
-      m_cmd->cmdBindVertexBuffers(
-        0, m_state.gp.state.ilBindingCount,
-        buffers.data(), offsets.data());
     }
+    
+    // Vertex bindigs get remapped when compiling the
+    // pipeline, so this actually does the right thing
+    m_cmd->cmdBindVertexBuffers(
+      0, m_state.gp.state.ilBindingCount,
+      buffers.data(), offsets.data());
   }
   
   
@@ -4094,33 +4079,29 @@ namespace dxvk {
 
 
   void DxvkContext::updateTransformFeedbackState() {
-    if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasTransformFeedback)) {
-      if (m_flags.test(DxvkContextFlag::GpDirtyXfbBuffers)) {
-        m_flags.clr(DxvkContextFlag::GpDirtyXfbBuffers);
+    if (m_flags.test(DxvkContextFlag::GpDirtyXfbBuffers)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyXfbBuffers);
 
-        this->pauseTransformFeedback();
-        this->updateTransformFeedbackBuffers();
-      }
-
-      this->startTransformFeedback();
+      this->pauseTransformFeedback();
+      this->updateTransformFeedbackBuffers();
     }
+
+    this->startTransformFeedback();
   }
 
   
   void DxvkContext::updateConditionalRendering() {
-    if (m_flags.test(DxvkContextFlag::GpDirtyPredicate)) {
-      m_flags.clr(DxvkContextFlag::GpDirtyPredicate);
+    m_flags.clr(DxvkContextFlag::GpDirtyPredicate);
 
-      pauseConditionalRendering();
+    pauseConditionalRendering();
 
-      if (m_state.cond.predicate.defined())
-        startConditionalRendering();
-    }
+    if (m_state.cond.predicate.defined())
+      startConditionalRendering();
   }
 
 
   void DxvkContext::updateDynamicState() {
-    if (m_gpActivePipeline == VK_NULL_HANDLE)
+    if (!m_gpActivePipeline)
       return;
     
     if (m_flags.test(DxvkContextFlag::GpDirtyViewport)) {
@@ -4169,27 +4150,25 @@ namespace dxvk {
 
   template<VkPipelineBindPoint BindPoint>
   void DxvkContext::updatePushConstants() {
-    if (m_flags.test(DxvkContextFlag::DirtyPushConstants)) {
-      m_flags.clr(DxvkContextFlag::DirtyPushConstants);
+    m_flags.clr(DxvkContextFlag::DirtyPushConstants);
 
-      auto layout = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
-        ? (m_state.gp.pipeline != nullptr ? m_state.gp.pipeline->layout() : nullptr)
-        : (m_state.cp.pipeline != nullptr ? m_state.cp.pipeline->layout() : nullptr);
-      
-      if (!layout)
-        return;
-      
-      VkPushConstantRange pushConstRange = layout->pushConstRange();
-      if (!pushConstRange.size)
-        return;
-      
-      m_cmd->cmdPushConstants(
-        layout->pipelineLayout(),
-        pushConstRange.stageFlags,
-        pushConstRange.offset,
-        pushConstRange.size,
-        &m_state.pc.data[pushConstRange.offset]);
-    }
+    auto layout = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+      ? (m_state.gp.pipeline != nullptr ? m_state.gp.pipeline->layout() : nullptr)
+      : (m_state.cp.pipeline != nullptr ? m_state.cp.pipeline->layout() : nullptr);
+    
+    if (!layout)
+      return;
+    
+    VkPushConstantRange pushConstRange = layout->pushConstRange();
+    if (!pushConstRange.size)
+      return;
+    
+    m_cmd->cmdPushConstants(
+      layout->pipelineLayout(),
+      pushConstRange.stageFlags,
+      pushConstRange.offset,
+      pushConstRange.size,
+      &m_state.pc.data[pushConstRange.offset]);
   }
   
   
@@ -4206,7 +4185,7 @@ namespace dxvk {
     if (m_flags.any(
           DxvkContextFlag::CpDirtyResources,
           DxvkContextFlag::CpDirtyDescriptorOffsets))
-    this->updateComputeShaderResources();
+      this->updateComputeShaderResources();
 
     if (m_flags.test(DxvkContextFlag::CpDirtyPipelineState))
       this->updateComputePipelineState();
