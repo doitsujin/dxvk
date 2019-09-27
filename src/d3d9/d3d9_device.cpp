@@ -51,10 +51,11 @@ namespace dxvk {
     , m_multithread    ( BehaviorFlags & D3DCREATE_MULTITHREADED )
     , m_shaderModules  ( new D3D9ShaderModuleSet )
     , m_d3d9Options    ( dxvkDevice, pAdapter->GetDXVKAdapter()->instance()->config() )
-    , m_dxsoOptions    ( m_dxvkDevice, m_d3d9Options ) {
+    , m_dxsoOptions    ( m_dxvkDevice, m_d3d9Options )
+    , m_isSWVP         ( (BehaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING) ? TRUE : FALSE ) {
     // If we can SWVP, then we use an extended constant set
     // as SWVP has many more slots available than HWVP. 
-    bool canSWVP = BehaviorFlags & (D3DCREATE_MIXED_VERTEXPROCESSING | D3DCREATE_SOFTWARE_VERTEXPROCESSING);
+    bool canSWVP = CanSWVP();
     DetermineConstantLayouts(canSWVP);
 
     if (canSWVP)
@@ -2100,22 +2101,21 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetSoftwareVertexProcessing(BOOL bSoftware) {
-    static bool s_errorShown = false;
+    auto lock = LockDevice();
 
-    if (!std::exchange(s_errorShown, true))
-      Logger::warn("D3D9DeviceEx::SetSoftwareVertexProcessing: Stub");
+    if (bSoftware && !CanSWVP())
+      return D3DERR_INVALIDCALL;
+
+    m_isSWVP = bSoftware;
 
     return D3D_OK;
   }
 
 
   BOOL    STDMETHODCALLTYPE D3D9DeviceEx::GetSoftwareVertexProcessing() {
-    static bool s_errorShown = false;
+    auto lock = LockDevice();
 
-    if (!std::exchange(s_errorShown, true))
-      Logger::warn("D3D9DeviceEx::GetSoftwareVertexProcessing: Stub");
-
-    return FALSE;
+    return m_isSWVP;
   }
 
 

@@ -875,6 +875,10 @@ namespace dxvk {
       }
     }
 
+    bool CanSWVP() {
+      return m_behaviorFlags & (D3DCREATE_MIXED_VERTEXPROCESSING | D3DCREATE_SOFTWARE_VERTEXPROCESSING);
+    }
+
     Com<D3D9InterfaceEx>            m_parent;
     D3DDEVTYPE                      m_deviceType;
     HWND                            m_window;
@@ -898,6 +902,8 @@ namespace dxvk {
 
     const D3D9Options               m_d3d9Options;
     const DxsoOptions               m_dxsoOptions;
+
+    BOOL                            m_isSWVP;
 
     D3DPRESENT_PARAMETERS           m_presentParams;
 
