@@ -30,6 +30,9 @@ namespace dxvk {
 
     /// Whether or not we should care about pow(0, 0) = 1
     bool strictPow;
+
+    /// Max version of shader to support
+    uint32_t shaderModel;
   };
 
 }

@@ -87,6 +87,9 @@ namespace dxvk {
 
     DxsoModule module(reader);
 
+    if (module.info().majorVersion() > pDxbcModuleInfo->options.shaderModel)
+      throw DxvkError("GetShaderModule: Out of range of supported shader model");
+
     if (module.info().shaderStage() != ShaderStage)
       throw DxvkError("GetShaderModule: Bytecode does not match shader stage");
 
