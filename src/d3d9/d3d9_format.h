@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3d9_include.h"
+#include "d3d9_options.h"
 
 #include "../dxvk/dxvk_adapter.h"
 #include "../dxvk/dxvk_format.h"
@@ -172,7 +173,8 @@ namespace dxvk {
   public:
 
     D3D9VkFormatTable(
-      const Rc<DxvkAdapter>& adapter);
+      const Rc<DxvkAdapter>& adapter,
+      const D3D9Options&     options);
 
     /**
      * \brief Retrieves info for a given D3D9 format
@@ -193,6 +195,8 @@ namespace dxvk {
 
     bool m_d24s8Support;
     bool m_d16s8Support;
+
+    bool m_a8Support;
 
   };
 

@@ -35,7 +35,7 @@ namespace dxvk {
     , m_adapter         (Adapter)
     , m_ordinal         (Ordinal)
     , m_modeCacheFormat (D3D9Format::Unknown)
-    , m_d3d9Formats     (Adapter) {
+    , m_d3d9Formats     (Adapter, m_parent->GetOptions()) {
     m_adapter->logAdapterInfo();
   }
 
