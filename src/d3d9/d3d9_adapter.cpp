@@ -75,7 +75,7 @@ namespace dxvk {
     pIdentifier->Revision               = 0;
     pIdentifier->SubSysId               = 0;
     pIdentifier->WHQLLevel              = m_parent->IsExtended() ? 1 : 0; // This doesn't check with the driver on Direct3D9Ex and is always 1.
-    pIdentifier->DriverVersion.QuadPart = props.driverVersion;
+    pIdentifier->DriverVersion.QuadPart = UINT64_MAX;
 
     return D3D_OK;
   }
