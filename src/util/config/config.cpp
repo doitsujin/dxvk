@@ -224,6 +224,9 @@ namespace dxvk {
     /* The Sims 2 and Body Shop                   */
     { R"(\\(Sims2.*|TS2BodyShop)\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
+      { "d3d9.customDeviceId",              "0341" },
+      { "d3d9.shaderModel",                 "2" },
+      { "d3d9.disableA8",                   "True" },
       { "d3d9.maxAvailableMemory",          "2147483648" },
        // The Sims 2 will try to upload 1024 constants
        // every frame otherwise, which it never uses
