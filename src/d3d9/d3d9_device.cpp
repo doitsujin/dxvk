@@ -4535,9 +4535,9 @@ namespace dxvk {
       });
 
       if (constSet.meta->maxConstIndexF)
-        std::memcpy(dstData + layout.floatOffset(),   srcData->fConsts.data(), layout.floatSize());
+        std::memcpy(dstData + layout.floatOffset(),   srcData->fConsts.data(), constSet.meta->maxConstIndexF * 4 * sizeof(float));
       if (constSet.meta->maxConstIndexI)
-        std::memcpy(dstData + layout.intOffset(),     srcData->iConsts.data(), layout.intSize());
+        std::memcpy(dstData + layout.intOffset(),     srcData->iConsts.data(), constSet.meta->maxConstIndexI * 4 * sizeof(INT));
       if (constSet.meta->maxConstIndexB)
         std::memcpy(dstData + layout.bitmaskOffset(), srcData->bConsts.data(), layout.bitmaskSize());
 
