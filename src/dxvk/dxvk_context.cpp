@@ -3970,24 +3970,26 @@ namespace dxvk {
   
   
   void DxvkContext::updateFramebuffer() {
-    m_flags.clr(DxvkContextFlag::GpDirtyFramebuffer);
-    
-    this->spillRenderPass();
-    
-    auto fb = m_device->createFramebuffer(m_state.om.renderTargets);
-    
-    m_state.gp.state.msSampleCount = fb->getSampleCount();
-    m_state.om.framebuffer = fb;
+    if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyFramebuffer);
 
-    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      Rc<DxvkImageView> attachment = fb->getColorTarget(i).view;
+      this->spillRenderPass();
 
-      m_state.gp.state.omComponentMapping[i] = attachment != nullptr
-        ? util::invertComponentMapping(attachment->info().swizzle)
-        : VkComponentMapping();
+      auto fb = m_device->createFramebuffer(m_state.om.renderTargets);
+
+      m_state.gp.state.msSampleCount = fb->getSampleCount();
+      m_state.om.framebuffer = fb;
+
+      for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+        Rc<DxvkImageView> attachment = fb->getColorTarget(i).view;
+
+        m_state.gp.state.omComponentMapping[i] = attachment != nullptr
+          ? util::invertComponentMapping(attachment->info().swizzle)
+          : VkComponentMapping();
+      }
+
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
-
-    m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
   
   
