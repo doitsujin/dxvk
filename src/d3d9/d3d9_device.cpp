@@ -406,8 +406,12 @@ namespace dxvk {
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
 
+    auto mapping = LookupFormat(desc.Format);
+    if (!mapping.IsValid())
+      return D3DERR_INVALIDCALL;
+
     try {
-      const Com<D3D9Texture2D> texture = new D3D9Texture2D(this, &desc);
+      const Com<D3D9Texture2D> texture = new D3D9Texture2D(this, &desc, mapping);
 
       void* initialData = nullptr;
 
@@ -461,8 +465,12 @@ namespace dxvk {
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
 
+    auto mapping = LookupFormat(desc.Format);
+    if (!mapping.IsValid())
+      return D3DERR_INVALIDCALL;
+
     try {
-      const Com<D3D9Texture3D> texture = new D3D9Texture3D(this, &desc);
+      const Com<D3D9Texture3D> texture = new D3D9Texture3D(this, &desc, mapping);
       m_initializer->InitTexture(texture->GetCommonTexture());
       *ppVolumeTexture = texture.ref();
 
@@ -506,8 +514,12 @@ namespace dxvk {
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
 
+    auto mapping = LookupFormat(desc.Format);
+    if (!mapping.IsValid())
+      return D3DERR_INVALIDCALL;
+
     try {
-      const Com<D3D9TextureCube> texture = new D3D9TextureCube(this, &desc);
+      const Com<D3D9TextureCube> texture = new D3D9TextureCube(this, &desc, mapping);
       m_initializer->InitTexture(texture->GetCommonTexture());
       *ppCubeTexture = texture.ref();
 
@@ -3171,8 +3183,12 @@ namespace dxvk {
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
 
+    auto mapping = LookupFormat(desc.Format);
+    if (!mapping.IsValid())
+      return D3DERR_INVALIDCALL;
+
     try {
-      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc);
+      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, mapping);
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
       return D3D_OK;
@@ -3214,8 +3230,12 @@ namespace dxvk {
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
 
+    auto mapping = LookupFormat(desc.Format);
+    if (!mapping.IsValid())
+      return D3DERR_INVALIDCALL;
+
     try {
-      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc);
+      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, mapping);
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
       return D3D_OK;
@@ -3259,8 +3279,12 @@ namespace dxvk {
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
 
+    auto mapping = LookupFormat(desc.Format);
+    if (!mapping.IsValid())
+      return D3DERR_INVALIDCALL;
+
     try {
-      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc);
+      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, mapping);
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
       return D3D_OK;

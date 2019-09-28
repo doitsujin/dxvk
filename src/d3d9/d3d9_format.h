@@ -157,6 +157,8 @@ namespace dxvk {
       VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
       VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
     D3D9_VIDEO_FORMAT_INFO VideoFormatInfo = { };
+
+    bool IsValid() { return FormatColor != VK_FORMAT_UNDEFINED; }
   };
 
   D3D9_VK_FORMAT_MAPPING ConvertFormatUnfixed(D3D9Format Format);

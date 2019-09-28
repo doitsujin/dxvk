@@ -87,7 +87,8 @@ namespace dxvk {
     D3D9CommonTexture(
             D3D9DeviceEx*             pDevice,
       const D3D9_COMMON_TEXTURE_DESC* pDesc,
-            D3DRESOURCETYPE           ResourceType);
+            D3DRESOURCETYPE           ResourceType,
+            D3D9_VK_FORMAT_MAPPING    Mapping);
 
     ~D3D9CommonTexture();
 
