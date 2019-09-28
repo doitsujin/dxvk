@@ -53,7 +53,7 @@ namespace dxvk {
     this->swvpFloatCount        = config.getOption<uint32_t>("d3d9.swvpFloatCount",        caps::MaxFloatConstantsSoftware);
     this->swvpIntCount          = config.getOption<uint32_t>("d3d9.swvpIntCount",          caps::MaxOtherConstantsSoftware);
     this->swvpBoolCount         = config.getOption<uint32_t>("d3d9.swvpBoolCount",         caps::MaxOtherConstantsSoftware);
-    this->disableA8             = config.getOption<bool>    ("d3d9.disableA8",             false);
+    this->disableA8RT           = config.getOption<bool>    ("d3d9.disableA8RT",           false);
 
     this->d3d9FloatEmulation    = true; // <-- Future Extension?
 

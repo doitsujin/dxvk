@@ -84,10 +84,10 @@ namespace dxvk {
     uint32_t swvpIntCount;
     uint32_t swvpBoolCount;
 
-    /// Disable D3DFMT_A8
+    /// Disable D3DFMT_A8 for render targets.
     /// Specifically to work around a game
     /// bug in The Sims 2 that happens on native too!
-    bool disableA8;
+    bool disableA8RT;
   };
 
 }

@@ -406,6 +406,11 @@ namespace dxvk {
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
 
+    if (desc.Format == D3D9Format::A8       &&
+       (desc.Usage & D3DUSAGE_RENDERTARGET) &&
+        m_d3d9Options.disableA8RT)
+      return D3DERR_INVALIDCALL;
+
     auto mapping = LookupFormat(desc.Format);
     if (!mapping.IsValid())
       return D3DERR_INVALIDCALL;
@@ -3183,6 +3188,11 @@ namespace dxvk {
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
 
+    if (desc.Format == D3D9Format::A8       &&
+       (desc.Usage & D3DUSAGE_RENDERTARGET) &&
+        m_d3d9Options.disableA8RT)
+      return D3DERR_INVALIDCALL;
+
     auto mapping = LookupFormat(desc.Format);
     if (!mapping.IsValid())
       return D3DERR_INVALIDCALL;
@@ -3228,6 +3238,11 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(&desc)))
+      return D3DERR_INVALIDCALL;
+
+    if (desc.Format == D3D9Format::A8       &&
+       (desc.Usage & D3DUSAGE_RENDERTARGET) &&
+        m_d3d9Options.disableA8RT)
       return D3DERR_INVALIDCALL;
 
     auto mapping = LookupFormat(desc.Format);

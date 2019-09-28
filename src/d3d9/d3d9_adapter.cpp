@@ -120,6 +120,9 @@ namespace dxvk {
     if (CheckFormat == D3D9Format::INST)
       return D3D_OK;
 
+    if (rt && CheckFormat == D3D9Format::A8 && m_parent->GetOptions().disableA8RT)
+      return D3DERR_NOTAVAILABLE;
+
     if (ds && !IsDepthFormat(CheckFormat))
       return D3DERR_NOTAVAILABLE;
 
