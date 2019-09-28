@@ -412,7 +412,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     auto mapping = LookupFormat(desc.Format);
-    if (!mapping.IsValid())
+    if (!mapping.IsValid() && desc.Format != D3D9Format::NULL_FORMAT)
       return D3DERR_INVALIDCALL;
 
     try {
@@ -471,7 +471,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     auto mapping = LookupFormat(desc.Format);
-    if (!mapping.IsValid())
+    if (!mapping.IsValid() && desc.Format != D3D9Format::NULL_FORMAT)
       return D3DERR_INVALIDCALL;
 
     try {
@@ -520,7 +520,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     auto mapping = LookupFormat(desc.Format);
-    if (!mapping.IsValid())
+    if (!mapping.IsValid() && desc.Format != D3D9Format::NULL_FORMAT)
       return D3DERR_INVALIDCALL;
 
     try {
@@ -3194,7 +3194,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     auto mapping = LookupFormat(desc.Format);
-    if (!mapping.IsValid())
+    if (!mapping.IsValid() && desc.Format != D3D9Format::NULL_FORMAT)
       return D3DERR_INVALIDCALL;
 
     try {
@@ -3246,7 +3246,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     auto mapping = LookupFormat(desc.Format);
-    if (!mapping.IsValid())
+    if (!mapping.IsValid() && desc.Format != D3D9Format::NULL_FORMAT)
       return D3DERR_INVALIDCALL;
 
     try {
@@ -3295,7 +3295,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     auto mapping = LookupFormat(desc.Format);
-    if (!mapping.IsValid())
+    if (!mapping.IsValid() && desc.Format != D3D9Format::NULL_FORMAT)
       return D3DERR_INVALIDCALL;
 
     try {
