@@ -1892,8 +1892,9 @@ namespace dxvk {
       
       case DxbcOpcode::Ne:
       case DxbcOpcode::DNe:
-        condition = m_module.opFOrdNotEqual(
-          conditionType, src.at(0).id, src.at(1).id);
+        // Avoid poorly supported FUnordNotEqual
+        condition = m_module.opLogicalNot(conditionType,
+          m_module.opFOrdEqual(conditionType, src.at(0).id, src.at(1).id));
         break;
       
       case DxbcOpcode::IEq:
