@@ -105,6 +105,14 @@ namespace dxvk {
     ~DxvkComputePipeline();
     
     /**
+     * \brief Shaders used by the pipeline
+     * \returns Shaders used by the pipeline
+     */
+    const DxvkComputePipelineShaders& shaders() const {
+      return m_shaders;
+    }
+    
+    /**
      * \brief Pipeline layout
      * 
      * Stores the pipeline layout and the descriptor set

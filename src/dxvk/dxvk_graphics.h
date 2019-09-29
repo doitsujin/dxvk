@@ -210,6 +210,14 @@ namespace dxvk {
     ~DxvkGraphicsPipeline();
     
     /**
+     * \brief Shaders used by the pipeline
+     * \returns Shaders used by the pipeline
+     */
+    const DxvkGraphicsPipelineShaders& shaders() const {
+      return m_shaders;
+    }
+    
+    /**
      * \brief Returns graphics pipeline flags
      * \returns Graphics pipeline property flags
      */
