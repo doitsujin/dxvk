@@ -1031,6 +1031,9 @@ namespace dxvk {
     std::array<DxvkDescriptorInfo,     MaxNumActiveBindings> m_descInfos;
     std::array<uint32_t,               MaxNumActiveBindings> m_descOffsets;
     
+    std::array<DxvkGraphicsPipeline*, 4096> m_gpLookupCache = { };
+    std::array<DxvkComputePipeline*,   256> m_cpLookupCache = { };
+
     std::unordered_map<
       DxvkBufferSliceHandle,
       DxvkGpuQueryHandle,
@@ -1179,6 +1182,12 @@ namespace dxvk {
             VkDescriptorSetLayout     layout);
 
     void trackDrawBuffer();
+
+    DxvkGraphicsPipeline* lookupGraphicsPipeline(
+      const DxvkGraphicsPipelineShaders&  shaders);
+
+    DxvkComputePipeline* lookupComputePipeline(
+      const DxvkComputePipelineShaders&   shaders);
 
   };
   

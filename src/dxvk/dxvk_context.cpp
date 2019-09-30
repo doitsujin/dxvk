@@ -3555,7 +3555,7 @@ namespace dxvk {
     m_flags.clr(DxvkContextFlag::CpDirtyPipeline);
     
     m_state.cp.state.bsBindingMask.clear();
-    m_state.cp.pipeline = m_common->pipelineManager().createComputePipeline(m_state.cp.shaders);
+    m_state.cp.pipeline = lookupComputePipeline(m_state.cp.shaders);
     
     if (m_state.cp.pipeline != nullptr
      && m_state.cp.pipeline->layout()->pushConstRange().size)
@@ -3601,7 +3601,7 @@ namespace dxvk {
     m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
     
     m_state.gp.state.bsBindingMask.clear();
-    m_state.gp.pipeline = m_common->pipelineManager().createGraphicsPipeline(m_state.gp.shaders);
+    m_state.gp.pipeline = lookupGraphicsPipeline(m_state.gp.shaders);
     m_state.gp.flags = DxvkGraphicsPipelineFlags();
     
     if (m_state.gp.pipeline != nullptr) {
@@ -4463,6 +4463,28 @@ namespace dxvk {
       if (m_state.id.cntBuffer.defined())
         m_cmd->trackResource<DxvkAccess::Read>(m_state.id.cntBuffer.buffer());
     }
+  }
+  
+
+  DxvkGraphicsPipeline* DxvkContext::lookupGraphicsPipeline(
+    const DxvkGraphicsPipelineShaders&  shaders) {
+    auto idx = shaders.hash() % m_gpLookupCache.size();
+    
+    if (unlikely(!m_gpLookupCache[idx] || !shaders.eq(m_gpLookupCache[idx]->shaders())))
+      m_gpLookupCache[idx] = m_common->pipelineManager().createGraphicsPipeline(shaders);
+
+    return m_gpLookupCache[idx];
+  }
+
+
+  DxvkComputePipeline* DxvkContext::lookupComputePipeline(
+    const DxvkComputePipelineShaders&   shaders) {
+    auto idx = shaders.hash() % m_cpLookupCache.size();
+    
+    if (unlikely(!m_cpLookupCache[idx] || !shaders.eq(m_cpLookupCache[idx]->shaders())))
+      m_cpLookupCache[idx] = m_common->pipelineManager().createComputePipeline(shaders);
+
+    return m_cpLookupCache[idx];
   }
   
 }
