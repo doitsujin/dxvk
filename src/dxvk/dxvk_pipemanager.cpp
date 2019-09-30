@@ -12,14 +12,17 @@ namespace dxvk {
   
   size_t DxvkPipelineKeyHash::operator () (const DxvkGraphicsPipelineShaders& key) const {
     DxvkHashState state;
-    
-    std::hash<DxvkShader*> hash;
-    state.add(hash(key.vs.ptr()));
-    state.add(hash(key.tcs.ptr()));
-    state.add(hash(key.tes.ptr()));
-    state.add(hash(key.gs.ptr()));
-    state.add(hash(key.fs.ptr()));
+    state.add(getShaderHash(key.vs));
+    state.add(getShaderHash(key.tcs));
+    state.add(getShaderHash(key.tes));
+    state.add(getShaderHash(key.gs));
+    state.add(getShaderHash(key.fs));
     return state;
+  }
+
+
+  size_t DxvkPipelineKeyHash::getShaderHash(const Rc<DxvkShader>& shader) {
+    return shader != nullptr ? shader->getHash() : 0;
   }
   
   

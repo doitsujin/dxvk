@@ -26,6 +26,7 @@ namespace dxvk {
   struct DxvkPipelineKeyHash {
     size_t operator () (const DxvkComputePipelineShaders& key) const;
     size_t operator () (const DxvkGraphicsPipelineShaders& key) const;
+    static size_t getShaderHash(const Rc<DxvkShader>& shader);
   };
   
   
