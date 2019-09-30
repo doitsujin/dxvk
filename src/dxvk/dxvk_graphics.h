@@ -37,6 +37,22 @@ namespace dxvk {
     Rc<DxvkShader> tes;
     Rc<DxvkShader> gs;
     Rc<DxvkShader> fs;
+
+    bool eq(const DxvkGraphicsPipelineShaders& other) const {
+      return vs == other.vs && tcs == other.tcs
+          && tes == other.tes && gs == other.gs
+          && fs == other.fs;
+    }
+
+    size_t hash() const {
+      DxvkHashState state;
+      state.add(DxvkShader::getHash(vs));
+      state.add(DxvkShader::getHash(tcs));
+      state.add(DxvkShader::getHash(tes));
+      state.add(DxvkShader::getHash(gs));
+      state.add(DxvkShader::getHash(fs));
+      return state;
+    }
   };
 
 
@@ -208,7 +224,7 @@ namespace dxvk {
             DxvkGraphicsPipelineShaders shaders);
 
     ~DxvkGraphicsPipeline();
-    
+
     /**
      * \brief Shaders used by the pipeline
      * \returns Shaders used by the pipeline

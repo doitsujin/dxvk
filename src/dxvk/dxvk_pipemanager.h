@@ -23,19 +23,6 @@ namespace dxvk {
   };
   
   
-  struct DxvkPipelineKeyHash {
-    size_t operator () (const DxvkComputePipelineShaders& key) const;
-    size_t operator () (const DxvkGraphicsPipelineShaders& key) const;
-    static size_t getShaderHash(const Rc<DxvkShader>& shader);
-  };
-  
-  
-  struct DxvkPipelineKeyEq {
-    bool operator () (const DxvkComputePipelineShaders& a, const DxvkComputePipelineShaders& b) const;
-    bool operator () (const DxvkGraphicsPipelineShaders& a, const DxvkGraphicsPipelineShaders& b) const;
-  };
-  
-  
   /**
    * \brief Pipeline manager
    * 
@@ -117,14 +104,12 @@ namespace dxvk {
     std::unordered_map<
       DxvkComputePipelineShaders,
       DxvkComputePipeline,
-      DxvkPipelineKeyHash,
-      DxvkPipelineKeyEq> m_computePipelines;
+      DxvkHash, DxvkEq> m_computePipelines;
     
     std::unordered_map<
       DxvkGraphicsPipelineShaders,
       DxvkGraphicsPipeline,
-      DxvkPipelineKeyHash,
-      DxvkPipelineKeyEq> m_graphicsPipelines;
+      DxvkHash, DxvkEq> m_graphicsPipelines;
     
   };
   

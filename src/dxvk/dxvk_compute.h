@@ -20,6 +20,14 @@ namespace dxvk {
    */
   struct DxvkComputePipelineShaders {
     Rc<DxvkShader> cs;
+
+    bool eq(const DxvkComputePipelineShaders& other) const {
+      return cs == other.cs;
+    }
+
+    size_t hash() const {
+      return DxvkShader::getHash(cs);
+    }
   };
 
 

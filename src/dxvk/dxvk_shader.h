@@ -253,6 +253,18 @@ namespace dxvk {
     std::string debugName() const {
       return m_key.toString();
     }
+
+    /**
+     * \brief Get lookup hash for a shader
+     *
+     * Convenience method that returns \c 0 for a null
+     * pointer, and the shader's lookup hash otherwise.
+     * \param [in] shader The shader
+     * \returns The shader's lookup hash, or 0
+     */
+    static size_t getHash(const Rc<DxvkShader>& shader) {
+      return shader != nullptr ? shader->getHash() : 0;
+    }
     
   private:
     
@@ -271,7 +283,7 @@ namespace dxvk {
 
     size_t m_o1IdxOffset = 0;
     size_t m_o1LocOffset = 0;
-    
+
   };
   
 
