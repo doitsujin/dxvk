@@ -324,6 +324,9 @@ namespace dxvk {
 
     bool MarkLocked(UINT Subresource, bool value) { return std::exchange(m_locked[Subresource], value); }
 
+    bool SetDirty(UINT Subresource, bool value) { return std::exchange(m_dirty[Subresource], value); }
+    void MarkAllDirty() { for (uint32_t i = 0; i < m_dirty.size(); i++) m_dirty[i] = true; }
+
   private:
 
     D3D9DeviceEx*                 m_device;
@@ -353,6 +356,9 @@ namespace dxvk {
 
     D3D9SubresourceArray<
       bool>                       m_locked = { };
+
+    D3D9SubresourceArray<
+      bool>                       m_dirty = { };
 
     /**
      * \brief Mip level

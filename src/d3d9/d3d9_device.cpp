@@ -731,6 +731,8 @@ namespace dxvk {
         cSrcExtent);
     });
 
+    dstTextureInfo->SetDirty(dst->GetSubresource(), true);
+
     if (dstTextureInfo->IsAutomaticMip())
       GenerateMips(dstTextureInfo);
 
@@ -777,6 +779,8 @@ namespace dxvk {
         });
       }
     }
+
+    dstTexInfo->MarkAllDirty();
 
     pDestinationTexture->GenerateMipSubLevels();
 
@@ -1039,6 +1043,8 @@ namespace dxvk {
       });
     }
 
+    dstTextureInfo->SetDirty(dst->GetSubresource(), true);
+
     return D3D_OK;
   }
 
@@ -1101,6 +1107,8 @@ namespace dxvk {
           cClearValue);
       });
     }
+
+    dstTextureInfo->SetDirty(dst->GetSubresource(), true);
 
     return D3D_OK;
   }
@@ -4061,77 +4069,95 @@ namespace dxvk {
       }
     }
     else {
-      Rc<DxvkImage> mappedImage = pResource->GetImage();
+      bool renderable = desc.Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL | D3DUSAGE_AUTOGENMIPMAP);
 
-      // When using any map mode which requires the image contents
-      // to be preserved, and if the GPU has write access to the
-      // image, copy the current image contents into the buffer.
-      auto subresourceLayers = vk::makeSubresourceLayers(subresource);
+      // If we are dirty, then we need to copy -> buffer
+      // We are also always dirty if we are a render target,
+      // a depth stencil, or auto generate mipmaps.
+      bool dirty  = pResource->SetDirty(Subresource, false) || renderable;
 
-      // We need to resolve this, some games
-      // lock MSAA render targets even though
-      // that's entirely illegal and they explicitly
-      // tell us that they do NOT want to lock them...
-      if (unlikely(mappedImage->info().sampleCount != 1)) {
-        Rc<DxvkImage> resolveImage = pResource->GetResolveImage();
+      if (unlikely(dirty)) {
+        Rc<DxvkImage> resourceImage = pResource->GetImage();
+
+        Rc<DxvkImage> mappedImage = resourceImage->info().sampleCount != 1
+          ? pResource->GetResolveImage()
+          : std::move(resourceImage);
+
+        // When using any map mode which requires the image contents
+        // to be preserved, and if the GPU has write access to the
+        // image, copy the current image contents into the buffer.
+        auto subresourceLayers = vk::makeSubresourceLayers(subresource);
+
+        // We need to resolve this, some games
+        // lock MSAA render targets even though
+        // that's entirely illegal and they explicitly
+        // tell us that they do NOT want to lock them...
+        if (resourceImage != nullptr) {
+          EmitCs([
+            cMainImage    = resourceImage,
+            cResolveImage = mappedImage,
+            cSubresource  = subresourceLayers
+          ] (DxvkContext* ctx) {
+            VkImageResolve region;
+            region.srcSubresource = cSubresource;
+            region.srcOffset      = VkOffset3D { 0, 0, 0 };
+            region.dstSubresource = cSubresource;
+            region.dstOffset      = VkOffset3D { 0, 0, 0 };
+            region.extent         = cMainImage->mipLevelExtent(cSubresource.mipLevel);
+
+            if (cSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+              ctx->resolveImage(
+                cResolveImage, cMainImage, region,
+                cMainImage->info().format);
+            }
+            else {
+              ctx->resolveDepthStencilImage(
+                cResolveImage, cMainImage, region,
+                VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR,
+                VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR);
+            }
+          });
+        }
+
+        VkFormat packedFormat = GetPackedDepthStencilFormat(desc.Format);
 
         EmitCs([
-          cMainImage    = mappedImage,
-          cResolveImage = resolveImage,
-          cSubresource  = subresourceLayers
+          cImageBuffer  = mappedBuffer,
+          cImage        = std::move(mappedImage),
+          cSubresources = subresourceLayers,
+          cLevelExtent  = levelExtent,
+          cPackedFormat = packedFormat
         ] (DxvkContext* ctx) {
-          VkImageResolve region;
-          region.srcSubresource = cSubresource;
-          region.srcOffset      = VkOffset3D { 0, 0, 0 };
-          region.dstSubresource = cSubresource;
-          region.dstOffset      = VkOffset3D { 0, 0, 0 };
-          region.extent         = cMainImage->mipLevelExtent(cSubresource.mipLevel);
-
-          if (cSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-            ctx->resolveImage(
-              cResolveImage, cMainImage, region,
-              cMainImage->info().format);
-          }
-          else {
-            ctx->resolveDepthStencilImage(
-              cResolveImage, cMainImage, region,
-              VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR,
-              VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR);
+          if (cSubresources.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+            ctx->copyImageToBuffer(
+              cImageBuffer, 0, VkExtent2D { 0u, 0u },
+              cImage, cSubresources, VkOffset3D { 0, 0, 0 },
+              cLevelExtent);
+          } else {
+            ctx->copyDepthStencilImageToPackedBuffer(
+              cImageBuffer, 0, cImage, cSubresources,
+              VkOffset2D { 0, 0 },
+              VkExtent2D { cLevelExtent.width, cLevelExtent.height },
+              cPackedFormat);
           }
         });
-
-        mappedImage = resolveImage;
       }
 
-      VkFormat packedFormat = GetPackedDepthStencilFormat(desc.Format);
-
-      EmitCs([
-        cImageBuffer  = mappedBuffer,
-        cImage        = std::move(mappedImage),
-        cSubresources = subresourceLayers,
-        cLevelExtent  = levelExtent,
-        cPackedFormat = packedFormat
-      ] (DxvkContext* ctx) {
-        if (cSubresources.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-          ctx->copyImageToBuffer(
-            cImageBuffer, 0, VkExtent2D { 0u, 0u },
-            cImage, cSubresources, VkOffset3D { 0, 0, 0 },
-            cLevelExtent);
-        } else {
-          ctx->copyDepthStencilImageToPackedBuffer(
-            cImageBuffer, 0, cImage, cSubresources,
-            VkOffset2D { 0, 0 },
-            VkExtent2D { cLevelExtent.width, cLevelExtent.height },
-            cPackedFormat);
-        }
-      });
-
-      // We can't implement NOOVERWRITE for this path
-      // because of the copyImageToBuffer above,
-      // and the fact that we are a backed image.
-      if (!WaitForResource(mappedBuffer, Flags))
-        return D3DERR_WASSTILLDRAWING;
       physSlice = mappedBuffer->getSliceHandle();
+
+      // If we are a new alloc, and we weren't dirty
+      // that means that we are a newly initialized
+      // texture, and hence can just memset -> 0 and
+      // avoid a wait here.
+      if (alloced && !dirty)
+        std::memset(physSlice.mapPtr, 0, physSlice.length);
+      else {
+        // We can't implement NOOVERWRITE for this path
+        // because of the copyImageToBuffer above,
+        // and the fact that we are a backed image.
+        if (!WaitForResource(mappedBuffer, Flags))
+          return D3DERR_WASSTILLDRAWING;
+      }
     }
 
     const bool atiHack = desc.Format == D3D9Format::ATI1 || desc.Format == D3D9Format::ATI2;
