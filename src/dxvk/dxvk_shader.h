@@ -223,6 +223,7 @@ namespace dxvk {
      */
     void setShaderKey(const DxvkShaderKey& key) {
       m_key = key;
+      m_hash = key.hash();
     }
 
     /**
@@ -231,6 +232,18 @@ namespace dxvk {
      */
     DxvkShaderKey getShaderKey() const {
       return m_key;
+    }
+
+    /**
+     * \brief Get lookup hash
+     * 
+     * Retrieves a non-unique hash value derived from the
+     * shader key which can be used to perform lookups.
+     * This is better than relying on the pointer value.
+     * \returns Hash value for map lookups
+     */
+    size_t getHash() const {
+      return m_hash;
     }
     
     /**
@@ -252,6 +265,7 @@ namespace dxvk {
     DxvkShaderOptions             m_options;
     DxvkShaderConstData           m_constData;
     DxvkShaderKey                 m_key;
+    size_t                        m_hash = 0;
 
     std::vector<spv::Capability>  m_capabilities;
 
