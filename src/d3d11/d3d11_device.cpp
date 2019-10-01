@@ -2483,7 +2483,7 @@ namespace dxvk {
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return DXGI_ERROR_UNSUPPORTED;
+      return E_INVALIDARG;
     }
   }
   
