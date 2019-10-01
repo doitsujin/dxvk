@@ -100,6 +100,11 @@ namespace dxvk {
     if (!IsWindow(m_window))
       return DXGI_ERROR_INVALID_CALL;
     
+    if (m_target != nullptr) {
+      *ppOutput = m_target.ref();
+      return S_OK;
+    }
+
     RECT windowRect = { 0, 0, 0, 0 };
     ::GetWindowRect(m_window, &windowRect);
     
@@ -185,13 +190,9 @@ namespace dxvk {
     if (pFullscreen != nullptr)
       *pFullscreen = !m_descFs.Windowed;
     
-    if (ppTarget != nullptr) {
-      *ppTarget = nullptr;
-      
-      if (!m_descFs.Windowed)
-        hr = GetOutputFromMonitor(m_monitor, ppTarget);
-    }
-    
+    if (ppTarget != nullptr)
+      *ppTarget = m_target.ref();
+
     return hr;
   }
   
@@ -532,7 +533,7 @@ namespace dxvk {
 
 
   HRESULT DxgiSwapChain::EnterFullscreenMode(IDXGIOutput* pTarget) {
-    Com<IDXGIOutput> output = static_cast<DxgiOutput*>(pTarget);
+    Com<IDXGIOutput> output = pTarget;
 
     if (!IsWindow(m_window))
       return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
@@ -591,6 +592,7 @@ namespace dxvk {
       SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
     
     m_monitor = desc.Monitor;
+    m_target  = std::move(output);
 
     // Apply current gamma curve of the output
     DXGI_VK_MONITOR_DATA* monitorInfo = nullptr;
@@ -628,6 +630,7 @@ namespace dxvk {
     // Restore internal state
     m_descFs.Windowed = TRUE;
     m_monitor = nullptr;
+    m_target  = nullptr;
     
     // Only restore the window style if the application hasn't
     // changed them. This is in line with what native DXGI does.

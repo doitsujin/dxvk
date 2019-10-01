@@ -178,6 +178,7 @@ namespace dxvk {
 
     Com<IDXGIFactory>               m_factory;
     Com<IDXGIAdapter>               m_adapter;
+    Com<IDXGIOutput>                m_target;
     Com<IDXGIVkMonitorInfo>         m_monitorInfo;
     
     HWND                            m_window;
