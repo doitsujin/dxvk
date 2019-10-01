@@ -2662,7 +2662,7 @@ namespace dxvk {
       MaxLatency = DefaultFrameLatency;
     
     if (MaxLatency > m_frameEvents.size())
-      MaxLatency = m_frameEvents.size();
+      return DXGI_ERROR_INVALID_CALL;
     
     m_frameLatency = MaxLatency;
     return S_OK;
