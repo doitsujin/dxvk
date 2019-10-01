@@ -76,7 +76,7 @@ namespace dxvk {
       Gamma = 1,
     };
 
-    Com<D3D11DXGIDevice>    m_dxgiDevice;
+    Com<D3D11DXGIDevice, false> m_dxgiDevice;
     
     D3D11Device*            m_parent;
     HWND                    m_window;
