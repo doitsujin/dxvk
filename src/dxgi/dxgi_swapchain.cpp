@@ -255,17 +255,14 @@ namespace dxvk {
     if (!IsWindow(m_window))
       return DXGI_ERROR_INVALID_CALL;
     
+    if (SyncInterval > 4)
+      return DXGI_ERROR_INVALID_CALL;
+
     if (PresentFlags & DXGI_PRESENT_TEST)
       return S_OK;
     
     std::lock_guard<std::recursive_mutex> lockWin(m_lockWindow);
     std::lock_guard<std::mutex> lockBuf(m_lockBuffer);
-
-    // Higher values are not allowed according to the Microsoft documentation:
-    // 
-    //   "1 through 4 - Synchronize presentation after the nth vertical blank."
-    //   https://msdn.microsoft.com/en-us/library/windows/desktop/bb174576(v=vs.85).aspx
-    SyncInterval = std::min<UINT>(SyncInterval, 4);
 
     try {
       return m_presenter->Present(SyncInterval, PresentFlags, nullptr);
