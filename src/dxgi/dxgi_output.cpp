@@ -219,7 +219,7 @@ namespace dxvk {
     std::vector<DXGI_MODE_DESC1> modes;
 
     if (pDesc)
-      modes.resize(*pNumModes);
+      modes.resize(std::max(1u, *pNumModes));
     
     HRESULT hr = GetDisplayModeList1(
       EnumFormat, Flags, pNumModes,
