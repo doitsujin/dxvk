@@ -102,20 +102,28 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiAdapter::CheckInterfaceSupport(
           REFGUID                   InterfaceName,
           LARGE_INTEGER*            pUMDVersion) {
-    const DxgiOptions* options = m_factory->GetOptions();
+    HRESULT hr = DXGI_ERROR_UNSUPPORTED;
 
-    if (pUMDVersion != nullptr)
-      *pUMDVersion = LARGE_INTEGER();
-    
-    if (options->d3d10Enable) {
+    if (InterfaceName == __uuidof(IDXGIDevice))
+      hr = S_OK;
+
+    if (m_factory->GetOptions()->d3d10Enable) {
       if (InterfaceName == __uuidof(ID3D10Device)
        || InterfaceName == __uuidof(ID3D10Device1))
-        return S_OK;
+        hr = S_OK;
     }
-    
-    Logger::err("DXGI: CheckInterfaceSupport: Unsupported interface");
-    Logger::err(str::format(InterfaceName));
-    return DXGI_ERROR_UNSUPPORTED;
+
+    // We can't really reconstruct the version numbers
+    // returned by Windows drivers from Vulkan data
+    if (pUMDVersion)
+      pUMDVersion->QuadPart = SUCCEEDED(hr) ? ~0ull : 0ull;
+
+    if (FAILED(hr)) {
+      Logger::err("DXGI: CheckInterfaceSupport: Unsupported interface");
+      Logger::err(str::format(InterfaceName));
+    }
+
+    return hr;
   }
   
   
