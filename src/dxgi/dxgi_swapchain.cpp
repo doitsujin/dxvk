@@ -113,8 +113,8 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetDesc(DXGI_SWAP_CHAIN_DESC* pDesc) {
-    if (pDesc == nullptr)
-      return DXGI_ERROR_INVALID_CALL;
+    if (!pDesc)
+      return E_INVALIDARG;
     
     pDesc->BufferDesc.Width     = m_desc.Width;
     pDesc->BufferDesc.Height    = m_desc.Height;
@@ -135,7 +135,7 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetDesc1(DXGI_SWAP_CHAIN_DESC1* pDesc) {
     if (pDesc == nullptr)
-      return DXGI_ERROR_INVALID_CALL;
+      return E_INVALIDARG;
     
     *pDesc = m_desc;
     return S_OK;
@@ -167,7 +167,7 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetFrameStatistics(DXGI_FRAME_STATISTICS* pStats) {
     if (pStats == nullptr)
-      return DXGI_ERROR_INVALID_CALL;
+      return E_INVALIDARG;
     
     *pStats = m_stats;
     return S_OK;
@@ -199,7 +199,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetFullscreenDesc(
           DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pDesc) {
     if (pDesc == nullptr)
-      return DXGI_ERROR_INVALID_CALL;
+      return E_INVALIDARG;
     
     *pDesc = m_descFs;
     return S_OK;
@@ -209,7 +209,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetHwnd(
           HWND*                     pHwnd) {
     if (pHwnd == nullptr)
-      return DXGI_ERROR_INVALID_CALL;
+      return E_INVALIDARG;
     
     *pHwnd = m_window;
     return S_OK;
@@ -228,7 +228,7 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetLastPresentCount(UINT* pLastPresentCount) {
     if (pLastPresentCount == nullptr)
-      return DXGI_ERROR_INVALID_CALL;
+      return E_INVALIDARG;
     
     *pLastPresentCount = m_stats.PresentCount;
     return S_OK;
