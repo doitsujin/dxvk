@@ -133,7 +133,7 @@ namespace dxvk {
     InitReturnPtr(ppOutput);
     
     if (ppOutput == nullptr)
-      return DXGI_ERROR_INVALID_CALL;
+      return E_INVALIDARG;
     
     if (Output > 0) {
       *ppOutput = nullptr;
@@ -149,7 +149,7 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiAdapter::GetDesc(DXGI_ADAPTER_DESC* pDesc) {
     if (pDesc == nullptr)
-      return DXGI_ERROR_INVALID_CALL;
+      return E_INVALIDARG;
 
     DXGI_ADAPTER_DESC2 desc;
     HRESULT hr = GetDesc2(&desc);
@@ -173,7 +173,7 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiAdapter::GetDesc1(DXGI_ADAPTER_DESC1* pDesc) {
     if (pDesc == nullptr)
-      return DXGI_ERROR_INVALID_CALL;
+      return E_INVALIDARG;
 
     DXGI_ADAPTER_DESC2 desc;
     HRESULT hr = GetDesc2(&desc);
@@ -198,7 +198,7 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiAdapter::GetDesc2(DXGI_ADAPTER_DESC2* pDesc) {
     if (pDesc == nullptr)
-      return DXGI_ERROR_INVALID_CALL;
+      return E_INVALIDARG;
     
     const DxgiOptions* options = m_factory->GetOptions();
     
