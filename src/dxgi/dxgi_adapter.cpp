@@ -115,8 +115,8 @@ namespace dxvk {
 
     // We can't really reconstruct the version numbers
     // returned by Windows drivers from Vulkan data
-    if (pUMDVersion)
-      pUMDVersion->QuadPart = SUCCEEDED(hr) ? ~0ull : 0ull;
+    if (SUCCEEDED(hr) && pUMDVersion)
+      pUMDVersion->QuadPart = ~0ull;
 
     if (FAILED(hr)) {
       Logger::err("DXGI: CheckInterfaceSupport: Unsupported interface");
