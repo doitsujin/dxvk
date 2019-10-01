@@ -16,6 +16,8 @@ namespace dxvk {
   class D3D9DeviceEx;
   class SpirvModule;
 
+  struct D3D9Options;
+
   struct D3D9FogContext {
     // General inputs...
     bool     IsPixel;
@@ -25,6 +27,12 @@ namespace dxvk {
     uint32_t vFog;
 
     uint32_t oColor;
+  };
+
+  struct D3D9FixedFunctionOptions {
+    D3D9FixedFunctionOptions(const D3D9Options* options);
+
+    bool invariantPosition;
   };
 
   // Returns new oFog if VS

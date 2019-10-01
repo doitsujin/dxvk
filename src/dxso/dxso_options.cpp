@@ -35,6 +35,8 @@ namespace dxvk {
     d3d9FloatEmulation   = options.d3d9FloatEmulation;
 
     shaderModel          = options.shaderModel;
+
+    invariantPosition    = options.invariantPosition;
   }
 
 }

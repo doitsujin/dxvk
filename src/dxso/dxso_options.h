@@ -33,6 +33,10 @@ namespace dxvk {
 
     /// Max version of shader to support
     uint32_t shaderModel;
+
+    /// Work around a NV driver quirk
+    /// Fixes flickering/z-fighting in some games.
+    bool invariantPosition;
   };
 
 }

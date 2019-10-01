@@ -88,6 +88,10 @@ namespace dxvk {
     /// Specifically to work around a game
     /// bug in The Sims 2 that happens on native too!
     bool disableA8RT;
+
+    /// Work around a NV driver quirk
+    /// Fixes flickering/z-fighting in some games.
+    bool invariantPosition;
   };
 
 }

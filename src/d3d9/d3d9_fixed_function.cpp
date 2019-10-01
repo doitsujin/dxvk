@@ -10,6 +10,10 @@
 
 namespace dxvk {
 
+  D3D9FixedFunctionOptions::D3D9FixedFunctionOptions(const D3D9Options* options) {
+    invariantPosition = options->invariantPosition;
+  }
+
   uint32_t DoFixedFunctionFog(SpirvModule& spvModule, const D3D9FogContext& fogCtx) {
     uint32_t boolType   = spvModule.defBoolType();
     uint32_t floatType  = spvModule.defFloatType(32);
@@ -293,14 +297,16 @@ namespace dxvk {
   public:
 
     D3D9FFShaderCompiler(
-            Rc<DxvkDevice>     Device,
-      const D3D9FFShaderKeyVS& Key,
-      const std::string&       Name);
+            Rc<DxvkDevice>           Device,
+      const D3D9FFShaderKeyVS&       Key,
+      const std::string&             Name,
+            D3D9FixedFunctionOptions Options);
 
     D3D9FFShaderCompiler(
-            Rc<DxvkDevice>     Device,
-      const D3D9FFShaderKeyFS& Key,
-      const std::string&       Name);
+            Rc<DxvkDevice>           Device,
+      const D3D9FFShaderKeyFS&       Key,
+      const std::string&             Name,
+            D3D9FixedFunctionOptions Options);
 
     Rc<DxvkShader> compile();
 
@@ -356,12 +362,16 @@ namespace dxvk {
 
     uint32_t              m_rsBlock;
     uint32_t              m_mainFuncLabel;
+
+    D3D9FixedFunctionOptions m_options;
   };
 
   D3D9FFShaderCompiler::D3D9FFShaderCompiler(
-          Rc<DxvkDevice>     Device,
-    const D3D9FFShaderKeyVS& Key,
-    const std::string&       Name) {
+          Rc<DxvkDevice>           Device,
+    const D3D9FFShaderKeyVS&       Key,
+    const std::string&             Name,
+          D3D9FixedFunctionOptions Options)
+      : m_options (Options) {
     m_programType = DxsoProgramTypes::VertexShader;
     m_vsKey    = Key;
     m_filename = Name;
@@ -369,9 +379,11 @@ namespace dxvk {
 
 
   D3D9FFShaderCompiler::D3D9FFShaderCompiler(
-          Rc<DxvkDevice>     Device,
-    const D3D9FFShaderKeyFS& Key,
-    const std::string& Name) {
+          Rc<DxvkDevice>           Device,
+    const D3D9FFShaderKeyFS&       Key,
+    const std::string&             Name,
+          D3D9FixedFunctionOptions Options)
+      : m_options(Options) {
     m_programType = DxsoProgramTypes::PixelShader;
     m_fsKey    = Key;
     m_filename = Name;
@@ -1077,6 +1089,8 @@ namespace dxvk {
 
     // Declare Outputs
     m_vs.out.POSITION = declareIO(false, DxsoSemantic{ DxsoUsage::Position, 0 }, spv::BuiltInPosition);
+    if (m_options.invariantPosition)
+      m_module.decorate(m_vs.out.POSITION, spv::DecorationInvariant);
 
     m_vs.out.NORMAL   = declareIO(false, DxsoSemantic{ DxsoUsage::Normal, 0 });
 
@@ -1687,7 +1701,8 @@ namespace dxvk {
 
     D3D9FFShaderCompiler compiler(
       pDevice->GetDXVKDevice(),
-      Key, name);
+      Key, name,
+      pDevice->GetOptions());
 
     m_shader = compiler.compile();
     m_isgn   = compiler.isgn();
@@ -1709,7 +1724,8 @@ namespace dxvk {
 
     D3D9FFShaderCompiler compiler(
       pDevice->GetDXVKDevice(),
-      Key, name);
+      Key, name,
+      pDevice->GetOptions());
 
     m_shader = compiler.compile();
     m_isgn   = compiler.isgn();
