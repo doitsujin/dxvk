@@ -382,6 +382,9 @@ namespace dxvk {
           IDXGIOutput*  pTarget) {
     std::lock_guard<std::recursive_mutex> lock(m_lockWindow);
 
+    if (!Fullscreen && pTarget)
+      return DXGI_ERROR_INVALID_CALL;
+
     if (m_descFs.Windowed && Fullscreen)
       return this->EnterFullscreenMode(pTarget);
     else if (!m_descFs.Windowed && !Fullscreen)
@@ -610,9 +613,6 @@ namespace dxvk {
   
   
   HRESULT DxgiSwapChain::LeaveFullscreenMode() {
-    if (!IsWindow(m_window))
-      return S_OK;
-    
     if (FAILED(RestoreDisplayMode(m_monitor)))
       Logger::warn("DXGI: LeaveFullscreenMode: Failed to restore display mode");
     
@@ -631,6 +631,9 @@ namespace dxvk {
     m_descFs.Windowed = TRUE;
     m_monitor = nullptr;
     m_target  = nullptr;
+    
+    if (!IsWindow(m_window))
+      return S_OK;
     
     // Only restore the window style if the application hasn't
     // changed them. This is in line with what native DXGI does.
