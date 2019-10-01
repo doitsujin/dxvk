@@ -280,11 +280,11 @@ namespace dxvk {
           DXGI_MEMORY_SEGMENT_GROUP     MemorySegmentGroup,
           DXGI_QUERY_VIDEO_MEMORY_INFO* pVideoMemoryInfo) {
     if (NodeIndex > 0 || !pVideoMemoryInfo)
-      return DXGI_ERROR_INVALID_CALL;
+      return E_INVALIDARG;
     
     if (MemorySegmentGroup != DXGI_MEMORY_SEGMENT_GROUP_LOCAL
      && MemorySegmentGroup != DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL)
-      return DXGI_ERROR_INVALID_CALL;
+      return E_INVALIDARG;
     
     DxvkAdapterMemoryInfo memInfo = m_adapter->getMemoryHeapInfo();
 
