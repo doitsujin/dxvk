@@ -44,8 +44,10 @@ namespace dxvk {
   public:
     
     DxgiAdapter(
-            DxgiFactory*      factory,
-      const Rc<DxvkAdapter>&  adapter);
+            DxgiFactory*              factory,
+      const Rc<DxvkAdapter>&          adapter,
+            UINT                      index);
+
     ~DxgiAdapter();
     
     HRESULT STDMETHODCALLTYPE QueryInterface(
@@ -105,6 +107,7 @@ namespace dxvk {
     Rc<DxvkAdapter>   m_adapter;
     DxgiVkAdapter     m_interop;
     
+    UINT              m_index;
     UINT64            m_memReservation[2] = { 0, 0 };
     
   };

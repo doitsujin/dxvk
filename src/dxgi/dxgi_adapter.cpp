@@ -12,6 +12,30 @@
 
 namespace dxvk {
 
+  static LUID GetAdapterLUID(UINT Adapter) {
+    static std::mutex        s_mutex;
+    static std::vector<LUID> s_luids;
+
+    std::lock_guard<std::mutex> lock(s_mutex);
+    uint32_t newLuidCount = Adapter + 1;
+
+    while (s_luids.size() < newLuidCount) {
+      LUID luid = { 0, 0 };
+
+      if (!AllocateLocallyUniqueId(&luid))
+        Logger::err("DXGI: Failed to allocate LUID");
+      
+        
+      Logger::info(str::format("DXGI: Adapter LUID ", s_luids.size(), ": ",
+        std::hex, luid.HighPart, ":", luid.LowPart, std::dec));
+
+      s_luids.push_back(luid);
+    }
+
+    return s_luids[Adapter];
+  }
+
+  
   DxgiVkAdapter::DxgiVkAdapter(DxgiAdapter* pAdapter)
   : m_adapter(pAdapter) {
 
@@ -53,10 +77,12 @@ namespace dxvk {
 
   DxgiAdapter::DxgiAdapter(
           DxgiFactory*      factory,
-    const Rc<DxvkAdapter>&  adapter)
+    const Rc<DxvkAdapter>&  adapter,
+          UINT              index)
   : m_factory (factory),
     m_adapter (adapter),
-    m_interop (this) {
+    m_interop (this),
+    m_index   (index) {
     
   }
   
@@ -271,6 +297,9 @@ namespace dxvk {
 
     if (deviceId.deviceLUIDValid)
       std::memcpy(&pDesc->AdapterLuid, deviceId.deviceLUID, VK_LUID_SIZE);
+    else
+      pDesc->AdapterLuid = GetAdapterLUID(m_index);
+
     return S_OK;
   }
   

@@ -2,7 +2,7 @@
 #include "dxgi_swapchain.h"
 
 namespace dxvk {
-  
+
   DxgiFactory::DxgiFactory(UINT Flags)
   : m_instance    (new DxvkInstance()),
     m_monitorInfo (this),
@@ -192,7 +192,7 @@ namespace dxvk {
     if (dxvkAdapter == nullptr)
       return DXGI_ERROR_NOT_FOUND;
     
-    *ppAdapter = ref(new DxgiAdapter(this, dxvkAdapter));
+    *ppAdapter = ref(new DxgiAdapter(this, dxvkAdapter, Adapter));
     return S_OK;
   }
   
