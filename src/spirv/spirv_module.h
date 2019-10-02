@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_set>
+
 #include "spirv_code_buffer.h"
 
 namespace dxvk {
@@ -167,6 +169,13 @@ namespace dxvk {
     uint32_t constUndef(
             uint32_t                typeId);
     
+    uint32_t lateConst32(
+            uint32_t                typeId);
+
+    void setLateConst(
+            uint32_t                constId,
+      const uint32_t*               argIds);
+
     uint32_t specConstBool(
             bool                    v);
     
@@ -1166,6 +1175,8 @@ namespace dxvk {
     SpirvCodeBuffer m_typeConstDefs;
     SpirvCodeBuffer m_variables;
     SpirvCodeBuffer m_code;
+
+    std::unordered_set<uint32_t> m_lateConsts;
     
     uint32_t defType(
             spv::Op                 op, 
