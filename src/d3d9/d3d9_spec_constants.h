@@ -11,6 +11,8 @@ namespace dxvk {
     FogEnabled      = 3,
     VertexFogMode   = 4,
     PixelFogMode    = 5,
+
+    PointMode       = 6,
   };
 
 }

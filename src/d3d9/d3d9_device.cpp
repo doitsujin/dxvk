@@ -1841,6 +1841,36 @@ namespace dxvk {
           m_flags.set(D3D9DeviceFlag::DirtyFogDensity);
           break;
 
+        case D3DRS_POINTSIZE:
+          UpdatePushConstant<D3D9RenderStateItem::PointSize>();
+          break;
+
+        case D3DRS_POINTSIZE_MIN:
+          UpdatePushConstant<D3D9RenderStateItem::PointSizeMin>();
+          break;
+
+        case D3DRS_POINTSIZE_MAX:
+          UpdatePushConstant<D3D9RenderStateItem::PointSizeMax>();
+          break;
+
+        case D3DRS_POINTSCALE_A:
+          UpdatePushConstant<D3D9RenderStateItem::PointScaleA>();
+          break;
+
+        case D3DRS_POINTSCALE_B:
+          UpdatePushConstant<D3D9RenderStateItem::PointScaleB>();
+          break;
+
+        case D3DRS_POINTSCALE_C:
+          UpdatePushConstant<D3D9RenderStateItem::PointScaleC>();
+          break;
+
+        case D3DRS_POINTSCALEENABLE:
+        case D3DRS_POINTSPRITEENABLE:
+          // Nothing to do here!
+          // This is handled in UpdatePointMode.
+          break;
+
         case D3DRS_ADAPTIVETESS_X:
         case D3DRS_ADAPTIVETESS_Z:
         case D3DRS_ADAPTIVETESS_W:
@@ -2160,7 +2190,7 @@ namespace dxvk {
           UINT             PrimitiveCount) {
     D3D9DeviceLock lock = LockDevice();
 
-    PrepareDraw();
+    PrepareDraw(PrimitiveType);
 
     EmitCs([this,
       cPrimType    = PrimitiveType,
@@ -2190,7 +2220,7 @@ namespace dxvk {
           UINT             PrimitiveCount) {
     D3D9DeviceLock lock = LockDevice();
 
-    PrepareDraw();
+    PrepareDraw(PrimitiveType);
 
     EmitCs([this,
       cPrimType        = PrimitiveType,
@@ -2220,7 +2250,7 @@ namespace dxvk {
           UINT             VertexStreamZeroStride) {
     D3D9DeviceLock lock = LockDevice();
 
-    PrepareDraw(true);
+    PrepareDraw(PrimitiveType, true);
 
     auto drawInfo = GenerateDrawInfo(PrimitiveType, PrimitiveCount, 0);
 
@@ -2263,7 +2293,7 @@ namespace dxvk {
           UINT             VertexStreamZeroStride) {
     D3D9DeviceLock lock = LockDevice();
 
-    PrepareDraw(true);
+    PrepareDraw(PrimitiveType, true);
 
     auto drawInfo = GenerateDrawInfo(PrimitiveType, PrimitiveCount, 0);
 
@@ -2331,7 +2361,7 @@ namespace dxvk {
     D3D9CommonBuffer* dst  = static_cast<D3D9VertexBuffer*>(pDestBuffer)->GetCommonBuffer();
     D3D9VertexDecl*   decl = static_cast<D3D9VertexDecl*>  (pVertexDecl);
 
-    PrepareDraw(false);
+    PrepareDraw(D3DPT_FORCE_DWORD, false);
 
     if (decl == nullptr) {
       DWORD FVF = dst->Desc()->FVF;
@@ -4688,6 +4718,24 @@ namespace dxvk {
 
       UpdatePushConstant<offsetof(D3D9RenderStateInfo, fogScale), sizeof(float)>(&scale);
     }
+    else if constexpr (Item == D3D9RenderStateItem::PointSize) {
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, pointSize), sizeof(float)>(&rs[D3DRS_POINTSIZE]);
+    }
+    else if constexpr (Item == D3D9RenderStateItem::PointSizeMin) {
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, pointSizeMin), sizeof(float)>(&rs[D3DRS_POINTSIZE_MIN]);
+    }
+    else if constexpr (Item == D3D9RenderStateItem::PointSizeMax) {
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, pointSizeMax), sizeof(float)>(&rs[D3DRS_POINTSIZE_MAX]);
+    }
+    else if constexpr (Item == D3D9RenderStateItem::PointScaleA) {
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, pointScaleA), sizeof(float)>(&rs[D3DRS_POINTSCALE_A]);
+    }
+    else if constexpr (Item == D3D9RenderStateItem::PointScaleB) {
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, pointScaleB), sizeof(float)>(&rs[D3DRS_POINTSCALE_B]);
+    }
+    else if constexpr (Item == D3D9RenderStateItem::PointScaleC) {
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, pointScaleC), sizeof(float)>(&rs[D3DRS_POINTSCALE_C]);
+    }
     else
       Logger::warn("D3D9: Invalid push constant set to update.");
   }
@@ -4757,6 +4805,33 @@ namespace dxvk {
           // No need to search for more hazards for this texture.
           break;
         }
+      }
+    }
+  }
+
+  template <bool Points>
+  void D3D9DeviceEx::UpdatePointMode() {
+    if constexpr (Points) {
+      m_lastPointMode = 0;
+
+      EmitCs([](DxvkContext* ctx) {
+        ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::PointMode, 0);
+      });
+    }
+    else {
+      auto& rs = m_state.renderStates;
+
+      const uint32_t scaleBit  = rs[D3DRS_POINTSCALEENABLE]  ? 1u : 0u;
+      const uint32_t spriteBit = rs[D3DRS_POINTSPRITEENABLE] ? 2u : 0u;
+
+      uint32_t mode = scaleBit | spriteBit;
+
+      if (unlikely(mode != m_lastPointMode)) {
+        EmitCs([cMode = mode] (DxvkContext* ctx) {
+          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::PointMode, cMode);
+        });
+
+        m_lastPointMode = mode;
       }
     }
   }
@@ -5341,7 +5416,7 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::PrepareDraw(bool up) {
+  void D3D9DeviceEx::PrepareDraw(D3DPRIMITIVETYPE PrimitiveType, bool up) {
     // This is fairly expensive to do!
     // So we only enable it on games & vendors that actually need it (for now)
     // This is not needed at all on NV either, etc...
@@ -5376,6 +5451,11 @@ namespace dxvk {
     
     if (m_flags.test(D3D9DeviceFlag::DirtyClipPlanes))
       UpdateClipPlanes();
+
+    if (PrimitiveType == D3DPT_POINTLIST)
+      UpdatePointMode<true>();
+    else if (m_lastPointMode != 0)
+      UpdatePointMode<false>();
 
     if (!up && m_flags.test(D3D9DeviceFlag::UpDirtiedVertices)) {
       m_flags.clr(D3D9DeviceFlag::UpDirtiedVertices);

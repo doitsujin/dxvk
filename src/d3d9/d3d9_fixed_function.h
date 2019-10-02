@@ -39,6 +39,26 @@ namespace dxvk {
   // Returns new oColor if PS
   uint32_t DoFixedFunctionFog(SpirvModule& spvModule, const D3D9FogContext& fogCtx);
 
+  // Returns a render state block
+  uint32_t SetupRenderStateBlock(SpirvModule& spvModule);
+
+  struct D3D9PointSizeInfoVS {
+    uint32_t defaultValue;
+    uint32_t min;
+    uint32_t max;
+  };
+
+  // Default point size and point scale magic!
+  D3D9PointSizeInfoVS GetPointSizeInfoVS(SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t rsBlock);
+
+  struct D3D9PointSizeInfoPS {
+    uint32_t isSprite;
+  };
+
+  D3D9PointSizeInfoPS GetPointSizeInfoPS(SpirvModule& spvModule, uint32_t rsBlock);
+
+  uint32_t GetPointCoord(SpirvModule& spvModule, std::vector<uint32_t>& entryPointInterfaces);
+
   struct D3D9FFShaderKeyVS {
     D3D9FFShaderKeyVS() {
       // memcmp safety

@@ -360,6 +360,8 @@ namespace dxvk {
     m_vs.functionId = m_module.allocateId();
     m_module.setDebugName(m_vs.functionId, "vs_main");
 
+    this->setupRenderStateInfo();
+
     this->emitFunctionBegin(
       m_vs.functionId,
       m_module.defVoidType(),
@@ -1080,7 +1082,7 @@ namespace dxvk {
               m_vs.oPSize = this->emitRegisterPtr(
                 "oPSize", DxsoScalarType::Float32, 1,
                 m_module.constf32(0.0f),
-                spv::StorageClassOutput, spv::BuiltInPointCoord);
+                spv::StorageClassOutput, spv::BuiltInPointSize);
             }
             return m_vs.oPSize;
         }
@@ -2823,6 +2825,9 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
 
   void DxsoCompiler::emitInputSetup() {
+    uint32_t pointCoord = GetPointCoord(m_module, m_entryPointInterfaces);
+    auto pointInfo = GetPointSizeInfoPS(m_module, m_rsBlock);
+
     for (uint32_t i = 0; i < m_isgn.elemCount; i++) {
       const auto& elem = m_isgn.elems[i];
       const uint32_t slot = elem.slot;
@@ -2881,6 +2886,9 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       workingReg.id = m_module.opVectorShuffle(getVectorTypeId(workingReg.type),
         workingReg.id, indexVal.id, 4, indices.data());
+
+      if (elem.semantic.usage == DxsoUsage::Texcoord)
+        workingReg.id = m_module.opSelect(getVectorTypeId(workingReg.type), pointInfo.isSprite, pointCoord, workingReg.id);
 
       m_module.opStore(indexPtr.id, workingReg.id);
     }
@@ -3038,6 +3046,23 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     if (!outputtedColor1)
       OutputZero(DxsoSemantic{ DxsoUsage::Color, 1 });
+
+    auto pointInfo = GetPointSizeInfoVS(m_module, m_vs.oPos.id, 0, m_rsBlock);
+
+    if (m_vs.oPSize.id == 0) {
+      m_vs.oPSize = this->emitRegisterPtr(
+        "oPSize", DxsoScalarType::Float32, 1, 0,
+        spv::StorageClassOutput, spv::BuiltInPointSize);
+
+      uint32_t pointSize = m_module.opFClamp(m_module.defFloatType(32), pointInfo.defaultValue, pointInfo.min, pointInfo.max);
+
+      m_module.opStore(m_vs.oPSize.id, pointSize);
+    }
+    else {
+      uint32_t float_t = m_module.defFloatType(32);
+      uint32_t pointSize = m_module.opFClamp(m_module.defFloatType(32), m_module.opLoad(float_t, m_vs.oPSize.id), pointInfo.min, pointInfo.max);
+      m_module.opStore(m_vs.oPSize.id, pointSize);
+    }
   }
 
 
@@ -3123,48 +3148,23 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
 
   void DxsoCompiler::setupRenderStateInfo() {
-    uint32_t boolType  = m_module.defBoolType();
-    uint32_t floatType = m_module.defFloatType(32);
-    uint32_t vec3Type  = m_module.defVectorType(floatType, 3);
-    uint32_t floatPtr  = m_module.defPointerType(floatType, spv::StorageClassPushConstant);
-
-    std::array<uint32_t, 5> rsMembers = {{
-      vec3Type,
-      floatType,
-      floatType,
-      floatType,
-      floatType
-    }};
-    
-    uint32_t rsStruct = m_module.defStructTypeUnique(rsMembers.size(), rsMembers.data());
-    m_rsBlock = m_module.newVar(
-      m_module.defPointerType(rsStruct, spv::StorageClassPushConstant),
-      spv::StorageClassPushConstant);
-    
-    m_module.setDebugName         (rsStruct, "render_state_t");
-    m_module.decorate             (rsStruct, spv::DecorationBlock);
-    m_module.setDebugMemberName   (rsStruct, 0, "fog_color");
-    m_module.memberDecorateOffset (rsStruct, 0, offsetof(D3D9RenderStateInfo, fogColor));
-    m_module.setDebugMemberName   (rsStruct, 1, "fog_scale");
-    m_module.memberDecorateOffset (rsStruct, 1, offsetof(D3D9RenderStateInfo, fogScale));
-    m_module.setDebugMemberName   (rsStruct, 2, "fog_end");
-    m_module.memberDecorateOffset (rsStruct, 2, offsetof(D3D9RenderStateInfo, fogEnd));
-    m_module.setDebugMemberName   (rsStruct, 3, "fog_density");
-    m_module.memberDecorateOffset (rsStruct, 3, offsetof(D3D9RenderStateInfo, fogDensity));
-    m_module.setDebugMemberName   (rsStruct, 4, "alpha_ref");
-    m_module.memberDecorateOffset (rsStruct, 4, offsetof(D3D9RenderStateInfo, alphaRef));
-    
-    m_module.setDebugName         (m_rsBlock, "render_state");
+    m_rsBlock = SetupRenderStateBlock(m_module);
 
     // Only need alpha ref for PS 3.
     // No FF fog component.
-    if (m_programInfo.majorVersion() == 3) {
-      m_interfaceSlots.pushConstOffset = offsetof(D3D9RenderStateInfo, alphaRef);
-      m_interfaceSlots.pushConstSize   = sizeof(float);
+    if (m_programInfo.type() == DxsoProgramType::PixelShader) {
+      if (m_programInfo.majorVersion() == 3) {
+        m_interfaceSlots.pushConstOffset = offsetof(D3D9RenderStateInfo, alphaRef);
+        m_interfaceSlots.pushConstSize   = sizeof(float);
+      }
+      else {
+        m_interfaceSlots.pushConstOffset = 0;
+        m_interfaceSlots.pushConstSize   = offsetof(D3D9RenderStateInfo, pointSize);
+      }
     }
     else {
-      m_interfaceSlots.pushConstOffset = 0;
-      m_interfaceSlots.pushConstSize   = sizeof(D3D9RenderStateInfo);
+      m_interfaceSlots.pushConstOffset = offsetof(D3D9RenderStateInfo, pointSize);
+      m_interfaceSlots.pushConstSize   = sizeof(float) * 6;
     }
   }
 

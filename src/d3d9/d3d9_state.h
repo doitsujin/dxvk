@@ -38,6 +38,13 @@ namespace dxvk {
     float fogDensity = 1.0f;
 
     float alphaRef   = 0.0f;
+
+    float pointSize    = 1.0f;
+    float pointSizeMin = 1.0f;
+    float pointSizeMax = 64.0f;
+    float pointScaleA  = 1.0f;
+    float pointScaleB  = 0.0f;
+    float pointScaleC  = 0.0f;
   };
 
   enum class D3D9RenderStateItem {
@@ -46,6 +53,14 @@ namespace dxvk {
     FogEnd,
     FogDensity,
     AlphaRef,
+
+    PointSize,
+    PointSizeMin,
+    PointSizeMax,
+    PointScaleA,
+    PointScaleB,
+    PointScaleC,
+
     Count
   };
 

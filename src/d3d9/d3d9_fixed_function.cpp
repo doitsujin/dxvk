@@ -183,6 +183,179 @@ namespace dxvk {
     return spvModule.opLoad(returnType, returnValuePtr);
   }
 
+
+  uint32_t SetupRenderStateBlock(SpirvModule& spvModule) {
+    uint32_t boolType  = spvModule.defBoolType();
+    uint32_t floatType = spvModule.defFloatType(32);
+    uint32_t vec3Type  = spvModule.defVectorType(floatType, 3);
+    uint32_t floatPtr  = spvModule.defPointerType(floatType, spv::StorageClassPushConstant);
+
+    std::array<uint32_t, 11> rsMembers = {{
+      vec3Type,
+      floatType,
+      floatType,
+      floatType,
+      floatType,
+
+      floatType,
+      floatType,
+      floatType,
+      floatType,
+      floatType,
+      floatType,
+    }};
+    
+    uint32_t rsStruct = spvModule.defStructTypeUnique(rsMembers.size(), rsMembers.data());
+    uint32_t rsBlock = spvModule.newVar(
+      spvModule.defPointerType(rsStruct, spv::StorageClassPushConstant),
+      spv::StorageClassPushConstant);
+    
+    spvModule.setDebugName         (rsStruct, "render_state_t");
+    spvModule.decorate             (rsStruct, spv::DecorationBlock);
+    spvModule.setDebugMemberName   (rsStruct, 0, "fog_color");
+    spvModule.memberDecorateOffset (rsStruct, 0, offsetof(D3D9RenderStateInfo, fogColor));
+    spvModule.setDebugMemberName   (rsStruct, 1, "fog_scale");
+    spvModule.memberDecorateOffset (rsStruct, 1, offsetof(D3D9RenderStateInfo, fogScale));
+    spvModule.setDebugMemberName   (rsStruct, 2, "fog_end");
+    spvModule.memberDecorateOffset (rsStruct, 2, offsetof(D3D9RenderStateInfo, fogEnd));
+    spvModule.setDebugMemberName   (rsStruct, 3, "fog_density");
+    spvModule.memberDecorateOffset (rsStruct, 3, offsetof(D3D9RenderStateInfo, fogDensity));
+    spvModule.setDebugMemberName   (rsStruct, 4, "alpha_ref");
+    spvModule.memberDecorateOffset (rsStruct, 4, offsetof(D3D9RenderStateInfo, alphaRef));
+    spvModule.setDebugMemberName   (rsStruct, 5, "point_size");
+    spvModule.memberDecorateOffset (rsStruct, 5, offsetof(D3D9RenderStateInfo, pointSize));
+    spvModule.setDebugMemberName   (rsStruct, 6, "point_size_min");
+    spvModule.memberDecorateOffset (rsStruct, 6, offsetof(D3D9RenderStateInfo, pointSizeMin));
+    spvModule.setDebugMemberName   (rsStruct, 7, "point_size_max");
+    spvModule.memberDecorateOffset (rsStruct, 7, offsetof(D3D9RenderStateInfo, pointSizeMax));
+    spvModule.setDebugMemberName   (rsStruct, 8, "point_scale_a");
+    spvModule.memberDecorateOffset (rsStruct, 8, offsetof(D3D9RenderStateInfo, pointScaleA));
+    spvModule.setDebugMemberName   (rsStruct, 9, "point_scale_b");
+    spvModule.memberDecorateOffset (rsStruct, 9, offsetof(D3D9RenderStateInfo, pointScaleB));
+    spvModule.setDebugMemberName   (rsStruct, 10, "point_scale_c");
+    spvModule.memberDecorateOffset (rsStruct, 10, offsetof(D3D9RenderStateInfo, pointScaleC));
+    
+    spvModule.setDebugName         (rsBlock, "render_state");
+
+    return rsBlock;
+  }
+
+
+  D3D9PointSizeInfoVS GetPointSizeInfoVS(SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t rsBlock) {
+    uint32_t floatType  = spvModule.defFloatType(32);
+    uint32_t floatPtr   = spvModule.defPointerType(floatType, spv::StorageClassPushConstant);
+    uint32_t vec3Type   = spvModule.defVectorType(floatType, 3);
+    uint32_t vec4Type   = spvModule.defVectorType(floatType, 4);
+    uint32_t uint32Type = spvModule.defIntType(32, 0);
+    uint32_t boolType   = spvModule.defBoolType();
+
+    auto LoadFloat = [&](D3D9RenderStateItem item) {
+      uint32_t index = spvModule.constu32(uint32_t(item));
+      return spvModule.opLoad(floatType, spvModule.opAccessChain(floatPtr, rsBlock, 1, &index));
+    };
+
+    uint32_t pointMode = spvModule.specConst32(uint32Type, 0);
+    spvModule.setDebugName(pointMode, "point_mode");
+    spvModule.decorateSpecId(pointMode, getSpecId(D3D9SpecConstantId::PointMode));
+
+    uint32_t scaleBit  = spvModule.opBitFieldUExtract(uint32Type, pointMode, spvModule.consti32(0), spvModule.consti32(1));
+    uint32_t isScale   = spvModule.opIEqual(boolType, scaleBit, spvModule.constu32(1));
+
+    uint32_t regularValue   = LoadFloat(D3D9RenderStateItem::PointSize);
+
+    uint32_t scaleC = LoadFloat(D3D9RenderStateItem::PointScaleC);
+    uint32_t scaleB = LoadFloat(D3D9RenderStateItem::PointScaleB);
+    uint32_t scaleA = LoadFloat(D3D9RenderStateItem::PointScaleA);
+
+    std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
+
+    uint32_t vtx3;
+    if (vPos != 0) {
+      vPos = spvModule.opLoad(vec4Type, vPos);
+
+      uint32_t rhw            = spvModule.opCompositeExtract(floatType, vPos, 1, &indices[3]);
+               rhw            = spvModule.opFDiv(floatType, spvModule.constf32(1.0f), rhw);
+      uint32_t pos3           = spvModule.opVectorShuffle(vec3Type, vPos, vPos, 3, indices.data());
+               vtx3           = spvModule.opVectorTimesScalar(vec3Type, pos3, rhw);
+    }
+    else {
+               vtx3           = spvModule.opVectorShuffle(vec3Type, vtx, vtx, 3, indices.data());
+    }
+
+    uint32_t DeSqr          = spvModule.opDot (floatType, vtx3, vtx3);
+    uint32_t De             = spvModule.opSqrt(floatType, DeSqr);
+    uint32_t scaleValue     = spvModule.opFMul(floatType, scaleC, DeSqr);
+             scaleValue     = spvModule.opFFma(floatType, scaleB, De, scaleValue);
+             scaleValue     = spvModule.opFAdd(floatType, scaleA, scaleValue);
+             scaleValue     = spvModule.opFDiv(floatType, spvModule.constf32(1.0f), scaleValue);
+             scaleValue     = spvModule.opSqrt(floatType, scaleValue);
+             scaleValue     = spvModule.opFMul(floatType, scaleValue, regularValue);
+
+    uint32_t value = spvModule.opSelect(floatType, isScale, scaleValue, regularValue);
+
+    uint32_t min   = LoadFloat(D3D9RenderStateItem::PointSizeMin);
+    uint32_t max   = LoadFloat(D3D9RenderStateItem::PointSizeMax);
+
+    D3D9PointSizeInfoVS info;
+    info.defaultValue = value;
+    info.min          = min;
+    info.max          = max;
+
+    return info;
+  }
+
+
+  D3D9PointSizeInfoPS GetPointSizeInfoPS(SpirvModule& spvModule, uint32_t rsBlock) {
+    uint32_t uint32Type = spvModule.defIntType(32, 0);
+    uint32_t boolType   = spvModule.defBoolType();
+    uint32_t boolVec4   = spvModule.defVectorType(boolType, 4);
+
+    uint32_t pointMode = spvModule.specConst32(uint32Type, 0);
+    spvModule.setDebugName(pointMode, "point_mode");
+    spvModule.decorateSpecId(pointMode, getSpecId(D3D9SpecConstantId::PointMode));
+
+    uint32_t spriteBit  = spvModule.opBitFieldUExtract(uint32Type, pointMode, spvModule.consti32(1), spvModule.consti32(1));
+    uint32_t isSprite   = spvModule.opIEqual(boolType, spriteBit, spvModule.constu32(1));
+
+    std::array<uint32_t, 4> isSpriteIndices;
+    for (uint32_t i = 0; i < isSpriteIndices.size(); i++)
+      isSpriteIndices[i] = isSprite;
+
+    isSprite = spvModule.opCompositeConstruct(boolVec4, isSpriteIndices.size(), isSpriteIndices.data());
+
+    D3D9PointSizeInfoPS info;
+    info.isSprite = isSprite;
+
+    return info;
+  }
+
+
+  uint32_t GetPointCoord(SpirvModule& spvModule, std::vector<uint32_t>& entryPointInterfaces) {
+    uint32_t floatType  = spvModule.defFloatType(32);
+    uint32_t vec2Type   = spvModule.defVectorType(floatType, 2);
+    uint32_t vec4Type   = spvModule.defVectorType(floatType, 4);
+    uint32_t vec2Ptr    = spvModule.defPointerType(vec2Type, spv::StorageClassInput);
+
+    uint32_t pointCoordPtr = spvModule.newVar(vec2Ptr, spv::StorageClassInput);
+
+    spvModule.decorateBuiltIn(pointCoordPtr, spv::BuiltInPointCoord);
+    entryPointInterfaces.push_back(pointCoordPtr);
+
+    uint32_t pointCoord    = spvModule.opLoad(vec2Type, pointCoordPtr);
+
+    std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
+
+    std::array<uint32_t, 4> pointCoordIndices = {
+      spvModule.opCompositeExtract(floatType, pointCoord, 1, &indices[0]),
+      spvModule.opCompositeExtract(floatType, pointCoord, 1, &indices[1]),
+      spvModule.constf32(0.0f),
+      spvModule.constf32(0.0f)
+    };
+
+    return spvModule.opCompositeConstruct(vec4Type, pointCoordIndices.size(), pointCoordIndices.data());
+  }
+
+
     enum FFConstantMembersVS {
       VSConstWorldViewMatrix   = 0,
       VSConstNormalMatrix    = 1,
@@ -253,6 +426,7 @@ namespace dxvk {
 
     struct {
       uint32_t POSITION = { 0 };
+      uint32_t POINTSIZE = { 0 };
       uint32_t NORMAL = { 0 };
       uint32_t TEXCOORD[8] = { 0 };
       uint32_t COLOR[2] = { 0 };
@@ -483,7 +657,8 @@ namespace dxvk {
     spv::StorageClass storageClass = input ?
       spv::StorageClassInput : spv::StorageClassOutput;
 
-    uint32_t type = semantic.usage == DxsoUsage::Fog ? m_floatType : m_vec4Type;
+    const bool scalar = semantic.usage == DxsoUsage::Fog || semantic.usage == DxsoUsage::PointSize;
+    uint32_t type = scalar ? m_floatType : m_vec4Type;
 
     uint32_t ptrType = m_module.defPointerType(type, storageClass);
 
@@ -817,42 +992,25 @@ namespace dxvk {
     fogCtx.vFog        = m_vs.in.FOG;
     fogCtx.oColor      = 0;
     m_module.opStore(m_vs.out.FOG, DoFixedFunctionFog(m_module, fogCtx));
+
+    auto pointInfo = GetPointSizeInfoVS(m_module, 0, vtx, m_rsBlock);
+
+    uint32_t pointSize = m_module.opFClamp(m_floatType, pointInfo.defaultValue, pointInfo.min, pointInfo.max);
+    m_module.opStore(m_vs.out.POINTSIZE, pointSize);
   }
 
 
   void D3D9FFShaderCompiler::setupRenderStateInfo() {
-    // TODO: fix duplication of this
+    m_rsBlock = SetupRenderStateBlock(m_module);
 
-    std::array<uint32_t, 5> rsMembers = {{
-      m_vec3Type,
-      m_floatType,
-      m_floatType,
-      m_floatType,
-      m_floatType
-    }};
-    
-    uint32_t rsStruct = m_module.defStructTypeUnique(rsMembers.size(), rsMembers.data());
-    m_rsBlock = m_module.newVar(
-      m_module.defPointerType(rsStruct, spv::StorageClassPushConstant),
-      spv::StorageClassPushConstant);
-    
-    m_module.setDebugName         (rsStruct, "render_state_t");
-    m_module.decorate             (rsStruct, spv::DecorationBlock);
-    m_module.setDebugMemberName   (rsStruct, 0, "fog_color");
-    m_module.memberDecorateOffset (rsStruct, 0, offsetof(D3D9RenderStateInfo, fogColor));
-    m_module.setDebugMemberName   (rsStruct, 1, "fog_scale");
-    m_module.memberDecorateOffset (rsStruct, 1, offsetof(D3D9RenderStateInfo, fogScale));
-    m_module.setDebugMemberName   (rsStruct, 2, "fog_end");
-    m_module.memberDecorateOffset (rsStruct, 2, offsetof(D3D9RenderStateInfo, fogEnd));
-    m_module.setDebugMemberName   (rsStruct, 3, "fog_density");
-    m_module.memberDecorateOffset (rsStruct, 3, offsetof(D3D9RenderStateInfo, fogDensity));
-    m_module.setDebugMemberName   (rsStruct, 4, "alpha_ref");
-    m_module.memberDecorateOffset (rsStruct, 4, offsetof(D3D9RenderStateInfo, alphaRef));
-    
-    m_module.setDebugName         (m_rsBlock, "render_state");
-
-    m_interfaceSlots.pushConstOffset = 0;
-    m_interfaceSlots.pushConstSize = sizeof(D3D9RenderStateInfo);
+    if (m_programType == DxsoProgramType::PixelShader) {
+      m_interfaceSlots.pushConstOffset = 0;
+      m_interfaceSlots.pushConstSize   = offsetof(D3D9RenderStateInfo, pointSize);
+    }
+    else {
+      m_interfaceSlots.pushConstOffset = offsetof(D3D9RenderStateInfo, pointSize);
+      m_interfaceSlots.pushConstSize   = sizeof(float) * 6;
+    }
   }
 
 
@@ -1070,8 +1228,14 @@ namespace dxvk {
     // Do IO
     m_vs.in.POSITION = declareIO(true, DxsoSemantic{ DxsoUsage::Position, 0 });
     m_vs.in.NORMAL   = declareIO(true, DxsoSemantic{ DxsoUsage::Normal, 0 });
-    for (uint32_t i = 0; i < caps::TextureStageCount; i++)
+
+    uint32_t pointCoord = GetPointCoord(m_module, m_entryPointInterfaces);
+    auto pointInfo = GetPointSizeInfoPS(m_module, m_rsBlock);
+
+    for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       m_vs.in.TEXCOORD[i] = declareIO(true, DxsoSemantic{ DxsoUsage::Texcoord, i });
+      m_vs.in.TEXCOORD[i] = m_module.opSelect(m_vec4Type, pointInfo.isSprite, pointCoord, m_vs.in.TEXCOORD[i]);
+    }
 
     if (m_vsKey.HasColor0)
       m_vs.in.COLOR[0] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 0 });
@@ -1091,6 +1255,8 @@ namespace dxvk {
     m_vs.out.POSITION = declareIO(false, DxsoSemantic{ DxsoUsage::Position, 0 }, spv::BuiltInPosition);
     if (m_options.invariantPosition)
       m_module.decorate(m_vs.out.POSITION, spv::DecorationInvariant);
+
+    m_vs.out.POINTSIZE = declareIO(false, DxsoSemantic{ DxsoUsage::PointSize, 0 }, spv::BuiltInPointSize);
 
     m_vs.out.NORMAL   = declareIO(false, DxsoSemantic{ DxsoUsage::Normal, 0 });
 

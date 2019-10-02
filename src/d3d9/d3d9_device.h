@@ -721,6 +721,9 @@ namespace dxvk {
 
     void CheckForHazards();
 
+    template <bool Points>
+    void UpdatePointMode();
+
     void UpdateFog();
 
     void BindFramebuffer();
@@ -773,7 +776,7 @@ namespace dxvk {
     
     uint32_t GetInstanceCount() const;
 
-    void PrepareDraw(bool up = false);
+    void PrepareDraw(D3DPRIMITIVETYPE PrimitiveType, bool up = false);
 
     void BindShader(
             DxsoProgramType                   ShaderStage,
@@ -929,6 +932,8 @@ namespace dxvk {
     uint32_t                        m_instancedData   = 0;
     uint32_t                        m_lastSamplerTypeBitfield = 0;
     uint32_t                        m_samplerTypeBitfield = 0;
+
+    uint32_t                        m_lastPointMode = 0;
 
     D3D9ViewportInfo                m_viewportInfo;
 
