@@ -67,7 +67,8 @@ namespace dxvk {
     UpDirtiedVertices,
     UpDirtiedIndices,
     ValidSampleMask,
-    DirtyDepthBounds
+    DirtyDepthBounds,
+    DirtyPointScale
   };
 
   using D3D9DeviceFlags = Flags<D3D9DeviceFlag>;

@@ -1183,6 +1183,7 @@ namespace dxvk {
 
       m_flags.set(D3D9DeviceFlag::DirtyViewportScissor);
       m_flags.set(D3D9DeviceFlag::DirtyFFViewport);
+      m_flags.set(D3D9DeviceFlag::DirtyPointScale);
     }
 
     return D3D_OK;
@@ -1472,6 +1473,7 @@ namespace dxvk {
 
     m_flags.set(D3D9DeviceFlag::DirtyViewportScissor);
     m_flags.set(D3D9DeviceFlag::DirtyFFViewport);
+    m_flags.set(D3D9DeviceFlag::DirtyPointScale);
 
     return D3D_OK;
   }
@@ -1854,15 +1856,9 @@ namespace dxvk {
           break;
 
         case D3DRS_POINTSCALE_A:
-          UpdatePushConstant<D3D9RenderStateItem::PointScaleA>();
-          break;
-
         case D3DRS_POINTSCALE_B:
-          UpdatePushConstant<D3D9RenderStateItem::PointScaleB>();
-          break;
-
         case D3DRS_POINTSCALE_C:
-          UpdatePushConstant<D3D9RenderStateItem::PointScaleC>();
+          m_flags.set(D3D9DeviceFlag::DirtyPointScale);
           break;
 
         case D3DRS_POINTSCALEENABLE:
@@ -3486,9 +3482,7 @@ namespace dxvk {
     UpdatePushConstant<D3D9RenderStateItem::PointSize>();
     UpdatePushConstant<D3D9RenderStateItem::PointSizeMin>();
     UpdatePushConstant<D3D9RenderStateItem::PointSizeMax>();
-    UpdatePushConstant<D3D9RenderStateItem::PointScaleA>();
-    UpdatePushConstant<D3D9RenderStateItem::PointScaleB>();
-    UpdatePushConstant<D3D9RenderStateItem::PointScaleC>();
+    m_flags.set(D3D9DeviceFlag::DirtyPointScale);
     UpdatePointMode<false>();
 
     rs[D3DRS_SRGBWRITEENABLE]            = 0;
@@ -4737,13 +4731,22 @@ namespace dxvk {
       UpdatePushConstant<offsetof(D3D9RenderStateInfo, pointSizeMax), sizeof(float)>(&rs[D3DRS_POINTSIZE_MAX]);
     }
     else if constexpr (Item == D3D9RenderStateItem::PointScaleA) {
-      UpdatePushConstant<offsetof(D3D9RenderStateInfo, pointScaleA), sizeof(float)>(&rs[D3DRS_POINTSCALE_A]);
+      float scale = bit::cast<float>(rs[D3DRS_POINTSCALE_A]);
+      scale /= float(m_state.viewport.Height * m_state.viewport.Height);
+
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, pointScaleA), sizeof(float)>(&scale);
     }
     else if constexpr (Item == D3D9RenderStateItem::PointScaleB) {
-      UpdatePushConstant<offsetof(D3D9RenderStateInfo, pointScaleB), sizeof(float)>(&rs[D3DRS_POINTSCALE_B]);
+      float scale = bit::cast<float>(rs[D3DRS_POINTSCALE_B]);
+      scale /= float(m_state.viewport.Height * m_state.viewport.Height);
+
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, pointScaleB), sizeof(float)>(&scale);
     }
     else if constexpr (Item == D3D9RenderStateItem::PointScaleC) {
-      UpdatePushConstant<offsetof(D3D9RenderStateInfo, pointScaleC), sizeof(float)>(&rs[D3DRS_POINTSCALE_C]);
+      float scale = bit::cast<float>(rs[D3DRS_POINTSCALE_C]);
+      scale /= float(m_state.viewport.Height * m_state.viewport.Height);
+
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, pointScaleC), sizeof(float)>(&scale);
     }
     else
       Logger::warn("D3D9: Invalid push constant set to update.");
@@ -4834,6 +4837,14 @@ namespace dxvk {
       const uint32_t spriteBit = rs[D3DRS_POINTSPRITEENABLE] ? 2u : 0u;
 
       uint32_t mode = scaleBit | spriteBit;
+
+      if (rs[D3DRS_POINTSCALEENABLE] && m_flags.test(D3D9DeviceFlag::DirtyPointScale)) {
+        m_flags.clr(D3D9DeviceFlag::DirtyPointScale);
+
+        UpdatePushConstant<D3D9RenderStateItem::PointScaleA>();
+        UpdatePushConstant<D3D9RenderStateItem::PointScaleB>();
+        UpdatePushConstant<D3D9RenderStateItem::PointScaleC>();
+      }
 
       if (unlikely(mode != m_lastPointMode)) {
         EmitCs([cMode = mode] (DxvkContext* ctx) {

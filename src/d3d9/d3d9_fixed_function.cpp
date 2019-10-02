@@ -287,9 +287,8 @@ namespace dxvk {
     uint32_t scaleValue     = spvModule.opFMul(floatType, scaleC, DeSqr);
              scaleValue     = spvModule.opFFma(floatType, scaleB, De, scaleValue);
              scaleValue     = spvModule.opFAdd(floatType, scaleA, scaleValue);
-             scaleValue     = spvModule.opFDiv(floatType, spvModule.constf32(1.0f), scaleValue);
              scaleValue     = spvModule.opSqrt(floatType, scaleValue);
-             scaleValue     = spvModule.opFMul(floatType, scaleValue, regularValue);
+             scaleValue     = spvModule.opFDiv(floatType, regularValue, scaleValue);
 
     uint32_t value = spvModule.opSelect(floatType, isScale, scaleValue, regularValue);
 
