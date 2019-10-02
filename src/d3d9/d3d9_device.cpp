@@ -3491,6 +3491,8 @@ namespace dxvk {
     UpdatePushConstant<D3D9RenderStateItem::PointScaleC>();
     UpdatePointMode<false>();
 
+    rs[D3DRS_SRGBWRITEENABLE]            = 0;
+
     // Render States not implemented beyond this point.
     rs[D3DRS_SHADEMODE]                  = D3DSHADE_GOURAUD;
     rs[D3DRS_LASTPIXEL]                  = TRUE;
@@ -3520,7 +3522,6 @@ namespace dxvk {
     rs[D3DRS_ADAPTIVETESS_Z]             = bit::cast<DWORD>(1.0f);
     rs[D3DRS_ADAPTIVETESS_W]             = bit::cast<DWORD>(0.0f);
     rs[D3DRS_ENABLEADAPTIVETESSELLATION] = FALSE;
-    rs[D3DRS_SRGBWRITEENABLE]            = 0;
     rs[D3DRS_WRAP8]                      = 0;
     rs[D3DRS_WRAP9]                      = 0;
     rs[D3DRS_WRAP10]                     = 0;
