@@ -6224,6 +6224,8 @@ namespace dxvk {
         ctx->resolveDepthStencilImage(cDstImage, cSrcImage, region, resolveMode, resolveMode);
       });
     }
+
+    dstTextureInfo->MarkAllDirty();
   }
 
 
