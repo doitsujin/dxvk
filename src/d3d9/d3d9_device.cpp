@@ -3475,6 +3475,22 @@ namespace dxvk {
     rs[D3DRS_CLIPPLANEENABLE] = 0;
     m_flags.set(D3D9DeviceFlag::DirtyClipPlanes);
 
+    rs[D3DRS_POINTSPRITEENABLE]          = FALSE;
+    rs[D3DRS_POINTSCALEENABLE]           = FALSE;
+    rs[D3DRS_POINTSCALE_A]               = bit::cast<DWORD>(1.0f);
+    rs[D3DRS_POINTSCALE_B]               = bit::cast<DWORD>(0.0f);
+    rs[D3DRS_POINTSCALE_C]               = bit::cast<DWORD>(0.0f);
+    rs[D3DRS_POINTSIZE]                  = bit::cast<DWORD>(1.0f);
+    rs[D3DRS_POINTSIZE_MIN]              = bit::cast<DWORD>(1.0f);
+    rs[D3DRS_POINTSIZE_MAX]              = bit::cast<DWORD>(64.0f);
+    UpdatePushConstant<D3D9RenderStateItem::PointSize>();
+    UpdatePushConstant<D3D9RenderStateItem::PointSizeMin>();
+    UpdatePushConstant<D3D9RenderStateItem::PointSizeMax>();
+    UpdatePushConstant<D3D9RenderStateItem::PointScaleA>();
+    UpdatePushConstant<D3D9RenderStateItem::PointScaleB>();
+    UpdatePushConstant<D3D9RenderStateItem::PointScaleC>();
+    UpdatePointMode<false>();
+
     // Render States not implemented beyond this point.
     rs[D3DRS_SHADEMODE]                  = D3DSHADE_GOURAUD;
     rs[D3DRS_LASTPIXEL]                  = TRUE;
@@ -3489,17 +3505,9 @@ namespace dxvk {
     rs[D3DRS_WRAP7]                      = 0;
     rs[D3DRS_CLIPPING]                   = TRUE;
     rs[D3DRS_VERTEXBLEND]                = D3DVBF_DISABLE;
-    rs[D3DRS_POINTSIZE]                  = bit::cast<DWORD>(1.0f);
-    rs[D3DRS_POINTSIZE_MIN]              = bit::cast<DWORD>(1.0f);
-    rs[D3DRS_POINTSPRITEENABLE]          = FALSE;
-    rs[D3DRS_POINTSCALEENABLE]           = FALSE;
-    rs[D3DRS_POINTSCALE_A]               = bit::cast<DWORD>(1.0f);
-    rs[D3DRS_POINTSCALE_B]               = bit::cast<DWORD>(0.0f);
-    rs[D3DRS_POINTSCALE_C]               = bit::cast<DWORD>(0.0f);
     rs[D3DRS_MULTISAMPLEANTIALIAS]       = TRUE;
     rs[D3DRS_PATCHEDGESTYLE]             = D3DPATCHEDGE_DISCRETE;
     rs[D3DRS_DEBUGMONITORTOKEN]          = D3DDMT_ENABLE;
-    rs[D3DRS_POINTSIZE_MAX]              = bit::cast<DWORD>(64.0f);
     rs[D3DRS_INDEXEDVERTEXBLENDENABLE]   = FALSE;
     rs[D3DRS_TWEENFACTOR]                = bit::cast<DWORD>(0.0f);
     rs[D3DRS_POSITIONDEGREE]             = D3DDEGREE_CUBIC;
