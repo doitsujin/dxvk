@@ -49,7 +49,7 @@ namespace dxvk {
   };
 
   // Default point size and point scale magic!
-  D3D9PointSizeInfoVS GetPointSizeInfoVS(SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t rsBlock);
+  D3D9PointSizeInfoVS GetPointSizeInfoVS(SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t perVertPointSize, uint32_t rsBlock);
 
   struct D3D9PointSizeInfoPS {
     uint32_t isSprite;
@@ -69,6 +69,8 @@ namespace dxvk {
 
     bool HasColor0; // Diffuse
     bool HasColor1; // Specular
+
+    bool HasPointSize;
 
     bool UseLighting;
 

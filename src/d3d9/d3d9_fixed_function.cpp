@@ -241,7 +241,7 @@ namespace dxvk {
   }
 
 
-  D3D9PointSizeInfoVS GetPointSizeInfoVS(SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t rsBlock) {
+  D3D9PointSizeInfoVS GetPointSizeInfoVS(SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t perVertPointSize, uint32_t rsBlock) {
     uint32_t floatType  = spvModule.defFloatType(32);
     uint32_t floatPtr   = spvModule.defPointerType(floatType, spv::StorageClassPushConstant);
     uint32_t vec3Type   = spvModule.defVectorType(floatType, 3);
@@ -261,7 +261,7 @@ namespace dxvk {
     uint32_t scaleBit  = spvModule.opBitFieldUExtract(uint32Type, pointMode, spvModule.consti32(0), spvModule.consti32(1));
     uint32_t isScale   = spvModule.opIEqual(boolType, scaleBit, spvModule.constu32(1));
 
-    uint32_t regularValue   = LoadFloat(D3D9RenderStateItem::PointSize);
+    uint32_t regularValue = perVertPointSize != 0 ? perVertPointSize : LoadFloat(D3D9RenderStateItem::PointSize);
 
     uint32_t scaleC = LoadFloat(D3D9RenderStateItem::PointScaleC);
     uint32_t scaleB = LoadFloat(D3D9RenderStateItem::PointScaleB);
@@ -418,6 +418,7 @@ namespace dxvk {
 
     struct {
       uint32_t POSITION = { 0 };
+      uint32_t POINTSIZE = { 0 };
       uint32_t NORMAL = { 0 };
       uint32_t TEXCOORD[8] = { 0 };
       uint32_t COLOR[2] = { 0 };
@@ -993,7 +994,7 @@ namespace dxvk {
     fogCtx.oColor      = 0;
     m_module.opStore(m_vs.out.FOG, DoFixedFunctionFog(m_module, fogCtx));
 
-    auto pointInfo = GetPointSizeInfoVS(m_module, 0, vtx, m_rsBlock);
+    auto pointInfo = GetPointSizeInfoVS(m_module, 0, vtx, m_vs.in.POINTSIZE, m_rsBlock);
 
     uint32_t pointSize = m_module.opFClamp(m_floatType, pointInfo.defaultValue, pointInfo.min, pointInfo.max);
     m_module.opStore(m_vs.out.POINTSIZE, pointSize);
@@ -1226,8 +1227,8 @@ namespace dxvk {
     m_vs.constants.materialPower    = LoadConstant(m_floatType, VSConstMaterialPower);
 
     // Do IO
-    m_vs.in.POSITION = declareIO(true, DxsoSemantic{ DxsoUsage::Position, 0 });
-    m_vs.in.NORMAL   = declareIO(true, DxsoSemantic{ DxsoUsage::Normal, 0 });
+    m_vs.in.POSITION  = declareIO(true, DxsoSemantic{ DxsoUsage::Position, 0 });
+    m_vs.in.NORMAL    = declareIO(true, DxsoSemantic{ DxsoUsage::Normal, 0 });
 
     uint32_t pointCoord = GetPointCoord(m_module, m_entryPointInterfaces);
     auto pointInfo = GetPointSizeInfoPS(m_module, m_rsBlock);
@@ -1268,6 +1269,9 @@ namespace dxvk {
 
     m_vs.in.FOG       = declareIO(true,  DxsoSemantic{ DxsoUsage::Fog,   0 });
     m_vs.out.FOG      = declareIO(false, DxsoSemantic{ DxsoUsage::Fog,   0 });
+
+    if (m_vsKey.HasPointSize)
+      m_vs.in.POINTSIZE = declareIO(true, DxsoSemantic{ DxsoUsage::PointSize, 0 });
   }
 
 
@@ -1963,6 +1967,7 @@ namespace dxvk {
     state.add(bhash(key.HasPositionT));
     state.add(bhash(key.HasColor0));
     state.add(bhash(key.HasColor1));
+    state.add(bhash(key.HasPointSize));
     state.add(bhash(key.UseLighting));
     state.add(bhash(key.NormalizeNormals));
     state.add(bhash(key.LocalViewer));

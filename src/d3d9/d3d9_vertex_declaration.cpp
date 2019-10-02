@@ -213,6 +213,8 @@ namespace dxvk {
         m_flags.set(D3D9VertexDeclFlag::HasColor1);
       else if (element.Usage == D3DDECLUSAGE_POSITIONT)
         m_flags.set(D3D9VertexDeclFlag::HasPositionT);
+      else if (element.Usage == D3DDECLUSAGE_PSIZE)
+        m_flags.set(D3D9VertexDeclFlag::HasPointSize);
     }
   }
 
