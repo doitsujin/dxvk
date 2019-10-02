@@ -4820,7 +4820,7 @@ namespace dxvk {
 
   template <bool Points>
   void D3D9DeviceEx::UpdatePointMode() {
-    if constexpr (Points) {
+    if constexpr (!Points) {
       m_lastPointMode = 0;
 
       EmitCs([](DxvkContext* ctx) {
