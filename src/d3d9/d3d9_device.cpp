@@ -4239,8 +4239,8 @@ namespace dxvk {
         this->FlushImage(pResource, Subresource);
     }
 
-    if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED
-    && (!pResource->IsManaged() || m_d3d9Options.evictManagedOnUnlock))
+    // TODO: Should we do this also for non-offscreen resources?
+    if (pResource->IsManaged() && !m_d3d9Options.evictManagedOnUnlock)
       pResource->DestroyBufferSubresource(Subresource);
 
     if (pResource->IsAutomaticMip())
