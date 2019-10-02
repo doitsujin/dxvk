@@ -255,6 +255,7 @@ namespace dxvk {
      */
     void DestroyBufferSubresource(UINT Subresource) {
       m_buffers[Subresource] = nullptr;
+      SetDirty(Subresource, true);
     }
 
     /**
