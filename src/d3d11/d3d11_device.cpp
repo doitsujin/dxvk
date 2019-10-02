@@ -2632,6 +2632,7 @@ namespace dxvk {
       case DXGI_CPU_ACCESS_SCRATCH:
         desc.Usage          = D3D11_USAGE_STAGING;
         desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE;
+        break;
 
       default:
         return E_INVALIDARG;
