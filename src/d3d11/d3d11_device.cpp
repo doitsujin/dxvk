@@ -2593,10 +2593,87 @@ namespace dxvk {
           DXGI_USAGE            Usage,
     const DXGI_SHARED_RESOURCE* pSharedResource,
           IDXGISurface**        ppSurface) {
-    InitReturnPtr(ppSurface);
+    if (!pDesc || (NumSurfaces && !ppSurface))
+      return E_INVALIDARG;
     
-    Logger::err("D3D11DXGIDevice::CreateSurface: Not implemented");
-    return E_NOTIMPL;
+    D3D11_TEXTURE2D_DESC desc;
+    desc.Width          = pDesc->Width;
+    desc.Height         = pDesc->Height;
+    desc.MipLevels      = 1;
+    desc.ArraySize      = 1;
+    desc.Format         = pDesc->Format;
+    desc.SampleDesc     = pDesc->SampleDesc;
+    desc.BindFlags      = 0;
+    desc.MiscFlags      = 0;
+
+    // Handle bind flags
+    if (Usage & DXGI_USAGE_RENDER_TARGET_OUTPUT)
+      desc.BindFlags |= D3D11_BIND_RENDER_TARGET;
+
+    if (Usage & DXGI_USAGE_SHADER_INPUT)
+      desc.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
+
+    if (Usage & DXGI_USAGE_UNORDERED_ACCESS)
+      desc.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
+
+    // Handle CPU access flags
+    switch (Usage & DXGI_CPU_ACCESS_FIELD) {
+      case DXGI_CPU_ACCESS_NONE:
+        desc.Usage          = D3D11_USAGE_DEFAULT;
+        desc.CPUAccessFlags = 0;
+        break;
+
+      case DXGI_CPU_ACCESS_DYNAMIC:
+        desc.Usage          = D3D11_USAGE_DYNAMIC;
+        desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+        break;
+
+      case DXGI_CPU_ACCESS_READ_WRITE:
+      case DXGI_CPU_ACCESS_SCRATCH:
+        desc.Usage          = D3D11_USAGE_STAGING;
+        desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ | D3D11_CPU_ACCESS_WRITE;
+
+      default:
+        return E_INVALIDARG;
+    }
+
+    // Restrictions and limitations of CreateSurface are not
+    // well-documented, so we'll be a lenient on validation.
+    HRESULT hr = m_d3d11Device.CreateTexture2D(&desc, nullptr, nullptr);
+
+    if (FAILED(hr))
+      return hr;
+
+    // We don't support shared resources
+    if (NumSurfaces && pSharedResource)
+      Logger::err("D3D11: CreateSurface: Shared surfaces not supported");
+
+    // Try to create the given number of surfaces
+    uint32_t surfacesCreated = 0;
+    hr = S_OK;
+
+    for (uint32_t i = 0; i < NumSurfaces; i++) {
+      Com<ID3D11Texture2D> texture;
+
+      hr = m_d3d11Device.CreateTexture2D(&desc, nullptr, &texture);
+
+      if (SUCCEEDED(hr)) {
+        hr = texture->QueryInterface(__uuidof(IDXGISurface),
+          reinterpret_cast<void**>(&ppSurface[i]));
+        surfacesCreated = i + 1;
+      }
+
+      if (FAILED(hr))
+        break;
+    }
+
+    // Don't leak surfaces if we failed to create one
+    if (FAILED(hr)) {
+      for (uint32_t i = 0; i < surfacesCreated; i++)
+        ppSurface[i]->Release();
+    }
+
+    return hr;
   }
   
   
