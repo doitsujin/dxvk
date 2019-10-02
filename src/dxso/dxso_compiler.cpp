@@ -2825,8 +2825,13 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
 
   void DxsoCompiler::emitInputSetup() {
-    uint32_t pointCoord = GetPointCoord(m_module, m_entryPointInterfaces);
-    auto pointInfo = GetPointSizeInfoPS(m_module, m_rsBlock);
+    uint32_t pointCoord = 0;
+    D3D9PointSizeInfoPS pointInfo;
+
+    if (m_programInfo.type() == DxsoProgramType::PixelShader) {
+      pointCoord = GetPointCoord(m_module, m_entryPointInterfaces);
+      pointInfo  = GetPointSizeInfoPS(m_module, m_rsBlock);
+    }
 
     for (uint32_t i = 0; i < m_isgn.elemCount; i++) {
       const auto& elem = m_isgn.elems[i];
