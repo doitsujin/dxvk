@@ -1636,7 +1636,7 @@ namespace dxvk {
     // if D3DRS_POINTSPRITEENABLE is set.
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       m_ps.in.TEXCOORD[i] = declareIO(true, DxsoSemantic{ DxsoUsage::Texcoord, i });
-      m_ps.in.TEXCOORD[i] = m_module.opSelect(m_vec4Type, pointInfo.isSprite, pointCoord, m_vs.in.TEXCOORD[i]);
+      m_ps.in.TEXCOORD[i] = m_module.opSelect(m_vec4Type, pointInfo.isSprite, pointCoord, m_ps.in.TEXCOORD[i]);
     }
 
     m_ps.in.COLOR[0] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 0 });
