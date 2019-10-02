@@ -2887,7 +2887,9 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       workingReg.id = m_module.opVectorShuffle(getVectorTypeId(workingReg.type),
         workingReg.id, indexVal.id, 4, indices.data());
 
-      if (elem.semantic.usage == DxsoUsage::Texcoord)
+      // We need to replace TEXCOORD inputs with gl_PointCoord
+      // if D3DRS_POINTSPRITEENABLE is set.
+      if (m_programInfo.type() == DxsoProgramType::PixelShader && elem.semantic.usage == DxsoUsage::Texcoord)
         workingReg.id = m_module.opSelect(getVectorTypeId(workingReg.type), pointInfo.isSprite, pointCoord, workingReg.id);
 
       m_module.opStore(indexPtr.id, workingReg.id);

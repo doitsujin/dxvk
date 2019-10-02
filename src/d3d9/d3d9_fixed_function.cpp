@@ -1230,13 +1230,8 @@ namespace dxvk {
     m_vs.in.POSITION  = declareIO(true, DxsoSemantic{ DxsoUsage::Position, 0 });
     m_vs.in.NORMAL    = declareIO(true, DxsoSemantic{ DxsoUsage::Normal, 0 });
 
-    uint32_t pointCoord = GetPointCoord(m_module, m_entryPointInterfaces);
-    auto pointInfo = GetPointSizeInfoPS(m_module, m_rsBlock);
-
-    for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
+    for (uint32_t i = 0; i < caps::TextureStageCount; i++)
       m_vs.in.TEXCOORD[i] = declareIO(true, DxsoSemantic{ DxsoUsage::Texcoord, i });
-      m_vs.in.TEXCOORD[i] = m_module.opSelect(m_vec4Type, pointInfo.isSprite, pointCoord, m_vs.in.TEXCOORD[i]);
-    }
 
     if (m_vsKey.HasColor0)
       m_vs.in.COLOR[0] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 0 });
@@ -1634,8 +1629,15 @@ namespace dxvk {
     m_module.setExecutionMode(m_entryPointId,
       spv::ExecutionModeOriginUpperLeft);
 
-    for (uint32_t i = 0; i < caps::TextureStageCount; i++)
+    uint32_t pointCoord = GetPointCoord(m_module, m_entryPointInterfaces);
+    auto pointInfo = GetPointSizeInfoPS(m_module, m_rsBlock);
+
+    // We need to replace TEXCOORD inputs with gl_PointCoord
+    // if D3DRS_POINTSPRITEENABLE is set.
+    for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       m_ps.in.TEXCOORD[i] = declareIO(true, DxsoSemantic{ DxsoUsage::Texcoord, i });
+      m_ps.in.TEXCOORD[i] = m_module.opSelect(m_vec4Type, pointInfo.isSprite, pointCoord, m_vs.in.TEXCOORD[i]);
+    }
 
     m_ps.in.COLOR[0] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 0 });
     m_ps.in.COLOR[1] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 1 });
