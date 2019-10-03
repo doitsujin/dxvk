@@ -108,6 +108,14 @@ namespace dxvk {
     
     LONG status = ::ChangeDisplaySettingsExW(
       monInfo.szDevice, &devMode, nullptr, CDS_FULLSCREEN, nullptr);
+
+    if (status != DISP_CHANGE_SUCCESSFUL) {
+      // Try again but without setting the frequency.
+      devMode.dmFields &= ~DM_DISPLAYFREQUENCY;
+      devMode.dmDisplayFrequency = 0;
+      status = ::ChangeDisplaySettingsExW(
+        monInfo.szDevice, &devMode, nullptr, CDS_FULLSCREEN, nullptr);
+    }
     
     return status == DISP_CHANGE_SUCCESSFUL ? D3D_OK : D3DERR_NOTAVAILABLE;
   }
