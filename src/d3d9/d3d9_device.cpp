@@ -4240,6 +4240,7 @@ namespace dxvk {
     }
 
     if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED
+    && (!pResource->IsDynamic())
     && (!pResource->IsManaged() || m_d3d9Options.evictManagedOnUnlock))
       pResource->DestroyBufferSubresource(Subresource);
 

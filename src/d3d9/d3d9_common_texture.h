@@ -258,6 +258,10 @@ namespace dxvk {
       SetDirty(Subresource, true);
     }
 
+    bool IsDynamic() const {
+      return m_desc.Usage & D3DUSAGE_DYNAMIC;
+    }
+
     /**
      * \brief Managed
      * \returns Whether a resource is managed (pool) or not
