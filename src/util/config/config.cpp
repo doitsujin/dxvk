@@ -135,6 +135,10 @@ namespace dxvk {
     { R"(\\HITMAN2\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
+    /* Modern Warfare Remastered                  */
+    { R"(\\h1_[ms]p64_ship\.exe$)", {{
+      { "dxgi.customVendorId",              "10de" },
+    }} },
   }};
 
 
