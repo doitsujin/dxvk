@@ -4834,8 +4834,11 @@ namespace dxvk {
     else {
       auto& rs = m_state.renderStates;
 
-      const uint32_t scaleBit  = rs[D3DRS_POINTSCALEENABLE]  ? 1u : 0u;
-      const uint32_t spriteBit = rs[D3DRS_POINTSPRITEENABLE] ? 2u : 0u;
+      const bool scale  = rs[D3DRS_POINTSCALEENABLE] && !UseProgrammableVS();
+      const bool sprite = rs[D3DRS_POINTSPRITEENABLE];
+
+      const uint32_t scaleBit  = scale  ? 1u : 0u;
+      const uint32_t spriteBit = sprite ? 2u : 0u;
 
       uint32_t mode = scaleBit | spriteBit;
 
