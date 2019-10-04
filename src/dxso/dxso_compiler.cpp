@@ -3171,7 +3171,8 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     }
     else {
       m_interfaceSlots.pushConstOffset = offsetof(D3D9RenderStateInfo, pointSize);
-      m_interfaceSlots.pushConstSize   = sizeof(float) * 6;
+      // Point scale never triggers on programmable
+      m_interfaceSlots.pushConstSize   = sizeof(float) * 3;
     }
   }
 
