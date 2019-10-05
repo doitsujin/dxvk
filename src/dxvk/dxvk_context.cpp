@@ -3624,9 +3624,6 @@ namespace dxvk {
       m_state.gp.state.ilBindings[i].stride = m_state.vi.vertexStrides[binding];
     }
     
-    for (uint32_t i = m_state.gp.state.ilBindingCount; i < MaxNumVertexBindings; i++)
-      m_state.gp.state.ilBindings[i].stride = 0;
-    
     // Check which dynamic states need to be active. States that
     // are not dynamic will be invalidated in the command buffer.
     m_flags.clr(DxvkContextFlag::GpDynamicBlendConstants,
