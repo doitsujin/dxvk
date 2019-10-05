@@ -263,7 +263,8 @@ namespace dxvk {
     
     // Walk over all modes that the display supports and
     // return those that match the requested format etc.
-    DEVMODEW devMode;
+    DEVMODEW devMode = { };
+    devMode.dmSize = sizeof(DEVMODEW);
     
     uint32_t srcModeId = 0;
     uint32_t dstModeId = 0;
