@@ -188,7 +188,7 @@ namespace dxvk {
     }
   }
 
-  Rc<DxvkShader> DxsoCompiler::finalize() {
+  void DxsoCompiler::finalize() {
     if (m_programInfo.type() == DxsoProgramTypes::VertexShader)
       this->emitVsFinalize();
     else
@@ -201,12 +201,35 @@ namespace dxvk {
       m_entryPointInterfaces.size(),
       m_entryPointInterfaces.data());
     m_module.setDebugName(m_entryPointId, "main");
+  }
 
-    DxvkShaderOptions shaderOptions = { };
 
-    DxvkShaderConstData constData = { };
+  DxsoPermutations DxsoCompiler::compile() {
+    DxsoPermutations permutations = { };
 
     // Create the shader module object
+    permutations[D3D9ShaderPermutations::None] = compileShader();
+
+    // If we need to add more permuations, might be worth making a copy of module
+    // before we do anything more. :-)
+    if (m_programInfo.type() == DxsoProgramType::PixelShader) {
+      if (m_ps.diffuseColorIn)
+        m_module.decorate(m_ps.diffuseColorIn, spv::DecorationFlat);
+
+      if (m_ps.specularColorIn)
+        m_module.decorate(m_ps.specularColorIn, spv::DecorationFlat);
+
+      permutations[D3D9ShaderPermutations::FlatShade] = compileShader();
+    }
+
+    return permutations;
+  }
+
+
+  Rc<DxvkShader> DxsoCompiler::compileShader() {
+    DxvkShaderOptions shaderOptions = { };
+    DxvkShaderConstData constData = { };
+
     return new DxvkShader(
       m_programInfo.shaderStage(),
       m_resourceSlots.size(),
@@ -2896,6 +2919,13 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       // if D3DRS_POINTSPRITEENABLE is set.
       if (m_programInfo.type() == DxsoProgramType::PixelShader && elem.semantic.usage == DxsoUsage::Texcoord)
         workingReg.id = m_module.opSelect(getVectorTypeId(workingReg.type), pointInfo.isSprite, pointCoord, workingReg.id);
+
+      if (m_programInfo.type() == DxsoProgramType::PixelShader && elem.semantic.usage == DxsoUsage::Color) {
+        if (elem.semantic.usageIndex == 0)
+          m_ps.diffuseColorIn = inputPtr.id;
+        else if (elem.semantic.usageIndex == 1)
+          m_ps.specularColorIn = inputPtr.id;
+      }
 
       m_module.opStore(indexPtr.id, workingReg.id);
     }

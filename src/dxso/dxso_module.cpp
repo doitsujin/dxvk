@@ -19,7 +19,7 @@ namespace dxvk {
     return info;
   }
 
-  Rc<DxvkShader> DxsoModule::compile(
+  DxsoPermutations DxsoModule::compile(
     const DxsoModuleInfo&     moduleInfo,
     const std::string&        fileName,
     const DxsoAnalysisInfo&   analysis,
@@ -37,7 +37,9 @@ namespace dxvk {
     m_usedSamplers = compiler.usedSamplers();
     m_usedRTs      = compiler.usedRTs();
 
-    return compiler.finalize();
+    compiler.finalize();
+
+    return compiler.compile();
   }
 
   void DxsoModule::runAnalyzer(

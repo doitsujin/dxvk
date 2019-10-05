@@ -133,6 +133,7 @@ namespace dxvk {
 
     D3D9FFShaderStage Stages[caps::TextureStageCount];
     bool              SpecularEnable;
+    bool              FlatShade;
   };
 
   struct D3D9FFShaderKeyHash {

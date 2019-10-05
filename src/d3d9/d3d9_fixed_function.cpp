@@ -669,6 +669,12 @@ namespace dxvk {
     else
       m_module.decorateBuiltIn(ptr, builtin);
 
+    bool diffuseOrSpec = semantic == DxsoSemantic{ DxsoUsage::Color, 0 }
+                      || semantic == DxsoSemantic{ DxsoUsage::Color, 1 };
+
+    if (diffuseOrSpec && m_fsKey.FlatShade)
+      m_module.decorate(ptr, spv::DecorationFlat);
+
     std::string name = str::format(input ? "in_" : "out_", semantic.usage, semantic.usageIndex);
     m_module.setDebugName(ptr, name.c_str());
 
@@ -1998,6 +2004,7 @@ namespace dxvk {
     std::hash<uint64_t> uint64hash;
 
     state.add(boolhash(key.SpecularEnable));
+    state.add(boolhash(key.FlatShade));
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       state.add(uint64hash(key.Stages[i].primitive.a));

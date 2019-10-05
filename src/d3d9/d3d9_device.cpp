@@ -1867,6 +1867,12 @@ namespace dxvk {
           // This is handled in UpdatePointMode.
           break;
 
+        case D3DRS_SHADEMODE:
+          if (m_state.pixelShader)
+            BindShader(DxsoProgramType::PixelShader, GetCommonShader(m_state.pixelShader), GetPixelShaderPermutation());
+          m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+          break;
+
         case D3DRS_ADAPTIVETESS_X:
         case D3DRS_ADAPTIVETESS_Z:
         case D3DRS_ADAPTIVETESS_W:
@@ -2592,7 +2598,8 @@ namespace dxvk {
 
       BindShader(
         DxsoProgramTypes::VertexShader,
-        GetCommonShader(shader));
+        GetCommonShader(shader),
+        GetVertexShaderPermutation());
     }
 
     m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
@@ -2917,7 +2924,8 @@ namespace dxvk {
 
       BindShader(
         DxsoProgramTypes::PixelShader,
-        GetCommonShader(shader));
+        GetCommonShader(shader),
+        GetPixelShaderPermutation());
     }
 
     return D3D_OK;
@@ -3487,8 +3495,9 @@ namespace dxvk {
 
     rs[D3DRS_SRGBWRITEENABLE]            = 0;
 
-    // Render States not implemented beyond this point.
     rs[D3DRS_SHADEMODE]                  = D3DSHADE_GOURAUD;
+
+    // Render States not implemented beyond this point.
     rs[D3DRS_LASTPIXEL]                  = TRUE;
     rs[D3DRS_DITHERENABLE]               = FALSE;
     rs[D3DRS_WRAP0]                      = 0;
@@ -5498,7 +5507,7 @@ namespace dxvk {
     if (likely(UseProgrammableVS())) {
       if (unlikely(m_flags.test(D3D9DeviceFlag::DirtyProgVertexShader))) {
         m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
-        BindShader(DxsoProgramType::VertexShader, GetCommonShader(m_state.vertexShader));
+        BindShader(DxsoProgramType::VertexShader, GetCommonShader(m_state.vertexShader), GetVertexShaderPermutation());
       }
       UploadConstants<DxsoProgramTypes::VertexShader>();
     }
@@ -5573,10 +5582,11 @@ namespace dxvk {
 
   void D3D9DeviceEx::BindShader(
         DxsoProgramType                   ShaderStage,
-  const D3D9CommonShader*                 pShaderModule) {
+  const D3D9CommonShader*                 pShaderModule,
+        D3D9ShaderPermutation             Permutation) {
     EmitCs([
       cStage  = GetShaderStage(ShaderStage),
-      cShader = pShaderModule->GetShader()
+      cShader = pShaderModule->GetShader(Permutation)
     ] (DxvkContext* ctx) {
       ctx->bindShader(cStage, cShader);
     });
@@ -6027,6 +6037,7 @@ namespace dxvk {
 
       D3D9FFShaderKeyFS key;
       key.SpecularEnable = m_state.renderStates[D3DRS_SPECULARENABLE];
+      key.FlatShade      = m_state.renderStates[D3DRS_SHADEMODE] == D3DSHADE_FLAT;
 
       uint32_t idx;
       for (idx = 0; idx < caps::TextureStageCount; idx++) {

@@ -23,6 +23,8 @@
 #include "d3d9_fixed_function.h"
 #include "d3d9_swvp_emu.h"
 
+#include "d3d9_shader_permutations.h"
+
 #include <vector>
 #include <type_traits>
 #include <unordered_map>
@@ -781,7 +783,8 @@ namespace dxvk {
 
     void BindShader(
             DxsoProgramType                   ShaderStage,
-      const D3D9CommonShader*                 pShaderModule);
+      const D3D9CommonShader*                 pShaderModule,
+            D3D9ShaderPermutation             Permutation);
 
     void BindInputLayout();
 
@@ -881,6 +884,17 @@ namespace dxvk {
 
     bool CanSWVP() {
       return m_behaviorFlags & (D3DCREATE_MIXED_VERTEXPROCESSING | D3DCREATE_SOFTWARE_VERTEXPROCESSING);
+    }
+
+    inline constexpr D3D9ShaderPermutation GetVertexShaderPermutation() {
+      return D3D9ShaderPermutations::None;
+    }
+
+    inline D3D9ShaderPermutation GetPixelShaderPermutation() {
+      if (unlikely(m_state.renderStates[D3DRS_SHADEMODE]))
+        return D3D9ShaderPermutations::FlatShade;
+
+      return D3D9ShaderPermutations::None;
     }
 
     Com<D3D9InterfaceEx>            m_parent;

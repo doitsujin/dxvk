@@ -6,6 +6,7 @@
 #include "dxso_isgn.h"
 
 #include "../d3d9/d3d9_constant_layout.h"
+#include "../d3d9/d3d9_shader_permutations.h"
 #include "../spirv/spirv_module.h"
 
 namespace dxvk {
@@ -174,6 +175,9 @@ namespace dxvk {
 
     uint32_t killState          = 0;
     uint32_t builtinLaneId      = 0;
+
+    uint32_t diffuseColorIn  = 0;
+    uint32_t specularColorIn = 0;
   };
 
   struct DxsoCfgBlockIf {
@@ -230,9 +234,14 @@ namespace dxvk {
 
     /**
      * \brief Finalizes the shader
-     * \returns The final shader object
      */
-    Rc<DxvkShader> finalize();
+    void finalize();
+
+    /**
+     * \brief Compiles the shader
+     * \returns The final shader objects
+     */
+    DxsoPermutations compile();
 
     const DxsoIsgn& isgn() { return m_isgn; }
     const DxsoIsgn& osgn() { return m_osgn; }
@@ -561,6 +570,8 @@ namespace dxvk {
 
       return this->emitRegisterLoad(lookup, writeMask);
     }
+
+    Rc<DxvkShader> compileShader();
 
     ///////////////////////////////
     // Handle shader ops

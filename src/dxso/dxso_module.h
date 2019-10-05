@@ -9,6 +9,7 @@
 #include "dxso_analysis.h"
 
 #include "../d3d9/d3d9_constant_layout.h"
+#include "../d3d9/d3d9_shader_permutations.h"
 
 #include <vector>
 
@@ -41,7 +42,7 @@ namespace dxvk {
      *        the compiled SPIR-V for debugging purposes.
      * \returns The compiled shader object
      */
-    Rc<DxvkShader> compile(
+    DxsoPermutations compile(
       const DxsoModuleInfo&     moduleInfo,
       const std::string&        fileName,
       const DxsoAnalysisInfo&   analysis,
