@@ -788,7 +788,7 @@ namespace dxvk {
     m_interop (this, &m_texture),
     m_surface (this, &m_texture),
     m_resource(this),
-    m_d3d10   (this, pDevice->GetD3D10Interface()) {
+    m_d3d10   (this) {
     
   }
   
@@ -890,7 +890,7 @@ namespace dxvk {
     m_interop (this, &m_texture),
     m_surface (this, &m_texture),
     m_resource(this),
-    m_d3d10   (this, pDevice->GetD3D10Interface()) {
+    m_d3d10   (this) {
     
   }
   
@@ -1009,7 +1009,7 @@ namespace dxvk {
   : m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE3D),
     m_interop (this, &m_texture),
     m_resource(this),
-    m_d3d10   (this, pDevice->GetD3D10Interface()) {
+    m_d3d10   (this) {
     
   }
   

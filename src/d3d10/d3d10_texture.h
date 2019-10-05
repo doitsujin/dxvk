@@ -16,8 +16,8 @@ namespace dxvk {
 
   public:
 
-    D3D10Texture1D(D3D11Texture1D* pParent, D3D10Device* pDevice)
-    : m_device(pDevice), m_d3d11(pParent) { }
+    D3D10Texture1D(D3D11Texture1D* pParent)
+    : m_d3d11(pParent) { }
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID                    riid,
@@ -70,7 +70,6 @@ namespace dxvk {
     
   private:
 
-    D3D10Device*    m_device;
     D3D11Texture1D* m_d3d11;
 
   };
@@ -82,8 +81,8 @@ namespace dxvk {
 
   public:
 
-    D3D10Texture2D(D3D11Texture2D* pParent, D3D10Device* pDevice)
-    : m_device(pDevice), m_d3d11(pParent) { }
+    D3D10Texture2D(D3D11Texture2D* pParent)
+    :  m_d3d11(pParent) { }
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID                    riid,
@@ -136,7 +135,6 @@ namespace dxvk {
 
   private:
 
-    D3D10Device*    m_device;
     D3D11Texture2D* m_d3d11;
 
   };
@@ -148,8 +146,8 @@ namespace dxvk {
 
   public:
 
-    D3D10Texture3D(D3D11Texture3D* pParent, D3D10Device* pDevice)
-    : m_device(pDevice), m_d3d11(pParent) { }
+    D3D10Texture3D(D3D11Texture3D* pParent)
+    : m_d3d11(pParent) { }
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID                    riid,
@@ -202,7 +200,6 @@ namespace dxvk {
 
   private:
 
-    D3D10Device*    m_device;
     D3D11Texture3D* m_d3d11;
 
   };
