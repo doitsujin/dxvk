@@ -45,9 +45,9 @@ namespace dxvk {
 
   VkBorderColor DxvkSampler::getBorderColor(bool depthCompare, VkClearColorValue borderColor) const {
     static const std::array<std::pair<VkClearColorValue, VkBorderColor>, 3> s_borderColors = {{
-      { { 0.0f, 0.0f, 0.0f, 0.0f }, VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK },
-      { { 0.0f, 0.0f, 0.0f, 1.0f }, VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK },
-      { { 1.0f, 1.0f, 1.0f, 1.0f }, VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE },
+      { { { 0.0f, 0.0f, 0.0f, 0.0f } }, VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK },
+      { { { 0.0f, 0.0f, 0.0f, 1.0f } }, VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK },
+      { { { 1.0f, 1.0f, 1.0f, 1.0f } }, VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE },
     }};
 
     if (depthCompare) {
