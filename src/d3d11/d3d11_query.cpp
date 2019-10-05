@@ -8,7 +8,7 @@ namespace dxvk {
     const D3D11_QUERY_DESC1& desc)
   : m_device(device), m_desc(desc),
     m_state(D3D11_VK_QUERY_INITIAL),
-    m_d3d10(this, device->GetD3D10Interface()) {
+    m_d3d10(this) {
     Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
 
     switch (m_desc.Query) {

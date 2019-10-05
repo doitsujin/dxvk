@@ -12,7 +12,7 @@ namespace dxvk {
   : m_device      (pDevice),
     m_desc        (*pDesc),
     m_resource    (this),
-    m_d3d10       (this, pDevice->GetD3D10Interface()) {
+    m_d3d10       (this) {
     DxvkBufferCreateInfo  info;
     info.size   = pDesc->ByteWidth;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
