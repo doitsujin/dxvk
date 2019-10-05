@@ -891,7 +891,7 @@ namespace dxvk {
     }
 
     inline D3D9ShaderPermutation GetPixelShaderPermutation() {
-      if (unlikely(m_state.renderStates[D3DRS_SHADEMODE]))
+      if (unlikely(m_state.renderStates[D3DRS_SHADEMODE] == D3DSHADE_FLAT))
         return D3D9ShaderPermutations::FlatShade;
 
       return D3D9ShaderPermutations::None;
