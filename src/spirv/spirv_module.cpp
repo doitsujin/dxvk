@@ -278,6 +278,23 @@ namespace dxvk {
     
     return this->constComposite(vectorTypeId, args.size(), args.data());
   }
+
+
+  uint32_t SpirvModule::constvec4b32(
+          bool                    x,
+          bool                    y,
+          bool                    z,
+          bool                    w) {
+    std::array<uint32_t, 4> args = {{
+      this->constBool(x), this->constBool(y),
+      this->constBool(z), this->constBool(w),
+    }};
+    
+    uint32_t scalarTypeId = this->defBoolType();
+    uint32_t vectorTypeId = this->defVectorType(scalarTypeId, 4);
+    
+    return this->constComposite(vectorTypeId, args.size(), args.data());
+  }
   
   
   uint32_t SpirvModule::constvec4u32(
