@@ -70,6 +70,7 @@ namespace dxvk {
 
   struct DxsoShaderInstruction {
     DxsoOpcode             opcode;
+    bool                   predicated;
     DxsoOpcodeSpecificData specificData;
 
     uint32_t               tokenLength;
@@ -193,6 +194,8 @@ namespace dxvk {
   struct DxsoInstructionContext {
     DxsoShaderInstruction       instruction;
 
+    DxsoRegister                pred;
+
     DxsoRegister                dst;
     std::array<
       DxsoRegister,
@@ -250,6 +253,7 @@ namespace dxvk {
     // Returns whether an extra token was read.
     bool decodeDestinationRegister(DxsoCodeIter& iter);
     bool decodeSourceRegister(uint32_t i, DxsoCodeIter& iter);
+    void decodePredicateRegister(DxsoCodeIter& iter);
 
     void decodeDeclaration(DxsoCodeIter& iter);
     void decodeDefinition(DxsoOpcode opcode, DxsoCodeIter& iter);

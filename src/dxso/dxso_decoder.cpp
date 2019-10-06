@@ -158,11 +158,27 @@ namespace dxvk {
     return false;
   }
 
+
+  void DxsoDecodeContext::decodePredicateRegister(DxsoCodeIter& iter) {
+    uint32_t token = iter.read();
+
+    this->decodeGenericRegister(m_ctx.pred, token);
+
+    m_ctx.pred.swizzle = DxsoRegSwizzle(
+      uint8_t((token & 0x00ff0000) >> 16));
+
+    m_ctx.pred.modifier = static_cast<DxsoRegModifier>(
+      (token & 0x0f000000) >> 24);
+  }
+
+
   bool DxsoDecodeContext::decodeInstruction(DxsoCodeIter& iter) {
     uint32_t token = iter.read();
 
     m_ctx.instruction.opcode = static_cast<DxsoOpcode>(
       token & 0x0000ffff);
+
+    m_ctx.instruction.predicated = token & (1 << 28);
 
     m_ctx.instruction.specificData.uint32 =
       (token & 0x00ff0000) >> 16;
@@ -170,7 +186,7 @@ namespace dxvk {
     m_ctx.instruction.tokenLength =
       this->decodeInstructionLength(token);
 
-    const uint32_t tokenLength =
+    uint32_t tokenLength =
       m_ctx.instruction.tokenLength;
 
     switch (m_ctx.instruction.opcode) {
@@ -213,6 +229,11 @@ namespace dxvk {
           if (i == 0) {
             if (this->decodeDestinationRegister(iter))
               i++;
+          }
+          else if (i == 1 && m_ctx.instruction.predicated) {
+            // Relative addressing makes no sense
+            // for predicate registers.
+            this->decodePredicateRegister(iter);
           }
           else {
             if (this->decodeSourceRegister(sourceIdx, iter))

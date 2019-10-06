@@ -275,6 +275,12 @@ namespace dxvk {
       DxsoRegisterPointer,
       DxsoMaxTempRegs> m_rRegs;
 
+    ////////////////////////////////////////////////
+    // Predicate registers
+    std::array<
+      DxsoRegisterPointer,
+      1> m_pRegs;
+
     //////////////////////////////////////////////////////////////////
     // Array of input values. Since v# and o# registers are indexable
     // in DXSO, we need to copy them into an array first.
@@ -460,7 +466,7 @@ namespace dxvk {
         reg.hasRelative ? &reg.relative : nullptr);
     }
 
-    uint32_t emitBoolComparison(DxsoComparison cmp, uint32_t a, uint32_t b);
+    uint32_t emitBoolComparison(DxsoVectorType type, DxsoComparison cmp, uint32_t a, uint32_t b);
 
     DxsoRegisterValue emitValueLoad(
             DxsoRegisterPointer ptr);
@@ -470,6 +476,7 @@ namespace dxvk {
             DxsoRegisterValue       value,
             DxsoRegMask             writeMask,
             bool                    saturate,
+            DxsoRegisterValue       predicate,
             int8_t                  shift,
             DxsoRegisterId          regId) {
       if (regId.type == DxsoRegisterType::RasterizerOut && regId.num == RasterOutFog)
@@ -502,13 +509,16 @@ namespace dxvk {
         }
       }
 
-      this->emitValueStore(ptr, value, writeMask);
+      this->emitValueStore(ptr, value, writeMask, predicate);
     }
+
+    DxsoRegisterValue applyPredicate(DxsoRegisterValue pred, DxsoRegisterValue dst, DxsoRegisterValue src);
 
     void emitValueStore(
             DxsoRegisterPointer     ptr,
             DxsoRegisterValue       value,
-            DxsoRegMask             writeMask);
+            DxsoRegMask             writeMask,
+            DxsoRegisterValue       predicate);
 
     DxsoRegisterValue emitClampBoundReplicant(
             DxsoRegisterValue       srcValue,
@@ -561,6 +571,13 @@ namespace dxvk {
         reg.hasRelative ? &reg.relative : nullptr);
     }
 
+    DxsoRegisterValue emitPredicateLoad(const DxsoInstructionContext& ctx) {
+      if (!ctx.instruction.predicated)
+        return DxsoRegisterValue();
+
+      return emitRegisterLoad(ctx.pred, IdentityWriteMask);
+    }
+
     DxsoRegisterValue emitRegisterLoadTexcoord(
       const DxsoRegister& reg,
             DxsoRegMask   writeMask) {
@@ -585,6 +602,7 @@ namespace dxvk {
     bool isScalarRegister(DxsoRegisterId id);
 
     void emitMov(const DxsoInstructionContext& ctx);
+    void emitPredicateOp(const DxsoInstructionContext& ctx);
     void emitVectorAlu(const DxsoInstructionContext& ctx);
     void emitMatrixAlu(const DxsoInstructionContext& ctx);
 

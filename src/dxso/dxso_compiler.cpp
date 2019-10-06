@@ -124,6 +124,9 @@ namespace dxvk {
     case DxsoOpcode::DsY:
       return this->emitVectorAlu(ctx);
 
+    case DxsoOpcode::SetP:
+      return this->emitPredicateOp(ctx);
+
     case DxsoOpcode::M3x2:
     case DxsoOpcode::M3x3:
     case DxsoOpcode::M3x4:
@@ -1217,6 +1220,18 @@ namespace dxvk {
           }
           return m_ps.vFace;
         }
+
+      case DxsoRegisterType::Predicate: {
+        DxsoRegisterPointer& ptr = m_pRegs.at(reg.id.num);
+        if (ptr.id == 0) {
+          std::string name = str::format("p", reg.id.num);
+          ptr = this->emitRegisterPtr(
+            name.c_str(), DxsoScalarType::Bool, 4,
+            m_module.constvec4b32(false, false, false, false));
+        }
+        return ptr;
+      }
+
       default: {
         //Logger::warn(str::format("emitGetOperandPtr: unhandled reg type: ", reg.id.type));
 
@@ -1228,18 +1243,18 @@ namespace dxvk {
   }
 
 
-  uint32_t DxsoCompiler::emitBoolComparison(DxsoComparison cmp, uint32_t a, uint32_t b) {
-    const uint32_t typeId = m_module.defBoolType();
+  uint32_t DxsoCompiler::emitBoolComparison(DxsoVectorType type, DxsoComparison cmp, uint32_t a, uint32_t b) {
+    const uint32_t typeId = getVectorTypeId(type);
     switch (cmp) {
       default:
-      case DxsoComparison::Never:        return m_module.constBool             (false); break;
+      case DxsoComparison::Never:        return m_module.constbReplicant(false, type.ccount);  break;
       case DxsoComparison::GreaterThan:  return m_module.opFOrdGreaterThan     (typeId, a, b); break;
       case DxsoComparison::Equal:        return m_module.opFOrdEqual           (typeId, a, b); break;
       case DxsoComparison::GreaterEqual: return m_module.opFOrdGreaterThanEqual(typeId, a, b); break;
       case DxsoComparison::LessThan:     return m_module.opFOrdLessThan        (typeId, a, b); break;
       case DxsoComparison::NotEqual:     return m_module.opFOrdNotEqual        (typeId, a, b); break;
       case DxsoComparison::LessEqual:    return m_module.opFOrdLessThanEqual   (typeId, a, b); break;
-      case DxsoComparison::Always:       return m_module.constBool             (true); break;
+      case DxsoComparison::Always:       return m_module.constbReplicant(true, type.ccount);   break;
     }
 }
 
@@ -1255,16 +1270,40 @@ namespace dxvk {
   }
 
 
+  DxsoRegisterValue DxsoCompiler::applyPredicate(DxsoRegisterValue pred, DxsoRegisterValue dst, DxsoRegisterValue src) {
+    if (dst.type.ccount != pred.type.ccount) {
+      DxsoRegMask mask = DxsoRegMask(
+        pred.type.ccount > 0,
+        pred.type.ccount > 1,
+        pred.type.ccount > 2,
+        pred.type.ccount > 3);
+
+      pred = emitRegisterSwizzle(pred, IdentitySwizzle, mask);
+    }
+
+    dst.id = m_module.opSelect(
+      getVectorTypeId(dst.type),
+      pred.id,
+      src.id, dst.id);
+
+    return dst;
+  }
+
+
   void DxsoCompiler::emitValueStore(
           DxsoRegisterPointer     ptr,
           DxsoRegisterValue       value,
-          DxsoRegMask             writeMask) {
+          DxsoRegMask             writeMask,
+          DxsoRegisterValue       predicate) {
     // If the source value consists of only one component,
     // it is stored in all components of the destination.
     if (value.type.ccount == 1)
       value = emitRegisterExtend(value, writeMask.popCount());
 
     if (ptr.type.ccount == writeMask.popCount()) {
+      if (predicate.id)
+        value = applyPredicate(predicate, emitValueLoad(ptr), value);
+
       // Simple case: We write to the entire register
       m_module.opStore(ptr.id, value.id);
     } else {
@@ -1272,6 +1311,9 @@ namespace dxvk {
       // register, so we need to load and modify it
       DxsoRegisterValue tmp = emitValueLoad(ptr);
       tmp = emitRegisterInsert(tmp, value, writeMask);
+
+      if (predicate.id)
+        value = applyPredicate(predicate, emitValueLoad(ptr), tmp);
 
       m_module.opStore(ptr.id, tmp.id);
     }
@@ -1686,7 +1728,7 @@ namespace dxvk {
     else // No special stuff needed!
       result.id = src0.id;
 
-    this->emitDstStore(dst, result, mask, ctx.dst.saturate, ctx.dst.shift, ctx.dst.id);
+    this->emitDstStore(dst, result, mask, ctx.dst.saturate, emitPredicateLoad(ctx), ctx.dst.shift, ctx.dst.id);
   }
 
 
@@ -2057,7 +2099,26 @@ namespace dxvk {
         return;
     }
 
-    this->emitDstStore(dst, result, mask, ctx.dst.saturate, ctx.dst.shift, ctx.dst.id);
+    this->emitDstStore(dst, result, mask, ctx.dst.saturate, emitPredicateLoad(ctx), ctx.dst.shift, ctx.dst.id);
+  }
+
+
+  void DxsoCompiler::emitPredicateOp(const DxsoInstructionContext& ctx) {
+    const auto& src = ctx.src;
+
+    DxsoRegMask mask = ctx.dst.mask;
+
+    DxsoRegisterPointer dst = emitGetOperandPtr(ctx.dst);
+
+    DxsoRegisterValue result;
+    result.type.ctype  = dst.type.ctype;
+    result.type.ccount = mask.popCount();
+
+    result.id = emitBoolComparison(
+      result.type, ctx.instruction.specificData.comparison,
+      emitRegisterLoad(src[0], mask).id, emitRegisterLoad(src[1], mask).id);
+
+    this->emitValueStore(dst, result, mask, emitPredicateLoad(ctx));
   }
 
 
@@ -2126,7 +2187,7 @@ namespace dxvk {
     result.id = m_module.opCompositeConstruct(
       typeId, iterCount, indices.data());
 
-    this->emitDstStore(dst, result, mask, ctx.dst.saturate, ctx.dst.shift, ctx.dst.id);
+    this->emitDstStore(dst, result, mask, ctx.dst.saturate, emitPredicateLoad(ctx), ctx.dst.shift, ctx.dst.id);
   }
 
 
@@ -2299,12 +2360,13 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       throw DxvkError("DxbcCompiler: 'BreakC' outside 'Rep' or 'Loop' found");
 
     DxsoRegMask srcMask(true, false, false, false);
-    uint32_t a = emitRegisterLoad(ctx.src[0], srcMask).id;
-    uint32_t b = emitRegisterLoad(ctx.src[1], srcMask).id;
+    auto a = emitRegisterLoad(ctx.src[0], srcMask);
+    auto b = emitRegisterLoad(ctx.src[1], srcMask);
 
     uint32_t result = this->emitBoolComparison(
+      { DxsoScalarType::Bool, a.type.ccount },
       ctx.instruction.specificData.comparison,
-      a, b);
+      a.id, b.id);
 
     // We basically have to wrap this into an 'if' block
     const uint32_t breakBlock = m_module.allocateId();
@@ -2330,12 +2392,13 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     DxsoRegMask srcMask(true, false, false, false);
     if (opcode == DxsoOpcode::Ifc) {
-      uint32_t a = emitRegisterLoad(ctx.src[0], srcMask).id;
-      uint32_t b = emitRegisterLoad(ctx.src[1], srcMask).id;
+      auto a = emitRegisterLoad(ctx.src[0], srcMask);
+      auto b = emitRegisterLoad(ctx.src[1], srcMask);
 
       result = this->emitBoolComparison(
+        { DxsoScalarType::Bool, a.type.ccount },
         ctx.instruction.specificData.comparison,
-        a, b);
+        a.id, b.id);
     } else
       result = emitRegisterLoad(ctx.src[0], srcMask).id;
 
@@ -2434,7 +2497,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     DxsoRegisterPointer dst = emitGetOperandPtr(ctx.dst);
 
-    this->emitDstStore(dst, result, ctx.dst.mask, ctx.dst.saturate, ctx.dst.shift, ctx.dst.id);
+    this->emitDstStore(dst, result, ctx.dst.mask, ctx.dst.saturate, emitPredicateLoad(ctx), ctx.dst.shift, ctx.dst.id);
   }
 
   void DxsoCompiler::emitTextureSample(const DxsoInstructionContext& ctx) {
@@ -2672,7 +2735,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         reference,
         imageOperands);
 
-      this->emitDstStore(dst, result, ctx.dst.mask, ctx.dst.saturate, ctx.dst.shift, ctx.dst.id);
+      this->emitDstStore(dst, result, ctx.dst.mask, ctx.dst.saturate, emitPredicateLoad(ctx), ctx.dst.shift, ctx.dst.id);
     };
 
     auto SampleType = [&](DxsoSamplerType samplerType) {
