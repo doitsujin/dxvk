@@ -208,6 +208,81 @@ namespace dxvk {
 
 
   /**
+   * \brief Packed rasterizer state
+   *
+   * Stores a bunch of flags and parameters
+   * related to rasterization in four bytes.
+   */
+  class DxvkRsInfo {
+
+  public:
+
+    DxvkRsInfo() = default;
+
+    DxvkRsInfo(
+            VkBool32              depthClipEnable,
+            VkBool32              depthBiasEnable,
+            VkPolygonMode         polygonMode,
+            VkCullModeFlags       cullMode,
+            VkFrontFace           frontFace,
+            uint32_t              viewportCount,
+            VkSampleCountFlags    sampleCount)
+    : m_depthClipEnable (uint32_t(depthClipEnable)),
+      m_depthBiasEnable (uint32_t(depthBiasEnable)),
+      m_polygonMode     (uint32_t(polygonMode)),
+      m_cullMode        (uint32_t(cullMode)),
+      m_frontFace       (uint32_t(frontFace)),
+      m_viewportCount   (uint32_t(viewportCount)),
+      m_sampleCount     (uint32_t(sampleCount)),
+      m_reserved        (0) { }
+    
+    VkBool32 depthClipEnable() const {
+      return VkBool32(m_depthClipEnable);
+    }
+
+    VkBool32 depthBiasEnable() const {
+      return VkBool32(m_depthBiasEnable);
+    }
+
+    VkPolygonMode polygonMode() const {
+      return VkPolygonMode(m_polygonMode);
+    }
+
+    VkCullModeFlags cullMode() const {
+      return VkCullModeFlags(m_cullMode);
+    }
+
+    VkFrontFace frontFace() const {
+      return VkFrontFace(m_frontFace);
+    }
+
+    uint32_t viewportCount() const {
+      return m_viewportCount;
+    }
+
+    VkSampleCountFlags sampleCount() const {
+      return VkSampleCountFlags(m_sampleCount);
+    }
+
+    void setViewportCount(uint32_t viewportCount) {
+      m_viewportCount = viewportCount;
+    }
+
+  private:
+
+    uint32_t m_depthClipEnable        : 1;
+    uint32_t m_depthBiasEnable        : 1;
+    uint32_t m_polygonMode            : 2;
+    uint32_t m_cullMode               : 2;
+    uint32_t m_frontFace              : 1;
+    uint32_t m_viewportCount          : 5;
+    uint32_t m_sampleCount            : 5;
+    uint32_t m_reserved               : 15;
+  
+  };
+
+
+  /**
    * \brief Packed graphics pipeline state
    *
    * Stores a compressed representation of the full
@@ -241,7 +316,7 @@ namespace dxvk {
     }
 
     bool useDynamicDepthBias() const {
-      return rsDepthBiasEnable;
+      return rs.depthBiasEnable();
     }
 
     bool useDynamicDepthBounds() const {
@@ -265,14 +340,7 @@ namespace dxvk {
     DxvkBindingMask         bsBindingMask;
     DxvkIaInfo              ia;
     DxvkIlInfo              il;
-    
-    VkBool32                            rsDepthClipEnable;
-    VkBool32                            rsDepthBiasEnable;
-    VkPolygonMode                       rsPolygonMode;
-    VkCullModeFlags                     rsCullMode;
-    VkFrontFace                         rsFrontFace;
-    uint32_t                            rsViewportCount;
-    VkSampleCountFlags                  rsSampleCount;
+    DxvkRsInfo              rs;
     
     VkSampleCountFlags                  msSampleCount;
     uint32_t                            msSampleMask;

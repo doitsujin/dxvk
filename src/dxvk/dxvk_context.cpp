@@ -2173,8 +2173,8 @@ namespace dxvk {
           uint32_t            viewportCount,
     const VkViewport*         viewports,
     const VkRect2D*           scissorRects) {
-    if (m_state.gp.state.rsViewportCount != viewportCount) {
-      m_state.gp.state.rsViewportCount = viewportCount;
+    if (m_state.gp.state.rs.viewportCount() != viewportCount) {
+      m_state.gp.state.rs.setViewportCount(viewportCount);
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
     
@@ -2281,12 +2281,14 @@ namespace dxvk {
   
   
   void DxvkContext::setRasterizerState(const DxvkRasterizerState& rs) {
-    m_state.gp.state.rsDepthClipEnable   = rs.depthClipEnable;
-    m_state.gp.state.rsDepthBiasEnable   = rs.depthBiasEnable;
-    m_state.gp.state.rsPolygonMode       = rs.polygonMode;
-    m_state.gp.state.rsCullMode          = rs.cullMode;
-    m_state.gp.state.rsFrontFace         = rs.frontFace;
-    m_state.gp.state.rsSampleCount       = rs.sampleCount;
+    m_state.gp.state.rs = DxvkRsInfo(
+      rs.depthClipEnable,
+      rs.depthBiasEnable,
+      rs.polygonMode,
+      rs.cullMode,
+      rs.frontFace,
+      m_state.gp.state.rs.viewportCount(),
+      rs.sampleCount);
 
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
@@ -4103,7 +4105,7 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyViewport)) {
       m_flags.clr(DxvkContextFlag::GpDirtyViewport);
 
-      uint32_t viewportCount = m_state.gp.state.rsViewportCount;
+      uint32_t viewportCount = m_state.gp.state.rs.viewportCount();
       m_cmd->cmdSetViewport(0, viewportCount, m_state.vp.viewports.data());
       m_cmd->cmdSetScissor (0, viewportCount, m_state.vp.scissorRects.data());
     }

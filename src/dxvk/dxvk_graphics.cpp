@@ -160,8 +160,8 @@ namespace dxvk {
 
     if (state.msSampleCount)
       sampleCount = VkSampleCountFlagBits(state.msSampleCount);
-    else if (state.rsSampleCount)
-      sampleCount = VkSampleCountFlagBits(state.rsSampleCount);
+    else if (state.rs.sampleCount())
+      sampleCount = VkSampleCountFlagBits(state.rs.sampleCount());
     
     // Set up some specialization constants
     DxvkSpecConstants specData;
@@ -301,9 +301,9 @@ namespace dxvk {
     vpInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     vpInfo.pNext                  = nullptr;
     vpInfo.flags                  = 0;
-    vpInfo.viewportCount          = state.rsViewportCount;
+    vpInfo.viewportCount          = state.rs.viewportCount();
     vpInfo.pViewports             = nullptr;
-    vpInfo.scissorCount           = state.rsViewportCount;
+    vpInfo.scissorCount           = state.rs.viewportCount();
     vpInfo.pScissors              = nullptr;
     
     VkPipelineRasterizationStateStreamCreateInfoEXT xfbStreamInfo;
@@ -316,7 +316,7 @@ namespace dxvk {
     rsDepthClipInfo.sType         = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT;
     rsDepthClipInfo.pNext         = nullptr;
     rsDepthClipInfo.flags         = 0;
-    rsDepthClipInfo.depthClipEnable = state.rsDepthClipEnable;
+    rsDepthClipInfo.depthClipEnable = state.rs.depthClipEnable();
 
     VkPipelineRasterizationStateCreateInfo rsInfo;
     rsInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -324,10 +324,10 @@ namespace dxvk {
     rsInfo.flags                  = 0;
     rsInfo.depthClampEnable       = VK_TRUE;
     rsInfo.rasterizerDiscardEnable = rasterizedStream < 0;
-    rsInfo.polygonMode            = state.rsPolygonMode;
-    rsInfo.cullMode               = state.rsCullMode;
-    rsInfo.frontFace              = state.rsFrontFace;
-    rsInfo.depthBiasEnable        = state.rsDepthBiasEnable;
+    rsInfo.polygonMode            = state.rs.polygonMode();
+    rsInfo.cullMode               = state.rs.cullMode();
+    rsInfo.frontFace              = state.rs.frontFace();
+    rsInfo.depthBiasEnable        = state.rs.depthBiasEnable();
     rsInfo.depthBiasConstantFactor= 0.0f;
     rsInfo.depthBiasClamp         = 0.0f;
     rsInfo.depthBiasSlopeFactor   = 0.0f;
@@ -338,7 +338,7 @@ namespace dxvk {
     
     if (!m_pipeMgr->m_device->features().extDepthClipEnable.depthClipEnable) {
       rsInfo.pNext                = rsDepthClipInfo.pNext;
-      rsInfo.depthClampEnable     = !state.rsDepthClipEnable;
+      rsInfo.depthClampEnable     = !state.rs.depthClipEnable();
     }
 
     VkPipelineMultisampleStateCreateInfo msInfo;
