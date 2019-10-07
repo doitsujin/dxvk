@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "dxvk_bind_mask.h"
+#include "dxvk_graphics_state.h"
 #include "dxvk_pipecache.h"
 #include "dxvk_pipelayout.h"
 #include "dxvk_resource.h"
@@ -28,25 +29,6 @@ namespace dxvk {
     size_t hash() const {
       return DxvkShader::getHash(cs);
     }
-  };
-
-
-  /**
-   * \brief Compute pipeline state info
-   */
-  struct DxvkComputePipelineStateInfo {
-    DxvkComputePipelineStateInfo();
-    DxvkComputePipelineStateInfo(
-      const DxvkComputePipelineStateInfo& other);
-    
-    DxvkComputePipelineStateInfo& operator = (
-      const DxvkComputePipelineStateInfo& other);
-
-    bool operator == (const DxvkComputePipelineStateInfo& other) const;
-    bool operator != (const DxvkComputePipelineStateInfo& other) const;
-    
-    DxvkBindingMask                     bsBindingMask;
-    uint32_t                            scSpecConstants[MaxNumSpecConstants];
   };
 
 

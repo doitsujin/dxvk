@@ -2351,7 +2351,7 @@ namespace dxvk {
           uint32_t            value) {
     auto& specConst = pipeline == VK_PIPELINE_BIND_POINT_GRAPHICS
       ? m_state.gp.state.sc.specConstants[index]
-      : m_state.cp.state.scSpecConstants[index];
+      : m_state.cp.state.sc.specConstants[index];
     
     if (specConst != value) {
       specConst = value;

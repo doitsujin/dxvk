@@ -9,34 +9,6 @@
 
 namespace dxvk {
   
-  DxvkComputePipelineStateInfo::DxvkComputePipelineStateInfo() {
-    std::memset(this, 0, sizeof(*this));
-  }
-
-
-  DxvkComputePipelineStateInfo::DxvkComputePipelineStateInfo(
-    const DxvkComputePipelineStateInfo& other) {
-    std::memcpy(this, &other, sizeof(*this));
-  }
-  
-
-  DxvkComputePipelineStateInfo& DxvkComputePipelineStateInfo::operator = (
-    const DxvkComputePipelineStateInfo& other) {
-    std::memcpy(this, &other, sizeof(*this));
-    return *this;
-  }
-
-
-  bool DxvkComputePipelineStateInfo::operator == (const DxvkComputePipelineStateInfo& other) const {
-    return std::memcmp(this, &other, sizeof(DxvkComputePipelineStateInfo)) == 0;
-  }
-  
-  
-  bool DxvkComputePipelineStateInfo::operator != (const DxvkComputePipelineStateInfo& other) const {
-    return std::memcmp(this, &other, sizeof(DxvkComputePipelineStateInfo)) != 0;
-  }
-  
-  
   DxvkComputePipeline::DxvkComputePipeline(
           DxvkPipelineManager*        pipeMgr,
           DxvkComputePipelineShaders  shaders)
@@ -126,7 +98,7 @@ namespace dxvk {
       specData.set(i, state.bsBindingMask.test(i), true);
     
     for (uint32_t i = 0; i < MaxNumSpecConstants; i++)
-      specData.set(getSpecId(i), state.scSpecConstants[i], 0u);
+      specData.set(getSpecId(i), state.sc.specConstants[i], 0u);
 
     VkSpecializationInfo specInfo = specData.getSpecInfo();
     

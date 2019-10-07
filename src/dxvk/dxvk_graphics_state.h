@@ -690,4 +690,34 @@ namespace dxvk {
     DxvkIlBinding           ilBindings        [DxvkLimits::MaxNumVertexBindings];
   };
 
+
+  /**
+   * \brief Compute pipeline state info
+   */
+  struct alignas(32) DxvkComputePipelineStateInfo {
+    DxvkComputePipelineStateInfo() {
+      std::memset(this, 0, sizeof(*this));
+    }
+
+    DxvkComputePipelineStateInfo(const DxvkComputePipelineStateInfo& other) {
+      std::memcpy(this, &other, sizeof(*this));
+    }
+    
+    DxvkComputePipelineStateInfo& operator = (const DxvkComputePipelineStateInfo& other) {
+      std::memcpy(this, &other, sizeof(*this));
+      return *this;
+    }
+    
+    bool operator == (const DxvkComputePipelineStateInfo& other) const {
+      return !std::memcmp(this, &other, sizeof(*this));
+    }
+
+    bool operator != (const DxvkComputePipelineStateInfo& other) const {
+      return std::memcmp(this, &other, sizeof(*this));
+    }
+    
+    DxvkBindingMask         bsBindingMask;
+    DxvkScInfo              sc;
+  };
+
 }
