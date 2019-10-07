@@ -1,5 +1,4 @@
 #include <chrono>
-#include <cstring>
 
 #include "dxvk_device.h"
 #include "dxvk_graphics.h"
@@ -8,34 +7,6 @@
 #include "dxvk_state_cache.h"
 
 namespace dxvk {
-  
-  DxvkGraphicsPipelineStateInfo::DxvkGraphicsPipelineStateInfo() {
-    std::memset(this, 0, sizeof(DxvkGraphicsPipelineStateInfo));
-  }
-  
-  
-  DxvkGraphicsPipelineStateInfo::DxvkGraphicsPipelineStateInfo(
-    const DxvkGraphicsPipelineStateInfo& other) {
-    std::memcpy(this, &other, sizeof(DxvkGraphicsPipelineStateInfo));
-  }
-  
-  
-  DxvkGraphicsPipelineStateInfo& DxvkGraphicsPipelineStateInfo::operator = (
-    const DxvkGraphicsPipelineStateInfo& other) {
-    std::memcpy(this, &other, sizeof(DxvkGraphicsPipelineStateInfo));
-    return *this;
-  }
-  
-  
-  bool DxvkGraphicsPipelineStateInfo::operator == (const DxvkGraphicsPipelineStateInfo& other) const {
-    return std::memcmp(this, &other, sizeof(DxvkGraphicsPipelineStateInfo)) == 0;
-  }
-  
-  
-  bool DxvkGraphicsPipelineStateInfo::operator != (const DxvkGraphicsPipelineStateInfo& other) const {
-    return std::memcmp(this, &other, sizeof(DxvkGraphicsPipelineStateInfo)) != 0;
-  }
-  
   
   DxvkGraphicsPipeline::DxvkGraphicsPipeline(
           DxvkPipelineManager*        pipeMgr,
