@@ -610,6 +610,16 @@ namespace dxvk {
 
 
   /**
+   * \brief Specialization constant state
+   *
+   * Stores the raw 32-bit spec constant values.
+   */
+  struct DxvkScInfo {
+    uint32_t specConstants[DxvkLimits::MaxNumSpecConstants];
+  };
+
+
+  /**
    * \brief Packed graphics pipeline state
    *
    * Stores a compressed representation of the full
@@ -671,9 +681,7 @@ namespace dxvk {
     DxvkMsInfo              ms;
     DxvkDsInfo              ds;
     DxvkOmInfo              om;
-    
-    uint32_t                            scSpecConstants[MaxNumSpecConstants];
-
+    DxvkScInfo              sc;
     DxvkDsStencilOp         dsFront;
     DxvkDsStencilOp         dsBack;
     DxvkOmAttachmentSwizzle omSwizzle         [DxvkLimits::MaxNumRenderTargets];
