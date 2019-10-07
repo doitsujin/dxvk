@@ -158,8 +158,8 @@ namespace dxvk {
     // Figure out the actual sample count to use
     VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
 
-    if (state.msSampleCount)
-      sampleCount = VkSampleCountFlagBits(state.msSampleCount);
+    if (state.ms.sampleCount())
+      sampleCount = VkSampleCountFlagBits(state.ms.sampleCount());
     else if (state.rs.sampleCount())
       sampleCount = VkSampleCountFlagBits(state.rs.sampleCount());
     
@@ -341,6 +341,8 @@ namespace dxvk {
       rsInfo.depthClampEnable     = !state.rs.depthClipEnable();
     }
 
+    uint32_t sampleMask = state.ms.sampleMask();
+
     VkPipelineMultisampleStateCreateInfo msInfo;
     msInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     msInfo.pNext                  = nullptr;
@@ -348,8 +350,8 @@ namespace dxvk {
     msInfo.rasterizationSamples   = sampleCount;
     msInfo.sampleShadingEnable    = m_common.msSampleShadingEnable;
     msInfo.minSampleShading       = m_common.msSampleShadingFactor;
-    msInfo.pSampleMask            = &state.msSampleMask;
-    msInfo.alphaToCoverageEnable  = state.msEnableAlphaToCoverage;
+    msInfo.pSampleMask            = &sampleMask;
+    msInfo.alphaToCoverageEnable  = state.ms.enableAlphaToCoverage();
     msInfo.alphaToOneEnable       = VK_FALSE;
     
     VkPipelineDepthStencilStateCreateInfo dsInfo;

@@ -283,6 +283,53 @@ namespace dxvk {
 
 
   /**
+   * \brief Packed multisample info
+   *
+   * Stores the sample mask, sample count override
+   * and alpha-to-coverage state in four bytes.
+   */
+  class DxvkMsInfo {
+
+  public:
+
+    DxvkMsInfo() = default;
+
+    DxvkMsInfo(
+            VkSampleCountFlags      sampleCount,
+            uint32_t                sampleMask,
+            VkBool32                enableAlphaToCoverage)
+    : m_sampleCount           (uint16_t(sampleCount)),
+      m_enableAlphaToCoverage (uint16_t(enableAlphaToCoverage)),
+      m_reserved              (0),
+      m_sampleMask            (uint16_t(sampleMask)) { }
+    
+    VkSampleCountFlags sampleCount() const {
+      return VkSampleCountFlags(m_sampleCount);
+    }
+
+    uint32_t sampleMask() const {
+      return m_sampleMask;
+    }
+
+    VkBool32 enableAlphaToCoverage() const {
+      return VkBool32(m_enableAlphaToCoverage);
+    }
+
+    void setSampleCount(VkSampleCountFlags sampleCount) {
+      m_sampleCount = uint16_t(sampleCount);
+    }
+
+  private:
+
+    uint16_t m_sampleCount            : 5;
+    uint16_t m_enableAlphaToCoverage  : 1;
+    uint16_t m_reserved               : 10;
+    uint16_t m_sampleMask;
+
+  };
+
+
+  /**
    * \brief Packed graphics pipeline state
    *
    * Stores a compressed representation of the full
@@ -341,10 +388,7 @@ namespace dxvk {
     DxvkIaInfo              ia;
     DxvkIlInfo              il;
     DxvkRsInfo              rs;
-    
-    VkSampleCountFlags                  msSampleCount;
-    uint32_t                            msSampleMask;
-    VkBool32                            msEnableAlphaToCoverage;
+    DxvkMsInfo              ms;
     
     VkBool32                            dsEnableDepthTest;
     VkBool32                            dsEnableDepthWrite;

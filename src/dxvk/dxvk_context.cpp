@@ -2295,8 +2295,10 @@ namespace dxvk {
   
   
   void DxvkContext::setMultisampleState(const DxvkMultisampleState& ms) {
-    m_state.gp.state.msSampleMask            = ms.sampleMask;
-    m_state.gp.state.msEnableAlphaToCoverage = ms.enableAlphaToCoverage;
+    m_state.gp.state.ms = DxvkMsInfo(
+      m_state.gp.state.ms.sampleCount(),
+      ms.sampleMask,
+      ms.enableAlphaToCoverage);
     
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
@@ -3973,7 +3975,7 @@ namespace dxvk {
 
       auto fb = m_device->createFramebuffer(m_state.om.renderTargets);
 
-      m_state.gp.state.msSampleCount = fb->getSampleCount();
+      m_state.gp.state.ms.setSampleCount(fb->getSampleCount());
       m_state.om.framebuffer = fb;
 
       for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
