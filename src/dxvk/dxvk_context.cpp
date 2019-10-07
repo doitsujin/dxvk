@@ -2223,8 +2223,8 @@ namespace dxvk {
       m_flags.set(DxvkContextFlag::GpDirtyDepthBounds);
     }
 
-    if (m_state.gp.state.dsEnableDepthBoundsTest != depthBounds.enableDepthBounds) {
-      m_state.gp.state.dsEnableDepthBoundsTest = depthBounds.enableDepthBounds;
+    if (m_state.gp.state.ds.enableDepthBoundsTest() != depthBounds.enableDepthBounds) {
+      m_state.gp.state.ds.setEnableDepthBoundsTest(depthBounds.enableDepthBounds);
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
   }
@@ -2305,12 +2305,15 @@ namespace dxvk {
   
   
   void DxvkContext::setDepthStencilState(const DxvkDepthStencilState& ds) {
-    m_state.gp.state.dsEnableDepthTest   = ds.enableDepthTest;
-    m_state.gp.state.dsEnableDepthWrite  = ds.enableDepthWrite;
-    m_state.gp.state.dsEnableStencilTest = ds.enableStencilTest;
-    m_state.gp.state.dsDepthCompareOp    = ds.depthCompareOp;
-    m_state.gp.state.dsStencilOpFront    = ds.stencilOpFront;
-    m_state.gp.state.dsStencilOpBack     = ds.stencilOpBack;
+    m_state.gp.state.ds = DxvkDsInfo(
+      ds.enableDepthTest,
+      ds.enableDepthWrite,
+      m_state.gp.state.ds.enableDepthBoundsTest(),
+      ds.enableStencilTest,
+      ds.depthCompareOp);
+    
+    m_state.gp.state.dsFront = DxvkDsStencilOp(ds.stencilOpFront);
+    m_state.gp.state.dsBack  = DxvkDsStencilOp(ds.stencilOpBack);
     
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }

@@ -358,13 +358,13 @@ namespace dxvk {
     dsInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     dsInfo.pNext                  = nullptr;
     dsInfo.flags                  = 0;
-    dsInfo.depthTestEnable        = state.dsEnableDepthTest;
-    dsInfo.depthWriteEnable       = state.dsEnableDepthWrite && !util::isDepthReadOnlyLayout(passFormat.depth.layout);
-    dsInfo.depthCompareOp         = state.dsDepthCompareOp;
-    dsInfo.depthBoundsTestEnable  = state.dsEnableDepthBoundsTest;
-    dsInfo.stencilTestEnable      = state.dsEnableStencilTest;
-    dsInfo.front                  = state.dsStencilOpFront;
-    dsInfo.back                   = state.dsStencilOpBack;
+    dsInfo.depthTestEnable        = state.ds.enableDepthTest();
+    dsInfo.depthWriteEnable       = state.ds.enableDepthWrite() && !util::isDepthReadOnlyLayout(passFormat.depth.layout);
+    dsInfo.depthCompareOp         = state.ds.depthCompareOp();
+    dsInfo.depthBoundsTestEnable  = state.ds.enableDepthBoundsTest();
+    dsInfo.stencilTestEnable      = state.ds.enableStencilTest();
+    dsInfo.front                  = state.dsFront.state();
+    dsInfo.back                   = state.dsBack.state();
     dsInfo.minDepthBounds         = 0.0f;
     dsInfo.maxDepthBounds         = 1.0f;
     

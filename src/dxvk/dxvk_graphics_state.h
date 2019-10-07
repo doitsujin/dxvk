@@ -330,6 +330,113 @@ namespace dxvk {
 
 
   /**
+   * \brief Packed depth-stencil metadata
+   *
+   * Stores some flags and the depth-compare op in
+   * two bytes. Stencil ops are stored separately.
+   */
+  class DxvkDsInfo {
+
+  public:
+
+    DxvkDsInfo() = default;
+
+    DxvkDsInfo(
+            VkBool32 enableDepthTest,
+            VkBool32 enableDepthWrite,
+            VkBool32 enableDepthBoundsTest,
+            VkBool32 enableStencilTest,
+            VkCompareOp depthCompareOp)
+    : m_enableDepthTest       (uint16_t(enableDepthTest)),
+      m_enableDepthWrite      (uint16_t(enableDepthWrite)),
+      m_enableDepthBoundsTest (uint16_t(enableDepthBoundsTest)),
+      m_enableStencilTest     (uint16_t(enableStencilTest)),
+      m_depthCompareOp        (uint16_t(depthCompareOp)),
+      m_reserved              (0) { }
+    
+    VkBool32 enableDepthTest() const {
+      return VkBool32(m_enableDepthTest);
+    }
+
+    VkBool32 enableDepthWrite() const {
+      return VkBool32(m_enableDepthWrite);
+    }
+
+    VkBool32 enableDepthBoundsTest() const {
+      return VkBool32(m_enableDepthBoundsTest);
+    }
+
+    VkBool32 enableStencilTest() const {
+      return VkBool32(m_enableStencilTest);
+    }
+
+    VkCompareOp depthCompareOp() const {
+      return VkCompareOp(m_depthCompareOp);
+    }
+
+    void setEnableDepthBoundsTest(VkBool32 enableDepthBoundsTest) {
+      m_enableDepthBoundsTest = VkBool32(enableDepthBoundsTest);
+    }
+
+  private:
+
+    uint16_t m_enableDepthTest        : 1;
+    uint16_t m_enableDepthWrite       : 1;
+    uint16_t m_enableDepthBoundsTest  : 1;
+    uint16_t m_enableStencilTest      : 1;
+    uint16_t m_depthCompareOp         : 3;
+    uint16_t m_reserved               : 9;
+
+  };
+
+
+  /**
+   * \brief Packed stencil op
+   *
+   * Stores various stencil op parameters
+   * for one single face in four bytes.
+   */
+  class DxvkDsStencilOp {
+
+  public:
+
+    DxvkDsStencilOp() = default;
+
+    DxvkDsStencilOp(VkStencilOpState state)
+    : m_failOp      (uint32_t(state.failOp)),
+      m_passOp      (uint32_t(state.passOp)),
+      m_depthFailOp (uint32_t(state.depthFailOp)),
+      m_compareOp   (uint32_t(state.compareOp)),
+      m_reserved    (0),
+      m_compareMask (uint32_t(state.compareMask)),
+      m_writeMask   (uint32_t(state.writeMask)) { }
+    
+    VkStencilOpState state() const {
+      VkStencilOpState result;
+      result.failOp      = VkStencilOp(m_failOp);
+      result.passOp      = VkStencilOp(m_passOp);
+      result.depthFailOp = VkStencilOp(m_depthFailOp);
+      result.compareOp   = VkCompareOp(m_compareOp);
+      result.compareMask = m_compareMask;
+      result.writeMask   = m_writeMask;
+      result.reference   = 0;
+      return result;
+    }
+
+  private:
+
+    uint32_t m_failOp                 : 3;
+    uint32_t m_passOp                 : 3;
+    uint32_t m_depthFailOp            : 3;
+    uint32_t m_compareOp              : 3;
+    uint32_t m_reserved               : 4;
+    uint32_t m_compareMask            : 8;
+    uint32_t m_writeMask              : 8;
+
+  };
+
+
+  /**
    * \brief Packed graphics pipeline state
    *
    * Stores a compressed representation of the full
@@ -359,7 +466,7 @@ namespace dxvk {
     }
 
     bool useDynamicStencilRef() const {
-      return dsEnableStencilTest;
+      return ds.enableStencilTest();
     }
 
     bool useDynamicDepthBias() const {
@@ -367,7 +474,7 @@ namespace dxvk {
     }
 
     bool useDynamicDepthBounds() const {
-      return dsEnableDepthBoundsTest;
+      return ds.enableDepthBoundsTest();
     }
 
     bool useDynamicBlendConstants() const {
@@ -389,14 +496,7 @@ namespace dxvk {
     DxvkIlInfo              il;
     DxvkRsInfo              rs;
     DxvkMsInfo              ms;
-    
-    VkBool32                            dsEnableDepthTest;
-    VkBool32                            dsEnableDepthWrite;
-    VkBool32                            dsEnableDepthBoundsTest;
-    VkBool32                            dsEnableStencilTest;
-    VkCompareOp                         dsDepthCompareOp;
-    VkStencilOpState                    dsStencilOpFront;
-    VkStencilOpState                    dsStencilOpBack;
+    DxvkDsInfo              ds;
     
     VkBool32                            omEnableLogicOp;
     VkLogicOp                           omLogicOp;
@@ -405,6 +505,8 @@ namespace dxvk {
 
     uint32_t                            scSpecConstants[MaxNumSpecConstants];
 
+    DxvkDsStencilOp         dsFront;
+    DxvkDsStencilOp         dsBack;
     DxvkIlAttribute         ilAttributes      [DxvkLimits::MaxNumVertexAttributes];
     DxvkIlBinding           ilBindings        [DxvkLimits::MaxNumVertexBindings];
   };
