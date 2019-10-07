@@ -302,6 +302,8 @@ namespace dxvk {
       expectedSize = sizeof(DxvkStateCacheEntryV4);
     else if (curHeader.version <= 5)
       expectedSize = sizeof(DxvkStateCacheEntryV5);
+    else if (curHeader.version <= 6)
+      expectedSize = sizeof(DxvkStateCacheEntryV6);
 
     if (curHeader.entrySize != expectedSize) {
       Logger::warn("DXVK: State cache entry size changed");
@@ -383,23 +385,34 @@ namespace dxvk {
           uint32_t                  version,
           std::istream&             stream, 
           DxvkStateCacheEntry&      entry) const {
-    if (version <= 4) {
-      DxvkStateCacheEntryV4 v4;
+    if (version <= 6) {
+      DxvkStateCacheEntryV6 v6;
 
-      if (!readCacheEntryTyped(stream, v4))
-        return false;
-      
-      if (version == 2)
-        convertEntryV2(v4);
-      
-      return convertEntryV4(v4, entry);
-    } else if (version <= 5) {
-      DxvkStateCacheEntryV5 v5;
+      if (version <= 4) {
+        DxvkStateCacheEntryV4 v4;
 
-      if (!readCacheEntryTyped(stream, v5))
-        return false;
+        if (!readCacheEntryTyped(stream, v4))
+          return false;
 
-      return convertEntryV5(v5, entry);
+        if (version == 2)
+          convertEntryV2(v4);
+
+        if (!convertEntryV4(v4, v6))
+          return false;
+      } else if (version <= 5) {
+        DxvkStateCacheEntryV5 v5;
+
+        if (!readCacheEntryTyped(stream, v5))
+          return false;
+
+        if (!convertEntryV5(v5, v6))
+          return false;
+      } else {
+        if (!readCacheEntryTyped(stream, v6))
+          return false;
+      }
+
+      return convertEntryV6(v6, entry);
     } else {
       return readCacheEntryTyped(stream, entry);
     }
@@ -435,7 +448,7 @@ namespace dxvk {
 
   bool DxvkStateCache::convertEntryV4(
     const DxvkStateCacheEntryV4&    in,
-          DxvkStateCacheEntry&      out) const {
+          DxvkStateCacheEntryV6&    out) const {
     out.shaders = in.shaders;
     out.format  = in.format;
     out.hash    = in.hash;
@@ -480,7 +493,7 @@ namespace dxvk {
     out.gpState.omEnableLogicOp         = in.gpState.omEnableLogicOp;
     out.gpState.omLogicOp               = in.gpState.omLogicOp;
 
-    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+    for (uint32_t i = 0; i < 8; i++) {
       out.gpState.omBlendAttachments[i] = in.gpState.omBlendAttachments[i];
       out.gpState.omComponentMapping[i] = in.gpState.omComponentMapping[i];
     }
@@ -491,7 +504,7 @@ namespace dxvk {
 
   bool DxvkStateCache::convertEntryV5(
     const DxvkStateCacheEntryV5&    in,
-          DxvkStateCacheEntry&      out) const {
+          DxvkStateCacheEntryV6&    out) const {
     out.shaders = in.shaders;
     out.gpState = in.gpState;
     out.format  = in.format;
@@ -499,6 +512,14 @@ namespace dxvk {
 
     out.cpState.bsBindingMask = in.cpState.bsBindingMask;
     return true;
+  }
+
+
+  bool DxvkStateCache::convertEntryV6(
+    const DxvkStateCacheEntryV6&    in,
+          DxvkStateCacheEntry&      out) const {
+    /* TODO implement */
+    return false;
   }
 
 
