@@ -17,9 +17,8 @@ namespace dxvk {
    */
   struct DxvkMetaClearArgs {
     VkClearColorValue clearValue;
-    
-    alignas(16) VkOffset3D offset;
-    alignas(16) VkExtent3D extent;
+    VkOffset3D offset; uint32_t pad1;
+    VkExtent3D extent; uint32_t pad2;
   };
   
   

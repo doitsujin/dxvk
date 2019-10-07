@@ -428,7 +428,7 @@ namespace dxvk {
     m_cmd->updateDescriptorSets(1, &descriptorWrite);
     
     // Prepare shader arguments
-    DxvkMetaClearArgs pushArgs;
+    DxvkMetaClearArgs pushArgs = { };
     pushArgs.clearValue = value;
     pushArgs.offset = VkOffset3D {  int32_t(offset), 0, 0 };
     pushArgs.extent = VkExtent3D { uint32_t(length), 1, 1 };
@@ -2571,7 +2571,7 @@ namespace dxvk {
     m_cmd->updateDescriptorSets(1, &descriptorWrite);
     
     // Prepare shader arguments
-    DxvkMetaClearArgs pushArgs;
+    DxvkMetaClearArgs pushArgs = { };
     pushArgs.clearValue = value.color;
     pushArgs.offset = offset;
     pushArgs.extent = extent;
