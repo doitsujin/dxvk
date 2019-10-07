@@ -231,14 +231,14 @@ namespace dxvk {
     // Generate per-instance attribute divisors
     std::array<VkVertexInputBindingDivisorDescriptionEXT, MaxNumVertexBindings> viDivisorDesc;
     uint32_t                                                                    viDivisorCount = 0;
-    
-    for (uint32_t i = 0; i < state.ilBindingCount; i++) {
-      if (state.ilBindings[i].inputRate == VK_VERTEX_INPUT_RATE_INSTANCE
-       && state.ilDivisors[i]           != 1) {
+
+    for (uint32_t i = 0; i < state.il.bindingCount(); i++) {
+      if (state.ilBindings[i].inputRate() == VK_VERTEX_INPUT_RATE_INSTANCE
+       && state.ilBindings[i].divisor()   != 1) {
         const uint32_t id = viDivisorCount++;
         
-        viDivisorDesc[id].binding = i;
-        viDivisorDesc[id].divisor = state.ilDivisors[i];
+        viDivisorDesc[id].binding = i; /* see below */
+        viDivisorDesc[id].divisor = state.ilBindings[i].divisor();
       }
     }
 
@@ -251,15 +251,15 @@ namespace dxvk {
     std::array<VkVertexInputBindingDescription,   MaxNumVertexBindings>   viBindings;
     std::array<uint32_t,                          MaxNumVertexBindings>   viBindingMap = { };
 
-    for (uint32_t i = 0; i < state.ilBindingCount; i++) {
-      viBindings[i] = state.ilBindings[i];
+    for (uint32_t i = 0; i < state.il.bindingCount(); i++) {
+      viBindings[i] = state.ilBindings[i].description();
       viBindings[i].binding = i;
-      viBindingMap[state.ilBindings[i].binding] = i;
+      viBindingMap[state.ilBindings[i].binding()] = i;
     }
 
-    for (uint32_t i = 0; i < state.ilAttributeCount; i++) {
-      viAttribs[i] = state.ilAttributes[i];
-      viAttribs[i].binding = viBindingMap[state.ilAttributes[i].binding];
+    for (uint32_t i = 0; i < state.il.attributeCount(); i++) {
+      viAttribs[i] = state.ilAttributes[i].description();
+      viAttribs[i].binding = viBindingMap[state.ilAttributes[i].binding()];
     }
 
     VkPipelineVertexInputDivisorStateCreateInfoEXT viDivisorInfo;
@@ -272,9 +272,9 @@ namespace dxvk {
     viInfo.sType                            = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     viInfo.pNext                            = &viDivisorInfo;
     viInfo.flags                            = 0;
-    viInfo.vertexBindingDescriptionCount    = state.ilBindingCount;
+    viInfo.vertexBindingDescriptionCount    = state.il.bindingCount();
     viInfo.pVertexBindingDescriptions       = viBindings.data();
-    viInfo.vertexAttributeDescriptionCount  = state.ilAttributeCount;
+    viInfo.vertexAttributeDescriptionCount  = state.il.attributeCount();
     viInfo.pVertexAttributeDescriptions     = viAttribs.data();
     
     if (viDivisorCount == 0)
@@ -453,8 +453,8 @@ namespace dxvk {
     // vertex shader must be provided by the input layout.
     uint32_t providedVertexInputs = 0;
     
-    for (uint32_t i = 0; i < state.ilAttributeCount; i++)
-      providedVertexInputs |= 1u << state.ilAttributes[i].location;
+    for (uint32_t i = 0; i < state.il.attributeCount(); i++)
+      providedVertexInputs |= 1u << state.ilAttributes[i].location();
     
     if ((providedVertexInputs & m_vsIn) != m_vsIn)
       return false;
@@ -470,8 +470,8 @@ namespace dxvk {
       return false;
     
     // Prevent unintended out-of-bounds access to the IL arrays
-    if (state.ilAttributeCount > DxvkLimits::MaxNumVertexAttributes
-     || state.ilBindingCount   > DxvkLimits::MaxNumVertexBindings)
+    if (state.il.attributeCount() > DxvkLimits::MaxNumVertexAttributes
+     || state.il.bindingCount()   > DxvkLimits::MaxNumVertexBindings)
       return false;
     
     // No errors
@@ -505,13 +505,13 @@ namespace dxvk {
     if (m_shaders.gs  != nullptr) Logger::log(level, str::format("  gs  : ", m_shaders.gs ->debugName()));
     if (m_shaders.fs  != nullptr) Logger::log(level, str::format("  fs  : ", m_shaders.fs ->debugName()));
 
-    for (uint32_t i = 0; i < state.ilAttributeCount; i++) {
-      const VkVertexInputAttributeDescription& attr = state.ilAttributes[i];
-      Logger::log(level, str::format("  attr ", i, " : location ", attr.location, ", binding ", attr.binding, ", format ", attr.format, ", offset ", attr.offset));
+    for (uint32_t i = 0; i < state.il.attributeCount(); i++) {
+      const auto& attr = state.ilAttributes[i];
+      Logger::log(level, str::format("  attr ", i, " : location ", attr.location(), ", binding ", attr.binding(), ", format ", attr.format(), ", offset ", attr.offset()));
     }
-    for (uint32_t i = 0; i < state.ilBindingCount; i++) {
-      const VkVertexInputBindingDescription& bind = state.ilBindings[i];
-      Logger::log(level, str::format("  binding ", i, " : binding ", bind.binding, ", stride ", bind.stride, ", rate ", bind.inputRate, ", divisor ", state.ilDivisors[i]));
+    for (uint32_t i = 0; i < state.il.bindingCount(); i++) {
+      const auto& bind = state.ilBindings[i];
+      Logger::log(level, str::format("  binding ", i, " : binding ", bind.binding(), ", stride ", bind.stride(), ", rate ", bind.inputRate(), ", divisor ", bind.divisor()));
     }
     
     // TODO log more pipeline state
