@@ -2320,8 +2320,9 @@ namespace dxvk {
   
   
   void DxvkContext::setLogicOpState(const DxvkLogicOpState& lo) {
-    m_state.gp.state.omEnableLogicOp = lo.enableLogicOp;
-    m_state.gp.state.omLogicOp       = lo.logicOp;
+    m_state.gp.state.om = DxvkOmInfo(
+      lo.enableLogicOp,
+      lo.logicOp);
     
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
@@ -2330,14 +2331,15 @@ namespace dxvk {
   void DxvkContext::setBlendMode(
           uint32_t            attachment,
     const DxvkBlendMode&      blendMode) {
-    m_state.gp.state.omBlendAttachments[attachment].blendEnable         = blendMode.enableBlending;
-    m_state.gp.state.omBlendAttachments[attachment].srcColorBlendFactor = blendMode.colorSrcFactor;
-    m_state.gp.state.omBlendAttachments[attachment].dstColorBlendFactor = blendMode.colorDstFactor;
-    m_state.gp.state.omBlendAttachments[attachment].colorBlendOp        = blendMode.colorBlendOp;
-    m_state.gp.state.omBlendAttachments[attachment].srcAlphaBlendFactor = blendMode.alphaSrcFactor;
-    m_state.gp.state.omBlendAttachments[attachment].dstAlphaBlendFactor = blendMode.alphaDstFactor;
-    m_state.gp.state.omBlendAttachments[attachment].alphaBlendOp        = blendMode.alphaBlendOp;
-    m_state.gp.state.omBlendAttachments[attachment].colorWriteMask      = blendMode.writeMask;
+    m_state.gp.state.omBlend[attachment] = DxvkOmAttachmentBlend(
+      blendMode.enableBlending,
+      blendMode.colorSrcFactor,
+      blendMode.colorDstFactor,
+      blendMode.colorBlendOp,
+      blendMode.alphaSrcFactor,
+      blendMode.alphaDstFactor,
+      blendMode.alphaBlendOp,
+      blendMode.writeMask);
     
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
@@ -3984,9 +3986,11 @@ namespace dxvk {
       for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
         Rc<DxvkImageView> attachment = fb->getColorTarget(i).view;
 
-        m_state.gp.state.omComponentMapping[i] = attachment != nullptr
+        VkComponentMapping mapping = attachment != nullptr
           ? util::invertComponentMapping(attachment->info().swizzle)
           : VkComponentMapping();
+
+        m_state.gp.state.omSwizzle[i] = DxvkOmAttachmentSwizzle(mapping);
       }
 
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);

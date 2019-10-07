@@ -437,6 +437,179 @@ namespace dxvk {
 
 
   /**
+   * \brief Packed output merger metadata
+   *
+   * Stores the logic op state in two bytes.
+   * Blend modes are stored separately.
+   */
+  class DxvkOmInfo {
+
+  public:
+
+    DxvkOmInfo() = default;
+
+    DxvkOmInfo(
+            VkBool32          enableLogicOp,
+            VkLogicOp         logicOp)
+    : m_enableLogicOp (uint16_t(enableLogicOp)),
+      m_logicOp       (uint16_t(logicOp)),
+      m_reserved      (0) { }
+    
+    VkBool32 enableLogicOp() const {
+      return VkBool32(m_enableLogicOp);
+    }
+
+    VkLogicOp logicOp() const {
+      return VkLogicOp(m_logicOp);
+    }
+
+  private:
+
+    uint16_t m_enableLogicOp          : 1;
+    uint16_t m_logicOp                : 4;
+    uint16_t m_reserved               : 11;
+
+  };
+
+
+  /**
+   * \brief Packed attachment blend mode
+   *
+   * Stores blendig parameters for a single
+   * color attachment in four bytes.
+   */
+  class DxvkOmAttachmentBlend {
+
+  public:
+
+    DxvkOmAttachmentBlend() = default;
+
+    DxvkOmAttachmentBlend(
+            VkBool32                    blendEnable,
+            VkBlendFactor               srcColorBlendFactor,
+            VkBlendFactor               dstColorBlendFactor,
+            VkBlendOp                   colorBlendOp,
+            VkBlendFactor               srcAlphaBlendFactor,
+            VkBlendFactor               dstAlphaBlendFactor,
+            VkBlendOp                   alphaBlendOp,
+            VkColorComponentFlags       colorWriteMask)
+    : m_blendEnable         (uint32_t(blendEnable)),
+      m_srcColorBlendFactor (uint32_t(srcColorBlendFactor)),
+      m_dstColorBlendFactor (uint32_t(dstColorBlendFactor)),
+      m_colorBlendOp        (uint32_t(colorBlendOp)),
+      m_srcAlphaBlendFactor (uint32_t(srcAlphaBlendFactor)),
+      m_dstAlphaBlendFactor (uint32_t(dstAlphaBlendFactor)),
+      m_alphaBlendOp        (uint32_t(alphaBlendOp)),
+      m_colorWriteMask      (uint32_t(colorWriteMask)),
+      m_reserved            (0) { }
+    
+    VkBool32 blendEnable() const {
+      return m_blendEnable;
+    }
+
+    VkBlendFactor srcColorBlendFactor() const {
+      return VkBlendFactor(m_srcColorBlendFactor);
+    }
+
+    VkBlendFactor dstColorBlendFactor() const {
+      return VkBlendFactor(m_dstColorBlendFactor);
+    }
+
+    VkBlendOp colorBlendOp() const {
+      return VkBlendOp(m_colorBlendOp);
+    }
+
+    VkBlendFactor srcAlphaBlendFactor() const {
+      return VkBlendFactor(m_srcAlphaBlendFactor);
+    }
+
+    VkBlendFactor dstAlphaBlendFactor() const {
+      return VkBlendFactor(m_dstAlphaBlendFactor);
+    }
+
+    VkBlendOp alphaBlendOp() const {
+      return VkBlendOp(m_alphaBlendOp);
+    }
+
+    VkColorComponentFlags colorWriteMask() const {
+      return VkColorComponentFlags(m_colorWriteMask);
+    }
+
+    VkPipelineColorBlendAttachmentState state() const {
+      VkPipelineColorBlendAttachmentState result;
+      result.blendEnable         = VkBool32(m_blendEnable);
+      result.srcColorBlendFactor = VkBlendFactor(m_srcColorBlendFactor);
+      result.dstColorBlendFactor = VkBlendFactor(m_dstColorBlendFactor);
+      result.colorBlendOp        = VkBlendOp(m_colorBlendOp);
+      result.srcAlphaBlendFactor = VkBlendFactor(m_srcAlphaBlendFactor);
+      result.dstAlphaBlendFactor = VkBlendFactor(m_dstAlphaBlendFactor);
+      result.alphaBlendOp        = VkBlendOp(m_alphaBlendOp);
+      result.colorWriteMask      = VkColorComponentFlags(m_colorWriteMask);
+      return result;
+    }
+
+  private:
+
+    uint32_t m_blendEnable            : 1;
+    uint32_t m_srcColorBlendFactor    : 5;
+    uint32_t m_dstColorBlendFactor    : 5;
+    uint32_t m_colorBlendOp           : 3;
+    uint32_t m_srcAlphaBlendFactor    : 5;
+    uint32_t m_dstAlphaBlendFactor    : 5;
+    uint32_t m_alphaBlendOp           : 3;
+    uint32_t m_colorWriteMask         : 4;
+    uint32_t m_reserved               : 1;
+
+  };
+
+
+  /**
+   * \brief Packed attachment swizzle
+   *
+   * Stores the component mapping for one
+   * single color attachment in one byte.
+   */
+  class DxvkOmAttachmentSwizzle {
+
+  public:
+
+    DxvkOmAttachmentSwizzle() = default;
+
+    DxvkOmAttachmentSwizzle(VkComponentMapping mapping)
+    : m_r(util::getComponentIndex(mapping.r, 0)),
+      m_g(util::getComponentIndex(mapping.g, 1)),
+      m_b(util::getComponentIndex(mapping.b, 2)),
+      m_a(util::getComponentIndex(mapping.a, 3)) { }
+    
+    uint32_t rIndex() const { return m_r; }
+    uint32_t gIndex() const { return m_g; }
+    uint32_t bIndex() const { return m_b; }
+    uint32_t aIndex() const { return m_a; }
+    
+    VkComponentMapping mapping() const {
+      VkComponentMapping result;
+      result.r = decodeSwizzle(m_r);
+      result.g = decodeSwizzle(m_g);
+      result.b = decodeSwizzle(m_b);
+      result.a = decodeSwizzle(m_a);
+      return result;
+    }
+
+  private:
+
+    uint8_t m_r : 2;
+    uint8_t m_g : 2;
+    uint8_t m_b : 2;
+    uint8_t m_a : 2;
+
+    static VkComponentSwizzle decodeSwizzle(uint8_t swizzle) {
+      return VkComponentSwizzle(uint32_t(swizzle) + uint32_t(VK_COMPONENT_SWIZZLE_R));
+    }
+
+  };
+
+
+  /**
    * \brief Packed graphics pipeline state
    *
    * Stores a compressed representation of the full
@@ -481,11 +654,11 @@ namespace dxvk {
       bool result = false;
       
       for (uint32_t i = 0; i < MaxNumRenderTargets && !result; i++) {
-        result |= omBlendAttachments[i].blendEnable
-         && (util::isBlendConstantBlendFactor(omBlendAttachments[i].srcColorBlendFactor)
-          || util::isBlendConstantBlendFactor(omBlendAttachments[i].dstColorBlendFactor)
-          || util::isBlendConstantBlendFactor(omBlendAttachments[i].srcAlphaBlendFactor)
-          || util::isBlendConstantBlendFactor(omBlendAttachments[i].dstAlphaBlendFactor));
+        result |= omBlend[i].blendEnable()
+         && (util::isBlendConstantBlendFactor(omBlend[i].srcColorBlendFactor())
+          || util::isBlendConstantBlendFactor(omBlend[i].dstColorBlendFactor())
+          || util::isBlendConstantBlendFactor(omBlend[i].srcAlphaBlendFactor())
+          || util::isBlendConstantBlendFactor(omBlend[i].dstAlphaBlendFactor()));
       }
 
       return result;
@@ -497,16 +670,14 @@ namespace dxvk {
     DxvkRsInfo              rs;
     DxvkMsInfo              ms;
     DxvkDsInfo              ds;
+    DxvkOmInfo              om;
     
-    VkBool32                            omEnableLogicOp;
-    VkLogicOp                           omLogicOp;
-    VkPipelineColorBlendAttachmentState omBlendAttachments[MaxNumRenderTargets];
-    VkComponentMapping                  omComponentMapping[MaxNumRenderTargets];
-
     uint32_t                            scSpecConstants[MaxNumSpecConstants];
 
     DxvkDsStencilOp         dsFront;
     DxvkDsStencilOp         dsBack;
+    DxvkOmAttachmentSwizzle omSwizzle         [DxvkLimits::MaxNumRenderTargets];
+    DxvkOmAttachmentBlend   omBlend           [DxvkLimits::MaxNumRenderTargets];
     DxvkIlAttribute         ilAttributes      [DxvkLimits::MaxNumVertexAttributes];
     DxvkIlBinding           ilBindings        [DxvkLimits::MaxNumVertexBindings];
   };

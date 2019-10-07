@@ -7,7 +7,7 @@
 #include "dxvk_state_cache.h"
 
 namespace dxvk {
-  
+
   DxvkGraphicsPipeline::DxvkGraphicsPipeline(
           DxvkPipelineManager*        pipeMgr,
           DxvkGraphicsPipelineShaders shaders)
@@ -173,10 +173,10 @@ namespace dxvk {
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       if ((m_fsOut & (1 << i)) != 0) {
         uint32_t specId = uint32_t(DxvkSpecConstantId::ColorComponentMappings) + 4 * i;
-        specData.set(specId + 0, util::getComponentIndex(state.omComponentMapping[i].r, 0), 0u);
-        specData.set(specId + 1, util::getComponentIndex(state.omComponentMapping[i].g, 1), 1u);
-        specData.set(specId + 2, util::getComponentIndex(state.omComponentMapping[i].b, 2), 2u);
-        specData.set(specId + 3, util::getComponentIndex(state.omComponentMapping[i].a, 3), 3u);
+        specData.set(specId + 0, state.omSwizzle[i].rIndex(), 0u);
+        specData.set(specId + 1, state.omSwizzle[i].gIndex(), 1u);
+        specData.set(specId + 2, state.omSwizzle[i].bIndex(), 2u);
+        specData.set(specId + 3, state.omSwizzle[i].aIndex(), 3u);
       }
     }
 
@@ -186,11 +186,11 @@ namespace dxvk {
     VkSpecializationInfo specInfo = specData.getSpecInfo();
     
     DxvkShaderModuleCreateInfo moduleInfo;
-    moduleInfo.fsDualSrcBlend = state.omBlendAttachments[0].blendEnable && (
-      util::isDualSourceBlendFactor(state.omBlendAttachments[0].srcColorBlendFactor) ||
-      util::isDualSourceBlendFactor(state.omBlendAttachments[0].dstColorBlendFactor) ||
-      util::isDualSourceBlendFactor(state.omBlendAttachments[0].srcAlphaBlendFactor) ||
-      util::isDualSourceBlendFactor(state.omBlendAttachments[0].dstAlphaBlendFactor));
+    moduleInfo.fsDualSrcBlend = state.omBlend[0].blendEnable() && (
+      util::isDualSourceBlendFactor(state.omBlend[0].srcColorBlendFactor()) ||
+      util::isDualSourceBlendFactor(state.omBlend[0].dstColorBlendFactor()) ||
+      util::isDualSourceBlendFactor(state.omBlend[0].srcAlphaBlendFactor()) ||
+      util::isDualSourceBlendFactor(state.omBlend[0].dstAlphaBlendFactor()));
     
     auto vsm  = createShaderModule(m_shaders.vs,  moduleInfo);
     auto gsm  = createShaderModule(m_shaders.gs,  moduleInfo);
@@ -213,15 +213,11 @@ namespace dxvk {
       | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      omBlendAttachments[i] = state.omBlendAttachments[i];
+      omBlendAttachments[i] = state.omBlend[i].state();
 
-      if (state.omBlendAttachments[i].colorWriteMask == fullMask) {
-        // Avoid unnecessary partial color write masks
-        omBlendAttachments[i].colorWriteMask = fullMask;
-      } else {
+      if (omBlendAttachments[i].colorWriteMask != fullMask) {
         omBlendAttachments[i].colorWriteMask = util::remapComponentMask(
-          state.omBlendAttachments[i].colorWriteMask,
-          state.omComponentMapping[i]);
+          state.omBlend[i].colorWriteMask(), state.omSwizzle[i].mapping());
       }
       
       if ((m_fsOut & (1 << i)) == 0)
@@ -372,8 +368,8 @@ namespace dxvk {
     cbInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     cbInfo.pNext                  = nullptr;
     cbInfo.flags                  = 0;
-    cbInfo.logicOpEnable          = state.omEnableLogicOp;
-    cbInfo.logicOp                = state.omLogicOp;
+    cbInfo.logicOpEnable          = state.om.enableLogicOp();
+    cbInfo.logicOp                = state.om.logicOp();
     cbInfo.attachmentCount        = DxvkLimits::MaxNumRenderTargets;
     cbInfo.pAttachments           = omBlendAttachments.data();
     
