@@ -518,8 +518,95 @@ namespace dxvk {
   bool DxvkStateCache::convertEntryV6(
     const DxvkStateCacheEntryV6&    in,
           DxvkStateCacheEntry&      out) const {
-    /* TODO implement */
-    return false;
+    out.shaders = in.shaders;
+    out.format  = in.format;
+    out.hash    = in.hash;
+
+    if (in.shaders.cs.eq(g_nullShaderKey)) {
+      // Binding mask
+      out.gpState.bsBindingMask = in.gpState.bsBindingMask;
+
+      // Graphics state
+      out.gpState.ia = DxvkIaInfo(
+        in.gpState.iaPrimitiveTopology,
+        in.gpState.iaPrimitiveRestart,
+        in.gpState.iaPatchVertexCount);
+      
+      out.gpState.il = DxvkIlInfo(
+        in.gpState.ilAttributeCount,
+        in.gpState.ilBindingCount);
+      
+      for (uint32_t i = 0; i < in.gpState.ilAttributeCount; i++) {
+        out.gpState.ilAttributes[i] = DxvkIlAttribute(
+          in.gpState.ilAttributes[i].location,
+          in.gpState.ilAttributes[i].binding,
+          in.gpState.ilAttributes[i].format,
+          in.gpState.ilAttributes[i].offset);
+      }
+      
+      for (uint32_t i = 0; i < in.gpState.ilBindingCount; i++) {
+        out.gpState.ilBindings[i] = DxvkIlBinding(
+          in.gpState.ilBindings[i].binding,
+          in.gpState.ilBindings[i].stride,
+          in.gpState.ilBindings[i].inputRate,
+          in.gpState.ilDivisors[i]);
+      }
+      
+      out.gpState.rs = DxvkRsInfo(
+        in.gpState.rsDepthClipEnable,
+        in.gpState.rsDepthBiasEnable,
+        in.gpState.rsPolygonMode,
+        in.gpState.rsCullMode,
+        in.gpState.rsFrontFace,
+        in.gpState.rsViewportCount,
+        in.gpState.rsSampleCount);
+
+      out.gpState.ms = DxvkMsInfo(
+        in.gpState.msSampleCount,
+        in.gpState.msSampleMask,
+        in.gpState.msEnableAlphaToCoverage);
+      
+      out.gpState.ds = DxvkDsInfo(
+        in.gpState.dsEnableDepthTest,
+        in.gpState.dsEnableDepthWrite,
+        in.gpState.dsEnableDepthBoundsTest,
+        in.gpState.dsEnableStencilTest,
+        in.gpState.dsDepthCompareOp);
+      
+      out.gpState.dsFront = DxvkDsStencilOp(in.gpState.dsStencilOpFront);
+      out.gpState.dsBack  = DxvkDsStencilOp(in.gpState.dsStencilOpBack);
+
+      out.gpState.om = DxvkOmInfo(
+        in.gpState.omEnableLogicOp,
+        in.gpState.omLogicOp);
+      
+      for (uint32_t i = 0; i < 8 && i < MaxNumRenderTargets; i++) {
+        out.gpState.omBlend[i] = DxvkOmAttachmentBlend(
+          in.gpState.omBlendAttachments[i].blendEnable,
+          in.gpState.omBlendAttachments[i].srcColorBlendFactor,
+          in.gpState.omBlendAttachments[i].dstColorBlendFactor,
+          in.gpState.omBlendAttachments[i].colorBlendOp,
+          in.gpState.omBlendAttachments[i].srcAlphaBlendFactor,
+          in.gpState.omBlendAttachments[i].dstAlphaBlendFactor,
+          in.gpState.omBlendAttachments[i].alphaBlendOp,
+          in.gpState.omBlendAttachments[i].colorWriteMask);
+        
+        out.gpState.omSwizzle[i] = DxvkOmAttachmentSwizzle(
+          in.gpState.omComponentMapping[i]);
+      }
+
+      // Specialization constants
+      for (uint32_t i = 0; i < 8 && i < MaxNumSpecConstants; i++)
+        out.cpState.sc.specConstants[i] = in.cpState.scSpecConstants[i];
+    } else {
+      // Binding mask
+      out.cpState.bsBindingMask = in.cpState.bsBindingMask;
+
+      for (uint32_t i = 0; i < 8 && i < MaxNumSpecConstants; i++)
+        out.gpState.sc.specConstants[i] = in.gpState.scSpecConstants[i];
+    }
+
+    return true;
   }
 
 
