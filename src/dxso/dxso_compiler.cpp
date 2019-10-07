@@ -939,10 +939,6 @@ namespace dxvk {
       uint32_t uintType  = getScalarTypeId(DxsoScalarType::Uint32);
       uint32_t uvec4Type = getVectorTypeId({ DxsoScalarType::Uint32, 4 });
 
-      // Fast path if the bool count in the constant layout
-      // is not more than 32.
-      bool fastPath = m_layout->boolCount <= 32;
-
       std::array<uint32_t, 2> indices = { m_module.constu32(2), m_module.constu32(reg.id.num / 128) };
 
       uint32_t indexCount = m_layout->bitmaskCount == 1 ? 1 : 2;
@@ -3300,7 +3296,6 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     uint32_t floatType = m_module.defFloatType(32);
     uint32_t vec4Type  = m_module.defVectorType(floatType, 4);
     uint32_t floatPtr  = m_module.defPointerType(floatType, spv::StorageClassPushConstant);
-    uint32_t vec4Ptr   = m_module.defPointerType(vec4Type,  spv::StorageClassPushConstant);
     
     // Declare spec constants for render states
     uint32_t alphaTestId = m_module.specConstBool(false);

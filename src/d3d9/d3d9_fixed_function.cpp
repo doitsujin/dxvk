@@ -15,7 +15,6 @@ namespace dxvk {
   }
 
   uint32_t DoFixedFunctionFog(SpirvModule& spvModule, const D3D9FogContext& fogCtx) {
-    uint32_t boolType   = spvModule.defBoolType();
     uint32_t floatType  = spvModule.defFloatType(32);
     uint32_t uint32Type = spvModule.defIntType(32, 0);
     uint32_t vec3Type   = spvModule.defVectorType(floatType, 3);
@@ -185,10 +184,8 @@ namespace dxvk {
 
 
   uint32_t SetupRenderStateBlock(SpirvModule& spvModule) {
-    uint32_t boolType  = spvModule.defBoolType();
     uint32_t floatType = spvModule.defFloatType(32);
     uint32_t vec3Type  = spvModule.defVectorType(floatType, 3);
-    uint32_t floatPtr  = spvModule.defPointerType(floatType, spv::StorageClassPushConstant);
 
     std::array<uint32_t, 11> rsMembers = {{
       vec3Type,
@@ -886,7 +883,6 @@ namespace dxvk {
         uint32_t bool_t  = m_module.defBoolType();
         uint32_t bool3_t = m_module.defVectorType(bool_t, 3);
 
-        uint32_t isPoint       = m_module.opIEqual(bool_t, type, m_module.constu32(D3DLIGHT_POINT));
         uint32_t isSpot        = m_module.opIEqual(bool_t, type, m_module.constu32(D3DLIGHT_SPOT));
         uint32_t isDirectional = m_module.opIEqual(bool_t, type, m_module.constu32(D3DLIGHT_DIRECTIONAL));
 
@@ -1918,8 +1914,6 @@ namespace dxvk {
     const std::string dumpPath = env::getEnvVar("DXVK_SHADER_DUMP_PATH");
 
     if (dumpPath.size() != 0) {
-      D3D9FFShaderKeyHash hash;
-
       std::ofstream dumpStream(
         str::format(dumpPath, "/", Name, ".spv"),
         std::ios_base::binary | std::ios_base::trunc);

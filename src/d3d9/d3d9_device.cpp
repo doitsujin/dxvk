@@ -698,9 +698,6 @@ namespace dxvk {
                     0u };
     }
 
-    const auto srcSubresource = vk::makeSubresourceLayers(
-      srcTextureInfo->GetSubresourceFromIndex(VK_IMAGE_ASPECT_COLOR_BIT, src->GetSubresource()));
-
     const auto dstSubresource = vk::makeSubresourceLayers(
       dstTextureInfo->GetSubresourceFromIndex(VK_IMAGE_ASPECT_COLOR_BIT, dst->GetSubresource()));
 
