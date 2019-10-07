@@ -15,7 +15,7 @@ namespace dxvk {
     MaxNumActiveBindings        =   128,
     MaxNumQueuedCommandBuffers  =    12,
     MaxNumQueryCountPerPool     =   128,
-    MaxNumSpecConstants         =     8,
+    MaxNumSpecConstants         =    12,
     MaxUniformBufferSize        = 65536,
     MaxVertexBindingStride      =  2048,
     MaxPushConstantSize         =   128,
