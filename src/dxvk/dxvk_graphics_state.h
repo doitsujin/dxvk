@@ -641,11 +641,11 @@ namespace dxvk {
     }
     
     bool operator == (const DxvkGraphicsPipelineStateInfo& other) const {
-      return !std::memcmp(this, &other, sizeof(*this));
+      return bit::bcmpeq(this, &other);
     }
 
     bool operator != (const DxvkGraphicsPipelineStateInfo& other) const {
-      return std::memcmp(this, &other, sizeof(*this));
+      return !bit::bcmpeq(this, &other);
     }
 
     bool useDynamicStencilRef() const {
@@ -709,11 +709,11 @@ namespace dxvk {
     }
     
     bool operator == (const DxvkComputePipelineStateInfo& other) const {
-      return !std::memcmp(this, &other, sizeof(*this));
+      return bit::bcmpeq(this, &other);
     }
 
     bool operator != (const DxvkComputePipelineStateInfo& other) const {
-      return std::memcmp(this, &other, sizeof(*this));
+      return !bit::bcmpeq(this, &other);
     }
     
     DxvkBindingMask         bsBindingMask;
