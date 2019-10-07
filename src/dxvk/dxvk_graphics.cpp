@@ -288,14 +288,14 @@ namespace dxvk {
     iaInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     iaInfo.pNext                  = nullptr;
     iaInfo.flags                  = 0;
-    iaInfo.topology               = state.iaPrimitiveTopology;
-    iaInfo.primitiveRestartEnable = state.iaPrimitiveRestart;
+    iaInfo.topology               = state.ia.primitiveTopology();
+    iaInfo.primitiveRestartEnable = state.ia.primitiveRestart();
     
     VkPipelineTessellationStateCreateInfo tsInfo;
     tsInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
     tsInfo.pNext                  = nullptr;
     tsInfo.flags                  = 0;
-    tsInfo.patchControlPoints     = state.iaPatchVertexCount;
+    tsInfo.patchControlPoints     = state.ia.patchVertexCount();
     
     VkPipelineViewportStateCreateInfo vpInfo;
     vpInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -461,12 +461,12 @@ namespace dxvk {
     
     // If there are no tessellation shaders, we
     // obviously cannot use tessellation patches.
-    if ((state.iaPrimitiveTopology == VK_PRIMITIVE_TOPOLOGY_PATCH_LIST)
+    if ((state.ia.primitiveTopology() == VK_PRIMITIVE_TOPOLOGY_PATCH_LIST)
      && (m_shaders.tcs == nullptr || m_shaders.tes == nullptr))
       return false;
     
     // Filter out undefined primitive topologies
-    if (state.iaPrimitiveTopology == VK_PRIMITIVE_TOPOLOGY_MAX_ENUM)
+    if (state.ia.primitiveTopology() == VK_PRIMITIVE_TOPOLOGY_MAX_ENUM)
       return false;
     
     // Prevent unintended out-of-bounds access to the IL arrays

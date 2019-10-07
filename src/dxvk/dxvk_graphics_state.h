@@ -7,6 +7,51 @@
 namespace dxvk {
 
   /**
+   * \brief Packed input assembly state
+   *
+   * Stores the primitive topology
+   * and primitive restart info.
+   */
+  class DxvkIaInfo {
+
+  public:
+
+    DxvkIaInfo() = default;
+
+    DxvkIaInfo(
+            VkPrimitiveTopology primitiveTopology,
+            VkBool32            primitiveRestart,
+            uint32_t            patchVertexCount)
+    : m_primitiveTopology (uint16_t(primitiveTopology)),
+      m_primitiveRestart  (uint16_t(primitiveRestart)),
+      m_patchVertexCount  (uint16_t(patchVertexCount)),
+      m_reserved          (0) { }
+
+    VkPrimitiveTopology primitiveTopology() const {
+      return m_primitiveTopology <= VK_PRIMITIVE_TOPOLOGY_PATCH_LIST
+        ? VkPrimitiveTopology(m_primitiveTopology)
+        : VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+    }
+
+    VkBool32 primitiveRestart() const {
+      return VkBool32(m_primitiveRestart);
+    }
+
+    uint32_t patchVertexCount() const {
+      return m_patchVertexCount;
+    }
+
+  private:
+
+    uint16_t m_primitiveTopology      : 4;
+    uint16_t m_primitiveRestart       : 1;
+    uint16_t m_patchVertexCount       : 6;
+    uint16_t m_reserved               : 5;
+
+  };
+
+
+  /**
    * \brief Packed graphics pipeline state
    *
    * Stores a compressed representation of the full
@@ -62,10 +107,7 @@ namespace dxvk {
     }
     
     DxvkBindingMask         bsBindingMask;
-    
-    VkPrimitiveTopology                 iaPrimitiveTopology;
-    VkBool32                            iaPrimitiveRestart;
-    uint32_t                            iaPatchVertexCount;
+    DxvkIaInfo              ia;
     
     uint32_t                            ilAttributeCount;
     uint32_t                            ilBindingCount;
