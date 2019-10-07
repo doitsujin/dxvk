@@ -2001,14 +2001,14 @@ namespace dxvk {
     DxvkHashState state;
 
     std::hash<bool> boolhash;
-    std::hash<uint64_t> uint64hash;
+    std::hash<uint32_t> uint32hash;
 
     state.add(boolhash(key.SpecularEnable));
     state.add(boolhash(key.FlatShade));
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
-      state.add(uint64hash(key.Stages[i].primitive.a));
-      state.add(uint64hash(key.Stages[i].primitive.b));
+      state.add(uint32hash(key.Stages[i].primitive.a));
+      state.add(uint32hash(key.Stages[i].primitive.b));
     }
 
     return state;

@@ -112,8 +112,8 @@ namespace dxvk {
       } data;
 
       struct {
-        uint64_t a;
-        uint64_t b;
+        uint32_t a;
+        uint32_t b;
       } primitive;
     };
   };
