@@ -59,6 +59,9 @@ namespace dxvk {
 
   uint32_t GetPointCoord(SpirvModule& spvModule, std::vector<uint32_t>& entryPointInterfaces);
 
+  constexpr uint32_t TCIOffset = 16;
+  constexpr uint32_t TCIMask   = 0xb111 << TCIOffset;
+
   struct D3D9FFShaderKeyVS {
     D3D9FFShaderKeyVS() {
       // memcmp safety
@@ -67,6 +70,8 @@ namespace dxvk {
 
     union {
       struct {
+        uint32_t TexcoordIndices  : 24;
+
         uint32_t HasPositionT     : 1;
 
         uint32_t HasColor0        : 1; // Diffuse
@@ -80,15 +85,16 @@ namespace dxvk {
         uint32_t LocalViewer      : 1;
         uint32_t RangeFog         : 1;
 
+        uint32_t TexcoordFlags    : 24;
+
         uint32_t DiffuseSource    : 2;
         uint32_t AmbientSource    : 2;
         uint32_t SpecularSource   : 2;
         uint32_t EmissiveSource   : 2;
 
-        uint32_t LightCount       : 4;
-
-        uint32_t TexcoordIndices  : 24;
         uint32_t TransformFlags   : 24;
+
+        uint32_t LightCount       : 4;
       } data;
 
       struct {
@@ -98,9 +104,6 @@ namespace dxvk {
       } primitive;
     };
   };
-
-  static_assert(std::is_trivially_copyable< D3D9FFShaderKeyVS>());
-  static_assert(std::is_trivial< D3D9FFShaderKeyVS>());
 
   constexpr uint32_t TextureArgCount = 3;
 

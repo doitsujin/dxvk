@@ -752,6 +752,7 @@ namespace dxvk {
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       uint32_t inputIndex = (m_vsKey.data.TexcoordIndices >> (i * 3)) & 0b111;
+      uint32_t inputFlags = (m_vsKey.data.TexcoordFlags   >> (i * 3)) & 0b111;
 
       uint32_t transformed;
 
@@ -759,23 +760,23 @@ namespace dxvk {
 
       uint32_t flags = (m_vsKey.data.TransformFlags >> (i * 3)) & 0b111;
       uint32_t count = flags;
-      switch (inputIndex & 0xffff0000) {
+      switch (inputFlags) {
         default:
-        case D3DTSS_TCI_PASSTHRU:
+        case (D3DTSS_TCI_PASSTHRU >> TCIOffset):
           transformed = m_vs.in.TEXCOORD[inputIndex & 0xFF];
           break;
 
-        case D3DTSS_TCI_CAMERASPACENORMAL:
+        case (D3DTSS_TCI_CAMERASPACENORMAL >> TCIOffset):
           transformed = outNrm;
           count = 4;
           break;
 
-        case D3DTSS_TCI_CAMERASPACEPOSITION:
+        case (D3DTSS_TCI_CAMERASPACEPOSITION >> TCIOffset):
           transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1.0f), vtx, 1, &wIndex);
           count = 4;
           break;
 
-        case D3DTSS_TCI_CAMERASPACEREFLECTIONVECTOR: {
+        case (D3DTSS_TCI_CAMERASPACEREFLECTIONVECTOR >> TCIOffset): {
           uint32_t vtx3 = m_module.opVectorShuffle(m_vec3Type, vtx, vtx, 3, indices.data());
           vtx3 = m_module.opNormalize(m_vec3Type, vtx3);
           
@@ -791,7 +792,7 @@ namespace dxvk {
           break;
         }
 
-        case D3DTSS_TCI_SPHEREMAP: {
+        case (D3DTSS_TCI_SPHEREMAP >> TCIOffset): {
           uint32_t vtx3 = m_module.opVectorShuffle(m_vec3Type, vtx, vtx, 3, indices.data());
           vtx3 = m_module.opNormalize(m_vec3Type, vtx3);
 

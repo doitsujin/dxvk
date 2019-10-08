@@ -5936,14 +5936,16 @@ namespace dxvk {
       key.data.LightCount = lightCount;
 
       for (uint32_t i = 0; i < caps::MaxTextureBlendStages; i++) {
-        uint32_t flags = m_state.textureStages[i][D3DTSS_TEXTURETRANSFORMFLAGS] & ~(D3DTTFF_PROJECTED);
-        uint32_t index = m_state.textureStages[i][D3DTSS_TEXCOORDINDEX];
+        uint32_t transformFlags = m_state.textureStages[i][D3DTSS_TEXTURETRANSFORMFLAGS] & ~(D3DTTFF_PROJECTED);
+        uint32_t index          = m_state.textureStages[i][D3DTSS_TEXCOORDINDEX];
+        uint32_t indexFlags     = (index & TCIMask) >> TCIOffset;
 
-        flags &= 0b111;
-        index &= 0b111;
+        transformFlags &= 0b111;
+        index          &= 0b111;
 
-        key.data.TransformFlags  |= flags << (i * 3);
-        key.data.TexcoordIndices |= index << (i * 3);
+        key.data.TransformFlags  |= transformFlags << (i * 3);
+        key.data.TexcoordFlags   |= indexFlags     << (i * 3);
+        key.data.TexcoordIndices |= index          << (i * 3);
       }
 
       EmitCs([
