@@ -89,7 +89,7 @@ namespace dxvk {
 
         uint32_t TexcoordIndices  : 24;
         uint32_t TransformFlags   : 24;
-      };
+      } data;
 
       struct {
         uint32_t a;
@@ -98,6 +98,9 @@ namespace dxvk {
       } primitive;
     };
   };
+
+  static_assert(std::is_trivially_copyable< D3D9FFShaderKeyVS>());
+  static_assert(std::is_trivial< D3D9FFShaderKeyVS>());
 
   constexpr uint32_t TextureArgCount = 3;
 
