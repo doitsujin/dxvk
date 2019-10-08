@@ -155,6 +155,7 @@ namespace dxvk {
   struct DxsoCompilerPsPart {
     uint32_t functionId         = 0;
     uint32_t samplerTypeSpec    = 0;
+    uint32_t projectionSpec     = 0;
 
     //////////////
     // Misc Types

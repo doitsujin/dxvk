@@ -2038,6 +2038,12 @@ namespace dxvk {
       return m_recorder->SetTextureStageState(Stage, Type, Value);
 
     if (likely(m_state.textureStages[Stage][Type] != Value)) {
+      if (Type == D3DTSS_TEXTURETRANSFORMFLAGS) {
+        m_projectionBitfield &= ~(1 << Stage);
+        if (Value & D3DTTFF_PROJECTED)
+          m_projectionBitfield |= 1 << Stage;
+      }
+
       if ((Type >= D3DTSS_BUMPENVMAT00  && Type <= D3DTSS_BUMPENVMAT11)
        || (Type == D3DTSS_BUMPENVLSCALE || Type == D3DTSS_BUMPENVLOFFSET))
         m_flags.set(D3D9DeviceFlag::DirtySharedPixelShaderData);
@@ -5514,21 +5520,24 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyInputLayout))
       BindInputLayout();
 
-    auto UpdateSamplerTypes = [&](uint32_t value) {
-      if (m_lastSamplerTypeBitfield != value)
-        UpdateSamplerSpecConsant(value);
+    auto UpdateSamplerTypes = [&](uint32_t types, uint32_t projections) {
+      if (m_lastSamplerTypeBitfield != types)
+        UpdateSamplerSpecConsant(types);
+
+      if (m_lastProjectionBitfield != projections)
+        UpdateProjectionSpecConstant(projections);
     };
 
     if (likely(UseProgrammablePS())) {
       UploadConstants<DxsoProgramTypes::PixelShader>();
 
       if (GetCommonShader(m_state.pixelShader)->GetInfo().majorVersion() >= 2)
-        UpdateSamplerTypes(0u);
+        UpdateSamplerTypes(0u, 0u);
       else
-        UpdateSamplerTypes(m_samplerTypeBitfield); // For implicit samplers...
+        UpdateSamplerTypes(m_samplerTypeBitfield, m_projectionBitfield); // For implicit samplers...
     }
     else {
-      UpdateSamplerTypes(0u);
+      UpdateSamplerTypes(0u, 0u);
 
       UpdateFixedFunctionPS();
     }
@@ -6139,6 +6148,15 @@ namespace dxvk {
     });
 
     m_lastSamplerTypeBitfield = value;
+  }
+
+
+  void D3D9DeviceEx::UpdateProjectionSpecConstant(uint32_t value) {
+    EmitCs([cBitfield = value](DxvkContext* ctx) {
+      ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::ProjectionType, cBitfield);
+    });
+
+    m_lastProjectionBitfield = value;
   }
 
 

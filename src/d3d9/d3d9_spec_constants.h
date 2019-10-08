@@ -13,6 +13,7 @@ namespace dxvk {
     PixelFogMode    = 5,
 
     PointMode       = 6,
+    ProjectionType  = 7,
   };
 
 }

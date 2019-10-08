@@ -466,6 +466,10 @@ namespace dxvk {
       m_ps.samplerTypeSpec = m_module.specConst32(m_module.defIntType(32, 0), 0);
       m_module.decorateSpecId(m_ps.samplerTypeSpec, getSpecId(D3D9SpecConstantId::SamplerType));
       m_module.setDebugName(m_ps.samplerTypeSpec, "s_sampler_types");
+
+      m_ps.projectionSpec = m_module.specConst32(m_module.defIntType(32, 0), 0);
+      m_module.decorateSpecId(m_ps.projectionSpec, getSpecId(D3D9SpecConstantId::ProjectionType));
+      m_module.setDebugName(m_ps.projectionSpec, "s_projections");
     }
 
     this->setupRenderStateInfo();
@@ -2644,7 +2648,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     DxsoSampler sampler = m_samplers.at(samplerIdx);
 
-    auto SampleImage = [this, opcode, dst, ctx](DxsoRegisterValue texcoordVar, DxsoSamplerInfo& sampler, bool depth, DxsoSamplerType samplerType) {
+    auto SampleImage = [this, opcode, dst, ctx, samplerIdx](DxsoRegisterValue texcoordVar, DxsoSamplerInfo& sampler, bool depth, DxsoSamplerType samplerType) {
       DxsoRegisterValue result;
       result.type.ctype  = dst.type.ctype;
       result.type.ccount = depth ? 1 : 4;
@@ -2694,15 +2698,9 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         }
       }
 
-      if (m_programInfo.majorVersion() == 1 && depth && samplerType != SamplerTypeTextureCube) {
-        // Apparently this gets projected automagically..?
-        // I am unsure whether this applies to all
-        // depth comp. samples in PS 1.x
-
-        // Come back to me if there are shadow
-        // glitches in PS 1.x games!
+      bool switchProjResult = m_programInfo.majorVersion() < 2 && samplerType != SamplerTypeTextureCube;
+      if (switchProjResult)
         projDivider = GetProjectionValue();
-      }
 
       uint32_t reference = 0;
 
@@ -2713,13 +2711,9 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       }
 
       if (projDivider != 0) {
-        texcoordVar.id = m_module.opCompositeInsert(getVectorTypeId(texcoordVar.type),
-          projDivider, texcoordVar.id, 1, &sampler.dimensions);
-
-        uint32_t w = 3;
-        if (sampler.dimensions != w) {
+        for (uint32_t i = sampler.dimensions; i < 4; i++) {
           texcoordVar.id = m_module.opCompositeInsert(getVectorTypeId(texcoordVar.type),
-            projDivider, texcoordVar.id, 1, &w);
+            projDivider, texcoordVar.id, 1, &i);
         }
       }
 
@@ -2730,6 +2724,35 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         texcoordVar.id,
         reference,
         imageOperands);
+
+      if (switchProjResult) {
+        uint32_t bool_t = m_module.defBoolType();
+
+        uint32_t nonProjResult = m_module.sampleGeneric(
+          0,
+          typeId,
+          imageVarId,
+          texcoordVar.id,
+          reference,
+          imageOperands);
+
+        uint32_t shouldProj = m_module.opBitFieldUExtract(
+          m_module.defIntType(32, 0), m_ps.projectionSpec,
+          m_module.consti32(samplerIdx), m_module.consti32(1));
+
+        shouldProj = m_module.opIEqual(m_module.defBoolType(), shouldProj, m_module.constu32(1));
+
+        // Depth  -> .x
+        // Colour -> .xyzw
+        // Need to replicate the bool for the opSelect.
+        if (!depth) {
+          uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
+          std::array<uint32_t, 4> indices = { shouldProj, shouldProj, shouldProj, shouldProj };
+          shouldProj = m_module.opCompositeConstruct(bvec4_t, indices.size(), indices.data());
+        }
+
+        result.id = m_module.opSelect(typeId, shouldProj, result.id, nonProjResult);
+      }
 
       this->emitDstStore(dst, result, ctx.dst.mask, ctx.dst.saturate, emitPredicateLoad(ctx), ctx.dst.shift, ctx.dst.id);
     };

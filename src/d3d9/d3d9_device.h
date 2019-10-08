@@ -947,6 +947,8 @@ namespace dxvk {
     uint32_t                        m_instancedData   = 0;
     uint32_t                        m_lastSamplerTypeBitfield = 0;
     uint32_t                        m_samplerTypeBitfield = 0;
+    uint32_t                        m_lastProjectionBitfield = 0;
+    uint32_t                        m_projectionBitfield = 0;
 
     uint32_t                        m_lastPointMode = 0;
 
@@ -1089,6 +1091,8 @@ namespace dxvk {
     bool UseProgrammablePS();
 
     void UpdateSamplerSpecConsant(uint32_t value);
+
+    void UpdateProjectionSpecConstant(uint32_t value);
 
   };
 
