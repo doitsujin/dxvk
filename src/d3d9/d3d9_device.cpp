@@ -6052,8 +6052,6 @@ namespace dxvk {
       };
 
       D3D9FFShaderKeyFS key;
-      key.SpecularEnable = m_state.renderStates[D3DRS_SPECULARENABLE];
-      key.FlatShade      = m_state.renderStates[D3DRS_SHADEMODE] == D3DSHADE_FLAT;
 
       uint32_t idx;
       for (idx = 0; idx < caps::TextureStageCount; idx++) {
@@ -6103,6 +6101,9 @@ namespace dxvk {
         stage0.AlphaOp   = D3DTOP_SELECTARG1;
         stage0.AlphaArg1 = D3DTA_DIFFUSE;
       }
+
+      stage0.GlobalSpecularEnable = m_state.renderStates[D3DRS_SPECULARENABLE];
+      stage0.GlobalFlatShade      = m_state.renderStates[D3DRS_SHADEMODE] == D3DSHADE_FLAT;
 
       // The last stage *always* writes to current.
       if (idx >= 1)

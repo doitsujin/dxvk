@@ -125,6 +125,11 @@ namespace dxvk {
         uint32_t     Projected : 1;
 
         uint32_t     ProjectedCount : 3;
+
+        // Included in here, read from Stage 0 for packing reasons
+        // Affects all stages.
+        uint32_t     GlobalSpecularEnable : 1;
+        uint32_t     GlobalFlatShade      : 1;
       } data;
 
       struct {
@@ -148,8 +153,6 @@ namespace dxvk {
     }
 
     D3D9FFShaderStage Stages[caps::TextureStageCount];
-    bool              SpecularEnable;
-    bool              FlatShade;
   };
 
   struct D3D9FFShaderKeyHash {

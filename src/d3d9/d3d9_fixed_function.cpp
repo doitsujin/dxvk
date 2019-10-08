@@ -669,7 +669,7 @@ namespace dxvk {
     bool diffuseOrSpec = semantic == DxsoSemantic{ DxsoUsage::Color, 0 }
                       || semantic == DxsoSemantic{ DxsoUsage::Color, 1 };
 
-    if (diffuseOrSpec && m_fsKey.FlatShade)
+    if (diffuseOrSpec && m_fsKey.Stages[0].data.GlobalFlatShade)
       m_module.decorate(ptr, spv::DecorationFlat);
 
     std::string name = str::format(input ? "in_" : "out_", semantic.usage, semantic.usageIndex);
@@ -1603,7 +1603,7 @@ namespace dxvk {
       }
     }
 
-    if (m_fsKey.SpecularEnable) {
+    if (m_fsKey.Stages[0].data.GlobalSpecularEnable) {
       uint32_t specular = m_module.opFMul(m_vec4Type, m_ps.in.COLOR[1], m_module.constvec4f32(1.0f, 1.0f, 1.0f, 0.0f));
 
       current = m_module.opFAdd(m_vec4Type, current, specular);
@@ -1975,11 +1975,7 @@ namespace dxvk {
   size_t D3D9FFShaderKeyHash::operator () (const D3D9FFShaderKeyFS& key) const {
     DxvkHashState state;
 
-    std::hash<bool> boolhash;
     std::hash<uint32_t> uint32hash;
-
-    state.add(boolhash(key.SpecularEnable));
-    state.add(boolhash(key.FlatShade));
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       state.add(uint32hash(key.Stages[i].primitive.a));
