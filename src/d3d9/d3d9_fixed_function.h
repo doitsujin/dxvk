@@ -60,7 +60,7 @@ namespace dxvk {
   uint32_t GetPointCoord(SpirvModule& spvModule, std::vector<uint32_t>& entryPointInterfaces);
 
   constexpr uint32_t TCIOffset = 16;
-  constexpr uint32_t TCIMask   = 0xb111 << TCIOffset;
+  constexpr uint32_t TCIMask   = 0b111 << TCIOffset;
 
   struct D3D9FFShaderKeyVS {
     D3D9FFShaderKeyVS() {
