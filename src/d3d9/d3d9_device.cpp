@@ -5901,10 +5901,10 @@ namespace dxvk {
       m_flags.clr(D3D9DeviceFlag::DirtyFFVertexShader);
 
       D3D9FFShaderKeyVS key;
-      key.HasColor0    = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor0)   : false;
-      key.HasColor1    = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor1)   : false;
       key.HasPositionT = hasPositionT;
-      key.HasPointSize = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPointSize)   : false;
+      key.HasColor0    = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor0)    : false;
+      key.HasColor1    = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor1)    : false;
+      key.HasPointSize = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPointSize) : false;
 
       bool lighting    = m_state.renderStates[D3DRS_LIGHTING] != 0 && !key.HasPositionT;
       bool colorVertex = m_state.renderStates[D3DRS_COLORVERTEX] != 0;
@@ -5914,28 +5914,36 @@ namespace dxvk {
                        : 0;
 
       key.UseLighting      = lighting;
-      key.LocalViewer      = m_state.renderStates[D3DRS_LOCALVIEWER] && lighting;
       key.NormalizeNormals = m_state.renderStates[D3DRS_NORMALIZENORMALS];
+      key.LocalViewer      = m_state.renderStates[D3DRS_LOCALVIEWER] && lighting;
 
-      key.DiffuseSource  = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_DIFFUSEMATERIALSOURCE]  & mask);
-      key.AmbientSource  = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_AMBIENTMATERIALSOURCE]  & mask);
-      key.SpecularSource = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_SPECULARMATERIALSOURCE] & mask);
-      key.EmissiveSource = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_EMISSIVEMATERIALSOURCE] & mask);
+      key.RangeFog         = m_state.renderStates[D3DRS_RANGEFOGENABLE];
 
-      key.RangeFog       = m_state.renderStates[D3DRS_RANGEFOGENABLE];
+      key.DiffuseSource    = m_state.renderStates[D3DRS_DIFFUSEMATERIALSOURCE]  & mask;
+      key.AmbientSource    = m_state.renderStates[D3DRS_AMBIENTMATERIALSOURCE]  & mask;
+      key.SpecularSource   = m_state.renderStates[D3DRS_SPECULARMATERIALSOURCE] & mask;
+      key.EmissiveSource   = m_state.renderStates[D3DRS_EMISSIVEMATERIALSOURCE] & mask;
 
-      for (uint32_t i = 0; i < key.TexcoordIndices.size(); i++) {
-        key.TransformFlags[i]  = m_state.textureStages[i][D3DTSS_TEXTURETRANSFORMFLAGS] & ~(D3DTTFF_PROJECTED);
-        key.TexcoordIndices[i] = m_state.textureStages[i][D3DTSS_TEXCOORDINDEX];
-      }
-
-      key.LightCount = 0;
+      uint32_t lightCount = 0;
 
       if (key.UseLighting) {
         for (uint32_t i = 0; i < caps::MaxEnabledLights; i++) {
           if (m_state.enabledLightIndices[i] != UINT32_MAX)
-            key.LightCount++;
+            lightCount++;
         }
+      }
+
+      key.LightCount = lightCount;
+
+      for (uint32_t i = 0; i < caps::MaxTextureBlendStages; i++) {
+        uint32_t flags = m_state.textureStages[i][D3DTSS_TEXTURETRANSFORMFLAGS] & ~(D3DTTFF_PROJECTED);
+        uint32_t index = m_state.textureStages[i][D3DTSS_TEXCOORDINDEX];
+
+        flags &= 0b111;
+        index &= 0b111;
+
+        key.TransformFlags  |= flags << (i * 3);
+        key.TexcoordIndices |= index << (i * 3);
       }
 
       EmitCs([

@@ -65,28 +65,38 @@ namespace dxvk {
       std::memset(this, 0, sizeof(*this));
     }
 
-    bool HasPositionT;
+    union {
+      struct {
+        uint32_t HasPositionT     : 1;
 
-    bool HasColor0; // Diffuse
-    bool HasColor1; // Specular
+        uint32_t HasColor0        : 1; // Diffuse
+        uint32_t HasColor1        : 1; // Specular
 
-    bool HasPointSize;
+        uint32_t HasPointSize     : 1;
 
-    bool UseLighting;
+        uint32_t UseLighting      : 1;
 
-    bool NormalizeNormals;
-    bool LocalViewer;
-    bool RangeFog;
+        uint32_t NormalizeNormals : 1;
+        uint32_t LocalViewer      : 1;
+        uint32_t RangeFog         : 1;
 
-    D3DMATERIALCOLORSOURCE DiffuseSource;
-    D3DMATERIALCOLORSOURCE AmbientSource;
-    D3DMATERIALCOLORSOURCE SpecularSource;
-    D3DMATERIALCOLORSOURCE EmissiveSource;
+        uint32_t DiffuseSource    : 2;
+        uint32_t AmbientSource    : 2;
+        uint32_t SpecularSource   : 2;
+        uint32_t EmissiveSource   : 2;
 
-    std::array<uint32_t, caps::TextureStageCount> TexcoordIndices;
-    std::array<uint32_t, caps::TextureStageCount> TransformFlags;
+        uint32_t LightCount       : 4;
 
-    uint32_t LightCount;
+        uint32_t TexcoordIndices  : 24;
+        uint32_t TransformFlags   : 24;
+      };
+
+      struct {
+        uint32_t a;
+        uint32_t b;
+        uint32_t c;
+      } primitive;
+    };
   };
 
   constexpr uint32_t TextureArgCount = 3;

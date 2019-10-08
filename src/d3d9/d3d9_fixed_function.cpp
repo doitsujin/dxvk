@@ -751,13 +751,14 @@ namespace dxvk {
     m_module.opStore(m_vs.out.NORMAL, outNrm);
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
-      uint32_t inputIndex  = m_vsKey.TexcoordIndices[i];
+      uint32_t inputIndex = (m_vsKey.TexcoordIndices >> (i * 3)) & 0b111;
 
       uint32_t transformed;
 
       const uint32_t wIndex = 3;
 
-      uint32_t count = m_vsKey.TransformFlags[i];
+      uint32_t flags = (m_vsKey.TransformFlags >> (i * 3)) & 0b111;
+      uint32_t count = flags;
       switch (inputIndex & 0xffff0000) {
         default:
         case D3DTSS_TCI_PASSTHRU:
@@ -815,7 +816,7 @@ namespace dxvk {
         }
       }
 
-      uint32_t type = m_vsKey.TransformFlags[i];
+      uint32_t type = flags;
       if (type != D3DTTFF_DISABLE) {
         if (!m_vsKey.HasPositionT) {
           uint32_t one  = m_module.constf32(1.0f);
@@ -838,7 +839,7 @@ namespace dxvk {
     }
 
     if (m_vsKey.UseLighting) {
-      auto PickSource = [&](D3DMATERIALCOLORSOURCE Source, uint32_t Material) {
+      auto PickSource = [&](uint32_t Source, uint32_t Material) {
         if (Source == D3DMCS_MATERIAL)
           return Material;
         else if (Source == D3DMCS_COLOR1)
@@ -1960,32 +1961,11 @@ namespace dxvk {
   size_t D3D9FFShaderKeyHash::operator () (const D3D9FFShaderKeyVS& key) const {
     DxvkHashState state;
 
-    std::hash<bool>                   bhash;
-    std::hash<D3DMATERIALCOLORSOURCE> colorSourceHash;
-    std::hash<uint8_t>                uint8hash;
-    std::hash<uint32_t>               uint32hash;
+    std::hash<uint32_t> uint32hash;
 
-    state.add(bhash(key.HasPositionT));
-    state.add(bhash(key.HasColor0));
-    state.add(bhash(key.HasColor1));
-    state.add(bhash(key.HasPointSize));
-    state.add(bhash(key.UseLighting));
-    state.add(bhash(key.NormalizeNormals));
-    state.add(bhash(key.LocalViewer));
-    state.add(bhash(key.RangeFog));
-
-    state.add(colorSourceHash(key.DiffuseSource));
-    state.add(colorSourceHash(key.AmbientSource));
-    state.add(colorSourceHash(key.SpecularSource));
-    state.add(colorSourceHash(key.EmissiveSource));
-
-    for (auto index : key.TexcoordIndices)
-      state.add(uint8hash(index));
-
-    for (auto index : key.TransformFlags)
-      state.add(uint32hash(index));
-
-    state.add(uint32hash(key.LightCount));
+    state.add(uint32hash(key.primitive.a));
+    state.add(uint32hash(key.primitive.b));
+    state.add(uint32hash(key.primitive.c));
 
     return state;
   }
