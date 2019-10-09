@@ -1670,8 +1670,10 @@ namespace dxvk {
 
           bool newATOC = IsAlphaToCoverageEnabled();
 
-          if (oldATOC != newATOC)
+          if (oldATOC != newATOC) {
             m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
+            m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
+          }
 
           return D3D_OK;
         }
@@ -1695,8 +1697,10 @@ namespace dxvk {
 
           bool newATOC = IsAlphaToCoverageEnabled();
 
-          if (oldATOC != newATOC)
+          if (oldATOC != newATOC) {
             m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
+            m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
+          }
 
           return D3D_OK;
         }
@@ -5242,7 +5246,7 @@ namespace dxvk {
     
     auto& rs = m_state.renderStates;
     
-    VkCompareOp alphaOp = rs[D3DRS_ALPHATESTENABLE]
+    VkCompareOp alphaOp = (rs[D3DRS_ALPHATESTENABLE] && !IsAlphaToCoverageEnabled())
       ? DecodeCompareOp(D3DCMPFUNC(rs[D3DRS_ALPHAFUNC]))
       : VK_COMPARE_OP_ALWAYS;
     
