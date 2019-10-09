@@ -5274,9 +5274,7 @@ namespace dxvk {
 
     uint32_t ref = uint32_t(rs[D3DRS_STENCILREF]);
 
-    EmitCs([
-      cRef = ref
-    ](DxvkContext* ctx) {
+    EmitCs([cRef = ref] (DxvkContext* ctx) {
       ctx->setStencilReference(cRef);
     });
   }
