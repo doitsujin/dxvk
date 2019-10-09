@@ -1657,6 +1657,7 @@ namespace dxvk {
     if (likely(changed)) {
       const bool oldATOC = IsAlphaToCoverageEnabled();
       const bool oldNVDB = states[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB);
+      const bool oldAlphaTest = IsAlphaTestEnabled();
 
       // AMD's driver hack for ATOC and RESZ
       if (unlikely(State == D3DRS_POINTSIZE)) {
@@ -1669,11 +1670,13 @@ namespace dxvk {
           m_amdATOC = Value == AlphaToCoverageEnable;
 
           bool newATOC = IsAlphaToCoverageEnabled();
+          bool newAlphaTest = IsAlphaTestEnabled();
 
-          if (oldATOC != newATOC) {
+          if (oldATOC != newATOC)
             m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
+
+          if (oldAlphaTest != newAlphaTest)
             m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
-          }
 
           return D3D_OK;
         }
@@ -1696,11 +1699,13 @@ namespace dxvk {
           m_nvATOC = Value == AlphaToCoverageEnable;
 
           bool newATOC = IsAlphaToCoverageEnabled();
+          bool newAlphaTest = IsAlphaToCoverageEnabled();
 
-          if (oldATOC != newATOC) {
+          if (oldATOC != newATOC)
             m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
+
+          if (oldAlphaTest != newAlphaTest)
             m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
-          }
 
           return D3D_OK;
         }
@@ -1732,10 +1737,17 @@ namespace dxvk {
         
         case D3DRS_ALPHATESTENABLE: {
           bool newATOC = IsAlphaToCoverageEnabled();
+          bool newAlphaTest = IsAlphaTestEnabled();
 
           if (oldATOC != newATOC)
             m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
+
+          if (oldAlphaTest != newAlphaTest)
+            m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
+
+          break;
         }
+
         case D3DRS_ALPHAFUNC:
           m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
           break;
@@ -5246,7 +5258,7 @@ namespace dxvk {
     
     auto& rs = m_state.renderStates;
     
-    VkCompareOp alphaOp = (rs[D3DRS_ALPHATESTENABLE] && !IsAlphaToCoverageEnabled())
+    VkCompareOp alphaOp = IsAlphaTestEnabled()
       ? DecodeCompareOp(D3DCMPFUNC(rs[D3DRS_ALPHAFUNC]))
       : VK_COMPARE_OP_ALWAYS;
     

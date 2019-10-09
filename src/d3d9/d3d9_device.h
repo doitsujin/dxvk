@@ -739,6 +739,10 @@ namespace dxvk {
       return m_amdATOC || (m_nvATOC && alphaTest);
     }
 
+    inline bool IsAlphaTestEnabled() {
+      return m_state.renderStates[D3DRS_ALPHATESTENABLE] && !IsAlphaToCoverageEnabled();
+    }
+
     void BindMultiSampleState();
     
     void BindBlendState();
