@@ -2754,6 +2754,9 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         result.id = m_module.opSelect(typeId, shouldProj, result.id, nonProjResult);
       }
 
+      // Apply operand swizzle to the operand value
+      result = emitRegisterSwizzle(result, IdentitySwizzle, ctx.dst.mask);
+
       this->emitDstStore(dst, result, ctx.dst.mask, ctx.dst.saturate, emitPredicateLoad(ctx), ctx.dst.shift, ctx.dst.id);
     };
 
