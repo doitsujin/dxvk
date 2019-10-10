@@ -1028,8 +1028,6 @@ namespace dxvk {
     DxvkBindingSet<MaxNumResourceSlots>       m_rcTracked;
 
     std::array<DxvkShaderResourceSlot, MaxNumResourceSlots>  m_rc;
-    std::array<DxvkDescriptorInfo,     MaxNumActiveBindings> m_descInfos;
-    
     std::array<DxvkGraphicsPipeline*, 4096> m_gpLookupCache = { };
     std::array<DxvkComputePipeline*,   256> m_cpLookupCache = { };
 
@@ -1133,9 +1131,6 @@ namespace dxvk {
 
     template<VkPipelineBindPoint BindPoint>
     bool updateShaderResources(
-      const DxvkPipelineLayout*     layout);
-    
-    VkDescriptorSet updateShaderDescriptors(
       const DxvkPipelineLayout*     layout);
     
     template<VkPipelineBindPoint BindPoint>
