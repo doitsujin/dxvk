@@ -1395,9 +1395,7 @@ namespace dxvk {
           uint32_t x,
           uint32_t y,
           uint32_t z) {
-    this->commitComputeState();
-    
-    if (m_cpActivePipeline) {
+    if (this->commitComputeState()) {
       this->commitComputeInitBarriers();
 
       m_queryManager.beginQueries(m_cmd,
@@ -1417,15 +1415,13 @@ namespace dxvk {
   
   void DxvkContext::dispatchIndirect(
           VkDeviceSize      offset) {
-    this->commitComputeState();
-    
     auto bufferSlice = m_state.id.argBuffer.getSliceHandle(
       offset, sizeof(VkDispatchIndirectCommand));
 
     if (m_execBarriers.isBufferDirty(bufferSlice, DxvkAccess::Read))
       m_execBarriers.recordCommands(m_cmd);
     
-    if (m_cpActivePipeline) {
+    if (this->commitComputeState()) {
       this->commitComputeInitBarriers();
 
       m_queryManager.beginQueries(m_cmd,
@@ -3557,30 +3553,33 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::updateComputePipeline() {
-    m_flags.clr(DxvkContextFlag::CpDirtyPipeline);
-    
+  bool DxvkContext::updateComputePipeline() {
     m_state.cp.state.bsBindingMask.clear();
     m_state.cp.pipeline = lookupComputePipeline(m_state.cp.shaders);
+
+    if (unlikely(m_state.cp.pipeline == nullptr))
+      return false;
     
-    if (m_state.cp.pipeline != nullptr
-     && m_state.cp.pipeline->layout()->pushConstRange().size)
+    if (m_state.cp.pipeline->layout()->pushConstRange().size)
       m_flags.set(DxvkContextFlag::DirtyPushConstants);
+
+    m_flags.clr(DxvkContextFlag::CpDirtyPipeline);
+    return true;
   }
   
   
-  void DxvkContext::updateComputePipelineState() {
+  bool DxvkContext::updateComputePipelineState() {
+    m_cpActivePipeline = m_state.cp.pipeline->getPipelineHandle(m_state.cp.state);
+    
+    if (unlikely(!m_cpActivePipeline))
+      return false;
+
+    m_cmd->cmdBindPipeline(
+      VK_PIPELINE_BIND_POINT_COMPUTE,
+      m_cpActivePipeline);
+
     m_flags.clr(DxvkContextFlag::CpDirtyPipelineState);
-    
-    m_cpActivePipeline = m_state.cp.pipeline != nullptr
-      ? m_state.cp.pipeline->getPipelineHandle(m_state.cp.state)
-      : VK_NULL_HANDLE;
-    
-    if (m_cpActivePipeline != VK_NULL_HANDLE) {
-      m_cmd->cmdBindPipeline(
-        VK_PIPELINE_BIND_POINT_COMPUTE,
-        m_cpActivePipeline);
-    }
+    return true;
   }
   
   
@@ -3667,9 +3666,6 @@ namespace dxvk {
   
   
   void DxvkContext::updateComputeShaderResources() {
-    if (m_state.cp.pipeline == nullptr)
-      return;
-
     if ((m_flags.test(DxvkContextFlag::CpDirtyResources))
      || (m_flags.test(DxvkContextFlag::CpDirtyDescriptorBinding)
       && m_state.cp.pipeline->layout()->hasStaticBufferBindings())) {
@@ -3684,9 +3680,6 @@ namespace dxvk {
   
   
   void DxvkContext::updateComputeShaderDescriptors() {
-    if (m_state.cp.pipeline == nullptr)
-      return;
-
     this->updateShaderDescriptorSetBinding<VK_PIPELINE_BIND_POINT_COMPUTE>(
       m_cpSet, m_state.cp.pipeline->layout());
 
@@ -4138,7 +4131,7 @@ namespace dxvk {
 
     auto layout = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
       ? (m_state.gp.pipeline != nullptr ? m_state.gp.pipeline->layout() : nullptr)
-      : (m_state.cp.pipeline != nullptr ? m_state.cp.pipeline->layout() : nullptr);
+      : m_state.cp.pipeline->layout();
     
     if (!layout)
       return;
@@ -4156,29 +4149,35 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::commitComputeState() {
+  bool DxvkContext::commitComputeState() {
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound))
       this->spillRenderPass();
 
     if (m_flags.test(DxvkContextFlag::GpClearRenderTargets))
       this->clearRenderPass();
     
-    if (m_flags.test(DxvkContextFlag::CpDirtyPipeline))
-      this->updateComputePipeline();
+    if (m_flags.test(DxvkContextFlag::CpDirtyPipeline)) {
+      if (unlikely(!this->updateComputePipeline()))
+        return false;
+    }
     
     if (m_flags.any(
           DxvkContextFlag::CpDirtyResources,
           DxvkContextFlag::CpDirtyDescriptorBinding))
       this->updateComputeShaderResources();
 
-    if (m_flags.test(DxvkContextFlag::CpDirtyPipelineState))
-      this->updateComputePipelineState();
+    if (m_flags.test(DxvkContextFlag::CpDirtyPipelineState)) {
+      if (unlikely(!this->updateComputePipelineState()))
+        return false;
+    }
     
     if (m_flags.test(DxvkContextFlag::CpDirtyDescriptorBinding))
       this->updateComputeShaderDescriptors();
     
     if (m_flags.test(DxvkContextFlag::DirtyPushConstants))
       this->updatePushConstants<VK_PIPELINE_BIND_POINT_COMPUTE>();
+
+    return true;
   }
   
   

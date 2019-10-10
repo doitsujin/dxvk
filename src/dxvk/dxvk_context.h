@@ -1116,8 +1116,8 @@ namespace dxvk {
     void pauseTransformFeedback();
     
     void unbindComputePipeline();
-    void updateComputePipeline();
-    void updateComputePipelineState();
+    bool updateComputePipeline();
+    bool updateComputePipelineState();
     
     void unbindGraphicsPipeline();
     void updateGraphicsPipeline();
@@ -1153,7 +1153,7 @@ namespace dxvk {
     template<VkPipelineBindPoint BindPoint>
     void updatePushConstants();
     
-    void commitComputeState();
+    bool commitComputeState();
     
     template<bool Indexed>
     void commitGraphicsState();
