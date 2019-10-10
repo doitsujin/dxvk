@@ -3954,12 +3954,14 @@ namespace dxvk {
   void DxvkContext::updateShaderDescriptorSetBinding(
           VkDescriptorSet         set,
     const DxvkPipelineLayout*     layout) {
-    if (set != VK_NULL_HANDLE) {
+    if (set) {
+      std::array<uint32_t, MaxNumActiveBindings> offsets;
+
       for (uint32_t i = 0; i < layout->dynamicBindingCount(); i++) {
         const auto& binding = layout->dynamicBinding(i);
         const auto& res     = m_rc[binding.slot];
 
-        m_descOffsets[i] = res.bufferSlice.defined()
+        offsets[i] = res.bufferSlice.defined()
           ? res.bufferSlice.getDynamicOffset()
           : 0;
       }
@@ -3967,7 +3969,7 @@ namespace dxvk {
       m_cmd->cmdBindDescriptorSet(BindPoint,
         layout->pipelineLayout(), set,
         layout->dynamicBindingCount(),
-        m_descOffsets.data());
+        offsets.data());
     }
   }
   
