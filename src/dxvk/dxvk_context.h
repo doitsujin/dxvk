@@ -1120,8 +1120,8 @@ namespace dxvk {
     bool updateComputePipelineState();
     
     void unbindGraphicsPipeline();
-    void updateGraphicsPipeline();
-    void updateGraphicsPipelineState();
+    bool updateGraphicsPipeline();
+    bool updateGraphicsPipelineState();
     
     void updateComputeShaderResources();
     void updateComputeShaderDescriptors();
@@ -1156,7 +1156,7 @@ namespace dxvk {
     bool commitComputeState();
     
     template<bool Indexed>
-    void commitGraphicsState();
+    bool commitGraphicsState();
     
     void commitComputeInitBarriers();
     void commitComputePostBarriers();

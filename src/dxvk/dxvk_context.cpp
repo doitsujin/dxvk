@@ -1454,9 +1454,7 @@ namespace dxvk {
           uint32_t instanceCount,
           uint32_t firstVertex,
           uint32_t firstInstance) {
-    this->commitGraphicsState<false>();
-    
-    if (m_gpActivePipeline) {
+    if (this->commitGraphicsState<false>()) {
       m_cmd->cmdDraw(
         vertexCount, instanceCount,
         firstVertex, firstInstance);
@@ -1472,9 +1470,7 @@ namespace dxvk {
           VkDeviceSize      offset,
           uint32_t          count,
           uint32_t          stride) {
-    this->commitGraphicsState<false>();
-    
-    if (m_gpActivePipeline) {
+    if (this->commitGraphicsState<false>()) {
       auto descriptor = m_state.id.argBuffer.getDescriptor();
       
       m_cmd->cmdDrawIndirect(
@@ -1494,9 +1490,7 @@ namespace dxvk {
           VkDeviceSize      countOffset,
           uint32_t          maxCount,
           uint32_t          stride) {
-    this->commitGraphicsState<false>();
-    
-    if (m_gpActivePipeline) {
+    if (this->commitGraphicsState<false>()) {
       auto argDescriptor = m_state.id.argBuffer.getDescriptor();
       auto cntDescriptor = m_state.id.cntBuffer.getDescriptor();
       
@@ -1520,9 +1514,7 @@ namespace dxvk {
           uint32_t firstIndex,
           uint32_t vertexOffset,
           uint32_t firstInstance) {
-    this->commitGraphicsState<true>();
-    
-    if (m_gpActivePipeline) {
+    if (this->commitGraphicsState<true>()) {
       m_cmd->cmdDrawIndexed(
         indexCount, instanceCount,
         firstIndex, vertexOffset,
@@ -1539,9 +1531,7 @@ namespace dxvk {
           VkDeviceSize      offset,
           uint32_t          count,
           uint32_t          stride) {
-    this->commitGraphicsState<true>();
-    
-    if (m_gpActivePipeline) {
+    if (this->commitGraphicsState<true>()) {
       auto descriptor = m_state.id.argBuffer.getDescriptor();
       
       m_cmd->cmdDrawIndexedIndirect(
@@ -1561,9 +1551,7 @@ namespace dxvk {
           VkDeviceSize      countOffset,
           uint32_t          maxCount,
           uint32_t          stride) {
-    this->commitGraphicsState<true>();
-    
-    if (m_gpActivePipeline) {
+    if (this->commitGraphicsState<true>()) {
       auto argDescriptor = m_state.id.argBuffer.getDescriptor();
       auto cntDescriptor = m_state.id.cntBuffer.getDescriptor();
       
@@ -1585,9 +1573,7 @@ namespace dxvk {
     const DxvkBufferSlice&  counterBuffer,
           uint32_t          counterDivisor,
           uint32_t          counterBias) {
-    this->commitGraphicsState<false>();
-
-    if (m_gpActivePipeline) {
+    if (this->commitGraphicsState<false>()) {
       auto physSlice = counterBuffer.getSliceHandle();
 
       m_cmd->cmdDrawIndirectVertexCount(1, 0,
@@ -3602,25 +3588,26 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::updateGraphicsPipeline() {
-    m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
-    
+  bool DxvkContext::updateGraphicsPipeline() {
     m_state.gp.state.bsBindingMask.clear();
     m_state.gp.pipeline = lookupGraphicsPipeline(m_state.gp.shaders);
-    m_state.gp.flags = DxvkGraphicsPipelineFlags();
-    
-    if (m_state.gp.pipeline != nullptr) {
-      m_state.gp.flags = m_state.gp.pipeline->flags();
 
-      if (m_state.gp.pipeline->layout()->pushConstRange().size)
-        m_flags.set(DxvkContextFlag::DirtyPushConstants);
+    if (unlikely(m_state.gp.pipeline == nullptr)) {
+      m_state.gp.flags = DxvkGraphicsPipelineFlags();
+      return false;
     }
+
+    m_state.gp.flags = m_state.gp.pipeline->flags();
+
+    if (m_state.gp.pipeline->layout()->pushConstRange().size)
+      m_flags.set(DxvkContextFlag::DirtyPushConstants);
+
+    m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
+    return true;
   }
   
   
-  void DxvkContext::updateGraphicsPipelineState() {
-    m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
-    
+  bool DxvkContext::updateGraphicsPipelineState() {
     this->pauseTransformFeedback();
 
     // Set up vertex buffer strides for active bindings
@@ -3653,15 +3640,17 @@ namespace dxvk {
       : DxvkContextFlag::GpDirtyStencilRef);
     
     // Retrieve and bind actual Vulkan pipeline handle
-    m_gpActivePipeline = m_state.gp.pipeline != nullptr && m_state.om.framebuffer != nullptr
-      ? m_state.gp.pipeline->getPipelineHandle(m_state.gp.state, m_state.om.framebuffer->getRenderPass())
-      : VK_NULL_HANDLE;
-    
-    if (m_gpActivePipeline != VK_NULL_HANDLE) {
-      m_cmd->cmdBindPipeline(
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        m_gpActivePipeline);
-    }
+    m_gpActivePipeline = m_state.gp.pipeline->getPipelineHandle(m_state.gp.state, m_state.om.framebuffer->getRenderPass());
+
+    if (unlikely(!m_gpActivePipeline))
+      return false;
+
+    m_cmd->cmdBindPipeline(
+      VK_PIPELINE_BIND_POINT_GRAPHICS,
+      m_gpActivePipeline);
+
+    m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
+    return true;
   }
   
   
@@ -3688,9 +3677,6 @@ namespace dxvk {
   
   
   void DxvkContext::updateGraphicsShaderResources() {
-    if (m_state.gp.pipeline == nullptr)
-      return;
-    
     if ((m_flags.test(DxvkContextFlag::GpDirtyResources))
      || (m_flags.test(DxvkContextFlag::GpDirtyDescriptorBinding)
       && m_state.gp.pipeline->layout()->hasStaticBufferBindings())) {
@@ -3705,9 +3691,6 @@ namespace dxvk {
   
   
   void DxvkContext::updateGraphicsShaderDescriptors() {
-    if (m_state.gp.pipeline == nullptr)
-      return;
-
     this->updateShaderDescriptorSetBinding<VK_PIPELINE_BIND_POINT_GRAPHICS>(
       m_gpSet, m_state.gp.pipeline->layout());
 
@@ -3728,7 +3711,7 @@ namespace dxvk {
     VkImage       depthImage  = VK_NULL_HANDLE;
     VkImageLayout depthLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     
-    if (BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS && m_state.om.framebuffer != nullptr) {
+    if (BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
       const auto& depthAttachment = m_state.om.framebuffer->getDepthTarget();
 
       if (depthAttachment.view != nullptr) {
@@ -4130,7 +4113,7 @@ namespace dxvk {
     m_flags.clr(DxvkContextFlag::DirtyPushConstants);
 
     auto layout = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
-      ? (m_state.gp.pipeline != nullptr ? m_state.gp.pipeline->layout() : nullptr)
+      ? m_state.gp.pipeline->layout()
       : m_state.cp.pipeline->layout();
     
     if (!layout)
@@ -4182,15 +4165,17 @@ namespace dxvk {
   
   
   template<bool Indexed>
-  void DxvkContext::commitGraphicsState() {
+  bool DxvkContext::commitGraphicsState() {
     if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer))
       this->updateFramebuffer();
 
     if (!m_flags.test(DxvkContextFlag::GpRenderPassBound))
       this->startRenderPass();
     
-    if (m_flags.test(DxvkContextFlag::GpDirtyPipeline))
-      this->updateGraphicsPipeline();
+    if (m_flags.test(DxvkContextFlag::GpDirtyPipeline)) {
+      if (unlikely(!this->updateGraphicsPipeline()))
+        return false;
+    }
     
     if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer) && Indexed)
       this->updateIndexBufferBinding();
@@ -4203,8 +4188,10 @@ namespace dxvk {
           DxvkContextFlag::GpDirtyDescriptorBinding))
       this->updateGraphicsShaderResources();
     
-    if (m_flags.test(DxvkContextFlag::GpDirtyPipelineState))
-      this->updateGraphicsPipelineState();
+    if (m_flags.test(DxvkContextFlag::GpDirtyPipelineState)) {
+      if (unlikely(!this->updateGraphicsPipelineState()))
+        return false;
+    }
     
     if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasTransformFeedback))
       this->updateTransformFeedbackState();
@@ -4225,6 +4212,8 @@ namespace dxvk {
     
     if (m_flags.test(DxvkContextFlag::DirtyPushConstants))
       this->updatePushConstants<VK_PIPELINE_BIND_POINT_GRAPHICS>();
+
+    return true;
   }
   
   
