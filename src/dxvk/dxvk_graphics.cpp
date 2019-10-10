@@ -457,10 +457,13 @@ namespace dxvk {
     if ((providedVertexInputs & m_vsIn) != m_vsIn)
       return false;
     
-    // If there are no tessellation shaders, we
-    // obviously cannot use tessellation patches.
-    if ((state.ia.primitiveTopology() == VK_PRIMITIVE_TOPOLOGY_PATCH_LIST)
-     && (m_shaders.tcs == nullptr || m_shaders.tes == nullptr))
+    // Tessellation shaders and patches must be used together
+    bool hasPatches = state.ia.primitiveTopology() == VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
+
+    bool hasTcs = m_shaders.tcs != nullptr;
+    bool hasTes = m_shaders.tes != nullptr;
+
+    if (hasPatches != hasTcs || hasPatches != hasTes)
       return false;
     
     // Filter out undefined primitive topologies
