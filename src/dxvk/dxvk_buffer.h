@@ -645,10 +645,21 @@ namespace dxvk {
     DxvkBufferTracker();
     ~DxvkBufferTracker();
     
-    void freeBufferSlice(
-      const Rc<DxvkBuffer>&         buffer,
-      const DxvkBufferSliceHandle&  slice);
+    /**
+     * \brief Add buffer slice for tracking
+     *
+     * The slice will be returned to the
+     * buffer on the next call to \c reset.
+     * \param [in] buffer The parent buffer
+     * \param [in] slice The buffer slice
+     */
+    void freeBufferSlice(const Rc<DxvkBuffer>& buffer, const DxvkBufferSliceHandle& slice) {
+      m_entries.push_back({ buffer, slice });
+    }
     
+    /**
+     * \brief Returns tracked buffer slices
+     */
     void reset();
     
   private:

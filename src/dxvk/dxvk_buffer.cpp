@@ -181,13 +181,6 @@ namespace dxvk {
   DxvkBufferTracker::~DxvkBufferTracker() { }
   
   
-  void DxvkBufferTracker::freeBufferSlice(
-    const Rc<DxvkBuffer>&         buffer,
-    const DxvkBufferSliceHandle&  slice) {
-    m_entries.push_back({ buffer, slice });
-  }
-  
-  
   void DxvkBufferTracker::reset() {
     for (const auto& e : m_entries)
       e.buffer->freeSlice(e.slice);
