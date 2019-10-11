@@ -1715,36 +1715,40 @@ namespace dxvk {
     
     // We also need to update all bindings that the buffer
     // may be bound to either directly or through views.
-    const VkBufferUsageFlags usage = buffer->info().usage;
+    VkBufferUsageFlags usage = buffer->info().usage &
+      ~(VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+
+    if (usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) {
+      m_flags.set(prevSlice.handle == slice.handle
+        ? DxvkContextFlags(DxvkContextFlag::GpDirtyDescriptorBinding,
+                           DxvkContextFlag::CpDirtyDescriptorBinding)
+        : DxvkContextFlags(DxvkContextFlag::GpDirtyResources,
+                           DxvkContextFlag::CpDirtyResources));
+    }
+
+    // Fast early-out for uniform buffers, very common
+    if (likely(usage == VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT))
+      return;
     
-    if (usage & VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT)
-      m_flags.set(DxvkContextFlag::DirtyDrawBuffer);
-    
+    if (usage & (VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
+               | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT
+               | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)) {
+      m_flags.set(DxvkContextFlag::GpDirtyResources,
+                  DxvkContextFlag::CpDirtyResources);
+    }
+
     if (usage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
       m_flags.set(DxvkContextFlag::GpDirtyIndexBuffer);
     
     if (usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
       m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
     
+    if (usage & VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT)
+      m_flags.set(DxvkContextFlag::DirtyDrawBuffer);
+
     if (usage & VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT)
       m_flags.set(DxvkContextFlag::GpDirtyXfbBuffers);
-    
-    if (usage & (VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
-               | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)) {
-      m_flags.set(DxvkContextFlag::GpDirtyResources,
-                  DxvkContextFlag::CpDirtyResources);
-    }
-
-    if (usage & (VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
-               | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)) {
-      if (prevSlice.handle != slice.handle) {
-        m_flags.set(DxvkContextFlag::GpDirtyResources,
-                    DxvkContextFlag::CpDirtyResources);
-      } else {
-        m_flags.set(DxvkContextFlag::GpDirtyDescriptorBinding,
-                    DxvkContextFlag::CpDirtyDescriptorBinding);
-      }
-    }
   }
 
 
