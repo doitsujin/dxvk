@@ -105,7 +105,7 @@ namespace dxvk {
     
     pDesc->ByteWidth       = d3d11Desc.ByteWidth;
     pDesc->Usage           = D3D10_USAGE(d3d11Desc.Usage);
-    pDesc->BindFlags       = d3d11Desc.BindFlags & 0x7F;
+    pDesc->BindFlags       = d3d11Desc.BindFlags;
     pDesc->CPUAccessFlags  = d3d11Desc.CPUAccessFlags;
     pDesc->MiscFlags       = ConvertD3D11ResourceFlags(d3d11Desc.MiscFlags);
   }

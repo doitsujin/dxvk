@@ -111,7 +111,7 @@ namespace dxvk {
     pDesc->ArraySize       = d3d11Desc.ArraySize;
     pDesc->Format          = d3d11Desc.Format;
     pDesc->Usage           = D3D10_USAGE(d3d11Desc.Usage);
-    pDesc->BindFlags       = d3d11Desc.BindFlags & 0x7F;
+    pDesc->BindFlags       = d3d11Desc.BindFlags;
     pDesc->CPUAccessFlags  = d3d11Desc.CPUAccessFlags;
     pDesc->MiscFlags       = ConvertD3D11ResourceFlags(d3d11Desc.MiscFlags);
   }
@@ -224,7 +224,7 @@ namespace dxvk {
     pDesc->Format          = d3d11Desc.Format;
     pDesc->SampleDesc      = d3d11Desc.SampleDesc;
     pDesc->Usage           = D3D10_USAGE(d3d11Desc.Usage);
-    pDesc->BindFlags       = d3d11Desc.BindFlags & 0x7F;
+    pDesc->BindFlags       = d3d11Desc.BindFlags;
     pDesc->CPUAccessFlags  = d3d11Desc.CPUAccessFlags;
     pDesc->MiscFlags       = ConvertD3D11ResourceFlags(d3d11Desc.MiscFlags);
   }
@@ -337,7 +337,7 @@ namespace dxvk {
     pDesc->MipLevels       = d3d11Desc.MipLevels;
     pDesc->Format          = d3d11Desc.Format;
     pDesc->Usage           = D3D10_USAGE(d3d11Desc.Usage);
-    pDesc->BindFlags       = d3d11Desc.BindFlags & 0x7F;
+    pDesc->BindFlags       = d3d11Desc.BindFlags;
     pDesc->CPUAccessFlags  = d3d11Desc.CPUAccessFlags;
     pDesc->MiscFlags       = ConvertD3D11ResourceFlags(d3d11Desc.MiscFlags);
   }
