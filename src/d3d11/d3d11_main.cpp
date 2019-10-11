@@ -115,6 +115,9 @@ extern "C" {
     InitReturnPtr(ppSwapChain);
     InitReturnPtr(ppImmediateContext);
 
+    if (pFeatureLevel)
+      *pFeatureLevel = D3D_FEATURE_LEVEL(0);
+
     HRESULT hr;
 
     Com<IDXGIFactory> dxgiFactory = nullptr;
