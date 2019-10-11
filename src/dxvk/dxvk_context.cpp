@@ -3753,7 +3753,7 @@ namespace dxvk {
             }
           } else {
             bindMask.clr(i);
-            descriptors[i].image = m_common->dummyResources().imageViewDescriptor(binding.view);
+            descriptors[i].image = m_common->dummyResources().imageViewDescriptor(binding.view, true);
           } break;
         
         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
@@ -3771,7 +3771,7 @@ namespace dxvk {
             }
           } else {
             bindMask.clr(i);
-            descriptors[i].image = m_common->dummyResources().imageViewDescriptor(binding.view);
+            descriptors[i].image = m_common->dummyResources().imageViewDescriptor(binding.view, false);
           } break;
         
         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:

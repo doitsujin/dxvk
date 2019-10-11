@@ -85,10 +85,11 @@ namespace dxvk {
      * 
      * Contains both an image view and a sampler
      * descriptor for the given image view type.
+     * \param [in] type Image view type
      * \returns Dummy image view descriptor
      */
     VkDescriptorImageInfo imageSamplerDescriptor(VkImageViewType type) const {
-      auto view = getImageView(type);
+      auto view = getImageView(type, true);
       
       VkDescriptorImageInfo result;
       result.sampler     = m_sampler->handle();
@@ -103,10 +104,12 @@ namespace dxvk {
      * Points to an image view which, instead of
      * reading image data, will return zeroes for
      * all components unconditionally.
+     * \param [in] type Image view type
+     * \param [in] sampled Format selector
      * \returns Dummy image view descriptor
      */
-    VkDescriptorImageInfo imageViewDescriptor(VkImageViewType type) const {
-      auto view = getImageView(type);
+    VkDescriptorImageInfo imageViewDescriptor(VkImageViewType type, bool sampled) const {
+      auto view = getImageView(type, sampled);
       
       VkDescriptorImageInfo result;
       result.sampler     = VK_NULL_HANDLE;
@@ -125,6 +128,16 @@ namespace dxvk {
     
   private:
     
+    struct UnboundViews {
+      Rc<DxvkImageView> view1D;
+      Rc<DxvkImageView> view1DArr;
+      Rc<DxvkImageView> view2D;
+      Rc<DxvkImageView> view2DArr;
+      Rc<DxvkImageView> viewCube;
+      Rc<DxvkImageView> viewCubeArr;
+      Rc<DxvkImageView> view3D;
+    };
+    
     Rc<DxvkSampler> m_sampler;
     
     Rc<DxvkBuffer>     m_buffer;
@@ -133,14 +146,9 @@ namespace dxvk {
     Rc<DxvkImage> m_image1D;
     Rc<DxvkImage> m_image2D;
     Rc<DxvkImage> m_image3D;
-    
-    Rc<DxvkImageView> m_view1D;
-    Rc<DxvkImageView> m_view1DArr;
-    Rc<DxvkImageView> m_view2D;
-    Rc<DxvkImageView> m_view2DArr;
-    Rc<DxvkImageView> m_viewCube;
-    Rc<DxvkImageView> m_viewCubeArr;
-    Rc<DxvkImageView> m_view3D;
+
+    UnboundViews m_viewsSampled;
+    UnboundViews m_viewsStorage;
     
     Rc<DxvkSampler> createSampler(DxvkDevice* dev);
     
@@ -158,11 +166,17 @@ namespace dxvk {
     Rc<DxvkImageView> createImageView(
             DxvkDevice*     dev,
       const Rc<DxvkImage>&  image,
+            VkFormat        format,
             VkImageViewType type,
             uint32_t        layers);
-    
+
+    UnboundViews createImageViews(
+            DxvkDevice*     dev,
+            VkFormat        format);
+
     const DxvkImageView* getImageView(
-            VkImageViewType type) const;
+            VkImageViewType type,
+            bool            sampled) const;
     
     void clearBuffer(
       const Rc<DxvkContext>&  ctx,

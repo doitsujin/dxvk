@@ -9,13 +9,8 @@ namespace dxvk {
     m_image1D       (createImage(dev, VK_IMAGE_TYPE_1D, 1)),
     m_image2D       (createImage(dev, VK_IMAGE_TYPE_2D, 6)),
     m_image3D       (createImage(dev, VK_IMAGE_TYPE_3D, 1)),
-    m_view1D        (createImageView(dev, m_image1D, VK_IMAGE_VIEW_TYPE_1D,         1)),
-    m_view1DArr     (createImageView(dev, m_image1D, VK_IMAGE_VIEW_TYPE_1D_ARRAY,   1)),
-    m_view2D        (createImageView(dev, m_image2D, VK_IMAGE_VIEW_TYPE_2D,         1)),
-    m_view2DArr     (createImageView(dev, m_image2D, VK_IMAGE_VIEW_TYPE_2D_ARRAY,   1)),
-    m_viewCube      (createImageView(dev, m_image2D, VK_IMAGE_VIEW_TYPE_CUBE,       6)),
-    m_viewCubeArr   (createImageView(dev, m_image2D, VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, 6)),
-    m_view3D        (createImageView(dev, m_image3D, VK_IMAGE_VIEW_TYPE_3D,         1)) {
+    m_viewsSampled  (createImageViews(dev, VK_FORMAT_R32_SFLOAT)),
+    m_viewsStorage  (createImageViews(dev, VK_FORMAT_R32_UINT)) {
     
   }
   
@@ -128,11 +123,12 @@ namespace dxvk {
   Rc<DxvkImageView> DxvkUnboundResources::createImageView(
           DxvkDevice*     dev,
     const Rc<DxvkImage>&  image,
+          VkFormat        format,
           VkImageViewType type,
           uint32_t        layers) {
     DxvkImageViewCreateInfo info;
     info.type         = type;
-    info.format       = image->info().format;
+    info.format       = format;
     info.usage        = VK_IMAGE_USAGE_SAMPLED_BIT
                       | VK_IMAGE_USAGE_STORAGE_BIT;
     info.aspect       = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -148,16 +144,31 @@ namespace dxvk {
   }
   
   
-  const DxvkImageView* DxvkUnboundResources::getImageView(VkImageViewType type) const {
+  DxvkUnboundResources::UnboundViews DxvkUnboundResources::createImageViews(DxvkDevice* dev, VkFormat format) {
+    UnboundViews result;
+    result.view1D      = createImageView(dev, m_image1D, format, VK_IMAGE_VIEW_TYPE_1D,         1);
+    result.view1DArr   = createImageView(dev, m_image1D, format, VK_IMAGE_VIEW_TYPE_1D_ARRAY,   1);
+    result.view2D      = createImageView(dev, m_image2D, format, VK_IMAGE_VIEW_TYPE_2D,         1);
+    result.view2DArr   = createImageView(dev, m_image2D, format, VK_IMAGE_VIEW_TYPE_2D_ARRAY,   1);
+    result.viewCube    = createImageView(dev, m_image2D, format, VK_IMAGE_VIEW_TYPE_CUBE,       6);
+    result.viewCubeArr = createImageView(dev, m_image2D, format, VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, 6);
+    result.view3D      = createImageView(dev, m_image3D, format, VK_IMAGE_VIEW_TYPE_3D,         1);
+    return result;
+  }
+
+
+  const DxvkImageView* DxvkUnboundResources::getImageView(VkImageViewType type, bool sampled) const {
+    auto views = sampled ? &m_viewsSampled : &m_viewsStorage;
+
     switch (type) {
-      case VK_IMAGE_VIEW_TYPE_1D:         return m_view1D.ptr();
-      case VK_IMAGE_VIEW_TYPE_1D_ARRAY:   return m_view1DArr.ptr();
-      case VK_IMAGE_VIEW_TYPE_2D:         return m_view2D.ptr();
-      case VK_IMAGE_VIEW_TYPE_2D_ARRAY:   return m_view2DArr.ptr();
-      case VK_IMAGE_VIEW_TYPE_CUBE:       return m_viewCube.ptr();
-      case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY: return m_viewCubeArr.ptr();
-      case VK_IMAGE_VIEW_TYPE_3D:         return m_view3D.ptr();
-      default:                            Logger::err("null"); return nullptr;
+      case VK_IMAGE_VIEW_TYPE_1D:         return views->view1D.ptr();
+      case VK_IMAGE_VIEW_TYPE_1D_ARRAY:   return views->view1DArr.ptr();
+      case VK_IMAGE_VIEW_TYPE_2D:         return views->view2D.ptr();
+      case VK_IMAGE_VIEW_TYPE_2D_ARRAY:   return views->view2DArr.ptr();
+      case VK_IMAGE_VIEW_TYPE_CUBE:       return views->viewCube.ptr();
+      case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY: return views->viewCubeArr.ptr();
+      case VK_IMAGE_VIEW_TYPE_3D:         return views->view3D.ptr();
+      default:                            return nullptr;
     }
   }
   
