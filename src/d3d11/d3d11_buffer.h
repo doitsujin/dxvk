@@ -113,13 +113,13 @@ namespace dxvk {
     }
 
     /**
-     * \brief Validates buffer description
+     * \brief Normalizes buffer description
      * 
      * \param [in] pDesc Buffer description
      * \returns \c S_OK if the parameters are valid
      */
-    static HRESULT ValidateBufferProperties(
-      const D3D11_BUFFER_DESC*      pDesc);
+    static HRESULT NormalizeBufferProperties(
+            D3D11_BUFFER_DESC*      pDesc);
 
   private:
     

@@ -81,7 +81,8 @@ namespace dxvk {
     if (!pDesc)
       return E_INVALIDARG;
     
-    HRESULT hr = D3D11Buffer::ValidateBufferProperties(pDesc);
+    D3D11_BUFFER_DESC desc = *pDesc;
+    HRESULT hr = D3D11Buffer::NormalizeBufferProperties(&desc);
 
     if (FAILED(hr))
       return hr;
@@ -90,9 +91,7 @@ namespace dxvk {
       return S_FALSE;
     
     try {
-      const Com<D3D11Buffer> buffer
-        = new D3D11Buffer(this, pDesc);
-      
+      const Com<D3D11Buffer> buffer = new D3D11Buffer(this, &desc);
       m_initializer->InitBuffer(buffer.ptr(), pInitialData);
       *ppBuffer = buffer.ref();
       return S_OK;
