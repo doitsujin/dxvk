@@ -42,6 +42,7 @@ namespace dxvk {
       DxvkContextFlag::GpClearRenderTargets);
     
     m_flags.set(
+      DxvkContextFlag::GpDirtyFramebuffer,
       DxvkContextFlag::GpDirtyPipeline,
       DxvkContextFlag::GpDirtyPipelineState,
       DxvkContextFlag::GpDirtyResources,
@@ -649,8 +650,7 @@ namespace dxvk {
     // If not, we need to create a temporary framebuffer.
     int32_t attachmentIndex = -1;
     
-    if (m_state.om.framebuffer != nullptr
-     && m_state.om.framebuffer->isFullSize(imageView))
+    if (m_state.om.framebuffer->isFullSize(imageView))
       attachmentIndex = m_state.om.framebuffer->findAttachment(imageView);
     
     if (attachmentIndex < 0) {
