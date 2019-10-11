@@ -57,9 +57,6 @@ namespace dxvk {
           uint32_t              storageBuffers) {
     if (this->countDescriptors(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) <= uniformBuffers)
       this->replaceDescriptors(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
-
-    if (this->countDescriptors(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) <= storageBuffers)
-      this->replaceDescriptors(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC);
   }
 
 
@@ -115,8 +112,7 @@ namespace dxvk {
       tEntries[i].offset          = sizeof(DxvkDescriptorInfo) * i;
       tEntries[i].stride          = 0;
 
-      if (bindingInfos[i].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
-       || bindingInfos[i].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+      if (bindingInfos[i].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
         m_dynamicSlots.push_back(i);
       
       m_descriptorTypes.set(bindingInfos[i].type);

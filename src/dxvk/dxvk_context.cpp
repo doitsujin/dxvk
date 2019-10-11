@@ -3860,18 +3860,6 @@ namespace dxvk {
             descriptors[i].buffer = m_common->dummyResources().bufferDescriptor();
           } break;
         
-        case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-          if (res.bufferSlice.defined()) {
-            descriptors[i] = res.bufferSlice.getDescriptor();
-            descriptors[i].buffer.offset = 0;
-            
-            if (m_rcTracked.set(binding.slot))
-              m_cmd->trackResource<DxvkAccess::Write>(res.bufferSlice.buffer());
-          } else {
-            bindMask.clr(i);
-            descriptors[i].buffer = m_common->dummyResources().bufferDescriptor();
-          } break;
-        
         default:
           Logger::err(str::format("DxvkContext: Unhandled descriptor type: ", binding.type));
       }
@@ -4236,7 +4224,6 @@ namespace dxvk {
         
         switch (binding.type) {
           case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
             if (binding.access & VK_ACCESS_SHADER_WRITE_BIT)
               dstAccess.set(DxvkAccess::Write);
             /* fall through */
@@ -4305,7 +4292,6 @@ namespace dxvk {
         
         switch (binding.type) {
           case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
             if (binding.access & VK_ACCESS_SHADER_WRITE_BIT)
               access |= VK_ACCESS_SHADER_WRITE_BIT;
             /* fall through */

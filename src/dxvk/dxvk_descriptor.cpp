@@ -7,7 +7,7 @@ namespace dxvk {
   : m_vkd(vkd) {
     constexpr uint32_t MaxSets = 2048;
 
-    std::array<VkDescriptorPoolSize, 10> pools = {{
+    std::array<VkDescriptorPoolSize, 9> pools = {{
       { VK_DESCRIPTOR_TYPE_SAMPLER,                MaxSets * 2 },
       { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          MaxSets * 3 },
       { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          MaxSets / 8 },
@@ -16,7 +16,6 @@ namespace dxvk {
       { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   MaxSets * 3 },
       { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   MaxSets / 8 },
       { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, MaxSets * 3 },
-      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, MaxSets / 8 },
       { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MaxSets * 2 } }};
     
     VkDescriptorPoolCreateInfo info;

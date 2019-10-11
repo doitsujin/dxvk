@@ -235,13 +235,12 @@ namespace dxvk {
      * \brief Checks for static buffer bindings
      * 
      * Returns \c true if there is at least one
-     * descriptor of the static uniform or storage
-     * buffer type.
+     * descriptor of the static uniform buffer
+     * type.
      */
     bool hasStaticBufferBindings() const {
-      return m_descriptorTypes.any(
-        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+      return m_descriptorTypes.test(
+        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
     }
     
     /**
