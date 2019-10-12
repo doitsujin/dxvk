@@ -78,11 +78,9 @@ namespace dxvk {
      * \c spill flag in order to make shader writes
      * from previous rendering operations visible.
      * \param [in] targets Render targets to bind
-     * \param [in] spill Spill render pass if true
      */
     void bindRenderTargets(
-      const DxvkRenderTargets&    targets,
-            bool                  spill);
+      const DxvkRenderTargets&    targets);
     
     /**
      * \brief Binds indirect argument buffer
