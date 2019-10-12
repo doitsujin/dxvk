@@ -3475,7 +3475,7 @@ namespace dxvk {
       if (m_flags.test(DxvkContextFlag::GpDirtyXfbCounters)) {
         m_flags.clr(DxvkContextFlag::GpDirtyXfbCounters);
 
-        this->emitMemoryBarrier(
+        this->emitMemoryBarrier(0,
           VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
           VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT,
           VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, /* XXX */
@@ -4458,6 +4458,7 @@ namespace dxvk {
 
 
   void DxvkContext::emitMemoryBarrier(
+          VkDependencyFlags         flags,
           VkPipelineStageFlags      srcStages,
           VkAccessFlags             srcAccess,
           VkPipelineStageFlags      dstStages,
@@ -4470,7 +4471,7 @@ namespace dxvk {
 
     m_cmd->cmdPipelineBarrier(
       DxvkCmdBuffer::ExecBuffer, srcStages, dstStages,
-      0, 1, &barrier, 0, nullptr, 0, nullptr);
+      flags, 1, &barrier, 0, nullptr, 0, nullptr);
   }
 
 
