@@ -4356,9 +4356,7 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer) && Indirect)
       this->trackDrawBuffer();
 
-    if (m_state.gp.flags.any(
-        DxvkGraphicsPipelineFlag::HasFsStorageDescriptors,
-        DxvkGraphicsPipelineFlag::HasVsStorageDescriptors))
+    if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasStorageDescriptors))
       this->commitGraphicsPostBarriers();
   }
 

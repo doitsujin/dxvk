@@ -22,8 +22,7 @@ namespace dxvk {
    */
   enum class DxvkGraphicsPipelineFlag {
     HasTransformFeedback,
-    HasFsStorageDescriptors,
-    HasVsStorageDescriptors,
+    HasStorageDescriptors,
   };
 
   using DxvkGraphicsPipelineFlags = Flags<DxvkGraphicsPipelineFlag>;

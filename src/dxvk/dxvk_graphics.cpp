@@ -32,13 +32,8 @@ namespace dxvk {
     if (m_shaders.gs != nullptr && m_shaders.gs->hasCapability(spv::CapabilityTransformFeedback))
       m_flags.set(DxvkGraphicsPipelineFlag::HasTransformFeedback);
     
-    VkShaderStageFlags stoStages = m_layout->getStorageDescriptorStages();
-
-    if (stoStages & VK_SHADER_STAGE_FRAGMENT_BIT)
-      m_flags.set(DxvkGraphicsPipelineFlag::HasFsStorageDescriptors);
-    
-    if (stoStages & ~VK_SHADER_STAGE_FRAGMENT_BIT)
-      m_flags.set(DxvkGraphicsPipelineFlag::HasVsStorageDescriptors);
+    if (m_layout->getStorageDescriptorStages())
+      m_flags.set(DxvkGraphicsPipelineFlag::HasStorageDescriptors);
     
     m_common.msSampleShadingEnable = m_shaders.fs != nullptr && m_shaders.fs->hasCapability(spv::CapabilitySampleRateShading);
     m_common.msSampleShadingFactor = 1.0f;
