@@ -2723,7 +2723,6 @@ namespace dxvk {
       return;
     
     bool needsUpdate = false;
-    bool needsSpill  = false;
 
     if (likely(NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)) {
       // Native D3D11 does not change the render targets if
@@ -2785,15 +2784,13 @@ namespace dxvk {
 
             if (NumRTVs == D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)
               needsUpdate |= ResolveOmRtvHazards(uav);
-
-            needsSpill = true;
           }
         }
       }
     }
 
-    if (needsUpdate || needsSpill)
-      BindFramebuffer(needsSpill);
+    if (needsUpdate)
+      BindFramebuffer();
   }
   
   
@@ -3407,7 +3404,7 @@ namespace dxvk {
   }
 
 
-  void D3D11DeviceContext::BindFramebuffer(BOOL Spill) {
+  void D3D11DeviceContext::BindFramebuffer() {
     DxvkRenderTargets attachments;
     
     // D3D11 doesn't have the concept of a framebuffer object,
@@ -3429,10 +3426,9 @@ namespace dxvk {
     
     // Create and bind the framebuffer object to the context
     EmitCs([
-      cAttachments = std::move(attachments),
-      cSpill       = Spill
+      cAttachments = std::move(attachments)
     ] (DxvkContext* ctx) {
-      ctx->bindRenderTargets(cAttachments, cSpill);
+      ctx->bindRenderTargets(cAttachments, false);
     });
   }
   
@@ -3780,7 +3776,7 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::RestoreState() {
-    BindFramebuffer(m_state.om.maxUav > 0);
+    BindFramebuffer();
     
     BindShader<DxbcProgramType::VertexShader>   (GetCommonShader(m_state.vs.shader.ptr()));
     BindShader<DxbcProgramType::HullShader>     (GetCommonShader(m_state.hs.shader.ptr()));

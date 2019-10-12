@@ -744,8 +744,7 @@ namespace dxvk {
     void BindShader(
       const D3D11CommonShader*                pShaderModule);
     
-    void BindFramebuffer(
-            BOOL                              Spill);
+    void BindFramebuffer();
     
     void BindDrawBuffers(
             D3D11Buffer*                      pBufferForArgs,
