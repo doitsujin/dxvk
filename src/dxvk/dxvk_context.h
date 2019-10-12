@@ -1013,6 +1013,7 @@ namespace dxvk {
     DxvkBarrierSet          m_initBarriers;
     DxvkBarrierSet          m_execAcquires;
     DxvkBarrierSet          m_execBarriers;
+    DxvkBarrierSet          m_gfxBarriers;
     DxvkBarrierControlFlags m_barrierControl;
     
     DxvkGpuQueryManager     m_queryManager;
@@ -1161,7 +1162,7 @@ namespace dxvk {
     void commitComputeInitBarriers();
     void commitComputePostBarriers();
     
-    void commitGraphicsPostBarriers();
+    void commitGraphicsBarriers();
 
     template<bool Indirect>
     void finalizeDraw();

@@ -14,6 +14,7 @@ namespace dxvk {
     m_initBarriers(DxvkCmdBuffer::InitBuffer),
     m_execAcquires(DxvkCmdBuffer::ExecBuffer),
     m_execBarriers(DxvkCmdBuffer::ExecBuffer),
+    m_gfxBarriers (DxvkCmdBuffer::ExecBuffer),
     m_queryManager(m_common->queryPool()),
     m_staging     (device) {
 
@@ -3280,6 +3281,8 @@ namespace dxvk {
       m_queryManager.endQueries(m_cmd, VK_QUERY_TYPE_OCCLUSION);
       m_queryManager.endQueries(m_cmd, VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
+      m_gfxBarriers.reset();
+
       this->renderPassUnbindFramebuffer();
       this->unbindGraphicsPipeline();
       this->commitPredicateUpdates();
@@ -3601,7 +3604,13 @@ namespace dxvk {
       return false;
     }
 
-    m_state.gp.flags = m_state.gp.pipeline->flags();
+    if (m_state.gp.flags != m_state.gp.pipeline->flags()) {
+      m_state.gp.flags = m_state.gp.pipeline->flags();
+
+      // This is necessary because we'll only do hazard
+      // tracking if the active pipeline has side effects
+      this->spillRenderPass();
+    }
 
     if (m_state.gp.pipeline->layout()->pushConstRange().size)
       m_flags.set(DxvkContextFlag::DirtyPushConstants);
@@ -4158,16 +4167,19 @@ namespace dxvk {
   
   template<bool Indexed>
   bool DxvkContext::commitGraphicsState() {
+    if (m_flags.test(DxvkContextFlag::GpDirtyPipeline)) {
+      if (unlikely(!this->updateGraphicsPipeline()))
+        return false;
+    }
+    
+    if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasStorageDescriptors))
+      this->commitGraphicsBarriers();
+
     if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer))
       this->updateFramebuffer();
 
     if (!m_flags.test(DxvkContextFlag::GpRenderPassBound))
       this->startRenderPass();
-    
-    if (m_flags.test(DxvkContextFlag::GpDirtyPipeline)) {
-      if (unlikely(!this->updateGraphicsPipeline()))
-        return false;
-    }
     
     if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer) && Indexed)
       this->updateIndexBufferBinding();
@@ -4343,11 +4355,102 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::commitGraphicsPostBarriers() {
+  void DxvkContext::commitGraphicsBarriers() {
+    auto layout = m_state.gp.pipeline->layout();
+
+    bool requiresBarrier = false;
+
+    for (uint32_t i = 0; i < layout->bindingCount() && !requiresBarrier; i++) {
+      if (m_state.gp.state.bsBindingMask.test(i)) {
+        const DxvkDescriptorSlot binding = layout->binding(i);
+        const DxvkShaderResourceSlot& slot = m_rc[binding.slot];
+
+        DxvkAccessFlags dstAccess = DxvkAccess::Read;
+        DxvkAccessFlags srcAccess = 0;
+        
+        switch (binding.type) {
+          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+            if (binding.access & VK_ACCESS_SHADER_WRITE_BIT)
+              dstAccess.set(DxvkAccess::Write);
+            /* fall through */
+
+          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+            if (slot.bufferSlice.bufferInfo().usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) {
+              srcAccess = m_gfxBarriers.getBufferAccess(
+                slot.bufferSlice.getSliceHandle());
+
+              m_gfxBarriers.accessBuffer(
+                slot.bufferSlice.getSliceHandle(),
+                binding.stages, binding.access,
+                slot.bufferSlice.bufferInfo().stages,
+                slot.bufferSlice.bufferInfo().access);
+            }
+            break;
+
+          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+            if (binding.access & VK_ACCESS_SHADER_WRITE_BIT)
+              dstAccess.set(DxvkAccess::Write);
+            /* fall through */
+
+          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+            if (slot.bufferView->bufferInfo().usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) {
+              srcAccess = m_gfxBarriers.getBufferAccess(
+                slot.bufferView->getSliceHandle());
+
+              m_gfxBarriers.accessBuffer(
+                slot.bufferView->getSliceHandle(),
+                binding.stages, binding.access,
+                slot.bufferView->bufferInfo().stages,
+                slot.bufferView->bufferInfo().access);
+            }
+            break;
+
+          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+            if (binding.access & VK_ACCESS_SHADER_WRITE_BIT)
+              dstAccess.set(DxvkAccess::Write);
+            /* fall through */
+
+          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+            if (slot.imageView->imageInfo().usage & VK_IMAGE_USAGE_STORAGE_BIT) {
+              srcAccess = m_gfxBarriers.getImageAccess(
+                slot.imageView->image(),
+                slot.imageView->imageSubresources());
+
+              m_gfxBarriers.accessImage(
+                slot.imageView->image(),
+                slot.imageView->imageSubresources(),
+                slot.imageView->imageInfo().layout,
+                binding.stages, binding.access,
+                slot.imageView->imageInfo().layout,
+                slot.imageView->imageInfo().stages,
+                slot.imageView->imageInfo().access);
+            }
+            break;
+
+          default:
+            /* nothing to do */;
+        }
+
+        if (srcAccess == 0)
+          continue;
+
+        // Skip write-after-write barriers if explicitly requested
+        if ((m_barrierControl.test(DxvkBarrierControl::IgnoreWriteAfterWrite))
+         && (srcAccess.test(DxvkAccess::Write))
+         && (dstAccess.test(DxvkAccess::Write)))
+          continue;
+
+        requiresBarrier = (srcAccess | dstAccess).test(DxvkAccess::Write);
+      }
+    }
+
     // External subpass dependencies serve as full memory
     // and execution barriers, so we can use this to allow
     // inter-stage synchronization.
-    this->spillRenderPass();
+    if (requiresBarrier)
+      this->spillRenderPass();
   }
 
 
@@ -4355,9 +4458,6 @@ namespace dxvk {
   void DxvkContext::finalizeDraw() {
     if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer) && Indirect)
       this->trackDrawBuffer();
-
-    if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasStorageDescriptors))
-      this->commitGraphicsPostBarriers();
   }
 
 
