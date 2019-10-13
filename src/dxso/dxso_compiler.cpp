@@ -1134,19 +1134,25 @@ namespace dxvk {
       }
 
       case DxsoRegisterType::AttributeOut: {
+        auto ptr = this->emitOutputPtr(false, reg, nullptr);
+
         if (!(m_explicitOutputs & 1u << reg.id.num)) {
           this->emitDclInterface(
             false, reg.id.num,
             DxsoSemantic{ DxsoUsage::Color, reg.id.num },
             IdentityWriteMask, false); // TODO: Do we want to make this centroid?
+
+          m_module.opStore(ptr.id, m_module.constfReplicant(0, ptr.type.ccount));
         }
 
-        return this->emitOutputPtr(false, reg, nullptr);
+        return ptr;
       }
 
       case DxsoRegisterType::Output: {
         bool texcrdOut = m_programInfo.type() == DxsoProgramTypes::VertexShader
                       && m_programInfo.majorVersion() != 3;
+
+        auto ptr = this->emitOutputPtr(texcrdOut, reg, !texcrdOut ? relative : nullptr);
 
         if (texcrdOut) {
           uint32_t adjustedNumber = reg.id.num + 2;
@@ -1155,10 +1161,12 @@ namespace dxvk {
               false, adjustedNumber,
               DxsoSemantic{ DxsoUsage::Texcoord, reg.id.num },
               IdentityWriteMask, false);
+
+            m_module.opStore(ptr.id, m_module.constfReplicant(0, ptr.type.ccount));
           }
         }
 
-        return this->emitOutputPtr(texcrdOut, reg, !texcrdOut ? relative : nullptr);
+        return ptr;
       }
 
       case DxsoRegisterType::DepthOut:
