@@ -3554,7 +3554,6 @@ namespace dxvk {
   
   
   bool DxvkContext::updateComputePipeline() {
-    m_state.cp.state.bsBindingMask.clear();
     m_state.cp.pipeline = lookupComputePipeline(m_state.cp.shaders);
 
     if (unlikely(m_state.cp.pipeline == nullptr))
@@ -3603,7 +3602,6 @@ namespace dxvk {
   
   
   bool DxvkContext::updateGraphicsPipeline() {
-    m_state.gp.state.bsBindingMask.clear();
     m_state.gp.pipeline = lookupGraphicsPipeline(m_state.gp.shaders);
 
     if (unlikely(m_state.gp.pipeline == nullptr)) {
