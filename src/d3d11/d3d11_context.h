@@ -717,8 +717,6 @@ namespace dxvk {
     DxvkCsChunkFlags            m_csFlags;
     DxvkCsChunkRef              m_csChunk;
     
-    Com<D3D11BlendState>        m_defaultBlendState;
-    
     D3D11ContextState           m_state;
     D3D11CmdData*               m_cmdData;
     
@@ -910,6 +908,12 @@ namespace dxvk {
 
     static void InitDefaultDepthStencilState(
             DxvkDepthStencilState*            pDsState);
+
+    static void InitDefaultBlendState(
+            DxvkBlendMode*                    pCbState,
+            DxvkLogicOpState*                 pLoState,
+            DxvkMultisampleState*             pMsState,
+            UINT                              SampleMask);
 
     template<typename T>
     const D3D11CommonShader* GetCommonShader(T* pShader) const {

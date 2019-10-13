@@ -21,16 +21,7 @@ namespace dxvk {
     m_csFlags   (CsFlags),
     m_csChunk   (AllocCsChunk()),
     m_cmdData   (nullptr) {
-    // Create default state objects. We won't ever return them
-    // to the application, but we'll use them to apply state.
-    Com<ID3D11BlendState>         defaultBlendState;
-    
-    if (FAILED(m_parent->CreateBlendState       (nullptr, &defaultBlendState)))
-      throw DxvkError("D3D11DeviceContext: Failed to create default state objects");
-    
-    // Apply default state to the context. This is required
-    // in order to initialize the DXVK contex properly.
-    m_defaultBlendState        = static_cast<D3D11BlendState*>       (defaultBlendState.ptr());
+
   }
   
   
@@ -3220,17 +3211,29 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::ApplyBlendState() {
-    auto cbState = m_state.om.cbState.prvRef();
+    if (m_state.om.cbState != nullptr) {
+      EmitCs([
+        cBlendState = m_state.om.cbState.prvRef(),
+        cSampleMask = m_state.om.sampleMask
+      ] (DxvkContext* ctx) {
+        cBlendState->BindToContext(ctx, cSampleMask);
+      });
+    } else {
+      EmitCs([
+        cSampleMask = m_state.om.sampleMask
+      ] (DxvkContext* ctx) {
+        DxvkBlendMode cbState;
+        DxvkLogicOpState loState;
+        DxvkMultisampleState msState;
+        InitDefaultBlendState(&cbState, &loState, &msState, cSampleMask);
 
-    if (unlikely(cbState == nullptr))
-      cbState = m_defaultBlendState.prvRef();
+        for (uint32_t i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
+          ctx->setBlendMode(i, cbState);
 
-    EmitCs([
-      cBlendState = std::move(cbState),
-      cSampleMask = m_state.om.sampleMask
-    ] (DxvkContext* ctx) {
-      cBlendState->BindToContext(ctx, cSampleMask);
-    });
+        ctx->setLogicOpState(loState);
+        ctx->setMultisampleState(msState);
+      });
+    }
   }
   
   
@@ -3778,9 +3781,7 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::ResetState() {
-    EmitCs([
-      cBlendState         = m_defaultBlendState.prvRef()
-    ] (DxvkContext* ctx) {
+    EmitCs([] (DxvkContext* ctx) {
       // Reset render targets
       ctx->bindRenderTargets(DxvkRenderTargets());
 
@@ -3797,11 +3798,19 @@ namespace dxvk {
       DxvkRasterizerState rsState;
       InitDefaultRasterizerState(&rsState);
 
+      DxvkBlendMode cbState;
+      DxvkLogicOpState loState;
+      DxvkMultisampleState msState;
+      InitDefaultBlendState(&cbState, &loState, &msState, D3D11_DEFAULT_SAMPLE_MASK);
+
       ctx->setInputAssemblyState(iaState);
       ctx->setDepthStencilState(dsState);
       ctx->setRasterizerState(rsState);
+      ctx->setLogicOpState(loState);
+      ctx->setMultisampleState(msState);
 
-      cBlendState->BindToContext(ctx, D3D11_DEFAULT_SAMPLE_MASK);
+      for (uint32_t i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
+        ctx->setBlendMode(i, cbState);
 
       // Reset dynamic states
       ctx->setBlendConstants(DxvkBlendConstants { 1.0f, 1.0f, 1.0f, 1.0f });
@@ -4302,6 +4311,29 @@ namespace dxvk {
     pDsState->depthCompareOp    = VK_COMPARE_OP_LESS;
     pDsState->stencilOpFront    = stencilOp;
     pDsState->stencilOpBack     = stencilOp;
+  }
+
+  
+  void D3D11DeviceContext::InitDefaultBlendState(
+          DxvkBlendMode*                    pCbState,
+          DxvkLogicOpState*                 pLoState,
+          DxvkMultisampleState*             pMsState,
+          UINT                              SampleMask) {
+    pCbState->enableBlending    = VK_FALSE;
+    pCbState->colorSrcFactor    = VK_BLEND_FACTOR_ONE;
+    pCbState->colorDstFactor    = VK_BLEND_FACTOR_ZERO;
+    pCbState->colorBlendOp      = VK_BLEND_OP_ADD;
+    pCbState->alphaSrcFactor    = VK_BLEND_FACTOR_ONE;
+    pCbState->alphaDstFactor    = VK_BLEND_FACTOR_ZERO;
+    pCbState->alphaBlendOp      = VK_BLEND_OP_ADD;
+    pCbState->writeMask         = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                                | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+    pLoState->enableLogicOp     = VK_FALSE;
+    pLoState->logicOp           = VK_LOGIC_OP_NO_OP;
+
+    pMsState->sampleMask            = SampleMask;
+    pMsState->enableAlphaToCoverage = VK_FALSE;
   }
 
 }
