@@ -199,4 +199,8 @@ namespace dxvk {
     return Pool == D3DPOOL_MANAGED || Pool == D3DPOOL_MANAGED_EX;
   }
 
+  inline D3DRENDERSTATETYPE ColorWriteIndex(uint32_t i) {
+    return D3DRENDERSTATETYPE(i ? D3DRS_COLORWRITEENABLE1 + i - 1 : D3DRS_COLORWRITEENABLE);
+  }
+
 }

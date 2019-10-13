@@ -4805,13 +4805,6 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::CheckForHazards() {
-    static const std::array<D3DRENDERSTATETYPE, 4> colorWriteIndices = {
-      D3DRS_COLORWRITEENABLE,
-      D3DRS_COLORWRITEENABLE1,
-      D3DRS_COLORWRITEENABLE2,
-      D3DRS_COLORWRITEENABLE3
-    };
-
     const auto* shader = GetCommonShader(m_state.pixelShader);
 
     if (shader == nullptr)
@@ -4822,7 +4815,7 @@ namespace dxvk {
 
       // Skip this RT if it doesn't exist
       // or we aren't writing to it anyway.
-      if (likely(rt == nullptr || m_state.renderStates[colorWriteIndices[j]] == 0 || !shader->IsRTUsed(j)))
+      if (likely(rt == nullptr || m_state.renderStates[ColorWriteIndex(j)] == 0 || !shader->IsRTUsed(j)))
         continue;
 
       // Check all of the pixel shader textures 
@@ -5139,15 +5132,7 @@ namespace dxvk {
       auto& mode = modes[i];
       mode = baseMode;
 
-      // These state indices are non-contiguous... Of course.
-      static const std::array<D3DRENDERSTATETYPE, 4> colorWriteIndices = {
-        D3DRS_COLORWRITEENABLE,
-        D3DRS_COLORWRITEENABLE1,
-        D3DRS_COLORWRITEENABLE2,
-        D3DRS_COLORWRITEENABLE3
-      };
-
-      mode.writeMask = state[colorWriteIndices[i]];
+      mode.writeMask = state[ColorWriteIndex(i)];
     }
 
     EmitCs([
