@@ -609,6 +609,14 @@ namespace dxvk {
             uint32_t          counterBias);
     
     /**
+     * \brief Emits barrier for render target readback
+     *
+     * Use between draw calls if the fragment shader
+     * reads one of the currently bound render targets.
+     */
+    void emitRenderTargetReadbackBarrier();
+
+    /**
      * \brief Generates mip maps
      * 
      * Uses blitting to generate lower mip levels from
