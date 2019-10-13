@@ -838,6 +838,8 @@ namespace dxvk {
             UINT*                             pFirstConstant, 
             UINT*                             pNumConstants);
     
+    void ResetState();
+
     void RestoreState();
     
     template<DxbcProgramType Stage>
@@ -902,6 +904,9 @@ namespace dxvk {
     
     DxvkCsChunkRef AllocCsChunk();
     
+    static void InitDefaultPrimitiveTopology(
+            DxvkInputAssemblyState*           pIaState);
+
     template<typename T>
     const D3D11CommonShader* GetCommonShader(T* pShader) const {
       return pShader != nullptr ? pShader->GetCommonShader() : nullptr;
