@@ -5010,7 +5010,7 @@ namespace dxvk {
     EmitCs([
       cAttachments = std::move(attachments)
     ] (DxvkContext* ctx) {
-      ctx->bindRenderTargets(cAttachments, false);
+      ctx->bindRenderTargets(cAttachments);
     });
   }
 

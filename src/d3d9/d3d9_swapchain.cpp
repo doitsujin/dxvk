@@ -469,7 +469,7 @@ namespace dxvk {
       DxvkRenderTargets renderTargets;
       renderTargets.color[0].view   = m_imageViews.at(imageIndex);
       renderTargets.color[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-      m_context->bindRenderTargets(renderTargets, false);
+      m_context->bindRenderTargets(renderTargets);
 
       VkViewport viewport;
       viewport.x        = float(m_dstRect.left);
