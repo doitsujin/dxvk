@@ -25,18 +25,15 @@ namespace dxvk {
     // to the application, but we'll use them to apply state.
     Com<ID3D11BlendState>         defaultBlendState;
     Com<ID3D11DepthStencilState>  defaultDepthStencilState;
-    Com<ID3D11RasterizerState>    defaultRasterizerState;
     
     if (FAILED(m_parent->CreateBlendState       (nullptr, &defaultBlendState))
-     || FAILED(m_parent->CreateDepthStencilState(nullptr, &defaultDepthStencilState))
-     || FAILED(m_parent->CreateRasterizerState  (nullptr, &defaultRasterizerState)))
+     || FAILED(m_parent->CreateDepthStencilState(nullptr, &defaultDepthStencilState)))
       throw DxvkError("D3D11DeviceContext: Failed to create default state objects");
     
     // Apply default state to the context. This is required
     // in order to initialize the DXVK contex properly.
     m_defaultBlendState        = static_cast<D3D11BlendState*>       (defaultBlendState.ptr());
     m_defaultDepthStencilState = static_cast<D3D11DepthStencilState*>(defaultDepthStencilState.ptr());
-    m_defaultRasterizerState   = static_cast<D3D11RasterizerState*>  (defaultRasterizerState.ptr());
   }
   
   
@@ -3275,16 +3272,20 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::ApplyRasterizerState() {
-    auto rsState = m_state.rs.state.prvRef();
+    if (m_state.rs.state != nullptr) {
+      EmitCs([
+        cRasterizerState = m_state.rs.state.prvRef()
+      ] (DxvkContext* ctx) {
+        cRasterizerState->BindToContext(ctx);
+      });
+    } else {
+      EmitCs([] (DxvkContext* ctx) {
+        DxvkRasterizerState rsState;
+        InitDefaultRasterizerState(&rsState);
 
-    if (unlikely(rsState == nullptr))
-      rsState = m_defaultRasterizerState.prvRef();
-
-    EmitCs([
-      cRasterizerState = std::move(rsState)
-    ] (DxvkContext* ctx) {
-      cRasterizerState->BindToContext(ctx);
-    });
+        ctx->setRasterizerState(rsState);
+      });
+    }
   }
   
   
@@ -3778,8 +3779,7 @@ namespace dxvk {
   void D3D11DeviceContext::ResetState() {
     EmitCs([
       cBlendState         = m_defaultBlendState.prvRef(),
-      cDepthStencilState  = m_defaultDepthStencilState.prvRef(),
-      cRasterizerState    = m_defaultRasterizerState.prvRef()
+      cDepthStencilState  = m_defaultDepthStencilState.prvRef()
     ] (DxvkContext* ctx) {
       // Reset render targets
       ctx->bindRenderTargets(DxvkRenderTargets());
@@ -3787,15 +3787,18 @@ namespace dxvk {
       // Reset vertex input state
       ctx->setInputLayout(0, nullptr, 0, nullptr);
 
+      // Reset render states
       DxvkInputAssemblyState iaState;
       InitDefaultPrimitiveTopology(&iaState);
 
-      ctx->setInputAssemblyState(iaState);
+      DxvkRasterizerState rsState;
+      InitDefaultRasterizerState(&rsState);
 
-      // Reset render states
+      ctx->setInputAssemblyState(iaState);
+      ctx->setRasterizerState(rsState);
+
       cBlendState->BindToContext(ctx, D3D11_DEFAULT_SAMPLE_MASK);
       cDepthStencilState->BindToContext(ctx);
-      cRasterizerState->BindToContext(ctx);
 
       // Reset dynamic states
       ctx->setBlendConstants(DxvkBlendConstants { 1.0f, 1.0f, 1.0f, 1.0f });
@@ -4265,6 +4268,17 @@ namespace dxvk {
     pIaState->primitiveTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
     pIaState->primitiveRestart  = VK_FALSE;
     pIaState->patchVertexCount  = 0;
+  }
+
+
+  void D3D11DeviceContext::InitDefaultRasterizerState(
+          DxvkRasterizerState*              pRsState) {
+    pRsState->polygonMode     = VK_POLYGON_MODE_FILL;
+    pRsState->cullMode        = VK_CULL_MODE_BACK_BIT;
+    pRsState->frontFace       = VK_FRONT_FACE_CLOCKWISE;
+    pRsState->depthClipEnable = VK_TRUE;
+    pRsState->depthBiasEnable = VK_FALSE;
+    pRsState->sampleCount     = 0;
   }
 
 }

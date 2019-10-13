@@ -719,7 +719,6 @@ namespace dxvk {
     
     Com<D3D11BlendState>        m_defaultBlendState;
     Com<D3D11DepthStencilState> m_defaultDepthStencilState;
-    Com<D3D11RasterizerState>   m_defaultRasterizerState;
     
     D3D11ContextState           m_state;
     D3D11CmdData*               m_cmdData;
@@ -906,6 +905,9 @@ namespace dxvk {
     
     static void InitDefaultPrimitiveTopology(
             DxvkInputAssemblyState*           pIaState);
+
+    static void InitDefaultRasterizerState(
+            DxvkRasterizerState*              pRsState);
 
     template<typename T>
     const D3D11CommonShader* GetCommonShader(T* pShader) const {
