@@ -4363,6 +4363,10 @@ namespace dxvk {
   void DxvkContext::commitGraphicsBarriers() {
     auto layout = m_state.gp.pipeline->layout();
 
+    constexpr auto storageBufferUsage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                                      | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+    constexpr auto storageImageUsage  = VK_IMAGE_USAGE_STORAGE_BIT;
+
     bool requiresBarrier = false;
 
     for (uint32_t i = 0; i < layout->bindingCount() && !requiresBarrier; i++) {
@@ -4381,7 +4385,7 @@ namespace dxvk {
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
           if (slot.bufferSlice.defined()
-           && slot.bufferSlice.bufferInfo().usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) {
+           && slot.bufferSlice.bufferInfo().usage & storageBufferUsage) {
             srcAccess = m_gfxBarriers.getBufferAccess(
               slot.bufferSlice.getSliceHandle());
 
@@ -4400,7 +4404,7 @@ namespace dxvk {
 
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
           if (slot.bufferView != nullptr
-           && slot.bufferView->bufferInfo().usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) {
+           && slot.bufferView->bufferInfo().usage & storageBufferUsage) {
             srcAccess = m_gfxBarriers.getBufferAccess(
               slot.bufferView->getSliceHandle());
 
@@ -4420,7 +4424,7 @@ namespace dxvk {
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
           if (slot.imageView != nullptr
-           && slot.imageView->imageInfo().usage & VK_IMAGE_USAGE_STORAGE_BIT) {
+           && slot.imageView->imageInfo().usage & storageImageUsage) {
             srcAccess = m_gfxBarriers.getImageAccess(
               slot.imageView->image(),
               slot.imageView->imageSubresources());
