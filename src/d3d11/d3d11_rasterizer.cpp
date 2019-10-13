@@ -50,6 +50,22 @@ namespace dxvk {
   }
   
   
+  ULONG STDMETHODCALLTYPE D3D11RasterizerState::AddRef() {
+    ULONG refCount = m_refCount++;
+    if (!refCount)
+      m_device->AddRef();
+    return refCount;
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11RasterizerState::Release() {
+    ULONG refCount = --m_refCount;
+    if (!refCount)
+      m_device->Release();
+    return refCount;
+  }
+
+
   HRESULT STDMETHODCALLTYPE D3D11RasterizerState::QueryInterface(REFIID riid, void** ppvObject) {
     if (ppvObject == nullptr)
       return E_POINTER;

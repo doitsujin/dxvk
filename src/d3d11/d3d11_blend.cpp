@@ -36,6 +36,22 @@ namespace dxvk {
   }
   
   
+  ULONG STDMETHODCALLTYPE D3D11BlendState::AddRef() {
+    ULONG refCount = m_refCount++;
+    if (!refCount)
+      m_device->AddRef();
+    return refCount;
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11BlendState::Release() {
+    ULONG refCount = --m_refCount;
+    if (!refCount)
+      m_device->Release();
+    return refCount;
+  }
+
+
   HRESULT STDMETHODCALLTYPE D3D11BlendState::QueryInterface(REFIID riid, void** ppvObject) {
     if (ppvObject == nullptr)
       return E_POINTER;

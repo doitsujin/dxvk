@@ -21,6 +21,10 @@ namespace dxvk {
       const D3D11_SAMPLER_DESC& desc);
     ~D3D11SamplerState();
     
+    ULONG STDMETHODCALLTYPE AddRef() final;
+
+    ULONG STDMETHODCALLTYPE Release() final;
+
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
             void**  ppvObject) final;
@@ -48,6 +52,8 @@ namespace dxvk {
     D3D11_SAMPLER_DESC m_desc;
     Rc<DxvkSampler>    m_sampler;
     D3D10SamplerState  m_d3d10;
+
+    std::atomic<uint32_t> m_refCount = { 0u };
 
     static bool ValidateAddressMode(
             D3D11_TEXTURE_ADDRESS_MODE  Mode);

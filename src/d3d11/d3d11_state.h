@@ -56,20 +56,22 @@ namespace dxvk {
     T* Create(D3D11Device* device, const DescType& desc) {
       std::lock_guard<std::mutex> lock(m_mutex);
       
-      auto pair = m_objects.find(desc);
+      auto entry = m_objects.find(desc);
       
-      if (pair != m_objects.end())
-        return pair->second.ref();
+      if (entry != m_objects.end())
+        return ref(&entry->second);
       
-      Com<T> result = new T(device, desc);
-      m_objects.insert({ desc, result });
-      return result.ref();
+      auto result = m_objects.emplace(
+        std::piecewise_construct,
+        std::tuple(desc),
+        std::tuple(device, desc));
+      return ref(&result.first->second);
     }
     
   private:
     
     std::mutex                                 m_mutex;
-    std::unordered_map<DescType, Com<T>,
+    std::unordered_map<DescType, T,
       D3D11StateDescHash, D3D11StateDescEqual> m_objects;
     
   };

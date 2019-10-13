@@ -22,6 +22,10 @@ namespace dxvk {
       const D3D11_BLEND_DESC1& desc);
     ~D3D11BlendState();
     
+    ULONG STDMETHODCALLTYPE AddRef() final;
+
+    ULONG STDMETHODCALLTYPE Release() final;
+
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
             void**  ppvObject) final;
@@ -61,6 +65,8 @@ namespace dxvk {
     DxvkLogicOpState              m_loState;
 
     D3D10BlendState               m_d3d10;
+
+    std::atomic<uint32_t> m_refCount = { 0u };
     
     static DxvkBlendMode DecodeBlendMode(
       const D3D11_RENDER_TARGET_BLEND_DESC1& BlendDesc);

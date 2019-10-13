@@ -20,7 +20,11 @@ namespace dxvk {
             D3D11Device*                    device,
       const D3D11_RASTERIZER_DESC2&         desc);
     ~D3D11RasterizerState();
-    
+
+    ULONG STDMETHODCALLTYPE AddRef() final;
+
+    ULONG STDMETHODCALLTYPE Release() final;
+
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
             void**  ppvObject) final;
@@ -66,6 +70,8 @@ namespace dxvk {
     DxvkRasterizerState    m_state;
     DxvkDepthBias          m_depthBias;
     D3D10RasterizerState   m_d3d10;
+
+    std::atomic<uint32_t> m_refCount = { 0u };
     
   };
   
