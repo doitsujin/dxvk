@@ -6,8 +6,8 @@
 
 namespace dxvk {
   
-  template<typename... Base>
-  class DxgiObject : public ComObject<Base...> {
+  template<typename Base>
+  class DxgiObject : public ComObject<Base> {
     
   public:
     

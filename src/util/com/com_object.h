@@ -24,8 +24,8 @@ namespace dxvk {
    * holding on to objects which the application wants
    * to delete.
    */
-  template<typename... Base>
-  class ComObject : public Base... {
+  template<typename Base>
+  class ComObject : public Base {
     
   public:
     

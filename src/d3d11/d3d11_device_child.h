@@ -6,8 +6,8 @@
 
 namespace dxvk {
   
-  template<typename... Base>
-  class D3D11DeviceChild : public ComObject<Base...> {
+  template<typename Base>
+  class D3D11DeviceChild : public ComObject<Base> {
     
   public:
     
