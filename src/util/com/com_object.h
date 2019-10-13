@@ -8,6 +8,9 @@
   
 namespace dxvk {
   
+  template<typename T>
+  using NoWrapper = T;
+  
   /**
    * \brief Reference-counted COM object
    *
