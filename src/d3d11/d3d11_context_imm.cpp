@@ -36,12 +36,18 @@ namespace dxvk {
   
   
   ULONG STDMETHODCALLTYPE D3D11ImmediateContext::AddRef() {
-    return m_parent->AddRef();
+    ULONG refCount = m_refCount++;
+    if (!refCount)
+      m_parent->AddRef();
+    return refCount;
   }
   
   
   ULONG STDMETHODCALLTYPE D3D11ImmediateContext::Release() {
-    return m_parent->Release();
+    ULONG refCount = --m_refCount;
+    if (!refCount)
+      m_parent->Release();
+    return refCount;
   }
   
   

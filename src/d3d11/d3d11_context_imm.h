@@ -109,6 +109,8 @@ namespace dxvk {
     DxvkCsThread m_csThread;
     bool         m_csIsBusy = false;
 
+    std::atomic<uint32_t> m_refCount = { 0 };
+
     std::chrono::high_resolution_clock::time_point m_lastFlush
       = std::chrono::high_resolution_clock::now();
     
