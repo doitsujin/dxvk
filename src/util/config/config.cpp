@@ -194,28 +194,9 @@ namespace dxvk {
     { R"(\\Risen3\.exe$)", {{
       { "d3d9.allowLockFlagReadonly",       "False" },
     }} },
-    /* Star Wars: The Force Unleashed 1 & 2       */
-    { R"(\\SWTFU\.exe$)", {{
-      { "d3d9.hasHazards",                  "True" },
-    }} },
-    { R"(\\SWTFU2\.exe$)", {{
-      { "d3d9.hasHazards",                  "True" },
-    }} },
-    /* Grand Theft Auto IV                        */
-    { R"(\\GTAIV\.exe$)", {{
-      { "d3d9.hasHazards",                  "True" },
-    }} },
-    /* Deadlight                                  */
-    { R"(\\LOTDGame\.exe$)", {{
-      { "d3d9.hasHazards",                  "True" },
-    }} },
     /* Nostale                                    */
     { R"(\\NostaleClientX\.exe$)", {{
       { "d3d9.allowLockFlagReadonly",       "False" },
-    }} },
-    /* GTA Episodes from Liberty City             */
-    { R"(\\EFLC\.exe$)", {{
-      { "d3d9.hasHazards",                  "True" },
     }} },
     /* Sonic Adventure 2                          */
     { R"(\\Sonic Adventure 2\\(launcher|sonic2app)\.exe$)", {{
