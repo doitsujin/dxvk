@@ -1149,6 +1149,8 @@ namespace dxvk {
 
     changePrivate(m_state.renderTargets[RenderTargetIndex], rt);
 
+    UpdateActiveRTs(RenderTargetIndex);
+
     if (RenderTargetIndex == 0) {
       const auto* desc = m_state.renderTargets[0]->GetCommonTexture()->Desc();
 
@@ -1726,12 +1728,25 @@ namespace dxvk {
         case D3DRS_BLENDOPALPHA:
         case D3DRS_DESTBLEND:
         case D3DRS_DESTBLENDALPHA:
-        case D3DRS_COLORWRITEENABLE:
-        case D3DRS_COLORWRITEENABLE1:
-        case D3DRS_COLORWRITEENABLE2:
-        case D3DRS_COLORWRITEENABLE3:
         case D3DRS_SRCBLEND:
         case D3DRS_SRCBLENDALPHA:
+          m_flags.set(D3D9DeviceFlag::DirtyBlendState);
+          break;
+
+        case D3DRS_COLORWRITEENABLE:
+          UpdateActiveRTs(0);
+          m_flags.set(D3D9DeviceFlag::DirtyBlendState);
+          break;
+        case D3DRS_COLORWRITEENABLE1:
+          UpdateActiveRTs(1);
+          m_flags.set(D3D9DeviceFlag::DirtyBlendState);
+          break;
+        case D3DRS_COLORWRITEENABLE2:
+          UpdateActiveRTs(2);
+          m_flags.set(D3D9DeviceFlag::DirtyBlendState);
+          break;
+        case D3DRS_COLORWRITEENABLE3:
+          UpdateActiveRTs(3);
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         
@@ -2947,6 +2962,8 @@ namespace dxvk {
         GetPixelShaderPermutation());
     }
 
+    UpdateActiveHazards();
+
     return D3D_OK;
   }
 
@@ -3770,6 +3787,10 @@ namespace dxvk {
     TextureChangePrivate(m_state.textures[StateSampler], pTexture);
 
     BindTexture(StateSampler);
+
+    // We only care about PS samplers
+    if (likely(StateSampler <= caps::MaxSamplers))
+      UpdateActiveRTTextures(StateSampler);
 
     return D3D_OK;
   }
@@ -4804,44 +4825,78 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::CheckForHazards() {
+   inline D3D9ShaderMasks D3D9DeviceEx::GetShaderMasks() {
     const auto* shader = GetCommonShader(m_state.pixelShader);
 
-    if (shader == nullptr)
-      return;
+    if (likely(shader != nullptr))
+      return shader->GetShaderMask();
 
-    for (uint32_t j = 0; j < m_state.renderTargets.size(); j++) {
-      auto* rt = GetCommonTexture(m_state.renderTargets[j]);
+    // TODO: What fixed function textures are in use?
+    // Currently we are making all 8 of them as in use here.
 
-      // Skip this RT if it doesn't exist
-      // or we aren't writing to it anyway.
-      if (likely(rt == nullptr || m_state.renderStates[ColorWriteIndex(j)] == 0 || !shader->IsRTUsed(j)))
-        continue;
+    // The RT output is always 0 for fixed function.
+    return D3D9ShaderMasks{ 0b1111111, 0b1 };
+  }
 
-      // Check all of the pixel shader textures 
-      for (uint32_t i = 0; i < 16; i++) {
-        auto* tex = GetCommonTexture(m_state.textures[i]);
 
-        // We only care if there is a hazard in the current draw...
-        // Some games don't unbind their textures so we need to check the shaders.
-        if (likely(tex == nullptr || !shader->IsSamplerUsed(i)))
+  inline void D3D9DeviceEx::UpdateActiveRTs(uint32_t index) {
+    const uint32_t bit = 1 << index;
+
+    m_activeRTs &= ~bit;
+
+    if (m_state.renderTargets[index] != nullptr &&
+        m_state.renderTargets[index]->GetBaseTexture() != nullptr &&
+        m_state.renderStates[ColorWriteIndex(index)])
+      m_activeRTs |= bit;
+
+    UpdateActiveHazards();
+  }
+
+
+  inline void D3D9DeviceEx::UpdateActiveRTTextures(uint32_t index) {
+    const uint32_t bit = 1 << index;
+
+    m_activeRTTextures &= ~bit;
+
+    auto tex = GetCommonTexture(m_state.textures[index]);
+    if (tex != nullptr && tex->IsRenderTarget())
+      m_activeRTTextures |= bit;
+
+    UpdateActiveHazards();
+  }
+
+
+  inline void D3D9DeviceEx::UpdateActiveHazards() {
+    auto masks = GetShaderMasks();
+    masks.rtMask      &= m_activeRTs;
+    masks.samplerMask &= m_activeRTTextures;
+
+    m_activeHazards = 0;
+    for (uint32_t rt = masks.rtMask; rt; rt &= rt - 1) {
+      for (uint32_t sampler = masks.samplerMask; sampler; sampler &= sampler - 1) {
+        IDirect3DBaseTexture9* rtBase  = m_state.renderTargets[bit::tzcnt(rt)]->GetBaseTexture();
+        IDirect3DBaseTexture9* texBase = m_state.textures[bit::tzcnt(sampler)];
+
+        if (likely(rtBase != texBase))
           continue;
-        
-        if (tex == rt) {
-          // If we haven't marked this as a hazard before:
-          // - Transition the image's layout
-          // - Rebind the framebuffer for the new layout
-          if (unlikely(!tex->MarkHazardous())) {
-            TransitionImage(tex, VK_IMAGE_LAYOUT_GENERAL);
-            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
-          }
 
-          // No need to search for more hazards for this texture.
-          break;
-        }
+        m_activeHazards |= 1 << bit::tzcnt(rt);
       }
     }
   }
+
+
+  void D3D9DeviceEx::MarkRenderHazards() {
+    for (uint32_t rt = m_activeHazards; rt; rt &= rt - 1) {
+      // Guaranteed to not be nullptr...
+      auto tex = m_state.renderTargets[bit::tzcnt(rt)]->GetCommonTexture();
+      if (unlikely(!tex->MarkHazardous())) {
+        TransitionImage(tex, VK_IMAGE_LAYOUT_GENERAL);
+        m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+      }
+    }
+  }
+
 
   template <bool Points>
   void D3D9DeviceEx::UpdatePointMode() {
@@ -5452,11 +5507,14 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::PrepareDraw(D3DPRIMITIVETYPE PrimitiveType, bool up) {
-    // This is fairly expensive to do!
-    // So we only enable it on games & vendors that actually need it (for now)
-    // This is not needed at all on NV either, etc...
-    if (m_d3d9Options.hasHazards)
-      CheckForHazards();
+    if (unlikely(m_activeHazards != 0)) {
+      EmitCs([](DxvkContext* ctx) {
+        ctx->emitRenderTargetReadbackBarrier();
+      });
+
+      if (m_d3d9Options.generalHazards)
+        MarkRenderHazards();
+    }
 
     UpdateFog();
 

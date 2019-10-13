@@ -3,10 +3,12 @@
 #include "d3d9_resource.h"
 #include "../dxso/dxso_module.h"
 #include "d3d9_shader_permutations.h"
+#include "d3d9_util.h"
 
 #include <array>
 
 namespace dxvk {
+
 
   /**
    * \brief Common shader object
@@ -49,13 +51,8 @@ namespace dxvk {
 
     const DxsoShaderMetaInfo& GetMeta() const { return m_meta; }
     const DxsoDefinedConstants& GetConstants() const { return m_constants; }
-    bool IsSamplerUsed(uint32_t index) const {
-      return m_usedSamplers & (1u << index);
-    }
 
-    bool IsRTUsed(uint32_t index) const {
-      return m_usedRTs & (1u << index);
-    }
+    D3D9ShaderMasks GetShaderMask() const { return D3D9ShaderMasks{ m_usedSamplers, m_usedRTs }; }
 
     const DxsoProgramInfo& GetInfo() const { return m_info; }
 

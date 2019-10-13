@@ -13,6 +13,11 @@
 
 namespace dxvk {
 
+  struct D3D9ShaderMasks {
+    uint32_t samplerMask;
+    uint32_t rtMask;
+  };
+
   struct D3D9MipFilter {
     bool                MipsEnabled;
     VkSamplerMipmapMode MipFilter;

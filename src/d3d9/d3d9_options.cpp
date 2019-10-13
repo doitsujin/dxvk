@@ -46,7 +46,6 @@ namespace dxvk {
     this->lenientClear          = config.getOption<bool>    ("d3d9.lenientClear",          false);
     this->numBackBuffers        = config.getOption<int32_t> ("d3d9.numBackBuffers",        0);
     this->deferSurfaceCreation  = config.getOption<bool>    ("d3d9.deferSurfaceCreation",  false);
-    this->hasHazards            = config.getOption<bool>    ("d3d9.hasHazards",            false);
     this->samplerAnisotropy     = config.getOption<int32_t> ("d3d9.samplerAnisotropy",     -1);
     this->maxAvailableMemory    = config.getOption<uint32_t>("d3d9.maxAvailableMemory",    UINT32_MAX);
     this->supportDFFormats      = config.getOption<bool>    ("d3d9.supportDFFormats",      true);
@@ -56,13 +55,13 @@ namespace dxvk {
     this->disableA8RT           = config.getOption<bool>    ("d3d9.disableA8RT",           false);
     this->invariantPosition     = config.getOption<bool>    ("d3d9.invariantPosition",     false);
 
+    // If we are not Nvidia, enable general hazards.
+    this->generalHazards = adapter == nullptr || !adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0);
+    applyTristate(this->generalHazards, config.getOption<Tristate>("d3d9.generalHazards", Tristate::Auto));
+
     this->d3d9FloatEmulation    = true; // <-- Future Extension?
 
     applyTristate(this->d3d9FloatEmulation, config.getOption<Tristate>("d3d9.floatEmulation", Tristate::Auto));
-
-    // This is not necessary on Nvidia.
-    if (adapter != nullptr && adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0))
-      this->hasHazards          = false;
   }
 
 }

@@ -89,6 +89,10 @@ namespace dxvk {
       return m_texture->Desc()->Format == D3D9Format::NULL_FORMAT;
     }
 
+    IDirect3DBaseTexture9* GetBaseTexture() {
+      return m_container;
+    }
+
   protected:
 
     IDirect3DBaseTexture9*  m_container;

@@ -70,7 +70,7 @@ namespace dxvk {
     UpDirtiedIndices,
     ValidSampleMask,
     DirtyDepthBounds,
-    DirtyPointScale
+    DirtyPointScale,
   };
 
   using D3D9DeviceFlags = Flags<D3D9DeviceFlag>;
@@ -722,7 +722,15 @@ namespace dxvk {
 
     void Flush();
 
-    void CheckForHazards();
+    D3D9ShaderMasks GetShaderMasks();
+
+    void UpdateActiveRTs(uint32_t index);
+
+    void UpdateActiveRTTextures(uint32_t index);
+
+    void UpdateActiveHazards();
+
+    void MarkRenderHazards();
 
     template <bool Points>
     void UpdatePointMode();
@@ -955,6 +963,10 @@ namespace dxvk {
     uint32_t                        m_projectionBitfield = 0;
 
     uint32_t                        m_lastPointMode = 0;
+
+    uint32_t                        m_activeRTs        = 0;
+    uint32_t                        m_activeRTTextures = 0;
+    uint32_t                        m_activeHazards    = 0;
 
     D3D9ViewportInfo                m_viewportInfo;
 

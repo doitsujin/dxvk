@@ -271,6 +271,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Render Target
+     * \returns Whether a resource is a render target or not
+     */
+    bool IsRenderTarget() const {
+      return m_desc.Usage & D3DUSAGE_RENDERTARGET;
+    }
+
+    /**
      * \brief Autogen Mipmap
      * \returns Whether the texture is to have automatic mip generation
      */
