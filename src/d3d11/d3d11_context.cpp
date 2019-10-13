@@ -3213,7 +3213,7 @@ namespace dxvk {
   void D3D11DeviceContext::ApplyBlendState() {
     if (m_state.om.cbState != nullptr) {
       EmitCs([
-        cBlendState = m_state.om.cbState.prvRef(),
+        cBlendState = m_state.om.cbState.ptr(),
         cSampleMask = m_state.om.sampleMask
       ] (DxvkContext* ctx) {
         cBlendState->BindToContext(ctx, cSampleMask);
@@ -3251,7 +3251,7 @@ namespace dxvk {
   void D3D11DeviceContext::ApplyDepthStencilState() {
     if (m_state.om.dsState != nullptr) {
       EmitCs([
-        cDepthStencilState = m_state.om.dsState.prvRef()
+        cDepthStencilState = m_state.om.dsState.ptr()
       ] (DxvkContext* ctx) {
         cDepthStencilState->BindToContext(ctx);
       });
@@ -3278,7 +3278,7 @@ namespace dxvk {
   void D3D11DeviceContext::ApplyRasterizerState() {
     if (m_state.rs.state != nullptr) {
       EmitCs([
-        cRasterizerState = m_state.rs.state.prvRef()
+        cRasterizerState = m_state.rs.state.ptr()
       ] (DxvkContext* ctx) {
         cRasterizerState->BindToContext(ctx);
       });
