@@ -24,16 +24,13 @@ namespace dxvk {
     // Create default state objects. We won't ever return them
     // to the application, but we'll use them to apply state.
     Com<ID3D11BlendState>         defaultBlendState;
-    Com<ID3D11DepthStencilState>  defaultDepthStencilState;
     
-    if (FAILED(m_parent->CreateBlendState       (nullptr, &defaultBlendState))
-     || FAILED(m_parent->CreateDepthStencilState(nullptr, &defaultDepthStencilState)))
+    if (FAILED(m_parent->CreateBlendState       (nullptr, &defaultBlendState)))
       throw DxvkError("D3D11DeviceContext: Failed to create default state objects");
     
     // Apply default state to the context. This is required
     // in order to initialize the DXVK contex properly.
     m_defaultBlendState        = static_cast<D3D11BlendState*>       (defaultBlendState.ptr());
-    m_defaultDepthStencilState = static_cast<D3D11DepthStencilState*>(defaultDepthStencilState.ptr());
   }
   
   
@@ -3249,16 +3246,20 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::ApplyDepthStencilState() {
-    auto dsState = m_state.om.dsState.prvRef();
+    if (m_state.om.dsState != nullptr) {
+      EmitCs([
+        cDepthStencilState = m_state.om.dsState.prvRef()
+      ] (DxvkContext* ctx) {
+        cDepthStencilState->BindToContext(ctx);
+      });
+    } else {
+      EmitCs([] (DxvkContext* ctx) {
+        DxvkDepthStencilState dsState;
+        InitDefaultDepthStencilState(&dsState);
 
-    if (unlikely(dsState == nullptr))
-      dsState = m_defaultDepthStencilState.prvRef();
-
-    EmitCs([
-      cDepthStencilState = std::move(dsState)
-    ] (DxvkContext* ctx) {
-      cDepthStencilState->BindToContext(ctx);
-    });
+        ctx->setDepthStencilState(dsState);
+      });
+    }
   }
   
   
@@ -3778,8 +3779,7 @@ namespace dxvk {
   
   void D3D11DeviceContext::ResetState() {
     EmitCs([
-      cBlendState         = m_defaultBlendState.prvRef(),
-      cDepthStencilState  = m_defaultDepthStencilState.prvRef()
+      cBlendState         = m_defaultBlendState.prvRef()
     ] (DxvkContext* ctx) {
       // Reset render targets
       ctx->bindRenderTargets(DxvkRenderTargets());
@@ -3791,14 +3791,17 @@ namespace dxvk {
       DxvkInputAssemblyState iaState;
       InitDefaultPrimitiveTopology(&iaState);
 
+      DxvkDepthStencilState dsState;
+      InitDefaultDepthStencilState(&dsState);
+
       DxvkRasterizerState rsState;
       InitDefaultRasterizerState(&rsState);
 
       ctx->setInputAssemblyState(iaState);
+      ctx->setDepthStencilState(dsState);
       ctx->setRasterizerState(rsState);
 
       cBlendState->BindToContext(ctx, D3D11_DEFAULT_SAMPLE_MASK);
-      cDepthStencilState->BindToContext(ctx);
 
       // Reset dynamic states
       ctx->setBlendConstants(DxvkBlendConstants { 1.0f, 1.0f, 1.0f, 1.0f });
@@ -4279,6 +4282,26 @@ namespace dxvk {
     pRsState->depthClipEnable = VK_TRUE;
     pRsState->depthBiasEnable = VK_FALSE;
     pRsState->sampleCount     = 0;
+  }
+
+
+  void D3D11DeviceContext::InitDefaultDepthStencilState(
+          DxvkDepthStencilState*            pDsState) {
+    VkStencilOpState stencilOp;
+    stencilOp.failOp            = VK_STENCIL_OP_KEEP;
+    stencilOp.passOp            = VK_STENCIL_OP_KEEP;
+    stencilOp.depthFailOp       = VK_STENCIL_OP_KEEP;
+    stencilOp.compareOp         = VK_COMPARE_OP_ALWAYS;
+    stencilOp.compareMask       = D3D11_DEFAULT_STENCIL_READ_MASK;
+    stencilOp.writeMask         = D3D11_DEFAULT_STENCIL_WRITE_MASK;
+    stencilOp.reference         = 0;
+
+    pDsState->enableDepthTest   = VK_TRUE;
+    pDsState->enableDepthWrite  = VK_TRUE;
+    pDsState->enableStencilTest = VK_FALSE;
+    pDsState->depthCompareOp    = VK_COMPARE_OP_LESS;
+    pDsState->stencilOpFront    = stencilOp;
+    pDsState->stencilOpBack     = stencilOp;
   }
 
 }
