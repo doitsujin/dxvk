@@ -5,7 +5,7 @@ namespace dxvk {
   DxvkSampler::DxvkSampler(
     const Rc<vk::DeviceFn>&       vkd,
     const DxvkSamplerCreateInfo&  info)
-  : m_vkd(vkd), m_info(info) {
+  : m_vkd(vkd) {
     VkSamplerCreateInfo samplerInfo;
     samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     samplerInfo.pNext                   = nullptr;
