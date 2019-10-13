@@ -10,7 +10,7 @@ namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11RasterizerState : public D3D11DeviceChild<ID3D11RasterizerState2> {
+  class D3D11RasterizerState : public D3D11DeviceChild<ID3D11RasterizerState2, NoWrapper> {
     
   public:
     

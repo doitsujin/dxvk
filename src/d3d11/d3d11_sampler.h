@@ -10,7 +10,7 @@ namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11SamplerState : public D3D11DeviceChild<ID3D11SamplerState> {
+  class D3D11SamplerState : public D3D11DeviceChild<ID3D11SamplerState, NoWrapper> {
     
   public:
     

@@ -11,7 +11,7 @@ namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11DepthStencilState : public D3D11DeviceChild<ID3D11DepthStencilState> {
+  class D3D11DepthStencilState : public D3D11DeviceChild<ID3D11DepthStencilState, NoWrapper> {
     
   public:
     
