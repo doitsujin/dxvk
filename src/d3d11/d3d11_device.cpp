@@ -999,10 +999,11 @@ namespace dxvk {
     const D3D11_BLEND_DESC*           pBlendStateDesc,
           ID3D11BlendState**          ppBlendState) {
     InitReturnPtr(ppBlendState);
+
+    if (!pBlendStateDesc)
+      return E_INVALIDARG;
     
-    D3D11_BLEND_DESC1 desc = pBlendStateDesc != nullptr
-      ? D3D11BlendState::PromoteDesc(pBlendStateDesc)
-      : D3D11BlendState::DefaultDesc();
+    D3D11_BLEND_DESC1 desc = D3D11BlendState::PromoteDesc(pBlendStateDesc);
     
     if (FAILED(D3D11BlendState::NormalizeDesc(&desc)))
       return E_INVALIDARG;
@@ -1019,9 +1020,10 @@ namespace dxvk {
           ID3D11BlendState1**         ppBlendState) {
     InitReturnPtr(ppBlendState);
     
-    D3D11_BLEND_DESC1 desc = pBlendStateDesc != nullptr
-      ? *pBlendStateDesc
-      : D3D11BlendState::DefaultDesc();
+    if (!pBlendStateDesc)
+      return E_INVALIDARG;
+
+    D3D11_BLEND_DESC1 desc = *pBlendStateDesc;
     
     if (FAILED(D3D11BlendState::NormalizeDesc(&desc)))
       return E_INVALIDARG;
@@ -1038,9 +1040,10 @@ namespace dxvk {
           ID3D11DepthStencilState**   ppDepthStencilState) {
     InitReturnPtr(ppDepthStencilState);
     
-    D3D11_DEPTH_STENCIL_DESC desc = pDepthStencilDesc != nullptr
-      ? *pDepthStencilDesc
-      : D3D11DepthStencilState::DefaultDesc();
+    if (!pDepthStencilDesc)
+      return E_INVALIDARG;
+
+    D3D11_DEPTH_STENCIL_DESC desc = *pDepthStencilDesc;
     
     if (FAILED(D3D11DepthStencilState::NormalizeDesc(&desc)))
       return E_INVALIDARG;
@@ -1056,10 +1059,11 @@ namespace dxvk {
     const D3D11_RASTERIZER_DESC*      pRasterizerDesc,
           ID3D11RasterizerState**     ppRasterizerState) {
     InitReturnPtr(ppRasterizerState);
-    
-    D3D11_RASTERIZER_DESC2 desc = pRasterizerDesc
-      ? D3D11RasterizerState::PromoteDesc(pRasterizerDesc)
-      : D3D11RasterizerState::DefaultDesc();
+
+    if (!pRasterizerDesc)
+      return E_INVALIDARG;
+
+    D3D11_RASTERIZER_DESC2 desc = D3D11RasterizerState::PromoteDesc(pRasterizerDesc);
     
     if (FAILED(D3D11RasterizerState::NormalizeDesc(&desc)))
       return E_INVALIDARG;
@@ -1077,9 +1081,10 @@ namespace dxvk {
           ID3D11RasterizerState1**    ppRasterizerState) {
     InitReturnPtr(ppRasterizerState);
     
-    D3D11_RASTERIZER_DESC2 desc = pRasterizerDesc
-      ? D3D11RasterizerState::PromoteDesc(pRasterizerDesc)
-      : D3D11RasterizerState::DefaultDesc();
+    if (!pRasterizerDesc)
+      return E_INVALIDARG;
+
+    D3D11_RASTERIZER_DESC2 desc = D3D11RasterizerState::PromoteDesc(pRasterizerDesc);
     
     if (FAILED(D3D11RasterizerState::NormalizeDesc(&desc)))
       return E_INVALIDARG;
@@ -1097,9 +1102,10 @@ namespace dxvk {
           ID3D11RasterizerState2**    ppRasterizerState) {
     InitReturnPtr(ppRasterizerState);
     
-    D3D11_RASTERIZER_DESC2 desc = pRasterizerDesc
-      ? *pRasterizerDesc
-      : D3D11RasterizerState::DefaultDesc();
+    if (!pRasterizerDesc)
+      return E_INVALIDARG;
+
+    D3D11_RASTERIZER_DESC2 desc = *pRasterizerDesc;
     
     if (FAILED(D3D11RasterizerState::NormalizeDesc(&desc)))
       return E_INVALIDARG;
