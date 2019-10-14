@@ -3992,9 +3992,14 @@ namespace dxvk {
     // on the CS thread so that we can determine whether the
     // resource is currently in use or not.
 
+    // Determine access type to wait for based on map mode
+    DxvkAccess access = (MapFlags & D3DLOCK_READONLY)
+      ? DxvkAccess::Write
+      : DxvkAccess::Read;
+
     SynchronizeCsThread();
 
-    if (Resource->isInUse()) {
+    if (Resource->isInUse(access)) {
       if (MapFlags & D3DLOCK_DONOTWAIT) {
         // We don't have to wait, but misbehaving games may
         // still try to spin on `Map` until the resource is
@@ -4007,11 +4012,6 @@ namespace dxvk {
         // executed on the the GPU if we have to wait for it
         Flush();
         SynchronizeCsThread();
-
-        // Determine access type to wait for based on map mode
-        DxvkAccess access = (MapFlags & D3DLOCK_READONLY)
-          ? DxvkAccess::Write
-          : DxvkAccess::Read;
 
         while (Resource->isInUse(access))
           dxvk::this_thread::yield();
