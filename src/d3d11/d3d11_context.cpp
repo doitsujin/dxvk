@@ -1903,7 +1903,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumSamplers; i++)
-      ppSamplers[i] = m_state.vs.samplers[StartSlot + i].ref();
+      ppSamplers[i] = ref(m_state.vs.samplers[StartSlot + i]);
   }
   
   
@@ -2045,7 +2045,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumSamplers; i++)
-      ppSamplers[i] = m_state.hs.samplers[StartSlot + i].ref();
+      ppSamplers[i] = ref(m_state.hs.samplers[StartSlot + i]);
   }
   
   
@@ -2187,7 +2187,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumSamplers; i++)
-      ppSamplers[i] = m_state.ds.samplers[StartSlot + i].ref();
+      ppSamplers[i] = ref(m_state.ds.samplers[StartSlot + i]);
   }
   
   
@@ -2329,7 +2329,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumSamplers; i++)
-      ppSamplers[i] = m_state.gs.samplers[StartSlot + i].ref();
+      ppSamplers[i] = ref(m_state.gs.samplers[StartSlot + i]);
   }
   
   
@@ -2471,7 +2471,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumSamplers; i++)
-      ppSamplers[i] = m_state.ps.samplers[StartSlot + i].ref();
+      ppSamplers[i] = ref(m_state.ps.samplers[StartSlot + i]);
   }
   
   
@@ -2669,7 +2669,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumSamplers; i++)
-      ppSamplers[i] = m_state.cs.samplers[StartSlot + i].ref();
+      ppSamplers[i] = ref(m_state.cs.samplers[StartSlot + i]);
   }
   
   
@@ -2864,7 +2864,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     if (ppBlendState != nullptr)
-      *ppBlendState = m_state.om.cbState.ref();
+      *ppBlendState = ref(m_state.om.cbState);
     
     if (BlendFactor != nullptr)
       std::memcpy(BlendFactor, m_state.om.blendFactor, sizeof(FLOAT) * 4);
@@ -2880,7 +2880,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     if (ppDepthStencilState != nullptr)
-      *ppDepthStencilState = m_state.om.dsState.ref();
+      *ppDepthStencilState = ref(m_state.om.dsState);
     
     if (pStencilRef != nullptr)
       *pStencilRef = m_state.om.stencilRef;
@@ -2982,7 +2982,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     if (ppRasterizerState != nullptr)
-      *ppRasterizerState = m_state.rs.state.ref();
+      *ppRasterizerState = ref(m_state.rs.state);
   }
   
   
@@ -3213,7 +3213,7 @@ namespace dxvk {
   void D3D11DeviceContext::ApplyBlendState() {
     if (m_state.om.cbState != nullptr) {
       EmitCs([
-        cBlendState = m_state.om.cbState.ptr(),
+        cBlendState = m_state.om.cbState,
         cSampleMask = m_state.om.sampleMask
       ] (DxvkContext* ctx) {
         cBlendState->BindToContext(ctx, cSampleMask);
@@ -3251,7 +3251,7 @@ namespace dxvk {
   void D3D11DeviceContext::ApplyDepthStencilState() {
     if (m_state.om.dsState != nullptr) {
       EmitCs([
-        cDepthStencilState = m_state.om.dsState.ptr()
+        cDepthStencilState = m_state.om.dsState
       ] (DxvkContext* ctx) {
         cDepthStencilState->BindToContext(ctx);
       });
@@ -3278,7 +3278,7 @@ namespace dxvk {
   void D3D11DeviceContext::ApplyRasterizerState() {
     if (m_state.rs.state != nullptr) {
       EmitCs([
-        cRasterizerState = m_state.rs.state.ptr()
+        cRasterizerState = m_state.rs.state
       ] (DxvkContext* ctx) {
         cRasterizerState->BindToContext(ctx);
       });
@@ -3959,7 +3959,7 @@ namespace dxvk {
     uint32_t slotId = computeSamplerBinding(Stage, 0);
     
     for (uint32_t i = 0; i < Bindings.size(); i++)
-      BindSampler(slotId + i, Bindings[i].ptr());
+      BindSampler(slotId + i, Bindings[i]);
   }
   
   

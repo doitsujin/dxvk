@@ -27,7 +27,7 @@ namespace dxvk {
   
   
   using D3D11SamplerBindings = std::array<
-    Com<D3D11SamplerState>, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT>;
+    D3D11SamplerState*, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT>;
     
   
   struct D3D11ShaderResourceBindings {
@@ -125,8 +125,8 @@ namespace dxvk {
     std::array<Com<D3D11RenderTargetView, false>, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> renderTargetViews;
     Com<D3D11DepthStencilView, false>                                                     depthStencilView;
     
-    Com<D3D11BlendState>        cbState = nullptr;
-    Com<D3D11DepthStencilState> dsState = nullptr;
+    D3D11BlendState*        cbState = nullptr;
+    D3D11DepthStencilState* dsState = nullptr;
     
     FLOAT blendFactor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
     UINT  sampleMask     = 0xFFFFFFFFu;
@@ -144,7 +144,7 @@ namespace dxvk {
     std::array<D3D11_VIEWPORT, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> viewports;
     std::array<D3D11_RECT,     D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> scissors;
     
-    Com<D3D11RasterizerState> state;
+    D3D11RasterizerState* state;
   };
 
 
