@@ -77,37 +77,15 @@ namespace dxvk {
   }
   
   
-  D3D11_DEPTH_STENCIL_DESC D3D11DepthStencilState::DefaultDesc() {
-    D3D11_DEPTH_STENCILOP_DESC stencilOp;
-    stencilOp.StencilFunc        = D3D11_COMPARISON_ALWAYS;
-    stencilOp.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
-    stencilOp.StencilPassOp      = D3D11_STENCIL_OP_KEEP;
-    stencilOp.StencilFailOp      = D3D11_STENCIL_OP_KEEP;
-    
-    D3D11_DEPTH_STENCIL_DESC dstDesc;
-    dstDesc.DepthEnable      = TRUE;
-    dstDesc.DepthWriteMask   = D3D11_DEPTH_WRITE_MASK_ALL;
-    dstDesc.DepthFunc        = D3D11_COMPARISON_LESS;
-    dstDesc.StencilEnable    = FALSE;
-    dstDesc.StencilReadMask  = D3D11_DEFAULT_STENCIL_READ_MASK;
-    dstDesc.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
-    dstDesc.FrontFace        = stencilOp;
-    dstDesc.BackFace         = stencilOp;
-    return dstDesc;
-  }
-  
-  
   HRESULT D3D11DepthStencilState::NormalizeDesc(D3D11_DEPTH_STENCIL_DESC* pDesc) {
-    const D3D11_DEPTH_STENCIL_DESC defaultDesc = DefaultDesc();
-    
     if (pDesc->DepthEnable) {
       pDesc->DepthEnable = TRUE;
       
       if (!ValidateDepthFunc(pDesc->DepthFunc))
         return E_INVALIDARG;
     } else {
-      pDesc->DepthFunc      = defaultDesc.DepthFunc;
-      pDesc->DepthWriteMask = defaultDesc.DepthWriteMask;
+      pDesc->DepthFunc      = D3D11_COMPARISON_LESS;
+      pDesc->DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;
     }
     
     if (!ValidateDepthWriteMask(pDesc->DepthWriteMask))
@@ -128,10 +106,16 @@ namespace dxvk {
        || !ValidateStencilOp(pDesc->BackFace.StencilPassOp))
         return E_INVALIDARG;
     } else {
-      pDesc->FrontFace        = defaultDesc.FrontFace;
-      pDesc->BackFace         = defaultDesc.BackFace;
-      pDesc->StencilReadMask  = defaultDesc.StencilReadMask;
-      pDesc->StencilWriteMask = defaultDesc.StencilWriteMask;
+      D3D11_DEPTH_STENCILOP_DESC stencilOp;
+      stencilOp.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+      stencilOp.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+      stencilOp.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+      stencilOp.StencilFunc   = D3D11_COMPARISON_ALWAYS;
+
+      pDesc->FrontFace        = stencilOp;
+      pDesc->BackFace         = stencilOp;
+      pDesc->StencilReadMask  = D3D11_DEFAULT_STENCIL_READ_MASK;
+      pDesc->StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
     }
     
     return S_OK;

@@ -47,8 +47,6 @@ namespace dxvk {
       return &m_d3d10;
     }
     
-    static D3D11_BLEND_DESC1 DefaultDesc();
-    
     static D3D11_BLEND_DESC1 PromoteDesc(
       const D3D11_BLEND_DESC*   pSrcDesc);
     

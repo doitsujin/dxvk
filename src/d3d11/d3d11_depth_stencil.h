@@ -43,8 +43,6 @@ namespace dxvk {
       return &m_d3d10;
     }
     
-    static D3D11_DEPTH_STENCIL_DESC DefaultDesc();
-    
     static HRESULT NormalizeDesc(
             D3D11_DEPTH_STENCIL_DESC* pDesc);
     

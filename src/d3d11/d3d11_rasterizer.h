@@ -52,8 +52,6 @@ namespace dxvk {
       return &m_d3d10;
     }
     
-    static D3D11_RASTERIZER_DESC2 DefaultDesc();
-    
     static D3D11_RASTERIZER_DESC2 PromoteDesc(
       const D3D11_RASTERIZER_DESC*  pDesc);
     

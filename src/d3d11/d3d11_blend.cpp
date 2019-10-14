@@ -125,31 +125,6 @@ namespace dxvk {
   }
   
   
-  D3D11_BLEND_DESC1 D3D11BlendState::DefaultDesc() {
-    D3D11_BLEND_DESC1 dstDesc;
-    dstDesc.AlphaToCoverageEnable  = FALSE;
-    dstDesc.IndependentBlendEnable = FALSE;
-    
-    // 1-7 must be ignored if IndependentBlendEnable is disabled so
-    // technically this is not needed, but since this structure is
-    // going to be copied around we'll initialize it nonetheless
-    for (uint32_t i = 0; i < 8; i++) {
-      dstDesc.RenderTarget[i].BlendEnable           = FALSE;
-      dstDesc.RenderTarget[i].LogicOpEnable         = FALSE;
-      dstDesc.RenderTarget[i].SrcBlend              = D3D11_BLEND_ONE;
-      dstDesc.RenderTarget[i].DestBlend             = D3D11_BLEND_ZERO;
-      dstDesc.RenderTarget[i].BlendOp               = D3D11_BLEND_OP_ADD;
-      dstDesc.RenderTarget[i].SrcBlendAlpha         = D3D11_BLEND_ONE;
-      dstDesc.RenderTarget[i].DestBlendAlpha        = D3D11_BLEND_ZERO;
-      dstDesc.RenderTarget[i].BlendOpAlpha          = D3D11_BLEND_OP_ADD;
-      dstDesc.RenderTarget[i].LogicOp               = D3D11_LOGIC_OP_NOOP;
-      dstDesc.RenderTarget[i].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-    }
-    
-    return dstDesc;
-  }
-  
-  
   D3D11_BLEND_DESC1 D3D11BlendState::PromoteDesc(const D3D11_BLEND_DESC* pSrcDesc) {
     D3D11_BLEND_DESC1 dstDesc;
     dstDesc.AlphaToCoverageEnable  = pSrcDesc->AlphaToCoverageEnable;
@@ -173,8 +148,6 @@ namespace dxvk {
   
   
   HRESULT D3D11BlendState::NormalizeDesc(D3D11_BLEND_DESC1* pDesc) {
-    const D3D11_BLEND_DESC1 defaultDesc = DefaultDesc();
-    
     if (pDesc->AlphaToCoverageEnable)
       pDesc->AlphaToCoverageEnable = TRUE;
     
@@ -198,12 +171,12 @@ namespace dxvk {
          rt->BlendOp, rt->BlendOpAlpha))
           return E_INVALIDARG;
       } else {
-        rt->SrcBlend       = defaultDesc.RenderTarget[0].SrcBlend;
-        rt->DestBlend      = defaultDesc.RenderTarget[0].DestBlend;
-        rt->BlendOp        = defaultDesc.RenderTarget[0].BlendOp;
-        rt->SrcBlendAlpha  = defaultDesc.RenderTarget[0].SrcBlendAlpha;
-        rt->DestBlendAlpha = defaultDesc.RenderTarget[0].DestBlendAlpha;
-        rt->BlendOpAlpha   = defaultDesc.RenderTarget[0].BlendOpAlpha;
+        rt->SrcBlend       = D3D11_BLEND_ONE;
+        rt->DestBlend      = D3D11_BLEND_ZERO;
+        rt->BlendOp        = D3D11_BLEND_OP_ADD;
+        rt->SrcBlendAlpha  = D3D11_BLEND_ONE;
+        rt->DestBlendAlpha = D3D11_BLEND_ZERO;
+        rt->BlendOpAlpha   = D3D11_BLEND_OP_ADD;
       }
       
       if (rt->LogicOpEnable) {
@@ -216,7 +189,7 @@ namespace dxvk {
          || !ValidateLogicOp(rt->LogicOp))
           return E_INVALIDARG;
       } else {
-        rt->LogicOp = defaultDesc.RenderTarget[0].LogicOp;
+        rt->LogicOp = D3D11_LOGIC_OP_NOOP;
       }
       
       if (rt->RenderTargetWriteMask > D3D11_COLOR_WRITE_ENABLE_ALL)
