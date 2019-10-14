@@ -3997,7 +3997,8 @@ namespace dxvk {
       ? DxvkAccess::Write
       : DxvkAccess::Read;
 
-    SynchronizeCsThread();
+    if (!Resource->isInUse(access))
+      SynchronizeCsThread();
 
     if (Resource->isInUse(access)) {
       if (MapFlags & D3DLOCK_DONOTWAIT) {
