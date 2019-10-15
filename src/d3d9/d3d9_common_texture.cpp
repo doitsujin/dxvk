@@ -67,7 +67,39 @@ namespace dxvk {
   }
   
 
-  HRESULT D3D9CommonTexture::NormalizeTextureProperties(D3D9_COMMON_TEXTURE_DESC* pDesc) {
+  HRESULT D3D9CommonTexture::NormalizeTextureProperties(
+          D3D9DeviceEx*             pDevice,
+          D3D9_COMMON_TEXTURE_DESC* pDesc,
+          D3D9_VK_FORMAT_MAPPING*   pMapping) {
+    auto* options = pDevice->GetOptions();
+
+    //////////////////////
+    // Mapping Validation
+
+    *pMapping = pDevice->LookupFormat(pDesc->Format);
+
+    // Handle DisableA8RT hack for The Sims 2
+    if (pDesc->Format == D3D9Format::A8       &&
+       (pDesc->Usage & D3DUSAGE_RENDERTARGET) &&
+        options->disableA8RT)
+      return D3DERR_INVALIDCALL;
+
+    // If the mapping is invalid then lets return invalid
+    // Some edge cases:
+    // NULL format does not map to anything, but should succeed
+    // SCRATCH textures can still be made if the device does not support
+    // the format at all.
+
+    if (!pMapping->IsValid() && pDesc->Format != D3D9Format::NULL_FORMAT) {
+      auto info = pDevice->UnsupportedFormatInfo(pDesc->Format);
+
+      if (pDesc->Pool != D3DPOOL_SCRATCH || info.elementSize == 0)
+        return D3DERR_INVALIDCALL;
+    }
+
+    ///////////////////
+    // Desc Validation
+
     if (pDesc->Width == 0 || pDesc->Height == 0 || pDesc->Depth == 0)
       return D3DERR_INVALIDCALL;
     
@@ -96,7 +128,7 @@ namespace dxvk {
     
     if (pDesc->MipLevels == 0 || pDesc->MipLevels > maxMipLevelCount)
       pDesc->MipLevels = maxMipLevelCount;
-    
+
     return D3D_OK;
   }
 
@@ -135,15 +167,17 @@ namespace dxvk {
   VkDeviceSize D3D9CommonTexture::GetMipSize(UINT Subresource) const {
     const UINT MipLevel = Subresource % m_desc.MipLevels;
 
-    const DxvkFormatInfo* formatInfo = imageFormatInfo(m_mapping.FormatColor);
+    const DxvkFormatInfo formatInfo = m_mapping.FormatColor != VK_FORMAT_UNDEFINED
+      ? *imageFormatInfo(m_mapping.FormatColor)
+      : m_device->UnsupportedFormatInfo(m_desc.Format);
 
     const VkExtent3D mipExtent = util::computeMipLevelExtent(
       m_adjustedExtent, MipLevel);
     
     const VkExtent3D blockCount = util::computeBlockCount(
-      mipExtent, formatInfo->blockSize);
+      mipExtent, formatInfo.blockSize);
 
-    return formatInfo->elementSize
+    return formatInfo.elementSize
          * blockCount.width
          * blockCount.height
          * blockCount.depth;

@@ -435,6 +435,48 @@ namespace dxvk {
 
     return mapping;
   }
+
+
+  DxvkFormatInfo D3D9VkFormatTable::GetUnsupportedFormatInfo(
+    D3D9Format            Format) const {
+    switch (Format) {
+      case D3D9Format::R8G8B8:
+        return { 3, VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::R3G3B2:
+        return { 1, VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::A8R3G3B2:
+        return { 2, VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::A8P8:
+        return { 2, VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::P8:
+        return { 1, VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::L6V5U5:
+        return { 2, VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::X8L8V8U8:
+        return { 4, VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::A2W10V10U10:
+        return { 4, VK_IMAGE_ASPECT_COLOR_BIT };
+
+      // MULTI2_ARGB8 -> Don't have a clue what this is.
+
+      case D3D9Format::CxV8U8:
+        return { 2, VK_IMAGE_ASPECT_COLOR_BIT };
+
+      // A1 -> Doesn't map nicely here cause it's not byte aligned.
+      // Gonna just pretend that doesn't exist until something
+      // depends on that.
+
+      default:
+        return {};
+    }
+  }
   
 
   bool D3D9VkFormatTable::CheckImageFormatSupport(

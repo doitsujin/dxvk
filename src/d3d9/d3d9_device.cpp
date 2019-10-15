@@ -405,16 +405,8 @@ namespace dxvk {
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
 
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(&desc)))
-      return D3DERR_INVALIDCALL;
-
-    if (desc.Format == D3D9Format::A8       &&
-       (desc.Usage & D3DUSAGE_RENDERTARGET) &&
-        m_d3d9Options.disableA8RT)
-      return D3DERR_INVALIDCALL;
-
-    auto mapping = LookupFormat(desc.Format);
-    if (!mapping.IsValid() && desc.Format != D3D9Format::NULL_FORMAT)
+    D3D9_VK_FORMAT_MAPPING mapping;
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc, &mapping)))
       return D3DERR_INVALIDCALL;
 
     try {
@@ -469,11 +461,8 @@ namespace dxvk {
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
 
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(&desc)))
-      return D3DERR_INVALIDCALL;
-
-    auto mapping = LookupFormat(desc.Format);
-    if (!mapping.IsValid() && desc.Format != D3D9Format::NULL_FORMAT)
+    D3D9_VK_FORMAT_MAPPING mapping;
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc, &mapping)))
       return D3DERR_INVALIDCALL;
 
     try {
@@ -518,11 +507,8 @@ namespace dxvk {
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
 
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(&desc)))
-      return D3DERR_INVALIDCALL;
-
-    auto mapping = LookupFormat(desc.Format);
-    if (!mapping.IsValid() && desc.Format != D3D9Format::NULL_FORMAT)
+    D3D9_VK_FORMAT_MAPPING mapping;
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc, &mapping)))
       return D3DERR_INVALIDCALL;
 
     try {
@@ -3278,16 +3264,8 @@ namespace dxvk {
     desc.MultiSample        = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
 
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(&desc)))
-      return D3DERR_INVALIDCALL;
-
-    if (desc.Format == D3D9Format::A8       &&
-       (desc.Usage & D3DUSAGE_RENDERTARGET) &&
-        m_d3d9Options.disableA8RT)
-      return D3DERR_INVALIDCALL;
-
-    auto mapping = LookupFormat(desc.Format);
-    if (!mapping.IsValid() && desc.Format != D3D9Format::NULL_FORMAT)
+    D3D9_VK_FORMAT_MAPPING mapping;
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc, &mapping)))
       return D3DERR_INVALIDCALL;
 
     try {
@@ -3330,16 +3308,8 @@ namespace dxvk {
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
 
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(&desc)))
-      return D3DERR_INVALIDCALL;
-
-    if (desc.Format == D3D9Format::A8       &&
-       (desc.Usage & D3DUSAGE_RENDERTARGET) &&
-        m_d3d9Options.disableA8RT)
-      return D3DERR_INVALIDCALL;
-
-    auto mapping = LookupFormat(desc.Format);
-    if (!mapping.IsValid() && desc.Format != D3D9Format::NULL_FORMAT)
+    D3D9_VK_FORMAT_MAPPING mapping;
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc, &mapping)))
       return D3DERR_INVALIDCALL;
 
     try {
@@ -3384,11 +3354,8 @@ namespace dxvk {
     desc.MultiSample        = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
 
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(&desc)))
-      return D3DERR_INVALIDCALL;
-
-    auto mapping = LookupFormat(desc.Format);
-    if (!mapping.IsValid() && desc.Format != D3D9Format::NULL_FORMAT)
+    D3D9_VK_FORMAT_MAPPING mapping;
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc, &mapping)))
       return D3DERR_INVALIDCALL;
 
     try {
@@ -3998,6 +3965,11 @@ namespace dxvk {
   D3D9_VK_FORMAT_MAPPING D3D9DeviceEx::LookupFormat(
     D3D9Format            Format) const {
     return m_adapter->GetFormatMapping(Format);
+  }
+
+  DxvkFormatInfo D3D9DeviceEx::UnsupportedFormatInfo(
+    D3D9Format            Format) const {
+    return m_adapter->GetUnsupportedFormatInfo(Format);
   }
 
   bool D3D9DeviceEx::WaitForResource(

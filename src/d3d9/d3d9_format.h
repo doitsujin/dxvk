@@ -188,6 +188,15 @@ namespace dxvk {
     D3D9_VK_FORMAT_MAPPING GetFormatMapping(
       D3D9Format            Format) const;
 
+    /**
+     * \brief Retrieves format info for unsupported
+     * formats.
+     *
+     * \param [in] Format The D3D9 format to look up
+     */
+    DxvkFormatInfo GetUnsupportedFormatInfo(
+      D3D9Format            Format) const;
+
   private:
 
     bool CheckImageFormatSupport(

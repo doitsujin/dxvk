@@ -195,7 +195,9 @@ namespace dxvk {
      * \returns \c S_OK if the parameters are valid
      */
     static HRESULT NormalizeTextureProperties(
-            D3D9_COMMON_TEXTURE_DESC*  pDesc);
+            D3D9DeviceEx*              pDevice,
+            D3D9_COMMON_TEXTURE_DESC*  pDesc,
+            D3D9_VK_FORMAT_MAPPING*    pMapping);
 
     /**
      * \brief Lock Flags
