@@ -1656,11 +1656,11 @@ namespace dxvk {
     passInfo.pClearValues     = nullptr;
     
     // Retrieve a compatible pipeline to use for rendering
-    DxvkMetaMipGenPipeline pipeInfo = m_common->metaMipGen().getPipeline(
+    DxvkMetaBlitPipeline pipeInfo = m_common->metaBlit().getPipeline(
       mipGenerator->viewType(), imageView->info().format);
     
     for (uint32_t i = 0; i < mipGenerator->passCount(); i++) {
-      DxvkMetaMipGenPass pass = mipGenerator->pass(i);
+      DxvkMetaBlitPass pass = mipGenerator->pass(i);
       
       // Width, height and layer count for the current pass
       VkExtent3D passExtent = mipGenerator->passExtent(i);
@@ -1688,7 +1688,7 @@ namespace dxvk {
       passInfo.renderArea  = scissor;
       
       // Set up push constants
-      DxvkMetaMipGenPushConstants pushConstants;
+      DxvkMetaBlitPushConstants pushConstants;
       pushConstants.layerCount = passExtent.depth;
       
       m_cmd->cmdBeginRenderPass(&passInfo, VK_SUBPASS_CONTENTS_INLINE);

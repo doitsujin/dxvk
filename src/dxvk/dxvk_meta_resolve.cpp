@@ -214,7 +214,7 @@ namespace dxvk {
     
     VkFramebuffer result = VK_NULL_HANDLE;
     if (m_vkd->vkCreateFramebuffer(m_vkd->device(), &fboInfo, nullptr, &result) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaMipGenRenderPass: Failed to create target framebuffer");
+      throw DxvkError("DxvkMetaResolveRenderPass: Failed to create target framebuffer");
     return result;
   }
 
@@ -241,7 +241,7 @@ namespace dxvk {
     
     VkFramebuffer result = VK_NULL_HANDLE;
     if (m_vkd->vkCreateFramebuffer(m_vkd->device(), &fboInfo, nullptr, &result) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaMipGenRenderPass: Failed to create target framebuffer");
+      throw DxvkError("DxvkMetaResolveRenderPass: Failed to create target framebuffer");
     return result;
   }
 
