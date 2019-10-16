@@ -9,12 +9,22 @@
 #include "dxvk_image.h"
 
 namespace dxvk {
+
+  /**
+   * \brief Texture coordinates
+   */
+  struct DxvkMetaBlitOffset {
+    float x, y, z;
+  };
   
   /**
    * \brief Push constant data
    */
   struct DxvkMetaBlitPushConstants {
-    uint32_t layerCount;
+    DxvkMetaBlitOffset srcCoord0;
+    uint32_t           pad1;
+    DxvkMetaBlitOffset srcCoord1;
+    uint32_t           layerCount;
   };
   
   /**

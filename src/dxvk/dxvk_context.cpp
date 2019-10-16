@@ -1688,7 +1688,9 @@ namespace dxvk {
       passInfo.renderArea  = scissor;
       
       // Set up push constants
-      DxvkMetaBlitPushConstants pushConstants;
+      DxvkMetaBlitPushConstants pushConstants = { };
+      pushConstants.srcCoord0  = { 0.0f, 0.0f, 0.0f };
+      pushConstants.srcCoord1  = { 1.0f, 1.0f, 1.0f };
       pushConstants.layerCount = passExtent.depth;
       
       m_cmd->cmdBeginRenderPass(&passInfo, VK_SUBPASS_CONTENTS_INLINE);
