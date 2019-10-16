@@ -107,6 +107,7 @@ namespace dxvk {
     DxvkMetaBlitPass result;
     result.srcView      = VK_NULL_HANDLE;
     result.dstView      = VK_NULL_HANDLE;
+    result.renderPass   = m_renderPass;
     result.framebuffer  = VK_NULL_HANDLE;
     
     // Common image view info

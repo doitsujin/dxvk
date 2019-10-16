@@ -96,9 +96,57 @@ namespace dxvk {
   struct DxvkMetaBlitPass {
     VkImageView   srcView;
     VkImageView   dstView;
+    VkRenderPass  renderPass;
     VkFramebuffer framebuffer;
   };
   
+
+  /**
+   * \brief Blit render pass
+   *
+   * Stores image view, render pass and framebuffer
+   * objects for a blit operation, as well as some
+   * metadata.
+   */
+  class DxvkMetaBlitRenderPass : public DxvkResource {
+
+  public:
+
+    DxvkMetaBlitRenderPass(
+      const Rc<DxvkDevice>&       device,
+      const Rc<DxvkImage>&        dstImage,
+      const Rc<DxvkImage>&        srcImage,
+      const VkImageBlit&          region);
+
+    ~DxvkMetaBlitRenderPass();
+
+    VkImageViewType viewType() const;
+
+    uint32_t framebufferLayerIndex() const;
+    uint32_t framebufferLayerCount() const;
+
+    DxvkMetaBlitPass pass() const;
+
+  private:
+
+    Rc<vk::DeviceFn>  m_vkd;
+    Rc<DxvkImage>     m_dstImage;
+    Rc<DxvkImage>     m_srcImage;
+
+    VkImageBlit       m_region;
+    VkImageView       m_dstView;
+    VkImageView       m_srcView;
+    VkRenderPass      m_renderPass;
+    VkFramebuffer     m_framebuffer;
+
+    VkImageView createDstView();
+    VkImageView createSrcView();
+
+    VkRenderPass createRenderPass();
+    VkFramebuffer createFramebuffer();
+
+  };
+
   
   /**
    * \brief Blitter objects

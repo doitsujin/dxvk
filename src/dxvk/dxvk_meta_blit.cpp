@@ -11,6 +11,201 @@
 
 namespace dxvk {
   
+  DxvkMetaBlitRenderPass::DxvkMetaBlitRenderPass(
+    const Rc<DxvkDevice>&       device,
+    const Rc<DxvkImage>&        dstImage,
+    const Rc<DxvkImage>&        srcImage,
+    const VkImageBlit&          region)
+  : m_vkd         (device->vkd()),
+    m_dstImage    (dstImage),
+    m_srcImage    (srcImage),
+    m_region      (region),
+    m_dstView     (createDstView()),
+    m_srcView     (createSrcView()),
+    m_renderPass  (createRenderPass()),
+    m_framebuffer (createFramebuffer()) {
+    
+  }
+
+
+  DxvkMetaBlitRenderPass::~DxvkMetaBlitRenderPass() {
+    m_vkd->vkDestroyImageView(m_vkd->device(), m_dstView, nullptr);
+    m_vkd->vkDestroyImageView(m_vkd->device(), m_srcView, nullptr);
+    m_vkd->vkDestroyRenderPass(m_vkd->device(), m_renderPass, nullptr);
+    m_vkd->vkDestroyFramebuffer(m_vkd->device(), m_framebuffer, nullptr);
+  }
+
+
+  VkImageViewType DxvkMetaBlitRenderPass::viewType() const {
+    std::array<VkImageViewType, 3> viewTypes = {{
+      VK_IMAGE_VIEW_TYPE_1D_ARRAY,
+      VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+      VK_IMAGE_VIEW_TYPE_3D,
+    }};
+
+    return viewTypes.at(uint32_t(m_srcImage->info().type));
+  }
+
+
+  uint32_t DxvkMetaBlitRenderPass::framebufferLayerIndex() const {
+    uint32_t result = m_region.dstSubresource.baseArrayLayer;
+
+    if (m_dstImage->info().type == VK_IMAGE_TYPE_3D)
+      result = std::min(m_region.dstOffsets[0].z, m_region.dstOffsets[1].z);
+
+    return result;
+  }
+
+
+  uint32_t DxvkMetaBlitRenderPass::framebufferLayerCount() const {
+    uint32_t result = m_region.dstSubresource.layerCount;
+
+    if (m_dstImage->info().type == VK_IMAGE_TYPE_3D) {
+      uint32_t minZ = std::min(m_region.dstOffsets[0].z, m_region.dstOffsets[1].z);
+      uint32_t maxZ = std::max(m_region.dstOffsets[0].z, m_region.dstOffsets[1].z);
+      result = maxZ - minZ;
+    }
+
+    return result;
+  }
+
+
+  DxvkMetaBlitPass DxvkMetaBlitRenderPass::pass() const {
+    DxvkMetaBlitPass result;
+    result.srcView      = m_srcView;
+    result.dstView      = m_dstView;
+    result.renderPass   = m_renderPass;
+    result.framebuffer  = m_framebuffer;
+    return result;
+  }
+
+
+  VkImageView DxvkMetaBlitRenderPass::createDstView() {
+    std::array<VkImageViewType, 3> viewTypes = {{
+      VK_IMAGE_VIEW_TYPE_1D_ARRAY,
+      VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+      VK_IMAGE_VIEW_TYPE_2D_ARRAY,
+    }};
+
+    VkImageViewUsageCreateInfo usageInfo;
+    usageInfo.sType       = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
+    usageInfo.pNext       = nullptr;
+    usageInfo.usage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    VkImageViewCreateInfo info;
+    info.sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    info.pNext            = &usageInfo;
+    info.flags            = 0;
+    info.image            = m_dstImage->handle();
+    info.viewType         = viewTypes.at(uint32_t(m_dstImage->info().type));
+    info.format           = m_dstImage->info().format;
+    info.components       = VkComponentMapping();
+    info.subresourceRange = vk::makeSubresourceRange(m_region.dstSubresource);
+
+    if (m_dstImage->info().type) {
+      info.subresourceRange.baseArrayLayer = framebufferLayerIndex();
+      info.subresourceRange.layerCount     = framebufferLayerCount();
+    }
+
+    VkImageView result;
+    if (m_vkd->vkCreateImageView(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
+      throw DxvkError("DxvkMetaBlitRenderPass: Failed to create image view");
+    return result;
+  }
+
+
+  VkImageView DxvkMetaBlitRenderPass::createSrcView() {
+    VkImageViewUsageCreateInfo usageInfo;
+    usageInfo.sType       = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
+    usageInfo.pNext       = nullptr;
+    usageInfo.usage       = VK_IMAGE_USAGE_SAMPLED_BIT;
+
+    VkImageViewCreateInfo info;
+    info.sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    info.pNext            = &usageInfo;
+    info.flags            = 0;
+    info.image            = m_srcImage->handle();
+    info.viewType         = this->viewType();
+    info.format           = m_srcImage->info().format;
+    info.components       = VkComponentMapping();
+    info.subresourceRange = vk::makeSubresourceRange(m_region.srcSubresource);
+
+    VkImageView result;
+    if (m_vkd->vkCreateImageView(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
+      throw DxvkError("DxvkMetaBlitRenderPass: Failed to create image view");
+    return result;
+  }
+
+
+  VkRenderPass DxvkMetaBlitRenderPass::createRenderPass() {
+    VkAttachmentDescription attachment;
+    attachment.flags            = 0;
+    attachment.format           = m_dstImage->info().format;
+    attachment.samples          = m_dstImage->info().sampleCount;
+    attachment.loadOp           = VK_ATTACHMENT_LOAD_OP_LOAD;
+    attachment.storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
+    attachment.stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachment.stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachment.initialLayout    = m_dstImage->info().layout;
+    attachment.finalLayout      = m_dstImage->info().layout;
+    
+    VkAttachmentReference attachmentRef;
+    attachmentRef.attachment    = 0;
+    attachmentRef.layout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    
+    VkSubpassDescription subpass;
+    subpass.flags               = 0;
+    subpass.pipelineBindPoint   = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.inputAttachmentCount = 0;
+    subpass.pInputAttachments   = nullptr;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments   = &attachmentRef;
+    subpass.pResolveAttachments = nullptr;
+    subpass.pDepthStencilAttachment = nullptr;
+    subpass.preserveAttachmentCount = 0;
+    subpass.pPreserveAttachments = nullptr;
+    
+    VkRenderPassCreateInfo info;
+    info.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    info.pNext                  = nullptr;
+    info.flags                  = 0;
+    info.attachmentCount        = 1;
+    info.pAttachments           = &attachment;
+    info.subpassCount           = 1;
+    info.pSubpasses             = &subpass;
+    info.dependencyCount        = 0;
+    info.pDependencies          = nullptr;
+    
+    VkRenderPass result = VK_NULL_HANDLE;
+    if (m_vkd->vkCreateRenderPass(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
+      throw DxvkError("DxvkMetaBlitRenderPass: Failed to create render pass");
+    return result;
+  }
+
+
+  VkFramebuffer DxvkMetaBlitRenderPass::createFramebuffer() {
+    VkExtent3D extent = m_dstImage->mipLevelExtent(m_region.dstSubresource.mipLevel);
+
+    VkFramebufferCreateInfo fboInfo;
+    fboInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    fboInfo.pNext           = nullptr;
+    fboInfo.flags           = 0;
+    fboInfo.renderPass      = m_renderPass;
+    fboInfo.attachmentCount = 1;
+    fboInfo.pAttachments    = &m_dstView;
+    fboInfo.width           = extent.width;
+    fboInfo.height          = extent.height;
+    fboInfo.layers          = framebufferLayerCount();
+    
+    VkFramebuffer result;
+    if (m_vkd->vkCreateFramebuffer(m_vkd->device(), &fboInfo, nullptr, &result) != VK_SUCCESS)
+      throw DxvkError("DxvkMetaBlitRenderPass: Failed to create target framebuffer");
+    return result;
+  }
+  
+
+
+  
   DxvkMetaBlitObjects::DxvkMetaBlitObjects(const DxvkDevice* device)
   : m_vkd         (device->vkd()),
     m_samplerCopy (createSampler(VK_FILTER_NEAREST)),
@@ -25,8 +220,8 @@ namespace dxvk {
       m_shaderGeom = createShaderModule(dxvk_fullscreen_geom);
     }
   }
-  
-  
+
+
   DxvkMetaBlitObjects::~DxvkMetaBlitObjects() {
     for (const auto& pair : m_renderPasses)
       m_vkd->vkDestroyRenderPass(m_vkd->device(), pair.second, nullptr);
