@@ -13,7 +13,8 @@ namespace dxvk {
   
   DxvkMetaBlitObjects::DxvkMetaBlitObjects(const DxvkDevice* device)
   : m_vkd         (device->vkd()),
-    m_sampler     (createSampler()),
+    m_samplerCopy (createSampler(VK_FILTER_NEAREST)),
+    m_samplerBlit (createSampler(VK_FILTER_LINEAR)),
     m_shaderFrag1D(createShaderModule(dxvk_blit_frag_1d)),
     m_shaderFrag2D(createShaderModule(dxvk_blit_frag_2d)),
     m_shaderFrag3D(createShaderModule(dxvk_blit_frag_3d)) {
@@ -42,7 +43,8 @@ namespace dxvk {
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderGeom, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderVert, nullptr);
     
-    m_vkd->vkDestroySampler(m_vkd->device(), m_sampler, nullptr);
+    m_vkd->vkDestroySampler(m_vkd->device(), m_samplerBlit, nullptr);
+    m_vkd->vkDestroySampler(m_vkd->device(), m_samplerCopy, nullptr);
   }
   
   
@@ -65,6 +67,13 @@ namespace dxvk {
   }
   
   
+  VkSampler DxvkMetaBlitObjects::getSampler(VkFilter filter) {
+    return filter == VK_FILTER_NEAREST
+      ? m_samplerCopy
+      : m_samplerBlit;
+  }
+  
+  
   VkRenderPass DxvkMetaBlitObjects::getRenderPass(VkFormat viewFormat) {
     auto entry = m_renderPasses.find(viewFormat);
     if (entry != m_renderPasses.end())
@@ -76,13 +85,13 @@ namespace dxvk {
   }
   
   
-  VkSampler DxvkMetaBlitObjects::createSampler() const {
+  VkSampler DxvkMetaBlitObjects::createSampler(VkFilter filter) const {
     VkSamplerCreateInfo info;
     info.sType                  = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     info.pNext                  = nullptr;
     info.flags                  = 0;
-    info.magFilter              = VK_FILTER_LINEAR;
-    info.minFilter              = VK_FILTER_LINEAR;
+    info.magFilter              = filter;
+    info.minFilter              = filter;
     info.mipmapMode             = VK_SAMPLER_MIPMAP_MODE_NEAREST;
     info.addressModeU           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     info.addressModeV           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
@@ -184,7 +193,7 @@ namespace dxvk {
     binding.descriptorType      = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     binding.descriptorCount     = 1;
     binding.stageFlags          = VK_SHADER_STAGE_FRAGMENT_BIT;
-    binding.pImmutableSamplers  = &m_sampler;
+    binding.pImmutableSamplers  = nullptr;
     
     VkDescriptorSetLayoutCreateInfo info;
     info.sType                  = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;

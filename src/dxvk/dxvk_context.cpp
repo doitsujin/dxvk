@@ -1629,7 +1629,7 @@ namespace dxvk {
     // Common descriptor set properties that we use to
     // bind the source image view to the fragment shader
     VkDescriptorImageInfo descriptorImage;
-    descriptorImage.sampler     = VK_NULL_HANDLE;
+    descriptorImage.sampler     = m_common->metaBlit().getSampler(VK_FILTER_LINEAR);
     descriptorImage.imageView   = VK_NULL_HANDLE;
     descriptorImage.imageLayout = imageView->imageInfo().layout;
     
