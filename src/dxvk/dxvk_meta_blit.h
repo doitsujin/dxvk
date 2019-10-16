@@ -116,7 +116,8 @@ namespace dxvk {
       const Rc<DxvkDevice>&       device,
       const Rc<DxvkImage>&        dstImage,
       const Rc<DxvkImage>&        srcImage,
-      const VkImageBlit&          region);
+      const VkImageBlit&          region,
+      const VkComponentMapping&   mapping);
 
     ~DxvkMetaBlitRenderPass();
 
@@ -140,7 +141,7 @@ namespace dxvk {
     VkFramebuffer     m_framebuffer;
 
     VkImageView createDstView();
-    VkImageView createSrcView();
+    VkImageView createSrcView(const VkComponentMapping& mapping);
 
     VkRenderPass createRenderPass();
     VkFramebuffer createFramebuffer();

@@ -15,13 +15,14 @@ namespace dxvk {
     const Rc<DxvkDevice>&       device,
     const Rc<DxvkImage>&        dstImage,
     const Rc<DxvkImage>&        srcImage,
-    const VkImageBlit&          region)
+    const VkImageBlit&          region,
+    const VkComponentMapping&   mapping)
   : m_vkd         (device->vkd()),
     m_dstImage    (dstImage),
     m_srcImage    (srcImage),
     m_region      (region),
     m_dstView     (createDstView()),
-    m_srcView     (createSrcView()),
+    m_srcView     (createSrcView(mapping)),
     m_renderPass  (createRenderPass()),
     m_framebuffer (createFramebuffer()) {
     
@@ -114,7 +115,7 @@ namespace dxvk {
   }
 
 
-  VkImageView DxvkMetaBlitRenderPass::createSrcView() {
+  VkImageView DxvkMetaBlitRenderPass::createSrcView(const VkComponentMapping& mapping) {
     VkImageViewUsageCreateInfo usageInfo;
     usageInfo.sType       = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
     usageInfo.pNext       = nullptr;
@@ -127,7 +128,7 @@ namespace dxvk {
     info.image            = m_srcImage->handle();
     info.viewType         = this->viewType();
     info.format           = m_srcImage->info().format;
-    info.components       = VkComponentMapping();
+    info.components       = mapping;
     info.subresourceRange = vk::makeSubresourceRange(m_region.srcSubresource);
 
     VkImageView result;
