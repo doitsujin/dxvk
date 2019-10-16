@@ -25,22 +25,44 @@ namespace dxvk {
    * and image format.
    */
   struct DxvkMetaBlitPipelineKey {
-    VkImageViewType viewType;
-    VkFormat        viewFormat;
+    VkImageViewType       viewType;
+    VkFormat              viewFormat;
+    VkSampleCountFlagBits samples;
     
     bool eq(const DxvkMetaBlitPipelineKey& other) const {
       return this->viewType   == other.viewType
-          && this->viewFormat == other.viewFormat;
+          && this->viewFormat == other.viewFormat
+          && this->samples    == other.samples;
     }
     
     size_t hash() const {
       DxvkHashState result;
       result.add(uint32_t(this->viewType));
       result.add(uint32_t(this->viewFormat));
+      result.add(uint32_t(this->samples));
       return result;
     }
   };
   
+  /**
+   * \brief Blit render pass key
+   */
+  struct DxvkMetaBlitRenderPassKey {
+    VkFormat              viewFormat;
+    VkSampleCountFlagBits samples;
+    
+    bool eq(const DxvkMetaBlitRenderPassKey& other) const {
+      return this->viewFormat == other.viewFormat
+          && this->samples    == other.samples;
+    }
+    
+    size_t hash() const {
+      DxvkHashState result;
+      result.add(uint32_t(this->viewFormat));
+      result.add(uint32_t(this->samples));
+      return result;
+    }
+  };
   
   /**
    * \brief Blit pipeline
@@ -88,11 +110,13 @@ namespace dxvk {
      * 
      * \param [in] viewType Source image view type
      * \param [in] viewFormat Image view format
+     * \param [in] samples Target sample count
      * \returns The blit pipeline
      */
     DxvkMetaBlitPipeline getPipeline(
-            VkImageViewType viewType,
-            VkFormat        viewFormat);
+            VkImageViewType       viewType,
+            VkFormat              viewFormat,
+            VkSampleCountFlagBits samples);
     
     /**
      * \brief Retrieves sampler with a given filter
@@ -101,7 +125,7 @@ namespace dxvk {
      * \returns Sampler object with the given filter
      */
     VkSampler getSampler(
-            VkFilter        filter);
+            VkFilter              filter);
     
   private:
     
@@ -119,8 +143,9 @@ namespace dxvk {
     std::mutex m_mutex;
     
     std::unordered_map<
-      VkFormat,
-      VkRenderPass> m_renderPasses;
+      DxvkMetaBlitRenderPassKey,
+      VkRenderPass,
+      DxvkHash, DxvkEq> m_renderPasses;
     
     std::unordered_map<
       DxvkMetaBlitPipelineKey,
@@ -128,7 +153,8 @@ namespace dxvk {
       DxvkHash, DxvkEq> m_pipelines;
     
     VkRenderPass getRenderPass(
-            VkFormat        viewFormat);
+            VkFormat                    viewFormat,
+            VkSampleCountFlagBits       samples);
     
     VkSampler createSampler(
             VkFilter                    filter) const;
@@ -140,7 +166,8 @@ namespace dxvk {
       const DxvkMetaBlitPipelineKey&    key);
     
     VkRenderPass createRenderPass(
-            VkFormat                    format) const;
+            VkFormat                    format,
+            VkSampleCountFlagBits       samples) const;
     
     VkDescriptorSetLayout createDescriptorSetLayout(
             VkImageViewType             viewType) const;
@@ -151,7 +178,8 @@ namespace dxvk {
     VkPipeline createPipeline(
             VkImageViewType             imageViewType,
             VkPipelineLayout            pipelineLayout,
-            VkRenderPass                renderPass) const;
+            VkRenderPass                renderPass,
+            VkSampleCountFlagBits       samples) const;
     
   };
   

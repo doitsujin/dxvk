@@ -49,13 +49,15 @@ namespace dxvk {
   
   
   DxvkMetaBlitPipeline DxvkMetaBlitObjects::getPipeline(
-          VkImageViewType viewType,
-          VkFormat        viewFormat) {
+          VkImageViewType       viewType,
+          VkFormat              viewFormat,
+          VkSampleCountFlagBits samples) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
     DxvkMetaBlitPipelineKey key;
     key.viewType   = viewType;
     key.viewFormat = viewFormat;
+    key.samples    = samples;
     
     auto entry = m_pipelines.find(key);
     if (entry != m_pipelines.end())
@@ -74,13 +76,19 @@ namespace dxvk {
   }
   
   
-  VkRenderPass DxvkMetaBlitObjects::getRenderPass(VkFormat viewFormat) {
-    auto entry = m_renderPasses.find(viewFormat);
+  VkRenderPass DxvkMetaBlitObjects::getRenderPass(
+          VkFormat                    viewFormat,
+          VkSampleCountFlagBits       samples) {
+    DxvkMetaBlitRenderPassKey key;
+    key.viewFormat = viewFormat;
+    key.samples    = samples;
+
+    auto entry = m_renderPasses.find(key);
     if (entry != m_renderPasses.end())
       return entry->second;
     
-    VkRenderPass renderPass = this->createRenderPass(viewFormat);
-    m_renderPasses.insert({ viewFormat, renderPass });
+    VkRenderPass renderPass = this->createRenderPass(viewFormat, samples);
+    m_renderPasses.insert({ key, renderPass });
     return renderPass;
   }
   
@@ -134,17 +142,18 @@ namespace dxvk {
     pipe.dsetLayout = this->createDescriptorSetLayout(key.viewType);
     pipe.pipeLayout = this->createPipelineLayout(pipe.dsetLayout);
     pipe.pipeHandle = this->createPipeline(key.viewType, pipe.pipeLayout,
-      this->getRenderPass(key.viewFormat));
+      this->getRenderPass(key.viewFormat, key.samples), key.samples);
     return pipe;
   }
   
   
   VkRenderPass DxvkMetaBlitObjects::createRenderPass(
-          VkFormat                    format) const {
+          VkFormat                    format,
+          VkSampleCountFlagBits       samples) const {
     VkAttachmentDescription attachment;
     attachment.flags            = 0;
     attachment.format           = format;
-    attachment.samples          = VK_SAMPLE_COUNT_1_BIT;
+    attachment.samples          = samples;
     attachment.loadOp           = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachment.storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
     attachment.stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
@@ -235,7 +244,8 @@ namespace dxvk {
   VkPipeline DxvkMetaBlitObjects::createPipeline(
           VkImageViewType             imageViewType,
           VkPipelineLayout            pipelineLayout,
-          VkRenderPass                renderPass) const {
+          VkRenderPass                renderPass,
+          VkSampleCountFlagBits       samples) const {
     std::array<VkPipelineShaderStageCreateInfo, 3> stages;
     uint32_t stageCount = 0;
     
@@ -332,7 +342,7 @@ namespace dxvk {
     msState.sType               = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     msState.pNext               = nullptr;
     msState.flags               = 0;
-    msState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    msState.rasterizationSamples = samples;
     msState.sampleShadingEnable = VK_FALSE;
     msState.minSampleShading    = 1.0f;
     msState.pSampleMask         = &msMask;

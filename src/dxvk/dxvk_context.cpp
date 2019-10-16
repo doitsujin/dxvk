@@ -1657,7 +1657,7 @@ namespace dxvk {
     
     // Retrieve a compatible pipeline to use for rendering
     DxvkMetaBlitPipeline pipeInfo = m_common->metaBlit().getPipeline(
-      mipGenerator->viewType(), imageView->info().format);
+      mipGenerator->viewType(), imageView->info().format, VK_SAMPLE_COUNT_1_BIT);
     
     for (uint32_t i = 0; i < mipGenerator->passCount(); i++) {
       DxvkMetaBlitPass pass = mipGenerator->pass(i);
