@@ -2441,7 +2441,7 @@ namespace dxvk {
     DxvkMetaBlitPass passObjects = pass->pass();
 
     VkRect2D renderArea;
-    renderArea.offset         = VkOffset2D { 0, 0 };
+    renderArea.offset         = VkOffset2D { dstOffsets[0].x, dstOffsets[0].y  };
     renderArea.extent         = VkExtent2D { dstExtent.width, dstExtent.height };
 
     VkRenderPassBeginInfo passInfo;
