@@ -140,6 +140,59 @@ namespace dxvk::util {
   }
 
 
+  static VkComponentMapping normalizeComponentMapping(
+          VkComponentMapping          mapping) {
+    mapping.r = mapping.r == VK_COMPONENT_SWIZZLE_IDENTITY ? VK_COMPONENT_SWIZZLE_R : mapping.r;
+    mapping.g = mapping.g == VK_COMPONENT_SWIZZLE_IDENTITY ? VK_COMPONENT_SWIZZLE_G : mapping.g;
+    mapping.b = mapping.b == VK_COMPONENT_SWIZZLE_IDENTITY ? VK_COMPONENT_SWIZZLE_B : mapping.b;
+    mapping.a = mapping.a == VK_COMPONENT_SWIZZLE_IDENTITY ? VK_COMPONENT_SWIZZLE_A : mapping.a;
+    return mapping;
+  }
+
+
+  static VkComponentSwizzle resolveComponentSwizzle(
+          VkComponentSwizzle          swizzle,
+          VkComponentMapping          dstMapping,
+          VkComponentMapping          srcMapping) {
+    VkComponentSwizzle dstSwizzle = VK_COMPONENT_SWIZZLE_IDENTITY;
+    if (dstMapping.r == swizzle) dstSwizzle = VK_COMPONENT_SWIZZLE_R;
+    if (dstMapping.g == swizzle) dstSwizzle = VK_COMPONENT_SWIZZLE_G;
+    if (dstMapping.b == swizzle) dstSwizzle = VK_COMPONENT_SWIZZLE_B;
+    if (dstMapping.a == swizzle) dstSwizzle = VK_COMPONENT_SWIZZLE_A;
+    
+    switch (dstSwizzle) {
+      case VK_COMPONENT_SWIZZLE_R: return srcMapping.r;
+      case VK_COMPONENT_SWIZZLE_G: return srcMapping.g;
+      case VK_COMPONENT_SWIZZLE_B: return srcMapping.b;
+      case VK_COMPONENT_SWIZZLE_A: return srcMapping.a;
+      default: return VK_COMPONENT_SWIZZLE_IDENTITY;
+    }
+  }
+
+
+  VkComponentMapping resolveSrcComponentMapping(
+          VkComponentMapping          dstMapping,
+          VkComponentMapping          srcMapping) {
+    dstMapping = normalizeComponentMapping(dstMapping);
+
+    VkComponentMapping result;
+    result.r = resolveComponentSwizzle(VK_COMPONENT_SWIZZLE_R, dstMapping, srcMapping);
+    result.g = resolveComponentSwizzle(VK_COMPONENT_SWIZZLE_G, dstMapping, srcMapping);
+    result.b = resolveComponentSwizzle(VK_COMPONENT_SWIZZLE_B, dstMapping, srcMapping);
+    result.a = resolveComponentSwizzle(VK_COMPONENT_SWIZZLE_A, dstMapping, srcMapping);
+    return result;
+  }
+
+
+  bool isIdentityMapping(
+          VkComponentMapping          mapping) {
+    return (mapping.r == VK_COMPONENT_SWIZZLE_R || mapping.r == VK_COMPONENT_SWIZZLE_IDENTITY)
+        && (mapping.g == VK_COMPONENT_SWIZZLE_G || mapping.g == VK_COMPONENT_SWIZZLE_IDENTITY)
+        && (mapping.b == VK_COMPONENT_SWIZZLE_B || mapping.b == VK_COMPONENT_SWIZZLE_IDENTITY)
+        && (mapping.a == VK_COMPONENT_SWIZZLE_A || mapping.a == VK_COMPONENT_SWIZZLE_IDENTITY);
+  }
+
+
   uint32_t getComponentIndex(
           VkComponentSwizzle          component,
           uint32_t                    identity) {
