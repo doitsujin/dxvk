@@ -265,17 +265,22 @@ namespace dxvk {
 
   void DxvkContext::blitImage(
     const Rc<DxvkImage>&        dstImage,
+    const VkComponentMapping&   dstMapping,
     const Rc<DxvkImage>&        srcImage,
+    const VkComponentMapping&   srcMapping,
     const VkImageBlit&          region,
           VkFilter              filter) {
     this->spillRenderPass();
+
+    auto mapping = util::resolveSrcComponentMapping(dstMapping, srcMapping);
 
     bool canUseFb = (srcImage->info().usage & VK_IMAGE_USAGE_SAMPLED_BIT)
                  && (dstImage->info().usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
                  && ((dstImage->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR)
                   || (dstImage->info().type != VK_IMAGE_TYPE_3D));
 
-    bool useFb = dstImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT;
+    bool useFb = dstImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT
+              || !util::isIdentityMapping(mapping);
 
     if (!useFb) {
       this->blitImageHw(
@@ -284,7 +289,7 @@ namespace dxvk {
     } else if (canUseFb) {
       this->blitImageFb(
         dstImage, srcImage,
-        region, filter);
+        region, mapping, filter);
     } else {
       Logger::err("DxvkContext: Unsupported blit operation");
     }
@@ -2396,6 +2401,7 @@ namespace dxvk {
     const Rc<DxvkImage>&        dstImage,
     const Rc<DxvkImage>&        srcImage,
     const VkImageBlit&          region,
+    const VkComponentMapping&   mapping,
           VkFilter              filter) {
     auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
@@ -2431,7 +2437,7 @@ namespace dxvk {
 
     // Begin render pass
     Rc<DxvkMetaBlitRenderPass> pass = new DxvkMetaBlitRenderPass(
-      m_device, dstImage, srcImage, region);
+      m_device, dstImage, srcImage, region, mapping);
     DxvkMetaBlitPass passObjects = pass->pass();
 
     VkExtent3D imageExtent = dstImage->mipLevelExtent(region.dstSubresource.mipLevel);

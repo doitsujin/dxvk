@@ -188,7 +188,9 @@ namespace dxvk {
      */
     void blitImage(
       const Rc<DxvkImage>&        dstImage,
+      const VkComponentMapping&   dstMapping,
       const Rc<DxvkImage>&        srcImage,
+      const VkComponentMapping&   srcMapping,
       const VkImageBlit&          region,
             VkFilter              filter);
     
@@ -1047,6 +1049,7 @@ namespace dxvk {
       const Rc<DxvkImage>&        dstImage,
       const Rc<DxvkImage>&        srcImage,
       const VkImageBlit&          region,
+      const VkComponentMapping&   mapping,
             VkFilter              filter);
 
     void blitImageHw(
