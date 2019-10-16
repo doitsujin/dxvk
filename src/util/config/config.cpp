@@ -229,6 +229,12 @@ namespace dxvk {
     { R"(\\halo2\.exe$)", {{
       { "d3d9.invariantPosition",           "True" },
     }} },
+    /* Counter Strike: Global Offensive
+       Needs NVAPI to avoid a forced AO + Smoke
+       exploit so we must force AMD vendor ID.    */
+    { R"(\\csgo\.exe$)", {{
+      { "d3d9.customVendorId",              "1002" },
+    }} },
   }};
 
 
