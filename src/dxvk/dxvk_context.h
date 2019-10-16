@@ -180,7 +180,9 @@ namespace dxvk {
      * \brief Blits an image
      * 
      * \param [in] dstImage Destination image
+     * \param [in] dstMapping Destination swizzle
      * \param [in] srcImage Source image
+     * \param [in] srcMapping Source swizzle
      * \param [in] region Blit region
      * \param [in] filter Texture filter
      */
@@ -1041,6 +1043,18 @@ namespace dxvk {
       DxvkGpuQueryHandle,
       DxvkHash, DxvkEq>     m_predicateWrites;
     
+    void blitImageFb(
+      const Rc<DxvkImage>&        dstImage,
+      const Rc<DxvkImage>&        srcImage,
+      const VkImageBlit&          region,
+            VkFilter              filter);
+
+    void blitImageHw(
+      const Rc<DxvkImage>&        dstImage,
+      const Rc<DxvkImage>&        srcImage,
+      const VkImageBlit&          region,
+            VkFilter              filter);
+
     void clearImageViewFb(
       const Rc<DxvkImageView>&    imageView,
             VkOffset3D            offset,

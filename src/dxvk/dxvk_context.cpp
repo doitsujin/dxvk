@@ -270,61 +270,24 @@ namespace dxvk {
           VkFilter              filter) {
     this->spillRenderPass();
 
-    auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
-    auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
+    bool canUseFb = (srcImage->info().usage & VK_IMAGE_USAGE_SAMPLED_BIT)
+                 && (dstImage->info().usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+                 && ((dstImage->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR)
+                  || (dstImage->info().type != VK_IMAGE_TYPE_3D));
 
-    if (m_execBarriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
-     || m_execBarriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
-      m_execBarriers.recordCommands(m_cmd);
+    bool useFb = dstImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT;
 
-    // Prepare the two images for transfer ops if necessary
-    auto dstLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-    auto srcLayout = srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
-    if (dstImage->info().layout != dstLayout) {
-      m_execAcquires.accessImage(
-        dstImage, dstSubresourceRange,
-        dstImage->info().layout, 0, 0,
-        dstLayout,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_WRITE_BIT);
+    if (!useFb) {
+      this->blitImageHw(
+        dstImage, srcImage,
+        region, filter);
+    } else if (canUseFb) {
+      this->blitImageFb(
+        dstImage, srcImage,
+        region, filter);
+    } else {
+      Logger::err("DxvkContext: Unsupported blit operation");
     }
-
-    if (srcImage->info().layout != srcLayout) {
-      m_execAcquires.accessImage(
-        srcImage, srcSubresourceRange,
-        srcImage->info().layout, 0, 0,
-        srcLayout,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_READ_BIT);
-    }
-
-    m_execAcquires.recordCommands(m_cmd);
-
-    // Perform the blit operation
-    m_cmd->cmdBlitImage(
-      srcImage->handle(), srcLayout,
-      dstImage->handle(), dstLayout,
-      1, &region, filter);
-    
-    m_execBarriers.accessImage(
-      dstImage, dstSubresourceRange, dstLayout,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_WRITE_BIT,
-      dstImage->info().layout,
-      dstImage->info().stages,
-      dstImage->info().access);
-    
-    m_execBarriers.accessImage(
-      srcImage, srcSubresourceRange, srcLayout,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_READ_BIT,
-      srcImage->info().layout,
-      srcImage->info().stages,
-      srcImage->info().access);
-
-    m_cmd->trackResource<DxvkAccess::Write>(dstImage);
-    m_cmd->trackResource<DxvkAccess::Read>(srcImage);
   }
 
 
@@ -2429,6 +2392,220 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::blitImageFb(
+    const Rc<DxvkImage>&        dstImage,
+    const Rc<DxvkImage>&        srcImage,
+    const VkImageBlit&          region,
+          VkFilter              filter) {
+    auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
+    auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
+
+    if (m_execBarriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
+     || m_execBarriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
+
+    // Sort out image offsets so that dstOffset[0] points
+    // to the top-left corner of the target area
+    VkOffset3D srcOffsets[2] = { region.srcOffsets[0], region.srcOffsets[1] };
+    VkOffset3D dstOffsets[2] = { region.dstOffsets[0], region.dstOffsets[1] };
+
+    if (dstOffsets[0].x > dstOffsets[1].x) {
+      std::swap(dstOffsets[0].x, dstOffsets[1].x);
+      std::swap(srcOffsets[0].x, srcOffsets[1].x);
+    }
+
+    if (dstOffsets[0].y > dstOffsets[1].y) {
+      std::swap(dstOffsets[0].y, dstOffsets[1].y);
+      std::swap(srcOffsets[0].y, srcOffsets[1].y);
+    }
+
+    if (dstOffsets[0].z > dstOffsets[1].z) {
+      std::swap(dstOffsets[0].z, dstOffsets[1].z);
+      std::swap(srcOffsets[0].z, srcOffsets[1].z);
+    }
+    
+    VkExtent3D dstExtent = {
+      uint32_t(dstOffsets[1].x - dstOffsets[0].x),
+      uint32_t(dstOffsets[1].y - dstOffsets[0].y),
+      uint32_t(dstOffsets[1].z - dstOffsets[0].z) };
+
+    // Begin render pass
+    Rc<DxvkMetaBlitRenderPass> pass = new DxvkMetaBlitRenderPass(
+      m_device, dstImage, srcImage, region);
+    DxvkMetaBlitPass passObjects = pass->pass();
+
+    VkExtent3D imageExtent = dstImage->mipLevelExtent(region.dstSubresource.mipLevel);
+
+    VkRect2D renderArea;
+    renderArea.offset         = VkOffset2D { 0, 0 };
+    renderArea.extent         = VkExtent2D { imageExtent.width, imageExtent.height };
+
+    VkRenderPassBeginInfo passInfo;
+    passInfo.sType            = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    passInfo.pNext            = nullptr;
+    passInfo.renderPass       = passObjects.renderPass;
+    passInfo.framebuffer      = passObjects.framebuffer;
+    passInfo.renderArea       = renderArea;
+    passInfo.clearValueCount  = 0;
+    passInfo.pClearValues     = nullptr;
+
+    m_cmd->cmdBeginRenderPass(&passInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    // Bind pipeline
+    DxvkMetaBlitPipeline pipeInfo = m_common->metaBlit().getPipeline(
+      pass->viewType(), dstImage->info().format, dstImage->info().sampleCount);
+
+    m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeHandle);
+
+    // Set up viewport
+    VkViewport viewport;
+    viewport.x                = float(dstOffsets[0].x);
+    viewport.y                = float(dstOffsets[0].y);
+    viewport.width            = float(dstExtent.width);
+    viewport.height           = float(dstExtent.height);
+    viewport.minDepth         = 0.0f;
+    viewport.maxDepth         = 1.0f;
+
+    VkRect2D scissor;
+    scissor.offset            = { dstOffsets[0].x, dstOffsets[0].y  };
+    scissor.extent            = { dstExtent.width, dstExtent.height };
+
+    m_cmd->cmdSetViewport(0, 1, &viewport);
+    m_cmd->cmdSetScissor (0, 1, &scissor);
+
+    // Bind source image view
+    VkDescriptorImageInfo descriptorImage;
+    descriptorImage.sampler     = m_common->metaBlit().getSampler(filter);
+    descriptorImage.imageView   = passObjects.srcView;
+    descriptorImage.imageLayout = srcImage->info().layout;
+    
+    VkWriteDescriptorSet descriptorWrite;
+    descriptorWrite.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.pNext            = nullptr;
+    descriptorWrite.dstSet           = allocateDescriptorSet(pipeInfo.dsetLayout);
+    descriptorWrite.dstBinding       = 0;
+    descriptorWrite.dstArrayElement  = 0;
+    descriptorWrite.descriptorCount  = 1;
+    descriptorWrite.descriptorType   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorWrite.pImageInfo       = &descriptorImage;
+    descriptorWrite.pBufferInfo      = nullptr;
+    descriptorWrite.pTexelBufferView = nullptr;
+
+    m_cmd->updateDescriptorSets(1, &descriptorWrite);
+    m_cmd->cmdBindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS,
+      pipeInfo.pipeLayout, descriptorWrite.dstSet, 0, nullptr);
+
+    // Compute shader parameters for the operation
+    VkExtent3D srcExtent = srcImage->mipLevelExtent(region.srcSubresource.mipLevel);
+
+    DxvkMetaBlitPushConstants pushConstants = { };
+    pushConstants.srcCoord0  = {
+      float(srcOffsets[0].x) / float(srcExtent.width),
+      float(srcOffsets[0].y) / float(srcExtent.height),
+      float(srcOffsets[0].z) / float(srcExtent.depth) };
+    pushConstants.srcCoord1  = {
+      float(srcOffsets[1].x) / float(srcExtent.width),
+      float(srcOffsets[1].y) / float(srcExtent.height),
+      float(srcOffsets[1].z) / float(srcExtent.depth) };
+    pushConstants.layerCount = pass->framebufferLayerCount();
+
+    m_cmd->cmdPushConstants(
+      pipeInfo.pipeLayout,
+      VK_SHADER_STAGE_FRAGMENT_BIT,
+      0, sizeof(pushConstants),
+      &pushConstants);
+
+    m_cmd->cmdDraw(3, pushConstants.layerCount, 0, 0);
+    m_cmd->cmdEndRenderPass();
+
+    // Add barriers and track image objects
+    m_execBarriers.accessImage(dstImage,
+      vk::makeSubresourceRange(region.dstSubresource),
+      dstImage->info().layout,
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+      VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+      dstImage->info().layout,
+      dstImage->info().stages,
+      dstImage->info().access);
+    
+    m_execBarriers.accessImage(srcImage,
+      vk::makeSubresourceRange(region.srcSubresource),
+      srcImage->info().layout,
+      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+      VK_ACCESS_SHADER_READ_BIT,
+      srcImage->info().layout,
+      srcImage->info().stages,
+      srcImage->info().access);
+
+    m_cmd->trackResource<DxvkAccess::Write>(dstImage);
+    m_cmd->trackResource<DxvkAccess::Read>(srcImage);
+    m_cmd->trackResource<DxvkAccess::None>(pass);
+  }
+
+
+  void DxvkContext::blitImageHw(
+    const Rc<DxvkImage>&        dstImage,
+    const Rc<DxvkImage>&        srcImage,
+    const VkImageBlit&          region,
+          VkFilter              filter) {
+    auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
+    auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
+
+    if (m_execBarriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
+     || m_execBarriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
+
+    // Prepare the two images for transfer ops if necessary
+    auto dstLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    auto srcLayout = srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+    if (dstImage->info().layout != dstLayout) {
+      m_execAcquires.accessImage(
+        dstImage, dstSubresourceRange,
+        dstImage->info().layout, 0, 0,
+        dstLayout,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT);
+    }
+
+    if (srcImage->info().layout != srcLayout) {
+      m_execAcquires.accessImage(
+        srcImage, srcSubresourceRange,
+        srcImage->info().layout, 0, 0,
+        srcLayout,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_READ_BIT);
+    }
+
+    m_execAcquires.recordCommands(m_cmd);
+
+    // Perform the blit operation
+    m_cmd->cmdBlitImage(
+      srcImage->handle(), srcLayout,
+      dstImage->handle(), dstLayout,
+      1, &region, filter);
+    
+    m_execBarriers.accessImage(
+      dstImage, dstSubresourceRange, dstLayout,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      dstImage->info().layout,
+      dstImage->info().stages,
+      dstImage->info().access);
+    
+    m_execBarriers.accessImage(
+      srcImage, srcSubresourceRange, srcLayout,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_READ_BIT,
+      srcImage->info().layout,
+      srcImage->info().stages,
+      srcImage->info().access);
+
+    m_cmd->trackResource<DxvkAccess::Write>(dstImage);
+    m_cmd->trackResource<DxvkAccess::Read>(srcImage);
+  }
+
+
   void DxvkContext::clearImageViewFb(
     const Rc<DxvkImageView>&    imageView,
           VkOffset3D            offset,
