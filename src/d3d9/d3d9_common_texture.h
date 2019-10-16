@@ -335,6 +335,8 @@ namespace dxvk {
       return m_type;
     }
 
+    const D3D9_VK_FORMAT_MAPPING& GetMapping() { return m_mapping; }
+
     bool MarkLocked(UINT Subresource, bool value) { return std::exchange(m_locked[Subresource], value); }
 
     bool SetDirty(UINT Subresource, bool value) { return std::exchange(m_dirty[Subresource], value); }

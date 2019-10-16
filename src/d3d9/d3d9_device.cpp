@@ -872,9 +872,7 @@ namespace dxvk {
     if (unlikely(src == nullptr || dst == nullptr))
       return D3DERR_INVALIDCALL;
 
-    bool fastPath         = true;
-    bool needsCopyResolve = false;
-    bool needsBlitResolve = false;
+    bool fastPath = true;
 
     D3D9CommonTexture* dstTextureInfo = dst->GetCommonTexture();
     D3D9CommonTexture* srcTextureInfo = src->GetCommonTexture();
@@ -907,8 +905,9 @@ namespace dxvk {
 
     // Copies are only supported if the sample count matches,
     // otherwise we need to resolve.
-    needsCopyResolve = dstImage->info().sampleCount != srcImage->info().sampleCount;
-    needsBlitResolve = srcImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT;
+    bool needsResolve = srcImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT;
+    bool fbBlit       = dstImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT;
+    fastPath &= !fbBlit;
 
     // Copies would only work if we are block aligned.
     if (pSourceRect != nullptr) {
@@ -968,7 +967,7 @@ namespace dxvk {
     fastPath &= !stretch;
 
     if (fastPath) {
-      if (needsCopyResolve) {
+      if (needsResolve) {
         VkImageResolve region;
         region.srcSubresource = blitInfo.srcSubresource;
         region.srcOffset      = blitInfo.srcOffsets[0];
@@ -1003,7 +1002,7 @@ namespace dxvk {
       }
     }
     else {
-      if (needsBlitResolve) {
+      if (needsResolve) {
         auto resolveSrc = srcTextureInfo->GetResolveImage();
 
         VkImageResolve region;
@@ -1028,13 +1027,17 @@ namespace dxvk {
 
       EmitCs([
         cDstImage = dstImage,
+        cDstMap   = dstTextureInfo->GetMapping().Swizzle,
         cSrcImage = srcImage,
+        cSrcMap   = srcTextureInfo->GetMapping().Swizzle,
         cBlitInfo = blitInfo,
         cFilter   = stretch ? DecodeFilter(Filter) : VK_FILTER_NEAREST
       ] (DxvkContext* ctx) {
         ctx->blitImage(
           cDstImage,
+          cDstMap,
           cSrcImage,
+          cSrcMap,
           cBlitInfo,
           cFilter);
       });
