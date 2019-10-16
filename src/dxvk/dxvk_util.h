@@ -225,7 +225,23 @@ namespace dxvk::util {
    */
   VkComponentMapping invertComponentMapping(
           VkComponentMapping          mapping);
+
+  /**
+   * \brief Resolves source component mapping
+   *
+   * Returns the source component mapping after rearranging
+   * the destination mapping to be the identity mapping.
+   * \param [in] dstMapping Destination mapping
+   * \param [in] srcMapping Source mapping
+   * \returns Adjusted src component mapping
+   */
+  VkComponentMapping resolveSrcComponentMapping(
+          VkComponentMapping          dstMapping,
+          VkComponentMapping          srcMapping);
   
+  bool isIdentityMapping(
+          VkComponentMapping          mapping);
+
   /**
    * \brief Computes component index for a component swizzle
    * 
