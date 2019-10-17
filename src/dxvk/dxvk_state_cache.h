@@ -143,6 +143,11 @@ namespace dxvk {
             std::istream&             stream,
             DxvkStateCacheHeader&     header) const;
 
+    bool readCacheEntryV7(
+            uint32_t                  version,
+            std::istream&             stream, 
+            DxvkStateCacheEntry&      entry) const;
+    
     bool readCacheEntry(
             uint32_t                  version,
             std::istream&             stream, 

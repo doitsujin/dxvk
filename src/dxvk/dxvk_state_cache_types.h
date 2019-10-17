@@ -52,8 +52,8 @@ namespace dxvk {
    */
   struct DxvkStateCacheHeader {
     char     magic[4]   = { 'D', 'X', 'V', 'K' };
-    uint32_t version    = 7;
-    uint32_t entrySize  = sizeof(DxvkStateCacheEntry);
+    uint32_t version    = 8;
+    uint32_t entrySize  = 0; /* no longer meaningful */
   };
 
   static_assert(sizeof(DxvkStateCacheHeader) == 12);
