@@ -37,6 +37,10 @@ namespace dxvk {
         other.m_digest.size());
     }
     
+    bool operator != (const Sha1Hash& other) const {
+      return !this->operator == (other);
+    }
+    
     static Sha1Hash compute(
       const void*     data,
             size_t    size);
