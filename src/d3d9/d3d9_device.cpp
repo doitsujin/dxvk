@@ -5159,8 +5159,8 @@ namespace dxvk {
 
     bool separateAlpha  = state[D3DRS_SEPARATEALPHABLENDENABLE] != FALSE;
 
-    DxvkBlendMode baseMode;
-    baseMode.enableBlending = state[D3DRS_ALPHABLENDENABLE] != FALSE;
+    DxvkBlendMode mode;
+    mode.enableBlending = state[D3DRS_ALPHABLENDENABLE] != FALSE;
 
     D3D9BlendState color, alpha;
 
@@ -5178,27 +5178,31 @@ namespace dxvk {
     else
       alpha = color;
 
-    baseMode.colorSrcFactor = DecodeBlendFactor(color.Src, false);
-    baseMode.colorDstFactor = DecodeBlendFactor(color.Dst, false);
-    baseMode.colorBlendOp   = DecodeBlendOp    (color.Op);
+    mode.colorSrcFactor = DecodeBlendFactor(color.Src, false);
+    mode.colorDstFactor = DecodeBlendFactor(color.Dst, false);
+    mode.colorBlendOp   = DecodeBlendOp    (color.Op);
 
-    baseMode.alphaSrcFactor = DecodeBlendFactor(alpha.Src, true);
-    baseMode.alphaDstFactor = DecodeBlendFactor(alpha.Dst, true);
-    baseMode.alphaBlendOp   = DecodeBlendOp    (alpha.Op);
+    mode.alphaSrcFactor = DecodeBlendFactor(alpha.Src, true);
+    mode.alphaDstFactor = DecodeBlendFactor(alpha.Dst, true);
+    mode.alphaBlendOp   = DecodeBlendOp    (alpha.Op);
 
-    std::array<DxvkBlendMode, 4> modes;
-    for (uint32_t i = 0; i < modes.size(); i++) {
-      auto& mode = modes[i];
-      mode = baseMode;
+    mode.writeMask = state[ColorWriteIndex(0)];
 
-      mode.writeMask = state[ColorWriteIndex(i)];
-    }
+    std::array<VkColorComponentFlags, 3> extraWriteMasks;
+    for (uint32_t i = 0; i < 3; i++)
+      extraWriteMasks[i] = state[ColorWriteIndex(i + 1)];
 
     EmitCs([
-      cModes = modes
+      cMode       = mode,
+      cWriteMasks = extraWriteMasks
     ](DxvkContext* ctx) {
-      for (uint32_t i = 0; i < cModes.size(); i++)
-        ctx->setBlendMode(i, cModes[i]);
+      for (uint32_t i = 0; i < 4; i++) {
+        DxvkBlendMode mode = cMode;
+        if (i != 0)
+          mode.writeMask = cWriteMasks[i - 1];
+
+        ctx->setBlendMode(i, mode);
+      }
     });
   }
 
