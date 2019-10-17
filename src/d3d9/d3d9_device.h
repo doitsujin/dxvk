@@ -751,6 +751,10 @@ namespace dxvk {
       return m_state.renderStates[D3DRS_ALPHATESTENABLE] && !IsAlphaToCoverageEnabled();
     }
 
+    inline bool IsZTestEnabled() {
+      return m_state.renderStates[D3DRS_ZENABLE] && m_state.depthStencil != nullptr;
+    }
+
     void BindMultiSampleState();
     
     void BindBlendState();
@@ -974,6 +978,7 @@ namespace dxvk {
 
     bool                            m_amdATOC         = false;
     bool                            m_nvATOC          = false;
+    bool                            m_ffZTest         = false;
 
     D3D9ConstantLayout              m_vsLayout;
     D3D9ConstantLayout              m_psLayout;

@@ -6019,7 +6019,7 @@ namespace dxvk {
       });
     }
 
-    if (hasPositionT && m_flags.test(D3D9DeviceFlag::DirtyFFViewport)) {
+    if (hasPositionT && (m_flags.test(D3D9DeviceFlag::DirtyFFViewport) || std::exchange(m_ffZTest, IsZTestEnabled()) != m_ffZTest)) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFViewport);
       m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
 
@@ -6032,15 +6032,22 @@ namespace dxvk {
       // The 1.0f additional offset however does not,
       // so we account for that there manually.
 
+      float zMin    = m_ffZTest ? vp.MinZ : 0.0f;
+      float zMax    = m_ffZTest ? vp.MaxZ : 0.0f;
+      float zExtent = zMax - zMin;
+      zExtent = zExtent != 0.0f
+              ? 1.0f / zExtent
+              : 0.0f;
+
       m_viewportInfo.inverseExtent = Vector4(
          2.0f / float(vp.Width),
         -2.0f / float(vp.Height),
-        1.0f,
+        zExtent,
         1.0f);
 
       m_viewportInfo.inverseOffset = Vector4(
         -float(vp.X), -float(vp.Y),
-         0.0f,         0.0f);
+        -zMin,          0.0f);
 
       m_viewportInfo.inverseOffset = m_viewportInfo.inverseOffset * m_viewportInfo.inverseExtent;
 
