@@ -1154,6 +1154,16 @@ namespace dxvk {
 
     UpdateActiveRTs(RenderTargetIndex);
 
+    uint32_t originalAlphaSwizzleRTs = m_alphaSwizzleRTs;
+
+    m_alphaSwizzleRTs &= ~(1 << RenderTargetIndex);
+
+    if (rt != nullptr && rt->GetCommonTexture()->GetMapping().Swizzle.a == VK_COMPONENT_SWIZZLE_ONE)
+      m_alphaSwizzleRTs |= 1 << RenderTargetIndex;
+
+    if (originalAlphaSwizzleRTs != m_alphaSwizzleRTs)
+      m_flags.set(D3D9DeviceFlag::DirtyBlendState);
+
     if (RenderTargetIndex == 0) {
       const auto* desc = m_state.renderTargets[0]->GetCommonTexture()->Desc();
 
@@ -5194,12 +5204,31 @@ namespace dxvk {
 
     EmitCs([
       cMode       = mode,
-      cWriteMasks = extraWriteMasks
+      cWriteMasks = extraWriteMasks,
+      cAlphaMasks = m_alphaSwizzleRTs
     ](DxvkContext* ctx) {
       for (uint32_t i = 0; i < 4; i++) {
         DxvkBlendMode mode = cMode;
         if (i != 0)
           mode.writeMask = cWriteMasks[i - 1];
+
+        const bool alphaSwizzle = cAlphaMasks & (1 << i);
+
+        auto NormalizeFactor = [alphaSwizzle](VkBlendFactor Factor) {
+          if (alphaSwizzle) {
+            if (Factor == VK_BLEND_FACTOR_DST_ALPHA)
+              return VK_BLEND_FACTOR_ONE;
+            else if (Factor == VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA)
+              return VK_BLEND_FACTOR_ZERO;
+          }
+
+          return Factor;
+        };
+
+        mode.colorSrcFactor = NormalizeFactor(mode.colorSrcFactor);
+        mode.colorDstFactor = NormalizeFactor(mode.colorDstFactor);
+        mode.alphaSrcFactor = NormalizeFactor(mode.alphaSrcFactor);
+        mode.alphaDstFactor = NormalizeFactor(mode.alphaDstFactor);
 
         ctx->setBlendMode(i, mode);
       }

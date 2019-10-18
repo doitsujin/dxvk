@@ -971,6 +971,7 @@ namespace dxvk {
     uint32_t                        m_activeRTs        = 0;
     uint32_t                        m_activeRTTextures = 0;
     uint32_t                        m_activeHazards    = 0;
+    uint32_t                        m_alphaSwizzleRTs  = 0;
 
     D3D9ViewportInfo                m_viewportInfo;
 
