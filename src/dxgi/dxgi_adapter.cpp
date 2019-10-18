@@ -108,14 +108,10 @@ namespace dxvk {
           LARGE_INTEGER*            pUMDVersion) {
     HRESULT hr = DXGI_ERROR_UNSUPPORTED;
 
-    if (InterfaceName == __uuidof(IDXGIDevice))
+    if (InterfaceName == __uuidof(IDXGIDevice)
+     || InterfaceName == __uuidof(ID3D10Device)
+     || InterfaceName == __uuidof(ID3D10Device1))
       hr = S_OK;
-
-    if (m_factory->GetOptions()->d3d10Enable) {
-      if (InterfaceName == __uuidof(ID3D10Device)
-       || InterfaceName == __uuidof(ID3D10Device1))
-        hr = S_OK;
-    }
 
     // We can't really reconstruct the version numbers
     // returned by Windows drivers from Vulkan data
