@@ -6052,7 +6052,7 @@ namespace dxvk {
       });
     }
 
-    if (hasPositionT && (m_flags.test(D3D9DeviceFlag::DirtyFFViewport) || std::exchange(m_ffZTest, IsZTestEnabled()) != m_ffZTest)) {
+    if (hasPositionT && (m_flags.test(D3D9DeviceFlag::DirtyFFViewport) || m_ffZTest != IsZTestEnabled())) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFViewport);
       m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
 
@@ -6064,6 +6064,8 @@ namespace dxvk {
       // timesed by it.
       // The 1.0f additional offset however does not,
       // so we account for that there manually.
+
+      m_ffZTest = IsZTestEnabled();
 
       float zMin    = m_ffZTest ? vp.MinZ : 0.0f;
       float zMax    = m_ffZTest ? vp.MaxZ : 0.0f;
