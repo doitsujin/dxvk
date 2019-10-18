@@ -1871,7 +1871,14 @@ namespace dxvk {
     if (componentCount > 1)
       conditionType = m_module.defVectorType(conditionType, componentCount);
     
+    bool invert = false;
+
     switch (ins.op) {
+      case DxbcOpcode::Ne:
+      case DxbcOpcode::DNe:
+        invert = true;
+        /* fall through */
+
       case DxbcOpcode::Eq:
       case DxbcOpcode::DEq:
         condition = m_module.opFOrdEqual(
@@ -1888,13 +1895,6 @@ namespace dxvk {
       case DxbcOpcode::DLt:
         condition = m_module.opFOrdLessThan(
           conditionType, src.at(0).id, src.at(1).id);
-        break;
-      
-      case DxbcOpcode::Ne:
-      case DxbcOpcode::DNe:
-        // Avoid poorly supported FUnordNotEqual
-        condition = m_module.opLogicalNot(conditionType,
-          m_module.opFOrdEqual(conditionType, src.at(0).id, src.at(1).id));
         break;
       
       case DxbcOpcode::IEq:
@@ -1952,6 +1952,9 @@ namespace dxvk {
       sTrue  = m_module.constComposite(typeId, componentCount, vTrue .data());
     }
     
+    if (invert)
+      std::swap(sFalse, sTrue);
+
     // Perform component-wise mask selection
     // based on the condition evaluated above.
     result.id = m_module.opSelect(
