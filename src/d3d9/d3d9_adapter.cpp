@@ -6,6 +6,7 @@
 #include "d3d9_util.h"
 
 #include "../util/util_bit.h"
+#include "../util/util_luid.h"
 
 #include <cfloat>
 
@@ -681,7 +682,12 @@ namespace dxvk {
     if (pLUID == nullptr)
       return D3DERR_INVALIDCALL;
 
-    *pLUID = bit::cast<LUID>(m_adapter->devicePropertiesExt().coreDeviceId.deviceLUID);
+    auto& deviceId = m_adapter->devicePropertiesExt().coreDeviceId;
+
+    if (deviceId.deviceLUIDValid)
+      *pLUID = bit::cast<LUID>(deviceId.deviceLUID);
+    else
+      *pLUID = dxvk::GetAdapterLUID(m_ordinal);
 
     return D3D_OK;
   }
