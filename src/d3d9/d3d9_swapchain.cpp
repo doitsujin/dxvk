@@ -133,7 +133,7 @@ namespace dxvk {
       return D3D_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return D3DERR_INVALIDCALL;
+      return D3DERR_DEVICEREMOVED;
     }
   }
 
