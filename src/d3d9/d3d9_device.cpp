@@ -4123,7 +4123,7 @@ namespace dxvk {
     // We can't really implement that, so just ignore discard
     // if we are not locking the full resource
 
-    if (!(desc.Usage & D3DUSAGE_DYNAMIC) || !fullResource)
+    if (!(desc.Usage & D3DUSAGE_DYNAMIC) || !fullResource || desc.Pool != D3DPOOL_DEFAULT)
       Flags &= ~D3DLOCK_DISCARD;
 
     pResource->SetLockFlags(Subresource, Flags);
