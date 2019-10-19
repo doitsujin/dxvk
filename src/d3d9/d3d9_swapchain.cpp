@@ -120,15 +120,15 @@ namespace dxvk {
     m_dirty    |= recreate;
     m_vsync     = vsync;
 
-    if (recreate)
-      CreatePresenter();
-
-    if (std::exchange(m_dirty, false))
-      RecreateSwapChain(vsync);
-
-    FlushDevice();
-
     try {
+      if (recreate)
+        CreatePresenter();
+
+      if (std::exchange(m_dirty, false))
+        RecreateSwapChain(vsync);
+
+      FlushDevice();
+
       PresentImage(presentInterval);
       return D3D_OK;
     } catch (const DxvkError& e) {
