@@ -139,6 +139,10 @@ namespace dxvk {
     { R"(\\h1_[ms]p64_ship\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
+    /* Titan Quest                                */
+    { R"(\\TQ\.exe$)", {{
+      { "d3d11.constantBufferRangeCheck",   "True" },
+    }} },
   }};
 
 
