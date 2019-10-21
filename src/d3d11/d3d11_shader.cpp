@@ -79,24 +79,34 @@ namespace dxvk {
   D3D11ShaderModuleSet::~D3D11ShaderModuleSet() { }
   
   
-  D3D11CommonShader D3D11ShaderModuleSet::GetShaderModule(
-          D3D11Device*    pDevice,
-    const DxvkShaderKey*  pShaderKey,
-    const DxbcModuleInfo* pDxbcModuleInfo,
-    const void*           pShaderBytecode,
-          size_t          BytecodeLength) {
+  HRESULT D3D11ShaderModuleSet::GetShaderModule(
+          D3D11Device*        pDevice,
+    const DxvkShaderKey*      pShaderKey,
+    const DxbcModuleInfo*     pDxbcModuleInfo,
+    const void*               pShaderBytecode,
+          size_t              BytecodeLength,
+          D3D11CommonShader*  pShader) {
     // Use the shader's unique key for the lookup
     { std::unique_lock<std::mutex> lock(m_mutex);
       
       auto entry = m_modules.find(*pShaderKey);
-      if (entry != m_modules.end())
-        return entry->second;
+      if (entry != m_modules.end()) {
+        *pShader = entry->second;
+        return S_OK;
+      }
     }
     
     // This shader has not been compiled yet, so we have to create a
     // new module. This takes a while, so we won't lock the structure.
-    D3D11CommonShader module(pDevice, pShaderKey,
-      pDxbcModuleInfo, pShaderBytecode, BytecodeLength);
+    D3D11CommonShader module;
+    
+    try {
+      module = D3D11CommonShader(pDevice, pShaderKey,
+        pDxbcModuleInfo, pShaderBytecode, BytecodeLength);
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_INVALIDARG;
+    }
     
     // Insert the new module into the lookup table. If another thread
     // has compiled the same shader in the meantime, we should return
@@ -104,11 +114,14 @@ namespace dxvk {
     { std::unique_lock<std::mutex> lock(m_mutex);
       
       auto status = m_modules.insert({ *pShaderKey, module });
-      if (!status.second)
-        return status.first->second;
+      if (!status.second) {
+        *pShader = status.first->second;
+        return S_OK;
+      }
     }
     
-    return module;
+    *pShader = std::move(module);
+    return S_OK;
   }
   
 }

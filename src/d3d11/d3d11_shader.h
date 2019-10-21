@@ -140,12 +140,13 @@ namespace dxvk {
     D3D11ShaderModuleSet();
     ~D3D11ShaderModuleSet();
     
-    D3D11CommonShader GetShaderModule(
-            D3D11Device*    pDevice,
-      const DxvkShaderKey*  pShaderKey,
-      const DxbcModuleInfo* pDxbcModuleInfo,
-      const void*           pShaderBytecode,
-            size_t          BytecodeLength);
+    HRESULT GetShaderModule(
+            D3D11Device*        pDevice,
+      const DxvkShaderKey*      pShaderKey,
+      const DxbcModuleInfo*     pDxbcModuleInfo,
+      const void*               pShaderBytecode,
+            size_t              BytecodeLength,
+            D3D11CommonShader*  pShader);
     
   private:
     
