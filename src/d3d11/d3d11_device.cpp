@@ -2049,6 +2049,16 @@ namespace dxvk {
     if (FAILED(hr))
       return hr;
 
+    auto shader = commonShader.GetShader();
+
+    if (shader->hasCapability(spv::CapabilityStencilExportEXT)
+     && !m_dxvkDevice->extensions().extShaderStencilExport)
+      return E_INVALIDARG;
+
+    if (shader->hasCapability(spv::CapabilityShaderViewportIndexLayerEXT)
+     && !m_dxvkDevice->extensions().extShaderViewportIndexLayer)
+      return E_INVALIDARG;
+
     *pShaderModule = std::move(commonShader);
     return S_OK;
   }
