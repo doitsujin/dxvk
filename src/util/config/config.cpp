@@ -229,6 +229,19 @@ namespace dxvk {
     { R"(\\halo2\.exe$)", {{
       { "d3d9.invariantPosition",           "True" },
     }} },
+    /* Halo CE/HaloPC                             */
+    { R"(\\halo(ce)?\.exe$)", {{
+      // Game enables minor decal layering fixes
+      // specifically when it detects AMD.
+      // Avoids chip being detected as unsupported
+      // when on intel. Avoids possible path towards
+      // invalid texture addressing methods.
+      { "d3d9.customVendorId",              "1002" },
+      // Avoids card not recognized error.
+      // Keeps game's rendering methods consistent
+      // for optimal compatibility.
+      { "d3d9.customDeviceId",              "4172" },
+    }} },
     /* Counter Strike: Global Offensive
        Needs NVAPI to avoid a forced AO + Smoke
        exploit so we must force AMD vendor ID.    */
