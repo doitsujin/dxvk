@@ -85,7 +85,7 @@ namespace dxvk {
             D3D9_BUFFER_DESC* pDesc);
 
     D3D9_COMMON_BUFFER_MAP_MODE GetMapMode() const {
-      return m_desc.Usage & D3DUSAGE_DYNAMIC
+      return (!IsPoolManaged(m_desc.Pool) && (m_desc.Usage & D3DUSAGE_DYNAMIC))
         ? D3D9_COMMON_BUFFER_MAP_MODE_DIRECT
         : D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
     }
@@ -141,7 +141,8 @@ namespace dxvk {
     D3D9Range& LockRange()  { return m_lockRange; }
     D3D9Range& DirtyRange() { return m_dirtyRange; }
 
-    bool SetReadLocked(bool state) { return std::exchange(m_readLocked, state); }
+    bool GetReadLocked() const     { return m_readLocked; }
+    void SetReadLocked(bool state) { m_readLocked = state; }
 
     uint32_t IncrementLockCount() { return ++m_lockCount; }
     uint32_t DecrementLockCount() {

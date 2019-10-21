@@ -75,7 +75,7 @@ namespace dxvk {
       info.access |= VK_ACCESS_INDEX_READ_BIT;
     }
 
-    if (m_desc.Usage & D3DUSAGE_DYNAMIC) {
+    if (GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_DIRECT) {
       info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
       info.access |= VK_ACCESS_HOST_WRITE_BIT;
 
