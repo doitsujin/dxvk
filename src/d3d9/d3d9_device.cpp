@@ -4363,7 +4363,7 @@ namespace dxvk {
   void D3D9DeviceEx::GenerateMips(
     D3D9CommonTexture* pResource) {
     EmitCs([
-      cImageView = pResource->GetViews().MipGenRT
+      cImageView = pResource->GetViews().Sample.Color
     ] (DxvkContext* ctx) {
       ctx->generateMipmaps(cImageView);
     });

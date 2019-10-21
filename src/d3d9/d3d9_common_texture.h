@@ -50,7 +50,6 @@ namespace dxvk {
 
   struct D3D9ViewSet {
     D3D9ColorView                    Sample;
-    Rc<DxvkImageView>                MipGenRT;
 
     std::array<
       std::array<D3D9ColorView, 15>, 6>     SubresourceSample;

@@ -454,9 +454,6 @@ namespace dxvk {
           m_views.SubresourceDepth[i][j] = CreateView(formatInfo, i, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, j, FALSE);
       }
     }
-
-    if (m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP)
-      m_views.MipGenRT = CreateView(formatInfo, AllLayers, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 0, FALSE);
   }
 
 
