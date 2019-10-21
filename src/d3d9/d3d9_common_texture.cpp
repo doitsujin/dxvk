@@ -400,6 +400,10 @@ namespace dxvk {
     if (UsageFlags != VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
       viewInfo.aspect &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
 
+    if (UsageFlags == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT ||
+        UsageFlags == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+      viewInfo.numLevels = 1;
+
     // Remove swizzle on depth views.
     if (UsageFlags == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
       viewInfo.swizzle = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
