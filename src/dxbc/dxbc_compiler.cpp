@@ -364,24 +364,8 @@ namespace dxvk {
   void DxbcCompiler::emitDclTemps(const DxbcShaderInstruction& ins) {
     // dcl_temps has one operand:
     //    (imm0) Number of temp registers
-    const uint32_t oldCount = m_rRegs.size();
-    const uint32_t newCount = ins.imm[0].u32;
-    
-    if (newCount > oldCount) {
-      m_rRegs.resize(newCount);
-      
-      DxbcRegisterInfo info;
-      info.type.ctype   = DxbcScalarType::Float32;
-      info.type.ccount  = 4;
-      info.type.alength = 0;
-      info.sclass       = spv::StorageClassPrivate;
-      
-      for (uint32_t i = oldCount; i < newCount; i++) {
-        const uint32_t varId = this->emitNewVariable(info);
-        m_module.setDebugName(varId, str::format("r", i).c_str());
-        m_rRegs.at(i) = varId;
-      }
-    }
+
+    // Ignore this and declare temps on demand.
   }
   
   
@@ -4684,10 +4668,29 @@ namespace dxvk {
     const DxbcRegister&           operand) {
     // r# regs are indexed as follows:
     //    (0) register index (immediate)
+    uint32_t regIdx = operand.idx[0].offset;
+
+    if (regIdx >= m_rRegs.size())
+      m_rRegs.resize(regIdx + 1, 0u);
+
+    if (!m_rRegs.at(regIdx)) {
+      DxbcRegisterInfo info;
+      info.type.ctype   = DxbcScalarType::Float32;
+      info.type.ccount  = 4;
+      info.type.alength = 0;
+      info.sclass       = spv::StorageClassPrivate;
+
+      uint32_t varId = emitNewVariable(info);
+      m_rRegs.at(regIdx) = varId;
+
+      m_module.setDebugName(varId,
+        str::format("r", regIdx).c_str());
+    }
+
     DxbcRegisterPointer result;
     result.type.ctype  = DxbcScalarType::Float32;
     result.type.ccount = 4;
-    result.id = m_rRegs.at(operand.idx[0].offset);
+    result.id = m_rRegs.at(regIdx);
     return result;
   }
   
