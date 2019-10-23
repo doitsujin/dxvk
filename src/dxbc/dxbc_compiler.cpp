@@ -5609,6 +5609,8 @@ namespace dxvk {
         result.type.ctype  = DxbcScalarType::Uint32;
         result.type.ccount = 1;
         result.id = m_module.constu32(reg.imm.u32_1);
+
+        result = emitRegisterExtend(result, writeMask.popCount());
       } else if (reg.componentCount == DxbcComponentCount::Component4) {
         // Create a u32 vector with as many components as needed
         std::array<uint32_t, 4> indices = { };
