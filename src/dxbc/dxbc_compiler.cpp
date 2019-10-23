@@ -674,9 +674,10 @@ namespace dxvk {
         m_module.enableCapability(spv::CapabilitySampleRateShading);
         m_module.decorate(varId, spv::DecorationSample);
       }
-      
+
       // Declare the input slot as defined
       m_interfaceSlots.inputSlots |= 1u << regIdx;
+      m_vArrayLength = std::max(m_vArrayLength, regIdx + 1);
     } else if (sv != DxbcSystemValue::None) {
       // Add a new system value mapping if needed
       bool skipSv = sv == DxbcSystemValue::ClipDistance
@@ -5682,6 +5683,8 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitInputSetup() {
+    m_module.setLateConst(m_vArrayLengthId, &m_vArrayLength);
+
     // Copy all defined v# registers into the input array
     const uint32_t vecTypeId = m_module.defVectorType(m_module.defFloatType(32), 4);
     const uint32_t ptrTypeId = m_module.defPointerType(vecTypeId, spv::StorageClassPrivate);
@@ -5727,6 +5730,8 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitInputSetup(uint32_t vertexCount) {
+    m_module.setLateConst(m_vArrayLengthId, &m_vArrayLength);
+
     // Copy all defined v# registers into the input array. Note
     // that the outer index of the array is the vertex index.
     const uint32_t vecTypeId    = m_module.defVectorType(m_module.defFloatType(32), 4);
@@ -7027,18 +7032,18 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitDclInputArray(uint32_t vertexCount) {
-    DxbcArrayType info;
+    DxbcVectorType info;
     info.ctype   = DxbcScalarType::Float32;
     info.ccount  = 4;
-    info.alength = m_isgn != nullptr ? m_isgn->maxRegisterCount() : 0;
 
-    if (info.alength == 0)
-      return;
-    
     // Define the array type. This will be two-dimensional
     // in some shaders, with the outer index representing
     // the vertex ID within an invocation.
-    uint32_t arrayTypeId = getArrayTypeId(info);
+    m_vArrayLength   = m_isgn != nullptr ? m_isgn->maxRegisterCount() : 1;
+    m_vArrayLengthId = m_module.lateConst32(getScalarTypeId(DxbcScalarType::Uint32));
+
+    uint32_t vectorTypeId = getVectorTypeId(info);
+    uint32_t arrayTypeId = m_module.defArrayType(vectorTypeId, m_vArrayLengthId);
     
     if (vertexCount != 0) {
       arrayTypeId = m_module.defArrayType(

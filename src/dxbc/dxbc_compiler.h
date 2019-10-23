@@ -476,6 +476,9 @@ namespace dxvk {
     ///////////////////////////////////////////////////////////
     // Array of input values. Since v# registers are indexable
     // in DXBC, we need to copy them into an array first.
+    uint32_t m_vArrayLength   = 0;
+    uint32_t m_vArrayLengthId = 0;
+
     uint32_t m_vArray = 0;
     
     ////////////////////////////////////////////////////
