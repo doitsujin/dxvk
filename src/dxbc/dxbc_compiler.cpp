@@ -7572,7 +7572,10 @@ namespace dxvk {
       default: {
         DxbcVectorType result;
         result.ctype  = DxbcScalarType::Float32;
-        result.ccount = m_isgn->regMask(regIdx).minComponents();
+        result.ccount = 4;
+
+        if (m_isgn->findByRegister(regIdx))
+          result.ccount = m_isgn->regMask(regIdx).minComponents();
         return result;
       }
     }
@@ -7606,7 +7609,10 @@ namespace dxvk {
       default: {
         DxbcVectorType result;
         result.ctype  = DxbcScalarType::Float32;
-        result.ccount = m_osgn->regMask(regIdx).minComponents();
+        result.ccount = 4;
+
+        if (m_osgn->findByRegister(regIdx))
+          result.ccount = m_osgn->regMask(regIdx).minComponents();
         return result;
       }
     }
