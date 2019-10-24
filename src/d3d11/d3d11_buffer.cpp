@@ -58,16 +58,6 @@ namespace dxvk {
                   |  VK_ACCESS_SHADER_WRITE_BIT;
     }
     
-    if (pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_WRITE) {
-      info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
-      info.access |= VK_ACCESS_HOST_WRITE_BIT;
-    }
-    
-    if (pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_READ) {
-      info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
-      info.access |= VK_ACCESS_HOST_READ_BIT;
-    }
-    
     if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS) {
       info.usage  |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
       info.stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;

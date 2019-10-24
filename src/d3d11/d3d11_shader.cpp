@@ -54,10 +54,8 @@ namespace dxvk {
       DxvkBufferCreateInfo info;
       info.size   = m_shader->shaderConstants().sizeInBytes();
       info.usage  = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-      info.stages = util::pipelineStages(m_shader->stage())
-                  | VK_PIPELINE_STAGE_HOST_BIT;
-      info.access = VK_ACCESS_UNIFORM_READ_BIT
-                  | VK_ACCESS_HOST_WRITE_BIT;
+      info.stages = util::pipelineStages(m_shader->stage());
+      info.access = VK_ACCESS_UNIFORM_READ_BIT;
       
       VkMemoryPropertyFlags memFlags
         = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
