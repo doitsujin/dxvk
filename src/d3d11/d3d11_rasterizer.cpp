@@ -54,7 +54,7 @@ namespace dxvk {
     ULONG refCount = m_refCount++;
     if (!refCount)
       m_device->AddRef();
-    return refCount;
+    return refCount + 1;
   }
 
 

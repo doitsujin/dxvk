@@ -39,7 +39,7 @@ namespace dxvk {
     ULONG refCount = m_refCount++;
     if (!refCount)
       m_parent->AddRef();
-    return refCount;
+    return refCount + 1;
   }
   
   
