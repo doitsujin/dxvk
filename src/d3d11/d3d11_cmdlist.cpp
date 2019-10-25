@@ -15,6 +15,22 @@ namespace dxvk {
   }
   
   
+  ULONG STDMETHODCALLTYPE D3D11CommandList::AddRef() {
+    ULONG refCount = m_refCount++;
+    if (!refCount)
+      m_device->AddRef();
+    return refCount + 1;
+  }
+  
+
+  ULONG STDMETHODCALLTYPE D3D11CommandList::Release() {
+    ULONG refCount = --m_refCount;
+    if (!refCount)
+      m_device->Release();
+    return refCount;
+  }
+  
+
   HRESULT STDMETHODCALLTYPE D3D11CommandList::QueryInterface(REFIID riid, void** ppvObject) {
     if (ppvObject == nullptr)
       return E_POINTER;
