@@ -9,7 +9,13 @@
 namespace dxvk {
   
   template<typename T>
-  using NoWrapper = T;
+  class NoWrapper : public T {
+
+  public:
+
+    virtual ~NoWrapper() { }
+
+  };
   
   /**
    * \brief Reference-counted COM object
