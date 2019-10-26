@@ -92,7 +92,9 @@ namespace dxvk {
     }
 
     DxvkBufferSlice GetSOCounter() {
-      return m_soCounter;
+      return m_soCounter != nullptr
+        ? DxvkBufferSlice(m_soCounter)
+        : DxvkBufferSlice();
     }
     
     DxvkBufferSliceHandle AllocSlice() {
@@ -127,7 +129,7 @@ namespace dxvk {
     const D3D11_BUFFER_DESC     m_desc;
     
     Rc<DxvkBuffer>              m_buffer;
-    DxvkBufferSlice             m_soCounter;
+    Rc<DxvkBuffer>              m_soCounter;
     DxvkBufferSliceHandle       m_mapped;
 
     D3D11DXGIResource           m_resource;
@@ -138,6 +140,8 @@ namespace dxvk {
             VkFormatFeatureFlags  Features) const;
     
     VkMemoryPropertyFlags GetMemoryFlags() const;
+
+    Rc<DxvkBuffer> CreateSoCounterBuffer();
 
   };
 

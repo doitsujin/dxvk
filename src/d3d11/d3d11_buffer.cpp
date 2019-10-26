@@ -76,13 +76,12 @@ namespace dxvk {
 
     // For Stream Output buffers we need a counter
     if (pDesc->BindFlags & D3D11_BIND_STREAM_OUTPUT)
-      m_soCounter = m_device->AllocXfbCounterSlice();
+      m_soCounter = CreateSoCounterBuffer();
   }
   
   
   D3D11Buffer::~D3D11Buffer() {
-    if (m_soCounter.defined())
-      m_device->FreeXfbCounterSlice(m_soCounter);
+
   }
   
   
@@ -254,6 +253,27 @@ namespace dxvk {
     }
     
     return memoryFlags;
+  }
+
+
+  Rc<DxvkBuffer> D3D11Buffer::CreateSoCounterBuffer() {
+    Rc<DxvkDevice> device = m_device->GetDXVKDevice();
+
+    DxvkBufferCreateInfo info;
+    info.size   = sizeof(D3D11SOCounter);
+    info.usage  = VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+                | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT
+                | VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT;
+    info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
+                | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT
+                | VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
+    info.access = VK_ACCESS_TRANSFER_READ_BIT
+                | VK_ACCESS_TRANSFER_WRITE_BIT
+                | VK_ACCESS_INDIRECT_COMMAND_READ_BIT
+                | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT
+                | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT;
+    return device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
   
 
