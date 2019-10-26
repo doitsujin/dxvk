@@ -253,8 +253,6 @@ namespace dxvk {
     const DxvkBufferSlice&      counter) {
     if (!m_state.xfb.buffers [binding].matches(buffer)
      || !m_state.xfb.counters[binding].matches(counter)) {
-      this->spillRenderPass();
-
       m_state.xfb.buffers [binding] = buffer;
       m_state.xfb.counters[binding] = counter;
       
@@ -3785,6 +3783,7 @@ namespace dxvk {
       // Force-update vertex/index buffers for hazard checks
       m_flags.set(DxvkContextFlag::GpDirtyIndexBuffer,
                   DxvkContextFlag::GpDirtyVertexBuffers,
+                  DxvkContextFlag::GpDirtyXfbBuffers,
                   DxvkContextFlag::DirtyDrawBuffer);
 
       // This is necessary because we'll only do hazard
@@ -4352,7 +4351,8 @@ namespace dxvk {
         return false;
     }
     
-    if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasStorageDescriptors))
+    if (m_state.gp.flags.any(DxvkGraphicsPipelineFlag::HasStorageDescriptors,
+                             DxvkGraphicsPipelineFlag::HasTransformFeedback))
       this->commitGraphicsBarriers<Indexed, Indirect>();
 
     if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer))
@@ -4543,7 +4543,8 @@ namespace dxvk {
     auto layout = m_state.gp.pipeline->layout();
 
     constexpr auto storageBufferUsage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-                                      | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+                                      | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT
+                                      | VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
     constexpr auto storageImageUsage  = VK_IMAGE_USAGE_STORAGE_BIT;
 
     bool requiresBarrier = false;
@@ -4591,6 +4592,21 @@ namespace dxvk {
           requiresBarrier = this->checkGfxBufferBarrier(vertexBufferSlice,
             VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
             VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT).test(DxvkAccess::Write);
+        }
+      }
+    }
+
+    // Transform feedback buffer writes won't overlap, so we
+    // also only need to check those when they are rebound
+    if (m_flags.test(DxvkContextFlag::GpDirtyXfbCounters)
+     && m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasTransformFeedback)) {
+      for (uint32_t i = 0; i < MaxNumXfbBuffers && !requiresBarrier; i++) {
+        const auto& xfbBufferSlice = m_state.xfb.buffers[i];
+
+        if (xfbBufferSlice.defined()) {
+          requiresBarrier = this->checkGfxBufferBarrier(xfbBufferSlice,
+            VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
+            VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT) != 0;
         }
       }
     }
