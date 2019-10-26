@@ -82,9 +82,6 @@ namespace dxvk {
     // Render passes may not require the previous
     // contents of the attachments to be preserved.
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      colorRef[i].attachment = VK_ATTACHMENT_UNUSED;
-      colorRef[i].layout     = VK_IMAGE_LAYOUT_UNDEFINED;
-      
       if (m_format.color[i].format != VK_FORMAT_UNDEFINED) {
         VkAttachmentDescription desc;
         desc.flags            = 0;
@@ -101,6 +98,9 @@ namespace dxvk {
         colorRef[i].layout     = m_format.color[i].layout;
         
         attachments.push_back(desc);
+      } else {
+        colorRef[i].attachment = VK_ATTACHMENT_UNUSED;
+        colorRef[i].layout     = VK_IMAGE_LAYOUT_UNDEFINED;
       }
     }
     
@@ -120,6 +120,9 @@ namespace dxvk {
       depthRef.layout     = m_format.depth.layout;
       
       attachments.push_back(desc);
+    } else {
+      depthRef.attachment = VK_ATTACHMENT_UNUSED;
+      depthRef.layout     = VK_IMAGE_LAYOUT_UNDEFINED;
     }
     
     VkSubpassDescription subpass;
