@@ -4587,18 +4587,8 @@ namespace dxvk {
         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
           if (slot.imageView != nullptr
            && slot.imageView->imageInfo().usage & storageImageUsage) {
-            srcAccess = m_gfxBarriers.getImageAccess(
-              slot.imageView->image(),
-              slot.imageView->imageSubresources());
-
-            m_gfxBarriers.accessImage(
-              slot.imageView->image(),
-              slot.imageView->imageSubresources(),
-              slot.imageView->imageInfo().layout,
-              binding.stages, binding.access,
-              slot.imageView->imageInfo().layout,
-              slot.imageView->imageInfo().stages,
-              slot.imageView->imageInfo().access);
+            srcAccess = this->checkGfxImageBarrier(slot.imageView,
+              binding.stages, binding.access);
           }
           break;
 
@@ -4637,6 +4627,27 @@ namespace dxvk {
       stages, access,
       slice.bufferInfo().stages,
       slice.bufferInfo().access);
+
+    return srcAccess;
+  }
+
+
+  DxvkAccessFlags DxvkContext::checkGfxImageBarrier(
+    const Rc<DxvkImageView>&        imageView,
+          VkPipelineStageFlags      stages,
+          VkAccessFlags             access) {
+    auto srcAccess = m_gfxBarriers.getImageAccess(
+      imageView->image(),
+      imageView->imageSubresources());
+
+    m_gfxBarriers.accessImage(
+      imageView->image(),
+      imageView->imageSubresources(),
+      imageView->imageInfo().layout,
+      stages, access,
+      imageView->imageInfo().layout,
+      imageView->imageInfo().stages,
+      imageView->imageInfo().access);
 
     return srcAccess;
   }

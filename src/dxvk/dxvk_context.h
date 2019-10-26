@@ -1190,6 +1190,11 @@ namespace dxvk {
             VkPipelineStageFlags      stages,
             VkAccessFlags             access);
 
+    DxvkAccessFlags checkGfxImageBarrier(
+      const Rc<DxvkImageView>&        imageView,
+            VkPipelineStageFlags      stages,
+            VkAccessFlags             access);
+
     void emitMemoryBarrier(
             VkDependencyFlags         flags,
             VkPipelineStageFlags      srcStages,
