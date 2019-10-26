@@ -1177,16 +1177,13 @@ namespace dxvk {
     
     bool commitComputeState();
     
-    template<bool Indexed>
+    template<bool Indexed, bool Indirect>
     bool commitGraphicsState();
     
     void commitComputeInitBarriers();
     void commitComputePostBarriers();
     
     void commitGraphicsBarriers();
-
-    template<bool Indirect>
-    void finalizeDraw();
 
     void emitMemoryBarrier(
             VkDependencyFlags         flags,

@@ -1419,12 +1419,10 @@ namespace dxvk {
           uint32_t instanceCount,
           uint32_t firstVertex,
           uint32_t firstInstance) {
-    if (this->commitGraphicsState<false>()) {
+    if (this->commitGraphicsState<false, false>()) {
       m_cmd->cmdDraw(
         vertexCount, instanceCount,
         firstVertex, firstInstance);
-      
-      this->finalizeDraw<false>();
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -1435,15 +1433,13 @@ namespace dxvk {
           VkDeviceSize      offset,
           uint32_t          count,
           uint32_t          stride) {
-    if (this->commitGraphicsState<false>()) {
+    if (this->commitGraphicsState<false, true>()) {
       auto descriptor = m_state.id.argBuffer.getDescriptor();
       
       m_cmd->cmdDrawIndirect(
         descriptor.buffer.buffer,
         descriptor.buffer.offset + offset,
         count, stride);
-      
-      this->finalizeDraw<true>();
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -1455,7 +1451,7 @@ namespace dxvk {
           VkDeviceSize      countOffset,
           uint32_t          maxCount,
           uint32_t          stride) {
-    if (this->commitGraphicsState<false>()) {
+    if (this->commitGraphicsState<false, true>()) {
       auto argDescriptor = m_state.id.argBuffer.getDescriptor();
       auto cntDescriptor = m_state.id.cntBuffer.getDescriptor();
       
@@ -1465,8 +1461,6 @@ namespace dxvk {
         cntDescriptor.buffer.buffer,
         cntDescriptor.buffer.offset + countOffset,
         maxCount, stride);
-      
-      this->finalizeDraw<true>();
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -1479,13 +1473,11 @@ namespace dxvk {
           uint32_t firstIndex,
           uint32_t vertexOffset,
           uint32_t firstInstance) {
-    if (this->commitGraphicsState<true>()) {
+    if (this->commitGraphicsState<true, false>()) {
       m_cmd->cmdDrawIndexed(
         indexCount, instanceCount,
         firstIndex, vertexOffset,
         firstInstance);
-      
-      this->finalizeDraw<false>();
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -1496,15 +1488,13 @@ namespace dxvk {
           VkDeviceSize      offset,
           uint32_t          count,
           uint32_t          stride) {
-    if (this->commitGraphicsState<true>()) {
+    if (this->commitGraphicsState<true, true>()) {
       auto descriptor = m_state.id.argBuffer.getDescriptor();
       
       m_cmd->cmdDrawIndexedIndirect(
         descriptor.buffer.buffer,
         descriptor.buffer.offset + offset,
         count, stride);
-      
-      this->finalizeDraw<true>();
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -1516,7 +1506,7 @@ namespace dxvk {
           VkDeviceSize      countOffset,
           uint32_t          maxCount,
           uint32_t          stride) {
-    if (this->commitGraphicsState<true>()) {
+    if (this->commitGraphicsState<true, true>()) {
       auto argDescriptor = m_state.id.argBuffer.getDescriptor();
       auto cntDescriptor = m_state.id.cntBuffer.getDescriptor();
       
@@ -1526,8 +1516,6 @@ namespace dxvk {
         cntDescriptor.buffer.buffer,
         cntDescriptor.buffer.offset + countOffset,
         maxCount, stride);
-      
-      this->finalizeDraw<true>();
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -1538,7 +1526,7 @@ namespace dxvk {
     const DxvkBufferSlice&  counterBuffer,
           uint32_t          counterDivisor,
           uint32_t          counterBias) {
-    if (this->commitGraphicsState<false>()) {
+    if (this->commitGraphicsState<false, false>()) {
       auto physSlice = counterBuffer.getSliceHandle();
 
       m_cmd->cmdDrawIndirectVertexCount(1, 0,
@@ -1546,8 +1534,6 @@ namespace dxvk {
         physSlice.offset,
         counterBias,
         counterDivisor);
-      
-      this->finalizeDraw<false>();
     }
 
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -4355,7 +4341,7 @@ namespace dxvk {
   }
   
   
-  template<bool Indexed>
+  template<bool Indexed, bool Indirect>
   bool DxvkContext::commitGraphicsState() {
     if (m_flags.test(DxvkContextFlag::GpDirtyPipeline)) {
       if (unlikely(!this->updateGraphicsPipeline()))
@@ -4406,6 +4392,9 @@ namespace dxvk {
     
     if (m_flags.test(DxvkContextFlag::DirtyPushConstants))
       this->updatePushConstants<VK_PIPELINE_BIND_POINT_GRAPHICS>();
+
+    if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer) && Indirect)
+      this->trackDrawBuffer();
 
     return true;
   }
@@ -4646,13 +4635,6 @@ namespace dxvk {
     // inter-stage synchronization.
     if (requiresBarrier)
       this->spillRenderPass();
-  }
-
-
-  template<bool Indirect>
-  void DxvkContext::finalizeDraw() {
-    if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer) && Indirect)
-      this->trackDrawBuffer();
   }
 
 
