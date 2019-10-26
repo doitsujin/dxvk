@@ -15,7 +15,6 @@
 #include "../util/com/com_private_data.h"
 
 #include "d3d11_cmdlist.h"
-#include "d3d11_counter_buffer.h"
 #include "d3d11_initializer.h"
 #include "d3d11_interfaces.h"
 #include "d3d11_interop.h"
