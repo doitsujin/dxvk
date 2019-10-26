@@ -553,6 +553,9 @@ namespace dxvk {
         entry.format.color[i].layout = unpackImageLayout(imageLayout);
       }
 
+      if (!validateRenderPassFormat(entry.format))
+        return false;
+
       // Read common pipeline state
       if (!data.read(entry.gpState.bsBindingMask)
        || !data.read(entry.gpState.ia)
@@ -983,6 +986,29 @@ namespace dxvk {
       case 0x81: return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
       default: return VkImageLayout(layout);
     }
+  }
+
+
+  bool DxvkStateCache::validateRenderPassFormat(
+    const DxvkRenderPassFormat&     format) {
+    bool valid = true;
+
+    if (format.depth.format) {
+      valid &= format.depth.layout == VK_IMAGE_LAYOUT_GENERAL
+            || format.depth.layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+            || format.depth.layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+            || format.depth.layout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
+            || format.depth.layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
+    }
+
+    for (uint32_t i = 0; i < MaxNumRenderTargets && valid; i++) {
+      if (format.color[i].format) {
+        valid &= format.color[i].layout == VK_IMAGE_LAYOUT_GENERAL
+              || format.color[i].layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      }
+    }
+
+    return valid;
   }
 
 }

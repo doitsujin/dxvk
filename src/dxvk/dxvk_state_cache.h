@@ -186,6 +186,9 @@ namespace dxvk {
     static VkImageLayout unpackImageLayout(
             uint8_t                   layout);
 
+    static bool validateRenderPassFormat(
+      const DxvkRenderPassFormat&     format);
+
   };
 
 }
