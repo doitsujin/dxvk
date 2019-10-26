@@ -4353,7 +4353,7 @@ namespace dxvk {
     }
     
     if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasStorageDescriptors))
-      this->commitGraphicsBarriers<Indexed>();
+      this->commitGraphicsBarriers<Indexed, Indirect>();
 
     if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer))
       this->updateFramebuffer();
@@ -4538,7 +4538,7 @@ namespace dxvk {
   }
   
   
-  template<bool Indexed>
+  template<bool Indexed, bool Indirect>
   void DxvkContext::commitGraphicsBarriers() {
     auto layout = m_state.gp.pipeline->layout();
 
@@ -4547,6 +4547,23 @@ namespace dxvk {
     constexpr auto storageImageUsage  = VK_IMAGE_USAGE_STORAGE_BIT;
 
     bool requiresBarrier = false;
+
+    // Check the draw buffer for indirect draw calls
+    if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer) && Indirect) {
+      std::array<DxvkBufferSlice*, 2> slices = {{
+        &m_state.id.argBuffer,
+        &m_state.id.cntBuffer,
+      }};
+
+      for (uint32_t i = 0; i < slices.size() && !requiresBarrier; i++) {
+        if (slices[i]->defined()
+         && slices[i]->bufferInfo().usage & storageBufferUsage) {
+          requiresBarrier = this->checkGfxBufferBarrier(*slices[i],
+            VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+            VK_ACCESS_INDIRECT_COMMAND_READ_BIT).test(DxvkAccess::Write);
+        }
+      }
+    }
 
     // Read-only stage, so we only have to check this if
     // the bindngs have actually changed between draws
