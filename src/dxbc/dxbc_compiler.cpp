@@ -1391,6 +1391,7 @@ namespace dxvk {
     // dcl_gs_instance_count has one operand:
     //    (imm0) Number of geometry shader invocations
     m_module.setInvocations(m_entryPointId, ins.imm[0].u32);
+    m_gs.invocationCount = ins.imm[0].u32;
   }
   
   
@@ -6866,6 +6867,9 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitGsFinalize() {
+    if (!m_gs.invocationCount)
+      m_module.setInvocations(m_entryPointId, 1);
+
     this->emitMainFunctionBegin();
     this->emitInputSetup(
       primitiveVertexCount(m_gs.inputPrimitive));

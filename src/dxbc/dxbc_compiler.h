@@ -160,6 +160,7 @@ namespace dxvk {
     uint32_t builtinLayer         = 0;
     uint32_t builtinViewportId    = 0;
     uint32_t builtinInvocationId  = 0;
+    uint32_t invocationCount      = 0;
   };
   
   
