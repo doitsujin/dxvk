@@ -1836,6 +1836,11 @@ namespace dxvk {
     DxvkCmdBuffer         cmdBuffer;
 
     if (replaceBuffer) {
+      // Pause transform feedback so that we don't mess
+      // with the currently bound counter buffers
+      if (m_flags.test(DxvkContextFlag::GpXfbActive))
+        this->pauseTransformFeedback();
+
       // As an optimization, allocate a free slice and perform
       // the copy in the initialization command buffer instead
       // interrupting the render pass and stalling the pipeline.
