@@ -1832,8 +1832,7 @@ namespace dxvk {
           VkDeviceSize              size,
     const void*                     data) {
     bool replaceBuffer = (size == buffer->info().size)
-                      && (size <= (1 << 20)) /* 1 MB */
-                      && (m_flags.test(DxvkContextFlag::GpRenderPassBound));
+                      && (size <= (1 << 20)); /* 1 MB */
     
     DxvkBufferSliceHandle bufferSlice;
     DxvkCmdBuffer         cmdBuffer;
