@@ -7039,7 +7039,7 @@ namespace dxvk {
     // Define the array type. This will be two-dimensional
     // in some shaders, with the outer index representing
     // the vertex ID within an invocation.
-    m_vArrayLength   = m_isgn != nullptr ? m_isgn->maxRegisterCount() : 1;
+    m_vArrayLength   = m_isgn != nullptr ? std::max(1u, m_isgn->maxRegisterCount()) : 1;
     m_vArrayLengthId = m_module.lateConst32(getScalarTypeId(DxbcScalarType::Uint32));
 
     uint32_t vectorTypeId = getVectorTypeId(info);
