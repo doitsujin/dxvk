@@ -247,11 +247,12 @@ namespace dxvk {
         std::unique_lock<sync::Spinlock> swapLock(m_swapMutex);
         DxvkBufferHandle handle = allocBuffer(m_physSliceCount);
         
+        DxvkBufferSliceHandle slice;
+        slice.handle = handle.buffer;
+        slice.length = m_physSliceLength;
+
         for (uint32_t i = 0; i < m_physSliceCount; i++) {
-          DxvkBufferSliceHandle slice;
-          slice.handle = handle.buffer;
           slice.offset = m_physSliceStride * i;
-          slice.length = m_physSliceLength;
           slice.mapPtr = handle.memory.mapPtr(slice.offset);
           m_freeSlices.push_back(slice);
         }
@@ -306,6 +307,8 @@ namespace dxvk {
 
     DxvkBufferHandle allocBuffer(
             VkDeviceSize          sliceCount) const;
+
+    VkDeviceSize computeSliceAlignment() const;
     
   };
   
