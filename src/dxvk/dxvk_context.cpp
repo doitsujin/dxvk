@@ -3785,7 +3785,8 @@ namespace dxvk {
 
       // Force-update vertex/index buffers for hazard checks
       m_flags.set(DxvkContextFlag::GpDirtyIndexBuffer,
-                  DxvkContextFlag::GpDirtyVertexBuffers);
+                  DxvkContextFlag::GpDirtyVertexBuffers,
+                  DxvkContextFlag::DirtyDrawBuffer);
 
       // This is necessary because we'll only do hazard
       // tracking if the active pipeline has side effects
