@@ -425,10 +425,6 @@ namespace dxvk {
       return m_d3d10Device;
     }
     
-    DxvkBufferSlice AllocPredicateSlice () { return m_predicates ->AllocSlice(); }
-    
-    void FreePredicateSlice (const DxvkBufferSlice& Slice) { m_predicates ->FreeSlice(Slice); }
-    
     static bool CheckFeatureLevelSupport(
       const Rc<DxvkAdapter>&  adapter,
             D3D_FEATURE_LEVEL featureLevel);
@@ -457,8 +453,6 @@ namespace dxvk {
     D3D11ImmediateContext*          m_context     = nullptr;
     D3D10Device*                    m_d3d10Device = nullptr;
 
-    Rc<D3D11CounterBuffer>          m_predicates;
-    
     D3D11StateObjectSet<D3D11BlendState>        m_bsStateObjects;
     D3D11StateObjectSet<D3D11DepthStencilState> m_dsStateObjects;
     D3D11StateObjectSet<D3D11RasterizerState>   m_rsStateObjects;
@@ -466,8 +460,6 @@ namespace dxvk {
     D3D11ShaderModuleSet                        m_shaderModules;
     D3D11CommandListAllocator                   m_commandListAllocator;
     
-    Rc<D3D11CounterBuffer> CreatePredicateBuffer();
-
     HRESULT CreateShaderModule(
             D3D11CommonShader*      pShaderModule,
             DxvkShaderKey           ShaderKey,

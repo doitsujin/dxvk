@@ -80,8 +80,7 @@ namespace dxvk {
   
   
   D3D11Query::~D3D11Query() {
-    if (m_predicate.defined())
-      m_device->FreePredicateSlice(m_predicate);
+
   }
   
     
@@ -221,8 +220,8 @@ namespace dxvk {
         ctx->endQuery(m_query[0]);
     }
 
-    if (unlikely(m_predicate.defined()))
-      ctx->writePredicate(m_predicate, m_query[0]);
+    if (unlikely(m_predicate != nullptr))
+      ctx->writePredicate(DxvkBufferSlice(m_predicate), m_query[0]);
     
     m_state = D3D11_VK_QUERY_ENDED;
   }
@@ -331,12 +330,12 @@ namespace dxvk {
     if (unlikely(m_state != D3D11_VK_QUERY_ENDED))
       return DxvkBufferSlice();
 
-    if (unlikely(!m_predicate.defined())) {
-      m_predicate = m_device->AllocPredicateSlice();
-      ctx->writePredicate(m_predicate, m_query[0]);
+    if (unlikely(m_predicate != nullptr)) {
+      m_predicate = CreatePredicateBuffer();
+      ctx->writePredicate(DxvkBufferSlice(m_predicate), m_query[0]);
     }
 
-    return m_predicate;
+    return DxvkBufferSlice(m_predicate);
   }
 
 
@@ -355,6 +354,21 @@ namespace dxvk {
       return E_INVALIDARG;
     
     return S_OK;
+  }
+
+
+  Rc<DxvkBuffer> D3D11Query::CreatePredicateBuffer() {
+    Rc<DxvkDevice> device = m_device->GetDXVKDevice();
+
+    DxvkBufferCreateInfo info;
+    info.size   = sizeof(uint32_t);
+    info.usage  = VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                | VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT;
+    info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
+                | VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT;
+    info.access = VK_ACCESS_TRANSFER_WRITE_BIT
+                | VK_ACCESS_CONDITIONAL_RENDERING_READ_BIT_EXT;
+    return device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
   
 }

@@ -92,8 +92,8 @@ namespace dxvk {
     std::array<Rc<DxvkGpuQuery>, MaxGpuQueries> m_query;
     std::array<Rc<DxvkGpuEvent>, MaxGpuEvents>  m_event;
 
-    sync::Spinlock  m_predicateLock;
-    DxvkBufferSlice m_predicate;
+    sync::Spinlock m_predicateLock;
+    Rc<DxvkBuffer> m_predicate;
 
     D3D10Query m_d3d10;
 
@@ -101,6 +101,8 @@ namespace dxvk {
     bool     m_stallFlag = false;
 
     UINT64 GetTimestampQueryFrequency() const;
+
+    Rc<DxvkBuffer> CreatePredicateBuffer();
     
   };
   
