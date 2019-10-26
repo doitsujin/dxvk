@@ -1183,6 +1183,7 @@ namespace dxvk {
     void commitComputeInitBarriers();
     void commitComputePostBarriers();
     
+    template<bool Indexed>
     void commitGraphicsBarriers();
 
     DxvkAccessFlags checkGfxBufferBarrier(

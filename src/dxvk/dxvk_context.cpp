@@ -3783,6 +3783,10 @@ namespace dxvk {
     if (m_state.gp.flags != m_state.gp.pipeline->flags()) {
       m_state.gp.flags = m_state.gp.pipeline->flags();
 
+      // Force-update vertex/index buffers for hazard checks
+      m_flags.set(DxvkContextFlag::GpDirtyIndexBuffer,
+                  DxvkContextFlag::GpDirtyVertexBuffers);
+
       // This is necessary because we'll only do hazard
       // tracking if the active pipeline has side effects
       this->spillRenderPass();
@@ -4349,7 +4353,7 @@ namespace dxvk {
     }
     
     if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasStorageDescriptors))
-      this->commitGraphicsBarriers();
+      this->commitGraphicsBarriers<Indexed>();
 
     if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer))
       this->updateFramebuffer();
@@ -4534,6 +4538,7 @@ namespace dxvk {
   }
   
   
+  template<bool Indexed>
   void DxvkContext::commitGraphicsBarriers() {
     auto layout = m_state.gp.pipeline->layout();
 
@@ -4543,6 +4548,37 @@ namespace dxvk {
 
     bool requiresBarrier = false;
 
+    // Read-only stage, so we only have to check this if
+    // the bindngs have actually changed between draws
+    if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer) && !requiresBarrier && Indexed) {
+      const auto& indexBufferSlice = m_state.vi.indexBuffer;
+
+      if (indexBufferSlice.defined()
+       && indexBufferSlice.bufferInfo().usage & storageBufferUsage) {
+        requiresBarrier = this->checkGfxBufferBarrier(indexBufferSlice,
+          VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+          VK_ACCESS_INDEX_READ_BIT).test(DxvkAccess::Write);
+      }
+    }
+
+    // Same here, also ignore unused vertex bindings
+    if (m_flags.test(DxvkContextFlag::GpDirtyVertexBuffers)) {
+      uint32_t bindingCount = m_state.gp.state.il.bindingCount();
+
+      for (uint32_t i = 0; i < bindingCount && !requiresBarrier; i++) {
+        uint32_t binding = m_state.gp.state.ilBindings[i].binding();
+        const auto& vertexBufferSlice = m_state.vi.vertexBuffers[binding];
+
+        if (vertexBufferSlice.defined()
+         && vertexBufferSlice.bufferInfo().usage & storageBufferUsage) {
+          requiresBarrier = this->checkGfxBufferBarrier(vertexBufferSlice,
+            VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+            VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT).test(DxvkAccess::Write);
+        }
+      }
+    }
+
+    // Check shader resources on every draw to handle WAW hazards
     for (uint32_t i = 0; i < layout->bindingCount() && !requiresBarrier; i++) {
       const DxvkDescriptorSlot binding = layout->binding(i);
       const DxvkShaderResourceSlot& slot = m_rc[binding.slot];
