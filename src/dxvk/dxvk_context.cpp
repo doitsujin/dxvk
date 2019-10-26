@@ -4560,14 +4560,8 @@ namespace dxvk {
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
           if (slot.bufferSlice.defined()
            && slot.bufferSlice.bufferInfo().usage & storageBufferUsage) {
-            srcAccess = m_gfxBarriers.getBufferAccess(
-              slot.bufferSlice.getSliceHandle());
-
-            m_gfxBarriers.accessBuffer(
-              slot.bufferSlice.getSliceHandle(),
-              binding.stages, binding.access,
-              slot.bufferSlice.bufferInfo().stages,
-              slot.bufferSlice.bufferInfo().access);
+            srcAccess = this->checkGfxBufferBarrier(slot.bufferSlice,
+              binding.stages, binding.access);
           }
           break;
 
@@ -4579,14 +4573,8 @@ namespace dxvk {
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
           if (slot.bufferView != nullptr
            && slot.bufferView->bufferInfo().usage & storageBufferUsage) {
-            srcAccess = m_gfxBarriers.getBufferAccess(
-              slot.bufferView->getSliceHandle());
-
-            m_gfxBarriers.accessBuffer(
-              slot.bufferView->getSliceHandle(),
-              binding.stages, binding.access,
-              slot.bufferView->bufferInfo().stages,
-              slot.bufferView->bufferInfo().access);
+            srcAccess = this->checkGfxBufferBarrier(slot.bufferView->slice(),
+              binding.stages, binding.access);
           }
           break;
 
@@ -4635,6 +4623,22 @@ namespace dxvk {
     // inter-stage synchronization.
     if (requiresBarrier)
       this->spillRenderPass();
+  }
+
+
+  DxvkAccessFlags DxvkContext::checkGfxBufferBarrier(
+    const DxvkBufferSlice&          slice,
+          VkPipelineStageFlags      stages,
+          VkAccessFlags             access) {
+    auto srcAccess = m_gfxBarriers.getBufferAccess(slice.getSliceHandle());
+
+    m_gfxBarriers.accessBuffer(
+      slice.getSliceHandle(),
+      stages, access,
+      slice.bufferInfo().stages,
+      slice.bufferInfo().access);
+
+    return srcAccess;
   }
 
 

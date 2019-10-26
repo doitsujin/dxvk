@@ -1185,6 +1185,11 @@ namespace dxvk {
     
     void commitGraphicsBarriers();
 
+    DxvkAccessFlags checkGfxBufferBarrier(
+      const DxvkBufferSlice&          slice,
+            VkPipelineStageFlags      stages,
+            VkAccessFlags             access);
+
     void emitMemoryBarrier(
             VkDependencyFlags         flags,
             VkPipelineStageFlags      srcStages,
