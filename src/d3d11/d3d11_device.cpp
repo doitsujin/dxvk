@@ -45,7 +45,6 @@ namespace dxvk {
     m_context     = new D3D11ImmediateContext(this, m_dxvkDevice);
     m_d3d10Device = new D3D10Device(this, m_context);
 
-    m_uavCounters = CreateUAVCounterBuffer();
     m_xfbCounters = CreateXFBCounterBuffer();
     m_predicates  = CreatePredicateBuffer();
   }
@@ -1970,31 +1969,6 @@ namespace dxvk {
   }
   
   
-  Rc<D3D11CounterBuffer> D3D11Device::CreateUAVCounterBuffer() {
-    // UAV counters are going to be used as raw storage buffers, so
-    // we need to align them to the minimum SSBO offset alignment
-    const auto& devInfo = m_dxvkAdapter->deviceProperties();
-
-    VkDeviceSize uavCounterSliceLength = align<VkDeviceSize>(
-      sizeof(uint32_t), devInfo.limits.minStorageBufferOffsetAlignment);
-
-    DxvkBufferCreateInfo uavCounterInfo;
-    uavCounterInfo.size   = 4096 * uavCounterSliceLength;
-    uavCounterInfo.usage  = VK_BUFFER_USAGE_TRANSFER_DST_BIT
-                          | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-                          | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    uavCounterInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
-                          | GetEnabledShaderStages();
-    uavCounterInfo.access = VK_ACCESS_TRANSFER_READ_BIT
-                          | VK_ACCESS_TRANSFER_WRITE_BIT
-                          | VK_ACCESS_SHADER_READ_BIT
-                          | VK_ACCESS_SHADER_WRITE_BIT;
-    
-    return new D3D11CounterBuffer(m_dxvkDevice,
-      uavCounterInfo, uavCounterSliceLength);
-  }
-
-
   Rc<D3D11CounterBuffer> D3D11Device::CreateXFBCounterBuffer() {
     DxvkBufferCreateInfo xfbCounterInfo;
     xfbCounterInfo.size   = 4096 * sizeof(D3D11SOCounter);

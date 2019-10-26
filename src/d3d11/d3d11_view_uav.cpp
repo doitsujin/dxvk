@@ -43,7 +43,7 @@ namespace dxvk {
       }
       
       if (pDesc->Buffer.Flags & (D3D11_BUFFER_UAV_FLAG_APPEND | D3D11_BUFFER_UAV_FLAG_COUNTER))
-        m_counterSlice = pDevice->AllocUavCounterSlice();
+        m_counterBuffer = CreateCounterBuffer();
       
       // Populate view info struct
       m_info.Buffer.Offset = viewInfo.rangeOffset;
@@ -123,9 +123,6 @@ namespace dxvk {
   
   D3D11UnorderedAccessView::~D3D11UnorderedAccessView() {
     ResourceReleasePrivate(m_resource);
-
-    if (m_counterSlice.defined())
-      m_device->FreeUavCounterSlice(m_counterSlice);
   }
   
   
@@ -419,6 +416,24 @@ namespace dxvk {
     }
     
     return S_OK;
+  }
+
+
+  Rc<DxvkBuffer> D3D11UnorderedAccessView::CreateCounterBuffer() {
+    Rc<DxvkDevice> device = m_device->GetDXVKDevice();
+
+    DxvkBufferCreateInfo info;
+    info.size   = sizeof(uint32_t);
+    info.usage  = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
+                | device->getShaderPipelineStages();
+    info.access = VK_ACCESS_TRANSFER_WRITE_BIT
+                | VK_ACCESS_TRANSFER_READ_BIT
+                | VK_ACCESS_SHADER_WRITE_BIT
+                | VK_ACCESS_SHADER_READ_BIT;
+    return device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
   
 }

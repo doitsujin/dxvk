@@ -425,11 +425,9 @@ namespace dxvk {
       return m_d3d10Device;
     }
     
-    DxvkBufferSlice AllocUavCounterSlice() { return m_uavCounters->AllocSlice(); }
     DxvkBufferSlice AllocXfbCounterSlice() { return m_xfbCounters->AllocSlice(); }
     DxvkBufferSlice AllocPredicateSlice () { return m_predicates ->AllocSlice(); }
     
-    void FreeUavCounterSlice(const DxvkBufferSlice& Slice) { m_uavCounters->FreeSlice(Slice); }
     void FreeXfbCounterSlice(const DxvkBufferSlice& Slice) { m_xfbCounters->FreeSlice(Slice); }
     void FreePredicateSlice (const DxvkBufferSlice& Slice) { m_predicates ->FreeSlice(Slice); }
     
@@ -461,7 +459,6 @@ namespace dxvk {
     D3D11ImmediateContext*          m_context     = nullptr;
     D3D10Device*                    m_d3d10Device = nullptr;
 
-    Rc<D3D11CounterBuffer>          m_uavCounters;
     Rc<D3D11CounterBuffer>          m_xfbCounters;
     Rc<D3D11CounterBuffer>          m_predicates;
     
@@ -472,7 +469,6 @@ namespace dxvk {
     D3D11ShaderModuleSet                        m_shaderModules;
     D3D11CommandListAllocator                   m_commandListAllocator;
     
-    Rc<D3D11CounterBuffer> CreateUAVCounterBuffer();
     Rc<D3D11CounterBuffer> CreateXFBCounterBuffer();
     Rc<D3D11CounterBuffer> CreatePredicateBuffer();
 
