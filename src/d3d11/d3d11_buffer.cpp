@@ -252,6 +252,11 @@ namespace dxvk {
         break;
     }
     
+    if (memoryFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT && m_device->GetOptions()->apitraceMode) {
+      memoryFlags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+                  |  VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+    }
+
     return memoryFlags;
   }
 

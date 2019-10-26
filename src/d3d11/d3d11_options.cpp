@@ -17,6 +17,18 @@ namespace dxvk {
     this->numBackBuffers        = config.getOption<int32_t>("dxgi.numBackBuffers", 0);
     this->maxFrameLatency       = config.getOption<int32_t>("dxgi.maxFrameLatency", 0);
     this->syncInterval          = config.getOption<int32_t>("dxgi.syncInterval", -1);
+
+    bool apitraceAttached = false;
+    #ifndef __WINE__
+    apitraceAttached = ::GetModuleHandle("dxgitrace.dll") != nullptr;
+    #endif
+
+    this->apitraceMode = config.getOption<bool>("d3d11.apitraceMode", apitraceAttached);
+
+    // Inform user in case they have the option enabled or a game
+    // ships a file called dxgitrace.dll for whatever reason.
+    if (this->apitraceMode)
+      Logger::warn("D3D11: Apitrace mode enabled, may affect performance!");
   }
   
 }

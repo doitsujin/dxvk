@@ -76,6 +76,10 @@ namespace dxvk {
     /// fixes issues with games that create multiple swap chains
     /// for a single window that may interfere with each other.
     bool deferSurfaceCreation;
+
+    /// Apitrace mode: Maps all buffers in cached memory.
+    /// Enabled automatically if dxgitrace.dll is attached.
+    bool apitraceMode;
   };
   
 }
