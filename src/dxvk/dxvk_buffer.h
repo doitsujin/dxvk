@@ -244,20 +244,20 @@ namespace dxvk {
       // If there are still no slices available, create a new
       // backing buffer and add all slices to the free list.
       if (unlikely(m_freeSlices.empty())) {
-        DxvkBufferHandle handle = allocBuffer(m_physSliceCount);
-        
-        DxvkBufferSliceHandle slice;
-        slice.handle = handle.buffer;
-        slice.length = m_physSliceLength;
+        if (likely(!m_lazyAlloc)) {
+          DxvkBufferHandle handle = allocBuffer(m_physSliceCount);
 
-        for (uint32_t i = 0; i < m_physSliceCount; i++) {
-          slice.offset = m_physSliceStride * i;
-          slice.mapPtr = handle.memory.mapPtr(slice.offset);
-          m_freeSlices.push_back(slice);
+          for (uint32_t i = 0; i < m_physSliceCount; i++)
+            pushSlice(handle, i);
+
+          m_buffers.push_back(std::move(handle));
+          m_physSliceCount = std::min(m_physSliceCount * 2, m_physSliceMaxCount);
+        } else {
+          for (uint32_t i = 1; i < m_physSliceCount; i++)
+            pushSlice(m_buffer, i);
+
+          m_lazyAlloc = false;
         }
-        
-        m_buffers.push_back(std::move(handle));
-        m_physSliceCount = std::min(m_physSliceCount * 2, m_physSliceMaxCount);
       }
       
       // Take the first slice from the queue
@@ -291,6 +291,7 @@ namespace dxvk {
     DxvkBufferSliceHandle   m_physSlice;
 
     uint32_t                m_vertexStride = 0;
+    uint32_t                m_lazyAlloc = false;
     
     sync::Spinlock m_freeMutex;
     sync::Spinlock m_swapMutex;
@@ -303,6 +304,15 @@ namespace dxvk {
     VkDeviceSize m_physSliceStride   = 0;
     VkDeviceSize m_physSliceCount    = 1;
     VkDeviceSize m_physSliceMaxCount = 1;
+
+    void pushSlice(const DxvkBufferHandle& handle, uint32_t index) {
+      DxvkBufferSliceHandle slice;
+      slice.handle = handle.buffer;
+      slice.length = m_physSliceLength;
+      slice.offset = m_physSliceStride * index;
+      slice.mapPtr = handle.memory.mapPtr(slice.offset);
+      m_freeSlices.push_back(slice);
+    }
 
     DxvkBufferHandle allocBuffer(
             VkDeviceSize          sliceCount) const;

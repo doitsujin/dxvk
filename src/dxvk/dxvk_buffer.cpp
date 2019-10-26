@@ -36,13 +36,7 @@ namespace dxvk {
     slice.mapPtr = m_buffer.memory.mapPtr(0);
 
     m_physSlice = slice;
-
-    // Push extra slices to the free list
-    for (uint32_t i = 1; i < m_physSliceCount; i++) {
-      slice.offset = m_physSliceStride * i;
-      slice.mapPtr = m_buffer.memory.mapPtr(slice.offset);
-      m_freeSlices.push_back(slice);
-    }
+    m_lazyAlloc = m_physSliceCount > 1;
   }
 
 
