@@ -542,7 +542,7 @@ namespace dxvk {
 
       entry.format.sampleCount = VkSampleCountFlagBits(sampleCount);
       entry.format.depth.format = VkFormat(imageFormat);
-      entry.format.depth.layout = VkImageLayout(imageLayout);
+      entry.format.depth.layout = unpackImageLayout(imageLayout);
 
       for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
         if (!data.read(imageFormat)
@@ -550,7 +550,7 @@ namespace dxvk {
           return false;
 
         entry.format.color[i].format = VkFormat(imageFormat);
-        entry.format.color[i].layout = VkImageLayout(imageLayout);
+        entry.format.color[i].layout = unpackImageLayout(imageLayout);
       }
 
       // Read common pipeline state
@@ -638,11 +638,11 @@ namespace dxvk {
       // Pack render pass format
       data.write(uint8_t(entry.format.sampleCount));
       data.write(uint8_t(entry.format.depth.format));
-      data.write(uint8_t(entry.format.depth.layout));
+      data.write(packImageLayout(entry.format.depth.layout));
 
       for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
         data.write(uint8_t(entry.format.color[i].format));
-        data.write(uint8_t(entry.format.color[i].layout));
+        data.write(packImageLayout(entry.format.color[i].layout));
       }
 
       // Write out common pipeline state
@@ -963,6 +963,26 @@ namespace dxvk {
 
   std::string DxvkStateCache::getCacheDir() const {
     return env::getEnvVar("DXVK_STATE_CACHE_PATH");
+  }
+
+
+  uint8_t DxvkStateCache::packImageLayout(
+          VkImageLayout             layout) {
+    switch (layout) {
+      case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL: return 0x80;
+      case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL: return 0x81;
+      default: return uint8_t(layout);
+    }
+  }
+
+
+  VkImageLayout DxvkStateCache::unpackImageLayout(
+          uint8_t                   layout) {
+    switch (layout) {
+      case 0x80: return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
+      case 0x81: return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
+      default: return VkImageLayout(layout);
+    }
   }
 
 }

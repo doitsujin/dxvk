@@ -180,6 +180,12 @@ namespace dxvk {
     
     std::string getCacheDir() const;
 
+    static uint8_t packImageLayout(
+            VkImageLayout             layout);
+
+    static VkImageLayout unpackImageLayout(
+            uint8_t                   layout);
+
   };
 
 }
