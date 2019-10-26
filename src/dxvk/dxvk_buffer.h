@@ -236,15 +236,14 @@ namespace dxvk {
       std::unique_lock<sync::Spinlock> freeLock(m_freeMutex);
       
       // If no slices are available, swap the two free lists.
-      if (unlikely(m_freeSlices.size() == 0)) {
+      if (unlikely(m_freeSlices.empty())) {
         std::unique_lock<sync::Spinlock> swapLock(m_swapMutex);
         std::swap(m_freeSlices, m_nextSlices);
       }
 
       // If there are still no slices available, create a new
       // backing buffer and add all slices to the free list.
-      if (unlikely(m_freeSlices.size() == 0)) {
-        std::unique_lock<sync::Spinlock> swapLock(m_swapMutex);
+      if (unlikely(m_freeSlices.empty())) {
         DxvkBufferHandle handle = allocBuffer(m_physSliceCount);
         
         DxvkBufferSliceHandle slice;
