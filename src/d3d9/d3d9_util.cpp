@@ -155,8 +155,8 @@ namespace dxvk {
 
   VkBlendFactor DecodeBlendFactor(D3DBLEND BlendFactor, bool IsAlpha) {
     switch (BlendFactor) {
-      case D3DBLEND_ZERO:            return VK_BLEND_FACTOR_ZERO;
       default:
+      case D3DBLEND_ZERO:            return VK_BLEND_FACTOR_ZERO;
       case D3DBLEND_ONE:             return VK_BLEND_FACTOR_ONE;
       case D3DBLEND_SRCCOLOR:        return VK_BLEND_FACTOR_SRC_COLOR;
       case D3DBLEND_INVSRCCOLOR:     return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
