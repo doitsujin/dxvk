@@ -4,11 +4,10 @@
 namespace dxvk {
     
   D3D11CommandList::D3D11CommandList(
-          D3D11Device*               pDevice,
-          D3D11CommandListAllocator* pAllocator)
-  : m_device(pDevice), m_allocator(pAllocator) {
-
-  }
+          D3D11Device*  pDevice,
+          UINT          ContextFlags)
+  : m_device      (pDevice),
+    m_contextFlags(ContextFlags) { }
   
   
   D3D11CommandList::~D3D11CommandList() {
@@ -26,14 +25,8 @@ namespace dxvk {
 
   ULONG STDMETHODCALLTYPE D3D11CommandList::Release() {
     ULONG refCount = --m_refCount;
-
-    if (!refCount) {
-      Reset();
-
-      m_allocator->RecycleCommandList(this);
+    if (!refCount)
       m_device->Release();
-    }
-
     return refCount;
   }
   
@@ -88,15 +81,6 @@ namespace dxvk {
     
     MarkSubmitted();
   }
-
-
-  void D3D11CommandList::Reset() {
-    m_chunks.clear();
-
-    m_contextFlags  = 0;
-    m_submitted     = false;
-    m_warned        = false;
-  }
   
   
   void D3D11CommandList::MarkSubmitted() {
@@ -108,42 +92,4 @@ namespace dxvk {
     }
   }
   
-
-  D3D11CommandListAllocator::D3D11CommandListAllocator(D3D11Device* pDevice)
-  : m_device(pDevice) {
-
-  }
-
-
-  D3D11CommandListAllocator::~D3D11CommandListAllocator() {
-    for (uint32_t i = 0; i < m_listCount; i++)
-      delete m_lists[i];
-  }
-
-
-  D3D11CommandList* D3D11CommandListAllocator::AllocCommandList(
-          UINT                  ContextFlags) {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    D3D11CommandList* result = nullptr;
-    
-    if (m_listCount)
-      result = m_lists[--m_listCount];
-    else
-      result = new D3D11CommandList(m_device, this);
-
-    result->SetContextFlags(ContextFlags);
-    return result;
-  }
-
-
-  void D3D11CommandListAllocator::RecycleCommandList(
-          D3D11CommandList*     pCommandList) {
-    std::lock_guard<std::mutex> lock(m_mutex);
-
-    if (m_listCount < m_lists.size())
-      m_lists[m_listCount++] = pCommandList;
-    else
-      delete pCommandList;
-  }
-
 }

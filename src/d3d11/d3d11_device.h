@@ -411,10 +411,6 @@ namespace dxvk {
       DxvkCsChunk* chunk = m_csChunkPool.allocChunk(flags);
       return DxvkCsChunkRef(chunk, &m_csChunkPool);
     }
-
-    D3D11CommandList* AllocCommandList(UINT ContextFlags) {
-      return m_commandListAllocator.AllocCommandList(ContextFlags);
-    }
     
     const D3D11Options* GetOptions() const {
       return &m_d3d11Options;
@@ -457,7 +453,6 @@ namespace dxvk {
     D3D11StateObjectSet<D3D11RasterizerState>   m_rsStateObjects;
     D3D11StateObjectSet<D3D11SamplerState>      m_samplerObjects;
     D3D11ShaderModuleSet                        m_shaderModules;
-    D3D11CommandListAllocator                   m_commandListAllocator;
     
     HRESULT CreateShaderModule(
             D3D11CommonShader*      pShaderModule,

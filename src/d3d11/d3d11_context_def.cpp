@@ -309,7 +309,7 @@ namespace dxvk {
   
   
   Com<D3D11CommandList> D3D11DeferredContext::CreateCommandList() {
-    return m_parent->AllocCommandList(m_contextFlags);
+    return new D3D11CommandList(m_parent, m_contextFlags);
   }
   
   
