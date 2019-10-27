@@ -143,6 +143,14 @@ namespace dxvk {
     { R"(\\TQ\.exe$)", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
     }} },
+    /* Saints Row IV                              */
+    { R"(\\SaintsRowIV\.exe$)", {{
+      { "d3d11.constantBufferRangeCheck",   "True" },
+    }} },
+    /* Saints Row: The Third                      */
+    { R"(\\SaintsRowTheThird_DX11\.exe$)", {{
+      { "d3d11.constantBufferRangeCheck",   "True" },
+    }} },
   }};
 
 
