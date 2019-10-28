@@ -35,10 +35,6 @@ namespace dxvk {
     /// Enables sm4-compliant division-by-zero behaviour
     bool strictDivision = false;
 
-    // Enables range checking for constant buffers.
-    // Fixes issues in some games, breaks others.
-    bool constantBufferRangeCheck = false;
-
     /// Implement dynamically indexed uniform buffers
     /// with storage buffers for tight bounds checking
     bool dynamicIndexedConstantBufferAsSsbo = false;

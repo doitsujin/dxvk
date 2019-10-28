@@ -5570,32 +5570,6 @@ namespace dxvk {
         scount, scomps.data());
     }
 
-    // HACK: If requested, use the constant buffer size to perform a range
-    // check. This does NOT match the API behaviour, but is needed for some
-    // games since out-of-bounds access is undefined behaviour.
-    if (m_moduleInfo.options.constantBufferRangeCheck && reg.idx[1].relReg) {
-      uint32_t zero = m_module.constf32(0.0f);
-      uint32_t cond = m_module.opULessThan(
-        m_module.defBoolType(), constId.id,
-        m_module.consti32(m_constantBuffers[regId].size));
-
-      if (scount > 1) {
-        std::array<uint32_t, 4> zeroes = {{ zero, zero, zero, zero }};
-        std::array<uint32_t, 4> conds  = {{ cond, cond, cond, cond }};
-
-        zero = m_module.opCompositeConstruct(
-          getVectorTypeId(result.type),
-          scount, zeroes.data());
-        cond = m_module.opCompositeConstruct(
-          m_module.defVectorType(m_module.defBoolType(), scount),
-          scount, conds.data());
-      }
-
-      result.id = m_module.opSelect(
-        getVectorTypeId(result.type), cond,
-        result.id, zero);
-    }
-
     // Apply any post-processing that might be necessary
     result = emitRegisterBitcast(result, reg.dataType);
     result = emitSrcOperandModifiers(result, reg.modifiers);
