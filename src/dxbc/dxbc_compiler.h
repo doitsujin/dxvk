@@ -575,7 +575,8 @@ namespace dxvk {
     void emitDclConstantBufferVar(
             uint32_t                regIdx,
             uint32_t                numConstants,
-      const char*                   name);
+      const char*                   name,
+            bool                    asSsbo);
     
     void emitDclSampler(
       const DxbcShaderInstruction&  ins);

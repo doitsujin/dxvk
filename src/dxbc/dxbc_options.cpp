@@ -41,7 +41,7 @@ namespace dxvk {
     zeroInitWorkgroupMemory  = options.zeroInitWorkgroupMemory;
 
     if (DxvkGpuVendor(devInfo.core.properties.vendorID) != DxvkGpuVendor::Amd)
-      constantBufferRangeCheck = options.constantBufferRangeCheck;
+      dynamicIndexedConstantBufferAsSsbo = options.constantBufferRangeCheck;
     
     // Disable early discard on RADV (with LLVM) due to GPU hangs
     // Disable early discard on Nvidia because it may hurt performance

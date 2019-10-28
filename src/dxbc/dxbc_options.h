@@ -39,6 +39,10 @@ namespace dxvk {
     // Fixes issues in some games, breaks others.
     bool constantBufferRangeCheck = false;
 
+    /// Implement dynamically indexed uniform buffers
+    /// with storage buffers for tight bounds checking
+    bool dynamicIndexedConstantBufferAsSsbo = false;
+
     /// Clear thread-group shared memory to zero
     bool zeroInitWorkgroupMemory = false;
 
