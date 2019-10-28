@@ -806,16 +806,8 @@ namespace dxvk {
     if (asSsbo)
       m_module.decorate(varId, spv::DecorationNonWritable);
 
-    // Declare a specialization constant which will
-    // store whether or not the resource is bound.
-    const uint32_t specConstId = m_module.specConstBool(true);
-    m_module.decorateSpecId(specConstId, bindingId);
-    m_module.setDebugName(specConstId,
-      str::format(name, "_bound").c_str());
-    
     DxbcConstantBuffer buf;
     buf.varId  = varId;
-    buf.specId = specConstId;
     buf.size   = numConstants;
     m_constantBuffers.at(regIdx) = buf;
     

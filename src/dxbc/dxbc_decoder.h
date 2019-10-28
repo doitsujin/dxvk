@@ -36,7 +36,6 @@ namespace dxvk {
    */
   struct DxbcConstantBuffer {
     uint32_t varId  = 0;
-    uint32_t specId = 0;
     uint32_t size   = 0;
   };
   
