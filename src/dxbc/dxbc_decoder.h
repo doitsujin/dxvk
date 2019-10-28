@@ -327,6 +327,10 @@ namespace dxvk {
     DxbcUavFlags uavFlags() const {
       return DxbcUavFlags(bit::extract(m_bits, 16, 16));
     }
+
+    DxbcConstantBufferAccessType accessType() const {
+      return DxbcConstantBufferAccessType(bit::extract(m_bits, 11, 11));
+    }
     
     uint32_t controlPointCount() const {
       return bit::extract(m_bits, 11, 16);

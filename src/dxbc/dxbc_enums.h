@@ -625,5 +625,11 @@ namespace dxvk {
     Raw        = 1,
     Structured = 2,
   };
+
+
+  enum class DxbcConstantBufferAccessType : uint32_t {
+    StaticallyIndexed = 0,
+    DynamicallyIndexed = 1,
+  };
   
 }
