@@ -209,6 +209,7 @@ namespace dxvk {
       { "d3d9.customDeviceDesc",            "GeForce 7800 GTX" },
       { "d3d9.disableA8RT",                 "True" },
       { "d3d9.maxAvailableMemory",          "2147483648" },
+      { "d3d9.memoryTrackTest",             "True" },
        // The Sims 2 will try to upload 1024 constants
        // every frame otherwise, which it never uses
        // causing a massive discard + upload.
