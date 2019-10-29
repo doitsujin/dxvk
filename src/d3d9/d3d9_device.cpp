@@ -140,8 +140,10 @@ namespace dxvk {
     // Clamp to megabyte range, as per spec.
     constexpr UINT range = 0xfff00000;
 
-    UINT memory = UINT(m_availableMemory.load());
-    return memory & range;
+    // Can't have negative memory!
+    int64_t memory = std::max(m_availableMemory.load(), 0ll);
+
+    return UINT(memory) & range;
   }
 
 

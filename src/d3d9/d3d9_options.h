@@ -93,6 +93,10 @@ namespace dxvk {
     /// Work around a NV driver quirk
     /// Fixes flickering/z-fighting in some games.
     bool invariantPosition;
+
+    /// Whether or not to respect memory tracking for
+    /// failing resource allocation.
+    bool memoryTrackTest;
   };
 
 }

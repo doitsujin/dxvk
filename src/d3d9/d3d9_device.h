@@ -835,7 +835,7 @@ namespace dxvk {
     bool ChangeReportedMemory(int64_t delta) {
       m_availableMemory += delta;
 
-      return m_availableMemory > 0;
+      return !m_d3d9Options.memoryTrackTest || m_availableMemory > 0;
     }
 
     void ResolveZ();

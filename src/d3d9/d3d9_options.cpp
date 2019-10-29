@@ -54,6 +54,7 @@ namespace dxvk {
     this->swvpBoolCount         = config.getOption<uint32_t>("d3d9.swvpBoolCount",         caps::MaxOtherConstantsSoftware);
     this->disableA8RT           = config.getOption<bool>    ("d3d9.disableA8RT",           false);
     this->invariantPosition     = config.getOption<bool>    ("d3d9.invariantPosition",     false);
+    this->memoryTrackTest       = config.getOption<bool>    ("d3d9.memoryTrackTest",       false);
 
     // If we are not Nvidia, enable general hazards.
     this->generalHazards = adapter == nullptr || !adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0);
