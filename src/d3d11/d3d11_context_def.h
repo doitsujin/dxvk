@@ -16,8 +16,6 @@ namespace dxvk {
     D3D11_MAP               MapType;
     UINT                    RowPitch;
     UINT                    DepthPitch;
-    DxvkDataSlice           DataSlice;
-    DxvkBufferSliceHandle   BufferSlice;
     void*                   MapPointer;
   };
   

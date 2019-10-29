@@ -128,7 +128,7 @@ namespace dxvk {
       // Adding a new map entry actually overrides the
       // old one in practice because the lookup function
       // scans the array in reverse order
-      m_mappedResources.push_back(entry);
+      m_mappedResources.push_back(std::move(entry));
       
       // Fill mapped resource structure
       pMappedResource->pData      = entry.MapPointer;
@@ -196,24 +196,24 @@ namespace dxvk {
       // For resources that cannot be written by the GPU,
       // we may write to the buffer resource directly and
       // just swap in the buffer slice as needed.
-      pMapEntry->BufferSlice = pBuffer->AllocSlice();
-      pMapEntry->MapPointer  = pMapEntry->BufferSlice.mapPtr;
+      auto bufferSlice = pBuffer->AllocSlice();
+      pMapEntry->MapPointer = bufferSlice.mapPtr;
 
       EmitCs([
         cDstBuffer = pBuffer->GetBuffer(),
-        cPhysSlice = pMapEntry->BufferSlice
+        cPhysSlice = bufferSlice
       ] (DxvkContext* ctx) {
         ctx->invalidateBuffer(cDstBuffer, cPhysSlice);
       });
     } else {
       // For GPU-writable resources, we need a data slice
       // to perform the update operation at execution time.
-      pMapEntry->DataSlice   = AllocUpdateBufferSlice(pBuffer->Desc()->ByteWidth);
-      pMapEntry->MapPointer  = pMapEntry->DataSlice.ptr();
+      auto dataSlice = AllocUpdateBufferSlice(pBuffer->Desc()->ByteWidth);
+      pMapEntry->MapPointer = dataSlice.ptr();
 
       EmitCs([
         cDstBuffer = pBuffer->GetBuffer(),
-        cDataSlice = pMapEntry->DataSlice
+        cDataSlice = dataSlice
       ] (DxvkContext* ctx) {
         DxvkBufferSliceHandle slice = cDstBuffer->allocSlice();
         std::memcpy(slice.mapPtr, cDataSlice.ptr(), cDataSlice.length());
@@ -257,20 +257,21 @@ namespace dxvk {
     VkDeviceSize xSize = blockCount.width  * eSize;
     VkDeviceSize ySize = blockCount.height * xSize;
     VkDeviceSize zSize = blockCount.depth  * ySize;
+
+    auto dataSlice = AllocUpdateBufferSlice(zSize);
     
     pMapEntry->pResource    = pResource;
     pMapEntry->Subresource  = Subresource;
     pMapEntry->MapType      = D3D11_MAP_WRITE_DISCARD;
     pMapEntry->RowPitch     = xSize;
     pMapEntry->DepthPitch   = ySize;
-    pMapEntry->DataSlice    = AllocUpdateBufferSlice(zSize);
-    pMapEntry->MapPointer   = pMapEntry->DataSlice.ptr();
+    pMapEntry->MapPointer   = dataSlice.ptr();
 
     EmitCs([
       cImage              = pTexture->GetImage(),
       cSubresource        = pTexture->GetSubresourceFromIndex(
         VK_IMAGE_ASPECT_COLOR_BIT, Subresource),
-      cDataSlice          = pMapEntry->DataSlice,
+      cDataSlice          = dataSlice,
       cDataPitchPerRow    = pMapEntry->RowPitch,
       cDataPitchPerLayer  = pMapEntry->DepthPitch,
       cPackedFormat       = GetPackedDepthStencilFormat(pTexture->Desc()->Format)
