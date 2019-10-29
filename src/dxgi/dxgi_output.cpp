@@ -491,10 +491,12 @@ namespace dxvk {
 
     if (TargetMode.RefreshRate.Numerator && TargetMode.RefreshRate.Denominator) {
       minDiffRefreshRate = std::accumulate(
-        Modes.begin(), Modes.end(), std::numeric_limits<uint32_t>::max(),
-        [&TargetMode] (uint32_t current, const DXGI_MODE_DESC1& mode) {
-          uint32_t rate = mode.RefreshRate.Numerator * TargetMode.RefreshRate.Denominator / mode.RefreshRate.Denominator;
-          uint32_t diff = std::abs(int32_t(rate - TargetMode.RefreshRate.Numerator));
+        Modes.begin(), Modes.end(), std::numeric_limits<uint64_t>::max(),
+        [&TargetMode] (uint64_t current, const DXGI_MODE_DESC1& mode) {
+          uint64_t rate = uint64_t(mode.RefreshRate.Numerator)
+                        * uint64_t(TargetMode.RefreshRate.Denominator)
+                        / uint64_t(mode.RefreshRate.Denominator);
+          uint64_t diff = std::abs(int64_t(rate - uint64_t(TargetMode.RefreshRate.Numerator)));
           return std::min(current, diff);
         });
     }
@@ -531,8 +533,10 @@ namespace dxvk {
       }
 
       if (TargetMode.RefreshRate.Numerator && TargetMode.RefreshRate.Denominator) {
-        uint32_t rate = it->RefreshRate.Numerator * TargetMode.RefreshRate.Denominator / it->RefreshRate.Denominator;
-        uint32_t diff = std::abs(int32_t(rate - TargetMode.RefreshRate.Numerator));
+        uint64_t rate = uint64_t(it->RefreshRate.Numerator)
+                      * uint64_t(TargetMode.RefreshRate.Denominator)
+                      / uint64_t(it->RefreshRate.Denominator);
+        uint64_t diff = std::abs(int64_t(rate - uint64_t(TargetMode.RefreshRate.Numerator)));
         skipMode |= diff != minDiffRefreshRate;
       }
 
