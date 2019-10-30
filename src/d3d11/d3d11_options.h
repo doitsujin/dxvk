@@ -4,12 +4,14 @@
 
 #include "../dxgi/dxgi_options.h"
 
+#include "../dxvk/dxvk_device.h"
+
 #include "d3d11_include.h"
 
 namespace dxvk {
   
   struct D3D11Options {
-    D3D11Options(const Config& config);
+    D3D11Options(const Config& config, const Rc<DxvkDevice>& device);
     /// Handle D3D11_MAP_FLAG_DO_NOT_WAIT properly.
     /// 
     /// This can offer substantial speedups, but some games

@@ -4,11 +4,12 @@
 
 namespace dxvk {
   
-  D3D11Options::D3D11Options(const Config& config) {
+  D3D11Options::D3D11Options(const Config& config, const Rc<DxvkDevice>& device) {
+    const DxvkDeviceInfo& devInfo = device->properties();
+
     this->allowMapFlagNoWait    = config.getOption<bool>("d3d11.allowMapFlagNoWait", true);
     this->dcSingleUseMode       = config.getOption<bool>("d3d11.dcSingleUseMode", true);
     this->strictDivision           = config.getOption<bool>("d3d11.strictDivision", false);
-    this->constantBufferRangeCheck = config.getOption<bool>("d3d11.constantBufferRangeCheck", false);
     this->zeroInitWorkgroupMemory  = config.getOption<bool>("d3d11.zeroInitWorkgroupMemory", false);
     this->relaxedBarriers       = config.getOption<bool>("d3d11.relaxedBarriers", false);
     this->maxTessFactor         = config.getOption<int32_t>("d3d11.maxTessFactor", 0);
@@ -17,6 +18,9 @@ namespace dxvk {
     this->numBackBuffers        = config.getOption<int32_t>("dxgi.numBackBuffers", 0);
     this->maxFrameLatency       = config.getOption<int32_t>("dxgi.maxFrameLatency", 0);
     this->syncInterval          = config.getOption<int32_t>("dxgi.syncInterval", -1);
+
+    this->constantBufferRangeCheck = config.getOption<bool>("d3d11.constantBufferRangeCheck", false)
+      && DxvkGpuVendor(devInfo.core.properties.vendorID) != DxvkGpuVendor::Amd;
 
     bool apitraceAttached = false;
     #ifndef __WINE__
