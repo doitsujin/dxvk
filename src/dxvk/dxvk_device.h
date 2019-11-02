@@ -388,7 +388,18 @@ namespace dxvk {
       const Rc<DxvkCommandList>&      commandList,
             VkSemaphore               waitSync,
             VkSemaphore               wakeSync);
-    
+
+    /**
+     * \brief Checks for async presentation support
+     *
+     * If this is \c false, synchronize with the
+     * present call immediately after submitting it.
+     * \returns \c true if async present is enabled
+     */
+    bool hasAsyncPresent() const {
+      return m_submissionQueue.hasAsyncPresent();
+    }
+
     /**
      * \brief Locks submission queue
      * 

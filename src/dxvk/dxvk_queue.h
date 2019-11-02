@@ -105,6 +105,14 @@ namespace dxvk {
     }
     
     /**
+     * \brief Checks whether asynchronous presentation is supported
+     * \returns \c true if presentation is asynchronous
+     */
+    bool hasAsyncPresent() const {
+      return m_asyncPresent;
+    }
+
+    /**
      * \brief Submits a command list asynchronously
      * 
      * Queues a command list for submission on the
