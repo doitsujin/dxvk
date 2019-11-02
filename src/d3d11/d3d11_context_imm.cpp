@@ -110,7 +110,7 @@ namespace dxvk {
     
     Com<D3D11Query, false> query(static_cast<D3D11Query*>(pAsync));
 
-    if (unlikely(!query->IsScoped()))
+    if (unlikely(!query->DoBegin()))
       return;
 
     EmitCs([cQuery = std::move(query)]
@@ -127,6 +127,9 @@ namespace dxvk {
       return;
     
     Com<D3D11Query, false> query(static_cast<D3D11Query*>(pAsync));
+
+    if (unlikely(!query->DoEnd()))
+      return;
 
     if (unlikely(query->IsEvent())) {
       query->NotifyEnd();

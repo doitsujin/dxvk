@@ -68,6 +68,9 @@ namespace dxvk {
   
   
   void D3D11CommandList::EmitToCsThread(DxvkCsThread* CsThread) {
+    for (const auto& query : m_queries)
+      query->DoDeferredEnd();
+
     for (const auto& chunk : m_chunks)
       CsThread->dispatchChunk(DxvkCsChunkRef(chunk));
     

@@ -43,11 +43,20 @@ namespace dxvk {
     
     void End(DxvkContext* ctx);
     
+    bool STDMETHODCALLTYPE DoBegin();
+
+    bool STDMETHODCALLTYPE DoEnd();
+
     HRESULT STDMETHODCALLTYPE GetData(
             void*                             pData,
             UINT                              GetDataFlags);
     
     DxvkBufferSlice GetPredicate(DxvkContext* ctx);
+
+    void DoDeferredEnd() {
+      m_state = D3D11_VK_QUERY_ENDED;
+      m_resetCtr += 1;
+    }
 
     bool IsScoped() const {
       return m_desc.Query != D3D11_QUERY_EVENT
