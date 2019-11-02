@@ -214,6 +214,8 @@ namespace dxvk {
 
     if (unlikely(m_predicate != nullptr))
       ctx->writePredicate(DxvkBufferSlice(m_predicate), m_query[0]);
+
+    m_resetCtr -= 1;
   }
   
   
@@ -230,6 +232,7 @@ namespace dxvk {
       return false;
 
     m_state = D3D11_VK_QUERY_ENDED;
+    m_resetCtr += 1;
     return true;
   }
 
@@ -237,6 +240,12 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Query::GetData(
           void*                             pData,
           UINT                              GetDataFlags) {
+    if (m_state != D3D11_VK_QUERY_ENDED)
+      return DXGI_ERROR_INVALID_CALL;
+
+    if (m_resetCtr != 0u)
+      return S_FALSE;
+
     if (m_desc.Query == D3D11_QUERY_EVENT) {
       DxvkGpuEventStatus status = m_event[0]->test();
 

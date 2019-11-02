@@ -77,10 +77,6 @@ namespace dxvk {
     // DataSize is 0, but we should ignore that pointer
     pData = DataSize ? pData : nullptr;
 
-    // Ensure that all query commands actually get
-    // executed before trying to access the query
-    SynchronizeCsThread();
-
     // Get query status directly from the query object
     auto query = static_cast<D3D11Query*>(pAsync);
     HRESULT hr = query->GetData(pData, GetDataFlags);
