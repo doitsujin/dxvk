@@ -102,16 +102,43 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11ImmediateContext::End(ID3D11Asynchronous* pAsync) {
-    D3D11DeviceContext::End(pAsync);
+  void STDMETHODCALLTYPE D3D11ImmediateContext::Begin(ID3D11Asynchronous* pAsync) {
+    D3D10DeviceLock lock = LockContext();
 
-    auto query = static_cast<D3D11Query*>(pAsync);
-    if (unlikely(query && query->IsEvent())) {
+    if (unlikely(!pAsync))
+      return;
+    
+    Com<D3D11Query, false> query(static_cast<D3D11Query*>(pAsync));
+
+    if (unlikely(!query->IsScoped()))
+      return;
+
+    EmitCs([cQuery = std::move(query)]
+    (DxvkContext* ctx) {
+      cQuery->Begin(ctx);
+    });
+  }
+
+
+  void STDMETHODCALLTYPE D3D11ImmediateContext::End(ID3D11Asynchronous* pAsync) {
+    D3D10DeviceLock lock = LockContext();
+
+    if (unlikely(!pAsync))
+      return;
+    
+    Com<D3D11Query, false> query(static_cast<D3D11Query*>(pAsync));
+
+    if (unlikely(query->IsEvent())) {
       query->NotifyEnd();
       query->IsStalling()
         ? Flush()
         : FlushImplicit(TRUE);
     }
+
+    EmitCs([cQuery = std::move(query)]
+    (DxvkContext* ctx) {
+      cQuery->End(ctx);
+    });
   }
 
 

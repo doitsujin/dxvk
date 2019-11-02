@@ -27,12 +27,16 @@ namespace dxvk {
     UINT STDMETHODCALLTYPE GetContextFlags();
     
     HRESULT STDMETHODCALLTYPE GetData(
-            ID3D11Asynchronous*               pAsync,
-            void*                             pData,
-            UINT                              DataSize,
-            UINT                              GetDataFlags);
+            ID3D11Asynchronous*         pAsync,
+            void*                       pData,
+            UINT                        DataSize,
+            UINT                        GetDataFlags);
     
-    void STDMETHODCALLTYPE End(ID3D11Asynchronous *pAsync);
+    void STDMETHODCALLTYPE Begin(
+            ID3D11Asynchronous*         pAsync);
+    
+    void STDMETHODCALLTYPE End(
+            ID3D11Asynchronous*         pAsync);
     
     void STDMETHODCALLTYPE Flush();
     

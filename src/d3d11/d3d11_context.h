@@ -44,10 +44,6 @@ namespace dxvk {
     
     void STDMETHODCALLTYPE ClearState();
     
-    void STDMETHODCALLTYPE Begin(ID3D11Asynchronous *pAsync);
-    
-    void STDMETHODCALLTYPE End(ID3D11Asynchronous *pAsync);
-    
     void STDMETHODCALLTYPE SetPredication(
             ID3D11Predicate*                  pPredicate,
             BOOL                              PredicateValue);

@@ -243,39 +243,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContext::Begin(ID3D11Asynchronous *pAsync) {
-    D3D10DeviceLock lock = LockContext();
-
-    if (unlikely(!pAsync))
-      return;
-    
-    Com<D3D11Query, false> query(static_cast<D3D11Query*>(pAsync));
-
-    if (unlikely(!query->IsScoped()))
-      return;
-
-    EmitCs([cQuery = std::move(query)]
-    (DxvkContext* ctx) {
-      cQuery->Begin(ctx);
-    });
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::End(ID3D11Asynchronous *pAsync) {
-    D3D10DeviceLock lock = LockContext();
-
-    if (unlikely(!pAsync))
-      return;
-    
-    Com<D3D11Query, false> query(static_cast<D3D11Query*>(pAsync));
-
-    EmitCs([cQuery = std::move(query)]
-    (DxvkContext* ctx) {
-      cQuery->End(ctx);
-    });
-  }
-  
-  
   void STDMETHODCALLTYPE D3D11DeviceContext::SetPredication(
           ID3D11Predicate*                  pPredicate,
           BOOL                              PredicateValue) {
