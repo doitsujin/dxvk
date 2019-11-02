@@ -734,7 +734,9 @@ namespace dxvk {
       // gl_Position.xyz *= gl_Position.w;
 
       uint32_t w   = m_module.opCompositeExtract (m_floatType, gl_Position, 1, &wIndex);      // w = gl_Position.w
+      uint32_t is0 = m_module.opFOrdEqual        (m_floatType, w, m_module.constf32(0));      // is0 = w == 0
       uint32_t rhw = m_module.opFDiv             (m_floatType, m_module.constf32(1.0f), w);   // rhw = 1.0f / w
+               rhw = m_module.opSelect           (m_floatType, is0, m_module.constf32(1.0), rhw); // rhw = w == 0 ? 1.0 : rhw
       gl_Position  = m_module.opVectorTimesScalar(m_vec4Type,  gl_Position, rhw);             // gl_Position.xyz *= rhw
       gl_Position  = m_module.opCompositeInsert  (m_vec4Type,  rhw, gl_Position, 1, &wIndex); // gl_Position.w = rhw
     }
