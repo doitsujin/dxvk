@@ -251,6 +251,9 @@ namespace dxvk {
     
     Com<D3D11Query, false> query(static_cast<D3D11Query*>(pAsync));
 
+    if (unlikely(!query->IsScoped()))
+      return;
+
     EmitCs([cQuery = std::move(query)]
     (DxvkContext* ctx) {
       cQuery->Begin(ctx);
