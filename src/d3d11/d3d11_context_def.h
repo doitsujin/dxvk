@@ -33,11 +33,17 @@ namespace dxvk {
     UINT STDMETHODCALLTYPE GetContextFlags();
     
     HRESULT STDMETHODCALLTYPE GetData(
-            ID3D11Asynchronous*               pAsync,
-            void*                             pData,
-            UINT                              DataSize,
-            UINT                              GetDataFlags);
+            ID3D11Asynchronous*         pAsync,
+            void*                       pData,
+            UINT                        DataSize,
+            UINT                        GetDataFlags);
     
+    void STDMETHODCALLTYPE Begin(
+            ID3D11Asynchronous*         pAsync);
+
+    void STDMETHODCALLTYPE End(
+            ID3D11Asynchronous*         pAsync);
+
     void STDMETHODCALLTYPE Flush();
 
     void STDMETHODCALLTYPE Flush1(
@@ -87,6 +93,9 @@ namespace dxvk {
     // number of mapped resources per command list.
     std::vector<D3D11DeferredContextMapEntry> m_mappedResources;
     
+    // Begun and ended queries, will also be stored in command list
+    std::vector<Com<D3D11Query, false>> m_queriesBegun;
+
     HRESULT MapBuffer(
             ID3D11Resource*               pResource,
             D3D11_MAP                     MapType,
@@ -100,6 +109,8 @@ namespace dxvk {
             UINT                          MapFlags,
             D3D11DeferredContextMapEntry* pMapEntry);
     
+    void FinalizeQueries();
+
     Com<D3D11CommandList> CreateCommandList();
     
     void EmitCsChunk(DxvkCsChunkRef&& chunk);

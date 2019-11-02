@@ -34,6 +34,63 @@ namespace dxvk {
   }
 
 
+  void STDMETHODCALLTYPE D3D11DeferredContext::Begin(
+          ID3D11Asynchronous*         pAsync) {
+    D3D10DeviceLock lock = LockContext();
+
+    if (unlikely(!pAsync))
+      return;
+
+    Com<D3D11Query, false> query(static_cast<D3D11Query*>(pAsync));
+
+    if (unlikely(!query->IsScoped()))
+      return;
+
+    auto entry = std::find(
+      m_queriesBegun.begin(),
+      m_queriesBegun.end(), query);
+
+    if (unlikely(entry != m_queriesBegun.end()))
+      return;
+
+    EmitCs([cQuery = query]
+    (DxvkContext* ctx) {
+      cQuery->Begin(ctx);
+    });
+
+    m_queriesBegun.push_back(std::move(query));
+  }
+
+
+  void STDMETHODCALLTYPE D3D11DeferredContext::End(
+          ID3D11Asynchronous*         pAsync) {
+    D3D10DeviceLock lock = LockContext();
+
+    if (unlikely(!pAsync))
+      return;
+
+    Com<D3D11Query, false> query(static_cast<D3D11Query*>(pAsync));
+
+    if (query->IsScoped()) {
+      auto entry = std::find(
+        m_queriesBegun.begin(),
+        m_queriesBegun.end(), query);
+
+      if (unlikely(entry == m_queriesBegun.end()))
+        return;
+
+      m_queriesBegun.erase(entry);
+    }
+
+    m_commandList->AddQuery(query.ptr());
+
+    EmitCs([cQuery = std::move(query)]
+    (DxvkContext* ctx) {
+      cQuery->End(ctx);
+    });
+  }
+
+
   void STDMETHODCALLTYPE D3D11DeferredContext::Flush() {
     Logger::err("D3D11: Flush called on a deferred context");
   }
@@ -83,6 +140,7 @@ namespace dxvk {
           ID3D11CommandList   **ppCommandList) {
     D3D10DeviceLock lock = LockContext();
 
+    FinalizeQueries();
     FlushCsChunk();
     
     if (ppCommandList != nullptr)
@@ -309,6 +367,20 @@ namespace dxvk {
   }
   
   
+  void D3D11DeferredContext::FinalizeQueries() {
+    for (auto& query : m_queriesBegun) {
+      m_commandList->AddQuery(query.ptr());
+
+      EmitCs([cQuery = std::move(query)]
+      (DxvkContext* ctx) {
+        cQuery->End(ctx);
+      });
+    }
+
+    m_queriesBegun.clear();
+  }
+
+
   Com<D3D11CommandList> D3D11DeferredContext::CreateCommandList() {
     return new D3D11CommandList(m_parent, m_contextFlags);
   }
