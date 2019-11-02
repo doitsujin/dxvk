@@ -105,8 +105,10 @@ namespace dxvk {
     T**       operator & ()       { return &m_ptr; }
     T* const* operator & () const { return &m_ptr; }
     
-    bool operator == (const Com<T>& other) const { return m_ptr == other.m_ptr; }
-    bool operator != (const Com<T>& other) const { return m_ptr != other.m_ptr; }
+    template<bool Public_>
+    bool operator == (const Com<T, Public_>& other) const { return m_ptr == other.m_ptr; }
+    template<bool Public_>
+    bool operator != (const Com<T, Public_>& other) const { return m_ptr != other.m_ptr; }
     
     bool operator == (const T* other) const { return m_ptr == other; }
     bool operator != (const T* other) const { return m_ptr != other; }
