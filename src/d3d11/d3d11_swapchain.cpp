@@ -181,8 +181,6 @@ namespace dxvk {
     if (std::exchange(m_dirty, false))
       RecreateSwapChain(vsync);
     
-    FlushImmediateContext();
-
     HRESULT hr = S_OK;
 
     try {
@@ -200,6 +198,16 @@ namespace dxvk {
 
 
   void D3D11SwapChain::PresentImage(UINT SyncInterval) {
+    Com<ID3D11DeviceContext> deviceContext = nullptr;
+    m_parent->GetImmediateContext(&deviceContext);
+
+    // Flush pending rendering commands before
+    auto immediateContext = static_cast<D3D11ImmediateContext*>(deviceContext.ptr());
+    immediateContext->Flush();
+
+    if (!m_device->hasAsyncPresent())
+      immediateContext->SynchronizeCsThread();
+
     // Wait for the sync event so that we respect the maximum frame latency
     auto syncEvent = m_dxgiDevice->GetFrameSyncEvent(m_desc.BufferCount);
     syncEvent->wait();
@@ -305,16 +313,41 @@ namespace dxvk {
       if (i + 1 >= SyncInterval)
         m_context->queueSignal(syncEvent);
 
+      SubmitPresent(immediateContext, sync);
+    }
+  }
+
+
+  void D3D11SwapChain::SubmitPresent(
+          D3D11ImmediateContext*  pContext,
+    const vk::PresenterSync&      Sync) {
+    if (m_device->hasAsyncPresent()) {
+      // Present from CS thread so that we don't
+      // have to synchronize with it first.
+      m_presentStatus.result = VK_NOT_READY;
+
+      pContext->EmitCs([this,
+        cSync        = Sync,
+        cCommandList = m_context->endRecording()
+      ] (DxvkContext* ctx) {
+        m_device->submitCommandList(cCommandList,
+          cSync.acquire, cSync.present);
+
+        m_device->presentImage(m_presenter,
+          cSync.present, &m_presentStatus);
+      });
+
+      pContext->FlushCsChunk();
+    } else {
+      // Safe path, present from calling thread
       m_device->submitCommandList(
         m_context->endRecording(),
-        sync.acquire, sync.present);
+        Sync.acquire, Sync.present);
       
       m_device->presentImage(m_presenter,
-        sync.present, &m_presentStatus);
+        Sync.present, &m_presentStatus);
 
-      if (m_presentStatus.result != VK_NOT_READY
-       && m_presentStatus.result != VK_SUCCESS)
-        RecreateSwapChain(m_vsync);
+      SynchronizePresent();
     }
   }
 
@@ -409,18 +442,6 @@ namespace dxvk {
       m_imageViews[i] = new DxvkImageView(
         m_device->vkd(), image, viewInfo);
     }
-  }
-
-
-  void D3D11SwapChain::FlushImmediateContext() {
-    Com<ID3D11DeviceContext> deviceContext = nullptr;
-    m_parent->GetImmediateContext(&deviceContext);
-    
-    // The presentation code is run from the main rendering thread
-    // rather than the command stream thread, so we synchronize.
-    auto immediateContext = static_cast<D3D11ImmediateContext*>(deviceContext.ptr());
-    immediateContext->Flush();
-    immediateContext->SynchronizeCsThread();
   }
 
 

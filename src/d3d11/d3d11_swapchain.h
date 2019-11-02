@@ -122,10 +122,12 @@ namespace dxvk {
 
     void PresentImage(UINT SyncInterval);
 
+    void SubmitPresent(
+            D3D11ImmediateContext*  pContext,
+      const vk::PresenterSync&      Sync);
+
     void SynchronizePresent();
 
-    void FlushImmediateContext();
-    
     void RecreateSwapChain(
             BOOL                      Vsync);
 

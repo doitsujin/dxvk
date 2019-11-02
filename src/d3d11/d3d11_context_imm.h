@@ -11,6 +11,7 @@ namespace dxvk {
   class D3D11CommonTexture;
   
   class D3D11ImmediateContext : public D3D11DeviceContext {
+    friend class D3D11SwapChain;
   public:
     
     D3D11ImmediateContext(
