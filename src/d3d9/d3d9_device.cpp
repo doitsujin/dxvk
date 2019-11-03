@@ -141,7 +141,7 @@ namespace dxvk {
     constexpr UINT range = 0xfff00000;
 
     // Can't have negative memory!
-    int64_t memory = std::max(m_availableMemory.load(), 0ll);
+    int64_t memory = std::max<int64_t>(m_availableMemory.load(), 0);
 
     return UINT(memory) & range;
   }
