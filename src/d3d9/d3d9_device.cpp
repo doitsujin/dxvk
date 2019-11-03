@@ -5855,9 +5855,7 @@ namespace dxvk {
   }
 
   void D3D9DeviceEx::BindIndices() {
-    D3D9CommonBuffer* buffer = m_state.indices != nullptr
-      ? m_state.indices->GetCommonBuffer()
-      : nullptr;
+    D3D9CommonBuffer* buffer = GetCommonBuffer(m_state.indices);
 
     D3D9Format format = buffer != nullptr
                       ? buffer->Desc()->Format
