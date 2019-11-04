@@ -31,10 +31,8 @@ namespace dxvk {
     desc.hDc         = nullptr;
     desc.hBitmap     = nullptr;
 
-    uint32_t a = D3DKMTCreateDCFromMemory(&desc);
-
-    if (a)
-      Logger::err(str::format("D3D11: Failed to create GDI DC:", std::hex, a));
+    if (D3DKMTCreateDCFromMemory(&desc))
+      Logger::err(str::format("D3D11: Failed to create GDI DC"));
     
     m_hdc     = desc.hDc;
     m_hbitmap = desc.hBitmap;
