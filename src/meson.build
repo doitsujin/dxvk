@@ -27,5 +27,5 @@ endif
 
 # Nothing selected
 if not get_option('enable_d3d10') and not get_option('enable_d3d11') and not get_option('enable_tests')
-  error('Nothing selected to be built. Please, enable at least D3D11 or TESTS.')
+  warning('Nothing selected to be built. Are you missing a frontend or tests?')
 endif
