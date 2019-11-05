@@ -3,7 +3,7 @@
 #include <mutex>
 #include <vector>
 
-#include "dxvk_include.h"
+#include "dxvk_extension_provider.h"
 
 #ifdef __WINE__
 using SoHandle = void*;
@@ -26,12 +26,18 @@ namespace dxvk {
    * Loads Initializes OpenVR to provide
    * access to Vulkan extension queries.
    */
-  class VrInstance {
+  class VrInstance : public DxvkExtensionProvider {
     
   public:
     
     VrInstance();
     ~VrInstance();
+
+    /**
+     * \brief Extension provider name
+     * \returns The extension provider's name
+     */
+    std::string_view getName();
 
     /**
      * \brief Query instance extensions
