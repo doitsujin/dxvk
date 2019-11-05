@@ -294,7 +294,6 @@ namespace dxvk {
   struct DxvkInstanceExtensions {
     DxvkExt khrGetPhysicalDeviceProperties2 = { VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME, DxvkExtMode::Required };
     DxvkExt khrSurface                      = { VK_KHR_SURFACE_EXTENSION_NAME,                          DxvkExtMode::Required };
-    DxvkExt khrWin32Surface                 = { VK_KHR_WIN32_SURFACE_EXTENSION_NAME,                    DxvkExtMode::Required };
   };
   
 }

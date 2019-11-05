@@ -1,7 +1,7 @@
 #include <version.h>
 
 #include "dxvk_instance.h"
-#include "dxvk_openvr.h"
+#include "dxvk_extension_provider.h"
 
 #include <algorithm>
 
@@ -15,17 +15,28 @@ namespace dxvk {
     m_config.merge(Config::getAppConfig(env::getExePath()));
     m_config.logOptions();
 
-    g_vrInstance.initInstanceExtensions();
+    const auto& extProviders = DxvkExtensionProvider::getExtensionProviders();
+
+    Logger::info("Built-in extension providers:");
+    for (const auto& provider : extProviders)
+      Logger::info(str::format("  ", provider->getName()));
+
+    for (const auto& provider : extProviders)
+      provider->initInstanceExtensions();
 
     m_vkl = new vk::LibraryFn();
     m_vki = new vk::InstanceFn(true, this->createInstance());
 
     m_adapters = this->queryAdapters();
-    g_vrInstance.initDeviceExtensions(this);
+
+    for (const auto& provider : extProviders)
+      provider->initDeviceExtensions(this);
 
     for (uint32_t i = 0; i < m_adapters.size(); i++) {
-      m_adapters[i]->enableExtensions(
-        g_vrInstance.getDeviceExtensions(i));
+      for (const auto& provider : extProviders) {
+        m_adapters[i]->enableExtensions(
+          provider->getDeviceExtensions(i));
+      }
     }
 
     m_options = DxvkOptions(m_config);
@@ -72,10 +83,9 @@ namespace dxvk {
   VkInstance DxvkInstance::createInstance() {
     DxvkInstanceExtensions insExtensions;
 
-    std::array<DxvkExt*, 3> insExtensionList = {{
+    std::array<DxvkExt*, 2> insExtensionList = {{
       &insExtensions.khrGetPhysicalDeviceProperties2,
       &insExtensions.khrSurface,
-      &insExtensions.khrWin32Surface,
     }};
 
     DxvkNameSet extensionsEnabled;
@@ -86,9 +96,12 @@ namespace dxvk {
           insExtensionList.data(),
           extensionsEnabled))
       throw DxvkError("DxvkInstance: Failed to create instance");
+
+    const auto& extProviders = DxvkExtensionProvider::getExtensionProviders();
     
     // Enable additional extensions if necessary
-    extensionsEnabled.merge(g_vrInstance.getInstanceExtensions());
+    for (const auto& provider : extProviders)
+      extensionsEnabled.merge(provider->getInstanceExtensions());
     DxvkNameList extensionNameList = extensionsEnabled.toNameList();
     
     Logger::info("Enabled instance extensions:");
