@@ -8,6 +8,8 @@
 
 #include "../spirv/spirv_module.h"
 
+#include <cfloat>
+
 namespace dxvk {
 
   D3D9FixedFunctionOptions::D3D9FixedFunctionOptions(const D3D9Options* options) {
@@ -909,6 +911,7 @@ namespace dxvk {
         uint32_t atten  = m_module.opFFma  (m_floatType, d, atten2, atten1);
                  atten  = m_module.opFFma  (m_floatType, d, atten,  atten0);
                  atten  = m_module.opFDiv  (m_floatType, m_module.constf32(1.0f), atten);
+                 atten  = m_module.opNMin  (m_floatType, atten, m_module.constf32(FLT_MAX));
 
                  atten  = m_module.opSelect(m_floatType, m_module.opFOrdGreaterThan(bool_t, d, range), m_module.constf32(0.0f), atten);
                  atten  = m_module.opSelect(m_floatType, isDirectional, m_module.constf32(1.0f), atten);
