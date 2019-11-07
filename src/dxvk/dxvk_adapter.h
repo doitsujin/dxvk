@@ -255,7 +255,7 @@ namespace dxvk {
     
   private:
     
-    DxvkInstance*       m_instance;
+    Rc<DxvkInstance>    m_instance;
     Rc<vk::InstanceFn>  m_vki;
     VkPhysicalDevice    m_handle;
 
