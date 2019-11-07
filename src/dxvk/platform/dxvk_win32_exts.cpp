@@ -2,6 +2,7 @@
 
 namespace dxvk {
 
+  DxvkPlatformExts DxvkPlatformExts::s_instance;
 
   std::string_view DxvkPlatformExts::getName() {
     return "Win32 WSI";
@@ -20,15 +21,16 @@ namespace dxvk {
           uint32_t      adapterId) {
     return DxvkNameSet();
   }
-  
 
-  void DxvkPlatformExts::initInstanceExtensions() {}
+
+  void DxvkPlatformExts::initInstanceExtensions() {
+
+  }
 
 
   void DxvkPlatformExts::initDeviceExtensions(
-    const DxvkInstance* instance) {}
+    const DxvkInstance* instance) {
 
-
-  DxvkPlatformExts g_platformInstance;
+  }
 
 }

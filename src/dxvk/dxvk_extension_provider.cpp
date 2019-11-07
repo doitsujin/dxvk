@@ -6,8 +6,8 @@
 namespace dxvk {
 
   DxvkExtensionProviderList DxvkExtensionProvider::s_extensionProviders = {
-    &g_platformInstance,
-    &g_vrInstance
+    &DxvkPlatformExts::s_instance,
+    &VrInstance::s_instance,
   };
 
   const DxvkExtensionProviderList& DxvkExtensionProvider::getExtensionProviders() {

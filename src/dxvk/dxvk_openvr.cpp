@@ -32,7 +32,7 @@ namespace dxvk {
   };
   
   VrFunctions g_vrFunctions;
-  VrInstance  g_vrInstance;
+  VrInstance VrInstance::s_instance;
 
   VrInstance:: VrInstance() { }
   VrInstance::~VrInstance() { }
