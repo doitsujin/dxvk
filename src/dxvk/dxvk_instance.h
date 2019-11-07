@@ -50,6 +50,8 @@ namespace dxvk {
     /**
      * \brief Retrieves an adapter
      * 
+     * Note that the adapter does not hold
+     * a hard reference to the instance.
      * \param [in] index Adapter index
      * \returns The adapter, or \c nullptr.
      */
