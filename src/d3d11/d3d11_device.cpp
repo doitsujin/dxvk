@@ -2464,6 +2464,7 @@ namespace dxvk {
           D3D_FEATURE_LEVEL   FeatureLevel,
           UINT                FeatureFlags)
   : m_dxgiAdapter   (pAdapter),
+    m_dxvkInstance  (pDxvkAdapter->instance()),
     m_dxvkAdapter   (pDxvkAdapter),
     m_dxvkDevice    (CreateDevice(FeatureLevel)),
     m_d3d11Device   (this, FeatureLevel, FeatureFlags),

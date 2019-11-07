@@ -641,6 +641,7 @@ namespace dxvk {
 
     Com<IDXGIAdapter>   m_dxgiAdapter;
 
+    Rc<DxvkInstance>    m_dxvkInstance;
     Rc<DxvkAdapter>     m_dxvkAdapter;
     Rc<DxvkDevice>      m_dxvkDevice;
 
