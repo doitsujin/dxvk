@@ -11,9 +11,6 @@ namespace dxvk {
     /// Enable state cache
     bool enableStateCache;
 
-    /// Use transfer queue if available
-    bool enableTransferQueue;
-
     /// Number of compiler threads
     /// when using the state cache
     int32_t numCompilerThreads;
