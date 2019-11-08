@@ -85,7 +85,9 @@ IDXGIDXVKAdapter : public IDXGIAdapter3 {
   static const GUID guid;
   
   virtual dxvk::Rc<dxvk::DxvkAdapter> STDMETHODCALLTYPE GetDXVKAdapter() = 0;
-  
+
+  virtual dxvk::Rc<dxvk::DxvkInstance> STDMETHODCALLTYPE GetDXVKInstance() = 0;
+
 };
 
 

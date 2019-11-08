@@ -118,6 +118,10 @@ namespace dxvk {
             void*                 pFeatureSupportData,
             UINT                  FeatureSupportDataSize) final;
 
+    Rc<DxvkInstance> GetDXVKInstance() const {
+      return m_instance;
+    }
+
     const DxgiOptions* GetOptions() const {
       return &m_options;
     }

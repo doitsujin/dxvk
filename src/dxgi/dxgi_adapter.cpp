@@ -41,7 +41,7 @@ namespace dxvk {
           VkInstance*               pInstance,
           VkPhysicalDevice*         pPhysDev) {
     auto adapter  = m_adapter->GetDXVKAdapter();
-    auto instance = adapter->instance();
+    auto instance = m_adapter->GetDXVKInstance();
 
     if (pInstance)
       *pInstance = instance->handle();
@@ -369,6 +369,11 @@ namespace dxvk {
 
   Rc<DxvkAdapter> STDMETHODCALLTYPE DxgiAdapter::GetDXVKAdapter() {
     return m_adapter;
+  }
+
+
+  Rc<DxvkInstance> STDMETHODCALLTYPE DxgiAdapter::GetDXVKInstance() {
+    return m_factory->GetDXVKInstance();
   }
   
 }

@@ -101,6 +101,8 @@ namespace dxvk {
 
     Rc<DxvkAdapter> STDMETHODCALLTYPE GetDXVKAdapter() final;
     
+    Rc<DxvkInstance> STDMETHODCALLTYPE GetDXVKInstance() final;
+
   private:
     
     Com<DxgiFactory>  m_factory;
