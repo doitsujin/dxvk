@@ -3,8 +3,8 @@
 #include "../util/config/config.h"
 
 #include "dxvk_adapter.h"
-#include "dxvk_device.h"
 #include "dxvk_device_filter.h"
+#include "dxvk_options.h"
 
 namespace dxvk {
   

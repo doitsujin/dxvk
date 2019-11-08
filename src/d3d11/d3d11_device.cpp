@@ -2814,7 +2814,7 @@ namespace dxvk {
     uint32_t flLo = (uint32_t(FeatureLevel) >> 8) & 0x7;
 
     std::string apiName = str::format("D3D11 FL ", flHi, "_", flLo);
-    return m_dxvkAdapter->createDevice(apiName, deviceFeatures);
+    return m_dxvkAdapter->createDevice(m_dxvkInstance, apiName, deviceFeatures);
   }
 
 }

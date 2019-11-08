@@ -8,6 +8,7 @@
 #include "dxvk_extensions.h"
 #include "dxvk_framebuffer.h"
 #include "dxvk_image.h"
+#include "dxvk_instance.h"
 #include "dxvk_memory.h"
 #include "dxvk_meta_clear.h"
 #include "dxvk_objects.h"
@@ -79,6 +80,7 @@ namespace dxvk {
     
     DxvkDevice(
             std::string               clientApi,
+      const Rc<DxvkInstance>&         instance,
       const Rc<DxvkAdapter>&          adapter,
       const Rc<vk::DeviceFn>&         vkd,
       const DxvkDeviceExtensions&     extensions,
@@ -138,6 +140,16 @@ namespace dxvk {
           != m_queues.graphics.queueHandle;
     }
     
+    /**
+     * \brief The instance
+     * 
+     * The DXVK instance that created this device.
+     * \returns Instance
+     */
+    Rc<DxvkInstance> instance() const {
+      return m_instance;
+    }
+
     /**
      * \brief The adapter
      * 
@@ -456,6 +468,7 @@ namespace dxvk {
     std::string                 m_clientApi;
     DxvkOptions                 m_options;
 
+    Rc<DxvkInstance>            m_instance;
     Rc<DxvkAdapter>             m_adapter;
     Rc<vk::DeviceFn>            m_vkd;
     DxvkDeviceExtensions        m_extensions;
