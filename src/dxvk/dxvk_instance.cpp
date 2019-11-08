@@ -157,7 +157,7 @@ namespace dxvk {
     
     std::vector<Rc<DxvkAdapter>> result;
     for (uint32_t i = 0; i < numAdapters; i++) {
-      Rc<DxvkAdapter> adapter = new DxvkAdapter(this, adapters[i]);
+      Rc<DxvkAdapter> adapter = new DxvkAdapter(m_vki, adapters[i]);
       
       if (filter.testAdapter(adapter))
         result.push_back(adapter);

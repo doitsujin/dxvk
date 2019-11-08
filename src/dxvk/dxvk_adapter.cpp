@@ -8,10 +8,9 @@
 namespace dxvk {
   
   DxvkAdapter::DxvkAdapter(
-          DxvkInstance*       instance,
+    const Rc<vk::InstanceFn>& vki,
           VkPhysicalDevice    handle)
-  : m_instance      (instance),
-    m_vki           (instance->vki()),
+  : m_vki           (vki),
     m_handle        (handle) {
     this->initHeapAllocInfo();
     this->queryExtensions();
@@ -25,11 +24,6 @@ namespace dxvk {
   
   DxvkAdapter::~DxvkAdapter() {
     
-  }
-  
-  
-  Rc<DxvkInstance> DxvkAdapter::instance() const {
-    return m_instance;
   }
   
   
@@ -98,8 +92,7 @@ namespace dxvk {
       VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT,
       VK_QUEUE_TRANSFER_BIT);
     
-    if (transferQueue == VK_QUEUE_FAMILY_IGNORED
-     || !m_instance->options().enableTransferQueue)
+    if (transferQueue == VK_QUEUE_FAMILY_IGNORED)
       transferQueue = graphicsQueue;
     
     DxvkAdapterQueueIndices queues;

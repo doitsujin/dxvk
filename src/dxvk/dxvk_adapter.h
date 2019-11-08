@@ -62,7 +62,7 @@ namespace dxvk {
   public:
     
     DxvkAdapter(
-            DxvkInstance*       instance,
+      const Rc<vk::InstanceFn>& vki,
             VkPhysicalDevice    handle);
     ~DxvkAdapter();
     
@@ -81,12 +81,6 @@ namespace dxvk {
     VkPhysicalDevice handle() const {
       return m_handle;
     }
-    
-    /**
-     * \brief Vulkan instance
-     * \returns Vulkan instance
-     */
-    Rc<DxvkInstance> instance() const;
     
     /**
      * \brief Physical device properties
@@ -257,7 +251,6 @@ namespace dxvk {
     
   private:
     
-    DxvkInstance*       m_instance;
     Rc<vk::InstanceFn>  m_vki;
     VkPhysicalDevice    m_handle;
 
