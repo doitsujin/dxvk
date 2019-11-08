@@ -43,7 +43,7 @@ namespace dxvk {
           VkDevice*             pDevice) {
     auto device   = m_device->GetDXVKDevice();
     auto adapter  = device->adapter();
-    auto instance = adapter->instance();
+    auto instance = device->instance();
     
     if (pDevice != nullptr)
       *pDevice = device->handle();

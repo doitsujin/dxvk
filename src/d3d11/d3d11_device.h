@@ -421,6 +421,7 @@ namespace dxvk {
     }
     
     static bool CheckFeatureLevelSupport(
+      const Rc<DxvkInstance>& instance,
       const Rc<DxvkAdapter>&  adapter,
             D3D_FEATURE_LEVEL featureLevel);
     
@@ -483,7 +484,7 @@ namespace dxvk {
     BOOL IsUnifiedMemoryArch();
 
     static D3D_FEATURE_LEVEL GetMaxFeatureLevel(
-      const Rc<DxvkAdapter>&        Adapter);
+      const Rc<DxvkInstance>&           pInstance);
     
   };
   
@@ -564,10 +565,11 @@ namespace dxvk {
   public:
     
     D3D11DXGIDevice(
-          IDXGIAdapter*       pAdapter,
-          DxvkAdapter*        pDxvkAdapter,
-          D3D_FEATURE_LEVEL   FeatureLevel,
-          UINT                FeatureFlags);
+            IDXGIAdapter*       pAdapter,
+      const Rc<DxvkInstance>&   pDxvkInstance,
+      const Rc<DxvkAdapter>&    pDxvkAdapter,
+            D3D_FEATURE_LEVEL   FeatureLevel,
+            UINT                FeatureFlags);
     
     ~D3D11DXGIDevice();
     

@@ -38,7 +38,7 @@ namespace dxvk {
     m_dxvkDevice    (pContainer->GetDXVKDevice()),
     m_dxvkAdapter   (m_dxvkDevice->adapter()),
     m_d3d11Formats  (m_dxvkAdapter),
-    m_d3d11Options  (m_dxvkAdapter->instance()->config(), m_dxvkDevice),
+    m_d3d11Options  (m_dxvkDevice->instance()->config(), m_dxvkDevice),
     m_dxbcOptions   (m_dxvkDevice, m_d3d11Options) {
     m_initializer = new D3D11Initializer(this);
     m_context     = new D3D11ImmediateContext(this, m_dxvkDevice);
@@ -1300,7 +1300,7 @@ namespace dxvk {
     
     UINT flId;
     for (flId = 0; flId < FeatureLevels; flId++) {
-      if (CheckFeatureLevelSupport(m_dxvkAdapter, pFeatureLevels[flId]))
+      if (CheckFeatureLevelSupport(m_dxvkDevice->instance(), m_dxvkAdapter, pFeatureLevels[flId]))
         break;
     }
 
@@ -1871,9 +1871,10 @@ namespace dxvk {
   
   
   bool D3D11Device::CheckFeatureLevelSupport(
+    const Rc<DxvkInstance>& instance,
     const Rc<DxvkAdapter>&  adapter,
           D3D_FEATURE_LEVEL featureLevel) {
-    if (featureLevel > GetMaxFeatureLevel(adapter))
+    if (featureLevel > GetMaxFeatureLevel(instance))
       return false;
     
     // Check whether all features are supported
@@ -2302,7 +2303,7 @@ namespace dxvk {
   }
 
 
-  D3D_FEATURE_LEVEL D3D11Device::GetMaxFeatureLevel(const Rc<DxvkAdapter>& Adapter) {
+  D3D_FEATURE_LEVEL D3D11Device::GetMaxFeatureLevel(const Rc<DxvkInstance>& pInstance) {
     static const std::array<std::pair<std::string, D3D_FEATURE_LEVEL>, 9> s_featureLevels = {{
       { "12_1", D3D_FEATURE_LEVEL_12_1 },
       { "12_0", D3D_FEATURE_LEVEL_12_0 },
@@ -2315,7 +2316,7 @@ namespace dxvk {
       { "9_1",  D3D_FEATURE_LEVEL_9_1  },
     }};
     
-    const std::string maxLevel = Adapter->instance()->config()
+    const std::string maxLevel = pInstance->config()
       .getOption<std::string>("d3d11.maxFeatureLevel");
     
     auto entry = std::find_if(s_featureLevels.begin(), s_featureLevels.end(),
@@ -2460,11 +2461,12 @@ namespace dxvk {
   
   D3D11DXGIDevice::D3D11DXGIDevice(
           IDXGIAdapter*       pAdapter,
-          DxvkAdapter*        pDxvkAdapter,
+    const Rc<DxvkInstance>&   pDxvkInstance,
+    const Rc<DxvkAdapter>&    pDxvkAdapter,
           D3D_FEATURE_LEVEL   FeatureLevel,
           UINT                FeatureFlags)
   : m_dxgiAdapter   (pAdapter),
-    m_dxvkInstance  (pDxvkAdapter->instance()),
+    m_dxvkInstance  (pDxvkInstance),
     m_dxvkAdapter   (pDxvkAdapter),
     m_dxvkDevice    (CreateDevice(FeatureLevel)),
     m_d3d11Device   (this, FeatureLevel, FeatureFlags),
