@@ -283,7 +283,7 @@ namespace dxvk {
     auto dxvkAdapter = adapter->GetDXVKAdapter();
 
     std::string clientApi = str::format("D3D9", m_extended ? "Ex" : "");
-    auto dxvkDevice = dxvkAdapter->createDevice(clientApi, D3D9DeviceEx::GetDeviceFeatures(dxvkAdapter));
+    auto dxvkDevice = dxvkAdapter->createDevice(m_instance, clientApi, D3D9DeviceEx::GetDeviceFeatures(dxvkAdapter));
 
     *ppReturnedDeviceInterface = ref(new D3D9DeviceEx(
       this,

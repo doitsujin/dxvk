@@ -50,7 +50,7 @@ namespace dxvk {
     , m_behaviorFlags  ( BehaviorFlags )
     , m_multithread    ( BehaviorFlags & D3DCREATE_MULTITHREADED )
     , m_shaderModules  ( new D3D9ShaderModuleSet )
-    , m_d3d9Options    ( dxvkDevice, pAdapter->GetDXVKAdapter()->instance()->config() )
+    , m_d3d9Options    ( dxvkDevice, pParent->GetInstance()->config() )
     , m_dxsoOptions    ( m_dxvkDevice, m_d3d9Options )
     , m_isSWVP         ( (BehaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING) ? TRUE : FALSE ) {
     // If we can SWVP, then we use an extended constant set

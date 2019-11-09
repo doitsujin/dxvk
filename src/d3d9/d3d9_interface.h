@@ -127,6 +127,8 @@ namespace dxvk {
 
     bool IsExtended() { return m_extended; }
 
+    Rc<DxvkInstance> GetInstance() { return m_instance; }
+
   private:
 
     void CacheModes(D3D9Format Format);
