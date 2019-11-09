@@ -112,6 +112,8 @@ namespace dxvk {
         if (m_state != D3D9_VK_QUERY_BEGUN && QueryBeginnable(m_queryType))
           m_parent->Begin(this);
 
+        m_resetCtr += 1;
+
         m_parent->End(this);
 
       }
@@ -139,7 +141,8 @@ namespace dxvk {
     if (m_state == D3D9_VK_QUERY_INITIAL)
       this->Issue(D3DISSUE_END);
 
-    m_parent->SynchronizeCsThread();
+    if (m_resetCtr != 0u)
+      return S_FALSE;
 
     bool flush = dwGetDataFlags & D3DGETDATA_FLUSH;
 
@@ -267,6 +270,8 @@ namespace dxvk {
 
       default: break;
     }
+
+    m_resetCtr -= 1;
   }
 
 

@@ -66,6 +66,8 @@ namespace dxvk {
     uint32_t m_stallMask = 0;
     bool     m_stallFlag = false;
 
+    std::atomic<uint32_t> m_resetCtr = { 0u };
+
     UINT64 GetTimestampQueryFrequency() const;
 
   };
