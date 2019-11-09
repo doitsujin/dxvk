@@ -142,9 +142,9 @@ namespace dxvk {
 
     void PresentImage(UINT PresentInterval);
 
-    void SynchronizePresent();
+    void SubmitPresent(const vk::PresenterSync& Sync);
 
-    void FlushDevice();
+    void SynchronizePresent();
 
     void RecreateSwapChain(
         BOOL                      Vsync);

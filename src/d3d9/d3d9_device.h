@@ -99,6 +99,8 @@ namespace dxvk {
     constexpr static uint32_t MaxPendingSubmits = 6;
 
     constexpr static uint32_t NullStreamIdx = caps::MaxStreams;
+
+    friend class D3D9SwapChainEx;
   public:
 
     D3D9DeviceEx(

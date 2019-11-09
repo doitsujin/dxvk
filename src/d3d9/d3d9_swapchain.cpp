@@ -88,6 +88,11 @@ namespace dxvk {
           DWORD    dwFlags) {
     auto lock = m_parent->LockDevice();
 
+    m_parent->Flush();
+
+    if (!m_device->hasAsyncPresent())
+      m_parent->SynchronizeCsThread();
+
     uint32_t presentInterval = m_presentParams.PresentationInterval;
 
     // This is not true directly in d3d9 to to timing differences that don't matter for us.
@@ -126,8 +131,6 @@ namespace dxvk {
 
       if (std::exchange(m_dirty, false))
         RecreateSwapChain(vsync);
-
-      FlushDevice();
 
       PresentImage(presentInterval);
       return D3D_OK;
@@ -515,20 +518,44 @@ namespace dxvk {
 
       if (m_hud != nullptr)
         m_hud->render(m_context, info.imageExtent);
-      
+
       if (i + 1 >= SyncInterval)
         m_context->queueSignal(syncEvent);
 
+      SubmitPresent(sync);
+    }
+  }
+
+
+  void D3D9SwapChainEx::SubmitPresent(const vk::PresenterSync& Sync) {
+    if (m_device->hasAsyncPresent()) {
+      // Present from CS thread so that we don't
+      // have to synchronize with it first.
+      m_presentStatus.result = VK_NOT_READY;
+
+      m_parent->EmitCs([this,
+        cSync = Sync,
+        cCommandList = m_context->endRecording()
+      ] (DxvkContext* ctx) {
+        m_device->submitCommandList(cCommandList,
+          cSync.acquire, cSync.present);
+
+        m_device->presentImage(m_presenter,
+          cSync.present, &m_presentStatus);
+      });
+
+      m_parent->FlushCsChunk();
+    }
+    else {
+      // Safe path, present from calling thread
       m_device->submitCommandList(
         m_context->endRecording(),
-        sync.acquire, sync.present);
-      
-      m_device->presentImage(m_presenter,
-        sync.present, &m_presentStatus);
+        Sync.acquire, Sync.present);
 
-      if (m_presentStatus.result != VK_NOT_READY
-       && m_presentStatus.result != VK_SUCCESS)
-        RecreateSwapChain(m_vsync);
+      m_device->presentImage(m_presenter,
+        Sync.present, &m_presentStatus);
+
+      SynchronizePresent();
     }
   }
 
@@ -623,14 +650,6 @@ namespace dxvk {
       m_imageViews[i] = new DxvkImageView(
         m_device->vkd(), image, viewInfo);
     }
-  }
-
-
-  void D3D9SwapChainEx::FlushDevice() {
-    // The presentation code is run from the main rendering thread
-    // rather than the command stream thread, so we synchronize.
-    m_parent->Flush();
-    m_parent->SynchronizeCsThread();
   }
 
 
