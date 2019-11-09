@@ -35,6 +35,8 @@ namespace dxvk {
     this->customDeviceId        = parsePciId(config.getOption<std::string>("d3d9.customDeviceId"));
     this->customDeviceDesc      = config.getOption<std::string>("d3d9.customDeviceDesc");
 
+    const int32_t vendorId = this->customDeviceId != -1 ? this->customDeviceId : (adapter != nullptr ? adapter->deviceProperties().vendorID : 0);
+
     this->maxFrameLatency       = config.getOption<int32_t> ("d3d9.maxFrameLatency",       0);
     this->presentInterval       = config.getOption<int32_t> ("d3d9.presentInterval",       -1);
     this->shaderModel           = config.getOption<int32_t> ("d3d9.shaderModel",           3);
@@ -55,6 +57,7 @@ namespace dxvk {
     this->disableA8RT           = config.getOption<bool>    ("d3d9.disableA8RT",           false);
     this->invariantPosition     = config.getOption<bool>    ("d3d9.invariantPosition",     false);
     this->memoryTrackTest       = config.getOption<bool>    ("d3d9.memoryTrackTest",       false);
+    this->supportVCache         = config.getOption<bool>    ("d3d9.supportVCache",         vendorId == 0x10de);
 
     // If we are not Nvidia, enable general hazards.
     this->generalHazards = adapter == nullptr || !adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0);

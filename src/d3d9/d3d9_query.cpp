@@ -11,7 +11,9 @@ namespace dxvk {
     Rc<DxvkDevice> dxvkDevice = m_parent->GetDXVKDevice();
 
     switch (m_queryType) {
-      case D3DQUERYTYPE_VCACHE:
+    case D3DQUERYTYPE_VCACHE:
+        if (!pDevice->GetOptions()->supportVCache)
+          throw DxvkError(str::format("D3D9Query: Unsupported query type ", m_queryType, " (from d3d9.supportVCache)"));
         break;
 
       case D3DQUERYTYPE_EVENT:

@@ -97,6 +97,9 @@ namespace dxvk {
     /// Whether or not to respect memory tracking for
     /// failing resource allocation.
     bool memoryTrackTest;
+
+    /// Support VCACHE query
+    bool supportVCache;
   };
 
 }
