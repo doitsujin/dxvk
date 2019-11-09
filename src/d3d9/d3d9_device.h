@@ -835,6 +835,9 @@ namespace dxvk {
     void FlushImplicit(BOOL StrongHint);
 
     bool ChangeReportedMemory(int64_t delta) {
+      if (IsExtended())
+        return true;
+
       m_availableMemory += delta;
 
       return !m_d3d9Options.memoryTrackTest || m_availableMemory > 0;
