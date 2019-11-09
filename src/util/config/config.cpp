@@ -249,6 +249,12 @@ namespace dxvk {
     { R"(\\csgo\.exe$)", {{
       { "d3d9.customVendorId",              "1002" },
     }} },
+    /* Vampire - The Masquerade Bloodlines        */
+    { R"(\\vampire\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",        "True" },
+      { "d3d9.memoryTrackTest",             "True" },
+      { "d3d9.maxAvailableMemory",          "1073741824" },
+    }} },
   }};
 
 
