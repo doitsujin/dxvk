@@ -283,10 +283,9 @@ namespace dxvk {
 
 
   bool D3D9Query::QueryEndable(D3DQUERYTYPE QueryType) {
-    return QueryType == D3DQUERYTYPE_TIMESTAMP
-        || QueryType == D3DQUERYTYPE_OCCLUSION
-        || QueryType == D3DQUERYTYPE_EVENT
-        || QueryType == D3DQUERYTYPE_VERTEXSTATS;
+    return QueryBeginnable(QueryType)
+        || QueryType == D3DQUERYTYPE_TIMESTAMP
+        || QueryType == D3DQUERYTYPE_EVENT;
   }
 
 
