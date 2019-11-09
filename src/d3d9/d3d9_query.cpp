@@ -193,8 +193,8 @@ namespace dxvk {
           auto* data = static_cast<D3DDEVINFO_VCACHE*>(pData);
           data->Pattern     = MAKEFOURCC('H', 'C', 'A', 'C');
           data->OptMethod   = 1;
-          data->CacheSize   = 16;
-          data->MagicNumber = 8;
+          data->CacheSize   = 24;
+          data->MagicNumber = 20;
           return D3D_OK;
         }
 
