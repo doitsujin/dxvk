@@ -155,6 +155,7 @@ namespace dxvk {
           D3D11_DEPTH_STENCIL_VIEW_DESC*    pDesc) {
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
+    pDesc->Flags = 0;
     
     switch (resourceDim) {
       case D3D11_RESOURCE_DIMENSION_TEXTURE1D: {
