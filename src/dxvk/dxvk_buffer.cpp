@@ -133,6 +133,10 @@ namespace dxvk {
      && m_info.size > (devInfo.limits.optimalBufferCopyOffsetAlignment / 2))
       result = std::max(result, devInfo.limits.optimalBufferCopyOffsetAlignment);
 
+    // For some reason, Warhammer Chaosbane breaks otherwise
+    if (m_info.usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
+      result = 256;
+
     if (m_memFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
       result = std::max(result, devInfo.limits.nonCoherentAtomSize);
       result = std::max(result, VkDeviceSize(64));
