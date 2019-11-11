@@ -151,6 +151,11 @@ namespace dxvk {
     { R"(\\SaintsRowTheThird_DX11\.exe$)", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
     }} },
+    /* Metal Gear Solid 5                         */
+    { R"(\\mgsvtpp\.exe$)", {{
+      { "dxvk.enableOpenVR",                "False" },
+      { "d3d11.dcSingleUseMode",            "False" },
+    }} },
   }};
 
 
