@@ -154,7 +154,6 @@ namespace dxvk {
     /* Metal Gear Solid 5                         */
     { R"(\\mgsvtpp\.exe$)", {{
       { "dxvk.enableOpenVR",                "False" },
-      { "d3d11.dcSingleUseMode",            "False" },
     }} },
   }};
 
