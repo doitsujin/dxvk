@@ -1405,16 +1405,6 @@ namespace dxvk {
       };
 
       auto DoOp = [&](D3DTEXTUREOP op, uint32_t dst, std::array<uint32_t, TextureArgCount> arg) {
-
-        // Dest should be self-saturated if it is used.
-        if (op != D3DTOP_SELECTARG1        && op != D3DTOP_SELECTARG2          &&
-            op != D3DTOP_MODULATE          && op != D3DTOP_PREMODULATE         &&
-            op != D3DTOP_BLENDDIFFUSEALPHA && op != D3DTOP_BLENDTEXTUREALPHA   &&
-            op != D3DTOP_BLENDFACTORALPHA  && op != D3DTOP_BLENDCURRENTALPHA   &&
-            op != D3DTOP_BUMPENVMAP        && op != D3DTOP_BUMPENVMAPLUMINANCE &&
-            op != D3DTOP_LERP)
-          dst = Saturate(dst);
-
         switch (op) {
           case D3DTOP_SELECTARG1:
             dst = arg[1];
@@ -1427,11 +1417,13 @@ namespace dxvk {
           case D3DTOP_MODULATE4X:
             dst = m_module.opFMul(m_vec4Type, arg[1], arg[2]);
             dst = m_module.opVectorTimesScalar(m_vec4Type, dst, m_module.constf32(4.0f));
+            dst = Saturate(dst);
             break;
 
           case D3DTOP_MODULATE2X:
             dst = m_module.opFMul(m_vec4Type, arg[1], arg[2]);
             dst = m_module.opVectorTimesScalar(m_vec4Type, dst, m_module.constf32(2.0f));
+            dst = Saturate(dst);
             break;
 
           case D3DTOP_MODULATE:
@@ -1444,6 +1436,7 @@ namespace dxvk {
 
             dst = m_module.opFAdd(m_vec4Type, arg[1], arg[2]);
             dst = m_module.opVectorTimesScalar(m_vec4Type, dst, m_module.constf32(2.0f));
+            dst = Saturate(dst);
             break;
 
           case D3DTOP_ADDSIGNED:
@@ -1451,18 +1444,22 @@ namespace dxvk {
               m_module.constvec4f32(0.5f, 0.5f, 0.5f, 0.5f));
 
             dst = m_module.opFAdd(m_vec4Type, arg[1], arg[2]);
+            dst = Saturate(dst);
             break;
 
           case D3DTOP_ADD:
             dst = m_module.opFAdd(m_vec4Type, arg[1], arg[2]);
+            dst = Saturate(dst);
             break;
 
           case D3DTOP_SUBTRACT:
             dst = m_module.opFSub(m_vec4Type, arg[1], arg[2]);
+            dst = Saturate(dst);
             break;
 
           case D3DTOP_ADDSMOOTH:
             dst = m_module.opFFma(m_vec4Type, Complement(arg[1]), arg[2], arg[1]);
+            dst = Saturate(dst);
             break;
 
           case D3DTOP_BLENDDIFFUSEALPHA:
@@ -1491,18 +1488,22 @@ namespace dxvk {
 
           case D3DTOP_MODULATEALPHA_ADDCOLOR:
             dst = m_module.opFFma(m_vec4Type, AlphaReplicate(arg[1]), arg[2], arg[1]);
+            dst = Saturate(dst);
             break;
 
           case D3DTOP_MODULATECOLOR_ADDALPHA:
             dst = m_module.opFFma(m_vec4Type, arg[1], arg[2], AlphaReplicate(arg[1]));
+            dst = Saturate(dst);
             break;
 
           case D3DTOP_MODULATEINVALPHA_ADDCOLOR:
             dst = m_module.opFFma(m_vec4Type, Complement(AlphaReplicate(arg[1])), arg[2], arg[1]);
+            dst = Saturate(dst);
             break;
 
           case D3DTOP_MODULATEINVCOLOR_ADDALPHA:
             dst = m_module.opFFma(m_vec4Type, Complement(arg[1]), arg[2], AlphaReplicate(arg[1]));
+            dst = Saturate(dst);
             break;
 
           case D3DTOP_BUMPENVMAP:
@@ -1539,6 +1540,7 @@ namespace dxvk {
 
           case D3DTOP_MULTIPLYADD:
             dst = m_module.opFFma(m_vec4Type, arg[1], arg[2], arg[0]);
+            dst = Saturate(dst);
             break;
 
           case D3DTOP_LERP:
