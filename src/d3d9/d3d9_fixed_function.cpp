@@ -1358,6 +1358,12 @@ namespace dxvk {
           reg);
       };
 
+      auto Saturate = [&](uint32_t reg) {
+        return m_module.opFClamp(m_vec4Type, reg,
+          m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f),
+          m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f));
+      };
+
       auto GetArg = [&] (uint32_t arg) {
         uint32_t reg = m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f);
 
@@ -1407,9 +1413,7 @@ namespace dxvk {
             op != D3DTOP_BLENDFACTORALPHA  && op != D3DTOP_BLENDCURRENTALPHA   &&
             op != D3DTOP_BUMPENVMAP        && op != D3DTOP_BUMPENVMAPLUMINANCE &&
             op != D3DTOP_LERP)
-          dst = m_module.opFClamp(m_vec4Type, dst,
-            m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f),
-            m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f));
+          dst = Saturate(dst);
 
         switch (op) {
           case D3DTOP_SELECTARG1:
@@ -1528,9 +1532,7 @@ namespace dxvk {
             dst = ScalarReplicate(dst);
 
             // Saturate
-            dst = m_module.opFClamp(m_vec4Type, dst,
-              m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f),
-              m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f));
+            dst = Saturate(dst);
 
             break;
           }
