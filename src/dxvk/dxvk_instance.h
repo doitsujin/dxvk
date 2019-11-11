@@ -4,6 +4,7 @@
 
 #include "dxvk_adapter.h"
 #include "dxvk_device_filter.h"
+#include "dxvk_extension_provider.h"
 #include "dxvk_options.h"
 
 namespace dxvk {
@@ -105,6 +106,7 @@ namespace dxvk {
     Rc<vk::LibraryFn>   m_vkl;
     Rc<vk::InstanceFn>  m_vki;
 
+    std::vector<DxvkExtensionProvider*> m_extProviders;
     std::vector<Rc<DxvkAdapter>> m_adapters;
     
     VkInstance createInstance();

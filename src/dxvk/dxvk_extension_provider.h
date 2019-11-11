@@ -11,8 +11,6 @@ namespace dxvk {
   class DxvkInstance;
   class DxvkExtensionProvider;
 
-  using DxvkExtensionProviderList = std::vector<DxvkExtensionProvider*>;
-
   /**
    * \brief Extension provider base
    *
@@ -63,15 +61,6 @@ namespace dxvk {
      */
     virtual void initDeviceExtensions(
       const DxvkInstance* instance) = 0;
-
-    /**
-     * \brief Get list of ptrs to the extension providers
-     */
-    static const DxvkExtensionProviderList& getExtensionProviders();
-
-  private:
-
-    static DxvkExtensionProviderList s_extensionProviders;
 
   };
 

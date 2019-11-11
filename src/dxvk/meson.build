@@ -98,7 +98,6 @@ dxvk_src = files([
   'dxvk_stats.cpp',
   'dxvk_unbound.cpp',
   'dxvk_util.cpp',
-  'dxvk_extension_provider.cpp',
 
   'platform/dxvk_win32_exts.cpp',
   

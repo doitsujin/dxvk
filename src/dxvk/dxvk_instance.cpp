@@ -1,7 +1,8 @@
 #include <version.h>
 
 #include "dxvk_instance.h"
-#include "dxvk_extension_provider.h"
+#include "dxvk_openvr.h"
+#include "dxvk_platform_exts.h"
 
 #include <algorithm>
 
@@ -15,13 +16,16 @@ namespace dxvk {
     m_config.merge(Config::getAppConfig(env::getExePath()));
     m_config.logOptions();
 
-    const auto& extProviders = DxvkExtensionProvider::getExtensionProviders();
+    m_options = DxvkOptions(m_config);
+
+    m_extProviders.push_back(&DxvkPlatformExts::s_instance);
+    m_extProviders.push_back(&VrInstance::s_instance);
 
     Logger::info("Built-in extension providers:");
-    for (const auto& provider : extProviders)
+    for (const auto& provider : m_extProviders)
       Logger::info(str::format("  ", provider->getName()));
 
-    for (const auto& provider : extProviders)
+    for (const auto& provider : m_extProviders)
       provider->initInstanceExtensions();
 
     m_vkl = new vk::LibraryFn();
@@ -29,17 +33,15 @@ namespace dxvk {
 
     m_adapters = this->queryAdapters();
 
-    for (const auto& provider : extProviders)
+    for (const auto& provider : m_extProviders)
       provider->initDeviceExtensions(this);
 
     for (uint32_t i = 0; i < m_adapters.size(); i++) {
-      for (const auto& provider : extProviders) {
+      for (const auto& provider : m_extProviders) {
         m_adapters[i]->enableExtensions(
           provider->getDeviceExtensions(i));
       }
     }
-
-    m_options = DxvkOptions(m_config);
   }
   
   
@@ -97,11 +99,10 @@ namespace dxvk {
           extensionsEnabled))
       throw DxvkError("DxvkInstance: Failed to create instance");
 
-    const auto& extProviders = DxvkExtensionProvider::getExtensionProviders();
-    
     // Enable additional extensions if necessary
-    for (const auto& provider : extProviders)
+    for (const auto& provider : m_extProviders)
       extensionsEnabled.merge(provider->getInstanceExtensions());
+
     DxvkNameList extensionNameList = extensionsEnabled.toNameList();
     
     Logger::info("Enabled instance extensions:");
