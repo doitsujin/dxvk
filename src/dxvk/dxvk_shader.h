@@ -33,7 +33,21 @@ namespace dxvk {
     RasterizerSampleCount       = SpecConstantRangeStart + 0,
     FirstPipelineConstant
   };
-  
+
+  /**
+   * \brief Shader flags
+   *
+   * Provides extra information about the features
+   * used by a shader.
+   */
+  enum DxvkShaderFlag : uint64_t {
+    HasSampleRateShading,
+    HasTransformFeedback,
+    ExportsStencilRef,
+    ExportsViewportIndexLayerFromVertexStage,
+  };
+
+  using DxvkShaderFlags = Flags<DxvkShaderFlag>;
   
   /**
    * \brief Shader interface slots
@@ -143,16 +157,12 @@ namespace dxvk {
     }
     
     /**
-     * \brief Checks whether a capability is enabled
-     * 
-     * If the shader contains an \c OpCapability
-     * instruction with the given capability, it
-     * is considered enabled. This may be required
-     * to correctly set up certain pipeline states.
-     * \param [in] cap The capability to check
-     * \returns \c true if \c cap is enabled
+     * \brief Retrieves shader flags
+     * \returns Shader flags
      */
-    bool hasCapability(spv::Capability cap);
+    DxvkShaderFlags flags() const {
+      return m_flags;
+    }
     
     /**
      * \brief Adds resource slots definitions to a mapping
@@ -274,12 +284,11 @@ namespace dxvk {
     std::vector<DxvkResourceSlot> m_slots;
     std::vector<size_t>           m_idOffsets;
     DxvkInterfaceSlots            m_interface;
+    DxvkShaderFlags               m_flags;
     DxvkShaderOptions             m_options;
     DxvkShaderConstData           m_constData;
     DxvkShaderKey                 m_key;
     size_t                        m_hash = 0;
-
-    std::vector<spv::Capability>  m_capabilities;
 
     size_t m_o1IdxOffset = 0;
     size_t m_o1LocOffset = 0;

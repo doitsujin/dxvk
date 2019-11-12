@@ -1987,11 +1987,11 @@ namespace dxvk {
 
     auto shader = commonShader.GetShader();
 
-    if (shader->hasCapability(spv::CapabilityStencilExportEXT)
+    if (shader->flags().test(DxvkShaderFlag::ExportsStencilRef)
      && !m_dxvkDevice->extensions().extShaderStencilExport)
       return E_INVALIDARG;
 
-    if (shader->hasCapability(spv::CapabilityShaderViewportIndexLayerEXT)
+    if (shader->flags().test(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage)
      && !m_dxvkDevice->extensions().extShaderViewportIndexLayer)
       return E_INVALIDARG;
 

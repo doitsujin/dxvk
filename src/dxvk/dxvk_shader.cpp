@@ -127,23 +127,27 @@ namespace dxvk {
           m_o1IdxOffset = ins.offset() + 3;
       }
 
-      if (ins.opCode() == spv::OpCapability)
-        m_capabilities.push_back(spv::Capability(ins.arg(1)));
+      if (ins.opCode() == spv::OpExecutionMode) {
+        if (ins.arg(2) == spv::ExecutionModeStencilRefReplacingEXT)
+          m_flags.set(DxvkShaderFlag::ExportsStencilRef);
+
+        if (ins.arg(2) == spv::ExecutionModeXfb)
+          m_flags.set(DxvkShaderFlag::HasTransformFeedback);
+      }
+
+      if (ins.opCode() == spv::OpCapability) {
+        if (ins.arg(1) == spv::CapabilitySampleRateShading)
+          m_flags.set(DxvkShaderFlag::HasSampleRateShading);
+
+        if (ins.arg(1) == spv::CapabilityShaderViewportIndexLayerEXT)
+          m_flags.set(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage);
+      }
     }
   }
   
   
   DxvkShader::~DxvkShader() {
     
-  }
-  
-  
-  bool DxvkShader::hasCapability(spv::Capability cap) {
-    auto entry = std::find(
-      m_capabilities.begin(),
-      m_capabilities.end(), cap);
-    
-    return entry != m_capabilities.end();
   }
   
   

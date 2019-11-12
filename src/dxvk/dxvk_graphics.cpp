@@ -29,13 +29,13 @@ namespace dxvk {
     m_vsIn  = m_shaders.vs != nullptr ? m_shaders.vs->interfaceSlots().inputSlots  : 0;
     m_fsOut = m_shaders.fs != nullptr ? m_shaders.fs->interfaceSlots().outputSlots : 0;
 
-    if (m_shaders.gs != nullptr && m_shaders.gs->hasCapability(spv::CapabilityTransformFeedback))
+    if (m_shaders.gs != nullptr && m_shaders.gs->flags().test(DxvkShaderFlag::HasTransformFeedback))
       m_flags.set(DxvkGraphicsPipelineFlag::HasTransformFeedback);
     
     if (m_layout->getStorageDescriptorStages())
       m_flags.set(DxvkGraphicsPipelineFlag::HasStorageDescriptors);
     
-    m_common.msSampleShadingEnable = m_shaders.fs != nullptr && m_shaders.fs->hasCapability(spv::CapabilitySampleRateShading);
+    m_common.msSampleShadingEnable = m_shaders.fs != nullptr && m_shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading);
     m_common.msSampleShadingFactor = 1.0f;
   }
   
