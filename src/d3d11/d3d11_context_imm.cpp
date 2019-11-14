@@ -104,12 +104,12 @@ namespace dxvk {
     if (unlikely(!pAsync))
       return;
     
-    Com<D3D11Query, false> query(static_cast<D3D11Query*>(pAsync));
+    auto query = static_cast<D3D11Query*>(pAsync);
 
     if (unlikely(!query->DoBegin()))
       return;
 
-    EmitCs([cQuery = std::move(query)]
+    EmitCs([cQuery = Com<D3D11Query, false>(query)]
     (DxvkContext* ctx) {
       cQuery->Begin(ctx);
     });
@@ -122,10 +122,15 @@ namespace dxvk {
     if (unlikely(!pAsync))
       return;
     
-    Com<D3D11Query, false> query(static_cast<D3D11Query*>(pAsync));
+    auto query = static_cast<D3D11Query*>(pAsync);
 
     if (unlikely(!query->DoEnd()))
       return;
+
+    EmitCs([cQuery = Com<D3D11Query, false>(query)]
+    (DxvkContext* ctx) {
+      cQuery->End(ctx);
+    });
 
     if (unlikely(query->IsEvent())) {
       query->NotifyEnd();
@@ -133,11 +138,6 @@ namespace dxvk {
         ? Flush()
         : FlushImplicit(TRUE);
     }
-
-    EmitCs([cQuery = std::move(query)]
-    (DxvkContext* ctx) {
-      cQuery->End(ctx);
-    });
   }
 
 
