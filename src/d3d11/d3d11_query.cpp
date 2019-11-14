@@ -215,7 +215,7 @@ namespace dxvk {
     if (unlikely(m_predicate != nullptr))
       ctx->writePredicate(DxvkBufferSlice(m_predicate), m_query[0]);
 
-    m_resetCtr -= 1;
+    m_resetCtr.fetch_sub(1, std::memory_order_release);
   }
   
   
@@ -232,7 +232,7 @@ namespace dxvk {
       return false;
 
     m_state = D3D11_VK_QUERY_ENDED;
-    m_resetCtr += 1;
+    m_resetCtr.fetch_add(1, std::memory_order_acquire);
     return true;
   }
 
