@@ -12,13 +12,6 @@ namespace dxvk {
   
   struct D3D11Options {
     D3D11Options(const Config& config, const Rc<DxvkDevice>& device);
-    /// Handle D3D11_MAP_FLAG_DO_NOT_WAIT properly.
-    /// 
-    /// This can offer substantial speedups, but some games
-    /// (The Witcher 3, Elder Scrolls Online, possibly others)
-    /// seem to make incorrect assumptions about when a map
-    /// operation succeeds when that flag is set.
-    bool allowMapFlagNoWait;
 
     /// Enables speed hack for mapping on deferred contexts
     ///

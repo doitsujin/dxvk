@@ -588,11 +588,6 @@ namespace dxvk {
     const Rc<DxvkResource>&                 Resource,
           D3D11_MAP                         MapType,
           UINT                              MapFlags) {
-    // Some games might not work correctly when a map
-    // fails with D3D11_MAP_FLAG_DO_NOT_WAIT set
-    if (!m_parent->GetOptions()->allowMapFlagNoWait)
-      MapFlags &= ~D3D11_MAP_FLAG_DO_NOT_WAIT;
-
     // Determine access type to wait for based on map mode
     DxvkAccess access = MapType == D3D11_MAP_READ
       ? DxvkAccess::Write
