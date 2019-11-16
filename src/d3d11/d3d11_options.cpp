@@ -22,7 +22,7 @@ namespace dxvk {
       && DxvkGpuVendor(devInfo.core.properties.vendorID) != DxvkGpuVendor::Amd;
 
     bool apitraceAttached = false;
-    #ifndef __WINE__
+    #if !defined(__WINE__) && !defined(DXVK_NATIVE)
     apitraceAttached = ::GetModuleHandle("dxgitrace.dll") != nullptr;
     #endif
 
