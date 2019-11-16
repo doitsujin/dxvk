@@ -2426,7 +2426,7 @@ namespace dxvk {
     // Make sure the back buffer size is not zero
     DXGI_SWAP_CHAIN_DESC1 desc = *pDesc;
     
-    GetWindowClientSize(hWnd,
+    wsi::getWindowSize(hWnd,
       desc.Width  ? nullptr : &desc.Width,
       desc.Height ? nullptr : &desc.Height);
     
