@@ -44,7 +44,7 @@ typedef enum D3D11_FORMAT_SUPPORT2 {
 #ifndef __WINE__
 
 //MinGW-Headers supports these typedefs since 6.0.0
-#if !defined(__MINGW64_VERSION_MAJOR) || __MINGW64_VERSION_MAJOR < 6
+#if (!defined(__MINGW64_VERSION_MAJOR) || __MINGW64_VERSION_MAJOR < 6) && !defined(DXVK_NATIVE)
 typedef enum D3D11_COPY_FLAGS {
   D3D11_COPY_NO_OVERWRITE                                             = 0x1,
   D3D11_COPY_DISCARD                                                  = 0x2,

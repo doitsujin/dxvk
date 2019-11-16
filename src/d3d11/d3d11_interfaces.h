@@ -97,6 +97,9 @@ ID3D11VkExtContext : public IUnknown {
 #ifdef _MSC_VER
 struct __declspec(uuid("8a6e3c42-f74c-45b7-8265-a231b677ca17")) ID3D11VkExtDevice;
 struct __declspec(uuid("fd0bca13-5cb6-4c3a-987e-4750de2ca791")) ID3D11VkExtContext;
+#elif DXVK_NATIVE
+DECLARE_UUIDOF_HELPER(ID3D11VkExtDevice, 0x8a6e3c42,0xf74c,0x45b7,0x82,0x65,0xa2,0x31,0xb6,0x77,0xca,0x17);
+DECLARE_UUIDOF_HELPER(ID3D11VkExtContext,0xfd0bca13,0x5cb6,0x4c3a,0x98,0x7e,0x47,0x50,0xde,0x2c,0xa7,0x91);
 #else
 DXVK_DEFINE_GUID(ID3D11VkExtDevice);
 DXVK_DEFINE_GUID(ID3D11VkExtContext);
