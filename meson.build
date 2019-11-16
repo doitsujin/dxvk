@@ -13,6 +13,8 @@ else
   dxvk_msvc=false
 endif
 
+dxvk_native = (not meson.is_cross_build() and not dxvk_msvc) or get_option('dxvk_native_force')
+
 if dxvk_compiler.get_id() == 'msvc'
   add_project_arguments('/std:' + dxvk_cpp_std, language : 'cpp')
 endif
@@ -32,6 +34,10 @@ code = '''#ifndef __WINE__
 dxvk_winelib = dxvk_compiler.compiles(code, name: 'winelib check')
 dxvk_extradep = [ ]
 
+dxvk_platform = 'windows'
+dxvk_wsi      = 'win32'
+so_prefix     = ''
+
 if dxvk_winelib
   if dxvk_compiler.has_argument('--no-gnu-unique')
     add_project_arguments('--no-gnu-unique', language : ['cpp'])
@@ -48,7 +54,7 @@ if dxvk_winelib
   dll_ext = '.dll'
   res_ext = '.res'
   def_spec_ext = '.spec'
-else
+elif not dxvk_native
   if dxvk_compiler.get_id() == 'msvc'
     wrc = find_program('rc')
   else
@@ -85,7 +91,27 @@ else
   endif
 
   def_spec_ext = '.def'
+else
+  add_project_arguments('-DDXVK_NATIVE', language : 'cpp')
+
+  dxvk_wsi      = get_option('dxvk_native_wsi')
+  dxvk_platform = target_machine.system()
+
+  dxvk_include_path = include_directories('./include', './include/native/', './include/native/windows', './include/native/directx')
+
+  lib_vulkan  = dxvk_compiler.find_library('vulkan')
+  lib_sdl2    = dxvk_compiler.find_library('SDL2')
+
+  wrc = find_program('echo')
+  res_ext = ''
+  exe_ext = ''
+  dll_ext = ''
+  def_spec_ext = '.def'
+  so_prefix = 'lib'
 endif
+
+add_project_arguments('-DDXVK_WSI_'      + dxvk_wsi.to_upper(),      language : 'cpp')
+add_project_arguments('-DDXVK_PLATFORM_' + dxvk_platform.to_upper(), language : 'cpp')
 
 glsl_compiler = find_program('glslangValidator')
 glsl_generator = generator(glsl_compiler,
@@ -96,6 +122,10 @@ if dxvk_compiler.get_id() == 'msvc'
   wrc_generator = generator(wrc,
   output    : [ '@BASENAME@' + res_ext ],
   arguments : [ '/fo', '@OUTPUT@', '@INPUT@' ])
+elif dxvk_native
+  wrc_generator = generator(wrc,
+  output    : [ '@BASENAME@_ignored.h' ],
+  arguments : [ 'Ignoring: ', '@INPUT@' ])
 else
   wrc_generator = generator(wrc,
   output    : [ '@BASENAME@' + res_ext ],
