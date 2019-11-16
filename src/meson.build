@@ -1,5 +1,6 @@
 subdir('util')
 subdir('spirv')
+subdir('wsi')
 subdir('vulkan')
 subdir('dxvk')
 
