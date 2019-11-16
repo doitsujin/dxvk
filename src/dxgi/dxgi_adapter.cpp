@@ -10,6 +10,7 @@
 #include "dxgi_options.h"
 #include "dxgi_output.h"
 
+#include "../wsi/wsi_monitor.h"
 #include "../util/util_luid.h"
 
 namespace dxvk {
@@ -134,14 +135,14 @@ namespace dxvk {
     
     if (ppOutput == nullptr)
       return E_INVALIDARG;
+
+    HMONITOR monitor = wsi::enumMonitors(Output);
     
-    if (Output > 0) {
+    if (!monitor) {
       *ppOutput = nullptr;
       return DXGI_ERROR_NOT_FOUND;
     }
-    
-    // TODO support multiple monitors
-    HMONITOR monitor = ::MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY);
+
     *ppOutput = ref(new DxgiOutput(m_factory, this, monitor));
     return S_OK;
   }

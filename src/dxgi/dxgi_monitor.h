@@ -5,6 +5,8 @@
 
 #include "dxgi_interfaces.h"
 
+#include "../wsi/wsi_mode.h"
+
 namespace dxvk {
 
   class DxgiSwapChain;
@@ -54,41 +56,42 @@ namespace dxvk {
    */
   uint32_t GetMonitorFormatBpp(
           DXGI_FORMAT             Format);
-  
-  /**
-   * \brief Retrieves monitor display mode
-   *
-   * \param [in] hMonitor Monitor handle
-   * \param [in] ModeNum Mode number
-   * \param [out] Display mode properties
-   * \returns S_OK on success
-   */
-  HRESULT GetMonitorDisplayMode(
-          HMONITOR                hMonitor,
-          DWORD                   ModeNum,
-          DXGI_MODE_DESC*         pMode);
 
   /**
-   * \brief Sets monitor display mode
-   * 
-   * \param [in] hMonitor Monitor handle
-   * \param [in] pMode Display mode properties
-   * \returns S_OK on success
+   * \brief Queries bits per pixel for a format
+   *
+   * \param [in] Bits per pixel to query
+   * \returns Format The DXGI format
    */
-  HRESULT SetMonitorDisplayMode(
-          HMONITOR                hMonitor,
-    const DXGI_MODE_DESC*         pMode);
+  DXGI_FORMAT GetBppMonitorFormat(
+          uint32_t                bpp);
   
   /**
-   * \brief Queries window client size
-   * 
-   * \param [in] hWnd Window to query
-   * \param [out] pWidth Client width
-   * \param [out] pHeight Client height
+   * \brief Converts two display modes
    */
-  void GetWindowClientSize(
-          HWND                    hWnd,
-          UINT*                   pWidth,
-          UINT*                   pHeight);
+  inline void ConvertDisplayMode(
+    const wsi::WsiMode&          WsiMode,
+          DXGI_MODE_DESC1*       pDxgiMode) {
+    pDxgiMode->Width            = WsiMode.width;
+    pDxgiMode->Height           = WsiMode.height;
+    pDxgiMode->RefreshRate      = DXGI_RATIONAL{ WsiMode.refreshRate.numerator, WsiMode.refreshRate.denominator };
+    pDxgiMode->Format           = GetBppMonitorFormat(WsiMode.bitsPerPixel);
+    pDxgiMode->ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
+    pDxgiMode->Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
+    pDxgiMode->Stereo           = FALSE;
+  }
+
+  /**
+   * \brief Converts two display modes
+   */
+  inline void ConvertDisplayMode(
+    const DXGI_MODE_DESC1&        DxgiMode,
+          wsi::WsiMode*           pWsiMode) {
+    pWsiMode->width        = DxgiMode.Width;
+    pWsiMode->height       = DxgiMode.Height;
+    pWsiMode->refreshRate  = wsi::WsiRational{ DxgiMode.RefreshRate.Numerator, DxgiMode.RefreshRate.Denominator };
+    pWsiMode->bitsPerPixel = GetMonitorFormatBpp(DxgiMode.Format);
+    pWsiMode->interlaced   = false;
+  }
 
 }

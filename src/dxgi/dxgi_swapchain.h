@@ -11,6 +11,10 @@
 
 #include "../spirv/spirv_module.h"
 
+#include "../wsi/wsi_window.h"
+#include "../wsi/wsi_monitor.h"
+#include "../wsi/wsi_mode.h"
+
 namespace dxvk {
   
   class DxgiDevice;
@@ -167,12 +171,6 @@ namespace dxvk {
     
   private:
     
-    struct WindowState {
-      LONG style   = 0;
-      LONG exstyle = 0;
-      RECT rect    = { 0, 0, 0, 0 };
-    };
-    
     std::recursive_mutex            m_lockWindow;
     std::mutex                      m_lockBuffer;
 
@@ -189,8 +187,8 @@ namespace dxvk {
     Com<IDXGIVkSwapChain>           m_presenter;
     
     HMONITOR                        m_monitor;
-    WindowState                     m_windowState;
-    
+    wsi::DxvkWindowState            m_windowState;
+ 
     HRESULT EnterFullscreenMode(
             IDXGIOutput             *pTarget);
     
@@ -198,10 +196,8 @@ namespace dxvk {
     
     HRESULT ChangeDisplayMode(
             IDXGIOutput*            pOutput,
-      const DXGI_MODE_DESC*         pDisplayMode);
-    
-    HRESULT RestoreDisplayMode(
-            HMONITOR                hMonitor);
+      const DXGI_MODE_DESC*         pDisplayMode,
+            BOOL                    EnteringFullscreen);
     
     HRESULT GetSampleCount(
             UINT                    Count,
