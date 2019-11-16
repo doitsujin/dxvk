@@ -2,7 +2,9 @@
 #include "d3d11_device.h"
 #include "d3d11_gdi.h"
 
+#ifndef DXVK_NATIVE
 #include "../util/util_gdi.h"
+#endif
 
 namespace dxvk {
   

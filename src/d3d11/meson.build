@@ -41,7 +41,6 @@ d3d11_src = [
   'd3d11_depth_stencil.cpp',
   'd3d11_device.cpp',
   'd3d11_enums.cpp',
-  'd3d11_gdi.cpp',
   'd3d11_initializer.cpp',
   'd3d11_input_layout.cpp',
   'd3d11_interop.cpp',
@@ -62,6 +61,14 @@ d3d11_src = [
   'd3d11_view_srv.cpp',
   'd3d11_view_uav.cpp',
 ]
+
+d3d11_src_win32 = [
+  'd3d11_gdi.cpp'
+]
+
+if dxvk_platform == 'windows'
+  d3d11_src += d3d11_src_win32
+endif
 
 if dxvk_native
   lib_dxgi = dxgi_dep

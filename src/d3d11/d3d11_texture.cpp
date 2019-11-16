@@ -520,14 +520,18 @@ namespace dxvk {
   : m_resource  (pResource),
     m_texture   (pTexture),
     m_gdiSurface(nullptr) {
+#ifndef DXVK_NATIVE
     if (pTexture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_GDI_COMPATIBLE)
       m_gdiSurface = new D3D11GDISurface(m_resource, 0);
+#endif
   }
 
   
   D3D11DXGISurface::~D3D11DXGISurface() {
+#ifndef DXVK_NATIVE
     if (m_gdiSurface)
       delete m_gdiSurface;
+#endif
   }
 
   
@@ -656,19 +660,23 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11DXGISurface::GetDC(
           BOOL                    Discard,
           HDC*                    phdc) {
-    if (!m_gdiSurface)
-      return DXGI_ERROR_INVALID_CALL;
+#ifndef DXVK_NATIVE
+    if (m_gdiSurface)
+      return m_gdiSurface->Acquire(Discard, phdc);
+#endif
     
-    return m_gdiSurface->Acquire(Discard, phdc);
+    return DXGI_ERROR_INVALID_CALL;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D11DXGISurface::ReleaseDC(
           RECT*                   pDirtyRect) {
-    if (!m_gdiSurface)
-      return DXGI_ERROR_INVALID_CALL;
+#ifndef DXVK_NATIVE
+    if (m_gdiSurface)
+      return m_gdiSurface->Release(pDirtyRect);
+#endif
 
-    return m_gdiSurface->Release(pDirtyRect);
+    return DXGI_ERROR_INVALID_CALL;
   }
 
   
