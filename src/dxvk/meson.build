@@ -51,7 +51,7 @@ dxvk_shaders = files([
   'hud/shaders/hud_text_vert.vert',
 ])
 
-dxvk_src = files([
+dxvk_src = [
   'dxvk_adapter.cpp',
   'dxvk_barrier.cpp',
   'dxvk_buffer.cpp',
@@ -80,7 +80,6 @@ dxvk_src = files([
   'dxvk_meta_mipgen.cpp',
   'dxvk_meta_pack.cpp',
   'dxvk_meta_resolve.cpp',
-  'dxvk_openvr.cpp',
   'dxvk_options.cpp',
   'dxvk_pipecache.cpp',
   'dxvk_pipelayout.cpp',
@@ -98,14 +97,29 @@ dxvk_src = files([
   'dxvk_stats.cpp',
   'dxvk_unbound.cpp',
   'dxvk_util.cpp',
-
-  'platform/dxvk_win32_exts.cpp',
   
   'hud/dxvk_hud.cpp',
   'hud/dxvk_hud_font.cpp',
   'hud/dxvk_hud_item.cpp',
   'hud/dxvk_hud_renderer.cpp',
-])
+]
+
+dxvk_src_win32 = [
+  'dxvk_openvr.cpp',
+  'platform/dxvk_win32_exts.cpp'
+]
+
+dxvk_src_sdl2 = [
+  'platform/dxvk_sdl2_exts.cpp'
+]
+
+if dxvk_wsi == 'win32'
+  dxvk_src += dxvk_src_win32
+elif dxvk_wsi == 'sdl2'
+  dxvk_src += dxvk_src_sdl2
+else
+  error('Unknown platform for dxvk')
+endif
 
 thread_dep = dependency('threads')
 
