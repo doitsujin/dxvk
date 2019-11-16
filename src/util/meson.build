@@ -1,4 +1,5 @@
 util_src = [
+  'util_env.cpp',
   'util_matrix.cpp',
   
   'com/com_guid.cpp',
@@ -22,8 +23,17 @@ util_src_win32 = [
   'platform/util_string_win32.cpp'
 ]
 
+util_src_linux = [
+  'platform/util_luid_linux.cpp',
+  'platform/util_env_linux.cpp',
+  'platform/util_string_linux.cpp',
+  'platform/thread_native.cpp',
+]
+
 if dxvk_platform == 'windows'
   util_src += util_src_win32
+elif dxvk_platform == 'linux'
+  util_src += util_src_linux
 else
   error('Unknown platform for util')
 endif
