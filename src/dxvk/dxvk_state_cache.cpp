@@ -171,7 +171,11 @@ namespace dxvk {
 
     for (uint32_t i = 0; i < numWorkers; i++) {
       m_workerThreads.emplace_back([this] () { workerFunc(); });
+
+      // TODO: better solution for this.
+#ifndef DXVK_NATIVE
       m_workerThreads[i].set_priority(ThreadPriority::Lowest);
+#endif
     }
     
     m_writerThread = dxvk::thread([this] () { writerFunc(); });
