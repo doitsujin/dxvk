@@ -9,6 +9,11 @@ enable_d3d10 = get_option('enable_d3d10')
 enable_d3d11 = get_option('enable_d3d11')
 enable_tests = get_option('enable_tests')
 
+if enable_d3d10 and dxvk_native
+  warning('Ignoring D3D10... Not supported for DXVK native.')
+  enable_d3d10 = false
+endif
+
 if enable_dxgi
   if not enable_d3d11
     error('D3D11 is required for DXGI.')
