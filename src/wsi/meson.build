@@ -5,9 +5,19 @@ wsi_win32_src = [
   'win32/wsi_window_win32.cpp',
 ]
 
+wsi_sdl2_src = [
+  'sdl2/wsi_mode_sdl2.cpp',
+  'sdl2/wsi_monitor_sdl2.cpp',
+  'sdl2/wsi_presenter_sdl2.cpp',
+  'sdl2/wsi_window_sdl2.cpp',
+]
+
 if dxvk_wsi == 'win32'
   wsi_src  = wsi_win32_src
   wsi_deps = []
+elif dxvk_wsi == 'sdl2'
+  wsi_src  = wsi_sdl2_src
+  wsi_deps = [ lib_sdl2 ]
 else
   error('Unknown wsi')
 endif
