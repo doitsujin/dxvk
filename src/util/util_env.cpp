@@ -40,15 +40,17 @@ namespace dxvk::env {
       ::GetProcAddress(::GetModuleHandleW(L"kernel32.dll"), "SetThreadDescription"));
 
     if (proc != nullptr) {
-      auto wideName = str::tows(name);
+      auto wideName = std::vector<WCHAR>(name.length() + 1);
+      str::tows(name.c_str(), wideName.data(), wideName.size());
       (*proc)(::GetCurrentThread(), wideName.data());
     }
   }
 
 
   bool createDirectory(const std::string& path) {
-    auto widePath = str::tows(path);
-    return !!CreateDirectoryW(widePath.data(), nullptr);
+    WCHAR widePath[MAX_PATH];
+    str::tows(path.c_str(), widePath);
+    return !!CreateDirectoryW(widePath, nullptr);
   }
   
 }
