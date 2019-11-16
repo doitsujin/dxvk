@@ -10,7 +10,12 @@ namespace dxvk::str {
   
   std::string fromws(const WCHAR *ws);
 
-  std::vector<WCHAR> tows(const std::string& str);
+  void tows(const char* mbs, WCHAR* wcs, size_t wcsLen);
+
+  template <size_t N>
+  void tows(const char* mbs, WCHAR (&wcs)[N]) {
+    return tows(mbs, wcs, N);
+  }
   
   inline void format1(std::stringstream&) { }
 
