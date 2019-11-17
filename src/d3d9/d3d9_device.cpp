@@ -5847,10 +5847,8 @@ namespace dxvk {
   void D3D9DeviceEx::Begin(D3D9Query* pQuery) {
     D3D9DeviceLock lock = LockDevice();
 
-    Com<D3D9Query> queryPtr = pQuery;
-
-    EmitCs([queryPtr](DxvkContext* ctx) {
-      queryPtr->Begin(ctx);
+    EmitCs([cQuery = Com<D3D9Query, false>(pQuery)](DxvkContext* ctx) {
+      cQuery->Begin(ctx);
     });
   }
 
@@ -5858,18 +5856,16 @@ namespace dxvk {
   void D3D9DeviceEx::End(D3D9Query* pQuery) {
     D3D9DeviceLock lock = LockDevice();
 
-    Com<D3D9Query> queryPtr = pQuery;
-
-    EmitCs([queryPtr](DxvkContext* ctx) {
-      queryPtr->End(ctx);
-    });
-
     if (unlikely(pQuery->IsEvent())) {
       pQuery->NotifyEnd();
       pQuery->IsStalling()
         ? Flush()
         : FlushImplicit(TRUE);
     }
+
+    EmitCs([cQuery = Com<D3D9Query, false>(pQuery)](DxvkContext* ctx) {
+      cQuery->End(ctx);
+    });
   }
 
 
