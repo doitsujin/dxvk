@@ -114,7 +114,7 @@ namespace dxvk {
         if (m_state != D3D9_VK_QUERY_BEGUN && QueryBeginnable(m_queryType))
           m_parent->Begin(this);
 
-        m_resetCtr += 1;
+        m_resetCtr.fetch_add(1, std::memory_order_acquire);
 
         m_parent->End(this);
 
@@ -273,7 +273,7 @@ namespace dxvk {
       default: break;
     }
 
-    m_resetCtr -= 1;
+    m_resetCtr.fetch_sub(1, std::memory_order_release);
   }
 
 
