@@ -47,6 +47,24 @@ namespace dxvk {
   }
 
 
+  void D3D11Initializer::InitUavCounter(
+          D3D11UnorderedAccessView*   pUav) {
+    auto counterBuffer = pUav->GetCounterSlice();
+
+    if (!counterBuffer.defined())
+      return;
+
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    const uint32_t zero = 0;
+    m_context->updateBuffer(
+      counterBuffer.buffer(),
+      0, sizeof(zero), &zero);
+
+    FlushImplicit();
+  }
+
+
   void D3D11Initializer::InitDeviceLocalBuffer(
           D3D11Buffer*                pBuffer,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {

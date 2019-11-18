@@ -34,6 +34,9 @@ namespace dxvk {
     void InitTexture(
             D3D11CommonTexture*         pTexture,
       const D3D11_SUBRESOURCE_DATA*     pInitialData);
+
+    void InitUavCounter(
+            D3D11UnorderedAccessView*   pUav);
     
   private:
 

@@ -427,7 +427,9 @@ namespace dxvk {
       return S_FALSE;
     
     try {
-      *ppUAView = ref(new D3D11UnorderedAccessView(this, pResource, &desc));
+      auto uav = new D3D11UnorderedAccessView(this, pResource, &desc);
+      m_initializer->InitUavCounter(uav);
+      *ppUAView = ref(uav);
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
