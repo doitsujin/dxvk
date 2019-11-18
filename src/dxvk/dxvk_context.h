@@ -1130,7 +1130,7 @@ namespace dxvk {
     void resetRenderPassOps(
       const DxvkRenderTargets&    renderTargets,
             DxvkRenderPassOps&    renderPassOps);
-    
+
     void startConditionalRendering();
     void pauseConditionalRendering();
     
@@ -1195,6 +1195,8 @@ namespace dxvk {
       const Rc<DxvkImageView>&        imageView,
             VkPipelineStageFlags      stages,
             VkAccessFlags             access);
+
+    DxvkAccessFlags checkFramebufferBarrier();
 
     void emitMemoryBarrier(
             VkDependencyFlags         flags,

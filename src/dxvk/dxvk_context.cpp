@@ -613,7 +613,7 @@ namespace dxvk {
     // If not, we need to create a temporary framebuffer.
     int32_t attachmentIndex = -1;
     
-    if (m_state.om.framebuffer->isFullSize(imageView))
+    if (m_state.om.framebuffer->isFullSize(imageView) && this->checkFramebufferBarrier().isClear())
       attachmentIndex = m_state.om.framebuffer->findAttachment(imageView);
     
     if (attachmentIndex < 0) {
@@ -4726,6 +4726,20 @@ namespace dxvk {
     return srcAccess;
   }
 
+
+  DxvkAccessFlags DxvkContext::checkFramebufferBarrier() {
+    DxvkAccessFlags access = 0;
+
+    for (uint32_t i = 0; i < m_state.om.framebuffer->numAttachments(); i++) {
+      const auto& attachment = m_state.om.framebuffer->getAttachment(i);
+
+      access.set(m_execBarriers.getImageAccess(
+        attachment.view->image(),
+        attachment.view->subresources()));
+    }
+
+    return access;
+  }
 
   void DxvkContext::emitMemoryBarrier(
           VkDependencyFlags         flags,
