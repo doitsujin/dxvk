@@ -126,8 +126,10 @@ namespace dxvk {
     if (m_info.usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
       result = std::max(result, devInfo.limits.minStorageBufferOffsetAlignment);
 
-    if (m_info.usage & (VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT))
+    if (m_info.usage & (VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT)) {
       result = std::max(result, devInfo.limits.minTexelBufferOffsetAlignment);
+      result = std::max(result, VkDeviceSize(16));
+    }
 
     if (m_info.usage & (VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT)
      && m_info.size > (devInfo.limits.optimalBufferCopyOffsetAlignment / 2))
