@@ -364,6 +364,8 @@ namespace dxvk {
   void D3D11SwapChain::RecreateSwapChain(BOOL Vsync) {
     // Ensure that we can safely destroy the swap chain
     m_device->waitForSubmission(&m_presentStatus);
+    m_device->waitForIdle();
+
     m_presentStatus.result = VK_SUCCESS;
 
     vk::PresenterDesc presenterDesc;

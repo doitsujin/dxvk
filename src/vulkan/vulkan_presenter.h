@@ -160,7 +160,9 @@ namespace dxvk::vk {
     /**
      * \brief Changes presenter properties
      * 
-     * Recreates the swap chain immediately.
+     * Recreates the swap chain immediately. Note that
+     * no swap chain resources must be in use by the
+     * GPU at the time this is called.
      * \param [in] desc Swap chain description
      */
     VkResult recreateSwapChain(

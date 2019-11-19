@@ -198,7 +198,7 @@ namespace dxvk::vk {
     // Create one set of semaphores per swap image
     m_semaphores.resize(m_info.imageCount);
 
-    for (uint32_t i = 0; i < m_info.imageCount; i++) {
+    for (uint32_t i = 0; i < m_semaphores.size(); i++) {
       VkFenceCreateInfo fenceInfo;
       fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
       fenceInfo.pNext = nullptr;
@@ -399,8 +399,6 @@ namespace dxvk::vk {
 
 
   void Presenter::destroySwapchain() {
-    m_vkd->vkDeviceWaitIdle(m_vkd->device());
-
     for (const auto& img : m_images)
       m_vkd->vkDestroyImageView(m_vkd->device(), img.view, nullptr);
     
