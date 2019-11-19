@@ -121,7 +121,8 @@ namespace dxvk {
    * \brief Shader module create info
    */
   struct DxvkShaderModuleCreateInfo {
-    bool fsDualSrcBlend;
+    bool      fsDualSrcBlend  = false;
+    uint32_t  undefinedInputs = 0;
   };
   
   
@@ -292,6 +293,8 @@ namespace dxvk {
 
     size_t m_o1IdxOffset = 0;
     size_t m_o1LocOffset = 0;
+
+    static void eliminateInput(SpirvCodeBuffer& code, uint32_t location);
 
   };
   
