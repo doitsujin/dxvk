@@ -205,9 +205,6 @@ namespace dxvk {
     auto immediateContext = static_cast<D3D11ImmediateContext*>(deviceContext.ptr());
     immediateContext->Flush();
 
-    if (!m_device->hasAsyncPresent())
-      immediateContext->SynchronizeCsThread();
-
     // Wait for the sync event so that we respect the maximum frame latency
     auto syncEvent = m_dxgiDevice->GetFrameSyncEvent(m_desc.BufferCount);
     syncEvent->wait();
@@ -321,34 +318,22 @@ namespace dxvk {
   void D3D11SwapChain::SubmitPresent(
           D3D11ImmediateContext*  pContext,
     const vk::PresenterSync&      Sync) {
-    if (m_device->hasAsyncPresent()) {
-      // Present from CS thread so that we don't
-      // have to synchronize with it first.
-      m_presentStatus.result = VK_NOT_READY;
+    // Present from CS thread so that we don't
+    // have to synchronize with it first.
+    m_presentStatus.result = VK_NOT_READY;
 
-      pContext->EmitCs([this,
-        cSync        = Sync,
-        cCommandList = m_context->endRecording()
-      ] (DxvkContext* ctx) {
-        m_device->submitCommandList(cCommandList,
-          cSync.acquire, cSync.present);
+    pContext->EmitCs([this,
+      cSync        = Sync,
+      cCommandList = m_context->endRecording()
+    ] (DxvkContext* ctx) {
+      m_device->submitCommandList(cCommandList,
+        cSync.acquire, cSync.present);
 
-        m_device->presentImage(m_presenter,
-          cSync.present, &m_presentStatus);
-      });
-
-      pContext->FlushCsChunk();
-    } else {
-      // Safe path, present from calling thread
-      m_device->submitCommandList(
-        m_context->endRecording(),
-        Sync.acquire, Sync.present);
-      
       m_device->presentImage(m_presenter,
-        Sync.present, &m_presentStatus);
+        cSync.present, &m_presentStatus);
+    });
 
-      SynchronizePresent();
-    }
+    pContext->FlushCsChunk();
   }
 
 

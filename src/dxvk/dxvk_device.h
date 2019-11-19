@@ -402,17 +402,6 @@ namespace dxvk {
             VkSemaphore               wakeSync);
 
     /**
-     * \brief Checks for async presentation support
-     *
-     * If this is \c false, synchronize with the
-     * present call immediately after submitting it.
-     * \returns \c true if async present is enabled
-     */
-    bool hasAsyncPresent() const {
-      return m_submissionQueue.hasAsyncPresent();
-    }
-
-    /**
      * \brief Locks submission queue
      * 
      * Since Vulkan queues are only meant to be accessed
