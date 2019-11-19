@@ -54,23 +54,35 @@ namespace dxvk {
      * take 64-bit arguments which require more than one DWORD.
      * Arguments start at index 1. Calling this method with an
      * argument ID of 0 will return the opcode token.
-     * \param [in] id Argument index, starting at 1
+     * \param [in] idx Argument index, starting at 1
      * \returns The argument value
      */
-    uint32_t arg(uint32_t id) const {
-      const uint32_t index = m_offset + id;
+    uint32_t arg(uint32_t idx) const {
+      const uint32_t index = m_offset + idx;
       return index < m_length ? m_code[index] : 0;
+    }
+
+    /**
+     * \brief Argument string
+     *
+     * Retrieves a pointer to a UTF-8-encoded string.
+     * \param [in] idx Argument index, starting at 1
+     * \returns Pointer to the literal string
+     */
+    const char* chr(uint32_t idx) const {
+      const uint32_t index = m_offset + idx;
+      return index < m_length ? reinterpret_cast<const char*>(&m_code[index]) : nullptr;
     }
     
     /**
      * \brief Changes the value of an argument
      * 
-     * \param [in] id Argument index, starting at 1
+     * \param [in] idx Argument index, starting at 1
      * \param [in] word New argument word
      */
-    void setArg(uint32_t id, uint32_t word) const {
-      if (m_offset + id < m_length)
-        m_code[m_offset + id] = word;
+    void setArg(uint32_t idx, uint32_t word) const {
+      if (m_offset + idx < m_length)
+        m_code[m_offset + idx] = word;
     }
     
   private:
