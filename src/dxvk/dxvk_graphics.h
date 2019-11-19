@@ -240,8 +240,11 @@ namespace dxvk {
     
     DxvkShaderModule createShaderModule(
       const Rc<DxvkShader>&                shader,
-      const DxvkShaderModuleCreateInfo&    info) const;
+      const DxvkGraphicsPipelineStateInfo& state) const;
     
+    Rc<DxvkShader> getPrevStageShader(
+            VkShaderStageFlagBits          stage) const;
+
     bool validatePipelineState(
       const DxvkGraphicsPipelineStateInfo& state) const;
     
@@ -252,7 +255,7 @@ namespace dxvk {
     void logPipelineState(
             LogLevel                       level,
       const DxvkGraphicsPipelineStateInfo& state) const;
-    
+
   };
   
 }
