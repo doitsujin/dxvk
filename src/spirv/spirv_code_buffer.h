@@ -148,6 +148,15 @@ namespace dxvk {
      * \param [in] boundIds Number of bound IDs
      */
     void putHeader(uint32_t boundIds);
+
+    /**
+     * \brief Erases given number of dwords
+     *
+     * Removes data from the code buffer, starting
+     * at the current insertion offset.
+     * \param [in] size Number of words to remove
+     */
+    void erase(size_t size);
     
     /**
      * \brief Computes length of a literal string

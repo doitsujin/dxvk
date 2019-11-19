@@ -132,6 +132,13 @@ namespace dxvk {
   }
   
   
+  void SpirvCodeBuffer::erase(size_t size) {
+    m_code.erase(
+      m_code.begin() + m_ptr,
+      m_code.begin() + m_ptr + size);
+  }
+
+
   uint32_t SpirvCodeBuffer::strLen(const char* str) {
     // Null-termination plus padding
     return (std::strlen(str) + 4) / 4;
