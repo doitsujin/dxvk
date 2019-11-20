@@ -10,6 +10,15 @@ namespace dxvk {
     D3D9_VK_QUERY_ENDED,
   };
 
+  union D3D9_QUERY_DATA {
+    D3DDEVINFO_VCACHE         VCache;
+    DWORD                     Occlusion;
+    UINT64                    Timestamp;
+    BOOL                      TimestampDisjoint;
+    UINT64                    TimestampFreq;
+    D3DDEVINFO_D3DVERTEXSTATS VertexStats;
+  };
+
   class D3D9Query : public D3D9DeviceChild<IDirect3DQuery9> {
     constexpr static uint32_t MaxGpuQueries = 2;
     constexpr static uint32_t MaxGpuEvents  = 1;

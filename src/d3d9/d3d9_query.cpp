@@ -189,39 +189,38 @@ namespace dxvk {
       if (pData == nullptr)
         return D3D_OK;
 
+      auto* data = static_cast<D3D9_QUERY_DATA*>(pData);
+
       switch (m_queryType) {
-        case D3DQUERYTYPE_VCACHE: {
+        case D3DQUERYTYPE_VCACHE:
           // Don't know what the hell any of this means.
           // Nor do I care. This just makes games work.
-          auto* data = static_cast<D3DDEVINFO_VCACHE*>(pData);
-          data->Pattern     = MAKEFOURCC('H', 'C', 'A', 'C');
-          data->OptMethod   = 1;
-          data->CacheSize   = 24;
-          data->MagicNumber = 20;
+          data->VCache.Pattern     = MAKEFOURCC('H', 'C', 'A', 'C');
+          data->VCache.OptMethod   = 1;
+          data->VCache.CacheSize   = 24;
+          data->VCache.MagicNumber = 20;
           return D3D_OK;
-        }
 
         case D3DQUERYTYPE_OCCLUSION:
-          *static_cast<DWORD*>(pData) = DWORD(queryData[0].occlusion.samplesPassed);
+          data->Occlusion = DWORD(queryData[0].occlusion.samplesPassed);
           return D3D_OK;
 
         case D3DQUERYTYPE_TIMESTAMP:
-          *static_cast<UINT64*>(pData) = queryData[0].timestamp.time;
+          data->Timestamp = queryData[0].timestamp.time;
           return D3D_OK;
 
         case D3DQUERYTYPE_TIMESTAMPDISJOINT:
-          *static_cast<BOOL*>(pData) = queryData[0].timestamp.time < queryData[1].timestamp.time;
+          data->TimestampDisjoint = queryData[0].timestamp.time < queryData[1].timestamp.time;
           return D3D_OK;
 
         case D3DQUERYTYPE_TIMESTAMPFREQ:
-          *static_cast<UINT64*>(pData) = GetTimestampQueryFrequency();
+          data->TimestampFreq = GetTimestampQueryFrequency();
           return D3D_OK;
 
-        case D3DQUERYTYPE_VERTEXSTATS: {
-          auto data = static_cast<D3DDEVINFO_D3DVERTEXSTATS*>(pData);
-          data->NumRenderedTriangles      = queryData[0].statistic.iaPrimitives;
-          data->NumExtraClippingTriangles = queryData[0].statistic.clipPrimitives;
-        } return D3D_OK;
+        case D3DQUERYTYPE_VERTEXSTATS:
+          data->VertexStats.NumRenderedTriangles      = queryData[0].statistic.iaPrimitives;
+          data->VertexStats.NumExtraClippingTriangles = queryData[0].statistic.clipPrimitives;
+          return D3D_OK;
 
         default:
           return D3D_OK;
