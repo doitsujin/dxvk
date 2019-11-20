@@ -88,8 +88,6 @@ namespace dxvk {
           DWORD    dwFlags) {
     auto lock = m_parent->LockDevice();
 
-    m_parent->Flush();
-
     uint32_t presentInterval = m_presentParams.PresentationInterval;
 
     // This is not true directly in d3d9 to to timing differences that don't matter for us.
@@ -408,6 +406,8 @@ namespace dxvk {
 
 
   void D3D9SwapChainEx::PresentImage(UINT SyncInterval) {
+    m_parent->Flush();
+
     // Wait for the sync event so that we respect the maximum frame latency
     auto syncEvent = m_parent->GetFrameSyncEvent(m_presentParams.BackBufferCount);
     syncEvent->wait();
