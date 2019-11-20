@@ -168,7 +168,7 @@ namespace dxvk {
       bool signaled = status == DxvkGpuEventStatus::Signaled;
 
       if (pData != nullptr)
-        * static_cast<BOOL*>(pData) = signaled;
+        *static_cast<BOOL*>(pData) = signaled;
 
       return signaled ? D3D_OK : S_FALSE;
     }
@@ -179,7 +179,7 @@ namespace dxvk {
         DxvkGpuQueryStatus status = m_query[i]->getData(queryData[i]);
 
         if (status == DxvkGpuQueryStatus::Invalid
-          || status == DxvkGpuQueryStatus::Failed)
+         || status == DxvkGpuQueryStatus::Failed)
           return D3DERR_INVALIDCALL;
 
         if (status == DxvkGpuQueryStatus::Pending)
