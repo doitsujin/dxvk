@@ -80,6 +80,9 @@ namespace dxvk {
     /// Support the DF16 & DF24 texture format
     bool supportDFFormats;
 
+    /// Support X4R4G4B4
+    bool supportX4R4G4B4;
+
     /// SWVP Constant Limits
     uint32_t swvpFloatCount;
     uint32_t swvpIntCount;

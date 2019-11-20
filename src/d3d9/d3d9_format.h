@@ -208,6 +208,7 @@ namespace dxvk {
     bool m_d16s8Support;
 
     bool m_dfSupport;
+    bool m_x4r4g4b4Support;
   };
 
 }
