@@ -29,6 +29,8 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE GetData(void* pData, DWORD dwSize, DWORD dwGetDataFlags) final;
 
+    HRESULT GetQueryData(void* pData, DWORD dwSize);
+
     void Begin(DxvkContext* ctx);
     void End(DxvkContext* ctx);
 

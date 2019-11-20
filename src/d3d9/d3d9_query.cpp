@@ -127,14 +127,27 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9Query::GetData(void* pData, DWORD dwSize, DWORD dwGetDataFlags) {
+    HRESULT hr = this->GetQueryData(pData, dwSize);
+
+    bool flush = dwGetDataFlags & D3DGETDATA_FLUSH;
+
+    // If we get S_FALSE and it's not from the fact
+    // they didn't call end, do some flushy stuff...
+    if (flush && hr == S_FALSE && m_state != D3D9_VK_QUERY_BEGUN) {
+      this->NotifyStall();
+      m_parent->FlushImplicit(FALSE);
+    }
+
+    return hr;
+  }
+
+
+  HRESULT D3D9Query::GetQueryData(void* pData, DWORD dwSize) {
     // Let the game know that calling end might be a good idea...
     if (m_state == D3D9_VK_QUERY_BEGUN)
       return S_FALSE;
 
     if (unlikely(!pData && dwSize))
-      return D3DERR_INVALIDCALL;
-
-    if (unlikely(dwGetDataFlags != 0 && dwGetDataFlags != D3DGETDATA_FLUSH))
       return D3DERR_INVALIDCALL;
 
     // The game forgot to even issue the query!
@@ -146,8 +159,6 @@ namespace dxvk {
     if (m_resetCtr != 0u)
       return S_FALSE;
 
-    bool flush = dwGetDataFlags & D3DGETDATA_FLUSH;
-
     if (m_queryType == D3DQUERYTYPE_EVENT) {
       DxvkGpuEventStatus status = m_event[0]->test();
 
@@ -158,11 +169,6 @@ namespace dxvk {
 
       if (pData != nullptr)
         * static_cast<BOOL*>(pData) = signaled;
-
-      if (!signaled && flush) {
-        this->NotifyStall();
-        m_parent->FlushImplicit(FALSE);
-      }
 
       return signaled ? D3D_OK : S_FALSE;
     }
@@ -176,13 +182,8 @@ namespace dxvk {
           || status == DxvkGpuQueryStatus::Failed)
           return D3DERR_INVALIDCALL;
 
-        if (status == DxvkGpuQueryStatus::Pending) {
-          if (flush) {
-            this->NotifyStall();
-            m_parent->FlushImplicit(FALSE);
-          }
+        if (status == DxvkGpuQueryStatus::Pending)
           return S_FALSE;
-        }
       }
 
       if (pData == nullptr)
