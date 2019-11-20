@@ -3376,8 +3376,10 @@ namespace dxvk {
           D3DDISPLAYMODEEX*      pFullscreenDisplayMode) {
     D3D9DeviceLock lock = LockDevice();
 
-    if (unlikely(pPresentationParameters == nullptr))
+    if (unlikely(pPresentationParameters == nullptr)) {
+      Logger::err("D3D9DeviceEx::ResetEx: Null presentation parameters.");
       return D3DERR_INVALIDCALL;
+    }
 
     D3D9Format backBufferFmt = EnumerateFormat(pPresentationParameters->BackBufferFormat);
 
@@ -3394,8 +3396,10 @@ namespace dxvk {
     if (backBufferFmt != D3D9Format::Unknown) {
       if (!IsSupportedBackBufferFormat(
         backBufferFmt,
-        pPresentationParameters->Windowed))
+        pPresentationParameters->Windowed)) {
+        Logger::err("D3D9DeviceEx::ResetEx: Unsupported backbuffer format.");
         return D3DERR_INVALIDCALL;
+      }
     }
 
     SetDepthStencilSurface(nullptr);
