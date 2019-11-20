@@ -563,6 +563,7 @@ namespace dxvk {
   void D3D9SwapChainEx::SynchronizePresent() {
     // Recreate swap chain if the previous present call failed
     VkResult status = m_device->waitForSubmission(&m_presentStatus);
+    m_device->waitForIdle();
 
     if (status != VK_SUCCESS)
       RecreateSwapChain(m_vsync);
