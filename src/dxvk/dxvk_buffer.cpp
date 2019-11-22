@@ -1,6 +1,8 @@
 #include "dxvk_buffer.h"
 #include "dxvk_device.h"
 
+#include <algorithm>
+
 namespace dxvk {
   
   DxvkBuffer::DxvkBuffer(
@@ -222,6 +224,11 @@ namespace dxvk {
   
   
   void DxvkBufferTracker::reset() {
+    std::sort(m_entries.begin(), m_entries.end(),
+      [] (const Entry& a, const Entry& b) {
+        return a.slice.handle < b.slice.handle;
+      });
+
     for (const auto& e : m_entries)
       e.buffer->freeSlice(e.slice);
       
