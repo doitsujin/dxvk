@@ -783,10 +783,11 @@ namespace dxvk {
             UINT                              Counter);
     
     void DiscardBuffer(
-            D3D11Buffer*                      pBuffer);
+            ID3D11Resource*                   pResource);
     
     void DiscardTexture(
-            D3D11CommonTexture*               pTexture);
+            ID3D11Resource*                   pResource,
+            UINT                              Subresource);
     
     void SetDrawBuffers(
             ID3D11Buffer*                     pBufferForArgs,

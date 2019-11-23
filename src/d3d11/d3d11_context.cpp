@@ -78,10 +78,14 @@ namespace dxvk {
     D3D11_RESOURCE_DIMENSION resType = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resType);
 
-    if (resType == D3D11_RESOURCE_DIMENSION_BUFFER)
-      DiscardBuffer(static_cast<D3D11Buffer*>(pResource));
-    else if (resType != D3D11_RESOURCE_DIMENSION_UNKNOWN)
-      DiscardTexture(GetCommonTexture(pResource));
+    if (resType == D3D11_RESOURCE_DIMENSION_BUFFER) {
+      DiscardBuffer(pResource);
+    } else {
+      auto texture = GetCommonTexture(pResource);
+
+      for (uint32_t i = 0; i < texture->CountSubresources(); i++)
+        DiscardTexture(pResource, i);
+    }
   }
 
 
@@ -113,13 +117,20 @@ namespace dxvk {
 
     if (view == nullptr)
       return;
-    
-    EmitCs([cView = std::move(view)]
-    (DxvkContext* ctx) {
-      ctx->discardImage(
-        cView->image(),
-        cView->subresources());
-    });
+
+    // Get information about underlying resource
+    Com<ID3D11Resource> resource;
+    pResourceView->GetResource(&resource);
+
+    uint32_t mipCount = GetCommonTexture(resource.ptr())->Desc()->MipLevels;
+
+    // Discard mip levels one by one
+    VkImageSubresourceRange sr = view->subresources();
+
+    for (uint32_t layer = 0; layer < sr.layerCount; layer++) {
+      for (uint32_t mip = 0; mip < sr.levelCount; mip++)
+        DiscardTexture(resource.ptr(), D3D11CalcSubresource(mip, layer, mipCount));
+    }
   }
 
 
@@ -3562,22 +3573,29 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::DiscardBuffer(
-          D3D11Buffer*                      pBuffer) {
-    EmitCs([cBuffer = pBuffer->GetBuffer()] (DxvkContext* ctx) {
-      ctx->discardBuffer(cBuffer);
-    });
+          ID3D11Resource*                   pResource) {
+    auto buffer = static_cast<D3D11Buffer*>(pResource);
+
+    if (buffer->GetMapMode() != D3D11_COMMON_BUFFER_MAP_MODE_NONE) {
+      D3D11_MAPPED_SUBRESOURCE sr;
+
+      Map(pResource, 0, D3D11_MAP_WRITE_DISCARD, 0, &sr);
+      Unmap(pResource, 0);
+    }
   }
 
 
   void D3D11DeviceContext::DiscardTexture(
-          D3D11CommonTexture*               pTexture) {
-    EmitCs([cImage = pTexture->GetImage()] (DxvkContext* ctx) {
-      VkImageSubresourceRange subresources = {
-        cImage->formatInfo()->aspectMask,
-        0, cImage->info().mipLevels,
-        0, cImage->info().numLayers };
-      ctx->discardImage(cImage, subresources);
-    });
+          ID3D11Resource*                   pResource,
+          UINT                              Subresource) {
+    auto texture = GetCommonTexture(pResource);
+
+    if (texture->GetMapMode() != D3D11_COMMON_TEXTURE_MAP_MODE_NONE) {
+      D3D11_MAPPED_SUBRESOURCE sr;
+
+      Map(pResource, Subresource, D3D11_MAP_WRITE_DISCARD, 0, &sr);
+      Unmap(pResource, Subresource);
+    }
   }
 
 
