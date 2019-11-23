@@ -128,8 +128,10 @@ namespace dxvk {
     VkImageSubresourceRange sr = view->subresources();
 
     for (uint32_t layer = 0; layer < sr.layerCount; layer++) {
-      for (uint32_t mip = 0; mip < sr.levelCount; mip++)
-        DiscardTexture(resource.ptr(), D3D11CalcSubresource(mip, layer, mipCount));
+      for (uint32_t mip = 0; mip < sr.levelCount; mip++) {
+        DiscardTexture(resource.ptr(), D3D11CalcSubresource(
+          sr.baseMipLevel + mip, sr.baseArrayLayer + layer, mipCount));
+      }
     }
   }
 
