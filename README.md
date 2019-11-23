@@ -38,7 +38,6 @@ export WINEPREFIX=/path/to/.wine-prefix
 ## Commands to install as needed to compile on ubuntu:
 - sudo apt install mingw-w64
 - sudo apt install meson
-- sudo snap install cmake --candidate --classic
 - sudo apt install --no-install-recommends dh-autoreconf
 - sudo apt install glslang-tools
 
