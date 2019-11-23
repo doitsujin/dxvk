@@ -351,9 +351,6 @@ namespace dxvk {
       auto dstBuffer = static_cast<D3D11Buffer*>(pDstResource)->GetBufferSlice();
       auto srcBuffer = static_cast<D3D11Buffer*>(pSrcResource)->GetBufferSlice();
 
-      if (CopyFlags & D3D11_COPY_DISCARD)
-        DiscardBuffer(static_cast<D3D11Buffer*>(pDstResource));
-      
       VkDeviceSize dstOffset = DstX;
       VkDeviceSize srcOffset = 0;
       VkDeviceSize regLength = srcBuffer.length();
@@ -1174,9 +1171,6 @@ namespace dxvk {
         std::memcpy(reinterpret_cast<char*>(mappedSr.pData) + offset, pSrcData, size);
         Unmap(pDstResource, 0);
       } else {
-        if (CopyFlags & D3D11_COPY_DISCARD)
-          DiscardBuffer(bufferResource);
-        
         DxvkDataSlice dataSlice = AllocUpdateBufferSlice(size);
         std::memcpy(dataSlice.ptr(), pSrcData, size);
         
