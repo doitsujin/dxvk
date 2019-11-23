@@ -35,6 +35,13 @@ export WINEPREFIX=/path/to/.wine-prefix
 - [MinGW64](http://mingw-w64.org/) 6.0 compiler and headers
 - [glslang](https://github.com/KhronosGroup/glslang) compiler
 
+## Commands to install as needed to compile on ubuntu:
+- sudo apt install mingw-w64
+- sudo apt install meson
+- sudo snap install cmake --candidate --classic
+- sudo apt install --no-install-recommends dh-autoreconf
+- sudo apt install glslang-tools
+
 ### Building DLLs
 
 #### The simple way
@@ -113,6 +120,8 @@ Debian and Ubuntu, this can usually be resolved by using the posix alternate, wh
 supports threading. For example, choose the posix alternate from these
 commands (use i686 for 32-bit):
 ```
-update-alternatives --config x86_64-w64-mingw32-gcc
-update-alternatives --config x86_64-w64-mingw32-g++
+sudo update-alternatives --config x86_64-w64-mingw32-gcc
+sudo update-alternatives --config x86_64-w64-mingw32-g++
+sudo update-alternatives --config i686-w64-mingw32-gcc
+sudo update-alternatives --config i686-w64-mingw32-g++
 ```
