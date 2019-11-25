@@ -4,6 +4,8 @@
 
 #include "../dxvk/hud/dxvk_hud.h"
 
+#include "../util/sync/sync_signal_win32.h"
+
 namespace dxvk {
   
   class D3D11Device;
@@ -125,7 +127,8 @@ namespace dxvk {
     uint64_t                m_frameId      = DXGI_MAX_SWAP_CHAIN_BUFFERS;
     uint32_t                m_frameLatency = DefaultFrameLatency;
     uint32_t                m_frameLatencyCap = 0;
-    Rc<sync::Signal>        m_frameLatencySignal;
+    HANDLE                  m_frameLatencyEvent = nullptr;
+    Rc<sync::Win32Fence>    m_frameLatencySignal;
 
     bool                    m_dirty = true;
     bool                    m_vsync = true;
@@ -141,7 +144,7 @@ namespace dxvk {
     void RecreateSwapChain(
             BOOL                      Vsync);
 
-    void CreateFrameLatencySignal();
+    void CreateFrameLatencyEvent();
 
     void CreatePresenter();
 
@@ -153,6 +156,8 @@ namespace dxvk {
             UINT                NumControlPoints,
       const D3D11_VK_GAMMA_CP*  pControlPoints);
     
+    void DestroyFrameLatencyEvent();
+
     void DestroyGammaTexture();
     
     void CreateHud();
@@ -162,6 +167,8 @@ namespace dxvk {
     void InitSamplers();
 
     void InitShaders();
+
+    void SignalFrameLatencyEvent();
 
     uint32_t GetActualFrameLatency();
     

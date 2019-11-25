@@ -26,7 +26,7 @@ namespace dxvk {
     m_device    (pDevice->GetDXVKDevice()),
     m_context   (m_device->createContext()),
     m_frameLatencyCap(pDevice->GetOptions()->maxFrameLatency) {
-    CreateFrameLatencySignal();
+    CreateFrameLatencyEvent();
 
     if (!pDevice->GetOptions()->deferSurfaceCreation)
       CreatePresenter();
@@ -45,6 +45,8 @@ namespace dxvk {
     
     if (m_backBuffer)
       m_backBuffer->ReleasePrivate();
+
+    DestroyFrameLatencyEvent();
   }
 
 
@@ -175,6 +177,9 @@ namespace dxvk {
       return DXGI_ERROR_INVALID_CALL;
 
     m_frameLatency = MaxLatency;
+    m_frameLatencySignal->wait(m_frameId - GetActualFrameLatency());
+
+    SignalFrameLatencyEvent();
     return S_OK;
   }
 
@@ -330,6 +335,8 @@ namespace dxvk {
 
       SubmitPresent(immediateContext, sync);
     }
+
+    SignalFrameLatencyEvent();
   }
 
 
@@ -384,8 +391,11 @@ namespace dxvk {
   }
 
 
-  void D3D11SwapChain::CreateFrameLatencySignal() {
-    m_frameLatencySignal = new sync::Fence(m_frameId);
+  void D3D11SwapChain::CreateFrameLatencyEvent() {
+    m_frameLatencySignal = new sync::Win32Fence(m_frameId);
+
+    if (m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT)
+      m_frameLatencyEvent = CreateEvent(nullptr, false, true, nullptr);
   }
 
 
@@ -621,6 +631,11 @@ namespace dxvk {
   }
 
 
+  void D3D11SwapChain::DestroyFrameLatencyEvent() {
+    CloseHandle(m_frameLatencyEvent);
+  }
+
+
   void D3D11SwapChain::DestroyGammaTexture() {
     m_gammaTexture     = nullptr;
     m_gammaTextureView = nullptr;
@@ -729,6 +744,14 @@ namespace dxvk {
       fsResourceSlots.size(),
       fsResourceSlots.data(),
       { 1u, 1u }, fsCode);
+  }
+
+
+  void D3D11SwapChain::SignalFrameLatencyEvent() {
+    if (m_frameLatencyEvent) {
+      // Signal event with the same value that we'd wait for during the next present.
+      m_frameLatencySignal->setEvent(m_frameLatencyEvent, m_frameId - GetActualFrameLatency() + 1);
+    }
   }
 
 
