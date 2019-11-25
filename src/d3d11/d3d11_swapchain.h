@@ -54,6 +54,8 @@ namespace dxvk {
 
     UINT STDMETHODCALLTYPE GetImageIndex();
 
+    UINT STDMETHODCALLTYPE GetFrameLatency();
+
     HRESULT STDMETHODCALLTYPE ChangeProperties(
       const DXGI_SWAP_CHAIN_DESC1*    pDesc);
 
@@ -63,6 +65,9 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE SetGammaControl(
             UINT                      NumControlPoints,
       const DXGI_RGB*                 pControlPoints);
+
+    HRESULT STDMETHODCALLTYPE SetFrameLatency(
+            UINT                      MaxLatency);
 
     HRESULT STDMETHODCALLTYPE Present(
             UINT                      SyncInterval,
@@ -117,7 +122,8 @@ namespace dxvk {
 
     std::vector<Rc<DxvkImageView>> m_imageViews;
 
-    uint64_t                m_frameId = DXGI_MAX_SWAP_CHAIN_BUFFERS;
+    uint64_t                m_frameId      = DXGI_MAX_SWAP_CHAIN_BUFFERS;
+    uint32_t                m_frameLatency = DefaultFrameLatency;
     uint32_t                m_frameLatencyCap = 0;
     Rc<sync::Signal>        m_frameLatencySignal;
 

@@ -108,6 +108,11 @@ namespace dxvk {
   }
 
 
+  UINT STDMETHODCALLTYPE D3D11SwapChain::GetFrameLatency() {
+    return m_frameLatency;
+  }
+
+
   HRESULT STDMETHODCALLTYPE D3D11SwapChain::ChangeProperties(
     const DXGI_SWAP_CHAIN_DESC1*  pDesc) {
 
@@ -160,6 +165,16 @@ namespace dxvk {
     if (isIdentity)
       DestroyGammaTexture();
 
+    return S_OK;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11SwapChain::SetFrameLatency(
+          UINT                      MaxLatency) {
+    if (MaxLatency == 0 || MaxLatency > DXGI_MAX_SWAP_CHAIN_BUFFERS)
+      return DXGI_ERROR_INVALID_CALL;
+
+    m_frameLatency = MaxLatency;
     return S_OK;
   }
 
@@ -718,8 +733,10 @@ namespace dxvk {
 
 
   uint32_t D3D11SwapChain::GetActualFrameLatency() {
-    uint32_t maxFrameLatency = DefaultFrameLatency;
-    m_dxgiDevice->GetMaximumFrameLatency(&maxFrameLatency);
+    uint32_t maxFrameLatency = m_frameLatency;
+
+    if (!(m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT))
+      m_dxgiDevice->GetMaximumFrameLatency(&maxFrameLatency);
 
     if (m_frameLatencyCap)
       maxFrameLatency = std::min(maxFrameLatency, m_frameLatencyCap);

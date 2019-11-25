@@ -421,8 +421,12 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetMaximumFrameLatency(
           UINT*                     pMaxLatency) {
-    Logger::err("DxgiSwapChain::GetMaximumFrameLatency: Not implemented");
-    return DXGI_ERROR_INVALID_CALL;
+    if (!(m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT))
+      return DXGI_ERROR_INVALID_CALL;
+
+    std::lock_guard<std::recursive_mutex> lock(m_lockWindow);
+    *pMaxLatency = m_presenter->GetFrameLatency();
+    return S_OK;
   }
 
   
@@ -446,8 +450,11 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::SetMaximumFrameLatency(
           UINT                      MaxLatency) {
-    Logger::err("DxgiSwapChain::SetMaximumFrameLatency: Not implemented");
-    return DXGI_ERROR_INVALID_CALL;
+    if (!(m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT))
+      return DXGI_ERROR_INVALID_CALL;
+
+    std::lock_guard<std::recursive_mutex> lock(m_lockWindow);
+    return m_presenter->SetFrameLatency(MaxLatency);
   }
 
 
