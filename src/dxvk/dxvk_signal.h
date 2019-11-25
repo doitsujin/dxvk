@@ -16,9 +16,11 @@ namespace dxvk {
     
     /**
      * \brief Adds a signal to track
+     *
      * \param [in] signal The signal
+     * \param [in] value Target value
      */
-    void add(const Rc<sync::Signal>& signal);
+    void add(const Rc<sync::Signal>& signal, uint64_t value);
     
     /**
      * \brief Notifies tracked signals
@@ -32,7 +34,7 @@ namespace dxvk {
     
   private:
     
-    std::vector<Rc<sync::Signal>> m_signals;
+    std::vector<std::pair<Rc<sync::Signal>, uint64_t>> m_signals;
     
   };
   

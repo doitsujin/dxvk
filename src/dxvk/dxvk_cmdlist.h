@@ -186,9 +186,11 @@ namespace dxvk {
      * 
      * The signal will be notified once the command
      * buffer has finished executing on the GPU.
+     * \param [in] signal The signal
+     * \param [in] value Signal value
      */
-    void queueSignal(const Rc<sync::Signal>& signal) {
-      m_signalTracker.add(signal);
+    void queueSignal(const Rc<sync::Signal>& signal, uint64_t value) {
+      m_signalTracker.add(signal, value);
     }
 
     /**

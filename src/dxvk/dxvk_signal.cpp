@@ -12,14 +12,14 @@ namespace dxvk {
   }
     
   
-  void DxvkSignalTracker::add(const Rc<sync::Signal>& signal) {
-    m_signals.push_back(signal);
+  void DxvkSignalTracker::add(const Rc<sync::Signal>& signal, uint64_t value) {
+    m_signals.push_back({ signal, value });
   }
 
 
   void DxvkSignalTracker::notify() {
-    for (const auto& sig : m_signals)
-      sig->notify();
+    for (const auto& pair : m_signals)
+      pair.first->signal(pair.second);
   }
 
 

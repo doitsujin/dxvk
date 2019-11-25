@@ -992,9 +992,11 @@ namespace dxvk {
      * previously submitted commands have
      * finished execution on the GPU.
      * \param [in] signal The signal
+     * \param [in] value Signal value
      */
-    void queueSignal(
-      const Rc<sync::Signal>&   signal);
+    void signal(
+      const Rc<sync::Signal>&   signal,
+            uint64_t            value);
     
     /**
      * \brief Trims staging buffers

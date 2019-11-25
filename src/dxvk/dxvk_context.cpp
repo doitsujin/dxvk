@@ -2375,8 +2375,8 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::queueSignal(const Rc<sync::Signal>& signal) {
-    m_cmd->queueSignal(signal);
+  void DxvkContext::signal(const Rc<sync::Signal>& signal, uint64_t value) {
+    m_cmd->queueSignal(signal, value);
   }
 
 

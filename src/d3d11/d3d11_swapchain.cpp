@@ -26,7 +26,7 @@ namespace dxvk {
     m_device    (pDevice->GetDXVKDevice()),
     m_context   (m_device->createContext()),
     m_frameLatencyCap(pDevice->GetOptions()->maxFrameLatency) {
-    CreateFrameLatencySignals();
+    CreateFrameLatencySignal();
 
     if (!pDevice->GetOptions()->deferSurfaceCreation)
       CreatePresenter();
@@ -209,9 +209,8 @@ namespace dxvk {
     immediateContext->Flush();
 
     // Wait for the sync event so that we respect the maximum frame latency
-    uint32_t frameId = m_frameId++ % GetActualFrameLatency();
-    auto syncEvent = m_frameLatencySignals[frameId];
-    syncEvent->wait();
+    uint64_t frameId = ++m_frameId;
+    m_frameLatencySignal->wait(frameId - GetActualFrameLatency());
     
     if (m_hud != nullptr)
       m_hud->update();
@@ -312,7 +311,7 @@ namespace dxvk {
         m_hud->render(m_context, info.imageExtent);
       
       if (i + 1 >= SyncInterval)
-        m_context->queueSignal(syncEvent);
+        m_context->signal(m_frameLatencySignal, frameId);
 
       SubmitPresent(immediateContext, sync);
     }
@@ -370,9 +369,8 @@ namespace dxvk {
   }
 
 
-  void D3D11SwapChain::CreateFrameLatencySignals() {
-    for (uint32_t i = 0; i < m_frameLatencySignals.size(); i++)
-      m_frameLatencySignals[i] = new sync::Signal(true);
+  void D3D11SwapChain::CreateFrameLatencySignal() {
+    m_frameLatencySignal = new sync::Fence(m_frameId);
   }
 
 

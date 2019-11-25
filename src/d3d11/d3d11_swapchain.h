@@ -117,9 +117,9 @@ namespace dxvk {
 
     std::vector<Rc<DxvkImageView>> m_imageViews;
 
-    uint32_t                                                  m_frameId = 0;
-    std::array<Rc<sync::Signal>, DXGI_MAX_SWAP_CHAIN_BUFFERS> m_frameLatencySignals;
-    uint32_t m_frameLatencyCap = 0;
+    uint64_t                m_frameId = DXGI_MAX_SWAP_CHAIN_BUFFERS;
+    uint32_t                m_frameLatencyCap = 0;
+    Rc<sync::Signal>        m_frameLatencySignal;
 
     bool                    m_dirty = true;
     bool                    m_vsync = true;
@@ -135,7 +135,7 @@ namespace dxvk {
     void RecreateSwapChain(
             BOOL                      Vsync);
 
-    void CreateFrameLatencySignals();
+    void CreateFrameLatencySignal();
 
     void CreatePresenter();
 

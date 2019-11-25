@@ -9,55 +9,83 @@ namespace dxvk::sync {
   /**
    * \brief Signal
    * 
-   * Acts as a simple CPU fence which can be signaled by one
-   * thread and waited upon by one more thread. Waiting on
-   * more than one thread is not supported.
+   * Interface for a CPU-side fence. Can be signaled
+   * to a given value, and any thread waiting for a
+   * lower value will be woken up.
    */
   class Signal : public RcObject {
     
   public:
     
-    Signal()
-    : m_signaled(false) { }
-    Signal(bool signaled)
-    : m_signaled(signaled) { }
-    ~Signal() { }
-    
-    Signal             (const Signal&) = delete;
-    Signal& operator = (const Signal&) = delete;
+    virtual ~Signal() { }
+
+    /**
+     * \brief Last signaled value
+     * \returns Last signaled value
+     */
+    virtual uint64_t value() const = 0;
     
     /**
      * \brief Notifies signal
-     * Wakes any waiting thread.
+     *
+     * Wakes up all threads currently waiting for
+     * a value lower than \c value. Note that
+     * \c value must monotonically increase.
+     * \param [in] value Value to signal to
      */
-    void notify() {
-      std::lock_guard<std::mutex> lock(m_mutex);
-      m_signaled.store(true);
-      m_cond.notify_one();
-    }
+    virtual void signal(uint64_t value) = 0;
     
     /**
      * \brief Waits for signal
      * 
      * Blocks the calling thread until another
-     * thread wakes it up, then resets it to
-     * the non-signaled state.
+     * thread signals it with a value equal to
+     * or greater than \c value.
+     * \param [in] value The value to wait for
      */
-    void wait() {
-      if (!m_signaled.exchange(false)) {
-        std::unique_lock<std::mutex> lock(m_mutex);
-        m_cond.wait(lock, [this] {
-          return m_signaled.exchange(false);
-        });
-      }
+    virtual void wait(uint64_t value) = 0;
+    
+  };
+
+
+  /**
+   * \brief Fence
+   *
+   * Simple CPU-side fence.
+   */
+  class Fence : public Signal {
+
+  public:
+
+    Fence()
+    : m_value(0ull) { }
+
+    explicit Fence(uint64_t value)
+    : m_value(value) { }
+
+    uint64_t value() const {
+      return m_value.load(std::memory_order_acquire);  
+    }
+
+    void signal(uint64_t value) {
+      std::unique_lock<std::mutex> lock(m_mutex);
+      m_value.store(value, std::memory_order_release);
+      m_cond.notify_all();
     }
     
+    void wait(uint64_t value) {
+      std::unique_lock<std::mutex> lock(m_mutex);
+      m_cond.wait(lock, [this, value] {
+        return value <= m_value.load(std::memory_order_acquire);
+      });
+    }
+
   private:
-    
-    std::atomic<bool>       m_signaled;
+
+    std::atomic<uint64_t>   m_value;
     std::mutex              m_mutex;
     std::condition_variable m_cond;
-    
+
   };
   
 }
