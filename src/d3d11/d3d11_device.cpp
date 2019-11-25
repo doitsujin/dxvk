@@ -2474,10 +2474,8 @@ namespace dxvk {
     m_d3d11Device   (this, FeatureLevel, FeatureFlags),
     m_d3d11DeviceExt(this, &m_d3d11Device),
     m_d3d11Interop  (this, &m_d3d11Device),
-    m_wineFactory   (this, &m_d3d11Device),
-    m_frameLatencyCap(m_d3d11Device.GetOptions()->maxFrameLatency) {
-    for (uint32_t i = 0; i < m_frameEvents.size(); i++)
-      m_frameEvents[i] = new sync::Signal(true);
+    m_wineFactory   (this, &m_d3d11Device) {
+
   }
   
   
@@ -2712,7 +2710,7 @@ namespace dxvk {
     if (MaxLatency == 0)
       MaxLatency = DefaultFrameLatency;
     
-    if (MaxLatency > m_frameEvents.size())
+    if (MaxLatency > DXGI_MAX_SWAP_CHAIN_BUFFERS)
       return DXGI_ERROR_INVALID_CALL;
     
     m_frameLatency = MaxLatency;
@@ -2790,22 +2788,6 @@ namespace dxvk {
   }
   
   
-  Rc<sync::Signal> STDMETHODCALLTYPE D3D11DXGIDevice::GetFrameSyncEvent(UINT BufferCount) {
-    uint32_t frameLatency = m_frameLatency;
-    
-    if (BufferCount != 0
-     && BufferCount <= frameLatency)
-      frameLatency = BufferCount;
-
-    if (m_frameLatencyCap != 0
-     && m_frameLatencyCap <= frameLatency)
-      frameLatency = m_frameLatencyCap;
-
-    uint32_t frameId = m_frameId++ % frameLatency;
-    return m_frameEvents[frameId];
-  }
-
-
   Rc<DxvkDevice> STDMETHODCALLTYPE D3D11DXGIDevice::GetDXVKDevice() {
     return m_dxvkDevice;
   }

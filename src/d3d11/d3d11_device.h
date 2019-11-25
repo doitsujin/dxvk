@@ -634,9 +634,6 @@ namespace dxvk {
     
     void STDMETHODCALLTYPE Trim() final;
     
-    Rc<sync::Signal> STDMETHODCALLTYPE GetFrameSyncEvent(
-            UINT                  BufferCount);
-
     Rc<DxvkDevice> STDMETHODCALLTYPE GetDXVKDevice();
 
   private:
@@ -653,11 +650,7 @@ namespace dxvk {
     
     WineDXGISwapChainFactory m_wineFactory;
     
-    uint32_t m_frameLatencyCap = 0;
-    uint32_t m_frameLatency    = DefaultFrameLatency;
-    uint32_t m_frameId         = 0;
-
-    std::array<Rc<sync::Signal>, 16> m_frameEvents;
+    uint32_t m_frameLatency = DefaultFrameLatency;
 
     Rc<DxvkDevice> CreateDevice(D3D_FEATURE_LEVEL FeatureLevel);
 

@@ -24,7 +24,10 @@ namespace dxvk {
     m_window    (hWnd),
     m_desc      (*pDesc),
     m_device    (pDevice->GetDXVKDevice()),
-    m_context   (m_device->createContext()) {
+    m_context   (m_device->createContext()),
+    m_frameLatencyCap(pDevice->GetOptions()->maxFrameLatency) {
+    CreateFrameLatencySignals();
+
     if (!pDevice->GetOptions()->deferSurfaceCreation)
       CreatePresenter();
     
@@ -206,7 +209,8 @@ namespace dxvk {
     immediateContext->Flush();
 
     // Wait for the sync event so that we respect the maximum frame latency
-    auto syncEvent = m_dxgiDevice->GetFrameSyncEvent(m_desc.BufferCount);
+    uint32_t frameId = m_frameId++ % GetActualFrameLatency();
+    auto syncEvent = m_frameLatencySignals[frameId];
     syncEvent->wait();
     
     if (m_hud != nullptr)
@@ -363,6 +367,12 @@ namespace dxvk {
       throw DxvkError("D3D11SwapChain: Failed to recreate swap chain");
     
     CreateRenderTargetViews();
+  }
+
+
+  void D3D11SwapChain::CreateFrameLatencySignals() {
+    for (uint32_t i = 0; i < m_frameLatencySignals.size(); i++)
+      m_frameLatencySignals[i] = new sync::Signal(true);
   }
 
 
@@ -706,6 +716,18 @@ namespace dxvk {
       fsResourceSlots.size(),
       fsResourceSlots.data(),
       { 1u, 1u }, fsCode);
+  }
+
+
+  uint32_t D3D11SwapChain::GetActualFrameLatency() {
+    uint32_t maxFrameLatency = DefaultFrameLatency;
+    m_dxgiDevice->GetMaximumFrameLatency(&maxFrameLatency);
+
+    if (m_frameLatencyCap)
+      maxFrameLatency = std::min(maxFrameLatency, m_frameLatencyCap);
+
+    maxFrameLatency = std::min(maxFrameLatency, m_desc.BufferCount + 1);
+    return maxFrameLatency;
   }
 
 

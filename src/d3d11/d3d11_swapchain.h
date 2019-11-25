@@ -21,7 +21,7 @@ namespace dxvk {
   };
 
   class D3D11SwapChain : public ComObject<IDXGIVkSwapChain> {
-
+    constexpr static uint32_t DefaultFrameLatency = 1;
   public:
 
     D3D11SwapChain(
@@ -68,7 +68,7 @@ namespace dxvk {
             UINT                      SyncInterval,
             UINT                      PresentFlags,
       const DXGI_PRESENT_PARAMETERS*  pPresentParameters);
-    
+
   private:
 
     enum BindingIds : uint32_t {
@@ -117,6 +117,10 @@ namespace dxvk {
 
     std::vector<Rc<DxvkImageView>> m_imageViews;
 
+    uint32_t                                                  m_frameId = 0;
+    std::array<Rc<sync::Signal>, DXGI_MAX_SWAP_CHAIN_BUFFERS> m_frameLatencySignals;
+    uint32_t m_frameLatencyCap = 0;
+
     bool                    m_dirty = true;
     bool                    m_vsync = true;
 
@@ -130,6 +134,8 @@ namespace dxvk {
 
     void RecreateSwapChain(
             BOOL                      Vsync);
+
+    void CreateFrameLatencySignals();
 
     void CreatePresenter();
 
@@ -150,6 +156,8 @@ namespace dxvk {
     void InitSamplers();
 
     void InitShaders();
+
+    uint32_t GetActualFrameLatency();
     
     uint32_t PickFormats(
             DXGI_FORMAT               Format,
