@@ -58,6 +58,8 @@ IDXGIVkSwapChain : public IUnknown {
 
   virtual UINT STDMETHODCALLTYPE GetFrameLatency() = 0;
 
+  virtual HANDLE STDMETHODCALLTYPE GetFrameLatencyEvent() = 0;
+
   virtual HRESULT STDMETHODCALLTYPE ChangeProperties(
     const DXGI_SWAP_CHAIN_DESC1*    pDesc) = 0;
 

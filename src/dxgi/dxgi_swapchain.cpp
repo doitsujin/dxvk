@@ -406,8 +406,10 @@ namespace dxvk {
   
   
   HANDLE STDMETHODCALLTYPE DxgiSwapChain::GetFrameLatencyWaitableObject() {
-    Logger::err("DxgiSwapChain::GetFrameLatencyWaitableObject: Not implemented");
-    return nullptr;
+    if (!(m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT))
+      return nullptr;
+
+    return m_presenter->GetFrameLatencyEvent();
   }
 
 

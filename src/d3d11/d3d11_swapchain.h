@@ -58,6 +58,8 @@ namespace dxvk {
 
     UINT STDMETHODCALLTYPE GetFrameLatency();
 
+    HANDLE STDMETHODCALLTYPE GetFrameLatencyEvent();
+
     HRESULT STDMETHODCALLTYPE ChangeProperties(
       const DXGI_SWAP_CHAIN_DESC1*    pDesc);
 

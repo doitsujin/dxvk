@@ -115,6 +115,11 @@ namespace dxvk {
   }
 
 
+  HANDLE STDMETHODCALLTYPE D3D11SwapChain::GetFrameLatencyEvent() {
+    return m_frameLatencyEvent;
+  }
+
+
   HRESULT STDMETHODCALLTYPE D3D11SwapChain::ChangeProperties(
     const DXGI_SWAP_CHAIN_DESC1*  pDesc) {
 
