@@ -1,7 +1,6 @@
 #pragma once
 
 #include <atomic>
-#include "../util/util_time.h"
 #include <condition_variable>
 #include <fstream>
 
@@ -9,6 +8,7 @@
 
 #include "../util/sha1/sha1_util.h"
 #include "../util/util_env.h"
+#include "../util/util_time.h"
 
 namespace dxvk {
   

@@ -1,5 +1,6 @@
-#include "../util/util_time.h"
 #include <cstring>
+
+#include "../util/util_time.h"
 
 #include "dxvk_compute.h"
 #include "dxvk_device.h"
