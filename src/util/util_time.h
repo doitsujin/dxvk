@@ -3,13 +3,13 @@
 #include <chrono>
 #include <cstdint>
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__WINE__)
 #include <windows.h>
 #endif
 
 namespace dxvk {
 
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(__WINE__)
   struct high_resolution_clock {
     static constexpr bool is_steady = true;
 
@@ -44,7 +44,7 @@ namespace dxvk {
     }
   };
 #else
-  using clock = std::chrono::high_resolution_clock;
+  using high_resolution_clock = std::chrono::high_resolution_clock;
 #endif
 
 }
