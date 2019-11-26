@@ -371,6 +371,30 @@ namespace dxvk {
   }
 
 
+  uint32_t GetDecltypeCount(D3DDECLTYPE Type) {
+    switch (Type) {
+      case D3DDECLTYPE_FLOAT1:    return 1;
+      case D3DDECLTYPE_FLOAT2:    return 2;
+      case D3DDECLTYPE_FLOAT3:    return 3;
+      case D3DDECLTYPE_FLOAT4:    return 4;
+      case D3DDECLTYPE_D3DCOLOR:  return 4;
+      case D3DDECLTYPE_UBYTE4:    return 4;
+      case D3DDECLTYPE_SHORT2:    return 2;
+      case D3DDECLTYPE_SHORT4:    return 4;
+      case D3DDECLTYPE_UBYTE4N:   return 4;
+      case D3DDECLTYPE_SHORT2N:   return 2;
+      case D3DDECLTYPE_SHORT4N:   return 4;
+      case D3DDECLTYPE_USHORT2N:  return 2;
+      case D3DDECLTYPE_USHORT4N:  return 4;
+      case D3DDECLTYPE_UDEC3:     return 3;
+      case D3DDECLTYPE_DEC3N:     return 3;
+      case D3DDECLTYPE_FLOAT16_2: return 2;
+      case D3DDECLTYPE_FLOAT16_4: return 4;
+      default:                    return 0;
+    }
+  }
+
+
   bool IsDepthFormat(D3D9Format Format) {
     return Format == D3D9Format::D16_LOCKABLE
         || Format == D3D9Format::D32

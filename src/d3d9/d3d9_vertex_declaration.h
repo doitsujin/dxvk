@@ -58,6 +58,10 @@ namespace dxvk {
       return m_flags.test(flag);
     }
 
+    uint32_t GetTexcoordMask() const {
+      return m_texcoordMask;
+    }
+
   private:
 
     void Classify();
@@ -67,6 +71,8 @@ namespace dxvk {
     D3D9VertexElements             m_elements;
 
     DWORD                          m_fvf;
+
+    uint32_t                       m_texcoordMask = 0;
 
   };
 

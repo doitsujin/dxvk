@@ -179,6 +179,8 @@ namespace dxvk {
 
   uint32_t GetDecltypeSize(D3DDECLTYPE Type);
 
+  uint32_t GetDecltypeCount(D3DDECLTYPE Type);
+
   void ConvertBox(D3DBOX box, VkOffset3D& offset, VkExtent3D& extent);
 
   void ConvertRect(RECT rect, VkOffset3D& offset, VkExtent3D& extent);

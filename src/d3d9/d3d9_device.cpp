@@ -2507,7 +2507,8 @@ namespace dxvk {
     if (!dirtyFFShader)
       dirtyFFShader |= decl->TestFlag(D3D9VertexDeclFlag::HasPositionT)  != m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT)
                     || decl->TestFlag(D3D9VertexDeclFlag::HasColor0)     != m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor0)
-                    || decl->TestFlag(D3D9VertexDeclFlag::HasColor1)     != m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor1);
+                    || decl->TestFlag(D3D9VertexDeclFlag::HasColor1)     != m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor1)
+                    || decl->GetTexcoordMask()                           != m_state.vertexDecl->GetTexcoordMask();
 
     if (dirtyFFShader)
       m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
@@ -6029,6 +6030,8 @@ namespace dxvk {
         key.data.TexcoordFlags   |= indexFlags     << (i * 3);
         key.data.TexcoordIndices |= index          << (i * 3);
       }
+
+      key.data.TexcoordDeclMask = m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetTexcoordMask() : 0;
 
       EmitCs([
         this,

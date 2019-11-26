@@ -95,12 +95,15 @@ namespace dxvk {
         uint32_t TransformFlags   : 24;
 
         uint32_t LightCount       : 4;
+
+        uint32_t TexcoordDeclMask     : 24;
       } data;
 
       struct {
         uint32_t a;
         uint32_t b;
         uint32_t c;
+        uint32_t d;
       } primitive;
     };
   };

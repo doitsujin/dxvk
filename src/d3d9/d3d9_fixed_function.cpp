@@ -826,10 +826,17 @@ namespace dxvk {
       uint32_t type = flags;
       if (type != D3DTTFF_DISABLE) {
         if (!m_vsKey.data.HasPositionT) {
-          uint32_t one  = m_module.constf32(1.0f);
+          for (uint32_t j = count; j < 4; j++) {
+            // If we're outside the component count of the vertex decl for this texcoord then we pad with zeroes.
+            // Otherwise, pad with ones.
 
-          for (uint32_t i = count; i < 4; i++)
-            transformed = m_module.opCompositeInsert(m_vec4Type, one, transformed, 1, &i);
+            // Very weird quirk in order to get texcoord transforms to work like they do in native.
+            // In future, maybe we could sort this out properly by chopping matrices of different sizes, but thats
+            // a project for another day.
+            uint32_t texcoordCount = (m_vsKey.data.TexcoordDeclMask >> (3 * inputIndex)) & 0x7;
+            uint32_t value = j > texcoordCount ? m_module.constf32(0) : m_module.constf32(1);
+            transformed = m_module.opCompositeInsert(m_vec4Type, value, transformed, 1, &j);
+          }
 
           transformed = m_module.opVectorTimesMatrix(m_vec4Type, transformed, m_vs.constants.texcoord[i]);
         }
@@ -1978,6 +1985,7 @@ namespace dxvk {
     state.add(uint32hash(key.primitive.a));
     state.add(uint32hash(key.primitive.b));
     state.add(uint32hash(key.primitive.c));
+    state.add(uint32hash(key.primitive.d));
 
     return state;
   }
