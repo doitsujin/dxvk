@@ -7,6 +7,7 @@
 
 #include "../util/util_bit.h"
 #include "../util/util_luid.h"
+#include "../util/util_ratio.h"
 
 #include <cfloat>
 
@@ -752,6 +753,8 @@ namespace dxvk {
     if (!IsSupportedAdapterFormat(Format) || !IsSupportedDisplayFormat(Format, false))
       return;
 
+    auto& options = m_parent->GetOptions();
+
     // Walk over all modes that the display supports and
     // return those that match the requested format etc.
     DEVMODEW devMode = { };
@@ -766,6 +769,9 @@ namespace dxvk {
 
       // Skip modes with incompatible formats
       if (devMode.dmBitsPerPel != GetMonitorFormatBpp(Format))
+        continue;
+
+      if (options.disableUltraWide && Ratio<DWORD>(devMode.dmPelsWidth, devMode.dmPelsHeight) == Ratio<DWORD>(64, 27))
         continue;
 
       D3DDISPLAYMODEEX mode;

@@ -59,6 +59,7 @@ namespace dxvk {
     this->invariantPosition     = config.getOption<bool>    ("d3d9.invariantPosition",     false);
     this->memoryTrackTest       = config.getOption<bool>    ("d3d9.memoryTrackTest",       false);
     this->supportVCache         = config.getOption<bool>    ("d3d9.supportVCache",         vendorId == 0x10de);
+    this->disableUltraWide      = config.getOption<bool>    ("d3d9.disableUltraWide",      false);
 
     // If we are not Nvidia, enable general hazards.
     this->generalHazards = adapter == nullptr || !adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0);
