@@ -1,6 +1,6 @@
 #pragma once
 
-#include <chrono>
+#include "../util/util_time.h"
 
 #include "../dxvk_stats.h"
 
@@ -38,8 +38,8 @@ namespace dxvk::hud {
     DxvkStatCounters  m_prevCounters;
     DxvkStatCounters  m_diffCounters;
 
-    std::chrono::high_resolution_clock::time_point m_gpuLoadUpdateTime;
-    std::chrono::high_resolution_clock::time_point m_compilerShowTime;
+    dxvk::high_resolution_clock::time_point m_gpuLoadUpdateTime;
+    dxvk::high_resolution_clock::time_point m_compilerShowTime;
 
     uint64_t m_prevGpuIdleTicks = 0;
     uint64_t m_diffGpuIdleTicks = 0;

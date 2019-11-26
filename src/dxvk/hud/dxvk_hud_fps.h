@@ -1,6 +1,6 @@
 #pragma once
 
-#include <chrono>
+#include "../util/util_time.h"
 
 #include "dxvk_hud_config.h"
 #include "dxvk_hud_renderer.h"
@@ -13,7 +13,7 @@ namespace dxvk::hud {
    * Displays the current frames per second.
    */
   class HudFps {
-    using Clock     = std::chrono::high_resolution_clock;
+    using Clock     = dxvk::high_resolution_clock;
     using TimeDiff  = std::chrono::microseconds;
     using TimePoint = typename Clock::time_point;
     
