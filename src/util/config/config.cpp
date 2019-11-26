@@ -256,6 +256,10 @@ namespace dxvk {
       { "d3d9.memoryTrackTest",             "True" },
       { "d3d9.maxAvailableMemory",          "1073741824" },
     }} },
+    /* Senran Kagura Shinovi Versus               */
+    { R"(\\SKShinoviVersus\.exe$)", {{
+      { "d3d9.disableUltraWide",            "True" },
+    }} },
   }};
 
 
