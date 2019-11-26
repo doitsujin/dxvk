@@ -30,7 +30,7 @@ namespace dxvk {
   DxvkDevice::~DxvkDevice() {
     // Wait for all pending Vulkan commands to be
     // executed before we destroy any resources.
-    m_vkd->vkDeviceWaitIdle(m_vkd->device());
+    this->waitForIdle();
   }
 
 
