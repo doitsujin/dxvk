@@ -281,6 +281,11 @@ namespace dxvk {
           UINT        SwapChainFlags) {
     if (!IsWindow(m_window))
       return DXGI_ERROR_INVALID_CALL;
+
+    constexpr UINT PreserveFlags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
+
+    if ((m_desc.Flags & PreserveFlags) != (SwapChainFlags & PreserveFlags))
+      return DXGI_ERROR_INVALID_CALL;
     
     std::lock_guard<std::mutex> lock(m_lockBuffer);
     m_desc.Width  = Width;
