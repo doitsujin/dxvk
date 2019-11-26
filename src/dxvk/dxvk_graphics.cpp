@@ -1,4 +1,4 @@
-#include <chrono>
+#include "../util/util_time.h"
 
 #include "dxvk_device.h"
 #include "dxvk_graphics.h"
@@ -396,10 +396,10 @@ namespace dxvk {
       info.pTessellationState = nullptr;
     
     // Time pipeline compilation for debugging purposes
-    std::chrono::high_resolution_clock::time_point t0, t1;
+    dxvk::high_resolution_clock::time_point t0, t1;
 
     if (Logger::logLevel() <= LogLevel::Debug)
-      t0 = std::chrono::high_resolution_clock::now();
+      t0 = dxvk::high_resolution_clock::now();
     
     VkPipeline pipeline = VK_NULL_HANDLE;
     if (m_vkd->vkCreateGraphicsPipelines(m_vkd->device(),
@@ -410,7 +410,7 @@ namespace dxvk {
     }
     
     if (Logger::logLevel() <= LogLevel::Debug) {
-      t1 = std::chrono::high_resolution_clock::now();
+      t1 = dxvk::high_resolution_clock::now();
       auto td = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0);
       Logger::debug(str::format("DxvkGraphicsPipeline: Finished in ", td.count(), " ms"));
     }

@@ -4,7 +4,7 @@ namespace dxvk::hud {
   
   HudStats::HudStats(HudElements elements)
   : m_elements(filterElements(elements)),
-    m_compilerShowTime(std::chrono::high_resolution_clock::now()) { }
+    m_compilerShowTime(dxvk::high_resolution_clock::now()) { }
   
   
   HudStats::~HudStats() {
@@ -58,7 +58,7 @@ namespace dxvk::hud {
   
   
   void HudStats::updateGpuLoad() {
-    auto now = std::chrono::high_resolution_clock::now();
+    auto now = dxvk::high_resolution_clock::now();
     uint64_t ticks = std::chrono::duration_cast<std::chrono::microseconds>(now - m_gpuLoadUpdateTime).count();
 
     if (ticks >= 500'000) {
@@ -194,7 +194,7 @@ namespace dxvk::hud {
     const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
           HudPos            position) {
-    auto now    = std::chrono::high_resolution_clock::now();
+    auto now    = dxvk::high_resolution_clock::now();
     bool doShow = m_prevCounters.getCtr(DxvkStatCounter::PipeCompilerBusy);
 
     if (m_prevCounters.getCtr(DxvkStatCounter::PipeCompilerBusy)

@@ -145,13 +145,13 @@ namespace dxvk {
 
     while (!m_stopped.load()) {
       if (m_finishQueue.empty()) {
-        auto t0 = std::chrono::high_resolution_clock::now();
+        auto t0 = dxvk::high_resolution_clock::now();
 
         m_submitCond.wait(lock, [this] {
           return m_stopped.load() || !m_finishQueue.empty();
         });
 
-        auto t1 = std::chrono::high_resolution_clock::now();
+        auto t1 = dxvk::high_resolution_clock::now();
         m_gpuIdle += std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
       }
 
