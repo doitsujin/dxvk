@@ -4522,7 +4522,7 @@ namespace dxvk {
     uint32_t pending = m_dxvkDevice->pendingSubmissions();
 
     if (StrongHint || pending <= MaxPendingSubmits) {
-      auto now = std::chrono::high_resolution_clock::now();
+      auto now = dxvk::high_resolution_clock::now();
 
       uint32_t delay = MinFlushIntervalUs
                      + IncFlushIntervalUs * pending;
@@ -4828,7 +4828,7 @@ namespace dxvk {
       FlushCsChunk();
 
       // Reset flush timer used for implicit flushes
-      m_lastFlush = std::chrono::high_resolution_clock::now();
+      m_lastFlush = dxvk::high_resolution_clock::now();
       m_csIsBusy = false;
     }
   }

@@ -863,8 +863,8 @@ namespace dxvk {
 
     Rc<DxvkDataBuffer>              m_updateBuffer;
     DxvkCsChunkPool                 m_csChunkPool;
-    std::chrono::high_resolution_clock::time_point m_lastFlush
-      = std::chrono::high_resolution_clock::now();
+    dxvk::high_resolution_clock::time_point m_lastFlush
+      = dxvk::high_resolution_clock::now();
     DxvkCsThread                    m_csThread;
     bool                            m_csIsBusy = false;
 

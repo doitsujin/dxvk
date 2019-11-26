@@ -181,7 +181,7 @@ namespace dxvk {
     uint32_t scanLineCount = mode.Height + vBlankLineCount;
 
     auto nowUs = std::chrono::time_point_cast<std::chrono::microseconds>(
-      std::chrono::high_resolution_clock::now())
+      dxvk::high_resolution_clock::now())
       .time_since_epoch();
 
     auto frametimeUs = std::chrono::microseconds(1000000u / mode.RefreshRate);
