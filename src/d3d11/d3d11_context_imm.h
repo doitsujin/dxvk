@@ -1,6 +1,6 @@
 #pragma once
 
-#include <chrono>
+#include "../util/util_time.h"
 
 #include "d3d11_context.h"
 #include "d3d11_state_object.h"
@@ -116,8 +116,8 @@ namespace dxvk {
 
     std::atomic<uint32_t> m_refCount = { 0 };
 
-    std::chrono::high_resolution_clock::time_point m_lastFlush
-      = std::chrono::high_resolution_clock::now();
+    dxvk::high_resolution_clock::time_point m_lastFlush
+      = dxvk::high_resolution_clock::now();
     
     Com<D3D11DeviceContextState> m_stateObject;
     
