@@ -41,6 +41,7 @@ namespace dxvk {
 
 
   D3D11SwapChain::~D3D11SwapChain() {
+    m_device->waitForSubmission(&m_presentStatus);
     m_device->waitForIdle();
     
     if (m_backBuffer)
