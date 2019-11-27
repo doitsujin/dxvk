@@ -12,7 +12,7 @@ namespace dxvk::sync {
    * CPU-side fence that also has the
    * ability to signal Win32 events.
    */
-  class Win32Fence : public Signal {
+  class Win32Fence final : public Signal {
 
   public:
 

@@ -53,7 +53,7 @@ namespace dxvk::sync {
    *
    * Simple CPU-side fence.
    */
-  class Fence : public Signal {
+  class Fence final : public Signal {
 
   public:
 
