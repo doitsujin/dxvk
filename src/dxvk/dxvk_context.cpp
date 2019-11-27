@@ -3931,7 +3931,6 @@ namespace dxvk {
             if (m_rcTracked.set(binding.slot))
               m_cmd->trackResource<DxvkAccess::None>(res.sampler);
           } else {
-            bindMask.clr(i);
             descriptors[i].image = m_common->dummyResources().samplerDescriptor();
           } break;
         
@@ -4026,7 +4025,6 @@ namespace dxvk {
             if (m_rcTracked.set(binding.slot))
               m_cmd->trackResource<DxvkAccess::Read>(res.bufferSlice.buffer());
           } else {
-            bindMask.clr(i);
             descriptors[i].buffer = m_common->dummyResources().bufferDescriptor();
           } break;
         
@@ -4049,7 +4047,6 @@ namespace dxvk {
             if (m_rcTracked.set(binding.slot))
               m_cmd->trackResource<DxvkAccess::Read>(res.bufferSlice.buffer());
           } else {
-            bindMask.clr(i);
             descriptors[i].buffer = m_common->dummyResources().bufferDescriptor();
           } break;
         
