@@ -474,8 +474,8 @@ namespace dxvk {
       VkViewport viewport;
       viewport.x        = float(m_dstRect.left);
       viewport.y        = float(m_dstRect.top);
-      viewport.width    = float(info.imageExtent.width  - m_dstRect.left);
-      viewport.height   = float(info.imageExtent.height - m_dstRect.top);
+      viewport.width    = float(m_dstRect.right  - m_dstRect.left);
+      viewport.height   = float(m_dstRect.bottom - m_dstRect.top);
       viewport.minDepth = 0.0f;
       viewport.maxDepth = 1.0f;
 
