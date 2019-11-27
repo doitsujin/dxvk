@@ -104,8 +104,8 @@ namespace dxvk {
     /// Support VCACHE query
     bool supportVCache;
 
-    /// Disable UltraWide (64:27) modes
-    bool disableUltraWide;
+    /// Forced aspect ratio, disable other modes
+    std::string forceAspectRatio;
   };
 
 }

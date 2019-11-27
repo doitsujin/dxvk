@@ -762,6 +762,8 @@ namespace dxvk {
 
     uint32_t modeIndex = 0;
 
+    const auto forcedRatio = Ratio<DWORD>(options.forceAspectRatio);
+
     while (::EnumDisplaySettingsW(monInfo.szDevice, modeIndex++, &devMode)) {
       // Skip interlaced modes altogether
       if (devMode.dmDisplayFlags & DM_INTERLACED)
@@ -771,7 +773,7 @@ namespace dxvk {
       if (devMode.dmBitsPerPel != GetMonitorFormatBpp(Format))
         continue;
 
-      if (options.disableUltraWide && Ratio<DWORD>(devMode.dmPelsWidth, devMode.dmPelsHeight) == Ratio<DWORD>(64, 27))
+      if (!forcedRatio.undefined() && Ratio<DWORD>(devMode.dmPelsWidth, devMode.dmPelsHeight) != forcedRatio)
         continue;
 
       D3DDISPLAYMODEEX mode;
