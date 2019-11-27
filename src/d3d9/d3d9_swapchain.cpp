@@ -479,6 +479,14 @@ namespace dxvk {
       viewport.minDepth = 0.0f;
       viewport.maxDepth = 1.0f;
 
+      VkRect2D scissor;
+      scissor.offset.x      = 0;
+      scissor.offset.y      = 0;
+      scissor.extent.width  = m_dstRect.right  - m_dstRect.left;
+      scissor.extent.height = m_dstRect.bottom - m_dstRect.top;
+
+      m_context->setViewports(1, &viewport, &scissor);
+
       D3D9PresentInfo presentInfoConsts;
       presentInfoConsts.scale[0]  = float(m_srcRect.right  - m_srcRect.left) / float(m_swapImage->info().extent.width);
       presentInfoConsts.scale[1]  = float(m_srcRect.bottom - m_srcRect.top)  / float(m_swapImage->info().extent.height);
@@ -487,14 +495,6 @@ namespace dxvk {
       presentInfoConsts.offset[1] = float(m_srcRect.top)  / float(m_swapImage->info().extent.height);
 
       m_context->pushConstants(0, sizeof(D3D9PresentInfo), &presentInfoConsts);
-      
-      VkRect2D scissor;
-      scissor.offset.x      = 0;
-      scissor.offset.y      = 0;
-      scissor.extent.width  = m_dstRect.right  - m_dstRect.left;
-      scissor.extent.height = m_dstRect.bottom - m_dstRect.top;
-
-      m_context->setViewports(1, &viewport, &scissor);
 
       m_context->setRasterizerState(m_rsState);
       m_context->setMultisampleState(m_msState);
