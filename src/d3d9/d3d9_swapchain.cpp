@@ -491,8 +491,8 @@ namespace dxvk {
       VkRect2D scissor;
       scissor.offset.x      = 0;
       scissor.offset.y      = 0;
-      scissor.extent.width  = info.imageExtent.width  - m_dstRect.left;
-      scissor.extent.height = info.imageExtent.height - m_dstRect.top;
+      scissor.extent.width  = m_dstRect.right  - m_dstRect.left;
+      scissor.extent.height = m_dstRect.bottom - m_dstRect.top;
 
       m_context->setViewports(1, &viewport, &scissor);
 
