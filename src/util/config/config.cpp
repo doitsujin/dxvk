@@ -258,7 +258,7 @@ namespace dxvk {
     }} },
     /* Senran Kagura Shinovi Versus               */
     { R"(\\SKShinoviVersus\.exe$)", {{
-      { "d3d9.disableUltraWide",            "True" },
+      { "d3d9.forceAspectRatio",            "16:9" },
     }} },
   }};
 
