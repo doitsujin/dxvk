@@ -56,6 +56,7 @@ namespace dxvk {
   D3D9SwapChainEx::~D3D9SwapChainEx() {
     RestoreDisplayMode(m_monitor);
 
+    m_device->waitForSubmission(&m_presentStatus);
     m_device->waitForIdle();
 
     if (m_backBuffer)
