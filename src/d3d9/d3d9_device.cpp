@@ -4435,7 +4435,7 @@ namespace dxvk {
 
     *ppbData = reinterpret_cast<void*>(data);
 
-    DWORD oldFlags = pResource->GetMapFlags(Flags);
+    DWORD oldFlags = pResource->GetMapFlags();
 
     // We need to remove the READONLY flags from the map flags
     // if there was ever a non-readonly upload.
@@ -4484,8 +4484,10 @@ namespace dxvk {
     if (pResource->GetMapMode() != D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
       return D3D_OK;
 
-    if (pResource->GetMapFlags(0) & D3DLOCK_READONLY)
+    if (pResource->GetMapFlags() & D3DLOCK_READONLY)
       return D3D_OK;
+
+    pResource->SetMapFlags(0);
 
     if (pResource->Desc()->Pool != D3DPOOL_DEFAULT) {
       pResource->MarkNeedsUpload();

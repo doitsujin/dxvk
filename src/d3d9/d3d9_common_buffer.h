@@ -128,9 +128,9 @@ namespace dxvk {
       return m_sliceHandle;
     }
 
-    DWORD GetMapFlags(DWORD Flags) { return m_mapFlags; }
+    DWORD GetMapFlags() const      { return m_mapFlags; }
 
-    DWORD SetMapFlags(DWORD Flags) { return std::exchange(m_mapFlags, Flags); }
+    void SetMapFlags(DWORD Flags) { m_mapFlags = Flags; }
 
     const D3D9_BUFFER_DESC* Desc() const {
       return &m_desc;
