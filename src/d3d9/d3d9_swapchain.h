@@ -5,6 +5,8 @@
 
 #include "../dxvk/hud/dxvk_hud.h"
 
+#include "../util/sync/sync_signal.h"
+
 #include <vector>
 
 namespace dxvk {
@@ -130,6 +132,11 @@ namespace dxvk {
 
     std::vector<Rc<DxvkImageView>> m_imageViews;
 
+
+    uint64_t                m_frameId           = D3D9DeviceEx::MaxFrameLatency;
+    uint32_t                m_frameLatencyCap   = 0;
+    Rc<sync::Fence>         m_frameLatencySignal;
+
     bool                    m_dirty    = true;
     bool                    m_vsync    = true;
 
@@ -170,6 +177,8 @@ namespace dxvk {
     void InitShaders();
 
     void InitRamp();
+
+    uint32_t GetActualFrameLatency();
 
     uint32_t PickFormats(
             D3D9Format                Format,

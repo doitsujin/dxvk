@@ -26,7 +26,9 @@ namespace dxvk {
     const D3DDISPLAYMODEEX*      pFullscreenDisplayMode)
     : D3D9SwapChainExBase(pDevice)
     , m_device           (pDevice->GetDXVKDevice())
-    , m_context          (m_device->createContext()) {
+    , m_context          (m_device->createContext())
+    , m_frameLatencyCap  (pDevice->GetOptions()->maxFrameLatency)
+    , m_frameLatencySignal(new sync::Fence(m_frameId)) {
     UpdateMonitorInfo();
 
     this->NormalizePresentParameters(pPresentParams);
@@ -409,8 +411,8 @@ namespace dxvk {
     m_parent->Flush();
 
     // Wait for the sync event so that we respect the maximum frame latency
-    auto syncEvent = m_parent->GetFrameSyncEvent(m_presentParams.BackBufferCount);
-    syncEvent->wait();
+    uint64_t frameId = ++m_frameId;
+    m_frameLatencySignal->wait(frameId - GetActualFrameLatency());
     
     if (m_hud != nullptr)
       m_hud->update();
@@ -517,7 +519,7 @@ namespace dxvk {
         m_hud->render(m_context, info.imageExtent);
 
       if (i + 1 >= SyncInterval)
-        m_context->queueSignal(syncEvent);
+        m_context->signal(m_frameLatencySignal, frameId);
 
       SubmitPresent(sync);
     }
@@ -920,6 +922,18 @@ namespace dxvk {
       m_ramp.green[i] = identity;
       m_ramp.blue[i]  = identity;
     }
+  }
+
+
+
+  uint32_t D3D9SwapChainEx::GetActualFrameLatency() {
+    uint32_t maxFrameLatency = m_parent->GetFrameLatency();
+
+    if (m_frameLatencyCap)
+      maxFrameLatency = std::min(maxFrameLatency, m_frameLatencyCap);
+
+    maxFrameLatency = std::min(maxFrameLatency, m_presentParams.BackBufferCount + 1);
+    return maxFrameLatency;
   }
 
 

@@ -42,7 +42,6 @@ namespace dxvk {
     : m_adapter        ( pAdapter )
     , m_dxvkDevice     ( dxvkDevice )
     , m_csThread       ( dxvkDevice->createContext() )
-    , m_frameLatency   ( DefaultFrameLatency )
     , m_csChunk        ( AllocCsChunk() )
     , m_parent         ( pParent )
     , m_deviceType     ( DeviceType )
@@ -63,11 +62,6 @@ namespace dxvk {
 
     m_initializer      = new D3D9Initializer(m_dxvkDevice);
     m_converter        = new D3D9FormatHelper(m_dxvkDevice);
-
-    m_frameLatencyCap  = m_d3d9Options.maxFrameLatency;
-
-    for (uint32_t i = 0; i < m_frameEvents.size(); i++)
-      m_frameEvents[i] = new sync::Signal(true);
 
     EmitCs([
       cDevice = m_dxvkDevice
@@ -3189,8 +3183,8 @@ namespace dxvk {
     if (MaxLatency == 0)
       MaxLatency = DefaultFrameLatency;
 
-    if (MaxLatency > m_frameEvents.size())
-      MaxLatency = m_frameEvents.size();
+    if (MaxLatency > MaxFrameLatency)
+      MaxLatency = MaxFrameLatency;
 
     m_frameLatency = MaxLatency;
 
@@ -3809,22 +3803,6 @@ namespace dxvk {
 
   HWND D3D9DeviceEx::GetWindow() {
     return m_window;
-  }
-
-
-  Rc<sync::Signal> D3D9DeviceEx::GetFrameSyncEvent(UINT BufferCount) {
-    uint32_t frameLatency = m_frameLatency;
-
-    if (BufferCount != 0
-     && BufferCount <= frameLatency)
-      frameLatency = BufferCount;
-
-    if (m_frameLatencyCap != 0
-      && m_frameLatencyCap <= frameLatency)
-      frameLatency = m_frameLatencyCap;
-
-    uint32_t frameId = m_frameId++ % frameLatency;
-    return m_frameEvents[frameId];
   }
 
 
