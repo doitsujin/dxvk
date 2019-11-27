@@ -712,6 +712,9 @@ namespace dxvk {
             void**                  ppbData,
             DWORD                   Flags);
 
+    HRESULT FlushBuffer(
+            D3D9CommonBuffer*       pResource);
+
     HRESULT UnlockBuffer(
             D3D9CommonBuffer*       pResource);
 

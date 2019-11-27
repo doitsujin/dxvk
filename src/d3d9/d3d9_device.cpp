@@ -4365,7 +4365,11 @@ namespace dxvk {
     // We only bounds check for MANAGED.
     // (TODO: Apparently this is meant to happen for DYNAMIC too but I am not sure
     //  how that works given it is meant to be a DIRECT access..?)
-    const bool boundsCheck = IsPoolManaged(desc.Pool);
+
+    // D3D9 does not do region tracking for READONLY locks
+    // But lets also account for whether we get readback from ProcessVertices
+    const bool quickRead   = ((Flags & D3DLOCK_READONLY) && !pResource->GetReadLocked());
+    const bool boundsCheck = IsPoolManaged(desc.Pool) && !quickRead;
 
     if (boundsCheck) {
       // We can only respect this for these cases -- otherwise R/W OOB still get copied on native
@@ -4400,20 +4404,14 @@ namespace dxvk {
     }
     else {
       // NOOVERWRITE promises that they will not write in a currently used area.
-      // READONLY promises they will only read -- and we never write to these buffers from the GPU
-      //   - (aside from specific cases, SetReadLocked returns a value if we need to)
       // Therefore we can skip waiting for these two cases.
       // We can also skip waiting if there is not dirty range overlap, if we are one of those resources.
-      bool dirtyRangeOverlap = true;
 
-      // If we are respecting the bounds ie. (MANAGED), and not-read-only then we can test overlap
+      // If we are respecting the bounds ie. (MANAGED) we can test overlap
       // of our bounds, otherwise we just ignore this and go for it all the time.
-      if (boundsCheck && !(Flags & D3DLOCK_READONLY))
-        dirtyRangeOverlap = pResource->DirtyRange().Overlaps(pResource->LockRange());
-
       const bool skipWait = (Flags & D3DLOCK_NOOVERWRITE) ||
-                            ((Flags & D3DLOCK_READONLY) && !pResource->GetReadLocked()) ||
-                            !dirtyRangeOverlap;
+                            quickRead                     ||
+                            (boundsCheck && !pResource->DirtyRange().Overlaps(pResource->LockRange()));
 
       if (!skipWait) {
         if (!(Flags & D3DLOCK_DONOTWAIT)) {
@@ -4451,21 +4449,8 @@ namespace dxvk {
   }
 
 
-  HRESULT D3D9DeviceEx::UnlockBuffer(
+  HRESULT D3D9DeviceEx::FlushBuffer(
         D3D9CommonBuffer*       pResource) {
-    D3D9DeviceLock lock = LockDevice();
-
-    if (pResource->DecrementLockCount() != 0)
-      return D3D_OK;
-
-    if (pResource->SetMapFlags(0) & D3DLOCK_READONLY)
-      return D3D_OK; 
-
-    if (pResource->GetMapMode() != D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
-      return D3D_OK;
-
-    FlushImplicit(FALSE);
-
     auto dstBuffer = pResource->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>();
     auto srcBuffer = pResource->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_STAGING>();
 
@@ -4483,6 +4468,33 @@ namespace dxvk {
 
     pResource->DirtyRange().Conjoin(pResource->LockRange());
     pResource->LockRange().Clear();
+    pResource->MarkUploaded();
+
+	  return D3D_OK;
+  }
+
+
+  HRESULT D3D9DeviceEx::UnlockBuffer(
+        D3D9CommonBuffer*       pResource) {
+    D3D9DeviceLock lock = LockDevice();
+
+    if (pResource->DecrementLockCount() != 0)
+      return D3D_OK;
+
+    if (pResource->GetMapMode() != D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
+      return D3D_OK;
+
+    if (pResource->GetMapFlags(0) & D3DLOCK_READONLY)
+      return D3D_OK;
+
+    if (pResource->Desc()->Pool != D3DPOOL_DEFAULT) {
+      pResource->MarkNeedsUpload();
+      return D3D_OK;
+    }
+
+    FlushImplicit(FALSE);
+
+    FlushBuffer(pResource);
 
     return D3D_OK;
   }
@@ -5525,6 +5537,16 @@ namespace dxvk {
       if (m_d3d9Options.generalHazards)
         MarkRenderHazards();
     }
+
+    for (uint32_t i = 0; i < caps::MaxStreams; i++) {
+      auto* vbo = GetCommonBuffer(m_state.vertexBuffers[i].vertexBuffer);
+      if (vbo != nullptr && vbo->NeedsUpload())
+        FlushBuffer(vbo);
+    }
+
+    auto* ibo = GetCommonBuffer(m_state.indices);
+    if (ibo != nullptr && ibo->NeedsUpload())
+      FlushBuffer(ibo);
 
     UpdateFog();
 

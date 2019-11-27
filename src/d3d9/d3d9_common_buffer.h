@@ -85,7 +85,7 @@ namespace dxvk {
             D3D9_BUFFER_DESC* pDesc);
 
     D3D9_COMMON_BUFFER_MAP_MODE GetMapMode() const {
-      return (!IsPoolManaged(m_desc.Pool) && (m_desc.Usage & D3DUSAGE_DYNAMIC))
+      return (m_desc.Pool == D3DPOOL_DEFAULT && (m_desc.Usage & D3DUSAGE_DYNAMIC))
         ? D3D9_COMMON_BUFFER_MAP_MODE_DIRECT
         : D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
     }
@@ -152,6 +152,16 @@ namespace dxvk {
       return --m_lockCount;
     }
 
+    void MarkUploaded()      { m_needsUpload = false; }
+    void MarkNeedsUpload()   { m_needsUpload = true; }
+    bool NeedsUpload() const { return m_needsUpload; }
+
+    bool MarkLocked() {
+      bool locked = m_readLocked;
+      m_readLocked = true;
+      return locked;
+    }
+
   private:
 
     Rc<DxvkBuffer> CreateBuffer() const;
@@ -183,6 +193,8 @@ namespace dxvk {
     D3D9Range                   m_dirtyRange;
 
     uint32_t                    m_lockCount = 0;
+
+    bool                        m_needsUpload = false;
 
   };
 
