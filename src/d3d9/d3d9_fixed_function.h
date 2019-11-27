@@ -27,6 +27,8 @@ namespace dxvk {
     uint32_t vFog;
 
     uint32_t oColor;
+
+    bool     HasFogInput;
   };
 
   struct D3D9FixedFunctionOptions {
@@ -97,6 +99,7 @@ namespace dxvk {
         uint32_t LightCount       : 4;
 
         uint32_t TexcoordDeclMask     : 24;
+        uint32_t HasFog           : 1;
       } data;
 
       struct {

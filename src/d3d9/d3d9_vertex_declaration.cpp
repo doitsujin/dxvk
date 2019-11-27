@@ -215,6 +215,8 @@ namespace dxvk {
         m_flags.set(D3D9VertexDeclFlag::HasPositionT);
       else if (element.Usage == D3DDECLUSAGE_PSIZE)
         m_flags.set(D3D9VertexDeclFlag::HasPointSize);
+      else if (element.Usage == D3DDECLUSAGE_FOG)
+        m_flags.set(D3D9VertexDeclFlag::HasFog);
 
       if (element.Usage == D3DDECLUSAGE_TEXCOORD)
         m_texcoordMask |= GetDecltypeCount(D3DDECLTYPE(element.Type)) << (element.UsageIndex * 3);

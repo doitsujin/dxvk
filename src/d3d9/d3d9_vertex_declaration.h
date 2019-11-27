@@ -10,7 +10,8 @@ namespace dxvk {
     HasColor0,
     HasColor1,
     HasPositionT,
-    HasPointSize
+    HasPointSize,
+    HasFog
   };
   using D3D9VertexDeclFlags = Flags<D3D9VertexDeclFlag>;
 

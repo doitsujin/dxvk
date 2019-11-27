@@ -1094,7 +1094,7 @@ namespace dxvk {
               m_fog = this->emitRegisterPtr(
                 input ? "vFog" : "oFog",
                 DxsoScalarType::Float32, 1,
-                input ? 0 : m_module.constf32(0.0f),
+                input ? 0 : m_module.constf32(1.0f),
                 input ? spv::StorageClassInput : spv::StorageClassOutput);
 
               m_entryPointInterfaces.push_back(m_fog.id);

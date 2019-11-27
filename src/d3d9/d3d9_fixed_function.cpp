@@ -86,7 +86,9 @@ namespace dxvk {
         depth = spvModule.opLength(floatType, pos3);
       }
       else
-        depth = spvModule.opFAbs(floatType, z);
+        depth = fogCtx.HasFogInput
+          ? fogCtx.vFog
+          : spvModule.opFAbs(floatType, z);
     }
 
     uint32_t applyFogFactor = spvModule.allocateId();
@@ -117,7 +119,9 @@ namespace dxvk {
           default:
           // vFog
           case D3DFOG_NONE: {
-            return fogCtx.vFog;
+            return fogCtx.IsPixel
+              ? fogCtx.vFog
+              : spvModule.constf32(1.0f);
           }
 
           // (end - d) / (end - start)
@@ -1007,6 +1011,7 @@ namespace dxvk {
     fogCtx.RangeFog    = m_vsKey.data.RangeFog;
     fogCtx.RenderState = m_rsBlock;
     fogCtx.vPos        = vtx;
+    fogCtx.HasFogInput = m_vsKey.data.HasFog;
     fogCtx.vFog        = m_vs.in.FOG;
     fogCtx.oColor      = 0;
     m_module.opStore(m_vs.out.FOG, DoFixedFunctionFog(m_module, fogCtx));
