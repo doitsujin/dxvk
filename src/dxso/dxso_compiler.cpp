@@ -2552,7 +2552,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
         uint32_t tc_m_n = m_module.opCompositeExtract(fl_t, m.id, 1, &i);
 
-        uint32_t offset = m_module.constu32(4 * ctx.dst.id.num + i);
+        uint32_t offset = m_module.constu32(D3D9SharedPSStages_Count * ctx.dst.id.num + D3D9SharedPSStages_BumpEnvMat0 + i);
         uint32_t bm     = m_module.opAccessChain(m_module.defPointerType(vec2_t, spv::StorageClassUniform),
                                                  m_ps.sharedState, 1, &offset);
                  bm     = m_module.opLoad(vec2_t, bm);

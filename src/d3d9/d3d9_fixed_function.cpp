@@ -362,7 +362,7 @@ namespace dxvk {
     uint32_t float_t = spvModule.defFloatType(32);
     uint32_t vec2_t  = spvModule.defVectorType(float_t, 2);
 
-    std::array<uint32_t, 4> stageMembers = {
+    std::array<uint32_t, D3D9SharedPSStages_Count> stageMembers = {
       vec2_t,
       vec2_t,
 

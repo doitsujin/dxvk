@@ -130,6 +130,14 @@ namespace dxvk {
     Vector4 textureFactor;
   };
 
+  enum D3D9SharedPSStages {
+    D3D9SharedPSStages_BumpEnvMat0,
+    D3D9SharedPSStages_BumpEnvMat1,
+    D3D9SharedPSStages_BumpEnvLScale,
+    D3D9SharedPSStages_BumpEnvLOffset,
+    D3D9SharedPSStages_Count,
+  };
+
   struct D3D9SharedPS {
     struct Stage {
       float BumpEnvMat[2][2];
