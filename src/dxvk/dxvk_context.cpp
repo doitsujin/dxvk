@@ -3853,45 +3853,31 @@ namespace dxvk {
   
   void DxvkContext::updateComputeShaderResources() {
     if ((m_flags.test(DxvkContextFlag::CpDirtyResources))
-     || (m_flags.test(DxvkContextFlag::CpDirtyDescriptorBinding)
-      && m_state.cp.pipeline->layout()->hasStaticBufferBindings())) {
-      m_flags.clr(DxvkContextFlag::CpDirtyResources);
-
+     || (m_state.cp.pipeline->layout()->hasStaticBufferBindings())) {
       if (this->updateShaderResources<VK_PIPELINE_BIND_POINT_COMPUTE>(m_state.cp.pipeline->layout()))
         m_flags.set(DxvkContextFlag::CpDirtyPipelineState);
-
-      m_flags.set(DxvkContextFlag::CpDirtyDescriptorBinding);
     }
-  }
-  
-  
-  void DxvkContext::updateComputeShaderDescriptors() {
+
     this->updateShaderDescriptorSetBinding<VK_PIPELINE_BIND_POINT_COMPUTE>(
       m_cpSet, m_state.cp.pipeline->layout());
 
-    m_flags.clr(DxvkContextFlag::CpDirtyDescriptorBinding);
+    m_flags.clr(DxvkContextFlag::CpDirtyResources,
+                DxvkContextFlag::CpDirtyDescriptorBinding);
   }
   
   
   void DxvkContext::updateGraphicsShaderResources() {
     if ((m_flags.test(DxvkContextFlag::GpDirtyResources))
-     || (m_flags.test(DxvkContextFlag::GpDirtyDescriptorBinding)
-      && m_state.gp.pipeline->layout()->hasStaticBufferBindings())) {
-      m_flags.clr(DxvkContextFlag::GpDirtyResources);
-
+     || (m_state.gp.pipeline->layout()->hasStaticBufferBindings())) {
       if (this->updateShaderResources<VK_PIPELINE_BIND_POINT_GRAPHICS>(m_state.gp.pipeline->layout()))
         m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
-
-      m_flags.set(DxvkContextFlag::GpDirtyDescriptorBinding);
     }
-  }
-  
-  
-  void DxvkContext::updateGraphicsShaderDescriptors() {
+
     this->updateShaderDescriptorSetBinding<VK_PIPELINE_BIND_POINT_GRAPHICS>(
       m_gpSet, m_state.gp.pipeline->layout());
 
-    m_flags.clr(DxvkContextFlag::GpDirtyDescriptorBinding);
+    m_flags.clr(DxvkContextFlag::GpDirtyResources,
+                DxvkContextFlag::GpDirtyDescriptorBinding);
   }
   
   
@@ -4336,9 +4322,6 @@ namespace dxvk {
         return false;
     }
     
-    if (m_flags.test(DxvkContextFlag::CpDirtyDescriptorBinding))
-      this->updateComputeShaderDescriptors();
-    
     if (m_flags.test(DxvkContextFlag::DirtyPushConstants))
       this->updatePushConstants<VK_PIPELINE_BIND_POINT_COMPUTE>();
 
@@ -4385,9 +4368,6 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyPredicate))
       this->updateConditionalRendering();
 
-    if (m_flags.test(DxvkContextFlag::GpDirtyDescriptorBinding))
-      this->updateGraphicsShaderDescriptors();
-    
     if (m_flags.any(
           DxvkContextFlag::GpDirtyViewport,
           DxvkContextFlag::GpDirtyBlendConstants,
