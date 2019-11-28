@@ -1,3 +1,5 @@
+#pragma once
+
 #include "dxvk_extension_provider.h"
 
 namespace dxvk {
