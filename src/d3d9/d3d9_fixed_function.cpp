@@ -358,6 +358,53 @@ namespace dxvk {
   }
 
 
+  uint32_t GetSharedConstants(SpirvModule& spvModule) {
+    uint32_t float_t = spvModule.defFloatType(32);
+    uint32_t vec2_t  = spvModule.defVectorType(float_t, 2);
+
+    std::array<uint32_t, 4> stageMembers = {
+      vec2_t,
+      vec2_t,
+
+      float_t,
+      float_t,
+    };
+
+    std::array<decltype(stageMembers), caps::TextureStageCount> members;
+
+    for (auto& member : members)
+      member = stageMembers;
+
+    const uint32_t structType =
+      spvModule.defStructType(members.size() * stageMembers.size(), members[0].data());
+
+    spvModule.decorateBlock(structType);
+
+    uint32_t offset = 0;
+    for (uint32_t stage = 0; stage < caps::TextureStageCount; stage++) {
+      spvModule.memberDecorateOffset(structType, stage + 0, offset);
+      offset += sizeof(float) * 2;
+
+      spvModule.memberDecorateOffset(structType, stage + 1, offset);
+      offset += sizeof(float) * 2;
+
+      spvModule.memberDecorateOffset(structType, stage + 2, offset);
+      offset += sizeof(float);
+
+      spvModule.memberDecorateOffset(structType, stage + 3, offset);
+      offset += sizeof(float);
+    }
+
+    uint32_t sharedState = spvModule.newVar(
+      spvModule.defPointerType(structType, spv::StorageClassUniform),
+      spv::StorageClassUniform);
+
+    spvModule.setDebugName(sharedState, "D3D9SharedPS");
+
+    return sharedState;
+  }
+
+
     enum FFConstantMembersVS {
       VSConstWorldViewMatrix   = 0,
       VSConstNormalMatrix    = 1,

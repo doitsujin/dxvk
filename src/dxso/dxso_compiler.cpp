@@ -398,44 +398,7 @@ namespace dxvk {
 
 
   void DxsoCompiler::emitPsSharedConstants() {
-    std::array<uint32_t, 4> stageMembers = {
-      getVectorTypeId({DxsoScalarType::Float32, 2}),
-      getVectorTypeId({DxsoScalarType::Float32, 2}),
-
-      getScalarTypeId(DxsoScalarType::Float32),
-      getScalarTypeId(DxsoScalarType::Float32),
-    };
-
-    std::array<decltype(stageMembers), caps::TextureStageCount> members;
-
-    for (auto& member : members)
-      member = stageMembers;
-
-    const uint32_t structType =
-      m_module.defStructType(members.size() * stageMembers.size(), members[0].data());
-
-    m_module.decorateBlock(structType);
-
-    uint32_t offset = 0;
-    for (uint32_t stage = 0; stage < caps::TextureStageCount; stage++) {
-      m_module.memberDecorateOffset(structType, stage + 0, offset);
-      offset += sizeof(float) * 2;
-
-      m_module.memberDecorateOffset(structType, stage + 1, offset);
-      offset += sizeof(float) * 2;
-
-      m_module.memberDecorateOffset(structType, stage + 2, offset);
-      offset += sizeof(float);
-
-      m_module.memberDecorateOffset(structType, stage + 3, offset);
-      offset += sizeof(float);
-    }
-
-    m_ps.sharedState = m_module.newVar(
-      m_module.defPointerType(structType, spv::StorageClassUniform),
-      spv::StorageClassUniform);
-
-    m_module.setDebugName(m_ps.sharedState, "D3D9SharedPS");
+    m_ps.sharedState = GetSharedConstants(m_module);
 
     const uint32_t bindingId = computeResourceSlotId(
       m_programInfo.type(), DxsoBindingType::ConstantBuffer,

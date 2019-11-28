@@ -61,6 +61,8 @@ namespace dxvk {
 
   uint32_t GetPointCoord(SpirvModule& spvModule, std::vector<uint32_t>& entryPointInterfaces);
 
+  uint32_t GetSharedConstants(SpirvModule& spvModule);
+
   constexpr uint32_t TCIOffset = 16;
   constexpr uint32_t TCIMask   = 0b111 << TCIOffset;
 
