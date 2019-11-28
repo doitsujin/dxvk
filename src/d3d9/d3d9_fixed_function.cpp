@@ -492,6 +492,7 @@ namespace dxvk {
 
   struct D3D9FFPixelData {
     uint32_t constantBuffer = 0;
+    uint32_t sharedState = 0;
 
     struct {
       uint32_t textureFactor = { 0 };
@@ -551,6 +552,8 @@ namespace dxvk {
     void compilePS();
 
     void setupPS();
+
+    void emitPsSharedConstants();
 
     void alphaTestPS();
 
@@ -1827,7 +1830,28 @@ namespace dxvk {
       m_resourceSlots.push_back(resource);
     }
 
+    emitPsSharedConstants();
   }
+
+
+  void D3D9FFShaderCompiler::emitPsSharedConstants() {
+    m_ps.sharedState = GetSharedConstants(m_module);
+
+    const uint32_t bindingId = computeResourceSlotId(
+      m_programType, DxsoBindingType::ConstantBuffer,
+      PSShared);
+
+    m_module.decorateDescriptorSet(m_ps.sharedState, 0);
+    m_module.decorateBinding(m_ps.sharedState, bindingId);
+
+    DxvkResourceSlot resource;
+    resource.slot   = bindingId;
+    resource.type   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    resource.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    resource.access = VK_ACCESS_UNIFORM_READ_BIT;
+    m_resourceSlots.push_back(resource);
+  }
+
 
   void D3D9FFShaderCompiler::alphaTestPS() {
     // Alpha testing
