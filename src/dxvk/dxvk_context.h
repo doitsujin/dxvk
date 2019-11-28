@@ -1151,7 +1151,7 @@ namespace dxvk {
     void updateGraphicsShaderResources();
 
     template<VkPipelineBindPoint BindPoint>
-    bool updateShaderResources(
+    void updateShaderResources(
       const DxvkPipelineLayout*     layout);
     
     template<VkPipelineBindPoint BindPoint>

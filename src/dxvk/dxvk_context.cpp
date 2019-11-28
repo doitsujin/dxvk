@@ -3853,10 +3853,8 @@ namespace dxvk {
   
   void DxvkContext::updateComputeShaderResources() {
     if ((m_flags.test(DxvkContextFlag::CpDirtyResources))
-     || (m_state.cp.pipeline->layout()->hasStaticBufferBindings())) {
-      if (this->updateShaderResources<VK_PIPELINE_BIND_POINT_COMPUTE>(m_state.cp.pipeline->layout()))
-        m_flags.set(DxvkContextFlag::CpDirtyPipelineState);
-    }
+     || (m_state.cp.pipeline->layout()->hasStaticBufferBindings()))
+      this->updateShaderResources<VK_PIPELINE_BIND_POINT_COMPUTE>(m_state.cp.pipeline->layout());
 
     this->updateShaderDescriptorSetBinding<VK_PIPELINE_BIND_POINT_COMPUTE>(
       m_cpSet, m_state.cp.pipeline->layout());
@@ -3868,10 +3866,8 @@ namespace dxvk {
   
   void DxvkContext::updateGraphicsShaderResources() {
     if ((m_flags.test(DxvkContextFlag::GpDirtyResources))
-     || (m_state.gp.pipeline->layout()->hasStaticBufferBindings())) {
-      if (this->updateShaderResources<VK_PIPELINE_BIND_POINT_GRAPHICS>(m_state.gp.pipeline->layout()))
-        m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
-    }
+     || (m_state.gp.pipeline->layout()->hasStaticBufferBindings()))
+      this->updateShaderResources<VK_PIPELINE_BIND_POINT_GRAPHICS>(m_state.gp.pipeline->layout());
 
     this->updateShaderDescriptorSetBinding<VK_PIPELINE_BIND_POINT_GRAPHICS>(
       m_gpSet, m_state.gp.pipeline->layout());
@@ -3882,7 +3878,7 @@ namespace dxvk {
   
   
   template<VkPipelineBindPoint BindPoint>
-  bool DxvkContext::updateShaderResources(const DxvkPipelineLayout* layout) {
+  void DxvkContext::updateShaderResources(const DxvkPipelineLayout* layout) {
     std::array<DxvkDescriptorInfo, MaxNumActiveBindings> descriptors;
 
     // Assume that all bindings are active as a fast path
@@ -4060,12 +4056,13 @@ namespace dxvk {
 
     // If some resources are not bound, we may need to
     // update spec constants and rebind the pipeline
-    bool updatePipelineState = refMask != bindMask;
-
-    if (updatePipelineState)
+    if (refMask != bindMask) {
       refMask = bindMask;
 
-    return updatePipelineState;
+      m_flags.set(BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+        ? DxvkContextFlag::GpDirtyPipelineState
+        : DxvkContextFlag::CpDirtyPipelineState);
+    }
   }
   
   
