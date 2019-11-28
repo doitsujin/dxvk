@@ -411,22 +411,24 @@ namespace dxvk {
     for (auto& member : members)
       member = stageMembers;
 
-    constexpr uint32_t memberCount = members.size() * stageMembers.size();
-
     const uint32_t structType =
-      m_module.defStructType(memberCount, members[0].data());
+      m_module.defStructType(members.size() * stageMembers.size(), members[0].data());
 
     m_module.decorateBlock(structType);
 
     uint32_t offset = 0;
-    for (uint32_t i = 0; i < memberCount; i++) {
-      m_module.memberDecorateOffset(structType, i, offset);
+    for (uint32_t stage = 0; stage < caps::TextureStageCount; stage++) {
+      m_module.memberDecorateOffset(structType, stage + 0, offset);
+      offset += sizeof(float) * 2;
 
-      uint32_t size = sizeof(float);
-      if (i % stageMembers.size() < 2)
-        size *= 2;
+      m_module.memberDecorateOffset(structType, stage + 1, offset);
+      offset += sizeof(float) * 2;
 
-      offset += size;
+      m_module.memberDecorateOffset(structType, stage + 2, offset);
+      offset += sizeof(float);
+
+      m_module.memberDecorateOffset(structType, stage + 3, offset);
+      offset += sizeof(float);
     }
 
     m_ps.sharedState = m_module.newVar(
