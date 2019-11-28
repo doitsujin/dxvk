@@ -2835,7 +2835,6 @@ void DxsoCompiler::emitControlFlowGenericLoop(
   void DxsoCompiler::emitTextureKill(const DxsoInstructionContext& ctx) {
     DxsoRegisterValue texReg;
 
-    DxsoRegMask srcMask(true, true, true, false);
     if (m_programInfo.majorVersion() >= 2 ||
        (m_programInfo.majorVersion() == 1
      && m_programInfo.minorVersion() == 4)) // SM 2.0+ or 1.4
@@ -2847,13 +2846,17 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       texReg = emitRegisterLoadRaw(texcoord, nullptr);
     }
 
-    std::array<uint32_t, 3> indices = { 0, 1, 2 };
+    std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
 
-    texReg.type.ccount = 3;
-    texReg.id = m_module.opVectorShuffle(
-      getVectorTypeId(texReg.type),
-      texReg.id, texReg.id,
-      indices.size(), indices.data());
+    // On SM1 it only works on the first 
+    if (m_programInfo.majorVersion() < 2) {
+      texReg.type.ccount = 3;
+
+      texReg.id = m_module.opVectorShuffle(
+        getVectorTypeId(texReg.type),
+        texReg.id, texReg.id,
+        texReg.type.ccount, indices.data());
+    }
 
     const uint32_t boolVecTypeId =
       getVectorTypeId({ DxsoScalarType::Bool, texReg.type.ccount });
