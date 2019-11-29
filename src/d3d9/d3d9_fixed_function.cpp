@@ -364,13 +364,13 @@ namespace dxvk {
     uint32_t vec4_t  = spvModule.defVectorType(float_t, 4);
 
     std::array<uint32_t, D3D9SharedPSStages_Count> stageMembers = {
+      vec4_t,
+
       vec2_t,
       vec2_t,
 
       float_t,
       float_t,
-
-      vec4_t
     };
 
     std::array<decltype(stageMembers), caps::TextureStageCount> members;
@@ -385,6 +385,9 @@ namespace dxvk {
 
     uint32_t offset = 0;
     for (uint32_t stage = 0; stage < caps::TextureStageCount; stage++) {
+      spvModule.memberDecorateOffset(structType, stage * D3D9SharedPSStages_Count + D3D9SharedPSStages_Constant, offset);
+      offset += sizeof(float) * 4;
+
       spvModule.memberDecorateOffset(structType, stage * D3D9SharedPSStages_Count + D3D9SharedPSStages_BumpEnvMat0, offset);
       offset += sizeof(float) * 2;
 
@@ -396,9 +399,6 @@ namespace dxvk {
 
       spvModule.memberDecorateOffset(structType, stage * D3D9SharedPSStages_Count + D3D9SharedPSStages_BumpEnvLOffset, offset);
       offset += sizeof(float);
-
-      spvModule.memberDecorateOffset(structType, stage * D3D9SharedPSStages_Count + D3D9SharedPSStages_Constant, offset);
-      offset += sizeof(float) * 4;
 
       // Padding...
       offset += sizeof(float) * 2;
