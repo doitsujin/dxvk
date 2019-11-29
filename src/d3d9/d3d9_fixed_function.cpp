@@ -385,19 +385,19 @@ namespace dxvk {
 
     uint32_t offset = 0;
     for (uint32_t stage = 0; stage < caps::TextureStageCount; stage++) {
-      spvModule.memberDecorateOffset(structType, stage + 0, offset);
+      spvModule.memberDecorateOffset(structType, stage * D3D9SharedPSStages_Count + 0, offset);
       offset += sizeof(float) * 2;
 
-      spvModule.memberDecorateOffset(structType, stage + 1, offset);
+      spvModule.memberDecorateOffset(structType, stage * D3D9SharedPSStages_Count + 1, offset);
       offset += sizeof(float) * 2;
 
-      spvModule.memberDecorateOffset(structType, stage + 2, offset);
+      spvModule.memberDecorateOffset(structType, stage * D3D9SharedPSStages_Count + 2, offset);
       offset += sizeof(float);
 
-      spvModule.memberDecorateOffset(structType, stage + 3, offset);
+      spvModule.memberDecorateOffset(structType, stage * D3D9SharedPSStages_Count + 3, offset);
       offset += sizeof(float);
 
-      spvModule.memberDecorateOffset(structType, stage + 4, offset);
+      spvModule.memberDecorateOffset(structType, stage * D3D9SharedPSStages_Count + 4, offset);
       offset += sizeof(float) * 4;
     }
 
