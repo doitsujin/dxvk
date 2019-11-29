@@ -145,6 +145,7 @@ namespace dxvk {
       float BumpEnvMat[2][2];
       float BumpEnvLScale;
       float BumpEnvLOffset;
+      float Padding[2];
     } Stages[8];
   };
   

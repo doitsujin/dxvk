@@ -399,6 +399,9 @@ namespace dxvk {
 
       spvModule.memberDecorateOffset(structType, stage * D3D9SharedPSStages_Count + D3D9SharedPSStages_Constant, offset);
       offset += sizeof(float) * 4;
+
+      // Padding...
+      offset += sizeof(float) * 2;
     }
 
     uint32_t sharedState = spvModule.newVar(
