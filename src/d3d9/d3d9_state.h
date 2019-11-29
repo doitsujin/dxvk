@@ -131,6 +131,7 @@ namespace dxvk {
   };
 
   enum D3D9SharedPSStages {
+    D3D9SharedPSStages_Constant,
     D3D9SharedPSStages_BumpEnvMat0,
     D3D9SharedPSStages_BumpEnvMat1,
     D3D9SharedPSStages_BumpEnvLScale,
@@ -140,6 +141,7 @@ namespace dxvk {
 
   struct D3D9SharedPS {
     struct Stage {
+      float Constant[4];
       float BumpEnvMat[2][2];
       float BumpEnvLScale;
       float BumpEnvLOffset;

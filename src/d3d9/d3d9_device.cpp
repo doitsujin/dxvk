@@ -5648,6 +5648,8 @@ namespace dxvk {
       D3D9SharedPS* data = reinterpret_cast<D3D9SharedPS*>(slice.mapPtr);
 
       for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
+        DecodeD3DCOLOR(D3DCOLOR(m_state.textureStages[i][D3DTSS_CONSTANT]), data->Stages[i].Constant);
+
         // Flip major-ness so we can get away with a nice easy
         // dot in the shader without complex access
         data->Stages[i].BumpEnvMat[0][0] = bit::cast<float>(m_state.textureStages[i][D3DTSS_BUMPENVMAT00]);

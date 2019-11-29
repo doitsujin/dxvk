@@ -361,6 +361,7 @@ namespace dxvk {
   uint32_t GetSharedConstants(SpirvModule& spvModule) {
     uint32_t float_t = spvModule.defFloatType(32);
     uint32_t vec2_t  = spvModule.defVectorType(float_t, 2);
+    uint32_t vec4_t  = spvModule.defVectorType(float_t, 4);
 
     std::array<uint32_t, D3D9SharedPSStages_Count> stageMembers = {
       vec2_t,
@@ -368,6 +369,8 @@ namespace dxvk {
 
       float_t,
       float_t,
+
+      vec4_t
     };
 
     std::array<decltype(stageMembers), caps::TextureStageCount> members;
@@ -393,6 +396,9 @@ namespace dxvk {
 
       spvModule.memberDecorateOffset(structType, stage + 3, offset);
       offset += sizeof(float);
+
+      spvModule.memberDecorateOffset(structType, stage + 4, offset);
+      offset += sizeof(float) * 4;
     }
 
     uint32_t sharedState = spvModule.newVar(
@@ -1430,9 +1436,14 @@ namespace dxvk {
         uint32_t reg = m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f);
 
         switch (arg & D3DTA_SELECTMASK) {
-          case D3DTA_CONSTANT:
-            Logger::warn("D3DTA_CONSTANT: not supported right now.");
+          case D3DTA_CONSTANT: {
+            uint32_t offset = m_module.constu32(D3D9SharedPSStages_Count * i + D3D9SharedPSStages_Constant);
+            uint32_t ptr    = m_module.opAccessChain(m_module.defPointerType(m_vec4Type, spv::StorageClassUniform),
+              m_ps.sharedState, 1, &offset);
+
+            reg = m_module.opLoad(m_vec4Type, ptr);
             break;
+          }
           case D3DTA_CURRENT:
             reg = current;
             break;
