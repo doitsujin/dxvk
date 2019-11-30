@@ -97,7 +97,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetContainingOutput(IDXGIOutput** ppOutput) {
     InitReturnPtr(ppOutput);
     
-    if (!IsWindow(m_window))
+    if (!wsi::isWindow(m_window))
       return DXGI_ERROR_INVALID_CALL;
     
     if (m_target != nullptr) {
@@ -174,7 +174,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetFullscreenState(
           BOOL*         pFullscreen,
           IDXGIOutput** ppTarget) {
-    if (!IsWindow(m_window))
+    if (!wsi::isWindow(m_window))
       return DXGI_ERROR_INVALID_CALL;
     
     HRESULT hr = S_OK;
@@ -244,7 +244,7 @@ namespace dxvk {
           UINT                      SyncInterval,
           UINT                      PresentFlags,
     const DXGI_PRESENT_PARAMETERS*  pPresentParameters) {
-    if (!IsWindow(m_window))
+    if (!wsi::isWindow(m_window))
       return DXGI_ERROR_INVALID_CALL;
     
     if (SyncInterval > 4)
@@ -268,7 +268,7 @@ namespace dxvk {
           UINT        Height,
           DXGI_FORMAT NewFormat,
           UINT        SwapChainFlags) {
-    if (!IsWindow(m_window))
+    if (!wsi::isWindow(m_window))
       return DXGI_ERROR_INVALID_CALL;
 
     constexpr UINT PreserveFlags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
@@ -318,7 +318,7 @@ namespace dxvk {
     if (pNewTargetParameters == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    if (!IsWindow(m_window))
+    if (!wsi::isWindow(m_window))
       return DXGI_ERROR_INVALID_CALL;
 
     // Update the swap chain description
@@ -520,7 +520,7 @@ namespace dxvk {
   HRESULT DxgiSwapChain::EnterFullscreenMode(IDXGIOutput* pTarget) {
     Com<IDXGIOutput> output = pTarget;
 
-    if (!IsWindow(m_window))
+    if (!wsi::isWindow(m_window))
       return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
     
     if (output == nullptr) {
@@ -599,7 +599,7 @@ namespace dxvk {
     m_monitor = nullptr;
     m_target  = nullptr;
     
-    if (!IsWindow(m_window))
+    if (!wsi::isWindow(m_window))
       return S_OK;
     
     if (!wsi::leaveFullscreenMode(m_window, &m_windowState)) {

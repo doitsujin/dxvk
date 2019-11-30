@@ -3,6 +3,7 @@
 #include "wsi_helpers_sdl2.h"
 
 #include <windows.h>
+#include <wsi/native_wsi.h>
 
 #include <string>
 #include <sstream>

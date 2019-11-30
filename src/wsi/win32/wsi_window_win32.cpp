@@ -179,4 +179,9 @@ namespace dxvk::wsi {
     return monitor;
   }
 
+
+  bool isWindow(HWND hWindow) {
+    return ::IsWindow(hWindow);
+  }
+
 }

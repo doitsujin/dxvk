@@ -9,13 +9,13 @@
 #include "./rc/util_rc.h"
 #include "./rc/util_rc_ptr.h"
 
-#ifdef DXVK_NATIVE
+#ifndef _WIN32
 #include <thread>
 #endif
 
 namespace dxvk {
 
-#ifndef DXVK_NATIVE
+#ifdef _WIN32
   /**
    * \brief Thread priority
    */

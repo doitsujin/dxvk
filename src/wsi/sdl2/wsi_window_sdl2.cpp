@@ -3,6 +3,7 @@
 #include "wsi_helpers_sdl2.h"
 
 #include <windows.h>
+#include <wsi/native_wsi.h>
 
 #include "../../util/util_string.h"
 #include "../../util/log/log.h"
@@ -13,8 +14,10 @@ namespace dxvk::wsi {
         HWND      hWindow,
         uint32_t* pWidth,
         uint32_t* pHeight) {
+    SDL_Window* window = window_cast(hWindow);
+
     int32_t w, h;
-    SDL_GetWindowSize(hWindow, &w, &h);
+    SDL_GetWindowSize(window, &w, &h);
 
     if (pWidth)
       *pWidth = uint32_t(w);
@@ -29,7 +32,9 @@ namespace dxvk::wsi {
           DxvkWindowState* pState,
           uint32_t         Width,
           uint32_t         Height) {
-    SDL_SetWindowSize(hWindow, int32_t(Width), int32_t(Height));
+    SDL_Window* window = window_cast(hWindow);
+
+    SDL_SetWindowSize(window, int32_t(Width), int32_t(Height));
   }
 
 
@@ -39,6 +44,7 @@ namespace dxvk::wsi {
     const WsiMode*         pMode,
           bool             EnteringFullscreen) {
     const int32_t displayId    = monitor_cast(hMonitor);
+    SDL_Window* window         = window_cast(hWindow);
 
     if (!isDisplayValid(displayId))
       return false;
@@ -57,7 +63,7 @@ namespace dxvk::wsi {
       return false;
     }
 
-    if (SDL_SetWindowDisplayMode(hWindow, &mode) != 0) {
+    if (SDL_SetWindowDisplayMode(window, &mode) != 0) {
       Logger::err(str::format("SDL2 WSI: setWindowMode: SDL_SetWindowDisplayMode: ", SDL_GetError()));
       return false;
     }
@@ -73,6 +79,7 @@ namespace dxvk::wsi {
           DxvkWindowState* pState,
           bool             ModeSwitch) {
     const int32_t displayId    = monitor_cast(hMonitor);
+    SDL_Window* window         = window_cast(hWindow);
 
     if (!isDisplayValid(displayId))
       return false;
@@ -83,7 +90,7 @@ namespace dxvk::wsi {
     
     // TODO: Set this on the correct monitor.
     // Docs aren't clear on this...
-    if (SDL_SetWindowFullscreen(hWindow, flags) != 0) {
+    if (SDL_SetWindowFullscreen(window, flags) != 0) {
       Logger::err(str::format("SDL2 WSI: enterFullscreenMode: SDL_SetWindowFullscreen: ", SDL_GetError()));
       return false;
     }
@@ -95,7 +102,9 @@ namespace dxvk::wsi {
   bool leaveFullscreenMode(
           HWND             hWindow,
           DxvkWindowState* pState) {
-    if (SDL_SetWindowFullscreen(hWindow, 0) != 0) {
+    SDL_Window* window = window_cast(hWindow);
+
+    if (SDL_SetWindowFullscreen(window, 0) != 0) {
       Logger::err(str::format("SDL2 WSI: leaveFullscreenMode: SDL_SetWindowFullscreen: ", SDL_GetError()));
       return false;
     }
@@ -110,9 +119,16 @@ namespace dxvk::wsi {
 
 
   HMONITOR getWindowMonitor(HWND hWindow) {
-    const int32_t displayId = SDL_GetWindowDisplayIndex(hWindow);
+    SDL_Window* window      = window_cast(hWindow);
+    const int32_t displayId = SDL_GetWindowDisplayIndex(window);
 
     return monitor_cast(displayId);
+  }
+
+
+  bool isWindow(HWND hWindow) {
+    SDL_Window* window = window_cast(hWindow);
+    return window != nullptr;
   }
 
 }

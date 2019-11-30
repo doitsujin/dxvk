@@ -97,17 +97,23 @@ else
   dxvk_wsi      = get_option('dxvk_native_wsi')
   dxvk_platform = target_machine.system()
 
-  dxvk_include_path = include_directories('./include', './include/native/', './include/native/windows', './include/native/directx')
+  if dxvk_platform == 'windows'
+    dxvk_include_path = include_directories('./include', './include/native/')
+    lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
+    lib_sdl2    = dxvk_compiler.find_library('SDL2',     dirs : dxvk_library_path)
+    wrc = find_program('rc')
+  else
+    dxvk_include_path = include_directories('./include', './include/native/', './include/native/windows', './include/native/directx')
+    lib_vulkan  = dxvk_compiler.find_library('vulkan')
+    lib_sdl2    = dxvk_compiler.find_library('SDL2')
+    wrc = find_program('echo')
+    so_prefix = 'lib'
+  endif
 
-  lib_vulkan  = dxvk_compiler.find_library('vulkan')
-  lib_sdl2    = dxvk_compiler.find_library('SDL2')
-
-  wrc = find_program('echo')
   res_ext = ''
   exe_ext = ''
   dll_ext = ''
   def_spec_ext = '.def'
-  so_prefix = 'lib'
 endif
 
 add_project_arguments('-DDXVK_WSI_'      + dxvk_wsi.to_upper(),      language : 'cpp')

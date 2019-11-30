@@ -2,7 +2,7 @@
 
 #include "wsi_helpers_sdl2.h"
 
-#include <windows.h>
+#include <wsi/native_wsi.h>
 
 #include "../../util/util_string.h"
 #include "../../util/log/log.h"
@@ -34,7 +34,7 @@ namespace dxvk::wsi {
 
   bool getDisplayMode(
           HMONITOR         hMonitor,
-          DWORD            ModeNumber,
+          uint32_t         ModeNumber,
           WsiMode*         pMode) {
     const int32_t displayId    = monitor_cast(hMonitor);
 

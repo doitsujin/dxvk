@@ -105,4 +105,11 @@ namespace dxvk::wsi {
     */
   HMONITOR getWindowMonitor(HWND hWindow);
 
+  /**
+    * \brief Is a HWND a window?
+    *
+    * \param [in] hWindow The window
+    * \returns Is it a window?
+    */
+  bool isWindow(HWND hWindow);
 }

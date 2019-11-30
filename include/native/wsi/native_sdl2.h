@@ -1,6 +1,15 @@
-#include "windows_base.h"
+#include <cstdint>
+#include <windows.h>
 
-using HWND = SDL_Window*;
+#include <SDL2/SDL.h>
+
+inline SDL_Window* window_cast(HWND hWindow) {
+  return reinterpret_cast<SDL_Window*>(hWindow);
+}
+
+inline HWND window_cast(SDL_Window* pWindow) {
+  return reinterpret_cast<HWND>(pWindow);
+}
 
 // Offset so null HMONITORs go to -1
 inline int32_t monitor_cast(HMONITOR hMonitor) {
@@ -11,5 +20,3 @@ inline int32_t monitor_cast(HMONITOR hMonitor) {
 inline HMONITOR monitor_cast(int32_t displayId) {
   return reinterpret_cast<HMONITOR>(static_cast<intptr_t>(displayId + 1));
 }
-
-inline BOOL IsWindow(HWND hWnd) { return hWnd != nullptr; }

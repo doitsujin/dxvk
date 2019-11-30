@@ -62,12 +62,10 @@ d3d11_src = [
   'd3d11_view_uav.cpp',
 ]
 
-d3d11_src_win32 = [
-  'd3d11_gdi.cpp'
-]
-
-if dxvk_platform == 'windows'
-  d3d11_src += d3d11_src_win32
+if not dxvk_native
+  # We don't want to allow GDI interop on *any* native builds
+  # because the idea is for you to write once and run anywhere.
+  d3d11_src += 'd3d11_gdi.cpp'
 endif
 
 if dxvk_native

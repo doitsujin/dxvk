@@ -71,6 +71,7 @@ using HANDLE   = void*;
 using HMONITOR = HANDLE;
 using HDC      = HANDLE;
 using HMODULE  = HANDLE;
+using HWND     = HANDLE;
 
 using LPSTR    = char*;
 using LPCSTR   = const char*;
