@@ -2719,6 +2719,19 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opIsNan(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpIsNan, 4);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(operand);
+    return resultId;
+  }
+
+
   uint32_t SpirvModule::opFunctionCall(
           uint32_t                resultType,
           uint32_t                functionId,

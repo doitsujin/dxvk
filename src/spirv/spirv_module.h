@@ -941,6 +941,10 @@ namespace dxvk {
             uint32_t                condition,
             uint32_t                operand1,
             uint32_t                operand2);
+
+    uint32_t opIsNan(
+            uint32_t                resultType,
+            uint32_t                operand);
     
     uint32_t opFunctionCall(
             uint32_t                resultType,
