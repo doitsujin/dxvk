@@ -4,7 +4,11 @@
 
 #include "../dxvk/hud/dxvk_hud.h"
 
+#ifndef DXVK_NATIVE
 #include "../util/sync/sync_signal_win32.h"
+#else
+#include "../util/sync/sync_signal.h"
+#endif
 
 namespace dxvk {
   
@@ -24,6 +28,13 @@ namespace dxvk {
 
   class D3D11SwapChain : public ComObject<IDXGIVkSwapChain> {
     constexpr static uint32_t DefaultFrameLatency = 1;
+
+#ifndef DXVK_NATIVE
+    using FrameLatencySignal = sync::Win32Fence;
+#else
+    using FrameLatencySignal = sync::Fence;
+#endif
+
   public:
 
     D3D11SwapChain(
@@ -130,7 +141,7 @@ namespace dxvk {
     uint32_t                m_frameLatency = DefaultFrameLatency;
     uint32_t                m_frameLatencyCap = 0;
     HANDLE                  m_frameLatencyEvent = nullptr;
-    Rc<sync::Win32Fence>    m_frameLatencySignal;
+    Rc<FrameLatencySignal>  m_frameLatencySignal;
 
     bool                    m_dirty = true;
     bool                    m_vsync = true;

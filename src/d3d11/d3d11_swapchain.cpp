@@ -421,10 +421,15 @@ namespace dxvk {
 
 
   void D3D11SwapChain::CreateFrameLatencyEvent() {
-    m_frameLatencySignal = new sync::Win32Fence(m_frameId);
+    m_frameLatencySignal = new FrameLatencySignal(m_frameId);
 
-    if (m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT)
+    if (m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT) {
+#ifndef DXVK_NATIVE
       m_frameLatencyEvent = CreateEvent(nullptr, false, true, nullptr);
+#else
+      throw DxvkError("DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT not supported on this platform.");
+#endif
+    }
   }
 
 
@@ -663,7 +668,9 @@ namespace dxvk {
 
 
   void D3D11SwapChain::DestroyFrameLatencyEvent() {
+#ifndef DXVK_NATIVE
     CloseHandle(m_frameLatencyEvent);
+#endif
   }
 
 
@@ -779,10 +786,12 @@ namespace dxvk {
 
 
   void D3D11SwapChain::SignalFrameLatencyEvent() {
+#ifndef DXVK_NATIVE
     if (m_frameLatencyEvent) {
       // Signal event with the same value that we'd wait for during the next present.
       m_frameLatencySignal->setEvent(m_frameLatencyEvent, m_frameId - GetActualFrameLatency() + 1);
     }
+#endif
   }
 
 
