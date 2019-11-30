@@ -35,9 +35,6 @@ namespace dxvk {
     /// Enables NaN fixup for render target outputs
     bool enableRtOutputNanFixup = false;
 
-    /// Enables sm4-compliant division-by-zero behaviour
-    bool strictDivision = false;
-
     /// Implement dynamically indexed uniform buffers
     /// with storage buffers for tight bounds checking
     bool dynamicIndexedConstantBufferAsSsbo = false;

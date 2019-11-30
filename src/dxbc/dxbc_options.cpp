@@ -38,7 +38,6 @@ namespace dxvk {
     }
     
     enableRtOutputNanFixup   = options.enableRtOutputNanFixup;
-    strictDivision           = options.strictDivision;
     zeroInitWorkgroupMemory  = options.zeroInitWorkgroupMemory;
     dynamicIndexedConstantBufferAsSsbo = options.constantBufferRangeCheck;
     

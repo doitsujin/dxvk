@@ -20,11 +20,6 @@ namespace dxvk {
     /// than once.
     bool dcSingleUseMode;
 
-    /// Enables sm4-compliant division-by-zero behaviour
-    /// Windows drivers don't normally do this, but some
-    /// games may expect correct behaviour.
-    bool strictDivision;
-
     /// Enables workaround to replace NaN render target
     /// outputs with zero
     bool enableRtOutputNanFixup;
