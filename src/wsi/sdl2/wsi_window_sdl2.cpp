@@ -14,7 +14,7 @@ namespace dxvk::wsi {
         HWND      hWindow,
         uint32_t* pWidth,
         uint32_t* pHeight) {
-    SDL_Window* window = window_cast(hWindow);
+    SDL_Window* window = fromHwnd(hWindow);
 
     int32_t w, h;
     SDL_GetWindowSize(window, &w, &h);
@@ -32,7 +32,7 @@ namespace dxvk::wsi {
           DxvkWindowState* pState,
           uint32_t         Width,
           uint32_t         Height) {
-    SDL_Window* window = window_cast(hWindow);
+    SDL_Window* window = fromHwnd(hWindow);
 
     SDL_SetWindowSize(window, int32_t(Width), int32_t(Height));
   }
@@ -43,8 +43,8 @@ namespace dxvk::wsi {
           HWND             hWindow,
     const WsiMode*         pMode,
           bool             EnteringFullscreen) {
-    const int32_t displayId    = monitor_cast(hMonitor);
-    SDL_Window* window         = window_cast(hWindow);
+    const int32_t displayId    = fromHmonitor(hMonitor);
+    SDL_Window* window         = fromHwnd(hWindow);
 
     if (!isDisplayValid(displayId))
       return false;
@@ -78,8 +78,8 @@ namespace dxvk::wsi {
           HWND             hWindow,
           DxvkWindowState* pState,
           bool             ModeSwitch) {
-    const int32_t displayId    = monitor_cast(hMonitor);
-    SDL_Window* window         = window_cast(hWindow);
+    const int32_t displayId    = fromHmonitor(hMonitor);
+    SDL_Window* window         = fromHwnd(hWindow);
 
     if (!isDisplayValid(displayId))
       return false;
@@ -102,7 +102,7 @@ namespace dxvk::wsi {
   bool leaveFullscreenMode(
           HWND             hWindow,
           DxvkWindowState* pState) {
-    SDL_Window* window = window_cast(hWindow);
+    SDL_Window* window = fromHwnd(hWindow);
 
     if (SDL_SetWindowFullscreen(window, 0) != 0) {
       Logger::err(str::format("SDL2 WSI: leaveFullscreenMode: SDL_SetWindowFullscreen: ", SDL_GetError()));
@@ -119,15 +119,15 @@ namespace dxvk::wsi {
 
 
   HMONITOR getWindowMonitor(HWND hWindow) {
-    SDL_Window* window      = window_cast(hWindow);
+    SDL_Window* window      = fromHwnd(hWindow);
     const int32_t displayId = SDL_GetWindowDisplayIndex(window);
 
-    return monitor_cast(displayId);
+    return toHmonitor(displayId);
   }
 
 
   bool isWindow(HWND hWindow) {
-    SDL_Window* window = window_cast(hWindow);
+    SDL_Window* window = fromHwnd(hWindow);
     return window != nullptr;
   }
 

@@ -11,7 +11,7 @@ namespace dxvk::wsi {
           HWND                hWindow,
     const Rc<vk::InstanceFn>& vki,
           VkSurfaceKHR*       pSurface) {
-    SDL_Window* window = window_cast(hWindow);
+    SDL_Window* window = fromHwnd(hWindow);
 
     return SDL_Vulkan_CreateSurface(window, vki->instance(), pSurface)
          ? VK_SUCCESS

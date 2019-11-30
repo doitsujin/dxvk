@@ -12,7 +12,7 @@ namespace dxvk::wsi {
 
   HMONITOR enumMonitors(uint32_t index) {
     return isDisplayValid(int32_t(index))
-      ? monitor_cast(index)
+      ? toHmonitor(index)
       : nullptr;
   }
 
@@ -20,7 +20,7 @@ namespace dxvk::wsi {
   bool getDisplayName(
           HMONITOR         hMonitor,
           WCHAR            (&Name)[32]) {
-    const int32_t displayId    = monitor_cast(hMonitor);
+    const int32_t displayId    = fromHmonitor(hMonitor);
 
     if (!isDisplayValid(displayId))
       return false;
@@ -40,7 +40,7 @@ namespace dxvk::wsi {
   bool getDesktopCoordinates(
           HMONITOR         hMonitor,
           RECT*            pRect) {
-    const int32_t displayId    = monitor_cast(hMonitor);
+    const int32_t displayId    = fromHmonitor(hMonitor);
 
     if (!isDisplayValid(displayId))
       return false;

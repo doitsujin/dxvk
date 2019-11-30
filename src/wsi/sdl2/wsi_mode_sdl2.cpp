@@ -36,7 +36,7 @@ namespace dxvk::wsi {
           HMONITOR         hMonitor,
           uint32_t         ModeNumber,
           WsiMode*         pMode) {
-    const int32_t displayId    = monitor_cast(hMonitor);
+    const int32_t displayId    = fromHmonitor(hMonitor);
 
     if (!isDisplayValid(displayId))
       return false;
@@ -54,7 +54,7 @@ namespace dxvk::wsi {
   bool getCurrentDisplayMode(
           HMONITOR         hMonitor,
           WsiMode*         pMode) {
-    const int32_t displayId    = monitor_cast(hMonitor);
+    const int32_t displayId    = fromHmonitor(hMonitor);
 
     if (!isDisplayValid(displayId))
       return false;
@@ -74,7 +74,7 @@ namespace dxvk::wsi {
   bool getDesktopDisplayMode(
           HMONITOR         hMonitor,
           WsiMode*         pMode) {
-    const int32_t displayId    = monitor_cast(hMonitor);
+    const int32_t displayId    = fromHmonitor(hMonitor);
 
     if (!isDisplayValid(displayId))
       return false;
