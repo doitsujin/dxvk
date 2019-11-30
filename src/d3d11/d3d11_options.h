@@ -25,6 +25,10 @@ namespace dxvk {
     /// games may expect correct behaviour.
     bool strictDivision;
 
+    /// Enables workaround to replace NaN render target
+    /// outputs with zero
+    bool enableRtOutputNanFixup;
+
     /// Enables out-of-bounds access check for constant
     /// buffers. Workaround for a few broken games that
     /// access random data inside their shaders.

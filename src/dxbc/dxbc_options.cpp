@@ -37,6 +37,7 @@ namespace dxvk {
       case Tristate::False: minSsboAlignment = ~0u; break;
     }
     
+    enableRtOutputNanFixup   = options.enableRtOutputNanFixup;
     strictDivision           = options.strictDivision;
     zeroInitWorkgroupMemory  = options.zeroInitWorkgroupMemory;
     dynamicIndexedConstantBufferAsSsbo = options.constantBufferRangeCheck;

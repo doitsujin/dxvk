@@ -32,6 +32,9 @@ namespace dxvk {
     /// dword offsets. Fixes RE2 and DMC5 on Nvidia drivers.
     bool useSdivForBufferIndex = false;
 
+    /// Enables NaN fixup for render target outputs
+    bool enableRtOutputNanFixup = false;
+
     /// Enables sm4-compliant division-by-zero behaviour
     bool strictDivision = false;
 

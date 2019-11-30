@@ -5834,10 +5834,21 @@ namespace dxvk {
         scalars[c] = m_module.opVectorExtractDynamic(compTypeId, vector.id, specId);
       }
 
-      vector.id = m_module.opCompositeConstruct(
-        getVectorTypeId(vector.type),
-        vector.type.ccount,
-        scalars.data());
+      uint32_t typeId = getVectorTypeId(vector.type);
+      vector.id = m_module.opCompositeConstruct(typeId, vector.type.ccount, scalars.data());
+
+      // Replace NaN by zero if requested
+      if (m_moduleInfo.options.enableRtOutputNanFixup && vector.type.ctype == DxbcScalarType::Float32) {
+        uint32_t boolType = m_module.defBoolType();
+
+        if (vector.type.ccount > 1)
+          boolType = m_module.defVectorType(boolType, vector.type.ccount);
+
+        uint32_t zero = emitBuildConstVecf32(0.0f, 0.0f, 0.0f, 0.0f,
+          DxbcRegMask((1u << vector.type.ccount) - 1)).id;
+        uint32_t isNan = m_module.opIsNan(boolType, vector.id);
+        vector.id = m_module.opSelect(typeId, isNan, zero, vector.id);
+      }
       
       emitValueStore(m_oRegs[i], vector,
         DxbcRegMask::firstN(vector.type.ccount));
