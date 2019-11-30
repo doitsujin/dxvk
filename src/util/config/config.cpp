@@ -74,7 +74,7 @@ namespace dxvk {
     }} },
     /* Final Fantasy XIV: Fix random black blocks */
     { R"(\\ffxiv_dx11\.exe$)", {{
-      { "d3d11.strictDivision",             "True" },
+      { "d3d11.enableRtOutputNanFixup",     "True" },
     }} },
     /* Resident Evil 2: Improve GPU performance   */
     { R"(\\re2\.exe$)", {{
