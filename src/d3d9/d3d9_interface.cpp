@@ -291,16 +291,9 @@ namespace dxvk {
       DeviceType,
       hFocusWindow,
       BehaviorFlags,
+      pPresentationParameters,
       pFullscreenDisplayMode,
       dxvkDevice));
-
-    HRESULT hr = (*ppReturnedDeviceInterface)->Reset(pPresentationParameters);
-
-    if (FAILED(hr)) {
-      Logger::warn("D3D9InterfaceEx::CreateDeviceEx: device initial reset failed.");
-      *ppReturnedDeviceInterface = nullptr;
-      return hr;
-    }
 
     return D3D_OK;
   }

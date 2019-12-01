@@ -104,13 +104,14 @@ namespace dxvk {
   public:
 
     D3D9DeviceEx(
-            D3D9InterfaceEx*  pParent,
-            D3D9Adapter*      pAdapter,
-            D3DDEVTYPE        DeviceType,
-            HWND              hFocusWindow,
-            DWORD             BehaviorFlags,
-            D3DDISPLAYMODEEX* pDisplayMode,
-            Rc<DxvkDevice>    dxvkDevice);
+            D3D9InterfaceEx*       pParent,
+            D3D9Adapter*           pAdapter,
+            D3DDEVTYPE             DeviceType,
+            HWND                   hFocusWindow,
+            DWORD                  BehaviorFlags,
+            D3DPRESENT_PARAMETERS* pPresentationParameters,
+            D3DDISPLAYMODEEX*      pDisplayMode,
+            Rc<DxvkDevice>         dxvkDevice);
 
     ~D3D9DeviceEx();
 
@@ -853,6 +854,11 @@ namespace dxvk {
 
     const D3D9ConstantLayout& GetVertexConstantLayout() { return m_vsLayout; }
     const D3D9ConstantLayout& GetPixelConstantLayout()  { return m_psLayout; }
+
+    HRESULT ResetState(D3DPRESENT_PARAMETERS* pPresentationParameters);
+    HRESULT ResetSwapChain(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode);
+
+    HRESULT InitialReset(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode);
 
   private:
 
