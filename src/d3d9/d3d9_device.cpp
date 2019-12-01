@@ -2395,6 +2395,8 @@ namespace dxvk {
           IDirect3DVertexBuffer9*      pDestBuffer,
           IDirect3DVertexDeclaration9* pVertexDecl,
           DWORD                        Flags) {
+    D3D9DeviceLock lock = LockDevice();
+
     if (unlikely(pDestBuffer == nullptr || pVertexDecl == nullptr))
       return D3DERR_INVALIDCALL;
 
