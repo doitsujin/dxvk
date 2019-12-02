@@ -85,7 +85,7 @@ namespace dxvk {
             D3D9_BUFFER_DESC* pDesc);
 
     D3D9_COMMON_BUFFER_MAP_MODE GetMapMode() const {
-      return (m_desc.Pool == D3DPOOL_DEFAULT && (m_desc.Usage & D3DUSAGE_DYNAMIC))
+      return (m_desc.Pool == D3DPOOL_DEFAULT && (m_desc.Usage & D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY))
         ? D3D9_COMMON_BUFFER_MAP_MODE_DIRECT
         : D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
     }
