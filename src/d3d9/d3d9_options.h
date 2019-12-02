@@ -83,6 +83,9 @@ namespace dxvk {
     /// Support X4R4G4B4
     bool supportX4R4G4B4;
 
+    /// Support D32
+    bool supportD32;
+
     /// SWVP Constant Limits
     uint32_t swvpFloatCount;
     uint32_t swvpIntCount;
