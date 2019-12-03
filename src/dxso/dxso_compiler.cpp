@@ -3296,7 +3296,6 @@ void DxsoCompiler::emitControlFlowGenericLoop(
   void DxsoCompiler::emitPsProcessing() {
     uint32_t boolType  = m_module.defBoolType();
     uint32_t floatType = m_module.defFloatType(32);
-    uint32_t vec4Type  = m_module.defVectorType(floatType, 4);
     uint32_t floatPtr  = m_module.defPointerType(floatType, spv::StorageClassPushConstant);
     
     // Declare spec constants for render states
