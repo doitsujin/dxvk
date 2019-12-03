@@ -98,6 +98,11 @@ namespace dxvk::vk {
     VULKAN_FN(vkGetPhysicalDeviceMemoryProperties2KHR);
     VULKAN_FN(vkGetPhysicalDeviceSparseImageFormatProperties2KHR);
     #endif
+
+    #ifdef VK_KHR_get_surface_capabilities2
+    VULKAN_FN(vkGetPhysicalDeviceSurfaceCapabilities2KHR);
+    VULKAN_FN(vkGetPhysicalDeviceSurfaceFormats2KHR);
+    #endif
     
     #ifdef VK_KHR_surface
     #ifdef VK_USE_PLATFORM_XCB_KHR
@@ -132,6 +137,13 @@ namespace dxvk::vk {
     VULKAN_FN(vkCreateDebugReportCallbackEXT);
     VULKAN_FN(vkDestroyDebugReportCallbackEXT);
     VULKAN_FN(vkDebugReportMessageEXT);
+    #endif
+
+    #ifdef VK_EXT_full_screen_exclusive
+    VULKAN_FN(vkGetPhysicalDeviceSurfacePresentModes2EXT);
+    VULKAN_FN(vkAcquireFullScreenExclusiveModeEXT);
+    VULKAN_FN(vkReleaseFullScreenExclusiveModeEXT);
+    VULKAN_FN(vkGetDeviceGroupSurfacePresentModes2EXT);
     #endif
   };
   
@@ -303,7 +315,7 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdBeginConditionalRenderingEXT);
     VULKAN_FN(vkCmdEndConditionalRenderingEXT);
     #endif
-    
+
     #ifdef VK_EXT_host_query_reset
     VULKAN_FN(vkResetQueryPoolEXT);
     #endif

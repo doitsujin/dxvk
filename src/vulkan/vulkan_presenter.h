@@ -26,6 +26,7 @@ namespace dxvk::vk {
     VkSurfaceFormatKHR  formats[4];
     uint32_t            numPresentModes;
     VkPresentModeKHR    presentModes[4];
+    VkFullScreenExclusiveEXT fullscreenExclusive;
   };
 
   /**
