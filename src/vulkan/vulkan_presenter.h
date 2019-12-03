@@ -41,6 +41,13 @@ namespace dxvk::vk {
     VkExtent2D          imageExtent;
     uint32_t            imageCount;
   };
+
+  /**
+   * \brief Presenter features
+   */
+  struct PresenterFeatures {
+    bool                fullScreenExclusive : 1;
+  };
   
   /**
    * \brief Adapter and queue
@@ -49,6 +56,7 @@ namespace dxvk::vk {
     uint32_t            queueFamily = 0;
     VkQueue             queue       = VK_NULL_HANDLE;
     VkPhysicalDevice    adapter     = VK_NULL_HANDLE;
+    PresenterFeatures   features    = { };
   };
 
   /**
