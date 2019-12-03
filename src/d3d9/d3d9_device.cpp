@@ -5713,40 +5713,40 @@ namespace dxvk {
       m_flags.clr(D3D9DeviceFlag::DirtyFFVertexShader);
 
       D3D9FFShaderKeyVS key;
-      key.data.HasPositionT = hasPositionT;
-      key.data.HasColor0    = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor0)    : false;
-      key.data.HasColor1    = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor1)    : false;
-      key.data.HasPointSize = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPointSize) : false;
-      key.data.HasFog       = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasFog)       : false;
+      key.Data.Contents.HasPositionT = hasPositionT;
+      key.Data.Contents.HasColor0    = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor0)    : false;
+      key.Data.Contents.HasColor1    = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor1)    : false;
+      key.Data.Contents.HasPointSize = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPointSize) : false;
+      key.Data.Contents.HasFog       = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasFog)       : false;
 
-      bool lighting    = m_state.renderStates[D3DRS_LIGHTING] != 0 && !key.data.HasPositionT;
+      bool lighting    = m_state.renderStates[D3DRS_LIGHTING] != 0 && !key.Data.Contents.HasPositionT;
       bool colorVertex = m_state.renderStates[D3DRS_COLORVERTEX] != 0;
       uint32_t mask    = (lighting && colorVertex)
-                       ? (key.data.HasColor0 ? D3DMCS_COLOR1 : D3DMCS_MATERIAL)
-                       | (key.data.HasColor1 ? D3DMCS_COLOR2 : D3DMCS_MATERIAL)
+                       ? (key.Data.Contents.HasColor0 ? D3DMCS_COLOR1 : D3DMCS_MATERIAL)
+                       | (key.Data.Contents.HasColor1 ? D3DMCS_COLOR2 : D3DMCS_MATERIAL)
                        : 0;
 
-      key.data.UseLighting      = lighting;
-      key.data.NormalizeNormals = m_state.renderStates[D3DRS_NORMALIZENORMALS];
-      key.data.LocalViewer      = m_state.renderStates[D3DRS_LOCALVIEWER] && lighting;
+      key.Data.Contents.UseLighting      = lighting;
+      key.Data.Contents.NormalizeNormals = m_state.renderStates[D3DRS_NORMALIZENORMALS];
+      key.Data.Contents.LocalViewer      = m_state.renderStates[D3DRS_LOCALVIEWER] && lighting;
 
-      key.data.RangeFog         = m_state.renderStates[D3DRS_RANGEFOGENABLE];
+      key.Data.Contents.RangeFog         = m_state.renderStates[D3DRS_RANGEFOGENABLE];
 
-      key.data.DiffuseSource    = m_state.renderStates[D3DRS_DIFFUSEMATERIALSOURCE]  & mask;
-      key.data.AmbientSource    = m_state.renderStates[D3DRS_AMBIENTMATERIALSOURCE]  & mask;
-      key.data.SpecularSource   = m_state.renderStates[D3DRS_SPECULARMATERIALSOURCE] & mask;
-      key.data.EmissiveSource   = m_state.renderStates[D3DRS_EMISSIVEMATERIALSOURCE] & mask;
+      key.Data.Contents.DiffuseSource    = m_state.renderStates[D3DRS_DIFFUSEMATERIALSOURCE]  & mask;
+      key.Data.Contents.AmbientSource    = m_state.renderStates[D3DRS_AMBIENTMATERIALSOURCE]  & mask;
+      key.Data.Contents.SpecularSource   = m_state.renderStates[D3DRS_SPECULARMATERIALSOURCE] & mask;
+      key.Data.Contents.EmissiveSource   = m_state.renderStates[D3DRS_EMISSIVEMATERIALSOURCE] & mask;
 
       uint32_t lightCount = 0;
 
-      if (key.data.UseLighting) {
+      if (key.Data.Contents.UseLighting) {
         for (uint32_t i = 0; i < caps::MaxEnabledLights; i++) {
           if (m_state.enabledLightIndices[i] != UINT32_MAX)
             lightCount++;
         }
       }
 
-      key.data.LightCount = lightCount;
+      key.Data.Contents.LightCount = lightCount;
 
       for (uint32_t i = 0; i < caps::MaxTextureBlendStages; i++) {
         uint32_t transformFlags = m_state.textureStages[i][D3DTSS_TEXTURETRANSFORMFLAGS] & ~(D3DTTFF_PROJECTED);
@@ -5756,12 +5756,12 @@ namespace dxvk {
         transformFlags &= 0b111;
         index          &= 0b111;
 
-        key.data.TransformFlags  |= transformFlags << (i * 3);
-        key.data.TexcoordFlags   |= indexFlags     << (i * 3);
-        key.data.TexcoordIndices |= index          << (i * 3);
+        key.Data.Contents.TransformFlags  |= transformFlags << (i * 3);
+        key.Data.Contents.TexcoordFlags   |= indexFlags     << (i * 3);
+        key.Data.Contents.TexcoordIndices |= index          << (i * 3);
       }
 
-      key.data.TexcoordDeclMask = m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetTexcoordMask() : 0;
+      key.Data.Contents.TexcoordDeclMask = m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetTexcoordMask() : 0;
 
       EmitCs([
         this,
@@ -5879,7 +5879,7 @@ namespace dxvk {
 
       uint32_t idx;
       for (idx = 0; idx < caps::TextureStageCount; idx++) {
-        auto& stage = key.Stages[idx].data;
+        auto& stage = key.Stages[idx].Contents;
         auto& data  = m_state.textureStages[idx];
 
         // Subsequent stages do not occur if this is true.
@@ -5917,7 +5917,7 @@ namespace dxvk {
         stage.ProjectedCount = (ttff & D3DTTFF_PROJECTED) ? count  : 0;
       }
 
-      auto& stage0 = key.Stages[0].data;
+      auto& stage0 = key.Stages[0].Contents;
 
       if (stage0.ResultIsTemp &&
           stage0.ColorOp != D3DTOP_DISABLE &&
@@ -5931,7 +5931,7 @@ namespace dxvk {
 
       // The last stage *always* writes to current.
       if (idx >= 1)
-        key.Stages[idx - 1].data.ResultIsTemp = false;
+        key.Stages[idx - 1].Contents.ResultIsTemp = false;
 
       EmitCs([
         this,

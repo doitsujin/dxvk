@@ -734,7 +734,7 @@ namespace dxvk {
     bool diffuseOrSpec = semantic == DxsoSemantic{ DxsoUsage::Color, 0 }
                       || semantic == DxsoSemantic{ DxsoUsage::Color, 1 };
 
-    if (diffuseOrSpec && m_fsKey.Stages[0].data.GlobalFlatShade)
+    if (diffuseOrSpec && m_fsKey.Stages[0].Contents.GlobalFlatShade)
       m_module.decorate(ptr, spv::DecorationFlat);
 
     std::string name = str::format(input ? "in_" : "out_", semantic.usage, semantic.usageIndex);
@@ -760,7 +760,7 @@ namespace dxvk {
 
     const uint32_t wIndex = 3;
 
-    if (!m_vsKey.data.HasPositionT) {
+    if (!m_vsKey.Data.Contents.HasPositionT) {
       uint32_t wv = m_vs.constants.worldview;
       uint32_t nrmMtx = m_vs.constants.normal;
 
@@ -774,7 +774,7 @@ namespace dxvk {
       normal = m_module.opMatrixTimesVector(m_vec3Type, nrmMtx, normal);
 
       // Some games rely no normals not being normal.
-      if (m_vsKey.data.NormalizeNormals) {
+      if (m_vsKey.Data.Contents.NormalizeNormals) {
         uint32_t bool_t = m_module.defBoolType();
         uint32_t bool3_t = m_module.defVectorType(bool_t, 3);
 
@@ -820,14 +820,14 @@ namespace dxvk {
     m_module.opStore(m_vs.out.NORMAL, outNrm);
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
-      uint32_t inputIndex = (m_vsKey.data.TexcoordIndices >> (i * 3)) & 0b111;
-      uint32_t inputFlags = (m_vsKey.data.TexcoordFlags   >> (i * 3)) & 0b111;
+      uint32_t inputIndex = (m_vsKey.Data.Contents.TexcoordIndices >> (i * 3)) & 0b111;
+      uint32_t inputFlags = (m_vsKey.Data.Contents.TexcoordFlags   >> (i * 3)) & 0b111;
 
       uint32_t transformed;
 
       const uint32_t wIndex = 3;
 
-      uint32_t flags = (m_vsKey.data.TransformFlags >> (i * 3)) & 0b111;
+      uint32_t flags = (m_vsKey.Data.Contents.TransformFlags >> (i * 3)) & 0b111;
       uint32_t count = flags;
       switch (inputFlags) {
         default:
@@ -888,7 +888,7 @@ namespace dxvk {
 
       uint32_t type = flags;
       if (type != D3DTTFF_DISABLE) {
-        if (!m_vsKey.data.HasPositionT) {
+        if (!m_vsKey.Data.Contents.HasPositionT) {
           for (uint32_t j = count; j < 4; j++) {
             // If we're outside the component count of the vertex decl for this texcoord then we pad with zeroes.
             // Otherwise, pad with ones.
@@ -896,7 +896,7 @@ namespace dxvk {
             // Very weird quirk in order to get texcoord transforms to work like they do in native.
             // In future, maybe we could sort this out properly by chopping matrices of different sizes, but thats
             // a project for another day.
-            uint32_t texcoordCount = (m_vsKey.data.TexcoordDeclMask >> (3 * inputIndex)) & 0x7;
+            uint32_t texcoordCount = (m_vsKey.Data.Contents.TexcoordDeclMask >> (3 * inputIndex)) & 0x7;
             uint32_t value = j > texcoordCount ? m_module.constf32(0) : m_module.constf32(1);
             transformed = m_module.opCompositeInsert(m_vec4Type, value, transformed, 1, &j);
           }
@@ -915,7 +915,7 @@ namespace dxvk {
       m_module.opStore(m_vs.out.TEXCOORD[i], transformed);
     }
 
-    if (m_vsKey.data.UseLighting) {
+    if (m_vsKey.Data.Contents.UseLighting) {
       auto PickSource = [&](uint32_t Source, uint32_t Material) {
         if (Source == D3DMCS_MATERIAL)
           return Material;
@@ -929,7 +929,7 @@ namespace dxvk {
       uint32_t specularValue = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
       uint32_t ambientValue  = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
 
-      for (uint32_t i = 0; i < m_vsKey.data.LightCount; i++) {
+      for (uint32_t i = 0; i < m_vsKey.Data.Contents.LightCount; i++) {
         uint32_t light_ptr_t = m_module.defPointerType(m_vs.lightType, spv::StorageClassUniform);
 
         uint32_t indexVal = m_module.constu32(VSConstLight0 + i);
@@ -1010,7 +1010,7 @@ namespace dxvk {
         uint32_t diffuseness = m_module.opFMul(m_floatType, hitDot, atten);
 
         uint32_t mid;
-        if (m_vsKey.data.LocalViewer) {
+        if (m_vsKey.Data.Contents.LocalViewer) {
           mid = m_module.opNormalize(m_vec3Type, vtx3);
           mid = m_module.opFSub(m_vec3Type, hitDir, mid);
         }
@@ -1035,10 +1035,10 @@ namespace dxvk {
         specularValue = m_module.opFAdd(m_vec4Type, specularValue, lightSpecular);
       }
 
-      uint32_t mat_diffuse  = PickSource(m_vsKey.data.DiffuseSource,  m_vs.constants.materialDiffuse);
-      uint32_t mat_ambient  = PickSource(m_vsKey.data.AmbientSource,  m_vs.constants.materialAmbient);
-      uint32_t mat_emissive = PickSource(m_vsKey.data.EmissiveSource, m_vs.constants.materialEmissive);
-      uint32_t mat_specular = PickSource(m_vsKey.data.SpecularSource, m_vs.constants.materialSpecular);
+      uint32_t mat_diffuse  = PickSource(m_vsKey.Data.Contents.DiffuseSource,  m_vs.constants.materialDiffuse);
+      uint32_t mat_ambient  = PickSource(m_vsKey.Data.Contents.AmbientSource,  m_vs.constants.materialAmbient);
+      uint32_t mat_emissive = PickSource(m_vsKey.Data.Contents.EmissiveSource, m_vs.constants.materialEmissive);
+      uint32_t mat_specular = PickSource(m_vsKey.Data.Contents.SpecularSource, m_vs.constants.materialSpecular);
       
       std::array<uint32_t, 4> alphaSwizzle = {0, 1, 2, 7};
       uint32_t finalColor0 = m_module.opFFma(m_vec4Type, mat_ambient, m_vs.constants.globalAmbient, mat_emissive);
@@ -1067,10 +1067,10 @@ namespace dxvk {
 
     D3D9FogContext fogCtx;
     fogCtx.IsPixel     = false;
-    fogCtx.RangeFog    = m_vsKey.data.RangeFog;
+    fogCtx.RangeFog    = m_vsKey.Data.Contents.RangeFog;
     fogCtx.RenderState = m_rsBlock;
     fogCtx.vPos        = vtx;
-    fogCtx.HasFogInput = m_vsKey.data.HasFog;
+    fogCtx.HasFogInput = m_vsKey.Data.Contents.HasFog;
     fogCtx.vFog        = m_vs.in.FOG;
     fogCtx.oColor      = 0;
     m_module.opStore(m_vs.out.FOG, DoFixedFunctionFog(m_module, fogCtx));
@@ -1314,14 +1314,14 @@ namespace dxvk {
     for (uint32_t i = 0; i < caps::TextureStageCount; i++)
       m_vs.in.TEXCOORD[i] = declareIO(true, DxsoSemantic{ DxsoUsage::Texcoord, i });
 
-    if (m_vsKey.data.HasColor0)
+    if (m_vsKey.Data.Contents.HasColor0)
       m_vs.in.COLOR[0] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 0 });
     else {
       m_vs.in.COLOR[0] = m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f);
       m_isgn.elemCount++;
     }
 
-    if (m_vsKey.data.HasColor1)
+    if (m_vsKey.Data.Contents.HasColor1)
       m_vs.in.COLOR[1] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 1 });
     else {
       m_vs.in.COLOR[1] = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
@@ -1346,7 +1346,7 @@ namespace dxvk {
     m_vs.in.FOG       = declareIO(true,  DxsoSemantic{ DxsoUsage::Fog,   0 });
     m_vs.out.FOG      = declareIO(false, DxsoSemantic{ DxsoUsage::Fog,   0 });
 
-    if (m_vsKey.data.HasPointSize)
+    if (m_vsKey.Data.Contents.HasPointSize)
       m_vs.in.POINTSIZE = declareIO(true, DxsoSemantic{ DxsoUsage::PointSize, 0 });
   }
 
@@ -1365,7 +1365,7 @@ namespace dxvk {
     uint32_t texture = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 1.0f);
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
-      const auto& stage = m_fsKey.Stages[i].data;
+      const auto& stage = m_fsKey.Stages[i].Contents;
 
       bool processedTexture = false;
 
@@ -1378,7 +1378,7 @@ namespace dxvk {
 
           // Add one for the texcoord count
           // if we need to include the divider
-          if (m_fsKey.Stages[i].data.Projected)
+          if (m_fsKey.Stages[i].Contents.Projected)
             texcoordCnt++;
 
           std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
@@ -1388,19 +1388,19 @@ namespace dxvk {
           texcoord = m_module.opVectorShuffle(texcoord_t,
             texcoord, texcoord, texcoordCnt, indices.data());
 
-          uint32_t projIdx = m_fsKey.Stages[i].data.ProjectedCount;
+          uint32_t projIdx = m_fsKey.Stages[i].Contents.ProjectedCount;
           if (projIdx == 0)
             projIdx = texcoordCnt;
           else
             projIdx--;
 
-          if (m_fsKey.Stages[i].data.Projected) {
+          if (m_fsKey.Stages[i].Contents.Projected) {
             uint32_t projValue = m_module.opCompositeExtract(m_floatType, m_ps.in.TEXCOORD[i], 1, &projIdx);
             uint32_t insertIdx = texcoordCnt - 1;
             texcoord = m_module.opCompositeInsert(texcoord_t, projValue, texcoord, 1, &insertIdx);
           }
 
-          if (m_fsKey.Stages[i].data.Projected)
+          if (m_fsKey.Stages[i].Contents.Projected)
             texture = m_module.opImageSampleProjImplicitLod(m_vec4Type, imageVarId, texcoord, imageOperands);
           else
             texture = m_module.opImageSampleImplicitLod(m_vec4Type, imageVarId, texcoord, imageOperands);
@@ -1690,7 +1690,7 @@ namespace dxvk {
       }
     }
 
-    if (m_fsKey.Stages[0].data.GlobalSpecularEnable) {
+    if (m_fsKey.Stages[0].Contents.GlobalSpecularEnable) {
       uint32_t specular = m_module.opFMul(m_vec4Type, m_ps.in.COLOR[1], m_module.constvec4f32(1.0f, 1.0f, 1.0f, 0.0f));
 
       current = m_module.opFAdd(m_vec4Type, current, specular);
@@ -1790,7 +1790,7 @@ namespace dxvk {
     // Samplers
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       auto& sampler = m_ps.samplers[i];
-      D3DRESOURCETYPE type = D3DRESOURCETYPE(m_fsKey.Stages[i].data.Type + D3DRTYPE_TEXTURE);
+      D3DRESOURCETYPE type = D3DRESOURCETYPE(m_fsKey.Stages[i].Contents.Type + D3DRTYPE_TEXTURE);
 
       spv::Dim dimensionality;
       VkImageViewType viewType;
@@ -2072,10 +2072,8 @@ namespace dxvk {
 
     std::hash<uint32_t> uint32hash;
 
-    state.add(uint32hash(key.primitive.a));
-    state.add(uint32hash(key.primitive.b));
-    state.add(uint32hash(key.primitive.c));
-    state.add(uint32hash(key.primitive.d));
+    for (uint32_t i = 0; i < countof(key.Data.Primitive); i++)
+      state.add(uint32hash(key.Data.Primitive[i]));
 
     return state;
   }
@@ -2087,8 +2085,8 @@ namespace dxvk {
     std::hash<uint32_t> uint32hash;
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
-      state.add(uint32hash(key.Stages[i].primitive.a));
-      state.add(uint32hash(key.Stages[i].primitive.b));
+      for (uint32_t j = 0; j < countof(key.Stages[i].Primitive); j++)
+        state.add(uint32hash(key.Stages[i].Primitive[j]));
     }
 
     return state;
