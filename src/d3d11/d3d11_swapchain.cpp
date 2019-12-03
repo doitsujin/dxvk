@@ -389,6 +389,7 @@ namespace dxvk {
     presenterDesc.imageCount      = PickImageCount(m_desc.BufferCount + 1);
     presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
     presenterDesc.numPresentModes = PickPresentModes(Vsync, presenterDesc.presentModes);
+    presenterDesc.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT;
 
     if (m_presenter->recreateSwapChain(presenterDesc) != VK_SUCCESS)
       throw DxvkError("D3D11SwapChain: Failed to recreate swap chain");
@@ -419,6 +420,7 @@ namespace dxvk {
     presenterDesc.imageCount      = PickImageCount(m_desc.BufferCount + 1);
     presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
     presenterDesc.numPresentModes = PickPresentModes(false, presenterDesc.presentModes);
+    presenterDesc.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT;
 
     m_presenter = new vk::Presenter(m_window,
       m_device->adapter()->vki(),

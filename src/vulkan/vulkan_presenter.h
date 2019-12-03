@@ -26,7 +26,7 @@ namespace dxvk::vk {
     VkSurfaceFormatKHR  formats[4];
     uint32_t            numPresentModes;
     VkPresentModeKHR    presentModes[4];
-    VkFullScreenExclusiveEXT fullscreenExclusive;
+    VkFullScreenExclusiveEXT fullScreenExclusive;
   };
 
   /**
@@ -196,10 +196,12 @@ namespace dxvk::vk {
     uint32_t m_frameIndex = 0;
 
     VkResult getSupportedFormats(
-            std::vector<VkSurfaceFormatKHR>& formats);
+            std::vector<VkSurfaceFormatKHR>& formats,
+      const PresenterDesc&            desc);
     
     VkResult getSupportedPresentModes(
-            std::vector<VkPresentModeKHR>& modes);
+            std::vector<VkPresentModeKHR>& modes,
+      const PresenterDesc&            desc);
     
     VkResult getSwapImages(
             std::vector<VkImage>&     images);
