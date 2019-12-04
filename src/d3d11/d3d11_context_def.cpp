@@ -29,7 +29,11 @@ namespace dxvk {
           void*                             pData,
           UINT                              DataSize,
           UINT                              GetDataFlags) {
-    Logger::err("D3D11: GetData called on a deferred context");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11: GetData called on a deferred context");
+
     return DXGI_ERROR_INVALID_CALL;
   }
 
@@ -92,21 +96,31 @@ namespace dxvk {
 
 
   void STDMETHODCALLTYPE D3D11DeferredContext::Flush() {
-    Logger::err("D3D11: Flush called on a deferred context");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11: Flush called on a deferred context");
   }
 
 
   void STDMETHODCALLTYPE D3D11DeferredContext::Flush1(
           D3D11_CONTEXT_TYPE          ContextType,
           HANDLE                      hEvent) {
-    Logger::err("D3D11: Flush1 called on a deferred context");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11: Flush1 called on a deferred context");
   }
   
   
   HRESULT STDMETHODCALLTYPE D3D11DeferredContext::Signal(
           ID3D11Fence*                pFence,
           UINT64                      Value) {
-    Logger::err("D3D11: Signal called on a deferred context");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11: Signal called on a deferred context");
+
     return DXGI_ERROR_INVALID_CALL;
   }
 
@@ -114,7 +128,11 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11DeferredContext::Wait(
           ID3D11Fence*                pFence,
           UINT64                      Value) {
-    Logger::err("D3D11: Wait called on a deferred context");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11: Wait called on a deferred context");
+
     return DXGI_ERROR_INVALID_CALL;
   }
 
@@ -228,7 +246,10 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeferredContext::SwapDeviceContextState(
           ID3DDeviceContextState*           pState,
           ID3DDeviceContextState**          ppPreviousState) {
-    Logger::err("D3D11: SwapDeviceContextState called on a deferred context");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11: SwapDeviceContextState called on a deferred context");
   }
 
 
