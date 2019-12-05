@@ -127,7 +127,8 @@ namespace dxvk {
     m_dirty |= m_desc.Format      != pDesc->Format
             || m_desc.Width       != pDesc->Width
             || m_desc.Height      != pDesc->Height
-            || m_desc.BufferCount != pDesc->BufferCount;
+            || m_desc.BufferCount != pDesc->BufferCount
+            || m_desc.Flags       != pDesc->Flags;
 
     m_desc = *pDesc;
     CreateBackBuffer();
@@ -389,7 +390,7 @@ namespace dxvk {
     presenterDesc.imageCount      = PickImageCount(m_desc.BufferCount + 1);
     presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
     presenterDesc.numPresentModes = PickPresentModes(Vsync, presenterDesc.presentModes);
-    presenterDesc.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT;
+    presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
     if (m_presenter->recreateSwapChain(presenterDesc) != VK_SUCCESS)
       throw DxvkError("D3D11SwapChain: Failed to recreate swap chain");
@@ -420,7 +421,7 @@ namespace dxvk {
     presenterDesc.imageCount      = PickImageCount(m_desc.BufferCount + 1);
     presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
     presenterDesc.numPresentModes = PickPresentModes(false, presenterDesc.presentModes);
-    presenterDesc.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT;
+    presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
     m_presenter = new vk::Presenter(m_window,
       m_device->adapter()->vki(),
@@ -834,6 +835,13 @@ namespace dxvk {
           UINT                      Preferred) {
     int32_t option = m_parent->GetOptions()->numBackBuffers;
     return option > 0 ? uint32_t(option) : uint32_t(Preferred);
+  }
+
+
+  VkFullScreenExclusiveEXT D3D11SwapChain::PickFullscreenMode() {
+    return m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH
+      ? VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT
+      : VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT;
   }
 
 }
