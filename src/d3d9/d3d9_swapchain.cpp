@@ -115,6 +115,7 @@ namespace dxvk {
     bool recreate = false;
     recreate   |= m_presenter == nullptr;
     recreate   |= window != m_window;    
+    recreate   |= m_dialogChanged;
 
     m_window    = window;
 
@@ -122,6 +123,8 @@ namespace dxvk {
     m_dirty    |= UpdatePresentRegion(pSourceRect, pDestRect);
     m_dirty    |= recreate;
     m_vsync     = vsync;
+
+    m_dialogChanged = false;
 
     try {
       if (recreate)
@@ -326,6 +329,14 @@ namespace dxvk {
 
     UpdatePresentRegion(nullptr, nullptr);
     CreateBackBuffer();
+
+    // If we would fail to go into dialog box mode with
+    // the new mode, let's escape from dialog mode.
+    HRESULT hr = SetDialogBoxMode(m_dialog);
+
+    if (FAILED(hr))
+      SetDialogBoxMode(false);
+
     return D3D_OK;
   }
 
@@ -380,6 +391,27 @@ namespace dxvk {
 
     if (m_presentParams.hDeviceWindow == hWindow)
       m_presenter = nullptr;
+  }
+
+
+  HRESULT D3D9SwapChainEx::SetDialogBoxMode(BOOL bEnableDialogs) {
+    if (bEnableDialogs) {
+      if (m_presentParams.BackBufferFormat != D3DFMT_X1R5G5B5 &&
+          m_presentParams.BackBufferFormat != D3DFMT_R5G6B5   &&
+          m_presentParams.BackBufferFormat != D3DFMT_X8R8G8B8)
+        return D3DERR_INVALIDCALL;
+
+      if (m_presentParams.SwapEffect == D3DSWAPEFFECT_DISCARD)
+        return D3DERR_INVALIDCALL;
+
+      if (m_presentParams.Flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER)
+        return D3DERR_INVALIDCALL;
+    }
+
+    m_dialogChanged = m_dialog != bEnableDialogs;
+    m_dialog        = bEnableDialogs;
+
+    return D3D_OK;
   }
 
 
@@ -568,7 +600,7 @@ namespace dxvk {
     presenterDesc.imageCount      = PickImageCount(m_presentParams.BackBufferCount + 1);
     presenterDesc.numFormats      = PickFormats(EnumerateFormat(m_presentParams.BackBufferFormat), presenterDesc.formats);
     presenterDesc.numPresentModes = PickPresentModes(Vsync, presenterDesc.presentModes);
-    presenterDesc.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT;
+    presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
     if (m_presenter->recreateSwapChain(presenterDesc) != VK_SUCCESS)
       throw DxvkError("D3D9SwapChainEx: Failed to recreate swap chain");
@@ -590,7 +622,7 @@ namespace dxvk {
     presenterDesc.imageCount      = PickImageCount(m_presentParams.BackBufferCount + 1);
     presenterDesc.numFormats      = PickFormats(EnumerateFormat(m_presentParams.BackBufferFormat), presenterDesc.formats);
     presenterDesc.numPresentModes = PickPresentModes(false, presenterDesc.presentModes);
-    presenterDesc.fullScreenExclusive = VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT;
+    presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
     m_presenter = new vk::Presenter(m_window,
       m_device->adapter()->vki(),
@@ -1161,6 +1193,13 @@ namespace dxvk {
 
     if (!::GetMonitorInfoW(GetDefaultMonitor(), reinterpret_cast<MONITORINFO*>(&m_monInfo)))
       throw DxvkError("D3D9SwapChainEx::GetDisplayModeEx: Failed to query monitor info");
+  }
+
+
+  VkFullScreenExclusiveEXT D3D9SwapChainEx::PickFullscreenMode() {
+    return m_dialog
+      ? VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT
+      : VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT;
   }
 
 }

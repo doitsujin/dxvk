@@ -78,6 +78,8 @@ namespace dxvk {
 
     void    Invalidate(HWND hWindow);
 
+    HRESULT SetDialogBoxMode(BOOL bEnableDialogs);
+
   private:
 
     enum BindingIds : uint32_t {
@@ -139,6 +141,9 @@ namespace dxvk {
 
     bool                    m_dirty    = true;
     bool                    m_vsync    = true;
+
+    bool                    m_dialog        = false;
+    bool                    m_dialogChanged = false;
 
     HWND                    m_window   = nullptr;
     HMONITOR                m_monitor  = nullptr;
@@ -210,6 +215,8 @@ namespace dxvk {
     bool    UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect);
 
     VkExtent2D GetPresentExtent();
+
+    VkFullScreenExclusiveEXT PickFullscreenMode();
 
   };
 
