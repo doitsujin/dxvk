@@ -414,42 +414,42 @@ namespace dxvk {
   }
 
 
-    enum FFConstantMembersVS {
-      VSConstWorldViewMatrix   = 0,
-      VSConstNormalMatrix    = 1,
-      VSConstProjMatrix,
+  enum FFConstantMembersVS {
+    VSConstWorldViewMatrix   = 0,
+    VSConstNormalMatrix    = 1,
+    VSConstProjMatrix,
       
-      VsConstTexcoord0,
-      VsConstTexcoord1,
-      VsConstTexcoord2,
-      VsConstTexcoord3,
-      VsConstTexcoord4,
-      VsConstTexcoord5,
-      VsConstTexcoord6,
-      VsConstTexcoord7,
+    VsConstTexcoord0,
+    VsConstTexcoord1,
+    VsConstTexcoord2,
+    VsConstTexcoord3,
+    VsConstTexcoord4,
+    VsConstTexcoord5,
+    VsConstTexcoord6,
+    VsConstTexcoord7,
 
-      VSConstInverseOffset,
-      VSConstInverseExtent,
+    VSConstInverseOffset,
+    VSConstInverseExtent,
 
-      VSConstGlobalAmbient,
+    VSConstGlobalAmbient,
 
-      VSConstLight0,
-      VSConstLight1,
-      VSConstLight2,
-      VSConstLight3,
-      VSConstLight4,
-      VSConstLight5,
-      VSConstLight6,
-      VSConstLight7,
+    VSConstLight0,
+    VSConstLight1,
+    VSConstLight2,
+    VSConstLight3,
+    VSConstLight4,
+    VSConstLight5,
+    VSConstLight6,
+    VSConstLight7,
 
-      VSConstMaterialDiffuse,
-      VSConstMaterialAmbient,
-      VSConstMaterialSpecular,
-      VSConstMaterialEmissive,
-      VSConstMaterialPower,
+    VSConstMaterialDiffuse,
+    VSConstMaterialAmbient,
+    VSConstMaterialSpecular,
+    VSConstMaterialEmissive,
+    VSConstMaterialPower,
 
-      VSConstMemberCount
-    };
+    VSConstMemberCount
+  };
 
   struct D3D9FFVertexData {
     uint32_t constantBuffer = 0;
