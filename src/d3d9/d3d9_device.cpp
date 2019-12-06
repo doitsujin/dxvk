@@ -3242,12 +3242,8 @@ namespace dxvk {
     const RGNDATA* pDirtyRegion,
           DWORD dwFlags) {
     D3D9DeviceLock lock = LockDevice();
-
-    auto* swapchain = GetInternalSwapchain(0);
-    if (swapchain == nullptr)
-      return D3DERR_INVALIDCALL;
     
-    return swapchain->Present(
+    return GetInternalSwapchain(0)->Present(
       pSourceRect,
       pDestRect,
       hDestWindowOverride,
