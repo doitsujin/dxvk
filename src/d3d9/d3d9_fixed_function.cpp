@@ -556,6 +556,10 @@ namespace dxvk {
 
     void setupRenderStateInfo();
 
+    void emitLightTypeDecl();
+
+    void emitBaseBufferDecl();
+
     void setupVS();
 
     void compilePS();
@@ -1096,15 +1100,7 @@ namespace dxvk {
   }
 
 
-  void D3D9FFShaderCompiler::setupVS() {
-    setupRenderStateInfo();
-
-    // VS Caps
-    m_module.enableCapability(spv::CapabilityClipDistance);
-    m_module.enableCapability(spv::CapabilityDrawParameters);
-
-    m_module.enableExtension("SPV_KHR_shader_draw_parameters");
-
+  void D3D9FFShaderCompiler::emitLightTypeDecl() {
     std::array<uint32_t, 13> light_members = {
       m_vec4Type,   // Diffuse
       m_vec4Type,   // Specular
@@ -1127,6 +1123,7 @@ namespace dxvk {
     m_module.setDebugName(m_vs.lightType, "light_t");
 
     uint32_t offset = 0;
+
     m_module.memberDecorateOffset(m_vs.lightType, 0, offset);  offset += 4 * sizeof(float);
     m_module.setDebugMemberName  (m_vs.lightType, 0, "Diffuse");
     m_module.memberDecorateOffset(m_vs.lightType, 1, offset);  offset += 4 * sizeof(float);
@@ -1158,7 +1155,10 @@ namespace dxvk {
     m_module.setDebugMemberName  (m_vs.lightType, 11, "Theta");
     m_module.memberDecorateOffset(m_vs.lightType, 12, offset); offset += 1 * sizeof(float);
     m_module.setDebugMemberName  (m_vs.lightType, 12, "Phi");
+  }
 
+
+  void D3D9FFShaderCompiler::emitBaseBufferDecl() {
     // Constant Buffer for VS.
     std::array<uint32_t, VSConstMemberCount> members = {
       m_mat4Type, // World
@@ -1199,7 +1199,9 @@ namespace dxvk {
       m_module.defStructType(members.size(), members.data());
 
     m_module.decorateBlock(structType);
-    offset = 0;
+
+    uint32_t offset = 0;
+
     for (uint32_t i = 0; i < VSConstInverseOffset; i++) {
       m_module.memberDecorateOffset(structType, i, offset);
       offset += sizeof(Matrix4);
@@ -1279,6 +1281,20 @@ namespace dxvk {
     resource.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     resource.access = VK_ACCESS_UNIFORM_READ_BIT;
     m_resourceSlots.push_back(resource);
+  }
+
+
+  void D3D9FFShaderCompiler::setupVS() {
+    setupRenderStateInfo();
+
+    // VS Caps
+    m_module.enableCapability(spv::CapabilityClipDistance);
+    m_module.enableCapability(spv::CapabilityDrawParameters);
+
+    m_module.enableExtension("SPV_KHR_shader_draw_parameters");
+
+    emitLightTypeDecl();
+    emitBaseBufferDecl();
 
     // Load constants
     auto LoadConstant = [&](uint32_t type, uint32_t idx) {
