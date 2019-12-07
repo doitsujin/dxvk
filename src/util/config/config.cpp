@@ -202,8 +202,12 @@ namespace dxvk {
     { R"(\\Sonic Adventure 2\\(launcher|sonic2app)\.exe$)", {{
       { "d3d9.floatEmulation",              "False" },
     }} },
-    /* The Sims 2 and Body Shop                   */
-    { R"(\\(Sims2.*|TS2BodyShop)\.exe$)", {{
+    /* The Sims 2,
+       Body Shop,
+       The Sims Life Stories,
+       The Sims Pet Stories,
+       and The Sims Castaway Stories             */
+    { R"(\\(Sims2.*|TS2BodyShop|SimsLS|SimsPS|SimsCS)\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
       { "d3d9.customDeviceId",              "0091" },
       { "d3d9.customDeviceDesc",            "GeForce 7800 GTX" },
