@@ -17,6 +17,7 @@ namespace dxvk {
     VSConstantBuffer = 0,
     VSClipPlanes     = 1,
     VSFixedFunction  = 2,
+    VSVertexBlendData = 3,
     VSCount,
 
     PSConstantBuffer = 0,

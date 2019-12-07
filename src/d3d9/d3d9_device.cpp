@@ -1920,6 +1920,15 @@ namespace dxvk {
           m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
           break;
 
+        case D3DRS_TWEENFACTOR:
+          m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
+          break;
+
+        case D3DRS_VERTEXBLEND:
+        case D3DRS_INDEXEDVERTEXBLENDENABLE:
+          m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
+          break;
+
         case D3DRS_ADAPTIVETESS_X:
         case D3DRS_ADAPTIVETESS_Z:
         case D3DRS_ADAPTIVETESS_W:
@@ -3512,6 +3521,9 @@ namespace dxvk {
 
     m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
 
+    if (idx == GetTransformIndex(D3DTS_VIEW) || idx >= GetTransformIndex(D3DTS_WORLD))
+      m_flags.set(D3D9DeviceFlag::DirtyFFVertexBlend);
+
     return D3D_OK;
   }
 
@@ -4346,17 +4358,27 @@ namespace dxvk {
     info.size   = m_psLayout.totalSize();
     m_consts[DxsoProgramTypes::PixelShader].buffer  = m_dxvkDevice->createBuffer(info, memoryFlags);
 
+    info.stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
     info.size = caps::MaxClipPlanes * sizeof(D3D9ClipPlane);
     m_vsClipPlanes = m_dxvkDevice->createBuffer(info, memoryFlags);
 
+    info.stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
     info.size = sizeof(D3D9FixedFunctionVS);
     m_vsFixedFunction = m_dxvkDevice->createBuffer(info, memoryFlags);
 
+    info.stages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     info.size = sizeof(D3D9FixedFunctionPS);
     m_psFixedFunction = m_dxvkDevice->createBuffer(info, memoryFlags);
 
+    info.stages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     info.size = sizeof(D3D9SharedPS);
     m_psShared = m_dxvkDevice->createBuffer(info, memoryFlags);
+
+    info.stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+    info.usage  = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    info.access = VK_ACCESS_SHADER_READ_BIT;
+    info.size = sizeof(D3D9FixedFunctionVertexBlendData);
+    m_vsVertexBlend = m_dxvkDevice->createBuffer(info, memoryFlags);
 
     auto BindConstantBuffer = [this](
       DxsoProgramType     shaderStage,
@@ -4378,6 +4400,7 @@ namespace dxvk {
     BindConstantBuffer(DxsoProgramTypes::VertexShader, m_consts[DxsoProgramTypes::VertexShader].buffer, DxsoConstantBuffers::VSConstantBuffer);
     BindConstantBuffer(DxsoProgramTypes::VertexShader, m_vsClipPlanes,                                  DxsoConstantBuffers::VSClipPlanes);
     BindConstantBuffer(DxsoProgramTypes::VertexShader, m_vsFixedFunction,                               DxsoConstantBuffers::VSFixedFunction);
+    BindConstantBuffer(DxsoProgramTypes::VertexShader, m_vsVertexBlend,                                 DxsoConstantBuffers::VSVertexBlendData);
 
     BindConstantBuffer(DxsoProgramTypes::PixelShader,  m_consts[DxsoProgramTypes::PixelShader].buffer,  DxsoConstantBuffers::PSConstantBuffer);
     BindConstantBuffer(DxsoProgramTypes::PixelShader,  m_psFixedFunction,                               DxsoConstantBuffers::PSFixedFunction);
@@ -5464,12 +5487,16 @@ namespace dxvk {
         if (cVertexShader == nullptr) {
           ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Position, 0 };
           ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Normal, 0 };
+          ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Position, 1 };
+          ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Normal, 1 };
           for (uint32_t i = 0; i < 8; i++)
             ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Texcoord, i };
           ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Color, 0 };
           ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Color, 1 };
           ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Fog, 0 };
           ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::PointSize, 0 };
+          ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::BlendWeight, 0 };
+          ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::BlendIndices, 0 };
         }
 
         const auto& isgn = cVertexShader != nullptr
@@ -5704,6 +5731,25 @@ namespace dxvk {
   void D3D9DeviceEx::UpdateFixedFunctionVS() {
     // Shader...
     bool hasPositionT = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT) : false;
+    bool hasBlendWeight    = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasBlendWeight)  : false;
+    bool hasBlendIndices   = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasBlendIndices) : false;
+
+    bool indexedVertexBlend = hasBlendIndices && m_state.renderStates[D3DRS_INDEXEDVERTEXBLENDENABLE];
+
+    D3D9FF_VertexBlendMode vertexBlendMode = D3D9FF_VertexBlendMode_Disabled;
+
+    if (m_state.renderStates[D3DRS_VERTEXBLEND] != D3DVBF_DISABLE && !hasPositionT) {
+      vertexBlendMode = m_state.renderStates[D3DRS_VERTEXBLEND] == D3DVBF_TWEENING
+        ? D3D9FF_VertexBlendMode_Tween
+        : D3D9FF_VertexBlendMode_Normal;
+
+      if (m_state.renderStates[D3DRS_VERTEXBLEND] != D3DVBF_0WEIGHTS) {
+        if (!hasBlendWeight)
+          vertexBlendMode = D3D9FF_VertexBlendMode_Disabled;
+      }
+      else if (!indexedVertexBlend)
+        vertexBlendMode = D3D9FF_VertexBlendMode_Disabled;
+    }
 
     if (unlikely(hasPositionT && m_state.vertexShader != nullptr && !m_flags.test(D3D9DeviceFlag::DirtyProgVertexShader))) {
       m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
@@ -5764,6 +5810,13 @@ namespace dxvk {
       }
 
       key.Data.Contents.TexcoordDeclMask = m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetTexcoordMask() : 0;
+
+      key.Data.Contents.VertexBlendMode    = uint32_t(vertexBlendMode);
+
+      if (vertexBlendMode == D3D9FF_VertexBlendMode_Normal) {
+        key.Data.Contents.VertexBlendIndexed = indexedVertexBlend;
+        key.Data.Contents.VertexBlendCount   = m_state.renderStates[D3DRS_VERTEXBLEND] & 0xff;
+      }
 
       EmitCs([
         this,
@@ -5850,6 +5903,24 @@ namespace dxvk {
       }
 
       data->Material = m_state.material;
+      data->TweenFactor = bit::cast<float>(m_state.renderStates[D3DRS_TWEENFACTOR]);
+    }
+
+    if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexBlend) && vertexBlendMode == D3D9FF_VertexBlendMode_Normal) {
+      m_flags.clr(D3D9DeviceFlag::DirtyFFVertexBlend);
+
+      DxvkBufferSliceHandle slice = m_vsVertexBlend->allocSlice();
+
+      EmitCs([
+        cBuffer = m_vsVertexBlend,
+        cSlice  = slice
+      ] (DxvkContext* ctx) {
+        ctx->invalidateBuffer(cBuffer, cSlice);
+      });
+
+      D3D9FixedFunctionVertexBlendData* data = reinterpret_cast<D3D9FixedFunctionVertexBlendData*>(slice.mapPtr);
+      for (uint32_t i = 0; i < countof(data->WorldView); i++)
+        data->WorldView[i] = m_state.transforms[GetTransformIndex(D3DTS_VIEW)] * m_state.transforms[GetTransformIndex(D3DTS_WORLDMATRIX(i))];
     }
   }
 
@@ -6226,6 +6297,11 @@ namespace dxvk {
 
     rs[D3DRS_SHADEMODE]                  = D3DSHADE_GOURAUD;
 
+    rs[D3DRS_VERTEXBLEND]                = D3DVBF_DISABLE;
+    rs[D3DRS_INDEXEDVERTEXBLENDENABLE]   = FALSE;
+    rs[D3DRS_TWEENFACTOR]                = bit::cast<DWORD>(0.0f);
+    m_flags.set(D3D9DeviceFlag::DirtyFFVertexBlend);
+
     // Render States not implemented beyond this point.
     rs[D3DRS_LASTPIXEL]                  = TRUE;
     rs[D3DRS_DITHERENABLE]               = FALSE;
@@ -6238,12 +6314,9 @@ namespace dxvk {
     rs[D3DRS_WRAP6]                      = 0;
     rs[D3DRS_WRAP7]                      = 0;
     rs[D3DRS_CLIPPING]                   = TRUE;
-    rs[D3DRS_VERTEXBLEND]                = D3DVBF_DISABLE;
     rs[D3DRS_MULTISAMPLEANTIALIAS]       = TRUE;
     rs[D3DRS_PATCHEDGESTYLE]             = D3DPATCHEDGE_DISCRETE;
     rs[D3DRS_DEBUGMONITORTOKEN]          = D3DDMT_ENABLE;
-    rs[D3DRS_INDEXEDVERTEXBLENDENABLE]   = FALSE;
-    rs[D3DRS_TWEENFACTOR]                = bit::cast<DWORD>(0.0f);
     rs[D3DRS_POSITIONDEGREE]             = D3DDEGREE_CUBIC;
     rs[D3DRS_NORMALDEGREE]               = D3DDEGREE_LINEAR;
     rs[D3DRS_ANTIALIASEDLINEENABLE]      = FALSE;

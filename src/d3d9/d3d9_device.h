@@ -60,6 +60,7 @@ namespace dxvk {
     DirtyFogEnd,
 
     DirtyFFVertexData,
+    DirtyFFVertexBlend,
     DirtyFFVertexShader,
     DirtyFFPixelShader,
     DirtyFFViewport,
@@ -940,6 +941,7 @@ namespace dxvk {
     Rc<DxvkBuffer>                  m_vsClipPlanes;
 
     Rc<DxvkBuffer>                  m_vsFixedFunction;
+    Rc<DxvkBuffer>                  m_vsVertexBlend;
     Rc<DxvkBuffer>                  m_psFixedFunction;
     Rc<DxvkBuffer>                  m_psShared;
 

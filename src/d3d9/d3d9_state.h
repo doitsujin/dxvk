@@ -123,6 +123,12 @@ namespace dxvk {
     Vector4 GlobalAmbient;
     std::array<D3D9Light, caps::MaxEnabledLights> Lights;
     D3DMATERIAL9 Material;
+    float TweenFactor;
+  };
+
+
+  struct D3D9FixedFunctionVertexBlendData {
+    Matrix4 WorldView[8];
   };
 
 

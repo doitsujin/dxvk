@@ -66,6 +66,12 @@ namespace dxvk {
   constexpr uint32_t TCIOffset = 16;
   constexpr uint32_t TCIMask   = 0b111 << TCIOffset;
 
+  enum D3D9FF_VertexBlendMode {
+    D3D9FF_VertexBlendMode_Disabled,
+    D3D9FF_VertexBlendMode_Normal,
+    D3D9FF_VertexBlendMode_Tween,
+  };
+
   struct D3D9FFShaderKeyVSData {
     union {
       struct {
@@ -97,6 +103,10 @@ namespace dxvk {
 
         uint32_t TexcoordDeclMask : 24;
         uint32_t HasFog : 1;
+
+        uint32_t VertexBlendMode    : 2;
+        uint32_t VertexBlendIndexed : 1;
+        uint32_t VertexBlendCount   : 3;
       } Contents;
 
       uint32_t Primitive[4];

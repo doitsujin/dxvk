@@ -448,11 +448,14 @@ namespace dxvk {
     VSConstMaterialEmissive,
     VSConstMaterialPower,
 
+    VsConstTweenFactor,
+
     VSConstMemberCount
   };
 
   struct D3D9FFVertexData {
     uint32_t constantBuffer = 0;
+    uint32_t vertexBlendData = 0;
     uint32_t lightType      = 0;
 
     struct {
@@ -472,15 +475,21 @@ namespace dxvk {
       uint32_t materialAmbient = { 0 };
       uint32_t materialEmissive = { 0 };
       uint32_t materialPower = { 0 };
+      uint32_t tweenFactor = { 0 };
     } constants;
 
     struct {
       uint32_t POSITION = { 0 };
+      uint32_t POSITION1 = { 0 };
       uint32_t POINTSIZE = { 0 };
       uint32_t NORMAL = { 0 };
+      uint32_t NORMAL1 = { 0 };
       uint32_t TEXCOORD[8] = { 0 };
       uint32_t COLOR[2] = { 0 };
       uint32_t FOG = { 0 };
+
+      uint32_t BLENDWEIGHT = { 0 };
+      uint32_t BLENDINDICES = { 0 };
     } in;
 
     struct {
@@ -559,6 +568,8 @@ namespace dxvk {
     void emitLightTypeDecl();
 
     void emitBaseBufferDecl();
+
+    void emitVertexBlendDecl();
 
     void setupVS();
 
@@ -762,20 +773,82 @@ namespace dxvk {
     uint32_t vtx         = m_vs.in.POSITION;
     uint32_t normal      = m_module.opVectorShuffle(m_vec3Type, m_vs.in.NORMAL, m_vs.in.NORMAL, 3, indices.data());
 
+    if (m_vsKey.Data.Contents.VertexBlendMode == D3D9FF_VertexBlendMode_Tween) {
+      uint32_t vtx1    = m_vs.in.POSITION1;
+      uint32_t normal1 = m_module.opVectorShuffle(m_vec3Type, m_vs.in.NORMAL1, m_vs.in.NORMAL1, 3, indices.data());
+
+      vtx    = m_module.opFMix(m_vec3Type, vtx,    vtx1,    m_vs.constants.tweenFactor);
+      normal = m_module.opFMix(m_vec3Type, normal, normal1, m_vs.constants.tweenFactor);
+    }
+
     const uint32_t wIndex = 3;
 
     if (!m_vsKey.Data.Contents.HasPositionT) {
-      uint32_t wv = m_vs.constants.worldview;
-      uint32_t nrmMtx = m_vs.constants.normal;
+      if (m_vsKey.Data.Contents.VertexBlendMode == D3D9FF_VertexBlendMode_Normal) {
+        uint32_t blendWeightRemaining = m_module.constf32(1);
+        uint32_t vtxSum               = m_module.constvec4f32(0, 0, 0, 0);
+        uint32_t nrmSum               = m_module.constvec3f32(0, 0, 0);
 
-      std::array<uint32_t, 3> mtxIndices;
-      for (uint32_t i = 0; i < 3; i++) {
-        mtxIndices[i] = m_module.opCompositeExtract(m_vec4Type, nrmMtx, 1, &i);
-        mtxIndices[i] = m_module.opVectorShuffle(m_vec3Type, mtxIndices[i], mtxIndices[i], 3, indices.data());
+        for (uint32_t i = 0; i <= m_vsKey.Data.Contents.VertexBlendCount; i++) {
+          std::array<uint32_t, 2> arrayIndices;
+
+          if (m_vsKey.Data.Contents.VertexBlendIndexed) {
+            uint32_t index = m_module.opCompositeExtract(m_floatType, m_vs.in.BLENDINDICES, 1, &i);
+                     index = m_module.opConvertFtoU(m_uint32Type, m_module.opRound(m_floatType, index));
+
+            arrayIndices = { m_module.constu32(0), index };
+          }
+          else
+            arrayIndices = { m_module.constu32(0), m_module.constu32(i) };
+
+          uint32_t worldview = m_module.opLoad(m_mat4Type,
+            m_module.opAccessChain(
+              m_module.defPointerType(m_mat4Type, spv::StorageClassUniform), m_vs.vertexBlendData, arrayIndices.size(), arrayIndices.data()));
+
+          uint32_t nrmMtx = worldview;
+
+          std::array<uint32_t, 3> mtxIndices;
+          for (uint32_t i = 0; i < 3; i++) {
+            mtxIndices[i] = m_module.opCompositeExtract(m_vec4Type, nrmMtx, 1, &i);
+            mtxIndices[i] = m_module.opVectorShuffle(m_vec3Type, mtxIndices[i], mtxIndices[i], 3, indices.data());
+          }
+          nrmMtx = m_module.opCompositeConstruct(m_mat3Type, mtxIndices.size(), mtxIndices.data());
+
+          uint32_t vtxResult = m_module.opVectorTimesMatrix(m_vec4Type, vtx, worldview);
+          uint32_t nrmResult = m_module.opVectorTimesMatrix(m_vec3Type, normal, nrmMtx);
+
+          uint32_t weight;
+          if (i != m_vsKey.Data.Contents.VertexBlendCount) {
+            weight = m_module.opCompositeExtract(m_floatType, m_vs.in.BLENDWEIGHT, 1, &i);
+            blendWeightRemaining = m_module.opFSub(m_floatType, blendWeightRemaining, weight);
+          }
+          else
+            weight = blendWeightRemaining;
+
+          vtxResult = m_module.opVectorTimesScalar(m_vec4Type, vtxResult, weight);
+          nrmResult = m_module.opVectorTimesScalar(m_vec3Type, nrmResult, weight);
+
+          vtxSum = m_module.opFAdd(m_vec4Type, vtxSum, vtxResult);
+          nrmSum = m_module.opFAdd(m_vec3Type, nrmSum, nrmResult);
+        }
+
+        vtx    = vtxSum;
+        normal = nrmSum;
       }
-      nrmMtx = m_module.opCompositeConstruct(m_mat3Type, mtxIndices.size(), mtxIndices.data());
+      else {
+        vtx = m_module.opVectorTimesMatrix(m_vec4Type, vtx, m_vs.constants.worldview);
 
-      normal = m_module.opMatrixTimesVector(m_vec3Type, nrmMtx, normal);
+        uint32_t nrmMtx = m_vs.constants.normal;
+
+        std::array<uint32_t, 3> mtxIndices;
+        for (uint32_t i = 0; i < 3; i++) {
+          mtxIndices[i] = m_module.opCompositeExtract(m_vec4Type, nrmMtx, 1, &i);
+          mtxIndices[i] = m_module.opVectorShuffle(m_vec3Type, mtxIndices[i], mtxIndices[i], 3, indices.data());
+        }
+        nrmMtx = m_module.opCompositeConstruct(m_mat3Type, mtxIndices.size(), mtxIndices.data());
+
+        normal = m_module.opMatrixTimesVector(m_vec3Type, nrmMtx, normal);
+      }
 
       // Some games rely no normals not being normal.
       if (m_vsKey.Data.Contents.NormalizeNormals) {
@@ -790,8 +863,7 @@ namespace dxvk {
         normal = m_module.opNormalize(m_vec3Type, normal);
         normal = m_module.opSelect(m_vec3Type, isZeroNormal3, m_module.constvec3f32(0.0f, 0.0f, 0.0f), normal);
       }
-
-      vtx         = m_module.opVectorTimesMatrix(m_vec4Type, vtx, wv);
+      
       gl_Position = m_module.opVectorTimesMatrix(m_vec4Type, vtx, m_vs.constants.proj);
     } else {
       gl_Position = m_module.opFMul(m_vec4Type, gl_Position, m_vs.constants.invExtent);
@@ -1193,6 +1265,8 @@ namespace dxvk {
       m_vec4Type,  // Material Specular
       m_vec4Type,  // Material Emissive
       m_floatType, // Material Power
+
+      m_floatType, // Tween Factor
     };
 
     const uint32_t structType =
@@ -1225,6 +1299,9 @@ namespace dxvk {
     }
 
     m_module.memberDecorateOffset(structType, VSConstMaterialPower, offset);
+    offset += sizeof(float);
+
+    m_module.memberDecorateOffset(structType, VsConstTweenFactor, offset);
     offset += sizeof(float);
 
     m_module.setDebugName(structType, "D3D9FixedFunctionVS");
@@ -1262,6 +1339,8 @@ namespace dxvk {
     m_module.setDebugMemberName(structType, member++, "Material_Emissive");
     m_module.setDebugMemberName(structType, member++, "Material_Power");
 
+    m_module.setDebugMemberName(structType, member++, "TweenFactor");
+
     m_vs.constantBuffer = m_module.newVar(
       m_module.defPointerType(structType, spv::StorageClassUniform),
       spv::StorageClassUniform);
@@ -1284,6 +1363,48 @@ namespace dxvk {
   }
 
 
+  void D3D9FFShaderCompiler::emitVertexBlendDecl() {
+    const uint32_t arrayType = m_module.defArrayTypeUnique(
+      m_mat4Type,
+      m_module.constu32(8));
+    m_module.decorateArrayStride(arrayType, sizeof(Matrix4));
+
+    const uint32_t structType = m_module.defStructTypeUnique(1, &arrayType);
+
+    m_module.memberDecorateMatrixStride(structType, 0, 16);
+    m_module.memberDecorate(structType, 0, spv::DecorationRowMajor);
+
+    m_module.decorate(structType, spv::DecorationBufferBlock);
+
+    m_module.memberDecorateOffset(structType, 0, 0);
+
+    m_module.setDebugName(structType, "D3D9FF_VertexBlendData");
+    m_module.setDebugMemberName(structType, 0, "WorldViewArray");
+
+    m_vs.vertexBlendData = m_module.newVar(
+      m_module.defPointerType(structType, spv::StorageClassUniform),
+      spv::StorageClassUniform);
+
+    m_module.setDebugName(m_vs.vertexBlendData, "VertexBlendData");
+
+    const uint32_t bindingId = computeResourceSlotId(
+      DxsoProgramType::VertexShader, DxsoBindingType::ConstantBuffer,
+      DxsoConstantBuffers::VSVertexBlendData);
+
+    m_module.decorateDescriptorSet(m_vs.vertexBlendData, 0);
+    m_module.decorateBinding(m_vs.vertexBlendData, bindingId);
+
+    m_module.decorate(m_vs.vertexBlendData, spv::DecorationNonWritable);
+
+    DxvkResourceSlot resource;
+    resource.slot   = bindingId;
+    resource.type   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    resource.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    resource.access = VK_ACCESS_SHADER_READ_BIT;
+    m_resourceSlots.push_back(resource);
+  }
+
+
   void D3D9FFShaderCompiler::setupVS() {
     setupRenderStateInfo();
 
@@ -1295,6 +1416,9 @@ namespace dxvk {
 
     emitLightTypeDecl();
     emitBaseBufferDecl();
+
+    if (m_vsKey.Data.Contents.VertexBlendMode == D3D9FF_VertexBlendMode_Normal)
+      emitVertexBlendDecl();
 
     // Load constants
     auto LoadConstant = [&](uint32_t type, uint32_t idx) {
@@ -1322,10 +1446,20 @@ namespace dxvk {
     m_vs.constants.materialSpecular = LoadConstant(m_vec4Type,  VSConstMaterialSpecular);
     m_vs.constants.materialEmissive = LoadConstant(m_vec4Type,  VSConstMaterialEmissive);
     m_vs.constants.materialPower    = LoadConstant(m_floatType, VSConstMaterialPower);
+    m_vs.constants.tweenFactor      = LoadConstant(m_floatType, VsConstTweenFactor);
 
     // Do IO
     m_vs.in.POSITION  = declareIO(true, DxsoSemantic{ DxsoUsage::Position, 0 });
     m_vs.in.NORMAL    = declareIO(true, DxsoSemantic{ DxsoUsage::Normal, 0 });
+
+    if (m_vsKey.Data.Contents.VertexBlendMode == D3D9FF_VertexBlendMode_Tween) {
+      m_vs.in.POSITION1 = declareIO(true, DxsoSemantic{ DxsoUsage::Position, 1 });
+      m_vs.in.NORMAL1   = declareIO(true, DxsoSemantic{ DxsoUsage::Normal, 1 });
+    }
+    else {
+      m_isgn.elemCount++;
+      m_isgn.elemCount++;
+    }
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++)
       m_vs.in.TEXCOORD[i] = declareIO(true, DxsoSemantic{ DxsoUsage::Texcoord, i });
@@ -1344,6 +1478,25 @@ namespace dxvk {
       m_isgn.elemCount++;
     }
 
+    if (m_vsKey.Data.Contents.HasPointSize)
+      m_vs.in.FOG = declareIO(true, DxsoSemantic{ DxsoUsage::Fog,   0 });
+    else
+      m_isgn.elemCount++;
+
+    if (m_vsKey.Data.Contents.HasPointSize)
+      m_vs.in.POINTSIZE = declareIO(true, DxsoSemantic{ DxsoUsage::PointSize, 0 });
+    else
+      m_isgn.elemCount++;
+
+    if (m_vsKey.Data.Contents.VertexBlendMode == D3D9FF_VertexBlendMode_Normal) {
+      m_vs.in.BLENDWEIGHT  = declareIO(true, DxsoSemantic{ DxsoUsage::BlendWeight, 0 });
+      m_vs.in.BLENDINDICES = declareIO(true, DxsoSemantic{ DxsoUsage::BlendIndices, 0 });
+    }
+    else {
+      m_isgn.elemCount++;
+      m_isgn.elemCount++;
+    }
+
     // Declare Outputs
     m_vs.out.POSITION = declareIO(false, DxsoSemantic{ DxsoUsage::Position, 0 }, spv::BuiltInPosition);
     if (m_options.invariantPosition)
@@ -1359,11 +1512,7 @@ namespace dxvk {
     m_vs.out.COLOR[0] = declareIO(false, DxsoSemantic{ DxsoUsage::Color, 0 });
     m_vs.out.COLOR[1] = declareIO(false, DxsoSemantic{ DxsoUsage::Color, 1 });
 
-    m_vs.in.FOG       = declareIO(true,  DxsoSemantic{ DxsoUsage::Fog,   0 });
     m_vs.out.FOG      = declareIO(false, DxsoSemantic{ DxsoUsage::Fog,   0 });
-
-    if (m_vsKey.Data.Contents.HasPointSize)
-      m_vs.in.POINTSIZE = declareIO(true, DxsoSemantic{ DxsoUsage::PointSize, 0 });
   }
 
 
