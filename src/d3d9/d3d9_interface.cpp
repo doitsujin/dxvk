@@ -283,17 +283,24 @@ namespace dxvk {
     auto dxvkAdapter = adapter->GetDXVKAdapter();
 
     std::string clientApi = str::format("D3D9", m_extended ? "Ex" : "");
-    auto dxvkDevice = dxvkAdapter->createDevice(m_instance, clientApi, D3D9DeviceEx::GetDeviceFeatures(dxvkAdapter));
 
-    *ppReturnedDeviceInterface = ref(new D3D9DeviceEx(
-      this,
-      adapter,
-      DeviceType,
-      hFocusWindow,
-      BehaviorFlags,
-      pPresentationParameters,
-      pFullscreenDisplayMode,
-      dxvkDevice));
+    try {
+      auto dxvkDevice = dxvkAdapter->createDevice(m_instance, clientApi, D3D9DeviceEx::GetDeviceFeatures(dxvkAdapter));
+
+      *ppReturnedDeviceInterface = ref(new D3D9DeviceEx(
+        this,
+        adapter,
+        DeviceType,
+        hFocusWindow,
+        BehaviorFlags,
+        pPresentationParameters,
+        pFullscreenDisplayMode,
+        dxvkDevice));
+    }
+    catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return D3DERR_NOTAVAILABLE;
+    }
 
     return D3D_OK;
   }
