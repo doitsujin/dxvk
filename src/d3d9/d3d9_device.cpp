@@ -1925,7 +1925,13 @@ namespace dxvk {
           break;
 
         case D3DRS_VERTEXBLEND:
+          m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
+          break;
+
         case D3DRS_INDEXEDVERTEXBLENDENABLE:
+          if (CanSWVP() && Value)
+            m_flags.set(D3D9DeviceFlag::DirtyFFVertexBlend);
+
           m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
           break;
 
@@ -5929,7 +5935,7 @@ namespace dxvk {
           data->WorldView[i] = m_state.transforms[GetTransformIndex(D3DTS_VIEW)] * m_state.transforms[GetTransformIndex(D3DTS_WORLDMATRIX(i))];
       };
 
-      m_isSWVP
+      (m_isSWVP && indexedVertexBlend)
         ? UploadVertexBlendData(reinterpret_cast<D3D9FixedFunctionVertexBlendDataSW*>(slice.mapPtr))
         : UploadVertexBlendData(reinterpret_cast<D3D9FixedFunctionVertexBlendDataHW*>(slice.mapPtr));
     }
