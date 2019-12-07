@@ -3439,11 +3439,17 @@ namespace dxvk {
     for (uint32_t i = 0; i < m_swapchains.size(); i++)
       GetInternalSwapchain(i)->Invalidate(pPresentationParameters->hDeviceWindow);
 
-    auto* swapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode);
-    *ppSwapChain = ref(swapchain);
+    try {
+      auto* swapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode);
+      *ppSwapChain = ref(swapchain);
 
-    m_swapchains.push_back(swapchain);
-    swapchain->AddRefPrivate();
+      m_swapchains.push_back(swapchain);
+      swapchain->AddRefPrivate();
+    }
+    catch (const DxvkError & e) {
+      Logger::err(e.message());
+      return D3DERR_NOTAVAILABLE;
+    }
 
     return D3D_OK;
   }
