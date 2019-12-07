@@ -4383,7 +4383,7 @@ namespace dxvk {
     info.stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
     info.usage  = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     info.access = VK_ACCESS_SHADER_READ_BIT;
-    info.size = sizeof(D3D9FixedFunctionVertexBlendData);
+    info.size = CanSWVP() ? sizeof(D3D9FixedFunctionVertexBlendDataSW) : sizeof(D3D9FixedFunctionVertexBlendDataHW);
     m_vsVertexBlend = m_dxvkDevice->createBuffer(info, memoryFlags);
 
     auto BindConstantBuffer = [this](
@@ -5924,9 +5924,14 @@ namespace dxvk {
         ctx->invalidateBuffer(cBuffer, cSlice);
       });
 
-      D3D9FixedFunctionVertexBlendData* data = reinterpret_cast<D3D9FixedFunctionVertexBlendData*>(slice.mapPtr);
-      for (uint32_t i = 0; i < countof(data->WorldView); i++)
-        data->WorldView[i] = m_state.transforms[GetTransformIndex(D3DTS_VIEW)] * m_state.transforms[GetTransformIndex(D3DTS_WORLDMATRIX(i))];
+      auto UploadVertexBlendData = [&](auto data) {
+        for (uint32_t i = 0; i < countof(data->WorldView); i++)
+          data->WorldView[i] = m_state.transforms[GetTransformIndex(D3DTS_VIEW)] * m_state.transforms[GetTransformIndex(D3DTS_WORLDMATRIX(i))];
+      };
+
+      m_isSWVP
+        ? UploadVertexBlendData(reinterpret_cast<D3D9FixedFunctionVertexBlendDataSW*>(slice.mapPtr))
+        : UploadVertexBlendData(reinterpret_cast<D3D9FixedFunctionVertexBlendDataHW*>(slice.mapPtr));
     }
   }
 

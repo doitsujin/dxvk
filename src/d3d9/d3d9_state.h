@@ -127,8 +127,13 @@ namespace dxvk {
   };
 
 
-  struct D3D9FixedFunctionVertexBlendData {
+  struct D3D9FixedFunctionVertexBlendDataHW {
     Matrix4 WorldView[8];
+  };
+
+
+  struct D3D9FixedFunctionVertexBlendDataSW {
+    Matrix4 WorldView[256];
   };
 
 

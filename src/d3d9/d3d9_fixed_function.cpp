@@ -1364,9 +1364,7 @@ namespace dxvk {
 
 
   void D3D9FFShaderCompiler::emitVertexBlendDecl() {
-    const uint32_t arrayType = m_module.defArrayTypeUnique(
-      m_mat4Type,
-      m_module.constu32(8));
+    const uint32_t arrayType = m_module.defRuntimeArrayTypeUnique(m_mat4Type);
     m_module.decorateArrayStride(arrayType, sizeof(Matrix4));
 
     const uint32_t structType = m_module.defStructTypeUnique(1, &arrayType);
