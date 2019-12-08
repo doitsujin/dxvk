@@ -5686,8 +5686,8 @@ namespace dxvk {
             UINT  StartRegister,
       const T*    pConstantData,
             UINT  Count) {
-    const     uint32_t regCountHardware = DetermineHardwareRegCount(ProgramType, ConstantType);
-    constexpr uint32_t regCountSoftware = DetermineSoftwareRegCount(ProgramType, ConstantType);
+    const     uint32_t regCountHardware = DetermineHardwareRegCount<ProgramType, ConstantType>();
+    constexpr uint32_t regCountSoftware = DetermineSoftwareRegCount<ProgramType, ConstantType>();
 
     if (unlikely(StartRegister + Count > regCountSoftware))
       return D3DERR_INVALIDCALL;

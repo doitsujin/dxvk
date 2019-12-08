@@ -1017,23 +1017,23 @@ namespace dxvk {
     }
 
     // So we don't do OOB.
-    inline static constexpr uint32_t DetermineSoftwareRegCount(
-            DxsoProgramType  ProgramType,
-            D3D9ConstantType ConstantType) {
-      const bool vs = ProgramType == DxsoProgramType::VertexShader;
+    template <DxsoProgramType  ProgramType,
+              D3D9ConstantType ConstantType>
+    inline static constexpr uint32_t DetermineSoftwareRegCount() {
+      constexpr bool isVS = ProgramType == DxsoProgramType::VertexShader;
 
       switch (ConstantType) {
         default:
-        case D3D9ConstantType::Float:  return vs ? caps::MaxFloatConstantsSoftware : caps::MaxFloatConstantsPS;
-        case D3D9ConstantType::Int:    return vs ? caps::MaxOtherConstantsSoftware : caps::MaxOtherConstants;
-        case D3D9ConstantType::Bool:   return vs ? caps::MaxOtherConstantsSoftware : caps::MaxOtherConstants;
+        case D3D9ConstantType::Float:  return isVS ? caps::MaxFloatConstantsSoftware : caps::MaxFloatConstantsPS;
+        case D3D9ConstantType::Int:    return isVS ? caps::MaxOtherConstantsSoftware : caps::MaxOtherConstants;
+        case D3D9ConstantType::Bool:   return isVS ? caps::MaxOtherConstantsSoftware : caps::MaxOtherConstants;
       }
     }
 
     // So we don't copy more than we need.
-    inline uint32_t DetermineHardwareRegCount(
-            DxsoProgramType  ProgramType,
-            D3D9ConstantType ConstantType) const {
+    template <DxsoProgramType  ProgramType,
+              D3D9ConstantType ConstantType>
+    inline uint32_t DetermineHardwareRegCount() const {
       const auto& layout = ProgramType == DxsoProgramType::VertexShader
         ? m_vsLayout : m_psLayout;
 
@@ -1067,8 +1067,8 @@ namespace dxvk {
             T*   pConstantData,
             UINT Count) {
       auto GetHelper = [&] (const auto& set) {
-        const     uint32_t regCountHardware = DetermineHardwareRegCount(ProgramType, ConstantType);
-        constexpr uint32_t regCountSoftware = DetermineSoftwareRegCount(ProgramType, ConstantType);
+        const     uint32_t regCountHardware = DetermineHardwareRegCount<ProgramType, ConstantType>();
+        constexpr uint32_t regCountSoftware = DetermineSoftwareRegCount<ProgramType, ConstantType>();
 
         if (StartRegister + Count > regCountSoftware)
           return D3DERR_INVALIDCALL;
