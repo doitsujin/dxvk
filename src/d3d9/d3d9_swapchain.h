@@ -78,7 +78,7 @@ namespace dxvk {
 
     void    Invalidate(HWND hWindow);
 
-    HRESULT SetDialogBoxMode(BOOL bEnableDialogs);
+    HRESULT SetDialogBoxMode(bool bEnableDialogs);
 
   private:
 

@@ -394,7 +394,7 @@ namespace dxvk {
   }
 
 
-  HRESULT D3D9SwapChainEx::SetDialogBoxMode(BOOL bEnableDialogs) {
+  HRESULT D3D9SwapChainEx::SetDialogBoxMode(bool bEnableDialogs) {
     if (bEnableDialogs) {
       if (m_presentParams.BackBufferFormat != D3DFMT_X1R5G5B5 &&
           m_presentParams.BackBufferFormat != D3DFMT_R5G6B5   &&
