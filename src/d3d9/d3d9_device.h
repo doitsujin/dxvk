@@ -805,8 +805,8 @@ namespace dxvk {
 
     void PrepareDraw(D3DPRIMITIVETYPE PrimitiveType, bool up = false);
 
+    template <DxsoProgramType ShaderStage>
     void BindShader(
-            DxsoProgramType                   ShaderStage,
       const D3D9CommonShader*                 pShaderModule,
             D3D9ShaderPermutation             Permutation);
 

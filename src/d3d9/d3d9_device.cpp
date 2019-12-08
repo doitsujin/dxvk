@@ -1915,8 +1915,12 @@ namespace dxvk {
           break;
 
         case D3DRS_SHADEMODE:
-          if (m_state.pixelShader)
-            BindShader(DxsoProgramType::PixelShader, GetCommonShader(m_state.pixelShader), GetPixelShaderPermutation());
+          if (m_state.pixelShader) {
+            BindShader<DxsoProgramType::PixelShader>(
+              GetCommonShader(m_state.pixelShader),
+              GetPixelShaderPermutation());
+          }
+
           m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
           break;
 
@@ -2667,8 +2671,7 @@ namespace dxvk {
       m_flags.clr(D3D9DeviceFlag::DirtyProgVertexShader);
       m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
 
-      BindShader(
-        DxsoProgramTypes::VertexShader,
+      BindShader<DxsoProgramTypes::VertexShader>(
         GetCommonShader(shader),
         GetVertexShaderPermutation());
     }
@@ -2993,8 +2996,7 @@ namespace dxvk {
     if (shader != nullptr) {
       m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
 
-      BindShader(
-        DxsoProgramTypes::PixelShader,
+      BindShader<DxsoProgramTypes::PixelShader>(
         GetCommonShader(shader),
         GetPixelShaderPermutation());
     }
@@ -5363,7 +5365,10 @@ namespace dxvk {
     if (likely(UseProgrammableVS())) {
       if (unlikely(m_flags.test(D3D9DeviceFlag::DirtyProgVertexShader))) {
         m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
-        BindShader(DxsoProgramType::VertexShader, GetCommonShader(m_state.vertexShader), GetVertexShaderPermutation());
+
+        BindShader<DxsoProgramType::VertexShader>(
+          GetCommonShader(m_state.vertexShader),
+          GetVertexShaderPermutation());
       }
       UploadConstants<DxsoProgramTypes::VertexShader>();
     }
@@ -5441,15 +5446,14 @@ namespace dxvk {
   }
 
 
+  template <DxsoProgramType ShaderStage>
   void D3D9DeviceEx::BindShader(
-        DxsoProgramType                   ShaderStage,
   const D3D9CommonShader*                 pShaderModule,
         D3D9ShaderPermutation             Permutation) {
     EmitCs([
-      cStage  = GetShaderStage(ShaderStage),
       cShader = pShaderModule->GetShader(Permutation)
     ] (DxvkContext* ctx) {
-      ctx->bindShader(cStage, cShader);
+      ctx->bindShader(GetShaderStage(ShaderStage), cShader);
     });
   }
 
