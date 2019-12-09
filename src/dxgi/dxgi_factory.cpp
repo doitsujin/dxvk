@@ -228,8 +228,18 @@ namespace dxvk {
           void**                ppvAdapter) {
     InitReturnPtr(ppvAdapter);
 
-    Logger::err("DxgiFactory::EnumWarpAdapter: Not implemented");
-    return E_NOTIMPL;
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("DxgiFactory::EnumWarpAdapter: WARP not supported, returning first hardware adapter");
+
+    Com<IDXGIAdapter1> adapter;
+    HRESULT hr = EnumAdapters1(0, &adapter);
+
+    if (FAILED(hr))
+      return hr;
+
+    return adapter->QueryInterface(riid, ppvAdapter);
   }
 
 
