@@ -1182,14 +1182,16 @@ namespace dxvk {
     void commitComputeInitBarriers();
     void commitComputePostBarriers();
     
-    template<bool Indexed, bool Indirect>
+    template<bool Indexed, bool Indirect, bool DoEmit>
     void commitGraphicsBarriers();
 
+    template<bool DoEmit>
     DxvkAccessFlags checkGfxBufferBarrier(
       const DxvkBufferSlice&          slice,
             VkPipelineStageFlags      stages,
             VkAccessFlags             access);
 
+    template<bool DoEmit>
     DxvkAccessFlags checkGfxImageBarrier(
       const Rc<DxvkImageView>&        imageView,
             VkPipelineStageFlags      stages,
