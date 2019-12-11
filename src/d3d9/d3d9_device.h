@@ -853,6 +853,12 @@ namespace dxvk {
 
     void TransitionImage(D3D9CommonTexture* pResource, VkImageLayout NewLayout);
 
+    void TransformImage(
+            D3D9CommonTexture*       pResource,
+      const VkImageSubresourceRange* pSubresources,
+            VkImageLayout            OldLayout,
+            VkImageLayout            NewLayout);
+
     const D3D9ConstantLayout& GetVertexConstantLayout() { return m_vsLayout; }
     const D3D9ConstantLayout& GetPixelConstantLayout()  { return m_psLayout; }
 

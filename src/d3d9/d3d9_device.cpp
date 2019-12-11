@@ -6200,6 +6200,24 @@ namespace dxvk {
     });
   }
 
+
+  void D3D9DeviceEx::TransformImage(
+          D3D9CommonTexture*       pResource,
+    const VkImageSubresourceRange* pSubresources,
+          VkImageLayout            OldLayout,
+          VkImageLayout            NewLayout) {
+    EmitCs([
+      cImage        = pResource->GetImage(),
+      cSubresources = *pSubresources,
+      cOldLayout    = OldLayout,
+      cNewLayout    = NewLayout
+    ] (DxvkContext* ctx) {
+      ctx->transformImage(
+        cImage, cSubresources,
+        cOldLayout, cNewLayout);
+    });
+  }
+
   
   HRESULT D3D9DeviceEx::ResetState(D3DPRESENT_PARAMETERS* pPresentationParameters) {
     if (!pPresentationParameters->AutoDepthStencilFormat)
