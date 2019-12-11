@@ -1,0 +1,8 @@
+dxvk:
+  script:
+    - chmod +x package-release.sh
+    - ./package-release.sh release build --no-package
+  artifacts:
+    name: "dxvk-${CI_COMMIT_REF_NAME}.${CI_COMMIT_SHA}"
+    paths:
+    - build/dxvk-release
