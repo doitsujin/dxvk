@@ -3612,9 +3612,9 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::DetermineConstantLayouts(bool canSWVP) {
-    m_vsLayout.floatCount    = canSWVP ? m_d3d9Options.swvpFloatCount : caps::MaxFloatConstantsVS;
-    m_vsLayout.intCount      = canSWVP ? m_d3d9Options.swvpIntCount   : caps::MaxOtherConstants;
-    m_vsLayout.boolCount     = canSWVP ? m_d3d9Options.swvpBoolCount  : caps::MaxOtherConstants;
+    m_vsLayout.floatCount    = canSWVP ? uint32_t(m_d3d9Options.swvpFloatCount) : caps::MaxFloatConstantsVS;
+    m_vsLayout.intCount      = canSWVP ? uint32_t(m_d3d9Options.swvpIntCount)   : caps::MaxOtherConstants;
+    m_vsLayout.boolCount     = canSWVP ? uint32_t(m_d3d9Options.swvpBoolCount)  : caps::MaxOtherConstants;
     m_vsLayout.bitmaskCount  = align(m_vsLayout.boolCount, 32) / 32;
 
     m_psLayout.floatCount    = caps::MaxFloatConstantsPS;
@@ -4348,8 +4348,10 @@ namespace dxvk {
         availableTextureMemory += memoryProp.memoryHeaps[i].size;
     }
 
+    constexpr VkDeviceSize Megabytes = 1024 * 1024;
+
     // The value returned is a 32-bit value, so we need to clamp it.
-    VkDeviceSize maxMemory = m_d3d9Options.maxAvailableMemory;
+    VkDeviceSize maxMemory = (VkDeviceSize(m_d3d9Options.maxAvailableMemory) * Megabytes) - 1;
     availableTextureMemory = std::min(availableTextureMemory, maxMemory);
 
     return int64_t(availableTextureMemory);

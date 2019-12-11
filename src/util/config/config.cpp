@@ -213,7 +213,7 @@ namespace dxvk {
       { "d3d9.customDeviceDesc",            "GeForce 7800 GTX" },
       { "d3d9.disableA8RT",                 "True" },
       { "d3d9.supportX4R4G4B4",             "False" },
-      { "d3d9.maxAvailableMemory",          "2147483648" },
+      { "d3d9.maxAvailableMemory",          "2048" },
       { "d3d9.memoryTrackTest",             "True" },
        // The Sims 2 will try to upload 1024 constants
        // every frame otherwise, which it never uses
@@ -258,7 +258,7 @@ namespace dxvk {
     { R"(\\vampire\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
       { "d3d9.memoryTrackTest",             "True" },
-      { "d3d9.maxAvailableMemory",          "1073741824" },
+      { "d3d9.maxAvailableMemory",          "1024" },
     }} },
     /* Senran Kagura Shinovi Versus               */
     { R"(\\SKShinoviVersus\.exe$)", {{

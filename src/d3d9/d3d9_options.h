@@ -87,9 +87,9 @@ namespace dxvk {
     bool supportD32;
 
     /// SWVP Constant Limits
-    uint32_t swvpFloatCount;
-    uint32_t swvpIntCount;
-    uint32_t swvpBoolCount;
+    int32_t swvpFloatCount;
+    int32_t swvpIntCount;
+    int32_t swvpBoolCount;
 
     /// Disable D3DFMT_A8 for render targets.
     /// Specifically to work around a game
