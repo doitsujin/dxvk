@@ -35,6 +35,7 @@ namespace dxvk::hud {
                                 | VK_COLOR_COMPONENT_A_BIT;
 
     addItem<HudVersionItem>("version");
+    addItem<HudClientApiItem>("api", m_device);
   }
   
   
@@ -89,14 +90,6 @@ namespace dxvk::hud {
     m_hudItems.render(m_renderer);
 
     HudPos position = { 8.0f, 24.0f };
-
-    if (m_config.elements.test(HudElement::DxvkClientApi)) {
-      m_renderer.drawText(16.0f,
-        { position.x, position.y },
-        { 1.0f, 1.0f, 1.0f, 1.0f },
-        m_device->clientApi());
-      position.y += 24.0f;
-    }
 
     if (m_config.elements.test(HudElement::DeviceInfo))
       position = m_hudDeviceInfo.render(m_renderer, position);

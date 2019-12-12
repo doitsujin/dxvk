@@ -114,4 +114,26 @@ namespace dxvk::hud {
   };
 
 
+  /**
+   * \brief HUD item to display the client API
+   */
+  class HudClientApiItem : public HudItem {
+
+  public:
+
+    HudClientApiItem(const Rc<DxvkDevice>& device);
+
+    ~HudClientApiItem();
+
+    HudPos render(
+            HudRenderer&      renderer,
+            HudPos            position);
+
+  private:
+
+    Rc<DxvkDevice> m_device;
+
+  };
+
+
 }
