@@ -147,4 +147,38 @@ namespace dxvk::hud {
     return position;
   }
 
+
+  HudFpsItem::HudFpsItem() { }
+  HudFpsItem::~HudFpsItem() { }
+
+
+  void HudFpsItem::update(dxvk::high_resolution_clock::time_point time) {
+    m_frameCount += 1;
+
+    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate);
+
+    if (elapsed.count() >= UpdateInterval) {
+      int64_t fps = (10'000'000ll * m_frameCount) / elapsed.count();
+
+      m_frameRate = str::format("FPS: ", fps / 10, ".", fps % 10);
+      m_frameCount = 0;
+      m_lastUpdate = time;
+    }
+  }
+
+
+  HudPos HudFpsItem::render(
+          HudRenderer&      renderer,
+          HudPos            position) {
+    position.y += 16.0f;
+
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      m_frameRate);
+
+    position.y += 8.0f;
+    return position;
+  }
+
 }

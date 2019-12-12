@@ -160,4 +160,31 @@ namespace dxvk::hud {
   };
 
 
+  /**
+   * \brief HUD item to display the frame rate
+   */
+  class HudFpsItem : public HudItem {
+    constexpr static int64_t UpdateInterval = 500'000;
+  public:
+
+    HudFpsItem();
+
+    ~HudFpsItem();
+
+    void update(dxvk::high_resolution_clock::time_point time);
+
+    HudPos render(
+            HudRenderer&      renderer,
+            HudPos            position);
+
+  private:
+
+    uint32_t                                m_frameCount = 0;
+    dxvk::high_resolution_clock::time_point m_lastUpdate
+      = dxvk::high_resolution_clock::now();
+
+    std::string m_frameRate;
+
+  };
+
 }
