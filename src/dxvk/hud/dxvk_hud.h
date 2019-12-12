@@ -6,6 +6,7 @@
 
 #include "dxvk_hud_config.h"
 #include "dxvk_hud_devinfo.h"
+#include "dxvk_hud_item.h"
 #include "dxvk_hud_fps.h"
 #include "dxvk_hud_renderer.h"
 #include "dxvk_hud_stats.h"
@@ -54,6 +55,18 @@ namespace dxvk::hud {
     void render(
       const Rc<DxvkContext>& ctx,
             VkExtent2D       surfaceSize);
+
+    /**
+     * \brief Adds a HUD item if enabled
+     *
+     * \tparam T The HUD item type
+     * \param [in] name HUD item name
+     * \param [in] args Constructor arguments
+     */
+    template<typename T, typename... Args>
+    void addItem(const char* name, Args... args) {
+      m_hudItems.add<T>(name, std::forward<Args>(args)...);
+    }
     
     /**
      * \brief Creates the HUD
@@ -81,6 +94,7 @@ namespace dxvk::hud {
     HudDeviceInfo         m_hudDeviceInfo;
     HudFps                m_hudFramerate;
     HudStats              m_hudStats;
+    HudItemSet            m_hudItems;
 
     void setupRendererState(
       const Rc<DxvkContext>&  ctx);

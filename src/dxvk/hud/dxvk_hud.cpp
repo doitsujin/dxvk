@@ -43,6 +43,7 @@ namespace dxvk::hud {
   
   
   void Hud::update() {
+    m_hudItems.update();
     m_hudFramerate.update();
     m_hudStats.update(m_device);
   }
@@ -84,8 +85,10 @@ namespace dxvk::hud {
 
 
   void Hud::renderHudElements(const Rc<DxvkContext>& ctx) {
+    m_hudItems.render(m_renderer);
+
     HudPos position = { 8.0f, 24.0f };
-    
+
     if (m_config.elements.test(HudElement::DxvkVersion)) {
       m_renderer.drawText(16.0f,
         { position.x, position.y },
