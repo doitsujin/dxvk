@@ -181,4 +181,81 @@ namespace dxvk::hud {
     return position;
   }
 
+
+  HudFrameTimeItem::HudFrameTimeItem() { }
+  HudFrameTimeItem::~HudFrameTimeItem() { }
+
+
+  void HudFrameTimeItem::update(dxvk::high_resolution_clock::time_point time) {
+    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate);
+
+    m_dataPoints[m_dataPointId] = float(elapsed.count());
+    m_dataPointId = (m_dataPointId + 1) % NumDataPoints;
+
+    m_lastUpdate = time;
+  }
+
+
+  HudPos HudFrameTimeItem::render(
+          HudRenderer&      renderer,
+          HudPos            position) {
+    std::array<HudLineVertex, NumDataPoints * 2> vData;
+    position.y += 40.0f;
+
+    // 60 FPS = optimal, 10 FPS = worst
+    const float targetUs =  16'666.6f;
+    const float minUs    =   5'000.0f;
+    const float maxUs    = 100'000.0f;
+    
+    // Ten times the maximum/minimum number
+    // of milliseconds for a single frame
+    uint32_t minMs = 0xFFFFFFFFu;
+    uint32_t maxMs = 0x00000000u;
+    
+    // Paint the time points
+    for (uint32_t i = 0; i < NumDataPoints; i++) {
+      float us = m_dataPoints[(m_dataPointId + i) % NumDataPoints];
+      
+      minMs = std::min(minMs, uint32_t(us / 100.0f));
+      maxMs = std::max(maxMs, uint32_t(us / 100.0f));
+      
+      float r = std::min(std::max(-1.0f + us / targetUs, 0.0f), 1.0f);
+      float g = std::min(std::max( 3.0f - us / targetUs, 0.0f), 1.0f);
+      float l = std::sqrt(r * r + g * g);
+      
+      HudNormColor color = {
+        uint8_t(255.0f * (r / l)),
+        uint8_t(255.0f * (g / l)),
+        uint8_t(0), uint8_t(255) };
+      
+      float x = position.x + float(i);
+      float y = position.y;
+      
+      float hVal = std::log2(std::max((us - minUs) / targetUs + 1.0f, 1.0f))
+                 / std::log2((maxUs - minUs) / targetUs);
+      float h = std::min(std::max(40.0f * hVal, 2.0f), 40.0f);
+      
+      vData[2 * i + 0] = HudLineVertex { { x, y     }, color };
+      vData[2 * i + 1] = HudLineVertex { { x, y - h }, color };
+    }
+    
+    renderer.drawLines(vData.size(), vData.data());
+    
+    // Paint min/max frame times in the entire window
+    position.y += 20.0f;
+
+    renderer.drawText(14.0f,
+      { position.x, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      str::format("min: ", minMs / 10, ".", minMs % 10));
+    
+    renderer.drawText(14.0f,
+      { position.x + 150.0f, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      str::format("max: ", maxMs / 10, ".", maxMs % 10));
+    
+    position.y += 2.0f;
+    return position;
+  }
+
 }

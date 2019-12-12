@@ -187,4 +187,32 @@ namespace dxvk::hud {
 
   };
 
+
+  /**
+   * \brief HUD item to display the frame rate
+   */
+  class HudFrameTimeItem : public HudItem {
+    constexpr static size_t NumDataPoints = 300;
+  public:
+
+    HudFrameTimeItem();
+
+    ~HudFrameTimeItem();
+
+    void update(dxvk::high_resolution_clock::time_point time);
+
+    HudPos render(
+            HudRenderer&      renderer,
+            HudPos            position);
+
+  private:
+
+    dxvk::high_resolution_clock::time_point m_lastUpdate
+      = dxvk::high_resolution_clock::now();
+
+    std::array<float, NumDataPoints>  m_dataPoints  = {};
+    uint32_t                          m_dataPointId = 0;
+
+  };
+
 }
