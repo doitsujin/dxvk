@@ -1,5 +1,4 @@
 #include <cstring>
-#include <version.h>
 
 #include "dxvk_hud.h"
 
@@ -34,6 +33,8 @@ namespace dxvk::hud {
                                 | VK_COLOR_COMPONENT_G_BIT
                                 | VK_COLOR_COMPONENT_B_BIT
                                 | VK_COLOR_COMPONENT_A_BIT;
+
+    addItem<HudVersionItem>("version");
   }
   
   
@@ -88,14 +89,6 @@ namespace dxvk::hud {
     m_hudItems.render(m_renderer);
 
     HudPos position = { 8.0f, 24.0f };
-
-    if (m_config.elements.test(HudElement::DxvkVersion)) {
-      m_renderer.drawText(16.0f,
-        { position.x, position.y },
-        { 1.0f, 1.0f, 1.0f, 1.0f },
-        "DXVK " DXVK_VERSION);
-      position.y += 24.0f;
-    }
 
     if (m_config.elements.test(HudElement::DxvkClientApi)) {
       m_renderer.drawText(16.0f,

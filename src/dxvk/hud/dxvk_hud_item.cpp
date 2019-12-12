@@ -1,5 +1,7 @@
 #include "dxvk_hud_item.h"
 
+#include <version.h>
+
 namespace dxvk::hud {
 
   HudItem::~HudItem() {
@@ -56,6 +58,21 @@ namespace dxvk::hud {
 
     for (const auto& item : m_items)
       position = item->render(renderer, position);
+  }
+
+
+  HudPos HudVersionItem::render(
+          HudRenderer&      renderer,
+          HudPos            position) {
+    position.y += 16.0f;
+
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      "DXVK " DXVK_VERSION);
+
+    position.y += 8.0f;
+    return position;
   }
 
 }

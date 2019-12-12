@@ -99,4 +99,19 @@ namespace dxvk::hud {
 
   };
 
+
+  /**
+   * \brief HUD item to display DXVK version
+   */
+  class HudVersionItem : public HudItem {
+
+  public:
+
+    HudPos render(
+            HudRenderer&      renderer,
+            HudPos            position);
+
+  };
+
+
 }
