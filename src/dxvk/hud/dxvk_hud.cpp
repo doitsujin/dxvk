@@ -36,6 +36,7 @@ namespace dxvk::hud {
 
     addItem<HudVersionItem>("version");
     addItem<HudClientApiItem>("api", m_device);
+    addItem<HudDeviceInfoItem>("devinfo", m_device);
   }
   
   
@@ -91,9 +92,6 @@ namespace dxvk::hud {
 
     HudPos position = { 8.0f, 24.0f };
 
-    if (m_config.elements.test(HudElement::DeviceInfo))
-      position = m_hudDeviceInfo.render(m_renderer, position);
-    
     position = m_hudFramerate.render(m_renderer, position);
     position = m_hudStats    .render(m_renderer, position);
   }

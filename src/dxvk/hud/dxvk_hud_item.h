@@ -136,4 +136,28 @@ namespace dxvk::hud {
   };
 
 
+  /**
+   * \brief HUD item to display device info
+   */
+  class HudDeviceInfoItem : public HudItem {
+
+  public:
+
+    HudDeviceInfoItem(const Rc<DxvkDevice>& device);
+
+    ~HudDeviceInfoItem();
+
+    HudPos render(
+            HudRenderer&      renderer,
+            HudPos            position);
+
+  private:
+
+    std::string m_deviceName;
+    std::string m_driverVer;
+    std::string m_vulkanVer;
+
+  };
+
+
 }

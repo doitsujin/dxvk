@@ -101,4 +101,50 @@ namespace dxvk::hud {
     return position;
   }
 
+
+  HudDeviceInfoItem::HudDeviceInfoItem(const Rc<DxvkDevice>& device) {
+    VkPhysicalDeviceProperties props = device->adapter()->deviceProperties();
+
+    m_deviceName = props.deviceName;
+    m_driverVer = str::format("Driver: ",
+      VK_VERSION_MAJOR(props.driverVersion), ".",
+      VK_VERSION_MINOR(props.driverVersion), ".",
+      VK_VERSION_PATCH(props.driverVersion));
+    m_vulkanVer = str::format("Vulkan: ",
+      VK_VERSION_MAJOR(props.apiVersion), ".",
+      VK_VERSION_MINOR(props.apiVersion), ".",
+      VK_VERSION_PATCH(props.apiVersion));
+  }
+
+
+  HudDeviceInfoItem::~HudDeviceInfoItem() {
+
+  }
+
+
+  HudPos HudDeviceInfoItem::render(
+          HudRenderer&      renderer,
+          HudPos            position) {
+    position.y += 16.0f;
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      m_deviceName);
+    
+    position.y += 24.0f;
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      m_driverVer);
+    
+    position.y += 20.0f;
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      m_vulkanVer);
+
+    position.y += 8.0f;
+    return position;
+  }
+
 }
