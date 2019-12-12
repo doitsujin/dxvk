@@ -18,7 +18,6 @@ namespace dxvk::hud {
     ~HudDeviceInfo();
     
     HudPos render(
-      const Rc<DxvkContext>&  context,
             HudRenderer&      renderer,
             HudPos            position);
     

@@ -43,28 +43,22 @@ namespace dxvk::hud {
   
   
   HudPos HudFps::render(
-    const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
           HudPos            position) {
-    if (m_elements.test(HudElement::Framerate)) {
-      position = this->renderFpsText(
-        context, renderer, position);
-    }
+    if (m_elements.test(HudElement::Framerate))
+      position = this->renderFpsText(renderer, position);
     
-    if (m_elements.test(HudElement::Frametimes)) {
-      position = this->renderFrametimeGraph(
-        context, renderer, position);
-    }
+    if (m_elements.test(HudElement::Frametimes))
+      position = this->renderFrametimeGraph(renderer, position);
     
     return position;
   }
   
   
   HudPos HudFps::renderFpsText(
-    const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
           HudPos            position) {
-    renderer.drawText(context, 16.0f,
+    renderer.drawText(16.0f,
       { position.x, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       m_fpsString);
@@ -74,7 +68,6 @@ namespace dxvk::hud {
   
   
   HudPos HudFps::renderFrametimeGraph(
-    const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
           HudPos            position) {
     std::array<HudLineVertex, NumDataPoints * 2> vData;
@@ -116,15 +109,15 @@ namespace dxvk::hud {
       vData[2 * i + 1] = HudLineVertex { { x, y - h }, color };
     }
     
-    renderer.drawLines(context, vData.size(), vData.data());
+    renderer.drawLines(vData.size(), vData.data());
     
     // Paint min/max frame times in the entire window
-    renderer.drawText(context, 14.0f,
+    renderer.drawText(14.0f,
       { position.x, position.y + 44.0f },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       str::format("min: ", minMs / 10, ".", minMs % 10));
     
-    renderer.drawText(context, 14.0f,
+    renderer.drawText(14.0f,
       { position.x + 150.0f, position.y + 44.0f },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       str::format("max: ", maxMs / 10, ".", maxMs % 10));

@@ -36,25 +36,23 @@ namespace dxvk::hud {
     
     m_mode        = Mode::RenderNone;
     m_surfaceSize = surfaceSize;
+    m_context     = context;
   }
   
   
   void HudRenderer::drawText(
-    const Rc<DxvkContext>&  context,
           float             size,
           HudPos            pos,
           HudColor          color,
     const std::string&      text) {
-    beginTextRendering(context);
+    beginTextRendering();
 
     uint32_t vertexCount = 6 * text.size();
 
-    auto vertexSlice = allocVertexBuffer(context,
-      vertexCount * sizeof(HudTextVertex));
-    
-    context->bindVertexBuffer(0, vertexSlice, sizeof(HudTextVertex));
-    context->pushConstants(0, sizeof(color), &color);
-    context->draw(vertexCount, 1, 0, 0);
+    auto vertexSlice = allocVertexBuffer(vertexCount * sizeof(HudTextVertex));
+    m_context->bindVertexBuffer(0, vertexSlice, sizeof(HudTextVertex));
+    m_context->pushConstants(0, sizeof(color), &color);
+    m_context->draw(vertexCount, 1, 0, 0);
 
     auto vertexData = reinterpret_cast<HudTextVertex*>(
       vertexSlice.getSliceHandle().mapPtr);
@@ -108,16 +106,13 @@ namespace dxvk::hud {
   
   
   void HudRenderer::drawLines(
-    const Rc<DxvkContext>&  context,
           size_t            vertexCount,
     const HudLineVertex*    vertexData) {
-    beginLineRendering(context);
+    beginLineRendering();
 
-    auto vertexSlice = allocVertexBuffer(context,
-      vertexCount * sizeof(HudLineVertex));
-    
-    context->bindVertexBuffer(0, vertexSlice, sizeof(HudLineVertex));
-    context->draw(vertexCount, 1, 0, 0);
+    auto vertexSlice = allocVertexBuffer(vertexCount * sizeof(HudLineVertex));
+    m_context->bindVertexBuffer(0, vertexSlice, sizeof(HudLineVertex));
+    m_context->draw(vertexCount, 1, 0, 0);
     
     auto dstVertexData = reinterpret_cast<HudLineVertex*>(
       vertexSlice.getSliceHandle().mapPtr);
@@ -128,12 +123,11 @@ namespace dxvk::hud {
   
   
   DxvkBufferSlice HudRenderer::allocVertexBuffer(
-    const Rc<DxvkContext>&  context,
           VkDeviceSize      dataSize) {
     dataSize = align(dataSize, 64);
 
     if (m_vertexOffset + dataSize > m_vertexBuffer->info().size) {
-      context->invalidateBuffer(m_vertexBuffer, m_vertexBuffer->allocSlice());
+      m_context->invalidateBuffer(m_vertexBuffer, m_vertexBuffer->allocSlice());
       m_vertexOffset = 0;
     }
 
@@ -143,13 +137,12 @@ namespace dxvk::hud {
   }
   
 
-  void HudRenderer::beginTextRendering(
-    const Rc<DxvkContext>&  context) {
+  void HudRenderer::beginTextRendering() {
     if (m_mode != Mode::RenderText) {
       m_mode = Mode::RenderText;
 
-      context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,   m_textShaders.vert);
-      context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_textShaders.frag);
+      m_context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,   m_textShaders.vert);
+      m_context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_textShaders.frag);
       
       static const DxvkInputAssemblyState iaState = {
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
@@ -164,8 +157,8 @@ namespace dxvk::hud {
         { 0, VK_VERTEX_INPUT_RATE_VERTEX },
       }};
       
-      context->setInputAssemblyState(iaState);
-      context->setInputLayout(
+      m_context->setInputAssemblyState(iaState);
+      m_context->setInputLayout(
         ilAttributes.size(),
         ilAttributes.data(),
         ilBindings.size(),
@@ -174,13 +167,12 @@ namespace dxvk::hud {
   }
 
   
-  void HudRenderer::beginLineRendering(
-    const Rc<DxvkContext>&  context) {
+  void HudRenderer::beginLineRendering() {
     if (m_mode != Mode::RenderLines) {
       m_mode = Mode::RenderLines;
 
-      context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,   m_lineShaders.vert);
-      context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_lineShaders.frag);
+      m_context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,   m_lineShaders.vert);
+      m_context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_lineShaders.frag);
       
       static const DxvkInputAssemblyState iaState = {
         VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
@@ -195,8 +187,8 @@ namespace dxvk::hud {
         { 0, VK_VERTEX_INPUT_RATE_VERTEX },
       }};
       
-      context->setInputAssemblyState(iaState);
-      context->setInputLayout(
+      m_context->setInputAssemblyState(iaState);
+      m_context->setInputLayout(
         ilAttributes.size(),
         ilAttributes.data(),
         ilBindings.size(),

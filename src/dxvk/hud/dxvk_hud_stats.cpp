@@ -30,26 +30,25 @@ namespace dxvk::hud {
   
   
   HudPos HudStats::render(
-    const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
           HudPos            position) {
     if (m_elements.test(HudElement::StatSubmissions))
-      position = this->printSubmissionStats(context, renderer, position);
+      position = this->printSubmissionStats(renderer, position);
     
     if (m_elements.test(HudElement::StatDrawCalls))
-      position = this->printDrawCallStats(context, renderer, position);
+      position = this->printDrawCallStats(renderer, position);
     
     if (m_elements.test(HudElement::StatPipelines))
-      position = this->printPipelineStats(context, renderer, position);
+      position = this->printPipelineStats(renderer, position);
     
     if (m_elements.test(HudElement::StatMemory))
-      position = this->printMemoryStats(context, renderer, position);
-    
+      position = this->printMemoryStats(renderer, position);
+
     if (m_elements.test(HudElement::StatGpuLoad))
-      position = this->printGpuLoad(context, renderer, position);
+      position = this->printGpuLoad(renderer, position);
     
     if (m_elements.test(HudElement::CompilerActivity)) {
-      this->printCompilerActivity(context, renderer,
+      this->printCompilerActivity(renderer,
         { position.x, float(renderer.surfaceSize().height) - 20.0f });
     }
     
@@ -77,7 +76,6 @@ namespace dxvk::hud {
 
 
   HudPos HudStats::printDrawCallStats(
-    const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
           HudPos            position) {
     const uint64_t frameCount = std::max<uint64_t>(m_diffCounters.getCtr(DxvkStatCounter::QueuePresentCount), 1);
@@ -90,17 +88,17 @@ namespace dxvk::hud {
     const std::string strDispatchCalls  = str::format("Dispatch calls: ", cpCalls);
     const std::string strRenderPasses   = str::format("Render passes:  ", rpCalls);
     
-    renderer.drawText(context, 16.0f,
+    renderer.drawText(16.0f,
       { position.x, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       strDrawCalls);
     
-    renderer.drawText(context, 16.0f,
+    renderer.drawText(16.0f,
       { position.x, position.y + 20.0f },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       strDispatchCalls);
     
-    renderer.drawText(context, 16.0f,
+    renderer.drawText(16.0f,
       { position.x, position.y + 40.0f },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       strRenderPasses);
@@ -110,7 +108,6 @@ namespace dxvk::hud {
   
   
   HudPos HudStats::printSubmissionStats(
-    const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
           HudPos            position) {
     const uint64_t frameCount = std::max<uint64_t>(m_diffCounters.getCtr(DxvkStatCounter::QueuePresentCount), 1);
@@ -118,7 +115,7 @@ namespace dxvk::hud {
     
     const std::string strSubmissions = str::format("Queue submissions: ", numSubmits);
     
-    renderer.drawText(context, 16.0f,
+    renderer.drawText(16.0f,
       { position.x, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       strSubmissions);
@@ -128,7 +125,6 @@ namespace dxvk::hud {
   
   
   HudPos HudStats::printPipelineStats(
-    const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
           HudPos            position) {
     const uint64_t gpCount = m_prevCounters.getCtr(DxvkStatCounter::PipeCountGraphics);
@@ -137,12 +133,12 @@ namespace dxvk::hud {
     const std::string strGpCount = str::format("Graphics pipelines: ", gpCount);
     const std::string strCpCount = str::format("Compute pipelines:  ", cpCount);
     
-    renderer.drawText(context, 16.0f,
+    renderer.drawText(16.0f,
       { position.x, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       strGpCount);
     
-    renderer.drawText(context, 16.0f,
+    renderer.drawText(16.0f,
       { position.x, position.y + 20.0f },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       strCpCount);
@@ -152,7 +148,6 @@ namespace dxvk::hud {
   
   
   HudPos HudStats::printMemoryStats(
-    const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
           HudPos            position) {
     constexpr uint64_t mib = 1024 * 1024;
@@ -163,12 +158,12 @@ namespace dxvk::hud {
     const std::string strMemAllocated = str::format("Memory allocated: ", memAllocated / mib, " MB");
     const std::string strMemUsed      = str::format("Memory used:      ", memUsed      / mib, " MB");
     
-    renderer.drawText(context, 16.0f,
+    renderer.drawText(16.0f,
       { position.x, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       strMemAllocated);
     
-    renderer.drawText(context, 16.0f,
+    renderer.drawText(16.0f,
       { position.x, position.y + 20.0f },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       strMemUsed);
@@ -178,10 +173,9 @@ namespace dxvk::hud {
 
 
   HudPos HudStats::printGpuLoad(
-    const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
           HudPos            position) {
-    renderer.drawText(context, 16.0f,
+    renderer.drawText(16.0f,
       { position.x, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       m_gpuLoadString);
@@ -191,7 +185,6 @@ namespace dxvk::hud {
 
 
   HudPos HudStats::printCompilerActivity(
-    const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
           HudPos            position) {
     auto now    = dxvk::high_resolution_clock::now();
@@ -207,7 +200,7 @@ namespace dxvk::hud {
     }
     
     if (doShow) {
-      renderer.drawText(context, 16.0f,
+      renderer.drawText(16.0f,
         { position.x, position.y },
         { 1.0f, 1.0f, 1.0f, 1.0f },
         "Compiling shaders...");

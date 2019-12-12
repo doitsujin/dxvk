@@ -87,7 +87,7 @@ namespace dxvk::hud {
     HudPos position = { 8.0f, 24.0f };
     
     if (m_config.elements.test(HudElement::DxvkVersion)) {
-      m_renderer.drawText(ctx, 16.0f,
+      m_renderer.drawText(16.0f,
         { position.x, position.y },
         { 1.0f, 1.0f, 1.0f, 1.0f },
         "DXVK " DXVK_VERSION);
@@ -95,20 +95,18 @@ namespace dxvk::hud {
     }
 
     if (m_config.elements.test(HudElement::DxvkClientApi)) {
-      m_renderer.drawText(ctx, 16.0f,
+      m_renderer.drawText(16.0f,
         { position.x, position.y },
         { 1.0f, 1.0f, 1.0f, 1.0f },
         m_device->clientApi());
       position.y += 24.0f;
     }
 
-    if (m_config.elements.test(HudElement::DeviceInfo)) {
-      position = m_hudDeviceInfo.render(
-        ctx, m_renderer, position);
-    }
+    if (m_config.elements.test(HudElement::DeviceInfo))
+      position = m_hudDeviceInfo.render(m_renderer, position);
     
-    position = m_hudFramerate.render(ctx, m_renderer, position);
-    position = m_hudStats    .render(ctx, m_renderer, position);
+    position = m_hudFramerate.render(m_renderer, position);
+    position = m_hudStats    .render(m_renderer, position);
   }
   
   

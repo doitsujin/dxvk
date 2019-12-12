@@ -27,7 +27,6 @@ namespace dxvk::hud {
       const Rc<DxvkDevice>&   device);
     
     HudPos render(
-      const Rc<DxvkContext>&  context,
             HudRenderer&      renderer,
             HudPos            position);
     
@@ -49,32 +48,26 @@ namespace dxvk::hud {
     void updateGpuLoad();
     
     HudPos printDrawCallStats(
-      const Rc<DxvkContext>&  context,
             HudRenderer&      renderer,
             HudPos            position);
     
     HudPos printSubmissionStats(
-      const Rc<DxvkContext>&  context,
             HudRenderer&      renderer,
             HudPos            position);
     
     HudPos printPipelineStats(
-      const Rc<DxvkContext>&  context,
             HudRenderer&      renderer,
             HudPos            position);
     
     HudPos printMemoryStats(
-      const Rc<DxvkContext>&  context,
             HudRenderer&      renderer,
             HudPos            position);
     
     HudPos printGpuLoad(
-      const Rc<DxvkContext>&  context,
             HudRenderer&      renderer,
             HudPos            position);
     
     HudPos printCompilerActivity(
-      const Rc<DxvkContext>&  context,
             HudRenderer&      renderer,
             HudPos            position);
     

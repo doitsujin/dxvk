@@ -88,14 +88,12 @@ namespace dxvk::hud {
             VkExtent2D        surfaceSize);
     
     void drawText(
-      const Rc<DxvkContext>&  context,
             float             size,
             HudPos            pos,
             HudColor          color,
       const std::string&      text);
     
     void drawLines(
-      const Rc<DxvkContext>&  context,
             size_t            vertexCount,
       const HudLineVertex*    vertexData);
     
@@ -120,6 +118,7 @@ namespace dxvk::hud {
     
     Mode                m_mode;
     VkExtent2D          m_surfaceSize;
+    Rc<DxvkContext>     m_context;
     
     ShaderPair          m_textShaders;
     ShaderPair          m_lineShaders;
@@ -132,14 +131,11 @@ namespace dxvk::hud {
     VkDeviceSize        m_vertexOffset = 0;
     
     DxvkBufferSlice allocVertexBuffer(
-      const Rc<DxvkContext>&  context,
             VkDeviceSize      dataSize);
 
-    void beginTextRendering(
-      const Rc<DxvkContext>&  context);
+    void beginTextRendering();
     
-    void beginLineRendering(
-      const Rc<DxvkContext>&  context);
+    void beginLineRendering();
     
     ShaderPair createTextShaders(
       const Rc<DxvkDevice>& device);

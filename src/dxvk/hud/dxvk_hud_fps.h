@@ -27,7 +27,6 @@ namespace dxvk::hud {
     void update();
     
     HudPos render(
-      const Rc<DxvkContext>&  context,
             HudRenderer&      renderer,
             HudPos            position);
     
@@ -45,12 +44,10 @@ namespace dxvk::hud {
     uint32_t                          m_dataPointId = 0;
     
     HudPos renderFpsText(
-      const Rc<DxvkContext>&  context,
             HudRenderer&      renderer,
             HudPos            position);
     
     HudPos renderFrametimeGraph(
-      const Rc<DxvkContext>&  context,
             HudRenderer&      renderer,
             HudPos            position);
     

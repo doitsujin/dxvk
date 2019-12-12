@@ -22,20 +22,19 @@ namespace dxvk::hud {
   
   
   HudPos HudDeviceInfo::render(
-    const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
           HudPos            position) {
-    renderer.drawText(context, 16.0f,
+    renderer.drawText(16.0f,
       { position.x, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       m_deviceName);
     
-    renderer.drawText(context, 16.0f,
+    renderer.drawText(16.0f,
       { position.x, position.y + 24 },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       m_driverVer);
     
-    renderer.drawText(context, 16.0f,
+    renderer.drawText(16.0f,
       { position.x, position.y + 44 },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       m_vulkanVer);
