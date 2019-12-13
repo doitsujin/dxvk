@@ -242,4 +242,31 @@ namespace dxvk::hud {
 
   };
 
+
+  /**
+   * \brief HUD item to display draw call counts
+   */
+  class HudDrawCallStatsItem : public HudItem {
+
+  public:
+
+    HudDrawCallStatsItem(const Rc<DxvkDevice>& device);
+
+    ~HudDrawCallStatsItem();
+
+    void update(dxvk::high_resolution_clock::time_point time);
+
+    HudPos render(
+            HudRenderer&      renderer,
+            HudPos            position);
+
+  private:
+
+    Rc<DxvkDevice>    m_device;
+
+    DxvkStatCounters  m_prevCounters;
+    DxvkStatCounters  m_diffCounters;
+
+  };
+
 }

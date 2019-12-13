@@ -293,4 +293,57 @@ namespace dxvk::hud {
     return position;
   }
 
+
+  HudDrawCallStatsItem::HudDrawCallStatsItem(const Rc<DxvkDevice>& device)
+  : m_device(device) {
+
+  }
+
+
+  HudDrawCallStatsItem::~HudDrawCallStatsItem() {
+
+  }
+
+
+  void HudDrawCallStatsItem::update(dxvk::high_resolution_clock::time_point time) {
+    DxvkStatCounters counters = m_device->getStatCounters();
+
+    m_diffCounters = counters.diff(m_prevCounters);
+    m_prevCounters = counters;
+  }
+
+
+  HudPos HudDrawCallStatsItem::render(
+          HudRenderer&      renderer,
+          HudPos            position) {
+    uint64_t gpCalls = m_diffCounters.getCtr(DxvkStatCounter::CmdDrawCalls);
+    uint64_t cpCalls = m_diffCounters.getCtr(DxvkStatCounter::CmdDispatchCalls);
+    uint64_t rpCalls = m_diffCounters.getCtr(DxvkStatCounter::CmdRenderPassCount);
+    
+    std::string strDrawCalls      = str::format("Draw calls:     ", gpCalls);
+    std::string strDispatchCalls  = str::format("Dispatch calls: ", cpCalls);
+    std::string strRenderPasses   = str::format("Render passes:  ", rpCalls);
+    
+    position.y += 16.0f;
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      strDrawCalls);
+    
+    position.y += 20.0f;
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      strDispatchCalls);
+    
+    position.y += 20.0f;
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      strRenderPasses);
+    
+    position.y += 8.0f;
+    return position;
+  }
+
 }
