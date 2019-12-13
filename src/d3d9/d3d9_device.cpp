@@ -5147,15 +5147,13 @@ namespace dxvk {
       samplerInfo.first, DxsoBindingType::DepthImage,
       samplerInfo.second);
 
-    EmitCs([
-      &cDevice   = m_dxvkDevice,
-      &cSamplers = m_samplers,
+    EmitCs([this,
       cColorSlot = colorSlot,
       cDepthSlot = depthSlot,
       cKey       = key
     ] (DxvkContext* ctx) {
-      auto pair = cSamplers.find(cKey);
-      if (pair != cSamplers.end()) {
+      auto pair = m_samplers.find(cKey);
+      if (pair != m_samplers.end()) {
         ctx->bindResourceSampler(cColorSlot, pair->second.color);
         ctx->bindResourceSampler(cDepthSlot, pair->second.depth);
         return;
@@ -5200,10 +5198,10 @@ namespace dxvk {
       try {
         D3D9SamplerPair pair;
 
-        pair.color = cDevice->createSampler(colorInfo);
-        pair.depth = cDevice->createSampler(depthInfo);
+        pair.color = m_dxvkDevice->createSampler(colorInfo);
+        pair.depth = m_dxvkDevice->createSampler(depthInfo);
 
-        cSamplers.insert(std::make_pair(cKey, pair));
+        m_samplers.insert(std::make_pair(cKey, pair));
         ctx->bindResourceSampler(cColorSlot, pair.color);
         ctx->bindResourceSampler(cDepthSlot, pair.depth);
       }
