@@ -232,20 +232,6 @@ namespace dxvk {
   }
   
   
-  DxvkMemoryStats DxvkMemoryAllocator::getMemoryStats() {
-    std::lock_guard<std::mutex> lock(m_mutex);
-
-    DxvkMemoryStats totalStats;
-    
-    for (size_t i = 0; i < m_memProps.memoryHeapCount; i++) {
-      totalStats.memoryAllocated += m_memHeaps[i].stats.memoryAllocated;
-      totalStats.memoryUsed      += m_memHeaps[i].stats.memoryUsed;
-    }
-      
-    return totalStats;
-  }
-  
-  
   DxvkMemory DxvkMemoryAllocator::tryAlloc(
     const VkMemoryRequirements*             req,
     const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo,

@@ -14,9 +14,6 @@ namespace dxvk {
     CmdDrawCalls,             ///< Number of draw calls
     CmdDispatchCalls,         ///< Number of compute calls
     CmdRenderPassCount,       ///< Number of render passes
-    MemoryAllocationCount,    ///< Number of memory allocations
-    MemoryAllocated,          ///< Amount of memory allocated
-    MemoryUsed,               ///< Amount of memory used
     PipeCountGraphics,        ///< Number of graphics pipelines
     PipeCountCompute,         ///< Number of compute pipelines
     PipeCompilerBusy,         ///< Boolean indicating compiler activity

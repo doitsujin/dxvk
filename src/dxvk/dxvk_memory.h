@@ -265,15 +265,6 @@ namespace dxvk {
     /**
      * \brief Queries memory stats
      * 
-     * Returns the total amount of device memory
-     * allocated and used by all available heaps.
-     * \returns Global memory stats
-     */
-    DxvkMemoryStats getMemoryStats();
-    
-    /**
-     * \brief Queries memory stats
-     * 
      * Returns the total amount of memory
      * allocated and used for a given heap.
      * \param [in] heap Heap index
