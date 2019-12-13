@@ -335,7 +335,7 @@ namespace dxvk {
       m_context->draw(3, 1, 0, 0);
 
       if (m_hud != nullptr)
-        m_hud->render(m_context, info.imageExtent);
+        m_hud->render(m_context, info.format, info.imageExtent);
       
       if (i + 1 >= SyncInterval)
         m_context->signal(m_frameLatencySignal, frameId);

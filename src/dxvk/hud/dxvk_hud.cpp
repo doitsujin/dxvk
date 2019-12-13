@@ -53,13 +53,17 @@ namespace dxvk::hud {
   }
   
   
-  void Hud::render(const Rc<DxvkContext>& ctx, VkExtent2D surfaceSize) {
+  void Hud::render(
+    const Rc<DxvkContext>&  ctx,
+          VkSurfaceFormatKHR surfaceFormat,
+          VkExtent2D        surfaceSize) {
     m_uniformData.surfaceSize = surfaceSize;
     
     this->updateUniformBuffer(ctx, m_uniformData);
 
-    this->setupRendererState(ctx);
+    this->setupRendererState(ctx, surfaceFormat);
     this->renderHudElements(ctx);
+    this->resetRendererState(ctx);
   }
   
   
@@ -68,14 +72,24 @@ namespace dxvk::hud {
   }
 
 
-  void Hud::setupRendererState(const Rc<DxvkContext>& ctx) {
+  void Hud::setupRendererState(
+    const Rc<DxvkContext>&  ctx,
+          VkSurfaceFormatKHR surfaceFormat) {
+    bool isSrgb = imageFormatInfo(surfaceFormat.format)->flags.test(DxvkFormatFlag::ColorSpaceSrgb);
+
     ctx->setRasterizerState(m_rsState);
     ctx->setBlendMode(0, m_blendMode);
 
     ctx->bindResourceBuffer(0,
       DxvkBufferSlice(m_uniformBuffer));
 
+    ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, 0, isSrgb);
     m_renderer.beginFrame(ctx, m_uniformData.surfaceSize);
+  }
+
+
+  void Hud::resetRendererState(const Rc<DxvkContext>& ctx) {
+    ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, 0, 0);
   }
 
 

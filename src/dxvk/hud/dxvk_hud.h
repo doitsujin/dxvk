@@ -45,8 +45,9 @@ namespace dxvk::hud {
      * \param [in] surfaceSize Image size, in pixels
      */
     void render(
-      const Rc<DxvkContext>& ctx,
-            VkExtent2D       surfaceSize);
+      const Rc<DxvkContext>&  ctx,
+            VkSurfaceFormatKHR surfaceFormat,
+            VkExtent2D        surfaceSize);
 
     /**
      * \brief Adds a HUD item if enabled
@@ -85,6 +86,10 @@ namespace dxvk::hud {
     HudItemSet            m_hudItems;
 
     void setupRendererState(
+      const Rc<DxvkContext>&  ctx,
+            VkSurfaceFormatKHR surfaceFormat);
+
+    void resetRendererState(
       const Rc<DxvkContext>&  ctx);
 
     void renderHudElements(

@@ -1,5 +1,8 @@
 #version 450
 
+layout(constant_id = 1249) const bool srgbSwapchain = false;
+
+layout(set = 0, binding = 0) uniform texture2D s_base;
 layout(set = 0, binding = 1) uniform sampler2D s_font;
 
 layout(location = 0) in vec2 v_texcoord;
@@ -9,6 +12,14 @@ layout(push_constant)
 uniform push_data {
   vec4 color;
 };
+
+vec3 linearToSrgb(vec3 color) {
+  bvec3 isLo = lessThanEqual(color, vec3(0.0031308f));
+
+  vec3 loPart = color * 12.92f;
+  vec3 hiPart = pow(color, vec3(5.0f / 12.0f)) * 1.055f - 0.055f;
+  return mix(hiPart, loPart, isLo);
+}
 
 float sampleAlpha(float alpha_bias, float dist_range) {
   float value = texture(s_font, v_texcoord).r + alpha_bias - 0.5f;
@@ -25,4 +36,7 @@ void main() {
   
   o_color = mix(r_shadow, r_center, r_alpha_center);
   o_color.rgb *= o_color.a;
+
+  if (!srgbSwapchain)
+    o_color.rgb = linearToSrgb(o_color.rgb);
 }
