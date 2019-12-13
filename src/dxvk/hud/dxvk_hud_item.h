@@ -269,4 +269,31 @@ namespace dxvk::hud {
 
   };
 
+
+  /**
+   * \brief HUD item to display pipeline counts
+   */
+  class HudPipelineStatsItem : public HudItem {
+
+  public:
+
+    HudPipelineStatsItem(const Rc<DxvkDevice>& device);
+
+    ~HudPipelineStatsItem();
+
+    void update(dxvk::high_resolution_clock::time_point time);
+
+    HudPos render(
+            HudRenderer&      renderer,
+            HudPos            position);
+
+  private:
+
+    Rc<DxvkDevice> m_device;
+
+    uint64_t m_graphicsPipelines = 0;
+    uint64_t m_computePipelines = 0;
+
+  };
+
 }

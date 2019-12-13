@@ -41,6 +41,7 @@ namespace dxvk::hud {
     addItem<HudFrameTimeItem>("frametimes");
     addItem<HudSubmissionStatsItem>("submissions", device);
     addItem<HudDrawCallStatsItem>("drawcalls", device);
+    addItem<HudPipelineStatsItem>("pipelines", device);
   }
   
   

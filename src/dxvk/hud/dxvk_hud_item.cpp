@@ -346,4 +346,46 @@ namespace dxvk::hud {
     return position;
   }
 
+
+  HudPipelineStatsItem::HudPipelineStatsItem(const Rc<DxvkDevice>& device)
+  : m_device(device) {
+
+  }
+
+
+  HudPipelineStatsItem::~HudPipelineStatsItem() {
+
+  }
+
+
+  void HudPipelineStatsItem::update(dxvk::high_resolution_clock::time_point time) {
+    DxvkStatCounters counters = m_device->getStatCounters();
+
+    m_graphicsPipelines = counters.getCtr(DxvkStatCounter::PipeCountGraphics);
+    m_computePipelines  = counters.getCtr(DxvkStatCounter::PipeCountCompute);
+  }
+
+
+  HudPos HudPipelineStatsItem::render(
+          HudRenderer&      renderer,
+          HudPos            position) {
+    std::string strGpCount = str::format("Graphics pipelines: ", m_graphicsPipelines);
+    std::string strCpCount = str::format("Compute pipelines:  ", m_computePipelines);
+    
+    position.y += 16.0f;
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      strGpCount);
+    
+    position.y += 20.0f;
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      strCpCount);
+
+    position.y += 8.0f;
+    return position;
+  }
+
 }
