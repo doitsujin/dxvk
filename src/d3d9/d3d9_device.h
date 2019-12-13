@@ -867,6 +867,10 @@ namespace dxvk {
 
     HRESULT InitialReset(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode);
 
+    UINT GetSamplerCount() const {
+      return m_samplerCount.load();
+    }
+
   private:
 
     D3D9DeviceFlags                 m_flags;
@@ -995,6 +999,7 @@ namespace dxvk {
     D3D9ViewportInfo                m_viewportInfo;
 
     std::atomic<int64_t>            m_availableMemory = 0;
+    std::atomic<int32_t>            m_samplerCount = 0;
 
     bool                            m_amdATOC         = false;
     bool                            m_nvATOC          = false;

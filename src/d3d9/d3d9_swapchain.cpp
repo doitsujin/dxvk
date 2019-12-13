@@ -2,6 +2,8 @@
 #include "d3d9_surface.h"
 #include "d3d9_monitor.h"
 
+#include "d3d9_hud.h"
+
 #include <d3d9_presenter_frag.h>
 #include <d3d9_presenter_vert.h>
 
@@ -846,6 +848,9 @@ namespace dxvk {
 
   void D3D9SwapChainEx::CreateHud() {
     m_hud = hud::Hud::createHud(m_device);
+
+    if (m_hud != nullptr)
+      m_hud->addItem<hud::HudSamplerCount>("samplers", m_parent);
   }
 
 

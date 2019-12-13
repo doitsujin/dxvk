@@ -5201,6 +5201,8 @@ namespace dxvk {
         pair.color = m_dxvkDevice->createSampler(colorInfo);
         pair.depth = m_dxvkDevice->createSampler(depthInfo);
 
+        m_samplerCount++;
+
         m_samplers.insert(std::make_pair(cKey, pair));
         ctx->bindResourceSampler(cColorSlot, pair.color);
         ctx->bindResourceSampler(cDepthSlot, pair.depth);
