@@ -290,8 +290,17 @@ namespace dxvk::hud {
     DxvkStatCounters counters = m_device->getStatCounters();
     
     uint32_t currCounter = counters.getCtr(DxvkStatCounter::QueueSubmitCount);
-    m_diffCounter = currCounter - m_prevCounter;
+    m_diffCounter = std::max(m_diffCounter, currCounter - m_prevCounter);
     m_prevCounter = currCounter;
+
+    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate);
+
+    if (elapsed.count() >= UpdateInterval) {
+      m_showCounter = m_diffCounter;
+      m_diffCounter = 0;
+
+      m_lastUpdate = time;
+    }
   }
 
 
@@ -308,7 +317,7 @@ namespace dxvk::hud {
     renderer.drawText(16.0f,
       { position.x + 228.0f, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
-      str::format(m_diffCounter));
+      str::format(m_showCounter));
 
     position.y += 8.0f;
     return position;

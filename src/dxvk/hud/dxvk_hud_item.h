@@ -220,7 +220,7 @@ namespace dxvk::hud {
    * \brief HUD item to display queue submissions
    */
   class HudSubmissionStatsItem : public HudItem {
-
+    constexpr static int64_t UpdateInterval = 500'000;
   public:
 
     HudSubmissionStatsItem(const Rc<DxvkDevice>& device);
@@ -239,6 +239,10 @@ namespace dxvk::hud {
 
     uint64_t        m_prevCounter = 0;
     uint64_t        m_diffCounter = 0;
+    uint64_t        m_showCounter = 0;
+
+    dxvk::high_resolution_clock::time_point m_lastUpdate
+      = dxvk::high_resolution_clock::now();
 
   };
 
