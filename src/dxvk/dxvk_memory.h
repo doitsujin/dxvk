@@ -271,6 +271,18 @@ namespace dxvk {
      */
     DxvkMemoryStats getMemoryStats();
     
+    /**
+     * \brief Queries memory stats
+     * 
+     * Returns the total amount of memory
+     * allocated and used for a given heap.
+     * \param [in] heap Heap index
+     * \returns Memory stats for this heap
+     */
+    DxvkMemoryStats getMemoryStats(uint32_t heap) const {
+      return m_memHeaps[heap].stats;
+    }
+    
   private:
 
     const Rc<vk::DeviceFn>                 m_vkd;

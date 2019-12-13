@@ -351,6 +351,14 @@ namespace dxvk {
     DxvkStatCounters getStatCounters();
 
     /**
+     * \brief Retrieves memors statistics
+     *
+     * \param [in] heap Memory heap index
+     * \returns Memory stats for this heap
+     */
+    DxvkMemoryStats getMemoryStats(uint32_t heap);
+
+    /**
      * \brief Retreves current frame ID
      * \returns Current frame ID
      */

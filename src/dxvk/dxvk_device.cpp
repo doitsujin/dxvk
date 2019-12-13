@@ -175,6 +175,11 @@ namespace dxvk {
     result.merge(m_statCounters);
     return result;
   }
+  
+  
+  DxvkMemoryStats DxvkDevice::getMemoryStats(uint32_t heap) {
+    return m_objects.memoryManager().getMemoryStats(heap);
+  }
 
 
   uint32_t DxvkDevice::getCurrentFrameId() const {
