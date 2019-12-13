@@ -347,7 +347,7 @@ namespace dxvk::hud {
     uint64_t m_prevGpuIdleTicks = 0;
     uint64_t m_diffGpuIdleTicks = 0;
 
-    std::string m_gpuLoadString = "GPU: ";
+    std::string m_gpuLoadString;
 
     dxvk::high_resolution_clock::time_point m_lastUpdate
       = dxvk::high_resolution_clock::now();

@@ -161,7 +161,7 @@ namespace dxvk::hud {
     if (elapsed.count() >= UpdateInterval) {
       int64_t fps = (10'000'000ll * m_frameCount) / elapsed.count();
 
-      m_frameRate = str::format("FPS: ", fps / 10, ".", fps % 10);
+      m_frameRate = str::format(fps / 10, ".", fps % 10);
       m_frameCount = 0;
       m_lastUpdate = time;
     }
@@ -175,6 +175,11 @@ namespace dxvk::hud {
 
     renderer.drawText(16.0f,
       { position.x, position.y },
+      { 1.0f, 0.25f, 0.25f, 1.0f },
+      "FPS:");
+
+    renderer.drawText(16.0f,
+      { position.x + 60.0f, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       m_frameRate);
 
@@ -243,19 +248,29 @@ namespace dxvk::hud {
     renderer.drawLines(vData.size(), vData.data());
     
     // Paint min/max frame times in the entire window
-    position.y += 20.0f;
+    position.y += 18.0f;
 
-    renderer.drawText(14.0f,
+    renderer.drawText(12.0f,
       { position.x, position.y },
+      { 1.0f, 0.25f, 0.25f, 1.0f },
+      "min:");
+
+    renderer.drawText(12.0f,
+      { position.x + 45.0f, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
-      str::format("min: ", minMs / 10, ".", minMs % 10));
+      str::format(minMs / 10, ".", minMs % 10));
     
-    renderer.drawText(14.0f,
+    renderer.drawText(12.0f,
       { position.x + 150.0f, position.y },
-      { 1.0f, 1.0f, 1.0f, 1.0f },
-      str::format("max: ", maxMs / 10, ".", maxMs % 10));
+      { 1.0f, 0.25f, 0.25f, 1.0f },
+      "max:");
     
-    position.y += 2.0f;
+    renderer.drawText(12.0f,
+      { position.x + 195.0f, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      str::format(maxMs / 10, ".", maxMs % 10));
+    
+    position.y += 4.0f;
     return position;
   }
 
@@ -287,8 +302,13 @@ namespace dxvk::hud {
 
     renderer.drawText(16.0f,
       { position.x, position.y },
+      { 1.0f, 0.5f, 0.25f, 1.0f },
+      "Queue submissions: ");
+
+    renderer.drawText(16.0f,
+      { position.x + 228.0f, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
-      str::format("Queue submissions: ", m_diffCounter));
+      str::format(m_diffCounter));
 
     position.y += 8.0f;
     return position;
@@ -321,27 +341,38 @@ namespace dxvk::hud {
     uint64_t cpCalls = m_diffCounters.getCtr(DxvkStatCounter::CmdDispatchCalls);
     uint64_t rpCalls = m_diffCounters.getCtr(DxvkStatCounter::CmdRenderPassCount);
     
-    std::string strDrawCalls      = str::format("Draw calls:     ", gpCalls);
-    std::string strDispatchCalls  = str::format("Dispatch calls: ", cpCalls);
-    std::string strRenderPasses   = str::format("Render passes:  ", rpCalls);
-    
     position.y += 16.0f;
     renderer.drawText(16.0f,
       { position.x, position.y },
+      { 0.25f, 0.5f, 1.0f, 1.0f },
+      "Draw calls:");
+    
+    renderer.drawText(16.0f,
+      { position.x + 192.0f, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
-      strDrawCalls);
+      str::format(gpCalls));
     
     position.y += 20.0f;
     renderer.drawText(16.0f,
       { position.x, position.y },
+      { 0.25f, 0.5f, 1.0f, 1.0f },
+      "Dispatch calls:");
+    
+    renderer.drawText(16.0f,
+      { position.x + 192.0f, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
-      strDispatchCalls);
+      str::format(cpCalls));
     
     position.y += 20.0f;
     renderer.drawText(16.0f,
       { position.x, position.y },
+      { 0.25f, 0.5f, 1.0f, 1.0f },
+      "Render passes:");
+    
+    renderer.drawText(16.0f,
+      { position.x + 192.0f, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
-      strRenderPasses);
+      str::format(rpCalls));
     
     position.y += 8.0f;
     return position;
@@ -370,20 +401,27 @@ namespace dxvk::hud {
   HudPos HudPipelineStatsItem::render(
           HudRenderer&      renderer,
           HudPos            position) {
-    std::string strGpCount = str::format("Graphics pipelines: ", m_graphicsPipelines);
-    std::string strCpCount = str::format("Compute pipelines:  ", m_computePipelines);
-    
     position.y += 16.0f;
     renderer.drawText(16.0f,
       { position.x, position.y },
+      { 1.0f, 0.25f, 1.0f, 1.0f },
+      "Graphics pipelines:");
+    
+    renderer.drawText(16.0f,
+      { position.x + 240.0f, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
-      strGpCount);
+      str::format(m_graphicsPipelines));
     
     position.y += 20.0f;
     renderer.drawText(16.0f,
       { position.x, position.y },
+      { 1.0f, 0.25f, 1.0f, 1.0f },
+      "Compute pipelines:");
+
+    renderer.drawText(16.0f,
+      { position.x + 240.0f, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
-      strCpCount);
+      str::format(m_computePipelines));
 
     position.y += 8.0f;
     return position;
@@ -416,12 +454,17 @@ namespace dxvk::hud {
       uint64_t memUsedMib = m_heaps[i].memoryUsed >> 20;
       uint64_t percentage = (100 * m_heaps[i].memoryUsed) / m_memory.memoryHeaps[i].size;
 
-      std::string text = str::format(isDeviceLocal ? "Vidmem" : "Sysmem", " heap ", i, ": ",
-        std::setfill(' '), std::setw(5), memUsedMib, " MB (", percentage, "%)");
+      std::string label = str::format(isDeviceLocal ? "Vidmem" : "Sysmem", " heap ", i, ":");
+      std::string text  = str::format(std::setfill(' '), std::setw(5), memUsedMib, " MB (", percentage, "%)");
 
       position.y += 16.0f;
       renderer.drawText(16.0f,
         { position.x, position.y },
+        { 1.0f, 1.0f, 0.25f, 1.0f },
+        label);
+
+      renderer.drawText(16.0f,
+        { position.x + 168.0f, position.y },
         { 1.0f, 1.0f, 1.0f, 1.0f },
         text);
       position.y += 4.0f;
@@ -457,7 +500,7 @@ namespace dxvk::hud {
         ? uint64_t(ticks - m_diffGpuIdleTicks)
         : uint64_t(0);
 
-      m_gpuLoadString = str::format("GPU: ", (100 * busyTicks) / ticks, "%");
+      m_gpuLoadString = str::format((100 * busyTicks) / ticks, "%");
       m_lastUpdate = time;
     }
   }
@@ -470,6 +513,11 @@ namespace dxvk::hud {
 
     renderer.drawText(16.0f,
       { position.x, position.y },
+      { 0.25f, 0.5f, 0.25f, 1.0f },
+      "GPU:");
+
+    renderer.drawText(16.0f,
+      { position.x + 60.0f, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       m_gpuLoadString);
 
