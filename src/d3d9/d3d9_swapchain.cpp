@@ -446,9 +446,6 @@ namespace dxvk {
     // Wait for the sync event so that we respect the maximum frame latency
     uint64_t frameId = ++m_frameId;
     m_frameLatencySignal->wait(frameId - GetActualFrameLatency());
-    
-    if (m_hud != nullptr)
-      m_hud->update();
 
     for (uint32_t i = 0; i < SyncInterval || i < 1; i++) {
       SynchronizePresent();
@@ -549,27 +546,32 @@ namespace dxvk {
       m_context->draw(3, 1, 0, 0);
 
       if (m_hud != nullptr)
-        m_hud->render(m_context, info.imageExtent);
+        m_hud->render(m_context, info.format, info.imageExtent);
 
       if (i + 1 >= SyncInterval)
         m_context->signal(m_frameLatencySignal, frameId);
 
-      SubmitPresent(sync);
+      SubmitPresent(sync, i);
     }
   }
 
 
-  void D3D9SwapChainEx::SubmitPresent(const vk::PresenterSync& Sync) {
+  void D3D9SwapChainEx::SubmitPresent(const vk::PresenterSync& Sync, uint32_t FrameId) {
     // Present from CS thread so that we don't
     // have to synchronize with it first.
     m_presentStatus.result = VK_NOT_READY;
 
     m_parent->EmitCs([this,
-      cSync = Sync,
+      cFrameId     = FrameId,
+      cSync        = Sync,
+      cHud         = m_hud,
       cCommandList = m_context->endRecording()
     ] (DxvkContext* ctx) {
       m_device->submitCommandList(cCommandList,
         cSync.acquire, cSync.present);
+
+      if (cHud != nullptr && !cFrameId)
+        cHud->update();
 
       m_device->presentImage(m_presenter,
         cSync.present, &m_presentStatus);
