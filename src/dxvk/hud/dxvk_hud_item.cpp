@@ -1,5 +1,6 @@
 #include "dxvk_hud_item.h"
 
+#include <iomanip>
 #include <version.h>
 
 namespace dxvk::hud {
@@ -385,6 +386,48 @@ namespace dxvk::hud {
       strCpCount);
 
     position.y += 8.0f;
+    return position;
+  }
+
+
+  HudMemoryStatsItem::HudMemoryStatsItem(const Rc<DxvkDevice>& device)
+  : m_device(device), m_memory(device->adapter()->memoryProperties()) {
+
+  }
+
+
+  HudMemoryStatsItem::~HudMemoryStatsItem() {
+
+  }
+
+
+  void HudMemoryStatsItem::update(dxvk::high_resolution_clock::time_point time) {
+    for (uint32_t i = 0; i < m_memory.memoryHeapCount; i++)
+      m_heaps[i] = m_device->getMemoryStats(i);
+  }
+
+
+  HudPos HudMemoryStatsItem::render(
+          HudRenderer&      renderer,
+          HudPos            position) {
+    for (uint32_t i = 0; i < m_memory.memoryHeapCount; i++) {
+      bool isDeviceLocal = m_memory.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+
+      uint64_t memUsedMib = m_heaps[i].memoryUsed >> 20;
+      uint64_t percentage = (100 * m_heaps[i].memoryUsed) / m_memory.memoryHeaps[i].size;
+
+      std::string text = str::format(isDeviceLocal ? "Vidmem" : "Sysmem", " heap ", i, ": ",
+        std::setfill(' '), std::setw(5), memUsedMib, " MB (", percentage, "%)");
+
+      position.y += 16.0f;
+      renderer.drawText(16.0f,
+        { position.x, position.y },
+        { 1.0f, 1.0f, 1.0f, 1.0f },
+        text);
+      position.y += 4.0f;
+    }
+
+    position.y += 4.0f;
     return position;
   }
 

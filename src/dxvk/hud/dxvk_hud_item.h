@@ -296,4 +296,30 @@ namespace dxvk::hud {
 
   };
 
+
+  /**
+   * \brief HUD item to display memory usage
+   */
+  class HudMemoryStatsItem : public HudItem {
+
+  public:
+
+    HudMemoryStatsItem(const Rc<DxvkDevice>& device);
+
+    ~HudMemoryStatsItem();
+
+    void update(dxvk::high_resolution_clock::time_point time);
+
+    HudPos render(
+            HudRenderer&      renderer,
+            HudPos            position);
+
+  private:
+
+    Rc<DxvkDevice>                    m_device;
+    VkPhysicalDeviceMemoryProperties  m_memory;
+    DxvkMemoryStats                   m_heaps[VK_MAX_MEMORY_HEAPS];
+
+  };
+
 }
