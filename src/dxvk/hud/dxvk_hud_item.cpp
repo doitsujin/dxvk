@@ -338,20 +338,18 @@ namespace dxvk::hud {
   void HudDrawCallStatsItem::update(dxvk::high_resolution_clock::time_point time) {
     auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate);
 
-    m_frameCount += 1;
+    DxvkStatCounters counters = m_device->getStatCounters();
+    auto diffCounters = counters.diff(m_prevCounters);
 
     if (elapsed.count() >= UpdateInterval) {
-      DxvkStatCounters counters = m_device->getStatCounters();
-      auto diffCounters = counters.diff(m_prevCounters);
+      m_gpCount = diffCounters.getCtr(DxvkStatCounter::CmdDrawCalls);
+      m_cpCount = diffCounters.getCtr(DxvkStatCounter::CmdDispatchCalls);
+      m_rpCount = diffCounters.getCtr(DxvkStatCounter::CmdRenderPassCount);
 
-      m_gpCount = diffCounters.getCtr(DxvkStatCounter::CmdDrawCalls) / m_frameCount;
-      m_cpCount = diffCounters.getCtr(DxvkStatCounter::CmdDispatchCalls) / m_frameCount;
-      m_rpCount = diffCounters.getCtr(DxvkStatCounter::CmdRenderPassCount) / m_frameCount;
-
-      m_prevCounters = counters;
       m_lastUpdate = time;
-      m_frameCount = 0;
     }
+
+    m_prevCounters = counters;
   }
 
 

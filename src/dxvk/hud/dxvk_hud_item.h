@@ -269,7 +269,6 @@ namespace dxvk::hud {
     Rc<DxvkDevice>    m_device;
 
     DxvkStatCounters  m_prevCounters;
-    uint64_t          m_frameCount = 0;
 
     uint64_t          m_gpCount = 0;
     uint64_t          m_cpCount = 0;
