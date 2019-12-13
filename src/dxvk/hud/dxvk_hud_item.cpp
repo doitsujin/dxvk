@@ -258,4 +258,39 @@ namespace dxvk::hud {
     return position;
   }
 
+
+  HudSubmissionStatsItem::HudSubmissionStatsItem(const Rc<DxvkDevice>& device)
+  : m_device(device) {
+
+  }
+
+
+  HudSubmissionStatsItem::~HudSubmissionStatsItem() {
+
+  }
+
+
+  void HudSubmissionStatsItem::update(dxvk::high_resolution_clock::time_point time) {
+    DxvkStatCounters counters = m_device->getStatCounters();
+    
+    uint32_t currCounter = counters.getCtr(DxvkStatCounter::QueueSubmitCount);
+    m_diffCounter = currCounter - m_prevCounter;
+    m_prevCounter = currCounter;
+  }
+
+
+  HudPos HudSubmissionStatsItem::render(
+          HudRenderer&      renderer,
+          HudPos            position) {
+    position.y += 16.0f;
+
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      str::format("Queue submissions: ", m_diffCounter));
+
+    position.y += 8.0f;
+    return position;
+  }
+
 }

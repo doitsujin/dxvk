@@ -215,4 +215,31 @@ namespace dxvk::hud {
 
   };
 
+
+  /**
+   * \brief HUD item to display queue submissions
+   */
+  class HudSubmissionStatsItem : public HudItem {
+
+  public:
+
+    HudSubmissionStatsItem(const Rc<DxvkDevice>& device);
+
+    ~HudSubmissionStatsItem();
+
+    void update(dxvk::high_resolution_clock::time_point time);
+
+    HudPos render(
+            HudRenderer&      renderer,
+            HudPos            position);
+
+  private:
+
+    Rc<DxvkDevice>  m_device;
+
+    uint64_t        m_prevCounter = 0;
+    uint64_t        m_diffCounter = 0;
+
+  };
+
 }
