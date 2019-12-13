@@ -632,6 +632,14 @@ namespace dxvk {
     void emitTextureSample(const DxsoInstructionContext& ctx);
     void emitTextureKill(const DxsoInstructionContext& ctx);
 
+    uint32_t emitSample(
+            bool                    projected,
+            uint32_t                resultType,
+            uint32_t                sampledImage,
+            uint32_t                coordinates,
+            uint32_t                reference,
+      const SpirvImageOperands&     operands);
+
     ///////////////////////////////
     // Shader finalization methods
     void emitInputSetup();

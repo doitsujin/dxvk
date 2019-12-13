@@ -2690,7 +2690,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         }
       }
 
-      result.id = m_module.sampleGeneric(
+      result.id = this->emitSample(
         projDivider != 0,
         typeId,
         imageVarId,
@@ -2701,7 +2701,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       if (switchProjResult) {
         uint32_t bool_t = m_module.defBoolType();
 
-        uint32_t nonProjResult = m_module.sampleGeneric(
+        uint32_t nonProjResult = this->emitSample(
           0,
           typeId,
           imageVarId,
@@ -2903,6 +2903,49 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         m_module.opKill();
         
         m_module.opLabel(labelEnd);
+      }
+    }
+  }
+
+
+  uint32_t DxsoCompiler::emitSample(
+          bool                    projected,
+          uint32_t                resultType,
+          uint32_t                sampledImage,
+          uint32_t                coordinates,
+          uint32_t                reference,
+    const SpirvImageOperands&     operands) {
+    const bool depthCompare = reference != 0;
+    const bool explicitLod  =
+       (operands.flags & spv::ImageOperandsLodMask)
+    || (operands.flags & spv::ImageOperandsGradMask);
+
+    if (projected) {
+      if (depthCompare) {
+        if (explicitLod)
+          return m_module.opImageSampleProjDrefExplicitLod(resultType, sampledImage, coordinates, reference, operands);
+        else
+          return m_module.opImageSampleProjDrefImplicitLod(resultType, sampledImage, coordinates, reference, operands);
+      }
+      else {
+        if (explicitLod)
+          return m_module.opImageSampleProjExplicitLod(resultType, sampledImage, coordinates, operands);
+        else
+          return m_module.opImageSampleProjImplicitLod(resultType, sampledImage, coordinates, operands);
+      }
+    }
+    else {
+      if (depthCompare) {
+        if (explicitLod)
+          return m_module.opImageSampleDrefExplicitLod(resultType, sampledImage, coordinates, reference, operands);
+        else
+          return m_module.opImageSampleDrefImplicitLod(resultType, sampledImage, coordinates, reference, operands);
+      }
+      else {
+        if (explicitLod)
+          return m_module.opImageSampleExplicitLod(resultType, sampledImage, coordinates, operands);
+        else
+          return m_module.opImageSampleImplicitLod(resultType, sampledImage, coordinates, operands);
       }
     }
   }
