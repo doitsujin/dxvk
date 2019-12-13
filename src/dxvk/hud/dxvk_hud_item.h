@@ -354,4 +354,33 @@ namespace dxvk::hud {
 
   };
 
+
+  /**
+   * \brief HUD item to display pipeline compiler activity
+   */
+  class HudCompilerActivityItem : public HudItem {
+    constexpr static int64_t MinShowDuration = 1500;
+  public:
+
+    HudCompilerActivityItem(const Rc<DxvkDevice>& device);
+
+    ~HudCompilerActivityItem();
+
+    void update(dxvk::high_resolution_clock::time_point time);
+
+    HudPos render(
+            HudRenderer&      renderer,
+            HudPos            position);
+
+  private:
+
+    Rc<DxvkDevice> m_device;
+
+    bool m_show = false;
+
+    dxvk::high_resolution_clock::time_point m_timeShown
+      = dxvk::high_resolution_clock::now();
+
+  };
+
 }

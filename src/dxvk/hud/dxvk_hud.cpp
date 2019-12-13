@@ -44,6 +44,7 @@ namespace dxvk::hud {
     addItem<HudPipelineStatsItem>("pipelines", device);
     addItem<HudMemoryStatsItem>("memory", device);
     addItem<HudGpuLoadItem>("gpuload", device);
+    addItem<HudCompilerActivityItem>("compiler", device);
   }
   
   

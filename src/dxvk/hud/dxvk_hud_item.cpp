@@ -477,4 +477,45 @@ namespace dxvk::hud {
     return position;
   }
 
+
+  HudCompilerActivityItem::HudCompilerActivityItem(const Rc<DxvkDevice>& device)
+  : m_device(device) {
+
+  }
+
+
+  HudCompilerActivityItem::~HudCompilerActivityItem() {
+
+  }
+
+
+  void HudCompilerActivityItem::update(dxvk::high_resolution_clock::time_point time) {
+    DxvkStatCounters counters = m_device->getStatCounters();
+    bool doShow = counters.getCtr(DxvkStatCounter::PipeCompilerBusy);
+
+    if (!doShow) {
+      auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(time - m_timeShown);
+      doShow = elapsed.count() <= MinShowDuration;
+    }
+
+    if (doShow && !m_show)
+      m_timeShown = time;
+
+    m_show = doShow;
+  }
+
+
+  HudPos HudCompilerActivityItem::render(
+          HudRenderer&      renderer,
+          HudPos            position) {
+    if (m_show) {
+      renderer.drawText(16.0f,
+        { position.x, renderer.surfaceSize().height - 20.0f },
+        { 1.0f, 1.0f, 1.0f, 1.0f },
+        "Compiling shaders...");
+    }
+
+    return position;
+  }
+
 }
