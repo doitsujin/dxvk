@@ -139,7 +139,8 @@ namespace dxvk {
 
     void SubmitPresent(
             D3D11ImmediateContext*  pContext,
-      const vk::PresenterSync&      Sync);
+      const vk::PresenterSync&      Sync,
+            uint32_t                FrameId);
 
     void SynchronizePresent();
 
