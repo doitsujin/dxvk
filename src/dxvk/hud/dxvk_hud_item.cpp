@@ -431,4 +431,50 @@ namespace dxvk::hud {
     return position;
   }
 
+
+  HudGpuLoadItem::HudGpuLoadItem(const Rc<DxvkDevice>& device)
+  : m_device(device) {
+
+  }
+
+
+  HudGpuLoadItem::~HudGpuLoadItem() {
+
+  }
+
+
+  void HudGpuLoadItem::update(dxvk::high_resolution_clock::time_point time) {
+    uint64_t ticks = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate).count();
+
+    if (ticks >= UpdateInterval) {
+      DxvkStatCounters counters = m_device->getStatCounters();
+      uint64_t currGpuIdleTicks = counters.getCtr(DxvkStatCounter::GpuIdleTicks);
+
+      m_diffGpuIdleTicks = currGpuIdleTicks - m_prevGpuIdleTicks;
+      m_prevGpuIdleTicks = currGpuIdleTicks;
+
+      uint64_t busyTicks = ticks > m_diffGpuIdleTicks
+        ? uint64_t(ticks - m_diffGpuIdleTicks)
+        : uint64_t(0);
+
+      m_gpuLoadString = str::format("GPU: ", (100 * busyTicks) / ticks, "%");
+      m_lastUpdate = time;
+    }
+  }
+
+
+  HudPos HudGpuLoadItem::render(
+          HudRenderer&      renderer,
+          HudPos            position) {
+    position.y += 16.0f;
+
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      m_gpuLoadString);
+
+    position.y += 8.0f;
+    return position;
+  }
+
 }

@@ -322,4 +322,36 @@ namespace dxvk::hud {
 
   };
 
+
+  /**
+   * \brief HUD item to display GPU load
+   */
+  class HudGpuLoadItem : public HudItem {
+    constexpr static int64_t UpdateInterval = 500'000;
+  public:
+
+    HudGpuLoadItem(const Rc<DxvkDevice>& device);
+
+    ~HudGpuLoadItem();
+
+    void update(dxvk::high_resolution_clock::time_point time);
+
+    HudPos render(
+            HudRenderer&      renderer,
+            HudPos            position);
+
+  private:
+
+    Rc<DxvkDevice> m_device;
+
+    uint64_t m_prevGpuIdleTicks = 0;
+    uint64_t m_diffGpuIdleTicks = 0;
+
+    std::string m_gpuLoadString = "GPU: ";
+
+    dxvk::high_resolution_clock::time_point m_lastUpdate
+      = dxvk::high_resolution_clock::now();
+
+  };
+
 }

@@ -43,6 +43,7 @@ namespace dxvk::hud {
     addItem<HudDrawCallStatsItem>("drawcalls", device);
     addItem<HudPipelineStatsItem>("pipelines", device);
     addItem<HudMemoryStatsItem>("memory", device);
+    addItem<HudGpuLoadItem>("gpuload", device);
   }
   
   
