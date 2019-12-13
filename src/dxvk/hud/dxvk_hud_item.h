@@ -251,7 +251,7 @@ namespace dxvk::hud {
    * \brief HUD item to display draw call counts
    */
   class HudDrawCallStatsItem : public HudItem {
-
+    constexpr static int64_t UpdateInterval = 500'000;
   public:
 
     HudDrawCallStatsItem(const Rc<DxvkDevice>& device);
@@ -269,7 +269,14 @@ namespace dxvk::hud {
     Rc<DxvkDevice>    m_device;
 
     DxvkStatCounters  m_prevCounters;
-    DxvkStatCounters  m_diffCounters;
+    uint64_t          m_frameCount = 0;
+
+    uint64_t          m_gpCount = 0;
+    uint64_t          m_cpCount = 0;
+    uint64_t          m_rpCount = 0;
+
+    dxvk::high_resolution_clock::time_point m_lastUpdate
+      = dxvk::high_resolution_clock::now();
 
   };
 

@@ -336,20 +336,28 @@ namespace dxvk::hud {
 
 
   void HudDrawCallStatsItem::update(dxvk::high_resolution_clock::time_point time) {
-    DxvkStatCounters counters = m_device->getStatCounters();
+    auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate);
 
-    m_diffCounters = counters.diff(m_prevCounters);
-    m_prevCounters = counters;
+    m_frameCount += 1;
+
+    if (elapsed.count() >= UpdateInterval) {
+      DxvkStatCounters counters = m_device->getStatCounters();
+      auto diffCounters = counters.diff(m_prevCounters);
+
+      m_gpCount = diffCounters.getCtr(DxvkStatCounter::CmdDrawCalls) / m_frameCount;
+      m_cpCount = diffCounters.getCtr(DxvkStatCounter::CmdDispatchCalls) / m_frameCount;
+      m_rpCount = diffCounters.getCtr(DxvkStatCounter::CmdRenderPassCount) / m_frameCount;
+
+      m_prevCounters = counters;
+      m_lastUpdate = time;
+      m_frameCount = 0;
+    }
   }
 
 
   HudPos HudDrawCallStatsItem::render(
           HudRenderer&      renderer,
           HudPos            position) {
-    uint64_t gpCalls = m_diffCounters.getCtr(DxvkStatCounter::CmdDrawCalls);
-    uint64_t cpCalls = m_diffCounters.getCtr(DxvkStatCounter::CmdDispatchCalls);
-    uint64_t rpCalls = m_diffCounters.getCtr(DxvkStatCounter::CmdRenderPassCount);
-    
     position.y += 16.0f;
     renderer.drawText(16.0f,
       { position.x, position.y },
@@ -359,7 +367,7 @@ namespace dxvk::hud {
     renderer.drawText(16.0f,
       { position.x + 192.0f, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
-      str::format(gpCalls));
+      str::format(m_gpCount));
     
     position.y += 20.0f;
     renderer.drawText(16.0f,
@@ -370,7 +378,7 @@ namespace dxvk::hud {
     renderer.drawText(16.0f,
       { position.x + 192.0f, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
-      str::format(cpCalls));
+      str::format(m_cpCount));
     
     position.y += 20.0f;
     renderer.drawText(16.0f,
@@ -381,7 +389,7 @@ namespace dxvk::hud {
     renderer.drawText(16.0f,
       { position.x + 192.0f, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
-      str::format(rpCalls));
+      str::format(m_rpCount));
     
     position.y += 8.0f;
     return position;
