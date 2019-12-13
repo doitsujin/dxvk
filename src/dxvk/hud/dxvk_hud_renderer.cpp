@@ -68,7 +68,7 @@ namespace dxvk::hud {
         sizeFactor * static_cast<float>(glyph.h) };
       
       const HudPos origin = {
-        pos.x + sizeFactor * static_cast<float>(glyph.originX),
+        pos.x - sizeFactor * static_cast<float>(glyph.originX),
         pos.y - sizeFactor * static_cast<float>(glyph.originY) };
       
       const HudPos posTl = { origin.x,          origin.y          };
