@@ -5,15 +5,10 @@
 namespace dxvk::hud {
   
   Hud::Hud(
-    const Rc<DxvkDevice>& device,
-    const HudConfig&      config)
-  : m_config        (config),
-    m_device        (device),
+    const Rc<DxvkDevice>& device)
+  : m_device        (device),
     m_uniformBuffer (createUniformBuffer()),
-    m_renderer      (device),
-    m_hudDeviceInfo (device),
-    m_hudFramerate  (config.elements),
-    m_hudStats      (config.elements) {
+    m_renderer      (device) {
     // Set up constant state
     m_rsState.polygonMode       = VK_POLYGON_MODE_FILL;
     m_rsState.cullMode          = VK_CULL_MODE_BACK_BIT;
@@ -55,8 +50,6 @@ namespace dxvk::hud {
   
   void Hud::update() {
     m_hudItems.update();
-    m_hudFramerate.update();
-    m_hudStats.update(m_device);
   }
   
   
@@ -71,16 +64,7 @@ namespace dxvk::hud {
   
   
   Rc<Hud> Hud::createHud(const Rc<DxvkDevice>& device) {
-    std::string hudElements = env::getEnvVar("DXVK_HUD");
-
-    if (hudElements.empty())
-      hudElements = device->config().hud;
-
-    HudConfig config(hudElements);
-
-    return !config.elements.isClear()
-      ? new Hud(device, config)
-      : nullptr;
+    return new Hud(device);
   }
 
 
@@ -97,11 +81,6 @@ namespace dxvk::hud {
 
   void Hud::renderHudElements(const Rc<DxvkContext>& ctx) {
     m_hudItems.render(m_renderer);
-
-    HudPos position = { 8.0f, 24.0f };
-
-    position = m_hudFramerate.render(m_renderer, position);
-    position = m_hudStats    .render(m_renderer, position);
   }
   
   

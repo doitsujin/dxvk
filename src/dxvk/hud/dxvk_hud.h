@@ -2,14 +2,8 @@
 
 #include "../dxvk_device.h"
 
-#include "../util/util_env.h"
-
-#include "dxvk_hud_config.h"
-#include "dxvk_hud_devinfo.h"
 #include "dxvk_hud_item.h"
-#include "dxvk_hud_fps.h"
 #include "dxvk_hud_renderer.h"
-#include "dxvk_hud_stats.h"
 
 namespace dxvk::hud {
   
@@ -31,9 +25,7 @@ namespace dxvk::hud {
     
   public:
     
-    Hud(
-      const Rc<DxvkDevice>& device,
-      const HudConfig&      config);
+    Hud(const Rc<DxvkDevice>& device);
     
     ~Hud();
     
@@ -81,7 +73,6 @@ namespace dxvk::hud {
     
   private:
     
-    const HudConfig       m_config;
     const Rc<DxvkDevice>  m_device;
     
     Rc<DxvkBuffer>        m_uniformBuffer;
@@ -91,9 +82,6 @@ namespace dxvk::hud {
 
     HudUniformData        m_uniformData;
     HudRenderer           m_renderer;
-    HudDeviceInfo         m_hudDeviceInfo;
-    HudFps                m_hudFramerate;
-    HudStats              m_hudStats;
     HudItemSet            m_hudItems;
 
     void setupRendererState(

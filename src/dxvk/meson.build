@@ -102,13 +102,9 @@ dxvk_src = files([
   'platform/dxvk_win32_exts.cpp',
   
   'hud/dxvk_hud.cpp',
-  'hud/dxvk_hud_config.cpp',
-  'hud/dxvk_hud_devinfo.cpp',
   'hud/dxvk_hud_font.cpp',
-  'hud/dxvk_hud_fps.cpp',
   'hud/dxvk_hud_item.cpp',
   'hud/dxvk_hud_renderer.cpp',
-  'hud/dxvk_hud_stats.cpp',
 ])
 
 thread_dep = dependency('threads')
