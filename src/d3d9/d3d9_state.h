@@ -224,7 +224,7 @@ namespace dxvk {
       std::array<DWORD, TextureStageStateCount>,
       caps::TextureStageCount>                       textureStages;
 
-    D3D9ShaderConstantsVS                            vsConsts;
+    D3D9ShaderConstantsVSSoftware                    vsConsts;
     D3D9ShaderConstantsPS                            psConsts;
 
     std::array<UINT, caps::MaxStreams>               streamFreq;
@@ -258,15 +258,15 @@ namespace dxvk {
         auto end   = begin + Count;
 
         if (!FloatEmu)
-          std::copy(begin, end, set.fConsts.begin() + StartRegister);
+          std::copy(begin, end, &set.fConsts[StartRegister]);
         else
-          std::transform(begin, end, set.fConsts.begin() + StartRegister, replaceNaN);
+          std::transform(begin, end, &set.fConsts[StartRegister], replaceNaN);
       }
       else if constexpr (ConstantType == D3D9ConstantType::Int) {
         auto begin = reinterpret_cast<const Vector4i*>(pConstantData);
         auto end   = begin + Count;
 
-        std::copy(begin, end, set.iConsts.begin() + StartRegister);
+        std::copy(begin, end, &set.iConsts[StartRegister]);
       }
       else {
         for (uint32_t i = 0; i < Count; i++) {

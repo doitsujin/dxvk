@@ -4427,48 +4427,78 @@ namespace dxvk {
   }
 
 
+  template <DxsoProgramType ShaderStage, typename HardwareLayoutType, typename SoftwareLayoutType, typename ShaderType>
+  inline void D3D9DeviceEx::UploadHardwareConstantSet(void* pData, const SoftwareLayoutType& Src, const ShaderType& Shader) {
+    const D3D9ConstantSets& constSet = m_consts[ShaderStage];
+
+    auto* dst = reinterpret_cast<HardwareLayoutType*>(pData);
+
+    if (constSet.meta->maxConstIndexF)
+      std::memcpy(dst->fConsts, Src.fConsts, constSet.meta->maxConstIndexF * sizeof(Vector4));
+    if (constSet.meta->maxConstIndexI)
+      std::memcpy(dst->iConsts, Src.iConsts, constSet.meta->maxConstIndexI * sizeof(Vector4i));
+    if (constSet.meta->maxConstIndexB)
+      dst->bConsts[0] = Src.bConsts[0];
+  }
+
+
+  template <typename SoftwareLayoutType, typename ShaderType>
+  inline void D3D9DeviceEx::UploadSoftwareConstantSet(void* pData, const SoftwareLayoutType& Src, const D3D9ConstantLayout& Layout, const ShaderType& Shader) {
+    const D3D9ConstantSets& constSet = m_consts[DxsoProgramType::VertexShader];
+
+    auto dst = reinterpret_cast<uint8_t*>(pData);
+
+    if (constSet.meta->maxConstIndexF)
+      std::memcpy(dst + Layout.floatOffset(),   Src.fConsts, constSet.meta->maxConstIndexF * sizeof(Vector4));
+    if (constSet.meta->maxConstIndexI)
+      std::memcpy(dst + Layout.intOffset(),     Src.iConsts, constSet.meta->maxConstIndexI * sizeof(Vector4i));
+    if (constSet.meta->maxConstIndexB)
+      std::memcpy(dst + Layout.bitmaskOffset(), Src.bConsts, Layout.bitmaskSize());
+  }
+
+
+  template <DxsoProgramType ShaderStage, typename HardwareLayoutType, typename SoftwareLayoutType, typename ShaderType>
+  inline void D3D9DeviceEx::UploadConstantSet(const SoftwareLayoutType& Src, const D3D9ConstantLayout& Layout, const ShaderType& Shader) {
+    D3D9ConstantSets& constSet = m_consts[ShaderStage];
+
+    if (!constSet.dirty)
+      return;
+
+    constSet.dirty = false;
+
+    DxvkBufferSliceHandle slice = constSet.buffer->allocSlice();
+
+    EmitCs([
+      cBuffer = constSet.buffer,
+      cSlice  = slice
+    ] (DxvkContext* ctx) {
+      ctx->invalidateBuffer(cBuffer, cSlice);
+    });
+
+    if constexpr (ShaderStage == DxsoProgramType::PixelShader)
+      UploadHardwareConstantSet<ShaderStage, HardwareLayoutType>(slice.mapPtr, Src, Shader);
+    else if (likely(!CanSWVP()))
+      UploadHardwareConstantSet<ShaderStage, HardwareLayoutType>(slice.mapPtr, Src, Shader);
+    else
+      UploadSoftwareConstantSet(slice.mapPtr, Src, Layout, Shader);
+
+    if (constSet.meta->needsConstantCopies) {
+      Vector4* data = reinterpret_cast<Vector4*>(slice.mapPtr);
+
+      auto& shaderConsts = GetCommonShader(Shader)->GetConstants();
+
+      for (const auto& constant : shaderConsts)
+        data[constant.uboIdx] = *reinterpret_cast<const Vector4*>(constant.float32);
+    }
+  }
+
+
   template <DxsoProgramType ShaderStage>
   void D3D9DeviceEx::UploadConstants() {
-    auto UploadHelper = [&](auto& src, auto& layout, const auto& shader) {
-      D3D9ConstantSets& constSet = m_consts[ShaderStage];
-
-      if (!constSet.dirty)
-        return;
-
-      constSet.dirty = false;
-
-      DxvkBufferSliceHandle slice = constSet.buffer->allocSlice();
-
-      auto dstData = reinterpret_cast<uint8_t*>(slice.mapPtr);
-      auto srcData = &src;
-
-      EmitCs([
-        cBuffer = constSet.buffer,
-        cSlice  = slice
-      ] (DxvkContext* ctx) {
-        ctx->invalidateBuffer(cBuffer, cSlice);
-      });
-
-      if (constSet.meta->maxConstIndexF)
-        std::memcpy(dstData + layout.floatOffset(),   srcData->fConsts.data(), constSet.meta->maxConstIndexF * 4 * sizeof(float));
-      if (constSet.meta->maxConstIndexI)
-        std::memcpy(dstData + layout.intOffset(),     srcData->iConsts.data(), constSet.meta->maxConstIndexI * 4 * sizeof(INT));
-      if (constSet.meta->maxConstIndexB)
-        std::memcpy(dstData + layout.bitmaskOffset(), srcData->bConsts.data(), layout.bitmaskSize());
-
-      if (constSet.meta->needsConstantCopies) {
-        Vector4* data = reinterpret_cast<Vector4*>(slice.mapPtr);
-
-        auto& shaderConsts = GetCommonShader(shader)->GetConstants();
-
-        for (const auto& constant : shaderConsts)
-          data[constant.uboIdx] = *reinterpret_cast<const Vector4*>(constant.float32);
-      }
-    };
-
-    return ShaderStage == DxsoProgramTypes::VertexShader
-      ? UploadHelper(m_state.vsConsts, m_vsLayout, m_state.vertexShader)
-      : UploadHelper(m_state.psConsts, m_psLayout, m_state.pixelShader);
+    if constexpr (ShaderStage == DxsoProgramTypes::VertexShader)
+      return UploadConstantSet<ShaderStage, D3D9ShaderConstantsVSHardware>(m_state.vsConsts, m_vsLayout, m_state.vertexShader);
+    else
+      return UploadConstantSet<ShaderStage, D3D9ShaderConstantsPS>        (m_state.psConsts, m_psLayout, m_state.pixelShader);
   }
 
 

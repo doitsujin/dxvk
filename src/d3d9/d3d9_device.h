@@ -776,6 +776,15 @@ namespace dxvk {
     void BindRasterizerState();
 
     void BindAlphaTestState();
+
+    template <DxsoProgramType ShaderStage, typename HardwareLayoutType, typename SoftwareLayoutType, typename ShaderType>
+    inline void UploadHardwareConstantSet(void* pData, const SoftwareLayoutType& Src, const ShaderType& Shader);
+
+    template <typename SoftwareLayoutType, typename ShaderType>
+    inline void UploadSoftwareConstantSet(void* pData, const SoftwareLayoutType& Src, const D3D9ConstantLayout& Layout, const ShaderType& Shader);
+
+    template <DxsoProgramType ShaderStage, typename HardwareLayoutType, typename SoftwareLayoutType, typename ShaderType>
+    inline void UploadConstantSet(const SoftwareLayoutType& Src, const D3D9ConstantLayout& Layout, const ShaderType& Shader);
     
     template <DxsoProgramType ShaderStage>
     void UploadConstants();
@@ -1096,14 +1105,14 @@ namespace dxvk {
           return D3DERR_INVALIDCALL;
 
         if constexpr (ConstantType == D3D9ConstantType::Float) {
-          auto begin = set.fConsts.begin() + StartRegister;
-          auto end = begin + Count;
+          auto begin = &set.fConsts[StartRegister];
+          auto end = &begin[Count];
 
           std::copy(begin, end, reinterpret_cast<Vector4*>(pConstantData));
         }
         else if constexpr (ConstantType == D3D9ConstantType::Int) {
-          auto begin = set.iConsts.begin() + StartRegister;
-          auto end = begin + Count;
+          auto begin = &set.iConsts[StartRegister];
+          auto end = &begin[Count];
 
           std::copy(begin, end, reinterpret_cast<Vector4i*>(pConstantData));
         }
