@@ -30,7 +30,8 @@ namespace dxvk {
     , m_device           (pDevice->GetDXVKDevice())
     , m_context          (m_device->createContext())
     , m_frameLatencyCap  (pDevice->GetOptions()->maxFrameLatency)
-    , m_frameLatencySignal(new sync::Fence(m_frameId)) {
+    , m_frameLatencySignal(new sync::Fence(m_frameId))
+    , m_dialog            (pDevice->GetOptions()->enableDialogMode) {
     UpdateMonitorInfo();
 
     this->NormalizePresentParameters(pPresentParams);
