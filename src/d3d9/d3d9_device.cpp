@@ -1290,8 +1290,8 @@ namespace dxvk {
     const auto& vp = m_state.viewport;
     const auto& sc = m_state.scissorRect;
 
-    bool srgb      = m_state.renderStates[D3DRS_SRGBWRITEENABLE]   != FALSE;
-    bool scissor   = m_state.renderStates[D3DRS_SCISSORTESTENABLE] != FALSE;
+    bool srgb      = m_state.renderStates[D3DRS_SRGBWRITEENABLE];
+    bool scissor   = m_state.renderStates[D3DRS_SCISSORTESTENABLE];
 
     VkOffset3D offset = { int32_t(vp.X),    int32_t(vp.Y),      0  };
     VkExtent3D extent = {         vp.Width,         vp.Height,  1u };
@@ -4737,7 +4737,7 @@ namespace dxvk {
   void D3D9DeviceEx::UpdateFog() {
     auto& rs = m_state.renderStates;
 
-    bool fogEnabled = rs[D3DRS_FOGENABLE] != FALSE;
+    bool fogEnabled = rs[D3DRS_FOGENABLE];
 
     bool pixelFog   = rs[D3DRS_FOGTABLEMODE]  != D3DFOG_NONE && fogEnabled;
     bool vertexFog  = rs[D3DRS_FOGVERTEXMODE] != D3DFOG_NONE && fogEnabled && !pixelFog;
@@ -4819,7 +4819,7 @@ namespace dxvk {
 
     DxvkRenderTargets attachments;
 
-    bool srgb = m_state.renderStates[D3DRS_SRGBWRITEENABLE] != FALSE;
+    bool srgb = m_state.renderStates[D3DRS_SRGBWRITEENABLE];
 
     // D3D9 doesn't have the concept of a framebuffer object,
     // so we'll just create a new one every time the render
@@ -4891,7 +4891,7 @@ namespace dxvk {
     // Scissor rectangles. Vulkan does not provide an easy way
     // to disable the scissor test, so we'll have to set scissor
     // rects that are at least as large as the framebuffer.
-    bool enableScissorTest = m_state.renderStates[D3DRS_SCISSORTESTENABLE] != FALSE;
+    bool enableScissorTest = m_state.renderStates[D3DRS_SCISSORTESTENABLE];
 
     if (enableScissorTest) {
       RECT sr = m_state.scissorRect;
@@ -4932,7 +4932,7 @@ namespace dxvk {
     m_flags.clr(D3D9DeviceFlag::DirtyMultiSampleState);
 
     DxvkMultisampleState msState;
-    msState.sampleMask            = m_flags.test(D3D9DeviceFlag::ValidSampleMask)
+    msState.sampleMask = m_flags.test(D3D9DeviceFlag::ValidSampleMask)
       ? m_state.renderStates[D3DRS_MULTISAMPLEMASK]
       : 0xffffffff;
     msState.enableAlphaToCoverage = IsAlphaToCoverageEnabled();
@@ -4950,7 +4950,7 @@ namespace dxvk {
 
     auto& state = m_state.renderStates;
 
-    bool separateAlpha  = state[D3DRS_SEPARATEALPHABLENDENABLE] != FALSE;
+    bool separateAlpha = state[D3DRS_SEPARATEALPHABLENDENABLE];
 
     DxvkBlendMode mode;
     mode.enableBlending = state[D3DRS_ALPHABLENDENABLE] != FALSE;
@@ -5038,8 +5038,8 @@ namespace dxvk {
 
     auto& rs = m_state.renderStates;
 
-    bool stencil            = rs[D3DRS_STENCILENABLE] != FALSE;
-    bool twoSidedStencil    = stencil && (rs[D3DRS_TWOSIDEDSTENCILMODE] != FALSE);
+    bool stencil            = rs[D3DRS_STENCILENABLE];
+    bool twoSidedStencil    = stencil && rs[D3DRS_TWOSIDEDSTENCILMODE];
 
     DxvkDepthStencilState state;
     state.enableDepthTest   = rs[D3DRS_ZENABLE]       != FALSE;
@@ -5254,7 +5254,7 @@ namespace dxvk {
       DxsoBindingType::DepthImage, uint32_t(shaderSampler.second));
 
     const bool srgb =
-      m_state.samplerStates[StateSampler][D3DSAMP_SRGBTEXTURE] != FALSE;
+      m_state.samplerStates[StateSampler][D3DSAMP_SRGBTEXTURE];
 
     D3D9CommonTexture* commonTex =
       GetCommonTexture(m_state.textures[StateSampler]);
@@ -6257,7 +6257,7 @@ namespace dxvk {
     rs[D3DRS_BLENDFACTOR]              = 0xffffffff;
     BindBlendFactor();
 
-    rs[D3DRS_ZENABLE]                  = pPresentationParameters->EnableAutoDepthStencil != FALSE
+    rs[D3DRS_ZENABLE]                  = pPresentationParameters->EnableAutoDepthStencil
                                        ? D3DZB_TRUE
                                        : D3DZB_FALSE;
     rs[D3DRS_ZFUNC]                    = D3DCMP_LESSEQUAL;
