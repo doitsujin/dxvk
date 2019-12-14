@@ -454,51 +454,51 @@ namespace dxvk {
   };
 
   struct D3D9FFVertexData {
-    uint32_t constantBuffer = 0;
-    uint32_t vertexBlendData = 0;
-    uint32_t lightType      = 0;
+    uint32_t constantBuffer;
+    uint32_t vertexBlendData;
+    uint32_t lightType;
 
     struct {
-      uint32_t worldview = { 0 };
-      uint32_t normal    = { 0 };
-      uint32_t proj = { 0 };
+      uint32_t worldview;
+      uint32_t normal;
+      uint32_t proj;
 
-      uint32_t texcoord[8] = { 0 };
+      uint32_t texcoord[8];
 
-      uint32_t invOffset = { 0 };
-      uint32_t invExtent = { 0 };
+      uint32_t invOffset;
+      uint32_t invExtent;
 
-      uint32_t globalAmbient = { 0 };
+      uint32_t globalAmbient;
 
-      uint32_t materialDiffuse = { 0 };
-      uint32_t materialSpecular = { 0 };
-      uint32_t materialAmbient = { 0 };
-      uint32_t materialEmissive = { 0 };
-      uint32_t materialPower = { 0 };
-      uint32_t tweenFactor = { 0 };
+      uint32_t materialDiffuse;
+      uint32_t materialSpecular;
+      uint32_t materialAmbient;
+      uint32_t materialEmissive;
+      uint32_t materialPower;
+      uint32_t tweenFactor;
     } constants;
 
     struct {
-      uint32_t POSITION = { 0 };
-      uint32_t POSITION1 = { 0 };
-      uint32_t POINTSIZE = { 0 };
-      uint32_t NORMAL = { 0 };
-      uint32_t NORMAL1 = { 0 };
-      uint32_t TEXCOORD[8] = { 0 };
-      uint32_t COLOR[2] = { 0 };
-      uint32_t FOG = { 0 };
+      uint32_t POSITION;
+      uint32_t POSITION1;
+      uint32_t POINTSIZE;
+      uint32_t NORMAL;
+      uint32_t NORMAL1;
+      uint32_t TEXCOORD[8];
+      uint32_t COLOR[2];
+      uint32_t FOG;
 
-      uint32_t BLENDWEIGHT = { 0 };
-      uint32_t BLENDINDICES = { 0 };
+      uint32_t BLENDWEIGHT;
+      uint32_t BLENDINDICES;
     } in;
 
     struct {
-      uint32_t POSITION = { 0 };
-      uint32_t POINTSIZE = { 0 };
-      uint32_t NORMAL = { 0 };
-      uint32_t TEXCOORD[8] = { 0 };
-      uint32_t COLOR[2] = { 0 };
-      uint32_t FOG = { 0 };
+      uint32_t POSITION;
+      uint32_t POINTSIZE;
+      uint32_t NORMAL;
+      uint32_t TEXCOORD[8];
+      uint32_t COLOR[2];
+      uint32_t FOG;
     } out;
   };
 
@@ -509,29 +509,29 @@ namespace dxvk {
   };
 
   struct D3D9FFPixelData {
-    uint32_t constantBuffer = 0;
-    uint32_t sharedState = 0;
+    uint32_t constantBuffer;
+    uint32_t sharedState;
 
     struct {
-      uint32_t textureFactor = { 0 };
+      uint32_t textureFactor;
     } constants;
 
     struct {
-      uint32_t TEXCOORD[8] = { 0 };
-      uint32_t COLOR[2]    = { 0 };
-      uint32_t FOG         = { 0 };
-      uint32_t POS         = { 0 };
+      uint32_t TEXCOORD[8];
+      uint32_t COLOR[2];
+      uint32_t FOG;
+      uint32_t POS;
     } in;
 
     struct {
-      uint32_t texcoordCnt = 0;
-      uint32_t typeId = { 0 };
-      uint32_t varId  = { 0 };
-      uint32_t bound  = { 0 };
+      uint32_t texcoordCnt;
+      uint32_t typeId;
+      uint32_t varId;
+      uint32_t bound;
     } samplers[8];
 
     struct {
-      uint32_t COLOR = { 0 };
+      uint32_t COLOR;
     } out;
   };
 
@@ -596,8 +596,8 @@ namespace dxvk {
     D3D9FFShaderKeyVS     m_vsKey;
     D3D9FFShaderKeyFS     m_fsKey;
 
-    D3D9FFVertexData      m_vs;
-    D3D9FFPixelData       m_ps;
+    D3D9FFVertexData      m_vs = { };
+    D3D9FFPixelData       m_ps = { };
 
     DxsoIsgn              m_isgn;
     DxsoIsgn              m_osgn;
