@@ -3182,7 +3182,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       m_module.setDebugName(outputPtr, name.c_str());
 
-      m_interfaceSlots.outputSlots |= slot;
+      m_interfaceSlots.outputSlots |= 1u << slot;
       m_entryPointInterfaces.push_back(outputPtr);
     };
 
