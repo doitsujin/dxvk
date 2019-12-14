@@ -5529,27 +5529,9 @@ namespace dxvk {
         uint32_t attrMask = 0;
         uint32_t bindMask = 0;
 
-        // TODO we should make fixed-function isgn global
-        DxsoIsgn ffIsgn;
-
-        if (cVertexShader == nullptr) {
-          ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Position, 0 };
-          ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Normal, 0 };
-          ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Position, 1 };
-          ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Normal, 1 };
-          for (uint32_t i = 0; i < 8; i++)
-            ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Texcoord, i };
-          ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Color, 0 };
-          ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Color, 1 };
-          ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Fog, 0 };
-          ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::PointSize, 0 };
-          ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::BlendWeight, 0 };
-          ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::BlendIndices, 0 };
-        }
-
         const auto& isgn = cVertexShader != nullptr
           ? GetCommonShader(cVertexShader.ptr())->GetIsgn()
-          : ffIsgn;
+          : GetFixedFunctionIsgn();
 
         for (uint32_t i = 0; i < isgn.elemCount; i++) {
           const auto& decl = isgn.elems[i];

@@ -2285,4 +2285,27 @@ namespace dxvk {
     return a == b;
   }
 
+
+  static inline DxsoIsgn CreateFixedFunctionIsgn() {
+    DxsoIsgn ffIsgn;
+
+    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Position, 0 };
+    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Normal, 0 };
+    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Position, 1 };
+    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Normal, 1 };
+    for (uint32_t i = 0; i < 8; i++)
+      ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Texcoord, i };
+    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Color, 0 };
+    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Color, 1 };
+    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Fog, 0 };
+    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::PointSize, 0 };
+    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::BlendWeight, 0 };
+    ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::BlendIndices, 0 };
+
+    return ffIsgn;
+  }
+
+
+  DxsoIsgn g_ffIsgn = CreateFixedFunctionIsgn();
+
 }
