@@ -205,6 +205,7 @@ namespace dxvk {
     std::copy(elements.begin(), elements.begin() + elemCount, m_elements.data());
   }
 
+
   void D3D9VertexDecl::Classify() {
     for (const auto& element : m_elements) {
       if (element.Usage == D3DDECLUSAGE_COLOR && element.UsageIndex == 0)
