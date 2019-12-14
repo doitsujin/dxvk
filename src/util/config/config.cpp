@@ -185,14 +185,17 @@ namespace dxvk {
     /* Risen                                      */
     { R"(\\Risen\.exe$)", {{
       { "d3d9.allowLockFlagReadonly",       "False" },
+      { "d3d9.invariantPosition",           "True" },
     }} },
     /* Risen 2                                    */
     { R"(\\Risen2\.exe$)", {{
       { "d3d9.allowLockFlagReadonly",       "False" },
+      { "d3d9.invariantPosition",           "True" },
     }} },
     /* Risen 3                                    */
     { R"(\\Risen3\.exe$)", {{
       { "d3d9.allowLockFlagReadonly",       "False" },
+      { "d3d9.invariantPosition",           "True" },
     }} },
     /* Nostale                                    */
     { R"(\\NostaleClientX\.exe$)", {{
