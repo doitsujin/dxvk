@@ -3159,7 +3159,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       m_module.opStore(outputPtr.id, workingReg.id);
     }
 
-    auto OutputZero = [&](DxsoSemantic semantic) {
+    auto OutputDefault = [&](DxsoSemantic semantic) {
       DxsoRegisterInfo info;
       info.type.ctype   = DxsoScalarType::Float32;
       info.type.ccount  = 4;
@@ -3168,13 +3168,17 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       uint32_t slot = RegisterLinkerSlot(semantic);
 
-      uint32_t outputPtr = emitNewVariableDefault(info,
-        m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f));
+      uint32_t value = semantic == DxsoSemantic{ DxsoUsage::Color, 0 }
+        ? m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f)
+        : m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
+
+
+      uint32_t outputPtr = emitNewVariableDefault(info, value);
 
       m_module.decorateLocation(outputPtr, slot);
 
       std::string name =
-        str::format("out_", semantic.usage, semantic.usageIndex, "_zero");
+        str::format("out_", semantic.usage, semantic.usageIndex, "_default");
 
       m_module.setDebugName(outputPtr, name.c_str());
 
@@ -3183,10 +3187,10 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     };
 
     if (!outputtedColor0)
-      OutputZero(DxsoSemantic{ DxsoUsage::Color, 0 });
+      OutputDefault(DxsoSemantic{ DxsoUsage::Color, 0 });
 
     if (!outputtedColor1)
-      OutputZero(DxsoSemantic{ DxsoUsage::Color, 1 });
+      OutputDefault(DxsoSemantic{ DxsoUsage::Color, 1 });
 
     auto pointInfo = GetPointSizeInfoVS(m_module, m_vs.oPos.id, 0, 0, m_rsBlock);
 
