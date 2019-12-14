@@ -168,12 +168,10 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetDisplayMode(UINT iSwapChain, D3DDISPLAYMODE* pMode) {
     D3D9DeviceLock lock = LockDevice();
 
-    auto* swapchain = GetInternalSwapchain(iSwapChain);
+    if (auto* swapchain = GetInternalSwapchain(iSwapChain))
+      return swapchain->GetDisplayMode(pMode);
 
-    if (unlikely(swapchain == nullptr))
-      return D3DERR_INVALIDCALL;
-
-    return swapchain->GetDisplayMode(pMode);
+    return D3DERR_INVALIDCALL;
   }
 
 
@@ -336,24 +334,20 @@ namespace dxvk {
 
     InitReturnPtr(ppBackBuffer);
 
-    auto* swapchain = GetInternalSwapchain(iSwapChain);
+    if (auto* swapchain = GetInternalSwapchain(iSwapChain))
+      return swapchain->GetBackBuffer(iBackBuffer, Type, ppBackBuffer);
 
-    if (unlikely(swapchain == nullptr))
-      return D3DERR_INVALIDCALL;
-
-    return swapchain->GetBackBuffer(iBackBuffer, Type, ppBackBuffer);
+    return D3DERR_INVALIDCALL;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetRasterStatus(UINT iSwapChain, D3DRASTER_STATUS* pRasterStatus) {
     D3D9DeviceLock lock = LockDevice();
 
-    auto* swapchain = GetInternalSwapchain(iSwapChain);
+    if (auto* swapchain = GetInternalSwapchain(iSwapChain))
+      return swapchain->GetRasterStatus(pRasterStatus);
 
-    if (unlikely(swapchain == nullptr))
-      return D3DERR_INVALIDCALL;
-
-    return swapchain->GetRasterStatus(pRasterStatus);
+    return D3DERR_INVALIDCALL;
   }
 
 
@@ -375,24 +369,16 @@ namespace dxvk {
     const D3DGAMMARAMP* pRamp) {
     D3D9DeviceLock lock = LockDevice();
 
-    auto* swapchain = GetInternalSwapchain(iSwapChain);
-
-    if (unlikely(swapchain == nullptr))
-      return;
-
-    swapchain->SetGammaRamp(Flags, pRamp);
+    if (auto* swapchain = GetInternalSwapchain(iSwapChain))
+      swapchain->SetGammaRamp(Flags, pRamp);
   }
 
 
   void    STDMETHODCALLTYPE D3D9DeviceEx::GetGammaRamp(UINT iSwapChain, D3DGAMMARAMP* pRamp) {
     D3D9DeviceLock lock = LockDevice();
 
-    auto* swapchain = GetInternalSwapchain(iSwapChain);
-
-    if (unlikely(swapchain == nullptr))
-      return;
-
-    swapchain->GetGammaRamp(pRamp);
+    if (auto* swapchain = GetInternalSwapchain(iSwapChain))
+      swapchain->GetGammaRamp(pRamp);
   }
 
 
@@ -855,12 +841,10 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetFrontBufferData(UINT iSwapChain, IDirect3DSurface9* pDestSurface) {
     D3D9DeviceLock lock = LockDevice();
 
-    auto* swapchain = GetInternalSwapchain(iSwapChain);
+    if (auto* swapchain = GetInternalSwapchain(iSwapChain))
+      return swapchain->GetFrontBufferData(pDestSurface);
 
-    if (unlikely(swapchain == nullptr))
-      return D3DERR_INVALIDCALL;
-
-    return swapchain->GetFrontBufferData(pDestSurface);
+    return D3DERR_INVALIDCALL;
   }
 
 
@@ -3205,12 +3189,10 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::WaitForVBlank(UINT iSwapChain) {
     D3D9DeviceLock lock = LockDevice();
 
-    auto* swapchain = GetInternalSwapchain(iSwapChain);
+    if (auto* swapchain = GetInternalSwapchain(iSwapChain))
+      return swapchain->WaitForVBlank();
 
-    if (swapchain == nullptr)
-      return D3DERR_INVALIDCALL;
-
-    return swapchain->WaitForVBlank();
+    return D3DERR_INVALIDCALL;    
   }
 
 
@@ -3424,12 +3406,10 @@ namespace dxvk {
           D3DDISPLAYROTATION* pRotation) {
     D3D9DeviceLock lock = LockDevice();
 
-    auto* swapchain = GetInternalSwapchain(iSwapChain);
+    if (auto* swapchain = GetInternalSwapchain(iSwapChain))
+      return swapchain->GetDisplayModeEx(pMode, pRotation);
 
-    if (unlikely(swapchain == nullptr))
-      return D3DERR_INVALIDCALL;
-
-    return swapchain->GetDisplayModeEx(pMode, pRotation);
+    return D3DERR_INVALIDCALL;
   }
 
 
