@@ -159,6 +159,16 @@ public:
 
     status = m_device->SetTexture(0, defaultTexture.ptr());
 
+    Com<IDirect3DSurface9> rt;
+    status = m_device->CreateRenderTarget(1280, 720, D3DFMT_X8R8G8B8, D3DMULTISAMPLE_NONE, 0, FALSE, &rt, nullptr);
+
+    Com<IDirect3DSurface9> rt2;
+    status = m_device->CreateRenderTarget(1280, 720, D3DFMT_X8R8G8B8, D3DMULTISAMPLE_NONE, 0, FALSE, &rt2, nullptr);
+
+    RECT stretchRect1 = { 0, 0, 640, 720 };
+    RECT stretchRect2 = { 640, 0, 1280, 720 };
+    status = m_device->StretchRect(rt.ptr(), &stretchRect1, rt.ptr(), &stretchRect2, D3DTEXF_LINEAR);
+
     /// 
 
     Com<IDirect3DSurface9> ds;
