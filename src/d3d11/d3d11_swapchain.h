@@ -135,7 +135,7 @@ namespace dxvk {
     bool                    m_dirty = true;
     bool                    m_vsync = true;
 
-    void PresentImage(UINT SyncInterval);
+    HRESULT PresentImage(UINT SyncInterval);
 
     void SubmitPresent(
             D3D11ImmediateContext*  pContext,

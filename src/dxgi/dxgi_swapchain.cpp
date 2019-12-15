@@ -258,9 +258,6 @@ namespace dxvk {
     if (SyncInterval > 4)
       return DXGI_ERROR_INVALID_CALL;
 
-    if (PresentFlags & DXGI_PRESENT_TEST)
-      return S_OK;
-    
     std::lock_guard<std::recursive_mutex> lockWin(m_lockWindow);
     std::lock_guard<std::mutex> lockBuf(m_lockBuffer);
 

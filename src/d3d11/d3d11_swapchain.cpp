@@ -208,11 +208,25 @@ namespace dxvk {
     if (m_presenter == nullptr)
       CreatePresenter();
 
+    HRESULT hr = S_OK;
+
+    if (!m_presenter->hasSwapChain()) {
+      RecreateSwapChain(vsync);
+      m_dirty = false;
+    }
+
+    if (!m_presenter->hasSwapChain())
+      hr = DXGI_STATUS_OCCLUDED;
+
+    if (m_device->getDeviceStatus() != VK_SUCCESS)
+      hr = DXGI_ERROR_DEVICE_RESET;
+
+    if ((PresentFlags & DXGI_PRESENT_TEST) || hr != S_OK)
+      return hr;
+
     if (std::exchange(m_dirty, false))
       RecreateSwapChain(vsync);
     
-    HRESULT hr = S_OK;
-
     try {
       PresentImage(SyncInterval);
     } catch (const DxvkError& e) {
@@ -220,14 +234,11 @@ namespace dxvk {
       hr = E_FAIL;
     }
 
-    if (m_device->getDeviceStatus() != VK_SUCCESS)
-      hr = DXGI_ERROR_DEVICE_RESET;
-
     return hr;
   }
 
 
-  void D3D11SwapChain::PresentImage(UINT SyncInterval) {
+  HRESULT D3D11SwapChain::PresentImage(UINT SyncInterval) {
     Com<ID3D11DeviceContext> deviceContext = nullptr;
     m_parent->GetImmediateContext(&deviceContext);
 
@@ -242,11 +253,36 @@ namespace dxvk {
     for (uint32_t i = 0; i < SyncInterval || i < 1; i++) {
       SynchronizePresent();
 
+      if (!m_presenter->hasSwapChain())
+        return DXGI_STATUS_OCCLUDED;
+
+      // Presentation semaphores and WSI swap chain image
+      vk::PresenterInfo info = m_presenter->info();
+      vk::PresenterSync sync = m_presenter->getSyncSemaphores();
+
+      uint32_t imageIndex = 0;
+
+      VkResult status = m_presenter->acquireNextImage(
+        sync.acquire, VK_NULL_HANDLE, imageIndex);
+
+      while (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
+        RecreateSwapChain(m_vsync);
+
+        if (!m_presenter->hasSwapChain())
+          return DXGI_STATUS_OCCLUDED;
+        
+        info = m_presenter->info();
+        sync = m_presenter->getSyncSemaphores();
+
+        status = m_presenter->acquireNextImage(
+          sync.acquire, VK_NULL_HANDLE, imageIndex);
+      }
+
+      // Resolve back buffer if it is multisampled. We
+      // only have to do it only for the first frame.
       m_context->beginRecording(
         m_device->createCommandList());
       
-      // Resolve back buffer if it is multisampled. We
-      // only have to do it only for the first frame.
       if (m_swapImageResolve != nullptr && i == 0) {
         VkImageSubresourceLayers resolveSubresource;
         resolveSubresource.aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -266,25 +302,6 @@ namespace dxvk {
           resolveRegion, VK_FORMAT_UNDEFINED);
       }
       
-      // Presentation semaphores and WSI swap chain image
-      vk::PresenterInfo info = m_presenter->info();
-      vk::PresenterSync sync = m_presenter->getSyncSemaphores();
-
-      uint32_t imageIndex = 0;
-
-      VkResult status = m_presenter->acquireNextImage(
-        sync.acquire, VK_NULL_HANDLE, imageIndex);
-
-      while (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
-        RecreateSwapChain(m_vsync);
-        
-        info = m_presenter->info();
-        sync = m_presenter->getSyncSemaphores();
-
-        status = m_presenter->acquireNextImage(
-          sync.acquire, VK_NULL_HANDLE, imageIndex);
-      }
-
       // Use an appropriate texture filter depending on whether
       // the back buffer size matches the swap image size
       bool fitSize = m_swapImage->info().extent.width  == info.imageExtent.width
@@ -341,6 +358,7 @@ namespace dxvk {
     }
 
     SignalFrameLatencyEvent();
+    return S_OK;
   }
 
 
