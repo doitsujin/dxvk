@@ -414,9 +414,9 @@ namespace dxvk {
   }
 
 
-  enum FFConstantMembersVS {
-    VSConstWorldViewMatrix   = 0,
-    VSConstNormalMatrix    = 1,
+  enum D3D9FFConstantMembersVS {
+    VSConstWorldViewMatrix,
+    VSConstNormalMatrix,
     VSConstProjMatrix,
       
     VsConstTexcoord0,
@@ -1428,8 +1428,8 @@ namespace dxvk {
     };
 
     m_vs.constants.worldview = LoadConstant(m_mat4Type, VSConstWorldViewMatrix);
-    m_vs.constants.normal  = LoadConstant(m_mat4Type, VSConstNormalMatrix);
-    m_vs.constants.proj  = LoadConstant(m_mat4Type, VSConstProjMatrix);
+    m_vs.constants.normal    = LoadConstant(m_mat4Type, VSConstNormalMatrix);
+    m_vs.constants.proj      = LoadConstant(m_mat4Type, VSConstProjMatrix);
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++)
       m_vs.constants.texcoord[i] = LoadConstant(m_mat4Type, VsConstTexcoord0 + i);
