@@ -7,7 +7,6 @@ namespace dxvk::hud {
   Hud::Hud(
     const Rc<DxvkDevice>& device)
   : m_device        (device),
-    m_uniformBuffer (createUniformBuffer()),
     m_renderer      (device) {
     // Set up constant state
     m_rsState.polygonMode       = VK_POLYGON_MODE_FILL;
@@ -57,11 +56,7 @@ namespace dxvk::hud {
     const Rc<DxvkContext>&  ctx,
           VkSurfaceFormatKHR surfaceFormat,
           VkExtent2D        surfaceSize) {
-    m_uniformData.surfaceSize = surfaceSize;
-    
-    this->updateUniformBuffer(ctx, m_uniformData);
-
-    this->setupRendererState(ctx, surfaceFormat);
+    this->setupRendererState(ctx, surfaceFormat, surfaceSize);
     this->renderHudElements(ctx);
     this->resetRendererState(ctx);
   }
@@ -74,17 +69,15 @@ namespace dxvk::hud {
 
   void Hud::setupRendererState(
     const Rc<DxvkContext>&  ctx,
-          VkSurfaceFormatKHR surfaceFormat) {
+          VkSurfaceFormatKHR surfaceFormat,
+          VkExtent2D        surfaceSize) {
     bool isSrgb = imageFormatInfo(surfaceFormat.format)->flags.test(DxvkFormatFlag::ColorSpaceSrgb);
 
     ctx->setRasterizerState(m_rsState);
     ctx->setBlendMode(0, m_blendMode);
 
-    ctx->bindResourceBuffer(0,
-      DxvkBufferSlice(m_uniformBuffer));
-
     ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, 0, isSrgb);
-    m_renderer.beginFrame(ctx, m_uniformData.surfaceSize);
+    m_renderer.beginFrame(ctx, surfaceSize);
   }
 
 
@@ -95,28 +88,6 @@ namespace dxvk::hud {
 
   void Hud::renderHudElements(const Rc<DxvkContext>& ctx) {
     m_hudItems.render(m_renderer);
-  }
-  
-  
-  void Hud::updateUniformBuffer(const Rc<DxvkContext>& ctx, const HudUniformData& data) {
-    auto slice = m_uniformBuffer->allocSlice();
-    std::memcpy(slice.mapPtr, &data, sizeof(data));
-
-    ctx->invalidateBuffer(m_uniformBuffer, slice);
-  }
-
-
-  Rc<DxvkBuffer> Hud::createUniformBuffer() {
-    DxvkBufferCreateInfo info;
-    info.size           = sizeof(HudUniformData);
-    info.usage          = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-    info.stages         = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
-                        | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    info.access         = VK_ACCESS_UNIFORM_READ_BIT;
-    
-    return m_device->createBuffer(info,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
   }
   
 }

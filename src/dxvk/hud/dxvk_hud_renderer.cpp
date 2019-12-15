@@ -208,11 +208,6 @@ namespace dxvk::hud {
     const SpirvCodeBuffer vsCode(hud_text_vert);
     const SpirvCodeBuffer fsCode(hud_text_frag);
     
-    // One shader resource: Global HUD uniform buffer
-    const std::array<DxvkResourceSlot, 1> vsResources = {{
-      { 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_IMAGE_VIEW_TYPE_MAX_ENUM },
-    }};
-
     // Two shader resources: Font texture and sampler
     const std::array<DxvkResourceSlot, 1> fsResources = {{
       { 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_IMAGE_VIEW_TYPE_2D },
@@ -220,10 +215,7 @@ namespace dxvk::hud {
     
     result.vert = device->createShader(
       VK_SHADER_STAGE_VERTEX_BIT,
-      vsResources.size(),
-      vsResources.data(),
-      { 0x3, 0x1 },
-      vsCode);
+      0, nullptr, { 0x3, 0x1 }, vsCode);
     
     result.frag = device->createShader(
       VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -242,22 +234,13 @@ namespace dxvk::hud {
     const SpirvCodeBuffer vsCode(hud_line_vert);
     const SpirvCodeBuffer fsCode(hud_line_frag);
     
-    // One shader resource: Global HUD uniform buffer
-    const std::array<DxvkResourceSlot, 1> vsResources = {{
-      { 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_IMAGE_VIEW_TYPE_MAX_ENUM },
-    }};
-
     result.vert = device->createShader(
       VK_SHADER_STAGE_VERTEX_BIT,
-      vsResources.size(),
-      vsResources.data(),
-      { 0x3, 0x1 },
-      vsCode);
+      0, nullptr, { 0x3, 0x1 }, vsCode);
     
     result.frag = device->createShader(
       VK_SHADER_STAGE_FRAGMENT_BIT,
-      0, nullptr, { 0x1, 0x1 },
-      fsCode);
+      0, nullptr, { 0x1, 0x1 }, fsCode);
     
     return result;
   }

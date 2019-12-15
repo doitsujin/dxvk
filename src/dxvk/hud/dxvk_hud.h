@@ -76,8 +76,6 @@ namespace dxvk::hud {
     
     const Rc<DxvkDevice>  m_device;
     
-    Rc<DxvkBuffer>        m_uniformBuffer;
-
     DxvkRasterizerState   m_rsState;
     DxvkBlendMode         m_blendMode;
 
@@ -87,19 +85,14 @@ namespace dxvk::hud {
 
     void setupRendererState(
       const Rc<DxvkContext>&  ctx,
-            VkSurfaceFormatKHR surfaceFormat);
+            VkSurfaceFormatKHR surfaceFormat,
+            VkExtent2D        surfaceSize);
 
     void resetRendererState(
       const Rc<DxvkContext>&  ctx);
 
     void renderHudElements(
       const Rc<DxvkContext>&  ctx);
-
-    void updateUniformBuffer(
-      const Rc<DxvkContext>&  ctx,
-      const HudUniformData&   data);
-    
-    Rc<DxvkBuffer> createUniformBuffer();
     
   };
   
