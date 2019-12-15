@@ -177,6 +177,18 @@ namespace dxvk::vk {
     VkResult recreateSwapChain(
       const PresenterDesc&  desc);
 
+    /**
+     * \brief Checks whether a Vulkan swap chain exists
+     *
+     * On Windows, there are situations where we cannot create
+     * a swap chain as the surface size can reach zero, and no
+     * presentation can be performed.
+     * \returns \c true if the presenter has a swap chain.
+     */
+    bool hasSwapChain() const {
+      return m_swapchain;
+    }
+
   private:
 
     Rc<InstanceFn>    m_vki;

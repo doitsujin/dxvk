@@ -131,6 +131,12 @@ namespace dxvk::vk {
     m_info.imageExtent  = pickImageExtent(caps, desc.imageExtent);
     m_info.imageCount   = pickImageCount(caps, m_info.presentMode, desc.imageCount);
 
+    if (!m_info.imageExtent.width || !m_info.imageExtent.height) {
+      m_info.imageCount = 0;
+      m_info.format     = { VK_FORMAT_UNDEFINED, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+      return VK_SUCCESS;
+    }
+
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo;
     fullScreenInfo.sType            = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
     fullScreenInfo.pNext            = nullptr;
