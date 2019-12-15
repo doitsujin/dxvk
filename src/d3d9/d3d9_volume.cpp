@@ -1,5 +1,6 @@
 #include "d3d9_volume.h"
 
+#include "d3d9_device.h"
 #include "d3d9_texture.h"
 
 namespace dxvk {

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3d9_device_child.h"
+#include "d3d9_device.h"
 #include "d3d9_state.h"
 
 namespace dxvk {
@@ -117,7 +118,7 @@ namespace dxvk {
     template <typename Dst, typename Src>
     void ApplyOrCapture(Dst* dst, const Src* src) {
       if (m_captures.flags.test(D3D9CapturedStateFlag::VertexDecl))
-        dst->SetVertexDeclaration(src->vertexDecl);
+        dst->SetVertexDeclaration(src->vertexDecl.ptr());
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::StreamFreq)) {
         for (uint32_t i = 0; i < caps::MaxStreams; i++) {
@@ -127,7 +128,7 @@ namespace dxvk {
       }
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::Indices))
-        dst->SetIndices(src->indices);
+        dst->SetIndices(src->indices.ptr());
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::RenderStates)) {
         for (uint32_t i = 0; i < m_captures.renderStates.size(); i++) {
@@ -153,7 +154,7 @@ namespace dxvk {
             const auto& vbo = src->vertexBuffers[i];
             dst->SetStreamSource(
               i,
-              vbo.vertexBuffer,
+              vbo.vertexBuffer.ptr(),
               vbo.offset,
               vbo.stride);
           }
@@ -171,10 +172,10 @@ namespace dxvk {
       }
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::VertexShader))
-        dst->SetVertexShader(src->vertexShader);
+        dst->SetVertexShader(src->vertexShader.ptr());
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::PixelShader))
-        dst->SetPixelShader(src->pixelShader);
+        dst->SetPixelShader(src->pixelShader.ptr());
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::Transforms)) {
         for (uint32_t i = 0; i < m_captures.transforms.size(); i++) {

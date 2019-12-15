@@ -2,6 +2,8 @@
 
 #include "d3d9_device_child.h"
 
+#include "../dxvk/dxvk_context.h"
+
 namespace dxvk {
 
   enum D3D9_VK_QUERY_STATE : uint32_t {

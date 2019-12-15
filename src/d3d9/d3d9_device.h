@@ -978,7 +978,8 @@ namespace dxvk {
     Com<D3D9Surface, false>         m_autoDepthStencil;
 
     std::vector<
-      IDirect3DSwapChain9Ex*>       m_swapchains;
+      Com<D3D9SwapChainEx,
+      false>>                       m_swapchains;
 
     std::unordered_map<
       D3D9SamplerKey,
@@ -1030,11 +1031,6 @@ namespace dxvk {
             VkShaderStageFlagBits ShaderStage,
       const DWORD*                pShaderBytecode,
       const DxsoModuleInfo*       pModuleInfo);
-
-    template<typename T>
-    static const D3D9CommonShader* GetCommonShader(T* pShader) {
-      return pShader != nullptr ? pShader->GetCommonShader() : nullptr;
-    }
 
     // So we don't do OOB.
     template <DxsoProgramType  ProgramType,

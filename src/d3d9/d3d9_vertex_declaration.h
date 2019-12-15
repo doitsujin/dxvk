@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3d9_device_child.h"
+#include "d3d9_util.h"
 
 #include <vector>
 

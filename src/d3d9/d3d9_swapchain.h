@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3d9_device_child.h"
+#include "d3d9_device.h"
 #include "d3d9_format.h"
 
 #include "../dxvk/hud/dxvk_hud.h"
@@ -64,7 +65,7 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE GetDisplayModeEx(D3DDISPLAYMODEEX* pMode, D3DDISPLAYROTATION* pRotation);
 
-    HRESULT Reset(
+    void    Reset(
             D3DPRESENT_PARAMETERS* pPresentParams,
             D3DDISPLAYMODEEX*      pFullscreenDisplayMode);
 
@@ -79,6 +80,8 @@ namespace dxvk {
     void    Invalidate(HWND hWindow);
 
     HRESULT SetDialogBoxMode(bool bEnableDialogs);
+
+    D3D9Surface* GetBackBuffer(UINT iBackBuffer);
 
   private:
 
@@ -125,7 +128,7 @@ namespace dxvk {
     DxvkLogicOpState        m_loState;
     DxvkBlendMode           m_blendMode;
 
-    D3D9Surface*            m_backBuffer = nullptr;
+    Com<D3D9Surface, false> m_backBuffer = nullptr;
     
     RECT                    m_srcRect;
     RECT                    m_dstRect;

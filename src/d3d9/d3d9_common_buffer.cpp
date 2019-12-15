@@ -1,5 +1,6 @@
 #include "d3d9_common_buffer.h"
 
+#include "d3d9_device.h"
 #include "d3d9_util.h"
 
 namespace dxvk {

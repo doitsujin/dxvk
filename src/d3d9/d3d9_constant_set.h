@@ -2,6 +2,8 @@
 
 #include "d3d9_caps.h"
 
+#include "../dxvk/dxvk_buffer.h"
+
 #include "../dxso/dxso_isgn.h"
 
 #include "../util/util_math.h"

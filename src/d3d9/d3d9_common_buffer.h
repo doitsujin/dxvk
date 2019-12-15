@@ -3,6 +3,7 @@
 #include "../dxvk/dxvk_device.h"
 
 #include "d3d9_device_child.h"
+#include "d3d9_format.h"
 
 namespace dxvk {
 

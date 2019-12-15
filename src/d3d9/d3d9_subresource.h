@@ -46,7 +46,7 @@ namespace dxvk {
       if (m_container != nullptr)
         return m_container->QueryInterface(riid, ppContainer);
 
-      return this->m_parent->QueryInterface(riid, ppContainer);
+      return this->GetDevice()->QueryInterface(riid, ppContainer);
     }
 
     D3D9CommonTexture* GetCommonTexture() {

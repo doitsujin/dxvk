@@ -1,5 +1,6 @@
 #include "d3d9_shader.h"
 
+#include "d3d9_device.h"
 #include "d3d9_util.h"
 
 namespace dxvk {

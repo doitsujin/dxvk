@@ -98,17 +98,6 @@ namespace dxvk {
 
   VkImageUsageFlags GetImageUsageFlags(DWORD Usage);
 
-  template <typename T>
-  void changePrivate(T*& srcPtr, T* newPtr) {
-    if (srcPtr != nullptr)
-      srcPtr->ReleasePrivate();
-
-    if (newPtr != nullptr)
-      newPtr->AddRefPrivate();
-
-    srcPtr = newPtr;
-  }
-
   inline void DecodeD3DCOLOR(D3DCOLOR color, float* rgba) {
     // Encoded in D3DCOLOR as argb
     rgba[3] = (float)((color & 0xff000000) >> 24) / 255.0f;

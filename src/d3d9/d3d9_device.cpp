@@ -1143,7 +1143,7 @@ namespace dxvk {
     FlushImplicit(RenderTargetIndex == 0 ? TRUE : FALSE);
     m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
-    changePrivate(m_state.renderTargets[RenderTargetIndex], rt);
+    m_state.renderTargets[RenderTargetIndex] = rt;
 
     UpdateActiveRTs(RenderTargetIndex);
 
@@ -1208,7 +1208,7 @@ namespace dxvk {
     if (m_state.renderTargets[RenderTargetIndex] == nullptr)
       return D3DERR_NOTFOUND;
 
-    *ppRenderTarget = ref(m_state.renderTargets[RenderTargetIndex]);
+    *ppRenderTarget = m_state.renderTargets[RenderTargetIndex].ref();
 
     return D3D_OK;
   }
@@ -1228,7 +1228,7 @@ namespace dxvk {
     FlushImplicit(FALSE);
     m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
-    changePrivate(m_state.depthStencil, ds);
+    m_state.depthStencil = ds;
 
     return D3D_OK;
   }
@@ -1245,7 +1245,7 @@ namespace dxvk {
     if (m_state.depthStencil == nullptr)
       return D3DERR_NOTFOUND;
 
-    *ppZStencilSurface = ref(m_state.depthStencil);
+    *ppZStencilSurface = m_state.depthStencil.ref();
 
     return D3D_OK;
   }
@@ -1902,7 +1902,7 @@ namespace dxvk {
           break;
 
         case D3DRS_SHADEMODE:
-          if (m_state.pixelShader) {
+          if (m_state.pixelShader != nullptr) {
             BindShader<DxsoProgramType::PixelShader>(
               GetCommonShader(m_state.pixelShader),
               GetPixelShaderPermutation());
@@ -2526,10 +2526,10 @@ namespace dxvk {
     if (unlikely(ShouldRecord()))
       return m_recorder->SetVertexDeclaration(decl);
 
-    if (decl == m_state.vertexDecl)
+    if (decl == m_state.vertexDecl.ptr())
       return D3D_OK;
 
-    bool dirtyFFShader = !decl || !m_state.vertexDecl;
+    bool dirtyFFShader = decl == nullptr || m_state.vertexDecl == nullptr;
     if (!dirtyFFShader)
       dirtyFFShader |= decl->TestFlag(D3D9VertexDeclFlag::HasPositionT)  != m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT)
                     || decl->TestFlag(D3D9VertexDeclFlag::HasColor0)     != m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor0)
@@ -2539,7 +2539,7 @@ namespace dxvk {
     if (dirtyFFShader)
       m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
 
-    changePrivate(m_state.vertexDecl, decl);
+    m_state.vertexDecl = decl;
 
     m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
 
@@ -2558,7 +2558,7 @@ namespace dxvk {
     if (m_state.vertexDecl == nullptr)
       return D3D_OK;
 
-    *ppDecl = ref(m_state.vertexDecl);
+    *ppDecl = m_state.vertexDecl.ref();
 
     return D3D_OK;
   }
@@ -2633,7 +2633,7 @@ namespace dxvk {
     if (unlikely(ShouldRecord()))
       return m_recorder->SetVertexShader(shader);
 
-    if (shader == m_state.vertexShader)
+    if (shader == m_state.vertexShader.ptr())
       return D3D_OK;
 
     auto* oldShader = GetCommonShader(m_state.vertexShader);
@@ -2652,7 +2652,7 @@ namespace dxvk {
         || newShader->GetMeta().maxConstIndexB > oldShader->GetMeta().maxConstIndexB;
     }
 
-    changePrivate(m_state.vertexShader, shader);
+    m_state.vertexShader = shader;
 
     if (shader != nullptr) {
       m_flags.clr(D3D9DeviceFlag::DirtyProgVertexShader);
@@ -2677,7 +2677,7 @@ namespace dxvk {
     if (unlikely(ppShader == nullptr))
       return D3DERR_INVALIDCALL;
 
-    *ppShader = ref(m_state.vertexShader);
+    *ppShader = m_state.vertexShader.ref();
 
     return D3D_OK;
   }
@@ -2796,7 +2796,7 @@ namespace dxvk {
     bool needsUpdate = vbo.vertexBuffer != buffer;
 
     if (needsUpdate)
-      changePrivate(vbo.vertexBuffer, buffer);
+      vbo.vertexBuffer = buffer;
 
     needsUpdate |= vbo.offset != OffsetInBytes
                 || vbo.stride != Stride;
@@ -2834,7 +2834,7 @@ namespace dxvk {
 
     const auto& vbo = m_state.vertexBuffers[StreamNumber];
 
-    *ppStreamData   = ref(vbo.vertexBuffer);
+    *ppStreamData   = vbo.vertexBuffer.ref();
     *pOffsetInBytes = vbo.offset;
     *pStride        = vbo.stride;
 
@@ -2902,10 +2902,10 @@ namespace dxvk {
     if (unlikely(ShouldRecord()))
       return m_recorder->SetIndices(buffer);
 
-    if (buffer == m_state.indices)
+    if (buffer == m_state.indices.ptr())
       return D3D_OK;
 
-    changePrivate(m_state.indices, buffer);
+    m_state.indices = buffer;
 
     BindIndices();
 
@@ -2920,7 +2920,7 @@ namespace dxvk {
     if (unlikely(ppIndexData == nullptr))
       return D3DERR_INVALIDCALL;
 
-    *ppIndexData = ref(m_state.indices);
+    *ppIndexData = m_state.indices.ref();
 
     return D3D_OK;
   }
@@ -2959,7 +2959,7 @@ namespace dxvk {
     if (unlikely(ShouldRecord()))
       return m_recorder->SetPixelShader(shader);
 
-    if (shader == m_state.pixelShader)
+    if (shader == m_state.pixelShader.ptr())
       return D3D_OK;
 
     auto* oldShader = GetCommonShader(m_state.pixelShader);
@@ -2978,7 +2978,7 @@ namespace dxvk {
         || newShader->GetMeta().maxConstIndexB > oldShader->GetMeta().maxConstIndexB;
     }
 
-    changePrivate(m_state.pixelShader, shader);
+    m_state.pixelShader = shader;
 
     if (shader != nullptr) {
       m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
@@ -3002,7 +3002,7 @@ namespace dxvk {
     if (unlikely(ppShader == nullptr))
       return D3DERR_INVALIDCALL;
 
-    *ppShader = ref(m_state.pixelShader);
+    *ppShader = m_state.pixelShader.ref();
 
     return D3D_OK;
   }
@@ -3670,7 +3670,7 @@ namespace dxvk {
     if (unlikely(index >= m_swapchains.size()))
       return nullptr;
 
-    return static_cast<D3D9SwapChainEx*>(m_swapchains[index]);
+    return m_swapchains[index].ptr();
   }
 
 
@@ -5367,7 +5367,7 @@ namespace dxvk {
       m_flags.clr(D3D9DeviceFlag::UpDirtiedVertices);
       if (m_state.vertexBuffers[0].vertexBuffer != nullptr)
         BindVertexBuffer(0,
-          m_state.vertexBuffers[0].vertexBuffer,
+          m_state.vertexBuffers[0].vertexBuffer.ptr(),
           m_state.vertexBuffers[0].offset,
           m_state.vertexBuffers[0].stride);
     }
@@ -5513,7 +5513,7 @@ namespace dxvk {
         uint32_t bindMask = 0;
 
         const auto& isgn = cVertexShader != nullptr
-          ? GetCommonShader(cVertexShader.ptr())->GetIsgn()
+          ? GetCommonShader(cVertexShader)->GetIsgn()
           : GetFixedFunctionIsgn();
 
         for (uint32_t i = 0; i < isgn.elemCount; i++) {
@@ -6099,7 +6099,7 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::ResolveZ() {
-    D3D9Surface*           src = static_cast<D3D9Surface*>(m_state.depthStencil);
+    D3D9Surface*           src = m_state.depthStencil.ptr();
     IDirect3DBaseTexture9* dst = m_state.textures[0];
 
     if (unlikely(!src || !dst))
@@ -6215,7 +6215,7 @@ namespace dxvk {
 
   
   HRESULT D3D9DeviceEx::ResetState(D3DPRESENT_PARAMETERS* pPresentationParameters) {
-    if (!pPresentationParameters->AutoDepthStencilFormat)
+    if (!pPresentationParameters->EnableAutoDepthStencil)
       SetDepthStencilSurface(nullptr);
 
     for (uint32_t i = 1; i < caps::MaxSimultaneousRenderTargets; i++)
@@ -6402,7 +6402,7 @@ namespace dxvk {
       m_state.streamFreq[i] = 1;
 
     for (uint32_t i = 0; i < m_state.textures.size(); i++) {
-      m_state.textures[i] = nullptr;
+      TextureChangePrivate(m_state.textures[i], nullptr);
 
       DWORD sampler = i;
       auto samplerInfo = RemapStateSamplerShader(sampler);
@@ -6470,43 +6470,39 @@ namespace dxvk {
         backBufferFmt,
         pPresentationParameters->Windowed)) {
         Logger::err("D3D9DeviceEx::ResetSwapChain: Unsupported backbuffer format.");
-        return D3DERR_INVALIDCALL;
+        return D3DERR_NOTAVAILABLE;
       }
     }
 
-    if (auto* implicitSwapchain = GetInternalSwapchain(0)) {
-      if (FAILED(implicitSwapchain->Reset(pPresentationParameters, pFullscreenDisplayMode)))
-        throw DxvkError("D3D9DeviceEx::ResetSwapChain: failed to reset swapchain");
-    }
-    else {
-      Com<IDirect3DSwapChain9> swapchain;
-      if (FAILED(CreateAdditionalSwapChainEx(pPresentationParameters, pFullscreenDisplayMode, &swapchain)))
-        throw DxvkError("D3D9DeviceEx::ResetSwapChain: failed to create implicit swapchain");
-    }
-
-    Com<IDirect3DSurface9> backbuffer;
-    HRESULT hr = m_swapchains[0]->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &backbuffer);
-    if (FAILED(hr))
-      throw DxvkError("D3D9DeviceEx::ResetSwapChain: failed to get implicit swapchain backbuffers");
-
-    SetRenderTarget(0, backbuffer.ptr());
-
     if (pPresentationParameters->EnableAutoDepthStencil) {
-      Com<D3D9Surface> autoDepthStencil;
+      D3D9_COMMON_TEXTURE_DESC desc;
+      desc.Width              = pPresentationParameters->BackBufferWidth;
+      desc.Height             = pPresentationParameters->BackBufferHeight;
+      desc.Depth              = 1;
+      desc.ArraySize          = 1;
+      desc.MipLevels          = 1;
+      desc.Usage              = D3DUSAGE_DEPTHSTENCIL;
+      desc.Format             = EnumerateFormat(pPresentationParameters->AutoDepthStencilFormat);
+      desc.Pool               = D3DPOOL_DEFAULT;
+      desc.Discard            = FALSE;
+      desc.MultiSample        = pPresentationParameters->MultiSampleType;
+      desc.MultisampleQuality = pPresentationParameters->MultiSampleQuality;
 
-      CreateDepthStencilSurface(
-        pPresentationParameters->BackBufferWidth,
-        pPresentationParameters->BackBufferHeight,
-        pPresentationParameters->AutoDepthStencilFormat,
-        pPresentationParameters->MultiSampleType,
-        pPresentationParameters->MultiSampleQuality,
-        FALSE,
-        reinterpret_cast<IDirect3DSurface9**>(&autoDepthStencil),
-        nullptr);
+      D3D9_VK_FORMAT_MAPPING mapping;
+      if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc, &mapping)))
+        return D3DERR_NOTAVAILABLE;
 
-      m_autoDepthStencil = autoDepthStencil.ptr();
+      m_autoDepthStencil = new D3D9Surface(this, &desc, mapping);
+      m_initializer->InitTexture(m_autoDepthStencil->GetCommonTexture());
       SetDepthStencilSurface(m_autoDepthStencil.ptr());
     }
+
+    if (auto* implicitSwapchain = GetInternalSwapchain(0))
+      implicitSwapchain->Reset(pPresentationParameters, pFullscreenDisplayMode);
+    else
+      m_swapchains.emplace_back(new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode));
+
+    SetRenderTarget(0, GetInternalSwapchain(0)->GetBackBuffer(0));
 
     // Force this if we end up binding the same RT to make scissor change go into effect.
     BindViewportAndScissor();

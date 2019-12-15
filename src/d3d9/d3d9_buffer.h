@@ -64,10 +64,6 @@ namespace dxvk {
 
   };
 
-  inline D3D9CommonBuffer* GetCommonBuffer(D3D9VertexBuffer* pResource) {
-    return pResource != nullptr ? pResource->GetCommonBuffer() : nullptr;
-  }
-
   using D3D9IndexBufferBase = D3D9Buffer<IDirect3DIndexBuffer9>;
   class D3D9IndexBuffer final : public D3D9IndexBufferBase {
 
@@ -88,7 +84,8 @@ namespace dxvk {
 
   };
 
-  inline D3D9CommonBuffer* GetCommonBuffer(D3D9IndexBuffer* pResource) {
+  template <typename T>
+  inline D3D9CommonBuffer* GetCommonBuffer(const T& pResource) {
     return pResource != nullptr ? pResource->GetCommonBuffer() : nullptr;
   }
 

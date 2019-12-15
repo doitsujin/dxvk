@@ -5,6 +5,11 @@
 #include "../dxso/dxso_common.h"
 #include "../util/util_matrix.h"
 
+#include "d3d9_surface.h"
+#include "d3d9_shader.h"
+#include "d3d9_vertex_declaration.h"
+#include "d3d9_buffer.h"
+
 #include <array>
 #include <bitset>
 #include <optional>
@@ -20,17 +25,11 @@ namespace dxvk {
     static constexpr DWORD AlphaToCoverageDisabled = MAKEFOURCC('A', '2', 'M', '0');
     static constexpr DWORD AlphaToCoverageEnabled  = MAKEFOURCC('A', '2', 'M', '1');;
   }
-
-  class D3D9Surface;
-  class D3D9VertexShader;
-  class D3D9PixelShader;
-  class D3D9VertexDecl;
-  class D3D9VertexBuffer;
-  class D3D9IndexBuffer;
   
   struct D3D9ClipPlane {
     float coeff[4];
   };
+
   struct D3D9RenderStateInfo {
     std::array<float, 3> fogColor = { };
     float fogScale   = 0.0f;
@@ -161,7 +160,8 @@ namespace dxvk {
   };
   
   struct D3D9VBO {
-    D3D9VertexBuffer* vertexBuffer = nullptr;
+    Com<D3D9VertexBuffer, false> vertexBuffer;
+
     UINT              offset = 0;
     UINT              stride = 0;
   };
@@ -181,22 +181,12 @@ namespace dxvk {
   };
 
   struct D3D9CapturableState {
-    D3D9CapturableState() {
-      for (uint32_t i = 0; i < textures.size(); i++)
-        textures[i] = nullptr;
+    D3D9CapturableState();
 
-      for (uint32_t i = 0; i < clipPlanes.size(); i++)
-        clipPlanes[i] = D3D9ClipPlane();
+    ~D3D9CapturableState();
 
-      for (uint32_t i = 0; i < streamFreq.size(); i++)
-        streamFreq[i] = 1;
-
-      for (uint32_t i = 0; i < enabledLightIndices.size(); i++)
-        enabledLightIndices[i] = UINT32_MAX;
-    }
-
-    D3D9VertexDecl*                                  vertexDecl = nullptr;
-    D3D9IndexBuffer*                                 indices    = nullptr;
+    Com<D3D9VertexDecl,  false>                       vertexDecl;
+    Com<D3D9IndexBuffer, false>                       indices;
 
     std::array<DWORD, RenderStateCount>              renderStates = { 0 };
 
@@ -210,8 +200,8 @@ namespace dxvk {
       IDirect3DBaseTexture9*,
       SamplerCount>                                  textures;
 
-    D3D9VertexShader*                                vertexShader = nullptr;
-    D3D9PixelShader*                                 pixelShader  = nullptr;
+    Com<D3D9VertexShader, false>                     vertexShader;
+    Com<D3D9PixelShader,  false>                     pixelShader;
 
     D3DVIEWPORT9                                     viewport;
     RECT                                             scissorRect;
@@ -346,15 +336,10 @@ namespace dxvk {
   };
 
   struct Direct3DState9 : public D3D9CapturableState {
-    Direct3DState9() {
-      for (uint32_t i = 0; i < renderTargets.size(); i++)
-        renderTargets[i] = nullptr;
-    }
 
-    std::array<D3D9Surface*, caps::MaxSimultaneousRenderTargets> renderTargets;
+    std::array<Com<D3D9Surface, false>, caps::MaxSimultaneousRenderTargets> renderTargets;
+    Com<D3D9Surface, false> depthStencil;
 
-    D3D9Surface* depthStencil = nullptr;
-    
   };
 
 

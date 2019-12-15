@@ -185,6 +185,11 @@ namespace dxvk {
       D3D9CommonShader,
       DxvkHash, DxvkEq> m_modules;
     
-};
+  };
+
+  template<typename T>
+  const D3D9CommonShader* GetCommonShader(const T& pShader) {
+    return pShader != nullptr ? pShader->GetCommonShader() : nullptr;
+  }
 
 }

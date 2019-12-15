@@ -1,5 +1,7 @@
 #include "d3d9_common_texture.h"
+
 #include "d3d9_util.h"
+#include "d3d9_device.h"
 
 #include <algorithm>
 
@@ -287,6 +289,18 @@ namespace dxvk {
     imageInfo.sampleCount = VK_SAMPLE_COUNT_1_BIT;
 
     return m_device->GetDXVKDevice()->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  }
+
+
+  void D3D9CommonTexture::RecreateSampledView(UINT Lod) {
+    // This will be a no-op for SYSTEMMEM types given we
+    // don't expose the cap to allow texturing with them.
+    if (unlikely(m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM))
+      return;
+
+    const D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
+
+    m_views.Sample = CreateColorViewPair(formatInfo, AllLayers, VK_IMAGE_USAGE_SAMPLED_BIT, Lod);
   }
 
 

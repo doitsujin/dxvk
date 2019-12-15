@@ -1,5 +1,6 @@
 #pragma once
 
+#include "d3d9_device.h"
 #include "d3d9_surface.h"
 #include "d3d9_volume.h"
 #include "d3d9_util.h"

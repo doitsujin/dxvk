@@ -1,11 +1,14 @@
 #pragma once
 
-#include "d3d9_device.h"
 #include "d3d9_format.h"
+#include "d3d9_util.h"
+#include "d3d9_caps.h"
 
 #include "../dxvk/dxvk_device.h"
 
 namespace dxvk {
+
+  class D3D9DeviceEx;
 
   /**
    * \brief Image memory mapping mode
@@ -300,16 +303,7 @@ namespace dxvk {
      * Recreates the main view of the sampler w/ a specific LOD.
      * SetLOD only works on MANAGED textures so this is A-okay.
      */
-    void RecreateSampledView(UINT Lod) {
-      // This will be a no-op for SYSTEMMEM types given we
-      // don't expose the cap to allow texturing with them.
-      if (unlikely(m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM))
-        return;
-
-      const D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
-
-      m_views.Sample = CreateColorViewPair(formatInfo, AllLayers, VK_IMAGE_USAGE_SAMPLED_BIT, Lod);
-    }
+    void RecreateSampledView(UINT Lod);
 
     /**
      * \brief Extent

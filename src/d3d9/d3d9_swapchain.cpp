@@ -61,9 +61,6 @@ namespace dxvk {
 
     m_device->waitForSubmission(&m_presentStatus);
     m_device->waitForIdle();
-
-    if (m_backBuffer)
-      m_backBuffer->ReleasePrivate();
   }
 
 
@@ -165,7 +162,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
     }
 
-    *ppBackBuffer = ref(m_backBuffer);
+    *ppBackBuffer = m_backBuffer.ref();
 
     return D3D_OK;
   }
@@ -278,7 +275,7 @@ namespace dxvk {
   }
 
 
-  HRESULT D3D9SwapChainEx::Reset(
+  void    D3D9SwapChainEx::Reset(
           D3DPRESENT_PARAMETERS* pPresentParams,
           D3DDISPLAYMODEEX*      pFullscreenDisplayMode) {
     auto lock = m_parent->LockDevice();
@@ -339,8 +336,6 @@ namespace dxvk {
 
     if (FAILED(hr))
       SetDialogBoxMode(false);
-
-    return D3D_OK;
   }
 
 
@@ -415,6 +410,11 @@ namespace dxvk {
     m_dialog        = bEnableDialogs;
 
     return D3D_OK;
+  }
+
+
+  D3D9Surface* D3D9SwapChainEx::GetBackBuffer(UINT iBackBuffer) {
+    return m_backBuffer.ptr();
   }
 
 
@@ -684,9 +684,6 @@ namespace dxvk {
   void D3D9SwapChainEx::CreateBackBuffer() {
     // Explicitly destroy current swap image before
     // creating a new one to free up resources
-    if (m_backBuffer)
-      m_backBuffer->ReleasePrivate();
-    
     m_swapImage         = nullptr;
     m_swapImageResolve  = nullptr;
     m_swapImageView     = nullptr;
@@ -709,7 +706,6 @@ namespace dxvk {
     auto mapping = m_parent->LookupFormat(desc.Format);
 
     m_backBuffer = new D3D9Surface(m_parent, &desc, mapping);
-    m_backBuffer->AddRefPrivate();
 
     m_swapImage = m_backBuffer->GetCommonTexture()->GetImage();
 

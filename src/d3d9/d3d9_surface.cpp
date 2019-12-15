@@ -1,6 +1,8 @@
 #include "d3d9_surface.h"
 #include "d3d9_texture.h"
 
+#include "d3d9_device.h"
+
 namespace dxvk {
 
   D3D9Surface::D3D9Surface(

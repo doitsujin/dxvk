@@ -1,5 +1,6 @@
 #include "d3d9_swvp_emu.h"
 
+#include "d3d9_device.h"
 #include "d3d9_vertex_declaration.h"
 
 #include "../spirv/spirv_module.h"

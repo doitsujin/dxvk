@@ -1,5 +1,7 @@
 #include "d3d9_query.h"
 
+#include "d3d9_device.h"
+
 namespace dxvk {
 
   D3D9Query::D3D9Query(

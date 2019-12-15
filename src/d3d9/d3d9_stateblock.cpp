@@ -1,5 +1,6 @@
 #include "d3d9_stateblock.h"
 
+#include "d3d9_device.h"
 #include "d3d9_vertex_declaration.h"
 #include "d3d9_buffer.h"
 #include "d3d9_shader.h"
@@ -53,7 +54,7 @@ namespace dxvk {
 
 
   HRESULT D3D9StateBlock::SetVertexDeclaration(D3D9VertexDecl* pDecl) {
-    changePrivate(m_state.vertexDecl, pDecl);
+    m_state.vertexDecl = pDecl;
 
     m_captures.flags.set(D3D9CapturedStateFlag::VertexDecl);
     return D3D_OK;
@@ -61,7 +62,7 @@ namespace dxvk {
 
 
   HRESULT D3D9StateBlock::SetIndices(D3D9IndexBuffer* pIndexData) {
-    changePrivate(m_state.indices, pIndexData);
+    m_state.indices = pIndexData;
 
     m_captures.flags.set(D3D9CapturedStateFlag::Indices);
     return D3D_OK;
@@ -95,7 +96,8 @@ namespace dxvk {
           D3D9VertexBuffer*   pStreamData,
           UINT                OffsetInBytes,
           UINT                Stride) {
-    changePrivate(m_state.vertexBuffers[StreamNumber].vertexBuffer, pStreamData);
+    m_state.vertexBuffers[StreamNumber].vertexBuffer = pStreamData;
+
     m_state.vertexBuffers[StreamNumber].offset = OffsetInBytes;
     m_state.vertexBuffers[StreamNumber].stride = Stride;
 
@@ -124,7 +126,7 @@ namespace dxvk {
 
 
   HRESULT D3D9StateBlock::SetVertexShader(D3D9VertexShader* pShader) {
-    changePrivate(m_state.vertexShader, pShader);
+    m_state.vertexShader = pShader;
 
     m_captures.flags.set(D3D9CapturedStateFlag::VertexShader);
     return D3D_OK;
@@ -132,7 +134,7 @@ namespace dxvk {
 
 
   HRESULT D3D9StateBlock::SetPixelShader(D3D9PixelShader* pShader) {
-    changePrivate(m_state.pixelShader, pShader);
+    m_state.pixelShader = pShader;
 
     m_captures.flags.set(D3D9CapturedStateFlag::PixelShader);
     return D3D_OK;
