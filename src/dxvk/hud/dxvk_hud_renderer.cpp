@@ -47,6 +47,9 @@ namespace dxvk::hud {
     const std::string&      text) {
     beginTextRendering();
 
+    const float xscale = 1.0f / std::max(float(m_surfaceSize.width),  1.0f);
+    const float yscale = 1.0f / std::max(float(m_surfaceSize.height), 1.0f);
+
     uint32_t vertexCount = 6 * text.size();
 
     auto vertexSlice = allocVertexBuffer(vertexCount * sizeof(HudTextVertex));
@@ -57,30 +60,25 @@ namespace dxvk::hud {
     auto vertexData = reinterpret_cast<HudTextVertex*>(
       vertexSlice.getSliceHandle().mapPtr);
     
-    const float sizeFactor = size / static_cast<float>(g_hudFont.size);
+    const float sizeFactor = size / float(g_hudFont.size);
     
     for (size_t i = 0; i < text.size(); i++) {
       const HudGlyph& glyph = g_hudFont.glyphs[
-        m_charMap[static_cast<uint8_t>(text[i])]];
+        m_charMap[uint8_t(text[i])]];
       
-      const HudPos size  = {
-        sizeFactor * static_cast<float>(glyph.w),
-        sizeFactor * static_cast<float>(glyph.h) };
+      HudPos size  = {
+        sizeFactor * float(glyph.w),
+        sizeFactor * float(glyph.h) };
       
-      const HudPos origin = {
-        pos.x - sizeFactor * static_cast<float>(glyph.originX),
-        pos.y - sizeFactor * static_cast<float>(glyph.originY) };
+      HudPos origin = {
+        pos.x - sizeFactor * float(glyph.originX),
+        pos.y - sizeFactor * float(glyph.originY) };
       
-      const HudPos posTl = { origin.x,          origin.y          };
-      const HudPos posBr = { origin.x + size.x, origin.y + size.y };
+      HudPos posTl = { xscale * (origin.x),          yscale * (origin.y)          };
+      HudPos posBr = { xscale * (origin.x + size.x), yscale * (origin.y + size.y) };
       
-      const HudTexCoord texTl = {
-        static_cast<uint32_t>(glyph.x),
-        static_cast<uint32_t>(glyph.y), };
-        
-      const HudTexCoord texBr = {
-        static_cast<uint32_t>(glyph.x + glyph.w),
-        static_cast<uint32_t>(glyph.y + glyph.h) };
+      HudTexCoord texTl = { uint32_t(glyph.x),           uint32_t(glyph.y)           };
+      HudTexCoord texBr = { uint32_t(glyph.x + glyph.w), uint32_t(glyph.y + glyph.h) };
       
       vertexData[6 * i + 0].position = { posTl.x, posTl.y };
       vertexData[6 * i + 0].texcoord = { texTl.u, texTl.v };
@@ -110,6 +108,9 @@ namespace dxvk::hud {
     const HudLineVertex*    vertexData) {
     beginLineRendering();
 
+    const float xscale = 1.0f / std::max(float(m_surfaceSize.width),  1.0f);
+    const float yscale = 1.0f / std::max(float(m_surfaceSize.height), 1.0f);
+
     auto vertexSlice = allocVertexBuffer(vertexCount * sizeof(HudLineVertex));
     m_context->bindVertexBuffer(0, vertexSlice, sizeof(HudLineVertex));
     m_context->draw(vertexCount, 1, 0, 0);
@@ -117,8 +118,12 @@ namespace dxvk::hud {
     auto dstVertexData = reinterpret_cast<HudLineVertex*>(
       vertexSlice.getSliceHandle().mapPtr);
     
-    for (size_t i = 0; i < vertexCount; i++)
-      dstVertexData[i] = vertexData[i];
+    for (size_t i = 0; i < vertexCount; i++) {
+      dstVertexData[i].position = {
+        xscale * vertexData[i].position.x,
+        yscale * vertexData[i].position.y };
+      dstVertexData[i].color = vertexData[i].color;
+    }
   }
   
   
