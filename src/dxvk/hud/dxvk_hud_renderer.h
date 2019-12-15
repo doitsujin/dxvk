@@ -75,7 +75,15 @@ namespace dxvk::hud {
    * display performance and driver information.
    */
   class HudRenderer {
+    constexpr static uint32_t MaxTextVertexCount    = 512 * 6;
+    constexpr static uint32_t MaxTextInstanceCount  = 64;
+    constexpr static uint32_t MaxLineVertexCount    = 1024;
 
+    struct VertexBufferData {
+      HudColor              textColors[MaxTextInstanceCount];
+      HudTextVertex         textVertices[MaxTextVertexCount];
+      HudLineVertex         lineVertices[MaxLineVertexCount];
+    };
   public:
     
     HudRenderer(
@@ -128,11 +136,14 @@ namespace dxvk::hud {
     Rc<DxvkSampler>     m_fontSampler;
     
     Rc<DxvkBuffer>      m_vertexBuffer;
-    VkDeviceSize        m_vertexOffset = 0;
-    
-    DxvkBufferSlice allocVertexBuffer(
-            VkDeviceSize      dataSize);
+    VertexBufferData*   m_vertexData = nullptr;
 
+    uint32_t            m_currTextVertex    = 0;
+    uint32_t            m_currTextInstance  = 0;
+    uint32_t            m_currLineVertex    = 0;
+
+    void allocVertexBufferSlice();
+    
     void beginTextRendering();
     
     void beginLineRendering();
