@@ -323,6 +323,7 @@ namespace dxvk::hud {
     info.access         = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
     
     return device->createBuffer(info,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
   }
