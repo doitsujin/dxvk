@@ -862,6 +862,9 @@ namespace dxvk {
     if (unlikely(src == nullptr || dst == nullptr))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(src == dst))
+      return D3DERR_INVALIDCALL;
+
     bool fastPath = true;
 
     D3D9CommonTexture* dstTextureInfo = dst->GetCommonTexture();
