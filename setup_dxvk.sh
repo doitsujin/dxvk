@@ -172,6 +172,7 @@ if [ $with_dxgi -ne 0 ] || [ "$action" == "uninstall" ]; then
   $action dxgi
 fi
 
+$action d3d9
 $action d3d10
 $action d3d10_1
 $action d3d10core
