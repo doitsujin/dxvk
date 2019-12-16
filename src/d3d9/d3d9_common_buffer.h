@@ -57,7 +57,7 @@ namespace dxvk {
       if (IsDegenerate())
         return false;
 
-      return range.max > min && range.min < max;;
+      return range.max > min && range.min < max;
     }
 
     void Clear() { min = 0; max = 0; }
