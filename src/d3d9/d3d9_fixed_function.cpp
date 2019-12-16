@@ -414,43 +414,43 @@ namespace dxvk {
   }
 
 
-  enum D3D9FFConstantMembersVS {
-    VSConstWorldViewMatrix,
-    VSConstNormalMatrix,
-    VSConstProjMatrix,
+  enum class D3D9FFVSMembers {
+    WorldViewMatrix,
+    NormalMatrix,
+    ProjMatrix,
       
-    VsConstTexcoord0,
-    VsConstTexcoord1,
-    VsConstTexcoord2,
-    VsConstTexcoord3,
-    VsConstTexcoord4,
-    VsConstTexcoord5,
-    VsConstTexcoord6,
-    VsConstTexcoord7,
+    Texcoord0,
+    Texcoord1,
+    Texcoord2,
+    Texcoord3,
+    Texcoord4,
+    Texcoord5,
+    Texcoord6,
+    Texcoord7,
 
-    VSConstInverseOffset,
-    VSConstInverseExtent,
+    InverseOffset,
+    InverseExtent,
 
-    VSConstGlobalAmbient,
+    GlobalAmbient,
 
-    VSConstLight0,
-    VSConstLight1,
-    VSConstLight2,
-    VSConstLight3,
-    VSConstLight4,
-    VSConstLight5,
-    VSConstLight6,
-    VSConstLight7,
+    Light0,
+    Light1,
+    Light2,
+    Light3,
+    Light4,
+    Light5,
+    Light6,
+    Light7,
 
-    VSConstMaterialDiffuse,
-    VSConstMaterialAmbient,
-    VSConstMaterialSpecular,
-    VSConstMaterialEmissive,
-    VSConstMaterialPower,
+    MaterialDiffuse,
+    MaterialAmbient,
+    MaterialSpecular,
+    MaterialEmissive,
+    MaterialPower,
 
-    VsConstTweenFactor,
+    TweenFactor,
 
-    VSConstMemberCount
+    MemberCount
   };
 
   struct D3D9FFVertexData {
@@ -502,10 +502,10 @@ namespace dxvk {
     } out;
   };
 
-  enum FFConstantMembersPS {
-    PSConstTextureFactor = 0,
+  enum D3D9FFPSMembers {
+    TextureFactor = 0,
 
-    PSConstMemberCount
+    MemberCount
   };
 
   struct D3D9FFPixelData {
@@ -1008,7 +1008,7 @@ namespace dxvk {
       for (uint32_t i = 0; i < m_vsKey.Data.Contents.LightCount; i++) {
         uint32_t light_ptr_t = m_module.defPointerType(m_vs.lightType, spv::StorageClassUniform);
 
-        uint32_t indexVal = m_module.constu32(VSConstLight0 + i);
+        uint32_t indexVal = m_module.constu32(uint32_t(D3D9FFVSMembers::Light0) + i);
         uint32_t lightPtr = m_module.opAccessChain(light_ptr_t, m_vs.constantBuffer, 1, &indexVal);
 
         auto LoadLightItem = [&](uint32_t type, uint32_t idx) {
@@ -1232,7 +1232,7 @@ namespace dxvk {
 
   void D3D9FFShaderCompiler::emitBaseBufferDecl() {
     // Constant Buffer for VS.
-    std::array<uint32_t, VSConstMemberCount> members = {
+    std::array<uint32_t, uint32_t(D3D9FFVSMembers::MemberCount)> members = {
       m_mat4Type, // World
       m_mat4Type, // View
       m_mat4Type, // Proj
@@ -1276,32 +1276,32 @@ namespace dxvk {
 
     uint32_t offset = 0;
 
-    for (uint32_t i = 0; i < VSConstInverseOffset; i++) {
+    for (uint32_t i = 0; i < uint32_t(D3D9FFVSMembers::InverseOffset); i++) {
       m_module.memberDecorateOffset(structType, i, offset);
       offset += sizeof(Matrix4);
       m_module.memberDecorateMatrixStride(structType, i, 16);
       m_module.memberDecorate(structType, i, spv::DecorationRowMajor);
     }
 
-    for (uint32_t i = VSConstInverseOffset; i < VSConstLight0; i++) {
+    for (uint32_t i = uint32_t(D3D9FFVSMembers::InverseOffset); i < uint32_t(D3D9FFVSMembers::Light0); i++) {
       m_module.memberDecorateOffset(structType, i, offset);
       offset += sizeof(Vector4);
     }
 
     for (uint32_t i = 0; i < caps::MaxEnabledLights; i++) {
-      m_module.memberDecorateOffset(structType, VSConstLight0 + i, offset);
+      m_module.memberDecorateOffset(structType, uint32_t(D3D9FFVSMembers::Light0) + i, offset);
       offset += sizeof(D3D9Light);
     }
 
-    for (uint32_t i = VSConstMaterialDiffuse; i < VSConstMaterialPower; i++) {
+    for (uint32_t i = uint32_t(D3D9FFVSMembers::MaterialDiffuse); i < uint32_t(D3D9FFVSMembers::MaterialPower); i++) {
       m_module.memberDecorateOffset(structType, i, offset);
       offset += sizeof(Vector4);
     }
 
-    m_module.memberDecorateOffset(structType, VSConstMaterialPower, offset);
+    m_module.memberDecorateOffset(structType, uint32_t(D3D9FFVSMembers::MaterialPower), offset);
     offset += sizeof(float);
 
-    m_module.memberDecorateOffset(structType, VsConstTweenFactor, offset);
+    m_module.memberDecorateOffset(structType, uint32_t(D3D9FFVSMembers::TweenFactor), offset);
     offset += sizeof(float);
 
     m_module.setDebugName(structType, "D3D9FixedFunctionVS");
@@ -1427,24 +1427,24 @@ namespace dxvk {
         m_module.opAccessChain(typePtr, m_vs.constantBuffer, 1, &offset));
     };
 
-    m_vs.constants.worldview = LoadConstant(m_mat4Type, VSConstWorldViewMatrix);
-    m_vs.constants.normal    = LoadConstant(m_mat4Type, VSConstNormalMatrix);
-    m_vs.constants.proj      = LoadConstant(m_mat4Type, VSConstProjMatrix);
+    m_vs.constants.worldview = LoadConstant(m_mat4Type, uint32_t(D3D9FFVSMembers::WorldViewMatrix));
+    m_vs.constants.normal    = LoadConstant(m_mat4Type, uint32_t(D3D9FFVSMembers::NormalMatrix));
+    m_vs.constants.proj      = LoadConstant(m_mat4Type, uint32_t(D3D9FFVSMembers::ProjMatrix));
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++)
-      m_vs.constants.texcoord[i] = LoadConstant(m_mat4Type, VsConstTexcoord0 + i);
+      m_vs.constants.texcoord[i] = LoadConstant(m_mat4Type, uint32_t(D3D9FFVSMembers::Texcoord0) + i);
 
-    m_vs.constants.invOffset = LoadConstant(m_vec4Type, VSConstInverseOffset);
-    m_vs.constants.invExtent = LoadConstant(m_vec4Type, VSConstInverseExtent);
+    m_vs.constants.invOffset = LoadConstant(m_vec4Type, uint32_t(D3D9FFVSMembers::InverseOffset));
+    m_vs.constants.invExtent = LoadConstant(m_vec4Type, uint32_t(D3D9FFVSMembers::InverseExtent));
 
-    m_vs.constants.globalAmbient = LoadConstant(m_vec4Type, VSConstGlobalAmbient);
+    m_vs.constants.globalAmbient = LoadConstant(m_vec4Type, uint32_t(D3D9FFVSMembers::GlobalAmbient));
 
-    m_vs.constants.materialDiffuse  = LoadConstant(m_vec4Type,  VSConstMaterialDiffuse);
-    m_vs.constants.materialAmbient  = LoadConstant(m_vec4Type,  VSConstMaterialAmbient);
-    m_vs.constants.materialSpecular = LoadConstant(m_vec4Type,  VSConstMaterialSpecular);
-    m_vs.constants.materialEmissive = LoadConstant(m_vec4Type,  VSConstMaterialEmissive);
-    m_vs.constants.materialPower    = LoadConstant(m_floatType, VSConstMaterialPower);
-    m_vs.constants.tweenFactor      = LoadConstant(m_floatType, VsConstTweenFactor);
+    m_vs.constants.materialDiffuse  = LoadConstant(m_vec4Type,  uint32_t(D3D9FFVSMembers::MaterialDiffuse));
+    m_vs.constants.materialAmbient  = LoadConstant(m_vec4Type,  uint32_t(D3D9FFVSMembers::MaterialAmbient));
+    m_vs.constants.materialSpecular = LoadConstant(m_vec4Type,  uint32_t(D3D9FFVSMembers::MaterialSpecular));
+    m_vs.constants.materialEmissive = LoadConstant(m_vec4Type,  uint32_t(D3D9FFVSMembers::MaterialEmissive));
+    m_vs.constants.materialPower    = LoadConstant(m_floatType, uint32_t(D3D9FFVSMembers::MaterialPower));
+    m_vs.constants.tweenFactor      = LoadConstant(m_floatType, uint32_t(D3D9FFVSMembers::TweenFactor));
 
     // Do IO
     m_vs.in.POSITION  = declareIO(true, DxsoSemantic{ DxsoUsage::Position, 0 });
@@ -1901,7 +1901,7 @@ namespace dxvk {
     m_ps.out.COLOR   = declareIO(false, DxsoSemantic{ DxsoUsage::Color, 0 });
 
     // Constant Buffer for PS.
-    std::array<uint32_t, PSConstMemberCount> members = {
+    std::array<uint32_t, uint32_t(D3D9FFPSMembers::MemberCount)> members = {
       m_vec4Type // Texture Factor
     };
 
@@ -1911,7 +1911,7 @@ namespace dxvk {
     m_module.decorateBlock(structType);
     uint32_t offset = 0;
 
-    for (uint32_t i = 0; i < PSConstMemberCount; i++) {
+    for (uint32_t i = 0; i < uint32_t(D3D9FFPSMembers::MemberCount); i++) {
       m_module.memberDecorateOffset(structType, i, offset);
       offset += sizeof(Vector4);
     }
@@ -1948,7 +1948,7 @@ namespace dxvk {
         m_module.opAccessChain(typePtr, m_ps.constantBuffer, 1, &offset));
     };
 
-    m_ps.constants.textureFactor = LoadConstant(m_vec4Type, PSConstTextureFactor);
+    m_ps.constants.textureFactor = LoadConstant(m_vec4Type, uint32_t(D3D9FFPSMembers::TextureFactor));
 
     // Samplers
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
