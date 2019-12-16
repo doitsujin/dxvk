@@ -44,6 +44,13 @@ namespace dxvk {
     inline void set(T num, T denom) {
       const T gcd = std::gcd(num, denom);
 
+      if (gcd == 0) {
+        m_num   = 0;
+        m_denom = 0;
+
+        return;
+      }
+
       m_num = num / gcd;
       m_denom = denom / gcd;
     }
