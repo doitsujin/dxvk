@@ -1,6 +1,6 @@
 # DXVK
 
-A Vulkan-based translation layer for Direct3D 10/11 which allows running 3D applications on Linux using Wine.
+A Vulkan-based translation layer for Direct3D 9/10/11 which allows running 3D applications on Linux using Wine.
 
 For the current status of the project, please refer to the [project wiki](https://github.com/doitsujin/dxvk/wiki).
 
@@ -19,7 +19,7 @@ The setup script optionally takes the following arguments:
 - `--symlink`: Create symbolic links to the DLL files instead of copying them. This is especially useful for development.
 - `--without-dxgi`: Do not install DXVK's DXGI implementation and use the one provided by wine instead. This is necessary for both vkd3d and DXVK to work within the same wine prefix.
 
-Verify that your application uses DXVK instead of wined3d by checking for the presence of the log file `d3d11.log` in the application's directory, or by enabling the HUD (see notes below).
+Verify that your application uses DXVK instead of wined3d by checking for the presence of the log file `d3d9.log` or `d3d11.log` in the application's directory, or by enabling the HUD (see notes below).
 
 In order to remove DXVK from a prefix, run the following command:
 ```
@@ -63,7 +63,7 @@ cd build.w64
 ninja install
 ```
 
-The D3D10, D3D11 and DXGI DLLs will be located in `/your/dxvk/directory/bin`. Setup has to be done manually in this case.
+The D3D9, D3D10, D3D11 and DXGI DLLs will be located in `/your/dxvk/directory/bin`. Setup has to be done manually in this case.
 
 ### Notes on Vulkan drivers
 Before reporting an issue, please check the [Wiki](https://github.com/doitsujin/dxvk/wiki/Driver-support) page on the current driver status and make sure you run a recent enough driver version for your hardware.
@@ -84,6 +84,7 @@ The `DXVK_HUD` environment variable controls a HUD which can display the framera
 - `version`: Shows DXVK version.
 - `api`: Shows the D3D feature level used by the application. Does not work correctly for D3D10 at the moment.
 - `compiler`: Shows shader compiler activity
+- `samplers`: Shows the current number of sampler pairs used *[D3D9 Only]*
 
 Additionally, `DXVK_HUD=1` has the same effect as `DXVK_HUD=devinfo,fps`, and `DXVK_HUD=full` enables all available HUD elements.
 
