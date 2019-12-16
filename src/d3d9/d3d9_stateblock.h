@@ -6,6 +6,61 @@
 
 namespace dxvk {
 
+  enum class D3D9CapturedStateFlag : uint32_t {
+    VertexDecl,
+    Indices,
+    RenderStates,
+    SamplerStates,
+    VertexBuffers,
+    Textures,
+    VertexShader,
+    PixelShader,
+    Viewport,
+    ScissorRect,
+    ClipPlanes,
+    VsConstants,
+    PsConstants,
+    StreamFreq,
+    Transforms,
+    TextureStages,
+    Material
+  };
+
+  using D3D9CapturedStateFlags = Flags<D3D9CapturedStateFlag>;
+
+  struct D3D9StateCaptures {
+    D3D9CapturedStateFlags flags;
+
+    std::bitset<RenderStateCount>                       renderStates;
+
+    std::bitset<SamplerCount>                           samplers;
+    std::array<
+      std::bitset<SamplerStateCount>,
+      SamplerCount>                                     samplerStates;
+
+    std::bitset<caps::MaxStreams>                       vertexBuffers;
+    std::bitset<SamplerCount>                           textures;
+    std::bitset<caps::MaxClipPlanes>                    clipPlanes;
+    std::bitset<caps::MaxStreams>                       streamFreq;
+    std::bitset<caps::MaxTransforms>                    transforms;
+    std::bitset<caps::TextureStageCount>                textureStages;
+    std::array<
+      std::bitset<D3DTSS_CONSTANT>,
+      caps::TextureStageCount>                          textureStageStates;
+
+    struct {
+      std::bitset<caps::MaxFloatConstantsSoftware>      fConsts;
+      std::bitset<caps::MaxOtherConstantsSoftware>      iConsts;
+      std::bitset<caps::MaxOtherConstantsSoftware>      bConsts;
+    } vsConsts;
+
+    struct {
+      std::bitset<caps::MaxFloatConstantsPS>            fConsts;
+      std::bitset<caps::MaxOtherConstants>              iConsts;
+      std::bitset<caps::MaxOtherConstants>              bConsts;
+    } psConsts;
+  };
+
   enum class D3D9StateBlockType :uint32_t {
     None,
     VertexState,
