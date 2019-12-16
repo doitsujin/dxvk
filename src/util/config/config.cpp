@@ -152,6 +152,11 @@ namespace dxvk {
     { R"(\\Crysis3\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
+    /* Atelier Ryza - tries to render video with  *
+     * a D3D9 swap chain over the DXGI swap chain */
+    { R"(\\Atelier_Ryza\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",        "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
