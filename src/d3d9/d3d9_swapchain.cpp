@@ -122,6 +122,7 @@ namespace dxvk {
     m_dirty    |= vsync != m_vsync;
     m_dirty    |= UpdatePresentRegion(pSourceRect, pDestRect);
     m_dirty    |= recreate;
+    m_dirty    |= !m_presenter->hasSwapChain();
     m_vsync     = vsync;
 
     m_dialogChanged = false;
@@ -132,6 +133,12 @@ namespace dxvk {
 
       if (std::exchange(m_dirty, false))
         RecreateSwapChain(vsync);
+
+      // We aren't going to device loss simply because
+      // 99% of D3D9 games don't handle this properly and
+      // just end up crashing (like with alt-tab loss)
+      if (!m_presenter->hasSwapChain())
+        return D3D_OK;
 
       PresentImage(presentInterval);
       return D3D_OK;
