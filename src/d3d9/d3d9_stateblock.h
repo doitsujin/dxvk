@@ -309,8 +309,10 @@ namespace dxvk {
           }
         }
 
-        for (uint32_t i = 0; i < m_captures.vsConsts.bConsts.dwordCount(); i++)
-          dst->SetVertexBoolBitfield(i, m_captures.vsConsts.bConsts.dword(i), src->vsConsts.bConsts[i]);
+        if (m_captures.vsConsts.bConsts.any()) {
+          for (uint32_t i = 0; i < m_captures.vsConsts.bConsts.dwordCount(); i++)
+            dst->SetVertexBoolBitfield(i, m_captures.vsConsts.bConsts.dword(i), src->vsConsts.bConsts[i]);
+        }
       }
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::PsConstants)) {
@@ -330,8 +332,10 @@ namespace dxvk {
           }
         }
 
-        for (uint32_t i = 0; i < m_captures.psConsts.bConsts.dwordCount(); i++)
-          dst->SetPixelBoolBitfield(i, m_captures.psConsts.bConsts.dword(i), src->psConsts.bConsts[i]);
+        if (m_captures.psConsts.bConsts.any()) {
+          for (uint32_t i = 0; i < m_captures.psConsts.bConsts.dwordCount(); i++)
+            dst->SetPixelBoolBitfield(i, m_captures.psConsts.bConsts.dword(i), src->psConsts.bConsts[i]);
+        }
       }
     }
 
