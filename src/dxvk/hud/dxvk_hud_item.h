@@ -52,7 +52,7 @@ namespace dxvk::hud {
 
   public:
 
-    HudItemSet();
+    HudItemSet(const Rc<DxvkDevice>& device);
 
     ~HudItemSet();
 

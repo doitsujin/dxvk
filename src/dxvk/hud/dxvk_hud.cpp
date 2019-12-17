@@ -7,7 +7,8 @@ namespace dxvk::hud {
   Hud::Hud(
     const Rc<DxvkDevice>& device)
   : m_device        (device),
-    m_renderer      (device) {
+    m_renderer      (device),
+    m_hudItems      (device) {
     // Set up constant state
     m_rsState.polygonMode       = VK_POLYGON_MODE_FILL;
     m_rsState.cullMode          = VK_CULL_MODE_BACK_BIT;

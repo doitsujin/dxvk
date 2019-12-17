@@ -15,8 +15,11 @@ namespace dxvk::hud {
   }
 
 
-  HudItemSet::HudItemSet() {
+  HudItemSet::HudItemSet(const Rc<DxvkDevice>& device) {
     std::string configStr = env::getEnvVar("DXVK_HUD");
+
+    if (configStr.empty())
+      configStr = device->config().hud;
 
     if (configStr == "full") {
       // Just enable everything
