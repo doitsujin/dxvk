@@ -110,8 +110,6 @@ namespace dxvk {
             D3DDEVTYPE             DeviceType,
             HWND                   hFocusWindow,
             DWORD                  BehaviorFlags,
-            D3DPRESENT_PARAMETERS* pPresentationParameters,
-            D3DDISPLAYMODEEX*      pDisplayMode,
             Rc<DxvkDevice>         dxvkDevice);
 
     ~D3D9DeviceEx();

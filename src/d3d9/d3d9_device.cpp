@@ -37,8 +37,6 @@ namespace dxvk {
           D3DDEVTYPE             DeviceType,
           HWND                   hFocusWindow,
           DWORD                  BehaviorFlags,
-          D3DPRESENT_PARAMETERS* pPresentationParameters,
-          D3DDISPLAYMODEEX*      pDisplayMode,
           Rc<DxvkDevice>         dxvkDevice)
     : m_adapter        ( pAdapter )
     , m_dxvkDevice     ( dxvkDevice )
@@ -81,10 +79,6 @@ namespace dxvk {
       SetupFPU();
 
     m_availableMemory = DetermineInitialTextureMemory();
-
-    HRESULT hr = InitialReset(pPresentationParameters, pDisplayMode);
-    if (FAILED(hr))
-      throw DxvkError("D3D9DeviceEx: Initial device reset failed.");
   }
 
 

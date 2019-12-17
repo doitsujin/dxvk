@@ -287,15 +287,20 @@ namespace dxvk {
     try {
       auto dxvkDevice = dxvkAdapter->createDevice(m_instance, clientApi, D3D9DeviceEx::GetDeviceFeatures(dxvkAdapter));
 
-      *ppReturnedDeviceInterface = ref(new D3D9DeviceEx(
+      auto* device = new D3D9DeviceEx(
         this,
         adapter,
         DeviceType,
         hFocusWindow,
         BehaviorFlags,
-        pPresentationParameters,
-        pFullscreenDisplayMode,
-        dxvkDevice));
+        dxvkDevice);
+
+      HRESULT hr = device->InitialReset(pPresentationParameters, pFullscreenDisplayMode);
+
+      if (FAILED(hr))
+        return hr;
+
+      *ppReturnedDeviceInterface = ref(device);
     }
     catch (const DxvkError& e) {
       Logger::err(e.message());
