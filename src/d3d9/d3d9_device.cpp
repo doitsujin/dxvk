@@ -6470,7 +6470,7 @@ namespace dxvk {
         backBufferFmt,
         pPresentationParameters->Windowed)) {
         Logger::err("D3D9DeviceEx::ResetSwapChain: Unsupported backbuffer format.");
-        return D3DERR_NOTAVAILABLE;
+        return D3DERR_INVALIDCALL;
       }
     }
 
