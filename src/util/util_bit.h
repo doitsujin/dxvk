@@ -14,6 +14,7 @@
 #endif
 
 #include "util_likely.h"
+#include "util_math.h"
 
 #include <cstring>
 #include <type_traits>
@@ -164,5 +165,84 @@ namespace dxvk::bit {
     return !std::memcmp(a, b, sizeof(T));
     #endif
   }
+
+  template <size_t Bits>
+  class bitset {
+    static constexpr size_t Dwords = align(Bits, 32) / 32;
+  public:
+
+    constexpr bitset()
+      : m_dwords() {
+
+    }
+
+    constexpr void set(uint32_t idx, bool value) {
+      uint32_t dword = 0;
+      uint32_t bit   = idx;
+
+      // Compiler doesn't remove this otherwise.
+      if constexpr (Dwords > 1) {
+        dword = idx / 32;
+        bit   = idx % 32;
+      }
+
+      if (value)
+        m_dwords[dword] |= 1u << bit;
+      else
+        m_dwords[dword] &= ~(1u << bit);
+    }
+
+    constexpr void flip(uint32_t idx) {
+      uint32_t dword = 0;
+      uint32_t bit   = idx;
+
+      // Compiler doesn't remove this otherwise.
+      if constexpr (Dwords > 1) {
+        dword = idx / 32;
+        bit   = idx % 32;
+      }
+
+      m_dwords[dword] ^= 1u << bit;
+    }
+
+    constexpr void setAll() {
+      if constexpr (Bits % 32 == 0) {
+        for (size_t i = 0; i < Dwords; i++)
+          m_dwords[i] = std::numeric_limits<uint32_t>::max();
+      }
+      else {
+        for (size_t i = 0; i < Dwords - 1; i++)
+          m_dwords[i] = std::numeric_limits<uint32_t>::max();
+
+        m_dwords[Dwords - 1] = (1u << (Bits % 32)) - 1;
+      }
+    }
+
+    constexpr bool any() {
+      for (size_t i = 0; i < Dwords; i++) {
+        if (m_dwords[i] != 0)
+          return true;
+      }
+
+      return false;
+    }
+
+    constexpr uint32_t& dword(uint32_t idx) {
+      return m_dwords[idx];
+    }
+
+    constexpr size_t bitCount() {
+      return Bits;
+    }
+
+    constexpr size_t dwordCount() {
+      return Dwords;
+    }
+
+  private:
+
+    uint32_t m_dwords[Dwords];
+
+  };
   
 }
