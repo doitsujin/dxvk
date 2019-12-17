@@ -157,6 +157,10 @@ namespace dxvk {
     { R"(\\Atelier_Ryza\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
+    /* Star Wars Battlefront II: amdags issues    */
+    { R"(\\starwarsbattlefrontii\.exe$)", {{
+      { "dxgi.customVendorId",              "10de" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
