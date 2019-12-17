@@ -6469,7 +6469,8 @@ namespace dxvk {
       if (!IsSupportedBackBufferFormat(
         backBufferFmt,
         pPresentationParameters->Windowed)) {
-        Logger::err("D3D9DeviceEx::ResetSwapChain: Unsupported backbuffer format.");
+        Logger::err(str::format("D3D9DeviceEx::ResetSwapChain: Unsupported backbuffer format: ",
+          EnumerateFormat(pPresentationParameters->BackBufferFormat)));
         return D3DERR_INVALIDCALL;
       }
     }
