@@ -1126,9 +1126,40 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     D3D9Surface* rt = static_cast<D3D9Surface*>(pRenderTarget);
+    const auto* desc = rt != nullptr
+      ? rt->GetCommonTexture()->Desc()
+      : nullptr;
 
-    if (unlikely(rt && !(rt->GetCommonTexture()->Desc()->Usage & D3DUSAGE_RENDERTARGET)))
+    if (unlikely(desc && !(desc->Usage & D3DUSAGE_RENDERTARGET)))
       return D3DERR_INVALIDCALL;
+
+    if (RenderTargetIndex == 0) {
+      D3DVIEWPORT9 viewport;
+      viewport.X       = 0;
+      viewport.Y       = 0;
+      viewport.Width   = desc->Width;
+      viewport.Height  = desc->Height;
+      viewport.MinZ    = 0.0f;
+      viewport.MaxZ    = 1.0f;
+
+      RECT scissorRect;
+      scissorRect.left    = 0;
+      scissorRect.top     = 0;
+      scissorRect.right   = desc->Width;
+      scissorRect.bottom  = desc->Height;
+
+      if (m_state.viewport != viewport) {
+        m_flags.set(D3D9DeviceFlag::DirtyFFViewport);
+        m_flags.set(D3D9DeviceFlag::DirtyPointScale);
+        m_flags.set(D3D9DeviceFlag::DirtyViewportScissor);
+        m_state.viewport = viewport;
+      }
+
+      if (m_state.scissorRect != scissorRect) {
+        m_flags.set(D3D9DeviceFlag::DirtyViewportScissor);
+        m_state.scissorRect = scissorRect;
+      }
+    }
 
     if (m_state.renderTargets[RenderTargetIndex] == rt)
       return D3D_OK;
@@ -1152,8 +1183,6 @@ namespace dxvk {
       m_flags.set(D3D9DeviceFlag::DirtyBlendState);
 
     if (RenderTargetIndex == 0) {
-      const auto* desc = m_state.renderTargets[0]->GetCommonTexture()->Desc();
-
       bool validSampleMask = desc->MultiSample > D3DMULTISAMPLE_NONMASKABLE;
 
       if (validSampleMask != m_flags.test(D3D9DeviceFlag::ValidSampleMask)) {
@@ -1163,26 +1192,6 @@ namespace dxvk {
 
         m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
       }
-
-      D3DVIEWPORT9 viewport;
-      viewport.X       = 0;
-      viewport.Y       = 0;
-      viewport.Width   = desc->Width;
-      viewport.Height  = desc->Height;
-      viewport.MinZ    = 0.0f;
-      viewport.MaxZ    = 1.0f;
-      m_state.viewport = viewport;
-
-      RECT scissorRect;
-      scissorRect.left    = 0;
-      scissorRect.top     = 0;
-      scissorRect.right   = desc->Width;
-      scissorRect.bottom  = desc->Height;
-      m_state.scissorRect = scissorRect;
-
-      m_flags.set(D3D9DeviceFlag::DirtyViewportScissor);
-      m_flags.set(D3D9DeviceFlag::DirtyFFViewport);
-      m_flags.set(D3D9DeviceFlag::DirtyPointScale);
     }
 
     return D3D_OK;
