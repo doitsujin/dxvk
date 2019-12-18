@@ -263,7 +263,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 23> devExtensionList = {{
+    std::array<DxvkExt*, 24> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.ext4444Formats,
@@ -286,6 +286,7 @@ namespace dxvk {
       &devExtensions.khrDriverProperties,
       &devExtensions.khrImageFormatList,
       &devExtensions.khrSamplerMirrorClampToEdge,
+      &devExtensions.khrShaderFloatControls,
       &devExtensions.khrSwapchain,
     }};
 
@@ -548,6 +549,11 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME)) {
       m_deviceInfo.khrDeviceDriverProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR;
       m_deviceInfo.khrDeviceDriverProperties.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.khrDeviceDriverProperties);
+    }
+
+    if (m_deviceExtensions.supports(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME)) {
+      m_deviceInfo.khrShaderFloatControls.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES_KHR;
+      m_deviceInfo.khrShaderFloatControls.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.khrShaderFloatControls);
     }
 
     // Query full device properties for all enabled extensions

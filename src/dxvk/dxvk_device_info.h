@@ -22,6 +22,7 @@ namespace dxvk {
     VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT extVertexAttributeDivisor;
     VkPhysicalDeviceDepthStencilResolvePropertiesKHR    khrDepthStencilResolve;
     VkPhysicalDeviceDriverPropertiesKHR                 khrDeviceDriverProperties;
+    VkPhysicalDeviceFloatControlsPropertiesKHR          khrShaderFloatControls;
   };
 
 
