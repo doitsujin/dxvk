@@ -1477,6 +1477,9 @@ namespace dxvk {
     if (unlikely(ShouldRecord()))
       return m_recorder->SetViewport(&viewport);
 
+    if (m_state.viewport == viewport)
+      return D3D_OK;
+
     m_state.viewport = viewport;
 
     m_flags.set(D3D9DeviceFlag::DirtyViewportScissor);
