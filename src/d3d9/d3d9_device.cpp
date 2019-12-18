@@ -1460,27 +1460,16 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetViewport(const D3DVIEWPORT9* pViewport) {
     D3D9DeviceLock lock = LockDevice();
 
-    D3DVIEWPORT9 viewport;
-    if (pViewport == nullptr) {
-      auto rtv = m_state.renderTargets[0]->GetRenderTargetView(false);
-
-      viewport.X      = 0;
-      viewport.Y      = 0;
-      viewport.Width  = rtv->image()->info().extent.width;
-      viewport.Height = rtv->image()->info().extent.height;
-      viewport.MinZ   = 0.0f;
-      viewport.MaxZ   = 1.0f;
-    }
-    else
-      viewport = *pViewport;
+    if (unlikely(pViewport == nullptr))
+      return D3DERR_INVALIDCALL;
 
     if (unlikely(ShouldRecord()))
-      return m_recorder->SetViewport(&viewport);
+      return m_recorder->SetViewport(pViewport);
 
-    if (m_state.viewport == viewport)
+    if (m_state.viewport == *pViewport)
       return D3D_OK;
 
-    m_state.viewport = viewport;
+    m_state.viewport = *pViewport;
 
     m_flags.set(D3D9DeviceFlag::DirtyViewportScissor);
     m_flags.set(D3D9DeviceFlag::DirtyFFViewport);
