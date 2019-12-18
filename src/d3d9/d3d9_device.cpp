@@ -6469,6 +6469,11 @@ namespace dxvk {
       }
     }
 
+    if (auto* implicitSwapchain = GetInternalSwapchain(0))
+      implicitSwapchain->Reset(pPresentationParameters, pFullscreenDisplayMode);
+    else
+      m_swapchains.emplace_back(new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode));
+
     if (pPresentationParameters->EnableAutoDepthStencil) {
       D3D9_COMMON_TEXTURE_DESC desc;
       desc.Width              = pPresentationParameters->BackBufferWidth;
@@ -6491,11 +6496,6 @@ namespace dxvk {
       m_initializer->InitTexture(m_autoDepthStencil->GetCommonTexture());
       SetDepthStencilSurface(m_autoDepthStencil.ptr());
     }
-
-    if (auto* implicitSwapchain = GetInternalSwapchain(0))
-      implicitSwapchain->Reset(pPresentationParameters, pFullscreenDisplayMode);
-    else
-      m_swapchains.emplace_back(new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode));
 
     SetRenderTarget(0, GetInternalSwapchain(0)->GetBackBuffer(0));
 
