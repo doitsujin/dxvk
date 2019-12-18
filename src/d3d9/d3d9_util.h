@@ -204,6 +204,17 @@ namespace dxvk {
     return !(a == b);
   }
 
+  inline bool operator == (const RECT& a, const RECT& b) {
+    return a.left   == b.left  &&
+           a.right  == b.right &&
+           a.top    == b.top   &&
+           a.bottom == b.bottom;
+  }
+
+  inline bool operator != (const RECT& a, const RECT& b) {
+    return !(a == b);
+  }
+
   inline bool IsPoolManaged(D3DPOOL Pool) {
     return Pool == D3DPOOL_MANAGED || Pool == D3DPOOL_MANAGED_EX;
   }
