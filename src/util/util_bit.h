@@ -176,6 +176,19 @@ namespace dxvk::bit {
 
     }
 
+    constexpr bool get(uint32_t idx) const {
+      uint32_t dword = 0;
+      uint32_t bit   = idx;
+
+      // Compiler doesn't remove this otherwise.
+      if constexpr (Dwords > 1) {
+        dword = idx / 32;
+        bit   = idx % 32;
+      }
+
+      return m_dwords[dword] & (1u << bit);
+    }
+
     constexpr void set(uint32_t idx, bool value) {
       uint32_t dword = 0;
       uint32_t bit   = idx;
