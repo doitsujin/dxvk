@@ -2202,6 +2202,9 @@ namespace dxvk {
     if (unlikely(ShouldRecord()))
       return m_recorder->SetScissorRect(pRect);
 
+    if (m_state.scissorRect == *pRect)
+      return D3D_OK;
+
     m_state.scissorRect = *pRect;
 
     m_flags.set(D3D9DeviceFlag::DirtyViewportScissor);
