@@ -145,9 +145,11 @@ namespace dxvk {
     
     /**
      * \brief Adds the header to the buffer
+     *
+     * \param [in] version SPIR-V version
      * \param [in] boundIds Number of bound IDs
      */
-    void putHeader(uint32_t boundIds);
+    void putHeader(uint32_t version, uint32_t boundIds);
 
     /**
      * \brief Erases given number of dwords

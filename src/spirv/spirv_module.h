@@ -28,6 +28,10 @@ namespace dxvk {
     uint32_t sSampleId     = 0;
     uint32_t sMinLod       = 0;
   };
+
+  constexpr uint32_t spvVersion(uint32_t major, uint32_t minor) {
+    return (major << 16) | (minor << 8);
+  }
   
   /**
    * \brief SPIR-V module
@@ -41,7 +45,8 @@ namespace dxvk {
     
   public:
     
-    SpirvModule();
+    explicit SpirvModule(uint32_t version);
+
     ~SpirvModule();
     
     SpirvCodeBuffer compile() const;
@@ -1204,6 +1209,7 @@ namespace dxvk {
     
   private:
     
+    uint32_t m_version;
     uint32_t m_id             = 1;
     uint32_t m_instExtGlsl450 = 0;
     

@@ -82,7 +82,8 @@ namespace dxvk {
 
   public:
 
-    D3D9SWVPEmulatorGenerator(const std::string& name) {
+    D3D9SWVPEmulatorGenerator(const std::string& name)
+    : m_module(spvVersion(1, 3)) {
       m_entryPointId = m_module.allocateId();
 
       m_module.setDebugSource(

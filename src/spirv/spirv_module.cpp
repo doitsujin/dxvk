@@ -4,7 +4,8 @@
 
 namespace dxvk {
   
-  SpirvModule:: SpirvModule() {
+  SpirvModule::SpirvModule(uint32_t version)
+  : m_version(version) {
     this->instImportGlsl450();
   }
   
@@ -16,7 +17,7 @@ namespace dxvk {
   
   SpirvCodeBuffer SpirvModule::compile() const {
     SpirvCodeBuffer result;
-    result.putHeader(m_id);
+    result.putHeader(m_version, m_id);
     result.append(m_capabilities);
     result.append(m_extensions);
     result.append(m_instExt);
