@@ -19,6 +19,7 @@ namespace dxvk {
     const DxbcAnalysisInfo&   analysis)
   : m_moduleInfo (moduleInfo),
     m_programInfo(programInfo),
+    m_module     (spvVersion(1, 3)),
     m_isgn       (isgn),
     m_osgn       (osgn),
     m_psgn       (psgn),
