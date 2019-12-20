@@ -851,9 +851,9 @@ namespace dxvk {
       if (IsExtended())
         return true;
 
-      m_availableMemory += delta;
+      int64_t availableMemory = m_availableMemory.fetch_add(delta);
 
-      return !m_d3d9Options.memoryTrackTest || m_availableMemory > 0;
+      return !m_d3d9Options.memoryTrackTest || availableMemory >= delta;
     }
 
     void ResolveZ();
