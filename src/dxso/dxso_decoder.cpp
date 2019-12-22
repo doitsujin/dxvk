@@ -180,6 +180,8 @@ namespace dxvk {
 
     m_ctx.instruction.predicated = token & (1 << 28);
 
+    m_ctx.instruction.coissue    = token & 0x40000000;
+
     m_ctx.instruction.specificData.uint32 =
       (token & 0x00ff0000) >> 16;
 

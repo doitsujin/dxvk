@@ -71,6 +71,7 @@ namespace dxvk {
   struct DxsoShaderInstruction {
     DxsoOpcode             opcode;
     bool                   predicated;
+    bool                   coissue;
     DxsoOpcodeSpecificData specificData;
 
     uint32_t               tokenLength;
