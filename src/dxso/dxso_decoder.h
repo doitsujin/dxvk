@@ -193,6 +193,8 @@ namespace dxvk {
   };
 
   struct DxsoInstructionContext {
+    uint32_t                    instructionIdx;
+
     DxsoShaderInstruction       instruction;
 
     DxsoRegister                pred;
@@ -212,7 +214,9 @@ namespace dxvk {
   public:
 
     DxsoDecodeContext(const DxsoProgramInfo& programInfo)
-      : m_programInfo( programInfo ) { }
+      : m_programInfo( programInfo ) {
+      m_ctx.instructionIdx = 0;
+    }
 
     /**
      * \brief Retrieves current instruction context

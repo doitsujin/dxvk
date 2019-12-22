@@ -175,6 +175,8 @@ namespace dxvk {
   bool DxsoDecodeContext::decodeInstruction(DxsoCodeIter& iter) {
     uint32_t token = iter.read();
 
+    m_ctx.instructionIdx++;
+
     m_ctx.instruction.opcode = static_cast<DxsoOpcode>(
       token & 0x0000ffff);
 
