@@ -218,7 +218,7 @@ namespace dxvk {
         VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT };
 
       case D3D9Format::D24X8: return {
-        VK_FORMAT_D32_SFLOAT,
+        VK_FORMAT_D24_UNORM_S8_UINT,
         VK_FORMAT_UNDEFINED,
         VK_IMAGE_ASPECT_DEPTH_BIT };
 
