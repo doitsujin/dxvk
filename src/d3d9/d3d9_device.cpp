@@ -4101,7 +4101,7 @@ namespace dxvk {
     // D3D9 does not do region tracking for READONLY locks
     // But lets also account for whether we get readback from ProcessVertices
     const bool quickRead   = ((Flags & D3DLOCK_READONLY) && !pResource->GetReadLocked());
-    const bool boundsCheck = IsPoolManaged(desc.Pool) && !quickRead;
+    const bool boundsCheck = desc.Pool != D3DPOOL_DEFAULT && !quickRead;
 
     if (boundsCheck) {
       // We can only respect this for these cases -- otherwise R/W OOB still get copied on native
