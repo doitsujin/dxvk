@@ -347,7 +347,7 @@ namespace dxvk {
       case D3D9Format::INST: return {}; // Driver hack, handled elsewhere
 
       case D3D9Format::DF24: return {
-        VK_FORMAT_D32_SFLOAT,
+        VK_FORMAT_D24_UNORM_S8_UINT,
         VK_FORMAT_UNDEFINED,
         VK_IMAGE_ASPECT_DEPTH_BIT,
         { VK_COMPONENT_SWIZZLE_R,    VK_COMPONENT_SWIZZLE_ZERO,
