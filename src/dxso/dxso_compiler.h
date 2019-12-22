@@ -487,14 +487,6 @@ namespace dxvk {
       if (value.type.ctype == DxsoScalarType::Float32) {
         const uint32_t typeId = getVectorTypeId(value.type);
 
-        // Saturating only makes sense on floats
-        if (saturate) {
-          value.id = m_module.opNClamp(
-            typeId, value.id,
-            m_module.constfReplicant(0.0f, value.type.ccount),
-            m_module.constfReplicant(1.0f, value.type.ccount));
-        }
-
         // There doesn't seem to be a nice float bitshift method for float vectors
         // in Spirv that I can see... Resorting to multiplication.
         if (shift != 0) {
@@ -508,6 +500,14 @@ namespace dxvk {
             value.id = m_module.opFMul(typeId, value.id, shiftConst);
           else
             value.id = m_module.opVectorTimesScalar(typeId, value.id, shiftConst);
+        }
+
+        // Saturating only makes sense on floats
+        if (saturate) {
+          value.id = m_module.opNClamp(
+            typeId, value.id,
+            m_module.constfReplicant(0.0f, value.type.ccount),
+            m_module.constfReplicant(1.0f, value.type.ccount));
         }
       }
 
