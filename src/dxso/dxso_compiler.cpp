@@ -74,8 +74,18 @@ namespace dxvk {
 
 
   void DxsoCompiler::processInstruction(
-    const DxsoInstructionContext& ctx) {
+    const DxsoInstructionContext& ctx,
+          uint32_t                currentCoissueIdx) {
     const DxsoOpcode opcode = ctx.instruction.opcode;
+
+    for (const auto& coissue : m_analysis->coissues) {
+      if (coissue.instructionIdx == ctx.instructionIdx &&
+          coissue.instructionIdx != currentCoissueIdx)
+        return;
+
+      if (coissue.instructionIdx == ctx.instructionIdx + 1)
+        processInstruction(coissue, coissue.instructionIdx);
+    }
 
     switch (opcode) {
     case DxsoOpcode::Nop:

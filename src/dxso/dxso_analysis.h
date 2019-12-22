@@ -10,6 +10,8 @@ namespace dxvk {
 
     bool usesDerivatives = false;
     bool usesKill        = false;
+
+    std::vector<DxsoInstructionContext> coissues;
   };
 
   class DxsoAnalyzer {

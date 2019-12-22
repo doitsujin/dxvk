@@ -231,7 +231,8 @@ namespace dxvk {
      * \param [in] ins The instruction
      */
     void processInstruction(
-      const DxsoInstructionContext& ctx);
+      const DxsoInstructionContext& ctx,
+            uint32_t                currentCoissueIdx = 0);
 
     /**
      * \brief Finalizes the shader
