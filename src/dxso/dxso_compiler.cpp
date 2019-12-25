@@ -2531,6 +2531,8 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         else
           eyeRay = emitRegisterLoad(ctx.src[1], vec3Mask).id;
 
+        eyeRay = m_module.opNormalize(vec3Type, eyeRay);
+        normal = m_module.opNormalize(vec3Type, normal);
         uint32_t reflection = m_module.opReflect(vec3Type, eyeRay, normal);
 
         for (uint32_t i = 0; i < 3; i++)
