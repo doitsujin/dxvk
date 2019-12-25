@@ -2534,6 +2534,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         eyeRay = m_module.opNormalize(vec3Type, eyeRay);
         normal = m_module.opNormalize(vec3Type, normal);
         uint32_t reflection = m_module.opReflect(vec3Type, eyeRay, normal);
+        reflection = m_module.opFNegate(vec3Type, reflection);
 
         for (uint32_t i = 0; i < 3; i++)
           indices[i] = m_module.opCompositeExtract(m_module.defFloatType(32), reflection, 1, &i);
