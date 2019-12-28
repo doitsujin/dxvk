@@ -122,7 +122,9 @@ namespace dxvk {
     m_dirty    |= vsync != m_vsync;
     m_dirty    |= UpdatePresentRegion(pSourceRect, pDestRect);
     m_dirty    |= recreate;
-    m_dirty    |= !m_presenter->hasSwapChain();
+    m_dirty    |= m_presenter != nullptr &&
+                 !m_presenter->hasSwapChain();
+
     m_vsync     = vsync;
 
     m_dialogChanged = false;
