@@ -17,6 +17,10 @@
 
 #include <vulkan/vulkan.h>
 
+#ifndef _WIN32
+#include <vulkan/vulkan_native.h>
+#endif
+
 #ifdef __WINE__
 #pragma pop_macro("_WIN32")
 #endif
