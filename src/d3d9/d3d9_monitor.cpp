@@ -2,6 +2,9 @@
 
 #include "d3d9_format.h"
 
+#include "../wsi/wsi_window.h"
+#include "../wsi/wsi_monitor.h"
+
 namespace dxvk {
 
   uint32_t GetMonitorFormatBpp(D3D9Format Format) {
@@ -75,49 +78,7 @@ namespace dxvk {
 
 
   HMONITOR GetDefaultMonitor() {
-    return ::MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY);
-  }
-
-
-  HRESULT SetMonitorDisplayMode(
-          HMONITOR                hMonitor,
-    const D3DDISPLAYMODEEX*       pMode) {
-    ::MONITORINFOEXW monInfo;
-    monInfo.cbSize = sizeof(monInfo);
-
-    if (!::GetMonitorInfoW(hMonitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
-      Logger::err("D3D9: Failed to query monitor info");
-      return E_FAIL;
-    }
-    
-    DEVMODEW devMode = { };
-    devMode.dmSize       = sizeof(devMode);
-    devMode.dmFields     = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL;
-    devMode.dmPelsWidth  = pMode->Width;
-    devMode.dmPelsHeight = pMode->Height;
-    devMode.dmBitsPerPel = GetMonitorFormatBpp(EnumerateFormat(pMode->Format));
-    
-    if (pMode->RefreshRate != 0)  {
-      devMode.dmFields |= DM_DISPLAYFREQUENCY;
-      devMode.dmDisplayFrequency = pMode->RefreshRate;
-    }
-    
-    Logger::info(str::format("D3D9: Setting display mode: ",
-      devMode.dmPelsWidth, "x", devMode.dmPelsHeight, "@",
-      devMode.dmDisplayFrequency));
-    
-    LONG status = ::ChangeDisplaySettingsExW(
-      monInfo.szDevice, &devMode, nullptr, CDS_FULLSCREEN, nullptr);
-
-    if (status != DISP_CHANGE_SUCCESSFUL) {
-      // Try again but without setting the frequency.
-      devMode.dmFields &= ~DM_DISPLAYFREQUENCY;
-      devMode.dmDisplayFrequency = 0;
-      status = ::ChangeDisplaySettingsExW(
-        monInfo.szDevice, &devMode, nullptr, CDS_FULLSCREEN, nullptr);
-    }
-    
-    return status == DISP_CHANGE_SUCCESSFUL ? D3D_OK : D3DERR_NOTAVAILABLE;
+    return wsi::enumMonitors(0);
   }
 
 
@@ -125,14 +86,7 @@ namespace dxvk {
           HWND                    hWnd,
           UINT*                   pWidth,
           UINT*                   pHeight) {
-    RECT rect = { };
-    ::GetClientRect(hWnd, &rect);
-    
-    if (pWidth)
-      *pWidth = rect.right - rect.left;
-    
-    if (pHeight)
-      *pHeight = rect.bottom - rect.top;
+    wsi::getWindowSize(hWnd, pWidth, pHeight);
   }
 
 
@@ -140,15 +94,12 @@ namespace dxvk {
           HMONITOR                hMonitor,
           UINT*                   pWidth,
           UINT*                   pHeight) {
-    ::MONITORINFOEXW monInfo;
-    monInfo.cbSize = sizeof(monInfo);
+    RECT rect;
 
-    if (!::GetMonitorInfoW(hMonitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
+    if (!wsi::getDesktopCoordinates(hMonitor, &rect)) {
       Logger::err("D3D9: Failed to query monitor info");
       return;
     }
-    
-    auto rect = monInfo.rcMonitor;
 
     if (pWidth)
       *pWidth = rect.right - rect.left;
@@ -161,15 +112,8 @@ namespace dxvk {
   void GetMonitorRect(
           HMONITOR                hMonitor,
           RECT*                   pRect) {
-    ::MONITORINFOEXW monInfo;
-    monInfo.cbSize = sizeof(monInfo);
-
-    if (!::GetMonitorInfoW(hMonitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
+    if (!wsi::getDesktopCoordinates(hMonitor, pRect))
       Logger::err("D3D9: Failed to query monitor info");
-      return;
-    }
-
-    *pRect = monInfo.rcMonitor;
   }
 
 }

@@ -16,10 +16,12 @@ namespace dxvk {
     for (uint32_t i = 0; i < m_instance->adapterCount(); i++)
       m_adapters.emplace_back(this, m_instance->enumAdapters(i), i);
 
+#ifndef DXVK_NATIVE
     if (m_d3d9Options.dpiAware) {
       Logger::info("Process set as DPI aware");
       SetProcessDPIAware();
     }
+#endif
   }
 
 

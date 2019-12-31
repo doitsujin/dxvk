@@ -39,17 +39,6 @@ namespace dxvk {
           BOOL       Windowed);
 
   HMONITOR GetDefaultMonitor();
-
-  /**
-   * \brief Sets monitor display mode
-   * 
-   * \param [in] hMonitor Monitor handle
-   * \param [in] pMode Display mode properties
-   * \returns S_OK on success
-   */
-  HRESULT SetMonitorDisplayMode(
-          HMONITOR                hMonitor,
-    const D3DDISPLAYMODEEX*       pMode);
   
   /**
    * \brief Queries window client size

@@ -5,6 +5,42 @@
 
 namespace dxvk {
 
+#ifndef DXVK_NATIVE
+  typedef HRESULT (STDMETHODCALLTYPE *D3DXDisassembleShader) (
+    const void*      pShader, 
+          BOOL       EnableColorCode, 
+          char*      pComments, 
+          ID3DBlob** ppDisassembly); // ppDisassembly is actually a D3DXBUFFER, but it has the exact same vtable as a ID3DBlob at the start.
+
+  D3DXDisassembleShader g_pfnDisassembleShader = nullptr;
+
+  HRESULT DisassembleShader(
+    const void*      pShader, 
+          BOOL       EnableColorCode, 
+          char*      pComments, 
+          ID3DBlob** ppDisassembly) {
+    if (g_pfnDisassembleShader == nullptr) {
+      HMODULE d3d9x = LoadLibraryA("d3dx9.dll");
+
+      if (d3d9x == nullptr)
+        d3d9x = LoadLibraryA("d3dx9_43.dll");
+
+      g_pfnDisassembleShader = 
+        reinterpret_cast<D3DXDisassembleShader>(GetProcAddress(d3d9x, "D3DXDisassembleShader"));
+    }
+
+    if (g_pfnDisassembleShader == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    return g_pfnDisassembleShader(
+      pShader,
+      EnableColorCode,
+      pComments,
+      ppDisassembly);
+  }
+#endif
+
+
   D3D9CommonShader::D3D9CommonShader() {}
 
   D3D9CommonShader::D3D9CommonShader(
@@ -24,10 +60,10 @@ namespace dxvk {
     const std::string name = shaderKey.toString();
     Logger::debug(str::format("Compiling shader ", name));
     
+    const std::string dumpPath = env::getEnvVar("DXVK_SHADER_DUMP_PATH");
+#ifndef DXVK_NATIVE
     // If requested by the user, dump both the raw DXBC
     // shader and the compiled SPIR-V module to a file.
-    const std::string dumpPath = env::getEnvVar("DXVK_SHADER_DUMP_PATH");
-    
     if (dumpPath.size() != 0) {
       DxsoReader reader(
         reinterpret_cast<const char*>(pShaderBytecode));
@@ -50,6 +86,7 @@ namespace dxvk {
           blob->GetBufferSize());
       }
     }
+#endif
     
     // Decide whether we need to create a pass-through
     // geometry shader for vertex shader stream output
@@ -73,7 +110,7 @@ namespace dxvk {
       // Lets lie about the shader key type for the state cache.
       m_shaders[1]->setShaderKey({ VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, *pHash });
     }
-    
+
     if (dumpPath.size() != 0) {
       std::ofstream dumpStream(
         str::format(dumpPath, "/", name, ".spv"),

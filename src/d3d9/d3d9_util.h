@@ -81,12 +81,6 @@ namespace dxvk {
     AddRef ? castedPtr->AddRefPrivate() : castedPtr->ReleasePrivate();
   }
 
-  HRESULT DisassembleShader(
-    const void*      pShader, 
-          BOOL       EnableColorCode, 
-          char*      pComments, 
-          ID3DBlob** ppDisassembly);
-
   HRESULT DecodeMultiSampleType(
         D3DMULTISAMPLE_TYPE       MultiSample,
         DWORD                     MultisampleQuality,

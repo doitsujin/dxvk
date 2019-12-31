@@ -4,6 +4,7 @@
 
 namespace dxvk {
 
+#ifndef DXVK_NATIVE
   void D3D9Cursor::UpdateCursor(int X, int Y) {
     ::SetCursorPos(X, Y);
   }
@@ -38,5 +39,24 @@ namespace dxvk {
 
     return D3D_OK;
   }
+#else
+  void D3D9Cursor::UpdateCursor(int X, int Y) { 
+    Logger::warn("D3D9Cursor::UpdateCursor: Not supported on native");
+  }
+
+
+  BOOL D3D9Cursor::ShowCursor(BOOL bShow) {
+    Logger::warn("D3D9Cursor::ShowCursor: Not supported on native");
+
+    return std::exchange(m_visible, bShow);
+  }
+
+
+  HRESULT D3D9Cursor::SetHardwareCursor(UINT XHotSpot, UINT YHotSpot, const CursorBitmap& bitmap) {
+    Logger::warn("D3D9Cursor::SetHardwareCursor: Not supported on native");
+
+    return D3DERR_INVALIDCALL;
+  }
+#endif
 
 }

@@ -26,7 +26,9 @@ namespace dxvk {
 
     BOOL    m_visible       = FALSE;
 
+#ifndef DXVK_NATIVE
     HCURSOR m_hCursor       = nullptr;
+#endif
 
   };
 

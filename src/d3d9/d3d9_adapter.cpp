@@ -5,9 +5,13 @@
 #include "d3d9_caps.h"
 #include "d3d9_util.h"
 
+#include "../wsi/wsi_mode.h"
+#include "../wsi/wsi_monitor.h"
+
 #include "../util/util_bit.h"
 #include "../util/util_luid.h"
 #include "../util/util_ratio.h"
+#include "../util/util_string.h"
 
 #include <cfloat>
 
@@ -52,13 +56,13 @@ namespace dxvk {
     
     const auto& props = m_adapter->deviceProperties();
 
-    ::MONITORINFOEXA monInfo;
-    monInfo.cbSize = sizeof(monInfo);
-
-    if (!::GetMonitorInfoA(GetDefaultMonitor(), reinterpret_cast<MONITORINFO*>(&monInfo))) {
+    WCHAR wideDisplayName[32] = { };
+    if (!wsi::getDisplayName(GetDefaultMonitor(), wideDisplayName)) {
       Logger::err("D3D9Adapter::GetAdapterIdentifier: Failed to query monitor info");
       return D3DERR_INVALIDCALL;
     }
+
+    std::string displayName = str::fromws(wideDisplayName);
 
     GUID guid          = bit::cast<GUID>(m_adapter->devicePropertiesExt().coreDeviceId.deviceUUID);
 
@@ -67,9 +71,9 @@ namespace dxvk {
     const char*  desc  = options.customDeviceDesc.empty() ? props.deviceName : options.customDeviceDesc.c_str();
     const char* driver = GetDriverDLL(DxvkGpuVendor(vendorId));
 
-    std::strncpy(pIdentifier->Description, desc,              countof(pIdentifier->Description));
-    std::strncpy(pIdentifier->DeviceName,  monInfo.szDevice,  countof(pIdentifier->DeviceName)); // The GDI device name. Not the actual device name.
-    std::strncpy(pIdentifier->Driver,      driver,            countof(pIdentifier->Driver));     // This is the driver's dll.
+    std::strncpy(pIdentifier->Description, desc,                countof(pIdentifier->Description));
+    std::strncpy(pIdentifier->DeviceName,  displayName.c_str(), countof(pIdentifier->DeviceName)); // The GDI device name. Not the actual device name.
+    std::strncpy(pIdentifier->Driver,      driver,              countof(pIdentifier->Driver));     // This is the driver's dll.
 
     pIdentifier->DeviceIdentifier       = guid;
     pIdentifier->DeviceId               = deviceId;
@@ -738,14 +742,6 @@ namespace dxvk {
     if (!m_modes.empty() && m_modeCacheFormat == Format)
       return; // We already cached the modes for this format. No need to do it again.
 
-    ::MONITORINFOEXW monInfo;
-    monInfo.cbSize = sizeof(monInfo);
-
-    if (!::GetMonitorInfoW(GetDefaultMonitor(), reinterpret_cast<MONITORINFO*>(&monInfo))) {
-      Logger::err("D3D9Adapter::CacheModes: failed to query monitor info");
-      return;
-    }
-
     m_modes.clear();
     m_modeCacheFormat = Format;
 
@@ -757,30 +753,29 @@ namespace dxvk {
 
     // Walk over all modes that the display supports and
     // return those that match the requested format etc.
-    DEVMODEW devMode = { };
-    devMode.dmSize = sizeof(DEVMODEW);
+    wsi::WsiMode devMode = { };
 
     uint32_t modeIndex = 0;
 
     const auto forcedRatio = Ratio<DWORD>(options.forceAspectRatio);
 
-    while (::EnumDisplaySettingsW(monInfo.szDevice, modeIndex++, &devMode)) {
+    while (wsi::getDisplayMode(GetDefaultMonitor(), modeIndex++, &devMode)) {
       // Skip interlaced modes altogether
-      if (devMode.dmDisplayFlags & DM_INTERLACED)
+      if (devMode.interlaced)
         continue;
 
       // Skip modes with incompatible formats
-      if (devMode.dmBitsPerPel != GetMonitorFormatBpp(Format))
+      if (devMode.bitsPerPixel != GetMonitorFormatBpp(Format))
         continue;
 
-      if (!forcedRatio.undefined() && Ratio<DWORD>(devMode.dmPelsWidth, devMode.dmPelsHeight) != forcedRatio)
+      if (!forcedRatio.undefined() && Ratio<DWORD>(devMode.width, devMode.height) != forcedRatio)
         continue;
 
       D3DDISPLAYMODEEX mode;
       mode.Size             = sizeof(D3DDISPLAYMODEEX);
-      mode.Width            = devMode.dmPelsWidth;
-      mode.Height           = devMode.dmPelsHeight;
-      mode.RefreshRate      = devMode.dmDisplayFrequency;
+      mode.Width            = devMode.width;
+      mode.Height           = devMode.height;
+      mode.RefreshRate      = devMode.refreshRate.numerator / devMode.refreshRate.denominator;
       mode.Format           = static_cast<D3DFORMAT>(Format);
       mode.ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
 
