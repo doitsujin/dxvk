@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# default directories
+dxvk_lib32=${dxvk_lib32:-"x32"}
+dxvk_lib64=${dxvk_lib64:-"x64"}
+
 # figure out where we are
 basedir=`dirname "$(readlink -f $0)"`
 
@@ -45,12 +49,20 @@ fi
 # find wine executable
 export WINEDEBUG=-all
 
-if [ -z "$wine" ]; then
-  wine="wine"
-fi
+wine="wine"
+wine64="wine64"
+wineboot="wineboot"
 
-wine64="${wine}64"
-wineboot="${wine}boot"
+# $PATH is the way for user to control where wine is located (including custom Wine versions).
+# Pure 64-bit Wine (non Wow64) requries skipping 32-bit steps.
+# In such case, wine64 and winebooot will be present, but wine binary will be missing,
+# however it can be present in other PATHs, so it shouldn't be used, to avoid versions mixing.
+wine_path=$(dirname "$(which $wineboot)")
+wow64=true
+if ! [ -f "$wine_path/$wine" ]; then
+   wine=$wine64
+   wow64=false
+fi
 
 # resolve 32-bit and 64-bit system32 path
 winever=`$wine --version | grep wine`
@@ -63,8 +75,10 @@ fi
 # if they are missing
 $wineboot -u
 
-win32_sys_path=$($wine winepath -u 'C:\windows\system32' 2> /dev/null)
 win64_sys_path=$($wine64 winepath -u 'C:\windows\system32' 2> /dev/null)
+if $wow64; then
+  win32_sys_path=$($wine winepath -u 'C:\windows\system32' 2> /dev/null)
+fi
 
 if [ -z "$win32_sys_path" ] && [ -z "$win64_sys_path" ]; then
   echo 'Failed to resolve C:\windows\system32.' >&2
@@ -147,20 +161,30 @@ uninstallFile() {
 }
 
 install() {
-  installFile "$win32_sys_path" "x32" "$1"
-  inst32_ret="$?"
-  installFile "$win64_sys_path" "x64" "$1"
+  installFile "$win64_sys_path" "$dxvk_lib64" "$1"
   inst64_ret="$?"
+
+  inst32_ret=-1
+  if $wow64; then
+    installFile "$win32_sys_path" "$dxvk_lib32" "$1"
+    inst32_ret="$?"
+  fi
+
   if [ "$inst32_ret" -eq 0 ] || [ "$inst64_ret" -eq 0 ]; then
     overrideDll "$1"
   fi
 }
 
 uninstall() {
-  uninstallFile "$win32_sys_path" "x32" "$1"
-  uninst32_ret="$?"
-  uninstallFile "$win64_sys_path" "x64" "$1"
+  uninstallFile "$win64_sys_path" "$dxvk_lib64" "$1"
   uninst64_ret="$?"
+
+  uninst32_ret=-1
+  if $wow64; then
+    uninstallFile "$win32_sys_path" "$dxvk_lib32" "$1"
+    uninst32_ret="$?"
+  fi
+
   if [ "$uninst32_ret" -eq 0 ] || [ "$uninst64_ret" -eq 0 ]; then
     restoreDll "$1"
   fi
