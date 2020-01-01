@@ -37,6 +37,10 @@ namespace dxvk {
     /// Work around a NV driver quirk
     /// Fixes flickering/z-fighting in some games.
     bool invariantPosition;
+
+    /// Always use a spec constant to determine sampler type (instead of just in PS 1.x)
+    /// Works around a game bug in Halo CE where it gives cube textures to 2d/volume samplers
+    bool forceSamplerTypeSpecConstants;
   };
 
 }

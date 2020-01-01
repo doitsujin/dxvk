@@ -37,6 +37,8 @@ namespace dxvk {
     shaderModel          = options.shaderModel;
 
     invariantPosition    = options.invariantPosition;
+
+    forceSamplerTypeSpecConstants = options.forceSamplerTypeSpecConstants;
   }
 
 }

@@ -438,14 +438,16 @@ namespace dxvk {
     m_ps.functionId = m_module.allocateId();
     m_module.setDebugName(m_ps.functionId, "ps_main");
 
-    if (m_programInfo.majorVersion() < 2) {
+    if (m_programInfo.majorVersion() < 2 || m_moduleInfo.options.forceSamplerTypeSpecConstants) {
       m_ps.samplerTypeSpec = m_module.specConst32(m_module.defIntType(32, 0), 0);
       m_module.decorateSpecId(m_ps.samplerTypeSpec, getSpecId(D3D9SpecConstantId::SamplerType));
       m_module.setDebugName(m_ps.samplerTypeSpec, "s_sampler_types");
 
-      m_ps.projectionSpec = m_module.specConst32(m_module.defIntType(32, 0), 0);
-      m_module.decorateSpecId(m_ps.projectionSpec, getSpecId(D3D9SpecConstantId::ProjectionType));
-      m_module.setDebugName(m_ps.projectionSpec, "s_projections");
+      if (m_programInfo.majorVersion() < 2) {
+        m_ps.projectionSpec = m_module.specConst32(m_module.defIntType(32, 0), 0);
+        m_module.decorateSpecId(m_ps.projectionSpec, getSpecId(D3D9SpecConstantId::ProjectionType));
+        m_module.setDebugName(m_ps.projectionSpec, "s_projections");
+      }
     }
 
     this->setupRenderStateInfo();
@@ -723,7 +725,7 @@ namespace dxvk {
       m_resourceSlots.push_back(resource);
     };
 
-    if (m_programInfo.majorVersion() >= 2) {
+    if (m_programInfo.majorVersion() >= 2 && !m_moduleInfo.options.forceSamplerTypeSpecConstants) {
       DxsoSamplerType samplerType = 
         SamplerTypeFromTextureType(type);
 
@@ -2772,7 +2774,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         SampleImage(texcoordVar, sampler.color[samplerType], false, samplerType);
     };
 
-    if (m_programInfo.majorVersion() >= 2) {
+    if (m_programInfo.majorVersion() >= 2 && !m_moduleInfo.options.forceSamplerTypeSpecConstants) {
       DxsoSamplerType samplerType =
         SamplerTypeFromTextureType(sampler.type);
 

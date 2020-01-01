@@ -5403,7 +5403,7 @@ namespace dxvk {
       UploadConstants<DxsoProgramTypes::PixelShader>();
 
       if (GetCommonShader(m_state.pixelShader)->GetInfo().majorVersion() >= 2)
-        UpdateSamplerTypes(0u, 0u);
+        UpdateSamplerTypes(m_d3d9Options.forceSamplerTypeSpecConstants ? m_samplerTypeBitfield : 0u, 0u);
       else
         UpdateSamplerTypes(m_samplerTypeBitfield, m_projectionBitfield); // For implicit samplers...
     }
