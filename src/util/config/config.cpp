@@ -259,6 +259,12 @@ namespace dxvk {
       // Keeps game's rendering methods consistent
       // for optimal compatibility.
       { "d3d9.customDeviceId",              "4172" },
+      // The game uses incorrect sampler types in
+      // the shaders for glass rendering which
+      // breaks it on native + us if we don't
+      // spec-constantly chose the sampler type
+      // automagically.
+      { "d3d9.forceSamplerTypeSpecConstants", "True" },
     }} },
     /* Counter Strike: Global Offensive
        Needs NVAPI to avoid a forced AO + Smoke
