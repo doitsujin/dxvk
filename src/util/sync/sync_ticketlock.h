@@ -26,7 +26,8 @@ namespace dxvk::sync {
     }
 
     void unlock() {
-      m_serving.fetch_add(1, std::memory_order_release);
+      uint32_t serveNext = m_serving.load() + 1;
+      m_serving.store(serveNext, std::memory_order_release);
     }
 
   private:
