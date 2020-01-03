@@ -102,12 +102,13 @@ else
     lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
     lib_sdl2    = dxvk_compiler.find_library('SDL2',     dirs : dxvk_library_path)
     wrc = find_program('rc')
+	so_prefix = 'dxvk_'
   else
     dxvk_include_path = include_directories('./include', './include/native/', './include/native/windows', './include/native/directx')
     lib_vulkan  = dxvk_compiler.find_library('vulkan')
     lib_sdl2    = dxvk_compiler.find_library('SDL2')
     wrc = find_program('echo')
-    so_prefix = 'lib'
+    so_prefix = 'lib_dxvk_'
   endif
 
   res_ext = ''
