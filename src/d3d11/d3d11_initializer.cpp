@@ -55,6 +55,7 @@ namespace dxvk {
       return;
 
     std::lock_guard<std::mutex> lock(m_mutex);
+    m_transferCommands += 1;
 
     const uint32_t zero = 0;
     m_context->updateBuffer(
