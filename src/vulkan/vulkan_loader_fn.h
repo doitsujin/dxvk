@@ -11,7 +11,7 @@
 #undef _WIN32
 #endif
 
-#ifndef DXVK_NATIVE
+#ifdef _WIN32
 #define VK_USE_PLATFORM_WIN32_KHR 1
 #endif
 
