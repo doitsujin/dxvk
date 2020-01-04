@@ -16,7 +16,7 @@
 namespace dxvk {
   
   struct D3D11ConstantBufferBinding {
-    Com<D3D11Buffer> buffer         = nullptr;
+    Com<D3D11Buffer, false> buffer         = nullptr;
     UINT             constantOffset = 0;
     UINT             constantCount  = 0;
     UINT             constantBound  = 0;
@@ -31,7 +31,7 @@ namespace dxvk {
     
   
   struct D3D11ShaderResourceBindings {
-    std::array<Com<D3D11ShaderResourceView>, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT> views;
+    std::array<Com<D3D11ShaderResourceView, false>, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT> views;
     DxvkBindingSet<D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT>                           hazardous;
   };
     
@@ -41,7 +41,7 @@ namespace dxvk {
   
   
   struct D3D11ContextStateVS {
-    Com<D3D11VertexShader>        shader;
+    Com<D3D11VertexShader, false>        shader;
     D3D11ConstantBufferBindings   constantBuffers;
     D3D11SamplerBindings          samplers;
     D3D11ShaderResourceBindings   shaderResources;
@@ -73,7 +73,7 @@ namespace dxvk {
   
   
   struct D3D11ContextStatePS {
-    Com<D3D11PixelShader>         shader;
+    Com<D3D11PixelShader, false>         shader;
     D3D11ConstantBufferBindings   constantBuffers;
     D3D11SamplerBindings          samplers;
     D3D11ShaderResourceBindings   shaderResources;
@@ -93,14 +93,14 @@ namespace dxvk {
   
   
   struct D3D11VertexBufferBinding {
-    Com<D3D11Buffer> buffer = nullptr;
+    Com<D3D11Buffer, false> buffer = nullptr;
     UINT             offset = 0;
     UINT             stride = 0;
   };
   
   
   struct D3D11IndexBufferBinding {
-    Com<D3D11Buffer> buffer = nullptr;
+    Com<D3D11Buffer, false> buffer = nullptr;
     UINT             offset = 0;
     DXGI_FORMAT      format = DXGI_FORMAT_UNKNOWN;
   };

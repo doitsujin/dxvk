@@ -19,10 +19,6 @@ namespace dxvk {
       const Rc<DxvkDevice>& Device);
     ~D3D11ImmediateContext();
     
-    ULONG STDMETHODCALLTYPE AddRef();
-    
-    ULONG STDMETHODCALLTYPE Release();
-    
     D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE GetType();
     
     UINT STDMETHODCALLTYPE GetContextFlags();
