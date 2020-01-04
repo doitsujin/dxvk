@@ -199,11 +199,13 @@ namespace dxvk {
 
     if (options->syncInterval >= 0)
       SyncInterval = options->syncInterval;
-    
-    bool vsync = SyncInterval != 0;
 
-    m_dirty |= vsync != m_vsync;
-    m_vsync  = vsync;
+    if (!(PresentFlags & DXGI_PRESENT_TEST)) {
+      bool vsync = SyncInterval != 0;
+
+      m_dirty |= vsync != m_vsync;
+      m_vsync  = vsync;
+    }
 
     if (m_presenter == nullptr)
       CreatePresenter();
@@ -211,7 +213,7 @@ namespace dxvk {
     HRESULT hr = S_OK;
 
     if (!m_presenter->hasSwapChain()) {
-      RecreateSwapChain(vsync);
+      RecreateSwapChain(m_vsync);
       m_dirty = false;
     }
 
@@ -225,7 +227,7 @@ namespace dxvk {
       return hr;
 
     if (std::exchange(m_dirty, false))
-      RecreateSwapChain(vsync);
+      RecreateSwapChain(m_vsync);
     
     try {
       PresentImage(SyncInterval);
