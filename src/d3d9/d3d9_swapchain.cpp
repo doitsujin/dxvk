@@ -402,18 +402,10 @@ namespace dxvk {
 
 
   HRESULT D3D9SwapChainEx::SetDialogBoxMode(bool bEnableDialogs) {
-    if (bEnableDialogs) {
-      if (m_presentParams.BackBufferFormat != D3DFMT_X1R5G5B5 &&
-          m_presentParams.BackBufferFormat != D3DFMT_R5G6B5   &&
-          m_presentParams.BackBufferFormat != D3DFMT_X8R8G8B8)
-        return D3DERR_INVALIDCALL;
-
-      if (m_presentParams.SwapEffect == D3DSWAPEFFECT_DISCARD)
-        return D3DERR_INVALIDCALL;
-
-      if (m_presentParams.Flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER)
-        return D3DERR_INVALIDCALL;
-    }
+    // https://docs.microsoft.com/en-us/windows/win32/api/d3d9/nf-d3d9-idirect3ddevice9-setdialogboxmode
+    // The MSDN documentation says this will error out under many weird conditions.
+    // However it doesn't appear to error at all in any of my tests of these
+    // cases described in the documentation.
 
     m_dialogChanged = m_dialog != bEnableDialogs;
     m_dialog        = bEnableDialogs;
