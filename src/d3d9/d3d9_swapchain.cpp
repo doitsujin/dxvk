@@ -338,13 +338,6 @@ namespace dxvk {
 
     UpdatePresentRegion(nullptr, nullptr);
     CreateBackBuffer();
-
-    // If we would fail to go into dialog box mode with
-    // the new mode, let's escape from dialog mode.
-    HRESULT hr = SetDialogBoxMode(m_dialog);
-
-    if (FAILED(hr))
-      SetDialogBoxMode(false);
   }
 
 
