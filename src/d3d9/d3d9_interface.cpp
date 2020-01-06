@@ -75,10 +75,22 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::GetAdapterDisplayMode(UINT Adapter, D3DDISPLAYMODE* pMode) {
-    constexpr D3DFORMAT format = D3DFMT_X8R8G8B8;
-    const UINT mode = GetAdapterModeCount(Adapter, format) - 1;
+    if (auto* adapter = GetAdapter(Adapter)) {
+      D3DDISPLAYMODEEX modeEx;
+      HRESULT hr = adapter->GetAdapterDisplayModeEx(&modeEx, nullptr);
 
-    return this->EnumAdapterModes(Adapter, format, mode, pMode);
+      if (FAILED(hr))
+        return hr;
+
+      pMode->Width       = modeEx.Width;
+      pMode->Height      = modeEx.Height;
+      pMode->RefreshRate = modeEx.RefreshRate;
+      pMode->Format      = modeEx.Format;
+
+      return D3D_OK;
+    }
+
+    return D3DERR_INVALIDCALL;
   }
 
 
