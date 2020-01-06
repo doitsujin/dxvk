@@ -76,7 +76,8 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::GetAdapterDisplayMode(UINT Adapter, D3DDISPLAYMODE* pMode) {
     if (auto* adapter = GetAdapter(Adapter)) {
-      D3DDISPLAYMODEEX modeEx;
+      D3DDISPLAYMODEEX modeEx = { };
+      modeEx.Size = sizeof(D3DDISPLAYMODEEX);
       HRESULT hr = adapter->GetAdapterDisplayModeEx(&modeEx, nullptr);
 
       if (FAILED(hr))
@@ -224,7 +225,8 @@ namespace dxvk {
     filter.ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
     filter.Size             = sizeof(D3DDISPLAYMODEFILTER);
 
-    D3DDISPLAYMODEEX modeEx;
+    D3DDISPLAYMODEEX modeEx = { };
+    modeEx.Size = sizeof(D3DDISPLAYMODEEX);
     HRESULT hr = this->EnumAdapterModesEx(Adapter, &filter, Mode, &modeEx);
 
     if (FAILED(hr))
