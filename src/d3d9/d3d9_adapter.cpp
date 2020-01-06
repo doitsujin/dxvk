@@ -667,15 +667,34 @@ namespace dxvk {
   HRESULT D3D9Adapter::GetAdapterDisplayModeEx(
           D3DDISPLAYMODEEX*   pMode,
           D3DDISPLAYROTATION* pRotation) {
+    if (pMode == nullptr)
+      return D3DERR_INVALIDCALL;
+
     if (pRotation != nullptr)
       *pRotation = D3DDISPLAYROTATION_IDENTITY;
 
-    D3DDISPLAYMODEFILTER filter;
-    filter.Size             = sizeof(filter);
-    filter.Format           = D3DFMT_X8R8G8B8;
-    filter.ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
+    MONITORINFOEXW monInfo = { };
+    monInfo.cbSize = sizeof(monInfo);
 
-    return this->EnumAdapterModesEx(&filter, 0, pMode);
+    if (!::GetMonitorInfoW(GetDefaultMonitor(), reinterpret_cast<MONITORINFO*>(&monInfo)))
+      throw DxvkError("D3D9Adapter::GetAdapterDisplayModeEx: Failed to query monitor info");
+
+    DEVMODEW devMode = DEVMODEW();
+    devMode.dmSize = sizeof(devMode);
+
+    if (!::EnumDisplaySettingsW(monInfo.szDevice, ENUM_CURRENT_SETTINGS, &devMode)) {
+      Logger::err("D3D9Adapter::GetAdapterDisplayModeEx: Failed to enum display settings");
+      return D3DERR_INVALIDCALL;
+    }
+
+    pMode->Size             = sizeof(D3DDISPLAYMODEEX);
+    pMode->Width            = devMode.dmPelsWidth;
+    pMode->Height           = devMode.dmPelsHeight;
+    pMode->RefreshRate      = devMode.dmDisplayFrequency;
+    pMode->Format           = D3DFMT_X8R8G8B8;
+    pMode->ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
+
+    return D3D_OK;
   }
 
 
