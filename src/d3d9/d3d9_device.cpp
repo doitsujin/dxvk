@@ -1658,6 +1658,8 @@ namespace dxvk {
     bool changed = states[State] != Value;
 
     if (likely(changed)) {
+      const bool oldDepthBiasEnabled = IsDepthBiasEnabled();
+
       const bool oldATOC = IsAlphaToCoverageEnabled();
       const bool oldNVDB = states[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB);
       const bool oldAlphaTest = IsAlphaTestEnabled();
@@ -1808,7 +1810,17 @@ namespace dxvk {
           break;
 
         case D3DRS_DEPTHBIAS:
-        case D3DRS_SLOPESCALEDEPTHBIAS:
+        case D3DRS_SLOPESCALEDEPTHBIAS: {
+          const bool depthBiasEnabled = IsDepthBiasEnabled();
+
+          if (depthBiasEnabled != oldDepthBiasEnabled)
+            m_flags.set(D3D9DeviceFlag::DirtyRasterizerState);
+
+          if (depthBiasEnabled)
+            m_flags.set(D3D9DeviceFlag::DirtyDepthBias);
+
+          break;
+        }
         case D3DRS_CULLMODE:
         case D3DRS_FILLMODE:
           m_flags.set(D3D9DeviceFlag::DirtyRasterizerState);
@@ -5063,6 +5075,27 @@ namespace dxvk {
   void D3D9DeviceEx::BindRasterizerState() {
     m_flags.clr(D3D9DeviceFlag::DirtyRasterizerState);
 
+    auto& rs = m_state.renderStates;
+
+    DxvkRasterizerState state;
+    state.cullMode        = DecodeCullMode(D3DCULL(rs[D3DRS_CULLMODE]));
+    state.depthBiasEnable = IsDepthBiasEnabled();
+    state.depthClipEnable = true;
+    state.frontFace       = VK_FRONT_FACE_CLOCKWISE;
+    state.polygonMode     = DecodeFillMode(D3DFILLMODE(rs[D3DRS_FILLMODE]));
+    state.sampleCount     = 0;
+
+    EmitCs([
+      cState  = state
+    ](DxvkContext* ctx) {
+      ctx->setRasterizerState(cState);
+    });
+  }
+
+
+  void D3D9DeviceEx::BindDepthBias() {
+    m_flags.clr(D3D9DeviceFlag::DirtyDepthBias);
+
     // TODO: Can we get a specific non-magic number in Vulkan for this based on device/adapter?
     constexpr float DepthBiasFactor = float(1 << 23);
 
@@ -5071,24 +5104,14 @@ namespace dxvk {
     float depthBias            = bit::cast<float>(rs[D3DRS_DEPTHBIAS]) * DepthBiasFactor;
     float slopeScaledDepthBias = bit::cast<float>(rs[D3DRS_SLOPESCALEDEPTHBIAS]);
 
-    DxvkRasterizerState state;
-    state.cullMode        = DecodeCullMode(D3DCULL(rs[D3DRS_CULLMODE]));
-    state.depthBiasEnable = depthBias != 0.0f || slopeScaledDepthBias != 0.0f;
-    state.depthClipEnable = true;
-    state.frontFace       = VK_FRONT_FACE_CLOCKWISE;
-    state.polygonMode     = DecodeFillMode(D3DFILLMODE(rs[D3DRS_FILLMODE]));
-    state.sampleCount     = 0;
-
     DxvkDepthBias biases;
     biases.depthBiasConstant = depthBias;
     biases.depthBiasSlope    = slopeScaledDepthBias;
     biases.depthBiasClamp    = 0.0f;
 
     EmitCs([
-      cState  = state,
       cBiases = biases
     ](DxvkContext* ctx) {
-      ctx->setRasterizerState(cState);
       ctx->setDepthBias(cBiases);
     });
   }
@@ -5346,6 +5369,9 @@ namespace dxvk {
 
     if (m_flags.test(D3D9DeviceFlag::DirtyRasterizerState))
       BindRasterizerState();
+
+    if (m_flags.test(D3D9DeviceFlag::DirtyDepthBias))
+      BindDepthBias();
     
     if (m_flags.test(D3D9DeviceFlag::DirtyMultiSampleState))
       BindMultiSampleState();
@@ -6265,6 +6291,7 @@ namespace dxvk {
     rs[D3DRS_DEPTHBIAS]           = bit::cast<DWORD>(0.0f);
     rs[D3DRS_SLOPESCALEDEPTHBIAS] = bit::cast<DWORD>(0.0f);
     BindRasterizerState();
+    BindDepthBias();
 
     rs[D3DRS_SCISSORTESTENABLE]   = FALSE;
 

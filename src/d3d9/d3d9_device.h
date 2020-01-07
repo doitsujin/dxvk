@@ -48,6 +48,7 @@ namespace dxvk {
     DirtyDepthStencilState,
     DirtyBlendState,
     DirtyRasterizerState,
+    DirtyDepthBias,
     DirtyAlphaTestState,
     DirtyInputLayout,
     DirtyViewportScissor,
@@ -753,6 +754,15 @@ namespace dxvk {
       return m_amdATOC || (m_nvATOC && alphaTest);
     }
 
+    inline bool IsDepthBiasEnabled() {
+      const auto& rs = m_state.renderStates;
+
+      float depthBias            = bit::cast<float>(rs[D3DRS_DEPTHBIAS]);
+      float slopeScaledDepthBias = bit::cast<float>(rs[D3DRS_SLOPESCALEDEPTHBIAS]);
+
+      return depthBias != 0.0f || slopeScaledDepthBias != 0.0f;
+    }
+
     inline bool IsAlphaTestEnabled() {
       return m_state.renderStates[D3DRS_ALPHATESTENABLE] && !IsAlphaToCoverageEnabled();
     }
@@ -772,6 +782,8 @@ namespace dxvk {
     void BindDepthStencilRefrence();
 
     void BindRasterizerState();
+
+    void BindDepthBias();
 
     void BindAlphaTestState();
 
