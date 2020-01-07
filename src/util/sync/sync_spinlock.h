@@ -13,7 +13,7 @@ namespace dxvk::sync {
    * in case the structure is not likely contested.
    */
   class Spinlock {
-    
+    constexpr static uint32_t SpinCount = 200;
   public:
     
     Spinlock() { }
@@ -23,8 +23,14 @@ namespace dxvk::sync {
     Spinlock& operator = (const Spinlock&) = delete;
     
     void lock() {
-      while (!this->try_lock())
+      while (unlikely(!try_lock())) {
+        for (uint32_t i = 1; i < SpinCount; i++) {
+          if (try_lock())
+            return;
+        }
+
         dxvk::this_thread::yield();
+      }
     }
     
     void unlock() {
@@ -32,8 +38,8 @@ namespace dxvk::sync {
     }
     
     bool try_lock() {
-      return !m_lock.load()
-          && !m_lock.exchange(1, std::memory_order_acquire);
+      return likely(!m_lock.load())
+          && likely(!m_lock.exchange(1, std::memory_order_acquire));
     }
     
   private:
