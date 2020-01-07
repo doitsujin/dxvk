@@ -1025,6 +1025,8 @@ namespace dxvk {
     bool                            m_nvATOC          = false;
     bool                            m_ffZTest         = false;
 
+    float                           m_depthBiasScale  = 0.0f;
+
     D3D9ConstantLayout              m_vsLayout;
     D3D9ConstantLayout              m_psLayout;
 

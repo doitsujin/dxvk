@@ -1231,6 +1231,14 @@ namespace dxvk {
     FlushImplicit(FALSE);
     m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
+    if (ds != nullptr) {
+      float rValue = GetDepthBufferRValue(ds->GetCommonTexture()->GetFormatMapping().FormatColor);
+      if (m_depthBiasScale != rValue) {
+        m_depthBiasScale = rValue;
+        m_flags.set(D3D9DeviceFlag::DirtyDepthBias);
+      }
+    }
+
     m_state.depthStencil = ds;
 
     return D3D_OK;
@@ -5096,12 +5104,9 @@ namespace dxvk {
   void D3D9DeviceEx::BindDepthBias() {
     m_flags.clr(D3D9DeviceFlag::DirtyDepthBias);
 
-    // TODO: Can we get a specific non-magic number in Vulkan for this based on device/adapter?
-    constexpr float DepthBiasFactor = float(1 << 23);
-
     auto& rs = m_state.renderStates;
 
-    float depthBias            = bit::cast<float>(rs[D3DRS_DEPTHBIAS]) * DepthBiasFactor;
+    float depthBias            = bit::cast<float>(rs[D3DRS_DEPTHBIAS]) * m_depthBiasScale;
     float slopeScaledDepthBias = bit::cast<float>(rs[D3DRS_SLOPESCALEDEPTHBIAS]);
 
     DxvkDepthBias biases;
