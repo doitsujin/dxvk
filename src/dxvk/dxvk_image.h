@@ -9,6 +9,7 @@
 namespace dxvk {
 
   class DxvkImageView;
+  class DxvkImageViewDump;
   
   /**
    * \brief Image create info
@@ -115,6 +116,7 @@ namespace dxvk {
    * memory type and if created with the linear tiling option.
    */
   class DxvkImage : public DxvkResource {
+    friend class DxvkContext;
     friend class DxvkImageView;
   public:
     
@@ -283,6 +285,16 @@ namespace dxvk {
     VkDeviceSize memSize() const {
       return m_image.memory.length();
     }
+
+    /**
+     * \brief Swaps the image with another
+     *
+     * \param [in] next The other image
+     * \param [in] dump Image view dump
+     */
+    void swap(
+      const Rc<DxvkImage>&         next,
+      const Rc<DxvkImageViewDump>& dump);
     
   private:
     
@@ -298,6 +310,8 @@ namespace dxvk {
 
     void addView(DxvkImageView* view);
     void removeView(DxvkImageView* view);
+
+    void recreateViews(const Rc<DxvkImageViewDump>& dump);
     
   };
   
@@ -481,7 +495,32 @@ namespace dxvk {
     void createViews();
     
     void createView(VkImageViewType type, uint32_t numLayers);
+
+    void discardViews(const Rc<DxvkImageViewDump>& dump);
     
+  };
+
+
+  /**
+   * \brief Image view dump
+   *
+   * Takes orphaned image view objects and destroys
+   * them when they are no longer needed.
+   */
+  class DxvkImageViewDump : public DxvkResource {
+
+  public:
+
+    DxvkImageViewDump(const Rc<vk::DeviceFn>& vkd);
+    ~DxvkImageViewDump();
+
+    void addView(VkImageView view);
+
+  private:
+
+    Rc<vk::DeviceFn>         m_vkd;
+    std::vector<VkImageView> m_views;
+
   };
   
 }
