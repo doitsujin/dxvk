@@ -709,6 +709,21 @@ namespace dxvk {
             VkResolveModeFlagBitsKHR  stencilMode);
 
     /**
+     * \brief Swaps two images
+     *
+     * Exchanges the image handles and backing storage
+     * of the two images, and recreates all the views.
+     * Note that the two images must have been created
+     * with identical properties, including the memory
+     * properties.
+     * \param [in] image1 The first image
+     * \param [in] image2 The second image
+     */
+    void swapImages(
+      const Rc<DxvkImage>&            image1,
+      const Rc<DxvkImage>&            image2);
+
+    /**
      * \brief Transforms image subresource layouts
      * 
      * \param [in] dstImage Image to transform

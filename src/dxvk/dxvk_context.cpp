@@ -1800,6 +1800,30 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::swapImages(
+    const Rc<DxvkImage>&            image1,
+    const Rc<DxvkImage>&            image2) {
+    Rc<DxvkImageViewDump> dump = new DxvkImageViewDump(m_device->vkd());
+    image1->swap(image2, dump);
+
+    // Usage flags are required to be identical
+    VkImageUsageFlags usage = image1->info().usage;
+
+    if (usage & (VK_IMAGE_USAGE_SAMPLED_BIT
+               | VK_IMAGE_USAGE_STORAGE_BIT)) {
+      m_flags.set(
+        DxvkContextFlag::GpDirtyResources,
+        DxvkContextFlag::CpDirtyResources);
+    }
+
+    if (usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+               | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
+      this->spillRenderPass();
+
+    m_cmd->trackResource<DxvkAccess::None>(dump);
+  }
+
+
   void DxvkContext::transformImage(
     const Rc<DxvkImage>&            dstImage,
     const VkImageSubresourceRange&  dstSubresources,

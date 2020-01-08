@@ -125,6 +125,20 @@ namespace dxvk {
   }
   
   
+  void DxvkImage::swap(const Rc<DxvkImage>& next, const Rc<DxvkImageViewDump>& dump) {
+    // Technically this could deadlock if two threads
+    // call this method, but that's undefined behaviour
+    // anyway so let's not care about it too much.
+    std::lock_guard lock1(this->m_viewLock);
+    std::lock_guard lock2(next->m_viewLock);
+
+    std::swap(this->m_image, next->m_image);
+
+    this->recreateViews(dump);
+    next->recreateViews(dump);
+  }
+
+
   void DxvkImage::addView(DxvkImageView* view) {
     m_viewList.push_back(view);
   }
@@ -137,6 +151,14 @@ namespace dxvk {
         m_viewList.pop_back();
         return;
       }
+    }
+  }
+
+
+  void DxvkImage::recreateViews(const Rc<DxvkImageViewDump>& dump) {
+    for (size_t i = 0; i < m_viewList.size(); i++) {
+      m_viewList[i]->discardViews(dump);
+      m_viewList[i]->createViews();
     }
   }
 
@@ -205,6 +227,16 @@ namespace dxvk {
         throw DxvkError(str::format("DxvkImageView: Invalid view type: ", m_info.type));
     }
   }
+
+
+  void DxvkImageView::discardViews(const Rc<DxvkImageViewDump>& dump) {
+    for (uint32_t i = 0; i < ViewCount; i++) {
+      if (m_views[i]) {
+        dump->addView(m_views[i]);
+        m_views[i] = VK_NULL_HANDLE;
+      }
+    }
+  }
   
   
   void DxvkImageView::createView(VkImageViewType type, uint32_t numLayers) {
@@ -260,6 +292,23 @@ namespace dxvk {
         "\n    Usage:         ", std::hex, m_image->info().usage,
         "\n    Tiling:        ", m_image->info().tiling));
     }
+  }
+
+
+  DxvkImageViewDump::DxvkImageViewDump(const Rc<vk::DeviceFn>& vkd)
+  : m_vkd(vkd) {
+
+  }
+
+
+  DxvkImageViewDump::~DxvkImageViewDump() {
+    for (auto view : m_views)
+      m_vkd->vkDestroyImageView(m_vkd->device(), view, nullptr);
+  }
+
+
+  void DxvkImageViewDump::addView(VkImageView view) {
+    m_views.push_back(view);
   }
   
 }
