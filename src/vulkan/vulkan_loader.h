@@ -141,9 +141,6 @@ namespace dxvk::vk {
 
     #ifdef VK_EXT_full_screen_exclusive
     VULKAN_FN(vkGetPhysicalDeviceSurfacePresentModes2EXT);
-    VULKAN_FN(vkAcquireFullScreenExclusiveModeEXT);
-    VULKAN_FN(vkReleaseFullScreenExclusiveModeEXT);
-    VULKAN_FN(vkGetDeviceGroupSurfacePresentModes2EXT);
     #endif
   };
   
@@ -314,6 +311,12 @@ namespace dxvk::vk {
     #ifdef VK_EXT_conditional_rendering
     VULKAN_FN(vkCmdBeginConditionalRenderingEXT);
     VULKAN_FN(vkCmdEndConditionalRenderingEXT);
+    #endif
+
+    #ifdef VK_EXT_full_screen_exclusive
+    VULKAN_FN(vkAcquireFullScreenExclusiveModeEXT);
+    VULKAN_FN(vkReleaseFullScreenExclusiveModeEXT);
+    VULKAN_FN(vkGetDeviceGroupSurfacePresentModes2EXT);
     #endif
 
     #ifdef VK_EXT_host_query_reset
