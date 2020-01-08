@@ -96,6 +96,15 @@ namespace dxvk {
       VK_COMPONENT_SWIZZLE_IDENTITY,
     };
   };
+
+
+  /**
+   * \brief Stores an image and its memory slice.
+   */
+  struct DxvkPhysicalImage {
+    VkImage     image = VK_NULL_HANDLE;
+    DxvkMemory  memory;
+  };
   
   
   /**
@@ -143,7 +152,7 @@ namespace dxvk {
      * \returns Image handle
      */
     VkImage handle() const {
-      return m_image;
+      return m_image.image;
     }
     
     /**
@@ -177,7 +186,7 @@ namespace dxvk {
      * \returns Pointer to mapped memory region
      */
     void* mapPtr(VkDeviceSize offset) const {
-      return m_memory.mapPtr(offset);
+      return m_image.memory.mapPtr(offset);
     }
     
     /**
@@ -210,7 +219,7 @@ namespace dxvk {
       const VkImageSubresource& subresource) const {
       VkSubresourceLayout result;
       m_vkd->vkGetImageSubresourceLayout(
-        m_vkd->device(), m_image,
+        m_vkd->device(), m_image.image,
         &subresource, &result);
       return result;
     }
@@ -272,7 +281,7 @@ namespace dxvk {
      * \returns The memory size of the image
      */
     VkDeviceSize memSize() const {
-      return m_memory.length();
+      return m_image.memory.length();
     }
     
   private:
@@ -280,8 +289,7 @@ namespace dxvk {
     Rc<vk::DeviceFn>      m_vkd;
     DxvkImageCreateInfo   m_info;
     VkMemoryPropertyFlags m_memFlags;
-    DxvkMemory            m_memory;
-    VkImage               m_image = VK_NULL_HANDLE;
+    DxvkPhysicalImage     m_image;
 
     small_vector<VkFormat, 4> m_viewFormats;
     
