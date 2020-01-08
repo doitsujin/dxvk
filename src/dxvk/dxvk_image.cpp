@@ -41,7 +41,7 @@ namespace dxvk {
     info.initialLayout         = createInfo.initialLayout;
     
     if (m_vkd->vkCreateImage(m_vkd->device(),
-          &info, nullptr, &m_image) != VK_SUCCESS) {
+          &info, nullptr, &m_image.image) != VK_SUCCESS) {
       throw DxvkError(str::format(
         "DxvkImage: Failed to create image:",
         "\n  Type:            ", info.imageType,
@@ -72,14 +72,14 @@ namespace dxvk {
     
     VkImageMemoryRequirementsInfo2KHR memReqInfo;
     memReqInfo.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2_KHR;
-    memReqInfo.image = m_image;
+    memReqInfo.image = m_image.image;
     memReqInfo.pNext = VK_NULL_HANDLE;
 
     VkMemoryDedicatedAllocateInfoKHR dedMemoryAllocInfo;
     dedMemoryAllocInfo.sType  = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR;
     dedMemoryAllocInfo.pNext  = VK_NULL_HANDLE;
     dedMemoryAllocInfo.buffer = VK_NULL_HANDLE;
-    dedMemoryAllocInfo.image  = m_image;
+    dedMemoryAllocInfo.image  = m_image.image;
     
     m_vkd->vkGetImageMemoryRequirements2KHR(
       m_vkd->device(), &memReqInfo, &memReq);
@@ -98,12 +98,12 @@ namespace dxvk {
     float priority = isGpuWritable ? 1.0f : 0.5f;
 
     // Ask driver whether we should be using a dedicated allocation
-    m_memory = memAlloc.alloc(&memReq.memoryRequirements,
+    m_image.memory = memAlloc.alloc(&memReq.memoryRequirements,
       dedicatedRequirements, dedMemoryAllocInfo, memFlags, priority);
     
     // Try to bind the allocated memory slice to the image
-    if (m_vkd->vkBindImageMemory(m_vkd->device(),
-          m_image, m_memory.memory(), m_memory.offset()) != VK_SUCCESS)
+    if (m_vkd->vkBindImageMemory(m_vkd->device(), m_image.image,
+          m_image.memory.memory(), m_image.memory.offset()) != VK_SUCCESS)
       throw DxvkError("DxvkImage::DxvkImage: Failed to bind device memory");
   }
   
@@ -112,7 +112,7 @@ namespace dxvk {
     const Rc<vk::DeviceFn>&     vkd,
     const DxvkImageCreateInfo&  info,
           VkImage               image)
-  : m_vkd(vkd), m_info(info), m_image(image) {
+  : m_vkd(vkd), m_info(info), m_image({ image }) {
     
   }
   
@@ -120,8 +120,8 @@ namespace dxvk {
   DxvkImage::~DxvkImage() {
     // This is a bit of a hack to determine whether
     // the image is implementation-handled or not
-    if (m_memory.memory() != VK_NULL_HANDLE)
-      m_vkd->vkDestroyImage(m_vkd->device(), m_image, nullptr);
+    if (m_image.memory.memory() != VK_NULL_HANDLE)
+      m_vkd->vkDestroyImage(m_vkd->device(), m_image.image, nullptr);
   }
   
   
