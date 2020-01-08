@@ -130,15 +130,25 @@ namespace dxvk {
     const Rc<DxvkImage>&            image,
     const DxvkImageViewCreateInfo&  info)
   : m_vkd(vkd), m_image(image), m_info(info) {
-    // Since applications tend to bind views 
+    createViews();
+  }
+  
+  
+  DxvkImageView::~DxvkImageView() {
+    for (uint32_t i = 0; i < ViewCount; i++)
+      m_vkd->vkDestroyImageView(m_vkd->device(), m_views[i], nullptr);
+  }
+
+  
+  void DxvkImageView::createViews() {
     for (uint32_t i = 0; i < ViewCount; i++)
       m_views[i] = VK_NULL_HANDLE;
     
-    switch (info.type) {
+    switch (m_info.type) {
       case VK_IMAGE_VIEW_TYPE_1D:
       case VK_IMAGE_VIEW_TYPE_1D_ARRAY: {
         this->createView(VK_IMAGE_VIEW_TYPE_1D,       1);
-        this->createView(VK_IMAGE_VIEW_TYPE_1D_ARRAY, info.numLayers);
+        this->createView(VK_IMAGE_VIEW_TYPE_1D_ARRAY, m_info.numLayers);
       } break;
       
       case VK_IMAGE_VIEW_TYPE_2D:
@@ -148,10 +158,10 @@ namespace dxvk {
 
       case VK_IMAGE_VIEW_TYPE_CUBE:
       case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY: {
-        this->createView(VK_IMAGE_VIEW_TYPE_2D_ARRAY, info.numLayers);
+        this->createView(VK_IMAGE_VIEW_TYPE_2D_ARRAY, m_info.numLayers);
         
         if (m_image->info().flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) {
-          uint32_t cubeCount = info.numLayers / 6;
+          uint32_t cubeCount = m_info.numLayers / 6;
         
           if (cubeCount > 0) {
             this->createView(VK_IMAGE_VIEW_TYPE_CUBE,       6);
@@ -163,21 +173,15 @@ namespace dxvk {
       case VK_IMAGE_VIEW_TYPE_3D: {
         this->createView(VK_IMAGE_VIEW_TYPE_3D, 1);
         
-        if (m_image->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR && info.numLevels == 1) {
+        if (m_image->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR && m_info.numLevels == 1) {
           this->createView(VK_IMAGE_VIEW_TYPE_2D,       1);
-          this->createView(VK_IMAGE_VIEW_TYPE_2D_ARRAY, m_image->mipLevelExtent(info.minLevel).depth);
+          this->createView(VK_IMAGE_VIEW_TYPE_2D_ARRAY, m_image->mipLevelExtent(m_info.minLevel).depth);
         }
       } break;
       
       default:
-        throw DxvkError(str::format("DxvkImageView: Invalid view type: ", info.type));
+        throw DxvkError(str::format("DxvkImageView: Invalid view type: ", m_info.type));
     }
-  }
-  
-  
-  DxvkImageView::~DxvkImageView() {
-    for (uint32_t i = 0; i < ViewCount; i++)
-      m_vkd->vkDestroyImageView(m_vkd->device(), m_views[i], nullptr);
   }
   
   

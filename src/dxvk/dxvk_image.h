@@ -461,6 +461,8 @@ namespace dxvk {
     DxvkImageViewCreateInfo m_info;
     VkImageView             m_views[ViewCount];
 
+    void createViews();
+    
     void createView(VkImageViewType type, uint32_t numLayers);
     
   };
