@@ -125,11 +125,30 @@ namespace dxvk {
   }
   
   
+  void DxvkImage::addView(DxvkImageView* view) {
+    m_viewList.push_back(view);
+  }
+
+
+  void DxvkImage::removeView(DxvkImageView* view) {
+    for (size_t i = 0; i < m_viewList.size(); i++) {
+      if (m_viewList[i] == view) {
+        m_viewList[i] = m_viewList.back();
+        m_viewList.pop_back();
+        return;
+      }
+    }
+  }
+
+
   DxvkImageView::DxvkImageView(
     const Rc<vk::DeviceFn>&         vkd,
     const Rc<DxvkImage>&            image,
     const DxvkImageViewCreateInfo&  info)
   : m_vkd(vkd), m_image(image), m_info(info) {
+    std::lock_guard lock(m_image->m_viewLock);
+    m_image->addView(this);
+
     createViews();
   }
   
@@ -137,6 +156,9 @@ namespace dxvk {
   DxvkImageView::~DxvkImageView() {
     for (uint32_t i = 0; i < ViewCount; i++)
       m_vkd->vkDestroyImageView(m_vkd->device(), m_views[i], nullptr);
+
+    std::lock_guard lock(m_image->m_viewLock);
+    m_image->removeView(this);
   }
 
   

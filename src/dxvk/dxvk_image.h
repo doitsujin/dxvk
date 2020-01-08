@@ -7,6 +7,8 @@
 #include "dxvk_util.h"
 
 namespace dxvk {
+
+  class DxvkImageView;
   
   /**
    * \brief Image create info
@@ -104,7 +106,7 @@ namespace dxvk {
    * memory type and if created with the linear tiling option.
    */
   class DxvkImage : public DxvkResource {
-    
+    friend class DxvkImageView;
   public:
     
     DxvkImage(
@@ -283,6 +285,12 @@ namespace dxvk {
 
     small_vector<VkFormat, 4> m_viewFormats;
     
+    sync::Spinlock                  m_viewLock;
+    small_vector<DxvkImageView*, 4> m_viewList;
+
+    void addView(DxvkImageView* view);
+    void removeView(DxvkImageView* view);
+    
   };
   
   
@@ -290,6 +298,7 @@ namespace dxvk {
    * \brief DXVK image view
    */
   class DxvkImageView : public DxvkResource {
+    friend class DxvkImage;
     constexpr static uint32_t ViewCount = VK_IMAGE_VIEW_TYPE_CUBE_ARRAY + 1;
   public:
     
