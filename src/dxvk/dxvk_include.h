@@ -8,6 +8,7 @@
 #include "../util/util_flags.h"
 #include "../util/util_likely.h"
 #include "../util/util_math.h"
+#include "../util/util_small_vector.h"
 #include "../util/util_string.h"
 
 #include "../util/rc/util_rc.h"

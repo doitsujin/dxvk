@@ -281,7 +281,7 @@ namespace dxvk {
     DxvkMemory            m_memory;
     VkImage               m_image = VK_NULL_HANDLE;
 
-    std::vector<VkFormat> m_viewFormats;
+    small_vector<VkFormat, 4> m_viewFormats;
     
   };
   
