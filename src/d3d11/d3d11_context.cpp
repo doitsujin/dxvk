@@ -3366,12 +3366,7 @@ namespace dxvk {
   void D3D11DeviceContext::BindShader(
     const D3D11CommonShader*    pShaderModule) {
     // Bind the shader and the ICB at once
-    uint32_t slotId = computeConstantBufferBinding(ShaderStage,
-      D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT);
-    
     EmitCs([
-      cSlotId = slotId,
-      cStage  = GetShaderStage(ShaderStage),
       cSlice  = pShaderModule           != nullptr
              && pShaderModule->GetIcb() != nullptr
         ? DxvkBufferSlice(pShaderModule->GetIcb())
@@ -3380,8 +3375,13 @@ namespace dxvk {
         ? pShaderModule->GetShader()
         : nullptr
     ] (DxvkContext* ctx) {
-      ctx->bindShader        (cStage, cShader);
-      ctx->bindResourceBuffer(cSlotId, cSlice);
+      VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+
+      uint32_t slotId = computeConstantBufferBinding(ShaderStage,
+        D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT);
+
+      ctx->bindShader        (stage,  cShader);
+      ctx->bindResourceBuffer(slotId, cSlice);
     });
   }
 
