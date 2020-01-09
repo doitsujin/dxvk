@@ -154,12 +154,10 @@ namespace dxvk {
 
     // Use half the available CPU cores for pipeline compilation
     uint32_t numCpuCores = dxvk::thread::hardware_concurrency();
-    uint32_t numWorkers  = numCpuCores > 8
-      ? numCpuCores * 3 / 4
-      : numCpuCores * 1 / 2;
+    uint32_t numWorkers  = ((std::max(1u, numCpuCores) - 1) * 5) / 7;
 
     if (numWorkers <  1) numWorkers =  1;
-    if (numWorkers > 16) numWorkers = 16;
+    if (numWorkers > 32) numWorkers = 32;
 
     if (device->config().numCompilerThreads > 0)
       numWorkers = device->config().numCompilerThreads;
