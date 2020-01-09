@@ -1134,19 +1134,22 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     if (RenderTargetIndex == 0) {
+      uint32_t width  = std::max(1u, desc->Width  >> rt->GetMipLevel());
+      uint32_t height = std::max(1u, desc->Height >> rt->GetMipLevel());
+
       D3DVIEWPORT9 viewport;
       viewport.X       = 0;
       viewport.Y       = 0;
-      viewport.Width   = desc->Width;
-      viewport.Height  = desc->Height;
+      viewport.Width   = width;
+      viewport.Height  = height;
       viewport.MinZ    = 0.0f;
       viewport.MaxZ    = 1.0f;
 
       RECT scissorRect;
       scissorRect.left    = 0;
       scissorRect.top     = 0;
-      scissorRect.right   = desc->Width;
-      scissorRect.bottom  = desc->Height;
+      scissorRect.right   = width;
+      scissorRect.bottom  = height;
 
       if (m_state.viewport != viewport) {
         m_flags.set(D3D9DeviceFlag::DirtyFFViewport);
