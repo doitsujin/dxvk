@@ -1315,9 +1315,6 @@ namespace dxvk {
     }
 
     // Here, Count of 0 will denote whether or not to care about user rects.
-
-    auto* rt0Desc = m_state.renderTargets[0]->GetCommonTexture()->Desc();
-
     VkClearValue clearValueDepth;
     clearValueDepth.depthStencil.depth   = Z;
     clearValueDepth.depthStencil.stencil = Stencil;
