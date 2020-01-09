@@ -1398,8 +1398,11 @@ namespace dxvk {
     // This works around that.
     uint32_t alignment = m_d3d9Options.lenientClear ? 8 : 1;
 
-    bool extentMatches = align(extent.width,  alignment) == align(rt0Desc->Width,  alignment)
-                      && align(extent.height, alignment) == align(rt0Desc->Height, alignment);
+    uint32_t rt0Width  = std::max(1u, rt0Desc->Width  >> m_state.renderTargets[0]->GetMipLevel());
+    uint32_t rt0Height = std::max(1u, rt0Desc->Height >> m_state.renderTargets[0]->GetMipLevel());
+
+    bool extentMatches = align(extent.width,  alignment) == align(rt0Width,  alignment)
+                      && align(extent.height, alignment) == align(rt0Height, alignment);
 
     bool rtSizeMatchesClearSize = offset.x == 0 && offset.y == 0 && extentMatches;
 
