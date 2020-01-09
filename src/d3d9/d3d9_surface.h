@@ -6,6 +6,8 @@
 
 #include "../util/util_gdi.h"
 
+#include <algorithm>
+
 namespace dxvk {
 
   using D3D9GDIDesc = D3DKMT_DESTROYDCFROMMEMORY;
@@ -44,6 +46,15 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetDC(HDC *phDC) final;
 
     HRESULT STDMETHODCALLTYPE ReleaseDC(HDC hDC) final;
+
+    inline VkExtent2D GetSurfaceExtent() const {
+      const auto* desc = m_texture->Desc();
+
+      return VkExtent2D { 
+        std::max(1u, desc->Width  >> GetMipLevel()),
+        std::max(1u, desc->Height >> GetMipLevel())
+      };
+    }
 
   private:
 

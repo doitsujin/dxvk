@@ -1134,22 +1134,21 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     if (RenderTargetIndex == 0) {
-      uint32_t width  = std::max(1u, desc->Width  >> rt->GetMipLevel());
-      uint32_t height = std::max(1u, desc->Height >> rt->GetMipLevel());
+      auto rtSize = rt->GetSurfaceExtent();
 
       D3DVIEWPORT9 viewport;
       viewport.X       = 0;
       viewport.Y       = 0;
-      viewport.Width   = width;
-      viewport.Height  = height;
+      viewport.Width   = rtSize.width;
+      viewport.Height  = rtSize.height;
       viewport.MinZ    = 0.0f;
       viewport.MaxZ    = 1.0f;
 
       RECT scissorRect;
       scissorRect.left    = 0;
       scissorRect.top     = 0;
-      scissorRect.right   = width;
-      scissorRect.bottom  = height;
+      scissorRect.right   = rtSize.width;
+      scissorRect.bottom  = rtSize.height;
 
       if (m_state.viewport != viewport) {
         m_flags.set(D3D9DeviceFlag::DirtyFFViewport);
@@ -1398,11 +1397,10 @@ namespace dxvk {
     // This works around that.
     uint32_t alignment = m_d3d9Options.lenientClear ? 8 : 1;
 
-    uint32_t rt0Width  = std::max(1u, rt0Desc->Width  >> m_state.renderTargets[0]->GetMipLevel());
-    uint32_t rt0Height = std::max(1u, rt0Desc->Height >> m_state.renderTargets[0]->GetMipLevel());
+    auto rtSize = m_state.renderTargets[0]->GetSurfaceExtent();
 
-    bool extentMatches = align(extent.width,  alignment) == align(rt0Width,  alignment)
-                      && align(extent.height, alignment) == align(rt0Height, alignment);
+    bool extentMatches = align(extent.width,  alignment) == align(rtSize.width,  alignment)
+                      && align(extent.height, alignment) == align(rtSize.height, alignment);
 
     bool rtSizeMatchesClearSize = offset.x == 0 && offset.y == 0 && extentMatches;
 
