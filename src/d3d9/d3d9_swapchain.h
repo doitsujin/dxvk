@@ -146,7 +146,7 @@ namespace dxvk {
     bool                    m_vsync    = true;
 
     bool                    m_dialog;
-    bool                    m_dialogChanged = false;
+    bool                    m_lastDialog = false;
 
     HWND                    m_window   = nullptr;
     HMONITOR                m_monitor  = nullptr;

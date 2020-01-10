@@ -115,7 +115,7 @@ namespace dxvk {
     bool recreate = false;
     recreate   |= m_presenter == nullptr;
     recreate   |= window != m_window;    
-    recreate   |= m_dialogChanged;
+    recreate   |= m_dialog != m_lastDialog;
 
     m_window    = window;
 
@@ -127,7 +127,7 @@ namespace dxvk {
 
     m_vsync     = vsync;
 
-    m_dialogChanged = false;
+    m_lastDialog = m_dialog;
 
     try {
       if (recreate)
@@ -400,8 +400,7 @@ namespace dxvk {
     // However it doesn't appear to error at all in any of my tests of these
     // cases described in the documentation.
 
-    m_dialogChanged = m_dialog != bEnableDialogs;
-    m_dialog        = bEnableDialogs;
+    m_dialog = bEnableDialogs;
 
     return D3D_OK;
   }
