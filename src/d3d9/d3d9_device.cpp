@@ -348,12 +348,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetDialogBoxMode(BOOL bEnableDialogs) {
     D3D9DeviceLock lock = LockDevice();
 
-    HRESULT hr = GetInternalSwapchain(0)->SetDialogBoxMode(bEnableDialogs);
-
-    if (FAILED(hr))
-      Logger::warn("D3D9DeviceEx::SetDialogBoxMode: Setting on swapchain failed.");
-
-    return hr;
+    return GetInternalSwapchain(0)->SetDialogBoxMode(bEnableDialogs);
   }
 
 
