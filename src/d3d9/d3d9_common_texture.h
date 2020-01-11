@@ -357,6 +357,15 @@ namespace dxvk {
             UINT                   Lod,
             VkImageUsageFlags      UsageFlags,
             bool                   Srgb);
+    D3D9SubresourceBitset& GetUploadBitmask() { return m_needsUpload; }
+
+    void SetUploading(UINT Subresource, bool uploading) { m_uploading.set(Subresource, uploading); }
+    void ClearUploading() { m_uploading.clearAll(); }
+    bool GetUploading(UINT Subresource) const { return m_uploading.get(Subresource); }
+
+    void SetNeedsUpload(UINT Subresource, bool upload) { m_needsUpload.set(Subresource, upload); }
+    bool NeedsAnyUpload() { return m_needsUpload.any(); }
+    void ClearNeedsUpload() { return m_needsUpload.clearAll();  }
 
   private:
 
@@ -391,6 +400,9 @@ namespace dxvk {
     D3D9SubresourceBitset         m_readOnly = { };
 
     D3D9SubresourceBitset         m_dirty = { };
+
+    D3D9SubresourceBitset         m_uploading = { };
+    D3D9SubresourceBitset         m_needsUpload = { };
 
     /**
      * \brief Mip level

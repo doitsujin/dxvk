@@ -61,6 +61,13 @@ namespace dxvk {
     m_shaders      = pModule->compile(*pDxsoModuleInfo, name, AnalysisInfo, constantLayout);
     m_isgn         = pModule->isgn();
     m_usedSamplers = pModule->usedSamplers();
+
+    // Shift up these sampler bits so we can just
+    // do an or per-draw in the device.
+    // We shift by 17 because 16 ps samplers + 1 dmap (tess)
+    if (ShaderStage == VK_SHADER_STAGE_VERTEX_BIT)
+      m_usedSamplers <<= 17;
+
     m_usedRTs      = pModule->usedRTs();
 
     m_info      = pModule->info();
