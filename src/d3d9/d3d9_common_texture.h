@@ -6,6 +6,8 @@
 
 #include "../dxvk/dxvk_device.h"
 
+#include "../util/util_bit.h"
+
 namespace dxvk {
 
   class D3D9DeviceEx;
@@ -85,6 +87,8 @@ namespace dxvk {
 
   template <typename T>
   using D3D9SubresourceArray = std::array<T, caps::MaxSubresources>;
+
+  using D3D9SubresourceBitset = bit::bitset<caps::MaxSubresources>;
 
   class D3D9CommonTexture {
 
@@ -205,22 +209,6 @@ namespace dxvk {
             D3D9_COMMON_TEXTURE_DESC*  pDesc);
 
     /**
-     * \brief Lock Flags
-     * Set the lock flags for a given subresource
-     */
-    void SetLockFlags(UINT Subresource, DWORD Flags) {
-      m_lockFlags[Subresource] = Flags;
-    }
-
-    /**
-     * \brief Lock Flags
-     * \returns The log flags for a given subresource
-     */
-    DWORD GetLockFlags(UINT Subresource) const {
-      return m_lockFlags[Subresource];
-    }
-
-    /**
      * \brief Shadow
      * \returns Whether the texture is to be depth compared
      */
@@ -334,10 +322,15 @@ namespace dxvk {
 
     const D3D9_VK_FORMAT_MAPPING& GetMapping() { return m_mapping; }
 
-    bool MarkLocked(UINT Subresource, bool value) { return std::exchange(m_locked[Subresource], value); }
+    bool MarkLocked(UINT Subresource, bool value) { return m_locked.exchange(Subresource, value); }
 
-    bool SetDirty(UINT Subresource, bool value) { return std::exchange(m_dirty[Subresource], value); }
-    void MarkAllDirty() { for (uint32_t i = 0; i < m_dirty.size(); i++) m_dirty[i] = true; }
+    bool SetDirty(UINT Subresource, bool value) { return m_dirty.exchange(Subresource, value); }
+
+    void MarkAllDirty() { m_dirty.setAll(); }
+
+    void SetReadOnlyLocked(UINT Subresource, bool readOnly) { return m_readOnly.set(Subresource, readOnly); }
+
+    bool GetReadOnlyLocked(UINT Subresource) { return m_readOnly.get(Subresource); }
 
     const Rc<DxvkImageView>& GetSampleView(bool srgb) const {
       return m_sampleView.Pick(srgb && IsSrgbCompatible());
@@ -378,7 +371,6 @@ namespace dxvk {
       Rc<DxvkBuffer>>             m_buffers;
     D3D9SubresourceArray<
       DxvkBufferSliceHandle>      m_mappedSlices;
-    D3D9SubresourceArray<DWORD>   m_lockFlags;
 
     D3D9_VK_FORMAT_MAPPING        m_mapping;
 
@@ -394,11 +386,11 @@ namespace dxvk {
 
     D3D9ColorView                 m_sampleView;
 
-    D3D9SubresourceArray<
-      bool>                       m_locked = { };
+    D3D9SubresourceBitset         m_locked = { };
 
-    D3D9SubresourceArray<
-      bool>                       m_dirty = { };
+    D3D9SubresourceBitset         m_readOnly = { };
+
+    D3D9SubresourceBitset         m_dirty = { };
 
     /**
      * \brief Mip level
