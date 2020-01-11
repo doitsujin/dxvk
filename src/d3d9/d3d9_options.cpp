@@ -62,6 +62,7 @@ namespace dxvk {
     this->supportVCache         = config.getOption<bool>    ("d3d9.supportVCache",         vendorId == 0x10de);
     this->enableDialogMode      = config.getOption<bool>    ("d3d9.enableDialogMode",      false);
     this->forceSamplerTypeSpecConstants = config.getOption<bool> ("d3d9.forceSamplerTypeSpecConstants", false);
+    this->forceSwapchainMSAA    = config.getOption<int32_t> ("d3d9.forceSwapchainMSAA",    -1);
 
     this->forceAspectRatio      = config.getOption<std::string>("d3d9.forceAspectRatio",   "");
 
