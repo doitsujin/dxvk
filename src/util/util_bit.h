@@ -237,6 +237,11 @@ namespace dxvk::bit {
       }
     }
 
+    constexpr void clearAll() {
+      for (size_t i = 0; i < Dwords; i++)
+        m_dwords[i] = 0;
+    }
+
     constexpr bool any() {
       for (size_t i = 0; i < Dwords; i++) {
         if (m_dwords[i] != 0)
