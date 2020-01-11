@@ -18,6 +18,9 @@ namespace dxvk {
     uint32_t rtMask;
   };
 
+  static constexpr D3D9ShaderMasks FixedFunctionMask =
+    { 0b1111111, 0b1 };
+
   struct D3D9MipFilter {
     bool                MipsEnabled;
     VkSamplerMipmapMode MipFilter;

@@ -734,15 +734,15 @@ namespace dxvk {
 
     void Flush();
 
-    D3D9ShaderMasks GetShaderMasks();
-
     void UpdateActiveRTs(uint32_t index);
 
-    void UpdateActiveRTTextures(uint32_t index);
+    void UpdateActiveTextures(uint32_t index);
 
     void UpdateActiveHazards();
 
     void MarkRenderHazards();
+
+    void UploadManagedTextures(uint32_t mask);
 
     template <bool Points>
     void UpdatePointMode();
@@ -1024,6 +1024,11 @@ namespace dxvk {
     uint32_t                        m_activeRTTextures = 0;
     uint32_t                        m_activeHazards    = 0;
     uint32_t                        m_alphaSwizzleRTs  = 0;
+    uint32_t                        m_activeTextures   = 0;
+    uint32_t                        m_activeTexturesToUpload = 0;
+
+    D3D9ShaderMasks                 m_vsShaderMasks = D3D9ShaderMasks();
+    D3D9ShaderMasks                 m_psShaderMasks = FixedFunctionMask;
 
     D3D9ViewportInfo                m_viewportInfo;
 

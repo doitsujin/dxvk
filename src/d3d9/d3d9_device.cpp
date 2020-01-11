@@ -2662,7 +2662,11 @@ namespace dxvk {
       BindShader<DxsoProgramTypes::VertexShader>(
         GetCommonShader(shader),
         GetVertexShaderPermutation());
+
+      m_vsShaderMasks = newShader->GetShaderMask();
     }
+    else
+      m_vsShaderMasks = D3D9ShaderMasks();
 
     m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
 
@@ -2987,6 +2991,15 @@ namespace dxvk {
       BindShader<DxsoProgramTypes::PixelShader>(
         GetCommonShader(shader),
         GetPixelShaderPermutation());
+
+      m_psShaderMasks = newShader->GetShaderMask();
+    }
+    else {
+      // TODO: What fixed function textures are in use?
+      // Currently we are making all 8 of them as in use here.
+
+      // The RT output is always 0 for fixed function.
+      m_psShaderMasks = FixedFunctionMask;
     }
 
     UpdateActiveHazards();
@@ -3498,9 +3511,7 @@ namespace dxvk {
 
     BindTexture(StateSampler);
 
-    // We only care about PS samplers
-    if (likely(StateSampler <= caps::MaxSamplers))
-      UpdateActiveRTTextures(StateSampler);
+    UpdateActiveTextures(StateSampler);
 
     return D3D_OK;
   }
@@ -3902,14 +3913,17 @@ namespace dxvk {
       // calling app promises not to overwrite data that is in use
       // or is reading. Remember! This will only trigger for MANAGED resources
       // that cannot get affected by GPU, therefore readonly is A-OK for NOT waiting.
+      const bool uploading = pResource->GetUploading(Subresource);
       const bool readOnly = Flags & D3DLOCK_READONLY;
-      const bool skipWait = (readOnly && managed) || scratch || (readOnly && systemmem && !dirty);
+      const bool skipWait = (managed && !uploading) || (readOnly && managed) || scratch || (readOnly && systemmem && !dirty);
 
       if (alloced)
         std::memset(physSlice.mapPtr, 0, physSlice.length);
       else if (!skipWait) {
         if (!WaitForResource(mappedBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
+
+        pResource->ClearUploading();
       }
     }
     else {
@@ -4036,7 +4050,22 @@ namespace dxvk {
     // Do we have a pending copy?
     if (!pResource->GetReadOnlyLocked(Subresource)) {
       // Only flush buffer -> image if we actually have an image
-      if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED)
+      if (pResource->IsManaged()) {
+        pResource->SetNeedsUpload(Subresource, true);
+
+        for (uint32_t tex = m_activeTextures; tex; tex &= tex - 1) {
+          // Guaranteed to not be nullptr...
+          const uint32_t i = bit::tzcnt(tex);
+          auto texInfo = GetCommonTexture(m_state.textures[i]);
+
+          if (texInfo == pResource) {
+            m_activeTexturesToUpload |= 1 << i;
+            // We can early out here, no need to add another index for this.
+            break;
+          }
+        }
+      }
+      else if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED)
         this->FlushImage(pResource, Subresource);
     }
 
@@ -4074,6 +4103,8 @@ namespace dxvk {
       subresource.arrayLayer, 1 };
 
     auto convertFormat = pResource->GetFormatMapping().ConversionFormatInfo;
+
+    pResource->SetUploading(Subresource, true);
 
     if (likely(convertFormat.FormatType == D3D9ConversionFormat_None)) {
       EmitCs([
@@ -4647,20 +4678,6 @@ namespace dxvk {
   }
 
 
-   inline D3D9ShaderMasks D3D9DeviceEx::GetShaderMasks() {
-    const auto* shader = GetCommonShader(m_state.pixelShader);
-
-    if (likely(shader != nullptr))
-      return shader->GetShaderMask();
-
-    // TODO: What fixed function textures are in use?
-    // Currently we are making all 8 of them as in use here.
-
-    // The RT output is always 0 for fixed function.
-    return D3D9ShaderMasks{ 0b1111111, 0b1 };
-  }
-
-
   inline void D3D9DeviceEx::UpdateActiveRTs(uint32_t index) {
     const uint32_t bit = 1 << index;
 
@@ -4675,21 +4692,30 @@ namespace dxvk {
   }
 
 
-  inline void D3D9DeviceEx::UpdateActiveRTTextures(uint32_t index) {
+  inline void D3D9DeviceEx::UpdateActiveTextures(uint32_t index) {
     const uint32_t bit = 1 << index;
 
-    m_activeRTTextures &= ~bit;
+    m_activeRTTextures       &= ~bit;
+    m_activeTextures         &= ~bit;
+    m_activeTexturesToUpload &= ~bit;
 
     auto tex = GetCommonTexture(m_state.textures[index]);
-    if (tex != nullptr && tex->IsRenderTarget())
-      m_activeRTTextures |= bit;
+    if (tex != nullptr) {
+      m_activeTextures |= bit;
+
+      if (unlikely(tex->IsRenderTarget()))
+        m_activeRTTextures |= bit;
+
+      if (unlikely(tex->NeedsAnyUpload()))
+        m_activeTexturesToUpload |= bit;
+    }
 
     UpdateActiveHazards();
   }
 
 
   inline void D3D9DeviceEx::UpdateActiveHazards() {
-    auto masks = GetShaderMasks();
+    auto masks = m_psShaderMasks;
     masks.rtMask      &= m_activeRTs;
     masks.samplerMask &= m_activeRTTextures;
 
@@ -4724,6 +4750,26 @@ namespace dxvk {
         m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
       }
     }
+  }
+
+
+  void D3D9DeviceEx::UploadManagedTextures(uint32_t mask) {
+    for (uint32_t tex = mask; tex; tex &= tex - 1) {
+      // Guaranteed to not be nullptr...
+      auto texInfo = GetCommonTexture(m_state.textures[bit::tzcnt(tex)]);
+
+      for (uint32_t i = 0; i < texInfo->GetUploadBitmask().dwordCount(); i++) {
+        for (uint32_t subresources = texInfo->GetUploadBitmask().dword(i); subresources; subresources &= subresources - 1) {
+          uint32_t subresource = i * 32 + bit::tzcnt(subresources);
+
+          this->FlushImage(texInfo, subresource);
+        }
+      }
+
+      texInfo->ClearNeedsUpload();
+    }
+
+    m_activeTexturesToUpload = 0;
   }
 
 
@@ -5381,6 +5427,11 @@ namespace dxvk {
       if (vbo != nullptr && vbo->NeedsUpload())
         FlushBuffer(vbo);
     }
+
+    uint32_t texturesToUpload = m_activeTexturesToUpload;
+    texturesToUpload &= m_psShaderMasks.samplerMask | m_vsShaderMasks.samplerMask;
+    if (unlikely(texturesToUpload != 0))
+      UploadManagedTextures(texturesToUpload);
 
     auto* ibo = GetCommonBuffer(m_state.indices);
     if (ibo != nullptr && ibo->NeedsUpload())
