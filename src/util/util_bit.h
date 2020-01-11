@@ -205,6 +205,12 @@ namespace dxvk::bit {
         m_dwords[dword] &= ~(1u << bit);
     }
 
+    constexpr bool exchange(uint32_t idx, bool value) {
+      bool oldValue = get(idx);
+      set(idx, value);
+      return oldValue;
+    }
+
     constexpr void flip(uint32_t idx) {
       uint32_t dword = 0;
       uint32_t bit   = idx;
