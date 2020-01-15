@@ -42,7 +42,7 @@ namespace dxvk {
     if (!pDevice->GetOptions()->deferSurfaceCreation)
       CreatePresenter();
 
-    CreateBackBuffer();
+    CreateBackBuffers(m_presentParams.BackBufferCount);
     CreateHud();
 
     InitRenderState();
@@ -166,13 +166,12 @@ namespace dxvk {
     if (ppBackBuffer == nullptr)
       return D3DERR_INVALIDCALL;
 
-    if (iBackBuffer > 0) {
-      Logger::err("D3D9: GetBackBuffer: iBackBuffer > 0 not supported");
+    if (iBackBuffer >= m_backBuffers.size()) {
+      Logger::err(str::format("D3D9: GetBackBuffer: Invalid back buffer index: ", iBackBuffer));
       return D3DERR_INVALIDCALL;
     }
 
-    *ppBackBuffer = m_backBuffer.ref();
-
+    *ppBackBuffer = m_backBuffers[iBackBuffer].ref();
     return D3D_OK;
   }
 
@@ -338,7 +337,7 @@ namespace dxvk {
       SetGammaRamp(0, &m_ramp);
 
     UpdatePresentRegion(nullptr, nullptr);
-    CreateBackBuffer();
+    CreateBackBuffers(m_presentParams.BackBufferCount);
   }
 
 
@@ -408,7 +407,10 @@ namespace dxvk {
 
 
   D3D9Surface* D3D9SwapChainEx::GetBackBuffer(UINT iBackBuffer) {
-    return m_backBuffer.ptr();
+    if (iBackBuffer >= m_backBuffers.size())
+      return nullptr;
+
+    return m_backBuffers[iBackBuffer].ptr();
   }
 
 
@@ -578,6 +580,14 @@ namespace dxvk {
 
       m_device->presentImage(m_presenter,
         cSync.present, &m_presentStatus);
+
+      // Shift back buffers so that m_backBuffers[1] will
+      // contain the image that we just presented
+      for (uint32_t i = m_backBuffers.size(); i > 1; i--) {
+        ctx->swapImages(
+          m_backBuffers[i - 1]->GetCommonTexture()->GetImage(),
+          m_backBuffers[i - 2]->GetCommonTexture()->GetImage());
+      }
     });
 
     m_parent->FlushCsChunk();
@@ -681,13 +691,15 @@ namespace dxvk {
   }
 
 
-  void D3D9SwapChainEx::CreateBackBuffer() {
+  void D3D9SwapChainEx::CreateBackBuffers(uint32_t NumBackBuffers) {
     // Explicitly destroy current swap image before
     // creating a new one to free up resources
     m_swapImage         = nullptr;
     m_swapImageResolve  = nullptr;
     m_swapImageView     = nullptr;
-    m_backBuffer        = nullptr;
+
+    m_backBuffers.clear();
+    m_backBuffers.resize(NumBackBuffers);
 
     // Create new back buffer
     D3D9_COMMON_TEXTURE_DESC desc;
@@ -705,9 +717,10 @@ namespace dxvk {
 
     auto mapping = m_parent->LookupFormat(desc.Format);
 
-    m_backBuffer = new D3D9Surface(m_parent, &desc, mapping);
+    for (uint32_t i = 0; i < NumBackBuffers; i++)
+      m_backBuffers[i] = new D3D9Surface(m_parent, &desc, mapping);
 
-    m_swapImage = m_backBuffer->GetCommonTexture()->GetImage();
+    m_swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
 
     // If the image is multisampled, we need to create
     // another image which we'll use as a resolve target
