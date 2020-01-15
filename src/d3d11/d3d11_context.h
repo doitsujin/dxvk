@@ -700,6 +700,10 @@ namespace dxvk {
             VkImageLayout             OldLayout,
             VkImageLayout             NewLayout);
 
+    D3D10DeviceLock LockContext() {
+      return m_multithread.AcquireLock();
+    }
+
   protected:
     
     D3D11Device* const          m_parent;
@@ -915,10 +919,6 @@ namespace dxvk {
     template<typename T>
     const D3D11CommonShader* GetCommonShader(T* pShader) const {
       return pShader != nullptr ? pShader->GetCommonShader() : nullptr;
-    }
-
-    D3D10DeviceLock LockContext() {
-      return m_multithread.AcquireLock();
     }
 
     template<typename Cmd>

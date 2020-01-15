@@ -368,6 +368,8 @@ namespace dxvk {
           D3D11ImmediateContext*  pContext,
     const vk::PresenterSync&      Sync,
           uint32_t                FrameId) {
+    auto lock = pContext->LockContext();
+
     // Present from CS thread so that we don't
     // have to synchronize with it first.
     m_presentStatus.result = VK_NOT_READY;
