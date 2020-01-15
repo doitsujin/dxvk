@@ -128,7 +128,7 @@ namespace dxvk {
     DxvkLogicOpState        m_loState;
     DxvkBlendMode           m_blendMode;
 
-    Com<D3D9Surface, false> m_backBuffer = nullptr;
+    std::vector<Com<D3D9Surface, false>> m_backBuffers;
     
     RECT                    m_srcRect;
     RECT                    m_dstRect;
@@ -168,7 +168,8 @@ namespace dxvk {
 
     void CreateRenderTargetViews();
 
-    void CreateBackBuffer();
+    void CreateBackBuffers(
+            uint32_t            NumBackBuffers);
 
     void CreateGammaTexture(
             UINT                NumControlPoints,
