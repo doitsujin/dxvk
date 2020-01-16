@@ -221,9 +221,9 @@ namespace dxvk {
     
     void updateDescriptorSetWithTemplate(
             VkDescriptorSet               descriptorSet,
-            VkDescriptorUpdateTemplateKHR descriptorTemplate,
+            VkDescriptorUpdateTemplate    descriptorTemplate,
       const void*                         data) {
-      m_vkd->vkUpdateDescriptorSetWithTemplateKHR(m_vkd->device(),
+      m_vkd->vkUpdateDescriptorSetWithTemplate(m_vkd->device(),
         descriptorSet, descriptorTemplate, data);
     }
 
