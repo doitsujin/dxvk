@@ -385,9 +385,6 @@ namespace dxvk {
 
   void DxsoCompiler::emitVsInit() {
     m_module.enableCapability(spv::CapabilityClipDistance);
-    m_module.enableCapability(spv::CapabilityDrawParameters);
-
-    m_module.enableExtension("SPV_KHR_shader_draw_parameters");
 
     // Only VS needs this, because PS has
     // non-indexable specialized output regs
