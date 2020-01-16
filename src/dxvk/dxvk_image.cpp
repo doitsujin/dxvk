@@ -217,7 +217,7 @@ namespace dxvk {
       case VK_IMAGE_VIEW_TYPE_3D: {
         this->createView(VK_IMAGE_VIEW_TYPE_3D, 1);
         
-        if (m_image->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR && m_info.numLevels == 1) {
+        if (m_image->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT && m_info.numLevels == 1) {
           this->createView(VK_IMAGE_VIEW_TYPE_2D,       1);
           this->createView(VK_IMAGE_VIEW_TYPE_2D_ARRAY, m_image->mipLevelExtent(m_info.minLevel).depth);
         }
@@ -247,8 +247,8 @@ namespace dxvk {
     subresourceRange.baseArrayLayer = m_info.minLayer;
     subresourceRange.layerCount     = numLayers;
 
-    VkImageViewUsageCreateInfoKHR viewUsage;
-    viewUsage.sType           = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO_KHR;
+    VkImageViewUsageCreateInfo viewUsage;
+    viewUsage.sType           = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
     viewUsage.pNext           = nullptr;
     viewUsage.usage           = m_info.usage;
     

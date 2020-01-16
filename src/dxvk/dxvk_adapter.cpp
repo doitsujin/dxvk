@@ -241,7 +241,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 24> devExtensionList = {{
+    std::array<DxvkExt*, 22> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.extConditionalRendering,
@@ -261,8 +261,6 @@ namespace dxvk {
       &devExtensions.khrDrawIndirectCount,
       &devExtensions.khrDriverProperties,
       &devExtensions.khrImageFormatList,
-      &devExtensions.khrMaintenance1,
-      &devExtensions.khrMaintenance2,
       &devExtensions.khrSamplerMirrorClampToEdge,
       &devExtensions.khrShaderDrawParameters,
       &devExtensions.khrSwapchain,

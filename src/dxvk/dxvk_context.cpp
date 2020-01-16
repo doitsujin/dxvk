@@ -274,7 +274,7 @@ namespace dxvk {
 
     bool canUseFb = (srcImage->info().usage & VK_IMAGE_USAGE_SAMPLED_BIT)
                  && (dstImage->info().usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
-                 && ((dstImage->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR)
+                 && ((dstImage->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT)
                   || (dstImage->info().type != VK_IMAGE_TYPE_3D));
 
     bool useFb = dstImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT
