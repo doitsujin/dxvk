@@ -13,7 +13,7 @@ namespace dxvk {
    * so before using them, check whether they are supported.
    */
   struct DxvkDeviceInfo {
-    VkPhysicalDeviceProperties2KHR                      core;
+    VkPhysicalDeviceProperties2                         core;
     VkPhysicalDeviceIDProperties                        coreDeviceId;
     VkPhysicalDeviceSubgroupProperties                  coreSubgroup;
     VkPhysicalDeviceTransformFeedbackPropertiesEXT      extTransformFeedback;
@@ -31,7 +31,7 @@ namespace dxvk {
    * extended features will be marked as unsupported.
    */
   struct DxvkDeviceFeatures {
-    VkPhysicalDeviceFeatures2KHR                              core;
+    VkPhysicalDeviceFeatures2                                 core;
     VkPhysicalDeviceConditionalRenderingFeaturesEXT           extConditionalRendering;
     VkPhysicalDeviceDepthClipEnableFeaturesEXT                extDepthClipEnable;
     VkPhysicalDeviceHostQueryResetFeaturesEXT                 extHostQueryReset;

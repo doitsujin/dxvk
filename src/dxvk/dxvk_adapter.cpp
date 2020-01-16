@@ -32,11 +32,11 @@ namespace dxvk {
     memBudget.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT;
     memBudget.pNext = nullptr;
 
-    VkPhysicalDeviceMemoryProperties2KHR memProps = { };
-    memProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2_KHR;
+    VkPhysicalDeviceMemoryProperties2 memProps = { };
+    memProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
     memProps.pNext = m_hasMemoryBudget ? &memBudget : nullptr;
 
-    m_vki->vkGetPhysicalDeviceMemoryProperties2KHR(m_handle, &memProps);
+    m_vki->vkGetPhysicalDeviceMemoryProperties2(m_handle, &memProps);
     
     DxvkAdapterMemoryInfo info = { };
     info.heapCount = memProps.memoryProperties.memoryHeapCount;
@@ -472,19 +472,17 @@ namespace dxvk {
 
   void DxvkAdapter::queryDeviceInfo() {
     m_deviceInfo = DxvkDeviceInfo();
-    m_deviceInfo.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
+    m_deviceInfo.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
     m_deviceInfo.core.pNext = nullptr;
 
     // Query info now so that we have basic device properties available
-    m_vki->vkGetPhysicalDeviceProperties2KHR(m_handle, &m_deviceInfo.core);
+    m_vki->vkGetPhysicalDeviceProperties2(m_handle, &m_deviceInfo.core);
 
-    if (m_deviceInfo.core.properties.apiVersion >= VK_MAKE_VERSION(1, 1, 0)) {
-      m_deviceInfo.coreDeviceId.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
-      m_deviceInfo.coreDeviceId.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.coreDeviceId);
+    m_deviceInfo.coreDeviceId.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
+    m_deviceInfo.coreDeviceId.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.coreDeviceId);
 
-      m_deviceInfo.coreSubgroup.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
-      m_deviceInfo.coreSubgroup.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.coreSubgroup);
-    }
+    m_deviceInfo.coreSubgroup.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
+    m_deviceInfo.coreSubgroup.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.coreSubgroup);
 
     if (m_deviceExtensions.supports(VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME)) {
       m_deviceInfo.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT;
@@ -507,7 +505,7 @@ namespace dxvk {
     }
 
     // Query full device properties for all enabled extensions
-    m_vki->vkGetPhysicalDeviceProperties2KHR(m_handle, &m_deviceInfo.core);
+    m_vki->vkGetPhysicalDeviceProperties2(m_handle, &m_deviceInfo.core);
     
     // Nvidia reports the driver version in a slightly different format
     if (DxvkGpuVendor(m_deviceInfo.core.properties.vendorID) == DxvkGpuVendor::Nvidia) {
@@ -521,7 +519,7 @@ namespace dxvk {
 
   void DxvkAdapter::queryDeviceFeatures() {
     m_deviceFeatures = DxvkDeviceFeatures();
-    m_deviceFeatures.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
+    m_deviceFeatures.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
     m_deviceFeatures.core.pNext = nullptr;
 
     if (m_deviceExtensions.supports(VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME)) {
@@ -559,7 +557,7 @@ namespace dxvk {
       m_deviceFeatures.extVertexAttributeDivisor.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extVertexAttributeDivisor);
     }
 
-    m_vki->vkGetPhysicalDeviceFeatures2KHR(m_handle, &m_deviceFeatures.core);
+    m_vki->vkGetPhysicalDeviceFeatures2(m_handle, &m_deviceFeatures.core);
   }
 
 
