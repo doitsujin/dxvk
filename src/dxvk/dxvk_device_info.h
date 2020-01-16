@@ -32,6 +32,7 @@ namespace dxvk {
    */
   struct DxvkDeviceFeatures {
     VkPhysicalDeviceFeatures2                                 core;
+    VkPhysicalDeviceShaderDrawParametersFeatures              shaderDrawParameters;
     VkPhysicalDeviceConditionalRenderingFeaturesEXT           extConditionalRendering;
     VkPhysicalDeviceDepthClipEnableFeaturesEXT                extDepthClipEnable;
     VkPhysicalDeviceHostQueryResetFeaturesEXT                 extHostQueryReset;
