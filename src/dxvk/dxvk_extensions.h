@@ -277,8 +277,6 @@ namespace dxvk {
     DxvkExt khrDrawIndirectCount              = { VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME,                DxvkExtMode::Optional };
     DxvkExt khrDriverProperties               = { VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME,                  DxvkExtMode::Optional };
     DxvkExt khrImageFormatList                = { VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME,                  DxvkExtMode::Required };
-    DxvkExt khrMaintenance1                   = { VK_KHR_MAINTENANCE1_EXTENSION_NAME,                       DxvkExtMode::Required };
-    DxvkExt khrMaintenance2                   = { VK_KHR_MAINTENANCE2_EXTENSION_NAME,                       DxvkExtMode::Required };
     DxvkExt khrSamplerMirrorClampToEdge       = { VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME,       DxvkExtMode::Optional };
     DxvkExt khrShaderDrawParameters           = { VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,             DxvkExtMode::Required };
     DxvkExt khrSwapchain                      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME,                          DxvkExtMode::Required };
