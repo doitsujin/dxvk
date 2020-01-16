@@ -182,9 +182,6 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetFullscreenState(
           BOOL*         pFullscreen,
           IDXGIOutput** ppTarget) {
-    if (!IsWindow(m_window))
-      return DXGI_ERROR_INVALID_CALL;
-    
     HRESULT hr = S_OK;
     
     if (pFullscreen != nullptr)
