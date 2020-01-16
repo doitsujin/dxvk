@@ -272,12 +272,10 @@ namespace dxvk {
     DxvkExt extTransformFeedback              = { VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME,                 DxvkExtMode::Optional };
     DxvkExt extVertexAttributeDivisor         = { VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME,           DxvkExtMode::Optional };
     DxvkExt khrCreateRenderPass2              = { VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,                DxvkExtMode::Optional };
-    DxvkExt khrDedicatedAllocation            = { VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,               DxvkExtMode::Required };
     DxvkExt khrDepthStencilResolve            = { VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,              DxvkExtMode::Optional };
     DxvkExt khrDescriptorUpdateTemplate       = { VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME,         DxvkExtMode::Required };
     DxvkExt khrDrawIndirectCount              = { VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME,                DxvkExtMode::Optional };
     DxvkExt khrDriverProperties               = { VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME,                  DxvkExtMode::Optional };
-    DxvkExt khrGetMemoryRequirements2         = { VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,          DxvkExtMode::Required };
     DxvkExt khrImageFormatList                = { VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME,                  DxvkExtMode::Required };
     DxvkExt khrMaintenance1                   = { VK_KHR_MAINTENANCE1_EXTENSION_NAME,                       DxvkExtMode::Required };
     DxvkExt khrMaintenance2                   = { VK_KHR_MAINTENANCE2_EXTENSION_NAME,                       DxvkExtMode::Required };

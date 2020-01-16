@@ -180,7 +180,7 @@ namespace dxvk {
   DxvkMemory DxvkMemoryAllocator::alloc(
     const VkMemoryRequirements*             req,
     const VkMemoryDedicatedRequirements&    dedAllocReq,
-    const VkMemoryDedicatedAllocateInfoKHR& dedAllocInfo,
+    const VkMemoryDedicatedAllocateInfo&    dedAllocInfo,
           VkMemoryPropertyFlags             flags,
           float                             priority) {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -234,7 +234,7 @@ namespace dxvk {
   
   DxvkMemory DxvkMemoryAllocator::tryAlloc(
     const VkMemoryRequirements*             req,
-    const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo,
+    const VkMemoryDedicatedAllocateInfo*    dedAllocInfo,
           VkMemoryPropertyFlags             flags,
           float                             priority) {
     DxvkMemory result;
@@ -259,7 +259,7 @@ namespace dxvk {
           VkDeviceSize                      size,
           VkDeviceSize                      align,
           float                             priority,
-    const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo) {
+    const VkMemoryDedicatedAllocateInfo*    dedAllocInfo) {
     // Prevent unnecessary external host memory fragmentation
     bool isDeviceLocal = (flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0;
 
@@ -305,7 +305,7 @@ namespace dxvk {
           VkMemoryPropertyFlags             flags,
           VkDeviceSize                      size,
           float                             priority,
-    const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo) {
+    const VkMemoryDedicatedAllocateInfo*    dedAllocInfo) {
     bool useMemoryPriority = (flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                           && (m_device->features().extMemoryPriority.memoryPriority);
     
