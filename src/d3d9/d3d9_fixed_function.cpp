@@ -1408,9 +1408,6 @@ namespace dxvk {
 
     // VS Caps
     m_module.enableCapability(spv::CapabilityClipDistance);
-    m_module.enableCapability(spv::CapabilityDrawParameters);
-
-    m_module.enableExtension("SPV_KHR_shader_draw_parameters");
 
     emitLightTypeDecl();
     emitBaseBufferDecl();
