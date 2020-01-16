@@ -135,14 +135,8 @@ namespace dxvk {
     VkInstance result = VK_NULL_HANDLE;
     VkResult status = m_vkl->vkCreateInstance(&info, nullptr, &result);
 
-    if (status == VK_ERROR_INCOMPATIBLE_DRIVER) {
-      Logger::warn("Failed to create Vulkan 1.1 instance, falling back to 1.0");
-      appInfo.apiVersion = 0; /* some very old drivers may not accept 1.0 */
-      status = m_vkl->vkCreateInstance(&info, nullptr, &result);
-    }
-
     if (status != VK_SUCCESS)
-      throw DxvkError("DxvkInstance::createInstance: Failed to create Vulkan instance");
+      throw DxvkError("DxvkInstance::createInstance: Failed to create Vulkan 1.1 instance");
     
     return result;
   }
