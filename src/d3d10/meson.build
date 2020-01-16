@@ -41,3 +41,7 @@ d3d10_1_dll = shared_library('d3d10_1'+dll_ext, d3d10_main_src, d3d10_1_res,
 d3d10_dep = declare_dependency(
   link_with           : [ d3d10_dll, d3d10_1_dll, d3d10_core_dll ],
   include_directories : [ dxvk_include_path ])
+
+if get_option('dump_debug')
+  subdir('debug')
+endif

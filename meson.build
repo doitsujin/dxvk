@@ -53,6 +53,15 @@ else
     wrc = find_program('rc')
   else
     wrc = cpu_family == 'x86_64' ? find_program('x86_64-w64-mingw32-windres') : find_program('i686-w64-mingw32-windres')
+    if get_option('dump_debug')
+      if get_option('buildtype') == 'release'
+        error('Option dump_debug specified in a release build')
+      endif
+      add_global_link_arguments('-Wl,--file-alignment,4096', language : ['cpp'])
+      objcopy = cpu_family == 'x86_64' ? find_program('x86_64-w64-mingw32-objcopy') : find_program('i686-w64-mingw32-objcopy')
+      bfd_target = cpu_family == 'x86_64' ? 'elf64-x86-64' : 'elf32-i386'
+      dump_debug = [objcopy, '-O', bfd_target, '--only-keep-debug', '--file-alignment=4096', '@INPUT@', '@OUTPUT@']
+    endif
   endif
   if cpu_family == 'x86'
     if dxvk_compiler.has_link_argument('-Wl,--add-stdcall-alias')

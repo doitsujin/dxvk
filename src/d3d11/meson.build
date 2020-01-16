@@ -75,3 +75,7 @@ d3d11_dll = shared_library('d3d11'+dll_ext, dxgi_common_src + d3d11_src + d3d10_
 d3d11_dep = declare_dependency(
   link_with           : [ d3d11_dll ],
   include_directories : [ dxvk_include_path ])
+
+if get_option('dump_debug')
+  subdir('debug')
+endif

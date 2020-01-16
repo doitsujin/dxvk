@@ -177,3 +177,12 @@ $action d3d10
 $action d3d10_1
 $action d3d10core
 $action d3d11
+
+if [ -f ".debug" ]
+    mkdir $win32_sys_path/.debug
+    mkdir $win64_sys_path/.debug
+    $action .debug/d3d9
+    $action .debug/d3d10
+    $action .debug/d3d10_1
+    $action .debug/d3d10core
+    $action .debug/d3d11

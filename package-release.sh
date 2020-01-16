@@ -25,6 +25,9 @@ opt_nopackage=0
 opt_devbuild=0
 opt_winelib=0
 
+buildtype="release"
+dump_debug="false"
+
 crossfile="build-win"
 
 while [ $# -gt 0 ]; do
@@ -35,6 +38,8 @@ while [ $# -gt 0 ]; do
   "--dev-build")
     opt_nopackage=1
     opt_devbuild=1
+    buildtype="debugoptimized"
+    dump_debug="true"
     ;;
   "--winelib")
     opt_winelib=1
@@ -54,12 +59,13 @@ function build_arch {
   cd "$DXVK_SRC_DIR"
 
   meson --cross-file "$DXVK_SRC_DIR/$crossfile$1.txt" \
-        --buildtype "release"                         \
+        --buildtype "$buildtype"                  \
         --prefix "$DXVK_BUILD_DIR"                    \
         --strip                                       \
         --bindir "x$1"                                \
         --libdir "x$1"                                \
         -Denable_tests=false                          \
+        -Ddump_debug="$dump_debug"                    \
         "$DXVK_BUILD_DIR/build.$1"
 
   cd "$DXVK_BUILD_DIR/build.$1"

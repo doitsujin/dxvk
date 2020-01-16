@@ -50,3 +50,7 @@ d3d9_dll = shared_library('d3d9'+dll_ext, d3d9_src, glsl_generator.process(d3d9_
 d3d9_dep = declare_dependency(
   link_with           : [ d3d9_dll ],
   include_directories : [ dxvk_include_path ])
+
+if get_option('dump_debug')
+  subdir('debug')
+endif
