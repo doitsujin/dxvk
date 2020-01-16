@@ -82,22 +82,19 @@ namespace dxvk::vk {
     VULKAN_FN(vkEnumerateDeviceExtensionProperties);
     VULKAN_FN(vkEnumeratePhysicalDevices);
     VULKAN_FN(vkGetPhysicalDeviceFeatures);
+    VULKAN_FN(vkGetPhysicalDeviceFeatures2);
     VULKAN_FN(vkGetPhysicalDeviceFormatProperties);
+    VULKAN_FN(vkGetPhysicalDeviceFormatProperties2);
+    VULKAN_FN(vkGetPhysicalDeviceProperties2);
     VULKAN_FN(vkGetPhysicalDeviceImageFormatProperties);
+    VULKAN_FN(vkGetPhysicalDeviceImageFormatProperties2);
     VULKAN_FN(vkGetPhysicalDeviceMemoryProperties);
+    VULKAN_FN(vkGetPhysicalDeviceMemoryProperties2);
     VULKAN_FN(vkGetPhysicalDeviceProperties);
     VULKAN_FN(vkGetPhysicalDeviceQueueFamilyProperties);
+    VULKAN_FN(vkGetPhysicalDeviceQueueFamilyProperties2);
     VULKAN_FN(vkGetPhysicalDeviceSparseImageFormatProperties);
-
-    #ifdef VK_KHR_get_physical_device_properties2
-    VULKAN_FN(vkGetPhysicalDeviceFeatures2KHR);
-    VULKAN_FN(vkGetPhysicalDeviceProperties2KHR);
-    VULKAN_FN(vkGetPhysicalDeviceFormatProperties2KHR);
-    VULKAN_FN(vkGetPhysicalDeviceImageFormatProperties2KHR);
-    VULKAN_FN(vkGetPhysicalDeviceQueueFamilyProperties2KHR);
-    VULKAN_FN(vkGetPhysicalDeviceMemoryProperties2KHR);
-    VULKAN_FN(vkGetPhysicalDeviceSparseImageFormatProperties2KHR);
-    #endif
+    VULKAN_FN(vkGetPhysicalDeviceSparseImageFormatProperties2);
 
     #ifdef VK_KHR_get_surface_capabilities2
     VULKAN_FN(vkGetPhysicalDeviceSurfaceCapabilities2KHR);

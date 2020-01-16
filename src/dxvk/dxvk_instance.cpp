@@ -87,8 +87,7 @@ namespace dxvk {
   VkInstance DxvkInstance::createInstance() {
     DxvkInstanceExtensions insExtensions;
 
-    std::array<DxvkExt*, 3> insExtensionList = {{
-      &insExtensions.khrGetPhysicalDeviceProperties2,
+    std::array<DxvkExt*, 2> insExtensionList = {{
       &insExtensions.khrGetSurfaceCapabilities2,
       &insExtensions.khrSurface,
     }};
