@@ -4668,10 +4668,17 @@ namespace dxvk {
     m_activeHazards = 0;
     for (uint32_t rt = masks.rtMask; rt; rt &= rt - 1) {
       for (uint32_t sampler = masks.samplerMask; sampler; sampler &= sampler - 1) {
-        IDirect3DBaseTexture9* rtBase  = m_state.renderTargets[bit::tzcnt(rt)]->GetBaseTexture();
+        D3D9Surface* rtSurf = m_state.renderTargets[bit::tzcnt(rt)].ptr();
+
+        IDirect3DBaseTexture9* rtBase  = rtSurf->GetBaseTexture();
         IDirect3DBaseTexture9* texBase = m_state.textures[bit::tzcnt(sampler)];
 
-        if (likely(rtBase != texBase))
+        // HACK: Don't mark for hazards if we aren't rendering to mip 0!
+        // Some games use screenspace passes like this for blurring
+        // Sampling from mip 0 (texture) -> mip 1 (rt)
+        // and we'd trigger the hazard path otherwise which is unnecessary,
+        // and would shove us into GENERAL and emitting readback barriers.
+        if (likely(rtSurf->GetMipLevel() != 0 || rtBase != texBase))
           continue;
 
         m_activeHazards |= 1 << bit::tzcnt(rt);
