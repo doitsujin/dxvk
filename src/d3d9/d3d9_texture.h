@@ -59,7 +59,7 @@ namespace dxvk {
       DWORD oldLod = m_lod;
       m_lod = LODNew;
 
-      m_texture.RecreateSampledView(LODNew);
+      m_texture.CreateSampleView(LODNew);
       if (this->GetPrivateRefCount() > 0)
         this->m_parent->MarkSamplersDirty();
 

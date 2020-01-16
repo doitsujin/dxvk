@@ -38,7 +38,7 @@ namespace dxvk {
           throw e;
       }
 
-      CreateInitialViews();
+      CreateSampleView(0);
 
       if (!IsManaged()) {
         m_size = m_image->memSize();
@@ -292,18 +292,6 @@ namespace dxvk {
   }
 
 
-  void D3D9CommonTexture::RecreateSampledView(UINT Lod) {
-    // This will be a no-op for SYSTEMMEM types given we
-    // don't expose the cap to allow texturing with them.
-    if (unlikely(m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM))
-      return;
-
-    const D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
-
-    m_views.Sample = CreateColorViewPair(formatInfo, AllLayers, VK_IMAGE_USAGE_SAMPLED_BIT, Lod);
-  }
-
-
   BOOL D3D9CommonTexture::DetermineShadowState() const {
     static std::array<D3D9Format, 3> blacklist = {
       D3D9Format::INTZ, D3D9Format::DF16, D3D9Format::DF24
@@ -427,15 +415,14 @@ namespace dxvk {
 
 
   Rc<DxvkImageView> D3D9CommonTexture::CreateView(
-          D3D9_VK_FORMAT_MAPPING FormatInfo,
           UINT                   Layer,
-          VkImageUsageFlags      UsageFlags,
           UINT                   Lod,
-          BOOL                   Srgb) {
+          VkImageUsageFlags      UsageFlags,
+          bool                   Srgb) {
     DxvkImageViewCreateInfo viewInfo;
-    viewInfo.format    = PickSRGB(FormatInfo.FormatColor, FormatInfo.FormatSrgb, Srgb);
+    viewInfo.format    = PickSRGB(m_mapping.FormatColor, m_mapping.FormatSrgb, Srgb);
     viewInfo.aspect    = imageFormatInfo(viewInfo.format)->aspectMask;
-    viewInfo.swizzle   = FormatInfo.Swizzle;
+    viewInfo.swizzle   = m_mapping.Swizzle;
     viewInfo.usage     = UsageFlags;
     viewInfo.type      = GetImageViewTypeFromResourceType(m_type, Layer);
     viewInfo.minLevel  = Lod;
@@ -462,46 +449,14 @@ namespace dxvk {
   }
 
 
-  D3D9ColorView D3D9CommonTexture::CreateColorViewPair(
-          D3D9_VK_FORMAT_MAPPING FormatInfo,
-          UINT                   Layer,
-          VkImageUsageFlags      UsageFlags,
-          UINT                   Lod) {
-    D3D9ColorView pair;
-    pair.Color  = CreateView(FormatInfo, Layer, UsageFlags, Lod, FALSE);
+  void D3D9CommonTexture::CreateSampleView(UINT Lod) {
+    // This will be a no-op for SYSTEMMEM types given we
+    // don't expose the cap to allow texturing with them.
+    if (unlikely(m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM))
+      return;
 
-    if (FormatInfo.FormatSrgb != VK_FORMAT_UNDEFINED)
-      pair.Srgb = CreateView(FormatInfo, Layer, UsageFlags, Lod, TRUE);
-    else
-      pair.Srgb = pair.Color;
-
-    return pair;
-  }
-
-
-  void D3D9CommonTexture::CreateInitialViews() {
-    const D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
-
-    m_views.Sample = CreateColorViewPair(formatInfo, AllLayers, VK_IMAGE_USAGE_SAMPLED_BIT, 0);
-
-    for (uint32_t i = 0; i < m_desc.ArraySize; i++) {
-      for (uint32_t j = 0; j < m_desc.MipLevels; j++)
-        m_views.SubresourceSample[i][j] = CreateColorViewPair(formatInfo, i, VK_IMAGE_USAGE_SAMPLED_BIT, j);
-    }
-
-    if (m_desc.Usage & D3DUSAGE_RENDERTARGET) {
-      for (uint32_t i = 0; i < m_desc.ArraySize; i++) {
-        for (uint32_t j = 0; j < m_desc.MipLevels; j++)
-          m_views.SubresourceRenderTarget[i][j] = CreateColorViewPair(formatInfo, i, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, j);
-      }
-    }
-
-    if (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL) {
-      for (uint32_t i = 0; i < m_desc.ArraySize; i++) {
-        for (uint32_t j = 0; j < m_desc.MipLevels; j++)
-          m_views.SubresourceDepth[i][j] = CreateView(formatInfo, i, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, j, FALSE);
-      }
-    }
+    m_sampleView.Color = CreateView(AllLayers, Lod, VK_IMAGE_USAGE_SAMPLED_BIT, false);
+    m_sampleView.Srgb  = CreateView(AllLayers, Lod, VK_IMAGE_USAGE_SAMPLED_BIT, true);
   }
 
 

@@ -43,7 +43,11 @@ namespace dxvk {
   };
 
   struct D3D9ColorView {
-    inline Rc<DxvkImageView> Pick(bool Srgb) const {
+    inline Rc<DxvkImageView>& Pick(bool Srgb) {
+      return Srgb ? this->Srgb : this->Color;
+    }
+
+    inline const Rc<DxvkImageView>& Pick(bool Srgb) const {
       return Srgb ? this->Srgb : this->Color;
     }
 
@@ -291,19 +295,11 @@ namespace dxvk {
     }
 
     /**
-     * \brief Autogen Mipmap
-     * \returns Whether the texture is to have automatic mip generation
-     */
-    const D3D9ViewSet& GetViews() const {
-      return m_views;
-    }
-
-    /**
      * \brief Recreate main image view
      * Recreates the main view of the sampler w/ a specific LOD.
      * SetLOD only works on MANAGED textures so this is A-okay.
      */
-    void RecreateSampledView(UINT Lod);
+    void CreateSampleView(UINT Lod);
 
     /**
      * \brief Extent
@@ -323,7 +319,7 @@ namespace dxvk {
     }
 
     bool MarkHazardous() {
-      return std::exchange(m_views.Hazardous, true);
+      return std::exchange(m_hazardous, true);
     }
 
     D3DRESOURCETYPE GetType() {
@@ -336,6 +332,32 @@ namespace dxvk {
 
     bool SetDirty(UINT Subresource, bool value) { return std::exchange(m_dirty[Subresource], value); }
     void MarkAllDirty() { for (uint32_t i = 0; i < m_dirty.size(); i++) m_dirty[i] = true; }
+
+    const D3D9ColorView& GetSampleView() const {
+      return m_sampleView;
+    }
+
+    VkImageLayout DetermineRenderTargetLayout() const {
+      return m_image != nullptr &&
+             m_image->info().tiling == VK_IMAGE_TILING_OPTIMAL &&
+            !m_hazardous
+        ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+        : VK_IMAGE_LAYOUT_GENERAL;
+    }
+
+    VkImageLayout DetermineDepthStencilLayout() const {
+      return m_image != nullptr &&
+             m_image->info().tiling == VK_IMAGE_TILING_OPTIMAL &&
+            !m_hazardous
+        ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+        : VK_IMAGE_LAYOUT_GENERAL;
+    }
+
+    Rc<DxvkImageView> CreateView(
+            UINT                   Layer,
+            UINT                   Lod,
+            VkImageUsageFlags      UsageFlags,
+            bool                   Srgb);
 
   private:
 
@@ -352,8 +374,6 @@ namespace dxvk {
       DxvkBufferSliceHandle>      m_mappedSlices;
     D3D9SubresourceArray<DWORD>   m_lockFlags;
 
-    D3D9ViewSet                   m_views;
-
     D3D9_VK_FORMAT_MAPPING        m_mapping;
 
     VkExtent3D                    m_adjustedExtent;
@@ -363,6 +383,10 @@ namespace dxvk {
     int64_t                       m_size = 0;
 
     bool                          m_systemmemModified = false;
+
+    bool                          m_hazardous = false;
+
+    D3D9ColorView                 m_sampleView;
 
     D3D9SubresourceArray<
       bool>                       m_locked = { };
@@ -412,20 +436,6 @@ namespace dxvk {
 
     static constexpr UINT AllLayers = UINT32_MAX;
 
-    Rc<DxvkImageView> CreateView(
-            D3D9_VK_FORMAT_MAPPING FormatInfo,
-            UINT                   Layer,
-            VkImageUsageFlags      UsageFlags,
-            UINT                   Lod,
-            BOOL                   Srgb);
-
-    D3D9ColorView CreateColorViewPair(
-            D3D9_VK_FORMAT_MAPPING FormatInfo,
-            UINT                   Layer,
-            VkImageUsageFlags      UsageFlags,
-            UINT                   Lod);
-
-    void CreateInitialViews();
   };
 
 }

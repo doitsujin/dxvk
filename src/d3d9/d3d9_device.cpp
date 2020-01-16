@@ -4068,7 +4068,7 @@ namespace dxvk {
   void D3D9DeviceEx::GenerateMips(
     D3D9CommonTexture* pResource) {
     EmitCs([
-      cImageView = pResource->GetViews().Sample.Color
+      cImageView = pResource->GetSampleView().Color
     ] (DxvkContext* ctx) {
       ctx->generateMipmaps(cImageView);
     });
@@ -4844,7 +4844,7 @@ namespace dxvk {
       if (likely(sampleCount == VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM || sampleCount == dsImageInfo.sampleCount)) {
         attachments.depth = {
           m_state.depthStencil->GetDepthStencilView(),
-          m_state.depthStencil->GetDepthLayout() };
+          m_state.depthStencil->GetDepthStencilLayout() };
       }
     }
 
@@ -5292,7 +5292,7 @@ namespace dxvk {
       cColorSlot = colorSlot,
       cDepthSlot = depthSlot,
       cDepth     = commonTex->IsShadow(),
-      cImageView = commonTex->GetViews().Sample.Pick(srgb)
+      cImageView = commonTex->GetSampleView().Pick(srgb)
     ](DxvkContext* ctx) {
       ctx->bindResourceView(cColorSlot, !cDepth ? cImageView : nullptr, nullptr);
       ctx->bindResourceView(cDepthSlot,  cDepth ? cImageView : nullptr, nullptr);
