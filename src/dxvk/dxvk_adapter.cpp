@@ -213,6 +213,8 @@ namespace dxvk {
                 || !required.core.features.variableMultisampleRate)
         && (m_deviceFeatures.core.features.inheritedQueries
                 || !required.core.features.inheritedQueries)
+        && (m_deviceFeatures.shaderDrawParameters.shaderDrawParameters
+                || !required.shaderDrawParameters.shaderDrawParameters)
         && (m_deviceFeatures.extConditionalRendering.conditionalRendering
                 || !required.extConditionalRendering.conditionalRendering)
         && (m_deviceFeatures.extDepthClipEnable.depthClipEnable
@@ -241,7 +243,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 22> devExtensionList = {{
+    std::array<DxvkExt*, 21> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.extConditionalRendering,
@@ -262,7 +264,6 @@ namespace dxvk {
       &devExtensions.khrDriverProperties,
       &devExtensions.khrImageFormatList,
       &devExtensions.khrSamplerMirrorClampToEdge,
-      &devExtensions.khrShaderDrawParameters,
       &devExtensions.khrSwapchain,
     }};
 
@@ -293,46 +294,42 @@ namespace dxvk {
     enabledFeatures.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
     enabledFeatures.core.pNext = nullptr;
 
+    enabledFeatures.shaderDrawParameters.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
+    enabledFeatures.shaderDrawParameters.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.shaderDrawParameters);
+
     if (devExtensions.extConditionalRendering) {
       enabledFeatures.extConditionalRendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT;
-      enabledFeatures.extConditionalRendering.pNext = enabledFeatures.core.pNext;
-      enabledFeatures.core.pNext = &enabledFeatures.extConditionalRendering;
+      enabledFeatures.extConditionalRendering.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extConditionalRendering);
     }
 
     if (devExtensions.extDepthClipEnable) {
       enabledFeatures.extDepthClipEnable.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT;
-      enabledFeatures.extDepthClipEnable.pNext = enabledFeatures.core.pNext;
-      enabledFeatures.core.pNext = &enabledFeatures.extDepthClipEnable;
+      enabledFeatures.extDepthClipEnable.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extDepthClipEnable);
     }
 
     if (devExtensions.extHostQueryReset) {
       enabledFeatures.extHostQueryReset.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT;
-      enabledFeatures.extHostQueryReset.pNext = enabledFeatures.core.pNext;
-      enabledFeatures.core.pNext = &enabledFeatures.extHostQueryReset;
+      enabledFeatures.extHostQueryReset.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extHostQueryReset);
     }
 
     if (devExtensions.extMemoryPriority) {
       enabledFeatures.extMemoryPriority.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
-      enabledFeatures.extMemoryPriority.pNext = enabledFeatures.core.pNext;
-      enabledFeatures.core.pNext = &enabledFeatures.extMemoryPriority;
+      enabledFeatures.extMemoryPriority.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extMemoryPriority);
     }
 
     if (devExtensions.extShaderDemoteToHelperInvocation) {
       enabledFeatures.extShaderDemoteToHelperInvocation.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT;
-      enabledFeatures.extShaderDemoteToHelperInvocation.pNext = enabledFeatures.core.pNext;
-      enabledFeatures.core.pNext = &enabledFeatures.extShaderDemoteToHelperInvocation;
+      enabledFeatures.extShaderDemoteToHelperInvocation.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extShaderDemoteToHelperInvocation);
     }
 
     if (devExtensions.extTransformFeedback) {
       enabledFeatures.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
-      enabledFeatures.extTransformFeedback.pNext = enabledFeatures.core.pNext;
-      enabledFeatures.core.pNext = &enabledFeatures.extTransformFeedback;
+      enabledFeatures.extTransformFeedback.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extTransformFeedback);
     }
 
     if (devExtensions.extVertexAttributeDivisor.revision() >= 3) {
       enabledFeatures.extVertexAttributeDivisor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
-      enabledFeatures.extVertexAttributeDivisor.pNext = enabledFeatures.core.pNext;
-      enabledFeatures.core.pNext = &enabledFeatures.extVertexAttributeDivisor;
+      enabledFeatures.extVertexAttributeDivisor.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extVertexAttributeDivisor);
     }
 
     // Report the desired overallocation behaviour to the driver
@@ -517,6 +514,9 @@ namespace dxvk {
     m_deviceFeatures = DxvkDeviceFeatures();
     m_deviceFeatures.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
     m_deviceFeatures.core.pNext = nullptr;
+
+    m_deviceFeatures.shaderDrawParameters.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
+    m_deviceFeatures.shaderDrawParameters.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.shaderDrawParameters);
 
     if (m_deviceExtensions.supports(VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME)) {
       m_deviceFeatures.extConditionalRendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT;
