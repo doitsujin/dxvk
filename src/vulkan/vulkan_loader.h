@@ -167,8 +167,11 @@ namespace dxvk::vk {
     VULKAN_FN(vkBindBufferMemory);
     VULKAN_FN(vkBindImageMemory);
     VULKAN_FN(vkGetBufferMemoryRequirements);
+    VULKAN_FN(vkGetBufferMemoryRequirements2);
     VULKAN_FN(vkGetImageMemoryRequirements);
+    VULKAN_FN(vkGetImageMemoryRequirements2);
     VULKAN_FN(vkGetImageSparseMemoryRequirements);
+    VULKAN_FN(vkGetImageSparseMemoryRequirements2);
     VULKAN_FN(vkQueueBindSparse);
     VULKAN_FN(vkCreateFence);
     VULKAN_FN(vkDestroyFence);
@@ -298,11 +301,6 @@ namespace dxvk::vk {
     VULKAN_FN(vkGetSwapchainImagesKHR);
     VULKAN_FN(vkAcquireNextImageKHR);
     VULKAN_FN(vkQueuePresentKHR);
-    #endif
-
-    #ifdef VK_KHR_get_memory_requirements2
-    VULKAN_FN(vkGetBufferMemoryRequirements2KHR);
-    VULKAN_FN(vkGetImageMemoryRequirements2KHR);
     #endif
 
     #ifdef VK_EXT_conditional_rendering

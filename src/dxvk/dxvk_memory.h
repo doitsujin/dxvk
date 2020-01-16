@@ -258,7 +258,7 @@ namespace dxvk {
     DxvkMemory alloc(
       const VkMemoryRequirements*             req,
       const VkMemoryDedicatedRequirements&    dedAllocReq,
-      const VkMemoryDedicatedAllocateInfoKHR& dedAllocInfo,
+      const VkMemoryDedicatedAllocateInfo&    dedAllocInfo,
             VkMemoryPropertyFlags             flags,
             float                             priority);
     
@@ -287,7 +287,7 @@ namespace dxvk {
     
     DxvkMemory tryAlloc(
       const VkMemoryRequirements*             req,
-      const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo,
+      const VkMemoryDedicatedAllocateInfo*    dedAllocInfo,
             VkMemoryPropertyFlags             flags,
             float                             priority);
     
@@ -297,14 +297,14 @@ namespace dxvk {
             VkDeviceSize                      size,
             VkDeviceSize                      align,
             float                             priority,
-      const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo);
+      const VkMemoryDedicatedAllocateInfo*    dedAllocInfo);
     
     DxvkDeviceMemory tryAllocDeviceMemory(
             DxvkMemoryType*                   type,
             VkMemoryPropertyFlags             flags,
             VkDeviceSize                      size,
             float                             priority,
-      const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo);
+      const VkMemoryDedicatedAllocateInfo*    dedAllocInfo);
     
     void free(
       const DxvkMemory&           memory);
