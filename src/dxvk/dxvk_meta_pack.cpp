@@ -36,8 +36,8 @@ namespace dxvk {
     m_vkd->vkDestroyPipeline(m_vkd->device(), m_pipePackD32S8, nullptr);
     m_vkd->vkDestroyPipeline(m_vkd->device(), m_pipePackD24S8, nullptr);
     
-    m_vkd->vkDestroyDescriptorUpdateTemplateKHR(m_vkd->device(), m_templatePack, nullptr);
-    m_vkd->vkDestroyDescriptorUpdateTemplateKHR(m_vkd->device(), m_templateUnpack, nullptr);
+    m_vkd->vkDestroyDescriptorUpdateTemplate(m_vkd->device(), m_templatePack, nullptr);
+    m_vkd->vkDestroyDescriptorUpdateTemplate(m_vkd->device(), m_templateUnpack, nullptr);
     
     m_vkd->vkDestroyPipelineLayout(m_vkd->device(), m_pipeLayoutPack, nullptr);
     m_vkd->vkDestroyPipelineLayout(m_vkd->device(), m_pipeLayoutUnpack, nullptr);
@@ -185,54 +185,54 @@ namespace dxvk {
   }
 
 
-  VkDescriptorUpdateTemplateKHR DxvkMetaPackObjects::createPackDescriptorUpdateTemplate() {
-    std::array<VkDescriptorUpdateTemplateEntryKHR, 3> bindings = {{
+  VkDescriptorUpdateTemplate DxvkMetaPackObjects::createPackDescriptorUpdateTemplate() {
+    std::array<VkDescriptorUpdateTemplateEntry, 3> bindings = {{
       { 0, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         offsetof(DxvkMetaPackDescriptors, dstBuffer),  0 },
       { 1, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, offsetof(DxvkMetaPackDescriptors, srcDepth),   0 },
       { 2, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, offsetof(DxvkMetaPackDescriptors, srcStencil), 0 },
     }};
 
-    VkDescriptorUpdateTemplateCreateInfoKHR templateInfo;
-    templateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO_KHR;
+    VkDescriptorUpdateTemplateCreateInfo templateInfo;
+    templateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO;
     templateInfo.pNext = nullptr;
     templateInfo.flags = 0;
     templateInfo.descriptorUpdateEntryCount = bindings.size();
     templateInfo.pDescriptorUpdateEntries   = bindings.data();
-    templateInfo.templateType               = VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET_KHR;
+    templateInfo.templateType               = VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET;
     templateInfo.descriptorSetLayout        = m_dsetLayoutPack;
     templateInfo.pipelineBindPoint          = VK_PIPELINE_BIND_POINT_COMPUTE;
     templateInfo.pipelineLayout             = m_pipeLayoutPack;
     templateInfo.set                        = 0;
 
-    VkDescriptorUpdateTemplateKHR result = VK_NULL_HANDLE;
-    if (m_vkd->vkCreateDescriptorUpdateTemplateKHR(m_vkd->device(),
+    VkDescriptorUpdateTemplate result = VK_NULL_HANDLE;
+    if (m_vkd->vkCreateDescriptorUpdateTemplate(m_vkd->device(),
           &templateInfo, nullptr, &result) != VK_SUCCESS)
       throw DxvkError("DxvkMetaPackObjects: Failed to create descriptor update template");
     return result;
   }
 
 
-  VkDescriptorUpdateTemplateKHR DxvkMetaPackObjects::createUnpackDescriptorUpdateTemplate() {
-    std::array<VkDescriptorUpdateTemplateEntryKHR, 3> bindings = {{
+  VkDescriptorUpdateTemplate DxvkMetaPackObjects::createUnpackDescriptorUpdateTemplate() {
+    std::array<VkDescriptorUpdateTemplateEntry, 3> bindings = {{
       { 0, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, offsetof(DxvkMetaUnpackDescriptors, dstDepth),   0 },
       { 1, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, offsetof(DxvkMetaUnpackDescriptors, dstStencil), 0 },
       { 2, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       offsetof(DxvkMetaUnpackDescriptors, srcBuffer),  0 },
     }};
 
-    VkDescriptorUpdateTemplateCreateInfoKHR templateInfo;
-    templateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO_KHR;
+    VkDescriptorUpdateTemplateCreateInfo templateInfo;
+    templateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO;
     templateInfo.pNext = nullptr;
     templateInfo.flags = 0;
     templateInfo.descriptorUpdateEntryCount = bindings.size();
     templateInfo.pDescriptorUpdateEntries   = bindings.data();
-    templateInfo.templateType               = VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET_KHR;
+    templateInfo.templateType               = VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET;
     templateInfo.descriptorSetLayout        = m_dsetLayoutUnpack;
     templateInfo.pipelineBindPoint          = VK_PIPELINE_BIND_POINT_COMPUTE;
     templateInfo.pipelineLayout             = m_pipeLayoutUnpack;
     templateInfo.set                        = 0;
 
-    VkDescriptorUpdateTemplateKHR result = VK_NULL_HANDLE;
-    if (m_vkd->vkCreateDescriptorUpdateTemplateKHR(m_vkd->device(),
+    VkDescriptorUpdateTemplate result = VK_NULL_HANDLE;
+    if (m_vkd->vkCreateDescriptorUpdateTemplate(m_vkd->device(),
           &templateInfo, nullptr, &result) != VK_SUCCESS)
       throw DxvkError("DxvkMetaPackObjects: Failed to create descriptor update template");
     return result;

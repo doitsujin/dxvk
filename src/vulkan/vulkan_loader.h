@@ -231,6 +231,9 @@ namespace dxvk::vk {
     VULKAN_FN(vkBeginCommandBuffer);
     VULKAN_FN(vkEndCommandBuffer);
     VULKAN_FN(vkResetCommandBuffer);
+    VULKAN_FN(vkCreateDescriptorUpdateTemplate);
+    VULKAN_FN(vkDestroyDescriptorUpdateTemplate);
+    VULKAN_FN(vkUpdateDescriptorSetWithTemplate);
     VULKAN_FN(vkCmdBindPipeline);
     VULKAN_FN(vkCmdSetViewport);
     VULKAN_FN(vkCmdSetScissor);
@@ -283,13 +286,6 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdEndRenderPass2KHR);
     #endif
     
-    #ifdef VK_KHR_descriptor_update_template
-    VULKAN_FN(vkCreateDescriptorUpdateTemplateKHR);
-    VULKAN_FN(vkDestroyDescriptorUpdateTemplateKHR);
-    VULKAN_FN(vkUpdateDescriptorSetWithTemplateKHR);
-    VULKAN_FN(vkCmdPushDescriptorSetWithTemplateKHR);
-    #endif
-
     #ifdef VK_KHR_draw_indirect_count
     VULKAN_FN(vkCmdDrawIndirectCountKHR);
     VULKAN_FN(vkCmdDrawIndexedIndirectCountKHR);
