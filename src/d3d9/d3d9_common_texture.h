@@ -293,6 +293,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Checks whether sRGB views can be created
+     * \returns Whether the format is sRGB compatible.
+     */
+    bool IsSrgbCompatible() const {
+      return m_mapping.FormatSrgb;
+    }
+
+    /**
      * \brief Recreate main image view
      * Recreates the main view of the sampler w/ a specific LOD.
      * SetLOD only works on MANAGED textures so this is A-okay.
@@ -332,7 +340,7 @@ namespace dxvk {
     void MarkAllDirty() { for (uint32_t i = 0; i < m_dirty.size(); i++) m_dirty[i] = true; }
 
     const Rc<DxvkImageView>& GetSampleView(bool srgb) const {
-      return m_sampleView.Pick(srgb);
+      return m_sampleView.Pick(srgb && IsSrgbCompatible());
     }
 
     VkImageLayout DetermineRenderTargetLayout() const {

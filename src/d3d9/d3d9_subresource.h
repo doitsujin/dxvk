@@ -20,7 +20,8 @@ namespace dxvk {
       , m_container                ( pContainer )
       , m_texture                  ( pTexture )
       , m_face                     ( Face )
-      , m_mipLevel                 ( MipLevel ) { }
+      , m_mipLevel                 ( MipLevel )
+      , m_isSrgbCompatible         ( pTexture->IsSrgbCompatible() ) { }
 
     ~D3D9Subresource() {
       // We own the texture!
@@ -66,6 +67,7 @@ namespace dxvk {
     }
 
     Rc<DxvkImageView> GetImageView(bool Srgb) {
+      Srgb &= m_isSrgbCompatible;
       Rc<DxvkImageView>& view = m_sampleView.Pick(Srgb);
 
       if (unlikely(view == nullptr && !IsNull()))
@@ -75,6 +77,7 @@ namespace dxvk {
     }
 
     Rc<DxvkImageView> GetRenderTargetView(bool Srgb) {
+      Srgb &= m_isSrgbCompatible;
       Rc<DxvkImageView>& view = m_renderTargetView.Pick(Srgb);
 
       if (unlikely(view == nullptr && !IsNull()))
@@ -116,6 +119,7 @@ namespace dxvk {
     UINT                    m_face;
     UINT                    m_mipLevel;
 
+    bool                    m_isSrgbCompatible;
     D3D9ColorView           m_sampleView;
     D3D9ColorView           m_renderTargetView;
     Rc<DxvkImageView>       m_depthStencilView;

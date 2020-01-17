@@ -455,7 +455,9 @@ namespace dxvk {
       return;
 
     m_sampleView.Color = CreateView(AllLayers, Lod, VK_IMAGE_USAGE_SAMPLED_BIT, false);
-    m_sampleView.Srgb  = CreateView(AllLayers, Lod, VK_IMAGE_USAGE_SAMPLED_BIT, true);
+
+    if (IsSrgbCompatible())
+      m_sampleView.Srgb = CreateView(AllLayers, Lod, VK_IMAGE_USAGE_SAMPLED_BIT, true);
   }
 
 
