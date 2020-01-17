@@ -890,10 +890,8 @@ namespace dxvk {
     desc.Usage              = D3DUSAGE_RENDERTARGET;
     desc.Discard            = FALSE;
 
-    auto mapping = m_parent->LookupFormat(desc.Format);
-
     for (uint32_t i = 0; i < NumBackBuffers; i++)
-      m_backBuffers[i] = new D3D9Surface(m_parent, &desc, mapping);
+      m_backBuffers[i] = new D3D9Surface(m_parent, &desc);
 
     m_swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
 
