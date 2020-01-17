@@ -25,7 +25,7 @@ esac
 shift
 
 with_dxgi=1
-file_cmd="cp"
+file_cmd="cp -v"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -33,7 +33,7 @@ while [ $# -gt 0 ]; do
     with_dxgi=0
     ;;
   "--symlink")
-    file_cmd="ln -s"
+    file_cmd="ln -s -v"
     ;;
   esac
   shift
@@ -119,9 +119,9 @@ installFile() {
   if [ -n "$1" ]; then
     if [ -f "${dstfile}" ] || [ -h "${dstfile}" ]; then
       if ! [ -f "${dstfile}.old" ]; then
-        mv "${dstfile}" "${dstfile}.old"
+        mv -v "${dstfile}" "${dstfile}.old"
       else
-        rm "${dstfile}"
+        rm -v "${dstfile}"
       fi
       $file_cmd "${srcfile}" "${dstfile}"
     else
@@ -152,8 +152,8 @@ uninstallFile() {
   fi
 
   if [ -f "${dstfile}.old" ]; then
-    rm "${dstfile}"
-    mv "${dstfile}.old" "${dstfile}"
+    rm -v "${dstfile}"
+    mv -v "${dstfile}.old" "${dstfile}"
     return 0
   else
     return 1
