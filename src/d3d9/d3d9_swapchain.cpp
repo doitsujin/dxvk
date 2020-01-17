@@ -271,7 +271,6 @@ namespace dxvk {
         srcSubresource.mipLevel,
         srcSubresource.arrayLayer, 1 };
 
-      VkExtent3D dstExtent = blittedSrc->mipLevelExtent(dstSubresource.mipLevel);
       VkExtent3D srcExtent = srcImage->mipLevelExtent(srcSubresource.mipLevel);
 
       // Blit to a subrect of the src extents
