@@ -5,7 +5,7 @@ dxvk_lib32=${dxvk_lib32:-"x32"}
 dxvk_lib64=${dxvk_lib64:-"x64"}
 
 # figure out where we are
-basedir=`dirname "$(readlink -f $0)"`
+basedir=$(dirname "$(readlink -f $0)")
 
 # figure out which action to perform
 action="$1"
@@ -24,13 +24,13 @@ esac
 # process arguments
 shift
 
-with_dxgi=1
+with_dxgi=true
 file_cmd="cp -v"
 
-while [ $# -gt 0 ]; do
+while (($# > 0)); do
   case "$1" in
   "--without-dxgi")
-    with_dxgi=0
+    with_dxgi=false
     ;;
   "--symlink")
     file_cmd="ln -s -v"
@@ -65,7 +65,7 @@ if ! [ -f "$wine_path/$wine" ]; then
 fi
 
 # resolve 32-bit and 64-bit system32 path
-winever=`$wine --version | grep wine`
+winever=$($wine --version | grep wine)
 if [ -z "$winever" ]; then
     echo "$wine:"' Not a wine executable. Check your $wine.' >&2
     exit 1
@@ -170,7 +170,7 @@ install() {
     inst32_ret="$?"
   fi
 
-  if [ "$inst32_ret" -eq 0 ] || [ "$inst64_ret" -eq 0 ]; then
+  if (( ($inst32_ret == 0) || ($inst64_ret == 0) )); then
     overrideDll "$1"
   fi
 }
@@ -185,14 +185,14 @@ uninstall() {
     uninst32_ret="$?"
   fi
 
-  if [ "$uninst32_ret" -eq 0 ] || [ "$uninst64_ret" -eq 0 ]; then
+  if (( ($uninst32_ret == 0) || ($uninst64_ret == 0) )); then
     restoreDll "$1"
   fi
 }
 
 # skip dxgi during install if not explicitly
 # enabled, but always try to uninstall it
-if [ $with_dxgi -ne 0 ] || [ "$action" == "uninstall" ]; then
+if $with_dxgi || [ "$action" == "uninstall" ]; then
   $action dxgi
 fi
 
