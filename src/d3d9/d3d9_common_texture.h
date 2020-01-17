@@ -331,8 +331,8 @@ namespace dxvk {
     bool SetDirty(UINT Subresource, bool value) { return std::exchange(m_dirty[Subresource], value); }
     void MarkAllDirty() { for (uint32_t i = 0; i < m_dirty.size(); i++) m_dirty[i] = true; }
 
-    const D3D9ColorView& GetSampleView() const {
-      return m_sampleView;
+    const Rc<DxvkImageView>& GetSampleView(bool srgb) const {
+      return m_sampleView.Pick(srgb);
     }
 
     VkImageLayout DetermineRenderTargetLayout() const {
