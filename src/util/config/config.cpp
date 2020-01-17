@@ -152,9 +152,18 @@ namespace dxvk {
     { R"(\\Crysis3\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
-    /* Atelier Ryza - tries to render video with  *
-     * a D3D9 swap chain over the DXGI swap chain */
-    { R"(\\Atelier_Ryza\.exe$)", {{
+    /* Atelier series - games try to render video *
+     * with a D3D9 swap chain over the DXGI swap  *
+     * chain, which breaks D3D11 presentation     */
+    { R"(\\Atelier_(Ayesha|Escha_and_Logy|Shallie)(_EN)?\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",        "True" },
+    }} },
+    /* Atelier Rorona/Totori/Meruru               */
+    { R"(\\A(11R|12V|13V)_x64_Release(_en)?\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",        "True" },
+    }} },
+    /* Just how many of these games are there?    */
+    { R"(\\Atelier_(Lulua|Lydie_and_Suelle|Ryza)\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
     /* Star Wars Battlefront II: amdags issues    */
