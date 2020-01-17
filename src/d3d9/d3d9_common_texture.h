@@ -93,8 +93,7 @@ namespace dxvk {
     D3D9CommonTexture(
             D3D9DeviceEx*             pDevice,
       const D3D9_COMMON_TEXTURE_DESC* pDesc,
-            D3DRESOURCETYPE           ResourceType,
-            D3D9_VK_FORMAT_MAPPING    Mapping);
+            D3DRESOURCETYPE           ResourceType);
 
     ~D3D9CommonTexture();
 
@@ -203,8 +202,7 @@ namespace dxvk {
      */
     static HRESULT NormalizeTextureProperties(
             D3D9DeviceEx*              pDevice,
-            D3D9_COMMON_TEXTURE_DESC*  pDesc,
-            D3D9_VK_FORMAT_MAPPING*    pMapping);
+            D3D9_COMMON_TEXTURE_DESC*  pDesc);
 
     /**
      * \brief Lock Flags

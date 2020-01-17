@@ -10,13 +10,14 @@ namespace dxvk {
   D3D9CommonTexture::D3D9CommonTexture(
           D3D9DeviceEx*             pDevice,
     const D3D9_COMMON_TEXTURE_DESC* pDesc,
-          D3DRESOURCETYPE           ResourceType,
-          D3D9_VK_FORMAT_MAPPING    Mapping)
-    : m_device(pDevice), m_desc(*pDesc), m_type(ResourceType), m_mapping(Mapping) {
+          D3DRESOURCETYPE           ResourceType)
+    : m_device(pDevice), m_desc(*pDesc), m_type(ResourceType) {
     if (m_desc.Format == D3D9Format::Unknown)
       m_desc.Format = (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL)
                     ? D3D9Format::D32
                     : D3D9Format::X8R8G8B8;
+
+    m_mapping = pDevice->LookupFormat(m_desc.Format);
 
     auto pxSize      = m_mapping.VideoFormatInfo.MacroPixelSize;
     m_adjustedExtent = VkExtent3D{ m_desc.Width / pxSize.width, m_desc.Height / pxSize.height, m_desc.Depth };
@@ -71,14 +72,12 @@ namespace dxvk {
 
   HRESULT D3D9CommonTexture::NormalizeTextureProperties(
           D3D9DeviceEx*             pDevice,
-          D3D9_COMMON_TEXTURE_DESC* pDesc,
-          D3D9_VK_FORMAT_MAPPING*   pMapping) {
+          D3D9_COMMON_TEXTURE_DESC* pDesc) {
     auto* options = pDevice->GetOptions();
 
     //////////////////////
     // Mapping Validation
-
-    *pMapping = pDevice->LookupFormat(pDesc->Format);
+    auto mapping = pDevice->LookupFormat(pDesc->Format);
 
     // Handle DisableA8RT hack for The Sims 2
     if (pDesc->Format == D3D9Format::A8       &&
@@ -92,7 +91,7 @@ namespace dxvk {
     // SCRATCH textures can still be made if the device does not support
     // the format at all.
 
-    if (!pMapping->IsValid() && pDesc->Format != D3D9Format::NULL_FORMAT) {
+    if (!mapping.IsValid() && pDesc->Format != D3D9Format::NULL_FORMAT) {
       auto info = pDevice->UnsupportedFormatInfo(pDesc->Format);
 
       if (pDesc->Pool != D3DPOOL_SCRATCH || info.elementSize == 0)
