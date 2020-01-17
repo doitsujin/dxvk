@@ -876,11 +876,7 @@ namespace dxvk {
 
     // We may only fast path copy non identicals one way!
     // We don't know what garbage could be in the X8 data.
-    bool similar = (srcFormat == dstFormat)
-                || (srcFormat == D3D9Format::A8B8G8R8 && dstFormat == D3D9Format::X8B8G8R8)
-                || (srcFormat == D3D9Format::A8R8G8B8 && dstFormat == D3D9Format::X8R8G8B8)
-                || (srcFormat == D3D9Format::A1R5G5B5 && dstFormat == D3D9Format::X1R5G5B5)
-                || (srcFormat == D3D9Format::A4R4G4B4 && dstFormat == D3D9Format::X4R4G4B4);
+    bool similar = AreFormatsSimilar(srcFormat, dstFormat);
 
     // Copies are only supported on similar formats.
     fastPath &= similar;
