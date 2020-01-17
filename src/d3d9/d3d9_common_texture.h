@@ -93,8 +93,7 @@ namespace dxvk {
     D3D9CommonTexture(
             D3D9DeviceEx*             pDevice,
       const D3D9_COMMON_TEXTURE_DESC* pDesc,
-            D3DRESOURCETYPE           ResourceType,
-            D3D9_VK_FORMAT_MAPPING    Mapping);
+            D3DRESOURCETYPE           ResourceType);
 
     ~D3D9CommonTexture();
 
@@ -203,8 +202,7 @@ namespace dxvk {
      */
     static HRESULT NormalizeTextureProperties(
             D3D9DeviceEx*              pDevice,
-            D3D9_COMMON_TEXTURE_DESC*  pDesc,
-            D3D9_VK_FORMAT_MAPPING*    pMapping);
+            D3D9_COMMON_TEXTURE_DESC*  pDesc);
 
     /**
      * \brief Lock Flags
@@ -295,6 +293,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Checks whether sRGB views can be created
+     * \returns Whether the format is sRGB compatible.
+     */
+    bool IsSrgbCompatible() const {
+      return m_mapping.FormatSrgb;
+    }
+
+    /**
      * \brief Recreate main image view
      * Recreates the main view of the sampler w/ a specific LOD.
      * SetLOD only works on MANAGED textures so this is A-okay.
@@ -333,8 +339,8 @@ namespace dxvk {
     bool SetDirty(UINT Subresource, bool value) { return std::exchange(m_dirty[Subresource], value); }
     void MarkAllDirty() { for (uint32_t i = 0; i < m_dirty.size(); i++) m_dirty[i] = true; }
 
-    const D3D9ColorView& GetSampleView() const {
-      return m_sampleView;
+    const Rc<DxvkImageView>& GetSampleView(bool srgb) const {
+      return m_sampleView.Pick(srgb && IsSrgbCompatible());
     }
 
     VkImageLayout DetermineRenderTargetLayout() const {

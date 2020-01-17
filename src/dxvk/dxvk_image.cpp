@@ -60,28 +60,28 @@ namespace dxvk {
     // alignment on non-linear images in order not to violate the
     // bufferImageGranularity limit, which may be greater than the
     // required resource memory alignment on some GPUs.
-    VkMemoryDedicatedRequirementsKHR dedicatedRequirements;
-    dedicatedRequirements.sType                       = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR;
+    VkMemoryDedicatedRequirements dedicatedRequirements;
+    dedicatedRequirements.sType                       = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
     dedicatedRequirements.pNext                       = VK_NULL_HANDLE;
     dedicatedRequirements.prefersDedicatedAllocation  = VK_FALSE;
     dedicatedRequirements.requiresDedicatedAllocation = VK_FALSE;
     
-    VkMemoryRequirements2KHR memReq;
-    memReq.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2_KHR;
+    VkMemoryRequirements2 memReq;
+    memReq.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
     memReq.pNext = &dedicatedRequirements;
     
-    VkImageMemoryRequirementsInfo2KHR memReqInfo;
-    memReqInfo.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2_KHR;
+    VkImageMemoryRequirementsInfo2 memReqInfo;
+    memReqInfo.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2;
     memReqInfo.image = m_image.image;
     memReqInfo.pNext = VK_NULL_HANDLE;
 
-    VkMemoryDedicatedAllocateInfoKHR dedMemoryAllocInfo;
-    dedMemoryAllocInfo.sType  = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR;
+    VkMemoryDedicatedAllocateInfo dedMemoryAllocInfo;
+    dedMemoryAllocInfo.sType  = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
     dedMemoryAllocInfo.pNext  = VK_NULL_HANDLE;
     dedMemoryAllocInfo.buffer = VK_NULL_HANDLE;
     dedMemoryAllocInfo.image  = m_image.image;
     
-    m_vkd->vkGetImageMemoryRequirements2KHR(
+    m_vkd->vkGetImageMemoryRequirements2(
       m_vkd->device(), &memReqInfo, &memReq);
  
     if (info.tiling != VK_IMAGE_TILING_LINEAR) {
@@ -217,7 +217,7 @@ namespace dxvk {
       case VK_IMAGE_VIEW_TYPE_3D: {
         this->createView(VK_IMAGE_VIEW_TYPE_3D, 1);
         
-        if (m_image->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR && m_info.numLevels == 1) {
+        if (m_image->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT && m_info.numLevels == 1) {
           this->createView(VK_IMAGE_VIEW_TYPE_2D,       1);
           this->createView(VK_IMAGE_VIEW_TYPE_2D_ARRAY, m_image->mipLevelExtent(m_info.minLevel).depth);
         }
@@ -247,8 +247,8 @@ namespace dxvk {
     subresourceRange.baseArrayLayer = m_info.minLayer;
     subresourceRange.layerCount     = numLayers;
 
-    VkImageViewUsageCreateInfoKHR viewUsage;
-    viewUsage.sType           = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO_KHR;
+    VkImageViewUsageCreateInfo viewUsage;
+    viewUsage.sType           = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
     viewUsage.pNext           = nullptr;
     viewUsage.usage           = m_info.usage;
     

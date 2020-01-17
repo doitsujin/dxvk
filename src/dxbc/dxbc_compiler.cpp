@@ -6569,8 +6569,6 @@ namespace dxvk {
     m_module.enableCapability(spv::CapabilityCullDistance);
     m_module.enableCapability(spv::CapabilityDrawParameters);
     
-    m_module.enableExtension("SPV_KHR_shader_draw_parameters");
-    
     // Declare the per-vertex output block. This is where
     // the vertex shader will write the vertex position.
     const uint32_t perVertexStruct = this->getPerVertexBlockId();

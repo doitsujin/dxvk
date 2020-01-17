@@ -7,11 +7,10 @@ namespace dxvk {
 
   D3D9Volume::D3D9Volume(
           D3D9DeviceEx*             pDevice,
-    const D3D9_COMMON_TEXTURE_DESC* pDesc,
-          D3D9_VK_FORMAT_MAPPING    Mapping)
+    const D3D9_COMMON_TEXTURE_DESC* pDesc)
     : D3D9VolumeBase(
         pDevice,
-        new D3D9CommonTexture( pDevice, pDesc, D3DRTYPE_VOLUMETEXTURE, Mapping ),
+        new D3D9CommonTexture( pDevice, pDesc, D3DRTYPE_VOLUMETEXTURE ),
         0, 0,
         nullptr) { }
 

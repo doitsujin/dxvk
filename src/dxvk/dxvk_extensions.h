@@ -272,17 +272,11 @@ namespace dxvk {
     DxvkExt extTransformFeedback              = { VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME,                 DxvkExtMode::Optional };
     DxvkExt extVertexAttributeDivisor         = { VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME,           DxvkExtMode::Optional };
     DxvkExt khrCreateRenderPass2              = { VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,                DxvkExtMode::Optional };
-    DxvkExt khrDedicatedAllocation            = { VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,               DxvkExtMode::Required };
     DxvkExt khrDepthStencilResolve            = { VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,              DxvkExtMode::Optional };
-    DxvkExt khrDescriptorUpdateTemplate       = { VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME,         DxvkExtMode::Required };
     DxvkExt khrDrawIndirectCount              = { VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME,                DxvkExtMode::Optional };
     DxvkExt khrDriverProperties               = { VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME,                  DxvkExtMode::Optional };
-    DxvkExt khrGetMemoryRequirements2         = { VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,          DxvkExtMode::Required };
     DxvkExt khrImageFormatList                = { VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME,                  DxvkExtMode::Required };
-    DxvkExt khrMaintenance1                   = { VK_KHR_MAINTENANCE1_EXTENSION_NAME,                       DxvkExtMode::Required };
-    DxvkExt khrMaintenance2                   = { VK_KHR_MAINTENANCE2_EXTENSION_NAME,                       DxvkExtMode::Required };
     DxvkExt khrSamplerMirrorClampToEdge       = { VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME,       DxvkExtMode::Optional };
-    DxvkExt khrShaderDrawParameters           = { VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,             DxvkExtMode::Required };
     DxvkExt khrSwapchain                      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME,                          DxvkExtMode::Required };
   };
   
@@ -293,7 +287,6 @@ namespace dxvk {
    * used by DXVK if supported by the implementation.
    */
   struct DxvkInstanceExtensions {
-    DxvkExt khrGetPhysicalDeviceProperties2 = { VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME, DxvkExtMode::Required };
     DxvkExt khrGetSurfaceCapabilities2      = { VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME,       DxvkExtMode::Optional };
     DxvkExt khrSurface                      = { VK_KHR_SURFACE_EXTENSION_NAME,                          DxvkExtMode::Required };
   };

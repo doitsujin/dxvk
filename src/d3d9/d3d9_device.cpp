@@ -398,12 +398,11 @@ namespace dxvk {
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
 
-    D3D9_VK_FORMAT_MAPPING mapping;
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc, &mapping)))
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
 
     try {
-      const Com<D3D9Texture2D> texture = new D3D9Texture2D(this, &desc, mapping);
+      const Com<D3D9Texture2D> texture = new D3D9Texture2D(this, &desc);
 
       void* initialData = nullptr;
 
@@ -454,12 +453,11 @@ namespace dxvk {
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
 
-    D3D9_VK_FORMAT_MAPPING mapping;
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc, &mapping)))
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
 
     try {
-      const Com<D3D9Texture3D> texture = new D3D9Texture3D(this, &desc, mapping);
+      const Com<D3D9Texture3D> texture = new D3D9Texture3D(this, &desc);
       m_initializer->InitTexture(texture->GetCommonTexture());
       *ppVolumeTexture = texture.ref();
 
@@ -500,12 +498,11 @@ namespace dxvk {
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
 
-    D3D9_VK_FORMAT_MAPPING mapping;
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc, &mapping)))
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
 
     try {
-      const Com<D3D9TextureCube> texture = new D3D9TextureCube(this, &desc, mapping);
+      const Com<D3D9TextureCube> texture = new D3D9TextureCube(this, &desc);
       m_initializer->InitTexture(texture->GetCommonTexture());
       *ppCubeTexture = texture.ref();
 
@@ -3293,12 +3290,11 @@ namespace dxvk {
     desc.MultiSample        = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
 
-    D3D9_VK_FORMAT_MAPPING mapping;
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc, &mapping)))
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
 
     try {
-      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, mapping);
+      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc);
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
       return D3D_OK;
@@ -3337,12 +3333,11 @@ namespace dxvk {
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
 
-    D3D9_VK_FORMAT_MAPPING mapping;
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc, &mapping)))
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
 
     try {
-      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, mapping);
+      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc);
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
       return D3D_OK;
@@ -3383,12 +3378,11 @@ namespace dxvk {
     desc.MultiSample        = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
 
-    D3D9_VK_FORMAT_MAPPING mapping;
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc, &mapping)))
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
 
     try {
-      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, mapping);
+      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc);
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
       return D3D_OK;
@@ -4064,7 +4058,7 @@ namespace dxvk {
   void D3D9DeviceEx::GenerateMips(
     D3D9CommonTexture* pResource) {
     EmitCs([
-      cImageView = pResource->GetSampleView().Color
+      cImageView = pResource->GetSampleView(false)
     ] (DxvkContext* ctx) {
       ctx->generateMipmaps(cImageView);
     });
@@ -5295,7 +5289,7 @@ namespace dxvk {
       cColorSlot = colorSlot,
       cDepthSlot = depthSlot,
       cDepth     = commonTex->IsShadow(),
-      cImageView = commonTex->GetSampleView().Pick(srgb)
+      cImageView = commonTex->GetSampleView(srgb)
     ](DxvkContext* ctx) {
       ctx->bindResourceView(cColorSlot, !cDepth ? cImageView : nullptr, nullptr);
       ctx->bindResourceView(cDepthSlot,  cDepth ? cImageView : nullptr, nullptr);
@@ -6523,11 +6517,10 @@ namespace dxvk {
       desc.MultiSample        = pPresentationParameters->MultiSampleType;
       desc.MultisampleQuality = pPresentationParameters->MultiSampleQuality;
 
-      D3D9_VK_FORMAT_MAPPING mapping;
-      if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc, &mapping)))
+      if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
         return D3DERR_NOTAVAILABLE;
 
-      m_autoDepthStencil = new D3D9Surface(this, &desc, mapping);
+      m_autoDepthStencil = new D3D9Surface(this, &desc);
       m_initializer->InitTexture(m_autoDepthStencil->GetCommonTexture());
       SetDepthStencilSurface(m_autoDepthStencil.ptr());
     }
