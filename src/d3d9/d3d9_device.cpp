@@ -4058,7 +4058,7 @@ namespace dxvk {
   void D3D9DeviceEx::GenerateMips(
     D3D9CommonTexture* pResource) {
     EmitCs([
-      cImageView = pResource->GetSampleView().Color
+      cImageView = pResource->GetSampleView(false)
     ] (DxvkContext* ctx) {
       ctx->generateMipmaps(cImageView);
     });
@@ -5289,7 +5289,7 @@ namespace dxvk {
       cColorSlot = colorSlot,
       cDepthSlot = depthSlot,
       cDepth     = commonTex->IsShadow(),
-      cImageView = commonTex->GetSampleView().Pick(srgb)
+      cImageView = commonTex->GetSampleView(srgb)
     ](DxvkContext* ctx) {
       ctx->bindResourceView(cColorSlot, !cDepth ? cImageView : nullptr, nullptr);
       ctx->bindResourceView(cDepthSlot,  cDepth ? cImageView : nullptr, nullptr);
