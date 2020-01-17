@@ -152,7 +152,182 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetFrontBufferData(IDirect3DSurface9* pDestSurface) {
-    Logger::warn("D3D9SwapChainEx::GetFrontBufferData: Stub");
+    auto lock = m_parent->LockDevice();
+
+    // This function can do absolutely everything!
+    // Copies the front buffer between formats with an implicit resolve.
+    // Oh, and the dest is systemmem...
+    // This is a slow function anyway, it waits for the copy to finish.
+    // so there's no reason to not just make and throwaway temp images.
+
+    // If extent of dst > src, then we blit to a subrect of the size
+    // of src onto a temp image of dst's extents,
+    // then copy buffer back to dst (given dst is subresource)
+
+    D3D9Surface* dst = static_cast<D3D9Surface*>(pDestSurface);
+
+    if (unlikely(dst == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    // TODO: Make the source what we consider the frontbuffer!
+    // rather than the first backbuffer...
+    D3D9CommonTexture* dstTexInfo = dst->GetCommonTexture();
+    D3D9CommonTexture* srcTexInfo = m_backBuffers[0]->GetCommonTexture();
+
+    Rc<DxvkBuffer> dstBuffer = dstTexInfo->GetBuffer(dst->GetSubresource());
+    Rc<DxvkImage>  srcImage  = srcTexInfo->GetImage();
+
+    if (srcImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT) {
+      DxvkImageCreateInfo resolveInfo;
+      resolveInfo.type          = VK_IMAGE_TYPE_2D;
+      resolveInfo.format        = srcImage->info().format;
+      resolveInfo.flags         = 0;
+      resolveInfo.sampleCount   = VK_SAMPLE_COUNT_1_BIT;
+      resolveInfo.extent        = srcImage->info().extent;
+      resolveInfo.numLayers     = 1;
+      resolveInfo.mipLevels     = 1;
+      resolveInfo.usage         = VK_IMAGE_USAGE_SAMPLED_BIT
+                                | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                                | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+      resolveInfo.stages        = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                                | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                                | VK_PIPELINE_STAGE_TRANSFER_BIT;
+      resolveInfo.access        = VK_ACCESS_SHADER_READ_BIT
+                                | VK_ACCESS_TRANSFER_WRITE_BIT
+                                | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+                                | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+      resolveInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+      resolveInfo.layout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      
+      Rc<DxvkImage> resolvedSrc = m_device->createImage(
+        resolveInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+      m_parent->EmitCs([
+        cDstImage = resolvedSrc,
+        cSrcImage = srcImage
+      ] (DxvkContext* ctx) {
+        VkImageSubresourceLayers resolveSubresource;
+        resolveSubresource.aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT;
+        resolveSubresource.mipLevel        = 0;
+        resolveSubresource.baseArrayLayer  = 0;
+        resolveSubresource.layerCount      = 1;
+
+        VkImageResolve resolveRegion;
+        resolveRegion.srcSubresource = resolveSubresource;
+        resolveRegion.srcOffset      = VkOffset3D { 0, 0, 0 };
+        resolveRegion.dstSubresource = resolveSubresource;
+        resolveRegion.dstOffset      = VkOffset3D { 0, 0, 0 };
+        resolveRegion.extent         = cSrcImage->info().extent;
+
+        ctx->resolveImage(
+          cDstImage, cSrcImage,
+          resolveRegion, VK_FORMAT_UNDEFINED);
+      });
+
+      srcImage = std::move(resolvedSrc);
+    }
+
+    D3D9Format srcFormat = srcTexInfo->Desc()->Format;
+    D3D9Format dstFormat = dstTexInfo->Desc()->Format;
+
+    bool similar = AreFormatsSimilar(srcFormat, dstFormat);
+
+    if (!similar || srcImage->info().extent != dstTexInfo->GetExtent()) {
+      DxvkImageCreateInfo blitCreateInfo;
+      blitCreateInfo.type          = VK_IMAGE_TYPE_2D;
+      blitCreateInfo.format        = dstTexInfo->GetFormatMapping().FormatColor;
+      blitCreateInfo.flags         = 0;
+      blitCreateInfo.sampleCount   = VK_SAMPLE_COUNT_1_BIT;
+      blitCreateInfo.extent        = dstTexInfo->GetExtent();
+      blitCreateInfo.numLayers     = 1;
+      blitCreateInfo.mipLevels     = 1;
+      blitCreateInfo.usage         = VK_IMAGE_USAGE_SAMPLED_BIT
+                                   | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                                   | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+      blitCreateInfo.stages        = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                                   | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                                   | VK_PIPELINE_STAGE_TRANSFER_BIT;
+      blitCreateInfo.access        = VK_ACCESS_SHADER_READ_BIT
+                                   | VK_ACCESS_TRANSFER_WRITE_BIT
+                                   | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+                                   | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+      blitCreateInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+      blitCreateInfo.layout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      
+      Rc<DxvkImage> blittedSrc = m_device->createImage(
+        blitCreateInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+      const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(blittedSrc->info().format);
+      const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
+
+      const VkImageSubresource dstSubresource = dstTexInfo->GetSubresourceFromIndex(dstFormatInfo->aspectMask, 0);
+      const VkImageSubresource srcSubresource = srcTexInfo->GetSubresourceFromIndex(srcFormatInfo->aspectMask, 0);
+
+      VkImageSubresourceLayers dstSubresourceLayers = {
+        dstSubresource.aspectMask,
+        dstSubresource.mipLevel,
+        dstSubresource.arrayLayer, 1 };
+
+      VkImageSubresourceLayers srcSubresourceLayers = {
+        srcSubresource.aspectMask,
+        srcSubresource.mipLevel,
+        srcSubresource.arrayLayer, 1 };
+
+      VkExtent3D dstExtent = blittedSrc->mipLevelExtent(dstSubresource.mipLevel);
+      VkExtent3D srcExtent = srcImage->mipLevelExtent(srcSubresource.mipLevel);
+
+      // Blit to a subrect of the src extents
+      VkImageBlit blitInfo;
+      blitInfo.dstSubresource = dstSubresourceLayers;
+      blitInfo.srcSubresource = srcSubresourceLayers;
+      blitInfo.dstOffsets[0] = VkOffset3D{ 0, 0, 0 };
+      blitInfo.dstOffsets[1] = VkOffset3D{ int32_t(srcExtent.width),  int32_t(srcExtent.height),  1 };
+      blitInfo.srcOffsets[0] = VkOffset3D{ 0, 0, 0 };
+      blitInfo.srcOffsets[1] = VkOffset3D{ int32_t(srcExtent.width),  int32_t(srcExtent.height),  1 };
+
+      m_parent->EmitCs([
+        cDstImage = blittedSrc,
+        cDstMap   = dstTexInfo->GetMapping().Swizzle,
+        cSrcImage = srcImage,
+        cSrcMap   = srcTexInfo->GetMapping().Swizzle,
+        cBlitInfo = blitInfo
+      ] (DxvkContext* ctx) {
+        ctx->blitImage(
+          cDstImage, cDstMap,
+          cSrcImage, cSrcMap,
+          cBlitInfo, VK_FILTER_NEAREST);
+      });
+
+      srcImage = std::move(blittedSrc);
+    }
+
+    const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
+    const VkImageSubresource srcSubresource = srcTexInfo->GetSubresourceFromIndex(srcFormatInfo->aspectMask, 0);
+    VkImageSubresourceLayers srcSubresourceLayers = {
+      srcSubresource.aspectMask,
+      srcSubresource.mipLevel,
+      srcSubresource.arrayLayer, 1 };
+    VkExtent3D srcExtent = srcImage->mipLevelExtent(srcSubresource.mipLevel);
+
+    m_parent->EmitCs([
+      cBuffer       = dstBuffer,
+      cImage        = srcImage,
+      cSubresources = srcSubresourceLayers,
+      cLevelExtent  = srcExtent
+    ] (DxvkContext* ctx) {
+      ctx->copyImageToBuffer(
+        cBuffer, 0, VkExtent2D { 0u, 0u },
+        cImage, cSubresources, VkOffset3D { 0, 0, 0 },
+        cLevelExtent);
+    });
+    
+    // We need to force a wait here
+    // as some applications depend on
+    // DO_NOT_WAIT not applying after
+    // this has happened.
+    // (this is a blocking call)
+    m_parent->WaitForResource(dstBuffer, 0);
+
     return D3D_OK;
   }
 
