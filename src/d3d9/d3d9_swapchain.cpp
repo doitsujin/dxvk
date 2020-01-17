@@ -169,10 +169,8 @@ namespace dxvk {
     if (unlikely(dst == nullptr))
       return D3DERR_INVALIDCALL;
 
-    // TODO: Make the source what we consider the frontbuffer!
-    // rather than the first backbuffer...
     D3D9CommonTexture* dstTexInfo = dst->GetCommonTexture();
-    D3D9CommonTexture* srcTexInfo = m_backBuffers[0]->GetCommonTexture();
+    D3D9CommonTexture* srcTexInfo = m_backBuffers[m_presentParams.BackBufferCount]->GetCommonTexture();
 
     Rc<DxvkBuffer> dstBuffer = dstTexInfo->GetBuffer(dst->GetSubresource());
     Rc<DxvkImage>  srcImage  = srcTexInfo->GetImage();
@@ -341,7 +339,7 @@ namespace dxvk {
     if (ppBackBuffer == nullptr)
       return D3DERR_INVALIDCALL;
 
-    if (iBackBuffer >= m_backBuffers.size()) {
+    if (iBackBuffer >= m_presentParams.BackBufferCount) {
       Logger::err(str::format("D3D9: GetBackBuffer: Invalid back buffer index: ", iBackBuffer));
       return D3DERR_INVALIDCALL;
     }
@@ -582,7 +580,7 @@ namespace dxvk {
 
 
   D3D9Surface* D3D9SwapChainEx::GetBackBuffer(UINT iBackBuffer) {
-    if (iBackBuffer >= m_backBuffers.size())
+    if (iBackBuffer >= m_presentParams.BackBufferCount)
       return nullptr;
 
     return m_backBuffers[iBackBuffer].ptr();
@@ -756,8 +754,8 @@ namespace dxvk {
       m_device->presentImage(m_presenter,
         cSync.present, &m_presentStatus);
 
-      // Shift back buffers so that m_backBuffers[1] will
-      // contain the image that we just presented
+      // Shift back buffers so that m_backBuffers[BackBufferCount]
+      // will contain the image that we just presented
       for (uint32_t i = m_backBuffers.size(); i > 1; i--) {
         ctx->swapImages(
           m_backBuffers[i - 1]->GetCommonTexture()->GetImage(),
@@ -874,7 +872,7 @@ namespace dxvk {
     m_swapImageView     = nullptr;
 
     m_backBuffers.clear();
-    m_backBuffers.resize(NumBackBuffers);
+    m_backBuffers.resize(NumBackBuffers + 1);
 
     // Create new back buffer
     D3D9_COMMON_TEXTURE_DESC desc;
@@ -890,7 +888,7 @@ namespace dxvk {
     desc.Usage              = D3DUSAGE_RENDERTARGET;
     desc.Discard            = FALSE;
 
-    for (uint32_t i = 0; i < NumBackBuffers; i++)
+    for (uint32_t i = 0; i < m_backBuffers.size(); i++)
       m_backBuffers[i] = new D3D9Surface(m_parent, &desc);
 
     m_swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
