@@ -1564,6 +1564,8 @@ namespace dxvk {
             texture = m_module.opImageSampleProjImplicitLod(m_vec4Type, imageVarId, texcoord, imageOperands);
           else
             texture = m_module.opImageSampleImplicitLod(m_vec4Type, imageVarId, texcoord, imageOperands);
+
+          texture = m_module.opSelect(m_vec4Type, m_ps.samplers[i].bound, texture, m_module.constvec4f32(0.0f, 0.0f, 0.0f, 1.0f));
         }
 
         processedTexture = true;
@@ -1991,6 +1993,11 @@ namespace dxvk {
 
       const uint32_t bindingId = computeResourceSlotId(DxsoProgramType::PixelShader,
         DxsoBindingType::ColorImage, i);
+
+      sampler.bound = m_module.specConstBool(true);
+      m_module.decorateSpecId(sampler.bound, bindingId);
+      m_module.setDebugName(sampler.bound,
+        str::format("s", i, "_bound").c_str());
 
       m_module.decorateDescriptorSet(sampler.varId, 0);
       m_module.decorateBinding(sampler.varId, bindingId);
