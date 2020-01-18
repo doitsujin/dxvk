@@ -126,6 +126,7 @@ namespace dxvk {
     DxsoSamplerInfo color[SamplerTypeCount];
     DxsoSamplerInfo depth[SamplerTypeCount];
 
+    uint32_t colorSpecConst;
     uint32_t depthSpecConst;
 
     DxsoTextureType type;

@@ -748,15 +748,22 @@ namespace dxvk {
     
 
     // Declare a specialization constant which will
-    // store whether or not the depth view is bound.
+    // store whether or not the depth/color views are bound.
+    const uint32_t colorBinding = computeResourceSlotId(m_programInfo.type(),
+      DxsoBindingType::ColorImage, idx);
+
     const uint32_t depthBinding = computeResourceSlotId(m_programInfo.type(),
       DxsoBindingType::DepthImage, idx);
 
     DxsoSampler& sampler = m_samplers[idx];
 
+    sampler.colorSpecConst = m_module.specConstBool(true);
     sampler.depthSpecConst = m_module.specConstBool(true);
     sampler.type = type;
+    m_module.decorateSpecId(sampler.colorSpecConst, colorBinding);
     m_module.decorateSpecId(sampler.depthSpecConst, depthBinding);
+    m_module.setDebugName(sampler.colorSpecConst,
+      str::format("s", idx, "_useColor").c_str());
     m_module.setDebugName(sampler.depthSpecConst,
       str::format("s", idx, "_useShadow").c_str());
   }
@@ -2634,7 +2641,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     DxsoSampler sampler = m_samplers.at(samplerIdx);
 
-    auto SampleImage = [this, opcode, dst, ctx, samplerIdx](DxsoRegisterValue texcoordVar, DxsoSamplerInfo& sampler, bool depth, DxsoSamplerType samplerType) {
+    auto SampleImage = [this, opcode, dst, ctx, samplerIdx](DxsoRegisterValue texcoordVar, DxsoSamplerInfo& sampler, bool depth, DxsoSamplerType samplerType, uint32_t specConst) {
       DxsoRegisterValue result;
       result.type.ctype  = dst.type.ctype;
       result.type.ccount = depth ? 1 : 4;
@@ -2740,6 +2747,16 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         result.id = m_module.opSelect(typeId, shouldProj, result.id, nonProjResult);
       }
 
+      // If we are sampling depth we've already specc'ed this!
+      // This path is always size 4 because it only hits on color.
+      if (specConst != 0) {
+        uint32_t bool_t = m_module.defBoolType();
+        uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
+        std::array<uint32_t, 4> indices = { specConst, specConst, specConst, specConst };
+        specConst = m_module.opCompositeConstruct(bvec4_t, indices.size(), indices.data());
+        result.id = m_module.opSelect(typeId, specConst, result.id, m_module.constvec4f32(0.0f, 0.0f, 0.0f, 1.0f));
+      }
+
       // Apply operand swizzle to the operand value
       result = emitRegisterSwizzle(result, IdentitySwizzle, ctx.dst.mask);
 
@@ -2758,17 +2775,17 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         m_module.opBranchConditional(sampler.depthSpecConst, depthLabel, colorLabel);
 
         m_module.opLabel(colorLabel);
-        SampleImage(texcoordVar, sampler.color[samplerType], false, samplerType);
+        SampleImage(texcoordVar, sampler.color[samplerType], false, samplerType, sampler.colorSpecConst);
         m_module.opBranch(endLabel);
 
         m_module.opLabel(depthLabel);
-        SampleImage(texcoordVar, sampler.depth[samplerType], true, samplerType);
+        SampleImage(texcoordVar, sampler.depth[samplerType], true, samplerType, 0); // already specc'ed
         m_module.opBranch(endLabel);
 
         m_module.opLabel(endLabel);
       }
       else
-        SampleImage(texcoordVar, sampler.color[samplerType], false, samplerType);
+        SampleImage(texcoordVar, sampler.color[samplerType], false, samplerType, sampler.colorSpecConst);
     };
 
     if (m_programInfo.majorVersion() >= 2 && !m_moduleInfo.options.forceSamplerTypeSpecConstants) {
