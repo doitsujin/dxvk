@@ -228,12 +228,14 @@ namespace dxvk {
   }
 
   bool STDMETHODCALLTYPE D3D11Query::DoEnd() {
-    if (IsScoped() && m_state != D3D11_VK_QUERY_BEGUN)
-      return false;
+    // Apparently the D3D11 runtime implicitly begins the query
+    // if it is in the wrong state at the time End is called, so
+    // let the caller react to it instead of just failing here.
+    bool result = m_state == D3D11_VK_QUERY_BEGUN || !IsScoped();
 
     m_state = D3D11_VK_QUERY_ENDED;
     m_resetCtr.fetch_add(1, std::memory_order_acquire);
-    return true;
+    return result;
   }
 
 

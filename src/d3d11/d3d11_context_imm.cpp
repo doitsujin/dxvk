@@ -124,8 +124,12 @@ namespace dxvk {
     
     auto query = static_cast<D3D11Query*>(pAsync);
 
-    if (unlikely(!query->DoEnd()))
-      return;
+    if (unlikely(!query->DoEnd())) {
+      EmitCs([cQuery = Com<D3D11Query, false>(query)]
+      (DxvkContext* ctx) {
+        cQuery->Begin(ctx);
+      });
+    }
 
     EmitCs([cQuery = Com<D3D11Query, false>(query)]
     (DxvkContext* ctx) {

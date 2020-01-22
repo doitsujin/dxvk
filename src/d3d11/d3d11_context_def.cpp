@@ -80,10 +80,14 @@ namespace dxvk {
         m_queriesBegun.begin(),
         m_queriesBegun.end(), query);
 
-      if (unlikely(entry == m_queriesBegun.end()))
-        return;
-
-      m_queriesBegun.erase(entry);
+      if (likely(entry != m_queriesBegun.end())) {
+        m_queriesBegun.erase(entry);
+      } else {
+        EmitCs([cQuery = query]
+        (DxvkContext* ctx) {
+          cQuery->Begin(ctx);
+        });
+      }
     }
 
     m_commandList->AddQuery(query.ptr());
