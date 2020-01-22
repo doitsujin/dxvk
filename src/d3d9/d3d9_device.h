@@ -638,6 +638,11 @@ namespace dxvk {
 
     HRESULT SetStateTransform(uint32_t idx, const D3DMATRIX* pMatrix);
 
+    HRESULT SetStateTextureStageState(
+            DWORD                      Stage,
+            D3D9TextureStageStateTypes Type,
+            DWORD                      Value);
+
     VkPipelineStageFlags GetEnabledShaderStages() const {
       return m_dxvkDevice->getShaderPipelineStages();
     }

@@ -158,10 +158,10 @@ namespace dxvk {
   }
 
 
-  HRESULT D3D9StateBlock::SetTextureStageState(
-          DWORD                    Stage,
-          D3DTEXTURESTAGESTATETYPE Type,
-          DWORD                    Value) {
+  HRESULT D3D9StateBlock::SetStateTextureStageState(
+          DWORD                      Stage,
+          D3D9TextureStageStateTypes Type,
+          DWORD                      Value) {
     m_state.textureStages[Stage][Type] = Value;
 
     m_captures.flags.set(D3D9CapturedStateFlag::TextureStages);

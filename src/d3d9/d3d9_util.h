@@ -247,4 +247,37 @@ namespace dxvk {
         || (srcFormat == D3D9Format::A4R4G4B4 && dstFormat == D3D9Format::X4R4G4B4);
   }
 
+  enum D3D9TextureStageStateTypes : uint32_t
+  {
+      DXVK_TSS_COLOROP        =  0,
+      DXVK_TSS_COLORARG1      =  1,
+      DXVK_TSS_COLORARG2      =  2,
+      DXVK_TSS_ALPHAOP        =  3,
+      DXVK_TSS_ALPHAARG1      =  4,
+      DXVK_TSS_ALPHAARG2      =  5,
+      DXVK_TSS_BUMPENVMAT00   =  6,
+      DXVK_TSS_BUMPENVMAT01   =  7,
+      DXVK_TSS_BUMPENVMAT10   =  8,
+      DXVK_TSS_BUMPENVMAT11   =  9,
+      DXVK_TSS_TEXCOORDINDEX  = 10,
+      DXVK_TSS_BUMPENVLSCALE  = 21,
+      DXVK_TSS_BUMPENVLOFFSET = 22,
+      DXVK_TSS_TEXTURETRANSFORMFLAGS = 23,
+      DXVK_TSS_COLORARG0      = 24,
+      DXVK_TSS_ALPHAARG0      = 25,
+      DXVK_TSS_RESULTARG      = 26,
+      DXVK_TSS_CONSTANT       = 31,
+      DXVK_TSS_COUNT          = 32
+  };
+
+  constexpr uint32_t DXVK_TSS_TCI_PASSTHRU                      = 0x00000000;
+  constexpr uint32_t DXVK_TSS_TCI_CAMERASPACENORMAL             = 0x00010000;
+  constexpr uint32_t DXVK_TSS_TCI_CAMERASPACEPOSITION           = 0x00020000;
+  constexpr uint32_t DXVK_TSS_TCI_CAMERASPACEREFLECTIONVECTOR   = 0x00030000;
+  constexpr uint32_t DXVK_TSS_TCI_SPHEREMAP                     = 0x00040000;
+
+  inline D3D9TextureStageStateTypes RemapTextureStageStateType(D3DTEXTURESTAGESTATETYPE Type) {
+    return D3D9TextureStageStateTypes(Type - 1);
+  }
+
 }

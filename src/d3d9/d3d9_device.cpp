@@ -2086,40 +2086,7 @@ namespace dxvk {
           DWORD                    Stage,
           D3DTEXTURESTAGESTATETYPE Type,
           DWORD                    Value) {
-    D3D9DeviceLock lock = LockDevice();
-
-    if (unlikely(Stage >= caps::TextureStageCount))
-      return D3DERR_INVALIDCALL;
-
-    if (unlikely(Type >= TextureStageStateCount))
-      return D3DERR_INVALIDCALL;
-
-    if (unlikely(ShouldRecord()))
-      return m_recorder->SetTextureStageState(Stage, Type, Value);
-
-    if (likely(m_state.textureStages[Stage][Type] != Value)) {
-      if (Type == D3DTSS_TEXTURETRANSFORMFLAGS) {
-        m_projectionBitfield &= ~(1 << Stage);
-        if (Value & D3DTTFF_PROJECTED)
-          m_projectionBitfield |= 1 << Stage;
-      }
-
-      if ((Type >= D3DTSS_BUMPENVMAT00  && Type <= D3DTSS_BUMPENVMAT11)
-       || (Type == D3DTSS_BUMPENVLSCALE || Type == D3DTSS_BUMPENVLOFFSET))
-        m_flags.set(D3D9DeviceFlag::DirtySharedPixelShaderData);
-      else if (Type == D3DTSS_TEXTURETRANSFORMFLAGS) {
-        // This state affects both!
-        m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
-        m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
-      }
-      else if (Type != D3DTSS_TEXCOORDINDEX)
-        m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
-      else
-        m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
-      m_state.textureStages[Stage][Type] = Value;
-    }
-
-    return D3D_OK;
+    return SetStateTextureStageState(Stage, RemapTextureStageStateType(Type), Value);
   }
 
 
@@ -3524,6 +3491,47 @@ namespace dxvk {
 
     if (idx == GetTransformIndex(D3DTS_VIEW) || idx >= GetTransformIndex(D3DTS_WORLD))
       m_flags.set(D3D9DeviceFlag::DirtyFFVertexBlend);
+
+    return D3D_OK;
+  }
+
+
+  HRESULT D3D9DeviceEx::SetStateTextureStageState(
+          DWORD                      Stage,
+          D3D9TextureStageStateTypes Type,
+          DWORD                      Value) {
+    D3D9DeviceLock lock = LockDevice();
+
+    if (unlikely(Stage >= caps::TextureStageCount))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(Type >= TextureStageStateCount))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(ShouldRecord()))
+      return m_recorder->SetStateTextureStageState(Stage, Type, Value);
+
+    if (likely(m_state.textureStages[Stage][Type] != Value)) {
+      if (Type == DXVK_TSS_TEXTURETRANSFORMFLAGS) {
+        m_projectionBitfield &= ~(1 << Stage);
+        if (Value & D3DTTFF_PROJECTED)
+          m_projectionBitfield |= 1 << Stage;
+      }
+
+      if ((Type >= DXVK_TSS_BUMPENVMAT00  && Type <= DXVK_TSS_BUMPENVMAT11)
+       || (Type == DXVK_TSS_BUMPENVLSCALE || Type == DXVK_TSS_BUMPENVLOFFSET))
+        m_flags.set(D3D9DeviceFlag::DirtySharedPixelShaderData);
+      else if (Type == DXVK_TSS_TEXTURETRANSFORMFLAGS) {
+        // This state affects both!
+        m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+        m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
+      }
+      else if (Type != DXVK_TSS_TEXCOORDINDEX)
+        m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+      else
+        m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
+      m_state.textureStages[Stage][Type] = Value;
+    }
 
     return D3D_OK;
   }
@@ -5452,17 +5460,17 @@ namespace dxvk {
       D3D9SharedPS* data = reinterpret_cast<D3D9SharedPS*>(slice.mapPtr);
 
       for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
-        DecodeD3DCOLOR(D3DCOLOR(m_state.textureStages[i][D3DTSS_CONSTANT]), data->Stages[i].Constant);
+        DecodeD3DCOLOR(D3DCOLOR(m_state.textureStages[i][DXVK_TSS_CONSTANT]), data->Stages[i].Constant);
 
         // Flip major-ness so we can get away with a nice easy
         // dot in the shader without complex access
-        data->Stages[i].BumpEnvMat[0][0] = bit::cast<float>(m_state.textureStages[i][D3DTSS_BUMPENVMAT00]);
-        data->Stages[i].BumpEnvMat[1][0] = bit::cast<float>(m_state.textureStages[i][D3DTSS_BUMPENVMAT01]);
-        data->Stages[i].BumpEnvMat[0][1] = bit::cast<float>(m_state.textureStages[i][D3DTSS_BUMPENVMAT10]);
-        data->Stages[i].BumpEnvMat[1][1] = bit::cast<float>(m_state.textureStages[i][D3DTSS_BUMPENVMAT11]);
+        data->Stages[i].BumpEnvMat[0][0] = bit::cast<float>(m_state.textureStages[i][DXVK_TSS_BUMPENVMAT00]);
+        data->Stages[i].BumpEnvMat[1][0] = bit::cast<float>(m_state.textureStages[i][DXVK_TSS_BUMPENVMAT01]);
+        data->Stages[i].BumpEnvMat[0][1] = bit::cast<float>(m_state.textureStages[i][DXVK_TSS_BUMPENVMAT10]);
+        data->Stages[i].BumpEnvMat[1][1] = bit::cast<float>(m_state.textureStages[i][DXVK_TSS_BUMPENVMAT11]);
 
-        data->Stages[i].BumpEnvLScale    = bit::cast<float>(m_state.textureStages[i][D3DTSS_BUMPENVLSCALE]);
-        data->Stages[i].BumpEnvLOffset   = bit::cast<float>(m_state.textureStages[i][D3DTSS_BUMPENVLOFFSET]);
+        data->Stages[i].BumpEnvLScale    = bit::cast<float>(m_state.textureStages[i][DXVK_TSS_BUMPENVLSCALE]);
+        data->Stages[i].BumpEnvLOffset   = bit::cast<float>(m_state.textureStages[i][DXVK_TSS_BUMPENVLOFFSET]);
       }
     }
 
@@ -5832,8 +5840,8 @@ namespace dxvk {
       key.Data.Contents.LightCount = lightCount;
 
       for (uint32_t i = 0; i < caps::MaxTextureBlendStages; i++) {
-        uint32_t transformFlags = m_state.textureStages[i][D3DTSS_TEXTURETRANSFORMFLAGS] & ~(D3DTTFF_PROJECTED);
-        uint32_t index          = m_state.textureStages[i][D3DTSS_TEXCOORDINDEX];
+        uint32_t transformFlags = m_state.textureStages[i][DXVK_TSS_TEXTURETRANSFORMFLAGS] & ~(D3DTTFF_PROJECTED);
+        uint32_t index          = m_state.textureStages[i][DXVK_TSS_TEXCOORDINDEX];
         uint32_t indexFlags     = (index & TCIMask) >> TCIOffset;
 
         transformFlags &= 0b111;
@@ -5996,34 +6004,34 @@ namespace dxvk {
         auto& data  = m_state.textureStages[idx];
 
         // Subsequent stages do not occur if this is true.
-        if (data[D3DTSS_COLOROP] == D3DTOP_DISABLE)
+        if (data[DXVK_TSS_COLOROP] == D3DTOP_DISABLE)
           break;
 
         // If the stage is invalid (ie. no texture bound),
         // this and all subsequent stages get disabled.
         if (m_state.textures[idx] == nullptr) {
-          if (((data[D3DTSS_COLORARG0] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[D3DTSS_COLOROP]) & (1 << 0u)))
-           || ((data[D3DTSS_COLORARG1] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[D3DTSS_COLOROP]) & (1 << 1u)))
-           || ((data[D3DTSS_COLORARG2] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[D3DTSS_COLOROP]) & (1 << 2u))))
+          if (((data[DXVK_TSS_COLORARG0] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[DXVK_TSS_COLOROP]) & (1 << 0u)))
+           || ((data[DXVK_TSS_COLORARG1] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[DXVK_TSS_COLOROP]) & (1 << 1u)))
+           || ((data[DXVK_TSS_COLORARG2] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[DXVK_TSS_COLOROP]) & (1 << 2u))))
             break;
         }
 
-        stage.ColorOp = data[D3DTSS_COLOROP];
-        stage.AlphaOp = data[D3DTSS_ALPHAOP];
+        stage.ColorOp = data[DXVK_TSS_COLOROP];
+        stage.AlphaOp = data[DXVK_TSS_ALPHAOP];
 
-        stage.ColorArg0 = data[D3DTSS_COLORARG0];
-        stage.ColorArg1 = data[D3DTSS_COLORARG1];
-        stage.ColorArg2 = data[D3DTSS_COLORARG2];
+        stage.ColorArg0 = data[DXVK_TSS_COLORARG0];
+        stage.ColorArg1 = data[DXVK_TSS_COLORARG1];
+        stage.ColorArg2 = data[DXVK_TSS_COLORARG2];
 
-        stage.AlphaArg0 = data[D3DTSS_ALPHAARG0];
-        stage.AlphaArg1 = data[D3DTSS_ALPHAARG1];
-        stage.AlphaArg2 = data[D3DTSS_ALPHAARG2];
+        stage.AlphaArg0 = data[DXVK_TSS_ALPHAARG0];
+        stage.AlphaArg1 = data[DXVK_TSS_ALPHAARG1];
+        stage.AlphaArg2 = data[DXVK_TSS_ALPHAARG2];
 
         const uint32_t samplerOffset = idx * 2;
         stage.Type         = (m_samplerTypeBitfield >> samplerOffset) & 0xffu;
-        stage.ResultIsTemp = data[D3DTSS_RESULTARG] == D3DTA_TEMP;
+        stage.ResultIsTemp = data[DXVK_TSS_RESULTARG] == D3DTA_TEMP;
 
-        uint32_t ttff  = data[D3DTSS_TEXTURETRANSFORMFLAGS];
+        uint32_t ttff  = data[DXVK_TSS_TEXTURETRANSFORMFLAGS];
         uint32_t count = ttff & ~D3DTTFF_PROJECTED;
 
         stage.Projected      = (ttff & D3DTTFF_PROJECTED) ? 1      : 0;
@@ -6399,24 +6407,24 @@ namespace dxvk {
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       auto& stage = m_state.textureStages[i];
 
-      stage[D3DTSS_COLOROP]               = i == 0 ? D3DTOP_MODULATE : D3DTOP_DISABLE;
-      stage[D3DTSS_COLORARG1]             = D3DTA_TEXTURE;
-      stage[D3DTSS_COLORARG2]             = D3DTA_CURRENT;
-      stage[D3DTSS_ALPHAOP]               = i == 0 ? D3DTOP_SELECTARG1 : D3DTOP_DISABLE;
-      stage[D3DTSS_ALPHAARG1]             = D3DTA_TEXTURE;
-      stage[D3DTSS_ALPHAARG2]             = D3DTA_CURRENT;
-      stage[D3DTSS_BUMPENVMAT00]          = bit::cast<DWORD>(0.0f);
-      stage[D3DTSS_BUMPENVMAT01]          = bit::cast<DWORD>(0.0f);
-      stage[D3DTSS_BUMPENVMAT10]          = bit::cast<DWORD>(0.0f);
-      stage[D3DTSS_BUMPENVMAT11]          = bit::cast<DWORD>(0.0f);
-      stage[D3DTSS_TEXCOORDINDEX]         = i;
-      stage[D3DTSS_BUMPENVLSCALE]         = bit::cast<DWORD>(0.0f);
-      stage[D3DTSS_BUMPENVLOFFSET]        = bit::cast<DWORD>(0.0f);
-      stage[D3DTSS_TEXTURETRANSFORMFLAGS] = D3DTTFF_DISABLE;
-      stage[D3DTSS_COLORARG0]             = D3DTA_CURRENT;
-      stage[D3DTSS_ALPHAARG0]             = D3DTA_CURRENT;
-      stage[D3DTSS_RESULTARG]             = D3DTA_CURRENT;
-      stage[D3DTSS_CONSTANT]              = 0x00000000;
+      stage[DXVK_TSS_COLOROP]               = i == 0 ? D3DTOP_MODULATE : D3DTOP_DISABLE;
+      stage[DXVK_TSS_COLORARG1]             = D3DTA_TEXTURE;
+      stage[DXVK_TSS_COLORARG2]             = D3DTA_CURRENT;
+      stage[DXVK_TSS_ALPHAOP]               = i == 0 ? D3DTOP_SELECTARG1 : D3DTOP_DISABLE;
+      stage[DXVK_TSS_ALPHAARG1]             = D3DTA_TEXTURE;
+      stage[DXVK_TSS_ALPHAARG2]             = D3DTA_CURRENT;
+      stage[DXVK_TSS_BUMPENVMAT00]          = bit::cast<DWORD>(0.0f);
+      stage[DXVK_TSS_BUMPENVMAT01]          = bit::cast<DWORD>(0.0f);
+      stage[DXVK_TSS_BUMPENVMAT10]          = bit::cast<DWORD>(0.0f);
+      stage[DXVK_TSS_BUMPENVMAT11]          = bit::cast<DWORD>(0.0f);
+      stage[DXVK_TSS_TEXCOORDINDEX]         = i;
+      stage[DXVK_TSS_BUMPENVLSCALE]         = bit::cast<DWORD>(0.0f);
+      stage[DXVK_TSS_BUMPENVLOFFSET]        = bit::cast<DWORD>(0.0f);
+      stage[DXVK_TSS_TEXTURETRANSFORMFLAGS] = D3DTTFF_DISABLE;
+      stage[DXVK_TSS_COLORARG0]             = D3DTA_CURRENT;
+      stage[DXVK_TSS_ALPHAARG0]             = D3DTA_CURRENT;
+      stage[DXVK_TSS_RESULTARG]             = D3DTA_CURRENT;
+      stage[DXVK_TSS_CONSTANT]              = 0x00000000;
     }
     m_flags.set(D3D9DeviceFlag::DirtySharedPixelShaderData);
     m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);

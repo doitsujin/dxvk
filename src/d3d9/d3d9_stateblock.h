@@ -47,7 +47,7 @@ namespace dxvk {
     bit::bitset<caps::MaxTransforms>                    transforms;
     bit::bitset<caps::TextureStageCount>                textureStages;
     std::array<
-      bit::bitset<D3DTSS_CONSTANT>,
+      bit::bitset<TextureStageStateCount>,
       caps::TextureStageCount>                          textureStageStates;
 
     struct {
@@ -122,10 +122,10 @@ namespace dxvk {
 
     HRESULT SetStateTransform(uint32_t idx, const D3DMATRIX* pMatrix);
 
-    HRESULT SetTextureStageState(
-            DWORD                    Stage,
-            D3DTEXTURESTAGESTATETYPE Type,
-            DWORD                    Value);
+    HRESULT SetStateTextureStageState(
+            DWORD                      Stage,
+            D3D9TextureStageStateTypes Type,
+            DWORD                      Value);
 
     HRESULT MultiplyStateTransform(uint32_t idx, const D3DMATRIX* pMatrix);
 
@@ -257,7 +257,7 @@ namespace dxvk {
           for (uint32_t state = m_captures.textureStageStates[0].dword(0); state; state &= state - 1) {
             uint32_t stateIdx = bit::tzcnt(state);
 
-            dst->SetTextureStageState(stageIdx, (D3DTEXTURESTAGESTATETYPE)stateIdx, src->textureStages[stageIdx][stateIdx]);
+            dst->SetStateTextureStageState(stageIdx, D3D9TextureStageStateTypes(stateIdx), src->textureStages[stageIdx][stateIdx]);
           }
         }
       }

@@ -1,6 +1,7 @@
 #include "d3d9_fixed_function.h"
 
 #include "d3d9_device.h"
+#include "d3d9_util.h"
 #include "d3d9_spec_constants.h"
 
 #include "../dxvk/dxvk_hash.h"
@@ -907,21 +908,21 @@ namespace dxvk {
       uint32_t count = flags;
       switch (inputFlags) {
         default:
-        case (D3DTSS_TCI_PASSTHRU >> TCIOffset):
+        case (DXVK_TSS_TCI_PASSTHRU >> TCIOffset):
           transformed = m_vs.in.TEXCOORD[inputIndex & 0xFF];
           break;
 
-        case (D3DTSS_TCI_CAMERASPACENORMAL >> TCIOffset):
+        case (DXVK_TSS_TCI_CAMERASPACENORMAL >> TCIOffset):
           transformed = outNrm;
           count = 4;
           break;
 
-        case (D3DTSS_TCI_CAMERASPACEPOSITION >> TCIOffset):
+        case (DXVK_TSS_TCI_CAMERASPACEPOSITION >> TCIOffset):
           transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1.0f), vtx, 1, &wIndex);
           count = 4;
           break;
 
-        case (D3DTSS_TCI_CAMERASPACEREFLECTIONVECTOR >> TCIOffset): {
+        case (DXVK_TSS_TCI_CAMERASPACEREFLECTIONVECTOR >> TCIOffset): {
           uint32_t vtx3 = m_module.opVectorShuffle(m_vec3Type, vtx, vtx, 3, indices.data());
           vtx3 = m_module.opNormalize(m_vec3Type, vtx3);
           
@@ -937,7 +938,7 @@ namespace dxvk {
           break;
         }
 
-        case (D3DTSS_TCI_SPHEREMAP >> TCIOffset): {
+        case (DXVK_TSS_TCI_SPHEREMAP >> TCIOffset): {
           uint32_t vtx3 = m_module.opVectorShuffle(m_vec3Type, vtx, vtx, 3, indices.data());
           vtx3 = m_module.opNormalize(m_vec3Type, vtx3);
 
