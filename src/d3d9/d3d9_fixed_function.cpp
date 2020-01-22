@@ -1565,7 +1565,11 @@ namespace dxvk {
           else
             texture = m_module.opImageSampleImplicitLod(m_vec4Type, imageVarId, texcoord, imageOperands);
 
-          texture = m_module.opSelect(m_vec4Type, m_ps.samplers[i].bound, texture, m_module.constvec4f32(0.0f, 0.0f, 0.0f, 1.0f));
+          uint32_t bool_t = m_module.defBoolType();
+          uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
+          std::array<uint32_t, 4> boundIndices = { m_ps.samplers[i].bound, m_ps.samplers[i].bound, m_ps.samplers[i].bound, m_ps.samplers[i].bound };
+          uint32_t bound4 = m_module.opCompositeConstruct(bvec4_t, boundIndices.size(), boundIndices.data());
+          texture = m_module.opSelect(m_vec4Type, bound4, texture, m_module.constvec4f32(0.0f, 0.0f, 0.0f, 1.0f));
         }
 
         processedTexture = true;
