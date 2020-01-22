@@ -295,6 +295,10 @@ namespace dxvk {
     { R"(\\mslugx\.exe$)", {{
       { "d3d9.supportD32",                  "False" },
     }} },
+    /* Skyrim (NVAPI)                             */
+    { R"(\\TESV\.exe$)", {{
+      { "d3d9.customVendorId",              "1002" },
+    }} },
   }};
 
 
