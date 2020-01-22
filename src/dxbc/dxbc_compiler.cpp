@@ -740,6 +740,11 @@ namespace dxvk {
         // Add index decoration for potential dual-source blending
         if (m_programInfo.type() == DxbcProgramType::PixelShader)
           m_module.decorateIndex(varId, 0);
+
+        // Declare vertex positions in all stages as invariant, even if
+        // this is not the last stage, to help with potential Z fighting.
+        if (sv == DxbcSystemValue::Position && m_moduleInfo.options.invariantPosition)
+          m_module.decorate(varId, spv::DecorationInvariant);
       }
       
       m_oRegs.at(regIdx) = { regType, varId };
