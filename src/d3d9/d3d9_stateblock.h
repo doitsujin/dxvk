@@ -178,12 +178,10 @@ namespace dxvk {
         dst->SetVertexDeclaration(src->vertexDecl.ptr());
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::StreamFreq)) {
-        for (uint32_t i = 0; i < m_captures.streamFreq.dwordCount(); i++) {
-          for (uint32_t stream = m_captures.streamFreq.dword(i); stream; stream &= stream - 1) {
-            uint32_t idx = i * 32 + bit::tzcnt(stream);
+        for (uint32_t stream = m_captures.streamFreq.dword(0); stream; stream &= stream - 1) {
+          uint32_t idx = bit::tzcnt(stream);
 
-            dst->SetStreamSourceFreq(idx, src->streamFreq[idx]);
-          }
+          dst->SetStreamSourceFreq(idx, src->streamFreq[idx]);
         }
       }
 
@@ -201,33 +199,27 @@ namespace dxvk {
       }
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::SamplerStates)) {
-        for (uint32_t i = 0; i < m_captures.samplers.dwordCount(); i++) {
-          for (uint32_t sampler = m_captures.samplers.dword(i); sampler; sampler &= sampler - 1) {
-            uint32_t samplerIdx = i * 32 + bit::tzcnt(sampler);
-            
-            for (uint32_t j = 0; j < m_captures.samplerStates[i].dwordCount(); j++) {
-              for (uint32_t state = m_captures.samplerStates[i].dword(j); state; state &= state - 1) {
-                uint32_t stateIdx = j * 32 + bit::tzcnt(state);
+        for (uint32_t sampler = m_captures.samplers.dword(0); sampler; sampler &= sampler - 1) {
+          uint32_t samplerIdx = bit::tzcnt(sampler);            
 
-                dst->SetStateSamplerState(samplerIdx, D3DSAMPLERSTATETYPE(stateIdx), src->samplerStates[samplerIdx][stateIdx]);
-              }
-            }
+          for (uint32_t state = m_captures.samplerStates[0].dword(0); state; state &= state - 1) {
+            uint32_t stateIdx = bit::tzcnt(state);
+
+            dst->SetStateSamplerState(samplerIdx, D3DSAMPLERSTATETYPE(stateIdx), src->samplerStates[samplerIdx][stateIdx]);
           }
         }
       }
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::VertexBuffers)) {
-        for (uint32_t i = 0; i < m_captures.vertexBuffers.dwordCount(); i++) {
-          for (uint32_t vb = m_captures.vertexBuffers.dword(i); vb; vb &= vb - 1) {
-            uint32_t idx = i * 32 + bit::tzcnt(vb);
+        for (uint32_t vb = m_captures.vertexBuffers.dword(0); vb; vb &= vb - 1) {
+          uint32_t idx = bit::tzcnt(vb);
 
-            const auto& vbo = src->vertexBuffers[idx];
-            dst->SetStreamSource(
-              idx,
-              vbo.vertexBuffer.ptr(),
-              vbo.offset,
-              vbo.stride);
-          }
+          const auto& vbo = src->vertexBuffers[idx];
+          dst->SetStreamSource(
+            idx,
+            vbo.vertexBuffer.ptr(),
+            vbo.offset,
+            vbo.stride);
         }
       }
 
@@ -235,12 +227,10 @@ namespace dxvk {
         dst->SetMaterial(&src->material);
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::Textures)) {
-        for (uint32_t i = 0; i < m_captures.textures.dwordCount(); i++) {
-          for (uint32_t tex = m_captures.textures.dword(i); tex; tex &= tex - 1) {
-            uint32_t idx = i * 32 + bit::tzcnt(tex);
+        for (uint32_t tex = m_captures.textures.dword(0); tex; tex &= tex - 1) {
+          uint32_t idx = bit::tzcnt(tex);
 
-            dst->SetStateTexture(idx, src->textures[idx]);
-          }
+          dst->SetStateTexture(idx, src->textures[idx]);
         }
       }
 
@@ -261,17 +251,13 @@ namespace dxvk {
       }
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::TextureStages)) {
-        for (uint32_t i = 0; i < m_captures.textureStages.dwordCount(); i++) {
-          for (uint32_t stage = m_captures.textureStages.dword(i); stage; stage &= stage - 1) {
-            uint32_t stageIdx = i * 32 + bit::tzcnt(stage);
+        for (uint32_t stage = m_captures.textureStages.dword(0); stage; stage &= stage - 1) {
+          uint32_t stageIdx = bit::tzcnt(stage);
             
-            for (uint32_t j = 0; j < m_captures.textureStageStates[i].dwordCount(); j++) {
-              for (uint32_t state = m_captures.textureStageStates[i].dword(j); state; state &= state - 1) {
-                uint32_t stateIdx = j * 32 + bit::tzcnt(state);
+          for (uint32_t state = m_captures.textureStageStates[0].dword(0); state; state &= state - 1) {
+            uint32_t stateIdx = bit::tzcnt(state);
 
-                dst->SetTextureStageState(stageIdx, (D3DTEXTURESTAGESTATETYPE)stateIdx, src->textureStages[stageIdx][stateIdx]);
-              }
-            }
+            dst->SetTextureStageState(stageIdx, (D3DTEXTURESTAGESTATETYPE)stateIdx, src->textureStages[stageIdx][stateIdx]);
           }
         }
       }
@@ -283,12 +269,10 @@ namespace dxvk {
         dst->SetScissorRect(&src->scissorRect);
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::ClipPlanes)) {
-        for (uint32_t i = 0; i < m_captures.clipPlanes.dwordCount(); i++) {
-          for (uint32_t plane = m_captures.clipPlanes.dword(i); plane; plane &= plane - 1) {
-            uint32_t idx = i * 32 + bit::tzcnt(plane);
+        for (uint32_t plane = m_captures.clipPlanes.dword(0); plane; plane &= plane - 1) {
+          uint32_t idx = bit::tzcnt(plane);
 
-            dst->SetClipPlane(idx, src->clipPlanes[idx].coeff);
-          }
+          dst->SetClipPlane(idx, src->clipPlanes[idx].coeff);
         }
       }
 
