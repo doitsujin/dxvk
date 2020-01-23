@@ -115,9 +115,8 @@ namespace dxvk {
     Rc<DxvkImage>           m_gammaTexture;
     Rc<DxvkImageView>       m_gammaTextureView;
 
-    Rc<DxvkImage>           m_swapImage;
-    Rc<DxvkImage>           m_swapImageResolve;
-    Rc<DxvkImageView>       m_swapImageView;
+    Rc<DxvkImage>           m_resolveImage;
+    Rc<DxvkImageView>       m_resolveImageView;
 
     Rc<hud::Hud>            m_hud;
 
