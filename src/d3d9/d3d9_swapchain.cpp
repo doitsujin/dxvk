@@ -620,6 +620,15 @@ namespace dxvk {
   void D3D9SwapChainEx::PresentImage(UINT SyncInterval) {
     m_parent->Flush();
 
+    // Retrieve the image and image view to present
+    auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
+    auto swapImageView = m_resolveImageView;
+
+    if (swapImageView == nullptr) {
+      bool isSrgb = swapImage->formatInfo()->flags.test(DxvkFormatFlag::ColorSpaceSrgb);
+      swapImageView = m_backBuffers[0]->GetImageView(isSrgb);
+    }
+
     // Wait for the sync event so that we respect the maximum frame latency
     uint64_t frameId = ++m_frameId;
     m_frameLatencySignal->wait(frameId - GetActualFrameLatency());
@@ -632,7 +641,7 @@ namespace dxvk {
       
       // Resolve back buffer if it is multisampled. We
       // only have to do it only for the first frame.
-      if (m_swapImageResolve != nullptr && i == 0) {
+      if (m_resolveImage != nullptr && i == 0) {
         VkImageSubresourceLayers resolveSubresource;
         resolveSubresource.aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT;
         resolveSubresource.mipLevel        = 0;
@@ -644,10 +653,10 @@ namespace dxvk {
         resolveRegion.srcOffset      = VkOffset3D { 0, 0, 0 };
         resolveRegion.dstSubresource = resolveSubresource;
         resolveRegion.dstOffset      = VkOffset3D { 0, 0, 0 };
-        resolveRegion.extent         = m_swapImage->info().extent;
+        resolveRegion.extent         = swapImage->info().extent;
         
         m_context->resolveImage(
-          m_swapImageResolve, m_swapImage,
+          m_resolveImage, swapImage,
           resolveRegion, VK_FORMAT_UNDEFINED);
       }
       
@@ -697,11 +706,11 @@ namespace dxvk {
       m_context->setViewports(1, &viewport, &scissor);
 
       D3D9PresentInfo presentInfoConsts;
-      presentInfoConsts.scale[0]  = float(m_srcRect.right  - m_srcRect.left) / float(m_swapImage->info().extent.width);
-      presentInfoConsts.scale[1]  = float(m_srcRect.bottom - m_srcRect.top)  / float(m_swapImage->info().extent.height);
+      presentInfoConsts.scale[0]  = float(m_srcRect.right  - m_srcRect.left) / float(swapImage->info().extent.width);
+      presentInfoConsts.scale[1]  = float(m_srcRect.bottom - m_srcRect.top)  / float(swapImage->info().extent.height);
 
-      presentInfoConsts.offset[0] = float(m_srcRect.left) / float(m_swapImage->info().extent.width);
-      presentInfoConsts.offset[1] = float(m_srcRect.top)  / float(m_swapImage->info().extent.height);
+      presentInfoConsts.offset[0] = float(m_srcRect.left) / float(swapImage->info().extent.width);
+      presentInfoConsts.offset[1] = float(m_srcRect.top)  / float(swapImage->info().extent.height);
 
       m_context->pushConstants(0, sizeof(D3D9PresentInfo), &presentInfoConsts);
 
@@ -717,7 +726,7 @@ namespace dxvk {
       m_context->bindResourceSampler(BindingIds::Image, m_samplerFitting);
       m_context->bindResourceSampler(BindingIds::Gamma, m_gammaSampler);
 
-      m_context->bindResourceView(BindingIds::Image, m_swapImageView, nullptr);
+      m_context->bindResourceView(BindingIds::Image, swapImageView, nullptr);
       m_context->bindResourceView(BindingIds::Gamma, m_gammaTextureView, nullptr);
 
       m_context->draw(3, 1, 0, 0);
@@ -858,9 +867,8 @@ namespace dxvk {
   void D3D9SwapChainEx::CreateBackBuffers(uint32_t NumBackBuffers) {
     // Explicitly destroy current swap image before
     // creating a new one to free up resources
-    m_swapImage         = nullptr;
-    m_swapImageResolve  = nullptr;
-    m_swapImageView     = nullptr;
+    m_resolveImage     = nullptr;
+    m_resolveImageView = nullptr;
 
     m_backBuffers.clear();
     m_backBuffers.resize(NumBackBuffers + 1);
@@ -882,17 +890,17 @@ namespace dxvk {
     for (uint32_t i = 0; i < m_backBuffers.size(); i++)
       m_backBuffers[i] = new D3D9Surface(m_parent, &desc);
 
-    m_swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
+    auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
 
     // If the image is multisampled, we need to create
     // another image which we'll use as a resolve target
-    if (m_swapImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT) {
+    if (swapImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT) {
       DxvkImageCreateInfo resolveInfo;
       resolveInfo.type          = VK_IMAGE_TYPE_2D;
-      resolveInfo.format        = m_swapImage->info().format;
+      resolveInfo.format        = swapImage->info().format;
       resolveInfo.flags         = 0;
       resolveInfo.sampleCount   = VK_SAMPLE_COUNT_1_BIT;
-      resolveInfo.extent        = m_swapImage->info().extent;
+      resolveInfo.extent        = swapImage->info().extent;
       resolveInfo.numLayers     = 1;
       resolveInfo.mipLevels     = 1;
       resolveInfo.usage         = VK_IMAGE_USAGE_SAMPLED_BIT
@@ -908,28 +916,22 @@ namespace dxvk {
       resolveInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
       resolveInfo.layout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
       
-      m_swapImageResolve = m_device->createImage(
+      m_resolveImage = m_device->createImage(
         resolveInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+      DxvkImageViewCreateInfo viewInfo;
+      viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
+      viewInfo.format     = m_resolveImage->info().format;
+      viewInfo.usage      = VK_IMAGE_USAGE_SAMPLED_BIT;
+      viewInfo.aspect     = VK_IMAGE_ASPECT_COLOR_BIT;
+      viewInfo.minLevel   = 0;
+      viewInfo.numLevels  = 1;
+      viewInfo.minLayer   = 0;
+      viewInfo.numLayers  = 1;
+
+      m_resolveImageView = m_device->createImageView(m_resolveImage, viewInfo);
     }
 
-    // Create an image view that allows the
-    // image to be bound as a shader resource.
-    DxvkImageViewCreateInfo viewInfo;
-    viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format     = m_swapImage->info().format;
-    viewInfo.usage      = VK_IMAGE_USAGE_SAMPLED_BIT;
-    viewInfo.aspect     = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewInfo.minLevel   = 0;
-    viewInfo.numLevels  = 1;
-    viewInfo.minLayer   = 0;
-    viewInfo.numLayers  = 1;
-    
-    m_swapImageView = m_device->createImageView(
-      m_swapImageResolve != nullptr
-        ? m_swapImageResolve
-        : m_swapImage,
-      viewInfo);
-    
     // Initialize the image so that we can use it. Clearing
     // to black prevents garbled output for the first frame.
     VkImageSubresourceRange subresources;
@@ -949,7 +951,7 @@ namespace dxvk {
       m_device->createCommandList());
     
     m_context->clearColorImage(
-      m_swapImage, clearColor, subresources);
+      swapImage, clearColor, subresources);
 
     m_device->submitCommandList(
       m_context->endRecording(),
