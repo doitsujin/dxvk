@@ -54,6 +54,9 @@ namespace dxvk {
     /// given anisotropy value for all samplers.
     int32_t samplerAnisotropy;
     
+    /// Declare vertex positions in shaders as invariant
+    bool invariantPosition;
+
     /// Back buffer count for the Vulkan swap chain.
     /// Overrides DXGI_SWAP_CHAIN_DESC::BufferCount.
     int32_t numBackBuffers;

@@ -37,13 +37,10 @@ namespace dxvk {
       case Tristate::False: minSsboAlignment = ~0u; break;
     }
     
+    invariantPosition        = options.invariantPosition;
     enableRtOutputNanFixup   = options.enableRtOutputNanFixup;
     zeroInitWorkgroupMemory  = options.zeroInitWorkgroupMemory;
     dynamicIndexedConstantBufferAsSsbo = options.constantBufferRangeCheck;
-    
-    // Don't declare vertex positions as invariant on Nvidia since it
-    // may break certain games, such as Shadow of the Tomb Raider.
-    invariantPosition = !adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0);
 
     // Disable early discard on RADV (with LLVM) due to GPU hangs
     // Disable early discard on Nvidia because it may hurt performance
