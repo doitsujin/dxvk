@@ -252,6 +252,10 @@ namespace dxvk::bit {
       return Dwords;
     }
 
+    constexpr bool operator [] (uint32_t idx) const {
+      return get(idx);
+    }
+
   private:
 
     uint32_t m_dwords[Dwords];
