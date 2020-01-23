@@ -9,7 +9,6 @@
 namespace dxvk {
 
   class DxvkImageView;
-  class DxvkImageViewDump;
   
   /**
    * \brief Image create info
@@ -285,16 +284,6 @@ namespace dxvk {
     VkDeviceSize memSize() const {
       return m_image.memory.length();
     }
-
-    /**
-     * \brief Swaps the image with another
-     *
-     * \param [in] next The other image
-     * \param [in] dump Image view dump
-     */
-    void swap(
-      const Rc<DxvkImage>&         next,
-      const Rc<DxvkImageViewDump>& dump);
     
   private:
     
@@ -304,14 +293,6 @@ namespace dxvk {
     DxvkPhysicalImage     m_image;
 
     small_vector<VkFormat, 4> m_viewFormats;
-    
-    sync::Spinlock                  m_viewLock;
-    small_vector<DxvkImageView*, 4> m_viewList;
-
-    void addView(DxvkImageView* view);
-    void removeView(DxvkImageView* view);
-
-    void recreateViews(const Rc<DxvkImageViewDump>& dump);
     
   };
   
@@ -492,35 +473,8 @@ namespace dxvk {
     DxvkImageViewCreateInfo m_info;
     VkImageView             m_views[ViewCount];
 
-    void createViews();
-    
     void createView(VkImageViewType type, uint32_t numLayers);
-
-    void discardViews(const Rc<DxvkImageViewDump>& dump);
     
-  };
-
-
-  /**
-   * \brief Image view dump
-   *
-   * Takes orphaned image view objects and destroys
-   * them when they are no longer needed.
-   */
-  class DxvkImageViewDump : public DxvkResource {
-
-  public:
-
-    DxvkImageViewDump(const Rc<vk::DeviceFn>& vkd);
-    ~DxvkImageViewDump();
-
-    void addView(VkImageView view);
-
-  private:
-
-    Rc<vk::DeviceFn>         m_vkd;
-    std::vector<VkImageView> m_views;
-
   };
   
 }

@@ -752,14 +752,6 @@ namespace dxvk {
 
       m_device->presentImage(m_presenter,
         cSync.present, &m_presentStatus);
-
-      // Shift back buffers so that m_backBuffers[BackBufferCount]
-      // will contain the image that we just presented
-      for (uint32_t i = m_backBuffers.size(); i > 1; i--) {
-        ctx->swapImages(
-          m_backBuffers[i - 1]->GetCommonTexture()->GetImage(),
-          m_backBuffers[i - 2]->GetCommonTexture()->GetImage());
-      }
     });
 
     m_parent->FlushCsChunk();

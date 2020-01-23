@@ -125,66 +125,11 @@ namespace dxvk {
   }
   
   
-  void DxvkImage::swap(const Rc<DxvkImage>& next, const Rc<DxvkImageViewDump>& dump) {
-    // Technically this could deadlock if two threads
-    // call this method, but that's undefined behaviour
-    // anyway so let's not care about it too much.
-    std::lock_guard lock1(this->m_viewLock);
-    std::lock_guard lock2(next->m_viewLock);
-
-    std::swap(this->m_image, next->m_image);
-
-    this->recreateViews(dump);
-    next->recreateViews(dump);
-  }
-
-
-  void DxvkImage::addView(DxvkImageView* view) {
-    m_viewList.push_back(view);
-  }
-
-
-  void DxvkImage::removeView(DxvkImageView* view) {
-    for (size_t i = 0; i < m_viewList.size(); i++) {
-      if (m_viewList[i] == view) {
-        m_viewList[i] = m_viewList.back();
-        m_viewList.pop_back();
-        return;
-      }
-    }
-  }
-
-
-  void DxvkImage::recreateViews(const Rc<DxvkImageViewDump>& dump) {
-    for (size_t i = 0; i < m_viewList.size(); i++) {
-      m_viewList[i]->discardViews(dump);
-      m_viewList[i]->createViews();
-    }
-  }
-
-
   DxvkImageView::DxvkImageView(
     const Rc<vk::DeviceFn>&         vkd,
     const Rc<DxvkImage>&            image,
     const DxvkImageViewCreateInfo&  info)
   : m_vkd(vkd), m_image(image), m_info(info) {
-    std::lock_guard lock(m_image->m_viewLock);
-    m_image->addView(this);
-
-    createViews();
-  }
-  
-  
-  DxvkImageView::~DxvkImageView() {
-    for (uint32_t i = 0; i < ViewCount; i++)
-      m_vkd->vkDestroyImageView(m_vkd->device(), m_views[i], nullptr);
-
-    std::lock_guard lock(m_image->m_viewLock);
-    m_image->removeView(this);
-  }
-
-  
-  void DxvkImageView::createViews() {
     for (uint32_t i = 0; i < ViewCount; i++)
       m_views[i] = VK_NULL_HANDLE;
     
@@ -227,17 +172,13 @@ namespace dxvk {
         throw DxvkError(str::format("DxvkImageView: Invalid view type: ", m_info.type));
     }
   }
-
-
-  void DxvkImageView::discardViews(const Rc<DxvkImageViewDump>& dump) {
-    for (uint32_t i = 0; i < ViewCount; i++) {
-      if (m_views[i]) {
-        dump->addView(m_views[i]);
-        m_views[i] = VK_NULL_HANDLE;
-      }
-    }
-  }
   
+  
+  DxvkImageView::~DxvkImageView() {
+    for (uint32_t i = 0; i < ViewCount; i++)
+      m_vkd->vkDestroyImageView(m_vkd->device(), m_views[i], nullptr);
+  }
+
   
   void DxvkImageView::createView(VkImageViewType type, uint32_t numLayers) {
     VkImageSubresourceRange subresourceRange;
@@ -292,23 +233,6 @@ namespace dxvk {
         "\n    Usage:         ", std::hex, m_image->info().usage,
         "\n    Tiling:        ", m_image->info().tiling));
     }
-  }
-
-
-  DxvkImageViewDump::DxvkImageViewDump(const Rc<vk::DeviceFn>& vkd)
-  : m_vkd(vkd) {
-
-  }
-
-
-  DxvkImageViewDump::~DxvkImageViewDump() {
-    for (auto view : m_views)
-      m_vkd->vkDestroyImageView(m_vkd->device(), view, nullptr);
-  }
-
-
-  void DxvkImageViewDump::addView(VkImageView view) {
-    m_views.push_back(view);
   }
   
 }
