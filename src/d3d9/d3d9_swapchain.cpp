@@ -739,6 +739,13 @@ namespace dxvk {
 
       SubmitPresent(sync, i);
     }
+
+    // Rotate swap chain buffers so that the back
+    // buffer at index 0 becomes the front buffer.
+    for (uint32_t i = 1; i < m_backBuffers.size(); i++)
+      m_backBuffers[i]->Swap(m_backBuffers[i - 1].ptr());
+
+    m_parent->m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
   }
 
 

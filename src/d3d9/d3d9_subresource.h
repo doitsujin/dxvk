@@ -111,6 +111,14 @@ namespace dxvk {
       return m_container;
     }
 
+    void Swap(D3D9Subresource* Other) {
+      // Only used for swap chain back buffers that don't
+      // have a container and all have identical properties
+      std::swap(m_texture,          Other->m_texture);
+      std::swap(m_sampleView,       Other->m_sampleView);
+      std::swap(m_renderTargetView, Other->m_renderTargetView);
+    }
+
   protected:
 
     IDirect3DBaseTexture9*  m_container;
