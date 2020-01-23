@@ -254,7 +254,7 @@ namespace dxvk {
         for (uint32_t stage = m_captures.textureStages.dword(0); stage; stage &= stage - 1) {
           uint32_t stageIdx = bit::tzcnt(stage);
             
-          for (uint32_t state = m_captures.textureStageStates[0].dword(0); state; state &= state - 1) {
+          for (uint32_t state = m_captures.textureStageStates[stageIdx].dword(0); state; state &= state - 1) {
             uint32_t stateIdx = bit::tzcnt(state);
 
             dst->SetStateTextureStageState(stageIdx, D3D9TextureStageStateTypes(stateIdx), src->textureStages[stageIdx][stateIdx]);
