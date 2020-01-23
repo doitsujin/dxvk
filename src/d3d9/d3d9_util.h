@@ -263,9 +263,9 @@ namespace dxvk {
       DXVK_TSS_BUMPENVLSCALE  = 21,
       DXVK_TSS_BUMPENVLOFFSET = 22,
       DXVK_TSS_TEXTURETRANSFORMFLAGS = 23,
-      DXVK_TSS_COLORARG0      = 24,
-      DXVK_TSS_ALPHAARG0      = 25,
-      DXVK_TSS_RESULTARG      = 26,
+      DXVK_TSS_COLORARG0      = 25,
+      DXVK_TSS_ALPHAARG0      = 26,
+      DXVK_TSS_RESULTARG      = 27,
       DXVK_TSS_CONSTANT       = 31,
       DXVK_TSS_COUNT          = 32
   };
