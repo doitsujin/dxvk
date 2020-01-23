@@ -170,6 +170,10 @@ namespace dxvk {
     { R"(\\starwarsbattlefrontii\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
+    /* Entropia Universe                          */
+    { R"(\\Entropia\.exe$)", {{
+      { "d3d11.invariantPosition",          "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
