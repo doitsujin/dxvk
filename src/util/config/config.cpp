@@ -305,6 +305,15 @@ namespace dxvk {
     { R"(\\TESV\.exe$)", {{
       { "d3d9.customVendorId",              "1002" },
     }} },
+    /* RTHDRIBL Demo                              
+       Uses DONOTWAIT after GetRenderTargetData
+       then goes into an infinite loop if it gets
+       D3DERR_WASSTILLDRAWING.
+       This is a better solution than penalizing
+       other apps that use this properly.         */
+    { R"(\\rthdribl\.exe$)", {{
+      { "d3d9.allowDoNotWait",              "False" },
+    }} },
   }};
 
 
