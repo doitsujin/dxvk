@@ -3829,6 +3829,13 @@ namespace dxvk {
       Flags &= ~D3DLOCK_READONLY;
 
     pResource->SetLockFlags(Subresource, Flags);
+
+    bool renderable = desc.Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL | D3DUSAGE_AUTOGENMIPMAP);
+
+    // If we are dirty, then we need to copy -> buffer
+    // We are also always dirty if we are a render target,
+    // a depth stencil, or auto generate mipmaps.
+    bool dirty = pResource->SetDirty(Subresource, false) || renderable;
       
     DxvkBufferSliceHandle physSlice;
       
@@ -3856,7 +3863,6 @@ namespace dxvk {
       // or is reading. Remember! This will only trigger for MANAGED resources
       // that cannot get affected by GPU, therefore readonly is A-OK for NOT waiting.
       const bool readOnly = Flags & D3DLOCK_READONLY;
-      const bool dirty    = pResource->SetDirty(Subresource, false);
       const bool skipWait = (readOnly && managed) || scratch || (readOnly && systemmem && !dirty);
 
       if (alloced)
@@ -3867,13 +3873,6 @@ namespace dxvk {
       }
     }
     else {
-      bool renderable = desc.Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL | D3DUSAGE_AUTOGENMIPMAP);
-
-      // If we are dirty, then we need to copy -> buffer
-      // We are also always dirty if we are a render target,
-      // a depth stencil, or auto generate mipmaps.
-      bool dirty  = pResource->SetDirty(Subresource, false) || renderable;
-
       if (unlikely(dirty)) {
         Rc<DxvkImage> resourceImage = pResource->GetImage();
 
