@@ -3833,7 +3833,7 @@ namespace dxvk {
 
     pResource->SetLockFlags(Subresource, Flags);
 
-    bool renderable = desc.Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL | D3DUSAGE_AUTOGENMIPMAP);
+    bool renderable = desc.Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL);
 
     // If we are dirty, then we need to copy -> buffer
     // We are also always dirty if we are a render target,
