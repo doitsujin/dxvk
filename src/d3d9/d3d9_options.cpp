@@ -65,6 +65,7 @@ namespace dxvk {
     this->forceSwapchainMSAA    = config.getOption<int32_t> ("d3d9.forceSwapchainMSAA",    -1);
 
     this->forceAspectRatio      = config.getOption<std::string>("d3d9.forceAspectRatio",   "");
+    this->allowDoNotWait        = config.getOption<bool>       ("d3d9.allowDoNotWait",     true);
 
     // If we are not Nvidia, enable general hazards.
     this->generalHazards = adapter == nullptr || !adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0);

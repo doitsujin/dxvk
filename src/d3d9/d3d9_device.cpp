@@ -3781,6 +3781,9 @@ namespace dxvk {
     if (unlikely(!m_d3d9Options.allowLockFlagReadonly))
       Flags &= ~D3DLOCK_READONLY;
 
+    if (unlikely(!m_d3d9Options.allowDoNotWait))
+      Flags &= ~D3DLOCK_DONOTWAIT;
+
     if (unlikely((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)))
       Flags &= ~D3DLOCK_DISCARD;
 
