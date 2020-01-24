@@ -812,13 +812,8 @@ namespace dxvk {
         cImage, cSubresources, VkOffset3D { 0, 0, 0 },
         cLevelExtent);
     });
-    
-    // We need to force a wait here
-    // as some applications depend on
-    // DO_NOT_WAIT not applying after
-    // this has happened.
-    // (this is a blocking call)
-    WaitForResource(dstBuffer, 0);
+
+    dstTexInfo->SetDirty(dst->GetSubresource(), true);
 
     return D3D_OK;
   }
@@ -3861,7 +3856,8 @@ namespace dxvk {
       // or is reading. Remember! This will only trigger for MANAGED resources
       // that cannot get affected by GPU, therefore readonly is A-OK for NOT waiting.
       const bool readOnly = Flags & D3DLOCK_READONLY;
-      const bool skipWait = (readOnly && managed) || scratch || (readOnly && systemmem);
+      const bool dirty    = pResource->SetDirty(Subresource, false);
+      const bool skipWait = (readOnly && managed) || scratch || (readOnly && systemmem && !dirty);
 
       if (alloced)
         std::memset(physSlice.mapPtr, 0, physSlice.length);

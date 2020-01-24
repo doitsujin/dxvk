@@ -318,12 +318,7 @@ namespace dxvk {
         cLevelExtent);
     });
     
-    // We need to force a wait here
-    // as some applications depend on
-    // DO_NOT_WAIT not applying after
-    // this has happened.
-    // (this is a blocking call)
-    m_parent->WaitForResource(dstBuffer, 0);
+    dstTexInfo->SetDirty(dst->GetSubresource(), true);
 
     return D3D_OK;
   }
