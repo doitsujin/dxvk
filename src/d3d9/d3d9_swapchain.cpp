@@ -624,10 +624,8 @@ namespace dxvk {
     auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
     auto swapImageView = m_resolveImageView;
 
-    if (swapImageView == nullptr) {
-      bool isSrgb = swapImage->formatInfo()->flags.test(DxvkFormatFlag::ColorSpaceSrgb);
-      swapImageView = m_backBuffers[0]->GetImageView(isSrgb);
-    }
+    if (swapImageView == nullptr)
+      swapImageView = m_backBuffers[0]->GetImageView(false);
 
     // Wait for the sync event so that we respect the maximum frame latency
     uint64_t frameId = ++m_frameId;
