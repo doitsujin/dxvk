@@ -252,6 +252,25 @@ public:
       throw DxvkError("Failed to create vertex decl");
 
     m_device->SetVertexDeclaration(m_decl.ptr());
+
+    ///
+
+    Com<IDirect3DTexture9> myRT;
+    status = m_device->CreateTexture(512, 256, 1, 0, D3DFMT_DXT1, D3DPOOL_DEFAULT, &myRT, nullptr);
+    
+    Com<IDirect3DSurface9> myRTSurf;
+    myRT->GetSurfaceLevel(0, &myRTSurf);
+
+    Com<IDirect3DTexture9> myCopyThing;
+    status = m_device->CreateTexture(512, 256, 1, 0, D3DFMT_DXT1, D3DPOOL_DEFAULT, &myCopyThing, nullptr);
+
+    Com<IDirect3DSurface9> myCopyThingSurf;
+    myCopyThing->GetSurfaceLevel(0, &myCopyThingSurf);
+
+    status = m_device->StretchRect(myRTSurf.ptr(), nullptr, myCopyThingSurf.ptr(), nullptr, D3DTEXF_NONE);
+
+    D3DLOCKED_RECT rect;
+    status = myCopyThing->LockRect(0, &rect, nullptr, D3DLOCK_READONLY | D3DLOCK_NOSYSLOCK);
   }
   
   void run() {
