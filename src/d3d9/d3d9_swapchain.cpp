@@ -208,7 +208,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     D3D9CommonTexture* dstTexInfo = dst->GetCommonTexture();
-    D3D9CommonTexture* srcTexInfo = m_backBuffers[m_presentParams.BackBufferCount]->GetCommonTexture();
+    D3D9CommonTexture* srcTexInfo = m_backBuffers.back()->GetCommonTexture();
 
     if (unlikely(dstTexInfo->Desc()->Pool != D3DPOOL_SYSTEMMEM))
       return D3DERR_INVALIDCALL;
@@ -930,8 +930,9 @@ namespace dxvk {
     m_resolveImage     = nullptr;
     m_resolveImageView = nullptr;
 
+    int NumFrontBuffer = m_parent->GetOptions()->noExplicitFrontBuffer ? 0 : 1;
     m_backBuffers.clear();
-    m_backBuffers.resize(NumBackBuffers + 1);
+    m_backBuffers.resize(NumBackBuffers + NumFrontBuffer);
 
     // Create new back buffer
     D3D9_COMMON_TEXTURE_DESC desc;
