@@ -936,9 +936,11 @@ namespace dxvk {
     bool stretch = srcCopyExtent != dstCopyExtent;
     fastPath &= !stretch;
 
-    // We don't support compressed destination formats at the moment
-    if (dstFormatInfo->flags.test(DxvkFormatFlag::BlockCompressed))
-      return D3DERR_INVALIDCALL;
+    if (!fastPath || needsResolve) {
+      // Compressed destination formats are forbidden for blits.
+      if (dstFormatInfo->flags.test(DxvkFormatFlag::BlockCompressed))
+        return D3DERR_INVALIDCALL;
+    }
 
     if (fastPath) {
       if (needsResolve) {
