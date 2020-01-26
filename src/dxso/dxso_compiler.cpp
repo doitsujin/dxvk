@@ -1188,39 +1188,15 @@ namespace dxvk {
       case DxsoRegisterType::MiscType:
         if (reg.id.num == MiscTypePosition) {
           if (m_ps.vPos.id == 0) {
-            DxsoRegisterPointer fragCoord = this->emitRegisterPtr(
-              "ps_frag_coord", DxsoScalarType::Float32, 4, 0,
-              spv::StorageClassInput, spv::BuiltInFragCoord);
-
-            DxsoRegisterValue val = this->emitValueLoad(fragCoord);
-            val.id = m_module.opFSub(
-              getVectorTypeId(val.type), val.id,
-              m_module.constvec4f32(0.5f, 0.5f, 0.0f, 0.0f));
-
             m_ps.vPos = this->emitRegisterPtr(
               "vPos", DxsoScalarType::Float32, 4, 0);
-
-            m_module.opStore(m_ps.vPos.id, val.id);
           }
           return m_ps.vPos;
         }
         else { // MiscTypeFace
           if (m_ps.vFace.id == 0) {
-            DxsoRegisterPointer faceBool = this->emitRegisterPtr(
-              "ps_is_front_face", DxsoScalarType::Bool, 1, 0,
-              spv::StorageClassInput, spv::BuiltInFrontFacing);
-
-            DxsoRegisterValue frontFace = emitValueLoad(faceBool);
-            DxsoRegisterValue selectOp = emitRegisterExtend(frontFace, 4);
-
             m_ps.vFace = this->emitRegisterPtr(
               "vFace", DxsoScalarType::Float32, 4, 0);
-
-            m_module.opStore(
-              m_ps.vFace.id,
-              m_module.opSelect(getVectorTypeId(m_ps.vFace.type), selectOp.id,
-                m_module.constvec4f32( 1.0f,  1.0f,  1.0f,  1.0f),
-                m_module.constvec4f32(-1.0f, -1.0f, -1.0f, -1.0f)));
           }
           return m_ps.vFace;
         }
@@ -3533,6 +3509,35 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     this->emitMainFunctionBegin();
 
     this->emitInputSetup();
+
+    if (m_ps.vPos.id != 0) {
+      DxsoRegisterPointer fragCoord = this->emitRegisterPtr(
+        "ps_frag_coord", DxsoScalarType::Float32, 4, 0,
+        spv::StorageClassInput, spv::BuiltInFragCoord);
+
+      DxsoRegisterValue val = this->emitValueLoad(fragCoord);
+      val.id = m_module.opFSub(
+        getVectorTypeId(val.type), val.id,
+        m_module.constvec4f32(0.5f, 0.5f, 0.0f, 0.0f));
+
+      m_module.opStore(m_ps.vPos.id, val.id);
+    }
+
+    if (m_ps.vFace.id != 0) {
+      DxsoRegisterPointer faceBool = this->emitRegisterPtr(
+        "ps_is_front_face", DxsoScalarType::Bool, 1, 0,
+        spv::StorageClassInput, spv::BuiltInFrontFacing);
+
+      DxsoRegisterValue frontFace = emitValueLoad(faceBool);
+      DxsoRegisterValue selectOp = emitRegisterExtend(frontFace, 4);
+
+      m_module.opStore(
+        m_ps.vFace.id,
+        m_module.opSelect(getVectorTypeId(m_ps.vFace.type), selectOp.id,
+          m_module.constvec4f32( 1.0f,  1.0f,  1.0f,  1.0f),
+          m_module.constvec4f32(-1.0f, -1.0f, -1.0f, -1.0f)));
+    }
+
     m_module.opFunctionCall(
       m_module.defVoidType(),
       m_ps.functionId, 0, nullptr);
