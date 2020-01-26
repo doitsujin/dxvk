@@ -34,6 +34,8 @@ namespace dxvk {
     uint32_t maxConstIndexF = 0;
     uint32_t maxConstIndexI = 0;
     uint32_t maxConstIndexB = 0;
+
+    uint32_t boolConstantMask = 0;
   };
 
 }

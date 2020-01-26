@@ -266,6 +266,8 @@ namespace dxvk {
 
     SpirvModule                m_module;
 
+    uint32_t                   m_boolSpecConstant;
+
     ///////////////////////////////////////////////////////
     // Resource slot description for the shader. This will
     // be used to map D3D9 bindings to DXVK bindings.
