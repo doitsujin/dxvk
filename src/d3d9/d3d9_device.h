@@ -1014,6 +1014,9 @@ namespace dxvk {
     uint32_t                        m_lastProjectionBitfield = 0;
     uint32_t                        m_projectionBitfield = 0;
 
+    uint32_t                        m_lastBoolSpecConstantVertex = 0;
+    uint32_t                        m_lastBoolSpecConstantPixel  = 0;
+
     uint32_t                        m_lastPointMode = 0;
 
     uint32_t                        m_activeRTs        = 0;
@@ -1161,6 +1164,10 @@ namespace dxvk {
     bool UseProgrammableVS();
 
     bool UseProgrammablePS();
+
+    void UpdateBoolSpecConstantVertex(uint32_t value);
+
+    void UpdateBoolSpecConstantPixel(uint32_t value);
 
     void UpdateSamplerSpecConsant(uint32_t value);
 

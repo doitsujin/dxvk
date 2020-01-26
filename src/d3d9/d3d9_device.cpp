@@ -4438,8 +4438,6 @@ namespace dxvk {
       std::memcpy(dst->fConsts, Src.fConsts, constSet.meta->maxConstIndexF * sizeof(Vector4));
     if (constSet.meta->maxConstIndexI)
       std::memcpy(dst->iConsts, Src.iConsts, constSet.meta->maxConstIndexI * sizeof(Vector4i));
-    if (constSet.meta->maxConstIndexB)
-      dst->bConsts[0] = Src.bConsts[0];
   }
 
 
@@ -5422,9 +5420,18 @@ namespace dxvk {
           GetVertexShaderPermutation());
       }
       UploadConstants<DxsoProgramTypes::VertexShader>();
+
+      if (likely(!CanSWVP())) {
+        UpdateBoolSpecConstantVertex(
+          m_state.vsConsts.bConsts[0] &
+          GetCommonShader(m_state.vertexShader)->GetMeta().boolConstantMask);
+      } else
+        UpdateBoolSpecConstantVertex(0);
     }
-    else
+    else {
+      UpdateBoolSpecConstantVertex(0);
       UpdateFixedFunctionVS();
+    }
 
     if (m_flags.test(D3D9DeviceFlag::DirtyInputLayout))
       BindInputLayout();
@@ -5444,8 +5451,13 @@ namespace dxvk {
         UpdateSamplerTypes(m_d3d9Options.forceSamplerTypeSpecConstants ? m_samplerTypeBitfield : 0u, 0u);
       else
         UpdateSamplerTypes(m_samplerTypeBitfield, m_projectionBitfield); // For implicit samplers...
+
+      UpdateBoolSpecConstantPixel(
+        m_state.psConsts.bConsts[0] &
+        GetCommonShader(m_state.pixelShader)->GetMeta().boolConstantMask);
     }
     else {
+      UpdateBoolSpecConstantPixel(0);
       UpdateSamplerTypes(0u, 0u);
 
       UpdateFixedFunctionPS();
@@ -5764,7 +5776,8 @@ namespace dxvk {
       ? DetermineMaxCount(m_state.vertexShader)
       : DetermineMaxCount(m_state.pixelShader);
 
-    m_consts[ProgramType].dirty |= StartRegister < maxCount;
+    if constexpr (ConstantType != D3D9ConstantType::Bool)
+      m_consts[ProgramType].dirty |= StartRegister < maxCount;
 
     UpdateStateConstants<ProgramType, ConstantType, T>(
       &m_state,
@@ -6101,6 +6114,30 @@ namespace dxvk {
 
   bool D3D9DeviceEx::UseProgrammablePS() {
     return m_state.pixelShader != nullptr;
+  }
+
+
+  void D3D9DeviceEx::UpdateBoolSpecConstantVertex(uint32_t value) {
+    if (value == m_lastBoolSpecConstantVertex)
+      return;
+
+    EmitCs([cBitfield = value](DxvkContext* ctx) {
+      ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::VertexShaderBools, cBitfield);
+      });
+
+    m_lastBoolSpecConstantVertex = value;
+  }
+
+
+  void D3D9DeviceEx::UpdateBoolSpecConstantPixel(uint32_t value) {
+    if (value == m_lastBoolSpecConstantPixel)
+      return;
+
+    EmitCs([cBitfield = value](DxvkContext* ctx) {
+      ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::PixelShaderBools, cBitfield);
+      });
+
+    m_lastBoolSpecConstantPixel = value;
   }
 
 
@@ -6484,6 +6521,8 @@ namespace dxvk {
     m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
 
     UpdateSamplerSpecConsant(0u);
+    UpdateBoolSpecConstantVertex(0u);
+    UpdateBoolSpecConstantPixel(0u);
 
     return D3D_OK;
   }

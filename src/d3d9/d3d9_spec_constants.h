@@ -14,6 +14,9 @@ namespace dxvk {
 
     PointMode       = 6,
     ProjectionType  = 7,
+
+    VertexShaderBools = 8,
+    PixelShaderBools  = 9,
   };
 
 }

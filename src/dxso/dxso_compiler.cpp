@@ -294,10 +294,9 @@ namespace dxvk {
     m_module.decorateArrayStride(members[0], 16);
     m_module.decorateArrayStride(members[1], 16);
 
-    if (m_layout->bitmaskCount == 1) {
-      members[2] = getScalarTypeId(DxsoScalarType::Uint32);
-    }
-    else {
+    const bool swvp = m_layout->bitmaskCount != 1;
+
+    if (swvp) {
       // Must be a multiple of 4 otherwise.
       members[2] = m_module.defArrayTypeUnique(
         getVectorTypeId({ DxsoScalarType::Uint32, 4 }),
@@ -307,18 +306,22 @@ namespace dxvk {
     }
 
     const uint32_t structType =
-      m_module.defStructType(members.size(), members.data());
+      m_module.defStructType(swvp ? 3 : 2, members.data());
 
     m_module.decorateBlock(structType);
 
     m_module.memberDecorateOffset(structType, 0, m_layout->floatOffset());
     m_module.memberDecorateOffset(structType, 1, m_layout->intOffset());
-    m_module.memberDecorateOffset(structType, 2, m_layout->bitmaskOffset());
+
+    if (swvp)
+      m_module.memberDecorateOffset(structType, 2, m_layout->bitmaskOffset());
 
     m_module.setDebugName(structType, "cbuffer_t");
     m_module.setDebugMemberName(structType, 0, "f");
     m_module.setDebugMemberName(structType, 1, "i");
-    m_module.setDebugMemberName(structType, 2, "b");
+
+    if (swvp)
+      m_module.setDebugMemberName(structType, 2, "b");
 
     m_cBuffer = m_module.newVar(
       m_module.defPointerType(structType, spv::StorageClassUniform),
@@ -339,6 +342,13 @@ namespace dxvk {
     resource.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     resource.access = VK_ACCESS_UNIFORM_READ_BIT;
     m_resourceSlots.push_back(resource);
+
+    m_boolSpecConstant = m_module.specConst32(m_module.defIntType(32, 0), 0);
+    m_module.decorateSpecId(m_boolSpecConstant, getSpecId(
+      m_programInfo.type() == DxsoProgramType::VertexShader
+      ? D3D9SpecConstantId::VertexShaderBools
+      : D3D9SpecConstantId::PixelShaderBools));
+    m_module.setDebugName(m_boolSpecConstant, "boolConstants");
   }
 
 
@@ -897,6 +907,7 @@ namespace dxvk {
       case DxsoRegisterType::ConstBool:
         m_meta.maxConstIndexB = std::max(m_meta.maxConstIndexB, reg.id.num + 1);
         m_meta.maxConstIndexB = std::min(m_meta.maxConstIndexB, m_layout->boolCount);
+        m_meta.boolConstantMask |= 1 << reg.id.num;
         break;
       
       default: break;
@@ -939,18 +950,25 @@ namespace dxvk {
       uint32_t uintType  = getScalarTypeId(DxsoScalarType::Uint32);
       uint32_t uvec4Type = getVectorTypeId({ DxsoScalarType::Uint32, 4 });
 
-      std::array<uint32_t, 2> indices = { m_module.constu32(2), m_module.constu32(reg.id.num / 128) };
+      // If not SWVP, spec const this
+      uint32_t bitfield;
+      if (m_layout->bitmaskCount != 1) {
+        std::array<uint32_t, 2> indices = { m_module.constu32(2), m_module.constu32(reg.id.num / 128) };
 
-      uint32_t indexCount = m_layout->bitmaskCount == 1 ? 1 : 2;
-      uint32_t accessType = m_layout->bitmaskCount == 1 ? uintType : uvec4Type;
+        uint32_t indexCount = m_layout->bitmaskCount == 1 ? 1 : 2;
+        uint32_t accessType = m_layout->bitmaskCount == 1 ? uintType : uvec4Type;
 
-      uint32_t ptrId = m_module.opAccessChain(
-        m_module.defPointerType(accessType, spv::StorageClassUniform),
-        m_cBuffer, indexCount, indices.data());
+        uint32_t ptrId = m_module.opAccessChain(
+          m_module.defPointerType(accessType, spv::StorageClassUniform),
+          m_cBuffer, indexCount, indices.data());
+
+        bitfield = m_module.opLoad(accessType, ptrId);
+      }
+      else
+        bitfield = m_boolSpecConstant;
 
       uint32_t bitIdx = m_module.consti32(reg.id.num % 32);
 
-      uint32_t bitfield = m_module.opLoad(accessType, ptrId);
       if (m_layout->bitmaskCount != 1) {
         uint32_t index = (reg.id.num % 128) / 32;
         bitfield = m_module.opCompositeExtract(uintType, bitfield, 1, &index);

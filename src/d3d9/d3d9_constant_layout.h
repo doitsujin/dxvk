@@ -14,7 +14,12 @@ namespace dxvk {
 
     uint32_t floatSize()     const { return floatCount   * 4 * sizeof(float); }
     uint32_t intSize()       const { return intCount     * 4 * sizeof(int); }
-    uint32_t bitmaskSize()   const { return bitmaskCount * 1 * sizeof(uint32_t); }
+    uint32_t bitmaskSize()   const {
+      // Account for SWVP (non SWVP uses a spec constant)
+      return bitmaskCount != 1
+        ? bitmaskCount * 1 * sizeof(uint32_t)
+        : 0;
+    }
 
     uint32_t floatOffset()   const { return 0; }
     uint32_t intOffset()     const { return floatOffset() + floatSize(); }
