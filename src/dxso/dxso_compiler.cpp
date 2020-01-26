@@ -857,8 +857,29 @@ namespace dxvk {
       case DxsoRegisterType::Const:
         result.type = { DxsoScalarType::Float32, 4 };
 
-        if (!relative) {
+        if (!relative)
           result.id = m_cFloat.at(reg.id.num);
+        break;
+      
+      case DxsoRegisterType::ConstInt:
+        result.type = { DxsoScalarType::Sint32, 4 };
+        result.id = m_cInt.at(reg.id.num);
+        break;
+      
+      case DxsoRegisterType::ConstBool:
+        result.type = { DxsoScalarType::Bool, 1 };
+        result.id = m_cBool.at(reg.id.num);
+        break;
+      
+      default: break;
+    }
+
+    if (result.id)
+      return result;
+
+    switch (reg.id.type) {
+      case DxsoRegisterType::Const:
+        if (!relative) {
           m_meta.maxConstIndexF = std::max(m_meta.maxConstIndexF, reg.id.num + 1);
           m_meta.maxConstIndexF = std::min(m_meta.maxConstIndexF, m_layout->floatCount);
         } else {
@@ -869,24 +890,17 @@ namespace dxvk {
         break;
       
       case DxsoRegisterType::ConstInt:
-        result.type = { DxsoScalarType::Sint32, 4 };
-        result.id = m_cInt.at(reg.id.num);
         m_meta.maxConstIndexI = std::max(m_meta.maxConstIndexI, reg.id.num + 1);
         m_meta.maxConstIndexI = std::min(m_meta.maxConstIndexI, m_layout->intCount);
         break;
       
       case DxsoRegisterType::ConstBool:
-        result.type = { DxsoScalarType::Bool, 1 };
-        result.id = m_cBool.at(reg.id.num);
         m_meta.maxConstIndexB = std::max(m_meta.maxConstIndexB, reg.id.num + 1);
         m_meta.maxConstIndexB = std::min(m_meta.maxConstIndexB, m_layout->boolCount);
         break;
       
       default: break;
     }
-
-    if (result.id)
-      return result;
 
     uint32_t relativeIdx = this->emitArrayIndex(reg.id.num, relative);
 
