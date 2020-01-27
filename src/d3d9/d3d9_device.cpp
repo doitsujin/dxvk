@@ -2067,6 +2067,8 @@ namespace dxvk {
           DWORD                    Stage,
           D3DTEXTURESTAGESTATETYPE Type,
           DWORD*                   pValue) {
+    auto dxvkType = RemapTextureStageStateType(Type);
+
     if (unlikely(pValue == nullptr))
       return D3DERR_INVALIDCALL;
 
@@ -2075,10 +2077,10 @@ namespace dxvk {
     if (unlikely(Stage >= caps::TextureStageCount))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(Type >= TextureStageStateCount))
+    if (unlikely(dxvkType >= TextureStageStateCount))
       return D3DERR_INVALIDCALL;
 
-    *pValue = m_state.textureStages[Stage][Type];
+    *pValue = m_state.textureStages[Stage][dxvkType];
 
     return D3D_OK;
   }
