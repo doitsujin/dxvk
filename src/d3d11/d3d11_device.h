@@ -481,8 +481,6 @@ namespace dxvk {
             UINT                        Subresource,
       const D3D11_BOX*                  pBox);
     
-    BOOL IsUnifiedMemoryArch();
-
     static D3D_FEATURE_LEVEL GetMaxFeatureLevel(
       const Rc<DxvkInstance>&           pInstance);
     
