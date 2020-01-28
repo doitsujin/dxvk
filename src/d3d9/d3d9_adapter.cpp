@@ -137,8 +137,10 @@ namespace dxvk {
     if (CheckFormat == D3D9Format::ATOC && surface)
       return D3D_OK;
 
-    if (CheckFormat == D3D9Format::NVDB && surface)
-      return D3D_OK;
+    if (m_adapter->features().core.features.depthBounds) {
+      if (CheckFormat == D3D9Format::NVDB && surface)
+        return D3D_OK;
+    }
 
     // I really don't want to support this...
     if (dmap)

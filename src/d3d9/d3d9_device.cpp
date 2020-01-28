@@ -3605,6 +3605,9 @@ namespace dxvk {
     // D3D10 level hardware supports this in D3D9 native.
     enabled.core.features.fullDrawIndexUint32 = VK_TRUE;
 
+    // Enable depth bounds test if we support it.
+    enabled.core.features.depthBounds = supported.core.features.depthBounds;
+
     return enabled;
   }
 
