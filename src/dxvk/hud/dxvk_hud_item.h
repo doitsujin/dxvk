@@ -76,10 +76,11 @@ namespace dxvk::hud {
      *
      * \tparam T The HUD item type
      * \param [in] name HUD item name
+     * \param [in] at Position at which to insert the item
      * \param [in] args Constructor arguments
      */
     template<typename T, typename... Args>
-    void add(const char* name, Args... args) {
+    void add(const char* name, int32_t at, Args... args) {
       bool enable = m_enableFull;
 
       if (!enable) {
@@ -87,8 +88,13 @@ namespace dxvk::hud {
         enable = entry != m_enabled.end();
       }
 
-      if (enable)
-        m_items.push_back(new T(std::forward<Args>(args)...));
+      if (at < 0 || at > int32_t(m_items.size()))
+        at = m_items.size();
+
+      if (enable) {
+        m_items.insert(m_items.begin() + at,
+          new T(std::forward<Args>(args)...));
+      }
     }
 
   private:

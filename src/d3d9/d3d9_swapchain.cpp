@@ -1024,7 +1024,7 @@ namespace dxvk {
     m_hud = hud::Hud::createHud(m_device);
 
     if (m_hud != nullptr)
-      m_hud->addItem<hud::HudSamplerCount>("samplers", m_parent);
+      m_hud->addItem<hud::HudSamplerCount>("samplers", -1, m_parent);
   }
 
 
