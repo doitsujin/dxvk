@@ -284,6 +284,8 @@ namespace dxvk {
     std::mutex                                      m_mutex;
     std::array<DxvkMemoryHeap, VK_MAX_MEMORY_HEAPS> m_memHeaps;
     std::array<DxvkMemoryType, VK_MAX_MEMORY_TYPES> m_memTypes;
+
+    bool m_restrictAllocations;
     
     DxvkMemory tryAlloc(
       const VkMemoryRequirements*             req,
