@@ -197,6 +197,15 @@ namespace dxvk {
     }
 
     /**
+     * \brief Checks whether this is a UMA system
+     *
+     * Basically tests whether all heaps are device-local.
+     * Can be used for various optimizations in client APIs.
+     * \returns \c true if the system has unified memory.
+     */
+    bool isUnifiedMemoryArchitecture() const;
+
+    /**
      * \brief Queries supported shader stages
      * \returns Supported shader pipeline stages
      */

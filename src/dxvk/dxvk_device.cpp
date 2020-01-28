@@ -34,6 +34,17 @@ namespace dxvk {
   }
 
 
+  bool DxvkDevice::isUnifiedMemoryArchitecture() const {
+    auto memory = m_adapter->memoryProperties();
+    bool result = true;
+
+    for (uint32_t i = 0; i < memory.memoryHeapCount; i++)
+      result &= memory.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+
+    return result;
+  }
+
+
   VkPipelineStageFlags DxvkDevice::getShaderPipelineStages() const {
     VkPipelineStageFlags result = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
                                 | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
