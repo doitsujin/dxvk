@@ -679,6 +679,9 @@ namespace dxvk {
 
   void D3D11SwapChain::CreateHud() {
     m_hud = hud::Hud::createHud(m_device);
+
+    if (m_hud != nullptr)
+      m_hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
   }
 
 
@@ -867,6 +870,20 @@ namespace dxvk {
     return m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH
       ? VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT
       : VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT;
+  }
+
+
+  std::string D3D11SwapChain::GetApiName() const {
+    Com<IDXGIDXVKDevice> device;
+    m_parent->QueryInterface(__uuidof(IDXGIDXVKDevice), reinterpret_cast<void**>(&device));
+
+    uint32_t apiVersion = device->GetAPIVersion();
+    uint32_t featureLevel = m_parent->GetFeatureLevel();
+
+    uint32_t flHi = (featureLevel >> 12);
+    uint32_t flLo = (featureLevel >> 8) & 0x7;
+
+    return str::format("D3D", apiVersion, " FL", flHi, "_", flLo);
   }
 
 }
