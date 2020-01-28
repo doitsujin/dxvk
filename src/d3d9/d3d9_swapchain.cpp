@@ -1023,8 +1023,10 @@ namespace dxvk {
   void D3D9SwapChainEx::CreateHud() {
     m_hud = hud::Hud::createHud(m_device);
 
-    if (m_hud != nullptr)
+    if (m_hud != nullptr) {
+      m_hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
       m_hud->addItem<hud::HudSamplerCount>("samplers", -1, m_parent);
+    }
   }
 
 
@@ -1381,6 +1383,11 @@ namespace dxvk {
     return m_dialog
       ? VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT
       : VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT;
+  }
+
+
+  std::string D3D9SwapChainEx::GetApiName() {
+    return this->GetParent()->IsExtended() ? "D3D9Ex" : "D3D9";
   }
 
 }
