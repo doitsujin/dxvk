@@ -29,16 +29,16 @@ namespace dxvk::hud {
                                 | VK_COLOR_COMPONENT_B_BIT
                                 | VK_COLOR_COMPONENT_A_BIT;
 
-    addItem<HudVersionItem>("version");
-    addItem<HudDeviceInfoItem>("devinfo", m_device);
-    addItem<HudFpsItem>("fps");
-    addItem<HudFrameTimeItem>("frametimes");
-    addItem<HudSubmissionStatsItem>("submissions", device);
-    addItem<HudDrawCallStatsItem>("drawcalls", device);
-    addItem<HudPipelineStatsItem>("pipelines", device);
-    addItem<HudMemoryStatsItem>("memory", device);
-    addItem<HudGpuLoadItem>("gpuload", device);
-    addItem<HudCompilerActivityItem>("compiler", device);
+    addItem<HudVersionItem>("version", -1);
+    addItem<HudDeviceInfoItem>("devinfo", -1, m_device);
+    addItem<HudFpsItem>("fps", -1);
+    addItem<HudFrameTimeItem>("frametimes", -1);
+    addItem<HudSubmissionStatsItem>("submissions", -1, device);
+    addItem<HudDrawCallStatsItem>("drawcalls", -1, device);
+    addItem<HudPipelineStatsItem>("pipelines", -1, device);
+    addItem<HudMemoryStatsItem>("memory", -1, device);
+    addItem<HudGpuLoadItem>("gpuload", -1, device);
+    addItem<HudCompilerActivityItem>("compiler", -1, device);
   }
   
   
