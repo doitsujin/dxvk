@@ -46,7 +46,11 @@ extern "C" {
     Com<ID3D10Multithread> multithread;
     d3d11Device->QueryInterface(__uuidof(ID3D10Multithread), reinterpret_cast<void**>(&multithread));
     multithread->SetMultithreadProtected(!(Flags & D3D10_CREATE_DEVICE_SINGLETHREADED));
-    
+
+    Com<IDXGIDXVKDevice> dxvkDevice;
+    d3d11Device->QueryInterface(__uuidof(IDXGIDXVKDevice), reinterpret_cast<void**>(&dxvkDevice));
+    dxvkDevice->SetAPIVersion(10);
+
     if (FAILED(d3d11Device->QueryInterface(
         __uuidof(ID3D10Device), reinterpret_cast<void**>(ppDevice))))
       return E_FAIL;
