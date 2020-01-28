@@ -79,7 +79,6 @@ namespace dxvk {
   public:
     
     DxvkDevice(
-            std::string               clientApi,
       const Rc<DxvkInstance>&         instance,
       const Rc<DxvkAdapter>&          adapter,
       const Rc<vk::DeviceFn>&         vkd,
@@ -102,14 +101,6 @@ namespace dxvk {
      */
     VkDevice handle() const {
       return m_vkd->device();
-    }
-
-    /**
-     * \brief Client API
-     * \returns Name of the client API
-     */
-    const std::string& clientApi() const {
-      return m_clientApi;
     }
 
     /**
@@ -471,7 +462,6 @@ namespace dxvk {
     
   private:
     
-    std::string                 m_clientApi;
     DxvkOptions                 m_options;
 
     Rc<DxvkInstance>            m_instance;

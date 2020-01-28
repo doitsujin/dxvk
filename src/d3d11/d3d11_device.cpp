@@ -2785,12 +2785,7 @@ namespace dxvk {
 
   Rc<DxvkDevice> D3D11DXGIDevice::CreateDevice(D3D_FEATURE_LEVEL FeatureLevel) {
     DxvkDeviceFeatures deviceFeatures = D3D11Device::GetDeviceFeatures(m_dxvkAdapter, FeatureLevel);
-
-    uint32_t flHi = (uint32_t(FeatureLevel) >> 12);
-    uint32_t flLo = (uint32_t(FeatureLevel) >> 8) & 0x7;
-
-    std::string apiName = str::format("D3D11 FL ", flHi, "_", flLo);
-    return m_dxvkAdapter->createDevice(m_dxvkInstance, apiName, deviceFeatures);
+    return m_dxvkAdapter->createDevice(m_dxvkInstance, deviceFeatures);
   }
 
 }

@@ -30,7 +30,6 @@ namespace dxvk::hud {
                                 | VK_COLOR_COMPONENT_A_BIT;
 
     addItem<HudVersionItem>("version");
-    addItem<HudClientApiItem>("api", m_device);
     addItem<HudDeviceInfoItem>("devinfo", m_device);
     addItem<HudFpsItem>("fps");
     addItem<HudFrameTimeItem>("frametimes");

@@ -80,8 +80,8 @@ namespace dxvk::hud {
   }
 
 
-  HudClientApiItem::HudClientApiItem(const Rc<DxvkDevice>& device)
-  : m_device(device) {
+  HudClientApiItem::HudClientApiItem(std::string api)
+  : m_api(api) {
 
   }
 
@@ -99,7 +99,7 @@ namespace dxvk::hud {
     renderer.drawText(16.0f,
       { position.x, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
-      m_device->clientApi());
+      m_api);
 
     position.y += 8.0f;
     return position;

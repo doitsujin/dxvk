@@ -121,7 +121,7 @@ namespace dxvk::hud {
 
   public:
 
-    HudClientApiItem(const Rc<DxvkDevice>& device);
+    HudClientApiItem(std::string api);
 
     ~HudClientApiItem();
 
@@ -131,7 +131,7 @@ namespace dxvk::hud {
 
   private:
 
-    Rc<DxvkDevice> m_device;
+    std::string m_api;
 
   };
 
