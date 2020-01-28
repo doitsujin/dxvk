@@ -99,6 +99,21 @@ IDXGIDXVKAdapter : public IDXGIAdapter3 {
 
 
 /**
+ * \brief Private DXGI device interface
+ */
+MIDL_INTERFACE("92a5d77b-b6e1-420a-b260-fdd701272827")
+IDXGIDXVKDevice : public IUnknown {
+  static const GUID guid;
+
+  virtual void STDMETHODCALLTYPE SetAPIVersion(
+            UINT                    Version) = 0;
+
+  virtual UINT STDMETHODCALLTYPE GetAPIVersion() = 0;
+
+};
+
+
+/**
  * \brief Private DXGI monitor info interface
  * 
  * Can be queried from the DXGI factory to store monitor
@@ -329,6 +344,7 @@ IWineDXGISwapChainFactory : public IUnknown {
 
 #ifdef _MSC_VER
 struct __declspec(uuid("907bf281-ea3c-43b4-a8e4-9f231107b4ff")) IDXGIDXVKAdapter;
+struct __declspec(uuid("92a5d77b-b6e1-420a-b260-fdd701272827")) IDXGIDXVKDevice;
 struct __declspec(uuid("c06a236f-5be3-448a-8943-89c611c0c2c1")) IDXGIVkMonitorInfo;
 struct __declspec(uuid("3a6d8f2c-b0e8-4ab4-b4dc-4fd24891bfa5")) IDXGIVkInteropAdapter;
 struct __declspec(uuid("e2ef5fa5-dc21-4af7-90c4-f67ef6a09323")) IDXGIVkInteropDevice;
@@ -337,6 +353,7 @@ struct __declspec(uuid("104001a6-7f36-4957-b932-86ade9567d91")) IDXGIVkSwapChain
 struct __declspec(uuid("53cb4ff0-c25a-4164-a891-0e83db0a7aac")) IWineDXGISwapChainFactory;
 #else
 DXVK_DEFINE_GUID(IDXGIDXVKAdapter);
+DXVK_DEFINE_GUID(IDXGIDXVKDevice);
 DXVK_DEFINE_GUID(IDXGIVkMonitorInfo);
 DXVK_DEFINE_GUID(IDXGIVkInteropAdapter);
 DXVK_DEFINE_GUID(IDXGIVkInteropDevice);

@@ -553,6 +553,36 @@ namespace dxvk {
   
 
   /**
+   * \brief D3D11 device metadata shenanigans
+   */
+  class DXGIDXVKDevice : public IDXGIDXVKDevice {
+
+  public:
+
+    DXGIDXVKDevice(D3D11DXGIDevice* pContainer);
+    
+    ULONG STDMETHODCALLTYPE AddRef();
+    
+    ULONG STDMETHODCALLTYPE Release();
+    
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                  riid,
+            void**                  ppvObject);
+
+    void STDMETHODCALLTYPE SetAPIVersion(
+              UINT                    Version);
+
+    UINT STDMETHODCALLTYPE GetAPIVersion();
+
+  private:
+
+    D3D11DXGIDevice* m_container;
+    UINT             m_apiVersion;
+
+  };
+
+
+  /**
    * \brief D3D11 device container
    * 
    * Stores all the objects that contribute to the D3D11
@@ -645,6 +675,7 @@ namespace dxvk {
     D3D11Device         m_d3d11Device;
     D3D11DeviceExt      m_d3d11DeviceExt;
     D3D11VkInterop      m_d3d11Interop;
+    DXGIDXVKDevice      m_metaDevice;
     
     WineDXGISwapChainFactory m_wineFactory;
     

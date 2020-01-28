@@ -2449,8 +2449,43 @@ namespace dxvk {
   }
   
   
+
+  DXGIDXVKDevice::DXGIDXVKDevice(D3D11DXGIDevice* pContainer)
+  : m_container(pContainer), m_apiVersion(11) {
+
+  }
   
+
+  ULONG STDMETHODCALLTYPE DXGIDXVKDevice::AddRef() {
+    return m_container->AddRef();
+  }
   
+
+  ULONG STDMETHODCALLTYPE DXGIDXVKDevice::Release() {
+    return m_container->Release();
+  }
+  
+
+  HRESULT STDMETHODCALLTYPE DXGIDXVKDevice::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    return m_container->QueryInterface(riid, ppvObject);
+  }
+
+
+  void STDMETHODCALLTYPE DXGIDXVKDevice::SetAPIVersion(
+            UINT                    Version) {
+    m_apiVersion = Version;
+  }
+
+
+  UINT STDMETHODCALLTYPE DXGIDXVKDevice::GetAPIVersion() {
+    return m_apiVersion;
+  }
+
+  
+
+
   D3D11DXGIDevice::D3D11DXGIDevice(
           IDXGIAdapter*       pAdapter,
     const Rc<DxvkInstance>&   pDxvkInstance,
@@ -2464,6 +2499,7 @@ namespace dxvk {
     m_d3d11Device   (this, FeatureLevel, FeatureFlags),
     m_d3d11DeviceExt(this, &m_d3d11Device),
     m_d3d11Interop  (this, &m_d3d11Device),
+    m_metaDevice    (this),
     m_wineFactory   (this, &m_d3d11Device) {
 
   }
@@ -2517,6 +2553,11 @@ namespace dxvk {
       return S_OK;
     }
     
+    if (riid == __uuidof(IDXGIDXVKDevice)) {
+      *ppvObject = ref(&m_metaDevice);
+      return S_OK;
+    }
+
     if (riid == __uuidof(IWineDXGISwapChainFactory)) {
       *ppvObject = ref(&m_wineFactory);
       return S_OK;
