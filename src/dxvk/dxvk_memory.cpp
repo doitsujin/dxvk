@@ -169,6 +169,8 @@ namespace dxvk {
       m_memTypes[i].memTypeId  = i;
       m_memTypes[i].chunkSize  = pickChunkSize(i);
     }
+
+    m_restrictAllocations = m_device->isUnifiedMemoryArchitecture();
   }
   
   
@@ -309,6 +311,9 @@ namespace dxvk {
     bool useMemoryPriority = (flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                           && (m_device->features().extMemoryPriority.memoryPriority);
     
+    if (m_restrictAllocations && type->heap->stats.memoryAllocated + size > type->heap->properties.size)
+      return DxvkDeviceMemory();
+
     DxvkDeviceMemory result;
     result.memSize  = size;
     result.memFlags = flags;
