@@ -181,7 +181,7 @@ namespace dxvk {
 
     /* A Hat in Time                              */
     { R"(\\HatinTimeGame\.exe$)", {{
-      { "d3d9.floatEmulation",              "False" },
+      { "d3d9.strictPow",                   "False" },
       { "d3d9.lenientClear",                "True" },
     }} },
     /* Borderlands: The Pre Sequel!               */
