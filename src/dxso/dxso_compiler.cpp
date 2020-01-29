@@ -2860,6 +2860,11 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         texReg.id, texReg.id,
         texReg.type.ccount, indices.data());
     }
+    else {
+      // The writemask actually applies and works here...
+      // (FXC doesn't generate this but it fixes broken ENB shaders)
+      texReg = emitRegisterSwizzle(texReg, IdentitySwizzle, ctx.dst.mask);
+    }
 
     const uint32_t boolVecTypeId =
       getVectorTypeId({ DxsoScalarType::Bool, texReg.type.ccount });
@@ -2868,7 +2873,8 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       boolVecTypeId, texReg.id,
       m_module.constfReplicant(0.0f, texReg.type.ccount));
 
-    result = m_module.opAny(m_module.defBoolType(), result);
+    if (texReg.type.ccount != 1)
+      result = m_module.opAny(m_module.defBoolType(), result);
 
     if (m_ps.killState == 0) {
       uint32_t labelIf = m_module.allocateId();
