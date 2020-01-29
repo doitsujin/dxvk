@@ -2441,6 +2441,10 @@ namespace dxvk {
 
       ApplyPrimitiveType(ctx, D3DPT_POINTLIST);
 
+      // Unbind the pixel shader, we aren't drawing
+      // to avoid val errors / UB.
+      ctx->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr);
+
       ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT, shader);
       ctx->bindResourceBuffer(getSWVPBufferSlot(), cBufferSlice);
       ctx->draw(
@@ -2449,6 +2453,16 @@ namespace dxvk {
       ctx->bindResourceBuffer(getSWVPBufferSlot(), DxvkBufferSlice());
       ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT, nullptr);
     });
+
+    // We unbound the pixel shader before,
+    // let's make sure that gets rebound.
+    m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+    
+    if (m_state.pixelShader != nullptr) {
+      BindShader<DxsoProgramTypes::PixelShader>(
+        GetCommonShader(m_state.pixelShader),
+        GetPixelShaderPermutation());
+    }
 
     if (dst->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER) {
       uint32_t copySize = VertexCount * decl->GetSize();
