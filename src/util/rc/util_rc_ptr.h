@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <ostream>
 
 namespace dxvk {
   
