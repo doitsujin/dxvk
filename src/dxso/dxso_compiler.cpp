@@ -2509,6 +2509,12 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     DxsoRegMask vec3Mask(true, true, true,  false);
     DxsoRegMask srcMask (true, true, true,  true);
 
+    auto GetProjectionValue = [&]() {
+      uint32_t w = 3;
+      return m_module.opCompositeExtract(
+        m_module.defFloatType(32), texcoordVar.id, 1, &w);
+    };
+
     if (opcode == DxsoOpcode::TexM3x2Tex || opcode == DxsoOpcode::TexM3x3Tex || opcode == DxsoOpcode::TexM3x3Spec || opcode == DxsoOpcode::TexM3x3VSpec) {
       const uint32_t count = opcode == DxsoOpcode::TexM3x2Tex ? 2 : 3;
 
@@ -2564,6 +2570,28 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       auto n = emitRegisterLoad(ctx.src[0], srcMask);
 
       texcoordVar = m;
+      samplerIdx = ctx.dst.id.num;
+
+      uint32_t texcoord_t = getVectorTypeId(texcoordVar.type);
+
+      // The projection (/.w) happens before this...
+      // Of course it does...
+      uint32_t bool_t = m_module.defBoolType();
+
+      uint32_t shouldProj = m_module.opBitFieldUExtract(
+        m_module.defIntType(32, 0), m_ps.projectionSpec,
+        m_module.consti32(samplerIdx), m_module.consti32(1));
+
+      shouldProj = m_module.opIEqual(bool_t, shouldProj, m_module.constu32(1));
+
+      uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
+      std::array<uint32_t, 4> indices = { shouldProj, shouldProj, shouldProj, shouldProj };
+      shouldProj = m_module.opCompositeConstruct(bvec4_t, indices.size(), indices.data());
+
+      uint32_t projScalar = m_module.opFDiv(m_module.defFloatType(32), m_module.constf32(1.0), GetProjectionValue());
+      uint32_t projResult = m_module.opVectorTimesScalar(texcoord_t, texcoordVar.id, projScalar);
+
+      texcoordVar.id = m_module.opSelect(texcoord_t, shouldProj, projResult, texcoordVar.id);
 
       // u' = tc(m).x + [bm00(m) * t(n).x + bm10(m) * t(n).y]
       // v' = tc(m).y + [bm01(m) * t(n).x + bm11(m) * t(n).y]
@@ -2578,9 +2606,9 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         uint32_t vec2_t = getVectorTypeId({ DxsoScalarType::Float32, 2 });
         std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
 
-        uint32_t tc_m_n = m_module.opCompositeExtract(fl_t, m.id, 1, &i);
+        uint32_t tc_m_n = m_module.opCompositeExtract(fl_t, texcoordVar.id, 1, &i);
 
-        uint32_t offset = m_module.constu32(D3D9SharedPSStages_Count * ctx.src[0].id.num + D3D9SharedPSStages_BumpEnvMat0 + i);
+        uint32_t offset = m_module.constu32(D3D9SharedPSStages_Count * ctx.dst.id.num + D3D9SharedPSStages_BumpEnvMat0 + i);
         uint32_t bm     = m_module.opAccessChain(m_module.defPointerType(vec2_t, spv::StorageClassUniform),
                                                  m_ps.sharedState, 1, &offset);
                  bm     = m_module.opLoad(vec2_t, bm);
@@ -2592,8 +2620,6 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         uint32_t result = m_module.opFAdd(fl_t, tc_m_n, dot);
         texcoordVar.id  = m_module.opCompositeInsert(getVectorTypeId(texcoordVar.type), result, texcoordVar.id, 1, &i);
       }
-
-      samplerIdx = ctx.dst.id.num;
     }
     else if (opcode == DxsoOpcode::TexReg2Ar) {
       texcoordVar = emitRegisterLoad(ctx.src[0], srcMask);
@@ -2649,7 +2675,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     DxsoSampler sampler = m_samplers.at(samplerIdx);
 
-    auto SampleImage = [this, opcode, dst, ctx, samplerIdx](DxsoRegisterValue texcoordVar, DxsoSamplerInfo& sampler, bool depth, DxsoSamplerType samplerType, uint32_t specConst) {
+    auto SampleImage = [this, opcode, dst, ctx, samplerIdx, GetProjectionValue](DxsoRegisterValue texcoordVar, DxsoSamplerInfo& sampler, bool depth, DxsoSamplerType samplerType, uint32_t specConst) {
       DxsoRegisterValue result;
       result.type.ctype  = dst.type.ctype;
       result.type.ccount = depth ? 1 : 4;
@@ -2680,12 +2706,6 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       uint32_t projDivider = 0;
 
-      auto GetProjectionValue = [&]() {
-        uint32_t w = 3;
-        return m_module.opCompositeExtract(
-          m_module.defFloatType(32), texcoordVar.id, 1, &w);
-      };
-
       if (opcode == DxsoOpcode::Tex
         && m_programInfo.majorVersion() >= 2) {
         if (ctx.instruction.specificData.texld == DxsoTexLdMode::Project) {
@@ -2700,8 +2720,15 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       }
 
       bool switchProjResult = m_programInfo.majorVersion() < 2 && samplerType != SamplerTypeTextureCube;
+
       if (switchProjResult)
         projDivider = GetProjectionValue();
+
+      // We already handled this...
+      if (opcode == DxsoOpcode::TexBem) {
+        switchProjResult = false;
+        projDivider = 0;
+      }
 
       uint32_t reference = 0;
 
