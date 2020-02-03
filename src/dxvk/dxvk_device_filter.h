@@ -36,11 +36,11 @@ namespace dxvk {
     /**
      * \brief Tests an adapter
      * 
-     * \param [in] adapter Adapter handle
+     * \param [in] properties Adapter properties
      * \returns \c true if the test passes
      */
     bool testAdapter(
-      const Rc<DxvkAdapter>&  adapter) const;
+      const VkPhysicalDeviceProperties& properties) const;
     
   private:
     

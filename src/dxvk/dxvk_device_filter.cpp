@@ -15,15 +15,12 @@ namespace dxvk {
   }
   
   
-  bool DxvkDeviceFilter::testAdapter(
-    const Rc<DxvkAdapter>&  adapter) const {
-    const auto& deviceProps = adapter->deviceProperties();
-    
+  bool DxvkDeviceFilter::testAdapter(const VkPhysicalDeviceProperties& properties) const {
     if (m_flags.test(DxvkDeviceFilterFlag::MatchDeviceName)) {
-      if (std::string (deviceProps.deviceName).find(m_matchDeviceName) == std::string::npos)
+      if (std::string(properties.deviceName).find(m_matchDeviceName) == std::string::npos)
         return false;
     }
-      
+
     return true;
   }
   

@@ -154,10 +154,13 @@ namespace dxvk {
     
     std::vector<Rc<DxvkAdapter>> result;
     for (uint32_t i = 0; i < numAdapters; i++) {
-      Rc<DxvkAdapter> adapter = new DxvkAdapter(m_vki, adapters[i]);
-      
-      if (filter.testAdapter(adapter))
-        result.push_back(adapter);
+      VkPhysicalDeviceProperties deviceProperties;
+      m_vki->vkGetPhysicalDeviceProperties(adapters[i], &deviceProperties);
+
+      if (deviceProperties.apiVersion < VK_MAKE_VERSION(1, 1, 0))
+        Logger::warn(str::format("Skipping Vulkan 1.0 adapter: ", deviceProperties.deviceName));
+      else if (filter.testAdapter(deviceProperties))
+        result.push_back(new DxvkAdapter(m_vki, adapters[i]));
     }
     
     std::sort(result.begin(), result.end(),
