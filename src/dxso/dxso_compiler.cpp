@@ -3561,6 +3561,15 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     this->emitInputSetup();
 
+    bool canUsePixelFog = m_programInfo.majorVersion() < 3;
+
+    if (canUsePixelFog) {
+      // Look up vPos so it gets initted.
+      DxsoRegister vPos;
+      vPos.id = DxsoRegisterId{ DxsoRegisterType::MiscType, DxsoMiscTypeIndices::MiscTypePosition };
+      auto vPosPtr = this->emitGetOperandPtr(vPos);
+    }
+
     if (m_ps.vPos.id != 0) {
       DxsoRegisterPointer fragCoord = this->emitRegisterPtr(
         "ps_frag_coord", DxsoScalarType::Float32, 4, 0,
