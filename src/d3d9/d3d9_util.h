@@ -247,6 +247,16 @@ namespace dxvk {
         || (srcFormat == D3D9Format::A4R4G4B4 && dstFormat == D3D9Format::X4R4G4B4);
   }
 
+  inline bool IsBlitRegionInvalid(VkOffset3D offsets[2], VkExtent3D extent) {
+    // Only bother checking x, y as we don't have 3D blits.
+    return offsets[1].x < offsets[0].x ||
+           offsets[1].y < offsets[0].y ||
+           offsets[0].x < 0             ||
+           offsets[0].y < 0             ||
+           offsets[1].x > extent.width  ||
+           offsets[1].y > extent.height;
+  }
+
   enum D3D9TextureStageStateTypes : uint32_t
   {
       DXVK_TSS_COLOROP        =  0,

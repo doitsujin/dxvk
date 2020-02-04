@@ -925,6 +925,12 @@ namespace dxvk {
     blitInfo.srcOffsets[1] = pSourceRect != nullptr
       ? VkOffset3D{ int32_t(pSourceRect->right), int32_t(pSourceRect->bottom), 1 }
       : VkOffset3D{ int32_t(srcExtent.width),    int32_t(srcExtent.height),    1 };
+
+    if (unlikely(IsBlitRegionInvalid(blitInfo.srcOffsets, srcExtent)))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(IsBlitRegionInvalid(blitInfo.dstOffsets, dstExtent)))
+      return D3DERR_INVALIDCALL;
     
     VkExtent3D srcCopyExtent =
     { uint32_t(blitInfo.srcOffsets[1].x - blitInfo.srcOffsets[0].x),
