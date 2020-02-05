@@ -5785,26 +5785,13 @@ namespace dxvk {
         pConstantData,
         Count);
 
-    auto DetermineMaxCount = [&](const auto& shader) {
-      if (unlikely(shader == nullptr))
-        return 0u;
+    if constexpr (ConstantType != D3D9ConstantType::Bool) {
+      uint32_t maxCount = ConstantType == D3D9ConstantType::Float
+        ? m_consts[ProgramType].meta.maxConstIndexF
+        : m_consts[ProgramType].meta.maxConstIndexI;
 
-      const auto& meta = GetCommonShader(shader)->GetMeta();
-
-      if constexpr      (ConstantType == D3D9ConstantType::Float)
-        return meta.maxConstIndexF;
-      else if constexpr (ConstantType == D3D9ConstantType::Int)
-        return meta.maxConstIndexI;
-      else
-        return meta.maxConstIndexB;
-    };
-
-    uint32_t maxCount = ProgramType == DxsoProgramTypes::VertexShader
-      ? DetermineMaxCount(m_state.vertexShader)
-      : DetermineMaxCount(m_state.pixelShader);
-
-    if constexpr (ConstantType != D3D9ConstantType::Bool)
       m_consts[ProgramType].dirty |= StartRegister < maxCount;
+    }
 
     UpdateStateConstants<ProgramType, ConstantType, T>(
       &m_state,
