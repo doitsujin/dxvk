@@ -129,7 +129,7 @@ namespace dxvk {
           case D3DFOG_LINEAR: {
             uint32_t fogFactor = spvModule.opFSub(floatType, fogEnd, depth);
             fogFactor = spvModule.opFMul(floatType, fogFactor, fogScale);
-            fogFactor = spvModule.opFClamp(floatType, fogFactor, spvModule.constf32(0.0f), spvModule.constf32(1.0f));
+            fogFactor = spvModule.opNClamp(floatType, fogFactor, spvModule.constf32(0.0f), spvModule.constf32(1.0f));
             return fogFactor;
           }
 
