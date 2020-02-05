@@ -2644,7 +2644,7 @@ namespace dxvk {
     bool newCopies = newShader && newShader->GetMeta().needsConstantCopies;
 
     m_consts[DxsoProgramTypes::VertexShader].dirty |= oldCopies || newCopies || !oldShader;
-    m_consts[DxsoProgramTypes::VertexShader].meta  = newShader ? &newShader->GetMeta() : nullptr;
+    m_consts[DxsoProgramTypes::VertexShader].meta  = newShader ? newShader->GetMeta() : DxsoShaderMetaInfo();
 
     if (newShader && oldShader) {
       m_consts[DxsoProgramTypes::VertexShader].dirty
@@ -2970,7 +2970,7 @@ namespace dxvk {
     bool newCopies = newShader && newShader->GetMeta().needsConstantCopies;
 
     m_consts[DxsoProgramTypes::PixelShader].dirty |= oldCopies || newCopies || !oldShader;
-    m_consts[DxsoProgramTypes::PixelShader].meta  = newShader ? &newShader->GetMeta() : nullptr;
+    m_consts[DxsoProgramTypes::PixelShader].meta  = newShader ? newShader->GetMeta() : DxsoShaderMetaInfo();
 
     if (newShader && oldShader) {
       m_consts[DxsoProgramTypes::PixelShader].dirty
@@ -4461,10 +4461,10 @@ namespace dxvk {
 
     auto* dst = reinterpret_cast<HardwareLayoutType*>(pData);
 
-    if (constSet.meta->maxConstIndexF)
-      std::memcpy(dst->fConsts, Src.fConsts, constSet.meta->maxConstIndexF * sizeof(Vector4));
-    if (constSet.meta->maxConstIndexI)
-      std::memcpy(dst->iConsts, Src.iConsts, constSet.meta->maxConstIndexI * sizeof(Vector4i));
+    if (constSet.meta.maxConstIndexF)
+      std::memcpy(dst->fConsts, Src.fConsts, constSet.meta.maxConstIndexF * sizeof(Vector4));
+    if (constSet.meta.maxConstIndexI)
+      std::memcpy(dst->iConsts, Src.iConsts, constSet.meta.maxConstIndexI * sizeof(Vector4i));
   }
 
 
@@ -4474,11 +4474,11 @@ namespace dxvk {
 
     auto dst = reinterpret_cast<uint8_t*>(pData);
 
-    if (constSet.meta->maxConstIndexF)
-      std::memcpy(dst + Layout.floatOffset(),   Src.fConsts, constSet.meta->maxConstIndexF * sizeof(Vector4));
-    if (constSet.meta->maxConstIndexI)
-      std::memcpy(dst + Layout.intOffset(),     Src.iConsts, constSet.meta->maxConstIndexI * sizeof(Vector4i));
-    if (constSet.meta->maxConstIndexB)
+    if (constSet.meta.maxConstIndexF)
+      std::memcpy(dst + Layout.floatOffset(),   Src.fConsts, constSet.meta.maxConstIndexF * sizeof(Vector4));
+    if (constSet.meta.maxConstIndexI)
+      std::memcpy(dst + Layout.intOffset(),     Src.iConsts, constSet.meta.maxConstIndexI * sizeof(Vector4i));
+    if (constSet.meta.maxConstIndexB)
       std::memcpy(dst + Layout.bitmaskOffset(), Src.bConsts, Layout.bitmaskSize());
   }
 
@@ -4508,7 +4508,7 @@ namespace dxvk {
     else
       UploadSoftwareConstantSet(slice.mapPtr, Src, Layout, Shader);
 
-    if (constSet.meta->needsConstantCopies) {
+    if (constSet.meta.needsConstantCopies) {
       Vector4* data = reinterpret_cast<Vector4*>(slice.mapPtr);
 
       auto& shaderConsts = GetCommonShader(Shader)->GetConstants();
@@ -5448,7 +5448,7 @@ namespace dxvk {
       if (likely(!CanSWVP())) {
         UpdateBoolSpecConstantVertex(
           m_state.vsConsts.bConsts[0] &
-          GetCommonShader(m_state.vertexShader)->GetMeta().boolConstantMask);
+          m_consts[DxsoProgramType::VertexShader].meta.boolConstantMask);
       } else
         UpdateBoolSpecConstantVertex(0);
     }
@@ -5478,7 +5478,7 @@ namespace dxvk {
 
       UpdateBoolSpecConstantPixel(
         m_state.psConsts.bConsts[0] &
-        GetCommonShader(m_state.pixelShader)->GetMeta().boolConstantMask);
+        m_consts[DxsoProgramType::PixelShader].meta.boolConstantMask);
     }
     else {
       UpdateBoolSpecConstantPixel(0);
