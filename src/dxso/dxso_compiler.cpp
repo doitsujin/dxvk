@@ -3567,7 +3567,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       // Look up vPos so it gets initted.
       DxsoRegister vPos;
       vPos.id = DxsoRegisterId{ DxsoRegisterType::MiscType, DxsoMiscTypeIndices::MiscTypePosition };
-      auto vPosPtr = this->emitGetOperandPtr(vPos);
+      this->emitGetOperandPtr(vPos);
     }
 
     if (m_ps.vPos.id != 0) {
