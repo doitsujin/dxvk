@@ -40,7 +40,7 @@ namespace dxvk {
 
   struct D3D9ConstantSets {
     Rc<DxvkBuffer>            buffer;
-    const DxsoShaderMetaInfo* meta  = nullptr;
+    DxsoShaderMetaInfo        meta  = {};
     bool                      dirty = true;
   };
 
