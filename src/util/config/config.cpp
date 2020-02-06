@@ -148,6 +148,10 @@ namespace dxvk {
     { R"(\\mgsvtpp\.exe$)", {{
       { "dxvk.enableOpenVR",                "False" },
     }} },
+    /* Raft                                       */
+    { R"(\\Raft\.exe$)", {{
+      { "dxvk.enableOpenVR",                "False" },
+    }} },
     /* Crysis 3 - slow if it notices AMD card     */
     { R"(\\Crysis3\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
