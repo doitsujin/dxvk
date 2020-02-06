@@ -202,7 +202,7 @@ namespace dxvk {
         for (uint32_t sampler = m_captures.samplers.dword(0); sampler; sampler &= sampler - 1) {
           uint32_t samplerIdx = bit::tzcnt(sampler);            
 
-          for (uint32_t state = m_captures.samplerStates[0].dword(0); state; state &= state - 1) {
+          for (uint32_t state = m_captures.samplerStates[samplerIdx].dword(0); state; state &= state - 1) {
             uint32_t stateIdx = bit::tzcnt(state);
 
             dst->SetStateSamplerState(samplerIdx, D3DSAMPLERSTATETYPE(stateIdx), src->samplerStates[samplerIdx][stateIdx]);
