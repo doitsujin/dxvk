@@ -139,10 +139,12 @@ namespace dxvk {
     /* Saints Row IV                              */
     { R"(\\SaintsRowIV\.exe$)", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
+      { "d3d11.invariantPosition",          "True" },
     }} },
     /* Saints Row: The Third                      */
     { R"(\\SaintsRowTheThird_DX11\.exe$)", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
+      { "d3d11.invariantPosition",          "True" },
     }} },
     /* Metal Gear Solid 5                         */
     { R"(\\mgsvtpp\.exe$)", {{
