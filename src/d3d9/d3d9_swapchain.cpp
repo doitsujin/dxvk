@@ -698,6 +698,11 @@ namespace dxvk {
 
       m_context->setViewports(1, &viewport, &scissor);
 
+      // Use an appropriate texture filter depending on whether
+      // the back buffer size matches the swap image size
+      bool fitSize = swapImage->info().extent.width  == info.imageExtent.width
+                  && swapImage->info().extent.height == info.imageExtent.height;
+
       D3D9PresentInfo presentInfoConsts;
       presentInfoConsts.scale[0]  = float(m_srcRect.right  - m_srcRect.left) / float(swapImage->info().extent.width);
       presentInfoConsts.scale[1]  = float(m_srcRect.bottom - m_srcRect.top)  / float(swapImage->info().extent.height);
@@ -716,7 +721,7 @@ namespace dxvk {
       m_context->setInputAssemblyState(m_iaState);
       m_context->setInputLayout(0, nullptr, 0, nullptr);
 
-      m_context->bindResourceSampler(BindingIds::Image, m_samplerFitting);
+      m_context->bindResourceSampler(BindingIds::Image, fitSize ? m_samplerFitting : m_samplerScaling);
       m_context->bindResourceSampler(BindingIds::Gamma, m_gammaSampler);
 
       m_context->bindResourceView(BindingIds::Image, swapImageView, nullptr);
