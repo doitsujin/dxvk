@@ -5221,6 +5221,15 @@ namespace dxvk {
         srcComponentIndex += 1;
       }
     }
+
+    // Make sure that shared memory stores are made visible in
+    // case the game does not synchronize invocations properly
+    if (isTgsm && m_moduleInfo.options.forceTgsmBarriers) {
+      m_module.opMemoryBarrier(
+        m_module.constu32(spv::ScopeWorkgroup),
+        m_module.constu32(spv::MemorySemanticsWorkgroupMemoryMask
+                        | spv::MemorySemanticsAcquireReleaseMask));
+    }
     
     // End conditional block
     if (!isTgsm) {

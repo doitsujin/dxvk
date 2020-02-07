@@ -35,6 +35,13 @@ namespace dxvk {
     /// TGSM in compute shaders before reading it.
     bool zeroInitWorkgroupMemory;
 
+    /// Force thread-group shared memory barriers
+    ///
+    /// Workaround for compute shaders that read and
+    /// write from the same shared memory location
+    /// without explicit synchronization.
+    bool forceTgsmBarriers;
+
     /// Use relaxed memory barriers
     ///
     /// May improve performance in some games,

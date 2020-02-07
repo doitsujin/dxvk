@@ -45,6 +45,9 @@ namespace dxvk {
     /// Declare vertex positions as invariant
     bool invariantPosition = false;
 
+    /// Insert memory barriers after TGSM stoes
+    bool forceTgsmBarriers = false;
+
     /// Minimum storage buffer alignment
     VkDeviceSize minSsboAlignment = 0;
   };

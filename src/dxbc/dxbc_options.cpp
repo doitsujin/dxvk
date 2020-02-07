@@ -40,6 +40,7 @@ namespace dxvk {
     invariantPosition        = options.invariantPosition;
     enableRtOutputNanFixup   = options.enableRtOutputNanFixup;
     zeroInitWorkgroupMemory  = options.zeroInitWorkgroupMemory;
+    forceTgsmBarriers        = options.forceTgsmBarriers;
     dynamicIndexedConstantBufferAsSsbo = options.constantBufferRangeCheck;
 
     // Disable early discard on RADV (with LLVM) due to GPU hangs
