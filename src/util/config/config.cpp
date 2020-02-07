@@ -180,6 +180,11 @@ namespace dxvk {
     { R"(\\Entropia\.exe$)", {{
       { "d3d11.invariantPosition",          "True" },
     }} },
+    /* F1 2019 - does not synchronize TGSM access *
+     * in a compute shader, causing artifacts     */
+    { R"(\\F1_2019\.exe$)", {{
+      { "d3d11.forceTgsmBarriers",          "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
