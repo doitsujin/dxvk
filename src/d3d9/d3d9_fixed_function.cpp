@@ -1610,6 +1610,26 @@ namespace dxvk {
           else
             texture = m_module.opImageSampleImplicitLod(m_vec4Type, imageVarId, texcoord, imageOperands);
 
+          if (i != 0 && m_fsKey.Stages[i - 1].Contents.ColorOp == D3DTOP_BUMPENVMAPLUMINANCE) {
+            uint32_t index = m_module.constu32(D3D9SharedPSStages_Count * (i - 1) + D3D9SharedPSStages_BumpEnvLScale);
+            uint32_t lScale = m_module.opAccessChain(m_module.defPointerType(m_floatType, spv::StorageClassUniform),
+                                                     m_ps.sharedState, 1, &index);
+                     lScale = m_module.opLoad(m_vec2Type, lScale);
+
+                     index = m_module.constu32(D3D9SharedPSStages_Count * (i - 1) + D3D9SharedPSStages_BumpEnvLOffset);
+            uint32_t lOffset = m_module.opAccessChain(m_module.defPointerType(m_floatType, spv::StorageClassUniform),
+                                                     m_ps.sharedState, 1, &index);
+                     lOffset = m_module.opLoad(m_vec2Type, lOffset);
+            
+            uint32_t zIndex = 2;
+            uint32_t scale = m_module.opCompositeExtract(m_floatType, texture, 1, &zIndex);
+                     scale = m_module.opFMul(m_floatType, scale, lScale);
+                     scale = m_module.opFAdd(m_floatType, scale, lOffset);
+                     scale = m_module.opFClamp(m_floatType, scale, m_module.constf32(0.0f), m_module.constf32(1.0));
+
+            texture = m_module.opVectorTimesScalar(m_vec4Type, texture, scale);
+          }
+
           uint32_t bool_t = m_module.defBoolType();
           uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
           std::array<uint32_t, 4> boundIndices = { m_ps.samplers[i].bound, m_ps.samplers[i].bound, m_ps.samplers[i].bound, m_ps.samplers[i].bound };
