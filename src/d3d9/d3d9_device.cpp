@@ -3550,6 +3550,8 @@ namespace dxvk {
         m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
         m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
       }
+      else if (Type == DXVK_TSS_CONSTANT)
+        m_flags.set(D3D9DeviceFlag::DirtySharedPixelShaderData);
       else if (Type != DXVK_TSS_TEXCOORDINDEX)
         m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
       else
