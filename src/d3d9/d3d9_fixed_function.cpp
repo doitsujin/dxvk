@@ -607,6 +607,7 @@ namespace dxvk {
     uint32_t              m_uint32Type;
     uint32_t              m_vec4Type;
     uint32_t              m_vec3Type;
+    uint32_t              m_vec2Type;
     uint32_t              m_mat3Type;
     uint32_t              m_mat4Type;
 
@@ -647,6 +648,7 @@ namespace dxvk {
     m_uint32Type = m_module.defIntType(32, 0);
     m_vec4Type   = m_module.defVectorType(m_floatType, 4);
     m_vec3Type   = m_module.defVectorType(m_floatType, 3);
+    m_vec2Type   = m_module.defVectorType(m_floatType, 2);
     m_mat3Type   = m_module.defMatrixType(m_vec3Type, 3);
     m_mat4Type   = m_module.defMatrixType(m_vec4Type, 4);
 
@@ -1530,6 +1532,31 @@ namespace dxvk {
 
       bool processedTexture = false;
 
+      auto DoBumpmapCoords = [&](uint32_t baseCoords) {
+        uint32_t stage = i - 1;
+
+        uint32_t coords = baseCoords;
+        for (uint32_t i = 0; i < 2; i++) {
+          std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
+
+          uint32_t tc_m_n = m_module.opCompositeExtract(m_floatType, coords, 1, &i);
+
+          uint32_t offset = m_module.constu32(D3D9SharedPSStages_Count * stage + D3D9SharedPSStages_BumpEnvMat0 + i);
+          uint32_t bm     = m_module.opAccessChain(m_module.defPointerType(m_vec2Type, spv::StorageClassUniform),
+                                                   m_ps.sharedState, 1, &offset);
+                   bm     = m_module.opLoad(m_vec2Type, bm);
+
+          uint32_t t      = m_module.opVectorShuffle(m_vec2Type, texture, texture, 2, indices.data());
+
+          uint32_t dot    = m_module.opDot(m_floatType, bm, t);
+
+          uint32_t result = m_module.opFAdd(m_floatType, tc_m_n, dot);
+          coords  = m_module.opCompositeInsert(m_vec4Type, result, coords, 1, &i);
+        }
+
+        return coords;
+      };
+
       auto GetTexture = [&]() {
         if (!processedTexture) {
           SpirvImageOperands imageOperands;
@@ -1555,13 +1582,30 @@ namespace dxvk {
           else
             projIdx--;
 
+          uint32_t projValue = 0;
+
           if (m_fsKey.Stages[i].Contents.Projected) {
-            uint32_t projValue = m_module.opCompositeExtract(m_floatType, m_ps.in.TEXCOORD[i], 1, &projIdx);
+            projValue = m_module.opCompositeExtract(m_floatType, m_ps.in.TEXCOORD[i], 1, &projIdx);
             uint32_t insertIdx = texcoordCnt - 1;
             texcoord = m_module.opCompositeInsert(texcoord_t, projValue, texcoord, 1, &insertIdx);
           }
 
-          if (m_fsKey.Stages[i].Contents.Projected)
+          bool shouldProject = m_fsKey.Stages[i].Contents.Projected;
+
+          if (i != 0 && (
+            m_fsKey.Stages[i - 1].Contents.ColorOp == D3DTOP_BUMPENVMAP ||
+            m_fsKey.Stages[i - 1].Contents.ColorOp == D3DTOP_BUMPENVMAPLUMINANCE)) {
+            if (shouldProject) {
+              uint32_t projRcp = m_module.opFDiv(m_floatType, m_module.constf32(1.0), projValue);
+              texcoord = m_module.opVectorTimesScalar(m_vec4Type, texcoord, projRcp);
+            }
+
+            texcoord = DoBumpmapCoords(texcoord);
+
+            shouldProject = false;
+          }
+
+          if (shouldProject)
             texture = m_module.opImageSampleProjImplicitLod(m_vec4Type, imageVarId, texcoord, imageOperands);
           else
             texture = m_module.opImageSampleImplicitLod(m_vec4Type, imageVarId, texcoord, imageOperands);
@@ -1749,12 +1793,10 @@ namespace dxvk {
             dst = Saturate(dst);
             break;
 
-          case D3DTOP_BUMPENVMAP:
-            Logger::warn("D3DTOP_BUMPENVMAP: not implemented");
-            break;
-
           case D3DTOP_BUMPENVMAPLUMINANCE:
-            Logger::warn("D3DTOP_BUMPENVMAPLUMINANCE: not implemented");
+          case D3DTOP_BUMPENVMAP:
+            // Load texture for the next stage...
+            texture = GetTexture();
             break;
 
           case D3DTOP_DOTPRODUCT3: {
