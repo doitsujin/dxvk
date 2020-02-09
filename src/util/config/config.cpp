@@ -185,6 +185,10 @@ namespace dxvk {
     { R"(\\F1_2019\.exe$)", {{
       { "d3d11.forceTgsmBarriers",          "True" },
     }} },
+    /* Subnautica                                 */
+    { R"(\\Subnautica\.exe$)", {{
+      { "dxvk.enableOpenVR",                "False" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
