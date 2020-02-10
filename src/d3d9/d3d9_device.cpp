@@ -4570,7 +4570,7 @@ namespace dxvk {
     auto& rs = m_state.renderStates;
 
     if constexpr (Item == D3D9RenderStateItem::AlphaRef) {
-      float alpha = float(rs[D3DRS_ALPHAREF]) / 255.0f;
+      float alpha = float(rs[D3DRS_ALPHAREF] & 0xFF) / 255.0f;
       UpdatePushConstant<offsetof(D3D9RenderStateInfo, alphaRef), sizeof(float)>(&alpha);
     }
     else if constexpr (Item == D3D9RenderStateItem::FogColor) {
