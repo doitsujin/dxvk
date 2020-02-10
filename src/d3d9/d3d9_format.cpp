@@ -135,7 +135,7 @@ namespace dxvk {
 
       case D3D9Format::Q8W8V8U8: return {
         VK_FORMAT_R8G8B8A8_SNORM,
-        VK_FORMAT_R8G8B8A8_SRGB,
+        VK_FORMAT_UNDEFINED,
         VK_IMAGE_ASPECT_COLOR_BIT };
 
       case D3D9Format::V16U16: return {
