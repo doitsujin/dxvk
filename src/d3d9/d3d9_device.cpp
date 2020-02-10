@@ -1458,6 +1458,9 @@ namespace dxvk {
 
     m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
 
+    if (idx == GetTransformIndex(D3DTS_VIEW) || idx >= GetTransformIndex(D3DTS_WORLD))
+      m_flags.set(D3D9DeviceFlag::DirtyFFVertexBlend);
+
     return D3D_OK;
   }
 
