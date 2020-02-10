@@ -46,6 +46,7 @@ PS_OUTPUT main( VS_OUTPUT IN ) {
   PS_OUTPUT OUT;
 
   OUT.Colour = tex2D(g_texDepth, float2(0, 0));
+  OUT.Colour = 1.0;
 
   return OUT;
 }
@@ -271,6 +272,10 @@ public:
 
     D3DLOCKED_RECT rect;
     status = myCopyThing->LockRect(0, &rect, nullptr, D3DLOCK_READONLY | D3DLOCK_NOSYSLOCK);
+
+    m_device->SetRenderState(D3DRS_ALPHAREF, 256 + 255);
+    m_device->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_LESSEQUAL);
+    m_device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
   }
   
   void run() {
