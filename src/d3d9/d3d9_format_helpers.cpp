@@ -13,11 +13,26 @@ namespace dxvk {
   }
 
 
+  void D3D9FormatHelper::ConvertFormat(
+          D3D9_CONVERSION_FORMAT_INFO   conversionFormat,
+    const Rc<DxvkImage>&                dstImage,
+          VkImageSubresourceLayers      dstSubresource,
+    const Rc<DxvkBuffer>&               srcBuffer) {
+    switch (conversionFormat.FormatType) {
+      case D3D9ConversionFormat_YUY2:
+      case D3D9ConversionFormat_UYVY:
+        ConvertVideoFormat(conversionFormat, dstImage, dstSubresource, srcBuffer);
+      default:
+        Logger::warn("Unimplemented format conversion");
+    }
+  }
+
+
   void D3D9FormatHelper::ConvertVideoFormat(
-          D3D9_VIDEO_FORMAT_INFO   videoFormat,
-    const Rc<DxvkImage>&           dstImage,
-          VkImageSubresourceLayers dstSubresource,
-    const Rc<DxvkBuffer>&          srcBuffer) {
+          D3D9_CONVERSION_FORMAT_INFO   videoFormat,
+    const Rc<DxvkImage>&                dstImage,
+          VkImageSubresourceLayers      dstSubresource,
+    const Rc<DxvkBuffer>&               srcBuffer) {
     DxvkImageViewCreateInfo imageViewInfo;
     imageViewInfo.type      = VK_IMAGE_VIEW_TYPE_2D;
     imageViewInfo.format    = dstImage->info().format;
@@ -40,10 +55,7 @@ namespace dxvk {
     bufferViewInfo.rangeLength = srcBuffer->info().size;
     auto tmpBufferView = m_device->createBufferView(srcBuffer, bufferViewInfo);
 
-    if (videoFormat.FormatType == D3D9VideoFormat_UYVY
-     || videoFormat.FormatType == D3D9VideoFormat_YUY2) {
-      m_context->setSpecConstant(VK_PIPELINE_BIND_POINT_COMPUTE, 0, videoFormat.FormatType == D3D9VideoFormat_UYVY);
-    }
+    m_context->setSpecConstant(VK_PIPELINE_BIND_POINT_COMPUTE, 0, videoFormat.FormatType == D3D9ConversionFormat_UYVY);
 
     m_context->bindResourceView(BindingIds::Image,  tmpImageView, nullptr);
     m_context->bindResourceView(BindingIds::Buffer, nullptr,     tmpBufferView);
@@ -62,8 +74,8 @@ namespace dxvk {
 
 
   void D3D9FormatHelper::InitShaders() {
-    m_shaders[D3D9VideoFormat_YUY2] = InitShader(d3d9_convert_yuy2_uyvy);
-    m_shaders[D3D9VideoFormat_UYVY] = m_shaders[D3D9VideoFormat_YUY2];
+    m_shaders[D3D9ConversionFormat_YUY2] = InitShader(d3d9_convert_yuy2_uyvy);
+    m_shaders[D3D9ConversionFormat_UYVY] = m_shaders[D3D9ConversionFormat_YUY2];
   }
 
 

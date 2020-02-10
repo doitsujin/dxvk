@@ -127,16 +127,17 @@ namespace dxvk {
 
   std::ostream& operator << (std::ostream& os, D3D9Format format);
 
-  enum D3D9VideoFormat : uint32_t {
-    D3D9VideoFormat_None = 0,
-    D3D9VideoFormat_YUY2 = 1,
-    D3D9VideoFormat_UYVY,
-    D3D9VideoFormat_Count
+  enum D3D9ConversionFormat : uint32_t {
+    D3D9ConversionFormat_None = 0,
+    D3D9ConversionFormat_YUY2 = 1,
+    D3D9ConversionFormat_UYVY,
+    D3D9ConversionFormat_Count
   };
 
-  struct D3D9_VIDEO_FORMAT_INFO {
-    D3D9VideoFormat FormatType     = D3D9VideoFormat_None;
-    VkExtent2D      MacroPixelSize = { 1u, 1u };
+  struct D3D9_CONVERSION_FORMAT_INFO {
+    D3D9ConversionFormat FormatType     = D3D9ConversionFormat_None;
+    VkExtent2D           MacroPixelSize = { 1u, 1u };
+    VkFormat             VulkanFormat   = VK_FORMAT_UNDEFINED;
   };
 
   /**
@@ -156,7 +157,7 @@ namespace dxvk {
     VkComponentMapping    Swizzle       = {                     ///< Color component swizzle
       VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
       VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
-    D3D9_VIDEO_FORMAT_INFO VideoFormatInfo = { };
+    D3D9_CONVERSION_FORMAT_INFO ConversionFormatInfo = { };
 
     bool IsValid() { return FormatColor != VK_FORMAT_UNDEFINED; }
   };

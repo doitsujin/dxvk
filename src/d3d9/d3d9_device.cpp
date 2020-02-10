@@ -4073,9 +4073,9 @@ namespace dxvk {
       subresource.mipLevel,
       subresource.arrayLayer, 1 };
 
-    auto videoFormat = pResource->GetFormatMapping().VideoFormatInfo;
+    auto convertFormat = pResource->GetFormatMapping().ConversionFormatInfo;
 
-    if (likely(videoFormat.FormatType == D3D9VideoFormat_None)) {
+    if (likely(convertFormat.FormatType == D3D9ConversionFormat_None)) {
       EmitCs([
         cSrcBuffer      = copyBuffer,
         cDstImage       = image,
@@ -4088,8 +4088,8 @@ namespace dxvk {
       });
     } 
     else {
-      m_converter->ConvertVideoFormat(
-        videoFormat,
+      m_converter->ConvertFormat(
+        convertFormat,
         image, subresourceLayers,
         copyBuffer);
     }

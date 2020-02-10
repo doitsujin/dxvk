@@ -153,7 +153,7 @@ namespace dxvk {
         VK_IMAGE_ASPECT_COLOR_BIT,
         { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
           VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY },
-        { D3D9VideoFormat_UYVY, { 2u, 1u } }
+        { D3D9ConversionFormat_UYVY, { 2u, 1u } }
       };
 
       case D3D9Format::R8G8_B8G8: return {
@@ -167,7 +167,7 @@ namespace dxvk {
         VK_IMAGE_ASPECT_COLOR_BIT,
         { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
           VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY },
-        { D3D9VideoFormat_YUY2, { 2u, 1u } }
+        { D3D9ConversionFormat_YUY2, { 2u, 1u } }
       };
 
       case D3D9Format::G8R8_G8B8: return {

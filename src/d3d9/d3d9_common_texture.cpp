@@ -19,7 +19,7 @@ namespace dxvk {
 
     m_mapping = pDevice->LookupFormat(m_desc.Format);
 
-    auto pxSize      = m_mapping.VideoFormatInfo.MacroPixelSize;
+    auto pxSize      = m_mapping.ConversionFormatInfo.MacroPixelSize;
     m_adjustedExtent = VkExtent3D{ m_desc.Width / pxSize.width, m_desc.Height / pxSize.height, m_desc.Depth };
 
     m_mapMode = DetermineMapMode();
@@ -147,7 +147,7 @@ namespace dxvk {
     info.access = VK_ACCESS_TRANSFER_READ_BIT
                 | VK_ACCESS_TRANSFER_WRITE_BIT;
 
-    if (m_mapping.VideoFormatInfo.FormatType != D3D9VideoFormat_None) {
+    if (m_mapping.ConversionFormatInfo.FormatType != D3D9ConversionFormat_None) {
       info.usage  |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
       info.stages |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
     }
@@ -188,7 +188,9 @@ namespace dxvk {
   Rc<DxvkImage> D3D9CommonTexture::CreatePrimaryImage(D3DRESOURCETYPE ResourceType) const {
     DxvkImageCreateInfo imageInfo;
     imageInfo.type            = GetImageTypeFromResourceType(ResourceType);
-    imageInfo.format          = m_mapping.FormatColor;
+    imageInfo.format          = m_mapping.ConversionFormatInfo.VulkanFormat != VK_FORMAT_UNDEFINED
+                              ? m_mapping.ConversionFormatInfo.VulkanFormat
+                              : m_mapping.FormatColor;
     imageInfo.flags           = 0;
     imageInfo.sampleCount     = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.extent.width    = m_desc.Width;
@@ -207,7 +209,7 @@ namespace dxvk {
     imageInfo.tiling          = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.layout          = VK_IMAGE_LAYOUT_GENERAL;
 
-    if (m_mapping.VideoFormatInfo.FormatType != D3D9VideoFormat_None) {
+    if (m_mapping.ConversionFormatInfo.FormatType != D3D9ConversionFormat_None) {
       imageInfo.usage  |= VK_IMAGE_USAGE_STORAGE_BIT;
       imageInfo.stages |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
     }
