@@ -1454,7 +1454,7 @@ namespace dxvk {
 
     uint32_t idx = GetTransformIndex(TransformState);
 
-    m_state.transforms[idx] = ConvertMatrix(pMatrix) * m_state.transforms[idx];
+    m_state.transforms[idx] = m_state.transforms[idx] * ConvertMatrix(pMatrix);
 
     m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
 
