@@ -322,6 +322,10 @@ namespace dxvk {
     { R"(\\ToEE\.exe$)", {{
       { "d3d9.allowDiscard",                "False" },
     }} },
+    /* ZUSI 3 - Aerosoft Edition                  */
+    { R"(\\ZusiSim\.exe$)", {{
+      { "d3d9.noExplicitFrontBuffer",       "True" },
+    }} },
   }};
 
 
