@@ -314,6 +314,10 @@ namespace dxvk {
     { R"(\\rthdribl\.exe$)", {{
       { "d3d9.allowDoNotWait",              "False" },
     }} },
+    /* ZUSI 3 - Aerosoft Edition                  */
+    { R"(\\ZusiSim\.exe$)", {{
+      { "d3d9.noExplicitFrontBuffer",       "True" },
+    }} },
   }};
 
 
