@@ -57,34 +57,6 @@ namespace dxvk {
     Rc<DxvkImageView> Srgb;
   };
 
-  struct D3D9ViewSet {
-    D3D9ColorView                    Sample;
-
-    std::array<
-      std::array<D3D9ColorView, 15>, 6>     SubresourceSample;
-    std::array<
-      std::array<D3D9ColorView, 15>, 6>     SubresourceRenderTarget;
-    std::array<
-      std::array<Rc<DxvkImageView>, 15>, 6> SubresourceDepth;
-
-    bool                             Hazardous = false;
-
-    VkImageLayout GetRTLayout() const {
-      return SubresourceRenderTarget[0][0].Color != nullptr
-          && SubresourceRenderTarget[0][0].Color->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL
-          && !Hazardous
-        ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-        : VK_IMAGE_LAYOUT_GENERAL;
-    }
-
-    VkImageLayout GetDepthLayout() const {
-      return SubresourceDepth[0][0] != nullptr
-          && SubresourceDepth[0][0]->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL
-        ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-        : VK_IMAGE_LAYOUT_GENERAL;
-    }
-  };
-
   template <typename T>
   using D3D9SubresourceArray = std::array<T, caps::MaxSubresources>;
 
