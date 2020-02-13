@@ -1004,7 +1004,8 @@ namespace dxvk {
 
     std::unordered_map<
       DWORD,
-      Com<D3D9VertexDecl>> m_fvfTable;
+      Com<D3D9VertexDecl,
+      false>>                       m_fvfTable;
 
     D3D9InputAssemblyState          m_iaState;
 
