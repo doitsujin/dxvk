@@ -1058,17 +1058,16 @@ namespace dxvk {
                   && extent == mipExtent;
     }
 
-    Rc<DxvkImageView> imageView         = dst->GetImageView(false);
-    Rc<DxvkImageView> renderTargetView  = dst->GetRenderTargetView(false);
+    Rc<DxvkImageView> rtView = dst->GetRenderTargetView(false);
 
     VkClearValue clearValue;
     DecodeD3DCOLOR(Color, clearValue.color.float32);
 
     // Fast path for games that may use this as an
     // alternative to Clear on render targets.
-    if (isFullExtent && renderTargetView != nullptr) {
+    if (isFullExtent && rtView != nullptr) {
       EmitCs([
-        cImageView  = renderTargetView,
+        cImageView  = rtView,
         cClearValue = clearValue
       ] (DxvkContext* ctx) {
         ctx->clearRenderTarget(
@@ -1077,8 +1076,11 @@ namespace dxvk {
           cClearValue);
       });
     } else {
+      if (unlikely(rtView == nullptr))
+        Logger::err(str::format("D3D9DeviceEx::ColorFill: Unsupported format ", dstTextureInfo->Desc()->Format));
+
       EmitCs([
-        cImageView  = imageView,
+        cImageView  = rtView,
         cOffset     = offset,
         cExtent     = extent,
         cClearValue = clearValue
