@@ -382,7 +382,7 @@ namespace dxvk {
      */
     VkDeviceSize GetMipSize(UINT Subresource) const;
 
-    Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType) const;
+    Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType, bool TryOffscreenRT) const;
 
     Rc<DxvkImage> CreateResolveImage() const;
 
