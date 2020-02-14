@@ -113,6 +113,7 @@ namespace dxvk {
   struct D3D9FixedFunctionVS {
     Matrix4 WorldView;
     Matrix4 NormalMatrix;
+    Matrix4 InverseView;
     Matrix4 Projection;
 
     std::array<Matrix4, 8> TexcoordMatrices;

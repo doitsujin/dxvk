@@ -418,6 +418,7 @@ namespace dxvk {
   enum class D3D9FFVSMembers {
     WorldViewMatrix,
     NormalMatrix,
+    InverseViewMatrix,
     ProjMatrix,
       
     Texcoord0,
@@ -462,6 +463,7 @@ namespace dxvk {
     struct {
       uint32_t worldview;
       uint32_t normal;
+      uint32_t inverseView;
       uint32_t proj;
 
       uint32_t texcoord[8];
@@ -580,7 +582,7 @@ namespace dxvk {
 
     void emitPsSharedConstants();
 
-    void emitVsClipping();
+    void emitVsClipping(uint32_t vtx);
 
     void alphaTestPS();
 
@@ -1161,7 +1163,7 @@ namespace dxvk {
     uint32_t pointSize = m_module.opFClamp(m_floatType, pointInfo.defaultValue, pointInfo.min, pointInfo.max);
     m_module.opStore(m_vs.out.POINTSIZE, pointSize);
 
-    emitVsClipping();
+    emitVsClipping(vtx);
   }
 
 
@@ -1242,6 +1244,7 @@ namespace dxvk {
     std::array<uint32_t, uint32_t(D3D9FFVSMembers::MemberCount)> members = {
       m_mat4Type, // World
       m_mat4Type, // View
+      m_mat4Type, // InverseView
       m_mat4Type, // Proj
 
       m_mat4Type, // Texture0
@@ -1315,6 +1318,7 @@ namespace dxvk {
     uint32_t member = 0;
     m_module.setDebugMemberName(structType, member++, "WorldView");
     m_module.setDebugMemberName(structType, member++, "Normal");
+    m_module.setDebugMemberName(structType, member++, "InverseView");
     m_module.setDebugMemberName(structType, member++, "Projection");
 
     m_module.setDebugMemberName(structType, member++, "TexcoordTransform0");
@@ -1433,6 +1437,7 @@ namespace dxvk {
 
     m_vs.constants.worldview = LoadConstant(m_mat4Type, uint32_t(D3D9FFVSMembers::WorldViewMatrix));
     m_vs.constants.normal    = LoadConstant(m_mat4Type, uint32_t(D3D9FFVSMembers::NormalMatrix));
+    m_vs.constants.inverseView = LoadConstant(m_mat4Type, uint32_t(D3D9FFVSMembers::InverseViewMatrix));
     m_vs.constants.proj      = LoadConstant(m_mat4Type, uint32_t(D3D9FFVSMembers::ProjMatrix));
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++)
@@ -2105,7 +2110,9 @@ namespace dxvk {
   }
 
 
-  void D3D9FFShaderCompiler::emitVsClipping() {
+  void D3D9FFShaderCompiler::emitVsClipping(uint32_t vtx) {
+    uint32_t worldPos = m_module.opMatrixTimesVector(m_vec4Type, m_vs.constants.inverseView, vtx);
+
     uint32_t clipPlaneCountId = m_module.constu32(caps::MaxClipPlanes);
     
     uint32_t floatType = m_module.defFloatType(32);
@@ -2163,7 +2170,7 @@ namespace dxvk {
           m_module.defPointerType(vec4Type, spv::StorageClassUniform),
           clipPlaneBlock, blockMembers.size(), blockMembers.data()));
       
-      uint32_t distId = m_module.opDot(floatType, m_vs.in.POSITION, planeId);
+      uint32_t distId = m_module.opDot(floatType, worldPos, planeId);
       
       m_module.opStore(
         m_module.opAccessChain(

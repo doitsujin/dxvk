@@ -6012,6 +6012,7 @@ namespace dxvk {
       D3D9FixedFunctionVS* data = reinterpret_cast<D3D9FixedFunctionVS*>(slice.mapPtr);
       data->WorldView    = WorldView;
       data->NormalMatrix = NormalMatrix;
+      data->InverseView  = transpose(inverse(m_state.transforms[GetTransformIndex(D3DTS_VIEW)]));
       data->Projection   = m_state.transforms[GetTransformIndex(D3DTS_PROJECTION)];
 
       for (uint32_t i = 0; i < data->TexcoordMatrices.size(); i++)
