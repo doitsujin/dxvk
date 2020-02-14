@@ -1163,7 +1163,8 @@ namespace dxvk {
     uint32_t pointSize = m_module.opFClamp(m_floatType, pointInfo.defaultValue, pointInfo.min, pointInfo.max);
     m_module.opStore(m_vs.out.POINTSIZE, pointSize);
 
-    emitVsClipping(vtx);
+    if (m_vsKey.Data.Contents.VertexClipping)
+      emitVsClipping(vtx);
   }
 
 

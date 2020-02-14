@@ -776,6 +776,10 @@ namespace dxvk {
       return m_state.renderStates[D3DRS_ZENABLE] && m_state.depthStencil != nullptr;
     }
 
+    inline bool IsClipPlaneEnabled() {
+      return m_state.renderStates[D3DRS_CLIPPLANEENABLE] != 0;
+    }
+
     void BindMultiSampleState();
     
     void BindBlendState();

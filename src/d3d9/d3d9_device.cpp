@@ -1668,6 +1668,8 @@ namespace dxvk {
     bool changed = states[State] != Value;
 
     if (likely(changed)) {
+      const bool oldClipPlaneEnabled = IsClipPlaneEnabled();
+
       const bool oldDepthBiasEnabled = IsDepthBiasEnabled();
 
       const bool oldATOC = IsAlphaToCoverageEnabled();
@@ -1836,9 +1838,15 @@ namespace dxvk {
           m_flags.set(D3D9DeviceFlag::DirtyRasterizerState);
           break;
 
-        case D3DRS_CLIPPLANEENABLE:
+        case D3DRS_CLIPPLANEENABLE: {
+          const bool clipPlaneEnabled = IsClipPlaneEnabled();
+
+          if (clipPlaneEnabled != oldClipPlaneEnabled)
+            m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
+
           m_flags.set(D3D9DeviceFlag::DirtyClipPlanes);
           break;
+        }
 
         case D3DRS_ALPHAREF:
           UpdatePushConstant<D3D9RenderStateItem::AlphaRef>();
@@ -5945,6 +5953,8 @@ namespace dxvk {
         key.Data.Contents.VertexBlendIndexed = indexedVertexBlend;
         key.Data.Contents.VertexBlendCount   = m_state.renderStates[D3DRS_VERTEXBLEND] & 0xff;
       }
+
+      key.Data.Contents.VertexClipping = IsClipPlaneEnabled();
 
       EmitCs([
         this,
