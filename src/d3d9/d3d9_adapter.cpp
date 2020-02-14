@@ -102,10 +102,7 @@ namespace dxvk {
           DWORD           Usage,
           D3DRESOURCETYPE RType,
           D3D9Format      CheckFormat) {
-    if (!IsSupportedAdapterFormat(AdapterFormat))
-      return D3DERR_INVALIDCALL;
-
-    if (!IsSupportedDisplayFormat(AdapterFormat, false))
+    if (!IsSupportedAdapterFormat(AdapterFormat, false))
       return D3DERR_NOTAVAILABLE;
 
     const bool dmap = Usage & D3DUSAGE_DMAP;
@@ -213,7 +210,7 @@ namespace dxvk {
           D3D9Format AdapterFormat,
           D3D9Format RenderTargetFormat,
           D3D9Format DepthStencilFormat) {
-    if (!IsSupportedAdapterFormat(AdapterFormat))
+    if (!IsSupportedAdapterFormat(AdapterFormat, false))
       return D3DERR_NOTAVAILABLE;
 
     if (!IsDepthFormat(DepthStencilFormat))
@@ -771,7 +768,7 @@ namespace dxvk {
     m_modeCacheFormat = Format;
 
     // Skip unsupported formats
-    if (!IsSupportedAdapterFormat(Format) || !IsSupportedDisplayFormat(Format, false))
+    if (!IsSupportedAdapterFormat(Format, false))
       return;
 
     auto& options = m_parent->GetOptions();
