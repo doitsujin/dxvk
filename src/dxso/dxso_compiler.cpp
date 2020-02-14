@@ -179,6 +179,7 @@ namespace dxvk {
     case DxsoOpcode::TexReg2Gb:
     case DxsoOpcode::TexReg2Rgb:
     case DxsoOpcode::TexBem:
+    case DxsoOpcode::TexBemL:
     case DxsoOpcode::TexM3x2Tex:
     case DxsoOpcode::TexM3x3Tex:
     case DxsoOpcode::TexM3x3Spec:
@@ -2565,7 +2566,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       
       samplerIdx = ctx.dst.id.num;
     }
-    else if (opcode == DxsoOpcode::TexBem) {
+    else if (opcode == DxsoOpcode::TexBem || opcode == DxsoOpcode::TexBemL) {
       auto m = emitRegisterLoadTexcoord(ctx.dst, srcMask);
       auto n = emitRegisterLoad(ctx.src[0], srcMask);
 
@@ -2794,6 +2795,28 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       // Apply operand swizzle to the operand value
       result = emitRegisterSwizzle(result, IdentitySwizzle, ctx.dst.mask);
+
+      if (opcode == DxsoOpcode::TexBemL) {
+        uint32_t float_t = m_module.defFloatType(32);
+
+        uint32_t index = m_module.constu32(D3D9SharedPSStages_Count * ctx.dst.id.num + D3D9SharedPSStages_BumpEnvLScale);
+        uint32_t lScale = m_module.opAccessChain(m_module.defPointerType(float_t, spv::StorageClassUniform),
+                                                 m_ps.sharedState, 1, &index);
+                 lScale = m_module.opLoad(float_t, lScale);
+
+                 index = m_module.constu32(D3D9SharedPSStages_Count * ctx.dst.id.num + D3D9SharedPSStages_BumpEnvLOffset);
+        uint32_t lOffset = m_module.opAccessChain(m_module.defPointerType(float_t, spv::StorageClassUniform),
+                                                  m_ps.sharedState, 1, &index);
+                 lOffset = m_module.opLoad(float_t, lOffset);
+            
+        uint32_t zIndex = 2;
+        uint32_t scale = m_module.opCompositeExtract(float_t, result.id, 1, &zIndex);
+                 scale = m_module.opFMul(float_t, scale, lScale);
+                 scale = m_module.opFAdd(float_t, scale, lOffset);
+                 scale = m_module.opFClamp(float_t, scale, m_module.constf32(0.0f), m_module.constf32(1.0));
+
+        result.id = m_module.opVectorTimesScalar(getVectorTypeId(result.type), result.id, scale);
+      }
 
       this->emitDstStore(dst, result, ctx.dst.mask, ctx.dst.saturate, emitPredicateLoad(ctx), ctx.dst.shift, ctx.dst.id);
     };
