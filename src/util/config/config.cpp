@@ -314,6 +314,11 @@ namespace dxvk {
     { R"(\\rthdribl\.exe$)", {{
       { "d3d9.allowDoNotWait",              "False" },
     }} },
+    /* Hyperdimension Neptunia U: Action Unleashed */
+    { R"(\\Neptunia\.exe$)", {{
+      { "d3d9.forceAspectRatio",            "16:9" },
+    }} },
+
   }};
 
 
