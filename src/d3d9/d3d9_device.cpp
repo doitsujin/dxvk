@@ -2827,10 +2827,10 @@ namespace dxvk {
 
     InitReturnPtr(ppStreamData);
 
-    if (unlikely(pOffsetInBytes != nullptr))
+    if (likely(pOffsetInBytes != nullptr))
       *pOffsetInBytes = 0;
 
-    if (unlikely(pStride != nullptr))
+    if (likely(pStride != nullptr))
       *pStride = 0;
     
     if (unlikely(ppStreamData == nullptr || pOffsetInBytes == nullptr || pStride == nullptr))
