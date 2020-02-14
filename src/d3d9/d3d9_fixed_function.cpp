@@ -1618,12 +1618,12 @@ namespace dxvk {
             uint32_t index = m_module.constu32(D3D9SharedPSStages_Count * (i - 1) + D3D9SharedPSStages_BumpEnvLScale);
             uint32_t lScale = m_module.opAccessChain(m_module.defPointerType(m_floatType, spv::StorageClassUniform),
                                                      m_ps.sharedState, 1, &index);
-                     lScale = m_module.opLoad(m_vec2Type, lScale);
+                     lScale = m_module.opLoad(m_floatType, lScale);
 
                      index = m_module.constu32(D3D9SharedPSStages_Count * (i - 1) + D3D9SharedPSStages_BumpEnvLOffset);
             uint32_t lOffset = m_module.opAccessChain(m_module.defPointerType(m_floatType, spv::StorageClassUniform),
                                                      m_ps.sharedState, 1, &index);
-                     lOffset = m_module.opLoad(m_vec2Type, lOffset);
+                     lOffset = m_module.opLoad(m_floatType, lOffset);
             
             uint32_t zIndex = 2;
             uint32_t scale = m_module.opCompositeExtract(m_floatType, texture, 1, &zIndex);
