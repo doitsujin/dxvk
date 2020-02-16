@@ -65,6 +65,7 @@ else
 
   lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
   lib_d3d9    = dxvk_compiler.find_library('d3d9')
+  lib_d3d10   = dxvk_compiler.find_library('d3d10')
   lib_d3d11   = dxvk_compiler.find_library('d3d11')
   lib_dxgi    = dxvk_compiler.find_library('dxgi')
   lib_d3dcompiler_43 = dxvk_compiler.find_library('d3dcompiler_43', dirs : dxvk_library_path)
