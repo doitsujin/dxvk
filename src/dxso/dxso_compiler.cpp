@@ -2472,11 +2472,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     if (m_programInfo.majorVersion() == 1 && m_programInfo.minorVersion() == 4) {
       // TexCrd Op (PS 1.4)
-      DxsoRegister texcoord;
-      texcoord.id.type = DxsoRegisterType::PixelTexcoord;
-      texcoord.id.num  = ctx.src[0].id.num;
-
-      result = emitRegisterLoadRaw(texcoord, nullptr);
+      result = emitRegisterLoad(ctx.src[0], ctx.dst.mask);
     } else {
       // TexCoord Op (PS 1.0 - PS 1.3)
       DxsoRegister texcoord;
