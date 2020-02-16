@@ -2,3 +2,4 @@ LIBRARY D3D10CORE.DLL
 EXPORTS  
     D3D10CoreCreateDevice
     D3D10CoreGetVersion
+    D3D10CoreRegisterLayers

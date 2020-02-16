@@ -374,6 +374,22 @@ extern "C" {
     return 0xa000100041770ull;
   }
 
+
+  HRESULT STDMETHODCALLTYPE D3D10RegisterLayers() {
+    // See test_d3d10_core.cpp
+    Logger::warn("D3D10RegisterLayers: Not implemented");
+
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10CoreRegisterLayers() {
+    // See test_d3d10_core.cpp
+    Logger::warn("D3D10CoreRegisterLayers: Not implemented");
+
+    return E_NOTIMPL;
+  }
+
 }
 
 

@@ -63,6 +63,10 @@ int main(int argc, char** argv) {
   auto* D3D10RegisterLayers1 = reinterpret_cast<pfnD3D10CoreRegisterLayers>(
     GetProcAddress(hD3D10_1, "D3D10RegisterLayers"));
 
+  HRESULT layers = D3D10RegisterLayers();
+  if (layers == E_NOTIMPL)
+    std::cout << "D3D10RegisterLayers: E_NOTIMPL" << std::endl;
+
   std::cout << "(d3d10.dll) D3D10RegisterLayers: " << std::hex << D3D10RegisterLayers() << std::endl;
 
   std::cout << "(d3d10core.dll) D3D10CoreRegisterLayers: " << std::hex << D3D10CoreRegisterLayers() << std::endl;

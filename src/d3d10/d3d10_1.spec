@@ -31,3 +31,4 @@
 @ stdcall D3D10StateBlockMaskUnion(ptr ptr ptr)
 
 @ stdcall D3D10GetVersion()
+@ stdcall D3D10RegisterLayers()
