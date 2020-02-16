@@ -25,3 +25,5 @@ EXPORTS
     D3D10StateBlockMaskGetSetting
     D3D10StateBlockMaskIntersect
     D3D10StateBlockMaskUnion
+    D3D10GetVersion
+    D3D10RegisterLayers

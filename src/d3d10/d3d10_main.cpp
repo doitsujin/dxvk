@@ -360,6 +360,28 @@ extern "C" {
       ppErrorMsgs);
   }
 
+
+  UINT64 STDMETHODCALLTYPE D3D10CoreGetVersion() {
+    // Match the Windows 10 return value, but we
+    // don't know the exact function signature
+    return 0xa000100041770ull;
+  }
+
+
+  UINT64 STDMETHODCALLTYPE D3D10GetVersion() {
+    return 0xa000100041770ull;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10RegisterLayers() {
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10CoreRegisterLayers() {
+    return E_NOTIMPL;
+  }
+
 }
 
 
