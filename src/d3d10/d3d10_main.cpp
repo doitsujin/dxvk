@@ -360,6 +360,20 @@ extern "C" {
       ppErrorMsgs);
   }
 
+
+  UINT64 STDMETHODCALLTYPE D3D10CoreGetVersion() {
+    // See test_d3d10_core.cpp
+    // D3D10CoreVersion: a000100041770
+    return 0xa000100041770ull;
+  }
+
+
+  UINT64 STDMETHODCALLTYPE D3D10GetVersion() {
+    // See test_d3d10_core.cpp
+    // D3D10GetVersion: a000100041770
+    return 0xa000100041770ull;
+  }
+
 }
 
 

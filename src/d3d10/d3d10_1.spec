@@ -29,3 +29,5 @@
 @ stdcall D3D10StateBlockMaskGetSetting(ptr long long)
 @ stdcall D3D10StateBlockMaskIntersect(ptr ptr ptr)
 @ stdcall D3D10StateBlockMaskUnion(ptr ptr ptr)
+
+@ stdcall D3D10GetVersion()
