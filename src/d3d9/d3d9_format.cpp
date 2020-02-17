@@ -41,7 +41,9 @@ namespace dxvk {
       case D3D9Format::A4R4G4B4: return {
         VK_FORMAT_B4G4R4A4_UNORM_PACK16,
         VK_FORMAT_UNDEFINED,
-        VK_IMAGE_ASPECT_COLOR_BIT };
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        { VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R,
+          VK_COMPONENT_SWIZZLE_A, VK_COMPONENT_SWIZZLE_B }};
 
       case D3D9Format::R3G3B2: return {}; // Unsupported
 
@@ -58,8 +60,8 @@ namespace dxvk {
         VK_FORMAT_B4G4R4A4_UNORM_PACK16,
         VK_FORMAT_UNDEFINED,
         VK_IMAGE_ASPECT_COLOR_BIT,
-        { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
-          VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_ONE }};
+        { VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R,
+          VK_COMPONENT_SWIZZLE_A, VK_COMPONENT_SWIZZLE_ONE }};
 
       case D3D9Format::A2B10G10R10: return {
         VK_FORMAT_A2B10G10R10_UNORM_PACK32, // The A2 is out of place here. This should be investigated.
