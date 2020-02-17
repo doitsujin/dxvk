@@ -6575,7 +6575,6 @@ namespace dxvk {
       auto& state = ss[i];
       state[D3DSAMP_ADDRESSU]      = D3DTADDRESS_WRAP;
       state[D3DSAMP_ADDRESSV]      = D3DTADDRESS_WRAP;
-      state[D3DSAMP_ADDRESSU]      = D3DTADDRESS_WRAP;
       state[D3DSAMP_ADDRESSW]      = D3DTADDRESS_WRAP;
       state[D3DSAMP_BORDERCOLOR]   = 0x00000000;
       state[D3DSAMP_MAGFILTER]     = D3DTEXF_POINT;
