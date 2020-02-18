@@ -4510,9 +4510,6 @@ namespace dxvk {
                             : sizeof(D3D9FixedFunctionVertexBlendDataHW),
                            DxsoProgramType::VertexShader,
                            DxsoConstantBuffers::VSVertexBlendData);
-    
-    m_flags.set(
-      D3D9DeviceFlag::DirtyClipPlanes);
   }
 
 
