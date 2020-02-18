@@ -728,6 +728,12 @@ namespace dxvk {
 
     int64_t DetermineInitialTextureMemory();
 
+    Rc<DxvkBuffer> CreateConstantBuffer(
+            bool                SSBO,
+            VkDeviceSize        Size,
+            DxsoProgramType     ShaderStage,
+            DxsoConstantBuffers BufferType);
+
     void CreateConstantBuffers();
 
     void SynchronizeCsThread();
