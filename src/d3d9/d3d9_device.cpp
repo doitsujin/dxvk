@@ -49,7 +49,6 @@ namespace dxvk {
     , m_multithread    ( BehaviorFlags & D3DCREATE_MULTITHREADED )
     , m_shaderModules  ( new D3D9ShaderModuleSet )
     , m_d3d9Options    ( dxvkDevice, pParent->GetInstance()->config() )
-    , m_dxsoOptions    ( m_dxvkDevice, m_d3d9Options )
     , m_isSWVP         ( (BehaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING) ? TRUE : FALSE ) {
     // If we can SWVP, then we use an extended constant set
     // as SWVP has many more slots available than HWVP. 
@@ -73,10 +72,12 @@ namespace dxvk {
       ctx->setLogicOpState(loState);
     });
 
-    CreateConstantBuffers();
-
     if (!(BehaviorFlags & D3DCREATE_FPU_PRESERVE))
       SetupFPU();
+
+    m_dxsoOptions = DxsoOptions(this, m_d3d9Options);
+
+    CreateConstantBuffers();
 
     m_availableMemory = DetermineInitialTextureMemory();
   }
@@ -4468,7 +4469,7 @@ namespace dxvk {
 
   void D3D9DeviceEx::CreateConstantBuffers() {
     m_consts[DxsoProgramTypes::VertexShader].buffer =
-      CreateConstantBuffer(false,
+      CreateConstantBuffer(m_dxsoOptions.vertexConstantBufferAsSSBO,
                            m_vsLayout.totalSize(),
                            DxsoProgramType::VertexShader,
                            DxsoConstantBuffers::VSConstantBuffer);

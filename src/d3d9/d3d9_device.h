@@ -992,7 +992,7 @@ namespace dxvk {
     D3D9UPBufferSlice               m_upBuffer;
 
     const D3D9Options               m_d3d9Options;
-    const DxsoOptions               m_dxsoOptions;
+    DxsoOptions                     m_dxsoOptions;
 
     BOOL                            m_isSWVP;
 
