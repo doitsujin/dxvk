@@ -4432,69 +4432,84 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::CreateConstantBuffers() {
-    DxvkBufferCreateInfo info;
-    info.usage  = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-    info.access = VK_ACCESS_UNIFORM_READ_BIT;
+  Rc<DxvkBuffer> D3D9DeviceEx::CreateConstantBuffer(
+          bool                SSBO,
+          VkDeviceSize        Size,
+          DxsoProgramType     ShaderStage,
+          DxsoConstantBuffers BufferType) {
+    DxvkBufferCreateInfo info = { };
+    info.usage  = SSBO ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT : VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    info.access = SSBO ? VK_ACCESS_SHADER_READ_BIT          : VK_ACCESS_UNIFORM_READ_BIT;
+    info.size   = Size;
+    info.stages = ShaderStage == DxsoProgramType::VertexShader
+      ? VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
+      : VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
     VkMemoryPropertyFlags memoryFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
-    info.stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
-    info.size   = m_vsLayout.totalSize();
-    m_consts[DxsoProgramTypes::VertexShader].buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
+    Rc<DxvkBuffer> buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
 
-    info.stages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    info.size   = m_psLayout.totalSize();
-    m_consts[DxsoProgramTypes::PixelShader].buffer  = m_dxvkDevice->createBuffer(info, memoryFlags);
+    const uint32_t slotId = computeResourceSlotId(
+      ShaderStage, DxsoBindingType::ConstantBuffer,
+      BufferType);
 
-    info.stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
-    info.size = caps::MaxClipPlanes * sizeof(D3D9ClipPlane);
-    m_vsClipPlanes = m_dxvkDevice->createBuffer(info, memoryFlags);
+    EmitCs([
+      cSlotId = slotId,
+      cBuffer = buffer
+    ] (DxvkContext* ctx) {
+      ctx->bindResourceBuffer(cSlotId,
+        DxvkBufferSlice(cBuffer, 0, cBuffer->info().size));
+    });
 
-    info.stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
-    info.size = sizeof(D3D9FixedFunctionVS);
-    m_vsFixedFunction = m_dxvkDevice->createBuffer(info, memoryFlags);
+    return buffer;
+  }
 
-    info.stages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    info.size = sizeof(D3D9FixedFunctionPS);
-    m_psFixedFunction = m_dxvkDevice->createBuffer(info, memoryFlags);
 
-    info.stages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    info.size = sizeof(D3D9SharedPS);
-    m_psShared = m_dxvkDevice->createBuffer(info, memoryFlags);
+  void D3D9DeviceEx::CreateConstantBuffers() {
+    m_consts[DxsoProgramTypes::VertexShader].buffer =
+      CreateConstantBuffer(false,
+                           m_vsLayout.totalSize(),
+                           DxsoProgramType::VertexShader,
+                           DxsoConstantBuffers::VSConstantBuffer);
 
-    info.stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
-    info.usage  = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    info.access = VK_ACCESS_SHADER_READ_BIT;
-    info.size = CanSWVP() ? sizeof(D3D9FixedFunctionVertexBlendDataSW) : sizeof(D3D9FixedFunctionVertexBlendDataHW);
-    m_vsVertexBlend = m_dxvkDevice->createBuffer(info, memoryFlags);
+    m_consts[DxsoProgramTypes::PixelShader].buffer =
+      CreateConstantBuffer(false,
+                           m_psLayout.totalSize(),
+                           DxsoProgramType::PixelShader,
+                           DxsoConstantBuffers::PSConstantBuffer);
 
-    auto BindConstantBuffer = [this](
-      DxsoProgramType     shaderStage,
-      Rc<DxvkBuffer>      buffer,
-      DxsoConstantBuffers cbuffer) {
-      const uint32_t slotId = computeResourceSlotId(
-        shaderStage, DxsoBindingType::ConstantBuffer,
-        cbuffer);
+    m_vsClipPlanes = 
+      CreateConstantBuffer(false,
+                           caps::MaxClipPlanes * sizeof(D3D9ClipPlane),
+                           DxsoProgramType::VertexShader,
+                           DxsoConstantBuffers::VSClipPlanes);
 
-      EmitCs([
-        cSlotId = slotId,
-        cBuffer = buffer
-      ] (DxvkContext* ctx) {
-        ctx->bindResourceBuffer(cSlotId,
-          DxvkBufferSlice(cBuffer, 0, cBuffer->info().size));
-      });
-    };
+    m_vsFixedFunction =
+      CreateConstantBuffer(false,
+                           sizeof(D3D9FixedFunctionVS),
+                           DxsoProgramType::VertexShader,
+                           DxsoConstantBuffers::VSFixedFunction);
 
-    BindConstantBuffer(DxsoProgramTypes::VertexShader, m_consts[DxsoProgramTypes::VertexShader].buffer, DxsoConstantBuffers::VSConstantBuffer);
-    BindConstantBuffer(DxsoProgramTypes::VertexShader, m_vsClipPlanes,                                  DxsoConstantBuffers::VSClipPlanes);
-    BindConstantBuffer(DxsoProgramTypes::VertexShader, m_vsFixedFunction,                               DxsoConstantBuffers::VSFixedFunction);
-    BindConstantBuffer(DxsoProgramTypes::VertexShader, m_vsVertexBlend,                                 DxsoConstantBuffers::VSVertexBlendData);
+    m_psFixedFunction =
+      CreateConstantBuffer(false,
+                           sizeof(D3D9FixedFunctionPS),
+                           DxsoProgramType::PixelShader,
+                           DxsoConstantBuffers::PSFixedFunction);
 
-    BindConstantBuffer(DxsoProgramTypes::PixelShader,  m_consts[DxsoProgramTypes::PixelShader].buffer,  DxsoConstantBuffers::PSConstantBuffer);
-    BindConstantBuffer(DxsoProgramTypes::PixelShader,  m_psFixedFunction,                               DxsoConstantBuffers::PSFixedFunction);
-    BindConstantBuffer(DxsoProgramTypes::PixelShader,  m_psShared,                                      DxsoConstantBuffers::PSShared);
+    m_psShared =
+      CreateConstantBuffer(false,
+                           sizeof(D3D9SharedPS),
+                           DxsoProgramType::PixelShader,
+                           DxsoConstantBuffers::PSShared);
+
+    m_vsVertexBlend =
+      CreateConstantBuffer(true,
+                           CanSWVP()
+                            ? sizeof(D3D9FixedFunctionVertexBlendDataSW)
+                            : sizeof(D3D9FixedFunctionVertexBlendDataHW),
+                           DxsoProgramType::VertexShader,
+                           DxsoConstantBuffers::VSVertexBlendData);
     
     m_flags.set(
       D3D9DeviceFlag::DirtyClipPlanes);
