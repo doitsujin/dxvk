@@ -274,6 +274,9 @@ namespace dxvk {
 
 
   void DxsoCompiler::emitDclConstantBuffer() {
+    const bool asSsbo = m_moduleInfo.options.vertexConstantBufferAsSSBO &&
+      m_programInfo.type() == DxsoProgramType::VertexShader;
+
     std::array<uint32_t, 3> members = {
       // float f[256 or 224 or 8192]
       m_module.defArrayTypeUnique(
@@ -309,7 +312,9 @@ namespace dxvk {
     const uint32_t structType =
       m_module.defStructType(swvp ? 3 : 2, members.data());
 
-    m_module.decorateBlock(structType);
+    m_module.decorate(structType, asSsbo
+      ? spv::DecorationBufferBlock
+      : spv::DecorationBlock);
 
     m_module.memberDecorateOffset(structType, 0, m_layout->floatOffset());
     m_module.memberDecorateOffset(structType, 1, m_layout->intOffset());
@@ -337,9 +342,14 @@ namespace dxvk {
     m_module.decorateDescriptorSet(m_cBuffer, 0);
     m_module.decorateBinding(m_cBuffer, bindingId);
 
+    if (asSsbo)
+      m_module.decorate(m_cBuffer, spv::DecorationNonWritable);
+
     DxvkResourceSlot resource;
     resource.slot   = bindingId;
-    resource.type   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    resource.type   = asSsbo
+      ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+      : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     resource.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     resource.access = VK_ACCESS_UNIFORM_READ_BIT;
     m_resourceSlots.push_back(resource);
