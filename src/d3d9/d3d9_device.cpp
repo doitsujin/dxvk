@@ -4163,6 +4163,9 @@ namespace dxvk {
     if (!m_d3d9Options.allowLockFlagReadonly)
       Flags &= ~D3DLOCK_READONLY;
 
+    if (!m_d3d9Options.allowDiscard)
+      Flags &= ~D3DLOCK_DISCARD;
+
     auto& desc = *pResource->Desc();
 
     // Ignore DISCARD if NOOVERWRITE is set
