@@ -36,8 +36,6 @@ struct DXGI_VK_MONITOR_DATA {
  */
 MIDL_INTERFACE("104001a6-7f36-4957-b932-86ade9567d91")
 IDXGIVkSwapChain : public IUnknown {
-  static const GUID guid;
-
   virtual HRESULT STDMETHODCALLTYPE GetDesc(
           DXGI_SWAP_CHAIN_DESC1*    pDesc) = 0;
   
@@ -89,8 +87,6 @@ IDXGIVkSwapChain : public IUnknown {
  */
 MIDL_INTERFACE("907bf281-ea3c-43b4-a8e4-9f231107b4ff")
 IDXGIDXVKAdapter : public IDXGIAdapter3 {
-  static const GUID guid;
-  
   virtual dxvk::Rc<dxvk::DxvkAdapter> STDMETHODCALLTYPE GetDXVKAdapter() = 0;
 
   virtual dxvk::Rc<dxvk::DxvkInstance> STDMETHODCALLTYPE GetDXVKInstance() = 0;
@@ -103,8 +99,6 @@ IDXGIDXVKAdapter : public IDXGIAdapter3 {
  */
 MIDL_INTERFACE("92a5d77b-b6e1-420a-b260-fdd701272827")
 IDXGIDXVKDevice : public IUnknown {
-  static const GUID guid;
-
   virtual void STDMETHODCALLTYPE SetAPIVersion(
             UINT                    Version) = 0;
 
@@ -122,8 +116,6 @@ IDXGIDXVKDevice : public IUnknown {
  */
 MIDL_INTERFACE("c06a236f-5be3-448a-8943-89c611c0c2c1")
 IDXGIVkMonitorInfo : public IUnknown {
-  static const GUID guid;
-
   /**
    * \brief Initializes monitor data
    * 
@@ -167,8 +159,6 @@ IDXGIVkMonitorInfo : public IUnknown {
  */
 MIDL_INTERFACE("5546cf8c-77e7-4341-b05d-8d4d5000e77d")
 IDXGIVkInteropSurface : public IUnknown {
-  static const GUID guid;
-  
   /**
    * \brief Retrieves device interop interfaceSlots
    * 
@@ -225,8 +215,6 @@ IDXGIVkInteropSurface : public IUnknown {
  */
 MIDL_INTERFACE("e2ef5fa5-dc21-4af7-90c4-f67ef6a09323")
 IDXGIVkInteropDevice : public IUnknown {
-  static const GUID guid;
-  
   /**
    * \brief Queries Vulkan handles used by DXVK
    * 
@@ -308,8 +296,6 @@ IDXGIVkInteropDevice : public IUnknown {
  */
 MIDL_INTERFACE("3a6d8f2c-b0e8-4ab4-b4dc-4fd24891bfa5")
 IDXGIVkInteropAdapter : public IUnknown {
-  static const GUID guid;
-
   /**
    * \brief Queries Vulkan handles used by DXVK
    * 
@@ -330,8 +316,6 @@ IDXGIVkInteropAdapter : public IUnknown {
  */
 MIDL_INTERFACE("53cb4ff0-c25a-4164-a891-0e83db0a7aac")
 IWineDXGISwapChainFactory : public IUnknown {
-    static const GUID guid;
-
     virtual HRESULT STDMETHODCALLTYPE CreateSwapChainForHwnd(
             IDXGIFactory*           pFactory,
             HWND                    hWnd,
@@ -352,12 +336,12 @@ struct __declspec(uuid("5546cf8c-77e7-4341-b05d-8d4d5000e77d")) IDXGIVkInteropSu
 struct __declspec(uuid("104001a6-7f36-4957-b932-86ade9567d91")) IDXGIVkSwapChain;
 struct __declspec(uuid("53cb4ff0-c25a-4164-a891-0e83db0a7aac")) IWineDXGISwapChainFactory;
 #else
-DXVK_DEFINE_GUID(IDXGIDXVKAdapter);
-DXVK_DEFINE_GUID(IDXGIDXVKDevice);
-DXVK_DEFINE_GUID(IDXGIVkMonitorInfo);
-DXVK_DEFINE_GUID(IDXGIVkInteropAdapter);
-DXVK_DEFINE_GUID(IDXGIVkInteropDevice);
-DXVK_DEFINE_GUID(IDXGIVkInteropSurface);
-DXVK_DEFINE_GUID(IDXGIVkSwapChain);
-DXVK_DEFINE_GUID(IWineDXGISwapChainFactory);
+__CRT_UUID_DECL(IDXGIDXVKAdapter,          0x907bf281,0xea3c,0x43b4,0xa8,0xe4,0x9f,0x23,0x11,0x07,0xb4,0xff);
+__CRT_UUID_DECL(IDXGIDXVKDevice,           0x92a5d77b,0xb6e1,0x420a,0xb2,0x60,0xfd,0xf7,0x01,0x27,0x28,0x27);
+__CRT_UUID_DECL(IDXGIVkMonitorInfo,        0xc06a236f,0x5be3,0x448a,0x89,0x43,0x89,0xc6,0x11,0xc0,0xc2,0xc1);
+__CRT_UUID_DECL(IDXGIVkInteropAdapter,     0x3a6d8f2c,0xb0e8,0x4ab4,0xb4,0xdc,0x4f,0xd2,0x48,0x91,0xbf,0xa5);
+__CRT_UUID_DECL(IDXGIVkInteropDevice,      0xe2ef5fa5,0xdc21,0x4af7,0x90,0xc4,0xf6,0x7e,0xf6,0xa0,0x93,0x23);
+__CRT_UUID_DECL(IDXGIVkInteropSurface,     0x5546cf8c,0x77e7,0x4341,0xb0,0x5d,0x8d,0x4d,0x50,0x00,0xe7,0x7d);
+__CRT_UUID_DECL(IDXGIVkSwapChain,          0x104001a6,0x7f36,0x4957,0xb9,0x32,0x86,0xad,0xe9,0x56,0x7d,0x91);
+__CRT_UUID_DECL(IWineDXGISwapChainFactory, 0x53cb4ff0,0xc25a,0x4164,0xa8,0x91,0x0e,0x83,0xdb,0x0a,0x7a,0xac);
 #endif
