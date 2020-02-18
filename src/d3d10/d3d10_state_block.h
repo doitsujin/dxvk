@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3d10_include.h"
+#include "d3d10_interfaces.h"
 
 namespace dxvk {
 
@@ -47,8 +48,6 @@ namespace dxvk {
   class D3D10StateBlock : public ComObject<ID3D10StateBlock> {
 
   public:
-    static const GUID guid;
-
     D3D10StateBlock(
             ID3D10Device*             pDevice,
       const D3D10_STATE_BLOCK_MASK*   pMask);

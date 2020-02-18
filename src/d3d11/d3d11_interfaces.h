@@ -32,8 +32,6 @@ enum D3D11_VK_BARRIER_CONTROL : uint32_t {
  */
 MIDL_INTERFACE("8a6e3c42-f74c-45b7-8265-a231b677ca17")
 ID3D11VkExtDevice : public IUnknown {
-  static const GUID guid;
-  
   /**
    * \brief Checks whether an extension is supported
    * 
@@ -54,8 +52,6 @@ ID3D11VkExtDevice : public IUnknown {
  */
 MIDL_INTERFACE("fd0bca13-5cb6-4c3a-987e-4750de2ca791")
 ID3D11VkExtContext : public IUnknown {
-  static const GUID guid;
-  
   virtual void STDMETHODCALLTYPE MultiDrawIndirect(
           UINT                    DrawCount,
           ID3D11Buffer*           pBufferForArgs,
@@ -98,6 +94,6 @@ ID3D11VkExtContext : public IUnknown {
 struct __declspec(uuid("8a6e3c42-f74c-45b7-8265-a231b677ca17")) ID3D11VkExtDevice;
 struct __declspec(uuid("fd0bca13-5cb6-4c3a-987e-4750de2ca791")) ID3D11VkExtContext;
 #else
-DXVK_DEFINE_GUID(ID3D11VkExtDevice);
-DXVK_DEFINE_GUID(ID3D11VkExtContext);
+__CRT_UUID_DECL(ID3D11VkExtDevice,         0x8a6e3c42,0xf74c,0x45b7,0x82,0x65,0xa2,0x31,0xb6,0x77,0xca,0x17);
+__CRT_UUID_DECL(ID3D11VkExtContext,        0xfd0bca13,0x5cb6,0x4c3a,0x98,0x7e,0x47,0x50,0xde,0x2c,0xa7,0x91);
 #endif
