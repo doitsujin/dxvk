@@ -4175,10 +4175,6 @@ namespace dxvk {
     if (desc.Pool != D3DPOOL_DEFAULT)
       Flags &= ~(D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE);
 
-    // Ignore DISCARD if we are doing a partial lock.
-    if (OffsetToLock != 0 || (SizeToLock != 0 && SizeToLock != desc.Size))
-      Flags &= ~D3DLOCK_DISCARD;
-
     // Ignore READONLY if we are a WRITEONLY resource.
     if (desc.Usage & D3DUSAGE_WRITEONLY)
       Flags &= ~D3DLOCK_READONLY;
