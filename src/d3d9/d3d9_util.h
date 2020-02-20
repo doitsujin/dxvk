@@ -234,6 +234,14 @@ namespace dxvk {
     return !(a == b);
   }
 
+  inline bool operator == (const POINT& a, const POINT& b) {
+    return a.x == b.x && a.y == b.y;
+  }
+
+  inline bool operator != (const POINT& a, const POINT& b) {
+    return !(a == b);
+  }
+
   inline bool IsPoolManaged(D3DPOOL Pool) {
     return Pool == D3DPOOL_MANAGED || Pool == D3DPOOL_MANAGED_EX;
   }
