@@ -18,6 +18,9 @@ namespace dxvk {
 
     void UpdateCursor(int X, int Y);
 
+    int PrevPosX;
+    int PrevPosY;
+
     BOOL ShowCursor(BOOL bShow);
 
     HRESULT SetHardwareCursor(UINT XHotSpot, UINT YHotSpot, const CursorBitmap& bitmap);

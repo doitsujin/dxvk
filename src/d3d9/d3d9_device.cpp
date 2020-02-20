@@ -237,7 +237,7 @@ namespace dxvk {
 
   void    STDMETHODCALLTYPE D3D9DeviceEx::SetCursorPosition(int X, int Y, DWORD Flags) {
     D3D9DeviceLock lock = LockDevice();
-
+  
     // I was not able to find an instance
     // where the cursor update was not immediate.
 
@@ -245,8 +245,14 @@ namespace dxvk {
     // behaviour here.
 
     // Hence we ignore the flag D3DCURSOR_IMMEDIATE_UPDATE.
-
-    m_cursor.UpdateCursor(X, Y);
+    if(m_cursor.PrevPosX == X && m_cursor.PrevPosY == Y) {
+    	return;
+    }
+    else{
+      m_cursor.PrevPosX = X;
+     m_cursor.PrevPosY = Y;
+     m_cursor.UpdateCursor(X, Y);
+    }
   }
 
 
