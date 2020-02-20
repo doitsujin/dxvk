@@ -1,10 +1,15 @@
 #include "d3d9_cursor.h"
+#include "d3d9_util.h"
 
 #include <utility>
 
 namespace dxvk {
 
   void D3D9Cursor::UpdateCursor(int X, int Y) {
+    POINT currentPos = { };
+    if (::GetCursorPos(&currentPos) && currentPos == POINT{ X, Y })
+        return;
+
     ::SetCursorPos(X, Y);
   }
 
