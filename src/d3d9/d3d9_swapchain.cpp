@@ -962,8 +962,11 @@ namespace dxvk {
     m_context->beginRecording(
       m_device->createCommandList());
     
-    m_context->clearColorImage(
-      swapImage, clearColor, subresources);
+    for (uint32_t i = 0; i < m_backBuffers.size(); i++) {
+      m_context->clearColorImage(
+        m_backBuffers[i]->GetCommonTexture()->GetImage(),
+        clearColor, subresources);
+    }
 
     m_device->submitCommandList(
       m_context->endRecording(),
