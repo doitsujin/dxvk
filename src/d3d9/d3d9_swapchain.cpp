@@ -559,8 +559,12 @@ namespace dxvk {
     if (hWindow == nullptr)
       hWindow = m_parent->GetWindow();
 
-    if (m_presentParams.hDeviceWindow == hWindow)
+    if (m_presentParams.hDeviceWindow == hWindow) {
       m_presenter = nullptr;
+
+      m_device->waitForSubmission(&m_presentStatus);
+      m_device->waitForIdle();
+    }
   }
 
 
