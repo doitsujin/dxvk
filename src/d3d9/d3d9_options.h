@@ -125,6 +125,9 @@ namespace dxvk {
 
     /// Allow D3DLOCK_DISCARD
     bool allowDiscard;
+
+    /// Enumerate adapters by displays
+    bool enumerateByDisplays;
   };
 
 }

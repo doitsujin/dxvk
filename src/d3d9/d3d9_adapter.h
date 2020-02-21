@@ -18,7 +18,8 @@ namespace dxvk {
     D3D9Adapter(
             D3D9InterfaceEx* pParent,
             Rc<DxvkAdapter>  Adapter,
-            UINT             Ordinal);
+            UINT             Ordinal,
+            UINT             DisplayIndex);
 
     HRESULT GetAdapterIdentifier(
             DWORD                   Flags,
@@ -101,6 +102,7 @@ namespace dxvk {
 
     Rc<DxvkAdapter>               m_adapter;
     UINT                          m_ordinal;
+    UINT                          m_displayIndex;
 
     std::vector<D3DDISPLAYMODEEX> m_modes;
     D3D9Format                    m_modeCacheFormat;

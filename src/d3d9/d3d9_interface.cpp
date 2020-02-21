@@ -12,9 +12,45 @@ namespace dxvk {
     : m_instance    ( new DxvkInstance() )
     , m_extended    ( bExtended ) 
     , m_d3d9Options ( nullptr, m_instance->config() ) {
-    m_adapters.reserve(m_instance->adapterCount());
-    for (uint32_t i = 0; i < m_instance->adapterCount(); i++)
-      m_adapters.emplace_back(this, m_instance->enumAdapters(i), i);
+    // D3D9 doesn't enumerate adapters like physical adapters...
+    // only as connected displays.
+
+    // Let's create some "adapters" for the amount of displays we have.
+    // We'll go through and match up displays -> our adapters in order.
+    // If we run out of adapters, then we'll just make repeats of the first one.
+    // We can't match up by names on Linux/Wine as they don't match at all
+    // like on Windows, so this is our best option.
+    if (m_d3d9Options.enumerateByDisplays) {
+      DISPLAY_DEVICEA device = { };
+      device.cb = sizeof(device);
+
+      uint32_t adapterOrdinal = 0;
+      uint32_t i = 0;
+      while (::EnumDisplayDevicesA(nullptr, i++, &device, 0)) {
+        // If we aren't attached, skip over.
+        if (!(device.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP))
+          continue;
+
+        // If we are a mirror, skip over this device.
+        if (device.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER)
+          continue;
+
+        Rc<DxvkAdapter> adapter = adapterOrdinal >= m_instance->adapterCount()
+          ? m_instance->enumAdapters(0)
+          : m_instance->enumAdapters(adapterOrdinal);
+
+        if (adapter != nullptr)
+          m_adapters.emplace_back(this, adapter, adapterOrdinal++, i - 1);
+      }
+    }
+    else
+    {
+      const uint32_t adapterCount = m_instance->adapterCount();
+      m_adapters.reserve(adapterCount);
+
+      for (uint32_t i = 0; i < adapterCount; i++)
+        m_adapters.emplace_back(this, m_instance->enumAdapters(i), i, 0);
+    }
 
     if (m_d3d9Options.dpiAware) {
       Logger::info("Process set as DPI aware");
