@@ -5,16 +5,12 @@ cpu_family = target_machine.cpu_family()
 add_project_arguments('-DNOMINMAX', language : 'cpp')
 
 dxvk_compiler = meson.get_compiler('cpp')
-if dxvk_compiler.get_id() == 'msvc'
+dxvk_msvc=dxvk_compiler.get_id() == 'msvc'
+# c++17 was added in 15.3, older version needs c++latest
+if dxvk_compiler.get_id() == 'msvc' and dxvk_compiler.version().version_compare('<15.3')
   dxvk_cpp_std='c++latest'
-  dxvk_msvc=true
 else
   dxvk_cpp_std='c++17'
-  dxvk_msvc=false
-endif
-
-if dxvk_compiler.get_id() == 'msvc'
-  add_project_arguments('/std:' + dxvk_cpp_std, language : 'cpp')
 endif
 
 dxvk_include_path = include_directories('./include')
