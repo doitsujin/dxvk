@@ -3913,7 +3913,7 @@ namespace dxvk {
         ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
       });
     }
-    else if (managed || scratch || systemmem) {
+    else if ((managed && !m_d3d9Options.evictManagedOnUnlock) || scratch || systemmem) {
       // Managed and scratch resources
       // are meant to be able to provide readback without waiting.
       // We always keep a copy of them in system memory for this reason.
@@ -4061,7 +4061,7 @@ namespace dxvk {
     // Do we have a pending copy?
     if (!pResource->GetReadOnlyLocked(Subresource)) {
       // Only flush buffer -> image if we actually have an image
-      if (pResource->IsManaged()) {
+      if (pResource->IsManaged() && !m_d3d9Options.evictManagedOnUnlock) {
         pResource->SetNeedsUpload(Subresource, true);
 
         for (uint32_t tex = m_activeTextures; tex; tex &= tex - 1) {
@@ -4082,8 +4082,10 @@ namespace dxvk {
 
     if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED
     && (!pResource->IsDynamic())
-    && (!pResource->IsManaged() || m_d3d9Options.evictManagedOnUnlock))
+    && (!pResource->IsManaged() || m_d3d9Options.evictManagedOnUnlock)) {
       pResource->DestroyBufferSubresource(Subresource);
+      pResource->SetDirty(Subresource, true);
+    }
 
     if (pResource->IsAutomaticMip())
       GenerateMips(pResource);
