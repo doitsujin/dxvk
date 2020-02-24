@@ -23,8 +23,10 @@ namespace dxvk {
       case D3D9ConversionFormat_YUY2:
       case D3D9ConversionFormat_UYVY:
         ConvertVideoFormat(conversionFormat, dstImage, dstSubresource, srcBuffer);
+        break;
       case D3D9ConversionFormat_L6V5U5:
         ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, VK_FORMAT_R16_UINT);
+        break;
       default:
         Logger::warn("Unimplemented format conversion");
     }
