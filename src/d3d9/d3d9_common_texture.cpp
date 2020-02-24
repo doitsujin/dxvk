@@ -193,8 +193,8 @@ namespace dxvk {
   Rc<DxvkImage> D3D9CommonTexture::CreatePrimaryImage(D3DRESOURCETYPE ResourceType, bool TryOffscreenRT) const {
     DxvkImageCreateInfo imageInfo;
     imageInfo.type            = GetImageTypeFromResourceType(ResourceType);
-    imageInfo.format          = m_mapping.ConversionFormatInfo.VulkanFormat != VK_FORMAT_UNDEFINED
-                              ? m_mapping.ConversionFormatInfo.VulkanFormat
+    imageInfo.format          = m_mapping.ConversionFormatInfo.FormatColor != VK_FORMAT_UNDEFINED
+                              ? m_mapping.ConversionFormatInfo.FormatColor
                               : m_mapping.FormatColor;
     imageInfo.flags           = 0;
     imageInfo.sampleCount     = VK_SAMPLE_COUNT_1_BIT;
@@ -427,7 +427,9 @@ namespace dxvk {
           VkImageUsageFlags      UsageFlags,
           bool                   Srgb) {
     DxvkImageViewCreateInfo viewInfo;
-    viewInfo.format    = PickSRGB(m_mapping.FormatColor, m_mapping.FormatSrgb, Srgb);
+    viewInfo.format    = m_mapping.ConversionFormatInfo.FormatColor != VK_FORMAT_UNDEFINED
+                       ? PickSRGB(m_mapping.ConversionFormatInfo.FormatColor, m_mapping.ConversionFormatInfo.FormatSrgb, Srgb)
+                       : PickSRGB(m_mapping.FormatColor, m_mapping.FormatSrgb, Srgb);
     viewInfo.aspect    = imageFormatInfo(viewInfo.format)->aspectMask;
     viewInfo.swizzle   = m_mapping.Swizzle;
     viewInfo.usage     = UsageFlags;
