@@ -21,6 +21,13 @@ namespace dxvk {
 
   private:
 
+    void ConvertGenericFormat(
+            D3D9_CONVERSION_FORMAT_INFO   videoFormat,
+      const Rc<DxvkImage>&                dstImage,
+            VkImageSubresourceLayers      dstSubresource,
+      const Rc<DxvkBuffer>&               srcBuffer,
+            VkFormat                      bufferFormat);
+
     void ConvertVideoFormat(
             D3D9_CONVERSION_FORMAT_INFO   videoFormat,
       const Rc<DxvkImage>&                dstImage,

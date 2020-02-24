@@ -1,6 +1,7 @@
 #include "d3d9_format_helpers.h"
 
 #include <d3d9_convert_yuy2_uyvy.h>
+#include <d3d9_convert_l6v5u5.h>
 
 namespace dxvk {
 
@@ -22,9 +23,49 @@ namespace dxvk {
       case D3D9ConversionFormat_YUY2:
       case D3D9ConversionFormat_UYVY:
         ConvertVideoFormat(conversionFormat, dstImage, dstSubresource, srcBuffer);
+      case D3D9ConversionFormat_L6V5U5:
+        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, VK_FORMAT_R16_UINT);
       default:
         Logger::warn("Unimplemented format conversion");
     }
+  }
+
+
+  void D3D9FormatHelper::ConvertGenericFormat(
+          D3D9_CONVERSION_FORMAT_INFO   videoFormat,
+    const Rc<DxvkImage>&                dstImage,
+          VkImageSubresourceLayers      dstSubresource,
+    const Rc<DxvkBuffer>&               srcBuffer,
+          VkFormat                      bufferFormat) {
+    DxvkImageViewCreateInfo imageViewInfo;
+    imageViewInfo.type      = VK_IMAGE_VIEW_TYPE_2D;
+    imageViewInfo.format    = dstImage->info().format;
+    imageViewInfo.usage     = VK_IMAGE_USAGE_STORAGE_BIT;
+    imageViewInfo.aspect    = dstSubresource.aspectMask;
+    imageViewInfo.minLevel  = dstSubresource.mipLevel;
+    imageViewInfo.numLevels = 1;
+    imageViewInfo.minLayer  = dstSubresource.baseArrayLayer;
+    imageViewInfo.numLayers = dstSubresource.layerCount;
+    auto tmpImageView = m_device->createImageView(dstImage, imageViewInfo);
+
+    VkExtent3D imageExtent = dstImage->mipLevelExtent(dstSubresource.mipLevel);
+
+    DxvkBufferViewCreateInfo bufferViewInfo;
+    bufferViewInfo.format      = bufferFormat;
+    bufferViewInfo.rangeOffset = 0;
+    bufferViewInfo.rangeLength = srcBuffer->info().size;
+    auto tmpBufferView = m_device->createBufferView(srcBuffer, bufferViewInfo);
+
+    m_context->bindResourceView(BindingIds::Image,  tmpImageView, nullptr);
+    m_context->bindResourceView(BindingIds::Buffer, nullptr,     tmpBufferView);
+    m_context->bindShader(VK_SHADER_STAGE_COMPUTE_BIT, m_shaders[videoFormat.FormatType]);
+    m_context->pushConstants(0, sizeof(VkExtent2D), &imageExtent);
+    m_context->dispatch(
+      (imageExtent.width  / 8) + (imageExtent.width  % 8),
+      (imageExtent.height / 8) + (imageExtent.height % 8),
+      1);
+    
+    m_context->flushCommandList();
   }
 
 
@@ -76,6 +117,7 @@ namespace dxvk {
   void D3D9FormatHelper::InitShaders() {
     m_shaders[D3D9ConversionFormat_YUY2] = InitShader(d3d9_convert_yuy2_uyvy);
     m_shaders[D3D9ConversionFormat_UYVY] = m_shaders[D3D9ConversionFormat_YUY2];
+    m_shaders[D3D9ConversionFormat_L6V5U5] = InitShader(d3d9_convert_l6v5u5);
   }
 
 

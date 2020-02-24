@@ -131,6 +131,7 @@ namespace dxvk {
     D3D9ConversionFormat_None = 0,
     D3D9ConversionFormat_YUY2 = 1,
     D3D9ConversionFormat_UYVY,
+    D3D9ConversionFormat_L6V5U5,
     D3D9ConversionFormat_Count
   };
 

@@ -3,7 +3,8 @@ d3d9_res = wrc_generator.process('version.rc')
 d3d9_shaders = files([
   'shaders/d3d9_presenter_frag.frag',
   'shaders/d3d9_presenter_vert.vert',
-  'shaders/d3d9_convert_yuy2_uyvy.comp'
+  'shaders/d3d9_convert_yuy2_uyvy.comp',
+  'shaders/d3d9_convert_l6v5u5.comp'
 ])
 
 d3d9_src = [
