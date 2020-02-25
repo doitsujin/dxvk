@@ -4797,7 +4797,7 @@ namespace dxvk {
       texInfo->ClearNeedsUpload();
     }
 
-    m_activeTexturesToUpload = 0;
+    m_activeTexturesToUpload &= ~mask;
   }
 
 
@@ -5458,6 +5458,7 @@ namespace dxvk {
 
     uint32_t texturesToUpload = m_activeTexturesToUpload;
     texturesToUpload &= m_psShaderMasks.samplerMask | m_vsShaderMasks.samplerMask;
+
     if (unlikely(texturesToUpload != 0))
       UploadManagedTextures(texturesToUpload);
 
