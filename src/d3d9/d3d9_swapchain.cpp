@@ -462,8 +462,6 @@ namespace dxvk {
     this->NormalizePresentParameters(pPresentParams);
 
     m_dirty    |= m_presentParams.BackBufferFormat   != pPresentParams->BackBufferFormat
-               || m_presentParams.BackBufferWidth    != pPresentParams->BackBufferWidth
-               || m_presentParams.BackBufferHeight   != pPresentParams->BackBufferHeight
                || m_presentParams.BackBufferCount    != pPresentParams->BackBufferCount;
 
     bool changeFullscreen = m_presentParams.Windowed != pPresentParams->Windowed;
