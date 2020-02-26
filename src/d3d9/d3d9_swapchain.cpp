@@ -120,14 +120,21 @@ namespace dxvk {
     m_window    = window;
 
     m_dirty    |= vsync != m_vsync;
-    m_dirty    |= UpdatePresentRegion(pSourceRect, pDestRect);
     m_dirty    |= recreate;
     m_dirty    |= m_presenter != nullptr &&
                  !m_presenter->hasSwapChain();
 
+    VkExtent2D presentExtent = GetPresentExtent();
+    if (m_presentExtent != presentExtent) {
+      m_dirty = true;
+      m_presentExtent = presentExtent;
+    }
+
     m_vsync     = vsync;
 
     m_lastDialog = m_dialog;
+
+    UpdatePresentRegion(pSourceRect, pDestRect);
 
     try {
       if (recreate)
@@ -679,13 +686,41 @@ namespace dxvk {
           sync.acquire, VK_NULL_HANDLE, imageIndex);
       }
 
+      const bool partialPresent =
+           m_presentParams.SwapEffect == D3DSWAPEFFECT_COPY &&
+          (m_dstRect.left   != 0 ||
+           m_dstRect.top    != 0 ||
+           m_dstRect.right  != m_presentExtent.width ||
+           m_dstRect.bottom != m_presentExtent.height);
+
+      if (partialPresent && !m_partialPresented) {
+        const VkImageSubresourceLayers subresourceLayers = {
+          VK_IMAGE_ASPECT_COLOR_BIT,
+          0, 0, 1 };
+
+        VkImageBlit region;
+        region.dstOffsets[0]  = VkOffset3D{ 0, 0, 0 };
+        region.dstOffsets[1]  = VkOffset3D{ int32_t(m_presentExtent.width), int32_t(m_presentExtent.height), 1 };
+        region.dstSubresource = subresourceLayers;
+        region.srcOffsets[0]  = region.dstOffsets[0];
+        region.srcOffsets[1]  = region.dstOffsets[1];
+        region.srcSubresource = region.dstSubresource;
+
+        const auto& lastImage = m_backBuffers[m_presentParams.BackBufferCount]->GetCommonTexture()->GetImage();
+
+        m_context->blitImage(
+          m_copyImage, VkComponentMapping{ },
+          lastImage,   VkComponentMapping{ },
+          region,      VK_FILTER_NEAREST);
+      }
+
       // Use an appropriate texture filter depending on whether
       // the back buffer size matches the swap image size
       m_context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,   m_vertShader);
       m_context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_fragShader);
 
       DxvkRenderTargets renderTargets;
-      renderTargets.color[0].view   = m_imageViews.at(imageIndex);
+      renderTargets.color[0].view   = partialPresent ? m_copyImageView : m_imageViews.at(imageIndex);
       renderTargets.color[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
       m_context->bindRenderTargets(renderTargets);
 
@@ -698,8 +733,8 @@ namespace dxvk {
       viewport.maxDepth = 1.0f;
 
       VkRect2D scissor;
-      scissor.offset.x      = 0;
-      scissor.offset.y      = 0;
+      scissor.offset.x      = m_dstRect.left;
+      scissor.offset.y      = m_dstRect.top;
       scissor.extent.width  = m_dstRect.right  - m_dstRect.left;
       scissor.extent.height = m_dstRect.bottom - m_dstRect.top;
 
@@ -707,8 +742,8 @@ namespace dxvk {
 
       // Use an appropriate texture filter depending on whether
       // the back buffer size matches the swap image size
-      bool fitSize = swapImage->info().extent.width  == info.imageExtent.width
-                  && swapImage->info().extent.height == info.imageExtent.height;
+      bool fitSize = m_srcRect.right  - m_srcRect.left == m_dstRect.right  - m_dstRect.left
+                  && m_srcRect.bottom - m_srcRect.top  == m_dstRect.bottom - m_dstRect.top;
 
       D3D9PresentInfo presentInfoConsts;
       presentInfoConsts.scale[0]  = float(m_srcRect.right  - m_srcRect.left) / float(swapImage->info().extent.width);
@@ -738,6 +773,19 @@ namespace dxvk {
 
       if (m_hud != nullptr)
         m_hud->render(m_context, info.format, info.imageExtent);
+
+      if (partialPresent) {
+        const VkImageSubresourceLayers subresourceLayers = {
+          VK_IMAGE_ASPECT_COLOR_BIT,
+          0, 0, 1 };
+
+        m_context->copyImage(
+          m_imageViews.at(imageIndex)->image(), subresourceLayers, VkOffset3D{ 0, 0, 0 },
+          m_copyImage, subresourceLayers, VkOffset3D{ 0, 0, 0 },
+          VkExtent3D{ m_presentExtent.width, m_presentExtent.height, 1 });
+      }
+
+      m_partialPresented = partialPresent;
 
       if (i + 1 >= SyncInterval)
         m_context->signal(m_frameLatencySignal, frameId);
@@ -848,7 +896,8 @@ namespace dxvk {
     imageInfo.extent      = { info.imageExtent.width, info.imageExtent.height, 1 };
     imageInfo.numLayers   = 1;
     imageInfo.mipLevels   = 1;
-    imageInfo.usage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    imageInfo.usage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                          | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     imageInfo.stages      = 0;
     imageInfo.access      = 0;
     imageInfo.tiling      = VK_IMAGE_TILING_OPTIMAL;
@@ -873,6 +922,45 @@ namespace dxvk {
       m_imageViews[i] = new DxvkImageView(
         m_device->vkd(), image, viewInfo);
     }
+
+
+    if (m_presentParams.SwapEffect == D3DSWAPEFFECT_COPY)
+      CreateCopyImage();
+  }
+
+
+  void D3D9SwapChainEx::CreateCopyImage() {
+    vk::PresenterInfo info = m_presenter->info();
+
+    DxvkImageCreateInfo imageInfo;
+    imageInfo.type        = VK_IMAGE_TYPE_2D;
+    imageInfo.format      = info.format.format;
+    imageInfo.flags       = 0;
+    imageInfo.sampleCount = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.extent      = { info.imageExtent.width, info.imageExtent.height, 1 };
+    imageInfo.numLayers   = 1;
+    imageInfo.mipLevels   = 1;
+    imageInfo.usage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                          | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+                          | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    imageInfo.stages      = 0;
+    imageInfo.access      = 0;
+    imageInfo.tiling      = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.layout      = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    DxvkImageViewCreateInfo viewInfo;
+    viewInfo.type         = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format       = info.format.format;
+    viewInfo.usage        = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    viewInfo.aspect       = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.minLevel     = 0;
+    viewInfo.numLevels    = 1;
+    viewInfo.minLayer     = 0;
+    viewInfo.numLayers    = 1;
+
+    m_copyImage = m_device->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    m_copyImageView = m_device->createImageView(m_copyImage, viewInfo);
   }
 
 
@@ -943,6 +1031,7 @@ namespace dxvk {
 
       m_resolveImageView = m_device->createImageView(m_resolveImage, viewInfo);
     }
+
 
     // Initialize the image so that we can use it. Clearing
     // to black prevents garbled output for the first frame.
@@ -1345,7 +1434,7 @@ namespace dxvk {
     return SetMonitorDisplayMode(GetDefaultMonitor(), &mode);
   }
 
-  bool    D3D9SwapChainEx::UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect) {
+  void    D3D9SwapChainEx::UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect) {
     if (pSourceRect == nullptr) {
       m_srcRect.top    = 0;
       m_srcRect.left   = 0;
@@ -1361,29 +1450,22 @@ namespace dxvk {
       UINT width, height;
       GetWindowClientSize(m_window, &width, &height);
 
-      dstRect.top    = 0;
-      dstRect.left   = 0;
-      dstRect.right  = LONG(width);
-      dstRect.bottom = LONG(height);
+      m_dstRect.top    = 0;
+      m_dstRect.left   = 0;
+      m_dstRect.right  = LONG(width);
+      m_dstRect.bottom = LONG(height);
     }
     else
-      dstRect = *pDestRect;
-
-    bool recreate = 
-       m_dstRect.left   != dstRect.left
-    || m_dstRect.top    != dstRect.top
-    || m_dstRect.right  != dstRect.right
-    || m_dstRect.bottom != dstRect.bottom;
-
-    m_dstRect = dstRect;
-
-    return recreate;
+      m_dstRect = *pDestRect;
   }
 
   VkExtent2D D3D9SwapChainEx::GetPresentExtent() {
+    UINT width, height;
+    GetWindowClientSize(m_window, &width, &height);
+
     return VkExtent2D {
-      std::max<uint32_t>(m_dstRect.right  - m_dstRect.left, 1u),
-      std::max<uint32_t>(m_dstRect.bottom - m_dstRect.top,  1u) };
+      std::max<uint32_t>(width,  1u),
+      std::max<uint32_t>(height, 1u) };
   }
 
   void    D3D9SwapChainEx::UpdateMonitorInfo() {

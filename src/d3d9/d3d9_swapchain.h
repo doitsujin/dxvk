@@ -118,6 +118,9 @@ namespace dxvk {
     Rc<DxvkImage>           m_resolveImage;
     Rc<DxvkImageView>       m_resolveImageView;
 
+    Rc<DxvkImage>           m_copyImage;
+    Rc<DxvkImageView>       m_copyImageView;
+
     Rc<hud::Hud>            m_hud;
 
     DxvkInputAssemblyState  m_iaState;
@@ -131,6 +134,7 @@ namespace dxvk {
     
     RECT                    m_srcRect;
     RECT                    m_dstRect;
+    VkExtent2D              m_presentExtent;
 
     DxvkSubmitStatus        m_presentStatus;
 
@@ -146,6 +150,8 @@ namespace dxvk {
 
     bool                    m_dialog;
     bool                    m_lastDialog = false;
+
+    bool                    m_partialPresented = false;
 
     HWND                    m_window   = nullptr;
     HMONITOR                m_monitor  = nullptr;
@@ -166,6 +172,8 @@ namespace dxvk {
     void CreatePresenter();
 
     void CreateRenderTargetViews();
+
+    void CreateCopyImage();
 
     void CreateBackBuffers(
             uint32_t            NumBackBuffers);
@@ -215,7 +223,7 @@ namespace dxvk {
 
     void    UpdateMonitorInfo();
 
-    bool    UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect);
+    void    UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect);
 
     VkExtent2D GetPresentExtent();
 
