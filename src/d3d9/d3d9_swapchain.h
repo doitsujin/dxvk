@@ -9,10 +9,12 @@
 #include "../util/sync/sync_signal.h"
 
 #include <vector>
+#include <list>
 
 namespace dxvk {
 
   class D3D9Surface;
+  class D3D9SwapChainEx;
 
   /**
    * \brief Gamma control point
@@ -23,6 +25,116 @@ namespace dxvk {
    */
   struct D3D9_VK_GAMMA_CP {
     uint16_t R, G, B, A;
+  };
+
+  class D3D9PresentationInfo {
+
+  public:
+
+    enum BindingIds : uint32_t {
+      Image = 0,
+      Gamma = 1,
+    };
+
+    D3D9PresentationInfo(D3D9DeviceEx* pDevice);
+
+    Rc<DxvkDevice>  device;
+    Rc<DxvkContext> context;
+    Rc<hud::Hud>    hud;
+
+    std::vector<Com<D3D9Surface, false>> backBuffers;
+
+    Rc<DxvkShader>          vertShader;
+    Rc<DxvkShader>          fragShader;
+
+    Rc<DxvkSampler>         samplerFitting;
+    Rc<DxvkSampler>         samplerScaling;
+
+    Rc<DxvkSampler>         gammaSampler;
+    Rc<DxvkImage>           gammaTexture;
+    Rc<DxvkImageView>       gammaTextureView;
+
+    Rc<DxvkImage>           resolveImage;
+    Rc<DxvkImageView>       resolveImageView;
+
+    DxvkInputAssemblyState  iaState = {};
+    DxvkRasterizerState     rsState = {};
+    DxvkMultisampleState    msState = {};
+    DxvkDepthStencilState   dsState = {};
+    DxvkLogicOpState        loState = {};
+    DxvkBlendMode           blendMode = {};
+
+    uint64_t                frameId           = D3D9DeviceEx::MaxFrameLatency;
+    uint32_t                frameLatencyCap   = 0;
+    Rc<sync::Fence>         frameLatencySignal;
+
+    bool                    dialog;
+  };
+
+  class D3D9Presenter : public RcObject {
+
+  public:
+
+    D3D9Presenter(
+      const D3D9PresentationInfo& Info,
+            D3D9SwapChainEx*      pParent,
+            HWND                  hWindow);
+
+    ~D3D9Presenter();
+
+    HRESULT Present(
+            UINT  SyncInterval,
+      const RECT* pSourceRect,
+      const RECT* pDestRect);
+
+    void SubmitPresent(const vk::PresenterSync& Sync, uint32_t FrameId);
+
+    void SynchronizePresent();
+
+    void RecreateSwapChain(BOOL Vsync);
+
+    void CreatePresenter();
+
+    void CreateRenderTargetViews();
+
+    void CreateCopyImage();
+
+    VkExtent2D GetPresentExtent();
+
+    HWND GetWindow() const { return m_window; }
+
+    void MarkDirty() { m_dirty = true; }
+
+  private:
+
+    void PresentImage(
+            UINT  SyncInterval,
+      const RECT* pSourceRect,
+      const RECT* pDestRect);
+
+    D3D9SwapChainEx*  m_parent;
+
+    HWND              m_window;
+
+    Rc<vk::Presenter> m_presenter;
+
+    VkExtent2D        m_presentExtent = {};
+
+    DxvkSubmitStatus  m_presentStatus;
+
+    bool              m_dirty = true;
+    bool              m_vsync = true;
+
+    bool              m_partialPresented = false;
+    bool              m_lastDialog = false;
+
+    Rc<DxvkImage>     m_copyImage;
+    Rc<DxvkImageView> m_copyImageView;
+
+    std::vector<Rc<DxvkImageView>> m_imageViews;
+
+    const D3D9PresentationInfo& m_info;
+
   };
 
   using D3D9SwapChainExBase = D3D9DeviceChild<IDirect3DSwapChain9Ex>;
@@ -85,11 +197,7 @@ namespace dxvk {
 
   private:
 
-    enum BindingIds : uint32_t {
-      Image = 0,
-      Gamma = 1,
-    };
-
+    friend class D3D9Presenter;
     
     struct WindowState {
       LONG style   = 0;
@@ -97,83 +205,19 @@ namespace dxvk {
       RECT rect    = { 0, 0, 0, 0 };
     };
 
+    D3D9PresentationInfo    m_info;
+
     D3DPRESENT_PARAMETERS   m_presentParams;
     D3DGAMMARAMP            m_ramp;
 
-    Rc<DxvkDevice>          m_device;
-    Rc<DxvkContext>         m_context;
+    Rc<D3D9Presenter>            m_mainPresenter;
+    std::list<Rc<D3D9Presenter>> m_presenters;
 
-    Rc<vk::Presenter>       m_presenter;
-
-    Rc<DxvkShader>          m_vertShader;
-    Rc<DxvkShader>          m_fragShader;
-
-    Rc<DxvkSampler>         m_samplerFitting;
-    Rc<DxvkSampler>         m_samplerScaling;
-
-    Rc<DxvkSampler>         m_gammaSampler;
-    Rc<DxvkImage>           m_gammaTexture;
-    Rc<DxvkImageView>       m_gammaTextureView;
-
-    Rc<DxvkImage>           m_resolveImage;
-    Rc<DxvkImageView>       m_resolveImageView;
-
-    Rc<DxvkImage>           m_copyImage;
-    Rc<DxvkImageView>       m_copyImageView;
-
-    Rc<hud::Hud>            m_hud;
-
-    DxvkInputAssemblyState  m_iaState;
-    DxvkRasterizerState     m_rsState;
-    DxvkMultisampleState    m_msState;
-    DxvkDepthStencilState   m_dsState;
-    DxvkLogicOpState        m_loState;
-    DxvkBlendMode           m_blendMode;
-
-    std::vector<Com<D3D9Surface, false>> m_backBuffers;
-    
-    RECT                    m_srcRect;
-    RECT                    m_dstRect;
-    VkExtent2D              m_presentExtent;
-
-    DxvkSubmitStatus        m_presentStatus;
-
-    std::vector<Rc<DxvkImageView>> m_imageViews;
-
-
-    uint64_t                m_frameId           = D3D9DeviceEx::MaxFrameLatency;
-    uint32_t                m_frameLatencyCap   = 0;
-    Rc<sync::Fence>         m_frameLatencySignal;
-
-    bool                    m_dirty    = true;
-    bool                    m_vsync    = true;
-
-    bool                    m_dialog;
-    bool                    m_lastDialog = false;
-
-    bool                    m_partialPresented = false;
-
-    HWND                    m_window   = nullptr;
     HMONITOR                m_monitor  = nullptr;
 
     MONITORINFOEXW          m_monInfo;
 
     WindowState             m_windowState;
-
-    void PresentImage(UINT PresentInterval);
-
-    void SubmitPresent(const vk::PresenterSync& Sync, uint32_t FrameId);
-
-    void SynchronizePresent();
-
-    void RecreateSwapChain(
-        BOOL                      Vsync);
-
-    void CreatePresenter();
-
-    void CreateRenderTargetViews();
-
-    void CreateCopyImage();
 
     void CreateBackBuffers(
             uint32_t            NumBackBuffers);
@@ -222,10 +266,6 @@ namespace dxvk {
     HRESULT RestoreDisplayMode(HMONITOR hMonitor);
 
     void    UpdateMonitorInfo();
-
-    void    UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect);
-
-    VkExtent2D GetPresentExtent();
 
     VkFullScreenExclusiveEXT PickFullscreenMode();
 

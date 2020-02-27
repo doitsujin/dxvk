@@ -103,6 +103,8 @@ namespace dxvk {
     constexpr static uint32_t NullStreamIdx = caps::MaxStreams;
 
     friend class D3D9SwapChainEx;
+    friend class D3D9Presenter;
+    friend class D3D9PresentationInfo;
   public:
 
     D3D9DeviceEx(
