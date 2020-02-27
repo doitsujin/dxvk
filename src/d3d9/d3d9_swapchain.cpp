@@ -705,8 +705,8 @@ namespace dxvk {
 
       // Use an appropriate texture filter depending on whether
       // the back buffer size matches the swap image size
-      bool fitSize = swapImage->info().extent.width  == info.imageExtent.width
-                  && swapImage->info().extent.height == info.imageExtent.height;
+      bool fitSize = m_dstRect.right  - m_dstRect.left == m_srcRect.right  - m_srcRect.left
+                  && m_dstRect.bottom - m_dstRect.top  == m_srcRect.bottom - m_srcRect.top;
 
       D3D9PresentInfo presentInfoConsts;
       presentInfoConsts.scale[0]  = float(m_srcRect.right  - m_srcRect.left) / float(swapImage->info().extent.width);
