@@ -696,8 +696,8 @@ namespace dxvk {
       viewport.maxDepth = 1.0f;
 
       VkRect2D scissor;
-      scissor.offset.x      = 0;
-      scissor.offset.y      = 0;
+      scissor.offset.x      = m_dstRect.left;
+      scissor.offset.y      = m_dstRect.top;
       scissor.extent.width  = m_dstRect.right  - m_dstRect.left;
       scissor.extent.height = m_dstRect.bottom - m_dstRect.top;
 
