@@ -808,6 +808,12 @@ namespace dxvk {
 
 
   void D3D9SwapChainEx::CreatePresenter() {
+    // Ensure that we can safely destroy the swap chain
+    m_device->waitForSubmission(&m_presentStatus);
+    m_device->waitForIdle();
+
+    m_presentStatus.result = VK_SUCCESS;
+
     DxvkDeviceQueue graphicsQueue = m_device->queues().graphics;
 
     vk::PresenterDevice presenterDevice;
