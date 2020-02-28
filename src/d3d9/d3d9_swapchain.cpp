@@ -331,10 +331,10 @@ namespace dxvk {
           UINT                iBackBuffer,
           D3DBACKBUFFER_TYPE  Type,
           IDirect3DSurface9** ppBackBuffer) {
-    if (ppBackBuffer == nullptr)
+    if (unlikely(ppBackBuffer == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (iBackBuffer >= m_presentParams.BackBufferCount) {
+    if (unlikely(iBackBuffer >= m_presentParams.BackBufferCount)) {
       Logger::err(str::format("D3D9: GetBackBuffer: Invalid back buffer index: ", iBackBuffer));
       return D3DERR_INVALIDCALL;
     }
