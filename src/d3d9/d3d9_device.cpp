@@ -2815,11 +2815,13 @@ namespace dxvk {
     if (needsUpdate)
       vbo.vertexBuffer = buffer;
 
-    needsUpdate |= vbo.offset != OffsetInBytes
-                || vbo.stride != Stride;
+    if (buffer != nullptr) {
+      needsUpdate |= vbo.offset != OffsetInBytes
+                  || vbo.stride != Stride;
 
-    vbo.offset = OffsetInBytes;
-    vbo.stride = Stride;
+      vbo.offset = OffsetInBytes;
+      vbo.stride = Stride;
+    }
 
     if (needsUpdate)
       BindVertexBuffer(StreamNumber, buffer, OffsetInBytes, Stride);
