@@ -3440,6 +3440,10 @@ namespace dxvk {
     if (!pPresentationParameters->Windowed)
       return D3DERR_INVALIDCALL;
 
+    // We can't make another swapchain if we are fullscreen.
+    if (!m_implicitSwapchain->GetPresentParams()->Windowed)
+      return D3DERR_INVALIDCALL;
+
     m_implicitSwapchain->Invalidate(pPresentationParameters->hDeviceWindow);
 
     try {

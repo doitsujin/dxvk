@@ -83,6 +83,8 @@ namespace dxvk {
 
     D3D9Surface* GetBackBuffer(UINT iBackBuffer);
 
+    const D3DPRESENT_PARAMETERS* GetPresentParams() const { return &m_presentParams; }
+
   private:
 
     enum BindingIds : uint32_t {
