@@ -3436,6 +3436,10 @@ namespace dxvk {
     if (ppSwapChain == nullptr || pPresentationParameters == nullptr)
       return D3DERR_INVALIDCALL;
 
+    // Additional fullscreen swapchains are forbidden.
+    if (!pPresentationParameters->Windowed)
+      return D3DERR_INVALIDCALL;
+
     m_implicitSwapchain->Invalidate(pPresentationParameters->hDeviceWindow);
 
     try {
