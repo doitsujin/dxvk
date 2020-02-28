@@ -161,12 +161,10 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetDisplayMode(UINT iSwapChain, D3DDISPLAYMODE* pMode) {
-    D3D9DeviceLock lock = LockDevice();
+    if (unlikely(iSwapChain != 0))
+      return D3DERR_INVALIDCALL;
 
-    if (auto* swapchain = GetInternalSwapchain(iSwapChain))
-      return swapchain->GetDisplayMode(pMode);
-
-    return D3DERR_INVALIDCALL;
+    return m_implicitSwapchain->GetDisplayMode(pMode);
   }
 
 
@@ -270,21 +268,24 @@ namespace dxvk {
 
     InitReturnPtr(pSwapChain);
 
-    auto* swapchain = GetInternalSwapchain(iSwapChain);
-
-    if (unlikely(swapchain == nullptr || pSwapChain == nullptr))
+    if (unlikely(pSwapChain == nullptr))
       return D3DERR_INVALIDCALL;
 
-    *pSwapChain = static_cast<IDirect3DSwapChain9*>(ref(swapchain));
+    // This only returns the implicit swapchain...
+
+    if (unlikely(iSwapChain != 0))
+      return D3DERR_INVALIDCALL;
+
+    *pSwapChain = static_cast<IDirect3DSwapChain9*>(m_implicitSwapchain.ref());
 
     return D3D_OK;
   }
 
 
   UINT    STDMETHODCALLTYPE D3D9DeviceEx::GetNumberOfSwapChains() {
-    D3D9DeviceLock lock = LockDevice();
+    // This only counts the implicit swapchain...
 
-    return UINT(m_swapchains.size());
+    return 1;
   }
 
 
@@ -325,31 +326,23 @@ namespace dxvk {
           UINT                iBackBuffer,
           D3DBACKBUFFER_TYPE  Type,
           IDirect3DSurface9** ppBackBuffer) {
-    D3D9DeviceLock lock = LockDevice();
+    if (unlikely(iSwapChain != 0))
+      return D3DERR_INVALIDCALL;
 
-    InitReturnPtr(ppBackBuffer);
-
-    if (auto* swapchain = GetInternalSwapchain(iSwapChain))
-      return swapchain->GetBackBuffer(iBackBuffer, Type, ppBackBuffer);
-
-    return D3DERR_INVALIDCALL;
+    return m_implicitSwapchain->GetBackBuffer(iBackBuffer, Type, ppBackBuffer);
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetRasterStatus(UINT iSwapChain, D3DRASTER_STATUS* pRasterStatus) {
-    D3D9DeviceLock lock = LockDevice();
+    if (unlikely(iSwapChain != 0))
+      return D3DERR_INVALIDCALL;
 
-    if (auto* swapchain = GetInternalSwapchain(iSwapChain))
-      return swapchain->GetRasterStatus(pRasterStatus);
-
-    return D3DERR_INVALIDCALL;
+    return m_implicitSwapchain->GetRasterStatus(pRasterStatus);
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetDialogBoxMode(BOOL bEnableDialogs) {
-    D3D9DeviceLock lock = LockDevice();
-
-    return GetInternalSwapchain(0)->SetDialogBoxMode(bEnableDialogs);
+    return m_implicitSwapchain->SetDialogBoxMode(bEnableDialogs);
   }
 
 
@@ -357,18 +350,18 @@ namespace dxvk {
           UINT          iSwapChain,
           DWORD         Flags,
     const D3DGAMMARAMP* pRamp) {
-    D3D9DeviceLock lock = LockDevice();
+    if (unlikely(iSwapChain != 0))
+      return;
 
-    if (auto* swapchain = GetInternalSwapchain(iSwapChain))
-      swapchain->SetGammaRamp(Flags, pRamp);
+    m_implicitSwapchain->SetGammaRamp(Flags, pRamp);
   }
 
 
   void    STDMETHODCALLTYPE D3D9DeviceEx::GetGammaRamp(UINT iSwapChain, D3DGAMMARAMP* pRamp) {
-    D3D9DeviceLock lock = LockDevice();
+    if (unlikely(iSwapChain != 0))
+      return;
 
-    if (auto* swapchain = GetInternalSwapchain(iSwapChain))
-      swapchain->GetGammaRamp(pRamp);
+    m_implicitSwapchain->GetGammaRamp(pRamp);
   }
 
 
@@ -818,12 +811,10 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetFrontBufferData(UINT iSwapChain, IDirect3DSurface9* pDestSurface) {
-    D3D9DeviceLock lock = LockDevice();
+    if (unlikely(iSwapChain != 0))
+      return D3DERR_INVALIDCALL;
 
-    if (auto* swapchain = GetInternalSwapchain(iSwapChain))
-      return swapchain->GetFrontBufferData(pDestSurface);
-
-    return D3DERR_INVALIDCALL;
+    return m_implicitSwapchain->GetFrontBufferData(pDestSurface);
   }
 
 
@@ -3215,12 +3206,10 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::WaitForVBlank(UINT iSwapChain) {
-    D3D9DeviceLock lock = LockDevice();
+    if (unlikely(iSwapChain != 0))
+      return D3DERR_INVALIDCALL;
 
-    if (auto* swapchain = GetInternalSwapchain(iSwapChain))
-      return swapchain->WaitForVBlank();
-
-    return D3DERR_INVALIDCALL;    
+    return m_implicitSwapchain->WaitForVBlank();
   }
 
 
@@ -3268,9 +3257,7 @@ namespace dxvk {
           HWND hDestWindowOverride,
     const RGNDATA* pDirtyRegion,
           DWORD dwFlags) {
-    D3D9DeviceLock lock = LockDevice();
-    
-    return GetInternalSwapchain(0)->Present(
+    return m_implicitSwapchain->Present(
       pSourceRect,
       pDestRect,
       hDestWindowOverride,
@@ -3429,12 +3416,10 @@ namespace dxvk {
           UINT                iSwapChain,
           D3DDISPLAYMODEEX*   pMode,
           D3DDISPLAYROTATION* pRotation) {
-    D3D9DeviceLock lock = LockDevice();
+    if (unlikely(iSwapChain != 0))
+      return D3DERR_INVALIDCALL;
 
-    if (auto* swapchain = GetInternalSwapchain(iSwapChain))
-      return swapchain->GetDisplayModeEx(pMode, pRotation);
-
-    return D3DERR_INVALIDCALL;
+    return m_implicitSwapchain->GetDisplayModeEx(pMode, pRotation);
   }
 
 
@@ -3449,14 +3434,12 @@ namespace dxvk {
     if (ppSwapChain == nullptr || pPresentationParameters == nullptr)
       return D3DERR_INVALIDCALL;
 
-    for (uint32_t i = 0; i < m_swapchains.size(); i++)
-      GetInternalSwapchain(i)->Invalidate(pPresentationParameters->hDeviceWindow);
+    m_implicitSwapchain->Invalidate(pPresentationParameters->hDeviceWindow);
 
     try {
       auto* swapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode);
       *ppSwapChain = ref(swapchain);
 
-      m_swapchains.push_back(swapchain);
       swapchain->AddRefPrivate();
     }
     catch (const DxvkError & e) {
@@ -3729,14 +3712,6 @@ namespace dxvk {
       result.mapPtr = result.slice.mapPtr(0);
       return result;
     }
-  }
-
-
-  D3D9SwapChainEx* D3D9DeviceEx::GetInternalSwapchain(UINT index) {
-    if (unlikely(index >= m_swapchains.size()))
-      return nullptr;
-
-    return m_swapchains[index].ptr();
   }
 
 
@@ -6646,10 +6621,10 @@ namespace dxvk {
       }
     }
 
-    if (auto* implicitSwapchain = GetInternalSwapchain(0))
-      implicitSwapchain->Reset(pPresentationParameters, pFullscreenDisplayMode);
+    if (m_implicitSwapchain != nullptr)
+      m_implicitSwapchain->Reset(pPresentationParameters, pFullscreenDisplayMode);
     else
-      m_swapchains.emplace_back(new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode));
+      m_implicitSwapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode);
 
     if (pPresentationParameters->EnableAutoDepthStencil) {
       D3D9_COMMON_TEXTURE_DESC desc;
@@ -6673,7 +6648,7 @@ namespace dxvk {
       SetDepthStencilSurface(m_autoDepthStencil.ptr());
     }
 
-    SetRenderTarget(0, GetInternalSwapchain(0)->GetBackBuffer(0));
+    SetRenderTarget(0, m_implicitSwapchain->GetBackBuffer(0));
 
     // Force this if we end up binding the same RT to make scissor change go into effect.
     BindViewportAndScissor();

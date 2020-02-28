@@ -89,7 +89,7 @@ namespace dxvk {
           HWND     hDestWindowOverride,
     const RGNDATA* pDirtyRegion,
           DWORD    dwFlags) {
-    auto lock = m_parent->LockDevice();
+    D3D9DeviceLock lock = m_parent->LockDevice();
 
     uint32_t presentInterval = m_presentParams.PresentationInterval;
 
@@ -152,7 +152,7 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetFrontBufferData(IDirect3DSurface9* pDestSurface) {
-    auto lock = m_parent->LockDevice();
+    D3D9DeviceLock lock = m_parent->LockDevice();
 
     // This function can do absolutely everything!
     // Copies the front buffer between formats with an implicit resolve.
@@ -331,6 +331,9 @@ namespace dxvk {
           UINT                iBackBuffer,
           D3DBACKBUFFER_TYPE  Type,
           IDirect3DSurface9** ppBackBuffer) {
+    // Could be doing a device reset...
+    D3D9DeviceLock lock = m_parent->LockDevice();
+
     if (unlikely(ppBackBuffer == nullptr))
       return D3DERR_INVALIDCALL;
 
@@ -454,7 +457,7 @@ namespace dxvk {
   void    D3D9SwapChainEx::Reset(
           D3DPRESENT_PARAMETERS* pPresentParams,
           D3DDISPLAYMODEEX*      pFullscreenDisplayMode) {
-    auto lock = m_parent->LockDevice();
+    D3D9DeviceLock lock = m_parent->LockDevice();
 
     this->SynchronizePresent();
     this->NormalizePresentParameters(pPresentParams);
@@ -516,6 +519,8 @@ namespace dxvk {
   void    D3D9SwapChainEx::SetGammaRamp(
             DWORD         Flags,
       const D3DGAMMARAMP* pRamp) {
+    D3D9DeviceLock lock = m_parent->LockDevice();
+
     if (unlikely(pRamp == nullptr))
       return;
 
@@ -546,6 +551,8 @@ namespace dxvk {
 
 
   void    D3D9SwapChainEx::GetGammaRamp(D3DGAMMARAMP* pRamp) {
+    D3D9DeviceLock lock = m_parent->LockDevice();
+
     if (likely(pRamp != nullptr))
       *pRamp = m_ramp;
   }
@@ -565,6 +572,8 @@ namespace dxvk {
 
 
   HRESULT D3D9SwapChainEx::SetDialogBoxMode(bool bEnableDialogs) {
+    D3D9DeviceLock lock = m_parent->LockDevice();
+
     // https://docs.microsoft.com/en-us/windows/win32/api/d3d9/nf-d3d9-idirect3ddevice9-setdialogboxmode
     // The MSDN documentation says this will error out under many weird conditions.
     // However it doesn't appear to error at all in any of my tests of these

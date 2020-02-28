@@ -1002,9 +1002,7 @@ namespace dxvk {
 
     Com<D3D9Surface, false>         m_autoDepthStencil;
 
-    std::vector<
-      Com<D3D9SwapChainEx,
-      false>>                       m_swapchains;
+    Com<D3D9SwapChainEx, false>     m_implicitSwapchain;
 
     std::unordered_map<
       D3D9SamplerKey,
@@ -1057,8 +1055,6 @@ namespace dxvk {
     void DetermineConstantLayouts(bool canSWVP);
 
     D3D9UPBufferSlice AllocUpBuffer(VkDeviceSize size);
-
-    D3D9SwapChainEx* GetInternalSwapchain(UINT index);
 
     bool ShouldRecord();
 
