@@ -3159,7 +3159,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateQuery(D3DQUERYTYPE Type, IDirect3DQuery9** ppQuery) {
     InitReturnPtr(ppQuery);
 
-    HRESULT hr = D3D9Query::QuerySupported(Type);
+    HRESULT hr = D3D9Query::QuerySupported(this, Type);
 
     if (ppQuery == nullptr || hr != D3D_OK)
       return hr;
