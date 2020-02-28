@@ -68,8 +68,6 @@ namespace dxvk {
     DirtyFFPixelData,
     DirtyProgVertexShader,
     DirtySharedPixelShaderData,
-    UpDirtiedVertices,
-    UpDirtiedIndices,
     ValidSampleMask,
     DirtyDepthBounds,
     DirtyPointScale,
@@ -837,7 +835,7 @@ namespace dxvk {
     
     uint32_t GetInstanceCount() const;
 
-    void PrepareDraw(D3DPRIMITIVETYPE PrimitiveType, bool up = false);
+    void PrepareDraw(D3DPRIMITIVETYPE PrimitiveType);
 
     template <DxsoProgramType ShaderStage>
     void BindShader(

@@ -2302,7 +2302,7 @@ namespace dxvk {
           UINT             VertexStreamZeroStride) {
     D3D9DeviceLock lock = LockDevice();
 
-    PrepareDraw(PrimitiveType, true);
+    PrepareDraw(PrimitiveType);
 
     auto drawInfo = GenerateDrawInfo(PrimitiveType, PrimitiveCount, 0);
 
@@ -2326,9 +2326,12 @@ namespace dxvk {
       ctx->draw(
         drawInfo.vertexCount, drawInfo.instanceCount,
         0, 0);
+      ctx->bindVertexBuffer(0, DxvkBufferSlice(), 0);
     });
 
-    m_flags.set(D3D9DeviceFlag::UpDirtiedVertices);
+    m_state.vertexBuffers[0].vertexBuffer = nullptr;
+    m_state.vertexBuffers[0].offset       = 0;
+    m_state.vertexBuffers[0].stride       = 0;
 
     return D3D_OK;
   }
@@ -2345,7 +2348,7 @@ namespace dxvk {
           UINT             VertexStreamZeroStride) {
     D3D9DeviceLock lock = LockDevice();
 
-    PrepareDraw(PrimitiveType, true);
+    PrepareDraw(PrimitiveType);
 
     auto drawInfo = GenerateDrawInfo(PrimitiveType, PrimitiveCount, 0);
 
@@ -2382,10 +2385,15 @@ namespace dxvk {
         drawInfo.vertexCount, drawInfo.instanceCount,
         0,
         0, 0);
+      ctx->bindVertexBuffer(0, DxvkBufferSlice(), 0);
+      ctx->bindIndexBuffer(DxvkBufferSlice(), VK_INDEX_TYPE_UINT32);
     });
 
-    m_flags.set(D3D9DeviceFlag::UpDirtiedVertices);
-    m_flags.set(D3D9DeviceFlag::UpDirtiedIndices);
+    m_state.vertexBuffers[0].vertexBuffer = nullptr;
+    m_state.vertexBuffers[0].offset       = 0;
+    m_state.vertexBuffers[0].stride       = 0;
+
+    m_state.indices = nullptr;
 
     return D3D_OK;
   }
@@ -2415,7 +2423,7 @@ namespace dxvk {
     D3D9CommonBuffer* dst  = static_cast<D3D9VertexBuffer*>(pDestBuffer)->GetCommonBuffer();
     D3D9VertexDecl*   decl = static_cast<D3D9VertexDecl*>  (pVertexDecl);
 
-    PrepareDraw(D3DPT_FORCE_DWORD, false);
+    PrepareDraw(D3DPT_FORCE_DWORD);
 
     if (decl == nullptr) {
       DWORD FVF = dst->Desc()->FVF;
@@ -5425,7 +5433,7 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::PrepareDraw(D3DPRIMITIVETYPE PrimitiveType, bool up) {
+  void D3D9DeviceEx::PrepareDraw(D3DPRIMITIVETYPE PrimitiveType) {
     if (unlikely(m_activeHazards != 0)) {
       EmitCs([](DxvkContext* ctx) {
         ctx->emitRenderTargetReadbackBarrier();
@@ -5487,20 +5495,6 @@ namespace dxvk {
       UpdatePointMode<true>();
     else if (m_lastPointMode != 0)
       UpdatePointMode<false>();
-
-    if (!up && m_flags.test(D3D9DeviceFlag::UpDirtiedVertices)) {
-      m_flags.clr(D3D9DeviceFlag::UpDirtiedVertices);
-      if (m_state.vertexBuffers[0].vertexBuffer != nullptr)
-        BindVertexBuffer(0,
-          m_state.vertexBuffers[0].vertexBuffer.ptr(),
-          m_state.vertexBuffers[0].offset,
-          m_state.vertexBuffers[0].stride);
-    }
-
-    if (!up && m_flags.test(D3D9DeviceFlag::UpDirtiedIndices)) {
-      m_flags.clr(D3D9DeviceFlag::UpDirtiedIndices);
-      BindIndices();
-    }
 
     if (likely(UseProgrammableVS())) {
       if (unlikely(m_flags.test(D3D9DeviceFlag::DirtyProgVertexShader))) {
