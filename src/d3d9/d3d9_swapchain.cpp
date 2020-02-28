@@ -331,8 +331,6 @@ namespace dxvk {
           UINT                iBackBuffer,
           D3DBACKBUFFER_TYPE  Type,
           IDirect3DSurface9** ppBackBuffer) {
-    InitReturnPtr(ppBackBuffer);
-
     if (ppBackBuffer == nullptr)
       return D3DERR_INVALIDCALL;
 
