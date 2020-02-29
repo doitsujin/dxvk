@@ -14,6 +14,12 @@ namespace dxvk {
   }
 
 
+  void D3D9FormatHelper::Flush() {
+    if (m_transferCommands != 0)
+      FlushInternal();
+  }
+
+
   void D3D9FormatHelper::ConvertFormat(
           D3D9_CONVERSION_FORMAT_INFO   conversionFormat,
     const Rc<DxvkImage>&                dstImage,
@@ -67,7 +73,7 @@ namespace dxvk {
       (imageExtent.height / 8) + (imageExtent.height % 8),
       1);
     
-    m_context->flushCommandList();
+    m_transferCommands += 1;
   }
 
 
@@ -112,7 +118,7 @@ namespace dxvk {
     // Reset the spec constants used...
     m_context->setSpecConstant(VK_PIPELINE_BIND_POINT_COMPUTE, 0, 0);
     
-    m_context->flushCommandList();
+    m_transferCommands += 1;
   }
 
 
@@ -133,6 +139,13 @@ namespace dxvk {
       VK_SHADER_STAGE_COMPUTE_BIT,
       resourceSlots.size(), resourceSlots.data(),
       { 0u, 0u, 0u, sizeof(VkExtent2D) }, code);
+  }
+
+
+  void D3D9FormatHelper::FlushInternal() {
+    m_context->flushCommandList();
+    
+    m_transferCommands = 0;
   }
 
 }

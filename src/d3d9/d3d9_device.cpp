@@ -4682,6 +4682,7 @@ namespace dxvk {
     D3D9DeviceLock lock = LockDevice();
 
     m_initializer->Flush();
+    m_converter->Flush();
 
     if (m_csIsBusy || !m_csChunk->empty()) {
       // Add commands to flush the threaded
