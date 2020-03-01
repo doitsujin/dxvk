@@ -129,6 +129,9 @@ namespace dxvk {
       return E_FAIL;
     }
     
+    DEVMODEW currentMode = { };
+    currentMode.dmSize   = sizeof(currentMode);
+    
     DEVMODEW devMode = { };
     devMode.dmSize       = sizeof(devMode);
     devMode.dmFields     = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL;
@@ -140,6 +143,25 @@ namespace dxvk {
       devMode.dmFields |= DM_DISPLAYFREQUENCY;
       devMode.dmDisplayFrequency = pMode->RefreshRate.Numerator
                                  / pMode->RefreshRate.Denominator;
+    }
+    
+    /* Compare new mode with current and change if necessary */
+    if (EnumDisplaySettingsW(monInfo.szDevice, ENUM_CURRENT_SETTINGS, &currentMode)) {
+      if (currentMode.dmPelsWidth == devMode.dmPelsWidth &&
+        currentMode.dmPelsHeight == devMode.dmPelsHeight &&
+        currentMode.dmBitsPerPel == devMode.dmBitsPerPel &&
+        (currentMode.dmDisplayFrequency == devMode.dmDisplayFrequency ||
+        !(devMode.dmFields & DM_DISPLAYFREQUENCY)) &&
+        (currentMode.dmDisplayFlags == devMode.dmDisplayFlags))
+      {
+        Logger::info(str::format("DXGI: Skipping redundant mode setting call: ",
+          devMode.dmPelsWidth, "x", devMode.dmPelsHeight, "@",
+          devMode.dmDisplayFrequency));
+        return S_OK;
+      }
+    
+    } else {
+      Logger::err("DXGI: Failed to get current display mode");
     }
     
     Logger::info(str::format("DXGI: Setting display mode: ",
