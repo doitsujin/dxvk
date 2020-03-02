@@ -27,11 +27,13 @@ namespace dxvk {
     const Rc<DxvkBuffer>&               srcBuffer) {
     switch (conversionFormat.FormatType) {
       case D3D9ConversionFormat_YUY2:
-      case D3D9ConversionFormat_UYVY:
-        ConvertVideoFormat(conversionFormat, dstImage, dstSubresource, srcBuffer);
+      case D3D9ConversionFormat_UYVY: {
+        uint32_t specConstant = conversionFormat.FormatType == D3D9ConversionFormat_UYVY ? 1 : 0;
+        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, VK_FORMAT_R32_UINT, specConstant);
         break;
+      }
       case D3D9ConversionFormat_L6V5U5:
-        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, VK_FORMAT_R16_UINT);
+        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, VK_FORMAT_R16_UINT, 0);
         break;
       default:
         Logger::warn("Unimplemented format conversion");
@@ -44,44 +46,8 @@ namespace dxvk {
     const Rc<DxvkImage>&                dstImage,
           VkImageSubresourceLayers      dstSubresource,
     const Rc<DxvkBuffer>&               srcBuffer,
-          VkFormat                      bufferFormat) {
-    DxvkImageViewCreateInfo imageViewInfo;
-    imageViewInfo.type      = VK_IMAGE_VIEW_TYPE_2D;
-    imageViewInfo.format    = dstImage->info().format;
-    imageViewInfo.usage     = VK_IMAGE_USAGE_STORAGE_BIT;
-    imageViewInfo.aspect    = dstSubresource.aspectMask;
-    imageViewInfo.minLevel  = dstSubresource.mipLevel;
-    imageViewInfo.numLevels = 1;
-    imageViewInfo.minLayer  = dstSubresource.baseArrayLayer;
-    imageViewInfo.numLayers = dstSubresource.layerCount;
-    auto tmpImageView = m_device->createImageView(dstImage, imageViewInfo);
-
-    VkExtent3D imageExtent = dstImage->mipLevelExtent(dstSubresource.mipLevel);
-
-    DxvkBufferViewCreateInfo bufferViewInfo;
-    bufferViewInfo.format      = bufferFormat;
-    bufferViewInfo.rangeOffset = 0;
-    bufferViewInfo.rangeLength = srcBuffer->info().size;
-    auto tmpBufferView = m_device->createBufferView(srcBuffer, bufferViewInfo);
-
-    m_context->bindResourceView(BindingIds::Image,  tmpImageView, nullptr);
-    m_context->bindResourceView(BindingIds::Buffer, nullptr,     tmpBufferView);
-    m_context->bindShader(VK_SHADER_STAGE_COMPUTE_BIT, m_shaders[videoFormat.FormatType]);
-    m_context->pushConstants(0, sizeof(VkExtent2D), &imageExtent);
-    m_context->dispatch(
-      (imageExtent.width  / 8) + (imageExtent.width  % 8),
-      (imageExtent.height / 8) + (imageExtent.height % 8),
-      1);
-    
-    m_transferCommands += 1;
-  }
-
-
-  void D3D9FormatHelper::ConvertVideoFormat(
-          D3D9_CONVERSION_FORMAT_INFO   videoFormat,
-    const Rc<DxvkImage>&                dstImage,
-          VkImageSubresourceLayers      dstSubresource,
-    const Rc<DxvkBuffer>&               srcBuffer) {
+          VkFormat                      bufferFormat,
+          uint32_t                      specConstantValue) {
     DxvkImageViewCreateInfo imageViewInfo;
     imageViewInfo.type      = VK_IMAGE_VIEW_TYPE_2D;
     imageViewInfo.format    = dstImage->info().format;
@@ -99,12 +65,13 @@ namespace dxvk {
                               1 };
 
     DxvkBufferViewCreateInfo bufferViewInfo;
-    bufferViewInfo.format      = VK_FORMAT_R32_UINT;
+    bufferViewInfo.format      = bufferFormat;
     bufferViewInfo.rangeOffset = 0;
     bufferViewInfo.rangeLength = srcBuffer->info().size;
     auto tmpBufferView = m_device->createBufferView(srcBuffer, bufferViewInfo);
 
-    m_context->setSpecConstant(VK_PIPELINE_BIND_POINT_COMPUTE, 0, videoFormat.FormatType == D3D9ConversionFormat_UYVY);
+    if (specConstantValue)
+      m_context->setSpecConstant(VK_PIPELINE_BIND_POINT_COMPUTE, 0, specConstantValue);
 
     m_context->bindResourceView(BindingIds::Image,  tmpImageView, nullptr);
     m_context->bindResourceView(BindingIds::Buffer, nullptr,     tmpBufferView);
@@ -116,7 +83,8 @@ namespace dxvk {
       1);
 
     // Reset the spec constants used...
-    m_context->setSpecConstant(VK_PIPELINE_BIND_POINT_COMPUTE, 0, 0);
+    if (specConstantValue)
+      m_context->setSpecConstant(VK_PIPELINE_BIND_POINT_COMPUTE, 0, 0);
     
     m_transferCommands += 1;
   }

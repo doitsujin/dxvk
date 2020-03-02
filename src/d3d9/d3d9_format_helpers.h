@@ -28,13 +28,8 @@ namespace dxvk {
       const Rc<DxvkImage>&                dstImage,
             VkImageSubresourceLayers      dstSubresource,
       const Rc<DxvkBuffer>&               srcBuffer,
-            VkFormat                      bufferFormat);
-
-    void ConvertVideoFormat(
-            D3D9_CONVERSION_FORMAT_INFO   videoFormat,
-      const Rc<DxvkImage>&                dstImage,
-            VkImageSubresourceLayers      dstSubresource,
-      const Rc<DxvkBuffer>&               srcBuffer);
+            VkFormat                      bufferFormat,
+            uint32_t                      specConstantValue);
 
     enum BindingIds : uint32_t {
       Image  = 0,
