@@ -9,6 +9,7 @@
 #include <list>
 #include <mutex>
 #include <new>
+#include <type_traits>
 
 namespace dxvk {
 
@@ -17,7 +18,7 @@ namespace dxvk {
 
   public:
 
-    struct alignas(16) SubresourceData { uint8_t data[sizeof(SubresourceType)]; };
+    using SubresourceData = std::aligned_storage_t<sizeof(SubresourceType), alignof(SubresourceType)>;
 
     D3D9BaseTexture(
             D3D9DeviceEx*             pDevice,
