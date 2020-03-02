@@ -5,11 +5,12 @@
 #include "d3d9_volume.h"
 #include "d3d9_util.h"
 
+#include "../util/util_deferred_fixed_vector.h"
+
 #include <vector>
 #include <list>
 #include <mutex>
 #include <new>
-#include <type_traits>
 
 namespace dxvk {
 
@@ -18,8 +19,6 @@ namespace dxvk {
 
   public:
 
-    using SubresourceData = std::aligned_storage_t<sizeof(SubresourceType), alignof(SubresourceType)>;
-
     D3D9BaseTexture(
             D3D9DeviceEx*             pDevice,
       const D3D9_COMMON_TEXTURE_DESC* pDesc,
@@ -27,31 +26,22 @@ namespace dxvk {
       : D3D9Resource<Base...> ( pDevice )
       , m_texture             ( pDevice, pDesc, ResourceType )
       , m_lod                 ( 0 )
-      , m_autogenFilter       ( D3DTEXF_LINEAR ) {
-      const uint32_t arraySlices = m_texture.Desc()->ArraySize;
-      const uint32_t mipLevels   = m_texture.Desc()->MipLevels;
-
-      m_subresources.resize(arraySlices * mipLevels);
-
-      for (uint32_t i = 0; i < arraySlices; i++) {
-        for (uint32_t j = 0; j < mipLevels; j++) {
+      , m_autogenFilter       ( D3DTEXF_LINEAR )
+      , m_subresources        ( m_texture.Desc()->ArraySize * m_texture.Desc()->MipLevels) {
+      // These subresources classes are non-copyable and we want to allocate
+      // a large amount of them, so we use the deferred fixed size vector
+      // here to avoid potentially doing 90 individual allocations
+      for (uint32_t i = 0; i < m_texture.Desc()->ArraySize; i++) {
+        for (uint32_t j = 0; j < m_texture.Desc()->MipLevels; j++) {
           const uint32_t subresource = m_texture.CalcSubresource(i, j);
 
-          SubresourceType* subObj = this->GetSubresource(subresource);
-
-          new (subObj) SubresourceType(
+          m_subresources.construct(
+            subresource,
             pDevice,
             &m_texture,
             i, j,
             this);
         }
-      }
-    }
-
-    ~D3D9BaseTexture() {
-      for (uint32_t i = 0; i < m_subresources.size(); i++) {
-        SubresourceType* subObj = this->GetSubresource(i);
-        subObj->~SubresourceType();
       }
     }
 
@@ -96,7 +86,7 @@ namespace dxvk {
       if (unlikely(Subresource >= m_subresources.size()))
         return nullptr;
 
-      return reinterpret_cast<SubresourceType*>(&m_subresources[Subresource]);
+      return &m_subresources[Subresource];
     }
 
   protected:
@@ -106,7 +96,7 @@ namespace dxvk {
     DWORD m_lod;
     D3DTEXTUREFILTERTYPE m_autogenFilter;
 
-    std::vector<SubresourceData> m_subresources;
+    deferred_fixed_vector<SubresourceType> m_subresources;
 
   };
 
