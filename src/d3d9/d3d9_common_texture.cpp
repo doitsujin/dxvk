@@ -153,7 +153,7 @@ namespace dxvk {
                 | VK_ACCESS_TRANSFER_WRITE_BIT;
 
     if (m_mapping.ConversionFormatInfo.FormatType != D3D9ConversionFormat_None) {
-      info.usage  |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+      info.usage  |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
       info.stages |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
     }
 

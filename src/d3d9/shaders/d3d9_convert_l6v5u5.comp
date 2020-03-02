@@ -1,5 +1,4 @@
 #version 450
-#extension GL_EXT_shader_16bit_storage : enable
 
 layout(
   local_size_x = 8,
@@ -9,10 +8,7 @@ layout(
 layout(binding = 0)
 writeonly uniform image2D dst;
 
-layout(binding = 1)
-readonly buffer _buffer_t {
-  uint16_t data[];
-} src;
+layout(binding = 1) uniform usamplerBuffer src;
 
 layout(push_constant)
 uniform u_info_t {
@@ -40,7 +36,7 @@ void main() {
     uint offset = thread_id.x
                 + thread_id.y * u_info.extent.x;
 
-    uint value = uint(src.data[offset]);
+    uint value = texelFetch(src, int(offset)).r;
 
     // Sign-extend magic!
     int u5  = bitfieldExtract(int (value), 0,  5);

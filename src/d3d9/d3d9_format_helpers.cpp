@@ -131,8 +131,8 @@ namespace dxvk {
 
   Rc<DxvkShader> D3D9FormatHelper::InitShader(SpirvCodeBuffer code) {
     const std::array<DxvkResourceSlot, 2> resourceSlots = { {
-      { BindingIds::Image,  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,  VK_IMAGE_VIEW_TYPE_2D },
-      { BindingIds::Buffer, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_IMAGE_VIEW_TYPE_1D },
+      { BindingIds::Image,  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,        VK_IMAGE_VIEW_TYPE_2D },
+      { BindingIds::Buffer, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, VK_IMAGE_VIEW_TYPE_1D },
     } };
 
     return m_device->createShader(
