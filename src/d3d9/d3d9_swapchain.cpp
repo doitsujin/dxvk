@@ -32,8 +32,6 @@ namespace dxvk {
     , m_frameLatencyCap  (pDevice->GetOptions()->maxFrameLatency)
     , m_frameLatencySignal(new sync::Fence(m_frameId))
     , m_dialog            (pDevice->GetOptions()->enableDialogMode) {
-    UpdateMonitorInfo();
-
     this->NormalizePresentParameters(pPresentParams);
     m_presentParams = *pPresentParams;
     m_window = m_presentParams.hDeviceWindow;
@@ -437,7 +435,7 @@ namespace dxvk {
       DEVMODEW devMode = DEVMODEW();
       devMode.dmSize = sizeof(devMode);
 
-      if (!::EnumDisplaySettingsW(m_monInfo.szDevice, ENUM_CURRENT_SETTINGS, &devMode)) {
+      if (!GetMonitorDisplayMode(m_monitor, ENUM_CURRENT_SETTINGS, &devMode)) {
         Logger::err("D3D9SwapChainEx::GetDisplayModeEx: Failed to enum display settings");
         return D3DERR_INVALIDCALL;
       }
@@ -1277,7 +1275,6 @@ namespace dxvk {
       SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
     
     m_monitor = GetDefaultMonitor();
-
     return D3D_OK;
   }
   
@@ -1318,7 +1315,9 @@ namespace dxvk {
     const D3DDISPLAYMODEEX*      pFullscreenDisplayMode) {
     D3DDISPLAYMODEEX mode;
 
-    if (pFullscreenDisplayMode == nullptr) {
+    if (pFullscreenDisplayMode) {
+      mode = *pFullscreenDisplayMode;
+    } else {
       mode.Width            = pPresentParams->BackBufferWidth;
       mode.Height           = pPresentParams->BackBufferHeight;
       mode.Format           = pPresentParams->BackBufferFormat;
@@ -1327,7 +1326,21 @@ namespace dxvk {
       mode.Size             = sizeof(D3DDISPLAYMODEEX);
     }
 
-    return SetMonitorDisplayMode(GetDefaultMonitor(), pFullscreenDisplayMode == nullptr ? &mode : pFullscreenDisplayMode);
+    DEVMODEW devMode = { };
+    devMode.dmSize       = sizeof(devMode);
+    devMode.dmFields     = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL;
+    devMode.dmPelsWidth  = mode.Width;
+    devMode.dmPelsHeight = mode.Height;
+    devMode.dmBitsPerPel = GetMonitorFormatBpp(EnumerateFormat(mode.Format));
+    
+    if (mode.RefreshRate != 0)  {
+      devMode.dmFields |= DM_DISPLAYFREQUENCY;
+      devMode.dmDisplayFrequency = mode.RefreshRate;
+    }
+    
+    return SetMonitorDisplayMode(GetDefaultMonitor(), &devMode)
+      ? D3D_OK
+      : D3DERR_NOTAVAILABLE;
   }
   
   
@@ -1335,25 +1348,9 @@ namespace dxvk {
     if (hMonitor == nullptr)
       return D3DERR_INVALIDCALL;
     
-    DEVMODEW devMode = { };
-    devMode.dmSize = sizeof(devMode);
-
-    if (!::EnumDisplaySettingsW(m_monInfo.szDevice, ENUM_REGISTRY_SETTINGS, &devMode))
-      return D3DERR_INVALIDCALL;
-    
-    Logger::info(str::format("D3D9: Setting display mode: ",
-      devMode.dmPelsWidth, "x", devMode.dmPelsHeight, "@",
-      devMode.dmDisplayFrequency));
-    
-    D3DDISPLAYMODEEX mode;
-    mode.Width            = devMode.dmPelsWidth;
-    mode.Height           = devMode.dmPelsHeight;
-    mode.RefreshRate      = devMode.dmDisplayFrequency;
-    mode.Format           = D3DFMT_X8R8G8B8; // Fix me
-    mode.ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
-    mode.Size             = sizeof(D3DDISPLAYMODEEX);
-
-    return SetMonitorDisplayMode(GetDefaultMonitor(), &mode);
+    return RestoreMonitorDisplayMode(hMonitor)
+      ? D3D_OK
+      : D3DERR_NOTAVAILABLE;
   }
 
   bool    D3D9SwapChainEx::UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect) {
@@ -1395,13 +1392,6 @@ namespace dxvk {
     return VkExtent2D {
       std::max<uint32_t>(m_dstRect.right  - m_dstRect.left, 1u),
       std::max<uint32_t>(m_dstRect.bottom - m_dstRect.top,  1u) };
-  }
-
-  void    D3D9SwapChainEx::UpdateMonitorInfo() {
-    m_monInfo.cbSize = sizeof(m_monInfo);
-
-    if (!::GetMonitorInfoW(GetDefaultMonitor(), reinterpret_cast<MONITORINFO*>(&m_monInfo)))
-      throw DxvkError("D3D9SwapChainEx::GetDisplayModeEx: Failed to query monitor info");
   }
 
 
