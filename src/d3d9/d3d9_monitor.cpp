@@ -60,11 +60,6 @@ namespace dxvk {
   }
 
 
-  HMONITOR GetDefaultMonitor() {
-    return ::MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY);
-  }
-
-
   HRESULT SetMonitorDisplayMode(
           HMONITOR                hMonitor,
     const D3DDISPLAYMODEEX*       pMode) {
@@ -104,58 +99,6 @@ namespace dxvk {
     }
     
     return status == DISP_CHANGE_SUCCESSFUL ? D3D_OK : D3DERR_NOTAVAILABLE;
-  }
-
-
-  void GetWindowClientSize(
-          HWND                    hWnd,
-          UINT*                   pWidth,
-          UINT*                   pHeight) {
-    RECT rect = { };
-    ::GetClientRect(hWnd, &rect);
-    
-    if (pWidth)
-      *pWidth = rect.right - rect.left;
-    
-    if (pHeight)
-      *pHeight = rect.bottom - rect.top;
-  }
-
-
-  void GetMonitorClientSize(
-          HMONITOR                hMonitor,
-          UINT*                   pWidth,
-          UINT*                   pHeight) {
-    ::MONITORINFOEXW monInfo;
-    monInfo.cbSize = sizeof(monInfo);
-
-    if (!::GetMonitorInfoW(hMonitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
-      Logger::err("D3D9: Failed to query monitor info");
-      return;
-    }
-    
-    auto rect = monInfo.rcMonitor;
-
-    if (pWidth)
-      *pWidth = rect.right - rect.left;
-    
-    if (pHeight)
-      *pHeight = rect.bottom - rect.top;
-  }
-
-
-  void GetMonitorRect(
-          HMONITOR                hMonitor,
-          RECT*                   pRect) {
-    ::MONITORINFOEXW monInfo;
-    monInfo.cbSize = sizeof(monInfo);
-
-    if (!::GetMonitorInfoW(hMonitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
-      Logger::err("D3D9: Failed to query monitor info");
-      return;
-    }
-
-    *pRect = monInfo.rcMonitor;
   }
 
 }
