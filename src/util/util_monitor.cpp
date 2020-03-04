@@ -25,6 +25,21 @@ namespace dxvk {
       pMode->dmPelsWidth, "x", pMode->dmPelsHeight, "@",
       pMode->dmDisplayFrequency));
 
+    DEVMODEW curMode = { };
+    curMode.dmSize = sizeof(curMode);
+
+    if (GetMonitorDisplayMode(hMonitor, ENUM_CURRENT_SETTINGS, &curMode)) {
+      bool eq = curMode.dmPelsWidth  == pMode->dmPelsWidth
+             && curMode.dmPelsHeight == pMode->dmPelsHeight
+             && curMode.dmBitsPerPel == pMode->dmBitsPerPel;
+
+      if (pMode->dmFields & DM_DISPLAYFREQUENCY)
+        eq &= curMode.dmDisplayFrequency == pMode->dmDisplayFrequency;
+
+      if (eq)
+        return true;
+    }
+
     LONG status = ::ChangeDisplaySettingsExW(monInfo.szDevice,
       pMode, nullptr, CDS_FULLSCREEN, nullptr);
 
