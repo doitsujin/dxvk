@@ -59,46 +59,4 @@ namespace dxvk {
          || BackBufferFormat == D3D9Format::R5G6B5;
   }
 
-
-  HRESULT SetMonitorDisplayMode(
-          HMONITOR                hMonitor,
-    const D3DDISPLAYMODEEX*       pMode) {
-    ::MONITORINFOEXW monInfo;
-    monInfo.cbSize = sizeof(monInfo);
-
-    if (!::GetMonitorInfoW(hMonitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
-      Logger::err("D3D9: Failed to query monitor info");
-      return E_FAIL;
-    }
-    
-    DEVMODEW devMode = { };
-    devMode.dmSize       = sizeof(devMode);
-    devMode.dmFields     = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL;
-    devMode.dmPelsWidth  = pMode->Width;
-    devMode.dmPelsHeight = pMode->Height;
-    devMode.dmBitsPerPel = GetMonitorFormatBpp(EnumerateFormat(pMode->Format));
-    
-    if (pMode->RefreshRate != 0)  {
-      devMode.dmFields |= DM_DISPLAYFREQUENCY;
-      devMode.dmDisplayFrequency = pMode->RefreshRate;
-    }
-    
-    Logger::info(str::format("D3D9: Setting display mode: ",
-      devMode.dmPelsWidth, "x", devMode.dmPelsHeight, "@",
-      devMode.dmDisplayFrequency));
-    
-    LONG status = ::ChangeDisplaySettingsExW(
-      monInfo.szDevice, &devMode, nullptr, CDS_FULLSCREEN, nullptr);
-
-    if (status != DISP_CHANGE_SUCCESSFUL) {
-      // Try again but without setting the frequency.
-      devMode.dmFields &= ~DM_DISPLAYFREQUENCY;
-      devMode.dmDisplayFrequency = 0;
-      status = ::ChangeDisplaySettingsExW(
-        monInfo.szDevice, &devMode, nullptr, CDS_FULLSCREEN, nullptr);
-    }
-    
-    return status == DISP_CHANGE_SUCCESSFUL ? D3D_OK : D3DERR_NOTAVAILABLE;
-  }
-
 }
