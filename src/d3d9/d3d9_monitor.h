@@ -35,8 +35,6 @@ namespace dxvk {
           D3D9Format BackBufferFormat,
           BOOL       Windowed);
 
-  HMONITOR GetDefaultMonitor();
-
   /**
    * \brief Sets monitor display mode
    * 
@@ -47,39 +45,5 @@ namespace dxvk {
   HRESULT SetMonitorDisplayMode(
           HMONITOR                hMonitor,
     const D3DDISPLAYMODEEX*       pMode);
-  
-  /**
-   * \brief Queries window client size
-   * 
-   * \param [in] hWnd Window to query
-   * \param [out] pWidth Client width
-   * \param [out] pHeight Client height
-   */
-  void GetWindowClientSize(
-          HWND                    hWnd,
-          UINT*                   pWidth,
-          UINT*                   pHeight);
-
-  /**
-   * \brief Queries monitor size
-   * 
-   * \param [in] hMonitor Monitor to query
-   * \param [out] pWidth Client width
-   * \param [out] pHeight Client height
-   */
-  void GetMonitorClientSize(
-          HMONITOR                hMonitor,
-          UINT*                   pWidth,
-          UINT*                   pHeight);
-
-  /**
-   * \brief Queries monitor rect
-   * 
-   * \param [in] hMonitor Monitor to query
-   * \param [out] pRect The rect to return
-   */
-  void GetMonitorRect(
-          HMONITOR                hMonitor,
-          RECT*                   pRect);
 
 }

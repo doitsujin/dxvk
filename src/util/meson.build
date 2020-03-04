@@ -4,6 +4,7 @@ util_src = files([
   'util_gdi.cpp',
   'util_luid.cpp',
   'util_matrix.cpp',
+  'util_monitor.cpp',
   
   'com/com_guid.cpp',
   'com/com_private_data.cpp',
