@@ -435,7 +435,7 @@ namespace dxvk {
       DEVMODEW devMode = DEVMODEW();
       devMode.dmSize = sizeof(devMode);
 
-      if (!GetMonitorDisplayMode(m_monitor, ENUM_CURRENT_SETTINGS, &devMode)) {
+      if (!GetMonitorDisplayMode(GetDefaultMonitor(), ENUM_CURRENT_SETTINGS, &devMode)) {
         Logger::err("D3D9SwapChainEx::GetDisplayModeEx: Failed to enum display settings");
         return D3DERR_INVALIDCALL;
       }
