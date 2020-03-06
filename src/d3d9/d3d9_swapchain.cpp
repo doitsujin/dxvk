@@ -503,7 +503,6 @@ namespace dxvk {
     if (changeFullscreen)
       SetGammaRamp(0, &m_ramp);
 
-    UpdatePresentRegion(nullptr, nullptr);
     CreateBackBuffers(m_presentParams.BackBufferCount);
   }
 
