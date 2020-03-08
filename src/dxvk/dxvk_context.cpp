@@ -315,8 +315,8 @@ namespace dxvk {
         image->info().stages,
         image->info().access,
         layout,
-        image->info().layout,
-        image->info().stages);
+        image->info().stages,
+        image->info().access);
 
       image->setLayout(layout);
     }
