@@ -89,22 +89,6 @@ namespace dxvk {
   }
   
 
-  VkImageUsageFlags GetImageUsageFlags(UINT BindFlags) {
-    VkImageUsageFlags usage = 0;
-
-    if (BindFlags & D3D11_BIND_DEPTH_STENCIL)
-      usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    if (BindFlags & D3D11_BIND_RENDER_TARGET)
-      usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    if (BindFlags & D3D11_BIND_SHADER_RESOURCE)
-      usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-    if (BindFlags & D3D11_BIND_UNORDERED_ACCESS)
-      usage |= VK_IMAGE_USAGE_STORAGE_BIT;
-    
-    return usage;
-  }
-
-
   VkFormatFeatureFlags GetBufferFormatFeatures(UINT BindFlags) {
     VkFormatFeatureFlags features = 0;
 
