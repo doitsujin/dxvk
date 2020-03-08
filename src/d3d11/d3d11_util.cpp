@@ -77,18 +77,6 @@ namespace dxvk {
   }
   
 
-  VkBufferUsageFlags GetBufferUsageFlags(UINT BindFlags) {
-    VkBufferUsageFlags usage = 0;
-
-    if (BindFlags & D3D11_BIND_SHADER_RESOURCE)
-      usage |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
-    if (BindFlags & D3D11_BIND_UNORDERED_ACCESS)
-      usage |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-    
-    return 0;
-  }
-  
-
   VkFormatFeatureFlags GetBufferFormatFeatures(UINT BindFlags) {
     VkFormatFeatureFlags features = 0;
 

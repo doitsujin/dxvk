@@ -155,9 +155,7 @@ namespace dxvk {
           UINT                BindFlags,
           DXGI_FORMAT         Format) const {
     // Check whether the given bind flags are supported
-    VkBufferUsageFlags usage = GetBufferUsageFlags(BindFlags);
-
-    if ((m_buffer->info().usage & usage) != usage)
+    if ((m_desc.BindFlags & BindFlags) != BindFlags)
       return false;
 
     // Structured buffer views use no format
