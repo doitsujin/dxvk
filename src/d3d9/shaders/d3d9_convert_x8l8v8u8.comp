@@ -1,0 +1,43 @@
+#version 450
+#extension GL_GOOGLE_include_directive : enable
+
+#include "d3d9_convert_common.h"
+
+layout(
+  local_size_x = 8,
+  local_size_y = 8,
+  local_size_z = 1) in;
+
+layout(binding = 0)
+writeonly uniform image2D dst;
+
+layout(binding = 1) uniform usamplerBuffer src;
+
+layout(push_constant)
+uniform u_info_t {
+  uvec2 extent;
+} u_info;
+
+void main() {
+  ivec3 thread_id = ivec3(gl_GlobalInvocationID);
+
+  if (all(lessThan(thread_id.xy, u_info.extent))) {
+    uint offset = thread_id.x
+                + thread_id.y * u_info.extent.x;
+
+    uint value = texelFetch(src, int(offset)).r;
+
+    // Sign-extend magic!
+    int  u8 = bitfieldExtract(int (value), 0,  8);
+    int  v8 = bitfieldExtract(int (value), 8,  8);
+    uint l8 = bitfieldExtract(uint(value), 16, 8);
+
+    vec4 color = vec4(
+      snormalize(u8, 8),
+      snormalize(v8, 8),
+      unormalize(l8, 8),
+      1.0f);
+    
+    imageStore(dst, thread_id.xy, color);
+  }
+}
