@@ -1,4 +1,7 @@
 #version 450
+#extension GL_GOOGLE_include_directive : enable
+
+#include "d3d9_convert_common.h"
 
 layout(
   local_size_x = 8,
@@ -14,20 +17,6 @@ layout(push_constant)
 uniform u_info_t {
   uvec2 extent;
 } u_info;
-
-float unormalize(uint value, int bits) {
-  const int range = (1 << bits) - 1;
-
-  return float(value) / float(range);
-}
-
-float snormalize(int value, int bits) {
-  const int range = (1 << (bits - 1)) - 1;
-
-  // Min because, -32 and -31 map to -1.0f, and we
-  // divide by 31.
-  return max(float(value) / float(range), -1.0f);
-}
 
 void main() {
   ivec3 thread_id = ivec3(gl_GlobalInvocationID);
