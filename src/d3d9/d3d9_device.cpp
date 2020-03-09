@@ -3016,7 +3016,7 @@ namespace dxvk {
       m_psShaderMasks = FixedFunctionMask;
     }
 
-    UpdateActiveHazards();
+    UpdateActiveHazardsRT();
 
     return D3D_OK;
   }
@@ -4710,7 +4710,7 @@ namespace dxvk {
         m_state.renderStates[ColorWriteIndex(index)])
       m_activeRTs |= bit;
 
-    UpdateActiveHazards();
+    UpdateActiveHazardsRT();
   }
 
 
@@ -4732,16 +4732,16 @@ namespace dxvk {
         m_activeTexturesToUpload |= bit;
     }
 
-    UpdateActiveHazards();
+    UpdateActiveHazardsRT();
   }
 
 
-  inline void D3D9DeviceEx::UpdateActiveHazards() {
+  inline void D3D9DeviceEx::UpdateActiveHazardsRT() {
     auto masks = m_psShaderMasks;
     masks.rtMask      &= m_activeRTs;
     masks.samplerMask &= m_activeRTTextures;
 
-    m_activeHazards = 0;
+    m_activeHazardsRT = 0;
     for (uint32_t rt = masks.rtMask; rt; rt &= rt - 1) {
       for (uint32_t sampler = masks.samplerMask; sampler; sampler &= sampler - 1) {
         D3D9Surface* rtSurf = m_state.renderTargets[bit::tzcnt(rt)].ptr();
@@ -4757,14 +4757,14 @@ namespace dxvk {
         if (likely(rtSurf->GetMipLevel() != 0 || rtBase != texBase))
           continue;
 
-        m_activeHazards |= 1 << bit::tzcnt(rt);
+        m_activeHazardsRT |= 1 << bit::tzcnt(rt);
       }
     }
   }
 
 
   void D3D9DeviceEx::MarkRenderHazards() {
-    for (uint32_t rt = m_activeHazards; rt; rt &= rt - 1) {
+    for (uint32_t rt = m_activeHazardsRT; rt; rt &= rt - 1) {
       // Guaranteed to not be nullptr...
       auto tex = m_state.renderTargets[bit::tzcnt(rt)]->GetCommonTexture();
       if (unlikely(!tex->MarkHazardous())) {
@@ -5435,7 +5435,7 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::PrepareDraw(D3DPRIMITIVETYPE PrimitiveType) {
-    if (unlikely(m_activeHazards != 0)) {
+    if (unlikely(m_activeHazardsRT != 0)) {
       EmitCs([](DxvkContext* ctx) {
         ctx->emitRenderTargetReadbackBarrier();
       });
