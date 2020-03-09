@@ -54,6 +54,8 @@ PS_OUTPUT main( VS_OUTPUT IN ) {
 
 )";
 
+Logger Logger::s_instance("triangle.log");
+
 class TriangleApp {
   
 public:
@@ -65,11 +67,35 @@ public:
     if (FAILED(status))
       throw DxvkError("Failed to create D3D9 interface");
 
+    UINT adapter = D3DADAPTER_DEFAULT;
+
+    D3DADAPTER_IDENTIFIER9 adapterId;
+    m_d3d->GetAdapterIdentifier(adapter, 0, &adapterId);
+
+    Logger::info(str::format("Using adapter: ", adapterId.Description));
+
+    auto CheckSRGBFormat = [&](D3DFORMAT fmt, const char* name) {
+      HRESULT status = m_d3d->CheckDeviceFormat(adapter, D3DDEVTYPE_HAL, D3DFMT_X8R8G8B8, 0, D3DRTYPE_TEXTURE, fmt);
+      Logger::warn(str::format("(linear) ", name, ": ", SUCCEEDED(status) ? "ok" : "nope"));
+
+      status = m_d3d->CheckDeviceFormat(adapter, D3DDEVTYPE_HAL, D3DFMT_X8R8G8B8, D3DUSAGE_QUERY_SRGBREAD, D3DRTYPE_TEXTURE, fmt);
+      Logger::warn(str::format("(srgb) ", name, ": ", SUCCEEDED(status) ? "ok" : "nope"));
+    };
+
+    CheckSRGBFormat(D3DFMT_R5G6B5,       "R5G6B5");
+    CheckSRGBFormat(D3DFMT_X1R5G5B5,     "X1R5G5B5");
+    CheckSRGBFormat(D3DFMT_A1R5G5B5,     "A1R5G5B5");
+    CheckSRGBFormat(D3DFMT_A4R4G4B4,     "A4R4G4B4");
+    CheckSRGBFormat(D3DFMT_X4R4G4B4,     "X4R4G4B4");
+    CheckSRGBFormat(D3DFMT_G16R16,       "G16R16");
+    CheckSRGBFormat(D3DFMT_A2R10G10B10,  "A2R10G10B10");
+    CheckSRGBFormat(D3DFMT_A16B16G16R16, "A16B16G16R16");
+
     D3DPRESENT_PARAMETERS params;
     getPresentParams(params);
 
     status = m_d3d->CreateDeviceEx(
-      D3DADAPTER_DEFAULT,
+      adapter,
       D3DDEVTYPE_HAL,
       m_window,
       D3DCREATE_HARDWARE_VERTEXPROCESSING,
