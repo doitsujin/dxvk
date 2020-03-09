@@ -221,6 +221,10 @@ namespace dxvk {
 
     std::string GetApiName();
 
+    void HookWindowProc();
+
+    void ResetWindowProc();
+
   };
 
 }
