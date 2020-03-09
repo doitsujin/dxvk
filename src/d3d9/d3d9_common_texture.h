@@ -245,6 +245,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Depth stencil
+     * \returns Whether a resource is a depth stencil or not
+     */
+    bool IsDepthStencil() const {
+      return m_desc.Usage & D3DUSAGE_DEPTHSTENCIL;
+    }
+
+    /**
      * \brief Autogen Mipmap
      * \returns Whether the texture is to have automatic mip generation
      */
