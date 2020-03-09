@@ -1235,7 +1235,7 @@ namespace dxvk {
 
     m_state.depthStencil = ds;
 
-    UpdateActiveHazardsDS();
+    UpdateActiveHazardsDS(UINT32_MAX);
 
     return D3D_OK;
   }
@@ -3018,7 +3018,7 @@ namespace dxvk {
       m_psShaderMasks = FixedFunctionMask;
     }
 
-    UpdateActiveHazardsRT();
+    UpdateActiveHazardsRT(UINT32_MAX, UINT32_MAX);
 
     return D3D_OK;
   }
@@ -4712,7 +4712,7 @@ namespace dxvk {
         m_state.renderStates[ColorWriteIndex(index)])
       m_activeRTs |= bit;
 
-    UpdateActiveHazardsRT();
+    UpdateActiveHazardsRT(bit, UINT32_MAX);
   }
 
 
@@ -4738,17 +4738,17 @@ namespace dxvk {
         m_activeTexturesToUpload |= bit;
     }
 
-    UpdateActiveHazardsRT();
-    UpdateActiveHazardsDS();
+    UpdateActiveHazardsRT(UINT32_MAX, bit);
+    UpdateActiveHazardsDS(bit);
   }
 
 
-  inline void D3D9DeviceEx::UpdateActiveHazardsRT() {
+  inline void D3D9DeviceEx::UpdateActiveHazardsRT(uint32_t rtMask, uint32_t texMask) {
     auto masks = m_psShaderMasks;
-    masks.rtMask      &= m_activeRTs;
-    masks.samplerMask &= m_activeRTTextures;
+    masks.rtMask      &= m_activeRTs & rtMask;
+    masks.samplerMask &= m_activeRTTextures & texMask;
 
-    m_activeHazardsRT = 0;
+    m_activeHazardsRT = m_activeHazardsRT & (~rtMask);
     for (uint32_t rt = masks.rtMask; rt; rt &= rt - 1) {
       for (uint32_t sampler = masks.samplerMask; sampler; sampler &= sampler - 1) {
         const uint32_t rtIdx = bit::tzcnt(rt);
@@ -4771,11 +4771,12 @@ namespace dxvk {
   }
 
 
-  inline void D3D9DeviceEx::UpdateActiveHazardsDS() {
-    m_activeHazardsDS = 0;
+  inline void D3D9DeviceEx::UpdateActiveHazardsDS(uint32_t texMask) {
+    m_activeHazardsDS = m_activeHazardsDS & (~texMask);
     if (m_state.depthStencil != nullptr &&
         m_state.depthStencil->GetBaseTexture() != nullptr) {
-      for (uint32_t sampler = m_activeDSTextures; sampler; sampler &= sampler - 1) {
+      uint32_t samplerMask = m_activeDSTextures & texMask;
+      for (uint32_t sampler = samplerMask; sampler; sampler &= sampler - 1) {
         const uint32_t samplerIdx = bit::tzcnt(sampler);
 
         IDirect3DBaseTexture9* dsBase  = m_state.depthStencil->GetBaseTexture();

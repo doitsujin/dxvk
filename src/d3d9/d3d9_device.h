@@ -742,9 +742,9 @@ namespace dxvk {
 
     void UpdateActiveTextures(uint32_t index);
 
-    void UpdateActiveHazardsRT();
+    void UpdateActiveHazardsRT(uint32_t rtMask, uint32_t texMask);
 
-    void UpdateActiveHazardsDS();
+    void UpdateActiveHazardsDS(uint32_t texMask);
 
     void MarkRenderHazards();
 
