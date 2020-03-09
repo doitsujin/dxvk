@@ -4751,7 +4751,8 @@ namespace dxvk {
     m_activeHazardsRT = 0;
     for (uint32_t rt = masks.rtMask; rt; rt &= rt - 1) {
       for (uint32_t sampler = masks.samplerMask; sampler; sampler &= sampler - 1) {
-        D3D9Surface* rtSurf = m_state.renderTargets[bit::tzcnt(rt)].ptr();
+        const uint32_t rtIdx = bit::tzcnt(rt);
+        D3D9Surface* rtSurf = m_state.renderTargets[rtIdx].ptr();
 
         IDirect3DBaseTexture9* rtBase  = rtSurf->GetBaseTexture();
         IDirect3DBaseTexture9* texBase = m_state.textures[bit::tzcnt(sampler)];
@@ -4764,7 +4765,7 @@ namespace dxvk {
         if (likely(rtSurf->GetMipLevel() != 0 || rtBase != texBase))
           continue;
 
-        m_activeHazardsRT |= 1 << bit::tzcnt(rt);
+        m_activeHazardsRT |= 1 << rtIdx;
       }
     }
   }
@@ -4775,13 +4776,15 @@ namespace dxvk {
     if (m_state.depthStencil != nullptr &&
         m_state.depthStencil->GetBaseTexture() != nullptr) {
       for (uint32_t sampler = m_activeDSTextures; sampler; sampler &= sampler - 1) {
+        const uint32_t samplerIdx = bit::tzcnt(sampler);
+
         IDirect3DBaseTexture9* dsBase  = m_state.depthStencil->GetBaseTexture();
-        IDirect3DBaseTexture9* texBase = m_state.textures[bit::tzcnt(sampler)];
+        IDirect3DBaseTexture9* texBase = m_state.textures[samplerIdx];
 
         if (likely(dsBase != texBase))
           continue;
 
-        m_activeHazardsDS |= 1 << bit::tzcnt(sampler);
+        m_activeHazardsDS |= 1 << samplerIdx;
       }
     }
   }
