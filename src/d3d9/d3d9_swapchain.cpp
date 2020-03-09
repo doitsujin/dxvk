@@ -9,6 +9,45 @@
 
 namespace dxvk {
 
+
+  struct D3D9WindowData {
+    bool unicode;
+    WNDPROC proc;
+  };
+
+
+  static std::recursive_mutex windowProcMapMutex;
+  static std::unordered_map<HWND, D3D9WindowData> windowProcMap;
+
+
+  static D3D9WindowData GetD3D9WindowData(HWND window) {
+    std::lock_guard<std::recursive_mutex> lock(windowProcMapMutex);
+
+    auto it = windowProcMap.find(window);
+    if (it == windowProcMap.end())
+      return {};
+
+    return it->second;
+  }
+
+
+  static LRESULT CALLBACK D3D9WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
+  {
+      if (message == WM_NCCALCSIZE && wparam == TRUE)
+        return 0;
+
+      auto windowData = GetD3D9WindowData(window);
+      if (!windowData.proc)
+        return IsWindowUnicode(window)
+          ? DefWindowProcW(window, message, wparam, lparam)
+          : DefWindowProcA(window, message, wparam, lparam);
+
+      return windowData.unicode
+        ? CallWindowProcW(windowData.proc, window, message, wparam, lparam)
+        : CallWindowProcA(windowData.proc, window, message, wparam, lparam);
+  }
+
+
   static uint16_t MapGammaControlPoint(float x) {
     if (x < 0.0f) x = 0.0f;
     if (x > 1.0f) x = 1.0f;
@@ -55,6 +94,7 @@ namespace dxvk {
 
 
   D3D9SwapChainEx::~D3D9SwapChainEx() {
+    ResetWindowProc();
     RestoreDisplayMode(m_monitor);
 
     m_device->waitForSubmission(&m_presentStatus);
@@ -1251,6 +1291,14 @@ namespace dxvk {
       Logger::err("D3D9: EnterFullscreenMode: Failed to change display mode");
       return D3DERR_INVALIDCALL;
     }
+
+    // Testing shows we shouldn't hook WM_NCCALCSIZE but we shouldn't change
+    // windows style either.
+    //
+    // Some games restore window styles after we have changed it, so hooking is
+    // also required. Doing it will allow us to create fullscreen windows
+    // regardless of their style and it also appears to work on Windows.
+    HookWindowProc();
     
     // Change the window flags to remove the decoration etc.
     LONG style   = ::GetWindowLongW(m_window, GWL_STYLE);
@@ -1286,6 +1334,8 @@ namespace dxvk {
       Logger::warn("D3D9: LeaveFullscreenMode: Failed to restore display mode");
     
     m_monitor = nullptr;
+
+    ResetWindowProc();
     
     // Only restore the window style if the application hasn't
     // changed them. This is in line with what native D3D9 does.
@@ -1403,6 +1453,40 @@ namespace dxvk {
 
   std::string D3D9SwapChainEx::GetApiName() {
     return this->GetParent()->IsExtended() ? "D3D9Ex" : "D3D9";
+  }
+
+
+  void D3D9SwapChainEx::HookWindowProc() {
+    std::lock_guard<std::recursive_mutex> lock(windowProcMapMutex);
+
+    ResetWindowProc();
+
+    D3D9WindowData windowData;
+    windowData.unicode = IsWindowUnicode(m_window);
+    windowData.proc = windowData.unicode
+      ? (WNDPROC)SetWindowLongPtrW(m_window, GWLP_WNDPROC, (LONG_PTR)D3D9WindowProc)
+      : (WNDPROC)SetWindowLongPtrA(m_window, GWLP_WNDPROC, (LONG_PTR)D3D9WindowProc);
+
+    windowProcMap[m_window] = std::move(windowData);
+  }
+
+  void D3D9SwapChainEx::ResetWindowProc() {
+    std::lock_guard<std::recursive_mutex> lock(windowProcMapMutex);
+
+    auto it = windowProcMap.find(m_window);
+    if (it == windowProcMap.end())
+      return;
+
+    auto proc = it->second.unicode
+      ? (WNDPROC)GetWindowLongPtrW(m_window, GWLP_WNDPROC)
+      : (WNDPROC)GetWindowLongPtrA(m_window, GWLP_WNDPROC);
+
+    if (proc == D3D9WindowProc && it->second.unicode)
+      SetWindowLongPtrW(m_window, GWLP_WNDPROC, (LONG_PTR)it->second.proc);
+    else if (proc == D3D9WindowProc && !it->second.unicode)
+      SetWindowLongPtrA(m_window, GWLP_WNDPROC, (LONG_PTR)it->second.proc);
+
+    windowProcMap.erase(m_window);
   }
 
 }
