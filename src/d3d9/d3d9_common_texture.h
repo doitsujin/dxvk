@@ -324,12 +324,16 @@ namespace dxvk {
         : VK_IMAGE_LAYOUT_GENERAL;
     }
 
-    VkImageLayout DetermineDepthStencilLayout() const {
-      return m_image != nullptr &&
-             m_image->info().tiling == VK_IMAGE_TILING_OPTIMAL &&
-            !m_hazardous
-        ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-        : VK_IMAGE_LAYOUT_GENERAL;
+    VkImageLayout DetermineDepthStencilLayout(bool hazardous) const {
+      VkImageLayout layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+      if (unlikely(hazardous))
+        layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+
+      if (unlikely(m_image->info().tiling == VK_IMAGE_TILING_OPTIMAL))
+        layout = VK_IMAGE_LAYOUT_GENERAL;
+
+      return layout;
     }
 
     Rc<DxvkImageView> CreateView(

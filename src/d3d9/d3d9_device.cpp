@@ -1235,6 +1235,8 @@ namespace dxvk {
 
     m_state.depthStencil = ds;
 
+    UpdateActiveHazardsDS();
+
     return D3D_OK;
   }
 
@@ -4718,6 +4720,7 @@ namespace dxvk {
     const uint32_t bit = 1 << index;
 
     m_activeRTTextures       &= ~bit;
+    m_activeDSTextures       &= ~bit;
     m_activeTextures         &= ~bit;
     m_activeTexturesToUpload &= ~bit;
 
@@ -4728,11 +4731,15 @@ namespace dxvk {
       if (unlikely(tex->IsRenderTarget()))
         m_activeRTTextures |= bit;
 
+      if (unlikely(tex->IsDepthStencil()))
+        m_activeDSTextures |= bit;
+
       if (unlikely(tex->NeedsAnyUpload()))
         m_activeTexturesToUpload |= bit;
     }
 
     UpdateActiveHazardsRT();
+    UpdateActiveHazardsDS();
   }
 
 
@@ -4758,6 +4765,23 @@ namespace dxvk {
           continue;
 
         m_activeHazardsRT |= 1 << bit::tzcnt(rt);
+      }
+    }
+  }
+
+
+  inline void D3D9DeviceEx::UpdateActiveHazardsDS() {
+    m_activeHazardsDS = 0;
+    if (m_state.depthStencil != nullptr &&
+        m_state.depthStencil->GetBaseTexture() != nullptr) {
+      for (uint32_t sampler = m_activeDSTextures; sampler; sampler &= sampler - 1) {
+        IDirect3DBaseTexture9* dsBase  = m_state.depthStencil->GetBaseTexture();
+        IDirect3DBaseTexture9* texBase = m_state.textures[bit::tzcnt(sampler)];
+
+        if (likely(dsBase != texBase))
+          continue;
+
+        m_activeHazardsDS |= 1 << bit::tzcnt(sampler);
       }
     }
   }
@@ -4947,7 +4971,7 @@ namespace dxvk {
       if (likely(sampleCount == VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM || sampleCount == dsImageInfo.sampleCount)) {
         attachments.depth = {
           m_state.depthStencil->GetDepthStencilView(),
-          m_state.depthStencil->GetDepthStencilLayout() };
+          m_state.depthStencil->GetDepthStencilLayout(m_activeHazardsDS != 0) };
       }
     }
 
@@ -5442,6 +5466,11 @@ namespace dxvk {
 
       if (m_d3d9Options.generalHazards)
         MarkRenderHazards();
+    }
+
+    if (unlikely((m_lastHazardsDS == 0) != (m_activeHazardsDS == 0))) {
+      m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+      m_lastHazardsDS = m_activeHazardsDS;
     }
 
     for (uint32_t i = 0; i < caps::MaxStreams; i++) {

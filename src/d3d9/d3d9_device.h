@@ -744,6 +744,8 @@ namespace dxvk {
 
     void UpdateActiveHazardsRT();
 
+    void UpdateActiveHazardsDS();
+
     void MarkRenderHazards();
 
     void UploadManagedTextures(uint32_t mask);
@@ -1028,10 +1030,14 @@ namespace dxvk {
 
     uint32_t                        m_activeRTs        = 0;
     uint32_t                        m_activeRTTextures = 0;
+    uint32_t                        m_activeDSTextures = 0;
     uint32_t                        m_activeHazardsRT  = 0;
     uint32_t                        m_alphaSwizzleRTs  = 0;
     uint32_t                        m_activeTextures   = 0;
     uint32_t                        m_activeTexturesToUpload = 0;
+
+    uint32_t                        m_activeHazardsDS = 0;
+    uint32_t                        m_lastHazardsDS   = 0;
 
     D3D9ShaderMasks                 m_vsShaderMasks = D3D9ShaderMasks();
     D3D9ShaderMasks                 m_psShaderMasks = FixedFunctionMask;
