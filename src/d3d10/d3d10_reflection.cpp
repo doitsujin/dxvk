@@ -5,11 +5,7 @@ namespace dxvk {
   D3D10ShaderReflectionType::D3D10ShaderReflectionType(
           ID3D11ShaderReflectionType*     d3d11)
   : m_d3d11(d3d11) {
-    D3D11_SHADER_TYPE_DESC d3d11Desc;
-    m_d3d11->GetDesc(&d3d11Desc);
 
-    for (uint32_t i = 0; i < d3d11Desc.Members; i++)
-      m_members.emplace_back(m_d3d11->GetMemberTypeByIndex(i));
   }
 
   
@@ -57,12 +53,17 @@ namespace dxvk {
 
   ID3D10ShaderReflectionType* D3D10ShaderReflectionType::FindMemberType(
           ID3D11ShaderReflectionType*     pMemberType) {
-    for (size_t i = 0; i < m_members.size(); i++) {
-      if (m_members[i].GetD3D11Iface() == pMemberType)
-        return &m_members[i];
+    if (!pMemberType)
+      return nullptr;
+
+    auto entry = m_members.find(pMemberType);
+
+    if (entry == m_members.end()) {
+      entry = m_members.insert({ pMemberType,
+        std::make_unique<D3D10ShaderReflectionType>(pMemberType) }).first;
     }
 
-    return nullptr;
+    return entry->second.get();
   }
 
   

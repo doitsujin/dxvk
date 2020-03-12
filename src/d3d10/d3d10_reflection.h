@@ -37,8 +37,11 @@ namespace dxvk {
   
   private:
 
-    ID3D11ShaderReflectionType*             m_d3d11;
-    std::vector<D3D10ShaderReflectionType>  m_members;
+    ID3D11ShaderReflectionType* m_d3d11;
+
+    std::unordered_map<
+      ID3D11ShaderReflectionType*,
+      std::unique_ptr<D3D10ShaderReflectionType>> m_members;
 
     ID3D10ShaderReflectionType* FindMemberType(
             ID3D11ShaderReflectionType*     pMemberType);
