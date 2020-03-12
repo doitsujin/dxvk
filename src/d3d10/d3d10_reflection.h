@@ -98,7 +98,9 @@ namespace dxvk {
 
     ID3D11ShaderReflectionConstantBuffer* m_d3d11;
 
-    std::vector<D3D10ShaderReflectionVariable> m_variables;
+    std::unordered_map<
+      ID3D11ShaderReflectionVariable*,
+      D3D10ShaderReflectionVariable> m_variables;
 
     ID3D10ShaderReflectionVariable* FindVariable(
             ID3D11ShaderReflectionVariable* pVariable);
