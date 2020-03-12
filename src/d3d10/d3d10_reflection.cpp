@@ -157,11 +157,7 @@ namespace dxvk {
 
   D3D10ShaderReflection::D3D10ShaderReflection(ID3D11ShaderReflection* d3d11)
   : m_d3d11(d3d11) {
-    D3D11_SHADER_DESC d3d11Desc;
-    m_d3d11->GetDesc(&d3d11Desc);
 
-    for (uint32_t i = 0; i < d3d11Desc.ConstantBuffers; i++)
-      m_constantBuffers.emplace_back(m_d3d11->GetConstantBufferByIndex(i));
   }
 
 
@@ -295,12 +291,19 @@ namespace dxvk {
 
   ID3D10ShaderReflectionConstantBuffer* D3D10ShaderReflection::FindConstantBuffer(
           ID3D11ShaderReflectionConstantBuffer* pConstantBuffer) {
-    for (size_t i = 0; i < m_constantBuffers.size(); i++) {
-      if (m_constantBuffers[i].GetD3D11Iface() == pConstantBuffer)
-        return &m_constantBuffers[i];
+    if (!pConstantBuffer)
+      return nullptr;
+
+    auto entry = m_constantBuffers.find(pConstantBuffer);
+
+    if (entry == m_constantBuffers.end()) {
+      entry = m_constantBuffers.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(pConstantBuffer),
+        std::forward_as_tuple(pConstantBuffer)).first;
     }
 
-    return nullptr;
+    return &entry->second;
   }
 
 

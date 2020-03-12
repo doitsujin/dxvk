@@ -1,5 +1,6 @@
 #pragma once
 
+#include <unordered_map>
 #include <vector>
 
 #include "d3d10_include.h"
@@ -141,7 +142,9 @@ namespace dxvk {
 
     Com<ID3D11ShaderReflection> m_d3d11;
 
-    std::vector<D3D10ShaderReflectionConstantBuffer> m_constantBuffers;
+    std::unordered_map<
+      ID3D11ShaderReflectionConstantBuffer*,
+      D3D10ShaderReflectionConstantBuffer> m_constantBuffers;
     
     ID3D10ShaderReflectionConstantBuffer* FindConstantBuffer(
             ID3D11ShaderReflectionConstantBuffer* pConstantBuffer);
