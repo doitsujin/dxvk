@@ -5,30 +5,6 @@
 namespace dxvk {
 
   /**
-   * \brief Device mutex
-   *
-   * Effectively implements a recursive spinlock
-   * which is used to lock the D3D9 device.
-   */
-  class D3D9DeviceMutex {
-
-  public:
-
-    void lock();
-
-    void unlock();
-
-    bool try_lock();
-
-  private:
-
-    std::atomic<uint32_t> m_owner = { 0u };
-    uint32_t              m_counter = { 0u };
-
-  };
-
-
-  /**
    * \brief Device lock
    *
    * Lightweight RAII wrapper that implements
@@ -43,7 +19,7 @@ namespace dxvk {
     D3D9DeviceLock()
       : m_mutex(nullptr) { }
 
-    D3D9DeviceLock(D3D9DeviceMutex& mutex)
+    D3D9DeviceLock(sync::RecursiveSpinlock& mutex)
       : m_mutex(&mutex) {
       mutex.lock();
     }
@@ -69,7 +45,7 @@ namespace dxvk {
 
   private:
 
-    D3D9DeviceMutex* m_mutex;
+    sync::RecursiveSpinlock* m_mutex;
 
   };
 
@@ -94,7 +70,7 @@ namespace dxvk {
 
     BOOL            m_protected;
 
-    D3D9DeviceMutex m_mutex;
+    sync::RecursiveSpinlock m_mutex;
 
   };
 

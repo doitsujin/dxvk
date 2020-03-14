@@ -30,6 +30,8 @@
 #include "../util/rc/util_rc.h"
 #include "../util/rc/util_rc_ptr.h"
 
+#include "../util/sync/sync_recursive.h"
+
 #include "../util/util_env.h"
 #include "../util/util_enum.h"
 #include "../util/util_error.h"
