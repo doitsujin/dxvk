@@ -141,7 +141,7 @@ namespace dxvk {
 
   namespace this_thread {
     inline void yield() {
-      Sleep(0);
+      SwitchToThread();
     }
   }
 }
