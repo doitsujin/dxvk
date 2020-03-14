@@ -1,9 +1,34 @@
 #pragma once
 
 #include <atomic>
+
 #include "../thread.h"
 
+#include "../util_bit.h"
+#include "../util_likely.h"
+
 namespace dxvk::sync {
+
+  /**
+   * \brief Generic spin function
+   *
+   * Blocks calling thread until a condition becomes
+   * \c true, calling \c yield every few iterations.
+   * \param [in] spinCount Number of probes between each yield
+   * \param [in] fn Condition to test
+   */
+  template<typename Fn>
+  void spin(uint32_t spinCount, const Fn& fn) {
+    while (unlikely(!fn())) {
+      for (uint32_t i = 1; i < spinCount; i++) {
+        _mm_pause();
+        if (fn())
+          return;
+      }
+
+      dxvk::this_thread::yield();
+    }
+  }
   
   /**
    * \brief Spin lock
@@ -13,7 +38,7 @@ namespace dxvk::sync {
    * in case the structure is not likely contested.
    */
   class Spinlock {
-    constexpr static uint32_t SpinCount = 200;
+
   public:
     
     Spinlock() { }
@@ -23,14 +48,7 @@ namespace dxvk::sync {
     Spinlock& operator = (const Spinlock&) = delete;
     
     void lock() {
-      while (unlikely(!try_lock())) {
-        for (uint32_t i = 1; i < SpinCount; i++) {
-          if (try_lock())
-            return;
-        }
-
-        dxvk::this_thread::yield();
-      }
+      spin(200, [this] { return try_lock(); });
     }
     
     void unlock() {
