@@ -69,6 +69,19 @@ namespace dxvk {
           : m_useCountW) -= 1;
       }
     }
+
+    /**
+     * \brief Waits for resource to become unused
+     *
+     * Blocks calling thread until the GPU finishes
+     * using the resource with the given access type.
+     * \param [in] access Access type to check for
+     */
+    void waitIdle(DxvkAccess access = DxvkAccess::Read) const {
+      sync::spin(50000, [this, access] {
+        return !isInUse(access);
+      });
+    }
     
   private:
     

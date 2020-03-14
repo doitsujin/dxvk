@@ -3779,8 +3779,7 @@ namespace dxvk {
         Flush();
         SynchronizeCsThread();
 
-        while (Resource->isInUse(access))
-          dxvk::this_thread::yield();
+        Resource->waitIdle(access);
       }
     }
 
