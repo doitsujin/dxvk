@@ -4,7 +4,7 @@ namespace dxvk {
 
   D3D11DeviceContextState::D3D11DeviceContextState(
           ID3D11Device*         pDevice)
-  : m_device(pDevice) {
+  : m_device(pDevice), m_state() {
 
   }
 
