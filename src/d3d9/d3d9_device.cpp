@@ -943,24 +943,36 @@ namespace dxvk {
         return D3DERR_INVALIDCALL;
     }
 
-    if (fastPath) {
-      if (needsResolve) {
-        VkImageResolve region;
-        region.srcSubresource = blitInfo.srcSubresource;
-        region.srcOffset      = blitInfo.srcOffsets[0];
-        region.dstSubresource = blitInfo.dstSubresource;
-        region.dstOffset      = blitInfo.dstOffsets[0];
-        region.extent         = srcCopyExtent;
-        
-        EmitCs([
-          cDstImage = dstImage,
-          cSrcImage = srcImage,
-          cRegion   = region
-        ] (DxvkContext* ctx) {
+    auto EmitResolveCS = [&](const Rc<DxvkImage>& resolveDst) {
+      VkImageResolve region;
+      region.srcSubresource = blitInfo.srcSubresource;
+      region.srcOffset      = blitInfo.srcOffsets[0];
+      region.dstSubresource = blitInfo.dstSubresource;
+      region.dstOffset      = blitInfo.dstOffsets[0];
+      region.extent         = srcCopyExtent;
+
+      EmitCs([
+        cDstImage = resolveDst,
+        cSrcImage = srcImage,
+        cRegion   = region
+      ] (DxvkContext* ctx) {
+        if (cRegion.srcSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
           ctx->resolveImage(
             cDstImage, cSrcImage, cRegion,
             VK_FORMAT_UNDEFINED);
-        });
+        }
+        else {
+          ctx->resolveDepthStencilImage(
+            cDstImage, cSrcImage, cRegion,
+            VK_RESOLVE_MODE_AVERAGE_BIT_KHR,
+            VK_RESOLVE_MODE_AVERAGE_BIT_KHR);
+        }
+      });
+    };
+
+    if (fastPath) {
+      if (needsResolve) {
+        EmitResolveCS(dstImage);
       } else {
         EmitCs([
           cDstImage  = dstImage,
@@ -982,23 +994,7 @@ namespace dxvk {
       if (needsResolve) {
         auto resolveSrc = srcTextureInfo->GetResolveImage();
 
-        VkImageResolve region;
-        region.srcSubresource = blitInfo.srcSubresource;
-        region.srcOffset      = blitInfo.srcOffsets[0];
-        region.dstSubresource = blitInfo.srcSubresource;
-        region.dstOffset      = blitInfo.srcOffsets[0];
-        region.extent         = srcCopyExtent;
-        
-        EmitCs([
-          cDstImage = resolveSrc,
-          cSrcImage = srcImage,
-          cRegion   = region
-        ] (DxvkContext* ctx) {
-          ctx->resolveImage(
-            cDstImage, cSrcImage, cRegion,
-            VK_FORMAT_UNDEFINED);
-        });
-
+        EmitResolveCS(resolveSrc);
         srcImage = resolveSrc;
       }
 
