@@ -90,8 +90,10 @@ namespace dxvk {
           D3D9Format AdapterFormat,
           D3D9Format BackBufferFormat,
           BOOL       bWindowed) {
-    if (!IsSupportedBackBufferFormat(
-      AdapterFormat, BackBufferFormat, bWindowed))
+    if (!IsSupportedAdapterFormat(AdapterFormat, bWindowed))
+      return D3DERR_NOTAVAILABLE;
+
+    if (!IsSupportedBackBufferFormat(BackBufferFormat, bWindowed))
       return D3DERR_NOTAVAILABLE;
 
     return D3D_OK;

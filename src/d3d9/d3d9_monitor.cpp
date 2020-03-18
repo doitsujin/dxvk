@@ -36,19 +36,6 @@ namespace dxvk {
 
 
   bool IsSupportedBackBufferFormat(
-          D3D9Format AdapterFormat,
-          D3D9Format BackBufferFormat,
-          BOOL       Windowed) {
-    if (!IsSupportedAdapterFormat(AdapterFormat, Windowed))
-      return false;
-
-    return AdapterFormat == BackBufferFormat
-        || (AdapterFormat == D3D9Format::X8R8G8B8 && BackBufferFormat == D3D9Format::A8R8G8B8)
-        || (AdapterFormat == D3D9Format::X1R5G5B5 && BackBufferFormat == D3D9Format::A1R5G5B5);
-  }
-
-
-  bool IsSupportedBackBufferFormat(
           D3D9Format BackBufferFormat,
           BOOL       Windowed) {
     return (BackBufferFormat == D3D9Format::A2R10G10B10 && !Windowed)
