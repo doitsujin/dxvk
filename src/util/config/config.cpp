@@ -314,6 +314,14 @@ namespace dxvk {
     { R"(\\rthdribl\.exe$)", {{
       { "d3d9.allowDoNotWait",              "False" },
     }} },
+    /* Hyperdimension Neptunia U: Action Unleashed */
+    { R"(\\Neptunia\.exe$)", {{
+      { "d3d9.forceAspectRatio",            "16:9" },
+    }} },
+    /* D&D - The Temple Of Elemental Evil          */
+    { R"(\\ToEE\.exe$)", {{
+      { "d3d9.allowDiscard",                "False" },
+    }} },
     /* ZUSI 3 - Aerosoft Edition                  */
     { R"(\\ZusiSim\.exe$)", {{
       { "d3d9.noExplicitFrontBuffer",       "True" },

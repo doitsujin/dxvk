@@ -48,7 +48,7 @@ namespace dxvk {
     static bool QueryBeginnable(D3DQUERYTYPE QueryType);
     static bool QueryEndable(D3DQUERYTYPE QueryType);
 
-    static HRESULT QuerySupported(D3DQUERYTYPE QueryType);
+    static HRESULT QuerySupported(D3D9DeviceEx* pDevice, D3DQUERYTYPE QueryType);
 
     bool IsEvent() const {
       return m_queryType == D3DQUERYTYPE_EVENT;

@@ -409,6 +409,10 @@ namespace dxvk {
       const VkImageSubresource dstSubresource = dstTextureInfo->GetSubresourceFromIndex(dstFormatInfo->aspectMask, DstSubresource);
       const VkImageSubresource srcSubresource = srcTextureInfo->GetSubresourceFromIndex(srcFormatInfo->aspectMask, SrcSubresource);
       
+      if (DstSubresource >= dstTextureInfo->CountSubresources()
+       || SrcSubresource >= srcTextureInfo->CountSubresources())
+        return;
+      
       // Copies are only supported on size-compatible formats
       if (dstFormatInfo->elementSize != srcFormatInfo->elementSize) {
         Logger::err(str::format(
@@ -468,7 +472,7 @@ namespace dxvk {
         srcSubresource.aspectMask,
         srcSubresource.mipLevel,
         srcSubresource.arrayLayer, 1 };
-      
+
       // Copying multiple slices does not
       // seem to be supported in D3D11
       if (copy2Dto3D || copy3Dto2D) {
@@ -1190,6 +1194,9 @@ namespace dxvk {
     } else {
       const D3D11CommonTexture* textureInfo = GetCommonTexture(pDstResource);
       
+      if (DstSubresource >= textureInfo->CountSubresources())
+        return;
+      
       VkFormat packedFormat = m_parent->LookupPackedFormat(
         textureInfo->Desc()->Format,
         textureInfo->GetFormatMode()).Format;
@@ -1375,6 +1382,10 @@ namespace dxvk {
     
     auto dstVulkanFormatInfo = imageFormatInfo(dstFormatInfo.Format);
     auto srcVulkanFormatInfo = imageFormatInfo(srcFormatInfo.Format);
+    
+    if (DstSubresource >= dstTextureInfo->CountSubresources()
+     || SrcSubresource >= srcTextureInfo->CountSubresources())
+      return;
     
     const VkImageSubresource dstSubresource =
       dstTextureInfo->GetSubresourceFromIndex(

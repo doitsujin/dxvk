@@ -10,10 +10,7 @@ layout(
 layout(binding = 0)
 writeonly uniform image2D dst;
 
-layout(binding = 1)
-readonly buffer yuy2_buffer_t {
-  uint data[];
-} src;
+layout(binding = 1) uniform usamplerBuffer src;
 
 layout(push_constant)
 uniform u_info_t {
@@ -39,7 +36,9 @@ void main() {
     uint offset = thread_id.x
                 + thread_id.y * u_info.extent.x;
 
-    vec4 data = unpackUnorm4x8(src.data[offset]);
+    uint value = texelFetch(src, int(offset)).r;
+
+    vec4 data = unpackUnorm4x8(value);
 
     // Flip around stuff for UYVY
     if (s_is_uyvy)

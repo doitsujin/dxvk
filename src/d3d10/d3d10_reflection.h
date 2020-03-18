@@ -1,5 +1,6 @@
 #pragma once
 
+#include <unordered_map>
 #include <vector>
 
 #include "d3d10_include.h"
@@ -36,8 +37,11 @@ namespace dxvk {
   
   private:
 
-    ID3D11ShaderReflectionType*             m_d3d11;
-    std::vector<D3D10ShaderReflectionType>  m_members;
+    ID3D11ShaderReflectionType* m_d3d11;
+
+    std::unordered_map<
+      ID3D11ShaderReflectionType*,
+      std::unique_ptr<D3D10ShaderReflectionType>> m_members;
 
     ID3D10ShaderReflectionType* FindMemberType(
             ID3D11ShaderReflectionType*     pMemberType);
@@ -97,7 +101,9 @@ namespace dxvk {
 
     ID3D11ShaderReflectionConstantBuffer* m_d3d11;
 
-    std::vector<D3D10ShaderReflectionVariable> m_variables;
+    std::unordered_map<
+      ID3D11ShaderReflectionVariable*,
+      D3D10ShaderReflectionVariable> m_variables;
 
     ID3D10ShaderReflectionVariable* FindVariable(
             ID3D11ShaderReflectionVariable* pVariable);
@@ -141,7 +147,9 @@ namespace dxvk {
 
     Com<ID3D11ShaderReflection> m_d3d11;
 
-    std::vector<D3D10ShaderReflectionConstantBuffer> m_constantBuffers;
+    std::unordered_map<
+      ID3D11ShaderReflectionConstantBuffer*,
+      D3D10ShaderReflectionConstantBuffer> m_constantBuffers;
     
     ID3D10ShaderReflectionConstantBuffer* FindConstantBuffer(
             ID3D11ShaderReflectionConstantBuffer* pConstantBuffer);

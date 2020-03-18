@@ -23,7 +23,7 @@ struct VS_OUTPUT {
 
 VS_OUTPUT main( VS_INPUT IN ) {
   VS_OUTPUT OUT;
-  OUT.Position = float4(IN.Position, 0.6f);
+  OUT.Position = float4(IN.Position, 1.0f);
 
   return OUT;
 }
@@ -40,21 +40,22 @@ struct PS_OUTPUT {
   float4 Colour   : COLOR;
 };
 
-sampler g_texDepth : register( s0 );
+sampler g_tex : register( s0 );
 
 PS_OUTPUT main( VS_OUTPUT IN ) {
   PS_OUTPUT OUT;
 
-  OUT.Colour = tex2D(g_texDepth, float2(0, 0));
-  OUT.Colour = 1.0;
+  float4 color = float4(tex2D(g_tex, float2(0.5, 0.5)).rgb, 1.0f);
+  color.r = -color.r;
+  color.g = -color.g;
+  OUT.Colour = color;
+  
 
   return OUT;
 }
 
 
 )";
-
-Logger Logger::s_instance("triangle.log");
 
 class TriangleApp {
   
@@ -67,53 +68,17 @@ public:
     if (FAILED(status))
       throw DxvkError("Failed to create D3D9 interface");
 
-    UINT adapter = D3DADAPTER_DEFAULT;
-
-    D3DADAPTER_IDENTIFIER9 adapterId;
-    m_d3d->GetAdapterIdentifier(adapter, 0, &adapterId);
-
-    Logger::info(str::format("Using adapter: ", adapterId.Description));
-
-    auto CheckSRGBFormat = [&](D3DFORMAT fmt, const char* name) {
-      HRESULT status = m_d3d->CheckDeviceFormat(adapter, D3DDEVTYPE_HAL, D3DFMT_X8R8G8B8, 0, D3DRTYPE_TEXTURE, fmt);
-      Logger::warn(str::format("(linear) ", name, ": ", SUCCEEDED(status) ? "ok" : "nope"));
-
-      status = m_d3d->CheckDeviceFormat(adapter, D3DDEVTYPE_HAL, D3DFMT_X8R8G8B8, D3DUSAGE_QUERY_SRGBREAD, D3DRTYPE_TEXTURE, fmt);
-      Logger::warn(str::format("(srgb) ", name, ": ", SUCCEEDED(status) ? "ok" : "nope"));
-    };
-
-    CheckSRGBFormat(D3DFMT_R5G6B5,       "R5G6B5");
-    CheckSRGBFormat(D3DFMT_X1R5G5B5,     "X1R5G5B5");
-    CheckSRGBFormat(D3DFMT_A1R5G5B5,     "A1R5G5B5");
-    CheckSRGBFormat(D3DFMT_A4R4G4B4,     "A4R4G4B4");
-    CheckSRGBFormat(D3DFMT_X4R4G4B4,     "X4R4G4B4");
-    CheckSRGBFormat(D3DFMT_G16R16,       "G16R16");
-    CheckSRGBFormat(D3DFMT_A2R10G10B10,  "A2R10G10B10");
-    CheckSRGBFormat(D3DFMT_A16B16G16R16, "A16B16G16R16");
-
     D3DPRESENT_PARAMETERS params;
     getPresentParams(params);
 
     status = m_d3d->CreateDeviceEx(
-      adapter,
+      D3DADAPTER_DEFAULT,
       D3DDEVTYPE_HAL,
       m_window,
       D3DCREATE_HARDWARE_VERTEXPROCESSING,
       &params,
       nullptr,
       &m_device);
-
-    UINT firstRef = m_device->AddRef();
-
-    Com<IDirect3DSurface9> backbuffer;
-    m_device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backbuffer);
-
-    UINT firstRef2 = m_device->AddRef();
-
-    Com<IDirect3DSwapChain9> swapchain;
-    m_device->GetSwapChain(0, &swapchain);
-
-    UINT firstRef3 = m_device->AddRef();
     
     if (FAILED(status))
       throw DxvkError("Failed to create D3D9 device");
@@ -165,79 +130,6 @@ public:
     m_device->SetVertexShader(m_vs.ptr());
     m_device->SetPixelShader(m_ps.ptr());
 
-    UINT secondRef1 = m_device->AddRef();
-
-    Com<IDirect3DTexture9> defaultTexture;
-    status = m_device->CreateTexture(64, 64, 1, 0, D3DFMT_DXT3, D3DPOOL_DEFAULT,   &defaultTexture, nullptr);
-
-    UINT secondRef2 = m_device->AddRef();
-
-    Com<IDirect3DSurface9> surface;
-    status = defaultTexture->GetSurfaceLevel(0, &surface);
-
-    UINT secondRef3 = m_device->AddRef();
-
-    Com<IDirect3DTexture9> sysmemTexture;
-    status = m_device->CreateTexture(64, 64, 1, 0, D3DFMT_DXT3, D3DPOOL_SYSTEMMEM, &sysmemTexture, nullptr);
-
-    Com<IDirect3DSurface9> offscreenSurface;
-    status = m_device->CreateOffscreenPlainSurfaceEx(64, 64, D3DFMT_DXT3, D3DPOOL_DEFAULT, &offscreenSurface, nullptr, 0);
-
-    D3DLOCKED_RECT offscreenLock;
-    status = offscreenSurface->LockRect(&offscreenLock, nullptr, 0);
-
-    std::memset(offscreenLock.pBits, 0xFF, offscreenLock.Pitch * (64 / 4));
-
-    status = offscreenSurface->UnlockRect();
-
-    //status = m_device->ColorFill(offscreenSurface.ptr(), nullptr, D3DCOLOR_ARGB(255, 255, 0, 0));
-
-    D3DLOCKED_RECT sysmemLock;
-    status = sysmemTexture->LockRect(0, &sysmemLock, nullptr, 0);
-
-    //D3DLOCKED_RECT offscreenLock;
-    status = offscreenSurface->LockRect(&offscreenLock, nullptr, 0);
-
-    std::memcpy(sysmemLock.pBits, offscreenLock.pBits, offscreenLock.Pitch * (64 / 4));
-
-    sysmemTexture->UnlockRect(0);
-    offscreenSurface->UnlockRect();
-
-    status = m_device->UpdateTexture(sysmemTexture.ptr(), defaultTexture.ptr());
-
-    status = m_device->SetTexture(0, defaultTexture.ptr());
-
-    Com<IDirect3DSurface9> rt;
-    status = m_device->CreateRenderTarget(1280, 720, D3DFMT_X8R8G8B8, D3DMULTISAMPLE_NONE, 0, FALSE, &rt, nullptr);
-
-    ULONG refCount = m_device->AddRef();
-
-    Com<IDirect3DSurface9> rt2;
-    status = m_device->CreateRenderTarget(1280, 720, D3DFMT_X8R8G8B8, D3DMULTISAMPLE_NONE, 0, FALSE, &rt2, nullptr);
-
-    ULONG refCount2 = m_device->AddRef();
-
-    rt2 = nullptr;
-
-    ULONG refCount3 = m_device->AddRef();
-
-    RECT stretchRect1 = { 0, 0, 640, 720 };
-    RECT stretchRect2 = { 640, 0, 1280, 720 };
-    status = m_device->StretchRect(rt.ptr(), &stretchRect1, rt.ptr(), &stretchRect2, D3DTEXF_LINEAR);
-
-    /// 
-
-    Com<IDirect3DSurface9> ds;
-    //status = m_device->CreateDepthStencilSurface(1274, 695, D3DFMT_D24X8, D3DMULTISAMPLE_NONE, 0, FALSE, &ds, nullptr);
-    status = m_device->CreateDepthStencilSurface(1280, 720, D3DFMT_D24X8, D3DMULTISAMPLE_NONE, 0, FALSE, &ds, nullptr);
-
-    status = m_device->SetDepthStencilSurface(ds.ptr());
-    status = m_device->SetRenderState(D3DRS_ZWRITEENABLE, 1);
-    status = m_device->SetRenderState(D3DRS_ZENABLE, 1);
-    status = m_device->SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
-
-
-
     std::array<float, 9> vertices = {
       0.0f, 0.5f, 0.0f,
       0.5f, -0.5f, 0.0f,
@@ -280,28 +172,40 @@ public:
 
     m_device->SetVertexDeclaration(m_decl.ptr());
 
-    ///
+    // The actual texture we want to test...
 
-    Com<IDirect3DTexture9> myRT;
-    status = m_device->CreateTexture(512, 256, 1, 0, D3DFMT_DXT1, D3DPOOL_DEFAULT, &myRT, nullptr);
-    
-    Com<IDirect3DSurface9> myRTSurf;
-    myRT->GetSurfaceLevel(0, &myRTSurf);
-
-    Com<IDirect3DTexture9> myCopyThing;
-    status = m_device->CreateTexture(512, 256, 1, 0, D3DFMT_DXT1, D3DPOOL_DEFAULT, &myCopyThing, nullptr);
-
-    Com<IDirect3DSurface9> myCopyThingSurf;
-    myCopyThing->GetSurfaceLevel(0, &myCopyThingSurf);
-
-    status = m_device->StretchRect(myRTSurf.ptr(), nullptr, myCopyThingSurf.ptr(), nullptr, D3DTEXF_NONE);
+    Com<IDirect3DTexture9> texture;
+    status = m_device->CreateTexture(64, 64, 1, D3DUSAGE_DYNAMIC, D3DFMT_L6V5U5, D3DPOOL_DEFAULT, &texture, nullptr);
 
     D3DLOCKED_RECT rect;
-    status = myCopyThing->LockRect(0, &rect, nullptr, D3DLOCK_READONLY | D3DLOCK_NOSYSLOCK);
+    status = texture->LockRect(0, &rect, nullptr, 0);
 
-    m_device->SetRenderState(D3DRS_ALPHAREF, 256 + 255);
-    m_device->SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_LESSEQUAL);
-    m_device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
+    uint16_t* texData = reinterpret_cast<uint16_t*>(rect.pBits);
+    for (uint32_t i = 0; i < (rect.Pitch * 64) / sizeof(uint16_t); i++) {
+      // -> U -1, V -1, L 1
+      texData[i] = 0b1111111000010000;
+      // -> U 1, V 1, L 1
+      //texData[i] = 0b1111110111101111;
+    }
+
+    status = texture->UnlockRect(0);
+
+    status = m_device->SetTexture(0, texture.ptr());
+
+    /////////////
+    
+    /*Com<IDirect3DTexture9> texture2;
+    status = m_device->CreateTexture(64, 64, 1, 0, D3DFMT_A8B8G8R8, D3DPOOL_MANAGED, &texture2, nullptr);
+    status = texture2->LockRect(0, &rect, nullptr, 0);
+
+    uint32_t* texData2 = reinterpret_cast<uint32_t*>(rect.pBits);
+    for (uint32_t i = 0; i < (rect.Pitch * 64) / sizeof(uint32_t); i++) {
+      texData2[i] = 0b00000000000000000000000011111111;
+    }
+
+    status = texture2->UnlockRect(0);
+
+    status = m_device->SetTexture(0, texture2.ptr());*/
   }
   
   void run() {

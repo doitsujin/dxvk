@@ -68,8 +68,6 @@ namespace dxvk {
     DirtyFFPixelData,
     DirtyProgVertexShader,
     DirtySharedPixelShaderData,
-    UpDirtiedVertices,
-    UpDirtiedIndices,
     ValidSampleMask,
     DirtyDepthBounds,
     DirtyPointScale,
@@ -728,21 +726,29 @@ namespace dxvk {
 
     int64_t DetermineInitialTextureMemory();
 
+    Rc<DxvkBuffer> CreateConstantBuffer(
+            bool                SSBO,
+            VkDeviceSize        Size,
+            DxsoProgramType     ShaderStage,
+            DxsoConstantBuffers BufferType);
+
     void CreateConstantBuffers();
 
     void SynchronizeCsThread();
 
     void Flush();
 
-    D3D9ShaderMasks GetShaderMasks();
-
     void UpdateActiveRTs(uint32_t index);
 
-    void UpdateActiveRTTextures(uint32_t index);
+    void UpdateActiveTextures(uint32_t index);
 
-    void UpdateActiveHazards();
+    void UpdateActiveHazardsRT(uint32_t rtMask, uint32_t texMask);
+
+    void UpdateActiveHazardsDS(uint32_t texMask);
 
     void MarkRenderHazards();
+
+    void UploadManagedTextures(uint32_t mask);
 
     template <bool Points>
     void UpdatePointMode();
@@ -774,6 +780,10 @@ namespace dxvk {
 
     inline bool IsZTestEnabled() {
       return m_state.renderStates[D3DRS_ZENABLE] && m_state.depthStencil != nullptr;
+    }
+
+    inline bool IsClipPlaneEnabled() {
+      return m_state.renderStates[D3DRS_CLIPPLANEENABLE] != 0;
     }
 
     void BindMultiSampleState();
@@ -827,7 +837,7 @@ namespace dxvk {
     
     uint32_t GetInstanceCount() const;
 
-    void PrepareDraw(D3DPRIMITIVETYPE PrimitiveType, bool up = false);
+    void PrepareDraw(D3DPRIMITIVETYPE PrimitiveType);
 
     template <DxsoProgramType ShaderStage>
     void BindShader(
@@ -982,7 +992,7 @@ namespace dxvk {
     D3D9UPBufferSlice               m_upBuffer;
 
     const D3D9Options               m_d3d9Options;
-    const DxsoOptions               m_dxsoOptions;
+    DxsoOptions                     m_dxsoOptions;
 
     BOOL                            m_isSWVP;
 
@@ -992,9 +1002,7 @@ namespace dxvk {
 
     Com<D3D9Surface, false>         m_autoDepthStencil;
 
-    std::vector<
-      Com<D3D9SwapChainEx,
-      false>>                       m_swapchains;
+    Com<D3D9SwapChainEx, false>     m_implicitSwapchain;
 
     std::unordered_map<
       D3D9SamplerKey,
@@ -1004,7 +1012,8 @@ namespace dxvk {
 
     std::unordered_map<
       DWORD,
-      Com<D3D9VertexDecl>> m_fvfTable;
+      Com<D3D9VertexDecl,
+      false>>                       m_fvfTable;
 
     D3D9InputAssemblyState          m_iaState;
 
@@ -1021,8 +1030,17 @@ namespace dxvk {
 
     uint32_t                        m_activeRTs        = 0;
     uint32_t                        m_activeRTTextures = 0;
-    uint32_t                        m_activeHazards    = 0;
+    uint32_t                        m_activeDSTextures = 0;
+    uint32_t                        m_activeHazardsRT  = 0;
     uint32_t                        m_alphaSwizzleRTs  = 0;
+    uint32_t                        m_activeTextures   = 0;
+    uint32_t                        m_activeTexturesToUpload = 0;
+
+    uint32_t                        m_activeHazardsDS = 0;
+    uint32_t                        m_lastHazardsDS   = 0;
+
+    D3D9ShaderMasks                 m_vsShaderMasks = D3D9ShaderMasks();
+    D3D9ShaderMasks                 m_psShaderMasks = FixedFunctionMask;
 
     D3D9ViewportInfo                m_viewportInfo;
 
@@ -1041,8 +1059,6 @@ namespace dxvk {
     void DetermineConstantLayouts(bool canSWVP);
 
     D3D9UPBufferSlice AllocUpBuffer(VkDeviceSize size);
-
-    D3D9SwapChainEx* GetInternalSwapchain(UINT index);
 
     bool ShouldRecord();
 

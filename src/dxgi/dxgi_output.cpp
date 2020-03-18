@@ -121,8 +121,19 @@ namespace dxvk {
     if ((pModeToMatch->Width == 0) ^ (pModeToMatch->Height == 0))
       return DXGI_ERROR_INVALID_CALL;
 
+    DEVMODEW devMode;
+    devMode.dmSize = sizeof(devMode);
+
+    if (!GetMonitorDisplayMode(m_monitor, ENUM_CURRENT_SETTINGS, &devMode))
+      return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
+
     DXGI_MODE_DESC activeMode = { };
-    GetMonitorDisplayMode(m_monitor, ENUM_CURRENT_SETTINGS, &activeMode);
+    activeMode.Width            = devMode.dmPelsWidth;
+    activeMode.Height           = devMode.dmPelsHeight;
+    activeMode.RefreshRate      = { devMode.dmDisplayFrequency, 1 };
+    activeMode.Format           = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB; // FIXME
+    activeMode.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
+    activeMode.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
 
     DXGI_MODE_DESC1 defaultMode;
     defaultMode.Width            = 0;
@@ -252,15 +263,6 @@ namespace dxvk {
       return S_OK;
     }
 
-    // Query monitor info to get the device name
-    ::MONITORINFOEXW monInfo;
-    monInfo.cbSize = sizeof(monInfo);
-
-    if (!::GetMonitorInfoW(m_monitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
-      Logger::err("DXGI: Failed to query monitor info");
-      return E_FAIL;
-    }
-    
     // Walk over all modes that the display supports and
     // return those that match the requested format etc.
     DEVMODEW devMode = { };
@@ -271,7 +273,7 @@ namespace dxvk {
     
     std::vector<DXGI_MODE_DESC1> modeList;
     
-    while (::EnumDisplaySettingsW(monInfo.szDevice, srcModeId++, &devMode)) {
+    while (GetMonitorDisplayMode(m_monitor, srcModeId++, &devMode)) {
       // Skip interlaced modes altogether
       if (devMode.dmDisplayFlags & DM_INTERLACED)
         continue;

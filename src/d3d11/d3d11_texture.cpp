@@ -219,9 +219,7 @@ namespace dxvk {
     const DxvkImageCreateInfo& imageInfo = m_image->info();
 
     // Check whether the given bind flags are supported
-    VkImageUsageFlags usage = GetImageUsageFlags(BindFlags);
-
-    if ((imageInfo.usage & usage) != usage)
+    if ((m_desc.BindFlags & BindFlags) != BindFlags)
       return false;
 
     // Check whether the view format is compatible

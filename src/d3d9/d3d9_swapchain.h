@@ -83,6 +83,8 @@ namespace dxvk {
 
     D3D9Surface* GetBackBuffer(UINT iBackBuffer);
 
+    const D3DPRESENT_PARAMETERS* GetPresentParams() const { return &m_presentParams; }
+
   private:
 
     enum BindingIds : uint32_t {
@@ -150,8 +152,6 @@ namespace dxvk {
     HWND                    m_window   = nullptr;
     HMONITOR                m_monitor  = nullptr;
 
-    MONITORINFOEXW          m_monInfo;
-
     WindowState             m_windowState;
 
     void PresentImage(UINT PresentInterval);
@@ -213,8 +213,6 @@ namespace dxvk {
     
     HRESULT RestoreDisplayMode(HMONITOR hMonitor);
 
-    void    UpdateMonitorInfo();
-
     bool    UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect);
 
     VkExtent2D GetPresentExtent();
@@ -222,6 +220,10 @@ namespace dxvk {
     VkFullScreenExclusiveEXT PickFullscreenMode();
 
     std::string GetApiName();
+
+    void HookWindowProc();
+
+    void ResetWindowProc();
 
   };
 

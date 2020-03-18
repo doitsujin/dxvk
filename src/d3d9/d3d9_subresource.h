@@ -93,14 +93,14 @@ namespace dxvk {
     Rc<DxvkImageView> GetDepthStencilView() {
       Rc<DxvkImageView>& view = m_depthStencilView;
 
-      if (unlikely(view == nullptr && !IsNull()))
+      if (unlikely(view == nullptr))
         view = m_texture->CreateView(m_face, m_mipLevel, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, false);
 
       return view;
     }
 
-    VkImageLayout GetDepthStencilLayout() const {
-      return m_texture->DetermineDepthStencilLayout();
+    VkImageLayout GetDepthStencilLayout(bool hazardous) const {
+      return m_texture->DetermineDepthStencilLayout(hazardous);
     }
 
     bool IsNull() {

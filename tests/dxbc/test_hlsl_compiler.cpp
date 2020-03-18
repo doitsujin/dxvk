@@ -48,7 +48,8 @@ int WINAPI WinMain(HINSTANCE hInstance,
     "Shader", nullptr, nullptr,
     str::fromws(entryPoint).c_str(),
     str::fromws(target).c_str(),
-    D3DCOMPILE_OPTIMIZATION_LEVEL3,
+    D3DCOMPILE_OPTIMIZATION_LEVEL3 |
+    D3DCOMPILE_ENABLE_UNBOUNDED_DESCRIPTOR_TABLES,
     0, &binary, &errors);
   
   if (FAILED(hr)) {

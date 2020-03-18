@@ -1,16 +1,16 @@
-project('dxvk', ['c', 'cpp'], version : 'v1.5.4', meson_version : '>= 0.46')
+project('dxvk', ['c', 'cpp'], version : 'v1.5.5', meson_version : '>= 0.46')
 
 cpu_family = target_machine.cpu_family()
 
 add_project_arguments('-DNOMINMAX', language : 'cpp')
 
 dxvk_compiler = meson.get_compiler('cpp')
-if dxvk_compiler.get_id() == 'msvc'
+dxvk_msvc=dxvk_compiler.get_id() == 'msvc'
+# c++17 was added in 15.3, older version needs c++latest
+if dxvk_compiler.get_id() == 'msvc' and dxvk_compiler.version().version_compare('<15.3')
   dxvk_cpp_std='c++latest'
-  dxvk_msvc=true
 else
   dxvk_cpp_std='c++17'
-  dxvk_msvc=false
 endif
 
 if dxvk_compiler.get_id() == 'msvc'

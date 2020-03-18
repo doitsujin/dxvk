@@ -6,6 +6,8 @@
 
 #include "../dxvk/dxvk_device.h"
 
+#include "../util/util_bit.h"
+
 namespace dxvk {
 
   class D3D9DeviceEx;
@@ -55,36 +57,10 @@ namespace dxvk {
     Rc<DxvkImageView> Srgb;
   };
 
-  struct D3D9ViewSet {
-    D3D9ColorView                    Sample;
-
-    std::array<
-      std::array<D3D9ColorView, 15>, 6>     SubresourceSample;
-    std::array<
-      std::array<D3D9ColorView, 15>, 6>     SubresourceRenderTarget;
-    std::array<
-      std::array<Rc<DxvkImageView>, 15>, 6> SubresourceDepth;
-
-    bool                             Hazardous = false;
-
-    VkImageLayout GetRTLayout() const {
-      return SubresourceRenderTarget[0][0].Color != nullptr
-          && SubresourceRenderTarget[0][0].Color->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL
-          && !Hazardous
-        ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-        : VK_IMAGE_LAYOUT_GENERAL;
-    }
-
-    VkImageLayout GetDepthLayout() const {
-      return SubresourceDepth[0][0] != nullptr
-          && SubresourceDepth[0][0]->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL
-        ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-        : VK_IMAGE_LAYOUT_GENERAL;
-    }
-  };
-
   template <typename T>
   using D3D9SubresourceArray = std::array<T, caps::MaxSubresources>;
+
+  using D3D9SubresourceBitset = bit::bitset<caps::MaxSubresources>;
 
   class D3D9CommonTexture {
 
@@ -205,22 +181,6 @@ namespace dxvk {
             D3D9_COMMON_TEXTURE_DESC*  pDesc);
 
     /**
-     * \brief Lock Flags
-     * Set the lock flags for a given subresource
-     */
-    void SetLockFlags(UINT Subresource, DWORD Flags) {
-      m_lockFlags[Subresource] = Flags;
-    }
-
-    /**
-     * \brief Lock Flags
-     * \returns The log flags for a given subresource
-     */
-    DWORD GetLockFlags(UINT Subresource) const {
-      return m_lockFlags[Subresource];
-    }
-
-    /**
      * \brief Shadow
      * \returns Whether the texture is to be depth compared
      */
@@ -285,6 +245,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Depth stencil
+     * \returns Whether a resource is a depth stencil or not
+     */
+    bool IsDepthStencil() const {
+      return m_desc.Usage & D3DUSAGE_DEPTHSTENCIL;
+    }
+
+    /**
      * \brief Autogen Mipmap
      * \returns Whether the texture is to have automatic mip generation
      */
@@ -334,10 +302,15 @@ namespace dxvk {
 
     const D3D9_VK_FORMAT_MAPPING& GetMapping() { return m_mapping; }
 
-    bool MarkLocked(UINT Subresource, bool value) { return std::exchange(m_locked[Subresource], value); }
+    bool MarkLocked(UINT Subresource, bool value) { return m_locked.exchange(Subresource, value); }
 
-    bool SetDirty(UINT Subresource, bool value) { return std::exchange(m_dirty[Subresource], value); }
-    void MarkAllDirty() { for (uint32_t i = 0; i < m_dirty.size(); i++) m_dirty[i] = true; }
+    bool SetDirty(UINT Subresource, bool value) { return m_dirty.exchange(Subresource, value); }
+
+    void MarkAllDirty() { m_dirty.setAll(); }
+
+    void SetReadOnlyLocked(UINT Subresource, bool readOnly) { return m_readOnly.set(Subresource, readOnly); }
+
+    bool GetReadOnlyLocked(UINT Subresource) { return m_readOnly.get(Subresource); }
 
     const Rc<DxvkImageView>& GetSampleView(bool srgb) const {
       return m_sampleView.Pick(srgb && IsSrgbCompatible());
@@ -351,12 +324,16 @@ namespace dxvk {
         : VK_IMAGE_LAYOUT_GENERAL;
     }
 
-    VkImageLayout DetermineDepthStencilLayout() const {
-      return m_image != nullptr &&
-             m_image->info().tiling == VK_IMAGE_TILING_OPTIMAL &&
-            !m_hazardous
-        ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-        : VK_IMAGE_LAYOUT_GENERAL;
+    VkImageLayout DetermineDepthStencilLayout(bool hazardous) const {
+      VkImageLayout layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+      if (unlikely(hazardous))
+        layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+
+      if (unlikely(m_image->info().tiling == VK_IMAGE_TILING_OPTIMAL))
+        layout = VK_IMAGE_LAYOUT_GENERAL;
+
+      return layout;
     }
 
     Rc<DxvkImageView> CreateView(
@@ -364,6 +341,15 @@ namespace dxvk {
             UINT                   Lod,
             VkImageUsageFlags      UsageFlags,
             bool                   Srgb);
+    D3D9SubresourceBitset& GetUploadBitmask() { return m_needsUpload; }
+
+    void SetUploading(UINT Subresource, bool uploading) { m_uploading.set(Subresource, uploading); }
+    void ClearUploading() { m_uploading.clearAll(); }
+    bool GetUploading(UINT Subresource) const { return m_uploading.get(Subresource); }
+
+    void SetNeedsUpload(UINT Subresource, bool upload) { m_needsUpload.set(Subresource, upload); }
+    bool NeedsAnyUpload() { return m_needsUpload.any(); }
+    void ClearNeedsUpload() { return m_needsUpload.clearAll();  }
 
   private:
 
@@ -378,7 +364,6 @@ namespace dxvk {
       Rc<DxvkBuffer>>             m_buffers;
     D3D9SubresourceArray<
       DxvkBufferSliceHandle>      m_mappedSlices;
-    D3D9SubresourceArray<DWORD>   m_lockFlags;
 
     D3D9_VK_FORMAT_MAPPING        m_mapping;
 
@@ -394,11 +379,14 @@ namespace dxvk {
 
     D3D9ColorView                 m_sampleView;
 
-    D3D9SubresourceArray<
-      bool>                       m_locked = { };
+    D3D9SubresourceBitset         m_locked = { };
 
-    D3D9SubresourceArray<
-      bool>                       m_dirty = { };
+    D3D9SubresourceBitset         m_readOnly = { };
+
+    D3D9SubresourceBitset         m_dirty = { };
+
+    D3D9SubresourceBitset         m_uploading = { };
+    D3D9SubresourceBitset         m_needsUpload = { };
 
     /**
      * \brief Mip level
@@ -406,7 +394,7 @@ namespace dxvk {
      */
     VkDeviceSize GetMipSize(UINT Subresource) const;
 
-    Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType) const;
+    Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType, bool TryOffscreenRT) const;
 
     Rc<DxvkImage> CreateResolveImage() const;
 

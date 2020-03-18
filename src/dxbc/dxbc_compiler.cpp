@@ -2279,9 +2279,13 @@ namespace dxvk {
     //    (srcX) As above
     const DxbcBufferInfo bufferInfo = getBufferInfo(ins.dst[ins.dstCount - 1]);
     
-    const bool isImm = ins.dstCount == 2;
-    const bool isUav = ins.dst[ins.dstCount - 1].type == DxbcOperandType::UnorderedAccessView;
+    bool isImm = ins.dstCount == 2;
+    bool isUav = ins.dst[ins.dstCount - 1].type == DxbcOperandType::UnorderedAccessView;
     
+    bool isSsbo = m_moduleInfo.options.minSsboAlignment <= bufferInfo.align
+               && bufferInfo.type != DxbcResourceType::Typed
+               && isUav;
+
     // Perform atomic operations on UAVs only if the UAV
     // is bound and if there is nothing else stopping us.
     DxbcConditional cond;
@@ -2317,8 +2321,11 @@ namespace dxvk {
     
     if (isUav) {
       scope     = spv::ScopeDevice;
-      semantics = spv::MemorySemanticsImageMemoryMask
-                | spv::MemorySemanticsAcquireReleaseMask;
+      semantics = spv::MemorySemanticsAcquireReleaseMask;
+
+      semantics |= isSsbo
+                ? spv::MemorySemanticsUniformMemoryMask
+                : spv::MemorySemanticsImageMemoryMask;
     } else {
       scope     = spv::ScopeWorkgroup;
       semantics = spv::MemorySemanticsWorkgroupMemoryMask
@@ -6301,8 +6308,8 @@ namespace dxvk {
         { m_hs.builtinTessLevelOuter, 1 },  // FinalTriVeq0EdgeTessFactor
         { m_hs.builtinTessLevelOuter, 2 },  // FinalTriWeq0EdgeTessFactor
         { m_hs.builtinTessLevelInner, 0 },  // FinalTriInsideTessFactor
-        { m_hs.builtinTessLevelOuter, 0 },  // FinalLineDetailTessFactor
-        { m_hs.builtinTessLevelOuter, 1 },  // FinalLineDensityTessFactor
+        { m_hs.builtinTessLevelOuter, 0 },  // FinalLineDensityTessFactor
+        { m_hs.builtinTessLevelOuter, 1 },  // FinalLineDetailTessFactor
       }};
       
       const TessFactor tessFactor = s_tessFactors.at(uint32_t(sv)

@@ -4,6 +4,7 @@ util_src = files([
   'util_gdi.cpp',
   'util_luid.cpp',
   'util_matrix.cpp',
+  'util_monitor.cpp',
   
   'com/com_guid.cpp',
   'com/com_private_data.cpp',
@@ -15,6 +16,8 @@ util_src = files([
   
   'sha1/sha1.c',
   'sha1/sha1_util.cpp',
+
+  'sync/sync_recursive.cpp',
 ])
 
 util_lib = static_library('util', util_src,
