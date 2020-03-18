@@ -4408,12 +4408,8 @@ namespace dxvk {
 
     VkDeviceSize availableTextureMemory = 0;
 
-    for (uint32_t i = 0; i < memoryProp.memoryHeapCount; i++) {
-      VkMemoryHeap& heap = memoryProp.memoryHeaps[i];
-
-      if (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
-        availableTextureMemory += memoryProp.memoryHeaps[i].size;
-    }
+    for (uint32_t i = 0; i < memoryProp.memoryHeapCount; i++)
+      availableTextureMemory += memoryProp.memoryHeaps[i].size;
 
     constexpr VkDeviceSize Megabytes = 1024 * 1024;
 
