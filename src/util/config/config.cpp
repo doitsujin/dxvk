@@ -326,6 +326,10 @@ namespace dxvk {
     { R"(\\ZusiSim\.exe$)", {{
       { "d3d9.noExplicitFrontBuffer",       "True" },
     }} },
+    /* VenusBlood FRONTIER International          */
+    { R"(\\VBFI\.exe$)", {{
+      { "d3d9.noExplicitFrontBuffer",       "True" },
+    }} },
   }};
 
 
