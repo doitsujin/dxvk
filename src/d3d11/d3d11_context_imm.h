@@ -2,6 +2,8 @@
 
 #include "../util/util_time.h"
 
+#include "../util/sync/sync_signal_win32.h"
+
 #include "d3d11_context.h"
 #include "d3d11_state_object.h"
 
@@ -116,6 +118,9 @@ namespace dxvk {
 
     std::atomic<uint32_t> m_refCount = { 0 };
 
+    Rc<sync::Win32Fence> m_eventSignal;
+    uint64_t             m_eventCount = 0;
+
     dxvk::high_resolution_clock::time_point m_lastFlush
       = dxvk::high_resolution_clock::now();
     
@@ -148,6 +153,8 @@ namespace dxvk {
     void EmitCsChunk(DxvkCsChunkRef&& chunk);
 
     void FlushImplicit(BOOL StrongHint);
+
+    void SignalEvent(HANDLE hEvent);
     
   };
   

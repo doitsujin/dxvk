@@ -156,7 +156,7 @@ namespace dxvk {
     m_parent->FlushInitContext();
 
     if (hEvent)
-      Logger::warn("D3D11: Flush1: Ignoring event");
+      SignalEvent(hEvent);
     
     D3D10DeviceLock lock = LockContext();
     
@@ -645,6 +645,23 @@ namespace dxvk {
       if (now - m_lastFlush >= std::chrono::microseconds(delay))
         Flush();
     }
+  }
+
+
+  void D3D11ImmediateContext::SignalEvent(HANDLE hEvent) {
+    uint64_t value = ++m_eventCount;
+
+    if (m_eventSignal == nullptr)
+      m_eventSignal = new sync::Win32Fence();
+
+    m_eventSignal->setEvent(hEvent, value);
+
+    EmitCs([
+      cSignal = m_eventSignal,
+      cValue  = value
+    ] (DxvkContext* ctx) {
+      ctx->signal(cSignal, cValue);
+    });
   }
   
 }
