@@ -4,6 +4,8 @@
 #include <condition_variable>
 #include <mutex>
 
+#include "../rc/util_rc.h"
+
 namespace dxvk::sync {
   
   /**
