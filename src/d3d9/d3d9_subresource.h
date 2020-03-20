@@ -99,8 +99,8 @@ namespace dxvk {
       return view;
     }
 
-    VkImageLayout GetDepthStencilLayout(bool hazardous) const {
-      return m_texture->DetermineDepthStencilLayout(hazardous);
+    VkImageLayout GetDepthStencilLayout(bool write, bool hazardous) const {
+      return m_texture->DetermineDepthStencilLayout(write, hazardous);
     }
 
     bool IsNull() {
