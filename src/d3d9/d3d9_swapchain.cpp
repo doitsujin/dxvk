@@ -31,20 +31,19 @@ namespace dxvk {
   }
 
 
-  static LRESULT CALLBACK D3D9WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam)
-  {
-      if (message == WM_NCCALCSIZE && wparam == TRUE)
-        return 0;
+  static LRESULT CALLBACK D3D9WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
+    if (message == WM_NCCALCSIZE && wparam == TRUE)
+      return 0;
 
-      auto windowData = GetD3D9WindowData(window);
-      if (!windowData.proc)
-        return IsWindowUnicode(window)
-          ? DefWindowProcW(window, message, wparam, lparam)
-          : DefWindowProcA(window, message, wparam, lparam);
+    auto windowData = GetD3D9WindowData(window);
+    if (!windowData.proc)
+      return IsWindowUnicode(window)
+        ? DefWindowProcW(window, message, wparam, lparam)
+        : DefWindowProcA(window, message, wparam, lparam);
 
-      return windowData.unicode
-        ? CallWindowProcW(windowData.proc, window, message, wparam, lparam)
-        : CallWindowProcA(windowData.proc, window, message, wparam, lparam);
+    return windowData.unicode
+      ? CallWindowProcW(windowData.proc, window, message, wparam, lparam)
+      : CallWindowProcA(windowData.proc, window, message, wparam, lparam);
   }
 
 
