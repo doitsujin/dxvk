@@ -2,6 +2,8 @@
 
 #include <list>
 
+#include "../com/com_include.h"
+
 #include "sync_signal.h"
 
 namespace dxvk::sync {
