@@ -324,10 +324,14 @@ namespace dxvk {
         : VK_IMAGE_LAYOUT_GENERAL;
     }
 
-    VkImageLayout DetermineDepthStencilLayout(bool hazardous) const {
-      VkImageLayout layout = hazardous
-        ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
-        : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    VkImageLayout DetermineDepthStencilLayout(bool write, bool hazardous) const {
+      VkImageLayout layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+      if (unlikely(hazardous)) {
+        layout = write
+          ? VK_IMAGE_LAYOUT_GENERAL
+          : VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
+      }
 
       if (unlikely(m_image->info().tiling != VK_IMAGE_TILING_OPTIMAL))
         layout = VK_IMAGE_LAYOUT_GENERAL;

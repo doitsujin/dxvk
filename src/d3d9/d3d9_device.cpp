@@ -1783,10 +1783,16 @@ namespace dxvk {
             m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
           break;
 
+        case D3DRS_ZWRITEENABLE:
+          if (m_activeHazardsDS != 0)
+            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+
+          m_flags.set(D3D9DeviceFlag::DirtyDepthStencilState);
+          break;
+
         case D3DRS_ZENABLE:
         case D3DRS_ZFUNC:
         case D3DRS_TWOSIDEDSTENCILMODE:
-        case D3DRS_ZWRITEENABLE:
         case D3DRS_STENCILENABLE:
         case D3DRS_STENCILFAIL:
         case D3DRS_STENCILZFAIL:
@@ -4962,11 +4968,12 @@ namespace dxvk {
 
     if (m_state.depthStencil != nullptr) {
       const DxvkImageCreateInfo& dsImageInfo = m_state.depthStencil->GetCommonTexture()->GetImage()->info();
+      const bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
 
       if (likely(sampleCount == VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM || sampleCount == dsImageInfo.sampleCount)) {
         attachments.depth = {
           m_state.depthStencil->GetDepthStencilView(),
-          m_state.depthStencil->GetDepthStencilLayout(m_activeHazardsDS != 0) };
+          m_state.depthStencil->GetDepthStencilLayout(depthWrite, m_activeHazardsDS != 0) };
       }
     }
 
