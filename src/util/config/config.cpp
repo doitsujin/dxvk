@@ -189,6 +189,14 @@ namespace dxvk {
     { R"(\\Subnautica\.exe$)", {{
       { "dxvk.enableOpenVR",                "False" },
     }} },
+    /* Super Monkey Ball: Banana Blitz HD         */
+    { R"(\\SMBBBHD\.exe$)", {{
+      { "d3d11.enableRtOutputNanFixup",     "True" },
+    }} },
+    /* Yooka-Laylee and the Impossible Lair       */
+    { R"(\\YLILWin64.exe\.exe$)", {{
+      { "d3d11.enableRtOutputNanFixup",     "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
