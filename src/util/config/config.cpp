@@ -194,7 +194,7 @@ namespace dxvk {
       { "d3d11.enableRtOutputNanFixup",     "True" },
     }} },
     /* Yooka-Laylee and the Impossible Lair       */
-    { R"(\\YLILWin64.exe\.exe$)", {{
+    { R"(\\YLILWin64\.exe$)", {{
       { "d3d11.enableRtOutputNanFixup",     "True" },
     }} },
 
