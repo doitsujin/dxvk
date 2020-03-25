@@ -167,6 +167,11 @@ public:
 
     UINT secondRef1 = m_device->AddRef();
 
+    Com<IDirect3DSurface9> nullSurface;
+    status = m_device->CreateRenderTarget(64, 64, D3DFORMAT(MAKEFOURCC('N', 'U', 'L', 'L')), D3DMULTISAMPLE_NONE, 0, FALSE, &nullSurface, nullptr);
+
+    status = m_device->ColorFill(nullSurface.ptr(), nullptr, D3DCOLOR_RGBA(255, 0, 0, 255));
+
     Com<IDirect3DTexture9> defaultTexture;
     status = m_device->CreateTexture(64, 64, 1, 0, D3DFMT_DXT3, D3DPOOL_DEFAULT,   &defaultTexture, nullptr);
 
