@@ -1066,8 +1066,13 @@ namespace dxvk {
           cClearValue);
       });
     } else {
-      if (unlikely(rtView == nullptr))
-        Logger::err(str::format("D3D9DeviceEx::ColorFill: Unsupported format ", dstTextureInfo->Desc()->Format));
+      if (unlikely(rtView == nullptr)) {
+        const D3D9Format format = dstTextureInfo->Desc()->Format;
+        if (format != D3D9Format::NULL_FORMAT)
+          Logger::err(str::format("D3D9DeviceEx::ColorFill: Unsupported format ", format));
+
+        return D3D_OK;
+      }
 
       EmitCs([
         cImageView  = rtView,
