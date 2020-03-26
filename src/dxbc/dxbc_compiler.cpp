@@ -2054,6 +2054,14 @@ namespace dxvk {
       emitRegisterLoad(ins.src[1], srcMask),
     };
     
+    // Division by zero will return 0xffffffff for both results
+    auto bvecId = getVectorTypeId({ DxbcScalarType::Bool, ins.dst[0].mask.popCount() });
+
+    DxbcRegisterValue const0  = emitBuildConstVecu32( 0u,  0u,  0u,  0u, ins.dst[0].mask);
+    DxbcRegisterValue constff = emitBuildConstVecu32(~0u, ~0u, ~0u, ~0u, ins.dst[0].mask);
+
+    uint32_t cmpValue = m_module.opINotEqual(bvecId, src.at(1).id, const0.id);
+
     // Compute results only if the destination
     // operands are not NULL.
     if (ins.dst[0].type != DxbcOperandType::Null) {
@@ -2064,6 +2072,10 @@ namespace dxvk {
       quotient.id = m_module.opUDiv(
         getVectorTypeId(quotient.type),
         src.at(0).id, src.at(1).id);
+
+      quotient.id = m_module.opSelect(
+        getVectorTypeId(quotient.type),
+        cmpValue, quotient.id, constff.id);
       
       quotient = emitDstOperandModifiers(quotient, ins.modifiers);
       emitRegisterStore(ins.dst[0], quotient);
@@ -2077,6 +2089,10 @@ namespace dxvk {
       remainder.id = m_module.opUMod(
         getVectorTypeId(remainder.type),
         src.at(0).id, src.at(1).id);
+
+      remainder.id = m_module.opSelect(
+        getVectorTypeId(remainder.type),
+        cmpValue, remainder.id, constff.id);
       
       remainder = emitDstOperandModifiers(remainder, ins.modifiers);
       emitRegisterStore(ins.dst[1], remainder);
