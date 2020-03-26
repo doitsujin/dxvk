@@ -2055,10 +2055,10 @@ namespace dxvk {
     };
     
     // Division by zero will return 0xffffffff for both results
-    auto bvecId = getVectorTypeId({ DxbcScalarType::Bool, ins.dst[0].mask.popCount() });
+    auto bvecId = getVectorTypeId({ DxbcScalarType::Bool, srcMask.popCount() });
 
-    DxbcRegisterValue const0  = emitBuildConstVecu32( 0u,  0u,  0u,  0u, ins.dst[0].mask);
-    DxbcRegisterValue constff = emitBuildConstVecu32(~0u, ~0u, ~0u, ~0u, ins.dst[0].mask);
+    DxbcRegisterValue const0  = emitBuildConstVecu32( 0u,  0u,  0u,  0u, srcMask);
+    DxbcRegisterValue constff = emitBuildConstVecu32(~0u, ~0u, ~0u, ~0u, srcMask);
 
     uint32_t cmpValue = m_module.opINotEqual(bvecId, src.at(1).id, const0.id);
 
