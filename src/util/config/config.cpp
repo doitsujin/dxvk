@@ -330,6 +330,10 @@ namespace dxvk {
     { R"(\\ZusiSim\.exe$)", {{
       { "d3d9.noExplicitFrontBuffer",       "True" },
     }} },
+    /* GTA IV (NVAPI)                             */
+    { R"(\\GTAIV\.exe$)", {{
+      { "d3d9.customVendorId",              "1002" },
+    }} },
   }};
 
 
