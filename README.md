@@ -122,5 +122,5 @@ update-alternatives --config x86_64-w64-mingw32-g++
 ```
 For non debian based distros, make sure that your mingw-w64-gcc cross compiler 
 does have `--enable-threads=posix` enabled during configure. If your distro does
-ship it's mingw-w64-gcc binary with `--enable-threads=win32` you might have to
+ship its mingw-w64-gcc binary with `--enable-threads=win32` you might have to
 recompile locally or open a bug at your distro's bugtracker to ask for it. 
