@@ -1715,7 +1715,7 @@ namespace dxvk {
           m_nvATOC = Value == AlphaToCoverageEnable;
 
           bool newATOC = IsAlphaToCoverageEnabled();
-          bool newAlphaTest = IsAlphaToCoverageEnabled();
+          bool newAlphaTest = IsAlphaTestEnabled();
 
           if (oldATOC != newATOC)
             m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
