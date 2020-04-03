@@ -400,6 +400,8 @@ namespace dxvk {
 
 
   void DxgiAdapter::runEventThread() {
+    env::setThreadName(str::format("dxvk-adapter-", m_index));
+
     std::unique_lock<std::mutex> lock(m_mutex);
     DxvkAdapterMemoryInfo memoryInfoOld = m_adapter->getMemoryHeapInfo();
 
