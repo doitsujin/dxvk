@@ -111,6 +111,15 @@ namespace dxvk {
     
     UINT              m_index;
     UINT64            m_memReservation[2] = { 0, 0 };
+
+    std::mutex                        m_mutex;
+    std::condition_variable           m_cond;
+
+    DWORD                             m_eventCookie = 0;
+    std::unordered_map<DWORD, HANDLE> m_eventMap;
+    dxvk::thread                      m_eventThread;
+
+    void runEventThread();
     
   };
 

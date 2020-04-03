@@ -66,7 +66,14 @@ namespace dxvk {
   
   
   DxgiAdapter::~DxgiAdapter() {
-    
+    if (m_eventThread.joinable()) {
+      std::unique_lock<std::mutex> lock(m_mutex);
+      m_eventCookie = ~0u;
+      m_cond.notify_one();
+
+      lock.unlock();
+      m_eventThread.join();
+    }
   }
   
   
@@ -349,8 +356,23 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiAdapter::RegisterVideoMemoryBudgetChangeNotificationEvent(
           HANDLE                        hEvent,
           DWORD*                        pdwCookie) {
-    Logger::err("DxgiAdapter::RegisterVideoMemoryBudgetChangeNotificationEvent: Not implemented");
-    return E_NOTIMPL;
+    if (!hEvent || !pdwCookie)
+      return E_INVALIDARG;
+
+    std::unique_lock<std::mutex> lock(m_mutex);
+    DWORD cookie = ++m_eventCookie;
+
+    m_eventMap.insert({ cookie, hEvent });
+
+    if (!m_eventThread.joinable())
+      m_eventThread = dxvk::thread([this] { runEventThread(); });
+
+    // This method seems to fire the
+    // event immediately on Windows
+    SetEvent(hEvent);
+
+    *pdwCookie = cookie;
+    return S_OK;
   }
   
 
@@ -362,7 +384,8 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE DxgiAdapter::UnregisterVideoMemoryBudgetChangeNotification(
           DWORD                         dwCookie) {
-    Logger::err("DxgiAdapter::UnregisterVideoMemoryBudgetChangeNotification: Not implemented");
+    std::unique_lock<std::mutex> lock(m_mutex);
+    m_eventMap.erase(dwCookie);
   }
 
 
@@ -373,6 +396,35 @@ namespace dxvk {
 
   Rc<DxvkInstance> STDMETHODCALLTYPE DxgiAdapter::GetDXVKInstance() {
     return m_factory->GetDXVKInstance();
+  }
+
+
+  void DxgiAdapter::runEventThread() {
+    std::unique_lock<std::mutex> lock(m_mutex);
+    DxvkAdapterMemoryInfo memoryInfoOld = m_adapter->getMemoryHeapInfo();
+
+    while (true) {
+      m_cond.wait_for(lock, std::chrono::milliseconds(1500),
+        [this] { return m_eventCookie == ~0u; });
+
+      if (m_eventCookie == ~0u)
+        return;
+
+      auto memoryInfoNew = m_adapter->getMemoryHeapInfo();
+      bool budgetChanged = false;
+
+      for (uint32_t i = 0; i < memoryInfoNew.heapCount; i++) {
+        budgetChanged |= memoryInfoNew.heaps[i].memoryBudget
+                      != memoryInfoOld.heaps[i].memoryBudget;
+      }
+
+      if (budgetChanged) {
+        memoryInfoOld = memoryInfoNew;
+
+        for (const auto& pair : m_eventMap)
+          SetEvent(pair.second);
+      }
+    }
   }
   
 }
