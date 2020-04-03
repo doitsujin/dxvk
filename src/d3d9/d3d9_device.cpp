@@ -1673,6 +1673,8 @@ namespace dxvk {
       const bool oldNVDB = states[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB);
       const bool oldAlphaTest = IsAlphaTestEnabled();
 
+      states[State] = Value;
+
       // AMD's driver hack for ATOC and RESZ
       if (unlikely(State == D3DRS_POINTSIZE)) {
         // ATOC
@@ -1730,8 +1732,6 @@ namespace dxvk {
           return D3D_OK;
         }
       }
-
-      states[State] = Value;
 
       switch (State) {
         case D3DRS_SEPARATEALPHABLENDENABLE:
