@@ -76,12 +76,8 @@ namespace dxvk {
     { R"(\\ffxiv_dx11\.exe$)", {{
       { "d3d11.enableRtOutputNanFixup",     "True" },
     }} },
-    /* Resident Evil 2: Improve GPU performance   */
-    { R"(\\re2\.exe$)", {{
-      { "d3d11.relaxedBarriers",            "True" },
-    }} },
-    /* Resident Evil 7                            */
-    { R"(\\re7\.exe$)", {{
+    /* Resident Evil 2/3/7: Ignore WaW hazards    */
+    { R"(\\re(2|3|3demo|7|7trial)\.exe$)", {{
       { "d3d11.relaxedBarriers",            "True" },
     }} },
     /* Devil May Cry 5                            */
