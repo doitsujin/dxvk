@@ -1774,7 +1774,7 @@ namespace dxvk {
               || !srcImage->isFullSubresource(region.srcSubresource, region.extent)
               || dstImage->info().format != srcImage->info().format;
     
-    if (useFb) {
+    if (!useFb) {
       // Additionally, the given mode combination must be supported.
       const auto& properties = m_device->properties().khrDepthStencilResolve;
 
