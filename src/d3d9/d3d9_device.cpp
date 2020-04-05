@@ -1726,7 +1726,7 @@ namespace dxvk {
           return D3D_OK;
         }
 
-        if (Value == uint32_t(D3D9Format::COPM)) {
+        if (unlikely(Value == uint32_t(D3D9Format::COPM))) {
           // UE3 calls this MinimalNVIDIADriverShaderOptimization
           Logger::info("D3D9DeviceEx::SetRenderState: MinimalNVIDIADriverShaderOptimization is unsupported");
           return D3D_OK;
