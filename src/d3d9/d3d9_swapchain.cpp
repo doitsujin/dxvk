@@ -12,6 +12,7 @@ namespace dxvk {
 
   struct D3D9WindowData {
     bool unicode;
+    bool filter;
     WNDPROC proc;
   };
 
@@ -20,28 +21,30 @@ namespace dxvk {
   static std::unordered_map<HWND, D3D9WindowData> windowProcMap;
 
 
-  static D3D9WindowData GetD3D9WindowData(HWND window) {
-    std::lock_guard<std::recursive_mutex> lock(windowProcMapMutex);
-
-    auto it = windowProcMap.find(window);
-    if (it == windowProcMap.end())
-      return {};
-
-    return it->second;
-  }
-
-
   static LRESULT CALLBACK D3D9WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
     if (message == WM_NCCALCSIZE && wparam == TRUE)
       return 0;
 
-    auto windowData = GetD3D9WindowData(window);
-    if (!windowData.proc)
-      return IsWindowUnicode(window)
+    D3D9WindowData windowData = {};
+
+    {
+      std::lock_guard<std::recursive_mutex> lock(windowProcMapMutex);
+
+      auto it = windowProcMap.find(window);
+      if (it != windowProcMap.end())
+        windowData = it->second;
+    }
+
+    bool unicode = windowData.proc
+      ? windowData.unicode
+      : IsWindowUnicode(window);
+
+    if (!windowData.proc || windowData.filter)
+      return unicode
         ? DefWindowProcW(window, message, wparam, lparam)
         : DefWindowProcA(window, message, wparam, lparam);
 
-    return windowData.unicode
+    return unicode
       ? CallWindowProcW(windowData.proc, window, message, wparam, lparam)
       : CallWindowProcA(windowData.proc, window, message, wparam, lparam);
   }
@@ -525,7 +528,15 @@ namespace dxvk {
     else {
       if (changeFullscreen)
         this->EnterFullscreenMode(pPresentParams, pFullscreenDisplayMode);
-      else
+
+      std::unique_lock<std::recursive_mutex> lock(windowProcMapMutex);
+
+      auto it = windowProcMap.find(m_window);
+      it->second.filter = true;
+
+      lock.unlock();
+
+      if (!changeFullscreen)
         ChangeDisplayMode(pPresentParams, pFullscreenDisplayMode);
 
       // Move the window so that it covers the entire output    
@@ -535,6 +546,10 @@ namespace dxvk {
       ::SetWindowPos(m_window, HWND_TOPMOST,
         rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
         SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
+
+      lock.lock();
+
+      it->second.filter = false;
     }
 
     m_presentParams = *pPresentParams;
@@ -1463,6 +1478,7 @@ namespace dxvk {
 
     D3D9WindowData windowData;
     windowData.unicode = IsWindowUnicode(m_window);
+    windowData.filter  = true;
     windowData.proc = windowData.unicode
       ? (WNDPROC)SetWindowLongPtrW(m_window, GWLP_WNDPROC, (LONG_PTR)D3D9WindowProc)
       : (WNDPROC)SetWindowLongPtrA(m_window, GWLP_WNDPROC, (LONG_PTR)D3D9WindowProc);
