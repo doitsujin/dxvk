@@ -71,7 +71,7 @@ namespace dxvk {
   }
 
 
-  static LRESULT CALLBACK D3D9WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
+  LRESULT CALLBACK D3D9WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
     if (message == WM_NCCALCSIZE && wparam == TRUE)
       return 0;
 
