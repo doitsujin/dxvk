@@ -21,6 +21,14 @@ namespace dxvk {
   static std::unordered_map<HWND, D3D9WindowData> g_windowProcMap;
 
 
+  template <typename T, typename J, typename ... Args>
+  auto CallCharsetFunction(T unicode, J ascii, bool isUnicode, Args... args) {
+    return isUnicode
+      ? unicode(args...)
+      : ascii  (args...);
+  }
+
+
   static LRESULT CALLBACK D3D9WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
     if (message == WM_NCCALCSIZE && wparam == TRUE)
       return 0;
@@ -40,13 +48,13 @@ namespace dxvk {
       : IsWindowUnicode(window);
 
     if (!windowData.proc || windowData.filter)
-      return unicode
-        ? DefWindowProcW(window, message, wparam, lparam)
-        : DefWindowProcA(window, message, wparam, lparam);
+      return CallCharsetFunction(
+        DefWindowProcW, DefWindowProcA, unicode,
+          window, message, wparam, lparam);
 
-    return unicode
-      ? CallWindowProcW(windowData.proc, window, message, wparam, lparam)
-      : CallWindowProcA(windowData.proc, window, message, wparam, lparam);
+    return CallCharsetFunction(
+      CallWindowProcW, CallWindowProcA, unicode,
+        windowData.proc, window, message, wparam, lparam);
   }
 
 
@@ -1480,9 +1488,10 @@ namespace dxvk {
     D3D9WindowData windowData;
     windowData.unicode = IsWindowUnicode(m_window);
     windowData.filter  = true;
-    windowData.proc = windowData.unicode
-      ? (WNDPROC)SetWindowLongPtrW(m_window, GWLP_WNDPROC, (LONG_PTR)D3D9WindowProc)
-      : (WNDPROC)SetWindowLongPtrA(m_window, GWLP_WNDPROC, (LONG_PTR)D3D9WindowProc);
+    windowData.proc = reinterpret_cast<WNDPROC>(
+      CallCharsetFunction(
+      SetWindowLongPtrW, SetWindowLongPtrA, windowData.unicode,
+        m_window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(D3D9WindowProc)));
 
     g_windowProcMap[m_window] = std::move(windowData);
   }
@@ -1494,15 +1503,16 @@ namespace dxvk {
     if (it == g_windowProcMap.end())
       return;
 
-    auto proc = it->second.unicode
-      ? (WNDPROC)GetWindowLongPtrW(m_window, GWLP_WNDPROC)
-      : (WNDPROC)GetWindowLongPtrA(m_window, GWLP_WNDPROC);
+    auto proc = reinterpret_cast<WNDPROC>(
+      CallCharsetFunction(
+      GetWindowLongPtrW, GetWindowLongPtrA, it->second.unicode,
+        m_window, GWLP_WNDPROC));
 
-    if (proc == D3D9WindowProc) {
-      it->second.unicode
-        ? SetWindowLongPtrW(m_window, GWLP_WNDPROC, (LONG_PTR)it->second.proc)
-        : SetWindowLongPtrA(m_window, GWLP_WNDPROC, (LONG_PTR)it->second.proc);
-    }
+
+    if (proc == D3D9WindowProc)
+      CallCharsetFunction(
+        SetWindowLongPtrW, SetWindowLongPtrA, it->second.unicode,
+          m_window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(it->second.proc));
 
     g_windowProcMap.erase(m_window);
   }
