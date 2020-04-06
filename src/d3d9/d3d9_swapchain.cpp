@@ -94,6 +94,9 @@ namespace dxvk {
         DefWindowProcW, DefWindowProcA, unicode,
           window, message, wparam, lparam);
 
+    if (message == WM_DESTROY)
+      ResetWindowProc(window);
+
     return CallCharsetFunction(
       CallWindowProcW, CallWindowProcA, unicode,
         windowData.proc, window, message, wparam, lparam);
