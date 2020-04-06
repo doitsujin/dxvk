@@ -529,12 +529,11 @@ namespace dxvk {
       if (changeFullscreen)
         this->EnterFullscreenMode(pPresentParams, pFullscreenDisplayMode);
 
-      std::unique_lock<std::recursive_mutex> lock(windowProcMapMutex);
-
-      auto it = windowProcMap.find(m_window);
-      it->second.filter = true;
-
-      lock.unlock();
+      {
+        std::lock_guard<std::recursive_mutex> lock(windowProcMapMutex);
+        auto it = windowProcMap.find(m_window);
+        it->second.filter = true;
+      }
 
       if (!changeFullscreen)
         ChangeDisplayMode(pPresentParams, pFullscreenDisplayMode);
@@ -547,9 +546,11 @@ namespace dxvk {
         rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
         SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
 
-      lock.lock();
-
-      it->second.filter = false;
+      {
+        std::lock_guard<std::recursive_mutex> lock(windowProcMapMutex);
+        auto it = windowProcMap.find(m_window);
+        it->second.filter = false;
+      }
     }
 
     m_presentParams = *pPresentParams;
