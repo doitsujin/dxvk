@@ -17,8 +17,8 @@ namespace dxvk {
   };
 
 
-  static std::recursive_mutex windowProcMapMutex;
-  static std::unordered_map<HWND, D3D9WindowData> windowProcMap;
+  static std::recursive_mutex g_windowProcMapMutex;
+  static std::unordered_map<HWND, D3D9WindowData> g_windowProcMap;
 
 
   static LRESULT CALLBACK D3D9WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
@@ -28,10 +28,10 @@ namespace dxvk {
     D3D9WindowData windowData = {};
 
     {
-      std::lock_guard<std::recursive_mutex> lock(windowProcMapMutex);
+      std::lock_guard lock(g_windowProcMapMutex);
 
-      auto it = windowProcMap.find(window);
-      if (it != windowProcMap.end())
+      auto it = g_windowProcMap.find(window);
+      if (it != g_windowProcMap.end())
         windowData = it->second;
     }
 
@@ -530,8 +530,8 @@ namespace dxvk {
         this->EnterFullscreenMode(pPresentParams, pFullscreenDisplayMode);
 
       {
-        std::lock_guard<std::recursive_mutex> lock(windowProcMapMutex);
-        auto it = windowProcMap.find(m_window);
+        std::lock_guard lock(g_windowProcMapMutex);
+        auto it = g_windowProcMap.find(m_window);
         it->second.filter = true;
       }
 
@@ -547,8 +547,8 @@ namespace dxvk {
         SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
 
       {
-        std::lock_guard<std::recursive_mutex> lock(windowProcMapMutex);
-        auto it = windowProcMap.find(m_window);
+        std::lock_guard lock(g_windowProcMapMutex);
+        auto it = g_windowProcMap.find(m_window);
         it->second.filter = false;
       }
     }
@@ -1473,7 +1473,7 @@ namespace dxvk {
 
 
   void D3D9SwapChainEx::HookWindowProc() {
-    std::lock_guard<std::recursive_mutex> lock(windowProcMapMutex);
+    std::lock_guard lock(g_windowProcMapMutex);
 
     ResetWindowProc();
 
@@ -1484,14 +1484,14 @@ namespace dxvk {
       ? (WNDPROC)SetWindowLongPtrW(m_window, GWLP_WNDPROC, (LONG_PTR)D3D9WindowProc)
       : (WNDPROC)SetWindowLongPtrA(m_window, GWLP_WNDPROC, (LONG_PTR)D3D9WindowProc);
 
-    windowProcMap[m_window] = std::move(windowData);
+    g_windowProcMap[m_window] = std::move(windowData);
   }
 
   void D3D9SwapChainEx::ResetWindowProc() {
-    std::lock_guard<std::recursive_mutex> lock(windowProcMapMutex);
+    std::lock_guard lock(g_windowProcMapMutex);
 
-    auto it = windowProcMap.find(m_window);
-    if (it == windowProcMap.end())
+    auto it = g_windowProcMap.find(m_window);
+    if (it == g_windowProcMap.end())
       return;
 
     auto proc = it->second.unicode
@@ -1503,7 +1503,7 @@ namespace dxvk {
     else if (proc == D3D9WindowProc && !it->second.unicode)
       SetWindowLongPtrA(m_window, GWLP_WNDPROC, (LONG_PTR)it->second.proc);
 
-    windowProcMap.erase(m_window);
+    g_windowProcMap.erase(m_window);
   }
 
 }
