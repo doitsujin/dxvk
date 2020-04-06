@@ -29,6 +29,48 @@ namespace dxvk {
   }
 
 
+  LRESULT CALLBACK D3D9WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam);
+
+
+  void ResetWindowProc(HWND window) {
+    std::lock_guard lock(g_windowProcMapMutex);
+
+    auto it = g_windowProcMap.find(window);
+    if (it == g_windowProcMap.end())
+      return;
+
+    auto proc = reinterpret_cast<WNDPROC>(
+      CallCharsetFunction(
+      GetWindowLongPtrW, GetWindowLongPtrA, it->second.unicode,
+        window, GWLP_WNDPROC));
+
+
+    if (proc == D3D9WindowProc)
+      CallCharsetFunction(
+        SetWindowLongPtrW, SetWindowLongPtrA, it->second.unicode,
+          window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(it->second.proc));
+
+    g_windowProcMap.erase(window);
+  }
+
+
+  void HookWindowProc(HWND window) {
+    std::lock_guard lock(g_windowProcMapMutex);
+
+    ResetWindowProc(window);
+
+    D3D9WindowData windowData;
+    windowData.unicode = IsWindowUnicode(window);
+    windowData.filter  = true;
+    windowData.proc = reinterpret_cast<WNDPROC>(
+      CallCharsetFunction(
+      SetWindowLongPtrW, SetWindowLongPtrA, windowData.unicode,
+        window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(D3D9WindowProc)));
+
+    g_windowProcMap[window] = std::move(windowData);
+  }
+
+
   static LRESULT CALLBACK D3D9WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
     if (message == WM_NCCALCSIZE && wparam == TRUE)
       return 0;
@@ -104,7 +146,7 @@ namespace dxvk {
 
 
   D3D9SwapChainEx::~D3D9SwapChainEx() {
-    ResetWindowProc();
+    ResetWindowProc(m_window);
     RestoreDisplayMode(m_monitor);
 
     m_device->waitForSubmission(&m_presentStatus);
@@ -1322,7 +1364,7 @@ namespace dxvk {
     // Some games restore window styles after we have changed it, so hooking is
     // also required. Doing it will allow us to create fullscreen windows
     // regardless of their style and it also appears to work on Windows.
-    HookWindowProc();
+    HookWindowProc(m_window);
     
     // Change the window flags to remove the decoration etc.
     LONG style   = ::GetWindowLongW(m_window, GWL_STYLE);
@@ -1359,7 +1401,7 @@ namespace dxvk {
     
     m_monitor = nullptr;
 
-    ResetWindowProc();
+    ResetWindowProc(m_window);
     
     // Only restore the window style if the application hasn't
     // changed them. This is in line with what native D3D9 does.
@@ -1477,44 +1519,6 @@ namespace dxvk {
 
   std::string D3D9SwapChainEx::GetApiName() {
     return this->GetParent()->IsExtended() ? "D3D9Ex" : "D3D9";
-  }
-
-
-  void D3D9SwapChainEx::HookWindowProc() {
-    std::lock_guard lock(g_windowProcMapMutex);
-
-    ResetWindowProc();
-
-    D3D9WindowData windowData;
-    windowData.unicode = IsWindowUnicode(m_window);
-    windowData.filter  = true;
-    windowData.proc = reinterpret_cast<WNDPROC>(
-      CallCharsetFunction(
-      SetWindowLongPtrW, SetWindowLongPtrA, windowData.unicode,
-        m_window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(D3D9WindowProc)));
-
-    g_windowProcMap[m_window] = std::move(windowData);
-  }
-
-  void D3D9SwapChainEx::ResetWindowProc() {
-    std::lock_guard lock(g_windowProcMapMutex);
-
-    auto it = g_windowProcMap.find(m_window);
-    if (it == g_windowProcMap.end())
-      return;
-
-    auto proc = reinterpret_cast<WNDPROC>(
-      CallCharsetFunction(
-      GetWindowLongPtrW, GetWindowLongPtrA, it->second.unicode,
-        m_window, GWLP_WNDPROC));
-
-
-    if (proc == D3D9WindowProc)
-      CallCharsetFunction(
-        SetWindowLongPtrW, SetWindowLongPtrA, it->second.unicode,
-          m_window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(it->second.proc));
-
-    g_windowProcMap.erase(m_window);
   }
 
 }
