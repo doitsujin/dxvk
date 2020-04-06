@@ -1498,10 +1498,11 @@ namespace dxvk {
       ? (WNDPROC)GetWindowLongPtrW(m_window, GWLP_WNDPROC)
       : (WNDPROC)GetWindowLongPtrA(m_window, GWLP_WNDPROC);
 
-    if (proc == D3D9WindowProc && it->second.unicode)
-      SetWindowLongPtrW(m_window, GWLP_WNDPROC, (LONG_PTR)it->second.proc);
-    else if (proc == D3D9WindowProc && !it->second.unicode)
-      SetWindowLongPtrA(m_window, GWLP_WNDPROC, (LONG_PTR)it->second.proc);
+    if (proc == D3D9WindowProc) {
+      it->second.unicode
+        ? SetWindowLongPtrW(m_window, GWLP_WNDPROC, (LONG_PTR)it->second.proc)
+        : SetWindowLongPtrA(m_window, GWLP_WNDPROC, (LONG_PTR)it->second.proc);
+    }
 
     g_windowProcMap.erase(m_window);
   }
