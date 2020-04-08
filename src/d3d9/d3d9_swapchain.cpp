@@ -29,6 +29,34 @@ namespace dxvk {
   }
 
 
+  class D3D9WindowMessageFilter {
+
+  public:
+
+    D3D9WindowMessageFilter(HWND window, bool filter = true)
+      : m_window(window) {
+      std::lock_guard lock(g_windowProcMapMutex);
+      auto it = g_windowProcMap.find(m_window);
+      m_filter = std::exchange(it->second.filter, filter);
+    }
+
+    ~D3D9WindowMessageFilter() {
+      std::lock_guard lock(g_windowProcMapMutex);
+      auto it = g_windowProcMap.find(m_window);
+      it->second.filter = m_filter;
+    }
+
+    D3D9WindowMessageFilter             (const D3D9WindowMessageFilter&) = delete;
+    D3D9WindowMessageFilter& operator = (const D3D9WindowMessageFilter&) = delete;
+
+  private:
+
+    HWND m_window;
+    bool m_filter;
+
+  };
+
+
   LRESULT CALLBACK D3D9WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam);
 
 
@@ -61,7 +89,7 @@ namespace dxvk {
 
     D3D9WindowData windowData;
     windowData.unicode = IsWindowUnicode(window);
-    windowData.filter  = true;
+    windowData.filter  = false;
     windowData.proc = reinterpret_cast<WNDPROC>(
       CallCharsetFunction(
       SetWindowLongPtrW, SetWindowLongPtrA, windowData.unicode,
@@ -582,11 +610,7 @@ namespace dxvk {
       if (changeFullscreen)
         this->EnterFullscreenMode(pPresentParams, pFullscreenDisplayMode);
 
-      {
-        std::lock_guard lock(g_windowProcMapMutex);
-        auto it = g_windowProcMap.find(m_window);
-        it->second.filter = true;
-      }
+      D3D9WindowMessageFilter filter(m_window);
 
       if (!changeFullscreen)
         ChangeDisplayMode(pPresentParams, pFullscreenDisplayMode);
@@ -598,12 +622,6 @@ namespace dxvk {
       ::SetWindowPos(m_window, HWND_TOPMOST,
         rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
         SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
-
-      {
-        std::lock_guard lock(g_windowProcMapMutex);
-        auto it = g_windowProcMap.find(m_window);
-        it->second.filter = false;
-      }
     }
 
     m_presentParams = *pPresentParams;
@@ -1368,6 +1386,8 @@ namespace dxvk {
     // also required. Doing it will allow us to create fullscreen windows
     // regardless of their style and it also appears to work on Windows.
     HookWindowProc(m_window);
+
+    D3D9WindowMessageFilter filter(m_window);
     
     // Change the window flags to remove the decoration etc.
     LONG style   = ::GetWindowLongW(m_window, GWL_STYLE);
