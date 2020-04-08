@@ -45,6 +45,11 @@ namespace dxvk {
 
     /// Should the VS constant buffer be an SSBO (swvp on NV)
     bool vertexConstantBufferAsSSBO;
+
+    /// Should we make our Mads a FFma or do it the long way with an FMul and an FAdd?
+    /// This solves some rendering bugs in games that have z-pass shaders which
+    /// don't match entirely to the regular vertex shader in this way.
+    bool longMad;
   };
 
 }
