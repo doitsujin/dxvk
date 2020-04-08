@@ -28,8 +28,8 @@ namespace dxvk::hud {
   
   
   void HudRenderer::beginFrame(const Rc<DxvkContext>& context, VkExtent2D surfaceSize) {
-    context->bindResourceSampler(1, m_fontSampler);
-    context->bindResourceView   (1, m_fontView, nullptr);
+    context->bindResourceSampler(0, m_fontSampler);
+    context->bindResourceView   (0, m_fontView, nullptr);
     
     m_mode        = Mode::RenderNone;
     m_surfaceSize = surfaceSize;
@@ -220,7 +220,7 @@ namespace dxvk::hud {
     
     // Two shader resources: Font texture and sampler
     const std::array<DxvkResourceSlot, 1> fsResources = {{
-      { 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_IMAGE_VIEW_TYPE_2D },
+      { 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_IMAGE_VIEW_TYPE_2D },
     }};
     
     result.vert = device->createShader(
