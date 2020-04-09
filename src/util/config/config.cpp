@@ -337,6 +337,7 @@ namespace dxvk {
     /* Battlefield 2 (bad z-pass)                 */
     { R"(\\BF2\.exe$)", {{
       { "d3d9.longMad",                     "True" },
+      { "d3d9.invariantPosition",           "True" },
     }} },
   }};
 
