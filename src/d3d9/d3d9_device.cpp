@@ -3025,7 +3025,7 @@ namespace dxvk {
       m_psShaderMasks = FixedFunctionMask;
     }
 
-    UpdateActiveHazardsRT(UINT32_MAX, UINT32_MAX);
+    UpdateActiveHazardsRT(UINT32_MAX);
 
     return D3D_OK;
   }
@@ -4714,7 +4714,7 @@ namespace dxvk {
         m_state.renderStates[ColorWriteIndex(index)])
       m_activeRTs |= bit;
 
-    UpdateActiveHazardsRT(bit, UINT32_MAX);
+    UpdateActiveHazardsRT(bit);
   }
 
 
@@ -4740,15 +4740,15 @@ namespace dxvk {
         m_activeTexturesToUpload |= bit;
     }
 
-    UpdateActiveHazardsRT(UINT32_MAX, bit);
+    UpdateActiveHazardsRT(UINT32_MAX);
     UpdateActiveHazardsDS(bit);
   }
 
 
-  inline void D3D9DeviceEx::UpdateActiveHazardsRT(uint32_t rtMask, uint32_t texMask) {
+  inline void D3D9DeviceEx::UpdateActiveHazardsRT(uint32_t rtMask) {
     auto masks = m_psShaderMasks;
     masks.rtMask      &= m_activeRTs & rtMask;
-    masks.samplerMask &= m_activeRTTextures & texMask;
+    masks.samplerMask &= m_activeRTTextures;
 
     m_activeHazardsRT = m_activeHazardsRT & (~rtMask);
     for (uint32_t rt = masks.rtMask; rt; rt &= rt - 1) {
