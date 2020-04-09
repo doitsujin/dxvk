@@ -91,6 +91,19 @@ public:
     CheckSRGBFormat(D3DFMT_A2R10G10B10,  "A2R10G10B10");
     CheckSRGBFormat(D3DFMT_A16B16G16R16, "A16B16G16R16");
 
+    //
+
+    DWORD quality;
+    status = m_d3d->CheckDepthStencilMatch(adapter, D3DDEVTYPE_HAL, D3DFMT_A8R8G8B8, D3DFMT_A8R8G8B8, D3DFMT_D24S8);
+    status = m_d3d->CheckDeviceFormat(adapter, D3DDEVTYPE_HAL, D3DFMT_X8R8G8B8, 0, D3DRTYPE_SURFACE, D3DFMT_A8R8G8B8);
+    status = m_d3d->CheckDeviceFormatConversion(adapter, D3DDEVTYPE_HAL, D3DFMT_A8R8G8B8, D3DFMT_A8R8G8B8);
+    status = m_d3d->CheckDeviceMultiSampleType(adapter, D3DDEVTYPE_HAL, D3DFMT_A8R8G8B8, FALSE, D3DMULTISAMPLE_NONE, &quality);
+    status = m_d3d->CheckDeviceMultiSampleType(adapter, D3DDEVTYPE_HAL, D3DFMT_A8R8G8B8, TRUE, D3DMULTISAMPLE_NONE, &quality);
+    status = m_d3d->CheckDeviceType(adapter, D3DDEVTYPE_HAL, D3DFMT_A8R8G8B8, D3DFMT_A8R8G8B8, FALSE);
+    status = m_d3d->CheckDeviceType(adapter, D3DDEVTYPE_HAL, D3DFMT_A8R8G8B8, D3DFMT_A8R8G8B8, TRUE);
+
+    //
+
     D3DPRESENT_PARAMETERS params;
     getPresentParams(params);
 
