@@ -3527,12 +3527,20 @@ namespace dxvk {
     // a valid resource or vice versa.
     if (pTexture == nullptr || m_state.textures[StateSampler] == nullptr)
       m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+
+    auto oldTexture = GetCommonTexture(m_state.textures[StateSampler]);
+    auto newTexture = GetCommonTexture(pTexture);
+
+    DWORD oldUsage = oldTexture != nullptr ? oldTexture->Desc()->Usage : 0;
+    DWORD newUsage = newTexture != nullptr ? newTexture->Desc()->Usage : 0;
+
+    DWORD combinedUsage = oldUsage | newUsage;
     
     TextureChangePrivate(m_state.textures[StateSampler], pTexture);
 
     BindTexture(StateSampler);
 
-    UpdateActiveTextures(StateSampler);
+    UpdateActiveTextures(StateSampler, combinedUsage);
 
     return D3D_OK;
   }
@@ -4718,7 +4726,7 @@ namespace dxvk {
   }
 
 
-  inline void D3D9DeviceEx::UpdateActiveTextures(uint32_t index) {
+  inline void D3D9DeviceEx::UpdateActiveTextures(uint32_t index, DWORD combinedUsage) {
     const uint32_t bit = 1 << index;
 
     m_activeRTTextures       &= ~bit;
@@ -4740,8 +4748,11 @@ namespace dxvk {
         m_activeTexturesToUpload |= bit;
     }
 
-    UpdateActiveHazardsRT(UINT32_MAX);
-    UpdateActiveHazardsDS(bit);
+    if (unlikely(combinedUsage & D3DUSAGE_RENDERTARGET))
+      UpdateActiveHazardsRT(UINT32_MAX);
+
+    if (unlikely(combinedUsage & D3DUSAGE_DEPTHSTENCIL))
+      UpdateActiveHazardsDS(bit);
   }
 
 
