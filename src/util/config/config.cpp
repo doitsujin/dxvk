@@ -395,9 +395,19 @@ namespace dxvk {
         return;
 
       // Extract the value
+      bool insideString = false;
       n = skipWhitespace(line, n + 1);
-      while (n < line.size() && !isWhitespace(line[n]))
-        value << line[n++];
+
+      while (n < line.size()) {
+        if (!insideString && isWhitespace(line[n]))
+          break;
+
+        if (line[n] == '"') {
+          insideString = !insideString;
+          n++;
+        } else
+          value << line[n++];
+      }
       
       if (ctx.active)
         config.setOption(key.str(), value.str());
