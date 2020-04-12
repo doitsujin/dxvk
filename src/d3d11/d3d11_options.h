@@ -72,6 +72,9 @@ namespace dxvk {
     /// passed to IDXGISwapChain::Present.
     int32_t syncInterval;
 
+    /// Tear-free mode if vsync is disabled
+    bool tearFree;
+
     /// Override maximum frame latency if the app specifies
     /// a higher value. May help with frame timing issues.
     int32_t maxFrameLatency;
