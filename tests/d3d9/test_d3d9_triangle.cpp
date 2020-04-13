@@ -116,17 +116,17 @@ public:
       nullptr,
       &m_device);
 
-    UINT firstRef = m_device->AddRef();
+    m_device->AddRef();
 
     Com<IDirect3DSurface9> backbuffer;
     m_device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backbuffer);
 
-    UINT firstRef2 = m_device->AddRef();
+    m_device->AddRef();
 
     Com<IDirect3DSwapChain9> swapchain;
     m_device->GetSwapChain(0, &swapchain);
 
-    UINT firstRef3 = m_device->AddRef();
+    m_device->AddRef();
     
     if (FAILED(status))
       throw DxvkError("Failed to create D3D9 device");
@@ -178,7 +178,7 @@ public:
     m_device->SetVertexShader(m_vs.ptr());
     m_device->SetPixelShader(m_ps.ptr());
 
-    UINT secondRef1 = m_device->AddRef();
+    m_device->AddRef();
 
     Com<IDirect3DSurface9> nullSurface;
     status = m_device->CreateRenderTarget(64, 64, D3DFORMAT(MAKEFOURCC('N', 'U', 'L', 'L')), D3DMULTISAMPLE_NONE, 0, FALSE, &nullSurface, nullptr);
@@ -188,12 +188,12 @@ public:
     Com<IDirect3DTexture9> defaultTexture;
     status = m_device->CreateTexture(64, 64, 1, 0, D3DFMT_DXT3, D3DPOOL_DEFAULT,   &defaultTexture, nullptr);
 
-    UINT secondRef2 = m_device->AddRef();
+    m_device->AddRef();
 
     Com<IDirect3DSurface9> surface;
     status = defaultTexture->GetSurfaceLevel(0, &surface);
 
-    UINT secondRef3 = m_device->AddRef();
+    m_device->AddRef();
 
     Com<IDirect3DTexture9> sysmemTexture;
     status = m_device->CreateTexture(64, 64, 1, 0, D3DFMT_DXT3, D3DPOOL_SYSTEMMEM, &sysmemTexture, nullptr);
@@ -228,16 +228,16 @@ public:
     Com<IDirect3DSurface9> rt;
     status = m_device->CreateRenderTarget(1280, 720, D3DFMT_X8R8G8B8, D3DMULTISAMPLE_NONE, 0, FALSE, &rt, nullptr);
 
-    ULONG refCount = m_device->AddRef();
+    m_device->AddRef();
 
     Com<IDirect3DSurface9> rt2;
     status = m_device->CreateRenderTarget(1280, 720, D3DFMT_X8R8G8B8, D3DMULTISAMPLE_NONE, 0, FALSE, &rt2, nullptr);
 
-    ULONG refCount2 = m_device->AddRef();
+    m_device->AddRef();
 
     rt2 = nullptr;
 
-    ULONG refCount3 = m_device->AddRef();
+    m_device->AddRef();
 
     RECT stretchRect1 = { 0, 0, 640, 720 };
     RECT stretchRect2 = { 640, 0, 1280, 720 };
