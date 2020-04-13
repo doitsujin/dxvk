@@ -129,7 +129,7 @@ namespace dxvk {
     DxvkLogicOpState        m_loState;
     DxvkBlendMode           m_blendMode;
 
-    std::vector<Com<D3D9Surface, false>> m_backBuffers;
+    std::vector<std::unique_ptr<D3D9Surface>> m_backBuffers;
     
     RECT                    m_srcRect;
     RECT                    m_dstRect;

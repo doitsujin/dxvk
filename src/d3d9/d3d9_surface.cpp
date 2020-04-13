@@ -1,5 +1,6 @@
 #include "d3d9_surface.h"
 #include "d3d9_texture.h"
+#include "d3d9_swapchain.h"
 
 #include "d3d9_device.h"
 
@@ -7,34 +8,44 @@ namespace dxvk {
 
   D3D9Surface::D3D9Surface(
           D3D9DeviceEx*             pDevice,
-    const D3D9_COMMON_TEXTURE_DESC* pDesc)
+    const D3D9_COMMON_TEXTURE_DESC* pDesc,
+          IUnknown*                 pContainer)
     : D3D9SurfaceBase(
         pDevice,
         new D3D9CommonTexture( pDevice, pDesc, D3DRTYPE_TEXTURE),
         0, 0,
-        nullptr) { }
+        nullptr,
+        pContainer) { }
 
   D3D9Surface::D3D9Surface(
           D3D9DeviceEx*             pDevice,
           D3D9CommonTexture*        pTexture,
           UINT                      Face,
           UINT                      MipLevel,
-          IDirect3DBaseTexture9*    pContainer)
+          IDirect3DBaseTexture9*    pBaseTexture)
     : D3D9SurfaceBase(
         pDevice,
         pTexture,
         Face, MipLevel,
-        pContainer) { }
+        pBaseTexture,
+        pBaseTexture) { }
 
   void D3D9Surface::AddRefPrivate() {
-    IDirect3DBaseTexture9* pContainer = this->m_container;
+    IDirect3DBaseTexture9* pBaseTexture = this->m_baseTexture;
+    IUnknown*              pSwapChain   = this->m_container;
 
-    if (pContainer != nullptr) {
-      D3DRESOURCETYPE type = pContainer->GetType();
+    if (pBaseTexture != nullptr) {
+      D3DRESOURCETYPE type = pBaseTexture->GetType();
       if (type == D3DRTYPE_TEXTURE)
-        reinterpret_cast<D3D9Texture2D*>  (pContainer)->AddRefPrivate();
+        reinterpret_cast<D3D9Texture2D*>  (pBaseTexture)->AddRefPrivate();
       else //if (type == D3DRTYPE_CUBETEXTURE)
-        reinterpret_cast<D3D9TextureCube*>(pContainer)->AddRefPrivate();
+        reinterpret_cast<D3D9TextureCube*>(pBaseTexture)->AddRefPrivate();
+
+      return;
+    }
+    else if (pSwapChain != nullptr) {
+      // Container must be a swapchain if it isn't a base texture.
+      reinterpret_cast<D3D9SwapChainEx*>(pSwapChain)->AddRefPrivate();
 
       return;
     }
@@ -43,14 +54,21 @@ namespace dxvk {
   }
 
   void D3D9Surface::ReleasePrivate() {
-    IDirect3DBaseTexture9* pContainer = this->m_container;
+    IDirect3DBaseTexture9* pBaseTexture = this->m_baseTexture;
+    IUnknown*              pSwapChain   = this->m_container;
 
-    if (pContainer != nullptr) {
-      D3DRESOURCETYPE type = pContainer->GetType();
+    if (pBaseTexture != nullptr) {
+      D3DRESOURCETYPE type = pBaseTexture->GetType();
       if (type == D3DRTYPE_TEXTURE)
-        reinterpret_cast<D3D9Texture2D*>  (pContainer)->ReleasePrivate();
+        reinterpret_cast<D3D9Texture2D*>  (pBaseTexture)->ReleasePrivate();
       else //if (type == D3DRTYPE_CUBETEXTURE)
-        reinterpret_cast<D3D9TextureCube*>(pContainer)->ReleasePrivate();
+        reinterpret_cast<D3D9TextureCube*>(pBaseTexture)->ReleasePrivate();
+
+      return;
+    }
+    else if (pSwapChain != nullptr) {
+      // Container must be a swapchain if it isn't a base texture.
+      reinterpret_cast<D3D9SwapChainEx*>(pSwapChain)->ReleasePrivate();
 
       return;
     }

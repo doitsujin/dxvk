@@ -463,7 +463,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
     }
 
-    *ppBackBuffer = m_backBuffers[iBackBuffer].ref();
+    *ppBackBuffer = ref(m_backBuffers[iBackBuffer].get());
     return D3D_OK;
   }
 
@@ -712,7 +712,7 @@ namespace dxvk {
     if (iBackBuffer >= m_presentParams.BackBufferCount)
       return nullptr;
 
-    return m_backBuffers[iBackBuffer].ptr();
+    return m_backBuffers[iBackBuffer].get();
   }
 
 
@@ -876,7 +876,7 @@ namespace dxvk {
     // Rotate swap chain buffers so that the back
     // buffer at index 0 becomes the front buffer.
     for (uint32_t i = 1; i < m_backBuffers.size(); i++)
-      m_backBuffers[i]->Swap(m_backBuffers[i - 1].ptr());
+      m_backBuffers[i]->Swap(m_backBuffers[i - 1].get());
 
     m_parent->m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
   }
@@ -1035,7 +1035,7 @@ namespace dxvk {
     desc.Discard            = FALSE;
 
     for (uint32_t i = 0; i < m_backBuffers.size(); i++)
-      m_backBuffers[i] = new D3D9Surface(m_parent, &desc);
+      m_backBuffers[i] = std::make_unique<D3D9Surface>(m_parent, &desc, this);
 
     auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
 
