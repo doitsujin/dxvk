@@ -18,8 +18,8 @@ namespace dxvk {
             IDirect3DBaseTexture9*  pBaseTexture,
             IUnknown*               pContainer)
       : D3D9Resource<Type...>      ( pDevice )
-      , m_baseTexture              ( pBaseTexture )
       , m_container                ( pContainer )
+      , m_baseTexture              ( pBaseTexture )
       , m_texture                  ( pTexture )
       , m_face                     ( Face )
       , m_mipLevel                 ( MipLevel )
