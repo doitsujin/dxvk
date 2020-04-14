@@ -33,7 +33,7 @@ export WINEPREFIX=/path/to/.wine-prefix
 ### Requirements:
 - [wine 3.10](https://www.winehq.org/) or newer
 - [Meson](http://mesonbuild.com/) build system (at least version 0.46)
-- [MinGW64](http://mingw-w64.org/) compiler and headers (at least version 6.0)
+- [Mingw-w64](http://mingw-w64.org/) compiler and headers (at least version 6.0)
 - [glslang](https://github.com/KhronosGroup/glslang) compiler
 
 ### Building DLLs
