@@ -18,7 +18,7 @@ namespace dxvk {
 
     SpirvCompressedBuffer();
 
-    SpirvCompressedBuffer(SpirvCodeBuffer& code);
+    SpirvCompressedBuffer(const SpirvCodeBuffer& code);
     
     ~SpirvCompressedBuffer();
     
@@ -26,12 +26,8 @@ namespace dxvk {
 
   private:
 
-    size_t                m_size;
-    std::vector<uint32_t> m_code;
-
-    void encodeDword(uint32_t dw);
-
-    uint32_t decodeDword(size_t& offset) const;
+    uint32_t             m_dwords;
+    std::vector<uint8_t> m_code;
 
   };
 
