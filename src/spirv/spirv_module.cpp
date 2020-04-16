@@ -512,7 +512,7 @@ namespace dxvk {
   uint32_t SpirvModule::lateConst32(
           uint32_t                typeId) {
     uint32_t resultId = this->allocateId();
-    m_lateConsts.insert(resultId);
+    m_lateConsts[resultId] = m_typeConstDefs.getInsertionPtr();
 
     m_typeConstDefs.putIns (spv::OpConstant, 4);
     m_typeConstDefs.putWord(typeId);
@@ -525,19 +525,12 @@ namespace dxvk {
   void SpirvModule::setLateConst(
             uint32_t                constId,
       const uint32_t*               argIds) {
-    for (auto ins : m_typeConstDefs) {
-      if (ins.opCode() != spv::OpConstant
-       && ins.opCode() != spv::OpConstantComposite)
-        continue;
-      
-      if (ins.arg(2) != constId)
-        continue;
+    auto ins = SpirvInstruction(m_typeConstDefs.data(),
+                                m_lateConsts[constId],
+                                m_typeConstDefs.dwords());
 
-      for (uint32_t i = 3; i < ins.length(); i++)
-        ins.setArg(i, argIds[i - 3]);
-
-      return;
-    }
+    for (uint32_t i = 3; i < ins.length(); i++)
+      ins.setArg(i, argIds[i - 3]);
   }
 
 
