@@ -1298,6 +1298,15 @@ namespace dxvk {
     std::optional<uint32_t> m_typeFloat32[4];
     std::optional<uint32_t> m_typeFloat64[4];
 
+    std::optional<uint32_t>                m_constBool[2];
+    std::unordered_map<uint32_t, uint32_t> m_constUndef;
+    std::unordered_map<int32_t, uint32_t>  m_constSInt32;
+    std::unordered_map<int64_t, uint32_t>  m_constSInt64;
+    std::unordered_map<uint32_t, uint32_t> m_constUInt32;
+    std::unordered_map<uint64_t, uint32_t> m_constUInt64;
+    std::unordered_map<float, uint32_t>    m_constFloat32;
+    std::unordered_map<double, uint32_t>   m_constFloat64;
+
     std::unordered_set<uint32_t> m_lateConsts;
 
     std::vector<uint32_t> m_interfaceVars;
@@ -1318,6 +1327,19 @@ namespace dxvk {
             uint32_t                argCount,
       const uint32_t*               argIds);
     
+    uint32_t defConstCached(
+            std::optional<uint32_t>&cache,
+            spv::Op                 op,
+            uint32_t                typeId,
+            uint32_t                argCount,
+      const uint32_t*               argIds);
+
+    uint32_t defConstUnique(
+            spv::Op                 op,
+            uint32_t                typeId,
+            uint32_t                argCount,
+      const uint32_t*               argIds);
+
     uint32_t defConst(
             spv::Op                 op,
             uint32_t                typeId,
