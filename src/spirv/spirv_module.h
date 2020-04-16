@@ -1284,6 +1284,7 @@ namespace dxvk {
     SpirvCodeBuffer m_code;
 
     std::vector<size_t> m_typeLocs;
+    std::vector<size_t> m_constLocs;
 
     std::optional<uint32_t> m_typeVoid;
     std::optional<uint32_t> m_typeSampler;

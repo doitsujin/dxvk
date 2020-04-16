@@ -3893,24 +3893,18 @@ namespace dxvk {
           uint32_t                argCount,
     const uint32_t*               argIds) {
     // Avoid declaring constants multiple times
-    for (auto ins : m_typeConstDefs) {
-      bool match = ins.opCode() == op
-                && ins.length() == 3 + argCount
-                && ins.arg(1)   == typeId;
-      
-      for (uint32_t i = 0; i < argCount && match; i++)
-        match &= ins.arg(3 + i) == argIds[i];
-      
-      if (!match)
-        continue;
-      
-      uint32_t id = ins.arg(2);
-
-      if (m_lateConsts.find(id) == m_lateConsts.end())
-        return id;
+    const uint32_t *data = m_typeConstDefs.data();
+    for (auto i : m_constLocs) {
+      if ((data[i] & spv::OpCodeMask) == op &&
+          (data[i] >> spv::WordCountShift) == (3 + argCount) &&
+          data[i + 1] == typeId &&
+          (!argCount || !std::memcmp(data + i + 3, argIds, argCount * sizeof(uint32_t))) &&
+          m_lateConsts.find(data[i + 2]) == m_lateConsts.end())
+        return data[i + 2];
     }
     
     // Constant not yet declared, make a new one
+    m_constLocs.push_back(m_typeConstDefs.getInsertionPtr());
     return this->defConstUnique(op, typeId, argCount, argIds);
   }
   
