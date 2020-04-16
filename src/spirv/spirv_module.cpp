@@ -40,12 +40,7 @@ namespace dxvk {
   
   bool SpirvModule::hasCapability(
           spv::Capability         capability) {
-    for (auto ins : m_capabilities) {
-      if (ins.opCode() == spv::OpCapability && ins.arg(1) == capability)
-        return true;
-    }
-
-    return false;
+    return m_enabledCaps.find(capability) != m_enabledCaps.end();
   }
 
   void SpirvModule::enableCapability(
@@ -55,6 +50,7 @@ namespace dxvk {
     if (!hasCapability(capability)) {
       m_capabilities.putIns (spv::OpCapability, 2);
       m_capabilities.putWord(capability);
+      m_enabledCaps.insert(capability);
     }
   }
   
