@@ -15,7 +15,7 @@ namespace dxvk {
   }
   
   
-  SpirvCodeBuffer SpirvModule::compile() const {
+  SpirvCompressedBuffer SpirvModule::compile() const {
     SpirvCodeBuffer result;
     result.putHeader(m_version, m_id);
     result.append(m_capabilities);
@@ -29,7 +29,7 @@ namespace dxvk {
     result.append(m_typeConstDefs);
     result.append(m_variables);
     result.append(m_code);
-    return result;
+    return SpirvCompressedBuffer(result);
   }
   
   
@@ -51,6 +51,19 @@ namespace dxvk {
       m_capabilities.putIns (spv::OpCapability, 2);
       m_capabilities.putWord(capability);
       m_enabledCaps.insert(capability);
+
+      if (capability == spv::CapabilitySampleRateShading)
+        m_shaderFlags.set(DxvkShaderFlag::HasSampleRateShading);
+
+      if (capability == spv::CapabilityShaderViewportIndex
+       || capability == spv::CapabilityShaderLayer)
+        m_shaderFlags.set(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage);
+
+      if (capability == spv::CapabilitySparseResidency)
+        m_shaderFlags.set(DxvkShaderFlag::UsesSparseResidency);
+
+      if (capability == spv::CapabilityFragmentFullyCoveredEXT)
+        m_shaderFlags.set(DxvkShaderFlag::UsesFragmentCoverage);
     }
   }
   
@@ -92,6 +105,12 @@ namespace dxvk {
     m_execModeInfo.putWord(entryPointId);
     m_execModeInfo.putWord(executionMode);
     m_enabledModes.insert(executionMode);
+
+    if (executionMode == spv::ExecutionModeStencilRefReplacingEXT)
+      m_shaderFlags.set(DxvkShaderFlag::ExportsStencilRef);
+
+    if (executionMode == spv::ExecutionModeXfb)
+      m_shaderFlags.set(DxvkShaderFlag::HasTransformFeedback);
   }
   
   
@@ -106,6 +125,12 @@ namespace dxvk {
 
     for (uint32_t i = 0; i < argCount; i++)
       m_execModeInfo.putWord(args[i]);
+
+    if (executionMode == spv::ExecutionModeStencilRefReplacingEXT)
+      m_shaderFlags.set(DxvkShaderFlag::ExportsStencilRef);
+
+    if (executionMode == spv::ExecutionModeXfb)
+      m_shaderFlags.set(DxvkShaderFlag::HasTransformFeedback);
   }
 
 
@@ -603,6 +628,9 @@ namespace dxvk {
     m_annotations.putWord (object);
     m_annotations.putWord (spv::DecorationBuiltIn);
     m_annotations.putWord (builtIn);
+
+    if (builtIn == spv::BuiltInPosition)
+      m_shaderFlags.set(DxvkShaderFlag::ExportsPosition);
   }
   
   
@@ -653,6 +681,8 @@ namespace dxvk {
     m_annotations.putWord (object);
     m_annotations.putWord (spv::DecorationSpecId);
     m_annotations.putInt32(specId);
+    if (specId <= MaxNumSpecConstants)
+      m_specConstantMask |= 1u << specId;
   }
   
 
@@ -693,6 +723,9 @@ namespace dxvk {
     m_annotations.putWord (memberId);
     m_annotations.putWord (spv::DecorationBuiltIn);
     m_annotations.putWord (builtIn);
+
+    if (builtIn == spv::BuiltInPosition)
+      m_shaderFlags.set(DxvkShaderFlag::ExportsPosition);
   }
 
 

@@ -895,7 +895,7 @@ namespace dxvk {
     info.pushConstOffset = m_pushConstOffset;
     info.pushConstSize = m_pushConstSize;
 
-    return new DxvkShader(info, m_module.compile());
+    return new DxvkShader(info, m_module);
   }
 
 

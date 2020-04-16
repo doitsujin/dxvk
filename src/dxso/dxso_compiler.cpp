@@ -232,7 +232,7 @@ namespace dxvk {
     if (m_programInfo.type() == DxsoProgramTypes::PixelShader)
       info.flatShadingInputs = m_ps.flatShadingMask;
 
-    return new DxvkShader(info, m_module.compile());
+    return new DxvkShader(info, m_module);
   }
 
   void DxsoCompiler::emitInit() {

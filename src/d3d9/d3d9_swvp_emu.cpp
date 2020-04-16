@@ -284,7 +284,7 @@ namespace dxvk {
       info.bindings = &m_bufferBinding;
       info.inputMask = m_inputMask;
 
-      return new DxvkShader(info, m_module.compile());
+      return new DxvkShader(info, m_module);
     }
 
   private:

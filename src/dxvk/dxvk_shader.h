@@ -19,24 +19,6 @@ namespace dxvk {
   struct DxvkPipelineStats;
   
   /**
-   * \brief Shader flags
-   *
-   * Provides extra information about the features
-   * used by a shader.
-   */
-  enum DxvkShaderFlag : uint64_t {
-    HasSampleRateShading,
-    HasTransformFeedback,
-    ExportsPosition,
-    ExportsStencilRef,
-    ExportsViewportIndexLayerFromVertexStage,
-    UsesFragmentCoverage,
-    UsesSparseResidency,
-  };
-
-  using DxvkShaderFlags = Flags<DxvkShaderFlag>;
-  
-  /**
    * \brief Shader info
    */
   struct DxvkShaderCreateInfo {
@@ -102,6 +84,10 @@ namespace dxvk {
     DxvkShader(
       const DxvkShaderCreateInfo&   info,
             SpirvCodeBuffer&&       spirv);
+
+    DxvkShader(
+      const DxvkShaderCreateInfo& info,
+      const SpirvModule&          spirv);
 
     ~DxvkShader();
     

@@ -271,7 +271,7 @@ namespace dxvk {
         info.xfbStrides[i] = m_moduleInfo.xfb->strides[i];
     }
 
-    return new DxvkShader(info, m_module.compile());
+    return new DxvkShader(info, m_module);
   }
   
   

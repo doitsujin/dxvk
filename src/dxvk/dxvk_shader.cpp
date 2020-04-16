@@ -168,6 +168,44 @@ namespace dxvk {
     m_needsLibraryCompile = canUsePipelineLibrary(true);
   }
 
+  DxvkShader::DxvkShader(
+      const DxvkShaderCreateInfo& info,
+      const SpirvModule&          spirv)
+  : m_info                (info),
+    m_code                (spirv.compile()),
+    m_flags               (spirv.getShaderFlags()),
+    m_specConstantMask    (spirv.getSpecConstantMask()),
+    m_bindings            (info.stage) {
+    m_info.uniformData = nullptr;
+    m_info.bindings = nullptr;
+
+    // Copy resource binding slot infos
+    for (uint32_t i = 0; i < info.bindingCount; i++) {
+      DxvkBindingInfo binding = info.bindings[i];
+      binding.stage = info.stage;
+      m_bindings.addBinding(binding);
+    }
+
+    if (info.pushConstSize) {
+      VkPushConstantRange pushConst;
+      pushConst.stageFlags = info.stage;
+      pushConst.offset = info.pushConstOffset;
+      pushConst.size = info.pushConstSize;
+
+      m_bindings.addPushConstantRange(pushConst);
+    }
+
+    // Copy uniform buffer data
+    if (info.uniformSize) {
+      m_uniformData.resize(info.uniformSize);
+      std::memcpy(m_uniformData.data(), info.uniformData, info.uniformSize);
+      m_info.uniformData = m_uniformData.data();
+    }
+
+    // Don't set pipeline library flag if the shader
+    // doesn't actually support pipeline libraries
+    m_needsLibraryCompile = canUsePipelineLibrary(true);
+  }
 
   DxvkShader::~DxvkShader() {
     

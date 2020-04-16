@@ -3,9 +3,30 @@
 #include <unordered_set>
 
 #include "spirv_code_buffer.h"
+#include "spirv_compression.h"
+
+#include "../dxvk/dxvk_limits.h"
 
 namespace dxvk {
   
+  /**
+   * \brief Shader flags
+   *
+   * Provides extra information about the features
+   * used by a shader.
+   */
+  enum DxvkShaderFlag : uint64_t {
+    HasSampleRateShading,
+    HasTransformFeedback,
+    ExportsPosition,
+    ExportsStencilRef,
+    ExportsViewportIndexLayerFromVertexStage,
+    UsesFragmentCoverage,
+    UsesSparseResidency,
+  };
+
+  using DxvkShaderFlags = Flags<DxvkShaderFlag>;
+
   struct SpirvPhiLabel {
     uint32_t varId         = 0;
     uint32_t labelId       = 0;
@@ -59,7 +80,7 @@ namespace dxvk {
 
     ~SpirvModule();
     
-    SpirvCodeBuffer compile() const;
+    SpirvCompressedBuffer compile() const;
 
     size_t getInsertionPtr() {
       return m_code.getInsertionPtr();
@@ -1264,6 +1285,14 @@ namespace dxvk {
 
     void opEndInvocationInterlock();
 
+    DxvkShaderFlags getShaderFlags() const {
+      return m_shaderFlags;
+    }
+
+    uint32_t getSpecConstantMask() const {
+      return m_specConstantMask;
+    }
+
   private:
     
     uint32_t m_version;
@@ -1271,6 +1300,9 @@ namespace dxvk {
     uint32_t m_instExtGlsl450 = 0;
     uint32_t m_blockId        = 0;
     
+    DxvkShaderFlags m_shaderFlags;
+    uint32_t        m_specConstantMask = 0;
+
     SpirvCodeBuffer m_capabilities;
     SpirvCodeBuffer m_extensions;
     SpirvCodeBuffer m_instExt;
