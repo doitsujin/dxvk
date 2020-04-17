@@ -4,6 +4,8 @@
 
 #include "spirv_code_buffer.h"
 
+#include "../util/util_raw_vector.h"
+
 namespace dxvk {
 
   /**
@@ -19,7 +21,9 @@ namespace dxvk {
 
     SpirvCompressedBuffer();
 
-    SpirvCompressedBuffer(const SpirvCodeBuffer& code);
+    SpirvCompressedBuffer(const SpirvCodeBuffer&  code);
+
+    SpirvCompressedBuffer(SpirvCompressedBuffer&& other) = default;
     
     ~SpirvCompressedBuffer();
     
@@ -42,9 +46,14 @@ namespace dxvk {
      * \param [in] word The word to append
      */
     void putWord(uint32_t word) {
-      m_code.push_back(word & 0x7f);
-      while (word >>= 7)
-        m_code.push_back((word & 0x7f) | 0x80);
+      size_t size = m_code.size();
+      m_code.resize(size + 5);
+
+      uint8_t *dst = m_code.data() + size;
+      *dst++ = word & 0x7f;
+      while (word >>= 7) *dst++ = (word & 0x7f) | 0x80;
+      m_code.resize(dst - m_code.data());
+
       m_dwords += 1;
     }
 
@@ -109,9 +118,9 @@ namespace dxvk {
 
   private:
 
-    uint32_t             m_dwords;
-    std::vector<uint8_t> m_code;
-    std::vector<uint8_t> m_insert;
+    uint32_t            m_dwords;
+    raw_vector<uint8_t> m_code;
+    raw_vector<uint8_t> m_insert;
     size_t m_ptr = not_inserting;
 
   };
