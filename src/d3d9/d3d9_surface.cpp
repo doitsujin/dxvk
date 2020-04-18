@@ -43,8 +43,6 @@ namespace dxvk {
     else if (m_container != nullptr && !swapchain) {
       // Container must be a swapchain if it isn't a base texture.
       static_cast<D3D9SwapChainEx*>(m_container)->AddRefPrivate();
-
-      return;
     }
 
     D3D9SurfaceBase::AddRefPrivate();
@@ -63,8 +61,6 @@ namespace dxvk {
     else if (m_container != nullptr && !swapchain) {
       // Container must be a swapchain if it isn't a base texture.
       static_cast<D3D9SwapChainEx*>(m_container)->ReleasePrivate();
-
-      return;
     }
 
     D3D9SurfaceBase::ReleasePrivate();
