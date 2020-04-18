@@ -275,7 +275,7 @@ namespace dxvk {
     pMapEntry->RowPitch     = pBuffer->Desc()->ByteWidth;
     pMapEntry->DepthPitch   = pBuffer->Desc()->ByteWidth;
     
-    if (likely(pBuffer->Desc()->Usage == D3D11_USAGE_DYNAMIC && m_csFlags.test(DxvkCsChunkFlag::SingleUse))) {
+    if (likely(m_csFlags.test(DxvkCsChunkFlag::SingleUse))) {
       // For resources that cannot be written by the GPU,
       // we may write to the buffer resource directly and
       // just swap in the buffer slice as needed.
