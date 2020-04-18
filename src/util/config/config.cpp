@@ -193,6 +193,10 @@ namespace dxvk {
     { R"(\\YLILWin64\.exe$)", {{
       { "d3d11.enableRtOutputNanFixup",     "True" },
     }} },
+    /* Blue Reflection                            */
+    { R"(\\BLUE_REFLECTION\.exe$)", {{
+      { "d3d11.constantBufferRangeCheck",   "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
