@@ -1173,10 +1173,13 @@ namespace dxvk {
           : D3D11_MAP_WRITE_DISCARD;
 
         D3D11_MAPPED_SUBRESOURCE mappedSr;
-        Map(pDstResource, 0, mapType, 0, &mappedSr);
-        std::memcpy(reinterpret_cast<char*>(mappedSr.pData) + offset, pSrcData, size);
-        Unmap(pDstResource, 0);
-      } else {
+        if (likely(useMap = SUCCEEDED(Map(pDstResource, 0, mapType, 0, &mappedSr)))) {
+          std::memcpy(reinterpret_cast<char*>(mappedSr.pData) + offset, pSrcData, size);
+          Unmap(pDstResource, 0);
+        }
+      }
+
+      if (!useMap) {
         DxvkDataSlice dataSlice = AllocUpdateBufferSlice(size);
         std::memcpy(dataSlice.ptr(), pSrcData, size);
         
