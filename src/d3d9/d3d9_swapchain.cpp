@@ -463,7 +463,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
     }
 
-    *ppBackBuffer = ref(m_backBuffers[iBackBuffer].get());
+    *ppBackBuffer = ref(m_backBuffers[iBackBuffer]);
     return D3D_OK;
   }
 
@@ -712,7 +712,7 @@ namespace dxvk {
     if (iBackBuffer >= m_presentParams.BackBufferCount)
       return nullptr;
 
-    return m_backBuffers[iBackBuffer].get();
+    return m_backBuffers[iBackBuffer];
   }
 
 
@@ -876,7 +876,7 @@ namespace dxvk {
     // Rotate swap chain buffers so that the back
     // buffer at index 0 becomes the front buffer.
     for (uint32_t i = 1; i < m_backBuffers.size(); i++)
-      m_backBuffers[i]->Swap(m_backBuffers[i - 1].get());
+      m_backBuffers[i]->Swap(m_backBuffers[i - 1]);
 
     m_parent->m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
   }
@@ -1010,14 +1010,23 @@ namespace dxvk {
   }
 
 
+  void D3D9SwapChainEx::DestroyBackBuffers() {
+    for (auto* backBuffer : m_backBuffers)
+      backBuffer->ReleasePrivate(true);
+
+    m_backBuffers.clear();
+  }
+
+
   void D3D9SwapChainEx::CreateBackBuffers(uint32_t NumBackBuffers) {
     // Explicitly destroy current swap image before
     // creating a new one to free up resources
     m_resolveImage     = nullptr;
     m_resolveImageView = nullptr;
 
+    DestroyBackBuffers();
+
     int NumFrontBuffer = m_parent->GetOptions()->noExplicitFrontBuffer ? 0 : 1;
-    m_backBuffers.clear();
     m_backBuffers.resize(NumBackBuffers + NumFrontBuffer);
 
     // Create new back buffer
@@ -1034,8 +1043,10 @@ namespace dxvk {
     desc.Usage              = D3DUSAGE_RENDERTARGET;
     desc.Discard            = FALSE;
 
-    for (uint32_t i = 0; i < m_backBuffers.size(); i++)
-      m_backBuffers[i] = std::make_unique<D3D9Surface>(m_parent, &desc, this);
+    for (uint32_t i = 0; i < m_backBuffers.size(); i++) {
+      m_backBuffers[i] = new D3D9Surface(m_parent, &desc, this);
+      m_backBuffers[i]->AddRefPrivate(true);
+    }
 
     auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
 

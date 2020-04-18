@@ -129,7 +129,7 @@ namespace dxvk {
     DxvkLogicOpState        m_loState;
     DxvkBlendMode           m_blendMode;
 
-    std::vector<std::unique_ptr<D3D9Surface>> m_backBuffers;
+    std::vector<D3D9Surface*> m_backBuffers;
     
     RECT                    m_srcRect;
     RECT                    m_dstRect;
@@ -166,6 +166,8 @@ namespace dxvk {
     void CreatePresenter();
 
     void CreateRenderTargetViews();
+
+    void DestroyBackBuffers();
 
     void CreateBackBuffers(
             uint32_t            NumBackBuffers);

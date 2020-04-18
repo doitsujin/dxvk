@@ -30,7 +30,7 @@ namespace dxvk {
         pBaseTexture,
         pBaseTexture) { }
 
-  void D3D9Surface::AddRefPrivate() {
+  void D3D9Surface::AddRefPrivate(bool swapchain) {
     IDirect3DBaseTexture9* pBaseTexture = this->m_baseTexture;
     IUnknown*              pSwapChain   = this->m_container;
 
@@ -43,7 +43,7 @@ namespace dxvk {
 
       return;
     }
-    else if (pSwapChain != nullptr) {
+    else if (pSwapChain != nullptr && !swapchain) {
       // Container must be a swapchain if it isn't a base texture.
       reinterpret_cast<D3D9SwapChainEx*>(pSwapChain)->AddRefPrivate();
 
@@ -53,7 +53,7 @@ namespace dxvk {
     D3D9SurfaceBase::AddRefPrivate();
   }
 
-  void D3D9Surface::ReleasePrivate() {
+  void D3D9Surface::ReleasePrivate(bool swapchain) {
     IDirect3DBaseTexture9* pBaseTexture = this->m_baseTexture;
     IUnknown*              pSwapChain   = this->m_container;
 
@@ -66,7 +66,7 @@ namespace dxvk {
 
       return;
     }
-    else if (pSwapChain != nullptr) {
+    else if (pSwapChain != nullptr && !swapchain) {
       // Container must be a swapchain if it isn't a base texture.
       reinterpret_cast<D3D9SwapChainEx*>(pSwapChain)->ReleasePrivate();
 
