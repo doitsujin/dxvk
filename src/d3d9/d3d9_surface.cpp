@@ -31,34 +31,36 @@ namespace dxvk {
         pBaseTexture) { }
 
   void D3D9Surface::AddRefPrivate(bool RefContainer) {
-    if (m_baseTexture) {
-      D3DRESOURCETYPE type = m_baseTexture->GetType();
-      if (type == D3DRTYPE_TEXTURE)
-        static_cast<D3D9Texture2D*>(m_baseTexture)->AddRefPrivate();
-      else //if (type == D3DRTYPE_CUBETEXTURE)
-        static_cast<D3D9TextureCube*>(m_baseTexture)->AddRefPrivate();
-      return;
-    }
-    else if (m_container && RefContainer) {
-      // Container must be a swapchain if it isn't a base texture.
-      static_cast<D3D9SwapChainEx*>(m_container)->AddRefPrivate();
+    if (RefContainer) {
+      if (m_baseTexture) {
+        D3DRESOURCETYPE type = m_baseTexture->GetType();
+        if (type == D3DRTYPE_TEXTURE)
+          static_cast<D3D9Texture2D*>(m_baseTexture)->AddRefPrivate();
+        else //if (type == D3DRTYPE_CUBETEXTURE)
+          static_cast<D3D9TextureCube*>(m_baseTexture)->AddRefPrivate();
+      }
+      else if (m_container) {
+        // Container must be a swapchain if it isn't a base texture.
+        static_cast<D3D9SwapChainEx*>(m_container)->AddRefPrivate();
+      }
     }
 
     D3D9SurfaceBase::AddRefPrivate();
   }
 
   void D3D9Surface::ReleasePrivate(bool RefContainer) {
-    if (m_baseTexture) {
-      D3DRESOURCETYPE type = m_baseTexture->GetType();
-      if (type == D3DRTYPE_TEXTURE)
-        static_cast<D3D9Texture2D*>(m_baseTexture)->ReleasePrivate();
-      else //if (type == D3DRTYPE_CUBETEXTURE)
-        static_cast<D3D9TextureCube*>(m_baseTexture)->ReleasePrivate();
-      return;
-    }
-    else if (m_container && RefContainer) {
-      // Container must be a swapchain if it isn't a base texture.
-      static_cast<D3D9SwapChainEx*>(m_container)->ReleasePrivate();
+    if (RefContainer) {
+      if (m_baseTexture) {
+        D3DRESOURCETYPE type = m_baseTexture->GetType();
+        if (type == D3DRTYPE_TEXTURE)
+          static_cast<D3D9Texture2D*>(m_baseTexture)->ReleasePrivate();
+        else //if (type == D3DRTYPE_CUBETEXTURE)
+          static_cast<D3D9TextureCube*>(m_baseTexture)->ReleasePrivate();
+      }
+      else if (m_container) {
+        // Container must be a swapchain if it isn't a base texture.
+        static_cast<D3D9SwapChainEx*>(m_container)->ReleasePrivate();
+      }
     }
 
     D3D9SurfaceBase::ReleasePrivate();

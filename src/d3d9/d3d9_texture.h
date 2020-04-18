@@ -18,8 +18,6 @@ namespace dxvk {
 
   public:
 
-    using SubresourceData = std::aligned_storage_t<sizeof(SubresourceType), alignof(SubresourceType)>;
-
     D3D9BaseTexture(
             D3D9DeviceEx*             pDevice,
       const D3D9_COMMON_TEXTURE_DESC* pDesc,
@@ -37,22 +35,15 @@ namespace dxvk {
         for (uint32_t j = 0; j < mipLevels; j++) {
           const uint32_t subresource = m_texture.CalcSubresource(i, j);
 
-          SubresourceType* subObj = this->GetSubresource(subresource);
-
-          new (subObj) SubresourceType(
-            pDevice,
-            &m_texture,
-            i, j,
-            this);
+          m_subresources[subresource] = new SubresourceType(pDevice, &m_texture, i, j, this);
+          m_subresources[subresource]->AddRefPrivate(false);
         }
       }
     }
 
     ~D3D9BaseTexture() {
-      for (uint32_t i = 0; i < m_subresources.size(); i++) {
-        SubresourceType* subObj = this->GetSubresource(i);
-        subObj->~SubresourceType();
-      }
+      for (uint32_t i = 0; i < m_subresources.size(); i++)
+        m_subresources[i]->ReleasePrivate(false);
     }
 
     DWORD STDMETHODCALLTYPE SetLOD(DWORD LODNew) final {
@@ -96,7 +87,7 @@ namespace dxvk {
       if (unlikely(Subresource >= m_subresources.size()))
         return nullptr;
 
-      return reinterpret_cast<SubresourceType*>(&m_subresources[Subresource]);
+      return m_subresources[Subresource];
     }
 
   protected:
@@ -106,7 +97,7 @@ namespace dxvk {
     DWORD m_lod;
     D3DTEXTUREFILTERTYPE m_autogenFilter;
 
-    std::vector<SubresourceData> m_subresources;
+    std::vector<SubresourceType*> m_subresources;
 
   };
 

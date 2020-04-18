@@ -30,29 +30,17 @@ namespace dxvk {
         pContainer) { }
 
 
-  void D3D9Volume::AddRefPrivate() {
-    IDirect3DBaseTexture9* pContainer = this->m_baseTexture;
-
-    // Can't have a swapchain container for a volume.
-
-    if (pContainer != nullptr) {
-      reinterpret_cast<D3D9Texture3D*> (pContainer)->AddRefPrivate();
-      return;
-    }
+  void D3D9Volume::AddRefPrivate(bool RefContainer) {
+    if (RefContainer && m_baseTexture)
+      static_cast<D3D9Texture3D*>(m_baseTexture)->AddRefPrivate();
 
     D3D9VolumeBase::AddRefPrivate();
   }
 
 
-  void D3D9Volume::ReleasePrivate() {
-    IDirect3DBaseTexture9* pContainer = this->m_baseTexture;
-
-    // Can't have a swapchain container for a volume.
-
-    if (pContainer != nullptr) {
-      reinterpret_cast<D3D9Texture3D*> (pContainer)->ReleasePrivate();
-      return;
-    }
+  void D3D9Volume::ReleasePrivate(bool RefContainer) {
+    if (RefContainer && m_baseTexture)
+      reinterpret_cast<D3D9Texture3D*>(m_baseTexture)->ReleasePrivate();
 
     D3D9VolumeBase::ReleasePrivate();
   }
