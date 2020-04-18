@@ -197,6 +197,10 @@ namespace dxvk {
     { R"(\\BLUE_REFLECTION\.exe$)", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
     }} },
+    /* Secret World Legends                       */
+    { R"(\\SecretWorldLegendsDX11\.exe$)", {{
+      { "d3d11.constantBufferRangeCheck",   "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
