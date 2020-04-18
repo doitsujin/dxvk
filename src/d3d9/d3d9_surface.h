@@ -29,9 +29,9 @@ namespace dxvk {
             UINT                      MipLevel,
             IDirect3DBaseTexture9*    pBaseTexture);
 
-    void AddRefPrivate();
+    void AddRefPrivate(bool RefContainer  = true);
 
-    void ReleasePrivate();
+    void ReleasePrivate(bool RefContainer = true);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 

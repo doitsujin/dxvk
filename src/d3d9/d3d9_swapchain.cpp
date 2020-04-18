@@ -180,6 +180,8 @@ namespace dxvk {
     ResetWindowProc(m_window);
     RestoreDisplayMode(m_monitor);
 
+    DestroyBackBuffers();
+
     m_device->waitForSubmission(&m_presentStatus);
     m_device->waitForIdle();
   }
@@ -463,7 +465,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
     }
 
-    *ppBackBuffer = ref(m_backBuffers[iBackBuffer].get());
+    *ppBackBuffer = ref(m_backBuffers[iBackBuffer]);
     return D3D_OK;
   }
 
@@ -712,7 +714,7 @@ namespace dxvk {
     if (iBackBuffer >= m_presentParams.BackBufferCount)
       return nullptr;
 
-    return m_backBuffers[iBackBuffer].get();
+    return m_backBuffers[iBackBuffer];
   }
 
 
@@ -876,7 +878,7 @@ namespace dxvk {
     // Rotate swap chain buffers so that the back
     // buffer at index 0 becomes the front buffer.
     for (uint32_t i = 1; i < m_backBuffers.size(); i++)
-      m_backBuffers[i]->Swap(m_backBuffers[i - 1].get());
+      m_backBuffers[i]->Swap(m_backBuffers[i - 1]);
 
     m_parent->m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
   }
@@ -1017,8 +1019,7 @@ namespace dxvk {
     m_resolveImageView = nullptr;
 
     int NumFrontBuffer = m_parent->GetOptions()->noExplicitFrontBuffer ? 0 : 1;
-    m_backBuffers.clear();
-    m_backBuffers.resize(NumBackBuffers + NumFrontBuffer);
+    DestroyBackBuffers();
 
     // Create new back buffer
     D3D9_COMMON_TEXTURE_DESC desc;
@@ -1034,8 +1035,8 @@ namespace dxvk {
     desc.Usage              = D3DUSAGE_RENDERTARGET;
     desc.Discard            = FALSE;
 
-    for (uint32_t i = 0; i < m_backBuffers.size(); i++)
-      m_backBuffers[i] = std::make_unique<D3D9Surface>(m_parent, &desc, this);
+    for (uint32_t i = 0; i < NumBackBuffers + NumFrontBuffer; i++)
+      m_backBuffers.push_back(CreateBackBuffer(desc));
 
     auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
 
@@ -1110,6 +1111,14 @@ namespace dxvk {
   }
 
 
+  D3D9Surface* D3D9SwapChainEx::CreateBackBuffer(
+    const D3D9_COMMON_TEXTURE_DESC& desc) {
+    auto surface = new D3D9Surface(m_parent, &desc, this);
+    surface->AddRefPrivate(false);
+    return surface;
+  }
+
+
   void D3D9SwapChainEx::CreateGammaTexture(
             UINT                NumControlPoints,
       const D3D9_VK_GAMMA_CP*   pControlPoints) {
@@ -1163,6 +1172,13 @@ namespace dxvk {
       VK_NULL_HANDLE);
   }
 
+
+  void D3D9SwapChainEx::DestroyBackBuffers() {
+    for (auto backBuffer : m_backBuffers)
+      backBuffer->ReleasePrivate(false);
+
+    m_backBuffers.clear();
+  }
 
   void D3D9SwapChainEx::DestroyGammaTexture() {
     m_gammaTexture     = nullptr;
