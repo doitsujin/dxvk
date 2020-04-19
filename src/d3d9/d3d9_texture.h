@@ -189,15 +189,13 @@ namespace dxvk {
     if (ptr == nullptr)
       return nullptr;
 
-    switch (ptr->GetType()) {
-      case D3DRTYPE_TEXTURE:       return static_cast<D3D9Texture2D*>  (ptr)->GetCommonTexture();
-      case D3DRTYPE_CUBETEXTURE:   return static_cast<D3D9TextureCube*>(ptr)->GetCommonTexture();
-      case D3DRTYPE_VOLUMETEXTURE: return static_cast<D3D9Texture3D*>  (ptr)->GetCommonTexture();
-      default:
-        Logger::warn("Unknown texture resource type."); break;
-    }
-
-    return nullptr;
+    D3DRESOURCETYPE type = ptr->GetType();
+    if (type == D3DRTYPE_TEXTURE)
+      return static_cast<D3D9Texture2D*>  (ptr)->GetCommonTexture();
+    else if (type == D3DRTYPE_CUBETEXTURE)
+      return static_cast<D3D9TextureCube*>(ptr)->GetCommonTexture();
+    else //if(type == D3DRTYPE_VOLUMETEXTURE)
+      return static_cast<D3D9Texture3D*>  (ptr)->GetCommonTexture();
   }
 
   inline D3D9CommonTexture* GetCommonTexture(D3D9Surface* ptr) {
@@ -215,13 +213,13 @@ namespace dxvk {
     if (tex == nullptr)
       return;
 
-    switch (tex->GetType()) {
-      case D3DRTYPE_TEXTURE:       CastRefPrivate<D3D9Texture2D>  (tex, AddRef); break;
-      case D3DRTYPE_CUBETEXTURE:   CastRefPrivate<D3D9TextureCube>(tex, AddRef); break;
-      case D3DRTYPE_VOLUMETEXTURE: CastRefPrivate<D3D9Texture3D>  (tex, AddRef); break;
-    default:
-      Logger::warn("Unknown texture resource type."); break;
-    }
+    D3DRESOURCETYPE type = tex->GetType();
+    if (type == D3DRTYPE_TEXTURE)
+      return CastRefPrivate<D3D9Texture2D>  (tex, AddRef);
+    else if (type == D3DRTYPE_CUBETEXTURE)
+      return CastRefPrivate<D3D9TextureCube>(tex, AddRef);
+    else //if(type == D3DRTYPE_VOLUMETEXTURE)
+      return CastRefPrivate<D3D9Texture3D>  (tex, AddRef);
   }
 
   inline void TextureChangePrivate(IDirect3DBaseTexture9*& dst, IDirect3DBaseTexture9* src) {
