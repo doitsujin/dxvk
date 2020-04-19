@@ -84,7 +84,7 @@ namespace dxvk {
     m_vkd->vkGetImageMemoryRequirements2(
       m_vkd->device(), &memReqInfo, &memReq);
  
-    if (info.tiling != VK_IMAGE_TILING_LINEAR) {
+    if (info.tiling != VK_IMAGE_TILING_LINEAR && !dedicatedRequirements.prefersDedicatedAllocation) {
       memReq.memoryRequirements.size      = align(memReq.memoryRequirements.size,       memAlloc.bufferImageGranularity());
       memReq.memoryRequirements.alignment = align(memReq.memoryRequirements.alignment , memAlloc.bufferImageGranularity());
     }
