@@ -20,6 +20,7 @@ namespace dxvk {
     this->maxFrameLatency       = config.getOption<int32_t>("dxgi.maxFrameLatency", 0);
     this->syncInterval          = config.getOption<int32_t>("dxgi.syncInterval", -1);
     this->tearFree              = config.getOption<bool>("dxgi.tearFree", false);
+    this->forceTear             = config.getOption<bool>("dxgi.forceTear", false);
 
     this->constantBufferRangeCheck = config.getOption<bool>("d3d11.constantBufferRangeCheck", false)
       && DxvkGpuVendor(devInfo.core.properties.vendorID) != DxvkGpuVendor::Amd;

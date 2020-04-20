@@ -848,12 +848,14 @@ namespace dxvk {
     uint32_t n = 0;
 
     if (Vsync) {
+      if (m_parent->GetOptions()->forceTear)
+        pDstModes[n++] = VK_PRESENT_MODE_FIFO_RELAXED_KHR;
       pDstModes[n++] = VK_PRESENT_MODE_FIFO_KHR;
     } else {
       if (!m_parent->GetOptions()->tearFree)
         pDstModes[n++] = VK_PRESENT_MODE_IMMEDIATE_KHR;
       pDstModes[n++] = VK_PRESENT_MODE_MAILBOX_KHR;
-      pDstModes[n++] = VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+      pDstModes[n++] = VK_PRESENT_MODE_IMMEDIATE_KHR;
     }
 
     return n;

@@ -75,6 +75,9 @@ namespace dxvk {
     /// Tear-free mode if vsync is disabled
     bool tearFree;
 
+    /// Tearing if vsync is enabled
+    bool forceTear;
+
     /// Override maximum frame latency if the app specifies
     /// a higher value. May help with frame timing issues.
     int32_t maxFrameLatency;

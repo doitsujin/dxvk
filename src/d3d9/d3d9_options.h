@@ -143,6 +143,12 @@ namespace dxvk {
     /// This solves some rendering bugs in games that have z-pass shaders which
     /// don't match entirely to the regular vertex shader in this way.
     bool longMad;
+
+    /// Tear-free mode if vsync is disabled
+    bool tearFree;
+
+    /// Tearing if vsync is enabled
+    bool forceTear;
   };
 
 }
