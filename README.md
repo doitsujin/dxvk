@@ -53,8 +53,6 @@ cd /your/target/directory/build.64
 ninja install
 ```
 
-A winelib build can be created by adding the `--winelib` argument.
-
 #### Compiling manually
 ```
 # 64-bit build. For 32-bit builds, replace

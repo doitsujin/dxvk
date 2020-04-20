@@ -5,7 +5,7 @@ set -e
 shopt -s extglob
 
 if [ -z "$1" ] || [ -z "$2" ]; then
-  echo "Usage: $0 version destdir [--no-package] [--dev-build] [--winelib]"
+  echo "Usage: $0 version destdir [--no-package] [--dev-build]"
   exit 1
 fi
 
@@ -23,7 +23,6 @@ shift 2
 
 opt_nopackage=0
 opt_devbuild=0
-opt_winelib=0
 
 crossfile="build-win"
 
@@ -35,10 +34,6 @@ while [ $# -gt 0 ]; do
   "--dev-build")
     opt_nopackage=1
     opt_devbuild=1
-    ;;
-  "--winelib")
-    opt_winelib=1
-    crossfile="build-wine"
     ;;
   *)
     echo "Unrecognized option: $1" >&2
@@ -66,10 +61,6 @@ function build_arch {
   ninja install
 
   if [ $opt_devbuild -eq 0 ]; then
-    if [ $opt_winelib -eq 0 ]; then
-      # get rid of some useless .a files
-      rm "$DXVK_BUILD_DIR/x$1/"*.!(dll)
-    fi
     rm -R "$DXVK_BUILD_DIR/build.$1"
   fi
 }
