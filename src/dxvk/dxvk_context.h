@@ -1014,6 +1014,7 @@ namespace dxvk {
     
     Rc<DxvkCommandList>     m_cmd;
     Rc<DxvkDescriptorPool>  m_descPool;
+    Rc<DxvkBuffer>          m_zeroBuffer;
 
     DxvkContextFlags        m_flags;
     DxvkContextState        m_state;
@@ -1216,6 +1217,9 @@ namespace dxvk {
 
     DxvkComputePipeline* lookupComputePipeline(
       const DxvkComputePipelineShaders&   shaders);
+
+    Rc<DxvkBuffer> createZeroBuffer(
+            VkDeviceSize              size);
 
   };
   

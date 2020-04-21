@@ -514,10 +514,8 @@ namespace dxvk {
       image->info().format,
       image->mipLevelExtent(subresources.baseMipLevel));
     
-    auto stagingSlice = m_staging.alloc(CACHE_LINE_SIZE, dataSize);
-    auto stagingHandle = stagingSlice.getSliceHandle();
-
-    std::memset(stagingHandle.mapPtr, 0, dataSize);
+    auto zeroBuffer = createZeroBuffer(dataSize);
+    auto zeroHandle = zeroBuffer->getSliceHandle();
 
     if (m_execBarriers.isImageDirty(image, subresources, DxvkAccess::Write))
       m_execBarriers.recordCommands(m_cmd);
@@ -537,7 +535,7 @@ namespace dxvk {
 
       for (uint32_t layer = 0; layer < subresources.layerCount; layer++) {
         VkBufferImageCopy region;
-        region.bufferOffset       = stagingHandle.offset;
+        region.bufferOffset       = zeroHandle.offset;
         region.bufferRowLength    = 0;
         region.bufferImageHeight  = 0;
         region.imageSubresource   = vk::makeSubresourceLayers(
@@ -546,7 +544,7 @@ namespace dxvk {
         region.imageExtent        = extent;
 
         m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer,
-          stagingHandle.handle, image->handle(),
+          zeroHandle.handle, image->handle(),
           image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
           1, &region);
       }
@@ -562,7 +560,7 @@ namespace dxvk {
       image->info().access);
     
     m_cmd->trackResource<DxvkAccess::Write>(image);
-    m_cmd->trackResource<DxvkAccess::Read>(stagingSlice.buffer());
+    m_cmd->trackResource<DxvkAccess::Read>(zeroBuffer);
   }
   
   
@@ -4792,6 +4790,28 @@ namespace dxvk {
       m_cpLookupCache[idx] = m_common->pipelineManager().createComputePipeline(shaders);
 
     return m_cpLookupCache[idx];
+  }
+
+
+  Rc<DxvkBuffer> DxvkContext::createZeroBuffer(
+          VkDeviceSize              size) {
+    if (m_zeroBuffer != nullptr && m_zeroBuffer->info().size >= size)
+      return m_zeroBuffer;
+
+    DxvkBufferCreateInfo bufInfo;
+    bufInfo.size    = align<VkDeviceSize>(size, 1 << 20);
+    bufInfo.usage   = VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                    | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    bufInfo.stages  = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    bufInfo.access  = VK_ACCESS_TRANSFER_WRITE_BIT
+                    | VK_ACCESS_TRANSFER_READ_BIT;
+
+    m_zeroBuffer = m_device->createBuffer(bufInfo,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    clearBuffer(m_zeroBuffer, 0, size, 0);
+    m_execBarriers.recordCommands(m_cmd);
+    return m_zeroBuffer;
   }
   
 }
