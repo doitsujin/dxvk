@@ -61,6 +61,8 @@ function build_arch {
   ninja install
 
   if [ $opt_devbuild -eq 0 ]; then
+    # get rid of some useless .a files
+    rm "$DXVK_BUILD_DIR/x$1/"*.!(dll)
     rm -R "$DXVK_BUILD_DIR/build.$1"
   fi
 }
