@@ -964,6 +964,9 @@ namespace dxvk {
           UINT                              NumRects) {
     D3D10DeviceLock lock = LockContext();
 
+    if (NumRects && !pRect)
+      return;
+
     // ID3D11View has no methods to query the exact type of
     // the view, so we'll have to check each possible class
     auto dsv = dynamic_cast<D3D11DepthStencilView*>(pView);
@@ -1014,14 +1017,21 @@ namespace dxvk {
     VkImageAspectFlags  clearAspect = formatInfo->aspectMask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT);
 
     // Clear all the rectangles that are specified
-    for (uint32_t i = 0; i < NumRects; i++) {
-      if (pRect[i].left >= pRect[i].right
-       || pRect[i].top >= pRect[i].bottom)
-        continue;
+    for (uint32_t i = 0; i < NumRects || i < 1; i++) {
+      if (pRect) {
+        if (pRect[i].left >= pRect[i].right
+        || pRect[i].top >= pRect[i].bottom)
+          continue;
+      }
       
       if (bufView != nullptr) {
-        VkDeviceSize offset = pRect[i].left;
-        VkDeviceSize length = pRect[i].right - pRect[i].left;
+        VkDeviceSize offset = 0;
+        VkDeviceSize length = bufView->info().rangeLength / formatInfo->elementSize;
+
+        if (pRect) {
+          offset = pRect[i].left;
+          length = pRect[i].right - pRect[i].left;
+        }
 
         EmitCs([
           cBufferView   = bufView,
@@ -1038,10 +1048,15 @@ namespace dxvk {
       }
 
       if (imgView != nullptr) {
-        VkOffset3D offset = { pRect[i].left, pRect[i].top, 0 };
-        VkExtent3D extent = { 
-          uint32_t(pRect[i].right - pRect[i].left),
-          uint32_t(pRect[i].bottom - pRect[i].top), 1 };
+        VkOffset3D offset = { 0, 0, 0 };
+        VkExtent3D extent = imgView->mipLevelExtent(0);
+
+        if (pRect) {
+          offset = { pRect[i].left, pRect[i].top, 0 };
+          extent = {
+            uint32_t(pRect[i].right - pRect[i].left),
+            uint32_t(pRect[i].bottom - pRect[i].top), 1 };
+        }
         
         EmitCs([
           cImageView    = imgView,
@@ -1050,46 +1065,13 @@ namespace dxvk {
           cClearAspect  = clearAspect,
           cClearValue   = clearValue
         ] (DxvkContext* ctx) {
-          ctx->clearImageView(
-            cImageView,
-            cAreaOffset,
-            cAreaExtent,
-            cClearAspect,
-            cClearValue);
-        });
-      }
-    }
-
-    // The rect array is optional, so if it is not
-    // specified, we'll have to clear the entire view
-    if (pRect == nullptr) {
-      if (bufView != nullptr) {
-        EmitCs([
-          cBufferView   = bufView,
-          cClearValue   = clearValue,
-          cElementSize  = formatInfo->elementSize
-        ] (DxvkContext* ctx) {
-          ctx->clearBufferView(cBufferView,
-            cBufferView->info().rangeOffset / cElementSize,
-            cBufferView->info().rangeLength / cElementSize,
-            cClearValue.color);
-        });
-      }
-
-      if (imgView != nullptr) {
-        EmitCs([
-          cImageView    = imgView,
-          cClearAspect  = clearAspect,
-          cClearValue   = clearValue
-        ] (DxvkContext* ctx) {
           const VkImageUsageFlags rtUsage =
             VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
             VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-          VkOffset3D offset = { 0, 0, 0 };
-          VkExtent3D extent = cImageView->mipLevelExtent(0);
+          bool isFullSize = cImageView->mipLevelExtent(0) == cAreaExtent;
 
-          if (cImageView->info().usage & rtUsage) {
+          if ((cImageView->info().usage & rtUsage) && isFullSize) {
             ctx->clearRenderTarget(
               cImageView,
               cClearAspect,
@@ -1097,7 +1079,8 @@ namespace dxvk {
           } else {
             ctx->clearImageView(
               cImageView,
-              offset, extent,
+              cAreaOffset,
+              cAreaExtent,
               cClearAspect,
               cClearValue);
           }
