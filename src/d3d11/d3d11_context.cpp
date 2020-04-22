@@ -1082,14 +1082,25 @@ namespace dxvk {
           cClearAspect  = clearAspect,
           cClearValue   = clearValue
         ] (DxvkContext* ctx) {
+          const VkImageUsageFlags rtUsage =
+            VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
           VkOffset3D offset = { 0, 0, 0 };
           VkExtent3D extent = cImageView->mipLevelExtent(0);
 
-          ctx->clearImageView(
-            cImageView,
-            offset, extent,
-            cClearAspect,
-            cClearValue);
+          if (cImageView->info().usage & rtUsage) {
+            ctx->clearRenderTarget(
+              cImageView,
+              cClearAspect,
+              cClearValue);
+          } else {
+            ctx->clearImageView(
+              cImageView,
+              offset, extent,
+              cClearAspect,
+              cClearValue);
+          }
         });
       }
     }
