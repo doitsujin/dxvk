@@ -4809,7 +4809,7 @@ namespace dxvk {
     m_zeroBuffer = m_device->createBuffer(bufInfo,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    clearBuffer(m_zeroBuffer, 0, size, 0);
+    clearBuffer(m_zeroBuffer, 0, bufInfo.size, 0);
     m_execBarriers.recordCommands(m_cmd);
     return m_zeroBuffer;
   }
