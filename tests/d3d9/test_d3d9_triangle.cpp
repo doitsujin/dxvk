@@ -116,6 +116,44 @@ public:
       nullptr,
       &m_device);
 
+    // Funny Swapchain Refcounting
+    // "One of the things COM does really well, is lifecycle management"
+    // Implicit Swapchain
+    {
+      IDirect3DSurface9* pSurface1 = nullptr;
+      IDirect3DSurface9* pSurface2 = nullptr;
+      status = m_device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pSurface1);
+      D3DPRESENT_PARAMETERS newParams = params;
+      newParams.BackBufferWidth  = 10;
+      newParams.BackBufferHeight = 10;
+      status = m_device->Reset(&newParams);
+      status = m_device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &pSurface2);
+
+      IDirect3DSwapChain9* pSwapChain2 = nullptr;
+      IDirect3DSwapChain9* pSwapChain3 = nullptr;
+      status = pSurface1->GetContainer(__uuidof(IDirect3DSwapChain9), reinterpret_cast<void**>(&pSwapChain2));
+      status = pSurface2->GetContainer(__uuidof(IDirect3DSwapChain9), reinterpret_cast<void**>(&pSwapChain3));
+
+      printf("E_NOINTERFACE! for pSwapchain2");
+      status = m_device->Reset(&params);
+    }
+    // Additional swapchain
+    {
+      IDirect3DSwapChain9* pSwapChain2 = nullptr;
+      IDirect3DSwapChain9* pSwapChain3 = nullptr;
+      IDirect3DSwapChain9* pSwapChain4 = nullptr;
+      IDirect3DSurface9* pSurface = nullptr;
+      status = m_device->CreateAdditionalSwapChain(&params, &pSwapChain2);
+      status = pSwapChain2->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &pSurface);
+      status = pSurface->GetContainer(__uuidof(IDirect3DSwapChain9), reinterpret_cast<void**>(&pSwapChain3));
+      pSwapChain2->Release();
+      UINT count = pSwapChain2->Release();
+      printf("Count: %u - Should be 0 and swapchain dead!", count);
+      status = pSurface->GetContainer(__uuidof(IDirect3DSwapChain9), reinterpret_cast<void**>(&pSwapChain4));
+      // E_NOINTERFACE !
+      printf("E_NOINTERFACE!");
+    }
+
     m_device->AddRef();
 
     Com<IDirect3DSurface9> backbuffer;
