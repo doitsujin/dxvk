@@ -29,9 +29,9 @@ namespace dxvk {
             UINT                      MipLevel,
             IDirect3DBaseTexture9*    pBaseTexture);
 
-    void AddRefPrivate(bool swapchain = false);
+    void AddRefPrivate();
 
-    void ReleasePrivate(bool swapchain = false);
+    void ReleasePrivate();
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 
@@ -55,6 +55,8 @@ namespace dxvk {
         std::max(1u, desc->Height >> GetMipLevel())
       };
     }
+
+    void ClearContainer();
 
   private:
 

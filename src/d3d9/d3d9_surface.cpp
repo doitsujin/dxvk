@@ -30,7 +30,7 @@ namespace dxvk {
         pBaseTexture,
         pBaseTexture) { }
 
-  void D3D9Surface::AddRefPrivate(bool swapchain) {
+  void D3D9Surface::AddRefPrivate() {
     if (m_baseTexture != nullptr) {
       D3DRESOURCETYPE type = m_baseTexture->GetType();
       if (type == D3DRTYPE_TEXTURE)
@@ -40,15 +40,11 @@ namespace dxvk {
 
       return;
     }
-    else if (m_container != nullptr && !swapchain) {
-      // Container must be a swapchain if it isn't a base texture.
-      static_cast<D3D9SwapChainEx*>(m_container)->AddRefPrivate();
-    }
 
     D3D9SurfaceBase::AddRefPrivate();
   }
 
-  void D3D9Surface::ReleasePrivate(bool swapchain) {
+  void D3D9Surface::ReleasePrivate() {
     if (m_baseTexture != nullptr) {
       D3DRESOURCETYPE type = m_baseTexture->GetType();
       if (type == D3DRTYPE_TEXTURE)
@@ -57,10 +53,6 @@ namespace dxvk {
         static_cast<D3D9TextureCube*>(m_baseTexture)->ReleasePrivate();
 
       return;
-    }
-    else if (m_container != nullptr && !swapchain) {
-      // Container must be a swapchain if it isn't a base texture.
-      static_cast<D3D9SwapChainEx*>(m_container)->ReleasePrivate();
     }
 
     D3D9SurfaceBase::ReleasePrivate();
@@ -186,6 +178,11 @@ namespace dxvk {
       return hr;
 
     return D3D_OK;
+  }
+
+
+  void D3D9Surface::ClearContainer() {
+    m_container = nullptr;
   }
 
 }
