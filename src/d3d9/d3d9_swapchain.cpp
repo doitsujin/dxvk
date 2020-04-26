@@ -177,6 +177,8 @@ namespace dxvk {
 
 
   D3D9SwapChainEx::~D3D9SwapChainEx() {
+    DestroyBackBuffers();
+
     ResetWindowProc(m_window);
     RestoreDisplayMode(m_monitor);
 
@@ -463,7 +465,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
     }
 
-    *ppBackBuffer = ref(m_backBuffers[iBackBuffer]);
+    *ppBackBuffer = ref(m_backBuffers[iBackBuffer].ptr());
     return D3D_OK;
   }
 
@@ -712,7 +714,7 @@ namespace dxvk {
     if (iBackBuffer >= m_presentParams.BackBufferCount)
       return nullptr;
 
-    return m_backBuffers[iBackBuffer];
+    return m_backBuffers[iBackBuffer].ptr();
   }
 
 
@@ -876,7 +878,7 @@ namespace dxvk {
     // Rotate swap chain buffers so that the back
     // buffer at index 0 becomes the front buffer.
     for (uint32_t i = 1; i < m_backBuffers.size(); i++)
-      m_backBuffers[i]->Swap(m_backBuffers[i - 1]);
+      m_backBuffers[i]->Swap(m_backBuffers[i - 1].ptr());
 
     m_parent->m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
   }
@@ -1011,8 +1013,8 @@ namespace dxvk {
 
 
   void D3D9SwapChainEx::DestroyBackBuffers() {
-    for (auto* backBuffer : m_backBuffers)
-      backBuffer->ReleasePrivate(true);
+    for (auto& backBuffer : m_backBuffers)
+      backBuffer->ClearContainer();
 
     m_backBuffers.clear();
   }
@@ -1043,10 +1045,8 @@ namespace dxvk {
     desc.Usage              = D3DUSAGE_RENDERTARGET;
     desc.Discard            = FALSE;
 
-    for (uint32_t i = 0; i < m_backBuffers.size(); i++) {
+    for (uint32_t i = 0; i < m_backBuffers.size(); i++)
       m_backBuffers[i] = new D3D9Surface(m_parent, &desc, this);
-      m_backBuffers[i]->AddRefPrivate(true);
-    }
 
     auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
 
