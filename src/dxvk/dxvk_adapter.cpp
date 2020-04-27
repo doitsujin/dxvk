@@ -223,6 +223,12 @@ namespace dxvk {
                 || !required.extHostQueryReset.hostQueryReset)
         && (m_deviceFeatures.extMemoryPriority.memoryPriority
                 || !required.extMemoryPriority.memoryPriority)
+        && (m_deviceFeatures.extRobustness2.robustBufferAccess2
+                || !required.extRobustness2.robustBufferAccess2)
+        && (m_deviceFeatures.extRobustness2.robustImageAccess2
+                || !required.extRobustness2.robustImageAccess2)
+        && (m_deviceFeatures.extRobustness2.nullDescriptor
+                || !required.extRobustness2.nullDescriptor)
         && (m_deviceFeatures.extTransformFeedback.transformFeedback
                 || !required.extTransformFeedback.transformFeedback)
         && (m_deviceFeatures.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor
@@ -242,7 +248,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 20> devExtensionList = {{
+    std::array<DxvkExt*, 21> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.extConditionalRendering,
@@ -251,6 +257,7 @@ namespace dxvk {
       &devExtensions.extHostQueryReset,
       &devExtensions.extMemoryBudget,
       &devExtensions.extMemoryPriority,
+      &devExtensions.extRobustness2,
       &devExtensions.extShaderDemoteToHelperInvocation,
       &devExtensions.extShaderStencilExport,
       &devExtensions.extShaderViewportIndexLayer,
@@ -318,6 +325,11 @@ namespace dxvk {
     if (devExtensions.extShaderDemoteToHelperInvocation) {
       enabledFeatures.extShaderDemoteToHelperInvocation.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT;
       enabledFeatures.extShaderDemoteToHelperInvocation.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extShaderDemoteToHelperInvocation);
+    }
+
+    if (devExtensions.extRobustness2) {
+      enabledFeatures.extRobustness2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
+      enabledFeatures.extRobustness2.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extRobustness2);
     }
 
     if (devExtensions.extTransformFeedback) {
@@ -475,6 +487,11 @@ namespace dxvk {
     m_deviceInfo.coreSubgroup.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
     m_deviceInfo.coreSubgroup.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.coreSubgroup);
 
+    if (m_deviceExtensions.supports(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME)) {
+      m_deviceInfo.extRobustness2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT;
+      m_deviceInfo.extRobustness2.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extRobustness2);
+    }
+
     if (m_deviceExtensions.supports(VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME)) {
       m_deviceInfo.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT;
       m_deviceInfo.extTransformFeedback.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extTransformFeedback);
@@ -534,6 +551,11 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME)) {
       m_deviceFeatures.extMemoryPriority.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
       m_deviceFeatures.extMemoryPriority.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extMemoryPriority);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME)) {
+      m_deviceFeatures.extRobustness2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
+      m_deviceFeatures.extRobustness2.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extRobustness2);
     }
 
     if (m_deviceExtensions.supports(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME)) {
@@ -625,6 +647,10 @@ namespace dxvk {
       "\n  hostQueryReset                         : ", features.extHostQueryReset.hostQueryReset ? "1" : "0",
       "\n", VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,
       "\n  memoryPriority                         : ", features.extMemoryPriority.memoryPriority ? "1" : "0",
+      "\n", VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
+      "\n  robustBufferAccess2                    : ", features.extRobustness2.robustBufferAccess2 ? "1" : "0",
+      "\n  robustImageAccess2                     : ", features.extRobustness2.robustImageAccess2 ? "1" : "0",
+      "\n  nullDescriptor                         : ", features.extRobustness2.nullDescriptor ? "1" : "0",
       "\n", VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME,
       "\n  shaderDemoteToHelperInvocation         : ", features.extShaderDemoteToHelperInvocation.shaderDemoteToHelperInvocation ? "1" : "0",
       "\n", VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME,

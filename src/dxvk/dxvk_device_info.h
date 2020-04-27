@@ -16,6 +16,7 @@ namespace dxvk {
     VkPhysicalDeviceProperties2                         core;
     VkPhysicalDeviceIDProperties                        coreDeviceId;
     VkPhysicalDeviceSubgroupProperties                  coreSubgroup;
+    VkPhysicalDeviceRobustness2PropertiesEXT            extRobustness2;
     VkPhysicalDeviceTransformFeedbackPropertiesEXT      extTransformFeedback;
     VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT extVertexAttributeDivisor;
     VkPhysicalDeviceDepthStencilResolvePropertiesKHR    khrDepthStencilResolve;
@@ -37,6 +38,7 @@ namespace dxvk {
     VkPhysicalDeviceDepthClipEnableFeaturesEXT                extDepthClipEnable;
     VkPhysicalDeviceHostQueryResetFeaturesEXT                 extHostQueryReset;
     VkPhysicalDeviceMemoryPriorityFeaturesEXT                 extMemoryPriority;
+    VkPhysicalDeviceRobustness2FeaturesEXT                    extRobustness2;
     VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT extShaderDemoteToHelperInvocation;
     VkPhysicalDeviceTransformFeedbackFeaturesEXT              extTransformFeedback;
     VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT         extVertexAttributeDivisor;
