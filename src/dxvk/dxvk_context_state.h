@@ -58,6 +58,16 @@ namespace dxvk {
 
 
   /**
+   * \brief Context feature bits
+   */
+  enum class DxvkContextFeature {
+    NullDescriptors,
+  };
+
+  using DxvkContextFeatures = Flags<DxvkContextFeature>;
+  
+
+  /**
    * \brief Barrier control flags
    * 
    * These flags specify what (not) to
