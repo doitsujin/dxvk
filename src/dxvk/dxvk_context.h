@@ -1018,6 +1018,7 @@ namespace dxvk {
 
     DxvkContextFlags        m_flags;
     DxvkContextState        m_state;
+    DxvkContextFeatures     m_features;
 
     DxvkBarrierSet          m_sdmaAcquires;
     DxvkBarrierSet          m_sdmaBarriers;
