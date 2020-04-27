@@ -4117,24 +4117,22 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::updateIndexBufferBinding() {
-    m_flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
-    
-    if (m_state.vi.indexBuffer.defined()) {
-      auto bufferInfo = m_state.vi.indexBuffer.getDescriptor();
-      
-      m_cmd->cmdBindIndexBuffer(
-        bufferInfo.buffer.buffer,
-        bufferInfo.buffer.offset,
-        m_state.vi.indexType);
+  bool DxvkContext::updateIndexBufferBinding() {
+    if (unlikely(!m_state.vi.indexBuffer.defined()))
+      return false;
 
-      if (m_vbTracked.set(MaxNumVertexBindings))
-        m_cmd->trackResource<DxvkAccess::Read>(m_state.vi.indexBuffer.buffer());
-    } else {
-      m_cmd->cmdBindIndexBuffer(
-        m_common->dummyResources().bufferHandle(),
-        0, VK_INDEX_TYPE_UINT32);
-    }
+    m_flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
+    auto bufferInfo = m_state.vi.indexBuffer.getDescriptor();
+
+    m_cmd->cmdBindIndexBuffer(
+      bufferInfo.buffer.buffer,
+      bufferInfo.buffer.offset,
+      m_state.vi.indexType);
+
+    if (m_vbTracked.set(MaxNumVertexBindings))
+      m_cmd->trackResource<DxvkAccess::Read>(m_state.vi.indexBuffer.buffer());
+
+    return true;
   }
   
   
@@ -4346,8 +4344,10 @@ namespace dxvk {
     if (!m_flags.test(DxvkContextFlag::GpRenderPassBound))
       this->startRenderPass();
     
-    if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer) && Indexed)
-      this->updateIndexBufferBinding();
+    if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer) && Indexed) {
+      if (unlikely(!this->updateIndexBufferBinding()))
+        return false;
+    }
     
     if (m_flags.test(DxvkContextFlag::GpDirtyVertexBuffers))
       this->updateVertexBufferBindings();

@@ -1162,7 +1162,7 @@ namespace dxvk {
 
     void updateFramebuffer();
     
-    void updateIndexBufferBinding();
+    bool updateIndexBufferBinding();
     void updateVertexBufferBindings();
 
     void updateTransformFeedbackBuffers();
