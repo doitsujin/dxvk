@@ -24,7 +24,7 @@ namespace dxvk {
   }
   
   
-  class DxgiOutput : public DxgiObject<IDXGIOutput5> {
+  class DxgiOutput : public DxgiObject<IDXGIOutput6> {
     
   public:
     
@@ -56,6 +56,9 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetDesc(
             DXGI_OUTPUT_DESC*     pDesc) final;
     
+    HRESULT STDMETHODCALLTYPE GetDesc1(
+            DXGI_OUTPUT_DESC1*    pDesc) final;
+
     HRESULT STDMETHODCALLTYPE GetDisplayModeList(
             DXGI_FORMAT           EnumFormat,
             UINT                  Flags,
@@ -121,6 +124,9 @@ namespace dxvk {
             IUnknown*             pConcernedDevice,
             UINT*                 pFlags) final;
     
+    HRESULT STDMETHODCALLTYPE CheckHardwareCompositionSupport(
+            UINT*                 pFlags) final;
+
   private:
     
     DxgiMonitorInfo* m_monitorInfo = nullptr;
