@@ -86,7 +86,7 @@ IDXGIVkSwapChain : public IUnknown {
  * this interface.
  */
 MIDL_INTERFACE("907bf281-ea3c-43b4-a8e4-9f231107b4ff")
-IDXGIDXVKAdapter : public IDXGIAdapter3 {
+IDXGIDXVKAdapter : public IDXGIAdapter4 {
   virtual dxvk::Rc<dxvk::DxvkAdapter> STDMETHODCALLTYPE GetDXVKAdapter() = 0;
 
   virtual dxvk::Rc<dxvk::DxvkInstance> STDMETHODCALLTYPE GetDXVKInstance() = 0;

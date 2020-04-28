@@ -89,6 +89,7 @@ namespace dxvk {
      || riid == __uuidof(IDXGIAdapter1)
      || riid == __uuidof(IDXGIAdapter2)
      || riid == __uuidof(IDXGIAdapter3)
+     || riid == __uuidof(IDXGIAdapter4)
      || riid == __uuidof(IDXGIDXVKAdapter)) {
       *ppvObject = ref(this);
       return S_OK;
@@ -158,8 +159,8 @@ namespace dxvk {
     if (pDesc == nullptr)
       return E_INVALIDARG;
 
-    DXGI_ADAPTER_DESC2 desc;
-    HRESULT hr = GetDesc2(&desc);
+    DXGI_ADAPTER_DESC3 desc;
+    HRESULT hr = GetDesc3(&desc);
     
     if (SUCCEEDED(hr)) {
       std::memcpy(pDesc->Description, desc.Description, sizeof(pDesc->Description));
@@ -182,8 +183,8 @@ namespace dxvk {
     if (pDesc == nullptr)
       return E_INVALIDARG;
 
-    DXGI_ADAPTER_DESC2 desc;
-    HRESULT hr = GetDesc2(&desc);
+    DXGI_ADAPTER_DESC3 desc;
+    HRESULT hr = GetDesc3(&desc);
     
     if (SUCCEEDED(hr)) {
       std::memcpy(pDesc->Description, desc.Description, sizeof(pDesc->Description));
@@ -204,6 +205,34 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiAdapter::GetDesc2(DXGI_ADAPTER_DESC2* pDesc) {
+    if (pDesc == nullptr)
+      return E_INVALIDARG;
+
+    DXGI_ADAPTER_DESC3 desc;
+    HRESULT hr = GetDesc3(&desc);
+    
+    if (SUCCEEDED(hr)) {
+      std::memcpy(pDesc->Description, desc.Description, sizeof(pDesc->Description));
+      
+      pDesc->VendorId               = desc.VendorId;
+      pDesc->DeviceId               = desc.DeviceId;
+      pDesc->SubSysId               = desc.SubSysId;
+      pDesc->Revision               = desc.Revision;
+      pDesc->DedicatedVideoMemory   = desc.DedicatedVideoMemory;
+      pDesc->DedicatedSystemMemory  = desc.DedicatedSystemMemory;
+      pDesc->SharedSystemMemory     = desc.SharedSystemMemory;
+      pDesc->AdapterLuid            = desc.AdapterLuid;
+      pDesc->Flags                  = desc.Flags;
+      pDesc->GraphicsPreemptionGranularity = desc.GraphicsPreemptionGranularity;
+      pDesc->ComputePreemptionGranularity  = desc.ComputePreemptionGranularity;
+    }
+    
+    return hr;
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiAdapter::GetDesc3(
+          DXGI_ADAPTER_DESC3*       pDesc) {
     if (pDesc == nullptr)
       return E_INVALIDARG;
     
@@ -271,7 +300,7 @@ namespace dxvk {
     pDesc->DedicatedSystemMemory          = 0;
     pDesc->SharedSystemMemory             = sharedMemory;
     pDesc->AdapterLuid                    = LUID { 0, 0 };
-    pDesc->Flags                          = 0;
+    pDesc->Flags                          = DXGI_ADAPTER_FLAG3_NONE;
     pDesc->GraphicsPreemptionGranularity  = DXGI_GRAPHICS_PREEMPTION_DMA_BUFFER_BOUNDARY;
     pDesc->ComputePreemptionGranularity   = DXGI_COMPUTE_PREEMPTION_DMA_BUFFER_BOUNDARY;
 
@@ -282,8 +311,8 @@ namespace dxvk {
 
     return S_OK;
   }
-  
-  
+
+
   HRESULT STDMETHODCALLTYPE DxgiAdapter::QueryVideoMemoryInfo(
           UINT                          NodeIndex,
           DXGI_MEMORY_SEGMENT_GROUP     MemorySegmentGroup,

@@ -75,6 +75,9 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetDesc2(
             DXGI_ADAPTER_DESC2*       pDesc) final;
     
+    HRESULT STDMETHODCALLTYPE GetDesc3(
+            DXGI_ADAPTER_DESC3*       pDesc) final;
+
     HRESULT STDMETHODCALLTYPE QueryVideoMemoryInfo(
             UINT                          NodeIndex,
             DXGI_MEMORY_SEGMENT_GROUP     MemorySegmentGroup,
