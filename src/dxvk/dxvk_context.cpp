@@ -3431,8 +3431,7 @@ namespace dxvk {
 
 
   void DxvkContext::startRenderPass() {
-    if (!m_flags.test(DxvkContextFlag::GpRenderPassBound)
-     && (m_state.om.framebuffer != nullptr)) {
+    if (!m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
       m_flags.set(DxvkContextFlag::GpRenderPassBound);
       m_flags.clr(DxvkContextFlag::GpClearRenderTargets);
 
