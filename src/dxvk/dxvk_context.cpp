@@ -571,36 +571,6 @@ namespace dxvk {
           VkClearValue          clearValue) {
     this->updateFramebuffer();
 
-    // Prepare attachment ops
-    DxvkColorAttachmentOps colorOp;
-    colorOp.loadOp        = VK_ATTACHMENT_LOAD_OP_LOAD;
-    colorOp.loadLayout    = imageView->imageInfo().layout;
-    colorOp.storeOp       = VK_ATTACHMENT_STORE_OP_STORE;
-    colorOp.storeLayout   = imageView->imageInfo().layout;
-    
-    DxvkDepthAttachmentOps depthOp;
-    depthOp.loadOpD       = VK_ATTACHMENT_LOAD_OP_LOAD;
-    depthOp.loadOpS       = VK_ATTACHMENT_LOAD_OP_LOAD;
-    depthOp.loadLayout    = imageView->imageInfo().layout;
-    depthOp.storeOpD      = VK_ATTACHMENT_STORE_OP_STORE;
-    depthOp.storeOpS      = VK_ATTACHMENT_STORE_OP_STORE;
-    depthOp.storeLayout   = imageView->imageInfo().layout;
-    
-    if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT)
-      colorOp.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    
-    if (clearAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
-      depthOp.loadOpD = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    
-    if (clearAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
-      depthOp.loadOpS = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    
-    if (clearAspects == imageView->info().aspect
-     && imageView->imageInfo().type != VK_IMAGE_TYPE_3D) {
-      colorOp.loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-      depthOp.loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-    }
-    
     // Make sure the color components are ordered correctly
     if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
       clearValue.color = util::swizzleClearColor(clearValue.color,
@@ -614,103 +584,11 @@ namespace dxvk {
     
     if (m_state.om.framebuffer->isFullSize(imageView) && this->checkFramebufferBarrier().isClear())
       attachmentIndex = m_state.om.framebuffer->findAttachment(imageView);
-    
-    if (attachmentIndex < 0) {
+
+    if (attachmentIndex < 0)
       this->spillRenderPass();
 
-      if (m_execBarriers.isImageDirty(
-          imageView->image(),
-          imageView->imageSubresources(),
-          DxvkAccess::Write))
-        m_execBarriers.recordCommands(m_cmd);
-      
-      // Set up and bind a temporary framebuffer
-      DxvkRenderTargets attachments;
-      DxvkRenderPassOps ops;
-
-      VkPipelineStageFlags clearStages = 0;
-      VkAccessFlags        clearAccess = 0;
-      
-      if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
-        clearStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        clearAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-        attachments.color[0].view   = imageView;
-        attachments.color[0].layout = imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-        
-        ops.colorOps[0] = colorOp;
-      } else {
-        clearStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-                    |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        clearAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-        attachments.depth.view   = imageView;
-        attachments.depth.layout = imageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-        
-        ops.depthOps = depthOp;
-      }
-      
-      this->renderPassBindFramebuffer(
-        m_device->createFramebuffer(attachments),
-        ops, 1, &clearValue);
-      this->renderPassUnbindFramebuffer();
-
-      m_execBarriers.accessImage(
-        imageView->image(),
-        imageView->imageSubresources(),
-        imageView->imageInfo().layout,
-        clearStages, clearAccess,
-        imageView->imageInfo().layout,
-        imageView->imageInfo().stages,
-        imageView->imageInfo().access);
-    } else if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
-      // Clear the attachment in quesion. For color images,
-      // the attachment index for the current subpass is
-      // equal to the render pass attachment index.
-      VkClearAttachment clearInfo;
-      clearInfo.aspectMask      = clearAspects;
-      clearInfo.colorAttachment = attachmentIndex;
-      clearInfo.clearValue      = clearValue;
-      
-      VkClearRect clearRect;
-      clearRect.rect.offset.x       = 0;
-      clearRect.rect.offset.y       = 0;
-      clearRect.rect.extent.width   = imageView->mipLevelExtent(0).width;
-      clearRect.rect.extent.height  = imageView->mipLevelExtent(0).height;
-      clearRect.baseArrayLayer      = 0;
-      clearRect.layerCount          = imageView->info().numLayers;
-
-      m_cmd->cmdClearAttachments(1, &clearInfo, 1, &clearRect);
-    } else {
-      // Perform the clear when starting the render pass
-      if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
-        m_state.om.renderPassOps.colorOps[attachmentIndex] = colorOp;
-        m_state.om.clearValues[attachmentIndex].color = clearValue.color;
-      }
-      
-      if (clearAspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
-        m_state.om.renderPassOps.depthOps.loadOpD  = depthOp.loadOpD;
-        m_state.om.renderPassOps.depthOps.storeOpD = depthOp.storeOpD;
-        m_state.om.clearValues[attachmentIndex].depthStencil.depth = clearValue.depthStencil.depth;
-      }
-      
-      if (clearAspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
-        m_state.om.renderPassOps.depthOps.loadOpS  = depthOp.loadOpS;
-        m_state.om.renderPassOps.depthOps.storeOpS = depthOp.storeOpS;
-        m_state.om.clearValues[attachmentIndex].depthStencil.stencil = clearValue.depthStencil.stencil;
-      }
-
-      if (clearAspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-        m_state.om.renderPassOps.depthOps.loadLayout  = depthOp.loadLayout;
-        m_state.om.renderPassOps.depthOps.storeLayout = depthOp.storeLayout;
-
-        if (m_state.om.renderPassOps.depthOps.loadOpD == VK_ATTACHMENT_LOAD_OP_CLEAR
-         && m_state.om.renderPassOps.depthOps.loadOpS == VK_ATTACHMENT_LOAD_OP_CLEAR)
-          m_state.om.renderPassOps.depthOps.loadLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-      }
-      
-      m_flags.set(DxvkContextFlag::GpClearRenderTargets);
-    }
+    this->performClear(imageView, attachmentIndex, clearAspects, clearValue);
   }
   
   
@@ -1823,6 +1701,137 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::performClear(
+    const Rc<DxvkImageView>&        imageView,
+          int32_t                   attachmentIndex,
+          VkImageAspectFlags        clearAspects,
+          VkClearValue              clearValue) {
+    DxvkColorAttachmentOps colorOp;
+    colorOp.loadOp        = VK_ATTACHMENT_LOAD_OP_LOAD;
+    colorOp.loadLayout    = imageView->imageInfo().layout;
+    colorOp.storeOp       = VK_ATTACHMENT_STORE_OP_STORE;
+    colorOp.storeLayout   = imageView->imageInfo().layout;
+    
+    DxvkDepthAttachmentOps depthOp;
+    depthOp.loadOpD       = VK_ATTACHMENT_LOAD_OP_LOAD;
+    depthOp.loadOpS       = VK_ATTACHMENT_LOAD_OP_LOAD;
+    depthOp.loadLayout    = imageView->imageInfo().layout;
+    depthOp.storeOpD      = VK_ATTACHMENT_STORE_OP_STORE;
+    depthOp.storeOpS      = VK_ATTACHMENT_STORE_OP_STORE;
+    depthOp.storeLayout   = imageView->imageInfo().layout;
+    
+    if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT)
+      colorOp.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    
+    if (clearAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
+      depthOp.loadOpD = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    
+    if (clearAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
+      depthOp.loadOpS = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    
+    if (clearAspects == imageView->info().aspect
+     && imageView->imageInfo().type != VK_IMAGE_TYPE_3D) {
+      colorOp.loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+      depthOp.loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+    }
+    
+    if (attachmentIndex < 0) {
+      if (m_execBarriers.isImageDirty(
+          imageView->image(),
+          imageView->imageSubresources(),
+          DxvkAccess::Write))
+        m_execBarriers.recordCommands(m_cmd);
+      
+      // Set up and bind a temporary framebuffer
+      DxvkRenderTargets attachments;
+      DxvkRenderPassOps ops;
+
+      VkPipelineStageFlags clearStages = 0;
+      VkAccessFlags        clearAccess = 0;
+      
+      if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
+        clearStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        clearAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+        attachments.color[0].view   = imageView;
+        attachments.color[0].layout = imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        
+        ops.colorOps[0] = colorOp;
+      } else {
+        clearStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                    |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        clearAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+        attachments.depth.view   = imageView;
+        attachments.depth.layout = imageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+        
+        ops.depthOps = depthOp;
+      }
+      
+      this->renderPassBindFramebuffer(
+        m_device->createFramebuffer(attachments),
+        ops, 1, &clearValue);
+      this->renderPassUnbindFramebuffer();
+
+      m_execBarriers.accessImage(
+        imageView->image(),
+        imageView->imageSubresources(),
+        imageView->imageInfo().layout,
+        clearStages, clearAccess,
+        imageView->imageInfo().layout,
+        imageView->imageInfo().stages,
+        imageView->imageInfo().access);
+    } else if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
+      // Clear the attachment in quesion. For color images,
+      // the attachment index for the current subpass is
+      // equal to the render pass attachment index.
+      VkClearAttachment clearInfo;
+      clearInfo.aspectMask      = clearAspects;
+      clearInfo.colorAttachment = attachmentIndex;
+      clearInfo.clearValue      = clearValue;
+      
+      VkClearRect clearRect;
+      clearRect.rect.offset.x       = 0;
+      clearRect.rect.offset.y       = 0;
+      clearRect.rect.extent.width   = imageView->mipLevelExtent(0).width;
+      clearRect.rect.extent.height  = imageView->mipLevelExtent(0).height;
+      clearRect.baseArrayLayer      = 0;
+      clearRect.layerCount          = imageView->info().numLayers;
+
+      m_cmd->cmdClearAttachments(1, &clearInfo, 1, &clearRect);
+    } else {
+      // Perform the clear when starting the render pass
+      if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
+        m_state.om.renderPassOps.colorOps[attachmentIndex] = colorOp;
+        m_state.om.clearValues[attachmentIndex].color = clearValue.color;
+      }
+      
+      if (clearAspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+        m_state.om.renderPassOps.depthOps.loadOpD  = depthOp.loadOpD;
+        m_state.om.renderPassOps.depthOps.storeOpD = depthOp.storeOpD;
+        m_state.om.clearValues[attachmentIndex].depthStencil.depth = clearValue.depthStencil.depth;
+      }
+      
+      if (clearAspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+        m_state.om.renderPassOps.depthOps.loadOpS  = depthOp.loadOpS;
+        m_state.om.renderPassOps.depthOps.storeOpS = depthOp.storeOpS;
+        m_state.om.clearValues[attachmentIndex].depthStencil.stencil = clearValue.depthStencil.stencil;
+      }
+
+      if (clearAspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+        m_state.om.renderPassOps.depthOps.loadLayout  = depthOp.loadLayout;
+        m_state.om.renderPassOps.depthOps.storeLayout = depthOp.storeLayout;
+
+        if (m_state.om.renderPassOps.depthOps.loadOpD == VK_ATTACHMENT_LOAD_OP_CLEAR
+         && m_state.om.renderPassOps.depthOps.loadOpS == VK_ATTACHMENT_LOAD_OP_CLEAR)
+          m_state.om.renderPassOps.depthOps.loadLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+      }
+      
+      m_flags.set(DxvkContextFlag::GpClearRenderTargets);
+    }
+  }
+
+
   void DxvkContext::updateBuffer(
     const Rc<DxvkBuffer>&           buffer,
           VkDeviceSize              offset,

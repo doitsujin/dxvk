@@ -1113,6 +1113,12 @@ namespace dxvk {
             VkResolveModeFlagBitsKHR  depthMode,
             VkResolveModeFlagBitsKHR  stencilMode);
     
+    void performClear(
+      const Rc<DxvkImageView>&        imageView,
+            int32_t                   attachmentIndex,
+            VkImageAspectFlags        clearAspects,
+            VkClearValue              clearValue);
+
     void updatePredicate(
       const DxvkBufferSliceHandle&    predicate,
       const DxvkGpuQueryHandle&       query);
