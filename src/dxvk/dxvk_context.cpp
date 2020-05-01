@@ -3469,9 +3469,11 @@ namespace dxvk {
       m_queryManager.endQueries(m_cmd, VK_QUERY_TYPE_OCCLUSION);
       m_queryManager.endQueries(m_cmd, VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
+      this->renderPassUnbindFramebuffer();
+
+      m_gfxBarriers.recordCommands(m_cmd);
       m_gfxBarriers.reset();
 
-      this->renderPassUnbindFramebuffer();
       this->unbindGraphicsPipeline();
       this->commitPredicateUpdates();
 
