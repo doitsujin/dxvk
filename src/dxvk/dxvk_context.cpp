@@ -1707,15 +1707,12 @@ namespace dxvk {
     DxvkColorAttachmentOps colorOp;
     colorOp.loadOp        = VK_ATTACHMENT_LOAD_OP_LOAD;
     colorOp.loadLayout    = imageView->imageInfo().layout;
-    colorOp.storeOp       = VK_ATTACHMENT_STORE_OP_STORE;
     colorOp.storeLayout   = imageView->imageInfo().layout;
     
     DxvkDepthAttachmentOps depthOp;
     depthOp.loadOpD       = VK_ATTACHMENT_LOAD_OP_LOAD;
     depthOp.loadOpS       = VK_ATTACHMENT_LOAD_OP_LOAD;
     depthOp.loadLayout    = imageView->imageInfo().layout;
-    depthOp.storeOpD      = VK_ATTACHMENT_STORE_OP_STORE;
-    depthOp.storeOpS      = VK_ATTACHMENT_STORE_OP_STORE;
     depthOp.storeLayout   = imageView->imageInfo().layout;
     
     if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT)
@@ -1802,13 +1799,11 @@ namespace dxvk {
       
       if (clearAspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
         m_state.om.renderPassOps.depthOps.loadOpD  = depthOp.loadOpD;
-        m_state.om.renderPassOps.depthOps.storeOpD = depthOp.storeOpD;
         m_state.om.clearValues[attachmentIndex].depthStencil.depth = clearValue.depthStencil.depth;
       }
       
       if (clearAspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
         m_state.om.renderPassOps.depthOps.loadOpS  = depthOp.loadOpS;
-        m_state.om.renderPassOps.depthOps.storeOpS = depthOp.storeOpS;
         m_state.om.clearValues[attachmentIndex].depthStencil.stencil = clearValue.depthStencil.stencil;
       }
 
@@ -2664,7 +2659,6 @@ namespace dxvk {
 
         ops.colorOps[0].loadOp      = VK_ATTACHMENT_LOAD_OP_LOAD;
         ops.colorOps[0].loadLayout  = imageView->imageInfo().layout;
-        ops.colorOps[0].storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
         ops.colorOps[0].storeLayout = imageView->imageInfo().layout;
       } else {
         clearStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
@@ -2677,8 +2671,6 @@ namespace dxvk {
         ops.depthOps.loadOpD     = VK_ATTACHMENT_LOAD_OP_LOAD;
         ops.depthOps.loadOpS     = VK_ATTACHMENT_LOAD_OP_LOAD;
         ops.depthOps.loadLayout  = imageView->imageInfo().layout;
-        ops.depthOps.storeOpD    = VK_ATTACHMENT_STORE_OP_STORE;
-        ops.depthOps.storeOpS    = VK_ATTACHMENT_STORE_OP_STORE;
         ops.depthOps.storeLayout = imageView->imageInfo().layout;
       }
 
@@ -3557,8 +3549,6 @@ namespace dxvk {
         VK_ATTACHMENT_LOAD_OP_LOAD,
         VK_ATTACHMENT_LOAD_OP_LOAD,
         renderTargets.depth.view->imageInfo().layout,
-        VK_ATTACHMENT_STORE_OP_STORE,
-        VK_ATTACHMENT_STORE_OP_STORE,
         renderTargets.depth.view->imageInfo().layout };
 
       renderPassOps.barrier.srcStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
@@ -3577,7 +3567,6 @@ namespace dxvk {
         renderPassOps.colorOps[i] = DxvkColorAttachmentOps {
             VK_ATTACHMENT_LOAD_OP_LOAD,
             renderTargets.color[i].view->imageInfo().layout,
-            VK_ATTACHMENT_STORE_OP_STORE,
             renderTargets.color[i].view->imageInfo().layout };
 
         renderPassOps.barrier.srcStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;

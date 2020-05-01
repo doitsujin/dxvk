@@ -88,7 +88,7 @@ namespace dxvk {
         desc.format           = m_format.color[i].format;
         desc.samples          = m_format.sampleCount;
         desc.loadOp           = ops.colorOps[i].loadOp;
-        desc.storeOp          = ops.colorOps[i].storeOp;
+        desc.storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
         desc.stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         desc.stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         desc.initialLayout    = ops.colorOps[i].loadLayout;
@@ -110,9 +110,9 @@ namespace dxvk {
       desc.format         = m_format.depth.format;
       desc.samples        = m_format.sampleCount;
       desc.loadOp         = ops.depthOps.loadOpD;
-      desc.storeOp        = ops.depthOps.storeOpD;
+      desc.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
       desc.stencilLoadOp  = ops.depthOps.loadOpS;
-      desc.stencilStoreOp = ops.depthOps.storeOpS;
+      desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
       desc.initialLayout  = ops.depthOps.loadLayout;
       desc.finalLayout    = ops.depthOps.storeLayout;
       
@@ -248,15 +248,12 @@ namespace dxvk {
       eq &= a.depthOps.loadOpD     == b.depthOps.loadOpD
          && a.depthOps.loadOpS     == b.depthOps.loadOpS
          && a.depthOps.loadLayout  == b.depthOps.loadLayout
-         && a.depthOps.storeOpD    == b.depthOps.storeOpD
-         && a.depthOps.storeOpS    == b.depthOps.storeOpS
          && a.depthOps.storeLayout == b.depthOps.storeLayout;
     }
     
     for (uint32_t i = 0; i < MaxNumRenderTargets && eq; i++) {
       eq &= a.colorOps[i].loadOp      == b.colorOps[i].loadOp
          && a.colorOps[i].loadLayout  == b.colorOps[i].loadLayout
-         && a.colorOps[i].storeOp     == b.colorOps[i].storeOp
          && a.colorOps[i].storeLayout == b.colorOps[i].storeLayout;
     }
     

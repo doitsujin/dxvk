@@ -50,7 +50,6 @@ namespace dxvk {
   struct DxvkColorAttachmentOps {
     VkAttachmentLoadOp  loadOp      = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     VkImageLayout       loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-    VkAttachmentStoreOp storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
     VkImageLayout       storeLayout = VK_IMAGE_LAYOUT_GENERAL;
   };
   
@@ -65,8 +64,6 @@ namespace dxvk {
     VkAttachmentLoadOp  loadOpD     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     VkAttachmentLoadOp  loadOpS     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     VkImageLayout       loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-    VkAttachmentStoreOp storeOpD    = VK_ATTACHMENT_STORE_OP_STORE;
-    VkAttachmentStoreOp storeOpS    = VK_ATTACHMENT_STORE_OP_STORE;
     VkImageLayout       storeLayout = VK_IMAGE_LAYOUT_GENERAL;
   };
   
