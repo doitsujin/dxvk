@@ -3539,21 +3539,8 @@ namespace dxvk {
     
     renderPassOps.barrier.srcStages = shaderStages
                                     | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT
-                                    | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT
-                                    | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-                                    | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
-                                    | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-                                    | VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-    renderPassOps.barrier.srcAccess = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
-                                    | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
-                                    | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
-                                    | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-                                    | VK_ACCESS_INDIRECT_COMMAND_READ_BIT
-                                    | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
-                                    | VK_ACCESS_INDEX_READ_BIT
-                                    | VK_ACCESS_UNIFORM_READ_BIT
-                                    | VK_ACCESS_SHADER_READ_BIT
-                                    | VK_ACCESS_SHADER_WRITE_BIT;
+                                    | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+    renderPassOps.barrier.srcAccess = VK_ACCESS_SHADER_WRITE_BIT;
     
     if (m_device->features().extTransformFeedback.transformFeedback) {
       renderPassOps.barrier.srcStages |= VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
@@ -3563,31 +3550,44 @@ namespace dxvk {
     }
 
     renderPassOps.barrier.dstStages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-    renderPassOps.barrier.dstAccess = renderPassOps.barrier.srcAccess
-                                    | VK_ACCESS_TRANSFER_READ_BIT
-                                    | VK_ACCESS_TRANSFER_WRITE_BIT;
+    renderPassOps.barrier.dstAccess = 0;
 
-    renderPassOps.depthOps = renderTargets.depth.view != nullptr
-      ? DxvkDepthAttachmentOps {
-          VK_ATTACHMENT_LOAD_OP_LOAD,
-          VK_ATTACHMENT_LOAD_OP_LOAD,
-          renderTargets.depth.view->imageInfo().layout,
-          VK_ATTACHMENT_STORE_OP_STORE,
-          VK_ATTACHMENT_STORE_OP_STORE,
-          renderTargets.depth.view->imageInfo().layout }
-      : DxvkDepthAttachmentOps { };
+    if (renderTargets.depth.view != nullptr) {
+      renderPassOps.depthOps = DxvkDepthAttachmentOps {
+        VK_ATTACHMENT_LOAD_OP_LOAD,
+        VK_ATTACHMENT_LOAD_OP_LOAD,
+        renderTargets.depth.view->imageInfo().layout,
+        VK_ATTACHMENT_STORE_OP_STORE,
+        VK_ATTACHMENT_STORE_OP_STORE,
+        renderTargets.depth.view->imageInfo().layout };
+
+      renderPassOps.barrier.srcStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                                      |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+
+      if (renderTargets.depth.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
+        renderPassOps.barrier.srcAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+      renderPassOps.barrier.dstAccess |= renderTargets.depth.view->imageInfo().access;
+    } else {
+      renderPassOps.depthOps = DxvkDepthAttachmentOps { };
+    }
     
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      renderPassOps.colorOps[i] = renderTargets.color[i].view != nullptr
-        ? DxvkColorAttachmentOps {
+      if (renderTargets.color[i].view != nullptr) {
+        renderPassOps.colorOps[i] = DxvkColorAttachmentOps {
             VK_ATTACHMENT_LOAD_OP_LOAD,
             renderTargets.color[i].view->imageInfo().layout,
             VK_ATTACHMENT_STORE_OP_STORE,
-            renderTargets.color[i].view->imageInfo().layout }
-        : DxvkColorAttachmentOps { };
+            renderTargets.color[i].view->imageInfo().layout };
+
+        renderPassOps.barrier.srcStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        renderPassOps.barrier.srcAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        renderPassOps.barrier.dstAccess |= renderTargets.color[i].view->imageInfo().access;
+      } else {
+        renderPassOps.colorOps[i] = DxvkColorAttachmentOps { };
+      }
     }
     
-    // TODO provide a sane alternative for this
     if (renderPassOps.colorOps[0].loadLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
       renderPassOps.colorOps[0].loadOp     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
       renderPassOps.colorOps[0].loadLayout = VK_IMAGE_LAYOUT_UNDEFINED;
