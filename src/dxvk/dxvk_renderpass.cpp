@@ -140,8 +140,47 @@ namespace dxvk {
     if (m_format.depth.format == VK_FORMAT_UNDEFINED)
       subpass.pDepthStencilAttachment = nullptr;
     
-    std::array<VkSubpassDependency, 3> subpassDeps;
+    std::array<VkSubpassDependency, 4> subpassDeps;
     uint32_t                           subpassDepCount = 0;
+
+    VkPipelineStageFlags renderStages = 0;
+    VkAccessFlags        renderAccess = 0;
+
+    if (m_format.depth.format) {
+      renderStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                   |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+
+      VkImageAspectFlags loadAspects = 0;
+
+      if (ops.depthOps.loadOpD == VK_ATTACHMENT_LOAD_OP_LOAD)
+        loadAspects = VK_IMAGE_ASPECT_DEPTH_BIT;
+      if (ops.depthOps.loadOpS == VK_ATTACHMENT_LOAD_OP_LOAD)
+        loadAspects = VK_IMAGE_ASPECT_STENCIL_BIT;
+
+      if (loadAspects & imageFormatInfo(m_format.depth.format)->aspectMask)
+        renderAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+      
+      if (m_format.depth.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
+        renderAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    }
+
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      if (!m_format.color[i].format)
+        continue;
+
+      renderStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      renderAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+      if (ops.colorOps[i].loadOp == VK_ATTACHMENT_LOAD_OP_LOAD)
+        renderAccess |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+    }
+
+    if (renderStages) {
+      subpassDeps[subpassDepCount++] = {
+        VK_SUBPASS_EXTERNAL, 0,
+        renderStages, renderStages,
+        0, renderAccess };
+    }
 
     if (ops.barrier.srcStages & (
           VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT |
