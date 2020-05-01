@@ -314,8 +314,7 @@ namespace dxvk {
 
       m_execBarriers.accessImage(image, subresources,
         image->info().layout,
-        image->info().stages,
-        image->info().access,
+        image->info().stages, 0,
         layout,
         image->info().stages,
         image->info().access);
