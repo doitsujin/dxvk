@@ -40,8 +40,7 @@ namespace dxvk {
     // before any draw or dispatch command is recorded.
     m_flags.clr(
       DxvkContextFlag::GpRenderPassBound,
-      DxvkContextFlag::GpXfbActive,
-      DxvkContextFlag::GpClearRenderTargets);
+      DxvkContextFlag::GpXfbActive);
     
     m_flags.set(
       DxvkContextFlag::GpDirtyFramebuffer,
@@ -98,10 +97,6 @@ namespace dxvk {
   
   void DxvkContext::bindRenderTargets(
     const DxvkRenderTargets&    targets) {
-    // If necessary, perform clears on the active render targets
-    if (m_flags.test(DxvkContextFlag::GpClearRenderTargets))
-      this->clearRenderPass();
-    
     // Set up default render pass ops
     m_state.om.renderTargets = targets;
     
@@ -569,8 +564,6 @@ namespace dxvk {
     const Rc<DxvkImageView>&    imageView,
           VkImageAspectFlags    clearAspects,
           VkClearValue          clearValue) {
-    this->updateFramebuffer();
-
     // Make sure the color components are ordered correctly
     if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
       clearValue.color = util::swizzleClearColor(clearValue.color,
@@ -582,13 +575,18 @@ namespace dxvk {
     // If not, we need to create a temporary framebuffer.
     int32_t attachmentIndex = -1;
     
-    if (m_state.om.framebuffer->isFullSize(imageView) && this->checkFramebufferBarrier().isClear())
-      attachmentIndex = m_state.om.framebuffer->findAttachment(imageView);
+    if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
+      if (m_state.om.framebuffer->isFullSize(imageView) && this->checkFramebufferBarrier().isClear())
+        attachmentIndex = m_state.om.framebuffer->findAttachment(imageView);
 
-    if (attachmentIndex < 0)
-      this->spillRenderPass();
+      if (attachmentIndex < 1)
+        this->spillRenderPass();
+    }
 
-    this->performClear(imageView, attachmentIndex, clearAspects, clearValue);
+    if (m_flags.test(DxvkContextFlag::GpRenderPassBound))
+      this->performClear(imageView, attachmentIndex, clearAspects, clearValue);
+    else
+      this->deferClear(imageView, clearAspects, clearValue);
   }
   
   
@@ -1826,9 +1824,30 @@ namespace dxvk {
          && m_state.om.renderPassOps.depthOps.loadOpS == VK_ATTACHMENT_LOAD_OP_CLEAR)
           m_state.om.renderPassOps.depthOps.loadLayout = VK_IMAGE_LAYOUT_UNDEFINED;
       }
-      
-      m_flags.set(DxvkContextFlag::GpClearRenderTargets);
     }
+  }
+
+
+  void DxvkContext::deferClear(
+    const Rc<DxvkImageView>&        imageView,
+          VkImageAspectFlags        clearAspects,
+          VkClearValue              clearValue) {
+    m_deferredClears.push_back({ imageView, clearAspects, clearValue });
+  }
+
+
+  void DxvkContext::flushClears(
+          bool                      useRenderPass) {
+    for (const auto& clear : m_deferredClears) {
+      int32_t attachmentIndex = -1;
+
+      if (useRenderPass && m_state.om.framebuffer->isFullSize(clear.imageView))
+        attachmentIndex = m_state.om.framebuffer->findAttachment(clear.imageView);
+
+      this->performClear(clear.imageView, attachmentIndex, clear.clearAspects, clear.clearValue);
+    }
+
+    m_deferredClears.clear();
   }
 
 
@@ -3432,8 +3451,9 @@ namespace dxvk {
 
   void DxvkContext::startRenderPass() {
     if (!m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
+      this->flushClears(true);
+
       m_flags.set(DxvkContextFlag::GpRenderPassBound);
-      m_flags.clr(DxvkContextFlag::GpClearRenderTargets);
 
       m_execBarriers.recordCommands(m_cmd);
 
@@ -3456,10 +3476,7 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::spillRenderPass() {
-    if (m_flags.test(DxvkContextFlag::GpClearRenderTargets))
-      this->clearRenderPass();
-    
+  void DxvkContext::spillRenderPass(bool flushClears) {
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
       m_flags.clr(DxvkContextFlag::GpRenderPassBound);
 
@@ -3475,60 +3492,14 @@ namespace dxvk {
       this->commitPredicateUpdates();
 
       m_flags.clr(DxvkContextFlag::GpDirtyXfbCounters);
+    } else if (flushClears) {
+      // We defer clears with a render pass bound,
+      // no need to call this for the common path.
+      this->flushClears(false);
     }
   }
 
 
-  void DxvkContext::clearRenderPass() {
-    if (m_flags.test(DxvkContextFlag::GpClearRenderTargets)) {
-      m_flags.clr(DxvkContextFlag::GpClearRenderTargets);
-
-      bool flushBarriers = false;
-
-      for (uint32_t i = 0; i < m_state.om.framebuffer->numAttachments(); i++) {
-        const DxvkAttachment& attachment = m_state.om.framebuffer->getAttachment(i);
-
-        flushBarriers |= m_execBarriers.isImageDirty(
-          attachment.view->image(),
-          attachment.view->imageSubresources(),
-          DxvkAccess::Write);
-      }
-
-      if (flushBarriers)
-        m_execBarriers.recordCommands(m_cmd);
-
-      this->renderPassBindFramebuffer(
-        m_state.om.framebuffer,
-        m_state.om.renderPassOps,
-        m_state.om.clearValues.size(),
-        m_state.om.clearValues.data());
-      
-      this->resetRenderPassOps(
-        m_state.om.renderTargets,
-        m_state.om.renderPassOps);
-      
-      this->renderPassUnbindFramebuffer();
-
-      for (uint32_t i = 0; i < m_state.om.framebuffer->numAttachments(); i++) {
-        const DxvkAttachment& attachment = m_state.om.framebuffer->getAttachment(i);
-
-        m_execBarriers.accessImage(
-          attachment.view->image(),
-          attachment.view->imageSubresources(),
-          attachment.view->imageInfo().layout,
-          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT    |
-          VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT          |
-          VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-          attachment.view->imageInfo().layout,
-          attachment.view->imageInfo().stages,
-          attachment.view->imageInfo().access);
-      }
-    }
-  }
-  
-  
   void DxvkContext::renderPassBindFramebuffer(
     const Rc<DxvkFramebuffer>&  framebuffer,
     const DxvkRenderPassOps&    ops,
@@ -4129,7 +4100,7 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer)) {
       m_flags.clr(DxvkContextFlag::GpDirtyFramebuffer);
 
-      this->spillRenderPass();
+      this->spillRenderPass(false);
 
       auto fb = m_device->createFramebuffer(m_state.om.renderTargets);
 
@@ -4334,12 +4305,8 @@ namespace dxvk {
   
   
   bool DxvkContext::commitComputeState() {
-    if (m_flags.test(DxvkContextFlag::GpRenderPassBound))
-      this->spillRenderPass();
+    this->spillRenderPass();
 
-    if (m_flags.test(DxvkContextFlag::GpClearRenderTargets))
-      this->clearRenderPass();
-    
     if (m_flags.test(DxvkContextFlag::CpDirtyPipeline)) {
       if (unlikely(!this->updateComputePipeline()))
         return false;

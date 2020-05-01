@@ -24,7 +24,6 @@ namespace dxvk {
     GpRenderPassBound,          ///< Render pass is currently bound
     GpCondActive,               ///< Conditional rendering is enabled
     GpXfbActive,                ///< Transform feedback is enabled
-    GpClearRenderTargets,       ///< Render targets need to be cleared
     GpDirtyFramebuffer,         ///< Framebuffer binding is out of date
     GpDirtyPipeline,            ///< Graphics pipeline binding is out of date
     GpDirtyPipelineState,       ///< Graphics pipeline needs to be recompiled
@@ -147,6 +146,13 @@ namespace dxvk {
   struct DxvkCondRenderState {
     DxvkBufferSlice                 predicate;
     VkConditionalRenderingFlagsEXT  flags;
+  };
+
+
+  struct DxvkDeferredClear {
+    Rc<DxvkImageView> imageView;
+    VkImageAspectFlags clearAspects;
+    VkClearValue clearValue;
   };
   
   

@@ -1040,6 +1040,8 @@ namespace dxvk {
     DxvkBindingSet<MaxNumVertexBindings + 1>  m_vbTracked;
     DxvkBindingSet<MaxNumResourceSlots>       m_rcTracked;
 
+    std::vector<DxvkDeferredClear> m_deferredClears;
+
     std::array<DxvkShaderResourceSlot, MaxNumResourceSlots>  m_rc;
     std::array<DxvkGraphicsPipeline*, 4096> m_gpLookupCache = { };
     std::array<DxvkComputePipeline*,   256> m_cpLookupCache = { };
@@ -1119,6 +1121,14 @@ namespace dxvk {
             VkImageAspectFlags        clearAspects,
             VkClearValue              clearValue);
 
+    void deferClear(
+      const Rc<DxvkImageView>&        imageView,
+            VkImageAspectFlags        clearAspects,
+            VkClearValue              clearValue);
+
+    void flushClears(
+            bool                      useRenderPass);
+
     void updatePredicate(
       const DxvkBufferSliceHandle&    predicate,
       const DxvkGpuQueryHandle&       query);
@@ -1126,8 +1136,7 @@ namespace dxvk {
     void commitPredicateUpdates();
     
     void startRenderPass();
-    void spillRenderPass();
-    void clearRenderPass();
+    void spillRenderPass(bool flushClears = true);
     
     void renderPassBindFramebuffer(
       const Rc<DxvkFramebuffer>&  framebuffer,
