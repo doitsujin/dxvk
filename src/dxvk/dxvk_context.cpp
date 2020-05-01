@@ -1765,20 +1765,16 @@ namespace dxvk {
         
         ops.depthOps = depthOp;
       }
-      
+
+      ops.barrier.srcStages = clearStages;
+      ops.barrier.srcAccess = clearAccess;
+      ops.barrier.dstStages = imageView->imageInfo().stages;
+      ops.barrier.dstAccess = imageView->imageInfo().access;
+
       this->renderPassBindFramebuffer(
         m_device->createFramebuffer(attachments),
         ops, 1, &clearValue);
       this->renderPassUnbindFramebuffer();
-
-      m_execBarriers.accessImage(
-        imageView->image(),
-        imageView->imageSubresources(),
-        imageView->imageInfo().layout,
-        clearStages, clearAccess,
-        imageView->imageInfo().layout,
-        imageView->imageInfo().stages,
-        imageView->imageInfo().access);
     } else if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
       // Clear the attachment in quesion. For color images,
       // the attachment index for the current subpass is
@@ -2686,20 +2682,16 @@ namespace dxvk {
         ops.depthOps.storeLayout = imageView->imageInfo().layout;
       }
 
+      ops.barrier.srcStages = clearStages;
+      ops.barrier.srcAccess = clearAccess;
+      ops.barrier.dstStages = imageView->imageInfo().stages;
+      ops.barrier.dstAccess = imageView->imageInfo().access;
+
       // We cannot leverage render pass clears
       // because we clear only part of the view
       this->renderPassBindFramebuffer(
         m_device->createFramebuffer(attachments),
         ops, 0, nullptr);
-      
-      m_execBarriers.accessImage(
-        imageView->image(),
-        imageView->imageSubresources(),
-        imageView->imageInfo().layout,
-        clearStages, clearAccess,
-        imageView->imageInfo().layout,
-        imageView->imageInfo().stages,
-        imageView->imageInfo().access);
     } else {
       // Make sure the render pass is active so
       // that we can actually perform the clear
