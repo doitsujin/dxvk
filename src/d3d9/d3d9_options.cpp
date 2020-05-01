@@ -70,6 +70,7 @@ namespace dxvk {
     this->allowDiscard          = config.getOption<bool>       ("d3d9.allowDiscard",       true);
     this->enumerateByDisplays   = config.getOption<bool>       ("d3d9.enumerateByDisplays", true);
     this->longMad               = config.getOption<bool>       ("d3d9.longMad",            false);
+    this->tearFree              = config.getOption<Tristate>   ("d3d9.tearFree", Tristate::Auto);
 
     // If we are not Nvidia, enable general hazards.
     this->generalHazards = adapter == nullptr || !adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0);

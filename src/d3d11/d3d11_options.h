@@ -73,7 +73,8 @@ namespace dxvk {
     int32_t syncInterval;
 
     /// Tear-free mode if vsync is disabled
-    bool tearFree;
+    /// Tearing mode if vsync is enabled
+    Tristate tearFree;
 
     /// Override maximum frame latency if the app specifies
     /// a higher value. May help with frame timing issues.
