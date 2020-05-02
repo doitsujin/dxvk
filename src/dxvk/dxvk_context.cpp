@@ -2913,7 +2913,8 @@ namespace dxvk {
     if (srcImage->info().layout != srcLayout) {
       m_execAcquires.accessImage(
         srcImage, srcSubresourceRange,
-        srcImage->info().layout, 0, 0,
+        srcImage->info().layout,
+        srcImage->info().stages, 0,
         srcLayout,
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         VK_ACCESS_SHADER_READ_BIT);
@@ -2945,9 +2946,8 @@ namespace dxvk {
       info.numLayers      = dstSubresource.layerCount;
       info.mipLevels      = 1;
       info.usage          = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | tgtUsage;
-      info.stages         = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-                          | VK_PIPELINE_STAGE_TRANSFER_BIT;
-      info.access         = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+      info.stages         = VK_PIPELINE_STAGE_TRANSFER_BIT;
+      info.access         = VK_ACCESS_TRANSFER_READ_BIT;
       info.tiling         = VK_IMAGE_TILING_OPTIMAL;
       info.layout         = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 
@@ -3071,26 +3071,15 @@ namespace dxvk {
     m_cmd->cmdDraw(3, tgtSubresource.layerCount, 0, 0);
     m_cmd->cmdEndRenderPass();
 
-    m_execBarriers.accessImage(
-      srcImage, srcSubresourceRange,
-      srcLayout,
-      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-      VK_ACCESS_SHADER_READ_BIT,
-      srcImage->info().layout,
-      srcImage->info().stages,
-      srcImage->info().access);
-    
-    m_execBarriers.accessImage(
-      dstImage, dstSubresourceRange,
-      dstImage->info().layout,
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
-      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT    |
-      VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-      VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT          |
-      VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-      dstImage->info().layout,
-      dstImage->info().stages,
-      dstImage->info().access);
+    if (srcLayout != srcImage->info().layout) {
+      m_execBarriers.accessImage(
+        srcImage, srcSubresourceRange, srcLayout,
+        srcImage->info().stages,
+        srcImage->info().access,
+        srcImage->info().layout,
+        srcImage->info().stages,
+        srcImage->info().access);
+    }
 
     m_cmd->trackResource<DxvkAccess::Write>(tgtImage);
     m_cmd->trackResource<DxvkAccess::Read>(srcImage);

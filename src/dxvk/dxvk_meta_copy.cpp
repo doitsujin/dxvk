@@ -42,6 +42,9 @@ namespace dxvk {
   VkRenderPass DxvkMetaCopyRenderPass::createRenderPass(bool discard) const {
     auto aspect = m_dstImageView->info().aspect;
 
+    VkPipelineStageFlags cpyStages = 0;
+    VkAccessFlags        cpyAccess = 0;
+
     VkAttachmentDescription attachment;
     attachment.flags            = 0;
     attachment.format           = m_dstImageView->info().format;
@@ -62,8 +65,8 @@ namespace dxvk {
     VkAttachmentReference attachmentRef;
     attachmentRef.attachment    = 0;
     attachmentRef.layout        = (aspect & VK_IMAGE_ASPECT_COLOR_BIT)
-      ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-      : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+      ? m_dstImageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+      : m_dstImageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
     
     VkSubpassDescription subpass;
     subpass.flags                   = 0;
@@ -80,9 +83,32 @@ namespace dxvk {
     if (aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
       subpass.colorAttachmentCount  = 1;
       subpass.pColorAttachments     = &attachmentRef;
+
+      cpyStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      cpyAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+      if (!discard)
+        cpyAccess |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
     } else {
       subpass.pDepthStencilAttachment = &attachmentRef;
+
+      cpyStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+      cpyAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+      if (!discard)
+        cpyAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
     }
+
+    // We have to be somewhat conservative here since we cannot assume
+    // that the backend blocks stages that are only used for meta ops
+    VkPipelineStageFlags extStages = m_dstImageView->imageInfo().stages | m_srcImageView->imageInfo().stages;
+    VkAccessFlags        extAccess = m_dstImageView->imageInfo().access;
+
+    std::array<VkSubpassDependency, 2> dependencies = {{
+      { VK_SUBPASS_EXTERNAL, 0, extStages, cpyStages, 0,         cpyAccess, 0 },
+      { 0, VK_SUBPASS_EXTERNAL, cpyStages, extStages, cpyAccess, extAccess, 0 },
+    }};
 
     VkRenderPassCreateInfo info;
     info.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -92,8 +118,8 @@ namespace dxvk {
     info.pAttachments           = &attachment;
     info.subpassCount           = 1;
     info.pSubpasses             = &subpass;
-    info.dependencyCount        = 0;
-    info.pDependencies          = nullptr;
+    info.dependencyCount        = dependencies.size();
+    info.pDependencies          = dependencies.data();
 
     VkRenderPass result = VK_NULL_HANDLE;
     if (m_vkd->vkCreateRenderPass(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
