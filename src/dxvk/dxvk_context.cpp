@@ -518,17 +518,15 @@ namespace dxvk {
 
     VkImageLayout layout = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    if (layout != image->info().layout) {
-      m_execAcquires.accessImage(
-        image, subresources,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-        layout,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_WRITE_BIT);
+    m_execAcquires.accessImage(
+      image, subresources,
+      VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+      layout,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT);
 
-      m_execAcquires.recordCommands(m_cmd);
-    }
+    m_execAcquires.recordCommands(m_cmd);
 
     for (uint32_t level = 0; level < subresources.levelCount; level++) {
       VkOffset3D offset = VkOffset3D { 0, 0, 0 };
@@ -715,12 +713,15 @@ namespace dxvk {
     if (dstImage->isFullSubresource(dstSubresource, dstExtent))
       dstImageLayoutInitial = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    m_execAcquires.accessImage(
-      dstImage, dstSubresourceRange,
-      dstImageLayoutInitial, 0, 0,
-      dstImageLayoutTransfer,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_WRITE_BIT);
+    if (dstImageLayoutTransfer != dstImageLayoutInitial) {
+      m_execAcquires.accessImage(
+        dstImage, dstSubresourceRange,
+        dstImageLayoutInitial,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+        dstImageLayoutTransfer,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT);
+    }
       
     m_execAcquires.recordCommands(m_cmd);
     
@@ -882,7 +883,8 @@ namespace dxvk {
     
     m_execAcquires.accessImage(
       srcImage, srcSubresourceRange,
-      srcImage->info().layout, 0, 0,
+      srcImage->info().layout,
+      VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
       srcImageLayoutTransfer,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT);
@@ -976,7 +978,8 @@ namespace dxvk {
     if (srcImage->info().layout != layout) {
       m_execAcquires.accessImage(
         srcImage, subresourceRange,
-        srcImage->info().layout, 0, 0,
+        srcImage->info().layout,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, 0,
         layout,
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
         VK_ACCESS_SHADER_READ_BIT);
@@ -1222,7 +1225,8 @@ namespace dxvk {
       m_execBarriers.recordCommands(m_cmd);
     
     m_execBarriers.accessImage(image, subresources,
-      VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
+      VK_IMAGE_LAYOUT_UNDEFINED,
+      image->info().stages, 0,
       image->info().layout,
       image->info().stages,
       image->info().access);
@@ -1968,7 +1972,7 @@ namespace dxvk {
     if (image->isFullSubresource(subresources, imageExtent))
       imageLayoutInitial = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    if (imageLayoutTransfer != image->info().layout) {
+    if (imageLayoutTransfer != imageLayoutInitial) {
       m_execAcquires.accessImage(
         image, subresourceRange,
         imageLayoutInitial,
@@ -2106,7 +2110,8 @@ namespace dxvk {
     // Discard previous subresource contents
     m_sdmaAcquires.accessImage(image,
       vk::makeSubresourceRange(subresources),
-      VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
+      VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
       image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
@@ -2831,7 +2836,7 @@ namespace dxvk {
     if (dstImage->isFullSubresource(dstSubresource, extent))
       dstInitImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    if (dstImageLayout != dstImage->info().layout) {
+    if (dstImageLayout != dstInitImageLayout) {
       m_execAcquires.accessImage(
         dstImage, dstSubresourceRange,
         dstInitImageLayout,
@@ -3127,12 +3132,12 @@ namespace dxvk {
     VkImageLayout dstLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     VkImageLayout srcLayout = srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    VkImageLayout initialLayout = dstLayout;
+    VkImageLayout initialLayout = dstImage->info().layout;
 
     if (dstImage->isFullSubresource(region.dstSubresource, region.extent))
       initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    if (dstLayout != dstImage->info().layout) {
+    if (dstLayout != initialLayout) {
       m_execAcquires.accessImage(
         dstImage, dstSubresourceRange, initialLayout,
         VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
