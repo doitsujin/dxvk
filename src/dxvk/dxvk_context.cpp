@@ -513,16 +513,9 @@ namespace dxvk {
     auto zeroBuffer = createZeroBuffer(dataSize);
     auto zeroHandle = zeroBuffer->getSliceHandle();
 
-    if (m_execBarriers.isImageDirty(image, subresources, DxvkAccess::Write))
-      m_execBarriers.recordCommands(m_cmd);
-
     VkImageLayout layout = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    m_execAcquires.accessImage(
-      image, subresources,
-      VK_IMAGE_LAYOUT_UNDEFINED,
-      VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-      layout,
+    this->initializeImage(image, subresources, layout,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
 
