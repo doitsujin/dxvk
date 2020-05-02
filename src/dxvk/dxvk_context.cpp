@@ -3122,35 +3122,42 @@ namespace dxvk {
     
     // We only support resolving to the entire image
     // area, so we might as well discard its contents
-    VkImageLayout initialLayout = dstImage->info().layout;
+    VkImageLayout dstLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    VkImageLayout srcLayout = srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+    VkImageLayout initialLayout = dstLayout;
 
     if (dstImage->isFullSubresource(region.dstSubresource, region.extent))
       initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    m_execAcquires.accessImage(
-      dstImage, dstSubresourceRange,
-      initialLayout, 0, 0,
-      dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_WRITE_BIT);
+    if (dstLayout != dstImage->info().layout) {
+      m_execAcquires.accessImage(
+        dstImage, dstSubresourceRange, initialLayout,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+        dstLayout,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT);
+    }
 
-    m_execAcquires.accessImage(
-      srcImage, srcSubresourceRange,
-      srcImage->info().layout, 0, 0,
-      srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_READ_BIT);
+    if (srcLayout != srcImage->info().layout) {
+      m_execAcquires.accessImage(
+        srcImage, srcSubresourceRange,
+        srcImage->info().layout,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+        srcLayout,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_READ_BIT);
+    }
 
     m_execAcquires.recordCommands(m_cmd);
     
     m_cmd->cmdResolveImage(
-      srcImage->handle(), srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
-      dstImage->handle(), dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+      srcImage->handle(), srcLayout,
+      dstImage->handle(), dstLayout,
       1, &region);
   
     m_execBarriers.accessImage(
-      dstImage, dstSubresourceRange,
-      dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+      dstImage, dstSubresourceRange, dstLayout,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
       dstImage->info().layout,
@@ -3158,8 +3165,7 @@ namespace dxvk {
       dstImage->info().access);
 
     m_execBarriers.accessImage(
-      srcImage, srcSubresourceRange,
-      srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
+      srcImage, srcSubresourceRange, srcLayout,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT,
       srcImage->info().layout,
