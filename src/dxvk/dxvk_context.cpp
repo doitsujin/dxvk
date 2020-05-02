@@ -2574,7 +2574,8 @@ namespace dxvk {
     if (dstImage->info().layout != dstLayout) {
       m_execAcquires.accessImage(
         dstImage, dstSubresourceRange,
-        dstImage->info().layout, 0, 0,
+        dstImage->info().layout,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
         dstLayout,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_WRITE_BIT);
@@ -2583,7 +2584,8 @@ namespace dxvk {
     if (srcImage->info().layout != srcLayout) {
       m_execAcquires.accessImage(
         srcImage, srcSubresourceRange,
-        srcImage->info().layout, 0, 0,
+        srcImage->info().layout,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
         srcLayout,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_READ_BIT);
