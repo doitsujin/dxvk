@@ -1223,6 +1223,13 @@ namespace dxvk {
             VkPipelineStageFlags      dstStages,
             VkAccessFlags             dstAccess);
     
+    void initializeImage(
+      const Rc<DxvkImage>&            image,
+      const VkImageSubresourceRange&  subresources,
+            VkImageLayout             dstLayout,
+            VkPipelineStageFlags      dstStages,
+            VkAccessFlags             dstAccess);
+
     VkDescriptorSet allocateDescriptorSet(
             VkDescriptorSetLayout     layout);
 

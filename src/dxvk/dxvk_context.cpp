@@ -4742,6 +4742,26 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::initializeImage(
+    const Rc<DxvkImage>&            image,
+    const VkImageSubresourceRange&  subresources,
+          VkImageLayout             dstLayout,
+          VkPipelineStageFlags      dstStages,
+          VkAccessFlags             dstAccess) {
+    if (m_execBarriers.isImageDirty(image, subresources, DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
+
+    VkPipelineStageFlags srcStages = 0;
+
+    if (image->isInUse())
+      srcStages = dstStages;
+
+    m_execAcquires.accessImage(image, subresources,
+      VK_IMAGE_LAYOUT_UNDEFINED, srcStages, 0,
+      dstLayout, dstStages, dstAccess);
+  }
+
+
   VkDescriptorSet DxvkContext::allocateDescriptorSet(
           VkDescriptorSetLayout     layout) {
     if (m_descPool == nullptr)
