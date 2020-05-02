@@ -429,19 +429,14 @@ namespace dxvk {
     const VkImageSubresourceRange&  subresources) {
     this->spillRenderPass();
 
-    m_execBarriers.recordCommands(m_cmd);
-    
     VkImageLayout imageLayoutClear = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    m_execBarriers.accessImage(image, subresources,
-      VK_IMAGE_LAYOUT_UNDEFINED,
-      image->info().stages,
-      image->info().access,
+    this->initializeImage(image, subresources,
       imageLayoutClear,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
 
-    m_execBarriers.recordCommands(m_cmd);
+    m_execAcquires.recordCommands(m_cmd);
     
     m_cmd->cmdClearColorImage(image->handle(),
       imageLayoutClear, &value, 1, &subresources);
