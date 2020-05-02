@@ -1966,12 +1966,15 @@ namespace dxvk {
     if (image->isFullSubresource(subresources, imageExtent))
       imageLayoutInitial = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    m_execAcquires.accessImage(
-      image, subresourceRange,
-      imageLayoutInitial, 0, 0,
-      imageLayoutTransfer,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_WRITE_BIT);
+    if (imageLayoutTransfer != image->info().layout) {
+      m_execAcquires.accessImage(
+        image, subresourceRange,
+        imageLayoutInitial,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+        imageLayoutTransfer,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT);
+    }
 
     m_execAcquires.recordCommands(m_cmd);
     
