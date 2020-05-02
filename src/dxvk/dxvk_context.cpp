@@ -515,15 +515,20 @@ namespace dxvk {
 
     if (m_execBarriers.isImageDirty(image, subresources, DxvkAccess::Write))
       m_execBarriers.recordCommands(m_cmd);
-    
-    m_execAcquires.accessImage(
-      image, subresources,
-      VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
-      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_WRITE_BIT);
-    
-    m_execAcquires.recordCommands(m_cmd);
+
+    VkImageLayout layout = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    if (layout != image->info().layout) {
+      m_execAcquires.accessImage(
+        image, subresources,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+        layout,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT);
+
+      m_execAcquires.recordCommands(m_cmd);
+    }
 
     for (uint32_t level = 0; level < subresources.levelCount; level++) {
       VkOffset3D offset = VkOffset3D { 0, 0, 0 };
@@ -540,15 +545,12 @@ namespace dxvk {
         region.imageExtent        = extent;
 
         m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer,
-          zeroHandle.handle, image->handle(),
-          image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
-          1, &region);
+          zeroHandle.handle, image->handle(), layout, 1, &region);
       }
     }
 
     m_execBarriers.accessImage(
-      image, subresources,
-      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+      image, subresources, layout,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
       image->info().layout,
