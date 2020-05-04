@@ -1915,6 +1915,11 @@ namespace dxvk {
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor      = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor;
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor  = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor;
     
+    if (supported.extCustomBorderColor.customBorderColorWithoutFormat) {
+      enabled.extCustomBorderColor.customBorderColors             = VK_TRUE;
+      enabled.extCustomBorderColor.customBorderColorWithoutFormat = VK_TRUE;
+    }
+
     if (featureLevel >= D3D_FEATURE_LEVEL_9_1) {
       enabled.core.features.depthClamp                            = VK_TRUE;
       enabled.core.features.depthBiasClamp                        = VK_TRUE;
