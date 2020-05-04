@@ -217,6 +217,10 @@ namespace dxvk {
                 || !required.shaderDrawParameters.shaderDrawParameters)
         && (m_deviceFeatures.extConditionalRendering.conditionalRendering
                 || !required.extConditionalRendering.conditionalRendering)
+        && (m_deviceFeatures.extCustomBorderColor.customBorderColors
+                || !required.extCustomBorderColor.customBorderColors)
+        && (m_deviceFeatures.extCustomBorderColor.customBorderColorWithoutFormat
+                || !required.extCustomBorderColor.customBorderColorWithoutFormat)
         && (m_deviceFeatures.extDepthClipEnable.depthClipEnable
                 || !required.extDepthClipEnable.depthClipEnable)
         && (m_deviceFeatures.extHostQueryReset.hostQueryReset
@@ -248,10 +252,11 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 21> devExtensionList = {{
+    std::array<DxvkExt*, 22> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.extConditionalRendering,
+      &devExtensions.extCustomBorderColor,
       &devExtensions.extDepthClipEnable,
       &devExtensions.extFullScreenExclusive,
       &devExtensions.extHostQueryReset,
@@ -305,6 +310,11 @@ namespace dxvk {
     if (devExtensions.extConditionalRendering) {
       enabledFeatures.extConditionalRendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT;
       enabledFeatures.extConditionalRendering.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extConditionalRendering);
+    }
+
+    if (devExtensions.extCustomBorderColor) {
+      enabledFeatures.extCustomBorderColor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT;
+      enabledFeatures.extCustomBorderColor.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extCustomBorderColor);
     }
 
     if (devExtensions.extDepthClipEnable) {
@@ -487,6 +497,11 @@ namespace dxvk {
     m_deviceInfo.coreSubgroup.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
     m_deviceInfo.coreSubgroup.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.coreSubgroup);
 
+    if (m_deviceExtensions.supports(VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME)) {
+      m_deviceInfo.extCustomBorderColor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT;
+      m_deviceInfo.extCustomBorderColor.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extCustomBorderColor);
+    }
+
     if (m_deviceExtensions.supports(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME)) {
       m_deviceInfo.extRobustness2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT;
       m_deviceInfo.extRobustness2.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extRobustness2);
@@ -536,6 +551,11 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME)) {
       m_deviceFeatures.extConditionalRendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT;
       m_deviceFeatures.extConditionalRendering.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extConditionalRendering);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME)) {
+      m_deviceFeatures.extCustomBorderColor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT;
+      m_deviceFeatures.extCustomBorderColor.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extCustomBorderColor);
     }
 
     if (m_deviceExtensions.supports(VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME)) {
@@ -641,6 +661,9 @@ namespace dxvk {
       "\n  variableMultisampleRate                : ", features.core.features.variableMultisampleRate ? "1" : "0",
       "\n", VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME,
       "\n  conditionalRendering                   : ", features.extConditionalRendering.conditionalRendering ? "1" : "0",
+      "\n", VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME,
+      "\n  customBorderColors                     : ", features.extCustomBorderColor.customBorderColors ? "1" : "0",
+      "\n  customBorderColorWithoutFormat         : ", features.extCustomBorderColor.customBorderColorWithoutFormat ? "1" : "0",
       "\n", VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME,
       "\n  depthClipEnable                        : ", features.extDepthClipEnable.depthClipEnable ? "1" : "0",
       "\n", VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME,
