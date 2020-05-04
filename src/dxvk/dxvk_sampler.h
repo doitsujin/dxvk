@@ -70,7 +70,9 @@ namespace dxvk {
     Rc<vk::DeviceFn>      m_vkd;
     VkSampler             m_sampler = VK_NULL_HANDLE;
 
-    VkBorderColor getBorderColor(bool depthCompare, VkClearColorValue borderColor) const;
+    static VkBorderColor getBorderColor(
+      const Rc<DxvkDevice>&         device,
+      const DxvkSamplerCreateInfo&  info);
     
   };
   
