@@ -5365,13 +5365,16 @@ namespace dxvk {
       for (uint32_t i = 0; i < 4; i++)
         colorInfo.borderColor.float32[i] = cKey.BorderColor[i];
 
-      // HACK: Let's get OPAQUE_WHITE border color over
-      // TRANSPARENT_BLACK if the border RGB is white.
-      if (colorInfo.borderColor.float32[0] == 1.0f
-       && colorInfo.borderColor.float32[1] == 1.0f
-       && colorInfo.borderColor.float32[2] == 1.0f) {
-        // Then set the alpha to 1.
-        colorInfo.borderColor.float32[3] = 1.0f;
+      if (!m_dxvkDevice->features().extCustomBorderColor.customBorderColorWithoutFormat) {
+        // HACK: Let's get OPAQUE_WHITE border color over
+        // TRANSPARENT_BLACK if the border RGB is white.
+        if (colorInfo.borderColor.float32[0] == 1.0f
+        && colorInfo.borderColor.float32[1] == 1.0f
+        && colorInfo.borderColor.float32[2] == 1.0f
+        && !m_dxvkDevice->features().extCustomBorderColor.customBorderColors) {
+          // Then set the alpha to 1.
+          colorInfo.borderColor.float32[3] = 1.0f;
+        }
       }
 
       DxvkSamplerCreateInfo depthInfo = colorInfo;
