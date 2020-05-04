@@ -7,6 +7,12 @@ namespace dxvk {
           DxvkDevice*             device,
     const DxvkSamplerCreateInfo&  info)
   : m_vkd(device->vkd()) {
+    VkSamplerCustomBorderColorCreateInfoEXT borderColorInfo;
+    borderColorInfo.sType               = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT;
+    borderColorInfo.pNext               = nullptr;
+    borderColorInfo.customBorderColor   = info.borderColor;
+    borderColorInfo.format              = VK_FORMAT_UNDEFINED;
+
     VkSamplerCreateInfo samplerInfo;
     samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     samplerInfo.pNext                   = nullptr;
@@ -31,6 +37,9 @@ namespace dxvk {
      || samplerInfo.addressModeV == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
      || samplerInfo.addressModeW == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
       samplerInfo.borderColor = getBorderColor(device, info);
+
+    if (samplerInfo.borderColor == VK_BORDER_COLOR_FLOAT_CUSTOM_EXT)
+      samplerInfo.pNext = &borderColorInfo;
 
     if (m_vkd->vkCreateSampler(m_vkd->device(),
         &samplerInfo, nullptr, &m_sampler) != VK_SUCCESS)
@@ -61,11 +70,12 @@ namespace dxvk {
         return e.second;
     }
 
-    Logger::warn(str::format(
-      "DXVK: No matching border color found for (",
-      info.borderColor.float32[0], ",", info.borderColor.float32[1], ",",
-      info.borderColor.float32[2], ",", info.borderColor.float32[3], ")"));
-    return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    if (!device->features().extCustomBorderColor.customBorderColorWithoutFormat) {
+      Logger::warn("DXVK: Custom border colors not supported");
+      return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    }
+
+    return VK_BORDER_COLOR_FLOAT_CUSTOM_EXT;
   }
-  
+
 }
