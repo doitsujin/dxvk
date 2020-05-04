@@ -3,6 +3,8 @@
 #include "dxvk_resource.h"
 
 namespace dxvk {
+
+  class DxvkDevice;
   
   /**
    * \brief Sampler properties
@@ -51,7 +53,7 @@ namespace dxvk {
   public:
     
     DxvkSampler(
-      const Rc<vk::DeviceFn>&       vkd,
+            DxvkDevice*             device,
       const DxvkSamplerCreateInfo&  info);
     ~DxvkSampler();
     

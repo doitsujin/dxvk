@@ -1,11 +1,12 @@
 #include "dxvk_sampler.h"
+#include "dxvk_device.h"
 
 namespace dxvk {
     
   DxvkSampler::DxvkSampler(
-    const Rc<vk::DeviceFn>&       vkd,
+          DxvkDevice*             device,
     const DxvkSamplerCreateInfo&  info)
-  : m_vkd(vkd) {
+  : m_vkd(device->vkd()) {
     VkSamplerCreateInfo samplerInfo;
     samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     samplerInfo.pNext                   = nullptr;
@@ -30,7 +31,7 @@ namespace dxvk {
      || samplerInfo.addressModeV == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
      || samplerInfo.addressModeW == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
       samplerInfo.borderColor = getBorderColor(info.compareToDepth, info.borderColor);
-    
+
     if (m_vkd->vkCreateSampler(m_vkd->device(),
         &samplerInfo, nullptr, &m_sampler) != VK_SUCCESS)
       throw DxvkError("DxvkSampler::DxvkSampler: Failed to create sampler");
