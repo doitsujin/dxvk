@@ -3674,6 +3674,11 @@ namespace dxvk {
     // Enable depth bounds test if we support it.
     enabled.core.features.depthBounds = supported.core.features.depthBounds;
 
+    if (supported.extCustomBorderColor.customBorderColorWithoutFormat) {
+      enabled.extCustomBorderColor.customBorderColors             = VK_TRUE;
+      enabled.extCustomBorderColor.customBorderColorWithoutFormat = VK_TRUE;
+    }
+
     return enabled;
   }
 
