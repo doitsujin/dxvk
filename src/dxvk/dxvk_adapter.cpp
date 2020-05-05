@@ -88,12 +88,19 @@ namespace dxvk {
       VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT,
       VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT);
     
+    uint32_t computeQueue = findQueueFamily(
+      VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT,
+      VK_QUEUE_COMPUTE_BIT);
+    
+    if (computeQueue == VK_QUEUE_FAMILY_IGNORED)
+      computeQueue = graphicsQueue;
+
     uint32_t transferQueue = findQueueFamily(
       VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT,
       VK_QUEUE_TRANSFER_BIT);
     
     if (transferQueue == VK_QUEUE_FAMILY_IGNORED)
-      transferQueue = graphicsQueue;
+      transferQueue = computeQueue;
     
     DxvkAdapterQueueIndices queues;
     queues.graphics = graphicsQueue;
