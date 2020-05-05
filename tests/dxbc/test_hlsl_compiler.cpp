@@ -21,8 +21,16 @@ int WINAPI WinMain(HINSTANCE hInstance,
     GetCommandLineW(), &argc);  
   
   if (argc < 5) {
-    std::cerr << "Usage: hlsl-compiler target entrypoint input.hlsl output.dxbc" << std::endl;
+    std::cerr << "Usage: hlsl-compiler target entrypoint input.hlsl output.dxbc [--strip] [--text]" << std::endl;
     return 1;
+  }
+
+  bool strip = false;
+  bool text = false;
+
+  for (int i = 5; i < argc; i++) {
+    strip |= str::fromws(argv[i]) == "--strip";
+    text  |= str::fromws(argv[i]) == "--text";
   }
   
   const LPWSTR target       = argv[1];
@@ -51,14 +59,51 @@ int WINAPI WinMain(HINSTANCE hInstance,
     D3DCOMPILE_OPTIMIZATION_LEVEL3 |
     D3DCOMPILE_ENABLE_UNBOUNDED_DESCRIPTOR_TABLES,
     0, &binary, &errors);
-  
+
   if (FAILED(hr)) {
     if (errors != nullptr)
       std::cerr << reinterpret_cast<const char*>(errors->GetBufferPointer()) << std::endl;
     return 1;
   }
   
-  std::ofstream outputStream(str::fromws(outputFile), std::ios::binary | std::ios::trunc);
-  outputStream.write(reinterpret_cast<const char*>(binary->GetBufferPointer()), binary->GetBufferSize());
+  if (strip) {
+    Com<ID3DBlob> strippedBlob;
+
+    hr = D3DStripShader(binary->GetBufferPointer(), binary->GetBufferSize(),
+      D3DCOMPILER_STRIP_REFLECTION_DATA | D3DCOMPILER_STRIP_DEBUG_INFO,
+      &strippedBlob);
+
+    if (FAILED(hr)) {
+      std::cerr << "Failed to strip shader" << std::endl;
+      return 1;
+    }
+
+    binary = strippedBlob;
+  }
+
+  std::ofstream file;
+
+  if (str::fromws(outputFile) != "-")
+    file = std::ofstream(str::fromws(outputFile), std::ios::binary | std::ios::trunc);
+
+  std::ostream& outputStream = file.is_open() ? file : std::cout;
+
+  if (text) {
+    auto data = reinterpret_cast<const uint32_t*>(binary->GetBufferPointer());
+    auto size = binary->GetBufferSize() / sizeof(uint32_t);
+
+    outputStream << std::hex;
+
+    for (uint32_t i = 0; i < size; i++) {
+      if (i && !(i & 0x7))
+        outputStream << std::endl;
+      outputStream << "0x" << std::setfill('0') << std::setw(8) << data[i] << ", ";
+    }
+
+    outputStream << std::endl;
+  } else {
+    outputStream.write(reinterpret_cast<const char*>(binary->GetBufferPointer()), binary->GetBufferSize());
+  }
+
   return 0;
 }
