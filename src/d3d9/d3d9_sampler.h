@@ -40,7 +40,7 @@ namespace dxvk {
     key.MinFilter = std::clamp(key.MinFilter, D3DTEXF_NONE, D3DTEXF_ANISOTROPIC);
     key.MipFilter = std::clamp(key.MipFilter, D3DTEXF_NONE, D3DTEXF_ANISOTROPIC);
 
-    key.MaxAnisotropy = std::clamp<DWORD>(key.MaxAnisotropy, 0, 16);
+    key.MaxAnisotropy = std::min<DWORD>(key.MaxAnisotropy, 16);
 
     if (key.MipFilter == D3DTEXF_NONE) {
       // May as well try and keep slots down.
