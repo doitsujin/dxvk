@@ -19,10 +19,7 @@ namespace dxvk {
     state.add(dhash (key.MaxAnisotropy));
     state.add(fhash (key.MipmapLodBias));
     state.add(dhash (key.MaxMipLevel));
-    state.add(fhash (key.BorderColor[0]));
-    state.add(fhash (key.BorderColor[1]));
-    state.add(fhash (key.BorderColor[2]));
-    state.add(fhash (key.BorderColor[3]));
+    state.add(dhash (key.BorderColor));
 
     return state;
   }
@@ -38,10 +35,7 @@ namespace dxvk {
         && a.MaxAnisotropy  == b.MaxAnisotropy
         && a.MipmapLodBias  == b.MipmapLodBias
         && a.MaxMipLevel    == b.MaxMipLevel
-        && a.BorderColor[0] == b.BorderColor[0]
-        && a.BorderColor[1] == b.BorderColor[1]
-        && a.BorderColor[2] == b.BorderColor[2]
-        && a.BorderColor[3] == b.BorderColor[3];
+        && a.BorderColor    == b.BorderColor;
   }
 
 }

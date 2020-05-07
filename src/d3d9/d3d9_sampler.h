@@ -20,7 +20,7 @@ namespace dxvk {
     DWORD MaxAnisotropy;
     float MipmapLodBias;
     DWORD MaxMipLevel;
-    float BorderColor[4];
+    D3DCOLOR BorderColor;
   };
 
   struct D3D9SamplerKeyHash {
@@ -63,12 +63,7 @@ namespace dxvk {
     if (key.AddressU != D3DTADDRESS_BORDER
      && key.AddressV != D3DTADDRESS_BORDER
      && key.AddressW != D3DTADDRESS_BORDER) {
-      for (auto& val : key.BorderColor)
-        val = 0.0f;
-    }
-    else {
-      for (auto& val : key.BorderColor)
-        val = val >= 0.5f ? 1.0f : 0.0f;
+      key.BorderColor = 0;
     }
   }
 

@@ -5308,7 +5308,7 @@ namespace dxvk {
     key.MaxAnisotropy = state[D3DSAMP_MAXANISOTROPY];
     key.MipmapLodBias = bit::cast<float>(state[D3DSAMP_MIPMAPLODBIAS]);
     key.MaxMipLevel   = state[D3DSAMP_MAXMIPLEVEL];
-    DecodeD3DCOLOR(D3DCOLOR(state[D3DSAMP_BORDERCOLOR]), key.BorderColor);
+    key.BorderColor   = D3DCOLOR(state[D3DSAMP_BORDERCOLOR]);
 
     if (m_d3d9Options.samplerAnisotropy != -1) {
       if (key.MagFilter == D3DTEXF_LINEAR)
@@ -5362,8 +5362,8 @@ namespace dxvk {
       colorInfo.mipmapLodMin   = mipFilter.MipsEnabled ? float(cKey.MaxMipLevel) : 0;
       colorInfo.mipmapLodMax   = mipFilter.MipsEnabled ? FLT_MAX                 : 0;
       colorInfo.usePixelCoord  = VK_FALSE;
-      for (uint32_t i = 0; i < 4; i++)
-        colorInfo.borderColor.float32[i] = cKey.BorderColor[i];
+
+      DecodeD3DCOLOR(cKey.BorderColor, colorInfo.borderColor.float32);
 
       if (!m_dxvkDevice->features().extCustomBorderColor.customBorderColorWithoutFormat) {
         // HACK: Let's get OPAQUE_WHITE border color over
