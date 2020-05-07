@@ -3579,27 +3579,46 @@ namespace dxvk {
       return m_recorder->SetStateTextureStageState(Stage, Type, Value);
 
     if (likely(m_state.textureStages[Stage][Type] != Value)) {
-      if (Type == DXVK_TSS_TEXTURETRANSFORMFLAGS) {
-        m_projectionBitfield &= ~(1 << Stage);
-        if (Value & D3DTTFF_PROJECTED)
-          m_projectionBitfield |= 1 << Stage;
-      }
-
-      if ((Type >= DXVK_TSS_BUMPENVMAT00  && Type <= DXVK_TSS_BUMPENVMAT11)
-       || (Type == DXVK_TSS_BUMPENVLSCALE || Type == DXVK_TSS_BUMPENVLOFFSET))
-        m_flags.set(D3D9DeviceFlag::DirtySharedPixelShaderData);
-      else if (Type == DXVK_TSS_TEXTURETRANSFORMFLAGS) {
-        // This state affects both!
-        m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
-        m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
-      }
-      else if (Type == DXVK_TSS_CONSTANT)
-        m_flags.set(D3D9DeviceFlag::DirtySharedPixelShaderData);
-      else if (Type != DXVK_TSS_TEXCOORDINDEX)
-        m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
-      else
-        m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
       m_state.textureStages[Stage][Type] = Value;
+
+      switch (Type) {
+        case DXVK_TSS_COLOROP:
+        case DXVK_TSS_COLORARG0:
+        case DXVK_TSS_COLORARG1:
+        case DXVK_TSS_COLORARG2:
+        case DXVK_TSS_ALPHAOP:
+        case DXVK_TSS_ALPHAARG0:
+        case DXVK_TSS_ALPHAARG1:
+        case DXVK_TSS_ALPHAARG2:
+        case DXVK_TSS_RESULTARG:
+          m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+          break;
+
+        case DXVK_TSS_TEXCOORDINDEX:
+          m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
+          break;
+
+        case DXVK_TSS_TEXTURETRANSFORMFLAGS:
+          m_projectionBitfield &= ~(1 << Stage);
+          if (Value & D3DTTFF_PROJECTED)
+            m_projectionBitfield |= 1 << Stage;
+
+          m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
+          m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+          break;
+
+        case DXVK_TSS_BUMPENVMAT00:
+        case DXVK_TSS_BUMPENVMAT01:
+        case DXVK_TSS_BUMPENVMAT10:
+        case DXVK_TSS_BUMPENVMAT11:
+        case DXVK_TSS_BUMPENVLSCALE:
+        case DXVK_TSS_BUMPENVLOFFSET:
+        case DXVK_TSS_CONSTANT:
+          m_flags.set(D3D9DeviceFlag::DirtySharedPixelShaderData);
+          break;
+
+        default: break;
+      }
     }
 
     return D3D_OK;
