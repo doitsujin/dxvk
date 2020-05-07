@@ -6151,10 +6151,10 @@ namespace dxvk {
       auto ArgsMask = [](DWORD Op) {
         switch (Op) {
           case D3DTOP_DISABLE:
-            return 0b0u; // No Args
+            return 0b000u; // No Args
           case D3DTOP_SELECTARG1:
           case D3DTOP_PREMODULATE:
-            return 0b10u; // Arg 1
+            return 0b010u; // Arg 1
           case D3DTOP_SELECTARG2:
             return 0b100u; // Arg 2
           case D3DTOP_MULTIPLYADD:
