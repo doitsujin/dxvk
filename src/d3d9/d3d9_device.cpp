@@ -3525,7 +3525,7 @@ namespace dxvk {
     // We need to check our ops and disable respective stages.
     // Given we have transition from a null resource to
     // a valid resource or vice versa.
-    if (pTexture == nullptr || m_state.textures[StateSampler] == nullptr)
+    if (StateSampler < 16 && (pTexture == nullptr || m_state.textures[StateSampler] == nullptr))
       m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
 
     auto oldTexture = GetCommonTexture(m_state.textures[StateSampler]);
