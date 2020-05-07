@@ -6630,12 +6630,15 @@ namespace dxvk {
 
       DWORD sampler = i;
       auto samplerInfo = RemapStateSamplerShader(sampler);
-      uint32_t slot = computeResourceSlotId(samplerInfo.first, DxsoBindingType::ColorImage, uint32_t(samplerInfo.second));
+      uint32_t colorSlot = computeResourceSlotId(samplerInfo.first, DxsoBindingType::ColorImage, uint32_t(samplerInfo.second));
+      uint32_t depthSlot = computeResourceSlotId(samplerInfo.first, DxsoBindingType::DepthImage, uint32_t(samplerInfo.second));
 
       EmitCs([
-        cSlot = slot
+        cColorSlot = colorSlot,
+        cDepthSlot = depthSlot
       ](DxvkContext* ctx) {
-        ctx->bindResourceView(cSlot, nullptr, nullptr);
+        ctx->bindResourceView(cColorSlot, nullptr, nullptr);
+        ctx->bindResourceView(cDepthSlot, nullptr, nullptr);
       });
     }
 
