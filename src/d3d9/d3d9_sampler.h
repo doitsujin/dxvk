@@ -47,8 +47,8 @@ namespace dxvk {
       key.MipmapLodBias = 0;
     }
     else {
-      // Games also pass NAN/INF here, this accounts for that.
-      if (unlikely(std::isnan(key.MipmapLodBias)))
+      // Games also pass NAN here, this accounts for that.
+      if (unlikely(key.MipmapLodBias != key.MipmapLodBias))
         key.MipmapLodBias = 0.0f;
 
       // Clamp between -15.0f and 15.0f, matching mip limits of d3d9.
