@@ -5445,8 +5445,12 @@ namespace dxvk {
       const uint32_t textureBitMask = 0b11u << offset;
       const uint32_t textureBits = textureType << offset;
 
-      m_samplerTypeBitfield &= ~textureBitMask;
-      m_samplerTypeBitfield |= textureBits;
+      if ((m_samplerTypeBitfield & textureBitMask) != textureBits) {
+        m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+
+        m_samplerTypeBitfield &= ~textureBitMask;
+        m_samplerTypeBitfield |= textureBits;
+      }
     }
 
     if (commonTex == nullptr) {
