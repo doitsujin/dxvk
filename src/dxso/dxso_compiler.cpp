@@ -624,6 +624,9 @@ namespace dxvk {
     const bool pixel  = m_programInfo.type() == DxsoProgramTypes::PixelShader;
     const bool vertex = !pixel;
 
+    if (pixel && input && semantic.usage == DxsoUsage::Color && m_programInfo.majorVersion() < 3)
+      centroid = true;
+
     uint32_t slot = 0;
 
     uint32_t& slots = input
@@ -1165,7 +1168,7 @@ namespace dxvk {
           this->emitDclInterface(
             false, reg.id.num,
             DxsoSemantic{ DxsoUsage::Color, reg.id.num },
-            IdentityWriteMask, false); // TODO: Do we want to make this centroid?
+            IdentityWriteMask, false);
 
           m_module.opStore(ptr.id, m_module.constfReplicant(0, ptr.type.ccount));
         }
