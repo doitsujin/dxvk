@@ -4,7 +4,7 @@
 
 #include "../util/util_enum.h"
 
-#include "vulkan_loader_fn.h"
+#include "vulkan_loader.h"
 
 std::ostream& operator << (std::ostream& os, VkPipelineCacheHeaderVersion e);
 std::ostream& operator << (std::ostream& os, VkResult e);
