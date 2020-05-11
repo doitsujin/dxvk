@@ -43,7 +43,8 @@ namespace dxvk {
     }
     
     if (pDesc->BindFlags & D3D11_BIND_SHADER_RESOURCE) {
-      info.usage  |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+      info.usage  |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
+                  |  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
       info.stages |= m_device->GetEnabledShaderStages();
       info.access |= VK_ACCESS_SHADER_READ_BIT;
     }
@@ -55,7 +56,8 @@ namespace dxvk {
     }
     
     if (pDesc->BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
-      info.usage  |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+      info.usage  |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT
+                  |  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
       info.stages |= m_device->GetEnabledShaderStages();
       info.access |= VK_ACCESS_SHADER_READ_BIT
                   |  VK_ACCESS_SHADER_WRITE_BIT;
@@ -67,11 +69,6 @@ namespace dxvk {
       info.access |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
     }
 
-    if (pDesc->MiscFlags & (
-        D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS |
-        D3D11_RESOURCE_MISC_BUFFER_STRUCTURED))
-      info.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    
     // Create the buffer and set the entire buffer slice as mapped,
     // so that we only have to update it when invalidating th buffer
     m_buffer = m_device->GetDXVKDevice()->createBuffer(info, GetMemoryFlags());
