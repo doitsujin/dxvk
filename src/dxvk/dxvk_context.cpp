@@ -4505,10 +4505,8 @@ namespace dxvk {
   void DxvkContext::commitGraphicsBarriers() {
     auto layout = m_state.gp.pipeline->layout();
 
-    constexpr auto storageBufferUsage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-                                      | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT
-                                      | VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
-    constexpr auto storageImageUsage  = VK_IMAGE_USAGE_STORAGE_BIT;
+    constexpr auto storageBufferAccess = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT;
+    constexpr auto storageImageAccess  = VK_ACCESS_SHADER_WRITE_BIT;
 
     bool requiresBarrier = false;
 
@@ -4520,8 +4518,8 @@ namespace dxvk {
       }};
 
       for (uint32_t i = 0; i < slices.size() && !requiresBarrier; i++) {
-        if (slices[i]->defined()
-         && slices[i]->bufferInfo().usage & storageBufferUsage) {
+        if ((slices[i]->defined())
+         && (slices[i]->bufferInfo().access & storageBufferAccess)) {
           requiresBarrier = this->checkGfxBufferBarrier<DoEmit>(*slices[i],
             VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
             VK_ACCESS_INDIRECT_COMMAND_READ_BIT).test(DxvkAccess::Write);
@@ -4534,8 +4532,8 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer) && !requiresBarrier && Indexed) {
       const auto& indexBufferSlice = m_state.vi.indexBuffer;
 
-      if (indexBufferSlice.defined()
-       && indexBufferSlice.bufferInfo().usage & storageBufferUsage) {
+      if ((indexBufferSlice.defined())
+       && (indexBufferSlice.bufferInfo().access & storageBufferAccess)) {
         requiresBarrier = this->checkGfxBufferBarrier<DoEmit>(indexBufferSlice,
           VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
           VK_ACCESS_INDEX_READ_BIT).test(DxvkAccess::Write);
@@ -4550,8 +4548,8 @@ namespace dxvk {
         uint32_t binding = m_state.gp.state.ilBindings[i].binding();
         const auto& vertexBufferSlice = m_state.vi.vertexBuffers[binding];
 
-        if (vertexBufferSlice.defined()
-         && vertexBufferSlice.bufferInfo().usage & storageBufferUsage) {
+        if ((vertexBufferSlice.defined())
+         && (vertexBufferSlice.bufferInfo().access & storageBufferAccess)) {
           requiresBarrier = this->checkGfxBufferBarrier<DoEmit>(vertexBufferSlice,
             VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
             VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT).test(DxvkAccess::Write);
@@ -4590,8 +4588,8 @@ namespace dxvk {
 
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-          if (slot.bufferSlice.defined()
-           && slot.bufferSlice.bufferInfo().usage & storageBufferUsage) {
+          if ((slot.bufferSlice.defined())
+           && (slot.bufferSlice.bufferInfo().access & storageBufferAccess)) {
             srcAccess = this->checkGfxBufferBarrier<DoEmit>(slot.bufferSlice,
               binding.stages, binding.access);
           }
@@ -4603,8 +4601,8 @@ namespace dxvk {
           /* fall through */
 
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-          if (slot.bufferView != nullptr
-           && slot.bufferView->bufferInfo().usage & storageBufferUsage) {
+          if ((slot.bufferView != nullptr)
+           && (slot.bufferView->bufferInfo().access & storageBufferAccess)) {
             srcAccess = this->checkGfxBufferBarrier<DoEmit>(slot.bufferView->slice(),
               binding.stages, binding.access);
           }
@@ -4617,8 +4615,8 @@ namespace dxvk {
 
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-          if (slot.imageView != nullptr
-           && slot.imageView->imageInfo().usage & storageImageUsage) {
+          if ((slot.imageView != nullptr)
+           && (slot.imageView->imageInfo().access & storageImageAccess)) {
             srcAccess = this->checkGfxImageBarrier<DoEmit>(slot.imageView,
               binding.stages, binding.access);
           }
