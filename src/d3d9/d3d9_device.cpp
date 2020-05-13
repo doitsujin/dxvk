@@ -5064,11 +5064,15 @@ namespace dxvk {
 
       VkOffset2D srPosA;
       srPosA.x = std::max<int32_t>(0, sr.left);
+      srPosA.x = std::max<int32_t>(vp.X, srPosA.x);
       srPosA.y = std::max<int32_t>(0, sr.top);
+      srPosA.y = std::max<int32_t>(vp.Y, srPosA.y);
 
       VkOffset2D srPosB;
       srPosB.x = std::max<int32_t>(srPosA.x, sr.right);
+      srPosB.x = std::min<int32_t>(vp.X + vp.Width, srPosB.x);
       srPosB.y = std::max<int32_t>(srPosA.y, sr.bottom);
+      srPosB.y = std::min<int32_t>(vp.Y + vp.Height, srPosB.y);
 
       VkExtent2D srSize;
       srSize.width  = uint32_t(srPosB.x - srPosA.x);
