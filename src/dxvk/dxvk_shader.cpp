@@ -497,8 +497,9 @@ namespace dxvk {
         if (numWords) {
           code.beginInsertion(ins.offset());
           code.erase(numWords);
+          code.endInsertion();
 
-          iter = SpirvInstructionIterator(code.data(), code.endInsertion(), code.dwords());
+          iter = SpirvInstructionIterator(code.data(), ins.offset(), code.dwords());
         }
       }
 

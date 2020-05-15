@@ -17,7 +17,8 @@ namespace dxvk {
    * format that can be read by Vulkan drivers.
    */
   class SpirvCodeBuffer : public SpirvWriter<SpirvCodeBuffer> {
-    
+    static constexpr size_t not_inserting = ~(size_t)0;
+
   public:
     
     SpirvCodeBuffer();
@@ -43,7 +44,7 @@ namespace dxvk {
      * \returns Code size, in dwords
      */
     uint32_t dwords() const {
-      return m_code.size();
+      return m_code.size() + m_insert.size();
     }
     
     /**
@@ -51,7 +52,7 @@ namespace dxvk {
      * \returns Code size, in bytes
      */
     size_t size() const {
-      return m_code.size() * sizeof(uint32_t);
+      return this->dwords() * sizeof(uint32_t);
     }
     
     /**
@@ -99,7 +100,9 @@ namespace dxvk {
      * \brief Appends an 32-bit word to the buffer
      * \param [in] word The word to append
      */
-    void putWord(uint32_t word);
+    void putWord(uint32_t word) {
+      m_code.push_back(word);
+    }
 
     /**
      * \brief Erases given number of dwords
@@ -130,7 +133,7 @@ namespace dxvk {
      * \returns Current instruction pointr
      */
     size_t getInsertionPtr() const {
-      return m_ptr;
+      return m_code.size();
     }
     
     /**
@@ -141,6 +144,7 @@ namespace dxvk {
      * \returns Current instruction pointr
      */
     void beginInsertion(size_t ptr) {
+      std::swap(m_code, m_insert);
       m_ptr = ptr;
     }
     
@@ -152,14 +156,20 @@ namespace dxvk {
      * this will restore default behaviour.
      * \returns Previous instruction pointer
      */
-    size_t endInsertion() {
-      return std::exchange(m_ptr, m_code.size());
+    void endInsertion() {
+      std::swap(m_code, m_insert);
+      m_code.insert(m_code.begin() + m_ptr,
+                    m_insert.begin(),
+                    m_insert.end());
+      m_insert.clear();
+      m_ptr = not_inserting;
     }
     
   private:
     
     std::vector<uint32_t> m_code;
-    size_t m_ptr = 0;
+    std::vector<uint32_t> m_insert;
+    size_t m_ptr = not_inserting;
     
   };
   
