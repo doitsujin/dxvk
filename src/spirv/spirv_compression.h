@@ -13,6 +13,7 @@ namespace dxvk {
    * to keep memory footprint low.
    */
   class SpirvCompressedBuffer : public SpirvWriter<SpirvCompressedBuffer> {
+    static constexpr size_t not_inserting = ~(size_t)0;
 
   public:
 
@@ -34,7 +35,7 @@ namespace dxvk {
      * \brief Code size, in bytes
      * \returns Code size, in bytes
      */
-    size_t size() const { return m_code.size(); }
+    size_t size() const { return m_code.size() + m_insert.size(); }
 
     /**
      * \brief Appends an 32-bit word to the buffer
@@ -62,12 +63,56 @@ namespace dxvk {
       m_dwords += other.dwords();
     }
 
+    /**
+     * \brief Retrieves current insertion pointer
+     *
+     * Sometimes it may be necessay to insert code into the
+     * middle of the stream rather than appending it. This
+     * retrieves the current function pointer. Note that the
+     * pointer will become invalid if any code is inserted
+     * before the current pointer location.
+     * \returns Current instruction pointr
+     */
+    size_t getInsertionPtr() const {
+      return m_code.size();
+    }
+
+    /**
+     * \brief Sets insertion pointer to a specific value
+     *
+     * Sets the insertion pointer to a value that was
+     * previously retrieved by \ref getInsertionPtr.
+     * \returns Current instruction pointr
+     */
+    void beginInsertion(size_t ptr) {
+      std::swap(m_code, m_insert);
+      m_ptr = ptr;
+    }
+
+    /**
+     * \brief Sets insertion pointer to the end
+     *
+     * After this call, new instructions will be
+     * appended to the stream. In other words,
+     * this will restore default behaviour.
+     */
+    void endInsertion() {
+      std::swap(m_code, m_insert);
+      m_code.insert(m_code.begin() + m_ptr,
+                    m_insert.begin(),
+                    m_insert.end());
+      m_insert.clear();
+      m_ptr = not_inserting;
+    }
+
     SpirvCodeBuffer decompress() const;
 
   private:
 
     uint32_t             m_dwords;
     std::vector<uint8_t> m_code;
+    std::vector<uint8_t> m_insert;
+    size_t m_ptr = not_inserting;
 
   };
 

@@ -1312,8 +1312,8 @@ namespace dxvk {
     SpirvCompressedBuffer m_debugNames;
     SpirvCompressedBuffer m_annotations;
     SpirvCodeBuffer       m_typeConstDefs;
-    SpirvCodeBuffer       m_variables;
-    SpirvCodeBuffer       m_code;
+    SpirvCompressedBuffer m_variables;
+    SpirvCompressedBuffer m_code;
 
     std::unordered_set<spv::Capability>    m_enabledCaps;
     std::unordered_set<spv::ExecutionMode> m_enabledModes;
