@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "spirv_instruction.h"
+#include "spirv_writer.h"
 
 namespace dxvk {
   
@@ -15,7 +16,7 @@ namespace dxvk {
    * Stores arbitrary SPIR-V instructions in a
    * format that can be read by Vulkan drivers.
    */
-  class SpirvCodeBuffer {
+  class SpirvCodeBuffer : public SpirvWriter<SpirvCodeBuffer> {
     
   public:
     
@@ -99,56 +100,6 @@ namespace dxvk {
      * \param [in] word The word to append
      */
     void putWord(uint32_t word);
-    
-    /**
-     * \brief Appends an instruction word to the buffer
-     * 
-     * Adds a single word containing both the word count
-     * and the op code number for a single instruction.
-     * \param [in] opCode Operand code
-     * \param [in] wordCount Number of words
-     */
-    void putIns(spv::Op opCode, uint16_t wordCount);
-
-    /**
-     * \brief Appends a 32-bit integer to the buffer
-     * \param [in] value The number to add
-     */
-    void putInt32(uint32_t word);
-    
-    /**
-     * \brief Appends a 64-bit integer to the buffer
-     * 
-     * A 64-bit integer will take up two 32-bit words.
-     * \param [in] value 64-bit value to add
-     */
-    void putInt64(uint64_t value);
-    
-    /**
-     * \brief Appends a 32-bit float to the buffer
-     * \param [in] value The number to add
-     */
-    void putFloat32(float value);
-    
-    /**
-     * \brief Appends a 64-bit float to the buffer
-     * \param [in] value The number to add
-     */
-    void putFloat64(double value);
-    
-    /**
-     * \brief Appends a literal string to the buffer
-     * \param [in] str String to append to the buffer
-     */
-    void putStr(const char* str);
-    
-    /**
-     * \brief Adds the header to the buffer
-     *
-     * \param [in] version SPIR-V version
-     * \param [in] boundIds Number of bound IDs
-     */
-    void putHeader(uint32_t version, uint32_t boundIds);
 
     /**
      * \brief Erases given number of dwords
@@ -158,14 +109,6 @@ namespace dxvk {
      * \param [in] size Number of words to remove
      */
     void erase(size_t size);
-    
-    /**
-     * \brief Computes length of a literal string
-     * 
-     * \param [in] str The string to check
-     * \returns Number of words consumed by a string
-     */
-    uint32_t strLen(const char* str);
     
     /**
      * \brief Stores the SPIR-V module to a stream
