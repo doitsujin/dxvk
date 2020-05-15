@@ -1303,17 +1303,17 @@ namespace dxvk {
     DxvkShaderFlags m_shaderFlags;
     uint32_t        m_specConstantMask = 0;
 
-    SpirvCodeBuffer m_capabilities;
-    SpirvCodeBuffer m_extensions;
-    SpirvCodeBuffer m_instExt;
-    SpirvCodeBuffer m_memoryModel;
-    SpirvCodeBuffer m_entryPoints;
-    SpirvCodeBuffer m_execModeInfo;
-    SpirvCodeBuffer m_debugNames;
-    SpirvCodeBuffer m_annotations;
-    SpirvCodeBuffer m_typeConstDefs;
-    SpirvCodeBuffer m_variables;
-    SpirvCodeBuffer m_code;
+    SpirvCompressedBuffer m_capabilities;
+    SpirvCompressedBuffer m_extensions;
+    SpirvCompressedBuffer m_instExt;
+    SpirvCompressedBuffer m_memoryModel;
+    SpirvCompressedBuffer m_entryPoints;
+    SpirvCompressedBuffer m_execModeInfo;
+    SpirvCompressedBuffer m_debugNames;
+    SpirvCompressedBuffer m_annotations;
+    SpirvCodeBuffer       m_typeConstDefs;
+    SpirvCodeBuffer       m_variables;
+    SpirvCodeBuffer       m_code;
 
     std::unordered_set<spv::Capability>    m_enabledCaps;
     std::unordered_set<spv::ExecutionMode> m_enabledModes;

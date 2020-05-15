@@ -16,7 +16,7 @@ namespace dxvk {
   
   
   SpirvCompressedBuffer SpirvModule::compile() const {
-    SpirvCodeBuffer result;
+    SpirvCompressedBuffer result;
     result.putHeader(m_version, m_id);
     result.append(m_capabilities);
     result.append(m_extensions);
@@ -29,7 +29,8 @@ namespace dxvk {
     result.append(m_typeConstDefs);
     result.append(m_variables);
     result.append(m_code);
-    return SpirvCompressedBuffer(result);
+    result.shrink();
+    return result;
   }
   
   
