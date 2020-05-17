@@ -276,6 +276,7 @@ namespace dxvk {
     }} },
     /* Halo CE/HaloPC                             */
     { R"(\\halo(ce)?\.exe$)", {{
+      { "d3d9.invariantPosition",           "True" },
       // Game enables minor decal layering fixes
       // specifically when it detects AMD.
       // Avoids chip being detected as unsupported
