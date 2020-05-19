@@ -102,6 +102,15 @@ public:
     status = m_d3d->CheckDeviceType(adapter, D3DDEVTYPE_HAL, D3DFMT_A8R8G8B8, D3DFMT_A8R8G8B8, FALSE);
     status = m_d3d->CheckDeviceType(adapter, D3DDEVTYPE_HAL, D3DFMT_A8R8G8B8, D3DFMT_A8R8G8B8, TRUE);
 
+    // NULL
+    constexpr D3DFORMAT NullFormat = D3DFORMAT(MAKEFOURCC('N', 'U', 'L', 'L'));
+
+    status = m_d3d->CheckDepthStencilMatch(adapter, D3DDEVTYPE_HAL, D3DFMT_X8R8G8B8, NullFormat, D3DFMT_D24S8);
+    status = m_d3d->CheckDeviceFormat(adapter, D3DDEVTYPE_HAL, D3DFMT_X8R8G8B8, D3DUSAGE_RENDERTARGET, D3DRTYPE_SURFACE, NullFormat);
+    status = m_d3d->CheckDeviceFormat(adapter, D3DDEVTYPE_HAL, D3DFMT_X8R8G8B8, D3DUSAGE_RENDERTARGET, D3DRTYPE_TEXTURE, NullFormat);
+    status = m_d3d->CheckDeviceFormatConversion(adapter, D3DDEVTYPE_HAL, D3DFMT_X8R8G8B8, NullFormat);
+    status = m_d3d->CheckDeviceType(adapter, D3DDEVTYPE_HAL, D3DFMT_X8R8G8B8, NullFormat, false);
+    status = m_d3d->CheckDeviceType(adapter, D3DDEVTYPE_HAL, D3DFMT_X8R8G8B8, NullFormat, true);
     //
 
     D3DPRESENT_PARAMETERS params;
