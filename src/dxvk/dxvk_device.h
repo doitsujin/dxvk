@@ -42,6 +42,7 @@ namespace dxvk {
    */
   struct DxvkDevicePerfHints {
     VkBool32 preferFbDepthStencilCopy : 1;
+    VkBool32 preferFbResolve          : 1;
   };
   
   /**

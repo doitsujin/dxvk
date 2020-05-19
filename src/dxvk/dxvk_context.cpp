@@ -1594,9 +1594,16 @@ namespace dxvk {
     
     if (format == VK_FORMAT_UNDEFINED)
       format = srcImage->info().format;
-    
-    if (srcImage->info().format == format
-     && dstImage->info().format == format) {
+
+    bool useFb = srcImage->info().format != format
+              || dstImage->info().format != format;
+
+    if (m_device->perfHints().preferFbResolve) {
+      useFb |= (dstImage->info().usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+            && (srcImage->info().usage & VK_IMAGE_USAGE_SAMPLED_BIT);
+    }
+
+    if (!useFb) {
       this->resolveImageHw(
         dstImage, srcImage, region);
     } else {
