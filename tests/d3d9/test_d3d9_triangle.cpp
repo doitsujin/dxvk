@@ -116,6 +116,9 @@ public:
       nullptr,
       &m_device);
 
+    if (FAILED(status))
+        throw DxvkError("Failed to create D3D9 device");
+
     // Funny Swapchain Refcounting
     // "One of the things COM does really well, is lifecycle management"
     // Implicit Swapchain
@@ -165,9 +168,6 @@ public:
     m_device->GetSwapChain(0, &swapchain);
 
     m_device->AddRef();
-    
-    if (FAILED(status))
-      throw DxvkError("Failed to create D3D9 device");
 
     // Vertex Shader
     {
