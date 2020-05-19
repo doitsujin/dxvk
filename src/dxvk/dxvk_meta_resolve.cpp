@@ -77,16 +77,43 @@ namespace dxvk {
     dstRef.layout        = layout;
     
     VkSubpassDescription subpass;
-    subpass.flags               = 0;
-    subpass.pipelineBindPoint   = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.inputAttachmentCount = 0;
-    subpass.pInputAttachments   = nullptr;
-    subpass.colorAttachmentCount = isColorImage ? 1 : 0;
-    subpass.pColorAttachments   = isColorImage ? &dstRef : nullptr;
-    subpass.pResolveAttachments = nullptr;
+    subpass.flags                   = 0;
+    subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.inputAttachmentCount    = 0;
+    subpass.pInputAttachments       = nullptr;
+    subpass.colorAttachmentCount    = isColorImage ? 1 : 0;
+    subpass.pColorAttachments       = isColorImage ? &dstRef : nullptr;
+    subpass.pResolveAttachments     = nullptr;
     subpass.pDepthStencilAttachment = isColorImage ? nullptr : &dstRef;
     subpass.preserveAttachmentCount = 0;
-    subpass.pPreserveAttachments = nullptr;
+    subpass.pPreserveAttachments    = nullptr;
+
+    VkPipelineStageFlags cpyStages = 0;
+    VkAccessFlags        cpyAccess = 0;
+
+    if (isColorImage) {
+      cpyStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      cpyAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+      if (!discard)
+        cpyAccess |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+    } else {
+      cpyStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+      cpyAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+      if (!discard)
+        cpyAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+    }
+
+    // Resolve targets are required to be render targets
+    VkPipelineStageFlags extStages = m_dstImageView->imageInfo().stages | m_srcImageView->imageInfo().stages;
+    VkAccessFlags        extAccess = m_dstImageView->imageInfo().access;
+
+    std::array<VkSubpassDependency, 2> dependencies = {{
+      { VK_SUBPASS_EXTERNAL, 0, cpyStages, cpyStages, 0,         cpyAccess, 0 },
+      { 0, VK_SUBPASS_EXTERNAL, cpyStages, extStages, cpyAccess, extAccess, 0 },
+    }};
 
     VkRenderPassCreateInfo info;
     info.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -96,8 +123,8 @@ namespace dxvk {
     info.pAttachments           = &attachment;
     info.subpassCount           = 1;
     info.pSubpasses             = &subpass;
-    info.dependencyCount        = 0;
-    info.pDependencies          = nullptr;
+    info.dependencyCount        = dependencies.size();
+    info.pDependencies          = dependencies.data();
 
     VkRenderPass result = VK_NULL_HANDLE;
     if (m_vkd->vkCreateRenderPass(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
@@ -176,6 +203,16 @@ namespace dxvk {
     subpass.preserveAttachmentCount = 0;
     subpass.pPreserveAttachments = nullptr;
 
+    VkPipelineStageFlags cpyStages = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    VkPipelineStageFlags extStages = m_dstImageView->imageInfo().stages | m_srcImageView->imageInfo().stages;
+    VkAccessFlags cpyAccess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+    VkAccessFlags extAccess = m_dstImageView->imageInfo().access;
+
+    std::array<VkSubpassDependency2KHR, 2> dependencies = {{
+      { VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2_KHR, nullptr, VK_SUBPASS_EXTERNAL, 0, cpyStages, cpyStages, 0,         cpyAccess, 0 },
+      { VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2_KHR, nullptr, 0, VK_SUBPASS_EXTERNAL, cpyStages, extStages, cpyAccess, extAccess, 0 },
+    }};
+
     VkRenderPassCreateInfo2KHR info;
     info.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2_KHR;
     info.pNext                  = nullptr;
@@ -184,8 +221,8 @@ namespace dxvk {
     info.pAttachments           = attachments.data();
     info.subpassCount           = 1;
     info.pSubpasses             = &subpass;
-    info.dependencyCount        = 0;
-    info.pDependencies          = nullptr;
+    info.dependencyCount        = dependencies.size();
+    info.pDependencies          = dependencies.data();
     info.correlatedViewMaskCount = 0;
     info.pCorrelatedViewMasks   = nullptr;
 
