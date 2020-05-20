@@ -1035,6 +1035,9 @@ namespace dxvk {
 
     D3D9CommonTexture* dstTextureInfo = dst->GetCommonTexture();
 
+    if (unlikely(dstTextureInfo->Desc()->Pool != D3DPOOL_DEFAULT))
+      return D3DERR_INVALIDCALL;
+
     VkExtent3D mipExtent = dstTextureInfo->GetExtentMip(dst->GetSubresource());
 
     VkOffset3D offset = VkOffset3D{ 0u, 0u, 0u };
