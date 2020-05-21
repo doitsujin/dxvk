@@ -36,11 +36,15 @@ namespace dxvk {
     key.AddressV = std::clamp(key.AddressV, D3DTADDRESS_WRAP, D3DTADDRESS_MIRRORONCE);
     key.AddressW = std::clamp(key.AddressW, D3DTADDRESS_WRAP, D3DTADDRESS_MIRRORONCE);
 
-    key.MagFilter = std::clamp(key.MagFilter, D3DTEXF_NONE, D3DTEXF_ANISOTROPIC);
-    key.MinFilter = std::clamp(key.MinFilter, D3DTEXF_NONE, D3DTEXF_ANISOTROPIC);
-    key.MipFilter = std::clamp(key.MipFilter, D3DTEXF_NONE, D3DTEXF_ANISOTROPIC);
+    bool hasAnisotropy = IsAnisotropic(key.MagFilter) || IsAnisotropic(key.MinFilter);
 
-    key.MaxAnisotropy = std::min<DWORD>(key.MaxAnisotropy, 16);
+    key.MagFilter = std::clamp(key.MagFilter, D3DTEXF_NONE, D3DTEXF_LINEAR);
+    key.MinFilter = std::clamp(key.MinFilter, D3DTEXF_NONE, D3DTEXF_LINEAR);
+    key.MipFilter = std::clamp(key.MipFilter, D3DTEXF_NONE, D3DTEXF_LINEAR);
+
+    key.MaxAnisotropy = hasAnisotropy
+      ? std::clamp<DWORD>(key.MaxAnisotropy, 1, 16)
+      : 1;
 
     if (key.MipFilter == D3DTEXF_NONE) {
       // May as well try and keep slots down.

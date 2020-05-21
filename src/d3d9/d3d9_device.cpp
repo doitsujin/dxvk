@@ -5379,8 +5379,7 @@ namespace dxvk {
       colorInfo.minFilter      = DecodeFilter(cKey.MinFilter);
       colorInfo.mipmapMode     = mipFilter.MipFilter;
       colorInfo.maxAnisotropy  = float(cKey.MaxAnisotropy);
-      colorInfo.useAnisotropy  = IsAnisotropic(cKey.MinFilter)
-                              || IsAnisotropic(cKey.MagFilter);
+      colorInfo.useAnisotropy  = cKey.MaxAnisotropy > 1;
       colorInfo.mipmapLodBias  = cKey.MipmapLodBias;
       colorInfo.mipmapLodMin   = mipFilter.MipsEnabled ? float(cKey.MaxMipLevel) : 0;
       colorInfo.mipmapLodMax   = mipFilter.MipsEnabled ? FLT_MAX                 : 0;
