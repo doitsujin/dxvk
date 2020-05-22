@@ -3352,8 +3352,8 @@ namespace dxvk {
     
     // Perform the actual resolve operation
     VkOffset2D srcOffset = {
-      region.srcOffset.x,
-      region.srcOffset.y };
+      region.srcOffset.x - region.dstOffset.x,
+      region.srcOffset.y - region.dstOffset.y };
     
     m_cmd->cmdBeginRenderPass(&info, VK_SUBPASS_CONTENTS_INLINE);
     m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeHandle);
