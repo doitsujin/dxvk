@@ -2771,7 +2771,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       }
 
       uint32_t fetch4 = 0;
-      if (m_programInfo.type() == DxsoProgramType::PixelShader && samplerType != SamplerTypeTextureCube) {
+      if (m_programInfo.type() == DxsoProgramType::PixelShader && samplerType != SamplerTypeTexture3D) {
         fetch4 = m_module.opBitFieldUExtract(
           m_module.defIntType(32, 0), m_ps.fetch4Spec,
           m_module.consti32(samplerIdx), m_module.consti32(1));
