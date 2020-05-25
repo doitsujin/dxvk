@@ -468,6 +468,10 @@ namespace dxvk {
       }
     }
 
+    m_ps.fetch4Spec = m_module.specConst32(m_module.defIntType(32, 0), 0);
+    m_module.decorateSpecId(m_ps.fetch4Spec, getSpecId(D3D9SpecConstantId::Fetch4));
+    m_module.setDebugName(m_ps.fetch4Spec, "s_fetch4");
+
     this->setupRenderStateInfo();
     this->emitPsSharedConstants();
 
@@ -2766,12 +2770,22 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         }
       }
 
+      uint32_t fetch4 = 0;
+      if (m_programInfo.type() == DxsoProgramType::PixelShader) {
+        fetch4 = m_module.opBitFieldUExtract(
+          m_module.defIntType(32, 0), m_ps.fetch4Spec,
+          m_module.consti32(samplerIdx), m_module.consti32(1));
+
+        fetch4 = m_module.opIEqual(m_module.defBoolType(), fetch4, m_module.constu32(1));
+      }
+
       result.id = this->emitSample(
         projDivider != 0,
         typeId,
         imageVarId,
         texcoordVar.id,
         reference,
+        fetch4,
         imageOperands);
 
       if (switchProjResult) {
@@ -2783,6 +2797,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
           imageVarId,
           texcoordVar.id,
           reference,
+          fetch4,
           imageOperands);
 
         uint32_t shouldProj = m_module.opBitFieldUExtract(
@@ -3028,40 +3043,56 @@ void DxsoCompiler::emitControlFlowGenericLoop(
           uint32_t                sampledImage,
           uint32_t                coordinates,
           uint32_t                reference,
+          uint32_t                fetch4,
     const SpirvImageOperands&     operands) {
     const bool depthCompare = reference != 0;
     const bool explicitLod  =
        (operands.flags & spv::ImageOperandsLodMask)
     || (operands.flags & spv::ImageOperandsGradMask);
 
+    uint32_t val;
+
+    // No Fetch 4
     if (projected) {
       if (depthCompare) {
         if (explicitLod)
-          return m_module.opImageSampleProjDrefExplicitLod(resultType, sampledImage, coordinates, reference, operands);
+          val = m_module.opImageSampleProjDrefExplicitLod(resultType, sampledImage, coordinates, reference, operands);
         else
-          return m_module.opImageSampleProjDrefImplicitLod(resultType, sampledImage, coordinates, reference, operands);
+          val = m_module.opImageSampleProjDrefImplicitLod(resultType, sampledImage, coordinates, reference, operands);
       }
       else {
         if (explicitLod)
-          return m_module.opImageSampleProjExplicitLod(resultType, sampledImage, coordinates, operands);
+          val = m_module.opImageSampleProjExplicitLod(resultType, sampledImage, coordinates, operands);
         else
-          return m_module.opImageSampleProjImplicitLod(resultType, sampledImage, coordinates, operands);
+          val = m_module.opImageSampleProjImplicitLod(resultType, sampledImage, coordinates, operands);
       }
     }
     else {
       if (depthCompare) {
         if (explicitLod)
-          return m_module.opImageSampleDrefExplicitLod(resultType, sampledImage, coordinates, reference, operands);
+          val = m_module.opImageSampleDrefExplicitLod(resultType, sampledImage, coordinates, reference, operands);
         else
-          return m_module.opImageSampleDrefImplicitLod(resultType, sampledImage, coordinates, reference, operands);
+          val = m_module.opImageSampleDrefImplicitLod(resultType, sampledImage, coordinates, reference, operands);
       }
       else {
         if (explicitLod)
-          return m_module.opImageSampleExplicitLod(resultType, sampledImage, coordinates, operands);
+          val = m_module.opImageSampleExplicitLod(resultType, sampledImage, coordinates, operands);
         else
-          return m_module.opImageSampleImplicitLod(resultType, sampledImage, coordinates, operands);
+          val = m_module.opImageSampleImplicitLod(resultType, sampledImage, coordinates, operands);
       }
     }
+
+
+    if (fetch4 && !depthCompare) {
+      uint32_t fetch4Val = m_module.opImageGather(resultType, sampledImage, coordinates, m_module.consti32(0), operands);
+      // B R G A swizzle... Funny D3D9 order.
+      const std::array<uint32_t, 4> indices = { 2, 0, 1, 3 };
+      fetch4Val = m_module.opVectorShuffle(resultType, fetch4Val, fetch4Val, indices.size(), indices.data());
+
+      val = m_module.opSelect(resultType, fetch4, fetch4Val, val);
+    }
+
+    return val;
   }
 
 

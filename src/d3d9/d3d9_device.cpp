@@ -3507,6 +3507,16 @@ namespace dxvk {
         m_dirtySamplerStates |= 1u << StateSampler;
       else if (Type == D3DSAMP_SRGBTEXTURE)
         BindTexture(StateSampler);
+
+      constexpr DWORD Fetch4Enabled  = MAKEFOURCC('G', 'E', 'T', '4');
+      constexpr DWORD Fetch4Disabled = MAKEFOURCC('G', 'E', 'T', '1');
+
+      if (Type == D3DSAMP_MIPMAPLODBIAS) {
+        if (Value == Fetch4Enabled)
+          m_fetch4Enabled |= 1u << StateSampler;
+        else if (Value == Fetch4Disabled)
+          m_fetch4Enabled &= ~(1u << StateSampler);
+      }
     }
 
     return D3D_OK;
@@ -5603,21 +5613,26 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyInputLayout))
       BindInputLayout();
 
-    auto UpdateSamplerTypes = [&](uint32_t types, uint32_t projections) {
+    auto UpdateSamplerTypes = [&](uint32_t types, uint32_t projections, uint32_t fetch4) {
       if (m_lastSamplerTypeBitfield != types)
         UpdateSamplerSpecConsant(types);
 
       if (m_lastProjectionBitfield != projections)
         UpdateProjectionSpecConstant(projections);
+
+      if (m_lastFetch4 != fetch4)
+        UpdateFetch4SpecConstant(fetch4);
     };
 
     if (likely(UseProgrammablePS())) {
       UploadConstants<DxsoProgramTypes::PixelShader>();
 
+      uint32_t fetch4 = m_fetch4Enabled & (m_activeTextures & m_psShaderMasks.samplerMask);
+
       if (GetCommonShader(m_state.pixelShader)->GetInfo().majorVersion() >= 2)
-        UpdateSamplerTypes(m_d3d9Options.forceSamplerTypeSpecConstants ? m_samplerTypeBitfield : 0u, 0u);
+        UpdateSamplerTypes(m_d3d9Options.forceSamplerTypeSpecConstants ? m_samplerTypeBitfield : 0u, 0u, fetch4);
       else
-        UpdateSamplerTypes(m_samplerTypeBitfield, m_projectionBitfield); // For implicit samplers...
+        UpdateSamplerTypes(m_samplerTypeBitfield, m_projectionBitfield, fetch4); // For implicit samplers...
 
       UpdateBoolSpecConstantPixel(
         m_state.psConsts.bConsts[0] &
@@ -5625,7 +5640,7 @@ namespace dxvk {
     }
     else {
       UpdateBoolSpecConstantPixel(0);
-      UpdateSamplerTypes(0u, 0u);
+      UpdateSamplerTypes(0u, 0u, 0u);
 
       UpdateFixedFunctionPS();
     }
@@ -6313,6 +6328,15 @@ namespace dxvk {
     });
 
     m_lastProjectionBitfield = value;
+  }
+
+
+  void D3D9DeviceEx::UpdateFetch4SpecConstant(uint32_t value) {
+    EmitCs([cBitfield = value](DxvkContext* ctx) {
+      ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::Fetch4, cBitfield);
+      });
+
+    m_lastFetch4 = value;
   }
 
 

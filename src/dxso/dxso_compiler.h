@@ -157,6 +157,7 @@ namespace dxvk {
     uint32_t functionId         = 0;
     uint32_t samplerTypeSpec    = 0;
     uint32_t projectionSpec     = 0;
+    uint32_t fetch4Spec         = 0;
 
     //////////////
     // Misc Types
@@ -642,6 +643,7 @@ namespace dxvk {
             uint32_t                sampledImage,
             uint32_t                coordinates,
             uint32_t                reference,
+            uint32_t                fetch4,
       const SpirvImageOperands&     operands);
 
     ///////////////////////////////
