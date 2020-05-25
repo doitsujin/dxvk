@@ -5627,12 +5627,15 @@ namespace dxvk {
     if (likely(UseProgrammablePS())) {
       UploadConstants<DxsoProgramTypes::PixelShader>();
 
-      uint32_t fetch4 = m_fetch4Enabled & (m_activeTextures & m_psShaderMasks.samplerMask);
+      const uint32_t psTextureMask = m_activeTextures & m_psShaderMasks.samplerMask;
+
+      uint32_t fetch4    = m_fetch4Enabled      & psTextureMask;
+      uint32_t projected = m_projectionBitfield & psTextureMask;
 
       if (GetCommonShader(m_state.pixelShader)->GetInfo().majorVersion() >= 2)
         UpdateSamplerTypes(m_d3d9Options.forceSamplerTypeSpecConstants ? m_samplerTypeBitfield : 0u, 0u, fetch4);
       else
-        UpdateSamplerTypes(m_samplerTypeBitfield, m_projectionBitfield, fetch4); // For implicit samplers...
+        UpdateSamplerTypes(m_samplerTypeBitfield, projected, fetch4); // For implicit samplers...
 
       UpdateBoolSpecConstantPixel(
         m_state.psConsts.bConsts[0] &
