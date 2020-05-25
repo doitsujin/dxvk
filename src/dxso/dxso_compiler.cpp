@@ -2776,7 +2776,12 @@ void DxsoCompiler::emitControlFlowGenericLoop(
           m_module.defIntType(32, 0), m_ps.fetch4Spec,
           m_module.consti32(samplerIdx), m_module.consti32(1));
 
-        fetch4 = m_module.opIEqual(m_module.defBoolType(), fetch4, m_module.constu32(1));
+        uint32_t bool_t = m_module.defBoolType();
+        fetch4 = m_module.opIEqual(bool_t, fetch4, m_module.constu32(1));
+
+        uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
+        std::array<uint32_t, 4> indices = { fetch4, fetch4, fetch4, fetch4 };
+        fetch4 = m_module.opCompositeConstruct(bvec4_t, indices.size(), indices.data());
       }
 
       result.id = this->emitSample(
