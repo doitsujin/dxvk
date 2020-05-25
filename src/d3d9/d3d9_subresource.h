@@ -32,15 +32,15 @@ namespace dxvk {
     }
 
     ULONG STDMETHODCALLTYPE AddRef() final {
-      if (m_container != nullptr)
-        return m_container->AddRef();
+      if (m_baseTexture != nullptr)
+        return m_baseTexture->AddRef();
 
       return D3D9Resource<Type...>::AddRef();
     }
 
     ULONG STDMETHODCALLTYPE Release() final {
-      if (m_container != nullptr)
-        return m_container->Release();
+      if (m_baseTexture != nullptr)
+        return m_baseTexture->Release();
 
       return D3D9Resource<Type...>::Release();
     }
