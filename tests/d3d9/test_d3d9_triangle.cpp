@@ -178,6 +178,13 @@ public:
 
     m_device->AddRef();
 
+    DWORD bias = 0xDEADBEEF;
+    status = m_device->GetSamplerState(0, D3DSAMP_MIPMAPLODBIAS, &bias);
+    status = m_device->SetSamplerState(0, D3DSAMP_MIPMAPLODBIAS, MAKEFOURCC('G', 'E', 'T', '4'));
+    status = m_device->GetSamplerState(0, D3DSAMP_MIPMAPLODBIAS, &bias);
+    status = m_device->SetSamplerState(0, D3DSAMP_MIPMAPLODBIAS, MAKEFOURCC('G', 'E', 'T', '1'));
+    status = m_device->GetSamplerState(0, D3DSAMP_MIPMAPLODBIAS, &bias);
+
     // Vertex Shader
     {
       Com<ID3DBlob> blob;
