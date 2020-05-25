@@ -2771,7 +2771,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       }
 
       uint32_t fetch4 = 0;
-      if (m_programInfo.type() == DxsoProgramType::PixelShader) {
+      if (m_programInfo.type() == DxsoProgramType::PixelShader && samplerType != SamplerTypeTextureCube) {
         fetch4 = m_module.opBitFieldUExtract(
           m_module.defIntType(32, 0), m_ps.fetch4Spec,
           m_module.consti32(samplerIdx), m_module.consti32(1));
@@ -3089,7 +3089,12 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
 
     if (fetch4 && !depthCompare) {
-      uint32_t fetch4Val = m_module.opImageGather(resultType, sampledImage, coordinates, m_module.consti32(0), operands);
+      SpirvImageOperands fetch4Operands = operands;
+      fetch4Operands.flags &= ~spv::ImageOperandsLodMask;
+      fetch4Operands.flags &= ~spv::ImageOperandsGradMask;
+      fetch4Operands.flags &= ~spv::ImageOperandsBiasMask;
+
+      uint32_t fetch4Val = m_module.opImageGather(resultType, sampledImage, coordinates, m_module.consti32(0), fetch4Operands);
       // B R G A swizzle... Funny D3D9 order.
       const std::array<uint32_t, 4> indices = { 2, 0, 1, 3 };
       fetch4Val = m_module.opVectorShuffle(resultType, fetch4Val, fetch4Val, indices.size(), indices.data());
