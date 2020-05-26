@@ -127,10 +127,12 @@ namespace dxvk {
     
     // Use the maximum possible mip level count if the supplied
     // mip level count is either unspecified (0) or invalid
-    const uint32_t maxMipLevelCount =
-        (pDesc->MultiSample <= D3DMULTISAMPLE_NONMASKABLE && !(pDesc->Usage & D3DUSAGE_AUTOGENMIPMAP))
+    const uint32_t maxMipLevelCount = pDesc->MultiSample <= D3DMULTISAMPLE_NONMASKABLE
       ? util::computeMipLevelCount({ pDesc->Width, pDesc->Height, pDesc->Depth })
       : 1u;
+
+    if (pDesc->Usage & D3DUSAGE_AUTOGENMIPMAP)
+      pDesc->MipLevels = 0;
     
     if (pDesc->MipLevels == 0 || pDesc->MipLevels > maxMipLevelCount)
       pDesc->MipLevels = maxMipLevelCount;
