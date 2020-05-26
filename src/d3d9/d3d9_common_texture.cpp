@@ -55,6 +55,11 @@ namespace dxvk {
 
     if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM)
       CreateBuffers();
+
+    m_exposedMipLevels = m_desc.MipLevels;
+
+    if (m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP)
+      m_exposedMipLevels = 1;
   }
 
 

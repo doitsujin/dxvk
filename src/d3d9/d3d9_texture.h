@@ -71,7 +71,7 @@ namespace dxvk {
     }
 
     DWORD STDMETHODCALLTYPE GetLevelCount() final {
-      return m_texture.Desc()->MipLevels;
+      return m_texture.ExposedMipLevels();
     }
 
     HRESULT STDMETHODCALLTYPE SetAutoGenFilterType(D3DTEXTUREFILTERTYPE FilterType) final {
@@ -93,9 +93,6 @@ namespace dxvk {
     }
 
     SubresourceType* GetSubresource(UINT Subresource) {
-      if (unlikely(Subresource >= m_subresources.size()))
-        return nullptr;
-
       return reinterpret_cast<SubresourceType*>(&m_subresources[Subresource]);
     }
 

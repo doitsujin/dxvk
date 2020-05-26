@@ -38,41 +38,43 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9Texture2D::GetLevelDesc(UINT Level, D3DSURFACE_DESC *pDesc) {
-    auto* surface = GetSubresource(Level);
-    if (surface == nullptr)
+    if (unlikely(Level >= m_texture.ExposedMipLevels()))
       return D3DERR_INVALIDCALL;
 
-    return surface->GetDesc(pDesc);
+    return GetSubresource(Level)->GetDesc(pDesc);
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9Texture2D::GetSurfaceLevel(UINT Level, IDirect3DSurface9** ppSurfaceLevel) {
     InitReturnPtr(ppSurfaceLevel);
-    auto* surface = GetSubresource(Level);
 
-    if (ppSurfaceLevel == nullptr || surface == nullptr)
+    if (unlikely(Level >= m_texture.ExposedMipLevels()))
       return D3DERR_INVALIDCALL;
 
-    *ppSurfaceLevel = ref(surface);
+    if (unlikely(ppSurfaceLevel == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    *ppSurfaceLevel = ref(GetSubresource(Level));
     return D3D_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9Texture2D::LockRect(UINT Level, D3DLOCKED_RECT* pLockedRect, CONST RECT* pRect, DWORD Flags) {
-    auto* surface = GetSubresource(Level);
-    if (surface == nullptr || pLockedRect == nullptr)
+    if (unlikely(Level >= m_texture.ExposedMipLevels()))
       return D3DERR_INVALIDCALL;
 
-    return surface->LockRect(pLockedRect, pRect, Flags);
+    if (unlikely(pLockedRect == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    return GetSubresource(Level)->LockRect(pLockedRect, pRect, Flags);
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9Texture2D::UnlockRect(UINT Level) {
-    auto* surface = GetSubresource(Level);
-    if (surface == nullptr)
+    if (unlikely(Level >= m_texture.ExposedMipLevels()))
       return D3DERR_INVALIDCALL;
 
-    return surface->UnlockRect();
+    return GetSubresource(Level)->UnlockRect();
   }
 
 
@@ -116,41 +118,43 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9Texture3D::GetLevelDesc(UINT Level, D3DVOLUME_DESC *pDesc) {
-    auto* volume = GetSubresource(Level);
-    if (volume == nullptr)
+    if (unlikely(Level >= m_texture.ExposedMipLevels()))
       return D3DERR_INVALIDCALL;
 
-    return volume->GetDesc(pDesc);
+    return GetSubresource(Level)->GetDesc(pDesc);
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9Texture3D::GetVolumeLevel(UINT Level, IDirect3DVolume9** ppVolumeLevel) {
     InitReturnPtr(ppVolumeLevel);
-    auto* volume = GetSubresource(Level);
 
-    if (ppVolumeLevel == nullptr || volume == nullptr)
+    if (unlikely(Level >= m_texture.ExposedMipLevels()))
       return D3DERR_INVALIDCALL;
 
-    *ppVolumeLevel = ref(volume);
+    if (unlikely(ppVolumeLevel == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    *ppVolumeLevel = ref(GetSubresource(Level));
     return D3D_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9Texture3D::LockBox(UINT Level, D3DLOCKED_BOX* pLockedBox, CONST D3DBOX* pBox, DWORD Flags) {
-    auto* volume = GetSubresource(Level);
-    if (volume == nullptr || pLockedBox == nullptr)
+    if (unlikely(Level >= m_texture.ExposedMipLevels()))
       return D3DERR_INVALIDCALL;
 
-    return volume->LockBox(pLockedBox, pBox, Flags);
+    if (unlikely(pLockedBox == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    return GetSubresource(Level)->LockBox(pLockedBox, pBox, Flags);
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9Texture3D::UnlockBox(UINT Level) {
-    auto* volume = GetSubresource(Level);
-    if (volume == nullptr)
+    if (unlikely(Level >= m_texture.ExposedMipLevels()))
       return D3DERR_INVALIDCALL;
 
-    return volume->UnlockBox();
+    return GetSubresource(Level)->UnlockBox();
   }
 
 
@@ -194,51 +198,43 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9TextureCube::GetLevelDesc(UINT Level, D3DSURFACE_DESC *pDesc) {
-    auto* surface = GetSubresource(Level);
-
-    if (surface == nullptr)
+    if (unlikely(Level >= m_texture.ExposedMipLevels()))
       return D3DERR_INVALIDCALL;
 
-    return surface->GetDesc(pDesc);
+    return GetSubresource(Level)->GetDesc(pDesc);
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9TextureCube::GetCubeMapSurface(D3DCUBEMAP_FACES Face, UINT Level, IDirect3DSurface9** ppSurfaceLevel) {
     InitReturnPtr(ppSurfaceLevel);
 
-    if (Level >= m_texture.Desc()->MipLevels)
+    if (unlikely(Level >= m_texture.ExposedMipLevels() || Face >= D3DCUBEMAP_FACES(6)))
       return D3DERR_INVALIDCALL;
 
-    auto* surface = GetSubresource(
-      m_texture.CalcSubresource(UINT(Face), Level));
-
-    if (ppSurfaceLevel == nullptr || surface == nullptr)
+    if (unlikely(ppSurfaceLevel == nullptr))
       return D3DERR_INVALIDCALL;
 
-    *ppSurfaceLevel = ref(surface);
+    *ppSurfaceLevel = ref(GetSubresource(m_texture.CalcSubresource(UINT(Face), Level)));
     return D3D_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9TextureCube::LockRect(D3DCUBEMAP_FACES Face, UINT Level, D3DLOCKED_RECT* pLockedRect, CONST RECT* pRect, DWORD Flags) {
-    auto* surface = GetSubresource(
-      m_texture.CalcSubresource(UINT(Face), Level));
-
-    if (surface == nullptr || pLockedRect == nullptr)
+    if (unlikely(Face > D3DCUBEMAP_FACE_NEGATIVE_Z || Level >= m_texture.ExposedMipLevels()))
       return D3DERR_INVALIDCALL;
 
-    return surface->LockRect(pLockedRect, pRect, Flags);
+    if (unlikely(pLockedRect == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    return GetSubresource(m_texture.CalcSubresource(UINT(Face), Level))->LockRect(pLockedRect, pRect, Flags);
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9TextureCube::UnlockRect(D3DCUBEMAP_FACES Face, UINT Level) {
-    auto* surface = GetSubresource(
-      m_texture.CalcSubresource(UINT(Face), Level));
-
-    if (surface == nullptr)
+    if (unlikely(Face > D3DCUBEMAP_FACE_NEGATIVE_Z || Level >= m_texture.ExposedMipLevels()))
       return D3DERR_INVALIDCALL;
 
-    return surface->UnlockRect();
+    return GetSubresource(m_texture.CalcSubresource(UINT(Face), Level))->UnlockRect();
   }
 
 
