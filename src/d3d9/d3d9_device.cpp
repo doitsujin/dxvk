@@ -4929,7 +4929,7 @@ namespace dxvk {
       auto texInfo = GetCommonTexture(m_state.textures[i]);
 
       if (texInfo == pResource)
-        m_activeTexturesToGen &= 1 << i;
+        m_activeTexturesToGen &= ~(1 << i);
     }
   }
 
