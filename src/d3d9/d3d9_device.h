@@ -754,6 +754,8 @@ namespace dxvk {
 
     void MarkTextureMipsDirty(D3D9CommonTexture* pResource);
 
+    void MarkTextureMipsUnDirty(D3D9CommonTexture* pResource);
+
     template <bool Points>
     void UpdatePointMode();
 

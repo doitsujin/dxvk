@@ -87,6 +87,7 @@ namespace dxvk {
       if (!m_texture.NeedsMipGen())
         return;
 
+      this->m_parent->MarkTextureMipsUnDirty(&m_texture);
       this->m_parent->GenerateMips(&m_texture);
     }
 

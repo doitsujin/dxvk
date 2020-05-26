@@ -4206,8 +4206,6 @@ namespace dxvk {
     ] (DxvkContext* ctx) {
       ctx->generateMipmaps(cImageView);
     });
-
-    pResource->SetNeedsMipGen(false);
   }
 
 
@@ -4896,12 +4894,13 @@ namespace dxvk {
       auto texInfo = GetCommonTexture(m_state.textures[bit::tzcnt(tex)]);
 
       this->GenerateMips(texInfo);
+      texInfo->SetNeedsMipGen(false);
     }
 
     m_activeTexturesToGen &= ~mask;
   }
 
-
+  
   void D3D9DeviceEx::MarkTextureMipsDirty(D3D9CommonTexture* pResource) {
     pResource->SetNeedsMipGen(true);
 
@@ -4915,6 +4914,20 @@ namespace dxvk {
         // We can early out here, no need to add another index for this.
         break;
       }
+    }
+  }
+
+
+  void D3D9DeviceEx::MarkTextureMipsUnDirty(D3D9CommonTexture* pResource) {
+    pResource->SetNeedsMipGen(false);
+
+    for (uint32_t tex = m_activeTextures; tex; tex &= tex - 1) {
+      // Guaranteed to not be nullptr...
+      const uint32_t i = bit::tzcnt(tex);
+      auto texInfo = GetCommonTexture(m_state.textures[i]);
+
+      if (texInfo == pResource)
+        m_activeTexturesToGen &= 1 << i;
     }
   }
 
