@@ -706,7 +706,7 @@ namespace dxvk {
             D3D9CommonTexture*      pResource,
             UINT                    Subresource);
 
-    void GenerateMips(
+    void EmitGenerateMips(
             D3D9CommonTexture* pResource);
 
     HRESULT LockBuffer(

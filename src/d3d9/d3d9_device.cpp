@@ -4199,7 +4199,7 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::GenerateMips(
+  void D3D9DeviceEx::EmitGenerateMips(
     D3D9CommonTexture* pResource) {
     EmitCs([
       cImageView = pResource->GetSampleView(false)
@@ -4894,7 +4894,7 @@ namespace dxvk {
       auto texInfo = GetCommonTexture(m_state.textures[bit::tzcnt(tex)]);
 
       if (texInfo->NeedsMipGen()) {
-        this->GenerateMips(texInfo);
+        this->EmitGenerateMips(texInfo);
         texInfo->SetNeedsMipGen(false);
       }
     }

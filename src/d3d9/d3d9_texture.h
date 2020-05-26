@@ -88,7 +88,7 @@ namespace dxvk {
         return;
 
       this->m_parent->MarkTextureMipsUnDirty(&m_texture);
-      this->m_parent->GenerateMips(&m_texture);
+      this->m_parent->EmitGenerateMips(&m_texture);
     }
 
     D3D9CommonTexture* GetCommonTexture() {
