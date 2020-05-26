@@ -702,7 +702,7 @@ namespace dxvk {
     dstTextureInfo->SetDirty(dst->GetSubresource(), true);
 
     if (dstTextureInfo->IsAutomaticMip())
-      GenerateMips(dstTextureInfo);
+      MarkTextureMipsDirty(dstTextureInfo);
 
     return D3D_OK;
   }
@@ -748,9 +748,14 @@ namespace dxvk {
       }
     }
 
-    dstTexInfo->MarkAllDirty();
+    if (dstTexInfo->IsAutomaticMip()) {
+      for (uint32_t i = 0; i < dstTexInfo->Desc()->ArraySize; i++)
+        dstTexInfo->SetDirty(dstTexInfo->CalcSubresource(i, 0), true);
 
-    pDestinationTexture->GenerateMipSubLevels();
+      MarkTextureMipsDirty(dstTexInfo);
+    }
+    else
+      dstTexInfo->MarkAllDirty();
 
     FlushImplicit(false);
 
@@ -1018,6 +1023,9 @@ namespace dxvk {
 
     dstTextureInfo->SetDirty(dst->GetSubresource(), true);
 
+    if (dstTextureInfo->IsAutomaticMip())
+      MarkTextureMipsDirty(dstTextureInfo);
+
     return D3D_OK;
   }
 
@@ -1092,6 +1100,9 @@ namespace dxvk {
     }
 
     dstTextureInfo->SetDirty(dst->GetSubresource(), true);
+
+    if (dstTextureInfo->IsAutomaticMip())
+      MarkTextureMipsDirty(dstTextureInfo);
 
     return D3D_OK;
   }
@@ -4133,9 +4144,6 @@ namespace dxvk {
       pResource->SetDirty(Subresource, true);
     }
 
-    if (pResource->IsAutomaticMip())
-      GenerateMips(pResource);
-
     return D3D_OK;
   }
 
@@ -4184,6 +4192,9 @@ namespace dxvk {
         copyBuffer);
     }
 
+    if (pResource->IsAutomaticMip())
+      MarkTextureMipsDirty(pResource);
+
     return D3D_OK;
   }
 
@@ -4195,6 +4206,8 @@ namespace dxvk {
     ] (DxvkContext* ctx) {
       ctx->generateMipmaps(cImageView);
     });
+
+    pResource->SetNeedsMipGen(false);
   }
 
 
@@ -4770,6 +4783,7 @@ namespace dxvk {
     m_activeDSTextures       &= ~bit;
     m_activeTextures         &= ~bit;
     m_activeTexturesToUpload &= ~bit;
+    m_activeTexturesToGen    &= ~bit;
 
     auto tex = GetCommonTexture(m_state.textures[index]);
     if (tex != nullptr) {
@@ -4783,6 +4797,9 @@ namespace dxvk {
 
       if (unlikely(tex->NeedsAnyUpload()))
         m_activeTexturesToUpload |= bit;
+
+      if (unlikely(tex->NeedsMipGen()))
+        m_activeTexturesToGen |= bit;
     }
 
     if (unlikely(combinedUsage & D3DUSAGE_RENDERTARGET))
@@ -4870,6 +4887,35 @@ namespace dxvk {
     }
 
     m_activeTexturesToUpload &= ~mask;
+  }
+
+
+  void D3D9DeviceEx::GenerateTextureMips(uint32_t mask) {
+    for (uint32_t tex = mask; tex; tex &= tex - 1) {
+      // Guaranteed to not be nullptr...
+      auto texInfo = GetCommonTexture(m_state.textures[bit::tzcnt(tex)]);
+
+      this->GenerateMips(texInfo);
+    }
+
+    m_activeTexturesToGen &= ~mask;
+  }
+
+
+  void D3D9DeviceEx::MarkTextureMipsDirty(D3D9CommonTexture* pResource) {
+    pResource->SetNeedsMipGen(true);
+
+    for (uint32_t tex = m_activeTextures; tex; tex &= tex - 1) {
+      // Guaranteed to not be nullptr...
+      const uint32_t i = bit::tzcnt(tex);
+      auto texInfo = GetCommonTexture(m_state.textures[i]);
+
+      if (texInfo == pResource) {
+        m_activeTexturesToGen |= 1 << i;
+        // We can early out here, no need to add another index for this.
+        break;
+      }
+    }
   }
 
 
@@ -5549,6 +5595,12 @@ namespace dxvk {
 
     if (unlikely(texturesToUpload != 0))
       UploadManagedTextures(texturesToUpload);
+
+    uint32_t texturesToGen = m_activeTexturesToGen;
+    texturesToGen &= m_psShaderMasks.samplerMask | m_vsShaderMasks.samplerMask;
+
+    if (unlikely(texturesToGen != 0))
+      GenerateTextureMips(texturesToGen);
 
     auto* ibo = GetCommonBuffer(m_state.indices);
     if (ibo != nullptr && ibo->NeedsUpload())

@@ -750,6 +750,10 @@ namespace dxvk {
 
     void UploadManagedTextures(uint32_t mask);
 
+    void GenerateTextureMips(uint32_t mask);
+
+    void MarkTextureMipsDirty(D3D9CommonTexture* pResource);
+
     template <bool Points>
     void UpdatePointMode();
 
@@ -1035,6 +1039,7 @@ namespace dxvk {
     uint32_t                        m_alphaSwizzleRTs  = 0;
     uint32_t                        m_activeTextures   = 0;
     uint32_t                        m_activeTexturesToUpload = 0;
+    uint32_t                        m_activeTexturesToGen    = 0;
 
     uint32_t                        m_fetch4Enabled = 0;
     uint32_t                        m_lastFetch4    = 0;

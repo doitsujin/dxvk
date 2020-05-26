@@ -354,6 +354,9 @@ namespace dxvk {
     bool NeedsAnyUpload() { return m_needsUpload.any(); }
     void ClearNeedsUpload() { return m_needsUpload.clearAll();  }
 
+    void SetNeedsMipGen(bool value) { m_needsMipGen = value; }
+    bool NeedsMipGen() const { return m_needsMipGen; }
+
     DWORD ExposedMipLevels() { return m_exposedMipLevels; }
 
   private:
@@ -394,6 +397,8 @@ namespace dxvk {
     D3D9SubresourceBitset         m_needsUpload = { };
 
     DWORD                         m_exposedMipLevels = 0;
+
+    bool                          m_needsMipGen = false;
 
     /**
      * \brief Mip level
