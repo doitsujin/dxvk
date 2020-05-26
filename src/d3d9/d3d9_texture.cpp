@@ -63,9 +63,6 @@ namespace dxvk {
     if (unlikely(Level >= m_texture.ExposedMipLevels()))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(pLockedRect == nullptr))
-      return D3DERR_INVALIDCALL;
-
     return GetSubresource(Level)->LockRect(pLockedRect, pRect, Flags);
   }
 
@@ -143,9 +140,6 @@ namespace dxvk {
     if (unlikely(Level >= m_texture.ExposedMipLevels()))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(pLockedBox == nullptr))
-      return D3DERR_INVALIDCALL;
-
     return GetSubresource(Level)->LockBox(pLockedBox, pBox, Flags);
   }
 
@@ -221,9 +215,6 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D9TextureCube::LockRect(D3DCUBEMAP_FACES Face, UINT Level, D3DLOCKED_RECT* pLockedRect, CONST RECT* pRect, DWORD Flags) {
     if (unlikely(Face > D3DCUBEMAP_FACE_NEGATIVE_Z || Level >= m_texture.ExposedMipLevels()))
-      return D3DERR_INVALIDCALL;
-
-    if (unlikely(pLockedRect == nullptr))
       return D3DERR_INVALIDCALL;
 
     return GetSubresource(m_texture.CalcSubresource(UINT(Face), Level))->LockRect(pLockedRect, pRect, Flags);

@@ -100,6 +100,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9Surface::LockRect(D3DLOCKED_RECT* pLockedRect, CONST RECT* pRect, DWORD Flags) {
+    if (unlikely(pLockedRect == nullptr))
+      return D3DERR_INVALIDCALL;
+
     D3DBOX box;
     if (pRect != nullptr) {
       box.Left   = pRect->left;

@@ -91,6 +91,9 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9Volume::LockBox(D3DLOCKED_BOX* pLockedBox, CONST D3DBOX* pBox, DWORD Flags) {
+    if (unlikely(pLockedBox == nullptr))
+      return D3DERR_INVALIDCALL;
+
     return m_parent->LockImage(
       m_texture,
       m_face, m_mipLevel,
