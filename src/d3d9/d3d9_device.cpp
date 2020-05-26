@@ -4893,8 +4893,10 @@ namespace dxvk {
       // Guaranteed to not be nullptr...
       auto texInfo = GetCommonTexture(m_state.textures[bit::tzcnt(tex)]);
 
-      this->GenerateMips(texInfo);
-      texInfo->SetNeedsMipGen(false);
+      if (texInfo->NeedsMipGen()) {
+        this->GenerateMips(texInfo);
+        texInfo->SetNeedsMipGen(false);
+      }
     }
 
     m_activeTexturesToGen &= ~mask;
