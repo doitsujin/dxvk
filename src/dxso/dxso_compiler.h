@@ -103,6 +103,8 @@ namespace dxvk {
 
     uint32_t varId = 0;
     uint32_t typeId = 0;
+
+    uint32_t imageTypeId = 0;
   };
 
   enum DxsoSamplerType : uint32_t {
@@ -640,8 +642,8 @@ namespace dxvk {
     uint32_t emitSample(
             bool                    projected,
             uint32_t                resultType,
-            uint32_t                sampledImage,
-            uint32_t                coordinates,
+            DxsoSamplerInfo&        samplerInfo,
+            DxsoRegisterValue       coordinates,
             uint32_t                reference,
             uint32_t                fetch4,
       const SpirvImageOperands&     operands);

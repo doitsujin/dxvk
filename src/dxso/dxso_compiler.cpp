@@ -719,12 +719,12 @@ namespace dxvk {
           break;
       }
 
-      sampler.typeId = m_module.defImageType(
+      sampler.imageTypeId = m_module.defImageType(
         m_module.defFloatType(32),
         dimensionality, depth ? 1 : 0, 0, 0, 1,
         spv::ImageFormatUnknown);
 
-      sampler.typeId = m_module.defSampledImageType(sampler.typeId);
+      sampler.typeId = m_module.defSampledImageType(sampler.imageTypeId);
 
       sampler.varId = m_module.newVar(
         m_module.defPointerType(
@@ -2707,8 +2707,6 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       const uint32_t typeId = getVectorTypeId(result.type);
 
-      const uint32_t imageVarId = m_module.opLoad(sampler.typeId, sampler.varId);
-
       SpirvImageOperands imageOperands;
       if (m_programInfo.type() == DxsoProgramTypes::VertexShader) {
         imageOperands.sLod = m_module.constf32(0.0f);
@@ -2787,8 +2785,8 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       result.id = this->emitSample(
         projDivider != 0,
         typeId,
-        imageVarId,
-        texcoordVar.id,
+        sampler,
+        texcoordVar,
         reference,
         fetch4,
         imageOperands);
@@ -2799,8 +2797,8 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         uint32_t nonProjResult = this->emitSample(
           0,
           typeId,
-          imageVarId,
-          texcoordVar.id,
+          sampler,
+          texcoordVar,
           reference,
           fetch4,
           imageOperands);
@@ -3045,8 +3043,8 @@ void DxsoCompiler::emitControlFlowGenericLoop(
   uint32_t DxsoCompiler::emitSample(
           bool                    projected,
           uint32_t                resultType,
-          uint32_t                sampledImage,
-          uint32_t                coordinates,
+          DxsoSamplerInfo&        samplerInfo,
+          DxsoRegisterValue       coordinates,
           uint32_t                reference,
           uint32_t                fetch4,
     const SpirvImageOperands&     operands) {
@@ -3055,35 +3053,37 @@ void DxsoCompiler::emitControlFlowGenericLoop(
        (operands.flags & spv::ImageOperandsLodMask)
     || (operands.flags & spv::ImageOperandsGradMask);
 
+    const uint32_t sampledImage = m_module.opLoad(samplerInfo.typeId, samplerInfo.varId);
+
     uint32_t val;
 
     // No Fetch 4
     if (projected) {
       if (depthCompare) {
         if (explicitLod)
-          val = m_module.opImageSampleProjDrefExplicitLod(resultType, sampledImage, coordinates, reference, operands);
+          val = m_module.opImageSampleProjDrefExplicitLod(resultType, sampledImage, coordinates.id, reference, operands);
         else
-          val = m_module.opImageSampleProjDrefImplicitLod(resultType, sampledImage, coordinates, reference, operands);
+          val = m_module.opImageSampleProjDrefImplicitLod(resultType, sampledImage, coordinates.id, reference, operands);
       }
       else {
         if (explicitLod)
-          val = m_module.opImageSampleProjExplicitLod(resultType, sampledImage, coordinates, operands);
+          val = m_module.opImageSampleProjExplicitLod(resultType, sampledImage, coordinates.id, operands);
         else
-          val = m_module.opImageSampleProjImplicitLod(resultType, sampledImage, coordinates, operands);
+          val = m_module.opImageSampleProjImplicitLod(resultType, sampledImage, coordinates.id, operands);
       }
     }
     else {
       if (depthCompare) {
         if (explicitLod)
-          val = m_module.opImageSampleDrefExplicitLod(resultType, sampledImage, coordinates, reference, operands);
+          val = m_module.opImageSampleDrefExplicitLod(resultType, sampledImage, coordinates.id, reference, operands);
         else
-          val = m_module.opImageSampleDrefImplicitLod(resultType, sampledImage, coordinates, reference, operands);
+          val = m_module.opImageSampleDrefImplicitLod(resultType, sampledImage, coordinates.id, reference, operands);
       }
       else {
         if (explicitLod)
-          val = m_module.opImageSampleExplicitLod(resultType, sampledImage, coordinates, operands);
+          val = m_module.opImageSampleExplicitLod(resultType, sampledImage, coordinates.id, operands);
         else
-          val = m_module.opImageSampleImplicitLod(resultType, sampledImage, coordinates, operands);
+          val = m_module.opImageSampleImplicitLod(resultType, sampledImage, coordinates.id, operands);
       }
     }
 
@@ -3094,7 +3094,33 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       fetch4Operands.flags &= ~spv::ImageOperandsGradMask;
       fetch4Operands.flags &= ~spv::ImageOperandsBiasMask;
 
-      uint32_t fetch4Val = m_module.opImageGather(resultType, sampledImage, coordinates, m_module.consti32(0), fetch4Operands);
+      // Doesn't really work for cubes...
+      // D3D9 does support gather on 3D but we cannot :<
+      // Nothing probably relies on that though.
+      // If we come back to this ever, make sure to handle cube/3d differences.
+      if (samplerInfo.dimensions == 2) {
+        uint32_t image = m_module.opImage(samplerInfo.imageTypeId, sampledImage);
+
+        // Account for half texel offset...
+        // textureSize = 1.0f / float(2 * textureSize(sampler, 0))
+        DxsoRegisterValue textureSize;
+        textureSize.type = { DxsoScalarType::Sint32, samplerInfo.dimensions };
+        textureSize.id = m_module.opImageQuerySizeLod(getVectorTypeId(textureSize.type), image, m_module.consti32(0));
+        textureSize.id = m_module.opIMul(getVectorTypeId(textureSize.type), textureSize.id, m_module.constiReplicant(2, samplerInfo.dimensions));
+
+        textureSize.type = { DxsoScalarType::Float32, samplerInfo.dimensions };
+        textureSize.id = m_module.opConvertStoF(getVectorTypeId(textureSize.type), textureSize.id);
+        textureSize.id = m_module.opFDiv(getVectorTypeId(textureSize.type), m_module.constfReplicant(1.0f, samplerInfo.dimensions), textureSize.id);
+
+        // coord => same dimensions as texture size (no cube here !)
+        const std::array<uint32_t, 4> naturalIndices = { 0, 1, 2, 3 };
+        coordinates.type.ccount = samplerInfo.dimensions;
+        coordinates.id = m_module.opVectorShuffle(getVectorTypeId(coordinates.type), coordinates.id, coordinates.id, coordinates.type.ccount, naturalIndices.data());
+        // coord += textureSize;
+        coordinates.id = m_module.opFAdd(getVectorTypeId(coordinates.type), coordinates.id, textureSize.id);
+      }
+
+      uint32_t fetch4Val = m_module.opImageGather(resultType, sampledImage, coordinates.id, m_module.consti32(0), fetch4Operands);
       // A R G B swizzle... Funny D3D9 order.
       const std::array<uint32_t, 4> indices = { 3, 0, 1, 2 };
       fetch4Val = m_module.opVectorShuffle(resultType, fetch4Val, fetch4Val, indices.size(), indices.data());
