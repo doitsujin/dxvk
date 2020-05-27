@@ -26,8 +26,7 @@ namespace dxvk {
             D3DRESOURCETYPE           ResourceType)
       : D3D9Resource<Base...> ( pDevice )
       , m_texture             ( pDevice, pDesc, ResourceType )
-      , m_lod                 ( 0 )
-      , m_autogenFilter       ( D3DTEXF_LINEAR ) {
+      , m_lod                 ( 0 ) {
       const uint32_t arraySlices = m_texture.Desc()->ArraySize;
       const uint32_t mipLevels   = m_texture.Desc()->MipLevels;
 
@@ -75,12 +74,15 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE SetAutoGenFilterType(D3DTEXTUREFILTERTYPE FilterType) final {
-      m_autogenFilter = FilterType;
+      if (unlikely(FilterType == D3DTEXF_NONE))
+        return D3DERR_INVALIDCALL;
+
+      m_texture.SetMipFilter(FilterType);
       return D3D_OK;
     }
 
     D3DTEXTUREFILTERTYPE STDMETHODCALLTYPE GetAutoGenFilterType() final {
-      return m_autogenFilter;
+      return m_texture.GetMipFilter();
     }
 
     void STDMETHODCALLTYPE GenerateMipSubLevels() final {
@@ -104,7 +106,6 @@ namespace dxvk {
     D3D9CommonTexture m_texture;
 
     DWORD m_lod;
-    D3DTEXTUREFILTERTYPE m_autogenFilter;
 
     std::vector<SubresourceData> m_subresources;
 
