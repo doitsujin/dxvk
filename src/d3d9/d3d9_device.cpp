@@ -4207,9 +4207,10 @@ namespace dxvk {
   void D3D9DeviceEx::EmitGenerateMips(
     D3D9CommonTexture* pResource) {
     EmitCs([
-      cImageView = pResource->GetSampleView(false)
+      cImageView = pResource->GetSampleView(false),
+      cFilter    = pResource->GetMipFilter()
     ] (DxvkContext* ctx) {
-      ctx->generateMipmaps(cImageView, VK_FILTER_LINEAR);
+      ctx->generateMipmaps(cImageView, DecodeFilter(cFilter));
     });
   }
 
