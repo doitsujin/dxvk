@@ -4209,7 +4209,7 @@ namespace dxvk {
     EmitCs([
       cImageView = pResource->GetSampleView(false)
     ] (DxvkContext* ctx) {
-      ctx->generateMipmaps(cImageView);
+      ctx->generateMipmaps(cImageView, VK_FILTER_LINEAR);
     });
   }
 

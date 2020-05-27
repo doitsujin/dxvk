@@ -1105,7 +1105,7 @@ namespace dxvk {
 
     EmitCs([cDstImageView = view->GetImageView()]
     (DxvkContext* ctx) {
-      ctx->generateMipmaps(cDstImageView);
+      ctx->generateMipmaps(cDstImageView, VK_FILTER_LINEAR);
     });
   }
   

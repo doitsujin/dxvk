@@ -1427,7 +1427,8 @@ namespace dxvk {
   
   
   void DxvkContext::generateMipmaps(
-    const Rc<DxvkImageView>&        imageView) {
+    const Rc<DxvkImageView>&        imageView,
+          VkFilter                  filter) {
     if (imageView->info().numLevels <= 1)
       return;
     
@@ -1442,7 +1443,7 @@ namespace dxvk {
     // Common descriptor set properties that we use to
     // bind the source image view to the fragment shader
     VkDescriptorImageInfo descriptorImage;
-    descriptorImage.sampler     = m_common->metaBlit().getSampler(VK_FILTER_LINEAR);
+    descriptorImage.sampler     = m_common->metaBlit().getSampler(filter);
     descriptorImage.imageView   = VK_NULL_HANDLE;
     descriptorImage.imageLayout = imageView->imageInfo().layout;
     
