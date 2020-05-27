@@ -179,6 +179,10 @@ namespace dxvk {
     uint32_t constbReplicant(
             bool                    replicant,
             uint32_t                count);
+
+    uint32_t constiReplicant(
+            int32_t                 replicant,
+            uint32_t                count);
     
     uint32_t constComposite(
             uint32_t                typeId,
