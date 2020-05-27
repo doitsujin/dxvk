@@ -414,6 +414,24 @@ namespace dxvk {
     
     return this->constComposite(vectorTypeId, count, args.data());
   }
+
+
+  uint32_t SpirvModule::constuReplicant(
+          int32_t                 replicant,
+          uint32_t                count) {
+    uint32_t value = this->constu32(replicant);
+
+    std::array<uint32_t, 4> args = { value, value, value, value };
+
+    // Can't make a scalar composite.
+    if (count == 1)
+      return args[0];
+    
+    uint32_t scalarTypeId = this->defIntType(32, 0);
+    uint32_t vectorTypeId = this->defVectorType(scalarTypeId, count);
+    
+    return this->constComposite(vectorTypeId, count, args.data());
+  }
   
   
   uint32_t SpirvModule::constComposite(
