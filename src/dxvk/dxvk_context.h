@@ -624,9 +624,11 @@ namespace dxvk {
      * Uses blitting to generate lower mip levels from
      * the top-most mip level passed to this method.
      * \param [in] imageView The image to generate mips for
+     * \param [in] filter The filter to use for generation
      */
     void generateMipmaps(
-      const Rc<DxvkImageView>&        imageView);
+      const Rc<DxvkImageView>&        imageView,
+            VkFilter                  filter);
     
     /**
      * \brief Initializes or invalidates an image
