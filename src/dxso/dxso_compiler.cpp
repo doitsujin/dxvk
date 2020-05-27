@@ -3095,8 +3095,8 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       fetch4Operands.flags &= ~spv::ImageOperandsBiasMask;
 
       uint32_t fetch4Val = m_module.opImageGather(resultType, sampledImage, coordinates, m_module.consti32(0), fetch4Operands);
-      // B R G A swizzle... Funny D3D9 order.
-      const std::array<uint32_t, 4> indices = { 2, 0, 1, 3 };
+      // A R G B swizzle... Funny D3D9 order.
+      const std::array<uint32_t, 4> indices = { 3, 0, 1, 2 };
       fetch4Val = m_module.opVectorShuffle(resultType, fetch4Val, fetch4Val, indices.size(), indices.data());
 
       val = m_module.opSelect(resultType, fetch4, fetch4Val, val);
