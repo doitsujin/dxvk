@@ -1020,6 +1020,10 @@ namespace dxvk {
             uint32_t                resultType,
             uint32_t                interpolant,
             uint32_t                offset);
+
+    uint32_t opImage(
+            uint32_t                resultType,
+            uint32_t                sampledImage);
     
     uint32_t opImageRead(
             uint32_t                resultType,
