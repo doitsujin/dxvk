@@ -348,6 +348,10 @@ namespace dxvk {
       { "d3d9.longMad",                     "True" },
       { "d3d9.invariantPosition",           "True" },
     }} },
+    /* SpellForce 2: Faith in Destiny             */
+    { R"(\\SpellForce2FaithInDestiny\.exe$)", {{
+      { "d3d9.forceSamplerTypeSpecConstants", "True" },
+    }} },
   }};
 
 
