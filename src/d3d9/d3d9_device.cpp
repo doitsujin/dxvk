@@ -1133,11 +1133,11 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     D3D9Surface* rt = static_cast<D3D9Surface*>(pRenderTarget);
-    const auto* desc = rt != nullptr
-      ? rt->GetCommonTexture()->Desc()
+    D3D9CommonTexture* texInfo = rt != nullptr
+      ? rt->GetCommonTexture()
       : nullptr;
 
-    if (unlikely(desc && !(desc->Usage & D3DUSAGE_RENDERTARGET)))
+    if (unlikely(rt != nullptr && !(texInfo->Desc()->Usage & D3DUSAGE_RENDERTARGET)))
       return D3DERR_INVALIDCALL;
 
     if (RenderTargetIndex == 0) {
@@ -1185,14 +1185,19 @@ namespace dxvk {
 
     m_alphaSwizzleRTs &= ~(1 << RenderTargetIndex);
 
-    if (rt != nullptr && rt->GetCommonTexture()->GetMapping().Swizzle.a == VK_COMPONENT_SWIZZLE_ONE)
-      m_alphaSwizzleRTs |= 1 << RenderTargetIndex;
+    if (rt != nullptr) {
+      if (texInfo->GetMapping().Swizzle.a == VK_COMPONENT_SWIZZLE_ONE)
+        m_alphaSwizzleRTs |= 1 << RenderTargetIndex;
+
+      if (texInfo->IsAutomaticMip())
+        texInfo->SetNeedsMipGen(true);
+    }
 
     if (originalAlphaSwizzleRTs != m_alphaSwizzleRTs)
       m_flags.set(D3D9DeviceFlag::DirtyBlendState);
 
     if (RenderTargetIndex == 0) {
-      bool validSampleMask = desc->MultiSample > D3DMULTISAMPLE_NONMASKABLE;
+      bool validSampleMask = texInfo->Desc()->MultiSample > D3DMULTISAMPLE_NONMASKABLE;
 
       if (validSampleMask != m_flags.test(D3D9DeviceFlag::ValidSampleMask)) {
         m_flags.clr(D3D9DeviceFlag::ValidSampleMask);
