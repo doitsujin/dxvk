@@ -2969,6 +2969,19 @@ namespace dxvk {
     m_code.putWord(offset);
     return resultId;
   }
+
+
+  uint32_t SpirvModule::opImage(
+          uint32_t                resultType,
+          uint32_t                sampledImage) {
+    uint32_t resultId = this->allocateId();
+
+    m_code.putIns(spv::OpImage, 4);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(sampledImage);
+    return resultId;
+  }
   
   
   uint32_t SpirvModule::opImageRead(
