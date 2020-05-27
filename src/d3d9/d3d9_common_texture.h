@@ -359,6 +359,9 @@ namespace dxvk {
 
     DWORD ExposedMipLevels() { return m_exposedMipLevels; }
 
+    void SetMipFilter(D3DTEXTUREFILTERTYPE filter) { m_mipFilter = filter; }
+    D3DTEXTUREFILTERTYPE GetMipFilter() const { return m_mipFilter; }
+
   private:
 
     D3D9DeviceEx*                 m_device;
@@ -399,6 +402,8 @@ namespace dxvk {
     DWORD                         m_exposedMipLevels = 0;
 
     bool                          m_needsMipGen = false;
+
+    D3DTEXTUREFILTERTYPE          m_mipFilter = D3DTEXF_LINEAR;
 
     /**
      * \brief Mip level
