@@ -780,12 +780,8 @@ namespace dxvk {
     InitReturnPtr(ppGeometryShader);
     D3D11CommonShader module;
 
-    if (!m_dxvkDevice->features().extTransformFeedback.transformFeedback) {
-      Logger::err(
-        "D3D11: CreateGeometryShaderWithStreamOutput:"
-        "\n  Transform feedback not supported by device");
-      return S_OK;
-    }
+    if (!m_dxvkDevice->features().extTransformFeedback.transformFeedback)
+      return DXGI_ERROR_INVALID_CALL;
 
     // Zero-init some counterss so that we can increment
     // them while walking over the stream output entries
@@ -1949,8 +1945,8 @@ namespace dxvk {
       enabled.core.features.shaderImageGatherExtended             = VK_TRUE;
       enabled.core.features.variableMultisampleRate               = supported.core.features.variableMultisampleRate;
       enabled.extConditionalRendering.conditionalRendering        = supported.extConditionalRendering.conditionalRendering;
-      enabled.extTransformFeedback.transformFeedback              = supported.extTransformFeedback.transformFeedback;
-      enabled.extTransformFeedback.geometryStreams                = supported.extTransformFeedback.geometryStreams;
+      enabled.extTransformFeedback.transformFeedback              = VK_TRUE;
+      enabled.extTransformFeedback.geometryStreams                = VK_TRUE;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_10_1) {
