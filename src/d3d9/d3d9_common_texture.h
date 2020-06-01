@@ -302,15 +302,19 @@ namespace dxvk {
 
     const D3D9_VK_FORMAT_MAPPING& GetMapping() { return m_mapping; }
 
-    bool MarkLocked(UINT Subresource, bool value) { return m_locked.exchange(Subresource, value); }
+    void SetLocked(UINT Subresource, bool value) { m_locked.set(Subresource, value); }
 
-    bool SetDirty(UINT Subresource, bool value) { return m_dirty.exchange(Subresource, value); }
+    bool GetLocked(UINT Subresource) const { return m_locked.get(Subresource); }
+
+    void SetDirty(UINT Subresource, bool value) { m_dirty.set(Subresource, value); }
+
+    bool GetDirty(UINT Subresource) const { return m_dirty.get(Subresource); }
 
     void MarkAllDirty() { m_dirty.setAll(); }
 
     void SetReadOnlyLocked(UINT Subresource, bool readOnly) { return m_readOnly.set(Subresource, readOnly); }
 
-    bool GetReadOnlyLocked(UINT Subresource) { return m_readOnly.get(Subresource); }
+    bool GetReadOnlyLocked(UINT Subresource) const { return m_readOnly.get(Subresource); }
 
     const Rc<DxvkImageView>& GetSampleView(bool srgb) const {
       return m_sampleView.Pick(srgb && IsSrgbCompatible());

@@ -3893,7 +3893,7 @@ namespace dxvk {
     UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
 
     // Don't allow multiple lockings.
-    if (unlikely(pResource->MarkLocked(Subresource, true)))
+    if (unlikely(pResource->GetLocked(Subresource)))
       return D3DERR_INVALIDCALL;
 
     if (unlikely((Flags & (D3DLOCK_DISCARD | D3DLOCK_READONLY)) == (D3DLOCK_DISCARD | D3DLOCK_READONLY)))
@@ -3959,7 +3959,8 @@ namespace dxvk {
     // If we are dirty, then we need to copy -> buffer
     // We are also always dirty if we are a render target,
     // a depth stencil, or auto generate mipmaps.
-    bool dirty = pResource->SetDirty(Subresource, false) || renderable;
+    bool dirty = pResource->GetDirty(Subresource) || renderable;
+    pResource->SetDirty(Subresource, false);
       
     DxvkBufferSliceHandle physSlice;
       
@@ -4095,6 +4096,8 @@ namespace dxvk {
       pLockedBox->SlicePitch = formatInfo->elementSize * blockCount.width * blockCount.height;
     }
 
+    pResource->SetLocked(Subresource, true);
+
     const uint32_t offset = CalcImageLockOffset(
       pLockedBox->SlicePitch,
       pLockedBox->RowPitch,
@@ -4117,8 +4120,10 @@ namespace dxvk {
     UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
 
     // We weren't locked anyway!
-    if (unlikely(!pResource->MarkLocked(Subresource, false)))
+    if (unlikely(!pResource->GetLocked(Subresource)))
       return D3DERR_INVALIDCALL;
+
+    pResource->SetLocked(Subresource, false);
 
     // Do we have a pending copy?
     if (!pResource->GetReadOnlyLocked(Subresource)) {
