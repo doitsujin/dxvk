@@ -3110,7 +3110,12 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
         textureSize.type = { DxsoScalarType::Float32, samplerInfo.dimensions };
         textureSize.id = m_module.opConvertStoF(getVectorTypeId(textureSize.type), textureSize.id);
-        textureSize.id = m_module.opFDiv(getVectorTypeId(textureSize.type), m_module.constfReplicant(1.0f, samplerInfo.dimensions), textureSize.id);
+        // HACK: Bias fetch4 half-texel offset to avoid a "grid" effect.
+        // Technically we should only do that for non-powers of two
+        // as only then does the imprecision need to be biased
+        // towards infinity -- but that's not really worth doing...
+        float numerator = 1.0f - 1.0f / 256.0f;
+        textureSize.id = m_module.opFDiv(getVectorTypeId(textureSize.type), m_module.constfReplicant(numerator, samplerInfo.dimensions), textureSize.id);
 
         // coord => same dimensions as texture size (no cube here !)
         const std::array<uint32_t, 4> naturalIndices = { 0, 1, 2, 3 };
