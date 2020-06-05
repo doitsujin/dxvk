@@ -4137,7 +4137,7 @@ namespace dxvk {
 
     // We weren't locked anyway!
     if (unlikely(!pResource->GetLocked(Subresource)))
-      return D3DERR_INVALIDCALL;
+      return D3D_OK;
 
     pResource->SetLocked(Subresource, false);
 
