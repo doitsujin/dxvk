@@ -3952,7 +3952,8 @@ namespace dxvk {
     if (desc.Usage & D3DUSAGE_WRITEONLY)
       Flags &= ~D3DLOCK_READONLY;
 
-    pResource->SetReadOnlyLocked(Subresource, Flags & D3DLOCK_READONLY);
+    const bool readOnly = Flags & D3DLOCK_READONLY;
+    pResource->SetReadOnlyLocked(Subresource, readOnly);
 
     bool renderable = desc.Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL);
 
@@ -3988,7 +3989,6 @@ namespace dxvk {
       // or is reading. Remember! This will only trigger for MANAGED resources
       // that cannot get affected by GPU, therefore readonly is A-OK for NOT waiting.
       const bool uploading = pResource->GetUploading(Subresource);
-      const bool readOnly = Flags & D3DLOCK_READONLY;
       const bool skipWait = (managed && !uploading) || (readOnly && managed) || scratch || (readOnly && systemmem && !dirty);
 
       if (alloced)
@@ -4098,7 +4098,7 @@ namespace dxvk {
 
     pResource->SetLocked(Subresource, true);
 
-    if (pResource->IsManaged() && !m_d3d9Options.evictManagedOnUnlock) {
+    if (pResource->IsManaged() && !m_d3d9Options.evictManagedOnUnlock && !readOnly) {
       pResource->SetNeedsUpload(Subresource, true);
 
       for (uint32_t tex = m_activeTextures; tex; tex &= tex - 1) {
