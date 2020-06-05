@@ -147,10 +147,6 @@ namespace dxvk {
     /// Tear-free mode if vsync is disabled
     /// Tearing mode if vsync is enabled
     Tristate tearFree;
-
-    /// Upload all subresources of managed resources when unlocked.
-    /// Workaround for a game bug in Nekopara.
-    bool uploadAllManagedSubresources;
   };
 
 }

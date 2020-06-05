@@ -355,13 +355,6 @@ namespace dxvk {
     bool GetUploading(UINT Subresource) const { return m_uploading.get(Subresource); }
 
     void SetNeedsUpload(UINT Subresource, bool upload) { m_needsUpload.set(Subresource, upload); }
-    void MarkAllForUpload() {
-      uint32_t subresourceDwords = CountSubresources() / 32;
-      for (uint32_t i = 0; i < subresourceDwords; i++)
-        m_needsUpload.dword(i) = std::numeric_limits<uint32_t>::max();
-
-      m_needsUpload.dword(subresourceDwords) = CountSubresources() % 32;
-    }
     bool NeedsAnyUpload() { return m_needsUpload.any(); }
     void ClearNeedsUpload() { return m_needsUpload.clearAll();  }
 

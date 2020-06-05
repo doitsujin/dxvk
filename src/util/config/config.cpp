@@ -352,10 +352,6 @@ namespace dxvk {
     { R"(\\SpellForce2.*\.exe$)", {{
       { "d3d9.forceSamplerTypeSpecConstants", "True" },
     }} },
-    /* Nekopara                                   */
-    { R"(\\nekopara.*\.exe$)", {{
-      { "d3d9.uploadAllManagedSubresources", "True" },
-    }} },
   }};
 
 
