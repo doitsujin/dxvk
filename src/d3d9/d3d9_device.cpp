@@ -4098,6 +4098,22 @@ namespace dxvk {
 
     pResource->SetLocked(Subresource, true);
 
+    if (pResource->IsManaged() && !m_d3d9Options.evictManagedOnUnlock) {
+      pResource->SetNeedsUpload(Subresource, true);
+
+      for (uint32_t tex = m_activeTextures; tex; tex &= tex - 1) {
+        // Guaranteed to not be nullptr...
+        const uint32_t i = bit::tzcnt(tex);
+        auto texInfo = GetCommonTexture(m_state.textures[i]);
+
+        if (texInfo == pResource) {
+          m_activeTexturesToUpload |= 1 << i;
+          // We can early out here, no need to add another index for this.
+          break;
+        }
+      }
+    }
+
     const uint32_t offset = CalcImageLockOffset(
       pLockedBox->SlicePitch,
       pLockedBox->RowPitch,
@@ -4125,31 +4141,22 @@ namespace dxvk {
 
     pResource->SetLocked(Subresource, false);
 
-    // Do we have a pending copy?
-    if (!pResource->GetReadOnlyLocked(Subresource)) {
-      // Only flush buffer -> image if we actually have an image
-      if (pResource->IsManaged() && !m_d3d9Options.evictManagedOnUnlock) {
-        pResource->SetNeedsUpload(Subresource, true);
+    // Flush image contents from staging if we aren't read only
+    // and we aren't deferring for managed.
+    bool shouldFlush  = pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED;
+         shouldFlush &= !pResource->GetReadOnlyLocked(Subresource);
+         shouldFlush &= !pResource->IsManaged() || m_d3d9Options.evictManagedOnUnlock;
 
-        for (uint32_t tex = m_activeTextures; tex; tex &= tex - 1) {
-          // Guaranteed to not be nullptr...
-          const uint32_t i = bit::tzcnt(tex);
-          auto texInfo = GetCommonTexture(m_state.textures[i]);
-
-          if (texInfo == pResource) {
-            m_activeTexturesToUpload |= 1 << i;
-            // We can early out here, no need to add another index for this.
-            break;
-          }
-        }
-      }
-      else if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED)
+    if (shouldFlush)
         this->FlushImage(pResource, Subresource);
-    }
 
-    if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED
-    && (!pResource->IsDynamic())
-    && (!pResource->IsManaged() || m_d3d9Options.evictManagedOnUnlock)) {
+    // Toss our staging buffer if we're not dynamic
+    // and we aren't managed (for sysmem copy.)
+    bool shouldToss  = pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED;
+         shouldToss &= !pResource->IsDynamic();
+         shouldToss &= !pResource->IsManaged() || m_d3d9Options.evictManagedOnUnlock;
+
+    if (shouldToss) {
       pResource->DestroyBufferSubresource(Subresource);
       pResource->SetDirty(Subresource, true);
     }
