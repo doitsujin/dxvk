@@ -352,6 +352,10 @@ namespace dxvk {
     { R"(\\SpellForce2FaithInDestiny\.exe$)", {{
       { "d3d9.forceSamplerTypeSpecConstants", "True" },
     }} },
+    /* Nekopara                                   */
+    { R"(\\nekopara.*\.exe$)", {{
+      { "d3d9.uploadAllManagedSubresources", "True" },
+    }} },
   }};
 
 
