@@ -348,8 +348,8 @@ namespace dxvk {
       { "d3d9.longMad",                     "True" },
       { "d3d9.invariantPosition",           "True" },
     }} },
-    /* SpellForce 2: Faith in Destiny             */
-    { R"(\\SpellForce2FaithInDestiny\.exe$)", {{
+    /* SpellForce 2 Series                        */
+    { R"(\\SpellForce2.*\.exe$)", {{
       { "d3d9.forceSamplerTypeSpecConstants", "True" },
     }} },
     /* Nekopara                                   */
