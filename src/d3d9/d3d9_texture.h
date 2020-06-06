@@ -77,6 +77,8 @@ namespace dxvk {
       if (unlikely(FilterType == D3DTEXF_NONE))
         return D3DERR_INVALIDCALL;
 
+      auto lock = this->m_parent->LockDevice();
+
       m_texture.SetMipFilter(FilterType);
       return D3D_OK;
     }
@@ -88,6 +90,8 @@ namespace dxvk {
     void STDMETHODCALLTYPE GenerateMipSubLevels() final {
       if (!m_texture.NeedsMipGen())
         return;
+
+      auto lock = this->m_parent->LockDevice();
 
       this->m_parent->MarkTextureMipsUnDirty(&m_texture);
       this->m_parent->EmitGenerateMips(&m_texture);
