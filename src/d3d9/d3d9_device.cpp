@@ -4219,6 +4219,9 @@ namespace dxvk {
 
   void D3D9DeviceEx::EmitGenerateMips(
     D3D9CommonTexture* pResource) {
+    if (pResource->IsManaged())
+      UploadManagedTexture(pResource);
+
     EmitCs([
       cImageView = pResource->GetSampleView(false),
       cFilter    = pResource->GetMipFilter()
