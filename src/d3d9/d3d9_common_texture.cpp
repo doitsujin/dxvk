@@ -466,11 +466,12 @@ namespace dxvk {
 
 
   void D3D9CommonTexture::PreLoadAll() {
-    if (IsManaged()) {
-      auto lock = m_device->LockDevice();
+    if (!IsManaged())
+      return;
 
-      m_device->UploadManagedTexture(this);
-    }
+    auto lock = m_device->LockDevice();
+    m_device->UploadManagedTexture(this);
+    m_device->MarkTextureUploaded(this);
   }
 
 
@@ -481,6 +482,9 @@ namespace dxvk {
       if (GetNeedsUpload(Subresource)) {
         m_device->FlushImage(this, Subresource);
         SetNeedsUpload(Subresource, false);
+
+        if (!NeedsAnyUpload())
+          m_device->MarkTextureUploaded(this);
       }
     }
   }

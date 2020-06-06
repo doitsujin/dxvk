@@ -4891,12 +4891,11 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::UploadManagedTexture(D3D9CommonTexture* pResource) {
-    for (uint32_t i = 0; i < pResource->GetUploadBitmask().dwordCount(); i++) {
-      for (uint32_t subresources = pResource->GetUploadBitmask().dword(i); subresources; subresources &= subresources - 1) {
-        uint32_t subresource = i * 32 + bit::tzcnt(subresources);
+    for (uint32_t subresource = 0; subresource < pResource->CountSubresources(); subresource++) {
+      if (!pResource->GetNeedsUpload(subresource))
+        continue;
 
-        this->FlushImage(pResource, subresource);
-      }
+      this->FlushImage(pResource, subresource);
     }
 
     pResource->ClearNeedsUpload();
@@ -4954,6 +4953,18 @@ namespace dxvk {
 
       if (texInfo == pResource)
         m_activeTexturesToGen &= ~(1 << i);
+    }
+  }
+
+
+  void D3D9DeviceEx::MarkTextureUploaded(D3D9CommonTexture* pResource) {
+    for (uint32_t tex = m_activeTextures; tex; tex &= tex - 1) {
+      // Guaranteed to not be nullptr...
+      const uint32_t i = bit::tzcnt(tex);
+      auto texInfo = GetCommonTexture(m_state.textures[i]);
+
+      if (texInfo == pResource)
+        m_activeTexturesToUpload &= ~(1 << i);
     }
   }
 
