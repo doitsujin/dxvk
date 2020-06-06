@@ -50,6 +50,16 @@ namespace dxvk {
   }
 
 
+  void D3D9CommonBuffer::PreLoad() {
+    if (IsPoolManaged(m_desc.Pool)) {
+      auto lock = m_parent->LockDevice();
+
+      if (NeedsUpload())
+        m_parent->FlushBuffer(this);
+    }
+  }
+
+
   Rc<DxvkBuffer> D3D9CommonBuffer::CreateBuffer() const {
     DxvkBufferCreateInfo  info;
     info.size   = m_desc.Size;

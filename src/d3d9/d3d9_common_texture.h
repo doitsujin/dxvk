@@ -355,6 +355,7 @@ namespace dxvk {
     bool GetUploading(UINT Subresource) const { return m_uploading.get(Subresource); }
 
     void SetNeedsUpload(UINT Subresource, bool upload) { m_needsUpload.set(Subresource, upload); }
+    bool GetNeedsUpload(UINT Subresource) const        { return m_needsUpload.get(Subresource); }
     bool NeedsAnyUpload() { return m_needsUpload.any(); }
     void ClearNeedsUpload() { return m_needsUpload.clearAll();  }
 
@@ -365,6 +366,9 @@ namespace dxvk {
 
     void SetMipFilter(D3DTEXTUREFILTERTYPE filter) { m_mipFilter = filter; }
     D3DTEXTUREFILTERTYPE GetMipFilter() const { return m_mipFilter; }
+
+    void PreLoadAll();
+    void PreLoadSubresource(UINT Subresource);
 
   private:
 

@@ -70,9 +70,6 @@ namespace dxvk {
       return m_priority;
     }
 
-    void STDMETHODCALLTYPE PreLoad() {
-    }
-
 
   protected:
 

@@ -93,6 +93,10 @@ namespace dxvk {
       this->m_parent->EmitGenerateMips(&m_texture);
     }
 
+    void STDMETHODCALLTYPE PreLoad() final {
+      m_texture.PreLoadAll();
+    }
+
     D3D9CommonTexture* GetCommonTexture() {
       return &m_texture;
     }

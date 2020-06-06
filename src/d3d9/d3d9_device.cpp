@@ -4120,6 +4120,7 @@ namespace dxvk {
       (!atiHack) ? formatInfo : nullptr,
       pBox);
 
+
     uint8_t* data = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
     data += offset;
     pLockedBox->pBits = data;
@@ -4886,21 +4887,23 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::UploadManagedTextures(uint32_t mask) {
-    for (uint32_t tex = mask; tex; tex &= tex - 1) {
-      // Guaranteed to not be nullptr...
-      auto texInfo = GetCommonTexture(m_state.textures[bit::tzcnt(tex)]);
+  void D3D9DeviceEx::UploadManagedTexture(D3D9CommonTexture* pResource) {
+    for (uint32_t i = 0; i < pResource->GetUploadBitmask().dwordCount(); i++) {
+      for (uint32_t subresources = pResource->GetUploadBitmask().dword(i); subresources; subresources &= subresources - 1) {
+        uint32_t subresource = i * 32 + bit::tzcnt(subresources);
 
-      for (uint32_t i = 0; i < texInfo->GetUploadBitmask().dwordCount(); i++) {
-        for (uint32_t subresources = texInfo->GetUploadBitmask().dword(i); subresources; subresources &= subresources - 1) {
-          uint32_t subresource = i * 32 + bit::tzcnt(subresources);
-
-          this->FlushImage(texInfo, subresource);
-        }
+        this->FlushImage(pResource, subresource);
       }
-
-      texInfo->ClearNeedsUpload();
     }
+
+    pResource->ClearNeedsUpload();
+  }
+
+
+  void D3D9DeviceEx::UploadManagedTextures(uint32_t mask) {
+    // Guaranteed to not be nullptr...
+    for (uint32_t tex = mask; tex; tex &= tex - 1)
+      UploadManagedTexture(GetCommonTexture(m_state.textures[bit::tzcnt(tex)]));
 
     m_activeTexturesToUpload &= ~mask;
   }

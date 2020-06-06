@@ -163,6 +163,8 @@ namespace dxvk {
       return locked;
     }
 
+    void PreLoad();
+
   private:
 
     Rc<DxvkBuffer> CreateBuffer() const;
