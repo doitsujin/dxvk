@@ -748,6 +748,8 @@ namespace dxvk {
 
     void MarkRenderHazards();
 
+    void UploadManagedTexture(D3D9CommonTexture* pResource);
+
     void UploadManagedTextures(uint32_t mask);
 
     void GenerateTextureMips(uint32_t mask);

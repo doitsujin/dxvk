@@ -52,6 +52,10 @@ namespace dxvk {
       return this->GetDevice()->QueryInterface(riid, ppContainer);
     }
 
+    void STDMETHODCALLTYPE PreLoad() {
+      m_texture->PreLoadSubresource(GetSubresource());
+    }
+
     D3D9CommonTexture* GetCommonTexture() {
       return m_texture;
     }

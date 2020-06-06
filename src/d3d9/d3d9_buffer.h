@@ -33,6 +33,10 @@ namespace dxvk {
       return m_buffer.Unlock();
     }
 
+    void STDMETHODCALLTYPE PreLoad() final {
+      m_buffer.PreLoad();
+    }
+
     D3D9CommonBuffer* GetCommonBuffer() {
       return &m_buffer;
     }

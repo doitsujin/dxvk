@@ -465,6 +465,27 @@ namespace dxvk {
   }
 
 
+  void D3D9CommonTexture::PreLoadAll() {
+    if (IsManaged()) {
+      auto lock = m_device->LockDevice();
+
+      m_device->UploadManagedTexture(this);
+    }
+  }
+
+
+  void D3D9CommonTexture::PreLoadSubresource(UINT Subresource) {
+    if (IsManaged()) {
+      auto lock = m_device->LockDevice();
+
+      if (GetNeedsUpload(Subresource)) {
+        m_device->FlushImage(this, Subresource);
+        SetNeedsUpload(Subresource, false);
+      }
+    }
+  }
+
+
   void D3D9CommonTexture::CreateSampleView(UINT Lod) {
     // This will be a no-op for SYSTEMMEM types given we
     // don't expose the cap to allow texturing with them.
