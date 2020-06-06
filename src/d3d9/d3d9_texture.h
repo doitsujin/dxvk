@@ -80,6 +80,7 @@ namespace dxvk {
       auto lock = this->m_parent->LockDevice();
 
       m_texture.SetMipFilter(FilterType);
+      this->m_parent->MarkTextureMipsDirty(&m_texture);
       return D3D_OK;
     }
 
