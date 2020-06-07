@@ -430,7 +430,7 @@ namespace dxvk::vk {
           uint32_t                  desired) {
     uint32_t count = caps.minImageCount;
     
-    if (presentMode != VK_PRESENT_MODE_IMMEDIATE_KHR)
+    if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR)
       count = caps.minImageCount + 1;
     
     if (count < desired)
