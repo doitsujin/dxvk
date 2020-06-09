@@ -201,6 +201,10 @@ namespace dxvk {
     { R"(\\SecretWorldLegendsDX11\.exe$)", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
     }} },
+    /* Stars End                                  */
+    { R"(\\Stars End\.exe$)", {{
+      { "d3d11.enableRtOutputNanFixup",     "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
