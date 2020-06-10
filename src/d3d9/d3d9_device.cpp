@@ -3971,7 +3971,7 @@ namespace dxvk {
       physSlice = pResource->DiscardMapSlice(Subresource);
 
       EmitCs([
-        cImageBuffer = mappedBuffer,
+        cImageBuffer = std::move(mappedBuffer),
         cBufferSlice = physSlice
       ] (DxvkContext* ctx) {
         ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
@@ -3992,7 +3992,21 @@ namespace dxvk {
 
       if (alloced)
         std::memset(physSlice.mapPtr, 0, physSlice.length);
-      else if (!skipWait) {
+      else if (managed && !skipWait) {
+        if (!WaitForResource(mappedBuffer, D3DLOCK_DONOTWAIT)) {
+          // if the mapped buffer is currently being copied to image and it's small enough
+          // we can just avoid a stall by allocating a new slice and copying the existing contents
+          DxvkBufferSliceHandle oldSlice = physSlice;
+          physSlice = pResource->DiscardMapSlice(Subresource);
+          std::memcpy(physSlice.mapPtr, oldSlice.mapPtr, oldSlice.length);
+          EmitCs([
+            cImageBuffer = std::move(mappedBuffer),
+            cBufferSlice = physSlice
+          ] (DxvkContext* ctx) {
+            ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
+          });
+        }
+      } else if (!skipWait) {
         if (!WaitForResource(mappedBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
       }
@@ -4314,15 +4328,30 @@ namespace dxvk {
       const bool skipWait = (Flags & D3DLOCK_NOOVERWRITE) ||
                             quickRead                     ||
                             (boundsCheck && !pResource->DirtyRange().Overlaps(pResource->LockRange()));
-
       if (!skipWait) {
-        if (!(Flags & D3DLOCK_DONOTWAIT)) {
-          pResource->SetReadLocked(false);
-          pResource->DirtyRange().Clear();
-        }
+        if (IsPoolManaged(desc.Pool)) {
+          if (!WaitForResource(mappingBuffer, D3DLOCK_DONOTWAIT)) {
+            // if the mapped buffer is currently being copied to the primary buffer and it's small enough
+            // we can just avoid a stall by allocating a new slice and copying the existing contents
+            DxvkBufferSliceHandle oldSlice = physSlice;
+            physSlice = pResource->DiscardMapSlice();
+            std::memcpy(physSlice.mapPtr, oldSlice.mapPtr, oldSlice.length);
+            EmitCs([
+              cBuffer = std::move(mappingBuffer),
+              cBufferSlice = physSlice
+            ] (DxvkContext* ctx) {
+              ctx->invalidateBuffer(cBuffer, cBufferSlice);
+            });
+          }
+        } else {
+          if (!(Flags & D3DLOCK_DONOTWAIT)) {
+            pResource->SetReadLocked(false);
+            pResource->DirtyRange().Clear();
+          }
 
-        if (!WaitForResource(mappingBuffer, Flags))
-          return D3DERR_WASSTILLDRAWING;
+          if (!WaitForResource(mappingBuffer, Flags))
+            return D3DERR_WASSTILLDRAWING;
+        }
       }
 
       // Use map pointer from previous map operation. This
