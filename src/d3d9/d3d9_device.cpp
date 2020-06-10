@@ -3988,16 +3988,13 @@ namespace dxvk {
       // calling app promises not to overwrite data that is in use
       // or is reading. Remember! This will only trigger for MANAGED resources
       // that cannot get affected by GPU, therefore readonly is A-OK for NOT waiting.
-      const bool uploading = pResource->GetUploading(Subresource);
-      const bool skipWait = (managed && !uploading) || (readOnly && managed) || scratch || (readOnly && systemmem && !dirty);
+      const bool skipWait = (readOnly && managed) || scratch || (readOnly && systemmem && !dirty);
 
       if (alloced)
         std::memset(physSlice.mapPtr, 0, physSlice.length);
       else if (!skipWait) {
         if (!WaitForResource(mappedBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
-
-        pResource->ClearUploading();
       }
     }
     else {
@@ -4188,8 +4185,6 @@ namespace dxvk {
       subresource.arrayLayer, 1 };
 
     auto convertFormat = pResource->GetFormatMapping().ConversionFormatInfo;
-
-    pResource->SetUploading(Subresource, true);
 
     if (likely(convertFormat.FormatType == D3D9ConversionFormat_None)) {
       EmitCs([

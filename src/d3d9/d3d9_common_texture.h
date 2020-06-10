@@ -350,10 +350,6 @@ namespace dxvk {
             bool                   Srgb);
     D3D9SubresourceBitset& GetUploadBitmask() { return m_needsUpload; }
 
-    void SetUploading(UINT Subresource, bool uploading) { m_uploading.set(Subresource, uploading); }
-    void ClearUploading() { m_uploading.clearAll(); }
-    bool GetUploading(UINT Subresource) const { return m_uploading.get(Subresource); }
-
     void SetNeedsUpload(UINT Subresource, bool upload) { m_needsUpload.set(Subresource, upload); }
     bool GetNeedsUpload(UINT Subresource) const        { return m_needsUpload.get(Subresource); }
     bool NeedsAnyUpload() { return m_needsUpload.any(); }
@@ -404,7 +400,6 @@ namespace dxvk {
 
     D3D9SubresourceBitset         m_dirty = { };
 
-    D3D9SubresourceBitset         m_uploading = { };
     D3D9SubresourceBitset         m_needsUpload = { };
 
     DWORD                         m_exposedMipLevels = 0;
