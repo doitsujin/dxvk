@@ -76,8 +76,8 @@ namespace dxvk {
     { R"(\\ffxiv_dx11\.exe$)", {{
       { "d3d11.enableRtOutputNanFixup",     "True" },
     }} },
-    /* Resident Evil 2/3/7: Ignore WaW hazards    */
-    { R"(\\re(2|3|3demo|7|7trial)\.exe$)", {{
+    /* Resident Evil 2/3: Ignore WaW hazards      */
+    { R"(\\re(2|3|3demo)\.exe$)", {{
       { "d3d11.relaxedBarriers",            "True" },
     }} },
     /* Devil May Cry 5                            */
