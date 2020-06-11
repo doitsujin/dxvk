@@ -4317,6 +4317,9 @@ namespace dxvk {
       ] (DxvkContext* ctx) {
         ctx->invalidateBuffer(cBuffer, cBufferSlice);
       });
+
+      pResource->SetReadLocked(false);
+      pResource->DirtyRange().Clear();
     }
     else {
       // NOOVERWRITE promises that they will not write in a currently used area.
@@ -4344,14 +4347,12 @@ namespace dxvk {
             });
           }
         } else {
-          if (!(Flags & D3DLOCK_DONOTWAIT)) {
-            pResource->SetReadLocked(false);
-            pResource->DirtyRange().Clear();
-          }
-
           if (!WaitForResource(mappingBuffer, Flags))
             return D3DERR_WASSTILLDRAWING;
         }
+
+        pResource->SetReadLocked(false);
+        pResource->DirtyRange().Clear();
       }
 
       // Use map pointer from previous map operation. This
