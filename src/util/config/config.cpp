@@ -205,6 +205,10 @@ namespace dxvk {
     { R"(\\Stars End\.exe$)", {{
       { "d3d11.enableRtOutputNanFixup",     "True" },
     }} },
+    /* Borderlands 3                              */
+    { R"(\\Borderlands3\.exe$)", {{
+      { "d3d11.invariantPosition",          "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
