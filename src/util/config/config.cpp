@@ -209,6 +209,10 @@ namespace dxvk {
     { R"(\\Borderlands3\.exe$)", {{
       { "d3d11.invariantPosition",          "True" },
     }} },
+    /* Terminator: Resistance                     */
+    { R"(\\Terminator-Win64-Shipping\.exe$)", {{
+      { "d3d11.invariantPosition",          "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
