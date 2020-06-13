@@ -3531,10 +3531,22 @@ namespace dxvk {
       constexpr DWORD Fetch4Disabled = MAKEFOURCC('G', 'E', 'T', '1');
 
       if (Type == D3DSAMP_MIPMAPLODBIAS) {
-        if (Value == Fetch4Enabled)
+        if (Value == Fetch4Enabled) {
           m_fetch4Enabled |= 1u << StateSampler;
-        else if (Value == Fetch4Disabled)
+          if (state[StateSampler][D3DSAMP_MAGFILTER] == D3DTEXF_POINT)
+            m_fetch4 |= 1u << StateSampler;
+        }
+        else if (Value == Fetch4Disabled) {
           m_fetch4Enabled &= ~(1u << StateSampler);
+          m_fetch4        &= ~(1u << StateSampler);
+        }
+      }
+
+      if (Type == D3DSAMP_MAGFILTER && m_fetch4Enabled & (1u << StateSampler)) {
+        if (Value == D3DTEXF_POINT)
+          m_fetch4 |=   1u << StateSampler;
+        else
+          m_fetch4 &= ~(1u << StateSampler);
       }
     }
 
@@ -5759,7 +5771,7 @@ namespace dxvk {
 
       const uint32_t psTextureMask = m_activeTextures & m_psShaderMasks.samplerMask;
 
-      uint32_t fetch4    = m_fetch4Enabled      & psTextureMask;
+      uint32_t fetch4    = m_fetch4             & psTextureMask;
       uint32_t projected = m_projectionBitfield & psTextureMask;
 
       if (GetCommonShader(m_state.pixelShader)->GetInfo().majorVersion() >= 2)

@@ -1048,6 +1048,7 @@ namespace dxvk {
     uint32_t                        m_activeTexturesToGen    = 0;
 
     uint32_t                        m_fetch4Enabled = 0;
+    uint32_t                        m_fetch4        = 0;
     uint32_t                        m_lastFetch4    = 0;
 
     uint32_t                        m_activeHazardsDS = 0;
