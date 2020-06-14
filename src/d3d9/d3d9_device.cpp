@@ -4006,7 +4006,7 @@ namespace dxvk {
         std::memset(physSlice.mapPtr, 0, physSlice.length);
       else if (managed && !skipWait) {
         if (!WaitForResource(mappedBuffer, D3DLOCK_DONOTWAIT)) {
-          // if the mapped buffer is currently being copied to image and it's small enough
+          // if the mapped buffer is currently being copied to image
           // we can just avoid a stall by allocating a new slice and copying the existing contents
           DxvkBufferSliceHandle oldSlice = physSlice;
           physSlice = pResource->DiscardMapSlice(Subresource);
@@ -4334,6 +4334,11 @@ namespace dxvk {
       pResource->DirtyRange().Clear();
     }
     else {
+      // Use map pointer from previous map operation. This
+      // way we don't have to synchronize with the CS thread
+      // if the map mode is D3DLOCK_NOOVERWRITE.
+      physSlice = pResource->GetMappedSlice();
+
       // NOOVERWRITE promises that they will not write in a currently used area.
       // Therefore we can skip waiting for these two cases.
       // We can also skip waiting if there is not dirty range overlap, if we are one of those resources.
@@ -4346,7 +4351,7 @@ namespace dxvk {
       if (!skipWait) {
         if (IsPoolManaged(desc.Pool)) {
           if (!WaitForResource(mappingBuffer, D3DLOCK_DONOTWAIT)) {
-            // if the mapped buffer is currently being copied to the primary buffer and it's small enough
+            // if the mapped buffer is currently being copied to the primary buffer
             // we can just avoid a stall by allocating a new slice and copying the existing contents
             DxvkBufferSliceHandle oldSlice = physSlice;
             physSlice = pResource->DiscardMapSlice();
@@ -4366,11 +4371,6 @@ namespace dxvk {
         pResource->SetReadLocked(false);
         pResource->DirtyRange().Clear();
       }
-
-      // Use map pointer from previous map operation. This
-      // way we don't have to synchronize with the CS thread
-      // if the map mode is D3DLOCK_NOOVERWRITE.
-      physSlice = pResource->GetMappedSlice();
     }
 
     uint8_t* data = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
