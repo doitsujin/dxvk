@@ -213,6 +213,10 @@ namespace dxvk {
     { R"(\\Terminator-Win64-Shipping\.exe$)", {{
       { "d3d11.invariantPosition",          "True" },
     }} },
+    /* Star Wars Jedi: Fallen Order               */
+    { R"(\\starwarsjedifallenorder\.exe$)", {{
+      { "d3d11.invariantPosition",          "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
