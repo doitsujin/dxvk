@@ -3583,6 +3583,9 @@ namespace dxvk {
 
     UpdateActiveTextures(StateSampler, combinedUsage);
 
+    if (m_d3d9Options.samplerAnisotropy != -1)
+      m_dirtySamplerStates |= 1u << StateSampler;
+
     return D3D_OK;
   }
 
@@ -5480,11 +5483,17 @@ namespace dxvk {
     key.BorderColor   = D3DCOLOR(state[D3DSAMP_BORDERCOLOR]);
 
     if (m_d3d9Options.samplerAnisotropy != -1) {
-      if (key.MagFilter == D3DTEXF_LINEAR)
-        key.MagFilter = D3DTEXF_ANISOTROPIC;
+      DWORD level = 0;
+      if (m_state.textures[Sampler])
+        level = m_state.textures[Sampler]->GetLevelCount();
 
-      if (key.MinFilter == D3DTEXF_LINEAR)
-        key.MinFilter = D3DTEXF_ANISOTROPIC;
+      if (level > 1) {
+        if (key.MagFilter == D3DTEXF_LINEAR)
+          key.MagFilter = D3DTEXF_ANISOTROPIC;
+
+        if (key.MinFilter == D3DTEXF_LINEAR)
+          key.MinFilter = D3DTEXF_ANISOTROPIC;
+      }
 
       key.MaxAnisotropy = m_d3d9Options.samplerAnisotropy;
     }
