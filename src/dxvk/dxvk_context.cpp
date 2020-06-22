@@ -19,6 +19,8 @@ namespace dxvk {
     m_staging     (device) {
     if (m_device->features().extRobustness2.nullDescriptor)
       m_features.set(DxvkContextFeature::NullDescriptors);
+    if (m_device->features().extExtendedDynamicState.extendedDynamicState)
+      m_features.set(DxvkContextFeature::ExtendedDynamicState);
   }
   
   
