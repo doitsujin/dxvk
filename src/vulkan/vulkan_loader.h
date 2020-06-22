@@ -308,6 +308,21 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdEndConditionalRenderingEXT);
     #endif
 
+    #ifdef VK_EXT_extended_dynamic_state
+    VULKAN_FN(vkCmdBindVertexBuffers2EXT);
+    VULKAN_FN(vkCmdSetCullModeEXT);
+    VULKAN_FN(vkCmdSetDepthBoundsTestEnableEXT);
+    VULKAN_FN(vkCmdSetDepthCompareOpEXT);
+    VULKAN_FN(vkCmdSetDepthTestEnableEXT);
+    VULKAN_FN(vkCmdSetDepthWriteEnableEXT);
+    VULKAN_FN(vkCmdSetFrontFaceEXT);
+    VULKAN_FN(vkCmdSetPrimitiveTopologyEXT);
+    VULKAN_FN(vkCmdSetScissorWithCountEXT);
+    VULKAN_FN(vkCmdSetStencilOpEXT);
+    VULKAN_FN(vkCmdSetStencilTestEnableEXT);
+    VULKAN_FN(vkCmdSetViewportWithCountEXT);
+    #endif
+
     #ifdef VK_EXT_full_screen_exclusive
     VULKAN_FN(vkAcquireFullScreenExclusiveModeEXT);
     VULKAN_FN(vkReleaseFullScreenExclusiveModeEXT);
