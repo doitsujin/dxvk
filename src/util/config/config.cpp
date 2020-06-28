@@ -231,13 +231,10 @@ namespace dxvk {
       { "d3d9.strictPow",                   "False" },
       { "d3d9.lenientClear",                "True" },
     }} },
-    /* Borderlands: The Pre Sequel!               */
-    { R"(\\BorderlandsPreSequel\.exe$)", {{
+    /* Borderlands 2 and The Pre Sequel!           */
+    { R"(\\Borderlands(2|PreSequel)\.exe$)", {{
       { "d3d9.lenientClear",                "True" },
-    }} },
-    /* Borderlands 2                              */
-    { R"(\\Borderlands2\.exe$)", {{
-      { "d3d9.lenientClear",                "True" },
+      { "d3d9.supportDFFormats",            "False" },
     }} },
     /* Borderlands                                */
     { R"(\\Borderlands\.exe$)", {{
