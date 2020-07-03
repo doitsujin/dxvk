@@ -217,6 +217,10 @@ namespace dxvk {
     { R"(\\starwarsjedifallenorder\.exe$)", {{
       { "d3d11.invariantPosition",          "True" },
     }} },
+    /* Mafia III: Definitive Edition              */
+    { R"(\\Mafia3DefinitiveEdition\.exe$)", {{
+      { "d3d11.invariantPosition",          "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
