@@ -654,9 +654,9 @@ namespace dxvk {
     // Restore window position and apply the style
     const RECT rect = m_windowState.rect;
     
-    ::SetWindowPos(m_window, 0,
+    ::SetWindowPos(m_window, (m_windowState.exstyle & WS_EX_TOPMOST) ? HWND_TOPMOST : HWND_NOTOPMOST,
       rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
-      SWP_FRAMECHANGED | SWP_NOZORDER | SWP_NOACTIVATE);
+      SWP_FRAMECHANGED | SWP_NOACTIVATE);
     
     return S_OK;
   }
