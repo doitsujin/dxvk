@@ -235,8 +235,8 @@ namespace dxvk {
     m_state.vi.vertexBuffers[binding] = buffer;
     m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
     
-    if (unlikely(!m_features.test(DxvkContextFeature::NullDescriptors))
-     && unlikely(!buffer.defined()))
+    if (unlikely(!buffer.defined())
+     && unlikely(!m_features.test(DxvkContextFeature::NullDescriptors)))
       stride = 0;
     
     if (unlikely(m_state.vi.vertexStrides[binding] != stride)) {
