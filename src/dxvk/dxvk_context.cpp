@@ -4108,6 +4108,7 @@ namespace dxvk {
     
     std::array<VkBuffer,     MaxNumVertexBindings> buffers;
     std::array<VkDeviceSize, MaxNumVertexBindings> offsets;
+    std::array<VkDeviceSize, MaxNumVertexBindings> lengths;
     
     // Set buffer handles and offsets for active bindings
     for (uint32_t i = 0; i < m_state.gp.state.il.bindingCount(); i++) {
@@ -4118,23 +4119,30 @@ namespace dxvk {
         
         buffers[i] = vbo.buffer.buffer;
         offsets[i] = vbo.buffer.offset;
+        lengths[i] = vbo.buffer.range;
         
         if (m_vbTracked.set(binding))
           m_cmd->trackResource<DxvkAccess::Read>(m_state.vi.vertexBuffers[binding].buffer());
       } else if (m_features.test(DxvkContextFeature::NullDescriptors)) {
         buffers[i] = VK_NULL_HANDLE;
         offsets[i] = 0;
+        lengths[i] = 0;
       } else {
         buffers[i] = m_common->dummyResources().bufferHandle();
         offsets[i] = 0;
+        lengths[i] = VK_WHOLE_SIZE;
       }
     }
     
     // Vertex bindigs get remapped when compiling the
     // pipeline, so this actually does the right thing
-    m_cmd->cmdBindVertexBuffers(
-      0, m_state.gp.state.il.bindingCount(),
-      buffers.data(), offsets.data());
+    if (m_features.test(DxvkContextFeature::ExtendedDynamicState)) {
+      m_cmd->cmdBindVertexBuffers2(0, m_state.gp.state.il.bindingCount(),
+        buffers.data(), offsets.data(), lengths.data(), nullptr);
+    } else {
+      m_cmd->cmdBindVertexBuffers(0, m_state.gp.state.il.bindingCount(),
+        buffers.data(), offsets.data());
+    }
   }
   
   

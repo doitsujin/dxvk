@@ -328,6 +328,19 @@ namespace dxvk {
     }
     
     
+    void cmdBindVertexBuffers2(
+            uint32_t                firstBinding,
+            uint32_t                bindingCount,
+      const VkBuffer*               pBuffers,
+      const VkDeviceSize*           pOffsets,
+      const VkDeviceSize*           pSizes,
+      const VkDeviceSize*           pStrides) {
+      m_vkd->vkCmdBindVertexBuffers2EXT(m_execBuffer,
+        firstBinding, bindingCount, pBuffers, pOffsets,
+        pSizes, pStrides);
+    }
+    
+    
     void cmdBlitImage(
             VkImage                 srcImage,
             VkImageLayout           srcImageLayout,
