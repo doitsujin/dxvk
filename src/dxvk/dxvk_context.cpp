@@ -3866,10 +3866,6 @@ namespace dxvk {
               m_cmd->trackResource<DxvkAccess::None>(res.imageView);
               m_cmd->trackResource<DxvkAccess::Read>(res.imageView->image());
             }
-          } else if (m_features.test(DxvkContextFeature::NullDescriptors)) {
-            descriptors[i].image.sampler     = VK_NULL_HANDLE;
-            descriptors[i].image.imageView   = VK_NULL_HANDLE;
-            descriptors[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
           } else {
             bindMask.clr(i);
             descriptors[i].image = m_common->dummyResources().imageViewDescriptor(binding.view, true);
@@ -3888,10 +3884,6 @@ namespace dxvk {
               m_cmd->trackResource<DxvkAccess::None>(res.imageView);
               m_cmd->trackResource<DxvkAccess::Write>(res.imageView->image());
             }
-          } else if (m_features.test(DxvkContextFeature::NullDescriptors)) {
-            descriptors[i].image.sampler     = VK_NULL_HANDLE;
-            descriptors[i].image.imageView   = VK_NULL_HANDLE;
-            descriptors[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
           } else {
             bindMask.clr(i);
             descriptors[i].image = m_common->dummyResources().imageViewDescriptor(binding.view, false);
@@ -3912,8 +3904,6 @@ namespace dxvk {
               m_cmd->trackResource<DxvkAccess::None>(res.imageView);
               m_cmd->trackResource<DxvkAccess::Read>(res.imageView->image());
             }
-          } else if (m_features.test(DxvkContextFeature::NullDescriptors)) {
-            descriptors[i].image = m_common->dummyResources().samplerDescriptor();
           } else {
             bindMask.clr(i);
             descriptors[i].image = m_common->dummyResources().imageSamplerDescriptor(binding.view);
@@ -3928,8 +3918,6 @@ namespace dxvk {
               m_cmd->trackResource<DxvkAccess::None>(res.bufferView);
               m_cmd->trackResource<DxvkAccess::Read>(res.bufferView->buffer());
             }
-          } else if (m_features.test(DxvkContextFeature::NullDescriptors)) {
-            descriptors[i].texelBuffer = VK_NULL_HANDLE;
           } else {
             bindMask.clr(i);
             descriptors[i].texelBuffer = m_common->dummyResources().bufferViewDescriptor();
@@ -3944,8 +3932,6 @@ namespace dxvk {
               m_cmd->trackResource<DxvkAccess::None>(res.bufferView);
               m_cmd->trackResource<DxvkAccess::Write>(res.bufferView->buffer());
             }
-          } else if (m_features.test(DxvkContextFeature::NullDescriptors)) {
-            descriptors[i].texelBuffer = VK_NULL_HANDLE;
           } else {
             bindMask.clr(i);
             descriptors[i].texelBuffer = m_common->dummyResources().bufferViewDescriptor();
@@ -3957,10 +3943,6 @@ namespace dxvk {
             
             if (m_rcTracked.set(binding.slot))
               m_cmd->trackResource<DxvkAccess::Read>(res.bufferSlice.buffer());
-          } else if (m_features.test(DxvkContextFeature::NullDescriptors)) {
-            descriptors[i].buffer.buffer = VK_NULL_HANDLE;
-            descriptors[i].buffer.offset = 0;
-            descriptors[i].buffer.range = 0;
           } else {
             bindMask.clr(i);
             descriptors[i].buffer = m_common->dummyResources().bufferDescriptor();
@@ -3972,10 +3954,6 @@ namespace dxvk {
             
             if (m_rcTracked.set(binding.slot))
               m_cmd->trackResource<DxvkAccess::Write>(res.bufferSlice.buffer());
-          } else if (m_features.test(DxvkContextFeature::NullDescriptors)) {
-            descriptors[i].buffer.buffer = VK_NULL_HANDLE;
-            descriptors[i].buffer.offset = 0;
-            descriptors[i].buffer.range = 0;
           } else {
             bindMask.clr(i);
             descriptors[i].buffer = m_common->dummyResources().bufferDescriptor();
@@ -3988,10 +3966,6 @@ namespace dxvk {
             
             if (m_rcTracked.set(binding.slot))
               m_cmd->trackResource<DxvkAccess::Read>(res.bufferSlice.buffer());
-          } else if (m_features.test(DxvkContextFeature::NullDescriptors)) {
-            descriptors[i].buffer.buffer = VK_NULL_HANDLE;
-            descriptors[i].buffer.offset = 0;
-            descriptors[i].buffer.range = 0;
           } else {
             bindMask.clr(i);
             descriptors[i].buffer = m_common->dummyResources().bufferDescriptor();
