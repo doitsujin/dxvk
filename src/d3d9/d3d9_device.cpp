@@ -1191,6 +1191,8 @@ namespace dxvk {
 
       if (texInfo->IsAutomaticMip())
         texInfo->SetNeedsMipGen(true);
+
+      texInfo->SetDirty(rt->GetSubresource(), true);
     }
 
     if (originalAlphaSwizzleRTs != m_alphaSwizzleRTs)
@@ -4024,6 +4026,8 @@ namespace dxvk {
       }
     }
     else {
+      physSlice = mappedBuffer->getSliceHandle();
+
       if (unlikely(dirty)) {
         Rc<DxvkImage> resourceImage = pResource->GetImage();
 
@@ -4089,19 +4093,15 @@ namespace dxvk {
               cPackedFormat);
           }
         });
-      }
 
-      physSlice = mappedBuffer->getSliceHandle();
-
-      // If we are a new alloc, and we weren't dirty
-      // that means that we are a newly initialized
-      // texture, and hence can just memset -> 0 and
-      // avoid a wait here.
-      if (alloced && !dirty)
-        std::memset(physSlice.mapPtr, 0, physSlice.length);
-      else {
         if (!WaitForResource(mappedBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
+      } else if (alloced) {
+        // If we are a new alloc, and we weren't dirty
+        // that means that we are a newly initialized
+        // texture, and hence can just memset -> 0 and
+        // avoid a wait here.
+        std::memset(physSlice.mapPtr, 0, physSlice.length);
       }
     }
 
