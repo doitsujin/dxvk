@@ -242,13 +242,23 @@ namespace dxvk {
     auto memoryProp = m_adapter->memoryProperties();
     auto deviceId   = m_adapter->devicePropertiesExt().coreDeviceId;
     
-    // Custom Vendor / Device ID
+    // Custom Vendor / Device ID / Description
     if (options->customVendorId >= 0)
       deviceProp.vendorID = options->customVendorId;
     
     if (options->customDeviceId >= 0)
       deviceProp.deviceID = options->customDeviceId;
     
+    if (!options->customDeviceDesc.empty())
+      #ifdef __GNUC__
+      #pragma GCC diagnostic push
+      #pragma GCC diagnostic ignored "-Wstringop-truncation"
+      #endif // __GNUC__
+      std::strncpy(deviceProp.deviceName, options->customDeviceDesc.c_str(), sizeof(deviceProp.deviceName));
+      #ifdef __GNUC__
+      #pragma GCC diagnostic pop
+      #endif // __GNUC__
+
     // XXX nvapi workaround for a lot of Unreal Engine 4 games
     if (options->customVendorId < 0 && options->customDeviceId < 0
      && options->nvapiHack && deviceProp.vendorID == uint16_t(DxvkGpuVendor::Nvidia)) {
