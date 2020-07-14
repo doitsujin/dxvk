@@ -30,8 +30,15 @@ dxvk_extradep = [ ]
 if dxvk_compiler.get_id() == 'msvc'
   wrc = find_program('rc')
 else
-  wrc = cpu_family == 'x86_64' ? find_program('x86_64-w64-mingw32-windres') : find_program('i686-w64-mingw32-windres')
+  if cpu_family == 'x86_64'
+    wrc = find_program('x86_64-w64-mingw32-windres')
+  elif cpu_family == 'x86'
+    wrc = find_program('i686-w64-mingw32-windres')
+  else
+    error('Unsupported target architecture')
+  endif
 endif
+
 if cpu_family == 'x86'
   if dxvk_compiler.has_link_argument('-Wl,--add-stdcall-alias')
     add_global_link_arguments('-Wl,--add-stdcall-alias', language: 'cpp')
