@@ -17,6 +17,15 @@ if dxvk_compiler.get_id() == 'msvc'
   add_project_arguments('/std:' + dxvk_cpp_std, language : 'cpp')
 endif
 
+if dxvk_compiler.get_id() == 'clang'
+  if dxvk_compiler.has_argument('-Wno-unused-private-field')
+    add_project_arguments('-Wno-unused-private-field', language: 'cpp')
+  endif
+  if dxvk_compiler.has_argument('-Wno-microsoft-exception-spec')
+    add_project_arguments('-Wno-microsoft-exception-spec', language: 'cpp')
+  endif
+endif
+
 dxvk_include_path = include_directories('./include')
 
 if (cpu_family == 'x86_64')
