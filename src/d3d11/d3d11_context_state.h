@@ -6,7 +6,7 @@
 #include "d3d11_input_layout.h"
 #include "d3d11_query.h"
 #include "d3d11_sampler.h"
-#include "d3d11_shader_types.h"
+#include "d3d11_shader.h"
 #include "d3d11_state.h"
 #include "d3d11_view_dsv.h"
 #include "d3d11_view_rtv.h"

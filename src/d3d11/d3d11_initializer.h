@@ -2,7 +2,6 @@
 
 #include "d3d11_buffer.h"
 #include "d3d11_texture.h"
-#include "d3d11_view_uav.h"
 
 namespace dxvk {
 

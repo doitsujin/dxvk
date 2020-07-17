@@ -17,7 +17,7 @@
 #include "d3d11_query.h"
 #include "d3d11_resource.h"
 #include "d3d11_sampler.h"
-#include "d3d11_shader_types.h"
+#include "d3d11_shader.h"
 #include "d3d11_state_object.h"
 #include "d3d11_swapchain.h"
 #include "d3d11_texture.h"
