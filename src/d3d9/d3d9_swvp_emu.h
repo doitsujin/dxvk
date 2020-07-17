@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_map>
+
 #include "d3d9_include.h"
 
 #include "../dxvk/dxvk_shader.h"
