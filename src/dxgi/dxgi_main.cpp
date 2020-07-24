@@ -44,4 +44,14 @@ extern "C" {
     dxvk::Logger::warn("DXGIDeclareAdapterRemovalSupport: Stub");
     return S_OK;
   }
+
+  DLLEXPORT HRESULT __stdcall DXGIGetDebugInterface1(UINT Flags, REFIID riid, void **ppDebug) {
+    static bool errorShown = false;
+
+    if (!std::exchange(errorShown, true))
+      dxvk::Logger::warn("DXGIGetDebugInterface1: Stub");
+
+    return E_NOINTERFACE;
+  }
+
 }
