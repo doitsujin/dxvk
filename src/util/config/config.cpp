@@ -239,6 +239,10 @@ namespace dxvk {
       { "d3d9.strictPow",                   "False" },
       { "d3d9.lenientClear",                "True" },
     }} },
+    /* Anarchy Online                             */
+    { R"(\\anarchyonline\.exe$)", {{
+      { "d3d9.memoryTrackTest",             "True" },
+    }} },
     /* Borderlands 2 and The Pre Sequel!           */
     { R"(\\Borderlands(2|PreSequel)\.exe$)", {{
       { "d3d9.lenientClear",                "True" },
