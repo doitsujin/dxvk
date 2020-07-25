@@ -1,0 +1,3 @@
+[binaries]
+c = ['ccache', 'i686-w64-mingw32-gcc']
+cpp = ['ccache', 'i686-w64-mingw32-g++']
