@@ -168,6 +168,10 @@ namespace dxvk {
     { R"(\\Atelier_(Lulua|Lydie_and_Suelle|Ryza)\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
+    /* Fairy Tail                                 */
+    { R"(\\FAIRY_TAIL\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",        "True" },
+    }} },
     /* Star Wars Battlefront II: amdags issues    */
     { R"(\\starwarsbattlefrontii\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
