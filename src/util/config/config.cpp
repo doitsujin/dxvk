@@ -225,6 +225,10 @@ namespace dxvk {
     { R"(\\Mafia3DefinitiveEdition\.exe$)", {{
       { "d3d11.invariantPosition",          "True" },
     }} },
+    /* Observation                                */
+    { R"(\\Observation\.exe$)", {{
+      { "d3d11.enableRtOutputNanFixup",     "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
