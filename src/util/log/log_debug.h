@@ -4,7 +4,11 @@
 
 #include "log.h"
 
+#ifdef _MSC_VER
+#define METHOD_NAME __FUNCSIG__
+#else
 #define METHOD_NAME __PRETTY_FUNCTION__
+#endif
 
 #define TRACE_ENABLED
 
