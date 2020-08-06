@@ -3487,8 +3487,6 @@ namespace dxvk {
     try {
       auto* swapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode);
       *ppSwapChain = ref(swapchain);
-
-      swapchain->AddRefPrivate();
     }
     catch (const DxvkError & e) {
       Logger::err(e.message());
