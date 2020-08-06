@@ -1,4 +1,7 @@
 #version 450
+#extension GL_GOOGLE_include_directive : enable
+
+#include "d3d9_convert_common.h"
 
 layout(constant_id = 1249) const bool s_is_uyvy = false;
 
@@ -17,18 +20,6 @@ uniform u_info_t {
   uvec2 extent;
 } u_info;
 
-mat3x4 g_yuv_to_rgb = {
-  { 298 / 256,  0,          409 / 256, 0.5 },
-  { 298 / 256, -100 / 256, -208 / 256, 0.5 },
-  { 298 / 256,  516 / 256,  0,         0.5 }
-};
-
-vec4 convertYUV(vec3 cde) {
-  vec3 value = vec4(cde, 1 / 255.0) * g_yuv_to_rgb;
-
-  return vec4(clamp(value, 0, 1), 1);
-}
-
 void main() {
   ivec3 thread_id = ivec3(gl_GlobalInvocationID);
 
@@ -44,13 +35,13 @@ void main() {
     if (s_is_uyvy)
       data = data.yxwz;
 
-    float c0 = data.x - (16   / 255.0);
-    float d  = data.y - (128  / 255.0);
-    float c1 = data.z - (16   / 255.0);
-    float e  = data.w - (128  / 255.0);
+    float y0 = data.x - (16   / 255.0);
+    float u  = data.y - (128  / 255.0);
+    float y1 = data.z - (16   / 255.0);
+    float v  = data.w - (128  / 255.0);
 
-    vec4 color0 = convertYUV(vec3(c0, d, e));
-    vec4 color1 = convertYUV(vec3(c1, d, e));
+    vec4 color0 = convertYUV(vec3(y0, u, v));
+    vec4 color1 = convertYUV(vec3(y1, u, v));
 
     // YUY2 has a macropixel of [2, 1]
     // so we write 2 pixels in this run.
