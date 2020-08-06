@@ -4223,6 +4223,9 @@ namespace dxvk {
       });
     } 
     else {
+      Flush();
+      SynchronizeCsThread();
+
       m_converter->ConvertFormat(
         convertFormat,
         image, subresourceLayers,
