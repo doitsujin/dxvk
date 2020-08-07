@@ -190,7 +190,10 @@ namespace dxvk {
     const VkExtent3D blockCount = util::computeBlockCount(
       mipExtent, formatInfo.blockSize);
 
+    const uint32_t planeCount = m_mapping.ConversionFormatInfo.MacroPixelSize.depth;
+
     return formatInfo.elementSize
+         * planeCount
          * blockCount.width
          * blockCount.height
          * blockCount.depth;

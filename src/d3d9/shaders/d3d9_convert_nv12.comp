@@ -1,0 +1,56 @@
+#version 450
+#extension GL_GOOGLE_include_directive : enable
+
+#include "d3d9_convert_common.h"
+
+layout(
+  local_size_x = 8,
+  local_size_y = 8,
+  local_size_z = 1) in;
+
+layout(binding = 0)
+writeonly uniform image2D dst;
+
+layout(binding = 1) uniform usamplerBuffer src;
+
+layout(push_constant)
+uniform u_info_t {
+  uvec2 extent;
+} u_info;
+
+float fetchUnorm(usamplerBuffer source, uint offset) {
+  return unpackUnorm(texelFetch(src, int(offset)).r);
+}
+
+void main() {
+  ivec3 thread_id = ivec3(gl_GlobalInvocationID);
+
+  if (all(lessThan(thread_id.xy, u_info.extent))) {
+    uvec2 pitch = uvec2(u_info.extent.x, u_info.extent.y);
+
+    // Format is:
+    // YYYYYYYYYYYYYYY...
+    // UVUVUVUVUVUVUVU...
+    uint offset = thread_id.x
+                + thread_id.y * pitch.x;
+
+    float c0 = fetchUnorm(src, offset) - (16 / 255.0);
+
+    // Floor .x to the nearest 2, because
+    // UV data is in WORDs, and we want to get the color
+    // for this pixel.
+    // Then divide thread_id.y by 2 because the macropixel
+    // layout for chroma data is [2, 2].
+    offset = (thread_id.x / 2) * 2
+           + thread_id.y / 2 * pitch.x
+           + pitch.x * pitch.y;
+
+    float u = fetchUnorm(src, offset)     - (128 / 255.0);
+    float v = fetchUnorm(src, offset + 1) - (128 / 255.0);
+
+    // The NV12 format seems to use the BT.703 color space.
+    vec4 color0 = convertBT_703(vec3(c0, u, v));
+    
+    imageStore(dst, thread_id.xy, color0);
+  }
+}
