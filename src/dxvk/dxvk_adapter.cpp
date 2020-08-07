@@ -222,6 +222,10 @@ namespace dxvk {
                 || !required.core.features.inheritedQueries)
         && (m_deviceFeatures.shaderDrawParameters.shaderDrawParameters
                 || !required.shaderDrawParameters.shaderDrawParameters)
+        && (m_deviceFeatures.ext4444Formats.formatA4R4G4B4
+                || !required.ext4444Formats.formatA4R4G4B4)
+        && (m_deviceFeatures.ext4444Formats.formatA4B4G4R4
+                || !required.ext4444Formats.formatA4B4G4R4)
         && (m_deviceFeatures.extConditionalRendering.conditionalRendering
                 || !required.extConditionalRendering.conditionalRendering)
         && (m_deviceFeatures.extCustomBorderColor.customBorderColors
@@ -261,9 +265,10 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 23> devExtensionList = {{
+    std::array<DxvkExt*, 24> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
+      &devExtensions.ext4444Formats,
       &devExtensions.extConditionalRendering,
       &devExtensions.extCustomBorderColor,
       &devExtensions.extDepthClipEnable,
@@ -301,6 +306,9 @@ namespace dxvk {
 
     // Enable additional device features if supported
     enabledFeatures.extExtendedDynamicState.extendedDynamicState = m_deviceFeatures.extExtendedDynamicState.extendedDynamicState;
+
+    enabledFeatures.ext4444Formats.formatA4B4G4R4 = m_deviceFeatures.ext4444Formats.formatA4B4G4R4;
+    enabledFeatures.ext4444Formats.formatA4R4G4B4 = m_deviceFeatures.ext4444Formats.formatA4R4G4B4;
     
     Logger::info(str::format("Device properties:"
       "\n  Device name:     : ", m_deviceInfo.core.properties.deviceName,
@@ -319,6 +327,11 @@ namespace dxvk {
 
     enabledFeatures.shaderDrawParameters.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
     enabledFeatures.shaderDrawParameters.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.shaderDrawParameters);
+
+    if (devExtensions.ext4444Formats) {
+      enabledFeatures.ext4444Formats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT;
+      enabledFeatures.ext4444Formats.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.ext4444Formats);
+    }
 
     if (devExtensions.extConditionalRendering) {
       enabledFeatures.extConditionalRendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT;
@@ -566,6 +579,11 @@ namespace dxvk {
     m_deviceFeatures.shaderDrawParameters.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
     m_deviceFeatures.shaderDrawParameters.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.shaderDrawParameters);
 
+    if (m_deviceExtensions.supports(VK_EXT_4444_FORMATS_EXTENSION_NAME)) {
+      m_deviceFeatures.ext4444Formats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT;
+      m_deviceFeatures.ext4444Formats.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.ext4444Formats);
+    }
+
     if (m_deviceExtensions.supports(VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME)) {
       m_deviceFeatures.extConditionalRendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT;
       m_deviceFeatures.extConditionalRendering.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extConditionalRendering);
@@ -684,6 +702,9 @@ namespace dxvk {
       "\n  variableMultisampleRate                : ", features.core.features.variableMultisampleRate ? "1" : "0",
       "\n", VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME,
       "\n  conditionalRendering                   : ", features.extConditionalRendering.conditionalRendering ? "1" : "0",
+      "\n", VK_EXT_4444_FORMATS_EXTENSION_NAME,
+      "\n  formatA4R4G4B4                         : ", features.ext4444Formats.formatA4R4G4B4 ? "1" : "0",
+      "\n  formatA4B4G4R4                         : ", features.ext4444Formats.formatA4B4G4R4 ? "1" : "0",
       "\n", VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME,
       "\n  customBorderColors                     : ", features.extCustomBorderColor.customBorderColors ? "1" : "0",
       "\n  customBorderColorWithoutFormat         : ", features.extCustomBorderColor.customBorderColorWithoutFormat ? "1" : "0",
