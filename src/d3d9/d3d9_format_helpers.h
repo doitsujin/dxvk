@@ -29,7 +29,8 @@ namespace dxvk {
             VkImageSubresourceLayers      dstSubresource,
       const Rc<DxvkBuffer>&               srcBuffer,
             VkFormat                      bufferFormat,
-            uint32_t                      specConstantValue);
+            uint32_t                      specConstantValue,
+            VkExtent2D                    macroPixelRun);
 
     enum BindingIds : uint32_t {
       Image  = 0,

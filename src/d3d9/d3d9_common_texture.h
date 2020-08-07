@@ -280,7 +280,7 @@ namespace dxvk {
      * \returns The extent of the top-level mip
      */
     VkExtent3D GetExtent() const {
-      return m_adjustedExtent;
+      return VkExtent3D{ m_desc.Width, m_desc.Height, m_desc.Depth };
     }
 
     /**
@@ -381,8 +381,6 @@ namespace dxvk {
       DxvkBufferSliceHandle>      m_mappedSlices;
 
     D3D9_VK_FORMAT_MAPPING        m_mapping;
-
-    VkExtent3D                    m_adjustedExtent;
 
     bool                          m_shadow; //< Depth Compare-ness
 

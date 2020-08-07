@@ -19,9 +19,6 @@ namespace dxvk {
 
     m_mapping = pDevice->LookupFormat(m_desc.Format);
 
-    auto pxSize      = m_mapping.ConversionFormatInfo.MacroPixelSize;
-    m_adjustedExtent = VkExtent3D{ m_desc.Width / pxSize.width, m_desc.Height / pxSize.height, m_desc.Depth };
-
     m_mapMode = DetermineMapMode();
     m_shadow  = DetermineShadowState();
 
@@ -185,15 +182,15 @@ namespace dxvk {
       : m_device->UnsupportedFormatInfo(m_desc.Format);
 
     const VkExtent3D mipExtent = util::computeMipLevelExtent(
-      m_adjustedExtent, MipLevel);
+      GetExtent(), MipLevel);
     
     const VkExtent3D blockCount = util::computeBlockCount(
       mipExtent, formatInfo.blockSize);
 
-    const uint32_t planeCount = m_mapping.ConversionFormatInfo.MacroPixelSize.depth;
+    const uint32_t planeCount = m_mapping.ConversionFormatInfo.PlaneCount;
 
-    return formatInfo.elementSize
-         * planeCount
+    return planeCount
+         * formatInfo.elementSize
          * blockCount.width
          * blockCount.height
          * blockCount.depth;
