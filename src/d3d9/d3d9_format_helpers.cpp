@@ -32,24 +32,24 @@ namespace dxvk {
       case D3D9ConversionFormat_YUY2:
       case D3D9ConversionFormat_UYVY: {
         uint32_t specConstant = conversionFormat.FormatType == D3D9ConversionFormat_UYVY ? 1 : 0;
-        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, VK_FORMAT_R32_UINT, specConstant);
+        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, VK_FORMAT_R32_UINT, specConstant, { 2u, 1u });
         break;
       }
 
       case D3D9ConversionFormat_NV12:
-        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, VK_FORMAT_R8_UINT, 0);
+        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, VK_FORMAT_R8_UINT, 0, { 1u, 1u });
         break;
 
       case D3D9ConversionFormat_L6V5U5:
-        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, VK_FORMAT_R16_UINT, 0);
+        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, VK_FORMAT_R16_UINT, 0, { 1u, 1u });
         break;
 
       case D3D9ConversionFormat_X8L8V8U8:
-        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, VK_FORMAT_R32_UINT, 0);
+        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, VK_FORMAT_R32_UINT, 0, { 1u, 1u });
         break;
 
       case D3D9ConversionFormat_A2W10V10U10:
-        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, VK_FORMAT_R32_UINT, 0);
+        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, VK_FORMAT_R32_UINT, 0, { 1u, 1u });
         break;
 
       default:
@@ -64,7 +64,8 @@ namespace dxvk {
           VkImageSubresourceLayers      dstSubresource,
     const Rc<DxvkBuffer>&               srcBuffer,
           VkFormat                      bufferFormat,
-          uint32_t                      specConstantValue) {
+          uint32_t                      specConstantValue,
+          VkExtent2D                    macroPixelRun) {
     DxvkImageViewCreateInfo imageViewInfo;
     imageViewInfo.type      = VK_IMAGE_VIEW_TYPE_2D;
     imageViewInfo.format    = dstImage->info().format;
@@ -77,8 +78,8 @@ namespace dxvk {
     auto tmpImageView = m_device->createImageView(dstImage, imageViewInfo);
 
     VkExtent3D imageExtent = dstImage->mipLevelExtent(dstSubresource.mipLevel);
-    imageExtent = VkExtent3D{ imageExtent.width  / videoFormat.MacroPixelSize.width,
-                              imageExtent.height / videoFormat.MacroPixelSize.height,
+    imageExtent = VkExtent3D{ imageExtent.width  / macroPixelRun.width,
+                              imageExtent.height / macroPixelRun.height,
                               1 };
 
     DxvkBufferViewCreateInfo bufferViewInfo;

@@ -140,7 +140,7 @@ namespace dxvk {
 
   struct D3D9_CONVERSION_FORMAT_INFO {
     D3D9ConversionFormat FormatType     = D3D9ConversionFormat_None;
-    VkExtent3D           MacroPixelSize = { 1u, 1u, 1u };
+    uint32_t             PlaneCount     = 1;
     VkFormat             FormatColor    = VK_FORMAT_UNDEFINED;
     VkFormat             FormatSrgb     = VK_FORMAT_UNDEFINED;
   };

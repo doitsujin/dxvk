@@ -136,7 +136,7 @@ namespace dxvk {
         VK_IMAGE_ASPECT_COLOR_BIT,
         { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
           VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A },
-        { D3D9ConversionFormat_L6V5U5, { 1u, 1u },
+        { D3D9ConversionFormat_L6V5U5, 1u,
         // Convert -> float (this is a mixed snorm and unorm type)
           VK_FORMAT_R16G16B16A16_SFLOAT } };
 
@@ -146,7 +146,7 @@ namespace dxvk {
         VK_IMAGE_ASPECT_COLOR_BIT,
         { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
           VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_ONE },
-        { D3D9ConversionFormat_X8L8V8U8, { 1u, 1u },
+        { D3D9ConversionFormat_X8L8V8U8, 1u,
         // Convert -> float (this is a mixed snorm and unorm type)
           VK_FORMAT_R16G16B16A16_SFLOAT } };
 
@@ -168,7 +168,7 @@ namespace dxvk {
         VK_IMAGE_ASPECT_COLOR_BIT,
         { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
           VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A },
-        { D3D9ConversionFormat_A2W10V10U10, { 1u, 1u },
+        { D3D9ConversionFormat_A2W10V10U10, 1u,
         // Convert -> float (this is a mixed snorm and unorm type)
           VK_FORMAT_R16G16B16A16_SFLOAT } };
 
@@ -178,7 +178,7 @@ namespace dxvk {
         VK_IMAGE_ASPECT_COLOR_BIT,
         { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
           VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY },
-        { D3D9ConversionFormat_UYVY, { 2u, 1u } }
+        { D3D9ConversionFormat_UYVY, 1u }
       };
 
       case D3D9Format::R8G8_B8G8: return {
@@ -192,7 +192,7 @@ namespace dxvk {
         VK_IMAGE_ASPECT_COLOR_BIT,
         { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
           VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY },
-        { D3D9ConversionFormat_YUY2, { 2u, 1u } }
+        { D3D9ConversionFormat_YUY2, 1u }
       };
 
       case D3D9Format::G8R8_G8B8: return {
@@ -412,7 +412,7 @@ namespace dxvk {
         VK_IMAGE_ASPECT_COLOR_BIT,
         { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
           VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY },
-        { D3D9ConversionFormat_NV12, { 1u, 1u, 2u }, VK_FORMAT_B8G8R8A8_UNORM }
+        { D3D9ConversionFormat_NV12, 2u, VK_FORMAT_B8G8R8A8_UNORM }
       };
 
       case D3D9Format::RAWZ: return {}; // Unsupported
