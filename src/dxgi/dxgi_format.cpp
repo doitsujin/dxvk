@@ -518,12 +518,10 @@ namespace dxvk {
     // DXGI_FORMAT_A8P8
     { }, // Unsupported
     // DXGI_FORMAT_B4G4R4A4_UNORM
-    { VK_FORMAT_B4G4R4A4_UNORM_PACK16,
+    { VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT,
       VK_FORMAT_UNDEFINED,
       VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT, 0,
-      { VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R,
-        VK_COMPONENT_SWIZZLE_A, VK_COMPONENT_SWIZZLE_B }},
+      VK_IMAGE_ASPECT_COLOR_BIT },
     // DXGI_FORMAT_P208
     { }, // Unsupported
     // DXGI_FORMAT_V208
@@ -842,6 +840,12 @@ namespace dxvk {
       RemapDepthFormat(DXGI_FORMAT_X24_TYPELESS_G8_UINT,  VK_FORMAT_D32_SFLOAT_S8_UINT);
       RemapDepthFormat(DXGI_FORMAT_D24_UNORM_S8_UINT,     VK_FORMAT_D32_SFLOAT_S8_UINT);
     }
+
+    if (!adapter->features().ext4444Formats.formatA4R4G4B4) {
+      RemapColorFormat(DXGI_FORMAT_B4G4R4A4_UNORM, VK_FORMAT_B4G4R4A4_UNORM_PACK16,
+        { VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R,
+          VK_COMPONENT_SWIZZLE_A, VK_COMPONENT_SWIZZLE_B });
+    }
   }
   
   
@@ -939,6 +943,15 @@ namespace dxvk {
           DXGI_FORMAT         Format,
           VkFormat            Target) {
     m_dxgiFormats[uint32_t(Format)].FormatDepth = Target;
+  }
+  
+
+  void DXGIVkFormatTable::RemapColorFormat(
+          DXGI_FORMAT         Format,
+          VkFormat            Target,
+          VkComponentMapping  Swizzle) {
+    m_dxgiFormats[uint32_t(Format)].FormatColor = Target;
+    m_dxgiFormats[uint32_t(Format)].Swizzle = Swizzle;
   }
   
 }

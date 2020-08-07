@@ -163,6 +163,11 @@ namespace dxvk {
             DXGI_FORMAT           Format,
             VkFormat              Target);
         
+    void RemapColorFormat(
+            DXGI_FORMAT           Format,
+            VkFormat              Target,
+            VkComponentMapping    Swizzle);
+
   };
   
 };
