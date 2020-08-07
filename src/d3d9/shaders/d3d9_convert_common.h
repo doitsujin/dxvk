@@ -33,12 +33,12 @@ vec4 convertYUV(vec3 yuv) {
   return vec4(clamp(value, 0, 1), 1);
 }
 
-mat3x3 g_bt703_to_rgb = {
+mat3x3 g_bt709_to_rgb = {
   { 1.164,  0,          1.793    },
   { 1.164, -0.213,     -0.533    },
   { 1.164,  2.112,      0        }
 };
 
-vec4 convertBT_703(vec3 cde) {
-  return vec4(clamp(cde * g_bt703_to_rgb, 0, 1), 1);
+vec4 convertBT_709(vec3 cde) {
+  return vec4(clamp(cde * g_bt709_to_rgb, 0, 1), 1);
 }

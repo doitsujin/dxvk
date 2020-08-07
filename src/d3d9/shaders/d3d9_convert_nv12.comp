@@ -49,9 +49,9 @@ void main() {
 
     vec2 uv = fetchUnorm2x8(src, offset) - (128 / 255.0);
 
-    // The NV12 format seems to use the BT.703 color space.
-    vec4 color0 = convertBT_703(vec3(y.x, uv.x, uv.y));
-    vec4 color1 = convertBT_703(vec3(y.y, uv.x, uv.y));
+    // The NV12 format seems to use the BT.709 color space.
+    vec4 color0 = convertBT_709(vec3(y.x, uv.x, uv.y));
+    vec4 color1 = convertBT_709(vec3(y.y, uv.x, uv.y));
 
     // We write as a macropixel of [2, 1]
     // So write out 2 pixels in this run.
