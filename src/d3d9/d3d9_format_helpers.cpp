@@ -37,7 +37,7 @@ namespace dxvk {
       }
 
       case D3D9ConversionFormat_NV12:
-        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, VK_FORMAT_R8_UINT, 0, { 1u, 1u });
+        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, VK_FORMAT_R16_UINT, 0, { 2u, 1u });
         break;
 
       case D3D9ConversionFormat_L6V5U5:

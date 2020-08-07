@@ -16,6 +16,11 @@ float unpackUnorm(uint p) {
   return float(p) / 255.0;
 }
 
+vec2 unpackUnorm2x8(uint p) {
+  uvec2 value = uvec2(p & 0xFF, p >> 8);
+  return vec2(unpackUnorm(value.x), unpackUnorm(value.y));
+}
+
 mat3x4 g_yuv_to_rgb = {
   { 298 / 256,  0,          409 / 256, 0.5 },
   { 298 / 256, -100 / 256, -208 / 256, 0.5 },
