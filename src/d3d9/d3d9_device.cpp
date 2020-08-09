@@ -4004,7 +4004,7 @@ namespace dxvk {
 
       if (alloced)
         std::memset(physSlice.mapPtr, 0, physSlice.length);
-      else if (managed && !skipWait) {
+      else if ((managed || systemmem) && !skipWait) {
         if (!WaitForResource(mappedBuffer, D3DLOCK_DONOTWAIT)) {
           // if the mapped buffer is currently being copied to image
           // we can just avoid a stall by allocating a new slice and copying the existing contents
@@ -4350,7 +4350,7 @@ namespace dxvk {
                             quickRead                     ||
                             (boundsCheck && !pResource->DirtyRange().Overlaps(pResource->LockRange()));
       if (!skipWait) {
-        if (IsPoolManaged(desc.Pool)) {
+        if (IsPoolManaged(desc.Pool) || desc.Pool == D3DPOOL_SYSTEMMEM) {
           if (!WaitForResource(mappingBuffer, D3DLOCK_DONOTWAIT)) {
             // if the mapped buffer is currently being copied to the primary buffer
             // we can just avoid a stall by allocating a new slice and copying the existing contents
