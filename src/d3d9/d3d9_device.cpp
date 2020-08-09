@@ -675,29 +675,39 @@ namespace dxvk {
     Rc<DxvkBuffer> srcBuffer = srcTextureInfo->GetBuffer(src->GetSubresource());
     Rc<DxvkImage>  dstImage  = dstTextureInfo->GetImage();
 
-    VkExtent3D levelExtent = srcTextureInfo->GetExtentMip(src->GetSubresource());
-    VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
+    if (likely(!srcTextureInfo->IsStalling())) {
+      VkExtent3D levelExtent = srcTextureInfo->GetExtentMip(src->GetSubresource());
+      VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
 
-    VkDeviceSize srcByteOffset = srcBlockOffset.y * formatInfo->elementSize * blockCount.width
-                               + srcBlockOffset.x * formatInfo->elementSize;
+      VkDeviceSize srcByteOffset = srcBlockOffset.y * formatInfo->elementSize * blockCount.width
+                                + srcBlockOffset.x * formatInfo->elementSize;
 
-    VkExtent2D fullSrcExtent = VkExtent2D{ blockCount.width  * formatInfo->blockSize.width,
-                                           blockCount.height * formatInfo->blockSize.height };
+      VkExtent2D fullSrcExtent = VkExtent2D{ blockCount.width  * formatInfo->blockSize.width,
+                                            blockCount.height * formatInfo->blockSize.height };
 
-    EmitCs([
-      cDstImage   = std::move(dstImage),
-      cSrcBuffer  = std::move(srcBuffer),
-      cDstLayers  = dstSubresource,
-      cDstOffset  = dstOffset,
-      cSrcOffset  = srcByteOffset,
-      cCopyExtent = copyExtent,
-      cSrcExtent  = fullSrcExtent
-    ] (DxvkContext* ctx) {
-      ctx->copyBufferToImage(
-        cDstImage, cDstLayers, cDstOffset, cCopyExtent,
-        cSrcBuffer, cSrcOffset,
-        cSrcExtent);
-    });
+      EmitCs([
+        cDstImage   = std::move(dstImage),
+        cSrcBuffer  = std::move(srcBuffer),
+        cDstLayers  = dstSubresource,
+        cDstOffset  = dstOffset,
+        cSrcOffset  = srcByteOffset,
+        cCopyExtent = copyExtent,
+        cSrcExtent  = fullSrcExtent
+      ] (DxvkContext* ctx) {
+        ctx->copyBufferToImage(
+          cDstImage, cDstLayers, cDstOffset, cCopyExtent,
+          cSrcBuffer, cSrcOffset,
+          cSrcExtent);
+      });
+    } else {
+        uint32_t face = dst->GetFace();
+        uint32_t mipLevel = dst->GetMipLevel();
+
+        D3DLOCKED_BOX box;
+        LockImage(dstTextureInfo, face, mipLevel, &box, nullptr, D3DLOCK_DISCARD);
+        memcpy(box.pBits, srcBuffer->getSliceHandle().mapPtr, srcBuffer->info().size);
+        UnlockImage(dstTextureInfo, face, mipLevel);
+    }
 
     dstTextureInfo->SetDirty(dst->GetSubresource(), true);
 
@@ -730,21 +740,28 @@ namespace dxvk {
       for (uint32_t m = 0; m < mipLevels; m++) {
         Rc<DxvkBuffer> srcBuffer = srcTexInfo->GetBuffer(srcTexInfo->CalcSubresource(a, m));
 
-        VkImageSubresourceLayers dstLayers = { VK_IMAGE_ASPECT_COLOR_BIT, m, a, 1 };
-        
-        VkExtent3D extent = dstImage->mipLevelExtent(m);
-        
-        EmitCs([
-          cDstImage  = dstImage,
-          cSrcBuffer = srcBuffer,
-          cDstLayers = dstLayers,
-          cExtent    = extent
-        ] (DxvkContext* ctx) {
-          ctx->copyBufferToImage(
-            cDstImage,  cDstLayers,
-            VkOffset3D{ 0, 0, 0 }, cExtent,
-            cSrcBuffer, 0, { 0u, 0u });
-        });
+        if (likely(!srcTexInfo->IsStalling())) {
+          VkImageSubresourceLayers dstLayers = { VK_IMAGE_ASPECT_COLOR_BIT, m, a, 1 };
+          
+          VkExtent3D extent = dstImage->mipLevelExtent(m);
+          
+          EmitCs([
+            cDstImage  = dstImage,
+            cSrcBuffer = srcBuffer,
+            cDstLayers = dstLayers,
+            cExtent    = extent
+          ] (DxvkContext* ctx) {
+            ctx->copyBufferToImage(
+              cDstImage,  cDstLayers,
+              VkOffset3D{ 0, 0, 0 }, cExtent,
+              cSrcBuffer, 0, { 0u, 0u });
+          });
+        } else {
+          D3DLOCKED_BOX box;
+          LockImage(dstTexInfo, a, m, &box, nullptr, D3DLOCK_DISCARD);
+          memcpy(box.pBits, srcBuffer->getSliceHandle().mapPtr, srcBuffer->info().size);
+          UnlockImage(dstTexInfo, a, m);
+        }
       }
     }
 
@@ -3830,7 +3847,7 @@ namespace dxvk {
     return m_adapter->GetUnsupportedFormatInfo(Format);
   }
 
-  bool D3D9DeviceEx::WaitForResource(
+  D3D9WaitForResourceResult D3D9DeviceEx::WaitForResource(
   const Rc<DxvkResource>&                 Resource,
         DWORD                             MapFlags) {
     // Wait for the any pending D3D9 command to be executed
@@ -3851,7 +3868,7 @@ namespace dxvk {
         // still try to spin on `Map` until the resource is
         // idle, so we should flush pending commands
         FlushImplicit(FALSE);
-        return false;
+        return D3D9WaitForResourceResult::InUse;
       }
       else {
         // Make sure pending commands using the resource get
@@ -3860,10 +3877,11 @@ namespace dxvk {
         SynchronizeCsThread();
 
         Resource->waitIdle(access);
+        return D3D9WaitForResourceResult::AvailableStalled;
       }
     }
 
-    return true;
+      return D3D9WaitForResourceResult::Available;
   }
 
 
@@ -4005,7 +4023,7 @@ namespace dxvk {
       if (alloced)
         std::memset(physSlice.mapPtr, 0, physSlice.length);
       else if (managed && !skipWait) {
-        if (!WaitForResource(mappedBuffer, D3DLOCK_DONOTWAIT)) {
+        if (WaitForResource(mappedBuffer, D3DLOCK_DONOTWAIT) == D3D9WaitForResourceResult::InUse) {
           // if the mapped buffer is currently being copied to image
           // we can just avoid a stall by allocating a new slice and copying the existing contents
           DxvkBufferSliceHandle oldSlice = physSlice;
@@ -4019,8 +4037,15 @@ namespace dxvk {
           });
         }
       } else if (!skipWait) {
-        if (!WaitForResource(mappedBuffer, Flags))
+        D3D9WaitForResourceResult waitResult = WaitForResource(mappedBuffer, Flags);
+        if (waitResult == D3D9WaitForResourceResult::InUse) {
           return D3DERR_WASSTILLDRAWING;
+        } else if (systemmem) {
+          pResource->NotifyLocked();
+
+          if (waitResult == D3D9WaitForResourceResult::AvailableStalled)
+            pResource->NotifyStall();
+        }
       }
     }
     else {
@@ -4092,7 +4117,7 @@ namespace dxvk {
           }
         });
 
-        if (!WaitForResource(mappedBuffer, Flags))
+        if (WaitForResource(mappedBuffer, Flags) == D3D9WaitForResourceResult::InUse)
           return D3DERR_WASSTILLDRAWING;
       } else if (alloced) {
         // If we are a new alloc, and we weren't dirty
@@ -4351,7 +4376,7 @@ namespace dxvk {
                             (boundsCheck && !pResource->DirtyRange().Overlaps(pResource->LockRange()));
       if (!skipWait) {
         if (IsPoolManaged(desc.Pool)) {
-          if (!WaitForResource(mappingBuffer, D3DLOCK_DONOTWAIT)) {
+          if (WaitForResource(mappingBuffer, D3DLOCK_DONOTWAIT) == D3D9WaitForResourceResult::InUse) {
             // if the mapped buffer is currently being copied to the primary buffer
             // we can just avoid a stall by allocating a new slice and copying the existing contents
             DxvkBufferSliceHandle oldSlice = physSlice;
@@ -4365,7 +4390,7 @@ namespace dxvk {
             });
           }
         } else {
-          if (!WaitForResource(mappingBuffer, Flags))
+          if (WaitForResource(mappingBuffer, Flags) == D3D9WaitForResourceResult::InUse)
             return D3DERR_WASSTILLDRAWING;
         }
 

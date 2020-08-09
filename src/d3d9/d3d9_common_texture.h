@@ -366,6 +366,19 @@ namespace dxvk {
     void PreLoadAll();
     void PreLoadSubresource(UINT Subresource);
 
+    bool IsStalling() const {
+      return m_stallFlag;
+    }
+
+    void NotifyLocked() {
+      m_stallMask <<= 1;
+    }
+
+    void NotifyStall() {
+      m_stallMask |= 1;
+      m_stallFlag |= bit::popcnt(m_stallMask) >= 4;
+    }
+
   private:
 
     D3D9DeviceEx*                 m_device;
@@ -405,6 +418,12 @@ namespace dxvk {
     bool                          m_needsMipGen = false;
 
     D3DTEXTUREFILTERTYPE          m_mipFilter = D3DTEXF_LINEAR;
+
+    /* Stall flags for D3DPOOL_SYSTEMMEM textures
+     * Once we detect enough stalls, future UpdateSurface/UpdateTexture
+     * calls will use do an additional copy of the src data */
+    uint32_t                      m_stallMask = 0;
+    bool                          m_stallFlag = false;
 
     /**
      * \brief Mip level

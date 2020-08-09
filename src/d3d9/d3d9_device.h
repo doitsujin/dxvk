@@ -90,6 +90,12 @@ namespace dxvk {
     void*           mapPtr = nullptr;
   };
 
+  enum class D3D9WaitForResourceResult {
+    InUse,
+    Available,
+    AvailableStalled
+  };
+
   class D3D9DeviceEx final : public ComObjectClamp<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
     constexpr static uint32_t MaxFrameLatency     = 20;
@@ -663,7 +669,7 @@ namespace dxvk {
     DxvkFormatInfo UnsupportedFormatInfo(
       D3D9Format            Format) const;
 
-    bool WaitForResource(
+    D3D9WaitForResourceResult WaitForResource(
       const Rc<DxvkResource>&                 Resource,
             DWORD                             MapFlags);
 
