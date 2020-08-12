@@ -229,6 +229,11 @@ namespace dxvk {
     { R"(\\Observation\.exe$)", {{
       { "d3d11.enableRtOutputNanFixup",     "True" },
     }} },
+    /* Darksiders Warmastered - apparently reads  *
+     * from write-only mapped buffers             */
+    { R"(\\darksiders1\.exe$)", {{
+      { "d3d11.apitraceMode",               "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
