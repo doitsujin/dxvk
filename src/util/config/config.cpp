@@ -234,6 +234,10 @@ namespace dxvk {
     { R"(\\darksiders1\.exe$)", {{
       { "d3d11.apitraceMode",               "True" },
     }} },
+    /* Monster Hunter World                       */
+    { R"(\\MonsterHunterWorld\.exe$)", {{
+      { "d3d11.apitraceMode",               "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
