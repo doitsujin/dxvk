@@ -200,9 +200,14 @@ namespace dxvk {
     // If that still didn't work, probe slower memory types as well
     VkMemoryPropertyFlags optFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
                                    | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+    VkMemoryPropertyFlags remFlags = 0;
     
-    if (!result && (flags & optFlags))
-      result = this->tryAlloc(req, dedAllocPtr, flags & ~optFlags, priority);
+    while (!result && (flags & optFlags)) {
+      remFlags |= optFlags & -optFlags;
+      optFlags &= ~remFlags;
+
+      result = this->tryAlloc(req, dedAllocPtr, flags & ~remFlags, priority);
+    }
     
     if (!result) {
       DxvkAdapterMemoryInfo memHeapInfo = m_device->adapter()->getMemoryHeapInfo();
