@@ -153,6 +153,7 @@ namespace dxvk {
 
       return --m_lockCount;
     }
+    uint32_t GetLockCount() const { return m_lockCount; }
 
     void MarkUploaded()      { m_needsUpload = false; }
     void MarkNeedsUpload()   { m_needsUpload = true; }
