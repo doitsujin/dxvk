@@ -5,6 +5,7 @@
 #include <d3d9_convert_x8l8v8u8.h>
 #include <d3d9_convert_a2w10v10u10.h>
 #include <d3d9_convert_nv12.h>
+#include <d3d9_convert_yv12.h>
 
 namespace dxvk {
 
@@ -38,6 +39,10 @@ namespace dxvk {
 
       case D3D9ConversionFormat_NV12:
         ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, VK_FORMAT_R16_UINT, 0, { 2u, 1u });
+        break;
+
+      case D3D9ConversionFormat_YV12:
+        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, VK_FORMAT_R8_UINT, 0, { 1u, 1u });
         break;
 
       case D3D9ConversionFormat_L6V5U5:
@@ -115,6 +120,7 @@ namespace dxvk {
     m_shaders[D3D9ConversionFormat_X8L8V8U8] = InitShader(d3d9_convert_x8l8v8u8);
     m_shaders[D3D9ConversionFormat_A2W10V10U10] = InitShader(d3d9_convert_a2w10v10u10);
     m_shaders[D3D9ConversionFormat_NV12] = InitShader(d3d9_convert_nv12);
+    m_shaders[D3D9ConversionFormat_YV12] = InitShader(d3d9_convert_yv12);
   }
 
 

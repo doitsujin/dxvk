@@ -411,6 +411,15 @@ namespace dxvk {
         { D3D9ConversionFormat_NV12, 2u, VK_FORMAT_B8G8R8A8_UNORM }
       };
 
+      case D3D9Format::YV12: return {
+        VK_FORMAT_R8_UNORM,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
+          VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY },
+        { D3D9ConversionFormat_YV12, 3u, VK_FORMAT_B8G8R8A8_UNORM }
+      };
+
       case D3D9Format::RAWZ: return {}; // Unsupported
 
       default:
