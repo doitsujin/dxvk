@@ -3,6 +3,12 @@
 #include <iomanip>
 #include <version.h>
 
+#ifndef NDEBUG
+#define DXVK_VERSION_SUFFIX "(debug)"
+#else
+#define DXVK_VERSION_SUFFIX
+#endif
+
 namespace dxvk::hud {
 
   HudItem::~HudItem() {
@@ -73,7 +79,7 @@ namespace dxvk::hud {
     renderer.drawText(16.0f,
       { position.x, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
-      "DXVK " DXVK_VERSION);
+      "DXVK " DXVK_VERSION DXVK_VERSION_SUFFIX);
 
     position.y += 8.0f;
     return position;
