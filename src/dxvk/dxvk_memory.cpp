@@ -177,6 +177,17 @@ namespace dxvk {
       m_memTypes[i].chunkSize  = pickChunkSize(i);
     }
 
+    /* Work around an issue on Nvidia drivers where using the entire
+     * device_local | host_visible heap can cause crashes, presumably
+     * due to subsequent internal driver allocations failing */
+    if (m_device->properties().core.properties.vendorID == uint16_t(DxvkGpuVendor::Nvidia)) {
+      for (uint32_t i = 0; i < m_memProps.memoryTypeCount; i++) {
+        constexpr VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+
+        if ((m_memTypes[i].memType.propertyFlags & flags) == flags)
+          m_memTypes[i].heap->budget = m_memTypes[i].heap->properties.size / 2;
+      }
+    }
   }
   
   
