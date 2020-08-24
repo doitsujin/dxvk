@@ -6,8 +6,12 @@ namespace dxvk {
   
   Logger::Logger(const std::string& file_name)
   : m_minLevel(getMinLogLevel()) {
-    if (m_minLevel != LogLevel::None)
-      m_fileStream = std::ofstream(getFileName(file_name));
+    if (m_minLevel != LogLevel::None) {
+      auto path = getFileName(file_name);
+
+      if (!path.empty())
+        m_fileStream = std::ofstream(path);
+    }
   }
   
   
@@ -57,8 +61,10 @@ namespace dxvk {
       std::string       line;
 
       while (std::getline(stream, line, '\n')) {
-        std::cerr    << prefix << line << std::endl;
-        m_fileStream << prefix << line << std::endl;
+        std::cerr << prefix << line << std::endl;
+
+        if (m_fileStream)
+          m_fileStream << prefix << line << std::endl;
       }
     }
   }
@@ -88,9 +94,12 @@ namespace dxvk {
   std::string Logger::getFileName(const std::string& base) {
     std::string path = env::getEnvVar("DXVK_LOG_PATH");
     
+    if (path == "none")
+      return "";
+
     if (!path.empty() && *path.rbegin() != '/')
       path += '/';
-    
+
     std::string exeName = env::getExeName();
     auto extp = exeName.find_last_of('.');
     
