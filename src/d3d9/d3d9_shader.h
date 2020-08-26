@@ -26,7 +26,7 @@ namespace dxvk {
     D3D9CommonShader(
             D3D9DeviceEx*         pDevice,
             VkShaderStageFlagBits ShaderStage,
-      const Sha1Hash*             pHash,
+      const DxvkShaderKey&        Key,
       const DxsoModuleInfo*       pDxbcModuleInfo,
       const void*                 pShaderBytecode,
       const DxsoAnalysisInfo&     AnalysisInfo,
@@ -170,8 +170,9 @@ namespace dxvk {
     
   public:
     
-    D3D9CommonShader GetShaderModule(
+    void GetShaderModule(
             D3D9DeviceEx*         pDevice,
+            D3D9CommonShader*     pShaderModule,
             VkShaderStageFlagBits ShaderStage,
       const DxsoModuleInfo*       pDxbcModuleInfo,
       const void*                 pShaderBytecode);

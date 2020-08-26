@@ -10,7 +10,7 @@ namespace dxvk {
   D3D9CommonShader::D3D9CommonShader(
             D3D9DeviceEx*         pDevice,
             VkShaderStageFlagBits ShaderStage,
-      const Sha1Hash*             pHash,
+      const DxvkShaderKey&        Key,
       const DxsoModuleInfo*       pDxsoModuleInfo,
       const void*                 pShaderBytecode,
       const DxsoAnalysisInfo&     AnalysisInfo,
@@ -19,9 +19,7 @@ namespace dxvk {
     m_bytecode.resize(bytecodeLength);
     std::memcpy(m_bytecode.data(), pShaderBytecode, bytecodeLength);
 
-    DxvkShaderKey shaderKey = { ShaderStage, *pHash };
-
-    const std::string name = shaderKey.toString();
+    const std::string name = Key.toString();
     Logger::debug(str::format("Compiling shader ", name));
     
     // If requested by the user, dump both the raw DXBC
@@ -57,7 +55,6 @@ namespace dxvk {
     const D3D9ConstantLayout& constantLayout = ShaderStage == VK_SHADER_STAGE_VERTEX_BIT
       ? pDevice->GetVertexConstantLayout()
       : pDevice->GetPixelConstantLayout();
-
     m_shaders      = pModule->compile(*pDxsoModuleInfo, name, AnalysisInfo, constantLayout);
     m_isgn         = pModule->isgn();
     m_usedSamplers = pModule->usedSamplers();
@@ -74,11 +71,11 @@ namespace dxvk {
     m_meta      = pModule->meta();
     m_constants = pModule->constants();
 
-    m_shaders[0]->setShaderKey(shaderKey);
+    m_shaders[0]->setShaderKey(Key);
 
     if (m_shaders[1] != nullptr) {
       // Lets lie about the shader key type for the state cache.
-      m_shaders[1]->setShaderKey({ VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, *pHash });
+      m_shaders[1]->setShaderKey({ VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, Key.sha1() });
     }
     
     if (dumpPath.size() != 0) {
@@ -96,8 +93,9 @@ namespace dxvk {
   }
 
 
-  D3D9CommonShader D3D9ShaderModuleSet::GetShaderModule(
+  void D3D9ShaderModuleSet::GetShaderModule(
             D3D9DeviceEx*         pDevice,
+            D3D9CommonShader*     pShaderModule,
             VkShaderStageFlagBits ShaderStage,
       const DxsoModuleInfo*       pDxbcModuleInfo,
       const void*                 pShaderBytecode) {
@@ -114,23 +112,24 @@ namespace dxvk {
 
     DxsoAnalysisInfo info = module.analyze();
 
-    Sha1Hash hash = Sha1Hash::compute(
-      pShaderBytecode, info.bytecodeByteLength);
-
-    DxvkShaderKey lookupKey = DxvkShaderKey(ShaderStage, hash);
+    DxvkShaderKey lookupKey = DxvkShaderKey(
+      ShaderStage,
+      Sha1Hash::compute(pShaderBytecode, info.bytecodeByteLength));
 
     // Use the shader's unique key for the lookup
     { std::unique_lock<std::mutex> lock(m_mutex);
       
       auto entry = m_modules.find(lookupKey);
-      if (entry != m_modules.end())
-        return entry->second;
+      if (entry != m_modules.end()) {
+        *pShaderModule = entry->second;
+        return;
+      }
     }
     
     // This shader has not been compiled yet, so we have to create a
     // new module. This takes a while, so we won't lock the structure.
-    D3D9CommonShader commonShader(
-      pDevice, ShaderStage, &hash,
+    *pShaderModule = D3D9CommonShader(
+      pDevice, ShaderStage, lookupKey,
       pDxbcModuleInfo, pShaderBytecode,
       info, &module);
     
@@ -139,12 +138,12 @@ namespace dxvk {
     // that object instead and discard the newly created module.
     { std::unique_lock<std::mutex> lock(m_mutex);
       
-      auto status = m_modules.insert({ lookupKey, commonShader });
-      if (!status.second)
-        return status.first->second;
+      auto status = m_modules.insert({ lookupKey, *pShaderModule });
+      if (!status.second) {
+        *pShaderModule = status.first->second;
+        return;
+      }
     }
-    
-    return commonShader;
   }
 
 }
