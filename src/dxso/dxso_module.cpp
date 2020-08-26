@@ -3,6 +3,8 @@
 #include "dxso_code.h"
 #include "dxso_compiler.h"
 
+#include <memory>
+
 namespace dxvk {
 
   DxsoModule::DxsoModule(DxsoReader& reader)
@@ -24,22 +26,22 @@ namespace dxvk {
     const std::string&        fileName,
     const DxsoAnalysisInfo&   analysis,
     const D3D9ConstantLayout& layout) {
-    DxsoCompiler compiler(
+    auto compiler = std::make_unique<DxsoCompiler>(
       fileName, moduleInfo,
       m_header.info(), analysis,
       layout);
 
-    this->runCompiler(compiler, m_code.iter());
-    m_isgn = compiler.isgn();
+    this->runCompiler(*compiler, m_code.iter());
+    m_isgn = compiler->isgn();
 
-    m_meta         = compiler.meta();
-    m_constants    = compiler.constants();
-    m_usedSamplers = compiler.usedSamplers();
-    m_usedRTs      = compiler.usedRTs();
+    m_meta         = compiler->meta();
+    m_constants    = compiler->constants();
+    m_usedSamplers = compiler->usedSamplers();
+    m_usedRTs      = compiler->usedRTs();
 
-    compiler.finalize();
+    compiler->finalize();
 
-    return compiler.compile();
+    return compiler->compile();
   }
 
   void DxsoModule::runAnalyzer(
