@@ -53,6 +53,12 @@ namespace dxvk {
     VkShaderStageFlags type() const { return m_type; }
 
     /**
+     * \brief Shader SHA1
+     * \returns Shader SHA1
+     */
+    const Sha1Hash& sha1() const { return m_sha1; }
+
+    /**
      * \brief Checks whether two keys are equal
      * 
      * \param [in] key The shader key to compare to
