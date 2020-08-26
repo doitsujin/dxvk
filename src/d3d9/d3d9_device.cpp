@@ -6043,7 +6043,7 @@ namespace dxvk {
   const DWORD*                pShaderBytecode,
   const DxsoModuleInfo*       pModuleInfo) {
     try {
-      *pShaderModule = m_shaderModules->GetShaderModule(this,
+      m_shaderModules->GetShaderModule(this, pShaderModule,
         ShaderStage, pModuleInfo, pShaderBytecode);
 
       return D3D_OK;
