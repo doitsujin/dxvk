@@ -8,8 +8,19 @@
 #endif
 
 #include <stdint.h>
+
 #include <d3d8.h>
+
+// Undefine D3D8 macros //
 #undef DIRECT3D_VERSION
+
+/**
+* \brief Direct3D 9
+* 
+* All D3D9 interfaces are included within
+* a namespace, so as not to collide with
+* D3D8 interfaces.
+*/
 namespace d3d9 {
 #include <d3d9.h>
 }

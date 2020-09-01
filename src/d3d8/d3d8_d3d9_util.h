@@ -1,5 +1,9 @@
 #pragma once
 
+/**
+* Utility functions for converting
+* between DirectX8 and DirectX9 types.
+*/
 
 namespace dxvk {
 

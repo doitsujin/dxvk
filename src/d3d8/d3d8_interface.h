@@ -1,5 +1,7 @@
 #pragma once
 
+// Implements IDirect3D8
+
 #include "d3d8_include.h"
 #include "d3d8_d3d9_util.h"
 
@@ -33,7 +35,7 @@ namespace dxvk {
 
     // IDirect3D8 methods //
 
-    // TODO //
+    // TODO: RegisterSoftwareDevice //
     HRESULT STDMETHODCALLTYPE RegisterSoftwareDevice(void* pInitializeFunction) {
       dxvk::Logger::warn("D3D8InterfaceEx::RegisterSoftwareDevice: stub");
       return D3DERR_INVALIDCALL;
@@ -140,7 +142,6 @@ namespace dxvk {
       return m_d3d9ex->GetAdapterMonitor(Adapter);
     }
 
-    // TODO //
     HRESULT STDMETHODCALLTYPE CreateDevice(
         UINT Adapter,
         D3DDEVTYPE DeviceType,

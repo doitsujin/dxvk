@@ -1,4 +1,6 @@
 
+// Main: the location of Direct3DCreate8 and other core exported functions
+
 #include "d3d8_interface.h"
 //#include "d3d9_shader_validator.h"
 

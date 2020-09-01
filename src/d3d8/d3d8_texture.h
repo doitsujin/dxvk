@@ -115,7 +115,6 @@ namespace dxvk {
       return res;
     }
 
-    // TODO: GetSurfaceLevel
     HRESULT STDMETHODCALLTYPE GetSurfaceLevel(UINT Level, IDirect3DSurface8** ppSurfaceLevel) {
       d3d9::IDirect3DSurface9* pSurface = nullptr;
       HRESULT res = m_pTexture->GetSurfaceLevel(Level, &pSurface);

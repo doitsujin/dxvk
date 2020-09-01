@@ -62,7 +62,7 @@ namespace dxvk {
     }
 
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() /*final*/ {
-      // TODO
+      // TODO: Surface::GetType
       return D3DRTYPE_TEXTURE;
     }
 

@@ -1,5 +1,7 @@
 #pragma once
 
+// Implements IDirect3DDevice8
+
 #include "d3d8_include.h"
 #include "d3d8_texture.h"
 #include "d3d8_buffer.h"
