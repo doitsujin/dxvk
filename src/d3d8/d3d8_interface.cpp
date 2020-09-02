@@ -9,7 +9,7 @@ namespace dxvk
 {
   D3D8InterfaceEx::D3D8InterfaceEx(UINT SDKVersion)
   {
-    d3d9::Direct3DCreate9Ex(SDKVersion, &m_d3d9ex);
+    d3d9::Direct3DCreate9Ex(D3D_SDK_VERSION, &m_d3d9ex);
 
     m_adapterCount = m_d3d9ex->GetAdapterCount();
 
