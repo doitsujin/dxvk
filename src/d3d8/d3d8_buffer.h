@@ -38,8 +38,7 @@ namespace dxvk {
       m_buffer->PreLoad();
     }
 
-    // allow conversion to wrapped type
-    inline operator Buffer* () const { return m_buffer; }
+    Buffer* GetBuffer() const { return m_buffer; }
 
   protected:
     Buffer* m_buffer;

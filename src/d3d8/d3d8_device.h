@@ -263,18 +263,25 @@ namespace dxvk {
             IDirect3DVertexBuffer8** ppVertexBuffer) {
       
       d3d9::IDirect3DVertexBuffer9* pVertexBuffer9 = nullptr;
-      HRESULT res = m_device9->CreateVertexBuffer(Length, Usage, FVF, (d3d9::D3DPOOL)Pool, &pVertexBuffer9, NULL);
+      HRESULT res = m_device9->CreateVertexBuffer(Length, Usage, FVF, d3d9::D3DPOOL(Pool), &pVertexBuffer9, NULL);
       D3D8VertexBuffer* pBuf = new D3D8VertexBuffer(this, pVertexBuffer9);
       *ppVertexBuffer = pBuf;
       return res;
     }
 
-    HRESULT STDMETHODCALLTYPE CreateIndexBuffer D3D8_DEVICE_STUB(
+    HRESULT STDMETHODCALLTYPE CreateIndexBuffer(
             UINT                    Length,
             DWORD                   Usage,
             D3DFORMAT               Format,
             D3DPOOL                 Pool,
-            IDirect3DIndexBuffer8** ppIndexBuffer);
+            IDirect3DIndexBuffer8** ppIndexBuffer) {
+      d3d9::IDirect3DIndexBuffer9* pIndexBuffer9 = nullptr;
+      HRESULT res = m_device9->CreateIndexBuffer(Length, Usage, d3d9::D3DFORMAT(Format), d3d9::D3DPOOL(Pool), &pIndexBuffer9, NULL);
+      D3D8IndexBuffer* pBuf = new D3D8IndexBuffer(this, pIndexBuffer9);
+      *ppIndexBuffer = reinterpret_cast<IDirect3DIndexBuffer8*>(pBuf);
+      return res;
+
+    }
 
     HRESULT STDMETHODCALLTYPE CreateRenderTarget D3D8_DEVICE_STUB(
             UINT                Width,
@@ -424,15 +431,17 @@ namespace dxvk {
             D3DPRIMITIVETYPE PrimitiveType,
             UINT             StartVertex,
             UINT             PrimitiveCount) {
-      return m_device9->DrawPrimitive((d3d9::D3DPRIMITIVETYPE)PrimitiveType, StartVertex, PrimitiveCount);
+      return m_device9->DrawPrimitive(d3d9::D3DPRIMITIVETYPE(PrimitiveType), StartVertex, PrimitiveCount);
     }
 
-    HRESULT STDMETHODCALLTYPE DrawIndexedPrimitive D3D8_DEVICE_STUB(
+    HRESULT STDMETHODCALLTYPE DrawIndexedPrimitive(
             D3DPRIMITIVETYPE PrimitiveType,
             UINT             MinVertexIndex,
             UINT             NumVertices,
             UINT             StartIndex,
-            UINT             PrimitiveCount);
+            UINT             PrimitiveCount) {
+      return m_device9->DrawIndexedPrimitive(d3d9::D3DPRIMITIVETYPE(PrimitiveType), 0, MinVertexIndex, NumVertices, StartIndex, PrimitiveCount);
+    }
 
     HRESULT STDMETHODCALLTYPE DrawPrimitiveUP D3D8_DEVICE_STUB(
             D3DPRIMITIVETYPE PrimitiveType,
@@ -485,7 +494,7 @@ namespace dxvk {
             UINT                    Stride) {
       D3D8VertexBuffer* buffer = static_cast<D3D8VertexBuffer*>(pStreamData);
 
-      return m_device9->SetStreamSource(StreamNumber, (*buffer), 0, Stride);
+      return m_device9->SetStreamSource(StreamNumber, buffer->GetBuffer(), 0, Stride);
     }
 
     HRESULT STDMETHODCALLTYPE GetStreamSource D3D8_DEVICE_STUB(
@@ -493,7 +502,10 @@ namespace dxvk {
             IDirect3DVertexBuffer8** ppStreamData,
             UINT*                    pStride);
 
-    HRESULT STDMETHODCALLTYPE SetIndices D3D8_DEVICE_STUB(IDirect3DIndexBuffer8* pIndexData, UINT BaseVertexIndex);
+    HRESULT STDMETHODCALLTYPE SetIndices(IDirect3DIndexBuffer8* pIndexData, UINT BaseVertexIndex) {
+      D3D8IndexBuffer* buffer = static_cast<D3D8IndexBuffer*>(pIndexData);
+      return m_device9->SetIndices(buffer->GetBuffer());
+    }
 
     HRESULT STDMETHODCALLTYPE GetIndices D3D8_DEVICE_STUB(
             IDirect3DIndexBuffer8** ppIndexData,
