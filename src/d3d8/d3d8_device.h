@@ -405,7 +405,7 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE SetTexture(DWORD Stage, IDirect3DBaseTexture8* pTexture) {
       D3D8Texture2D* tex = static_cast<D3D8Texture2D*>(pTexture);
-      return GetD3D9()->SetTexture(Stage, tex->GetD3D9());
+      return GetD3D9()->SetTexture(Stage, tex != nullptr ? tex->GetD3D9() : nullptr);
     }
 
     HRESULT STDMETHODCALLTYPE GetTextureStageState D3D8_DEVICE_STUB(
