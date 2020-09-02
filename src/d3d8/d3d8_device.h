@@ -231,9 +231,7 @@ namespace dxvk {
         &pTex9,
         NULL);
 
-      D3D8Texture2D* pTex = new D3D8Texture2D(this, std::move(pTex9));
-
-      (*ppTexture) = pTex;
+      *ppTexture = ref(new D3D8Texture2D(this, std::move(pTex9)));
 
       return res;
     }
@@ -263,10 +261,9 @@ namespace dxvk {
             D3DPOOL                  Pool,
             IDirect3DVertexBuffer8** ppVertexBuffer) {
       
-      d3d9::IDirect3DVertexBuffer9* pVertexBuffer9 = nullptr;
+      Com<d3d9::IDirect3DVertexBuffer9> pVertexBuffer9 = nullptr;
       HRESULT res = GetD3D9()->CreateVertexBuffer(Length, Usage, FVF, d3d9::D3DPOOL(Pool), &pVertexBuffer9, NULL);
-      D3D8VertexBuffer* pBuf = new D3D8VertexBuffer(this, pVertexBuffer9);
-      *ppVertexBuffer = pBuf;
+      *ppVertexBuffer = ref(new D3D8VertexBuffer(this, std::move(pVertexBuffer9)));
       return res;
     }
 
@@ -276,10 +273,9 @@ namespace dxvk {
             D3DFORMAT               Format,
             D3DPOOL                 Pool,
             IDirect3DIndexBuffer8** ppIndexBuffer) {
-      d3d9::IDirect3DIndexBuffer9* pIndexBuffer9 = nullptr;
+      Com<d3d9::IDirect3DIndexBuffer9> pIndexBuffer9 = nullptr;
       HRESULT res = GetD3D9()->CreateIndexBuffer(Length, Usage, d3d9::D3DFORMAT(Format), d3d9::D3DPOOL(Pool), &pIndexBuffer9, NULL);
-      D3D8IndexBuffer* pBuf = new D3D8IndexBuffer(this, pIndexBuffer9);
-      *ppIndexBuffer = reinterpret_cast<IDirect3DIndexBuffer8*>(pBuf);
+      *ppIndexBuffer = ref(new D3D8IndexBuffer(this, std::move(pIndexBuffer9)));
       return res;
 
     }
