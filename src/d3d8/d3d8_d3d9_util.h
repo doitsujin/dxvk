@@ -23,17 +23,17 @@ namespace dxvk {
     d3d9::D3DPRESENT_PARAMETERS params;
     params.BackBufferWidth = pParams->BackBufferWidth;
     params.BackBufferHeight = pParams->BackBufferHeight;
-    params.BackBufferFormat = (d3d9::D3DFORMAT)pParams->BackBufferFormat;
+    params.BackBufferFormat = d3d9::D3DFORMAT(pParams->BackBufferFormat);
     params.BackBufferCount = pParams->BackBufferCount;
 
-    params.MultiSampleType = (d3d9::D3DMULTISAMPLE_TYPE)pParams->MultiSampleType;
+    params.MultiSampleType = d3d9::D3DMULTISAMPLE_TYPE(pParams->MultiSampleType);
     params.MultiSampleQuality = 0; // (D3D8: no MultiSampleQuality), TODO: get a value for this
 
-    params.SwapEffect = (d3d9::D3DSWAPEFFECT)pParams->SwapEffect;
+    params.SwapEffect = d3d9::D3DSWAPEFFECT(pParams->SwapEffect);
     params.hDeviceWindow = pParams->hDeviceWindow;
     params.Windowed = pParams->Windowed;
     params.EnableAutoDepthStencil = pParams->EnableAutoDepthStencil;
-    params.AutoDepthStencilFormat = (d3d9::D3DFORMAT)pParams->AutoDepthStencilFormat;
+    params.AutoDepthStencilFormat = d3d9::D3DFORMAT(pParams->AutoDepthStencilFormat);
     params.Flags = pParams->Flags;
 
     params.FullScreen_RefreshRateInHz = pParams->FullScreen_RefreshRateInHz;
@@ -51,13 +51,14 @@ namespace dxvk {
 
   // (8<-9) Convert D3DSURFACE_DESC
   inline void ConvertSurfaceDesc8(const d3d9::D3DSURFACE_DESC* pSurf9, D3DSURFACE_DESC* pSurf8) {
-    pSurf8->Format = (D3DFORMAT)pSurf9->Format;
-    pSurf8->Type = (D3DRESOURCETYPE)pSurf9->Type;
+    pSurf8->Format = D3DFORMAT(pSurf9->Format);
+    pSurf8->Type = D3DRESOURCETYPE(pSurf9->Type);
     pSurf8->Usage = pSurf9->Usage;
-    pSurf8->Pool = (D3DPOOL)pSurf9->Pool;
+    pSurf8->Pool = D3DPOOL(pSurf9->Pool);
     pSurf8->Size = pSurf9->Width * pSurf9->Height * GetFormatBPP(pSurf8->Format);
 
-    pSurf8->MultiSampleType = (D3DMULTISAMPLE_TYPE)pSurf9->MultiSampleType;
+    pSurf8->MultiSampleType = D3DMULTISAMPLE_TYPE(pSurf9->MultiSampleType);
+    // DX8: No multisample quality
     pSurf8->Width = pSurf9->Width;
     pSurf8->Height = pSurf9->Height;
   }
