@@ -14,14 +14,14 @@
 
 namespace dxvk {
   
-  template <typename... Type>
-  class D3D8Resource : public D3D8DeviceChild<Type...> {
+  template <typename D3D9, typename D3D8>
+  class D3D8Resource : public D3D8DeviceChild<D3D9, D3D8> {
 
   public:
 
-    D3D8Resource(D3D8DeviceEx* pDevice)
-      : D3D8DeviceChild<Type...>(pDevice)
-      , m_priority              ( 0 ) { }
+    D3D8Resource(D3D8DeviceEx* pDevice, Com<D3D9>&& Object)
+      : D3D8DeviceChild<D3D9, D3D8>(pDevice, std::move(Object))
+      , m_priority                 ( 0 ) { }
 
     HRESULT STDMETHODCALLTYPE SetPrivateData(
             REFGUID     refguid,

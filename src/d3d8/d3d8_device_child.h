@@ -7,18 +7,20 @@
 */
 
 #include "d3d8_include.h"
+#include "d3d8_wrapped_object.h"
 
 namespace dxvk {
 
   class D3D8DeviceEx;
 
-  template <typename Base>
-  class D3D8DeviceChild : public ComObjectClamp<Base> {
+  template <typename D3D9, typename D3D8>
+  class D3D8DeviceChild : public D3D8WrappedObject<D3D9, D3D8> {
 
   public:
 
-    D3D8DeviceChild(D3D8DeviceEx* pDevice)
-      : m_parent( pDevice ) { }
+    D3D8DeviceChild(D3D8DeviceEx* pDevice, Com<D3D9>&& Object)
+      : D3D8WrappedObject<D3D9, D3D8>(std::move(Object))
+      , m_parent( pDevice ) { }
 
     ULONG STDMETHODCALLTYPE AddRef() {
       uint32_t refCount = this->m_refCount++;

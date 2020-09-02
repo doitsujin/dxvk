@@ -7,53 +7,50 @@
 
 namespace dxvk {
 
-  template <typename Base, typename Buffer>
-  class D3D8Buffer : public D3D8Resource<Base> {
+  template <typename D3D9, typename D3D8>
+  class D3D8Buffer : public D3D8Resource<D3D9, D3D8> {
 
   public:
 
     D3D8Buffer(
             D3D8DeviceEx*   pDevice,
-            Buffer*         pBuffer)
-      : D3D8Resource<Base>  ( pDevice )
-      , m_buffer(pBuffer) { }
+            Com<D3D9>&&     pBuffer)
+      : D3D8Resource<D3D9, D3D8> ( pDevice, std::move(pBuffer) ) {
+    }
 
     HRESULT STDMETHODCALLTYPE Lock(
             UINT   OffsetToLock,
             UINT   SizeToLock,
             BYTE** ppbData,
             DWORD  Flags) {
-      return m_buffer->Lock(
+      return GetD3D9()->Lock(
         OffsetToLock,
         SizeToLock,
-        (void**)ppbData,
+        reinterpret_cast<void**>(ppbData),
         Flags);
     }
 
     HRESULT STDMETHODCALLTYPE Unlock() {
-      return m_buffer->Unlock();
+      return GetD3D9()->Unlock();
     }
 
     void STDMETHODCALLTYPE PreLoad() {
-      m_buffer->PreLoad();
+      GetD3D9()->PreLoad();
     }
-
-    Buffer* GetBuffer() const { return m_buffer; }
-
-  protected:
-    Buffer* m_buffer;
 
   };
 
 
-  using D3D8VertexBufferBase = D3D8Buffer<IDirect3DVertexBuffer8, d3d9::IDirect3DVertexBuffer9>;
+  using D3D8VertexBufferBase = D3D8Buffer<d3d9::IDirect3DVertexBuffer9, IDirect3DVertexBuffer8>;
   class D3D8VertexBuffer final : public D3D8VertexBufferBase {
 
   public:
 
     D3D8VertexBuffer(
-        D3D8DeviceEx*                 pDevice,
-        d3d9::IDirect3DVertexBuffer9* pBuffer) : D3D8VertexBufferBase(pDevice, pBuffer) { }
+        D3D8DeviceEx*                       pDevice,
+        Com<d3d9::IDirect3DVertexBuffer9>&& pBuffer)
+      : D3D8VertexBufferBase(pDevice, std::move(pBuffer)) {
+    }
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
@@ -62,19 +59,22 @@ namespace dxvk {
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_VERTEXBUFFER; }
 
     HRESULT STDMETHODCALLTYPE GetDesc(D3DVERTEXBUFFER_DESC* pDesc) final {
-      return m_buffer->GetDesc((d3d9::D3DVERTEXBUFFER_DESC*)pDesc);
+      // TODO: Remove reinterpret cast.
+      return GetD3D9()->GetDesc(reinterpret_cast<d3d9::D3DVERTEXBUFFER_DESC*>(pDesc));
     }
 
   };
 
-  using D3D8IndexBufferBase = D3D8Buffer<IDirect3DIndexBuffer8, d3d9::IDirect3DIndexBuffer9>;
+  using D3D8IndexBufferBase = D3D8Buffer<d3d9::IDirect3DIndexBuffer9, IDirect3DIndexBuffer8>;
   class D3D8IndexBuffer final : public D3D8IndexBufferBase {
 
   public:
 
     D3D8IndexBuffer(
-        D3D8DeviceEx*                 pDevice,
-        d3d9::IDirect3DIndexBuffer9*  pBuffer) : D3D8IndexBufferBase(pDevice, pBuffer) { }
+        D3D8DeviceEx*                      pDevice,
+        Com<d3d9::IDirect3DIndexBuffer9>&& pBuffer)
+      : D3D8IndexBufferBase(pDevice, std::move(pBuffer)) {
+    }
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
@@ -83,7 +83,8 @@ namespace dxvk {
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_INDEXBUFFER; }
 
     HRESULT STDMETHODCALLTYPE GetDesc(D3DINDEXBUFFER_DESC* pDesc) final {
-      return m_buffer->GetDesc((d3d9::D3DINDEXBUFFER_DESC*)pDesc);
+      // TODO: Remove reinterpret_cast.
+      return GetD3D9()->GetDesc(reinterpret_cast<d3d9::D3DINDEXBUFFER_DESC*>(pDesc));
     }
 
   };

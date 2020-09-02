@@ -9,13 +9,13 @@
 namespace dxvk {
 
   D3D8DeviceEx::D3D8DeviceEx(
-    D3D8InterfaceEx* pParent,
-    //D3D8Adapter*           pAdapter,
-    D3DDEVTYPE             DeviceType,
-    HWND                   hFocusWindow,
-    DWORD                  BehaviorFlags,
-    d3d9::IDirect3DDevice9* pD3DDevice9)
-    : m_device9(pD3DDevice9)
+    D3D8InterfaceEx*              pParent,
+    Com<d3d9::IDirect3DDevice9>&& pDevice,
+    //D3D8Adapter*                  pAdapter,
+    D3DDEVTYPE                    DeviceType,
+    HWND                          hFocusWindow,
+    DWORD                         BehaviorFlags)
+    : D3D8DeviceBase(std::move(pDevice))
     , m_parent(pParent)
     , m_deviceType(DeviceType)
     , m_window(hFocusWindow)

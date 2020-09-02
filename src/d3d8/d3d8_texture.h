@@ -36,20 +36,19 @@ namespace dxvk {
 
 
   // Implements IDirect3DBaseTexture8 (Except GetType)
-  template <typename SubresourceType, typename... Base>
-  class D3D8BaseTexture : public D3D8Resource<Base...> {
+  template <typename SubresourceType, typename D3D9, typename D3D8>
+  class D3D8BaseTexture : public D3D8Resource<D3D9, D3D8> {
 
   public:
 
     using SubresourceData = std::aligned_storage_t<sizeof(SubresourceType), alignof(SubresourceType)>;
 
     D3D8BaseTexture(
-            D3D8DeviceEx*                 pDevice,
-            d3d9::IDirect3DBaseTexture9*  pBaseTexture,
-      //const D3D8_COMMON_TEXTURE_DESC*     pDesc,
-            D3DRESOURCETYPE               ResourceType)
-        : D3D8Resource<Base...> ( pDevice )
-        , m_pBaseTexture        ( pBaseTexture ) {
+            D3D8DeviceEx*                       pDevice,
+            Com<D3D9>&&                         pBaseTexture,
+      //const D3D8_COMMON_TEXTURE_DESC*         pDesc,
+            D3DRESOURCETYPE                     ResourceType)
+        : D3D8Resource<D3D9, D3D8> ( pDevice, std::move(pBaseTexture) ) {
       // TODO: set up subresource
     }
 
@@ -59,22 +58,20 @@ namespace dxvk {
     // TODO: all these methods should probably be final
 
     void STDMETHODCALLTYPE PreLoad() {
-      m_pBaseTexture->PreLoad();
+      GetD3D9()->PreLoad();
     }
 
     DWORD STDMETHODCALLTYPE SetLOD(DWORD LODNew) {
-      return m_pBaseTexture->SetLOD(LODNew);
+      return GetD3D9()->SetLOD(LODNew);
     }
 
     DWORD STDMETHODCALLTYPE GetLOD() {
-      return m_pBaseTexture->GetLOD();
+      return GetD3D9()->GetLOD();
     }
 
     DWORD STDMETHODCALLTYPE GetLevelCount() {
-      return m_pBaseTexture->GetLevelCount();
+      return GetD3D9()->GetLevelCount();
     }
-
-    inline operator d3d9::IDirect3DBaseTexture9*() const { return m_pBaseTexture; }
 
     SubresourceType* GetSubresource(UINT Subresource) {
       return reinterpret_cast<SubresourceType*>(&m_subresources[Subresource]);
@@ -82,24 +79,22 @@ namespace dxvk {
 
   protected:
 
-    d3d9::IDirect3DBaseTexture9* m_pBaseTexture;
-
     std::vector<SubresourceData> m_subresources;
 
   };
 
   // Implements IDirect3DTexture8
-  using D3D8Texture2DBase = D3D8BaseTexture<D3D8Surface, IDirect3DTexture8>;
+  using D3D8Texture2DBase = D3D8BaseTexture<D3D8Surface, d3d9::IDirect3DTexture9, IDirect3DTexture8>;
   class D3D8Texture2D final : public D3D8Texture2DBase {
 
   public:
 
     D3D8Texture2D(
-            D3D8DeviceEx*             pDevice,
-            d3d9::IDirect3DTexture9*  pTexture)
+      D3D8DeviceEx*                  pDevice,
+      Com<d3d9::IDirect3DTexture9>&& pTexture)
       //const D3D8_COMMON_TEXTURE_DESC* pDesc)
-        : D3D8Texture2DBase( pDevice, pTexture, D3DRTYPE_TEXTURE )
-        , m_pTexture(pTexture) { }
+      : D3D8Texture2DBase(pDevice, std::move(pTexture), D3DRTYPE_TEXTURE) {
+    }
 
     // TODO: QueryInterface
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) {
@@ -110,33 +105,29 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc) {
       d3d9::D3DSURFACE_DESC surf;
-      HRESULT res = m_pTexture->GetLevelDesc(Level, &surf);
+      HRESULT res = GetD3D9()->GetLevelDesc(Level, &surf);
       ConvertSurfaceDesc8(&surf, pDesc);
       return res;
     }
 
     HRESULT STDMETHODCALLTYPE GetSurfaceLevel(UINT Level, IDirect3DSurface8** ppSurfaceLevel) {
       d3d9::IDirect3DSurface9* pSurface = nullptr;
-      HRESULT res = m_pTexture->GetSurfaceLevel(Level, &pSurface);
-      D3D8Surface* surface = new D3D8Surface(m_parent, pSurface);
-      *ppSurfaceLevel = surface;
+      HRESULT res = GetD3D9()->GetSurfaceLevel(Level, &pSurface);
+      *ppSurfaceLevel = ref(new D3D8Surface(m_parent, pSurface));
       return res;
     }
 
     HRESULT STDMETHODCALLTYPE LockRect(UINT Level, D3DLOCKED_RECT* pLockedRect, CONST RECT* pRect, DWORD Flags) {
-      return m_pTexture->LockRect(Level, (d3d9::D3DLOCKED_RECT*)pLockedRect, pRect, Flags);
+      return GetD3D9()->LockRect(Level, (d3d9::D3DLOCKED_RECT*)pLockedRect, pRect, Flags);
     }
 
     HRESULT STDMETHODCALLTYPE UnlockRect(UINT Level) {
-      return m_pTexture->UnlockRect(Level);
+      return GetD3D9()->UnlockRect(Level);
     }
 
     HRESULT STDMETHODCALLTYPE AddDirtyRect(CONST RECT* pDirtyRect) {
-      return m_pTexture->AddDirtyRect(pDirtyRect);
+      return GetD3D9()->AddDirtyRect(pDirtyRect);
     }
-
-  private:
-    d3d9::IDirect3DTexture9* m_pTexture;
 
   };
 

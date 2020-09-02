@@ -21,25 +21,25 @@ namespace dxvk {
 
   // TODO: all inherited methods in D3D8Surface should be final like in d9vk
 
-  using D3D8SurfaceBase = D3D8Resource<IDirect3DSurface8>;
+  using D3D8SurfaceBase = D3D8Resource<d3d9::IDirect3DSurface9, IDirect3DSurface8>;
   class D3D8Surface final : public D3D8SurfaceBase {
 
   public:
 
     D3D8Surface(
-            D3D8DeviceEx*             pDevice,
-            d3d9::IDirect3DSurface9*  pSurface)
-      : D3D8SurfaceBase (pDevice)
-      , m_surface       (pSurface) { }
+            D3D8DeviceEx*                   pDevice,
+            Com<d3d9::IDirect3DSurface9>&&  pSurface)
+      : D3D8SurfaceBase (pDevice, std::move(pSurface)) {
+    }
 
     D3D8Surface(
-            D3D8DeviceEx*             pDevice,
-            d3d9::IDirect3DSurface9*  pSurface,
-            UINT                      Face,
-            UINT                      MipLevel,
-            IDirect3DBaseTexture8*    pBaseTexture)
-      : D3D8SurfaceBase (pDevice)
-      , m_surface       (pSurface) { }
+            D3D8DeviceEx*                   pDevice,
+            Com<d3d9::IDirect3DSurface9>&&  pSurface,
+            UINT                            Face,
+            UINT                            MipLevel,
+            IDirect3DBaseTexture8*          pBaseTexture)
+      : D3D8SurfaceBase (pDevice, std::move(pSurface)) {
+    }
 
     void AddRefPrivate() {}
 
@@ -51,38 +51,38 @@ namespace dxvk {
     }
 
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() {
-      return (D3DRESOURCETYPE)m_surface->GetType();
+      return D3DRESOURCETYPE(GetD3D9()->GetType());
     }
 
     HRESULT STDMETHODCALLTYPE GetContainer(REFIID riid, void** ppContainer) {
-      return m_surface->GetContainer(riid, ppContainer);
+      return GetD3D9()->GetContainer(riid, ppContainer);
     }
 
     HRESULT STDMETHODCALLTYPE GetDesc(D3DSURFACE_DESC* pDesc) {
       d3d9::D3DSURFACE_DESC desc;
-      HRESULT res = m_surface->GetDesc(&desc);
+      HRESULT res = GetD3D9()->GetDesc(&desc);
       ConvertSurfaceDesc8(&desc, pDesc);
       return res;
     }
 
     HRESULT STDMETHODCALLTYPE LockRect(D3DLOCKED_RECT* pLockedRect, CONST RECT* pRect, DWORD Flags) {
-      return m_surface->LockRect((d3d9::D3DLOCKED_RECT*)pLockedRect, pRect, Flags);
+      return GetD3D9()->LockRect((d3d9::D3DLOCKED_RECT*)pLockedRect, pRect, Flags);
     }
 
     HRESULT STDMETHODCALLTYPE UnlockRect() {
-      return m_surface->UnlockRect();
+      return GetD3D9()->UnlockRect();
     }
 
     HRESULT STDMETHODCALLTYPE GetDC(HDC* phDC) {
-      return m_surface->GetDC(phDC);
+      return GetD3D9()->GetDC(phDC);
     }
 
     HRESULT STDMETHODCALLTYPE ReleaseDC(HDC hDC) {
-      return m_surface->ReleaseDC(hDC);
+      return GetD3D9()->ReleaseDC(hDC);
     }
 
   private:
-    d3d9::IDirect3DSurface9* m_surface;
+
     D3D8GDIDesc m_dcDesc;
 
   };
