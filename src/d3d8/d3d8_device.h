@@ -179,7 +179,8 @@ namespace dxvk {
 
 
     HRESULT STDMETHODCALLTYPE Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) {
-      return GetD3D9()->Reset((d3d9::D3DPRESENT_PARAMETERS*)pPresentationParameters);
+      d3d9::D3DPRESENT_PARAMETERS params = ConvertPresentParameters9(pPresentationParameters);
+      return GetD3D9()->Reset(&params);
     }
 
     HRESULT STDMETHODCALLTYPE Present(
