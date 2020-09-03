@@ -123,7 +123,6 @@ namespace dxvk {
     STDMETHOD(CopyRects) D3D8_DEVICE_STUB(THIS_ IDirect3DSurface8* pSourceSurface, CONST RECT* pSourceRectsArray, UINT cRects, IDirect3DSurface8* pDestinationSurface, CONST POINT* pDestPointsArray);
     STDMETHOD(CreateImageSurface) D3D8_DEVICE_STUB(THIS_ UINT Width, UINT Height, D3DFORMAT Format, IDirect3DSurface8** ppSurface);
     STDMETHOD(DeletePixelShader) D3D8_DEVICE_STUB(THIS_ DWORD Handle);
-    STDMETHOD(DeleteStateBlock) D3D8_DEVICE_STUB(THIS_ DWORD Token);
     STDMETHOD(DeleteVertexShader) D3D8_DEVICE_STUB(THIS_ DWORD Handle);
     STDMETHOD(GetPixelShaderConstant) D3D8_DEVICE_STUB(THIS_ DWORD Register, void* pConstantData, DWORD ConstantCount);
     STDMETHOD(GetPixelShaderFunction) D3D8_DEVICE_STUB(THIS_ DWORD Handle, void* pData, DWORD* pSizeOfData);
@@ -386,6 +385,10 @@ namespace dxvk {
       return reinterpret_cast<d3d9::IDirect3DStateBlock9*>(Token)->Apply();
     }
 
+    HRESULT STDMETHODCALLTYPE DeleteStateBlock(DWORD Token) {
+      reinterpret_cast<d3d9::IDirect3DStateBlock9*>(Token)->Release();
+      return D3D_OK;
+    }
 
     HRESULT STDMETHODCALLTYPE BeginStateBlock() { 
       return GetD3D9()->BeginStateBlock();
