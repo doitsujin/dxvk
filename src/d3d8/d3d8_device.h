@@ -404,15 +404,35 @@ namespace dxvk {
       return GetD3D9()->SetTexture(Stage, tex != nullptr ? tex->GetD3D9() : nullptr);
     }
 
-    HRESULT STDMETHODCALLTYPE GetTextureStageState D3D8_DEVICE_STUB(
+    HRESULT STDMETHODCALLTYPE GetTextureStageState(
             DWORD                    Stage,
             D3DTEXTURESTAGESTATETYPE Type,
-            DWORD*                   pValue);
+            DWORD*                   pValue) {
+      d3d9::D3DSAMPLERSTATETYPE stateType = GetSamplerStateType9(Type);
 
-    HRESULT STDMETHODCALLTYPE SetTextureStageState D3D8_DEVICE_STUB(
+      if (stateType != -1) {
+        // if the type has been remapped to a sampler state type:
+        return GetD3D9()->GetSamplerState(Stage, stateType, pValue);
+      }
+      else {
+        return GetD3D9()->GetTextureStageState(Stage, d3d9::D3DTEXTURESTAGESTATETYPE(Type), pValue);
+      }
+    }
+
+    HRESULT STDMETHODCALLTYPE SetTextureStageState(
             DWORD                    Stage,
             D3DTEXTURESTAGESTATETYPE Type,
-            DWORD                    Value);
+            DWORD                    Value) {
+
+      d3d9::D3DSAMPLERSTATETYPE stateType = GetSamplerStateType9(Type);
+
+      if (stateType != -1) {
+        // if the type has been remapped to a sampler state type:
+        return GetD3D9()->SetSamplerState(Stage, stateType, Value);
+      } else {
+        return GetD3D9()->SetTextureStageState(Stage, d3d9::D3DTEXTURESTAGESTATETYPE(Type), Value);
+      }
+    }
 
     HRESULT STDMETHODCALLTYPE ValidateDevice D3D8_DEVICE_STUB(DWORD* pNumPasses);
 
