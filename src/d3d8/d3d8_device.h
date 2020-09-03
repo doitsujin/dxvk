@@ -324,14 +324,16 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE SetTransform(D3DTRANSFORMSTATETYPE State, const D3DMATRIX* pMatrix) {
-      return GetD3D9()->SetTransform((d3d9::D3DTRANSFORMSTATETYPE)State, pMatrix);
+      return GetD3D9()->SetTransform(d3d9::D3DTRANSFORMSTATETYPE(State), pMatrix);
     }
 
     HRESULT STDMETHODCALLTYPE GetTransform(D3DTRANSFORMSTATETYPE State, D3DMATRIX* pMatrix) {
-      return GetD3D9()->GetTransform((d3d9::D3DTRANSFORMSTATETYPE)State, pMatrix);
+      return GetD3D9()->GetTransform(d3d9::D3DTRANSFORMSTATETYPE(State), pMatrix);
     }
 
-    HRESULT STDMETHODCALLTYPE MultiplyTransform D3D8_DEVICE_STUB(D3DTRANSFORMSTATETYPE TransformState, const D3DMATRIX* pMatrix);
+    HRESULT STDMETHODCALLTYPE MultiplyTransform(D3DTRANSFORMSTATETYPE TransformState, const D3DMATRIX* pMatrix) {
+      return GetD3D9()->MultiplyTransform(d3d9::D3DTRANSFORMSTATETYPE(TransformState), pMatrix);
+    }
 
     HRESULT STDMETHODCALLTYPE SetViewport D3D8_DEVICE_STUB_(SetViewport, const D3DVIEWPORT8* pViewport);
 
