@@ -195,10 +195,11 @@ namespace dxvk {
             UINT iBackBuffer,
             D3DBACKBUFFER_TYPE Type,
             IDirect3DSurface8** ppBackBuffer) {
-      d3d9::IDirect3DSurface9* pBackBuffer;
-      HRESULT res = GetD3D9()->GetBackBuffer(0, iBackBuffer, (d3d9::D3DBACKBUFFER_TYPE)Type, &pBackBuffer);
-
-      (*ppBackBuffer) = (IDirect3DSurface8*)pBackBuffer;
+      Com<d3d9::IDirect3DSurface9> pSurface9;
+      HRESULT res = GetD3D9()->GetBackBuffer(0, iBackBuffer, (d3d9::D3DBACKBUFFER_TYPE)Type, &pSurface9);
+      // TODO: cache backbuffer surface
+      D3D8Surface* surf = new D3D8Surface(this, std::move(pSurface9));
+      *ppBackBuffer = ref(surf);
       return res;
     }
 
