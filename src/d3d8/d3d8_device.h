@@ -361,9 +361,13 @@ namespace dxvk {
       return GetD3D9()->GetLightEnable(Index, pEnable);
     }
 
-    HRESULT STDMETHODCALLTYPE SetClipPlane D3D8_DEVICE_STUB(DWORD Index, const float* pPlane);
+    HRESULT STDMETHODCALLTYPE SetClipPlane(DWORD Index, const float* pPlane) {
+      return GetD3D9()->SetClipPlane(Index, pPlane);
+    }
 
-    HRESULT STDMETHODCALLTYPE GetClipPlane D3D8_DEVICE_STUB(DWORD Index, float* pPlane);
+    HRESULT STDMETHODCALLTYPE GetClipPlane(DWORD Index, float* pPlane) {
+      return GetD3D9()->GetClipPlane(Index, pPlane);
+    }
 
     HRESULT STDMETHODCALLTYPE SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) {
       return GetD3D9()->SetRenderState((d3d9::D3DRENDERSTATETYPE)State, Value);
