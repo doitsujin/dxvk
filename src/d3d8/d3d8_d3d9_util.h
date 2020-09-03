@@ -5,6 +5,8 @@
 * between DirectX8 and DirectX9 types.
 */
 
+#include "d3d8_include.h"
+
 namespace dxvk {
 
   // (8<-9) D3DCAPSX: Writes to D3DCAPS8 from D3DCAPS9
@@ -29,7 +31,38 @@ namespace dxvk {
     params.MultiSampleType = d3d9::D3DMULTISAMPLE_TYPE(pParams->MultiSampleType);
     params.MultiSampleQuality = 0; // (D3D8: no MultiSampleQuality), TODO: get a value for this
 
-    params.SwapEffect = d3d9::D3DSWAPEFFECT(pParams->SwapEffect);
+
+    UINT PresentationInterval = pParams->FullScreen_PresentationInterval;
+
+    if (pParams->Windowed) {
+
+      if (unlikely(PresentationInterval != D3DPRESENT_INTERVAL_DEFAULT)) {
+        // TODO: what does dx8 do if windowed app sets FullScreen_PresentationInterval?
+        Logger::warn(str::format(
+          "D3D8 Application is windowed yet requested FullScreen_PresentationInterval ", PresentationInterval,
+          " (should be D3DPRESENT_INTERVAL_DEFAULT). This will be ignored."));
+      }
+
+      // D3D8: For windowed swap chain, the back buffer is copied to the window immediately.
+      PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
+    }
+
+    register D3DSWAPEFFECT SwapEffect = pParams->SwapEffect;
+
+    // D3DSWAPEFFECT_COPY_VSYNC has been removed
+    if (SwapEffect == D3DSWAPEFFECT_COPY_VSYNC) {
+
+      SwapEffect = D3DSWAPEFFECT_COPY;
+
+      // D3D8: In windowed mode, D3DSWAPEFFECT_COPY_VSYNC enables VSYNC.
+      // In fullscreen, D3DPRESENT_INTERVAL_IMMEDIATE is meaningless.
+      if (pParams->Windowed || PresentationInterval & D3DPRESENT_INTERVAL_IMMEDIATE == 1) {
+        PresentationInterval = D3DPRESENT_INTERVAL_ONE;
+        // TODO: what does dx8 do if multiple D3DPRESENT_INTERVAL flags are set? 
+      }
+    }
+
+    params.SwapEffect = d3d9::D3DSWAPEFFECT(SwapEffect);
     params.hDeviceWindow = pParams->hDeviceWindow;
     params.Windowed = pParams->Windowed;
     params.EnableAutoDepthStencil = pParams->EnableAutoDepthStencil;
@@ -39,7 +72,7 @@ namespace dxvk {
     params.FullScreen_RefreshRateInHz = pParams->FullScreen_RefreshRateInHz;
 
     // FullScreen_PresentationInterval -> PresentationInterval
-    params.PresentationInterval = pParams->FullScreen_PresentationInterval;
+    params.PresentationInterval = PresentationInterval;
 
     return params;
   }
