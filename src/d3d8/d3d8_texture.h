@@ -157,74 +157,63 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE AddDirtyBox(CONST D3DBOX* pDirtyBox);
 
   };
+*/
 
-  using D3D8TextureCubeBase = D3D8BaseTexture<D3D8Surface, IDirect3DCubeTexture8>;
+  // Implements IDirect3DCubeTexture8 //
+
+  using D3D8TextureCubeBase = D3D8BaseTexture<D3D8Surface, d3d9::IDirect3DCubeTexture9, IDirect3DCubeTexture8>;
   class D3D8TextureCube final : public D3D8TextureCubeBase {
 
   public:
 
     D3D8TextureCube(
-            D3D8DeviceEx*             pDevice,
-      const D3D8_COMMON_TEXTURE_DESC* pDesc);
+            D3D8DeviceEx*                       pDevice,
+            Com<d3d9::IDirect3DCubeTexture9>&&  pTexture)
+      : D3D8TextureCubeBase(pDevice, std::move(pTexture), D3DRTYPE_CUBETEXTURE) {
+    }
 
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
+    // TODO: IDirect3DCubeTexture8 QueryInterface
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) {
+      return D3D_OK;
+    }
 
-    D3DRESOURCETYPE STDMETHODCALLTYPE GetType();
+    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() { return D3DRTYPE_CUBETEXTURE; }
 
-    HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DSURFACE_DESC *pDesc);
+    HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc) {
+      d3d9::D3DSURFACE_DESC surf;
+      HRESULT res = GetD3D9()->GetLevelDesc(Level, &surf);
+      ConvertSurfaceDesc8(&surf, pDesc);
+      return res;
+    }
 
-    HRESULT STDMETHODCALLTYPE GetCubeMapSurface(D3DCUBEMAP_FACES Face, UINT Level, IDirect3DSurface8** ppSurfaceLevel);
+    HRESULT STDMETHODCALLTYPE GetCubeMapSurface(D3DCUBEMAP_FACES Face, UINT Level, IDirect3DSurface8** ppSurfaceLevel) {
+      // TODO: cache this
+      d3d9::IDirect3DSurface9* pSurface = nullptr;
+      HRESULT res = GetD3D9()->GetCubeMapSurface(d3d9::D3DCUBEMAP_FACES(Face), Level, &pSurface);
+      *ppSurfaceLevel = ref(new D3D8Surface(m_parent, pSurface));
+      return res;
+    }
 
-    HRESULT STDMETHODCALLTYPE LockRect(D3DCUBEMAP_FACES Face, UINT Level, D3DLOCKED_RECT* pLockedRect, CONST RECT* pRect, DWORD Flags);
+    HRESULT STDMETHODCALLTYPE LockRect(
+            D3DCUBEMAP_FACES Face,
+            UINT Level,
+            D3DLOCKED_RECT* pLockedRect,
+            const RECT* pRect,
+            DWORD Flags) {
+      return GetD3D9()->LockRect(
+        d3d9::D3DCUBEMAP_FACES(Face),
+        Level,
+        reinterpret_cast<d3d9::D3DLOCKED_RECT*>(pLockedRect),
+        pRect,
+        Flags);
+    }
 
-    HRESULT STDMETHODCALLTYPE UnlockRect(D3DCUBEMAP_FACES Face, UINT Level);
+    HRESULT STDMETHODCALLTYPE UnlockRect(D3DCUBEMAP_FACES Face, UINT Level) {
+      return GetD3D9()->UnlockRect(d3d9::D3DCUBEMAP_FACES(Face), Level);
+    }
 
-    HRESULT STDMETHODCALLTYPE AddDirtyRect(D3DCUBEMAP_FACES Face, CONST RECT* pDirtyRect);
-
+    HRESULT STDMETHODCALLTYPE AddDirtyRect(D3DCUBEMAP_FACES Face, const RECT* pDirtyRect) {
+      return GetD3D9()->AddDirtyRect(d3d9::D3DCUBEMAP_FACES(Face), pDirtyRect);
+    }
   };
-
-  inline D3D8CommonTexture* GetCommonTexture(IDirect3DBaseTexture8* ptr) {
-    if (ptr == nullptr)
-      return nullptr;
-
-    D3DRESOURCETYPE type = ptr->GetType();
-    if (type == D3DRTYPE_TEXTURE)
-      return static_cast<D3D8Texture2D*>  (ptr)->GetCommonTexture();
-    else if (type == D3DRTYPE_CUBETEXTURE)
-      return static_cast<D3D8TextureCube*>(ptr)->GetCommonTexture();
-    else //if(type == D3DRTYPE_VOLUMETEXTURE)
-      return static_cast<D3D8Texture3D*>  (ptr)->GetCommonTexture();
-  }
-
-  inline D3D8CommonTexture* GetCommonTexture(D3D8Surface* ptr) {
-    if (ptr == nullptr)
-      return nullptr;
-
-    return ptr->GetCommonTexture();
-  }
-
-  inline D3D8CommonTexture* GetCommonTexture(IDirect3DSurface8* ptr) {
-    return GetCommonTexture(static_cast<D3D8Surface*>(ptr));
-  }
-
-  inline void TextureRefPrivate(IDirect3DBaseTexture8* tex, bool AddRef) {
-    if (tex == nullptr)
-      return;
-
-    D3DRESOURCETYPE type = tex->GetType();
-    if (type == D3DRTYPE_TEXTURE)
-      return CastRefPrivate<D3D8Texture2D>  (tex, AddRef);
-    else if (type == D3DRTYPE_CUBETEXTURE)
-      return CastRefPrivate<D3D8TextureCube>(tex, AddRef);
-    else //if(type == D3DRTYPE_VOLUMETEXTURE)
-      return CastRefPrivate<D3D8Texture3D>  (tex, AddRef);
-  }
-
-  inline void TextureChangePrivate(IDirect3DBaseTexture8*& dst, IDirect3DBaseTexture8* src) {
-    TextureRefPrivate(dst, false);
-    TextureRefPrivate(src, true);
-    dst = src;
-  }
-*/
-
 }

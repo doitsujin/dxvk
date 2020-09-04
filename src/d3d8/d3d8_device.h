@@ -247,13 +247,27 @@ namespace dxvk {
             D3DPOOL                   Pool,
             IDirect3DVolumeTexture8** ppVolumeTexture);
 
-    HRESULT STDMETHODCALLTYPE CreateCubeTexture D3D8_DEVICE_STUB(
+    HRESULT STDMETHODCALLTYPE CreateCubeTexture(
           UINT                      EdgeLength,
             UINT                    Levels,
             DWORD                   Usage,
             D3DFORMAT               Format,
             D3DPOOL                 Pool,
-            IDirect3DCubeTexture8** ppCubeTexture);
+            IDirect3DCubeTexture8** ppCubeTexture) {
+      Com<d3d9::IDirect3DCubeTexture9> pCube9 = nullptr;
+      HRESULT res = GetD3D9()->CreateCubeTexture(
+        EdgeLength,
+        Levels,
+        Usage,
+        d3d9::D3DFORMAT(Format),
+        d3d9::D3DPOOL(Pool),
+        &pCube9,
+        NULL);
+
+      *ppCubeTexture = ref(new D3D8TextureCube(this, std::move(pCube9)));
+
+      return res;
+    }
 
     HRESULT STDMETHODCALLTYPE CreateVertexBuffer(
             UINT                     Length,
@@ -289,12 +303,27 @@ namespace dxvk {
             BOOL                Lockable,
             IDirect3DSurface8** ppSurface);
 
-    HRESULT STDMETHODCALLTYPE CreateDepthStencilSurface D3D8_DEVICE_STUB(
+    HRESULT STDMETHODCALLTYPE CreateDepthStencilSurface(
             UINT                Width,
             UINT                Height,
             D3DFORMAT           Format,
             D3DMULTISAMPLE_TYPE MultiSample,
-            IDirect3DSurface8** ppSurface);
+            IDirect3DSurface8** ppSurface) {
+      Com<d3d9::IDirect3DSurface9> pSurf9 = nullptr;
+      HRESULT res = GetD3D9()->CreateDepthStencilSurface(
+        Width,
+        Height,
+        d3d9::D3DFORMAT(Format),
+        d3d9::D3DMULTISAMPLE_TYPE(MultiSample),
+        0,    // TODO: CreateDepthStencilSurface MultisampleQuality
+        true, // TODO: CreateDepthStencilSurface Discard
+        &pSurf9,
+        NULL);
+
+      *ppSurface = ref(new D3D8Surface(this, std::move(pSurf9)));
+
+      return res;
+    }
 
     HRESULT STDMETHODCALLTYPE UpdateTexture D3D8_DEVICE_STUB_(UpdateTexture,
             IDirect3DBaseTexture8* pSourceTexture,
@@ -303,11 +332,35 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetFrontBuffer D3D8_DEVICE_STUB(IDirect3DSurface8* pDestSurface);
 
 
-    HRESULT STDMETHODCALLTYPE SetRenderTarget D3D8_DEVICE_STUB(IDirect3DSurface8* pRenderTarget, IDirect3DSurface8* pNewZStencil);
+    HRESULT STDMETHODCALLTYPE SetRenderTarget(IDirect3DSurface8* pRenderTarget, IDirect3DSurface8* pNewZStencil) {
+      HRESULT res;
 
-    HRESULT STDMETHODCALLTYPE GetRenderTarget D3D8_DEVICE_STUB(IDirect3DSurface8** ppRenderTarget);
+      if (pRenderTarget != NULL) {
+        D3D8Surface* surf = static_cast<D3D8Surface*>(pRenderTarget);
+        res = GetD3D9()->SetRenderTarget(0, surf != nullptr ? surf->GetD3D9() : nullptr); // use RT index 0
+        if (res != D3D_OK) return res;
+      }
 
-    HRESULT STDMETHODCALLTYPE GetDepthStencilSurface D3D8_DEVICE_STUB(IDirect3DSurface8** ppZStencilSurface);
+      // SetDepthStencilSurface is a separate call
+      D3D8Surface* zStencil = static_cast<D3D8Surface*>(pNewZStencil);
+      res = GetD3D9()->SetDepthStencilSurface(zStencil != nullptr ? zStencil->GetD3D9() : nullptr);
+
+      return res;
+    }
+
+    HRESULT STDMETHODCALLTYPE GetRenderTarget(IDirect3DSurface8** ppRenderTarget) {
+      Com<d3d9::IDirect3DSurface9> pRT9 = nullptr;
+      HRESULT res = GetD3D9()->GetRenderTarget(0, &pRT9); // use RT index 0
+      *ppRenderTarget = ref(new D3D8Surface(this, std::move(pRT9)));
+      return res;
+    }
+
+    HRESULT STDMETHODCALLTYPE GetDepthStencilSurface(IDirect3DSurface8** ppZStencilSurface) {
+      Com<d3d9::IDirect3DSurface9> pStencil9 = nullptr;
+      HRESULT res = GetD3D9()->GetDepthStencilSurface(&pStencil9);
+      *ppZStencilSurface = ref(new D3D8Surface(this, std::move(pStencil9)));
+      return res;
+    }
 
     HRESULT STDMETHODCALLTYPE BeginScene() { return GetD3D9()->BeginScene(); }
 
