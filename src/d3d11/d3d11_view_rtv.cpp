@@ -383,7 +383,7 @@ namespace dxvk {
         }
         
         format    = resourceDesc.Format;
-        numLayers = resourceDesc.Depth >> pDesc->Texture3D.MipSlice;
+        numLayers = std::max(resourceDesc.Depth >> pDesc->Texture3D.MipSlice, 1u);
       } break;
       
       default:
