@@ -83,16 +83,16 @@ namespace dxvk {
 
   };
 
-  // Implements IDirect3DTexture8
+  // Implements IDirect3DTexture8 //
+
   using D3D8Texture2DBase = D3D8BaseTexture<D3D8Surface, d3d9::IDirect3DTexture9, IDirect3DTexture8>;
   class D3D8Texture2D final : public D3D8Texture2DBase {
 
   public:
 
     D3D8Texture2D(
-      D3D8DeviceEx*                  pDevice,
-      Com<d3d9::IDirect3DTexture9>&& pTexture)
-      //const D3D8_COMMON_TEXTURE_DESC* pDesc)
+            D3D8DeviceEx*                  pDevice,
+            Com<d3d9::IDirect3DTexture9>&& pTexture)
       : D3D8Texture2DBase(pDevice, std::move(pTexture), D3DRTYPE_TEXTURE) {
     }
 
@@ -111,7 +111,7 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE GetSurfaceLevel(UINT Level, IDirect3DSurface8** ppSurfaceLevel) {
-      // TODO: cache these
+      // TODO: cache this
       d3d9::IDirect3DSurface9* pSurface = nullptr;
       HRESULT res = GetD3D9()->GetSurfaceLevel(Level, &pSurface);
       *ppSurfaceLevel = ref(new D3D8Surface(m_parent, pSurface));
@@ -119,7 +119,7 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE LockRect(UINT Level, D3DLOCKED_RECT* pLockedRect, CONST RECT* pRect, DWORD Flags) {
-      return GetD3D9()->LockRect(Level, (d3d9::D3DLOCKED_RECT*)pLockedRect, pRect, Flags);
+      return GetD3D9()->LockRect(Level, reinterpret_cast<d3d9::D3DLOCKED_RECT*>(pLockedRect), pRect, Flags);
     }
 
     HRESULT STDMETHODCALLTYPE UnlockRect(UINT Level) {

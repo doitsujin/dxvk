@@ -47,7 +47,7 @@ namespace dxvk {
       PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
     }
 
-    register D3DSWAPEFFECT SwapEffect = pParams->SwapEffect;
+    D3DSWAPEFFECT SwapEffect = pParams->SwapEffect;
 
     // D3DSWAPEFFECT_COPY_VSYNC has been removed
     if (SwapEffect == D3DSWAPEFFECT_COPY_VSYNC) {

@@ -227,8 +227,8 @@ namespace dxvk {
         Height,
         Levels,
         Usage,
-        (d3d9::D3DFORMAT)Format,
-        (d3d9::D3DPOOL)Pool,
+        d3d9::D3DFORMAT(Format),
+        d3d9::D3DPOOL(Pool),
         &pTex9,
         NULL);
 
