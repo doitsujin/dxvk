@@ -41,10 +41,6 @@ namespace dxvk {
       : D3D8SurfaceBase (pDevice, std::move(pSurface)) {
     }
 
-    void AddRefPrivate() {}
-
-    void ReleasePrivate() {}
-
     // TODO: Surface::QueryInterface
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) {
       return D3D_OK;

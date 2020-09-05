@@ -2,7 +2,6 @@
 
 /** Common methods for device-tied objects.
 * - AddRef, Release from IUnknown
-*   - Subclasses must provide AddRefPrivate and ReleasePrivate
 * - GetDevice from various classes including IDirect3DResource8
 */
 
