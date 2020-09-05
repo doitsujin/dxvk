@@ -106,7 +106,7 @@ namespace dxvk
 
     Com<d3d9::IDirect3DDevice9> pDevice9 = nullptr;
     d3d9::D3DPRESENT_PARAMETERS params = ConvertPresentParameters9(pPresentationParameters);
-    m_d3d9ex->CreateDevice(
+    HRESULT res = m_d3d9ex->CreateDevice(
       Adapter,
       (d3d9::D3DDEVTYPE)DeviceType,
       hFocusWindow,
@@ -117,7 +117,7 @@ namespace dxvk
 
     *ppReturnedDeviceInterface = ref(new D3D8DeviceEx(this, std::move(pDevice9), DeviceType, hFocusWindow, BehaviorFlags));
 
-    return D3D_OK;
+    return res;
   }
 
 
