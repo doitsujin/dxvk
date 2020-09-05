@@ -524,13 +524,15 @@ namespace dxvk {
       return GetD3D9()->DrawIndexedPrimitive(d3d9::D3DPRIMITIVETYPE(PrimitiveType), 0, MinVertexIndex, NumVertices, StartIndex, PrimitiveCount);
     }
 
-    HRESULT STDMETHODCALLTYPE DrawPrimitiveUP D3D8_DEVICE_STUB(
+    HRESULT STDMETHODCALLTYPE DrawPrimitiveUP(
             D3DPRIMITIVETYPE PrimitiveType,
             UINT             PrimitiveCount,
       const void*            pVertexStreamZeroData,
-            UINT             VertexStreamZeroStride);
+            UINT             VertexStreamZeroStride) {
+      return GetD3D9()->DrawPrimitiveUP(d3d9::D3DPRIMITIVETYPE(PrimitiveType), PrimitiveCount, pVertexStreamZeroData, VertexStreamZeroStride);
+    }
 
-    HRESULT STDMETHODCALLTYPE DrawIndexedPrimitiveUP D3D8_DEVICE_STUB(
+    HRESULT STDMETHODCALLTYPE DrawIndexedPrimitiveUP(
             D3DPRIMITIVETYPE PrimitiveType,
             UINT             MinVertexIndex,
             UINT             NumVertices,
@@ -538,7 +540,17 @@ namespace dxvk {
       const void*            pIndexData,
             D3DFORMAT        IndexDataFormat,
       const void*            pVertexStreamZeroData,
-            UINT             VertexStreamZeroStride);
+            UINT             VertexStreamZeroStride) {
+      return GetD3D9()->DrawIndexedPrimitiveUP(
+        d3d9::D3DPRIMITIVETYPE(PrimitiveType),
+        MinVertexIndex,
+        NumVertices,
+        PrimitiveCount,
+        pIndexData,
+        d3d9::D3DFORMAT(IndexDataFormat),
+        pVertexStreamZeroData,
+        VertexStreamZeroStride);
+    }
 
     HRESULT STDMETHODCALLTYPE ProcessVertices D3D8_DEVICE_STUB(
             UINT                         SrcStartIndex,
