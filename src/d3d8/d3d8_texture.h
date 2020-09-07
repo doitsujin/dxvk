@@ -112,9 +112,9 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE GetSurfaceLevel(UINT Level, IDirect3DSurface8** ppSurfaceLevel) {
       // TODO: cache this
-      d3d9::IDirect3DSurface9* pSurface = nullptr;
-      HRESULT res = GetD3D9()->GetSurfaceLevel(Level, &pSurface);
-      *ppSurfaceLevel = ref(new D3D8Surface(m_parent, pSurface));
+      Com<d3d9::IDirect3DSurface9> surface = nullptr;
+      HRESULT res = GetD3D9()->GetSurfaceLevel(Level, &surface);
+      *ppSurfaceLevel = ref(new D3D8Surface(m_parent, std::move(surface)));
       return res;
     }
 
@@ -188,9 +188,9 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE GetCubeMapSurface(D3DCUBEMAP_FACES Face, UINT Level, IDirect3DSurface8** ppSurfaceLevel) {
       // TODO: cache this
-      d3d9::IDirect3DSurface9* pSurface = nullptr;
-      HRESULT res = GetD3D9()->GetCubeMapSurface(d3d9::D3DCUBEMAP_FACES(Face), Level, &pSurface);
-      *ppSurfaceLevel = ref(new D3D8Surface(m_parent, pSurface));
+      Com<d3d9::IDirect3DSurface9> surface = nullptr;
+      HRESULT res = GetD3D9()->GetCubeMapSurface(d3d9::D3DCUBEMAP_FACES(Face), Level, &surface);
+      *ppSurfaceLevel = ref(new D3D8Surface(m_parent, std::move(surface)));
       return res;
     }
 
