@@ -59,7 +59,14 @@ namespace dxvk
           UINT Adapter,
           DWORD Flags,
           D3DADAPTER_IDENTIFIER8* pIdentifier) {
-    
+
+    // This flag now has the opposite effect.
+    // Either way, WHQLevel will be 1 with Direct3D9Ex
+    if (Flags & D3DENUM_NO_WHQL_LEVEL)
+      Flags &= ~D3DENUM_WHQL_LEVEL;
+    else
+      Flags |= D3DENUM_WHQL_LEVEL;
+
     d3d9::D3DADAPTER_IDENTIFIER9 identifier9;
     HRESULT res = m_d3d9ex->GetAdapterIdentifier(Adapter, Flags, &identifier9);
 
