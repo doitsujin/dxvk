@@ -72,8 +72,9 @@ namespace dxvk {
 
     UINT    STDMETHODCALLTYPE GetAvailableTextureMem() { return GetD3D9()->GetAvailableTextureMem(); }
 
-    // TODO?
-    HRESULT STDMETHODCALLTYPE ResourceManagerDiscardBytes(DWORD bytes) { return D3D_OK; }
+    HRESULT STDMETHODCALLTYPE ResourceManagerDiscardBytes(DWORD bytes) { 
+      return GetD3D9()->EvictManagedResources();
+    }
 
     HRESULT STDMETHODCALLTYPE GetDirect3D(IDirect3D8** ppD3D8);
 
