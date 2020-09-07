@@ -474,7 +474,13 @@ namespace dxvk {
             UINT             NumVertices,
             UINT             StartIndex,
             UINT             PrimitiveCount) {
-      return GetD3D9()->DrawIndexedPrimitive(d3d9::D3DPRIMITIVETYPE(PrimitiveType), 0, MinVertexIndex, NumVertices, StartIndex, PrimitiveCount);
+      return GetD3D9()->DrawIndexedPrimitive(
+        d3d9::D3DPRIMITIVETYPE(PrimitiveType),
+        m_BaseVertexIndex, // set by SetIndices
+        MinVertexIndex,
+        NumVertices,
+        StartIndex,
+        PrimitiveCount);
     }
 
     HRESULT STDMETHODCALLTYPE DrawPrimitiveUP(
@@ -555,6 +561,10 @@ namespace dxvk {
             UINT*                    pStride);
 
     HRESULT STDMETHODCALLTYPE SetIndices(IDirect3DIndexBuffer8* pIndexData, UINT BaseVertexIndex) {
+
+      // used by DrawIndexedPrimitive
+      m_BaseVertexIndex = static_cast<INT>(BaseVertexIndex);
+
       D3D8IndexBuffer* buffer = static_cast<D3D8IndexBuffer*>(pIndexData);
       return GetD3D9()->SetIndices(buffer->GetD3D9());
     }
@@ -605,6 +615,8 @@ namespace dxvk {
     }
 
   private:
+
+    INT                   m_BaseVertexIndex = 0;
 
     Com<D3D8InterfaceEx>  m_parent;
 
