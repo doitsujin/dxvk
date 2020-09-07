@@ -121,7 +121,6 @@ namespace dxvk {
 
     /* Direct3D 8 Exclusive Methods */
     STDMETHOD(CopyRects) D3D8_DEVICE_STUB(THIS_ IDirect3DSurface8* pSourceSurface, CONST RECT* pSourceRectsArray, UINT cRects, IDirect3DSurface8* pDestinationSurface, CONST POINT* pDestPointsArray);
-    STDMETHOD(CreateImageSurface) D3D8_DEVICE_STUB(THIS_ UINT Width, UINT Height, D3DFORMAT Format, IDirect3DSurface8** ppSurface);
     STDMETHOD(DeletePixelShader) D3D8_DEVICE_STUB(THIS_ DWORD Handle);
     STDMETHOD(DeleteVertexShader) D3D8_DEVICE_STUB(THIS_ DWORD Handle);
     STDMETHOD(GetPixelShaderConstant) D3D8_DEVICE_STUB(THIS_ DWORD Register, void* pConstantData, DWORD ConstantCount);
@@ -331,6 +330,22 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE GetFrontBuffer D3D8_DEVICE_STUB(IDirect3DSurface8* pDestSurface);
 
+    // CreateImageSurface -> CreateOffscreenPlainSurface
+    HRESULT STDMETHODCALLTYPE CreateImageSurface(UINT Width, UINT Height, D3DFORMAT Format, IDirect3DSurface8** ppSurface) {
+
+      Com<d3d9::IDirect3DSurface9> pSurf = nullptr;
+      HRESULT res = GetD3D9()->CreateOffscreenPlainSurface(
+        Width,
+        Height,
+        d3d9::D3DFORMAT(Format),
+        d3d9::D3DPOOL_SCRATCH, // dx8 compatible
+        &pSurf,
+        NULL);
+
+      *ppSurface = ref(new D3D8Surface(this, std::move(pSurf)));
+
+      return res;
+    }
 
     HRESULT STDMETHODCALLTYPE SetRenderTarget(IDirect3DSurface8* pRenderTarget, IDirect3DSurface8* pNewZStencil) {
       HRESULT res;
