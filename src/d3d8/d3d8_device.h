@@ -498,7 +498,9 @@ namespace dxvk {
       }
     }
 
-    HRESULT STDMETHODCALLTYPE ValidateDevice D3D8_DEVICE_STUB(DWORD* pNumPasses);
+    HRESULT STDMETHODCALLTYPE ValidateDevice(DWORD* pNumPasses) {
+      return GetD3D9()->ValidateDevice(pNumPasses);
+    }
 
     HRESULT STDMETHODCALLTYPE SetPaletteEntries D3D8_DEVICE_STUB(UINT PaletteNumber, const PALETTEENTRY* pEntries);
 
