@@ -13,6 +13,14 @@
 
 // Undefine D3D8 macros //
 #undef DIRECT3D_VERSION
+#undef D3D_SDK_VERSION
+
+#undef D3DCS_ALL            // parentheses added in DX9
+#undef D3DFVF_POSITION_MASK // changed from 0x00E to 0x400E in DX9
+#undef D3DFVF_RESERVED2     // reduced from 4 to 2 in DX9
+
+#undef D3DSP_REGNUM_MASK    // changed from 0x00000FFF to 0x000007FF in DX9
+
 
 /**
 * \brief Direct3D 9
