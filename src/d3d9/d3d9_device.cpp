@@ -649,6 +649,19 @@ namespace dxvk {
     if (unlikely(srcTextureInfo->Desc()->Format != dstTextureInfo->Desc()->Format))
       return D3DERR_INVALIDCALL;
 
+    if (dst->GetMipLevel() == 0) {
+      if (pSourceRect) {
+        D3DBOX updateDirtyRect = { UINT(pSourceRect->left), UINT(pSourceRect->top), UINT(pSourceRect->right), UINT(pSourceRect->bottom), 0, 1 };
+        if (pDestinationSurface) {
+          updateDirtyRect.Left = pDestPoint->x;
+          updateDirtyRect.Top = pDestPoint->y;
+        }
+        dstTextureInfo->AddUpdateDirtyBox(&updateDirtyRect, dst->GetFace());
+      } else {
+        dstTextureInfo->AddUpdateDirtyBox(nullptr, dst->GetFace());
+      }
+    }
+
     const DxvkFormatInfo* formatInfo = imageFormatInfo(dstTextureInfo->GetFormatMapping().FormatColor);
 
     VkOffset3D srcBlockOffset = { 0u, 0u, 0u };
@@ -726,27 +739,54 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     const Rc<DxvkImage> dstImage  = dstTexInfo->GetImage();
-      
+    const DxvkFormatInfo* formatInfo = imageFormatInfo(dstTexInfo->GetFormatMapping().FormatColor);
     uint32_t mipLevels   = std::min(srcTexInfo->Desc()->MipLevels, dstTexInfo->Desc()->MipLevels);
     uint32_t arraySlices = std::min(srcTexInfo->Desc()->ArraySize, dstTexInfo->Desc()->ArraySize);
+
     for (uint32_t a = 0; a < arraySlices; a++) {
+      const D3DBOX& box = srcTexInfo->GetUpdateDirtyBox(a);
       for (uint32_t m = 0; m < mipLevels; m++) {
         Rc<DxvkBuffer> srcBuffer = srcTexInfo->GetBuffer(srcTexInfo->CalcSubresource(a, m));
-
         VkImageSubresourceLayers dstLayers = { VK_IMAGE_ASPECT_COLOR_BIT, m, a, 1 };
-        
-        VkExtent3D extent = dstImage->mipLevelExtent(m);
-        
+
+        VkOffset3D offset = {
+          alignDown(int32_t(box.Left)  >> m, int32_t(formatInfo->blockSize.width)),
+          alignDown(int32_t(box.Top)   >> m, int32_t(formatInfo->blockSize.height)),
+          alignDown(int32_t(box.Front) >> m, int32_t(formatInfo->blockSize.depth))
+        };
+        VkExtent3D extent = {
+          alignDown(uint32_t((box.Right - box.Left) >> m), formatInfo->blockSize.width),
+          alignDown(uint32_t((box.Bottom - box.Top) >> m), formatInfo->blockSize.height),
+          alignDown(uint32_t((box.Back - box.Front) >> m), formatInfo->blockSize.depth),
+        };
+
+        VkExtent3D levelExtent = dstImage->mipLevelExtent(m);
+        VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
+        VkOffset3D srcByteOffset = {
+          offset.x / int32_t(formatInfo->blockSize.width),
+          offset.y / int32_t(formatInfo->blockSize.height),
+          offset.z / int32_t(formatInfo->blockSize.depth)
+        };
+        VkDeviceSize srcOffset =  srcByteOffset.z * formatInfo->elementSize * blockCount.depth
+                                  + srcByteOffset.y * formatInfo->elementSize * blockCount.width
+                                  + srcByteOffset.x * formatInfo->elementSize;
+        VkExtent2D srcExtent = VkExtent2D{ blockCount.width  * formatInfo->blockSize.width,
+                                           blockCount.height * formatInfo->blockSize.height };
+
         EmitCs([
           cDstImage  = dstImage,
           cSrcBuffer = srcBuffer,
           cDstLayers = dstLayers,
-          cExtent    = extent
+          cExtent    = extent,
+          cOffset    = offset,
+          cSrcOffset = srcOffset,
+          cSrcExtent = srcExtent
         ] (DxvkContext* ctx) {
           ctx->copyBufferToImage(
             cDstImage,  cDstLayers,
-            VkOffset3D{ 0, 0, 0 }, cExtent,
-            cSrcBuffer, 0, { 0u, 0u });
+            cOffset, cExtent,
+            cSrcBuffer, cSrcOffset,
+            cSrcExtent);
         });
       }
     }
@@ -759,6 +799,8 @@ namespace dxvk {
     }
     else
       dstTexInfo->MarkAllDirty();
+
+    srcTexInfo->ClearUpdateDirtyBoxes();
 
     FlushImplicit(false);
 
@@ -3928,6 +3970,10 @@ namespace dxvk {
 
     if (unlikely((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)))
       Flags &= ~D3DLOCK_DISCARD;
+
+    if (!(Flags & D3DLOCK_NO_DIRTY_UPDATE) && !(Flags & D3DLOCK_READONLY)) {
+        pResource->AddUpdateDirtyBox(pBox, Face);
+    }
 
     auto& desc = *(pResource->Desc());
 
