@@ -579,10 +579,13 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetVertexShader D3D8_DEVICE_STUB_(GetVertexShader, DWORD Handle);
     HRESULT STDMETHODCALLTYPE GetVertexShader D3D8_DEVICE_STUB_(GetVertexShader, DWORD* pHandle);
 
-    HRESULT STDMETHODCALLTYPE SetVertexShaderConstant D3D8_DEVICE_STUB(
+    HRESULT STDMETHODCALLTYPE SetVertexShaderConstant(
             DWORD StartRegister,
       const void* pConstantData,
-            DWORD ConstantCount);
+            DWORD ConstantCount) {
+      // ConstantCount is actually the same as Vector4fCount
+      return GetD3D9()->SetVertexShaderConstantF(StartRegister, reinterpret_cast<const float*>(pConstantData), ConstantCount);
+    }
 
     HRESULT STDMETHODCALLTYPE SetStreamSource(
             UINT                    StreamNumber,
@@ -620,10 +623,13 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetPixelShader D3D8_DEVICE_STUB(DWORD Handle);
     HRESULT STDMETHODCALLTYPE GetPixelShader D3D8_DEVICE_STUB(DWORD* pHandle);
 
-    HRESULT STDMETHODCALLTYPE SetPixelShaderConstant D3D8_DEVICE_STUB(
+    HRESULT STDMETHODCALLTYPE SetPixelShaderConstant(
             DWORD StartRegister,
       const void* pConstantData,
-            DWORD ConstantCount);
+            DWORD ConstantCount) {
+      // ConstantCount is actually the same as Vector4fCount
+      return GetD3D9()->SetPixelShaderConstantF(StartRegister, reinterpret_cast<const float*>(pConstantData), ConstantCount);
+    }
 
     HRESULT STDMETHODCALLTYPE DrawRectPatch D3D8_DEVICE_STUB(
             UINT               Handle,
