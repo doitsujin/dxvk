@@ -631,17 +631,25 @@ namespace dxvk {
       return GetD3D9()->SetPixelShaderConstantF(StartRegister, reinterpret_cast<const float*>(pConstantData), ConstantCount);
     }
 
-    HRESULT STDMETHODCALLTYPE DrawRectPatch D3D8_DEVICE_STUB(
+    // Patches not supported by d9vk but pass the values through anyway.
+
+    HRESULT STDMETHODCALLTYPE DrawRectPatch(
             UINT               Handle,
       const float*             pNumSegs,
-      const D3DRECTPATCH_INFO* pRectPatchInfo);
+      const D3DRECTPATCH_INFO* pRectPatchInfo) {
+      return GetD3D9()->DrawRectPatch(Handle, pNumSegs, reinterpret_cast<const d3d9::D3DRECTPATCH_INFO*>(pRectPatchInfo));
+    }
 
-    HRESULT STDMETHODCALLTYPE DrawTriPatch  D3D8_DEVICE_STUB(
+    HRESULT STDMETHODCALLTYPE DrawTriPatch (
             UINT              Handle,
       const float*            pNumSegs,
-      const D3DTRIPATCH_INFO* pTriPatchInfo);
+      const D3DTRIPATCH_INFO* pTriPatchInfo) {
+      return GetD3D9()->DrawTriPatch(Handle, pNumSegs, reinterpret_cast<const d3d9::D3DTRIPATCH_INFO*>(pTriPatchInfo));
+    }
 
-    HRESULT STDMETHODCALLTYPE DeletePatch  D3D8_DEVICE_STUB(UINT Handle);
+    HRESULT STDMETHODCALLTYPE DeletePatch(UINT Handle) {
+      return GetD3D9()->DeletePatch(Handle);
+    }
 
     /*
     VkPipelineStageFlags GetEnabledShaderStages() const {
