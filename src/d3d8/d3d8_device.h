@@ -621,6 +621,11 @@ namespace dxvk {
 
     Com<D3D8InterfaceEx>  m_parent;
 
+    D3DDEVTYPE            m_deviceType;
+    HWND                  m_window;
+
+    DWORD                 m_behaviorFlags;
+
   };
 
 }
