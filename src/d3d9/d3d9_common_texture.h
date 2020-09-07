@@ -366,6 +366,40 @@ namespace dxvk {
     void PreLoadAll();
     void PreLoadSubresource(UINT Subresource);
 
+    void AddUpdateDirtyBox(CONST D3DBOX* pDirtyBox, uint32_t layer) {
+      if (pDirtyBox) {
+        D3DBOX box = *pDirtyBox;
+        if (box.Right <= box.Left
+          || box.Bottom <= box.Top
+          || box.Back <= box.Front)
+          return;
+
+        D3DBOX& updateBox = m_updateDirtyBoxes[layer];
+        if (updateBox.Left == updateBox.Right) {
+          updateBox = box;
+        } else {
+          updateBox.Left    = std::min(updateBox.Left,   box.Left);
+          updateBox.Right   = std::max(updateBox.Right,  box.Right);
+          updateBox.Top     = std::min(updateBox.Top,    box.Top);
+          updateBox.Bottom  = std::max(updateBox.Bottom, box.Bottom);
+          updateBox.Front   = std::min(updateBox.Front,  box.Front);
+          updateBox.Back    = std::max(updateBox.Back,   box.Back);
+        }
+      } else {
+        m_updateDirtyBoxes[layer] = { 0, 0, m_desc.Width, m_desc.Height, 0, m_desc.Depth };
+      }
+    }
+
+    void ClearUpdateDirtyBoxes() {
+      for (uint32_t i = 0; i < m_updateDirtyBoxes.size(); i++) {
+        m_updateDirtyBoxes[i] = { 0, 0, 0, 0, 0, 0 };
+      }
+    }
+
+    const D3DBOX& GetUpdateDirtyBox(uint32_t layer) const {
+      return m_updateDirtyBoxes[layer];
+    }
+
   private:
 
     D3D9DeviceEx*                 m_device;
@@ -405,6 +439,8 @@ namespace dxvk {
     bool                          m_needsMipGen = false;
 
     D3DTEXTUREFILTERTYPE          m_mipFilter = D3DTEXF_LINEAR;
+
+    std::array<D3DBOX, 6>         m_updateDirtyBoxes;
 
     /**
      * \brief Mip level
