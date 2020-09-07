@@ -560,11 +560,14 @@ namespace dxvk {
             DWORD                        Flags);
 
 
-    HRESULT STDMETHODCALLTYPE CreateVertexShader D3D8_DEVICE_STUB(
+    HRESULT STDMETHODCALLTYPE CreateVertexShader(
       const DWORD*  pDeclaration,
       const DWORD*  pFunction,
             DWORD*  pHandle,
-            DWORD   Usage);
+            DWORD   Usage) {
+      Logger::warn("D3D8DeviceEx::CreateVertexShader: STUB !");
+      return D3D_OK;
+    }
 
     HRESULT STDMETHODCALLTYPE SetVertexShader(DWORD Handle) {
       // TODO: determine if Handle is an FVF or a shader ptr
@@ -604,9 +607,12 @@ namespace dxvk {
             IDirect3DIndexBuffer8** ppIndexData,
             UINT* pBaseVertexIndex);
 
-    HRESULT STDMETHODCALLTYPE CreatePixelShader D3D8_DEVICE_STUB(
+    HRESULT STDMETHODCALLTYPE CreatePixelShader(
       const DWORD* pFunction, 
-            DWORD* pHandle);
+            DWORD* pHandle) {
+      Logger::warn("D3D8DeviceEx::CreatePixelShader: STUB !");
+      return D3D_OK;
+    }
 
     HRESULT STDMETHODCALLTYPE SetPixelShader D3D8_DEVICE_STUB(DWORD Handle);
     HRESULT STDMETHODCALLTYPE SetPixelShader D3D8_DEVICE_STUB(DWORD* pHandle);
