@@ -24,4 +24,20 @@ namespace dxvk::str {
       wcs, wcsLen);
   }
 
+  std::wstring tows(const char* mbs) {
+    size_t len = ::MultiByteToWideChar(CP_UTF8,
+      0, mbs, -1, nullptr, 0);
+    
+    if (len <= 1)
+      return L"";
+
+    len -= 1;
+
+    std::wstring result;
+    result.resize(len);
+    ::MultiByteToWideChar(CP_UTF8, 0, mbs, -1,
+      &result.at(0), len);
+    return result;
+  }
+
 }

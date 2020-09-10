@@ -5,10 +5,13 @@
 namespace dxvk::env {
 
   std::string getEnvVar(const char* name) {
-    char* result = std::getenv(name);
-    return (result)
-      ? result
-      : "";
+    std::vector<WCHAR> result;
+    result.resize(MAX_PATH + 1);
+
+    DWORD len = ::GetEnvironmentVariableW(str::tows(name).c_str(), result.data(), MAX_PATH);
+    result.resize(len);
+
+    return str::fromws(result.data());
   }
   
   
