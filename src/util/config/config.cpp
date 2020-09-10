@@ -593,7 +593,7 @@ namespace dxvk {
       filePath = "dxvk.conf";
     
     // Open the file if it exists
-    std::ifstream stream(filePath);
+    std::ifstream stream(str::tows(filePath.c_str()).c_str());
 
     if (!stream)
       return config;

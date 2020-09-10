@@ -10,7 +10,7 @@ namespace dxvk {
       auto path = getFileName(file_name);
 
       if (!path.empty())
-        m_fileStream = std::ofstream(path);
+        m_fileStream = std::ofstream(str::tows(path.c_str()).c_str());
     }
   }
   

@@ -16,6 +16,8 @@ namespace dxvk::str {
   void tows(const char* mbs, WCHAR (&wcs)[N]) {
     return tows(mbs, wcs, N);
   }
+
+  std::wstring tows(const char* mbs);
   
   inline void format1(std::stringstream&) { }
 
