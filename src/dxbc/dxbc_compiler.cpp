@@ -387,6 +387,7 @@ namespace dxvk {
       m_xRegs.resize(regId + 1);
     
     m_xRegs.at(regId).ccount = info.type.ccount;
+    m_xRegs.at(regId).alength = info.type.alength;
     m_xRegs.at(regId).varId  = emitNewVariable(info);
     
     m_module.setDebugName(m_xRegs.at(regId).varId,
@@ -4724,28 +4725,7 @@ namespace dxvk {
   
   DxbcRegisterPointer DxbcCompiler::emitGetIndexableTempPtr(
     const DxbcRegister&           operand) {
-    // x# regs are indexed as follows:
-    //    (0) register index (immediate)
-    //    (1) element index (relative)
-    const uint32_t regId = operand.idx[0].offset;
-    
-    const DxbcRegisterValue vectorId
-      = emitIndexLoad(operand.idx[1]);
-    
-    DxbcRegisterInfo info;
-    info.type.ctype   = DxbcScalarType::Float32;
-    info.type.ccount  = m_xRegs[regId].ccount;
-    info.type.alength = 0;
-    info.sclass       = spv::StorageClassPrivate;
-    
-    DxbcRegisterPointer result;
-    result.type.ctype  = info.type.ctype;
-    result.type.ccount = info.type.ccount;
-    result.id = m_module.opAccessChain(
-      getPointerTypeId(info),
-      m_xRegs.at(regId).varId,
-      1, &vectorId.id);
-    return result;
+    return getIndexableTempPtr(operand, emitIndexLoad(operand.idx[1]));
   }
   
   
@@ -5673,7 +5653,27 @@ namespace dxvk {
   void DxbcCompiler::emitRegisterStore(
     const DxbcRegister&           reg,
           DxbcRegisterValue       value) {
-    emitValueStore(emitGetOperandPtr(reg), value, reg.mask);
+    if (reg.type == DxbcOperandType::IndexableTemp) {
+      DxbcRegisterValue vectorId = emitIndexLoad(reg.idx[1]);
+      uint32_t boundsCheck = m_module.opULessThan(
+        m_module.defBoolType(), vectorId.id,
+        m_module.constu32(m_xRegs.at(reg.idx[0].offset).alength));
+      
+      DxbcConditional cond;
+      cond.labelIf  = m_module.allocateId();
+      cond.labelEnd = m_module.allocateId();
+      
+      m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
+      m_module.opBranchConditional(boundsCheck, cond.labelIf, cond.labelEnd);
+      
+      m_module.opLabel(cond.labelIf);
+      emitValueStore(getIndexableTempPtr(reg, vectorId), value, reg.mask);
+      
+      m_module.opBranch(cond.labelEnd);
+      m_module.opLabel (cond.labelEnd);
+    } else {
+      emitValueStore(emitGetOperandPtr(reg), value, reg.mask);
+    }
   }
   
   
@@ -7686,6 +7686,30 @@ namespace dxvk {
         || type == DxbcScalarType::Float64;
   }
 
+  DxbcRegisterPointer DxbcCompiler::getIndexableTempPtr(
+    const DxbcRegister&           operand,
+          DxbcRegisterValue       vectorId) {
+    // x# regs are indexed as follows:
+    //    (0) register index (immediate)
+    //    (1) element index (relative)
+    const uint32_t regId = operand.idx[0].offset;
+    
+    DxbcRegisterInfo info;
+    info.type.ctype   = DxbcScalarType::Float32;
+    info.type.ccount  = m_xRegs[regId].ccount;
+    info.type.alength = 0;
+    info.sclass       = spv::StorageClassPrivate;
+    
+    DxbcRegisterPointer result;
+    result.type.ctype  = info.type.ctype;
+    result.type.ccount = info.type.ccount;
+    result.id = m_module.opAccessChain(
+      getPointerTypeId(info),
+      m_xRegs.at(regId).varId,
+      1, &vectorId.id);
+
+    return result;
+  }
 
   uint32_t DxbcCompiler::getScalarTypeId(DxbcScalarType type) {
     if (type == DxbcScalarType::Float64)
