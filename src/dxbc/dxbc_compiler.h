@@ -83,8 +83,9 @@ namespace dxvk {
   
   
   struct DxbcXreg {
-    uint32_t ccount = 0;
-    uint32_t varId  = 0;
+    uint32_t ccount  = 0;
+    uint32_t alength = 0;
+    uint32_t varId   = 0;
   };
   
   
@@ -1220,6 +1221,10 @@ namespace dxvk {
     
     bool isDoubleType(
             DxbcScalarType type) const;
+    
+    DxbcRegisterPointer getIndexableTempPtr(
+      const DxbcRegister&           operand,
+            DxbcRegisterValue       vectorId);
     
     ///////////////////////////
     // Type definition methods
