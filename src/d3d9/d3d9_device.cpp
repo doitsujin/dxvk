@@ -5022,6 +5022,7 @@ namespace dxvk {
   
   void D3D9DeviceEx::MarkTextureMipsDirty(D3D9CommonTexture* pResource) {
     pResource->SetNeedsMipGen(true);
+    pResource->MarkAllDirty();
 
     for (uint32_t tex = m_activeTextures; tex; tex &= tex - 1) {
       // Guaranteed to not be nullptr...
