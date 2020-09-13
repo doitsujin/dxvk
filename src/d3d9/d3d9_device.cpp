@@ -743,6 +743,12 @@ namespace dxvk {
     uint32_t mipLevels   = std::min(srcTexInfo->Desc()->MipLevels, dstTexInfo->Desc()->MipLevels);
     uint32_t arraySlices = std::min(srcTexInfo->Desc()->ArraySize, dstTexInfo->Desc()->ArraySize);
 
+    if (unlikely(srcTexInfo->IsAutomaticMip() && !dstTexInfo->IsAutomaticMip()))
+      return D3DERR_INVALIDCALL;
+
+    if (dstTexInfo->IsAutomaticMip())
+      mipLevels = 1;
+
     for (uint32_t a = 0; a < arraySlices; a++) {
       const D3DBOX& box = srcTexInfo->GetUpdateDirtyBox(a);
       for (uint32_t m = 0; m < mipLevels; m++) {
@@ -788,19 +794,14 @@ namespace dxvk {
             cSrcBuffer, cSrcOffset,
             cSrcExtent);
         });
+
+        dstTexInfo->SetDirty(dstTexInfo->CalcSubresource(a, m), true);
       }
     }
 
-    if (dstTexInfo->IsAutomaticMip()) {
-      for (uint32_t i = 0; i < dstTexInfo->Desc()->ArraySize; i++)
-        dstTexInfo->SetDirty(dstTexInfo->CalcSubresource(i, 0), true);
-
-      MarkTextureMipsDirty(dstTexInfo);
-    }
-    else
-      dstTexInfo->MarkAllDirty();
-
     srcTexInfo->ClearUpdateDirtyBoxes();
+    if (dstTexInfo->IsAutomaticMip() && mipLevels != dstTexInfo->Desc()->MipLevels)
+      MarkTextureMipsDirty(dstTexInfo);
 
     FlushImplicit(false);
 
