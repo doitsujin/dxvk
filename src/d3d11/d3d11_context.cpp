@@ -3498,18 +3498,6 @@ namespace dxvk {
 
   void D3D11DeviceContext::BindConstantBuffer(
           UINT                              Slot,
-          D3D11Buffer*                      pBuffer) {
-    EmitCs([
-      cSlotId      = Slot,
-      cBufferSlice = pBuffer ? pBuffer->GetBufferSlice() : DxvkBufferSlice()
-    ] (DxvkContext* ctx) {
-      ctx->bindResourceBuffer(cSlotId, cBufferSlice);
-    });
-  }
-  
-  
-  void D3D11DeviceContext::BindConstantBuffer1(
-          UINT                              Slot,
           D3D11Buffer*                      pBuffer,
           UINT                              Offset,
           UINT                              Length) {
@@ -3628,19 +3616,19 @@ namespace dxvk {
     for (uint32_t i = 0; i < NumBuffers; i++) {
       auto newBuffer = static_cast<D3D11Buffer*>(ppConstantBuffers[i]);
       
-      UINT constantBound = 0;
+      UINT constantCount = 0;
       
       if (likely(newBuffer != nullptr))
-        constantBound = newBuffer->Desc()->ByteWidth / 16;
+        constantCount = std::min(newBuffer->Desc()->ByteWidth / 16, UINT(D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT));
       
       if (Bindings[StartSlot + i].buffer         != newBuffer
-       || Bindings[StartSlot + i].constantBound  != constantBound) {
+       || Bindings[StartSlot + i].constantCount  != constantCount) {
         Bindings[StartSlot + i].buffer         = newBuffer;
         Bindings[StartSlot + i].constantOffset = 0;
-        Bindings[StartSlot + i].constantCount  = constantBound;
-        Bindings[StartSlot + i].constantBound  = constantBound;
+        Bindings[StartSlot + i].constantCount  = constantCount;
+        Bindings[StartSlot + i].constantBound  = constantCount;
         
-        BindConstantBuffer(slotId + i, newBuffer);
+        BindConstantBuffer(slotId + i, newBuffer, 0, constantCount);
       }
     }
   }
@@ -3664,11 +3652,14 @@ namespace dxvk {
       UINT constantBound;
 
       if (likely(newBuffer != nullptr)) {
-        constantBound = newBuffer->Desc()->ByteWidth / 16;
+        constantBound = std::min(newBuffer->Desc()->ByteWidth / 16, UINT(D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT));
 
         if (likely(pFirstConstant && pNumConstants)) {
           constantOffset  = pFirstConstant[i];
           constantCount   = pNumConstants [i];
+
+          if (unlikely(constantCount > D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT))
+            continue;
 
           constantBound = (constantOffset + constantCount > constantBound)
             ? constantBound - std::min(constantOffset, constantBound)
@@ -3696,7 +3687,7 @@ namespace dxvk {
         Bindings[StartSlot + i].constantCount  = constantCount;
         Bindings[StartSlot + i].constantBound  = constantBound;
         
-        BindConstantBuffer1(slotId + i, newBuffer, constantOffset, constantBound);
+        BindConstantBuffer(slotId + i, newBuffer, constantOffset, constantBound);
       }
     }
   }
@@ -3937,7 +3928,7 @@ namespace dxvk {
     uint32_t slotId = computeConstantBufferBinding(Stage, 0);
     
     for (uint32_t i = 0; i < Bindings.size(); i++) {
-      BindConstantBuffer1(slotId + i, Bindings[i].buffer.ptr(),
+      BindConstantBuffer(slotId + i, Bindings[i].buffer.ptr(),
         Bindings[i].constantOffset, Bindings[i].constantBound);
     }
   }
