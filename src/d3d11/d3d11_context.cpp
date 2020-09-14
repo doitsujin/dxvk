@@ -3652,7 +3652,8 @@ namespace dxvk {
       UINT constantBound;
 
       if (likely(newBuffer != nullptr)) {
-        constantBound = std::min(newBuffer->Desc()->ByteWidth / 16, UINT(D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT));
+        UINT bufferConstantsCount = newBuffer->Desc()->ByteWidth / 16;
+        constantBound = std::min(bufferConstantsCount, UINT(D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT));
 
         if (likely(pFirstConstant && pNumConstants)) {
           constantOffset  = pFirstConstant[i];
@@ -3661,8 +3662,8 @@ namespace dxvk {
           if (unlikely(constantCount > D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT))
             continue;
 
-          constantBound = (constantOffset + constantCount > constantBound)
-            ? constantBound - std::min(constantOffset, constantBound)
+          constantBound = (constantOffset + constantCount > bufferConstantsCount)
+            ? bufferConstantsCount - std::min(constantOffset, bufferConstantsCount)
             : constantCount;
         } else {
           constantOffset  = 0;
