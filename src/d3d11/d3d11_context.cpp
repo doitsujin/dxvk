@@ -329,6 +329,9 @@ namespace dxvk {
           UINT                              CopyFlags) {
     D3D10DeviceLock lock = LockContext();
 
+    if (!pDstResource || !pSrcResource)
+      return;
+
     D3D11_RESOURCE_DIMENSION dstResourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     D3D11_RESOURCE_DIMENSION srcResourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     
