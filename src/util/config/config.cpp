@@ -238,6 +238,10 @@ namespace dxvk {
     { R"(\\MonsterHunterWorld\.exe$)", {{
       { "d3d11.apitraceMode",               "True" },
     }} },
+    /* The Dungeon of Maheulbeuk                  */
+    { R"(\\Naheulbeuk\.exe$)", {{
+      { "d3d11.enableRtOutputNanFixup",     "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
