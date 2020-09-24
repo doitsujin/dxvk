@@ -238,6 +238,18 @@ namespace dxvk {
     { R"(\\MonsterHunterWorld\.exe$)", {{
       { "d3d11.apitraceMode",               "True" },
     }} },
+    /* The Ghost Train                            */
+    { R"(\\TheGhostTrain\.exe$)", {{
+      { "d3d11.enableRtOutputNanFixup",     "True" },
+    }} },
+    /* Missing Children                           */
+    { R"(\\Missing Children\.exe$)", {{
+      { "d3d11.enableRtOutputNanFixup",     "True" },
+    }} },
+    /* The Convenience Store Yakin Jiken          */
+    { R"(\\The Convenience Store Yakin Jiken\.exe$)", {{
+      { "d3d11.enableRtOutputNanFixup",     "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
