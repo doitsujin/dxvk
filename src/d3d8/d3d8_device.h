@@ -37,6 +37,8 @@ namespace dxvk {
   class D3D8InterfaceEx;
   class D3D8SwapChainEx;
 
+  struct D3D8ShaderInfo;
+
   using D3D8DeviceBase = D3D8WrappedObject<d3d9::IDirect3DDevice9, IDirect3DDevice8>;
   class D3D8DeviceEx final : public D3D8DeviceBase {
 
@@ -524,19 +526,10 @@ namespace dxvk {
       const DWORD*  pDeclaration,
       const DWORD*  pFunction,
             DWORD*  pHandle,
-            DWORD   Usage) {
-      Logger::warn("D3D8DeviceEx::CreateVertexShader: STUB !");
-      return D3D_OK;
-    }
+            DWORD   Usage);
 
-    HRESULT STDMETHODCALLTYPE SetVertexShader(DWORD Handle) {
-      // TODO: determine if Handle is an FVF or a shader ptr
-      // (may need to set a bit on ptrs)
-      return GetD3D9()->SetFVF(Handle);
-    }
-    HRESULT STDMETHODCALLTYPE SetVertexShader D3D8_DEVICE_STUB_(SetVertexShader, DWORD* pHandle);
+    HRESULT STDMETHODCALLTYPE SetVertexShader(DWORD Handle);
 
-    HRESULT STDMETHODCALLTYPE GetVertexShader D3D8_DEVICE_STUB_(GetVertexShader, DWORD Handle);
     HRESULT STDMETHODCALLTYPE GetVertexShader D3D8_DEVICE_STUB_(GetVertexShader, DWORD* pHandle);
 
     HRESULT STDMETHODCALLTYPE SetVertexShaderConstant(
@@ -620,6 +613,8 @@ namespace dxvk {
     INT                   m_BaseVertexIndex = 0;
 
     Com<D3D8InterfaceEx>  m_parent;
+
+    std::vector<D3D8ShaderInfo>  m_shaders;
 
     D3DDEVTYPE            m_deviceType;
     HWND                  m_window;
