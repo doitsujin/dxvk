@@ -3521,6 +3521,10 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     fogCtx.vPos        = m_module.opLoad(getVectorTypeId(vPosPtr.type),    vPosPtr.id);
     fogCtx.vFog        = m_module.opLoad(getVectorTypeId(vFogPtr.type),    vFogPtr.id);
     fogCtx.oColor      = m_module.opLoad(getVectorTypeId(oColor0Ptr.type), oColor0Ptr.id);
+    fogCtx.IsFixedFunction = false;
+    fogCtx.IsPositionT = false;
+    fogCtx.HasSpecular = false;
+    fogCtx.Specular    = 0;
 
     m_module.opStore(oColor0Ptr.id, DoFixedFunctionFog(m_module, fogCtx));
   }

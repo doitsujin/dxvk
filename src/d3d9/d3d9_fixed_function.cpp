@@ -91,73 +91,82 @@ namespace dxvk {
           ? fogCtx.vFog
           : spvModule.opFAbs(floatType, z);
     }
+    uint32_t fogFactor;
+    if (!fogCtx.IsPixel && fogCtx.IsFixedFunction && fogCtx.IsPositionT) {
+      fogFactor = fogCtx.HasSpecular
+        ? spvModule.opCompositeExtract(floatType, fogCtx.Specular, 1, &wIndex)
+        : spvModule.constf32(1.0f);
+    } else {
+      uint32_t applyFogFactor = spvModule.allocateId();
 
-    uint32_t applyFogFactor = spvModule.allocateId();
+      std::array<SpirvPhiLabel, 4> fogVariables;
 
-    std::array<SpirvPhiLabel, 4> fogVariables;
+      std::array<SpirvSwitchCaseLabel, 4> fogCaseLabels = { {
+        { uint32_t(D3DFOG_NONE),      spvModule.allocateId() },
+        { uint32_t(D3DFOG_EXP),       spvModule.allocateId() },
+        { uint32_t(D3DFOG_EXP2),      spvModule.allocateId() },
+        { uint32_t(D3DFOG_LINEAR),    spvModule.allocateId() },
+      } };
 
-    std::array<SpirvSwitchCaseLabel, 4> fogCaseLabels = { {
-      { uint32_t(D3DFOG_NONE),      spvModule.allocateId() },
-      { uint32_t(D3DFOG_EXP),       spvModule.allocateId() },
-      { uint32_t(D3DFOG_EXP2),      spvModule.allocateId() },
-      { uint32_t(D3DFOG_LINEAR),    spvModule.allocateId() },
-    } };
+      spvModule.opSelectionMerge(applyFogFactor, spv::SelectionControlMaskNone);
+      spvModule.opSwitch(fogMode,
+        fogCaseLabels[D3DFOG_NONE].labelId,
+        fogCaseLabels.size(),
+        fogCaseLabels.data());
 
-
-    spvModule.opSelectionMerge(applyFogFactor, spv::SelectionControlMaskNone);
-    spvModule.opSwitch(fogMode,
-      fogCaseLabels[D3DFOG_NONE].labelId,
-      fogCaseLabels.size(),
-      fogCaseLabels.data());
-
-    for (uint32_t i = 0; i < fogCaseLabels.size(); i++) {
-      spvModule.opLabel(fogCaseLabels[i].labelId);
+      for (uint32_t i = 0; i < fogCaseLabels.size(); i++) {
+        spvModule.opLabel(fogCaseLabels[i].labelId);
         
-      fogVariables[i].labelId = fogCaseLabels[i].labelId;
-      fogVariables[i].varId   = [&] {
-        auto mode = D3DFOGMODE(fogCaseLabels[i].literal);
-        switch (mode) {
-          default:
-          // vFog
-          case D3DFOG_NONE: {
-            return fogCtx.IsPixel
-              ? fogCtx.vFog
-              : spvModule.constf32(1.0f);
+        fogVariables[i].labelId = fogCaseLabels[i].labelId;
+        fogVariables[i].varId   = [&] {
+          auto mode = D3DFOGMODE(fogCaseLabels[i].literal);
+          switch (mode) {
+            default:
+            // vFog
+            case D3DFOG_NONE: {
+              if (fogCtx.IsPixel)
+                return fogCtx.vFog;
+
+              if (fogCtx.IsFixedFunction && fogCtx.HasSpecular)
+                return spvModule.opCompositeExtract(floatType, fogCtx.Specular, 1, &wIndex);
+
+              return spvModule.constf32(1.0f);
+            }
+
+            // (end - d) / (end - start)
+            case D3DFOG_LINEAR: {
+              uint32_t fogFactor = spvModule.opFSub(floatType, fogEnd, depth);
+              fogFactor = spvModule.opFMul(floatType, fogFactor, fogScale);
+              fogFactor = spvModule.opNClamp(floatType, fogFactor, spvModule.constf32(0.0f), spvModule.constf32(1.0f));
+              return fogFactor;
+            }
+
+            // 1 / (e^[d * density])^2
+            case D3DFOG_EXP2:
+            // 1 / (e^[d * density])
+            case D3DFOG_EXP: {
+              uint32_t fogFactor = spvModule.opFMul(floatType, depth, fogDensity);
+
+              if (mode == D3DFOG_EXP2)
+                fogFactor = spvModule.opFMul(floatType, fogFactor, fogFactor);
+
+              // Provides the rcp.
+              fogFactor = spvModule.opFNegate(floatType, fogFactor);
+              fogFactor = spvModule.opExp(floatType, fogFactor);
+              return fogFactor;
+            }
           }
-
-          // (end - d) / (end - start)
-          case D3DFOG_LINEAR: {
-            uint32_t fogFactor = spvModule.opFSub(floatType, fogEnd, depth);
-            fogFactor = spvModule.opFMul(floatType, fogFactor, fogScale);
-            fogFactor = spvModule.opNClamp(floatType, fogFactor, spvModule.constf32(0.0f), spvModule.constf32(1.0f));
-            return fogFactor;
-          }
-
-          // 1 / (e^[d * density])^2
-          case D3DFOG_EXP2:
-          // 1 / (e^[d * density])
-          case D3DFOG_EXP: {
-            uint32_t fogFactor = spvModule.opFMul(floatType, depth, fogDensity);
-
-            if (mode == D3DFOG_EXP2)
-              fogFactor = spvModule.opFMul(floatType, fogFactor, fogFactor);
-
-            // Provides the rcp.
-            fogFactor = spvModule.opFNegate(floatType, fogFactor);
-            fogFactor = spvModule.opExp(floatType, fogFactor);
-            return fogFactor;
-          }
-        }
-      }();
+        }();
         
-      spvModule.opBranch(applyFogFactor);
+        spvModule.opBranch(applyFogFactor);
+      }
+
+      spvModule.opLabel(applyFogFactor);
+
+      fogFactor = spvModule.opPhi(floatType,
+        fogVariables.size(),
+        fogVariables.data());
     }
-
-    spvModule.opLabel(applyFogFactor);
-
-    uint32_t fogFactor = spvModule.opPhi(floatType,
-      fogVariables.size(),
-      fogVariables.data());
 
     uint32_t fogRetValue = 0;
 
@@ -1156,6 +1165,10 @@ namespace dxvk {
     fogCtx.HasFogInput = m_vsKey.Data.Contents.HasFog;
     fogCtx.vFog        = m_vs.in.FOG;
     fogCtx.oColor      = 0;
+    fogCtx.IsFixedFunction = true;
+    fogCtx.IsPositionT = m_vsKey.Data.Contents.HasPositionT;
+    fogCtx.HasSpecular = m_vsKey.Data.Contents.HasColor1;
+    fogCtx.Specular    = m_vs.in.COLOR[1];
     m_module.opStore(m_vs.out.FOG, DoFixedFunctionFog(m_module, fogCtx));
 
     auto pointInfo = GetPointSizeInfoVS(m_module, 0, vtx, m_vs.in.POINTSIZE, m_rsBlock);
@@ -1942,6 +1955,10 @@ namespace dxvk {
     fogCtx.vPos        = m_ps.in.POS;
     fogCtx.vFog        = m_ps.in.FOG;
     fogCtx.oColor      = current;
+    fogCtx.IsFixedFunction = true;
+    fogCtx.IsPositionT = false;
+    fogCtx.HasSpecular = false;
+    fogCtx.Specular    = 0;
     current = DoFixedFunctionFog(m_module, fogCtx);
 
     m_module.opStore(m_ps.out.COLOR, current);

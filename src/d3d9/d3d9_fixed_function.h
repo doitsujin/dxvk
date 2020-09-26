@@ -29,6 +29,11 @@ namespace dxvk {
     uint32_t oColor;
 
     bool     HasFogInput;
+
+    bool     IsFixedFunction;
+    bool     IsPositionT;
+    bool     HasSpecular;
+    uint32_t Specular;
   };
 
   struct D3D9FixedFunctionOptions {
