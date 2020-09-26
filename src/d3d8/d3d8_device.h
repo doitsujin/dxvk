@@ -59,7 +59,6 @@ namespace dxvk {
 
     /* Direct3D 8 Exclusive Methods */
     STDMETHOD(CopyRects) D3D8_DEVICE_STUB(THIS_ IDirect3DSurface8* pSourceSurface, CONST RECT* pSourceRectsArray, UINT cRects, IDirect3DSurface8* pDestinationSurface, CONST POINT* pDestPointsArray);
-    STDMETHOD(DeletePixelShader) D3D8_DEVICE_STUB(THIS_ DWORD Handle);
     STDMETHOD(GetPixelShaderConstant) D3D8_DEVICE_STUB(THIS_ DWORD Register, void* pConstantData, DWORD ConstantCount);
     STDMETHOD(GetPixelShaderFunction) D3D8_DEVICE_STUB(THIS_ DWORD Handle, void* pData, DWORD* pSizeOfData);
     STDMETHOD(GetVertexShaderConstant) D3D8_DEVICE_STUB(THIS_ DWORD Register, void* pConstantData, DWORD ConstantCount);
@@ -570,16 +569,13 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE CreatePixelShader(
       const DWORD* pFunction, 
-            DWORD* pHandle) {
-      Logger::warn("D3D8DeviceEx::CreatePixelShader: STUB !");
-      return D3D_OK;
-    }
+            DWORD* pHandle);
 
-    HRESULT STDMETHODCALLTYPE SetPixelShader D3D8_DEVICE_STUB(DWORD Handle);
-    HRESULT STDMETHODCALLTYPE SetPixelShader D3D8_DEVICE_STUB(DWORD* pHandle);
+    HRESULT STDMETHODCALLTYPE SetPixelShader(DWORD Handle);
 
-    HRESULT STDMETHODCALLTYPE GetPixelShader D3D8_DEVICE_STUB(DWORD Handle);
     HRESULT STDMETHODCALLTYPE GetPixelShader D3D8_DEVICE_STUB(DWORD* pHandle);
+
+    HRESULT STDMETHODCALLTYPE DeletePixelShader(THIS_ DWORD Handle);
 
     HRESULT STDMETHODCALLTYPE SetPixelShaderConstant(
             DWORD StartRegister,
