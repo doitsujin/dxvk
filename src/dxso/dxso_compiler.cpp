@@ -3378,7 +3378,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     if (!outputtedColor1)
       OutputDefault(DxsoSemantic{ DxsoUsage::Color, 1 });
 
-    auto pointInfo = GetPointSizeInfoVS(m_module, m_vs.oPos.id, 0, 0, m_rsBlock);
+    auto pointInfo = GetPointSizeInfoVS(m_module, m_vs.oPos.id, 0, 0, m_rsBlock, false);
 
     if (m_vs.oPSize.id == 0) {
       m_vs.oPSize = this->emitRegisterPtr(

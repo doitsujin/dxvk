@@ -254,7 +254,7 @@ namespace dxvk {
   }
 
 
-  D3D9PointSizeInfoVS GetPointSizeInfoVS(SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t perVertPointSize, uint32_t rsBlock) {
+  D3D9PointSizeInfoVS GetPointSizeInfoVS(SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t perVertPointSize, uint32_t rsBlock, bool isFixedFunction) {
     uint32_t floatType  = spvModule.defFloatType(32);
     uint32_t floatPtr   = spvModule.defPointerType(floatType, spv::StorageClassPushConstant);
     uint32_t vec3Type   = spvModule.defVectorType(floatType, 3);
@@ -267,43 +267,44 @@ namespace dxvk {
       return spvModule.opLoad(floatType, spvModule.opAccessChain(floatPtr, rsBlock, 1, &index));
     };
 
-    uint32_t pointMode = spvModule.specConst32(uint32Type, 0);
-    spvModule.setDebugName(pointMode, "point_mode");
-    spvModule.decorateSpecId(pointMode, getSpecId(D3D9SpecConstantId::PointMode));
+    uint32_t value = perVertPointSize != 0 ? perVertPointSize : LoadFloat(D3D9RenderStateItem::PointSize);
 
-    uint32_t scaleBit  = spvModule.opBitFieldUExtract(uint32Type, pointMode, spvModule.consti32(0), spvModule.consti32(1));
-    uint32_t isScale   = spvModule.opIEqual(boolType, scaleBit, spvModule.constu32(1));
+    if (isFixedFunction) {
+      uint32_t pointMode = spvModule.specConst32(uint32Type, 0);
+      spvModule.setDebugName(pointMode, "point_mode");
+      spvModule.decorateSpecId(pointMode, getSpecId(D3D9SpecConstantId::PointMode));
 
-    uint32_t regularValue = perVertPointSize != 0 ? perVertPointSize : LoadFloat(D3D9RenderStateItem::PointSize);
+      uint32_t scaleBit  = spvModule.opBitFieldUExtract(uint32Type, pointMode, spvModule.consti32(0), spvModule.consti32(1));
+      uint32_t isScale   = spvModule.opIEqual(boolType, scaleBit, spvModule.constu32(1));
 
-    uint32_t scaleC = LoadFloat(D3D9RenderStateItem::PointScaleC);
-    uint32_t scaleB = LoadFloat(D3D9RenderStateItem::PointScaleB);
-    uint32_t scaleA = LoadFloat(D3D9RenderStateItem::PointScaleA);
+      uint32_t scaleC = LoadFloat(D3D9RenderStateItem::PointScaleC);
+      uint32_t scaleB = LoadFloat(D3D9RenderStateItem::PointScaleB);
+      uint32_t scaleA = LoadFloat(D3D9RenderStateItem::PointScaleA);
 
-    std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
+      std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
 
-    uint32_t vtx3;
-    if (vPos != 0) {
-      vPos = spvModule.opLoad(vec4Type, vPos);
+      uint32_t vtx3;
+      if (vPos != 0) {
+        vPos = spvModule.opLoad(vec4Type, vPos);
 
-      uint32_t rhw            = spvModule.opCompositeExtract(floatType, vPos, 1, &indices[3]);
-               rhw            = spvModule.opFDiv(floatType, spvModule.constf32(1.0f), rhw);
-      uint32_t pos3           = spvModule.opVectorShuffle(vec3Type, vPos, vPos, 3, indices.data());
-               vtx3           = spvModule.opVectorTimesScalar(vec3Type, pos3, rhw);
+        uint32_t rhw  = spvModule.opCompositeExtract(floatType, vPos, 1, &indices[3]);
+                 rhw  = spvModule.opFDiv(floatType, spvModule.constf32(1.0f), rhw);
+        uint32_t pos3 = spvModule.opVectorShuffle(vec3Type, vPos, vPos, 3, indices.data());
+                 vtx3 = spvModule.opVectorTimesScalar(vec3Type, pos3, rhw);
+      } else {
+                 vtx3 = spvModule.opVectorShuffle(vec3Type, vtx, vtx, 3, indices.data());
+      }
+
+      uint32_t DeSqr      = spvModule.opDot (floatType, vtx3, vtx3);
+      uint32_t De         = spvModule.opSqrt(floatType, DeSqr);
+      uint32_t scaleValue = spvModule.opFMul(floatType, scaleC, DeSqr);
+               scaleValue = spvModule.opFFma(floatType, scaleB, De, scaleValue);
+               scaleValue = spvModule.opFAdd(floatType, scaleA, scaleValue);
+               scaleValue = spvModule.opSqrt(floatType, scaleValue);
+               scaleValue = spvModule.opFDiv(floatType, value, scaleValue);
+
+      value = spvModule.opSelect(floatType, isScale, scaleValue, value);
     }
-    else {
-               vtx3           = spvModule.opVectorShuffle(vec3Type, vtx, vtx, 3, indices.data());
-    }
-
-    uint32_t DeSqr          = spvModule.opDot (floatType, vtx3, vtx3);
-    uint32_t De             = spvModule.opSqrt(floatType, DeSqr);
-    uint32_t scaleValue     = spvModule.opFMul(floatType, scaleC, DeSqr);
-             scaleValue     = spvModule.opFFma(floatType, scaleB, De, scaleValue);
-             scaleValue     = spvModule.opFAdd(floatType, scaleA, scaleValue);
-             scaleValue     = spvModule.opSqrt(floatType, scaleValue);
-             scaleValue     = spvModule.opFDiv(floatType, regularValue, scaleValue);
-
-    uint32_t value = spvModule.opSelect(floatType, isScale, scaleValue, regularValue);
 
     uint32_t min   = LoadFloat(D3D9RenderStateItem::PointSizeMin);
     uint32_t max   = LoadFloat(D3D9RenderStateItem::PointSizeMax);
@@ -1171,7 +1172,7 @@ namespace dxvk {
     fogCtx.Specular    = m_vs.in.COLOR[1];
     m_module.opStore(m_vs.out.FOG, DoFixedFunctionFog(m_module, fogCtx));
 
-    auto pointInfo = GetPointSizeInfoVS(m_module, 0, vtx, m_vs.in.POINTSIZE, m_rsBlock);
+    auto pointInfo = GetPointSizeInfoVS(m_module, 0, vtx, m_vs.in.POINTSIZE, m_rsBlock, true);
 
     uint32_t pointSize = m_module.opFClamp(m_floatType, pointInfo.defaultValue, pointInfo.min, pointInfo.max);
     m_module.opStore(m_vs.out.POINTSIZE, pointSize);
