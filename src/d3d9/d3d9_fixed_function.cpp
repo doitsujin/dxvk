@@ -1486,7 +1486,7 @@ namespace dxvk {
       m_isgn.elemCount++;
     }
 
-    if (m_vsKey.Data.Contents.HasPointSize)
+    if (m_vsKey.Data.Contents.HasFog)
       m_vs.in.FOG = declareIO(true, DxsoSemantic{ DxsoUsage::Fog,   0 });
     else
       m_isgn.elemCount++;
