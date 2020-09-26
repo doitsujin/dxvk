@@ -60,7 +60,6 @@ namespace dxvk {
     /* Direct3D 8 Exclusive Methods */
     STDMETHOD(CopyRects) D3D8_DEVICE_STUB(THIS_ IDirect3DSurface8* pSourceSurface, CONST RECT* pSourceRectsArray, UINT cRects, IDirect3DSurface8* pDestinationSurface, CONST POINT* pDestPointsArray);
     STDMETHOD(DeletePixelShader) D3D8_DEVICE_STUB(THIS_ DWORD Handle);
-    STDMETHOD(DeleteVertexShader) D3D8_DEVICE_STUB(THIS_ DWORD Handle);
     STDMETHOD(GetPixelShaderConstant) D3D8_DEVICE_STUB(THIS_ DWORD Register, void* pConstantData, DWORD ConstantCount);
     STDMETHOD(GetPixelShaderFunction) D3D8_DEVICE_STUB(THIS_ DWORD Handle, void* pData, DWORD* pSizeOfData);
     STDMETHOD(GetVertexShaderConstant) D3D8_DEVICE_STUB(THIS_ DWORD Register, void* pConstantData, DWORD ConstantCount);
@@ -531,6 +530,8 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE SetVertexShader(DWORD Handle);
 
     HRESULT STDMETHODCALLTYPE GetVertexShader D3D8_DEVICE_STUB_(GetVertexShader, DWORD* pHandle);
+
+    HRESULT STDMETHODCALLTYPE DeleteVertexShader(DWORD Handle);
 
     HRESULT STDMETHODCALLTYPE SetVertexShaderConstant(
             DWORD StartRegister,

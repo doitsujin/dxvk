@@ -10,6 +10,57 @@
 
 namespace dxvk {
 
+  // v0-v16, used by fixed function vs
+  static constexpr int D3D8_NUM_VERTEX_INPUT_REGISTERS = 17;
+
+  // standard mapping of vertx input v0-v16 to d3d9 usages and usage indices
+  // (See D3DVSDE_ values in d3d8types.h or DirectX 8 docs for vertex shader input registers vn)
+  static const BYTE D3D8_VERTEX_INPUT_REGISTERS[D3D8_NUM_VERTEX_INPUT_REGISTERS][2] = {
+    {d3d9::D3DDECLUSAGE_POSITION, 0},      // dcl_position     v0
+    {d3d9::D3DDECLUSAGE_BLENDWEIGHT, 0},   // dcl_blendweight  v1
+    {d3d9::D3DDECLUSAGE_BLENDINDICES, 0},  // dcl_blendindices v2
+    {d3d9::D3DDECLUSAGE_NORMAL, 0},        // dcl_normal       v3
+    {d3d9::D3DDECLUSAGE_PSIZE, 0},         // dcl_psize        v4
+    {d3d9::D3DDECLUSAGE_COLOR, 0},         // dcl_color        v5 ; diffuse
+    {d3d9::D3DDECLUSAGE_COLOR, 1},         // dcl_color1       v6 ; specular
+    {d3d9::D3DDECLUSAGE_TEXCOORD, 0},      // dcl_texcoord0    v7
+    {d3d9::D3DDECLUSAGE_TEXCOORD, 1},      // dcl_texcoord1    v8
+    {d3d9::D3DDECLUSAGE_TEXCOORD, 2},      // dcl_texcoord2    v9
+    {d3d9::D3DDECLUSAGE_TEXCOORD, 3},      // dcl_texcoord3    v10
+    {d3d9::D3DDECLUSAGE_TEXCOORD, 4},      // dcl_texcoord4    v11
+    {d3d9::D3DDECLUSAGE_TEXCOORD, 5},      // dcl_texcoord5    v12
+    {d3d9::D3DDECLUSAGE_TEXCOORD, 6},      // dcl_texcoord6    v13
+    {d3d9::D3DDECLUSAGE_TEXCOORD, 7},      // dcl_texcoord7    v14
+    {d3d9::D3DDECLUSAGE_POSITION, 1},      // dcl_position1    v15 ; position 2
+    {d3d9::D3DDECLUSAGE_NORMAL, 1},        // dcl_normal1      v16 ; normal 2
+  };
+  
+  // width in bytes of each D3DDECLTYPE (dx9) or D3DVSDT (dx8)
+  static const BYTE D3D9_DECL_TYPE_SIZES[d3d9::MAXD3DDECLTYPE + 1] = {
+    4,  // FLOAT1
+    8,  // FLOAT2
+    12, // FLOAT3
+    16, // FLOAT4
+    4,  // D3DCOLOR
+
+    4,  // UBYTE4
+    4,  // SHORT2
+    8,  // SHORT4
+
+    // The following are for vs2.0+ //
+    4,  // UBYTE4N
+    4,  // SHORT2N
+    8,  // SHORT4N
+    4,  // USHORT2N
+    8,  // USHORT4N
+    6,  // UDEC3
+    6,  // DEC3N
+    8,  // FLOAT16_2
+    16, // FLOAT16_4
+
+    0   // UNUSED
+  };
+
   struct D3D8ShaderInfo {
 
     d3d9::IDirect3DVertexDeclaration9*  pDecl;
@@ -82,18 +133,28 @@ namespace dxvk {
     using d3d9::D3DDECLTYPE;
 
     D3D8ShaderInfo& info = m_shaders.emplace_back();
+
+    std::vector<DWORD> tokens;
+
+    // shaderInputRegisters:
+    // set bit N to enable input register vN
+    DWORD shaderInputRegisters = 0;
     
     D3DVERTEXELEMENT9 vertexElements[MAXD3DDECLLENGTH + 1];
     unsigned int elementIdx = 0;
 
+    // these are used for pDeclaration and pFunction
     int i = 0;
     DWORD token;
+
     std::stringstream dbg;
     dbg << "Vertex Declaration Tokens:\n\t";
 
     WORD currentStream = 0;
     WORD currentOffset = 0;
 
+    // remap d3d8 tokens to d3d9 vertex elements
+    // and enable specific shaderInputRegisters for each
     do {
       token = pDeclaration[i++];
 
@@ -111,6 +172,7 @@ namespace dxvk {
           DWORD streamNum = VSD_SHIFT_MASK(token, D3DVSD_STREAMNUMBER);
 
           currentStream = streamNum;
+          currentOffset = 0; // reset offset
 
           dbg << streamNum;
           break;
@@ -128,61 +190,21 @@ namespace dxvk {
 
             // Read and set data type
             D3DDECLTYPE dataType  = D3DDECLTYPE(VSD_SHIFT_MASK(token, D3DVSD_DATATYPE));
-            vertexElements[elementIdx].Type = dataType;
+            vertexElements[elementIdx].Type = dataType; // (D3DVSDT values map directly to D3DDECLTYPE)
+
+            // Increase stream offset
+            currentOffset += D3D9_DECL_TYPE_SIZES[dataType];
 
             vertexElements[elementIdx].Method = d3d9::D3DDECLMETHOD_DEFAULT;
 
-            // default usage index
-            vertexElements[elementIdx].UsageIndex = 0;
+            DWORD dataReg = VSD_SHIFT_MASK(token, D3DVSD_VERTEXREG);
 
-            DWORD dataReg   = VSD_SHIFT_MASK(token, D3DVSD_VERTEXREG);
-            switch ( dataReg ) {
-              case D3DVSDE_POSITION:
-                vertexElements[elementIdx].Usage = d3d9::D3DDECLUSAGE_POSITION;
-                break;
-              case D3DVSDE_BLENDWEIGHT:
-                vertexElements[elementIdx].Usage = d3d9::D3DDECLUSAGE_BLENDWEIGHT;
-                break;
-              case D3DVSDE_BLENDINDICES:
-                vertexElements[elementIdx].Usage = d3d9::D3DDECLUSAGE_BLENDINDICES;
-                break;
-              case D3DVSDE_NORMAL:
-                vertexElements[elementIdx].Usage = d3d9::D3DDECLUSAGE_NORMAL;
-                break;
-              case D3DVSDE_PSIZE:
-                vertexElements[elementIdx].Usage = d3d9::D3DDECLUSAGE_PSIZE;
-                break;
+            // Map D3DVSDE register num to Usage and UsageIndex
+            vertexElements[elementIdx].Usage = D3D8_VERTEX_INPUT_REGISTERS[dataReg][0];
+            vertexElements[elementIdx].UsageIndex = D3D8_VERTEX_INPUT_REGISTERS[dataReg][1];
 
-              case D3DVSDE_DIFFUSE:   // Color 0
-                vertexElements[elementIdx].Usage = d3d9::D3DDECLUSAGE_COLOR;
-                break;
-              case D3DVSDE_SPECULAR:  // Color 1
-                vertexElements[elementIdx].Usage = d3d9::D3DDECLUSAGE_COLOR;
-                vertexElements[elementIdx].UsageIndex = 1;
-                break;
-
-              // Texcoords
-              case D3DVSDE_TEXCOORD0:
-              case D3DVSDE_TEXCOORD1:
-              case D3DVSDE_TEXCOORD2:
-              case D3DVSDE_TEXCOORD3:
-              case D3DVSDE_TEXCOORD4:
-              case D3DVSDE_TEXCOORD5:
-              case D3DVSDE_TEXCOORD6:
-              case D3DVSDE_TEXCOORD7:
-                vertexElements[elementIdx].Usage = d3d9::D3DDECLUSAGE_TEXCOORD;
-                vertexElements[elementIdx].UsageIndex = BYTE(dataReg - D3DVSDE_TEXCOORD0); // 0 to 7
-                break;
-
-              case D3DVSDE_POSITION2:
-                vertexElements[elementIdx].Usage = d3d9::D3DDECLUSAGE_POSITION;
-                vertexElements[elementIdx].UsageIndex = 1;
-                break;
-              case D3DVSDE_NORMAL2:
-                vertexElements[elementIdx].Usage = d3d9::D3DDECLUSAGE_NORMAL;
-                vertexElements[elementIdx].UsageIndex = 1;
-                break;
-            }
+            // Enable register vn
+            shaderInputRegisters |= 1 << dataReg;
 
             // Finished with this element
             elementIdx++;
@@ -193,12 +215,15 @@ namespace dxvk {
         }
         case D3DVSD_TOKEN_TESSELLATOR:
           dbg << "TESSELLATOR";
+          // TODO: D3DVSD_TOKEN_TESSELLATOR
           break;
         case D3DVSD_TOKEN_CONSTMEM:
           dbg << "CONSTMEM";
+          // TODO: D3DVSD_TOKEN_CONSTMEM
           break;
         case D3DVSD_TOKEN_EXT:
           dbg << "EXT";
+          // TODO: D3DVSD_TOKEN_EXT
           break;
         case D3DVSD_TOKEN_END: {
           using d3d9::D3DDECLTYPE_UNUSED;
@@ -220,10 +245,44 @@ namespace dxvk {
       //dbg << std::hex << token << " ";
 
     } while (token != D3DVSD_END());
-    Logger::info(dbg.str());
+    Logger::debug(dbg.str());
+
+    // copy first token
+    // TODO: ensure first token is always only one dword
+    tokens.push_back(pFunction[0]);
+
+    // insert dcl instructions 
+
+    for ( int vn = 0; vn < D3D8_NUM_VERTEX_INPUT_REGISTERS; vn++ ) {
+
+      // if bit N is set then we need to dcl register vN
+      if ( ( shaderInputRegisters & ( 1 << vn ) ) != 0 ) {
+
+        Logger::debug(str::format("\tShader Input Regsiter: v", vn));
+
+        DWORD usage = D3D8_VERTEX_INPUT_REGISTERS[vn][0];
+        DWORD index = D3D8_VERTEX_INPUT_REGISTERS[vn][1];
+
+        DWORD dclUsage  = (usage << D3DSP_DCL_USAGE_SHIFT) & D3DSP_DCL_USAGE_MASK;           // usage
+        dclUsage       |= (index << D3DSP_DCL_USAGEINDEX_SHIFT) & D3DSP_DCL_USAGEINDEX_MASK; // usage index
+
+        tokens.push_back(d3d9::D3DSIO_DCL);   // dcl opcode
+        tokens.push_back(0x80000000 | dclUsage); // usage token
+        tokens.push_back(0x900F0000 | vn);    // register num
+      }
+    }
+
+    // copy shader tokens from input
+
+    i = 1; // skip first token (we already copied it)
+    do {
+      token = pFunction[i++];
+      tokens.push_back(token);
+      //Logger::debug(str::format(std::hex, token));
+    } while ( token != D3DVS_END() );
 
     GetD3D9()->CreateVertexDeclaration(vertexElements, &(info.pDecl));
-    HRESULT res = GetD3D9()->CreateVertexShader(pFunction, &(info.pShader));
+    HRESULT res = GetD3D9()->CreateVertexShader(tokens.data(), &(info.pShader));
 
     // Set bit to indicate this is not a fixed function FVF
     *pHandle = DWORD(m_shaders.size() - 1) | DXVK_D3D8_SHADER_BIT;
@@ -232,8 +291,6 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8DeviceEx::SetVertexShader( DWORD Handle ) {
-    // TODO: determine if Handle is an FVF or a shader ptr
-    // (may need to set a bit on ptrs)
 
     // Check for extra bit that indicates this is not an FVF
     if ( (Handle & DXVK_D3D8_SHADER_BIT ) != 0 ) {
@@ -241,20 +298,45 @@ namespace dxvk {
       Handle &= ~DXVK_D3D8_SHADER_BIT;
 
       if ( Handle >= m_shaders.size() ) {
-        Logger::err(str::format("Invalid vertex shader index ", Handle));
+        Logger::err(str::format("SetVertexShader: Invalid vertex shader index ", Handle));
         return D3DERR_INVALIDCALL;
       }
 
       D3D8ShaderInfo& info = m_shaders[Handle];
+
+      if ( info.pDecl == nullptr || info.pShader == nullptr ) {
+        Logger::err(str::format("SetVertexShader: Vertex shader ", Handle, " has been deleted"));
+        return D3DERR_INVALIDCALL;
+      }
       
       GetD3D9()->SetVertexDeclaration(info.pDecl);
       return GetD3D9()->SetVertexShader(info.pShader);
-    }
-    else {
+    } else {
       //GetD3D9()->SetVertexDeclaration(nullptr);
       GetD3D9()->SetVertexShader(nullptr);
       return GetD3D9()->SetFVF( Handle );
     }
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D8DeviceEx::DeleteVertexShader(DWORD Handle) {
+
+    if ( (Handle & DXVK_D3D8_SHADER_BIT) != 0 ) {
+
+      Handle &= ~DXVK_D3D8_SHADER_BIT;
+
+      if ( Handle >= m_shaders.size() ) {
+        Logger::err(str::format("DeleteVertexShader: Invalid vertex shader index ", Handle));
+        return D3DERR_INVALIDCALL;
+      }
+
+      D3D8ShaderInfo& info = m_shaders[Handle];
+
+      SAFE_RELEASE(info.pDecl);
+      SAFE_RELEASE(info.pShader);
+
+    }
+
+    return D3D_OK;
   }
 
 } // namespace dxvk

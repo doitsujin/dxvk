@@ -9,6 +9,9 @@
 
 #include <stdint.h>
 
+// Used for some refcounted COM objects that need to be released.
+#define SAFE_RELEASE(p)   { if (p) { (p)->Release(); (p) = nullptr; } }
+
 #include <d3d8.h>
 
 // Undefine D3D8 macros //
