@@ -199,7 +199,7 @@ namespace dxvk {
   }
 
 
-  uint32_t SetupRenderStateBlock(SpirvModule& spvModule) {
+  uint32_t SetupRenderStateBlock(SpirvModule& spvModule, uint32_t count) {
     uint32_t floatType = spvModule.defFloatType(32);
     uint32_t vec3Type  = spvModule.defVectorType(floatType, 3);
 
@@ -217,38 +217,38 @@ namespace dxvk {
       floatType,
       floatType,
     }};
-    
-    uint32_t rsStruct = spvModule.defStructTypeUnique(rsMembers.size(), rsMembers.data());
+
+    uint32_t rsStruct = spvModule.defStructTypeUnique(count, rsMembers.data());
     uint32_t rsBlock = spvModule.newVar(
       spvModule.defPointerType(rsStruct, spv::StorageClassPushConstant),
       spv::StorageClassPushConstant);
     
+    spvModule.setDebugName         (rsBlock, "render_state");
+
     spvModule.setDebugName         (rsStruct, "render_state_t");
     spvModule.decorate             (rsStruct, spv::DecorationBlock);
-    spvModule.setDebugMemberName   (rsStruct, 0, "fog_color");
-    spvModule.memberDecorateOffset (rsStruct, 0, offsetof(D3D9RenderStateInfo, fogColor));
-    spvModule.setDebugMemberName   (rsStruct, 1, "fog_scale");
-    spvModule.memberDecorateOffset (rsStruct, 1, offsetof(D3D9RenderStateInfo, fogScale));
-    spvModule.setDebugMemberName   (rsStruct, 2, "fog_end");
-    spvModule.memberDecorateOffset (rsStruct, 2, offsetof(D3D9RenderStateInfo, fogEnd));
-    spvModule.setDebugMemberName   (rsStruct, 3, "fog_density");
-    spvModule.memberDecorateOffset (rsStruct, 3, offsetof(D3D9RenderStateInfo, fogDensity));
-    spvModule.setDebugMemberName   (rsStruct, 4, "alpha_ref");
-    spvModule.memberDecorateOffset (rsStruct, 4, offsetof(D3D9RenderStateInfo, alphaRef));
-    spvModule.setDebugMemberName   (rsStruct, 5, "point_size");
-    spvModule.memberDecorateOffset (rsStruct, 5, offsetof(D3D9RenderStateInfo, pointSize));
-    spvModule.setDebugMemberName   (rsStruct, 6, "point_size_min");
-    spvModule.memberDecorateOffset (rsStruct, 6, offsetof(D3D9RenderStateInfo, pointSizeMin));
-    spvModule.setDebugMemberName   (rsStruct, 7, "point_size_max");
-    spvModule.memberDecorateOffset (rsStruct, 7, offsetof(D3D9RenderStateInfo, pointSizeMax));
-    spvModule.setDebugMemberName   (rsStruct, 8, "point_scale_a");
-    spvModule.memberDecorateOffset (rsStruct, 8, offsetof(D3D9RenderStateInfo, pointScaleA));
-    spvModule.setDebugMemberName   (rsStruct, 9, "point_scale_b");
-    spvModule.memberDecorateOffset (rsStruct, 9, offsetof(D3D9RenderStateInfo, pointScaleB));
-    spvModule.setDebugMemberName   (rsStruct, 10, "point_scale_c");
-    spvModule.memberDecorateOffset (rsStruct, 10, offsetof(D3D9RenderStateInfo, pointScaleC));
-    
-    spvModule.setDebugName         (rsBlock, "render_state");
+
+    uint32_t memberIdx = 0;
+    auto SetMemberName = [&](const char* name, uint32_t offset) {
+      if (memberIdx >= count)
+        return;
+
+      spvModule.setDebugMemberName   (rsStruct, memberIdx, name);
+      spvModule.memberDecorateOffset (rsStruct, memberIdx, offset);
+      memberIdx++;
+    };
+
+    SetMemberName("fog_color",      offsetof(D3D9RenderStateInfo, fogColor));
+    SetMemberName("fog_scale",      offsetof(D3D9RenderStateInfo, fogScale));
+    SetMemberName("fog_end",        offsetof(D3D9RenderStateInfo, fogEnd));
+    SetMemberName("fog_density",    offsetof(D3D9RenderStateInfo, fogDensity));
+    SetMemberName("alpha_ref",      offsetof(D3D9RenderStateInfo, alphaRef));
+    SetMemberName("point_size",     offsetof(D3D9RenderStateInfo, pointSize));
+    SetMemberName("point_size_min", offsetof(D3D9RenderStateInfo, pointSizeMin));
+    SetMemberName("point_size_max", offsetof(D3D9RenderStateInfo, pointSizeMax));
+    SetMemberName("point_scale_a",  offsetof(D3D9RenderStateInfo, pointScaleA));
+    SetMemberName("point_scale_b",  offsetof(D3D9RenderStateInfo, pointScaleB));
+    SetMemberName("point_scale_c",  offsetof(D3D9RenderStateInfo, pointScaleC));
 
     return rsBlock;
   }
@@ -1183,16 +1183,20 @@ namespace dxvk {
 
 
   void D3D9FFShaderCompiler::setupRenderStateInfo() {
-    m_rsBlock = SetupRenderStateBlock(m_module);
+    uint32_t count;
 
     if (m_programType == DxsoProgramType::PixelShader) {
       m_interfaceSlots.pushConstOffset = 0;
       m_interfaceSlots.pushConstSize   = offsetof(D3D9RenderStateInfo, pointSize);
+      count = 5;
     }
     else {
       m_interfaceSlots.pushConstOffset = offsetof(D3D9RenderStateInfo, pointSize);
       m_interfaceSlots.pushConstSize   = sizeof(float) * 6;
+      count = 11;
     }
+
+    m_rsBlock = SetupRenderStateBlock(m_module, count);
   }
 
 

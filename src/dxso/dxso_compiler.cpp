@@ -3479,7 +3479,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
 
   void DxsoCompiler::setupRenderStateInfo() {
-    m_rsBlock = SetupRenderStateBlock(m_module);
+    uint32_t count;
 
     // Only need alpha ref for PS 3.
     // No FF fog component.
@@ -3492,12 +3492,17 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         m_interfaceSlots.pushConstOffset = 0;
         m_interfaceSlots.pushConstSize   = offsetof(D3D9RenderStateInfo, pointSize);
       }
+
+      count = 5;
     }
     else {
       m_interfaceSlots.pushConstOffset = offsetof(D3D9RenderStateInfo, pointSize);
       // Point scale never triggers on programmable
       m_interfaceSlots.pushConstSize   = sizeof(float) * 3;
+      count = 8;
     }
+
+    m_rsBlock = SetupRenderStateBlock(m_module, count);
   }
 
 

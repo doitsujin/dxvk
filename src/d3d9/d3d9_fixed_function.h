@@ -47,7 +47,7 @@ namespace dxvk {
   uint32_t DoFixedFunctionFog(SpirvModule& spvModule, const D3D9FogContext& fogCtx);
 
   // Returns a render state block
-  uint32_t SetupRenderStateBlock(SpirvModule& spvModule);
+  uint32_t SetupRenderStateBlock(SpirvModule& spvModule, uint32_t count);
 
   struct D3D9PointSizeInfoVS {
     uint32_t defaultValue;
