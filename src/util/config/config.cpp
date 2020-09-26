@@ -250,6 +250,10 @@ namespace dxvk {
     { R"(\\The Convenience Store Yakin Jiken\.exe$)", {{
       { "d3d11.enableRtOutputNanFixup",     "True" },
     }} },
+    /* The Dungeon of Maheulbeuk                  */
+    { R"(\\Naheulbeuk\.exe$)", {{
+      { "d3d11.enableRtOutputNanFixup",     "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */

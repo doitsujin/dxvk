@@ -3378,7 +3378,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     if (!outputtedColor1)
       OutputDefault(DxsoSemantic{ DxsoUsage::Color, 1 });
 
-    auto pointInfo = GetPointSizeInfoVS(m_module, m_vs.oPos.id, 0, 0, m_rsBlock);
+    auto pointInfo = GetPointSizeInfoVS(m_module, m_vs.oPos.id, 0, 0, m_rsBlock, false);
 
     if (m_vs.oPSize.id == 0) {
       m_vs.oPSize = this->emitRegisterPtr(
@@ -3479,7 +3479,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
 
   void DxsoCompiler::setupRenderStateInfo() {
-    m_rsBlock = SetupRenderStateBlock(m_module);
+    uint32_t count;
 
     // Only need alpha ref for PS 3.
     // No FF fog component.
@@ -3492,12 +3492,17 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         m_interfaceSlots.pushConstOffset = 0;
         m_interfaceSlots.pushConstSize   = offsetof(D3D9RenderStateInfo, pointSize);
       }
+
+      count = 5;
     }
     else {
       m_interfaceSlots.pushConstOffset = offsetof(D3D9RenderStateInfo, pointSize);
       // Point scale never triggers on programmable
       m_interfaceSlots.pushConstSize   = sizeof(float) * 3;
+      count = 8;
     }
+
+    m_rsBlock = SetupRenderStateBlock(m_module, count);
   }
 
 
@@ -3521,6 +3526,10 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     fogCtx.vPos        = m_module.opLoad(getVectorTypeId(vPosPtr.type),    vPosPtr.id);
     fogCtx.vFog        = m_module.opLoad(getVectorTypeId(vFogPtr.type),    vFogPtr.id);
     fogCtx.oColor      = m_module.opLoad(getVectorTypeId(oColor0Ptr.type), oColor0Ptr.id);
+    fogCtx.IsFixedFunction = false;
+    fogCtx.IsPositionT = false;
+    fogCtx.HasSpecular = false;
+    fogCtx.Specular    = 0;
 
     m_module.opStore(oColor0Ptr.id, DoFixedFunctionFog(m_module, fogCtx));
   }

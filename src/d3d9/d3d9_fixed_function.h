@@ -29,6 +29,11 @@ namespace dxvk {
     uint32_t oColor;
 
     bool     HasFogInput;
+
+    bool     IsFixedFunction;
+    bool     IsPositionT;
+    bool     HasSpecular;
+    uint32_t Specular;
   };
 
   struct D3D9FixedFunctionOptions {
@@ -42,7 +47,7 @@ namespace dxvk {
   uint32_t DoFixedFunctionFog(SpirvModule& spvModule, const D3D9FogContext& fogCtx);
 
   // Returns a render state block
-  uint32_t SetupRenderStateBlock(SpirvModule& spvModule);
+  uint32_t SetupRenderStateBlock(SpirvModule& spvModule, uint32_t count);
 
   struct D3D9PointSizeInfoVS {
     uint32_t defaultValue;
@@ -51,7 +56,7 @@ namespace dxvk {
   };
 
   // Default point size and point scale magic!
-  D3D9PointSizeInfoVS GetPointSizeInfoVS(SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t perVertPointSize, uint32_t rsBlock);
+  D3D9PointSizeInfoVS GetPointSizeInfoVS(SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t perVertPointSize, uint32_t rsBlock, bool isFixedFunction);
 
   struct D3D9PointSizeInfoPS {
     uint32_t isSprite;
