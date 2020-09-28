@@ -392,9 +392,7 @@ namespace dxvk {
       return reinterpret_cast<d3d9::IDirect3DStateBlock9*>(Token)->Capture();
     }
 
-    HRESULT STDMETHODCALLTYPE ApplyStateBlock(DWORD Token) {
-      return reinterpret_cast<d3d9::IDirect3DStateBlock9*>(Token)->Apply();
-    }
+    HRESULT STDMETHODCALLTYPE ApplyStateBlock(DWORD Token);
 
     HRESULT STDMETHODCALLTYPE DeleteStateBlock(DWORD Token) {
       reinterpret_cast<d3d9::IDirect3DStateBlock9*>(Token)->Release();
@@ -528,7 +526,7 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE SetVertexShader(DWORD Handle);
 
-    HRESULT STDMETHODCALLTYPE GetVertexShader D3D8_DEVICE_STUB_(GetVertexShader, DWORD* pHandle);
+    HRESULT STDMETHODCALLTYPE GetVertexShader(DWORD* pHandle);
 
     HRESULT STDMETHODCALLTYPE DeleteVertexShader(DWORD Handle);
 
@@ -573,7 +571,7 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE SetPixelShader(DWORD Handle);
 
-    HRESULT STDMETHODCALLTYPE GetPixelShader D3D8_DEVICE_STUB(DWORD* pHandle);
+    HRESULT STDMETHODCALLTYPE GetPixelShader(DWORD* pHandle);
 
     HRESULT STDMETHODCALLTYPE DeletePixelShader(THIS_ DWORD Handle);
 
@@ -605,6 +603,18 @@ namespace dxvk {
       return GetD3D9()->DeletePatch(Handle);
     }
 
+  public: // Internal Methods //
+
+    void CacheFVF();
+
+    // RefreshVS and RefreshPS can be slow, so avoid calling them in hot path when possible
+
+    void RefreshVS(d3d9::IDirect3DVertexShader9* pVertexShader);
+    void RefreshPS(d3d9::IDirect3DPixelShader9* pPixelShader);
+
+    // Refresh the cached active shader.
+    void UpdateCurrentShaders();
+
   private:
 
     INT                   m_BaseVertexIndex = 0;
@@ -612,6 +622,8 @@ namespace dxvk {
     Com<D3D8InterfaceEx>  m_parent;
 
     std::vector<D3D8ShaderInfo>  m_shaders;
+    DWORD                        m_currentVertexShader  = 0;  // can be m_shaders index or FVF
+    DWORD                        m_currentPixelShader   = 0;
 
     D3DDEVTYPE            m_deviceType;
     HWND                  m_window;
