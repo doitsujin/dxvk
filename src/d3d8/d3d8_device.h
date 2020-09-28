@@ -415,9 +415,13 @@ namespace dxvk {
       return GetD3D9()->EndStateBlock((d3d9::IDirect3DStateBlock9**)pToken);
     }
 
-    HRESULT STDMETHODCALLTYPE SetClipStatus D3D8_DEVICE_STUB(const D3DCLIPSTATUS8* pClipStatus);
+    HRESULT STDMETHODCALLTYPE SetClipStatus(const D3DCLIPSTATUS8* pClipStatus) {
+      return GetD3D9()->SetClipStatus(reinterpret_cast<const d3d9::D3DCLIPSTATUS9*>(pClipStatus));
+    }
 
-    HRESULT STDMETHODCALLTYPE GetClipStatus D3D8_DEVICE_STUB(D3DCLIPSTATUS8* pClipStatus);
+    HRESULT STDMETHODCALLTYPE GetClipStatus(D3DCLIPSTATUS8* pClipStatus) {
+      return GetD3D9()->GetClipStatus(reinterpret_cast<d3d9::D3DCLIPSTATUS9*>(pClipStatus));
+    }
 
     HRESULT STDMETHODCALLTYPE GetTexture D3D8_DEVICE_STUB_(GetTexture, DWORD Stage, IDirect3DBaseTexture8** ppTexture);
 
