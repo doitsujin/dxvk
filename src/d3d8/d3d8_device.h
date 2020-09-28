@@ -340,9 +340,13 @@ namespace dxvk {
       return GetD3D9()->MultiplyTransform(d3d9::D3DTRANSFORMSTATETYPE(TransformState), pMatrix);
     }
 
-    HRESULT STDMETHODCALLTYPE SetViewport D3D8_DEVICE_STUB_(SetViewport, const D3DVIEWPORT8* pViewport);
+    HRESULT STDMETHODCALLTYPE SetViewport(const D3DVIEWPORT8* pViewport) {
+      return GetD3D9()->SetViewport(reinterpret_cast<const d3d9::D3DVIEWPORT9*>(pViewport));
+    }
 
-    HRESULT STDMETHODCALLTYPE GetViewport D3D8_DEVICE_STUB_(GetViewport, D3DVIEWPORT8* pViewport);
+    HRESULT STDMETHODCALLTYPE GetViewport(D3DVIEWPORT8* pViewport) {
+      return GetD3D9()->GetViewport(reinterpret_cast<d3d9::D3DVIEWPORT9*>(pViewport));
+    }
 
     HRESULT STDMETHODCALLTYPE SetMaterial(const D3DMATERIAL8* pMaterial) {
       return GetD3D9()->SetMaterial((const d3d9::D3DMATERIAL9*)pMaterial);
