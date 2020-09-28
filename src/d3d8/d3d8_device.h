@@ -388,9 +388,13 @@ namespace dxvk {
       return GetD3D9()->GetRenderState((d3d9::D3DRENDERSTATETYPE)State, pValue);
     }
 
-    HRESULT STDMETHODCALLTYPE CreateStateBlock D3D8_DEVICE_STUB(
+    HRESULT STDMETHODCALLTYPE CreateStateBlock(
             D3DSTATEBLOCKTYPE     Type,
-            DWORD*                pToken);
+            DWORD*                pToken) {
+      return GetD3D9()->CreateStateBlock(
+        d3d9::D3DSTATEBLOCKTYPE(Type),
+        reinterpret_cast<d3d9::IDirect3DStateBlock9**>(pToken));
+    }
 
     HRESULT STDMETHODCALLTYPE CaptureStateBlock(DWORD Token) {
       return reinterpret_cast<d3d9::IDirect3DStateBlock9*>(Token)->Capture();
