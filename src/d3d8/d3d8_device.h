@@ -5,6 +5,7 @@
 #include "d3d8_include.h"
 #include "d3d8_texture.h"
 #include "d3d8_buffer.h"
+#include "d3d8_state_block.h"
 #include "d3d8_d3d9_util.h"
 
 #include <vector>
@@ -43,6 +44,7 @@ namespace dxvk {
   class D3D8DeviceEx final : public D3D8DeviceBase {
 
     friend class D3D8SwapChainEx;
+    friend class D3D8StateBlock;
   public:
 
     D3D8DeviceEx(
@@ -397,28 +399,53 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE CreateStateBlock(
             D3DSTATEBLOCKTYPE     Type,
             DWORD*                pToken) {
-      return GetD3D9()->CreateStateBlock(
-        d3d9::D3DSTATEBLOCKTYPE(Type),
-        reinterpret_cast<d3d9::IDirect3DStateBlock9**>(pToken));
+
+      Com<d3d9::IDirect3DStateBlock9> pStateBlock9;
+      HRESULT res = GetD3D9()->CreateStateBlock(d3d9::D3DSTATEBLOCKTYPE(Type), &pStateBlock9);
+
+      D3D8StateBlock* pStateBlock = new D3D8StateBlock(this, pStateBlock9.ref());
+
+      *pToken = DWORD(pStateBlock);
+
+      return res;
     }
 
     HRESULT STDMETHODCALLTYPE CaptureStateBlock(DWORD Token) {
-      return reinterpret_cast<d3d9::IDirect3DStateBlock9*>(Token)->Capture();
+      return reinterpret_cast<D3D8StateBlock*>(Token)->Capture();
     }
 
     HRESULT STDMETHODCALLTYPE ApplyStateBlock(DWORD Token);
 
     HRESULT STDMETHODCALLTYPE DeleteStateBlock(DWORD Token) {
-      reinterpret_cast<d3d9::IDirect3DStateBlock9*>(Token)->Release();
+      delete reinterpret_cast<D3D8StateBlock*>(Token);
       return D3D_OK;
     }
 
-    HRESULT STDMETHODCALLTYPE BeginStateBlock() { 
+    HRESULT STDMETHODCALLTYPE BeginStateBlock() {
+
+      if (unlikely(m_recorder != nullptr))
+        return D3DERR_INVALIDCALL;
+
+      m_recorder = new D3D8StateBlock(this);
+
       return GetD3D9()->BeginStateBlock();
     }
 
     HRESULT STDMETHODCALLTYPE EndStateBlock(DWORD* pToken) {
-      return GetD3D9()->EndStateBlock((d3d9::IDirect3DStateBlock9**)pToken);
+
+      if (unlikely(pToken == nullptr || m_recorder == nullptr))
+        return D3DERR_INVALIDCALL;
+
+      Com<d3d9::IDirect3DStateBlock9> pStateBlock;
+      HRESULT res = GetD3D9()->EndStateBlock(&pStateBlock);
+
+      m_recorder->SetD3D9(std::move(pStateBlock));
+
+      *pToken = DWORD(m_recorder);
+
+      m_recorder = nullptr;
+
+      return res;
     }
 
     HRESULT STDMETHODCALLTYPE SetClipStatus(const D3DCLIPSTATUS8* pClipStatus) {
@@ -632,15 +659,7 @@ namespace dxvk {
 
   public: // Internal Methods //
 
-    void CacheFVF();
-
-    // RefreshVS and RefreshPS can be slow, so avoid calling them in hot path when possible
-
-    void RefreshVS(d3d9::IDirect3DVertexShader9* pVertexShader);
-    void RefreshPS(d3d9::IDirect3DPixelShader9* pPixelShader);
-
-    // Refresh the cached active shader.
-    void UpdateCurrentShaders();
+    inline bool ShouldRecord() { return m_recorder != nullptr; }
 
   private:
 
@@ -648,6 +667,8 @@ namespace dxvk {
 
     Com<D3D8IndexBuffer>        m_indices;
     INT                         m_baseVertexIndex = 0;
+
+    D3D8StateBlock*             m_recorder = nullptr;
 
     Com<D3D8Surface>            m_backBuffer;
     Com<D3D8Surface>            m_frontBuffer;

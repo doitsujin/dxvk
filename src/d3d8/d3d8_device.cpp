@@ -136,10 +136,7 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D8DeviceEx::ApplyStateBlock(DWORD Token) {
 
-    HRESULT res = reinterpret_cast<d3d9::IDirect3DStateBlock9*>(Token)->Apply();
-
-    // TODO: only refresh shaders this state block might affect
-    UpdateCurrentShaders();
+    HRESULT res = reinterpret_cast<D3D8StateBlock*>(Token)->Apply();
 
     return res;
   }
@@ -318,6 +315,10 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D8DeviceEx::SetVertexShader( DWORD Handle ) {
 
+    if (unlikely(ShouldRecord())) {
+      return m_recorder->SetVertexShader(Handle);
+    }
+
     // Check for extra bit that indicates this is not an FVF
     if ( (Handle & DXVK_D3D8_SHADER_BIT ) != 0 ) {
       // Remove that bit
@@ -428,6 +429,10 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D8DeviceEx::SetPixelShader(DWORD Handle) {
 
+    if (unlikely(ShouldRecord())) {
+      return m_recorder->SetPixelShader(Handle);
+    }
+
     if ( (Handle & DXVK_D3D8_SHADER_BIT) != 0 ) {
       Handle &= ~DXVK_D3D8_SHADER_BIT; // We don't care
     }
@@ -447,7 +452,7 @@ namespace dxvk {
     return GetD3D9()->SetPixelShader(info.pPixelShader);
   }
 
-  HRESULT __stdcall D3D8DeviceEx::GetPixelShader(DWORD* pHandle) {
+  HRESULT STDMETHODCALLTYPE D3D8DeviceEx::GetPixelShader(DWORD* pHandle) {
     // Return cached shader
     *pHandle = m_currentPixelShader;
 
@@ -499,133 +504,6 @@ namespace dxvk {
     info.type = D3D8ShaderType::None;
 
     return D3D_OK;
-  }
-
-  // Internal Methods //
-  
-  inline void D3D8DeviceEx::CacheFVF() {
-    GetD3D9()->GetFVF(&m_currentVertexShader);
-  }
-
-  inline void D3D8DeviceEx::RefreshVS(d3d9::IDirect3DVertexShader9* pVertexShader)
-  {
-    // Search for VS in our shaders
-    for (unsigned int i = 0; i < m_shaders.size(); i++) {
-      D3D8ShaderInfo& info = m_shaders[i];
-
-      if (m_shaders[i].pVertexShader == pVertexShader) {
-        // Found it
-        m_currentVertexShader = i | DXVK_D3D8_SHADER_BIT;
-        return;
-      }
-    }
-
-    // We haven't found it! (Worst case)
-    Logger::debug(str::format("RefreshVS: unrecognized vertex shader with address 0x", std::hex, pVertexShader));
-
-    D3D8ShaderInfo& info = m_shaders.emplace_back();
-    info.type = D3D8ShaderType::Vertex;
-    info.pVertexShader = pVertexShader;
-
-    // Get the vertex decl too
-    d3d9::IDirect3DVertexDeclaration9* pVertexDecl;
-    GetD3D9()->GetVertexDeclaration(&pVertexDecl);
-
-    info.pVertexDecl = pVertexDecl;
-
-    m_currentPixelShader = DWORD(m_shaders.size() - 1) | DXVK_D3D8_SHADER_BIT;
-  }
-
-  inline void D3D8DeviceEx::RefreshPS(d3d9::IDirect3DPixelShader9* pPixelShader)
-  {
-    // Search for PS in our shaders
-    for (unsigned int i = 0; i < m_shaders.size(); i++) {
-      D3D8ShaderInfo& info = m_shaders[i];
-
-      if (m_shaders[i].pPixelShader == pPixelShader) {
-        // Found it
-        m_currentPixelShader = i | DXVK_D3D8_SHADER_BIT;
-        return;
-      }
-    }
-
-    // We haven't found it! (Worst case)
-    Logger::debug(str::format("RefreshPS: unrecognized pixel shader with address 0x", std::hex, pPixelShader));
-
-    D3D8ShaderInfo& info = m_shaders.emplace_back();
-    info.type = D3D8ShaderType::Pixel;
-    info.pPixelShader = pPixelShader;
-
-    m_currentPixelShader = DWORD(m_shaders.size() - 1) | DXVK_D3D8_SHADER_BIT;
-  }
-
-  inline void D3D8DeviceEx::UpdateCurrentShaders()
-  {
-    // Get current vertex shader
-    d3d9::IDirect3DVertexShader9* pVertexShader;
-    GetD3D9()->GetVertexShader(&pVertexShader);
-
-    if (pVertexShader != nullptr) {
-
-      // Check cache
-      if ((m_currentVertexShader & DXVK_D3D8_SHADER_BIT) != 0) {
-
-        DWORD handle = m_currentVertexShader & ~DXVK_D3D8_SHADER_BIT;
-
-        if (likely(handle < m_shaders.size())) {
-
-          D3D8ShaderInfo& info = m_shaders[handle];
-
-          if (info.pVertexShader != pVertexShader) {
-            // Invalid: current shader is different
-            RefreshVS(pVertexShader);
-          }
-
-        } else {
-          // Invalid: we don't recognize the cached current shader
-          RefreshVS(pVertexShader);
-        }
-      } else {
-        // Invalid: We have an FVF or something cached
-        RefreshVS(pVertexShader);
-      }
-
-    } else {
-      CacheFVF();
-    }
-
-    // Get current pixel shader
-    d3d9::IDirect3DPixelShader9* pPixelShader;
-    GetD3D9()->GetPixelShader(&pPixelShader);
-
-    if (pPixelShader != nullptr) {
-
-      // Check cache
-      if ((m_currentPixelShader & DXVK_D3D8_SHADER_BIT) != 0) {
-
-        DWORD handle = m_currentPixelShader & ~DXVK_D3D8_SHADER_BIT;
-
-        if (likely(handle < m_shaders.size())) {
-
-          D3D8ShaderInfo& info = m_shaders[handle];
-
-          if (info.pPixelShader != pPixelShader) {
-            // Invalid: current shader is different
-            RefreshPS(pPixelShader);
-          }
-          
-        } else {
-          // Invalid: we don't recognize the cached current shader
-          RefreshPS(pPixelShader);
-        }
-      } else {
-        // Invalid: we don't have a pixel shader
-        RefreshPS(pPixelShader);
-      }
-    } else {
-      // No pixel shader
-      m_currentPixelShader = 0;
-    }
   }
 
 } // namespace dxvk

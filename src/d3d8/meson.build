@@ -3,7 +3,8 @@ d3d8_res = wrc_generator.process('version.rc')
 d3d8_src = [
   'd3d8_main.cpp',
   'd3d8_interface.cpp',
-  'd3d8_device.cpp'
+  'd3d8_device.cpp',
+  'd3d8_state_block.cpp'
 ]
 
 d3d8_dll = shared_library('d3d8'+dll_ext, d3d8_src, d3d8_res,
