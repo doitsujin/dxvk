@@ -599,7 +599,8 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE SetIndices(IDirect3DIndexBuffer8* pIndexData, UINT BaseVertexIndex) {
 
-      // TODO: record SetIndices for state block
+      if (unlikely(ShouldRecord()))
+        return m_recorder->SetIndices(pIndexData, BaseVertexIndex);
 
       // used by DrawIndexedPrimitive
       m_baseVertexIndex = static_cast<INT>(BaseVertexIndex);
@@ -665,10 +666,10 @@ namespace dxvk {
 
     Com<D3D8InterfaceEx>  m_parent;
 
+    D3D8StateBlock* m_recorder = nullptr;
+
     Com<D3D8IndexBuffer>        m_indices;
     INT                         m_baseVertexIndex = 0;
-
-    D3D8StateBlock*             m_recorder = nullptr;
 
     Com<D3D8Surface>            m_backBuffer;
     Com<D3D8Surface>            m_frontBuffer;

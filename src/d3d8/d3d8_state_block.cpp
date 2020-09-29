@@ -8,6 +8,8 @@ HRESULT dxvk::D3D8StateBlock::Capture() {
   if (m_capture.vs) m_device->GetVertexShader(&m_vertexShader);
   if (m_capture.ps) m_device->GetPixelShader(&m_pixelShader);
 
+  if (m_capture.indices) m_device->GetIndices(&m_indices, &m_baseVertexIndex);
+
   return m_stateBlock->Capture();
 }
 
@@ -20,6 +22,8 @@ HRESULT dxvk::D3D8StateBlock::Apply() {
 
   if (m_capture.vs) m_device->SetVertexShader(m_vertexShader);
   if (m_capture.ps) m_device->SetPixelShader(m_pixelShader);
+
+  if (m_capture.indices) m_device->SetIndices(m_indices, m_baseVertexIndex);
 
   return res;
 }

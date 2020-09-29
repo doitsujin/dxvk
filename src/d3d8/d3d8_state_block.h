@@ -9,6 +9,7 @@ namespace dxvk {
   struct D3D8StateCapture {
     bool vs : 1;
     bool ps : 1;
+    bool indices : 1;
   };
 
   class D3D8StateBlock  {
@@ -53,6 +54,13 @@ namespace dxvk {
       return D3D_OK;
     }
 
+    inline HRESULT SetIndices(IDirect3DIndexBuffer8* pIndexData, UINT BaseVertexIndex) {
+      m_indices         = pIndexData;
+      m_baseVertexIndex = BaseVertexIndex;
+      m_capture.indices = true;
+      return D3D_OK;
+    }
+
   private:
     D3D8DeviceEx*                   m_device;
     Com<d3d9::IDirect3DStateBlock9> m_stateBlock;
@@ -61,8 +69,13 @@ namespace dxvk {
 
     D3D8StateCapture m_capture;
 
-    DWORD m_vertexShader;
-    DWORD m_pixelShader;
+    DWORD m_vertexShader; // vs
+    DWORD m_pixelShader;  // ps
+
+    IDirect3DIndexBuffer8*  m_indices;          // indices
+    UINT                    m_baseVertexIndex;  // indices
+
+
   };
 
 
