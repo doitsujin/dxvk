@@ -265,7 +265,7 @@ namespace dxvk {
             IDirect3DBaseTexture8* pSourceTexture,
             IDirect3DBaseTexture8* pDestinationTexture);
 
-    HRESULT STDMETHODCALLTYPE GetFrontBuffer D3D8_DEVICE_STUB(IDirect3DSurface8* pDestSurface);
+    HRESULT STDMETHODCALLTYPE GetFrontBuffer(IDirect3DSurface8* pDestSurface);
 
     // CreateImageSurface -> CreateOffscreenPlainSurface
     HRESULT STDMETHODCALLTYPE CreateImageSurface(UINT Width, UINT Height, D3DFORMAT Format, IDirect3DSurface8** ppSurface) {
@@ -487,7 +487,7 @@ namespace dxvk {
             UINT             PrimitiveCount) {
       return GetD3D9()->DrawIndexedPrimitive(
         d3d9::D3DPRIMITIVETYPE(PrimitiveType),
-        m_BaseVertexIndex, // set by SetIndices
+        m_baseVertexIndex, // set by SetIndices
         MinVertexIndex,
         NumVertices,
         StartIndex,
@@ -566,16 +566,25 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE SetIndices(IDirect3DIndexBuffer8* pIndexData, UINT BaseVertexIndex) {
 
+      // TODO: record SetIndices for state block
+
       // used by DrawIndexedPrimitive
-      m_BaseVertexIndex = static_cast<INT>(BaseVertexIndex);
+      m_baseVertexIndex = static_cast<INT>(BaseVertexIndex);
 
       D3D8IndexBuffer* buffer = static_cast<D3D8IndexBuffer*>(pIndexData);
+
+      m_indices = buffer;
+
       return GetD3D9()->SetIndices(buffer->GetD3D9());
     }
 
-    HRESULT STDMETHODCALLTYPE GetIndices D3D8_DEVICE_STUB(
+    HRESULT STDMETHODCALLTYPE GetIndices(
             IDirect3DIndexBuffer8** ppIndexData,
-            UINT* pBaseVertexIndex);
+            UINT* pBaseVertexIndex) {
+      *ppIndexData      = m_indices.ptr();
+      *pBaseVertexIndex = m_baseVertexIndex;
+      return D3D_OK;
+    }
 
     HRESULT STDMETHODCALLTYPE CreatePixelShader(
       const DWORD* pFunction, 
@@ -604,7 +613,7 @@ namespace dxvk {
       return GetD3D9()->DrawRectPatch(Handle, pNumSegs, reinterpret_cast<const d3d9::D3DRECTPATCH_INFO*>(pRectPatchInfo));
     }
 
-    HRESULT STDMETHODCALLTYPE DrawTriPatch (
+    HRESULT STDMETHODCALLTYPE DrawTriPatch(
             UINT              Handle,
       const float*            pNumSegs,
       const D3DTRIPATCH_INFO* pTriPatchInfo) {
@@ -629,13 +638,17 @@ namespace dxvk {
 
   private:
 
-    INT                   m_BaseVertexIndex = 0;
+    
+
 
     Com<D3D8InterfaceEx>  m_parent;
 
-    std::vector<D3D8ShaderInfo>  m_shaders;
-    DWORD                        m_currentVertexShader  = 0;  // can be m_shaders index or FVF
-    DWORD                        m_currentPixelShader   = 0;
+    Com<D3D8IndexBuffer>        m_indices;
+    INT                         m_baseVertexIndex = 0;
+
+    std::vector<D3D8ShaderInfo> m_shaders;
+    DWORD                       m_currentVertexShader  = 0;  // can be m_shaders index or FVF
+    DWORD                       m_currentPixelShader   = 0;
 
     D3DDEVTYPE            m_deviceType;
     HWND                  m_window;
