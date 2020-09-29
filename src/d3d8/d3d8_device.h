@@ -130,12 +130,18 @@ namespace dxvk {
             UINT iBackBuffer,
             D3DBACKBUFFER_TYPE Type,
             IDirect3DSurface8** ppBackBuffer) {
-      Com<d3d9::IDirect3DSurface9> pSurface9;
-      HRESULT res = GetD3D9()->GetBackBuffer(0, iBackBuffer, (d3d9::D3DBACKBUFFER_TYPE)Type, &pSurface9);
-      // TODO: cache backbuffer surface
-      D3D8Surface* surf = new D3D8Surface(this, std::move(pSurface9));
-      *ppBackBuffer = ref(surf);
-      return res;
+
+      if (unlikely(m_backBuffer == nullptr)) {
+        Com<d3d9::IDirect3DSurface9> pSurface9;
+        HRESULT res = GetD3D9()->GetBackBuffer(0, iBackBuffer, (d3d9::D3DBACKBUFFER_TYPE)Type, &pSurface9);
+
+        m_backBuffer = new D3D8Surface(this, std::move(pSurface9));
+        *ppBackBuffer = m_backBuffer.ref();
+        return res;
+      }
+
+      *ppBackBuffer = m_backBuffer.ref();
+      return D3D_OK;
     }
 
     HRESULT STDMETHODCALLTYPE GetRasterStatus(D3DRASTER_STATUS* pRasterStatus) {
@@ -265,7 +271,7 @@ namespace dxvk {
             IDirect3DBaseTexture8* pSourceTexture,
             IDirect3DBaseTexture8* pDestinationTexture);
 
-    HRESULT STDMETHODCALLTYPE GetFrontBuffer(IDirect3DSurface8* pDestSurface);
+    HRESULT STDMETHODCALLTYPE GetFrontBuffer D3D8_DEVICE_STUB(IDirect3DSurface8* pDestSurface);
 
     // CreateImageSurface -> CreateOffscreenPlainSurface
     HRESULT STDMETHODCALLTYPE CreateImageSurface(UINT Width, UINT Height, D3DFORMAT Format, IDirect3DSurface8** ppSurface) {
@@ -638,13 +644,13 @@ namespace dxvk {
 
   private:
 
-    
-
-
     Com<D3D8InterfaceEx>  m_parent;
 
     Com<D3D8IndexBuffer>        m_indices;
     INT                         m_baseVertexIndex = 0;
+
+    Com<D3D8Surface>            m_backBuffer;
+    Com<D3D8Surface>            m_frontBuffer;
 
     std::vector<D3D8ShaderInfo> m_shaders;
     DWORD                       m_currentVertexShader  = 0;  // can be m_shaders index or FVF
