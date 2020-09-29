@@ -4,12 +4,15 @@
 #include "d3d8_device.h"
 #include "d3d8_device_child.h"
 
+#include <array>
+
 namespace dxvk {
 
   struct D3D8StateCapture {
-    bool vs : 1;
-    bool ps : 1;
-    bool indices : 1;
+    bool vs       : 1;
+    bool ps       : 1;
+    bool indices  : 1;
+    bool textures : 1;
   };
 
   class D3D8StateBlock  {
@@ -54,6 +57,12 @@ namespace dxvk {
       return D3D_OK;
     }
 
+    inline HRESULT SetTexture(DWORD Stage, IDirect3DBaseTexture8* pTexture) {
+      m_textures[Stage] = pTexture;
+      m_capture.textures = true;
+      return D3D_OK;
+    }
+
     inline HRESULT SetIndices(IDirect3DIndexBuffer8* pIndexData, UINT BaseVertexIndex) {
       m_indices         = pIndexData;
       m_baseVertexIndex = BaseVertexIndex;
@@ -71,6 +80,8 @@ namespace dxvk {
 
     DWORD m_vertexShader; // vs
     DWORD m_pixelShader;  // ps
+
+    std::array<IDirect3DBaseTexture8*, d8caps::MAX_TEXTURE_STAGES>  m_textures; // textures
 
     IDirect3DIndexBuffer8*  m_indices;          // indices
     UINT                    m_baseVertexIndex;  // indices

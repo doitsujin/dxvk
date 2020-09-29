@@ -7,7 +7,9 @@
 #include "d3d8_buffer.h"
 #include "d3d8_state_block.h"
 #include "d3d8_d3d9_util.h"
+#include "d3d8_caps.h"
 
+#include <array>
 #include <vector>
 #include <type_traits>
 #include <unordered_map>
@@ -456,10 +458,26 @@ namespace dxvk {
       return GetD3D9()->GetClipStatus(reinterpret_cast<d3d9::D3DCLIPSTATUS9*>(pClipStatus));
     }
 
-    HRESULT STDMETHODCALLTYPE GetTexture D3D8_DEVICE_STUB_(GetTexture, DWORD Stage, IDirect3DBaseTexture8** ppTexture);
+    HRESULT STDMETHODCALLTYPE GetTexture(DWORD Stage, IDirect3DBaseTexture8** ppTexture) {
+      InitReturnPtr(ppTexture);
+
+      *ppTexture = m_textures[Stage];
+
+      return D3D_OK;
+    }
 
     HRESULT STDMETHODCALLTYPE SetTexture(DWORD Stage, IDirect3DBaseTexture8* pTexture) {
+
+      if (unlikely(Stage < d8caps::MAX_TEXTURE_STAGES))
+        return D3DERR_INVALIDCALL;
+
+      if (unlikely(ShouldRecord()))
+        return m_recorder->SetTexture(Stage, pTexture);
+
       D3D8Texture2D* tex = static_cast<D3D8Texture2D*>(pTexture);
+
+      m_textures[Stage] = tex;
+
       return GetD3D9()->SetTexture(Stage, tex != nullptr ? tex->GetD3D9() : nullptr);
     }
 
@@ -667,6 +685,8 @@ namespace dxvk {
     Com<D3D8InterfaceEx>  m_parent;
 
     D3D8StateBlock* m_recorder = nullptr;
+
+    std::array<IDirect3DBaseTexture8*, d8caps::MAX_TEXTURE_STAGES>  m_textures;
 
     Com<D3D8IndexBuffer>        m_indices;
     INT                         m_baseVertexIndex = 0;
