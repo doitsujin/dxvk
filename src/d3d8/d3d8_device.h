@@ -152,12 +152,15 @@ namespace dxvk {
       return GetD3D9()->GetRasterStatus(0, (d3d9::D3DRASTER_STATUS*)pRasterStatus);
     }
 
-    void    STDMETHODCALLTYPE SetGammaRamp D3D8_DEVICE_STUB_VOID(DWORD Flags, const D3DGAMMARAMP* pRamp);
+    void STDMETHODCALLTYPE SetGammaRamp(DWORD Flags, const D3DGAMMARAMP* pRamp) {
+      // For swap chain 0
+      GetD3D9()->SetGammaRamp(0, Flags, reinterpret_cast<const d3d9::D3DGAMMARAMP*>(pRamp));
+    }
 
-    void    STDMETHODCALLTYPE SetGammaRamp D3D8_DEVICE_STUB_VOID(const D3DGAMMARAMP* pRamp);
-
-
-    void    STDMETHODCALLTYPE GetGammaRamp D3D8_DEVICE_STUB_VOID(D3DGAMMARAMP* pRamp);
+    void STDMETHODCALLTYPE GetGammaRamp(D3DGAMMARAMP* pRamp) {
+      // For swap chain 0
+      GetD3D9()->GetGammaRamp(0, reinterpret_cast<d3d9::D3DGAMMARAMP*>(pRamp));
+    }
 
     HRESULT STDMETHODCALLTYPE CreateTexture (
             UINT                Width,
