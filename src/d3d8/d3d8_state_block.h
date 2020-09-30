@@ -1,5 +1,6 @@
 #pragma once
 
+#include "d3d8_caps.h"
 #include "d3d8_include.h"
 #include "d3d8_device.h"
 #include "d3d8_device_child.h"
@@ -15,6 +16,7 @@ namespace dxvk {
     bool textures : 1;
   };
 
+  // Wrapper class for D3D9 state blocks. Captures D3D8-specific state.
   class D3D8StateBlock  {
 
   public:
@@ -33,6 +35,7 @@ namespace dxvk {
       : D3D8StateBlock(pDevice, nullptr) {
     }
 
+    // Attach a D3D9 object to a state block that doesn't have one yet
     void SetD3D9(Com<d3d9::IDirect3DStateBlock9>&& pStateBlock) {
       if (likely(m_stateBlock == nullptr)) {
         m_stateBlock = std::move(pStateBlock);

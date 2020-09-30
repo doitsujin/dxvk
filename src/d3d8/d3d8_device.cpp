@@ -132,15 +132,6 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  // State Blocks //
-
-  HRESULT STDMETHODCALLTYPE D3D8DeviceEx::ApplyStateBlock(DWORD Token) {
-
-    HRESULT res = reinterpret_cast<D3D8StateBlock*>(Token)->Apply();
-
-    return res;
-  }
-
   // Vertex Shaders //
 
 #define VSD_SHIFT_MASK(token, field) ( (token & field ## MASK) >> field ## SHIFT )

@@ -416,7 +416,9 @@ namespace dxvk {
       return reinterpret_cast<D3D8StateBlock*>(Token)->Capture();
     }
 
-    HRESULT STDMETHODCALLTYPE ApplyStateBlock(DWORD Token);
+    HRESULT STDMETHODCALLTYPE ApplyStateBlock(DWORD Token) {
+      return reinterpret_cast<D3D8StateBlock*>(Token)->Apply();
+    }
 
     HRESULT STDMETHODCALLTYPE DeleteStateBlock(DWORD Token) {
       delete reinterpret_cast<D3D8StateBlock*>(Token);
