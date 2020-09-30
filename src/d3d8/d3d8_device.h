@@ -473,7 +473,7 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE SetTexture(DWORD Stage, IDirect3DBaseTexture8* pTexture) {
 
-      if (unlikely(Stage < d8caps::MAX_TEXTURE_STAGES))
+      if (unlikely(Stage >= d8caps::MAX_TEXTURE_STAGES))
         return D3DERR_INVALIDCALL;
 
       if (unlikely(ShouldRecord()))
