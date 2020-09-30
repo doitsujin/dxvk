@@ -520,13 +520,23 @@ namespace dxvk {
       return GetD3D9()->ValidateDevice(pNumPasses);
     }
 
-    HRESULT STDMETHODCALLTYPE SetPaletteEntries D3D8_DEVICE_STUB(UINT PaletteNumber, const PALETTEENTRY* pEntries);
+    // Palettes not supported by d9vk, but we pass the values through anyway.
 
-    HRESULT STDMETHODCALLTYPE GetPaletteEntries D3D8_DEVICE_STUB(UINT PaletteNumber, PALETTEENTRY* pEntries);
+    HRESULT STDMETHODCALLTYPE SetPaletteEntries(UINT PaletteNumber, const PALETTEENTRY* pEntries) {
+      return GetD3D9()->SetPaletteEntries(PaletteNumber, pEntries);
+    }
 
-    HRESULT STDMETHODCALLTYPE SetCurrentTexturePalette D3D8_DEVICE_STUB(UINT PaletteNumber);
+    HRESULT STDMETHODCALLTYPE GetPaletteEntries(UINT PaletteNumber, PALETTEENTRY* pEntries) {
+      return GetD3D9()->GetPaletteEntries(PaletteNumber, pEntries);
+    }
 
-    HRESULT STDMETHODCALLTYPE GetCurrentTexturePalette D3D8_DEVICE_STUB(UINT *PaletteNumber);
+    HRESULT STDMETHODCALLTYPE SetCurrentTexturePalette(UINT PaletteNumber) {
+      return GetD3D9()->SetCurrentTexturePalette(PaletteNumber);
+    }
+
+    HRESULT STDMETHODCALLTYPE GetCurrentTexturePalette(UINT* PaletteNumber) {
+      return GetD3D9()->GetCurrentTexturePalette(PaletteNumber);
+    }
 
     HRESULT STDMETHODCALLTYPE DrawPrimitive(
             D3DPRIMITIVETYPE PrimitiveType,
