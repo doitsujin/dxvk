@@ -118,6 +118,12 @@ namespace dxvk {
 
 
     HRESULT STDMETHODCALLTYPE Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) {
+      // Purge cache
+      m_backBuffer = nullptr;
+      m_frontBuffer = nullptr;
+      m_renderTarget = nullptr;
+      m_depthStencil = nullptr;
+
       d3d9::D3DPRESENT_PARAMETERS params = ConvertPresentParameters9(pPresentationParameters);
       return GetD3D9()->Reset(&params);
     }
