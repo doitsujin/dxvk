@@ -1,28 +1,28 @@
-# DXVK
+# DXVK - Amazing Project :)
 
-A Vulkan-based translation layer for Direct3D 9/10/11 which allows running 3D applications on Linux using Wine.
+An Vulkan-based translation layer for Direct3D 9/10/11 that allows running 3D applications on Linux using Wine.
 
-For the current status of the project, please refer to the [project wiki](https://github.com/doitsujin/dxvk/wiki).
+For the current status of the project, please refer to the [project folder](https://github.com/doitsujin/dxvk/wiki).
 
 
 ## How to use
-In order to install a DXVK package obtained from the [release](https://github.com/doitsujin/dxvk/releases) page into a given wine prefix, run the following commands from within the DXVK directory:
+In order to install an DXVK package obtained from the [release](https://github.com/doitsujin/dxvk/releases) page into a given wine prefix, run the following commands from within the DXVK directory:
 
 ```
 export WINEPREFIX=/path/to/.wine-prefix
 ./setup_dxvk.sh install
 ```
 
-This will **copy** the DLLs into the `system32` and `syswow64` directories of your wine prefix and set up the required DLL overrides. Pure 32-bit prefixes are also supported.
+This will ** copy ** the DLLs to the `system32` and` syswow64` directories for the wine prefix and set the required DLL overrides. 32-bit prefixes are also supported.
 
-The setup script optionally takes the following arguments:
-- `--symlink`: Create symbolic links to the DLL files instead of copying them. This is especially useful for development.
-- `--with-d3d10`: Install the `d3d10{_1}.dll` helper libraries.
-- `--without-dxgi`: Do not install DXVK's DXGI implementation and use the one provided by wine instead. This is necessary for both vkd3d and DXVK to work within the same wine prefix.
+The installation text optionally includes the following arguments:
+- `--symlink`: create symbolic links to DLL files instead of copying. This is especially useful for development.
+- `--with-d3d10`: Install help libraries` d3d10 {_1} .dll`.
+- `- don-dxgi`: Do not install the DXVK DXGI application and use the wine-supplied application instead. This is necessary for vkd3d and DXVK to work with the same wine prefix.
 
-Verify that your application uses DXVK instead of wined3d by checking for the presence of the log file `d3d9.log` or `d3d11.log` in the application's directory, or by enabling the HUD (see notes below).
+Verify that the user of your application is DXVK instead of wined3d by checking that the application directory contains the log file `d3d9.log` or` d3d11.log`, or enable HUD (see notes below.)
 
-In order to remove DXVK from a prefix, run the following command:
+To remove a DXVK from a prefix, do the following:
 ```
 export WINEPREFIX=/path/to/.wine-prefix
 ./setup_dxvk.sh uninstall
@@ -31,14 +31,14 @@ export WINEPREFIX=/path/to/.wine-prefix
 ## Build instructions
 
 ### Requirements:
-- [wine 3.10](https://www.winehq.org/) or newer
+- [came 3.10](https://www.winehq.org/) or newer
 - [Meson](http://mesonbuild.com/) build system (at least version 0.46)
 - [Mingw-w64](http://mingw-w64.org/) compiler and headers (at least version 6.0)
 - [glslang](https://github.com/KhronosGroup/glslang) compiler
 
 ### Building DLLs
 
-#### The simple way
+#### The simplest way
 Inside the DXVK directory, run:
 ```
 ./package-release.sh master /your/target/directory --no-package
@@ -67,8 +67,8 @@ The D3D9, D3D10, D3D11 and DXGI DLLs will be located in `/your/dxvk/directory/bi
 ### Notes on Vulkan drivers
 Before reporting an issue, please check the [Wiki](https://github.com/doitsujin/dxvk/wiki/Driver-support) page on the current driver status and make sure you run a recent enough driver version for your hardware.
 
-### Online multi-player games
-Manipulation of Direct3D libraries in multi-player games may be considered cheating and can get your account **banned**. This may also apply to single-player games with an embedded or dedicated multiplayer portion. **Use at your own risk.**
+### Online multi player games
+Manipulation of Direct3D libraries in multi-player games may be considered cheating and can get you account **banned**. This may also apply to single player games with an embedded or dedicated multi player portion. **Use at you own risk.**
 
 ### HUD
 The `DXVK_HUD` environment variable controls a HUD which can display the framerate and some stat counters. It accepts a comma-separated list of the following options:
@@ -118,7 +118,7 @@ commands (use i686 for 32-bit):
 update-alternatives --config x86_64-w64-mingw32-gcc
 update-alternatives --config x86_64-w64-mingw32-g++
 ```
-For non debian based distros, make sure that your mingw-w64-gcc cross compiler 
-does have `--enable-threads=posix` enabled during configure. If your distro does
+For non-Debian based distros, make sure that you mingw-w64-gcc cross compiler 
+do have `--enable-threads=posix` enabled during configure. If your distro does
 ship its mingw-w64-gcc binary with `--enable-threads=win32` you might have to
 recompile locally or open a bug at your distro's bugtracker to ask for it. 
