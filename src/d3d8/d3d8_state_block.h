@@ -14,6 +14,11 @@ namespace dxvk {
     bool ps       : 1;
     bool indices  : 1;
     bool textures : 1;
+
+    D3D8StateCapture() {
+      // Ensure all bits are initialized to false
+      memset(this, false, sizeof(*this));
+    }
   };
 
   // Wrapper class for D3D9 state blocks. Captures D3D8-specific state.
@@ -26,6 +31,9 @@ namespace dxvk {
             Com<d3d9::IDirect3DStateBlock9>&& pStateBlock)
       : m_device(pDevice)
       , m_stateBlock(std::move(pStateBlock)) {
+
+      
+      m_textures.fill(nullptr);
     }
 
     ~D3D8StateBlock() {}
@@ -86,8 +94,8 @@ namespace dxvk {
 
     std::array<IDirect3DBaseTexture8*, d8caps::MAX_TEXTURE_STAGES>  m_textures; // textures
 
-    IDirect3DIndexBuffer8*  m_indices;          // indices
-    UINT                    m_baseVertexIndex;  // indices
+    IDirect3DIndexBuffer8*  m_indices = nullptr;  // indices
+    UINT                    m_baseVertexIndex;    // indices
 
 
   };

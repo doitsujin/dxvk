@@ -91,6 +91,8 @@ namespace dxvk {
     , m_window(hFocusWindow)
     , m_behaviorFlags(BehaviorFlags) {
 
+    m_textures.fill(nullptr);
+
   }
 
 
