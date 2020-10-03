@@ -307,30 +307,54 @@ namespace dxvk {
       HRESULT res;
 
       if (pRenderTarget != NULL) {
-        D3D8Surface* surf = static_cast<D3D8Surface*>(pRenderTarget);
+        Com<D3D8Surface> surf = static_cast<D3D8Surface*>(pRenderTarget);
+        m_renderTarget = surf.ref();
+
         res = GetD3D9()->SetRenderTarget(0, surf != nullptr ? surf->GetD3D9() : nullptr); // use RT index 0
+
         if (res != D3D_OK) return res;
       }
 
       // SetDepthStencilSurface is a separate call
-      D3D8Surface* zStencil = static_cast<D3D8Surface*>(pNewZStencil);
+      Com<D3D8Surface> zStencil = static_cast<D3D8Surface*>(pNewZStencil);
+      m_depthStencil = zStencil.ref();
       res = GetD3D9()->SetDepthStencilSurface(zStencil != nullptr ? zStencil->GetD3D9() : nullptr);
 
       return res;
     }
 
     HRESULT STDMETHODCALLTYPE GetRenderTarget(IDirect3DSurface8** ppRenderTarget) {
-      Com<d3d9::IDirect3DSurface9> pRT9 = nullptr;
-      HRESULT res = GetD3D9()->GetRenderTarget(0, &pRT9); // use RT index 0
-      *ppRenderTarget = ref(new D3D8Surface(this, std::move(pRT9)));
-      return res;
+
+      if (unlikely(m_renderTarget == nullptr)) {
+        Com<d3d9::IDirect3DSurface9> pRT9 = nullptr;
+        HRESULT res = GetD3D9()->GetRenderTarget(0, &pRT9); // use RT index 0
+
+        m_renderTarget = new D3D8Surface(this, std::move(pRT9));
+
+        *ppRenderTarget = m_renderTarget.ref();
+
+        return res;
+      }
+
+      *ppRenderTarget = m_renderTarget.ref();
+      return D3D_OK;
     }
 
     HRESULT STDMETHODCALLTYPE GetDepthStencilSurface(IDirect3DSurface8** ppZStencilSurface) {
-      Com<d3d9::IDirect3DSurface9> pStencil9 = nullptr;
-      HRESULT res = GetD3D9()->GetDepthStencilSurface(&pStencil9);
-      *ppZStencilSurface = ref(new D3D8Surface(this, std::move(pStencil9)));
-      return res;
+      if (unlikely(m_depthStencil == nullptr)) {
+
+        Com<d3d9::IDirect3DSurface9> pStencil9 = nullptr;
+        HRESULT res = GetD3D9()->GetDepthStencilSurface(&pStencil9);
+
+        m_depthStencil = new D3D8Surface(this, std::move(pStencil9));
+
+        *ppZStencilSurface = m_depthStencil.ref();
+
+        return res;
+      }
+
+      *ppZStencilSurface = m_depthStencil.ref();
+      return D3D_OK;
     }
 
     HRESULT STDMETHODCALLTYPE BeginScene() { return GetD3D9()->BeginScene(); }
@@ -714,6 +738,9 @@ namespace dxvk {
 
     Com<D3D8Surface>            m_backBuffer;
     Com<D3D8Surface>            m_frontBuffer;
+
+    Com<D3D8Surface>            m_renderTarget;
+    Com<D3D8Surface>            m_depthStencil;
 
     std::vector<D3D8ShaderInfo> m_shaders;
     DWORD                       m_currentVertexShader  = 0;  // can be m_shaders index or FVF
