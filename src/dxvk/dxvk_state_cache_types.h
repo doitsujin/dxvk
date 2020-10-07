@@ -52,18 +52,31 @@ namespace dxvk {
    */
   struct DxvkStateCacheHeader {
     char     magic[4]   = { 'D', 'X', 'V', 'K' };
-    uint32_t version    = 8;
+    uint32_t version    = 9;
     uint32_t entrySize  = 0; /* no longer meaningful */
   };
 
   static_assert(sizeof(DxvkStateCacheHeader) == 12);
 
 
+  class DxvkBindingMaskV8 : DxvkBindingSet<128> {
+
+  public:
+
+    DxvkBindingMask convert() const {
+      DxvkBindingMask result = { };
+      for (uint32_t i = 0; i < 128; i++)
+        result.set(i, test(i));
+      return result;
+    }
+
+  };
+
   /**
    * \brief Version 4 graphics pipeline state
    */
   struct DxvkGraphicsPipelineStateInfoV4 {
-    DxvkBindingMask                     bsBindingMask;
+    DxvkBindingMaskV8                   bsBindingMask;
     
     VkPrimitiveTopology                 iaPrimitiveTopology;
     VkBool32                            iaPrimitiveRestart;
@@ -107,7 +120,7 @@ namespace dxvk {
    * \brief Version 6 graphics pipeline state
    */
   struct DxvkGraphicsPipelineStateInfoV6 {
-    DxvkBindingMask                     bsBindingMask;
+    DxvkBindingMaskV8                   bsBindingMask;
     
     VkPrimitiveTopology                 iaPrimitiveTopology;
     VkBool32                            iaPrimitiveRestart;
@@ -152,7 +165,7 @@ namespace dxvk {
    * \brief Version 5 compute pipeline state
    */
   struct DxvkComputePipelineStateInfoV5 {
-    DxvkBindingMask                     bsBindingMask;
+    DxvkBindingMaskV8                   bsBindingMask;
   };
 
 
@@ -160,7 +173,7 @@ namespace dxvk {
    * \brief Version 6 compute pipeline state
    */
   struct DxvkComputePipelineStateInfoV6 {
-    DxvkBindingMask                     bsBindingMask;
+    DxvkBindingMaskV8                   bsBindingMask;
     uint32_t                            scSpecConstants[8];
   };
 
