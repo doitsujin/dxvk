@@ -134,31 +134,36 @@ namespace dxvk {
     env::setThreadName("dxvk-cs");
 
     DxvkCsChunkRef chunk;
-    
-    while (!m_stopped.load()) {
-      { std::unique_lock<std::mutex> lock(m_mutex);
-        if (chunk) {
-          if (--m_chunksPending == 0)
-            m_condOnSync.notify_one();
+
+    try {
+      while (!m_stopped.load()) {
+        { std::unique_lock<std::mutex> lock(m_mutex);
+          if (chunk) {
+            if (--m_chunksPending == 0)
+              m_condOnSync.notify_one();
+            
+            chunk = DxvkCsChunkRef();
+          }
           
-          chunk = DxvkCsChunkRef();
+          if (m_chunksQueued.size() == 0) {
+            m_condOnAdd.wait(lock, [this] {
+              return (m_chunksQueued.size() != 0)
+                  || (m_stopped.load());
+            });
+          }
+          
+          if (m_chunksQueued.size() != 0) {
+            chunk = std::move(m_chunksQueued.front());
+            m_chunksQueued.pop();
+          }
         }
         
-        if (m_chunksQueued.size() == 0) {
-          m_condOnAdd.wait(lock, [this] {
-            return (m_chunksQueued.size() != 0)
-                || (m_stopped.load());
-          });
-        }
-        
-        if (m_chunksQueued.size() != 0) {
-          chunk = std::move(m_chunksQueued.front());
-          m_chunksQueued.pop();
-        }
+        if (chunk)
+          chunk->executeAll(m_context.ptr());
       }
-      
-      if (chunk)
-        chunk->executeAll(m_context.ptr());
+    } catch (const DxvkError& e) {
+      Logger::err("Exception on CS thread!");
+      Logger::err(e.message());
     }
   }
   
