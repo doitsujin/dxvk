@@ -1,6 +1,7 @@
 #include <cstring>
 
 #include "dxvk_descriptor.h"
+#include "dxvk_limits.h"
 #include "dxvk_pipelayout.h"
 
 namespace dxvk {
@@ -91,6 +92,9 @@ namespace dxvk {
 
     auto bindingCount = slotMapping.bindingCount();
     auto bindingInfos = slotMapping.bindingInfos();
+    
+    if (bindingCount > MaxNumActiveBindings)
+      throw DxvkError(str::format("Too many active bindings in pipeline layout (", bindingCount, ")"));
     
     for (uint32_t i = 0; i < bindingCount; i++)
       m_bindingSlots[i] = bindingInfos[i];
