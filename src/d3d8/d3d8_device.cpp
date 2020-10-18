@@ -61,21 +61,10 @@ namespace dxvk {
     0   // UNUSED
   };
 
-  enum class D3D8ShaderType {
-    None,
-    Vertex,
-    Pixel
-  };
-
-  struct D3D8ShaderInfo {
-    D3D8ShaderType type = D3D8ShaderType::None;
-
+  struct D3D8VertexShaderInfo {
     // Vertex Shader
     d3d9::IDirect3DVertexDeclaration9*  pVertexDecl;
     d3d9::IDirect3DVertexShader9*       pVertexShader;
-
-    // Pixel Shader
-    d3d9::IDirect3DPixelShader9*        pPixelShader;
   };
 
   D3D8DeviceEx::D3D8DeviceEx(
@@ -147,8 +136,7 @@ namespace dxvk {
     using d3d9::D3DVERTEXELEMENT9;
     using d3d9::D3DDECLTYPE;
 
-    D3D8ShaderInfo& info = m_shaders.emplace_back();
-    info.type = D3D8ShaderType::Vertex;
+    D3D8VertexShaderInfo& info = m_vertexShaders.emplace_back();
 
     std::vector<DWORD> tokens;
 
@@ -301,7 +289,7 @@ namespace dxvk {
     HRESULT res = GetD3D9()->CreateVertexShader(tokens.data(), &(info.pVertexShader));
 
     // Set bit to indicate this is not a fixed function FVF
-    *pHandle = DWORD(m_shaders.size() - 1) | DXVK_D3D8_SHADER_BIT;
+    *pHandle = DWORD(m_vertexShaders.size() - 1) | DXVK_D3D8_SHADER_BIT;
 
     return res;
   }
@@ -317,15 +305,15 @@ namespace dxvk {
       // Remove that bit
       Handle &= ~DXVK_D3D8_SHADER_BIT;
 
-      if ( unlikely( Handle >= m_shaders.size() ) ) {
+      if ( unlikely( Handle >= m_vertexShaders.size() ) ) {
         Logger::err(str::format("SetVertexShader: Invalid vertex shader index ", Handle));
         return D3DERR_INVALIDCALL;
       }
 
-      D3D8ShaderInfo& info = m_shaders[Handle];
+      D3D8VertexShaderInfo& info = m_vertexShaders[Handle];
 
-      if ( unlikely( info.type != D3D8ShaderType::Vertex ) ) {
-        Logger::err(str::format("SetVertexShader: Application provided non-vertex shader or deleted shader ", Handle));
+      if ( info.pVertexDecl == nullptr && info.pVertexShader == nullptr ) {
+        Logger::err(str::format("SetVertexShader: Application provided deleted vertex shader ", Handle));
         return D3DERR_INVALIDCALL;
       }
 
@@ -334,6 +322,7 @@ namespace dxvk {
       
       GetD3D9()->SetVertexDeclaration(info.pVertexDecl);
       return GetD3D9()->SetVertexShader(info.pVertexShader);
+
     } else {
 
       // Cache current FVF
@@ -362,8 +351,8 @@ namespace dxvk {
       return GetD3D9()->GetFVF(pHandle);
     }
 
-    for (unsigned int i = 0; i < m_shaders.size(); i++) {
-      D3D8ShaderInfo& info = m_shaders[i];
+    for (unsigned int i = 0; i < m_vertexShaders.size(); i++) {
+      D3D8VertexShaderInfo& info = m_vertexShaders[i];
 
       if (info.pVertexShader == pVertexShader) {
         *pHandle = DWORD(i) | DXVK_D3D8_SHADER_BIT;
@@ -381,23 +370,20 @@ namespace dxvk {
 
       Handle &= ~DXVK_D3D8_SHADER_BIT;
 
-      if ( Handle >= m_shaders.size() ) {
+      if ( Handle >= m_vertexShaders.size() ) {
         Logger::err(str::format("DeleteVertexShader: Invalid vertex shader index ", Handle));
         return D3DERR_INVALIDCALL;
       }
 
-      D3D8ShaderInfo& info = m_shaders[Handle];
+      D3D8VertexShaderInfo& info = m_vertexShaders[Handle];
 
-      if ( unlikely(info.type != D3D8ShaderType::Vertex) ) {
-        Logger::err(str::format("DeleteVertexShader: Application provided non-vertex shader or deleted shader ", Handle));
+      if (info.pVertexDecl == nullptr && info.pVertexShader == nullptr) {
+        Logger::err(str::format("DeleteVertexShader: Application provided already deleted vertex shader ", Handle));
         return D3DERR_INVALIDCALL;
       }
 
       SAFE_RELEASE(info.pVertexDecl);
       SAFE_RELEASE(info.pVertexShader);
-
-      info.type = D3D8ShaderType::None;
-
     }
 
     return D3D_OK;
@@ -408,14 +394,16 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8DeviceEx::CreatePixelShader(
         const DWORD* pFunction,
               DWORD* pHandle) {
-    D3D8ShaderInfo& info = m_shaders.emplace_back();
-    info.type = D3D8ShaderType::Pixel;
 
+    d3d9::IDirect3DPixelShader9* pPixelShader;
     
-    HRESULT res = GetD3D9()->CreatePixelShader(pFunction, &(info.pPixelShader));
+    HRESULT res = GetD3D9()->CreatePixelShader(pFunction, &pPixelShader);
 
-    // Still set the shader bit so that SetVertexShader can recognize and reject a pixel shader
-    *pHandle = DWORD(m_shaders.size() - 1) | DXVK_D3D8_SHADER_BIT;
+    m_pixelShaders.push_back(pPixelShader);
+
+    // Still set the shader bit so that SetVertexShader can recognize and reject a pixel shader,
+    // and to prevent conflicts with NULL.
+    *pHandle = DWORD(m_pixelShaders.size() - 1) | DXVK_D3D8_SHADER_BIT;
 
     return res;
   }
@@ -426,23 +414,30 @@ namespace dxvk {
       return m_recorder->SetPixelShader(Handle);
     }
 
+    if (Handle == NULL) {
+      return GetD3D9()->SetPixelShader(nullptr);
+    }
+
     if ( (Handle & DXVK_D3D8_SHADER_BIT) != 0 ) {
       Handle &= ~DXVK_D3D8_SHADER_BIT; // We don't care
     }
 
-    if ( unlikely(Handle >= m_shaders.size()) ) {
+    if (unlikely(Handle >= m_pixelShaders.size())) {
       Logger::err(str::format("SetPixelShader: Invalid pixel shader index ", Handle));
       return D3DERR_INVALIDCALL;
     }
 
-    D3D8ShaderInfo& info = m_shaders[Handle];
+    d3d9::IDirect3DPixelShader9* pPixelShader = m_pixelShaders[Handle];
 
-    if ( unlikely(info.type != D3D8ShaderType::Pixel) ) {
-      Logger::err(str::format("SetPixelShader: Application provided non-pixel shader or deleted shader ", Handle));
+    if (unlikely(pPixelShader == nullptr)) {
+      Logger::err(str::format("SetPixelShader: Application provided deleted pixel shader ", Handle));
       return D3DERR_INVALIDCALL;
     }
 
-    return GetD3D9()->SetPixelShader(info.pPixelShader);
+    // Cache current pixel shader
+    m_currentPixelShader = Handle | DXVK_D3D8_SHADER_BIT;
+
+    return GetD3D9()->SetPixelShader(pPixelShader);
   }
 
   HRESULT STDMETHODCALLTYPE D3D8DeviceEx::GetPixelShader(DWORD* pHandle) {
@@ -450,51 +445,27 @@ namespace dxvk {
     *pHandle = m_currentPixelShader;
 
     return D3D_OK;
-
-    /*
-    // Slow path. Use to debug cached shader validation. //
-
-    d3d9::IDirect3DPixelShader9* pPixelShader;
-    HRESULT res = GetD3D9()->GetPixelShader(&pPixelShader);
-
-    if (FAILED(res) || pPixelShader == nullptr) {
-      *pHandle = NULL;
-      return res;
-    }
-
-    for (unsigned int i = 0; i < m_shaders.size(); i++) {
-      D3D8ShaderInfo& info = m_shaders[i];
-
-      if (info.pPixelShader == pPixelShader) {
-        *pHandle = DWORD(i) | DXVK_D3D8_SHADER_BIT;
-        return res;
-      }
-    }
-
-    return res;
-    */
   }
 
   HRESULT STDMETHODCALLTYPE D3D8DeviceEx::DeletePixelShader(DWORD Handle) {
+
     if ( (Handle & DXVK_D3D8_SHADER_BIT) != 0 ) {
       Handle &= ~DXVK_D3D8_SHADER_BIT; // We don't care
     }
 
-    if ( Handle >= m_shaders.size() ) {
+    if (Handle >= m_pixelShaders.size()) {
       Logger::err(str::format("DeletePixelShader: Invalid pixel shader index ", Handle));
       return D3DERR_INVALIDCALL;
     }
 
-    D3D8ShaderInfo& info = m_shaders[Handle];
+    d3d9::IDirect3DPixelShader9* pPixelShader = m_pixelShaders[Handle];
 
-    if (unlikely(info.type != D3D8ShaderType::Pixel)) {
-      Logger::err(str::format("DeletePixelShader: Application provided non-pixel shader or deleted shader ", Handle));
+    if (unlikely(pPixelShader == nullptr)) {
+      Logger::err(str::format("SetPixelShader: Application provided already deleted pixel shader ", Handle));
       return D3DERR_INVALIDCALL;
     }
 
-    SAFE_RELEASE(info.pPixelShader);
-
-    info.type = D3D8ShaderType::None;
+    SAFE_RELEASE(pPixelShader);
 
     return D3D_OK;
   }

@@ -40,7 +40,7 @@ namespace dxvk {
   class D3D8InterfaceEx;
   class D3D8SwapChainEx;
 
-  struct D3D8ShaderInfo;
+  struct D3D8VertexShaderInfo;
 
   using D3D8DeviceBase = D3D8WrappedObject<d3d9::IDirect3DDevice9, IDirect3DDevice8>;
   class D3D8DeviceEx final : public D3D8DeviceBase {
@@ -834,9 +834,10 @@ namespace dxvk {
     Com<D3D8Surface>            m_renderTarget;
     Com<D3D8Surface>            m_depthStencil;
 
-    std::vector<D3D8ShaderInfo> m_shaders;
-    DWORD                       m_currentVertexShader  = 0;  // can be m_shaders index or FVF
-    DWORD                       m_currentPixelShader   = 0;
+    std::vector<D3D8VertexShaderInfo>           m_vertexShaders;
+    std::vector<d3d9::IDirect3DPixelShader9*>   m_pixelShaders;
+    DWORD                       m_currentVertexShader  = 0;  // can be FVF or vs index, can have DXVK_D3D8_SHADER_BIT
+    DWORD                       m_currentPixelShader   = 0;  // will have DXVK_D3D8_SHADER_BIT
 
     D3DDEVTYPE            m_deviceType;
     HWND                  m_window;
