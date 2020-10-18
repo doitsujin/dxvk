@@ -62,7 +62,98 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 
     /* Direct3D 8 Exclusive Methods */
-    STDMETHOD(CopyRects) D3D8_DEVICE_STUB(THIS_ IDirect3DSurface8* pSourceSurface, CONST RECT* pSourceRectsArray, UINT cRects, IDirect3DSurface8* pDestinationSurface, CONST POINT* pDestPointsArray);
+
+    HRESULT STDMETHODCALLTYPE CopyRects(
+            IDirect3DSurface8* pSourceSurface,
+            CONST RECT* pSourceRectsArray,
+            UINT cRects,
+            IDirect3DSurface8* pDestinationSurface,
+            CONST POINT* pDestPointsArray) {
+
+      Com<D3D8Surface> src = static_cast<D3D8Surface*>(pSourceSurface);
+      Com<D3D8Surface> dst = static_cast<D3D8Surface*>(pDestinationSurface);
+
+      d3d9::D3DSURFACE_DESC srcDesc, dstDesc;
+      src->GetD3D9()->GetDesc(&srcDesc);
+      dst->GetD3D9()->GetDesc(&dstDesc);
+
+      // If pSourceRectsArray is NULL, then the entire surface is copied
+      if (pSourceRectsArray == NULL) {
+        cRects = 1;
+        RECT rect;
+        rect.top    = rect.left = 0;
+        rect.right  = srcDesc.Width;
+        rect.bottom = srcDesc.Height;
+        pSourceRectsArray = &rect;
+
+        POINT point = { 0, 0 };
+        pDestPointsArray = &point;
+      }
+
+      HRESULT res = D3DERR_INVALIDCALL;
+
+      for (UINT i = 0; i < cRects; i++) {
+
+        RECT srcRect, dstRect;
+
+        srcRect = pSourceRectsArray[i];
+
+        if (pDestPointsArray != NULL) {
+          dstRect.left    = pDestPointsArray[i].x;
+          dstRect.right   = dstRect.left + (srcRect.right - srcRect.left);
+          dstRect.top     = pDestPointsArray[i].y;
+          dstRect.bottom  = dstRect.top + (srcRect.bottom - srcRect.top);
+        } else {
+          dstRect = srcRect;
+        }
+
+        if (srcDesc.Pool == D3DPOOL_MANAGED || dstDesc.Pool != D3DPOOL_DEFAULT) {
+          // copying from managed or to non-default dest
+
+          if (m_renderTarget == src && dstDesc.Pool == D3DPOOL_SYSTEMMEM) {
+
+            // rt -> system mem: use GetRenderTargetData
+            res = GetD3D9()->GetRenderTargetData(src->GetD3D9(), dst->GetD3D9());
+
+          } else {
+
+            // TODO: CopyRect all other cases
+
+          }
+
+        } else if (srcDesc.Pool == D3DPOOL_DEFAULT) {
+
+          // default -> default: use StretchRect
+          res = GetD3D9()->StretchRect(
+            src->GetD3D9(),
+            &srcRect,
+            dst->GetD3D9(),
+            &dstRect,
+            d3d9::D3DTEXF_NONE
+          );
+
+        } else if (srcDesc.Pool == D3DPOOL_SYSTEMMEM) {
+
+          // system mem -> default: use UpdateSurface
+          POINT dstPt = { dstRect.left, dstRect.top };
+
+          res = GetD3D9()->UpdateSurface(
+            src->GetD3D9(),
+            &srcRect,
+            dst->GetD3D9(),
+            &dstPt
+          );
+
+        }
+
+        if (FAILED(res)) break;
+
+      }
+
+      return res;
+      
+    }
+    
     STDMETHOD(GetPixelShaderConstant) D3D8_DEVICE_STUB(THIS_ DWORD Register, void* pConstantData, DWORD ConstantCount);
     STDMETHOD(GetPixelShaderFunction) D3D8_DEVICE_STUB(THIS_ DWORD Handle, void* pData, DWORD* pSizeOfData);
     STDMETHOD(GetVertexShaderConstant) D3D8_DEVICE_STUB(THIS_ DWORD Register, void* pConstantData, DWORD ConstantCount);
@@ -294,7 +385,8 @@ namespace dxvk {
         Width,
         Height,
         d3d9::D3DFORMAT(Format),
-        d3d9::D3DPOOL_SCRATCH, // dx8 compatible
+        // FIXME: D3DPOOL_SCRATCH is said to be dx8 compatible, but currently won't work with CopyRects
+        d3d9::D3DPOOL_SYSTEMMEM,
         &pSurf,
         NULL);
 
