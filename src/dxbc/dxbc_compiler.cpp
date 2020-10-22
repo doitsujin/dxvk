@@ -4575,7 +4575,9 @@ namespace dxvk {
     
     switch (value.type.ctype) {
       case DxbcScalarType::Float32: value.id = m_module.opFAbs(typeId, value.id); break;
+      case DxbcScalarType::Float64: value.id = m_module.opFAbs(typeId, value.id); break;
       case DxbcScalarType::Sint32:  value.id = m_module.opSAbs(typeId, value.id); break;
+      case DxbcScalarType::Sint64:  value.id = m_module.opSAbs(typeId, value.id); break;
       default: Logger::warn("DxbcCompiler: Cannot get absolute value for given type");
     }
     
@@ -4648,15 +4650,22 @@ namespace dxvk {
           DxbcOpModifiers         modifiers) {
     const uint32_t typeId = getVectorTypeId(value.type);
     
-    if (value.type.ctype == DxbcScalarType::Float32) {
-      // Saturating only makes sense on floats
-      if (modifiers.saturate) {
-        const DxbcRegMask       mask = DxbcRegMask::firstN(value.type.ccount);
-        const DxbcRegisterValue vec0 = emitBuildConstVecf32(0.0f, 0.0f, 0.0f, 0.0f, mask);
-        const DxbcRegisterValue vec1 = emitBuildConstVecf32(1.0f, 1.0f, 1.0f, 1.0f, mask);
-        
-        value.id = m_module.opNClamp(typeId, value.id, vec0.id, vec1.id);
+    if (modifiers.saturate) {
+      DxbcRegMask mask;
+      DxbcRegisterValue vec0, vec1;
+
+      if (value.type.ctype == DxbcScalarType::Float32) {
+        mask = DxbcRegMask::firstN(value.type.ccount);
+        vec0 = emitBuildConstVecf32(0.0f, 0.0f, 0.0f, 0.0f, mask);
+        vec1 = emitBuildConstVecf32(1.0f, 1.0f, 1.0f, 1.0f, mask);
+      } else if (value.type.ctype == DxbcScalarType::Float64) {
+        mask = DxbcRegMask::firstN(value.type.ccount * 2);
+        vec0 = emitBuildConstVecf64(0.0, 0.0, mask);
+        vec1 = emitBuildConstVecf64(1.0, 1.0, mask);
       }
+
+      if (mask)
+        value.id = m_module.opNClamp(typeId, value.id, vec0.id, vec1.id);
     }
     
     return value;

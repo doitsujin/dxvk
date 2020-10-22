@@ -194,6 +194,10 @@ namespace dxvk {
       out += (m_mask & 0x8) ? "w" : "";
       return out;
     }
+
+    operator bool () const {
+      return m_mask != 0;
+    }
     
   private:
     
