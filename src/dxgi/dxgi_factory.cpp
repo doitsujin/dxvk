@@ -370,4 +370,20 @@ namespace dxvk {
     }
   }
 
+
+  HRESULT STDMETHODCALLTYPE DxgiFactory::RegisterAdaptersChangedEvent(
+          HANDLE                hEvent,
+          DWORD*                pdwCookie) {
+    Logger::err("DxgiFactory: RegisterAdaptersChangedEvent: Stub");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE DxgiFactory::UnregisterAdaptersChangedEvent(
+          DWORD                 Cookie) {
+    Logger::err("DxgiFactory: UnregisterAdaptersChangedEvent: Stub");
+    return E_NOTIMPL;
+  }
+
+
 }

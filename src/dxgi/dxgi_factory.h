@@ -124,6 +124,13 @@ namespace dxvk {
             void*                 pFeatureSupportData,
             UINT                  FeatureSupportDataSize) final;
 
+    HRESULT STDMETHODCALLTYPE RegisterAdaptersChangedEvent(
+            HANDLE                hEvent,
+            DWORD*                pdwCookie);
+
+    HRESULT STDMETHODCALLTYPE UnregisterAdaptersChangedEvent(
+            DWORD                 Cookie);
+
     Rc<DxvkInstance> GetDXVKInstance() const {
       return m_instance;
     }
