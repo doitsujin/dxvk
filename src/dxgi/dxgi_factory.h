@@ -10,7 +10,7 @@
 
 namespace dxvk {
     
-  class DxgiFactory : public DxgiObject<IDXGIFactory5> {
+  class DxgiFactory : public DxgiObject<IDXGIFactory6> {
     
   public:
     
@@ -70,6 +70,12 @@ namespace dxvk {
             REFIID                riid,
             void**                ppvAdapter) final;
     
+    HRESULT STDMETHODCALLTYPE EnumAdapterByGpuPreference(
+            UINT                  Adapter,
+            DXGI_GPU_PREFERENCE   GpuPreference,
+            REFIID                riid,
+            void**                ppvAdapter);
+
     HRESULT STDMETHODCALLTYPE EnumWarpAdapter(
             REFIID                riid,
             void**                ppvAdapter) final;

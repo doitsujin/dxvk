@@ -223,6 +223,33 @@ namespace dxvk {
   }
 
   
+  HRESULT STDMETHODCALLTYPE DxgiFactory::EnumAdapterByGpuPreference(
+          UINT                  Adapter,
+          DXGI_GPU_PREFERENCE   GpuPreference,
+          REFIID                riid,
+          void**                ppvAdapter) {
+    InitReturnPtr(ppvAdapter);
+    uint32_t adapterCount = m_instance->adapterCount();
+
+    if (Adapter >= adapterCount)
+      return DXGI_ERROR_NOT_FOUND;
+
+    // We know that the backend lists dedicated GPUs before
+    // any integrated ones, so just list adapters in reverse
+    // order. We have no other way to estimate performance.
+    if (GpuPreference == DXGI_GPU_PREFERENCE_MINIMUM_POWER)
+      Adapter = adapterCount - Adapter - 1;
+
+    Com<IDXGIAdapter> adapter;
+    HRESULT hr = this->EnumAdapters(Adapter, &adapter);
+
+    if (FAILED(hr))
+      return hr;
+
+    return adapter->QueryInterface(riid, ppvAdapter);
+  }
+
+
   HRESULT STDMETHODCALLTYPE DxgiFactory::EnumWarpAdapter(
           REFIID                riid,
           void**                ppvAdapter) {
