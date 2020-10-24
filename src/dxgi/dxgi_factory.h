@@ -10,7 +10,7 @@
 
 namespace dxvk {
     
-  class DxgiFactory : public DxgiObject<IDXGIFactory6> {
+  class DxgiFactory : public DxgiObject<IDXGIFactory7> {
     
   public:
     
