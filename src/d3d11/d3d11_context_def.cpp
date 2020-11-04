@@ -276,18 +276,33 @@ namespace dxvk {
     pMapEntry->DepthPitch   = pBuffer->Desc()->ByteWidth;
     
     if (likely(m_csFlags.test(DxvkCsChunkFlag::SingleUse))) {
-      // For resources that cannot be written by the GPU,
-      // we may write to the buffer resource directly and
-      // just swap in the buffer slice as needed.
-      auto bufferSlice = pBuffer->AllocSlice();
-      pMapEntry->MapPointer = bufferSlice.mapPtr;
+      if (pBuffer->Desc()->ByteWidth <= 4096) {
+        pMapEntry->MapPointer = std::malloc(pBuffer->Desc()->ByteWidth);
 
-      EmitCs([
-        cDstBuffer = pBuffer->GetBuffer(),
-        cPhysSlice = bufferSlice
-      ] (DxvkContext* ctx) {
-        ctx->invalidateBuffer(cDstBuffer, cPhysSlice);
-      });
+        EmitCs([
+          cDstBuffer = pBuffer->GetBuffer(),
+          cSliceLength = pBuffer->Desc()->ByteWidth,
+          cSlicePointer = pMapEntry->MapPointer
+        ] (DxvkContext* ctx) {
+          DxvkBufferSliceHandle slice = cDstBuffer->allocSlice();
+          std::memcpy(slice.mapPtr, cSlicePointer, cSliceLength);
+          std::free(cSlicePointer);
+          ctx->invalidateBuffer(cDstBuffer, slice);
+        });
+      } else {
+        // For resources that cannot be written by the GPU,
+        // we may write to the buffer resource directly and
+        // just swap in the buffer slice as needed.
+        auto bufferSlice = pBuffer->AllocSlice();
+        pMapEntry->MapPointer = bufferSlice.mapPtr;
+
+        EmitCs([
+          cDstBuffer = pBuffer->GetBuffer(),
+          cPhysSlice = bufferSlice
+        ] (DxvkContext* ctx) {
+          ctx->invalidateBuffer(cDstBuffer, cPhysSlice);
+        });
+      }
     } else {
       // For GPU-writable resources, we need a data slice
       // to perform the update operation at execution time.
