@@ -1,5 +1,5 @@
 LIBRARY D3D11.DLL
 EXPORTS  
-    D3D11CoreCreateDevice
-    D3D11CreateDevice
-    D3D11CreateDeviceAndSwapChain
+    D3D11CoreCreateDevice @18
+    D3D11CreateDevice @22
+    D3D11CreateDeviceAndSwapChain @23
