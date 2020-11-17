@@ -45,10 +45,6 @@ namespace dxvk {
     { R"(\\FarCry4\.exe$)", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
-    /* Far Cry Primal: Nvidia performance         */
-    { R"(\\FCPrimal\.exe$)", {{
-      { "dxgi.nvapiHack",                   "False" },
-    } }},
     /* Frostpunk: Renders one frame with D3D9     *
      * after creating the DXGI swap chain         */
     { R"(\\Frostpunk\.exe$)", {{
