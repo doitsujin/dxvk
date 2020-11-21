@@ -998,6 +998,10 @@ namespace dxvk {
             uint32_t                resultType,
             uint32_t                operand);
     
+    uint32_t opIsInf(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
     uint32_t opFunctionCall(
             uint32_t                resultType,
             uint32_t                functionId,

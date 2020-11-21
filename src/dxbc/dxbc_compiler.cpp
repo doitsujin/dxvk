@@ -2924,16 +2924,37 @@ namespace dxvk {
           1, &zeroIndex);
       }
     }
-    
-    // Store result in the destination register
+
     DxbcRegisterValue result;
     result.type.ctype  = ins.dst[0].dataType;
     result.type.ccount = componentCount;
+
+    uint32_t typeId = getVectorTypeId(result.type);
     result.id = componentCount > 1
-      ? m_module.opCompositeConstruct(
-          getVectorTypeId(result.type),
+      ? m_module.opCompositeConstruct(typeId,
           componentCount, scalarIds.data())
       : scalarIds[0];
+
+    if (isPack) {
+      // Some drivers return infinity if the input value is above a certain
+      // threshold, but D3D wants us to return infinity only if the input is
+      // actually infinite. Fix this up to return the maximum representable
+      // 16-bit floating point number instead, but preserve input infinity.
+      uint32_t t_bvec = getVectorTypeId({ DxbcScalarType::Bool, componentCount });
+      uint32_t f16Infinity = m_module.constuReplicant(0x7C00, componentCount);
+      uint32_t f16Unsigned = m_module.constuReplicant(0x7FFF, componentCount);
+
+      uint32_t isInputInf = m_module.opIsInf(t_bvec, src.id);
+      uint32_t isValueInf = m_module.opIEqual(t_bvec, f16Infinity,
+        m_module.opBitwiseAnd(typeId, result.id, f16Unsigned));
+
+      result.id = m_module.opSelect(getVectorTypeId(result.type),
+        m_module.opLogicalAnd(t_bvec, isValueInf, m_module.opLogicalNot(t_bvec, isInputInf)),
+        m_module.opISub(typeId, result.id, m_module.constuReplicant(1, componentCount)),
+        result.id);
+    }
+
+    // Store result in the destination register
     emitRegisterStore(ins.dst[0], result);
   }
 
