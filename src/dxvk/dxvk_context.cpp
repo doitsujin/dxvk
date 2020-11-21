@@ -1819,6 +1819,21 @@ namespace dxvk {
     const Rc<DxvkImageView>&        imageView,
           VkImageAspectFlags        clearAspects,
           VkClearValue              clearValue) {
+    for (auto& entry : m_deferredClears) {
+      if (entry.imageView == imageView) {
+        entry.clearAspects |= clearAspects;
+
+        if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT)
+          entry.clearValue.color = clearValue.color;
+        if (clearAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
+          entry.clearValue.depthStencil.depth = clearValue.depthStencil.depth;
+        if (clearAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
+          entry.clearValue.depthStencil.stencil = clearValue.depthStencil.stencil;
+        
+        return;
+      }
+    }
+
     m_deferredClears.push_back({ imageView, clearAspects, clearValue });
   }
 
