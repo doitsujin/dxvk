@@ -37,6 +37,7 @@ namespace dxvk {
   struct D3D11CmdDrawIndirectData : public D3D11CmdData {
     uint32_t            offset;
     uint32_t            count;
+    uint32_t            stride;
   };
 
 }

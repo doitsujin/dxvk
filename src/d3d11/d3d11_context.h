@@ -917,6 +917,14 @@ namespace dxvk {
       return pShader != nullptr ? pShader->GetCommonShader() : nullptr;
     }
 
+    static uint32_t GetIndirectCommandStride(const D3D11CmdDrawIndirectData* cmdData, uint32_t offset, uint32_t minStride) {
+      if (likely(cmdData->stride))
+        return cmdData->offset + cmdData->count * cmdData->stride == offset ? cmdData->stride : 0;
+
+      uint32_t stride = offset - cmdData->offset;
+      return stride >= minStride && stride <= 32 ? stride : 0;
+    }
+    
     template<typename Cmd>
     void EmitCs(Cmd&& command) {
       m_cmdData = nullptr;
