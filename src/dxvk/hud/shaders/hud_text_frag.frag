@@ -18,7 +18,7 @@ vec3 linearToSrgb(vec3 color) {
 }
 
 float sampleAlpha(float alpha_bias, float dist_range) {
-  float value = texture(s_font, v_texcoord).r + alpha_bias - 0.5f;
+  float value = textureLod(s_font, v_texcoord, 0).r + alpha_bias - 0.5f;
   float dist  = value * dot(vec2(dist_range, dist_range), 1.0f / fwidth(v_texcoord.xy));
   return clamp(dist + 0.5f, 0.0f, 1.0f);
 }
