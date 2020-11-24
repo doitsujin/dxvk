@@ -3395,15 +3395,6 @@ namespace dxvk {
     // Extract coordinates from address
     const DxbcRegisterValue coord = emitCalcTexCoord(address, imageType);
     
-    // Fetch texels only if the resource is actually bound
-    const uint32_t labelMerge     = m_module.allocateId();
-    const uint32_t labelBound     = m_module.allocateId();
-    const uint32_t labelUnbound   = m_module.allocateId();
-    
-    m_module.opSelectionMerge(labelMerge, spv::SelectionControlMaskNone);
-    m_module.opBranchConditional(m_textures.at(textureId).specId, labelBound, labelUnbound);
-    m_module.opLabel(labelBound);
-    
     // Reading a typed image or buffer view
     // always returns a four-component vector.
     const uint32_t imageId = m_module.opLoad(
@@ -3423,32 +3414,15 @@ namespace dxvk {
       ins.src[1].swizzle, ins.dst[0].mask);
     
     // If the texture is not bound, return zeroes
-    m_module.opBranch(labelMerge);
-    m_module.opLabel(labelUnbound);
-    
-    DxbcRegisterValue zeroes = [&] {
-      switch (result.type.ctype) {
-        case DxbcScalarType::Float32: return emitBuildConstVecf32(0.0f, 0.0f, 0.0f, 0.0f, ins.dst[0].mask);
-        case DxbcScalarType::Uint32:  return emitBuildConstVecu32(0u, 0u, 0u, 0u,         ins.dst[0].mask);
-        case DxbcScalarType::Sint32:  return emitBuildConstVeci32(0, 0, 0, 0,             ins.dst[0].mask);
-        default: throw DxvkError("DxbcCompiler: Invalid scalar type");
-      }
-    }();
-    
-    m_module.opBranch(labelMerge);
-    m_module.opLabel(labelMerge);
-    
-    // Merge the result with a phi function
-    const std::array<SpirvPhiLabel, 2> phiLabels = {{
-      { result.id, labelBound   },
-      { zeroes.id, labelUnbound },
-    }};
+    DxbcRegisterValue bound;
+    bound.type = { DxbcScalarType::Bool, 1 };
+    bound.id = m_textures.at(textureId).specId;
     
     DxbcRegisterValue mergedResult;
     mergedResult.type = result.type;
-    mergedResult.id = m_module.opPhi(
-      getVectorTypeId(mergedResult.type),
-      phiLabels.size(), phiLabels.data());
+    mergedResult.id = m_module.opSelect(getVectorTypeId(mergedResult.type),
+      emitBuildVector(bound, result.type.ccount).id, result.id,
+      emitBuildZeroVector(result.type).id);
     
     emitRegisterStore(ins.dst[0], mergedResult);
   }
@@ -4433,6 +4407,42 @@ namespace dxvk {
   }
   
   
+  DxbcRegisterValue DxbcCompiler::emitBuildVector(
+          DxbcRegisterValue       scalar,
+          uint32_t                count) {
+    if (count == 1)
+      return scalar;
+
+    std::array<uint32_t, 4> scalarIds =
+      { scalar.id, scalar.id, scalar.id, scalar.id };
+
+    DxbcRegisterValue result;
+    result.type.ctype = scalar.type.ctype;
+    result.type.ccount = count;
+    result.id = m_module.constComposite(
+      getVectorTypeId(result.type),
+      count, scalarIds.data());
+    return result;
+  }
+
+
+  DxbcRegisterValue DxbcCompiler::emitBuildZeroVector(
+          DxbcVectorType          type) {
+    DxbcRegisterValue result;
+    result.type.ctype = type.ctype;
+    result.type.ccount = 1;
+
+    switch (type.ctype) {
+      case DxbcScalarType::Float32: result.id = m_module.constf32(0.0f); break;
+      case DxbcScalarType::Uint32:  result.id = m_module.constu32(0u); break;
+      case DxbcScalarType::Sint32:  result.id = m_module.consti32(0); break;
+      default: throw DxvkError("DxbcCompiler: Invalid scalar type");
+    }
+
+    return emitBuildVector(result, type.ccount);
+  }
+
+
   DxbcRegisterValue DxbcCompiler::emitRegisterBitcast(
           DxbcRegisterValue       srcValue,
           DxbcScalarType          dstType) {

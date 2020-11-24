@@ -835,7 +835,14 @@ namespace dxvk {
             double                  xy,
             double                  zw,
       const DxbcRegMask&            writeMask);
+
+    DxbcRegisterValue emitBuildVector(
+            DxbcRegisterValue       scalar,
+            uint32_t                count);
     
+    DxbcRegisterValue emitBuildZeroVector(
+            DxbcVectorType          type);
+
     /////////////////////////////////////////
     // Generic register manipulation methods
     DxbcRegisterValue emitRegisterBitcast(
