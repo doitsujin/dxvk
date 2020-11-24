@@ -3696,6 +3696,9 @@ namespace dxvk {
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor;
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor;
 
+    // Null Descriptors
+    enabled.extRobustness2.nullDescriptor = supported.extRobustness2.nullDescriptor;
+
     // ProcessVertices
     enabled.core.features.vertexPipelineStoresAndAtomics = supported.core.features.vertexPipelineStoresAndAtomics;
 
