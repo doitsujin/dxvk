@@ -4119,7 +4119,7 @@ namespace dxvk {
       } else {
         buffers[i] = m_common->dummyResources().bufferHandle();
         offsets[i] = 0;
-        lengths[i] = VK_WHOLE_SIZE;
+        lengths[i] = 0;
       }
     }
     
