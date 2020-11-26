@@ -406,6 +406,10 @@ namespace dxvk {
     { R"(\\SpellForce2.*\.exe$)", {{
       { "d3d9.forceSamplerTypeSpecConstants", "True" },
     }} },
+    /* Everquest 2                                */
+    { R"(\\SpellForce2.*\.exe$)", {{
+      { "d3d9.alphaTestWiggleRoom", "True" },
+    }} },
   }};
 
 
