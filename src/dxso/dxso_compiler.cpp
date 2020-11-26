@@ -3596,6 +3596,21 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       uint32_t alphaId = m_module.opCompositeExtract(floatType,
         m_module.opLoad(m_module.defVectorType(floatType, 4), oC0.id),
         1, &alphaComponentId);
+
+      if (m_moduleInfo.options.alphaTestWiggleRoom) {
+        // NV has wonky interpolation of all 1's in a VS -> PS going to 0.999999...
+        // This causes garbage-looking graphics on people's clothing in EverQuest 2 as it does alpha == 1.0.
+
+        // My testing shows the alpha test has a precision of 1/256 for all A8 and below formats,
+        // and around 1 / 2048 for A32F formats and 1 / 4096 for A16F formats (It makes no sense to me too)
+        // so anyway, we're just going to round this to a precision of 1 / 4096 and hopefully this should make things happy
+        // everywhere.
+        const uint32_t alphaSizeId = m_module.constf32(4096.0f);
+
+        alphaId = m_module.opFMul(floatType, alphaId, alphaSizeId);
+        alphaId = m_module.opRound(floatType, alphaId);
+        alphaId = m_module.opFDiv(floatType, alphaId, alphaSizeId);
+      }
       
       // Load alpha reference
       uint32_t alphaRefMember = m_module.constu32(uint32_t(D3D9RenderStateItem::AlphaRef));

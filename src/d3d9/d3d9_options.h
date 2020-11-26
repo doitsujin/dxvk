@@ -147,6 +147,10 @@ namespace dxvk {
     /// Tear-free mode if vsync is disabled
     /// Tearing mode if vsync is enabled
     Tristate tearFree;
+
+    /// Workaround for games using alpha test == 1.0, etc due to wonky interpolation or
+    /// misc. imprecision on some vendors
+    bool alphaTestWiggleRoom;
   };
 
 }

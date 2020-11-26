@@ -47,6 +47,8 @@ namespace dxvk {
     vertexConstantBufferAsSSBO = pDevice->GetVertexConstantLayout().totalSize() > devInfo.core.properties.limits.maxUniformBufferRange;
 
     longMad = options.longMad;
+
+    alphaTestWiggleRoom = options.alphaTestWiggleRoom;
   }
 
 }

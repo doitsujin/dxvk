@@ -50,6 +50,10 @@ namespace dxvk {
     /// This solves some rendering bugs in games that have z-pass shaders which
     /// don't match entirely to the regular vertex shader in this way.
     bool longMad;
+
+    /// Workaround for games using alpha test == 1.0, etc due to wonky interpolation or
+    /// misc. imprecision on some vendors
+    bool alphaTestWiggleRoom;
   };
 
 }
