@@ -99,10 +99,9 @@ namespace dxvk {
        vkd->device(), &memReqInfo, &memReq);
 
     // Use high memory priority for GPU-writable resources
-    bool isGpuWritable = (m_info.usage & (
-      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-      VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)) != 0;
-    
+    bool isGpuWritable = (m_info.access & (
+      VK_ACCESS_SHADER_WRITE_BIT |
+      VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT)) != 0;
     float priority = isGpuWritable ? 1.0f : 0.5f;
     
     // Ask driver whether we should be using a dedicated allocation
