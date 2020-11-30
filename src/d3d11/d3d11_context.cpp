@@ -269,23 +269,6 @@ namespace dxvk {
 
     if (pPredicate && !std::exchange(s_errorShown, true))
       Logger::err("D3D11DeviceContext::SetPredication: Stub");
-
-    // TODO: Figure out why this breaks Watch Dogs and crashes War Thunder
-    // if (!m_device->features().extConditionalRendering.conditionalRendering)
-    //   return;
-
-    // EmitCs([
-    //   cPredicate = Com<D3D11Query, false>(predicate),
-    //   cValue     = PredicateValue
-    // ] (DxvkContext* ctx) {
-    //   DxvkBufferSlice predSlice;
-
-    //   if (cPredicate != nullptr)
-    //     predSlice = cPredicate->GetPredicate(ctx);
-      
-    //   ctx->setPredicate(predSlice,
-    //     cValue ? VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT : 0);
-    // });
   }
   
   
@@ -3808,9 +3791,6 @@ namespace dxvk {
       auto scissor  = VkRect2D();
 
       ctx->setViewports(1, &viewport, &scissor);
-
-      // Reset predication
-      ctx->setPredicate(DxvkBufferSlice(), 0);
 
       // Unbind indirect draw buffer
       ctx->bindDrawBuffers(DxvkBufferSlice(), DxvkBufferSlice());

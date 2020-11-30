@@ -212,9 +212,6 @@ namespace dxvk {
         ctx->endQuery(m_query[0]);
     }
 
-    if (unlikely(m_predicate != nullptr))
-      ctx->writePredicate(DxvkBufferSlice(m_predicate), m_query[0]);
-
     m_resetCtr.fetch_sub(1, std::memory_order_release);
   }
   
@@ -339,21 +336,6 @@ namespace dxvk {
   }
   
   
-  DxvkBufferSlice D3D11Query::GetPredicate(DxvkContext* ctx) {
-    std::lock_guard<sync::Spinlock> lock(m_predicateLock);
-
-    if (unlikely(m_desc.Query != D3D11_QUERY_OCCLUSION_PREDICATE))
-      return DxvkBufferSlice();
-
-    if (unlikely(m_predicate != nullptr)) {
-      m_predicate = CreatePredicateBuffer();
-      ctx->writePredicate(DxvkBufferSlice(m_predicate), m_query[0]);
-    }
-
-    return DxvkBufferSlice(m_predicate);
-  }
-
-
   UINT64 D3D11Query::GetTimestampQueryFrequency() const {
     Rc<DxvkDevice>  device  = m_device->GetDXVKDevice();
     Rc<DxvkAdapter> adapter = device->adapter();
@@ -369,21 +351,6 @@ namespace dxvk {
       return E_INVALIDARG;
     
     return S_OK;
-  }
-
-
-  Rc<DxvkBuffer> D3D11Query::CreatePredicateBuffer() {
-    Rc<DxvkDevice> device = m_device->GetDXVKDevice();
-
-    DxvkBufferCreateInfo info;
-    info.size   = sizeof(uint32_t);
-    info.usage  = VK_BUFFER_USAGE_TRANSFER_DST_BIT
-                | VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT;
-    info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
-                | VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT;
-    info.access = VK_ACCESS_TRANSFER_WRITE_BIT
-                | VK_ACCESS_CONDITIONAL_RENDERING_READ_BIT_EXT;
-    return device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
   
 }

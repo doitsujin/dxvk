@@ -1945,7 +1945,6 @@ namespace dxvk {
       enabled.core.features.logicOp                               = supported.core.features.logicOp;
       enabled.core.features.shaderImageGatherExtended             = VK_TRUE;
       enabled.core.features.variableMultisampleRate               = supported.core.features.variableMultisampleRate;
-      enabled.extConditionalRendering.conditionalRendering        = supported.extConditionalRendering.conditionalRendering;
       enabled.extTransformFeedback.transformFeedback              = VK_TRUE;
       enabled.extTransformFeedback.geometryStreams                = VK_TRUE;
     }
