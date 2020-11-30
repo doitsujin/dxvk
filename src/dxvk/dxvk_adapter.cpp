@@ -226,8 +226,6 @@ namespace dxvk {
                 || !required.ext4444Formats.formatA4R4G4B4)
         && (m_deviceFeatures.ext4444Formats.formatA4B4G4R4
                 || !required.ext4444Formats.formatA4B4G4R4)
-        && (m_deviceFeatures.extConditionalRendering.conditionalRendering
-                || !required.extConditionalRendering.conditionalRendering)
         && (m_deviceFeatures.extCustomBorderColor.customBorderColors
                 || !required.extCustomBorderColor.customBorderColors)
         && (m_deviceFeatures.extCustomBorderColor.customBorderColorWithoutFormat
@@ -265,11 +263,10 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 24> devExtensionList = {{
+    std::array<DxvkExt*, 23> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.ext4444Formats,
-      &devExtensions.extConditionalRendering,
       &devExtensions.extCustomBorderColor,
       &devExtensions.extDepthClipEnable,
       &devExtensions.extExtendedDynamicState,
@@ -331,11 +328,6 @@ namespace dxvk {
     if (devExtensions.ext4444Formats) {
       enabledFeatures.ext4444Formats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT;
       enabledFeatures.ext4444Formats.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.ext4444Formats);
-    }
-
-    if (devExtensions.extConditionalRendering) {
-      enabledFeatures.extConditionalRendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT;
-      enabledFeatures.extConditionalRendering.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extConditionalRendering);
     }
 
     if (devExtensions.extCustomBorderColor) {
@@ -584,11 +576,6 @@ namespace dxvk {
       m_deviceFeatures.ext4444Formats.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.ext4444Formats);
     }
 
-    if (m_deviceExtensions.supports(VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME)) {
-      m_deviceFeatures.extConditionalRendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT;
-      m_deviceFeatures.extConditionalRendering.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extConditionalRendering);
-    }
-
     if (m_deviceExtensions.supports(VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME)) {
       m_deviceFeatures.extCustomBorderColor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT;
       m_deviceFeatures.extCustomBorderColor.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extCustomBorderColor);
@@ -700,8 +687,6 @@ namespace dxvk {
       "\n  shaderFloat64                          : ", features.core.features.shaderFloat64 ? "1" : "0",
       "\n  shaderInt64                            : ", features.core.features.shaderInt64 ? "1" : "0",
       "\n  variableMultisampleRate                : ", features.core.features.variableMultisampleRate ? "1" : "0",
-      "\n", VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME,
-      "\n  conditionalRendering                   : ", features.extConditionalRendering.conditionalRendering ? "1" : "0",
       "\n", VK_EXT_4444_FORMATS_EXTENSION_NAME,
       "\n  formatA4R4G4B4                         : ", features.ext4444Formats.formatA4R4G4B4 ? "1" : "0",
       "\n  formatA4B4G4R4                         : ", features.ext4444Formats.formatA4B4G4R4 ? "1" : "0",

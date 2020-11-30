@@ -937,21 +937,6 @@ namespace dxvk {
             uint32_t            value);
     
     /**
-     * \brief Sets predicate
-     *
-     * Enables or disables conditional rendering,
-     * depending on whether the given buffer slice
-     * is defined or not. Draw calls and render
-     * target clear commands will get discarded if
-     * the predicate value is either zero or non-zero.
-     * \param [in] predicate The predicate buffer
-     * \param [in] flags Conditional rendering mode
-     */
-    void setPredicate(
-      const DxvkBufferSlice&    predicate,
-            VkConditionalRenderingFlagsEXT flags);
-    
-    /**
      * \brief Sets barrier control flags
      *
      * Barrier control flags can be used to control
@@ -967,18 +952,6 @@ namespace dxvk {
      */
     void signalGpuEvent(
       const Rc<DxvkGpuEvent>&   event);
-    
-    /**
-     * \brief Copies query data to predicate buffer
-     * 
-     * The given buffer slice can then be passed
-     * to \c setPredicate to enable predication.
-     * \param [in] predicate Predicate buffer
-     * \param [in] query Source query
-     */
-    void writePredicate(
-      const DxvkBufferSlice&    predicate,
-      const Rc<DxvkGpuQuery>&   query);
     
     /**
      * \brief Writes to a timestamp query
@@ -1048,11 +1021,6 @@ namespace dxvk {
     std::array<DxvkGraphicsPipeline*, 4096> m_gpLookupCache = { };
     std::array<DxvkComputePipeline*,   256> m_cpLookupCache = { };
 
-    std::unordered_map<
-      DxvkBufferSliceHandle,
-      DxvkGpuQueryHandle,
-      DxvkHash, DxvkEq>     m_predicateWrites;
-    
     void blitImageFb(
       const Rc<DxvkImage>&        dstImage,
       const Rc<DxvkImage>&        srcImage,
@@ -1131,12 +1099,6 @@ namespace dxvk {
     void flushClears(
             bool                      useRenderPass);
 
-    void updatePredicate(
-      const DxvkBufferSliceHandle&    predicate,
-      const DxvkGpuQueryHandle&       query);
-    
-    void commitPredicateUpdates();
-    
     void startRenderPass();
     void spillRenderPass(bool flushClears = true);
     
@@ -1152,9 +1114,6 @@ namespace dxvk {
       const DxvkRenderTargets&    renderTargets,
             DxvkRenderPassOps&    renderPassOps);
 
-    void startConditionalRendering();
-    void pauseConditionalRendering();
-    
     void startTransformFeedback();
     void pauseTransformFeedback();
     
@@ -1186,8 +1145,6 @@ namespace dxvk {
     void updateTransformFeedbackBuffers();
     void updateTransformFeedbackState();
 
-    void updateConditionalRendering();
-    
     void updateDynamicState();
 
     template<VkPipelineBindPoint BindPoint>

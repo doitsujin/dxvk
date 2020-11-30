@@ -22,7 +22,6 @@ namespace dxvk {
    */
   enum class DxvkContextFlag : uint32_t  {
     GpRenderPassBound,          ///< Render pass is currently bound
-    GpCondActive,               ///< Conditional rendering is enabled
     GpXfbActive,                ///< Transform feedback is enabled
     GpDirtyFramebuffer,         ///< Framebuffer binding is out of date
     GpDirtyPipeline,            ///< Graphics pipeline binding is out of date
@@ -38,7 +37,6 @@ namespace dxvk {
     GpDirtyDepthBounds,         ///< Depth bounds have changed
     GpDirtyStencilRef,          ///< Stencil reference has changed
     GpDirtyViewport,            ///< Viewport state has changed
-    GpDirtyPredicate,           ///< Predicate has changed
     GpDynamicBlendConstants,    ///< Blend constants are dynamic
     GpDynamicDepthBias,         ///< Depth bias is dynamic
     GpDynamicDepthBounds,       ///< Depth bounds are dynamic
@@ -144,12 +142,6 @@ namespace dxvk {
   };
 
 
-  struct DxvkCondRenderState {
-    DxvkBufferSlice                 predicate;
-    VkConditionalRenderingFlagsEXT  flags;
-  };
-
-
   struct DxvkDeferredClear {
     Rc<DxvkImageView> imageView;
     VkImageAspectFlags clearAspects;
@@ -171,7 +163,6 @@ namespace dxvk {
     DxvkPushConstantState     pc;
     DxvkXfbState              xfb;
     DxvkDynamicState          dyn;
-    DxvkCondRenderState       cond;
     
     DxvkGraphicsPipelineState gp;
     DxvkComputePipelineState  cp;

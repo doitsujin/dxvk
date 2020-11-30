@@ -36,7 +36,6 @@ namespace dxvk {
     VkPhysicalDeviceFeatures2                                 core;
     VkPhysicalDeviceShaderDrawParametersFeatures              shaderDrawParameters;
     VkPhysicalDevice4444FormatsFeaturesEXT                    ext4444Formats;
-    VkPhysicalDeviceConditionalRenderingFeaturesEXT           extConditionalRendering;
     VkPhysicalDeviceCustomBorderColorFeaturesEXT              extCustomBorderColor;
     VkPhysicalDeviceDepthClipEnableFeaturesEXT                extDepthClipEnable;
     VkPhysicalDeviceExtendedDynamicStateFeaturesEXT           extExtendedDynamicState;
