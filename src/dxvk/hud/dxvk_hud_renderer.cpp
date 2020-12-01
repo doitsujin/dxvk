@@ -190,7 +190,7 @@ namespace dxvk::hud {
       m_context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_lineShaders.frag);
       
       static const DxvkInputAssemblyState iaState = {
-        VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
+        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
         VK_FALSE, 0 };
 
       static const std::array<DxvkVertexAttribute, 2> ilAttributes = {{
