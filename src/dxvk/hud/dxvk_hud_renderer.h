@@ -93,7 +93,8 @@ namespace dxvk::hud {
     
     void beginFrame(
       const Rc<DxvkContext>&  context,
-            VkExtent2D        surfaceSize);
+            VkExtent2D        surfaceSize,
+            float             scale);
     
     void drawText(
             float             size,
@@ -125,6 +126,7 @@ namespace dxvk::hud {
     std::array<uint8_t, 256> m_charMap;
     
     Mode                m_mode;
+    float               m_scale;
     VkExtent2D          m_surfaceSize;
     Rc<DxvkContext>     m_context;
     

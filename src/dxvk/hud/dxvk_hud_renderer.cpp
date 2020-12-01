@@ -10,6 +10,7 @@ namespace dxvk::hud {
   
   HudRenderer::HudRenderer(const Rc<DxvkDevice>& device)
   : m_mode          (Mode::RenderNone),
+    m_scale         (0.0f),
     m_surfaceSize   { 0, 0 },
     m_textShaders   (createTextShaders(device)),
     m_lineShaders   (createLineShaders(device)),
@@ -27,11 +28,12 @@ namespace dxvk::hud {
   }
   
   
-  void HudRenderer::beginFrame(const Rc<DxvkContext>& context, VkExtent2D surfaceSize) {
+  void HudRenderer::beginFrame(const Rc<DxvkContext>& context, VkExtent2D surfaceSize, float scale) {
     context->bindResourceSampler(0, m_fontSampler);
     context->bindResourceView   (0, m_fontView, nullptr);
     
     m_mode        = Mode::RenderNone;
+    m_scale       = scale;
     m_surfaceSize = surfaceSize;
     m_context     = context;
 
@@ -46,8 +48,8 @@ namespace dxvk::hud {
     const std::string&      text) {
     beginTextRendering();
 
-    const float xscale = 1.0f / std::max(float(m_surfaceSize.width),  1.0f);
-    const float yscale = 1.0f / std::max(float(m_surfaceSize.height), 1.0f);
+    const float xscale = m_scale / std::max(float(m_surfaceSize.width),  1.0f);
+    const float yscale = m_scale / std::max(float(m_surfaceSize.height), 1.0f);
 
     uint32_t vertexCount = 6 * text.size();
 
@@ -112,8 +114,8 @@ namespace dxvk::hud {
     const HudLineVertex*    vertexData) {
     beginLineRendering();
 
-    const float xscale = 1.0f / std::max(float(m_surfaceSize.width),  1.0f);
-    const float yscale = 1.0f / std::max(float(m_surfaceSize.height), 1.0f);
+    const float xscale = m_scale / std::max(float(m_surfaceSize.width),  1.0f);
+    const float yscale = m_scale / std::max(float(m_surfaceSize.height), 1.0f);
 
     if (m_currLineVertex + vertexCount > MaxLineVertexCount)
       allocVertexBufferSlice();

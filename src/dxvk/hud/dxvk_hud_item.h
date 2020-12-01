@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -97,11 +98,25 @@ namespace dxvk::hud {
       }
     }
 
+    template<typename T>
+    T getOption(const char *option, T fallback) {
+      auto entry = m_options.find(option);
+      if (entry == m_options.end())
+        return fallback;
+
+      T value = fallback;
+      parseOption(entry->second, value);
+      return value;
+    }
+
   private:
 
-    bool                            m_enableFull = false;
-    std::unordered_set<std::string> m_enabled;
-    std::vector<Rc<HudItem>>        m_items;
+    bool                                          m_enableFull = false;
+    std::unordered_set<std::string>               m_enabled;
+    std::unordered_map<std::string, std::string>  m_options;
+    std::vector<Rc<HudItem>>                      m_items;
+
+    static void parseOption(const std::string& str, float& value);
 
   };
 

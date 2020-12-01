@@ -83,6 +83,8 @@ namespace dxvk::hud {
     HudRenderer           m_renderer;
     HudItemSet            m_hudItems;
 
+    float                 m_scale;
+
     void setupRendererState(
       const Rc<DxvkContext>&  ctx,
             VkSurfaceFormatKHR surfaceFormat,
