@@ -84,6 +84,7 @@ The `DXVK_HUD` environment variable controls a HUD which can display the framera
 - `api`: Shows the D3D feature level used by the application.
 - `compiler`: Shows shader compiler activity
 - `samplers`: Shows the current number of sampler pairs used *[D3D9 Only]*
+- `scale=x`: Scales the HUD by a factor of `x` (e.g. `1.5`)
 
 Additionally, `DXVK_HUD=1` has the same effect as `DXVK_HUD=devinfo,fps`, and `DXVK_HUD=full` enables all available HUD elements.
 
