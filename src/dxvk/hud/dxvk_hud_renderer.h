@@ -109,6 +109,10 @@ namespace dxvk::hud {
     VkExtent2D surfaceSize() const {
       return m_surfaceSize;
     }
+
+    float scale() const {
+      return m_scale;
+    }
     
   private:
     
