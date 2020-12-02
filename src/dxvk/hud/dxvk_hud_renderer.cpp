@@ -108,7 +108,7 @@ namespace dxvk::hud {
     m_currTextInstance += 1;
   }
   
-  
+  #
   void HudRenderer::drawLines(
           size_t            vertexCount,
     const HudLineVertex*    vertexData) {
