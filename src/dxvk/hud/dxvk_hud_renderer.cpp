@@ -10,7 +10,7 @@ namespace dxvk::hud {
   
   HudRenderer::HudRenderer(const Rc<DxvkDevice>& device)
   : m_mode          (Mode::RenderNone),
-    m_scale         (0.0f),
+    m_scale         (1.0f),
     m_surfaceSize   { 0, 0 },
     m_textShaders   (createTextShaders(device)),
     m_lineShaders   (createLineShaders(device)),
