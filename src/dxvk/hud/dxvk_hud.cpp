@@ -10,6 +10,10 @@ namespace dxvk::hud {
     m_renderer      (device),
     m_hudItems      (device),
     m_scale         (m_hudItems.getOption<float>("scale", 1.0f)) {
+    // Sanitize scaling factor
+    if (m_scale < 0.01f)
+      m_scale = 1.0f;
+
     // Set up constant state
     m_rsState.polygonMode       = VK_POLYGON_MODE_FILL;
     m_rsState.cullMode          = VK_CULL_MODE_BACK_BIT;
