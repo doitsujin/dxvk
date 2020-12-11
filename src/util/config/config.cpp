@@ -233,6 +233,7 @@ namespace dxvk {
     /* Monster Hunter World                       */
     { R"(\\MonsterHunterWorld\.exe$)", {{
       { "d3d11.apitraceMode",               "True" },
+      { "d3d11.invariantPosition",          "True" },
     }} },
     /* The Dungeon of Maheulbeuk                  */
     { R"(\\Naheulbeuk\.exe$)", {{
