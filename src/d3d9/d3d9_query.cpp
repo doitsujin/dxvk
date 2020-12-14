@@ -121,12 +121,26 @@ namespace dxvk {
       }
       m_state = D3D9_VK_QUERY_ENDED;
     }
-      
+
     return D3D_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9Query::GetData(void* pData, DWORD dwSize, DWORD dwGetDataFlags) {
+    if (m_state == D3D9_VK_QUERY_CACHED) {
+      // Query data was already retrieved once.
+      // Use cached query data to prevent having to check the VK event
+      // and having to iterate over the VK queries again
+      if (likely(pData && dwSize)) {
+        if (m_queryType != D3DQUERYTYPE_EVENT) {
+          memcpy(pData, &m_dataCache, dwSize);
+        } else {
+          *static_cast<bool*>(pData) = true;
+        }
+      }
+      return D3D_OK;
+    }
+
     HRESULT hr = this->GetQueryData(pData, dwSize);
 
     bool flush = dwGetDataFlags & D3DGETDATA_FLUSH;
@@ -170,7 +184,12 @@ namespace dxvk {
       if (pData != nullptr)
         *static_cast<BOOL*>(pData) = signaled;
 
-      return signaled ? D3D_OK : S_FALSE;
+      if (signaled) {
+        m_state = D3D9_VK_QUERY_CACHED;
+        return D3D_OK;
+      } else {
+        return S_FALSE;
+      }
     }
     else {
       std::array<DxvkQueryData, MaxGpuQueries> queryData = { };
@@ -189,42 +208,44 @@ namespace dxvk {
       if (pData == nullptr)
         return D3D_OK;
 
-      auto* data = static_cast<D3D9_QUERY_DATA*>(pData);
 
       switch (m_queryType) {
         case D3DQUERYTYPE_VCACHE:
           // Don't know what the hell any of this means.
           // Nor do I care. This just makes games work.
-          data->VCache.Pattern     = MAKEFOURCC('H', 'C', 'A', 'C');
-          data->VCache.OptMethod   = 1;
-          data->VCache.CacheSize   = 24;
-          data->VCache.MagicNumber = 20;
-          return D3D_OK;
+          m_dataCache.VCache.Pattern     = MAKEFOURCC('H', 'C', 'A', 'C');
+          m_dataCache.VCache.OptMethod   = 1;
+          m_dataCache.VCache.CacheSize   = 24;
+          m_dataCache.VCache.MagicNumber = 20;
+          break;
 
         case D3DQUERYTYPE_OCCLUSION:
-          data->Occlusion = DWORD(queryData[0].occlusion.samplesPassed);
-          return D3D_OK;
+          m_dataCache.Occlusion = DWORD(queryData[0].occlusion.samplesPassed);
+          break;
 
         case D3DQUERYTYPE_TIMESTAMP:
-          data->Timestamp = queryData[0].timestamp.time;
-          return D3D_OK;
+          m_dataCache.Timestamp = queryData[0].timestamp.time;
+          break;
 
         case D3DQUERYTYPE_TIMESTAMPDISJOINT:
-          data->TimestampDisjoint = queryData[0].timestamp.time < queryData[1].timestamp.time;
-          return D3D_OK;
+          m_dataCache.TimestampDisjoint = queryData[0].timestamp.time < queryData[1].timestamp.time;
+          break;
 
         case D3DQUERYTYPE_TIMESTAMPFREQ:
-          data->TimestampFreq = GetTimestampQueryFrequency();
-          return D3D_OK;
+          m_dataCache.TimestampFreq = GetTimestampQueryFrequency();
+          break;
 
         case D3DQUERYTYPE_VERTEXSTATS:
-          data->VertexStats.NumRenderedTriangles      = queryData[0].statistic.iaPrimitives;
-          data->VertexStats.NumExtraClippingTriangles = queryData[0].statistic.clipPrimitives;
-          return D3D_OK;
-
-        default:
-          return D3D_OK;
+          m_dataCache.VertexStats.NumRenderedTriangles      = queryData[0].statistic.iaPrimitives;
+          m_dataCache.VertexStats.NumExtraClippingTriangles = queryData[0].statistic.clipPrimitives;
+          break;
       }
+
+      if (likely(pData && dwSize))
+        memcpy(pData, &m_dataCache, dwSize);
+
+      m_state = D3D9_VK_QUERY_CACHED;
+      return D3D_OK;
     }
   }
 
