@@ -410,6 +410,10 @@ namespace dxvk {
     { R"(\\EverQuest2.*\.exe$)", {{
       { "d3d9.alphaTestWiggleRoom", "True" },
     }} },
+    /* Tomb Raider: Legend                       */
+    { R"(\\trl\.exe$)", {{
+      { "d3d9.apitraceMode",                "True" },
+    }} },
   }};
 
 
