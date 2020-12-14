@@ -68,7 +68,6 @@ namespace dxvk {
 
   class D3D9CommonBuffer {
     static constexpr VkDeviceSize BufferSliceAlignment = 64;
-    static constexpr VkDeviceSize DeviceLocalThreshold = 4096;
   public:
 
     D3D9CommonBuffer(

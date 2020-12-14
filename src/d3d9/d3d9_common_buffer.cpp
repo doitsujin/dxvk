@@ -94,10 +94,8 @@ namespace dxvk {
         info.access |= VK_ACCESS_HOST_READ_BIT;
 
       memoryFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                  |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-
-      if (m_desc.Size <= DeviceLocalThreshold)
-        memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+                  |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+                  |  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     }
     else {
       info.stages |= VK_PIPELINE_STAGE_TRANSFER_BIT;
