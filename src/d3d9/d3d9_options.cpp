@@ -73,6 +73,8 @@ namespace dxvk {
     this->tearFree              = config.getOption<Tristate>   ("d3d9.tearFree", Tristate::Auto);
     this->alphaTestWiggleRoom   = config.getOption<bool>       ("d3d9.alphaTestWiggleRoom", false);
 
+    this->apitraceMode = config.getOption<bool>("d3d9.apitraceMode", false);
+
     // If we are not Nvidia, enable general hazards.
     this->generalHazards = adapter == nullptr || !adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0);
     applyTristate(this->generalHazards, config.getOption<Tristate>("d3d9.generalHazards", Tristate::Auto));
