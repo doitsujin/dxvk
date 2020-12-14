@@ -10,6 +10,7 @@ namespace dxvk {
     D3D9_VK_QUERY_INITIAL,
     D3D9_VK_QUERY_BEGUN,
     D3D9_VK_QUERY_ENDED,
+    D3D9_VK_QUERY_CACHED
   };
 
   union D3D9_QUERY_DATA {
@@ -80,6 +81,8 @@ namespace dxvk {
     bool     m_stallFlag = false;
 
     std::atomic<uint32_t> m_resetCtr = { 0u };
+
+    D3D9_QUERY_DATA m_dataCache;
 
     UINT64 GetTimestampQueryFrequency() const;
 
