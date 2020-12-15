@@ -6008,6 +6008,10 @@ namespace dxvk {
   void D3D9DeviceEx::End(D3D9Query* pQuery) {
     D3D9DeviceLock lock = LockDevice();
 
+    EmitCs([cQuery = Com<D3D9Query, false>(pQuery)](DxvkContext* ctx) {
+      cQuery->End(ctx);
+    });
+
     pQuery->NotifyEnd();
     if (unlikely(pQuery->IsEvent())) {
       pQuery->IsStalling()
@@ -6016,10 +6020,6 @@ namespace dxvk {
     } else if (pQuery->IsStalling()) {
       FlushImplicit(FALSE);
     }
-
-    EmitCs([cQuery = Com<D3D9Query, false>(pQuery)](DxvkContext* ctx) {
-      cQuery->End(ctx);
-    });
   }
 
 
