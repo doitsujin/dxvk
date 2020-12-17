@@ -255,6 +255,10 @@ namespace dxvk {
     { R"(\\artofrally(_demo)?\.exe$)", {{
       { "d3d11.enableRtOutputNanFixup",     "True" },
     }} },
+    /* Empire of Sin                               */
+    { R"(\\EmpireOfSin\.exe$)", {{
+      { "d3d11.enableRtOutputNanFixup",     "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
