@@ -79,6 +79,7 @@ namespace dxvk {
     /* Devil May Cry 5                            */
     { R"(\\DevilMayCry5\.exe$)", {{
       { "d3d11.relaxedBarriers",            "True" },
+      { "d3d11.invariantPosition",          "True" },
     }} },
     /* Call of Duty WW2                           */
     { R"(\\s2_sp64_ship\.exe$)", {{
