@@ -415,6 +415,10 @@ namespace dxvk {
     { R"(\\trl\.exe$)", {{
       { "d3d9.apitraceMode",                "True" },
     }} },
+    /* Everquest                                 */
+    { R"(\\eqgame\.exe$)", {{
+      { "d3d9.apitraceMode",                "True" },
+    }} },
   }};
 
 
