@@ -62,7 +62,8 @@ namespace dxvk {
     D3D11CommonTexture(
             D3D11Device*                pDevice,
       const D3D11_COMMON_TEXTURE_DESC*  pDesc,
-            D3D11_RESOURCE_DIMENSION    Dimension);
+            D3D11_RESOURCE_DIMENSION    Dimension,
+            VkImage                     vkImage);
     
     ~D3D11CommonTexture();
     
@@ -421,6 +422,11 @@ namespace dxvk {
     D3D11Texture2D(
             D3D11Device*                pDevice,
       const D3D11_COMMON_TEXTURE_DESC*  pDesc);
+
+    D3D11Texture2D(
+            D3D11Device*                pDevice,
+      const D3D11_COMMON_TEXTURE_DESC*  pDesc,
+            VkImage                     vkImage);
     
     ~D3D11Texture2D();
     

@@ -104,4 +104,63 @@ namespace dxvk {
     m_device->GetDXVKDevice()->unlockSubmission();
   }
   
+  
+  void STDMETHODCALLTYPE D3D11VkInterop::GetSubmissionQueue1(
+          VkQueue*              pQueue,
+          uint32_t*             pQueueIndex,
+          uint32_t*             pQueueFamilyIndex) {
+    auto device = static_cast<D3D11Device*>(m_device)->GetDXVKDevice();
+    DxvkDeviceQueue queue = device->queues().graphics;
+    
+    if (pQueue != nullptr)
+      *pQueue = queue.queueHandle;
+    
+    if (pQueueIndex != nullptr)
+      *pQueueIndex = queue.queueIndex;
+    
+    if (pQueueFamilyIndex != nullptr)
+      *pQueueFamilyIndex = queue.queueFamily;
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D11VkInterop::CreateTexture2DFromVkImage(
+          const D3D11_TEXTURE2D_DESC1 *pDesc,
+          VkImage vkImage,
+          ID3D11Texture2D **ppTexture2D) {
+
+    InitReturnPtr(ppTexture2D);
+
+    if (!pDesc)
+      return E_INVALIDARG;
+    
+    D3D11_COMMON_TEXTURE_DESC desc;
+    desc.Width          = pDesc->Width;
+    desc.Height         = pDesc->Height;
+    desc.Depth          = 1;
+    desc.MipLevels      = pDesc->MipLevels;
+    desc.ArraySize      = pDesc->ArraySize;
+    desc.Format         = pDesc->Format;
+    desc.SampleDesc     = pDesc->SampleDesc;
+    desc.Usage          = pDesc->Usage;
+    desc.BindFlags      = pDesc->BindFlags;
+    desc.CPUAccessFlags = pDesc->CPUAccessFlags;
+    desc.MiscFlags      = pDesc->MiscFlags;
+    desc.TextureLayout  = pDesc->TextureLayout;
+    
+    HRESULT hr = D3D11CommonTexture::NormalizeTextureProperties(&desc);
+
+    if (FAILED(hr))
+      return hr;
+    
+    if (!ppTexture2D)
+      return S_FALSE;
+    
+    try {
+      Com<D3D11Texture2D> texture = new D3D11Texture2D(m_device, &desc, vkImage);
+      *ppTexture2D = texture.ref();
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_INVALIDARG;
+    }
+  }
 }

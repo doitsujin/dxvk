@@ -304,6 +304,17 @@ namespace dxvk {
     Rc<DxvkImage> createImage(
       const DxvkImageCreateInfo&  createInfo,
             VkMemoryPropertyFlags memoryType);
+
+    /**
+     * \brief Creates an image object for an existing VkImage
+     * 
+     * \param [in] createInfo Image create info
+     * \param [in] image Vulkan image to wrap
+     * \returns The image object
+     */
+    Rc<DxvkImage> createImageFromVkImage(
+      const DxvkImageCreateInfo&  createInfo,
+            VkImage               image);
     
     /**
      * \brief Creates an image view
