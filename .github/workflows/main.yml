@@ -1,0 +1,65 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the action will run. Triggers the workflow on push or pull request
+# events but only for the master branch
+on:
+  pull_request:
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-20.04
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          
+      - name: Setting up mingw
+        run: sudo apt install mingw-w64 mingw-w64
+
+      - name: Setting up wine
+        run: sudo apt install wine64 wine64-tools
+
+      - name: Setup python
+        uses: actions/setup-python@v1
+
+      - name: Setup meson
+        run: pip3 install meson
+
+      - name: Setup ninja
+        run: sudo apt install ninja-build
+
+      - name: Configuring mingw
+        run: |
+          sudo update-alternatives --set i686-w64-mingw32-gcc /usr/bin/i686-w64-mingw32-gcc-posix
+          sudo update-alternatives --set i686-w64-mingw32-g++ /usr/bin/i686-w64-mingw32-g++-posix
+          sudo update-alternatives --set x86_64-w64-mingw32-gcc /usr/bin/x86_64-w64-mingw32-gcc-posix
+          sudo update-alternatives --set x86_64-w64-mingw32-g++ /usr/bin/x86_64-w64-mingw32-g++-posix
+
+      - name: Setup glslang
+        run: |
+          git clone --recursive https://github.com/KhronosGroup/glslang.git glslang
+          cd glslang
+          git checkout 8.13.3743
+          cmake .
+          sudo cmake --build . --config Release --target install
+
+      # Runs a single command using the runners shell
+      - name: Build
+        run: |
+          ./package-release.sh ${GITHUB_REF##*/} build --no-package
+          echo "BRANCH_NAME=${GITHUB_REF##*/}" >> $GITHUB_ENV
+
+      - name: Uploading artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: dxvk-${{ env.BRANCH_NAME }}
+          path: build/dxvk-${{ env.BRANCH_NAME }}
+          if-no-files-found: error
