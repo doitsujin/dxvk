@@ -8,7 +8,7 @@ namespace dxvk {
 
   class D3D11Device;
   
-  class D3D11VkInterop : public ComObject<IDXGIVkInteropDevice> {
+  class D3D11VkInterop : public ComObject<IDXGIVkInteropDevice1> {
     
   public:
     
@@ -46,6 +46,16 @@ namespace dxvk {
     void STDMETHODCALLTYPE LockSubmissionQueue();
     
     void STDMETHODCALLTYPE ReleaseSubmissionQueue();
+    
+    void STDMETHODCALLTYPE GetSubmissionQueue1(
+            VkQueue*              pQueue,
+            uint32_t*             pQueueIndex,
+            uint32_t*             pQueueFamilyIndex);
+    
+    HRESULT STDMETHODCALLTYPE CreateTexture2DFromVkImage(
+            const D3D11_TEXTURE2D_DESC1* pDesc,
+            VkImage                      vkImage,
+            ID3D11Texture2D**            ppTexture2D);
     
   private:
     

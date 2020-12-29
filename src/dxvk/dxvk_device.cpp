@@ -142,6 +142,12 @@ namespace dxvk {
   }
   
   
+  Rc<DxvkImage> DxvkDevice::createImageFromVkImage(
+    const DxvkImageCreateInfo&  createInfo,
+          VkImage               image) {
+    return new DxvkImage(m_vkd, createInfo, image);
+  }
+  
   Rc<DxvkImageView> DxvkDevice::createImageView(
     const Rc<DxvkImage>&            image,
     const DxvkImageViewCreateInfo&  createInfo) {
