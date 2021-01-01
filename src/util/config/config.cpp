@@ -419,6 +419,10 @@ namespace dxvk {
     { R"(\\eqgame\.exe$)", {{
       { "d3d9.apitraceMode",                "True" },
     }} },
+    /* VRChat                                    */
+    { R"(\\VRChat\.exe$)", {{
+      { "d3d11.enableRtOutputNanFixup",     "True" },
+    }} },
   }};
 
 
