@@ -25,6 +25,7 @@
 // directly, although others from the same header work.
 // Some structures are missing from the mingw headers.
 #ifndef _MSC_VER
+#if !defined(__MINGW64_VERSION_MAJOR) || __MINGW64_VERSION_MAJOR < 9
 typedef enum D3D11_FORMAT_SUPPORT2 { 
   D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_ADD                                = 0x1,
   D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_BITWISE_OPS                        = 0x2,
@@ -41,6 +42,7 @@ typedef enum D3D11_FORMAT_SUPPORT2 {
 } D3D11_FORMAT_SUPPORT2;
 #define D3D11_RESOURCE_MISC_TILE_POOL (0x20000)
 #define D3D11_RESOURCE_MISC_TILED     (0x40000)
+#endif // !defined(__MINGW64_VERSION_MAJOR) || __MINGW64_VERSION_MAJOR < 9
 #ifndef __WINE__
 
 //MinGW-Headers supports these typedefs since 6.0.0
