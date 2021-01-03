@@ -55,6 +55,10 @@ if cpu_family == 'x86'
   if dxvk_compiler.has_link_argument('-Wl,--enable-stdcall-fixup')
     add_global_link_arguments('-Wl,--enable-stdcall-fixup', language: 'cpp')
   endif
+  if dxvk_compiler.has_argument('-msse') and dxvk_compiler.has_argument('-msse2')
+    add_project_arguments('-msse', '-msse2', language: 'c')
+    add_project_arguments('-msse', '-msse2', language: 'cpp')
+  endif
 endif
 
 lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)

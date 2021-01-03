@@ -5,8 +5,6 @@ ar = 'i686-w64-mingw32-ar'
 strip = 'i686-w64-mingw32-strip'
 
 [built-in options]
-c_args=['-msse', '-msse2']
-cpp_args=['-msse', '-msse2']
 c_link_args = ['-static', '-static-libgcc']
 cpp_link_args = ['-static', '-static-libgcc', '-static-libstdc++']
 
