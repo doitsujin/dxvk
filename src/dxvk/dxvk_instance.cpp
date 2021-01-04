@@ -2,6 +2,7 @@
 
 #include "dxvk_instance.h"
 #include "dxvk_openvr.h"
+#include "dxvk_openxr.h"
 #include "dxvk_platform_exts.h"
 
 #include <algorithm>
@@ -22,6 +23,9 @@ namespace dxvk {
 
     if (m_options.enableOpenVR)
       m_extProviders.push_back(&VrInstance::s_instance);
+
+    if (m_options.enableOpenXR)
+      m_extProviders.push_back(&DxvkXrProvider::s_instance);
 
     Logger::info("Built-in extension providers:");
     for (const auto& provider : m_extProviders)

@@ -81,6 +81,7 @@ dxvk_src = files([
   'dxvk_meta_pack.cpp',
   'dxvk_meta_resolve.cpp',
   'dxvk_openvr.cpp',
+  'dxvk_openxr.cpp',
   'dxvk_options.cpp',
   'dxvk_pipecache.cpp',
   'dxvk_pipelayout.cpp',
