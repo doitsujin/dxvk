@@ -126,7 +126,7 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11Query::GetDevice(ID3D11Device **ppDevice) {
-    *ppDevice = ref(m_device);
+    *ppDevice = m_device.ref();
   }
   
   

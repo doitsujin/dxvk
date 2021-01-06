@@ -96,7 +96,7 @@ namespace dxvk {
     
   private:
     
-    D3D11Device* const m_device;
+    const Com<D3D11Device> m_device;
     D3D11_QUERY_DESC1  m_desc;
 
     D3D11_VK_QUERY_STATE m_state;
