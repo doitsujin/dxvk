@@ -11,7 +11,7 @@ namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11BlendState : public D3D11DeviceChild<ID3D11BlendState1, NoWrapper> {
+  class D3D11BlendState : public D3D11StateObject<ID3D11BlendState1> {
     
   public:
     
@@ -21,17 +21,10 @@ namespace dxvk {
             D3D11Device*       device,
       const D3D11_BLEND_DESC1& desc);
     ~D3D11BlendState();
-    
-    ULONG STDMETHODCALLTYPE AddRef() final;
-
-    ULONG STDMETHODCALLTYPE Release() final;
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
             void**  ppvObject) final;
-    
-    void STDMETHODCALLTYPE GetDevice(
-            ID3D11Device **ppDevice) final;
     
     void STDMETHODCALLTYPE GetDesc(
             D3D11_BLEND_DESC* pDesc) final;
@@ -55,7 +48,6 @@ namespace dxvk {
 
   private:
     
-    D3D11Device* const            m_device;
     D3D11_BLEND_DESC1             m_desc;
     
     std::array<DxvkBlendMode, 8>  m_blendModes;
@@ -63,8 +55,6 @@ namespace dxvk {
     DxvkLogicOpState              m_loState;
 
     D3D10BlendState               m_d3d10;
-
-    std::atomic<uint32_t> m_refCount = { 0u };
     
     static DxvkBlendMode DecodeBlendMode(
       const D3D11_RENDER_TARGET_BLEND_DESC1& BlendDesc);

@@ -18,9 +18,6 @@ namespace dxvk {
             REFIID  riid,
             void**  ppvObject) final;
     
-    void STDMETHODCALLTYPE GetDevice(
-            ID3D11Device **ppDevice) final;
-    
     UINT STDMETHODCALLTYPE GetContextFlags() final;
     
     void AddChunk(
@@ -37,7 +34,6 @@ namespace dxvk {
     
   private:
     
-    D3D11Device* const m_device;
     UINT         const m_contextFlags;
     
     std::vector<DxvkCsChunkRef>         m_chunks;

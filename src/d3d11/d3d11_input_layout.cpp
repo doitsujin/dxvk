@@ -9,7 +9,8 @@ namespace dxvk {
     const DxvkVertexAttribute*  pAttributes,
           uint32_t              numBindings,
     const DxvkVertexBinding*    pBindings)
-  : m_device(pDevice), m_d3d10(this) {
+  : D3D11DeviceChild<ID3D11InputLayout>(pDevice),
+    m_d3d10(this) {
     m_attributes.resize(numAttributes);
     m_bindings.resize(numBindings);
     
@@ -48,11 +49,6 @@ namespace dxvk {
     Logger::warn("D3D11InputLayout::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11InputLayout::GetDevice(ID3D11Device** ppDevice) {
-    *ppDevice = m_device.ref();
   }
   
   

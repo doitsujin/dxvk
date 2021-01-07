@@ -42,13 +42,13 @@ namespace dxvk {
     m_dxbcOptions   (m_dxvkDevice, m_d3d11Options) {
     m_initializer = new D3D11Initializer(this);
     m_context     = new D3D11ImmediateContext(this, m_dxvkDevice);
-    m_d3d10Device = new D3D10Device(this, m_context);
+    m_d3d10Device = new D3D10Device(this, m_context.ptr());
   }
   
   
   D3D11Device::~D3D11Device() {
     delete m_d3d10Device;
-    delete m_context;
+    m_context = nullptr;
     delete m_initializer;
   }
   
@@ -1757,22 +1757,22 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11Device::GetImmediateContext(ID3D11DeviceContext** ppImmediateContext) {
-    *ppImmediateContext = ref(m_context);
+    *ppImmediateContext = m_context.ref();
   }
 
 
   void STDMETHODCALLTYPE D3D11Device::GetImmediateContext1(ID3D11DeviceContext1** ppImmediateContext) {
-    *ppImmediateContext = ref(m_context);
+    *ppImmediateContext = m_context.ref();
   }
   
   
   void STDMETHODCALLTYPE D3D11Device::GetImmediateContext2(ID3D11DeviceContext2** ppImmediateContext) {
-    *ppImmediateContext = ref(m_context);
+    *ppImmediateContext = m_context.ref();
   }
   
   
   void STDMETHODCALLTYPE D3D11Device::GetImmediateContext3(ID3D11DeviceContext3** ppImmediateContext) {
-    *ppImmediateContext = ref(m_context);
+    *ppImmediateContext = m_context.ref();
   }
   
   

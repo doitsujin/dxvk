@@ -214,11 +214,6 @@ namespace dxvk {
   }
   
   
-  void D3D11CommonTexture::GetDevice(ID3D11Device** ppDevice) const {
-    *ppDevice = m_device.ref();
-  }
-  
-  
   bool D3D11CommonTexture::CheckViewCompatibility(UINT BindFlags, DXGI_FORMAT Format) const {
     const DxvkImageCreateInfo& imageInfo = m_image->info();
 
@@ -779,7 +774,8 @@ namespace dxvk {
   D3D11Texture1D::D3D11Texture1D(
           D3D11Device*                pDevice,
     const D3D11_COMMON_TEXTURE_DESC*  pDesc)
-  : m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE1D, VK_NULL_HANDLE),
+  : D3D11DeviceChild<ID3D11Texture1D>(pDevice),
+    m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE1D, VK_NULL_HANDLE),
     m_interop (this, &m_texture),
     m_surface (this, &m_texture),
     m_resource(this),
@@ -840,11 +836,6 @@ namespace dxvk {
     return E_NOINTERFACE;
   }
   
-    
-  void STDMETHODCALLTYPE D3D11Texture1D::GetDevice(ID3D11Device** ppDevice) {
-    m_texture.GetDevice(ppDevice);
-  }
-  
   
   void STDMETHODCALLTYPE D3D11Texture1D::GetType(D3D11_RESOURCE_DIMENSION *pResourceDimension) {
     *pResourceDimension = D3D11_RESOURCE_DIMENSION_TEXTURE1D;
@@ -881,7 +872,8 @@ namespace dxvk {
   D3D11Texture2D::D3D11Texture2D(
           D3D11Device*                pDevice,
     const D3D11_COMMON_TEXTURE_DESC*  pDesc)
-  : m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D, VK_NULL_HANDLE),
+  : D3D11DeviceChild<ID3D11Texture2D1>(pDevice),
+    m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D, VK_NULL_HANDLE),
     m_interop (this, &m_texture),
     m_surface (this, &m_texture),
     m_resource(this),
@@ -894,7 +886,8 @@ namespace dxvk {
           D3D11Device*                pDevice,
     const D3D11_COMMON_TEXTURE_DESC*  pDesc,
           VkImage vkImage)
-  : m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D, vkImage),
+  : D3D11DeviceChild<ID3D11Texture2D1>(pDevice),
+    m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D, vkImage),
     m_interop (this, &m_texture),
     m_surface (this, &m_texture),
     m_resource(this),
@@ -956,11 +949,6 @@ namespace dxvk {
     return E_NOINTERFACE;
   }
   
-    
-  void STDMETHODCALLTYPE D3D11Texture2D::GetDevice(ID3D11Device** ppDevice) {
-    m_texture.GetDevice(ppDevice);
-  }
-  
   
   void STDMETHODCALLTYPE D3D11Texture2D::GetType(D3D11_RESOURCE_DIMENSION *pResourceDimension) {
     *pResourceDimension = D3D11_RESOURCE_DIMENSION_TEXTURE2D;
@@ -1014,7 +1002,8 @@ namespace dxvk {
   D3D11Texture3D::D3D11Texture3D(
           D3D11Device*                pDevice,
     const D3D11_COMMON_TEXTURE_DESC*  pDesc)
-  : m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE3D, VK_NULL_HANDLE),
+  : D3D11DeviceChild<ID3D11Texture3D1>(pDevice),
+    m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE3D, VK_NULL_HANDLE),
     m_interop (this, &m_texture),
     m_resource(this),
     m_d3d10   (this) {
@@ -1065,11 +1054,6 @@ namespace dxvk {
     Logger::warn("D3D11Texture3D::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
-  }
-  
-    
-  void STDMETHODCALLTYPE D3D11Texture3D::GetDevice(ID3D11Device** ppDevice) {
-    m_texture.GetDevice(ppDevice);
   }
   
   

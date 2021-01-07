@@ -48,9 +48,6 @@ namespace dxvk {
             REFIID  riid,
             void**  ppvObject) final;
     
-    void STDMETHODCALLTYPE GetDevice(
-            ID3D11Device **ppDevice) final;
-    
     void STDMETHODCALLTYPE GetType(
             D3D11_RESOURCE_DIMENSION *pResourceDimension) final;
     
@@ -125,7 +122,6 @@ namespace dxvk {
 
   private:
     
-    const Com<D3D11Device>      m_device;
     const D3D11_BUFFER_DESC     m_desc;
     
     Rc<DxvkBuffer>              m_buffer;

@@ -5,7 +5,7 @@ namespace dxvk {
   
   D3D11ClassLinkage::D3D11ClassLinkage(
           D3D11Device*                pDevice)
-  : m_device(pDevice) {
+  : D3D11DeviceChild<ID3D11ClassLinkage>(pDevice) {
     
   }
   
@@ -31,11 +31,6 @@ namespace dxvk {
     Logger::warn("D3D11ClassLinkage::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11ClassLinkage::GetDevice(ID3D11Device** ppDevice) {
-    *ppDevice = m_device.ref();
   }
   
   

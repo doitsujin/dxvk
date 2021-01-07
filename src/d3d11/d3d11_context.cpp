@@ -13,7 +13,7 @@ namespace dxvk {
           D3D11Device*            pParent,
     const Rc<DxvkDevice>&         Device,
           DxvkCsChunkFlags        CsFlags)
-  : m_parent    (pParent),
+  : D3D11DeviceChild<ID3D11DeviceContext4>(pParent),
     m_contextExt(this),
     m_annotation(this),
     m_multithread(this, false),
@@ -133,11 +133,6 @@ namespace dxvk {
           sr.baseMipLevel + mip, sr.baseArrayLayer + layer, mipCount));
       }
     }
-  }
-
-
-  void STDMETHODCALLTYPE D3D11DeviceContext::GetDevice(ID3D11Device **ppDevice) {
-    *ppDevice = ref(m_parent);
   }
   
   

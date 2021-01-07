@@ -39,8 +39,6 @@ namespace dxvk {
             ID3D11View*                      pResourceView,
       const D3D11_RECT*                      pRects,
             UINT                             NumRects);
-
-    void STDMETHODCALLTYPE GetDevice(ID3D11Device **ppDevice);
     
     void STDMETHODCALLTYPE ClearState();
     
@@ -706,7 +704,6 @@ namespace dxvk {
 
   protected:
     
-    D3D11Device* const          m_parent;
     D3D11DeviceContextExt       m_contextExt;
     D3D11UserDefinedAnnotation  m_annotation;
     D3D10Multithread            m_multithread;
