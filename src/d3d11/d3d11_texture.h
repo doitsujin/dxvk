@@ -174,12 +174,6 @@ namespace dxvk {
     DXGI_VK_FORMAT_MODE GetFormatMode() const;
     
     /**
-     * \brief Retrieves parent D3D11 device
-     * \param [out] ppDevice The device
-     */
-    void GetDevice(ID3D11Device** ppDevice) const;
-    
-    /**
      * \brief Checks whether a view can be created for this textue
      * 
      * View formats are only compatible if they are either identical
@@ -208,7 +202,7 @@ namespace dxvk {
     
   private:
     
-    Com<D3D11Device>              m_device;
+    D3D11Device* const            m_device;
     D3D11_COMMON_TEXTURE_DESC     m_desc;
     D3D11_COMMON_TEXTURE_MAP_MODE m_mapMode;
     
@@ -381,9 +375,6 @@ namespace dxvk {
             REFIID  riid,
             void**  ppvObject) final;
     
-    void STDMETHODCALLTYPE GetDevice(
-            ID3D11Device **ppDevice) final;
-    
     void STDMETHODCALLTYPE GetType(
             D3D11_RESOURCE_DIMENSION *pResourceDimension) final;
     
@@ -434,9 +425,6 @@ namespace dxvk {
             REFIID  riid,
             void**  ppvObject) final;
     
-    void STDMETHODCALLTYPE GetDevice(
-            ID3D11Device **ppDevice) final;
-    
     void STDMETHODCALLTYPE GetType(
             D3D11_RESOURCE_DIMENSION *pResourceDimension) final;
     
@@ -484,9 +472,6 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
             void**  ppvObject) final;
-    
-    void STDMETHODCALLTYPE GetDevice(
-            ID3D11Device **ppDevice) final;
     
     void STDMETHODCALLTYPE GetType(
             D3D11_RESOURCE_DIMENSION *pResourceDimension) final;

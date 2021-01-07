@@ -6,7 +6,8 @@ namespace dxvk {
   D3D11DepthStencilState::D3D11DepthStencilState(
           D3D11Device*              device,
     const D3D11_DEPTH_STENCIL_DESC& desc)
-  : m_device(device), m_desc(desc), m_d3d10(this) {
+  : D3D11StateObject<ID3D11DepthStencilState>(device),
+    m_desc(desc), m_d3d10(this) {
     m_state.enableDepthTest   = desc.DepthEnable;
     m_state.enableDepthWrite  = desc.DepthWriteMask == D3D11_DEPTH_WRITE_MASK_ALL;
     m_state.enableStencilTest = desc.StencilEnable;
@@ -18,22 +19,6 @@ namespace dxvk {
   
   D3D11DepthStencilState::~D3D11DepthStencilState() {
     
-  }
-  
-  
-  ULONG STDMETHODCALLTYPE D3D11DepthStencilState::AddRef() {
-    ULONG refCount = m_refCount++;
-    if (!refCount)
-      m_device->AddRef();
-    return refCount + 1;
-  }
-
-
-  ULONG STDMETHODCALLTYPE D3D11DepthStencilState::Release() {
-    ULONG refCount = --m_refCount;
-    if (!refCount)
-      m_device->Release();
-    return refCount;
   }
 
 
@@ -59,11 +44,6 @@ namespace dxvk {
     Logger::warn("D3D11DepthStencilState::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DepthStencilState::GetDevice(ID3D11Device** ppDevice) {
-    *ppDevice = ref(m_device);
   }
   
   

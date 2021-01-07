@@ -10,7 +10,7 @@ namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11SamplerState : public D3D11DeviceChild<ID3D11SamplerState, NoWrapper> {
+  class D3D11SamplerState : public D3D11StateObject<ID3D11SamplerState> {
     
   public:
     
@@ -20,17 +20,10 @@ namespace dxvk {
             D3D11Device*        device,
       const D3D11_SAMPLER_DESC& desc);
     ~D3D11SamplerState();
-    
-    ULONG STDMETHODCALLTYPE AddRef() final;
-
-    ULONG STDMETHODCALLTYPE Release() final;
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
             void**  ppvObject) final;
-    
-    void STDMETHODCALLTYPE GetDevice(
-            ID3D11Device **ppDevice) final;
     
     void STDMETHODCALLTYPE GetDesc(
             D3D11_SAMPLER_DESC* pDesc) final;
@@ -48,7 +41,6 @@ namespace dxvk {
     
   private:
     
-    D3D11Device* const m_device;
     D3D11_SAMPLER_DESC m_desc;
     Rc<DxvkSampler>    m_sampler;
     D3D10SamplerState  m_d3d10;

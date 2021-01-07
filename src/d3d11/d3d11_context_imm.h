@@ -21,10 +21,6 @@ namespace dxvk {
       const Rc<DxvkDevice>& Device);
     ~D3D11ImmediateContext();
     
-    ULONG STDMETHODCALLTYPE AddRef();
-    
-    ULONG STDMETHODCALLTYPE Release();
-    
     D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE GetType();
     
     UINT STDMETHODCALLTYPE GetContextFlags();
@@ -115,8 +111,6 @@ namespace dxvk {
     
     DxvkCsThread m_csThread;
     bool         m_csIsBusy = false;
-
-    std::atomic<uint32_t> m_refCount = { 0 };
 
     Rc<sync::Win32Fence> m_eventSignal;
     uint64_t             m_eventCount = 0;

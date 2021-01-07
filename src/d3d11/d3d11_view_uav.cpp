@@ -10,7 +10,8 @@ namespace dxvk {
           D3D11Device*                       pDevice,
           ID3D11Resource*                    pResource,
     const D3D11_UNORDERED_ACCESS_VIEW_DESC1* pDesc)
-  : m_device(pDevice), m_resource(pResource), m_desc(*pDesc) {
+  : D3D11DeviceChild<ID3D11UnorderedAccessView1>(pDevice),
+    m_resource(pResource), m_desc(*pDesc) {
     ResourceAddRefPrivate(m_resource);
 
     D3D11_COMMON_RESOURCE_DESC resourceDesc;
@@ -144,11 +145,6 @@ namespace dxvk {
     Logger::warn("D3D11UnorderedAccessView::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11UnorderedAccessView::GetDevice(ID3D11Device** ppDevice) {
-    *ppDevice = m_device.ref();
   }
   
   
@@ -420,7 +416,7 @@ namespace dxvk {
 
 
   Rc<DxvkBuffer> D3D11UnorderedAccessView::CreateCounterBuffer() {
-    Rc<DxvkDevice> device = m_device->GetDXVKDevice();
+    Rc<DxvkDevice> device = m_parent->GetDXVKDevice();
 
     DxvkBufferCreateInfo info;
     info.size   = sizeof(uint32_t);

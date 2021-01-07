@@ -446,8 +446,8 @@ namespace dxvk {
     DxvkCsChunkPool                 m_csChunkPool;
     
     D3D11Initializer*               m_initializer = nullptr;
-    D3D11ImmediateContext*          m_context     = nullptr;
     D3D10Device*                    m_d3d10Device = nullptr;
+    Com<D3D11ImmediateContext, false> m_context;
 
     D3D11StateObjectSet<D3D11BlendState>        m_bsStateObjects;
     D3D11StateObjectSet<D3D11DepthStencilState> m_dsStateObjects;

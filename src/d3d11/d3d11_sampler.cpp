@@ -7,7 +7,8 @@ namespace dxvk {
   D3D11SamplerState::D3D11SamplerState(
           D3D11Device*        device,
     const D3D11_SAMPLER_DESC& desc)
-  : m_device(device), m_desc(desc), m_d3d10(this) {
+  : D3D11StateObject<ID3D11SamplerState>(device),
+    m_desc(desc), m_d3d10(this) {
     DxvkSamplerCreateInfo info;
     
     // While D3D11_FILTER is technically an enum, its value bits
@@ -57,22 +58,6 @@ namespace dxvk {
   D3D11SamplerState::~D3D11SamplerState() {
     
   }
-  
-  
-  ULONG STDMETHODCALLTYPE D3D11SamplerState::AddRef() {
-    ULONG refCount = m_refCount++;
-    if (!refCount)
-      m_device->AddRef();
-    return refCount + 1;
-  }
-
-
-  ULONG STDMETHODCALLTYPE D3D11SamplerState::Release() {
-    ULONG refCount = --m_refCount;
-    if (!refCount)
-      m_device->Release();
-    return refCount;
-  }
 
 
   HRESULT STDMETHODCALLTYPE D3D11SamplerState::QueryInterface(REFIID riid, void** ppvObject) {
@@ -97,11 +82,6 @@ namespace dxvk {
     Logger::warn("D3D11SamplerState::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11SamplerState::GetDevice(ID3D11Device** ppDevice) {
-    *ppDevice = ref(m_device);
   }
   
   

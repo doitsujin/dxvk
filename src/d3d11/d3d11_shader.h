@@ -72,7 +72,8 @@ namespace dxvk {
   public:
     
     D3D11Shader(D3D11Device* device, const D3D11CommonShader& shader)
-    : m_device(device), m_shader(shader), m_d3d10(this) { }
+    : D3D11DeviceChild<D3D11Interface>(device),
+      m_shader(shader), m_d3d10(this) { }
     
     ~D3D11Shader() { }
     
@@ -97,10 +98,6 @@ namespace dxvk {
       return E_NOINTERFACE;
     }
     
-    void STDMETHODCALLTYPE GetDevice(ID3D11Device **ppDevice) final {
-      *ppDevice = m_device.ref();
-    }
-    
     const D3D11CommonShader* GetCommonShader() const {
       return &m_shader;
     }
@@ -111,7 +108,6 @@ namespace dxvk {
 
   private:
     
-    Com<D3D11Device>  m_device;
     D3D11CommonShader m_shader;
     D3D10ShaderClass  m_d3d10;
     

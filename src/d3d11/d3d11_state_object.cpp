@@ -3,8 +3,8 @@
 namespace dxvk {
 
   D3D11DeviceContextState::D3D11DeviceContextState(
-          ID3D11Device*         pDevice)
-  : m_device(pDevice) {
+          D3D11Device*         pDevice)
+  : D3D11DeviceChild<ID3DDeviceContextState>(pDevice) {
 
   }
 
@@ -32,12 +32,6 @@ namespace dxvk {
     Logger::warn("D3D11DeviceContextState::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
-  }
-
-  
-  void STDMETHODCALLTYPE D3D11DeviceContextState::GetDevice(
-          ID3D11Device**        ppDevice) {
-    *ppDevice = m_device.ref();
   }
 
 }

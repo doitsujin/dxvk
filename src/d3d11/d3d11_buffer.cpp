@@ -9,7 +9,7 @@ namespace dxvk {
   D3D11Buffer::D3D11Buffer(
           D3D11Device*                pDevice,
     const D3D11_BUFFER_DESC*          pDesc)
-  : m_device      (pDevice),
+  : D3D11DeviceChild<ID3D11Buffer>(pDevice),
     m_desc        (*pDesc),
     m_resource    (this),
     m_d3d10       (this) {
@@ -35,17 +35,17 @@ namespace dxvk {
     
     if (pDesc->BindFlags & D3D11_BIND_CONSTANT_BUFFER) {
       info.usage  |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-      info.stages |= m_device->GetEnabledShaderStages();
+      info.stages |= m_parent->GetEnabledShaderStages();
       info.access |= VK_ACCESS_UNIFORM_READ_BIT;
 
-      if (m_device->GetOptions()->constantBufferRangeCheck)
+      if (m_parent->GetOptions()->constantBufferRangeCheck)
         info.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     }
     
     if (pDesc->BindFlags & D3D11_BIND_SHADER_RESOURCE) {
       info.usage  |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
                   |  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-      info.stages |= m_device->GetEnabledShaderStages();
+      info.stages |= m_parent->GetEnabledShaderStages();
       info.access |= VK_ACCESS_SHADER_READ_BIT;
     }
     
@@ -58,7 +58,7 @@ namespace dxvk {
     if (pDesc->BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
       info.usage  |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT
                   |  VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-      info.stages |= m_device->GetEnabledShaderStages();
+      info.stages |= m_parent->GetEnabledShaderStages();
       info.access |= VK_ACCESS_SHADER_READ_BIT
                   |  VK_ACCESS_SHADER_WRITE_BIT;
     }
@@ -71,7 +71,7 @@ namespace dxvk {
 
     // Create the buffer and set the entire buffer slice as mapped,
     // so that we only have to update it when invalidating th buffer
-    m_buffer = m_device->GetDXVKDevice()->createBuffer(info, GetMemoryFlags());
+    m_buffer = m_parent->GetDXVKDevice()->createBuffer(info, GetMemoryFlags());
     m_mapped = m_buffer->getSliceHandle();
 
     // For Stream Output buffers we need a counter
@@ -120,11 +120,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11Buffer::GetDevice(ID3D11Device** ppDevice) {
-    *ppDevice = m_device.ref();
-  }
-  
-  
   UINT STDMETHODCALLTYPE D3D11Buffer::GetEvictionPriority() {
     return DXGI_RESOURCE_PRIORITY_NORMAL;
   }
@@ -161,7 +156,7 @@ namespace dxvk {
 
     // Check whether the given combination of buffer view
     // type and view format is supported by the device
-    DXGI_VK_FORMAT_INFO viewFormat = m_device->LookupFormat(Format, DXGI_VK_FORMAT_MODE_ANY);
+    DXGI_VK_FORMAT_INFO viewFormat = m_parent->LookupFormat(Format, DXGI_VK_FORMAT_MODE_ANY);
     VkFormatFeatureFlags features = GetBufferFormatFeatures(BindFlags);
 
     return CheckFormatFeatureSupport(viewFormat.Format, features);
@@ -208,7 +203,7 @@ namespace dxvk {
   BOOL D3D11Buffer::CheckFormatFeatureSupport(
           VkFormat              Format,
           VkFormatFeatureFlags  Features) const {
-    VkFormatProperties properties = m_device->GetDXVKDevice()->adapter()->formatProperties(Format);
+    VkFormatProperties properties = m_parent->GetDXVKDevice()->adapter()->formatProperties(Format);
     return (properties.bufferFeatures & Features) == Features;
   }
 
@@ -250,7 +245,7 @@ namespace dxvk {
         break;
     }
     
-    if (memoryFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT && m_device->GetOptions()->apitraceMode) {
+    if (memoryFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT && m_parent->GetOptions()->apitraceMode) {
       memoryFlags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
                   |  VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
     }
@@ -260,7 +255,7 @@ namespace dxvk {
 
 
   Rc<DxvkBuffer> D3D11Buffer::CreateSoCounterBuffer() {
-    Rc<DxvkDevice> device = m_device->GetDXVKDevice();
+    Rc<DxvkDevice> device = m_parent->GetDXVKDevice();
 
     DxvkBufferCreateInfo info;
     info.size   = sizeof(D3D11SOCounter);

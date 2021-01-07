@@ -19,16 +19,13 @@ namespace dxvk {
   public:
 
     D3D11DeviceContextState(
-            ID3D11Device*         pDevice);
+            D3D11Device*         pDevice);
     
     ~D3D11DeviceContextState();
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID                riid,
             void**                ppvObject);
-    
-    void STDMETHODCALLTYPE GetDevice(
-            ID3D11Device**        ppDevice);
     
     void SetState(const D3D11ContextState& State) {
       m_state = State;
@@ -40,7 +37,6 @@ namespace dxvk {
 
   private:
 
-    Com<ID3D11Device> m_device;
     D3D11ContextState m_state;
 
   };

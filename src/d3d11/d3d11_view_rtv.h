@@ -27,8 +27,6 @@ namespace dxvk {
     
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final;
     
-    void STDMETHODCALLTYPE GetDevice(ID3D11Device** ppDevice) final;
-    
     void STDMETHODCALLTYPE GetResource(ID3D11Resource** ppResource) final;
     
     void STDMETHODCALLTYPE GetDesc(D3D11_RENDER_TARGET_VIEW_DESC* pDesc) final;
@@ -76,7 +74,6 @@ namespace dxvk {
     
   private:
     
-    Com<D3D11Device>                  m_device;
     ID3D11Resource*                   m_resource;
     D3D11_RENDER_TARGET_VIEW_DESC1    m_desc;
     D3D11_VK_VIEW_INFO                m_info;

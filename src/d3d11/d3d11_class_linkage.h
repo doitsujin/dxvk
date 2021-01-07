@@ -20,9 +20,6 @@ namespace dxvk {
             REFIID  riid,
             void**  ppvObject) final;
     
-    void STDMETHODCALLTYPE GetDevice(
-            ID3D11Device **ppDevice) final;
-    
     HRESULT STDMETHODCALLTYPE CreateClassInstance(
             LPCSTR              pClassTypeName,
             UINT                ConstantBufferOffset,
@@ -35,10 +32,6 @@ namespace dxvk {
             LPCSTR              pClassInstanceName,
             UINT                InstanceIndex,
             ID3D11ClassInstance **ppInstance);  
-    
-  private:
-    
-    Com<D3D11Device> m_device;
     
   };
   

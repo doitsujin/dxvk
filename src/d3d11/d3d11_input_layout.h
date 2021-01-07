@@ -25,9 +25,6 @@ namespace dxvk {
             REFIID                riid,
             void**                ppvObject) final;
     
-    void STDMETHODCALLTYPE GetDevice(
-            ID3D11Device**        ppDevice) final;
-    
     void BindToContext(
       const Rc<DxvkContext>&      ctx);
     
@@ -39,8 +36,6 @@ namespace dxvk {
     }
     
   private:
-    
-    Com<D3D11Device> m_device;
     
     std::vector<DxvkVertexAttribute> m_attributes;
     std::vector<DxvkVertexBinding>   m_bindings;

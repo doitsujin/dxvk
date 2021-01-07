@@ -6,10 +6,11 @@ namespace dxvk {
   D3D11Query::D3D11Query(
           D3D11Device*       device,
     const D3D11_QUERY_DESC1& desc)
-  : m_device(device), m_desc(desc),
+  : D3D11DeviceChild<ID3D11Query1>(device),
+    m_desc(desc),
     m_state(D3D11_VK_QUERY_INITIAL),
     m_d3d10(this) {
-    Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
+    Rc<DxvkDevice> dxvkDevice = m_parent->GetDXVKDevice();
 
     switch (m_desc.Query) {
       case D3D11_QUERY_EVENT:
@@ -122,11 +123,6 @@ namespace dxvk {
     Logger::warn("D3D11Query: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11Query::GetDevice(ID3D11Device **ppDevice) {
-    *ppDevice = m_device.ref();
   }
   
   
@@ -337,7 +333,7 @@ namespace dxvk {
   
   
   UINT64 D3D11Query::GetTimestampQueryFrequency() const {
-    Rc<DxvkDevice>  device  = m_device->GetDXVKDevice();
+    Rc<DxvkDevice>  device  = m_parent->GetDXVKDevice();
     Rc<DxvkAdapter> adapter = device->adapter();
 
     VkPhysicalDeviceLimits limits = adapter->deviceProperties().limits;

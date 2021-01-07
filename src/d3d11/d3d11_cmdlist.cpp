@@ -6,7 +6,7 @@ namespace dxvk {
   D3D11CommandList::D3D11CommandList(
           D3D11Device*  pDevice,
           UINT          ContextFlags)
-  : m_device      (pDevice),
+  : D3D11DeviceChild<ID3D11CommandList>(pDevice),
     m_contextFlags(ContextFlags) { }
   
   
@@ -31,11 +31,6 @@ namespace dxvk {
     Logger::warn("D3D11CommandList::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11CommandList::GetDevice(ID3D11Device **ppDevice) {
-    *ppDevice = ref(m_device);
   }
   
   
@@ -80,7 +75,7 @@ namespace dxvk {
   
   void D3D11CommandList::MarkSubmitted() {
     if (m_submitted.exchange(true) && !m_warned.exchange(true)
-     && m_device->GetOptions()->dcSingleUseMode) {
+     && m_parent->GetOptions()->dcSingleUseMode) {
       Logger::warn(
         "D3D11: Command list submitted multiple times,\n"
         "       but d3d11.dcSingleUseMode is enabled");

@@ -6,7 +6,8 @@ namespace dxvk {
   D3D11BlendState::D3D11BlendState(
           D3D11Device*        device,
     const D3D11_BLEND_DESC1&  desc)
-  : m_device(device), m_desc(desc), m_d3d10(this) {
+  : D3D11StateObject<ID3D11BlendState1>(device),
+    m_desc(desc), m_d3d10(this) {
     // If Independent Blend is disabled, we must ignore the
     // blend modes for render target 1 to 7. In Vulkan, all
     // blend modes need to be identical in that case.
@@ -34,22 +35,6 @@ namespace dxvk {
   D3D11BlendState::~D3D11BlendState() {
     
   }
-  
-  
-  ULONG STDMETHODCALLTYPE D3D11BlendState::AddRef() {
-    ULONG refCount = m_refCount++;
-    if (!refCount)
-      m_device->AddRef();
-    return refCount + 1;
-  }
-
-
-  ULONG STDMETHODCALLTYPE D3D11BlendState::Release() {
-    ULONG refCount = --m_refCount;
-    if (!refCount)
-      m_device->Release();
-    return refCount;
-  }
 
 
   HRESULT STDMETHODCALLTYPE D3D11BlendState::QueryInterface(REFIID riid, void** ppvObject) {
@@ -76,11 +61,6 @@ namespace dxvk {
     Logger::warn("D3D11BlendState::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11BlendState::GetDevice(ID3D11Device** ppDevice) {
-    *ppDevice = ref(m_device);
   }
   
   
