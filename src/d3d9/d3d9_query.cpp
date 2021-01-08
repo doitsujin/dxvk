@@ -239,6 +239,9 @@ namespace dxvk {
           m_dataCache.VertexStats.NumRenderedTriangles      = queryData[0].statistic.iaPrimitives;
           m_dataCache.VertexStats.NumExtraClippingTriangles = queryData[0].statistic.clipPrimitives;
           break;
+
+        default:
+          break;
       }
 
       if (likely(pData && dwSize))
