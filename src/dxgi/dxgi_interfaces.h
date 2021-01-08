@@ -288,7 +288,7 @@ IDXGIVkInteropDevice : public IUnknown {
 };
 
 struct D3D11_TEXTURE2D_DESC1;
-class ID3D11Texture2D;
+struct ID3D11Texture2D;
 
 /**
  * \brief See IDXGIVkInteropDevice.
