@@ -34,7 +34,11 @@ namespace dxvk {
     // Decide whether we need to create a pass-through
     // geometry shader for vertex shader stream output
     bool passthroughShader = pDxbcModuleInfo->xfb != nullptr
-      && module.programInfo().type() != DxbcProgramType::GeometryShader;
+      && (module.programInfo().type() == DxbcProgramType::VertexShader
+       || module.programInfo().type() == DxbcProgramType::DomainShader);
+
+    if (module.programInfo().shaderStage() != pShaderKey->type() && !passthroughShader)
+      throw DxvkError("Mismatching shader type.");
 
     m_shader = passthroughShader
       ? module.compilePassthroughShader(*pDxbcModuleInfo, name)
