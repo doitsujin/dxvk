@@ -1,6 +1,8 @@
 #pragma once
 
 #include <array>
+#include <vector>
+#include <set>
 
 #include "dxbc_common.h"
 #include "dxbc_decoder.h"
@@ -453,6 +455,8 @@ namespace dxvk {
   class DxbcDecodeContext {
     
   public:
+    DxbcDecodeContext(std::string name) : m_name(std::move(name)), m_instr_num(0),
+                                          m_if_condition_saved(false), m_emitting_sync(0) {}
     
     /**
      * \brief Retrieves current instruction
@@ -481,6 +485,15 @@ namespace dxvk {
     std::array<DxbcRegister,  8> m_srcOperands;
     std::array<DxbcImmediate, 4> m_immOperands;
     std::array<DxbcRegister, 12> m_indices;
+
+    std::string m_name;
+    std::vector<uint32_t> m_if_stack;
+    size_t m_instr_num;
+    uint32_t m_new_temp;
+    bool m_if_condition_saved;
+    uint32_t m_emitting_sync;
+    std::set<uint32_t> m_written_buffers;
+    DxbcZeroTest m_zero_test;
     
     // Index into the indices array. Used when decoding
     // instruction operands with relative indexing.

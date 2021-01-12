@@ -35,7 +35,12 @@ namespace dxvk {
       throw DxvkError("DxbcCodeSlice: End of stream");
     return DxbcCodeSlice(m_ptr + n, m_end);
   }
-  
+
+
+  static bool check_f1_2020() {
+      const char *sgi = getenv("SteamGameId");
+      return sgi && strcmp(sgi, "1080110") == 0;
+  }
   
   
   void DxbcDecodeContext::decodeInstruction(DxbcCodeSlice& code) {
@@ -70,6 +75,130 @@ namespace dxvk {
     } else {
       length = bit::extract(token0, 24, 30);
       this->decodeOperation(code.take(length));
+    }
+
+    static bool is_f1_2020 = check_f1_2020();
+    if (is_f1_2020 && m_name.substr(0, 3) == "CS_") {
+        if (m_instruction.op == DxbcOpcode::DclTemps) {
+            // Allocate a new temporary; tcl_temps is not used by
+            // DXVK, but let's keep it consistent
+            m_new_temp = m_immOperands[0].u32++;
+        }
+
+        if (m_instruction.opClass == DxbcInstClass::BufferStore) {
+            const auto &dst = m_instruction.dst[0];
+            if (dst.type == DxbcOperandType::ThreadGroupSharedMemory) {
+                if (dst.idxDim == 1 && dst.idx[0].relReg == nullptr) {
+                    const auto reg_idx = dst.idx[0].offset;
+                    m_written_buffers.insert(reg_idx);
+                }
+            }
+        } else if (m_instruction.opClass == DxbcInstClass::BufferLoad) {
+            const auto &src = m_instruction.src[m_instruction.srcCount-1];
+            if (src.type == DxbcOperandType::ThreadGroupSharedMemory) {
+                if (src.idxDim == 1 && src.idx[0].relReg == nullptr) {
+                    const auto reg_idx = src.idx[0].offset;
+                    if (m_written_buffers.find(reg_idx) != m_written_buffers.end()) {
+                        if (m_if_stack.empty() || (m_if_stack.size() == 1 && m_if_stack[0] == 0)) {
+                            if (m_emitting_sync == 0) {
+                                m_emitting_sync = 1;
+                                if (!m_if_stack.empty()) {
+                                    m_instruction.op = DxbcOpcode::EndIf;
+                                    m_instruction.opClass = DxbcInstClass::ControlFlow;
+                                    m_instruction.controls = 0;
+                                    m_instruction.sampleControls = {0, 0, 0};
+                                    m_instruction.srcCount = 0;
+                                    m_instruction.dstCount = 0;
+                                    m_instruction.immCount = 0;
+                                    return;
+                                }
+                            }
+                            if (m_emitting_sync == 1) {
+                                m_emitting_sync = 2;
+                                m_instruction.op = DxbcOpcode::Sync;
+                                m_instruction.opClass = DxbcInstClass::Barrier;
+                                m_instruction.controls = 0x1800;
+                                m_instruction.sampleControls = {0, 0, 0};
+                                m_instruction.srcCount = 0;
+                                m_instruction.dstCount = 0;
+                                m_instruction.immCount = 0;
+                                return;
+                            }
+                            if (m_emitting_sync == 2) {
+                                m_emitting_sync = 3;
+                                if (!m_if_stack.empty()) {
+                                    m_instruction.op = DxbcOpcode::If;
+                                    m_instruction.opClass = DxbcInstClass::ControlFlow;
+                                    m_instruction.controls = (m_zero_test == DxbcZeroTest::TestNz) << 18;
+                                    m_instruction.sampleControls = {0, 0, 0};
+                                    m_instruction.srcCount = 1;
+                                    m_instruction.dstCount = 0;
+                                    m_instruction.immCount = 0;
+                                    m_srcOperands[0].type = DxbcOperandType::Temp;
+                                    m_srcOperands[0].dataType = DxbcScalarType::Uint32;
+                                    m_srcOperands[0].componentCount = DxbcComponentCount::Component4;
+                                    m_srcOperands[0].idxDim = 1;
+                                    m_srcOperands[0].idx[0].relReg = nullptr;
+                                    m_srcOperands[0].idx[0].offset = m_new_temp;
+                                    m_srcOperands[0].mask = DxbcRegMask(true, false, false, false);
+                                    m_srcOperands[0].swizzle = DxbcRegSwizzle(0, 1, 2, 3);
+                                    m_srcOperands[0].modifiers = 0;
+                                    return;
+                                }
+                            }
+                            if (m_emitting_sync == 3) {
+                                m_emitting_sync = 0;
+                                m_written_buffers.clear();
+                            }
+                        } else {
+                            // To deep in the stack, we cannot emit a
+                            // control barrier
+                        }
+                    }
+                }
+            }
+        }
+
+        switch (m_instruction.op) {
+        case DxbcOpcode::If: m_if_stack.push_back(0); break;
+        case DxbcOpcode::Else: m_if_stack.back() = 1; break;
+        case DxbcOpcode::EndIf: m_if_stack.pop_back(); break;
+        case DxbcOpcode::Loop: m_if_stack.push_back(2); break;
+        case DxbcOpcode::EndLoop: m_if_stack.pop_back(); break;
+        case DxbcOpcode::Switch: m_if_stack.push_back(3); break;
+        case DxbcOpcode::EndSwitch: m_if_stack.pop_back(); break;
+        default: break;
+        }
+
+        if (m_instruction.op == DxbcOpcode::If && m_if_stack.size() == 1 && m_if_stack[0] == 0) {
+            if (m_if_condition_saved) {
+                m_if_condition_saved = false;
+            } else {
+                // Save if condition
+                m_if_condition_saved = true;
+                m_zero_test = m_instruction.controls.zeroTest();
+                m_if_stack.pop_back();
+
+                m_instruction.op = DxbcOpcode::Mov;
+                m_instruction.opClass = DxbcInstClass::VectorAlu;
+                m_instruction.controls = 0;
+                m_instruction.sampleControls = {0, 0, 0};
+                m_instruction.srcCount = 1;
+                m_instruction.dstCount = 1;
+                m_instruction.immCount = 0;
+                // Source is already correct from the if
+                m_dstOperands[0].type = DxbcOperandType::Temp;
+                m_dstOperands[0].dataType = DxbcScalarType::Uint32;
+                m_dstOperands[0].componentCount = DxbcComponentCount::Component4;
+                m_dstOperands[0].idxDim = 1;
+                m_dstOperands[0].idx[0].relReg = nullptr;
+                m_dstOperands[0].idx[0].offset = m_new_temp;
+                m_dstOperands[0].mask = DxbcRegMask(true, false, false, false);
+                m_dstOperands[0].swizzle = DxbcRegSwizzle(0, 1, 2, 3);
+                m_dstOperands[0].modifiers = 0;
+                return;
+            }
+        }
     }
     
     // Advance the caller's slice to the next token so that

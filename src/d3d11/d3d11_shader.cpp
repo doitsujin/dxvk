@@ -20,7 +20,7 @@ namespace dxvk {
       reinterpret_cast<const char*>(pShaderBytecode),
       BytecodeLength);
     
-    DxbcModule module(reader);
+    DxbcModule module(reader, name);
     
     // If requested by the user, dump both the raw DXBC
     // shader and the compiled SPIR-V module to a file.

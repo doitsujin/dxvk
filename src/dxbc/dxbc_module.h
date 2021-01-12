@@ -28,7 +28,7 @@ namespace dxvk {
     
   public:
     
-    DxbcModule(DxbcReader& reader);
+    DxbcModule(DxbcReader& reader, std::string name = "");
     ~DxbcModule();
     
     /**
@@ -82,6 +82,8 @@ namespace dxvk {
     Rc<DxbcIsgn> m_osgnChunk;
     Rc<DxbcIsgn> m_psgnChunk;
     Rc<DxbcShex> m_shexChunk;
+
+    std::string m_name;
     
     void runAnalyzer(
             DxbcAnalyzer&       analyzer,

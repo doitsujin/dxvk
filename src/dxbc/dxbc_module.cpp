@@ -4,8 +4,8 @@
 
 namespace dxvk {
   
-  DxbcModule::DxbcModule(DxbcReader& reader)
-  : m_header(reader) {
+  DxbcModule::DxbcModule(DxbcReader& reader, std::string name)
+  : m_header(reader), m_name(std::move(name)) {
     for (uint32_t i = 0; i < m_header.numChunks(); i++) {
       
       // The chunk tag is stored at the beginning of each chunk
@@ -89,7 +89,7 @@ namespace dxvk {
   void DxbcModule::runAnalyzer(
           DxbcAnalyzer&       analyzer,
           DxbcCodeSlice       slice) const {
-    DxbcDecodeContext decoder;
+    DxbcDecodeContext decoder(m_name);
     
     while (!slice.atEnd()) {
       decoder.decodeInstruction(slice);
@@ -103,7 +103,7 @@ namespace dxvk {
   void DxbcModule::runCompiler(
           DxbcCompiler&       compiler,
           DxbcCodeSlice       slice) const {
-    DxbcDecodeContext decoder;
+    DxbcDecodeContext decoder(m_name);
     
     while (!slice.atEnd()) {
       decoder.decodeInstruction(slice);
