@@ -2156,6 +2156,15 @@ namespace dxvk {
         image->info().layout,
         image->info().stages,
         image->info().access);
+    } else {
+      barriers->accessImage(image,
+        vk::makeSubresourceRange(subresources),
+        image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        image->info().layout,
+        image->info().stages,
+        image->info().access);
     }
     
     m_cmd->trackResource<DxvkAccess::Write>(image);
