@@ -2112,15 +2112,23 @@ namespace dxvk {
       elementCount, formatInfo->elementSize,
       pitchPerRow, pitchPerLayer);
 
+    DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer::SdmaBuffer;
+    DxvkBarrierSet* barriers = &m_sdmaAcquires;
+    
+    if (subresources.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+      cmdBuffer = DxvkCmdBuffer::InitBuffer;
+      barriers = &m_initBarriers;
+    }
+
     // Discard previous subresource contents
-    m_sdmaAcquires.accessImage(image,
+    barriers->accessImage(image,
       vk::makeSubresourceRange(subresources),
       VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
       image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
 
-    m_sdmaAcquires.recordCommands(m_cmd);
+    barriers->recordCommands(m_cmd);
     
     // Perform copy on the transfer queue
     VkBufferImageCopy region;
@@ -2131,22 +2139,24 @@ namespace dxvk {
     region.imageOffset        = imageOffset;
     region.imageExtent        = imageExtent;
     
-    m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::SdmaBuffer,
+    m_cmd->cmdCopyBufferToImage(cmdBuffer,
       stagingHandle.handle, image->handle(),
       image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       1, &region);
     
     // Transfer ownership to graphics queue
-    m_sdmaBarriers.releaseImage(m_initBarriers,
-      image, vk::makeSubresourceRange(subresources),
-      m_device->queues().transfer.queueFamily,
-      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_WRITE_BIT,
-      m_device->queues().graphics.queueFamily,
-      image->info().layout,
-      image->info().stages,
-      image->info().access);
+    if (cmdBuffer == DxvkCmdBuffer::SdmaBuffer) {
+      m_sdmaBarriers.releaseImage(m_initBarriers,
+        image, vk::makeSubresourceRange(subresources),
+        m_device->queues().transfer.queueFamily,
+        image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        m_device->queues().graphics.queueFamily,
+        image->info().layout,
+        image->info().stages,
+        image->info().access);
+    }
     
     m_cmd->trackResource<DxvkAccess::Write>(image);
     m_cmd->trackResource<DxvkAccess::Read>(stagingSlice.buffer());
