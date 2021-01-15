@@ -179,7 +179,7 @@ namespace dxvk {
     }} },
     /* F1 2019 - does not synchronize TGSM access *
      * in a compute shader, causing artifacts     */
-    { R"(\\F1_2019\.exe$)", {{
+    { R"(\\F1_201[89]\.exe$)", {{
       { "d3d11.forceTgsmBarriers",          "True" },
     }} },
     /* Subnautica                                 */
