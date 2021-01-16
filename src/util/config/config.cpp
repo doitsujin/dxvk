@@ -177,9 +177,9 @@ namespace dxvk {
     { R"(\\Entropia\.exe$)", {{
       { "d3d11.invariantPosition",          "True" },
     }} },
-    /* F1 2019 - does not synchronize TGSM access *
+    /* F1 games - do not synchronize TGSM access  *
      * in a compute shader, causing artifacts     */
-    { R"(\\F1_201[89]\.exe$)", {{
+    { R"(\\F1_20(1[89]|[2-9][0-9])\.exe$)", {{
       { "d3d11.forceTgsmBarriers",          "True" },
     }} },
     /* Subnautica                                 */
