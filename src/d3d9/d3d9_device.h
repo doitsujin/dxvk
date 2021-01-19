@@ -706,6 +706,10 @@ namespace dxvk {
             D3D9CommonTexture*      pResource,
             UINT                    Subresource);
 
+    void UpdateMappedBuffer(
+            D3D9CommonTexture*      pResource,
+            UINT                    Subresource);
+
     void EmitGenerateMips(
             D3D9CommonTexture* pResource);
 

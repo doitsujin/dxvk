@@ -300,9 +300,19 @@ namespace dxvk {
       return m_type;
     }
 
+    bool ShouldUpdateMappedBufferEarly() const {
+      // The texture has been locked very frequently.
+      // This indicates that it gets locked every frame
+      // and we should try our hardest to avoid the late copy to the mapping buffer.
+      return m_totalLockCount > 256;
+    }
+
     const D3D9_VK_FORMAT_MAPPING& GetMapping() { return m_mapping; }
 
-    void SetLocked(UINT Subresource, bool value) { m_locked.set(Subresource, value); }
+    void SetLocked(UINT Subresource, bool value) {
+      m_totalLockCount += 1;
+      m_locked.set(Subresource, value);
+    }
 
     bool GetLocked(UINT Subresource) const { return m_locked.get(Subresource); }
 
@@ -405,6 +415,8 @@ namespace dxvk {
     bool                          m_needsMipGen = false;
 
     D3DTEXTUREFILTERTYPE          m_mipFilter = D3DTEXF_LINEAR;
+
+    uint32_t                      m_totalLockCount = 0;
 
     /**
      * \brief Mip level

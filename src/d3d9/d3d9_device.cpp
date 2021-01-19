@@ -699,7 +699,10 @@ namespace dxvk {
         cSrcExtent);
     });
 
-    dstTextureInfo->SetDirty(dst->GetSubresource(), true);
+    if (dstTextureInfo->ShouldUpdateMappedBufferEarly())
+      UpdateMappedBuffer(dst->GetCommonTexture(), dst->GetSubresource());
+    else
+      dstTextureInfo->SetDirty(dst->GetSubresource(), true);
 
     if (dstTextureInfo->IsAutomaticMip())
       MarkTextureMipsDirty(dstTextureInfo);
@@ -749,8 +752,12 @@ namespace dxvk {
     }
 
     if (dstTexInfo->IsAutomaticMip()) {
-      for (uint32_t i = 0; i < dstTexInfo->Desc()->ArraySize; i++)
-        dstTexInfo->SetDirty(dstTexInfo->CalcSubresource(i, 0), true);
+      for (uint32_t i = 0; i < dstTexInfo->Desc()->ArraySize; i++) {
+        if (dstTexInfo->ShouldUpdateMappedBufferEarly())
+          UpdateMappedBuffer(dstTexInfo, dstTexInfo->CalcSubresource(i, 0));
+        else
+          dstTexInfo->SetDirty(dstTexInfo->CalcSubresource(i, 0), true);
+      }
 
       MarkTextureMipsDirty(dstTexInfo);
     }
@@ -811,7 +818,10 @@ namespace dxvk {
         cLevelExtent);
     });
 
-    dstTexInfo->SetDirty(dst->GetSubresource(), true);
+    if (dstTexInfo->ShouldUpdateMappedBufferEarly())
+      UpdateMappedBuffer(dstTexInfo, dst->GetSubresource());
+    else
+      dstTexInfo->SetDirty(dst->GetSubresource(), true);
 
     return D3D_OK;
   }
@@ -1021,7 +1031,10 @@ namespace dxvk {
       });
     }
 
-    dstTextureInfo->SetDirty(dst->GetSubresource(), true);
+    if (dstTextureInfo->ShouldUpdateMappedBufferEarly())
+      UpdateMappedBuffer(dstTextureInfo, dst->GetSubresource());
+    else
+      dstTextureInfo->SetDirty(dst->GetSubresource(), true);
 
     if (dstTextureInfo->IsAutomaticMip())
       MarkTextureMipsDirty(dstTextureInfo);
@@ -1099,7 +1112,10 @@ namespace dxvk {
       });
     }
 
-    dstTextureInfo->SetDirty(dst->GetSubresource(), true);
+    if (dstTextureInfo->ShouldUpdateMappedBufferEarly())
+      UpdateMappedBuffer(dstTextureInfo, dst->GetSubresource());
+    else
+      dstTextureInfo->SetDirty(dst->GetSubresource(), true);
 
     if (dstTextureInfo->IsAutomaticMip())
       MarkTextureMipsDirty(dstTextureInfo);
@@ -4044,70 +4060,7 @@ namespace dxvk {
       physSlice = mappedBuffer->getSliceHandle();
 
       if (unlikely(dirty)) {
-        Rc<DxvkImage> resourceImage = pResource->GetImage();
-
-        Rc<DxvkImage> mappedImage = resourceImage->info().sampleCount != 1
-          ? pResource->GetResolveImage()
-          : std::move(resourceImage);
-
-        // When using any map mode which requires the image contents
-        // to be preserved, and if the GPU has write access to the
-        // image, copy the current image contents into the buffer.
-        auto subresourceLayers = vk::makeSubresourceLayers(subresource);
-
-        // We need to resolve this, some games
-        // lock MSAA render targets even though
-        // that's entirely illegal and they explicitly
-        // tell us that they do NOT want to lock them...
-        if (resourceImage != nullptr) {
-          EmitCs([
-            cMainImage    = resourceImage,
-            cResolveImage = mappedImage,
-            cSubresource  = subresourceLayers
-          ] (DxvkContext* ctx) {
-            VkImageResolve region;
-            region.srcSubresource = cSubresource;
-            region.srcOffset      = VkOffset3D { 0, 0, 0 };
-            region.dstSubresource = cSubresource;
-            region.dstOffset      = VkOffset3D { 0, 0, 0 };
-            region.extent         = cMainImage->mipLevelExtent(cSubresource.mipLevel);
-
-            if (cSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-              ctx->resolveImage(
-                cResolveImage, cMainImage, region,
-                cMainImage->info().format);
-            }
-            else {
-              ctx->resolveDepthStencilImage(
-                cResolveImage, cMainImage, region,
-                VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR,
-                VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR);
-            }
-          });
-        }
-
-        VkFormat packedFormat = GetPackedDepthStencilFormat(desc.Format);
-
-        EmitCs([
-          cImageBuffer  = mappedBuffer,
-          cImage        = std::move(mappedImage),
-          cSubresources = subresourceLayers,
-          cLevelExtent  = levelExtent,
-          cPackedFormat = packedFormat
-        ] (DxvkContext* ctx) {
-          if (cSubresources.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-            ctx->copyImageToBuffer(
-              cImageBuffer, 0, VkExtent2D { 0u, 0u },
-              cImage, cSubresources, VkOffset3D { 0, 0, 0 },
-              cLevelExtent);
-          } else {
-            ctx->copyDepthStencilImageToPackedBuffer(
-              cImageBuffer, 0, cImage, cSubresources,
-              VkOffset2D { 0, 0 },
-              VkExtent2D { cLevelExtent.width, cLevelExtent.height },
-              cPackedFormat);
-          }
-        });
+        UpdateMappedBuffer(pResource, Subresource);
 
         if (!WaitForResource(mappedBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
@@ -4253,6 +4206,89 @@ namespace dxvk {
       MarkTextureMipsDirty(pResource);
 
     return D3D_OK;
+  }
+
+  void D3D9DeviceEx::UpdateMappedBuffer(
+    D3D9CommonTexture*      pResource,
+    UINT                    Subresource) {
+
+    const Rc<DxvkBuffer> mappedBuffer = pResource->GetBuffer(Subresource);
+    if (mappedBuffer == nullptr) {
+      pResource->SetDirty(Subresource, true);
+      return;
+    }
+    pResource->SetDirty(Subresource, false);
+
+
+    auto& desc = *pResource->Desc();
+    const DxvkFormatInfo* formatInfo = imageFormatInfo(pResource->GetFormatMapping().FormatColor);
+    Rc<DxvkImage> resourceImage = pResource->GetImage();
+
+    Rc<DxvkImage> mappedImage = resourceImage->info().sampleCount != 1
+      ? pResource->GetResolveImage()
+      : std::move(resourceImage);
+
+    // When using any map mode which requires the image contents
+    // to be preserved, and if the GPU has write access to the
+    // image, copy the current image contents into the buffer.
+    auto subresource = pResource->GetSubresourceFromIndex(
+    formatInfo->aspectMask, Subresource);
+    auto subresourceLayers = vk::makeSubresourceLayers(subresource);
+
+    // We need to resolve this, some games
+    // lock MSAA render targets even though
+    // that's entirely illegal and they explicitly
+    // tell us that they do NOT want to lock them...
+    if (resourceImage != nullptr) {
+      EmitCs([
+        cMainImage    = resourceImage,
+        cResolveImage = mappedImage,
+        cSubresource  = subresourceLayers
+      ] (DxvkContext* ctx) {
+        VkImageResolve region;
+        region.srcSubresource = cSubresource;
+        region.srcOffset      = VkOffset3D { 0, 0, 0 };
+        region.dstSubresource = cSubresource;
+        region.dstOffset      = VkOffset3D { 0, 0, 0 };
+        region.extent         = cMainImage->mipLevelExtent(cSubresource.mipLevel);
+
+        if (cSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+          ctx->resolveImage(
+            cResolveImage, cMainImage, region,
+            cMainImage->info().format);
+        }
+        else {
+          ctx->resolveDepthStencilImage(
+            cResolveImage, cMainImage, region,
+            VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR,
+            VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR);
+        }
+      });
+    }
+
+    VkFormat packedFormat = GetPackedDepthStencilFormat(desc.Format);
+    VkExtent3D levelExtent = pResource->GetExtentMip(subresource.mipLevel);
+
+    EmitCs([
+      cImageBuffer  = mappedBuffer,
+      cImage        = std::move(mappedImage),
+      cSubresources = subresourceLayers,
+      cLevelExtent  = levelExtent,
+      cPackedFormat = packedFormat
+    ] (DxvkContext* ctx) {
+      if (cSubresources.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+        ctx->copyImageToBuffer(
+          cImageBuffer, 0, VkExtent2D { 0u, 0u },
+          cImage, cSubresources, VkOffset3D { 0, 0, 0 },
+          cLevelExtent);
+      } else {
+        ctx->copyDepthStencilImageToPackedBuffer(
+          cImageBuffer, 0, cImage, cSubresources,
+          VkOffset2D { 0, 0 },
+          VkExtent2D { cLevelExtent.width, cLevelExtent.height },
+          cPackedFormat);
+      }
+    });
   }
 
 
