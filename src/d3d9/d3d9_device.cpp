@@ -3970,16 +3970,30 @@ namespace dxvk {
     const bool readOnly = Flags & D3DLOCK_READONLY;
     pResource->SetReadOnlyLocked(Subresource, readOnly);
 
-    bool renderable = desc.Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL);
-
     // If we are dirty, then we need to copy -> buffer
-    // We are also always dirty if we are a render target,
-    // a depth stencil, or auto generate mipmaps.
-    bool dirty = pResource->GetDirty(Subresource) || renderable;
+    bool dirty = pResource->GetDirty(Subresource);
+
+    bool renderable = desc.Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL);
+    if (renderable && !dirty) {
+      // If the texture is currently bound as an RT of DS, we treat it as always dirty
+      // to avoid having to mark it as dirty before every draw call while it's bound
+
+      bool isBound = false;
+      for (uint32_t i = 1; i < caps::MaxSimultaneousRenderTargets; i++) {
+        auto rt = m_state.renderTargets[i];
+        isBound |= rt != nullptr && rt->GetCommonTexture() == pResource && rt->GetSubresource() == Subresource;
+      }
+      isBound |= m_state.depthStencil != nullptr
+        && m_state.depthStencil->GetCommonTexture() == pResource
+        && m_state.depthStencil->GetSubresource() == Subresource;
+
+      dirty |= isBound;
+    }
+
     pResource->SetDirty(Subresource, false);
-      
+
     DxvkBufferSliceHandle physSlice;
-      
+
     if (Flags & D3DLOCK_DISCARD) {
       // We do not have to preserve the contents of the
       // buffer if the entire image gets discarded.
