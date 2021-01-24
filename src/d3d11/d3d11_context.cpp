@@ -1459,6 +1459,7 @@ namespace dxvk {
           UINT            StartIndexLocation,
           INT             BaseVertexLocation) {
     D3D10DeviceLock lock = LockContext();
+    StartIndexLocation += m_state.ia.indexBuffer.firstIndex;
     
     EmitCs([=] (DxvkContext* ctx) {
       ctx->drawIndexed(
@@ -1493,6 +1494,7 @@ namespace dxvk {
           INT             BaseVertexLocation,
           UINT            StartInstanceLocation) {
     D3D10DeviceLock lock = LockContext();
+    StartIndexLocation += m_state.ia.indexBuffer.firstIndex;
     
     EmitCs([=] (DxvkContext* ctx) {
       ctx->drawIndexed(
@@ -1666,6 +1668,12 @@ namespace dxvk {
 
     if (needsUpdate)
       m_state.ia.indexBuffer.buffer = newBuffer;
+
+    if (likely(m_state.ia.indexBuffer.optimized)) {
+      uint32_t shift = Format == DXGI_FORMAT_R16_UINT ? 1 : 2;
+      m_state.ia.indexBuffer.firstIndex = Offset >> shift;
+      Offset = 0;
+    }
 
     needsUpdate |= m_state.ia.indexBuffer.offset != Offset
                 || m_state.ia.indexBuffer.format != Format;
@@ -3377,7 +3385,13 @@ namespace dxvk {
 
   void D3D11DeviceContext::BindFramebuffer() {
     DxvkRenderTargets attachments;
-    
+
+    // Re-enable index buffer optimization here. Some games will
+    // use indirect draws for actual scene rendering, but then
+    // use direct draws for things like the user interface.
+    if (!m_state.ia.indexBuffer.optimized)
+      SetIndexBufferOptimized(true);
+
     // D3D11 doesn't have the concept of a framebuffer object,
     // so we'll just create a new one every time the render
     // target bindings are updated. Set up the attachments.
@@ -3572,11 +3586,38 @@ namespace dxvk {
   }
 
 
+  void D3D11DeviceContext::SetIndexBufferOptimized(
+          BOOL                              Enable) {
+    uint32_t shift = m_state.ia.indexBuffer.format == DXGI_FORMAT_R16_UINT ? 1 : 2;
+
+    if (Enable) {
+      m_state.ia.indexBuffer.firstIndex = m_state.ia.indexBuffer.offset >> shift;
+      m_state.ia.indexBuffer.offset = 0;
+    } else {
+      m_state.ia.indexBuffer.offset += m_state.ia.indexBuffer.firstIndex << shift;
+      m_state.ia.indexBuffer.firstIndex = 0;
+    }
+
+    m_state.ia.indexBuffer.optimized = Enable;
+
+    BindIndexBuffer(
+      m_state.ia.indexBuffer.buffer.ptr(),
+      m_state.ia.indexBuffer.offset,
+      m_state.ia.indexBuffer.format);
+  }
+
+
   void D3D11DeviceContext::SetDrawBuffers(
           ID3D11Buffer*                     pBufferForArgs,
           ID3D11Buffer*                     pBufferForCount) {
     auto argBuffer = static_cast<D3D11Buffer*>(pBufferForArgs);
     auto cntBuffer = static_cast<D3D11Buffer*>(pBufferForCount);
+
+    // Bind index buffer with the actual offset since otherwise the
+    // first index members of the indirect draw structures would be
+    // incorrect.
+    if (unlikely(m_state.ia.indexBuffer.optimized))
+      SetIndexBufferOptimized(false);
 
     if (m_state.id.argBuffer != argBuffer
      || m_state.id.cntBuffer != cntBuffer) {

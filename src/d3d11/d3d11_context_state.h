@@ -103,6 +103,8 @@ namespace dxvk {
     Com<D3D11Buffer> buffer = nullptr;
     UINT             offset = 0;
     DXGI_FORMAT      format = DXGI_FORMAT_UNKNOWN;
+    UINT             firstIndex = 0;
+    BOOL             optimized  = true;
   };
 
 
