@@ -162,7 +162,7 @@ namespace dxvk {
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
     /* Just how many of these games are there?    */
-    { R"(\\Atelier_(Lulua|Lydie_and_Suelle|Ryza)\.exe$)", {{
+    { R"(\\Atelier_(Lulua|Lydie_and_Suelle|Ryza(_2)?)\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
     /* Fairy Tail                                 */
