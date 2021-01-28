@@ -86,6 +86,12 @@ namespace dxvk {
             uint32_t                entryPointId,
             spv::ExecutionMode      executionMode);
     
+    void setExecutionMode(
+            uint32_t                entryPointId,
+            spv::ExecutionMode      executionMode,
+            uint32_t                argCount,
+      const uint32_t*               args);
+    
     void setInvocations(
             uint32_t                entryPointId,
             uint32_t                invocations);

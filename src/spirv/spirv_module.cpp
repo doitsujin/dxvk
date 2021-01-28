@@ -93,6 +93,20 @@ namespace dxvk {
   }
   
   
+  void SpirvModule::setExecutionMode(
+          uint32_t                entryPointId,
+          spv::ExecutionMode      executionMode,
+          uint32_t                argCount,
+    const uint32_t*               args) {
+    m_execModeInfo.putIns (spv::OpExecutionMode, 3 + argCount);
+    m_execModeInfo.putWord(entryPointId);
+    m_execModeInfo.putWord(executionMode);
+
+    for (uint32_t i = 0; i < argCount; i++)
+      m_execModeInfo.putWord(args[i]);
+  }
+
+
   void SpirvModule::setInvocations(
           uint32_t                entryPointId,
           uint32_t                invocations) {

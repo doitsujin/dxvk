@@ -5,7 +5,16 @@
 namespace dxvk {
 
   struct D3D11Options;
-  
+
+  enum class DxbcFloatControlFlag : uint32_t {
+    DenormFlushToZero32,
+    DenormPreserve64,
+    PreserveNan32,
+    PreserveNan64,
+  };
+
+  using DxbcFloatControlFlags = Flags<DxbcFloatControlFlag>;
+
   struct DxbcOptions {
     DxbcOptions();
     DxbcOptions(const Rc<DxvkDevice>& device, const D3D11Options& options);
@@ -47,6 +56,9 @@ namespace dxvk {
 
     /// Insert memory barriers after TGSM stoes
     bool forceTgsmBarriers = false;
+
+    /// Float control flags
+    DxbcFloatControlFlags floatControl;
 
     /// Minimum storage buffer alignment
     VkDeviceSize minSsboAlignment = 0;

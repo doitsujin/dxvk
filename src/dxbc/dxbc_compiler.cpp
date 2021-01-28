@@ -235,6 +235,9 @@ namespace dxvk {
       case DxbcProgramType::PixelShader:    this->emitPsFinalize(); break;
       case DxbcProgramType::ComputeShader:  this->emitCsFinalize(); break;
     }
+
+    // Emit float control mode if the extension is supported
+    this->emitFloatControl();
     
     // Declare the entry point, we now have all the
     // information we need, including the interfaces
@@ -7467,7 +7470,32 @@ namespace dxvk {
     return varId;
   }
   
-  
+
+  void DxbcCompiler::emitFloatControl() {
+    DxbcFloatControlFlags flags = m_moduleInfo.options.floatControl;
+
+    if (flags.isClear())
+      return;
+
+    const uint32_t width32 = 32;
+    const uint32_t width64 = 64;
+
+    m_module.enableExtension("SPV_KHR_float_controls");
+
+    if (flags.test(DxbcFloatControlFlag::DenormFlushToZero32))
+      m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeDenormFlushToZero, 1, &width32);
+
+    if (flags.test(DxbcFloatControlFlag::DenormPreserve64))
+      m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeDenormPreserve, 1, &width64);
+
+    if (flags.test(DxbcFloatControlFlag::PreserveNan32))
+      m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeSignedZeroInfNanPreserve, 1, &width32);
+
+    if (flags.test(DxbcFloatControlFlag::PreserveNan64))
+      m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeSignedZeroInfNanPreserve, 1, &width64);
+  }
+
+
   uint32_t DxbcCompiler::emitNewVariable(const DxbcRegisterInfo& info) {
     const uint32_t ptrTypeId = this->getPointerTypeId(info);
     return m_module.newVar(ptrTypeId, info.sclass);

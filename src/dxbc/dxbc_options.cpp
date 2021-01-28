@@ -57,6 +57,19 @@ namespace dxvk {
     
     // Apply shader-related options
     applyTristate(useSubgroupOpsForEarlyDiscard, device->config().useEarlyDiscard);
+
+    // Figure out float control flags to match D3D11 rules
+    if (devInfo.khrShaderFloatControls.shaderSignedZeroInfNanPreserveFloat32)
+      floatControl.set(DxbcFloatControlFlag::PreserveNan32);
+    if (devInfo.khrShaderFloatControls.shaderSignedZeroInfNanPreserveFloat64)
+      floatControl.set(DxbcFloatControlFlag::PreserveNan64);
+
+    if (devInfo.khrShaderFloatControls.denormBehaviorIndependence != VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_NONE) {
+      if (devInfo.khrShaderFloatControls.shaderDenormFlushToZeroFloat32)
+        floatControl.set(DxbcFloatControlFlag::DenormFlushToZero32);
+      if (devInfo.khrShaderFloatControls.shaderDenormPreserveFloat64)
+        floatControl.set(DxbcFloatControlFlag::DenormPreserve64);
+    }
   }
   
 }

@@ -1173,6 +1173,8 @@ namespace dxvk {
     
     uint32_t emitSamplePosArray();
     
+    void emitFloatControl();
+    
     ///////////////////////////////
     // Variable definition methods
     uint32_t emitNewVariable(
