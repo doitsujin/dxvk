@@ -79,7 +79,6 @@ namespace dxvk {
     /* Devil May Cry 5                            */
     { R"(\\DevilMayCry5\.exe$)", {{
       { "d3d11.relaxedBarriers",            "True" },
-      { "d3d11.invariantPosition",          "True" },
     }} },
     /* Call of Duty WW2                           */
     { R"(\\s2_sp64_ship\.exe$)", {{
@@ -132,12 +131,10 @@ namespace dxvk {
     /* Saints Row IV                              */
     { R"(\\SaintsRowIV\.exe$)", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
-      { "d3d11.invariantPosition",          "True" },
     }} },
     /* Saints Row: The Third                      */
     { R"(\\SaintsRowTheThird_DX11\.exe$)", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
-      { "d3d11.invariantPosition",          "True" },
     }} },
     /* Metal Gear Solid 5                         */
     { R"(\\mgsvtpp\.exe$)", {{
@@ -173,10 +170,6 @@ namespace dxvk {
     { R"(\\starwarsbattlefrontii\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
-    /* Entropia Universe                          */
-    { R"(\\Entropia\.exe$)", {{
-      { "d3d11.invariantPosition",          "True" },
-    }} },
     /* F1 games - do not synchronize TGSM access  *
      * in a compute shader, causing artifacts     */
     { R"(\\F1_20(1[89]|[2-9][0-9])\.exe$)", {{
@@ -194,22 +187,6 @@ namespace dxvk {
     { R"(\\SecretWorldLegendsDX11\.exe$)", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
     }} },
-    /* Borderlands 3                              */
-    { R"(\\Borderlands3\.exe$)", {{
-      { "d3d11.invariantPosition",          "True" },
-    }} },
-    /* Terminator: Resistance                     */
-    { R"(\\Terminator-Win64-Shipping\.exe$)", {{
-      { "d3d11.invariantPosition",          "True" },
-    }} },
-    /* Star Wars Jedi: Fallen Order               */
-    { R"(\\starwarsjedifallenorder\.exe$)", {{
-      { "d3d11.invariantPosition",          "True" },
-    }} },
-    /* Mafia III: Definitive Edition              */
-    { R"(\\Mafia3DefinitiveEdition\.exe$)", {{
-      { "d3d11.invariantPosition",          "True" },
-    }} },
     /* Darksiders Warmastered - apparently reads  *
      * from write-only mapped buffers             */
     { R"(\\darksiders1\.exe$)", {{
@@ -218,7 +195,11 @@ namespace dxvk {
     /* Monster Hunter World                       */
     { R"(\\MonsterHunterWorld\.exe$)", {{
       { "d3d11.apitraceMode",               "True" },
-      { "d3d11.invariantPosition",          "True" },
+    }} },
+    /* Shadow of the Tomb Raider - invariant      *
+     * position breaks character rendering on NV  */
+    { R"(\\SOTTR\.exe$)", {{
+      { "d3d11.invariantPosition",          "False" },
     }} },
 
     /**********************************************/
