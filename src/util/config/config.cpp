@@ -200,6 +200,7 @@ namespace dxvk {
      * position breaks character rendering on NV  */
     { R"(\\SOTTR\.exe$)", {{
       { "d3d11.invariantPosition",          "False" },
+      { "d3d11.floatControls",              "False" },
     }} },
 
     /**********************************************/
