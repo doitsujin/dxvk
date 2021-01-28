@@ -186,14 +186,6 @@ namespace dxvk {
     { R"(\\Subnautica\.exe$)", {{
       { "dxvk.enableOpenVR",                "False" },
     }} },
-    /* Super Monkey Ball: Banana Blitz HD         */
-    { R"(\\SMBBBHD\.exe$)", {{
-      { "d3d11.enableRtOutputNanFixup",     "True" },
-    }} },
-    /* Yooka-Laylee and the Impossible Lair       */
-    { R"(\\YLILWin64\.exe$)", {{
-      { "d3d11.enableRtOutputNanFixup",     "True" },
-    }} },
     /* Blue Reflection                            */
     { R"(\\BLUE_REFLECTION\.exe$)", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
@@ -201,10 +193,6 @@ namespace dxvk {
     /* Secret World Legends                       */
     { R"(\\SecretWorldLegendsDX11\.exe$)", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
-    }} },
-    /* Stars End                                  */
-    { R"(\\Stars End\.exe$)", {{
-      { "d3d11.enableRtOutputNanFixup",     "True" },
     }} },
     /* Borderlands 3                              */
     { R"(\\Borderlands3\.exe$)", {{
@@ -222,10 +210,6 @@ namespace dxvk {
     { R"(\\Mafia3DefinitiveEdition\.exe$)", {{
       { "d3d11.invariantPosition",          "True" },
     }} },
-    /* Observation                                */
-    { R"(\\Observation\.exe$)", {{
-      { "d3d11.enableRtOutputNanFixup",     "True" },
-    }} },
     /* Darksiders Warmastered - apparently reads  *
      * from write-only mapped buffers             */
     { R"(\\darksiders1\.exe$)", {{
@@ -235,30 +219,6 @@ namespace dxvk {
     { R"(\\MonsterHunterWorld\.exe$)", {{
       { "d3d11.apitraceMode",               "True" },
       { "d3d11.invariantPosition",          "True" },
-    }} },
-    /* The Dungeon of Maheulbeuk                  */
-    { R"(\\Naheulbeuk\.exe$)", {{
-      { "d3d11.enableRtOutputNanFixup",     "True" },
-    }} },
-    /* The Ghost Train                            */
-    { R"(\\TheGhostTrain\.exe$)", {{
-      { "d3d11.enableRtOutputNanFixup",     "True" },
-    }} },
-    /* Missing Children                           */
-    { R"(\\Missing Children\.exe$)", {{
-      { "d3d11.enableRtOutputNanFixup",     "True" },
-    }} },
-    /* The Convenience Store Yakin Jiken          */
-    { R"(\\The Convenience Store Yakin Jiken\.exe$)", {{
-      { "d3d11.enableRtOutputNanFixup",     "True" },
-    }} },
-    /* Art of Rally                               */
-    { R"(\\artofrally(_demo)?\.exe$)", {{
-      { "d3d11.enableRtOutputNanFixup",     "True" },
-    }} },
-    /* Empire of Sin                               */
-    { R"(\\EmpireOfSin\.exe$)", {{
-      { "d3d11.enableRtOutputNanFixup",     "True" },
     }} },
 
     /**********************************************/
@@ -423,10 +383,6 @@ namespace dxvk {
     /* Everquest                                 */
     { R"(\\eqgame\.exe$)", {{
       { "d3d9.apitraceMode",                "True" },
-    }} },
-    /* VRChat                                    */
-    { R"(\\VRChat\.exe$)", {{
-      { "d3d11.enableRtOutputNanFixup",     "True" },
     }} },
   }};
 

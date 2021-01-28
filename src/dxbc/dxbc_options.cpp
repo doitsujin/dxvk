@@ -70,6 +70,10 @@ namespace dxvk {
       if (devInfo.khrShaderFloatControls.shaderDenormPreserveFloat64)
         floatControl.set(DxbcFloatControlFlag::DenormPreserve64);
     }
+
+    if (!devInfo.khrShaderFloatControls.shaderSignedZeroInfNanPreserveFloat32
+     || adapter->matchesDriver(DxvkGpuVendor::Amd, VK_DRIVER_ID_MESA_RADV_KHR, 0, VK_MAKE_VERSION(20, 3, 0)))
+      enableRtOutputNanFixup = true;
   }
   
 }
