@@ -7481,17 +7481,27 @@ namespace dxvk {
 
     m_module.enableExtension("SPV_KHR_float_controls");
 
-    if (flags.test(DxbcFloatControlFlag::DenormFlushToZero32))
+    if (flags.test(DxbcFloatControlFlag::DenormFlushToZero32)) {
+      m_module.enableCapability(spv::CapabilityDenormFlushToZero);
       m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeDenormFlushToZero, 1, &width32);
+    }
 
-    if (flags.test(DxbcFloatControlFlag::DenormPreserve64))
-      m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeDenormPreserve, 1, &width64);
-
-    if (flags.test(DxbcFloatControlFlag::PreserveNan32))
+    if (flags.test(DxbcFloatControlFlag::PreserveNan32)) {
+      m_module.enableCapability(spv::CapabilitySignedZeroInfNanPreserve);
       m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeSignedZeroInfNanPreserve, 1, &width32);
+    }
 
-    if (flags.test(DxbcFloatControlFlag::PreserveNan64))
-      m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeSignedZeroInfNanPreserve, 1, &width64);
+    if (m_module.hasCapability(spv::CapabilityFloat64)) {
+      if (flags.test(DxbcFloatControlFlag::DenormPreserve64)) {
+        m_module.enableCapability(spv::CapabilityDenormPreserve);
+        m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeDenormPreserve, 1, &width64);
+      }
+
+      if (flags.test(DxbcFloatControlFlag::PreserveNan64)) {
+        m_module.enableCapability(spv::CapabilitySignedZeroInfNanPreserve);
+        m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeSignedZeroInfNanPreserve, 1, &width64);
+      }
+    }
   }
 
 
