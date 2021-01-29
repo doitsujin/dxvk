@@ -65,6 +65,9 @@ namespace dxvk {
     
     uint32_t allocateId();
     
+    bool hasCapability(
+            spv::Capability         capability);
+
     void enableCapability(
             spv::Capability         capability);
     

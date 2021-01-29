@@ -38,17 +38,24 @@ namespace dxvk {
   }
   
   
+  bool SpirvModule::hasCapability(
+          spv::Capability         capability) {
+    for (auto ins : m_capabilities) {
+      if (ins.opCode() == spv::OpCapability && ins.arg(1) == capability)
+        return true;
+    }
+
+    return false;
+  }
+
   void SpirvModule::enableCapability(
           spv::Capability         capability) {
     // Scan the generated instructions to check
     // whether we already enabled the capability.
-    for (auto ins : m_capabilities) {
-      if (ins.opCode() == spv::OpCapability && ins.arg(1) == capability)
-        return;
+    if (!hasCapability(capability)) {
+      m_capabilities.putIns (spv::OpCapability, 2);
+      m_capabilities.putWord(capability);
     }
-    
-    m_capabilities.putIns (spv::OpCapability, 2);
-    m_capabilities.putWord(capability);
   }
   
   
