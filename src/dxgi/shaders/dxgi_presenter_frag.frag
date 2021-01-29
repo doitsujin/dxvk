@@ -1,6 +1,6 @@
 #version 450
 
-layout(constant_id = 1249) const bool c_has_gamma = false;
+layout(constant_id = 1225) const bool c_has_gamma = false;
 
 layout(binding = 0) uniform sampler2D s_image;
 layout(binding = 1) uniform sampler1D s_gamma;
