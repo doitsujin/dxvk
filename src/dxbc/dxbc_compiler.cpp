@@ -5904,16 +5904,15 @@ namespace dxvk {
       uint32_t specTypeId = getScalarTypeId(DxbcScalarType::Uint32);
       uint32_t compTypeId = getScalarTypeId(vector.type.ctype);
       
+      uint32_t specId = m_module.specConst32(specTypeId, 0x3210);
+      m_module.decorateSpecId(specId, uint32_t(DxvkSpecConstantId::ColorComponentMappings) + i);
+      m_module.setDebugName(specId, str::format("omap", i).c_str());
+
       std::array<uint32_t, 4> scalars;
-
       for (uint32_t c = 0; c < vector.type.ccount; c++) {
-        const char* components = "rgba";
-
-        uint32_t specId = m_module.specConst32(specTypeId, c);
-        m_module.decorateSpecId(specId, uint32_t(DxvkSpecConstantId::ColorComponentMappings) + 4 * i + c);
-        m_module.setDebugName(specId, str::format("omap", i, ".", components[c]).c_str());
-
-        scalars[c] = m_module.opVectorExtractDynamic(compTypeId, vector.id, specId);
+        scalars[c] = m_module.opVectorExtractDynamic(compTypeId, vector.id,
+          m_module.opBitFieldUExtract(specTypeId, specId,
+            m_module.constu32(4 * c), m_module.constu32(4)));
       }
 
       uint32_t typeId = getVectorTypeId(vector.type);

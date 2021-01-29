@@ -167,11 +167,9 @@ namespace dxvk {
     
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       if ((m_fsOut & (1 << i)) != 0) {
-        uint32_t specId = uint32_t(DxvkSpecConstantId::ColorComponentMappings) + 4 * i;
-        specData.set(specId + 0, state.omSwizzle[i].rIndex(), 0u);
-        specData.set(specId + 1, state.omSwizzle[i].gIndex(), 1u);
-        specData.set(specId + 2, state.omSwizzle[i].bIndex(), 2u);
-        specData.set(specId + 3, state.omSwizzle[i].aIndex(), 3u);
+        specData.set(uint32_t(DxvkSpecConstantId::ColorComponentMappings) + i,
+          state.omSwizzle[i].rIndex() << 0 | state.omSwizzle[i].gIndex() << 4 |
+          state.omSwizzle[i].bIndex() << 8 | state.omSwizzle[i].aIndex() << 12, 0x3210u);
       }
     }
 
