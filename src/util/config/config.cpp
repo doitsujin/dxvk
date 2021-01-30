@@ -366,6 +366,11 @@ namespace dxvk {
     { R"(\\eqgame\.exe$)", {{
       { "d3d9.apitraceMode",                "True" },
     }} },
+    /* Dark Messiah of Might & Magic             */
+    { R"(\\mm\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",        "True" },
+      { "d3d9.memoryTrackTest",             "True" },
+    }} },
   }};
 
 
