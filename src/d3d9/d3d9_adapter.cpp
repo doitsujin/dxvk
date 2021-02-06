@@ -90,10 +90,10 @@ namespace dxvk {
           D3D9Format AdapterFormat,
           D3D9Format BackBufferFormat,
           BOOL       bWindowed) {
-    if (!IsSupportedAdapterFormat(AdapterFormat, bWindowed) && !bWindowed)
+    if (!IsSupportedAdapterFormat(AdapterFormat))
       return D3DERR_NOTAVAILABLE;
 
-    if (!IsSupportedBackBufferFormat(BackBufferFormat, bWindowed))
+    if (!IsSupportedBackBufferFormat(AdapterFormat, BackBufferFormat, bWindowed))
       return D3DERR_NOTAVAILABLE;
 
     return D3D_OK;
@@ -106,7 +106,7 @@ namespace dxvk {
           DWORD           Usage,
           D3DRESOURCETYPE RType,
           D3D9Format      CheckFormat) {
-    if (!IsSupportedAdapterFormat(AdapterFormat, false))
+    if (!IsSupportedAdapterFormat(AdapterFormat))
       return D3DERR_NOTAVAILABLE;
 
     const bool dmap = Usage & D3DUSAGE_DMAP;
@@ -232,7 +232,7 @@ namespace dxvk {
           D3DDEVTYPE DeviceType,
           D3D9Format SourceFormat,
           D3D9Format TargetFormat) {
-    bool sourceSupported = IsSupportedBackBufferFormat(SourceFormat, FALSE);
+    bool sourceSupported = IsSupportedBackBufferFormat(D3D9Format::Unknown, SourceFormat, TRUE);
     bool targetSupported = TargetFormat == D3D9Format::X1R5G5B5
                         || TargetFormat == D3D9Format::A1R5G5B5
                         || TargetFormat == D3D9Format::R5G6B5
@@ -757,7 +757,7 @@ namespace dxvk {
     m_modeCacheFormat = Format;
 
     // Skip unsupported formats
-    if (!IsSupportedAdapterFormat(Format, false))
+    if (!IsSupportedAdapterFormat(Format))
       return;
 
     auto& options = m_parent->GetOptions();
