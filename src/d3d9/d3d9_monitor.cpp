@@ -28,22 +28,22 @@ namespace dxvk {
   bool IsSupportedAdapterFormat(
           D3D9Format Format,
           BOOL       Windowed) {
-    return (Format == D3D9Format::A2R10G10B10 && !Windowed)
-         || Format == D3D9Format::X8R8G8B8
-         || Format == D3D9Format::X1R5G5B5
-         || Format == D3D9Format::R5G6B5;
+    return Format == D3D9Format::A2R10G10B10
+        || Format == D3D9Format::X8R8G8B8
+        || Format == D3D9Format::X1R5G5B5
+        || Format == D3D9Format::R5G6B5;
   }
 
 
   bool IsSupportedBackBufferFormat(
           D3D9Format BackBufferFormat,
           BOOL       Windowed) {
-    return (BackBufferFormat == D3D9Format::A2R10G10B10 && !Windowed)
-         || BackBufferFormat == D3D9Format::A8R8G8B8
-         || BackBufferFormat == D3D9Format::X8R8G8B8
-         || BackBufferFormat == D3D9Format::A1R5G5B5
-         || BackBufferFormat == D3D9Format::X1R5G5B5
-         || BackBufferFormat == D3D9Format::R5G6B5;
+    return BackBufferFormat == D3D9Format::A2R10G10B10
+        || BackBufferFormat == D3D9Format::A8R8G8B8
+        || BackBufferFormat == D3D9Format::X8R8G8B8
+        || BackBufferFormat == D3D9Format::A1R5G5B5
+        || BackBufferFormat == D3D9Format::X1R5G5B5
+        || BackBufferFormat == D3D9Format::R5G6B5;
   }
 
 }
