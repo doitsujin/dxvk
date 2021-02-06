@@ -202,6 +202,10 @@ namespace dxvk {
       { "d3d11.invariantPosition",          "False" },
       { "d3d11.floatControls",              "False" },
     }} },
+    /* Nioh 2                                     */
+    { R"(\\nioh2\.exe$)", {{
+      { "dxgi.deferSurfaceCreation",        "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
