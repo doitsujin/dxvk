@@ -619,7 +619,8 @@ namespace dxvk {
             
             if (prev.binding == attrib.binding) {
               const DxvkFormatInfo* formatInfo = imageFormatInfo(prev.format);
-              attrib.offset = align(prev.offset + formatInfo->elementSize, 4);
+              VkDeviceSize alignment = std::min<VkDeviceSize>(formatInfo->elementSize, 4);
+              attrib.offset = align(prev.offset + formatInfo->elementSize, alignment);
               break;
             }
           }
