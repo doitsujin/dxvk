@@ -611,6 +611,9 @@ namespace dxvk {
         // generate the exact vertex layout. In that case we'll
         // pack attributes on the same binding in the order they
         // are declared, aligning each attribute to four bytes.
+        const DxvkFormatInfo* formatInfo = imageFormatInfo(attrib.format);
+        VkDeviceSize alignment = std::min<VkDeviceSize>(formatInfo->elementSize, 4);
+
         if (attrib.offset == D3D11_APPEND_ALIGNED_ELEMENT) {
           attrib.offset = 0;
           
@@ -618,13 +621,12 @@ namespace dxvk {
             const DxvkVertexAttribute& prev = attrList.at(i - j);
             
             if (prev.binding == attrib.binding) {
-              const DxvkFormatInfo* formatInfo = imageFormatInfo(prev.format);
-              VkDeviceSize alignment = std::min<VkDeviceSize>(formatInfo->elementSize, 4);
-              attrib.offset = align(prev.offset + formatInfo->elementSize, alignment);
+              attrib.offset = align(prev.offset + imageFormatInfo(prev.format)->elementSize, alignment);
               break;
             }
           }
-        }
+        } else if (attrib.offset & (alignment - 1))
+          return E_INVALIDARG;
 
         attrList.at(i) = attrib;
         
