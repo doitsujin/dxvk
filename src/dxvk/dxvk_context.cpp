@@ -3479,36 +3479,17 @@ namespace dxvk {
   void DxvkContext::resetRenderPassOps(
     const DxvkRenderTargets&    renderTargets,
           DxvkRenderPassOps&    renderPassOps) {
-    VkPipelineStageFlags shaderStages = m_device->getShaderPipelineStages()
-                                      & ~VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-    
-    renderPassOps.barrier.srcStages = shaderStages
-                                    | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT
-                                    | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-    renderPassOps.barrier.srcAccess = VK_ACCESS_SHADER_WRITE_BIT;
-    
-    if (m_device->features().extTransformFeedback.transformFeedback) {
-      renderPassOps.barrier.srcStages |= VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
-      renderPassOps.barrier.srcAccess |= VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT
-                                      |  VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT
-                                      |  VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT;
-    }
-
-    renderPassOps.barrier.dstStages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-    renderPassOps.barrier.dstAccess = 0;
+    VkAccessFlags access = 0;
 
     if (renderTargets.depth.view != nullptr) {
       renderPassOps.depthOps = DxvkDepthAttachmentOps {
         VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_LOAD_OP_LOAD,
         renderTargets.depth.layout, renderTargets.depth.layout };
 
-      renderPassOps.barrier.srcStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-                                      |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+      access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
 
       if (renderTargets.depth.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
-        renderPassOps.barrier.srcAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-      renderPassOps.barrier.dstAccess |= renderTargets.depth.view->imageInfo().access;
+        access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     } else {
       renderPassOps.depthOps = DxvkDepthAttachmentOps { };
     }
@@ -3520,13 +3501,17 @@ namespace dxvk {
             renderTargets.color[i].layout,
             renderTargets.color[i].layout };
 
-        renderPassOps.barrier.srcStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        renderPassOps.barrier.srcAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        renderPassOps.barrier.dstAccess |= renderTargets.color[i].view->imageInfo().access;
+        access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+               |  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
       } else {
         renderPassOps.colorOps[i] = DxvkColorAttachmentOps { };
       }
     }
+
+    renderPassOps.barrier.srcStages = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
+    renderPassOps.barrier.srcAccess = access;
+    renderPassOps.barrier.dstStages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+    renderPassOps.barrier.dstAccess = access;
   }
   
   
