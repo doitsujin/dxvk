@@ -1006,6 +1006,8 @@ namespace dxvk {
     DxvkGpuQueryManager     m_queryManager;
     DxvkStagingDataAlloc    m_staging;
     
+    DxvkRenderTargetLayouts m_rtLayouts = { };
+
     VkPipeline m_gpActivePipeline = VK_NULL_HANDLE;
     VkPipeline m_cpActivePipeline = VK_NULL_HANDLE;
 
@@ -1139,6 +1141,17 @@ namespace dxvk {
 
     void updateFramebuffer();
     
+    void applyRenderTargetLoadLayouts();
+
+    void applyRenderTargetStoreLayouts();
+
+    void transitionRenderTargetLayouts(
+            DxvkBarrierSet&         barriers);
+
+    void updateRenderTargetLayouts(
+      const Rc<DxvkFramebuffer>&    newFb,
+      const Rc<DxvkFramebuffer>&    oldFb);
+
     bool updateIndexBufferBinding();
     void updateVertexBufferBindings();
 

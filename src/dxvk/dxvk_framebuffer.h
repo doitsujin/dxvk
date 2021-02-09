@@ -41,6 +41,15 @@ namespace dxvk {
     DxvkAttachment depth;
     DxvkAttachment color[MaxNumRenderTargets];
   };
+
+
+  /**
+   * \brief Render target layouts
+   */
+  struct DxvkRenderTargetLayouts {
+    VkImageLayout color[MaxNumRenderTargets];
+    VkImageLayout depth;
+  };
   
   
   /**

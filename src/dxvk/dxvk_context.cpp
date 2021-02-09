@@ -1720,8 +1720,9 @@ namespace dxvk {
     if (clearAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
       depthOp.loadOpS = VK_ATTACHMENT_LOAD_OP_CLEAR;
     
-    if (clearAspects == imageView->info().aspect
-     && imageView->imageInfo().type != VK_IMAGE_TYPE_3D) {
+    bool is3D = imageView->imageInfo().type != VK_IMAGE_TYPE_3D;
+
+    if (clearAspects == imageView->info().aspect && !is3D) {
       colorOp.loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
       depthOp.loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
     }
@@ -1789,24 +1790,23 @@ namespace dxvk {
     } else {
       // Perform the clear when starting the render pass
       if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
-        m_state.om.renderPassOps.colorOps[attachmentIndex] = colorOp;
+        m_state.om.renderPassOps.colorOps[attachmentIndex].loadOp = colorOp.loadOp;
+        if (m_state.om.renderPassOps.colorOps[attachmentIndex].loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR && !is3D)
+          m_state.om.renderPassOps.colorOps[attachmentIndex].loadLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         m_state.om.clearValues[attachmentIndex].color = clearValue.color;
       }
       
       if (clearAspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
-        m_state.om.renderPassOps.depthOps.loadOpD  = depthOp.loadOpD;
+        m_state.om.renderPassOps.depthOps.loadOpD = depthOp.loadOpD;
         m_state.om.clearValues[attachmentIndex].depthStencil.depth = clearValue.depthStencil.depth;
       }
       
       if (clearAspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
-        m_state.om.renderPassOps.depthOps.loadOpS  = depthOp.loadOpS;
+        m_state.om.renderPassOps.depthOps.loadOpS = depthOp.loadOpS;
         m_state.om.clearValues[attachmentIndex].depthStencil.stencil = clearValue.depthStencil.stencil;
       }
 
       if (clearAspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-        m_state.om.renderPassOps.depthOps.loadLayout  = depthOp.loadLayout;
-        m_state.om.renderPassOps.depthOps.storeLayout = depthOp.storeLayout;
-
         if (m_state.om.renderPassOps.depthOps.loadOpD == VK_ATTACHMENT_LOAD_OP_CLEAR
          && m_state.om.renderPassOps.depthOps.loadOpS == VK_ATTACHMENT_LOAD_OP_CLEAR)
           m_state.om.renderPassOps.depthOps.loadLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -3384,6 +3384,7 @@ namespace dxvk {
 
   void DxvkContext::startRenderPass() {
     if (!m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
+      this->applyRenderTargetLoadLayouts();
       this->flushClears(true);
 
       m_flags.set(DxvkContextFlag::GpRenderPassBound);
@@ -3395,7 +3396,10 @@ namespace dxvk {
         m_state.om.renderPassOps,
         m_state.om.clearValues.size(),
         m_state.om.clearValues.data());
-      
+
+      // Track the final layout of each render target
+      this->applyRenderTargetStoreLayouts();
+
       // Don't discard image contents if we have
       // to spill the current render pass
       this->resetRenderPassOps(
@@ -3419,16 +3423,15 @@ namespace dxvk {
       m_queryManager.endQueries(m_cmd, VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
       this->renderPassUnbindFramebuffer();
+      this->transitionRenderTargetLayouts(m_gfxBarriers);
 
       m_gfxBarriers.recordCommands(m_cmd);
-      m_gfxBarriers.reset();
 
       this->unbindGraphicsPipeline();
 
       m_flags.clr(DxvkContextFlag::GpDirtyXfbCounters);
     } else if (flushClears) {
-      // We defer clears with a render pass bound,
-      // no need to call this for the common path.
+      // Execute deferred clears if necessary
       this->flushClears(false);
     }
   }
@@ -3496,10 +3499,8 @@ namespace dxvk {
 
     if (renderTargets.depth.view != nullptr) {
       renderPassOps.depthOps = DxvkDepthAttachmentOps {
-        VK_ATTACHMENT_LOAD_OP_LOAD,
-        VK_ATTACHMENT_LOAD_OP_LOAD,
-        renderTargets.depth.view->imageInfo().layout,
-        renderTargets.depth.view->imageInfo().layout };
+        VK_ATTACHMENT_LOAD_OP_LOAD, VK_ATTACHMENT_LOAD_OP_LOAD,
+        renderTargets.depth.layout, renderTargets.depth.layout };
 
       renderPassOps.barrier.srcStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
                                       |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
@@ -3516,8 +3517,8 @@ namespace dxvk {
       if (renderTargets.color[i].view != nullptr) {
         renderPassOps.colorOps[i] = DxvkColorAttachmentOps {
             VK_ATTACHMENT_LOAD_OP_LOAD,
-            renderTargets.color[i].view->imageInfo().layout,
-            renderTargets.color[i].view->imageInfo().layout };
+            renderTargets.color[i].layout,
+            renderTargets.color[i].layout };
 
         renderPassOps.barrier.srcStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         renderPassOps.barrier.srcAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -3525,11 +3526,6 @@ namespace dxvk {
       } else {
         renderPassOps.colorOps[i] = DxvkColorAttachmentOps { };
       }
-    }
-    
-    if (renderPassOps.colorOps[0].loadLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
-      renderPassOps.colorOps[0].loadOp     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-      renderPassOps.colorOps[0].loadLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     }
   }
   
@@ -3980,6 +3976,7 @@ namespace dxvk {
       this->spillRenderPass(false);
 
       auto fb = m_device->createFramebuffer(m_state.om.renderTargets);
+      this->updateRenderTargetLayouts(fb, m_state.om.framebuffer);
 
       m_state.gp.state.ms.setSampleCount(fb->getSampleCount());
       m_state.om.framebuffer = fb;
@@ -3996,6 +3993,122 @@ namespace dxvk {
 
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
+  }
+
+
+  void DxvkContext::applyRenderTargetLoadLayouts() {
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
+      m_state.om.renderPassOps.colorOps[i].loadLayout = m_rtLayouts.color[i];
+
+    m_state.om.renderPassOps.depthOps.loadLayout = m_rtLayouts.depth;
+
+    // Always discard swap chain images since we currently don't have a better solution for this.
+    if (m_state.om.renderPassOps.colorOps[0].loadLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
+      m_state.om.renderPassOps.colorOps[0].loadLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+      m_state.om.renderPassOps.colorOps[0].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    }
+  }
+
+
+  void DxvkContext::applyRenderTargetStoreLayouts() {
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
+      m_rtLayouts.color[i] = m_state.om.renderPassOps.colorOps[i].storeLayout;
+
+    m_rtLayouts.depth = m_state.om.renderPassOps.depthOps.storeLayout;
+  }
+
+
+  void DxvkContext::transitionRenderTargetLayouts(
+          DxvkBarrierSet&         barriers) {
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      const DxvkAttachment& color = m_state.om.framebuffer->getColorTarget(i);
+
+      if (color.view != nullptr) {
+        barriers.accessImage(
+          color.view->image(),
+          color.view->subresources(),
+          m_rtLayouts.color[i],
+          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+          color.view->imageInfo().layout,
+          color.view->imageInfo().stages,
+          color.view->imageInfo().access);
+
+        m_rtLayouts.color[i] = color.view->imageInfo().layout;
+      }
+    }
+
+    const DxvkAttachment& depth = m_state.om.framebuffer->getDepthTarget();
+
+    if (depth.view != nullptr) {
+      barriers.accessImage(
+        depth.view->image(),
+        depth.view->subresources(),
+        m_rtLayouts.depth,
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+        m_rtLayouts.depth != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+          ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : 0,
+        depth.view->imageInfo().layout,
+        depth.view->imageInfo().stages,
+        depth.view->imageInfo().access);
+
+      m_rtLayouts.depth = depth.view->imageInfo().layout;
+    }
+  }
+
+
+  void DxvkContext::updateRenderTargetLayouts(
+    const Rc<DxvkFramebuffer>&    newFb,
+    const Rc<DxvkFramebuffer>&    oldFb) {
+    DxvkRenderTargetLayouts layouts = { };
+
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      if (newFb->getColorTarget(i).view != nullptr)
+        layouts.color[i] = newFb->getColorTarget(i).view->imageInfo().layout;
+    }
+
+    if (newFb->getDepthTarget().view != nullptr)
+      layouts.depth = newFb->getDepthTarget().view->imageInfo().layout;
+
+    if (oldFb != nullptr) {
+      // Check whether any of the previous attachments have been moved
+      // around or been rebound with a different view. This may help
+      // reduce the number of image layout transitions between passes.
+      for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+        const DxvkAttachment& oldAttachment = oldFb->getColorTarget(i);
+
+        if (oldAttachment.view != nullptr) {
+          bool found = false;
+
+          for (uint32_t j = 0; j < MaxNumRenderTargets && !found; j++) {
+            const DxvkAttachment& newAttachment = newFb->getColorTarget(j);
+
+            found = newAttachment.view == oldAttachment.view || (newAttachment.view != nullptr
+              && newAttachment.view->image()        == oldAttachment.view->image()
+              && newAttachment.view->subresources() == oldAttachment.view->subresources());
+
+            if (found)
+              layouts.color[j] = m_rtLayouts.color[i];
+          }
+        }
+      }
+
+      const DxvkAttachment& oldAttachment = oldFb->getDepthTarget();
+
+      if (oldAttachment.view != nullptr) {
+        const DxvkAttachment& newAttachment = newFb->getDepthTarget();
+
+        bool found = newAttachment.view == oldAttachment.view || (newAttachment.view != nullptr
+          && newAttachment.view->image()        == oldAttachment.view->image()
+          && newAttachment.view->subresources() == oldAttachment.view->subresources());
+
+        if (found)
+          layouts.depth = m_rtLayouts.depth;
+      }
+    }
+
+    m_rtLayouts = layouts;
   }
   
   
