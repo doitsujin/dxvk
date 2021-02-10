@@ -58,6 +58,15 @@ namespace dxvk::vk {
     return subres;
   }
 
+  inline bool checkSubresourceRangeOverlap(
+    const VkImageSubresourceRange&  a,
+    const VkImageSubresourceRange&  b) {
+    return a.baseMipLevel < b.baseMipLevel + b.levelCount
+        && a.baseMipLevel + a.levelCount > b.baseMipLevel
+        && a.baseArrayLayer < b.baseArrayLayer + b.layerCount
+        && a.baseArrayLayer + a.layerCount > b.baseArrayLayer;
+  }
+
 }
 
 
