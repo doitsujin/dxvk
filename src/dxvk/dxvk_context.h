@@ -1102,7 +1102,7 @@ namespace dxvk {
             bool                      useRenderPass);
 
     void startRenderPass();
-    void spillRenderPass(bool suspend = false);
+    void spillRenderPass(bool suspend);
     
     void renderPassBindFramebuffer(
       const Rc<DxvkFramebuffer>&  framebuffer,

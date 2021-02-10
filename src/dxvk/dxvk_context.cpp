@@ -65,7 +65,7 @@ namespace dxvk {
   
   
   Rc<DxvkCommandList> DxvkContext::endRecording() {
-    this->spillRenderPass();
+    this->spillRenderPass(false);
     
     m_sdmaBarriers.recordCommands(m_cmd);
     m_initBarriers.recordCommands(m_cmd);
@@ -433,7 +433,7 @@ namespace dxvk {
     const Rc<DxvkImage>&            image,
     const VkClearColorValue&        value,
     const VkImageSubresourceRange&  subresources) {
-    this->spillRenderPass();
+    this->spillRenderPass(false);
 
     VkImageLayout imageLayoutClear = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
@@ -463,7 +463,7 @@ namespace dxvk {
     const Rc<DxvkImage>&            image,
     const VkClearDepthStencilValue& value,
     const VkImageSubresourceRange&  subresources) {
-    this->spillRenderPass();
+    this->spillRenderPass(false);
     
     m_execBarriers.recordCommands(m_cmd);
 
@@ -495,7 +495,7 @@ namespace dxvk {
   void DxvkContext::clearCompressedColorImage(
     const Rc<DxvkImage>&            image,
     const VkImageSubresourceRange&  subresources) {
-    this->spillRenderPass();
+    this->spillRenderPass(false);
 
     // Allocate enough staging buffer memory to fit one
     // single subresource, then dispatch multiple copies
@@ -1222,7 +1222,7 @@ namespace dxvk {
   void DxvkContext::discardImage(
     const Rc<DxvkImage>&          image,
           VkImageSubresourceRange subresources) {
-    this->spillRenderPass();
+    this->spillRenderPass(false);
 
     if (m_execBarriers.isImageDirty(image, subresources, DxvkAccess::Write))
       m_execBarriers.recordCommands(m_cmd);
@@ -1455,7 +1455,7 @@ namespace dxvk {
     if (imageView->info().numLevels <= 1)
       return;
     
-    this->spillRenderPass();
+    this->spillRenderPass(false);
 
     m_execBarriers.recordCommands(m_cmd);
     
@@ -1701,7 +1701,7 @@ namespace dxvk {
     const VkImageSubresourceRange&  dstSubresources,
           VkImageLayout             srcLayout,
           VkImageLayout             dstLayout) {
-    this->spillRenderPass();
+    this->spillRenderPass(false);
     
     if (srcLayout != dstLayout) {
       m_execBarriers.recordCommands(m_cmd);
@@ -2660,7 +2660,7 @@ namespace dxvk {
       attachmentIndex = m_state.om.framebuffer->findAttachment(imageView);
 
     if (attachmentIndex < 0) {
-      this->spillRenderPass();
+      this->spillRenderPass(false);
 
       if (m_execBarriers.isImageDirty(
           imageView->image(),
@@ -2747,7 +2747,7 @@ namespace dxvk {
           VkOffset3D            offset,
           VkExtent3D            extent,
           VkClearValue          value) {
-    this->spillRenderPass();
+    this->spillRenderPass(false);
     this->unbindComputePipeline();
     
     if (m_execBarriers.isImageDirty(
@@ -4378,7 +4378,7 @@ namespace dxvk {
   
   
   bool DxvkContext::commitComputeState() {
-    this->spillRenderPass();
+    this->spillRenderPass(false);
 
     if (m_flags.test(DxvkContextFlag::CpDirtyPipeline)) {
       if (unlikely(!this->updateComputePipeline()))
