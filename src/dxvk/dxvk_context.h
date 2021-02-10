@@ -1102,7 +1102,7 @@ namespace dxvk {
             bool                      useRenderPass);
 
     void startRenderPass();
-    void spillRenderPass(bool flushClears = true);
+    void spillRenderPass(bool suspend = false);
     
     void renderPassBindFramebuffer(
       const Rc<DxvkFramebuffer>&  framebuffer,
@@ -1147,6 +1147,16 @@ namespace dxvk {
 
     void transitionRenderTargetLayouts(
             DxvkBarrierSet&         barriers);
+
+    void transitionColorAttachment(
+            DxvkBarrierSet&         barriers,
+      const DxvkAttachment&         attachment,
+            VkImageLayout           oldLayout);
+
+    void transitionDepthAttachment(
+            DxvkBarrierSet&         barriers,
+      const DxvkAttachment&         attachment,
+            VkImageLayout           oldLayout);
 
     void updateRenderTargetLayouts(
       const Rc<DxvkFramebuffer>&    newFb,

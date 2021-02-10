@@ -22,6 +22,7 @@ namespace dxvk {
    */
   enum class DxvkContextFlag : uint32_t  {
     GpRenderPassBound,          ///< Render pass is currently bound
+    GpRenderPassSuspended,      ///< Render pass is currently suspended
     GpXfbActive,                ///< Transform feedback is enabled
     GpDirtyFramebuffer,         ///< Framebuffer binding is out of date
     GpDirtyPipeline,            ///< Graphics pipeline binding is out of date
