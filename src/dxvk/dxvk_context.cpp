@@ -267,7 +267,9 @@ namespace dxvk {
     const VkComponentMapping&   srcMapping,
     const VkImageBlit&          region,
           VkFilter              filter) {
-    this->spillRenderPass();
+    this->spillRenderPass(true);
+    this->prepareImage(m_execBarriers, dstImage, vk::makeSubresourceRange(region.dstSubresource));
+    this->prepareImage(m_execBarriers, srcImage, vk::makeSubresourceRange(region.srcSubresource));
 
     auto mapping = util::resolveSrcComponentMapping(dstMapping, srcMapping);
 
@@ -297,7 +299,7 @@ namespace dxvk {
     const Rc<DxvkImage>&        image,
           VkImageLayout         layout) {
     if (image->info().layout != layout) {
-      this->spillRenderPass();
+      this->spillRenderPass(true);
 
       VkImageSubresourceRange subresources;
       subresources.aspectMask     = image->formatInfo()->aspectMask;
@@ -305,6 +307,8 @@ namespace dxvk {
       subresources.baseMipLevel   = 0;
       subresources.layerCount     = image->info().numLayers;
       subresources.levelCount     = image->info().mipLevels;
+
+      this->prepareImage(m_execBarriers, image, subresources);
 
       if (m_execBarriers.isImageDirty(image, subresources, DxvkAccess::Write))
         m_execBarriers.recordCommands(m_cmd);
@@ -681,7 +685,8 @@ namespace dxvk {
     const Rc<DxvkBuffer>&       srcBuffer,
           VkDeviceSize          srcOffset,
           VkExtent2D            srcExtent) {
-    this->spillRenderPass();
+    this->spillRenderPass(true);
+    this->prepareImage(m_execBarriers, dstImage, vk::makeSubresourceRange(dstSubresource));
 
     auto srcSlice = srcBuffer->getSliceHandle(srcOffset, 0);
 
@@ -755,7 +760,9 @@ namespace dxvk {
           VkImageSubresourceLayers srcSubresource,
           VkOffset3D            srcOffset,
           VkExtent3D            extent) {
-    this->spillRenderPass();
+    this->spillRenderPass(true);
+    this->prepareImage(m_execBarriers, dstImage, vk::makeSubresourceRange(dstSubresource));
+    this->prepareImage(m_execBarriers, srcImage, vk::makeSubresourceRange(srcSubresource));
 
     bool useFb = dstSubresource.aspectMask != srcSubresource.aspectMask;
 
@@ -853,8 +860,9 @@ namespace dxvk {
           VkImageSubresourceLayers srcSubresource,
           VkOffset3D            srcOffset,
           VkExtent3D            srcExtent) {
-    this->spillRenderPass();
-    
+    this->spillRenderPass(true);
+    this->prepareImage(m_execBarriers, srcImage, vk::makeSubresourceRange(srcSubresource));
+
     auto dstSlice = dstBuffer->getSliceHandle(dstOffset, 0);
 
     // We may copy to only one aspect of a depth-stencil image,
@@ -921,7 +929,9 @@ namespace dxvk {
           VkOffset2D            srcOffset,
           VkExtent2D            srcExtent,
           VkFormat              format) {
-    this->spillRenderPass();
+    this->spillRenderPass(true);
+    this->prepareImage(m_execBarriers, srcImage, vk::makeSubresourceRange(srcSubresource));
+
     this->unbindComputePipeline();
 
     // Retrieve compute pipeline for the given format
@@ -1032,10 +1042,13 @@ namespace dxvk {
     const Rc<DxvkBuffer>&       srcBuffer,
           VkDeviceSize          srcOffset,
           VkFormat              format) {
-    this->spillRenderPass();
+    this->spillRenderPass(true);
+    this->prepareImage(m_execBarriers, dstImage, vk::makeSubresourceRange(dstSubresource));
+
     this->unbindComputePipeline();
 
-    if (m_execBarriers.isBufferDirty(srcBuffer->getSliceHandle(), DxvkAccess::Read))
+    if (m_execBarriers.isBufferDirty(srcBuffer->getSliceHandle(), DxvkAccess::Read)
+     || m_execBarriers.isImageDirty(dstImage, vk::makeSubresourceRange(dstSubresource), DxvkAccess::Write))
       m_execBarriers.recordCommands(m_cmd);
     
     // Retrieve compute pipeline for the given format
@@ -1601,8 +1614,10 @@ namespace dxvk {
     const Rc<DxvkImage>&            srcImage,
     const VkImageResolve&           region,
           VkFormat                  format) {
-    this->spillRenderPass();
-    
+    this->spillRenderPass(true);
+    this->prepareImage(m_execBarriers, dstImage, vk::makeSubresourceRange(region.dstSubresource));
+    this->prepareImage(m_execBarriers, srcImage, vk::makeSubresourceRange(region.srcSubresource));
+
     if (format == VK_FORMAT_UNDEFINED)
       format = srcImage->info().format;
 
@@ -1632,7 +1647,9 @@ namespace dxvk {
     const VkImageResolve&           region,
           VkResolveModeFlagBitsKHR  depthMode,
           VkResolveModeFlagBitsKHR  stencilMode) {
-    this->spillRenderPass();
+    this->spillRenderPass(true);
+    this->prepareImage(m_execBarriers, dstImage, vk::makeSubresourceRange(region.dstSubresource));
+    this->prepareImage(m_execBarriers, srcImage, vk::makeSubresourceRange(region.srcSubresource));
 
     // Technically legal, but no-op
     if (!depthMode && !stencilMode)
@@ -1947,8 +1964,8 @@ namespace dxvk {
     const void*                     data,
           VkDeviceSize              pitchPerRow,
           VkDeviceSize              pitchPerLayer) {
-    this->spillRenderPass();
-    
+    this->spillRenderPass(true);
+
     // Upload data through a staging buffer. Special care needs to
     // be taken when dealing with compressed image formats: Rather
     // than copying pixels, we'll be copying blocks of pixels.
@@ -1974,6 +1991,8 @@ namespace dxvk {
     // the entire image, we may discard its previous contents.
     auto subresourceRange = vk::makeSubresourceRange(subresources);
     subresourceRange.aspectMask = formatInfo->aspectMask;
+
+    this->prepareImage(m_execBarriers, image, subresourceRange);
 
     if (m_execBarriers.isImageDirty(image, subresourceRange, DxvkAccess::Write))
       m_execBarriers.recordCommands(m_cmd);
