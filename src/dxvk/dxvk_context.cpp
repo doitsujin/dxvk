@@ -326,7 +326,7 @@ namespace dxvk {
           VkDeviceSize          offset,
           VkDeviceSize          length,
           uint32_t              value) {
-    this->spillRenderPass();
+    this->spillRenderPass(true);
     
     length = align(length, sizeof(uint32_t));
     auto slice = buffer->getSliceHandle(offset, length);
@@ -355,7 +355,7 @@ namespace dxvk {
           VkDeviceSize          offset,
           VkDeviceSize          length,
           VkClearColorValue     value) {
-    this->spillRenderPass();
+    this->spillRenderPass(true);
     this->unbindComputePipeline();
 
     // The view range might have been invalidated, so
@@ -601,7 +601,7 @@ namespace dxvk {
     if (numBytes == 0)
       return;
     
-    this->spillRenderPass();
+    this->spillRenderPass(true);
     
     auto dstSlice = dstBuffer->getSliceHandle(dstOffset, numBytes);
     auto srcSlice = srcBuffer->getSliceHandle(srcOffset, numBytes);
@@ -1878,7 +1878,7 @@ namespace dxvk {
 
       this->invalidateBuffer(buffer, bufferSlice);
     } else {
-      this->spillRenderPass();
+      this->spillRenderPass(true);
     
       bufferSlice = buffer->getSliceHandle(offset, size);
       cmdBuffer   = DxvkCmdBuffer::ExecBuffer;
@@ -2372,7 +2372,7 @@ namespace dxvk {
   
   
   void DxvkContext::signalGpuEvent(const Rc<DxvkGpuEvent>& event) {
-    this->spillRenderPass();
+    this->spillRenderPass(true);
     
     DxvkGpuEventHandle handle = m_common->eventPool().allocEvent();
 
@@ -3667,7 +3667,7 @@ namespace dxvk {
 
       // This is necessary because we'll only do hazard
       // tracking if the active pipeline has side effects
-      this->spillRenderPass();
+      this->spillRenderPass(true);
     }
 
     if (m_state.gp.pipeline->layout()->pushConstRange().size)
@@ -4664,7 +4664,7 @@ namespace dxvk {
     // and execution barriers, so we can use this to allow
     // inter-stage synchronization.
     if (requiresBarrier)
-      this->spillRenderPass();
+      this->spillRenderPass(true);
   }
 
 
