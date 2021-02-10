@@ -4126,6 +4126,50 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::prepareImage(
+          DxvkBarrierSet&         barriers,
+    const Rc<DxvkImage>&          image,
+    const VkImageSubresourceRange& subresources) {
+    // Images that can't be used as attachments are always in their
+    // default layout, so we don't have to do anything in this case
+    if (!(image->info().usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)))
+      return;
+
+    // Flush clears if there are any since they may affect the image
+    if (!m_deferredClears.empty())
+      this->spillRenderPass(false);
+
+    // All images are in their default layout for suspended passes
+    if (!m_flags.test(DxvkContextFlag::GpRenderPassSuspended))
+      return;
+
+    // 3D images require special care because they only have one
+    // layer, but views may address individual 2D slices as layers
+    bool is3D = image->info().type == VK_IMAGE_TYPE_3D;
+
+    // Transition any attachment with overlapping subresources
+    if (image->info().usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
+      for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+        const DxvkAttachment& attachment = m_state.om.framebuffer->getColorTarget(i);
+
+        if (attachment.view != nullptr && attachment.view->image() == image
+         && (is3D || vk::checkSubresourceRangeOverlap(attachment.view->subresources(), subresources))) {
+          this->transitionColorAttachment(barriers, attachment, m_rtLayouts.color[i]);
+          m_rtLayouts.color[i] = image->info().layout;
+        }
+      }
+    } else {
+      const DxvkAttachment& attachment = m_state.om.framebuffer->getDepthTarget();
+
+      if (attachment.view != nullptr && attachment.view->image() == image
+       && (is3D || vk::checkSubresourceRangeOverlap(attachment.view->subresources(), subresources))) {
+        this->transitionDepthAttachment(barriers, attachment, m_rtLayouts.depth);
+        m_rtLayouts.depth = image->info().layout;
+      }
+    }
+  }
+
+
   bool DxvkContext::updateIndexBufferBinding() {
     if (unlikely(!m_state.vi.indexBuffer.defined()))
       return false;

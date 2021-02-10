@@ -1162,6 +1162,11 @@ namespace dxvk {
       const Rc<DxvkFramebuffer>&    newFb,
       const Rc<DxvkFramebuffer>&    oldFb);
 
+    void prepareImage(
+            DxvkBarrierSet&         barriers,
+      const Rc<DxvkImage>&          image,
+      const VkImageSubresourceRange& subresources);
+
     bool updateIndexBufferBinding();
     void updateVertexBufferBindings();
 
