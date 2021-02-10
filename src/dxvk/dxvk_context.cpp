@@ -1745,7 +1745,7 @@ namespace dxvk {
     if (clearAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
       depthOp.loadOpS = VK_ATTACHMENT_LOAD_OP_CLEAR;
     
-    bool is3D = imageView->imageInfo().type != VK_IMAGE_TYPE_3D;
+    bool is3D = imageView->imageInfo().type == VK_IMAGE_TYPE_3D;
 
     if (clearAspects == imageView->info().aspect && !is3D) {
       colorOp.loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -4066,14 +4066,16 @@ namespace dxvk {
           DxvkBarrierSet&         barriers,
     const DxvkAttachment&         attachment,
           VkImageLayout           oldLayout) {
-    barriers.accessImage(
-      attachment.view->image(),
-      attachment.view->subresources(), oldLayout,
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-      VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-      attachment.view->imageInfo().layout,
-      attachment.view->imageInfo().stages,
-      attachment.view->imageInfo().access);
+    if (oldLayout != attachment.view->imageInfo().layout) {
+      barriers.accessImage(
+        attachment.view->image(),
+        attachment.view->imageSubresources(), oldLayout,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        attachment.view->imageInfo().layout,
+        attachment.view->imageInfo().stages,
+        attachment.view->imageInfo().access);
+    }
   }
 
 
@@ -4081,16 +4083,18 @@ namespace dxvk {
           DxvkBarrierSet&         barriers,
     const DxvkAttachment&         attachment,
           VkImageLayout           oldLayout) {
-    barriers.accessImage(
-      attachment.view->image(),
-      attachment.view->subresources(), oldLayout,
-      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-      VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-      oldLayout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
-        ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : 0,
-      attachment.view->imageInfo().layout,
-      attachment.view->imageInfo().stages,
-      attachment.view->imageInfo().access);
+    if (oldLayout != attachment.view->imageInfo().layout) {
+      barriers.accessImage(
+        attachment.view->image(),
+        attachment.view->imageSubresources(), oldLayout,
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+        oldLayout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+          ? VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT : 0,
+        attachment.view->imageInfo().layout,
+        attachment.view->imageInfo().stages,
+        attachment.view->imageInfo().access);
+    }
   }
 
 
