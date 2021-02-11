@@ -16,14 +16,14 @@ namespace dxvk {
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       if (m_renderTargets.color[i].view != nullptr) {
         views[m_attachmentCount] = m_renderTargets.color[i].view->handle();
-        m_attachments[m_attachmentCount] = &m_renderTargets.color[i];
+        m_attachments[m_attachmentCount] = i;
         m_attachmentCount += 1;
       }
     }
     
     if (m_renderTargets.depth.view != nullptr) {
       views[m_attachmentCount] = m_renderTargets.depth.view->handle();
-      m_attachments[m_attachmentCount] = &m_renderTargets.depth;
+      m_attachments[m_attachmentCount] = -1;
       m_attachmentCount += 1;
     }
     
@@ -50,7 +50,7 @@ namespace dxvk {
   
   int32_t DxvkFramebuffer::findAttachment(const Rc<DxvkImageView>& view) const {
     for (uint32_t i = 0; i < m_attachmentCount; i++) {
-      if (m_attachments[i]->view == view)
+      if (getAttachment(i).view == view)
         return int32_t(i);
     }
     

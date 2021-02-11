@@ -160,15 +160,24 @@ namespace dxvk {
     }
     
     /**
+     * \brief Queries color attachment index of a given attachment
+     * \returns The index, or -1 if the given attachment is the depth attachment
+     */
+    const int32_t getColorAttachmentIndex(uint32_t id) const {
+      return m_attachments[id];
+    }
+    
+    /**
      * \brief Retrieves attachment by index
      * 
      * \param [in] id Framebuffer attachment ID
      * \returns The framebuffer attachment
      */
     const DxvkAttachment& getAttachment(uint32_t id) const {
-      return *m_attachments[id];
+      int32_t idx = getColorAttachmentIndex(id);
+      return idx < 0 ? m_renderTargets.depth : m_renderTargets.color[idx];
     }
-    
+
     /**
      * \brief Finds attachment index by view
      * 
@@ -217,8 +226,8 @@ namespace dxvk {
     const DxvkRenderTargets   m_renderTargets;
     const DxvkFramebufferSize m_renderSize;
     
-    uint32_t                                                   m_attachmentCount = 0;
-    std::array<const DxvkAttachment*, MaxNumRenderTargets + 1> m_attachments;
+    uint32_t                                     m_attachmentCount = 0;
+    std::array<int32_t, MaxNumRenderTargets + 1> m_attachments;
     
     VkFramebuffer m_handle = VK_NULL_HANDLE;
     
