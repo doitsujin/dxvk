@@ -1795,12 +1795,11 @@ namespace dxvk {
         ops, 1, &clearValue);
       this->renderPassUnbindFramebuffer();
     } else if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
-      // Clear the attachment in quesion. For color images,
-      // the attachment index for the current subpass is
-      // equal to the render pass attachment index.
+      uint32_t colorIndex = std::max(0, m_state.om.framebuffer->getColorAttachmentIndex(attachmentIndex));
+
       VkClearAttachment clearInfo;
       clearInfo.aspectMask      = clearAspects;
-      clearInfo.colorAttachment = attachmentIndex;
+      clearInfo.colorAttachment = colorIndex;
       clearInfo.clearValue      = clearValue;
       
       VkClearRect clearRect;
@@ -1815,9 +1814,12 @@ namespace dxvk {
     } else {
       // Perform the clear when starting the render pass
       if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
-        m_state.om.renderPassOps.colorOps[attachmentIndex].loadOp = colorOp.loadOp;
-        if (m_state.om.renderPassOps.colorOps[attachmentIndex].loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR && !is3D)
-          m_state.om.renderPassOps.colorOps[attachmentIndex].loadLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        uint32_t colorIndex = m_state.om.framebuffer->getColorAttachmentIndex(attachmentIndex);
+
+        m_state.om.renderPassOps.colorOps[colorIndex].loadOp = colorOp.loadOp;
+        if (m_state.om.renderPassOps.colorOps[colorIndex].loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR && !is3D)
+          m_state.om.renderPassOps.colorOps[colorIndex].loadLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
         m_state.om.clearValues[attachmentIndex].color = clearValue.color;
       }
       
@@ -2720,11 +2722,11 @@ namespace dxvk {
     // Perform the actual clear operation
     VkClearAttachment clearInfo;
     clearInfo.aspectMask          = aspect;
-    clearInfo.colorAttachment     = attachmentIndex;
+    clearInfo.colorAttachment     = 0;
     clearInfo.clearValue          = value;
 
-    if (attachmentIndex < 0)
-      clearInfo.colorAttachment   = 0;
+    if ((aspect & VK_IMAGE_ASPECT_COLOR_BIT) && (attachmentIndex >= 0))
+      clearInfo.colorAttachment   = m_state.om.framebuffer->getColorAttachmentIndex(attachmentIndex);
 
     VkClearRect clearRect;
     clearRect.rect.offset.x       = offset.x;
