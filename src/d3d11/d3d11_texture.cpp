@@ -8,8 +8,9 @@ namespace dxvk {
           D3D11Device*                pDevice,
     const D3D11_COMMON_TEXTURE_DESC*  pDesc,
           D3D11_RESOURCE_DIMENSION    Dimension,
+          DXGI_USAGE                  DxgiUsage,
           VkImage                     vkImage)
-  : m_device(pDevice), m_desc(*pDesc) {
+  : m_device(pDevice), m_desc(*pDesc), m_dxgiUsage(DxgiUsage) {
     DXGI_VK_FORMAT_MODE   formatMode   = GetFormatMode();
     DXGI_VK_FORMAT_INFO   formatInfo   = m_device->LookupFormat(m_desc.Format, formatMode);
     DXGI_VK_FORMAT_FAMILY formatFamily = m_device->LookupFamily(m_desc.Format, formatMode);
@@ -775,7 +776,7 @@ namespace dxvk {
           D3D11Device*                pDevice,
     const D3D11_COMMON_TEXTURE_DESC*  pDesc)
   : D3D11DeviceChild<ID3D11Texture1D>(pDevice),
-    m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE1D, VK_NULL_HANDLE),
+    m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE1D, 0, VK_NULL_HANDLE),
     m_interop (this, &m_texture),
     m_surface (this, &m_texture),
     m_resource(this),
@@ -873,7 +874,7 @@ namespace dxvk {
           D3D11Device*                pDevice,
     const D3D11_COMMON_TEXTURE_DESC*  pDesc)
   : D3D11DeviceChild<ID3D11Texture2D1>(pDevice),
-    m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D, VK_NULL_HANDLE),
+    m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D, 0, VK_NULL_HANDLE),
     m_interop (this, &m_texture),
     m_surface (this, &m_texture),
     m_resource(this),
@@ -885,9 +886,10 @@ namespace dxvk {
   D3D11Texture2D::D3D11Texture2D(
           D3D11Device*                pDevice,
     const D3D11_COMMON_TEXTURE_DESC*  pDesc,
-          VkImage vkImage)
+          DXGI_USAGE                  DxgiUsage,
+          VkImage                     vkImage)
   : D3D11DeviceChild<ID3D11Texture2D1>(pDevice),
-    m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D, vkImage),
+    m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D, DxgiUsage, vkImage),
     m_interop (this, &m_texture),
     m_surface (this, &m_texture),
     m_resource(this),
@@ -1003,7 +1005,7 @@ namespace dxvk {
           D3D11Device*                pDevice,
     const D3D11_COMMON_TEXTURE_DESC*  pDesc)
   : D3D11DeviceChild<ID3D11Texture3D1>(pDevice),
-    m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE3D, VK_NULL_HANDLE),
+    m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE3D, 0, VK_NULL_HANDLE),
     m_interop (this, &m_texture),
     m_resource(this),
     m_d3d10   (this) {

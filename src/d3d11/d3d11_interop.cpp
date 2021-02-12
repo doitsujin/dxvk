@@ -155,7 +155,7 @@ namespace dxvk {
       return S_FALSE;
     
     try {
-      Com<D3D11Texture2D> texture = new D3D11Texture2D(m_device, &desc, vkImage);
+      Com<D3D11Texture2D> texture = new D3D11Texture2D(m_device, &desc, 0, vkImage);
       *ppTexture2D = texture.ref();
       return S_OK;
     } catch (const DxvkError& e) {

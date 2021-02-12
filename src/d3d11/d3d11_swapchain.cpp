@@ -535,7 +535,13 @@ namespace dxvk {
     if (m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_GDI_COMPATIBLE)
       desc.MiscFlags |= D3D11_RESOURCE_MISC_GDI_COMPATIBLE;
     
-    m_backBuffer = new D3D11Texture2D(m_parent, &desc);
+    DXGI_USAGE dxgiUsage = DXGI_USAGE_BACK_BUFFER;
+
+    if (m_desc.SwapEffect == DXGI_SWAP_EFFECT_DISCARD
+     || m_desc.SwapEffect == DXGI_SWAP_EFFECT_FLIP_DISCARD)
+      dxgiUsage |= DXGI_USAGE_DISCARD_ON_PRESENT;
+
+    m_backBuffer = new D3D11Texture2D(m_parent, &desc, dxgiUsage, VK_NULL_HANDLE);
     m_backBuffer->AddRefPrivate();
 
     m_swapImage = GetCommonTexture(m_backBuffer)->GetImage();

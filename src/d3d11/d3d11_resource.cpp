@@ -96,7 +96,7 @@ namespace dxvk {
     if (FAILED(hr))
       return hr;
     
-    DXGI_USAGE usage = 0;
+    DXGI_USAGE usage = desc.DxgiUsage;
 
     switch (desc.Usage) {
       case D3D11_USAGE_IMMUTABLE: usage |= DXGI_CPU_ACCESS_NONE;       break;
@@ -160,6 +160,7 @@ namespace dxvk {
       pDesc->BindFlags      = buffer->Desc()->BindFlags;
       pDesc->CPUAccessFlags = buffer->Desc()->CPUAccessFlags;
       pDesc->MiscFlags      = buffer->Desc()->MiscFlags;
+      pDesc->DxgiUsage      = 0;
       return S_OK;
     } else if (texture != nullptr) {
       pResource->GetType(&pDesc->Dim);
@@ -168,6 +169,7 @@ namespace dxvk {
       pDesc->BindFlags      = texture->Desc()->BindFlags;
       pDesc->CPUAccessFlags = texture->Desc()->CPUAccessFlags;
       pDesc->MiscFlags      = texture->Desc()->MiscFlags;
+      pDesc->DxgiUsage      = texture->GetDxgiUsage();
       return S_OK;
     } else {
       pDesc->Dim            = D3D11_RESOURCE_DIMENSION_UNKNOWN;
@@ -176,6 +178,7 @@ namespace dxvk {
       pDesc->BindFlags      = 0;
       pDesc->CPUAccessFlags = 0;
       pDesc->MiscFlags      = 0;
+      pDesc->DxgiUsage      = 0;
       return E_INVALIDARG;
     }
   }

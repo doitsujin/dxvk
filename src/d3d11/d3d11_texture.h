@@ -63,6 +63,7 @@ namespace dxvk {
             D3D11Device*                pDevice,
       const D3D11_COMMON_TEXTURE_DESC*  pDesc,
             D3D11_RESOURCE_DIMENSION    Dimension,
+            DXGI_USAGE                  DxgiUsage,
             VkImage                     vkImage);
     
     ~D3D11CommonTexture();
@@ -76,6 +77,17 @@ namespace dxvk {
      */
     const D3D11_COMMON_TEXTURE_DESC* Desc() const {
       return &m_desc;
+    }
+
+    /**
+     * \brief Special DXGI usage flags
+     *
+     * Flags that are set in addition to the bind
+     * flags. Zero for application-created textures.
+     * \returns DXGI usage flags
+     */
+    DXGI_USAGE GetDxgiUsage() const {
+      return m_dxgiUsage;
     }
 
     /**
@@ -205,6 +217,7 @@ namespace dxvk {
     D3D11Device* const            m_device;
     D3D11_COMMON_TEXTURE_DESC     m_desc;
     D3D11_COMMON_TEXTURE_MAP_MODE m_mapMode;
+    DXGI_USAGE                    m_dxgiUsage;
     
     Rc<DxvkImage>                 m_image;
     std::vector<Rc<DxvkBuffer>>   m_buffers;
@@ -417,6 +430,7 @@ namespace dxvk {
     D3D11Texture2D(
             D3D11Device*                pDevice,
       const D3D11_COMMON_TEXTURE_DESC*  pDesc,
+            DXGI_USAGE                  DxgiUsage,
             VkImage                     vkImage);
     
     ~D3D11Texture2D();

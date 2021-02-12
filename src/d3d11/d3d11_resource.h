@@ -18,6 +18,7 @@ namespace dxvk {
     UINT                      BindFlags;
     UINT                      CPUAccessFlags;
     UINT                      MiscFlags;
+    UINT                      DxgiUsage;
   };
   
 
