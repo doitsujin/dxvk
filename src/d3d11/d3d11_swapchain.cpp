@@ -523,11 +523,16 @@ namespace dxvk {
     desc.Format             = m_desc.Format;
     desc.SampleDesc         = m_desc.SampleDesc;
     desc.Usage              = D3D11_USAGE_DEFAULT;
-    desc.BindFlags          = D3D11_BIND_RENDER_TARGET
-                            | D3D11_BIND_SHADER_RESOURCE;
+    desc.BindFlags          = 0;
     desc.CPUAccessFlags     = 0;
     desc.MiscFlags          = 0;
     desc.TextureLayout      = D3D11_TEXTURE_LAYOUT_UNDEFINED;
+
+    if (m_desc.BufferUsage & DXGI_USAGE_RENDER_TARGET_OUTPUT)
+      desc.BindFlags |= D3D11_BIND_RENDER_TARGET;
+
+    if (m_desc.BufferUsage & DXGI_USAGE_SHADER_INPUT)
+      desc.BindFlags |= D3D11_BIND_SHADER_RESOURCE;
 
     if (m_desc.BufferUsage & DXGI_USAGE_UNORDERED_ACCESS)
       desc.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
