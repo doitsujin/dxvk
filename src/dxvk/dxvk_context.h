@@ -1146,7 +1146,8 @@ namespace dxvk {
     void applyRenderTargetStoreLayouts();
 
     void transitionRenderTargetLayouts(
-            DxvkBarrierSet&         barriers);
+            DxvkBarrierSet&         barriers,
+            bool                    sharedOnly);
 
     void transitionColorAttachment(
             DxvkBarrierSet&         barriers,

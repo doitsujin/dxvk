@@ -65,8 +65,12 @@ namespace dxvk {
   
   
   Rc<DxvkCommandList> DxvkContext::endRecording() {
-    this->spillRenderPass(false);
-    
+    this->spillRenderPass(true);
+
+    // Ensure that any shared images are in their
+    // default layout for the next submission
+    this->transitionRenderTargetLayouts(m_execBarriers, true);
+
     m_sdmaBarriers.recordCommands(m_cmd);
     m_initBarriers.recordCommands(m_cmd);
     m_execBarriers.recordCommands(m_cmd);
@@ -3456,7 +3460,7 @@ namespace dxvk {
       if (suspend)
         m_flags.set(DxvkContextFlag::GpRenderPassSuspended);
       else
-        this->transitionRenderTargetLayouts(m_gfxBarriers);
+        this->transitionRenderTargetLayouts(m_gfxBarriers, false);
 
       m_gfxBarriers.recordCommands(m_cmd);
 
@@ -3467,7 +3471,7 @@ namespace dxvk {
       // We may end a previously suspended render pass
       if (m_flags.test(DxvkContextFlag::GpRenderPassSuspended)) {
         m_flags.clr(DxvkContextFlag::GpRenderPassSuspended);
-        this->transitionRenderTargetLayouts(m_gfxBarriers);
+        this->transitionRenderTargetLayouts(m_gfxBarriers, false);
         m_gfxBarriers.recordCommands(m_cmd);
       }
 
@@ -4044,11 +4048,15 @@ namespace dxvk {
 
 
   void DxvkContext::transitionRenderTargetLayouts(
-          DxvkBarrierSet&         barriers) {
+          DxvkBarrierSet&         barriers,
+          bool                    sharedOnly) {
+    if (m_state.om.framebuffer == nullptr)
+      return;
+
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       const DxvkAttachment& color = m_state.om.framebuffer->getColorTarget(i);
 
-      if (color.view != nullptr) {
+      if (color.view != nullptr && (!sharedOnly || color.view->imageInfo().shared)) {
         this->transitionColorAttachment(barriers, color, m_rtLayouts.color[i]);
         m_rtLayouts.color[i] = color.view->imageInfo().layout;
       }
@@ -4056,7 +4064,7 @@ namespace dxvk {
 
     const DxvkAttachment& depth = m_state.om.framebuffer->getDepthTarget();
 
-    if (depth.view != nullptr) {
+    if (depth.view != nullptr && (!sharedOnly || depth.view->imageInfo().shared)) {
       this->transitionDepthAttachment(barriers, depth, m_rtLayouts.depth);
       m_rtLayouts.depth = depth.view->imageInfo().layout;
     }
