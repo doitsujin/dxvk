@@ -1201,8 +1201,6 @@ namespace dxvk {
             VkPipelineStageFlags      stages,
             VkAccessFlags             access);
 
-    DxvkAccessFlags checkFramebufferBarrier();
-
     void emitMemoryBarrier(
             VkDependencyFlags         flags,
             VkPipelineStageFlags      srcStages,
