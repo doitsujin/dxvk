@@ -33,6 +33,7 @@ namespace dxvk {
     imageInfo.tiling          = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.layout          = VK_IMAGE_LAYOUT_GENERAL;
     imageInfo.initialLayout   = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.shared          = vkImage != VK_NULL_HANDLE;
 
     DecodeSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount);
 
@@ -123,6 +124,7 @@ namespace dxvk {
       imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
       imageInfo.stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
       imageInfo.access |= VK_ACCESS_SHADER_READ_BIT;
+      imageInfo.shared = VK_TRUE;
     }
 
     // Some image formats (i.e. the R32G32B32 ones) are

@@ -479,6 +479,7 @@ namespace dxvk {
     imageInfo.access      = 0;
     imageInfo.tiling      = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.layout      = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    imageInfo.shared      = VK_TRUE;
 
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.type         = VK_IMAGE_VIEW_TYPE_2D;
