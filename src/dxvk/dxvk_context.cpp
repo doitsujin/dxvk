@@ -577,7 +577,7 @@ namespace dxvk {
       //    will indirectly emit barriers for the given render target.
       // If there is overlap, we need to explicitly transition affected attachments.
       this->spillRenderPass(true);
-      this->prepareImage(m_execBarriers, imageView->image(), imageView->subresources());
+      this->prepareImage(m_execBarriers, imageView->image(), imageView->subresources(), false);
     }
 
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound))
@@ -4169,14 +4169,15 @@ namespace dxvk {
   void DxvkContext::prepareImage(
           DxvkBarrierSet&         barriers,
     const Rc<DxvkImage>&          image,
-    const VkImageSubresourceRange& subresources) {
+    const VkImageSubresourceRange& subresources,
+          bool                    flushClears) {
     // Images that can't be used as attachments are always in their
     // default layout, so we don't have to do anything in this case
     if (!(image->info().usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)))
       return;
 
     // Flush clears if there are any since they may affect the image
-    if (!m_deferredClears.empty())
+    if (!m_deferredClears.empty() && flushClears)
       this->spillRenderPass(false);
 
     // All images are in their default layout for suspended passes

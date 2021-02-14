@@ -1166,7 +1166,8 @@ namespace dxvk {
     void prepareImage(
             DxvkBarrierSet&         barriers,
       const Rc<DxvkImage>&          image,
-      const VkImageSubresourceRange& subresources);
+      const VkImageSubresourceRange& subresources,
+            bool                    flushClears = true);
 
     bool updateIndexBufferBinding();
     void updateVertexBufferBindings();
