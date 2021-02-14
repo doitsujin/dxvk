@@ -57,6 +57,10 @@ namespace dxvk {
     // Initial image layout
     VkImageLayout initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
+    // Image is used by multiple contexts so it needs
+    // to be in its default layout after each submission
+    VkBool32 shared = VK_FALSE;
+
     // Image view formats that can
     // be used with this image
     uint32_t        viewFormatCount = 0;
