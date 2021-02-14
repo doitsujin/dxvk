@@ -561,20 +561,20 @@ namespace dxvk {
     // If not, we need to create a temporary framebuffer.
     int32_t attachmentIndex = -1;
     
-    if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
-      if (m_state.om.framebuffer->isFullSize(imageView) && this->checkFramebufferBarrier().isClear())
-        attachmentIndex = m_state.om.framebuffer->findAttachment(imageView);
+    if (m_flags.test(DxvkContextFlag::GpRenderPassBound)
+     && m_state.om.framebuffer->isFullSize(imageView)
+     && this->checkFramebufferBarrier().isClear())
+      attachmentIndex = m_state.om.framebuffer->findAttachment(imageView);
 
+    if (attachmentIndex < 0) {
       // Suspend works here because we'll end up with one of these scenarios:
       // 1) The render pass gets ended for good, in which case we emit barriers
       // 2) The clear gets folded into render pass ops, so the layout is correct
       // 3) The clear gets executed separately, in which case updateFramebuffer
       //    will indirectly emit barriers for the given render target.
       // If there is overlap, we need to explicitly transition affected attachments.
-      if (attachmentIndex < 1) {
-        this->spillRenderPass(true);
-        this->prepareImage(m_execBarriers, imageView->image(), imageView->subresources());
-      }
+      this->spillRenderPass(true);
+      this->prepareImage(m_execBarriers, imageView->image(), imageView->subresources());
     }
 
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound))
