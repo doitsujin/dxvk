@@ -206,6 +206,11 @@ namespace dxvk {
     { R"(\\nioh2\.exe$)", {{
       { "dxgi.deferSurfaceCreation",        "True" },
     }} },
+    /* DIRT 5 - uses amd_ags_x64.dll when it      *
+     * detects an AMD GPU                         */
+    { R"(\\DIRT5\.exe$)", {{
+      { "dxgi.customVendorId",              "10de" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
