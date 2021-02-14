@@ -42,6 +42,7 @@ namespace dxvk {
     BOOL                Discard;
     D3DMULTISAMPLE_TYPE MultiSample;
     DWORD               MultisampleQuality;
+    BOOL                IsBackBuffer;
   };
 
   struct D3D9ColorView {

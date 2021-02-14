@@ -1012,6 +1012,7 @@ namespace dxvk {
     imageInfo.access      = 0;
     imageInfo.tiling      = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.layout      = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    imageInfo.shared      = VK_TRUE;
 
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.type         = VK_IMAGE_VIEW_TYPE_2D;
@@ -1067,6 +1068,7 @@ namespace dxvk {
     desc.Pool               = D3DPOOL_DEFAULT;
     desc.Usage              = D3DUSAGE_RENDERTARGET;
     desc.Discard            = FALSE;
+    desc.IsBackBuffer       = TRUE;
 
     for (uint32_t i = 0; i < m_backBuffers.size(); i++)
       m_backBuffers[i] = new D3D9Surface(m_parent, &desc, this);
