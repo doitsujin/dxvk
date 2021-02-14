@@ -393,6 +393,7 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
+    desc.IsBackBuffer       = FALSE;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -447,6 +448,7 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
+    desc.IsBackBuffer       = FALSE;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -491,6 +493,7 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
+    desc.IsBackBuffer       = FALSE;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -3334,6 +3337,7 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.MultiSample        = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
+    desc.IsBackBuffer       = FALSE;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -3377,6 +3381,7 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
+    desc.IsBackBuffer       = FALSE;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -3422,6 +3427,7 @@ namespace dxvk {
     desc.Discard            = Discard;
     desc.MultiSample        = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
+    desc.IsBackBuffer       = FALSE;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -6898,6 +6904,7 @@ namespace dxvk {
       desc.Discard            = FALSE;
       desc.MultiSample        = pPresentationParameters->MultiSampleType;
       desc.MultisampleQuality = pPresentationParameters->MultiSampleQuality;
+      desc.IsBackBuffer       = FALSE;
 
       if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
         return D3DERR_NOTAVAILABLE;

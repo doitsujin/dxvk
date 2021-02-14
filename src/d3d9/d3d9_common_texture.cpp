@@ -220,6 +220,7 @@ namespace dxvk {
                               | VK_ACCESS_SHADER_READ_BIT;
     imageInfo.tiling          = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.layout          = VK_IMAGE_LAYOUT_GENERAL;
+    imageInfo.shared          = m_desc.IsBackBuffer;
 
     if (m_mapping.ConversionFormatInfo.FormatType != D3D9ConversionFormat_None) {
       imageInfo.usage  |= VK_IMAGE_USAGE_STORAGE_BIT;
