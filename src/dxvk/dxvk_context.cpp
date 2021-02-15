@@ -3791,20 +3791,6 @@ namespace dxvk {
     DxvkBindingMask bindMask;
     bindMask.setFirst(layout->bindingCount());
 
-    // If the depth attachment is also bound as a shader
-    // resource, we have to use the appropriate layout
-    VkImage       depthImage  = VK_NULL_HANDLE;
-    VkImageLayout depthLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    
-    if (BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
-      const auto& depthAttachment = m_state.om.framebuffer->getDepthTarget();
-
-      if (depthAttachment.view != nullptr) {
-        depthImage  = depthAttachment.view->imageHandle();
-        depthLayout = depthAttachment.layout;
-      }
-    }
-
     for (uint32_t i = 0; i < layout->bindingCount(); i++) {
       const auto& binding = layout->binding(i);
       const auto& res     = m_rc[binding.slot];
@@ -3828,9 +3814,6 @@ namespace dxvk {
             descriptors[i].image.imageView   = res.imageView->handle(binding.view);
             descriptors[i].image.imageLayout = res.imageView->imageInfo().layout;
             
-            if (unlikely(res.imageView->imageHandle() == depthImage))
-              descriptors[i].image.imageLayout = depthLayout;
-            
             if (m_rcTracked.set(binding.slot)) {
               m_cmd->trackResource<DxvkAccess::None>(res.imageView);
               m_cmd->trackResource<DxvkAccess::Read>(res.imageView->image());
@@ -3845,9 +3828,6 @@ namespace dxvk {
             descriptors[i].image.sampler     = VK_NULL_HANDLE;
             descriptors[i].image.imageView   = res.imageView->handle(binding.view);
             descriptors[i].image.imageLayout = res.imageView->imageInfo().layout;
-            
-            if (unlikely(res.imageView->imageHandle() == depthImage))
-              descriptors[i].image.imageLayout = depthLayout;
             
             if (m_rcTracked.set(binding.slot)) {
               m_cmd->trackResource<DxvkAccess::None>(res.imageView);
@@ -3864,9 +3844,6 @@ namespace dxvk {
             descriptors[i].image.sampler     = res.sampler->handle();
             descriptors[i].image.imageView   = res.imageView->handle(binding.view);
             descriptors[i].image.imageLayout = res.imageView->imageInfo().layout;
-            
-            if (unlikely(res.imageView->imageHandle() == depthImage))
-              descriptors[i].image.imageLayout = depthLayout;
             
             if (m_rcTracked.set(binding.slot)) {
               m_cmd->trackResource<DxvkAccess::None>(res.sampler);
