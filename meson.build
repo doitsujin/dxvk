@@ -26,6 +26,12 @@ if dxvk_compiler.get_id() == 'clang'
   endif
 endif
 
+if get_option('build_id') and dxvk_compiler.get_id() != 'msvc'
+  if dxvk_compiler.has_link_argument('-Wl,--build-id')
+    add_global_link_arguments('-Wl,--build-id', language: 'cpp')
+  endif
+endif
+
 dxvk_include_path = include_directories('./include')
 
 if (cpu_family == 'x86_64')
