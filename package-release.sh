@@ -23,6 +23,7 @@ shift 2
 
 opt_nopackage=0
 opt_devbuild=0
+opt_buildid=false
 
 crossfile="build-win"
 
@@ -34,6 +35,9 @@ while [ $# -gt 0 ]; do
   "--dev-build")
     opt_nopackage=1
     opt_devbuild=1
+    ;;
+  "--build-id")
+    opt_buildid=true
     ;;
   *)
     echo "Unrecognized option: $1" >&2
@@ -55,6 +59,7 @@ function build_arch {
         --bindir "x$1"                                \
         --libdir "x$1"                                \
         -Denable_tests=false                          \
+        -Dbuild_id=$opt_buildid                       \
         "$DXVK_BUILD_DIR/build.$1"
 
   cd "$DXVK_BUILD_DIR/build.$1"
