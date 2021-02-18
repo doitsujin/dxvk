@@ -34,7 +34,9 @@ namespace dxvk {
   VrFunctions g_vrFunctions;
   VrInstance VrInstance::s_instance;
 
-  VrInstance:: VrInstance() { }
+  VrInstance:: VrInstance() {
+    m_no_vr = env::getEnvVar("DXVK_NO_VR") == "1";
+  }
   VrInstance::~VrInstance() { }
 
 
@@ -62,10 +64,21 @@ namespace dxvk {
   void VrInstance::initInstanceExtensions() {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    if (!m_compositor)
+    if (m_no_vr || m_initializedDevExt)
+        return;
+
+    if (!m_vr_key)
+    {
+        LSTATUS status;
+
+        if ((status = RegOpenKeyExA(HKEY_CURRENT_USER, "Software\\Wine\\VR", 0, KEY_READ, &m_vr_key)))
+            Logger::info(str::format("OpenVR: could not open registry key, status ", status));
+    }
+
+    if (!m_vr_key && !m_compositor)
       m_compositor = this->getCompositor();
 
-    if (!m_compositor || m_initializedInsExt)
+    if (!m_vr_key && !m_compositor)
       return;
     
     m_insExtensions = this->queryInstanceExtensions();
@@ -76,31 +89,137 @@ namespace dxvk {
   void VrInstance::initDeviceExtensions(const DxvkInstance* instance) {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    if (!m_compositor || m_initializedDevExt)
+    if (m_no_vr || (!m_vr_key && !m_compositor) || m_initializedDevExt)
       return;
     
     for (uint32_t i = 0; instance->enumAdapters(i) != nullptr; i++) {
       m_devExtensions.push_back(this->queryDeviceExtensions(
-        instance->enumAdapters(i)->handle()));
+        instance->enumAdapters(i)));
     }
 
     m_initializedDevExt = true;
     this->shutdown();
   }
 
+  bool VrInstance::waitVrKeyReady() const {
+    DWORD type, value, wait_status, size;
+    LSTATUS status;
+    HANDLE event;
+
+    size = sizeof(value);
+    if ((status = RegQueryValueExA(m_vr_key, "state", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size)))
+    {
+        Logger::err(str::format("OpenVR: could not query value, status ", status));
+        return false;
+    }
+    if (type != REG_DWORD)
+    {
+        Logger::err(str::format("OpenVR: unexpected value type ", type));
+        return false;
+    }
+
+    if (value)
+        return value == 1;
+
+    event = CreateEventA(nullptr, FALSE, FALSE, nullptr);
+    while (1)
+    {
+        if (RegNotifyChangeKeyValue(m_vr_key, FALSE, REG_NOTIFY_CHANGE_LAST_SET, event, TRUE))
+        {
+            Logger::err("Error registering registry change notification");
+            goto done;
+        }
+        size = sizeof(value);
+        if ((status = RegQueryValueExA(m_vr_key, "state", nullptr, &type, reinterpret_cast<BYTE*>(&value), &size)))
+        {
+            Logger::err(str::format("OpenVR: could not query value, status ", status));
+            goto done;
+        }
+        if (value)
+            break;
+        while ((wait_status = WaitForSingleObject(event, 1000)) == WAIT_TIMEOUT)
+            Logger::warn("VR state wait timeout (retrying)");
+
+        if (wait_status != WAIT_OBJECT_0)
+        {
+            Logger::err(str::format("Got unexpected wait status ", wait_status));
+            break;
+        }
+    }
+
+  done:
+    CloseHandle(event);
+    return value == 1;
+  }
 
   DxvkNameSet VrInstance::queryInstanceExtensions() const {
-    uint32_t len = m_compositor->GetVulkanInstanceExtensionsRequired(nullptr, 0);
-    std::vector<char> extensionList(len);
-    len = m_compositor->GetVulkanInstanceExtensionsRequired(extensionList.data(), len);
+    std::vector<char> extensionList;
+    DWORD len;
+
+    if (m_vr_key)
+    {
+        LSTATUS status;
+        DWORD type;
+
+        if (!this->waitVrKeyReady())
+            return DxvkNameSet();
+
+        len = 0;
+        if ((status = RegQueryValueExA(m_vr_key, "openvr_vulkan_instance_extensions", nullptr, &type, nullptr, &len)))
+        {
+            Logger::err(str::format("OpenVR: could not query value, status ", status));
+            return DxvkNameSet();
+        }
+        extensionList.resize(len);
+        if ((status = RegQueryValueExA(m_vr_key, "openvr_vulkan_instance_extensions", nullptr, &type, reinterpret_cast<BYTE*>(extensionList.data()), &len)))
+        {
+            Logger::err(str::format("OpenVR: could not query value, status ", status));
+            return DxvkNameSet();
+        }
+    }
+    else
+    {
+        len = m_compositor->GetVulkanInstanceExtensionsRequired(nullptr, 0);
+        extensionList.resize(len);
+        len = m_compositor->GetVulkanInstanceExtensionsRequired(extensionList.data(), len);
+    }
     return parseExtensionList(std::string(extensionList.data(), len));
   }
   
   
-  DxvkNameSet VrInstance::queryDeviceExtensions(VkPhysicalDevice adapter) const {
-    uint32_t len = m_compositor->GetVulkanDeviceExtensionsRequired(adapter, nullptr, 0);
-    std::vector<char> extensionList(len);
-    len = m_compositor->GetVulkanDeviceExtensionsRequired(adapter, extensionList.data(), len);
+  DxvkNameSet VrInstance::queryDeviceExtensions(Rc<DxvkAdapter> adapter) const {
+    std::vector<char> extensionList;
+    DWORD len;
+
+    if (m_vr_key)
+    {
+        LSTATUS status;
+        char name[256];
+        DWORD type;
+
+        if (!this->waitVrKeyReady())
+            return DxvkNameSet();
+
+        sprintf(name, "PCIID:%04x:%04x", adapter->deviceProperties().vendorID, adapter->deviceProperties().deviceID);
+        len = 0;
+        if ((status = RegQueryValueExA(m_vr_key, name, nullptr, &type, nullptr, &len)))
+        {
+            Logger::err(str::format("OpenVR: could not query value, status ", status));
+            return DxvkNameSet();
+        }
+        extensionList.resize(len);
+        if ((status = RegQueryValueExA(m_vr_key, name, nullptr, &type, reinterpret_cast<BYTE*>(extensionList.data()), &len)))
+        {
+            Logger::err(str::format("OpenVR: could not query value, status ", status));
+            return DxvkNameSet();
+        }
+    }
+    else
+    {
+        len = m_compositor->GetVulkanDeviceExtensionsRequired(adapter->handle(), nullptr, 0);
+        extensionList.resize(len);
+        len = m_compositor->GetVulkanDeviceExtensionsRequired(adapter->handle(), extensionList.data(), len);
+    }
     return parseExtensionList(std::string(extensionList.data(), len));
   }
   
@@ -120,8 +239,6 @@ namespace dxvk {
   
   vr::IVRCompositor* VrInstance::getCompositor() {
     // Skip OpenVR initialization if requested
-    if (env::getEnvVar("DXVK_NO_VR") == "1")
-      return nullptr;
     
     // Locate the OpenVR DLL if loaded by the process. Some
     // applications may not have OpenVR loaded at the time
@@ -182,9 +299,15 @@ namespace dxvk {
 
 
   void VrInstance::shutdown() {
+    if (m_vr_key)
+    {
+        RegCloseKey(m_vr_key);
+        m_vr_key = nullptr;
+    }
+
     if (m_initializedOpenVr)
       g_vrFunctions.shutdownInternal();
-    
+
     if (m_loadedOvrApi)
       this->freeLibrary();
     

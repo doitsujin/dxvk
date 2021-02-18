@@ -50,9 +50,11 @@ namespace dxvk {
   private:
 
     std::mutex            m_mutex;
+    HKEY                  m_vr_key     = nullptr;
     vr::IVRCompositor*    m_compositor = nullptr;
     SoHandle              m_ovrApi     = nullptr;
 
+    bool m_no_vr;
     bool m_loadedOvrApi      = false;
     bool m_initializedOpenVr = false;
     bool m_initializedInsExt = false;
@@ -64,7 +66,7 @@ namespace dxvk {
     DxvkNameSet queryInstanceExtensions() const;
 
     DxvkNameSet queryDeviceExtensions(
-            VkPhysicalDevice          adapter) const;
+            Rc<DxvkAdapter>           adapter) const;
 
     DxvkNameSet parseExtensionList(
       const std::string&              str) const;
@@ -78,7 +80,8 @@ namespace dxvk {
     void freeLibrary();
 
     void* getSym(const char* sym);
-    
+
+    bool waitVrKeyReady() const;
   };
 
   extern VrInstance g_vrInstance;
