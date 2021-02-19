@@ -141,8 +141,10 @@ namespace dxvk {
           SetWindowPos(window, nullptr, rect.left, rect.top, params.BackBufferWidth, params.BackBufferHeight,
                        SWP_NOACTIVATE | SWP_NOZORDER);
         }
-        // Don't minimise if !wparam
-        // We'd need to re-set the mode here technically, if we did.
+        else {
+          if (IsWindowVisible(window))
+            ShowWindow(window, SW_MINIMIZE);
+        }
       }
     }
 
