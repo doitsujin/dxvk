@@ -73,7 +73,7 @@ namespace dxvk {
       m_imgBarriers.push_back(barrier);
     }
 
-    m_imgSlices.push_back({ image.ptr(), subresources, access });
+    m_imgSlices.push_back({ image, subresources, access });
   }
 
 
@@ -152,8 +152,8 @@ namespace dxvk {
     acquire.m_imgBarriers.push_back(barrier);
 
     DxvkAccessFlags access(DxvkAccess::Read, DxvkAccess::Write);
-    release.m_imgSlices.push_back({ image.ptr(), subresources, access });
-    acquire.m_imgSlices.push_back({ image.ptr(), subresources, access });
+    release.m_imgSlices.push_back({ image, subresources, access });
+    acquire.m_imgSlices.push_back({ image, subresources, access });
   }
 
 
