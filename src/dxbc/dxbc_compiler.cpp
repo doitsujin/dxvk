@@ -3220,18 +3220,16 @@ namespace dxvk {
     const DxbcRegister& samplerReg  = ins.src[2];
     
     // Texture and sampler register IDs
-    const uint32_t textureId = textureReg.idx[0].offset;
-    const uint32_t samplerId = samplerReg.idx[0].offset;
+    const auto& texture = m_textures.at(textureReg.idx[0].offset);
+    const auto& sampler = m_samplers.at(samplerReg.idx[0].offset);
     
     // Load texture coordinates
     const DxbcRegisterValue coord = emitRegisterLoad(texCoordReg,
-      DxbcRegMask::firstN(getTexLayerDim(m_textures.at(textureId).imageInfo)));
+      DxbcRegMask::firstN(getTexLayerDim(texture.imageInfo)));
     
     // Query the LOD. The result is a two-dimensional float32
     // vector containing the mip level and virtual LOD numbers.
-    const uint32_t sampledImageId = emitLoadSampledImage(
-      m_textures.at(textureId), m_samplers.at(samplerId), false);
-    
+    const uint32_t sampledImageId = emitLoadSampledImage(texture, sampler, false);
     const uint32_t queriedLodId = m_module.opImageQueryLod(
       getVectorTypeId({ DxbcScalarType::Float32, 2 }),
       sampledImageId, coord.id);
@@ -3347,11 +3345,8 @@ namespace dxvk {
     //    (src0) Source address
     //    (src1) Source texture
     //    (src2) Sample number
-    const uint32_t textureId = ins.src[1].idx[0].offset;
-    
-    // Image type, which stores the image dimensions etc.
-    const DxbcImageInfo imageType = m_textures.at(textureId).imageInfo;
-    const uint32_t imageLayerDim  = getTexLayerDim(imageType);
+    const auto& texture = m_textures.at(ins.src[1].idx[0].offset);
+    const uint32_t imageLayerDim = getTexLayerDim(texture.imageInfo);
     
     // Load the texture coordinates. The last component
     // contains the LOD if the resource is an image.
@@ -3377,7 +3372,7 @@ namespace dxvk {
     
     // The LOD is not present when reading from
     // a buffer or from a multisample texture.
-    if (imageType.dim != spv::DimBuffer && imageType.ms == 0) {
+    if (texture.imageInfo.dim != spv::DimBuffer && texture.imageInfo.ms == 0) {
       DxbcRegisterValue imageLod = emitRegisterExtract(
         address, DxbcRegMask(false, false, false, true));
       
@@ -3387,7 +3382,7 @@ namespace dxvk {
     
     // The ld2ms instruction has a sample index, but we
     // are only allowed to set it for multisample views
-    if (ins.op == DxbcOpcode::LdMs && imageType.ms == 1) {
+    if (ins.op == DxbcOpcode::LdMs && texture.imageInfo.ms == 1) {
       DxbcRegisterValue sampleId = emitRegisterLoad(
         ins.src[2], DxbcRegMask(true, false, false, false));
       
@@ -3396,16 +3391,14 @@ namespace dxvk {
     }
     
     // Extract coordinates from address
-    const DxbcRegisterValue coord = emitCalcTexCoord(address, imageType);
+    const DxbcRegisterValue coord = emitCalcTexCoord(address, texture.imageInfo);
     
     // Reading a typed image or buffer view
     // always returns a four-component vector.
-    const uint32_t imageId = m_module.opLoad(
-      m_textures.at(textureId).imageTypeId,
-      m_textures.at(textureId).varId);
+    const uint32_t imageId = m_module.opLoad(texture.imageTypeId, texture.varId);
     
     DxbcRegisterValue result;
-    result.type.ctype  = m_textures.at(textureId).sampledType;
+    result.type.ctype  = texture.sampledType;
     result.type.ccount = 4;
     result.id = m_module.opImageFetch(
       getVectorTypeId(result.type), imageId,
@@ -3419,7 +3412,7 @@ namespace dxvk {
     // If the texture is not bound, return zeroes
     DxbcRegisterValue bound;
     bound.type = { DxbcScalarType::Bool, 1 };
-    bound.id = m_textures.at(textureId).specId;
+    bound.id = texture.specId;
     
     DxbcRegisterValue mergedResult;
     mergedResult.type = result.type;
@@ -3451,16 +3444,15 @@ namespace dxvk {
     const DxbcRegister& samplerReg  = ins.src[2 + isExtendedGather];
     
     // Texture and sampler register IDs
-    const uint32_t textureId = textureReg.idx[0].offset;
-    const uint32_t samplerId = samplerReg.idx[0].offset;
+    const auto& texture = m_textures.at(textureReg.idx[0].offset);
+    const auto& sampler = m_samplers.at(samplerReg.idx[0].offset);
     
     // Image type, which stores the image dimensions etc.
-    const DxbcImageInfo imageType = m_textures.at(textureId).imageInfo;
-    const uint32_t imageLayerDim = getTexLayerDim(imageType);
+    const uint32_t imageLayerDim = getTexLayerDim(texture.imageInfo);
     
     // Load the texture coordinates. SPIR-V allows these
     // to be float4 even if not all components are used.
-    DxbcRegisterValue coord = emitLoadTexCoord(texCoordReg, imageType);
+    DxbcRegisterValue coord = emitLoadTexCoord(texCoordReg, texture.imageInfo);
     
     // Load reference value for depth-compare operations
     const bool isDepthCompare = ins.op == DxbcOpcode::Gather4C
@@ -3470,11 +3462,6 @@ namespace dxvk {
       ? emitRegisterLoad(ins.src[3 + isExtendedGather],
           DxbcRegMask(true, false, false, false))
       : DxbcRegisterValue();
-    
-    // Determine the sampled image type based on the opcode.
-    const uint32_t sampledImageType = isDepthCompare
-      ? m_module.defSampledImageType(m_textures.at(textureId).depthTypeId)
-      : m_module.defSampledImageType(m_textures.at(textureId).colorTypeId);
     
     // Accumulate additional image operands.
     SpirvImageOperands imageOperands;
@@ -3500,20 +3487,12 @@ namespace dxvk {
         imageLayerDim, offsetIds.data());
     }
     
-    // Combine the texture and the sampler into a sampled image
-    const uint32_t sampledImageId = m_module.opSampledImage(
-      sampledImageType,
-      m_module.opLoad(
-        m_textures.at(textureId).imageTypeId,
-        m_textures.at(textureId).varId),
-      m_module.opLoad(
-        m_samplers.at(samplerId).typeId,
-        m_samplers.at(samplerId).varId));
-    
     // Gathering texels always returns a four-component
     // vector, even for the depth-compare variants.
+    uint32_t sampledImageId = emitLoadSampledImage(texture, sampler, isDepthCompare);
+
     DxbcRegisterValue result;
-    result.type.ctype  = m_textures.at(textureId).sampledType;
+    result.type.ctype  = texture.sampledType;
     result.type.ccount = 4;
     
     switch (ins.op) {
@@ -3548,7 +3527,7 @@ namespace dxvk {
     
     DxbcRegisterValue bound;
     bound.type = { DxbcScalarType::Bool, 1 };
-    bound.id = m_textures.at(textureId).specId;
+    bound.id = texture.specId;
     
     result.id = m_module.opSelect(getVectorTypeId(result.type),
       emitBuildVector(bound, result.type.ccount).id, result.id,
@@ -3569,16 +3548,13 @@ namespace dxvk {
     const DxbcRegister& samplerReg  = ins.src[2];
     
     // Texture and sampler register IDs
-    const uint32_t textureId = textureReg.idx[0].offset;
-    const uint32_t samplerId = samplerReg.idx[0].offset;
-    
-    // Image type, which stores the image dimensions etc.
-    const DxbcImageInfo imageType = m_textures.at(textureId).imageInfo;
-    const uint32_t imageLayerDim  = getTexLayerDim(imageType);
+    const auto& texture = m_textures.at(textureReg.idx[0].offset);
+    const auto& sampler = m_samplers.at(samplerReg.idx[0].offset);
+    const uint32_t imageLayerDim = getTexLayerDim(texture.imageInfo);
     
     // Load the texture coordinates. SPIR-V allows these
     // to be float4 even if not all components are used.
-    DxbcRegisterValue coord = emitLoadTexCoord(texCoordReg, imageType);
+    DxbcRegisterValue coord = emitLoadTexCoord(texCoordReg, texture.imageInfo);
     
     // Load reference value for depth-compare operations
     const bool isDepthCompare = ins.op == DxbcOpcode::SampleC
@@ -3625,14 +3601,12 @@ namespace dxvk {
     }
     
     // Combine the texture and the sampler into a sampled image
-    const uint32_t sampledImageId = emitLoadSampledImage(
-      m_textures.at(textureId), m_samplers.at(samplerId),
-      isDepthCompare);
+    uint32_t sampledImageId = emitLoadSampledImage(texture, sampler, isDepthCompare);
     
     // Sampling an image always returns a four-component
     // vector, whereas depth-compare ops return a scalar.
     DxbcRegisterValue result;
-    result.type.ctype  = m_textures.at(textureId).sampledType;
+    result.type.ctype  = texture.sampledType;
     result.type.ccount = isDepthCompare ? 1 : 4;
     
     switch (ins.op) {
@@ -3708,7 +3682,7 @@ namespace dxvk {
     
     DxbcRegisterValue bound;
     bound.type = { DxbcScalarType::Bool, 1 };
-    bound.id = m_textures.at(textureId).specId;
+    bound.id = texture.specId;
     
     result.id = m_module.opSelect(getVectorTypeId(result.type),
       emitBuildVector(bound, result.type.ccount).id, result.id,
@@ -7586,28 +7560,32 @@ namespace dxvk {
     
     switch (reg.type) {
       case DxbcOperandType::Resource: {
+        const auto& texture = m_textures.at(registerId);
+
         DxbcBufferInfo result;
-        result.image  = m_textures.at(registerId).imageInfo;
-        result.stype  = m_textures.at(registerId).sampledType;
-        result.type   = m_textures.at(registerId).type;
-        result.typeId = m_textures.at(registerId).imageTypeId;
-        result.varId  = m_textures.at(registerId).varId;
-        result.specId = m_textures.at(registerId).specId;
-        result.stride = m_textures.at(registerId).structStride;
-        result.align  = m_textures.at(registerId).structAlign;
+        result.image  = texture.imageInfo;
+        result.stype  = texture.sampledType;
+        result.type   = texture.type;
+        result.typeId = texture.imageTypeId;
+        result.varId  = texture.varId;
+        result.specId = texture.specId;
+        result.stride = texture.structStride;
+        result.align  = texture.structAlign;
         return result;
       } break;
         
       case DxbcOperandType::UnorderedAccessView: {
+        const auto& uav = m_uavs.at(registerId);
+
         DxbcBufferInfo result;
-        result.image  = m_uavs.at(registerId).imageInfo;
-        result.stype  = m_uavs.at(registerId).sampledType;
-        result.type   = m_uavs.at(registerId).type;
-        result.typeId = m_uavs.at(registerId).imageTypeId;
-        result.varId  = m_uavs.at(registerId).varId;
-        result.specId = m_uavs.at(registerId).specId;
-        result.stride = m_uavs.at(registerId).structStride;
-        result.align  = m_uavs.at(registerId).structAlign;
+        result.image  = uav.imageInfo;
+        result.stype  = uav.sampledType;
+        result.type   = uav.type;
+        result.typeId = uav.imageTypeId;
+        result.varId  = uav.varId;
+        result.specId = uav.specId;
+        result.stride = uav.structStride;
+        result.align  = uav.structAlign;
         return result;
       } break;
         
