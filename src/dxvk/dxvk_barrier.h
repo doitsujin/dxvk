@@ -93,7 +93,7 @@ namespace dxvk {
     };
 
     struct ImgSlice {
-      DxvkImage*              image;
+      VkImage                 image;
       VkImageSubresourceRange subres;
       DxvkAccessFlags         access;
     };

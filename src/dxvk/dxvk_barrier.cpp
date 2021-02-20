@@ -73,7 +73,7 @@ namespace dxvk {
       m_imgBarriers.push_back(barrier);
     }
 
-    m_imgSlices.push_back({ image.ptr(), subresources, access });
+    m_imgSlices.push_back({ image->handle(), subresources, access });
   }
 
 
@@ -152,8 +152,8 @@ namespace dxvk {
     acquire.m_imgBarriers.push_back(barrier);
 
     DxvkAccessFlags access(DxvkAccess::Read, DxvkAccess::Write);
-    release.m_imgSlices.push_back({ image.ptr(), subresources, access });
-    acquire.m_imgSlices.push_back({ image.ptr(), subresources, access });
+    release.m_imgSlices.push_back({ image->handle(), subresources, access });
+    acquire.m_imgSlices.push_back({ image->handle(), subresources, access });
   }
 
 
@@ -183,7 +183,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < m_imgSlices.size() && !result; i++) {
       const VkImageSubresourceRange& dstSubres = m_imgSlices[i].subres;
 
-      result = (image == m_imgSlices[i].image) && (imgAccess | m_imgSlices[i].access).test(DxvkAccess::Write)
+      result = (image->handle() == m_imgSlices[i].image) && (imgAccess | m_imgSlices[i].access).test(DxvkAccess::Write)
             && (imgSubres.baseArrayLayer < dstSubres.baseArrayLayer + dstSubres.layerCount)
             && (imgSubres.baseArrayLayer + imgSubres.layerCount     > dstSubres.baseArrayLayer)
             && (imgSubres.baseMipLevel   < dstSubres.baseMipLevel   + dstSubres.levelCount)
@@ -219,7 +219,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < m_imgSlices.size(); i++) {
       const VkImageSubresourceRange& dstSubres = m_imgSlices[i].subres;
 
-      if ((image == m_imgSlices[i].image)
+      if ((image->handle() == m_imgSlices[i].image)
        && (imgSubres.baseArrayLayer < dstSubres.baseArrayLayer + dstSubres.layerCount)
        && (imgSubres.baseArrayLayer + imgSubres.layerCount     > dstSubres.baseArrayLayer)
        && (imgSubres.baseMipLevel   < dstSubres.baseMipLevel   + dstSubres.levelCount)
