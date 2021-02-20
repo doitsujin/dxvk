@@ -325,6 +325,8 @@ namespace dxvk {
         image->info().access);
 
       image->setLayout(layout);
+
+      m_cmd->trackResource<DxvkAccess::Write>(image);
     }
   }
 
