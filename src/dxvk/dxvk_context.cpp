@@ -4063,6 +4063,8 @@ namespace dxvk {
         attachment.view->imageInfo().layout,
         attachment.view->imageInfo().stages,
         attachment.view->imageInfo().access);
+
+      m_cmd->trackResource<DxvkAccess::Write>(attachment.view->image());
     }
   }
 
@@ -4082,6 +4084,8 @@ namespace dxvk {
         attachment.view->imageInfo().layout,
         attachment.view->imageInfo().stages,
         attachment.view->imageInfo().access);
+
+      m_cmd->trackResource<DxvkAccess::Write>(attachment.view->image());
     }
   }
 
