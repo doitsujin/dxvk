@@ -1868,7 +1868,8 @@ namespace dxvk {
           entry.clearValue.depthStencil.stencil = clearValue.depthStencil.stencil;
         
         return;
-      }
+      } else if (entry.imageView->checkSubresourceOverlap(imageView))
+        this->flushClears(false);
     }
 
     m_deferredClears.push_back({ imageView, 0, clearAspects, clearValue });
@@ -1883,7 +1884,8 @@ namespace dxvk {
         entry.discardAspects |= discardAspects;
         entry.clearAspects &= ~discardAspects;
         return;
-      }
+      } else if (entry.imageView->checkSubresourceOverlap(imageView))
+        this->flushClears(false);
     }
 
     m_deferredClears.push_back({ imageView, discardAspects });

@@ -469,6 +469,23 @@ namespace dxvk {
       return result;
     }
 
+    /**
+     * \brief Checks whether this view overlaps with another one
+     *
+     * Two views overlap if they were created for the same
+     * image and have at least one subresource in common.
+     * \param [in] view The other view to check
+     * \returns \c true if the two views overlap
+     */
+    bool checkSubresourceOverlap(const Rc<DxvkImageView>& view) const {
+      if (likely(m_image != view->m_image))
+        return false;
+
+      return vk::checkSubresourceRangeOverlap(
+        this->imageSubresources(),
+        view->imageSubresources());
+    }
+
   private:
     
     Rc<vk::DeviceFn>  m_vkd;
