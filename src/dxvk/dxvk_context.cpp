@@ -4030,12 +4030,6 @@ namespace dxvk {
       m_state.om.renderPassOps.colorOps[i].loadLayout = m_rtLayouts.color[i];
 
     m_state.om.renderPassOps.depthOps.loadLayout = m_rtLayouts.depth;
-
-    // Always discard swap chain images since we currently don't have a better solution for this.
-    if (m_state.om.renderPassOps.colorOps[0].loadLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
-      m_state.om.renderPassOps.colorOps[0].loadLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-      m_state.om.renderPassOps.colorOps[0].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    }
   }
 
 
