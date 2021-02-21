@@ -38,6 +38,8 @@ namespace dxvk {
       } break;
       
       case DxbcInstClass::TextureSample:
+      case DxbcInstClass::TextureGather:
+      case DxbcInstClass::TextureQueryLod:
       case DxbcInstClass::VectorDeriv: {
         m_analysis->usesDerivatives = true;
       } break;
