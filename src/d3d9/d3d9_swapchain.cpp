@@ -841,6 +841,7 @@ namespace dxvk {
       renderTargets.color[0].view   = m_imageViews.at(imageIndex);
       renderTargets.color[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
       m_context->bindRenderTargets(renderTargets);
+      m_context->discardImageView(m_imageViews.at(imageIndex), VK_IMAGE_ASPECT_COLOR_BIT);
 
       VkViewport viewport;
       viewport.x        = float(m_dstRect.left);
