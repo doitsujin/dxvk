@@ -145,6 +145,7 @@ namespace dxvk {
 
   struct DxvkDeferredClear {
     Rc<DxvkImageView> imageView;
+    VkImageAspectFlags discardAspects;
     VkImageAspectFlags clearAspects;
     VkClearValue clearValue;
   };

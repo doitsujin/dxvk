@@ -583,7 +583,7 @@ namespace dxvk {
     }
 
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound))
-      this->performClear(imageView, attachmentIndex, clearAspects, clearValue);
+      this->performClear(imageView, attachmentIndex, 0, clearAspects, clearValue);
     else
       this->deferClear(imageView, clearAspects, clearValue);
   }
@@ -1224,22 +1224,18 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::discardImage(
-    const Rc<DxvkImage>&          image,
-          VkImageSubresourceRange subresources) {
-    this->spillRenderPass(false);
+  void DxvkContext::discardImageView(
+    const Rc<DxvkImageView>&      imageView,
+          VkImageAspectFlags      discardAspects) {
+    VkImageUsageFlags viewUsage = imageView->info().usage;
 
-    if (m_execBarriers.isImageDirty(image, subresources, DxvkAccess::Write))
-      m_execBarriers.recordCommands(m_cmd);
-    
-    m_execBarriers.accessImage(image, subresources,
-      VK_IMAGE_LAYOUT_UNDEFINED,
-      image->info().stages, 0,
-      image->info().layout,
-      image->info().stages,
-      image->info().access);
-    
-    m_cmd->trackResource<DxvkAccess::Write>(image);
+    // Ignore non-render target views since there's likely no good use case for
+    // discarding those. Also, force reinitialization even if the image is bound
+    // as a render target, which may have niche use cases for depth buffers.
+    if (viewUsage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+      this->spillRenderPass(true);
+      this->deferDiscard(imageView, discardAspects);
+    }
   }
 
 
@@ -1728,6 +1724,7 @@ namespace dxvk {
   void DxvkContext::performClear(
     const Rc<DxvkImageView>&        imageView,
           int32_t                   attachmentIndex,
+          VkImageAspectFlags        discardAspects,
           VkImageAspectFlags        clearAspects,
           VkClearValue              clearValue) {
     DxvkColorAttachmentOps colorOp;
@@ -1743,16 +1740,22 @@ namespace dxvk {
     
     if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT)
       colorOp.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    else if (discardAspects & VK_IMAGE_ASPECT_COLOR_BIT)
+      colorOp.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     
     if (clearAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
       depthOp.loadOpD = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    else if (discardAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
+      depthOp.loadOpD = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     
     if (clearAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
       depthOp.loadOpS = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    
+    else if (discardAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
+      depthOp.loadOpS = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+
     bool is3D = imageView->imageInfo().type == VK_IMAGE_TYPE_3D;
 
-    if (clearAspects == imageView->info().aspect && !is3D) {
+    if ((clearAspects | discardAspects) == imageView->info().aspect && !is3D) {
       colorOp.loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
       depthOp.loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
     }
@@ -1815,32 +1818,33 @@ namespace dxvk {
       clearRect.baseArrayLayer      = 0;
       clearRect.layerCount          = imageView->info().numLayers;
 
-      m_cmd->cmdClearAttachments(1, &clearInfo, 1, &clearRect);
+      if (clearAspects)
+        m_cmd->cmdClearAttachments(1, &clearInfo, 1, &clearRect);
     } else {
-      // Perform the clear when starting the render pass
-      if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
+      // Perform the operation when starting the next render pass
+      if ((clearAspects | discardAspects) & VK_IMAGE_ASPECT_COLOR_BIT) {
         uint32_t colorIndex = m_state.om.framebuffer->getColorAttachmentIndex(attachmentIndex);
 
         m_state.om.renderPassOps.colorOps[colorIndex].loadOp = colorOp.loadOp;
-        if (m_state.om.renderPassOps.colorOps[colorIndex].loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR && !is3D)
+        if (m_state.om.renderPassOps.colorOps[colorIndex].loadOp != VK_ATTACHMENT_LOAD_OP_LOAD && !is3D)
           m_state.om.renderPassOps.colorOps[colorIndex].loadLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
         m_state.om.clearValues[attachmentIndex].color = clearValue.color;
       }
       
-      if (clearAspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+      if ((clearAspects | discardAspects) & VK_IMAGE_ASPECT_DEPTH_BIT) {
         m_state.om.renderPassOps.depthOps.loadOpD = depthOp.loadOpD;
         m_state.om.clearValues[attachmentIndex].depthStencil.depth = clearValue.depthStencil.depth;
       }
       
-      if (clearAspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+      if ((clearAspects | discardAspects) & VK_IMAGE_ASPECT_STENCIL_BIT) {
         m_state.om.renderPassOps.depthOps.loadOpS = depthOp.loadOpS;
         m_state.om.clearValues[attachmentIndex].depthStencil.stencil = clearValue.depthStencil.stencil;
       }
 
-      if (clearAspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-        if (m_state.om.renderPassOps.depthOps.loadOpD == VK_ATTACHMENT_LOAD_OP_CLEAR
-         && m_state.om.renderPassOps.depthOps.loadOpS == VK_ATTACHMENT_LOAD_OP_CLEAR)
+      if ((clearAspects | discardAspects) & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+        if (m_state.om.renderPassOps.depthOps.loadOpD != VK_ATTACHMENT_LOAD_OP_LOAD
+         && m_state.om.renderPassOps.depthOps.loadOpS != VK_ATTACHMENT_LOAD_OP_LOAD)
           m_state.om.renderPassOps.depthOps.loadLayout = VK_IMAGE_LAYOUT_UNDEFINED;
       }
     }
@@ -1853,6 +1857,7 @@ namespace dxvk {
           VkClearValue              clearValue) {
     for (auto& entry : m_deferredClears) {
       if (entry.imageView == imageView) {
+        entry.discardAspects &= ~clearAspects;
         entry.clearAspects |= clearAspects;
 
         if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT)
@@ -1866,7 +1871,22 @@ namespace dxvk {
       }
     }
 
-    m_deferredClears.push_back({ imageView, clearAspects, clearValue });
+    m_deferredClears.push_back({ imageView, 0, clearAspects, clearValue });
+  }
+
+
+  void DxvkContext::deferDiscard(
+    const Rc<DxvkImageView>&        imageView,
+          VkImageAspectFlags        discardAspects) {
+    for (auto& entry : m_deferredClears) {
+      if (entry.imageView == imageView) {
+        entry.discardAspects |= discardAspects;
+        entry.clearAspects &= ~discardAspects;
+        return;
+      }
+    }
+
+    m_deferredClears.push_back({ imageView, discardAspects });
   }
 
 
@@ -1878,7 +1898,8 @@ namespace dxvk {
       if (useRenderPass && m_state.om.framebuffer->isFullSize(clear.imageView))
         attachmentIndex = m_state.om.framebuffer->findAttachment(clear.imageView);
 
-      this->performClear(clear.imageView, attachmentIndex, clear.clearAspects, clear.clearValue);
+      this->performClear(clear.imageView, attachmentIndex,
+        clear.discardAspects, clear.clearAspects, clear.clearValue);
     }
 
     m_deferredClears.clear();

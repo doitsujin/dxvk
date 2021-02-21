@@ -474,18 +474,18 @@ namespace dxvk {
       const Rc<DxvkBuffer>&       buffer);
     
     /**
-     * \brief Discards image subresources
+     * \brief Discards contents of an image view
      * 
      * Discards the current contents of the image
      * and performs a fast layout transition. This
      * may improve performance in some cases.
-     * \param [in] image The image to discard
-     * \param [in] subresources Image subresources
+     * \param [in] imageView View to discard
+     * \param [in] discardAspects Image aspects to discard
      */
-    void discardImage(
-      const Rc<DxvkImage>&          image,
-            VkImageSubresourceRange subresources);
-    
+    void discardImageView(
+      const Rc<DxvkImageView>&      imageView,
+            VkImageAspectFlags      discardAspects);
+
     /**
      * \brief Starts compute jobs
      * 
@@ -1090,6 +1090,7 @@ namespace dxvk {
     void performClear(
       const Rc<DxvkImageView>&        imageView,
             int32_t                   attachmentIndex,
+            VkImageAspectFlags        discardAspects,
             VkImageAspectFlags        clearAspects,
             VkClearValue              clearValue);
 
@@ -1097,6 +1098,10 @@ namespace dxvk {
       const Rc<DxvkImageView>&        imageView,
             VkImageAspectFlags        clearAspects,
             VkClearValue              clearValue);
+
+    void deferDiscard(
+      const Rc<DxvkImageView>&        imageView,
+            VkImageAspectFlags        discardAspects);
 
     void flushClears(
             bool                      useRenderPass);
