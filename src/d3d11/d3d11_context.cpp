@@ -133,6 +133,12 @@ namespace dxvk {
           sr.baseMipLevel + mip, sr.baseArrayLayer + layer, mipCount));
       }
     }
+
+    // Since we don't handle SRVs here, we can assume that the
+    // view covers all aspects of the underlying resource.
+    EmitCs([cView = view] (DxvkContext* ctx) {
+      ctx->discardImageView(cView, cView->formatInfo()->aspectMask);
+    });
   }
   
   
