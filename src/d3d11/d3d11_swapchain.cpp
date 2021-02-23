@@ -2,9 +2,6 @@
 #include "d3d11_device.h"
 #include "d3d11_swapchain.h"
 
-#include <dxgi_presenter_frag.h>
-#include <dxgi_presenter_vert.h>
-
 namespace dxvk {
 
   static uint16_t MapGammaControlPoint(float x) {
