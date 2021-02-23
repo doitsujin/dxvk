@@ -33,6 +33,12 @@ dxvk_shaders = files([
   'shaders/dxvk_pack_d24s8.comp',
   'shaders/dxvk_pack_d32s8.comp',
 
+  'shaders/dxvk_present_frag.frag',
+  'shaders/dxvk_present_frag_blit.frag',
+  'shaders/dxvk_present_frag_ms.frag',
+  'shaders/dxvk_present_frag_ms_amd.frag',
+  'shaders/dxvk_present_vert.vert',
+
   'shaders/dxvk_resolve_frag_d.frag',
   'shaders/dxvk_resolve_frag_ds.frag',
   'shaders/dxvk_resolve_frag_f.frag',
@@ -86,6 +92,7 @@ dxvk_src = files([
   'dxvk_pipecache.cpp',
   'dxvk_pipelayout.cpp',
   'dxvk_pipemanager.cpp',
+  'dxvk_presenter.cpp',
   'dxvk_queue.cpp',
   'dxvk_renderpass.cpp',
   'dxvk_resource.cpp',
