@@ -420,6 +420,10 @@ namespace dxvk {
       return m_d3d10Device;
     }
     
+    void InitTexture(D3D11CommonTexture* pTexture) {
+      m_initializer->InitTexture(pTexture, nullptr);
+    }
+
     static bool CheckFeatureLevelSupport(
       const Rc<DxvkInstance>& instance,
       const Rc<DxvkAdapter>&  adapter,
