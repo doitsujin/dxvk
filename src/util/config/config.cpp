@@ -386,6 +386,11 @@ namespace dxvk {
       { "d3d9.swvpIntCount",                "16" },
       { "d3d9.swvpBoolCount",               "16" },
     }} },
+    /* Mafia 2                                   */
+    { R"(\\mafia2\.exe$)", {{
+      { "d3d9.customVendorId",              "10de" },
+      { "d3d9.customDeviceId",              "0402" },
+    }} },
   }};
 
 
