@@ -2469,6 +2469,24 @@ namespace dxvk {
      || m_execBarriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
       m_execBarriers.recordCommands(m_cmd);
 
+    bool isDepthStencil = region.srcSubresource.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
+
+    VkImageLayout srcLayout = srcImage->pickLayout(isDepthStencil
+      ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+      : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    
+    if (srcImage->info().layout != srcLayout) {
+      m_execAcquires.accessImage(
+        srcImage, srcSubresourceRange,
+        srcImage->info().layout,
+        srcImage->info().stages, 0,
+        srcLayout,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_SHADER_READ_BIT);
+      
+      m_execAcquires.recordCommands(m_cmd);
+    }
+
     // Sort out image offsets so that dstOffset[0] points
     // to the top-left corner of the target area
     VkOffset3D srcOffsets[2] = { region.srcOffsets[0], region.srcOffsets[1] };
@@ -2542,7 +2560,7 @@ namespace dxvk {
     VkDescriptorImageInfo descriptorImage;
     descriptorImage.sampler     = m_common->metaBlit().getSampler(filter);
     descriptorImage.imageView   = passObjects.srcView;
-    descriptorImage.imageLayout = srcImage->info().layout;
+    descriptorImage.imageLayout = srcLayout;
     
     VkWriteDescriptorSet descriptorWrite;
     descriptorWrite.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -2595,7 +2613,7 @@ namespace dxvk {
     
     m_execBarriers.accessImage(srcImage,
       vk::makeSubresourceRange(region.srcSubresource),
-      srcImage->info().layout,
+      srcLayout,
       VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
       VK_ACCESS_SHADER_READ_BIT,
       srcImage->info().layout,
