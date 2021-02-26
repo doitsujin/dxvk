@@ -1740,8 +1740,12 @@ namespace dxvk {
     if (pFormat != nullptr)
       *pFormat = m_state.ia.indexBuffer.format;
     
-    if (pOffset != nullptr)
-      *pOffset = m_state.ia.indexBuffer.offset;
+    if (pOffset != nullptr) {
+      uint32_t shift = m_state.ia.indexBuffer.format == DXGI_FORMAT_R16_UINT ? 1 : 2;
+      *pOffset = m_state.ia.indexBuffer.optimized
+        ? m_state.ia.indexBuffer.firstIndex << shift
+        : m_state.ia.indexBuffer.offset;
+    }
   }
   
   
