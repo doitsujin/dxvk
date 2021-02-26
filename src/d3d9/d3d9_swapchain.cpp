@@ -617,6 +617,7 @@ namespace dxvk {
       RECT oldRect = { 0, 0, 0, 0 };
       
       ::GetWindowRect(m_window, &oldRect);
+      ::MapWindowPoints(HWND_DESKTOP, ::GetParent(m_window), reinterpret_cast<POINT*>(&oldRect), 1);
       ::SetRect(&newRect, 0, 0, pPresentParams->BackBufferWidth, pPresentParams->BackBufferHeight);
       ::AdjustWindowRectEx(&newRect,
         ::GetWindowLongW(m_window, GWL_STYLE), FALSE,
