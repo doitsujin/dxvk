@@ -162,6 +162,11 @@ namespace dxvk {
       
       if (m_format.depth.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
         renderAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+      if (m_format.depth.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+        renderStages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        renderAccess |= VK_ACCESS_SHADER_READ_BIT;
+      }
     }
 
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
