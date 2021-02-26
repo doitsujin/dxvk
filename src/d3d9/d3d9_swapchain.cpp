@@ -1070,6 +1070,7 @@ namespace dxvk {
     desc.Usage              = D3DUSAGE_RENDERTARGET;
     desc.Discard            = FALSE;
     desc.IsBackBuffer       = TRUE;
+    desc.IsAttachmentOnly   = FALSE;
 
     for (uint32_t i = 0; i < m_backBuffers.size(); i++)
       m_backBuffers[i] = new D3D9Surface(m_parent, &desc, this);

@@ -401,7 +401,7 @@ namespace dxvk {
   }
 
 
-  VkImageLayout D3D9CommonTexture::OptimizeLayout(VkImageUsageFlags Usage) {
+  VkImageLayout D3D9CommonTexture::OptimizeLayout(VkImageUsageFlags Usage) const {
     const VkImageUsageFlags usageFlags = Usage;
     
     // Filter out unnecessary flags. Transfer operations
@@ -409,6 +409,11 @@ namespace dxvk {
     Usage &= ~(VK_IMAGE_USAGE_TRANSFER_DST_BIT
              | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
     
+    // Ignore sampled bit in case the image was created with
+    // an image flag that only allows attachment usage
+    if (m_desc.IsAttachmentOnly)
+      Usage &= ~VK_IMAGE_USAGE_SAMPLED_BIT;
+
     // If the image is used only as an attachment, we never
     // have to transform the image back to a different layout
     if (Usage == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
