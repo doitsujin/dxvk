@@ -394,6 +394,7 @@ namespace dxvk {
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
+    desc.IsAttachmentOnly   = FALSE;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -449,6 +450,7 @@ namespace dxvk {
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
+    desc.IsAttachmentOnly   = FALSE;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -494,6 +496,7 @@ namespace dxvk {
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
+    desc.IsAttachmentOnly   = FALSE;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -3381,6 +3384,7 @@ namespace dxvk {
     desc.MultiSample        = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
     desc.IsBackBuffer       = FALSE;
+    desc.IsAttachmentOnly   = TRUE;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -3425,6 +3429,7 @@ namespace dxvk {
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
+    desc.IsAttachmentOnly   = Pool == D3DPOOL_DEFAULT;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -3471,6 +3476,7 @@ namespace dxvk {
     desc.MultiSample        = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
     desc.IsBackBuffer       = FALSE;
+    desc.IsAttachmentOnly   = TRUE;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -6953,6 +6959,7 @@ namespace dxvk {
       desc.MultiSample        = pPresentationParameters->MultiSampleType;
       desc.MultisampleQuality = pPresentationParameters->MultiSampleQuality;
       desc.IsBackBuffer       = FALSE;
+      desc.IsAttachmentOnly   = TRUE;
 
       if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
         return D3DERR_NOTAVAILABLE;

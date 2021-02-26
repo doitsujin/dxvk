@@ -43,6 +43,7 @@ namespace dxvk {
     D3DMULTISAMPLE_TYPE MultiSample;
     DWORD               MultisampleQuality;
     BOOL                IsBackBuffer;
+    BOOL                IsAttachmentOnly;
   };
 
   struct D3D9ColorView {
@@ -473,15 +474,15 @@ namespace dxvk {
       return D3D9_COMMON_TEXTURE_MAP_MODE_BACKED;
     }
 
+    VkImageLayout OptimizeLayout(
+            VkImageUsageFlags         Usage) const;
+
     static VkImageType GetImageTypeFromResourceType(
             D3DRESOURCETYPE  Dimension);
 
     static VkImageViewType GetImageViewTypeFromResourceType(
             D3DRESOURCETYPE  Dimension,
             UINT             Layer);
-
-    static VkImageLayout OptimizeLayout(
-            VkImageUsageFlags         Usage);
 
     static constexpr UINT AllLayers = UINT32_MAX;
 
