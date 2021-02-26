@@ -2974,8 +2974,11 @@ namespace dxvk {
           UINT*                             pNumViewports,
           D3D11_VIEWPORT*                   pViewports) {
     D3D10DeviceLock lock = LockContext();
-    
-    if (pViewports != nullptr) {
+    uint32_t numWritten = m_state.rs.numViewports;
+
+    if (pViewports) {
+      numWritten = std::min(numWritten, *pNumViewports);
+
       for (uint32_t i = 0; i < *pNumViewports; i++) {
         if (i < m_state.rs.numViewports) {
           pViewports[i] = m_state.rs.viewports[i];
@@ -2988,9 +2991,9 @@ namespace dxvk {
           pViewports[i].MaxDepth = 0.0f;
         }
       }
-    } else {
-      *pNumViewports = m_state.rs.numViewports;
     }
+
+    *pNumViewports = numWritten;
   }
   
   
@@ -2998,8 +3001,11 @@ namespace dxvk {
           UINT*                             pNumRects,
           D3D11_RECT*                       pRects) {
     D3D10DeviceLock lock = LockContext();
+    uint32_t numWritten = m_state.rs.numScissors;
     
-    if (pRects != nullptr) {
+    if (pRects) {
+      numWritten = std::min(numWritten, *pNumRects);
+
       for (uint32_t i = 0; i < *pNumRects; i++) {
         if (i < m_state.rs.numScissors) {
           pRects[i] = m_state.rs.scissors[i];
@@ -3010,9 +3016,9 @@ namespace dxvk {
           pRects[i].bottom = 0;
         }
       }
-    } else {
-      *pNumRects = m_state.rs.numScissors;
     }
+
+    *pNumRects = m_state.rs.numScissors;
   }
 
 
