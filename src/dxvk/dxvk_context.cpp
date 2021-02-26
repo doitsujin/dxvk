@@ -3470,7 +3470,7 @@ namespace dxvk {
       this->renderPassBindFramebuffer(
         m_state.om.framebuffer,
         m_state.om.renderPassOps,
-        m_state.om.clearValues.size(),
+        m_state.om.framebuffer->numAttachments(),
         m_state.om.clearValues.data());
 
       // Track the final layout of each render target
