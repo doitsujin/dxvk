@@ -157,6 +157,10 @@ namespace dxvk {
 
     /// Use device local memory for constant buffers.
     bool deviceLocalConstantBuffers;
+
+    /// Allow implicit discard of resources in contested situations.
+    /// Some naughty apps write to pointers outside of lock boundaries.
+    bool allowImplicitDiscard;
   };
 
 }

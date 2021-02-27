@@ -76,6 +76,7 @@ namespace dxvk {
     this->apitraceMode = config.getOption<bool>("d3d9.apitraceMode", false);
 
     this->deviceLocalConstantBuffers = config.getOption<bool>("d3d9.deviceLocalConstantBuffers", false);
+    this->allowImplicitDiscard = config.getOption<bool>("d3d9.allowImplicitDiscard", true);
 
     // If we are not Nvidia, enable general hazards.
     this->generalHazards = adapter == nullptr || !adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0);
