@@ -3999,6 +3999,7 @@ namespace dxvk {
     const bool systemmem = desc.Pool == D3DPOOL_SYSTEMMEM;
     const bool managed   = IsPoolManaged(desc.Pool);
     const bool scratch   = desc.Pool == D3DPOOL_SCRATCH;
+    const bool doNotWait = Flags & D3DLOCK_DONOTWAIT;
 
     bool fullResource = pBox == nullptr;
     if (unlikely(!fullResource)) {
@@ -4065,26 +4066,32 @@ namespace dxvk {
       // that cannot get affected by GPU, therefore readonly is A-OK for NOT waiting.
       const bool skipWait = (readOnly && managed) || scratch || (readOnly && systemmem && !dirty);
 
-      if (alloced)
+      bool doImplicitDiscard = (managed || (systemmem && !dirty)) && !doNotWait;
+
+      doImplicitDiscard = doImplicitDiscard && m_d3d9Options.allowImplicitDiscard;
+
+      if (alloced) {
         std::memset(physSlice.mapPtr, 0, physSlice.length);
-      else if ((managed || (systemmem && !dirty)) && !(Flags & D3DLOCK_DONOTWAIT) && !skipWait
-            && m_d3d9Options.allowImplicitDiscard) {
-        if (!WaitForResource(mappedBuffer, D3DLOCK_DONOTWAIT)) {
-          // if the mapped buffer is currently being copied to image
-          // we can just avoid a stall by allocating a new slice and copying the existing contents
-          DxvkBufferSliceHandle oldSlice = physSlice;
-          physSlice = pResource->DiscardMapSlice(Subresource);
-          std::memcpy(physSlice.mapPtr, oldSlice.mapPtr, oldSlice.length);
-          EmitCs([
-            cImageBuffer = std::move(mappedBuffer),
-            cBufferSlice = physSlice
-          ] (DxvkContext* ctx) {
-            ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
-          });
+      }
+      else if (!skipWait) {
+        if (doImplicitDiscard) {
+          if (!WaitForResource(mappedBuffer, D3DLOCK_DONOTWAIT)) {
+            // if the mapped buffer is currently being copied to image
+            // we can just avoid a stall by allocating a new slice and copying the existing contents
+            DxvkBufferSliceHandle oldSlice = physSlice;
+            physSlice = pResource->DiscardMapSlice(Subresource);
+            std::memcpy(physSlice.mapPtr, oldSlice.mapPtr, oldSlice.length);
+            EmitCs([
+              cImageBuffer = std::move(mappedBuffer),
+              cBufferSlice = physSlice
+            ] (DxvkContext* ctx) {
+              ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
+            });
+          }
+        } else {
+          if (!WaitForResource(mappedBuffer, Flags))
+            return D3DERR_WASSTILLDRAWING;
         }
-      } else if (!skipWait) {
-        if (!WaitForResource(mappedBuffer, Flags))
-          return D3DERR_WASSTILLDRAWING;
       }
     }
     else {
@@ -4414,8 +4421,15 @@ namespace dxvk {
                             quickRead                     ||
                             (boundsCheck && !pResource->DirtyRange().Overlaps(pResource->LockRange()));
       if (!skipWait) {
-        if ((IsPoolManaged(desc.Pool) || desc.Pool == D3DPOOL_SYSTEMMEM) && !(Flags & D3DLOCK_DONOTWAIT) && pResource->GetLockCount() == 0
-        && m_d3d9Options.allowImplicitDiscard) {
+        const bool managed   = IsPoolManaged(desc.Pool);
+        const bool systemmem = desc.Pool == D3DPOOL_SYSTEMMEM;
+        const bool doNotWait = Flags & D3DLOCK_DONOTWAIT;
+
+        bool doImplicitDiscard = (managed || systemmem) && !doNotWait && pResource->GetLockCount() == 0;
+
+        doImplicitDiscard = doImplicitDiscard && m_d3d9Options.allowImplicitDiscard;
+
+        if (doImplicitDiscard) {
           if (!WaitForResource(mappingBuffer, D3DLOCK_DONOTWAIT)) {
             // if the mapped buffer is currently being copied to the primary buffer
             // we can just avoid a stall by allocating a new slice and copying the existing contents
