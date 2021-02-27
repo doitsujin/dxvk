@@ -1,0 +1,34 @@
+name: Artifacts (Package)
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  build-artifacts:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - name: Checkout code
+      id: checkout-code
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - name: Setup problem matcher
+      uses: Joshua-Ashton/gcc-problem-matcher@v1
+
+    - name: Build release
+      id: build-release
+      uses: Joshua-Ashton/arch-mingw-github-action@v5
+      with:
+        command: |
+          export VERSION_NAME="${GITHUB_REF##*/}-${GITHUB_SHA##*/}"
+          ./package-release.sh ${VERSION_NAME} build --no-package
+          echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_ENV
+
+    - name: Upload artifacts
+      id: upload-artifacts
+      uses: actions/upload-artifact@v2
+      with:
+        name: dxvk-${{ env.VERSION_NAME }}
+        path: build/dxvk-${{ env.VERSION_NAME }}
+        if-no-files-found: error
