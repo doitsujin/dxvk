@@ -470,6 +470,21 @@ namespace dxvk {
     }
 
     /**
+     * \brief Checks whether this view matches another
+     *
+     * \param [in] view The other view to check
+     * \returns \c true if the two views have the same subresources
+     */
+    bool checkSubresourceMatch(const Rc<DxvkImageView>& view) const {
+      if (this == view.ptr())
+        return true;
+
+      return this->image()        == view->image()
+          && this->subresources() == view->subresources()
+          && this->info().type    == view->info().type;
+    }
+
+    /**
      * \brief Checks whether this view overlaps with another one
      *
      * Two views overlap if they were created for the same
