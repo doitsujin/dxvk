@@ -4627,6 +4627,9 @@ namespace dxvk {
     VkMemoryPropertyFlags memoryFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
+    if (m_d3d9Options.deviceLocalConstantBuffers)
+      memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
     Rc<DxvkBuffer> buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
 
     const uint32_t slotId = computeResourceSlotId(

@@ -154,6 +154,9 @@ namespace dxvk {
 
     /// Apitrace mode: Maps all buffers in cached memory.
     bool apitraceMode;
+
+    /// Use device local memory for constant buffers.
+    bool deviceLocalConstantBuffers;
   };
 
 }
