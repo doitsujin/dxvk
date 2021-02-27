@@ -4,7 +4,7 @@
 #include "d3d9_device.h"
 #include "d3d9_format.h"
 
-#include "../dxvk/hud/dxvk_hud.h"
+#include "../dxvk/dxvk_presenter.h"
 
 #include "../util/sync/sync_signal.h"
 
@@ -13,17 +13,6 @@
 namespace dxvk {
 
   class D3D9Surface;
-
-  /**
-   * \brief Gamma control point
-   * 
-   * Control points are stored as normalized
-   * 16-bit unsigned integer values that will
-   * be converted back to floats in the shader.
-   */
-  struct D3D9_VK_GAMMA_CP {
-    uint16_t R, G, B, A;
-  };
 
   using D3D9SwapChainExBase = D3D9DeviceChild<IDirect3DSwapChain9Ex>;
   class D3D9SwapChainEx final : public D3D9SwapChainExBase {
@@ -87,12 +76,6 @@ namespace dxvk {
 
   private:
 
-    enum BindingIds : uint32_t {
-      Image = 0,
-      Gamma = 1,
-    };
-
-    
     struct WindowState {
       LONG style   = 0;
       LONG exstyle = 0;
@@ -103,41 +86,13 @@ namespace dxvk {
     D3DGAMMARAMP            m_ramp;
 
     Rc<DxvkDevice>          m_device;
-    Rc<DxvkContext>         m_context;
 
-    Rc<vk::Presenter>       m_presenter;
-
-    Rc<DxvkShader>          m_vertShader;
-    Rc<DxvkShader>          m_fragShader;
-
-    Rc<DxvkSampler>         m_samplerFitting;
-    Rc<DxvkSampler>         m_samplerScaling;
-
-    Rc<DxvkSampler>         m_gammaSampler;
-    Rc<DxvkImage>           m_gammaTexture;
-    Rc<DxvkImageView>       m_gammaTextureView;
-
-    Rc<DxvkImage>           m_resolveImage;
-    Rc<DxvkImageView>       m_resolveImageView;
-
-    Rc<hud::Hud>            m_hud;
-
-    DxvkInputAssemblyState  m_iaState;
-    DxvkRasterizerState     m_rsState;
-    DxvkMultisampleState    m_msState;
-    DxvkDepthStencilState   m_dsState;
-    DxvkLogicOpState        m_loState;
-    DxvkBlendMode           m_blendMode;
+    Rc<DxvkPresenter>       m_presenter;
 
     std::vector<Com<D3D9Surface, false>> m_backBuffers;
     
-    RECT                    m_srcRect;
-    RECT                    m_dstRect;
-
-    DxvkSubmitStatus        m_presentStatus;
-
-    std::vector<Rc<DxvkImageView>> m_imageViews;
-
+    VkRect2D                m_srcRect;
+    VkRect2D                m_dstRect;
 
     uint64_t                m_frameId           = D3D9DeviceEx::MaxFrameLatency;
     uint32_t                m_frameLatencyCap   = 0;
@@ -156,7 +111,7 @@ namespace dxvk {
 
     void PresentImage(UINT PresentInterval);
 
-    void SubmitPresent(const vk::PresenterSync& Sync, uint32_t FrameId);
+    void SubmitPresent(uint32_t Repeat);
 
     void SynchronizePresent();
 
@@ -165,26 +120,12 @@ namespace dxvk {
 
     void CreatePresenter();
 
-    void CreateRenderTargetViews();
-
     void DestroyBackBuffers();
 
     void CreateBackBuffers(
             uint32_t            NumBackBuffers);
 
-    void CreateGammaTexture(
-            UINT                NumControlPoints,
-      const D3D9_VK_GAMMA_CP*   pControlPoints);
-
-    void DestroyGammaTexture();
-
     void CreateHud();
-
-    void InitRenderState();
-
-    void InitSamplers();
-
-    void InitShaders();
 
     void InitRamp();
 

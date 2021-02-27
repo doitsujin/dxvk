@@ -6993,5 +6993,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
-
+  void D3D9DeviceEx::InitTexture(D3D9CommonTexture* pTexture) {
+    m_initializer->InitTexture(pTexture);
+  }
 }

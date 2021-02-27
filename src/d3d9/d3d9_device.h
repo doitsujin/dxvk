@@ -915,6 +915,8 @@ namespace dxvk {
       return m_samplerCount.load();
     }
 
+    void InitTexture(D3D9CommonTexture* pTexture);
+
   private:
 
     D3D9DeviceFlags                 m_flags;

@@ -96,7 +96,7 @@ namespace dxvk {
       return m_texture->DetermineRenderTargetLayout();
     }
 
-    Rc<DxvkImageView> GetDepthStencilView() {
+    Rc<DxvkImageView>& GetDepthStencilView() {
       Rc<DxvkImageView>& view = m_depthStencilView;
 
       if (unlikely(view == nullptr))
