@@ -391,6 +391,10 @@ namespace dxvk {
       { "d3d9.customVendorId",              "10de" },
       { "d3d9.customDeviceId",              "0402" },
     }} },
+    /* Warhammer: Online                         */
+    { R"(\\WAR(-64)?\.exe$)", {{
+      { "d3d9.allowImplicitDiscard",        "False" },
+    }} },
   }};
 
 
