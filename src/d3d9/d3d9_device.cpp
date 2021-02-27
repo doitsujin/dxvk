@@ -754,40 +754,41 @@ namespace dxvk {
 
     for (uint32_t a = 0; a < arraySlices; a++) {
       const D3DBOX& box = srcTexInfo->GetUpdateDirtyBox(a);
+      if (box.Left >= box.Right || box.Top >= box.Bottom || box.Front >= box.Back)
+        continue;
+
       for (uint32_t m = 0; m < mipLevels; m++) {
         Rc<DxvkBuffer> srcBuffer = srcTexInfo->GetBuffer(srcTexInfo->CalcSubresource(a, m));
         VkImageSubresourceLayers dstLayers = { VK_IMAGE_ASPECT_COLOR_BIT, m, a, 1 };
 
-        VkOffset3D offset = {
-          alignDown(int32_t(box.Left)  >> m, int32_t(formatInfo->blockSize.width)),
-          alignDown(int32_t(box.Top)   >> m, int32_t(formatInfo->blockSize.height)),
-          alignDown(int32_t(box.Front) >> m, int32_t(formatInfo->blockSize.depth))
+        VkOffset3D scaledBoxOffset = {
+          int32_t(alignDown(box.Left  >> m, formatInfo->blockSize.width)),
+          int32_t(alignDown(box.Top   >> m, formatInfo->blockSize.height)),
+          int32_t(alignDown(box.Front >> m, formatInfo->blockSize.depth))
         };
-        VkExtent3D extent = {
-          alignDown(uint32_t((box.Right - box.Left) >> m), formatInfo->blockSize.width),
-          alignDown(uint32_t((box.Bottom - box.Top) >> m), formatInfo->blockSize.height),
-          alignDown(uint32_t((box.Back - box.Front) >> m), formatInfo->blockSize.depth),
-        };
+        VkExtent3D scaledBoxExtent = util::computeMipLevelExtent({
+          uint32_t(box.Right - box.Left),
+          uint32_t(box.Bottom - box.Top),
+          uint32_t(box.Back - box.Front)
+        }, m);
+        VkExtent3D scaledBoxExtentBlockCount = util::computeBlockCount(scaledBoxExtent, formatInfo->blockSize);
+        VkExtent3D scaledAlignedBoxExtent = util::computeBlockExtent(scaledBoxExtentBlockCount, formatInfo->blockSize);
 
-        VkExtent3D levelExtent = dstImage->mipLevelExtent(m);
-        VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
-        VkOffset3D srcByteOffset = {
-          offset.x / int32_t(formatInfo->blockSize.width),
-          offset.y / int32_t(formatInfo->blockSize.height),
-          offset.z / int32_t(formatInfo->blockSize.depth)
-        };
-        VkDeviceSize srcOffset =  srcByteOffset.z * formatInfo->elementSize * blockCount.depth
-                                  + srcByteOffset.y * formatInfo->elementSize * blockCount.width
-                                  + srcByteOffset.x * formatInfo->elementSize;
-        VkExtent2D srcExtent = VkExtent2D{ blockCount.width  * formatInfo->blockSize.width,
-                                           blockCount.height * formatInfo->blockSize.height };
+        VkExtent3D texLevelExtent = dstImage->mipLevelExtent(m);
+        VkExtent3D texLevelExtentBlockCount = util::computeBlockCount(texLevelExtent, formatInfo->blockSize);
+        VkOffset3D boxOffsetBlockCount = util::computeBlockOffset(scaledBoxOffset, formatInfo->blockSize);
+        VkDeviceSize srcOffset = boxOffsetBlockCount.z * formatInfo->elementSize * texLevelExtentBlockCount.depth
+                                  + boxOffsetBlockCount.y * formatInfo->elementSize * texLevelExtentBlockCount.width
+                                  + boxOffsetBlockCount.x * formatInfo->elementSize;
+        VkExtent2D srcExtent = VkExtent2D{ texLevelExtentBlockCount.width  * formatInfo->blockSize.width,
+                                           texLevelExtentBlockCount.height * formatInfo->blockSize.height };
 
         EmitCs([
           cDstImage  = dstImage,
           cSrcBuffer = srcBuffer,
           cDstLayers = dstLayers,
-          cExtent    = extent,
-          cOffset    = offset,
+          cExtent    = scaledAlignedBoxExtent,
+          cOffset    = scaledBoxOffset,
           cSrcOffset = srcOffset,
           cSrcExtent = srcExtent
         ] (DxvkContext* ctx) {
