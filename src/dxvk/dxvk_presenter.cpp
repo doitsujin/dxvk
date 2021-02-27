@@ -27,8 +27,7 @@ namespace dxvk {
 
 
   DxvkPresenter::~DxvkPresenter() {
-    m_device->waitForSubmission(&m_status);
-    m_device->waitForIdle();
+    this->waitForIdle();
   }
 
 

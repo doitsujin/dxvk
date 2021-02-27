@@ -105,6 +105,14 @@ namespace dxvk {
       return m_presenter->hasSwapChain();
     }
 
+    /**
+     * \brief Waits for the current submission
+     */
+    void waitForIdle() {
+      m_device->waitForSubmission(&m_status);
+      m_device->waitForIdle();
+    }
+
   private:
 
     enum BindingIds : uint32_t {
