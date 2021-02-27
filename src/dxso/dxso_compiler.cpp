@@ -195,6 +195,7 @@ namespace dxvk {
 
     case DxsoOpcode::End:
     case DxsoOpcode::Comment:
+    case DxsoOpcode::Phase:
       break;
 
     default:
