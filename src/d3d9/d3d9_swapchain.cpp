@@ -4,9 +4,6 @@
 
 #include "d3d9_hud.h"
 
-#include <d3d9_presenter_frag.h>
-#include <d3d9_presenter_vert.h>
-
 namespace dxvk {
 
 
@@ -186,11 +183,9 @@ namespace dxvk {
       CreatePresenter();
 
     CreateBackBuffers(m_presentParams.BackBufferCount);
+    CreateBlitter();
     CreateHud();
 
-    InitRenderState();
-    InitSamplers();
-    InitShaders();
     InitRamp();
 
     // Apply initial window mode and fullscreen state
@@ -676,25 +671,25 @@ namespace dxvk {
 
     bool isIdentity = true;
 
-    std::array<D3D9_VK_GAMMA_CP, NumControlPoints> cp;
+    std::array<DxvkGammaCp, NumControlPoints> cp;
       
     for (uint32_t i = 0; i < NumControlPoints; i++) {
       uint16_t identity = MapGammaControlPoint(float(i) / float(NumControlPoints - 1));
 
-      cp[i].R = pRamp->red[i];
-      cp[i].G = pRamp->green[i];
-      cp[i].B = pRamp->blue[i];
-      cp[i].A = 0;
+      cp[i].r = pRamp->red[i];
+      cp[i].g = pRamp->green[i];
+      cp[i].b = pRamp->blue[i];
+      cp[i].a = 0;
 
-      isIdentity &= cp[i].R == identity
-                 && cp[i].G == identity
-                 && cp[i].B == identity;
+      isIdentity &= cp[i].r == identity
+                 && cp[i].g == identity
+                 && cp[i].b == identity;
     }
 
-    if (isIdentity || m_presentParams.Windowed)
-      DestroyGammaTexture();
+    if (!isIdentity && !m_presentParams.Windowed)
+      m_blitter->setGammaRamp(NumControlPoints, cp.data());
     else
-      CreateGammaTexture(NumControlPoints, cp.data());
+      m_blitter->setGammaRamp(0, nullptr);
   }
 
 
@@ -777,10 +772,7 @@ namespace dxvk {
 
     // Retrieve the image and image view to present
     auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
-    auto swapImageView = m_resolveImageView;
-
-    if (swapImageView == nullptr)
-      swapImageView = m_backBuffers[0]->GetImageView(false);
+    auto swapImageView = m_backBuffers[0]->GetImageView(false);
 
     // Wait for the sync event so that we respect the maximum frame latency
     uint64_t frameId = ++m_frameId;
@@ -789,30 +781,6 @@ namespace dxvk {
     for (uint32_t i = 0; i < SyncInterval || i < 1; i++) {
       SynchronizePresent();
 
-      m_context->beginRecording(
-        m_device->createCommandList());
-      
-      // Resolve back buffer if it is multisampled. We
-      // only have to do it only for the first frame.
-      if (m_resolveImage != nullptr && i == 0) {
-        VkImageSubresourceLayers resolveSubresource;
-        resolveSubresource.aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT;
-        resolveSubresource.mipLevel        = 0;
-        resolveSubresource.baseArrayLayer  = 0;
-        resolveSubresource.layerCount      = 1;
-
-        VkImageResolve resolveRegion;
-        resolveRegion.srcSubresource = resolveSubresource;
-        resolveRegion.srcOffset      = VkOffset3D { 0, 0, 0 };
-        resolveRegion.dstSubresource = resolveSubresource;
-        resolveRegion.dstOffset      = VkOffset3D { 0, 0, 0 };
-        resolveRegion.extent         = swapImage->info().extent;
-        
-        m_context->resolveImage(
-          m_resolveImage, swapImage,
-          resolveRegion, VK_FORMAT_UNDEFINED);
-      }
-      
       // Presentation semaphores and WSI swap chain image
       vk::PresenterInfo info = m_presenter->info();
       vk::PresenterSync sync = m_presenter->getSyncSemaphores();
@@ -832,63 +800,20 @@ namespace dxvk {
           sync.acquire, VK_NULL_HANDLE, imageIndex);
       }
 
-      // Use an appropriate texture filter depending on whether
-      // the back buffer size matches the swap image size
-      m_context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,   m_vertShader);
-      m_context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_fragShader);
+      m_context->beginRecording(
+        m_device->createCommandList());
 
-      DxvkRenderTargets renderTargets;
-      renderTargets.color[0].view   = m_imageViews.at(imageIndex);
-      renderTargets.color[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-      m_context->bindRenderTargets(renderTargets);
-      m_context->discardImageView(m_imageViews.at(imageIndex), VK_IMAGE_ASPECT_COLOR_BIT);
+      VkRect2D srcRect = {
+        {  int32_t(m_srcRect.left),                    int32_t(m_srcRect.top)                    },
+        { uint32_t(m_srcRect.right - m_srcRect.left), uint32_t(m_srcRect.bottom - m_srcRect.top) } };
 
-      VkViewport viewport;
-      viewport.x        = float(m_dstRect.left);
-      viewport.y        = float(m_dstRect.top);
-      viewport.width    = float(m_dstRect.right  - m_dstRect.left);
-      viewport.height   = float(m_dstRect.bottom - m_dstRect.top);
-      viewport.minDepth = 0.0f;
-      viewport.maxDepth = 1.0f;
+      VkRect2D dstRect = {
+        {  int32_t(m_dstRect.left),                    int32_t(m_dstRect.top)                    },
+        { uint32_t(m_dstRect.right - m_dstRect.left), uint32_t(m_dstRect.bottom - m_dstRect.top) } };
 
-      VkRect2D scissor;
-      scissor.offset.x      = m_dstRect.left;
-      scissor.offset.y      = m_dstRect.top;
-      scissor.extent.width  = m_dstRect.right  - m_dstRect.left;
-      scissor.extent.height = m_dstRect.bottom - m_dstRect.top;
-
-      m_context->setViewports(1, &viewport, &scissor);
-
-      // Use an appropriate texture filter depending on whether
-      // the back buffer size matches the swap image size
-      bool fitSize = m_dstRect.right  - m_dstRect.left == m_srcRect.right  - m_srcRect.left
-                  && m_dstRect.bottom - m_dstRect.top  == m_srcRect.bottom - m_srcRect.top;
-
-      D3D9PresentInfo presentInfoConsts;
-      presentInfoConsts.scale[0]  = float(m_srcRect.right  - m_srcRect.left) / float(swapImage->info().extent.width);
-      presentInfoConsts.scale[1]  = float(m_srcRect.bottom - m_srcRect.top)  / float(swapImage->info().extent.height);
-
-      presentInfoConsts.offset[0] = float(m_srcRect.left) / float(swapImage->info().extent.width);
-      presentInfoConsts.offset[1] = float(m_srcRect.top)  / float(swapImage->info().extent.height);
-
-      m_context->pushConstants(0, sizeof(D3D9PresentInfo), &presentInfoConsts);
-
-      m_context->setRasterizerState(m_rsState);
-      m_context->setMultisampleState(m_msState);
-      m_context->setDepthStencilState(m_dsState);
-      m_context->setLogicOpState(m_loState);
-      m_context->setBlendMode(0, m_blendMode);
-      
-      m_context->setInputAssemblyState(m_iaState);
-      m_context->setInputLayout(0, nullptr, 0, nullptr);
-
-      m_context->bindResourceSampler(BindingIds::Image, fitSize ? m_samplerFitting : m_samplerScaling);
-      m_context->bindResourceSampler(BindingIds::Gamma, m_gammaSampler);
-
-      m_context->bindResourceView(BindingIds::Image, swapImageView, nullptr);
-      m_context->bindResourceView(BindingIds::Gamma, m_gammaTextureView, nullptr);
-
-      m_context->draw(3, 1, 0, 0);
+      m_blitter->presentImage(m_context.ptr(),
+        m_imageViews.at(imageIndex), dstRect,
+        swapImageView, srcRect);
 
       if (m_hud != nullptr)
         m_hud->render(m_context, info.format, info.imageExtent);
@@ -1048,9 +973,6 @@ namespace dxvk {
   void D3D9SwapChainEx::CreateBackBuffers(uint32_t NumBackBuffers) {
     // Explicitly destroy current swap image before
     // creating a new one to free up resources
-    m_resolveImage     = nullptr;
-    m_resolveImageView = nullptr;
-
     DestroyBackBuffers();
 
     int NumFrontBuffer = m_parent->GetOptions()->noExplicitFrontBuffer ? 0 : 1;
@@ -1076,46 +998,6 @@ namespace dxvk {
       m_backBuffers[i] = new D3D9Surface(m_parent, &desc, this);
 
     auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
-
-    // If the image is multisampled, we need to create
-    // another image which we'll use as a resolve target
-    if (swapImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT) {
-      DxvkImageCreateInfo resolveInfo;
-      resolveInfo.type          = VK_IMAGE_TYPE_2D;
-      resolveInfo.format        = swapImage->info().format;
-      resolveInfo.flags         = 0;
-      resolveInfo.sampleCount   = VK_SAMPLE_COUNT_1_BIT;
-      resolveInfo.extent        = swapImage->info().extent;
-      resolveInfo.numLayers     = 1;
-      resolveInfo.mipLevels     = 1;
-      resolveInfo.usage         = VK_IMAGE_USAGE_SAMPLED_BIT
-                                | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-                                | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-      resolveInfo.stages        = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
-                                | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-                                | VK_PIPELINE_STAGE_TRANSFER_BIT;
-      resolveInfo.access        = VK_ACCESS_SHADER_READ_BIT
-                                | VK_ACCESS_TRANSFER_WRITE_BIT
-                                | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
-                                | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-      resolveInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
-      resolveInfo.layout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-      
-      m_resolveImage = m_device->createImage(
-        resolveInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-      DxvkImageViewCreateInfo viewInfo;
-      viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
-      viewInfo.format     = m_resolveImage->info().format;
-      viewInfo.usage      = VK_IMAGE_USAGE_SAMPLED_BIT;
-      viewInfo.aspect     = VK_IMAGE_ASPECT_COLOR_BIT;
-      viewInfo.minLevel   = 0;
-      viewInfo.numLevels  = 1;
-      viewInfo.minLayer   = 0;
-      viewInfo.numLayers  = 1;
-
-      m_resolveImageView = m_device->createImageView(m_resolveImage, viewInfo);
-    }
 
     // Initialize the image so that we can use it. Clearing
     // to black prevents garbled output for the first frame.
@@ -1148,63 +1030,8 @@ namespace dxvk {
   }
 
 
-  void D3D9SwapChainEx::CreateGammaTexture(
-            UINT                NumControlPoints,
-      const D3D9_VK_GAMMA_CP*   pControlPoints) {
-    if (m_gammaTexture == nullptr
-     || m_gammaTexture->info().extent.width != NumControlPoints) {
-      DxvkImageCreateInfo imgInfo;
-      imgInfo.type        = VK_IMAGE_TYPE_1D;
-      imgInfo.format      = VK_FORMAT_R16G16B16A16_UNORM;
-      imgInfo.flags       = 0;
-      imgInfo.sampleCount = VK_SAMPLE_COUNT_1_BIT;
-      imgInfo.extent      = { NumControlPoints, 1, 1 };
-      imgInfo.numLayers   = 1;
-      imgInfo.mipLevels   = 1;
-      imgInfo.usage       = VK_IMAGE_USAGE_TRANSFER_DST_BIT
-                          | VK_IMAGE_USAGE_SAMPLED_BIT;
-      imgInfo.stages      = VK_PIPELINE_STAGE_TRANSFER_BIT
-                          | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-      imgInfo.access      = VK_ACCESS_TRANSFER_WRITE_BIT
-                          | VK_ACCESS_SHADER_READ_BIT;
-      imgInfo.tiling      = VK_IMAGE_TILING_OPTIMAL;
-      imgInfo.layout      = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-      
-      m_gammaTexture = m_device->createImage(
-        imgInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-      DxvkImageViewCreateInfo viewInfo;
-      viewInfo.type       = VK_IMAGE_VIEW_TYPE_1D;
-      viewInfo.format     = VK_FORMAT_R16G16B16A16_UNORM;
-      viewInfo.usage      = VK_IMAGE_USAGE_SAMPLED_BIT;
-      viewInfo.aspect     = VK_IMAGE_ASPECT_COLOR_BIT;
-      viewInfo.minLevel   = 0;
-      viewInfo.numLevels  = 1;
-      viewInfo.minLayer   = 0;
-      viewInfo.numLayers  = 1;
-      
-      m_gammaTextureView = m_device->createImageView(m_gammaTexture, viewInfo);
-    }
-
-    m_context->beginRecording(
-      m_device->createCommandList());
-    
-    m_context->updateImage(m_gammaTexture,
-      VkImageSubresourceLayers { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
-      VkOffset3D { 0, 0, 0 },
-      VkExtent3D { NumControlPoints, 1, 1 },
-      pControlPoints, 0, 0);
-    
-    m_device->submitCommandList(
-      m_context->endRecording(),
-      VK_NULL_HANDLE,
-      VK_NULL_HANDLE);
-  }
-
-
-  void D3D9SwapChainEx::DestroyGammaTexture() {
-    m_gammaTexture     = nullptr;
-    m_gammaTextureView = nullptr;
+  void D3D9SwapChainEx::CreateBlitter() {
+    m_blitter = new DxvkSwapchainBlitter(m_device);
   }
 
 
@@ -1215,108 +1042,6 @@ namespace dxvk {
       m_hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
       m_hud->addItem<hud::HudSamplerCount>("samplers", -1, m_parent);
     }
-  }
-
-
-  void D3D9SwapChainEx::InitRenderState() {
-    m_iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-    m_iaState.primitiveRestart  = VK_FALSE;
-    m_iaState.patchVertexCount  = 0;
-    
-    m_rsState.polygonMode        = VK_POLYGON_MODE_FILL;
-    m_rsState.cullMode           = VK_CULL_MODE_BACK_BIT;
-    m_rsState.frontFace          = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    m_rsState.depthClipEnable    = VK_FALSE;
-    m_rsState.depthBiasEnable    = VK_FALSE;
-    m_rsState.sampleCount        = VK_SAMPLE_COUNT_1_BIT;
-    
-    m_msState.sampleMask            = 0xffffffff;
-    m_msState.enableAlphaToCoverage = VK_FALSE;
-    
-    VkStencilOpState stencilOp;
-    stencilOp.failOp      = VK_STENCIL_OP_KEEP;
-    stencilOp.passOp      = VK_STENCIL_OP_KEEP;
-    stencilOp.depthFailOp = VK_STENCIL_OP_KEEP;
-    stencilOp.compareOp   = VK_COMPARE_OP_ALWAYS;
-    stencilOp.compareMask = 0xFFFFFFFF;
-    stencilOp.writeMask   = 0xFFFFFFFF;
-    stencilOp.reference   = 0;
-    
-    m_dsState.enableDepthTest   = VK_FALSE;
-    m_dsState.enableDepthWrite  = VK_FALSE;
-    m_dsState.enableStencilTest = VK_FALSE;
-    m_dsState.depthCompareOp    = VK_COMPARE_OP_ALWAYS;
-    m_dsState.stencilOpFront    = stencilOp;
-    m_dsState.stencilOpBack     = stencilOp;
-    
-    m_loState.enableLogicOp = VK_FALSE;
-    m_loState.logicOp       = VK_LOGIC_OP_NO_OP;
-
-    m_blendMode.enableBlending  = VK_FALSE;
-    m_blendMode.colorSrcFactor  = VK_BLEND_FACTOR_ONE;
-    m_blendMode.colorDstFactor  = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    m_blendMode.colorBlendOp    = VK_BLEND_OP_ADD;
-    m_blendMode.alphaSrcFactor  = VK_BLEND_FACTOR_ONE;
-    m_blendMode.alphaDstFactor  = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    m_blendMode.alphaBlendOp    = VK_BLEND_OP_ADD;
-    m_blendMode.writeMask       = VK_COLOR_COMPONENT_R_BIT
-                                | VK_COLOR_COMPONENT_G_BIT
-                                | VK_COLOR_COMPONENT_B_BIT
-                                | VK_COLOR_COMPONENT_A_BIT;
-  }
-
-
-  void D3D9SwapChainEx::InitSamplers() {
-    DxvkSamplerCreateInfo samplerInfo;
-    samplerInfo.magFilter       = VK_FILTER_NEAREST;
-    samplerInfo.minFilter       = VK_FILTER_NEAREST;
-    samplerInfo.mipmapMode      = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    samplerInfo.mipmapLodBias   = 0.0f;
-    samplerInfo.mipmapLodMin    = 0.0f;
-    samplerInfo.mipmapLodMax    = 0.0f;
-    samplerInfo.useAnisotropy   = VK_FALSE;
-    samplerInfo.maxAnisotropy   = 1.0f;
-    samplerInfo.addressModeU    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-    samplerInfo.addressModeV    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-    samplerInfo.addressModeW    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-    samplerInfo.compareToDepth  = VK_FALSE;
-    samplerInfo.compareOp       = VK_COMPARE_OP_ALWAYS;
-    samplerInfo.borderColor     = VkClearColorValue();
-    samplerInfo.usePixelCoord   = VK_FALSE;
-    m_samplerFitting = m_device->createSampler(samplerInfo);
-
-    samplerInfo.magFilter       = VK_FILTER_LINEAR;
-    samplerInfo.minFilter       = VK_FILTER_LINEAR;
-    m_samplerScaling = m_device->createSampler(samplerInfo);
-
-    samplerInfo.addressModeU    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeV    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeW    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    m_gammaSampler = m_device->createSampler(samplerInfo);
-  }
-
-
-  void D3D9SwapChainEx::InitShaders() {
-    const SpirvCodeBuffer vsCode(d3d9_presenter_vert);
-    const SpirvCodeBuffer fsCode(d3d9_presenter_frag);
-    
-    const std::array<DxvkResourceSlot, 2> fsResourceSlots = {{
-      { BindingIds::Image, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_IMAGE_VIEW_TYPE_2D },
-      { BindingIds::Gamma, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_IMAGE_VIEW_TYPE_1D },
-    }};
-
-    m_vertShader = m_device->createShader(
-      VK_SHADER_STAGE_VERTEX_BIT,
-      0, nullptr,
-      { 0u, 1u,
-        0u, sizeof(D3D9PresentInfo) },
-      vsCode);
-    
-    m_fragShader = m_device->createShader(
-      VK_SHADER_STAGE_FRAGMENT_BIT,
-      fsResourceSlots.size(),
-      fsResourceSlots.data(),
-      { 1u, 1u }, fsCode);
   }
 
 
