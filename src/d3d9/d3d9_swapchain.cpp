@@ -4,9 +4,6 @@
 
 #include "d3d9_hud.h"
 
-#include <d3d9_presenter_frag.h>
-#include <d3d9_presenter_vert.h>
-
 namespace dxvk {
 
 
