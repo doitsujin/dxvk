@@ -4,6 +4,9 @@ A Vulkan-based translation layer for Direct3D 9/10/11 which allows running 3D ap
 
 For the current status of the project, please refer to the [project wiki](https://github.com/doitsujin/dxvk/wiki).
 
+The most recent development builds can be found [here](https://github.com/doitsujin/dxvk/actions/workflows/artifacts.yml?query=branch%3Amaster).
+
+Release builds can be found [here](https://github.com/doitsujin/dxvk/releases).
 
 ## How to use
 In order to install a DXVK package obtained from the [release](https://github.com/doitsujin/dxvk/releases) page into a given wine prefix, run the following commands from within the DXVK directory:
@@ -18,7 +21,7 @@ This will **copy** the DLLs into the `system32` and `syswow64` directories of yo
 The setup script optionally takes the following arguments:
 - `--symlink`: Create symbolic links to the DLL files instead of copying them. This is especially useful for development.
 - `--with-d3d10`: Install the `d3d10{_1}.dll` helper libraries.
-- `--without-dxgi`: Do not install DXVK's DXGI implementation and use the one provided by wine instead. This is necessary for both vkd3d and DXVK to work within the same wine prefix.
+- `--without-dxgi`: Do not install DXVK's DXGI implementation and use the one provided by wine instead.
 
 Verify that your application uses DXVK instead of wined3d by checking for the presence of the log file `d3d9.log` or `d3d11.log` in the application's directory, or by enabling the HUD (see notes below).
 
