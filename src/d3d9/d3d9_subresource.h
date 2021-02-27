@@ -72,7 +72,7 @@ namespace dxvk {
       return m_texture->CalcSubresource(m_face, m_mipLevel);
     }
 
-    Rc<DxvkImageView> GetImageView(bool Srgb) {
+    Rc<DxvkImageView>& GetImageView(bool Srgb) {
       Srgb &= m_isSrgbCompatible;
       Rc<DxvkImageView>& view = m_sampleView.Pick(Srgb);
 
@@ -82,7 +82,7 @@ namespace dxvk {
       return view;
     }
 
-    Rc<DxvkImageView> GetRenderTargetView(bool Srgb) {
+    Rc<DxvkImageView>& GetRenderTargetView(bool Srgb) {
       Srgb &= m_isSrgbCompatible;
       Rc<DxvkImageView>& view = m_renderTargetView.Pick(Srgb);
 
