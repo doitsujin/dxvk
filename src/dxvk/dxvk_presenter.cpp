@@ -509,7 +509,7 @@ namespace dxvk {
     m_status.result = VK_SUCCESS;
 
     if (m_presenter->recreateSwapChain(m_presenterDesc) != VK_SUCCESS)
-      throw DxvkError("D3D11SwapChain: Failed to recreate swap chain");
+      throw DxvkError("DxvkPresenter: Failed to recreate swap chain");
 
     this->createRenderTargetViews();    
   }
