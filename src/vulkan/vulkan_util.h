@@ -155,3 +155,15 @@ inline bool operator != (VkOffset2D a, VkOffset2D b) {
   return a.x != b.x
       || a.y != b.y;
 }
+
+
+inline bool operator == (VkRect2D a, VkRect2D b) {
+  return a.offset == b.offset
+      && a.extent == b.extent;
+}
+
+
+inline bool operator != (VkRect2D a, VkRect2D b) {
+  return a.offset != b.offset
+      || a.extent != b.extent;
+}
