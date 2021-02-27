@@ -334,14 +334,6 @@ namespace dxvk {
   }
 
 
-  void DxvkPresenter::synchronizePresent() {
-    VkResult status = m_device->waitForSubmission(&m_status);
-
-    if (status != VK_SUCCESS)
-      this->recreateSwapChain();
-  }
-
-
   void DxvkPresenter::createPresenter(HWND window) {
     DxvkDeviceQueue graphicsQueue = m_device->queues().graphics;
 

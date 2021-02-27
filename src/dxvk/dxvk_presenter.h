@@ -113,6 +113,17 @@ namespace dxvk {
       m_device->waitForIdle();
     }
 
+    /**
+     * \brief Waits for the current submission and
+     * recreates the swapchain if necessary.
+     */
+    void synchronizePresent() {
+      VkResult status = m_device->waitForSubmission(&m_status);
+
+      if (status != VK_SUCCESS)
+        this->recreateSwapChain();
+    }
+
   private:
 
     enum BindingIds : uint32_t {
@@ -156,8 +167,6 @@ namespace dxvk {
     DxvkSubmitStatus    m_status;
     
     std::vector<Rc<DxvkImageView>> m_renderTargetViews;
-
-    void synchronizePresent();
 
     void createPresenter(HWND window);
 
