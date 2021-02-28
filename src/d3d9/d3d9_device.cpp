@@ -4421,11 +4421,10 @@ namespace dxvk {
                             quickRead                     ||
                             (boundsCheck && !pResource->DirtyRange().Overlaps(pResource->LockRange()));
       if (!skipWait) {
-        const bool managed   = IsPoolManaged(desc.Pool);
-        const bool systemmem = desc.Pool == D3DPOOL_SYSTEMMEM;
+        const bool backed    = pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
         const bool doNotWait = Flags & D3DLOCK_DONOTWAIT;
 
-        bool doImplicitDiscard = (managed || systemmem) && !doNotWait && pResource->GetLockCount() == 0;
+        bool doImplicitDiscard = backed && !doNotWait && pResource->GetLockCount() == 0;
 
         doImplicitDiscard = doImplicitDiscard && m_d3d9Options.allowImplicitDiscard;
 
