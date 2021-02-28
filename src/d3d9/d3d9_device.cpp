@@ -4424,7 +4424,7 @@ namespace dxvk {
         const bool backed    = pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
         const bool doNotWait = Flags & D3DLOCK_DONOTWAIT;
 
-        bool doImplicitDiscard = backed && !doNotWait && pResource->GetLockCount() == 0;
+        bool doImplicitDiscard = backed && !doNotWait && pResource->GetLockCount() == 0 && !pResource->GetReadLocked();
 
         doImplicitDiscard = doImplicitDiscard && m_d3d9Options.allowImplicitDiscard;
 
