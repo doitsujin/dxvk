@@ -394,6 +394,7 @@ namespace dxvk {
     /* Warhammer: Online                         */
     { R"(\\WAR(-64)?\.exe$)", {{
       { "d3d9.allowImplicitDiscard",        "False" },
+      { "d3d9.customVendorId",              "1002" },
     }} },
   }};
 
