@@ -180,7 +180,16 @@ namespace dxvk {
     /* Work around an issue on Nvidia drivers where using the entire
      * device_local | host_visible heap can cause crashes, presumably
      * due to subsequent internal driver allocations failing */
-    bool nvidiaBug3114283Active = true;
+    bool nvidiaBug3114283Active = false;
+
+    // Fix is available in mainline drivers starting with the 465 driver series.
+    if (device->adapter()->matchesDriver(DxvkGpuVendor::Nvidia,
+                                         VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR,
+                                         0,
+                                         VK_MAKE_VERSION(465, 0, 0))) {
+      nvidiaBug3114283Active = true;
+    }
+
     applyTristate(nvidiaBug3114283Active, device->config().halveNvidiaHVVHeap);
 
     if ((m_device->properties().core.properties.vendorID == uint16_t(DxvkGpuVendor::Nvidia))
