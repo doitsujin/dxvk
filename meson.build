@@ -5,15 +5,16 @@ cpu_family = target_machine.cpu_family()
 add_project_arguments('-DNOMINMAX', language : 'cpp')
 
 dxvk_compiler = meson.get_compiler('cpp')
-dxvk_msvc=dxvk_compiler.get_id() == 'msvc'
+dxvk_is_msvc = dxvk_compiler.get_id() == 'msvc'
+
 # c++17 was added in 15.3, older version needs c++latest
-if dxvk_compiler.get_id() == 'msvc' and dxvk_compiler.version().version_compare('<15.3')
+if dxvk_is_msvc and dxvk_compiler.version().version_compare('<15.3')
   dxvk_cpp_std='c++latest'
 else
   dxvk_cpp_std='c++17'
 endif
 
-if dxvk_compiler.get_id() == 'msvc'
+if dxvk_is_msvc
   add_project_arguments('/std:' + dxvk_cpp_std, language : 'cpp')
 endif
 
@@ -26,7 +27,7 @@ if dxvk_compiler.get_id() == 'clang'
   endif
 endif
 
-if dxvk_compiler.get_id() != 'msvc'
+if not dxvk_is_msvc
   if get_option('build_id') and dxvk_compiler.has_link_argument('-Wl,--build-id')
     add_global_link_arguments('-Wl,--build-id', language: 'cpp')
   endif
@@ -48,7 +49,7 @@ endif
 
 dxvk_extradep = [ ]
 
-if dxvk_compiler.get_id() == 'msvc'
+if dxvk_is_msvc
   wrc = find_program('rc')
 else
   add_global_link_arguments('-static', '-static-libgcc', language: 'c')
@@ -82,7 +83,7 @@ lib_d3d11   = dxvk_compiler.find_library('d3d11')
 lib_dxgi    = dxvk_compiler.find_library('dxgi')
 lib_d3dcompiler_43 = dxvk_compiler.find_library('d3dcompiler_43', dirs : dxvk_library_path)
 
-if dxvk_compiler.get_id() == 'msvc'
+if dxvk_is_msvc
   lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler')
 else
   lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler_47')
@@ -91,7 +92,7 @@ endif
 exe_ext = ''
 dll_ext = ''
 
-if dxvk_compiler.get_id() == 'msvc'
+if dxvk_is_msvc
   res_ext = '.res'
 else
   res_ext = '.o'
@@ -104,7 +105,7 @@ glsl_generator = generator(glsl_compiler,
   output    : [ '@BASENAME@.h' ],
   arguments : [ '-V', '--vn', '@BASENAME@', '@INPUT@', '-o', '@OUTPUT@' ])
 
-if dxvk_compiler.get_id() == 'msvc'
+if dxvk_is_msvc
   wrc_generator = generator(wrc,
   output    : [ '@BASENAME@' + res_ext ],
   arguments : [ '/fo', '@OUTPUT@', '@INPUT@' ])
