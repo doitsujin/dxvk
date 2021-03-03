@@ -167,7 +167,7 @@ namespace dxvk {
         result.push_back(new DxvkAdapter(m_vki, adapters[i]));
     }
     
-    std::sort(result.begin(), result.end(),
+    std::stable_sort(result.begin(), result.end(),
       [] (const Rc<DxvkAdapter>& a, const Rc<DxvkAdapter>& b) -> bool {
         static const std::array<VkPhysicalDeviceType, 3> deviceTypes = {{
           VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU,
