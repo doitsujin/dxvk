@@ -26,9 +26,15 @@ if dxvk_compiler.get_id() == 'clang'
   endif
 endif
 
-if get_option('build_id') and dxvk_compiler.get_id() != 'msvc'
-  if dxvk_compiler.has_link_argument('-Wl,--build-id')
+if dxvk_compiler.get_id() != 'msvc'
+  if get_option('build_id') and dxvk_compiler.has_link_argument('-Wl,--build-id')
     add_global_link_arguments('-Wl,--build-id', language: 'cpp')
+  endif
+
+  # We need to set the section alignment for debug symbols to
+  # work properly as well as avoiding a memcpy from the Wine loader.
+  if dxvk_compiler.has_link_argument('-Wl,--file-alignment=4096')
+    add_global_link_arguments('-Wl,--file-alignment=4096', language: 'cpp')
   endif
 endif
 
