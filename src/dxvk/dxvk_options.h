@@ -25,6 +25,12 @@ namespace dxvk {
     Tristate useRawSsbo;
     Tristate useEarlyDiscard;
 
+    /// Workaround for NVIDIA driver
+    /// bug 3114283. Cut usable HVV
+    /// (Host-Visible Vidmem) heap
+    /// in half to avoid crash
+    Tristate halveNvidiaHVVHeap;
+
     /// HUD elements
     std::string hud;
   };
