@@ -786,9 +786,6 @@ namespace dxvk {
             ID3D11Resource*                   pResource,
             UINT                              Subresource);
     
-    void SetIndexBufferOptimized(
-            BOOL                              Enable);
-    
     void SetDrawBuffers(
             ID3D11Buffer*                     pBufferForArgs,
             ID3D11Buffer*                     pBufferForCount);
