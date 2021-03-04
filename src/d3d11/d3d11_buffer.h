@@ -77,15 +77,23 @@ namespace dxvk {
     }
     
     DxvkBufferSlice GetBufferSlice() const {
-      return GetBufferSlice(0, m_desc.ByteWidth);
+      return DxvkBufferSlice(m_buffer, 0, m_desc.ByteWidth);
     }
     
     DxvkBufferSlice GetBufferSlice(VkDeviceSize offset) const {
-      return GetBufferSlice(offset, m_desc.ByteWidth - offset);
+      VkDeviceSize size = m_desc.ByteWidth;
+
+      return likely(offset < size)
+        ? DxvkBufferSlice(m_buffer, offset, size - offset)
+        : DxvkBufferSlice();
     }
     
     DxvkBufferSlice GetBufferSlice(VkDeviceSize offset, VkDeviceSize length) const {
-      return DxvkBufferSlice(m_buffer, offset, length);
+      VkDeviceSize size = m_desc.ByteWidth;
+
+      return likely(offset < size)
+        ? DxvkBufferSlice(m_buffer, offset, std::min(length, size - offset))
+        : DxvkBufferSlice();
     }
 
     DxvkBufferSlice GetSOCounter() {
