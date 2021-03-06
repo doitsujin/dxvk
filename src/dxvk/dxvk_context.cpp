@@ -1869,7 +1869,7 @@ namespace dxvk {
         
         return;
       } else if (entry.imageView->checkSubresourceOverlap(imageView)) {
-        this->flushClears(false);
+        this->spillRenderPass(false);
         break;
       }
     }
@@ -1887,7 +1887,7 @@ namespace dxvk {
         entry.clearAspects &= ~discardAspects;
         return;
       } else if (entry.imageView->checkSubresourceOverlap(imageView)) {
-        this->flushClears(false);
+        this->spillRenderPass(false);
         break;
       }
     }
