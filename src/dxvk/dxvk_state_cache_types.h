@@ -52,7 +52,7 @@ namespace dxvk {
    */
   struct DxvkStateCacheHeader {
     char     magic[4]   = { 'D', 'X', 'V', 'K' };
-    uint32_t version    = 9;
+    uint32_t version    = 10;
     uint32_t entrySize  = 0; /* no longer meaningful */
   };
 
@@ -68,6 +68,23 @@ namespace dxvk {
       for (uint32_t i = 0; i < 128; i++)
         result.set(i, test(i));
       return result;
+    }
+
+  };
+
+  class DxvkIlBindingV9 {
+
+  public:
+
+    uint32_t m_binding                : 5;
+    uint32_t m_stride                 : 12;
+    uint32_t m_inputRate              : 1;
+    uint32_t m_reserved               : 14;
+    uint32_t m_divisor;
+
+    DxvkIlBinding convert() const {
+      return DxvkIlBinding(m_binding, m_stride,
+        VkVertexInputRate(m_inputRate), m_divisor);
     }
 
   };

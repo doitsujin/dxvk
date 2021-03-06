@@ -165,8 +165,7 @@ namespace dxvk {
     : m_binding   (uint32_t(binding)),
       m_stride    (uint32_t(stride)),
       m_inputRate (uint32_t(inputRate)),
-      m_reserved  (0),
-      m_divisor   (divisor) { }
+      m_divisor   (uint32_t(divisor < (1u << 14) ? divisor : 0u)) { }
     
     uint32_t binding() const {
       return m_binding;
@@ -201,8 +200,7 @@ namespace dxvk {
     uint32_t m_binding                : 5;
     uint32_t m_stride                 : 12;
     uint32_t m_inputRate              : 1;
-    uint32_t m_reserved               : 14;
-    uint32_t m_divisor;
+    uint32_t m_divisor                : 14;
 
   };
 
