@@ -67,6 +67,15 @@ namespace dxvk::vk {
         && a.baseArrayLayer + a.layerCount > b.baseArrayLayer;
   }
 
+  inline bool checkSubresourceRangeSuperset(
+    const VkImageSubresourceRange&  a,
+    const VkImageSubresourceRange&  b) {
+    return a.baseMipLevel                <= b.baseMipLevel
+        && a.baseMipLevel + a.levelCount >= b.baseMipLevel + b.levelCount
+        && a.baseArrayLayer                <= b.baseArrayLayer
+        && a.baseArrayLayer + a.layerCount >= b.baseArrayLayer + b.layerCount;
+  }
+
 }
 
 

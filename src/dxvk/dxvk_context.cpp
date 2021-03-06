@@ -766,6 +766,10 @@ namespace dxvk {
           VkOffset3D            srcOffset,
           VkExtent3D            extent) {
     this->spillRenderPass(true);
+
+    if (this->copyImageClear(dstImage, dstSubresource, dstOffset, extent, srcImage, srcSubresource))
+      return;
+
     this->prepareImage(m_execBarriers, dstImage, vk::makeSubresourceRange(dstSubresource));
     this->prepareImage(m_execBarriers, srcImage, vk::makeSubresourceRange(srcSubresource));
 
@@ -3180,6 +3184,73 @@ namespace dxvk {
         tgtImage, tgtSubresource, tgtOffset,
         extent);
     }
+  }
+
+
+  bool DxvkContext::copyImageClear(
+    const Rc<DxvkImage>&        dstImage,
+          VkImageSubresourceLayers dstSubresource,
+          VkOffset3D            dstOffset,
+          VkExtent3D            dstExtent,
+    const Rc<DxvkImage>&        srcImage,
+          VkImageSubresourceLayers srcSubresource) {
+    // If the source image has a pending deferred clear, we can
+    // implement the copy by clearing the destination image to
+    // the same clear value.
+    const VkImageUsageFlags attachmentUsage
+      = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+      | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+    if (!(dstImage->info().usage & attachmentUsage)
+     || !(srcImage->info().usage & attachmentUsage))
+      return false;
+
+    // Ignore 3D images since those are complicated to handle
+    if (dstImage->info().type == VK_IMAGE_TYPE_3D
+     || srcImage->info().type == VK_IMAGE_TYPE_3D)
+      return false;
+
+    // Find a pending clear that overlaps with the source image
+    const DxvkDeferredClear* clear = nullptr;
+
+    for (const auto& entry : m_deferredClears) {
+      // Entries in the deferred clear array cannot overlap, so
+      // if we find an entry covering all source subresources,
+      // it's the only one in the list that does.
+      if ((entry.imageView->image() == srcImage) && ((srcSubresource.aspectMask & entry.clearAspects) == srcSubresource.aspectMask)
+       && (vk::checkSubresourceRangeSuperset(entry.imageView->subresources(), vk::makeSubresourceRange(srcSubresource)))) {
+        clear = &entry;
+        break;
+      }
+    }
+
+    if (!clear)
+      return false;
+
+    // Create a view for the destination image with the general
+    // properties ofthe source image view used for the clear
+    DxvkImageViewCreateInfo viewInfo = clear->imageView->info();
+    viewInfo.type = dstImage->info().type == VK_IMAGE_TYPE_1D
+      ? VK_IMAGE_VIEW_TYPE_1D_ARRAY
+      : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+    viewInfo.minLevel = dstSubresource.mipLevel;
+    viewInfo.numLevels = 1;
+    viewInfo.minLayer = dstSubresource.baseArrayLayer;
+    viewInfo.numLayers = dstSubresource.layerCount;
+
+    // That is, if the formats are actually compatible
+    // so that we can safely use the same clear value
+    if (!dstImage->isViewCompatible(viewInfo.format))
+      return false;
+
+    // Ignore mismatched size for now, needs more testing since we'd
+    // need to prepare the image first and then call clearImageViewFb
+    if (dstImage->mipLevelExtent(dstSubresource.mipLevel) != dstExtent)
+      return false;
+
+    auto view = m_device->createImageView(dstImage, viewInfo);
+    this->deferClear(view, clear->clearAspects, clear->clearValue);
+    return true;
   }
 
 

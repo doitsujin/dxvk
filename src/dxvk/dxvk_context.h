@@ -1067,6 +1067,14 @@ namespace dxvk {
             VkOffset3D            srcOffset,
             VkExtent3D            extent);
     
+    bool copyImageClear(
+      const Rc<DxvkImage>&        dstImage,
+            VkImageSubresourceLayers dstSubresource,
+            VkOffset3D            dstOffset,
+            VkExtent3D            dstExtent,
+      const Rc<DxvkImage>&        srcImage,
+            VkImageSubresourceLayers srcSubresource);
+
     void resolveImageHw(
       const Rc<DxvkImage>&            dstImage,
       const Rc<DxvkImage>&            srcImage,
