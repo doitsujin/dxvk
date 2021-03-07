@@ -3249,7 +3249,7 @@ namespace dxvk {
       return false;
 
     auto view = m_device->createImageView(dstImage, viewInfo);
-    this->deferClear(view, clear->clearAspects, clear->clearValue);
+    this->deferClear(view, srcSubresource.aspectMask, clear->clearValue);
     return true;
   }
 
