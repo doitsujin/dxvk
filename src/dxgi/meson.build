@@ -12,14 +12,15 @@ dxgi_src = [
   'dxgi_swapchain.cpp',
 ]
 
-dxgi_dll = shared_library('dxgi'+dll_ext, dxgi_src, dxgi_res,
-  name_prefix         : '',
-  dependencies        : [ dxvk_dep ],
-  include_directories : dxvk_include_path,
-  install             : true,
-  vs_module_defs      : 'dxgi'+def_spec_ext,
-  objects             : not dxvk_is_msvc ? 'dxgi'+def_spec_ext : [],
-  override_options    : ['cpp_std='+dxvk_cpp_std])
+dxgi_def = 'dxgi' + def_spec_ext
+
+dxgi_opts = common_shared_opts + { 'dependencies': [ dxvk_dep ], 'vs_module_defs': dxgi_def }
+
+if not dxvk_is_msvc
+  dxgi_opts += { 'link_depends': files(dxgi_def), 'link_args': meson.current_source_dir() / dxgi_def }
+endif
+
+dxgi_dll = shared_library('dxgi'+dll_ext, dxgi_src, dxgi_res, kwargs: dxgi_opts)
 
 dxgi_dep = declare_dependency(
   link_with           : [ dxgi_dll ],

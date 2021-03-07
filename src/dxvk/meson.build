@@ -117,11 +117,9 @@ dxvk_src = files([
 
 thread_dep = dependency('threads')
 
-dxvk_lib = static_library('dxvk', dxvk_src, glsl_generator.process(dxvk_shaders), dxvk_version,
-  link_with           : [ util_lib, spirv_lib ],
-  dependencies        : [ thread_dep, vkcommon_dep ] + dxvk_extradep,
-  include_directories : [ dxvk_include_path ],
-  override_options    : ['cpp_std='+dxvk_cpp_std])
+dxvk_opts = common_static_opts + { 'link_with': [ util_lib, spirv_lib ], 'dependencies': [ thread_dep, vkcommon_dep ] + dxvk_extradep }
+
+dxvk_lib = static_library('dxvk', dxvk_src, glsl_generator.process(dxvk_shaders), dxvk_version, kwargs: dxvk_opts)
 
 dxvk_dep = declare_dependency(
   link_with           : [ dxvk_lib ],

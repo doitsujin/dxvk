@@ -1,6 +1,6 @@
-test_dxbc_deps = [ dxbc_dep, dxvk_dep ]
+test_dxbc_opts     = common_exe_opts + { 'dependencies': [ dxbc_dep, dxvk_dep ] }
+test_dxbc_ext_opts = common_exe_opts + { 'dependencies': [ dxbc_dep, dxvk_dep, lib_d3dcompiler_47 ] }
 
-executable('dxbc-compiler'+exe_ext, files('test_dxbc_compiler.cpp'), dependencies : test_dxbc_deps, install : true, gui_app : true, override_options: ['cpp_std='+dxvk_cpp_std])
-executable('dxbc-disasm'+exe_ext,   files('test_dxbc_disasm.cpp'),   dependencies : [ test_dxbc_deps, lib_d3dcompiler_47 ], install : true, gui_app : true, override_options: ['cpp_std='+dxvk_cpp_std])
-executable('hlsl-compiler'+exe_ext, files('test_hlsl_compiler.cpp'), dependencies : [ test_dxbc_deps, lib_d3dcompiler_47 ], install : true, gui_app : true, override_options: ['cpp_std='+dxvk_cpp_std])
-
+executable('dxbc-compiler'+exe_ext, files('test_dxbc_compiler.cpp'), kwargs: test_dxbc_opts)
+executable('dxbc-disasm'+exe_ext,   files('test_dxbc_disasm.cpp'),   kwargs: test_dxbc_ext_opts)
+executable('hlsl-compiler'+exe_ext, files('test_hlsl_compiler.cpp'), kwargs: test_dxbc_ext_opts)

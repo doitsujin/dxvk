@@ -1,4 +1,4 @@
-project('dxvk', ['c', 'cpp'], version : 'v1.8.1', meson_version : '>= 0.46')
+project('dxvk', ['c', 'cpp'], version : 'v1.8.1', meson_version : '>= 0.49')
 
 cpu_family = target_machine.cpu_family()
 
@@ -119,6 +119,13 @@ dxvk_version = vcs_tag(
   command: ['git', 'describe', '--dirty=+'],
   input:  'version.h.in',
   output: 'version.h')
+
+# Common kwargs for targets
+common_opts = { 'override_options': ['cpp_std=' + dxvk_cpp_std] }
+
+common_exe_opts    = common_opts + { 'gui_app' : true, 'install': true }
+common_static_opts = common_opts + { 'include_directories': dxvk_include_path }
+common_shared_opts = common_opts + { 'include_directories': dxvk_include_path, 'name_prefix': '', 'install': true }
 
 subdir('src')
 
