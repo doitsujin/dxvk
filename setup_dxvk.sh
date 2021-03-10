@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # default directories
 dxvk_lib32=${dxvk_lib32:-"x32"}
