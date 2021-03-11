@@ -1427,13 +1427,28 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::emitRenderTargetReadbackBarrier() {
+  void DxvkContext::emitRenderTargetReadbackBarrier(
+    const Rc<DxvkImage>&           image,
+    const VkImageSubresourceRange& subresources) {
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
-      emitMemoryBarrier(VK_DEPENDENCY_BY_REGION_BIT,
+      VkImageMemoryBarrier barrier;
+      barrier.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+      barrier.pNext               = nullptr;
+      barrier.srcAccessMask       = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+      barrier.dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
+      barrier.oldLayout           = image->info().layout;
+      barrier.newLayout           = image->info().layout;
+      barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+      barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+      barrier.image               = image->m_image.image;
+      barrier.subresourceRange    = subresources;
+
+      m_cmd->cmdPipelineBarrier(
+        DxvkCmdBuffer::ExecBuffer,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        VK_ACCESS_SHADER_READ_BIT);
+        VK_DEPENDENCY_BY_REGION_BIT,
+        0, nullptr, 0, nullptr, 1, &barrier);
     }
   }
 

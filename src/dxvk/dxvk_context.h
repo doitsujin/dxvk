@@ -615,8 +615,12 @@ namespace dxvk {
      *
      * Use between draw calls if the fragment shader
      * reads one of the currently bound render targets.
+     * \param [in] image Image
+     * \param [in] subresources Image subresources
      */
-    void emitRenderTargetReadbackBarrier();
+    void emitRenderTargetReadbackBarrier(
+      const Rc<DxvkImage>&           image,
+      const VkImageSubresourceRange& subresources);
 
     /**
      * \brief Generates mip maps
