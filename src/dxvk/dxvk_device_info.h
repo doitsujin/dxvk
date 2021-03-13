@@ -13,16 +13,17 @@ namespace dxvk {
    * so before using them, check whether they are supported.
    */
   struct DxvkDeviceInfo {
-    VkPhysicalDeviceProperties2                         core;
-    VkPhysicalDeviceIDProperties                        coreDeviceId;
-    VkPhysicalDeviceSubgroupProperties                  coreSubgroup;
-    VkPhysicalDeviceCustomBorderColorPropertiesEXT      extCustomBorderColor;
-    VkPhysicalDeviceRobustness2PropertiesEXT            extRobustness2;
-    VkPhysicalDeviceTransformFeedbackPropertiesEXT      extTransformFeedback;
-    VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT extVertexAttributeDivisor;
-    VkPhysicalDeviceDepthStencilResolvePropertiesKHR    khrDepthStencilResolve;
-    VkPhysicalDeviceDriverPropertiesKHR                 khrDeviceDriverProperties;
-    VkPhysicalDeviceFloatControlsPropertiesKHR          khrShaderFloatControls;
+    VkPhysicalDeviceProperties2                               core;
+    VkPhysicalDeviceIDProperties                              coreDeviceId;
+    VkPhysicalDeviceSubgroupProperties                        coreSubgroup;
+    VkPhysicalDeviceConservativeRasterizationPropertiesEXT    extConservativeRasterization;
+    VkPhysicalDeviceCustomBorderColorPropertiesEXT            extCustomBorderColor;
+    VkPhysicalDeviceRobustness2PropertiesEXT                  extRobustness2;
+    VkPhysicalDeviceTransformFeedbackPropertiesEXT            extTransformFeedback;
+    VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT       extVertexAttributeDivisor;
+    VkPhysicalDeviceDepthStencilResolvePropertiesKHR          khrDepthStencilResolve;
+    VkPhysicalDeviceDriverPropertiesKHR                       khrDeviceDriverProperties;
+    VkPhysicalDeviceFloatControlsPropertiesKHR                khrShaderFloatControls;
   };
 
 
