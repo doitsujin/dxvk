@@ -35,7 +35,7 @@ namespace dxvk {
     // we do not need to enable it in case the parameters are both 0.
     m_state.depthBiasEnable   = desc.DepthBias != 0 || desc.SlopeScaledDepthBias != 0.0f;
     m_state.depthClipEnable   = desc.DepthClipEnable;
-    m_state.conservativeMode  = VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
+    m_state.conservativeMode  = DecodeConservativeRasterizationMode(desc.ConservativeRaster);
     m_state.sampleCount       = VkSampleCountFlags(desc.ForcedSampleCount);
 
     m_depthBias.depthBiasConstant = float(desc.DepthBias);
@@ -189,10 +189,6 @@ namespace dxvk {
         return E_INVALIDARG;
     }
 
-    // Conservative rasterization currently not supported
-    if (pDesc->ConservativeRaster != D3D11_CONSERVATIVE_RASTERIZATION_MODE_OFF)
-      return E_INVALIDARG;
-    
     return S_OK;
   }
   

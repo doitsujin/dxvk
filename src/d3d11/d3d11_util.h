@@ -31,6 +31,9 @@ namespace dxvk {
   VkCompareOp DecodeCompareOp(
           D3D11_COMPARISON_FUNC     Mode);
   
+  VkConservativeRasterizationModeEXT DecodeConservativeRasterizationMode(
+          D3D11_CONSERVATIVE_RASTERIZATION_MODE Mode);
+
   VkShaderStageFlagBits GetShaderStage(
           DxbcProgramType           ProgramType);
   

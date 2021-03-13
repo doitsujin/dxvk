@@ -1121,7 +1121,11 @@ namespace dxvk {
     
     if (FAILED(D3D11RasterizerState::NormalizeDesc(&desc)))
       return E_INVALIDARG;
-    
+
+    if (desc.ConservativeRaster != D3D11_CONSERVATIVE_RASTERIZATION_MODE_OFF
+     && !m_dxvkDevice->extensions().extConservativeRasterization)
+      return E_INVALIDARG;
+
     if (!ppRasterizerState)
       return S_FALSE;
     
@@ -1682,6 +1686,12 @@ namespace dxvk {
         info->TiledResourcesTier             = D3D11_TILED_RESOURCES_NOT_SUPPORTED;
         info->StandardSwizzle                = FALSE;
         info->UnifiedMemoryArchitecture      = m_dxvkDevice->isUnifiedMemoryArchitecture();
+
+        if (m_dxvkDevice->extensions().extConservativeRasterization) {
+          // We don't have a way to query uncertainty regions, so just check degenerate triangle behaviour
+          info->ConservativeRasterizationTier = m_dxvkDevice->properties().extConservativeRasterization.degenerateTrianglesRasterized
+            ? D3D11_CONSERVATIVE_RASTERIZATION_TIER_2 : D3D11_CONSERVATIVE_RASTERIZATION_TIER_1;
+        }
       } return S_OK;
 
       case D3D11_FEATURE_D3D11_OPTIONS3: {

@@ -64,6 +64,20 @@ namespace dxvk {
   }
   
   
+  VkConservativeRasterizationModeEXT DecodeConservativeRasterizationMode(
+          D3D11_CONSERVATIVE_RASTERIZATION_MODE Mode) {
+    switch (Mode) {
+      case D3D11_CONSERVATIVE_RASTERIZATION_MODE_OFF:
+        return VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
+      case D3D11_CONSERVATIVE_RASTERIZATION_MODE_ON:
+        return VK_CONSERVATIVE_RASTERIZATION_MODE_OVERESTIMATE_EXT;
+    }
+
+    Logger::err(str::format("D3D11: Unsupported conservative raster mode: ", Mode));
+    return VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
+  }
+
+
   VkShaderStageFlagBits GetShaderStage(DxbcProgramType ProgramType) {
     switch (ProgramType) {
       case DxbcProgramType::VertexShader:   return VK_SHADER_STAGE_VERTEX_BIT;
