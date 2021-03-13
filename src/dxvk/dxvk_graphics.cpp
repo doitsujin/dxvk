@@ -288,6 +288,13 @@ namespace dxvk {
     vpInfo.scissorCount           = state.rs.viewportCount();
     vpInfo.pScissors              = nullptr;
     
+    VkPipelineRasterizationConservativeStateCreateInfoEXT conservativeInfo;
+    conservativeInfo.sType        = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT;
+    conservativeInfo.pNext        = nullptr;
+    conservativeInfo.flags        = 0;
+    conservativeInfo.conservativeRasterizationMode = state.rs.conservativeMode();
+    conservativeInfo.extraPrimitiveOverestimationSize = 0.0f;
+
     VkPipelineRasterizationStateStreamCreateInfoEXT xfbStreamInfo;
     xfbStreamInfo.sType           = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT;
     xfbStreamInfo.pNext           = nullptr;
@@ -302,7 +309,7 @@ namespace dxvk {
 
     VkPipelineRasterizationStateCreateInfo rsInfo;
     rsInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rsInfo.pNext                  = &rsDepthClipInfo;
+    rsInfo.pNext                  = nullptr;
     rsInfo.flags                  = 0;
     rsInfo.depthClampEnable       = VK_TRUE;
     rsInfo.rasterizerDiscardEnable = rasterizedStream < 0;
@@ -316,12 +323,15 @@ namespace dxvk {
     rsInfo.lineWidth              = 1.0f;
     
     if (rasterizedStream > 0)
-      rsDepthClipInfo.pNext = &xfbStreamInfo;
-    
-    if (!m_pipeMgr->m_device->features().extDepthClipEnable.depthClipEnable) {
-      rsInfo.pNext                = rsDepthClipInfo.pNext;
-      rsInfo.depthClampEnable     = !state.rs.depthClipEnable();
-    }
+      xfbStreamInfo.pNext = std::exchange(rsInfo.pNext, &xfbStreamInfo);
+
+    if (conservativeInfo.conservativeRasterizationMode != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT)
+      conservativeInfo.pNext = std::exchange(rsInfo.pNext, &conservativeInfo);
+
+    if (m_pipeMgr->m_device->features().extDepthClipEnable.depthClipEnable)
+      rsDepthClipInfo.pNext = std::exchange(rsInfo.pNext, &rsDepthClipInfo);
+    else
+      rsInfo.depthClampEnable = !state.rs.depthClipEnable();
 
     uint32_t sampleMask = state.ms.sampleMask();
 

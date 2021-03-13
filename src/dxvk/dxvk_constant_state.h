@@ -103,6 +103,7 @@ namespace dxvk {
     VkFrontFace         frontFace;
     VkBool32            depthClipEnable;
     VkBool32            depthBiasEnable;
+    VkConservativeRasterizationModeEXT conservativeMode;
     VkSampleCountFlags  sampleCount;
   };
   

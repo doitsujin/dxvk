@@ -224,7 +224,8 @@ namespace dxvk {
             VkCullModeFlags       cullMode,
             VkFrontFace           frontFace,
             uint32_t              viewportCount,
-            VkSampleCountFlags    sampleCount)
+            VkSampleCountFlags    sampleCount,
+            VkConservativeRasterizationModeEXT conservativeMode)
     : m_depthClipEnable (uint32_t(depthClipEnable)),
       m_depthBiasEnable (uint32_t(depthBiasEnable)),
       m_polygonMode     (uint32_t(polygonMode)),
@@ -232,6 +233,7 @@ namespace dxvk {
       m_frontFace       (uint32_t(frontFace)),
       m_viewportCount   (uint32_t(viewportCount)),
       m_sampleCount     (uint32_t(sampleCount)),
+      m_conservativeMode(uint32_t(conservativeMode)),
       m_reserved        (0) { }
     
     VkBool32 depthClipEnable() const {
@@ -262,6 +264,10 @@ namespace dxvk {
       return VkSampleCountFlags(m_sampleCount);
     }
 
+    VkConservativeRasterizationModeEXT conservativeMode() const {
+      return VkConservativeRasterizationModeEXT(m_conservativeMode);
+    }
+
     void setViewportCount(uint32_t viewportCount) {
       m_viewportCount = viewportCount;
     }
@@ -275,7 +281,8 @@ namespace dxvk {
     uint32_t m_frontFace              : 1;
     uint32_t m_viewportCount          : 5;
     uint32_t m_sampleCount            : 5;
-    uint32_t m_reserved               : 15;
+    uint32_t m_conservativeMode       : 2;
+    uint32_t m_reserved               : 13;
   
   };
 

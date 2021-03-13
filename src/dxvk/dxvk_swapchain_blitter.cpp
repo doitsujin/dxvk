@@ -102,6 +102,7 @@ namespace dxvk {
     rsState.frontFace          = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rsState.depthClipEnable    = VK_FALSE;
     rsState.depthBiasEnable    = VK_FALSE;
+    rsState.conservativeMode   = VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
     rsState.sampleCount        = VK_SAMPLE_COUNT_1_BIT;
     ctx->setRasterizerState(rsState);
     
