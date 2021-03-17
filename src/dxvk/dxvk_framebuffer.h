@@ -207,6 +207,16 @@ namespace dxvk {
      *          the framebuffer.
      */
     bool isFullSize(const Rc<DxvkImageView>& view) const;
+
+    /**
+     * \brief Checks whether an attachment is writable
+     *
+     * Needed for certain clear optimizations.
+     * \param [in] attachmentIndex Attachment to check
+     * \param [in] aspects Aspect mask to check
+     * \returns \c true if all aspects can be written for the given attachment
+     */
+    bool isWritable(uint32_t attachmentIndex, VkImageAspectFlags aspects) const;
     
     /**
      * \brief Generatess render pass format

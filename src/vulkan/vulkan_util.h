@@ -76,6 +76,27 @@ namespace dxvk::vk {
         && a.baseArrayLayer + a.layerCount >= b.baseArrayLayer + b.layerCount;
   }
 
+  inline VkImageAspectFlags getWritableAspectsForLayout(VkImageLayout layout) {
+    switch (layout) {
+      case VK_IMAGE_LAYOUT_GENERAL:
+        return VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+      case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+        return VK_IMAGE_ASPECT_COLOR_BIT;
+      case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL:
+        return VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
+      case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL:
+        return VK_IMAGE_ASPECT_DEPTH_BIT;
+      case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL:
+        return VK_IMAGE_ASPECT_STENCIL_BIT;
+      case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
+      case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+        return 0;
+      default:
+        Logger::err(str::format("Unhandled image layout ", layout));
+        return 0;
+    }
+  }
+
 }
 
 

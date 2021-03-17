@@ -78,6 +78,12 @@ namespace dxvk {
   }
 
 
+  bool DxvkFramebuffer::isWritable(uint32_t attachmentIndex, VkImageAspectFlags aspects) const {
+    VkImageAspectFlags writableAspects = vk::getWritableAspectsForLayout(getAttachment(attachmentIndex).layout);
+    return (writableAspects & aspects) == aspects;
+  }
+
+
   DxvkRenderPassFormat DxvkFramebuffer::getRenderPassFormat(const DxvkRenderTargets& renderTargets) {
     DxvkRenderPassFormat format;
     

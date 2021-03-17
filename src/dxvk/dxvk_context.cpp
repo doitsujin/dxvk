@@ -567,7 +567,7 @@ namespace dxvk {
     // If not, we need to create a temporary framebuffer.
     int32_t attachmentIndex = -1;
     
-    if (m_flags.test(DxvkContextFlag::GpRenderPassBound)
+    if (m_state.om.framebuffer != nullptr
      && m_state.om.framebuffer->isFullSize(imageView))
       attachmentIndex = m_state.om.framebuffer->findAttachment(imageView);
 
@@ -580,6 +580,9 @@ namespace dxvk {
       // If there is overlap, we need to explicitly transition affected attachments.
       this->spillRenderPass(true);
       this->prepareImage(m_execBarriers, imageView->image(), imageView->subresources(), false);
+    } else if (!m_state.om.framebuffer->isWritable(attachmentIndex, clearAspects)) {
+      // We cannot inline clears if the clear aspects are not writable
+      this->spillRenderPass(true);
     }
 
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound))
@@ -1757,6 +1760,28 @@ namespace dxvk {
     else if (discardAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
       depthOp.loadOpS = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
+    if (!m_flags.test(DxvkContextFlag::GpRenderPassBound) && (attachmentIndex >= 0)) {
+      // Do not fold the clear/discard into the render pass if any of the affected aspects
+      // isn't writable. We can only hit this particular path when starting a render pass,
+      // so we can safely manipulate load layouts here.
+      if (!m_state.om.framebuffer->isWritable(attachmentIndex, clearAspects | discardAspects)) {
+        int32_t colorIndex = m_state.om.framebuffer->getColorAttachmentIndex(attachmentIndex);
+        VkImageLayout renderLayout = m_state.om.framebuffer->getAttachment(attachmentIndex).layout;
+
+        if (colorIndex < 0) {
+          depthOp.loadLayout = m_state.om.renderPassOps.depthOps.loadLayout;
+          depthOp.storeLayout = renderLayout;
+          m_state.om.renderPassOps.depthOps.loadLayout = renderLayout;
+        } else {
+          colorOp.loadLayout = m_state.om.renderPassOps.colorOps[colorIndex].loadLayout;
+          colorOp.storeLayout = renderLayout;
+          m_state.om.renderPassOps.colorOps[colorIndex].loadLayout = renderLayout;
+        }
+
+        attachmentIndex = -1;
+      }
+    }
+
     bool is3D = imageView->imageInfo().type == VK_IMAGE_TYPE_3D;
 
     if ((clearAspects | discardAspects) == imageView->info().aspect && !is3D) {
@@ -2717,6 +2742,9 @@ namespace dxvk {
     if (m_state.om.framebuffer != nullptr
      && m_state.om.framebuffer->isFullSize(imageView))
       attachmentIndex = m_state.om.framebuffer->findAttachment(imageView);
+
+    if (attachmentIndex >= 0 && !m_state.om.framebuffer->isWritable(attachmentIndex, aspect))
+      attachmentIndex = -1;
 
     if (attachmentIndex < 0) {
       this->spillRenderPass(false);
