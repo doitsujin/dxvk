@@ -585,9 +585,24 @@ namespace dxvk {
       this->spillRenderPass(true);
     }
 
-    if (m_flags.test(DxvkContextFlag::GpRenderPassBound))
-      this->performClear(imageView, attachmentIndex, 0, clearAspects, clearValue);
-    else
+    if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
+      uint32_t colorIndex = std::max(0, m_state.om.framebuffer->getColorAttachmentIndex(attachmentIndex));
+
+      VkClearAttachment clearInfo;
+      clearInfo.aspectMask      = clearAspects;
+      clearInfo.colorAttachment = colorIndex;
+      clearInfo.clearValue      = clearValue;
+
+      VkClearRect clearRect;
+      clearRect.rect.offset.x       = 0;
+      clearRect.rect.offset.y       = 0;
+      clearRect.rect.extent.width   = imageView->mipLevelExtent(0).width;
+      clearRect.rect.extent.height  = imageView->mipLevelExtent(0).height;
+      clearRect.baseArrayLayer      = 0;
+      clearRect.layerCount          = imageView->info().numLayers;
+
+      m_cmd->cmdClearAttachments(1, &clearInfo, 1, &clearRect);
+    } else
       this->deferClear(imageView, clearAspects, clearValue);
   }
   
@@ -1760,26 +1775,24 @@ namespace dxvk {
     else if (discardAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
       depthOp.loadOpS = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
-    if (!m_flags.test(DxvkContextFlag::GpRenderPassBound) && (attachmentIndex >= 0)) {
+    if (attachmentIndex >= 0 && !m_state.om.framebuffer->isWritable(attachmentIndex, clearAspects | discardAspects)) {
       // Do not fold the clear/discard into the render pass if any of the affected aspects
       // isn't writable. We can only hit this particular path when starting a render pass,
       // so we can safely manipulate load layouts here.
-      if (!m_state.om.framebuffer->isWritable(attachmentIndex, clearAspects | discardAspects)) {
-        int32_t colorIndex = m_state.om.framebuffer->getColorAttachmentIndex(attachmentIndex);
-        VkImageLayout renderLayout = m_state.om.framebuffer->getAttachment(attachmentIndex).layout;
+      int32_t colorIndex = m_state.om.framebuffer->getColorAttachmentIndex(attachmentIndex);
+      VkImageLayout renderLayout = m_state.om.framebuffer->getAttachment(attachmentIndex).layout;
 
-        if (colorIndex < 0) {
-          depthOp.loadLayout = m_state.om.renderPassOps.depthOps.loadLayout;
-          depthOp.storeLayout = renderLayout;
-          m_state.om.renderPassOps.depthOps.loadLayout = renderLayout;
-        } else {
-          colorOp.loadLayout = m_state.om.renderPassOps.colorOps[colorIndex].loadLayout;
-          colorOp.storeLayout = renderLayout;
-          m_state.om.renderPassOps.colorOps[colorIndex].loadLayout = renderLayout;
-        }
-
-        attachmentIndex = -1;
+      if (colorIndex < 0) {
+        depthOp.loadLayout = m_state.om.renderPassOps.depthOps.loadLayout;
+        depthOp.storeLayout = renderLayout;
+        m_state.om.renderPassOps.depthOps.loadLayout = renderLayout;
+      } else {
+        colorOp.loadLayout = m_state.om.renderPassOps.colorOps[colorIndex].loadLayout;
+        colorOp.storeLayout = renderLayout;
+        m_state.om.renderPassOps.colorOps[colorIndex].loadLayout = renderLayout;
       }
+
+      attachmentIndex = -1;
     }
 
     bool is3D = imageView->imageInfo().type == VK_IMAGE_TYPE_3D;
@@ -1831,24 +1844,6 @@ namespace dxvk {
         m_device->createFramebuffer(attachments),
         ops, 1, &clearValue);
       this->renderPassUnbindFramebuffer();
-    } else if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
-      uint32_t colorIndex = std::max(0, m_state.om.framebuffer->getColorAttachmentIndex(attachmentIndex));
-
-      VkClearAttachment clearInfo;
-      clearInfo.aspectMask      = clearAspects;
-      clearInfo.colorAttachment = colorIndex;
-      clearInfo.clearValue      = clearValue;
-      
-      VkClearRect clearRect;
-      clearRect.rect.offset.x       = 0;
-      clearRect.rect.offset.y       = 0;
-      clearRect.rect.extent.width   = imageView->mipLevelExtent(0).width;
-      clearRect.rect.extent.height  = imageView->mipLevelExtent(0).height;
-      clearRect.baseArrayLayer      = 0;
-      clearRect.layerCount          = imageView->info().numLayers;
-
-      if (clearAspects)
-        m_cmd->cmdClearAttachments(1, &clearInfo, 1, &clearRect);
     } else {
       // Perform the operation when starting the next render pass
       if ((clearAspects | discardAspects) & VK_IMAGE_ASPECT_COLOR_BIT) {
