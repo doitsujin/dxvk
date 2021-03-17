@@ -168,9 +168,10 @@ namespace dxvk {
     }
     uint32_t GetLockCount() const { return m_lockCount; }
 
-    void MarkUploaded()      { m_needsUpload = false; }
-    void MarkNeedsUpload()   { m_needsUpload = true; }
-    bool NeedsUpload() const { return m_needsUpload; }
+    /**
+     * \brief Whether or not the staging buffer needs to be copied to the actual buffer
+     */
+    bool NeedsUpload() { return m_desc.Pool != D3DPOOL_DEFAULT && !m_dirtyRange.IsDegenerate(); }
 
     void PreLoad();
 
@@ -205,8 +206,6 @@ namespace dxvk {
     D3D9Range                   m_gpuReadingRange;
 
     uint32_t                    m_lockCount = 0;
-
-    bool                        m_needsUpload = false;
 
   };
 
