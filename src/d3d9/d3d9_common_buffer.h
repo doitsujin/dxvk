@@ -139,11 +139,25 @@ namespace dxvk {
 
     static HRESULT ValidateBufferProperties(const D3D9_BUFFER_DESC* pDesc);
 
-    D3D9Range& LockRange()  { return m_lockRange; }
-    D3D9Range& DirtyRange() { return m_dirtyRange; }
+    /**
+     * \brief The range of the buffer that was changed using Lock calls
+     */
+    D3D9Range& DirtyRange()  { return m_dirtyRange; }
 
-    bool GetReadLocked() const     { return m_readLocked; }
-    void SetReadLocked(bool state) { m_readLocked = state; }
+    /**
+     * \brief The range of the buffer that might currently be read by the GPU
+     */
+    D3D9Range& GPUReadingRange() { return m_gpuReadingRange; }
+
+    /**
+    * \brief Whether or not the buffer was written to by the GPU (in IDirect3DDevice9::ProcessVertices)
+    */
+    bool WasWrittenByGPU() const     { return m_wasWrittenByGPU; }
+
+    /**
+    * \brief Sets whether or not the buffer was written to by the GPU
+    */
+    void SetWrittenByGPU(bool state) { m_wasWrittenByGPU = state; }
 
     uint32_t IncrementLockCount() { return ++m_lockCount; }
     uint32_t DecrementLockCount() {
@@ -157,12 +171,6 @@ namespace dxvk {
     void MarkUploaded()      { m_needsUpload = false; }
     void MarkNeedsUpload()   { m_needsUpload = true; }
     bool NeedsUpload() const { return m_needsUpload; }
-
-    bool MarkLocked() {
-      bool locked = m_readLocked;
-      m_readLocked = true;
-      return locked;
-    }
 
     void PreLoad();
 
@@ -186,15 +194,15 @@ namespace dxvk {
     D3D9DeviceEx*               m_parent;
     const D3D9_BUFFER_DESC      m_desc;
     DWORD                       m_mapFlags;
-    bool                        m_readLocked = false;
+    bool                        m_wasWrittenByGPU = false;
 
     Rc<DxvkBuffer>              m_buffer;
     Rc<DxvkBuffer>              m_stagingBuffer;
 
     DxvkBufferSliceHandle       m_sliceHandle;
 
-    D3D9Range                   m_lockRange;
     D3D9Range                   m_dirtyRange;
+    D3D9Range                   m_gpuReadingRange;
 
     uint32_t                    m_lockCount = 0;
 
