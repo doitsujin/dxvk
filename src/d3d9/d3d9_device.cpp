@@ -4463,12 +4463,8 @@ namespace dxvk {
 
     // We need to remove the READONLY flags from the map flags
     // if there was ever a non-readonly upload.
-    if (!(Flags & D3DLOCK_READONLY)) {
+    if (!(Flags & D3DLOCK_READONLY))
       oldFlags &= ~D3DLOCK_READONLY;
-
-      if (pResource->Desc()->Pool != D3DPOOL_DEFAULT)
-        pResource->MarkNeedsUpload();
-    }
 
     pResource->SetMapFlags(Flags | oldFlags);
     pResource->IncrementLockCount();
@@ -4496,7 +4492,6 @@ namespace dxvk {
 
     pResource->GPUReadingRange().Conjoin(pResource->DirtyRange());
     pResource->DirtyRange().Clear();
-    pResource->MarkUploaded();
 
 	  return D3D_OK;
   }
