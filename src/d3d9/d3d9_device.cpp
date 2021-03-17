@@ -2579,7 +2579,7 @@ namespace dxvk {
       });
     }
 
-    dst->SetReadLocked(true);
+    dst->SetWrittenByGPU(true);
 
     return D3D_OK;
   }
@@ -4368,7 +4368,7 @@ namespace dxvk {
 
     // D3D9 does not do region tracking for READONLY locks
     // But lets also account for whether we get readback from ProcessVertices
-    const bool quickRead   = ((Flags & D3DLOCK_READONLY) && !pResource->GetReadLocked());
+    const bool quickRead   = ((Flags & D3DLOCK_READONLY) && !pResource->WasWrittenByGPU());
     const bool boundsCheck = desc.Pool != D3DPOOL_DEFAULT && !quickRead;
 
     if (boundsCheck) {
@@ -4382,7 +4382,7 @@ namespace dxvk {
       uint32_t offset = respectUserBounds ? OffsetToLock : 0;
       uint32_t size   = respectUserBounds ? SizeToLock   : desc.Size;
 
-      pResource->LockRange().Conjoin(D3D9Range(offset, offset + size));
+      pResource->DirtyRange().Conjoin(D3D9Range(offset, offset + size));
     }
 
     Rc<DxvkBuffer> mappingBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
@@ -4402,8 +4402,8 @@ namespace dxvk {
         ctx->invalidateBuffer(cBuffer, cBufferSlice);
       });
 
-      pResource->SetReadLocked(false);
-      pResource->DirtyRange().Clear();
+      pResource->SetWrittenByGPU(false);
+      pResource->GPUReadingRange().Clear();
     }
     else {
       // Use map pointer from previous map operation. This
@@ -4419,12 +4419,12 @@ namespace dxvk {
       // of our bounds, otherwise we just ignore this and go for it all the time.
       const bool skipWait = (Flags & D3DLOCK_NOOVERWRITE) ||
                             quickRead                     ||
-                            (boundsCheck && !pResource->DirtyRange().Overlaps(pResource->LockRange()));
+                            (boundsCheck && !pResource->GPUReadingRange().Overlaps(pResource->DirtyRange()));
       if (!skipWait) {
         const bool backed    = pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
         const bool doNotWait = Flags & D3DLOCK_DONOTWAIT;
 
-        bool doImplicitDiscard = backed && !doNotWait && pResource->GetLockCount() == 0 && !pResource->GetReadLocked();
+        bool doImplicitDiscard = backed && !doNotWait && pResource->GetLockCount() == 0 && !pResource->WasWrittenByGPU();
 
         doImplicitDiscard = doImplicitDiscard && m_d3d9Options.allowImplicitDiscard;
 
@@ -4447,8 +4447,8 @@ namespace dxvk {
             return D3DERR_WASSTILLDRAWING;
         }
 
-        pResource->SetReadLocked(false);
-        pResource->DirtyRange().Clear();
+        pResource->SetWrittenByGPU(false);
+        pResource->GPUReadingRange().Clear();
       }
     }
 
@@ -4493,8 +4493,8 @@ namespace dxvk {
         cSrcSlice.length());
     });
 
-    pResource->DirtyRange().Conjoin(pResource->LockRange());
-    pResource->LockRange().Clear();
+    pResource->GPUReadingRange().Conjoin(pResource->DirtyRange());
+    pResource->DirtyRange().Clear();
     pResource->MarkUploaded();
 
 	  return D3D_OK;
