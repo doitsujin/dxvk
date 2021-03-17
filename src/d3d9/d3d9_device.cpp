@@ -652,19 +652,6 @@ namespace dxvk {
     if (unlikely(srcTextureInfo->Desc()->Format != dstTextureInfo->Desc()->Format))
       return D3DERR_INVALIDCALL;
 
-    if (dst->GetMipLevel() == 0) {
-      if (pSourceRect) {
-        D3DBOX updateDirtyRect = { UINT(pSourceRect->left), UINT(pSourceRect->top), UINT(pSourceRect->right), UINT(pSourceRect->bottom), 0, 1 };
-        if (pDestinationSurface) {
-          updateDirtyRect.Left = pDestPoint->x;
-          updateDirtyRect.Top = pDestPoint->y;
-        }
-        dstTextureInfo->AddDirtyBox(&updateDirtyRect, dst->GetFace());
-      } else {
-        dstTextureInfo->AddDirtyBox(nullptr, dst->GetFace());
-      }
-    }
-
     const DxvkFormatInfo* formatInfo = imageFormatInfo(dstTextureInfo->GetFormatMapping().FormatColor);
 
     VkOffset3D srcBlockOffset = { 0u, 0u, 0u };
@@ -3979,21 +3966,6 @@ namespace dxvk {
     if (unlikely((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)))
       Flags &= ~D3DLOCK_DISCARD;
 
-    if (!(Flags & D3DLOCK_NO_DIRTY_UPDATE) && !(Flags & D3DLOCK_READONLY)) {
-      if (pBox && MipLevel != 0) {
-        D3DBOX scaledBox = *pBox;
-        scaledBox.Left   <<= MipLevel;
-        scaledBox.Right    = std::min(scaledBox.Right << MipLevel, pResource->Desc()->Width);
-        scaledBox.Top    <<= MipLevel;
-        scaledBox.Bottom   = std::min(scaledBox.Bottom << MipLevel, pResource->Desc()->Height);
-        scaledBox.Back   <<= MipLevel;
-        scaledBox.Front    = std::min(scaledBox.Front << MipLevel, pResource->Desc()->Depth);
-        pResource->AddDirtyBox(&scaledBox, Face);
-      } else {
-        pResource->AddDirtyBox(pBox, Face);
-      }
-    }
-
     auto& desc = *(pResource->Desc());
 
     bool alloced = pResource->CreateBufferSubresource(Subresource);
@@ -4202,6 +4174,21 @@ namespace dxvk {
 
     pResource->SetLocked(Subresource, true);
 
+    if (!(Flags & D3DLOCK_NO_DIRTY_UPDATE) && !(Flags & D3DLOCK_READONLY)) {
+      if (pBox && MipLevel != 0) {
+        D3DBOX scaledBox = *pBox;
+        scaledBox.Left   <<= MipLevel;
+        scaledBox.Right    = std::min(scaledBox.Right << MipLevel, pResource->Desc()->Width);
+        scaledBox.Top    <<= MipLevel;
+        scaledBox.Bottom   = std::min(scaledBox.Bottom << MipLevel, pResource->Desc()->Height);
+        scaledBox.Back   <<= MipLevel;
+        scaledBox.Front    = std::min(scaledBox.Front << MipLevel, pResource->Desc()->Depth);
+        pResource->AddDirtyBox(&scaledBox, Face);
+      } else {
+        pResource->AddDirtyBox(pBox, Face);
+      }
+    }
+
     if (pResource->IsManaged() && !m_d3d9Options.evictManagedOnUnlock && !readOnly) {
       pResource->SetNeedsUpload(Subresource, true);
 
@@ -4252,8 +4239,11 @@ namespace dxvk {
          shouldFlush &= !pResource->GetReadOnlyLocked(Subresource);
          shouldFlush &= !pResource->IsManaged() || m_d3d9Options.evictManagedOnUnlock;
 
-    if (shouldFlush)
+    if (shouldFlush) {
         this->FlushImage(pResource, Subresource);
+        if (pResource->IsManaged())
+          pResource->ClearDirtyBoxes();
+    }
 
     // Toss our staging buffer if we're not dynamic
     // and we aren't managed (for sysmem copy.)
@@ -5024,6 +5014,7 @@ namespace dxvk {
       this->FlushImage(pResource, subresource);
     }
 
+    pResource->ClearDirtyBoxes();
     pResource->ClearNeedsUpload();
   }
 
