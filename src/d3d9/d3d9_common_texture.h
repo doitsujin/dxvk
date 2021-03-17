@@ -376,6 +376,10 @@ namespace dxvk {
           || box.Back <= box.Front)
           return;
 
+        box.Right = std::min(box.Right, m_desc.Width);
+        box.Bottom = std::min(box.Bottom, m_desc.Height);
+        box.Back = std::min(box.Back, m_desc.Depth);
+
         D3DBOX& dirtyBox = m_dirtyBoxes[layer];
         if (dirtyBox.Left == dirtyBox.Right) {
           dirtyBox = box;
