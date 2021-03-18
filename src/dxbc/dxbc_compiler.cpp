@@ -360,6 +360,9 @@ namespace dxvk {
   void DxbcCompiler::emitDclGlobalFlags(const DxbcShaderInstruction& ins) {
     const DxbcGlobalFlags flags = ins.controls.globalFlags();
     
+    if (flags.test(DxbcGlobalFlag::RefactoringAllowed))
+      m_precise = false;
+
     if (flags.test(DxbcGlobalFlag::EarlyFragmentTests))
       m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeEarlyFragmentTests);
   }
@@ -1768,7 +1771,7 @@ namespace dxvk {
         return;
     }
     
-    if (ins.controls.precise())
+    if (ins.controls.precise() || m_precise)
       m_module.decorate(dst.id, spv::DecorationNoContraction);
     
     // Store computed value
@@ -2020,7 +2023,7 @@ namespace dxvk {
       src.at(0).id,
       src.at(1).id);
     
-    if (ins.controls.precise())
+    if (ins.controls.precise() || m_precise)
       m_module.decorate(dst.id, spv::DecorationNoContraction);
     
     dst = emitDstOperandModifiers(dst, ins.modifiers);

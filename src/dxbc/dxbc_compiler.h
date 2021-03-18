@@ -538,7 +538,11 @@ namespace dxvk {
     /////////////////////////////
     // Enabled SPIR-V extensions
     DxbcSpirvExtensions m_extensions;
-    
+
+    //////////////////////
+    // Global state stuff
+    bool m_precise = true;
+
     /////////////////////////////////////////////////////
     // Shader interface and metadata declaration methods
     void emitDcl(
