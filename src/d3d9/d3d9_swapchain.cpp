@@ -462,7 +462,7 @@ namespace dxvk {
         cLevelExtent);
     });
     
-    dstTexInfo->SetDirty(dst->GetSubresource(), true);
+    dstTexInfo->SetWrittenByGPU(dst->GetSubresource(), true);
 
     return D3D_OK;
   }

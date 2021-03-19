@@ -659,9 +659,9 @@ namespace dxvk {
           updateDirtyRect.Left = pDestPoint->x;
           updateDirtyRect.Top = pDestPoint->y;
         }
-        dstTextureInfo->AddUpdateDirtyBox(&updateDirtyRect, dst->GetFace());
+        dstTextureInfo->AddDirtyBox(&updateDirtyRect, dst->GetFace());
       } else {
-        dstTextureInfo->AddUpdateDirtyBox(nullptr, dst->GetFace());
+        dstTextureInfo->AddDirtyBox(nullptr, dst->GetFace());
       }
     }
 
@@ -718,7 +718,7 @@ namespace dxvk {
         cSrcExtent);
     });
 
-    dstTextureInfo->SetDirty(dst->GetSubresource(), true);
+    dstTextureInfo->SetWrittenByGPU(dst->GetSubresource(), true);
 
     if (dstTextureInfo->IsAutomaticMip())
       MarkTextureMipsDirty(dstTextureInfo);
@@ -753,7 +753,7 @@ namespace dxvk {
       mipLevels = 1;
 
     for (uint32_t a = 0; a < arraySlices; a++) {
-      const D3DBOX& box = srcTexInfo->GetUpdateDirtyBox(a);
+      const D3DBOX& box = srcTexInfo->GetDirtyBox(a);
       if (box.Left >= box.Right || box.Top >= box.Bottom || box.Front >= box.Back)
         continue;
 
@@ -799,11 +799,11 @@ namespace dxvk {
             cSrcExtent);
         });
 
-        dstTexInfo->SetDirty(dstTexInfo->CalcSubresource(a, m), true);
+        dstTexInfo->SetWrittenByGPU(dstTexInfo->CalcSubresource(a, m), true);
       }
     }
 
-    srcTexInfo->ClearUpdateDirtyBoxes();
+    srcTexInfo->ClearDirtyBoxes();
     if (dstTexInfo->IsAutomaticMip() && mipLevels != dstTexInfo->Desc()->MipLevels)
       MarkTextureMipsDirty(dstTexInfo);
 
@@ -861,7 +861,7 @@ namespace dxvk {
         cLevelExtent);
     });
 
-    dstTexInfo->SetDirty(dst->GetSubresource(), true);
+    dstTexInfo->SetWrittenByGPU(dst->GetSubresource(), true);
 
     return D3D_OK;
   }
@@ -1071,7 +1071,7 @@ namespace dxvk {
       });
     }
 
-    dstTextureInfo->SetDirty(dst->GetSubresource(), true);
+    dstTextureInfo->SetWrittenByGPU(dst->GetSubresource(), true);
 
     if (dstTextureInfo->IsAutomaticMip())
       MarkTextureMipsDirty(dstTextureInfo);
@@ -1149,7 +1149,7 @@ namespace dxvk {
       });
     }
 
-    dstTextureInfo->SetDirty(dst->GetSubresource(), true);
+    dstTextureInfo->SetWrittenByGPU(dst->GetSubresource(), true);
 
     if (dstTextureInfo->IsAutomaticMip())
       MarkTextureMipsDirty(dstTextureInfo);
@@ -1242,7 +1242,7 @@ namespace dxvk {
       if (texInfo->IsAutomaticMip())
         texInfo->SetNeedsMipGen(true);
 
-      texInfo->SetDirty(rt->GetSubresource(), true);
+      texInfo->SetWrittenByGPU(rt->GetSubresource(), true);
     }
 
     if (originalAlphaSwizzleRTs != m_alphaSwizzleRTs)
@@ -3980,7 +3980,7 @@ namespace dxvk {
       Flags &= ~D3DLOCK_DISCARD;
 
     if (!(Flags & D3DLOCK_NO_DIRTY_UPDATE) && !(Flags & D3DLOCK_READONLY)) {
-        pResource->AddUpdateDirtyBox(pBox, Face);
+        pResource->AddDirtyBox(pBox, Face);
     }
 
     auto& desc = *(pResource->Desc());
@@ -4033,14 +4033,15 @@ namespace dxvk {
 
     bool renderable = desc.Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL);
 
-    // If we are dirty, then we need to copy -> buffer
+    // If we recently wrote to the texture on the gpu,
+    // then we need to copy -> buffer
     // We are also always dirty if we are a render target,
     // a depth stencil, or auto generate mipmaps.
-    bool dirty = pResource->GetDirty(Subresource) || renderable;
-    pResource->SetDirty(Subresource, false);
-      
+    bool wasWrittenByGPU = pResource->WasWrittenByGPU(Subresource) || renderable;
+    pResource->SetWrittenByGPU(Subresource, false);
+
     DxvkBufferSliceHandle physSlice;
-      
+
     if (Flags & D3DLOCK_DISCARD) {
       // We do not have to preserve the contents of the
       // buffer if the entire image gets discarded.
@@ -4064,9 +4065,9 @@ namespace dxvk {
       // calling app promises not to overwrite data that is in use
       // or is reading. Remember! This will only trigger for MANAGED resources
       // that cannot get affected by GPU, therefore readonly is A-OK for NOT waiting.
-      const bool skipWait = (readOnly && managed) || scratch || (readOnly && systemmem && !dirty);
+      const bool skipWait = (readOnly && managed) || scratch || (readOnly && systemmem && !wasWrittenByGPU);
 
-      bool doImplicitDiscard = (managed || (systemmem && !dirty)) && !doNotWait;
+      bool doImplicitDiscard = (managed || (systemmem && !wasWrittenByGPU)) && !doNotWait;
 
       doImplicitDiscard = doImplicitDiscard && m_d3d9Options.allowImplicitDiscard;
 
@@ -4097,7 +4098,7 @@ namespace dxvk {
     else {
       physSlice = mappedBuffer->getSliceHandle();
 
-      if (unlikely(dirty)) {
+      if (unlikely(wasWrittenByGPU)) {
         Rc<DxvkImage> resourceImage = pResource->GetImage();
 
         Rc<DxvkImage> mappedImage = resourceImage->info().sampleCount != 1
@@ -4166,7 +4167,7 @@ namespace dxvk {
         if (!WaitForResource(mappedBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
       } else if (alloced) {
-        // If we are a new alloc, and we weren't dirty
+        // If we are a new alloc, and we weren't written by the GPU
         // that means that we are a newly initialized
         // texture, and hence can just memset -> 0 and
         // avoid a wait here.
@@ -4251,7 +4252,7 @@ namespace dxvk {
 
     if (shouldToss) {
       pResource->DestroyBufferSubresource(Subresource);
-      pResource->SetDirty(Subresource, true);
+      pResource->SetWrittenByGPU(Subresource, true);
     }
 
     return D3D_OK;
@@ -5011,7 +5012,7 @@ namespace dxvk {
 
   void D3D9DeviceEx::UploadManagedTexture(D3D9CommonTexture* pResource) {
     for (uint32_t subresource = 0; subresource < pResource->CountSubresources(); subresource++) {
-      if (!pResource->GetNeedsUpload(subresource))
+      if (!pResource->NeedsUpload(subresource))
         continue;
 
       this->FlushImage(pResource, subresource);
@@ -5047,7 +5048,7 @@ namespace dxvk {
   
   void D3D9DeviceEx::MarkTextureMipsDirty(D3D9CommonTexture* pResource) {
     pResource->SetNeedsMipGen(true);
-    pResource->MarkAllDirty();
+    pResource->MarkAllWrittenByGPU();
 
     for (uint32_t tex = m_activeTextures; tex; tex &= tex - 1) {
       // Guaranteed to not be nullptr...
@@ -6663,7 +6664,7 @@ namespace dxvk {
       });
     }
 
-    dstTextureInfo->MarkAllDirty();
+    dstTextureInfo->MarkAllWrittenByGPU();
   }
 
 

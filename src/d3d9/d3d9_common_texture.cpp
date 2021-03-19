@@ -17,8 +17,8 @@ namespace dxvk {
                     ? D3D9Format::D32
                     : D3D9Format::X8R8G8B8;
 
-    for (uint32_t i = 0; i < m_updateDirtyBoxes.size(); i++) {
-      AddUpdateDirtyBox(nullptr, i);
+    for (uint32_t i = 0; i < m_dirtyBoxes.size(); i++) {
+      AddDirtyBox(nullptr, i);
     }
 
     m_mapping = pDevice->LookupFormat(m_desc.Format);
@@ -489,7 +489,7 @@ namespace dxvk {
     if (IsManaged()) {
       auto lock = m_device->LockDevice();
 
-      if (GetNeedsUpload(Subresource)) {
+      if (NeedsUpload(Subresource)) {
         m_device->FlushImage(this, Subresource);
         SetNeedsUpload(Subresource, false);
 
