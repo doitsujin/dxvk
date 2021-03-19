@@ -3957,9 +3957,6 @@ namespace dxvk {
     if (unlikely((Flags & (D3DLOCK_DISCARD | D3DLOCK_READONLY)) == (D3DLOCK_DISCARD | D3DLOCK_READONLY)))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(!m_d3d9Options.allowLockFlagReadonly))
-      Flags &= ~D3DLOCK_READONLY;
-
     if (unlikely(!m_d3d9Options.allowDoNotWait))
       Flags &= ~D3DLOCK_DONOTWAIT;
 
@@ -4336,9 +4333,6 @@ namespace dxvk {
 
     if (unlikely(ppbData == nullptr))
       return D3DERR_INVALIDCALL;
-
-    if (!m_d3d9Options.allowLockFlagReadonly)
-      Flags &= ~D3DLOCK_READONLY;
 
     if (!m_d3d9Options.allowDiscard)
       Flags &= ~D3DLOCK_DISCARD;
