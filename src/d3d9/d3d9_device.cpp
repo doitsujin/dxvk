@@ -5008,7 +5008,7 @@ namespace dxvk {
 
   void D3D9DeviceEx::UploadManagedTexture(D3D9CommonTexture* pResource) {
     for (uint32_t subresource = 0; subresource < pResource->CountSubresources(); subresource++) {
-      if (!pResource->NeedsUpload(subresource))
+      if (!pResource->NeedsUpload(subresource) || pResource->GetBuffer(subresource) == nullptr)
         continue;
 
       this->FlushImage(pResource, subresource);
