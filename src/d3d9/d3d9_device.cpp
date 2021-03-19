@@ -3980,7 +3980,18 @@ namespace dxvk {
       Flags &= ~D3DLOCK_DISCARD;
 
     if (!(Flags & D3DLOCK_NO_DIRTY_UPDATE) && !(Flags & D3DLOCK_READONLY)) {
+      if (pBox && MipLevel != 0) {
+        D3DBOX scaledBox = *pBox;
+        scaledBox.Left   <<= MipLevel;
+        scaledBox.Right    = std::min(scaledBox.Right << MipLevel, pResource->Desc()->Width);
+        scaledBox.Top    <<= MipLevel;
+        scaledBox.Bottom   = std::min(scaledBox.Bottom << MipLevel, pResource->Desc()->Height);
+        scaledBox.Back   <<= MipLevel;
+        scaledBox.Front    = std::min(scaledBox.Front << MipLevel, pResource->Desc()->Depth);
+        pResource->AddDirtyBox(&scaledBox, Face);
+      } else {
         pResource->AddDirtyBox(pBox, Face);
+      }
     }
 
     auto& desc = *(pResource->Desc());
