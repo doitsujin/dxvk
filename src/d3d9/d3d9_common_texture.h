@@ -223,7 +223,7 @@ namespace dxvk {
      */
     void DestroyBufferSubresource(UINT Subresource) {
       m_buffers[Subresource] = nullptr;
-      SetDirty(Subresource, true);
+      SetWrittenByGPU(Subresource, true);
     }
 
     bool IsDynamic() const {
@@ -308,11 +308,11 @@ namespace dxvk {
 
     bool GetLocked(UINT Subresource) const { return m_locked.get(Subresource); }
 
-    void SetDirty(UINT Subresource, bool value) { m_dirty.set(Subresource, value); }
+    void SetWrittenByGPU(UINT Subresource, bool value) { m_wasWrittenByGPU.set(Subresource, value); }
 
-    bool GetDirty(UINT Subresource) const { return m_dirty.get(Subresource); }
+    bool WasWrittenByGPU(UINT Subresource) const { return m_wasWrittenByGPU.get(Subresource); }
 
-    void MarkAllDirty() { m_dirty.setAll(); }
+    void MarkAllWrittenByGPU() { m_wasWrittenByGPU.setAll(); }
 
     void SetReadOnlyLocked(UINT Subresource, bool readOnly) { return m_readOnly.set(Subresource, readOnly); }
 
@@ -353,7 +353,7 @@ namespace dxvk {
     D3D9SubresourceBitset& GetUploadBitmask() { return m_needsUpload; }
 
     void SetNeedsUpload(UINT Subresource, bool upload) { m_needsUpload.set(Subresource, upload); }
-    bool GetNeedsUpload(UINT Subresource) const        { return m_needsUpload.get(Subresource); }
+    bool NeedsUpload(UINT Subresource) const { return m_needsUpload.get(Subresource); }
     bool NeedsAnyUpload() { return m_needsUpload.any(); }
     void ClearNeedsUpload() { return m_needsUpload.clearAll();  }
 
@@ -368,7 +368,7 @@ namespace dxvk {
     void PreLoadAll();
     void PreLoadSubresource(UINT Subresource);
 
-    void AddUpdateDirtyBox(CONST D3DBOX* pDirtyBox, uint32_t layer) {
+    void AddDirtyBox(CONST D3DBOX* pDirtyBox, uint32_t layer) {
       if (pDirtyBox) {
         D3DBOX box = *pDirtyBox;
         if (box.Right <= box.Left
@@ -376,30 +376,30 @@ namespace dxvk {
           || box.Back <= box.Front)
           return;
 
-        D3DBOX& updateBox = m_updateDirtyBoxes[layer];
-        if (updateBox.Left == updateBox.Right) {
-          updateBox = box;
+        D3DBOX& dirtyBox = m_dirtyBoxes[layer];
+        if (dirtyBox.Left == dirtyBox.Right) {
+          dirtyBox = box;
         } else {
-          updateBox.Left    = std::min(updateBox.Left,   box.Left);
-          updateBox.Right   = std::max(updateBox.Right,  box.Right);
-          updateBox.Top     = std::min(updateBox.Top,    box.Top);
-          updateBox.Bottom  = std::max(updateBox.Bottom, box.Bottom);
-          updateBox.Front   = std::min(updateBox.Front,  box.Front);
-          updateBox.Back    = std::max(updateBox.Back,   box.Back);
+          dirtyBox.Left    = std::min(dirtyBox.Left,   box.Left);
+          dirtyBox.Right   = std::max(dirtyBox.Right,  box.Right);
+          dirtyBox.Top     = std::min(dirtyBox.Top,    box.Top);
+          dirtyBox.Bottom  = std::max(dirtyBox.Bottom, box.Bottom);
+          dirtyBox.Front   = std::min(dirtyBox.Front,  box.Front);
+          dirtyBox.Back    = std::max(dirtyBox.Back,   box.Back);
         }
       } else {
-        m_updateDirtyBoxes[layer] = { 0, 0, m_desc.Width, m_desc.Height, 0, m_desc.Depth };
+        m_dirtyBoxes[layer] = { 0, 0, m_desc.Width, m_desc.Height, 0, m_desc.Depth };
       }
     }
 
-    void ClearUpdateDirtyBoxes() {
-      for (uint32_t i = 0; i < m_updateDirtyBoxes.size(); i++) {
-        m_updateDirtyBoxes[i] = { 0, 0, 0, 0, 0, 0 };
+    void ClearDirtyBoxes() {
+      for (uint32_t i = 0; i < m_dirtyBoxes.size(); i++) {
+        m_dirtyBoxes[i] = { 0, 0, 0, 0, 0, 0 };
       }
     }
 
-    const D3DBOX& GetUpdateDirtyBox(uint32_t layer) const {
-      return m_updateDirtyBoxes[layer];
+    const D3DBOX& GetDirtyBox(uint32_t layer) const {
+      return m_dirtyBoxes[layer];
     }
 
   private:
@@ -432,7 +432,7 @@ namespace dxvk {
 
     D3D9SubresourceBitset         m_readOnly = { };
 
-    D3D9SubresourceBitset         m_dirty = { };
+    D3D9SubresourceBitset         m_wasWrittenByGPU = { };
 
     D3D9SubresourceBitset         m_needsUpload = { };
 
@@ -442,7 +442,7 @@ namespace dxvk {
 
     D3DTEXTUREFILTERTYPE          m_mipFilter = D3DTEXF_LINEAR;
 
-    std::array<D3DBOX, 6>         m_updateDirtyBoxes;
+    std::array<D3DBOX, 6>         m_dirtyBoxes;
 
     /**
      * \brief Mip level

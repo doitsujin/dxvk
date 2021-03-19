@@ -78,9 +78,9 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9Texture2D::AddDirtyRect(CONST RECT* pDirtyRect) {
     if (pDirtyRect) {
       D3DBOX box = { UINT(pDirtyRect->left), UINT(pDirtyRect->top), UINT(pDirtyRect->right), UINT(pDirtyRect->bottom), 0, 1 };
-      m_texture.AddUpdateDirtyBox(&box, 0);
+      m_texture.AddDirtyBox(&box, 0);
     } else {
-      m_texture.AddUpdateDirtyBox(nullptr, 0);
+      m_texture.AddDirtyBox(nullptr, 0);
     }
     return D3D_OK;
   }
@@ -158,7 +158,7 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9Texture3D::AddDirtyBox(CONST D3DBOX* pDirtyBox) {
-    m_texture.AddUpdateDirtyBox(pDirtyBox, 0);
+    m_texture.AddDirtyBox(pDirtyBox, 0);
     return D3D_OK;
   }
 
@@ -238,9 +238,9 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9TextureCube::AddDirtyRect(D3DCUBEMAP_FACES Face, CONST RECT* pDirtyRect) {
     if (pDirtyRect) {
       D3DBOX box = { UINT(pDirtyRect->left), UINT(pDirtyRect->top), UINT(pDirtyRect->right), UINT(pDirtyRect->bottom), 0, 1 };
-      m_texture.AddUpdateDirtyBox(&box, Face);
+      m_texture.AddDirtyBox(&box, Face);
     } else {
-      m_texture.AddUpdateDirtyBox(nullptr, Face);
+      m_texture.AddDirtyBox(nullptr, Face);
     }
     return D3D_OK;
   }
