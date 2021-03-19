@@ -21,6 +21,13 @@ namespace dxvk {
       AddDirtyBox(nullptr, i);
     }
 
+    if (m_desc.Pool != D3DPOOL_DEFAULT) {
+      const uint32_t subresources = CountSubresources();
+      for (uint32_t i = 0; i < subresources; i++) {
+        SetNeedsUpload(i, true);
+      }
+    }
+
     m_mapping = pDevice->LookupFormat(m_desc.Format);
 
     m_mapMode = DetermineMapMode();
