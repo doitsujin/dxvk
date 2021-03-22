@@ -4365,19 +4365,17 @@ namespace dxvk {
     const bool quickRead   = ((Flags & D3DLOCK_READONLY) && !pResource->WasWrittenByGPU());
     const bool boundsCheck = desc.Pool != D3DPOOL_DEFAULT && !quickRead;
 
-    if (boundsCheck) {
-      // We can only respect this for these cases -- otherwise R/W OOB still get copied on native
-      // and some stupid games depend on that.
-      const bool respectUserBounds = !(Flags & D3DLOCK_DISCARD) &&
-                                     SizeToLock != 0;
+    // We can only respect this for these cases -- otherwise R/W OOB still get copied on native
+    // and some stupid games depend on that.
+    const bool respectUserBounds = !(Flags & D3DLOCK_DISCARD) &&
+                                    SizeToLock != 0;
 
-      // If we don't respect the bounds, encompass it all in our tests/checks
-      // These values may be out of range and don't get clamped.
-      uint32_t offset = respectUserBounds ? OffsetToLock : 0;
-      uint32_t size   = respectUserBounds ? SizeToLock   : desc.Size;
+    // If we don't respect the bounds, encompass it all in our tests/checks
+    // These values may be out of range and don't get clamped.
+    uint32_t offset = respectUserBounds ? OffsetToLock : 0;
+    uint32_t size   = respectUserBounds ? std::min(SizeToLock, desc.Size - offset) : (desc.Size - offset);
 
-      pResource->DirtyRange().Conjoin(D3D9Range(offset, offset + size));
-    }
+    pResource->DirtyRange().Conjoin(D3D9Range(offset, offset + size));
 
     Rc<DxvkBuffer> mappingBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
 
