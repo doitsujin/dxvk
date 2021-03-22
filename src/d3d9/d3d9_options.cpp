@@ -74,7 +74,6 @@ namespace dxvk {
     this->alphaTestWiggleRoom           = config.getOption<bool>        ("d3d9.alphaTestWiggleRoom",           false);
     this->apitraceMode                  = config.getOption<bool>        ("d3d9.apitraceMode",                  false);
     this->deviceLocalConstantBuffers    = config.getOption<bool>        ("d3d9.deviceLocalConstantBuffers",    false);
-    this->allowImplicitDiscard          = config.getOption<bool>        ("d3d9.allowImplicitDiscard",          true);
 
     // If we are not Nvidia, enable general hazards.
     this->generalHazards = adapter != nullptr
