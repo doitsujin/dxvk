@@ -64,7 +64,11 @@ else
   endif
 endif
 
-if cpu_family == 'x86'
+if cpu_family == 'x86_64'
+  if dxvk_compiler.has_argument('-msse3')
+    add_project_arguments('-msse3', language: ['c', 'cpp'])
+  endif
+elif cpu_family == 'x86'
   if dxvk_compiler.has_link_argument('-Wl,--add-stdcall-alias')
     add_global_link_arguments('-Wl,--add-stdcall-alias', language: 'cpp')
   endif
