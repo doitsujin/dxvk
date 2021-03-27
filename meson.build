@@ -74,6 +74,9 @@ if cpu_family == 'x86'
   if dxvk_compiler.has_argument('-msse') and dxvk_compiler.has_argument('-msse2') and dxvk_compiler.has_argument('-msse3') and dxvk_compiler.has_argument('-mssse3')
     add_project_arguments('-msse', '-msse2', '-msse3', '-mssse3', language: ['c', 'cpp'])
   endif
+  if dxvk_compiler.has_argument('-mfpmath=sse')
+    add_project_arguments('-mfpmath=sse', language: ['c', 'cpp'])
+  endif
 endif
 
 lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
