@@ -80,11 +80,15 @@ namespace dxvk {
   }
 
   Matrix4& Matrix4::operator+=(const Matrix4& other) {
-    return (*this = (*this) + other);
+    for (uint32_t i = 0; i < 4; i++)
+      data[i] += other.data[i];
+    return *this;
   }
 
   Matrix4& Matrix4::operator-=(const Matrix4& other) {
-    return (*this = (*this) - other);
+    for (uint32_t i = 0; i < 4; i++)
+      data[i] -= other.data[i];
+    return *this;
   }
 
   Matrix4& Matrix4::operator*=(const Matrix4& other) {
