@@ -40,8 +40,9 @@ namespace dxvk {
       // Reference for the thread function
       this->incRef();
 
-      m_handle = ::CreateThread(nullptr, 0,
-        ThreadFn::threadProc, this, 0, nullptr);
+      m_handle = ::CreateThread(nullptr, 0x100000,
+        ThreadFn::threadProc, this, STACK_SIZE_PARAM_IS_A_RESERVATION,
+        nullptr);
       
       if (m_handle == nullptr)
         throw DxvkError("Failed to create thread");
