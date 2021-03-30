@@ -1,5 +1,6 @@
 #include "dxgi_factory.h"
 #include "dxgi_swapchain.h"
+#include "dxgi_swapchain_dispatcher.h"
 
 namespace dxvk {
 
@@ -130,9 +131,18 @@ namespace dxvk {
     if (SUCCEEDED(pDevice->QueryInterface(
           __uuidof(IWineDXGISwapChainFactory),
           reinterpret_cast<void**>(&wineDevice)))) {
-      return wineDevice->CreateSwapChainForHwnd(
+      IDXGISwapChain4* frontendSwapChain;
+
+      HRESULT hr = wineDevice->CreateSwapChainForHwnd(
         this, hWnd, pDesc, pFullscreenDesc,
-        pRestrictToOutput, ppSwapChain);
+        pRestrictToOutput, reinterpret_cast<IDXGISwapChain1**>(&frontendSwapChain));
+
+      // No ref as that's handled by the object we're wrapping
+      // which was ref'ed on creation.
+      if (SUCCEEDED(hr))
+        *ppSwapChain = new DxgiSwapChainDispatcher(frontendSwapChain);
+
+      return hr;
     }
     
     Logger::err("DXGI: CreateSwapChainForHwnd: Unsupported device type");
