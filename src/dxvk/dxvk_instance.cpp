@@ -91,10 +91,16 @@ namespace dxvk {
   VkInstance DxvkInstance::createInstance() {
     DxvkInstanceExtensions insExtensions;
 
-    std::array<DxvkExt*, 2> insExtensionList = {{
+    std::vector<DxvkExt*> insExtensionList = {{
       &insExtensions.khrGetSurfaceCapabilities2,
       &insExtensions.khrSurface,
     }};
+
+    // Hide VK_EXT_debug_utils behind an environment variable. This extension
+    // adds additional overhead to winevulkan
+    if (env::getEnvVar("DXVK_PERF_EVENTS") == "1") {
+        insExtensionList.push_back(&insExtensions.extDebugUtils);
+    }
 
     DxvkNameSet extensionsEnabled;
     DxvkNameSet extensionsAvailable = DxvkNameSet::enumInstanceExtensions(m_vkl);

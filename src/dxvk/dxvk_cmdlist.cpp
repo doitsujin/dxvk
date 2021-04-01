@@ -6,6 +6,7 @@ namespace dxvk {
   DxvkCommandList::DxvkCommandList(DxvkDevice* device)
   : m_device        (device),
     m_vkd           (device->vkd()),
+    m_vki           (device->instance()->vki()),
     m_cmdBuffersUsed(0),
     m_descriptorPoolTracker(device) {
     const auto& graphicsQueue = m_device->queues().graphics;
@@ -206,4 +207,15 @@ namespace dxvk {
     return m_vkd->vkQueueSubmit(queue, 1, &submitInfo, fence);
   }
   
+  void DxvkCommandList::cmdBeginDebugUtilsLabel(VkDebugUtilsLabelEXT *pLabelInfo) {
+    m_vki->vkCmdBeginDebugUtilsLabelEXT(m_execBuffer, pLabelInfo);
+  }
+
+  void DxvkCommandList::cmdEndDebugUtilsLabel() {
+    m_vki->vkCmdEndDebugUtilsLabelEXT(m_execBuffer);
+  }
+
+  void DxvkCommandList::cmdInsertDebugUtilsLabel(VkDebugUtilsLabelEXT *pLabelInfo) {
+    m_vki->vkCmdInsertDebugUtilsLabelEXT(m_execBuffer, pLabelInfo);
+  }
 }
