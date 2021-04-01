@@ -19,7 +19,8 @@ namespace dxvk {
             D3D9_CONVERSION_FORMAT_INFO   conversionFormat,
       const Rc<DxvkImage>&                dstImage,
             VkImageSubresourceLayers      dstSubresource,
-      const Rc<DxvkBuffer>&               srcBuffer);
+      const Rc<DxvkBuffer>&               srcBuffer,
+            uint32_t                      srcBufferOffset);
 
   private:
 
@@ -28,6 +29,7 @@ namespace dxvk {
       const Rc<DxvkImage>&                dstImage,
             VkImageSubresourceLayers      dstSubresource,
       const Rc<DxvkBuffer>&               srcBuffer,
+            uint32_t                      srcBufferOffset,
             VkFormat                      bufferFormat,
             uint32_t                      specConstantValue,
             VkExtent2D                    macroPixelRun);
