@@ -105,6 +105,8 @@ namespace dxvk {
           extensionsEnabled))
       throw DxvkError("DxvkInstance: Failed to create instance");
 
+    m_extensions = insExtensions;
+
     // Enable additional extensions if necessary
     for (const auto& provider : m_extProviders)
       extensionsEnabled.merge(provider->getInstanceExtensions());
