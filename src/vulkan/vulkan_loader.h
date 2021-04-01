@@ -140,6 +140,12 @@ namespace dxvk::vk {
     VULKAN_FN(vkDebugReportMessageEXT);
     #endif
 
+    #ifdef VK_EXT_debug_utils
+    VULKAN_FN(vkCmdBeginDebugUtilsLabelEXT);
+    VULKAN_FN(vkCmdEndDebugUtilsLabelEXT);
+    VULKAN_FN(vkCmdInsertDebugUtilsLabelEXT);
+    #endif
+
     #ifdef VK_EXT_full_screen_exclusive
     VULKAN_FN(vkGetPhysicalDeviceSurfacePresentModes2EXT);
     #endif

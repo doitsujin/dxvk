@@ -762,10 +762,17 @@ namespace dxvk {
         pipelineStage, queryPool, query);
     }
     
+    void cmdBeginDebugUtilsLabel(VkDebugUtilsLabelEXT *pLabelInfo);
+
+    void cmdEndDebugUtilsLabel();
+
+    void cmdInsertDebugUtilsLabel(VkDebugUtilsLabelEXT *pLabelInfo);
+
   private:
     
     DxvkDevice*         m_device;
     Rc<vk::DeviceFn>    m_vkd;
+    Rc<vk::InstanceFn>  m_vki;
     
     VkFence             m_fence;
     

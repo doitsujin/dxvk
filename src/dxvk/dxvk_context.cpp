@@ -2485,6 +2485,27 @@ namespace dxvk {
   void DxvkContext::trimStagingBuffers() {
     m_staging.trim();
   }
+
+  void DxvkContext::beginDebugLabel(VkDebugUtilsLabelEXT *label) {
+    if (!m_device->instance()->extensions().extDebugUtils)
+      return;
+
+    m_cmd->cmdBeginDebugUtilsLabel(label);
+  }
+
+  void DxvkContext::endDebugLabel() {
+    if (!m_device->instance()->extensions().extDebugUtils)
+      return;
+
+    m_cmd->cmdEndDebugUtilsLabel();
+  }
+
+  void DxvkContext::insertDebugLabel(VkDebugUtilsLabelEXT *label) {
+    if (!m_device->instance()->extensions().extDebugUtils)
+      return;
+
+    m_cmd->cmdInsertDebugUtilsLabel(label);
+  }
   
   
   void DxvkContext::blitImageFb(

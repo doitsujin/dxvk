@@ -981,7 +981,32 @@ namespace dxvk {
      * given context are rare.
      */
     void trimStagingBuffers();
-    
+   
+    /**
+     * \brief Begins a debug label region
+     * \param [in] label The debug label
+     *
+     * Marks the start of a debug label region. Used by debugging/profiling
+     * tools to mark different workloads within a frame.
+     */
+    void beginDebugLabel(VkDebugUtilsLabelEXT *label);
+
+    /**
+     * \brief Ends a debug label region
+     *
+     * Marks the close of a debug label region. Used by debugging/profiling
+     * tools to mark different workloads within a frame.
+     */
+    void endDebugLabel();
+
+    /**
+     * \brief Inserts a debug label
+     * \param [in] label The debug label
+     *
+     * Inserts an instantaneous debug label. Used by debugging/profiling
+     * tools to mark different workloads within a frame.
+     */
+    void insertDebugLabel(VkDebugUtilsLabelEXT *label);
   private:
     
     Rc<DxvkDevice>          m_device;
