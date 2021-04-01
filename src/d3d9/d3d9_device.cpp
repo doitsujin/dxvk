@@ -2375,7 +2375,7 @@ namespace dxvk {
 
     const uint32_t upSize = drawInfo.vertexCount * VertexStreamZeroStride;
 
-    auto upSlice = AllocUpBuffer(upSize);
+    auto upSlice = AllocTempBuffer<true>(upSize);
     std::memcpy(upSlice.mapPtr, pVertexStreamZeroData, upSize);
 
     EmitCs([this,
@@ -2426,7 +2426,7 @@ namespace dxvk {
 
     const uint32_t upSize = vertexSize + indicesSize;
 
-    auto upSlice = AllocUpBuffer(upSize);
+    auto upSlice = AllocTempBuffer<true>(upSize);
     uint8_t* data = reinterpret_cast<uint8_t*>(upSlice.mapPtr);
 
     std::memcpy(data, pVertexStreamZeroData, vertexSize);
@@ -3800,58 +3800,76 @@ namespace dxvk {
   }
 
 
-  D3D9UPBufferSlice D3D9DeviceEx::AllocUpBuffer(VkDeviceSize size) {
+  template<bool UpBuffer>
+  D3D9BufferSlice D3D9DeviceEx::AllocTempBuffer(VkDeviceSize size) {
     constexpr VkDeviceSize DefaultSize = 1 << 20;
 
-    constexpr VkMemoryPropertyFlags memoryFlags
-      = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-      | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    VkMemoryPropertyFlags memoryFlags
+      = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+      | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+
+    if constexpr (UpBuffer) {
+      memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    }
+
+    D3D9BufferSlice& currentSlice = UpBuffer ? m_upBuffer : m_managedUploadBuffer;
 
     if (size <= DefaultSize) {
-      if (unlikely(!m_upBuffer.slice.defined())) {
+      if (unlikely(!currentSlice.slice.defined())) {
         DxvkBufferCreateInfo info;
         info.size   = DefaultSize;
-        info.usage  = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
-                    | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-        info.access = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
-                    | VK_ACCESS_INDEX_READ_BIT;
-        info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+        if constexpr (UpBuffer) {
+          info.usage  = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+                      | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+          info.access = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
+                      | VK_ACCESS_INDEX_READ_BIT;
+          info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+        } else {
+          info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+          info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
+          info.access = VK_ACCESS_TRANSFER_READ_BIT;
+        }
 
-        m_upBuffer.slice  = DxvkBufferSlice(m_dxvkDevice->createBuffer(info, memoryFlags));
-        m_upBuffer.mapPtr = m_upBuffer.slice.mapPtr(0);
-      } else if (unlikely(m_upBuffer.slice.length() < size)) {
-        auto physSlice = m_upBuffer.slice.buffer()->allocSlice();
+        currentSlice.slice  = DxvkBufferSlice(m_dxvkDevice->createBuffer(info, memoryFlags));
+        currentSlice.mapPtr = currentSlice.slice.mapPtr(0);
+      } else if (unlikely(currentSlice.slice.length() < size)) {
+        auto physSlice = currentSlice.slice.buffer()->allocSlice();
 
-        m_upBuffer.slice  = DxvkBufferSlice(m_upBuffer.slice.buffer());
-        m_upBuffer.mapPtr = physSlice.mapPtr;
+        currentSlice.slice  = DxvkBufferSlice(currentSlice.slice.buffer());
+        currentSlice.mapPtr = physSlice.mapPtr;
 
         EmitCs([
-          cBuffer = m_upBuffer.slice.buffer(),
+          cBuffer = currentSlice.slice.buffer(),
           cSlice  = physSlice
         ] (DxvkContext* ctx) {
           ctx->invalidateBuffer(cBuffer, cSlice);
         });
       }
 
-      D3D9UPBufferSlice result;
-      result.slice  = m_upBuffer.slice.subSlice(0, size);
-      result.mapPtr = reinterpret_cast<char*>(m_upBuffer.mapPtr) + m_upBuffer.slice.offset();
+      D3D9BufferSlice result;
+      result.slice  = currentSlice.slice.subSlice(0, size);
+      result.mapPtr = reinterpret_cast<char*>(currentSlice.mapPtr) + currentSlice.slice.offset();
 
       VkDeviceSize adjust = align(size, CACHE_LINE_SIZE);
-      m_upBuffer.slice = m_upBuffer.slice.subSlice(adjust, m_upBuffer.slice.length() - adjust);
+      currentSlice.slice = currentSlice.slice.subSlice(adjust, currentSlice.slice.length() - adjust);
       return result;
     } else {
       // Create a temporary buffer for very large allocations
       DxvkBufferCreateInfo info;
       info.size   = size;
-      info.usage  = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
-                  | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-      info.access = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
-                  | VK_ACCESS_INDEX_READ_BIT;
-      info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+      if constexpr (UpBuffer) {
+        info.usage  = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+                    | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+        info.access = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
+                    | VK_ACCESS_INDEX_READ_BIT;
+        info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+      } else {
+        info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        info.access = VK_ACCESS_TRANSFER_READ_BIT;
+      }
 
-      D3D9UPBufferSlice result;
+      D3D9BufferSlice result;
       result.slice  = DxvkBufferSlice(m_dxvkDevice->createBuffer(info, memoryFlags));
       result.mapPtr = result.slice.mapPtr(0);
       return result;

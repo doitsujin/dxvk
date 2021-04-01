@@ -85,7 +85,7 @@ namespace dxvk {
     Rc<DxvkSampler> depth;
   };
 
-  struct D3D9UPBufferSlice {
+  struct D3D9BufferSlice {
     DxvkBufferSlice slice = {};
     void*           mapPtr = nullptr;
   };
@@ -999,7 +999,8 @@ namespace dxvk {
     Rc<DxvkBuffer>                  m_psFixedFunction;
     Rc<DxvkBuffer>                  m_psShared;
 
-    D3D9UPBufferSlice               m_upBuffer;
+    D3D9BufferSlice                 m_upBuffer;
+    D3D9BufferSlice                 m_managedUploadBuffer;
 
     const D3D9Options               m_d3d9Options;
     DxsoOptions                     m_dxsoOptions;
@@ -1073,7 +1074,8 @@ namespace dxvk {
 
     void DetermineConstantLayouts(bool canSWVP);
 
-    D3D9UPBufferSlice AllocUpBuffer(VkDeviceSize size);
+    template<bool UpBuffer>
+    D3D9BufferSlice AllocTempBuffer(VkDeviceSize size);
 
     bool ShouldRecord();
 
