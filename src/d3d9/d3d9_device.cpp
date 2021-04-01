@@ -51,7 +51,7 @@ namespace dxvk {
     , m_d3d9Options    ( dxvkDevice, pParent->GetInstance()->config() )
     , m_isSWVP         ( (BehaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING) ? TRUE : FALSE ) {
     // If we can SWVP, then we use an extended constant set
-    // as SWVP has many more slots available than HWVP. 
+    // as SWVP has many more slots available than HWVP.
     bool canSWVP = CanSWVP();
     DetermineConstantLayouts(canSWVP);
 
@@ -656,6 +656,8 @@ namespace dxvk {
 
     VkOffset3D srcBlockOffset = { 0u, 0u, 0u };
     VkOffset3D dstOffset = { 0u, 0u, 0u };
+    VkExtent3D texLevelExtent = srcTextureInfo->GetExtentMip(src->GetSubresource());
+    VkExtent3D texLevelBlockCount = util::computeBlockCount(texLevelExtent, formatInfo->blockSize);
 
     VkExtent3D copyExtent = srcTextureInfo->GetExtentMip(src->GetSubresource());
 
@@ -678,7 +680,11 @@ namespace dxvk {
     const auto dstSubresource = vk::makeSubresourceLayers(
       dstTextureInfo->GetSubresourceFromIndex(VK_IMAGE_ASPECT_COLOR_BIT, dst->GetSubresource()));
 
-    Rc<DxvkBuffer> srcBuffer = srcTextureInfo->GetBuffer(src->GetSubresource());
+    DxvkBufferSliceHandle srcSlice = srcTextureInfo->GetMappedSlice(src->GetSubresource());
+    D3D9BufferSlice slice = AllocTempBuffer<false>(srcSlice.length);
+    util::packImageData(
+      slice.mapPtr, srcSlice.mapPtr, texLevelBlockCount, formatInfo->elementSize,
+      texLevelBlockCount.width * formatInfo->elementSize, texLevelBlockCount.width * texLevelBlockCount.height * formatInfo->elementSize);
     Rc<DxvkImage>  dstImage  = dstTextureInfo->GetImage();
 
     VkExtent3D levelExtent = srcTextureInfo->GetExtentMip(src->GetSubresource());
@@ -692,7 +698,7 @@ namespace dxvk {
 
     EmitCs([
       cDstImage   = std::move(dstImage),
-      cSrcBuffer  = std::move(srcBuffer),
+      cSrcSlice   = slice.slice,
       cDstLayers  = dstSubresource,
       cDstOffset  = dstOffset,
       cSrcOffset  = srcByteOffset,
@@ -701,7 +707,7 @@ namespace dxvk {
     ] (DxvkContext* ctx) {
       ctx->copyBufferToImage(
         cDstImage, cDstLayers, cDstOffset, cCopyExtent,
-        cSrcBuffer, cSrcOffset,
+        cSrcSlice.buffer(), cSrcSlice.offset() + cSrcOffset,
         cSrcExtent);
     });
 
@@ -745,7 +751,6 @@ namespace dxvk {
         continue;
 
       for (uint32_t m = 0; m < mipLevels; m++) {
-        Rc<DxvkBuffer> srcBuffer = srcTexInfo->GetBuffer(srcTexInfo->CalcSubresource(a, m));
         VkImageSubresourceLayers dstLayers = { VK_IMAGE_ASPECT_COLOR_BIT, m, a, 1 };
 
         VkOffset3D scaledBoxOffset = {
@@ -770,9 +775,19 @@ namespace dxvk {
         VkExtent2D srcExtent = VkExtent2D{ texLevelExtentBlockCount.width  * formatInfo->blockSize.width,
                                            texLevelExtentBlockCount.height * formatInfo->blockSize.height };
 
+        scaledAlignedBoxExtent.width = std::min<uint32_t>(texLevelExtent.width, scaledAlignedBoxExtent.width);
+        scaledAlignedBoxExtent.height = std::min<uint32_t>(texLevelExtent.height, scaledAlignedBoxExtent.height);
+        scaledAlignedBoxExtent.depth = std::min<uint32_t>(texLevelExtent.depth, scaledAlignedBoxExtent.depth);
+
+        DxvkBufferSliceHandle srcSlice = srcTexInfo->GetMappedSlice(srcTexInfo->CalcSubresource(a, m));
+        D3D9BufferSlice slice = AllocTempBuffer<false>(srcSlice.length);
+        util::packImageData(
+          slice.mapPtr, srcSlice.mapPtr, texLevelExtentBlockCount, formatInfo->elementSize,
+          texLevelExtentBlockCount.width * formatInfo->elementSize, texLevelExtentBlockCount.width * texLevelExtentBlockCount.height * formatInfo->elementSize);
+
         EmitCs([
           cDstImage  = dstImage,
-          cSrcBuffer = srcBuffer,
+          cSrcSlice  = slice.slice,
           cDstLayers = dstLayers,
           cExtent    = scaledAlignedBoxExtent,
           cOffset    = scaledBoxOffset,
@@ -782,7 +797,7 @@ namespace dxvk {
           ctx->copyBufferToImage(
             cDstImage,  cDstLayers,
             cOffset, cExtent,
-            cSrcBuffer, cSrcOffset,
+            cSrcSlice.buffer(), cSrcSlice.offset() + cSrcOffset,
             cSrcExtent);
         });
 
@@ -964,7 +979,7 @@ namespace dxvk {
 
     if (unlikely(IsBlitRegionInvalid(blitInfo.dstOffsets, dstExtent)))
       return D3DERR_INVALIDCALL;
-    
+
     VkExtent3D srcCopyExtent =
     { uint32_t(blitInfo.srcOffsets[1].x - blitInfo.srcOffsets[0].x),
       uint32_t(blitInfo.srcOffsets[1].y - blitInfo.srcOffsets[0].y),
@@ -1676,9 +1691,9 @@ namespace dxvk {
 
     if (unlikely(ShouldRecord()))
       return m_recorder->SetClipPlane(Index, pPlane);
-    
+
     bool dirty = false;
-    
+
     for (uint32_t i = 0; i < 4; i++) {
       dirty |= m_state.clipPlanes[Index].coeff[i] != pPlane[i];
       m_state.clipPlanes[Index].coeff[i] = pPlane[i];
@@ -1686,10 +1701,10 @@ namespace dxvk {
 
     bool enabled = m_state.renderStates[D3DRS_CLIPPLANEENABLE] & (1u << Index);
     dirty &= enabled;
-    
+
     if (dirty)
       m_flags.set(D3D9DeviceFlag::DirtyClipPlanes);
-    
+
     return D3D_OK;
   }
 
@@ -1699,10 +1714,10 @@ namespace dxvk {
 
     if (unlikely(Index >= caps::MaxClipPlanes || !pPlane))
       return D3DERR_INVALIDCALL;
-    
+
     for (uint32_t i = 0; i < 4; i++)
       pPlane[i] = m_state.clipPlanes[Index].coeff[i];
-    
+
     return D3D_OK;
   }
 
@@ -1819,7 +1834,7 @@ namespace dxvk {
           UpdateActiveRTs(3);
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
-        
+
         case D3DRS_ALPHATESTENABLE: {
           bool newATOC = IsAlphaToCoverageEnabled();
           bool newAlphaTest = IsAlphaTestEnabled();
@@ -2546,7 +2561,7 @@ namespace dxvk {
     // We unbound the pixel shader before,
     // let's make sure that gets rebound.
     m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
-    
+
     if (m_state.pixelShader != nullptr) {
       BindShader<DxsoProgramTypes::PixelShader>(
         GetCommonShader(m_state.pixelShader),
@@ -2911,7 +2926,7 @@ namespace dxvk {
 
     if (likely(pStride != nullptr))
       *pStride = 0;
-    
+
     if (unlikely(ppStreamData == nullptr || pOffsetInBytes == nullptr || pStride == nullptr))
       return D3DERR_INVALIDCALL;
 
@@ -3619,7 +3634,7 @@ namespace dxvk {
     DWORD newUsage = newTexture != nullptr ? newTexture->Desc()->Usage : 0;
 
     DWORD combinedUsage = oldUsage | newUsage;
-    
+
     TextureChangePrivate(m_state.textures[StateSampler], pTexture);
 
     BindTexture(StateSampler);
@@ -3991,7 +4006,7 @@ namespace dxvk {
 
     VkExtent3D levelExtent = pResource->GetExtentMip(MipLevel);
     VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
-    
+
     const bool systemmem = desc.Pool == D3DPOOL_SYSTEMMEM;
     const bool managed   = IsPoolManaged(desc.Pool);
     const bool scratch   = desc.Pool == D3DPOOL_SCRATCH;
@@ -4276,11 +4291,11 @@ namespace dxvk {
   HRESULT D3D9DeviceEx::FlushImage(
         D3D9CommonTexture*      pResource,
         UINT                    Subresource) {
-    const Rc<DxvkImage>  image = pResource->GetImage();
+    const Rc<DxvkImage> image = pResource->GetImage();
 
     // Now that data has been written into the buffer,
     // we need to copy its contents into the image
-    const Rc<DxvkBuffer> copyBuffer = pResource->GetBuffer(Subresource);
+    const DxvkBufferSliceHandle srcSlice = pResource->GetMappedSlice(Subresource);
 
     auto formatInfo  = imageFormatInfo(image->info().format);
     auto subresource = pResource->GetSubresourceFromIndex(
@@ -4297,25 +4312,35 @@ namespace dxvk {
     auto convertFormat = pResource->GetFormatMapping().ConversionFormatInfo;
 
     if (likely(convertFormat.FormatType == D3D9ConversionFormat_None)) {
+      VkExtent3D texLevelExtentBlockCount = util::computeBlockCount(levelExtent, formatInfo->blockSize);
+      D3D9BufferSlice slice = AllocTempBuffer<false>(srcSlice.length);
+      util::packImageData(
+        slice.mapPtr, srcSlice.mapPtr, texLevelExtentBlockCount, formatInfo->elementSize,
+        texLevelExtentBlockCount.width * formatInfo->elementSize, texLevelExtentBlockCount.width * texLevelExtentBlockCount.height * formatInfo->elementSize);
       EmitCs([
-        cSrcBuffer      = copyBuffer,
+        cSrcSlice       = slice.slice,
         cDstImage       = image,
         cDstLayers      = subresourceLayers,
         cDstLevelExtent = levelExtent
       ] (DxvkContext* ctx) {
         ctx->copyBufferToImage(cDstImage, cDstLayers,
           VkOffset3D{ 0, 0, 0 }, cDstLevelExtent,
-          cSrcBuffer, 0, { 0u, 0u });
+          cSrcSlice.buffer(), cSrcSlice.offset(),
+          { 0u, 0u });
       });
-    } 
+    }
     else {
+      D3D9BufferSlice slice = AllocTempBuffer<false>(srcSlice.length);
+      memcpy(slice.mapPtr, srcSlice.mapPtr, srcSlice.length);
+
       Flush();
       SynchronizeCsThread();
 
       m_converter->ConvertFormat(
         convertFormat,
         image, subresourceLayers,
-        copyBuffer);
+        slice.slice.buffer(),
+        slice.slice.offset());
     }
 
     if (pResource->IsAutomaticMip())
@@ -4681,7 +4706,7 @@ namespace dxvk {
                            DxsoProgramType::PixelShader,
                            DxsoConstantBuffers::PSConstantBuffer);
 
-    m_vsClipPlanes = 
+    m_vsClipPlanes =
       CreateConstantBuffer(false,
                            caps::MaxClipPlanes * sizeof(D3D9ClipPlane),
                            DxsoProgramType::VertexShader,
@@ -4790,16 +4815,16 @@ namespace dxvk {
 
   void D3D9DeviceEx::UpdateClipPlanes() {
     m_flags.clr(D3D9DeviceFlag::DirtyClipPlanes);
-    
+
     auto slice = m_vsClipPlanes->allocSlice();
     auto dst = reinterpret_cast<D3D9ClipPlane*>(slice.mapPtr);
-    
+
     for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {
       dst[i] = (m_state.renderStates[D3DRS_CLIPPLANEENABLE] & (1 << i))
         ? m_state.clipPlanes[i]
         : D3D9ClipPlane();
     }
-    
+
     EmitCs([
       cBuffer = m_vsClipPlanes,
       cSlice  = slice
@@ -4881,7 +4906,7 @@ namespace dxvk {
     else
       Logger::warn("D3D9: Invalid push constant set to update.");
   }
-  
+
 
 
   void D3D9DeviceEx::Flush() {
@@ -5050,7 +5075,7 @@ namespace dxvk {
     m_activeTexturesToGen &= ~mask;
   }
 
-  
+
   void D3D9DeviceEx::MarkTextureMipsDirty(D3D9CommonTexture* pResource) {
     pResource->SetNeedsMipGen(true);
     pResource->MarkAllWrittenByGPU();
@@ -5526,13 +5551,13 @@ namespace dxvk {
 
   void D3D9DeviceEx::BindAlphaTestState() {
     m_flags.clr(D3D9DeviceFlag::DirtyAlphaTestState);
-    
+
     auto& rs = m_state.renderStates;
-    
+
     VkCompareOp alphaOp = IsAlphaTestEnabled()
       ? DecodeCompareOp(D3DCMPFUNC(rs[D3DRS_ALPHAFUNC]))
       : VK_COMPARE_OP_ALWAYS;
-    
+
     EmitCs([cAlphaOp = alphaOp] (DxvkContext* ctx) {
       ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::AlphaTestEnable, cAlphaOp != VK_COMPARE_OP_ALWAYS);
       ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::AlphaCompareOp,  cAlphaOp);
@@ -5715,7 +5740,7 @@ namespace dxvk {
   void D3D9DeviceEx::UndirtySamplers() {
     for (uint32_t dirty = m_dirtySamplerStates; dirty; dirty &= dirty - 1)
       BindSampler(bit::tzcnt(dirty));
-    
+
     m_dirtySamplerStates = 0;
   }
 
@@ -5793,7 +5818,7 @@ namespace dxvk {
 
     if (m_flags.test(D3D9DeviceFlag::DirtyBlendState))
       BindBlendState();
-    
+
     if (m_flags.test(D3D9DeviceFlag::DirtyDepthStencilState))
       BindDepthStencilState();
 
@@ -5802,13 +5827,13 @@ namespace dxvk {
 
     if (m_flags.test(D3D9DeviceFlag::DirtyDepthBias))
       BindDepthBias();
-    
+
     if (m_flags.test(D3D9DeviceFlag::DirtyMultiSampleState))
       BindMultiSampleState();
 
     if (m_flags.test(D3D9DeviceFlag::DirtyAlphaTestState))
       BindAlphaTestState();
-    
+
     if (m_flags.test(D3D9DeviceFlag::DirtyClipPlanes))
       UpdateClipPlanes();
 
@@ -6039,7 +6064,7 @@ namespace dxvk {
         // out attributes and bindings not used by the shader
         uint32_t attrCount = CompactSparseList(attrList.data(), attrMask);
         uint32_t bindCount = CompactSparseList(bindList.data(), bindMask);
-      
+
         ctx->setInputLayout(
           attrCount, attrList.data(),
           bindCount, bindList.data());
@@ -6055,8 +6080,8 @@ namespace dxvk {
         UINT                              Stride) {
     EmitCs([
       cSlotId       = Slot,
-      cBufferSlice  = pBuffer != nullptr ? 
-          pBuffer->GetCommonBuffer()->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>(Offset) 
+      cBufferSlice  = pBuffer != nullptr ?
+          pBuffer->GetCommonBuffer()->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>(Offset)
         : DxvkBufferSlice(),
       cStride       = pBuffer != nullptr ? Stride : 0
     ] (DxvkContext* ctx) {
@@ -6358,7 +6383,7 @@ namespace dxvk {
         data->TexcoordMatrices[i] = m_state.transforms[GetTransformIndex(D3DTS_TEXTURE0) + i];
 
       data->ViewportInfo = m_viewportInfo;
-      
+
       DecodeD3DCOLOR(m_state.renderStates[D3DRS_AMBIENT], data->GlobalAmbient.data);
 
       uint32_t lightIdx = 0;
@@ -6415,7 +6440,7 @@ namespace dxvk {
             return 0b100u; // Arg 2
           case D3DTOP_MULTIPLYADD:
           case D3DTOP_LERP:
-            return 0b111u; // Arg 0, 1, 2 
+            return 0b111u; // Arg 0, 1, 2
           default:
             return 0b110u; // Arg 1, 2
         }
@@ -6609,23 +6634,23 @@ namespace dxvk {
 
     const D3D9_VK_FORMAT_MAPPING srcFormatInfo = LookupFormat(srcDesc->Format);
     const D3D9_VK_FORMAT_MAPPING dstFormatInfo = LookupFormat(dstDesc->Format);
-    
+
     auto srcVulkanFormatInfo = imageFormatInfo(srcFormatInfo.FormatColor);
     auto dstVulkanFormatInfo = imageFormatInfo(dstFormatInfo.FormatColor);
-    
+
     const VkImageSubresource dstSubresource =
       dstTextureInfo->GetSubresourceFromIndex(
         dstVulkanFormatInfo->aspectMask, 0);
-    
+
     const VkImageSubresource srcSubresource =
       srcTextureInfo->GetSubresourceFromIndex(
         srcVulkanFormatInfo->aspectMask, src->GetSubresource());
-    
+
     const VkImageSubresourceLayers dstSubresourceLayers = {
       dstSubresource.aspectMask,
       dstSubresource.mipLevel,
       dstSubresource.arrayLayer, 1 };
-    
+
     const VkImageSubresourceLayers srcSubresourceLayers = {
       srcSubresource.aspectMask,
       srcSubresource.mipLevel,
@@ -6646,7 +6671,7 @@ namespace dxvk {
           cSrcImage, cSrcLayers, VkOffset3D { 0, 0, 0 },
           cDstImage->mipLevelExtent(cDstLayers.mipLevel));
       });
-    } else {      
+    } else {
       EmitCs([
         cDstImage  = dstTextureInfo->GetImage(),
         cSrcImage  = srcTextureInfo->GetImage(),
@@ -6701,7 +6726,7 @@ namespace dxvk {
     });
   }
 
-  
+
   HRESULT D3D9DeviceEx::ResetState(D3DPRESENT_PARAMETERS* pPresentationParameters) {
     if (!pPresentationParameters->EnableAutoDepthStencil)
       SetDepthStencilSurface(nullptr);
@@ -6770,7 +6795,7 @@ namespace dxvk {
 
     rs[D3DRS_TEXTUREFACTOR]       = 0xffffffff;
     m_flags.set(D3D9DeviceFlag::DirtyFFPixelData);
-    
+
     rs[D3DRS_DIFFUSEMATERIALSOURCE]  = D3DMCS_COLOR1;
     rs[D3DRS_SPECULARMATERIALSOURCE] = D3DMCS_COLOR2;
     rs[D3DRS_AMBIENTMATERIALSOURCE]  = D3DMCS_MATERIAL;
