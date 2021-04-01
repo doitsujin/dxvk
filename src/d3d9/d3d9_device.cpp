@@ -659,7 +659,7 @@ namespace dxvk {
     VkExtent3D texLevelExtent = srcTextureInfo->GetExtentMip(src->GetSubresource());
     VkExtent3D texLevelBlockCount = util::computeBlockCount(texLevelExtent, formatInfo->blockSize);
 
-    VkExtent3D copyExtent = srcTextureInfo->GetExtentMip(src->GetSubresource());
+    VkExtent3D copyExtent = texLevelExtent;
 
     if (pSourceRect != nullptr) {
       srcBlockOffset = { pSourceRect->left / int32_t(formatInfo->blockSize.width),
@@ -677,38 +677,39 @@ namespace dxvk {
                     0u };
     }
 
+    VkExtent3D copyBlockCount = util::computeBlockCount(copyExtent, formatInfo->blockSize);
+
     const auto dstSubresource = vk::makeSubresourceLayers(
       dstTextureInfo->GetSubresourceFromIndex(VK_IMAGE_ASPECT_COLOR_BIT, dst->GetSubresource()));
 
     DxvkBufferSliceHandle srcSlice = srcTextureInfo->GetMappedSlice(src->GetSubresource());
-    D3D9BufferSlice slice = AllocTempBuffer<false>(srcSlice.length);
+    VkDeviceSize dirtySize = copyBlockCount.width * copyBlockCount.height * formatInfo->elementSize;
+    D3D9BufferSlice slice = AllocTempBuffer<false>(dirtySize);
+    VkDeviceSize copySrcOffset = (srcBlockOffset.z * texLevelBlockCount.height * texLevelBlockCount.width
+        + srcBlockOffset.y * texLevelBlockCount.width
+        + srcBlockOffset.x)
+        * formatInfo->elementSize;
+    void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + copySrcOffset;
     util::packImageData(
-      slice.mapPtr, srcSlice.mapPtr, texLevelBlockCount, formatInfo->elementSize,
+      slice.mapPtr, srcData, copyBlockCount, formatInfo->elementSize,
       texLevelBlockCount.width * formatInfo->elementSize, texLevelBlockCount.width * texLevelBlockCount.height * formatInfo->elementSize);
+
     Rc<DxvkImage>  dstImage  = dstTextureInfo->GetImage();
-
-    VkExtent3D levelExtent = srcTextureInfo->GetExtentMip(src->GetSubresource());
-    VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
-
-    VkDeviceSize srcByteOffset = srcBlockOffset.y * formatInfo->elementSize * blockCount.width
+    VkDeviceSize srcByteOffset = srcBlockOffset.y * formatInfo->elementSize * texLevelBlockCount.width
                                + srcBlockOffset.x * formatInfo->elementSize;
-
-    VkExtent2D fullSrcExtent = VkExtent2D{ blockCount.width  * formatInfo->blockSize.width,
-                                           blockCount.height * formatInfo->blockSize.height };
 
     EmitCs([
       cDstImage   = std::move(dstImage),
       cSrcSlice   = slice.slice,
       cDstLayers  = dstSubresource,
       cDstOffset  = dstOffset,
-      cSrcOffset  = srcByteOffset,
-      cCopyExtent = copyExtent,
-      cSrcExtent  = fullSrcExtent
+      cSrcOffset  = srcByteOffset + slice.slice.offset(),
+      cCopyExtent = copyExtent
     ] (DxvkContext* ctx) {
       ctx->copyBufferToImage(
         cDstImage, cDstLayers, cDstOffset, cCopyExtent,
         cSrcSlice.buffer(), cSrcSlice.offset() + cSrcOffset,
-        cSrcExtent);
+        VkExtent2D { 0, 0 });
     });
 
     dstTextureInfo->SetWrittenByGPU(dst->GetSubresource(), true);
@@ -759,46 +760,48 @@ namespace dxvk {
           int32_t(alignDown(box.Front >> m, formatInfo->blockSize.depth))
         };
         VkExtent3D scaledBoxExtent = util::computeMipLevelExtent({
-          uint32_t(box.Right - box.Left),
-          uint32_t(box.Bottom - box.Top),
-          uint32_t(box.Back - box.Front)
+          uint32_t(box.Right - scaledBoxOffset.x),
+          uint32_t(box.Bottom - scaledBoxOffset.y),
+          uint32_t(box.Back - scaledBoxOffset.z)
         }, m);
         VkExtent3D scaledBoxExtentBlockCount = util::computeBlockCount(scaledBoxExtent, formatInfo->blockSize);
         VkExtent3D scaledAlignedBoxExtent = util::computeBlockExtent(scaledBoxExtentBlockCount, formatInfo->blockSize);
 
         VkExtent3D texLevelExtent = dstImage->mipLevelExtent(m);
         VkExtent3D texLevelExtentBlockCount = util::computeBlockCount(texLevelExtent, formatInfo->blockSize);
-        VkOffset3D boxOffsetBlockCount = util::computeBlockOffset(scaledBoxOffset, formatInfo->blockSize);
-        VkDeviceSize srcOffset = boxOffsetBlockCount.z * formatInfo->elementSize * texLevelExtentBlockCount.depth
-                                  + boxOffsetBlockCount.y * formatInfo->elementSize * texLevelExtentBlockCount.width
-                                  + boxOffsetBlockCount.x * formatInfo->elementSize;
-        VkExtent2D srcExtent = VkExtent2D{ texLevelExtentBlockCount.width  * formatInfo->blockSize.width,
-                                           texLevelExtentBlockCount.height * formatInfo->blockSize.height };
 
         scaledAlignedBoxExtent.width = std::min<uint32_t>(texLevelExtent.width, scaledAlignedBoxExtent.width);
         scaledAlignedBoxExtent.height = std::min<uint32_t>(texLevelExtent.height, scaledAlignedBoxExtent.height);
         scaledAlignedBoxExtent.depth = std::min<uint32_t>(texLevelExtent.depth, scaledAlignedBoxExtent.depth);
 
-        DxvkBufferSliceHandle srcSlice = srcTexInfo->GetMappedSlice(srcTexInfo->CalcSubresource(a, m));
-        D3D9BufferSlice slice = AllocTempBuffer<false>(srcSlice.length);
+        VkDeviceSize dirtySize = scaledBoxExtentBlockCount.width * scaledBoxExtentBlockCount.height * scaledBoxExtentBlockCount.depth * formatInfo->elementSize;
+        D3D9BufferSlice slice = AllocTempBuffer<false>(dirtySize);
+        VkOffset3D boxOffsetBlockCount = util::computeBlockOffset(scaledBoxOffset, formatInfo->blockSize);
+        VkDeviceSize copySrcOffset = (boxOffsetBlockCount.z * texLevelExtentBlockCount.height * texLevelExtentBlockCount.width
+            + boxOffsetBlockCount.y * texLevelExtentBlockCount.width
+            + boxOffsetBlockCount.x)
+            * formatInfo->elementSize;
+        void* srcData = reinterpret_cast<uint8_t*>(srcTexInfo->GetMappedSlice(srcTexInfo->CalcSubresource(a, m)).mapPtr) + copySrcOffset;
         util::packImageData(
-          slice.mapPtr, srcSlice.mapPtr, texLevelExtentBlockCount, formatInfo->elementSize,
+          slice.mapPtr, srcData, scaledBoxExtentBlockCount, formatInfo->elementSize,
           texLevelExtentBlockCount.width * formatInfo->elementSize, texLevelExtentBlockCount.width * texLevelExtentBlockCount.height * formatInfo->elementSize);
+
+        scaledAlignedBoxExtent.width  = std::min<uint32_t>(texLevelExtent.width, scaledAlignedBoxExtent.width);
+        scaledAlignedBoxExtent.height = std::min<uint32_t>(texLevelExtent.height, scaledAlignedBoxExtent.height);
+        scaledAlignedBoxExtent.depth  = std::min<uint32_t>(texLevelExtent.depth, scaledAlignedBoxExtent.depth);
 
         EmitCs([
           cDstImage  = dstImage,
           cSrcSlice  = slice.slice,
           cDstLayers = dstLayers,
           cExtent    = scaledAlignedBoxExtent,
-          cOffset    = scaledBoxOffset,
-          cSrcOffset = srcOffset,
-          cSrcExtent = srcExtent
+          cOffset    = scaledBoxOffset
         ] (DxvkContext* ctx) {
           ctx->copyBufferToImage(
             cDstImage,  cDstLayers,
             cOffset, cExtent,
-            cSrcSlice.buffer(), cSrcSlice.offset() + cSrcOffset,
-            cSrcExtent);
+            cSrcSlice.buffer(), cSrcSlice.offset(),
+            VkExtent2D { 0, 0 });
         });
 
         dstTexInfo->SetWrittenByGPU(dstTexInfo->CalcSubresource(a, m), true);
@@ -3891,7 +3894,6 @@ namespace dxvk {
     }
   }
 
-
   bool D3D9DeviceEx::ShouldRecord() {
     return m_recorder != nullptr && !m_recorder->IsApplying();
   }
@@ -4301,9 +4303,6 @@ namespace dxvk {
     auto subresource = pResource->GetSubresourceFromIndex(
       formatInfo->aspectMask, Subresource);
 
-    VkExtent3D levelExtent = image
-      ->mipLevelExtent(subresource.mipLevel);
-
     VkImageSubresourceLayers subresourceLayers = {
       subresource.aspectMask,
       subresource.mipLevel,
@@ -4312,21 +4311,54 @@ namespace dxvk {
     auto convertFormat = pResource->GetFormatMapping().ConversionFormatInfo;
 
     if (likely(convertFormat.FormatType == D3D9ConversionFormat_None)) {
-      VkExtent3D texLevelExtentBlockCount = util::computeBlockCount(levelExtent, formatInfo->blockSize);
-      D3D9BufferSlice slice = AllocTempBuffer<false>(srcSlice.length);
+      const DxvkFormatInfo* formatInfo = imageFormatInfo(pResource->GetFormatMapping().FormatColor);
+      VkImageSubresourceLayers dstLayers = { VK_IMAGE_ASPECT_COLOR_BIT, subresource.mipLevel, subresource.arrayLayer, 1 };
+
+      const D3DBOX& box = pResource->GetDirtyBox(subresource.arrayLayer);
+      VkOffset3D scaledBoxOffset = {
+        int32_t(alignDown(box.Left  >> subresource.mipLevel, formatInfo->blockSize.width)),
+        int32_t(alignDown(box.Top   >> subresource.mipLevel, formatInfo->blockSize.height)),
+        int32_t(alignDown(box.Front >> subresource.mipLevel, formatInfo->blockSize.depth))
+      };
+      VkExtent3D scaledBoxExtent = util::computeMipLevelExtent({
+        uint32_t(box.Right - scaledBoxOffset.x),
+        uint32_t(box.Bottom - scaledBoxOffset.y),
+        uint32_t(box.Back - scaledBoxOffset.z)
+      }, subresource.mipLevel);
+      VkExtent3D scaledBoxExtentBlockCount = util::computeBlockCount(scaledBoxExtent, formatInfo->blockSize);
+      VkExtent3D scaledAlignedBoxExtent = util::computeBlockExtent(scaledBoxExtentBlockCount, formatInfo->blockSize);
+
+      VkExtent3D texLevelExtent = image->mipLevelExtent(subresource.mipLevel);
+      VkExtent3D texLevelExtentBlockCount = util::computeBlockCount(texLevelExtent, formatInfo->blockSize);
+
+      scaledAlignedBoxExtent.width = std::min<uint32_t>(texLevelExtent.width, scaledAlignedBoxExtent.width);
+      scaledAlignedBoxExtent.height = std::min<uint32_t>(texLevelExtent.height, scaledAlignedBoxExtent.height);
+      scaledAlignedBoxExtent.depth = std::min<uint32_t>(texLevelExtent.depth, scaledAlignedBoxExtent.depth);
+
+      VkDeviceSize dirtySize = scaledBoxExtentBlockCount.width * scaledBoxExtentBlockCount.height * scaledBoxExtentBlockCount.depth * formatInfo->elementSize;
+      D3D9BufferSlice slice = AllocTempBuffer<false>(dirtySize);
+      VkOffset3D boxOffsetBlockCount = util::computeBlockOffset(scaledBoxOffset, formatInfo->blockSize);
+      VkDeviceSize copySrcOffset = (boxOffsetBlockCount.z * texLevelExtentBlockCount.height * texLevelExtentBlockCount.width
+          + boxOffsetBlockCount.y * texLevelExtentBlockCount.width
+          + boxOffsetBlockCount.x)
+          * formatInfo->elementSize;
+      void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + copySrcOffset;
       util::packImageData(
-        slice.mapPtr, srcSlice.mapPtr, texLevelExtentBlockCount, formatInfo->elementSize,
+        slice.mapPtr, srcData, scaledBoxExtentBlockCount, formatInfo->elementSize,
         texLevelExtentBlockCount.width * formatInfo->elementSize, texLevelExtentBlockCount.width * texLevelExtentBlockCount.height * formatInfo->elementSize);
+
       EmitCs([
         cSrcSlice       = slice.slice,
         cDstImage       = image,
-        cDstLayers      = subresourceLayers,
-        cDstLevelExtent = levelExtent
+        cDstLayers      = dstLayers,
+        cDstLevelExtent = scaledAlignedBoxExtent,
+        cOffset         = scaledBoxOffset
       ] (DxvkContext* ctx) {
-        ctx->copyBufferToImage(cDstImage, cDstLayers,
-          VkOffset3D{ 0, 0, 0 }, cDstLevelExtent,
+        ctx->copyBufferToImage(
+          cDstImage,  cDstLayers,
+          cOffset, cDstLevelExtent,
           cSrcSlice.buffer(), cSrcSlice.offset(),
-          { 0u, 0u });
+          VkExtent2D { 0, 0 });
       });
     }
     else {
@@ -4512,16 +4544,22 @@ namespace dxvk {
     auto dstBuffer = pResource->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>();
     auto srcBuffer = pResource->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_STAGING>();
 
+    D3D9Range& range = pResource->DirtyRange();
+
+    D3D9BufferSlice slice = AllocTempBuffer<false>(range.max - range.min);
+    memcpy(slice.mapPtr, srcBuffer.mapPtr(range.min), range.max - range.min);
+
     EmitCs([
-      cDstSlice = dstBuffer,
-      cSrcSlice = srcBuffer
+      cDstSlice  = dstBuffer,
+      cSrcSlice = slice.slice,
+      cLength    = range.max - range.min
     ] (DxvkContext* ctx) {
       ctx->copyBuffer(
         cDstSlice.buffer(),
         cDstSlice.offset(),
         cSrcSlice.buffer(),
         cSrcSlice.offset(),
-        cSrcSlice.length());
+        cLength);
     });
 
     pResource->GPUReadingRange().Conjoin(pResource->DirtyRange());
@@ -7043,6 +7081,5 @@ namespace dxvk {
 
     return D3D_OK;
   }
-
 
 }
