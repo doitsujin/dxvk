@@ -4012,7 +4012,6 @@ namespace dxvk {
     const bool systemmem = desc.Pool == D3DPOOL_SYSTEMMEM;
     const bool managed   = IsPoolManaged(desc.Pool);
     const bool scratch   = desc.Pool == D3DPOOL_SCRATCH;
-    const bool doNotWait = Flags & D3DLOCK_DONOTWAIT;
 
     bool fullResource = pBox == nullptr;
     if (unlikely(!fullResource)) {
@@ -4078,34 +4077,14 @@ namespace dxvk {
       // calling app promises not to overwrite data that is in use
       // or is reading. Remember! This will only trigger for MANAGED resources
       // that cannot get affected by GPU, therefore readonly is A-OK for NOT waiting.
-      const bool skipWait = (readOnly && managed) || scratch || (readOnly && systemmem && !wasWrittenByGPU);
-
-      bool doImplicitDiscard = (managed || (systemmem && !wasWrittenByGPU)) && !doNotWait;
-
-      doImplicitDiscard = doImplicitDiscard && m_d3d9Options.allowImplicitDiscard;
+      const bool skipWait = scratch || managed || (systemmem && !wasWrittenByGPU);
 
       if (alloced) {
         std::memset(physSlice.mapPtr, 0, physSlice.length);
       }
       else if (!skipWait) {
-        if (doImplicitDiscard) {
-          if (!WaitForResource(mappedBuffer, D3DLOCK_DONOTWAIT)) {
-            // if the mapped buffer is currently being copied to image
-            // we can just avoid a stall by allocating a new slice and copying the existing contents
-            DxvkBufferSliceHandle oldSlice = physSlice;
-            physSlice = pResource->DiscardMapSlice(Subresource);
-            std::memcpy(physSlice.mapPtr, oldSlice.mapPtr, oldSlice.length);
-            EmitCs([
-              cImageBuffer = std::move(mappedBuffer),
-              cBufferSlice = physSlice
-            ] (DxvkContext* ctx) {
-              ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
-            });
-          }
-        } else {
-          if (!WaitForResource(mappedBuffer, Flags))
-            return D3DERR_WASSTILLDRAWING;
-        }
+        if (!WaitForResource(mappedBuffer, Flags))
+          return D3DERR_WASSTILLDRAWING;
       }
     }
     else {
@@ -4488,31 +4467,8 @@ namespace dxvk {
                             quickRead                     ||
                             (boundsCheck && !pResource->GPUReadingRange().Overlaps(pResource->DirtyRange()));
       if (!skipWait) {
-        const bool backed    = pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
-        const bool doNotWait = Flags & D3DLOCK_DONOTWAIT;
-
-        bool doImplicitDiscard = backed && !doNotWait && pResource->GetLockCount() == 0 && !pResource->WasWrittenByGPU();
-
-        doImplicitDiscard = doImplicitDiscard && m_d3d9Options.allowImplicitDiscard;
-
-        if (doImplicitDiscard) {
-          if (!WaitForResource(mappingBuffer, D3DLOCK_DONOTWAIT)) {
-            // if the mapped buffer is currently being copied to the primary buffer
-            // we can just avoid a stall by allocating a new slice and copying the existing contents
-            DxvkBufferSliceHandle oldSlice = physSlice;
-            physSlice = pResource->DiscardMapSlice();
-            std::memcpy(physSlice.mapPtr, oldSlice.mapPtr, oldSlice.length);
-            EmitCs([
-              cBuffer = std::move(mappingBuffer),
-              cBufferSlice = physSlice
-            ] (DxvkContext* ctx) {
-              ctx->invalidateBuffer(cBuffer, cBufferSlice);
-            });
-          }
-        } else {
-          if (!WaitForResource(mappingBuffer, Flags))
-            return D3DERR_WASSTILLDRAWING;
-        }
+        if (!WaitForResource(mappingBuffer, Flags))
+          return D3DERR_WASSTILLDRAWING;
 
         pResource->SetWrittenByGPU(false);
         pResource->GPUReadingRange().Clear();
