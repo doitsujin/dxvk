@@ -35,6 +35,13 @@ namespace dxvk {
       data[3] = v3;
     }
 
+    inline Matrix4(const float matrix[4][4]) {
+      data[0] = Vector4(matrix[0]);
+      data[1] = Vector4(matrix[1]);
+      data[2] = Vector4(matrix[2]);
+      data[3] = Vector4(matrix[3]);
+    }
+
     Matrix4(const Matrix4& other) = default;
 
     Vector4& operator[](size_t index);
