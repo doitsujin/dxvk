@@ -18,7 +18,7 @@ namespace dxvk {
     Vector4Base(T x, T y, T z, T w)
       : x(x), y(y), z(z), w(w) { }
 
-    Vector4Base(T xyzw[4])
+    Vector4Base(const T xyzw[4])
       : x(xyzw[0]), y(xyzw[1]), z(xyzw[2]), w(xyzw[3]) { }
 
     Vector4Base(const Vector4Base<T>& other) = default;
