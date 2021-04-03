@@ -1152,16 +1152,16 @@ namespace dxvk {
           return D3DERR_INVALIDCALL;
 
         if constexpr (ConstantType == D3D9ConstantType::Float) {
-          auto begin = &set.fConsts[StartRegister];
-          auto end = &begin[Count];
+          const float* source = set.fConsts[StartRegister].data;
+          const size_t size   = Count * sizeof(Vector4);
 
-          std::copy(begin, end, reinterpret_cast<Vector4*>(pConstantData));
+          std::memcpy(pConstantData, source, size);
         }
         else if constexpr (ConstantType == D3D9ConstantType::Int) {
-          auto begin = &set.iConsts[StartRegister];
-          auto end = &begin[Count];
+          const int*  source = set.iConsts[StartRegister].data;
+          const size_t size  = Count * sizeof(Vector4i);
 
-          std::copy(begin, end, reinterpret_cast<Vector4i*>(pConstantData));
+          std::memcpy(pConstantData, source, size);
         }
         else {
           for (uint32_t i = 0; i < Count; i++) {
