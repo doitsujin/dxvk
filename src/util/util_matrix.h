@@ -68,6 +68,8 @@ namespace dxvk {
 
   };
 
+  static_assert(sizeof(Matrix4) == sizeof(Vector4) * 4);
+
   inline Matrix4 operator*(float scalar, const Matrix4& m) { return m * scalar; }
 
   Matrix4 transpose(const Matrix4& m);
