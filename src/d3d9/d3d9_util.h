@@ -138,7 +138,7 @@ namespace dxvk {
     if (Matrix == nullptr) // Identity.
       return Matrix4();
 
-    return *(reinterpret_cast<const Matrix4*>(Matrix));
+    return Matrix4(Matrix->m);
   }
 
   uint32_t GetVertexCount(D3DPRIMITIVETYPE type, UINT count);
