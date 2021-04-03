@@ -146,6 +146,9 @@ namespace dxvk {
   using Vector4  = Vector4Base<float>;
   using Vector4i = Vector4Base<int>;
 
+  static_assert(sizeof(Vector4)  == sizeof(float) * 4);
+  static_assert(sizeof(Vector4i) == sizeof(int)   * 4);
+
   inline Vector4 replaceNaN(Vector4 a) {
     Vector4 result;
     __m128 value = _mm_load_ps(a.data);
