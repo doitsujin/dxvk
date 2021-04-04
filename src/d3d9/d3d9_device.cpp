@@ -3755,7 +3755,7 @@ namespace dxvk {
     enabled.core.features.fillModeNonSolid = VK_TRUE;
     enabled.core.features.pipelineStatisticsQuery = supported.core.features.pipelineStatisticsQuery;
     enabled.core.features.sampleRateShading = VK_TRUE;
-    enabled.core.features.samplerAnisotropy = VK_TRUE;
+    enabled.core.features.samplerAnisotropy = supported.core.features.samplerAnisotropy;
     enabled.core.features.shaderClipDistance = VK_TRUE;
     enabled.core.features.shaderCullDistance = VK_TRUE;
 
