@@ -33,6 +33,9 @@ namespace dxvk {
     samplerInfo.borderColor             = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
     samplerInfo.unnormalizedCoordinates = info.usePixelCoord;
 
+    if (!device->features().core.features.samplerAnisotropy)
+      samplerInfo.anisotropyEnable = VK_FALSE;
+
     if (samplerInfo.addressModeU == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
      || samplerInfo.addressModeV == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
      || samplerInfo.addressModeW == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
