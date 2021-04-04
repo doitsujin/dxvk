@@ -386,6 +386,10 @@ namespace dxvk {
       { "d3d9.allowImplicitDiscard",        "False" },
       { "d3d9.customVendorId",              "1002" },
     }} },
+    /* Dragon Nest                               */
+    { R"(\\DragonNest_x64\.exe$)", {{
+      { "d3d9.memoryTrackTest ",            "True" },
+    }} },
   }};
 
 
