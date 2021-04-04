@@ -1560,7 +1560,7 @@ namespace dxvk {
 
       bool processedTexture = false;
 
-      auto DoBumpmapCoords = [&](uint32_t baseCoords) {
+      auto DoBumpmapCoords = [&](uint32_t typeId, uint32_t baseCoords) {
         uint32_t stage = i - 1;
 
         uint32_t coords = baseCoords;
@@ -1579,7 +1579,7 @@ namespace dxvk {
           uint32_t dot    = m_module.opDot(m_floatType, bm, t);
 
           uint32_t result = m_module.opFAdd(m_floatType, tc_m_n, dot);
-          coords  = m_module.opCompositeInsert(m_vec4Type, result, coords, 1, &i);
+          coords  = m_module.opCompositeInsert(typeId, result, coords, 1, &i);
         }
 
         return coords;
@@ -1625,10 +1625,10 @@ namespace dxvk {
             m_fsKey.Stages[i - 1].Contents.ColorOp == D3DTOP_BUMPENVMAPLUMINANCE)) {
             if (shouldProject) {
               uint32_t projRcp = m_module.opFDiv(m_floatType, m_module.constf32(1.0), projValue);
-              texcoord = m_module.opVectorTimesScalar(m_vec4Type, texcoord, projRcp);
+              texcoord = m_module.opVectorTimesScalar(texcoord_t, texcoord, projRcp);
             }
 
-            texcoord = DoBumpmapCoords(texcoord);
+            texcoord = DoBumpmapCoords(texcoord_t, texcoord);
 
             shouldProject = false;
           }
