@@ -1908,7 +1908,6 @@ namespace dxvk {
 
     enabled.core.features.geometryShader                          = VK_TRUE;
     enabled.core.features.robustBufferAccess                      = VK_TRUE;
-    enabled.core.features.shaderStorageImageExtendedFormats       = VK_TRUE;
     enabled.core.features.shaderStorageImageWriteWithoutFormat    = VK_TRUE;
     enabled.core.features.depthBounds                             = supported.core.features.depthBounds;
 
