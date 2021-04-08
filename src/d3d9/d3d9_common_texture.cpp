@@ -201,8 +201,7 @@ namespace dxvk {
     const uint32_t planeCount = m_mapping.ConversionFormatInfo.PlaneCount;
 
     return std::min(planeCount, 2u)
-         * formatInfo.elementSize
-         * blockCount.width
+         * align(formatInfo.elementSize * blockCount.width, 4)
          * blockCount.height
          * blockCount.depth;
   }
