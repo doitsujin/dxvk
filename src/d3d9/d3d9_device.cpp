@@ -689,10 +689,12 @@ namespace dxvk {
         + srcBlockOffset.y * texLevelBlockCount.width
         + srcBlockOffset.x)
         * formatInfo->elementSize;
+
+    VkDeviceSize pitch = align(texLevelBlockCount.width * formatInfo->elementSize, 4);
     void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + copySrcOffset;
     util::packImageData(
       slice.mapPtr, srcData, copyBlockCount, formatInfo->elementSize,
-      texLevelBlockCount.width * formatInfo->elementSize, texLevelBlockCount.width * texLevelBlockCount.height * formatInfo->elementSize);
+      pitch, pitch * texLevelBlockCount.height);
 
     Rc<DxvkImage>  dstImage  = dstTextureInfo->GetImage();
     VkDeviceSize srcByteOffset = srcBlockOffset.y * formatInfo->elementSize * texLevelBlockCount.width
@@ -781,10 +783,12 @@ namespace dxvk {
             + boxOffsetBlockCount.y * texLevelExtentBlockCount.width
             + boxOffsetBlockCount.x)
             * formatInfo->elementSize;
+
+        VkDeviceSize pitch = align(texLevelExtentBlockCount.width * formatInfo->elementSize, 4);
         void* srcData = reinterpret_cast<uint8_t*>(srcTexInfo->GetMappedSlice(srcTexInfo->CalcSubresource(a, m)).mapPtr) + copySrcOffset;
         util::packImageData(
           slice.mapPtr, srcData, scaledBoxExtentBlockCount, formatInfo->elementSize,
-          texLevelExtentBlockCount.width * formatInfo->elementSize, texLevelExtentBlockCount.width * texLevelExtentBlockCount.height * formatInfo->elementSize);
+          pitch, pitch * texLevelExtentBlockCount.height);
 
         scaledAlignedBoxExtent.width  = std::min<uint32_t>(texLevelExtent.width, scaledAlignedBoxExtent.width);
         scaledAlignedBoxExtent.height = std::min<uint32_t>(texLevelExtent.height, scaledAlignedBoxExtent.height);
@@ -854,14 +858,21 @@ namespace dxvk {
 
     VkExtent3D srcExtent = srcTexInfo->GetExtentMip(src->GetMipLevel());
 
+    VkExtent3D texLevelExtentBlockCount = util::computeBlockCount(srcExtent, srcFormatInfo->blockSize);
+    VkDeviceSize pitch = align(texLevelExtentBlockCount.width * uint32_t(srcFormatInfo->elementSize), 4);
+    uint32_t pitchBlocks = uint32_t(pitch / srcFormatInfo->elementSize);
+    VkExtent2D dstExtent = VkExtent2D{ pitchBlocks,
+                                       texLevelExtentBlockCount.height * pitchBlocks };
+
     EmitCs([
       cBuffer       = dstBuffer,
       cImage        = srcImage,
       cSubresources = srcSubresourceLayers,
-      cLevelExtent  = srcExtent
+      cLevelExtent  = srcExtent,
+      cDstExtent    = dstExtent
     ] (DxvkContext* ctx) {
       ctx->copyImageToBuffer(
-        cBuffer, 0, VkExtent2D { 0u, 0u },
+        cBuffer, 0, cDstExtent,
         cImage, cSubresources, VkOffset3D { 0, 0, 0 },
         cLevelExtent);
     });
@@ -4172,13 +4183,13 @@ namespace dxvk {
     if (atiHack) {
       // We need to lie here. The game is expected to use this info and do a workaround.
       // It's stupid. I know.
-      pLockedBox->RowPitch   = std::max(desc.Width >> MipLevel, 1u);
+      pLockedBox->RowPitch   = align(std::max(desc.Width >> MipLevel, 1u), 4);
       pLockedBox->SlicePitch = pLockedBox->RowPitch * std::max(desc.Height >> MipLevel, 1u);
     }
     else {
       // Data is tightly packed within the mapped buffer.
-      pLockedBox->RowPitch   = formatInfo->elementSize * blockCount.width;
-      pLockedBox->SlicePitch = formatInfo->elementSize * blockCount.width * blockCount.height;
+      pLockedBox->RowPitch   = align(formatInfo->elementSize * blockCount.width, 4);
+      pLockedBox->SlicePitch = pLockedBox->RowPitch * blockCount.height;
     }
 
     pResource->SetLocked(Subresource, true);
@@ -4321,10 +4332,12 @@ namespace dxvk {
           + boxOffsetBlockCount.y * texLevelExtentBlockCount.width
           + boxOffsetBlockCount.x)
           * formatInfo->elementSize;
+
+      VkDeviceSize pitch = align(texLevelExtentBlockCount.width * formatInfo->elementSize, 4);
       void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + copySrcOffset;
       util::packImageData(
         slice.mapPtr, srcData, scaledBoxExtentBlockCount, formatInfo->elementSize,
-        texLevelExtentBlockCount.width * formatInfo->elementSize, texLevelExtentBlockCount.width * texLevelExtentBlockCount.height * formatInfo->elementSize);
+        pitch, pitch * texLevelExtentBlockCount.height);
 
       EmitCs([
         cSrcSlice       = slice.slice,
@@ -4341,8 +4354,14 @@ namespace dxvk {
       });
     }
     else {
+      VkExtent3D texLevelExtent = image->mipLevelExtent(Subresource);
+      VkExtent3D texLevelExtentBlockCount = util::computeBlockCount(texLevelExtent, formatInfo->blockSize);
+
       D3D9BufferSlice slice = AllocTempBuffer<false>(srcSlice.length);
-      memcpy(slice.mapPtr, srcSlice.mapPtr, srcSlice.length);
+      VkDeviceSize pitch = align(texLevelExtentBlockCount.width * formatInfo->elementSize, 4);
+      util::packImageData(
+        slice.mapPtr, srcSlice.mapPtr, texLevelExtent, formatInfo->elementSize,
+        pitch, pitch * texLevelExtentBlockCount.height);
 
       Flush();
       SynchronizeCsThread();
