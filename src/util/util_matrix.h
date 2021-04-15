@@ -8,15 +8,32 @@ namespace dxvk {
 
     public:
 
-    Matrix4(); // Identity
+    // Identity
+    inline Matrix4() {
+      data[0] = { 1, 0, 0, 0 };
+      data[1] = { 0, 1, 0, 0 };
+      data[2] = { 0, 0, 1, 0 };
+      data[3] = { 0, 0, 0, 1 };
+    }
 
-    explicit Matrix4(float x); // Produces a scalar matrix, x * Identity
+    // Produces a scalar matrix, x * Identity
+    inline explicit Matrix4(float x) {
+      data[0] = { x, 0, 0, 0 };
+      data[1] = { 0, x, 0, 0 };
+      data[2] = { 0, 0, x, 0 };
+      data[3] = { 0, 0, 0, x };
+    }
 
-    Matrix4(
+    inline Matrix4(
       const Vector4& v0,
       const Vector4& v1,
       const Vector4& v2,
-      const Vector4& v3);
+      const Vector4& v3) {
+      data[0] = v0;
+      data[1] = v1;
+      data[2] = v2;
+      data[3] = v3;
+    }
 
     Matrix4(const Matrix4& other) = default;
 

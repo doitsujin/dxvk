@@ -2,33 +2,6 @@
 
 namespace dxvk {
 
-  // Identity
-  Matrix4::Matrix4() {
-    data[0] = { 1, 0, 0, 0 };
-    data[1] = { 0, 1, 0, 0 };
-    data[2] = { 0, 0, 1, 0 };
-    data[3] = { 0, 0, 0, 1 };
-  }
-
-  // Produces a scalar matrix, x * Identity
-  Matrix4::Matrix4(float x) {
-    data[0] = { x, 0, 0, 0 };
-    data[1] = { 0, x, 0, 0 };
-    data[2] = { 0, 0, x, 0 };
-    data[3] = { 0, 0, 0, x };
-  }
-
-  Matrix4::Matrix4(
-    const Vector4& v0,
-    const Vector4& v1,
-    const Vector4& v2,
-    const Vector4& v3) {
-    data[0] = v0;
-    data[1] = v1;
-    data[2] = v2;
-    data[3] = v3;
-  }
-
         Vector4& Matrix4::operator[](size_t index)       { return data[index]; }
   const Vector4& Matrix4::operator[](size_t index) const { return data[index]; }
 
