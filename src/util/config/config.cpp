@@ -196,6 +196,14 @@ namespace dxvk {
     { R"(\\MonsterHunterWorld\.exe$)", {{
       { "d3d11.apitraceMode",               "True" },
     }} },
+    /* Kingdome Come: Deliverance                 */
+    { R"(\\KingdomCome\.exe$)", {{
+      { "d3d11.apitraceMode",               "True" },
+    }} },
+    /* Sniper Ghost Warrior Contracts             */
+    { R"(\\SGWContracts\.exe$)", {{
+      { "d3d11.apitraceMode",               "True" },
+    }} },
     /* Shadow of the Tomb Raider - invariant      *
      * position breaks character rendering on NV  */
     { R"(\\SOTTR\.exe$)", {{
