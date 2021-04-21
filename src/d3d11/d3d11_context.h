@@ -830,6 +830,12 @@ namespace dxvk {
             UINT*                             pFirstConstant, 
             UINT*                             pNumConstants);
 
+    void GetShaderResources(
+      const D3D11ShaderResourceBindings&      Bindings,
+            UINT                              StartSlot,
+            UINT                              NumViews,
+            ID3D11ShaderResourceView**        ppShaderResourceViews);
+
     void GetSamplers(
       const D3D11SamplerBindings&             Bindings,
             UINT                              StartSlot,
