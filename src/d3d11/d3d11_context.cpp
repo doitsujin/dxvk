@@ -1885,8 +1885,8 @@ namespace dxvk {
           ID3D11SamplerState**              ppSamplers) {
     D3D10DeviceLock lock = LockContext();
     
-    for (uint32_t i = 0; i < NumSamplers; i++)
-      ppSamplers[i] = ref(m_state.vs.samplers[StartSlot + i]);
+    GetSamplers(m_state.vs.samplers,
+      StartSlot, NumSamplers, ppSamplers);
   }
   
   
@@ -2027,8 +2027,8 @@ namespace dxvk {
           ID3D11SamplerState**              ppSamplers) {
     D3D10DeviceLock lock = LockContext();
     
-    for (uint32_t i = 0; i < NumSamplers; i++)
-      ppSamplers[i] = ref(m_state.hs.samplers[StartSlot + i]);
+    GetSamplers(m_state.hs.samplers,
+      StartSlot, NumSamplers, ppSamplers);
   }
   
   
@@ -2169,8 +2169,8 @@ namespace dxvk {
           ID3D11SamplerState**              ppSamplers) {
     D3D10DeviceLock lock = LockContext();
     
-    for (uint32_t i = 0; i < NumSamplers; i++)
-      ppSamplers[i] = ref(m_state.ds.samplers[StartSlot + i]);
+    GetSamplers(m_state.ds.samplers,
+      StartSlot, NumSamplers, ppSamplers);
   }
   
   
@@ -2311,8 +2311,8 @@ namespace dxvk {
           ID3D11SamplerState**              ppSamplers) {
     D3D10DeviceLock lock = LockContext();
     
-    for (uint32_t i = 0; i < NumSamplers; i++)
-      ppSamplers[i] = ref(m_state.gs.samplers[StartSlot + i]);
+    GetSamplers(m_state.gs.samplers,
+      StartSlot, NumSamplers, ppSamplers);
   }
   
   
@@ -2453,8 +2453,8 @@ namespace dxvk {
           ID3D11SamplerState**              ppSamplers) {
     D3D10DeviceLock lock = LockContext();
     
-    for (uint32_t i = 0; i < NumSamplers; i++)
-      ppSamplers[i] = ref(m_state.ps.samplers[StartSlot + i]);
+    GetSamplers(m_state.ps.samplers,
+      StartSlot, NumSamplers, ppSamplers);
   }
   
   
@@ -2651,8 +2651,8 @@ namespace dxvk {
           ID3D11SamplerState**              ppSamplers) {
     D3D10DeviceLock lock = LockContext();
     
-    for (uint32_t i = 0; i < NumSamplers; i++)
-      ppSamplers[i] = ref(m_state.cs.samplers[StartSlot + i]);
+    GetSamplers(m_state.cs.samplers,
+      StartSlot, NumSamplers, ppSamplers);
   }
   
   
@@ -3798,6 +3798,19 @@ namespace dxvk {
   }
   
   
+  void D3D11DeviceContext::GetSamplers(
+    const D3D11SamplerBindings&             Bindings,
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D11SamplerState**              ppSamplers) {
+    for (uint32_t i = 0; i < NumSamplers; i++) {
+      ppSamplers[i] = StartSlot + i < Bindings.size()
+        ? ref(Bindings[StartSlot + i])
+        : nullptr;
+    }
+  }
+
+
   void D3D11DeviceContext::ResetState() {
     EmitCs([] (DxvkContext* ctx) {
       // Reset render targets

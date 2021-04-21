@@ -829,7 +829,13 @@ namespace dxvk {
             ID3D11Buffer**                    ppConstantBuffers, 
             UINT*                             pFirstConstant, 
             UINT*                             pNumConstants);
-    
+
+    void GetSamplers(
+      const D3D11SamplerBindings&             Bindings,
+            UINT                              StartSlot,
+            UINT                              NumSamplers,
+            ID3D11SamplerState**              ppSamplers);
+
     void ResetState();
 
     void RestoreState();
