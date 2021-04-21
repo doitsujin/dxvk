@@ -1708,14 +1708,25 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumBuffers; i++) {
-      if (ppVertexBuffers != nullptr)
-        ppVertexBuffers[i] = m_state.ia.vertexBuffers[StartSlot + i].buffer.ref();
+      const bool inRange = StartSlot + i < m_state.ia.vertexBuffers.size();
+
+      if (ppVertexBuffers != nullptr) {
+        ppVertexBuffers[i] = inRange
+          ? m_state.ia.vertexBuffers[StartSlot + i].buffer.ref()
+          : nullptr;
+      }
       
-      if (pStrides != nullptr)
-        pStrides[i] = m_state.ia.vertexBuffers[StartSlot + i].stride;
+      if (pStrides != nullptr) {
+        pStrides[i] = inRange
+          ? m_state.ia.vertexBuffers[StartSlot + i].stride
+          : 0u;
+      }
       
-      if (pOffsets != nullptr)
-        pOffsets[i] = m_state.ia.vertexBuffers[StartSlot + i].offset;
+      if (pOffsets != nullptr) {
+        pOffsets[i] = inRange
+          ? m_state.ia.vertexBuffers[StartSlot + i].offset
+          : 0u;
+      }
     }
   }
   
