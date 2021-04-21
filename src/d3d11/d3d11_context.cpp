@@ -3062,8 +3062,11 @@ namespace dxvk {
           ID3D11Buffer**                    ppSOTargets) {
     D3D10DeviceLock lock = LockContext();
     
-    for (uint32_t i = 0; i < NumBuffers; i++)
-      ppSOTargets[i] = m_state.so.targets[i].buffer.ref();
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      ppSOTargets[i] = i < m_state.so.targets.size()
+        ? m_state.so.targets[i].buffer.ref()
+        : nullptr;
+    }
   }
   
   
@@ -3074,11 +3077,19 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     for (uint32_t i = 0; i < NumBuffers; i++) {
-      if (ppSOTargets != nullptr)
-        ppSOTargets[i] = m_state.so.targets[i].buffer.ref();
+      const bool inRange = i < m_state.so.targets.size();
 
-      if (pOffsets != nullptr)
-        pOffsets[i] = m_state.so.targets[i].offset;
+      if (ppSOTargets != nullptr) {
+        ppSOTargets[i] = inRange
+          ? m_state.so.targets[i].buffer.ref()
+          : nullptr;
+      }
+
+      if (pOffsets != nullptr) {
+        pOffsets[i] = inRange
+          ? m_state.so.targets[i].offset
+          : 0u;
+      }
     }
   }
 
