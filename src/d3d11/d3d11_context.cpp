@@ -3775,14 +3775,25 @@ namespace dxvk {
           UINT*                             pFirstConstant, 
           UINT*                             pNumConstants) {
     for (uint32_t i = 0; i < NumBuffers; i++) {
-      if (ppConstantBuffers != nullptr)
-        ppConstantBuffers[i] = Bindings[StartSlot + i].buffer.ref();
+      const bool inRange = StartSlot + i < Bindings.size();
+
+      if (ppConstantBuffers != nullptr) {
+        ppConstantBuffers[i] = inRange
+          ? Bindings[StartSlot + i].buffer.ref()
+          : nullptr;
+      }
       
-      if (pFirstConstant != nullptr)
-        pFirstConstant[i] = Bindings[StartSlot + i].constantOffset;
+      if (pFirstConstant != nullptr) {
+        pFirstConstant[i] = inRange
+          ? Bindings[StartSlot + i].constantOffset
+          : 0u;
+      }
       
-      if (pNumConstants != nullptr)
-        pNumConstants[i] = Bindings[StartSlot + i].constantCount;
+      if (pNumConstants != nullptr) {
+        pNumConstants[i] = inRange
+          ? Bindings[StartSlot + i].constantCount
+          : 0u;
+      }
     }
   }
   
