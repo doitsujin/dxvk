@@ -1982,7 +1982,7 @@ namespace dxvk {
   }
 
 
-  void D3D11DeviceContext::HSGetConstantBuffers1(
+  void STDMETHODCALLTYPE D3D11DeviceContext::HSGetConstantBuffers1(
           UINT                              StartSlot, 
           UINT                              NumBuffers, 
           ID3D11Buffer**                    ppConstantBuffers, 
@@ -2195,7 +2195,7 @@ namespace dxvk {
   }
 
 
-  void D3D11DeviceContext::GSSetConstantBuffers1(
+  void STDMETHODCALLTYPE D3D11DeviceContext::GSSetConstantBuffers1(
           UINT                              StartSlot, 
           UINT                              NumBuffers, 
           ID3D11Buffer* const*              ppConstantBuffers,
@@ -2266,7 +2266,7 @@ namespace dxvk {
   }
 
 
-  void D3D11DeviceContext::GSGetConstantBuffers1(
+  void STDMETHODCALLTYPE D3D11DeviceContext::GSGetConstantBuffers1(
           UINT                              StartSlot, 
           UINT                              NumBuffers, 
           ID3D11Buffer**                    ppConstantBuffers, 
@@ -2337,7 +2337,7 @@ namespace dxvk {
   }
 
 
-  void D3D11DeviceContext::PSSetConstantBuffers1(
+  void STDMETHODCALLTYPE D3D11DeviceContext::PSSetConstantBuffers1(
           UINT                              StartSlot, 
           UINT                              NumBuffers, 
           ID3D11Buffer* const*              ppConstantBuffers, 
@@ -2408,7 +2408,7 @@ namespace dxvk {
   }
 
 
-  void D3D11DeviceContext::PSGetConstantBuffers1(
+  void STDMETHODCALLTYPE D3D11DeviceContext::PSGetConstantBuffers1(
           UINT                              StartSlot,
           UINT                              NumBuffers, 
           ID3D11Buffer**                    ppConstantBuffers,
