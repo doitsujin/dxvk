@@ -2662,8 +2662,11 @@ namespace dxvk {
           ID3D11UnorderedAccessView**       ppUnorderedAccessViews) {
     D3D10DeviceLock lock = LockContext();
     
-    for (uint32_t i = 0; i < NumUAVs; i++)
-      ppUnorderedAccessViews[i] = m_state.cs.unorderedAccessViews[StartSlot + i].ref();
+    for (uint32_t i = 0; i < NumUAVs; i++) {
+      ppUnorderedAccessViews[i] = StartSlot + i < m_state.cs.unorderedAccessViews.size()
+        ? m_state.cs.unorderedAccessViews[StartSlot + i].ref()
+        : nullptr;
+    }
   }
   
   
@@ -2813,8 +2816,11 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     if (ppRenderTargetViews != nullptr) {
-      for (UINT i = 0; i < NumViews; i++)
-        ppRenderTargetViews[i] = m_state.om.renderTargetViews[i].ref();
+      for (UINT i = 0; i < NumViews; i++) {
+        ppRenderTargetViews[i] = i < m_state.om.renderTargetViews.size()
+          ? m_state.om.renderTargetViews[i].ref()
+          : nullptr;
+      }
     }
     
     if (ppDepthStencilView != nullptr)
@@ -2834,8 +2840,11 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     if (ppUnorderedAccessViews != nullptr) {
-      for (UINT i = 0; i < NumUAVs; i++)
-        ppUnorderedAccessViews[i] = m_state.ps.unorderedAccessViews[UAVStartSlot + i].ref();
+      for (UINT i = 0; i < NumUAVs; i++) {
+        ppUnorderedAccessViews[i] = UAVStartSlot + i < m_state.ps.unorderedAccessViews.size()
+          ? m_state.ps.unorderedAccessViews[UAVStartSlot + i].ref()
+          : nullptr;
+      }
     }
   }
   
