@@ -4419,10 +4419,6 @@ namespace dxvk {
     if (desc.Pool != D3DPOOL_DEFAULT)
       Flags &= ~(D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE);
 
-    // Ignore READONLY if we are a WRITEONLY resource.
-    if (desc.Usage & D3DUSAGE_WRITEONLY)
-      Flags &= ~D3DLOCK_READONLY;
-
     // Ignore DONOTWAIT if we are DYNAMIC
     // Yes... D3D9 is a good API.
     if (desc.Usage & D3DUSAGE_DYNAMIC)
@@ -4431,14 +4427,6 @@ namespace dxvk {
     // We only bounds check for MANAGED.
     // (TODO: Apparently this is meant to happen for DYNAMIC too but I am not sure
     //  how that works given it is meant to be a DIRECT access..?)
-
-    // D3D9 does not do region tracking for READONLY locks
-    // But lets also account for whether we get readback from ProcessVertices
-    const bool quickRead   = ((Flags & D3DLOCK_READONLY) && !pResource->WasWrittenByGPU());
-    const bool boundsCheck = desc.Pool != D3DPOOL_DEFAULT && !quickRead;
-
-    // We can only respect this for these cases -- otherwise R/W OOB still get copied on native
-    // and some stupid games depend on that.
     const bool respectUserBounds = !(Flags & D3DLOCK_DISCARD) &&
                                     SizeToLock != 0;
 
@@ -4447,7 +4435,8 @@ namespace dxvk {
     uint32_t offset = respectUserBounds ? OffsetToLock : 0;
     uint32_t size   = respectUserBounds ? std::min(SizeToLock, desc.Size - offset) : (desc.Size - offset);
 
-    pResource->DirtyRange().Conjoin(D3D9Range(offset, offset + size));
+    if (!(Flags & D3DLOCK_READONLY))
+      pResource->DirtyRange().Conjoin(D3D9Range(offset, offset + size));
 
     Rc<DxvkBuffer> mappingBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
 
@@ -4481,9 +4470,9 @@ namespace dxvk {
 
       // If we are respecting the bounds ie. (MANAGED) we can test overlap
       // of our bounds, otherwise we just ignore this and go for it all the time.
-      const bool skipWait = (Flags & D3DLOCK_NOOVERWRITE) ||
-                            quickRead                     ||
-                            (boundsCheck && !pResource->GPUReadingRange().Overlaps(pResource->DirtyRange()));
+      const bool skipWait = (pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER && !pResource->WasWrittenByGPU()) ||
+                            (Flags & D3DLOCK_NOOVERWRITE) ||
+                            ((Flags & D3DLOCK_READONLY) && !pResource->WasWrittenByGPU());
       if (!skipWait) {
         if (!WaitForResource(mappingBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
