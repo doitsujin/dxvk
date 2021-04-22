@@ -4443,7 +4443,7 @@ namespace dxvk {
     // If we don't respect the bounds, encompass it all in our tests/checks
     // These values may be out of range and don't get clamped.
     uint32_t offset = respectUserBounds ? OffsetToLock : 0;
-    uint32_t size   = respectUserBounds ? std::min(SizeToLock, desc.Size - offset) : (desc.Size - offset);
+    uint32_t size   = respectUserBounds ? std::min(SizeToLock, desc.Size - offset) : desc.Size;
 
     pResource->DirtyRange().Conjoin(D3D9Range(offset, offset + size));
 
@@ -4514,21 +4514,23 @@ namespace dxvk {
   HRESULT D3D9DeviceEx::FlushBuffer(
         D3D9CommonBuffer*       pResource) {
     auto dstBuffer = pResource->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>();
-    auto srcBuffer = pResource->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_STAGING>();
+    auto srcSlice = pResource->GetMappedSlice();
 
     D3D9Range& range = pResource->DirtyRange();
 
     D3D9BufferSlice slice = AllocTempBuffer<false>(range.max - range.min);
-    memcpy(slice.mapPtr, srcBuffer.mapPtr(range.min), range.max - range.min);
+    void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + range.min;
+    memcpy(slice.mapPtr, srcData, range.max - range.min);
 
     EmitCs([
       cDstSlice  = dstBuffer,
-      cSrcSlice = slice.slice,
+      cSrcSlice  = slice.slice,
+      cDstOffset = range.min,
       cLength    = range.max - range.min
     ] (DxvkContext* ctx) {
       ctx->copyBuffer(
         cDstSlice.buffer(),
-        cDstSlice.offset(),
+        cDstSlice.offset() + cDstOffset,
         cSrcSlice.buffer(),
         cSrcSlice.offset(),
         cLength);
