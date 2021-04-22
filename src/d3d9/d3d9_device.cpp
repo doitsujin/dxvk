@@ -705,12 +705,11 @@ namespace dxvk {
       cSrcSlice   = slice.slice,
       cDstLayers  = dstSubresource,
       cDstOffset  = dstOffset,
-      cSrcOffset  = srcByteOffset + slice.slice.offset(),
       cCopyExtent = copyExtent
     ] (DxvkContext* ctx) {
       ctx->copyBufferToImage(
         cDstImage, cDstLayers, cDstOffset, cCopyExtent,
-        cSrcSlice.buffer(), cSrcSlice.offset() + cSrcOffset,
+        cSrcSlice.buffer(), cSrcSlice.offset(),
         VkExtent2D { 0, 0 });
     });
 
