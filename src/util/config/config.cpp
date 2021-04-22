@@ -398,6 +398,10 @@ namespace dxvk {
     { R"(\\DragonNest_x64\.exe$)", {{
       { "d3d9.memoryTrackTest ",            "True" },
     }} },
+    /* Dal Segno                                 */
+    { R"(\\DST\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",        "True" },
+    }} },
   }};
 
 
