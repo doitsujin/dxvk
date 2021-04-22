@@ -162,6 +162,10 @@ namespace dxvk {
     { R"(\\Atelier_(Lulua|Lydie_and_Suelle|Ryza(_2)?)\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
+    /* ...                                        */
+    { R"(\\Atelier_(Lydie_and_Suelle|Firis|Sophie)_DX\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",        "True" },
+    }} },
     /* Fairy Tail                                 */
     { R"(\\FAIRY_TAIL\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
