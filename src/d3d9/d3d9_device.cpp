@@ -697,8 +697,6 @@ namespace dxvk {
       pitch, pitch * texLevelBlockCount.height);
 
     Rc<DxvkImage>  dstImage  = dstTextureInfo->GetImage();
-    VkDeviceSize srcByteOffset = srcBlockOffset.y * formatInfo->elementSize * texLevelBlockCount.width
-                               + srcBlockOffset.x * formatInfo->elementSize;
 
     EmitCs([
       cDstImage   = std::move(dstImage),
