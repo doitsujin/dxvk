@@ -4807,12 +4807,12 @@ namespace dxvk {
       UploadSoftwareConstantSet(slice.mapPtr, Src, Layout, Shader);
 
     if (constSet.meta.needsConstantCopies) {
-      Vector4* data = reinterpret_cast<Vector4*>(slice.mapPtr);
+      float* data = reinterpret_cast<float*>(slice.mapPtr);
 
       auto& shaderConsts = GetCommonShader(Shader)->GetConstants();
 
       for (const auto& constant : shaderConsts)
-        data[constant.uboIdx] = *reinterpret_cast<const Vector4*>(constant.float32);
+        std::memcpy(&data[constant.uboIdx * 4], constant.float32, sizeof(float) * 4);
     }
   }
 
