@@ -81,6 +81,11 @@ elif cpu_family == 'x86'
   if dxvk_compiler.has_argument('-mfpmath=sse')
     add_project_arguments('-mfpmath=sse', language: ['c', 'cpp'])
   endif
+  # On 32bit windows the stack only has to be 4 byte aligned,
+  # but for some reason gcc expects 16
+  if dxvk_compiler.has_argument('-mincoming-stack-boundary=2')
+    add_project_arguments('-mincoming-stack-boundary=2', language: ['c', 'cpp'])
+  endif
 endif
 
 lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
