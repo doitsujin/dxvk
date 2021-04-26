@@ -170,6 +170,10 @@ namespace dxvk {
     { R"(\\FAIRY_TAIL\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
+    /* Nights of Azure                            */
+    { R"(\\CNN\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",        "True" },
+    }} },
     /* Star Wars Battlefront II: amdags issues    */
     { R"(\\starwarsbattlefrontii\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
