@@ -655,7 +655,11 @@ namespace dxvk {
 
 
   HRESULT D3D9SwapChainEx::WaitForVBlank() {
-    Logger::warn("D3D9SwapChainEx::WaitForVBlank: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D9SwapChainEx::WaitForVBlank: Stub");
+
     return D3D_OK;
   }
 
