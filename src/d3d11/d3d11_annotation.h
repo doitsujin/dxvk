@@ -1,12 +1,13 @@
 #pragma once
 
 #include "d3d11_include.h"
+#include "../dxvk/dxvk_annotation.h"
 
 namespace dxvk {
 
   class D3D11DeviceContext;
 
-  class D3D11UserDefinedAnnotation final : public ID3DUserDefinedAnnotation {
+  class D3D11UserDefinedAnnotation final : public IDXVKUserDefinedAnnotation {
 
   public:
 
@@ -22,11 +23,13 @@ namespace dxvk {
             void**                  ppvObject);
     
     INT STDMETHODCALLTYPE BeginEvent(
+            D3DCOLOR                Color,
             LPCWSTR                 Name);
 
     INT STDMETHODCALLTYPE EndEvent();
 
     void STDMETHODCALLTYPE SetMarker(
+            D3DCOLOR                Color,
             LPCWSTR                 Name);
 
     BOOL STDMETHODCALLTYPE GetStatus();
