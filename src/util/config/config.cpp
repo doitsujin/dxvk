@@ -405,6 +405,10 @@ namespace dxvk {
     { R"(\\DST\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
+    /* Kohan II                                  */
+    { R"(\\k2\.exe$)", {{
+      { "d3d9.memoryTrackTest",             "True" },
+    }} },
   }};
 
 
