@@ -90,4 +90,12 @@ extern "C" {
     return 0;
   }
 
+  DLLEXPORT void __stdcall DXVK_RegisterAnnotation(IDXVKUserDefinedAnnotation* annotation) {
+    dxvk::D3D9GlobalAnnotationList::Instance().RegisterAnnotator(annotation);
+  }
+
+  DLLEXPORT void __stdcall DXVK_UnRegisterAnnotation(IDXVKUserDefinedAnnotation* annotation) {
+    dxvk::D3D9GlobalAnnotationList::Instance().UnregisterAnnotator(annotation);
+  }
+
 }
