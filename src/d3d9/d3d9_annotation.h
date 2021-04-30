@@ -52,4 +52,37 @@ namespace dxvk {
 
   };
 
+  class D3D9UserDefinedAnnotation final : public IDXVKUserDefinedAnnotation {
+
+  public:
+
+    D3D9UserDefinedAnnotation(D3D9DeviceEx* device);
+    ~D3D9UserDefinedAnnotation();
+
+    ULONG STDMETHODCALLTYPE AddRef();
+
+    ULONG STDMETHODCALLTYPE Release();
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                  riid,
+            void**                  ppvObject);
+
+    INT STDMETHODCALLTYPE BeginEvent(
+            D3DCOLOR                Color,
+            LPCWSTR                 Name);
+
+    INT STDMETHODCALLTYPE EndEvent();
+
+    void STDMETHODCALLTYPE SetMarker(
+            D3DCOLOR                Color,
+            LPCWSTR                 Name);
+
+    BOOL STDMETHODCALLTYPE GetStatus();
+
+  private:
+
+    D3D9DeviceEx* m_container;
+
+  };
+
 }
