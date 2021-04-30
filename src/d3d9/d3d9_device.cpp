@@ -59,6 +59,9 @@ namespace dxvk {
     if (canSWVP)
       Logger::info("D3D9DeviceEx: Using extended constant set for software vertex processing.");
 
+    if (m_dxvkDevice->instance()->extensions().extDebugUtils)
+      m_annotation = new D3D9UserDefinedAnnotation(this);
+
     m_initializer      = new D3D9Initializer(m_dxvkDevice);
     m_converter        = new D3D9FormatHelper(m_dxvkDevice);
 
@@ -144,6 +147,9 @@ namespace dxvk {
   D3D9DeviceEx::~D3D9DeviceEx() {
     Flush();
     SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
+
+    if (m_annotation)
+      delete m_annotation;
 
     delete m_initializer;
     delete m_converter;

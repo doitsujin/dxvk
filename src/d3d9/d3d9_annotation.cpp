@@ -92,4 +92,83 @@ namespace dxvk {
     return m_shouldAnnotate ? 1 : 0;
   }
 
+  ////////////////////////////
+  // D3D9UserDefinedAnnotation
+  ////////////////////////////
+
+  D3D9UserDefinedAnnotation::D3D9UserDefinedAnnotation(D3D9DeviceEx* device)
+    : m_container(device) {
+    D3D9GlobalAnnotationList::Instance().RegisterAnnotator(this);
+  }
+
+
+  D3D9UserDefinedAnnotation::~D3D9UserDefinedAnnotation() {
+    D3D9GlobalAnnotationList::Instance().UnregisterAnnotator(this);
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D9UserDefinedAnnotation::AddRef() {
+    return m_container->AddRef();
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D9UserDefinedAnnotation::Release() {
+    return m_container->Release();
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D9UserDefinedAnnotation::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    return m_container->QueryInterface(riid, ppvObject);
+  }
+
+
+  INT STDMETHODCALLTYPE D3D9UserDefinedAnnotation::BeginEvent(
+          D3DCOLOR                Color,
+          LPCWSTR                 Name) {
+    m_container->EmitCs([color = Color, labelName = dxvk::str::fromws(Name)](DxvkContext *ctx) {
+      VkDebugUtilsLabelEXT label;
+      label.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+      label.pNext = nullptr;
+      label.pLabelName = labelName.c_str();
+      DecodeD3DCOLOR(color, label.color);
+
+      ctx->beginDebugLabel(&label);
+    });
+
+    // Handled by the global list.
+    return 0;
+  }
+
+
+  INT STDMETHODCALLTYPE D3D9UserDefinedAnnotation::EndEvent() {
+    m_container->EmitCs([](DxvkContext *ctx) {
+      ctx->endDebugLabel();
+    });
+
+    // Handled by the global list.
+    return 0;
+  }
+
+
+  void STDMETHODCALLTYPE D3D9UserDefinedAnnotation::SetMarker(
+          D3DCOLOR                Color,
+          LPCWSTR                 Name) {
+    m_container->EmitCs([color = Color, labelName = dxvk::str::fromws(Name)](DxvkContext *ctx) {
+      VkDebugUtilsLabelEXT label;
+      label.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+      label.pNext = nullptr;
+      label.pLabelName = labelName.c_str();
+      DecodeD3DCOLOR(color, label.color);
+
+      ctx->insertDebugLabel(&label);
+    });
+  }
+
+
+  BOOL STDMETHODCALLTYPE D3D9UserDefinedAnnotation::GetStatus() {
+    return TRUE;
+  }
+
 }
