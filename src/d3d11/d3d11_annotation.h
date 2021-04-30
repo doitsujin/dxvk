@@ -6,7 +6,7 @@ namespace dxvk {
 
   class D3D11DeviceContext;
 
-  class D3D11UserDefinedAnnotation : ID3DUserDefinedAnnotation {
+  class D3D11UserDefinedAnnotation final : public ID3DUserDefinedAnnotation {
 
   public:
 
