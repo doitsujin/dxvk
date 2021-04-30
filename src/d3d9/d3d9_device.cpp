@@ -1,5 +1,6 @@
 #include "d3d9_device.h"
 
+#include "d3d9_annotation.h"
 #include "d3d9_interface.h"
 #include "d3d9_swapchain.h"
 #include "d3d9_caps.h"
