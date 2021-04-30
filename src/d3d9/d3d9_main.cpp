@@ -3,7 +3,7 @@
 #include "d3d9_interface.h"
 #include "d3d9_shader_validator.h"
 
-#include "../d3d9/d3d9_annotation.h"
+#include "d3d9_annotation.h"
 
 class D3DFE_PROCESSVERTICES;
 using PSGPERRORID = UINT;

@@ -12,6 +12,7 @@ namespace dxvk {
   public:
 
     D3D11UserDefinedAnnotation(D3D11DeviceContext* ctx);
+    D3D11UserDefinedAnnotation(const D3D11UserDefinedAnnotation&);
     ~D3D11UserDefinedAnnotation();
 
     ULONG STDMETHODCALLTYPE AddRef();
