@@ -55,7 +55,8 @@ namespace dxvk {
       return S_OK;
     }
     
-    if (riid == __uuidof(ID3DUserDefinedAnnotation)) {
+    if (riid == __uuidof(ID3DUserDefinedAnnotation)
+     || riid == __uuidof(IDXVKUserDefinedAnnotation)) {
       *ppvObject = ref(&m_annotation);
       return S_OK;
     }
