@@ -6,13 +6,41 @@
 
 namespace dxvk {
 
+  template <bool Register>
+  static void RegisterUserDefinedAnnotation(IDXVKUserDefinedAnnotation* annotation) {
+    using RegistrationFunctionType = void(__stdcall *)(IDXVKUserDefinedAnnotation*);
+    static const int16_t RegisterOrdinal = 28257;
+    static const int16_t UnregisterOrdinal = 28258;
+
+    HMODULE d3d9Module = ::LoadLibraryA("d3d9.dll");
+    if (!d3d9Module) {
+      Logger::info("Unable to find d3d9, some annotations may be missed.");
+      return;
+    }
+
+    const int16_t ordinal = Register ? UnregisterOrdinal : RegisterOrdinal;
+    auto registrationFunction = reinterpret_cast<RegistrationFunctionType>(::GetProcAddress(d3d9Module,
+      reinterpret_cast<const char*>(static_cast<uintptr_t>(ordinal))));
+
+    if (!registrationFunction) {
+      Logger::info("Unable to find DXVK_RegisterAnnotation, some annotations may be missed.");
+      return;
+    }
+
+    registrationFunction(annotation);
+  }
+
   D3D11UserDefinedAnnotation::D3D11UserDefinedAnnotation(D3D11DeviceContext* ctx)
   : m_container(ctx),
-    m_eventDepth(0) { }
+    m_eventDepth(0) {
+    if (m_container->IsAnnotationEnabled())
+      RegisterUserDefinedAnnotation<true>(this);
+  }
 
 
   D3D11UserDefinedAnnotation::~D3D11UserDefinedAnnotation() {
-
+    if (m_container->IsAnnotationEnabled())
+      RegisterUserDefinedAnnotation<false>(this);
   }
 
 
