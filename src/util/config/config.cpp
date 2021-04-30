@@ -384,7 +384,7 @@ namespace dxvk {
     }} },
     /* TrackMania Forever                        */
     { R"(\\TmForever\.exe$)", {{
-      { "d3d9.swvpFloatCount",              "128" },
+      { "d3d9.swvpFloatCount",              "256" },
       { "d3d9.swvpIntCount",                "16" },
       { "d3d9.swvpBoolCount",               "16" },
     }} },
