@@ -2399,10 +2399,11 @@ namespace dxvk {
 
     auto drawInfo = GenerateDrawInfo(PrimitiveType, PrimitiveCount, 0);
 
-    const uint32_t upSize = drawInfo.vertexCount * VertexStreamZeroStride;
+    const uint32_t dataSize = GetUPDataSize(drawInfo.vertexCount, VertexStreamZeroStride);
+    const uint32_t bufferSize = GetUPBufferSize(drawInfo.vertexCount, VertexStreamZeroStride);
 
-    auto upSlice = AllocTempBuffer<true>(upSize);
-    std::memcpy(upSlice.mapPtr, pVertexStreamZeroData, upSize);
+    auto upSlice = AllocTempBuffer<true>(bufferSize);
+    FillUPVertexBuffer(upSlice.mapPtr, pVertexStreamZeroData, dataSize, bufferSize);
 
     EmitCs([this,
       cBufferSlice  = std::move(upSlice.slice),
@@ -2445,21 +2446,21 @@ namespace dxvk {
 
     auto drawInfo = GenerateDrawInfo(PrimitiveType, PrimitiveCount, 0);
 
-    const uint32_t vertexSize  = (MinVertexIndex + NumVertices) * VertexStreamZeroStride;
+    const uint32_t vertexDataSize = GetUPDataSize(MinVertexIndex + NumVertices, VertexStreamZeroStride);
+    const uint32_t vertexBufferSize = GetUPBufferSize(MinVertexIndex + NumVertices, VertexStreamZeroStride);
 
     const uint32_t indexSize = IndexDataFormat == D3DFMT_INDEX16 ? 2 : 4;
     const uint32_t indicesSize = drawInfo.vertexCount * indexSize;
 
-    const uint32_t upSize = vertexSize + indicesSize;
+    const uint32_t upSize = vertexBufferSize + indicesSize;
 
     auto upSlice = AllocTempBuffer<true>(upSize);
     uint8_t* data = reinterpret_cast<uint8_t*>(upSlice.mapPtr);
-
-    std::memcpy(data, pVertexStreamZeroData, vertexSize);
-    std::memcpy(data + vertexSize, pIndexData, indicesSize);
+    FillUPVertexBuffer(data, pVertexStreamZeroData, vertexDataSize, vertexBufferSize);
+    std::memcpy(data + vertexBufferSize, pIndexData, indicesSize);
 
     EmitCs([this,
-      cVertexSize   = vertexSize,
+      cVertexSize   = vertexBufferSize,
       cBufferSlice  = std::move(upSlice.slice),
       cPrimType     = PrimitiveType,
       cPrimCount    = PrimitiveCount,

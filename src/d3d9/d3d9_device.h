@@ -1085,6 +1085,31 @@ namespace dxvk {
       const DWORD*                pShaderBytecode,
       const DxsoModuleInfo*       pModuleInfo);
 
+    inline uint32_t GetUPDataSize(uint32_t vertexCount, uint32_t stride) {
+      return vertexCount * stride;
+    }
+
+    inline uint32_t GetUPBufferSize(uint32_t vertexCount, uint32_t stride) {
+      return (vertexCount - 1) * stride + m_state.vertexDecl->GetSize();
+    }
+
+    inline void FillUPVertexBuffer(void* buffer, const void* userData, uint32_t dataSize, uint32_t bufferSize) {
+      uint8_t* data = reinterpret_cast<uint8_t*>(buffer);
+      // Don't copy excess data if we don't end up needing it.
+      dataSize = std::min(dataSize, bufferSize);
+      std::memcpy(data, userData, dataSize);
+      // Pad out with 0 to make buffer range checks happy
+      // Some games have components out of range in the vertex decl
+      // that they don't read from the shader.
+      // My tests show that these are read back as 0 always if out of range of
+      // the dataSize.
+      //
+      // So... make the actual buffer the range that satisfies the range of the vertex
+      // declaration and pad with 0s outside of it.
+      if (dataSize < bufferSize)
+        std::memset(data + dataSize, 0, bufferSize - dataSize);
+    }
+
     // So we don't do OOB.
     template <DxsoProgramType  ProgramType,
               D3D9ConstantType ConstantType>
