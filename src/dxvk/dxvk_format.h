@@ -9,10 +9,22 @@ namespace dxvk {
     SampledUInt     = 1,  ///< Sampled type is an unsigned integer type
     SampledSInt     = 2,  ///< Sampled type is a signed integer type
     ColorSpaceSrgb  = 3,  ///< Non-linear SRGB color format
+    MultiPlane      = 4,  ///< Multi-plane format
   };
   
   using DxvkFormatFlags = Flags<DxvkFormatFlag>;
   
+  /**
+   * \brief Planar format info
+   */
+  struct DxvkPlaneFormatInfo {
+    /// Byte size of a pixel in the current plane
+    VkDeviceSize elementSize = 0;
+    /// Number of image pixels covered by a
+    /// single pixel in the current plane
+    VkExtent2D blockSize = { 1, 1 };
+  };
+
   /**
    * \brief Format info structure
    * 
@@ -33,6 +45,9 @@ namespace dxvk {
     /// Size, in pixels, of a compressed block. For
     /// non-block formats, all these values are 1.
     VkExtent3D blockSize = { 1, 1, 1 };
+
+    /// Plane info for multi-planar formats
+    std::array<DxvkPlaneFormatInfo, 3> planes;
   };
   
   
