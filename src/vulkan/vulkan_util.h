@@ -97,6 +97,29 @@ namespace dxvk::vk {
     }
   }
 
+  inline uint32_t getPlaneCount(VkImageAspectFlags aspects) {
+    // Use a 16-bit integer as a lookup table. This works because
+    // plane aspects use consecutive bits in the image aspect enum.
+    const uint32_t shift = (aspects / VK_IMAGE_ASPECT_PLANE_0_BIT) * 2;
+    const uint32_t counts = 0xffa5;
+    return (counts >> shift) & 0x3;
+  }
+
+  inline uint32_t getPlaneIndex(VkImageAspectFlags aspect) {
+    // Works for up to PLANE_2_BIT due to enum poperties
+    return aspect / VK_IMAGE_ASPECT_PLANE_1_BIT;
+  }
+
+  inline VkImageAspectFlagBits getPlaneAspect(uint32_t plane) {
+    return VkImageAspectFlagBits(VK_IMAGE_ASPECT_PLANE_0_BIT << plane);
+  }
+
+  inline VkImageAspectFlags getNextAspect(VkImageAspectFlags& mask) {
+    VkImageAspectFlags result = mask & -mask;
+    mask &= ~result;
+    return result;
+  }
+
 }
 
 

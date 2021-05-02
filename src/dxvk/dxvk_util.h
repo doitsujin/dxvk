@@ -102,6 +102,29 @@ namespace dxvk::util {
   }
   
   /**
+   * \brief Computes mip level extent
+   *
+   * This function variant takes into account planar formats.
+   * \param [in] size Base mip level extent
+   * \param [in] level Mip level to compute
+   * \param [in] format Image format
+   * \param [in] aspect Image aspect to consider
+   * \returns Extent of the given mip level
+   */
+  inline VkExtent3D computeMipLevelExtent(VkExtent3D size, uint32_t level, VkFormat format, VkImageAspectFlags aspect) {
+    if (unlikely(!(aspect & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)))) {
+      auto plane = &imageFormatInfo(format)->planes[vk::getPlaneIndex(aspect)];
+      size.width  /= plane->blockSize.width;
+      size.height /= plane->blockSize.height;
+    }
+
+    size.width  = std::max(1u, size.width  >> level);
+    size.height = std::max(1u, size.height >> level);
+    size.depth  = std::max(1u, size.depth  >> level);
+    return size;
+  }
+  
+  /**
    * \brief Computes block offset for compressed images
    * 
    * Convenience function to compute the block position
