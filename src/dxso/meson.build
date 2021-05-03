@@ -14,9 +14,7 @@ dxso_src = files([
   'dxso_enums.cpp'
 ])
 
-dxso_lib = static_library('dxso', dxso_src,
-  include_directories : [ dxvk_include_path ],
-  override_options    : ['cpp_std='+dxvk_cpp_std])
+dxso_lib = static_library('dxso', dxso_src, kwargs: common_static_opts)
 
 dxso_dep = declare_dependency(
   link_with           : [ dxso_lib ],

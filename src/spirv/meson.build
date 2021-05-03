@@ -4,6 +4,4 @@ spirv_src = files([
   'spirv_module.cpp',
 ])
 
-spirv_lib = static_library('spirv', spirv_src,
-  include_directories : [ dxvk_include_path ],
-  override_options    : ['cpp_std='+dxvk_cpp_std])
+spirv_lib = static_library('spirv', spirv_src, kwargs: common_static_opts)

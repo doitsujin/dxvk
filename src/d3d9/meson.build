@@ -41,14 +41,15 @@ d3d9_src = [
   'd3d9_hud.cpp'
 ]
 
-d3d9_dll = shared_library('d3d9'+dll_ext, d3d9_src, glsl_generator.process(d3d9_shaders), d3d9_res,
-  name_prefix         : '',
-  dependencies        : [ dxso_dep, dxvk_dep ],
-  include_directories : dxvk_include_path,
-  install             : true,
-  objects             : not dxvk_is_msvc ? 'd3d9'+def_spec_ext : [],
-  vs_module_defs      : 'd3d9'+def_spec_ext,
-  override_options    : ['cpp_std='+dxvk_cpp_std])
+d3d9_def = 'd3d9' + def_spec_ext
+
+d3d9_opts = common_shared_opts + { 'dependencies': [ dxso_dep, dxvk_dep ], 'vs_module_defs': d3d9_def }
+
+if not dxvk_is_msvc
+  d3d9_opts += { 'link_depends': files(d3d9_def), 'link_args': meson.current_source_dir() / d3d9_def }
+endif
+
+d3d9_dll = shared_library('d3d9'+dll_ext, d3d9_src, glsl_generator.process(d3d9_shaders), d3d9_res, kwargs: d3d9_opts)
 
 d3d9_dep = declare_dependency(
   link_with           : [ d3d9_dll ],

@@ -12,37 +12,36 @@ d3d10_main_src = [
   'd3d10_state_block.cpp',
 ]
 
-d3d10_core_dll = shared_library('d3d10core'+dll_ext, d3d10_core_src, d3d10_core_res,
-  name_prefix         : '',
-  dependencies        : [ d3d11_dep ],
-  include_directories : dxvk_include_path,
-  install             : true,
-  objects             : not dxvk_is_msvc ? 'd3d10core'+def_spec_ext : [],
-  vs_module_defs      : 'd3d10core'+def_spec_ext,
-  override_options    : ['cpp_std='+dxvk_cpp_std])
+d3d10_core_def = 'd3d10core' + def_spec_ext
+d3d10_def      = 'd3d10'     + def_spec_ext
+d3d10_1_def    = 'd3d10_1'   + def_spec_ext
+
+# d3d10core
+d3d10_core_opts = common_shared_opts + { 'dependencies': [ d3d11_dep ], 'vs_module_defs': d3d10_core_def }
+
+if not dxvk_is_msvc
+  d3d10_core_opts += { 'link_depends': files(d3d10_core_def), 'link_args': meson.current_source_dir() / d3d10_core_def }
+endif
+
+d3d10_core_dll = shared_library('d3d10core'+dll_ext, d3d10_core_src, d3d10_core_res, kwargs: d3d10_core_opts)
 
 d3d10_core_dep = declare_dependency(
   link_with           : [ d3d10_core_dll ])
 
-d3d10_deps = [ lib_d3dcompiler_43, lib_dxgi, dxbc_dep, dxvk_dep, d3d10_core_dep ]
 
-d3d10_dll = shared_library('d3d10'+dll_ext, d3d10_main_src, d3d10_res,
-  name_prefix         : '',
-  dependencies        : [ d3d10_deps ],
-  include_directories : dxvk_include_path,
-  install             : true,
-  objects             : not dxvk_is_msvc ? 'd3d10'+def_spec_ext : [],
-  vs_module_defs      : 'd3d10'+def_spec_ext,
-  override_options    : ['cpp_std='+dxvk_cpp_std])
+# d3d10 and d3d10_1
+d3d10_common_opts = common_shared_opts + { 'dependencies': [ lib_d3dcompiler_43, lib_dxgi, dxbc_dep, dxvk_dep, d3d10_core_dep ] }
 
-d3d10_1_dll = shared_library('d3d10_1'+dll_ext, d3d10_main_src, d3d10_1_res,
-  name_prefix         : '',
-  dependencies        : [ d3d10_deps ],
-  include_directories : dxvk_include_path,
-  install             : true,
-  objects             : not dxvk_is_msvc ? 'd3d10_1'+def_spec_ext : [],
-  vs_module_defs      : 'd3d10_1'+def_spec_ext,
-  override_options    : ['cpp_std='+dxvk_cpp_std])
+d3d10_opts      = d3d10_common_opts + { 'vs_module_defs': d3d10_def }
+d3d10_1_opts    = d3d10_common_opts + { 'vs_module_defs': d3d10_1_def }
+
+if not dxvk_is_msvc
+  d3d10_opts   += { 'link_depends': files(d3d10_def),   'link_args': meson.current_source_dir() / d3d10_def }
+  d3d10_1_opts += { 'link_depends': files(d3d10_1_def), 'link_args': meson.current_source_dir() / d3d10_1_def }
+endif
+
+d3d10_dll   = shared_library('d3d10'+dll_ext,   d3d10_main_src, d3d10_res,   kwargs: d3d10_opts)
+d3d10_1_dll = shared_library('d3d10_1'+dll_ext, d3d10_main_src, d3d10_1_res, kwargs: d3d10_1_opts)
 
 d3d10_dep = declare_dependency(
   link_with           : [ d3d10_dll, d3d10_1_dll, d3d10_core_dll ],
