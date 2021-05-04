@@ -2392,6 +2392,185 @@ namespace dxvk {
   
   
   
+  D3D11VideoDevice::D3D11VideoDevice(
+          D3D11DXGIDevice*        pContainer,
+          D3D11Device*            pDevice)
+  : m_container(pContainer), m_device(pDevice) {
+
+  }
+
+
+  D3D11VideoDevice::~D3D11VideoDevice() {
+
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11VideoDevice::AddRef() {
+    return m_container->AddRef();
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11VideoDevice::Release() {
+    return m_container->Release();
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VideoDevice::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    return m_container->QueryInterface(riid, ppvObject);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VideoDevice::CreateVideoDecoder(
+    const D3D11_VIDEO_DECODER_DESC*                     pVideoDesc,
+    const D3D11_VIDEO_DECODER_CONFIG*                   pConfig,
+          ID3D11VideoDecoder**                          ppDecoder) {
+    Logger::err("D3D11VideoDevice::CreateVideoDecoder: Stub");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VideoDevice::CreateVideoProcessor(
+          ID3D11VideoProcessorEnumerator*               pEnum,
+          UINT                                          RateConversionIndex,
+          ID3D11VideoProcessor**                        ppVideoProcessor) {
+    Logger::err("D3D11VideoDevice::CreateVideoProcessor: Stub");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VideoDevice::CreateAuthenticatedChannel(
+          D3D11_AUTHENTICATED_CHANNEL_TYPE              ChannelType,
+          ID3D11AuthenticatedChannel**                  ppAuthenticatedChannel) {
+    Logger::err("D3D11VideoDevice::CreateAuthenticatedChannel: Stub");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VideoDevice::CreateCryptoSession(
+    const GUID*                                         pCryptoType,
+    const GUID*                                         pDecoderProfile,
+    const GUID*                                         pKeyExchangeType,
+          ID3D11CryptoSession**                         ppCryptoSession) {
+    Logger::err("D3D11VideoDevice::CreateCryptoSession: Stub");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VideoDevice::CreateVideoDecoderOutputView(
+          ID3D11Resource*                               pResource,
+    const D3D11_VIDEO_DECODER_OUTPUT_VIEW_DESC*         pDesc,
+          ID3D11VideoDecoderOutputView**                ppVDOVView) {
+    Logger::err("D3D11VideoDevice::CreateVideoDecoderOutputView: Stub");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VideoDevice::CreateVideoProcessorInputView(
+          ID3D11Resource*                               pResource,
+          ID3D11VideoProcessorEnumerator*               pEnum,
+    const D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC*        pDesc,
+          ID3D11VideoProcessorInputView**               ppVPIView) {
+    Logger::err("D3D11VideoDevice::CreateVideoProcessorInputView: Stub");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VideoDevice::CreateVideoProcessorOutputView(
+          ID3D11Resource*                               pResource,
+          ID3D11VideoProcessorEnumerator*               pEnum,
+    const D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC*       pDesc,
+          ID3D11VideoProcessorOutputView**              ppVPOView) {
+    Logger::err("D3D11VideoDevice::CreateVideoProcessorOutputView: Stub");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VideoDevice::CreateVideoProcessorEnumerator(
+    const D3D11_VIDEO_PROCESSOR_CONTENT_DESC*           pDesc,
+          ID3D11VideoProcessorEnumerator**              ppEnum)  {
+    Logger::err("D3D11VideoDevice::CreateVideoProcessorEnumerator: Stub");
+    return E_NOTIMPL;
+  }
+
+
+  UINT STDMETHODCALLTYPE D3D11VideoDevice::GetVideoDecoderProfileCount() {
+    Logger::err("D3D11VideoDevice::GetVideoDecoderProfileCount: Stub");
+    return 0;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VideoDevice::GetVideoDecoderProfile(
+          UINT                                          Index,
+          GUID*                                         pDecoderProfile) {
+    Logger::err("D3D11VideoDevice::GetVideoDecoderProfile: Stub");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VideoDevice::CheckVideoDecoderFormat(
+    const GUID*                                         pDecoderProfile,
+          DXGI_FORMAT                                   Format,
+          BOOL*                                         pSupported) {
+    Logger::err("D3D11VideoDevice::CheckVideoDecoderFormat: Stub");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VideoDevice::GetVideoDecoderConfigCount(
+    const D3D11_VIDEO_DECODER_DESC*                     pDesc,
+          UINT*                                         pCount) {
+    Logger::err("D3D11VideoDevice::GetVideoDecoderConfigCount: Stub");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VideoDevice::GetVideoDecoderConfig(
+    const D3D11_VIDEO_DECODER_DESC*                     pDesc,
+          UINT                                          Index,
+          D3D11_VIDEO_DECODER_CONFIG*                   pConfig) {
+    Logger::err("D3D11VideoDevice::GetVideoDecoderConfig: Stub");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VideoDevice::GetContentProtectionCaps(
+    const GUID*                                         pCryptoType,
+    const GUID*                                         pDecoderProfile,
+          D3D11_VIDEO_CONTENT_PROTECTION_CAPS*          pCaps) {
+    Logger::err("D3D11VideoDevice::GetContentProtectionCaps: Stub");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VideoDevice::CheckCryptoKeyExchange(
+    const GUID*                                         pCryptoType,
+    const GUID*                                         pDecoderProfile,
+          UINT                                          Index,
+          GUID*                                         pKeyExchangeType) {
+    Logger::err("D3D11VideoDevice::CheckCryptoKeyExchange: Stub");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VideoDevice::SetPrivateData(
+          REFGUID                                       Name,
+          UINT                                          DataSize,
+    const void*                                         pData) {
+    return m_container->SetPrivateData(Name, DataSize, pData);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VideoDevice::SetPrivateDataInterface(
+          REFGUID                                       Name,
+    const IUnknown*                                     pData) {
+    return m_container->SetPrivateDataInterface(Name, pData);
+  }
+
+
+
+
   WineDXGISwapChainFactory::WineDXGISwapChainFactory(
           D3D11DXGIDevice*        pContainer,
           D3D11Device*            pDevice)
@@ -2515,6 +2694,7 @@ namespace dxvk {
     m_d3d11Device   (this, FeatureLevel, FeatureFlags),
     m_d3d11DeviceExt(this, &m_d3d11Device),
     m_d3d11Interop  (this, &m_d3d11Device),
+    m_d3d11Video    (this, &m_d3d11Device),
     m_metaDevice    (this),
     m_wineFactory   (this, &m_d3d11Device) {
 
@@ -2580,12 +2760,17 @@ namespace dxvk {
       return S_OK;
     }
 
+    if (riid == __uuidof(ID3D11VideoDevice)) {
+      *ppvObject = ref(&m_d3d11Video);
+      return S_OK;
+    }
+
     if (riid == __uuidof(ID3D10Multithread)) {
       Com<ID3D11DeviceContext> context;
       m_d3d11Device.GetImmediateContext(&context);
       return context->QueryInterface(riid, ppvObject);
     }
-    
+
     if (riid == __uuidof(ID3D11Debug))
       return E_NOINTERFACE;      
     

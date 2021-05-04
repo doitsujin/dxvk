@@ -518,6 +518,116 @@ namespace dxvk {
   
   
   /**
+   * \brief D3D11 video device
+   */
+  class D3D11VideoDevice : public ID3D11VideoDevice {
+
+  public:
+
+    D3D11VideoDevice(
+            D3D11DXGIDevice*        pContainer,
+            D3D11Device*            pDevice);
+
+    ~D3D11VideoDevice();
+
+    ULONG STDMETHODCALLTYPE AddRef();
+
+    ULONG STDMETHODCALLTYPE Release();
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                  riid,
+            void**                  ppvObject);
+
+    HRESULT STDMETHODCALLTYPE CreateVideoDecoder(
+      const D3D11_VIDEO_DECODER_DESC*                     pVideoDesc,
+      const D3D11_VIDEO_DECODER_CONFIG*                   pConfig,
+            ID3D11VideoDecoder**                          ppDecoder);
+
+    HRESULT STDMETHODCALLTYPE CreateVideoProcessor(
+            ID3D11VideoProcessorEnumerator*               pEnum,
+            UINT                                          RateConversionIndex,
+            ID3D11VideoProcessor**                        ppVideoProcessor);
+
+    HRESULT STDMETHODCALLTYPE CreateAuthenticatedChannel(
+            D3D11_AUTHENTICATED_CHANNEL_TYPE              ChannelType,
+            ID3D11AuthenticatedChannel**                  ppAuthenticatedChannel);
+
+    HRESULT STDMETHODCALLTYPE CreateCryptoSession(
+      const GUID*                                         pCryptoType,
+      const GUID*                                         pDecoderProfile,
+      const GUID*                                         pKeyExchangeType,
+            ID3D11CryptoSession**                         ppCryptoSession);
+
+    HRESULT STDMETHODCALLTYPE CreateVideoDecoderOutputView(
+            ID3D11Resource*                               pResource,
+      const D3D11_VIDEO_DECODER_OUTPUT_VIEW_DESC*         pDesc,
+            ID3D11VideoDecoderOutputView**                ppVDOVView);
+
+    HRESULT STDMETHODCALLTYPE CreateVideoProcessorInputView(
+            ID3D11Resource*                               pResource,
+            ID3D11VideoProcessorEnumerator*               pEnum,
+      const D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC*        pDesc,
+            ID3D11VideoProcessorInputView**               ppVPIView);
+
+    HRESULT STDMETHODCALLTYPE CreateVideoProcessorOutputView(
+            ID3D11Resource*                               pResource,
+            ID3D11VideoProcessorEnumerator*               pEnum,
+      const D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC*       pDesc,
+            ID3D11VideoProcessorOutputView**              ppVPOView);
+
+    HRESULT STDMETHODCALLTYPE CreateVideoProcessorEnumerator(
+      const D3D11_VIDEO_PROCESSOR_CONTENT_DESC*           pDesc,
+            ID3D11VideoProcessorEnumerator**              ppEnum);
+
+    UINT STDMETHODCALLTYPE GetVideoDecoderProfileCount();
+
+    HRESULT STDMETHODCALLTYPE GetVideoDecoderProfile(
+            UINT                                          Index,
+            GUID*                                         pDecoderProfile);
+
+    HRESULT STDMETHODCALLTYPE CheckVideoDecoderFormat(
+      const GUID*                                         pDecoderProfile,
+            DXGI_FORMAT                                   Format,
+            BOOL*                                         pSupported);
+
+    HRESULT STDMETHODCALLTYPE GetVideoDecoderConfigCount(
+      const D3D11_VIDEO_DECODER_DESC*                     pDesc,
+            UINT*                                         pCount);
+
+    HRESULT STDMETHODCALLTYPE GetVideoDecoderConfig(
+      const D3D11_VIDEO_DECODER_DESC*                     pDesc,
+            UINT                                          Index,
+            D3D11_VIDEO_DECODER_CONFIG*                   pConfig);
+
+    HRESULT STDMETHODCALLTYPE GetContentProtectionCaps(
+      const GUID*                                         pCryptoType,
+      const GUID*                                         pDecoderProfile,
+            D3D11_VIDEO_CONTENT_PROTECTION_CAPS*          pCaps);
+
+    HRESULT STDMETHODCALLTYPE CheckCryptoKeyExchange(
+      const GUID*                                         pCryptoType,
+      const GUID*                                         pDecoderProfile,
+            UINT                                          Index,
+            GUID*                                         pKeyExchangeType);
+
+    HRESULT STDMETHODCALLTYPE SetPrivateData(
+            REFGUID                                       Name,
+            UINT                                          DataSize,
+      const void*                                         pData);
+
+    HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
+            REFGUID                                       Name,
+      const IUnknown*                                     pData);
+
+  private:
+
+    D3D11DXGIDevice* m_container;
+    D3D11Device*     m_device;
+
+  };
+
+
+  /**
    * \brief DXGI swap chain factory
    */
   class WineDXGISwapChainFactory : public IWineDXGISwapChainFactory {
@@ -675,6 +785,7 @@ namespace dxvk {
     D3D11Device         m_d3d11Device;
     D3D11DeviceExt      m_d3d11DeviceExt;
     D3D11VkInterop      m_d3d11Interop;
+    D3D11VideoDevice    m_d3d11Video;
     DXGIDXVKDevice      m_metaDevice;
     
     WineDXGISwapChainFactory m_wineFactory;
