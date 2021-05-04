@@ -21,6 +21,7 @@
 #include "d3d11_state_object.h"
 #include "d3d11_swapchain.h"
 #include "d3d11_texture.h"
+#include "d3d11_video.h"
 
 namespace dxvk {
   
@@ -2490,8 +2491,13 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11VideoDevice::CreateVideoProcessorEnumerator(
     const D3D11_VIDEO_PROCESSOR_CONTENT_DESC*           pDesc,
           ID3D11VideoProcessorEnumerator**              ppEnum)  {
-    Logger::err("D3D11VideoDevice::CreateVideoProcessorEnumerator: Stub");
-    return E_NOTIMPL;
+    try {
+      *ppEnum = ref(new D3D11VideoProcessorEnumerator(m_device, *pDesc));
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_FAIL;
+    }
   }
 
 
