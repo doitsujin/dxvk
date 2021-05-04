@@ -79,4 +79,49 @@ namespace dxvk {
     return E_NOTIMPL;
   }
 
+
+
+
+  D3D11VideoProcessor::D3D11VideoProcessor(
+          D3D11Device*                    pDevice,
+          D3D11VideoProcessorEnumerator*  pEnumerator,
+          UINT                            RateConversionIndex)
+  : D3D11DeviceChild<ID3D11VideoProcessor>(pDevice),
+    m_enumerator(pEnumerator), m_rateConversionIndex(RateConversionIndex) {
+
+  }
+
+
+  D3D11VideoProcessor::~D3D11VideoProcessor() {
+
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11VideoProcessor::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    if (riid == __uuidof(IUnknown)
+     || riid == __uuidof(ID3D11DeviceChild)
+     || riid == __uuidof(ID3D11VideoProcessor)) {
+      *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    Logger::warn("D3D11VideoProcessor::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
+    return E_NOINTERFACE;
+  }
+
+
+  void STDMETHODCALLTYPE D3D11VideoProcessor::GetContentDesc(
+          D3D11_VIDEO_PROCESSOR_CONTENT_DESC *pDesc) {
+    m_enumerator->GetVideoProcessorContentDesc(pDesc);
+  }
+
+
+  void STDMETHODCALLTYPE D3D11VideoProcessor::GetRateConversionCaps(
+          D3D11_VIDEO_PROCESSOR_RATE_CONVERSION_CAPS *pCaps) {
+    m_enumerator->GetVideoProcessorRateConversionCaps(m_rateConversionIndex, pCaps);
+  }
+
 }

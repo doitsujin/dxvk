@@ -47,4 +47,34 @@ namespace dxvk {
 
   };
 
+
+
+  class D3D11VideoProcessor : public D3D11DeviceChild<ID3D11VideoProcessor> {
+
+  public:
+
+    D3D11VideoProcessor(
+            D3D11Device*                    pDevice,
+            D3D11VideoProcessorEnumerator*  pEnumerator,
+            UINT                            RateConversionIndex);
+
+    ~D3D11VideoProcessor();
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                  riid,
+            void**                  ppvObject);
+
+    void STDMETHODCALLTYPE GetContentDesc(
+            D3D11_VIDEO_PROCESSOR_CONTENT_DESC *pDesc);
+
+    void STDMETHODCALLTYPE GetRateConversionCaps(
+            D3D11_VIDEO_PROCESSOR_RATE_CONVERSION_CAPS *pCaps);
+
+  private:
+
+    D3D11VideoProcessorEnumerator* m_enumerator;
+    uint32_t                       m_rateConversionIndex;
+
+  };
+
 }

@@ -2436,8 +2436,14 @@ namespace dxvk {
           ID3D11VideoProcessorEnumerator*               pEnum,
           UINT                                          RateConversionIndex,
           ID3D11VideoProcessor**                        ppVideoProcessor) {
-    Logger::err("D3D11VideoDevice::CreateVideoProcessor: Stub");
-    return E_NOTIMPL;
+    try {
+      auto enumerator = static_cast<D3D11VideoProcessorEnumerator*>(pEnum);
+      *ppVideoProcessor = ref(new D3D11VideoProcessor(m_device, enumerator, RateConversionIndex));
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_FAIL;
+    }
   }
 
 
