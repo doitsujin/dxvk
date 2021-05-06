@@ -2479,8 +2479,13 @@ namespace dxvk {
           ID3D11VideoProcessorEnumerator*               pEnum,
     const D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC*        pDesc,
           ID3D11VideoProcessorInputView**               ppVPIView) {
-    Logger::err("D3D11VideoDevice::CreateVideoProcessorInputView: Stub");
-    return E_NOTIMPL;
+    try {
+      *ppVPIView = ref(new D3D11VideoProcessorInputView(m_device, pResource, *pDesc));
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_FAIL;
+    }
   }
 
 
@@ -2489,8 +2494,13 @@ namespace dxvk {
           ID3D11VideoProcessorEnumerator*               pEnum,
     const D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC*       pDesc,
           ID3D11VideoProcessorOutputView**              ppVPOView) {
-    Logger::err("D3D11VideoDevice::CreateVideoProcessorOutputView: Stub");
-    return E_NOTIMPL;
+    try {
+      *ppVPOView = ref(new D3D11VideoProcessorOutputView(m_device, pResource, *pDesc));
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_FAIL;
+    }
   }
 
 
