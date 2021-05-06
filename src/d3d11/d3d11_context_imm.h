@@ -6,6 +6,7 @@
 
 #include "d3d11_context.h"
 #include "d3d11_state_object.h"
+#include "d3d11_video.h"
 
 namespace dxvk {
   
@@ -21,6 +22,10 @@ namespace dxvk {
       const Rc<DxvkDevice>& Device);
     ~D3D11ImmediateContext();
     
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID  riid,
+            void**  ppvObject);
+
     D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE GetType();
     
     UINT STDMETHODCALLTYPE GetContextFlags();
@@ -118,6 +123,7 @@ namespace dxvk {
     dxvk::high_resolution_clock::time_point m_lastFlush
       = dxvk::high_resolution_clock::now();
     
+    D3D11VideoContext            m_videoContext;
     Com<D3D11DeviceContextState> m_stateObject;
     
     HRESULT MapBuffer(

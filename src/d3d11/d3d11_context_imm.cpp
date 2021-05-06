@@ -13,7 +13,8 @@ namespace dxvk {
           D3D11Device*    pParent,
     const Rc<DxvkDevice>& Device)
   : D3D11DeviceContext(pParent, Device, DxvkCsChunkFlag::SingleUse),
-    m_csThread(Device->createContext()) {
+    m_csThread(Device->createContext()),
+    m_videoContext(this) {
     EmitCs([
       cDevice          = m_device,
       cRelaxedBarriers = pParent->GetOptions()->relaxedBarriers
@@ -35,6 +36,16 @@ namespace dxvk {
   }
   
   
+  HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::QueryInterface(REFIID riid, void** ppvObject) {
+    if (riid == __uuidof(ID3D11VideoContext)) {
+      *ppvObject = ref(&m_videoContext);
+      return S_OK;
+    }
+
+    return D3D11DeviceContext::QueryInterface(riid, ppvObject);
+  }
+
+
   D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE D3D11ImmediateContext::GetType() {
     return D3D11_DEVICE_CONTEXT_IMMEDIATE;
   }

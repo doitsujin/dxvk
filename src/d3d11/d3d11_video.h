@@ -146,4 +146,382 @@ namespace dxvk {
 
   };
 
+
+
+  class D3D11VideoContext : public ID3D11VideoContext {
+
+  public:
+
+    D3D11VideoContext(
+            D3D11ImmediateContext*   pContext);
+
+    ~D3D11VideoContext();
+
+    ULONG STDMETHODCALLTYPE AddRef();
+
+    ULONG STDMETHODCALLTYPE Release();
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                  riid,
+            void**                  ppvObject);
+
+    HRESULT STDMETHODCALLTYPE GetPrivateData(
+            REFGUID                 Name,
+            UINT*                   pDataSize,
+            void*                   pData);
+
+    HRESULT STDMETHODCALLTYPE SetPrivateData(
+            REFGUID                 Name,
+            UINT                    DataSize,
+      const void*                   pData);
+
+    HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
+            REFGUID                 Name,
+      const IUnknown*               pUnknown);
+
+    void STDMETHODCALLTYPE GetDevice(
+            ID3D11Device**          ppDevice);
+
+    HRESULT STDMETHODCALLTYPE GetDecoderBuffer(
+            ID3D11VideoDecoder*             pDecoder,
+            D3D11_VIDEO_DECODER_BUFFER_TYPE Type,
+            UINT*                           BufferSize,
+            void**                          ppBuffer);
+
+    HRESULT STDMETHODCALLTYPE ReleaseDecoderBuffer(
+            ID3D11VideoDecoder*             pDecoder,
+            D3D11_VIDEO_DECODER_BUFFER_TYPE Type);
+
+    HRESULT STDMETHODCALLTYPE DecoderBeginFrame(
+            ID3D11VideoDecoder*             pDecoder,
+            ID3D11VideoDecoderOutputView*   pView,
+            UINT                            KeySize,
+      const void*                           pKey);
+
+    HRESULT STDMETHODCALLTYPE DecoderEndFrame(
+            ID3D11VideoDecoder*             pDecoder);
+
+    HRESULT STDMETHODCALLTYPE SubmitDecoderBuffers(
+            ID3D11VideoDecoder*             pDecoder,
+            UINT                            BufferCount,
+      const D3D11_VIDEO_DECODER_BUFFER_DESC* pBufferDescs);
+
+    HRESULT STDMETHODCALLTYPE DecoderExtension(
+            ID3D11VideoDecoder*             pDecoder,
+      const D3D11_VIDEO_DECODER_EXTENSION*  pExtension);
+
+    void STDMETHODCALLTYPE VideoProcessorSetOutputTargetRect(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            BOOL                            Enable,
+      const RECT*                           pRect);
+
+    void STDMETHODCALLTYPE VideoProcessorSetOutputBackgroundColor(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            BOOL                            YCbCr,
+      const D3D11_VIDEO_COLOR*              pColor);
+
+    void STDMETHODCALLTYPE VideoProcessorSetOutputColorSpace(
+            ID3D11VideoProcessor*           pVideoProcessor,
+      const D3D11_VIDEO_PROCESSOR_COLOR_SPACE *pColorSpace);
+
+    void STDMETHODCALLTYPE VideoProcessorSetOutputAlphaFillMode(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            D3D11_VIDEO_PROCESSOR_ALPHA_FILL_MODE AlphaFillMode,
+            UINT                            StreamIndex);
+
+    void STDMETHODCALLTYPE VideoProcessorSetOutputConstriction(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            BOOL                            Enable,
+            SIZE                            Size);
+
+    void STDMETHODCALLTYPE VideoProcessorSetOutputStereoMode(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            BOOL                            Enable);
+
+    HRESULT STDMETHODCALLTYPE VideoProcessorSetOutputExtension(
+            ID3D11VideoProcessor*           pVideoProcessor,
+      const GUID*                           pExtensionGuid,
+            UINT                            DataSize,
+            void*                           pData);
+
+    void STDMETHODCALLTYPE VideoProcessorSetStreamFrameFormat(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            D3D11_VIDEO_FRAME_FORMAT        Format);
+
+    void STDMETHODCALLTYPE VideoProcessorSetStreamColorSpace(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+      const D3D11_VIDEO_PROCESSOR_COLOR_SPACE *pColorSpace);
+
+    void STDMETHODCALLTYPE VideoProcessorSetStreamOutputRate(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            D3D11_VIDEO_PROCESSOR_OUTPUT_RATE Rate,
+            BOOL                            Repeat,
+      const DXGI_RATIONAL*                  CustomRate);
+
+    void STDMETHODCALLTYPE VideoProcessorSetStreamSourceRect(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            BOOL                            Enable,
+      const RECT*                           pRect);
+
+    void STDMETHODCALLTYPE VideoProcessorSetStreamDestRect(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            BOOL                            Enable,
+      const RECT*                           pRect);
+
+    void STDMETHODCALLTYPE VideoProcessorSetStreamAlpha(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            BOOL                            Enable,
+            FLOAT                           Alpha);
+
+    void STDMETHODCALLTYPE VideoProcessorSetStreamPalette(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            UINT                            EntryCount,
+      const UINT*                           pEntries);
+
+    void STDMETHODCALLTYPE VideoProcessorSetStreamPixelAspectRatio(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            BOOL                            Enable,
+      const DXGI_RATIONAL*                  pSrcAspectRatio,
+      const DXGI_RATIONAL*                  pDstAspectRatio);
+
+    void STDMETHODCALLTYPE VideoProcessorSetStreamLumaKey(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            BOOL                            Enable,
+            FLOAT                           Lower,
+            FLOAT                           Upper);
+
+    void STDMETHODCALLTYPE VideoProcessorSetStreamStereoFormat(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            BOOL                            Enable,
+            D3D11_VIDEO_PROCESSOR_STEREO_FORMAT Format,
+            BOOL                            LeftViewFrame0,
+            BOOL                            BaseViewFrame0,
+            D3D11_VIDEO_PROCESSOR_STEREO_FLIP_MODE FlipMode,
+            int                             MonoOffset);
+
+    void STDMETHODCALLTYPE VideoProcessorSetStreamAutoProcessingMode(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            BOOL                            Enable);
+
+    void STDMETHODCALLTYPE VideoProcessorSetStreamFilter(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            D3D11_VIDEO_PROCESSOR_FILTER    Filter,
+            BOOL                            Enable,
+            int                             Level);
+
+    HRESULT STDMETHODCALLTYPE VideoProcessorSetStreamExtension(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+      const GUID*                           pExtensionGuid,
+            UINT                            DataSize,
+            void*                           pData);
+
+    void STDMETHODCALLTYPE VideoProcessorSetStreamRotation(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            BOOL                            Enable,
+            D3D11_VIDEO_PROCESSOR_ROTATION  Rotation);
+
+    void STDMETHODCALLTYPE VideoProcessorGetOutputTargetRect(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            BOOL*                           pEnabled,
+            RECT*                           pRect);
+
+    void STDMETHODCALLTYPE VideoProcessorGetOutputBackgroundColor(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            BOOL*                           pYCbCr,
+            D3D11_VIDEO_COLOR*              pColor);
+
+    void STDMETHODCALLTYPE VideoProcessorGetOutputColorSpace(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            D3D11_VIDEO_PROCESSOR_COLOR_SPACE* pColorSpace);
+
+    void STDMETHODCALLTYPE VideoProcessorGetOutputAlphaFillMode(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            D3D11_VIDEO_PROCESSOR_ALPHA_FILL_MODE* pAlphaFillMode,
+            UINT*                           pStreamIndex);
+
+    void STDMETHODCALLTYPE VideoProcessorGetOutputConstriction(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            BOOL*                           pEnabled,
+            SIZE*                           pSize);
+
+    void STDMETHODCALLTYPE VideoProcessorGetOutputStereoMode(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            BOOL*                           pEnabled);
+
+    HRESULT STDMETHODCALLTYPE VideoProcessorGetOutputExtension(
+            ID3D11VideoProcessor*           pVideoProcessor,
+      const GUID*                           pExtensionGuid,
+            UINT                            DataSize,
+            void*                           pData);
+
+    void STDMETHODCALLTYPE VideoProcessorGetStreamFrameFormat(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            D3D11_VIDEO_FRAME_FORMAT*       pFormat);
+
+    void STDMETHODCALLTYPE VideoProcessorGetStreamColorSpace(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            D3D11_VIDEO_PROCESSOR_COLOR_SPACE* pColorSpace);
+
+    void STDMETHODCALLTYPE VideoProcessorGetStreamOutputRate(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            D3D11_VIDEO_PROCESSOR_OUTPUT_RATE* pRate,
+            BOOL*                           pRepeat,
+            DXGI_RATIONAL*                  pCustomRate);
+
+    void STDMETHODCALLTYPE VideoProcessorGetStreamSourceRect(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            BOOL*                           pEnabled,
+            RECT*                           pRect);
+
+    void STDMETHODCALLTYPE VideoProcessorGetStreamDestRect(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            BOOL*                           pEnabled,
+            RECT*                           pRect);
+
+    void STDMETHODCALLTYPE VideoProcessorGetStreamAlpha(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            BOOL*                           pEnabled,
+            FLOAT*                          pAlpha);
+
+    void STDMETHODCALLTYPE VideoProcessorGetStreamPalette(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            UINT                            EntryCount,
+            UINT*                           pEntries);
+
+    void STDMETHODCALLTYPE VideoProcessorGetStreamPixelAspectRatio(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            BOOL*                           pEnabled,
+            DXGI_RATIONAL*                  pSrcAspectRatio,
+            DXGI_RATIONAL*                  pDstAspectRatio);
+
+    void STDMETHODCALLTYPE VideoProcessorGetStreamLumaKey(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            BOOL*                           pEnabled,
+            FLOAT*                          pLower,
+            FLOAT*                          pUpper);
+
+    void STDMETHODCALLTYPE VideoProcessorGetStreamStereoFormat(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            BOOL*                           pEnabled,
+            D3D11_VIDEO_PROCESSOR_STEREO_FORMAT* pFormat,
+            BOOL*                           pLeftViewFrame0,
+            BOOL*                           pBaseViewFrame0,
+            D3D11_VIDEO_PROCESSOR_STEREO_FLIP_MODE* pFlipMode,
+            int*                            pMonoOffset);
+
+    void STDMETHODCALLTYPE VideoProcessorGetStreamAutoProcessingMode(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            BOOL*                           pEnabled);
+
+    void STDMETHODCALLTYPE VideoProcessorGetStreamFilter(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            D3D11_VIDEO_PROCESSOR_FILTER    Filter,
+            BOOL*                           pEnabled,
+            int*                            pLevel);
+
+    HRESULT STDMETHODCALLTYPE VideoProcessorGetStreamExtension(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+      const GUID*                           pExtensionGuid,
+            UINT                            DataSize,
+            void*                           pData);
+
+    void STDMETHODCALLTYPE VideoProcessorGetStreamRotation(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            UINT                            StreamIndex,
+            BOOL*                           pEnable,
+            D3D11_VIDEO_PROCESSOR_ROTATION* pRotation);
+
+    HRESULT STDMETHODCALLTYPE VideoProcessorBlt(
+            ID3D11VideoProcessor*           pVideoProcessor,
+            ID3D11VideoProcessorOutputView* pOutputView,
+            UINT                            FrameIdx,
+            UINT                            StreamCount,
+      const D3D11_VIDEO_PROCESSOR_STREAM*   pStreams);
+
+    HRESULT STDMETHODCALLTYPE NegotiateCryptoSessionKeyExchange(
+            ID3D11CryptoSession*            pSession,
+            UINT                            DataSize,
+            void*                           pData);
+
+    void STDMETHODCALLTYPE EncryptionBlt(
+            ID3D11CryptoSession*            pSession,
+            ID3D11Texture2D*                pSrcSurface,
+            ID3D11Texture2D*                pDstSurface,
+            UINT                            IVSize,
+            void*                           pIV);
+
+    void STDMETHODCALLTYPE DecryptionBlt(
+            ID3D11CryptoSession*            pSession,
+            ID3D11Texture2D*                pSrcSurface,
+            ID3D11Texture2D*                pDstSurface,
+            D3D11_ENCRYPTED_BLOCK_INFO*     pBlockInfo,
+            UINT                            KeySize,
+      const void*                           pKey,
+            UINT                            IVSize,
+            void*                           pIV);
+
+    void STDMETHODCALLTYPE StartSessionKeyRefresh(
+            ID3D11CryptoSession*            pSession,
+            UINT                            RandomNumberSize,
+            void*                           pRandomNumber);
+
+    void STDMETHODCALLTYPE FinishSessionKeyRefresh(
+            ID3D11CryptoSession*            pSession);
+
+    HRESULT STDMETHODCALLTYPE GetEncryptionBltKey(
+            ID3D11CryptoSession*            pSession,
+            UINT                            KeySize,
+            void*                           pKey);
+
+    HRESULT STDMETHODCALLTYPE NegotiateAuthenticatedChannelKeyExchange(
+            ID3D11AuthenticatedChannel*     pChannel,
+            UINT                            DataSize,
+            void*                           pData);
+
+    HRESULT STDMETHODCALLTYPE QueryAuthenticatedChannel(
+            ID3D11AuthenticatedChannel*     pChannel,
+            UINT                            InputSize,
+      const void*                           pInput,
+            UINT                            OutputSize,
+            void*                           pOutput);
+
+    HRESULT STDMETHODCALLTYPE ConfigureAuthenticatedChannel(
+            ID3D11AuthenticatedChannel*     pChannel,
+            UINT                            InputSize,
+      const void*                           pInput,
+            D3D11_AUTHENTICATED_CONFIGURE_OUTPUT* pOutput);
+
+  private:
+
+      D3D11ImmediateContext* m_ctx;
+
+  };
+
 }
