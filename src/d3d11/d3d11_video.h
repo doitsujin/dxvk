@@ -4,6 +4,8 @@
 
 namespace dxvk {
 
+  static constexpr uint32_t D3D11_VK_VIDEO_STREAM_COUNT = 8;
+
   class D3D11VideoProcessorEnumerator : public D3D11DeviceChild<ID3D11VideoProcessorEnumerator> {
 
   public:
@@ -48,6 +50,26 @@ namespace dxvk {
   };
 
 
+  struct D3D11VideoProcessorStreamState {
+    BOOL autoProcessingEnabled  = TRUE;
+    BOOL dstRectEnabled         = FALSE;
+    BOOL srcRectEnabled         = FALSE;
+    BOOL rotationEnabled        = FALSE;
+    RECT dstRect                = RECT();
+    RECT srcRect                = RECT();
+    D3D11_VIDEO_FRAME_FORMAT frameFormat = D3D11_VIDEO_FRAME_FORMAT_PROGRESSIVE;
+    D3D11_VIDEO_PROCESSOR_ROTATION rotation = D3D11_VIDEO_PROCESSOR_ROTATION_IDENTITY;
+    D3D11_VIDEO_PROCESSOR_COLOR_SPACE colorSpace = D3D11_VIDEO_PROCESSOR_COLOR_SPACE();
+  };
+
+  struct D3D11VideoProcessorState {
+    BOOL outputStereoModeEnabled                       = FALSE;
+    BOOL outputBackgroundColorIsYCbCr                  = FALSE;
+    BOOL outputTargetRectEnabled                       = FALSE;
+    RECT outputTargetRect                              = RECT();
+    D3D11_VIDEO_COLOR outputBackgroundColor            = D3D11_VIDEO_COLOR();
+    D3D11_VIDEO_PROCESSOR_COLOR_SPACE outputColorSpace = D3D11_VIDEO_PROCESSOR_COLOR_SPACE();
+  };
 
   class D3D11VideoProcessor : public D3D11DeviceChild<ID3D11VideoProcessor> {
 
@@ -70,10 +92,22 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetRateConversionCaps(
             D3D11_VIDEO_PROCESSOR_RATE_CONVERSION_CAPS *pCaps);
 
+    D3D11VideoProcessorState* GetState() {
+      return &m_state;
+    }
+
+    D3D11VideoProcessorStreamState* GetStreamState(UINT StreamIndex) {
+      return StreamIndex < D3D11_VK_VIDEO_STREAM_COUNT
+        ? &m_streams[StreamIndex]
+        : nullptr;
+    }
+
   private:
 
     D3D11VideoProcessorEnumerator* m_enumerator;
     uint32_t                       m_rateConversionIndex;
+    D3D11VideoProcessorState       m_state;
+    D3D11VideoProcessorStreamState m_streams[D3D11_VK_VIDEO_STREAM_COUNT];
 
   };
 
@@ -102,6 +136,10 @@ namespace dxvk {
 
     const bool IsYCbCr() const {
       return m_isYCbCr;
+    }
+
+    std::array<Rc<DxvkImageView>, 2> GetViews() const {
+      return m_views;
     }
 
   private:
@@ -138,6 +176,10 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_VIDEO_PROCESSOR_OUTPUT_VIEW_DESC* pDesc);
 
+    Rc<DxvkImageView> GetView() const {
+      return m_view;
+    }
+
   private:
 
     Com<ID3D11Resource>                     m_resource;
@@ -153,7 +195,8 @@ namespace dxvk {
   public:
 
     D3D11VideoContext(
-            D3D11ImmediateContext*   pContext);
+            D3D11ImmediateContext*  pContext,
+      const Rc<DxvkDevice>&         Device);
 
     ~D3D11VideoContext();
 
@@ -520,7 +563,31 @@ namespace dxvk {
 
   private:
 
-      D3D11ImmediateContext* m_ctx;
+    struct alignas(16) UboData {
+      float colorMatrix[3][4];
+      float coordMatrix[3][2];
+      float yMin, yMax;
+    };
+
+    D3D11ImmediateContext* m_ctx;
+
+    Rc<DxvkSampler> m_sampler;
+    Rc<DxvkShader> m_vs;
+    Rc<DxvkShader> m_fs;
+    Rc<DxvkBuffer> m_ubo;
+
+    VkExtent2D m_dstExtent = { 0u, 0u };
+
+    void ApplyColorMatrix(float pDst[3][4], const float pSrc[3][4]);
+
+    void ApplyYCbCrMatrix(float pColorMatrix[3][4], bool UseBt709);
+
+    void BindOutputView(
+            ID3D11VideoProcessorOutputView* pOutputView);
+
+    void BlitStream(
+      const D3D11VideoProcessorStreamState* pStreamState,
+      const D3D11_VIDEO_PROCESSOR_STREAM*   pStream);
 
   };
 

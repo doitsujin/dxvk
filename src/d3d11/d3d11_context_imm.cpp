@@ -14,7 +14,7 @@ namespace dxvk {
     const Rc<DxvkDevice>& Device)
   : D3D11DeviceContext(pParent, Device, DxvkCsChunkFlag::SingleUse),
     m_csThread(Device->createContext()),
-    m_videoContext(this) {
+    m_videoContext(this, Device) {
     EmitCs([
       cDevice          = m_device,
       cRelaxedBarriers = pParent->GetOptions()->relaxedBarriers

@@ -4,6 +4,9 @@
 #include "d3d11_context_imm.h"
 #include "d3d11_video.h"
 
+#include <d3d11_video_blit_frag.h>
+#include <d3d11_video_blit_vert.h>
+
 namespace dxvk {
 
   D3D11VideoProcessorEnumerator::D3D11VideoProcessorEnumerator(
@@ -302,9 +305,55 @@ namespace dxvk {
 
 
   D3D11VideoContext::D3D11VideoContext(
-          D3D11ImmediateContext*   pContext)
+          D3D11ImmediateContext*  pContext,
+    const Rc<DxvkDevice>&         Device)
   : m_ctx(pContext) {
+    const SpirvCodeBuffer vsCode(d3d11_video_blit_vert);
+    const SpirvCodeBuffer fsCode(d3d11_video_blit_frag);
 
+    const std::array<DxvkResourceSlot, 4> fsResourceSlots = {{
+      { 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC               },
+      { 1, VK_DESCRIPTOR_TYPE_SAMPLER                              },
+      { 2, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_IMAGE_VIEW_TYPE_2D },
+      { 3, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_IMAGE_VIEW_TYPE_2D },
+    }};
+
+    m_vs = Device->createShader(
+      VK_SHADER_STAGE_VERTEX_BIT,
+      0, nullptr, { 0u, 1u },
+      vsCode);
+    
+    m_fs = Device->createShader(
+      VK_SHADER_STAGE_FRAGMENT_BIT,
+      fsResourceSlots.size(),
+      fsResourceSlots.data(),
+      { 1u, 1u, 0u, 0u },
+      fsCode);
+
+    DxvkSamplerCreateInfo samplerInfo;
+    samplerInfo.magFilter       = VK_FILTER_LINEAR;
+    samplerInfo.minFilter       = VK_FILTER_LINEAR;
+    samplerInfo.mipmapMode      = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    samplerInfo.mipmapLodBias   = 0.0f;
+    samplerInfo.mipmapLodMin    = 0.0f;
+    samplerInfo.mipmapLodMax    = 0.0f;
+    samplerInfo.useAnisotropy   = VK_FALSE;
+    samplerInfo.maxAnisotropy   = 1.0f;
+    samplerInfo.addressModeU    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeV    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeW    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.compareToDepth  = VK_FALSE;
+    samplerInfo.compareOp       = VK_COMPARE_OP_ALWAYS;
+    samplerInfo.borderColor     = VkClearColorValue();
+    samplerInfo.usePixelCoord   = VK_FALSE;
+    m_sampler = Device->createSampler(samplerInfo);
+
+    DxvkBufferCreateInfo bufferInfo;
+    bufferInfo.size = sizeof(UboData);
+    bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    bufferInfo.stages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    bufferInfo.access = VK_ACCESS_UNIFORM_READ_BIT;
+    m_ubo = Device->createBuffer(bufferInfo, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
 
 
@@ -414,7 +463,16 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           BOOL                            Enable,
     const RECT*                           pRect) {
-    Logger::err("D3D11VideoContext::VideoProcessorSetOutputTargetRect: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetState();
+    state->outputTargetRectEnabled = Enable;
+
+    if (Enable)
+      state->outputTargetRect = *pRect;
+
+    static bool errorShown = false;
+
+    if (!std::exchange(errorShown, true))
+      Logger::err("D3D11VideoContext::VideoProcessorSetOutputTargetRect: Stub.");
   }
 
 
@@ -422,14 +480,22 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           BOOL                            YCbCr,
     const D3D11_VIDEO_COLOR*              pColor) {
-    Logger::err("D3D11VideoContext::VideoProcessorSetOutputBackgroundColor: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetState();
+    state->outputBackgroundColorIsYCbCr = YCbCr;
+    state->outputBackgroundColor = *pColor;
+
+    static bool errorShown = false;
+
+    if (!std::exchange(errorShown, true))
+      Logger::err("D3D11VideoContext::VideoProcessorSetOutputBackgroundColor: Stub");
   }
 
 
   void STDMETHODCALLTYPE D3D11VideoContext::VideoProcessorSetOutputColorSpace(
           ID3D11VideoProcessor*           pVideoProcessor,
     const D3D11_VIDEO_PROCESSOR_COLOR_SPACE *pColorSpace) {
-    Logger::err("D3D11VideoContext::VideoProcessorSetOutputColorSpace: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetState();
+    state->outputColorSpace = *pColorSpace;
   }
 
 
@@ -452,7 +518,11 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11VideoContext::VideoProcessorSetOutputStereoMode(
           ID3D11VideoProcessor*           pVideoProcessor,
           BOOL                            Enable) {
-    Logger::err("D3D11VideoContext::VideoProcessorSetOutputStereoMode: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetState();
+    state->outputStereoModeEnabled = Enable;
+
+    if (Enable)
+      Logger::err("D3D11VideoContext: Stereo output not supported");
   }
 
 
@@ -470,7 +540,15 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           UINT                            StreamIndex,
           D3D11_VIDEO_FRAME_FORMAT        Format) {
-    Logger::err("D3D11VideoContext::VideoProcessorSetStreamFrameFormat: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
+
+    if (!state)
+      return;
+
+    state->frameFormat = Format;
+
+    if (Format != D3D11_VIDEO_FRAME_FORMAT_PROGRESSIVE)
+      Logger::err(str::format("D3D11VideoContext: Unsupported frame format: ", Format));
   }
 
 
@@ -478,7 +556,12 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           UINT                            StreamIndex,
     const D3D11_VIDEO_PROCESSOR_COLOR_SPACE *pColorSpace) {
-    Logger::err("D3D11VideoContext::VideoProcessorSetStreamColorSpace: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
+
+    if (!state)
+      return;
+
+    state->colorSpace = *pColorSpace;
   }
 
 
@@ -497,7 +580,20 @@ namespace dxvk {
           UINT                            StreamIndex,
           BOOL                            Enable,
     const RECT*                           pRect) {
-    Logger::err("D3D11VideoContext::VideoProcessorSetStreamSourceRect: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
+
+    if (!state)
+      return;
+
+    state->srcRectEnabled = Enable;
+
+    if (Enable)
+      state->srcRect = *pRect;
+
+    static bool errorShown = false;
+
+    if (!std::exchange(errorShown, true))
+      Logger::err("D3D11VideoContext::VideoProcessorSetStreamSourceRect: Stub.");
   }
 
 
@@ -506,7 +602,15 @@ namespace dxvk {
           UINT                            StreamIndex,
           BOOL                            Enable,
     const RECT*                           pRect) {
-    Logger::err("D3D11VideoContext::VideoProcessorSetStreamDestRect: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
+
+    if (!state)
+      return;
+
+    state->dstRectEnabled = Enable;
+
+    if (Enable)
+      state->dstRect = *pRect;
   }
 
 
@@ -565,7 +669,12 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           UINT                            StreamIndex,
           BOOL                            Enable) {
-    Logger::err("D3D11VideoContext::VideoProcessorSetStreamAutoProcessingMode: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
+
+    if (!state)
+      return;
+
+    state->autoProcessingEnabled = Enable;
   }
 
 
@@ -595,7 +704,16 @@ namespace dxvk {
           UINT                            StreamIndex,
           BOOL                            Enable,
           D3D11_VIDEO_PROCESSOR_ROTATION  Rotation) {
-    Logger::err("D3D11VideoContext::VideoProcessorSetStreamRotation: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
+
+    if (!state)
+      return;
+
+    state->rotationEnabled = Enable;
+    state->rotation = Rotation;
+
+    if (Enable && Rotation != D3D11_VIDEO_PROCESSOR_ROTATION_IDENTITY)
+      Logger::err(str::format("D3D11VideoContext: Unsupported rotation: ", Rotation));
   }
 
 
@@ -603,7 +721,13 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           BOOL*                           pEnabled,
           RECT*                           pRect) {
-    Logger::err("D3D11VideoContext::VideoProcessorGetOutputTargetRect: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetState();
+
+    if (pEnabled)
+      *pEnabled = state->outputTargetRectEnabled;
+
+    if (pRect)
+      *pRect = state->outputTargetRect;
   }
 
 
@@ -611,14 +735,23 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           BOOL*                           pYCbCr,
           D3D11_VIDEO_COLOR*              pColor) {
-    Logger::err("D3D11VideoContext::VideoProcessorGetOutputBackgroundColor: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetState();
+    
+    if (pYCbCr)
+      *pYCbCr = state->outputBackgroundColorIsYCbCr;
+
+    if (pColor)
+      *pColor = state->outputBackgroundColor;
   }
 
 
   void STDMETHODCALLTYPE D3D11VideoContext::VideoProcessorGetOutputColorSpace(
           ID3D11VideoProcessor*           pVideoProcessor,
           D3D11_VIDEO_PROCESSOR_COLOR_SPACE* pColorSpace) {
-    Logger::err("D3D11VideoContext::VideoProcessorGetOutputColorSpace: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetState();
+
+    if (pColorSpace)
+      *pColorSpace = state->outputColorSpace;
   }
 
 
@@ -641,7 +774,10 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11VideoContext::VideoProcessorGetOutputStereoMode(
           ID3D11VideoProcessor*           pVideoProcessor,
           BOOL*                           pEnabled) {
-    Logger::err("D3D11VideoContext::VideoProcessorGetOutputStereoMode: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetState();
+
+    if (pEnabled)
+      *pEnabled = state->outputStereoModeEnabled;
   }
 
 
@@ -659,7 +795,13 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           UINT                            StreamIndex,
           D3D11_VIDEO_FRAME_FORMAT*       pFormat) {
-    Logger::err("D3D11VideoContext::VideoProcessorGetStreamFrameFormat: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
+
+    if (!state)
+      return;
+
+    if (pFormat)
+      *pFormat = state->frameFormat;
   }
 
 
@@ -667,7 +809,13 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           UINT                            StreamIndex,
           D3D11_VIDEO_PROCESSOR_COLOR_SPACE* pColorSpace) {
-    Logger::err("D3D11VideoContext::VideoProcessorGetStreamColorSpace: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
+
+    if (!state)
+      return;
+
+    if (pColorSpace)
+      *pColorSpace = state->colorSpace;
   }
 
 
@@ -686,7 +834,16 @@ namespace dxvk {
           UINT                            StreamIndex,
           BOOL*                           pEnabled,
           RECT*                           pRect) {
-    Logger::err("D3D11VideoContext::VideoProcessorGetStreamSourceRect: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
+
+    if (!state)
+      return;
+
+    if (pEnabled)
+      *pEnabled = state->srcRectEnabled;
+
+    if (pRect)
+      *pRect = state->srcRect;
   }
 
 
@@ -695,7 +852,16 @@ namespace dxvk {
           UINT                            StreamIndex,
           BOOL*                           pEnabled,
           RECT*                           pRect) {
-    Logger::err("D3D11VideoContext::VideoProcessorGetStreamDestRect: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
+
+    if (!state)
+      return;
+
+    if (pEnabled)
+      *pEnabled = state->dstRectEnabled;
+
+    if (pRect)
+      *pRect = state->dstRect;
   }
 
 
@@ -754,7 +920,12 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           UINT                            StreamIndex,
           BOOL*                           pEnabled) {
-    Logger::err("D3D11VideoContext::VideoProcessorGetStreamAutoProcessingMode: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
+
+    if (!state)
+      return;
+
+    *pEnabled = state->autoProcessingEnabled;
   }
 
 
@@ -784,7 +955,16 @@ namespace dxvk {
           UINT                            StreamIndex,
           BOOL*                           pEnable,
           D3D11_VIDEO_PROCESSOR_ROTATION* pRotation) {
-    Logger::err("D3D11VideoContext::VideoProcessorGetStreamRotation: Stub");
+    auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
+
+    if (!state)
+      return;
+
+    if (pEnable)
+      *pEnable = state->rotationEnabled;
+
+    if (pRotation)
+      *pRotation = state->rotation;
   }
 
 
@@ -794,8 +974,30 @@ namespace dxvk {
           UINT                            FrameIdx,
           UINT                            StreamCount,
     const D3D11_VIDEO_PROCESSOR_STREAM*   pStreams) {
-    Logger::err("D3D11VideoContext::VideoProcessorBlt: Stub");
-    return E_NOTIMPL;
+    auto videoProcessor = static_cast<D3D11VideoProcessor*>(pVideoProcessor);
+    bool hasStreamsEnabled = false;
+
+    // Resetting and restoring all context state incurs
+    // a lot of overhead, so only do it as necessary
+    for (uint32_t i = 0; i < StreamCount; i++) {
+      auto streamState = videoProcessor->GetStreamState(i);
+
+      if (!pStreams[i].Enable || !streamState)
+        continue;
+
+      if (!hasStreamsEnabled) {
+        m_ctx->ResetState();
+        BindOutputView(pOutputView);
+        hasStreamsEnabled = true;
+      }
+
+      BlitStream(streamState, &pStreams[i]);
+    }
+
+    if (hasStreamsEnabled)
+      m_ctx->RestoreState();
+
+    return S_OK;
   }
 
 
@@ -881,6 +1083,142 @@ namespace dxvk {
           D3D11_AUTHENTICATED_CONFIGURE_OUTPUT* pOutput) {
     Logger::err("D3D11VideoContext::ConfigureAuthenticatedChannel: Stub");
     return E_NOTIMPL;
+  }
+
+
+  void D3D11VideoContext::ApplyColorMatrix(float pDst[3][4], const float pSrc[3][4]) {
+    float result[3][4];
+
+    for (uint32_t i = 0; i < 3; i++) {
+      for (uint32_t j = 0; j < 4; j++) {
+        result[i][j] = pSrc[i][0] * pDst[0][j]
+                     + pSrc[i][1] * pDst[1][j]
+                     + pSrc[i][2] * pDst[2][j]
+                     + pSrc[i][3] * float(j == 3);
+      }
+    }
+
+    memcpy(pDst, &result[0][0], sizeof(result));
+  }
+
+
+  void D3D11VideoContext::ApplyYCbCrMatrix(float pColorMatrix[3][4], bool UseBt709) {
+    static const float pretransform[3][4] = {
+      { 0.0f, 1.0f, 0.0f,  0.0f },
+      { 0.0f, 0.0f, 1.0f, -0.5f },
+      { 1.0f, 0.0f, 0.0f, -0.5f },
+    };
+
+    static const float bt601[3][4] = {
+      { 1.0f,  0.000000f,  1.402000f, 0.0f },
+      { 1.0f, -0.344136f, -0.714136f, 0.0f },
+      { 1.0f,  1.772000f,  0.000000f, 0.0f },
+    };
+
+    static const float bt709[3][4] = {
+      { 1.0f,  0.000000f,  1.574800f, 0.0f },
+      { 1.0f, -0.187324f, -0.468124f, 0.0f },
+      { 1.0f,  1.855600f,  0.000000f, 0.0f },
+    };
+
+    ApplyColorMatrix(pColorMatrix, pretransform);
+    ApplyColorMatrix(pColorMatrix, UseBt709 ? bt709 : bt601);
+  }
+
+
+  void D3D11VideoContext::BindOutputView(
+          ID3D11VideoProcessorOutputView* pOutputView) {
+    auto dxvkView = static_cast<D3D11VideoProcessorOutputView*>(pOutputView)->GetView();
+
+    m_ctx->EmitCs([this, cView = dxvkView] (DxvkContext* ctx) {
+      DxvkRenderTargets rt;
+      rt.color[0].view = cView;
+      rt.color[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+      ctx->bindRenderTargets(rt);
+      ctx->bindShader(VK_SHADER_STAGE_VERTEX_BIT, m_vs);
+      ctx->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_fs);
+      ctx->bindResourceBuffer(0, DxvkBufferSlice(m_ubo));
+
+      DxvkInputAssemblyState iaState;
+      iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+      iaState.primitiveRestart = VK_FALSE;
+      iaState.patchVertexCount = 0;
+      ctx->setInputAssemblyState(iaState);
+    });
+
+    VkExtent3D viewExtent = dxvkView->mipLevelExtent(0);
+    m_dstExtent = { viewExtent.width, viewExtent.height };
+  }
+
+
+  void D3D11VideoContext::BlitStream(
+    const D3D11VideoProcessorStreamState* pStreamState,
+    const D3D11_VIDEO_PROCESSOR_STREAM*   pStream) {
+    if (pStream->PastFrames || pStream->FutureFrames)
+      Logger::err("D3D11VideoContext: Ignoring non-zero PastFrames and FutureFrames");
+
+    if (pStream->OutputIndex)
+      Logger::err("D3D11VideoContext: Ignoring non-zero OutputIndex");
+
+    if (pStream->InputFrameOrField)
+      Logger::err("D3D11VideoContext: Ignoring non-zero InputFrameOrField");
+
+    auto view = static_cast<D3D11VideoProcessorInputView*>(pStream->pInputSurface);
+
+    m_ctx->EmitCs([this,
+      cStreamState  = *pStreamState,
+      cViews        = view->GetViews(),
+      cIsYCbCr      = view->IsYCbCr()
+    ] (DxvkContext* ctx) {
+      VkViewport viewport;
+      viewport.x        = 0.0f;
+      viewport.y        = 0.0f;
+      viewport.width    = float(m_dstExtent.width);
+      viewport.height   = float(m_dstExtent.height);
+      viewport.minDepth = 0.0f;
+      viewport.maxDepth = 1.0f;
+
+      VkRect2D scissor;
+      scissor.offset = { 0, 0 };
+      scissor.extent = m_dstExtent;
+
+      if (cStreamState.dstRectEnabled) {
+        viewport.x      = float(cStreamState.dstRect.left);
+        viewport.y      = float(cStreamState.dstRect.top);
+        viewport.width  = float(cStreamState.dstRect.right) - viewport.x;
+        viewport.height = float(cStreamState.dstRect.bottom) - viewport.y;
+      }
+
+      UboData uboData = { };
+      uboData.colorMatrix[0][0] = 1.0f;
+      uboData.colorMatrix[1][1] = 1.0f;
+      uboData.colorMatrix[2][2] = 1.0f;
+      uboData.coordMatrix[0][0] = 1.0f;
+      uboData.coordMatrix[1][1] = 1.0f;
+      uboData.yMin = 0.0f;
+      uboData.yMax = 1.0f;
+
+      if (cIsYCbCr)
+        ApplyYCbCrMatrix(uboData.colorMatrix, cStreamState.colorSpace.YCbCr_Matrix);
+
+      if (cStreamState.colorSpace.Nominal_Range) {
+        uboData.yMin = 0.0627451f;
+        uboData.yMax = 0.9215686f;
+      }
+
+      DxvkBufferSliceHandle uboSlice = m_ubo->allocSlice();
+      memcpy(uboSlice.mapPtr, &uboData, sizeof(uboData));
+
+      ctx->invalidateBuffer(m_ubo, uboSlice);
+      ctx->setViewports(1, &viewport, &scissor);
+      ctx->bindResourceSampler(1, m_sampler);
+
+      for (uint32_t i = 0; i < cViews.size(); i++)
+        ctx->bindResourceView(2 + i, cViews[i], nullptr);
+
+      ctx->draw(3, 1, 0, 0);
+    });
   }
 
 }

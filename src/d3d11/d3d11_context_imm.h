@@ -15,6 +15,7 @@ namespace dxvk {
   
   class D3D11ImmediateContext : public D3D11DeviceContext {
     friend class D3D11SwapChain;
+    friend class D3D11VideoContext;
   public:
     
     D3D11ImmediateContext(
