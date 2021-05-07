@@ -1,11 +1,26 @@
 #include "dxgi_factory.h"
 #include "dxgi_include.h"
 
+#include "../util/util_env.h"
+
 namespace dxvk {
   
   Logger Logger::s_instance("dxgi.log");
-  
+
+  bool useGlobalFactory() {
+    static bool s_useGlobalFactory = env::getExeName() == "re8.exe";
+    return s_useGlobalFactory;
+  }
+
+  HRESULT getGlobalFactory(REFIID riid, void **ppFactory) {
+    static Com<DxgiFactory, false> s_factory = new DxgiFactory(0);
+    return s_factory->QueryInterface(riid, ppFactory);
+  }
+
   HRESULT createDxgiFactory(UINT Flags, REFIID riid, void **ppFactory) {
+    if (useGlobalFactory())
+      return getGlobalFactory(riid, ppFactory);
+
     try {
       Com<DxgiFactory> factory = new DxgiFactory(Flags);
       HRESULT hr = factory->QueryInterface(riid, ppFactory);
