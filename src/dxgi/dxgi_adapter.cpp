@@ -61,7 +61,20 @@ namespace dxvk {
     m_adapter (adapter),
     m_interop (this),
     m_index   (index) {
-    
+    for (uint32_t i = 0; ; i++) {
+      MonitorEnumInfo info;
+      info.iMonitorId = i;
+      info.oMonitor   = nullptr;
+      
+      ::EnumDisplayMonitors(
+        nullptr, nullptr, &MonitorEnumProc,
+        reinterpret_cast<LPARAM>(&info));
+      
+      if (info.oMonitor == nullptr)
+        break;
+      
+      m_outputCache.emplace_back(new DxgiOutput(m_factory, this, info.oMonitor));
+    }
   }
   
   
@@ -143,18 +156,11 @@ namespace dxvk {
     if (ppOutput == nullptr)
       return E_INVALIDARG;
     
-    MonitorEnumInfo info;
-    info.iMonitorId = Output;
-    info.oMonitor   = nullptr;
-    
-    ::EnumDisplayMonitors(
-      nullptr, nullptr, &MonitorEnumProc,
-      reinterpret_cast<LPARAM>(&info));
-    
-    if (info.oMonitor == nullptr)
+    if (Output >= m_outputCache.size())
       return DXGI_ERROR_NOT_FOUND;
     
-    *ppOutput = ref(new DxgiOutput(m_factory, this, info.oMonitor));
+    *ppOutput = ref(m_outputCache[Output].ptr());
+
     return S_OK;
   }
   

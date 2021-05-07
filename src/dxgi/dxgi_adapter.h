@@ -122,6 +122,8 @@ namespace dxvk {
     std::unordered_map<DWORD, HANDLE> m_eventMap;
     dxvk::thread                      m_eventThread;
 
+    std::vector<Com<DxgiOutput, false>> m_outputCache;
+
     void runEventThread();
     
     struct MonitorEnumInfo {
