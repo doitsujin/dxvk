@@ -3,6 +3,8 @@
 #include "dxgi_monitor.h"
 #include "dxgi_object.h"
 
+#include <mutex>
+
 namespace dxvk {
   
   class DxgiAdapter;
@@ -133,9 +135,17 @@ namespace dxvk {
     Com<DxgiAdapter> m_adapter = nullptr;
     HMONITOR         m_monitor = nullptr;
 
+    DXGI_FORMAT m_cachedModeFormat = DXGI_FORMAT_UNKNOWN;
+    std::vector<DXGI_MODE_DESC1> m_cachedModeList;
+    std::mutex m_cachedModeMutex;
+
     static void FilterModesByDesc(
             std::vector<DXGI_MODE_DESC1>& Modes,
       const DXGI_MODE_DESC1&              TargetMode);
+
+    UINT CacheModeList(
+            DXGI_FORMAT EnumFormat,
+            UINT        Flags);
     
   };
 

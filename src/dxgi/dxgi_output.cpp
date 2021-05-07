@@ -262,25 +262,34 @@ namespace dxvk {
     if (pNumModes == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    std::vector<DXGI_MODE_DESC1> modes;
+    // Special case, just return zero modes
+    if (EnumFormat == DXGI_FORMAT_UNKNOWN) {
+      *pNumModes = 0;
+      return S_OK;
+    }
 
-    if (pDesc)
-      modes.resize(std::max(1u, *pNumModes));
-    
-    HRESULT hr = GetDisplayModeList1(
-      EnumFormat, Flags, pNumModes,
-      pDesc ? modes.data() : nullptr);
-    
-    for (uint32_t i = 0; i < *pNumModes && i < modes.size(); i++) {
-      pDesc[i].Width            = modes[i].Width;
-      pDesc[i].Height           = modes[i].Height;
-      pDesc[i].RefreshRate      = modes[i].RefreshRate;
-      pDesc[i].Format           = modes[i].Format;
-      pDesc[i].ScanlineOrdering = modes[i].ScanlineOrdering;
-      pDesc[i].Scaling          = modes[i].Scaling;
+    auto lock = std::unique_lock(m_cachedModeMutex);
+
+    UINT modeCount = CacheModeList(EnumFormat, Flags);
+
+    // If requested, write out the first set of display
+    // modes to the destination array.
+    if (pDesc != nullptr) {
+      for (uint32_t i = 0; i < *pNumModes && i < modeCount; i++) {
+        pDesc[i].Width            = m_cachedModeList[i].Width;
+        pDesc[i].Height           = m_cachedModeList[i].Height;
+        pDesc[i].RefreshRate      = m_cachedModeList[i].RefreshRate;
+        pDesc[i].Format           = m_cachedModeList[i].Format;
+        pDesc[i].ScanlineOrdering = m_cachedModeList[i].ScanlineOrdering;
+        pDesc[i].Scaling          = m_cachedModeList[i].Scaling;
+      }
+      
+      if (modeCount > *pNumModes)
+        return DXGI_ERROR_MORE_DATA;
     }
     
-    return hr;
+    *pNumModes = modeCount;
+    return S_OK;
   }
   
   
@@ -298,65 +307,22 @@ namespace dxvk {
       return S_OK;
     }
 
-    // Walk over all modes that the display supports and
-    // return those that match the requested format etc.
-    DEVMODEW devMode = { };
-    devMode.dmSize = sizeof(DEVMODEW);
-    
-    uint32_t srcModeId = 0;
-    uint32_t dstModeId = 0;
-    
-    std::vector<DXGI_MODE_DESC1> modeList;
-    
-    while (GetMonitorDisplayMode(m_monitor, srcModeId++, &devMode)) {
-      // Skip interlaced modes altogether
-      if (devMode.dmDisplayFlags & DM_INTERLACED)
-        continue;
-      
-      // Skip modes with incompatible formats
-      if (devMode.dmBitsPerPel != GetMonitorFormatBpp(EnumFormat))
-        continue;
-      
-      if (pDesc != nullptr) {
-        DXGI_MODE_DESC1 mode;
-        mode.Width            = devMode.dmPelsWidth;
-        mode.Height           = devMode.dmPelsHeight;
-        mode.RefreshRate      = { devMode.dmDisplayFrequency * 1000, 1000 };
-        mode.Format           = EnumFormat;
-        mode.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
-        mode.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
-        mode.Stereo           = FALSE;
-        modeList.push_back(mode);
-      }
-      
-      dstModeId += 1;
-    }
-    
-    // Sort display modes by width, height and refresh rate,
-    // in that order. Some games rely on correct ordering.
-    std::sort(modeList.begin(), modeList.end(),
-      [] (const DXGI_MODE_DESC1& a, const DXGI_MODE_DESC1& b) {
-        if (a.Width < b.Width) return true;
-        if (a.Width > b.Width) return false;
-        
-        if (a.Height < b.Height) return true;
-        if (a.Height > b.Height) return false;
-        
-        return (a.RefreshRate.Numerator / a.RefreshRate.Denominator)
-             < (b.RefreshRate.Numerator / b.RefreshRate.Denominator);
-      });
-    
+    auto lock = std::unique_lock(m_cachedModeMutex);
+
+    UINT modeCount = CacheModeList(EnumFormat, Flags);
+
     // If requested, write out the first set of display
     // modes to the destination array.
     if (pDesc != nullptr) {
-      for (uint32_t i = 0; i < *pNumModes && i < dstModeId; i++)
-        pDesc[i] = modeList[i];
+      for (uint32_t i = 0; i < *pNumModes && i < modeCount; i++) {
+        pDesc[i] = m_cachedModeList[i];
+      }
       
-      if (dstModeId > *pNumModes)
+      if (modeCount > *pNumModes)
         return DXGI_ERROR_MORE_DATA;
     }
     
-    *pNumModes = dstModeId;
+    *pNumModes = modeCount;
     return S_OK;
   }
 
@@ -588,6 +554,63 @@ namespace dxvk {
 
       it = skipMode ? Modes.erase(it) : ++it;
     }
+  }
+
+
+  UINT DxgiOutput::CacheModeList(
+            DXGI_FORMAT EnumFormat,
+            UINT        Flags) {
+    if (m_cachedModeFormat == EnumFormat)
+      return UINT(m_cachedModeList.size());
+
+    m_cachedModeList.clear();
+
+    // Walk over all modes that the display supports and
+    // return those that match the requested format etc.
+    DEVMODEW devMode = { };
+    devMode.dmSize = sizeof(DEVMODEW);
+    
+    uint32_t srcModeId = 0;
+    uint32_t dstModeId = 0;
+    
+    while (GetMonitorDisplayMode(m_monitor, srcModeId++, &devMode)) {
+      // Skip interlaced modes altogether
+      if (devMode.dmDisplayFlags & DM_INTERLACED)
+        continue;
+      
+      // Skip modes with incompatible formats
+      if (devMode.dmBitsPerPel != GetMonitorFormatBpp(EnumFormat))
+        continue;
+      
+      DXGI_MODE_DESC1 mode;
+      mode.Width            = devMode.dmPelsWidth;
+      mode.Height           = devMode.dmPelsHeight;
+      mode.RefreshRate      = { devMode.dmDisplayFrequency * 1000, 1000 };
+      mode.Format           = EnumFormat;
+      mode.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
+      mode.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
+      mode.Stereo           = FALSE;
+      m_cachedModeList.push_back(mode);
+      
+      dstModeId += 1;
+    }
+    
+    // Sort display modes by width, height and refresh rate,
+    // in that order. Some games rely on correct ordering.
+    std::sort(m_cachedModeList.begin(), m_cachedModeList.end(),
+      [] (const DXGI_MODE_DESC1& a, const DXGI_MODE_DESC1& b) {
+        if (a.Width < b.Width) return true;
+        if (a.Width > b.Width) return false;
+        
+        if (a.Height < b.Height) return true;
+        if (a.Height > b.Height) return false;
+        
+        return (a.RefreshRate.Numerator / a.RefreshRate.Denominator)
+            < (b.RefreshRate.Numerator / b.RefreshRate.Denominator);
+      });
+
+    m_cachedModeFormat = EnumFormat;
+    return UINT(m_cachedModeList.size());
   }
 
 }
