@@ -232,6 +232,11 @@ namespace dxvk {
     { R"(\\cm3\.exe$)", {{
       { "dxgi.customDeviceDesc",            "DXVK Adapter" },
     }} },
+    /* GTA IV: Thinks we're always on Intel       *
+     * and will report/use bad amounts of VRAM.   */
+    { R"(\\GTAIV\.exe$)", {{
+      { "dxgi.emulateUMA",                  "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
