@@ -253,6 +253,11 @@ namespace dxvk {
     if (options->customDeviceId >= 0)
       deviceProp.deviceID = options->customDeviceId;
     
+    const char* description = deviceProp.deviceName;
+    // Custom device description
+    if (!options->customDeviceDesc.empty())
+      description = options->customDeviceDesc.c_str();
+    
     // XXX nvapi workaround for a lot of Unreal Engine 4 games
     if (options->customVendorId < 0 && options->customDeviceId < 0
      && options->nvapiHack && deviceProp.vendorID == uint16_t(DxvkGpuVendor::Nvidia)) {
@@ -263,7 +268,7 @@ namespace dxvk {
     
     // Convert device name
     std::memset(pDesc->Description, 0, sizeof(pDesc->Description));
-    str::tows(deviceProp.deviceName, pDesc->Description);
+    str::tows(description, pDesc->Description);
     
     // Get amount of video memory
     // based on the Vulkan heaps
