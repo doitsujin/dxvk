@@ -227,6 +227,11 @@ namespace dxvk {
     { R"(\\DIRT5\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
+    /* Crazy Machines 3 - crashes on long device  *
+     * descriptions                               */
+    { R"(\\cm3\.exe$)", {{
+      { "dxgi.customDeviceDesc",            "DXVK Adapter" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
