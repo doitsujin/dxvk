@@ -283,6 +283,15 @@ namespace dxvk {
       else
         sharedMemory += heap.size;
     }
+
+    // Some games think we are on Intel given a lack of
+    // NVAPI or AGS/atiadlxx support.
+    // Report our device memory as shared memory,
+    // and some small amount for the carveout.
+    if (options->emulateUMA && !m_adapter->isUnifiedMemoryArchitecture()) {
+      sharedMemory = deviceMemory;
+      deviceMemory = 128 * (1 << 20);
+    }
     
     // Some games are silly and need their memory limited
     if (options->maxDeviceMemory > 0
