@@ -33,13 +33,7 @@ namespace dxvk {
 
 
   bool DxvkDevice::isUnifiedMemoryArchitecture() const {
-    auto memory = m_adapter->memoryProperties();
-    bool result = true;
-
-    for (uint32_t i = 0; i < memory.memoryHeapCount; i++)
-      result &= memory.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
-
-    return result;
+    return m_adapter->isUnifiedMemoryArchitecture();
   }
 
 

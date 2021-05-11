@@ -497,6 +497,17 @@ namespace dxvk {
   }
   
   
+  bool DxvkAdapter::isUnifiedMemoryArchitecture() const {
+    auto memory = this->memoryProperties();
+    bool result = true;
+
+    for (uint32_t i = 0; i < memory.memoryHeapCount; i++)
+      result &= memory.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
+
+    return result;
+  }
+  
+  
   void DxvkAdapter::initHeapAllocInfo() {
     for (uint32_t i = 0; i < m_heapAlloc.size(); i++)
       m_heapAlloc[i] = 0;
