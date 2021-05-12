@@ -66,10 +66,7 @@ namespace dxvk {
   
   Rc<DxvkCommandList> DxvkContext::endRecording() {
     this->spillRenderPass(true);
-
-    // Ensure that any shared images are in their
-    // default layout for the next submission
-    this->transitionRenderTargetLayouts(m_execBarriers, true);
+    this->flushSharedImages();
 
     m_sdmaBarriers.recordCommands(m_cmd);
     m_initBarriers.recordCommands(m_cmd);
@@ -1935,6 +1932,20 @@ namespace dxvk {
     }
 
     m_deferredClears.clear();
+  }
+
+
+  void DxvkContext::flushSharedImages() {
+    for (auto i = m_deferredClears.begin(); i != m_deferredClears.end(); ) {
+      if (i->imageView->imageInfo().shared) {
+        this->performClear(i->imageView, -1, i->discardAspects, i->clearAspects, i->clearValue);
+        i = m_deferredClears.erase(i);
+      } else {
+        i++;
+      }
+    }
+
+    this->transitionRenderTargetLayouts(m_execBarriers, true);
   }
 
 

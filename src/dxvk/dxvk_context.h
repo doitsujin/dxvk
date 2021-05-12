@@ -1139,6 +1139,8 @@ namespace dxvk {
     void flushClears(
             bool                      useRenderPass);
 
+    void flushSharedImages();
+
     void startRenderPass();
     void spillRenderPass(bool suspend);
     
