@@ -1090,7 +1090,10 @@ namespace dxvk {
     }
 
     inline uint32_t GetUPBufferSize(uint32_t vertexCount, uint32_t stride) {
-      return (vertexCount - 1) * stride + m_state.vertexDecl->GetSize();
+      return std::max(
+        GetUPDataSize(vertexCount, stride),
+        (vertexCount - 1) * stride + m_state.vertexDecl->GetSize()
+      );
     }
 
     inline void FillUPVertexBuffer(void* buffer, const void* userData, uint32_t dataSize, uint32_t bufferSize) {
