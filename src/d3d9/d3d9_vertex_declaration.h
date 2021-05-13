@@ -51,11 +51,7 @@ namespace dxvk {
     }
 
     UINT GetSize() const {
-      if (m_elements.size() == 0)
-        return 0;
-
-      auto& end = m_elements.back();
-      return end.Offset + GetDecltypeSize(D3DDECLTYPE(end.Type));
+      return m_size;
     }
 
     bool TestFlag(D3D9VertexDeclFlag flag) const {
@@ -77,6 +73,9 @@ namespace dxvk {
     DWORD                          m_fvf;
 
     uint32_t                       m_texcoordMask = 0;
+
+    // The size of Stream 0. That's all we care about.
+    uint32_t                       m_size = 0;
 
   };
 

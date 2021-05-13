@@ -208,6 +208,9 @@ namespace dxvk {
 
   void D3D9VertexDecl::Classify() {
     for (const auto& element : m_elements) {
+      if (element.Stream == 0 && element.Type != D3DDECLTYPE_UNUSED)
+        m_size = std::max(m_size, element.Offset + GetDecltypeSize(D3DDECLTYPE(element.Type)));
+
       if (element.Usage == D3DDECLUSAGE_COLOR && element.UsageIndex == 0)
         m_flags.set(D3D9VertexDeclFlag::HasColor0);
       else if (element.Usage == D3DDECLUSAGE_COLOR && element.UsageIndex == 1)
