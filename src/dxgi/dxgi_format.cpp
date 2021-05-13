@@ -494,13 +494,19 @@ namespace dxvk {
     // DXGI_FORMAT_Y416
     { }, // Unsupported
     // DXGI_FORMAT_NV12
-    { }, // Unsupported
+    { VK_FORMAT_G8_B8R8_2PLANE_420_UNORM,
+      VK_FORMAT_UNDEFINED,
+      VK_FORMAT_UNDEFINED,
+      VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT },
     // DXGI_FORMAT_P010
     { }, // Unsupported
     // DXGI_FORMAT_P016
     { }, // Unsupported
     // DXGI_FORMAT_420_OPAQUE
-    { }, // Unsupported
+    { VK_FORMAT_G8_B8R8_2PLANE_420_UNORM,
+      VK_FORMAT_UNDEFINED,
+      VK_FORMAT_UNDEFINED,
+      VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT },
     // DXGI_FORMAT_YUY2
     { }, // Unsupported
     // DXGI_FORMAT_Y210
@@ -793,13 +799,19 @@ namespace dxvk {
     // DXGI_FORMAT_Y416
     { }, // Unsupported
     // DXGI_FORMAT_NV12
-    { }, // Unsupported
+    { VK_FORMAT_R8_UNORM,
+      VK_FORMAT_R8G8_UNORM,
+      VK_FORMAT_R8_UINT,
+      VK_FORMAT_R8G8_UINT },
     // DXGI_FORMAT_P010
     { }, // Unsupported
     // DXGI_FORMAT_P016
     { }, // Unsupported
     // DXGI_FORMAT_420_OPAQUE
-    { }, // Unsupported
+    { VK_FORMAT_R8_UNORM,
+      VK_FORMAT_R8G8_UNORM,
+      VK_FORMAT_R8_UINT,
+      VK_FORMAT_R8G8_UINT },
     // DXGI_FORMAT_YUY2
     { }, // Unsupported
     // DXGI_FORMAT_Y210
