@@ -516,7 +516,7 @@ namespace dxvk {
         if (cPackedFormat == VK_FORMAT_UNDEFINED) {
           ctx->copyBufferToImage(cDstImage, cDstLayers,
             VkOffset3D { 0, 0, 0 }, cDstLevelExtent,
-            cSrcBuffer, 0, { 0u, 0u });
+            cSrcBuffer, 0, 0);
         } else {
           ctx->copyPackedBufferToDepthStencilImage(
             cDstImage, cDstLayers,

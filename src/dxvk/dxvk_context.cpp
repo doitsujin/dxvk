@@ -704,14 +704,14 @@ namespace dxvk {
           VkExtent3D            dstExtent,
     const Rc<DxvkBuffer>&       srcBuffer,
           VkDeviceSize          srcOffset,
-          VkExtent2D            srcExtent) {
+          VkDeviceSize          rowAlignment) {
     this->spillRenderPass(true);
     this->prepareImage(m_execBarriers, dstImage, vk::makeSubresourceRange(dstSubresource));
 
     auto srcSlice = srcBuffer->getSliceHandle(srcOffset, 0);
 
-    // We may copy to only one aspect of a depth-stencil image,
-    // but pipeline barriers need to have all aspect bits set
+    // We may copy to only one aspect at a time, but pipeline
+    // barriers need to have all available aspect bits set
     auto dstFormatInfo = dstImage->formatInfo();
 
     auto dstSubresourceRange = vk::makeSubresourceRange(dstSubresource);
@@ -739,19 +739,10 @@ namespace dxvk {
     }
       
     m_execAcquires.recordCommands(m_cmd);
-    
-    VkBufferImageCopy copyRegion;
-    copyRegion.bufferOffset       = srcSlice.offset;
-    copyRegion.bufferRowLength    = srcExtent.width;
-    copyRegion.bufferImageHeight  = srcExtent.height;
-    copyRegion.imageSubresource   = dstSubresource;
-    copyRegion.imageOffset        = dstOffset;
-    copyRegion.imageExtent        = dstExtent;
-    
-    m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer,
-      srcSlice.handle, dstImage->handle(),
-      dstImageLayoutTransfer, 1, &copyRegion);
-    
+
+    this->copyImageBufferData<true>(DxvkCmdBuffer::ExecBuffer, dstImage, dstSubresource,
+      dstOffset, dstExtent, dstImageLayoutTransfer, srcSlice, rowAlignment, 0);
+
     m_execBarriers.accessImage(
       dstImage, dstSubresourceRange,
       dstImageLayoutTransfer,
@@ -2751,6 +2742,91 @@ namespace dxvk {
 
     m_cmd->trackResource<DxvkAccess::Write>(dstImage);
     m_cmd->trackResource<DxvkAccess::Read>(srcImage);
+  }
+
+
+  template<bool ToImage>
+  void DxvkContext::copyImageBufferData(
+          DxvkCmdBuffer         cmd,
+    const Rc<DxvkImage>&        image,
+    const VkImageSubresourceLayers& imageSubresource,
+          VkOffset3D            imageOffset,
+          VkExtent3D            imageExtent,
+          VkImageLayout         imageLayout,
+    const DxvkBufferSliceHandle& bufferSlice,
+          VkDeviceSize          bufferRowAlignment,
+          VkDeviceSize          bufferSliceAlignment) {
+    auto formatInfo = image->formatInfo();
+    auto layers = imageSubresource.layerCount;
+
+    VkDeviceSize bufferOffset = bufferSlice.offset;
+
+    // Do one copy region per layer in case the buffer memory layout is weird
+    if (bufferSliceAlignment || formatInfo->flags.test(DxvkFormatFlag::MultiPlane))
+      layers = 1;
+
+    for (uint32_t i = 0; i < imageSubresource.layerCount; i += layers) {
+      auto aspectOffset = bufferOffset;
+
+      for (auto aspects = imageSubresource.aspectMask; aspects; ) {
+        auto aspect = vk::getNextAspect(aspects);
+        auto elementSize = formatInfo->elementSize;
+
+        VkBufferImageCopy copyRegion = { };
+        copyRegion.imageSubresource.aspectMask = aspect;
+        copyRegion.imageSubresource.baseArrayLayer = imageSubresource.baseArrayLayer + i;
+        copyRegion.imageSubresource.layerCount = layers;
+        copyRegion.imageSubresource.mipLevel = imageSubresource.mipLevel;
+        copyRegion.imageOffset = imageOffset;
+        copyRegion.imageExtent = imageExtent;
+
+        if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+          auto plane = &formatInfo->planes[vk::getPlaneIndex(aspect)];
+          copyRegion.imageOffset.x /= plane->blockSize.width;
+          copyRegion.imageOffset.y /= plane->blockSize.height;
+          copyRegion.imageExtent.width  /= plane->blockSize.width;
+          copyRegion.imageExtent.height /= plane->blockSize.height;
+          elementSize = plane->elementSize;
+        }
+
+        // Vulkan can't really express row pitch in the same way that client APIs
+        // may expect, so we'll need to do some heroics here and hope that it works
+        VkExtent3D blockCount = util::computeBlockCount(copyRegion.imageExtent, formatInfo->blockSize);
+        VkDeviceSize rowPitch = blockCount.width * elementSize;
+
+        if (bufferRowAlignment > elementSize)
+          rowPitch = bufferRowAlignment > rowPitch ? bufferRowAlignment : align(rowPitch, bufferRowAlignment);
+
+        VkDeviceSize slicePitch = blockCount.height * rowPitch;
+
+        if (image->info().type == VK_IMAGE_TYPE_3D && bufferSliceAlignment > elementSize)
+          slicePitch = bufferSliceAlignment > slicePitch ? bufferSliceAlignment : align(slicePitch, bufferSliceAlignment);
+
+        copyRegion.bufferOffset      = aspectOffset;
+        copyRegion.bufferRowLength   = formatInfo->blockSize.width * rowPitch / elementSize;
+        copyRegion.bufferImageHeight = formatInfo->blockSize.height * slicePitch / rowPitch;
+
+        // Perform the actual copy
+        if constexpr (ToImage) {
+          m_cmd->cmdCopyBufferToImage(cmd, bufferSlice.handle,
+            image->handle(), imageLayout, 1, &copyRegion);
+        } else {
+          m_cmd->cmdCopyImageToBuffer(cmd, image->handle(), imageLayout,
+            bufferSlice.handle, 1, &copyRegion);
+        }
+
+        aspectOffset += blockCount.depth * slicePitch;
+      }
+
+      // Advance to next layer. This is non-trivial for multi-plane formats
+      // since plane data for each layer is expected to be packed.
+      VkDeviceSize layerPitch = aspectOffset - bufferOffset;
+
+      if (bufferSliceAlignment)
+        layerPitch = bufferSliceAlignment > layerPitch ? bufferSliceAlignment : align(layerPitch, bufferSliceAlignment);
+
+      bufferOffset += layerPitch;
+    }
   }
 
 

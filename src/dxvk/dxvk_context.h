@@ -341,13 +341,14 @@ namespace dxvk {
     /**
      * \brief Copies data from a buffer to an image
      * 
+     * Source data must be packed, except for the row alignment.
      * \param [in] dstImage Destination image
      * \param [in] dstSubresource Destination subresource
      * \param [in] dstOffset Destination area offset
      * \param [in] dstExtent Destination area size
      * \param [in] srcBuffer Source buffer
      * \param [in] srcOffset Source offset, in bytes
-     * \param [in] srcExtent Source data extent
+     * \param [in] rowAlignment Row alignment, in bytes
      */
     void copyBufferToImage(
       const Rc<DxvkImage>&        dstImage,
@@ -356,7 +357,7 @@ namespace dxvk {
             VkExtent3D            dstExtent,
       const Rc<DxvkBuffer>&       srcBuffer,
             VkDeviceSize          srcOffset,
-            VkExtent2D            srcExtent);
+            VkDeviceSize          rowAlignment);
     
     /**
      * \brief Copies data from one image to another
@@ -1060,6 +1061,18 @@ namespace dxvk {
       const Rc<DxvkImage>&        srcImage,
       const VkImageBlit&          region,
             VkFilter              filter);
+
+    template<bool ToImage>
+    void copyImageBufferData(
+            DxvkCmdBuffer         cmd,
+      const Rc<DxvkImage>&        image,
+      const VkImageSubresourceLayers& imageSubresource,
+            VkOffset3D            imageOffset,
+            VkExtent3D            imageExtent,
+            VkImageLayout         imageLayout,
+      const DxvkBufferSliceHandle& bufferSlice,
+            VkDeviceSize          bufferRowAlignment,
+            VkDeviceSize          bufferSliceAlignment);
 
     void clearImageViewFb(
       const Rc<DxvkImageView>&    imageView,
