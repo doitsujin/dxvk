@@ -142,6 +142,20 @@ namespace dxvk {
     D3D11_COMMON_RESOURCE_DESC resourceDesc = { };
     GetCommonResourceDesc(pResource, &resourceDesc);
 
+    Rc<DxvkImage> dxvkImage = GetCommonTexture(pResource)->GetImage();
+
+    if (!(dxvkImage->info().usage & VK_IMAGE_USAGE_SAMPLED_BIT)) {
+      DxvkImageCreateInfo info = dxvkImage->info();
+      info.flags  = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
+      info.usage  = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+      info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+      info.access = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
+      info.tiling = VK_IMAGE_TILING_OPTIMAL;
+      info.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      info.shared = VK_FALSE;
+      dxvkImage = m_copy = pDevice->GetDXVKDevice()->createImage(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    }
+
     DXGI_VK_FORMAT_INFO formatInfo = pDevice->LookupFormat(resourceDesc.Format, DXGI_VK_FORMAT_MODE_COLOR);
     DXGI_VK_FORMAT_FAMILY formatFamily = pDevice->LookupFamily(resourceDesc.Format, DXGI_VK_FORMAT_MODE_COLOR);
 
@@ -165,14 +179,18 @@ namespace dxvk {
         throw DxvkError("Invalid view dimension");
     }
 
+    m_subresources.aspectMask = aspectMask;
+    m_subresources.baseArrayLayer = viewInfo.minLayer;
+    m_subresources.layerCount = viewInfo.numLayers;
+    m_subresources.mipLevel = viewInfo.minLevel;
+
     for (uint32_t i = 0; aspectMask && i < m_views.size(); i++) {
       viewInfo.aspect = vk::getNextAspect(aspectMask);
 
       if (viewInfo.aspect != VK_IMAGE_ASPECT_COLOR_BIT)
         viewInfo.format = formatFamily.Formats[i];
 
-      m_views[i] = pDevice->GetDXVKDevice()->createImageView(
-        GetCommonTexture(pResource)->GetImage(), viewInfo);
+      m_views[i] = pDevice->GetDXVKDevice()->createImageView(dxvkImage, viewInfo);
     }
 
     m_isYCbCr = IsYCbCrFormat(resourceDesc.Format);
@@ -1207,6 +1225,25 @@ namespace dxvk {
       Logger::err("D3D11VideoContext: Ignoring non-zero InputFrameOrField");
 
     auto view = static_cast<D3D11VideoProcessorInputView*>(pStream->pInputSurface);
+
+    if (view->NeedsCopy()) {
+      m_ctx->EmitCs([
+        cDstImage     = view->GetShadowCopy(),
+        cSrcImage     = view->GetImage(),
+        cSrcLayers    = view->GetImageSubresources()
+      ] (DxvkContext* ctx) {
+        VkImageSubresourceLayers cDstLayers;
+        cDstLayers.aspectMask = cSrcLayers.aspectMask;
+        cDstLayers.baseArrayLayer = 0;
+        cDstLayers.layerCount = cSrcLayers.layerCount;
+        cDstLayers.mipLevel = cSrcLayers.mipLevel;
+
+        ctx->copyImage(
+          cDstImage, cDstLayers, VkOffset3D(),
+          cSrcImage, cSrcLayers, VkOffset3D(),
+          cDstImage->info().extent);
+      });
+    }
 
     m_ctx->EmitCs([this,
       cStreamState  = *pStreamState,
