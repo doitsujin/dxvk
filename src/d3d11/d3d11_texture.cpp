@@ -507,7 +507,11 @@ namespace dxvk {
     // packing rules, so we need to copy that data into a buffer first
     if (GetPackedDepthStencilFormat(m_desc.Format))
       return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
-    
+
+    // Multi-plane images have a sepcial memory layout in D3D11
+    if (imageFormatInfo(pImageInfo->format)->flags.test(DxvkFormatFlag::MultiPlane))
+      return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
+
     // Images that can be read by the host should be mapped directly in
     // order to avoid expensive synchronization with the GPU. This does
     // however require linear tiling, which may not be supported for all
