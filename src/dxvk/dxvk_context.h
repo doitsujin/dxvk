@@ -1074,6 +1074,16 @@ namespace dxvk {
             VkDeviceSize          bufferRowAlignment,
             VkDeviceSize          bufferSliceAlignment);
 
+    void copyImageHostData(
+            DxvkCmdBuffer         cmd,
+      const Rc<DxvkImage>&        image,
+      const VkImageSubresourceLayers& imageSubresource,
+            VkOffset3D            imageOffset,
+            VkExtent3D            imageExtent,
+      const void*                 hostData,
+            VkDeviceSize          rowPitch,
+            VkDeviceSize          slicePitch);
+
     void clearImageViewFb(
       const Rc<DxvkImageView>&    imageView,
             VkOffset3D            offset,

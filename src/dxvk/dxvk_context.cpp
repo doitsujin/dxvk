@@ -2183,23 +2183,8 @@ namespace dxvk {
     const void*                     data,
           VkDeviceSize              pitchPerRow,
           VkDeviceSize              pitchPerLayer) {
-    const DxvkFormatInfo* formatInfo = image->formatInfo();
-
     VkOffset3D imageOffset = { 0, 0, 0 };
     VkExtent3D imageExtent = image->mipLevelExtent(subresources.mipLevel);
-    
-    // Allocate staging buffer slice and copy data to it
-    VkExtent3D elementCount = util::computeBlockCount(
-      imageExtent, formatInfo->blockSize);
-    elementCount.depth *= subresources.layerCount;
-    
-    auto stagingSlice = m_staging.alloc(CACHE_LINE_SIZE,
-      formatInfo->elementSize * util::flattenImageExtent(elementCount));
-    auto stagingHandle = stagingSlice.getSliceHandle();
-    
-    util::packImageData(stagingHandle.mapPtr, data,
-      elementCount, formatInfo->elementSize,
-      pitchPerRow, pitchPerLayer);
 
     DxvkCmdBuffer cmdBuffer = DxvkCmdBuffer::SdmaBuffer;
     DxvkBarrierSet* barriers = &m_sdmaAcquires;
@@ -2218,21 +2203,11 @@ namespace dxvk {
       VK_ACCESS_TRANSFER_WRITE_BIT);
 
     barriers->recordCommands(m_cmd);
-    
-    // Perform copy on the transfer queue
-    VkBufferImageCopy region;
-    region.bufferOffset       = stagingHandle.offset;
-    region.bufferRowLength    = 0;
-    region.bufferImageHeight  = 0;
-    region.imageSubresource   = subresources;
-    region.imageOffset        = imageOffset;
-    region.imageExtent        = imageExtent;
-    
-    m_cmd->cmdCopyBufferToImage(cmdBuffer,
-      stagingHandle.handle, image->handle(),
-      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
-      1, &region);
-    
+
+    this->copyImageHostData(cmdBuffer,
+      image, subresources, imageOffset, imageExtent,
+      data, pitchPerRow, pitchPerLayer);
+
     // Transfer ownership to graphics queue
     if (cmdBuffer == DxvkCmdBuffer::SdmaBuffer) {
       m_sdmaBarriers.releaseImage(m_initBarriers,
@@ -2257,7 +2232,6 @@ namespace dxvk {
     }
     
     m_cmd->trackResource<DxvkAccess::Write>(image);
-    m_cmd->trackResource<DxvkAccess::Read>(stagingSlice.buffer());
   }
 
 
@@ -2826,6 +2800,57 @@ namespace dxvk {
         layerPitch = bufferSliceAlignment > layerPitch ? bufferSliceAlignment : align(layerPitch, bufferSliceAlignment);
 
       bufferOffset += layerPitch;
+    }
+  }
+
+
+  void DxvkContext::copyImageHostData(
+          DxvkCmdBuffer         cmd,
+    const Rc<DxvkImage>&        image,
+    const VkImageSubresourceLayers& imageSubresource,
+          VkOffset3D            imageOffset,
+          VkExtent3D            imageExtent,
+    const void*                 hostData,
+          VkDeviceSize          rowPitch,
+          VkDeviceSize          slicePitch) {
+    auto formatInfo = image->formatInfo();
+    auto srcData = reinterpret_cast<const char*>(hostData);
+
+    for (uint32_t i = 0; i < imageSubresource.layerCount; i++) {
+      auto layerData = srcData + i * slicePitch;
+
+      for (auto aspects = imageSubresource.aspectMask; aspects; ) {
+        auto aspect = vk::getNextAspect(aspects);
+        auto extent = imageExtent;
+
+        VkDeviceSize elementSize = formatInfo->elementSize;
+
+        if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+          auto plane = &formatInfo->planes[vk::getPlaneIndex(aspect)];
+          extent.width  /= plane->blockSize.width;
+          extent.height /= plane->blockSize.height;
+          elementSize = plane->elementSize;
+        }
+
+        auto blockCount = util::computeBlockCount(extent, formatInfo->blockSize);
+        auto stagingSlice  = m_staging.alloc(CACHE_LINE_SIZE, elementSize * util::flattenImageExtent(blockCount));
+        auto stagingHandle = stagingSlice.getSliceHandle();
+
+        util::packImageData(stagingHandle.mapPtr, layerData,
+          blockCount, elementSize, rowPitch, slicePitch);
+
+        auto subresource = imageSubresource;
+        subresource.aspectMask = aspect;
+
+        this->copyImageBufferData<true>(cmd,
+          image, subresource, imageOffset, imageExtent,
+          image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+          stagingHandle, 0, 0);
+
+        layerData += blockCount.height * rowPitch;
+
+        m_cmd->trackResource<DxvkAccess::Read>(stagingSlice.buffer());
+      }
     }
   }
 
