@@ -418,8 +418,6 @@ namespace dxvk {
       formatInfo->aspectMask, Subresource);
     
     if (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
-      const VkImageType imageType = mappedImage->info().type;
-      
       // Wait for the resource to become available
       if (!WaitForResource(mappedImage, MapType, MapFlags))
         return DXGI_ERROR_WAS_STILL_DRAWING;
@@ -430,17 +428,14 @@ namespace dxvk {
       // Query the subresource's memory layout and hope that
       // the application respects the returned pitch values.
       if (pMappedResource) {
-        VkSubresourceLayout layout  = mappedImage->querySubresourceLayout(subresource);
-        pMappedResource->pData      = mappedImage->mapPtr(layout.offset);
-        pMappedResource->RowPitch   = imageType >= VK_IMAGE_TYPE_2D ? layout.rowPitch   : layout.size;
-        pMappedResource->DepthPitch = imageType >= VK_IMAGE_TYPE_3D ? layout.depthPitch : layout.size;
+        auto layout = pResource->GetSubresourceLayout(formatInfo->aspectMask, Subresource);
+        pMappedResource->pData      = mappedImage->mapPtr(layout.Offset);
+        pMappedResource->RowPitch   = layout.RowPitch;
+        pMappedResource->DepthPitch = layout.DepthPitch;
       }
 
       return S_OK;
     } else {
-      VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
-      VkExtent3D blockCount = util::computeBlockCount(levelExtent, formatInfo->blockSize);
-      
       DxvkBufferSliceHandle physSlice;
       
       if (MapType == D3D11_MAP_WRITE_DISCARD) {
@@ -476,9 +471,10 @@ namespace dxvk {
 
       // Set up map pointer. Data is tightly packed within the mapped buffer.
       if (pMappedResource) {
-        pMappedResource->pData      = physSlice.mapPtr;
-        pMappedResource->RowPitch   = formatInfo->elementSize * blockCount.width;
-        pMappedResource->DepthPitch = formatInfo->elementSize * blockCount.width * blockCount.height;
+        auto layout = pResource->GetSubresourceLayout(formatInfo->aspectMask, Subresource);
+        pMappedResource->pData      = reinterpret_cast<char*>(physSlice.mapPtr) + layout.Offset;
+        pMappedResource->RowPitch   = layout.RowPitch;
+        pMappedResource->DepthPitch = layout.DepthPitch;
       }
 
       return S_OK;
