@@ -115,9 +115,14 @@ namespace dxvk::vk {
   }
 
   inline VkImageAspectFlags getNextAspect(VkImageAspectFlags& mask) {
-    VkImageAspectFlags result = mask & -mask;
-    mask &= ~result;
-    return result;
+    if (likely(mask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))) {
+      // Depth-stencil isn't considered multi-planar
+      return std::exchange(mask, VkImageAspectFlags(0));
+    } else {
+      VkImageAspectFlags result = mask & -mask;
+      mask &= ~result;
+      return result;
+    }
   }
 
 }

@@ -3051,7 +3051,9 @@ namespace dxvk {
           VkExtent3D            extent) {
     auto dstSubresourceRange = vk::makeSubresourceRange(dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(srcSubresource);
-    
+
+    auto dstFormatInfo = dstImage->formatInfo();
+
     if (m_execBarriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
      || m_execBarriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
       m_execBarriers.recordCommands(m_cmd);
@@ -3086,17 +3088,33 @@ namespace dxvk {
 
     m_execAcquires.recordCommands(m_cmd);
     
-    VkImageCopy imageRegion;
-    imageRegion.srcSubresource = srcSubresource;
-    imageRegion.srcOffset      = srcOffset;
-    imageRegion.dstSubresource = dstSubresource;
-    imageRegion.dstOffset      = dstOffset;
-    imageRegion.extent         = extent;
-    
-    m_cmd->cmdCopyImage(DxvkCmdBuffer::ExecBuffer,
-      srcImage->handle(), srcImageLayout,
-      dstImage->handle(), dstImageLayout,
-      1, &imageRegion);
+    for (auto aspects = dstSubresource.aspectMask; aspects; ) {
+      auto aspect = vk::getNextAspect(aspects);
+
+      VkImageCopy imageRegion;
+      imageRegion.srcSubresource = srcSubresource;
+      imageRegion.srcSubresource.aspectMask = aspect;
+      imageRegion.srcOffset      = srcOffset;
+      imageRegion.dstSubresource = dstSubresource;
+      imageRegion.dstSubresource.aspectMask = aspect;
+      imageRegion.dstOffset      = dstOffset;
+      imageRegion.extent         = extent;
+
+      if (dstFormatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+        auto plane = &dstFormatInfo->planes[vk::getPlaneIndex(aspect)];
+        imageRegion.srcOffset.x /= plane->blockSize.width;
+        imageRegion.srcOffset.y /= plane->blockSize.height;
+        imageRegion.dstOffset.x /= plane->blockSize.width;
+        imageRegion.dstOffset.y /= plane->blockSize.height;
+        imageRegion.extent.width  /= plane->blockSize.width;
+        imageRegion.extent.height /= plane->blockSize.height;
+      }
+
+      m_cmd->cmdCopyImage(DxvkCmdBuffer::ExecBuffer,
+        srcImage->handle(), srcImageLayout,
+        dstImage->handle(), dstImageLayout,
+        1, &imageRegion);
+    }
     
     m_execBarriers.accessImage(
       dstImage, dstSubresourceRange,
