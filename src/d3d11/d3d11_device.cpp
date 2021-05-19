@@ -2041,6 +2041,23 @@ namespace dxvk {
     
     VkFormatFeatureFlags bufFeatures = fmtSupport.bufferFeatures;
     VkFormatFeatureFlags imgFeatures = fmtSupport.optimalTilingFeatures | fmtSupport.linearTilingFeatures;
+
+    // For multi-plane images, we want to check available view formats as well
+    if (fmtProperties->flags.test(DxvkFormatFlag::MultiPlane)) {
+      const VkFormatFeatureFlags featureMask
+        = VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT
+        | VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT
+        | VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT
+        | VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT
+        | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+
+      DXGI_VK_FORMAT_FAMILY formatFamily = LookupFamily(Format, DXGI_VK_FORMAT_MODE_ANY);
+
+      for (uint32_t i = 0; i < formatFamily.FormatCount; i++) {
+        VkFormatProperties viewFmtSupport = m_dxvkAdapter->formatProperties(formatFamily.Formats[i]);
+        imgFeatures |= (viewFmtSupport.optimalTilingFeatures | viewFmtSupport.linearTilingFeatures) & featureMask;
+      }
+    }
     
     UINT flags1 = 0;
     UINT flags2 = 0;
@@ -2093,7 +2110,8 @@ namespace dxvk {
         flags1 |= D3D11_FORMAT_SUPPORT_TEXTURECUBE
                |  D3D11_FORMAT_SUPPORT_SHADER_LOAD
                |  D3D11_FORMAT_SUPPORT_SHADER_GATHER
-               |  D3D11_FORMAT_SUPPORT_SHADER_SAMPLE;
+               |  D3D11_FORMAT_SUPPORT_SHADER_SAMPLE
+               |  D3D11_FORMAT_SUPPORT_VIDEO_PROCESSOR_INPUT;
         
         if (depthFormat != VK_FORMAT_UNDEFINED) {
           flags1 |= D3D11_FORMAT_SUPPORT_SHADER_GATHER_COMPARISON
@@ -2104,7 +2122,8 @@ namespace dxvk {
       // Format is a color format that can be used for rendering
       if (imgFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT) {
         flags1 |= D3D11_FORMAT_SUPPORT_RENDER_TARGET
-               |  D3D11_FORMAT_SUPPORT_MIP_AUTOGEN;
+               |  D3D11_FORMAT_SUPPORT_MIP_AUTOGEN
+               |  D3D11_FORMAT_SUPPORT_VIDEO_PROCESSOR_OUTPUT;
         
         if (m_dxvkDevice->features().core.features.logicOp)
           flags2 |= D3D11_FORMAT_SUPPORT2_OUTPUT_MERGER_LOGIC_OP;
