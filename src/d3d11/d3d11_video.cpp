@@ -463,6 +463,8 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           BOOL                            Enable,
     const RECT*                           pRect) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetState();
     state->outputTargetRectEnabled = Enable;
 
@@ -480,6 +482,8 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           BOOL                            YCbCr,
     const D3D11_VIDEO_COLOR*              pColor) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetState();
     state->outputBackgroundColorIsYCbCr = YCbCr;
     state->outputBackgroundColor = *pColor;
@@ -494,6 +498,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11VideoContext::VideoProcessorSetOutputColorSpace(
           ID3D11VideoProcessor*           pVideoProcessor,
     const D3D11_VIDEO_PROCESSOR_COLOR_SPACE *pColorSpace) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetState();
     state->outputColorSpace = *pColorSpace;
   }
@@ -518,6 +524,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11VideoContext::VideoProcessorSetOutputStereoMode(
           ID3D11VideoProcessor*           pVideoProcessor,
           BOOL                            Enable) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetState();
     state->outputStereoModeEnabled = Enable;
 
@@ -540,6 +548,8 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           UINT                            StreamIndex,
           D3D11_VIDEO_FRAME_FORMAT        Format) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
 
     if (!state)
@@ -556,6 +566,8 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           UINT                            StreamIndex,
     const D3D11_VIDEO_PROCESSOR_COLOR_SPACE *pColorSpace) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
 
     if (!state)
@@ -580,6 +592,8 @@ namespace dxvk {
           UINT                            StreamIndex,
           BOOL                            Enable,
     const RECT*                           pRect) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
 
     if (!state)
@@ -602,6 +616,8 @@ namespace dxvk {
           UINT                            StreamIndex,
           BOOL                            Enable,
     const RECT*                           pRect) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
 
     if (!state)
@@ -669,6 +685,8 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           UINT                            StreamIndex,
           BOOL                            Enable) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
 
     if (!state)
@@ -704,6 +722,8 @@ namespace dxvk {
           UINT                            StreamIndex,
           BOOL                            Enable,
           D3D11_VIDEO_PROCESSOR_ROTATION  Rotation) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
 
     if (!state)
@@ -721,6 +741,8 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           BOOL*                           pEnabled,
           RECT*                           pRect) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetState();
 
     if (pEnabled)
@@ -735,6 +757,8 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           BOOL*                           pYCbCr,
           D3D11_VIDEO_COLOR*              pColor) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetState();
     
     if (pYCbCr)
@@ -748,6 +772,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11VideoContext::VideoProcessorGetOutputColorSpace(
           ID3D11VideoProcessor*           pVideoProcessor,
           D3D11_VIDEO_PROCESSOR_COLOR_SPACE* pColorSpace) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetState();
 
     if (pColorSpace)
@@ -774,6 +800,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11VideoContext::VideoProcessorGetOutputStereoMode(
           ID3D11VideoProcessor*           pVideoProcessor,
           BOOL*                           pEnabled) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetState();
 
     if (pEnabled)
@@ -795,6 +823,8 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           UINT                            StreamIndex,
           D3D11_VIDEO_FRAME_FORMAT*       pFormat) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
 
     if (!state)
@@ -809,6 +839,8 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           UINT                            StreamIndex,
           D3D11_VIDEO_PROCESSOR_COLOR_SPACE* pColorSpace) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
 
     if (!state)
@@ -834,6 +866,8 @@ namespace dxvk {
           UINT                            StreamIndex,
           BOOL*                           pEnabled,
           RECT*                           pRect) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
 
     if (!state)
@@ -852,6 +886,8 @@ namespace dxvk {
           UINT                            StreamIndex,
           BOOL*                           pEnabled,
           RECT*                           pRect) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
 
     if (!state)
@@ -920,6 +956,8 @@ namespace dxvk {
           ID3D11VideoProcessor*           pVideoProcessor,
           UINT                            StreamIndex,
           BOOL*                           pEnabled) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
 
     if (!state)
@@ -955,6 +993,8 @@ namespace dxvk {
           UINT                            StreamIndex,
           BOOL*                           pEnable,
           D3D11_VIDEO_PROCESSOR_ROTATION* pRotation) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto state = static_cast<D3D11VideoProcessor*>(pVideoProcessor)->GetStreamState(StreamIndex);
 
     if (!state)
@@ -974,6 +1014,8 @@ namespace dxvk {
           UINT                            FrameIdx,
           UINT                            StreamCount,
     const D3D11_VIDEO_PROCESSOR_STREAM*   pStreams) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
     auto videoProcessor = static_cast<D3D11VideoProcessor*>(pVideoProcessor);
     bool hasStreamsEnabled = false;
 
