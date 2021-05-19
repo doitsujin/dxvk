@@ -500,15 +500,6 @@ namespace dxvk {
     const VkImageSubresourceRange&  subresources) {
     this->spillRenderPass(false);
 
-    // Allocate enough staging buffer memory to fit one
-    // single subresource, then dispatch multiple copies
-    VkDeviceSize dataSize = util::computeImageDataSize(
-      image->info().format,
-      image->mipLevelExtent(subresources.baseMipLevel));
-    
-    auto zeroBuffer = createZeroBuffer(dataSize);
-    auto zeroHandle = zeroBuffer->getSliceHandle();
-
     VkImageLayout layout = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
     this->initializeImage(image, subresources, layout,
@@ -517,23 +508,55 @@ namespace dxvk {
 
     m_execAcquires.recordCommands(m_cmd);
 
-    for (uint32_t level = 0; level < subresources.levelCount; level++) {
-      VkOffset3D offset = VkOffset3D { 0, 0, 0 };
-      VkExtent3D extent = image->mipLevelExtent(subresources.baseMipLevel + level);
+    auto formatInfo = image->formatInfo();
 
-      for (uint32_t layer = 0; layer < subresources.layerCount; layer++) {
-        VkBufferImageCopy region;
-        region.bufferOffset       = zeroHandle.offset;
-        region.bufferRowLength    = 0;
-        region.bufferImageHeight  = 0;
-        region.imageSubresource   = vk::makeSubresourceLayers(
-          vk::pickSubresource(subresources, level, layer));
-        region.imageOffset        = offset;
-        region.imageExtent        = extent;
+    for (auto aspects = formatInfo->aspectMask; aspects; ) {
+      auto aspect = vk::getNextAspect(aspects);
+      auto extent = image->mipLevelExtent(subresources.baseMipLevel);
+      auto elementSize = formatInfo->elementSize;
 
-        m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer,
-          zeroHandle.handle, image->handle(), layout, 1, &region);
+      if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+        auto plane = &formatInfo->planes[vk::getPlaneIndex(aspect)];
+        extent.width  /= plane->blockSize.width;
+        extent.height /= plane->blockSize.height;
+        elementSize = plane->elementSize;
       }
+
+      // Allocate enough staging buffer memory to fit one
+      // single subresource, then dispatch multiple copies
+      VkExtent3D blockCount = util::computeBlockCount(extent, formatInfo->blockSize);
+      VkDeviceSize dataSize = util::flattenImageExtent(blockCount) * elementSize;
+      
+      auto zeroBuffer = createZeroBuffer(dataSize);
+      auto zeroHandle = zeroBuffer->getSliceHandle();
+
+      for (uint32_t level = 0; level < subresources.levelCount; level++) {
+        VkOffset3D offset = VkOffset3D { 0, 0, 0 };
+        VkExtent3D extent = image->mipLevelExtent(subresources.baseMipLevel + level);
+
+        if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+          auto plane = &formatInfo->planes[vk::getPlaneIndex(aspect)];
+          extent.width  /= plane->blockSize.width;
+          extent.height /= plane->blockSize.height;
+        }
+
+        for (uint32_t layer = 0; layer < subresources.layerCount; layer++) {
+          VkBufferImageCopy region;
+          region.bufferOffset       = zeroHandle.offset;
+          region.bufferRowLength    = 0;
+          region.bufferImageHeight  = 0;
+          region.imageSubresource   = vk::makeSubresourceLayers(
+            vk::pickSubresource(subresources, level, layer));
+          region.imageSubresource.aspectMask = aspect;
+          region.imageOffset        = offset;
+          region.imageExtent        = extent;
+
+          m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer,
+            zeroHandle.handle, image->handle(), layout, 1, &region);
+        }
+      }
+
+      m_cmd->trackResource<DxvkAccess::Read>(zeroBuffer);
     }
 
     m_execBarriers.accessImage(
@@ -545,7 +568,6 @@ namespace dxvk {
       image->info().access);
     
     m_cmd->trackResource<DxvkAccess::Write>(image);
-    m_cmd->trackResource<DxvkAccess::Read>(zeroBuffer);
   }
   
   
