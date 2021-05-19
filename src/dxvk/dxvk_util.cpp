@@ -73,6 +73,75 @@ namespace dxvk::util {
   }
   
   
+  void packImageData(
+          void*             dstBytes,
+    const void*             srcBytes,
+          VkDeviceSize      rowPitch,
+          VkDeviceSize      slicePitch,
+          VkImageType       imageType,
+          VkExtent3D        imageExtent,
+          uint32_t          imageLayers,
+    const DxvkFormatInfo*   formatInfo,
+          VkImageAspectFlags aspectMask) {
+    for (uint32_t i = 0; i < imageLayers; i++) {
+      auto dstData = reinterpret_cast<      char*>(dstBytes);
+      auto srcData = reinterpret_cast<const char*>(srcBytes) + i * slicePitch;
+
+      for (auto aspects = aspectMask; aspects; ) {
+        auto aspect = vk::getNextAspect(aspects);
+        auto extent = imageExtent;
+        auto elementSize = formatInfo->elementSize;
+
+        if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+          auto plane = &formatInfo->planes[vk::getPlaneIndex(aspect)];
+          extent.width  /= plane->blockSize.width;
+          extent.height /= plane->blockSize.height;
+          elementSize = plane->elementSize;
+        }
+
+        auto blockCount = computeBlockCount(extent, formatInfo->blockSize);
+
+        VkDeviceSize bytesPerRow   = blockCount.width  * elementSize;
+        VkDeviceSize bytesPerSlice = blockCount.height * bytesPerRow;
+        VkDeviceSize bytesTotal    = blockCount.depth  * bytesPerSlice;
+
+        const bool directCopy = ((bytesPerRow   == rowPitch  ) || (blockCount.height == 1))
+                             && ((bytesPerSlice == slicePitch) || (blockCount.depth  == 1));
+
+        if (directCopy) {
+          std::memcpy(dstData, srcData, bytesTotal);
+          dstData += bytesTotal;
+
+          switch (imageType) {
+            case VK_IMAGE_TYPE_1D: srcData += bytesPerRow;                   break;
+            case VK_IMAGE_TYPE_2D: srcData += blockCount.height * rowPitch;  break;
+            case VK_IMAGE_TYPE_3D: srcData += blockCount.depth * slicePitch; break;
+            default: ;
+          }
+        } else {
+          for (uint32_t i = 0; i < blockCount.depth; i++) {
+            for (uint32_t j = 0; j < blockCount.height; j++) {
+              std::memcpy(
+                dstData + j * bytesPerRow,
+                srcData + j * rowPitch,
+                bytesPerRow);
+            }
+            
+            switch (imageType) {
+              case VK_IMAGE_TYPE_1D: srcData += bytesPerRow;                  break;
+              case VK_IMAGE_TYPE_2D: srcData += blockCount.height * rowPitch; break;
+              case VK_IMAGE_TYPE_3D: srcData += slicePitch;                   break;
+              default: ;
+            }
+            
+            dstData += bytesPerSlice;
+          }
+        }
+      }
+    }
+  }
+
+
   VkDeviceSize computeImageDataSize(VkFormat format, VkExtent3D extent) {
     const DxvkFormatInfo* formatInfo = imageFormatInfo(format);
 

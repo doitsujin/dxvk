@@ -40,6 +40,30 @@ namespace dxvk::util {
           VkDeviceSize      pitchPerLayer);
   
   /**
+   * \brief Writes tightly packed image data to a buffer
+   * 
+   * \param [in] dstBytes Destination buffer pointer
+   * \param [in] srcBytes Pointer to source data
+   * \param [in] rowPitch Number of bytes between rows
+   * \param [in] slicePitch Number of bytes between layers
+   * \param [in] imageType Image type (2D, 3D etc)
+   * \param [in] imageExtent Image extent, in pixels
+   * \param [in] imageLayers Image layer count
+   * \param [in] formatInfo Image format info
+   * \param [in] aspectMask Image aspects to pack
+   */
+  void packImageData(
+          void*             dstBytes,
+    const void*             srcBytes,
+          VkDeviceSize      rowPitch,
+          VkDeviceSize      slicePitch,
+          VkImageType       imageType,
+          VkExtent3D        imageExtent,
+          uint32_t          imageLayers,
+    const DxvkFormatInfo*   formatInfo,
+          VkImageAspectFlags aspectMask);
+  
+  /**
    * \brief Computes minimum extent
    * 
    * \param [in] a First value
