@@ -180,16 +180,6 @@ namespace dxvk {
         "\n  Flags:   ", std::hex, m_desc.MiscFlags));
     }
     
-    // If necessary, create the mapped linear buffer
-    for (uint32_t i = 0; i < m_desc.ArraySize; i++) {
-      for (uint32_t j = 0; j < m_desc.MipLevels; j++) {
-        if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)
-          m_buffers.push_back(CreateMappedBuffer(j));
-        if (m_mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_NONE)
-          m_mapTypes.push_back(D3D11_MAP(~0u));
-      }
-    }
-    
     // Create the image on a host-visible memory type
     // in case it is going to be mapped directly.
     VkMemoryPropertyFlags memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -204,6 +194,16 @@ namespace dxvk {
       m_image = m_device->GetDXVKDevice()->createImage(imageInfo, memoryProperties);
     else
       m_image = m_device->GetDXVKDevice()->createImageFromVkImage(imageInfo, vkImage);
+
+    // If necessary, create the mapped linear buffer
+    for (uint32_t i = 0; i < m_desc.ArraySize; i++) {
+      for (uint32_t j = 0; j < m_desc.MipLevels; j++) {
+        if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)
+          m_buffers.push_back(CreateMappedBuffer(j));
+        if (m_mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_NONE)
+          m_mapTypes.push_back(D3D11_MAP(~0u));
+      }
+    }
   }
   
   
@@ -223,6 +223,66 @@ namespace dxvk {
   }
   
   
+  D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT D3D11CommonTexture::GetSubresourceLayout(
+          VkImageAspectFlags    Aspect,
+          UINT                  Subresource) const {
+    VkImageSubresource subresource = GetSubresourceFromIndex(Aspect, Subresource);
+    D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT layout = { };
+
+    switch (m_mapMode) {
+      case D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT: {
+        auto vkLayout = m_image->querySubresourceLayout(subresource);
+        layout.Offset     = vkLayout.offset;
+        layout.Size       = vkLayout.size;
+        layout.RowPitch   = vkLayout.rowPitch;
+        layout.DepthPitch = vkLayout.depthPitch;
+      } break;
+
+      case D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER: {
+        auto formatInfo = imageFormatInfo(m_device->LookupPackedFormat(m_desc.Format, GetFormatMode()).Format);
+        auto aspects = Aspect;
+
+        // The exact aspect mask only matters for multi-plane formats,
+        // but depth-stencil is assumed to be packed in memory
+        if (aspects == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+          aspects = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+        VkExtent3D mipExtent = m_image->mipLevelExtent(subresource.mipLevel);
+
+        while (aspects) {
+          auto aspect = vk::getNextAspect(aspects);
+          auto extent = mipExtent;
+          auto elementSize = formatInfo->elementSize;
+
+          if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+            auto plane = &formatInfo->planes[vk::getPlaneIndex(aspect)];
+            extent.width  /= plane->blockSize.width;
+            extent.height /= plane->blockSize.height;
+            elementSize = plane->elementSize;
+          }
+
+          auto blockCount = util::computeBlockCount(extent, formatInfo->blockSize);
+
+          if (!layout.RowPitch) {
+            layout.RowPitch   = elementSize * blockCount.width;
+            layout.DepthPitch = elementSize * blockCount.width * blockCount.height;
+          }
+
+          layout.Size += elementSize * blockCount.width * blockCount.height * blockCount.depth;
+        }
+      } break;
+
+      case D3D11_COMMON_TEXTURE_MAP_MODE_NONE:
+        break; /* no op */
+    }
+
+    // D3D wants us to return the total subresource size in some instances
+    if (m_image->info().type < VK_IMAGE_TYPE_2D) layout.RowPitch = layout.Size;
+    if (m_image->info().type < VK_IMAGE_TYPE_3D) layout.DepthPitch = layout.Size;
+    return layout;
+  }
+
+
   DXGI_VK_FORMAT_MODE D3D11CommonTexture::GetFormatMode() const {
     if (m_desc.BindFlags & D3D11_BIND_RENDER_TARGET)
       return DXGI_VK_FORMAT_MODE_COLOR;
@@ -462,18 +522,8 @@ namespace dxvk {
     const DxvkFormatInfo* formatInfo = imageFormatInfo(
       m_device->LookupPackedFormat(m_desc.Format, GetFormatMode()).Format);
     
-    const VkExtent3D mipExtent = util::computeMipLevelExtent(
-      VkExtent3D { m_desc.Width, m_desc.Height, m_desc.Depth },
-      MipLevel);
-    
-    const VkExtent3D blockCount = util::computeBlockCount(
-      mipExtent, formatInfo->blockSize);
-    
     DxvkBufferCreateInfo info;
-    info.size   = formatInfo->elementSize
-                * blockCount.width
-                * blockCount.height
-                * blockCount.depth;
+    info.size   = GetSubresourceLayout(formatInfo->aspectMask, MipLevel).Size;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
                 | VK_BUFFER_USAGE_TRANSFER_DST_BIT
                 | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;

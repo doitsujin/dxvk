@@ -46,6 +46,17 @@ namespace dxvk {
     UINT             MiscFlags;
     D3D11_TEXTURE_LAYOUT TextureLayout;
   };
+
+
+  /**
+   * \brief Packed subresource layout
+   */
+  struct D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT {
+    UINT64          Offset;
+    UINT64          Size;
+    UINT            RowPitch;
+    UINT            DepthPitch;
+  };
   
   
   /**
@@ -175,7 +186,18 @@ namespace dxvk {
     VkImageSubresource GetSubresourceFromIndex(
             VkImageAspectFlags    Aspect,
             UINT                  Subresource) const;
-    
+
+    /**
+     * \brief Computes subresource layout for the given subresource
+     *
+     * \param [in] Aspect The image aspect
+     * \param [in] Subresource Subresource index
+     * \returns Memory layout of the mapped subresource
+     */
+    D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT GetSubresourceLayout(
+            VkImageAspectFlags    Aspect,
+            UINT                  Subresource) const;
+
     /**
      * \brief Format mode
      * 
