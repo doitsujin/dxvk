@@ -866,8 +866,7 @@ namespace dxvk {
       cLevelExtent  = srcExtent,
       cDstExtent    = dstExtent
     ] (DxvkContext* ctx) {
-      ctx->copyImageToBuffer(
-        cBuffer, 0, cDstExtent,
+      ctx->copyImageToBuffer(cBuffer, 0, 4,
         cImage, cSubresources, VkOffset3D { 0, 0, 0 },
         cLevelExtent);
     });
@@ -4162,8 +4161,7 @@ namespace dxvk {
           cPackedFormat = packedFormat
         ] (DxvkContext* ctx) {
           if (cSubresources.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-            ctx->copyImageToBuffer(
-              cImageBuffer, 0, VkExtent2D { 0u, 0u },
+            ctx->copyImageToBuffer(cImageBuffer, 0, 0,
               cImage, cSubresources, VkOffset3D { 0, 0, 0 },
               cLevelExtent);
           } else {

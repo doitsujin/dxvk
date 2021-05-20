@@ -892,7 +892,7 @@ namespace dxvk {
   void DxvkContext::copyImageToBuffer(
     const Rc<DxvkBuffer>&       dstBuffer,
           VkDeviceSize          dstOffset,
-          VkExtent2D            dstExtent,
+          VkDeviceSize          rowAlignment,
     const Rc<DxvkImage>&        srcImage,
           VkImageSubresourceLayers srcSubresource,
           VkOffset3D            srcOffset,
@@ -926,17 +926,8 @@ namespace dxvk {
 
     m_execAcquires.recordCommands(m_cmd);
     
-    VkBufferImageCopy copyRegion;
-    copyRegion.bufferOffset       = dstSlice.offset;
-    copyRegion.bufferRowLength    = dstExtent.width;
-    copyRegion.bufferImageHeight  = dstExtent.height;
-    copyRegion.imageSubresource   = srcSubresource;
-    copyRegion.imageOffset        = srcOffset;
-    copyRegion.imageExtent        = srcExtent;
-    
-    m_cmd->cmdCopyImageToBuffer(DxvkCmdBuffer::ExecBuffer,
-      srcImage->handle(), srcImageLayoutTransfer,
-      dstSlice.handle, 1, &copyRegion);
+    this->copyImageBufferData<false>(DxvkCmdBuffer::ExecBuffer, srcImage, srcSubresource,
+      srcOffset, srcExtent, srcImageLayoutTransfer, dstSlice, rowAlignment, 0);
     
     m_execBarriers.accessImage(
       srcImage, srcSubresourceRange,
