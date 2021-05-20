@@ -11,6 +11,8 @@
 
 #include "../spirv/spirv_module.h"
 
+#include "../util/util_time.h"
+
 namespace dxvk {
   
   class DxgiDevice;
@@ -184,8 +186,8 @@ namespace dxvk {
     HWND                            m_window;
     DXGI_SWAP_CHAIN_DESC1           m_desc;
     DXGI_SWAP_CHAIN_FULLSCREEN_DESC m_descFs;
-    DXGI_FRAME_STATISTICS           m_stats;
-    
+    UINT                            m_presentCount;
+
     Com<IDXGIVkSwapChain>           m_presenter;
     
     HMONITOR                        m_monitor;

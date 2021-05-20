@@ -14,15 +14,9 @@ namespace dxvk {
     m_window    (hWnd),
     m_desc      (*pDesc),
     m_descFs    (*pFullscreenDesc),
+    m_presentCount(0u),
     m_presenter (pPresenter),
     m_monitor   (nullptr) {
-    // Initialize frame statistics
-    m_stats.PresentCount         = 0;
-    m_stats.PresentRefreshCount  = 0;
-    m_stats.SyncRefreshCount     = 0;
-    m_stats.SyncQPCTime.QuadPart = 0;
-    m_stats.SyncGPUTime.QuadPart = 0;
-    
     if (FAILED(m_presenter->GetAdapter(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&m_adapter))))
       throw DxvkError("DXGI: Failed to get adapter for present device");
     
@@ -171,10 +165,22 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetFrameStatistics(DXGI_FRAME_STATISTICS* pStats) {
-    if (pStats == nullptr)
+    std::lock_guard<std::recursive_mutex> lock(m_lockWindow);
+
+    if (!pStats)
       return E_INVALIDARG;
-    
-    *pStats = m_stats;
+
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("DxgiSwapChain::GetFrameStatistics: Semi-stub");
+
+    // TODO deal with the refresh counts at some point
+    pStats->PresentCount = m_presentCount;
+    pStats->PresentRefreshCount = 0;
+    pStats->SyncRefreshCount = 0;
+    pStats->SyncQPCTime.QuadPart = dxvk::high_resolution_clock::getCounter();
+    pStats->SyncGPUTime.QuadPart = 0;
     return S_OK;
   }
   
@@ -228,7 +234,7 @@ namespace dxvk {
     if (pLastPresentCount == nullptr)
       return E_INVALIDARG;
     
-    *pLastPresentCount = m_stats.PresentCount;
+    *pLastPresentCount = m_presentCount;
     return S_OK;
   }
   
@@ -259,6 +265,7 @@ namespace dxvk {
     std::lock_guard<std::mutex> lockBuf(m_lockBuffer);
 
     try {
+      m_presentCount++;
       return m_presenter->Present(SyncInterval, PresentFlags, nullptr);
     } catch (const DxvkError& err) {
       Logger::err(err.message());
