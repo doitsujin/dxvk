@@ -71,15 +71,15 @@ namespace dxvk {
       m_bufferView = pDevice->GetDXVKDevice()->createBufferView(
         buffer->GetBuffer(), viewInfo);
     } else {
-      const DXGI_VK_FORMAT_INFO formatInfo = pDevice->LookupFormat(
-        pDesc->Format, GetCommonTexture(pResource)->GetFormatMode());
+      auto texture = GetCommonTexture(pResource);
+      auto formatInfo = pDevice->LookupFormat(pDesc->Format, texture->GetFormatMode());
       
       DxvkImageViewCreateInfo viewInfo;
       viewInfo.format  = formatInfo.Format;
       viewInfo.aspect  = formatInfo.Aspect;
       viewInfo.swizzle = formatInfo.Swizzle;
       viewInfo.usage   = VK_IMAGE_USAGE_SAMPLED_BIT;
-      
+
       // Shaders expect the stencil value in the G component
       if (viewInfo.aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
         viewInfo.swizzle = VkComponentMapping {
@@ -164,6 +164,9 @@ namespace dxvk {
           throw DxvkError("D3D11: Invalid view dimension for image SRV");
       }
       
+      if (texture->GetPlaneCount() > 1)
+        viewInfo.aspect = vk::getPlaneAspect(GetPlaneSlice(pDesc));
+
       // Populate view info struct
       m_info.Image.Aspects   = viewInfo.aspect;
       m_info.Image.MinLevel  = viewInfo.minLevel;
@@ -172,8 +175,7 @@ namespace dxvk {
       m_info.Image.NumLayers = viewInfo.numLayers;
 
       // Create the underlying image view object
-      m_imageView = pDevice->GetDXVKDevice()->createImageView(
-        GetCommonTexture(pResource)->GetImage(), viewInfo);
+      m_imageView = pDevice->GetDXVKDevice()->createImageView(texture->GetImage(), viewInfo);
     }
   }
   
@@ -371,7 +373,8 @@ namespace dxvk {
   
   
   D3D11_SHADER_RESOURCE_VIEW_DESC1 D3D11ShaderResourceView::PromoteDesc(
-    const D3D11_SHADER_RESOURCE_VIEW_DESC*  pDesc) {
+    const D3D11_SHADER_RESOURCE_VIEW_DESC*  pDesc,
+          UINT                              Plane) {
     D3D11_SHADER_RESOURCE_VIEW_DESC1 dstDesc;
     dstDesc.Format            = pDesc->Format;
     dstDesc.ViewDimension     = pDesc->ViewDimension;
@@ -395,7 +398,7 @@ namespace dxvk {
       case D3D11_SRV_DIMENSION_TEXTURE2D:
         dstDesc.Texture2D.MostDetailedMip = pDesc->Texture2D.MostDetailedMip;
         dstDesc.Texture2D.MipLevels       = pDesc->Texture2D.MipLevels;
-        dstDesc.Texture2D.PlaneSlice      = 0;
+        dstDesc.Texture2D.PlaneSlice      = Plane;
         break;
 
       case D3D11_SRV_DIMENSION_TEXTURE2DARRAY:
@@ -403,7 +406,7 @@ namespace dxvk {
         dstDesc.Texture2DArray.MipLevels       = pDesc->Texture2DArray.MipLevels;
         dstDesc.Texture2DArray.FirstArraySlice = pDesc->Texture2DArray.FirstArraySlice;
         dstDesc.Texture2DArray.ArraySize       = pDesc->Texture2DArray.ArraySize;
-        dstDesc.Texture2DArray.PlaneSlice      = 0;
+        dstDesc.Texture2DArray.PlaneSlice      = Plane;
         break;
 
       case D3D11_SRV_DIMENSION_TEXTURE2DMS:
@@ -535,9 +538,6 @@ namespace dxvk {
       case D3D11_SRV_DIMENSION_TEXTURE2D:
         if (pDesc->Texture2D.MipLevels > mipLevels - pDesc->Texture2D.MostDetailedMip)
           pDesc->Texture2D.MipLevels = mipLevels - pDesc->Texture2D.MostDetailedMip;
-        
-        if (pDesc->Texture2D.PlaneSlice != 0)
-          return E_INVALIDARG;
         break;
       
       case D3D11_SRV_DIMENSION_TEXTURE2DARRAY:
@@ -545,9 +545,6 @@ namespace dxvk {
           pDesc->Texture2DArray.MipLevels = mipLevels - pDesc->Texture2DArray.MostDetailedMip;
         if (pDesc->Texture2DArray.ArraySize > numLayers - pDesc->Texture2DArray.FirstArraySlice)
           pDesc->Texture2DArray.ArraySize = numLayers - pDesc->Texture2DArray.FirstArraySlice;
-        
-        if (pDesc->Texture2DArray.PlaneSlice != 0)
-          return E_INVALIDARG;
         break;
       
       case D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
@@ -579,4 +576,16 @@ namespace dxvk {
     return S_OK;
   }
   
+
+  UINT D3D11ShaderResourceView::GetPlaneSlice(const D3D11_SHADER_RESOURCE_VIEW_DESC1* pDesc) {
+    switch (pDesc->ViewDimension) {
+      case D3D11_SRV_DIMENSION_TEXTURE2D:
+        return pDesc->Texture2D.PlaneSlice;
+      case D3D11_SRV_DIMENSION_TEXTURE2DARRAY:
+        return pDesc->Texture2DArray.PlaneSlice;
+      default:
+        return 0;
+    }
+  }
+
 }

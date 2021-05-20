@@ -111,13 +111,16 @@ namespace dxvk {
    * texture, certain restrictions apply on which formats
    * can be used to view the resource.
    * \param [in] pResource The resource to check
+   * \param [in] BindFlags Bind flags required for the view
    * \param [in] Format The desired view format
+   * \param [in] Plane Plane slice for planar formats
    * \returns \c true if the format is compatible
    */
   BOOL CheckResourceViewCompatibility(
           ID3D11Resource*             pResource,
           UINT                        BindFlags,
-          DXGI_FORMAT                 Format);
+          DXGI_FORMAT                 Format,
+          UINT                        Plane);
   
   /**
    * \brief Increments private reference count of a resource

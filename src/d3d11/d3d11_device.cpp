@@ -299,8 +299,10 @@ namespace dxvk {
           ID3D11ShaderResourceView**        ppSRView) {
     InitReturnPtr(ppSRView);
 
+    uint32_t plane = GetViewPlaneIndex(pResource, pDesc ? pDesc->Format : DXGI_FORMAT_UNKNOWN);
+
     D3D11_SHADER_RESOURCE_VIEW_DESC1 desc = pDesc
-      ? D3D11ShaderResourceView::PromoteDesc(pDesc)
+      ? D3D11ShaderResourceView::PromoteDesc(pDesc, plane)
       : D3D11_SHADER_RESOURCE_VIEW_DESC1();
     
     ID3D11ShaderResourceView1* view = nullptr;
@@ -342,13 +344,16 @@ namespace dxvk {
       if (FAILED(D3D11ShaderResourceView::NormalizeDesc(pResource, &desc)))
         return E_INVALIDARG;
     }
+
+    uint32_t plane = D3D11ShaderResourceView::GetPlaneSlice(&desc);
     
-    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_SHADER_RESOURCE, desc.Format)) {
+    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_SHADER_RESOURCE, desc.Format, plane)) {
       Logger::err(str::format("D3D11: Cannot create shader resource view:",
         "\n  Resource type:   ", resourceDesc.Dim,
         "\n  Resource usage:  ", resourceDesc.BindFlags,
         "\n  Resource format: ", resourceDesc.Format,
-        "\n  View format:     ", desc.Format));
+        "\n  View format:     ", desc.Format,
+        "\n  View plane:      ", plane));
       return E_INVALIDARG;
     }
     
@@ -415,7 +420,7 @@ namespace dxvk {
         return E_INVALIDARG;
     }
     
-    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_UNORDERED_ACCESS, desc.Format)) {
+    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_UNORDERED_ACCESS, desc.Format, 0)) {
       Logger::err(str::format("D3D11: Cannot create unordered access view:",
         "\n  Resource type:   ", resourceDesc.Dim,
         "\n  Resource usage:  ", resourceDesc.BindFlags,
@@ -495,7 +500,7 @@ namespace dxvk {
         return E_INVALIDARG;
     }
     
-    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_RENDER_TARGET, desc.Format)) {
+    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_RENDER_TARGET, desc.Format, 0)) {
       Logger::err(str::format("D3D11: Cannot create render target view:",
         "\n  Resource type:   ", resourceDesc.Dim,
         "\n  Resource usage:  ", resourceDesc.BindFlags,
@@ -543,7 +548,7 @@ namespace dxvk {
         return E_INVALIDARG;
     }
     
-    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_DEPTH_STENCIL, desc.Format)) {
+    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_DEPTH_STENCIL, desc.Format, 0)) {
       Logger::err(str::format("D3D11: Cannot create depth-stencil view:",
         "\n  Resource type:   ", resourceDesc.Dim,
         "\n  Resource usage:  ", resourceDesc.BindFlags,
@@ -2219,6 +2224,32 @@ namespace dxvk {
   }
   
   
+  uint32_t D3D11Device::GetViewPlaneIndex(
+          ID3D11Resource*         pResource,
+          DXGI_FORMAT             ViewFormat) {
+    auto texture = GetCommonTexture(pResource);
+
+    if (!texture)
+      return 0;
+
+    uint32_t planeCount = texture->GetPlaneCount();
+
+    if (planeCount == 1)
+      return 0;
+
+    auto formatMode   = texture->GetFormatMode();
+    auto formatFamily = LookupFamily(texture->Desc()->Format, formatMode);
+    auto viewFormat   = LookupFormat(ViewFormat, formatMode);
+
+    for (uint32_t i = 0; i < formatFamily.FormatCount; i++) {
+      if (formatFamily.Formats[i] == viewFormat.Format)
+        return i % planeCount;
+    }
+
+    return ~0u;
+  }
+
+
   template<typename Void>
   void D3D11Device::CopySubresourceData(
           Void*                       pData,

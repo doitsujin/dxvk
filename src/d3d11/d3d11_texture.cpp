@@ -294,7 +294,12 @@ namespace dxvk {
   }
   
   
-  bool D3D11CommonTexture::CheckViewCompatibility(UINT BindFlags, DXGI_FORMAT Format) const {
+  uint32_t D3D11CommonTexture::GetPlaneCount() const {
+    return vk::getPlaneCount(m_image->formatInfo()->aspectMask);
+  }
+
+
+  bool D3D11CommonTexture::CheckViewCompatibility(UINT BindFlags, DXGI_FORMAT Format, UINT Plane) const {
     const DxvkImageCreateInfo& imageInfo = m_image->info();
 
     // Check whether the given bind flags are supported
@@ -306,6 +311,12 @@ namespace dxvk {
     DXGI_VK_FORMAT_INFO viewFormat = m_device->LookupFormat(Format,        formatMode);
     DXGI_VK_FORMAT_INFO baseFormat = m_device->LookupFormat(m_desc.Format, formatMode);
     
+    // Check whether the plane index is valid for the given format
+    uint32_t planeCount = GetPlaneCount();
+
+    if (Plane >= planeCount)
+      return false;
+
     if (imageInfo.flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) {
       // Check whether the given combination of image
       // view type and view format is actually supported
@@ -314,19 +325,21 @@ namespace dxvk {
       if (!CheckFormatFeatureSupport(viewFormat.Format, features))
         return false;
 
-      // Using the image format itself is always legal
-      if (viewFormat.Format == baseFormat.Format)
+      // Using the image format itself is supported for non-planar formats
+      if (viewFormat.Format == baseFormat.Format && planeCount == 1)
         return true;
       
-      // If there is a list of compatible formats, the
-      // view format must be included in that list.
-      for (size_t i = 0; i < imageInfo.viewFormatCount; i++) {
-        if (imageInfo.viewFormats[i] == viewFormat.Format)
+      // If there is a list of compatible formats, the view format must be
+      // included in that list. For planar formats, the list is laid out in
+      // such a way that the n-th format is supported for the n-th plane. 
+      for (size_t i = Plane; i < imageInfo.viewFormatCount; i += planeCount) {
+        if (imageInfo.viewFormats[i] == viewFormat.Format) {
           return true;
+        }
       }
 
       // Otherwise, all bit-compatible formats can be used.
-      if (imageInfo.viewFormatCount == 0) {
+      if (imageInfo.viewFormatCount == 0 && planeCount == 1) {
         auto baseFormatInfo = imageFormatInfo(baseFormat.Format);
         auto viewFormatInfo = imageFormatInfo(viewFormat.Format);
         
@@ -338,7 +351,7 @@ namespace dxvk {
     } else {
       // For non-mutable images, the view format
       // must be identical to the image format.
-      return viewFormat.Format == baseFormat.Format;
+      return viewFormat.Format == baseFormat.Format && planeCount == 1;
     }
   }
   

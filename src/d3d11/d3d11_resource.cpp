@@ -187,12 +187,13 @@ namespace dxvk {
   BOOL CheckResourceViewCompatibility(
           ID3D11Resource*             pResource,
           UINT                        BindFlags,
-          DXGI_FORMAT                 Format) {
+          DXGI_FORMAT                 Format,
+          UINT                        Plane) {
     auto texture = GetCommonTexture(pResource);
     auto buffer  = GetCommonBuffer (pResource);
     
     return texture != nullptr
-      ? texture->CheckViewCompatibility(BindFlags, Format)
+      ? texture->CheckViewCompatibility(BindFlags, Format, Plane)
       : buffer ->CheckViewCompatibility(BindFlags, Format);
   }
 

@@ -471,6 +471,10 @@ namespace dxvk {
     BOOL GetImageTypeSupport(
             VkFormat    Format,
             VkImageType Type) const;
+
+    uint32_t GetViewPlaneIndex(
+            ID3D11Resource*         pResource,
+            DXGI_FORMAT             ViewFormat);
     
     template<typename Void>
     void CopySubresourceData(
