@@ -373,7 +373,12 @@ namespace dxvk {
 
     if (FAILED(hr))
       return hr;
-    
+
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("DxgiOutput::GetFrameStatistics: Stub");
+
     *pStats = monitorInfo->FrameStats;
     m_monitorInfo->ReleaseMonitorData();
     return S_OK;
