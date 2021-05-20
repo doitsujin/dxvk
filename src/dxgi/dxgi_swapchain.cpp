@@ -265,8 +265,10 @@ namespace dxvk {
     std::lock_guard<std::mutex> lockBuf(m_lockBuffer);
 
     try {
-      m_presentCount++;
-      return m_presenter->Present(SyncInterval, PresentFlags, nullptr);
+      HRESULT hr = m_presenter->Present(SyncInterval, PresentFlags, nullptr);
+      if (hr == S_OK && !(PresentFlags & DXGI_PRESENT_TEST))
+        m_presentCount++;
+      return hr;
     } catch (const DxvkError& err) {
       Logger::err(err.message());
       return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
