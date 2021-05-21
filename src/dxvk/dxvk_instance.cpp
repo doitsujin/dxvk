@@ -154,8 +154,6 @@ namespace dxvk {
   
   
   std::vector<Rc<DxvkAdapter>> DxvkInstance::queryAdapters() {
-    DxvkDeviceFilter filter;
-    
     uint32_t numAdapters = 0;
     if (m_vki->vkEnumeratePhysicalDevices(m_vki->instance(), &numAdapters, nullptr) != VK_SUCCESS)
       throw DxvkError("DxvkInstance::enumAdapters: Failed to enumerate adapters");
@@ -163,15 +161,22 @@ namespace dxvk {
     std::vector<VkPhysicalDevice> adapters(numAdapters);
     if (m_vki->vkEnumeratePhysicalDevices(m_vki->instance(), &numAdapters, adapters.data()) != VK_SUCCESS)
       throw DxvkError("DxvkInstance::enumAdapters: Failed to enumerate adapters");
-    
-    std::vector<Rc<DxvkAdapter>> result;
-    for (uint32_t i = 0; i < numAdapters; i++) {
-      VkPhysicalDeviceProperties deviceProperties;
-      m_vki->vkGetPhysicalDeviceProperties(adapters[i], &deviceProperties);
 
-      if (deviceProperties.apiVersion < VK_MAKE_VERSION(1, 1, 0))
-        Logger::warn(str::format("Skipping Vulkan 1.0 adapter: ", deviceProperties.deviceName));
-      else if (filter.testAdapter(deviceProperties))
+    std::vector<VkPhysicalDeviceProperties> deviceProperties(numAdapters);
+    DxvkDeviceFilterFlags filterFlags = 0;
+
+    for (uint32_t i = 0; i < numAdapters; i++) {
+      m_vki->vkGetPhysicalDeviceProperties(adapters[i], &deviceProperties[i]);
+
+      if (deviceProperties[i].deviceType != VK_PHYSICAL_DEVICE_TYPE_CPU)
+        filterFlags.set(DxvkDeviceFilterFlag::SkipCpuDevices);
+    }
+
+    DxvkDeviceFilter filter(filterFlags);
+    std::vector<Rc<DxvkAdapter>> result;
+
+    for (uint32_t i = 0; i < numAdapters; i++) {
+      if (filter.testAdapter(deviceProperties[i]))
         result.push_back(new DxvkAdapter(m_vki, adapters[i]));
     }
     

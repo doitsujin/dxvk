@@ -13,6 +13,7 @@ namespace dxvk {
    */
   enum class DxvkDeviceFilterFlag {
     MatchDeviceName   = 0,
+    SkipCpuDevices    = 1,
   };
   
   using DxvkDeviceFilterFlags = Flags<DxvkDeviceFilterFlag>;
@@ -30,7 +31,7 @@ namespace dxvk {
     
   public:
     
-    DxvkDeviceFilter();
+    DxvkDeviceFilter(DxvkDeviceFilterFlags flags);
     ~DxvkDeviceFilter();
     
     /**
