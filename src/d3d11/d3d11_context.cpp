@@ -4,6 +4,7 @@
 #include "d3d11_device.h"
 #include "d3d11_query.h"
 #include "d3d11_texture.h"
+#include "d3d11_video.h"
 
 #include "../dxbc/dxbc_util.h"
 
@@ -959,6 +960,7 @@ namespace dxvk {
     auto dsv = dynamic_cast<D3D11DepthStencilView*>(pView);
     auto rtv = dynamic_cast<D3D11RenderTargetView*>(pView);
     auto uav = dynamic_cast<D3D11UnorderedAccessView*>(pView);
+    auto vov = dynamic_cast<D3D11VideoProcessorOutputView*>(pView);
 
     // Retrieve underlying resource view
     Rc<DxvkBufferView> bufView;
@@ -974,6 +976,9 @@ namespace dxvk {
       bufView = uav->GetBufferView();
       imgView = uav->GetImageView();
     }
+
+    if (vov != nullptr)
+      imgView = vov->GetView();
 
     // 3D views are unsupported
     if (imgView != nullptr
