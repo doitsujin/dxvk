@@ -2041,31 +2041,10 @@ namespace dxvk {
           VkDeviceSize              pitchPerLayer) {
     this->spillRenderPass(true);
 
-    // Upload data through a staging buffer. Special care needs to
-    // be taken when dealing with compressed image formats: Rather
-    // than copying pixels, we'll be copying blocks of pixels.
-    const DxvkFormatInfo* formatInfo = image->formatInfo();
-    
-    // Align image extent to a full block. This is necessary in
-    // case the image size is not a multiple of the block size.
-    VkExtent3D elementCount = util::computeBlockCount(
-      imageExtent, formatInfo->blockSize);
-    elementCount.depth *= subresources.layerCount;
-    
-    // Allocate staging buffer memory for the image data. The
-    // pixels or blocks will be tightly packed within the buffer.
-    auto stagingSlice = m_staging.alloc(CACHE_LINE_SIZE,
-      formatInfo->elementSize * util::flattenImageExtent(elementCount));
-    auto stagingHandle = stagingSlice.getSliceHandle();
-    
-    util::packImageData(stagingHandle.mapPtr, data,
-      elementCount, formatInfo->elementSize,
-      pitchPerRow, pitchPerLayer);
-    
     // Prepare the image layout. If the given extent covers
     // the entire image, we may discard its previous contents.
     auto subresourceRange = vk::makeSubresourceRange(subresources);
-    subresourceRange.aspectMask = formatInfo->aspectMask;
+    subresourceRange.aspectMask = image->formatInfo()->aspectMask;
 
     this->prepareImage(m_execBarriers, image, subresourceRange);
 
@@ -2091,20 +2070,9 @@ namespace dxvk {
 
     m_execAcquires.recordCommands(m_cmd);
     
-    // Copy contents of the staging buffer into the image.
-    // Since our source data is tightly packed, we do not
-    // need to specify any strides.
-    VkBufferImageCopy region;
-    region.bufferOffset       = stagingHandle.offset;
-    region.bufferRowLength    = 0;
-    region.bufferImageHeight  = 0;
-    region.imageSubresource   = subresources;
-    region.imageOffset        = imageOffset;
-    region.imageExtent        = imageExtent;
-    
-    m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer,
-      stagingHandle.handle, image->handle(),
-      imageLayoutTransfer, 1, &region);
+    this->copyImageHostData(DxvkCmdBuffer::ExecBuffer,
+      image, subresources, imageOffset, imageExtent,
+      data, pitchPerRow, pitchPerLayer);
     
     // Transition image back into its optimal layout
     m_execBarriers.accessImage(
@@ -2117,7 +2085,6 @@ namespace dxvk {
       image->info().access);
     
     m_cmd->trackResource<DxvkAccess::Write>(image);
-    m_cmd->trackResource<DxvkAccess::Read>(stagingSlice.buffer());
   }
   
   
