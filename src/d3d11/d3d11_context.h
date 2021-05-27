@@ -906,6 +906,9 @@ namespace dxvk {
     
     DxvkDataSlice AllocUpdateBufferSlice(size_t Size);
     
+    DxvkBufferSlice AllocStagingBuffer(
+            VkDeviceSize                      Size);
+    
     DxvkCsChunkRef AllocCsChunk();
     
     static void InitDefaultPrimitiveTopology(
