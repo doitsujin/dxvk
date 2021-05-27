@@ -333,58 +333,44 @@ namespace dxvk {
         formatInfo->aspectMask, Subresource);
     
     VkExtent3D levelExtent = image->mipLevelExtent(subresource.mipLevel);
-    VkExtent3D blockCount = util::computeBlockCount(
-      levelExtent, formatInfo->blockSize);
     
-    VkDeviceSize eSize = formatInfo->elementSize;
-    VkDeviceSize xSize = blockCount.width  * eSize;
-    VkDeviceSize ySize = blockCount.height * xSize;
-    VkDeviceSize zSize = blockCount.depth  * ySize;
-
-    auto dataSlice = AllocUpdateBufferSlice(zSize);
+    auto layout = pTexture->GetSubresourceLayout(formatInfo->aspectMask, Subresource);
+    auto dataSlice = AllocStagingBuffer(util::computeImageDataSize(packedFormat, levelExtent));
     
     pMapEntry->pResource    = pResource;
     pMapEntry->Subresource  = Subresource;
     pMapEntry->MapType      = D3D11_MAP_WRITE_DISCARD;
-    pMapEntry->RowPitch     = xSize;
-    pMapEntry->DepthPitch   = ySize;
-    pMapEntry->MapPointer   = dataSlice.ptr();
+    pMapEntry->RowPitch     = layout.RowPitch;
+    pMapEntry->DepthPitch   = layout.DepthPitch;
+    pMapEntry->MapPointer   = dataSlice.mapPtr(0);
 
     EmitCs([
-      cImage              = pTexture->GetImage(),
-      cSubresource        = pTexture->GetSubresourceFromIndex(
-        VK_IMAGE_ASPECT_COLOR_BIT, Subresource),
-      cDataSlice          = dataSlice,
-      cDataPitchPerRow    = pMapEntry->RowPitch,
-      cDataPitchPerLayer  = pMapEntry->DepthPitch,
+      cDstImage           = pTexture->GetImage(),
+      cSubresource        = pTexture->GetSubresourceFromIndex(formatInfo->aspectMask, Subresource),
+      cStagingSlice       = std::move(dataSlice),
       cPackedFormat       = GetPackedDepthStencilFormat(pTexture->Desc()->Format)
     ] (DxvkContext* ctx) {
-      VkImageSubresourceLayers srLayers;
-      srLayers.aspectMask     = cSubresource.aspectMask;
-      srLayers.mipLevel       = cSubresource.mipLevel;
-      srLayers.baseArrayLayer = cSubresource.arrayLayer;
-      srLayers.layerCount     = 1;
+      VkImageSubresourceLayers dstLayers;
+      dstLayers.aspectMask     = cSubresource.aspectMask;
+      dstLayers.mipLevel       = cSubresource.mipLevel;
+      dstLayers.baseArrayLayer = cSubresource.arrayLayer;
+      dstLayers.layerCount     = 1;
 
-      VkOffset3D mipLevelOffset = { 0, 0, 0 };
-      VkExtent3D mipLevelExtent = cImage->mipLevelExtent(srLayers.mipLevel);
+      VkOffset3D dstOffset = { 0, 0, 0 };
+      VkExtent3D dstExtent = cDstImage->mipLevelExtent(dstLayers.mipLevel);
       
       if (cPackedFormat == VK_FORMAT_UNDEFINED) {
-        ctx->updateImage(
-          cImage, srLayers,
-          mipLevelOffset,
-          mipLevelExtent,
-          cDataSlice.ptr(),
-          cDataPitchPerRow,
-          cDataPitchPerLayer);
+        ctx->copyBufferToImage(cDstImage,
+          dstLayers, dstOffset, dstExtent,
+          cStagingSlice.buffer(),
+          cStagingSlice.offset(), 0);
       } else {
-        ctx->updateDepthStencilImage(
-          cImage, srLayers,
-          VkOffset2D { mipLevelOffset.x,     mipLevelOffset.y      },
-          VkExtent2D { mipLevelExtent.width, mipLevelExtent.height },
-          cDataSlice.ptr(),
-          cDataPitchPerRow,
-          cDataPitchPerLayer,
-          cPackedFormat);
+        ctx->copyPackedBufferToDepthStencilImage(
+          cDstImage, dstLayers,
+          VkOffset2D { dstOffset.x,     dstOffset.y      },
+          VkExtent2D { dstExtent.width, dstExtent.height },
+          cStagingSlice.buffer(),
+          cStagingSlice.offset(), cPackedFormat);
       }
     });
 
