@@ -75,7 +75,25 @@ namespace dxvk::util {
   
   VkDeviceSize computeImageDataSize(VkFormat format, VkExtent3D extent) {
     const DxvkFormatInfo* formatInfo = imageFormatInfo(format);
-    return formatInfo->elementSize * flattenImageExtent(computeBlockCount(extent, formatInfo->blockSize));
+
+    VkDeviceSize size = 0;
+
+    for (auto aspects = formatInfo->aspectMask; aspects; ) {
+      auto aspect = vk::getNextAspect(aspects);
+      auto elementSize = formatInfo->elementSize;
+      auto planeExtent = extent;
+
+      if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+        auto plane = &formatInfo->planes[vk::getPlaneIndex(aspect)];
+        planeExtent.width  /= plane->blockSize.width;
+        planeExtent.height /= plane->blockSize.height;
+        elementSize = plane->elementSize;
+      }
+
+      size += elementSize * flattenImageExtent(computeBlockCount(planeExtent, formatInfo->blockSize));
+    }
+
+    return size;
   }
 
 
