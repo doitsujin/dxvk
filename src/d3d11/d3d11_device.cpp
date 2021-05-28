@@ -376,8 +376,10 @@ namespace dxvk {
           ID3D11UnorderedAccessView**       ppUAView) {
     InitReturnPtr(ppUAView);
 
+    uint32_t plane = GetViewPlaneIndex(pResource, pDesc ? pDesc->Format : DXGI_FORMAT_UNKNOWN);
+
     D3D11_UNORDERED_ACCESS_VIEW_DESC1 desc = pDesc
-      ? D3D11UnorderedAccessView::PromoteDesc(pDesc)
+      ? D3D11UnorderedAccessView::PromoteDesc(pDesc, plane)
       : D3D11_UNORDERED_ACCESS_VIEW_DESC1();
     
     ID3D11UnorderedAccessView1* view = nullptr;
@@ -420,12 +422,15 @@ namespace dxvk {
         return E_INVALIDARG;
     }
     
-    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_UNORDERED_ACCESS, desc.Format, 0)) {
+    uint32_t plane = D3D11UnorderedAccessView::GetPlaneSlice(&desc);
+
+    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_UNORDERED_ACCESS, desc.Format, plane)) {
       Logger::err(str::format("D3D11: Cannot create unordered access view:",
         "\n  Resource type:   ", resourceDesc.Dim,
         "\n  Resource usage:  ", resourceDesc.BindFlags,
         "\n  Resource format: ", resourceDesc.Format,
-        "\n  View format:     ", desc.Format));
+        "\n  View format:     ", desc.Format,
+        "\n  View plane:      ", plane));
       return E_INVALIDARG;
     }
 

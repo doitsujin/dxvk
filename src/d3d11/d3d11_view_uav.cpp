@@ -53,8 +53,8 @@ namespace dxvk {
       m_bufferView = pDevice->GetDXVKDevice()->createBufferView(
         buffer->GetBuffer(), viewInfo);
     } else {
-      const DXGI_VK_FORMAT_INFO formatInfo = pDevice->LookupFormat(
-        pDesc->Format, GetCommonTexture(pResource)->GetFormatMode());
+      auto texture = GetCommonTexture(pResource);
+      auto formatInfo = pDevice->LookupFormat(pDesc->Format, texture->GetFormatMode());
       
       DxvkImageViewCreateInfo viewInfo;
       viewInfo.format  = formatInfo.Format;
@@ -108,6 +108,9 @@ namespace dxvk {
         default:
           throw DxvkError("D3D11: Invalid view dimension for image UAV");
       }
+
+      if (texture->GetPlaneCount() > 1)
+        viewInfo.aspect = vk::getPlaneAspect(GetPlaneSlice(pDesc));
 
       // Populate view info struct
       m_info.Image.Aspects   = viewInfo.aspect;
@@ -271,7 +274,8 @@ namespace dxvk {
   
   
   D3D11_UNORDERED_ACCESS_VIEW_DESC1 D3D11UnorderedAccessView::PromoteDesc(
-    const D3D11_UNORDERED_ACCESS_VIEW_DESC*  pDesc) {
+    const D3D11_UNORDERED_ACCESS_VIEW_DESC*  pDesc,
+          UINT                               Plane) {
     D3D11_UNORDERED_ACCESS_VIEW_DESC1 dstDesc;
     dstDesc.Format            = pDesc->Format;
     dstDesc.ViewDimension     = pDesc->ViewDimension;
@@ -294,14 +298,14 @@ namespace dxvk {
 
       case D3D11_UAV_DIMENSION_TEXTURE2D:
         dstDesc.Texture2D.MipSlice   = pDesc->Texture2D.MipSlice;
-        dstDesc.Texture2D.PlaneSlice = 0;
+        dstDesc.Texture2D.PlaneSlice = Plane;
         break;
 
       case D3D11_UAV_DIMENSION_TEXTURE2DARRAY:
         dstDesc.Texture2DArray.MipSlice        = pDesc->Texture2DArray.MipSlice;
         dstDesc.Texture2DArray.FirstArraySlice = pDesc->Texture2DArray.FirstArraySlice;
         dstDesc.Texture2DArray.ArraySize       = pDesc->Texture2DArray.ArraySize;
-        dstDesc.Texture2DArray.PlaneSlice      = 0;
+        dstDesc.Texture2DArray.PlaneSlice      = Plane;
         break;
 
       case D3D11_UAV_DIMENSION_TEXTURE3D:
@@ -390,16 +394,11 @@ namespace dxvk {
         break;
       
       case D3D11_UAV_DIMENSION_TEXTURE2D:
-        if (pDesc->Texture2D.PlaneSlice != 0)
-          return E_INVALIDARG;
         break;
 
       case D3D11_UAV_DIMENSION_TEXTURE2DARRAY:
         if (pDesc->Texture2DArray.ArraySize > numLayers - pDesc->Texture2DArray.FirstArraySlice)
           pDesc->Texture2DArray.ArraySize = numLayers - pDesc->Texture2DArray.FirstArraySlice;
-        
-        if (pDesc->Texture2DArray.PlaneSlice != 0)
-          return E_INVALIDARG;
         break;
       
       case D3D11_UAV_DIMENSION_TEXTURE3D:
@@ -412,6 +411,18 @@ namespace dxvk {
     }
     
     return S_OK;
+  }
+
+
+  UINT D3D11UnorderedAccessView::GetPlaneSlice(const D3D11_UNORDERED_ACCESS_VIEW_DESC1* pDesc) {
+    switch (pDesc->ViewDimension) {
+      case D3D11_UAV_DIMENSION_TEXTURE2D:
+        return pDesc->Texture2D.PlaneSlice;
+      case D3D11_UAV_DIMENSION_TEXTURE2DARRAY:
+        return pDesc->Texture2DArray.PlaneSlice;
+      default:
+        return 0;
+    }
   }
 
 
