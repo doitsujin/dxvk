@@ -14,6 +14,8 @@ namespace dxvk {
     m_resource(pResource), m_desc(*pDesc), m_d3d10(this) {
     ResourceAddRefPrivate(m_resource);
 
+    auto texture = GetCommonTexture(pResource);
+
     D3D11_COMMON_RESOURCE_DESC resourceDesc;
     GetCommonResourceDesc(pResource, &resourceDesc);
 
@@ -87,6 +89,9 @@ namespace dxvk {
         throw DxvkError("D3D11: Invalid view dimension for RTV");
     }
     
+    if (texture->GetPlaneCount() > 1)
+      viewInfo.aspect = vk::getPlaneAspect(GetPlaneSlice(pDesc));
+
     // Normalize view type so that we won't accidentally
     // bind 2D array views and 2D views at the same time
     if (viewInfo.numLayers == 1) {
@@ -105,8 +110,7 @@ namespace dxvk {
     m_info.Image.NumLayers = viewInfo.numLayers;
     
     // Create the underlying image view object
-    m_view = pDevice->GetDXVKDevice()->createImageView(
-      GetCommonTexture(pResource)->GetImage(), viewInfo);
+    m_view = pDevice->GetDXVKDevice()->createImageView(texture->GetImage(), viewInfo);
   }
   
   
@@ -272,7 +276,8 @@ namespace dxvk {
   
   
   D3D11_RENDER_TARGET_VIEW_DESC1 D3D11RenderTargetView::PromoteDesc(
-    const D3D11_RENDER_TARGET_VIEW_DESC*    pDesc) {
+    const D3D11_RENDER_TARGET_VIEW_DESC*    pDesc,
+          UINT                              Plane) {
     D3D11_RENDER_TARGET_VIEW_DESC1 dstDesc;
     dstDesc.Format            = pDesc->Format;
     dstDesc.ViewDimension     = pDesc->ViewDimension;
@@ -295,14 +300,14 @@ namespace dxvk {
 
       case D3D11_RTV_DIMENSION_TEXTURE2D:
         dstDesc.Texture2D.MipSlice   = pDesc->Texture2D.MipSlice;
-        dstDesc.Texture2D.PlaneSlice = 0;
+        dstDesc.Texture2D.PlaneSlice = Plane;
         break;
 
       case D3D11_RTV_DIMENSION_TEXTURE2DARRAY:
         dstDesc.Texture2DArray.MipSlice        = pDesc->Texture2DArray.MipSlice;
         dstDesc.Texture2DArray.FirstArraySlice = pDesc->Texture2DArray.FirstArraySlice;
         dstDesc.Texture2DArray.ArraySize       = pDesc->Texture2DArray.ArraySize;
-        dstDesc.Texture2DArray.PlaneSlice      = 0;
+        dstDesc.Texture2DArray.PlaneSlice      = Plane;
         break;
 
       case D3D11_RTV_DIMENSION_TEXTURE2DMS:
@@ -396,16 +401,11 @@ namespace dxvk {
         break;
       
       case D3D11_RTV_DIMENSION_TEXTURE2D:
-        if (pDesc->Texture2D.PlaneSlice != 0)
-          return E_INVALIDARG;
         break;
       
       case D3D11_RTV_DIMENSION_TEXTURE2DARRAY:
         if (pDesc->Texture2DArray.ArraySize > numLayers - pDesc->Texture2DArray.FirstArraySlice)
           pDesc->Texture2DArray.ArraySize = numLayers - pDesc->Texture2DArray.FirstArraySlice;
-        
-        if (pDesc->Texture2DArray.PlaneSlice != 0)
-          return E_INVALIDARG;
         break;
       
       case D3D11_RTV_DIMENSION_TEXTURE2DMSARRAY:
@@ -425,4 +425,16 @@ namespace dxvk {
     return S_OK;
   }
   
+
+  UINT D3D11RenderTargetView::GetPlaneSlice(const D3D11_RENDER_TARGET_VIEW_DESC1* pDesc) {
+    switch (pDesc->ViewDimension) {
+      case D3D11_RTV_DIMENSION_TEXTURE2D:
+        return pDesc->Texture2D.PlaneSlice;
+      case D3D11_RTV_DIMENSION_TEXTURE2DARRAY:
+        return pDesc->Texture2DArray.PlaneSlice;
+      default:
+        return 0;
+    }
+  }
+
 }

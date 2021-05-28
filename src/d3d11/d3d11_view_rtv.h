@@ -66,12 +66,16 @@ namespace dxvk {
             D3D11_RENDER_TARGET_VIEW_DESC1*   pDesc);
     
     static D3D11_RENDER_TARGET_VIEW_DESC1 PromoteDesc(
-      const D3D11_RENDER_TARGET_VIEW_DESC*    pDesc);
+      const D3D11_RENDER_TARGET_VIEW_DESC*    pDesc,
+            UINT                              Plane);
     
     static HRESULT NormalizeDesc(
             ID3D11Resource*                   pResource,
             D3D11_RENDER_TARGET_VIEW_DESC1*   pDesc);
     
+    static UINT GetPlaneSlice(
+      const D3D11_RENDER_TARGET_VIEW_DESC1*   pDesc);
+
   private:
     
     ID3D11Resource*                   m_resource;

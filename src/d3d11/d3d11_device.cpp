@@ -455,8 +455,10 @@ namespace dxvk {
           ID3D11RenderTargetView**          ppRTView) {
     InitReturnPtr(ppRTView);
 
+    uint32_t plane = GetViewPlaneIndex(pResource, pDesc ? pDesc->Format : DXGI_FORMAT_UNKNOWN);
+
     D3D11_RENDER_TARGET_VIEW_DESC1 desc = pDesc
-      ? D3D11RenderTargetView::PromoteDesc(pDesc)
+      ? D3D11RenderTargetView::PromoteDesc(pDesc, plane)
       : D3D11_RENDER_TARGET_VIEW_DESC1();
     
     ID3D11RenderTargetView1* view = nullptr;
@@ -505,12 +507,15 @@ namespace dxvk {
         return E_INVALIDARG;
     }
     
-    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_RENDER_TARGET, desc.Format, 0)) {
+    uint32_t plane = D3D11RenderTargetView::GetPlaneSlice(&desc);
+
+    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_RENDER_TARGET, desc.Format, plane)) {
       Logger::err(str::format("D3D11: Cannot create render target view:",
         "\n  Resource type:   ", resourceDesc.Dim,
         "\n  Resource usage:  ", resourceDesc.BindFlags,
         "\n  Resource format: ", resourceDesc.Format,
-        "\n  View format:     ", desc.Format));
+        "\n  View format:     ", desc.Format,
+        "\n  View plane:      ", plane));
       return E_INVALIDARG;
     }
 
