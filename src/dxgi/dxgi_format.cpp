@@ -484,7 +484,12 @@ namespace dxvk {
       VK_FORMAT_UNDEFINED,
       VK_IMAGE_ASPECT_COLOR_BIT },
     // DXGI_FORMAT_AYUV
-    { }, // Unsupported
+    { VK_FORMAT_R8G8B8A8_UNORM,
+      VK_FORMAT_UNDEFINED,
+      VK_FORMAT_R8G8B8A8_UINT,
+      VK_IMAGE_ASPECT_COLOR_BIT, 0,
+      { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_B,
+        VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_A } },
     // DXGI_FORMAT_Y410
     { }, // Unsupported
     // DXGI_FORMAT_Y416
@@ -792,7 +797,8 @@ namespace dxvk {
     { VK_FORMAT_BC7_UNORM_BLOCK,
       VK_FORMAT_BC7_SRGB_BLOCK },
     // DXGI_FORMAT_AYUV
-    { }, // Unsupported
+    { VK_FORMAT_R8G8B8A8_UNORM,
+      VK_FORMAT_R8G8B8A8_UINT },
     // DXGI_FORMAT_Y410
     { }, // Unsupported
     // DXGI_FORMAT_Y416
