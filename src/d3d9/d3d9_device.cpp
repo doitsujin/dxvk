@@ -3343,6 +3343,8 @@ namespace dxvk {
 
     m_frameLatency = MaxLatency;
 
+    m_implicitSwapchain->SyncFrameLatency();
+
     return D3D_OK;
   }
 
