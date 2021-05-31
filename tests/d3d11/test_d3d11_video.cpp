@@ -128,12 +128,15 @@ public:
 
     size_t rowSizeRgba = textureDesc.Width * 4;
     size_t rowSizeNv12 = textureDesc.Width;
+    size_t rowSizeYuy2 = textureDesc.Width * 2;
     size_t imageSizeRgba = textureDesc.Height * rowSizeRgba;
     size_t imageSizeNv12 = pixelCount + pixelCount / 2;
+    size_t imageSizeYuy2 = textureDesc.Height * rowSizeYuy2;
 
     std::vector<uint8_t> srcData(pixelCount * 3);
     std::vector<uint8_t> imgDataRgba(imageSizeRgba);
     std::vector<uint8_t> imgDataNv12(imageSizeNv12);
+    std::vector<uint8_t> imgDataYuy2(imageSizeYuy2);
     std::ifstream ifile("video_image.raw", std::ios::binary);
 
     if (!ifile || !ifile.read(reinterpret_cast<char*>(srcData.data()), srcData.size())) {
@@ -149,6 +152,10 @@ public:
 
       imgDataNv12[i] = y_coeff(&srcData[3 * i], 0.299000f, 0.587000f, 0.114000f);
 
+      imgDataYuy2[2 * i + 0] = y_coeff(&srcData[3 * i], 0.299000f, 0.587000f, 0.114000f);
+      imgDataYuy2[2 * i + 1] = i % 2
+        ? c_coeff(&srcData[3 * i], -0.168736f, -0.331264f,  0.500000f)
+        : c_coeff(&srcData[3 * i],  0.500000f, -0.418688f, -0.081312f);
     }
 
     for (size_t y = 0; y < textureDesc.Height / 2; y++) {
@@ -202,11 +209,29 @@ public:
     if (SUCCEEDED(hr = m_device->CreateTexture2D(&textureDesc, nullptr, &m_videoInputNv12Host))) {
       D3D11_MAPPED_SUBRESOURCE mr = { };
       m_context->Map(m_videoInputNv12Host.ptr(), 0, D3D11_MAP_WRITE, D3D11_MAP_FLAG_DO_NOT_WAIT, &mr);
-      std::cerr << "Row pitch: " << mr.RowPitch << "  Depth pitch: " << mr.DepthPitch << std::endl;
       memcpy(mr.pData, imgDataNv12.data(), imgDataNv12.size());
       m_context->Unmap(m_videoInputNv12Host.ptr(), 0);
       D3D11_BOX box = { 0, 0, 0, 128, 128, 1 };
       m_context->CopySubresourceRegion(m_videoInputNv12.ptr(), 0, 0, 0, 0, m_videoInputNv12Host.ptr(), 0, &box);
+    }
+
+    // YUY2 input image and view
+    textureDesc.Format = DXGI_FORMAT_YUY2;
+    textureDesc.BindFlags = 0;
+    textureDesc.Usage = D3D11_USAGE_DEFAULT;
+    textureDesc.CPUAccessFlags = 0;
+
+    subresourceData.pSysMem = imgDataYuy2.data();
+    subresourceData.SysMemPitch = rowSizeYuy2;
+    subresourceData.SysMemSlicePitch = imageSizeYuy2;
+
+    if (SUCCEEDED(hr = m_device->CreateTexture2D(&textureDesc, &subresourceData, &m_videoInputYuy2))) {
+      if (FAILED(hr = m_vdevice->CreateVideoProcessorInputView(m_videoInputYuy2.ptr(), m_venum.ptr(), &inputDesc, &m_videoInputViewYuy2))) {
+        std::cerr << "Failed to create D3D11 video input view for YUY2" << std::endl;
+        return;
+      }
+    } else {
+      std::cerr << "YUY2 not supported" << std::endl;
     }
 
     m_initialized = true;
@@ -241,19 +266,14 @@ public:
     m_vcontext->VideoProcessorSetStreamColorSpace(m_vprocessor.ptr(), 0, &csIn);
     blit(m_videoInputView.ptr(), 32, 32);
     blit(m_videoInputViewNv12.ptr(), 32, 320);
-    csIn.YCbCr_Matrix = 1; // BT.709
-    m_vcontext->VideoProcessorSetStreamColorSpace(m_vprocessor.ptr(), 0, &csIn);
-    blit(m_videoInputViewNv12.ptr(), 32, 608);
+    blit(m_videoInputViewYuy2.ptr(), 32, 608);
 
     csIn.RGB_Range = 1; // Limited range
     csIn.Nominal_Range = 0; // Limited range
-    csIn.YCbCr_Matrix = 0; // BT.601
     m_vcontext->VideoProcessorSetStreamColorSpace(m_vprocessor.ptr(), 0, &csIn);
     blit(m_videoInputView.ptr(), 320, 32);
     blit(m_videoInputViewNv12.ptr(), 320, 320);
-    csIn.YCbCr_Matrix = 1; // BT.709
-    m_vcontext->VideoProcessorSetStreamColorSpace(m_vprocessor.ptr(), 0, &csIn);
-    blit(m_videoInputViewNv12.ptr(), 320, 608);
+    blit(m_videoInputViewYuy2.ptr(), 320, 608);
 
     // Limited range RGB output color space
     csOut.RGB_Range = 1;
@@ -262,23 +282,17 @@ public:
 
     csIn.RGB_Range = 0; // Full range
     csIn.Nominal_Range = 1; // Full range
-    csIn.YCbCr_Matrix = 0; // BT.601
     m_vcontext->VideoProcessorSetStreamColorSpace(m_vprocessor.ptr(), 0, &csIn);
     blit(m_videoInputView.ptr(), 608, 32);
     blit(m_videoInputViewNv12.ptr(), 608, 320);
-    csIn.YCbCr_Matrix = 1; // BT.709
-    m_vcontext->VideoProcessorSetStreamColorSpace(m_vprocessor.ptr(), 0, &csIn);
-    blit(m_videoInputViewNv12.ptr(), 608, 608);
+    blit(m_videoInputViewYuy2.ptr(), 608, 608);
 
     csIn.RGB_Range = 1; // Limited range
     csIn.Nominal_Range = 0; // Limited range
-    csIn.YCbCr_Matrix = 0; // BT.601
     m_vcontext->VideoProcessorSetStreamColorSpace(m_vprocessor.ptr(), 0, &csIn);
     blit(m_videoInputView.ptr(), 896, 32);
     blit(m_videoInputViewNv12.ptr(), 896, 320);
-    csIn.YCbCr_Matrix = 1; // BT.709
-    m_vcontext->VideoProcessorSetStreamColorSpace(m_vprocessor.ptr(), 0, &csIn);
-    blit(m_videoInputViewNv12.ptr(), 896, 608);
+    blit(m_videoInputViewYuy2.ptr(), 896, 608);
 
     m_swapchain->Present(1, 0);
   }
@@ -365,7 +379,9 @@ private:
   Com<ID3D11VideoProcessorInputView>  m_videoInputView;
   Com<ID3D11Texture2D>                m_videoInputNv12;
   Com<ID3D11Texture2D>                m_videoInputNv12Host;
+  Com<ID3D11Texture2D>                m_videoInputYuy2;
   Com<ID3D11VideoProcessorInputView>  m_videoInputViewNv12;
+  Com<ID3D11VideoProcessorInputView>  m_videoInputViewYuy2;
 
   bool                                m_initialized = false;
 
