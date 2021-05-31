@@ -1255,7 +1255,7 @@ namespace dxvk {
     if (hMonitor == nullptr)
       return D3DERR_INVALIDCALL;
     
-    return RestoreMonitorDisplayMode(hMonitor)
+    return RestoreMonitorDisplayMode()
       ? D3D_OK
       : D3DERR_NOTAVAILABLE;
   }

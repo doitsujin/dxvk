@@ -722,7 +722,7 @@ namespace dxvk {
     if (!hMonitor)
       return DXGI_ERROR_INVALID_CALL;
     
-    return RestoreMonitorDisplayMode(hMonitor)
+    return RestoreMonitorDisplayMode()
       ? S_OK
       : DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
   }

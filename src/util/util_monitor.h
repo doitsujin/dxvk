@@ -36,13 +36,10 @@ namespace dxvk {
           DEVMODEW*               pMode);
 
   /**
-   * \brief Change display mode to registry settings
-   *
-   * \param [in] hMonitor The monitor to change
+   * \brief Change display modes to registry settings
    * \returns \c true on success
    */
-  BOOL RestoreMonitorDisplayMode(
-          HMONITOR                hMonitor);
+  BOOL RestoreMonitorDisplayMode();
 
   /**
    * \brief Queries window client size
