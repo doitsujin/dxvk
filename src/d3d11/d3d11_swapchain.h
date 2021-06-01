@@ -134,7 +134,7 @@ namespace dxvk {
 
     void DestroyFrameLatencyEvent();
 
-    void SignalFrameLatencyEvent();
+    void SyncFrameLatency();
 
     uint32_t GetActualFrameLatency();
     
