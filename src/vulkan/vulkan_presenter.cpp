@@ -46,17 +46,18 @@ namespace dxvk::vk {
   VkResult Presenter::acquireNextImage(PresenterSync& sync, uint32_t& index) {
     sync = m_semaphores.at(m_frameIndex);
 
-    VkResult status = m_vkd->vkAcquireNextImageKHR(
-      m_vkd->device(), m_swapchain,
-      std::numeric_limits<uint64_t>::max(),
-      sync.acquire, VK_NULL_HANDLE, &m_imageIndex);
+    // Don't acquire more than one image at a time
+    if (m_acquireStatus == VK_NOT_READY) {
+      m_acquireStatus = m_vkd->vkAcquireNextImageKHR(m_vkd->device(),
+        m_swapchain, std::numeric_limits<uint64_t>::max(),
+        sync.acquire, VK_NULL_HANDLE, &m_imageIndex);
+    }
     
-    if (status != VK_SUCCESS
-     && status != VK_SUBOPTIMAL_KHR)
-      return status;
+    if (m_acquireStatus != VK_SUCCESS && m_acquireStatus != VK_SUBOPTIMAL_KHR)
+      return m_acquireStatus;
     
     index = m_imageIndex;
-    return status;
+    return m_acquireStatus;
   }
 
 
@@ -73,10 +74,22 @@ namespace dxvk::vk {
     info.pImageIndices      = &m_imageIndex;
     info.pResults           = nullptr;
 
+    VkResult status = m_vkd->vkQueuePresentKHR(m_device.queue, &info);
+
+    if (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR)
+      return status;
+
+    // Try to acquire next image already, in order to hide
+    // potential delays from the application thread.
     m_frameIndex += 1;
     m_frameIndex %= m_semaphores.size();
 
-    return m_vkd->vkQueuePresentKHR(m_device.queue, &info);
+    sync = m_semaphores.at(m_frameIndex);
+
+    m_acquireStatus = m_vkd->vkAcquireNextImageKHR(m_vkd->device(),
+      m_swapchain, std::numeric_limits<uint64_t>::max(),
+      sync.acquire, VK_NULL_HANDLE, &m_imageIndex);
+    return status;
   }
 
   
@@ -220,6 +233,7 @@ namespace dxvk::vk {
     // Invalidate indices
     m_imageIndex = 0;
     m_frameIndex = 0;
+    m_acquireStatus = VK_NOT_READY;
     return VK_SUCCESS;
   }
 

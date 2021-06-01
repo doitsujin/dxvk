@@ -182,6 +182,8 @@ namespace dxvk::vk {
     uint32_t m_imageIndex = 0;
     uint32_t m_frameIndex = 0;
 
+    VkResult m_acquireStatus = VK_NOT_READY;
+
     VkResult getSupportedFormats(
             std::vector<VkSurfaceFormatKHR>& formats,
       const PresenterDesc&            desc);
