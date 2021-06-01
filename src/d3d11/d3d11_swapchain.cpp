@@ -178,9 +178,8 @@ namespace dxvk {
       return DXGI_ERROR_INVALID_CALL;
 
     m_frameLatency = MaxLatency;
-    m_frameLatencySignal->wait(m_frameId - GetActualFrameLatency());
 
-    SignalFrameLatencyEvent();
+    SyncFrameLatency();
     return S_OK;
   }
 
@@ -241,10 +240,6 @@ namespace dxvk {
     // Flush pending rendering commands before
     auto immediateContext = static_cast<D3D11ImmediateContext*>(deviceContext.ptr());
     immediateContext->Flush();
-
-    // Wait for the sync event so that we respect the maximum frame latency
-    uint64_t frameId = ++m_frameId;
-    m_frameLatencySignal->wait(frameId - GetActualFrameLatency());
     
     for (uint32_t i = 0; i < SyncInterval || i < 1; i++) {
       SynchronizePresent();
@@ -283,12 +278,15 @@ namespace dxvk {
         m_hud->render(m_context, info.format, info.imageExtent);
       
       if (i + 1 >= SyncInterval)
-        m_context->signal(m_frameLatencySignal, frameId);
+        m_context->signal(m_frameLatencySignal, m_frameId);
 
       SubmitPresent(immediateContext, sync, i);
     }
 
-    SignalFrameLatencyEvent();
+    // Bump our frame id.
+    ++m_frameId;
+
+    SyncFrameLatency();
     return S_OK;
   }
 
@@ -536,7 +534,10 @@ namespace dxvk {
   }
 
 
-  void D3D11SwapChain::SignalFrameLatencyEvent() {
+  void D3D11SwapChain::SyncFrameLatency() {
+    // Wait for the sync event so that we respect the maximum frame latency
+    m_frameLatencySignal->wait(m_frameId - GetActualFrameLatency());
+
     if (m_frameLatencyEvent) {
       // Signal event with the same value that we'd wait for during the next present.
       m_frameLatencySignal->setEvent(m_frameLatencyEvent, m_frameId - GetActualFrameLatency() + 1);
