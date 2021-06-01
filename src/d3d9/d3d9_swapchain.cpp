@@ -778,6 +778,9 @@ namespace dxvk {
     auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
     auto swapImageView = m_backBuffers[0]->GetImageView(false);
 
+    // Bump our frame id.
+    ++m_frameId;
+
     for (uint32_t i = 0; i < SyncInterval || i < 1; i++) {
       SynchronizePresent();
 
@@ -819,9 +822,6 @@ namespace dxvk {
 
       SubmitPresent(sync, i);
     }
-
-    // Bump our frame id.
-    ++m_frameId;
 
     SyncFrameLatency();
 
