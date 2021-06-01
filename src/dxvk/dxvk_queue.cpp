@@ -108,8 +108,7 @@ namespace dxvk {
             entry.submit.waitSync,
             entry.submit.wakeSync);
         } else if (entry.present.presenter != nullptr) {
-          status = entry.present.presenter->presentImage(
-            entry.present.waitSync);
+          status = entry.present.presenter->presentImage();
         }
       } else {
         // Don't submit anything after device loss

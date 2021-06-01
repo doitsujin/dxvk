@@ -46,7 +46,6 @@ namespace dxvk {
    */
   struct DxvkPresentInfo {
     Rc<vk::Presenter>   presenter;
-    VkSemaphore         waitSync;
   };
 
 

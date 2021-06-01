@@ -38,48 +38,43 @@ namespace dxvk::vk {
   }
 
 
-  PresenterSync Presenter::getSyncSemaphores() const {
-    return m_semaphores.at(m_frameIndex);
-  }
-
-
   PresenterImage Presenter::getImage(uint32_t index) const {
     return m_images.at(index);
   }
 
 
-  VkResult Presenter::acquireNextImage(
-          VkSemaphore     signal,
-          uint32_t&       index) {
-    VkResult status;
+  VkResult Presenter::acquireNextImage(PresenterSync& sync, uint32_t& index) {
+    sync = m_semaphores.at(m_frameIndex);
 
-    status = m_vkd->vkAcquireNextImageKHR(
+    VkResult status = m_vkd->vkAcquireNextImageKHR(
       m_vkd->device(), m_swapchain,
       std::numeric_limits<uint64_t>::max(),
-      signal, VK_NULL_HANDLE, &m_imageIndex);
+      sync.acquire, VK_NULL_HANDLE, &m_imageIndex);
     
     if (status != VK_SUCCESS
      && status != VK_SUBOPTIMAL_KHR)
       return status;
     
-    m_frameIndex += 1;
-    m_frameIndex %= m_semaphores.size();
-
     index = m_imageIndex;
     return status;
   }
 
 
-  VkResult Presenter::presentImage(VkSemaphore wait) {
+  VkResult Presenter::presentImage() {
+    PresenterSync sync = m_semaphores.at(m_frameIndex);
+
     VkPresentInfoKHR info;
     info.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     info.pNext              = nullptr;
     info.waitSemaphoreCount = 1;
-    info.pWaitSemaphores    = &wait;
+    info.pWaitSemaphores    = &sync.present;
     info.swapchainCount     = 1;
     info.pSwapchains        = &m_swapchain;
     info.pImageIndices      = &m_imageIndex;
     info.pResults           = nullptr;
+
+    m_frameIndex += 1;
+    m_frameIndex %= m_semaphores.size();
 
     return m_vkd->vkQueuePresentKHR(m_device.queue, &info);
   }

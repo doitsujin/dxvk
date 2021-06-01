@@ -254,11 +254,11 @@ namespace dxvk {
 
       // Presentation semaphores and WSI swap chain image
       vk::PresenterInfo info = m_presenter->info();
-      vk::PresenterSync sync = m_presenter->getSyncSemaphores();
+      vk::PresenterSync sync;
 
       uint32_t imageIndex = 0;
 
-      VkResult status = m_presenter->acquireNextImage(sync.acquire, imageIndex);
+      VkResult status = m_presenter->acquireNextImage(sync, imageIndex);
 
       while (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
         RecreateSwapChain(m_vsync);
@@ -267,9 +267,7 @@ namespace dxvk {
           return DXGI_STATUS_OCCLUDED;
         
         info = m_presenter->info();
-        sync = m_presenter->getSyncSemaphores();
-
-        status = m_presenter->acquireNextImage(sync.acquire, imageIndex);
+        status = m_presenter->acquireNextImage(sync, imageIndex);
       }
 
       // Resolve back buffer if it is multisampled. We
@@ -317,8 +315,7 @@ namespace dxvk {
       if (cHud != nullptr && !cFrameId)
         cHud->update();
 
-      m_device->presentImage(m_presenter,
-        cSync.present, &m_presentStatus);
+      m_device->presentImage(m_presenter, &m_presentStatus);
     });
 
     pContext->FlushCsChunk();

@@ -399,12 +399,10 @@ namespace dxvk {
      * the submission thread. The status of this operation
      * can be retrieved with \ref waitForSubmission.
      * \param [in] presenter The presenter
-     * \param [in] semaphore Sync semaphore
      * \param [out] status Present status
      */
     void presentImage(
       const Rc<vk::Presenter>&        presenter,
-            VkSemaphore               semaphore,
             DxvkSubmitStatus*         status);
     
     /**

@@ -107,15 +107,6 @@ namespace dxvk::vk {
     PresenterInfo info() const;
 
     /**
-     * \breif Retrieves a pair of semaphores
-     * 
-     * These semaphores are meant to be used
-     * for acquire and present operations.
-     * \returns Pair of semaphores
-     */
-    PresenterSync getSyncSemaphores() const;
-    
-    /**
      * \brief Retrieves image by index
      * 
      * Can be used to create per-image objects.
@@ -132,12 +123,12 @@ namespace dxvk::vk {
      * If this returns an error, the swap chain
      * must be recreated and a new image must
      * be acquired before proceeding.
-     * \param [in] signal Semaphore to signal
+     * \param [out] sync Synchronization semaphores
      * \param [out] index Acquired image index
      * \returns Status of the operation
      */
     VkResult acquireNextImage(
-            VkSemaphore     signal,
+            PresenterSync&  sync,
             uint32_t&       index);
     
     /**
@@ -146,11 +137,9 @@ namespace dxvk::vk {
      * Presents the current image. If this returns
      * an error, the swap chain must be recreated,
      * but do not present before acquiring an image.
-     * \param [in] wait Semaphore to wait on
      * \returns Status of the operation
      */
-    VkResult presentImage(
-            VkSemaphore     wait);
+    VkResult presentImage();
     
     /**
      * \brief Changes presenter properties

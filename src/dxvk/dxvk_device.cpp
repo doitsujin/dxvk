@@ -211,13 +211,11 @@ namespace dxvk {
   
   void DxvkDevice::presentImage(
     const Rc<vk::Presenter>&        presenter,
-          VkSemaphore               semaphore,
           DxvkSubmitStatus*         status) {
     status->result = VK_NOT_READY;
 
     DxvkPresentInfo presentInfo;
     presentInfo.presenter = presenter;
-    presentInfo.waitSync  = semaphore;
     m_submissionQueue.present(presentInfo, status);
     
     std::lock_guard<sync::Spinlock> statLock(m_statLock);
