@@ -240,6 +240,9 @@ namespace dxvk {
     // Flush pending rendering commands before
     auto immediateContext = static_cast<D3D11ImmediateContext*>(deviceContext.ptr());
     immediateContext->Flush();
+
+    // Bump our frame id.
+    ++m_frameId;
     
     for (uint32_t i = 0; i < SyncInterval || i < 1; i++) {
       SynchronizePresent();
@@ -282,9 +285,6 @@ namespace dxvk {
 
       SubmitPresent(immediateContext, sync, i);
     }
-
-    // Bump our frame id.
-    ++m_frameId;
 
     SyncFrameLatency();
     return S_OK;
