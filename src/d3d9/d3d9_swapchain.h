@@ -76,6 +76,8 @@ namespace dxvk {
 
     const D3DPRESENT_PARAMETERS* GetPresentParams() const { return &m_presentParams; }
 
+    void SyncFrameLatency();
+
   private:
 
     enum BindingIds : uint32_t {

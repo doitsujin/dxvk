@@ -778,10 +778,6 @@ namespace dxvk {
     auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
     auto swapImageView = m_backBuffers[0]->GetImageView(false);
 
-    // Wait for the sync event so that we respect the maximum frame latency
-    uint64_t frameId = ++m_frameId;
-    m_frameLatencySignal->wait(frameId - GetActualFrameLatency());
-
     for (uint32_t i = 0; i < SyncInterval || i < 1; i++) {
       SynchronizePresent();
 
@@ -819,10 +815,15 @@ namespace dxvk {
         m_hud->render(m_context, info.format, info.imageExtent);
 
       if (i + 1 >= SyncInterval)
-        m_context->signal(m_frameLatencySignal, frameId);
+        m_context->signal(m_frameLatencySignal, m_frameId);
 
       SubmitPresent(sync, i);
     }
+
+    // Bump our frame id.
+    ++m_frameId;
+
+    SyncFrameLatency();
 
     // Rotate swap chain buffers so that the back
     // buffer at index 0 becomes the front buffer.
@@ -1054,6 +1055,11 @@ namespace dxvk {
     }
   }
 
+
+  void D3D9SwapChainEx::SyncFrameLatency() {
+    // Wait for the sync event so that we respect the maximum frame latency
+    m_frameLatencySignal->wait(m_frameId - GetActualFrameLatency());
+  }
 
 
   uint32_t D3D9SwapChainEx::GetActualFrameLatency() {
