@@ -50,18 +50,13 @@ namespace dxvk::vk {
 
   VkResult Presenter::acquireNextImage(
           VkSemaphore     signal,
-          VkFence         fence,
           uint32_t&       index) {
     VkResult status;
-
-    if (fence && ((status = m_vkd->vkResetFences(
-        m_vkd->device(), 1, &fence)) != VK_SUCCESS))
-      return status;
 
     status = m_vkd->vkAcquireNextImageKHR(
       m_vkd->device(), m_swapchain,
       std::numeric_limits<uint64_t>::max(),
-      signal, fence, &m_imageIndex);
+      signal, VK_NULL_HANDLE, &m_imageIndex);
     
     if (status != VK_SUCCESS
      && status != VK_SUBOPTIMAL_KHR)
@@ -75,15 +70,6 @@ namespace dxvk::vk {
   }
 
 
-  VkResult Presenter::waitForFence(VkFence fence) {
-    // Ignore timeouts, we don't want to block the
-    // app indefinitely if something goes wrong
-    return m_vkd->vkWaitForFences(
-      m_vkd->device(), 1, &fence, VK_FALSE,
-      1'000'000'000ull);
-  }
-
-  
   VkResult Presenter::presentImage(VkSemaphore wait) {
     VkPresentInfoKHR info;
     info.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -222,15 +208,6 @@ namespace dxvk::vk {
     m_semaphores.resize(m_info.imageCount);
 
     for (uint32_t i = 0; i < m_semaphores.size(); i++) {
-      VkFenceCreateInfo fenceInfo;
-      fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-      fenceInfo.pNext = nullptr;
-      fenceInfo.flags = 0;
-
-      if ((status = m_vkd->vkCreateFence(m_vkd->device(),
-          &fenceInfo, nullptr, &m_semaphores[i].fence)) != VK_SUCCESS)
-        return status;
-
       VkSemaphoreCreateInfo semInfo;
       semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
       semInfo.pNext = nullptr;
@@ -480,7 +457,6 @@ namespace dxvk::vk {
       m_vkd->vkDestroyImageView(m_vkd->device(), img.view, nullptr);
     
     for (const auto& sem : m_semaphores) {
-      m_vkd->vkDestroyFence(m_vkd->device(), sem.fence, nullptr);
       m_vkd->vkDestroySemaphore(m_vkd->device(), sem.acquire, nullptr);
       m_vkd->vkDestroySemaphore(m_vkd->device(), sem.present, nullptr);
     }

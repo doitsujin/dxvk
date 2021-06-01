@@ -791,8 +791,7 @@ namespace dxvk {
 
       uint32_t imageIndex = 0;
 
-      VkResult status = m_presenter->acquireNextImage(
-        sync.acquire, VK_NULL_HANDLE, imageIndex);
+      VkResult status = m_presenter->acquireNextImage(sync.acquire, imageIndex);
 
       while (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
         RecreateSwapChain(m_vsync);
@@ -800,8 +799,7 @@ namespace dxvk {
         info = m_presenter->info();
         sync = m_presenter->getSyncSemaphores();
 
-        status = m_presenter->acquireNextImage(
-          sync.acquire, VK_NULL_HANDLE, imageIndex);
+        status = m_presenter->acquireNextImage(sync.acquire, imageIndex);
       }
 
       m_context->beginRecording(
