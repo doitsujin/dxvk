@@ -2,6 +2,8 @@
 #include "dxvk_pipemanager.h"
 #include "dxvk_state_cache.h"
 
+#include <cctype>
+
 namespace dxvk {
 
   static const Sha1Hash       g_nullHash      = Sha1Hash::compute(nullptr, 0);
@@ -986,6 +988,8 @@ namespace dxvk {
       path += '/';
     
     std::string exeName = env::getExeName();
+    std::transform(exeName.begin(), exeName.end(), exeName.begin(), std::tolower);
+
     auto extp = exeName.find_last_of('.');
     
     if (extp != std::string::npos && exeName.substr(extp + 1) == "exe")
