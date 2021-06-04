@@ -2,6 +2,8 @@
 
 #include "../util_env.h"
 
+#include <cctype>
+
 namespace dxvk {
   
   Logger::Logger(const std::string& file_name)
@@ -101,6 +103,8 @@ namespace dxvk {
       path += '/';
 
     std::string exeName = env::getExeName();
+    std::transform(exeName.begin(), exeName.end(), exeName.begin(), std::tolower);
+
     auto extp = exeName.find_last_of('.');
     
     if (extp != std::string::npos && exeName.substr(extp + 1) == "exe")
