@@ -6357,22 +6357,15 @@ namespace dxvk {
 
       m_ffZTest = IsZTestEnabled();
 
-      float zMin    = m_ffZTest ? vp.MinZ : 0.0f;
-      float zMax    = m_ffZTest ? vp.MaxZ : 0.0f;
-      float zExtent = zMax - zMin;
-      zExtent = zExtent != 0.0f
-              ? 1.0f / zExtent
-              : 0.0f;
-
       m_viewportInfo.inverseExtent = Vector4(
          2.0f / float(vp.Width),
         -2.0f / float(vp.Height),
-        zExtent,
+        m_ffZTest ? 1.0f : 0.0f,
         1.0f);
 
       m_viewportInfo.inverseOffset = Vector4(
         -float(vp.X), -float(vp.Y),
-        -zMin,          0.0f);
+         0.0f,         0.0f);
 
       m_viewportInfo.inverseOffset = m_viewportInfo.inverseOffset * m_viewportInfo.inverseExtent;
 
