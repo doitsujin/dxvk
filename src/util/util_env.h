@@ -16,6 +16,16 @@ namespace dxvk::env {
   std::string getEnvVar(const char* name);
   
   /**
+   * \brief Checks whether a file name has a given extension
+   *
+   * \param [in] name File name
+   * \param [in] ext Extension to match, in lowercase letters
+   * \returns Position of the extension within the file name, or
+   *    \c std::string::npos if the file has a different extension
+   */
+  size_t matchFileExtension(const std::string& name, const char* ext);
+
+  /**
    * \brief Gets the executable name
    * 
    * Returns the base name (not the full path) of the
@@ -25,6 +35,14 @@ namespace dxvk::env {
    */
   std::string getExeName();
   
+  /**
+   * \brief Gets the executable name without extension
+   *
+   * Same as \ref getExeName but without the file extension.
+   * \returns Executable name
+   */
+  std::string getExeBaseName();
+
   /**
    * \brief Gets full path to executable
    * \returns Path to executable

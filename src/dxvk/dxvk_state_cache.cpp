@@ -985,12 +985,7 @@ namespace dxvk {
     if (!path.empty() && *path.rbegin() != '/')
       path += '/';
     
-    std::string exeName = env::getExeName();
-    auto extp = exeName.find_last_of('.');
-    
-    if (extp != std::string::npos && exeName.substr(extp + 1) == "exe")
-      exeName.erase(extp);
-    
+    std::string exeName = env::getExeBaseName();
     path += exeName + ".dxvk-cache";
     return str::tows(path.c_str());
   }
