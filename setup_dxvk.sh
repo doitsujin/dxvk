@@ -52,6 +52,9 @@ fi
 
 # find wine executable
 export WINEDEBUG=-all
+# disable mscoree and mshtml to avoid downloading
+# wine gecko and mono
+export WINEDLLOVERRIDES="mscoree,mshtml="
 
 wine="wine"
 wine64="wine64"
