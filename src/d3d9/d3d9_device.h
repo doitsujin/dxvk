@@ -41,6 +41,7 @@ namespace dxvk {
   class D3D9Query;
   class D3D9StateBlock;
   class D3D9FormatHelper;
+  class D3D9UserDefinedAnnotation;
 
   enum class D3D9DeviceFlag : uint32_t {
     DirtyFramebuffer,
@@ -101,6 +102,7 @@ namespace dxvk {
     constexpr static uint32_t NullStreamIdx = caps::MaxStreams;
 
     friend class D3D9SwapChainEx;
+    friend class D3D9UserDefinedAnnotation;
   public:
 
     D3D9DeviceEx(
@@ -1071,6 +1073,8 @@ namespace dxvk {
 
     D3D9ConstantLayout              m_vsLayout;
     D3D9ConstantLayout              m_psLayout;
+
+    D3D9UserDefinedAnnotation*      m_annotation = nullptr;
 
     void DetermineConstantLayouts(bool canSWVP);
 
