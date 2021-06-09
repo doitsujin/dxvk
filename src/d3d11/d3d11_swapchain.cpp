@@ -380,6 +380,9 @@ namespace dxvk {
       presenterDevice,
       presenterDesc);
     
+    m_presenter->setFrameRateLimit(m_parent->GetOptions()->maxFrameRate);
+    m_presenter->setFrameRateLimiterRefreshRate(m_displayRefreshRate);
+
     CreateRenderTargetViews();
   }
 

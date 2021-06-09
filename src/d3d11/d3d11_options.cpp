@@ -19,6 +19,7 @@ namespace dxvk {
     this->deferSurfaceCreation  = config.getOption<bool>("dxgi.deferSurfaceCreation", false);
     this->numBackBuffers        = config.getOption<int32_t>("dxgi.numBackBuffers", 0);
     this->maxFrameLatency       = config.getOption<int32_t>("dxgi.maxFrameLatency", 0);
+    this->maxFrameRate          = config.getOption<int32_t>("dxgi.maxFrameRate", 0);
     this->syncInterval          = config.getOption<int32_t>("dxgi.syncInterval", -1);
     this->tearFree              = config.getOption<Tristate>("dxgi.tearFree", Tristate::Auto);
 
