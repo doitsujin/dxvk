@@ -365,8 +365,10 @@ namespace dxvk {
       }
       
       // If the swap chain allows it, change the display mode
-      if (m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH)
+      if (m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH) {
         ChangeDisplayMode(output.ptr(), pNewTargetParameters);
+        NotifyModeChange(m_monitor, FALSE);
+      }
       
       // Resize and reposition the window to 
       DXGI_OUTPUT_DESC desc;
@@ -622,6 +624,7 @@ namespace dxvk {
       ReleaseMonitorData();
     }
 
+    NotifyModeChange(m_monitor, FALSE);
     return S_OK;
   }
   
@@ -642,6 +645,8 @@ namespace dxvk {
     }
     
     // Restore internal state
+    HMONITOR monitor = m_monitor;
+
     m_descFs.Windowed = TRUE;
     m_monitor = nullptr;
     m_target  = nullptr;
@@ -667,6 +672,7 @@ namespace dxvk {
       rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
       SWP_FRAMECHANGED | SWP_NOACTIVATE);
     
+    NotifyModeChange(monitor, TRUE);
     return S_OK;
   }
   
@@ -774,6 +780,29 @@ namespace dxvk {
   void DxgiSwapChain::ReleaseMonitorData() {
     if (m_monitorInfo != nullptr)
       m_monitorInfo->ReleaseMonitorData();
+  }
+
+
+  void DxgiSwapChain::NotifyModeChange(
+          HMONITOR                hMonitor,
+          BOOL                    Windowed) {
+    DEVMODEW devMode = { };
+    devMode.dmSize       = sizeof(devMode);
+    devMode.dmFields     = DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFREQUENCY;
+
+    if (GetMonitorDisplayMode(hMonitor, ENUM_CURRENT_SETTINGS, &devMode)) {
+      DXGI_MODE_DESC displayMode = { };
+      displayMode.Width            = devMode.dmPelsWidth;
+      displayMode.Height           = devMode.dmPelsHeight;
+      displayMode.RefreshRate      = { devMode.dmDisplayFrequency, 1 };
+      displayMode.Format           = m_desc.Format;
+      displayMode.ScanlineOrdering = m_descFs.ScanlineOrdering;
+      displayMode.Scaling          = m_descFs.Scaling;
+      m_presenter->NotifyModeChange(Windowed, &displayMode);
+    } else {
+      Logger::warn("Failed to query current display mode");
+      m_presenter->NotifyModeChange(Windowed, nullptr);
+    }
   }
   
 }
