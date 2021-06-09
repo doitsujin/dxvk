@@ -6,6 +6,8 @@
 
 #include "../dxvk/dxvk_swapchain_blitter.h"
 
+#include "../util/util_fps_limit.h"
+
 #include "../util/sync/sync_signal_win32.h"
 
 namespace dxvk {
@@ -107,6 +109,8 @@ namespace dxvk {
 
     bool                    m_dirty = true;
     bool                    m_vsync = true;
+
+    FpsLimiter              m_fpsLimiter;
 
     HRESULT PresentImage(UINT SyncInterval);
 

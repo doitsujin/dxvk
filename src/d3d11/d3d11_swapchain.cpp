@@ -22,7 +22,8 @@ namespace dxvk {
     m_desc      (*pDesc),
     m_device    (pDevice->GetDXVKDevice()),
     m_context   (m_device->createContext()),
-    m_frameLatencyCap(pDevice->GetOptions()->maxFrameLatency) {
+    m_frameLatencyCap(pDevice->GetOptions()->maxFrameLatency),
+    m_fpsLimiter(double(pDevice->GetOptions()->maxFrameRate)) {
     CreateFrameLatencyEvent();
 
     if (!pDevice->GetOptions()->deferSurfaceCreation)
@@ -285,6 +286,8 @@ namespace dxvk {
 
       SubmitPresent(immediateContext, sync, i);
     }
+
+    m_fpsLimiter.delay(SyncInterval);
 
     SyncFrameLatency();
     return S_OK;
