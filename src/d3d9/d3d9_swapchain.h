@@ -8,6 +8,8 @@
 
 #include "../dxvk/dxvk_swapchain_blitter.h"
 
+#include "../util/util_fps_limit.h"
+
 #include "../util/sync/sync_signal.h"
 
 #include <vector>
@@ -127,6 +129,8 @@ namespace dxvk {
     HMONITOR                  m_monitor  = nullptr;
 
     WindowState               m_windowState;
+
+    FpsLimiter                m_fpsLimiter;
 
     void PresentImage(UINT PresentInterval);
 

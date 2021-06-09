@@ -173,7 +173,8 @@ namespace dxvk {
     , m_context          (m_device->createContext())
     , m_frameLatencyCap  (pDevice->GetOptions()->maxFrameLatency)
     , m_frameLatencySignal(new sync::Fence(m_frameId))
-    , m_dialog            (pDevice->GetOptions()->enableDialogMode) {
+    , m_dialog           (pDevice->GetOptions()->enableDialogMode)
+    , m_fpsLimiter       (pDevice->GetOptions()->maxFrameRate) {
     this->NormalizePresentParameters(pPresentParams);
     m_presentParams = *pPresentParams;
     m_window = m_presentParams.hDeviceWindow;
@@ -823,6 +824,8 @@ namespace dxvk {
       SubmitPresent(sync, i);
     }
 
+    m_fpsLimiter.delay(SyncInterval);
+
     SyncFrameLatency();
 
     // Rotate swap chain buffers so that the back
@@ -1246,9 +1249,19 @@ namespace dxvk {
       devMode.dmDisplayFrequency = mode.RefreshRate;
     }
     
-    return SetMonitorDisplayMode(GetDefaultMonitor(), &devMode)
-      ? D3D_OK
-      : D3DERR_NOTAVAILABLE;
+    HMONITOR monitor = GetDefaultMonitor();
+
+    if (!SetMonitorDisplayMode(monitor, &devMode))
+      return D3DERR_NOTAVAILABLE;
+
+    devMode.dmFields = DM_DISPLAYFREQUENCY;
+    
+    if (GetMonitorDisplayMode(monitor, ENUM_CURRENT_SETTINGS, &devMode))
+      m_fpsLimiter.setDisplayRefreshRate(double(devMode.dmDisplayFrequency));
+    else
+      m_fpsLimiter.setDisplayRefreshRate(0.0);
+
+    return D3D_OK;
   }
   
   
@@ -1256,9 +1269,11 @@ namespace dxvk {
     if (hMonitor == nullptr)
       return D3DERR_INVALIDCALL;
     
-    return RestoreMonitorDisplayMode()
-      ? D3D_OK
-      : D3DERR_NOTAVAILABLE;
+    if (!RestoreMonitorDisplayMode())
+      return D3DERR_NOTAVAILABLE;
+
+    m_fpsLimiter.setDisplayRefreshRate(0.0);
+    return D3D_OK;
   }
 
   bool    D3D9SwapChainEx::UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect) {
