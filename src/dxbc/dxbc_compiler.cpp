@@ -7456,29 +7456,36 @@ namespace dxvk {
     const uint32_t width32 = 32;
     const uint32_t width64 = 64;
 
-    m_module.enableExtension("SPV_KHR_float_controls");
+    bool enableFPControls = false;
 
     if (flags.test(DxbcFloatControlFlag::DenormFlushToZero32)) {
       m_module.enableCapability(spv::CapabilityDenormFlushToZero);
       m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeDenormFlushToZero, 1, &width32);
+      enableFPControls = true;
     }
 
-    if (flags.test(DxbcFloatControlFlag::PreserveNan32)) {
+    if (flags.test(DxbcFloatControlFlag::PreserveNan32) && m_precise) {
       m_module.enableCapability(spv::CapabilitySignedZeroInfNanPreserve);
       m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeSignedZeroInfNanPreserve, 1, &width32);
+      enableFPControls = true;
     }
 
     if (m_module.hasCapability(spv::CapabilityFloat64)) {
       if (flags.test(DxbcFloatControlFlag::DenormPreserve64)) {
         m_module.enableCapability(spv::CapabilityDenormPreserve);
         m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeDenormPreserve, 1, &width64);
+        enableFPControls = true;
       }
 
-      if (flags.test(DxbcFloatControlFlag::PreserveNan64)) {
+      if (flags.test(DxbcFloatControlFlag::PreserveNan64) && m_precise) {
         m_module.enableCapability(spv::CapabilitySignedZeroInfNanPreserve);
         m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeSignedZeroInfNanPreserve, 1, &width64);
+        enableFPControls = true;
       }
     }
+
+    if (enableFPControls)
+      m_module.enableExtension("SPV_KHR_float_controls");
   }
 
 
