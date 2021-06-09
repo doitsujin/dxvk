@@ -108,6 +108,11 @@ namespace dxvk {
     { R"(\\NieRAutomata\.exe$)", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
     }} },
+    /* NieR Replicant                             */
+    { R"(\\NieR Replicant ver\.1\.22474487139\.exe)", {{
+      { "dxgi.syncInterval",                "1"   },
+      { "dxgi.maxFrameRate",                "60"  },
+    }} },
     /* SteamVR performance test                   */
     { R"(\\vr\.exe$)", {{
       { "d3d11.dcSingleUseMode",            "False" },
