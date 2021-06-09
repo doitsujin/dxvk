@@ -218,6 +218,10 @@ namespace dxvk {
             DXGI_VK_MONITOR_DATA**  ppData);
     
     void ReleaseMonitorData();
+
+    void NotifyModeChange(
+            HMONITOR                hMonitor,
+            BOOL                    Windowed);
     
   };
   
