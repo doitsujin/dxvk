@@ -75,6 +75,10 @@ IDXGIVkSwapChain : public IUnknown {
           UINT                      SyncInterval,
           UINT                      PresentFlags,
     const DXGI_PRESENT_PARAMETERS*  pPresentParameters) = 0;
+
+  virtual void STDMETHODCALLTYPE NotifyModeChange(
+          BOOL                      Windowed,
+    const DXGI_MODE_DESC*           pDisplayMode) = 0;
 };
 
 
