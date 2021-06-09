@@ -108,6 +108,8 @@ namespace dxvk {
     bool                    m_dirty = true;
     bool                    m_vsync = true;
 
+    double                  m_displayRefreshRate = 0.0;
+
     HRESULT PresentImage(UINT SyncInterval);
 
     void SubmitPresent(

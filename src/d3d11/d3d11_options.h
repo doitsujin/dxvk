@@ -83,6 +83,9 @@ namespace dxvk {
     /// a higher value. May help with frame timing issues.
     int32_t maxFrameLatency;
 
+    /// Limit frame rate
+    int32_t maxFrameRate;
+
     /// Defer surface creation until first present call. This
     /// fixes issues with games that create multiple swap chains
     /// for a single window that may interfere with each other.
