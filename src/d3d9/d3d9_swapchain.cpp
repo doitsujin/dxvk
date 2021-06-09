@@ -173,7 +173,7 @@ namespace dxvk {
     , m_context          (m_device->createContext())
     , m_frameLatencyCap  (pDevice->GetOptions()->maxFrameLatency)
     , m_frameLatencySignal(new sync::Fence(m_frameId))
-    , m_dialog            (pDevice->GetOptions()->enableDialogMode) {
+    , m_dialog           (pDevice->GetOptions()->enableDialogMode) {
     this->NormalizePresentParameters(pPresentParams);
     m_presentParams = *pPresentParams;
     m_window = m_presentParams.hDeviceWindow;
@@ -914,7 +914,10 @@ namespace dxvk {
       m_device->vkd(),
       presenterDevice,
       presenterDesc);
-    
+
+    m_presenter->setFrameRateLimit(m_parent->GetOptions()->maxFrameRate);
+    m_presenter->setFrameRateLimiterRefreshRate(m_displayRefreshRate);
+
     CreateRenderTargetViews();
   }
 
@@ -1138,6 +1141,16 @@ namespace dxvk {
     return option > 0 ? uint32_t(option) : uint32_t(Preferred);
   }
 
+
+  void D3D9SwapChainEx::NotifyDisplayRefreshRate(
+          double                  RefreshRate) {
+    m_displayRefreshRate = RefreshRate;
+
+    if (m_presenter != nullptr)
+      m_presenter->setFrameRateLimiterRefreshRate(RefreshRate);
+  }
+
+
   HRESULT D3D9SwapChainEx::EnterFullscreenMode(
           D3DPRESENT_PARAMETERS* pPresentParams,
     const D3DDISPLAYMODEEX*      pFullscreenDisplayMode) {    
@@ -1246,9 +1259,19 @@ namespace dxvk {
       devMode.dmDisplayFrequency = mode.RefreshRate;
     }
     
-    return SetMonitorDisplayMode(GetDefaultMonitor(), &devMode)
-      ? D3D_OK
-      : D3DERR_NOTAVAILABLE;
+    HMONITOR monitor = GetDefaultMonitor();
+
+    if (!SetMonitorDisplayMode(monitor, &devMode))
+      return D3DERR_NOTAVAILABLE;
+
+    devMode.dmFields = DM_DISPLAYFREQUENCY;
+    
+    if (GetMonitorDisplayMode(monitor, ENUM_CURRENT_SETTINGS, &devMode))
+      NotifyDisplayRefreshRate(double(devMode.dmDisplayFrequency));
+    else
+      NotifyDisplayRefreshRate(0.0);
+
+    return D3D_OK;
   }
   
   
@@ -1256,9 +1279,11 @@ namespace dxvk {
     if (hMonitor == nullptr)
       return D3DERR_INVALIDCALL;
     
-    return RestoreMonitorDisplayMode()
-      ? D3D_OK
-      : D3DERR_NOTAVAILABLE;
+    if (!RestoreMonitorDisplayMode())
+      return D3DERR_NOTAVAILABLE;
+
+    NotifyDisplayRefreshRate(0.0);
+    return D3D_OK;
   }
 
   bool    D3D9SwapChainEx::UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect) {
