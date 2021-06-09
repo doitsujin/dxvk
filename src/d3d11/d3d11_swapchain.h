@@ -71,6 +71,10 @@ namespace dxvk {
             UINT                      PresentFlags,
       const DXGI_PRESENT_PARAMETERS*  pPresentParameters);
 
+    void STDMETHODCALLTYPE NotifyModeChange(
+            BOOL                      Windowed,
+      const DXGI_MODE_DESC*           pDisplayMode);
+
   private:
 
     enum BindingIds : uint32_t {
