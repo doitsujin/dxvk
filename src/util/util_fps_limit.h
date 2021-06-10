@@ -54,15 +54,27 @@ namespace dxvk {
 
   private:
 
-    using Duration = std::chrono::duration<double>;
     using TimePoint = dxvk::high_resolution_clock::time_point;
 
-    Duration  m_targetInterval;
-    Duration  m_refreshInterval;
-    Duration  m_deviation;
-    TimePoint m_lastFrame;
+    using NtTimerDuration = std::chrono::duration<int64_t, std::ratio<1, 10000000>>;
+    using NtQueryTimerResolutionProc = UINT (WINAPI *) (ULONG*, ULONG*, ULONG*);
+    using NtSetTimerResolutionProc = UINT (WINAPI *) (ULONG, BOOL, ULONG*);
+    using NtDelayExecutionProc = UINT (WINAPI *) (BOOL, LARGE_INTEGER*);
 
-    void sleep(Duration duration);
+    NtTimerDuration m_targetInterval;
+    NtTimerDuration m_refreshInterval;
+    NtTimerDuration m_deviation;
+    TimePoint       m_lastFrame;
+
+    uint64_t        m_frameCountBad  = 0;
+    uint64_t        m_frameCountGood = 0;
+
+    NtTimerDuration m_sleepGranularity = NtTimerDuration::zero();
+    NtTimerDuration m_sleepThreshold   = NtTimerDuration::zero();
+
+    NtDelayExecutionProc NtDelayExecution = nullptr;
+
+    TimePoint sleep(TimePoint t0, NtTimerDuration duration);
 
   };
 
