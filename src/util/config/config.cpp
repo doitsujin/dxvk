@@ -68,10 +68,6 @@ namespace dxvk {
     { R"(\\FIFA(19|[2-9][0-9])(_demo)?\.exe$)", {{
       { "dxvk.useRawSsbo",                  "True" },
     }} },
-    /* Final Fantasy XIV: Fix random black blocks */
-    { R"(\\ffxiv_dx11\.exe$)", {{
-      { "d3d11.enableRtOutputNanFixup",     "True" },
-    }} },
     /* Resident Evil 2/3: Ignore WaW hazards      */
     { R"(\\re(2|3|3demo)\.exe$)", {{
       { "d3d11.relaxedBarriers",            "True" },
