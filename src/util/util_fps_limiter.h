@@ -74,6 +74,7 @@ namespace dxvk {
     TimePoint       m_lastFrame;
 
     bool            m_initialized     = false;
+    bool            m_envOverride     = false;
 
     NtTimerDuration m_sleepGranularity = NtTimerDuration::zero();
     NtTimerDuration m_sleepThreshold   = NtTimerDuration::zero();

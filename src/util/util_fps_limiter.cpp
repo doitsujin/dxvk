@@ -1,6 +1,7 @@
 #include <thread>
 
 #include "thread.h"
+#include "util_env.h"
 #include "util_fps_limiter.h"
 #include "util_string.h"
 
@@ -9,7 +10,16 @@
 namespace dxvk {
   
   FpsLimiter::FpsLimiter() {
+    std::string env = env::getEnvVar("DXVK_FRAME_RATE");
 
+    if (!env.empty()) {
+      try {
+        setTargetFrameRate(std::stod(env));
+        m_envOverride = true;
+      } catch (const std::invalid_argument&) {
+        // no-op
+      }
+    }
   }
 
 
@@ -21,12 +31,14 @@ namespace dxvk {
   void FpsLimiter::setTargetFrameRate(double frameRate) {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    m_targetInterval = frameRate > 0.0
-      ? NtTimerDuration(int64_t(double(NtTimerDuration::period::den) / frameRate))
-      : NtTimerDuration::zero();
+    if (!m_envOverride) {
+      m_targetInterval = frameRate > 0.0
+        ? NtTimerDuration(int64_t(double(NtTimerDuration::period::den) / frameRate))
+        : NtTimerDuration::zero();
 
-    if (isEnabled() && !m_initialized)
-      initialize();
+      if (isEnabled() && !m_initialized)
+        initialize();
+    }
   }
 
 
@@ -48,7 +60,8 @@ namespace dxvk {
     // If the swap chain is known to have vsync enabled and the
     // refresh rate is similar to the target frame rate, disable
     // the limiter so it does not screw up frame times
-    if (vsyncEnabled && m_refreshInterval * 100 > m_targetInterval * 97)
+    if (vsyncEnabled && !m_envOverride
+     && m_refreshInterval * 100 > m_targetInterval * 97)
       return;
 
     auto t0 = m_lastFrame;
