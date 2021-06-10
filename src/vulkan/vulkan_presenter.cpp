@@ -89,6 +89,11 @@ namespace dxvk::vk {
     m_acquireStatus = m_vkd->vkAcquireNextImageKHR(m_vkd->device(),
       m_swapchain, std::numeric_limits<uint64_t>::max(),
       sync.acquire, VK_NULL_HANDLE, &m_imageIndex);
+
+    bool vsync = m_info.presentMode == VK_PRESENT_MODE_FIFO_KHR
+              || m_info.presentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+
+    m_fpsLimiter.delay(vsync);
     return status;
   }
 
@@ -235,6 +240,16 @@ namespace dxvk::vk {
     m_frameIndex = 0;
     m_acquireStatus = VK_NOT_READY;
     return VK_SUCCESS;
+  }
+
+
+  void Presenter::setFrameRateLimit(double frameRate) {
+    m_fpsLimiter.setTargetFrameRate(frameRate);
+  }
+
+
+  void Presenter::setFrameRateLimiterRefreshRate(double refreshRate) {
+    m_fpsLimiter.setDisplayRefreshRate(refreshRate);
   }
 
 

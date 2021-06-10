@@ -5,6 +5,7 @@
 #include "../util/log/log.h"
 
 #include "../util/util_error.h"
+#include "../util/util_fps_limiter.h"
 #include "../util/util_math.h"
 #include "../util/util_string.h"
 
@@ -153,6 +154,24 @@ namespace dxvk::vk {
       const PresenterDesc&  desc);
 
     /**
+     * \brief Changes maximum frame rate
+     *
+     * \param [in] frameRate Target frame rate. Set
+     *    to 0 in order to disable the limiter.
+     */
+    void setFrameRateLimit(double frameRate);
+
+    /**
+     * \brief Notifies frame rate limiter about the display refresh rate
+     *
+     * Used to dynamically disable the frame rate limiter in case
+     * vertical synchronization is used and the target frame rate
+     * roughly equals the display's refresh rate.
+     * \param [in] refresnRate Current refresh rate
+     */
+    void setFrameRateLimiterRefreshRate(double refreshRate);
+
+    /**
      * \brief Checks whether a Vulkan swap chain exists
      *
      * On Windows, there are situations where we cannot create
@@ -183,6 +202,8 @@ namespace dxvk::vk {
     uint32_t m_frameIndex = 0;
 
     VkResult m_acquireStatus = VK_NOT_READY;
+
+    FpsLimiter m_fpsLimiter;
 
     VkResult getSupportedFormats(
             std::vector<VkSurfaceFormatKHR>& formats,
