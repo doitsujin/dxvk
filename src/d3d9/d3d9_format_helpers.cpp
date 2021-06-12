@@ -28,34 +28,33 @@ namespace dxvk {
           D3D9_CONVERSION_FORMAT_INFO   conversionFormat,
     const Rc<DxvkImage>&                dstImage,
           VkImageSubresourceLayers      dstSubresource,
-    const Rc<DxvkBuffer>&               srcBuffer,
-          uint32_t                      srcBufferOffset) {
+    const DxvkBufferSlice&              srcSlice) {
     switch (conversionFormat.FormatType) {
       case D3D9ConversionFormat_YUY2:
       case D3D9ConversionFormat_UYVY: {
         uint32_t specConstant = conversionFormat.FormatType == D3D9ConversionFormat_UYVY ? 1 : 0;
-        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, srcBufferOffset, VK_FORMAT_R32_UINT, specConstant, { 2u, 1u });
+        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcSlice, VK_FORMAT_R32_UINT, specConstant, { 2u, 1u });
         break;
       }
 
       case D3D9ConversionFormat_NV12:
-        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, srcBufferOffset, VK_FORMAT_R16_UINT, 0, { 2u, 1u });
+        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcSlice, VK_FORMAT_R16_UINT, 0, { 2u, 1u });
         break;
 
       case D3D9ConversionFormat_YV12:
-        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, srcBufferOffset, VK_FORMAT_R8_UINT, 0, { 1u, 1u });
+        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcSlice, VK_FORMAT_R8_UINT, 0, { 1u, 1u });
         break;
 
       case D3D9ConversionFormat_L6V5U5:
-        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, srcBufferOffset, VK_FORMAT_R16_UINT, 0, { 1u, 1u });
+        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcSlice, VK_FORMAT_R16_UINT, 0, { 1u, 1u });
         break;
 
       case D3D9ConversionFormat_X8L8V8U8:
-        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, srcBufferOffset, VK_FORMAT_R32_UINT, 0, { 1u, 1u });
+        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcSlice, VK_FORMAT_R32_UINT, 0, { 1u, 1u });
         break;
 
       case D3D9ConversionFormat_A2W10V10U10:
-        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcBuffer, srcBufferOffset, VK_FORMAT_R32_UINT, 0, { 1u, 1u });
+        ConvertGenericFormat(conversionFormat, dstImage, dstSubresource, srcSlice, VK_FORMAT_R32_UINT, 0, { 1u, 1u });
         break;
 
       default:
@@ -68,8 +67,7 @@ namespace dxvk {
           D3D9_CONVERSION_FORMAT_INFO   videoFormat,
     const Rc<DxvkImage>&                dstImage,
           VkImageSubresourceLayers      dstSubresource,
-    const Rc<DxvkBuffer>&               srcBuffer,
-          uint32_t                      srcBufferOffset,
+    const DxvkBufferSlice&              srcSlice,
           VkFormat                      bufferFormat,
           uint32_t                      specConstantValue,
           VkExtent2D                    macroPixelRun) {
@@ -91,9 +89,9 @@ namespace dxvk {
 
     DxvkBufferViewCreateInfo bufferViewInfo;
     bufferViewInfo.format      = bufferFormat;
-    bufferViewInfo.rangeOffset = srcBufferOffset;
-    bufferViewInfo.rangeLength = srcBuffer->info().size;
-    auto tmpBufferView = m_device->createBufferView(srcBuffer, bufferViewInfo);
+    bufferViewInfo.rangeOffset = srcSlice.offset();
+    bufferViewInfo.rangeLength = srcSlice.length();
+    auto tmpBufferView = m_device->createBufferView(srcSlice.buffer(), bufferViewInfo);
 
     if (specConstantValue)
       m_context->setSpecConstant(VK_PIPELINE_BIND_POINT_COMPUTE, 0, specConstantValue);

@@ -3863,9 +3863,9 @@ namespace dxvk {
                       | VK_ACCESS_INDEX_READ_BIT;
           info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
         } else {
-          info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-          info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
-          info.access = VK_ACCESS_TRANSFER_READ_BIT;
+          info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+          info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+          info.access = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
         }
 
         currentSlice.slice  = DxvkBufferSlice(m_dxvkDevice->createBuffer(info, memoryFlags));
@@ -4361,7 +4361,7 @@ namespace dxvk {
       });
     }
     else {
-      VkExtent3D texLevelExtent = image->mipLevelExtent(Subresource);
+      VkExtent3D texLevelExtent = image->mipLevelExtent(subresource.mipLevel);
       VkExtent3D texLevelExtentBlockCount = util::computeBlockCount(texLevelExtent, formatInfo->blockSize);
 
       D3D9BufferSlice slice = AllocTempBuffer<false>(srcSlice.length);
@@ -4376,8 +4376,7 @@ namespace dxvk {
       m_converter->ConvertFormat(
         convertFormat,
         image, subresourceLayers,
-        slice.slice.buffer(),
-        slice.slice.offset());
+        slice.slice);
     }
 
     if (pResource->IsAutomaticMip())
