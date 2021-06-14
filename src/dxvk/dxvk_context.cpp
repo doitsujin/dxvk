@@ -1881,7 +1881,7 @@ namespace dxvk {
           VkImageAspectFlags        clearAspects,
           VkClearValue              clearValue) {
     for (auto& entry : m_deferredClears) {
-      if (entry.imageView->checkSubresourceMatch(imageView)) {
+      if (entry.imageView->matchesView(imageView)) {
         entry.imageView = imageView;
         entry.discardAspects &= ~clearAspects;
         entry.clearAspects |= clearAspects;
@@ -1908,7 +1908,7 @@ namespace dxvk {
     const Rc<DxvkImageView>&        imageView,
           VkImageAspectFlags        discardAspects) {
     for (auto& entry : m_deferredClears) {
-      if (entry.imageView->checkSubresourceMatch(imageView)) {
+      if (entry.imageView->matchesView(imageView)) {
         entry.imageView = imageView;
         entry.discardAspects |= discardAspects;
         entry.clearAspects &= ~discardAspects;

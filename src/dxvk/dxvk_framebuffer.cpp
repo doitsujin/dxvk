@@ -50,7 +50,7 @@ namespace dxvk {
   
   int32_t DxvkFramebuffer::findAttachment(const Rc<DxvkImageView>& view) const {
     for (uint32_t i = 0; i < m_attachmentCount; i++) {
-      if (getAttachment(i).view->checkSubresourceMatch(view))
+      if (getAttachment(i).view->matchesView(view))
         return int32_t(i);
     }
     
