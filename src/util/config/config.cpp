@@ -428,6 +428,10 @@ namespace dxvk {
     { R"(\\NINJA GAIDEN SIGMA(2)?\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
+    /* Demon Stone breaks at frame rates > 60fps */
+    { R"(\\Demonstone\.exe$)", {{
+      { "d3d9.maxFrameRate",                "60" },
+    }} },
   }};
 
 
