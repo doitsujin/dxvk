@@ -664,6 +664,34 @@ namespace dxvk {
     D3D11Device*     m_device;
     
   };
+
+  /**
+ * \brief D2DPrivateInfo
+ */
+  class D2DPrivateInfo : public ID2DPrivateInfo {
+
+  public:
+      D2DPrivateInfo(
+          D3D11DXGIDevice* pContainer,
+          D3D11Device* pDevice);
+
+      ULONG STDMETHODCALLTYPE AddRef();
+
+      ULONG STDMETHODCALLTYPE Release();
+
+      HRESULT STDMETHODCALLTYPE QueryInterface(
+          REFIID                  riid,
+          void** ppvObject);
+
+      UINT ConservativeFlushCount(void) { return 0; }
+
+  private:
+
+      D3D11DXGIDevice* m_container;
+      D3D11Device* m_device;
+
+  };
+
   
 
   /**
@@ -793,6 +821,8 @@ namespace dxvk {
     DXGIDXVKDevice      m_metaDevice;
     
     WineDXGISwapChainFactory m_wineFactory;
+
+    D2DPrivateInfo m_d2dPrivateInfo;
     
     uint32_t m_frameLatency = DefaultFrameLatency;
 
