@@ -23,7 +23,6 @@ namespace dxvk {
 
     /// Shader-related options
     Tristate useRawSsbo;
-    Tristate useEarlyDiscard;
 
     /// Workaround for NVIDIA driver
     /// bug 3114283. Cut usable HVV

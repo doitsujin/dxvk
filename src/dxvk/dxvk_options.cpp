@@ -8,7 +8,6 @@ namespace dxvk {
     enableOpenXR          = config.getOption<bool>    ("dxvk.enableOpenXR",           true);
     numCompilerThreads    = config.getOption<int32_t> ("dxvk.numCompilerThreads",     0);
     useRawSsbo            = config.getOption<Tristate>("dxvk.useRawSsbo",             Tristate::Auto);
-    useEarlyDiscard       = config.getOption<Tristate>("dxvk.useEarlyDiscard",        Tristate::Auto);
     halveNvidiaHVVHeap    = config.getOption<Tristate>("dxvk.halveNvidiaHVVHeap",     Tristate::Auto);
     hud                   = config.getOption<std::string>("dxvk.hud", "");
   }

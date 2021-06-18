@@ -27,8 +27,6 @@ namespace dxvk {
       useSubgroupOpsForEarlyDiscard = false;
     
     // Apply shader-related options
-    applyTristate(useSubgroupOpsForEarlyDiscard, device->config().useEarlyDiscard);
-
     strictConstantCopies = options.strictConstantCopies;
 
     strictPow            = options.strictPow;
