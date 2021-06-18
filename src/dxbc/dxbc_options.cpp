@@ -47,10 +47,6 @@ namespace dxvk {
     if (adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0))
       useSubgroupOpsForEarlyDiscard = false;
     
-    // Disable atomic counters on older RADV versions
-    if (adapter->matchesDriver(DxvkGpuVendor::Amd, VK_DRIVER_ID_MESA_RADV_KHR, 0, VK_MAKE_VERSION(19, 1, 0)))
-      useSubgroupOpsForAtomicCounters = false;
-    
     // Figure out float control flags to match D3D11 rules
     if (options.floatControls) {
       if (devInfo.khrShaderFloatControls.shaderSignedZeroInfNanPreserveFloat32)
