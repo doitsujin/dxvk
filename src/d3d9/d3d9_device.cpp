@@ -4309,7 +4309,6 @@ namespace dxvk {
     auto convertFormat = pResource->GetFormatMapping().ConversionFormatInfo;
 
     if (likely(convertFormat.FormatType == D3D9ConversionFormat_None)) {
-      const DxvkFormatInfo* formatInfo = imageFormatInfo(pResource->GetFormatMapping().FormatColor);
       VkImageSubresourceLayers dstLayers = { VK_IMAGE_ASPECT_COLOR_BIT, subresource.mipLevel, subresource.arrayLayer, 1 };
 
       const D3DBOX& box = pResource->GetDirtyBox(subresource.arrayLayer);
@@ -4361,13 +4360,14 @@ namespace dxvk {
       });
     }
     else {
+      const DxvkFormatInfo* formatInfo = imageFormatInfo(pResource->GetFormatMapping().FormatColor);
       VkExtent3D texLevelExtent = image->mipLevelExtent(subresource.mipLevel);
       VkExtent3D texLevelExtentBlockCount = util::computeBlockCount(texLevelExtent, formatInfo->blockSize);
 
       D3D9BufferSlice slice = AllocTempBuffer<false>(srcSlice.length);
       VkDeviceSize pitch = align(texLevelExtentBlockCount.width * formatInfo->elementSize, 4);
       util::packImageData(
-        slice.mapPtr, srcSlice.mapPtr, texLevelExtent, formatInfo->elementSize,
+        slice.mapPtr, srcSlice.mapPtr, texLevelExtentBlockCount, formatInfo->elementSize,
         pitch, pitch * texLevelExtentBlockCount.height);
 
       Flush();
