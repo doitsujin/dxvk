@@ -4114,12 +4114,17 @@ namespace dxvk {
       // calling app promises not to overwrite data that is in use
       // or is reading. Remember! This will only trigger for MANAGED resources
       // that cannot get affected by GPU, therefore readonly is A-OK for NOT waiting.
-      const bool skipWait = scratch || managed || (systemmem && !wasWrittenByGPU);
+      const bool usesStagingBuffer = pResource->DoesStagingBufferUploads(Subresource);
+      const bool skipWait = (scratch || managed || (systemmem && !wasWrittenByGPU))
+        && (usesStagingBuffer || readOnly);
 
       if (alloced) {
         std::memset(physSlice.mapPtr, 0, physSlice.length);
       }
       else if (!skipWait) {
+        if (!(Flags & D3DLOCK_DONOTWAIT) && !WaitForResource(mappedBuffer, D3DLOCK_DONOTWAIT))
+          pResource->EnableStagingBufferUploads(Subresource);
+
         if (!WaitForResource(mappedBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
       }
@@ -4354,31 +4359,41 @@ namespace dxvk {
       scaledAlignedBoxExtent.height = std::min<uint32_t>(texLevelExtent.height - scaledBoxOffset.y, scaledAlignedBoxExtent.height);
       scaledAlignedBoxExtent.depth = std::min<uint32_t>(texLevelExtent.depth - scaledBoxOffset.z, scaledAlignedBoxExtent.depth);
 
-      VkDeviceSize dirtySize = scaledBoxExtentBlockCount.width * scaledBoxExtentBlockCount.height * scaledBoxExtentBlockCount.depth * formatInfo->elementSize;
-      D3D9BufferSlice slice = AllocTempBuffer<false>(dirtySize);
       VkOffset3D boxOffsetBlockCount = util::computeBlockOffset(scaledBoxOffset, formatInfo->blockSize);
       VkDeviceSize copySrcOffset = (boxOffsetBlockCount.z * texLevelExtentBlockCount.height * texLevelExtentBlockCount.width
           + boxOffsetBlockCount.y * texLevelExtentBlockCount.width
           + boxOffsetBlockCount.x)
           * formatInfo->elementSize;
 
-      VkDeviceSize pitch = align(texLevelExtentBlockCount.width * formatInfo->elementSize, 4);
-      void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + copySrcOffset;
-      util::packImageData(
-        slice.mapPtr, srcData, scaledBoxExtentBlockCount, formatInfo->elementSize,
-        pitch, pitch * texLevelExtentBlockCount.height);
+      VkDeviceSize rowAlignment = 0;
+      DxvkBufferSlice copySrcSlice;
+      if (pResource->DoesStagingBufferUploads(Subresource)) {
+        VkDeviceSize dirtySize = scaledBoxExtentBlockCount.width * scaledBoxExtentBlockCount.height * scaledBoxExtentBlockCount.depth * formatInfo->elementSize;
+        VkDeviceSize pitch = align(texLevelExtentBlockCount.width * formatInfo->elementSize, 4);
+        D3D9BufferSlice slice = AllocTempBuffer<false>(dirtySize);
+        copySrcSlice = slice.slice;
+        void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + copySrcOffset;
+        util::packImageData(
+          slice.mapPtr, srcData, scaledBoxExtentBlockCount, formatInfo->elementSize,
+          pitch, pitch * texLevelExtentBlockCount.height);
+      } else {
+        copySrcSlice = DxvkBufferSlice(pResource->GetBuffer(Subresource), copySrcOffset, srcSlice.length);
+        rowAlignment = 4;
+      }
 
       EmitCs([
-        cSrcSlice       = slice.slice,
+        cSrcSlice       = std::move(copySrcSlice),
         cDstImage       = image,
         cDstLayers      = dstLayers,
         cDstLevelExtent = scaledAlignedBoxExtent,
-        cOffset         = scaledBoxOffset
+        cOffset         = scaledBoxOffset,
+        cRowAlignment   = rowAlignment
       ] (DxvkContext* ctx) {
         ctx->copyBufferToImage(
           cDstImage,  cDstLayers,
           cOffset, cDstLevelExtent,
-          cSrcSlice.buffer(), cSrcSlice.offset(), 0, 0);
+          cSrcSlice.buffer(), cSrcSlice.offset(),
+          cRowAlignment, 0);
       });
     }
     else {
@@ -4389,6 +4404,7 @@ namespace dxvk {
       // TODO: PLEASE CLEAN ME
       texLevelExtentBlockCount.height *= std::min(convertFormat.PlaneCount, 2u);
 
+      // the converter can not handle the 4 aligned pitch so we always repack into a staging buffer
       D3D9BufferSlice slice = AllocTempBuffer<false>(srcSlice.length);
       VkDeviceSize pitch = align(texLevelExtentBlockCount.width * formatInfo->elementSize, 4);
 
@@ -4508,8 +4524,12 @@ namespace dxvk {
       const bool readOnly = Flags & D3DLOCK_READONLY;
       const bool noOverlap = !pResource->GPUReadingRange().Overlaps(lockRange);
       const bool noOverwrite = Flags & D3DLOCK_NOOVERWRITE;
-      const bool skipWait = (!wasWrittenByGPU && (readOnly || noOverlap)) || noOverwrite;
+      const bool usesStagingBuffer = pResource->DoesStagingBufferUploads();
+      const bool skipWait = (!wasWrittenByGPU && (usesStagingBuffer || readOnly || noOverlap)) || noOverwrite;
       if (!skipWait) {
+        if (!(Flags & D3DLOCK_DONOTWAIT) && !WaitForResource(mappingBuffer, D3DLOCK_DONOTWAIT))
+          pResource->EnableStagingBufferUploads();
+
         if (!WaitForResource(mappingBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
 
@@ -4545,13 +4565,19 @@ namespace dxvk {
 
     D3D9Range& range = pResource->DirtyRange();
 
-    D3D9BufferSlice slice = AllocTempBuffer<false>(range.max - range.min);
-    void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + range.min;
-    memcpy(slice.mapPtr, srcData, range.max - range.min);
+    DxvkBufferSlice copySrcSlice;
+    if (pResource->DoesStagingBufferUploads()) {
+      D3D9BufferSlice slice = AllocTempBuffer<false>(range.max - range.min);
+      copySrcSlice = slice.slice;
+      void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + range.min;
+      memcpy(slice.mapPtr, srcData, range.max - range.min);
+    } else {
+      copySrcSlice = DxvkBufferSlice(pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>(), range.min, range.max - range.min);
+    }
 
     EmitCs([
       cDstSlice  = dstBuffer,
-      cSrcSlice  = slice.slice,
+      cSrcSlice  = copySrcSlice,
       cDstOffset = range.min,
       cLength    = range.max - range.min
     ] (DxvkContext* ctx) {
