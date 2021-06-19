@@ -1472,6 +1472,9 @@ namespace dxvk {
 
     auto rtSize = m_state.renderTargets[0]->GetSurfaceExtent();
 
+    extent.width = std::min(rtSize.width - offset.x, extent.width);
+    extent.height = std::min(rtSize.height - offset.y, extent.height);
+
     bool extentMatches = align(extent.width,  alignment) == align(rtSize.width,  alignment)
                       && align(extent.height, alignment) == align(rtSize.height, alignment);
 
