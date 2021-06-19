@@ -432,6 +432,10 @@ namespace dxvk {
     { R"(\\Demonstone\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
+    /* Far Cry 1 has worse water rendering when it detects AMD GPUs */
+    { R"(\\FarCry\.exe$)", {{
+      { "d3d9.customVendorId",              "10de" },
+    }} },
   }};
 
 
