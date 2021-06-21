@@ -338,52 +338,22 @@ namespace dxvk {
     }
     
     if (dstResourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
-      auto dstBuffer = static_cast<D3D11Buffer*>(pDstResource)->GetBufferSlice();
-      auto srcBuffer = static_cast<D3D11Buffer*>(pSrcResource)->GetBufferSlice();
+      auto dstBuffer = static_cast<D3D11Buffer*>(pDstResource);
+      auto srcBuffer = static_cast<D3D11Buffer*>(pSrcResource);
 
       VkDeviceSize dstOffset = DstX;
       VkDeviceSize srcOffset = 0;
-      VkDeviceSize regLength = srcBuffer.length();
+      VkDeviceSize byteCount = -1;
       
-      if (dstOffset >= dstBuffer.length())
-        return;
-      
-      if (pSrcBox != nullptr) {
+      if (pSrcBox) {
         if (pSrcBox->left >= pSrcBox->right)
           return;  // no-op, but legal
-        
+
         srcOffset = pSrcBox->left;
-        regLength = pSrcBox->right - pSrcBox->left;
-        
-        if (srcOffset >= srcBuffer.length())
-          return;
+        byteCount = pSrcBox->right - pSrcBox->left;
       }
       
-      // Clamp copy region to prevent out-of-bounds access
-      regLength = std::min(regLength, srcBuffer.length() - srcOffset);
-      regLength = std::min(regLength, dstBuffer.length() - dstOffset);
-      
-      EmitCs([
-        cDstSlice = dstBuffer.subSlice(dstOffset, regLength),
-        cSrcSlice = srcBuffer.subSlice(srcOffset, regLength)
-      ] (DxvkContext* ctx) {
-        bool sameResource = cDstSlice.buffer() == cSrcSlice.buffer();
-
-        if (!sameResource) {
-          ctx->copyBuffer(
-            cDstSlice.buffer(),
-            cDstSlice.offset(),
-            cSrcSlice.buffer(),
-            cSrcSlice.offset(),
-            cSrcSlice.length());
-        } else {
-          ctx->copyBufferRegion(
-            cDstSlice.buffer(),
-            cDstSlice.offset(),
-            cSrcSlice.offset(),
-            cSrcSlice.length());
-        }
-      });
+      CopyBuffer(dstBuffer, dstOffset, srcBuffer, srcOffset, byteCount);
     } else {
       const D3D11CommonTexture* dstTextureInfo = GetCommonTexture(pDstResource);
       const D3D11CommonTexture* srcTextureInfo = GetCommonTexture(pSrcResource);
@@ -560,28 +530,13 @@ namespace dxvk {
     }
     
     if (dstResourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
-      auto dstBuffer = static_cast<D3D11Buffer*>(pDstResource)->GetBufferSlice();
-      auto srcBuffer = static_cast<D3D11Buffer*>(pSrcResource)->GetBufferSlice();
-      
-      if (dstBuffer.length() != srcBuffer.length()) {
-        Logger::err(str::format(
-          "D3D11: CopyResource: Mismatched buffer size",
-          "\n  Dst buffer size: ", dstBuffer.length(),
-          "\n  Src buffer size: ", srcBuffer.length()));
+      auto dstBuffer = static_cast<D3D11Buffer*>(pDstResource);
+      auto srcBuffer = static_cast<D3D11Buffer*>(pSrcResource);
+
+      if (dstBuffer->Desc()->ByteWidth != srcBuffer->Desc()->ByteWidth)
         return;
-      }
       
-      EmitCs([
-        cDstBuffer = std::move(dstBuffer),
-        cSrcBuffer = std::move(srcBuffer)
-      ] (DxvkContext* ctx) {
-        ctx->copyBuffer(
-          cDstBuffer.buffer(),
-          cDstBuffer.offset(),
-          cSrcBuffer.buffer(),
-          cSrcBuffer.offset(),
-          cSrcBuffer.length());
-      });
+      CopyBuffer(dstBuffer, 0, srcBuffer, 0, -1);
     } else {
       auto dstTexture = GetCommonTexture(pDstResource);
       auto srcTexture = GetCommonTexture(pSrcResource);
@@ -3590,6 +3545,44 @@ namespace dxvk {
   }
   
   
+  void D3D11DeviceContext::CopyBuffer(
+          D3D11Buffer*                      pDstBuffer,
+          VkDeviceSize                      DstOffset,
+          D3D11Buffer*                      pSrcBuffer,
+          VkDeviceSize                      SrcOffset,
+          VkDeviceSize                      ByteCount) {
+    // Clamp copy region to prevent out-of-bounds access
+    VkDeviceSize dstLength = pDstBuffer->Desc()->ByteWidth;
+    VkDeviceSize srcLength = pSrcBuffer->Desc()->ByteWidth;
+
+    if (SrcOffset >= srcLength || DstOffset >= dstLength || !ByteCount)
+      return;
+
+    ByteCount = std::min(dstLength - DstOffset, ByteCount);
+    ByteCount = std::min(srcLength - SrcOffset, ByteCount);
+
+    EmitCs([
+      cDstBuffer = pDstBuffer->GetBufferSlice(DstOffset, ByteCount),
+      cSrcBuffer = pSrcBuffer->GetBufferSlice(SrcOffset, ByteCount)
+    ] (DxvkContext* ctx) {
+      if (cDstBuffer.buffer() != cSrcBuffer.buffer()) {
+        ctx->copyBuffer(
+          cDstBuffer.buffer(),
+          cDstBuffer.offset(),
+          cSrcBuffer.buffer(),
+          cSrcBuffer.offset(),
+          cSrcBuffer.length());
+      } else {
+        ctx->copyBufferRegion(
+          cDstBuffer.buffer(),
+          cDstBuffer.offset(),
+          cSrcBuffer.offset(),
+          cSrcBuffer.length());
+      }
+    });
+  }
+
+
   void D3D11DeviceContext::DiscardBuffer(
           ID3D11Resource*                   pResource) {
     auto buffer = static_cast<D3D11Buffer*>(pResource);

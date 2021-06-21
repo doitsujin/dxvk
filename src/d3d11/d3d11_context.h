@@ -780,7 +780,14 @@ namespace dxvk {
             D3D11UnorderedAccessView*         pUav,
             UINT                              CtrSlot,
             UINT                              Counter);
-    
+
+    void CopyBuffer(
+            D3D11Buffer*                      pDstBuffer,
+            VkDeviceSize                      DstOffset,
+            D3D11Buffer*                      pSrcBuffer,
+            VkDeviceSize                      SrcOffset,
+            VkDeviceSize                      ByteCount);
+
     void DiscardBuffer(
             ID3D11Resource*                   pResource);
     
