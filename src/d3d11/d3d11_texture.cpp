@@ -535,17 +535,22 @@ namespace dxvk {
   D3D11_COMMON_TEXTURE_MAP_MODE D3D11CommonTexture::DetermineMapMode(
     const DxvkImageCreateInfo*  pImageInfo) const {
     // Don't map an image unless the application requests it
-    if (m_desc.CPUAccessFlags == 0)
+    if (!m_desc.CPUAccessFlags)
       return D3D11_COMMON_TEXTURE_MAP_MODE_NONE;
     
+    // If the resource cannot be used in the actual rendering pipeline, we
+    // do not need to create an actual image and can instead implement copy
+    // functions as buffer-to-image and image-to-buffer copies.
+    if (!m_desc.BindFlags && m_desc.Usage != D3D11_USAGE_DEFAULT)
+      return D3D11_COMMON_TEXTURE_MAP_MODE_STAGING;
+
     // Write-only images should go through a buffer for multiple reasons:
     // 1. Some games do not respect the row and depth pitch that is returned
     //    by the Map() method, which leads to incorrect rendering (e.g. Nier)
     // 2. Since the image will most likely be read for rendering by the GPU,
     //    writing the image to device-local image may be more efficient than
-    //    reading its contents from host-visible memory.
+    //    reading its contents from host memory.
     if (m_desc.Usage         == D3D11_USAGE_DYNAMIC
-     && m_desc.BindFlags     != 0
      && m_desc.TextureLayout != D3D11_TEXTURE_LAYOUT_ROW_MAJOR)
       return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
     
@@ -554,7 +559,7 @@ namespace dxvk {
     if (GetPackedDepthStencilFormat(m_desc.Format))
       return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
 
-    // Multi-plane images have a sepcial memory layout in D3D11
+    // Multi-plane images have a special memory layout in D3D11
     if (imageFormatInfo(pImageInfo->format)->flags.test(DxvkFormatFlag::MultiPlane))
       return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
 
