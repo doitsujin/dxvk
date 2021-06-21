@@ -542,7 +542,7 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkBuffer> D3D11CommonTexture::CreateMappedBuffer(UINT MipLevel) const {
+  D3D11CommonTexture::MappedBuffer D3D11CommonTexture::CreateMappedBuffer(UINT MipLevel) const {
     const DxvkFormatInfo* formatInfo = imageFormatInfo(
       m_device->LookupPackedFormat(m_desc.Format, GetFormatMode()).Format);
     
@@ -561,7 +561,10 @@ namespace dxvk {
     if (m_desc.Usage == D3D11_USAGE_STAGING)
       memType |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
     
-    return m_device->GetDXVKDevice()->createBuffer(info, memType);
+    MappedBuffer result;
+    result.buffer = m_device->GetDXVKDevice()->createBuffer(info, memType);
+    result.slice = result.buffer->getSliceHandle();
+    return result;
   }
   
   

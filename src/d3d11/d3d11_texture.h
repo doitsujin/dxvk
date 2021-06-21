@@ -168,8 +168,36 @@ namespace dxvk {
      */
     Rc<DxvkBuffer> GetMappedBuffer(UINT Subresource) const {
       return Subresource < m_buffers.size()
-        ? m_buffers[Subresource]
+        ? m_buffers[Subresource].buffer
         : Rc<DxvkBuffer>();
+    }
+
+    /**
+     * \brief Discards mapped buffer slice for a given subresource
+     *
+     * \param [in] Subresource Subresource to discard
+     * \returns Newly allocated mapped buffer slice
+     */
+    DxvkBufferSliceHandle DiscardSlice(UINT Subresource) {
+      if (Subresource < m_buffers.size()) {
+        DxvkBufferSliceHandle slice = m_buffers[Subresource].buffer->allocSlice();
+        m_buffers[Subresource].slice = slice;
+        return slice;
+      } else {
+        return DxvkBufferSliceHandle();
+      }
+    }
+
+    /**
+     * \brief Retrieves mapped buffer slice for a given subresource
+     *
+     * \param [in] Subresource Subresource index to query
+     * \returns Currently mapped buffer slice
+     */
+    DxvkBufferSliceHandle GetMappedSlice(UINT Subresource) const {
+      return Subresource < m_buffers.size()
+        ? m_buffers[Subresource].slice
+        : DxvkBufferSliceHandle();
     }
     
     /**
@@ -258,6 +286,11 @@ namespace dxvk {
     
   private:
     
+    struct MappedBuffer {
+      Rc<DxvkBuffer>        buffer;
+      DxvkBufferSliceHandle slice;
+    };
+
     D3D11Device* const            m_device;
     D3D11_RESOURCE_DIMENSION      m_dimension;
     D3D11_COMMON_TEXTURE_DESC     m_desc;
@@ -265,10 +298,10 @@ namespace dxvk {
     DXGI_USAGE                    m_dxgiUsage;
     
     Rc<DxvkImage>                 m_image;
-    std::vector<Rc<DxvkBuffer>>   m_buffers;
+    std::vector<MappedBuffer>     m_buffers;
     std::vector<D3D11_MAP>        m_mapTypes;
     
-    Rc<DxvkBuffer> CreateMappedBuffer(
+    MappedBuffer CreateMappedBuffer(
             UINT                  MipLevel) const;
     
     BOOL CheckImageSupport(
