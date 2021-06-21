@@ -10,7 +10,7 @@ namespace dxvk {
           D3D11_RESOURCE_DIMENSION    Dimension,
           DXGI_USAGE                  DxgiUsage,
           VkImage                     vkImage)
-  : m_device(pDevice), m_desc(*pDesc), m_dxgiUsage(DxgiUsage) {
+  : m_device(pDevice), m_dimension(Dimension), m_desc(*pDesc), m_dxgiUsage(DxgiUsage) {
     DXGI_VK_FORMAT_MODE   formatMode   = GetFormatMode();
     DXGI_VK_FORMAT_INFO   formatInfo   = m_device->LookupFormat(m_desc.Format, formatMode);
     DXGI_VK_FORMAT_FAMILY formatFamily = m_device->LookupFamily(m_desc.Format, formatMode);
@@ -153,6 +153,22 @@ namespace dxvk {
       imageInfo.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
     }
     
+    // If necessary, create the mapped linear buffer
+    if (m_mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_NONE) {
+      for (uint32_t i = 0; i < m_desc.ArraySize; i++) {
+        for (uint32_t j = 0; j < m_desc.MipLevels; j++) {
+          if (m_mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT)
+            m_buffers.push_back(CreateMappedBuffer(j));
+
+          m_mapTypes.push_back(D3D11_MAP(~0u));
+        }
+      }
+    }
+
+    // Skip image creation if possible
+    if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_STAGING)
+      return;
+
     // We must keep LINEAR images in GENERAL layout, but we
     // can choose a better layout for the image based on how
     // it is going to be used by the game.
@@ -194,16 +210,6 @@ namespace dxvk {
       m_image = m_device->GetDXVKDevice()->createImage(imageInfo, memoryProperties);
     else
       m_image = m_device->GetDXVKDevice()->createImageFromVkImage(imageInfo, vkImage);
-
-    // If necessary, create the mapped linear buffer
-    for (uint32_t i = 0; i < m_desc.ArraySize; i++) {
-      for (uint32_t j = 0; j < m_desc.MipLevels; j++) {
-        if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)
-          m_buffers.push_back(CreateMappedBuffer(j));
-        if (m_mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_NONE)
-          m_mapTypes.push_back(D3D11_MAP(~0u));
-      }
-    }
   }
   
   
@@ -238,7 +244,8 @@ namespace dxvk {
         layout.DepthPitch = vkLayout.depthPitch;
       } break;
 
-      case D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER: {
+      case D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER:
+      case D3D11_COMMON_TEXTURE_MAP_MODE_STAGING: {
         auto formatInfo = imageFormatInfo(m_device->LookupPackedFormat(m_desc.Format, GetFormatMode()).Format);
         auto aspects = Aspect;
 
@@ -247,7 +254,7 @@ namespace dxvk {
         if (aspects == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
           aspects = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-        VkExtent3D mipExtent = m_image->mipLevelExtent(subresource.mipLevel);
+        VkExtent3D mipExtent = MipLevelExtent(subresource.mipLevel);
 
         while (aspects) {
           auto aspect = vk::getNextAspect(aspects);
@@ -277,8 +284,8 @@ namespace dxvk {
     }
 
     // D3D wants us to return the total subresource size in some instances
-    if (m_image->info().type < VK_IMAGE_TYPE_2D) layout.RowPitch = layout.Size;
-    if (m_image->info().type < VK_IMAGE_TYPE_3D) layout.DepthPitch = layout.Size;
+    if (m_dimension < D3D11_RESOURCE_DIMENSION_TEXTURE2D) layout.RowPitch = layout.Size;
+    if (m_dimension < D3D11_RESOURCE_DIMENSION_TEXTURE3D) layout.DepthPitch = layout.Size;
     return layout;
   }
 

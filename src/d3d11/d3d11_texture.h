@@ -20,9 +20,10 @@ namespace dxvk {
    * behave when mapping an image.
    */
   enum D3D11_COMMON_TEXTURE_MAP_MODE {
-    D3D11_COMMON_TEXTURE_MAP_MODE_NONE,   ///< Not mapped
-    D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER, ///< Mapped through buffer
-    D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT, ///< Directly mapped to host mem
+    D3D11_COMMON_TEXTURE_MAP_MODE_NONE,     ///< Not mapped
+    D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER,   ///< Mapped through buffer
+    D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT,   ///< Directly mapped to host mem
+    D3D11_COMMON_TEXTURE_MAP_MODE_STAGING,  ///< Buffer only, no image
   };
   
   
@@ -88,6 +89,17 @@ namespace dxvk {
      */
     const D3D11_COMMON_TEXTURE_DESC* Desc() const {
       return &m_desc;
+    }
+
+    /**
+     * \brief Computes extent of a given mip level
+     *
+     * This also works for staging resources that have no image.
+     * \param [in] Level Mip level to compute the size of
+     */
+    VkExtent3D MipLevelExtent(uint32_t Level) const {
+      return util::computeMipLevelExtent(
+        VkExtent3D { m_desc.Width, m_desc.Height, m_desc.Depth }, Level);
     }
 
     /**
@@ -247,6 +259,7 @@ namespace dxvk {
   private:
     
     D3D11Device* const            m_device;
+    D3D11_RESOURCE_DIMENSION      m_dimension;
     D3D11_COMMON_TEXTURE_DESC     m_desc;
     D3D11_COMMON_TEXTURE_MAP_MODE m_mapMode;
     DXGI_USAGE                    m_dxgiUsage;
