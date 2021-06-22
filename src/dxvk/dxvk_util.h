@@ -94,7 +94,7 @@ namespace dxvk::util {
   }
   
   /**
-   * \brief Checks whether an extent is block-aligned
+   * \brief Checks whether an offset and extent are block-aligned
    * 
    * A block-aligned extent can be used for image copy
    * operations that involve block-compressed images.
@@ -108,7 +108,8 @@ namespace dxvk::util {
   inline bool isBlockAligned(VkOffset3D offset, VkExtent3D extent, VkExtent3D blockSize, VkExtent3D imageSize) {
     return ((extent.width  % blockSize.width  == 0) || (uint32_t(offset.x + extent.width)  == imageSize.width))
         && ((extent.height % blockSize.height == 0) || (uint32_t(offset.y + extent.height) == imageSize.height))
-        && ((extent.depth  % blockSize.depth  == 0) || (uint32_t(offset.z + extent.depth)  == imageSize.depth));
+        && ((extent.depth  % blockSize.depth  == 0) || (uint32_t(offset.z + extent.depth)  == imageSize.depth))
+        && isBlockAligned(offset, blockSize);
   }
   
   /**
@@ -195,6 +196,23 @@ namespace dxvk::util {
       (extent.width  + blockSize.width  - offset.x - 1) / blockSize.width,
       (extent.height + blockSize.height - offset.y - 1) / blockSize.height,
       (extent.depth  + blockSize.depth  - offset.z - 1) / blockSize.depth };
+  }
+  
+  /**
+   * \brief Snaps block-aligned image extent to image edges
+   * 
+   * Fixes up an image extent that is aligned to a compressed
+   * block so that it no longer exceeds the given image size.
+   * \param [in] offset Aligned pixel offset
+   * \param [in] extent Extent to clamp
+   * \param [in] imageExtent Image size
+   * \returns Number of blocks in the image
+   */
+  inline VkExtent3D snapExtent3D(VkOffset3D offset, VkExtent3D extent, VkExtent3D imageExtent) {
+    return VkExtent3D {
+      std::min(extent.width,  imageExtent.width  - uint32_t(offset.x)),
+      std::min(extent.height, imageExtent.height - uint32_t(offset.y)),
+      std::min(extent.depth,  imageExtent.depth  - uint32_t(offset.z)) };
   }
   
   /**

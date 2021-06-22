@@ -788,6 +788,15 @@ namespace dxvk {
             VkDeviceSize                      SrcOffset,
             VkDeviceSize                      ByteCount);
 
+    void CopyImage(
+            D3D11CommonTexture*               pDstTexture,
+      const VkImageSubresourceLayers*         pDstLayers,
+            VkOffset3D                        DstOffset,
+            D3D11CommonTexture*               pSrcTexture,
+      const VkImageSubresourceLayers*         pSrcLayers,
+            VkOffset3D                        SrcOffset,
+            VkExtent3D                        SrcExtent);
+
     void DiscardBuffer(
             ID3D11Resource*                   pResource);
     
