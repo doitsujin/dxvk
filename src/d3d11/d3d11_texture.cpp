@@ -18,7 +18,7 @@ namespace dxvk {
     m_packedFormat = formatPacked.Format;
 
     DxvkImageCreateInfo imageInfo;
-    imageInfo.type            = GetImageTypeFromResourceDim(Dimension);
+    imageInfo.type            = GetVkImageType();
     imageInfo.format          = formatInfo.Format;
     imageInfo.flags           = 0;
     imageInfo.sampleCount     = VK_SAMPLE_COUNT_1_BIT;

@@ -92,6 +92,17 @@ namespace dxvk {
     }
 
     /**
+     * \brief Retrieves Vulkan image type
+     *
+     * Returns the image type based on the D3D11 resource
+     * dimension. Also works if there is no actual image.
+     * \returns Vulkan image type
+     */
+    VkImageType GetVkImageType() const {
+      return GetImageTypeFromResourceDim(m_dimension);
+    }
+
+    /**
      * \brief Computes extent of a given mip level
      *
      * This also works for staging resources that have no image.
