@@ -14,6 +14,8 @@ namespace dxvk {
     DXGI_VK_FORMAT_MODE   formatMode   = GetFormatMode();
     DXGI_VK_FORMAT_INFO   formatInfo   = m_device->LookupFormat(m_desc.Format, formatMode);
     DXGI_VK_FORMAT_FAMILY formatFamily = m_device->LookupFamily(m_desc.Format, formatMode);
+    DXGI_VK_FORMAT_INFO   formatPacked = m_device->LookupPackedFormat(m_desc.Format, formatMode);
+    m_packedFormat = formatPacked.Format;
 
     DxvkImageCreateInfo imageInfo;
     imageInfo.type            = GetImageTypeFromResourceDim(Dimension);
@@ -246,7 +248,6 @@ namespace dxvk {
 
       case D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER:
       case D3D11_COMMON_TEXTURE_MAP_MODE_STAGING: {
-        auto formatInfo = imageFormatInfo(m_device->LookupPackedFormat(m_desc.Format, GetFormatMode()).Format);
         auto aspects = Aspect;
 
         // The exact aspect mask only matters for multi-plane formats,
@@ -257,18 +258,20 @@ namespace dxvk {
         VkExtent3D mipExtent = MipLevelExtent(subresource.mipLevel);
 
         while (aspects) {
+          auto packedFormatInfo = imageFormatInfo(m_packedFormat);
+
           auto aspect = vk::getNextAspect(aspects);
           auto extent = mipExtent;
-          auto elementSize = formatInfo->elementSize;
+          auto elementSize = packedFormatInfo->elementSize;
 
-          if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
-            auto plane = &formatInfo->planes[vk::getPlaneIndex(aspect)];
+          if (packedFormatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+            auto plane = &packedFormatInfo->planes[vk::getPlaneIndex(aspect)];
             extent.width  /= plane->blockSize.width;
             extent.height /= plane->blockSize.height;
             elementSize = plane->elementSize;
           }
 
-          auto blockCount = util::computeBlockCount(extent, formatInfo->blockSize);
+          auto blockCount = util::computeBlockCount(extent, packedFormatInfo->blockSize);
 
           if (!layout.RowPitch) {
             layout.RowPitch   = elementSize * blockCount.width;

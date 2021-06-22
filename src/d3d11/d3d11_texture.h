@@ -199,6 +199,18 @@ namespace dxvk {
         ? m_buffers[Subresource].slice
         : DxvkBufferSliceHandle();
     }
+
+    /**
+     * \brief Returns underlying packed Vulkan format
+     *
+     * This works even for staging resources that have no image.
+     * Note that for depth-stencil resources, the returned format
+     * may be different from the image format on some systems.
+     * \returns Packed Vulkan format
+     */
+    VkFormat GetPackedFormat() const {
+      return m_packedFormat;
+    }
     
     /**
      * \brief Checks whether we can update the mapped buffer early
@@ -296,6 +308,7 @@ namespace dxvk {
     D3D11_COMMON_TEXTURE_DESC     m_desc;
     D3D11_COMMON_TEXTURE_MAP_MODE m_mapMode;
     DXGI_USAGE                    m_dxgiUsage;
+    VkFormat                      m_packedFormat;
     
     Rc<DxvkImage>                 m_image;
     std::vector<MappedBuffer>     m_buffers;
