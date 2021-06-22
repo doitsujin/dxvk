@@ -2751,12 +2751,12 @@ namespace dxvk {
         VkDeviceSize rowPitch = blockCount.width * elementSize;
 
         if (bufferRowAlignment > elementSize)
-          rowPitch = bufferRowAlignment > rowPitch ? bufferRowAlignment : align(rowPitch, bufferRowAlignment);
+          rowPitch = bufferRowAlignment >= rowPitch ? bufferRowAlignment : align(rowPitch, bufferRowAlignment);
 
         VkDeviceSize slicePitch = blockCount.height * rowPitch;
 
         if (image->info().type == VK_IMAGE_TYPE_3D && bufferSliceAlignment > elementSize)
-          slicePitch = bufferSliceAlignment > slicePitch ? bufferSliceAlignment : align(slicePitch, bufferSliceAlignment);
+          slicePitch = bufferSliceAlignment >= slicePitch ? bufferSliceAlignment : align(slicePitch, bufferSliceAlignment);
 
         copyRegion.bufferOffset      = aspectOffset;
         copyRegion.bufferRowLength   = formatInfo->blockSize.width * rowPitch / elementSize;
@@ -2779,7 +2779,7 @@ namespace dxvk {
       VkDeviceSize layerPitch = aspectOffset - bufferOffset;
 
       if (bufferSliceAlignment)
-        layerPitch = bufferSliceAlignment > layerPitch ? bufferSliceAlignment : align(layerPitch, bufferSliceAlignment);
+        layerPitch = bufferSliceAlignment >= layerPitch ? bufferSliceAlignment : align(layerPitch, bufferSliceAlignment);
 
       bufferOffset += layerPitch;
     }
