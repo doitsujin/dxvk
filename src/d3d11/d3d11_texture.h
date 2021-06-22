@@ -236,6 +236,16 @@ namespace dxvk {
           && (m_desc.BindFlags & ~D3D11_BIND_SHADER_RESOURCE) == 0
           && (m_desc.Usage == D3D11_USAGE_STAGING);
     }
+
+    /**
+     * \brief Computes pixel offset into mapped buffer
+     *
+     * \param [in] Subresource Subresource index
+     * \param [in] Subresource Plane index
+     * \param [in] Offset Pixel coordinate to compute offset for
+     * \returns Offset into mapped subresource buffer, in pixels
+     */
+    VkDeviceSize ComputeMappedOffset(UINT Subresource, UINT Plane, VkOffset3D Offset) const;
     
     /**
      * \brief Computes subresource from the subresource index
@@ -253,12 +263,12 @@ namespace dxvk {
     /**
      * \brief Computes subresource layout for the given subresource
      *
-     * \param [in] Aspect The image aspect
+     * \param [in] AspectMask The image aspect
      * \param [in] Subresource Subresource index
      * \returns Memory layout of the mapped subresource
      */
     D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT GetSubresourceLayout(
-            VkImageAspectFlags    Aspect,
+            VkImageAspectFlags    AspectMask,
             UINT                  Subresource) const;
 
     /**

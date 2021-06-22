@@ -220,6 +220,30 @@ namespace dxvk {
   }
   
   
+  VkDeviceSize D3D11CommonTexture::ComputeMappedOffset(UINT Subresource, UINT Plane, VkOffset3D Offset) const {
+    auto packedFormatInfo = imageFormatInfo(m_packedFormat);
+
+    VkImageAspectFlags aspectMask = packedFormatInfo->aspectMask;
+    VkDeviceSize elementSize = packedFormatInfo->elementSize;
+
+    if (packedFormatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+      auto plane = &packedFormatInfo->planes[Plane];
+      elementSize = plane->elementSize;
+      Offset.x /= plane->blockSize.width;
+      Offset.y /= plane->blockSize.height;
+      aspectMask = vk::getPlaneAspect(Plane);
+    }
+
+    auto layout = GetSubresourceLayout(aspectMask, Subresource);
+    auto blockOffset = util::computeBlockOffset(Offset, packedFormatInfo->blockSize);
+
+    return VkDeviceSize(blockOffset.z) * layout.DepthPitch
+         + VkDeviceSize(blockOffset.y) * layout.RowPitch
+         + VkDeviceSize(blockOffset.x) * elementSize
+         + VkDeviceSize(layout.Offset);
+  }
+
+
   VkImageSubresource D3D11CommonTexture::GetSubresourceFromIndex(
           VkImageAspectFlags    Aspect,
           UINT                  Subresource) const {
@@ -232,9 +256,9 @@ namespace dxvk {
   
   
   D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT D3D11CommonTexture::GetSubresourceLayout(
-          VkImageAspectFlags    Aspect,
+          VkImageAspectFlags    AspectMask,
           UINT                  Subresource) const {
-    VkImageSubresource subresource = GetSubresourceFromIndex(Aspect, Subresource);
+    VkImageSubresource subresource = GetSubresourceFromIndex(AspectMask, Subresource);
     D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT layout = { };
 
     switch (m_mapMode) {
@@ -248,18 +272,12 @@ namespace dxvk {
 
       case D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER:
       case D3D11_COMMON_TEXTURE_MAP_MODE_STAGING: {
-        auto aspects = Aspect;
+        auto packedFormatInfo = imageFormatInfo(m_packedFormat);
 
-        // The exact aspect mask only matters for multi-plane formats,
-        // but depth-stencil is assumed to be packed in memory
-        if (aspects == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
-          aspects = VK_IMAGE_ASPECT_DEPTH_BIT;
-
+        VkImageAspectFlags aspects = packedFormatInfo->aspectMask;
         VkExtent3D mipExtent = MipLevelExtent(subresource.mipLevel);
 
         while (aspects) {
-          auto packedFormatInfo = imageFormatInfo(m_packedFormat);
-
           auto aspect = vk::getNextAspect(aspects);
           auto extent = mipExtent;
           auto elementSize = packedFormatInfo->elementSize;
@@ -278,7 +296,12 @@ namespace dxvk {
             layout.DepthPitch = elementSize * blockCount.width * blockCount.height;
           }
 
-          layout.Size += elementSize * blockCount.width * blockCount.height * blockCount.depth;
+          VkDeviceSize size = elementSize * blockCount.width * blockCount.height * blockCount.depth;
+
+          if (aspect & AspectMask)
+            layout.Size += size;
+          else if (!layout.Size)
+            layout.Offset += size;
         }
       } break;
 
