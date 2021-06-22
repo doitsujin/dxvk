@@ -203,6 +203,13 @@ namespace dxvk {
             image, value, subresources);
         }
       }
+
+      if (pTexture->GetMapMode() != D3D11_COMMON_TEXTURE_MAP_MODE_NONE) {
+        for (uint32_t i = 0; i < pTexture->CountSubresources(); i++) {
+          auto buffer = pTexture->GetMappedBuffer(i);
+          std::memset(buffer->mapPtr(0), 0, buffer->info().size);
+        }
+      }
     }
 
     FlushImplicit();
