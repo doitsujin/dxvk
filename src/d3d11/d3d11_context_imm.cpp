@@ -443,17 +443,24 @@ namespace dxvk {
 
         mapPtr = physSlice.mapPtr;
       } else {
-        // When using any map mode which requires the image contents
-        // to be preserved, and if the GPU has write access to the
-        // image, copy the current image contents into the buffer.
-        if (pResource->Desc()->Usage == D3D11_USAGE_STAGING
-         && !pResource->CanUpdateMappedBufferEarly()) {
-          UpdateMappedBuffer(pResource, subresource);
-          MapFlags &= ~D3D11_MAP_FLAG_DO_NOT_WAIT;
+        bool wait = MapType != D3D11_MAP_WRITE_NO_OVERWRITE;
+
+        if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER) {
+          // When using any map mode which requires the image contents
+          // to be preserved, and if the GPU has write access to the
+          // image, copy the current image contents into the buffer.
+          if (pResource->Desc()->Usage == D3D11_USAGE_STAGING
+           && !pResource->CanUpdateMappedBufferEarly()) {
+            UpdateMappedBuffer(pResource, subresource);
+            MapFlags &= ~D3D11_MAP_FLAG_DO_NOT_WAIT;
+          }
+
+          // Need to wait for any previous upload to finish anyway
+          wait = true;
         }
         
         // Wait for mapped buffer to become available
-        if (!WaitForResource(mappedBuffer, MapType, MapFlags))
+        if (wait && !WaitForResource(mappedBuffer, MapType, MapFlags))
           return DXGI_ERROR_WAS_STILL_DRAWING;
         
         mapPtr = pResource->GetMappedSlice(Subresource).mapPtr;
