@@ -363,7 +363,7 @@ namespace dxvk {
         ctx->copyBufferToImage(cDstImage,
           dstLayers, dstOffset, dstExtent,
           cStagingSlice.buffer(),
-          cStagingSlice.offset(), 0);
+          cStagingSlice.offset(), 0, 0);
       } else {
         ctx->copyPackedBufferToDepthStencilImage(
           cDstImage, dstLayers,

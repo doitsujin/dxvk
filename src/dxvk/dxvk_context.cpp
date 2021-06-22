@@ -726,7 +726,8 @@ namespace dxvk {
           VkExtent3D            dstExtent,
     const Rc<DxvkBuffer>&       srcBuffer,
           VkDeviceSize          srcOffset,
-          VkDeviceSize          rowAlignment) {
+          VkDeviceSize          rowAlignment,
+          VkDeviceSize          sliceAlignment) {
     this->spillRenderPass(true);
     this->prepareImage(m_execBarriers, dstImage, vk::makeSubresourceRange(dstSubresource));
 
@@ -763,7 +764,7 @@ namespace dxvk {
     m_execAcquires.recordCommands(m_cmd);
 
     this->copyImageBufferData<true>(DxvkCmdBuffer::ExecBuffer, dstImage, dstSubresource,
-      dstOffset, dstExtent, dstImageLayoutTransfer, srcSlice, rowAlignment, 0);
+      dstOffset, dstExtent, dstImageLayoutTransfer, srcSlice, rowAlignment, sliceAlignment);
 
     m_execBarriers.accessImage(
       dstImage, dstSubresourceRange,

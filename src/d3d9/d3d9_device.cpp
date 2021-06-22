@@ -707,7 +707,7 @@ namespace dxvk {
     ] (DxvkContext* ctx) {
       ctx->copyBufferToImage(
         cDstImage, cDstLayers, cDstOffset, cCopyExtent,
-        cSrcSlice.buffer(), cSrcSlice.offset(), 0);
+        cSrcSlice.buffer(), cSrcSlice.offset(), 0, 0);
     });
 
     dstTextureInfo->SetWrittenByGPU(dst->GetSubresource(), true);
@@ -800,7 +800,7 @@ namespace dxvk {
           ctx->copyBufferToImage(
             cDstImage,  cDstLayers,
             cOffset, cExtent,
-            cSrcSlice.buffer(), cSrcSlice.offset(), 0);
+            cSrcSlice.buffer(), cSrcSlice.offset(), 0, 0);
         });
 
         dstTexInfo->SetWrittenByGPU(dstTexInfo->CalcSubresource(a, m), true);
@@ -4359,7 +4359,7 @@ namespace dxvk {
         ctx->copyBufferToImage(
           cDstImage,  cDstLayers,
           cOffset, cDstLevelExtent,
-          cSrcSlice.buffer(), cSrcSlice.offset(), 0);
+          cSrcSlice.buffer(), cSrcSlice.offset(), 0, 0);
       });
     }
     else {

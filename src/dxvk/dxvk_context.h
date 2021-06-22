@@ -349,6 +349,7 @@ namespace dxvk {
      * \param [in] srcBuffer Source buffer
      * \param [in] srcOffset Source offset, in bytes
      * \param [in] rowAlignment Row alignment, in bytes
+     * \param [in] sliceAlignment Slice alignment, in bytes
      */
     void copyBufferToImage(
       const Rc<DxvkImage>&        dstImage,
@@ -357,7 +358,8 @@ namespace dxvk {
             VkExtent3D            dstExtent,
       const Rc<DxvkBuffer>&       srcBuffer,
             VkDeviceSize          srcOffset,
-            VkDeviceSize          rowAlignment);
+            VkDeviceSize          rowAlignment,
+            VkDeviceSize          sliceAlignment);
     
     /**
      * \brief Copies data from one image to another

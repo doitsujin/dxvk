@@ -1243,7 +1243,7 @@ namespace dxvk {
           ctx->copyBufferToImage(cDstImage,
             cDstLayers, cDstOffset, cDstExtent,
             cStagingSlice.buffer(),
-            cStagingSlice.offset(), 0);
+            cStagingSlice.offset(), 0, 0);
         } else {
           ctx->copyPackedBufferToDepthStencilImage(cDstImage, cDstLayers,
             VkOffset2D { cDstOffset.x,     cDstOffset.y      },
