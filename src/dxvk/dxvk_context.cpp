@@ -894,6 +894,7 @@ namespace dxvk {
     const Rc<DxvkBuffer>&       dstBuffer,
           VkDeviceSize          dstOffset,
           VkDeviceSize          rowAlignment,
+          VkDeviceSize          sliceAlignment,
     const Rc<DxvkImage>&        srcImage,
           VkImageSubresourceLayers srcSubresource,
           VkOffset3D            srcOffset,
@@ -928,7 +929,7 @@ namespace dxvk {
     m_execAcquires.recordCommands(m_cmd);
     
     this->copyImageBufferData<false>(DxvkCmdBuffer::ExecBuffer, srcImage, srcSubresource,
-      srcOffset, srcExtent, srcImageLayoutTransfer, dstSlice, rowAlignment, 0);
+      srcOffset, srcExtent, srcImageLayoutTransfer, dstSlice, rowAlignment, sliceAlignment);
     
     m_execBarriers.accessImage(
       srcImage, srcSubresourceRange,

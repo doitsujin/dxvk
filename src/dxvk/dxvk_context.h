@@ -403,6 +403,8 @@ namespace dxvk {
      * \param [in] dstBuffer Destination buffer
      * \param [in] dstOffset Destination offset, in bytes
      * \param [in] dstExtent Destination data extent
+     * \param [in] rowAlignment Row alignment, in bytes
+     * \param [in] sliceAlignment Slice alignment, in bytes
      * \param [in] srcImage Source image
      * \param [in] srcSubresource Source subresource
      * \param [in] srcOffset Source area offset
@@ -412,6 +414,7 @@ namespace dxvk {
       const Rc<DxvkBuffer>&       dstBuffer,
             VkDeviceSize          dstOffset,
             VkDeviceSize          rowAlignment,
+            VkDeviceSize          sliceAlignment,
       const Rc<DxvkImage>&        srcImage,
             VkImageSubresourceLayers srcSubresource,
             VkOffset3D            srcOffset,
