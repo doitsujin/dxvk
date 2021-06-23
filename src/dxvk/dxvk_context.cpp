@@ -1064,6 +1064,171 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::copyPackedBufferImage(
+    const Rc<DxvkBuffer>&       dstBuffer,
+          VkDeviceSize          dstBufferOffset,
+          VkOffset3D            dstOffset,
+          VkExtent3D            dstSize,
+    const Rc<DxvkBuffer>&       srcBuffer,
+          VkDeviceSize          srcBufferOffset,
+          VkOffset3D            srcOffset,
+          VkExtent3D            srcSize,
+          VkExtent3D            extent,
+          VkDeviceSize          elementSize) {
+    this->spillRenderPass(true);
+    this->unbindComputePipeline();
+
+    auto dstBufferSlice = dstBuffer->getSliceHandle(dstBufferOffset, elementSize * util::flattenImageExtent(dstSize));
+    auto srcBufferSlice = srcBuffer->getSliceHandle(srcBufferOffset, elementSize * util::flattenImageExtent(srcSize));
+
+    if (m_execBarriers.isBufferDirty(dstBufferSlice, DxvkAccess::Write)
+     || m_execBarriers.isBufferDirty(srcBufferSlice, DxvkAccess::Read))
+      m_execBarriers.recordCommands(m_cmd);
+
+    // We'll use texel buffer views with an appropriately
+    // sized integer format to perform the copy
+    VkFormat format = VK_FORMAT_UNDEFINED;
+
+    switch (elementSize) {
+      case  1: format = VK_FORMAT_R8_UINT; break;
+      case  2: format = VK_FORMAT_R16_UINT; break;
+      case  4: format = VK_FORMAT_R32_UINT; break;
+      case  8: format = VK_FORMAT_R32G32_UINT; break;
+      case 12: format = VK_FORMAT_R32G32B32_UINT; break;
+      case 16: format = VK_FORMAT_R32G32B32A32_UINT; break;
+    }
+
+    if (!format) {
+      Logger::err(str::format("DxvkContext: copyPackedBufferImage: Unsupported element size ", elementSize));
+      return;
+    }
+
+    DxvkBufferViewCreateInfo viewInfo;
+    viewInfo.format = format;
+    viewInfo.rangeOffset = dstBufferOffset;
+    viewInfo.rangeLength = dstBufferSlice.length;
+    Rc<DxvkBufferView> dstView = m_device->createBufferView(dstBuffer, viewInfo);
+
+    viewInfo.rangeOffset = srcBufferOffset;
+    viewInfo.rangeLength = srcBufferSlice.length;
+    Rc<DxvkBufferView> srcView;
+
+    if (srcBuffer == dstBuffer
+     && srcBufferSlice.offset < dstBufferSlice.offset + dstBufferSlice.length
+     && srcBufferSlice.offset + srcBufferSlice.length > dstBufferSlice.offset) {
+      // Create temporary copy in case of overlapping regions
+      DxvkBufferCreateInfo bufferInfo;
+      bufferInfo.size   = srcBufferSlice.length;
+      bufferInfo.usage  = VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                        | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+      bufferInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
+                        | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+      bufferInfo.access = VK_ACCESS_TRANSFER_WRITE_BIT
+                        | VK_ACCESS_SHADER_READ_BIT;
+      Rc<DxvkBuffer> tmpBuffer = m_device->createBuffer(bufferInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+      auto tmpBufferSlice = tmpBuffer->getSliceHandle();
+
+      VkBufferCopy copyRegion;
+      copyRegion.srcOffset = srcBufferSlice.offset;
+      copyRegion.dstOffset = tmpBufferSlice.offset;
+      copyRegion.size = tmpBufferSlice.length;
+
+      m_cmd->cmdCopyBuffer(DxvkCmdBuffer::ExecBuffer,
+        srcBufferSlice.handle, tmpBufferSlice.handle,
+        1, &copyRegion);
+
+      emitMemoryBarrier(0,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_ACCESS_SHADER_READ_BIT);
+
+      viewInfo.rangeOffset = 0;
+      srcView = m_device->createBufferView(tmpBuffer, viewInfo);
+
+      m_cmd->trackResource<DxvkAccess::Write>(tmpBuffer);
+    } else {
+      srcView = m_device->createBufferView(srcBuffer, viewInfo);
+    }
+
+    auto pipeInfo = m_common->metaCopy().getCopyBufferImagePipeline();
+    VkDescriptorSet descriptorSet = allocateDescriptorSet(pipeInfo.dsetLayout);
+
+    std::array<VkWriteDescriptorSet, 2> descriptorWrites;
+
+    std::array<std::pair<VkDescriptorType, VkBufferView>, 2> descriptorInfos = {{
+      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, dstView->handle() },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, srcView->handle() },
+    }};
+
+    for (uint32_t i = 0; i < descriptorWrites.size(); i++) {
+      auto write = &descriptorWrites[i];
+      auto info = &descriptorInfos[i];
+
+      write->sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      write->pNext = nullptr;
+      write->dstSet = descriptorSet;
+      write->dstBinding = i;
+      write->dstArrayElement = 0;
+      write->descriptorCount = 1;
+      write->descriptorType = info->first;
+      write->pImageInfo = nullptr;
+      write->pBufferInfo = nullptr;
+      write->pTexelBufferView = &info->second;
+    }
+
+    m_cmd->updateDescriptorSets(descriptorWrites.size(), descriptorWrites.data());
+
+    DxvkCopyBufferImageArgs args = { };
+    args.dstOffset = dstOffset;
+    args.srcOffset = srcOffset;
+    args.extent = extent;
+    args.dstSize = { dstSize.width, dstSize.height };
+    args.srcSize = { srcSize.width, srcSize.height };
+
+    m_cmd->cmdBindPipeline(
+      VK_PIPELINE_BIND_POINT_COMPUTE,
+      pipeInfo.pipeHandle);
+    
+    m_cmd->cmdBindDescriptorSet(
+      VK_PIPELINE_BIND_POINT_COMPUTE,
+      pipeInfo.pipeLayout, descriptorSet,
+      0, nullptr);
+    
+    m_cmd->cmdPushConstants(
+      pipeInfo.pipeLayout,
+      VK_SHADER_STAGE_COMPUTE_BIT,
+      0, sizeof(args), &args);
+    
+    m_cmd->cmdDispatch(
+      (extent.width  + 7) / 8,
+      (extent.height + 7) / 8,
+      extent.depth);
+    
+    m_execBarriers.accessBuffer(
+      dstView->getSliceHandle(),
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      VK_ACCESS_SHADER_WRITE_BIT,
+      dstBuffer->info().stages,
+      dstBuffer->info().access);
+
+    m_execBarriers.accessBuffer(
+      srcView->getSliceHandle(),
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      VK_ACCESS_SHADER_READ_BIT,
+      srcBuffer->info().stages,
+      srcBuffer->info().access);
+
+    // Track all involved resources
+    m_cmd->trackResource<DxvkAccess::Write>(dstBuffer);
+    m_cmd->trackResource<DxvkAccess::Read>(srcBuffer);
+
+    m_cmd->trackResource<DxvkAccess::None>(dstView);
+    m_cmd->trackResource<DxvkAccess::None>(srcView);
+  }
+
+
   void DxvkContext::copyPackedBufferToDepthStencilImage(
     const Rc<DxvkImage>&        dstImage,
           VkImageSubresourceLayers dstSubresource,

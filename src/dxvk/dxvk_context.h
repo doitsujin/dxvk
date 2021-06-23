@@ -445,6 +445,34 @@ namespace dxvk {
             VkFormat              format);
     
     /**
+     * \brief Copies image data stored in a linear buffer to another
+     *
+     * The source and destination regions may overlap, in which case
+     * a temporary copy of the source buffer will be created.
+     * \param [in] dstBuffer Destination buffer
+     * \param [in] dstBufferOffset Destination subresource offset
+     * \param [in] dstOffset Destination image offset
+     * \param [in] dstSize Total size of the destination image
+     * \param [in] srcBuffer Source buffer
+     * \param [in] srcBufferOffset Source subresource offset
+     * \param [in] srcOffset Source image offset
+     * \param [in] srcSize Total size of the source image
+     * \param [in] extent Number of pixels to copy
+     * \param [in] elementSize Pixel size, in bytes
+     */
+    void copyPackedBufferImage(
+      const Rc<DxvkBuffer>&       dstBuffer,
+            VkDeviceSize          dstBufferOffset,
+            VkOffset3D            dstOffset,
+            VkExtent3D            dstSize,
+      const Rc<DxvkBuffer>&       srcBuffer,
+            VkDeviceSize          srcBufferOffset,
+            VkOffset3D            srcOffset,
+            VkExtent3D            srcSize,
+            VkExtent3D            extent,
+            VkDeviceSize          elementSize);
+
+    /**
      * \brief Unpacks buffer data to a depth-stencil image
      * 
      * Writes the packed depth-stencil data to an image.
