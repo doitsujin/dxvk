@@ -992,20 +992,18 @@ namespace dxvk {
         });
       }
     } else {
-      const D3D11CommonTexture* textureInfo = GetCommonTexture(pDstResource);
+      D3D11CommonTexture* dstTexture = GetCommonTexture(pDstResource);
       
-      if (DstSubresource >= textureInfo->CountSubresources())
+      if (DstSubresource >= dstTexture->CountSubresources())
         return;
       
-      VkFormat packedFormat = m_parent->LookupPackedFormat(
-        textureInfo->Desc()->Format,
-        textureInfo->GetFormatMode()).Format;
+      VkFormat packedFormat = dstTexture->GetPackedFormat();
 
       auto formatInfo = imageFormatInfo(packedFormat);
-      auto subresource = textureInfo->GetSubresourceFromIndex(
+      auto subresource = dstTexture->GetSubresourceFromIndex(
           formatInfo->aspectMask, DstSubresource);
       
-      VkExtent3D mipExtent = textureInfo->GetImage()->mipLevelExtent(subresource.mipLevel);
+      VkExtent3D mipExtent = dstTexture->MipLevelExtent(subresource.mipLevel);
 
       VkOffset3D offset = { 0, 0, 0 };
       VkExtent3D extent = mipExtent;
@@ -1025,51 +1023,23 @@ namespace dxvk {
         extent.depth  = pDstBox->back - pDstBox->front;
       }
       
-      const VkImageSubresourceLayers layers = {
-        subresource.aspectMask,
-        subresource.mipLevel,
-        subresource.arrayLayer, 1 };
-      
       if (!util::isBlockAligned(offset, extent, formatInfo->blockSize, mipExtent)) {
         Logger::err("D3D11: UpdateSubresource1: Unaligned region");
         return;
       }
 
-      auto image = textureInfo->GetImage();
       auto stagingSlice = AllocStagingBuffer(util::computeImageDataSize(packedFormat, extent));
 
       util::packImageData(stagingSlice.mapPtr(0),
         pSrcData, SrcRowPitch, SrcDepthPitch,
-        image->info().type, extent, 1,
+        dstTexture->GetVkImageType(), extent, 1,
         formatInfo, formatInfo->aspectMask);
-      
-      EmitCs([
-        cDstImage         = std::move(image),
-        cDstLayers        = layers,
-        cDstOffset        = offset,
-        cDstExtent        = extent,
-        cStagingSlice     = std::move(stagingSlice),
-        cPackedFormat     = packedFormat
-      ] (DxvkContext* ctx) {
-        if (cDstLayers.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-          ctx->copyBufferToImage(cDstImage,
-            cDstLayers, cDstOffset, cDstExtent,
-            cStagingSlice.buffer(),
-            cStagingSlice.offset(), 0, 0);
-        } else {
-          ctx->copyPackedBufferToDepthStencilImage(cDstImage, cDstLayers,
-            VkOffset2D { cDstOffset.x,     cDstOffset.y      },
-            VkExtent2D { cDstExtent.width, cDstExtent.height },
-            cStagingSlice.buffer(),
-            cStagingSlice.offset(),
-            VkOffset2D { 0, 0 },
-            VkExtent2D { cDstExtent.width, cDstExtent.height },
-            cPackedFormat);
-        }
-      });
 
-      if (textureInfo->CanUpdateMappedBufferEarly())
-        UpdateMappedBuffer(textureInfo, subresource);
+      UpdateImage(dstTexture, &subresource,
+        offset, extent, std::move(stagingSlice));
+
+      if (dstTexture->CanUpdateMappedBufferEarly())
+        UpdateMappedBuffer(dstTexture, subresource);
     }
   }
 
@@ -3697,6 +3667,98 @@ namespace dxvk {
 
       Map(pResource, Subresource, D3D11_MAP_WRITE_DISCARD, 0, &sr);
       Unmap(pResource, Subresource);
+    }
+  }
+
+
+  void D3D11DeviceContext::UpdateImage(
+          D3D11CommonTexture*               pDstTexture,
+    const VkImageSubresource*               pDstSubresource,
+          VkOffset3D                        DstOffset,
+          VkExtent3D                        DstExtent,
+          DxvkBufferSlice                   StagingBuffer) {
+    bool dstIsImage = pDstTexture->GetMapMode() != D3D11_COMMON_TEXTURE_MAP_MODE_STAGING;
+
+    if (dstIsImage) {
+      EmitCs([
+        cDstImage         = pDstTexture->GetImage(),
+        cDstLayers        = vk::makeSubresourceLayers(*pDstSubresource),
+        cDstOffset        = DstOffset,
+        cDstExtent        = DstExtent,
+        cStagingSlice     = std::move(StagingBuffer),
+        cPackedFormat     = pDstTexture->GetPackedFormat()
+      ] (DxvkContext* ctx) {
+        if (cDstLayers.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+          ctx->copyBufferToImage(cDstImage,
+            cDstLayers, cDstOffset, cDstExtent,
+            cStagingSlice.buffer(),
+            cStagingSlice.offset(), 0, 0);
+        } else {
+          ctx->copyPackedBufferToDepthStencilImage(cDstImage, cDstLayers,
+            VkOffset2D { cDstOffset.x,     cDstOffset.y      },
+            VkExtent2D { cDstExtent.width, cDstExtent.height },
+            cStagingSlice.buffer(),
+            cStagingSlice.offset(),
+            VkOffset2D { 0, 0 },
+            VkExtent2D { cDstExtent.width, cDstExtent.height },
+            cPackedFormat);
+        }
+      });
+    } else {
+      // If the destination image is backed only by a buffer, we need to use
+      // the packed buffer copy function which does not know about planes and
+      // format metadata, so deal with it manually here.
+      VkExtent3D dstMipExtent = pDstTexture->MipLevelExtent(pDstSubresource->mipLevel);
+
+      uint32_t dstSubresource = D3D11CalcSubresource(pDstSubresource->mipLevel,
+        pDstSubresource->arrayLayer, pDstTexture->Desc()->MipLevels);
+
+      auto dstFormat = pDstTexture->GetPackedFormat();
+      auto dstFormatInfo = imageFormatInfo(dstFormat);
+
+      uint32_t planeCount = 1;
+
+      if (dstFormatInfo->flags.test(DxvkFormatFlag::MultiPlane))
+        planeCount = vk::getPlaneCount(dstFormatInfo->aspectMask);
+
+      // The source data isn't stored in an image so we'll also need to
+      // track the offset for that while iterating over the planes.
+      VkDeviceSize srcPlaneOffset = 0;
+
+      for (uint32_t i = 0; i < planeCount; i++) {
+        VkImageAspectFlags dstAspectMask = dstFormatInfo->aspectMask;
+        VkDeviceSize elementSize = dstFormatInfo->elementSize;
+        VkExtent3D blockSize = dstFormatInfo->blockSize;
+
+        if (dstFormatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+          dstAspectMask = vk::getPlaneAspect(i);
+
+          auto plane = &dstFormatInfo->planes[i];
+          blockSize.width  *= plane->blockSize.width;
+          blockSize.height *= plane->blockSize.height;
+          elementSize = plane->elementSize;
+        }
+
+        VkExtent3D blockCount = util::computeBlockCount(DstExtent, blockSize);
+
+        EmitCs([
+          cDstBuffer      = pDstTexture->GetMappedBuffer(dstSubresource),
+          cDstStart       = pDstTexture->GetSubresourceLayout(dstAspectMask, dstSubresource).Offset,
+          cDstOffset      = util::computeBlockOffset(DstOffset, blockSize),
+          cDstSize        = util::computeBlockCount(dstMipExtent, blockSize),
+          cDstExtent      = blockCount,
+          cSrcBuffer      = StagingBuffer.buffer(),
+          cSrcStart       = StagingBuffer.offset() + srcPlaneOffset,
+          cPixelSize      = elementSize
+        ] (DxvkContext* ctx) {
+          ctx->copyPackedBufferImage(
+            cDstBuffer, cDstStart, cDstOffset, cDstSize,
+            cSrcBuffer, cSrcStart, VkOffset3D(), cDstExtent,
+            cDstExtent, cPixelSize);
+        });
+
+        srcPlaneOffset += util::flattenImageExtent(blockCount) * elementSize;
+      }
     }
   }
 

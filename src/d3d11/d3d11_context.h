@@ -803,7 +803,14 @@ namespace dxvk {
     void DiscardTexture(
             ID3D11Resource*                   pResource,
             UINT                              Subresource);
-    
+
+    void UpdateImage(
+            D3D11CommonTexture*               pDstTexture,
+      const VkImageSubresource*               pDstSubresource,
+            VkOffset3D                        DstOffset,
+            VkExtent3D                        DstExtent,
+            DxvkBufferSlice                   StagingBuffer);
+
     void SetDrawBuffers(
             ID3D11Buffer*                     pBufferForArgs,
             ID3D11Buffer*                     pBufferForCount);
