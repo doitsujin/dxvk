@@ -16,7 +16,7 @@ namespace dxvk {
     m_dsetLayoutPack  (createPackDescriptorSetLayout()),
     m_dsetLayoutUnpack(createUnpackDescriptorSetLayout()),
     m_pipeLayoutPack  (createPipelineLayout(m_dsetLayoutPack, sizeof(DxvkMetaPackArgs))),
-    m_pipeLayoutUnpack(createPipelineLayout(m_dsetLayoutUnpack, sizeof(DxvkMetaUnpackArgs))),
+    m_pipeLayoutUnpack(createPipelineLayout(m_dsetLayoutUnpack, sizeof(DxvkMetaPackArgs))),
     m_templatePack    (createPackDescriptorUpdateTemplate()),
     m_templateUnpack  (createUnpackDescriptorUpdateTemplate()),
     m_pipePackD24S8   (createPipeline(m_pipeLayoutPack, dxvk_pack_d24s8)),

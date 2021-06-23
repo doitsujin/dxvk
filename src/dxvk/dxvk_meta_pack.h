@@ -22,18 +22,6 @@ namespace dxvk {
 
 
   /**
-   * \brief Unpacking arguments
-   * 
-   * Passed in as push constants
-   * to the compute shader.
-   */
-  struct DxvkMetaUnpackArgs {
-    VkExtent2D dstExtent;
-    VkExtent2D srcExtent;
-  };
-
-
-  /**
    * \brief Packing pipeline
    * 
    * Stores the objects for a single pipeline

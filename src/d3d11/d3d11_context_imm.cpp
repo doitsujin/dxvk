@@ -529,7 +529,10 @@ namespace dxvk {
             cDstImage, cDstLayers,
             VkOffset2D { 0, 0 },
             VkExtent2D { cDstLevelExtent.width, cDstLevelExtent.height },
-            cSrcBuffer, 0, cPackedFormat);
+            cSrcBuffer, 0,
+            VkOffset2D { 0, 0 },
+            VkExtent2D { cDstLevelExtent.width, cDstLevelExtent.height },
+            cPackedFormat);
         }
       });
     }

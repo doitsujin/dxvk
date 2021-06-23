@@ -1239,7 +1239,9 @@ namespace dxvk {
           VkOffset2D            dstOffset,
           VkExtent2D            dstExtent,
     const Rc<DxvkBuffer>&       srcBuffer,
-          VkDeviceSize          srcOffset,
+          VkDeviceSize          srcBufferOffset,
+          VkOffset2D            srcOffset,
+          VkExtent2D            srcExtent,
           VkFormat              format) {
     this->spillRenderPass(true);
     this->prepareImage(m_execBarriers, dstImage, vk::makeSubresourceRange(dstSubresource));
@@ -1311,15 +1313,17 @@ namespace dxvk {
     DxvkMetaUnpackDescriptors descriptors;
     descriptors.dstDepth   = tmpBufferViewD->handle();
     descriptors.dstStencil = tmpBufferViewS->handle();
-    descriptors.srcBuffer  = srcBuffer->getDescriptor(srcOffset, VK_WHOLE_SIZE).buffer;
+    descriptors.srcBuffer  = srcBuffer->getDescriptor(srcBufferOffset, VK_WHOLE_SIZE).buffer;
 
     VkDescriptorSet dset = allocateDescriptorSet(pipeInfo.dsetLayout);
     m_cmd->updateDescriptorSetWithTemplate(dset, pipeInfo.dsetTemplate, &descriptors);
 
     // Unpack the source buffer to temporary buffers
-    DxvkMetaUnpackArgs args;
+    DxvkMetaPackArgs args;
+    args.srcOffset = srcOffset;
+    args.srcExtent = srcExtent;
+    args.dstOffset = VkOffset2D { 0, 0 };
     args.dstExtent = dstExtent;
-    args.srcExtent = dstExtent;
 
     m_cmd->cmdBindPipeline(
       VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -2293,7 +2297,8 @@ namespace dxvk {
     
     copyPackedBufferToDepthStencilImage(
       image, subresources, imageOffset, imageExtent,
-      tmpBuffer, 0, format);
+      tmpBuffer, 0, VkOffset2D { 0, 0 }, imageExtent,
+      format);
   }
 
 

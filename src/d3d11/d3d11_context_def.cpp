@@ -370,7 +370,10 @@ namespace dxvk {
           VkOffset2D { dstOffset.x,     dstOffset.y      },
           VkExtent2D { dstExtent.width, dstExtent.height },
           cStagingSlice.buffer(),
-          cStagingSlice.offset(), cPackedFormat);
+          cStagingSlice.offset(),
+          VkOffset2D { dstOffset.x,     dstOffset.y      },
+          VkExtent2D { dstExtent.width, dstExtent.height },
+          cPackedFormat);
       }
     });
 

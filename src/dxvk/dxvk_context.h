@@ -487,7 +487,9 @@ namespace dxvk {
      * \param [in] dstOffset Image area offset
      * \param [in] dstExtent Image area size
      * \param [in] srcBuffer Packed data buffer
-     * \param [in] srcOffset Packed data offset
+     * \param [in] srcBufferOffset Buffer offset of source image
+     * \param [in] srcOffset Offset into the source image
+     * \param [in] srcExtent Total size of the source image
      * \param [in] format Packed data format
      */
     void copyPackedBufferToDepthStencilImage(
@@ -496,7 +498,9 @@ namespace dxvk {
             VkOffset2D            dstOffset,
             VkExtent2D            dstExtent,
       const Rc<DxvkBuffer>&       srcBuffer,
-            VkDeviceSize          srcOffset,
+            VkDeviceSize          srcBufferOffset,
+            VkOffset2D            srcOffset,
+            VkExtent2D            srcExtent,
             VkFormat              format);
     
     /**

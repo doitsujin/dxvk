@@ -1249,7 +1249,10 @@ namespace dxvk {
             VkOffset2D { cDstOffset.x,     cDstOffset.y      },
             VkExtent2D { cDstExtent.width, cDstExtent.height },
             cStagingSlice.buffer(),
-            cStagingSlice.offset(), cPackedFormat);
+            cStagingSlice.offset(),
+            VkOffset2D { 0, 0 },
+            VkExtent2D { cDstExtent.width, cDstExtent.height },
+            cPackedFormat);
         }
       });
 
