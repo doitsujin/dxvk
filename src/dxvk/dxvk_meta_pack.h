@@ -16,6 +16,8 @@ namespace dxvk {
   struct DxvkMetaPackArgs {
     VkOffset2D srcOffset;
     VkExtent2D srcExtent;
+    VkOffset2D dstOffset;
+    VkExtent2D dstExtent;
   };
 
 

@@ -953,7 +953,9 @@ namespace dxvk {
 
   void DxvkContext::copyDepthStencilImageToPackedBuffer(
     const Rc<DxvkBuffer>&       dstBuffer,
-          VkDeviceSize          dstOffset,
+          VkDeviceSize          dstBufferOffset,
+          VkOffset2D            dstOffset,
+          VkExtent2D            dstExtent,
     const Rc<DxvkImage>&        srcImage,
           VkImageSubresourceLayers srcSubresource,
           VkOffset2D            srcOffset,
@@ -991,7 +993,7 @@ namespace dxvk {
     VkImageLayout layout = srcImage->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
 
     DxvkMetaPackDescriptors descriptors;
-    descriptors.dstBuffer  = dstBuffer->getDescriptor(dstOffset, VK_WHOLE_SIZE).buffer;
+    descriptors.dstBuffer  = dstBuffer->getDescriptor(dstBufferOffset, VK_WHOLE_SIZE).buffer;
     descriptors.srcDepth   = dView->getDescriptor(VK_IMAGE_VIEW_TYPE_2D_ARRAY, layout).image;
     descriptors.srcStencil = sView->getDescriptor(VK_IMAGE_VIEW_TYPE_2D_ARRAY, layout).image;
 
@@ -1021,6 +1023,8 @@ namespace dxvk {
     DxvkMetaPackArgs args;
     args.srcOffset = srcOffset;
     args.srcExtent = srcExtent;
+    args.dstOffset = dstOffset;
+    args.dstExtent = dstExtent;
 
     m_cmd->cmdBindPipeline(
       VK_PIPELINE_BIND_POINT_COMPUTE,

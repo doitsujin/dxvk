@@ -428,7 +428,9 @@ namespace dxvk {
      * - \c VK_FORMAT_D24_UNORM_S8_UINT: 0xssdddddd
      * - \c VK_FORMAT_D32_SFLOAT_S8_UINT: 0xdddddddd 0x000000ss
      * \param [in] dstBuffer Destination buffer
-     * \param [in] dstOffset Destination offset, in bytes
+     * \param [in] dstBufferOffset Destination offset, in bytes
+     * \param [in] dstOffset Destination image offset
+     * \param [in] dstSize Destination image size
      * \param [in] srcImage Source image
      * \param [in] srcSubresource Source subresource
      * \param [in] srcOffset Source area offset
@@ -437,7 +439,9 @@ namespace dxvk {
      */
     void copyDepthStencilImageToPackedBuffer(
       const Rc<DxvkBuffer>&       dstBuffer,
-            VkDeviceSize          dstOffset,
+            VkDeviceSize          dstBufferOffset,
+            VkOffset2D            dstOffset,
+            VkExtent2D            dstExtent,
       const Rc<DxvkImage>&        srcImage,
             VkImageSubresourceLayers srcSubresource,
             VkOffset2D            srcOffset,

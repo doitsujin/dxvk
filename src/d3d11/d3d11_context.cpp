@@ -4057,7 +4057,10 @@ namespace dxvk {
           cLevelExtent);
       } else {
         ctx->copyDepthStencilImageToPackedBuffer(
-          cImageBuffer, 0, cImage, cSubresources,
+          cImageBuffer, 0,
+          VkOffset2D { 0, 0 },
+          VkExtent2D { cLevelExtent.width, cLevelExtent.height },
+          cImage, cSubresources,
           VkOffset2D { 0, 0 },
           VkExtent2D { cLevelExtent.width, cLevelExtent.height },
           cPackedFormat);

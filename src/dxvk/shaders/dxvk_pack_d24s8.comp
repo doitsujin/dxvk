@@ -17,24 +17,25 @@ layout(push_constant)
 uniform u_info_t {
   uvec2 src_offset;
   uvec2 src_extent;
+  uvec2 dst_offset;
+  uvec2 dst_extent;
 } u_info;
 
 void main() {
   if (all(lessThan(gl_GlobalInvocationID.xy, u_info.src_extent))) {
-    uvec3 src_offset = uvec3(
+    uvec3 src_coord = uvec3(
       gl_GlobalInvocationID.xy + u_info.src_offset,
       gl_GlobalInvocationID.z);
 
-    uvec2 dst_pitch = uvec2(u_info.src_extent.x,
-      u_info.src_extent.x * u_info.src_extent.y);
+    uvec3 dst_coord = uvec3(
+      gl_GlobalInvocationID.xy + u_info.dst_offset,
+      gl_GlobalInvocationID.z);
 
-    uint dst_offset = gl_GlobalInvocationID.x
-                    + gl_GlobalInvocationID.y * dst_pitch.x
-                    + gl_GlobalInvocationID.z * dst_pitch.y;
+    uint dst_index = dst_coord.x + u_info.dst_extent.x * (dst_coord.y + u_info.dst_extent.y * dst_coord.z);
     
-    float depth   = texelFetch(u_depth,   ivec3(src_offset), 0).r;
-    uint  stencil = texelFetch(u_stencil, ivec3(src_offset), 0).r;
+    float depth   = texelFetch(u_depth,   ivec3(src_coord), 0).r;
+    uint  stencil = texelFetch(u_stencil, ivec3(src_coord), 0).r;
     
-    s_buffer.data[dst_offset] = uint(mix(0.0f, float((1 << 24) - 1), depth)) | (stencil << 24);
+    s_buffer.data[dst_index] = uint(mix(0.0f, float((1 << 24) - 1), depth)) | (stencil << 24);
   }
 }
