@@ -5,6 +5,7 @@
 #include <dxvk_fullscreen_vert.h>
 #include <dxvk_fullscreen_layer_vert.h>
 
+#include <dxvk_copy_buffer_image.h>
 #include <dxvk_copy_color_1d.h>
 #include <dxvk_copy_color_2d.h>
 #include <dxvk_copy_color_ms.h>
@@ -179,6 +180,10 @@ namespace dxvk {
 
 
   DxvkMetaCopyObjects::~DxvkMetaCopyObjects() {
+    m_vkd->vkDestroyPipeline(m_vkd->device(), m_copyBufferImagePipeline.pipeHandle, nullptr);
+    m_vkd->vkDestroyPipelineLayout(m_vkd->device(), m_copyBufferImagePipeline.pipeLayout, nullptr);
+    m_vkd->vkDestroyDescriptorSetLayout(m_vkd->device(), m_copyBufferImagePipeline.dsetLayout, nullptr);
+
     for (const auto& pair : m_pipelines) {
       m_vkd->vkDestroyPipeline(m_vkd->device(), pair.second.pipeHandle, nullptr);
       m_vkd->vkDestroyPipelineLayout(m_vkd->device(), pair.second.pipeLayout, nullptr);
@@ -250,6 +255,16 @@ namespace dxvk {
     m_pipelines.insert({ key, pipeline });
     return pipeline;
   }
+
+
+  DxvkMetaCopyPipeline DxvkMetaCopyObjects::getCopyBufferImagePipeline() {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (!m_copyBufferImagePipeline.pipeHandle)
+      m_copyBufferImagePipeline = createCopyBufferImagePipeline();
+
+    return m_copyBufferImagePipeline;
+  }
   
   
   VkSampler DxvkMetaCopyObjects::createSampler() const {
@@ -296,6 +311,65 @@ namespace dxvk {
   }
 
   
+  DxvkMetaCopyPipeline DxvkMetaCopyObjects::createCopyBufferImagePipeline() {
+    DxvkMetaCopyPipeline pipeline;
+    pipeline.renderPass = VK_NULL_HANDLE;
+
+    std::array<VkDescriptorSetLayoutBinding, 2> bindings = {{
+      { 0, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+      { 1, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+    }};
+
+    VkDescriptorSetLayoutCreateInfo setLayoutInfo;
+    setLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    setLayoutInfo.pNext = nullptr;
+    setLayoutInfo.flags = 0;
+    setLayoutInfo.bindingCount = bindings.size();
+    setLayoutInfo.pBindings = bindings.data();
+
+    if (m_vkd->vkCreateDescriptorSetLayout(m_vkd->device(), &setLayoutInfo, nullptr, &pipeline.dsetLayout) != VK_SUCCESS)
+      throw DxvkError("DxvkMetaCopyObjects: Failed to create descriptor set layout");
+
+    VkPushConstantRange pushRange = { VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(DxvkCopyBufferImageArgs) };
+
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo;
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.pNext = nullptr;
+    pipelineLayoutInfo.flags = 0;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &pipeline.dsetLayout;
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges = &pushRange;
+
+    if (m_vkd->vkCreatePipelineLayout(m_vkd->device(), &pipelineLayoutInfo, nullptr, &pipeline.pipeLayout) != VK_SUCCESS)
+      throw DxvkError("DxvkMetaCopyObjects: Failed to create pipeline layout");
+
+    VkShaderModule shaderModule = createShaderModule(dxvk_copy_buffer_image);
+
+    VkComputePipelineCreateInfo pipelineInfo;
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    pipelineInfo.pNext = nullptr;
+    pipelineInfo.flags = 0;
+    pipelineInfo.layout = pipeline.pipeLayout;
+    pipelineInfo.stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    pipelineInfo.stage.pNext = nullptr;
+    pipelineInfo.stage.flags = 0;
+    pipelineInfo.stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    pipelineInfo.stage.module = shaderModule;
+    pipelineInfo.stage.pName = "main";
+    pipelineInfo.stage.pSpecializationInfo = nullptr;
+    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+    pipelineInfo.basePipelineIndex = -1;
+
+    if (m_vkd->vkCreateComputePipelines(m_vkd->device(), VK_NULL_HANDLE,
+        1, &pipelineInfo, nullptr, &pipeline.pipeHandle) != VK_SUCCESS)
+      throw DxvkError("DxvkMetaCopyObjects: Failed to create compute pipeline");
+
+    m_vkd->vkDestroyShaderModule(m_vkd->device(), shaderModule, nullptr);
+    return pipeline;
+  }
+
+
   DxvkMetaCopyPipeline DxvkMetaCopyObjects::createPipeline(
     const DxvkMetaCopyPipelineKey&  key) {
     DxvkMetaCopyPipeline pipeline;

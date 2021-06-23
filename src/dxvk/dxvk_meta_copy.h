@@ -15,6 +15,17 @@ namespace dxvk {
   class DxvkDevice;
 
   /**
+   * \brief Push constants for buffer image copies
+   */
+  struct DxvkCopyBufferImageArgs {
+    VkOffset3D dstOffset; uint32_t pad0;
+    VkOffset3D srcOffset; uint32_t pad1;
+    VkExtent3D extent;    uint32_t pad2;
+    VkExtent2D dstSize;
+    VkExtent2D srcSize;
+  };
+
+  /**
    * \brief Copy pipeline
    * 
    * Stores the objects for a single pipeline
@@ -135,6 +146,12 @@ namespace dxvk {
             VkFormat              dstFormat,
             VkSampleCountFlagBits dstSamples);
 
+    /**
+     * \brief Creates pipeline for buffer image copy
+     * \returns Compute pipeline for buffer image copies
+     */
+    DxvkMetaCopyPipeline getCopyBufferImagePipeline();
+
   private:
 
     struct FragShaders {
@@ -160,12 +177,16 @@ namespace dxvk {
       DxvkMetaCopyPipelineKey,
       DxvkMetaCopyPipeline,
       DxvkHash, DxvkEq> m_pipelines;
-    
+
+    DxvkMetaCopyPipeline m_copyBufferImagePipeline = { };
+
     VkSampler createSampler() const;
     
     VkShaderModule createShaderModule(
       const SpirvCodeBuffer&          code) const;
     
+    DxvkMetaCopyPipeline createCopyBufferImagePipeline();
+
     DxvkMetaCopyPipeline createPipeline(
       const DxvkMetaCopyPipelineKey&  key);
 
