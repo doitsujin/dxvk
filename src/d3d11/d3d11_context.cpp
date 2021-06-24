@@ -317,6 +317,12 @@ namespace dxvk {
     if (!pDstResource || !pSrcResource)
       return;
 
+    if (pSrcBox
+     && (pSrcBox->left  >= pSrcBox->right
+      || pSrcBox->top   >= pSrcBox->bottom
+      || pSrcBox->front >= pSrcBox->back))
+      return;
+
     D3D11_RESOURCE_DIMENSION dstResourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     D3D11_RESOURCE_DIMENSION srcResourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     
@@ -332,9 +338,6 @@ namespace dxvk {
       VkDeviceSize byteCount = -1;
       
       if (pSrcBox) {
-        if (pSrcBox->left >= pSrcBox->right)
-          return;  // no-op, but legal
-
         srcOffset = pSrcBox->left;
         byteCount = pSrcBox->right - pSrcBox->left;
       }
@@ -360,11 +363,6 @@ namespace dxvk {
       VkExtent3D srcExtent = srcTexture->MipLevelExtent(srcLayers.mipLevel);
       
       if (pSrcBox != nullptr) {
-        if (pSrcBox->left  >= pSrcBox->right
-         || pSrcBox->top   >= pSrcBox->bottom
-         || pSrcBox->front >= pSrcBox->back)
-          return;  // no-op, but legal
-        
         srcOffset.x = pSrcBox->left;
         srcOffset.y = pSrcBox->top;
         srcOffset.z = pSrcBox->front;
