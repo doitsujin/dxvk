@@ -1817,7 +1817,7 @@ namespace dxvk {
       VkPipelineStageFlags clearStages = 0;
       VkAccessFlags        clearAccess = 0;
       
-      if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
+      if ((clearAspects | discardAspects) & VK_IMAGE_ASPECT_COLOR_BIT) {
         clearStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         clearAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
