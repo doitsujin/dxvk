@@ -314,8 +314,7 @@ namespace dxvk {
           D3D11_MAP                     MapType,
           UINT                          MapFlags,
           D3D11DeferredContextMapEntry* pMapEntry) {
-    const D3D11CommonTexture* pTexture = GetCommonTexture(pResource);
-    const Rc<DxvkImage> image = pTexture->GetImage();
+    D3D11CommonTexture* pTexture = GetCommonTexture(pResource);
     
     if (unlikely(pTexture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_NONE)) {
       Logger::err("D3D11: Cannot map a device-local image");
@@ -325,14 +324,13 @@ namespace dxvk {
     if (unlikely(Subresource >= pTexture->CountSubresources()))
       return E_INVALIDARG;
     
-    VkFormat packedFormat = m_parent->LookupPackedFormat(
-      pTexture->Desc()->Format, pTexture->GetFormatMode()).Format;
+    VkFormat packedFormat = pTexture->GetPackedFormat();
     
     auto formatInfo = imageFormatInfo(packedFormat);
     auto subresource = pTexture->GetSubresourceFromIndex(
         formatInfo->aspectMask, Subresource);
     
-    VkExtent3D levelExtent = image->mipLevelExtent(subresource.mipLevel);
+    VkExtent3D levelExtent = pTexture->MipLevelExtent(subresource.mipLevel);
     
     auto layout = pTexture->GetSubresourceLayout(formatInfo->aspectMask, Subresource);
     auto dataSlice = AllocStagingBuffer(util::computeImageDataSize(packedFormat, levelExtent));
@@ -344,39 +342,9 @@ namespace dxvk {
     pMapEntry->DepthPitch   = layout.DepthPitch;
     pMapEntry->MapPointer   = dataSlice.mapPtr(0);
 
-    EmitCs([
-      cDstImage           = pTexture->GetImage(),
-      cSubresource        = pTexture->GetSubresourceFromIndex(formatInfo->aspectMask, Subresource),
-      cStagingSlice       = std::move(dataSlice),
-      cPackedFormat       = GetPackedDepthStencilFormat(pTexture->Desc()->Format)
-    ] (DxvkContext* ctx) {
-      VkImageSubresourceLayers dstLayers;
-      dstLayers.aspectMask     = cSubresource.aspectMask;
-      dstLayers.mipLevel       = cSubresource.mipLevel;
-      dstLayers.baseArrayLayer = cSubresource.arrayLayer;
-      dstLayers.layerCount     = 1;
-
-      VkOffset3D dstOffset = { 0, 0, 0 };
-      VkExtent3D dstExtent = cDstImage->mipLevelExtent(dstLayers.mipLevel);
-      
-      if (cPackedFormat == VK_FORMAT_UNDEFINED) {
-        ctx->copyBufferToImage(cDstImage,
-          dstLayers, dstOffset, dstExtent,
-          cStagingSlice.buffer(),
-          cStagingSlice.offset(), 0, 0);
-      } else {
-        ctx->copyPackedBufferToDepthStencilImage(
-          cDstImage, dstLayers,
-          VkOffset2D { dstOffset.x,     dstOffset.y      },
-          VkExtent2D { dstExtent.width, dstExtent.height },
-          cStagingSlice.buffer(),
-          cStagingSlice.offset(),
-          VkOffset2D { dstOffset.x,     dstOffset.y      },
-          VkExtent2D { dstExtent.width, dstExtent.height },
-          cPackedFormat);
-      }
-    });
-
+    UpdateImage(pTexture, &subresource,
+      VkOffset3D { 0, 0, 0 }, levelExtent,
+      std::move(dataSlice));
     return S_OK;
   }
   
