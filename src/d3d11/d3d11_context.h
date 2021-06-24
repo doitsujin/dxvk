@@ -885,10 +885,6 @@ namespace dxvk {
     void RestoreUnorderedAccessViews(
             D3D11UnorderedAccessBindings&     Bindings);
     
-    void UpdateMappedBuffer(
-      const D3D11CommonTexture*               pTexture,
-            VkImageSubresource                Subresource);
-    
     bool TestRtvUavHazards(
             UINT                              NumRTVs,
             ID3D11RenderTargetView* const*    ppRTVs,

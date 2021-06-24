@@ -378,9 +378,6 @@ namespace dxvk {
         dstTexture, &dstLayers, dstOffset,
         srcTexture, &srcLayers, srcOffset,
         srcExtent);
-
-      if (dstTexture->CanUpdateMappedBufferEarly())
-        UpdateMappedBuffer(dstTexture, vk::pickSubresource(dstLayers, 0));
     } else {
       Logger::err(str::format(
         "D3D11: CopySubresourceRegion1: Incompatible resources",
@@ -445,11 +442,6 @@ namespace dxvk {
           dstTexture, &dstLayers, VkOffset3D(),
           srcTexture, &srcLayers, VkOffset3D(),
           srcTexture->MipLevelExtent(i));
-
-        if (dstTexture->CanUpdateMappedBufferEarly()) {
-          for (uint32_t j = 0; j < dstDesc->ArraySize; j++)
-            UpdateMappedBuffer(dstTexture, { dstLayers.aspectMask, i, j });
-        }
       }
     }
   }
@@ -1037,9 +1029,6 @@ namespace dxvk {
 
       UpdateImage(dstTexture, &subresource,
         offset, extent, std::move(stagingSlice));
-
-      if (dstTexture->CanUpdateMappedBufferEarly())
-        UpdateMappedBuffer(dstTexture, subresource);
     }
   }
 
@@ -4178,46 +4167,6 @@ namespace dxvk {
   }
 
 
-  void D3D11DeviceContext::UpdateMappedBuffer(
-    const D3D11CommonTexture*               pTexture,
-          VkImageSubresource                Subresource) {
-    UINT SubresourceIndex = D3D11CalcSubresource(
-      Subresource.mipLevel, Subresource.arrayLayer,
-      pTexture->Desc()->MipLevels);
-
-    Rc<DxvkImage>  mappedImage  = pTexture->GetImage();
-    Rc<DxvkBuffer> mappedBuffer = pTexture->GetMappedBuffer(SubresourceIndex);
-
-    VkFormat packedFormat = m_parent->LookupPackedFormat(
-      pTexture->Desc()->Format, pTexture->GetFormatMode()).Format;
-    
-    VkExtent3D levelExtent = mappedImage->mipLevelExtent(Subresource.mipLevel);
-    
-    EmitCs([
-      cImageBuffer  = std::move(mappedBuffer),
-      cImage        = std::move(mappedImage),
-      cSubresources = vk::makeSubresourceLayers(Subresource),
-      cLevelExtent  = levelExtent,
-      cPackedFormat = packedFormat
-    ] (DxvkContext* ctx) {
-      if (cSubresources.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-        ctx->copyImageToBuffer(cImageBuffer, 0, 0, 0,
-          cImage, cSubresources, VkOffset3D { 0, 0, 0 },
-          cLevelExtent);
-      } else {
-        ctx->copyDepthStencilImageToPackedBuffer(
-          cImageBuffer, 0,
-          VkOffset2D { 0, 0 },
-          VkExtent2D { cLevelExtent.width, cLevelExtent.height },
-          cImage, cSubresources,
-          VkOffset2D { 0, 0 },
-          VkExtent2D { cLevelExtent.width, cLevelExtent.height },
-          cPackedFormat);
-      }
-    });
-  }
-  
-  
   bool D3D11DeviceContext::TestRtvUavHazards(
           UINT                              NumRTVs,
           ID3D11RenderTargetView* const*    ppRTVs,
