@@ -4321,7 +4321,8 @@ namespace dxvk {
     DxvkBufferCreateInfo info;
     info.size   = Size;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-                | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+                | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
     info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
                 | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
                 | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
