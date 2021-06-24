@@ -494,46 +494,12 @@ namespace dxvk {
     if (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER) {
       // Now that data has been written into the buffer,
       // we need to copy its contents into the image
-      const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
-      const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Subresource);
+      VkImageAspectFlags aspectMask = imageFormatInfo(pResource->GetPackedFormat())->aspectMask;
+      VkImageSubresource subresource = pResource->GetSubresourceFromIndex(aspectMask, Subresource);
 
-      VkFormat packedFormat = m_parent->LookupPackedFormat(
-        pResource->Desc()->Format, pResource->GetFormatMode()).Format;
-
-      auto formatInfo = imageFormatInfo(packedFormat);
-      auto subresource = pResource->GetSubresourceFromIndex(
-        formatInfo->aspectMask, Subresource);
-
-      VkExtent3D levelExtent = mappedImage
-        ->mipLevelExtent(subresource.mipLevel);
-      
-      VkImageSubresourceLayers subresourceLayers = {
-        subresource.aspectMask,
-        subresource.mipLevel,
-        subresource.arrayLayer, 1 };
-      
-      EmitCs([
-        cSrcBuffer      = mappedBuffer,
-        cDstImage       = mappedImage,
-        cDstLayers      = subresourceLayers,
-        cDstLevelExtent = levelExtent,
-        cPackedFormat   = GetPackedDepthStencilFormat(pResource->Desc()->Format)
-      ] (DxvkContext* ctx) {
-        if (cPackedFormat == VK_FORMAT_UNDEFINED) {
-          ctx->copyBufferToImage(cDstImage, cDstLayers,
-            VkOffset3D { 0, 0, 0 }, cDstLevelExtent,
-            cSrcBuffer, 0, 0, 0);
-        } else {
-          ctx->copyPackedBufferToDepthStencilImage(
-            cDstImage, cDstLayers,
-            VkOffset2D { 0, 0 },
-            VkExtent2D { cDstLevelExtent.width, cDstLevelExtent.height },
-            cSrcBuffer, 0,
-            VkOffset2D { 0, 0 },
-            VkExtent2D { cDstLevelExtent.width, cDstLevelExtent.height },
-            cPackedFormat);
-        }
-      });
+      UpdateImage(pResource, &subresource, VkOffset3D { 0, 0, 0 },
+        pResource->MipLevelExtent(subresource.mipLevel),
+        DxvkBufferSlice(pResource->GetMappedBuffer(Subresource)));
     }
   }
   
