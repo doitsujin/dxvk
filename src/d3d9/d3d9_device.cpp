@@ -4166,10 +4166,12 @@ namespace dxvk {
           cPackedFormat = packedFormat
         ] (DxvkContext* ctx) {
           if (cSubresources.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-            ctx->copyImageToBuffer(cImageBuffer, 0, 0, 0,
+            ctx->copyImageToBuffer(cImageBuffer, 0, 4, 0,
               cImage, cSubresources, VkOffset3D { 0, 0, 0 },
               cLevelExtent);
           } else {
+            // Copying DS to a packed buffer is only supported for D24S8 and D32S8
+            // right now so the 4 byte row alignment is guaranteed by the format size
             ctx->copyDepthStencilImageToPackedBuffer(
               cImageBuffer, 0,
               VkOffset2D { 0, 0 },
