@@ -308,6 +308,8 @@ namespace dxvk {
 
     bool GetLocked(UINT Subresource) const { return m_locked.get(Subresource); }
 
+    bool IsAnySubresourceLocked() const { return m_locked.any(); }
+
     void SetWrittenByGPU(UINT Subresource, bool value) { m_wasWrittenByGPU.set(Subresource, value); }
 
     bool WasWrittenByGPU(UINT Subresource) const { return m_wasWrittenByGPU.get(Subresource); }
