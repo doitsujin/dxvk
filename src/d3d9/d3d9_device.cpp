@@ -4224,7 +4224,7 @@ namespace dxvk {
       }
     }
 
-    if (pResource->IsManaged() && !m_d3d9Options.evictManagedOnUnlock && !readOnly) {
+    if (managed && !m_d3d9Options.evictManagedOnUnlock && !readOnly) {
       pResource->SetNeedsUpload(Subresource, true);
 
       for (uint32_t tex = m_activeTextures; tex; tex &= tex - 1) {
@@ -4276,7 +4276,7 @@ namespace dxvk {
 
     if (shouldFlush) {
         this->FlushImage(pResource, Subresource);
-        if (pResource->IsManaged())
+        if (!pResource->IsAnySubresourceLocked())
           pResource->ClearDirtyBoxes();
     }
 

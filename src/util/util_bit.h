@@ -242,7 +242,7 @@ namespace dxvk::bit {
         m_dwords[i] = 0;
     }
 
-    constexpr bool any() {
+    constexpr bool any() const {
       for (size_t i = 0; i < Dwords; i++) {
         if (m_dwords[i] != 0)
           return true;
