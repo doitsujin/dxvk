@@ -436,6 +436,11 @@ namespace dxvk {
     { R"(\\FarCry\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
     }} },
+    /* Earth Defense Force 5 */
+    { R"(\\EDF5\.exe$)", {{
+      { "dxgi.tearFree",                    "False" },
+      { "dxgi.syncInterval",                "1"     },
+    }} },
   }};
 
 
