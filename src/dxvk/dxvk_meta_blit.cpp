@@ -248,7 +248,7 @@ namespace dxvk {
           VkImageViewType       viewType,
           VkFormat              viewFormat,
           VkSampleCountFlagBits samples) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
     
     DxvkMetaBlitPipelineKey key;
     key.viewType   = viewType;

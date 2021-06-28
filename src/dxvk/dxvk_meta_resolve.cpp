@@ -330,7 +330,7 @@ namespace dxvk {
           VkSampleCountFlagBits     samples,
           VkResolveModeFlagBitsKHR  depthResolveMode,
           VkResolveModeFlagBitsKHR  stencilResolveMode) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     DxvkMetaResolvePipelineKey key;
     key.format  = format;

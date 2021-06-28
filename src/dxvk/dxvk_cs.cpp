@@ -102,7 +102,7 @@ namespace dxvk {
   
   
   DxvkCsThread::~DxvkCsThread() {
-    { std::unique_lock<std::mutex> lock(m_mutex);
+    { std::unique_lock<dxvk::mutex> lock(m_mutex);
       m_stopped.store(true);
     }
     
@@ -112,7 +112,7 @@ namespace dxvk {
   
   
   void DxvkCsThread::dispatchChunk(DxvkCsChunkRef&& chunk) {
-    { std::unique_lock<std::mutex> lock(m_mutex);
+    { std::unique_lock<dxvk::mutex> lock(m_mutex);
       m_chunksQueued.push(std::move(chunk));
       m_chunksPending += 1;
     }
@@ -122,7 +122,7 @@ namespace dxvk {
   
   
   void DxvkCsThread::synchronize() {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::unique_lock<dxvk::mutex> lock(m_mutex);
     
     m_condOnSync.wait(lock, [this] {
       return !m_chunksPending.load();
@@ -137,7 +137,7 @@ namespace dxvk {
 
     try {
       while (!m_stopped.load()) {
-        { std::unique_lock<std::mutex> lock(m_mutex);
+        { std::unique_lock<dxvk::mutex> lock(m_mutex);
           if (chunk) {
             if (--m_chunksPending == 0)
               m_condOnSync.notify_one();

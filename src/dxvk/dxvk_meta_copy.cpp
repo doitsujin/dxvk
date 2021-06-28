@@ -240,7 +240,7 @@ namespace dxvk {
           VkImageViewType       viewType,
           VkFormat              dstFormat,
           VkSampleCountFlagBits dstSamples) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     DxvkMetaCopyPipelineKey key;
     key.viewType = viewType;
@@ -258,7 +258,7 @@ namespace dxvk {
 
 
   DxvkMetaCopyPipeline DxvkMetaCopyObjects::getCopyBufferImagePipeline() {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     if (!m_copyBufferImagePipeline.pipeHandle)
       m_copyBufferImagePipeline = createCopyBufferImagePipeline();

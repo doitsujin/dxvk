@@ -27,7 +27,7 @@ namespace dxvk {
 
   private:
 
-    std::mutex                                m_mutex;
+    dxvk::mutex                               m_mutex;
 
     std::unordered_map<
       D3D9VertexElements, Rc<DxvkShader>,

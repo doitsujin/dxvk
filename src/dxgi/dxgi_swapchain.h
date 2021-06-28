@@ -175,8 +175,8 @@ namespace dxvk {
       RECT rect    = { 0, 0, 0, 0 };
     };
     
-    std::recursive_mutex            m_lockWindow;
-    std::mutex                      m_lockBuffer;
+    dxvk::recursive_mutex           m_lockWindow;
+    dxvk::mutex                     m_lockBuffer;
 
     Com<IDXGIFactory>               m_factory;
     Com<IDXGIAdapter>               m_adapter;

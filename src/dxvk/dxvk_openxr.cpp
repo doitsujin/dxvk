@@ -29,19 +29,19 @@ namespace dxvk {
   
   
   DxvkNameSet DxvkXrProvider::getInstanceExtensions() {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
     return m_insExtensions;
   }
 
 
   DxvkNameSet DxvkXrProvider::getDeviceExtensions(uint32_t adapterId) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
     return m_devExtensions;
   }
 
 
   void DxvkXrProvider::initInstanceExtensions() {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     if (!m_wineOxr)
       m_wineOxr = this->loadLibrary();
@@ -70,7 +70,7 @@ namespace dxvk {
 
 
   void DxvkXrProvider::initDeviceExtensions(const DxvkInstance* instance) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     if (!m_wineOxr || m_initializedDevExt)
       return;

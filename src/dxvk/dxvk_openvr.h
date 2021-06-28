@@ -49,7 +49,7 @@ namespace dxvk {
 
   private:
 
-    std::mutex            m_mutex;
+    dxvk::mutex           m_mutex;
     HKEY                  m_vr_key     = nullptr;
     vr::IVRCompositor*    m_compositor = nullptr;
     SoHandle              m_ovrApi     = nullptr;

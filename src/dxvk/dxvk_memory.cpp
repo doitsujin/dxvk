@@ -215,7 +215,7 @@ namespace dxvk {
     const VkMemoryDedicatedAllocateInfo&    dedAllocInfo,
           VkMemoryPropertyFlags             flags,
           float                             priority) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     // Try to allocate from a memory type which supports the given flags exactly
     auto dedAllocPtr = dedAllocReq.prefersDedicatedAllocation ? &dedAllocInfo : nullptr;
@@ -386,7 +386,7 @@ namespace dxvk {
 
   void DxvkMemoryAllocator::free(
     const DxvkMemory&           memory) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
     memory.m_type->heap->stats.memoryUsed -= memory.m_length;
 
     if (memory.m_chunk != nullptr) {

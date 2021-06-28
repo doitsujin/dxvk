@@ -89,7 +89,7 @@ namespace dxvk {
           size_t              BytecodeLength,
           D3D11CommonShader*  pShader) {
     // Use the shader's unique key for the lookup
-    { std::unique_lock<std::mutex> lock(m_mutex);
+    { std::unique_lock<dxvk::mutex> lock(m_mutex);
       
       auto entry = m_modules.find(*pShaderKey);
       if (entry != m_modules.end()) {
@@ -113,7 +113,7 @@ namespace dxvk {
     // Insert the new module into the lookup table. If another thread
     // has compiled the same shader in the meantime, we should return
     // that object instead and discard the newly created module.
-    { std::unique_lock<std::mutex> lock(m_mutex);
+    { std::unique_lock<dxvk::mutex> lock(m_mutex);
       
       auto status = m_modules.insert({ *pShaderKey, module });
       if (!status.second) {

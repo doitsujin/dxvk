@@ -1,7 +1,6 @@
 #pragma once
 
-#include <mutex>
-
+#include "thread.h"
 #include "util_time.h"
 
 namespace dxvk {
@@ -66,7 +65,7 @@ namespace dxvk {
     using NtSetTimerResolutionProc = UINT (WINAPI *) (ULONG, BOOL, ULONG*);
     using NtDelayExecutionProc = UINT (WINAPI *) (BOOL, LARGE_INTEGER*);
 
-    std::mutex      m_mutex;
+    dxvk::mutex     m_mutex;
 
     NtTimerDuration m_targetInterval  = NtTimerDuration::zero();
     NtTimerDuration m_refreshInterval = NtTimerDuration::zero();

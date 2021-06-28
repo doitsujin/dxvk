@@ -21,7 +21,7 @@ namespace dxvk {
 
 
   void D3D11Initializer::Flush() {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     if (m_transferCommands != 0)
       FlushInternal();
@@ -54,7 +54,7 @@ namespace dxvk {
     if (!counterBuffer.defined())
       return;
 
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
     m_transferCommands += 1;
 
     const uint32_t zero = 0;
@@ -69,7 +69,7 @@ namespace dxvk {
   void D3D11Initializer::InitDeviceLocalBuffer(
           D3D11Buffer*                pBuffer,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     DxvkBufferSlice bufferSlice = pBuffer->GetBufferSlice();
 
@@ -118,7 +118,7 @@ namespace dxvk {
   void D3D11Initializer::InitDeviceLocalTexture(
           D3D11CommonTexture*         pTexture,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
     
     Rc<DxvkImage> image = pTexture->GetImage();
 
@@ -262,7 +262,7 @@ namespace dxvk {
     }
 
     // Initialize the image on the GPU
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     VkImageSubresourceRange subresources;
     subresources.aspectMask     = image->formatInfo()->aspectMask;

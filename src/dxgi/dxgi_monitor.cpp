@@ -36,7 +36,7 @@ namespace dxvk {
     if (!hMonitor || !pData)
       return E_INVALIDARG;
     
-    std::lock_guard<std::mutex> lock(m_monitorMutex);
+    std::lock_guard<dxvk::mutex> lock(m_monitorMutex);
     auto result = m_monitorData.insert({ hMonitor, *pData });
 
     return result.second ? S_OK : E_INVALIDARG;

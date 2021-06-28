@@ -419,9 +419,9 @@ namespace dxvk {
     const Rc<DxvkContext>       m_context;
     
     std::atomic<bool>           m_stopped = { false };
-    std::mutex                  m_mutex;
-    std::condition_variable     m_condOnAdd;
-    std::condition_variable     m_condOnSync;
+    dxvk::mutex                 m_mutex;
+    dxvk::condition_variable    m_condOnAdd;
+    dxvk::condition_variable    m_condOnSync;
     std::queue<DxvkCsChunkRef>  m_chunksQueued;
     std::atomic<uint32_t>       m_chunksPending = { 0u };
     dxvk::thread                m_thread;

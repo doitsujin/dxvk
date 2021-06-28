@@ -18,7 +18,7 @@ namespace dxvk {
 
 
   void D3D9Initializer::Flush() {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     if (m_transferCommands != 0)
       FlushInternal();
@@ -52,7 +52,7 @@ namespace dxvk {
 
   void D3D9Initializer::InitDeviceLocalBuffer(
           DxvkBufferSlice    Slice) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     m_transferCommands += 1;
 
@@ -79,7 +79,7 @@ namespace dxvk {
 
   void D3D9Initializer::InitDeviceLocalTexture(
           D3D9CommonTexture* pTexture) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     auto InitImage = [&](Rc<DxvkImage> image) {
       if (image == nullptr)

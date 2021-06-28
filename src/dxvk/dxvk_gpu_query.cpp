@@ -180,7 +180,7 @@ namespace dxvk {
 
   
   DxvkGpuQueryHandle DxvkGpuQueryAllocator::allocQuery() {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     if (m_handles.size() == 0)
       this->createQueryPool();
@@ -195,7 +195,7 @@ namespace dxvk {
 
 
   void DxvkGpuQueryAllocator::freeQuery(DxvkGpuQueryHandle handle) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
     m_handles.push_back(handle);
   }
 

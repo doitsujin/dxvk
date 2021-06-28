@@ -43,7 +43,7 @@ namespace dxvk {
 
   private:
 
-    std::mutex            m_mutex;
+    dxvk::mutex           m_mutex;
     SoHandle              m_wineOxr     = nullptr;
 
     bool m_loadedOxrApi      = false;
