@@ -9,10 +9,10 @@
 namespace dxvk {
 
   LUID GetAdapterLUID(UINT Adapter) {
-    static std::mutex        s_mutex;
+    static dxvk::mutex       s_mutex;
     static std::vector<LUID> s_luids;
 
-    std::lock_guard<std::mutex> lock(s_mutex);
+    std::lock_guard<dxvk::mutex> lock(s_mutex);
     uint32_t newLuidCount = Adapter + 1;
 
     while (s_luids.size() < newLuidCount) {

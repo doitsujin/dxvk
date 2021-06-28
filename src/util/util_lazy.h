@@ -32,7 +32,7 @@ namespace dxvk {
 
   private:
 
-    std::mutex         m_mutex;
+    dxvk::mutex        m_mutex;
     std::unique_ptr<T> m_object;
 
   };

@@ -29,7 +29,7 @@ namespace dxvk {
 
 
   void FpsLimiter::setTargetFrameRate(double frameRate) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     if (!m_envOverride) {
       m_targetInterval = frameRate > 0.0
@@ -43,7 +43,7 @@ namespace dxvk {
 
 
   void FpsLimiter::setDisplayRefreshRate(double refreshRate) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     m_refreshInterval = refreshRate > 0.0
       ? NtTimerDuration(int64_t(double(NtTimerDuration::period::den) / refreshRate))
@@ -52,7 +52,7 @@ namespace dxvk {
 
 
   void FpsLimiter::delay(bool vsyncEnabled) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     if (!isEnabled())
       return;

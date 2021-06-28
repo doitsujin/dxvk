@@ -54,7 +54,7 @@ namespace dxvk {
      * \returns Pointer to the state object
      */
     T* Create(D3D11Device* device, const DescType& desc) {
-      std::lock_guard<std::mutex> lock(m_mutex);
+      std::lock_guard<dxvk::mutex> lock(m_mutex);
       
       auto entry = m_objects.find(desc);
       
@@ -70,7 +70,7 @@ namespace dxvk {
     
   private:
     
-    std::mutex                                 m_mutex;
+    dxvk::mutex                                m_mutex;
     std::unordered_map<DescType, T,
       D3D11StateDescHash, D3D11StateDescEqual> m_objects;
     

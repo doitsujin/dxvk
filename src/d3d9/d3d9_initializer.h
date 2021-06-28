@@ -33,7 +33,7 @@ namespace dxvk {
     
   private:
 
-    std::mutex        m_mutex;
+    dxvk::mutex       m_mutex;
 
     Rc<DxvkDevice>    m_device;
     Rc<DxvkContext>   m_context;

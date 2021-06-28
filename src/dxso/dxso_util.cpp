@@ -37,14 +37,14 @@ namespace dxvk {
   }
 
 
-  std::mutex                   g_linkerSlotMutex;
+  dxvk::mutex                  g_linkerSlotMutex;
   uint32_t                     g_linkerSlotCount = 0;
   std::array<DxsoSemantic, 32> g_linkerSlots;
 
   uint32_t RegisterLinkerSlot(DxsoSemantic semantic) {
     // Lock, because games could be trying
     // to make multiple shaders at a time.
-    std::lock_guard<std::mutex> lock(g_linkerSlotMutex);
+    std::lock_guard<dxvk::mutex> lock(g_linkerSlotMutex);
 
     // Need to chose a slot that maps nicely and similarly
     // between vertex and pixel shaders

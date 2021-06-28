@@ -12,7 +12,7 @@ namespace dxvk {
   
   
   DxvkSubmissionQueue::~DxvkSubmissionQueue() {
-    { std::unique_lock<std::mutex> lock(m_mutex);
+    { std::unique_lock<dxvk::mutex> lock(m_mutex);
       m_stopped.store(true);
     }
     
@@ -25,7 +25,7 @@ namespace dxvk {
   
   
   void DxvkSubmissionQueue::submit(DxvkSubmitInfo submitInfo) {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::unique_lock<dxvk::mutex> lock(m_mutex);
 
     m_finishCond.wait(lock, [this] {
       return m_submitQueue.size() + m_finishQueue.size() <= MaxNumQueuedCommandBuffers;
@@ -41,7 +41,7 @@ namespace dxvk {
 
 
   void DxvkSubmissionQueue::present(DxvkPresentInfo presentInfo, DxvkSubmitStatus* status) {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::unique_lock<dxvk::mutex> lock(m_mutex);
 
     DxvkSubmitEntry entry = { };
     entry.status  = status;
@@ -54,7 +54,7 @@ namespace dxvk {
 
   void DxvkSubmissionQueue::synchronizeSubmission(
           DxvkSubmitStatus*   status) {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::unique_lock<dxvk::mutex> lock(m_mutex);
 
     m_submitCond.wait(lock, [status] {
       return status->result.load() != VK_NOT_READY;
@@ -63,7 +63,7 @@ namespace dxvk {
 
 
   void DxvkSubmissionQueue::synchronize() {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::unique_lock<dxvk::mutex> lock(m_mutex);
 
     m_submitCond.wait(lock, [this] {
       return m_submitQueue.empty();
@@ -84,7 +84,7 @@ namespace dxvk {
   void DxvkSubmissionQueue::submitCmdLists() {
     env::setThreadName("dxvk-submit");
 
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::unique_lock<dxvk::mutex> lock(m_mutex);
 
     while (!m_stopped.load()) {
       m_appendCond.wait(lock, [this] {
@@ -101,7 +101,7 @@ namespace dxvk {
       VkResult status = VK_NOT_READY;
 
       if (m_lastError != VK_ERROR_DEVICE_LOST) {
-        std::lock_guard<std::mutex> lock(m_mutexQueue);
+        std::lock_guard<dxvk::mutex> lock(m_mutexQueue);
 
         if (entry.submit.cmdList != nullptr) {
           status = entry.submit.cmdList->submit(
@@ -120,7 +120,7 @@ namespace dxvk {
         entry.status->result = status;
       
       // On success, pass it on to the queue thread
-      lock = std::unique_lock<std::mutex>(m_mutex);
+      lock = std::unique_lock<dxvk::mutex>(m_mutex);
 
       if (status == VK_SUCCESS) {
         if (entry.submit.cmdList != nullptr)
@@ -140,7 +140,7 @@ namespace dxvk {
   void DxvkSubmissionQueue::finishCmdLists() {
     env::setThreadName("dxvk-queue");
 
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::unique_lock<dxvk::mutex> lock(m_mutex);
 
     while (!m_stopped.load()) {
       if (m_finishQueue.empty()) {
@@ -176,7 +176,7 @@ namespace dxvk {
 
       m_device->recycleCommandList(entry.submit.cmdList);
 
-      lock = std::unique_lock<std::mutex>(m_mutex);
+      lock = std::unique_lock<dxvk::mutex>(m_mutex);
       m_pending -= 1;
 
       m_finishQueue.pop();

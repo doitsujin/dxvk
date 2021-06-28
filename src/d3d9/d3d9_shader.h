@@ -179,7 +179,7 @@ namespace dxvk {
     
   private:
     
-    std::mutex m_mutex;
+    dxvk::mutex m_mutex;
     
     std::unordered_map<
       DxvkShaderKey,

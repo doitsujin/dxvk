@@ -46,13 +46,13 @@ namespace dxvk {
   
   
   DxvkNameSet VrInstance::getInstanceExtensions() {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
     return m_insExtensions;
   }
 
 
   DxvkNameSet VrInstance::getDeviceExtensions(uint32_t adapterId) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
     
     if (adapterId < m_devExtensions.size())
       return m_devExtensions[adapterId];
@@ -62,7 +62,7 @@ namespace dxvk {
 
 
   void VrInstance::initInstanceExtensions() {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     if (m_no_vr || m_initializedDevExt)
         return;
@@ -87,7 +87,7 @@ namespace dxvk {
 
 
   void VrInstance::initDeviceExtensions(const DxvkInstance* instance) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     if (m_no_vr || (!m_vr_key && !m_compositor) || m_initializedDevExt)
       return;

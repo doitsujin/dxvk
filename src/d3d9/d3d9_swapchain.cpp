@@ -15,7 +15,7 @@ namespace dxvk {
   };
 
 
-  static std::recursive_mutex g_windowProcMapMutex;
+  static dxvk::recursive_mutex g_windowProcMapMutex;
   static std::unordered_map<HWND, D3D9WindowData> g_windowProcMap;
 
 

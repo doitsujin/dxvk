@@ -26,7 +26,7 @@ namespace dxvk {
     if (shaders.cs == nullptr)
       return nullptr;
     
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
     
     auto pair = m_computePipelines.find(shaders);
     if (pair != m_computePipelines.end())
@@ -45,7 +45,7 @@ namespace dxvk {
     if (shaders.vs == nullptr)
       return nullptr;
     
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
     
     auto pair = m_graphicsPipelines.find(shaders);
     if (pair != m_graphicsPipelines.end())

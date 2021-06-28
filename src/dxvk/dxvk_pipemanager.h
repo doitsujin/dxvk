@@ -99,7 +99,7 @@ namespace dxvk {
     std::atomic<uint32_t>     m_numComputePipelines  = { 0 };
     std::atomic<uint32_t>     m_numGraphicsPipelines = { 0 };
     
-    std::mutex m_mutex;
+    dxvk::mutex m_mutex;
     
     std::unordered_map<
       DxvkComputePipelineShaders,

@@ -67,7 +67,7 @@ namespace dxvk {
   
   DxgiAdapter::~DxgiAdapter() {
     if (m_eventThread.joinable()) {
-      std::unique_lock<std::mutex> lock(m_mutex);
+      std::unique_lock<dxvk::mutex> lock(m_mutex);
       m_eventCookie = ~0u;
       m_cond.notify_one();
 
@@ -406,7 +406,7 @@ namespace dxvk {
     if (!hEvent || !pdwCookie)
       return E_INVALIDARG;
 
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::unique_lock<dxvk::mutex> lock(m_mutex);
     DWORD cookie = ++m_eventCookie;
 
     m_eventMap.insert({ cookie, hEvent });
@@ -431,7 +431,7 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE DxgiAdapter::UnregisterVideoMemoryBudgetChangeNotification(
           DWORD                         dwCookie) {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::unique_lock<dxvk::mutex> lock(m_mutex);
     m_eventMap.erase(dwCookie);
   }
 
@@ -449,7 +449,7 @@ namespace dxvk {
   void DxgiAdapter::runEventThread() {
     env::setThreadName(str::format("dxvk-adapter-", m_index));
 
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::unique_lock<dxvk::mutex> lock(m_mutex);
     DxvkAdapterMemoryInfo memoryInfoOld = m_adapter->getMemoryHeapInfo();
 
     while (true) {

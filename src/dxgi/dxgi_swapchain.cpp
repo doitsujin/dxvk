@@ -165,7 +165,7 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetFrameStatistics(DXGI_FRAME_STATISTICS* pStats) {
-    std::lock_guard<std::recursive_mutex> lock(m_lockWindow);
+    std::lock_guard<dxvk::recursive_mutex> lock(m_lockWindow);
 
     if (!pStats)
       return E_INVALIDARG;
@@ -261,8 +261,8 @@ namespace dxvk {
     if (SyncInterval > 4)
       return DXGI_ERROR_INVALID_CALL;
 
-    std::lock_guard<std::recursive_mutex> lockWin(m_lockWindow);
-    std::lock_guard<std::mutex> lockBuf(m_lockBuffer);
+    std::lock_guard<dxvk::recursive_mutex> lockWin(m_lockWindow);
+    std::lock_guard<dxvk::mutex> lockBuf(m_lockBuffer);
 
     try {
       HRESULT hr = m_presenter->Present(SyncInterval, PresentFlags, nullptr);
@@ -290,7 +290,7 @@ namespace dxvk {
     if ((m_desc.Flags & PreserveFlags) != (SwapChainFlags & PreserveFlags))
       return DXGI_ERROR_INVALID_CALL;
     
-    std::lock_guard<std::mutex> lock(m_lockBuffer);
+    std::lock_guard<dxvk::mutex> lock(m_lockBuffer);
     m_desc.Width  = Width;
     m_desc.Height = Height;
     
@@ -327,7 +327,7 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::ResizeTarget(const DXGI_MODE_DESC* pNewTargetParameters) {
-    std::lock_guard<std::recursive_mutex> lock(m_lockWindow);
+    std::lock_guard<dxvk::recursive_mutex> lock(m_lockWindow);
 
     if (pNewTargetParameters == nullptr)
       return DXGI_ERROR_INVALID_CALL;
@@ -387,7 +387,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::SetFullscreenState(
           BOOL          Fullscreen,
           IDXGIOutput*  pTarget) {
-    std::lock_guard<std::recursive_mutex> lock(m_lockWindow);
+    std::lock_guard<dxvk::recursive_mutex> lock(m_lockWindow);
 
     if (!Fullscreen && pTarget)
       return DXGI_ERROR_INVALID_CALL;
@@ -436,7 +436,7 @@ namespace dxvk {
     if (!(m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT))
       return DXGI_ERROR_INVALID_CALL;
 
-    std::lock_guard<std::recursive_mutex> lock(m_lockWindow);
+    std::lock_guard<dxvk::recursive_mutex> lock(m_lockWindow);
     *pMaxLatency = m_presenter->GetFrameLatency();
     return S_OK;
   }
@@ -465,7 +465,7 @@ namespace dxvk {
     if (!(m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT))
       return DXGI_ERROR_INVALID_CALL;
 
-    std::lock_guard<std::recursive_mutex> lock(m_lockWindow);
+    std::lock_guard<dxvk::recursive_mutex> lock(m_lockWindow);
     return m_presenter->SetFrameLatency(MaxLatency);
   }
 
@@ -546,7 +546,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::SetGammaControl(
           UINT                      NumPoints,
     const DXGI_RGB*                 pGammaCurve) {
-    std::lock_guard<std::mutex> lockBuf(m_lockBuffer);
+    std::lock_guard<dxvk::mutex> lockBuf(m_lockBuffer);
     return m_presenter->SetGammaControl(NumPoints, pGammaCurve);
   }
 
