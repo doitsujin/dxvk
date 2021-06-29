@@ -28,6 +28,8 @@ if dxvk_compiler.get_id() == 'clang'
 endif
 
 if not dxvk_is_msvc
+  add_project_arguments('-D_WIN32_WINNT=0xa00', language : 'cpp')
+
   if get_option('build_id') and dxvk_compiler.has_link_argument('-Wl,--build-id')
     add_global_link_arguments('-Wl,--build-id', language: 'cpp')
   endif
