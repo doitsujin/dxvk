@@ -1417,6 +1417,9 @@ namespace dxvk {
 
   void DxvkContext::discardBuffer(
     const Rc<DxvkBuffer>&       buffer) {
+    if (buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+      return;
+
     if (m_execBarriers.isBufferDirty(buffer->getSliceHandle(), DxvkAccess::Write))
       this->invalidateBuffer(buffer, buffer->allocSlice());
   }
@@ -2133,8 +2136,11 @@ namespace dxvk {
           VkDeviceSize              offset,
           VkDeviceSize              size,
     const void*                     data) {
+    bool isHostVisible = buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+
     bool replaceBuffer = (size == buffer->info().size)
-                      && (size <= (1 << 20)); /* 1 MB */
+                      && (size <= (1 << 20))
+                      && !isHostVisible;
     
     DxvkBufferSliceHandle bufferSlice;
     DxvkCmdBuffer         cmdBuffer;
