@@ -214,6 +214,7 @@ namespace dxvk {
           pDesc->ViewDimension       = D3D11_UAV_DIMENSION_BUFFER;
           pDesc->Buffer.FirstElement = 0;
           pDesc->Buffer.NumElements  = bufferDesc.ByteWidth / bufferDesc.StructureByteStride;
+          pDesc->Buffer.Flags = 0;
           return S_OK;
         }
       } return E_INVALIDARG;
