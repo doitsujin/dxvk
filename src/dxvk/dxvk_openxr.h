@@ -5,12 +5,6 @@
 
 #include "dxvk_extension_provider.h"
 
-#ifdef __WINE__
-using SoHandle = void*;
-#else
-using SoHandle = HMODULE;
-#endif
-
 namespace dxvk {
 
   class DxvkInstance;
@@ -44,7 +38,7 @@ namespace dxvk {
   private:
 
     dxvk::mutex           m_mutex;
-    SoHandle              m_wineOxr     = nullptr;
+    HMODULE               m_wineOxr     = nullptr;
 
     bool m_loadedOxrApi      = false;
     bool m_initializedInsExt = false;
@@ -64,7 +58,7 @@ namespace dxvk {
 
     void shutdown();
 
-    SoHandle loadLibrary();
+    HMODULE loadLibrary();
 
     void freeLibrary();
 

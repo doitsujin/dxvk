@@ -5,19 +5,7 @@
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 #endif
 
-#ifdef __WINE__
-#include <dlfcn.h>
-
-#pragma push_macro("_WIN32")
-//request UNIX ABI from openvr.hpp
-#undef _WIN32
-#endif
-
 #include <openvr/openvr.hpp>
-
-#ifdef __WINE__
-#pragma pop_macro("_WIN32")
-#endif
 
 using VR_InitInternalProc        = vr::IVRSystem* (VR_CALLTYPE *)(vr::EVRInitError*, vr::EVRApplicationType);
 using VR_ShutdownInternalProc    = void  (VR_CALLTYPE *)();
@@ -316,40 +304,24 @@ namespace dxvk {
   }
 
 
-  SoHandle VrInstance::loadLibrary() {
-    SoHandle handle = nullptr;
-    #ifdef __WINE__
-    // on winelib, load native openvr_api directly
-    if (!(handle = ::dlopen("libopenvr_api.so", RTLD_LAZY | RTLD_NOLOAD)))
-      handle = ::dlopen("libopenvr_api_dxvk.so", RTLD_LAZY | RTLD_LOCAL);
-    m_loadedOvrApi = handle != nullptr;
-    #else
+  HMODULE VrInstance::loadLibrary() {
+    HMODULE handle = nullptr;
     if (!(handle = ::GetModuleHandle("openvr_api.dll"))) {
       handle = ::LoadLibrary("openvr_api_dxvk.dll");
       m_loadedOvrApi = handle != nullptr;
     }
-    #endif
     return handle;
   }
 
 
   void VrInstance::freeLibrary() {
-    #ifdef __WINE__
-    ::dlclose(m_ovrApi);
-    #else
     ::FreeLibrary(m_ovrApi);
-    #endif
   }
 
   
   void* VrInstance::getSym(const char* sym) {
-    #ifdef __WINE__
-    return reinterpret_cast<void*>(
-      ::dlsym(m_ovrApi, sym));
-    #else
     return reinterpret_cast<void*>(
       ::GetProcAddress(m_ovrApi, sym));
-    #endif
   }
   
 }

@@ -146,8 +146,8 @@ namespace dxvk {
   }
 
 
-  SoHandle DxvkXrProvider::loadLibrary() {
-    SoHandle handle = nullptr;
+  HMODULE DxvkXrProvider::loadLibrary() {
+    HMODULE handle = nullptr;
     if (!(handle = ::GetModuleHandle("wineopenxr.dll"))) {
       handle = ::LoadLibrary("wineopenxr.dll");
       m_loadedOxrApi = handle != nullptr;
