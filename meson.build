@@ -53,7 +53,9 @@ endif
 
 dxvk_include_path = include_directories('./include')
 
-if (cpu_family == 'x86_64')
+if dxvk_is_winelib
+  dxvk_library_path = []
+elif cpu_family == 'x86_64'
   dxvk_library_path = meson.source_root() + '/lib'
 else
   dxvk_library_path = meson.source_root() + '/lib32'
@@ -93,9 +95,13 @@ lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
 lib_d3d9    = dxvk_compiler.find_library('d3d9')
 lib_d3d11   = dxvk_compiler.find_library('d3d11')
 lib_dxgi    = dxvk_compiler.find_library('dxgi')
-lib_d3dcompiler_43 = dxvk_compiler.find_library('d3dcompiler_43', dirs : dxvk_library_path)
+if dxvk_is_winelib
+  lib_d3dcompiler_43 = dxvk_compiler.find_library('d3dcompiler')
+else
+  lib_d3dcompiler_43 = dxvk_compiler.find_library('d3dcompiler_43', dirs : dxvk_library_path)
+endif
 
-if dxvk_is_msvc
+if dxvk_is_msvc or dxvk_is_winelib
   lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler')
 else
   lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler_47')
