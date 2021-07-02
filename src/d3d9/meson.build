@@ -46,7 +46,6 @@ d3d9_dll = shared_library('d3d9'+dll_ext, d3d9_src, glsl_generator.process(d3d9_
   dependencies        : [ dxso_dep, dxvk_dep ],
   include_directories : dxvk_include_path,
   install             : true,
-  objects             : not dxvk_is_msvc ? 'd3d9'+def_spec_ext : [],
   vs_module_defs      : 'd3d9'+def_spec_ext,
   override_options    : ['cpp_std='+dxvk_cpp_std])
 
