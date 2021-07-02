@@ -66,8 +66,10 @@ dxvk_extradep = [ ]
 if dxvk_is_msvc
   wrc = find_program('rc')
 else
-  add_global_link_arguments('-static', '-static-libgcc', language: 'c')
-  add_global_link_arguments('-static', '-static-libgcc', '-static-libstdc++', language: 'cpp')
+  if not dxvk_is_winelib
+    add_global_link_arguments('-static', '-static-libgcc', language: 'c')
+    add_global_link_arguments('-static', '-static-libgcc', '-static-libstdc++', language: 'cpp')
+  endif
 
   wrc = find_program('windres')
 endif
