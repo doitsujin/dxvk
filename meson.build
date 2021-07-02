@@ -120,6 +120,12 @@ endif
 
 def_spec_ext = '.def'
 
+if dxvk_is_winelib
+  library_ext = 'dll.so'
+else
+  library_ext = []
+endif
+
 glsl_compiler = find_program('glslangValidator')
 glsl_args = [ '-V', '--vn', '@BASENAME@', '@INPUT@', '-o', '@OUTPUT@' ]
 if run_command(glsl_compiler, [ '--quiet', '--version' ]).returncode() == 0
