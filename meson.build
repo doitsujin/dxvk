@@ -57,13 +57,7 @@ else
   add_global_link_arguments('-static', '-static-libgcc', language: 'c')
   add_global_link_arguments('-static', '-static-libgcc', '-static-libstdc++', language: 'cpp')
 
-  if cpu_family == 'x86_64'
-    wrc = find_program('x86_64-w64-mingw32-windres')
-  elif cpu_family == 'x86'
-    wrc = find_program('i686-w64-mingw32-windres')
-  else
-    error('Unsupported target architecture')
-  endif
+  wrc = find_program('windres')
 endif
 
 if cpu_family == 'x86_64'
