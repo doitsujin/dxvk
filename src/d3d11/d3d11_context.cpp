@@ -1161,7 +1161,7 @@ namespace dxvk {
       srcSubresource.mipLevel,
       srcSubresource.arrayLayer, 1 };
     
-    if (srcDesc.SampleDesc.Count == 1) {
+    if (srcDesc.SampleDesc.Count == 1 || m_parent->GetOptions()->disableMsaa) {
       EmitCs([
         cDstImage  = dstTextureInfo->GetImage(),
         cSrcImage  = srcTextureInfo->GetImage(),

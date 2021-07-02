@@ -91,6 +91,10 @@ namespace dxvk {
     /// for a single window that may interfere with each other.
     bool deferSurfaceCreation;
 
+    /// Forces the sample count of all textures to be 1, and
+    /// performs the required shader and resolve fixups.
+    bool disableMsaa;
+
     /// Apitrace mode: Maps all buffers in cached memory.
     /// Enabled automatically if dxgitrace.dll is attached.
     bool apitraceMode;

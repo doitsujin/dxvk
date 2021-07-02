@@ -37,7 +37,8 @@ namespace dxvk {
     imageInfo.initialLayout   = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.shared          = vkImage != VK_NULL_HANDLE;
 
-    DecodeSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount);
+    if (!pDevice->GetOptions()->disableMsaa)
+      DecodeSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount);
 
     // Integer clear operations on UAVs are implemented using
     // a view with a bit-compatible integer format, so we'll
