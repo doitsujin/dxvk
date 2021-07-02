@@ -7,6 +7,16 @@ add_project_arguments('-DNOMINMAX', language : 'cpp')
 dxvk_compiler = meson.get_compiler('cpp')
 dxvk_is_msvc = dxvk_compiler.get_id() == 'msvc'
 
+dxvk_is_winelib = dxvk_compiler.compiles('''
+#ifndef __WINE__
+int foo[-1];
+#endif
+''', name : 'is winelib')
+
+if dxvk_is_winelib
+  warning('DXVK winelib is experimental and not supported')
+endif
+
 # c++17 was added in 15.3, older version needs c++latest
 if dxvk_is_msvc and dxvk_compiler.version().version_compare('<15.3')
   dxvk_cpp_std='c++latest'
