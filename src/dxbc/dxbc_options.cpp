@@ -41,6 +41,7 @@ namespace dxvk {
     enableRtOutputNanFixup   = options.enableRtOutputNanFixup;
     zeroInitWorkgroupMemory  = options.zeroInitWorkgroupMemory;
     forceTgsmBarriers        = options.forceTgsmBarriers;
+    disableMsaa              = options.disableMsaa;
     dynamicIndexedConstantBufferAsSsbo = options.constantBufferRangeCheck;
 
     // Disable subgroup early discard on Nvidia because it may hurt performance

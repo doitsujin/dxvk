@@ -3376,8 +3376,16 @@ namespace dxvk {
     // The LOD is not present when reading from
     // a buffer or from a multisample texture.
     if (texture.imageInfo.dim != spv::DimBuffer && texture.imageInfo.ms == 0) {
-      DxbcRegisterValue imageLod = emitRegisterExtract(
-        address, DxbcRegMask(false, false, false, true));
+      DxbcRegisterValue imageLod;
+      
+      if (ins.op != DxbcOpcode::LdMs) {
+        imageLod = emitRegisterExtract(
+          address, DxbcRegMask(false, false, false, true));
+      } else {
+        // If we force-disabled MSAA, fetch from LOD 0
+        imageLod.type = { DxbcScalarType::Uint32, 1 };
+        imageLod.id = m_module.constu32(0);
+      }
       
       imageOperands.flags |= spv::ImageOperandsLodMask;
       imageOperands.sLod = imageLod.id;
@@ -5366,9 +5374,15 @@ namespace dxvk {
       DxbcRegisterValue result;
       result.type.ctype  = DxbcScalarType::Uint32;
       result.type.ccount = 1;
-      result.id = m_module.opImageQuerySamples(
-        getVectorTypeId(result.type),
-        m_module.opLoad(info.typeId, info.varId));
+
+      if (info.image.ms) {
+        result.id = m_module.opImageQuerySamples(
+          getVectorTypeId(result.type),
+          m_module.opLoad(info.typeId, info.varId));
+      } else {
+        // OpImageQuerySamples requires MSAA images
+        result.id = m_module.constu32(1);
+      }
       
       // Report a sample count of 0 for unbound images
       result.id = m_module.opSelect(getVectorTypeId(result.type),
@@ -7724,15 +7738,17 @@ namespace dxvk {
   DxbcImageInfo DxbcCompiler::getResourceType(
           DxbcResourceDim   resourceType,
           bool              isUav) const {
-    DxbcImageInfo typeInfo = [resourceType, isUav] () -> DxbcImageInfo {
+    uint32_t ms = m_moduleInfo.options.disableMsaa ? 0 : 1;
+
+    DxbcImageInfo typeInfo = [resourceType, isUav, ms] () -> DxbcImageInfo {
       switch (resourceType) {
         case DxbcResourceDim::Buffer:         return { spv::DimBuffer, 0, 0, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_MAX_ENUM   };
         case DxbcResourceDim::Texture1D:      return { spv::Dim1D,     0, 0, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_1D         };
         case DxbcResourceDim::Texture1DArr:   return { spv::Dim1D,     1, 0, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_1D_ARRAY   };
         case DxbcResourceDim::Texture2D:      return { spv::Dim2D,     0, 0, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_2D         };
         case DxbcResourceDim::Texture2DArr:   return { spv::Dim2D,     1, 0, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_2D_ARRAY   };
-        case DxbcResourceDim::Texture2DMs:    return { spv::Dim2D,     0, 1, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_2D         };
-        case DxbcResourceDim::Texture2DMsArr: return { spv::Dim2D,     1, 1, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_2D_ARRAY   };
+        case DxbcResourceDim::Texture2DMs:    return { spv::Dim2D,     0, ms,isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_2D         };
+        case DxbcResourceDim::Texture2DMsArr: return { spv::Dim2D,     1, ms,isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_2D_ARRAY   };
         case DxbcResourceDim::Texture3D:      return { spv::Dim3D,     0, 0, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_3D         };
         case DxbcResourceDim::TextureCube:    return { spv::DimCube,   0, 0, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_CUBE       };
         case DxbcResourceDim::TextureCubeArr: return { spv::DimCube,   1, 0, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_CUBE_ARRAY };

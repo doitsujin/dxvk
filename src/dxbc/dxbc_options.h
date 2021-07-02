@@ -57,6 +57,9 @@ namespace dxvk {
     /// Insert memory barriers after TGSM stoes
     bool forceTgsmBarriers = false;
 
+    /// Replace ld_ms with ld
+    bool disableMsaa = false;
+
     /// Float control flags
     DxbcFloatControlFlags floatControl;
 
