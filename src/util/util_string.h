@@ -18,6 +18,17 @@ namespace dxvk::str {
   }
 
   std::wstring tows(const char* mbs);
+
+  // Convert the given UTF-8 string to a format suitable to pass to functions
+  // expecting a filename. On MSVC and MinGW the standard char * variants use
+  // the system's code page instead of UTF-8 and there are non-standard
+  // overloads which take a wchar_t, however winelib uses the host's libstdc++
+  // which doesn't have the wchar_t overload and uses UTF-8.
+#ifdef __WINE__
+  static inline std::string filename(std::string s) { return s; }
+#else
+  static inline std::wstring filename(std::string s) { return tows(s.c_str()); }
+#endif
   
   inline void format1(std::stringstream&) { }
 
