@@ -238,6 +238,11 @@ namespace dxvk {
     { R"(\\GTAIV\.exe$)", {{
       { "dxgi.emulateUMA",                  "True" },
     }} },
+    /* World of Final Fantasy: Broken and useless *
+     * use of 4x MSAA throughout the renderer     */
+    { R"(\\WOFF\.exe$)", {{
+      { "d3d11.disableMsaa",                "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
