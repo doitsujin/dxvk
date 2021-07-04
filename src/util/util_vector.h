@@ -23,8 +23,8 @@ namespace dxvk {
 
     Vector4Base(const Vector4Base<T>& other) = default;
 
-    inline       float& operator[](size_t index)       { return data[index]; }
-    inline const float& operator[](size_t index) const { return data[index]; }
+    inline       T& operator[](size_t index)       { return data[index]; }
+    inline const T& operator[](size_t index) const { return data[index]; }
 
     bool operator==(const Vector4Base<T>& other) const {
       for (uint32_t i = 0; i < 4; i++) {
