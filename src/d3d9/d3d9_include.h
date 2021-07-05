@@ -10,12 +10,7 @@
 #include <stdint.h>
 #include <d3d9.h>
 
-//for some reason we need to specify __declspec(dllexport) for MinGW
-#if defined(__WINE__)
-#define DLLEXPORT __attribute__((visibility("default")))
-#else
 #define DLLEXPORT
-#endif
 
 
 #include "../util/com/com_guid.h"
