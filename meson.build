@@ -142,7 +142,7 @@ if dxvk_is_msvc
 else
   wrc_generator = generator(wrc,
   output    : [ '@BASENAME@' + res_ext ],
-  arguments : [ '-i', '@INPUT@', '-o', '@OUTPUT@' ])
+  arguments : meson.get_cross_property('windres_args', []) + [ '-i', '@INPUT@', '-o', '@OUTPUT@' ])
 endif
 
 dxvk_version = vcs_tag(
