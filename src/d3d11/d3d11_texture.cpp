@@ -74,12 +74,6 @@ namespace dxvk {
       }
     }
 
-    // Some games will try to create an SRGB image with the UAV
-    // bind flag set. This works on Windows, but no UAVs can be
-    // created for the image in practice.
-    bool noUav = formatProperties->flags.test(DxvkFormatFlag::ColorSpaceSrgb)
-      && !CheckFormatFeatureSupport(formatInfo.Format, VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT);
-    
     // Adjust image flags based on the corresponding D3D flags
     if (m_desc.BindFlags & D3D11_BIND_SHADER_RESOURCE) {
       imageInfo.usage  |= VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -102,11 +96,16 @@ namespace dxvk {
                        |  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     }
     
-    if (m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS && !noUav) {
+    if (m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
       imageInfo.usage  |= VK_IMAGE_USAGE_STORAGE_BIT;
       imageInfo.stages |= pDevice->GetEnabledShaderStages();
       imageInfo.access |= VK_ACCESS_SHADER_READ_BIT
                        |  VK_ACCESS_SHADER_WRITE_BIT;
+
+      // UAVs are not supported for sRGB formats on most drivers,
+      // but we can still create linear views for the image
+      if (formatProperties->flags.test(DxvkFormatFlag::ColorSpaceSrgb))
+        imageInfo.flags |= VK_IMAGE_CREATE_EXTENDED_USAGE_BIT;
     }
 
     // Multi-plane formats need views to be created with color formats, and
