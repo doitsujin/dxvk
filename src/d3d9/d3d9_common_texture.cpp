@@ -173,10 +173,8 @@ namespace dxvk {
     }
 
     VkMemoryPropertyFlags memType = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                                  | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-
-    if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM || IsManaged())
-      memType |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+                                  | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+                                  | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
 
     m_buffers[Subresource] = m_device->GetDXVKDevice()->createBuffer(info, memType);
     m_mappedSlices[Subresource] = m_buffers[Subresource]->getSliceHandle();
