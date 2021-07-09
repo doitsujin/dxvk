@@ -679,6 +679,9 @@ namespace dxvk {
 
     VkExtent3D copyBlockCount = util::computeBlockCount(copyExtent, formatInfo->blockSize);
 
+    if (!copyBlockCount.width || !copyBlockCount.height || !copyBlockCount.depth)
+      return D3D_OK;
+
     const auto dstSubresource = vk::makeSubresourceLayers(
       dstTextureInfo->GetSubresourceFromIndex(VK_IMAGE_ASPECT_COLOR_BIT, dst->GetSubresource()));
 
