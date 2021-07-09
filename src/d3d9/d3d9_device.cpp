@@ -666,9 +666,13 @@ namespace dxvk {
                          pSourceRect->top  / int32_t(formatInfo->blockSize.height),
                          0u };
 
-      copyExtent = { alignDown(uint32_t(pSourceRect->right  - pSourceRect->left), formatInfo->blockSize.width),
-                     alignDown(uint32_t(pSourceRect->bottom - pSourceRect->top),  formatInfo->blockSize.height),
-                     1u };
+      if (pSourceRect->right < texLevelExtent.width)
+        copyExtent.width = alignDown(uint32_t(pSourceRect->right - pSourceRect->left), formatInfo->blockSize.width);
+
+      if (pSourceRect->bottom < texLevelExtent.height)
+        copyExtent.height = alignDown(uint32_t(pSourceRect->bottom - pSourceRect->top), formatInfo->blockSize.height);
+
+      copyExtent.depth = 1u;
     }
 
     if (pDestPoint != nullptr) {
