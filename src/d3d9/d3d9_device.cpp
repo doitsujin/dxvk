@@ -4372,12 +4372,16 @@ namespace dxvk {
       const DxvkFormatInfo* formatInfo = imageFormatInfo(pResource->GetFormatMapping().FormatColor);
       VkExtent3D texLevelExtent = image->mipLevelExtent(subresource.mipLevel);
       VkExtent3D texLevelExtentBlockCount = util::computeBlockCount(texLevelExtent, formatInfo->blockSize);
+      // Add more blocks for the other planes that we might have.
+      // TODO: PLEASE CLEAN ME
+      texLevelExtentBlockCount.height *= std::min(convertFormat.PlaneCount, 2u);
 
       D3D9BufferSlice slice = AllocTempBuffer<false>(srcSlice.length);
       VkDeviceSize pitch = align(texLevelExtentBlockCount.width * formatInfo->elementSize, 4);
+
       util::packImageData(
         slice.mapPtr, srcSlice.mapPtr, texLevelExtentBlockCount, formatInfo->elementSize,
-        pitch, pitch * texLevelExtentBlockCount.height);
+        pitch, std::min(convertFormat.PlaneCount, 2u) * pitch * texLevelExtentBlockCount.height);
 
       Flush();
       SynchronizeCsThread();
