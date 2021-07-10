@@ -4327,9 +4327,9 @@ namespace dxvk {
         int32_t(alignDown(box.Front >> subresource.mipLevel, formatInfo->blockSize.depth))
       };
       VkExtent3D scaledBoxExtent = util::computeMipLevelExtent({
-        uint32_t(box.Right - scaledBoxOffset.x),
-        uint32_t(box.Bottom - scaledBoxOffset.y),
-        uint32_t(box.Back - scaledBoxOffset.z)
+        uint32_t(box.Right  - int32_t(alignDown(box.Left, formatInfo->blockSize.width))),
+        uint32_t(box.Bottom - int32_t(alignDown(box.Top, formatInfo->blockSize.height))),
+        uint32_t(box.Back   - int32_t(alignDown(box.Front, formatInfo->blockSize.depth)))
       }, subresource.mipLevel);
       VkExtent3D scaledBoxExtentBlockCount = util::computeBlockCount(scaledBoxExtent, formatInfo->blockSize);
       VkExtent3D scaledAlignedBoxExtent = util::computeBlockExtent(scaledBoxExtentBlockCount, formatInfo->blockSize);
@@ -4337,9 +4337,9 @@ namespace dxvk {
       VkExtent3D texLevelExtent = image->mipLevelExtent(subresource.mipLevel);
       VkExtent3D texLevelExtentBlockCount = util::computeBlockCount(texLevelExtent, formatInfo->blockSize);
 
-      scaledAlignedBoxExtent.width = std::min<uint32_t>(texLevelExtent.width, scaledAlignedBoxExtent.width);
-      scaledAlignedBoxExtent.height = std::min<uint32_t>(texLevelExtent.height, scaledAlignedBoxExtent.height);
-      scaledAlignedBoxExtent.depth = std::min<uint32_t>(texLevelExtent.depth, scaledAlignedBoxExtent.depth);
+      scaledAlignedBoxExtent.width = std::min<uint32_t>(texLevelExtent.width - scaledBoxOffset.x, scaledAlignedBoxExtent.width);
+      scaledAlignedBoxExtent.height = std::min<uint32_t>(texLevelExtent.height - scaledBoxOffset.y, scaledAlignedBoxExtent.height);
+      scaledAlignedBoxExtent.depth = std::min<uint32_t>(texLevelExtent.depth - scaledBoxOffset.z, scaledAlignedBoxExtent.depth);
 
       VkDeviceSize dirtySize = scaledBoxExtentBlockCount.width * scaledBoxExtentBlockCount.height * scaledBoxExtentBlockCount.depth * formatInfo->elementSize;
       D3D9BufferSlice slice = AllocTempBuffer<false>(dirtySize);
