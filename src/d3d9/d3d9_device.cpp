@@ -662,18 +662,38 @@ namespace dxvk {
     VkExtent3D copyExtent = texLevelExtent;
 
     if (pSourceRect != nullptr) {
+      const VkExtent3D extent = { uint32_t(pSourceRect->right - pSourceRect->left), uint32_t(pSourceRect->bottom - pSourceRect->top), 1 };
+
+      const bool extentAligned = extent.width % formatInfo->blockSize.width == 0
+        && extent.height % formatInfo->blockSize.height == 0;
+
+      if (pSourceRect->left < 0
+        || pSourceRect->top < 0
+        || pSourceRect->right <= pSourceRect->left
+        || pSourceRect->bottom <= pSourceRect->top
+        || pSourceRect->left % formatInfo->blockSize.width != 0
+        || pSourceRect->top % formatInfo->blockSize.height != 0
+        || (extent != texLevelExtent && !extentAligned))
+        return D3DERR_INVALIDCALL;
+
       srcBlockOffset = { pSourceRect->left / int32_t(formatInfo->blockSize.width),
                          pSourceRect->top  / int32_t(formatInfo->blockSize.height),
                          0u };
 
-      copyExtent = { alignDown(uint32_t(pSourceRect->right  - pSourceRect->left), formatInfo->blockSize.width),
-                     alignDown(uint32_t(pSourceRect->bottom - pSourceRect->top),  formatInfo->blockSize.height),
+      copyExtent = { extent.width,
+                     extent.height,
                      1u };
     }
 
     if (pDestPoint != nullptr) {
-      dstOffset = { alignDown(pDestPoint->x, formatInfo->blockSize.width),
-                    alignDown(pDestPoint->y, formatInfo->blockSize.height),
+      if (pDestPoint->x % formatInfo->blockSize.width != 0
+        || pDestPoint->y % formatInfo->blockSize.height != 0
+        || pDestPoint->x < 0
+        || pDestPoint->y < 0)
+        return D3DERR_INVALIDCALL;
+
+      dstOffset = { pDestPoint->x,
+                    pDestPoint->y,
                     0u };
     }
 
