@@ -838,6 +838,8 @@ namespace dxvk {
 
     void UndirtySamplers();
 
+    void UndirtyTextures();
+
     void MarkSamplersDirty();
 
     D3D9DrawInfo GenerateDrawInfo(
@@ -919,6 +921,7 @@ namespace dxvk {
 
     D3D9DeviceFlags                 m_flags;
     uint32_t                        m_dirtySamplerStates = 0;
+    uint32_t                        m_dirtyTextures = 0;
 
     D3D9Adapter*                    m_adapter;
     Rc<DxvkDevice>                  m_dxvkDevice;
