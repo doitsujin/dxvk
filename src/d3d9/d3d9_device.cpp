@@ -3621,8 +3621,8 @@ namespace dxvk {
        || Type == D3DSAMP_MAXMIPLEVEL
        || Type == D3DSAMP_BORDERCOLOR)
         m_dirtySamplerStates |= 1u << StateSampler;
-      else if (Type == D3DSAMP_SRGBTEXTURE)
-        BindTexture(StateSampler);
+      else if (Type == D3DSAMP_SRGBTEXTURE && m_state.textures[StateSampler] != nullptr)
+        m_dirtyTextures |= 1u << StateSampler;
 
       constexpr DWORD Fetch4Enabled  = MAKEFOURCC('G', 'E', 'T', '4');
       constexpr DWORD Fetch4Disabled = MAKEFOURCC('G', 'E', 'T', '1');
@@ -3676,7 +3676,7 @@ namespace dxvk {
 
     TextureChangePrivate(m_state.textures[StateSampler], pTexture);
 
-    BindTexture(StateSampler);
+    m_dirtyTextures |= 1u << StateSampler;
 
     UpdateActiveTextures(StateSampler, combinedUsage);
 
@@ -5779,7 +5779,17 @@ namespace dxvk {
       }
     }
 
-    if (commonTex == nullptr) {
+    if (commonTex != nullptr) {
+      EmitCs([
+        cColorSlot = colorSlot,
+        cDepthSlot = depthSlot,
+        cDepth     = commonTex->IsShadow(),
+        cImageView = commonTex->GetSampleView(srgb)
+      ](DxvkContext* ctx) {
+        ctx->bindResourceView(cColorSlot, !cDepth ? cImageView : nullptr, nullptr);
+        ctx->bindResourceView(cDepthSlot,  cDepth ? cImageView : nullptr, nullptr);
+      });
+    } else {
       EmitCs([
         cColorSlot = colorSlot,
         cDepthSlot = depthSlot
@@ -5787,18 +5797,7 @@ namespace dxvk {
         ctx->bindResourceView(cColorSlot, nullptr, nullptr);
         ctx->bindResourceView(cDepthSlot, nullptr, nullptr);
       });
-      return;
     }
-
-    EmitCs([
-      cColorSlot = colorSlot,
-      cDepthSlot = depthSlot,
-      cDepth     = commonTex->IsShadow(),
-      cImageView = commonTex->GetSampleView(srgb)
-    ](DxvkContext* ctx) {
-      ctx->bindResourceView(cColorSlot, !cDepth ? cImageView : nullptr, nullptr);
-      ctx->bindResourceView(cDepthSlot,  cDepth ? cImageView : nullptr, nullptr);
-    });
   }
 
 
@@ -5809,6 +5808,13 @@ namespace dxvk {
     m_dirtySamplerStates = 0;
   }
 
+
+  void D3D9DeviceEx::UndirtyTextures() {
+    for (uint32_t tex = m_dirtyTextures; tex; tex &= tex - 1)
+      BindTexture(bit::tzcnt(tex));
+  
+    m_dirtyTextures = 0;
+  }
 
   void D3D9DeviceEx::MarkSamplersDirty() {
     m_dirtySamplerStates = 0x001fffff; // 21 bits.
@@ -5880,6 +5886,9 @@ namespace dxvk {
 
     if (m_dirtySamplerStates)
       UndirtySamplers();
+
+    if (m_dirtyTextures)
+      UndirtyTextures();
 
     if (m_flags.test(D3D9DeviceFlag::DirtyBlendState))
       BindBlendState();
@@ -6989,6 +6998,8 @@ namespace dxvk {
         ctx->bindResourceView(cDepthSlot, nullptr, nullptr);
       });
     }
+
+    m_dirtyTextures = 0;
 
     auto& ss = m_state.samplerStates;
     for (uint32_t i = 0; i < ss.size(); i++) {
