@@ -413,6 +413,9 @@ namespace dxvk {
       return m_dirtyBoxes[layer];
     }
 
+    static VkImageType GetImageTypeFromResourceType(
+            D3DRESOURCETYPE  Dimension);
+
   private:
 
     D3D9DeviceEx*                 m_device;
@@ -489,9 +492,6 @@ namespace dxvk {
 
     VkImageLayout OptimizeLayout(
             VkImageUsageFlags         Usage) const;
-
-    static VkImageType GetImageTypeFromResourceType(
-            D3DRESOURCETYPE  Dimension);
 
     static VkImageViewType GetImageViewTypeFromResourceType(
             D3DRESOURCETYPE  Dimension,
