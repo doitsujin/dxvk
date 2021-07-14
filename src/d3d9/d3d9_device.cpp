@@ -406,8 +406,6 @@ namespace dxvk {
 
       if (Pool == D3DPOOL_SYSTEMMEM && Levels == 1 && pSharedHandle != nullptr)
         initialData = *(reinterpret_cast<void**>(pSharedHandle));
-      else // This must be a shared resource.
-        InitReturnPtr(pSharedHandle);
 
       m_initializer->InitTexture(texture->GetCommonTexture(), initialData);
       *ppTexture = texture.ref();
@@ -432,7 +430,6 @@ namespace dxvk {
           IDirect3DVolumeTexture9** ppVolumeTexture,
           HANDLE*                   pSharedHandle) {
     InitReturnPtr(ppVolumeTexture);
-    InitReturnPtr(pSharedHandle);
 
     if (unlikely(ppVolumeTexture == nullptr))
       return D3DERR_INVALIDCALL;
@@ -478,7 +475,6 @@ namespace dxvk {
           IDirect3DCubeTexture9** ppCubeTexture,
           HANDLE*                 pSharedHandle) {
     InitReturnPtr(ppCubeTexture);
-    InitReturnPtr(pSharedHandle);
 
     if (unlikely(ppCubeTexture == nullptr))
       return D3DERR_INVALIDCALL;
@@ -3395,7 +3391,6 @@ namespace dxvk {
           HANDLE*             pSharedHandle,
           DWORD               Usage) {
     InitReturnPtr(ppSurface);
-    InitReturnPtr(pSharedHandle);
 
     if (unlikely(ppSurface == nullptr))
       return D3DERR_INVALIDCALL;
@@ -3440,7 +3435,6 @@ namespace dxvk {
           HANDLE*             pSharedHandle,
           DWORD               Usage) {
     InitReturnPtr(ppSurface);
-    InitReturnPtr(pSharedHandle);
 
     if (unlikely(ppSurface == nullptr))
       return D3DERR_INVALIDCALL;
@@ -3487,7 +3481,6 @@ namespace dxvk {
           HANDLE*             pSharedHandle,
           DWORD               Usage) {
     InitReturnPtr(ppSurface);
-    InitReturnPtr(pSharedHandle);
 
     if (unlikely(ppSurface == nullptr))
       return D3DERR_INVALIDCALL;
