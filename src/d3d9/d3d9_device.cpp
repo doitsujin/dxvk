@@ -4364,12 +4364,12 @@ namespace dxvk {
           + boxOffsetBlockCount.y * texLevelExtentBlockCount.width
           + boxOffsetBlockCount.x)
           * formatInfo->elementSize;
+      VkDeviceSize pitch = align(texLevelExtentBlockCount.width * formatInfo->elementSize, 4);
 
       VkDeviceSize rowAlignment = 0;
       DxvkBufferSlice copySrcSlice;
       if (pResource->DoesStagingBufferUploads(Subresource)) {
         VkDeviceSize dirtySize = scaledBoxExtentBlockCount.width * scaledBoxExtentBlockCount.height * scaledBoxExtentBlockCount.depth * formatInfo->elementSize;
-        VkDeviceSize pitch = align(texLevelExtentBlockCount.width * formatInfo->elementSize, 4);
         D3D9BufferSlice slice = AllocTempBuffer<false>(dirtySize);
         copySrcSlice = slice.slice;
         void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + copySrcOffset;
@@ -4378,7 +4378,7 @@ namespace dxvk {
           pitch, pitch * texLevelExtentBlockCount.height);
       } else {
         copySrcSlice = DxvkBufferSlice(pResource->GetBuffer(Subresource), copySrcOffset, srcSlice.length);
-        rowAlignment = 4;
+        rowAlignment = pitch; // row alignment can act as the pitch parameter
       }
 
       EmitCs([
