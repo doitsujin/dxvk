@@ -4229,7 +4229,7 @@ namespace dxvk {
 
     pResource->SetLocked(Subresource, true);
 
-    if (!(Flags & D3DLOCK_NO_DIRTY_UPDATE) && !(Flags & D3DLOCK_READONLY)) {
+    if ((desc.Pool == D3DPOOL_DEFAULT || !(Flags & D3DLOCK_NO_DIRTY_UPDATE)) && !(Flags & D3DLOCK_READONLY)) {
       if (pBox && MipLevel != 0) {
         D3DBOX scaledBox = *pBox;
         scaledBox.Left   <<= MipLevel;
@@ -4485,7 +4485,7 @@ namespace dxvk {
     uint32_t size   = respectUserBounds ? std::min(SizeToLock, desc.Size - offset) : desc.Size;
     D3D9Range lockRange = D3D9Range(offset, offset + size);
 
-    if (!(Flags & D3DLOCK_READONLY))
+    if ((desc.Pool == D3DPOOL_DEFAULT || !(Flags & D3DLOCK_NO_DIRTY_UPDATE)) && !(Flags & D3DLOCK_READONLY))
       pResource->DirtyRange().Conjoin(lockRange);
 
     Rc<DxvkBuffer> mappingBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
