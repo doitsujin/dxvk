@@ -131,18 +131,53 @@ namespace dxvk {
     // If the buffer is mapped, we can write data directly
     // to the mapped memory region instead of doing it on
     // the GPU. Same goes for zero-initialization.
-    for (uint32_t i = 0; i < pTexture->CountSubresources(); i++) {
-      DxvkBufferSliceHandle mapSlice  = pTexture->GetBuffer(i)->getSliceHandle();
+    const D3D9_COMMON_TEXTURE_DESC* desc = pTexture->Desc();
+    for (uint32_t a = 0; a < desc->ArraySize; a++) {
+      for (uint32_t m = 0; m < desc->MipLevels; m++) {
+        uint32_t subresource = pTexture->CalcSubresource(a, m);
+        DxvkBufferSliceHandle mapSlice  = pTexture->GetBuffer(subresource)->getSliceHandle();
 
-      if (pInitialData != nullptr) {
-        std::memcpy(
-          mapSlice.mapPtr,
-          pInitialData,
-          mapSlice.length);
-      } else {
-        std::memset(
-          mapSlice.mapPtr, 0,
-          mapSlice.length);
+        if (pInitialData != nullptr) {
+          VkExtent3D mipExtent = pTexture->GetExtentMip(m);
+          const DxvkFormatInfo* formatInfo = imageFormatInfo(pTexture->GetFormatMapping().FormatColor);
+          VkExtent3D blockCount = util::computeBlockCount(mipExtent, formatInfo->blockSize);
+          uint32_t pitch = blockCount.width * formatInfo->elementSize;
+          uint32_t alignedPitch = align(pitch, 4);
+
+          D3DRESOURCETYPE resourceType = pTexture->GetType();
+          VkImageType type;
+          switch (resourceType) {
+            case D3DRTYPE_VOLUME:
+            case D3DRTYPE_VOLUMETEXTURE:
+              type = VK_IMAGE_TYPE_3D;
+              break;
+            case D3DRTYPE_CUBETEXTURE:
+              type = VK_IMAGE_TYPE_2D;
+              break;
+            default:
+            case D3DRTYPE_SURFACE:
+            case D3DRTYPE_TEXTURE:
+              type = VK_IMAGE_TYPE_2D;
+              break;
+          }
+
+          util::packImageData(
+            mapSlice.mapPtr,
+            pInitialData,
+            pitch,
+            pitch * blockCount.height,
+            alignedPitch,
+            alignedPitch * blockCount.height,
+            type,
+            mipExtent,
+            resourceType == D3DRTYPE_CUBETEXTURE ? 6 : 1,
+            formatInfo,
+            VK_IMAGE_ASPECT_COLOR_BIT);
+        } else {
+          std::memset(
+            mapSlice.mapPtr, 0,
+            mapSlice.length);
+        }
       }
     }
   }
