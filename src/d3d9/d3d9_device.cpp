@@ -3919,7 +3919,7 @@ namespace dxvk {
                     | VK_ACCESS_INDEX_READ_BIT;
         info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
       } else {
-        info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
         info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
         info.access = VK_ACCESS_TRANSFER_READ_BIT;
       }
