@@ -774,9 +774,9 @@ namespace dxvk {
           int32_t(alignDown(box.Front >> m, formatInfo->blockSize.depth))
         };
         VkExtent3D scaledBoxExtent = util::computeMipLevelExtent({
-          uint32_t(box.Right - scaledBoxOffset.x),
-          uint32_t(box.Bottom - scaledBoxOffset.y),
-          uint32_t(box.Back - scaledBoxOffset.z)
+          uint32_t(box.Right  - int32_t(alignDown(box.Left, formatInfo->blockSize.width))),
+          uint32_t(box.Bottom - int32_t(alignDown(box.Top, formatInfo->blockSize.height))),
+          uint32_t(box.Back   - int32_t(alignDown(box.Front, formatInfo->blockSize.depth)))
         }, m);
         VkExtent3D scaledBoxExtentBlockCount = util::computeBlockCount(scaledBoxExtent, formatInfo->blockSize);
         VkExtent3D scaledAlignedBoxExtent = util::computeBlockExtent(scaledBoxExtentBlockCount, formatInfo->blockSize);
@@ -784,9 +784,9 @@ namespace dxvk {
         VkExtent3D texLevelExtent = dstImage->mipLevelExtent(m);
         VkExtent3D texLevelExtentBlockCount = util::computeBlockCount(texLevelExtent, formatInfo->blockSize);
 
-        scaledAlignedBoxExtent.width = std::min<uint32_t>(texLevelExtent.width, scaledAlignedBoxExtent.width);
-        scaledAlignedBoxExtent.height = std::min<uint32_t>(texLevelExtent.height, scaledAlignedBoxExtent.height);
-        scaledAlignedBoxExtent.depth = std::min<uint32_t>(texLevelExtent.depth, scaledAlignedBoxExtent.depth);
+        scaledAlignedBoxExtent.width = std::min<uint32_t>(texLevelExtent.width - scaledBoxOffset.x, scaledAlignedBoxExtent.width);
+        scaledAlignedBoxExtent.height = std::min<uint32_t>(texLevelExtent.height - scaledBoxOffset.y, scaledAlignedBoxExtent.height);
+        scaledAlignedBoxExtent.depth = std::min<uint32_t>(texLevelExtent.depth - scaledBoxOffset.z, scaledAlignedBoxExtent.depth);
 
         VkDeviceSize dirtySize = scaledBoxExtentBlockCount.width * scaledBoxExtentBlockCount.height * scaledBoxExtentBlockCount.depth * formatInfo->elementSize;
         D3D9BufferSlice slice = AllocTempBuffer<false>(dirtySize);
@@ -3919,7 +3919,7 @@ namespace dxvk {
                     | VK_ACCESS_INDEX_READ_BIT;
         info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
       } else {
-        info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+        info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
         info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
         info.access = VK_ACCESS_TRANSFER_READ_BIT;
       }
@@ -4229,7 +4229,7 @@ namespace dxvk {
 
     pResource->SetLocked(Subresource, true);
 
-    if (!(Flags & D3DLOCK_NO_DIRTY_UPDATE) && !(Flags & D3DLOCK_READONLY)) {
+    if ((desc.Pool == D3DPOOL_DEFAULT || !(Flags & D3DLOCK_NO_DIRTY_UPDATE)) && !(Flags & D3DLOCK_READONLY)) {
       if (pBox && MipLevel != 0) {
         D3DBOX scaledBox = *pBox;
         scaledBox.Left   <<= MipLevel;
@@ -4364,12 +4364,12 @@ namespace dxvk {
           + boxOffsetBlockCount.y * texLevelExtentBlockCount.width
           + boxOffsetBlockCount.x)
           * formatInfo->elementSize;
+      VkDeviceSize pitch = align(texLevelExtentBlockCount.width * formatInfo->elementSize, 4);
 
       VkDeviceSize rowAlignment = 0;
       DxvkBufferSlice copySrcSlice;
       if (pResource->DoesStagingBufferUploads(Subresource)) {
         VkDeviceSize dirtySize = scaledBoxExtentBlockCount.width * scaledBoxExtentBlockCount.height * scaledBoxExtentBlockCount.depth * formatInfo->elementSize;
-        VkDeviceSize pitch = align(texLevelExtentBlockCount.width * formatInfo->elementSize, 4);
         D3D9BufferSlice slice = AllocTempBuffer<false>(dirtySize);
         copySrcSlice = slice.slice;
         void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + copySrcOffset;
@@ -4378,7 +4378,7 @@ namespace dxvk {
           pitch, pitch * texLevelExtentBlockCount.height);
       } else {
         copySrcSlice = DxvkBufferSlice(pResource->GetBuffer(Subresource), copySrcOffset, srcSlice.length);
-        rowAlignment = 4;
+        rowAlignment = pitch; // row alignment can act as the pitch parameter
       }
 
       EmitCs([
@@ -4485,7 +4485,7 @@ namespace dxvk {
     uint32_t size   = respectUserBounds ? std::min(SizeToLock, desc.Size - offset) : desc.Size;
     D3D9Range lockRange = D3D9Range(offset, offset + size);
 
-    if (!(Flags & D3DLOCK_READONLY))
+    if ((desc.Pool == D3DPOOL_DEFAULT || !(Flags & D3DLOCK_NO_DIRTY_UPDATE)) && !(Flags & D3DLOCK_READONLY))
       pResource->DirtyRange().Conjoin(lockRange);
 
     Rc<DxvkBuffer> mappingBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
