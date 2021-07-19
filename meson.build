@@ -7,6 +7,16 @@ add_project_arguments('-DNOMINMAX', language : 'cpp')
 dxvk_compiler = meson.get_compiler('cpp')
 dxvk_is_msvc = dxvk_compiler.get_id() == 'msvc'
 
+dxvk_is_winelib = dxvk_compiler.compiles('''
+#ifndef __WINE__
+int foo[-1];
+#endif
+''', name : 'is winelib')
+
+if dxvk_is_winelib
+  warning('DXVK winelib is experimental and not supported')
+endif
+
 # c++17 was added in 15.3, older version needs c++latest
 if dxvk_is_msvc and dxvk_compiler.version().version_compare('<15.3')
   dxvk_cpp_std='c++latest'
@@ -43,7 +53,9 @@ endif
 
 dxvk_include_path = include_directories('./include')
 
-if (cpu_family == 'x86_64')
+if dxvk_is_winelib
+  dxvk_library_path = []
+elif cpu_family == 'x86_64'
   dxvk_library_path = meson.source_root() + '/lib'
 else
   dxvk_library_path = meson.source_root() + '/lib32'
@@ -54,8 +66,10 @@ dxvk_extradep = [ ]
 if dxvk_is_msvc
   wrc = find_program('rc')
 else
-  add_global_link_arguments('-static', '-static-libgcc', language: 'c')
-  add_global_link_arguments('-static', '-static-libgcc', '-static-libstdc++', language: 'cpp')
+  if not dxvk_is_winelib
+    add_global_link_arguments('-static', '-static-libgcc', language: 'c')
+    add_global_link_arguments('-static', '-static-libgcc', '-static-libstdc++', language: 'cpp')
+  endif
 
   wrc = find_program('windres')
 endif
@@ -83,9 +97,13 @@ lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
 lib_d3d9    = dxvk_compiler.find_library('d3d9')
 lib_d3d11   = dxvk_compiler.find_library('d3d11')
 lib_dxgi    = dxvk_compiler.find_library('dxgi')
-lib_d3dcompiler_43 = dxvk_compiler.find_library('d3dcompiler_43', dirs : dxvk_library_path)
+if dxvk_is_winelib
+  lib_d3dcompiler_43 = dxvk_compiler.find_library('d3dcompiler')
+else
+  lib_d3dcompiler_43 = dxvk_compiler.find_library('d3dcompiler_43', dirs : dxvk_library_path)
+endif
 
-if dxvk_is_msvc
+if dxvk_is_msvc or dxvk_is_winelib
   lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler')
 else
   lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler_47')
@@ -101,6 +119,12 @@ else
 endif
 
 def_spec_ext = '.def'
+
+if dxvk_is_winelib
+  library_ext = 'dll.so'
+else
+  library_ext = []
+endif
 
 glsl_compiler = find_program('glslangValidator')
 glsl_args = [ '-V', '--vn', '@BASENAME@', '@INPUT@', '-o', '@OUTPUT@' ]
@@ -118,7 +142,7 @@ if dxvk_is_msvc
 else
   wrc_generator = generator(wrc,
   output    : [ '@BASENAME@' + res_ext ],
-  arguments : [ '-i', '@INPUT@', '-o', '@OUTPUT@' ])
+  arguments : meson.get_cross_property('windres_args', []) + [ '-i', '@INPUT@', '-o', '@OUTPUT@' ])
 endif
 
 dxvk_version = vcs_tag(

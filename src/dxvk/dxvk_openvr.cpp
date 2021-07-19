@@ -5,7 +5,18 @@
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 #endif
 
+#ifdef __WINE__
+
+#pragma push_macro("_WIN32")
+// don't use dllimport with winelib, it's useless
+#undef _WIN32
+#endif
+
 #include <openvr/openvr.hpp>
+
+#ifdef __WINE__
+#pragma pop_macro("_WIN32")
+#endif
 
 using VR_InitInternalProc        = vr::IVRSystem* (VR_CALLTYPE *)(vr::EVRInitError*, vr::EVRApplicationType);
 using VR_ShutdownInternalProc    = void  (VR_CALLTYPE *)();
