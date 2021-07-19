@@ -76,8 +76,10 @@ namespace dxvk::util {
   void packImageData(
           void*             dstBytes,
     const void*             srcBytes,
-          VkDeviceSize      rowPitch,
-          VkDeviceSize      slicePitch,
+          VkDeviceSize      srcRowPitch,
+          VkDeviceSize      srcSlicePitch,
+          VkDeviceSize      dstRowPitchIn,
+          VkDeviceSize      dstSlicePitchIn,
           VkImageType       imageType,
           VkExtent3D        imageExtent,
           uint32_t          imageLayers,
@@ -85,7 +87,7 @@ namespace dxvk::util {
           VkImageAspectFlags aspectMask) {
     for (uint32_t i = 0; i < imageLayers; i++) {
       auto dstData = reinterpret_cast<      char*>(dstBytes);
-      auto srcData = reinterpret_cast<const char*>(srcBytes) + i * slicePitch;
+      auto srcData = reinterpret_cast<const char*>(srcBytes);
 
       for (auto aspects = aspectMask; aspects; ) {
         auto aspect = vk::getNextAspect(aspects);
@@ -105,36 +107,54 @@ namespace dxvk::util {
         VkDeviceSize bytesPerSlice = blockCount.height * bytesPerRow;
         VkDeviceSize bytesTotal    = blockCount.depth  * bytesPerSlice;
 
-        const bool directCopy = ((bytesPerRow   == rowPitch  ) || (blockCount.height == 1))
-                             && ((bytesPerSlice == slicePitch) || (blockCount.depth  == 1));
+        VkDeviceSize dstRowPitch   = dstRowPitchIn   ? dstRowPitchIn   : bytesPerRow;
+        VkDeviceSize dstSlicePitch = dstSlicePitchIn ? dstSlicePitchIn : bytesPerSlice;
+
+        const bool directCopy = ((bytesPerRow   == srcRowPitch   && bytesPerRow   == dstRowPitch  ) || (blockCount.height == 1))
+                             && ((bytesPerSlice == srcSlicePitch && bytesPerSlice == dstSlicePitch) || (blockCount.depth  == 1));
 
         if (directCopy) {
           std::memcpy(dstData, srcData, bytesTotal);
-          dstData += bytesTotal;
 
           switch (imageType) {
-            case VK_IMAGE_TYPE_1D: srcData += bytesPerRow;                   break;
-            case VK_IMAGE_TYPE_2D: srcData += blockCount.height * rowPitch;  break;
-            case VK_IMAGE_TYPE_3D: srcData += blockCount.depth * slicePitch; break;
+            case VK_IMAGE_TYPE_1D:
+              srcData += srcRowPitch;
+              dstData += dstRowPitch;
+              break;
+            case VK_IMAGE_TYPE_2D:
+              srcData += blockCount.height * srcRowPitch;
+              dstData += blockCount.height * dstRowPitch;
+              break;
+            case VK_IMAGE_TYPE_3D:
+              srcData += blockCount.depth * srcSlicePitch;
+              dstData += blockCount.depth * dstSlicePitch;
+              break;
             default: ;
           }
         } else {
           for (uint32_t i = 0; i < blockCount.depth; i++) {
             for (uint32_t j = 0; j < blockCount.height; j++) {
               std::memcpy(
-                dstData + j * bytesPerRow,
-                srcData + j * rowPitch,
+                dstData + j * dstRowPitch,
+                srcData + j * srcRowPitch,
                 bytesPerRow);
             }
-            
+
             switch (imageType) {
-              case VK_IMAGE_TYPE_1D: srcData += bytesPerRow;                  break;
-              case VK_IMAGE_TYPE_2D: srcData += blockCount.height * rowPitch; break;
-              case VK_IMAGE_TYPE_3D: srcData += slicePitch;                   break;
+              case VK_IMAGE_TYPE_1D:
+                srcData += srcRowPitch;
+                dstData += dstRowPitch;
+                break;
+              case VK_IMAGE_TYPE_2D:
+                srcData += blockCount.height * srcRowPitch;
+                dstData += blockCount.height * dstRowPitch;
+                break;
+              case VK_IMAGE_TYPE_3D:
+                srcData += srcSlicePitch;
+                dstData += dstSlicePitch;
+                break;
               default: ;
             }
-            
-            dstData += bytesPerSlice;
           }
         }
       }

@@ -40,12 +40,17 @@ namespace dxvk::util {
           VkDeviceSize      pitchPerLayer);
   
   /**
-   * \brief Writes tightly packed image data to a buffer
+   * \brief Repacks image data to a buffer
    * 
+   * Note that passing destination pitches of 0 means that the data is
+   * tightly packed, while a source pitch of 0 will not show this behaviour
+   * in order to match client API behaviour for initialization.
    * \param [in] dstBytes Destination buffer pointer
    * \param [in] srcBytes Pointer to source data
-   * \param [in] rowPitch Number of bytes between rows
-   * \param [in] slicePitch Number of bytes between layers
+   * \param [in] srcRowPitch Number of bytes between rows to read
+   * \param [in] srcSlicePitch Number of bytes between layers to read
+   * \param [in] dstRowPitch Number of bytes between rows to write
+   * \param [in] dstSlicePitch Number of bytes between layers to write
    * \param [in] imageType Image type (2D, 3D etc)
    * \param [in] imageExtent Image extent, in pixels
    * \param [in] imageLayers Image layer count
@@ -55,8 +60,10 @@ namespace dxvk::util {
   void packImageData(
           void*             dstBytes,
     const void*             srcBytes,
-          VkDeviceSize      rowPitch,
-          VkDeviceSize      slicePitch,
+          VkDeviceSize      srcRowPitch,
+          VkDeviceSize      srcSlicePitch,
+          VkDeviceSize      dstRowPitchIn,
+          VkDeviceSize      dstSlicePitchIn,
           VkImageType       imageType,
           VkExtent3D        imageExtent,
           uint32_t          imageLayers,

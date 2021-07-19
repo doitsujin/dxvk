@@ -1021,7 +1021,7 @@ namespace dxvk {
       auto stagingSlice = AllocStagingBuffer(util::computeImageDataSize(packedFormat, extent));
 
       util::packImageData(stagingSlice.mapPtr(0),
-        pSrcData, SrcRowPitch, SrcDepthPitch,
+        pSrcData, SrcRowPitch, SrcDepthPitch, 0, 0,
         dstTexture->GetVkImageType(), extent, 1,
         formatInfo, formatInfo->aspectMask);
 

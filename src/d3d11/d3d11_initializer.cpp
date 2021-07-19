@@ -171,7 +171,7 @@ namespace dxvk {
           if (mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_NONE) {
             util::packImageData(pTexture->GetMappedBuffer(id)->mapPtr(0),
               pInitialData[id].pSysMem, pInitialData[id].SysMemPitch, pInitialData[id].SysMemSlicePitch,
-              pTexture->GetVkImageType(), mipLevelExtent, 1, formatInfo, formatInfo->aspectMask);
+              0, 0, pTexture->GetVkImageType(), mipLevelExtent, 1, formatInfo, formatInfo->aspectMask);
           }
         }
       }
