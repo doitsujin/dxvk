@@ -15,8 +15,8 @@ namespace dxvk {
   }
   
   
-  SpirvCodeBuffer SpirvModule::compile() const {
-    SpirvCodeBuffer result;
+  SpirvCompressedBuffer SpirvModule::compile() const {
+    SpirvCompressedBuffer result;
     result.putHeader(m_version, m_id);
     result.append(m_capabilities);
     result.append(m_extensions);
@@ -29,6 +29,7 @@ namespace dxvk {
     result.append(m_typeConstDefs);
     result.append(m_variables);
     result.append(m_code);
+    result.shrink();
     return result;
   }
   
@@ -40,12 +41,7 @@ namespace dxvk {
   
   bool SpirvModule::hasCapability(
           spv::Capability         capability) {
-    for (auto ins : m_capabilities) {
-      if (ins.opCode() == spv::OpCapability && ins.arg(1) == capability)
-        return true;
-    }
-
-    return false;
+    return m_enabledCaps.find(capability) != m_enabledCaps.end();
   }
 
   void SpirvModule::enableCapability(
@@ -55,6 +51,7 @@ namespace dxvk {
     if (!hasCapability(capability)) {
       m_capabilities.putIns (spv::OpCapability, 2);
       m_capabilities.putWord(capability);
+      m_enabledCaps.insert(capability);
     }
   }
   
@@ -97,6 +94,7 @@ namespace dxvk {
     m_execModeInfo.putIns (spv::OpExecutionMode, 3);
     m_execModeInfo.putWord(entryPointId);
     m_execModeInfo.putWord(executionMode);
+    m_enabledModes.insert(executionMode);
   }
   
   
@@ -199,89 +197,123 @@ namespace dxvk {
   
   uint32_t SpirvModule::constBool(
           bool                    v) {
-    return this->defConst(v
-        ? spv::OpConstantTrue
-        : spv::OpConstantFalse,
-      this->defBoolType(),
-      0, nullptr);
+    return this->defConstCached(m_constBool[v ? 1 : 0],
+      v ? spv::OpConstantTrue : spv::OpConstantFalse,
+      this->defBoolType(), 0, nullptr);
   }
   
   
   uint32_t SpirvModule::consti32(
           int32_t                 v) {
+    auto it = m_constSInt32.find(v);
+    if (it != m_constSInt32.end()) return it->second;
+
     std::array<uint32_t, 1> data;
     std::memcpy(data.data(), &v, sizeof(v));
     
-    return this->defConst(
+    auto id = this->defConstUnique(
       spv::OpConstant,
       this->defIntType(32, 1),
       data.size(),
       data.data());
+
+    m_constSInt32[v] = id;
+    return id;
   }
   
   
   uint32_t SpirvModule::consti64(
           int64_t                 v) {
+    auto it = m_constSInt64.find(v);
+    if (it != m_constSInt64.end()) return it->second;
+
     std::array<uint32_t, 2> data;
     std::memcpy(data.data(), &v, sizeof(v));
     
-    return this->defConst(
+    auto id = this->defConstUnique(
       spv::OpConstant,
       this->defIntType(64, 1),
       data.size(),
       data.data());
+
+    m_constSInt64[v] = id;
+    return id;
   }
   
   
   uint32_t SpirvModule::constu32(
           uint32_t                v) {
+    auto it = m_constUInt32.find(v);
+    if (it != m_constUInt32.end()) return it->second;
+
     std::array<uint32_t, 1> data;
     std::memcpy(data.data(), &v, sizeof(v));
     
-    return this->defConst(
+    auto id = this->defConstUnique(
       spv::OpConstant,
       this->defIntType(32, 0),
       data.size(),
       data.data());
+
+    m_constUInt32[v] = id;
+    return id;
   }
   
   
   uint32_t SpirvModule::constu64(
           uint64_t                v) {
+    auto it = m_constUInt64.find(v);
+    if (it != m_constUInt64.end()) return it->second;
+
     std::array<uint32_t, 2> data;
     std::memcpy(data.data(), &v, sizeof(v));
     
-    return this->defConst(
+    auto id = this->defConstUnique(
       spv::OpConstant,
       this->defIntType(64, 0),
       data.size(),
       data.data());
+
+    m_constUInt64[v] = id;
+    return id;
   }
   
   
   uint32_t SpirvModule::constf32(
           float                   v) {
+    auto it = m_constFloat32.find(v);
+    if (it != m_constFloat32.end()) return it->second;
+
     std::array<uint32_t, 1> data;
     std::memcpy(data.data(), &v, sizeof(v));
     
-    return this->defConst(
+    auto id = this->defConstUnique(
       spv::OpConstant,
       this->defFloatType(32),
       data.size(),
       data.data());
+
+    m_constFloat32[v] = id;
+    return id;
   }
   
   
   uint32_t SpirvModule::constf64(
           double                  v) {
+    auto it = m_constFloat64.find(v);
+    if (it != m_constFloat64.end()) return it->second;
+
     std::array<uint32_t, 2> data;
     std::memcpy(data.data(), &v, sizeof(v));
     
-    return this->defConst(
+    auto id = this->defConstUnique(
       spv::OpConstant,
       this->defFloatType(64),
       data.size(),
       data.data());
+
+    m_constFloat64[v] = id;
+    return id;
   }
   
   
@@ -467,15 +499,20 @@ namespace dxvk {
   
   uint32_t SpirvModule::constUndef(
           uint32_t                typeId) {
-    return this->defConst(spv::OpUndef,
+    auto it = m_constUndef.find(typeId);
+    if (it != m_constUndef.end()) return it->second;
+
+    auto id = this->defConstUnique(spv::OpUndef,
       typeId, 0, nullptr);
+    m_constUndef[typeId] = id;
+    return id;
   }
 
 
   uint32_t SpirvModule::lateConst32(
           uint32_t                typeId) {
     uint32_t resultId = this->allocateId();
-    m_lateConsts.insert(resultId);
+    m_lateConsts[resultId] = m_typeConstDefs.getInsertionPtr();
 
     m_typeConstDefs.putIns (spv::OpConstant, 4);
     m_typeConstDefs.putWord(typeId);
@@ -488,19 +525,12 @@ namespace dxvk {
   void SpirvModule::setLateConst(
             uint32_t                constId,
       const uint32_t*               argIds) {
-    for (auto ins : m_typeConstDefs) {
-      if (ins.opCode() != spv::OpConstant
-       && ins.opCode() != spv::OpConstantComposite)
-        continue;
-      
-      if (ins.arg(2) != constId)
-        continue;
+    auto ins = SpirvInstruction(m_typeConstDefs.data(),
+                                m_lateConsts[constId],
+                                m_typeConstDefs.dwords());
 
-      for (uint32_t i = 3; i < ins.length(); i++)
-        ins.setArg(i, argIds[i - 3]);
-
-      return;
-    }
+    for (uint32_t i = 3; i < ins.length(); i++)
+      ins.setArg(i, argIds[i - 3]);
   }
 
 
@@ -705,12 +735,14 @@ namespace dxvk {
   
   
   uint32_t SpirvModule::defVoidType() {
-    return this->defType(spv::OpTypeVoid, 0, nullptr);
+    return this->defTypeCached(m_typeVoid,
+      spv::OpTypeVoid, 0, nullptr);
   }
   
   
   uint32_t SpirvModule::defBoolType() {
-    return this->defType(spv::OpTypeBool, 0, nullptr);
+    return this->defTypeCached(m_typeBool[0],
+      spv::OpTypeBool, 0, nullptr);
   }
   
   
@@ -718,6 +750,32 @@ namespace dxvk {
           uint32_t                width,
           uint32_t                isSigned) {
     std::array<uint32_t, 2> args = {{ width, isSigned }};
+    switch ((int64_t)width * (isSigned ? -1 : 1)) {
+    case -64:
+      return this->defTypeCached(m_typeSInt64[0],
+        spv::OpTypeInt, args.size(), args.data());
+    case -32:
+      return this->defTypeCached(m_typeSInt32[0],
+        spv::OpTypeInt, args.size(), args.data());
+    case -16:
+      return this->defTypeCached(m_typeSInt16[0],
+        spv::OpTypeInt, args.size(), args.data());
+    case -8:
+      return this->defTypeCached(m_typeSInt8[0],
+        spv::OpTypeInt, args.size(), args.data());
+    case +8:
+      return this->defTypeCached(m_typeUInt8[0],
+        spv::OpTypeInt, args.size(), args.data());
+    case +16:
+      return this->defTypeCached(m_typeUInt16[0],
+        spv::OpTypeInt, args.size(), args.data());
+    case +32:
+      return this->defTypeCached(m_typeUInt32[0],
+        spv::OpTypeInt, args.size(), args.data());
+    case +64:
+      return this->defTypeCached(m_typeUInt64[0],
+        spv::OpTypeInt, args.size(), args.data());
+    }
     return this->defType(spv::OpTypeInt,
       args.size(), args.data());
   }
@@ -726,6 +784,17 @@ namespace dxvk {
   uint32_t SpirvModule::defFloatType(
           uint32_t                width) {
     std::array<uint32_t, 1> args = {{ width }};
+    switch (width) {
+    case 16:
+      return this->defTypeCached(m_typeFloat16[0],
+        spv::OpTypeFloat, args.size(), args.data());
+    case 32:
+      return this->defTypeCached(m_typeFloat32[0],
+        spv::OpTypeFloat, args.size(), args.data());
+    case 64:
+      return this->defTypeCached(m_typeFloat64[0],
+        spv::OpTypeFloat, args.size(), args.data());
+    }
     return this->defType(spv::OpTypeFloat,
       args.size(), args.data());
   }
@@ -736,6 +805,43 @@ namespace dxvk {
           uint32_t                elementCount) {
     std::array<uint32_t, 2> args =
       {{ elementType, elementCount }};
+
+    if (elementType == m_typeBool[0])
+      return this->defTypeCached(m_typeBool[elementCount - 1],
+          spv::OpTypeVector, args.size(), args.data());
+    else if (elementType == m_typeSInt8[0])
+      return this->defTypeCached(m_typeSInt8[elementCount - 1],
+          spv::OpTypeVector, args.size(), args.data());
+    else if (elementType == m_typeSInt16[0])
+      return this->defTypeCached(m_typeSInt16[elementCount - 1],
+          spv::OpTypeVector, args.size(), args.data());
+    else if (elementType == m_typeSInt32[0])
+      return this->defTypeCached(m_typeSInt32[elementCount - 1],
+          spv::OpTypeVector, args.size(), args.data());
+    else if (elementType == m_typeSInt64[0])
+      return this->defTypeCached(m_typeSInt64[elementCount - 1],
+          spv::OpTypeVector, args.size(), args.data());
+    else if (elementType == m_typeUInt8[0])
+      return this->defTypeCached(m_typeUInt8[elementCount - 1],
+          spv::OpTypeVector, args.size(), args.data());
+    else if (elementType == m_typeUInt16[0])
+      return this->defTypeCached(m_typeUInt16[elementCount - 1],
+          spv::OpTypeVector, args.size(), args.data());
+    else if (elementType == m_typeUInt32[0])
+      return this->defTypeCached(m_typeUInt32[elementCount - 1],
+          spv::OpTypeVector, args.size(), args.data());
+    else if (elementType == m_typeUInt64[0])
+      return this->defTypeCached(m_typeUInt64[elementCount - 1],
+          spv::OpTypeVector, args.size(), args.data());
+    else if (elementType == m_typeFloat16[0])
+      return this->defTypeCached(m_typeFloat16[elementCount - 1],
+          spv::OpTypeVector, args.size(), args.data());
+    else if (elementType == m_typeFloat32[0])
+      return this->defTypeCached(m_typeFloat32[elementCount - 1],
+          spv::OpTypeVector, args.size(), args.data());
+    else if (elementType == m_typeFloat64[0])
+      return this->defTypeCached(m_typeFloat64[elementCount - 1],
+          spv::OpTypeVector, args.size(), args.data());
     
     return this->defType(spv::OpTypeVector,
       args.size(), args.data());
@@ -766,13 +872,11 @@ namespace dxvk {
   uint32_t SpirvModule::defArrayTypeUnique(
           uint32_t                typeId,
           uint32_t                length) {
-    uint32_t resultId = this->allocateId();
+    std::array<uint32_t, 2> args = {{ typeId, length }};
     
-    m_typeConstDefs.putIns (spv::OpTypeArray, 4);
-    m_typeConstDefs.putWord(resultId);
-    m_typeConstDefs.putWord(typeId);
-    m_typeConstDefs.putWord(length);
-    return resultId;
+    m_typeLocs.push_back(m_typeConstDefs.getInsertionPtr());
+    return this->defTypeUnique(spv::OpTypeArray,
+      args.size(), args.data());
   }
   
   
@@ -787,12 +891,11 @@ namespace dxvk {
   
   uint32_t SpirvModule::defRuntimeArrayTypeUnique(
           uint32_t                typeId) {
-    uint32_t resultId = this->allocateId();
+    std::array<uint32_t, 1> args = { typeId };
     
-    m_typeConstDefs.putIns (spv::OpTypeRuntimeArray, 3);
-    m_typeConstDefs.putWord(resultId);
-    m_typeConstDefs.putWord(typeId);
-    return resultId;
+    m_typeLocs.push_back(m_typeConstDefs.getInsertionPtr());
+    return this->defTypeUnique(spv::OpTypeRuntimeArray,
+      args.size(), args.data());
   }
   
   
@@ -822,14 +925,9 @@ namespace dxvk {
   uint32_t SpirvModule::defStructTypeUnique(
           uint32_t                memberCount,
     const uint32_t*               memberTypes) {
-    uint32_t resultId = this->allocateId();
-    
-    m_typeConstDefs.putIns (spv::OpTypeStruct, 2 + memberCount);
-    m_typeConstDefs.putWord(resultId);
-    
-    for (uint32_t i = 0; i < memberCount; i++)
-      m_typeConstDefs.putWord(memberTypes[i]);
-    return resultId;
+    m_typeLocs.push_back(m_typeConstDefs.getInsertionPtr());
+    return this->defTypeUnique(spv::OpTypeStruct,
+      memberCount, memberTypes);
   }
   
   
@@ -847,7 +945,8 @@ namespace dxvk {
   
   
   uint32_t SpirvModule::defSamplerType() {
-    return this->defType(spv::OpTypeSampler, 0, nullptr);
+    return this->defTypeCached(m_typeSampler,
+      spv::OpTypeSampler, 0, nullptr);
   }
   
   
@@ -3598,6 +3697,32 @@ namespace dxvk {
       m_code.putWord(streamId);
     }
   }
+
+
+  uint32_t SpirvModule::defTypeCached(
+          std::optional<uint32_t>&cache,
+          spv::Op                 op,
+          uint32_t                argCount,
+    const uint32_t*               argIds) {
+    if (!cache)
+      cache = this->defTypeUnique(op, argCount,
+        argIds);
+    return *cache;
+  }
+
+
+  uint32_t SpirvModule::defTypeUnique(
+          spv::Op                 op,
+          uint32_t                argCount,
+    const uint32_t*               argIds) {
+    uint32_t resultId = this->allocateId();
+    m_typeConstDefs.putIns (op, 2 + argCount);
+    m_typeConstDefs.putWord(resultId);
+
+    for (uint32_t i = 0; i < argCount; i++)
+      m_typeConstDefs.putWord(argIds[i]);
+    return resultId;
+  }
   
   
   uint32_t SpirvModule::defType(
@@ -3607,52 +3732,38 @@ namespace dxvk {
     // Since the type info is stored in the code buffer,
     // we can use the code buffer to look up type IDs as
     // well. Result IDs are always stored as argument 1.
-    for (auto ins : m_typeConstDefs) {
-      bool match = ins.opCode() == op
-                && ins.length() == 2 + argCount;
-      
-      for (uint32_t i = 0; i < argCount && match; i++)
-        match &= ins.arg(2 + i) == argIds[i];
-      
-      if (match)
-        return ins.arg(1);
+    const uint32_t *data = m_typeConstDefs.data();
+    for (auto i : m_typeLocs) {
+      if ((data[i] & spv::OpCodeMask) == op &&
+          (data[i] >> spv::WordCountShift) == (2 + argCount) &&
+          (!argCount || !std::memcmp(data + i + 2, argIds, argCount * sizeof(uint32_t))))
+        return data[i + 1];
     }
     
     // Type not yet declared, create a new one.
-    uint32_t resultId = this->allocateId();
-    m_typeConstDefs.putIns (op, 2 + argCount);
-    m_typeConstDefs.putWord(resultId);
-    
-    for (uint32_t i = 0; i < argCount; i++)
-      m_typeConstDefs.putWord(argIds[i]);
-    return resultId;
+    m_typeLocs.push_back(m_typeConstDefs.getInsertionPtr());
+    return this->defTypeUnique(op, argCount, argIds);
   }
   
   
-  uint32_t SpirvModule::defConst(
+  uint32_t SpirvModule::defConstCached(
+          std::optional<uint32_t>&cache,
           spv::Op                 op,
           uint32_t                typeId,
           uint32_t                argCount,
     const uint32_t*               argIds) {
-    // Avoid declaring constants multiple times
-    for (auto ins : m_typeConstDefs) {
-      bool match = ins.opCode() == op
-                && ins.length() == 3 + argCount
-                && ins.arg(1)   == typeId;
-      
-      for (uint32_t i = 0; i < argCount && match; i++)
-        match &= ins.arg(3 + i) == argIds[i];
-      
-      if (!match)
-        continue;
-      
-      uint32_t id = ins.arg(2);
+    if (!cache)
+      cache = this->defConstUnique(op, typeId,
+        argCount, argIds);
+    return *cache;
+  }
 
-      if (m_lateConsts.find(id) == m_lateConsts.end())
-        return id;
-    }
-    
-    // Constant not yet declared, make a new one
+
+  uint32_t SpirvModule::defConstUnique(
+          spv::Op                 op,
+          uint32_t                typeId,
+          uint32_t                argCount,
+    const uint32_t*               argIds) {
     uint32_t resultId = this->allocateId();
     m_typeConstDefs.putIns (op, 3 + argCount);
     m_typeConstDefs.putWord(typeId);
@@ -3661,6 +3772,28 @@ namespace dxvk {
     for (uint32_t i = 0; i < argCount; i++)
       m_typeConstDefs.putWord(argIds[i]);
     return resultId;
+  }
+
+
+  uint32_t SpirvModule::defConst(
+          spv::Op                 op,
+          uint32_t                typeId,
+          uint32_t                argCount,
+    const uint32_t*               argIds) {
+    // Avoid declaring constants multiple times
+    const uint32_t *data = m_typeConstDefs.data();
+    for (auto i : m_constLocs) {
+      if ((data[i] & spv::OpCodeMask) == op &&
+          (data[i] >> spv::WordCountShift) == (3 + argCount) &&
+          data[i + 1] == typeId &&
+          (!argCount || !std::memcmp(data + i + 3, argIds, argCount * sizeof(uint32_t))) &&
+          m_lateConsts.find(data[i + 2]) == m_lateConsts.end())
+        return data[i + 2];
+    }
+    
+    // Constant not yet declared, make a new one
+    m_constLocs.push_back(m_typeConstDefs.getInsertionPtr());
+    return this->defConstUnique(op, typeId, argCount, argIds);
   }
   
   

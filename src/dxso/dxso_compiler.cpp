@@ -251,7 +251,7 @@ namespace dxvk {
       m_resourceSlots.size(),
       m_resourceSlots.data(),
       m_interfaceSlots,
-      m_module.compile(),
+      m_module,
       shaderOptions,
       std::move(constData));
   }

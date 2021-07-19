@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "spirv_instruction.h"
+#include "spirv_writer.h"
 
 namespace dxvk {
   
@@ -16,8 +17,9 @@ namespace dxvk {
    * Stores arbitrary SPIR-V instructions in a
    * format that can be read by Vulkan drivers.
    */
-  class SpirvCodeBuffer {
-    
+  class SpirvCodeBuffer : public SpirvWriter<SpirvCodeBuffer> {
+    static constexpr size_t not_inserting = ~(size_t)0;
+
   public:
     
     SpirvCodeBuffer();
@@ -43,7 +45,7 @@ namespace dxvk {
      * \returns Code size, in dwords
      */
     uint32_t dwords() const {
-      return m_code.size();
+      return m_code.size() + m_insert.size();
     }
     
     /**
@@ -51,7 +53,7 @@ namespace dxvk {
      * \returns Code size, in bytes
      */
     size_t size() const {
-      return m_code.size() * sizeof(uint32_t);
+      return this->dwords() * sizeof(uint32_t);
     }
     
     /**
@@ -99,57 +101,9 @@ namespace dxvk {
      * \brief Appends an 32-bit word to the buffer
      * \param [in] word The word to append
      */
-    void putWord(uint32_t word);
-    
-    /**
-     * \brief Appends an instruction word to the buffer
-     * 
-     * Adds a single word containing both the word count
-     * and the op code number for a single instruction.
-     * \param [in] opCode Operand code
-     * \param [in] wordCount Number of words
-     */
-    void putIns(spv::Op opCode, uint16_t wordCount);
-
-    /**
-     * \brief Appends a 32-bit integer to the buffer
-     * \param [in] value The number to add
-     */
-    void putInt32(uint32_t word);
-    
-    /**
-     * \brief Appends a 64-bit integer to the buffer
-     * 
-     * A 64-bit integer will take up two 32-bit words.
-     * \param [in] value 64-bit value to add
-     */
-    void putInt64(uint64_t value);
-    
-    /**
-     * \brief Appends a 32-bit float to the buffer
-     * \param [in] value The number to add
-     */
-    void putFloat32(float value);
-    
-    /**
-     * \brief Appends a 64-bit float to the buffer
-     * \param [in] value The number to add
-     */
-    void putFloat64(double value);
-    
-    /**
-     * \brief Appends a literal string to the buffer
-     * \param [in] str String to append to the buffer
-     */
-    void putStr(const char* str);
-    
-    /**
-     * \brief Adds the header to the buffer
-     *
-     * \param [in] version SPIR-V version
-     * \param [in] boundIds Number of bound IDs
-     */
-    void putHeader(uint32_t version, uint32_t boundIds);
+    void putWord(uint32_t word) {
+      m_code.push_back(word);
+    }
 
     /**
      * \brief Erases given number of dwords
@@ -159,14 +113,6 @@ namespace dxvk {
      * \param [in] size Number of words to remove
      */
     void erase(size_t size);
-    
-    /**
-     * \brief Computes length of a literal string
-     * 
-     * \param [in] str The string to check
-     * \returns Number of words consumed by a string
-     */
-    uint32_t strLen(const char* str);
     
     /**
      * \brief Stores the SPIR-V module to a stream
@@ -188,7 +134,7 @@ namespace dxvk {
      * \returns Current instruction pointr
      */
     size_t getInsertionPtr() const {
-      return m_ptr;
+      return m_code.size();
     }
     
     /**
@@ -199,6 +145,7 @@ namespace dxvk {
      * \returns Current instruction pointr
      */
     void beginInsertion(size_t ptr) {
+      std::swap(m_code, m_insert);
       m_ptr = ptr;
     }
     
@@ -210,13 +157,19 @@ namespace dxvk {
      * this will restore default behaviour.
      */
     void endInsertion() {
-      m_ptr = m_code.size();
+      std::swap(m_code, m_insert);
+      m_code.insert(m_code.begin() + m_ptr,
+                    m_insert.begin(),
+                    m_insert.end());
+      m_insert.clear();
+      m_ptr = not_inserting;
     }
     
   private:
     
     std::vector<uint32_t> m_code;
-    size_t m_ptr = 0;
+    std::vector<uint32_t> m_insert;
+    size_t m_ptr = not_inserting;
     
   };
   

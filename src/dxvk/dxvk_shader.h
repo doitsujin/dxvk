@@ -7,8 +7,7 @@
 #include "dxvk_pipelayout.h"
 #include "dxvk_shader_key.h"
 
-#include "../spirv/spirv_code_buffer.h"
-#include "../spirv/spirv_compression.h"
+#include "../spirv/spirv_module.h"
 
 namespace dxvk {
   
@@ -144,6 +143,15 @@ namespace dxvk {
       const DxvkResourceSlot*       slotInfos,
       const DxvkInterfaceSlots&     iface,
             SpirvCodeBuffer         code,
+      const DxvkShaderOptions&      options,
+            DxvkShaderConstData&&   constData);
+    
+    DxvkShader(
+            VkShaderStageFlagBits   stage,
+            uint32_t                slotCount,
+      const DxvkResourceSlot*       slotInfos,
+      const DxvkInterfaceSlots&     iface,
+      const SpirvModule&            module,
       const DxvkShaderOptions&      options,
             DxvkShaderConstData&&   constData);
     
@@ -283,16 +291,12 @@ namespace dxvk {
     SpirvCompressedBuffer m_code;
     
     std::vector<DxvkResourceSlot> m_slots;
-    std::vector<size_t>           m_idOffsets;
     DxvkInterfaceSlots            m_interface;
     DxvkShaderFlags               m_flags;
     DxvkShaderOptions             m_options;
     DxvkShaderConstData           m_constData;
     DxvkShaderKey                 m_key;
     size_t                        m_hash = 0;
-
-    size_t m_o1IdxOffset = 0;
-    size_t m_o1LocOffset = 0;
 
     static void eliminateInput(SpirvCodeBuffer& code, uint32_t location);
 

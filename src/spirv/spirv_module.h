@@ -3,6 +3,7 @@
 #include <unordered_set>
 
 #include "spirv_code_buffer.h"
+#include "spirv_compression.h"
 
 namespace dxvk {
   
@@ -49,7 +50,7 @@ namespace dxvk {
 
     ~SpirvModule();
     
-    SpirvCodeBuffer compile() const;
+    SpirvCompressedBuffer compile() const;
     
     size_t getInsertionPtr() {
       return m_code.getInsertionPtr();
@@ -1232,31 +1233,105 @@ namespace dxvk {
     void opEndPrimitive(
             uint32_t                streamId);
     
+    bool exportsStencil() const {
+      return m_enabledModes.find(spv::ExecutionModeStencilRefReplacingEXT) !=
+        m_enabledModes.end();
+    }
+
+    bool hasTransformFeedback() const {
+      return m_enabledModes.find(spv::ExecutionModeXfb) !=
+        m_enabledModes.end();
+    }
+
+    bool hasSampleRateShading() const {
+      return m_enabledCaps.find(spv::CapabilitySampleRateShading) !=
+        m_enabledCaps.end();
+    }
+    
+    bool exportsViewportIndex() const {
+      return m_enabledCaps.find(spv::CapabilityShaderViewportIndexLayerEXT) !=
+        m_enabledCaps.end();
+    }
+
   private:
     
     uint32_t m_version;
     uint32_t m_id             = 1;
     uint32_t m_instExtGlsl450 = 0;
     
-    SpirvCodeBuffer m_capabilities;
-    SpirvCodeBuffer m_extensions;
-    SpirvCodeBuffer m_instExt;
-    SpirvCodeBuffer m_memoryModel;
-    SpirvCodeBuffer m_entryPoints;
-    SpirvCodeBuffer m_execModeInfo;
-    SpirvCodeBuffer m_debugNames;
-    SpirvCodeBuffer m_annotations;
-    SpirvCodeBuffer m_typeConstDefs;
-    SpirvCodeBuffer m_variables;
-    SpirvCodeBuffer m_code;
+    SpirvCompressedBuffer m_capabilities;
+    SpirvCompressedBuffer m_extensions;
+    SpirvCompressedBuffer m_instExt;
+    SpirvCompressedBuffer m_memoryModel;
+    SpirvCompressedBuffer m_entryPoints;
+    SpirvCompressedBuffer m_execModeInfo;
+    SpirvCompressedBuffer m_debugNames;
+    SpirvCompressedBuffer m_annotations;
+    SpirvCodeBuffer       m_typeConstDefs;
+    SpirvCompressedBuffer m_variables;
+    SpirvCompressedBuffer m_code;
 
-    std::unordered_set<uint32_t> m_lateConsts;
+    std::unordered_set<spv::Capability>    m_enabledCaps;
+    std::unordered_set<spv::ExecutionMode> m_enabledModes;
+
+    std::vector<size_t> m_typeLocs;
+    std::vector<size_t> m_constLocs;
+
+    std::optional<uint32_t> m_typeVoid;
+    std::optional<uint32_t> m_typeSampler;
+    std::optional<uint32_t> m_typeBool[4];
+    std::optional<uint32_t> m_typeSInt8[4];
+    std::optional<uint32_t> m_typeSInt16[4];
+    std::optional<uint32_t> m_typeSInt32[4];
+    std::optional<uint32_t> m_typeSInt64[4];
+    std::optional<uint32_t> m_typeUInt8[4];
+    std::optional<uint32_t> m_typeUInt16[4];
+    std::optional<uint32_t> m_typeUInt32[4];
+    std::optional<uint32_t> m_typeUInt64[4];
+    std::optional<uint32_t> m_typeFloat16[4];
+    std::optional<uint32_t> m_typeFloat32[4];
+    std::optional<uint32_t> m_typeFloat64[4];
+
+    std::optional<uint32_t>                m_constBool[2];
+    std::unordered_map<uint32_t, uint32_t> m_constUndef;
+    std::unordered_map<int32_t, uint32_t>  m_constSInt32;
+    std::unordered_map<int64_t, uint32_t>  m_constSInt64;
+    std::unordered_map<uint32_t, uint32_t> m_constUInt32;
+    std::unordered_map<uint64_t, uint32_t> m_constUInt64;
+    std::unordered_map<float, uint32_t>    m_constFloat32;
+    std::unordered_map<double, uint32_t>   m_constFloat64;
+
+    std::unordered_map<uint32_t, size_t> m_lateConsts;
+
+    uint32_t defTypeCached(
+            std::optional<uint32_t>&cache,
+            spv::Op                 op,
+            uint32_t                argCount,
+      const uint32_t*               argIds);
     
+    uint32_t defTypeUnique(
+            spv::Op                 op,
+            uint32_t                argCount,
+      const uint32_t*               argIds);
+
     uint32_t defType(
             spv::Op                 op, 
             uint32_t                argCount,
       const uint32_t*               argIds);
     
+    uint32_t defConstCached(
+            std::optional<uint32_t>&cache,
+            spv::Op                 op,
+            uint32_t                typeId,
+            uint32_t                argCount,
+      const uint32_t*               argIds);
+
+    uint32_t defConstUnique(
+            spv::Op                 op,
+            uint32_t                typeId,
+            uint32_t                argCount,
+      const uint32_t*               argIds);
+
     uint32_t defConst(
             spv::Op                 op,
             uint32_t                typeId,

@@ -110,25 +110,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < slotCount; i++)
       m_slots.push_back(slotInfos[i]);
     
-    // Gather the offsets where the binding IDs
-    // are stored so we can quickly remap them.
-    uint32_t o1VarId = 0;
-    
     for (auto ins : code) {
-      if (ins.opCode() == spv::OpDecorate) {
-        if (ins.arg(2) == spv::DecorationBinding
-         || ins.arg(2) == spv::DecorationSpecId)
-          m_idOffsets.push_back(ins.offset() + 3);
-        
-        if (ins.arg(2) == spv::DecorationLocation && ins.arg(3) == 1) {
-          m_o1LocOffset = ins.offset() + 3;
-          o1VarId = ins.arg(1);
-        }
-        
-        if (ins.arg(2) == spv::DecorationIndex && ins.arg(1) == o1VarId)
-          m_o1IdxOffset = ins.offset() + 3;
-      }
-
       if (ins.opCode() == spv::OpExecutionMode) {
         if (ins.arg(2) == spv::ExecutionModeStencilRefReplacingEXT)
           m_flags.set(DxvkShaderFlag::ExportsStencilRef);
@@ -145,6 +127,34 @@ namespace dxvk {
           m_flags.set(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage);
       }
     }
+  }
+
+
+  DxvkShader::DxvkShader(
+          VkShaderStageFlagBits   stage,
+          uint32_t                slotCount,
+    const DxvkResourceSlot*       slotInfos,
+    const DxvkInterfaceSlots&     iface,
+    const SpirvModule&            module,
+    const DxvkShaderOptions&      options,
+          DxvkShaderConstData&&   constData)
+  : m_stage(stage), m_code(module.compile()), m_interface(iface),
+    m_options(options), m_constData(std::move(constData)) {
+    // Write back resource slot infos
+    for (uint32_t i = 0; i < slotCount; i++)
+      m_slots.push_back(slotInfos[i]);
+
+    if (module.exportsStencil())
+      m_flags.set(DxvkShaderFlag::ExportsStencilRef);
+
+    if (module.hasTransformFeedback())
+      m_flags.set(DxvkShaderFlag::HasTransformFeedback);
+
+    if (module.hasSampleRateShading())
+      m_flags.set(DxvkShaderFlag::HasSampleRateShading);
+
+    if (module.exportsViewportIndex())
+      m_flags.set(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage);
   }
   
   
@@ -173,16 +183,38 @@ namespace dxvk {
     SpirvCodeBuffer spirvCode = m_code.decompress();
     uint32_t* code = spirvCode.data();
     
+    // Gather the offsets where the binding IDs
+    // are stored so we can quickly remap them.
+    uint32_t o1VarId = 0;
+    size_t o1IdxOffset = 0;
+    size_t o1LocOffset = 0;
+    std::vector<size_t> idOffsets;
+    for (auto ins : spirvCode) {
+      if (ins.opCode() == spv::OpDecorate) {
+        if (ins.arg(2) == spv::DecorationBinding
+         || ins.arg(2) == spv::DecorationSpecId)
+          idOffsets.push_back(ins.offset() + 3);
+        
+        if (ins.arg(2) == spv::DecorationLocation && ins.arg(3) == 1) {
+          o1LocOffset = ins.offset() + 3;
+          o1VarId = ins.arg(1);
+        }
+        
+        if (ins.arg(2) == spv::DecorationIndex && ins.arg(1) == o1VarId)
+          o1IdxOffset = ins.offset() + 3;
+      }
+    }
+
     // Remap resource binding IDs
-    for (uint32_t ofs : m_idOffsets) {
+    for (uint32_t ofs : idOffsets) {
       if (code[ofs] < MaxNumResourceSlots)
         code[ofs] = mapping.getBindingId(code[ofs]);
     }
 
     // For dual-source blending we need to re-map
     // location 1, index 0 to location 0, index 1
-    if (info.fsDualSrcBlend && m_o1IdxOffset && m_o1LocOffset)
-      std::swap(code[m_o1IdxOffset], code[m_o1LocOffset]);
+    if (info.fsDualSrcBlend && o1IdxOffset && o1LocOffset)
+      std::swap(code[o1IdxOffset], code[o1LocOffset]);
     
     // Replace undefined input variables with zero
     for (uint32_t u = info.undefinedInputs; u; u &= u - 1)
