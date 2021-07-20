@@ -233,11 +233,6 @@ namespace dxvk {
     { R"(\\cm3\.exe$)", {{
       { "dxgi.customDeviceDesc",            "DXVK Adapter" },
     }} },
-    /* GTA IV: Thinks we're always on Intel       *
-     * and will report/use bad amounts of VRAM.   */
-    { R"(\\GTAIV\.exe$)", {{
-      { "dxgi.emulateUMA",                  "True" },
-    }} },
     /* World of Final Fantasy: Broken and useless *
      * use of 4x MSAA throughout the renderer     */
     { R"(\\WOFF\.exe$)", {{
@@ -373,8 +368,11 @@ namespace dxvk {
       { "d3d9.noExplicitFrontBuffer",       "True" },
     }} },
     /* GTA IV (NVAPI)                             */
+    /* Also thinks we're always on Intel          *
+     * and will report/use bad amounts of VRAM.   */
     { R"(\\GTAIV\.exe$)", {{
       { "d3d9.customVendorId",              "1002" },
+      { "dxgi.emulateUMA",                  "True" },
     }} },
     /* Battlefield 2 (bad z-pass)                 */
     { R"(\\BF2\.exe$)", {{
