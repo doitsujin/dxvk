@@ -56,7 +56,7 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE GetDisplayModeEx(D3DDISPLAYMODEEX* pMode, D3DDISPLAYROTATION* pRotation);
 
-    void    Reset(
+    HRESULT Reset(
             D3DPRESENT_PARAMETERS* pPresentParams,
             D3DDISPLAYMODEEX*      pFullscreenDisplayMode);
 

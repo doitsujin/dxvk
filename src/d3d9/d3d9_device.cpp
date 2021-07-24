@@ -7079,8 +7079,10 @@ namespace dxvk {
       }
     }
 
-    if (m_implicitSwapchain != nullptr)
-      m_implicitSwapchain->Reset(pPresentationParameters, pFullscreenDisplayMode);
+    if (m_implicitSwapchain != nullptr) {
+      if (FAILED(m_implicitSwapchain->Reset(pPresentationParameters, pFullscreenDisplayMode)))
+        return D3DERR_INVALIDCALL;
+    }
     else
       m_implicitSwapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode);
 
