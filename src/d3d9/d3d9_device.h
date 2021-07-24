@@ -738,6 +738,8 @@ namespace dxvk {
 
     void Flush();
 
+    void UpdateBoundRTs(uint32_t index);
+
     void UpdateActiveRTs(uint32_t index);
 
     void UpdateActiveTextures(uint32_t index, DWORD combinedUsage);
@@ -1050,6 +1052,7 @@ namespace dxvk {
     uint32_t                        m_activeTextures   = 0;
     uint32_t                        m_activeTexturesToUpload = 0;
     uint32_t                        m_activeTexturesToGen    = 0;
+    uint32_t                        m_boundRTs        = 0;
 
     uint32_t                        m_fetch4Enabled = 0;
     uint32_t                        m_fetch4        = 0;
