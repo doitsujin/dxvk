@@ -23,7 +23,8 @@ namespace dxvk {
       m_texture            (pTexture),
       m_face               (Face),
       m_mipLevel           (MipLevel),
-      m_isSrgbCompatible   (pTexture->IsSrgbCompatible()) {
+      m_isSrgbCompatible   (pTexture->IsSrgbCompatible()),
+      m_isNull             (pTexture->IsNull()) {
 
     }
 
@@ -112,7 +113,7 @@ namespace dxvk {
     }
 
     inline bool IsNull() {
-      return m_texture->Desc()->Format == D3D9Format::NULL_FORMAT;
+      return m_isNull;
     }
 
     inline IDirect3DBaseTexture9* GetBaseTexture() {
@@ -137,6 +138,7 @@ namespace dxvk {
     UINT                    m_face             : 8;
     UINT                    m_mipLevel         : 16;
     UINT                    m_isSrgbCompatible : 1;
+    UINT                    m_isNull           : 1;
   
     D3D9ColorView           m_sampleView;
     D3D9ColorView           m_renderTargetView;

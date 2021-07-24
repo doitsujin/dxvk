@@ -191,6 +191,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Null
+     * \returns Whether the texture is D3DFMT_NULL or not
+     */
+    bool IsNull() const {
+      return m_desc.Format == D3D9Format::NULL_FORMAT;
+    }
+
+    /**
      * \brief Subresource
      * \returns The subresource idx of a given face and mip level
      */
