@@ -62,7 +62,7 @@ namespace dxvk {
 
     HMONITOR GetMonitor();
 
-    UINT GetAdapterModeCountEx(CONST D3DDISPLAYMODEFILTER* pFilter);
+    UINT GetAdapterModeCountEx(const D3DDISPLAYMODEFILTER* pFilter);
 
     HRESULT EnumAdapterModesEx(
       const D3DDISPLAYMODEFILTER* pFilter,
@@ -79,13 +79,11 @@ namespace dxvk {
 
     Rc<DxvkAdapter> GetDXVKAdapter() { return m_adapter; }
 
-    D3D9_VK_FORMAT_MAPPING GetFormatMapping(
-      D3D9Format            Format) const {
+    D3D9_VK_FORMAT_MAPPING GetFormatMapping(D3D9Format Format) const {
       return m_d3d9Formats.GetFormatMapping(Format);
     }
 
-    DxvkFormatInfo GetUnsupportedFormatInfo(
-      D3D9Format            Format) const {
+    DxvkFormatInfo GetUnsupportedFormatInfo(D3D9Format Format) const {
       return m_d3d9Formats.GetUnsupportedFormatInfo(Format);
     }
 
