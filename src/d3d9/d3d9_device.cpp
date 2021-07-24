@@ -1255,6 +1255,7 @@ namespace dxvk {
 
     m_state.renderTargets[RenderTargetIndex] = rt;
 
+    UpdateBoundRTs(RenderTargetIndex);
     UpdateActiveRTs(RenderTargetIndex);
 
     uint32_t originalAlphaSwizzleRTs = m_alphaSwizzleRTs;
@@ -4996,12 +4997,23 @@ namespace dxvk {
   }
 
 
+  inline void D3D9DeviceEx::UpdateBoundRTs(uint32_t index) {
+    const uint32_t bit = 1 << index;
+    
+    m_boundRTs &= ~bit;
+
+    if (m_state.renderTargets[index] != nullptr &&
+       !m_state.renderTargets[index]->IsNull())
+      m_boundRTs |= bit;
+  }
+
+
   inline void D3D9DeviceEx::UpdateActiveRTs(uint32_t index) {
     const uint32_t bit = 1 << index;
 
     m_activeRTs &= ~bit;
 
-    if (m_state.renderTargets[index] != nullptr &&
+    if ((m_boundRTs & bit) != 0 &&
         m_state.renderTargets[index]->GetBaseTexture() != nullptr &&
         m_state.renderStates[ColorWriteIndex(index)])
       m_activeRTs |= bit;
