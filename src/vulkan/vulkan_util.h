@@ -4,6 +4,11 @@
 
 #include "vulkan_loader.h"
 
+#if defined(_MSC_VER)
+// Unary minus on unsigned type
+#pragma warning( disable : 4146 )
+#endif
+
 namespace dxvk::vk {
 
   inline VkImageSubresourceRange makeSubresourceRange(
