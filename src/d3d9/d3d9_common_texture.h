@@ -98,7 +98,7 @@ namespace dxvk {
      * \brief Vulkan Format
      * \returns The Vulkan format of the resource
      */
-    const D3D9_VK_FORMAT_MAPPING GetFormatMapping() const {
+    const D3D9_VK_FORMAT_MAPPING& GetFormatMapping() const {
       return m_mapping;
     }
 
@@ -123,7 +123,7 @@ namespace dxvk {
      * Note, this will be nullptr if the map mode is D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM
      * \returns The DXVK image
      */
-    Rc<DxvkImage> GetImage() const {
+    const Rc<DxvkImage>& GetImage() const {
       return m_image;
     }
 
@@ -133,14 +133,14 @@ namespace dxvk {
      * as the main image
      * \returns An image with identical info, but 1 sample
      */
-    Rc<DxvkImage> GetResolveImage() {
+    const Rc<DxvkImage>& GetResolveImage() {
       if (unlikely(m_resolveImage == nullptr))
         m_resolveImage = CreateResolveImage();
 
       return m_resolveImage;
     }
 
-    Rc<DxvkBuffer> GetBuffer(UINT Subresource) {
+    const Rc<DxvkBuffer>& GetBuffer(UINT Subresource) {
       return m_buffers[Subresource];
     }
 
