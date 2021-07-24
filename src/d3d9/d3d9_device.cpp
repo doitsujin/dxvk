@@ -1360,12 +1360,26 @@ namespace dxvk {
   // Some games don't even call them.
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::BeginScene() {
+    D3D9DeviceLock lock = LockDevice();
+
+    if (unlikely(m_flags.test(D3D9DeviceFlag::InScene)))
+      return D3DERR_INVALIDCALL;
+
+    m_flags.set(D3D9DeviceFlag::InScene);
+
     return D3D_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::EndScene() {
+    D3D9DeviceLock lock = LockDevice();
+
+    if (unlikely(!m_flags.test(D3D9DeviceFlag::InScene)))
+      return D3DERR_INVALIDCALL;
+
     FlushImplicit(true);
+
+    m_flags.clr(D3D9DeviceFlag::InScene);
 
     return D3D_OK;
   }
