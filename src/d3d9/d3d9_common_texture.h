@@ -39,11 +39,11 @@ namespace dxvk {
     DWORD               Usage;
     D3D9Format          Format;
     D3DPOOL             Pool;
-    BOOL                Discard;
     D3DMULTISAMPLE_TYPE MultiSample;
     DWORD               MultisampleQuality;
-    BOOL                IsBackBuffer;
-    BOOL                IsAttachmentOnly;
+    bool                Discard;
+    bool                IsBackBuffer;
+    bool                IsAttachmentOnly;
   };
 
   struct D3D9ColorView {
