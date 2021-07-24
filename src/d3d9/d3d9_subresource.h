@@ -131,10 +131,11 @@ namespace dxvk {
     IDirect3DBaseTexture9*  m_baseTexture;
 
     D3D9CommonTexture*      m_texture;
-    UINT                    m_face;
-    UINT                    m_mipLevel;
 
-    bool                    m_isSrgbCompatible;
+    UINT                    m_face             : 8;
+    UINT                    m_mipLevel         : 16;
+    UINT                    m_isSrgbCompatible : 1;
+  
     D3D9ColorView           m_sampleView;
     D3D9ColorView           m_renderTargetView;
     Rc<DxvkImageView>       m_depthStencilView;
