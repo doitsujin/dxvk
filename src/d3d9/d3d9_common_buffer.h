@@ -89,7 +89,7 @@ namespace dxvk {
     }
 
     template <D3D9_COMMON_BUFFER_TYPE Type>
-    Rc<DxvkBuffer> GetBuffer() const {
+    const Rc<DxvkBuffer>& GetBuffer() const {
       if constexpr (Type == D3D9_COMMON_BUFFER_TYPE_MAPPING)
         return GetMapBuffer();
       else if constexpr (Type == D3D9_COMMON_BUFFER_TYPE_STAGING)
@@ -186,15 +186,15 @@ namespace dxvk {
     Rc<DxvkBuffer> CreateBuffer() const;
     Rc<DxvkBuffer> CreateStagingBuffer() const;
 
-    Rc<DxvkBuffer> GetMapBuffer() const {
+    const Rc<DxvkBuffer>& GetMapBuffer() const {
       return m_stagingBuffer != nullptr ? m_stagingBuffer : m_buffer;
     }
 
-    Rc<DxvkBuffer> GetStagingBuffer() const {
+    const Rc<DxvkBuffer>& GetStagingBuffer() const {
       return m_stagingBuffer;
     }
 
-    Rc<DxvkBuffer> GetRealBuffer() const {
+    const Rc<DxvkBuffer>& GetRealBuffer() const {
       return m_buffer;
     }
 
