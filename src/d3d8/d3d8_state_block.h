@@ -13,7 +13,8 @@ namespace dxvk {
     bool vs       : 1;
     bool ps       : 1;
     bool indices  : 1;
-    bool textures : 1;
+
+    bit::bitset<d8caps::MAX_TEXTURE_STAGES> textures;
 
     D3D8StateCapture() {
       // Ensure all bits are initialized to false
@@ -70,7 +71,7 @@ namespace dxvk {
 
     inline HRESULT SetTexture(DWORD Stage, IDirect3DBaseTexture8* pTexture) {
       m_textures[Stage] = pTexture;
-      m_capture.textures = true;
+      m_capture.textures.set(Stage, true);
       return D3D_OK;
     }
 
