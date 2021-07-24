@@ -6799,7 +6799,7 @@ namespace dxvk {
       SetDepthStencilSurface(nullptr);
 
     for (uint32_t i = 1; i < caps::MaxSimultaneousRenderTargets; i++)
-      SetRenderTarget(0, nullptr);
+      SetRenderTarget(i, nullptr);
 
     auto& rs = m_state.renderStates;
 
