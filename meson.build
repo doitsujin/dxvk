@@ -39,6 +39,13 @@ if not dxvk_is_msvc
   if dxvk_compiler.has_link_argument('-Wl,--file-alignment=4096')
     add_global_link_arguments('-Wl,--file-alignment=4096', language: 'cpp')
   endif
+
+  # Wine's built-in back traces only work with dwarf2 symbols
+  if get_option('debug') and target_machine.system() == 'windows'
+    if dxvk_compiler.has_argument('-gstrict-dwarf') and dxvk_compiler.has_argument('-gdwarf-2')
+      add_project_arguments('-gstrict-dwarf', '-gdwarf-2', language: ['c', 'cpp'])
+    endif
+  endif
 endif
 
 dxvk_include_path = include_directories('./include')
