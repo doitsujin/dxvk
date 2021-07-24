@@ -594,7 +594,7 @@ namespace dxvk {
   }
 
 
-  void    D3D9SwapChainEx::Reset(
+  HRESULT D3D9SwapChainEx::Reset(
           D3DPRESENT_PARAMETERS* pPresentParams,
           D3DDISPLAYMODEEX*      pFullscreenDisplayMode) {
     D3D9DeviceLock lock = m_parent->LockDevice();
@@ -627,13 +627,17 @@ namespace dxvk {
         newRect.right - newRect.left, newRect.bottom - newRect.top, TRUE);
     }
     else {
-      if (changeFullscreen)
-        this->EnterFullscreenMode(pPresentParams, pFullscreenDisplayMode);
+      if (changeFullscreen) {
+        if (FAILED(this->EnterFullscreenMode(pPresentParams, pFullscreenDisplayMode)))
+          return D3DERR_INVALIDCALL;
+      }
 
       D3D9WindowMessageFilter filter(m_window);
 
-      if (!changeFullscreen)
-        ChangeDisplayMode(pPresentParams, pFullscreenDisplayMode);
+      if (!changeFullscreen) {
+        if (FAILED(ChangeDisplayMode(pPresentParams, pFullscreenDisplayMode)))
+          return D3DERR_INVALIDCALL;
+      }
 
       // Move the window so that it covers the entire output    
       RECT rect;
@@ -650,6 +654,8 @@ namespace dxvk {
       SetGammaRamp(0, &m_ramp);
 
     CreateBackBuffers(m_presentParams.BackBufferCount);
+
+    return D3D_OK;
   }
 
 
