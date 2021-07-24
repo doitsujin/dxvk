@@ -72,7 +72,7 @@ namespace dxvk {
       return m_texture->CalcSubresource(m_face, m_mipLevel);
     }
 
-    Rc<DxvkImageView> GetImageView(bool Srgb) {
+    const Rc<DxvkImageView>& GetImageView(bool Srgb) {
       Srgb &= m_isSrgbCompatible;
       Rc<DxvkImageView>& view = m_sampleView.Pick(Srgb);
 
@@ -82,7 +82,7 @@ namespace dxvk {
       return view;
     }
 
-    Rc<DxvkImageView> GetRenderTargetView(bool Srgb) {
+    const Rc<DxvkImageView>& GetRenderTargetView(bool Srgb) {
       Srgb &= m_isSrgbCompatible;
       Rc<DxvkImageView>& view = m_renderTargetView.Pick(Srgb);
 
@@ -96,7 +96,7 @@ namespace dxvk {
       return m_texture->DetermineRenderTargetLayout();
     }
 
-    Rc<DxvkImageView> GetDepthStencilView() {
+    const Rc<DxvkImageView>& GetDepthStencilView() {
       Rc<DxvkImageView>& view = m_depthStencilView;
 
       if (unlikely(view == nullptr))
