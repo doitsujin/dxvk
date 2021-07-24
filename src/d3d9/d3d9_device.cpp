@@ -1418,25 +1418,24 @@ namespace dxvk {
     VkClearValue clearValueColor;
     DecodeD3DCOLOR(Color, clearValueColor.color.float32);
 
-    auto dsv = m_state.depthStencil != nullptr ? m_state.depthStencil->GetDepthStencilView() : nullptr;
     VkImageAspectFlags depthAspectMask = 0;
-    if (dsv != nullptr) {
+    if (m_state.depthStencil != nullptr) {
       if (Flags & D3DCLEAR_ZBUFFER)
         depthAspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
 
       if (Flags & D3DCLEAR_STENCIL)
         depthAspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-      depthAspectMask &= imageFormatInfo(dsv->info().format)->aspectMask;
+      depthAspectMask &= imageFormatInfo(m_state.depthStencil->GetCommonTexture()->GetFormatMapping().FormatColor)->aspectMask;
     }
 
     auto ClearImageView = [this](
-      bool               fullClear,
-      VkOffset3D         offset,
-      VkExtent3D         extent,
-      Rc<DxvkImageView>  imageView,
-      VkImageAspectFlags aspectMask,
-      VkClearValue       clearValue) {
+      bool                     fullClear,
+      VkOffset3D               offset,
+      VkExtent3D               extent,
+      const Rc<DxvkImageView>& imageView,
+      VkImageAspectFlags       aspectMask,
+      VkClearValue             clearValue) {
       if (fullClear) {
         EmitCs([
           cClearValue = clearValue,
@@ -1472,14 +1471,14 @@ namespace dxvk {
       VkExtent3D         extent) {
       // Clear depth if we need to.
       if (depthAspectMask != 0)
-        ClearImageView(fullClear, offset, extent, dsv, depthAspectMask, clearValueDepth);
+        ClearImageView(fullClear, offset, extent, m_state.depthStencil->GetDepthStencilView(), depthAspectMask, clearValueDepth);
 
       // Clear render targets if we need to.
       if (Flags & D3DCLEAR_TARGET) {
-        for (auto rt : m_state.renderTargets) {
-          auto rtv = rt != nullptr ? rt->GetRenderTargetView(srgb) : nullptr;
+        for (uint32_t rt = m_boundRTs; rt; rt &= rt - 1) {
+          const auto& rtv = m_state.renderTargets[bit::tzcnt(rt)]->GetRenderTargetView(srgb);
 
-          if (unlikely(rtv != nullptr))
+          if (likely(rtv != nullptr))
             ClearImageView(fullClear, offset, extent, rtv, VK_IMAGE_ASPECT_COLOR_BIT, clearValueColor);
         }
       }
