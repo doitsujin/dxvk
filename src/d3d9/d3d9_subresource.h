@@ -17,13 +17,15 @@ namespace dxvk {
             UINT                    MipLevel,
             IDirect3DBaseTexture9*  pBaseTexture,
             IUnknown*               pContainer)
-      : D3D9Resource<Type...>      ( pDevice )
-      , m_container                ( pContainer )
-      , m_baseTexture              ( pBaseTexture )
-      , m_texture                  ( pTexture )
-      , m_face                     ( Face )
-      , m_mipLevel                 ( MipLevel )
-      , m_isSrgbCompatible         ( pTexture->IsSrgbCompatible() ) { }
+    : D3D9Resource<Type...>(pDevice),
+      m_container          (pContainer),
+      m_baseTexture        (pBaseTexture),
+      m_texture            (pTexture),
+      m_face               (Face),
+      m_mipLevel           (MipLevel),
+      m_isSrgbCompatible   (pTexture->IsSrgbCompatible()) {
+
+    }
 
     ~D3D9Subresource() {
       // We own the texture!
@@ -56,23 +58,23 @@ namespace dxvk {
       m_texture->PreLoadSubresource(GetSubresource());
     }
 
-    D3D9CommonTexture* GetCommonTexture() {
+    inline D3D9CommonTexture* GetCommonTexture() {
       return m_texture;
     }
 
-    UINT GetFace() const {
+    inline UINT GetFace() const {
       return m_face;
     }
 
-    UINT GetMipLevel() const {
+    inline UINT GetMipLevel() const {
       return m_mipLevel;
     }
 
-    UINT GetSubresource() const {
+    inline UINT GetSubresource() const {
       return m_texture->CalcSubresource(m_face, m_mipLevel);
     }
 
-    const Rc<DxvkImageView>& GetImageView(bool Srgb) {
+    inline const Rc<DxvkImageView>& GetImageView(bool Srgb) {
       Srgb &= m_isSrgbCompatible;
       Rc<DxvkImageView>& view = m_sampleView.Pick(Srgb);
 
@@ -82,7 +84,7 @@ namespace dxvk {
       return view;
     }
 
-    const Rc<DxvkImageView>& GetRenderTargetView(bool Srgb) {
+    inline const Rc<DxvkImageView>& GetRenderTargetView(bool Srgb) {
       Srgb &= m_isSrgbCompatible;
       Rc<DxvkImageView>& view = m_renderTargetView.Pick(Srgb);
 
@@ -92,11 +94,11 @@ namespace dxvk {
       return view;
     }
 
-    VkImageLayout GetRenderTargetLayout() const {
+    inline VkImageLayout GetRenderTargetLayout() const {
       return m_texture->DetermineRenderTargetLayout();
     }
 
-    const Rc<DxvkImageView>& GetDepthStencilView() {
+    inline const Rc<DxvkImageView>& GetDepthStencilView() {
       Rc<DxvkImageView>& view = m_depthStencilView;
 
       if (unlikely(view == nullptr))
@@ -105,19 +107,19 @@ namespace dxvk {
       return view;
     }
 
-    VkImageLayout GetDepthStencilLayout(bool write, bool hazardous) const {
+    inline VkImageLayout GetDepthStencilLayout(bool write, bool hazardous) const {
       return m_texture->DetermineDepthStencilLayout(write, hazardous);
     }
 
-    bool IsNull() {
+    inline bool IsNull() {
       return m_texture->Desc()->Format == D3D9Format::NULL_FORMAT;
     }
 
-    IDirect3DBaseTexture9* GetBaseTexture() {
+    inline IDirect3DBaseTexture9* GetBaseTexture() {
       return m_baseTexture;
     }
 
-    void Swap(D3D9Subresource* Other) {
+    inline void Swap(D3D9Subresource* Other) {
       // Only used for swap chain back buffers that don't
       // have a container and all have identical properties
       std::swap(m_texture,          Other->m_texture);
