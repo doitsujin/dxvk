@@ -114,9 +114,9 @@ namespace dxvk {
 
     D3D9CommonTexture m_texture;
 
-    DWORD m_lod;
-
     std::vector<SubresourceData> m_subresources;
+
+    DWORD m_lod;
 
   };
 
