@@ -5327,19 +5327,18 @@ namespace dxvk {
     // target bindings are updated. Set up the attachments.
     VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
 
-    for (UINT i = 0; i < m_state.renderTargets.size(); i++) {
-      if (m_state.renderTargets[i] != nullptr && !m_state.renderTargets[i]->IsNull()) {
-        const DxvkImageCreateInfo& rtImageInfo = m_state.renderTargets[i]->GetCommonTexture()->GetImage()->info();
+    for (uint32_t rt = m_boundRTs; rt; rt &= rt - 1) {
+      uint32_t i = bit::tzcnt(rt);
+      const DxvkImageCreateInfo& rtImageInfo = m_state.renderTargets[i]->GetCommonTexture()->GetImage()->info();
 
-        if (likely(sampleCount == VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM))
-          sampleCount = rtImageInfo.sampleCount;
-        else if (unlikely(sampleCount != rtImageInfo.sampleCount))
-          continue;
+      if (likely(sampleCount == VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM))
+        sampleCount = rtImageInfo.sampleCount;
+      else if (unlikely(sampleCount != rtImageInfo.sampleCount))
+        continue;
 
-        attachments.color[i] = {
-          m_state.renderTargets[i]->GetRenderTargetView(srgb),
-          m_state.renderTargets[i]->GetRenderTargetLayout() };
-      }
+      attachments.color[i] = {
+        m_state.renderTargets[i]->GetRenderTargetView(srgb),
+        m_state.renderTargets[i]->GetRenderTargetLayout() };
     }
 
     if (m_state.depthStencil != nullptr) {
