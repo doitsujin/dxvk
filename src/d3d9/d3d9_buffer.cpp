@@ -43,15 +43,14 @@ namespace dxvk {
     if (pDesc == nullptr)
       return D3DERR_INVALIDCALL;
 
-    D3D9_BUFFER_DESC desc;
-    m_buffer.GetDesc(&desc);
+    const D3D9_BUFFER_DESC* desc = m_buffer.Desc();
 
-    pDesc->Format = static_cast<D3DFORMAT>(desc.Format);
-    pDesc->Type   = desc.Type;
-    pDesc->Usage  = desc.Usage;
-    pDesc->Pool   = desc.Pool;
-    pDesc->Size   = desc.Size;
-    pDesc->FVF    = desc.FVF;
+    pDesc->Format = static_cast<D3DFORMAT>(desc->Format);
+    pDesc->Type   = desc->Type;
+    pDesc->Usage  = desc->Usage;
+    pDesc->Pool   = desc->Pool;
+    pDesc->Size   = desc->Size;
+    pDesc->FVF    = desc->FVF;
 
     return D3D_OK;
   }
@@ -99,14 +98,13 @@ namespace dxvk {
     if (pDesc == nullptr)
       return D3DERR_INVALIDCALL;
 
-    D3D9_BUFFER_DESC desc;
-    m_buffer.GetDesc(&desc);
+    const D3D9_BUFFER_DESC* desc = m_buffer.Desc();
 
-    pDesc->Format = static_cast<D3DFORMAT>(desc.Format);
-    pDesc->Type   = desc.Type;
-    pDesc->Usage  = desc.Usage;
-    pDesc->Pool   = desc.Pool;
-    pDesc->Size   = desc.Size;
+    pDesc->Format = static_cast<D3DFORMAT>(desc->Format);
+    pDesc->Type   = desc->Type;
+    pDesc->Usage  = desc->Usage;
+    pDesc->Pool   = desc->Pool;
+    pDesc->Size   = desc->Size;
 
     return D3D_OK;
   }
