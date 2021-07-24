@@ -14,8 +14,10 @@ namespace dxvk {
     D3D9Buffer(
             D3D9DeviceEx*      pDevice,
       const D3D9_BUFFER_DESC*  pDesc)
-      : D3D9Resource<Type...>  ( pDevice )
-      , m_buffer               ( pDevice, pDesc ) { }
+    : D3D9Resource<Type...> (pDevice),
+      m_buffer              (pDevice, pDesc) {
+
+    }
 
     HRESULT STDMETHODCALLTYPE Lock(
             UINT   OffsetToLock,
@@ -59,12 +61,11 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
-            void** ppvObject) final;
+            void** ppvObject);
 
-    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final;
+    D3DRESOURCETYPE STDMETHODCALLTYPE GetType();
 
-    HRESULT STDMETHODCALLTYPE GetDesc(
-            D3DVERTEXBUFFER_DESC* pDesc) final;
+    HRESULT STDMETHODCALLTYPE GetDesc(D3DVERTEXBUFFER_DESC* pDesc);
 
   };
 
@@ -79,12 +80,11 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
-            void** ppvObject) final;
+            void** ppvObject);
 
-    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final;
+    D3DRESOURCETYPE STDMETHODCALLTYPE GetType();
 
-    HRESULT STDMETHODCALLTYPE GetDesc(
-            D3DINDEXBUFFER_DESC* pDesc) final;
+    HRESULT STDMETHODCALLTYPE GetDesc(D3DINDEXBUFFER_DESC* pDesc);
 
   };
 
