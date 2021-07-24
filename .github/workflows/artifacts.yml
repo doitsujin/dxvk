@@ -8,7 +8,6 @@ jobs:
 
     steps:
     - name: Checkout code
-      id: checkout-code
       uses: actions/checkout@v2
       with:
         submodules: recursive
@@ -24,12 +23,11 @@ jobs:
         command: |
           export VERSION_NAME="${GITHUB_REF##*/}-${GITHUB_SHA##*/}"
           ./package-release.sh ${VERSION_NAME} build --no-package
-          echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_ENV
+          echo "::set-output name=VERSION_NAME::${VERSION_NAME}"
 
     - name: Upload artifacts
-      id: upload-artifacts
       uses: actions/upload-artifact@v2
       with:
-        name: dxvk-${{ env.VERSION_NAME }}
-        path: build/dxvk-${{ env.VERSION_NAME }}
+        name: dxvk-${{ steps.build-release.outputs.VERSION_NAME }}
+        path: build/dxvk-${{ steps.build-release.outputs.VERSION_NAME }}
         if-no-files-found: error
