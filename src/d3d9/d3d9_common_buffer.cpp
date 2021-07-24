@@ -39,12 +39,6 @@ namespace dxvk {
   }
 
 
-  void D3D9CommonBuffer::GetDesc(
-          D3D9_BUFFER_DESC* pDesc) {
-    *pDesc = m_desc;
-  }
-
-
   HRESULT D3D9CommonBuffer::ValidateBufferProperties(const D3D9_BUFFER_DESC* pDesc) {
     if (pDesc->Size == 0)
       return D3DERR_INVALIDCALL;
