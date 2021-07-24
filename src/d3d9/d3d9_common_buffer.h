@@ -40,11 +40,14 @@ namespace dxvk {
     D3D9Range() { Clear(); }
 
     D3D9Range(uint32_t min, uint32_t max)
-      : min(min), max(max) { }
+    : min(min),
+      max(max) {
 
-    bool IsDegenerate() { return min == max; }
+    }
 
-    void Conjoin(D3D9Range range) {
+    inline bool IsDegenerate() { return min == max; }
+
+    inline void Conjoin(D3D9Range range) {
       if (IsDegenerate())
         *this = range;
       else {
@@ -53,14 +56,14 @@ namespace dxvk {
       }
     }
 
-    bool Overlaps(D3D9Range range) {
+    inline bool Overlaps(D3D9Range range) {
       if (IsDegenerate())
         return false;
 
       return range.max > min && range.min < max;
     }
 
-    void Clear() { min = 0; max = 0; }
+    inline void Clear() { min = 0; max = 0; }
 
     uint32_t min = 0;
     uint32_t max = 0;
@@ -82,14 +85,20 @@ namespace dxvk {
 
     HRESULT Unlock();
 
-    D3D9_COMMON_BUFFER_MAP_MODE GetMapMode() const {
+    /**
+    * \brief Determine the mapping mode of the buffer, (ie. direct mapping or backed)
+    */
+    inline D3D9_COMMON_BUFFER_MAP_MODE GetMapMode() const {
       return (m_desc.Pool == D3DPOOL_DEFAULT && (m_desc.Usage & (D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY)))
         ? D3D9_COMMON_BUFFER_MAP_MODE_DIRECT
         : D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
     }
 
+    /**
+    * \brief Abstraction for getting a type of buffer (mapping/staging/the real buffer) across mapping modes.
+    */
     template <D3D9_COMMON_BUFFER_TYPE Type>
-    const Rc<DxvkBuffer>& GetBuffer() const {
+    inline const Rc<DxvkBuffer>& GetBuffer() const {
       if constexpr (Type == D3D9_COMMON_BUFFER_TYPE_MAPPING)
         return GetMapBuffer();
       else if constexpr (Type == D3D9_COMMON_BUFFER_TYPE_STAGING)
@@ -99,80 +108,77 @@ namespace dxvk {
     }
 
     template <D3D9_COMMON_BUFFER_TYPE Type>
-    DxvkBufferSlice GetBufferSlice() const {
+    inline DxvkBufferSlice GetBufferSlice() const {
       return GetBufferSlice<Type>(0, m_desc.Size);
     }
 
     template <D3D9_COMMON_BUFFER_TYPE Type>
-    DxvkBufferSlice GetBufferSlice(VkDeviceSize offset) const {
+    inline DxvkBufferSlice GetBufferSlice(VkDeviceSize offset) const {
       return GetBufferSlice<Type>(offset, m_desc.Size - offset);
     }
 
     template <D3D9_COMMON_BUFFER_TYPE Type>
-    DxvkBufferSlice GetBufferSlice(VkDeviceSize offset, VkDeviceSize length) const {
+    inline DxvkBufferSlice GetBufferSlice(VkDeviceSize offset, VkDeviceSize length) const {
       return DxvkBufferSlice(GetBuffer<Type>(), offset, length);
     }
 
-    DxvkBufferSliceHandle AllocMapSlice() {
+    inline DxvkBufferSliceHandle AllocMapSlice() {
       return GetMapBuffer()->allocSlice();
     }
 
-    DxvkBufferSliceHandle DiscardMapSlice() {
+    inline DxvkBufferSliceHandle DiscardMapSlice() {
       m_sliceHandle = GetMapBuffer()->allocSlice();
       return m_sliceHandle;
     }
 
-    DxvkBufferSliceHandle GetMappedSlice() const {
+    inline DxvkBufferSliceHandle GetMappedSlice() const {
       return m_sliceHandle;
     }
 
-    DWORD GetMapFlags() const      { return m_mapFlags; }
+    inline DWORD GetMapFlags() const      { return m_mapFlags; }
+    inline void SetMapFlags(DWORD Flags)  { m_mapFlags = Flags; }
 
-    void SetMapFlags(DWORD Flags) { m_mapFlags = Flags; }
-
-    const D3D9_BUFFER_DESC* Desc() const {
-      return &m_desc;
-    }
+    inline const D3D9_BUFFER_DESC* Desc() const { return &m_desc; }
 
     static HRESULT ValidateBufferProperties(const D3D9_BUFFER_DESC* pDesc);
 
     /**
      * \brief The range of the buffer that was changed using Lock calls
      */
-    D3D9Range& DirtyRange()  { return m_dirtyRange; }
+    inline D3D9Range& DirtyRange()  { return m_dirtyRange; }
 
     /**
      * \brief The range of the buffer that might currently be read by the GPU
      */
-    D3D9Range& GPUReadingRange() { return m_gpuReadingRange; }
+    inline D3D9Range& GPUReadingRange() { return m_gpuReadingRange; }
 
     /**
     * \brief Whether or not the buffer was written to by the GPU (in IDirect3DDevice9::ProcessVertices)
     */
-    bool WasWrittenByGPU() const     { return m_wasWrittenByGPU; }
+    inline bool WasWrittenByGPU() const     { return m_wasWrittenByGPU; }
 
     /**
     * \brief Sets whether or not the buffer was written to by the GPU
     */
-    void SetWrittenByGPU(bool state) { m_wasWrittenByGPU = state; }
+    inline void SetWrittenByGPU(bool state) { m_wasWrittenByGPU = state; }
 
-    uint32_t IncrementLockCount() { return ++m_lockCount; }
-    uint32_t DecrementLockCount() {
+    inline uint32_t IncrementLockCount() { return ++m_lockCount; }
+    inline uint32_t DecrementLockCount() {
       if (m_lockCount == 0)
         return 0;
 
       return --m_lockCount;
     }
-    uint32_t GetLockCount() const { return m_lockCount; }
+    inline uint32_t GetLockCount() const { return m_lockCount; }
 
     /**
      * \brief Whether or not the staging buffer needs to be copied to the actual buffer
      */
-    bool NeedsUpload() { return m_desc.Pool != D3DPOOL_DEFAULT && !m_dirtyRange.IsDegenerate(); }
+    inline bool NeedsUpload() { return m_desc.Pool != D3DPOOL_DEFAULT && !m_dirtyRange.IsDegenerate(); }
 
-    bool DoesStagingBufferUploads() const { return m_uploadUsingStaging; }
+    inline bool DoesStagingBufferUploads() const { return m_uploadUsingStaging; }
 
-    void EnableStagingBufferUploads() {
+    inline void EnableStagingBufferUploads() {
       if (GetMapMode() != D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
         return;
 
@@ -186,15 +192,15 @@ namespace dxvk {
     Rc<DxvkBuffer> CreateBuffer() const;
     Rc<DxvkBuffer> CreateStagingBuffer() const;
 
-    const Rc<DxvkBuffer>& GetMapBuffer() const {
+    inline const Rc<DxvkBuffer>& GetMapBuffer() const {
       return m_stagingBuffer != nullptr ? m_stagingBuffer : m_buffer;
     }
 
-    const Rc<DxvkBuffer>& GetStagingBuffer() const {
+    inline const Rc<DxvkBuffer>& GetStagingBuffer() const {
       return m_stagingBuffer;
     }
 
-    const Rc<DxvkBuffer>& GetRealBuffer() const {
+    inline const Rc<DxvkBuffer>& GetRealBuffer() const {
       return m_buffer;
     }
 
