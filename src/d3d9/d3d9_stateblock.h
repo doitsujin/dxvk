@@ -174,9 +174,6 @@ namespace dxvk {
 
     template <typename Dst, typename Src>
     void ApplyOrCapture(Dst* dst, const Src* src) {
-      if (m_captures.flags.test(D3D9CapturedStateFlag::VertexDecl))
-        dst->SetVertexDeclaration(src->vertexDecl.ptr());
-
       if (m_captures.flags.test(D3D9CapturedStateFlag::StreamFreq)) {
         for (uint32_t stream = m_captures.streamFreq.dword(0); stream; stream &= stream - 1) {
           uint32_t idx = bit::tzcnt(stream);
