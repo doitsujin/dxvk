@@ -2369,10 +2369,13 @@ namespace dxvk {
           D3DPRIMITIVETYPE PrimitiveType,
           UINT             StartVertex,
           UINT             PrimitiveCount) {
-	if (unlikely(!PrimitiveCount))
-	  return S_OK;
-
     D3D9DeviceLock lock = LockDevice();
+
+    if (unlikely(m_state.vertexDecl == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(!PrimitiveCount))
+      return S_OK;
 
     PrepareDraw(PrimitiveType);
 
@@ -2402,10 +2405,13 @@ namespace dxvk {
           UINT             NumVertices,
           UINT             StartIndex,
           UINT             PrimitiveCount) {
-	if (unlikely(!PrimitiveCount))
-	  return S_OK;
-
     D3D9DeviceLock lock = LockDevice();
+
+    if (unlikely(m_state.vertexDecl == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(!PrimitiveCount))
+      return S_OK;
 
     PrepareDraw(PrimitiveType);
 
@@ -2435,10 +2441,13 @@ namespace dxvk {
           UINT             PrimitiveCount,
     const void*            pVertexStreamZeroData,
           UINT             VertexStreamZeroStride) {
-	if (unlikely(!PrimitiveCount))
-	  return S_OK;
-
     D3D9DeviceLock lock = LockDevice();
+
+    if (unlikely(m_state.vertexDecl == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(!PrimitiveCount))
+      return S_OK;
 
     PrepareDraw(PrimitiveType);
 
@@ -2485,10 +2494,13 @@ namespace dxvk {
           D3DFORMAT        IndexDataFormat,
     const void*            pVertexStreamZeroData,
           UINT             VertexStreamZeroStride) {
-	if (unlikely(!PrimitiveCount))
-	  return S_OK;
-
     D3D9DeviceLock lock = LockDevice();
+
+    if (unlikely(m_state.vertexDecl == nullptr))
+        return D3DERR_INVALIDCALL;
+
+    if (unlikely(!PrimitiveCount))
+      return S_OK;
 
     PrepareDraw(PrimitiveType);
 
