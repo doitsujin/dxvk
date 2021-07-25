@@ -38,6 +38,9 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9StateBlock::Capture() {
+    if (m_captures.flags.test(D3D9CapturedStateFlag::VertexDecl))
+      SetVertexDeclaration(m_deviceState->vertexDecl.ptr());
+
     ApplyOrCapture<D3D9StateFunction::Capture>();
 
     return D3D_OK;
@@ -46,6 +49,10 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D9StateBlock::Apply() {
     m_applying = true;
+
+    if (m_captures.flags.test(D3D9CapturedStateFlag::VertexDecl) && m_state.vertexDecl != nullptr)
+      m_parent->SetVertexDeclaration(m_state.vertexDecl.ptr());
+
     ApplyOrCapture<D3D9StateFunction::Apply>();
     m_applying = false;
 
