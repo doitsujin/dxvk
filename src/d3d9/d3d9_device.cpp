@@ -4525,7 +4525,8 @@ namespace dxvk {
       const bool noOverlap = !pResource->GPUReadingRange().Overlaps(lockRange);
       const bool noOverwrite = Flags & D3DLOCK_NOOVERWRITE;
       const bool usesStagingBuffer = pResource->DoesStagingBufferUploads();
-      const bool skipWait = (!wasWrittenByGPU && (usesStagingBuffer || readOnly || noOverlap)) || noOverwrite;
+      const bool directMapping = pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_DIRECT;
+      const bool skipWait = (!wasWrittenByGPU && (usesStagingBuffer || readOnly || (noOverlap && !directMapping))) || noOverwrite;
       if (!skipWait) {
         if (!(Flags & D3DLOCK_DONOTWAIT) && !WaitForResource(mappingBuffer, D3DLOCK_DONOTWAIT))
           pResource->EnableStagingBufferUploads();
