@@ -4280,7 +4280,9 @@ namespace dxvk {
 
     pResource->SetLocked(Subresource, true);
 
-    if ((desc.Pool == D3DPOOL_DEFAULT || !(Flags & D3DLOCK_NO_DIRTY_UPDATE)) && !(Flags & D3DLOCK_READONLY)) {
+    const bool noDirtyUpdate = Flags & D3DLOCK_NO_DIRTY_UPDATE;
+    if (likely((pResource->IsManaged() && m_d3d9Options.evictManagedOnUnlock)
+      || ((desc.Pool == D3DPOOL_DEFAULT || !noDirtyUpdate) && !readOnly))) {
       if (pBox && MipLevel != 0) {
         D3DBOX scaledBox = *pBox;
         scaledBox.Left   <<= MipLevel;
@@ -4341,8 +4343,9 @@ namespace dxvk {
 
     // Flush image contents from staging if we aren't read only
     // and we aren't deferring for managed.
+    const D3DBOX& box = pResource->GetDirtyBox(Face);
     bool shouldFlush  = pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED;
-         shouldFlush &= !pResource->GetReadOnlyLocked(Subresource);
+         shouldFlush &= box.Left < box.Right && box.Top < box.Bottom && box.Front < box.Back;
          shouldFlush &= !pResource->IsManaged() || m_d3d9Options.evictManagedOnUnlock;
 
     if (shouldFlush) {
@@ -4658,7 +4661,7 @@ namespace dxvk {
     if (pResource->GetMapMode() != D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
       return D3D_OK;
 
-    if (pResource->GetMapFlags() & D3DLOCK_READONLY)
+    if (pResource->DirtyRange().IsDegenerate())
       return D3D_OK;
 
     pResource->SetMapFlags(0);
