@@ -596,9 +596,11 @@ namespace dxvk {
     uint64_t value = ++m_eventCount;
 
     if (m_eventSignal == nullptr)
-      m_eventSignal = new sync::Win32Fence();
+      m_eventSignal = new sync::CallbackFence();
 
-    m_eventSignal->setEvent(hEvent, value);
+    m_eventSignal->setCallback(value, [hEvent] {
+      SetEvent(hEvent);
+    });
 
     EmitCs([
       cSignal = m_eventSignal,
