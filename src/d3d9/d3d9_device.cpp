@@ -1377,6 +1377,9 @@ namespace dxvk {
           D3DCOLOR Color,
           float    Z,
           DWORD    Stencil) {
+    if (unlikely(!Count && pRects))
+      return D3D_OK;
+
     D3D9DeviceLock lock = LockDevice();
 
     const auto& vp = m_state.viewport;
