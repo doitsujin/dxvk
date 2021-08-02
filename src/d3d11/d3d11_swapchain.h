@@ -6,7 +6,7 @@
 
 #include "../dxvk/dxvk_swapchain_blitter.h"
 
-#include "../util/sync/sync_signal_win32.h"
+#include "../util/sync/sync_signal.h"
 
 namespace dxvk {
   
@@ -107,7 +107,7 @@ namespace dxvk {
     uint32_t                m_frameLatency = DefaultFrameLatency;
     uint32_t                m_frameLatencyCap = 0;
     HANDLE                  m_frameLatencyEvent = nullptr;
-    Rc<sync::Win32Fence>    m_frameLatencySignal;
+    Rc<sync::CallbackFence> m_frameLatencySignal;
 
     bool                    m_dirty = true;
     bool                    m_vsync = true;

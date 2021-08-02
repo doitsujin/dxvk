@@ -177,9 +177,16 @@ namespace dxvk {
     if (MaxLatency == 0 || MaxLatency > DXGI_MAX_SWAP_CHAIN_BUFFERS)
       return DXGI_ERROR_INVALID_CALL;
 
-    m_frameLatency = MaxLatency;
+    if (m_frameLatencyEvent) {
+      // Windows DXGI does not seem to handle the case where the new maximum
+      // latency is less than the current value, and some games relying on
+      // this behaviour will hang if we attempt to decrement the semaphore.
+      // Thus, only increment the semaphore as necessary.
+      if (MaxLatency > m_frameLatency)
+        ReleaseSemaphore(m_frameLatencyEvent, MaxLatency - m_frameLatency, nullptr);
+    }
 
-    SyncFrameLatency();
+    m_frameLatency = MaxLatency;
     return S_OK;
   }
 
@@ -367,10 +374,10 @@ namespace dxvk {
 
 
   void D3D11SwapChain::CreateFrameLatencyEvent() {
-    m_frameLatencySignal = new sync::Win32Fence(m_frameId);
+    m_frameLatencySignal = new sync::CallbackFence(m_frameId);
 
     if (m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT)
-      m_frameLatencyEvent = CreateEvent(nullptr, false, true, nullptr);
+      m_frameLatencyEvent = CreateSemaphore(nullptr, m_frameLatency, DXGI_MAX_SWAP_CHAIN_BUFFERS, nullptr);
   }
 
 
@@ -558,8 +565,9 @@ namespace dxvk {
     m_frameLatencySignal->wait(m_frameId - GetActualFrameLatency());
 
     if (m_frameLatencyEvent) {
-      // Signal event with the same value that we'd wait for during the next present.
-      m_frameLatencySignal->setEvent(m_frameLatencyEvent, m_frameId - GetActualFrameLatency() + 1);
+      m_frameLatencySignal->setCallback(m_frameId, [cFrameLatencyEvent = m_frameLatencyEvent] () {
+        ReleaseSemaphore(cFrameLatencyEvent, 1, nullptr);
+      });
     }
   }
 
