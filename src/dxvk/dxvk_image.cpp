@@ -116,6 +116,10 @@ namespace dxvk {
           VkImage               image)
   : m_vkd(vkd), m_info(info), m_image({ image }) {
     
+    m_viewFormats.resize(info.viewFormatCount);
+    for (uint32_t i = 0; i < info.viewFormatCount; i++)
+      m_viewFormats[i] = info.viewFormats[i];
+    m_info.viewFormats = m_viewFormats.data();
   }
   
   
