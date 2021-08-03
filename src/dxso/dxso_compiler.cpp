@@ -120,6 +120,7 @@ namespace dxvk {
     case DxsoOpcode::Pow:
     case DxsoOpcode::Crs:
     case DxsoOpcode::Abs:
+    case DxsoOpcode::Sgn:
     case DxsoOpcode::Nrm:
     case DxsoOpcode::SinCos:
     case DxsoOpcode::Lit:
@@ -1928,6 +1929,10 @@ namespace dxvk {
       }
       case DxsoOpcode::Abs:
         result.id = m_module.opFAbs(typeId,
+          emitRegisterLoad(src[0], mask).id);
+        break;
+      case DxsoOpcode::Sgn:
+        result.id = m_module.opFSign(typeId,
           emitRegisterLoad(src[0], mask).id);
         break;
       case DxsoOpcode::Nrm: {
