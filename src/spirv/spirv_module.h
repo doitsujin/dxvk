@@ -654,6 +654,10 @@ namespace dxvk {
             uint32_t                resultType,
             uint32_t                operand);
 
+    uint32_t opFSign(
+            uint32_t                resultType,
+            uint32_t                operand);
+
     uint32_t opFMix(
             uint32_t                resultType,
             uint32_t                x,

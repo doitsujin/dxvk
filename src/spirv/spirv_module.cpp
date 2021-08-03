@@ -1793,6 +1793,21 @@ namespace dxvk {
   }
 
 
+    uint32_t SpirvModule::opFSign(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+
+    m_code.putIns (spv::OpExtInst, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450FSign);
+    m_code.putWord(operand);
+    return resultId;
+  }
+
+
   uint32_t SpirvModule::opFMix(
           uint32_t                resultType,
           uint32_t                x,
