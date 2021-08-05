@@ -3249,6 +3249,7 @@ namespace dxvk {
       getVectorTypeId(result.type),
       resultIds.size(), resultIds.data());
     
+    result = emitRegisterSwizzle(result, ins.src[1].swizzle, ins.dst[0].mask);
     emitRegisterStore(ins.dst[0], result);
   }
   
