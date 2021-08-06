@@ -60,7 +60,7 @@ namespace dxvk {
 
       m_texture.CreateSampleView(LODNew);
       if (this->GetPrivateRefCount() > 0)
-        this->m_parent->MarkSamplersDirty();
+        this->m_parent->MarkTextureBindingDirty(this);
 
       return oldLod;
     }

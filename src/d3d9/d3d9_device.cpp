@@ -5817,8 +5817,13 @@ namespace dxvk {
     m_dirtyTextures = 0;
   }
 
-  void D3D9DeviceEx::MarkSamplersDirty() {
-    m_dirtySamplerStates = 0x001fffff; // 21 bits.
+  void D3D9DeviceEx::MarkTextureBindingDirty(IDirect3DBaseTexture9* texture) {
+    D3D9DeviceLock lock = LockDevice();
+
+    for (uint32_t i = 0; i < m_state.textures.size(); i++) {
+      if (m_state.textures[i] == texture)
+        m_dirtyTextures |= 1u << i;
+    }
   }
 
 
