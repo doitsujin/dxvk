@@ -842,7 +842,7 @@ namespace dxvk {
 
     void UndirtyTextures();
 
-    void MarkSamplersDirty();
+    void MarkTextureBindingDirty(IDirect3DBaseTexture9* texture);
 
     D3D9DrawInfo GenerateDrawInfo(
       D3DPRIMITIVETYPE PrimitiveType,
