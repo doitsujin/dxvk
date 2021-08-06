@@ -12,7 +12,7 @@ namespace dxvk {
           IUnknown*                 pContainer)
     : D3D9SurfaceBase(
         pDevice,
-        new D3D9CommonTexture( pDevice, pDesc, D3DRTYPE_TEXTURE),
+        new D3D9CommonTexture( pDevice, pDesc, D3DRTYPE_SURFACE),
         0, 0,
         nullptr,
         pContainer) { }

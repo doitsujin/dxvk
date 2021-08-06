@@ -383,6 +383,7 @@ namespace dxvk {
 
   VkImageType D3D9CommonTexture::GetImageTypeFromResourceType(D3DRESOURCETYPE Type) {
     switch (Type) {
+      case D3DRTYPE_SURFACE:
       case D3DRTYPE_TEXTURE:       return VK_IMAGE_TYPE_2D;
       case D3DRTYPE_VOLUMETEXTURE: return VK_IMAGE_TYPE_3D;
       case D3DRTYPE_CUBETEXTURE:   return VK_IMAGE_TYPE_2D;
@@ -395,6 +396,7 @@ namespace dxvk {
           D3DRESOURCETYPE  Dimension,
           UINT             Layer) {
     switch (Dimension) {
+      case D3DRTYPE_SURFACE:
       case D3DRTYPE_TEXTURE:       return VK_IMAGE_VIEW_TYPE_2D;
       case D3DRTYPE_VOLUMETEXTURE: return VK_IMAGE_VIEW_TYPE_3D;
       case D3DRTYPE_CUBETEXTURE:   return Layer == AllLayers
