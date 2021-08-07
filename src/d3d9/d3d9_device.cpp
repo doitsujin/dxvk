@@ -1493,10 +1493,17 @@ namespace dxvk {
       // Clear render targets if we need to.
       if (Flags & D3DCLEAR_TARGET) {
         for (uint32_t rt = m_boundRTs; rt; rt &= rt - 1) {
-          const auto& rtv = m_state.renderTargets[bit::tzcnt(rt)]->GetRenderTargetView(srgb);
+          const auto& rts = m_state.renderTargets[bit::tzcnt(rt)];
+          const auto& rtv = rts->GetRenderTargetView(srgb);
 
-          if (likely(rtv != nullptr))
+          if (likely(rtv != nullptr)) {
             ClearImageView(fullClear, offset, extent, rtv, VK_IMAGE_ASPECT_COLOR_BIT, clearValueColor);
+
+            D3D9CommonTexture* dstTexture = rts->GetCommonTexture();
+
+            if (dstTexture->IsAutomaticMip())
+              MarkTextureMipsDirty(dstTexture);
+          }
         }
       }
     };
