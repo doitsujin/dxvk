@@ -142,13 +142,13 @@ namespace dxvk {
         return { VK_PRIMITIVE_TOPOLOGY_LINE_LIST,      VK_FALSE, 0 };
 
       case D3DPT_LINESTRIP:
-        return { VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,     VK_TRUE,  0 };
+        return { VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,     VK_FALSE, 0 };
 
       case D3DPT_TRIANGLESTRIP:
-        return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, VK_TRUE,  0 };
+        return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, VK_FALSE, 0 };
 
       case D3DPT_TRIANGLEFAN:
-        return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN,   VK_TRUE,  0 };
+        return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN,   VK_FALSE, 0 };
     }
   }
 
