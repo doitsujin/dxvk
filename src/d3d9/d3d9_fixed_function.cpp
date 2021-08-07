@@ -2211,7 +2211,7 @@ namespace dxvk {
 
     // Declare spec constants for render states
     uint32_t alphaTestId = m_module.specConstBool(false);
-    uint32_t alphaFuncId = m_module.specConst32(m_module.defIntType(32, 0), uint32_t(VK_COMPARE_OP_ALWAYS));
+    uint32_t alphaFuncId = m_module.specConst32(m_module.defIntType(32, 0), 0);
 
     m_module.setDebugName(alphaTestId, "alpha_test");
     m_module.decorateSpecId(alphaTestId, getSpecId(D3D9SpecConstantId::AlphaTestEnable));
