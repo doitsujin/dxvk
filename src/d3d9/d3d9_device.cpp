@@ -5761,7 +5761,7 @@ namespace dxvk {
       DxsoBindingType::DepthImage, uint32_t(shaderSampler.second));
 
     const bool srgb =
-      m_state.samplerStates[StateSampler][D3DSAMP_SRGBTEXTURE];
+      m_state.samplerStates[StateSampler][D3DSAMP_SRGBTEXTURE] & 0x1;
 
     D3D9CommonTexture* commonTex =
       GetCommonTexture(m_state.textures[StateSampler]);
