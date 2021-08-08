@@ -1810,7 +1810,8 @@ namespace dxvk {
             break;
 
           case D3DTOP_BLENDTEXTUREALPHAPM:
-            Logger::warn("D3DTOP_BLENDTEXTUREALPHAPM: not implemented");
+            dst = m_module.opFFma(m_vec4Type, arg[2], Complement(AlphaReplicate(GetTexture())), arg[1]);
+            dst = Saturate(dst);
             break;
 
           case D3DTOP_BLENDCURRENTALPHA:
