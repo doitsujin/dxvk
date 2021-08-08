@@ -128,8 +128,7 @@ namespace dxvk {
     DxsoSamplerInfo color[SamplerTypeCount];
     DxsoSamplerInfo depth[SamplerTypeCount];
 
-    uint32_t colorSpecConst;
-    uint32_t depthSpecConst;
+    uint32_t boundConst;
 
     DxsoTextureType type;
   };
@@ -270,6 +269,7 @@ namespace dxvk {
     SpirvModule                m_module;
 
     uint32_t                   m_boolSpecConstant;
+    uint32_t                   m_depthSpecConstant;
 
     ///////////////////////////////////////////////////////
     // Resource slot description for the shader. This will

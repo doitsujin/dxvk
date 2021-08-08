@@ -3710,6 +3710,19 @@ namespace dxvk {
     DWORD oldUsage = oldTexture != nullptr ? oldTexture->Desc()->Usage : 0;
     DWORD newUsage = newTexture != nullptr ? newTexture->Desc()->Usage : 0;
 
+    if (newTexture != nullptr) {
+      const bool oldDepth = m_depthTextures & (1u << StateSampler);
+      const bool newDepth = newTexture->IsShadow();
+
+      if (oldDepth != newDepth) {
+        m_depthTextures &= ~(1u << StateSampler);
+        if (newDepth)
+          m_depthTextures |= 1u << StateSampler;
+
+        m_dirtySamplerStates |= 1u << StateSampler;
+      }
+    }
+
     DWORD combinedUsage = oldUsage | newUsage;
 
     TextureChangePrivate(m_state.textures[StateSampler], pTexture);
@@ -5703,6 +5716,7 @@ namespace dxvk {
     key.MipmapLodBias = bit::cast<float>(state[D3DSAMP_MIPMAPLODBIAS]);
     key.MaxMipLevel   = state[D3DSAMP_MAXMIPLEVEL];
     key.BorderColor   = D3DCOLOR(state[D3DSAMP_BORDERCOLOR]);
+    key.Depth         = m_depthTextures & (1u << Sampler);
 
     if (m_d3d9Options.samplerAnisotropy != -1) {
       if (key.MagFilter == D3DTEXF_LINEAR)
@@ -5718,75 +5732,59 @@ namespace dxvk {
 
     auto samplerInfo = RemapStateSamplerShader(Sampler);
 
-    const uint32_t colorSlot = computeResourceSlotId(
-      samplerInfo.first, DxsoBindingType::ColorImage,
-      samplerInfo.second);
-
-    const uint32_t depthSlot = computeResourceSlotId(
-      samplerInfo.first, DxsoBindingType::DepthImage,
+    const uint32_t slot = computeResourceSlotId(
+      samplerInfo.first, DxsoBindingType::Image,
       samplerInfo.second);
 
     EmitCs([this,
-      cColorSlot = colorSlot,
-      cDepthSlot = depthSlot,
-      cKey       = key
+      cSlot = slot,
+      cKey  = key
     ] (DxvkContext* ctx) {
       auto pair = m_samplers.find(cKey);
       if (pair != m_samplers.end()) {
-        ctx->bindResourceSampler(cColorSlot, pair->second.color);
-        ctx->bindResourceSampler(cDepthSlot, pair->second.depth);
+        ctx->bindResourceSampler(cSlot, pair->second);
         return;
       }
 
       auto mipFilter = DecodeMipFilter(cKey.MipFilter);
 
-      DxvkSamplerCreateInfo colorInfo;
-      colorInfo.addressModeU   = DecodeAddressMode(cKey.AddressU);
-      colorInfo.addressModeV   = DecodeAddressMode(cKey.AddressV);
-      colorInfo.addressModeW   = DecodeAddressMode(cKey.AddressW);
-      colorInfo.compareToDepth = VK_FALSE;
-      colorInfo.compareOp      = VK_COMPARE_OP_NEVER;
-      colorInfo.magFilter      = DecodeFilter(cKey.MagFilter);
-      colorInfo.minFilter      = DecodeFilter(cKey.MinFilter);
-      colorInfo.mipmapMode     = mipFilter.MipFilter;
-      colorInfo.maxAnisotropy  = float(cKey.MaxAnisotropy);
-      colorInfo.useAnisotropy  = cKey.MaxAnisotropy > 1;
-      colorInfo.mipmapLodBias  = cKey.MipmapLodBias;
-      colorInfo.mipmapLodMin   = mipFilter.MipsEnabled ? float(cKey.MaxMipLevel) : 0;
-      colorInfo.mipmapLodMax   = mipFilter.MipsEnabled ? FLT_MAX                 : 0;
-      colorInfo.usePixelCoord  = VK_FALSE;
+      DxvkSamplerCreateInfo info;
+      info.addressModeU   = DecodeAddressMode(cKey.AddressU);
+      info.addressModeV   = DecodeAddressMode(cKey.AddressV);
+      info.addressModeW   = DecodeAddressMode(cKey.AddressW);
+      info.compareToDepth = cKey.Depth;
+      info.compareOp      = cKey.Depth ? VK_COMPARE_OP_LESS_OR_EQUAL : VK_COMPARE_OP_NEVER;
+      info.magFilter      = DecodeFilter(cKey.MagFilter);
+      info.minFilter      = DecodeFilter(cKey.MinFilter);
+      info.mipmapMode     = mipFilter.MipFilter;
+      info.maxAnisotropy  = float(cKey.MaxAnisotropy);
+      info.useAnisotropy  = cKey.MaxAnisotropy > 1;
+      info.mipmapLodBias  = cKey.MipmapLodBias;
+      info.mipmapLodMin   = mipFilter.MipsEnabled ? float(cKey.MaxMipLevel) : 0;
+      info.mipmapLodMax   = mipFilter.MipsEnabled ? FLT_MAX                 : 0;
+      info.usePixelCoord  = VK_FALSE;
 
-      DecodeD3DCOLOR(cKey.BorderColor, colorInfo.borderColor.float32);
+      DecodeD3DCOLOR(cKey.BorderColor, info.borderColor.float32);
 
       if (!m_dxvkDevice->features().extCustomBorderColor.customBorderColorWithoutFormat) {
         // HACK: Let's get OPAQUE_WHITE border color over
         // TRANSPARENT_BLACK if the border RGB is white.
-        if (colorInfo.borderColor.float32[0] == 1.0f
-        && colorInfo.borderColor.float32[1] == 1.0f
-        && colorInfo.borderColor.float32[2] == 1.0f
+        if (info.borderColor.float32[0] == 1.0f
+        && info.borderColor.float32[1] == 1.0f
+        && info.borderColor.float32[2] == 1.0f
         && !m_dxvkDevice->features().extCustomBorderColor.customBorderColors) {
           // Then set the alpha to 1.
-          colorInfo.borderColor.float32[3] = 1.0f;
+          info.borderColor.float32[3] = 1.0f;
         }
       }
 
-      DxvkSamplerCreateInfo depthInfo = colorInfo;
-      depthInfo.compareToDepth = VK_TRUE;
-      depthInfo.compareOp      = VK_COMPARE_OP_LESS_OR_EQUAL;
-      depthInfo.magFilter      = VK_FILTER_LINEAR;
-      depthInfo.minFilter      = VK_FILTER_LINEAR;
-
       try {
-        D3D9SamplerPair pair;
+        auto sampler = m_dxvkDevice->createSampler(info);
 
-        pair.color = m_dxvkDevice->createSampler(colorInfo);
-        pair.depth = m_dxvkDevice->createSampler(depthInfo);
+        m_samplers.insert(std::make_pair(cKey, sampler));
+        ctx->bindResourceSampler(cSlot, std::move(sampler));
 
         m_samplerCount++;
-
-        m_samplers.insert(std::make_pair(cKey, pair));
-        ctx->bindResourceSampler(cColorSlot, pair.color);
-        ctx->bindResourceSampler(cDepthSlot, pair.depth);
       }
       catch (const DxvkError& e) {
         Logger::err(e.message());
@@ -5798,11 +5796,8 @@ namespace dxvk {
   void D3D9DeviceEx::BindTexture(DWORD StateSampler) {
     auto shaderSampler = RemapStateSamplerShader(StateSampler);
 
-    uint32_t colorSlot = computeResourceSlotId(shaderSampler.first,
-      DxsoBindingType::ColorImage, uint32_t(shaderSampler.second));
-
-    uint32_t depthSlot = computeResourceSlotId(shaderSampler.first,
-      DxsoBindingType::DepthImage, uint32_t(shaderSampler.second));
+    uint32_t slot = computeResourceSlotId(shaderSampler.first,
+      DxsoBindingType::Image, uint32_t(shaderSampler.second));
 
     const bool srgb =
       m_state.samplerStates[StateSampler][D3DSAMP_SRGBTEXTURE] & 0x1;
@@ -5829,31 +5824,26 @@ namespace dxvk {
 
     if (commonTex != nullptr) {
       EmitCs([
-        cColorSlot = colorSlot,
-        cDepthSlot = depthSlot,
-        cDepth     = commonTex->IsShadow(),
+        cSlot = slot,
         cImageView = commonTex->GetSampleView(srgb)
       ](DxvkContext* ctx) {
-        ctx->bindResourceView(cColorSlot, !cDepth ? cImageView : nullptr, nullptr);
-        ctx->bindResourceView(cDepthSlot,  cDepth ? cImageView : nullptr, nullptr);
+        ctx->bindResourceView(cSlot, cImageView, nullptr);
       });
     } else {
       EmitCs([
-        cColorSlot = colorSlot,
-        cDepthSlot = depthSlot
+        cSlot = slot
       ](DxvkContext* ctx) {
-        ctx->bindResourceView(cColorSlot, nullptr, nullptr);
-        ctx->bindResourceView(cDepthSlot, nullptr, nullptr);
+        ctx->bindResourceView(cSlot, nullptr, nullptr);
       });
     }
   }
 
 
-  void D3D9DeviceEx::UndirtySamplers() {
-    for (uint32_t dirty = m_dirtySamplerStates; dirty; dirty &= dirty - 1)
+  void D3D9DeviceEx::UndirtySamplers(uint32_t mask) {
+    for (uint32_t dirty = mask; dirty; dirty &= dirty - 1)
       BindSampler(bit::tzcnt(dirty));
 
-    m_dirtySamplerStates = 0;
+    m_dirtySamplerStates &= ~mask;
   }
 
 
@@ -5914,15 +5904,13 @@ namespace dxvk {
         FlushBuffer(vbo);
     }
 
-    uint32_t texturesToUpload = m_activeTexturesToUpload;
-    texturesToUpload &= m_psShaderMasks.samplerMask | m_vsShaderMasks.samplerMask;
+    const uint32_t usedSamplerMask = m_activeTextures & (m_psShaderMasks.samplerMask | m_vsShaderMasks.samplerMask);
 
+    const uint32_t texturesToUpload = m_activeTexturesToUpload & usedSamplerMask;
     if (unlikely(texturesToUpload != 0))
       UploadManagedTextures(texturesToUpload);
 
-    uint32_t texturesToGen = m_activeTexturesToGen;
-    texturesToGen &= m_psShaderMasks.samplerMask | m_vsShaderMasks.samplerMask;
-
+    const uint32_t texturesToGen = m_activeTexturesToGen & usedSamplerMask;
     if (unlikely(texturesToGen != 0))
       GenerateTextureMips(texturesToGen);
 
@@ -5938,8 +5926,9 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyViewportScissor))
       BindViewportAndScissor();
 
-    if (m_dirtySamplerStates)
-      UndirtySamplers();
+    const uint32_t activeDirtySamplers = m_dirtySamplerStates & usedSamplerMask;
+    if (activeDirtySamplers)
+      UndirtySamplers(activeDirtySamplers);
 
     if (m_dirtyTextures)
       UndirtyTextures();
@@ -6029,6 +6018,10 @@ namespace dxvk {
 
       UpdateFixedFunctionPS();
     }
+
+    const uint32_t depthTextureMask = m_depthTextures & usedSamplerMask;
+    if (depthTextureMask != m_lastSamplerDepthMode)
+      UpdateSamplerDepthModeSpecConstant(depthTextureMask);
 
     if (m_flags.test(D3D9DeviceFlag::DirtySharedPixelShaderData)) {
       m_flags.clr(D3D9DeviceFlag::DirtySharedPixelShaderData);
@@ -6720,6 +6713,15 @@ namespace dxvk {
   }
 
 
+  void D3D9DeviceEx::UpdateSamplerDepthModeSpecConstant(uint32_t value) {
+    EmitCs([cBitfield = value](DxvkContext* ctx) {
+      ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::SamplerDepthMode, cBitfield);
+    });
+
+    m_lastSamplerDepthMode = value;
+  }
+
+
   void D3D9DeviceEx::ApplyPrimitiveType(
     DxvkContext*      pContext,
     D3DPRIMITIVETYPE  PrimType) {
@@ -7036,24 +7038,21 @@ namespace dxvk {
     for (uint32_t i = 0; i < caps::MaxStreams; i++)
       m_state.streamFreq[i] = 1;
 
-    for (uint32_t i = 0; i < m_state.textures.size(); i++) {
+    for (uint32_t i = 0; i < m_state.textures.size(); i++)
       TextureChangePrivate(m_state.textures[i], nullptr);
 
-      DWORD sampler = i;
-      auto samplerInfo = RemapStateSamplerShader(sampler);
-      uint32_t colorSlot = computeResourceSlotId(samplerInfo.first, DxsoBindingType::ColorImage, uint32_t(samplerInfo.second));
-      uint32_t depthSlot = computeResourceSlotId(samplerInfo.first, DxsoBindingType::DepthImage, uint32_t(samplerInfo.second));
-
-      EmitCs([
-        cColorSlot = colorSlot,
-        cDepthSlot = depthSlot
-      ](DxvkContext* ctx) {
-        ctx->bindResourceView(cColorSlot, nullptr, nullptr);
-        ctx->bindResourceView(cDepthSlot, nullptr, nullptr);
-      });
-    }
+    EmitCs([
+      cSize = m_state.textures.size()
+    ](DxvkContext* ctx) {
+      for (uint32_t i = 0; i < cSize; i++) {
+        auto samplerInfo = RemapStateSamplerShader(DWORD(i));
+        uint32_t slot = computeResourceSlotId(samplerInfo.first, DxsoBindingType::Image, uint32_t(samplerInfo.second));
+        ctx->bindResourceView(slot, nullptr, nullptr);
+      }
+    });
 
     m_dirtyTextures = 0;
+    m_depthTextures = 0;
 
     auto& ss = m_state.samplerStates;
     for (uint32_t i = 0; i < ss.size(); i++) {
@@ -7088,6 +7087,7 @@ namespace dxvk {
     UpdateSamplerSpecConsant(0u);
     UpdateBoolSpecConstantVertex(0u);
     UpdateBoolSpecConstantPixel(0u);
+    UpdateSamplerDepthModeSpecConstant(0u);
 
     return D3D_OK;
   }

@@ -82,11 +82,6 @@ namespace dxvk {
     uint32_t instanceCount;
   };
 
-  struct D3D9SamplerPair {
-    Rc<DxvkSampler> color;
-    Rc<DxvkSampler> depth;
-  };
-
   struct D3D9BufferSlice {
     DxvkBufferSlice slice = {};
     void*           mapPtr = nullptr;
@@ -840,7 +835,7 @@ namespace dxvk {
 
     void BindTexture(DWORD SamplerSampler);
 
-    void UndirtySamplers();
+    void UndirtySamplers(uint32_t mask);
 
     void UndirtyTextures();
 
@@ -926,6 +921,9 @@ namespace dxvk {
     D3D9DeviceFlags                 m_flags;
     uint32_t                        m_dirtySamplerStates = 0;
     uint32_t                        m_dirtyTextures = 0;
+    // Last state of depth textures. Doesn't update when NULL is bound.
+    // & with m_activeTextures to normalize.
+    uint32_t                        m_depthTextures = 0;
 
     D3D9Adapter*                    m_adapter;
     Rc<DxvkDevice>                  m_dxvkDevice;
@@ -1024,7 +1022,7 @@ namespace dxvk {
 
     std::unordered_map<
       D3D9SamplerKey,
-      D3D9SamplerPair,
+      Rc<DxvkSampler>,
       D3D9SamplerKeyHash,
       D3D9SamplerKeyEq>             m_samplers;
 
@@ -1062,6 +1060,8 @@ namespace dxvk {
 
     uint32_t                        m_activeHazardsDS = 0;
     uint32_t                        m_lastHazardsDS   = 0;
+
+    uint32_t                        m_lastSamplerDepthMode = 0;
 
     D3D9ShaderMasks                 m_vsShaderMasks = D3D9ShaderMasks();
     D3D9ShaderMasks                 m_psShaderMasks = FixedFunctionMask;
@@ -1240,6 +1240,8 @@ namespace dxvk {
     void UpdateProjectionSpecConstant(uint32_t value);
 
     void UpdateFetch4SpecConstant(uint32_t value);
+
+    void UpdateSamplerDepthModeSpecConstant(uint32_t value);
 
   };
 
