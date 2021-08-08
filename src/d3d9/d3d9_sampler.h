@@ -21,6 +21,7 @@ namespace dxvk {
     float MipmapLodBias;
     DWORD MaxMipLevel;
     D3DCOLOR BorderColor;
+    bool Depth;
   };
 
   struct D3D9SamplerKeyHash {

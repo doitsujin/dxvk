@@ -9,8 +9,7 @@ namespace dxvk {
 
   enum class DxsoBindingType : uint32_t {
     ConstantBuffer,
-    ColorImage,
-    DepthImage // <-- We use whatever one is bound to determine whether an image should be 'shadow' sampled or not.
+    Image,
   };
 
   enum DxsoConstantBuffers : uint32_t {
@@ -26,12 +25,22 @@ namespace dxvk {
     PSCount
   };
 
-  uint32_t computeResourceSlotId(
-          DxsoProgramType shaderStage,
-          DxsoBindingType bindingType,
-          uint32_t        bindingIndex);
+  constexpr uint32_t computeResourceSlotId(
+        DxsoProgramType shaderStage,
+        DxsoBindingType bindingType,
+        uint32_t        bindingIndex) {
+    const uint32_t stageOffset = 8 * uint32_t(shaderStage);
 
-  uint32_t getSWVPBufferSlot();
+    if (bindingType == DxsoBindingType::ConstantBuffer)
+      return bindingIndex + stageOffset;
+    else // if (bindingType == DxsoBindingType::Image)
+      return bindingIndex + stageOffset + (shaderStage == DxsoProgramType::PixelShader ? PSCount : VSCount);
+  }
+
+  // TODO: Intergrate into compute resource slot ID/refactor all of this?
+  constexpr uint32_t getSWVPBufferSlot() {
+    return 27; // From last pixel shader slot, above.
+  }
 
   uint32_t RegisterLinkerSlot(DxsoSemantic semantic);
 

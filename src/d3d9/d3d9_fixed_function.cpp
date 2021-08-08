@@ -2092,7 +2092,7 @@ namespace dxvk {
       m_module.setDebugName(sampler.varId, name.c_str());
 
       const uint32_t bindingId = computeResourceSlotId(DxsoProgramType::PixelShader,
-        DxsoBindingType::ColorImage, i);
+        DxsoBindingType::Image, i);
 
       sampler.bound = m_module.specConstBool(true);
       m_module.decorateSpecId(sampler.bound, bindingId);

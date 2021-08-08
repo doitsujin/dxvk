@@ -9,6 +9,7 @@ namespace dxvk {
     std::hash<D3DTEXTUREADDRESS>    tahash;
     std::hash<D3DTEXTUREFILTERTYPE> tfhash;
     std::hash<float>                fhash;
+    std::hash<bool>                 bhash;
 
     state.add(tahash(key.AddressU));
     state.add(tahash(key.AddressV));
@@ -20,6 +21,7 @@ namespace dxvk {
     state.add(fhash (key.MipmapLodBias));
     state.add(dhash (key.MaxMipLevel));
     state.add(dhash (key.BorderColor));
+    state.add(bhash (key.Depth));
 
     return state;
   }
@@ -35,7 +37,8 @@ namespace dxvk {
         && a.MaxAnisotropy  == b.MaxAnisotropy
         && a.MipmapLodBias  == b.MipmapLodBias
         && a.MaxMipLevel    == b.MaxMipLevel
-        && a.BorderColor    == b.BorderColor;
+        && a.BorderColor    == b.BorderColor
+        && a.Depth          == b.Depth;
   }
 
 }
