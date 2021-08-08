@@ -452,13 +452,13 @@ namespace dxvk {
       VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT);
 
     if (!m_d24s8Support)
-      Logger::warn("D3D9: VK_FORMAT_D24_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT");
+      Logger::info("D3D9: VK_FORMAT_D24_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT");
 
     if (!m_d16s8Support) {
       if (m_d24s8Support)
-        Logger::warn("D3D9: VK_FORMAT_D16_UNORM_S8_UINT -> VK_FORMAT_D24_UNORM_S8_UINT");
+        Logger::info("D3D9: VK_FORMAT_D16_UNORM_S8_UINT -> VK_FORMAT_D24_UNORM_S8_UINT");
       else
-        Logger::warn("D3D9: VK_FORMAT_D16_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT");
+        Logger::info("D3D9: VK_FORMAT_D16_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT");
     }
 
     if (!m_a4r4g4b4Support)
