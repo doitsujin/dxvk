@@ -234,7 +234,7 @@ namespace dxvk {
     m_ovrApi = this->loadLibrary();
     
     if (!m_ovrApi) {
-      Logger::warn("OpenVR: Failed to locate module");
+      Logger::info("OpenVR: Failed to locate module");
       return nullptr;
     }
     
