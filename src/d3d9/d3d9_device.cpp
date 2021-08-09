@@ -3666,19 +3666,19 @@ namespace dxvk {
       constexpr DWORD Fetch4Enabled  = MAKEFOURCC('G', 'E', 'T', '4');
       constexpr DWORD Fetch4Disabled = MAKEFOURCC('G', 'E', 'T', '1');
 
-      if (Type == D3DSAMP_MIPMAPLODBIAS) {
-        if (Value == Fetch4Enabled) {
+      if (unlikely(Type == D3DSAMP_MIPMAPLODBIAS)) {
+        if (unlikely(Value == Fetch4Enabled)) {
           m_fetch4Enabled |= 1u << StateSampler;
           if (state[StateSampler][D3DSAMP_MAGFILTER] == D3DTEXF_POINT)
             m_fetch4 |= 1u << StateSampler;
         }
-        else if (Value == Fetch4Disabled) {
+        else if (unlikely(Value == Fetch4Disabled)) {
           m_fetch4Enabled &= ~(1u << StateSampler);
           m_fetch4        &= ~(1u << StateSampler);
         }
       }
 
-      if (Type == D3DSAMP_MAGFILTER && m_fetch4Enabled & (1u << StateSampler)) {
+      if (unlikely(Type == D3DSAMP_MAGFILTER && m_fetch4Enabled & (1u << StateSampler))) {
         if (Value == D3DTEXF_POINT)
           m_fetch4 |=   1u << StateSampler;
         else
