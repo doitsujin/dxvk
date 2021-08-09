@@ -176,7 +176,7 @@ namespace dxvk {
     void ApplyOrCapture(Dst* dst, const Src* src) {
       if (m_captures.flags.test(D3D9CapturedStateFlag::StreamFreq)) {
         for (uint32_t stream = m_captures.streamFreq.dword(0); stream; stream &= stream - 1) {
-          uint32_t idx = bit::tzcnt(stream);
+          uint32_t idx = bit::bsf(stream);
 
           dst->SetStreamSourceFreq(idx, src->streamFreq[idx]);
         }
@@ -188,7 +188,7 @@ namespace dxvk {
       if (m_captures.flags.test(D3D9CapturedStateFlag::RenderStates)) {
         for (uint32_t i = 0; i < m_captures.renderStates.dwordCount(); i++) {
           for (uint32_t rs = m_captures.renderStates.dword(i); rs; rs &= rs - 1) {
-            uint32_t idx = i * 32 + bit::tzcnt(rs);
+            uint32_t idx = i * 32 + bit::bsf(rs);
 
             dst->SetRenderState(D3DRENDERSTATETYPE(idx), src->renderStates[idx]);
           }
@@ -197,10 +197,10 @@ namespace dxvk {
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::SamplerStates)) {
         for (uint32_t sampler = m_captures.samplers.dword(0); sampler; sampler &= sampler - 1) {
-          uint32_t samplerIdx = bit::tzcnt(sampler);            
+          uint32_t samplerIdx = bit::bsf(sampler);            
 
           for (uint32_t state = m_captures.samplerStates[samplerIdx].dword(0); state; state &= state - 1) {
-            uint32_t stateIdx = bit::tzcnt(state);
+            uint32_t stateIdx = bit::bsf(state);
 
             dst->SetStateSamplerState(samplerIdx, D3DSAMPLERSTATETYPE(stateIdx), src->samplerStates[samplerIdx][stateIdx]);
           }
@@ -209,7 +209,7 @@ namespace dxvk {
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::VertexBuffers)) {
         for (uint32_t vb = m_captures.vertexBuffers.dword(0); vb; vb &= vb - 1) {
-          uint32_t idx = bit::tzcnt(vb);
+          uint32_t idx = bit::bsf(vb);
 
           const auto& vbo = src->vertexBuffers[idx];
           dst->SetStreamSource(
@@ -225,7 +225,7 @@ namespace dxvk {
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::Textures)) {
         for (uint32_t tex = m_captures.textures.dword(0); tex; tex &= tex - 1) {
-          uint32_t idx = bit::tzcnt(tex);
+          uint32_t idx = bit::bsf(tex);
 
           dst->SetStateTexture(idx, src->textures[idx]);
         }
@@ -240,7 +240,7 @@ namespace dxvk {
       if (m_captures.flags.test(D3D9CapturedStateFlag::Transforms)) {
         for (uint32_t i = 0; i < m_captures.transforms.dwordCount(); i++) {
           for (uint32_t trans = m_captures.transforms.dword(i); trans; trans &= trans - 1) {
-            uint32_t idx = i * 32 + bit::tzcnt(trans);
+            uint32_t idx = i * 32 + bit::bsf(trans);
 
             dst->SetStateTransform(idx, reinterpret_cast<const D3DMATRIX*>(&src->transforms[idx]));
           }
@@ -249,10 +249,10 @@ namespace dxvk {
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::TextureStages)) {
         for (uint32_t stage = m_captures.textureStages.dword(0); stage; stage &= stage - 1) {
-          uint32_t stageIdx = bit::tzcnt(stage);
+          uint32_t stageIdx = bit::bsf(stage);
             
           for (uint32_t state = m_captures.textureStageStates[stageIdx].dword(0); state; state &= state - 1) {
-            uint32_t stateIdx = bit::tzcnt(state);
+            uint32_t stateIdx = bit::bsf(state);
 
             dst->SetStateTextureStageState(stageIdx, D3D9TextureStageStateTypes(stateIdx), src->textureStages[stageIdx][stateIdx]);
           }
@@ -267,7 +267,7 @@ namespace dxvk {
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::ClipPlanes)) {
         for (uint32_t plane = m_captures.clipPlanes.dword(0); plane; plane &= plane - 1) {
-          uint32_t idx = bit::tzcnt(plane);
+          uint32_t idx = bit::bsf(plane);
 
           dst->SetClipPlane(idx, src->clipPlanes[idx].coeff);
         }
@@ -276,7 +276,7 @@ namespace dxvk {
       if (m_captures.flags.test(D3D9CapturedStateFlag::VsConstants)) {
         for (uint32_t i = 0; i < m_captures.vsConsts.fConsts.dwordCount(); i++) {
           for (uint32_t consts = m_captures.vsConsts.fConsts.dword(i); consts; consts &= consts - 1) {
-            uint32_t idx = i * 32 + bit::tzcnt(consts);
+            uint32_t idx = i * 32 + bit::bsf(consts);
 
             dst->SetVertexShaderConstantF(idx, (float*)&src->vsConsts.fConsts[idx], 1);
           }
@@ -284,7 +284,7 @@ namespace dxvk {
 
         for (uint32_t i = 0; i < m_captures.vsConsts.iConsts.dwordCount(); i++) {
           for (uint32_t consts = m_captures.vsConsts.iConsts.dword(i); consts; consts &= consts - 1) {
-            uint32_t idx = i * 32 + bit::tzcnt(consts);
+            uint32_t idx = i * 32 + bit::bsf(consts);
 
             dst->SetVertexShaderConstantI(idx, (int*)&src->vsConsts.iConsts[idx], 1);
           }
@@ -299,7 +299,7 @@ namespace dxvk {
       if (m_captures.flags.test(D3D9CapturedStateFlag::PsConstants)) {
         for (uint32_t i = 0; i < m_captures.psConsts.fConsts.dwordCount(); i++) {
           for (uint32_t consts = m_captures.psConsts.fConsts.dword(i); consts; consts &= consts - 1) {
-            uint32_t idx = i * 32 + bit::tzcnt(consts);
+            uint32_t idx = i * 32 + bit::bsf(consts);
 
             dst->SetPixelShaderConstantF(idx, (float*)&src->psConsts.fConsts[idx], 1);
           }
@@ -307,7 +307,7 @@ namespace dxvk {
 
         for (uint32_t i = 0; i < m_captures.psConsts.iConsts.dwordCount(); i++) {
           for (uint32_t consts = m_captures.psConsts.iConsts.dword(i); consts; consts &= consts - 1) {
-            uint32_t idx = i * 32 + bit::tzcnt(consts);
+            uint32_t idx = i * 32 + bit::bsf(consts);
 
             dst->SetPixelShaderConstantI(idx, (int*)&src->psConsts.iConsts[idx], 1);
           }
