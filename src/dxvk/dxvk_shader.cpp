@@ -186,7 +186,7 @@ namespace dxvk {
     
     // Replace undefined input variables with zero
     for (uint32_t u = info.undefinedInputs; u; u &= u - 1)
-      eliminateInput(spirvCode, bit::tzcnt(u));
+      eliminateInput(spirvCode, bit::bsf(u));
 
     return DxvkShaderModule(vkd, this, spirvCode);
   }

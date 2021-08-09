@@ -118,7 +118,7 @@ namespace dxvk {
       if (!mask)
         return -1;
       
-      return BitCount * intId + bit::tzcnt(mask);
+      return BitCount * intId + bit::bsf(mask);
     }
 
     bool operator == (const DxvkBindingSet& other) const {
