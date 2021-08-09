@@ -5868,7 +5868,8 @@ namespace dxvk {
   void D3D9DeviceEx::MarkTextureBindingDirty(IDirect3DBaseTexture9* texture) {
     D3D9DeviceLock lock = LockDevice();
 
-    for (uint32_t i = 0; i < m_state.textures.size(); i++) {
+    for (uint32_t tex = m_activeTextures; tex; tex &= tex - 1) {
+      const uint32_t i = bit::tzcnt(tex);
       if (m_state.textures[i] == texture)
         m_dirtyTextures |= 1u << i;
     }
