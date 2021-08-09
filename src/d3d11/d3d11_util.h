@@ -13,7 +13,7 @@ namespace dxvk {
     uint32_t count = 0;
     
     while (Mask != 0) {
-      uint32_t id = bit::tzcnt(Mask);
+      uint32_t id = bit::bsf(Mask);
       pData[count++] = pData[id];
       Mask &= Mask - 1;
     }
