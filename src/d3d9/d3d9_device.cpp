@@ -3660,7 +3660,7 @@ namespace dxvk {
      || Type == D3DSAMP_MAXMIPLEVEL
      || Type == D3DSAMP_BORDERCOLOR)
       m_dirtySamplerStates |= 1u << StateSampler;
-    else if (Type == D3DSAMP_SRGBTEXTURE && m_state.textures[StateSampler] != nullptr)
+    else if (Type == D3DSAMP_SRGBTEXTURE && (m_activeTextures & (1u << StateSampler)))
       m_dirtyTextures |= 1u << StateSampler;
 
     constexpr DWORD Fetch4Enabled  = MAKEFOURCC('G', 'E', 'T', '4');
