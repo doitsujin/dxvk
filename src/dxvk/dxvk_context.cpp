@@ -3360,7 +3360,7 @@ namespace dxvk {
                         && (dstImage->info().usage & tgtUsage);
     
     // If needed, create a temporary render target for the copy
-    Rc<DxvkImage>            tgtImage       = dstImage;
+    Rc<DxvkImage>            tgtImage;
     VkImageSubresourceLayers tgtSubresource = dstSubresource;
     VkOffset3D               tgtOffset      = dstOffset;
 
@@ -3385,6 +3385,8 @@ namespace dxvk {
       tgtSubresource.baseArrayLayer = 0;
 
       tgtOffset = { 0, 0, 0 };
+    } else {
+      tgtImage = dstImage;
     }
     
     // Create source and destination image views
