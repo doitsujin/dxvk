@@ -4448,7 +4448,7 @@ namespace dxvk {
       m_state.om.framebuffer = fb;
 
       for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-        Rc<DxvkImageView> attachment = fb->getColorTarget(i).view;
+        const Rc<DxvkImageView>& attachment = fb->getColorTarget(i).view;
 
         VkComponentMapping mapping = attachment != nullptr
           ? util::invertComponentMapping(attachment->info().swizzle)
