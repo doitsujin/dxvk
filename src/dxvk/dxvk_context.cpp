@@ -4729,7 +4729,7 @@ namespace dxvk {
         xfbBuffers[i] = m_common->dummyResources().bufferHandle();
       
       if (physSlice.handle != VK_NULL_HANDLE) {
-        auto buffer = m_state.xfb.buffers[i].buffer();
+        const Rc<DxvkBuffer>& buffer = m_state.xfb.buffers[i].buffer();
         buffer->setXfbVertexStride(gsOptions.xfbStrides[i]);
         
         m_cmd->trackResource<DxvkAccess::Write>(buffer);
