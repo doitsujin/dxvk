@@ -212,7 +212,7 @@ namespace dxvk {
       streamMask |= 1u << m_xfbVars[i].streamId;
     
     for (uint32_t mask = streamMask; mask != 0; mask &= mask - 1) {
-      const uint32_t streamId = bit::tzcnt(mask);
+      const uint32_t streamId = bit::bsf(mask);
 
       emitXfbOutputSetup(streamId, true);
       m_module.opEmitVertex(m_module.constu32(streamId));
