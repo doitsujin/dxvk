@@ -5,19 +5,18 @@
 namespace dxvk {
 
   enum D3D9SpecConstantId : uint32_t {
-    AlphaTestEnable = 0,
-    AlphaCompareOp  = 1,
-    SamplerType     = 2,
-    FogEnabled      = 3,
-    VertexFogMode   = 4,
-    PixelFogMode    = 5,
+    AlphaCompareOp  = 0,
+    SamplerType     = 1,
+    FogEnabled      = 2,
+    VertexFogMode   = 3,
+    PixelFogMode    = 4,
 
-    PointMode       = 6,
-    ProjectionType  = 7,
+    PointMode       = 5,
+    ProjectionType  = 6,
 
-    VertexShaderBools = 8,
-    PixelShaderBools  = 9,
-    Fetch4            = 10
+    VertexShaderBools = 7,
+    PixelShaderBools  = 8,
+    Fetch4            = 9
   };
 
 }

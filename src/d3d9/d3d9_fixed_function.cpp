@@ -2211,12 +2211,7 @@ namespace dxvk {
     uint32_t floatPtr = m_module.defPointerType(m_floatType, spv::StorageClassPushConstant);
 
     // Declare spec constants for render states
-    uint32_t alphaTestId = m_module.specConstBool(false);
     uint32_t alphaFuncId = m_module.specConst32(m_module.defIntType(32, 0), 0);
-
-    m_module.setDebugName(alphaTestId, "alpha_test");
-    m_module.decorateSpecId(alphaTestId, getSpecId(D3D9SpecConstantId::AlphaTestEnable));
-
     m_module.setDebugName(alphaFuncId, "alpha_func");
     m_module.decorateSpecId(alphaFuncId, getSpecId(D3D9SpecConstantId::AlphaCompareOp));
 
@@ -2241,8 +2236,9 @@ namespace dxvk {
     uint32_t atestSkipLabel = m_module.allocateId();
 
     // if (alpha_test) { ... }
+    uint32_t isNotAlways = m_module.opINotEqual(boolType, alphaFuncId, m_module.constu32(VK_COMPARE_OP_ALWAYS));
     m_module.opSelectionMerge(atestSkipLabel, spv::SelectionControlMaskNone);
-    m_module.opBranchConditional(alphaTestId, atestBeginLabel, atestSkipLabel);
+    m_module.opBranchConditional(isNotAlways, atestBeginLabel, atestSkipLabel);
     m_module.opLabel(atestBeginLabel);
 
     // Load alpha component
@@ -2293,8 +2289,6 @@ namespace dxvk {
       atestVariables.size(),
       atestVariables.data());
     uint32_t atestDiscard = m_module.opLogicalNot(boolType, atestResult);
-
-    atestResult = m_module.opLogicalNot(boolType, atestResult);
 
     // if (do_discard) { ... }
     m_module.opSelectionMerge(atestKeepLabel, spv::SelectionControlMaskNone);
