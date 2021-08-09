@@ -3678,7 +3678,7 @@ namespace dxvk {
       }
     }
 
-    if (unlikely(Type == D3DSAMP_MAGFILTER && m_fetch4Enabled & (1u << StateSampler))) {
+    if (unlikely(Type == D3DSAMP_MAGFILTER && (m_fetch4Enabled & (1u << StateSampler)))) {
       if (Value == D3DTEXF_POINT)
         m_fetch4 |=   1u << StateSampler;
       else
