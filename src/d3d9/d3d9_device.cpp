@@ -5682,7 +5682,7 @@ namespace dxvk {
   void D3D9DeviceEx::BindDepthStencilRefrence() {
     auto& rs = m_state.renderStates;
 
-    uint32_t ref = uint32_t(rs[D3DRS_STENCILREF]);
+    uint32_t ref = uint32_t(rs[D3DRS_STENCILREF]) & 0xff;
 
     EmitCs([cRef = ref] (DxvkContext* ctx) {
       ctx->setStencilReference(cRef);
