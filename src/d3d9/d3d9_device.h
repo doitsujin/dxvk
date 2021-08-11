@@ -918,33 +918,6 @@ namespace dxvk {
 
   private:
 
-    D3D9DeviceFlags                 m_flags;
-    uint32_t                        m_dirtySamplerStates = 0;
-    uint32_t                        m_dirtyTextures = 0;
-    // Last state of depth textures. Doesn't update when NULL is bound.
-    // & with m_activeTextures to normalize.
-    uint32_t                        m_depthTextures = 0;
-
-    D3D9Adapter*                    m_adapter;
-    Rc<DxvkDevice>                  m_dxvkDevice;
-
-    Rc<DxvkDataBuffer>              m_updateBuffer;
-    DxvkCsChunkPool                 m_csChunkPool;
-    dxvk::high_resolution_clock::time_point m_lastFlush
-      = dxvk::high_resolution_clock::now();
-    DxvkCsThread                    m_csThread;
-    bool                            m_csIsBusy = false;
-
-    uint32_t                        m_frameLatency = DefaultFrameLatency;
-
-    D3D9Initializer*                m_initializer = nullptr;
-    D3D9FormatHelper*               m_converter   = nullptr;
-
-    DxvkCsChunkRef                  m_csChunk;
-
-    D3D9FFShaderModuleSet           m_ffModules;
-    D3D9SWVPEmulator                m_swvpEmulator;
-
     DxvkCsChunkRef AllocCsChunk() {
       DxvkCsChunk* chunk = m_csChunkPool.allocChunk(DxvkCsChunkFlag::SingleUse);
       return DxvkCsChunkRef(chunk, &m_csChunkPool);
@@ -983,102 +956,6 @@ namespace dxvk {
 
       return D3D9ShaderPermutations::None;
     }
-
-    Com<D3D9InterfaceEx>            m_parent;
-    D3DDEVTYPE                      m_deviceType;
-    HWND                            m_window;
-
-    DWORD                           m_behaviorFlags;
-    Direct3DState9                  m_state;
-    Com<D3D9StateBlock>             m_recorder;
-    D3D9Multithread                 m_multithread;
-
-    Rc<D3D9ShaderModuleSet>         m_shaderModules;
-
-    D3D9ConstantSets                m_consts[DxsoProgramTypes::Count];
-
-    Rc<DxvkBuffer>                  m_vsClipPlanes;
-
-    Rc<DxvkBuffer>                  m_vsFixedFunction;
-    Rc<DxvkBuffer>                  m_vsVertexBlend;
-    Rc<DxvkBuffer>                  m_psFixedFunction;
-    Rc<DxvkBuffer>                  m_psShared;
-
-    D3D9BufferSlice                 m_upBuffer;
-    D3D9BufferSlice                 m_managedUploadBuffer;
-
-    const D3D9Options               m_d3d9Options;
-    DxsoOptions                     m_dxsoOptions;
-
-    BOOL                            m_isSWVP;
-
-    D3DPRESENT_PARAMETERS           m_presentParams;
-
-    D3D9Cursor                      m_cursor;
-
-    Com<D3D9Surface, false>         m_autoDepthStencil;
-
-    Com<D3D9SwapChainEx, false>     m_implicitSwapchain;
-
-    std::unordered_map<
-      D3D9SamplerKey,
-      Rc<DxvkSampler>,
-      D3D9SamplerKeyHash,
-      D3D9SamplerKeyEq>             m_samplers;
-
-    std::unordered_map<
-      DWORD,
-      Com<D3D9VertexDecl,
-      false>>                       m_fvfTable;
-
-    D3D9InputAssemblyState          m_iaState;
-
-    uint32_t                        m_instancedData   = 0;
-    uint32_t                        m_lastSamplerTypeBitfield = 0;
-    uint32_t                        m_samplerTypeBitfield = 0;
-    uint32_t                        m_lastProjectionBitfield = 0;
-    uint32_t                        m_projectionBitfield = 0;
-
-    uint32_t                        m_lastBoolSpecConstantVertex = 0;
-    uint32_t                        m_lastBoolSpecConstantPixel  = 0;
-
-    uint32_t                        m_lastPointMode = 0;
-
-    uint32_t                        m_activeRTs        = 0;
-    uint32_t                        m_activeRTTextures = 0;
-    uint32_t                        m_activeDSTextures = 0;
-    uint32_t                        m_activeHazardsRT  = 0;
-    uint32_t                        m_alphaSwizzleRTs  = 0;
-    uint32_t                        m_activeTextures   = 0;
-    uint32_t                        m_activeTexturesToUpload = 0;
-    uint32_t                        m_activeTexturesToGen    = 0;
-    uint32_t                        m_boundRTs        = 0;
-
-    uint32_t                        m_fetch4Enabled = 0;
-    uint32_t                        m_fetch4        = 0;
-    uint32_t                        m_lastFetch4    = 0;
-
-    uint32_t                        m_activeHazardsDS = 0;
-    uint32_t                        m_lastHazardsDS   = 0;
-
-    uint32_t                        m_lastSamplerDepthMode = 0;
-
-    D3D9ShaderMasks                 m_vsShaderMasks = D3D9ShaderMasks();
-    D3D9ShaderMasks                 m_psShaderMasks = FixedFunctionMask;
-
-    D3D9ViewportInfo                m_viewportInfo;
-
-    std::atomic<int64_t>            m_availableMemory = 0;
-    std::atomic<int32_t>            m_samplerCount = 0;
-
-    bool                            m_amdATOC         = false;
-    bool                            m_nvATOC          = false;
-    bool                            m_ffZTest         = false;
-
-    float                           m_depthBiasScale  = 0.0f;
-
-    D3D9ConstantLayout              m_vsLayout;
-    D3D9ConstantLayout              m_psLayout;
 
     void DetermineConstantLayouts(bool canSWVP);
 
@@ -1242,6 +1119,124 @@ namespace dxvk {
     void UpdateFetch4SpecConstant(uint32_t value);
 
     void UpdateSamplerDepthModeSpecConstant(uint32_t value);
+
+    Com<D3D9InterfaceEx>            m_parent;
+    D3DDEVTYPE                      m_deviceType;
+    HWND                            m_window;
+    WORD                            m_behaviorFlags;
+    D3DPRESENT_PARAMETERS           m_presentParams;
+
+    D3D9Adapter*                    m_adapter;
+    Rc<DxvkDevice>                  m_dxvkDevice;
+
+    uint32_t                        m_frameLatency = DefaultFrameLatency;
+
+    D3D9Initializer*                m_initializer = nullptr;
+    D3D9FormatHelper*               m_converter   = nullptr;
+
+    D3D9FFShaderModuleSet           m_ffModules;
+    D3D9SWVPEmulator                m_swvpEmulator;
+
+    Com<D3D9StateBlock>             m_recorder;
+
+    Rc<D3D9ShaderModuleSet>         m_shaderModules;
+
+    Rc<DxvkBuffer>                  m_vsClipPlanes;
+
+    Rc<DxvkBuffer>                  m_vsFixedFunction;
+    Rc<DxvkBuffer>                  m_vsVertexBlend;
+    Rc<DxvkBuffer>                  m_psFixedFunction;
+    Rc<DxvkBuffer>                  m_psShared;
+
+    D3D9BufferSlice                 m_upBuffer;
+    D3D9BufferSlice                 m_managedUploadBuffer;
+
+    D3D9Cursor                      m_cursor;
+
+    Com<D3D9Surface, false>         m_autoDepthStencil;
+
+    Com<D3D9SwapChainEx, false>     m_implicitSwapchain;
+
+    const D3D9Options               m_d3d9Options;
+    DxsoOptions                     m_dxsoOptions;
+
+    std::unordered_map<
+      D3D9SamplerKey,
+      Rc<DxvkSampler>,
+      D3D9SamplerKeyHash,
+      D3D9SamplerKeyEq>             m_samplers;
+
+    std::unordered_map<
+      DWORD,
+      Com<D3D9VertexDecl,
+      false>>                       m_fvfTable;
+
+    D3D9Multithread                 m_multithread;
+    D3D9InputAssemblyState          m_iaState;
+
+    D3D9DeviceFlags                 m_flags;
+    // Last state of depth textures. Doesn't update when NULL is bound.
+    // & with m_activeTextures to normalize.
+    uint32_t                        m_instancedData = 0;
+
+    uint32_t                        m_depthTextures = 0;
+    uint32_t                        m_samplerTypeBitfield = 0;
+    uint32_t                        m_projectionBitfield  = 0;
+
+    uint32_t                        m_dirtySamplerStates = 0;
+    uint32_t                        m_dirtyTextures      = 0;
+
+    uint32_t                        m_boundRTs = 0;
+
+    uint32_t                        m_activeRTs              = 0;
+    uint32_t                        m_activeRTTextures       = 0;
+    uint32_t                        m_activeDSTextures       = 0;
+    uint32_t                        m_activeHazardsRT        = 0;
+    uint32_t                        m_activeHazardsDS        = 0;
+    uint32_t                        m_alphaSwizzleRTs        = 0;
+    uint32_t                        m_activeTextures         = 0;
+    uint32_t                        m_activeTexturesToUpload = 0;
+    uint32_t                        m_activeTexturesToGen    = 0;
+
+    uint32_t                        m_fetch4Enabled = 0;
+    uint32_t                        m_fetch4        = 0;
+
+    uint32_t                        m_lastBoolSpecConstantVertex = 0;
+    uint32_t                        m_lastBoolSpecConstantPixel  = 0;
+    uint32_t                        m_lastSamplerDepthMode = 0;
+    uint32_t                        m_lastProjectionBitfield = 0;
+    uint32_t                        m_lastSamplerTypeBitfield = 0;
+    uint32_t                        m_lastPointMode = 0;
+    uint32_t                        m_lastFetch4    = 0;
+    uint32_t                        m_lastHazardsDS = 0;
+
+    D3D9ShaderMasks                 m_vsShaderMasks = D3D9ShaderMasks();
+    D3D9ShaderMasks                 m_psShaderMasks = FixedFunctionMask;
+
+    bool                            m_isSWVP;
+    bool                            m_amdATOC         = false;
+    bool                            m_nvATOC          = false;
+    bool                            m_ffZTest         = false;
+
+    float                           m_depthBiasScale  = 0.0f;
+
+    D3D9ConstantLayout              m_vsLayout;
+    D3D9ConstantLayout              m_psLayout;
+    D3D9ConstantSets                m_consts[DxsoProgramTypes::Count];
+
+    D3D9ViewportInfo                m_viewportInfo;
+
+    DxvkCsChunkPool                 m_csChunkPool;
+    dxvk::high_resolution_clock::time_point m_lastFlush
+      = dxvk::high_resolution_clock::now();
+    DxvkCsThread                    m_csThread;
+    DxvkCsChunkRef                  m_csChunk;
+    bool                            m_csIsBusy = false;
+
+    std::atomic<int64_t>            m_availableMemory = { 0 };
+    std::atomic<int32_t>            m_samplerCount    = { 0 };
+
+    Direct3DState9                  m_state;
 
   };
 

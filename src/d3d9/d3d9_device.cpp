@@ -38,18 +38,18 @@ namespace dxvk {
           HWND                   hFocusWindow,
           DWORD                  BehaviorFlags,
           Rc<DxvkDevice>         dxvkDevice)
-    : m_adapter        ( pAdapter )
-    , m_dxvkDevice     ( dxvkDevice )
-    , m_csThread       ( dxvkDevice->createContext() )
-    , m_csChunk        ( AllocCsChunk() )
-    , m_parent         ( pParent )
+    : m_parent         ( pParent )
     , m_deviceType     ( DeviceType )
     , m_window         ( hFocusWindow )
     , m_behaviorFlags  ( BehaviorFlags )
-    , m_multithread    ( BehaviorFlags & D3DCREATE_MULTITHREADED )
+    , m_adapter        ( pAdapter )
+    , m_dxvkDevice     ( dxvkDevice )
     , m_shaderModules  ( new D3D9ShaderModuleSet )
     , m_d3d9Options    ( dxvkDevice, pParent->GetInstance()->config() )
-    , m_isSWVP         ( (BehaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING) ? TRUE : FALSE ) {
+    , m_multithread    ( BehaviorFlags & D3DCREATE_MULTITHREADED )
+    , m_isSWVP         ( (BehaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING) ? true : false )
+    , m_csThread       ( dxvkDevice->createContext() )
+    , m_csChunk        ( AllocCsChunk() ) {
     // If we can SWVP, then we use an extended constant set
     // as SWVP has many more slots available than HWVP.
     bool canSWVP = CanSWVP();
