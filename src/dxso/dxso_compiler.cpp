@@ -188,6 +188,8 @@ namespace dxvk {
       return this->emitTextureSample(ctx);
     case DxsoOpcode::TexKill:
       return this->emitTextureKill(ctx);
+    case DxsoOpcode::TexDepth:
+      return this->emitTextureDepth(ctx);
 
     case DxsoOpcode::TexM3x3Pad:
     case DxsoOpcode::TexM3x2Pad:
@@ -3053,6 +3055,30 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         m_module.opLabel(labelEnd);
       }
     }
+  }
+
+  void DxsoCompiler::emitTextureDepth(const DxsoInstructionContext& ctx) {
+    const uint32_t fType = m_module.defFloatType(32);
+
+    DxsoRegMask srcMask(true, true, false, false);
+    uint32_t r5 = emitRegisterLoad(ctx.src[0], srcMask).id;
+    uint32_t x = 0;
+    uint32_t y = 1;
+
+    uint32_t xValue = m_module.opCompositeExtract(fType, r5, 1, &x);
+    uint32_t yValue = m_module.opCompositeExtract(fType, r5, 1, &y);
+
+    // The docs say if yValue is 0 the result is 1.0 but native drivers return
+    // 0 for xValue <= 0. So we don't have to do anything special since -INF and
+    // NAN get clamped to 0 at the end of the shader.
+    uint32_t result = m_module.opFDiv(fType, xValue, yValue);
+
+    DxsoBaseRegister depth;
+    depth.id = { DxsoRegisterType::DepthOut, 0 };
+
+    DxsoRegisterPointer depthPtr = emitGetOperandPtr(depth, nullptr);
+
+    m_module.opStore(depthPtr.id, result);
   }
 
 
