@@ -837,7 +837,7 @@ namespace dxvk {
 
     void UndirtySamplers(uint32_t mask);
 
-    void UndirtyTextures();
+    void UndirtyTextures(uint32_t mask);
 
     void MarkTextureBindingDirty(IDirect3DBaseTexture9* texture);
 

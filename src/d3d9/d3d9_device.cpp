@@ -5847,11 +5847,11 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::UndirtyTextures() {
-    for (uint32_t tex = m_dirtyTextures; tex; tex &= tex - 1)
+  void D3D9DeviceEx::UndirtyTextures(uint32_t mask) {
+    for (uint32_t tex = mask; tex; tex &= tex - 1)
       BindTexture(bit::tzcnt(tex));
   
-    m_dirtyTextures = 0;
+    m_dirtyTextures &= ~mask;
   }
 
   void D3D9DeviceEx::MarkTextureBindingDirty(IDirect3DBaseTexture9* texture) {
@@ -5930,8 +5930,9 @@ namespace dxvk {
     if (activeDirtySamplers)
       UndirtySamplers(activeDirtySamplers);
 
-    if (m_dirtyTextures)
-      UndirtyTextures();
+    const uint32_t activeDirtyTextures = m_dirtyTextures & usedSamplerMask;
+    if (activeDirtyTextures)
+      UndirtyTextures(activeDirtyTextures);
 
     if (m_flags.test(D3D9DeviceFlag::DirtyBlendState))
       BindBlendState();
