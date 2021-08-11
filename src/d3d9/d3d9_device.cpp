@@ -4183,7 +4183,7 @@ namespace dxvk {
     else {
       physSlice = mappedBuffer->getSliceHandle();
 
-      if (!alloced) {
+      if (!alloced || wasWrittenByGPU) {
         if (unlikely(wasWrittenByGPU)) {
           Rc<DxvkImage> resourceImage = pResource->GetImage();
 
