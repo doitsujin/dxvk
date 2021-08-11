@@ -196,11 +196,8 @@ namespace dxvk {
 
   };
 
-  using D3D9TextureGeneric = D3D9BaseTexture<D3D9Surface, IDirect3DBaseTexture9>;
-
   static_assert(sizeof(D3D9Texture2D) == sizeof(D3D9Texture3D) &&
-                sizeof(D3D9Texture2D) == sizeof(D3D9TextureCube) &&
-                sizeof(D3D9Texture2D) == sizeof(D3D9TextureGeneric));
+                sizeof(D3D9Texture2D) == sizeof(D3D9TextureCube));
 
   inline D3D9CommonTexture* GetCommonTexture(IDirect3DBaseTexture9* ptr) {
     if (ptr == nullptr)
@@ -210,7 +207,7 @@ namespace dxvk {
     // no matter the texture type.
     // The compiler is not smart enough to eliminate the call to GetType as it is
     // not marked const.
-    return static_cast<D3D9TextureGeneric*>(ptr)->GetCommonTexture();
+    return static_cast<D3D9Texture2D*>(ptr)->GetCommonTexture();
   }
 
   inline D3D9CommonTexture* GetCommonTexture(D3D9Surface* ptr) {
@@ -232,7 +229,7 @@ namespace dxvk {
     // no matter the texture type.
     // The compiler is not smart enough to eliminate the call to GetType as it is
     // not marked const.
-    return CastRefPrivate<D3D9TextureGeneric>(tex, AddRef);
+    return CastRefPrivate<D3D9Texture2D>(tex, AddRef);
   }
 
   inline void TextureChangePrivate(IDirect3DBaseTexture9*& dst, IDirect3DBaseTexture9* src) {
