@@ -1594,9 +1594,6 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetViewport(const D3DVIEWPORT9* pViewport) {
     D3D9DeviceLock lock = LockDevice();
 
-    if (unlikely(pViewport == nullptr))
-      return D3DERR_INVALIDCALL;
-
     if (unlikely(ShouldRecord()))
       return m_recorder->SetViewport(pViewport);
 
