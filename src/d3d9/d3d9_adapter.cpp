@@ -323,7 +323,7 @@ namespace dxvk {
                                     | D3DPMISCCAPS_CULLCCW
                                     | D3DPMISCCAPS_COLORWRITEENABLE
                                     | D3DPMISCCAPS_CLIPPLANESCALEDPOINTS
-                                 /* | D3DPMISCCAPS_CLIPTLVERTS */
+                                    | D3DPMISCCAPS_CLIPTLVERTS
                                     | D3DPMISCCAPS_TSSARGTEMP
                                     | D3DPMISCCAPS_BLENDOP
                                  /* | D3DPMISCCAPS_NULLREFERENCE */
