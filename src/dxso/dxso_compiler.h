@@ -638,6 +638,7 @@ namespace dxvk {
     void emitTexCoord(const DxsoInstructionContext& ctx);
     void emitTextureSample(const DxsoInstructionContext& ctx);
     void emitTextureKill(const DxsoInstructionContext& ctx);
+    void emitTextureDepth(const DxsoInstructionContext& ctx);
 
     uint32_t emitSample(
             bool                    projected,
