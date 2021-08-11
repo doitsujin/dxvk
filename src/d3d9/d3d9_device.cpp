@@ -4183,79 +4183,81 @@ namespace dxvk {
     else {
       physSlice = mappedBuffer->getSliceHandle();
 
-      if (unlikely(wasWrittenByGPU)) {
-        Rc<DxvkImage> resourceImage = pResource->GetImage();
+      if (!alloced) {
+        if (unlikely(wasWrittenByGPU)) {
+          Rc<DxvkImage> resourceImage = pResource->GetImage();
 
-        Rc<DxvkImage> mappedImage = resourceImage->info().sampleCount != 1
-          ? pResource->GetResolveImage()
-          : std::move(resourceImage);
+          Rc<DxvkImage> mappedImage = resourceImage->info().sampleCount != 1
+            ? pResource->GetResolveImage()
+            : std::move(resourceImage);
 
-        // When using any map mode which requires the image contents
-        // to be preserved, and if the GPU has write access to the
-        // image, copy the current image contents into the buffer.
-        auto subresourceLayers = vk::makeSubresourceLayers(subresource);
+          // When using any map mode which requires the image contents
+          // to be preserved, and if the GPU has write access to the
+          // image, copy the current image contents into the buffer.
+          auto subresourceLayers = vk::makeSubresourceLayers(subresource);
 
-        // We need to resolve this, some games
-        // lock MSAA render targets even though
-        // that's entirely illegal and they explicitly
-        // tell us that they do NOT want to lock them...
-        if (resourceImage != nullptr) {
+          // We need to resolve this, some games
+          // lock MSAA render targets even though
+          // that's entirely illegal and they explicitly
+          // tell us that they do NOT want to lock them...
+          if (resourceImage != nullptr) {
+            EmitCs([
+              cMainImage    = resourceImage,
+              cResolveImage = mappedImage,
+              cSubresource  = subresourceLayers
+            ] (DxvkContext* ctx) {
+              VkImageResolve region;
+              region.srcSubresource = cSubresource;
+              region.srcOffset      = VkOffset3D { 0, 0, 0 };
+              region.dstSubresource = cSubresource;
+              region.dstOffset      = VkOffset3D { 0, 0, 0 };
+              region.extent         = cMainImage->mipLevelExtent(cSubresource.mipLevel);
+
+              if (cSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+                ctx->resolveImage(
+                  cResolveImage, cMainImage, region,
+                  cMainImage->info().format);
+              }
+              else {
+                ctx->resolveDepthStencilImage(
+                  cResolveImage, cMainImage, region,
+                  VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR,
+                  VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR);
+              }
+            });
+          }
+
+          VkFormat packedFormat = GetPackedDepthStencilFormat(desc.Format);
+
           EmitCs([
-            cMainImage    = resourceImage,
-            cResolveImage = mappedImage,
-            cSubresource  = subresourceLayers
+            cImageBuffer  = mappedBuffer,
+            cImage        = std::move(mappedImage),
+            cSubresources = subresourceLayers,
+            cLevelExtent  = levelExtent,
+            cPackedFormat = packedFormat
           ] (DxvkContext* ctx) {
-            VkImageResolve region;
-            region.srcSubresource = cSubresource;
-            region.srcOffset      = VkOffset3D { 0, 0, 0 };
-            region.dstSubresource = cSubresource;
-            region.dstOffset      = VkOffset3D { 0, 0, 0 };
-            region.extent         = cMainImage->mipLevelExtent(cSubresource.mipLevel);
-
-            if (cSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-              ctx->resolveImage(
-                cResolveImage, cMainImage, region,
-                cMainImage->info().format);
-            }
-            else {
-              ctx->resolveDepthStencilImage(
-                cResolveImage, cMainImage, region,
-                VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR,
-                VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR);
+            if (cSubresources.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+              ctx->copyImageToBuffer(cImageBuffer, 0, 4, 0,
+                cImage, cSubresources, VkOffset3D { 0, 0, 0 },
+                cLevelExtent);
+            } else {
+              // Copying DS to a packed buffer is only supported for D24S8 and D32S8
+              // right now so the 4 byte row alignment is guaranteed by the format size
+              ctx->copyDepthStencilImageToPackedBuffer(
+                cImageBuffer, 0,
+                VkOffset2D { 0, 0 },
+                VkExtent2D { cLevelExtent.width, cLevelExtent.height },
+                cImage, cSubresources,
+                VkOffset2D { 0, 0 },
+                VkExtent2D { cLevelExtent.width, cLevelExtent.height },
+                cPackedFormat);
             }
           });
         }
 
-        VkFormat packedFormat = GetPackedDepthStencilFormat(desc.Format);
-
-        EmitCs([
-          cImageBuffer  = mappedBuffer,
-          cImage        = std::move(mappedImage),
-          cSubresources = subresourceLayers,
-          cLevelExtent  = levelExtent,
-          cPackedFormat = packedFormat
-        ] (DxvkContext* ctx) {
-          if (cSubresources.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-            ctx->copyImageToBuffer(cImageBuffer, 0, 4, 0,
-              cImage, cSubresources, VkOffset3D { 0, 0, 0 },
-              cLevelExtent);
-          } else {
-            // Copying DS to a packed buffer is only supported for D24S8 and D32S8
-            // right now so the 4 byte row alignment is guaranteed by the format size
-            ctx->copyDepthStencilImageToPackedBuffer(
-              cImageBuffer, 0,
-              VkOffset2D { 0, 0 },
-              VkExtent2D { cLevelExtent.width, cLevelExtent.height },
-              cImage, cSubresources,
-              VkOffset2D { 0, 0 },
-              VkExtent2D { cLevelExtent.width, cLevelExtent.height },
-              cPackedFormat);
-          }
-        });
-
         if (!WaitForResource(mappedBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
-      } else if (alloced) {
+      } else {
         // If we are a new alloc, and we weren't written by the GPU
         // that means that we are a newly initialized
         // texture, and hence can just memset -> 0 and
