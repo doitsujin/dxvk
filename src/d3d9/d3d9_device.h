@@ -1137,7 +1137,7 @@ namespace dxvk {
     D3D9FFShaderModuleSet           m_ffModules;
     D3D9SWVPEmulator                m_swvpEmulator;
 
-    Com<D3D9StateBlock>             m_recorder;
+    Com<D3D9StateBlock, false>      m_recorder;
 
     Rc<D3D9ShaderModuleSet>         m_shaderModules;
 
