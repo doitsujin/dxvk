@@ -1492,8 +1492,8 @@ namespace dxvk {
 
       // Clear render targets if we need to.
       if (Flags & D3DCLEAR_TARGET) {
-        for (uint32_t rt = m_boundRTs; rt; rt &= rt - 1) {
-          const auto& rts = m_state.renderTargets[bit::tzcnt(rt)];
+        for (uint32_t rt : bit::BitMask(m_boundRTs)) {
+          const auto& rts = m_state.renderTargets[rt];
           const auto& rtv = rts->GetRenderTargetView(srgb);
 
           if (likely(rtv != nullptr)) {
@@ -4299,9 +4299,8 @@ namespace dxvk {
     if (managed && !m_d3d9Options.evictManagedOnUnlock && !readOnly) {
       pResource->SetNeedsUpload(Subresource, true);
 
-      for (uint32_t tex = m_activeTextures; tex; tex &= tex - 1) {
+      for (uint32_t i : bit::BitMask(m_activeTextures)) {
         // Guaranteed to not be nullptr...
-        const uint32_t i = bit::tzcnt(tex);
         auto texInfo = GetCommonTexture(m_state.textures[i]);
 
         if (texInfo == pResource) {
@@ -5115,13 +5114,12 @@ namespace dxvk {
     masks.samplerMask &= m_activeRTTextures;
 
     m_activeHazardsRT = m_activeHazardsRT & (~rtMask);
-    for (uint32_t rt = masks.rtMask; rt; rt &= rt - 1) {
-      for (uint32_t sampler = masks.samplerMask; sampler; sampler &= sampler - 1) {
-        const uint32_t rtIdx = bit::tzcnt(rt);
+    for (uint32_t rtIdx : bit::BitMask(masks.rtMask)) {
+      for (uint32_t samplerIdx : bit::BitMask(masks.samplerMask)) {
         D3D9Surface* rtSurf = m_state.renderTargets[rtIdx].ptr();
 
         IDirect3DBaseTexture9* rtBase  = rtSurf->GetBaseTexture();
-        IDirect3DBaseTexture9* texBase = m_state.textures[bit::tzcnt(sampler)];
+        IDirect3DBaseTexture9* texBase = m_state.textures[samplerIdx];
 
         // HACK: Don't mark for hazards if we aren't rendering to mip 0!
         // Some games use screenspace passes like this for blurring
@@ -5142,9 +5140,7 @@ namespace dxvk {
     if (m_state.depthStencil != nullptr &&
         m_state.depthStencil->GetBaseTexture() != nullptr) {
       uint32_t samplerMask = m_activeDSTextures & texMask;
-      for (uint32_t sampler = samplerMask; sampler; sampler &= sampler - 1) {
-        const uint32_t samplerIdx = bit::tzcnt(sampler);
-
+      for (uint32_t samplerIdx : bit::BitMask(samplerMask)) {
         IDirect3DBaseTexture9* dsBase  = m_state.depthStencil->GetBaseTexture();
         IDirect3DBaseTexture9* texBase = m_state.textures[samplerIdx];
 
@@ -5158,9 +5154,9 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::MarkRenderHazards() {
-    for (uint32_t rt = m_activeHazardsRT; rt; rt &= rt - 1) {
+    for (uint32_t rtIdx : bit::BitMask(m_activeHazardsRT)) {
       // Guaranteed to not be nullptr...
-      auto tex = m_state.renderTargets[bit::tzcnt(rt)]->GetCommonTexture();
+      auto tex = m_state.renderTargets[rtIdx]->GetCommonTexture();
       if (unlikely(!tex->MarkHazardous())) {
         TransitionImage(tex, VK_IMAGE_LAYOUT_GENERAL);
         m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
@@ -5184,17 +5180,17 @@ namespace dxvk {
 
   void D3D9DeviceEx::UploadManagedTextures(uint32_t mask) {
     // Guaranteed to not be nullptr...
-    for (uint32_t tex = mask; tex; tex &= tex - 1)
-      UploadManagedTexture(GetCommonTexture(m_state.textures[bit::tzcnt(tex)]));
+    for (uint32_t texIdx : bit::BitMask(mask))
+      UploadManagedTexture(GetCommonTexture(m_state.textures[texIdx]));
 
     m_activeTexturesToUpload &= ~mask;
   }
 
 
   void D3D9DeviceEx::GenerateTextureMips(uint32_t mask) {
-    for (uint32_t tex = mask; tex; tex &= tex - 1) {
+    for (uint32_t texIdx : bit::BitMask(mask)) {
       // Guaranteed to not be nullptr...
-      auto texInfo = GetCommonTexture(m_state.textures[bit::tzcnt(tex)]);
+      auto texInfo = GetCommonTexture(m_state.textures[texIdx]);
 
       if (texInfo->NeedsMipGen()) {
         this->EmitGenerateMips(texInfo);
@@ -5210,9 +5206,8 @@ namespace dxvk {
     pResource->SetNeedsMipGen(true);
     pResource->MarkAllWrittenByGPU();
 
-    for (uint32_t tex = m_activeTextures; tex; tex &= tex - 1) {
+    for (uint32_t i : bit::BitMask(m_activeTextures)) {
       // Guaranteed to not be nullptr...
-      const uint32_t i = bit::tzcnt(tex);
       auto texInfo = GetCommonTexture(m_state.textures[i]);
 
       if (texInfo == pResource) {
@@ -5227,9 +5222,8 @@ namespace dxvk {
   void D3D9DeviceEx::MarkTextureMipsUnDirty(D3D9CommonTexture* pResource) {
     pResource->SetNeedsMipGen(false);
 
-    for (uint32_t tex = m_activeTextures; tex; tex &= tex - 1) {
+    for (uint32_t i : bit::BitMask(m_activeTextures)) {
       // Guaranteed to not be nullptr...
-      const uint32_t i = bit::tzcnt(tex);
       auto texInfo = GetCommonTexture(m_state.textures[i]);
 
       if (texInfo == pResource)
@@ -5239,9 +5233,8 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::MarkTextureUploaded(D3D9CommonTexture* pResource) {
-    for (uint32_t tex = m_activeTextures; tex; tex &= tex - 1) {
+    for (uint32_t i : bit::BitMask(m_activeTextures)) {
       // Guaranteed to not be nullptr...
-      const uint32_t i = bit::tzcnt(tex);
       auto texInfo = GetCommonTexture(m_state.textures[i]);
 
       if (texInfo == pResource)
@@ -5381,8 +5374,7 @@ namespace dxvk {
     // target bindings are updated. Set up the attachments.
     VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
 
-    for (uint32_t rt = m_boundRTs; rt; rt &= rt - 1) {
-      uint32_t i = bit::tzcnt(rt);
+    for (uint32_t i : bit::BitMask(m_boundRTs)) {
       const DxvkImageCreateInfo& rtImageInfo = m_state.renderTargets[i]->GetCommonTexture()->GetImage()->info();
 
       if (likely(sampleCount == VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM))
@@ -5846,16 +5838,16 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::UndirtySamplers(uint32_t mask) {
-    for (uint32_t dirty = mask; dirty; dirty &= dirty - 1)
-      BindSampler(bit::tzcnt(dirty));
+    for (uint32_t i : bit::BitMask(mask))
+      BindSampler(i);
 
     m_dirtySamplerStates &= ~mask;
   }
 
 
   void D3D9DeviceEx::UndirtyTextures(uint32_t mask) {
-    for (uint32_t tex = mask; tex; tex &= tex - 1)
-      BindTexture(bit::tzcnt(tex));
+    for (uint32_t i : bit::BitMask(mask))
+      BindTexture(i);
   
     m_dirtyTextures &= ~mask;
   }
@@ -5863,8 +5855,7 @@ namespace dxvk {
   void D3D9DeviceEx::MarkTextureBindingDirty(IDirect3DBaseTexture9* texture) {
     D3D9DeviceLock lock = LockDevice();
 
-    for (uint32_t tex = m_activeTextures; tex; tex &= tex - 1) {
-      const uint32_t i = bit::tzcnt(tex);
+    for (uint32_t i : bit::BitMask(m_activeTextures)) {
       if (m_state.textures[i] == texture)
         m_dirtyTextures |= 1u << i;
     }
