@@ -17,6 +17,7 @@
 #include "util_math.h"
 
 #include <cstring>
+#include <iterator>
 #include <type_traits>
 
 namespace dxvk::bit {
@@ -291,5 +292,58 @@ namespace dxvk::bit {
     uint32_t m_dwords[Dwords];
 
   };
-  
+
+  class BitMask {
+
+  public:
+
+    class iterator: public std::iterator<std::input_iterator_tag,
+      uint32_t, uint32_t, const uint32_t*, uint32_t> {
+    public:
+
+      explicit iterator(uint32_t flags)
+        : m_mask(flags) { }
+
+      iterator& operator ++ () {
+        m_mask &= m_mask - 1;
+        return *this;
+      }
+
+      iterator operator ++ (int) {
+        iterator retval = *this;
+        m_mask &= m_mask - 1;
+        return retval;
+      }
+
+      uint32_t operator * () const {
+        return bsf(m_mask);
+      }
+
+      bool operator == (iterator other) const { return m_mask == other.m_mask; }
+      bool operator != (iterator other) const { return m_mask != other.m_mask; }
+
+    private:
+
+      uint32_t m_mask;
+
+    };
+
+    BitMask() { }
+
+    BitMask(uint32_t n)
+      : m_mask(n) { }
+
+    iterator begin() {
+      return iterator(m_mask);
+    }
+
+    iterator end() {
+      return iterator(0);
+    }
+
+  private:
+
+    uint32_t m_mask;
+
+  };
 }
