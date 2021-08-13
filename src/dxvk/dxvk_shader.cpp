@@ -185,8 +185,8 @@ namespace dxvk {
       std::swap(code[m_o1IdxOffset], code[m_o1LocOffset]);
     
     // Replace undefined input variables with zero
-    for (uint32_t u = info.undefinedInputs; u; u &= u - 1)
-      eliminateInput(spirvCode, bit::tzcnt(u));
+    for (uint32_t u : bit::BitMask(info.undefinedInputs))
+      eliminateInput(spirvCode, u);
 
     return DxvkShaderModule(vkd, this, spirvCode);
   }
