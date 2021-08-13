@@ -12,11 +12,8 @@ namespace dxvk {
   UINT CompactSparseList(T* pData, UINT Mask) {
     uint32_t count = 0;
     
-    while (Mask != 0) {
-      uint32_t id = bit::tzcnt(Mask);
+    for (uint32_t id : bit::BitMask(Mask))
       pData[count++] = pData[id];
-      Mask &= Mask - 1;
-    }
 
     return count;
   }
