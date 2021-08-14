@@ -209,6 +209,10 @@ namespace dxvk {
     { R"(\\KingdomCome\.exe$)", {{
       { "d3d11.apitraceMode",               "True" },
     }} },
+    /* Homefront: The Revolution                  */
+    { R"(\\Homefront2_Release\.exe$)", {{
+      { "d3d11.apitraceMode",               "True" },
+    }} },
     /* Sniper Ghost Warrior Contracts             */
     { R"(\\SGWContracts\.exe$)", {{
       { "d3d11.apitraceMode",               "True" },
