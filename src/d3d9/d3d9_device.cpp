@@ -1521,7 +1521,15 @@ namespace dxvk {
     bool extentMatches = align(extent.width,  alignment) == align(rtSize.width,  alignment)
                       && align(extent.height, alignment) == align(rtSize.height, alignment);
 
-    bool rtSizeMatchesClearSize = offset.x == 0 && offset.y == 0 && extentMatches;
+    bool dsMatches = true;
+    if (depthAspectMask) {
+      auto dsSize = m_state.depthStencil->GetSurfaceExtent();
+
+      dsMatches = align(extent.width,  alignment) == align(dsSize.width,  alignment)
+               && align(extent.height, alignment) == align(dsSize.height, alignment);
+    }
+
+    bool rtSizeMatchesClearSize = offset.x == 0 && offset.y == 0 && extentMatches && dsMatches;
 
     if (likely(!Count && rtSizeMatchesClearSize)) {
       // Fast path w/ ClearRenderTarget for when
