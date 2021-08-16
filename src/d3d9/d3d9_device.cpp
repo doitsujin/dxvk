@@ -5811,9 +5811,7 @@ namespace dxvk {
     // For all our pixel shader textures
     if (likely(StateSampler < 16)) {
       const uint32_t offset = StateSampler * 2;
-      const uint32_t textureType = commonTex != nullptr
-        ? uint32_t(commonTex->GetType() - D3DRTYPE_TEXTURE)
-        : 0;
+      const uint32_t textureType = uint32_t(commonTex->GetType() - D3DRTYPE_TEXTURE);
       const uint32_t textureBitMask = 0b11u << offset;
       const uint32_t textureBits = textureType << offset;
 
@@ -5825,20 +5823,43 @@ namespace dxvk {
       }
     }
 
-    if (commonTex != nullptr) {
-      EmitCs([
-        cSlot = slot,
-        cImageView = commonTex->GetSampleView(srgb)
-      ](DxvkContext* ctx) {
-        ctx->bindResourceView(cSlot, cImageView, nullptr);
-      });
-    } else {
-      EmitCs([
-        cSlot = slot
-      ](DxvkContext* ctx) {
-        ctx->bindResourceView(cSlot, nullptr, nullptr);
-      });
+    EmitCs([
+      cSlot = slot,
+      cImageView = commonTex->GetSampleView(srgb)
+    ](DxvkContext* ctx) {
+      ctx->bindResourceView(cSlot, cImageView, nullptr);
+    });
+  }
+
+
+  void D3D9DeviceEx::UnbindTextures(uint32_t mask) {
+    // For all our pixel shader textures
+    const uint32_t pixelShaderMask = (1u << 16u) - 1;
+
+    // Update the sampler type bitfield to 0 for the
+    // unbound textures.
+    uint32_t typeMask = 0;
+    for (uint32_t i : bit::BitMask(mask & pixelShaderMask))
+      typeMask |= 0b11u << (i * 2u);
+
+    if ((m_samplerTypeBitfield & typeMask) != 0) {
+      m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+
+      m_samplerTypeBitfield &= ~typeMask;
     }
+
+    EmitCs([
+      cMask = mask
+    ](DxvkContext* ctx) {
+      for (uint32_t i : bit::BitMask(cMask)) {
+        auto shaderSampler = RemapStateSamplerShader(i);
+
+        uint32_t slot = computeResourceSlotId(shaderSampler.first,
+          DxsoBindingType::Image, uint32_t(shaderSampler.second));
+
+        ctx->bindResourceView(slot, nullptr, nullptr);
+      }
+    });
   }
 
 
@@ -5850,11 +5871,17 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::UndirtyTextures(uint32_t mask) {
-    for (uint32_t i : bit::BitMask(mask))
+  void D3D9DeviceEx::UndirtyTextures(uint32_t usedMask) {
+    const uint32_t activeMask   = usedMask &  m_activeTextures;
+    const uint32_t inactiveMask = usedMask & ~m_activeTextures;
+
+    for (uint32_t i : bit::BitMask(activeMask))
       BindTexture(i);
+
+    if (inactiveMask)
+      UnbindTextures(inactiveMask);
   
-    m_dirtyTextures &= ~mask;
+    m_dirtyTextures &= ~usedMask;
   }
 
   void D3D9DeviceEx::MarkTextureBindingDirty(IDirect3DBaseTexture9* texture) {
@@ -5933,9 +5960,9 @@ namespace dxvk {
     if (activeDirtySamplers)
       UndirtySamplers(activeDirtySamplers);
 
-    const uint32_t activeDirtyTextures = m_dirtyTextures & usedSamplerMask;
-    if (activeDirtyTextures)
-      UndirtyTextures(activeDirtyTextures);
+    const uint32_t usedDirtyTextures = m_dirtyTextures & usedSamplerMask;
+    if (usedDirtyTextures)
+      UndirtyTextures(usedDirtyTextures);
 
     if (m_flags.test(D3D9DeviceFlag::DirtyBlendState))
       BindBlendState();

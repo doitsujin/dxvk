@@ -835,9 +835,11 @@ namespace dxvk {
 
     void BindTexture(DWORD SamplerSampler);
 
+    void UnbindTextures(uint32_t mask);
+
     void UndirtySamplers(uint32_t mask);
 
-    void UndirtyTextures(uint32_t mask);
+    void UndirtyTextures(uint32_t usedMask);
 
     void MarkTextureBindingDirty(IDirect3DBaseTexture9* texture);
 
