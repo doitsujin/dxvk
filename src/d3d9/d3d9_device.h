@@ -1182,7 +1182,7 @@ namespace dxvk {
     uint32_t                        m_instancedData = 0;
 
     uint32_t                        m_depthTextures = 0;
-    uint32_t                        m_samplerTypeBitfield = 0;
+    uint32_t                        m_textureTypes = 0;
     uint32_t                        m_projectionBitfield  = 0;
 
     uint32_t                        m_dirtySamplerStates = 0;
@@ -1207,11 +1207,11 @@ namespace dxvk {
     uint32_t                        m_lastBoolSpecConstantPixel  = 0;
     uint32_t                        m_lastSamplerDepthMode = 0;
     uint32_t                        m_lastProjectionBitfield = 0;
-    uint32_t                        m_lastSamplerTypeBitfield = 0;
+    uint32_t                        m_lastSamplerTypes = 0;
     uint32_t                        m_lastPointMode = 0;
     uint32_t                        m_lastFetch4    = 0;
     uint32_t                        m_lastHazardsDS = 0;
-    uint32_t                        m_lastSamplerTypeBitfieldFF = 0;
+    uint32_t                        m_lastSamplerTypesFF = 0;
 
     D3D9ShaderMasks                 m_vsShaderMasks = D3D9ShaderMasks();
     D3D9ShaderMasks                 m_psShaderMasks = FixedFunctionMask;

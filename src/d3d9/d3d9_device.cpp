@@ -3700,14 +3700,26 @@ namespace dxvk {
     if (m_state.textures[StateSampler] == pTexture)
       return D3D_OK;
 
+    auto oldTexture = GetCommonTexture(m_state.textures[StateSampler]);
+    auto newTexture = GetCommonTexture(pTexture);
+
     // We need to check our ops and disable respective stages.
     // Given we have transition from a null resource to
     // a valid resource or vice versa.
-    if (StateSampler < 16 && (pTexture == nullptr || m_state.textures[StateSampler] == nullptr))
-      m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+    if (StateSampler < 16) {
+      const uint32_t offset = StateSampler * 2;
+      const uint32_t textureType = newTexture != nullptr
+        ? uint32_t(newTexture->GetType() - D3DRTYPE_TEXTURE)
+        : 0;
+      const uint32_t textureBitMask = 0b11u       << offset;
+      const uint32_t textureBits    = textureType << offset;
 
-    auto oldTexture = GetCommonTexture(m_state.textures[StateSampler]);
-    auto newTexture = GetCommonTexture(pTexture);
+      m_textureTypes &= ~textureBitMask;
+      m_textureTypes |=  textureBits;
+
+      if (newTexture == nullptr || oldTexture == nullptr)
+        m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+    }
 
     DWORD oldUsage = oldTexture != nullptr ? oldTexture->Desc()->Usage : 0;
     DWORD newUsage = newTexture != nullptr ? newTexture->Desc()->Usage : 0;
@@ -5808,17 +5820,6 @@ namespace dxvk {
     D3D9CommonTexture* commonTex =
       GetCommonTexture(m_state.textures[StateSampler]);
 
-    // For all our pixel shader textures
-    if (likely(StateSampler < 16)) {
-      const uint32_t offset = StateSampler * 2;
-      const uint32_t textureType = uint32_t(commonTex->GetType() - D3DRTYPE_TEXTURE);
-      const uint32_t textureBitMask = 0b11u << offset;
-      const uint32_t textureBits = textureType << offset;
-
-      m_samplerTypeBitfield &= ~textureBitMask;
-      m_samplerTypeBitfield |= textureBits;
-    }
-
     EmitCs([
       cSlot = slot,
       cImageView = commonTex->GetSampleView(srgb)
@@ -5829,18 +5830,6 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::UnbindTextures(uint32_t mask) {
-    // For all our pixel shader textures
-    const uint32_t pixelShaderMask = (1u << 16u) - 1;
-
-    // Update the sampler type bitfield to 0 for the
-    // unbound textures.
-    uint32_t typeMask = 0;
-    for (uint32_t i : bit::BitMask(mask & pixelShaderMask))
-      typeMask |= 0b11u << (i * 2u);
-
-      m_samplerTypeBitfield &= ~typeMask;
-    }
-
     EmitCs([
       cMask = mask
     ](DxvkContext* ctx) {
@@ -6009,7 +5998,7 @@ namespace dxvk {
       BindInputLayout();
 
     auto UpdateSamplerTypes = [&](uint32_t types, uint32_t projections, uint32_t fetch4) {
-      if (m_lastSamplerTypeBitfield != types)
+      if (m_lastSamplerTypes != types)
         UpdateSamplerSpecConsant(types);
 
       if (m_lastProjectionBitfield != projections)
@@ -6022,15 +6011,14 @@ namespace dxvk {
     if (likely(UseProgrammablePS())) {
       UploadConstants<DxsoProgramTypes::PixelShader>();
 
-      const uint32_t psTextureMask = m_activeTextures & m_psShaderMasks.samplerMask;
-
-      uint32_t fetch4    = m_fetch4             & psTextureMask;
-      uint32_t projected = m_projectionBitfield & psTextureMask;
+      const uint32_t psTextureMask = usedTextureMask & ((1u << 16u) - 1u);
+      const uint32_t fetch4        = m_fetch4             & psTextureMask;
+      const uint32_t projected     = m_projectionBitfield & psTextureMask;
 
       if (GetCommonShader(m_state.pixelShader)->GetInfo().majorVersion() >= 2)
-        UpdateSamplerTypes(m_d3d9Options.forceSamplerTypeSpecConstants ? m_samplerTypeBitfield : 0u, 0u, fetch4);
+        UpdateSamplerTypes(m_d3d9Options.forceSamplerTypeSpecConstants ? m_textureTypes : 0u, 0u, fetch4);
       else
-        UpdateSamplerTypes(m_samplerTypeBitfield, projected, fetch4); // For implicit samplers...
+        UpdateSamplerTypes(m_textureTypes, projected, fetch4); // For implicit samplers...
 
       UpdateBoolSpecConstantPixel(
         m_state.psConsts.bConsts[0] &
@@ -6563,9 +6551,9 @@ namespace dxvk {
 
   void D3D9DeviceEx::UpdateFixedFunctionPS() {
     // Shader...
-    if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader) || m_lastSamplerTypeBitfieldFF != m_samplerTypeBitfield) {
+    if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader) || m_lastSamplerTypesFF != m_textureTypes) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFPixelShader);
-      m_lastSamplerTypeBitfieldFF = m_samplerTypeBitfield;
+      m_lastSamplerTypesFF = m_textureTypes;
 
       // Used args for a given operation.
       auto ArgsMask = [](DWORD Op) {
@@ -6617,7 +6605,7 @@ namespace dxvk {
         stage.AlphaArg2 = data[DXVK_TSS_ALPHAARG2];
 
         const uint32_t samplerOffset = idx * 2;
-        stage.Type         = (m_samplerTypeBitfield >> samplerOffset) & 0xffu;
+        stage.Type         = (m_textureTypes >> samplerOffset) & 0xffu;
         stage.ResultIsTemp = data[DXVK_TSS_RESULTARG] == D3DTA_TEMP;
 
         uint32_t ttff  = data[DXVK_TSS_TEXTURETRANSFORMFLAGS];
@@ -6716,7 +6704,7 @@ namespace dxvk {
       ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::SamplerType, cBitfield);
     });
 
-    m_lastSamplerTypeBitfield = value;
+    m_lastSamplerTypes = value;
   }
 
 
