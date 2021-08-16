@@ -2207,8 +2207,6 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetTexture(DWORD Stage, IDirect3DBaseTexture9* pTexture) {
-    D3D9DeviceLock lock = LockDevice();
-
     if (unlikely(InvalidSampler(Stage)))
       return D3D_OK;
 
@@ -2274,7 +2272,6 @@ namespace dxvk {
           DWORD               Sampler,
           D3DSAMPLERSTATETYPE Type,
           DWORD               Value) {
-    D3D9DeviceLock lock = LockDevice();
     if (unlikely(InvalidSampler(Sampler)))
       return D3D_OK;
 
