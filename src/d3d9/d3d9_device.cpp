@@ -5918,13 +5918,14 @@ namespace dxvk {
         FlushBuffer(vbo);
     }
 
-    const uint32_t usedSamplerMask = m_activeTextures & (m_psShaderMasks.samplerMask | m_vsShaderMasks.samplerMask);
+    const uint32_t usedSamplerMask = m_psShaderMasks.samplerMask | m_vsShaderMasks.samplerMask;
+    const uint32_t usedTextureMask = m_activeTextures & usedSamplerMask;
 
-    const uint32_t texturesToUpload = m_activeTexturesToUpload & usedSamplerMask;
+    const uint32_t texturesToUpload = m_activeTexturesToUpload & usedTextureMask;
     if (unlikely(texturesToUpload != 0))
       UploadManagedTextures(texturesToUpload);
 
-    const uint32_t texturesToGen = m_activeTexturesToGen & usedSamplerMask;
+    const uint32_t texturesToGen = m_activeTexturesToGen & usedTextureMask;
     if (unlikely(texturesToGen != 0))
       GenerateTextureMips(texturesToGen);
 
@@ -5940,7 +5941,7 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyViewportScissor))
       BindViewportAndScissor();
 
-    const uint32_t activeDirtySamplers = m_dirtySamplerStates & usedSamplerMask;
+    const uint32_t activeDirtySamplers = m_dirtySamplerStates & usedTextureMask;
     if (activeDirtySamplers)
       UndirtySamplers(activeDirtySamplers);
 
@@ -6034,7 +6035,7 @@ namespace dxvk {
       UpdateFixedFunctionPS();
     }
 
-    const uint32_t depthTextureMask = m_depthTextures & usedSamplerMask;
+    const uint32_t depthTextureMask = m_depthTextures & usedTextureMask;
     if (depthTextureMask != m_lastSamplerDepthMode)
       UpdateSamplerDepthModeSpecConstant(depthTextureMask);
 
