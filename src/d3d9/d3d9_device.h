@@ -1211,6 +1211,7 @@ namespace dxvk {
     uint32_t                        m_lastPointMode = 0;
     uint32_t                        m_lastFetch4    = 0;
     uint32_t                        m_lastHazardsDS = 0;
+    uint32_t                        m_lastSamplerTypeBitfieldFF = 0;
 
     D3D9ShaderMasks                 m_vsShaderMasks = D3D9ShaderMasks();
     D3D9ShaderMasks                 m_psShaderMasks = FixedFunctionMask;
