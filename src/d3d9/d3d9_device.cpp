@@ -5818,12 +5818,8 @@ namespace dxvk {
       const uint32_t textureBitMask = 0b11u << offset;
       const uint32_t textureBits = textureType << offset;
 
-      if ((m_samplerTypeBitfield & textureBitMask) != textureBits) {
-        m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
-
-        m_samplerTypeBitfield &= ~textureBitMask;
-        m_samplerTypeBitfield |= textureBits;
-      }
+      m_samplerTypeBitfield &= ~textureBitMask;
+      m_samplerTypeBitfield |= textureBits;
     }
 
     EmitCs([
@@ -5844,9 +5840,6 @@ namespace dxvk {
     uint32_t typeMask = 0;
     for (uint32_t i : bit::BitMask(mask & pixelShaderMask))
       typeMask |= 0b11u << (i * 2u);
-
-    if ((m_samplerTypeBitfield & typeMask) != 0) {
-      m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
 
       m_samplerTypeBitfield &= ~typeMask;
     }
@@ -6573,8 +6566,9 @@ namespace dxvk {
 
   void D3D9DeviceEx::UpdateFixedFunctionPS() {
     // Shader...
-    if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader)) {
+    if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader) || m_lastSamplerTypeBitfieldFF != m_samplerTypeBitfield) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFPixelShader);
+      m_lastSamplerTypeBitfieldFF = m_samplerTypeBitfield;
 
       // Used args for a given operation.
       auto ArgsMask = [](DWORD Op) {
