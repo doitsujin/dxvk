@@ -456,7 +456,7 @@ namespace dxvk {
       cSubresources = srcSubresourceLayers,
       cLevelExtent  = srcExtent
     ] (DxvkContext* ctx) {
-      ctx->copyImageToBuffer(cBuffer, 0, 0, 0,
+      ctx->copyImageToBuffer(cBuffer, 0, 4, 0,
         cImage, cSubresources, VkOffset3D { 0, 0, 0 },
         cLevelExtent);
     });
