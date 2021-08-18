@@ -701,12 +701,11 @@ namespace dxvk {
     DxvkBufferSliceHandle srcSlice = srcTextureInfo->GetMappedSlice(src->GetSubresource());
     VkDeviceSize dirtySize = copyBlockCount.width * copyBlockCount.height * formatInfo->elementSize;
     D3D9BufferSlice slice = AllocTempBuffer<false>(dirtySize);
-    VkDeviceSize copySrcOffset = (srcBlockOffset.z * texLevelBlockCount.height * texLevelBlockCount.width
-        + srcBlockOffset.y * texLevelBlockCount.width
-        + srcBlockOffset.x)
-        * formatInfo->elementSize;
-
     VkDeviceSize pitch = align(texLevelBlockCount.width * formatInfo->elementSize, 4);
+    VkDeviceSize copySrcOffset = srcBlockOffset.z * texLevelBlockCount.height * pitch
+        + srcBlockOffset.y * pitch
+        + srcBlockOffset.x * formatInfo->elementSize;
+
     void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + copySrcOffset;
     util::packImageData(
       slice.mapPtr, srcData, copyBlockCount, formatInfo->elementSize,
@@ -791,12 +790,11 @@ namespace dxvk {
         VkDeviceSize dirtySize = scaledBoxExtentBlockCount.width * scaledBoxExtentBlockCount.height * scaledBoxExtentBlockCount.depth * formatInfo->elementSize;
         D3D9BufferSlice slice = AllocTempBuffer<false>(dirtySize);
         VkOffset3D boxOffsetBlockCount = util::computeBlockOffset(scaledBoxOffset, formatInfo->blockSize);
-        VkDeviceSize copySrcOffset = (boxOffsetBlockCount.z * texLevelExtentBlockCount.height * texLevelExtentBlockCount.width
-            + boxOffsetBlockCount.y * texLevelExtentBlockCount.width
-            + boxOffsetBlockCount.x)
-            * formatInfo->elementSize;
-
         VkDeviceSize pitch = align(texLevelExtentBlockCount.width * formatInfo->elementSize, 4);
+        VkDeviceSize copySrcOffset = boxOffsetBlockCount.z * texLevelExtentBlockCount.height * pitch
+            + boxOffsetBlockCount.y * pitch
+            + boxOffsetBlockCount.x * formatInfo->elementSize;
+
         void* srcData = reinterpret_cast<uint8_t*>(srcTexInfo->GetMappedSlice(srcTexInfo->CalcSubresource(a, m)).mapPtr) + copySrcOffset;
         util::packImageData(
           slice.mapPtr, srcData, scaledBoxExtentBlockCount, formatInfo->elementSize,
@@ -4429,11 +4427,10 @@ namespace dxvk {
       scaledAlignedBoxExtent.depth = std::min<uint32_t>(texLevelExtent.depth - scaledBoxOffset.z, scaledAlignedBoxExtent.depth);
 
       VkOffset3D boxOffsetBlockCount = util::computeBlockOffset(scaledBoxOffset, formatInfo->blockSize);
-      VkDeviceSize copySrcOffset = (boxOffsetBlockCount.z * texLevelExtentBlockCount.height * texLevelExtentBlockCount.width
-          + boxOffsetBlockCount.y * texLevelExtentBlockCount.width
-          + boxOffsetBlockCount.x)
-          * formatInfo->elementSize;
       VkDeviceSize pitch = align(texLevelExtentBlockCount.width * formatInfo->elementSize, 4);
+      VkDeviceSize copySrcOffset = boxOffsetBlockCount.z * texLevelExtentBlockCount.height * pitch
+          + boxOffsetBlockCount.y * pitch
+          + boxOffsetBlockCount.x * formatInfo->elementSize;
 
       VkDeviceSize rowAlignment = 0;
       DxvkBufferSlice copySrcSlice;
