@@ -668,6 +668,26 @@ namespace dxvk {
     return D3D_OK;
   }
 
+  static bool validateGammaRamp(const WORD (&ramp)[256]) {
+    if (ramp[0] >= ramp[std::size(ramp) - 1]) {
+      Logger::err("validateGammaRamp: ramp inverted or flat");
+      return false;
+    }
+
+    for (size_t i = 1; i < std::size(ramp); i++) {
+      if (ramp[i] < ramp[i - 1]) {
+        Logger::err("validateGammaRamp: ramp not monotonically increasing");
+        return false;
+      }
+      if (ramp[i] - ramp[i - 1] >= UINT16_MAX / 2) {
+        Logger::err("validateGammaRamp: huuuge jump");
+        return false;
+      }
+    }
+
+    return true;
+  }
+
 
   void    D3D9SwapChainEx::SetGammaRamp(
             DWORD         Flags,
@@ -675,6 +695,11 @@ namespace dxvk {
     D3D9DeviceLock lock = m_parent->LockDevice();
 
     if (unlikely(pRamp == nullptr))
+      return;
+
+    if (unlikely(!validateGammaRamp(pRamp->red)
+              && !validateGammaRamp(pRamp->blue)
+              && !validateGammaRamp(pRamp->green)))
       return;
 
     m_ramp = *pRamp;
