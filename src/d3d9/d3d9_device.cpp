@@ -6012,10 +6012,12 @@ namespace dxvk {
       const uint32_t fetch4        = m_fetch4             & psTextureMask;
       const uint32_t projected     = m_projectionBitfield & psTextureMask;
 
-      if (GetCommonShader(m_state.pixelShader)->GetInfo().majorVersion() >= 2)
+      const auto& programInfo = GetCommonShader(m_state.pixelShader)->GetInfo();
+
+      if (programInfo.majorVersion() >= 2)
         UpdateSamplerTypes(m_d3d9Options.forceSamplerTypeSpecConstants ? m_textureTypes : 0u, 0u, fetch4);
       else
-        UpdateSamplerTypes(m_textureTypes, projected, fetch4); // For implicit samplers...
+        UpdateSamplerTypes(m_textureTypes, programInfo.minorVersion() >= 4 ? 0u : projected, fetch4); // For implicit samplers...
 
       UpdateBoolSpecConstantPixel(
         m_state.psConsts.bConsts[0] &
