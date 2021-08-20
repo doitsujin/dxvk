@@ -452,6 +452,10 @@ namespace dxvk {
     { R"(\\SineMoraEX\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
+    /* Fantasy Grounds                           */
+    { R"(\\FantasyGrounds\.exe$)", {{
+      { "d3d9.noExplicitFrontBuffer",       "True" },
+    }} },
   }};
 
 
