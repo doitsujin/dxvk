@@ -79,7 +79,7 @@ namespace dxvk::bit {
 
   inline uint32_t bsf(uint32_t n) {
     #if defined(_MSC_VER) && !defined(__clang__)
-    DWORD index;
+    unsigned long index;
     _BitScanForward(&index, n);
     return uint32_t(index);
     #elif defined(__GNUC__) || defined(__clang__)
