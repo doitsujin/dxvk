@@ -4102,7 +4102,11 @@ namespace dxvk {
 
     const Rc<DxvkBuffer> mappedBuffer = pResource->GetBuffer(Subresource);
 
-    auto formatInfo = imageFormatInfo(pResource->GetFormatMapping().FormatColor);
+    auto& formatMapping = pResource->GetFormatMapping();
+
+    const DxvkFormatInfo* formatInfo = formatMapping.IsValid()
+      ? imageFormatInfo(formatMapping.FormatColor) : UnsupportedFormatInfo(pResource->Desc()->Format);
+
     auto subresource = pResource->GetSubresourceFromIndex(
         formatInfo->aspectMask, Subresource);
 
