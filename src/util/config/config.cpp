@@ -145,9 +145,12 @@ namespace dxvk {
     { R"(\\Raft\.exe$)", {{
       { "dxvk.enableOpenVR",                "False" },
     }} },
-    /* Crysis 3 - slow if it notices AMD card     */
+    /* Crysis 3 - slower if it notices AMD card     *
+     * Apitrace mode helps massively in cpu bound   *
+     * game parts                                   */
     { R"(\\Crysis3\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
+      { "d3d11.apitraceMode",               "True" },
     }} },
     /* Atelier series - games try to render video *
      * with a D3D9 swap chain over the DXGI swap  *
