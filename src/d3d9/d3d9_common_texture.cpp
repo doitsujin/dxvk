@@ -112,7 +112,7 @@ namespace dxvk {
     if (!mapping.IsValid() && pDesc->Format != D3D9Format::NULL_FORMAT) {
       auto info = pDevice->UnsupportedFormatInfo(pDesc->Format);
 
-      if (pDesc->Pool != D3DPOOL_SCRATCH || info.elementSize == 0)
+      if (pDesc->Pool != D3DPOOL_SCRATCH || info->elementSize == 0)
         return D3DERR_INVALIDCALL;
     }
 
@@ -186,20 +186,20 @@ namespace dxvk {
   VkDeviceSize D3D9CommonTexture::GetMipSize(UINT Subresource) const {
     const UINT MipLevel = Subresource % m_desc.MipLevels;
 
-    const DxvkFormatInfo formatInfo = m_mapping.FormatColor != VK_FORMAT_UNDEFINED
-      ? *imageFormatInfo(m_mapping.FormatColor)
+    const DxvkFormatInfo* formatInfo = m_mapping.FormatColor != VK_FORMAT_UNDEFINED
+      ? imageFormatInfo(m_mapping.FormatColor)
       : m_device->UnsupportedFormatInfo(m_desc.Format);
 
     const VkExtent3D mipExtent = util::computeMipLevelExtent(
       GetExtent(), MipLevel);
     
     const VkExtent3D blockCount = util::computeBlockCount(
-      mipExtent, formatInfo.blockSize);
+      mipExtent, formatInfo->blockSize);
 
     const uint32_t planeCount = m_mapping.ConversionFormatInfo.PlaneCount;
 
     return std::min(planeCount, 2u)
-         * align(formatInfo.elementSize * blockCount.width, 4)
+         * align(formatInfo->elementSize * blockCount.width, 4)
          * blockCount.height
          * blockCount.depth;
   }

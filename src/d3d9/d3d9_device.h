@@ -657,7 +657,7 @@ namespace dxvk {
     D3D9_VK_FORMAT_MAPPING LookupFormat(
       D3D9Format            Format) const;
 
-    DxvkFormatInfo UnsupportedFormatInfo(
+    const DxvkFormatInfo* UnsupportedFormatInfo(
       D3D9Format            Format) const;
 
     bool WaitForResource(
