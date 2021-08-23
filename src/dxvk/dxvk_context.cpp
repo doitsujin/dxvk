@@ -2146,10 +2146,10 @@ namespace dxvk {
     DxvkCmdBuffer         cmdBuffer;
 
     if (replaceBuffer) {
-      // Pause transform feedback so that we don't mess
-      // with the currently bound counter buffers
+      // Suspend render pass so that we don't mess with the
+      // currently bound transform feedback counter buffers
       if (m_flags.test(DxvkContextFlag::GpXfbActive))
-        this->pauseTransformFeedback();
+        this->spillRenderPass(true);
 
       // As an optimization, allocate a free slice and perform
       // the copy in the initialization command buffer instead
@@ -3925,8 +3925,6 @@ namespace dxvk {
       m_gfxBarriers.recordCommands(m_cmd);
 
       this->unbindGraphicsPipeline();
-
-      m_flags.clr(DxvkContextFlag::GpDirtyXfbCounters);
     } else if (!suspend) {
       // We may end a previously suspended render pass
       if (m_flags.test(DxvkContextFlag::GpRenderPassSuspended)) {
@@ -4023,16 +4021,6 @@ namespace dxvk {
     if (!m_flags.test(DxvkContextFlag::GpXfbActive)) {
       m_flags.set(DxvkContextFlag::GpXfbActive);
 
-      if (m_flags.test(DxvkContextFlag::GpDirtyXfbCounters)) {
-        m_flags.clr(DxvkContextFlag::GpDirtyXfbCounters);
-
-        this->emitMemoryBarrier(0,
-          VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
-          VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT,
-          VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, /* XXX */
-          VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT);
-      }
-
       VkBuffer     ctrBuffers[MaxNumXfbBuffers];
       VkDeviceSize ctrOffsets[MaxNumXfbBuffers];
 
@@ -4077,8 +4065,6 @@ namespace dxvk {
       
       m_cmd->cmdEndTransformFeedback(
         0, MaxNumXfbBuffers, ctrBuffers, ctrOffsets);
-      
-      m_flags.set(DxvkContextFlag::GpDirtyXfbCounters);
     }
   }
 
@@ -4171,8 +4157,6 @@ namespace dxvk {
   
   
   bool DxvkContext::updateGraphicsPipelineState() {
-    this->pauseTransformFeedback();
-
     // Set up vertex buffer strides for active bindings
     for (uint32_t i = 0; i < m_state.gp.state.il.bindingCount(); i++) {
       const uint32_t binding = m_state.gp.state.ilBindings[i].binding();
@@ -5105,11 +5089,20 @@ namespace dxvk {
      && m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasTransformFeedback)) {
       for (uint32_t i = 0; i < MaxNumXfbBuffers && !requiresBarrier; i++) {
         const auto& xfbBufferSlice = m_state.xfb.buffers[i];
+        const auto& xfbCounterSlice = m_state.xfb.counters[i];
 
         if (xfbBufferSlice.defined()) {
           requiresBarrier = this->checkGfxBufferBarrier<DoEmit>(xfbBufferSlice,
             VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
             VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT) != 0;
+
+          if (xfbCounterSlice.defined()) {
+            requiresBarrier |= this->checkGfxBufferBarrier<DoEmit>(xfbCounterSlice,
+              VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
+              VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
+              VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT |
+              VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT) != 0;
+          }
         }
       }
     }
