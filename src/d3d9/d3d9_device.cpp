@@ -4004,7 +4004,7 @@ namespace dxvk {
     return m_adapter->GetFormatMapping(Format);
   }
 
-  DxvkFormatInfo D3D9DeviceEx::UnsupportedFormatInfo(
+  const DxvkFormatInfo* D3D9DeviceEx::UnsupportedFormatInfo(
     D3D9Format            Format) const {
     return m_adapter->GetUnsupportedFormatInfo(Format);
   }

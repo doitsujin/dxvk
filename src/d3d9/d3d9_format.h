@@ -201,7 +201,7 @@ namespace dxvk {
      *
      * \param [in] Format The D3D9 format to look up
      */
-    DxvkFormatInfo GetUnsupportedFormatInfo(
+    const DxvkFormatInfo* GetUnsupportedFormatInfo(
       D3D9Format            Format) const;
 
   private:
