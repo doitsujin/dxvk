@@ -140,7 +140,7 @@ namespace dxvk {
     if (m_format.depth.format == VK_FORMAT_UNDEFINED)
       subpass.pDepthStencilAttachment = nullptr;
     
-    std::array<VkSubpassDependency, 4> subpassDeps;
+    std::array<VkSubpassDependency, 3> subpassDeps;
     uint32_t                           subpassDepCount = 0;
 
     VkPipelineStageFlags renderStages = 0;
@@ -185,17 +185,6 @@ namespace dxvk {
         VK_SUBPASS_EXTERNAL, 0,
         renderStages, renderStages,
         0, renderAccess };
-    }
-
-    if (ops.barrier.srcStages & (
-          VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT |
-          VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT |
-          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)) {
-      subpassDeps[subpassDepCount++] = { 0, 0,
-        VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
-        VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, /* XXX */
-        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT,
-        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT, 0 };
     }
 
     if (ops.barrier.srcStages & (
