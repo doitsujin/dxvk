@@ -2732,7 +2732,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       }
 
       if (opcode == DxsoOpcode::TexLdd) {
-        DxsoRegMask gradMask(true, true, false, false);
+        DxsoRegMask gradMask(true, true, sampler.dimensions == 3, false);
         imageOperands.flags |= spv::ImageOperandsGradMask;
         imageOperands.sGradX = emitRegisterLoad(ctx.src[2], gradMask).id;
         imageOperands.sGradY = emitRegisterLoad(ctx.src[3], gradMask).id;
