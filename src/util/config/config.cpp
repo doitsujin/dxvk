@@ -448,6 +448,10 @@ namespace dxvk {
       { "dxgi.tearFree",                    "False" },
       { "dxgi.syncInterval",                "1"     },
     }} },
+    /* Sine Mora EX */
+    { R"(\\SineMoraEX\.exe$)", {{
+      { "d3d9.maxFrameRate",                "60" },
+    }} },
   }};
 
 
