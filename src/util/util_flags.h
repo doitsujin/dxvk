@@ -64,7 +64,7 @@ namespace dxvk {
       m_bits = 0;
     }
     
-    uint32_t raw() const {
+    IntType raw() const {
       return m_bits;
     }
     
