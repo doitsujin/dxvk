@@ -6,7 +6,8 @@
 
 namespace dxvk {
   
-  DxvkShaderConstData::DxvkShaderConstData() {
+  DxvkShaderConstData::DxvkShaderConstData()
+  : m_size(0), m_data(nullptr) {
 
   }
 
