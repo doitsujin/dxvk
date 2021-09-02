@@ -1439,7 +1439,7 @@ namespace dxvk {
   DxsoRegisterValue DxsoCompiler::emitMulOperand(
           DxsoRegisterValue       operand,
           DxsoRegisterValue       other) {
-    if (!m_moduleInfo.options.d3d9FloatEmulation)
+    if (m_moduleInfo.options.d3d9FloatEmulation != D3D9FloatEmulation::Strict)
       return operand;
 
     uint32_t boolId = getVectorTypeId({ DxsoScalarType::Bool, other.type.ccount });
@@ -1966,7 +1966,7 @@ namespace dxvk {
           m_module.constfReplicant(1.0f, result.type.ccount),
           emitRegisterLoad(src[0], mask).id);
 
-        if (m_moduleInfo.options.d3d9FloatEmulation) {
+        if (m_moduleInfo.options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled) {
           result.id = m_module.opNMin(typeId, result.id,
             m_module.constfReplicant(FLT_MAX, result.type.ccount));
         }
@@ -1978,7 +1978,7 @@ namespace dxvk {
         result.id = m_module.opInverseSqrt(typeId,
           result.id);
 
-        if (m_moduleInfo.options.d3d9FloatEmulation) {
+        if (m_moduleInfo.options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled) {
           result.id = m_module.opNMin(typeId, result.id,
             m_module.constfReplicant(FLT_MAX, result.type.ccount));
         }
@@ -2052,7 +2052,7 @@ namespace dxvk {
 
         result.id = m_module.opPow(typeId, base, exponent);
 
-        if (m_moduleInfo.options.strictPow && m_moduleInfo.options.d3d9FloatEmulation) {
+        if (m_moduleInfo.options.strictPow && m_moduleInfo.options.d3d9FloatEmulation != D3D9FloatEmulation::Disabled) {
           DxsoRegisterValue cmp;
           cmp.type  = { DxsoScalarType::Bool, result.type.ccount };
           cmp.id    = m_module.opFOrdEqual(getVectorTypeId(cmp.type),
@@ -2097,7 +2097,7 @@ namespace dxvk {
 
         DxsoRegisterValue dot = emitDot(vec3, vec3);
         dot.id = m_module.opInverseSqrt (scalarTypeId, dot.id);
-        if (m_moduleInfo.options.d3d9FloatEmulation) {
+        if (m_moduleInfo.options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled) {
           dot.id = m_module.opNMin        (scalarTypeId, dot.id,
             m_module.constf32(FLT_MAX));
         }
@@ -2214,7 +2214,7 @@ namespace dxvk {
       case DxsoOpcode::Log:
         result.id = m_module.opFAbs(typeId, emitRegisterLoad(src[0], mask).id);
         result.id = m_module.opLog2(typeId, result.id);
-        if (m_moduleInfo.options.d3d9FloatEmulation) {
+        if (m_moduleInfo.options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled) {
           result.id = m_module.opNMax(typeId, result.id,
             m_module.constfReplicant(-FLT_MAX, result.type.ccount));
         }
