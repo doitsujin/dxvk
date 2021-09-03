@@ -1,3 +1,5 @@
+#include <utility>
+
 #include "d3d10_device.h"
 
 namespace dxvk {
