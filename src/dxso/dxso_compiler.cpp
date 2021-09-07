@@ -1436,15 +1436,61 @@ namespace dxvk {
   }
 
 
+  DxsoRegisterValue DxsoCompiler::emitMulOperand(
+          DxsoRegisterValue       operand,
+          DxsoRegisterValue       other) {
+    if (!m_moduleInfo.options.d3d9FloatEmulation)
+      return operand;
+
+    uint32_t boolId = getVectorTypeId({ DxsoScalarType::Bool, other.type.ccount });
+    uint32_t zeroId = m_module.constfReplicant(0.0f, other.type.ccount);
+
+    DxsoRegisterValue result;
+    result.type = operand.type;
+    result.id = m_module.opSelect(getVectorTypeId(result.type),
+      m_module.opFOrdEqual(boolId, other.id, zeroId), zeroId, operand.id);
+    return result;
+  }
+
+
+  DxsoRegisterValue DxsoCompiler::emitMul(
+          DxsoRegisterValue       a,
+          DxsoRegisterValue       b) {
+    auto az = emitMulOperand(a, b);
+    auto bz = emitMulOperand(b, a);
+
+    DxsoRegisterValue result;
+    result.type = a.type;
+    result.id = m_module.opFMul(getVectorTypeId(result.type), az.id, bz.id);
+    return result;
+  }
+
+
+  DxsoRegisterValue DxsoCompiler::emitFma(
+          DxsoRegisterValue       a,
+          DxsoRegisterValue       b,
+          DxsoRegisterValue       c) {
+    auto az = emitMulOperand(a, b);
+    auto bz = emitMulOperand(b, a);
+
+    DxsoRegisterValue result;
+    result.type = a.type;
+    result.id = m_module.opFFma(getVectorTypeId(result.type), az.id, bz.id, c.id);
+    return result;
+  }
+
+
   DxsoRegisterValue DxsoCompiler::emitDot(
             DxsoRegisterValue       a,
             DxsoRegisterValue       b) {
+    auto az = emitMulOperand(a, b);
+    auto bz = emitMulOperand(b, a);
+
     DxsoRegisterValue dot;
     dot.type        = a.type;
     dot.type.ccount = 1;
 
-    dot.id = m_module.opDot(getVectorTypeId(dot.type), a.id, b.id);
-
+    dot.id = m_module.opDot(getVectorTypeId(dot.type), az.id, bz.id);
     return dot;
   }
 
@@ -1864,15 +1910,15 @@ namespace dxvk {
         break;
       case DxsoOpcode::Mad:
         if (!m_moduleInfo.options.longMad) {
-          result.id = m_module.opFFma(typeId,
-            emitRegisterLoad(src[0], mask).id,
-            emitRegisterLoad(src[1], mask).id,
-            emitRegisterLoad(src[2], mask).id);
+          result.id = emitFma(
+            emitRegisterLoad(src[0], mask),
+            emitRegisterLoad(src[1], mask),
+            emitRegisterLoad(src[2], mask)).id;
         }
         else {
-          result.id = m_module.opFMul(typeId,
-            emitRegisterLoad(src[0], mask).id,
-            emitRegisterLoad(src[1], mask).id);
+          result.id = emitMul(
+            emitRegisterLoad(src[0], mask),
+            emitRegisterLoad(src[1], mask)).id;
 
           result.id = m_module.opFAdd(typeId,
             result.id,
@@ -1880,9 +1926,9 @@ namespace dxvk {
         }
         break;
       case DxsoOpcode::Mul:
-        result.id = m_module.opFMul(typeId,
-          emitRegisterLoad(src[0], mask).id,
-          emitRegisterLoad(src[1], mask).id);
+        result.id = emitMul(
+          emitRegisterLoad(src[0], mask),
+          emitRegisterLoad(src[1], mask)).id;
         break;
       case DxsoOpcode::Rcp:
         result.id = m_module.opFDiv(typeId,
