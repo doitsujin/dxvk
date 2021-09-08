@@ -264,7 +264,18 @@ namespace dxvk {
     m_module.enableCapability(spv::CapabilityShader);
     m_module.enableCapability(spv::CapabilityImageQuery);
 
-    this->emitDclConstantBuffer();
+    if (isSwvp()) {
+      m_cFloatBuffer = this->emitDclSwvpConstantBuffer<DxsoConstantBufferType::Float>();
+      m_cIntBuffer = this->emitDclSwvpConstantBuffer<DxsoConstantBufferType::Int>();
+      m_cBoolBuffer = this->emitDclSwvpConstantBuffer<DxsoConstantBufferType::Bool>();
+    } else {
+      this->emitDclConstantBuffer();
+    }
+
+    m_depthSpecConstant = m_module.specConst32(m_module.defIntType(32, 0), 0);
+    m_module.decorateSpecId(m_depthSpecConstant, getSpecId(D3D9SpecConstantId::SamplerDepthMode));
+    m_module.setDebugName(m_depthSpecConstant, "depthSamplers");
+
     this->emitDclInputArray();
 
     // Initialize the shader module with capabilities
@@ -276,12 +287,8 @@ namespace dxvk {
     }
   }
 
-
   void DxsoCompiler::emitDclConstantBuffer() {
-    const bool asSsbo = m_moduleInfo.options.vertexConstantBufferAsSSBO &&
-      m_programInfo.type() == DxsoProgramType::VertexShader;
-
-    std::array<uint32_t, 3> members = {
+    std::array<uint32_t, 2> members = {
       // float f[256 or 224 or 8192]
       m_module.defArrayTypeUnique(
         getVectorTypeId({ DxsoScalarType::Float32, 4 }),
@@ -290,48 +297,26 @@ namespace dxvk {
       // int i[16 or 2048]
       m_module.defArrayTypeUnique(
         getVectorTypeId({ DxsoScalarType::Sint32, 4 }),
-        m_module.constu32(m_layout->intCount)),
-
-      //    uint32_t boolBitmask
-      // or uvec4    boolBitmask[512]
-      // Defined later...
-      0
+        m_module.constu32(m_layout->intCount))
     };
 
     // Decorate array strides, this is required.
     m_module.decorateArrayStride(members[0], 16);
     m_module.decorateArrayStride(members[1], 16);
 
-    const bool swvp = m_layout->bitmaskCount != 1;
-
-    if (swvp) {
-      // Must be a multiple of 4 otherwise.
-      members[2] = m_module.defArrayTypeUnique(
-        getVectorTypeId({ DxsoScalarType::Uint32, 4 }),
-        m_module.constu32(m_layout->bitmaskCount / 4));
-
-      m_module.decorateArrayStride(members[2], 16);
-    }
-
     const uint32_t structType =
-      m_module.defStructType(swvp ? 3 : 2, members.data());
+      m_module.defStructType(members.size(), members.data());
 
-    m_module.decorate(structType, asSsbo
+    m_module.decorate(structType, false
       ? spv::DecorationBufferBlock
       : spv::DecorationBlock);
 
     m_module.memberDecorateOffset(structType, 0, m_layout->floatOffset());
     m_module.memberDecorateOffset(structType, 1, m_layout->intOffset());
 
-    if (swvp)
-      m_module.memberDecorateOffset(structType, 2, m_layout->bitmaskOffset());
-
     m_module.setDebugName(structType, "cbuffer_t");
     m_module.setDebugMemberName(structType, 0, "f");
     m_module.setDebugMemberName(structType, 1, "i");
-
-    if (swvp)
-      m_module.setDebugMemberName(structType, 2, "b");
 
     m_cBuffer = m_module.newVar(
       m_module.defPointerType(structType, spv::StorageClassUniform),
@@ -346,14 +331,9 @@ namespace dxvk {
     m_module.decorateDescriptorSet(m_cBuffer, 0);
     m_module.decorateBinding(m_cBuffer, bindingId);
 
-    if (asSsbo)
-      m_module.decorate(m_cBuffer, spv::DecorationNonWritable);
-
     DxvkResourceSlot resource;
     resource.slot   = bindingId;
-    resource.type   = asSsbo
-      ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-      : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    resource.type   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     resource.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     resource.access = VK_ACCESS_UNIFORM_READ_BIT;
     m_resourceSlots.push_back(resource);
@@ -364,10 +344,97 @@ namespace dxvk {
       ? D3D9SpecConstantId::VertexShaderBools
       : D3D9SpecConstantId::PixelShaderBools));
     m_module.setDebugName(m_boolSpecConstant, "boolConstants");
+  }
 
-    m_depthSpecConstant = m_module.specConst32(m_module.defIntType(32, 0), 0);
-    m_module.decorateSpecId(m_depthSpecConstant, getSpecId(D3D9SpecConstantId::SamplerDepthMode));
-    m_module.setDebugName(m_depthSpecConstant, "depthSamplers");
+  template<DxsoConstantBufferType ConstantBufferType>
+  int DxsoCompiler::emitDclSwvpConstantBuffer() {
+    uint32_t member;
+    bool asSsbo;
+    if constexpr (ConstantBufferType == DxsoConstantBufferType::Float) {
+      asSsbo = m_moduleInfo.options.vertexFloatConstantBufferAsSSBO;
+
+      // float f[8192]
+      member =  m_module.defArrayTypeUnique(
+        getVectorTypeId({ DxsoScalarType::Float32, 4 }),
+        m_module.constu32(m_layout->floatCount));
+      m_module.decorateArrayStride(member, 16);
+    } else if constexpr (ConstantBufferType == DxsoConstantBufferType::Int) {
+      asSsbo = false;
+
+      // int i[2048]
+      member = m_module.defArrayTypeUnique(
+          getVectorTypeId({ DxsoScalarType::Sint32, 4 }),
+          m_module.constu32(m_layout->intCount));
+      m_module.decorateArrayStride(member, 16);
+    } else {
+      asSsbo = false;
+
+      // int i[256] (bitmasks for 2048 bools)
+      member = m_module.defArrayTypeUnique(
+          getVectorTypeId({ DxsoScalarType::Uint32, 4 }),
+          m_module.constu32(m_layout->bitmaskCount / 4));
+      // Must be a multiple of 4 otherwise.
+      m_module.decorateArrayStride(member, 16);
+    }
+
+    const uint32_t structType =
+      m_module.defStructType(1, &member);
+
+    m_module.decorate(structType, asSsbo
+      ? spv::DecorationBufferBlock
+      : spv::DecorationBlock);
+
+    m_module.memberDecorateOffset(structType, 0, 0);
+
+    if constexpr (ConstantBufferType == DxsoConstantBufferType::Float) {
+      m_module.setDebugName(structType, "cbuffer_float_t");
+      m_module.setDebugMemberName(structType, 0, "f");
+    } else if constexpr (ConstantBufferType == DxsoConstantBufferType::Int) {
+      m_module.setDebugName(structType, "cbuffer_int_t");
+      m_module.setDebugMemberName(structType, 0, "i");
+    } else {
+      m_module.setDebugName(structType, "cbuffer_bool_t");
+      m_module.setDebugMemberName(structType, 0, "b");
+    }
+
+    uint32_t constantBufferId = m_module.newVar(
+      m_module.defPointerType(structType, spv::StorageClassUniform),
+      spv::StorageClassUniform);
+
+    uint32_t bindingId;
+    if constexpr (ConstantBufferType == DxsoConstantBufferType::Float) {
+      m_module.setDebugName(constantBufferId, "cF");
+      bindingId = computeResourceSlotId(
+        m_programInfo.type(), DxsoBindingType::ConstantBuffer,
+        0);
+    } else if constexpr (ConstantBufferType == DxsoConstantBufferType::Int) {
+      m_module.setDebugName(constantBufferId, "cI");
+      bindingId = computeResourceSlotId(
+        m_programInfo.type(), DxsoBindingType::ConstantBuffer,
+        1);
+    } else {
+      m_module.setDebugName(constantBufferId, "cB");
+      bindingId = computeResourceSlotId(
+        m_programInfo.type(), DxsoBindingType::ConstantBuffer,
+        2);
+    }
+
+    m_module.decorateDescriptorSet(constantBufferId, 0);
+    m_module.decorateBinding(constantBufferId, bindingId);
+
+    if (asSsbo)
+      m_module.decorate(constantBufferId, spv::DecorationNonWritable);
+
+    DxvkResourceSlot resource;
+    resource.slot   = bindingId;
+    resource.type   = asSsbo
+      ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+      : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    resource.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    resource.access = asSsbo ? VK_ACCESS_MEMORY_READ_BIT : VK_ACCESS_UNIFORM_READ_BIT;
+    m_resourceSlots.push_back(resource);
+
+    return constantBufferId;
   }
 
 
@@ -932,16 +999,33 @@ namespace dxvk {
     uint32_t relativeIdx = this->emitArrayIndex(reg.id.num, relative);
 
     if (reg.id.type != DxsoRegisterType::ConstBool) {
-      uint32_t structIdx = reg.id.type == DxsoRegisterType::Const
-        ? m_module.constu32(0)
-        : m_module.constu32(1);
+      uint32_t structIdx;
+      uint32_t cBufferId;
+
+      if (reg.id.type == DxsoRegisterType::Const) {
+        if (isSwvp()) {
+          structIdx = m_module.constu32(0);
+          cBufferId = m_cFloatBuffer;
+        } else {
+          structIdx = m_module.constu32(0);
+          cBufferId = m_cBuffer;
+        }
+      } else {
+        if (isSwvp()) {
+          structIdx = m_module.constu32(0);
+          cBufferId = m_cIntBuffer;
+        } else {
+          structIdx = m_module.constu32(1);
+          cBufferId = m_cBuffer;
+        }
+      }
 
       std::array<uint32_t, 2> indices = { structIdx, relativeIdx };
 
       uint32_t typeId = getVectorTypeId(result.type);
       uint32_t ptrId = m_module.opAccessChain(
         m_module.defPointerType(typeId, spv::StorageClassUniform),
-        m_cBuffer, indices.size(), indices.data());
+        cBufferId, indices.size(), indices.data());
 
       result.id = m_module.opLoad(typeId, ptrId);
 
@@ -969,14 +1053,14 @@ namespace dxvk {
       // If not SWVP, spec const this
       uint32_t bitfield;
       if (m_layout->bitmaskCount != 1) {
-        std::array<uint32_t, 2> indices = { m_module.constu32(2), m_module.constu32(reg.id.num / 128) };
+        std::array<uint32_t, 2> indices = { m_module.constu32(0), m_module.constu32(reg.id.num / 128) };
 
         uint32_t indexCount = m_layout->bitmaskCount == 1 ? 1 : 2;
         uint32_t accessType = m_layout->bitmaskCount == 1 ? uintType : uvec4Type;
 
         uint32_t ptrId = m_module.opAccessChain(
           m_module.defPointerType(accessType, spv::StorageClassUniform),
-          m_cBuffer, indexCount, indices.data());
+          m_cBoolBuffer, indexCount, indices.data());
 
         bitfield = m_module.opLoad(accessType, ptrId);
       }
