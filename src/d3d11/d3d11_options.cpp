@@ -12,6 +12,7 @@ namespace dxvk {
     this->zeroInitWorkgroupMemory  = config.getOption<bool>("d3d11.zeroInitWorkgroupMemory", false);
     this->forceTgsmBarriers     = config.getOption<bool>("d3d11.forceTgsmBarriers", false);
     this->relaxedBarriers       = config.getOption<bool>("d3d11.relaxedBarriers", false);
+    this->ignoreGraphicsBarriers = config.getOption<bool>("d3d11.ignoreGraphicsBarriers", false);
     this->maxTessFactor         = config.getOption<int32_t>("d3d11.maxTessFactor", 0);
     this->samplerAnisotropy     = config.getOption<int32_t>("d3d11.samplerAnisotropy", -1);
     this->invariantPosition     = config.getOption<bool>("d3d11.invariantPosition", true);

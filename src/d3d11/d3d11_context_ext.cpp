@@ -128,7 +128,10 @@ namespace dxvk {
     
     if (ControlFlags & D3D11_VK_BARRIER_CONTROL_IGNORE_WRITE_AFTER_WRITE)
       flags.set(DxvkBarrierControl::IgnoreWriteAfterWrite);
-    
+
+    if (ControlFlags & D3D11_VK_BARRIER_CONTROL_IGNORE_GRAPHICS_UAV)
+      flags.set(DxvkBarrierControl::IgnoreGraphicsBarriers);
+
     m_ctx->EmitCs([cFlags = flags] (DxvkContext* ctx) {
       ctx->setBarrierControl(cFlags);
     });

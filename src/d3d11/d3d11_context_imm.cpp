@@ -16,13 +16,21 @@ namespace dxvk {
     m_csThread(Device->createContext()),
     m_videoContext(this, Device) {
     EmitCs([
-      cDevice          = m_device,
-      cRelaxedBarriers = pParent->GetOptions()->relaxedBarriers
+      cDevice                 = m_device,
+      cRelaxedBarriers        = pParent->GetOptions()->relaxedBarriers,
+      cIgnoreGraphicsBarriers = pParent->GetOptions()->ignoreGraphicsBarriers
     ] (DxvkContext* ctx) {
       ctx->beginRecording(cDevice->createCommandList());
 
+      DxvkBarrierControlFlags barrierControl;
+
       if (cRelaxedBarriers)
-        ctx->setBarrierControl(DxvkBarrierControl::IgnoreWriteAfterWrite);
+        barrierControl.set(DxvkBarrierControl::IgnoreWriteAfterWrite);
+
+      if (cIgnoreGraphicsBarriers)
+        barrierControl.set(DxvkBarrierControl::IgnoreGraphicsBarriers);
+
+      ctx->setBarrierControl(barrierControl);
     });
     
     ClearState();
