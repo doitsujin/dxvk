@@ -4145,7 +4145,8 @@ namespace dxvk {
 
       // This is necessary because we'll only do hazard
       // tracking if the active pipeline has side effects
-      this->spillRenderPass(true);
+      if (!m_barrierControl.test(DxvkBarrierControl::IgnoreGraphicsBarriers))
+        this->spillRenderPass(true);
     }
 
     if (m_state.gp.pipeline->layout()->pushConstRange().size)
@@ -5029,6 +5030,9 @@ namespace dxvk {
   
   template<bool Indexed, bool Indirect, bool DoEmit>
   void DxvkContext::commitGraphicsBarriers() {
+    if (m_barrierControl.test(DxvkBarrierControl::IgnoreGraphicsBarriers))
+      return;
+
     auto layout = m_state.gp.pipeline->layout();
 
     constexpr auto storageBufferAccess = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT;

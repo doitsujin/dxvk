@@ -73,6 +73,7 @@ namespace dxvk {
    */
   enum class DxvkBarrierControl : uint32_t {
     IgnoreWriteAfterWrite       = 1,
+    IgnoreGraphicsBarriers      = 2,
   };
 
   using DxvkBarrierControlFlags  = Flags<DxvkBarrierControl>;
