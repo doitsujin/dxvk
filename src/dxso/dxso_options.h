@@ -43,8 +43,8 @@ namespace dxvk {
     /// Works around a game bug in Halo CE where it gives cube textures to 2d/volume samplers
     bool forceSamplerTypeSpecConstants;
 
-    /// Should the VS constant buffer be an SSBO (swvp on NV)
-    bool vertexConstantBufferAsSSBO;
+    /// Should the SWVP float constant buffer be a SSBO (because of the size on NV)
+    bool vertexFloatConstantBufferAsSSBO;
 
     /// Should we make our Mads a FFma or do it the long way with an FMul and an FAdd?
     /// This solves some rendering bugs in games that have z-pass shaders which

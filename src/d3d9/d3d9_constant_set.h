@@ -38,7 +38,14 @@ namespace dxvk {
     uint32_t bConsts[1];
   };
 
+  struct D3D9SwvpConstantBuffers {
+    Rc<DxvkBuffer>        floatBuffer;
+    Rc<DxvkBuffer>        intBuffer;
+    Rc<DxvkBuffer>        boolBuffer;
+  };
+
   struct D3D9ConstantSets {
+    D3D9SwvpConstantBuffers   swvpBuffers;
     Rc<DxvkBuffer>            buffer;
     DxsoShaderMetaInfo        meta  = {};
     bool                      dirty = true;

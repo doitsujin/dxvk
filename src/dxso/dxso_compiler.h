@@ -4,6 +4,7 @@
 #include "dxso_header.h"
 #include "dxso_modinfo.h"
 #include "dxso_isgn.h"
+#include "dxso_util.h"
 
 #include "../d3d9/d3d9_constant_layout.h"
 #include "../d3d9/d3d9_shader_permutations.h"
@@ -302,7 +303,10 @@ namespace dxvk {
 
     ////////////////////////////////////
     // Ptr to the constant buffer array
-    uint32_t m_cBuffer;
+    uint32_t m_cBuffer = 0;
+    uint32_t m_cFloatBuffer = 0;
+    uint32_t m_cIntBuffer = 0;
+    uint32_t m_cBoolBuffer = 0;
 
     ////////////////////////////////////////
     // Constant buffer deffed mappings
@@ -373,6 +377,9 @@ namespace dxvk {
 
     //////////////////////
     // Common shader dcls
+    template<DxsoConstantBufferType ConstantBufferType>
+    int emitDclSwvpConstantBuffer();
+
     void emitDclConstantBuffer();
 
     void emitDclInputArray();
@@ -677,6 +684,11 @@ namespace dxvk {
     
     uint32_t getPointerTypeId(
       const DxsoRegisterInfo& type);
+
+
+    bool isSwvp() {
+      return m_layout->bitmaskCount != 1;
+    }
 
   };
 

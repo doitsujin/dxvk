@@ -12,11 +12,20 @@ namespace dxvk {
     Image,
   };
 
+  enum class DxsoConstantBufferType : uint32_t {
+    Float,
+    Int,
+    Bool
+  };
+
   enum DxsoConstantBuffers : uint32_t {
     VSConstantBuffer = 0,
-    VSClipPlanes     = 1,
-    VSFixedFunction  = 2,
-    VSVertexBlendData = 3,
+    VSFloatConstantBuffer = 0,
+    VSIntConstantBuffer = 1,
+    VSBoolConstantBuffer = 2,
+    VSClipPlanes     = 3,
+    VSFixedFunction  = 4,
+    VSVertexBlendData = 5,
     VSCount,
 
     PSConstantBuffer = 0,
@@ -29,7 +38,7 @@ namespace dxvk {
         DxsoProgramType shaderStage,
         DxsoBindingType bindingType,
         uint32_t        bindingIndex) {
-    const uint32_t stageOffset = 8 * uint32_t(shaderStage);
+    const uint32_t stageOffset = (VSCount + 4) * uint32_t(shaderStage);
 
     if (bindingType == DxsoBindingType::ConstantBuffer)
       return bindingIndex + stageOffset;
