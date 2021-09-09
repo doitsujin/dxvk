@@ -1060,6 +1060,11 @@ namespace dxvk {
         ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
         : VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
       resource.access = m_analysis->uavInfos[registerId].accessFlags;
+
+      if (!(resource.access & VK_ACCESS_SHADER_WRITE_BIT))
+        m_module.decorate(varId, spv::DecorationNonWritable);
+      if (!(resource.access & VK_ACCESS_SHADER_READ_BIT))
+        m_module.decorate(varId, spv::DecorationNonReadable);
     } else {
       resource.type = resourceType == DxbcResourceDim::Buffer
         ? VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
@@ -1067,11 +1072,6 @@ namespace dxvk {
       resource.access = VK_ACCESS_SHADER_READ_BIT;
     }
     
-    if (!(resource.access & VK_ACCESS_SHADER_WRITE_BIT))
-      m_module.decorate(varId, spv::DecorationNonWritable);
-    if (!(resource.access & VK_ACCESS_SHADER_READ_BIT))
-      m_module.decorate(varId, spv::DecorationNonReadable);
-
     m_resourceSlots.push_back(resource);
   }
   
@@ -1210,10 +1210,12 @@ namespace dxvk {
       ? m_analysis->uavInfos[registerId].accessFlags
       : VK_ACCESS_SHADER_READ_BIT;
 
-    if (!(resource.access & VK_ACCESS_SHADER_WRITE_BIT))
-      m_module.decorate(varId, spv::DecorationNonWritable);
-    if (!(resource.access & VK_ACCESS_SHADER_READ_BIT))
-      m_module.decorate(varId, spv::DecorationNonReadable);
+    if (useRawSsbo || isUav) {
+      if (!(resource.access & VK_ACCESS_SHADER_WRITE_BIT))
+        m_module.decorate(varId, spv::DecorationNonWritable);
+      if (!(resource.access & VK_ACCESS_SHADER_READ_BIT))
+        m_module.decorate(varId, spv::DecorationNonReadable);
+    }
 
     m_resourceSlots.push_back(resource);
   }
