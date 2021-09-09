@@ -111,7 +111,11 @@ namespace dxvk {
 
     std::vector<BufSlice> m_bufSlices;
     std::vector<ImgSlice> m_imgSlices;
-    
+
+    void insertBufferSlice(BufSlice slice);
+
+    void insertImageSlice(ImgSlice slice);
+
     DxvkAccessFlags getAccessTypes(VkAccessFlags flags) const;
     
   };
