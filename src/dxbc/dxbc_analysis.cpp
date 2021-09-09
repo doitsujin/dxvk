@@ -34,6 +34,7 @@ namespace dxvk {
         if (ins.dst[operandId].type == DxbcOperandType::UnorderedAccessView) {
           const uint32_t registerId = ins.dst[operandId].idx[0].offset;
           m_analysis->uavInfos[registerId].accessAtomicOp = true;
+          m_analysis->uavInfos[registerId].accessFlags |= VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
         }
       } break;
       
@@ -49,9 +50,31 @@ namespace dxvk {
           m_analysis->usesKill = true;
       } break;
       
+      case DxbcInstClass::BufferLoad: {
+        uint32_t operandId = ins.op == DxbcOpcode::LdStructured ? 2 : 1;
+
+        if (ins.src[operandId].type == DxbcOperandType::UnorderedAccessView) {
+          const uint32_t registerId = ins.src[operandId].idx[0].offset;
+          m_analysis->uavInfos[registerId].accessFlags |= VK_ACCESS_SHADER_READ_BIT;
+        }
+      } break;
+        
+      case DxbcInstClass::BufferStore: {
+        if (ins.dst[0].type == DxbcOperandType::UnorderedAccessView) {
+          const uint32_t registerId = ins.dst[0].idx[0].offset;
+          m_analysis->uavInfos[registerId].accessFlags |= VK_ACCESS_SHADER_WRITE_BIT;
+        }
+      } break;
+
       case DxbcInstClass::TypedUavLoad: {
         const uint32_t registerId = ins.src[1].idx[0].offset;
         m_analysis->uavInfos[registerId].accessTypedLoad = true;
+        m_analysis->uavInfos[registerId].accessFlags |= VK_ACCESS_SHADER_READ_BIT;
+      } break;
+      
+      case DxbcInstClass::TypedUavStore: {
+        const uint32_t registerId = ins.dst[0].idx[0].offset;
+        m_analysis->uavInfos[registerId].accessFlags |= VK_ACCESS_SHADER_WRITE_BIT;
       } break;
       
       default:

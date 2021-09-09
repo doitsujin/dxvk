@@ -4939,7 +4939,7 @@ namespace dxvk {
         // Skip write-after-write barriers if explicitly requested
         if ((m_barrierControl.test(DxvkBarrierControl::IgnoreWriteAfterWrite))
          && (m_execBarriers.getSrcStages() == VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)
-         && (srcAccess == DxvkAccess::Write) && (dstAccess == DxvkAccess::Write))
+         && ((srcAccess | dstAccess) == DxvkAccess::Write))
           continue;
 
         requiresBarrier = (srcAccess | dstAccess).test(DxvkAccess::Write);
@@ -5133,7 +5133,7 @@ namespace dxvk {
 
       // Skip write-after-write barriers if explicitly requested
       if ((m_barrierControl.test(DxvkBarrierControl::IgnoreWriteAfterWrite))
-        && (srcAccess == DxvkAccess::Write) && (dstAccess == DxvkAccess::Write))
+        && ((srcAccess | dstAccess) == DxvkAccess::Write))
         continue;
 
       requiresBarrier = (srcAccess | dstAccess).test(DxvkAccess::Write);

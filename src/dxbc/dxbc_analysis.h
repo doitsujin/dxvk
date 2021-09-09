@@ -19,6 +19,7 @@ namespace dxvk {
   struct DxbcUavInfo {
     bool accessTypedLoad = false;
     bool accessAtomicOp  = false;
+    VkAccessFlags accessFlags = 0;
   };
   
   /**
