@@ -4989,7 +4989,7 @@ namespace dxvk {
       std::memcpy(dst->iConsts, Src.iConsts, constSet.meta.maxConstIndexI * sizeof(Vector4i));
 
     if (constSet.meta.needsConstantCopies) {
-      Vector4* data = reinterpret_cast<Vector4*>(slice.mapPtr);
+      Vector4* data = reinterpret_cast<Vector4*>(dst->fConsts);
 
       auto& shaderConsts = GetCommonShader(Shader)->GetConstants();
 

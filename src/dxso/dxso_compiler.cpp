@@ -289,15 +289,15 @@ namespace dxvk {
 
   void DxsoCompiler::emitDclConstantBuffer() {
     std::array<uint32_t, 2> members = {
-      // float f[256 or 224 or 8192]
-      m_module.defArrayTypeUnique(
-        getVectorTypeId({ DxsoScalarType::Float32, 4 }),
-        m_module.constu32(m_layout->floatCount)),
-
       // int i[16 or 2048]
       m_module.defArrayTypeUnique(
         getVectorTypeId({ DxsoScalarType::Sint32, 4 }),
-        m_module.constu32(m_layout->intCount))
+        m_module.constu32(m_layout->intCount)),
+
+      // float f[256 or 224 or 8192]
+      m_module.defArrayTypeUnique(
+        getVectorTypeId({ DxsoScalarType::Float32, 4 }),
+        m_module.constu32(m_layout->floatCount))
     };
 
     // Decorate array strides, this is required.
@@ -311,8 +311,8 @@ namespace dxvk {
       ? spv::DecorationBufferBlock
       : spv::DecorationBlock);
 
-    m_module.memberDecorateOffset(structType, 0, m_layout->floatOffset());
-    m_module.memberDecorateOffset(structType, 1, m_layout->intOffset());
+    m_module.memberDecorateOffset(structType, 0, m_layout->intOffset());
+    m_module.memberDecorateOffset(structType, 1, m_layout->floatOffset());
 
     m_module.setDebugName(structType, "cbuffer_t");
     m_module.setDebugMemberName(structType, 0, "f");
@@ -1007,7 +1007,7 @@ namespace dxvk {
           structIdx = m_module.constu32(0);
           cBufferId = m_cFloatBuffer;
         } else {
-          structIdx = m_module.constu32(0);
+          structIdx = m_module.constu32(1);
           cBufferId = m_cBuffer;
         }
       } else {
@@ -1015,7 +1015,7 @@ namespace dxvk {
           structIdx = m_module.constu32(0);
           cBufferId = m_cIntBuffer;
         } else {
-          structIdx = m_module.constu32(1);
+          structIdx = m_module.constu32(0);
           cBufferId = m_cBuffer;
         }
       }

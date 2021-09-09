@@ -21,9 +21,9 @@ namespace dxvk {
         : 0;
     }
 
-    uint32_t floatOffset()   const { return 0; }
-    uint32_t intOffset()     const { return floatOffset() + floatSize(); }
-    uint32_t bitmaskOffset() const { return intOffset()   + intSize(); }
+    uint32_t intOffset()     const { return 0; }
+    uint32_t floatOffset()   const { return intOffset() + intSize(); }
+    uint32_t bitmaskOffset() const { return floatOffset() + floatSize(); }
 
     uint32_t totalSize()     const { return floatSize() + intSize() + bitmaskSize(); }
   };
