@@ -78,22 +78,28 @@ namespace dxvk {
     m_dxsoOptions = DxsoOptions(this, m_d3d9Options);
 
     const bool supportsRobustness2 = m_dxvkDevice->features().extRobustness2.robustBufferAccess2;
-    bool useRobustConstantAccess = canSWVP && supportsRobustness2;
+    bool useRobustConstantAccess = supportsRobustness2;
     if (useRobustConstantAccess) {
       m_robustSSBOAlignment = m_dxvkDevice->properties().extRobustness2.robustStorageBufferAccessSizeAlignment;
       m_robustUBOAlignment  = m_dxvkDevice->properties().extRobustness2.robustUniformBufferAccessSizeAlignment;
-      const uint32_t floatBufferAlignment = m_dxsoOptions.vertexFloatConstantBufferAsSSBO ? m_robustSSBOAlignment : m_robustUBOAlignment;
-      useRobustConstantAccess &= m_vsLayout.floatSize() % floatBufferAlignment == 0;
-      useRobustConstantAccess &= m_vsLayout.intSize() % m_robustUBOAlignment == 0;
-      useRobustConstantAccess &= m_vsLayout.bitmaskSize() % m_robustUBOAlignment == 0;
+      if (canSWVP) {
+        const uint32_t floatBufferAlignment = m_dxsoOptions.vertexFloatConstantBufferAsSSBO ? m_robustSSBOAlignment : m_robustUBOAlignment;
+        useRobustConstantAccess &= m_vsLayout.floatSize() % floatBufferAlignment == 0;
+        useRobustConstantAccess &= m_vsLayout.intSize() % m_robustUBOAlignment == 0;
+        useRobustConstantAccess &= m_vsLayout.bitmaskSize() % m_robustUBOAlignment == 0;
+      } else {
+        useRobustConstantAccess &= m_vsLayout.totalSize() % m_robustUBOAlignment == 0;
+      }
+      useRobustConstantAccess &= m_psLayout.totalSize() % m_robustUBOAlignment == 0;
     }
     
     if (!useRobustConstantAccess) {
       m_vsFloatConstsCount = m_vsLayout.floatCount;
       m_vsIntConstsCount   = m_vsLayout.intCount;
       m_vsBoolConstsCount  = m_vsLayout.boolCount;
+      m_psFloatConstsCount = m_psLayout.floatCount;
 
-      if (supportsRobustness2 && canSWVP) {
+      if (supportsRobustness2) {
         Logger::warn("Disabling robust constant buffer access because of alignment.");
       }
     }
@@ -4836,6 +4842,11 @@ namespace dxvk {
         DxvkBufferSlice(cBuffer, 0, cBuffer->info().size));
     });
 
+    if (ShaderStage == DxsoProgramType::PixelShader)
+      m_boundPSConstantsBufferSize = buffer->info().size;
+    else
+      m_boundVSConstantsBufferSize = buffer->info().size;
+
     return buffer;
   }
 
@@ -4954,13 +4965,40 @@ namespace dxvk {
 
 
   template <DxsoProgramType ShaderStage, typename HardwareLayoutType, typename SoftwareLayoutType, typename ShaderType>
-  inline void D3D9DeviceEx::UploadConstantSet(const SoftwareLayoutType& Src, const ShaderType& Shader) {
+  inline void D3D9DeviceEx::UploadConstantSet(const SoftwareLayoutType& Src, const D3D9ConstantLayout& Layout, const ShaderType& Shader) {
+    /*
+     * We just copy the float constants that have been set by the application and rely on robustness
+     * to return 0 on OOB reads.
+    */
     D3D9ConstantSets& constSet = m_consts[ShaderStage];
 
     if (!constSet.dirty)
       return;
 
     constSet.dirty = false;
+
+    const uint32_t floatCount = ShaderStage == DxsoProgramType::VertexShader ? m_vsFloatConstsCount : m_psFloatConstsCount;
+
+    const uint32_t intRange = caps::MaxOtherConstants * sizeof(Vector4i);
+    const uint32_t intDataSize = constSet.meta.maxConstIndexI * sizeof(Vector4i);
+    uint32_t floatDataSize = std::min(constSet.meta.maxConstIndexF, floatCount) * sizeof(Vector4);
+    const uint32_t minSize = std::max(m_robustUBOAlignment, 64u); // Make sure we do not recreate the buffer because the new one has to be a tiny bit larger
+    const uint32_t bufferSize = std::max(floatDataSize + intRange, minSize);
+    floatDataSize = bufferSize - intRange; // Read additional floats for padding so we don't end up with garbage data
+
+    VkDeviceSize& boundConstantBufferSize = ShaderStage == DxsoProgramType::VertexShader ? m_boundVSConstantsBufferSize : m_boundPSConstantsBufferSize;
+    if (boundConstantBufferSize != bufferSize) {
+      constexpr uint32_t slotId = computeResourceSlotId(ShaderStage, DxsoBindingType::ConstantBuffer, 0);
+      EmitCs([
+        cBuffer = constSet.buffer,
+        cSlotId = slotId,
+        cSize   = bufferSize
+      ] (DxvkContext* ctx) {
+        ctx->bindResourceBuffer(cSlotId,
+          DxvkBufferSlice(cBuffer, 0, cSize));
+      });
+      boundConstantBufferSize = bufferSize;
+    }
 
     DxvkBufferSliceHandle slice = constSet.buffer->allocSlice();
 
@@ -4973,18 +5011,20 @@ namespace dxvk {
 
     auto* dst = reinterpret_cast<HardwareLayoutType*>(slice.mapPtr);
 
-    if (constSet.meta.maxConstIndexF)
-      std::memcpy(dst->fConsts, Src.fConsts, constSet.meta.maxConstIndexF * sizeof(Vector4));
-    if (constSet.meta.maxConstIndexI)
-      std::memcpy(dst->iConsts, Src.iConsts, constSet.meta.maxConstIndexI * sizeof(Vector4i));
+    if (constSet.meta.maxConstIndexI != 0)
+      std::memcpy(dst->iConsts, Src.iConsts, intDataSize);
+    if (constSet.meta.maxConstIndexF != 0)
+      std::memcpy(dst->fConsts, Src.fConsts, floatDataSize);
 
     if (constSet.meta.needsConstantCopies) {
       Vector4* data = reinterpret_cast<Vector4*>(dst->fConsts);
 
       auto& shaderConsts = GetCommonShader(Shader)->GetConstants();
 
-      for (const auto& constant : shaderConsts)
-        data[constant.uboIdx] = *reinterpret_cast<const Vector4*>(constant.float32);
+      for (const auto& constant : shaderConsts) {
+        if (constant.uboIdx < constSet.meta.maxConstIndexF)
+          data[constant.uboIdx] = *reinterpret_cast<const Vector4*>(constant.float32);
+      }
     }
   }
 
@@ -4995,9 +5035,9 @@ namespace dxvk {
       if (CanSWVP()) 
         return UploadSoftwareConstantSet(m_state.vsConsts, m_vsLayout);
       else
-        return UploadConstantSet<ShaderStage, D3D9ShaderConstantsVSHardware>(m_state.vsConsts, m_state.vertexShader);
+        return UploadConstantSet<ShaderStage, D3D9ShaderConstantsVSHardware>(m_state.vsConsts, m_vsLayout, m_state.vertexShader);
     } else {
-      return UploadConstantSet<ShaderStage, D3D9ShaderConstantsPS>          (m_state.psConsts, m_state.pixelShader);
+      return UploadConstantSet<ShaderStage, D3D9ShaderConstantsPS>          (m_state.psConsts, m_psLayout, m_state.pixelShader);
     }
   }
 
@@ -6391,6 +6431,10 @@ namespace dxvk {
         m_vsIntConstsCount = std::max(m_vsIntConstsCount, StartRegister + Count);
       } else /* if constexpr (ConstantType == D3D9ConstantType::Bool) */ {
         m_vsBoolConstsCount = std::max(m_vsBoolConstsCount, StartRegister + Count);
+      }
+    } else {
+      if constexpr (ConstantType == D3D9ConstantType::Float) {
+        m_psFloatConstsCount = std::max(m_psFloatConstsCount, StartRegister + Count);
       }
     }
 
