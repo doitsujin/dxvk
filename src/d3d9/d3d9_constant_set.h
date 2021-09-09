@@ -21,20 +21,20 @@ namespace dxvk {
 
   // We make an assumption later based on the packing of this struct for copying.
   struct D3D9ShaderConstantsVSSoftware {
-    Vector4  fConsts[caps::MaxFloatConstantsSoftware];
     Vector4i iConsts[caps::MaxOtherConstantsSoftware];
+    Vector4  fConsts[caps::MaxFloatConstantsSoftware];
     uint32_t bConsts[caps::MaxOtherConstantsSoftware / 32];
   };
 
   struct D3D9ShaderConstantsVSHardware {
-    Vector4  fConsts[caps::MaxFloatConstantsVS];
     Vector4i iConsts[caps::MaxOtherConstants];
+    Vector4  fConsts[caps::MaxFloatConstantsVS];
     uint32_t bConsts[1];
   };
 
   struct D3D9ShaderConstantsPS {
-    Vector4  fConsts[caps::MaxFloatConstantsPS];
     Vector4i iConsts[caps::MaxOtherConstants];
+    Vector4  fConsts[caps::MaxFloatConstantsPS];
     uint32_t bConsts[1];
   };
 
