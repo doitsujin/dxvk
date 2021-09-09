@@ -811,16 +811,13 @@ namespace dxvk {
 
     void BindAlphaTestState();
 
-    template <DxsoProgramType ShaderStage, typename HardwareLayoutType, typename SoftwareLayoutType, typename ShaderType>
-    inline void UploadHardwareConstantSet(void* pData, const SoftwareLayoutType& Src, const ShaderType& Shader);
-
     template <typename SoftwareLayoutType>
     inline void UploadSoftwareConstantSet(const SoftwareLayoutType& Src, const D3D9ConstantLayout& Layout);
 
     inline void CopySoftwareConstants(DxsoConstantBuffers cBufferTarget, Rc<DxvkBuffer>& dstBuffer, const void* src, uint32_t copySize, bool useSSBO);
 
     template <DxsoProgramType ShaderStage, typename HardwareLayoutType, typename SoftwareLayoutType, typename ShaderType>
-    inline void UploadConstantSet(const SoftwareLayoutType& Src, const ShaderType& Shader);
+    inline void UploadConstantSet(const SoftwareLayoutType& Src, const D3D9ConstantLayout& Layout, const ShaderType& Shader);
     
     template <DxsoProgramType ShaderStage>
     void UploadConstants();
@@ -1231,6 +1228,9 @@ namespace dxvk {
     uint32_t                        m_vsFloatConstsCount = 0;
     uint32_t                        m_vsIntConstsCount   = 0;
     uint32_t                        m_vsBoolConstsCount  = 0;
+    uint32_t                        m_psFloatConstsCount = 0;
+    VkDeviceSize                    m_boundVSConstantsBufferSize = 0;
+    VkDeviceSize                    m_boundPSConstantsBufferSize = 0;
 
     D3D9ConstantLayout              m_vsLayout;
     D3D9ConstantLayout              m_psLayout;
