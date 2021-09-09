@@ -305,7 +305,7 @@ namespace dxvk {
   }
 
 
-  DxvkAccessFlags DxvkBarrierSet::getAccessTypes(VkAccessFlags flags) const {
+  DxvkAccessFlags DxvkBarrierSet::getAccessTypes(VkAccessFlags flags) {
     const VkAccessFlags rflags
       = VK_ACCESS_INDIRECT_COMMAND_READ_BIT
       | VK_ACCESS_INDEX_READ_BIT
