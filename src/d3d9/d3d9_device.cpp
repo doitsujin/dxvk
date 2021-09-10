@@ -3933,9 +3933,9 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::DetermineConstantLayouts(bool canSWVP) {
-    m_vsLayout.floatCount    = canSWVP ? uint32_t(m_d3d9Options.swvpFloatCount) : caps::MaxFloatConstantsVS;
-    m_vsLayout.intCount      = canSWVP ? uint32_t(m_d3d9Options.swvpIntCount)   : caps::MaxOtherConstants;
-    m_vsLayout.boolCount     = canSWVP ? uint32_t(m_d3d9Options.swvpBoolCount)  : caps::MaxOtherConstants;
+    m_vsLayout.floatCount    = canSWVP ? caps::MaxFloatConstantsSoftware : caps::MaxFloatConstantsVS;
+    m_vsLayout.intCount      = canSWVP ? caps::MaxOtherConstantsSoftware : caps::MaxOtherConstants;
+    m_vsLayout.boolCount     = canSWVP ? caps::MaxOtherConstantsSoftware : caps::MaxOtherConstants;
     m_vsLayout.bitmaskCount  = align(m_vsLayout.boolCount, 32) / 32;
 
     m_psLayout.floatCount    = caps::MaxFloatConstantsPS;

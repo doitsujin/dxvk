@@ -56,9 +56,6 @@ namespace dxvk {
     this->supportDFFormats              = config.getOption<bool>        ("d3d9.supportDFFormats",              true);
     this->supportX4R4G4B4               = config.getOption<bool>        ("d3d9.supportX4R4G4B4",               true);
     this->supportD32                    = config.getOption<bool>        ("d3d9.supportD32",                    true);
-    this->swvpFloatCount                = config.getOption<int32_t>     ("d3d9.swvpFloatCount",                caps::MaxFloatConstantsSoftware);
-    this->swvpIntCount                  = config.getOption<int32_t>     ("d3d9.swvpIntCount",                  caps::MaxOtherConstantsSoftware);
-    this->swvpBoolCount                 = config.getOption<int32_t>     ("d3d9.swvpBoolCount",                 caps::MaxOtherConstantsSoftware);
     this->disableA8RT                   = config.getOption<bool>        ("d3d9.disableA8RT",                   false);
     this->invariantPosition             = config.getOption<bool>        ("d3d9.invariantPosition",             false);
     this->memoryTrackTest               = config.getOption<bool>        ("d3d9.memoryTrackTest",               false);
