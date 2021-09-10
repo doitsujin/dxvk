@@ -2404,7 +2404,7 @@ namespace dxvk {
 
     std::hash<uint32_t> uint32hash;
 
-    for (uint32_t i = 0; i < countof(key.Data.Primitive); i++)
+    for (uint32_t i = 0; i < std::size(key.Data.Primitive); i++)
       state.add(uint32hash(key.Data.Primitive[i]));
 
     return state;
@@ -2417,7 +2417,7 @@ namespace dxvk {
     std::hash<uint32_t> uint32hash;
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
-      for (uint32_t j = 0; j < countof(key.Stages[i].Primitive); j++)
+      for (uint32_t j = 0; j < std::size(key.Stages[i].Primitive); j++)
         state.add(uint32hash(key.Stages[i].Primitive[j]));
     }
 

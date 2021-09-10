@@ -6541,7 +6541,7 @@ namespace dxvk {
       });
 
       auto UploadVertexBlendData = [&](auto data) {
-        for (uint32_t i = 0; i < countof(data->WorldView); i++)
+        for (uint32_t i = 0; i < std::size(data->WorldView); i++)
           data->WorldView[i] = m_state.transforms[GetTransformIndex(D3DTS_VIEW)] * m_state.transforms[GetTransformIndex(D3DTS_WORLDMATRIX(i))];
       };
 
