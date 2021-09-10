@@ -4937,8 +4937,11 @@ namespace dxvk {
           continue;
 
         // Skip write-after-write barriers if explicitly requested
+        VkPipelineStageFlags stageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+                                       | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+
         if ((m_barrierControl.test(DxvkBarrierControl::IgnoreWriteAfterWrite))
-         && (m_execBarriers.getSrcStages() == VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)
+         && (!(m_execBarriers.getSrcStages() & ~stageMask))
          && ((srcAccess | dstAccess) == DxvkAccess::Write))
           continue;
 
