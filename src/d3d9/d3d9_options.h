@@ -94,11 +94,6 @@ namespace dxvk {
     /// Support D32
     bool supportD32;
 
-    /// SWVP Constant Limits
-    int32_t swvpFloatCount;
-    int32_t swvpIntCount;
-    int32_t swvpBoolCount;
-
     /// Disable D3DFMT_A8 for render targets.
     /// Specifically to work around a game
     /// bug in The Sims 2 that happens on native too!

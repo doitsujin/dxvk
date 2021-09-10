@@ -295,12 +295,6 @@ namespace dxvk {
       { "d3d9.supportX4R4G4B4",             "False" },
       { "d3d9.maxAvailableMemory",          "2048" },
       { "d3d9.memoryTrackTest",             "True" },
-       // The Sims 2 will try to upload 1024 constants
-       // every frame otherwise, which it never uses
-       // causing a massive discard + upload.
-      { "d3d9.swvpFloatCount",              "384" },
-      { "d3d9.swvpIntCount",                "16" },
-      { "d3d9.swvpBoolCount",               "16" },
     }} },
     /* Dead Space uses the a NULL render target instead
        of a 1x1 one if DF24 is NOT supported      */
@@ -408,12 +402,6 @@ namespace dxvk {
     { R"(\\mm\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
       { "d3d9.memoryTrackTest",             "True" },
-    }} },
-    /* TrackMania Forever                        */
-    { R"(\\TmForever\.exe$)", {{
-      { "d3d9.swvpFloatCount",              "256" },
-      { "d3d9.swvpIntCount",                "16" },
-      { "d3d9.swvpBoolCount",               "16" },
     }} },
     /* Mafia 2                                   */
     { R"(\\mafia2\.exe$)", {{
