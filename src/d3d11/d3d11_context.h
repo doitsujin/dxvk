@@ -957,6 +957,15 @@ namespace dxvk {
       uint32_t stride = offset - cmdData->offset;
       return stride >= minStride && stride <= 32 ? stride : 0;
     }
+
+    static bool ValidateDrawBufferSize(ID3D11Buffer* pBuffer, UINT Offset, UINT Size) {
+      UINT bufferSize = 0;
+
+      if (likely(pBuffer != nullptr))
+        bufferSize = static_cast<D3D11Buffer*>(pBuffer)->Desc()->ByteWidth;
+
+      return bufferSize >= Offset + Size;
+    }
     
     template<typename Cmd>
     void EmitCs(Cmd&& command) {
