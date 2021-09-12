@@ -23,7 +23,7 @@ namespace dxvk
       // cache adapter modes and mode counts for each d3d9 format
       for (d3d9::D3DFORMAT fmt : ADAPTER_FORMATS) {
 
-        const int modeCount = m_d3d9ex->GetAdapterModeCount(adapter, fmt);
+        const UINT modeCount = m_d3d9ex->GetAdapterModeCount(adapter, fmt);
 
         for (UINT mode = 0; mode < modeCount; mode++) {
 
