@@ -23,7 +23,7 @@ namespace dxvk {
             UINT   SizeToLock,
             BYTE** ppbData,
             DWORD  Flags) {
-      return GetD3D9()->Lock(
+      return this->GetD3D9()->Lock(
         OffsetToLock,
         SizeToLock,
         reinterpret_cast<void**>(ppbData),
@@ -31,11 +31,11 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE Unlock() {
-      return GetD3D9()->Unlock();
+      return this->GetD3D9()->Unlock();
     }
 
     void STDMETHODCALLTYPE PreLoad() {
-      GetD3D9()->PreLoad();
+      this->GetD3D9()->PreLoad();
     }
 
   };

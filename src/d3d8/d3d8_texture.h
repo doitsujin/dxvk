@@ -58,19 +58,19 @@ namespace dxvk {
     // TODO: all these methods should probably be final
 
     void STDMETHODCALLTYPE PreLoad() {
-      GetD3D9()->PreLoad();
+      this->GetD3D9()->PreLoad();
     }
 
     DWORD STDMETHODCALLTYPE SetLOD(DWORD LODNew) {
-      return GetD3D9()->SetLOD(LODNew);
+      return this->GetD3D9()->SetLOD(LODNew);
     }
 
     DWORD STDMETHODCALLTYPE GetLOD() {
-      return GetD3D9()->GetLOD();
+      return this->GetD3D9()->GetLOD();
     }
 
     DWORD STDMETHODCALLTYPE GetLevelCount() {
-      return GetD3D9()->GetLevelCount();
+      return this->GetD3D9()->GetLevelCount();
     }
 
     SubresourceType* GetSubresource(UINT Subresource) {
