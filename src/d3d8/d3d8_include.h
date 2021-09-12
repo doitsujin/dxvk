@@ -25,10 +25,36 @@
 #undef D3DSP_REGNUM_MASK    // changed from 0x00000FFF to 0x000007FF in DX9
 
 
+#ifdef __MINGW32__
 
 // Avoid redundant definitions (add D3D*_DEFINED macros here) //
 #define D3DRECT_DEFINED
 #define D3DMATRIX_DEFINED
+
+// Temporarily override __CRT_UUID_DECL to allow usage in d3d9 namespace
+#pragma push_macro("__CRT_UUID_DECL")
+#ifdef __CRT_UUID_DECL
+#undef __CRT_UUID_DECL
+#endif
+#define __CRT_UUID_DECL(type,l,w1,w2,b1,b2,b3,b4,b5,b6,b7,b8)         \
+}                                                                     \
+    extern "C++" {                                                    \
+    template<> struct __mingw_uuidof_s<d3d9::type> {                  \
+        static constexpr IID __uuid_inst = {                          \
+            l,w1,w2, {b1,b2,b3,b4,b5,b6,b7,b8}                        \
+        };                                                            \
+    };                                                                \
+    template<> constexpr const GUID &__mingw_uuidof<d3d9::type>() {   \
+        return __mingw_uuidof_s<d3d9::type>::__uuid_inst;             \
+    }                                                                 \
+    template<> constexpr const GUID &__mingw_uuidof<d3d9::type*>() {  \
+        return  __mingw_uuidof_s<d3d9::type>::__uuid_inst;            \
+    }                                                                 \
+    }                                                                 \
+namespace d3d9 {
+
+#endif // __MINGW32__
+
 
 /**
 * \brief Direct3D 9
@@ -40,6 +66,10 @@
 namespace d3d9 {
 #include <d3d9.h>
 }
+
+#ifdef __MINGW32__
+#pragma pop_macro("__CRT_UUID_DECL")
+#endif // __MINGW32__
 
 //for some reason we need to specify __declspec(dllexport) for MinGW
 #if defined(__WINE__)
