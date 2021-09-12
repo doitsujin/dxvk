@@ -534,7 +534,7 @@ namespace dxvk {
 
       D3D8StateBlock* pStateBlock = new D3D8StateBlock(this, pStateBlock9.ref());
 
-      *pToken = DWORD(pStateBlock);
+      *pToken = DWORD(reinterpret_cast<uintptr_t>(pStateBlock));
 
       return res;
     }
@@ -572,7 +572,7 @@ namespace dxvk {
 
       m_recorder->SetD3D9(std::move(pStateBlock));
 
-      *pToken = DWORD(m_recorder);
+      *pToken = DWORD(reinterpret_cast<uintptr_t>(m_recorder));
 
       m_recorder = nullptr;
 
