@@ -25,6 +25,11 @@
 #undef D3DSP_REGNUM_MASK    // changed from 0x00000FFF to 0x000007FF in DX9
 
 
+
+// Avoid redundant definitions (add D3D*_DEFINED macros here) //
+#define D3DRECT_DEFINED
+#define D3DMATRIX_DEFINED
+
 /**
 * \brief Direct3D 9
 * 
