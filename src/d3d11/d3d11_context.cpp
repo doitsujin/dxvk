@@ -1372,6 +1372,9 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     SetDrawBuffers(pBufferForArgs, nullptr);
     
+    if (!ValidateDrawBufferSize(pBufferForArgs, AlignedByteOffsetForArgs, sizeof(VkDispatchIndirectCommand)))
+      return;
+
     EmitCs([cOffset = AlignedByteOffsetForArgs]
     (DxvkContext* ctx) {
       ctx->dispatchIndirect(cOffset);
