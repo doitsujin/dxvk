@@ -1411,6 +1411,36 @@ namespace dxvk {
   }
 
 
+  DxsoRegisterValue DxsoCompiler::emitCross(
+          DxsoRegisterValue       a,
+          DxsoRegisterValue       b) {
+    const std::array<uint32_t, 4> shiftIndices = { 1, 2, 0, 1 };
+
+    DxsoRegisterValue result;
+    result.type = { DxsoScalarType::Float32, 3 };
+
+    uint32_t typeId = getVectorTypeId(result.type);
+    std::array<DxsoRegisterValue, 2> products;
+
+    for (uint32_t i = 0; i < 2; i++) {
+      DxsoRegisterValue ashift;
+      ashift.type = result.type;
+      ashift.id = m_module.opVectorShuffle(typeId,
+        a.id, a.id, 3, &shiftIndices[i]);
+
+      DxsoRegisterValue bshift;
+      bshift.type = result.type;
+      bshift.id = m_module.opVectorShuffle(typeId,
+        b.id, b.id, 3, &shiftIndices[1 - i]);
+
+      products[i] = emitMul(ashift, bshift);
+    }
+
+    result.id = m_module.opFSub(typeId, products[0].id, products[1].id);
+    return result;
+  }
+
+
   DxsoRegisterValue DxsoCompiler::emitRegisterInsert(
             DxsoRegisterValue       dstValue,
             DxsoRegisterValue       srcValue,
@@ -1951,11 +1981,9 @@ namespace dxvk {
       case DxsoOpcode::Crs: {
         DxsoRegMask vec3Mask(true, true, true, false);
         
-        DxsoRegisterValue crossValue;
-        crossValue.type = { DxsoScalarType::Float32, 3 };
-        crossValue.id = m_module.opCross(getVectorTypeId(crossValue.type),
-          emitRegisterLoad(src[0], vec3Mask).id,
-          emitRegisterLoad(src[1], vec3Mask).id);
+        DxsoRegisterValue crossValue = emitCross(
+          emitRegisterLoad(src[0], vec3Mask),
+          emitRegisterLoad(src[1], vec3Mask));
 
         std::array<uint32_t, 3> indices = { 0, 0, 0 };
 
