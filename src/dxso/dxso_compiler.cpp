@@ -2079,15 +2079,15 @@ namespace dxvk {
         const uint32_t z = 2;
         const uint32_t w = 3;
 
-        uint32_t src0Y = m_module.opCompositeExtract(scalarTypeId, src0, 1, &y);
-        uint32_t src1Y = m_module.opCompositeExtract(scalarTypeId, src1, 1, &y);
+        DxsoRegisterValue src0Y = { scalarType, m_module.opCompositeExtract(scalarTypeId, src0, 1, &y) };
+        DxsoRegisterValue src1Y = { scalarType, m_module.opCompositeExtract(scalarTypeId, src1, 1, &y) };
 
         uint32_t src0Z = m_module.opCompositeExtract(scalarTypeId, src0, 1, &z);
         uint32_t src1W = m_module.opCompositeExtract(scalarTypeId, src1, 1, &w);
 
         std::array<uint32_t, 4> resultIndices;
         resultIndices[0] = m_module.constf32(1.0f);
-        resultIndices[1] = m_module.opFMul(scalarTypeId, src0Y, src1Y);
+        resultIndices[1] = emitMul(src0Y, src1Y).id;
         resultIndices[2] = src0Z;
         resultIndices[3] = src1W;
 
