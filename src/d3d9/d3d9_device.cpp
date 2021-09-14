@@ -6330,11 +6330,7 @@ namespace dxvk {
     }
 
     UpdateStateConstants<ProgramType, ConstantType, T>(
-      &m_state,
-      StartRegister,
-      pConstantData,
-      Count,
-      m_d3d9Options.d3d9FloatEmulation);
+      &m_state, StartRegister, pConstantData, Count);
 
     return D3D_OK;
   }

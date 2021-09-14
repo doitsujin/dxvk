@@ -149,13 +149,4 @@ namespace dxvk {
   static_assert(sizeof(Vector4)  == sizeof(float) * 4);
   static_assert(sizeof(Vector4i) == sizeof(int)   * 4);
 
-  inline Vector4 replaceNaN(Vector4 a) {
-    Vector4 result;
-    __m128 value = _mm_load_ps(a.data);
-    __m128 mask  = _mm_cmpeq_ps(value, value);
-           value = _mm_and_ps(value, mask);
-    _mm_store_ps(result.data, value);
-    return result;
-  }
-
 }
