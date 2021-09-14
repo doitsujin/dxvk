@@ -2275,12 +2275,7 @@ namespace dxvk {
     result.type.ctype  = dst.type.ctype;
     result.type.ccount = componentCount;
 
-    DxsoVectorType scalarType;
-    scalarType.ctype = result.type.ctype;
-    scalarType.ccount = 1;
-
     const uint32_t typeId = getVectorTypeId(result.type);
-    const uint32_t scalarTypeId = getVectorTypeId(scalarType);
 
     DxsoRegMask srcMask(true, true, true, dotCount == 4);
     std::array<uint32_t, 4> indices;
@@ -2289,9 +2284,9 @@ namespace dxvk {
     DxsoRegister src1 = ctx.src[1];
 
     for (uint32_t i = 0; i < componentCount; i++) {
-      indices[i] = m_module.opDot(scalarTypeId,
-        emitRegisterLoad(src0, srcMask).id,
-        emitRegisterLoad(src1, srcMask).id);
+      indices[i] = emitDot(
+        emitRegisterLoad(src0, srcMask),
+        emitRegisterLoad(src1, srcMask)).id;
 
       src1.id.num++;
     }
