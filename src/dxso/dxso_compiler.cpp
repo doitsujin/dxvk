@@ -2631,7 +2631,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         reg.id.num -= (count - 1) - i;
         auto m = emitRegisterLoadTexcoord(reg, vec3Mask);
 
-        indices[i] = m_module.opDot(getScalarTypeId(DxsoScalarType::Float32), m.id, n.id);
+        indices[i] = emitDot(m, n).id;
       }
 
       if (opcode == DxsoOpcode::TexM3x3Spec || opcode == DxsoOpcode::TexM3x3VSpec) {
