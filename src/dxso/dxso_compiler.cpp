@@ -3565,26 +3565,27 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     }
 
     // Compute clip distances
-    uint32_t positionId = m_module.opLoad(vec4Type, positionPtr);
+    DxsoRegisterValue position;
+    position.type = { DxsoScalarType::Float32, 4 };
+    position.id = m_module.opLoad(vec4Type, positionPtr);
     
     for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {
       std::array<uint32_t, 2> blockMembers = {{
         m_module.constu32(0),
         m_module.constu32(i),
       }};
-      
-      uint32_t planeId = m_module.opLoad(vec4Type,
-        m_module.opAccessChain(
-          m_module.defPointerType(vec4Type, spv::StorageClassUniform),
-          clipPlaneBlock, blockMembers.size(), blockMembers.data()));
-      
-      uint32_t distId = m_module.opDot(floatType, positionId, planeId);
-      
-      m_module.opStore(
-        m_module.opAccessChain(
-          m_module.defPointerType(floatType, spv::StorageClassOutput),
-          clipDistArray, 1, &blockMembers[1]),
-        distId);
+
+      DxsoRegisterValue plane;
+      plane.type = { DxsoScalarType::Float32, 4 };
+      plane.id = m_module.opLoad(vec4Type, m_module.opAccessChain(
+        m_module.defPointerType(vec4Type, spv::StorageClassUniform),
+        clipPlaneBlock, blockMembers.size(), blockMembers.data()));
+
+      DxsoRegisterValue dist = emitDot(position, plane);
+
+      m_module.opStore(m_module.opAccessChain(
+        m_module.defPointerType(floatType, spv::StorageClassOutput),
+        clipDistArray, 1, &blockMembers[1]), dist.id);
     }
   }
 
