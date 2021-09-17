@@ -494,7 +494,7 @@ namespace dxvk {
   /**
    * \brief Extended D3D11 device
    */
-  class D3D11DeviceExt : public ID3D11VkExtDevice {
+  class D3D11DeviceExt : public ID3D11VkExtDevice1 {
     
   public:
     
@@ -513,11 +513,80 @@ namespace dxvk {
     BOOL STDMETHODCALLTYPE GetExtensionSupport(
             D3D11_VK_EXTENSION      Extension);
     
+    bool STDMETHODCALLTYPE GetCudaTextureObjectNVX(
+            uint32_t                srvDriverHandle,
+            uint32_t                samplerDriverHandle,
+            uint32_t*               pCudaTextureHandle);
+
+    bool STDMETHODCALLTYPE CreateCubinComputeShaderWithNameNVX(
+            const void*             pCubin,
+            uint32_t                size,
+            uint32_t                blockX,
+            uint32_t                blockY,
+            uint32_t                blockZ,
+            const char*             pShaderName,
+            IUnknown**              phShader);
+
+    bool STDMETHODCALLTYPE GetResourceHandleGPUVirtualAddressAndSizeNVX(
+            void*                   hObject,
+            uint64_t*               gpuVAStart,
+            uint64_t*               gpuVASize);
+
+     bool STDMETHODCALLTYPE CreateUnorderedAccessViewAndGetDriverHandleNVX(
+            ID3D11Resource*                         pResource,
+            const D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc,
+            ID3D11UnorderedAccessView**             ppUAV,
+            uint32_t*                               pDriverHandle);
+
+     bool STDMETHODCALLTYPE CreateShaderResourceViewAndGetDriverHandleNVX(
+            ID3D11Resource*                        pResource,
+            const D3D11_SHADER_RESOURCE_VIEW_DESC* pDesc,
+            ID3D11ShaderResourceView**             ppSRV,
+            uint32_t*                              pDriverHandle);
+
+     bool STDMETHODCALLTYPE CreateSamplerStateAndGetDriverHandleNVX(
+            const D3D11_SAMPLER_DESC* pSamplerDesc,
+            ID3D11SamplerState**      ppSamplerState,
+            uint32_t*                 pDriverHandle);
+    
   private:
     
     D3D11DXGIDevice* m_container;
     D3D11Device*     m_device;
     
+    void AddSamplerAndHandleNVX(ID3D11SamplerState *sampler, uint32_t handle);
+    ID3D11SamplerState *HandleToSamplerNVX(uint32_t handle);
+    void AddSrvAndHandleNVX(ID3D11ShaderResourceView *srv_imageview, uint32_t handle);
+    ID3D11ShaderResourceView *HandleToSrvNVX(uint32_t handle);
+    
+    D3D10Multithread  m_multithreadMapsLock;
+    std::unordered_map<uint32_t, ID3D11SamplerState *> m_SamplerHandleToPtr;
+    std::unordered_map<uint32_t, ID3D11ShaderResourceView *> m_SrvHandleToPtr;
+  };
+
+
+  class CubinShaderWrapper : public IUnknown {
+  public:
+    CubinShaderWrapper(Rc<dxvk::DxvkDevice> in_dxvkDevice)
+    : m_RefCount(0UL), rcDxvkDevice(in_dxvkDevice) { };
+    ~CubinShaderWrapper() {
+      VkDevice vkDevice = rcDxvkDevice->handle();
+      rcDxvkDevice->vkd()->vkDestroyCuFunctionNVX(vkDevice, Function, nullptr);
+      rcDxvkDevice->vkd()->vkDestroyCuModuleNVX(vkDevice, Module, nullptr);
+    };
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID, void **) { return E_NOTIMPL; }
+    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_RefCount); }
+    ULONG STDMETHODCALLTYPE Release() {
+      ULONG rc = InterlockedDecrement(&m_RefCount);
+      if (rc == 0) delete this;
+      return rc;
+    }
+    VkCuModuleNVX Module;
+    VkCuFunctionNVX Function;
+    uint32_t BlockDimX, BlockDimY, BlockDimZ;
+    Rc<DxvkDevice> rcDxvkDevice;
+  private:
+    ULONG m_RefCount;
   };
   
   

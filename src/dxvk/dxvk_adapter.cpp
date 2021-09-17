@@ -263,7 +263,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 25> devExtensionList = {{
+    std::array<DxvkExt*, 28> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.ext4444Formats,
@@ -289,7 +289,16 @@ namespace dxvk {
       &devExtensions.khrSamplerMirrorClampToEdge,
       &devExtensions.khrShaderFloatControls,
       &devExtensions.khrSwapchain,
+      &devExtensions.nvxBinaryImport,
+      &devExtensions.nvxImageViewHandle,
+      &devExtensions.khrBufferDeviceAddress,
     }};
+
+    // VK_KHR_buffer_device_address can be expensive to enable on
+    // some drivers; only enable selectively for Cuda interop
+    if (m_deviceExtensions.supports(devExtensions.nvxBinaryImport.name()) &&
+        m_deviceExtensions.supports(devExtensions.nvxImageViewHandle.name()))
+      devExtensions.khrBufferDeviceAddress.setMode(DxvkExtMode::Optional);
 
     DxvkNameSet extensionsEnabled;
 

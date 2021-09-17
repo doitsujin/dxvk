@@ -264,12 +264,7 @@ namespace dxvk {
     // Initialize the image on the GPU
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
-    VkImageSubresourceRange subresources;
-    subresources.aspectMask     = image->formatInfo()->aspectMask;
-    subresources.baseMipLevel   = 0;
-    subresources.levelCount     = image->info().mipLevels;
-    subresources.baseArrayLayer = 0;
-    subresources.layerCount     = image->info().numLayers;
+    VkImageSubresourceRange subresources = image->getAvailableSubresources();
     
     m_context->initImage(image, subresources, VK_IMAGE_LAYOUT_PREINITIALIZED);
 

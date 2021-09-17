@@ -1,4 +1,6 @@
 #include <cstring>
+#include <vector>
+#include <utility>
 
 #include "dxvk_device.h"
 #include "dxvk_context.h"
@@ -302,12 +304,7 @@ namespace dxvk {
     if (image->info().layout != layout) {
       this->spillRenderPass(true);
 
-      VkImageSubresourceRange subresources;
-      subresources.aspectMask     = image->formatInfo()->aspectMask;
-      subresources.baseArrayLayer = 0;
-      subresources.baseMipLevel   = 0;
-      subresources.layerCount     = image->info().numLayers;
-      subresources.levelCount     = image->info().mipLevels;
+      VkImageSubresourceRange subresources = image->getAvailableSubresources();
 
       this->prepareImage(m_execBarriers, image, subresources);
 
@@ -2607,6 +2604,134 @@ namespace dxvk {
 
     m_cmd->trackGpuEvent(event->reset(handle));
     m_cmd->trackResource<DxvkAccess::None>(event);
+  }
+  
+
+  void DxvkContext::launchCuKernelNVX(
+         VkCuLaunchInfoNVX& nvxLaunchInfo,
+         std::vector<std::pair<Rc<DxvkBuffer>, DxvkAccessFlags>>& buffers,
+         std::vector<std::pair<Rc<DxvkImage>, DxvkAccessFlags>>& images)
+  {
+    // the resources in the std::vectors above are called-out
+    // explicitly in the API for barrier and tracking purposes
+    // since they're being used bindlessly.
+
+    // resources may appear multiple times as both read and write,
+    // so start by merging the duplicates.  note: in practice
+    // there are typically just a handful of resources.
+    auto MergeAccessFlagsForDuplicates = [](auto& vec) {
+      for (int i = 0; i < vec.size(); i++) {
+        for (int j = i+1; j < vec.size(); j++) {
+          if (vec[i].first == vec[j].first) {
+            // merge dupe into earlier entry
+            vec[i].second.set(vec[j].second);
+            // remove dupe by swapping-to-back then shrinking vector
+            std::swap(vec[j], vec.back());
+            vec.pop_back();
+          }
+        }
+      }
+    };
+    MergeAccessFlagsForDuplicates(images);
+    MergeAccessFlagsForDuplicates(buffers);
+
+    this->spillRenderPass(true);
+
+    for (auto& r : images) {
+      auto& img = r.first;
+      this->prepareImage(m_execBarriers, img, img->getAvailableSubresources());
+    }
+
+    bool needExecBarrierFlush = false;
+    for (auto& r : buffers) {
+      if (m_execBarriers.isBufferDirty(r.first->getSliceHandle(), r.second)) {
+        needExecBarrierFlush = true;
+        break;
+      }
+    }
+    if (!needExecBarrierFlush) {
+      for (auto& r : images) {
+        auto& img = r.first;
+        if (m_execBarriers.isImageDirty(img, img->getAvailableSubresources(), r.second)) {
+          needExecBarrierFlush = true;
+          break;
+        }
+      }
+    }
+
+    // flush any outstanding barriers for dirty inputs/outputs
+    if (needExecBarrierFlush)
+      m_execBarriers.recordCommands(m_cmd);
+
+    // create acquisition barriers
+    for (auto& r : buffers) {
+      auto& buf = r.first;
+      VkAccessFlags accessFlags = (r.second.test(DxvkAccess::Read) * VK_ACCESS_SHADER_READ_BIT) | (r.second.test(DxvkAccess::Write) * VK_ACCESS_SHADER_WRITE_BIT);
+      DxvkBufferSliceHandle bufferSlice = buf->getSliceHandle();
+      m_execAcquires.accessBuffer(
+        bufferSlice,
+        buf->info().stages,
+        buf->info().access,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        accessFlags);
+    }
+    for (auto& r : images) {
+      auto& img = r.first;
+      VkAccessFlags accessFlags = (r.second.test(DxvkAccess::Read) * VK_ACCESS_SHADER_READ_BIT) | (r.second.test(DxvkAccess::Write) * VK_ACCESS_SHADER_WRITE_BIT);
+      m_execAcquires.accessImage(
+        img,
+        img->getAvailableSubresources(),
+        img->info().layout,
+        img->info().stages,
+        img->info().access,
+        img->info().layout,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        accessFlags
+        );
+    }
+
+    // flush acquisition barriers
+    m_execAcquires.recordCommands(m_cmd);
+
+    // now actually run the cuda kernel
+    m_cmd->cmdLaunchCuKernel(nvxLaunchInfo);
+
+    // transition resources back to expected state
+    for (auto& r : buffers) {
+      auto& buf = r.first;
+      VkAccessFlags accessFlags = (r.second.test(DxvkAccess::Read) * VK_ACCESS_SHADER_READ_BIT) | (r.second.test(DxvkAccess::Write) * VK_ACCESS_SHADER_WRITE_BIT);
+      DxvkBufferSliceHandle bufferSlice = buf->getSliceHandle();
+      m_execBarriers.accessBuffer(
+        bufferSlice,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        accessFlags,
+        buf->info().stages,
+        buf->info().access);
+    }
+    for (auto& r : images) {
+      auto& img = r.first;
+      VkAccessFlags accessFlags = (r.second.test(DxvkAccess::Read) * VK_ACCESS_SHADER_READ_BIT) | (r.second.test(DxvkAccess::Write) * VK_ACCESS_SHADER_WRITE_BIT);
+      m_execBarriers.accessImage(
+        img,
+        img->getAvailableSubresources(),
+        img->info().layout,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        accessFlags,
+        img->info().layout,
+        img->info().stages,
+        img->info().access
+        );
+    }
+
+    // add keepalive refs for resources until cmdlist is done
+    for (auto& r : images) {
+      if (r.second.test(DxvkAccess::Read)) m_cmd->trackResource<DxvkAccess::Read>(r.first);
+      if (r.second.test(DxvkAccess::Write)) m_cmd->trackResource<DxvkAccess::Write>(r.first);
+    }
+    for (auto& r : buffers) {
+      if (r.second.test(DxvkAccess::Read)) m_cmd->trackResource<DxvkAccess::Read>(r.first);
+      if (r.second.test(DxvkAccess::Write)) m_cmd->trackResource<DxvkAccess::Write>(r.first);
+    }
   }
   
   

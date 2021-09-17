@@ -48,7 +48,8 @@ namespace dxvk {
       return S_OK;
     }
     
-    if (riid == __uuidof(ID3D11VkExtContext)) {
+    if (riid == __uuidof(ID3D11VkExtContext)
+     || riid == __uuidof(ID3D11VkExtContext1)) {
       *ppvObject = ref(&m_contextExt);
       return S_OK;
     }

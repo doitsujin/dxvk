@@ -298,6 +298,21 @@ namespace dxvk {
     VkDeviceSize memSize() const {
       return m_image.memory.length();
     }
+
+    /**
+     * \brief Get full subresource range of the image
+     * 
+     * \returns Resource range of the whole image
+     */
+    VkImageSubresourceRange getAvailableSubresources() const {
+      VkImageSubresourceRange result;
+      result.aspectMask     = formatInfo()->aspectMask;
+      result.baseMipLevel   = 0;
+      result.levelCount     = info().mipLevels;
+      result.baseArrayLayer = 0;
+      result.layerCount     = info().numLayers;
+      return result;
+    }
     
   private:
     

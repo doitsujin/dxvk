@@ -1,3 +1,10 @@
+#include <vector>
+#include <utility>
+#include <cstring>
+
+#include "d3d11_device.h"
+#include "../util/log/log.h"
+
 #include "d3d11_context.h"
 
 namespace dxvk {
@@ -136,5 +143,76 @@ namespace dxvk {
       ctx->setBarrierControl(cFlags);
     });
   }
-  
+
+
+  class CubinShaderLaunchInfo {
+  public:
+    Com<CubinShaderWrapper> cuShader;
+    std::vector<uint8_t> Params;
+    size_t ParamSize;
+    VkCuLaunchInfoNVX nvxLaunchInfo = { VK_STRUCTURE_TYPE_CU_LAUNCH_INFO_NVX };
+    const void* CuLaunchConfig[5];
+    std::vector<std::pair<Rc<DxvkBuffer>, DxvkAccessFlags>> buffers;
+    std::vector<std::pair<Rc<DxvkImage>, DxvkAccessFlags>> images;
+  };
+
+
+  bool STDMETHODCALLTYPE D3D11DeviceContextExt::LaunchCubinShaderNVX(IUnknown* hShader, uint32_t GridX, uint32_t GridY, uint32_t GridZ, const void* pParams, uint32_t ParamSize, const void** pReadResources, uint32_t NumReadResources, const void** pWriteResources, uint32_t NumWriteResources) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+
+    CubinShaderWrapper* cubinShader = (CubinShaderWrapper*)hShader;
+    auto rcLaunchInfo = new CubinShaderLaunchInfo();
+
+    const uint32_t maxResources = NumReadResources + NumWriteResources;
+    rcLaunchInfo->buffers.reserve(maxResources);
+    rcLaunchInfo->images.reserve(maxResources);
+
+    auto InsertResource =
+    [&images = rcLaunchInfo->images,
+     &buffers = rcLaunchInfo->buffers](ID3D11Resource* res, DxvkAccessFlags access) {
+      auto buffer = GetCommonBuffer(res);
+      auto texture = GetCommonTexture(res);
+      if (buffer) buffers.emplace_back(std::make_pair(buffer->GetBuffer(), access));
+      else if (texture) images.emplace_back(std::make_pair(texture->GetImage(), access));
+    };
+
+    for (uint32_t i = 0; i < NumReadResources; i++) {
+      InsertResource(const_cast<ID3D11Resource*>(static_cast<const ID3D11Resource*>(pReadResources[i])), DxvkAccess::Read);
+    }
+    for (uint32_t i = 0; i < NumWriteResources; i++) {
+      InsertResource(const_cast<ID3D11Resource*>(static_cast<const ID3D11Resource*>(pWriteResources[i])), DxvkAccess::Write);
+    }
+
+    rcLaunchInfo->ParamSize = ParamSize;
+    rcLaunchInfo->Params.resize(rcLaunchInfo->ParamSize);
+    std::memcpy(rcLaunchInfo->Params.data(), pParams, ParamSize);
+
+    rcLaunchInfo->CuLaunchConfig[0] = reinterpret_cast<void*>(0x01); // CU_LAUNCH_PARAM_BUFFER_POINTER
+    rcLaunchInfo->CuLaunchConfig[1] = rcLaunchInfo->Params.data();
+    rcLaunchInfo->CuLaunchConfig[2] = reinterpret_cast<void*>(0x02); // CU_LAUNCH_PARAM_BUFFER_SIZE
+    rcLaunchInfo->CuLaunchConfig[3] = &rcLaunchInfo->ParamSize; // yes, this actually requires a pointer to a size_t containing the parameter size
+    rcLaunchInfo->CuLaunchConfig[4] = reinterpret_cast<void*>(0x00); // CU_LAUNCH_PARAM_END
+
+    rcLaunchInfo->nvxLaunchInfo.function       = cubinShader->Function;
+    rcLaunchInfo->nvxLaunchInfo.gridDimX       = GridX;
+    rcLaunchInfo->nvxLaunchInfo.gridDimY       = GridY;
+    rcLaunchInfo->nvxLaunchInfo.gridDimZ       = GridZ;
+    rcLaunchInfo->nvxLaunchInfo.blockDimX      = cubinShader->BlockDimX;
+    rcLaunchInfo->nvxLaunchInfo.blockDimY      = cubinShader->BlockDimY;
+    rcLaunchInfo->nvxLaunchInfo.blockDimZ      = cubinShader->BlockDimZ;
+    rcLaunchInfo->nvxLaunchInfo.sharedMemBytes = 0;
+    rcLaunchInfo->nvxLaunchInfo.paramCount     = 0;
+    rcLaunchInfo->nvxLaunchInfo.pParams        = nullptr;
+    rcLaunchInfo->nvxLaunchInfo.extraCount     = 1;
+    rcLaunchInfo->nvxLaunchInfo.pExtras        = &rcLaunchInfo->CuLaunchConfig[0];
+
+    rcLaunchInfo->cuShader = cubinShader;
+
+    m_ctx->EmitCs([cRcLaunchInfo = rcLaunchInfo] (DxvkContext* ctx) {
+        ctx->launchCuKernelNVX(cRcLaunchInfo->nvxLaunchInfo, cRcLaunchInfo->buffers, cRcLaunchInfo->images);
+        delete cRcLaunchInfo;
+    });
+
+    return true;
+  }
 }
