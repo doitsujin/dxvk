@@ -340,6 +340,9 @@ namespace dxvk {
         pSizes, pStrides);
     }
     
+    void cmdLaunchCuKernel(VkCuLaunchInfoNVX launchInfo) {
+      m_vkd->vkCmdCuLaunchKernelNVX(m_execBuffer, &launchInfo);
+    }
     
     void cmdBlitImage(
             VkImage                 srcImage,

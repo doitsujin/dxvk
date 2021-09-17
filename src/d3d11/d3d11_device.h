@@ -15,6 +15,7 @@
 #include "../util/com/com_private_data.h"
 
 #include "d3d11_cmdlist.h"
+#include "d3d11_cuda.h"
 #include "d3d11_initializer.h"
 #include "d3d11_interfaces.h"
 #include "d3d11_interop.h"
@@ -494,7 +495,7 @@ namespace dxvk {
   /**
    * \brief Extended D3D11 device
    */
-  class D3D11DeviceExt : public ID3D11VkExtDevice {
+  class D3D11DeviceExt : public ID3D11VkExtDevice1 {
     
   public:
     
@@ -513,14 +514,67 @@ namespace dxvk {
     BOOL STDMETHODCALLTYPE GetExtensionSupport(
             D3D11_VK_EXTENSION      Extension);
     
+    bool STDMETHODCALLTYPE GetCudaTextureObjectNVX(
+            uint32_t                srvDriverHandle,
+            uint32_t                samplerDriverHandle,
+            uint32_t*               pCudaTextureHandle);
+
+    bool STDMETHODCALLTYPE CreateCubinComputeShaderWithNameNVX(
+            const void*             pCubin,
+            uint32_t                size,
+            uint32_t                blockX,
+            uint32_t                blockY,
+            uint32_t                blockZ,
+            const char*             pShaderName,
+            IUnknown**              phShader);
+
+    bool STDMETHODCALLTYPE GetResourceHandleGPUVirtualAddressAndSizeNVX(
+            void*                   hObject,
+            uint64_t*               gpuVAStart,
+            uint64_t*               gpuVASize);
+
+     bool STDMETHODCALLTYPE CreateUnorderedAccessViewAndGetDriverHandleNVX(
+            ID3D11Resource*                         pResource,
+            const D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc,
+            ID3D11UnorderedAccessView**             ppUAV,
+            uint32_t*                               pDriverHandle);
+
+     bool STDMETHODCALLTYPE CreateShaderResourceViewAndGetDriverHandleNVX(
+            ID3D11Resource*                        pResource,
+            const D3D11_SHADER_RESOURCE_VIEW_DESC* pDesc,
+            ID3D11ShaderResourceView**             ppSRV,
+            uint32_t*                              pDriverHandle);
+
+     bool STDMETHODCALLTYPE CreateSamplerStateAndGetDriverHandleNVX(
+            const D3D11_SAMPLER_DESC* pSamplerDesc,
+            ID3D11SamplerState**      ppSamplerState,
+            uint32_t*                 pDriverHandle);
+    
   private:
     
     D3D11DXGIDevice* m_container;
     D3D11Device*     m_device;
     
+    void AddSamplerAndHandleNVX(
+            ID3D11SamplerState*       pSampler,
+            uint32_t                  Handle);
+
+    ID3D11SamplerState* HandleToSamplerNVX(
+            uint32_t                  Handle);
+
+    void AddSrvAndHandleNVX(
+            ID3D11ShaderResourceView* pSrv,
+            uint32_t                  Handle);
+
+    ID3D11ShaderResourceView* HandleToSrvNVX(
+            uint32_t                  Handle);
+    
+    dxvk::mutex m_mapLock;
+    std::unordered_map<uint32_t, ID3D11SamplerState*> m_samplerHandleToPtr;
+    std::unordered_map<uint32_t, ID3D11ShaderResourceView*> m_srvHandleToPtr;
   };
-  
-  
+
+
   /**
    * \brief D3D11 video device
    */

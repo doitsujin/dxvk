@@ -1,4 +1,6 @@
 #include <cstring>
+#include <vector>
+#include <utility>
 
 #include "dxvk_device.h"
 #include "dxvk_context.h"
@@ -302,12 +304,7 @@ namespace dxvk {
     if (image->info().layout != layout) {
       this->spillRenderPass(true);
 
-      VkImageSubresourceRange subresources;
-      subresources.aspectMask     = image->formatInfo()->aspectMask;
-      subresources.baseArrayLayer = 0;
-      subresources.baseMipLevel   = 0;
-      subresources.layerCount     = image->info().numLayers;
-      subresources.levelCount     = image->info().mipLevels;
+      VkImageSubresourceRange subresources = image->getAvailableSubresources();
 
       this->prepareImage(m_execBarriers, image, subresources);
 
@@ -2607,6 +2604,73 @@ namespace dxvk {
 
     m_cmd->trackGpuEvent(event->reset(handle));
     m_cmd->trackResource<DxvkAccess::None>(event);
+  }
+  
+
+  void DxvkContext::launchCuKernelNVX(
+    const VkCuLaunchInfoNVX& nvxLaunchInfo,
+    const std::vector<std::pair<Rc<DxvkBuffer>, DxvkAccessFlags>>& buffers,
+    const std::vector<std::pair<Rc<DxvkImage>,  DxvkAccessFlags>>& images) {
+    // The resources in the std::vectors above are called-out
+    // explicitly in the API for barrier and tracking purposes
+    // since they're being used bindlessly.
+    this->spillRenderPass(true);
+
+    VkPipelineStageFlags srcStages = 0;
+    VkAccessFlags srcAccess = 0;
+
+    for (auto& r : buffers) {
+      srcStages |= r.first->info().stages;
+      srcAccess |= r.first->info().access;
+    }
+
+    for (auto& r : images) {
+      srcStages |= r.first->info().stages;
+      srcAccess |= r.first->info().access;
+
+      this->prepareImage(m_execBarriers, r.first, r.first->getAvailableSubresources());
+    }
+
+    m_execBarriers.accessMemory(srcStages, srcAccess,
+      VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+      VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+    m_execBarriers.recordCommands(m_cmd);
+
+    m_cmd->cmdLaunchCuKernel(nvxLaunchInfo);
+
+    for (auto& r : buffers) {
+      VkAccessFlags accessFlags = (r.second.test(DxvkAccess::Read) * VK_ACCESS_SHADER_READ_BIT)
+                                | (r.second.test(DxvkAccess::Write) * VK_ACCESS_SHADER_WRITE_BIT);
+      DxvkBufferSliceHandle bufferSlice = r.first->getSliceHandle();
+      m_execBarriers.accessBuffer(bufferSlice,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        accessFlags,
+        r.first->info().stages,
+        r.first->info().access);
+    }
+
+    for (auto& r : images) {
+      VkAccessFlags accessFlags = (r.second.test(DxvkAccess::Read) * VK_ACCESS_SHADER_READ_BIT)
+                                | (r.second.test(DxvkAccess::Write) * VK_ACCESS_SHADER_WRITE_BIT);
+      m_execBarriers.accessImage(r.first,
+        r.first->getAvailableSubresources(),
+        r.first->info().layout,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        accessFlags,
+        r.first->info().layout,
+        r.first->info().stages,
+        r.first->info().access);
+    }
+
+    for (auto& r : images) {
+      if (r.second.test(DxvkAccess::Read)) m_cmd->trackResource<DxvkAccess::Read>(r.first);
+      if (r.second.test(DxvkAccess::Write)) m_cmd->trackResource<DxvkAccess::Write>(r.first);
+    }
+
+    for (auto& r : buffers) {
+      if (r.second.test(DxvkAccess::Read)) m_cmd->trackResource<DxvkAccess::Read>(r.first);
+      if (r.second.test(DxvkAccess::Write)) m_cmd->trackResource<DxvkAccess::Write>(r.first);
+    }
   }
   
   

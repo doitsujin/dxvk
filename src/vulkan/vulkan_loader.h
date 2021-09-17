@@ -347,6 +347,23 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdBeginQueryIndexedEXT);
     VULKAN_FN(vkCmdEndQueryIndexedEXT);
     #endif
+
+    #ifdef VK_NVX_image_view_handle
+    VULKAN_FN(vkGetImageViewHandleNVX);
+    VULKAN_FN(vkGetImageViewAddressNVX);
+    #endif
+
+    #ifdef VK_NVX_binary_import
+    VULKAN_FN(vkCreateCuModuleNVX);
+    VULKAN_FN(vkCreateCuFunctionNVX);
+    VULKAN_FN(vkDestroyCuModuleNVX);
+    VULKAN_FN(vkDestroyCuFunctionNVX);
+    VULKAN_FN(vkCmdCuLaunchKernelNVX);
+    #endif
+
+    #ifdef VK_KHR_buffer_device_address
+    VULKAN_FN(vkGetBufferDeviceAddressKHR);
+    #endif
   };
   
 }

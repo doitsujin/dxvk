@@ -6,6 +6,7 @@
 #include "dxvk_context_state.h"
 #include "dxvk_data.h"
 #include "dxvk_objects.h"
+#include "dxvk_resource.h"
 #include "dxvk_util.h"
 
 namespace dxvk {
@@ -987,6 +988,23 @@ namespace dxvk {
      */
     void setBarrierControl(
             DxvkBarrierControlFlags control);
+    
+    /**
+     * \brief Launches a Cuda kernel
+     *
+     * Since the kernel is launched with an opaque set of
+     * kernel-specific parameters which may reference
+     * resources bindlessly, such resources must be listed by
+     * the caller in the 'buffers' and 'images' parameters so
+     * that their access may be tracked appropriately.
+     * \param [in] nvxLaunchInfo Kernel launch parameter struct
+     * \param [in] buffers List of {buffer,read,write} used by kernel
+     * \param [in] images List of {image,read,write} used by kernel
+     */
+    void launchCuKernelNVX(
+      const VkCuLaunchInfoNVX& nvxLaunchInfo,
+      const std::vector<std::pair<Rc<DxvkBuffer>, DxvkAccessFlags>>& buffers,
+      const std::vector<std::pair<Rc<DxvkImage>, DxvkAccessFlags>>& images);
     
     /**
      * \brief Signals a GPU event

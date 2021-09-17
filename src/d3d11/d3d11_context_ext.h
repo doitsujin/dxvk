@@ -6,7 +6,7 @@ namespace dxvk {
   
   class D3D11DeviceContext;
 
-  class D3D11DeviceContextExt : public ID3D11VkExtContext {
+  class D3D11DeviceContextExt : public ID3D11VkExtContext1 {
     
   public:
     
@@ -56,11 +56,23 @@ namespace dxvk {
     
     void STDMETHODCALLTYPE SetBarrierControl(
             UINT                    ControlFlags);
-    
+
+    bool STDMETHODCALLTYPE LaunchCubinShaderNVX(
+            IUnknown*               hShader,
+            uint32_t                GridX,
+            uint32_t                GridY,
+            uint32_t                GridZ,
+            const void*             pParams,
+            uint32_t                paramSize,
+            void* const*            pReadResources,
+            uint32_t                NumReadResources,
+            void* const*            pWriteResources,
+            uint32_t                NumWriteResources);
+
   private:
     
     D3D11DeviceContext* m_ctx;
-    
+
   };
 
 }
