@@ -16,9 +16,9 @@ namespace dxvk {
 
     bit::bitset<d8caps::MAX_TEXTURE_STAGES> textures;
 
-    D3D8StateCapture() {
+    D3D8StateCapture() : vs(false), ps(false), indices(false) {
       // Ensure all bits are initialized to false
-      memset(this, false, sizeof(*this));
+      textures.clearAll();
     }
   };
 
