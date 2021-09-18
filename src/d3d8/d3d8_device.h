@@ -109,10 +109,10 @@ namespace dxvk {
           dstRect = srcRect;
         }
 
-        if (srcDesc.Pool == D3DPOOL_MANAGED || dstDesc.Pool != D3DPOOL_DEFAULT) {
+        if (srcDesc.Pool == d3d9::D3DPOOL_MANAGED || dstDesc.Pool != d3d9::D3DPOOL_DEFAULT) {
           // copying from managed or to non-default dest
 
-          if (m_renderTarget == src && dstDesc.Pool == D3DPOOL_SYSTEMMEM) {
+          if (m_renderTarget == src && dstDesc.Pool == d3d9::D3DPOOL_SYSTEMMEM) {
 
             // rt -> system mem: use GetRenderTargetData
             res = GetD3D9()->GetRenderTargetData(src->GetD3D9(), dst->GetD3D9());
@@ -123,7 +123,7 @@ namespace dxvk {
 
           }
 
-        } else if (srcDesc.Pool == D3DPOOL_DEFAULT) {
+        } else if (srcDesc.Pool == d3d9::D3DPOOL_DEFAULT) {
 
           // default -> default: use StretchRect
           res = GetD3D9()->StretchRect(
@@ -134,7 +134,7 @@ namespace dxvk {
             d3d9::D3DTEXF_NONE
           );
 
-        } else if (srcDesc.Pool == D3DPOOL_SYSTEMMEM) {
+        } else if (srcDesc.Pool == d3d9::D3DPOOL_SYSTEMMEM) {
 
           // system mem -> default: use UpdateSurface
           POINT dstPt = { dstRect.left, dstRect.top };
