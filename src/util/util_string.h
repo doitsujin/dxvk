@@ -40,4 +40,6 @@ namespace dxvk::str {
     return stream.str();
   }
   
+  bool compareAsciiCaseInsensitive(const char* s1, const char* s2);
+
 }

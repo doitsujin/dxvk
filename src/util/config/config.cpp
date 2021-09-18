@@ -573,10 +573,10 @@ namespace dxvk {
   bool Config::parseOptionValue(
     const std::string&  value,
           bool&         result) {
-    if (value == "True") {
+    if (str::compareAsciiCaseInsensitive(value.c_str(), "true")) {
       result = true;
       return true;
-    } else if (value == "False") {
+    } else if (str::compareAsciiCaseInsensitive(value.c_str(), "false")) {
       result = false;
       return true;
     } else {
@@ -620,13 +620,13 @@ namespace dxvk {
   bool Config::parseOptionValue(
     const std::string&  value,
           Tristate&     result) {
-    if (value == "True") {
+    if (str::compareAsciiCaseInsensitive(value.c_str(), "true")) {
       result = Tristate::True;
       return true;
-    } else if (value == "False") {
+    } else if (str::compareAsciiCaseInsensitive(value.c_str(), "false")) {
       result = Tristate::False;
       return true;
-    } else if (value == "Auto") {
+    } else if (str::compareAsciiCaseInsensitive(value.c_str(), "auto")) {
       result = Tristate::Auto;
       return true;
     } else {

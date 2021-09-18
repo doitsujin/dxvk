@@ -40,4 +40,19 @@ namespace dxvk::str {
     return result;
   }
 
+  static char asciiToLower(char c) {
+    if (c >= 'A' && c <= 'Z')
+      return c + ('a' - 'A');
+    else
+      return c;
+  }
+
+  bool compareAsciiCaseInsensitive(const char* s1, const char* s2) {
+    for (;*s1 || *s2; s1++, s2++) {
+      if (asciiToLower(*s1) != asciiToLower(*s2))
+        return false;
+    }
+    return true;
+  }
+
 }
