@@ -34,15 +34,4 @@ extern "C" {
 
     return pDirect3D;
   }
-
-  DLLEXPORT void __stdcall DebugSetMute(void) {
-  }
-
-  DLLEXPORT int __stdcall DebugSetLevel(void) {
-    return 0;
-  }
-
-  DLLEXPORT int __stdcall Direct3D9EnableMaximizedWindowedModeShim(UINT a) {
-    return 0;
-  }
 }
