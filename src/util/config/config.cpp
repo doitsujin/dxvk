@@ -1,7 +1,9 @@
+#include <array>
 #include <fstream>
 #include <sstream>
 #include <iostream>
 #include <regex>
+#include <utility>
 
 #include "config.h"
 
@@ -573,15 +575,13 @@ namespace dxvk {
   bool Config::parseOptionValue(
     const std::string&  value,
           bool&         result) {
-    if (value == "True") {
-      result = true;
-      return true;
-    } else if (value == "False") {
-      result = false;
-      return true;
-    } else {
-      return false;
-    }
+    static const std::array<std::pair<const char*, bool>, 2> s_lookup = {{
+      { "true",  true  },
+      { "false", false },
+    }};
+
+    return parseStringOption(value,
+      s_lookup.begin(), s_lookup.end(), result);
   }
 
 
@@ -620,18 +620,34 @@ namespace dxvk {
   bool Config::parseOptionValue(
     const std::string&  value,
           Tristate&     result) {
-    if (value == "True") {
-      result = Tristate::True;
-      return true;
-    } else if (value == "False") {
-      result = Tristate::False;
-      return true;
-    } else if (value == "Auto") {
-      result = Tristate::Auto;
-      return true;
-    } else {
-      return false;
+    static const std::array<std::pair<const char*, Tristate>, 3> s_lookup = {{
+      { "true",  Tristate::True  },
+      { "false", Tristate::False },
+      { "auto",  Tristate::Auto  },
+    }};
+
+    return parseStringOption(value,
+      s_lookup.begin(), s_lookup.end(), result);
+  }
+
+
+  template<typename I, typename V>
+  bool Config::parseStringOption(
+          std::string   str,
+          I             begin,
+          I             end,
+          V&            value) {
+    std::transform(str.begin(), str.end(), str.begin(),
+      [] (unsigned char c) { return (c >= 'A' && c <= 'Z') ? (c + 'a' - 'A') : c; });
+
+    for (auto i = begin; i != end; i++) {
+      if (str == i->first) {
+        value = i->second;
+        return true;
+      }
     }
+
+    return false;
   }
 
 
