@@ -1002,9 +1002,9 @@ namespace dxvk {
      * \param [in] images List of {image,read,write} used by kernel
      */
     void launchCuKernelNVX(
-            VkCuLaunchInfoNVX& nvxLaunchInfo,
-            std::vector<std::pair<Rc<DxvkBuffer>, DxvkAccessFlags>>& buffers,
-            std::vector<std::pair<Rc<DxvkImage>, DxvkAccessFlags>>& images);
+      const VkCuLaunchInfoNVX& nvxLaunchInfo,
+      const std::vector<std::pair<Rc<DxvkBuffer>, DxvkAccessFlags>>& buffers,
+      const std::vector<std::pair<Rc<DxvkImage>, DxvkAccessFlags>>& images);
     
     /**
      * \brief Signals a GPU event
