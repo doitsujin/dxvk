@@ -13,6 +13,19 @@ namespace dxvk {
   }
 
   
+  void DxvkBarrierSet::accessMemory(
+          VkPipelineStageFlags      srcStages,
+          VkAccessFlags             srcAccess,
+          VkPipelineStageFlags      dstStages,
+          VkAccessFlags             dstAccess) {
+    m_srcStages |= srcStages;
+    m_dstStages |= dstStages;
+    
+    m_srcAccess |= srcAccess;
+    m_dstAccess |= dstAccess;
+  }
+
+
   void DxvkBarrierSet::accessBuffer(
     const DxvkBufferSliceHandle&    bufSlice,
           VkPipelineStageFlags      srcStages,
