@@ -2533,7 +2533,8 @@ namespace dxvk {
   }
   
 
-  bool STDMETHODCALLTYPE D3D11DeviceExt::CreateCubinComputeShaderWithNameNVX(const void* pCubin, uint32_t size, uint32_t blockX, uint32_t blockY, uint32_t blockZ, const char* pShaderName, IUnknown** phShader) {
+  bool STDMETHODCALLTYPE D3D11DeviceExt::CreateCubinComputeShaderWithNameNVX(const void* pCubin, uint32_t size,
+      uint32_t blockX, uint32_t blockY, uint32_t blockZ, const char* pShaderName, IUnknown** phShader) {
     Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
     VkDevice vkDevice = dxvkDevice->handle();
 
@@ -2543,8 +2544,9 @@ namespace dxvk {
 
     VkCuModuleNVX cuModule;
     VkCuFunctionNVX cuFunction;
-    VkResult result = dxvkDevice->vkd()->vkCreateCuModuleNVX(vkDevice, &moduleCreateInfo, NULL, &cuModule);
-    if (result != VK_SUCCESS) {
+    VkResult result;
+
+    if ((result = dxvkDevice->vkd()->vkCreateCuModuleNVX(vkDevice, &moduleCreateInfo, nullptr, &cuModule))) {
       Logger::warn(str::format("CreateCubinComputeShaderWithNameNVX() - failure to create module - result=", result, " pcubindata=", pCubin, " cubinsize=", size));
       return false; // failure
     }
@@ -2553,25 +2555,15 @@ namespace dxvk {
     functionCreateInfo.module = cuModule;
     functionCreateInfo.pName = pShaderName;
 
-    result = dxvkDevice->vkd()->vkCreateCuFunctionNVX(vkDevice, &functionCreateInfo, NULL, &cuFunction);
-    if (result != VK_SUCCESS) {
+    if ((result = dxvkDevice->vkd()->vkCreateCuFunctionNVX(vkDevice, &functionCreateInfo, nullptr, &cuFunction))) {
       dxvkDevice->vkd()->vkDestroyCuModuleNVX(vkDevice, cuModule, nullptr);
       Logger::warn(str::format("CreateCubinComputeShaderWithNameNVX() - failure to create function - result=", result));
-      return false; // failure
+      return false;
     }
 
-    CubinShaderWrapper* cubinShader = new CubinShaderWrapper(dxvkDevice);
-    cubinShader->Module    = cuModule;
-    cubinShader->Function  = cuFunction;
-    // Have to squirrel these away because the d3d11 NvAPI for this is a
-    // bit wacky compared to the Vk equivalents
-    cubinShader->BlockDimX = blockX;
-    cubinShader->BlockDimY = blockY;
-    cubinShader->BlockDimZ = blockZ;
-
-    *phShader = cubinShader;
-
-    return true; // success
+    *phShader = ref(new CubinShaderWrapper(dxvkDevice,
+      cuModule, cuFunction, { blockX, blockY, blockZ }));
+    return true;
   }
 
 

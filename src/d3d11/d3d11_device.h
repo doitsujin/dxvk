@@ -15,6 +15,7 @@
 #include "../util/com/com_private_data.h"
 
 #include "d3d11_cmdlist.h"
+#include "d3d11_cuda.h"
 #include "d3d11_initializer.h"
 #include "d3d11_interfaces.h"
 #include "d3d11_interop.h"
@@ -565,31 +566,6 @@ namespace dxvk {
   };
 
 
-  class CubinShaderWrapper : public IUnknown {
-  public:
-    CubinShaderWrapper(Rc<dxvk::DxvkDevice> in_dxvkDevice)
-    : m_RefCount(0UL), rcDxvkDevice(in_dxvkDevice) { };
-    ~CubinShaderWrapper() {
-      VkDevice vkDevice = rcDxvkDevice->handle();
-      rcDxvkDevice->vkd()->vkDestroyCuFunctionNVX(vkDevice, Function, nullptr);
-      rcDxvkDevice->vkd()->vkDestroyCuModuleNVX(vkDevice, Module, nullptr);
-    };
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID, void **) { return E_NOTIMPL; }
-    ULONG STDMETHODCALLTYPE AddRef() { return InterlockedIncrement(&m_RefCount); }
-    ULONG STDMETHODCALLTYPE Release() {
-      ULONG rc = InterlockedDecrement(&m_RefCount);
-      if (rc == 0) delete this;
-      return rc;
-    }
-    VkCuModuleNVX Module;
-    VkCuFunctionNVX Function;
-    uint32_t BlockDimX, BlockDimY, BlockDimZ;
-    Rc<DxvkDevice> rcDxvkDevice;
-  private:
-    ULONG m_RefCount;
-  };
-  
-  
   /**
    * \brief D3D11 video device
    */
