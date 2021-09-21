@@ -156,9 +156,9 @@ ID3D11VkExtContext1 : public ID3D11VkExtContext {
           uint32_t                gridZ,
           const void*             pParams,
           uint32_t                paramSize,
-          const void**            pReadResources,
+          void* const*            pReadResources,
           uint32_t                numReadResources,
-          const void**            pWriteResources,
+          void* const*            pWriteResources,
           uint32_t                numWriteResources) = 0;
 };
 

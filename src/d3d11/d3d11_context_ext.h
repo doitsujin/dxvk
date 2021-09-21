@@ -64,9 +64,9 @@ namespace dxvk {
             uint32_t                GridZ,
             const void*             pParams,
             uint32_t                paramSize,
-            const void**            pReadResources,
+            void* const*            pReadResources,
             uint32_t                NumReadResources,
-            const void**            pWriteResources,
+            void* const*            pWriteResources,
             uint32_t                NumWriteResources);
 
   private:
