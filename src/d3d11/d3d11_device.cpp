@@ -2404,7 +2404,7 @@ namespace dxvk {
   D3D11DeviceExt::D3D11DeviceExt(
           D3D11DXGIDevice*        pContainer,
           D3D11Device*            pDevice)
-  : m_container(pContainer), m_device(pDevice), m_multithreadMapsLock(this, false) {
+  : m_container(pContainer), m_device(pDevice) {
     
   }
   
@@ -2449,7 +2449,8 @@ namespace dxvk {
         return deviceExtensions.nvxImageViewHandle;
 
       case D3D11_VK_NVX_BINARY_IMPORT:
-        return deviceExtensions.nvxBinaryImport;
+        return deviceExtensions.nvxBinaryImport
+            && deviceExtensions.khrBufferDeviceAddress;
 
       default:
         return false;
@@ -2457,48 +2458,16 @@ namespace dxvk {
   }
   
   
-
-  // Maintain mappings from opaque uint32 handles to
-  // resources.
-  //
-  // Doesn't keep the resource ref'd; the app is responsible
-  // for keeping the underlying resource alive as long as it
-  // wants to use the handle.
-  // No attempt to shrink or depopulate the maps; number of
-  // entries is expected to be very limited and using a
-  // dangling handle is an app bug.
-  void D3D11DeviceExt::AddSamplerAndHandleNVX(ID3D11SamplerState* sampler, uint32_t handle) {
-    auto mapslock = m_multithreadMapsLock.AcquireLock();
-    m_SamplerHandleToPtr[handle] = sampler;
-  }
-  ID3D11SamplerState* D3D11DeviceExt::HandleToSamplerNVX(uint32_t handle) {
-    auto mapLock = m_multithreadMapsLock.AcquireLock();
-    auto got = m_SamplerHandleToPtr.find(handle);
-    if (got == m_SamplerHandleToPtr.end())
-      return nullptr;
-    return (ID3D11SamplerState*)got->second;
-  }
-  void D3D11DeviceExt::AddSrvAndHandleNVX(ID3D11ShaderResourceView* srv_imageview, uint32_t handle) {
-    auto mapLock = m_multithreadMapsLock.AcquireLock();
-    m_SrvHandleToPtr[handle] = srv_imageview;
-  }
-  ID3D11ShaderResourceView* D3D11DeviceExt::HandleToSrvNVX(uint32_t handle) {
-    auto mapLock = m_multithreadMapsLock.AcquireLock();
-    auto got = m_SrvHandleToPtr.find(handle);
-    if (got == m_SrvHandleToPtr.end())
-      return nullptr;
-    return (ID3D11ShaderResourceView*)got->second;
-  }
-
-
   bool STDMETHODCALLTYPE D3D11DeviceExt::GetCudaTextureObjectNVX(uint32_t srvDriverHandle, uint32_t samplerDriverHandle, uint32_t* pCudaTextureHandle) {
     ID3D11ShaderResourceView* srv = HandleToSrvNVX(srvDriverHandle);
+
     if (!srv) {
       Logger::warn(str::format("GetCudaTextureObjectNVX() failure - srv handle wasn't found: ", srvDriverHandle));
       return false;
     }
 
     ID3D11SamplerState* samplerState = HandleToSamplerNVX(samplerDriverHandle);
+
     if (!samplerState) {
       Logger::warn(str::format("GetCudaTextureObjectNVX() failure - sampler handle wasn't found: ", samplerDriverHandle));
       return false;
@@ -2520,7 +2489,6 @@ namespace dxvk {
     // note: there's no implicit lifetime management here; it's up to the
     // app to keep the sampler and SRV alive as long as it wants to use this
     // derived handle.
-
     VkDevice vkDevice = m_device->GetDXVKDevice()->handle();
     *pCudaTextureHandle = m_device->GetDXVKDevice()->vkd()->vkGetImageViewHandleNVX(vkDevice, &imageViewHandleInfo);
 
@@ -2696,7 +2664,7 @@ namespace dxvk {
       return false;
     }
 
-    return true; // success
+    return true;
   }
 
 
@@ -2743,8 +2711,7 @@ namespace dxvk {
 
     // will need to look-up resource from uint32 handle later
     AddSrvAndHandleNVX(*ppSRV, *pDriverHandle);
-
-    return true; // success
+    return true;
   }
 
 
@@ -2759,9 +2726,44 @@ namespace dxvk {
 
     // will need to look-up sampler from uint32 handle later
     AddSamplerAndHandleNVX(*ppSamplerState, *pDriverHandle);
-
     return true;
   }
+
+
+  void D3D11DeviceExt::AddSamplerAndHandleNVX(ID3D11SamplerState* pSampler, uint32_t Handle) {
+    std::lock_guard lock(m_mapLock);
+    m_samplerHandleToPtr[Handle] = pSampler;
+  }
+
+
+  ID3D11SamplerState* D3D11DeviceExt::HandleToSamplerNVX(uint32_t Handle) {
+    std::lock_guard lock(m_mapLock);
+    auto got = m_samplerHandleToPtr.find(Handle);
+
+    if (got == m_samplerHandleToPtr.end())
+      return nullptr;
+
+    return static_cast<ID3D11SamplerState*>(got->second);
+  }
+
+
+  void D3D11DeviceExt::AddSrvAndHandleNVX(ID3D11ShaderResourceView* pSrv, uint32_t Handle) {
+    std::lock_guard lock(m_mapLock);
+    m_srvHandleToPtr[Handle] = pSrv;
+  }
+
+
+  ID3D11ShaderResourceView* D3D11DeviceExt::HandleToSrvNVX(uint32_t Handle) {
+    std::lock_guard lock(m_mapLock);
+    auto got = m_srvHandleToPtr.find(Handle);
+
+    if (got == m_srvHandleToPtr.end())
+      return nullptr;
+
+    return static_cast<ID3D11ShaderResourceView*>(got->second);
+  }
+
+
 
   
   

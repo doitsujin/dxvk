@@ -555,14 +555,23 @@ namespace dxvk {
     D3D11DXGIDevice* m_container;
     D3D11Device*     m_device;
     
-    void AddSamplerAndHandleNVX(ID3D11SamplerState *sampler, uint32_t handle);
-    ID3D11SamplerState *HandleToSamplerNVX(uint32_t handle);
-    void AddSrvAndHandleNVX(ID3D11ShaderResourceView *srv_imageview, uint32_t handle);
-    ID3D11ShaderResourceView *HandleToSrvNVX(uint32_t handle);
+    void AddSamplerAndHandleNVX(
+            ID3D11SamplerState*       pSampler,
+            uint32_t                  Handle);
+
+    ID3D11SamplerState* HandleToSamplerNVX(
+            uint32_t                  Handle);
+
+    void AddSrvAndHandleNVX(
+            ID3D11ShaderResourceView* pSrv,
+            uint32_t                  Handle);
+
+    ID3D11ShaderResourceView* HandleToSrvNVX(
+            uint32_t                  Handle);
     
-    D3D10Multithread  m_multithreadMapsLock;
-    std::unordered_map<uint32_t, ID3D11SamplerState *> m_SamplerHandleToPtr;
-    std::unordered_map<uint32_t, ID3D11ShaderResourceView *> m_SrvHandleToPtr;
+    dxvk::mutex m_mapLock;
+    std::unordered_map<uint32_t, ID3D11SamplerState*> m_samplerHandleToPtr;
+    std::unordered_map<uint32_t, ID3D11ShaderResourceView*> m_srvHandleToPtr;
   };
 
 
