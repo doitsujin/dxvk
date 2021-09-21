@@ -45,11 +45,31 @@ namespace dxvk {
 
 
   struct CubinShaderLaunchInfo {
+
+    CubinShaderLaunchInfo() = default;
+
+    CubinShaderLaunchInfo(CubinShaderLaunchInfo&& other) {
+      shader         = std::move(other.shader);
+      params         = std::move(other.params);
+      paramSize      = std::move(other.paramSize);
+      nvxLaunchInfo  = std::move(other.nvxLaunchInfo);
+      cuLaunchConfig = other.cuLaunchConfig;
+      buffers        = std::move(other.buffers);
+      images         = std::move(other.images);
+      other.cuLaunchConfig[1] = nullptr;
+      other.cuLaunchConfig[3] = nullptr;
+      other.nvxLaunchInfo.pExtras = nullptr;
+      // fix-up internally-pointing pointers
+      cuLaunchConfig[1] = params.data();
+      cuLaunchConfig[3] = &paramSize;
+      nvxLaunchInfo.pExtras = cuLaunchConfig.data();
+    }
+
     Com<CubinShaderWrapper> shader;
     std::vector<uint8_t>    params;
     size_t                  paramSize;
     VkCuLaunchInfoNVX       nvxLaunchInfo = { VK_STRUCTURE_TYPE_CU_LAUNCH_INFO_NVX };
-    const void*             cuLaunchConfig[5];
+    std::array<void*, 5>    cuLaunchConfig;
 
     std::vector<std::pair<Rc<DxvkBuffer>, DxvkAccessFlags>> buffers;
     std::vector<std::pair<Rc<DxvkImage>, DxvkAccessFlags>> images;

@@ -184,7 +184,7 @@ namespace dxvk {
     launchInfo.nvxLaunchInfo.paramCount     = 0;
     launchInfo.nvxLaunchInfo.pParams        = nullptr;
     launchInfo.nvxLaunchInfo.extraCount     = 1;
-    launchInfo.nvxLaunchInfo.pExtras        = &launchInfo.cuLaunchConfig[0];
+    launchInfo.nvxLaunchInfo.pExtras        = launchInfo.cuLaunchConfig.data();
 
     launchInfo.shader = cubinShader;
 
