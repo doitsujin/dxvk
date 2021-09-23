@@ -56,9 +56,18 @@ export WINEDEBUG=-all
 # wine gecko and mono
 export WINEDLLOVERRIDES="mscoree,mshtml="
 
-wine="wine"
-wine64="wine64"
-wineboot="wineboot"
+# avoid empty WINE variable
+if [ -z "$WINE" ]; then
+   wine="wine"
+   wine64="wine64"
+   wineboot="wineboot"
+fi
+
+if [ -n "$WINE" ]; then
+   wine="$WINE"
+   wine64="${WINE}64"
+   wineboot="${WINE}boot"
+fi
 
 # $PATH is the way for user to control where wine is located (including custom Wine versions).
 # Pure 64-bit Wine (non Wow64) requries skipping 32-bit steps.
