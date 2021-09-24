@@ -144,13 +144,14 @@ namespace dxvk {
           viewInfo.numLayers = 1;
           break;
           
-        case D3D11_SRV_DIMENSION_TEXTURECUBE:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+        case D3D11_SRV_DIMENSION_TEXTURECUBE: {
+          const bool cubeArraysEnabled = pDevice->GetDXVKDevice()->features().core.features.imageCubeArray;
+          viewInfo.type      = cubeArraysEnabled ? VK_IMAGE_VIEW_TYPE_CUBE_ARRAY : VK_IMAGE_VIEW_TYPE_CUBE;
           viewInfo.minLevel  = pDesc->TextureCube.MostDetailedMip;
           viewInfo.numLevels = pDesc->TextureCube.MipLevels;
           viewInfo.minLayer  = 0;
           viewInfo.numLayers = 6;
-          break;
+        } break;
           
         case D3D11_SRV_DIMENSION_TEXTURECUBEARRAY:
           viewInfo.type      = VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
