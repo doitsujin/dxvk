@@ -1997,7 +1997,7 @@ namespace dxvk {
 
         if (mask[0]) resultIndices[index++] = m_module.constf32(1.0f);
         if (mask[1]) resultIndices[index++] = m_module.opFMax(scalarTypeId, srcX, m_module.constf32(0));
-        if (mask[2]) resultIndices[index++] = m_module.opPow (scalarTypeId, srcY, power);
+        if (mask[2]) resultIndices[index++] = m_module.opPow (scalarTypeId, m_module.opFMax(scalarTypeId, srcY, m_module.constf32(0)), power);
         if (mask[3]) resultIndices[index++] = m_module.constf32(1.0f);
 
         const uint32_t boolType = m_module.defBoolType();
