@@ -564,10 +564,9 @@ namespace dxvk {
     std::vector<VkBufferMemoryBarrier> m_bufBarriers;
     std::vector<VkImageMemoryBarrier>  m_imgBarriers;
 
-    std::vector<BufSlice> m_bufSlices;
     std::vector<ImgSlice> m_imgSlices;
 
-    void insertBufferSlice(BufSlice slice);
+    DxvkBarrierSubresourceSet<VkBuffer, DxvkBarrierBufferSlice> m_bufSlices;
 
     void insertImageSlice(ImgSlice slice);
     
