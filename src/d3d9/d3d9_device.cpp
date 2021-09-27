@@ -1445,12 +1445,25 @@ namespace dxvk {
     }
 
     auto ClearImageView = [this](
-      bool                     fullClear,
+      uint32_t                 alignment,
       VkOffset3D               offset,
       VkExtent3D               extent,
       const Rc<DxvkImageView>& imageView,
       VkImageAspectFlags       aspectMask,
       VkClearValue             clearValue) {
+      
+      VkExtent3D imageExtent = imageView->mipLevelExtent(0);
+      extent.width = std::min(imageExtent.width, extent.width);
+      extent.height = std::min(imageExtent.height, extent.height);
+
+      if (unlikely(uint32_t(offset.x) >= imageExtent.width || uint32_t(offset.y) >= imageExtent.height))
+        return;
+
+      const bool fullClear = align(extent.width, alignment) == imageExtent.width
+        && align(extent.height, alignment) == imageExtent.height
+        && offset.x == 0
+        && offset.y == 0;
+
       if (fullClear) {
         EmitCs([
           cClearValue = clearValue,
@@ -1481,12 +1494,12 @@ namespace dxvk {
     };
 
     auto ClearViewRect = [&](
-      bool               fullClear,
+      uint32_t           alignment,
       VkOffset3D         offset,
       VkExtent3D         extent) {
       // Clear depth if we need to.
       if (depthAspectMask != 0)
-        ClearImageView(fullClear, offset, extent, m_state.depthStencil->GetDepthStencilView(), depthAspectMask, clearValueDepth);
+        ClearImageView(alignment, offset, extent, m_state.depthStencil->GetDepthStencilView(), depthAspectMask, clearValueDepth);
 
       // Clear render targets if we need to.
       if (Flags & D3DCLEAR_TARGET) {
@@ -1495,7 +1508,7 @@ namespace dxvk {
           const auto& rtv = rts->GetRenderTargetView(srgb);
 
           if (likely(rtv != nullptr)) {
-            ClearImageView(fullClear, offset, extent, rtv, VK_IMAGE_ASPECT_COLOR_BIT, clearValueColor);
+            ClearImageView(alignment, offset, extent, rtv, VK_IMAGE_ASPECT_COLOR_BIT, clearValueColor);
 
             D3D9CommonTexture* dstTexture = rts->GetCommonTexture();
 
@@ -1511,32 +1524,9 @@ namespace dxvk {
     // This works around that.
     uint32_t alignment = m_d3d9Options.lenientClear ? 8 : 1;
 
-    auto rtSize = m_state.renderTargets[0]->GetSurfaceExtent();
-
-    extent.width = std::min(rtSize.width - offset.x, extent.width);
-    extent.height = std::min(rtSize.height - offset.y, extent.height);
-
-    bool extentMatches = align(extent.width,  alignment) == align(rtSize.width,  alignment)
-                      && align(extent.height, alignment) == align(rtSize.height, alignment);
-
-    bool dsMatches = true;
-    if (depthAspectMask) {
-      auto dsSize = m_state.depthStencil->GetSurfaceExtent();
-
-      dsMatches = align(extent.width,  alignment) == align(dsSize.width,  alignment)
-               && align(extent.height, alignment) == align(dsSize.height, alignment);
-    }
-
-    bool rtSizeMatchesClearSize = offset.x == 0 && offset.y == 0 && extentMatches && dsMatches;
-
-    if (likely(!Count && rtSizeMatchesClearSize)) {
-      // Fast path w/ ClearRenderTarget for when
-      // our viewport and stencils match the RT size
-      ClearViewRect(true, offset, extent);
-    }
-    else if (!Count) {
+    if (!Count) {
       // Clear our viewport & scissor minified region in this rendertarget.
-      ClearViewRect(false, offset, extent);
+      ClearViewRect(alignment, offset, extent);
     }
     else {
       // Clear the application provided rects.
@@ -1553,7 +1543,7 @@ namespace dxvk {
           1u
         };
 
-        ClearViewRect(false, rectOffset, rectExtent);
+        ClearViewRect(alignment, rectOffset, rectExtent);
       }
     }
 
