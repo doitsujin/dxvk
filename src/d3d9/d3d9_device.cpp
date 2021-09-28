@@ -1459,8 +1459,8 @@ namespace dxvk {
       if (unlikely(uint32_t(offset.x) >= imageExtent.width || uint32_t(offset.y) >= imageExtent.height))
         return;
 
-      const bool fullClear = align(extent.width, alignment) == imageExtent.width
-        && align(extent.height, alignment) == imageExtent.height
+      const bool fullClear = align(extent.width, alignment) == align(imageExtent.width, alignment)
+        && align(extent.height, alignment) == align(imageExtent.height, alignment)
         && offset.x == 0
         && offset.y == 0;
 
