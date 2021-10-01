@@ -5,6 +5,13 @@
 namespace dxvk::env {
   
   /**
+   * \brief Checks whether the host platform is 32-bit
+   */
+  constexpr bool is32BitHostPlatform() {
+    return sizeof(void*) == 4;
+  }
+
+  /**
    * \brief Gets environment variable
    * 
    * If the variable is not defined, this will return

@@ -432,10 +432,10 @@ namespace dxvk {
 
     // Try to waste a bit less system memory in 32-bit
     // applications due to address space constraints
-    #ifndef _WIN64
-    if (type.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-      chunkSize = 32 << 20;
-    #endif
+    if (env::is32BitHostPlatform()) {
+      if (type.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+        chunkSize = 32 << 20;
+    }
 
     // Reduce the chunk size on small heaps so
     // we can at least fit in 15 allocations
