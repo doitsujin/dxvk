@@ -281,6 +281,7 @@ namespace dxvk {
       &devExtensions.extShaderViewportIndexLayer,
       &devExtensions.extTransformFeedback,
       &devExtensions.extVertexAttributeDivisor,
+      &devExtensions.khrBufferDeviceAddress,
       &devExtensions.khrCreateRenderPass2,
       &devExtensions.khrDepthStencilResolve,
       &devExtensions.khrDrawIndirectCount,
@@ -291,14 +292,23 @@ namespace dxvk {
       &devExtensions.khrSwapchain,
       &devExtensions.nvxBinaryImport,
       &devExtensions.nvxImageViewHandle,
-      &devExtensions.khrBufferDeviceAddress,
     }};
 
-    // VK_KHR_buffer_device_address can be expensive to enable on
-    // some drivers; only enable selectively for Cuda interop
-    if (m_deviceExtensions.supports(devExtensions.nvxBinaryImport.name()) &&
-        m_deviceExtensions.supports(devExtensions.nvxImageViewHandle.name()))
+    // Only enable Cuda interop extensions in 64-bit builds in
+    // order to avoid potential driver or address space issues.
+    // VK_KHR_buffer_device_address is expensive on some drivers.
+    bool enableCudaInterop = !env::is32BitHostPlatform() &&
+      m_deviceExtensions.supports(devExtensions.nvxBinaryImport.name()) &&
+      m_deviceExtensions.supports(devExtensions.nvxImageViewHandle.name()) &&
+      m_deviceFeatures.khrBufferDeviceAddress.bufferDeviceAddress;
+
+    if (enableCudaInterop) {
+      devExtensions.nvxBinaryImport.setMode(DxvkExtMode::Optional);
+      devExtensions.nvxImageViewHandle.setMode(DxvkExtMode::Optional);
       devExtensions.khrBufferDeviceAddress.setMode(DxvkExtMode::Optional);
+
+      enabledFeatures.khrBufferDeviceAddress.bufferDeviceAddress = VK_TRUE;
+    }
 
     DxvkNameSet extensionsEnabled;
 

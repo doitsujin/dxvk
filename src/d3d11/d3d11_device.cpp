@@ -1940,8 +1940,6 @@ namespace dxvk {
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor      = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor;
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor  = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor;
     
-    enabled.khrBufferDeviceAddress                                = supported.khrBufferDeviceAddress;
-
     if (supported.extCustomBorderColor.customBorderColorWithoutFormat) {
       enabled.extCustomBorderColor.customBorderColors             = VK_TRUE;
       enabled.extCustomBorderColor.customBorderColorWithoutFormat = VK_TRUE;
