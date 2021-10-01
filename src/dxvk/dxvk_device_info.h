@@ -47,6 +47,7 @@ namespace dxvk {
     VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT extShaderDemoteToHelperInvocation;
     VkPhysicalDeviceTransformFeedbackFeaturesEXT              extTransformFeedback;
     VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT         extVertexAttributeDivisor;
+    VkPhysicalDeviceBufferDeviceAddressFeaturesKHR            khrBufferDeviceAddress;
   };
 
 }
