@@ -59,6 +59,13 @@ namespace dxvk {
   }
 
 
+  void DxvkNameSet::disableExtension(
+          DxvkExt&          ext) {
+    m_names.erase(ext.name());
+    ext.disable();
+  }
+
+
   DxvkNameList DxvkNameSet::toNameList() const {
     DxvkNameList nameList;
     for (const auto& pair : m_names)

@@ -445,8 +445,31 @@ namespace dxvk {
       overallocInfo.pNext = std::exchange(info.pNext, &overallocInfo);
     
     VkDevice device = VK_NULL_HANDLE;
-    
-    if (m_vki->vkCreateDevice(m_handle, &info, nullptr, &device) != VK_SUCCESS)
+    VkResult vr = m_vki->vkCreateDevice(m_handle, &info, nullptr, &device);
+
+    if (vr != VK_SUCCESS && enableCudaInterop) {
+      // Enabling certain Vulkan extensions can cause device creation to fail on
+      // Nvidia drivers if a certain kernel module isn't loaded, but we cannot know
+      // that in advance since the extensions are reported as supported anyway.
+      Logger::err("DxvkAdapter: Failed to create device, retrying without CUDA interop extensions");
+
+      extensionsEnabled.disableExtension(devExtensions.khrBufferDeviceAddress);
+      extensionsEnabled.disableExtension(devExtensions.nvxBinaryImport);
+      extensionsEnabled.disableExtension(devExtensions.nvxImageViewHandle);
+
+      enabledFeatures.khrBufferDeviceAddress.bufferDeviceAddress = VK_FALSE;
+
+      vk::removeStructFromPNextChain(&enabledFeatures.core.pNext,
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR);
+
+      extensionNameList = extensionsEnabled.toNameList();
+      info.enabledExtensionCount      = extensionNameList.count();
+      info.ppEnabledExtensionNames    = extensionNameList.names();
+
+      vr = m_vki->vkCreateDevice(m_handle, &info, nullptr, &device);
+    }
+
+    if (vr != VK_SUCCESS)
       throw DxvkError("DxvkAdapter: Failed to create device");
     
     Rc<DxvkDevice> result = new DxvkDevice(instance, this,

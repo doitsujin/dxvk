@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <map>
 #include <vector>
 
@@ -87,6 +88,13 @@ namespace dxvk {
      */
     void enable(uint32_t revision) {
       m_revision = revision;
+    }
+
+    /**
+     * \brief Disables the extension
+     */
+    void disable() {
+      m_revision = 0;
     }
 
   private:
@@ -207,6 +215,16 @@ namespace dxvk {
             DxvkNameSet&      nameSet) const;
     
     /**
+     * \brief Disables given extension
+     *
+     * Removes the given extension from the set
+     * and sets its revision to 0 (i.e. disabled).
+     * \param [in,out] ext Extension to disable
+     */
+    void disableExtension(
+            DxvkExt&          ext);
+
+    /**
      * \brief Creates name list from name set
      * 
      * Adds all names contained in the name set
@@ -275,6 +293,7 @@ namespace dxvk {
     DxvkExt extShaderViewportIndexLayer       = { VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME,        DxvkExtMode::Optional };
     DxvkExt extTransformFeedback              = { VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME,                 DxvkExtMode::Optional };
     DxvkExt extVertexAttributeDivisor         = { VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME,           DxvkExtMode::Optional };
+    DxvkExt khrBufferDeviceAddress            = { VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,              DxvkExtMode::Disabled };
     DxvkExt khrCreateRenderPass2              = { VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,                DxvkExtMode::Optional };
     DxvkExt khrDepthStencilResolve            = { VK_KHR_DEPTH_STENCIL_RESOLVE_EXTENSION_NAME,              DxvkExtMode::Optional };
     DxvkExt khrDrawIndirectCount              = { VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME,                DxvkExtMode::Optional };
@@ -285,7 +304,6 @@ namespace dxvk {
     DxvkExt khrSwapchain                      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME,                          DxvkExtMode::Required };
     DxvkExt nvxBinaryImport                   = { VK_NVX_BINARY_IMPORT_EXTENSION_NAME,                      DxvkExtMode::Disabled };
     DxvkExt nvxImageViewHandle                = { VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME,                  DxvkExtMode::Disabled };
-    DxvkExt khrBufferDeviceAddress            = { VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,              DxvkExtMode::Disabled };
   };
   
   /**
