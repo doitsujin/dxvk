@@ -237,8 +237,8 @@ namespace dxvk {
       DxvkAccessFlags access;
 
       while (list && access != entry->data.getAccess()) {
-        if (entry->data.overlaps(slice))
-          access.set(entry->data.getAccess());
+        if (list->data.overlaps(slice))
+          access.set(list->data.getAccess());
 
         list = getListEntry(list->next);
       }
