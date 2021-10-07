@@ -70,7 +70,12 @@ namespace dxvk {
      */
     void registerShader(
       const Rc<DxvkShader>&                 shader);
-    
+
+    /**
+     * \brief Explicitly stops worker threads
+     */
+    void stopWorkerThreads();
+
     /**
      * \brief Checks whether compiler threads are busy
      * \returns \c true if we're compiling shaders

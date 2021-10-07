@@ -78,5 +78,11 @@ namespace dxvk {
     return m_stateCache != nullptr
         && m_stateCache->isCompilingShaders();
   }
+
+
+  void DxvkPipelineManager::stopWorkerThreads() const {
+    if (m_stateCache != nullptr)
+      m_stateCache->stopWorkerThreads();
+  }
   
 }

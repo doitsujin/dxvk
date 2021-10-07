@@ -29,6 +29,10 @@ namespace dxvk {
     // Wait for all pending Vulkan commands to be
     // executed before we destroy any resources.
     this->waitForIdle();
+
+    // Stop workers explicitly in order to prevent
+    // access to structures that are being destroyed.
+    m_objects.pipelineManager().stopWorkerThreads();
   }
 
 

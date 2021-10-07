@@ -89,6 +89,11 @@ namespace dxvk {
      * \returns \c true if shaders are being compiled
      */
     bool isCompilingShaders() const;
+
+    /**
+     * \brief Stops async compiler threads
+     */
+    void stopWorkerThreads() const;
     
   private:
     

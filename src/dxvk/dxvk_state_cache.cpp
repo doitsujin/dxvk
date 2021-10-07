@@ -210,19 +210,7 @@ namespace dxvk {
   
 
   DxvkStateCache::~DxvkStateCache() {
-    { std::lock_guard<dxvk::mutex> workerLock(m_workerLock);
-      std::lock_guard<dxvk::mutex> writerLock(m_writerLock);
-
-      m_stopThreads.store(true);
-
-      m_workerCond.notify_all();
-      m_writerCond.notify_all();
-    }
-
-    for (auto& worker : m_workerThreads)
-      worker.join();
-    
-    m_writerThread.join();
+    this->stopWorkerThreads();
   }
 
 
@@ -311,6 +299,24 @@ namespace dxvk {
 
     if (workerLock)
       m_workerCond.notify_all();
+  }
+
+
+  void DxvkStateCache::stopWorkerThreads() {
+    { std::lock_guard<dxvk::mutex> workerLock(m_workerLock);
+      std::lock_guard<dxvk::mutex> writerLock(m_writerLock);
+
+      if (m_stopThreads.exchange(true))
+        return;
+
+      m_workerCond.notify_all();
+      m_writerCond.notify_all();
+    }
+
+    for (auto& worker : m_workerThreads)
+      worker.join();
+    
+    m_writerThread.join();
   }
 
 
