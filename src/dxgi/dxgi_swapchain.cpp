@@ -255,8 +255,9 @@ namespace dxvk {
           UINT                      SyncInterval,
           UINT                      PresentFlags,
     const DXGI_PRESENT_PARAMETERS*  pPresentParameters) {
+
     if (!IsWindow(m_window))
-      return DXGI_ERROR_INVALID_CALL;
+      return S_OK;
     
     if (SyncInterval > 4)
       return DXGI_ERROR_INVALID_CALL;
