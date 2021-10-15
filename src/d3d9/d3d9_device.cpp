@@ -4187,7 +4187,7 @@ namespace dxvk {
       }
     }
     else {
-      physSlice = mappedBuffer->getSliceHandle();
+      physSlice = pResource->GetMappedSlice(Subresource);
 
       if (!alloced || wasWrittenByGPU) {
         if (unlikely(wasWrittenByGPU)) {
