@@ -154,6 +154,12 @@ namespace dxvk {
       { "dxgi.customVendorId",              "10de" },
       { "d3d11.apitraceMode",               "True" },
     }} },
+    /* Crysis 3 Remastered                          *
+     * Apitrace mode helps massively in cpu bound   *
+     * game parts                                   */
+    { R"(\\Crysis3Remastered\.exe$)", {{
+      { "d3d11.apitraceMode",               "True" },
+    }} },
     /* Atelier series - games try to render video *
      * with a D3D9 swap chain over the DXGI swap  *
      * chain, which breaks D3D11 presentation     */
