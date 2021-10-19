@@ -309,6 +309,12 @@ namespace dxvk::vk {
     VULKAN_FN(vkQueuePresentKHR);
     #endif
 
+    #ifdef VK_KHR_timeline_semaphore
+    VULKAN_FN(vkGetSemaphoreCounterValueKHR);
+    VULKAN_FN(vkSignalSemaphoreKHR);
+    VULKAN_FN(vkWaitSemaphoresKHR);
+    #endif
+
     #ifdef VK_EXT_conditional_rendering
     VULKAN_FN(vkCmdBeginConditionalRenderingEXT);
     VULKAN_FN(vkCmdEndConditionalRenderingEXT);

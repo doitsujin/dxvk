@@ -251,7 +251,9 @@ namespace dxvk {
         && (m_deviceFeatures.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor
                 || !required.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor)
         && (m_deviceFeatures.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor
-                || !required.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor);
+                || !required.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor)
+        && (m_deviceFeatures.khrTimelineSemaphore.timelineSemaphore
+                || !required.khrTimelineSemaphore.timelineSemaphore);
   }
   
   
@@ -265,7 +267,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 30> devExtensionList = {{
+    std::array<DxvkExt*, 31> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.ext4444Formats,
@@ -294,6 +296,7 @@ namespace dxvk {
       &devExtensions.khrSamplerMirrorClampToEdge,
       &devExtensions.khrShaderFloatControls,
       &devExtensions.khrSwapchain,
+      &devExtensions.khrTimelineSemaphore,
       &devExtensions.nvxBinaryImport,
       &devExtensions.nvxImageViewHandle,
     }};
@@ -408,6 +411,11 @@ namespace dxvk {
     if (devExtensions.khrBufferDeviceAddress) {
       enabledFeatures.khrBufferDeviceAddress.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR;
       enabledFeatures.khrBufferDeviceAddress.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrBufferDeviceAddress);
+    }
+
+    if (devExtensions.khrTimelineSemaphore) {
+      enabledFeatures.khrTimelineSemaphore.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES_KHR;
+      enabledFeatures.khrTimelineSemaphore.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrTimelineSemaphore);
     }
 
     // Report the desired overallocation behaviour to the driver
@@ -629,6 +637,11 @@ namespace dxvk {
       m_deviceInfo.khrShaderFloatControls.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.khrShaderFloatControls);
     }
 
+    if (m_deviceExtensions.supports(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME)) {
+      m_deviceInfo.khrTimelineSemaphore.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES_KHR;
+      m_deviceInfo.khrTimelineSemaphore.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.khrTimelineSemaphore);
+    }
+
     // Query full device properties for all enabled extensions
     m_vki->vkGetPhysicalDeviceProperties2(m_handle, &m_deviceInfo.core);
     
@@ -718,6 +731,11 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)) {
       m_deviceFeatures.khrBufferDeviceAddress.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR;
       m_deviceFeatures.khrBufferDeviceAddress.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrBufferDeviceAddress);
+    }
+
+    if (m_deviceExtensions.supports(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME)) {
+      m_deviceFeatures.khrTimelineSemaphore.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES_KHR;
+      m_deviceFeatures.khrTimelineSemaphore.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrTimelineSemaphore);
     }
 
     m_vki->vkGetPhysicalDeviceFeatures2(m_handle, &m_deviceFeatures.core);
@@ -815,7 +833,9 @@ namespace dxvk {
       "\n  vertexAttributeInstanceRateDivisor     : ", features.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor ? "1" : "0",
       "\n  vertexAttributeInstanceRateZeroDivisor : ", features.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor ? "1" : "0",
       "\n", VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-      "\n  bufferDeviceAddress                    : ", features.khrBufferDeviceAddress.bufferDeviceAddress));
+      "\n  bufferDeviceAddress                    : ", features.khrBufferDeviceAddress.bufferDeviceAddress,
+      "\n", VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME,
+      "\n  timelineSemaphore                      : ", features.khrTimelineSemaphore.timelineSemaphore));
   }
 
 
