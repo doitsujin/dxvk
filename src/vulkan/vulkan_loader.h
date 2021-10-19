@@ -248,6 +248,9 @@ namespace dxvk::vk {
     VULKAN_FN(vkUpdateDescriptorSetWithTemplate);
     VULKAN_FN(vkResetQueryPool);
     VULKAN_FN(vkGetBufferDeviceAddress);
+    VULKAN_FN(vkGetSemaphoreCounterValue);
+    VULKAN_FN(vkSignalSemaphore);
+    VULKAN_FN(vkWaitSemaphores);
     VULKAN_FN(vkCmdBindPipeline);
     VULKAN_FN(vkCmdSetViewport);
     VULKAN_FN(vkCmdSetScissor);
