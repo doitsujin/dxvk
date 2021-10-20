@@ -2927,7 +2927,10 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       }
 
       // Apply operand swizzle to the operand value
-      result = emitRegisterSwizzle(result, IdentitySwizzle, ctx.dst.mask);
+      if (m_programInfo.majorVersion() >= 2) // SM 2.0+
+        result = emitRegisterSwizzle(result, ctx.src[1].swizzle, ctx.dst.mask);
+      else
+        result = emitRegisterSwizzle(result, IdentitySwizzle, ctx.dst.mask);
 
       if (opcode == DxsoOpcode::TexBemL) {
         uint32_t float_t = m_module.defFloatType(32);
