@@ -127,8 +127,14 @@ namespace dxvk {
           uint32_t              index) {
     return new DxvkGpuQuery(m_vkd, type, flags, index);
   }
-  
-  
+
+
+  Rc<DxvkFence> DxvkDevice::createFence(
+    const DxvkFenceCreateInfo& fenceInfo) {
+    return new DxvkFence(this, fenceInfo);
+  }
+
+
   Rc<DxvkBuffer> DxvkDevice::createBuffer(
     const DxvkBufferCreateInfo& createInfo,
           VkMemoryPropertyFlags memoryType) {
