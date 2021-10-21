@@ -6,6 +6,7 @@
 #include "dxvk_constant_state.h"
 #include "dxvk_context.h"
 #include "dxvk_extensions.h"
+#include "dxvk_fence.h"
 #include "dxvk_framebuffer.h"
 #include "dxvk_image.h"
 #include "dxvk_instance.h"
@@ -266,6 +267,15 @@ namespace dxvk {
             VkQueryType           type,
             VkQueryControlFlags   flags,
             uint32_t              index);
+
+    /**
+     * \brief Creates new fence
+     *
+     * \param [in] info Fence create info
+     * \returns The fence
+     */
+    Rc<DxvkFence> createFence(
+      const DxvkFenceCreateInfo& fenceInfo);
     
     /**
      * \brief Creates framebuffer for a set of render targets

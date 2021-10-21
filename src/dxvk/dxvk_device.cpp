@@ -112,6 +112,12 @@ namespace dxvk {
   }
   
   
+  Rc<DxvkFence> DxvkDevice::createFence(
+    const DxvkFenceCreateInfo& fenceInfo) {
+    return new DxvkFence(this, fenceInfo);
+  }
+  
+  
   Rc<DxvkFramebuffer> DxvkDevice::createFramebuffer(
     const DxvkFramebufferInfo&  info) {
     return new DxvkFramebuffer(m_vkd, info);
