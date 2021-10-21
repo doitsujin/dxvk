@@ -2721,8 +2721,8 @@ namespace dxvk {
     }
 
     // for our purposes the actual value doesn't matter, only its uniqueness
-    static ULONG seqNum = 1;
-    *pDriverHandle = InterlockedIncrement(&seqNum);
+    static std::atomic<ULONG> s_seqNum = 0;
+    *pDriverHandle = ++s_seqNum;
 
     // will need to look-up sampler from uint32 handle later
     AddSamplerAndHandleNVX(*ppSamplerState, *pDriverHandle);
