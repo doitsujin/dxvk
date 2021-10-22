@@ -38,12 +38,15 @@ namespace dxvk {
    * only, array sizes are based on need.
    */
   struct DxvkQueueSubmission {
-    uint32_t                  waitCount;
-    VkSemaphoreSubmitInfo     waitSync[2];
-    uint32_t                  wakeCount;
-    VkSemaphoreSubmitInfo     wakeSync[2];
-    uint32_t                  cmdBufferCount;
-    VkCommandBufferSubmitInfo cmdBuffers[4];
+    std::vector<VkSemaphoreSubmitInfo>     waitSync;
+    std::vector<VkSemaphoreSubmitInfo>     wakeSync;
+    std::vector<VkCommandBufferSubmitInfo> cmdBuffers;
+
+    void reset() {
+      waitSync.clear();
+      wakeSync.clear();
+      cmdBuffers.clear();
+    }
   };
 
   /**
@@ -789,6 +792,7 @@ namespace dxvk {
     DxvkGpuQueryTracker m_gpuQueryTracker;
     DxvkBufferTracker   m_bufferTracker;
     DxvkStatCounters    m_statCounters;
+    DxvkQueueSubmission m_submission;
 
     std::vector<std::pair<
       Rc<DxvkDescriptorPool>,
