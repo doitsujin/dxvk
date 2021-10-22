@@ -43,6 +43,12 @@ namespace dxvk {
     m_adapter->logAdapterInfo();
   }
 
+  template <size_t N>
+  static void copyToStringArray(char (&dst)[N], const char* src) {
+    std::strncpy(dst, src, N);
+    dst[N - 1] = '\0';
+  }
+
 
   HRESULT D3D9Adapter::GetAdapterIdentifier(
           DWORD                   Flags,
@@ -69,9 +75,9 @@ namespace dxvk {
     const char*  desc  = options.customDeviceDesc.empty() ? props.deviceName : options.customDeviceDesc.c_str();
     const char* driver = GetDriverDLL(DxvkGpuVendor(vendorId));
 
-    std::strncpy(pIdentifier->Description, desc,              std::size(pIdentifier->Description));
-    std::strncpy(pIdentifier->DeviceName,  device.DeviceName, std::size(pIdentifier->DeviceName)); // The GDI device name. Not the actual device name.
-    std::strncpy(pIdentifier->Driver,      driver,            std::size(pIdentifier->Driver));     // This is the driver's dll.
+    copyToStringArray(pIdentifier->Description, desc);
+    copyToStringArray(pIdentifier->DeviceName,  device.DeviceName); // The GDI device name. Not the actual device name.
+    copyToStringArray(pIdentifier->Driver,      driver);            // This is the driver's dll.
 
     pIdentifier->DeviceIdentifier       = guid;
     pIdentifier->DeviceId               = deviceId;
