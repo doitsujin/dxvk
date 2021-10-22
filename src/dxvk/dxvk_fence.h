@@ -2,6 +2,8 @@
 
 #include <functional>
 #include <queue>
+#include <utility>
+#include <vector>
 
 #include "dxvk_resource.h"
 
@@ -10,6 +12,7 @@
 namespace dxvk {
 
   class DxvkDevice;
+  class DxvkFence;
 
   using DxvkFenceEvent = std::function<void ()>;
 
@@ -18,6 +21,20 @@ namespace dxvk {
    */
   struct DxvkFenceCreateInfo {
     uint64_t        initialValue;
+  };
+
+  /**
+   * \brief Fence-value pair
+   */
+  struct DxvkFenceValuePair {
+    DxvkFenceValuePair() { }
+    DxvkFenceValuePair(Rc<DxvkFence>&& fence_, uint64_t value_)
+    : fence(std::move(fence_)), value(value_) { }
+    DxvkFenceValuePair(const Rc<DxvkFence>& fence_, uint64_t value_)
+    : fence(fence_), value(value_) { }
+
+    Rc<DxvkFence> fence;
+    uint64_t value;
   };
 
   /**

@@ -989,7 +989,27 @@ namespace dxvk {
     void signal(
       const Rc<sync::Signal>&   signal,
             uint64_t            value);
-    
+
+    /**
+     * \brief Waits for fence
+     *
+     * Stalls current command list execution until
+     * the fence reaches the given value or higher.
+     * \param [in] fence Fence to wait on
+     * \param [in] value Value to wait on
+     */
+    void waitFence(const Rc<DxvkFence>& fence, uint64_t value);
+
+    /**
+     * \brief Signals fence
+     *
+     * Signals fence to the given value once the current
+     * command list execution completes on the GPU.
+     * \param [in] fence Fence to signal
+     * \param [in] value Value to signal
+     */
+    void signalFence(const Rc<DxvkFence>& fence, uint64_t value);
+
     /**
      * \brief Begins a debug label region
      * \param [in] label The debug label
