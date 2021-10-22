@@ -2574,6 +2574,16 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::waitFence(const Rc<DxvkFence>& fence, uint64_t value) {
+    m_cmd->waitFence(fence, value);
+  }
+
+
+  void DxvkContext::signalFence(const Rc<DxvkFence>& fence, uint64_t value) {
+    m_cmd->signalFence(fence, value);
+  }
+
+
   void DxvkContext::beginDebugLabel(VkDebugUtilsLabelEXT *label) {
     if (!m_device->instance()->extensions().extDebugUtils)
       return;
