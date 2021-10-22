@@ -1,6 +1,7 @@
 #include "d3d11_cmdlist.h"
 #include "d3d11_context_imm.h"
 #include "d3d11_device.h"
+#include "d3d11_fence.h"
 #include "d3d11_texture.h"
 
 constexpr static uint32_t MinFlushIntervalUs = 750;
@@ -185,16 +186,41 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::Signal(
           ID3D11Fence*                pFence,
           UINT64                      Value) {
-    Logger::err("D3D11ImmediateContext::Signal: Not implemented");
-    return E_NOTIMPL;
+    auto fence = static_cast<D3D11Fence*>(pFence);
+
+    if (!fence)
+      return E_INVALIDARG;
+
+    EmitCs([
+      cFence = fence->GetFence(),
+      cValue = Value
+    ] (DxvkContext* ctx) {
+      ctx->signalFence(cFence, cValue);
+    });
+
+    Flush();
+    return S_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::Wait(
           ID3D11Fence*                pFence,
           UINT64                      Value) {
-    Logger::err("D3D11ImmediateContext::Wait: Not implemented");
-    return E_NOTIMPL;
+    auto fence = static_cast<D3D11Fence*>(pFence);
+
+    if (!fence)
+      return E_INVALIDARG;
+
+    Flush();
+
+    EmitCs([
+      cFence = fence->GetFence(),
+      cValue = Value
+    ] (DxvkContext* ctx) {
+      ctx->waitFence(cFence, cValue);
+    });
+
+    return S_OK;
   }
 
 
