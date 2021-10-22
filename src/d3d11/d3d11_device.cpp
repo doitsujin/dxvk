@@ -12,6 +12,7 @@
 #include "d3d11_context_def.h"
 #include "d3d11_context_imm.h"
 #include "d3d11_device.h"
+#include "d3d11_fence.h"
 #include "d3d11_input_layout.h"
 #include "d3d11_interop.h"
 #include "d3d11_query.h"
@@ -1347,16 +1348,17 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateFence(
           UINT64                      InitialValue,
           D3D11_FENCE_FLAG            Flags,
-          REFIID                      ReturnedInterface,
+          REFIID                      riid,
           void**                      ppFence) {
     InitReturnPtr(ppFence);
 
-    static bool s_errorShown = false;
-
-    if (!std::exchange(s_errorShown, true))
-      Logger::err("D3D11Device::CreateFence: Not implemented");
-    
-    return E_NOTIMPL;
+    try {
+      Com<D3D11Fence> fence = new D3D11Fence(this, InitialValue, Flags);
+      return fence->QueryInterface(riid, ppFence);
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_FAIL;
+    }
   }
 
 
@@ -1926,6 +1928,8 @@ namespace dxvk {
     enabled.core.features.depthBounds                             = supported.core.features.depthBounds;
 
     enabled.shaderDrawParameters.shaderDrawParameters             = VK_TRUE;
+
+    enabled.khrTimelineSemaphore.timelineSemaphore                = supported.khrTimelineSemaphore.timelineSemaphore;
 
     enabled.extMemoryPriority.memoryPriority                      = supported.extMemoryPriority.memoryPriority;
 
