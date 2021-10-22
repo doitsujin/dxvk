@@ -106,7 +106,7 @@ namespace dxvk {
 
         VkSemaphoreSubmitInfo waitInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
         waitInfo.semaphore = m_sdmaSemaphore;
-        waitInfo.stageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        waitInfo.stageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
         m_submission.waitSync.push_back(waitInfo);
       }
     }
@@ -126,7 +126,7 @@ namespace dxvk {
     if (waitSemaphore) {
       VkSemaphoreSubmitInfo waitInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
       waitInfo.semaphore = waitSemaphore;
-      waitInfo.stageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+      waitInfo.stageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
       m_submission.waitSync.push_back(waitInfo);
     }
 
@@ -137,6 +137,22 @@ namespace dxvk {
       m_submission.wakeSync.push_back(signalInfo);
     }
     
+    for (const auto& entry : m_waitSemaphores) {
+      VkSemaphoreSubmitInfo waitInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
+      waitInfo.semaphore = entry.fence->handle();
+      waitInfo.value = entry.value;
+      waitInfo.stageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+      m_submission.waitSync.push_back(waitInfo);
+    }
+
+    for (const auto& entry : m_signalSemaphores) {
+      VkSemaphoreSubmitInfo signalInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
+      signalInfo.semaphore = entry.fence->handle();
+      signalInfo.value = entry.value;
+      signalInfo.stageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
+      m_submission.wakeSync.push_back(signalInfo);
+    }
+
     return submitToQueue(graphics.queueHandle, m_fence, m_submission);
   }
   
@@ -207,6 +223,9 @@ namespace dxvk {
       descriptorPools.second->recycleDescriptorPool(descriptorPools.first);
 
     m_descriptorPools.clear();
+
+    m_waitSemaphores.clear();
+    m_signalSemaphores.clear();
   }
 
 
