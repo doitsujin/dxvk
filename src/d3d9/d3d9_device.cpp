@@ -3484,7 +3484,7 @@ namespace dxvk {
     desc.MultiSample        = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
     desc.IsBackBuffer       = FALSE;
-    desc.IsAttachmentOnly   = TRUE;
+    desc.IsAttachmentOnly   = Usage & D3DUSAGE_RENDERTARGET;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
