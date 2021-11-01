@@ -253,6 +253,10 @@ namespace dxvk {
     { R"(\\WOFF\.exe$)", {{
       { "d3d11.disableMsaa",                "True" },
     }} },
+    /* Final Fantasy XIV - Stuttering on NV       */
+    { R"(\\ffxiv_dx11\.exe$)", {{
+      { "dxvk.shrinkNvidiaHvvHeap",         "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
