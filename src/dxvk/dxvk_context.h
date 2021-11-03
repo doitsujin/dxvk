@@ -1067,6 +1067,7 @@ namespace dxvk {
      * tools to mark different workloads within a frame.
      */
     void insertDebugLabel(VkDebugUtilsLabelEXT *label);
+
   private:
     
     Rc<DxvkDevice>          m_device;
@@ -1227,7 +1228,7 @@ namespace dxvk {
     void spillRenderPass(bool suspend);
     
     void renderPassBindFramebuffer(
-      const Rc<DxvkFramebuffer>&  framebuffer,
+      const DxvkFramebufferInfo&  framebufferInfo,
       const DxvkRenderPassOps&    ops,
             uint32_t              clearValueCount,
       const VkClearValue*         clearValues);
@@ -1261,6 +1262,9 @@ namespace dxvk {
             VkDescriptorSet         set,
       const DxvkPipelineLayout*     layout);
 
+    DxvkFramebufferInfo makeFramebufferInfo(
+      const DxvkRenderTargets&      renderTargets);
+
     void updateFramebuffer();
     
     void applyRenderTargetLoadLayouts();
@@ -1282,8 +1286,8 @@ namespace dxvk {
             VkImageLayout           oldLayout);
 
     void updateRenderTargetLayouts(
-      const Rc<DxvkFramebuffer>&    newFb,
-      const Rc<DxvkFramebuffer>&    oldFb);
+      const DxvkFramebufferInfo&    newFb,
+      const DxvkFramebufferInfo&    oldFb);
 
     void prepareImage(
             DxvkBarrierSet&         barriers,

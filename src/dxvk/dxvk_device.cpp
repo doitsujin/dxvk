@@ -41,6 +41,14 @@ namespace dxvk {
   }
 
 
+  DxvkFramebufferSize DxvkDevice::getDefaultFramebufferSize() const {
+    return DxvkFramebufferSize {
+      m_properties.core.properties.limits.maxFramebufferWidth,
+      m_properties.core.properties.limits.maxFramebufferHeight,
+      m_properties.core.properties.limits.maxFramebufferLayers };
+  }
+
+
   VkPipelineStageFlags DxvkDevice::getShaderPipelineStages() const {
     VkPipelineStageFlags result = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
                                 | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
@@ -106,16 +114,12 @@ namespace dxvk {
   
   Rc<DxvkFramebuffer> DxvkDevice::createFramebuffer(
     const DxvkRenderTargets& renderTargets) {
-    const DxvkFramebufferSize defaultSize = {
-      m_properties.core.properties.limits.maxFramebufferWidth,
-      m_properties.core.properties.limits.maxFramebufferHeight,
-      m_properties.core.properties.limits.maxFramebufferLayers };
-    
     auto renderPassFormat = DxvkFramebuffer::getRenderPassFormat(renderTargets);
     auto renderPassObject = m_objects.renderPassPool().getRenderPass(renderPassFormat);
     
     return new DxvkFramebuffer(m_vkd,
-      renderPassObject, renderTargets, defaultSize);
+      renderPassObject, renderTargets,
+      getDefaultFramebufferSize());
   }
   
   

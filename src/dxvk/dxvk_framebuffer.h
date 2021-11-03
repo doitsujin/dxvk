@@ -72,6 +72,14 @@ namespace dxvk {
     ~DxvkFramebufferInfo();
 
     /**
+     * \brief Retrieves all attachments
+     * \returns Render targets
+     */
+    const DxvkRenderTargets& attachments() const {
+      return m_renderTargets;
+    }
+
+    /**
      * \brief Framebuffer size
      * \returns Framebuffer size
      */

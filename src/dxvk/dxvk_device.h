@@ -198,6 +198,12 @@ namespace dxvk {
     bool isUnifiedMemoryArchitecture() const;
 
     /**
+     * \brief Queries default framebuffer size
+     * \returns Default framebuffer size
+     */
+    DxvkFramebufferSize getDefaultFramebufferSize() const;
+
+    /**
      * \brief Queries supported shader stages
      * \returns Supported shader pipeline stages
      */

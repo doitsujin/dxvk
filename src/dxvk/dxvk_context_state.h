@@ -105,7 +105,7 @@ namespace dxvk {
     
     DxvkRenderTargets   renderTargets;
     DxvkRenderPassOps   renderPassOps;
-    Rc<DxvkFramebuffer> framebuffer       = nullptr;
+    DxvkFramebufferInfo framebufferInfo;
   };
 
 
