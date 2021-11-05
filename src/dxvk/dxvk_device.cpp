@@ -113,13 +113,8 @@ namespace dxvk {
   
   
   Rc<DxvkFramebuffer> DxvkDevice::createFramebuffer(
-    const DxvkRenderTargets& renderTargets) {
-    auto renderPassFormat = DxvkFramebuffer::getRenderPassFormat(renderTargets);
-    auto renderPassObject = m_objects.renderPassPool().getRenderPass(renderPassFormat);
-    
-    return new DxvkFramebuffer(m_vkd,
-      renderPassObject, renderTargets,
-      getDefaultFramebufferSize());
+    const DxvkFramebufferInfo&  info) {
+    return new DxvkFramebuffer(m_vkd, info);
   }
   
   

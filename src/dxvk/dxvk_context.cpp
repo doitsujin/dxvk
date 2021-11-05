@@ -4004,7 +4004,7 @@ namespace dxvk {
     const VkClearValue*         clearValues) {
     const DxvkFramebufferSize fbSize = framebufferInfo.size();
 
-    Rc<DxvkFramebuffer> framebuffer = m_device->createFramebuffer(framebufferInfo.attachments());
+    Rc<DxvkFramebuffer> framebuffer = m_device->createFramebuffer(framebufferInfo);
 
     VkRect2D renderArea;
     renderArea.offset = VkOffset2D { 0, 0 };
