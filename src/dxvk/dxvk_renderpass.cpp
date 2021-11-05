@@ -153,9 +153,9 @@ namespace dxvk {
       VkImageAspectFlags loadAspects = 0;
 
       if (ops.depthOps.loadOpD == VK_ATTACHMENT_LOAD_OP_LOAD)
-        loadAspects = VK_IMAGE_ASPECT_DEPTH_BIT;
+        loadAspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
       if (ops.depthOps.loadOpS == VK_ATTACHMENT_LOAD_OP_LOAD)
-        loadAspects = VK_IMAGE_ASPECT_STENCIL_BIT;
+        loadAspects |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
       if (loadAspects & imageFormatInfo(m_format.depth.format)->aspectMask)
         renderAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
