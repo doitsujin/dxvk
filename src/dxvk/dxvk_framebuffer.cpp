@@ -70,6 +70,24 @@ namespace dxvk {
   }
 
 
+  DxvkFramebufferKey DxvkFramebufferInfo::key() const {
+    DxvkFramebufferKey result = { };
+
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      if (m_renderTargets.color[i].view != nullptr)
+        result.colorViews[i] = m_renderTargets.color[i].view->cookie();
+    }
+
+    if (m_renderTargets.depth.view != nullptr)
+      result.depthView = m_renderTargets.depth.view->cookie();
+
+    if (result.renderPass)
+      result.renderPass = m_renderPass->getDefaultHandle();
+
+    return result;
+  }
+
+
   DxvkRenderPassFormat DxvkFramebufferInfo::getRenderPassFormat(const DxvkRenderTargets& renderTargets) {
     DxvkRenderPassFormat format;
 
@@ -128,7 +146,7 @@ namespace dxvk {
   DxvkFramebuffer::DxvkFramebuffer(
     const Rc<vk::DeviceFn>&       vkd,
     const DxvkFramebufferInfo&    info)
-  : m_vkd           (vkd) {
+  : m_vkd(vkd), m_key(info.key()) {
     std::array<VkImageView, MaxNumRenderTargets + 1> views;
     uint32_t attachmentCount = 0;
     

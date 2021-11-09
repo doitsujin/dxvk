@@ -17,7 +17,7 @@ namespace dxvk {
     uint32_t height;
     uint32_t layers;
   };
-  
+
   
   /**
    * \brief Framebuffer attachment
@@ -49,6 +49,33 @@ namespace dxvk {
   struct DxvkRenderTargetLayouts {
     VkImageLayout color[MaxNumRenderTargets];
     VkImageLayout depth;
+  };
+
+
+  /**
+   * \brief Framebuffer key
+   */
+  struct DxvkFramebufferKey {
+    uint64_t            colorViews[MaxNumRenderTargets];
+    uint64_t            depthView;
+    VkRenderPass        renderPass;
+
+    size_t hash() const {
+      DxvkHashState state;
+      state.add(depthView);
+      for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
+        state.add(colorViews[i]);
+      state.add(reinterpret_cast<uint64_t>(renderPass));
+      return state;
+    }
+
+    bool eq(const DxvkFramebufferKey& other) const {
+      bool eq = depthView   == other.depthView
+             && renderPass  == other.renderPass;
+      for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
+        eq &= colorViews[i] == other.colorViews[i];
+      return eq;
+    }
   };
 
 
@@ -193,6 +220,12 @@ namespace dxvk {
     bool isWritable(uint32_t attachmentIndex, VkImageAspectFlags aspects) const;
 
     /**
+     * \brief Generates framebuffer key
+     * \returns Framebuffer key
+     */
+    DxvkFramebufferKey key() const;
+
+    /**
      * \brief Generatess render pass format
      *
      * This render pass format can be used to
@@ -247,11 +280,19 @@ namespace dxvk {
     VkFramebuffer handle() const {
       return m_handle;
     }
+
+    /**
+     * \brief Framebuffer key
+     */
+    const DxvkFramebufferKey& key() const {
+      return m_key;
+    }
     
   private:
     
-    Rc<vk::DeviceFn>  m_vkd;
-    VkFramebuffer     m_handle;
+    Rc<vk::DeviceFn>    m_vkd;
+    VkFramebuffer       m_handle;
+    DxvkFramebufferKey  m_key;
     
   };
   
