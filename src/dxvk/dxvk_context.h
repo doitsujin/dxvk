@@ -1108,6 +1108,7 @@ namespace dxvk {
     std::array<DxvkShaderResourceSlot, MaxNumResourceSlots>  m_rc;
     std::array<DxvkGraphicsPipeline*, 4096> m_gpLookupCache = { };
     std::array<DxvkComputePipeline*,   256> m_cpLookupCache = { };
+    std::array<Rc<DxvkFramebuffer>,    512> m_framebufferCache = { };
 
     void blitImageFb(
       const Rc<DxvkImage>&        dstImage,
@@ -1353,6 +1354,9 @@ namespace dxvk {
 
     DxvkComputePipeline* lookupComputePipeline(
       const DxvkComputePipelineShaders&   shaders);
+    
+    Rc<DxvkFramebuffer> lookupFramebuffer(
+      const DxvkFramebufferInfo&      framebufferInfo);
 
     Rc<DxvkBuffer> createZeroBuffer(
             VkDeviceSize              size);

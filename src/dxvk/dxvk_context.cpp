@@ -4004,7 +4004,7 @@ namespace dxvk {
     const VkClearValue*         clearValues) {
     const DxvkFramebufferSize fbSize = framebufferInfo.size();
 
-    Rc<DxvkFramebuffer> framebuffer = m_device->createFramebuffer(framebufferInfo);
+    Rc<DxvkFramebuffer> framebuffer = this->lookupFramebuffer(framebufferInfo);
 
     VkRect2D renderArea;
     renderArea.offset = VkOffset2D { 0, 0 };
@@ -5344,6 +5344,18 @@ namespace dxvk {
       m_cpLookupCache[idx] = m_common->pipelineManager().createComputePipeline(shaders);
 
     return m_cpLookupCache[idx];
+  }
+
+
+  Rc<DxvkFramebuffer> DxvkContext::lookupFramebuffer(
+    const DxvkFramebufferInfo&      framebufferInfo) {
+    DxvkFramebufferKey key = framebufferInfo.key();
+    size_t idx = key.hash() % m_framebufferCache.size();
+
+    if (m_framebufferCache[idx] == nullptr || !m_framebufferCache[idx]->key().eq(key))
+      m_framebufferCache[idx] = m_device->createFramebuffer(framebufferInfo);
+
+    return m_framebufferCache[idx];
   }
 
 
