@@ -56,11 +56,13 @@ namespace dxvk {
 
     DWORD STDMETHODCALLTYPE SetLOD(DWORD LODNew) final {
       DWORD oldLod = m_lod;
-      m_lod = LODNew;
+      m_lod = std::min<DWORD>(LODNew, m_texture.Desc()->MipLevels - 1);
 
-      m_texture.CreateSampleView(LODNew);
-      if (this->GetPrivateRefCount() > 0)
-        this->m_parent->MarkTextureBindingDirty(this);
+      if (m_lod != oldLod) {
+        m_texture.CreateSampleView(LODNew);
+        if (this->GetPrivateRefCount() > 0)
+          this->m_parent->MarkTextureBindingDirty(this);
+      }
 
       return oldLod;
     }
