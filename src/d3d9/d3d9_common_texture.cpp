@@ -448,7 +448,7 @@ namespace dxvk {
           UINT                   Layer,
           UINT                   Lod,
           VkImageUsageFlags      UsageFlags,
-          bool                   Srgb) {
+          bool                   Srgb) {    
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.format    = m_mapping.ConversionFormatInfo.FormatColor != VK_FORMAT_UNDEFINED
                        ? PickSRGB(m_mapping.ConversionFormatInfo.FormatColor, m_mapping.ConversionFormatInfo.FormatSrgb, Srgb)
@@ -458,7 +458,7 @@ namespace dxvk {
     viewInfo.usage     = UsageFlags;
     viewInfo.type      = GetImageViewTypeFromResourceType(m_type, Layer);
     viewInfo.minLevel  = Lod;
-    viewInfo.numLevels  = m_desc.MipLevels - Lod;
+    viewInfo.numLevels = m_desc.MipLevels - Lod;
     viewInfo.minLayer  = Layer == AllLayers ? 0                : Layer;
     viewInfo.numLayers = Layer == AllLayers ? m_desc.ArraySize : 1;
 
