@@ -59,7 +59,7 @@ namespace dxvk {
       m_lod = std::min<DWORD>(LODNew, m_texture.Desc()->MipLevels - 1);
 
       if (m_lod != oldLod) {
-        m_texture.CreateSampleView(LODNew);
+        m_texture.CreateSampleView(m_lod);
         if (this->GetPrivateRefCount() > 0)
           this->m_parent->MarkTextureBindingDirty(this);
       }
