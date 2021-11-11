@@ -315,8 +315,8 @@ namespace dxvk {
     m_module.memberDecorateOffset(structType, 1, m_layout->floatOffset());
 
     m_module.setDebugName(structType, "cbuffer_t");
-    m_module.setDebugMemberName(structType, 0, "f");
-    m_module.setDebugMemberName(structType, 1, "i");
+    m_module.setDebugMemberName(structType, 0, "i");
+    m_module.setDebugMemberName(structType, 1, "f");
 
     m_cBuffer = m_module.newVar(
       m_module.defPointerType(structType, spv::StorageClassUniform),
