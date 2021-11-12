@@ -459,6 +459,34 @@ namespace dxvk {
     { R"(\\FantasyGrounds\.exe$)", {{
       { "d3d9.noExplicitFrontBuffer",       "True" },
     }} },
+    /* Red Orchestra 2                           */
+    { R"(\\ROGame\.exe$)", {{
+      { "d3d9.floatEmulation",              "Strict" },
+    }} },
+    /* Dark Souls II                            */
+    { R"(\\DarkSoulsII\.exe$)", {{
+      { "d3d9.floatEmulation",              "Strict" },
+    }} },
+    /* Dogfight 1942                            */
+    { R"(\\Dogfight1942\.exe$)", {{
+      { "d3d9.floatEmulation",              "Strict" },
+    }} },
+    /* Bayonetta                                */
+    { R"(\\Bayonetta\.exe$)", {{
+      { "d3d9.floatEmulation",              "Strict" },
+    }} },
+    /* Rayman Origins                           */
+    { R"(\\Rayman Origins\.exe$)", {{
+      { "d3d9.floatEmulation",              "Strict" },
+    }} },
+    /* Guilty Gear Xrd -Relevator-              */
+    { R"(\\GuiltyGearXrd\.exe$)", {{
+      { "d3d9.floatEmulation",              "Strict" },
+    }} },
+    /* Richard Burns Rally                      */
+    { R"(\\RichardBurnsRally_SSE\.exe$)", {{
+      { "d3d9.floatEmulation",              "Strict" },
+    }} },
   }};
 
 
