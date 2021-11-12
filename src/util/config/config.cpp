@@ -635,8 +635,7 @@ namespace dxvk {
           I             begin,
           I             end,
           V&            value) {
-    std::transform(str.begin(), str.end(), str.begin(),
-      [] (unsigned char c) { return (c >= 'A' && c <= 'Z') ? (c + 'a' - 'A') : c; });
+    str = Config::toLower(str);
 
     for (auto i = begin; i != end; i++) {
       if (str == i->first) {
@@ -706,6 +705,12 @@ namespace dxvk {
       for (auto& pair : m_options)
         Logger::info(str::format("  ", pair.first, " = ", pair.second));
     }
+  }
+
+  std::string Config::toLower(std::string str) {
+    std::transform(str.begin(), str.end(), str.begin(),
+      [] (unsigned char c) { return (c >= 'A' && c <= 'Z') ? (c + 'a' - 'A') : c; });
+    return str;
   }
 
 }
