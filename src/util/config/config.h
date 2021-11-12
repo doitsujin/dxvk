@@ -102,6 +102,8 @@ namespace dxvk {
      */
     static Config getUserConfig();
 
+    static std::string toLower(std::string str);
+
   private:
 
     OptionMap m_options;
