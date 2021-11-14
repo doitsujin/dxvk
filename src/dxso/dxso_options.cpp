@@ -43,6 +43,8 @@ namespace dxvk {
     longMad = options.longMad;
 
     alphaTestWiggleRoom = options.alphaTestWiggleRoom;
+
+    robustness2Supported = devFeatures.extRobustness2.robustBufferAccess2;
   }
 
 }

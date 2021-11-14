@@ -1029,7 +1029,7 @@ namespace dxvk {
 
       result.id = m_module.opLoad(typeId, ptrId);
 
-      if (relative) {
+      if (relative && !m_moduleInfo.options.robustness2Supported) {
         uint32_t constCount = m_module.constu32(m_layout->floatCount);
 
         // Expand condition to bvec4 since the result has four components
