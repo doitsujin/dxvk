@@ -60,6 +60,8 @@ namespace dxvk {
 
     uint32_t usedRTs() { return m_usedRTs; }
 
+    uint32_t maxDefinedConstant() { return m_maxDefinedConst; }
+
   private:
 
     void runCompiler(
@@ -78,6 +80,7 @@ namespace dxvk {
     uint32_t        m_usedRTs;
 
     DxsoShaderMetaInfo   m_meta;
+    uint32_t             m_maxDefinedConst;
     DxsoDefinedConstants m_constants;
 
   };
