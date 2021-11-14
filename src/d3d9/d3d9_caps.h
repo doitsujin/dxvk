@@ -29,4 +29,7 @@ namespace dxvk::caps {
 
   constexpr uint32_t MaxEnabledLights             = 8;
 
+  constexpr uint32_t MaxTexturesVS                = 4;
+  constexpr uint32_t MaxTexturesPS                = 16;
+
 }

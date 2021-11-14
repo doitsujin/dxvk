@@ -3721,7 +3721,7 @@ namespace dxvk {
     // We need to check our ops and disable respective stages.
     // Given we have transition from a null resource to
     // a valid resource or vice versa.
-    if (StateSampler < 16) {
+    if (StateSampler < caps::MaxTexturesPS) {
       const uint32_t offset = StateSampler * 2;
       const uint32_t textureType = newTexture != nullptr
         ? uint32_t(newTexture->GetType() - D3DRTYPE_TEXTURE)
@@ -6101,7 +6101,7 @@ namespace dxvk {
     if (likely(UseProgrammablePS())) {
       UploadConstants<DxsoProgramTypes::PixelShader>();
 
-      const uint32_t psTextureMask = usedTextureMask & ((1u << 16u) - 1u);
+      const uint32_t psTextureMask = usedTextureMask & ((1u << caps::MaxTexturesPS) - 1u);
       const uint32_t fetch4        = m_fetch4             & psTextureMask;
       const uint32_t projected     = m_projectionBitfield & psTextureMask;
 

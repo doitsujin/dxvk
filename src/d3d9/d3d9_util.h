@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3d9_include.h"
+#include "d3d9_caps.h"
 
 #include "d3d9_format.h"
 
@@ -46,25 +47,25 @@ namespace dxvk {
   }
 
   inline bool InvalidSampler(DWORD Sampler) {
-    if (Sampler > 15 && Sampler < D3DDMAPSAMPLER)
+    if (Sampler >= caps::MaxTexturesPS && Sampler < D3DDMAPSAMPLER)
       return true;
 
     if (Sampler > D3DVERTEXTEXTURESAMPLER3)
       return true;
-    
+
     return false;
   }
 
   inline DWORD RemapSamplerState(DWORD Sampler) {
     if (Sampler >= D3DDMAPSAMPLER)
-      Sampler = 16 + (Sampler - D3DDMAPSAMPLER);
+      Sampler = caps::MaxTexturesPS + (Sampler - D3DDMAPSAMPLER);
 
     return Sampler;
   }
 
   inline std::pair<DxsoProgramType, DWORD> RemapStateSamplerShader(DWORD Sampler) {
-    if (Sampler >= 17)
-      return std::make_pair(DxsoProgramTypes::VertexShader, Sampler - 17);
+    if (Sampler >= caps::MaxTexturesPS + 1)
+      return std::make_pair(DxsoProgramTypes::VertexShader, Sampler - caps::MaxTexturesPS - 1);
 
     return std::make_pair(DxsoProgramTypes::PixelShader, Sampler);
   }
