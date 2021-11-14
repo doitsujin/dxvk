@@ -1,5 +1,6 @@
 #include "d3d9_stateblock.h"
 
+#include "d3d9_caps.h"
 #include "d3d9_device.h"
 #include "d3d9_vertex_declaration.h"
 #include "d3d9_buffer.h"
@@ -375,7 +376,7 @@ namespace dxvk {
   void D3D9StateBlock::CapturePixelSamplerStates() {
     m_captures.flags.set(D3D9CapturedStateFlag::SamplerStates);
 
-    for (uint32_t i = 0; i < 17; i++) {
+    for (uint32_t i = 0; i < caps::MaxTexturesPS + 1; i++) {
       m_captures.samplers.set(i, true);
 
       m_captures.samplerStates[i].set(D3DSAMP_ADDRESSU, true);
@@ -458,7 +459,7 @@ namespace dxvk {
   void D3D9StateBlock::CaptureVertexSamplerStates() {
     m_captures.flags.set(D3D9CapturedStateFlag::SamplerStates);
 
-    for (uint32_t i = 17; i < SamplerCount; i++) {
+    for (uint32_t i = caps::MaxTexturesPS + 1; i < SamplerCount; i++) {
       m_captures.samplers.set(i, true);
       m_captures.samplerStates[i].set(D3DSAMP_DMAPOFFSET, true);
     }
