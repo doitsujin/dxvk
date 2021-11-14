@@ -56,6 +56,8 @@ namespace dxvk {
 
     const DxsoProgramInfo& GetInfo() const { return m_info; }
 
+    uint32_t GetMaxDefinedConstant() const { return m_maxDefinedConst; }
+
   private:
 
     DxsoIsgn              m_isgn;
@@ -65,6 +67,7 @@ namespace dxvk {
     DxsoProgramInfo       m_info;
     DxsoShaderMetaInfo    m_meta;
     DxsoDefinedConstants  m_constants;
+    uint32_t              m_maxDefinedConst;
 
     DxsoPermutations      m_shaders;
 
