@@ -54,6 +54,9 @@ namespace dxvk {
     /// Workaround for games using alpha test == 1.0, etc due to wonky interpolation or
     /// misc. imprecision on some vendors
     bool alphaTestWiggleRoom;
+
+    /// Whether or not we can rely on robustness2 to handle oob constant access
+    bool robustness2Supported;
   };
 
 }
