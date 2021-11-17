@@ -4996,11 +4996,16 @@ namespace dxvk {
 
     constSet.dirty = false;
 
-    const uint32_t floatCount = ShaderStage == DxsoProgramType::VertexShader ? m_vsFloatConstsCount : m_psFloatConstsCount;
+    uint32_t floatCount = ShaderStage == DxsoProgramType::VertexShader ? m_vsFloatConstsCount : m_psFloatConstsCount;
+    if (constSet.meta.needsConstantCopies) {
+      auto shader = GetCommonShader(Shader);
+      floatCount = std::max(floatCount, shader->GetMaxDefinedConstant());
+    }
+    floatCount = std::min(constSet.meta.maxConstIndexF, floatCount);
 
     const uint32_t intRange = caps::MaxOtherConstants * sizeof(Vector4i);
     const uint32_t intDataSize = constSet.meta.maxConstIndexI * sizeof(Vector4i);
-    uint32_t floatDataSize = std::min(constSet.meta.maxConstIndexF, floatCount) * sizeof(Vector4);
+    uint32_t floatDataSize = floatCount * sizeof(Vector4);
     const uint32_t alignment = std::max(m_robustUBOAlignment, 64u); // Make sure we do not recreate the buffer because the new one has to be a tiny bit larger
     const uint32_t bufferSize = align(std::max(floatDataSize + intRange, alignment), alignment);
     floatDataSize = bufferSize - intRange; // Read additional floats for padding so we don't end up with garbage data
