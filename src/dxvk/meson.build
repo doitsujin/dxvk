@@ -79,7 +79,6 @@ dxvk_src = files([
   'dxvk_image.cpp',
   'dxvk_instance.cpp',
   'dxvk_lifetime.cpp',
-  'dxvk_main.cpp',
   'dxvk_memory.cpp',
   'dxvk_meta_blit.cpp',
   'dxvk_meta_clear.cpp',

@@ -4,7 +4,6 @@
 
 #include "dxvk_device.h"
 #include "dxvk_context.h"
-#include "dxvk_main.h"
 
 namespace dxvk {
   
