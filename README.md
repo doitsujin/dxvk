@@ -117,14 +117,17 @@ The following environment variables can be used for **debugging** purposes.
 
 ## Troubleshooting
 DXVK requires threading support from your mingw-w64 build environment. If you
-are missing this, you may see "error: 'mutex' is not a member of 'std'". 
+are missing this, you may see "error: ‘std::cv_status’ has not been declared"
+or similar threading related errors.
 
 On Debian and Ubuntu, this can be resolved by using the posix alternate, which
 supports threading. For example, choose the posix alternate from these
-commands (use i686 for 32-bit):
+commands:
 ```
 update-alternatives --config x86_64-w64-mingw32-gcc
 update-alternatives --config x86_64-w64-mingw32-g++
+update-alternatives --config i686-w64-mingw32-gcc
+update-alternatives --config i686-w64-mingw32-g++
 ```
 For non debian based distros, make sure that your mingw-w64-gcc cross compiler 
 does have `--enable-threads=posix` enabled during configure. If your distro does
