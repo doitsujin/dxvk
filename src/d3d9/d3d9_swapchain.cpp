@@ -144,6 +144,14 @@ namespace dxvk {
         }
       }
     }
+    else if (message == WM_SIZE)
+    {
+      D3DDEVICE_CREATION_PARAMETERS create_parms;
+      windowData.swapchain->GetDevice()->GetCreationParameters(&create_parms);
+
+      if (!(create_parms.BehaviorFlags & D3DCREATE_NOWINDOWCHANGES) && !IsIconic(window))
+        PostMessageW(window, WM_ACTIVATEAPP, 1, GetCurrentThreadId());
+    }
 
     return CallCharsetFunction(
       CallWindowProcW, CallWindowProcA, unicode,
