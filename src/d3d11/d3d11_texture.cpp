@@ -270,6 +270,7 @@ namespace dxvk {
         layout.DepthPitch = vkLayout.depthPitch;
       } break;
 
+      case D3D11_COMMON_TEXTURE_MAP_MODE_NONE:
       case D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER:
       case D3D11_COMMON_TEXTURE_MAP_MODE_STAGING: {
         auto packedFormatInfo = imageFormatInfo(m_packedFormat);
@@ -304,9 +305,6 @@ namespace dxvk {
             layout.Offset += size;
         }
       } break;
-
-      case D3D11_COMMON_TEXTURE_MAP_MODE_NONE:
-        break; /* no op */
     }
 
     // D3D wants us to return the total subresource size in some instances
