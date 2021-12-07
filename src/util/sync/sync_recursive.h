@@ -20,7 +20,7 @@ namespace dxvk::sync {
 
     void unlock();
 
-    bool try_lock();
+    bool try_lock(uint32_t threadId);
 
   private:
 
