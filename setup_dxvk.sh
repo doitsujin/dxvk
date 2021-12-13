@@ -17,7 +17,7 @@ uninstall)
   ;;
 *)
   echo "Unrecognized action: $action"
-  echo "Usage: $0 [install|uninstall] [--without-dxgi] [--with-d3d10] [--symlink]"
+  echo "Usage: $0 [install|uninstall] [--without-dxgi] [--with-d3d10] [--symlink] [--app <name>]"
   exit 1
 esac
 
@@ -27,6 +27,11 @@ shift
 with_dxgi=true
 with_d3d10=false
 file_cmd="cp -v"
+# Based on --app. Defaults to global.
+reg_key="HKEY_CURRENT_USER\Software\Wine\DllOverrides"
+# Dont try to uninstall files if this is true, as we're only removing overrides from an application.
+# Do allow installs though, so that someone can setup dxvk just for a specific application, rather than global.
+with_app=false
 
 while (($# > 0)); do
   case "$1" in
@@ -38,6 +43,14 @@ while (($# > 0)); do
     ;;
   "--symlink")
     file_cmd="ln -s -v"
+    ;;
+  "--app")
+    if [ -z "$2" ] || [[ "$2" == "--"* ]]; then
+      echo "--app missing <name>"
+      exit 1
+    fi
+    reg_key="HKEY_CURRENT_USER\Software\Wine\AppDefaults\\$2\DllOverrides"
+    with_app=true
     ;;
   esac
   shift
@@ -96,7 +109,7 @@ fi
 
 # create native dll override
 overrideDll() {
-  $wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d native /f >/dev/null 2>&1
+  $wine reg add "$reg_key" /v $1 /d native /f >/dev/null 2>&1
   if [ $? -ne 0 ]; then
     echo -e "Failed to add override for $1"
     exit 1
@@ -105,7 +118,7 @@ overrideDll() {
 
 # remove dll override
 restoreDll() {
-  $wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /f > /dev/null 2>&1
+  $wine reg delete "$reg_key" /v $1 /f > /dev/null 2>&1
   if [ $? -ne 0 ]; then
     echo "Failed to remove override for $1"
   fi
@@ -143,6 +156,9 @@ installFile() {
 
 # remove dxvk dll, restore original file
 uninstallFile() {
+  if $with_app; then
+    return 0
+  fi
   dstfile="${1}/${3}.dll"
   srcfile="${basedir}/${2}/${3}.dll"
 
