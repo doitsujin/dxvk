@@ -245,14 +245,22 @@ namespace dxvk {
     auto deviceProp = m_adapter->deviceProperties();
     auto memoryProp = m_adapter->memoryProperties();
     auto deviceId   = m_adapter->devicePropertiesExt().coreDeviceId;
+    auto subSysId   = options->customSubSysId;
+    auto revision   = options->customRevision;
     
-    // Custom Vendor / Device ID
+    // Custom Vendor / Device / Subsystem ID, Revision
     if (options->customVendorId >= 0)
       deviceProp.vendorID = options->customVendorId;
     
     if (options->customDeviceId >= 0)
       deviceProp.deviceID = options->customDeviceId;
     
+    if (subSysId < 0 || subSysId > 0xffffffff)
+      subSysId = 0;
+
+    if (revision < 0 || revision > 0xff)
+      revision = 0;
+
     const char* description = deviceProp.deviceName;
     // Custom device description
     if (!options->customDeviceDesc.empty())
@@ -312,8 +320,8 @@ namespace dxvk {
     
     pDesc->VendorId                       = deviceProp.vendorID;
     pDesc->DeviceId                       = deviceProp.deviceID;
-    pDesc->SubSysId                       = 0;
-    pDesc->Revision                       = 0;
+    pDesc->SubSysId                       = subSysId;
+    pDesc->Revision                       = revision;
     pDesc->DedicatedVideoMemory           = deviceMemory;
     pDesc->DedicatedSystemMemory          = 0;
     pDesc->SharedSystemMemory             = sharedMemory;

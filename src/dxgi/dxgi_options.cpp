@@ -4,13 +4,13 @@
 
 namespace dxvk {
 
-  static int32_t parsePciId(const std::string& str) {
-    if (str.size() != 4)
+  static int64_t parsePciId(const std::string& str, const size_t size = 4) {
+    if (str.size() != size)
       return -1;
     
-    int32_t id = 0;
+    int64_t id = 0;
 
-    for (size_t i = 0; i < str.size(); i++) {
+    for (size_t i = 0; i < size; i++) {
       id *= 16;
 
       if (str[i] >= '0' && str[i] <= '9')
@@ -39,6 +39,9 @@ namespace dxvk {
     // Interpret the memory limits as Megabytes
     this->maxDeviceMemory = VkDeviceSize(config.getOption<int32_t>("dxgi.maxDeviceMemory", 0)) << 20;
     this->maxSharedMemory = VkDeviceSize(config.getOption<int32_t>("dxgi.maxSharedMemory", 0)) << 20;
+
+    this->customSubSysId = parsePciId(config.getOption<std::string>("dxgi.customSubSysId"), 8);
+    this->customRevision = parsePciId(config.getOption<std::string>("dxgi.customRevision"), 2);
 
     this->nvapiHack   = config.getOption<bool>("dxgi.nvapiHack", true);
   }

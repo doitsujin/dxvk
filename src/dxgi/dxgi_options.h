@@ -30,6 +30,9 @@ namespace dxvk {
     VkDeviceSize maxDeviceMemory;
     VkDeviceSize maxSharedMemory;
 
+    int64_t customSubSysId;
+    int16_t customRevision;
+
     /// Emulate UMA
     bool emulateUMA;
 
