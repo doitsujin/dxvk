@@ -36,6 +36,8 @@ namespace dxvk {
     if (!m_container->IsAnnotationEnabled())
       return -1;
 
+    D3D10DeviceLock lock = m_container->LockContext();
+
     m_container->EmitCs([labelName = dxvk::str::fromws(Name)](DxvkContext *ctx) {
       VkDebugUtilsLabelEXT label;
       label.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
@@ -57,6 +59,8 @@ namespace dxvk {
     if (!m_container->IsAnnotationEnabled())
       return -1;
 
+    D3D10DeviceLock lock = m_container->LockContext();
+
     m_container->EmitCs([](DxvkContext *ctx) {
       ctx->endDebugLabel();
     });
@@ -69,6 +73,8 @@ namespace dxvk {
           LPCWSTR                 Name) {
     if (!m_container->IsAnnotationEnabled())
       return;
+
+    D3D10DeviceLock lock = m_container->LockContext();
 
     m_container->EmitCs([labelName = dxvk::str::fromws(Name)](DxvkContext *ctx) {
       VkDebugUtilsLabelEXT label;
