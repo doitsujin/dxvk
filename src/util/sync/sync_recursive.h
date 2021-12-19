@@ -20,9 +20,13 @@ namespace dxvk::sync {
 
     void unlock();
 
-    bool try_lock(uint32_t threadId);
+    bool try_lock() {
+      return try_lock_impl(GetCurrentThreadId());
+    }
 
   private:
+
+    bool try_lock_impl(uint32_t threadId);
 
     std::atomic<uint32_t> m_owner   = { 0u };
     uint32_t              m_counter = { 0u };
