@@ -178,6 +178,8 @@ namespace dxvk {
     for (uint32_t i = 0; i < numAdapters; i++) {
       if (filter.testAdapter(deviceProperties[i]))
         result.push_back(new DxvkAdapter(m_vki, adapters[i]));
+      if(!filter.testCreatedAdapter(result.back()->devicePropertiesExt()))
+        result.pop_back();
     }
     
     std::stable_sort(result.begin(), result.end(),

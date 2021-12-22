@@ -1,13 +1,25 @@
 #include "dxvk_device_filter.h"
 
+std::string convertUUID(const uint8_t* uuid) {
+    std::ostringstream convert;
+    for (int a = 0; a < 16; a++) {
+        convert << static_cast<int>(uuid[a]);
+    }
+    std::string key_string = convert.str();
+    return key_string;
+}
+
 namespace dxvk {
   
   DxvkDeviceFilter::DxvkDeviceFilter(DxvkDeviceFilterFlags flags)
   : m_flags(flags) {
     m_matchDeviceName = env::getEnvVar("DXVK_FILTER_DEVICE_NAME");
+    m_matchDeviceUUID = env::getEnvVar("DXVK_FILTER_DEVICE_UUID");
     
     if (m_matchDeviceName.size() != 0)
       m_flags.set(DxvkDeviceFilterFlag::MatchDeviceName);
+    if (m_matchDeviceUUID.size() != 0)
+      m_flags.set(DxvkDeviceFilterFlag::MatchDeviceUUID);
   }
   
   
@@ -32,6 +44,15 @@ namespace dxvk {
         Logger::warn(str::format("Skipping CPU adapter: ", properties.deviceName));
         return false;
       }
+    }
+
+    return true;
+  }
+
+  bool DxvkDeviceFilter::testCreatedAdapter(const DxvkDeviceInfo& deviceInfo) const {
+    if (m_flags.test(DxvkDeviceFilterFlag::MatchDeviceUUID)) {
+      if (convertUUID(deviceInfo.coreDeviceId.deviceUUID).find(m_matchDeviceUUID) == std::string::npos)
+        return false;
     }
 
     return true;
