@@ -2725,6 +2725,7 @@ namespace dxvk {
       dirtyFFShader |= decl->TestFlag(D3D9VertexDeclFlag::HasPositionT)  != m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT)
                     || decl->TestFlag(D3D9VertexDeclFlag::HasColor0)     != m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor0)
                     || decl->TestFlag(D3D9VertexDeclFlag::HasColor1)     != m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor1)
+                    || decl->TestFlag(D3D9VertexDeclFlag::HasPointSize)  != m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPointSize)
                     || decl->GetTexcoordMask()                           != m_state.vertexDecl->GetTexcoordMask();
 
     if (dirtyFFShader)
