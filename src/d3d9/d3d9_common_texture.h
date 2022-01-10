@@ -362,6 +362,9 @@ namespace dxvk {
             bool                   Srgb);
     D3D9SubresourceBitset& GetUploadBitmask() { return m_needsUpload; }
 
+    void SetAllNeedUpload() {
+      m_needsUpload.setAll();
+    }
     void SetNeedsUpload(UINT Subresource, bool upload) { m_needsUpload.set(Subresource, upload); }
     bool NeedsUpload(UINT Subresource) const { return m_needsUpload.get(Subresource); }
     bool NeedsAnyUpload() { return m_needsUpload.any(); }

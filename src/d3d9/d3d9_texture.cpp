@@ -82,6 +82,11 @@ namespace dxvk {
     } else {
       m_texture.AddDirtyBox(nullptr, 0);
     }
+
+    // Some games keep using the pointer returned in LockRect() after calling Unlock()
+    // and purely rely on AddDirtyRect to notify D3D9 that contents have changed.
+    // We have no way of knowing which mip levels were actually changed.
+    m_texture.SetAllNeedUpload();
     return D3D_OK;
   }
 
@@ -159,6 +164,11 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D9Texture3D::AddDirtyBox(CONST D3DBOX* pDirtyBox) {
     m_texture.AddDirtyBox(pDirtyBox, 0);
+
+    // Some games keep using the pointer returned in LockBox() after calling Unlock()
+    // and purely rely on AddDirtyBox to notify D3D9 that contents have changed.
+    // We have no way of knowing which mip levels were actually changed.
+    m_texture.SetAllNeedUpload();
     return D3D_OK;
   }
 
@@ -241,6 +251,13 @@ namespace dxvk {
       m_texture.AddDirtyBox(&box, Face);
     } else {
       m_texture.AddDirtyBox(nullptr, Face);
+    }
+
+    // Some games keep using the pointer returned in LockRect() after calling Unlock()
+    // and purely rely on AddDirtyRect to notify D3D9 that contents have changed.
+    // We have no way of knowing which mip levels were actually changed.
+    for (uint32_t m = 0; m < m_texture.Desc()->MipLevels; m++) {
+      m_texture.SetNeedsUpload(m_texture.CalcSubresource(Face, m), true);
     }
     return D3D_OK;
   }
