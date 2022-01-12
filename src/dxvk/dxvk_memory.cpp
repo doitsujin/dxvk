@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "dxvk_device.h"
 #include "dxvk_memory.h"
 
@@ -152,6 +154,12 @@ namespace dxvk {
   }
   
   
+  bool DxvkMemoryChunk::isEmpty() const {
+    return m_freeList.size() == 1
+        && m_freeList[0].length == m_memory.memSize;
+  }
+
+
   DxvkMemoryAllocator::DxvkMemoryAllocator(const DxvkDevice* device)
   : m_vkd             (device->vkd()),
     m_device          (device),
@@ -406,6 +414,13 @@ namespace dxvk {
           VkDeviceSize          offset,
           VkDeviceSize          length) {
     chunk->free(offset, length);
+
+    if (chunk->isEmpty()) {
+      auto e = std::find(type->chunks.begin(), type->chunks.end(), chunk);
+
+      if (e != type->chunks.end())
+        type->chunks.erase(e);
+    }
   }
   
 

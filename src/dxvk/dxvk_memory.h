@@ -203,7 +203,13 @@ namespace dxvk {
     void free(
             VkDeviceSize  offset,
             VkDeviceSize  length);
-    
+
+    /**
+     * \brief Checks whether the chunk is being used
+     * \returns \c true if there are no allocations left
+     */
+    bool isEmpty() const;
+
   private:
     
     struct FreeSlice {
