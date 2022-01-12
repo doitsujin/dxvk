@@ -60,8 +60,9 @@ namespace dxvk {
   DxvkMemoryChunk::DxvkMemoryChunk(
           DxvkMemoryAllocator*  alloc,
           DxvkMemoryType*       type,
-          DxvkDeviceMemory      memory)
-  : m_alloc(alloc), m_type(type), m_memory(memory) {
+          DxvkDeviceMemory      memory,
+          DxvkMemoryFlags       hints)
+  : m_alloc(alloc), m_type(type), m_memory(memory), m_hints(hints) {
     // Mark the entire chunk as free
     m_freeList.push_back(FreeSlice { 0, memory.memSize });
   }
@@ -78,11 +79,10 @@ namespace dxvk {
           VkMemoryPropertyFlags flags,
           VkDeviceSize          size,
           VkDeviceSize          align,
-          float                 priority) {
+          DxvkMemoryFlags       hints) {
     // Property flags must be compatible. This could
     // be refined a bit in the future if necessary.
-    if (m_memory.memFlags != flags
-     || m_memory.priority != priority)
+    if (m_memory.memFlags != flags || !checkHints(hints))
       return DxvkMemory();
     
     // If the chunk is full, return
@@ -160,6 +160,19 @@ namespace dxvk {
   }
 
 
+  bool DxvkMemoryChunk::checkHints(DxvkMemoryFlags hints) const {
+    DxvkMemoryFlags mask(
+      DxvkMemoryFlag::Small,
+      DxvkMemoryFlag::GpuReadable,
+      DxvkMemoryFlag::GpuWritable);
+
+    if (hints.test(DxvkMemoryFlag::IgnoreConstraints))
+      mask = DxvkMemoryFlags();
+
+    return (m_hints & mask) == (hints & mask);
+  }
+
+
   DxvkMemoryAllocator::DxvkMemoryAllocator(const DxvkDevice* device)
   : m_vkd             (device->vkd()),
     m_device          (device),
@@ -182,7 +195,6 @@ namespace dxvk {
       m_memTypes[i].heapId     = m_memProps.memoryTypes[i].heapIndex;
       m_memTypes[i].memType    = m_memProps.memoryTypes[i];
       m_memTypes[i].memTypeId  = i;
-      m_memTypes[i].chunkSize  = pickChunkSize(i);
     }
 
     /* Work around an issue on Nvidia drivers where using the entire
@@ -197,10 +209,8 @@ namespace dxvk {
         for (uint32_t i = 0; i < m_memProps.memoryTypeCount; i++) {
           VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
-          if ((m_memTypes[i].memType.propertyFlags & flags) == flags) {
+          if ((m_memTypes[i].memType.propertyFlags & flags) == flags)
             m_memTypes[i].heap->budget = 32 << 20;
-            m_memTypes[i].chunkSize    =  1 << 20;
-          }
         }
       }
     }
@@ -217,17 +227,36 @@ namespace dxvk {
     const VkMemoryDedicatedRequirements&    dedAllocReq,
     const VkMemoryDedicatedAllocateInfo&    dedAllocInfo,
           VkMemoryPropertyFlags             flags,
-          float                             priority) {
+          DxvkMemoryFlags                   hints) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
+
+    // Keep small allocations together to avoid fragmenting
+    // chunks for larger resources with lots of small gaps,
+    // as well as resources with potentially weird lifetimes
+    if (req->size <= SmallAllocationThreshold) {
+      hints.set(DxvkMemoryFlag::Small);
+      hints.clr(DxvkMemoryFlag::GpuWritable, DxvkMemoryFlag::GpuReadable);
+    }
+
+    // Ignore all hints for host-visible allocations since they
+    // usually don't make much sense for those resources
+    if (flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+      hints = DxvkMemoryFlags();
 
     // Try to allocate from a memory type which supports the given flags exactly
     auto dedAllocPtr = dedAllocReq.prefersDedicatedAllocation ? &dedAllocInfo : nullptr;
-    DxvkMemory result = this->tryAlloc(req, dedAllocPtr, flags, priority);
+    DxvkMemory result = this->tryAlloc(req, dedAllocPtr, flags, hints);
 
     // If the first attempt failed, try ignoring the dedicated allocation
     if (!result && dedAllocPtr && !dedAllocReq.requiresDedicatedAllocation) {
-      result = this->tryAlloc(req, nullptr, flags, priority);
+      result = this->tryAlloc(req, nullptr, flags, hints);
       dedAllocPtr = nullptr;
+    }
+
+    // Retry without the hint constraints
+    if (!result) {
+      hints.set(DxvkMemoryFlag::IgnoreConstraints);
+      result = this->tryAlloc(req, nullptr, flags, hints);
     }
 
     // If that still didn't work, probe slower memory types as well
@@ -239,7 +268,7 @@ namespace dxvk {
       remFlags |= optFlags & -optFlags;
       optFlags &= ~remFlags;
 
-      result = this->tryAlloc(req, dedAllocPtr, flags & ~remFlags, priority);
+      result = this->tryAlloc(req, dedAllocPtr, flags & ~remFlags, hints);
     }
     
     if (!result) {
@@ -276,7 +305,7 @@ namespace dxvk {
     const VkMemoryRequirements*             req,
     const VkMemoryDedicatedAllocateInfo*    dedAllocInfo,
           VkMemoryPropertyFlags             flags,
-          float                             priority) {
+          DxvkMemoryFlags                   hints) {
     DxvkMemory result;
 
     for (uint32_t i = 0; i < m_memProps.memoryTypeCount && !result; i++) {
@@ -285,7 +314,7 @@ namespace dxvk {
       
       if (supported && adequate) {
         result = this->tryAllocFromType(&m_memTypes[i],
-          flags, req->size, req->alignment, priority, dedAllocInfo);
+          flags, req->size, req->alignment, hints, dedAllocInfo);
       }
     }
     
@@ -298,35 +327,31 @@ namespace dxvk {
           VkMemoryPropertyFlags             flags,
           VkDeviceSize                      size,
           VkDeviceSize                      align,
-          float                             priority,
+          DxvkMemoryFlags                   hints,
     const VkMemoryDedicatedAllocateInfo*    dedAllocInfo) {
-    // Prevent unnecessary external host memory fragmentation
-    bool isDeviceLocal = (flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0;
-
-    if (!isDeviceLocal)
-      priority = 0.0f;
+    VkDeviceSize chunkSize = pickChunkSize(type->memTypeId, hints);
 
     DxvkMemory memory;
 
-    if (size >= type->chunkSize || dedAllocInfo) {
+    if (size >= chunkSize || dedAllocInfo) {
       DxvkDeviceMemory devMem = this->tryAllocDeviceMemory(
-        type, flags, size, priority, dedAllocInfo);
+        type, flags, size, hints, dedAllocInfo);
 
       if (devMem.memHandle != VK_NULL_HANDLE)
         memory = DxvkMemory(this, nullptr, type, devMem.memHandle, 0, size, devMem.memPointer);
     } else {
       for (uint32_t i = 0; i < type->chunks.size() && !memory; i++)
-        memory = type->chunks[i]->alloc(flags, size, align, priority);
+        memory = type->chunks[i]->alloc(flags, size, align, hints);
       
       if (!memory) {
         DxvkDeviceMemory devMem;
         
-        for (uint32_t i = 0; i < 6 && (type->chunkSize >> i) >= size && !devMem.memHandle; i++)
-          devMem = tryAllocDeviceMemory(type, flags, type->chunkSize >> i, priority, nullptr);
+        for (uint32_t i = 0; i < 6 && (chunkSize >> i) >= size && !devMem.memHandle; i++)
+          devMem = tryAllocDeviceMemory(type, flags, chunkSize >> i, hints, nullptr);
 
         if (devMem.memHandle) {
-          Rc<DxvkMemoryChunk> chunk = new DxvkMemoryChunk(this, type, devMem);
-          memory = chunk->alloc(flags, size, align, priority);
+          Rc<DxvkMemoryChunk> chunk = new DxvkMemoryChunk(this, type, devMem, hints);
+          memory = chunk->alloc(flags, size, align, hints);
 
           type->chunks.push_back(std::move(chunk));
         }
@@ -344,13 +369,20 @@ namespace dxvk {
           DxvkMemoryType*                   type,
           VkMemoryPropertyFlags             flags,
           VkDeviceSize                      size,
-          float                             priority,
+          DxvkMemoryFlags                   hints,
     const VkMemoryDedicatedAllocateInfo*    dedAllocInfo) {
     bool useMemoryPriority = (flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                           && (m_device->features().extMemoryPriority.memoryPriority);
     
     if (type->heap->budget && type->heap->stats.memoryAllocated + size > type->heap->budget)
       return DxvkDeviceMemory();
+
+    float priority = 0.0f;
+
+    if (hints.test(DxvkMemoryFlag::GpuReadable))
+      priority = 0.5f;
+    if (hints.test(DxvkMemoryFlag::GpuWritable))
+      priority = 1.0f;
 
     DxvkDeviceMemory result;
     result.memSize  = size;
@@ -433,19 +465,20 @@ namespace dxvk {
   }
 
 
-  VkDeviceSize DxvkMemoryAllocator::pickChunkSize(uint32_t memTypeId) const {
+  VkDeviceSize DxvkMemoryAllocator::pickChunkSize(uint32_t memTypeId, DxvkMemoryFlags hints) const {
     VkMemoryType type = m_memProps.memoryTypes[memTypeId];
     VkMemoryHeap heap = m_memProps.memoryHeaps[type.heapIndex];
 
     // Default to a chunk size of 128 MiB
     VkDeviceSize chunkSize = 128 << 20;
 
-    // Try to waste a bit less system memory in 32-bit
-    // applications due to address space constraints
-    if (env::is32BitHostPlatform()) {
-      if (type.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-        chunkSize = 32 << 20;
-    }
+    if (hints.test(DxvkMemoryFlag::Small))
+      chunkSize = 16 << 20;
+
+    // Try to waste a bit less system memory especially in
+    // 32-bit applications due to address space constraints
+    if (type.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+      chunkSize = 16 << 20;
 
     // Reduce the chunk size on small heaps so
     // we can at least fit in 15 allocations

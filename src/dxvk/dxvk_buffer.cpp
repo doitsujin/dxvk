@@ -102,11 +102,15 @@ namespace dxvk {
     bool isGpuWritable = (m_info.access & (
       VK_ACCESS_SHADER_WRITE_BIT |
       VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT)) != 0;
-    float priority = isGpuWritable ? 1.0f : 0.5f;
-    
+
+    DxvkMemoryFlags hints(DxvkMemoryFlag::GpuReadable);
+
+    if (isGpuWritable)
+      hints.set(DxvkMemoryFlag::GpuWritable);
+
     // Ask driver whether we should be using a dedicated allocation
     handle.memory = m_memAlloc->alloc(&memReq.memoryRequirements,
-      dedicatedRequirements, dedMemoryAllocInfo, m_memFlags, priority);
+      dedicatedRequirements, dedMemoryAllocInfo, m_memFlags, hints);
     
     if (vkd->vkBindBufferMemory(vkd->device(), handle.buffer,
         handle.memory.memory(), handle.memory.offset()) != VK_SUCCESS)
