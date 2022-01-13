@@ -22,7 +22,7 @@ namespace dxvk {
     m_physSliceCount  = std::max<VkDeviceSize>(1, 256 / m_physSliceStride);
 
     // Limit size of multi-slice buffers to reduce fragmentation
-    constexpr VkDeviceSize MaxBufferSize = 4 << 20;
+    constexpr VkDeviceSize MaxBufferSize = 256 << 10;
 
     m_physSliceMaxCount = MaxBufferSize >= m_physSliceStride
       ? MaxBufferSize / m_physSliceStride
