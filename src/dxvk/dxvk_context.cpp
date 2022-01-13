@@ -2136,7 +2136,7 @@ namespace dxvk {
     bool isHostVisible = buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
     bool replaceBuffer = (size == buffer->info().size)
-                      && (size <= (1 << 20))
+                      && (size <= (1 << 18))
                       && !isHostVisible;
     
     DxvkBufferSliceHandle bufferSlice;
