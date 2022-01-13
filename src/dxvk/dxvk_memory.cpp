@@ -160,6 +160,11 @@ namespace dxvk {
   }
 
 
+  bool DxvkMemoryChunk::isCompatible(const Rc<DxvkMemoryChunk>& other) const {
+    return other->m_memory.memFlags == m_memory.memFlags && other->m_hints == m_hints;
+  }
+
+
   bool DxvkMemoryChunk::checkHints(DxvkMemoryFlags hints) const {
     DxvkMemoryFlags mask(
       DxvkMemoryFlag::Small,
@@ -334,6 +339,9 @@ namespace dxvk {
     DxvkMemory memory;
 
     if (size >= chunkSize || dedAllocInfo) {
+      if (this->shouldFreeEmptyChunks(type->heap, size))
+        this->freeEmptyChunks(type->heap);
+
       DxvkDeviceMemory devMem = this->tryAllocDeviceMemory(
         type, flags, size, hints, dedAllocInfo);
 
@@ -346,6 +354,9 @@ namespace dxvk {
       if (!memory) {
         DxvkDeviceMemory devMem;
         
+        if (this->shouldFreeEmptyChunks(type->heap, chunkSize))
+          this->freeEmptyChunks(type->heap);
+
         for (uint32_t i = 0; i < 6 && (chunkSize >> i) >= size && !devMem.memHandle; i++)
           devMem = tryAllocDeviceMemory(type, flags, chunkSize >> i, hints, nullptr);
 
@@ -448,10 +459,15 @@ namespace dxvk {
     chunk->free(offset, length);
 
     if (chunk->isEmpty()) {
-      auto e = std::find(type->chunks.begin(), type->chunks.end(), chunk);
+      Rc<DxvkMemoryChunk> chunkRef = chunk;
 
-      if (e != type->chunks.end())
-        type->chunks.erase(e);
+      // Free the chunk if we have to, or at least put it at the end of
+      // the list so that chunks that are already in use and cannot be
+      // freed are prioritized for allocations to reduce memory pressure.
+      type->chunks.erase(std::remove(type->chunks.begin(), type->chunks.end(), chunkRef));
+
+      if (!this->shouldFreeChunk(type, chunkRef))
+        type->chunks.push_back(std::move(chunkRef));
     }
   }
   
@@ -487,5 +503,51 @@ namespace dxvk {
 
     return chunkSize;
   }
-  
+
+
+  bool DxvkMemoryAllocator::shouldFreeChunk(
+    const DxvkMemoryType*       type,
+    const Rc<DxvkMemoryChunk>&  chunk) const {
+    // Under memory pressure, we should start freeing everything.
+    if (this->shouldFreeEmptyChunks(type->heap, 0))
+      return true;
+
+    // Even if we have enough memory to spare, only keep
+    // one chunk of each type around to save memory.
+    for (const auto& c : type->chunks) {
+      if (c != chunk && c->isEmpty() && c->isCompatible(chunk))
+        return true;
+    }
+
+    return false;
+  }
+
+
+  bool DxvkMemoryAllocator::shouldFreeEmptyChunks(
+    const DxvkMemoryHeap*       heap,
+          VkDeviceSize          allocationSize) const {
+    VkDeviceSize budget = heap->budget;
+
+    if (!budget)
+      budget = (heap->properties.size * 4) / 5;
+
+    return heap->stats.memoryAllocated + allocationSize > budget;
+  }
+
+
+  void DxvkMemoryAllocator::freeEmptyChunks(
+    const DxvkMemoryHeap*       heap) {
+    for (uint32_t i = 0; i < m_memProps.memoryTypeCount; i++) {
+      DxvkMemoryType* type = &m_memTypes[i];
+
+      if (type->heap != heap)
+        continue;
+
+      type->chunks.erase(
+        std::remove_if(type->chunks.begin(), type->chunks.end(),
+          [] (const Rc<DxvkMemoryChunk>& chunk) { return chunk->isEmpty(); }),
+        type->chunks.end());
+    }
+  }
+
 }
