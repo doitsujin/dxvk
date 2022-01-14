@@ -257,6 +257,10 @@ namespace dxvk {
     { R"(\\ffxiv_dx11\.exe$)", {{
       { "dxvk.shrinkNvidiaHvvHeap",         "True" },
     }} },
+    { R"(\\GoW\.exe$)", {{
+      { "d3d11.ignoreGraphicsBarriers",     "True" },
+      { "d3d11.relaxedBarriers",            "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
