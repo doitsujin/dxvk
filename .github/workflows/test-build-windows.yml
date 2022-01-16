@@ -1,0 +1,53 @@
+name: Test Builds on Windows
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  build-set-windows:
+    runs-on: windows-2022
+
+    steps:
+    - name: Checkout code
+      id: checkout-code
+      uses: actions/checkout@v2
+      with:
+        submodules: recursive
+
+    - name: Setup glslangValidator
+      shell: pwsh
+      run: |
+        choco install vulkan-sdk -y
+        Write-Output "$([System.Environment]::GetEnvironmentVariable('VULKAN_SDK', 'Machine'))\Bin" `
+          | Out-File -FilePath "${Env:GITHUB_PATH}" -Append
+    - name: Setup Meson and Ninja
+      shell: pwsh
+      run: pip install meson ninja
+
+    - name: Find Visual Studio
+      shell: pwsh
+      run: |
+        $installationPath = Get-VSSetupInstance `
+          | Select-VSSetupInstance -Require Microsoft.VisualStudio.Workload.NativeDesktop -Latest `
+          | Select-Object -ExpandProperty InstallationPath
+        Write-Output "VSDEVCMD=${installationPath}\Common7\Tools\VsDevCmd.bat" `
+          | Out-File -FilePath "${Env:GITHUB_ENV}" -Append
+    - name: Prepare MSVC x86
+      shell: pwsh
+      run: |
+        & "${Env:COMSPEC}" /s /c "`"${Env:VSDEVCMD}`" -arch=x86 -host_arch=x64 -no_logo && set" `
+          | Out-File -FilePath "${Env:GITHUB_ENV}" -Append
+    - name: Build MSVC x86
+      shell: pwsh
+      run: |
+        meson --buildtype release build-msvc-x86
+        ninja -C build-msvc-x86
+    - name: Prepare MSVC x64
+      shell: pwsh
+      run: |
+        & "${Env:COMSPEC}" /s /c "`"${Env:VSDEVCMD}`" -arch=x64 -host_arch=x64 -no_logo && set" `
+          | Out-File -FilePath "${Env:GITHUB_ENV}" -Append
+    - name: Build MSVC x64
+      shell: pwsh
+      run: |
+        meson --buildtype release build-msvc-x64
+        ninja -C build-msvc-x64 
