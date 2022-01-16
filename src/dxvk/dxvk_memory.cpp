@@ -202,6 +202,17 @@ namespace dxvk {
       m_memTypes[i].memTypeId  = i;
     }
 
+    /* Check what kind of heap the HVV memory type is on, if any. If the
+     * HVV memory type is on the largest device-local heap, we either have
+     * an UMA system or an RBAR-enabled system. Otherwise, there will likely
+     * be a separate, smaller heap for it. */
+    VkDeviceSize largestDeviceLocalHeap = 0;
+
+    for (uint32_t i = 0; i < m_memProps.memoryTypeCount; i++) {
+      if (m_memTypes[i].memType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+        largestDeviceLocalHeap = std::max(largestDeviceLocalHeap, m_memTypes[i].heap->properties.size);
+    }
+
     /* Work around an issue on Nvidia drivers where using the entire
      * device_local | host_visible heap can cause crashes or slowdowns */
     if (m_device->properties().core.properties.vendorID == uint16_t(DxvkGpuVendor::Nvidia)) {
@@ -212,9 +223,10 @@ namespace dxvk {
 
       if (shrinkNvidiaHvvHeap) {
         for (uint32_t i = 0; i < m_memProps.memoryTypeCount; i++) {
-          VkMemoryPropertyFlags flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+          VkMemoryPropertyFlags hvvFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
-          if ((m_memTypes[i].memType.propertyFlags & flags) == flags)
+          if ((m_memTypes[i].memType.propertyFlags & hvvFlags) == hvvFlags
+           && (m_memTypes[i].heap->properties.size < largestDeviceLocalHeap))
             m_memTypes[i].heap->budget = 32 << 20;
         }
       }
