@@ -81,13 +81,19 @@ namespace dxvk {
                             0, 0);
     applyTristate(this->generalHazards, config.getOption<Tristate>("d3d9.generalHazards", Tristate::Auto));
 
-    std::string floatEmulation = Config::toLower(config.getOption<std::string>("d3d9.floatEmulation", "true"));
+    std::string floatEmulation = Config::toLower(config.getOption<std::string>("d3d9.floatEmulation", "auto"));
     if (floatEmulation == "strict") {
-      d3d9FloatEmulation  = D3D9FloatEmulation::Strict;
+      d3d9FloatEmulation = D3D9FloatEmulation::Strict;
     } else if (floatEmulation == "false") {
-      d3d9FloatEmulation  = D3D9FloatEmulation::Disabled;
+      d3d9FloatEmulation = D3D9FloatEmulation::Disabled;
+    } else if (floatEmulation == "true") {
+      d3d9FloatEmulation = D3D9FloatEmulation::Enabled;
     } else {
-      d3d9FloatEmulation  = D3D9FloatEmulation::Enabled;
+      bool hasMulz = adapter->matchesDriver(DxvkGpuVendor::Amd,
+                                            VK_DRIVER_ID_MESA_RADV,
+                                            VK_MAKE_VERSION(21, 99, 99),
+                                            0);
+      d3d9FloatEmulation = hasMulz ? D3D9FloatEmulation::Strict : D3D9FloatEmulation::Enabled;
     }
   }
 
