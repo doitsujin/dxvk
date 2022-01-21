@@ -89,7 +89,8 @@ namespace dxvk {
     } else if (floatEmulation == "true") {
       d3d9FloatEmulation = D3D9FloatEmulation::Enabled;
     } else {
-      bool hasMulz = adapter->matchesDriver(DxvkGpuVendor::Amd,
+      bool hasMulz = adapter != nullptr
+                  && adapter->matchesDriver(DxvkGpuVendor::Amd,
                                             VK_DRIVER_ID_MESA_RADV,
                                             VK_MAKE_VERSION(21, 99, 99),
                                             0);
