@@ -139,14 +139,6 @@ namespace dxvk {
     { R"(\\SaintsRowTheThird_DX11\.exe$)", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
     }} },
-    /* Metal Gear Solid 5                         */
-    { R"(\\mgsvtpp\.exe$)", {{
-      { "dxvk.enableOpenVR",                "False" },
-    }} },
-    /* Raft                                       */
-    { R"(\\Raft\.exe$)", {{
-      { "dxvk.enableOpenVR",                "False" },
-    }} },
     /* Crysis 3 - slower if it notices AMD card     *
      * Apitrace mode helps massively in cpu bound   *
      * game parts                                   */
@@ -194,10 +186,6 @@ namespace dxvk {
      * in a compute shader, causing artifacts     */
     { R"(\\F1_20(1[89]|[2-9][0-9])\.exe$)", {{
       { "d3d11.forceTgsmBarriers",          "True" },
-    }} },
-    /* Subnautica                                 */
-    { R"(\\Subnautica\.exe$)", {{
-      { "dxvk.enableOpenVR",                "False" },
     }} },
     /* Blue Reflection                            */
     { R"(\\BLUE_REFLECTION\.exe$)", {{
