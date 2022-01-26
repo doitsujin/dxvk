@@ -156,6 +156,9 @@ namespace dxvk {
 
     /// Use device local memory for constant buffers.
     bool deviceLocalConstantBuffers;
+
+    /// Disable direct buffer mapping
+    bool allowDirectBufferMapping;
   };
 
 }

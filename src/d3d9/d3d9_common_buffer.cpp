@@ -7,8 +7,9 @@ namespace dxvk {
 
   D3D9CommonBuffer::D3D9CommonBuffer(
           D3D9DeviceEx*      pDevice,
-    const D3D9_BUFFER_DESC*  pDesc) 
-    : m_parent ( pDevice ), m_desc ( *pDesc ), m_mapMode(DetermineMapMode()) {
+    const D3D9_BUFFER_DESC*  pDesc)
+    : m_parent ( pDevice ), m_desc ( *pDesc ),
+      m_mapMode(DetermineMapMode(pDevice->GetOptions())) {
     m_buffer = CreateBuffer();
     if (m_mapMode == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
       m_stagingBuffer = CreateStagingBuffer();
