@@ -89,8 +89,8 @@ function package {
 }
 
 build_arch 64
-build_arch 32
-build_script
+#build_arch 32 # not applicable to macOS since 10.15 Catalina
+#build_script  # not applicable to macOS
 
 if [ $opt_nopackage -eq 0 ]; then
   package

@@ -1,0 +1,54 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  build:
+    name: "Build"
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      # https://github.com/actions/checkout/issues/290
+      - name: Git Fetch
+        run: git fetch --force --tags
+
+      - name: Get Branch Name
+        id: branch_name
+        uses: tj-actions/branch-names@v5
+      
+      - name: Create Version Name
+        id: version_name
+        run: |
+          export VERSION_NAME="${{ steps.branch_name.outputs.current_branch }}-$(git describe)"
+          echo "::set-output name=name::${VERSION_NAME}"
+
+      - name: Setup Problem Matcher
+        uses: Joshua-Ashton/gcc-problem-matcher@v1
+
+      - name: Install Dependencies
+        run: |
+          export HOMEBREW_NO_AUTO_UPDATE=1
+          export HOMEBREW_NO_INSTALL_CLEANUP=1
+          brew install coreutils
+          brew install meson
+          brew install mingw-w64
+          brew install glslang
+
+      - name: Build
+        run: ./package-release.sh ${{ steps.version_name.outputs.name }} build --no-package
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: dxvk-${{ steps.version_name.outputs.name }}
+          path: build/dxvk-${{ steps.version_name.outputs.name }}
+          if-no-files-found: error
