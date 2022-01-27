@@ -52,3 +52,17 @@ jobs:
           name: dxvk-${{ steps.version_name.outputs.name }}
           path: build/dxvk-${{ steps.version_name.outputs.name }}
           if-no-files-found: error
+      
+      - name: Build Async
+        run: |
+          curl -O https://raw.githubusercontent.com/Sporif/dxvk-async/master/dxvk-async.patch
+          patch -p1 < dxvk-async.patch
+          echo "dxvk.enableAsync = true" >> dxvk.conf
+          ./package-release.sh "${{ steps.version_name.outputs.name }}-async" build --no-package
+
+      - name: Upload Async Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: dxvk-${{ steps.version_name.outputs.name }}-async
+          path: build/dxvk-${{ steps.version_name.outputs.name }}-async
+          if-no-files-found: warn
