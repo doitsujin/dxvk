@@ -30,8 +30,9 @@ namespace dxvk {
 
     m_mapping = pDevice->LookupFormat(m_desc.Format);
 
-    m_mapMode = DetermineMapMode();
-    m_shadow  = DetermineShadowState();
+    m_mapMode        = DetermineMapMode();
+    m_shadow         = DetermineShadowState();
+    m_supportsFetch4 = DetermineFetch4Compatibility();
 
     if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED) {
       bool plainSurface = m_type == D3DRTYPE_SURFACE &&
@@ -316,12 +317,23 @@ namespace dxvk {
 
 
   BOOL D3D9CommonTexture::DetermineShadowState() const {
-    static std::array<D3D9Format, 3> blacklist = {
+    constexpr std::array<D3D9Format, 3> blacklist = {
       D3D9Format::INTZ, D3D9Format::DF16, D3D9Format::DF24
     };
 
     return IsDepthFormat(m_desc.Format)
         && std::find(blacklist.begin(), blacklist.end(), m_desc.Format) == blacklist.end();
+  }
+
+
+  BOOL D3D9CommonTexture::DetermineFetch4Compatibility() const {
+    constexpr std::array<D3D9Format, 8> singleChannelFormats = {
+      D3D9Format::INTZ, D3D9Format::DF16, D3D9Format::DF24,
+      D3D9Format::R16F, D3D9Format::R32F, D3D9Format::A8,
+      D3D9Format::L8, D3D9Format::L16
+    };
+
+    return std::find(singleChannelFormats.begin(), singleChannelFormats.end(), m_desc.Format) != singleChannelFormats.end();
   }
 
 

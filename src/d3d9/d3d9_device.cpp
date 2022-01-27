@@ -3682,10 +3682,14 @@ namespace dxvk {
     constexpr DWORD Fetch4Disabled = MAKEFOURCC('G', 'E', 'T', '1');
 
     if (unlikely(Type == D3DSAMP_MIPMAPLODBIAS)) {
+      auto texture = GetCommonTexture(m_state.textures[StateSampler]);
+      bool textureSupportsFetch4 = texture != nullptr && texture->SupportsFetch4();
+
       if (unlikely(Value == Fetch4Enabled)) {
         m_fetch4Enabled |= 1u << StateSampler;
-        if (state[StateSampler][D3DSAMP_MAGFILTER] == D3DTEXF_POINT)
+        if (textureSupportsFetch4 && state[StateSampler][D3DSAMP_MAGFILTER] == D3DTEXF_POINT) {
           m_fetch4 |= 1u << StateSampler;
+        }
       }
       else if (unlikely(Value == Fetch4Disabled)) {
         m_fetch4Enabled &= ~(1u << StateSampler);
@@ -3694,7 +3698,10 @@ namespace dxvk {
     }
 
     if (unlikely(Type == D3DSAMP_MAGFILTER && (m_fetch4Enabled & (1u << StateSampler)))) {
-      if (Value == D3DTEXF_POINT)
+      auto texture = GetCommonTexture(m_state.textures[StateSampler]);
+      bool textureSupportsFetch4 = texture != nullptr && texture->SupportsFetch4();
+
+      if (Value == D3DTEXF_POINT && textureSupportsFetch4)
         m_fetch4 |=   1u << StateSampler;
       else
         m_fetch4 &= ~(1u << StateSampler);
@@ -3748,6 +3755,19 @@ namespace dxvk {
 
         m_dirtySamplerStates |= 1u << StateSampler;
       }
+
+      if (unlikely(m_fetch4Enabled & (1u << StateSampler) && !(m_fetch4 & (1u << StateSampler)))) {
+        bool textureSupportsFetch4 = newTexture->SupportsFetch4();
+        if (textureSupportsFetch4
+          && m_state.samplerStates[StateSampler][D3DSAMP_MAGFILTER] == D3DTEXF_POINT
+          && m_state.samplerStates[StateSampler][D3DSAMP_MINFILTER] == D3DTEXF_POINT) {
+          m_fetch4 |= 1u << StateSampler;
+          m_dirtySamplerStates |= 1u << StateSampler;
+        }
+      }
+    } else if (unlikely(m_fetch4 & (1u << StateSampler))) {
+      m_fetch4 &= ~(1u << StateSampler);
+      m_dirtySamplerStates |= 1u << StateSampler;
     }
 
     DWORD combinedUsage = oldUsage | newUsage;

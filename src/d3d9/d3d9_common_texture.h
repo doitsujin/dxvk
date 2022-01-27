@@ -191,6 +191,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief FETCH4 compatibility
+     * \returns Whether the format of the texture supports the FETCH4 hack
+     */
+    bool SupportsFetch4() const {
+      return m_supportsFetch4;
+    }
+
+    /**
      * \brief Null
      * \returns Whether the texture is D3DFMT_NULL or not
      */
@@ -444,6 +452,7 @@ namespace dxvk {
     D3D9_VK_FORMAT_MAPPING        m_mapping;
 
     bool                          m_shadow; //< Depth Compare-ness
+    bool                          m_supportsFetch4;
 
     int64_t                       m_size = 0;
 
@@ -482,6 +491,8 @@ namespace dxvk {
     Rc<DxvkImage> CreateResolveImage() const;
 
     BOOL DetermineShadowState() const;
+
+    BOOL DetermineFetch4Compatibility() const;
 
     BOOL CheckImageSupport(
       const DxvkImageCreateInfo*  pImageInfo,
