@@ -10,7 +10,7 @@ if [ -z "$1" ] || [ -z "$2" ]; then
 fi
 
 DXVK_VERSION="$1"
-DXVK_SRC_DIR=`dirname $(readlink -f $0)`
+DXVK_SRC_DIR=`dirname $(greadlink -f $0)`
 DXVK_BUILD_DIR=$(realpath "$2")"/dxvk-$DXVK_VERSION"
 DXVK_ARCHIVE_PATH=$(realpath "$2")"/dxvk-$DXVK_VERSION.tar.gz"
 
