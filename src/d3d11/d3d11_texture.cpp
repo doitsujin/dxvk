@@ -565,9 +565,12 @@ namespace dxvk {
     // order to avoid expensive synchronization with the GPU. This does
     // however require linear tiling, which may not be supported for all
     // combinations of image parameters.
-    return this->CheckImageSupport(pImageInfo, VK_IMAGE_TILING_LINEAR)
-      ? D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT
-      : D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
+    // HACK: Never use direct mapping; it doesn't work right with MoltenVK
+    // because we don't unmap memory.
+    //return this->CheckImageSupport(pImageInfo, VK_IMAGE_TILING_LINEAR)
+    //  ? D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT
+    //  : D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
+    return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
   }
   
   

@@ -66,13 +66,22 @@ namespace dxvk {
   DxbcRegMask DxbcIsgn::regMask(
           uint32_t     registerId) const {
     DxbcRegMask mask;
+    DxbcRegMask svMask;
 
     for (auto e = this->begin(); e != this->end(); e++) {
-      if (e->registerId == registerId)
-        mask |= e->componentMask;
+      if (e->registerId == registerId) {
+        if (e->systemValue == DxbcSystemValue::None)
+          mask |= e->componentMask;
+        else
+          svMask |= e->componentMask;
+      }
     }
 
-    return mask;
+    if (mask != DxbcRegMask(0) && svMask != DxbcRegMask(0)) {
+      Logger::info("dxbc system value mask hack fired");
+    }
+
+    return mask != DxbcRegMask(0) ? mask : svMask;
   }
 
 
