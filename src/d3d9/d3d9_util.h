@@ -1,5 +1,7 @@
 #pragma once
 
+#define D3D11_NO_HELPERS
+
 #include "d3d9_include.h"
 #include "d3d9_caps.h"
 
