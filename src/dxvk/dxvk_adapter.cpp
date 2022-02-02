@@ -623,12 +623,16 @@ namespace dxvk {
     // Query full device properties for all enabled extensions
     m_vki->vkGetPhysicalDeviceProperties2(m_handle, &m_deviceInfo.core);
     
-    // Nvidia reports the driver version in a slightly different format
-    if (DxvkGpuVendor(m_deviceInfo.core.properties.vendorID) == DxvkGpuVendor::Nvidia) {
-      m_deviceInfo.core.properties.driverVersion = VK_MAKE_VERSION(
-        VK_VERSION_MAJOR(m_deviceInfo.core.properties.driverVersion),
-        VK_VERSION_MINOR(m_deviceInfo.core.properties.driverVersion >> 0) >> 2,
-        VK_VERSION_PATCH(m_deviceInfo.core.properties.driverVersion >> 2) >> 4);
+    // Some drivers reports the driver version in a slightly different format
+    switch (m_deviceInfo.khrDeviceDriverProperties.driverID) {
+      case VK_DRIVER_ID_NVIDIA_PROPRIETARY:
+        m_deviceInfo.core.properties.driverVersion = VK_MAKE_VERSION(
+          (m_deviceInfo.core.properties.driverVersion >> 22) & 0x3ff,
+          (m_deviceInfo.core.properties.driverVersion >> 14) & 0x0ff,
+          (m_deviceInfo.core.properties.driverVersion >>  6) & 0x0ff);
+        break;
+
+      default:;
     }
   }
 
