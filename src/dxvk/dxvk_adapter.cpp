@@ -632,6 +632,12 @@ namespace dxvk {
           (m_deviceInfo.core.properties.driverVersion >>  6) & 0x0ff);
         break;
 
+      case VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS:
+        m_deviceInfo.core.properties.driverVersion = VK_MAKE_VERSION(
+          m_deviceInfo.core.properties.driverVersion >> 14,
+          m_deviceInfo.core.properties.driverVersion & 0x3fff, 0);
+        break;
+
       default:;
     }
   }
