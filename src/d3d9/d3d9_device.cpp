@@ -775,10 +775,22 @@ namespace dxvk {
     if (unlikely(srcTexInfo->Desc()->Pool != D3DPOOL_SYSTEMMEM || dstTexInfo->Desc()->Pool != D3DPOOL_DEFAULT))
       return D3DERR_INVALIDCALL;
 
+    if (srcTexInfo->Desc()->MipLevels < dstTexInfo->Desc()->MipLevels)
+      return D3DERR_INVALIDCALL;
+
+    if (dstTexInfo->Desc()->Format != srcTexInfo->Desc()->Format)
+      return D3DERR_INVALIDCALL;
+
     const Rc<DxvkImage> dstImage  = dstTexInfo->GetImage();
     const DxvkFormatInfo* formatInfo = imageFormatInfo(dstTexInfo->GetFormatMapping().FormatColor);
-    uint32_t mipLevels   = std::min(srcTexInfo->Desc()->MipLevels, dstTexInfo->Desc()->MipLevels);
+    uint32_t mipLevels = dstTexInfo->Desc()->MipLevels;
     uint32_t arraySlices = std::min(srcTexInfo->Desc()->ArraySize, dstTexInfo->Desc()->ArraySize);
+
+    uint32_t srcMipOffset = srcTexInfo->Desc()->MipLevels - mipLevels;
+    VkExtent3D srcFirstMipExtent = util::computeMipLevelExtent(srcTexInfo->GetExtent(), srcMipOffset);
+    VkExtent3D dstFirstMipExtent = dstTexInfo->GetExtent();
+    if (srcFirstMipExtent != dstFirstMipExtent)
+      return D3DERR_INVALIDCALL;
 
     if (unlikely(srcTexInfo->IsAutomaticMip() && !dstTexInfo->IsAutomaticMip()))
       return D3DERR_INVALIDCALL;
@@ -791,23 +803,24 @@ namespace dxvk {
       if (box.Left >= box.Right || box.Top >= box.Bottom || box.Front >= box.Back)
         continue;
 
-      for (uint32_t m = 0; m < mipLevels; m++) {
-        VkImageSubresourceLayers dstLayers = { VK_IMAGE_ASPECT_COLOR_BIT, m, a, 1 };
+      for (uint32_t dstMip = 0; dstMip < mipLevels; dstMip++) {
+        uint32_t srcMip = dstMip + srcMipOffset;
+        VkImageSubresourceLayers dstLayers = { VK_IMAGE_ASPECT_COLOR_BIT, dstMip, a, 1 };
 
         VkOffset3D scaledBoxOffset = {
-          int32_t(alignDown(box.Left  >> m, formatInfo->blockSize.width)),
-          int32_t(alignDown(box.Top   >> m, formatInfo->blockSize.height)),
-          int32_t(alignDown(box.Front >> m, formatInfo->blockSize.depth))
+          int32_t(alignDown(box.Left  >> srcMip, formatInfo->blockSize.width)),
+          int32_t(alignDown(box.Top   >> srcMip, formatInfo->blockSize.height)),
+          int32_t(alignDown(box.Front >> srcMip, formatInfo->blockSize.depth))
         };
         VkExtent3D scaledBoxExtent = util::computeMipLevelExtent({
           uint32_t(box.Right  - int32_t(alignDown(box.Left, formatInfo->blockSize.width))),
           uint32_t(box.Bottom - int32_t(alignDown(box.Top, formatInfo->blockSize.height))),
           uint32_t(box.Back   - int32_t(alignDown(box.Front, formatInfo->blockSize.depth)))
-        }, m);
+        }, srcMip);
         VkExtent3D scaledBoxExtentBlockCount = util::computeBlockCount(scaledBoxExtent, formatInfo->blockSize);
         VkExtent3D scaledAlignedBoxExtent = util::computeBlockExtent(scaledBoxExtentBlockCount, formatInfo->blockSize);
 
-        VkExtent3D texLevelExtent = dstImage->mipLevelExtent(m);
+        VkExtent3D texLevelExtent = dstImage->mipLevelExtent(dstMip);
         VkExtent3D texLevelExtentBlockCount = util::computeBlockCount(texLevelExtent, formatInfo->blockSize);
 
         scaledAlignedBoxExtent.width = std::min<uint32_t>(texLevelExtent.width - scaledBoxOffset.x, scaledAlignedBoxExtent.width);
@@ -822,7 +835,7 @@ namespace dxvk {
             + boxOffsetBlockCount.y * pitch
             + boxOffsetBlockCount.x * formatInfo->elementSize;
 
-        void* srcData = reinterpret_cast<uint8_t*>(srcTexInfo->GetMappedSlice(srcTexInfo->CalcSubresource(a, m)).mapPtr) + copySrcOffset;
+        void* srcData = reinterpret_cast<uint8_t*>(srcTexInfo->GetMappedSlice(srcTexInfo->CalcSubresource(a, srcMip)).mapPtr) + copySrcOffset;
         util::packImageData(
           slice.mapPtr, srcData, scaledBoxExtentBlockCount, formatInfo->elementSize,
           pitch, pitch * texLevelExtentBlockCount.height);
@@ -844,7 +857,7 @@ namespace dxvk {
             cSrcSlice.buffer(), cSrcSlice.offset(), 0, 0);
         });
 
-        dstTexInfo->SetWrittenByGPU(dstTexInfo->CalcSubresource(a, m), true);
+        dstTexInfo->SetWrittenByGPU(dstTexInfo->CalcSubresource(a, dstMip), true);
       }
     }
 
