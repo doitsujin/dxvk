@@ -19,9 +19,10 @@ jobs:
         choco install vulkan-sdk -y
         Write-Output "$([System.Environment]::GetEnvironmentVariable('VULKAN_SDK', 'Machine'))\Bin" `
           | Out-File -FilePath "${Env:GITHUB_PATH}" -Append
-    - name: Setup Meson and Ninja
+
+    - name: Setup Meson
       shell: pwsh
-      run: pip install meson ninja
+      run: pip install meson
 
     - name: Find Visual Studio
       shell: pwsh
@@ -31,23 +32,21 @@ jobs:
           | Select-Object -ExpandProperty InstallationPath
         Write-Output "VSDEVCMD=${installationPath}\Common7\Tools\VsDevCmd.bat" `
           | Out-File -FilePath "${Env:GITHUB_ENV}" -Append
-    - name: Prepare MSVC x86
-      shell: pwsh
-      run: |
-        & "${Env:COMSPEC}" /s /c "`"${Env:VSDEVCMD}`" -arch=x86 -host_arch=x64 -no_logo && set" `
-          | Out-File -FilePath "${Env:GITHUB_ENV}" -Append
+
     - name: Build MSVC x86
       shell: pwsh
       run: |
-        meson --buildtype release build-msvc-x86
-        ninja -C build-msvc-x86
-    - name: Prepare MSVC x64
-      shell: pwsh
-      run: |
-        & "${Env:COMSPEC}" /s /c "`"${Env:VSDEVCMD}`" -arch=x64 -host_arch=x64 -no_logo && set" `
-          | Out-File -FilePath "${Env:GITHUB_ENV}" -Append
+        & "${Env:COMSPEC}" /s /c "`"${Env:VSDEVCMD}`" -arch=x86 -host_arch=x64 -no_logo && set" `
+          | % { , ($_ -Split '=', 2) } `
+          | % { [System.Environment]::SetEnvironmentVariable($_[0], $_[1]) }
+        meson --buildtype release --backend vs2022 build-msvc-x86
+        msbuild -m build-msvc-x86/dxvk.sln
+
     - name: Build MSVC x64
       shell: pwsh
       run: |
-        meson --buildtype release build-msvc-x64
-        ninja -C build-msvc-x64 
+        & "${Env:COMSPEC}" /s /c "`"${Env:VSDEVCMD}`" -arch=x64 -host_arch=x64 -no_logo && set" `
+          | % { , ($_ -Split '=', 2) } `
+          | % { [System.Environment]::SetEnvironmentVariable($_[0], $_[1]) }
+        meson --buildtype release --backend vs2022 build-msvc-x64
+        msbuild -m build-msvc-x64/dxvk.sln
