@@ -175,6 +175,7 @@ namespace dxvk {
       ClearState();
     
     m_mappedResources.clear();
+    ResetStagingBuffer();
     return S_OK;
   }
   

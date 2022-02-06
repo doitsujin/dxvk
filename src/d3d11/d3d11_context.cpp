@@ -4398,7 +4398,7 @@ namespace dxvk {
 
 
   DxvkDataSlice D3D11DeviceContext::AllocUpdateBufferSlice(size_t Size) {
-    constexpr size_t UpdateBufferSize = 16 * 1024 * 1024;
+    constexpr size_t UpdateBufferSize = 1 * 1024 * 1024;
     
     if (Size >= UpdateBufferSize) {
       Rc<DxvkDataBuffer> buffer = new DxvkDataBuffer(Size);
@@ -4421,6 +4421,8 @@ namespace dxvk {
   
   DxvkBufferSlice D3D11DeviceContext::AllocStagingBuffer(
           VkDeviceSize                      Size) {
+    constexpr VkDeviceSize StagingBufferSize = 4 * 1024 * 1024;
+
     DxvkBufferCreateInfo info;
     info.size   = Size;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
@@ -4432,8 +4434,32 @@ namespace dxvk {
     info.access = VK_ACCESS_TRANSFER_READ_BIT
                 | VK_ACCESS_SHADER_READ_BIT;
 
-    return DxvkBufferSlice(m_device->createBuffer(info,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+    // Create a dedicated buffer for large allocations
+    VkDeviceSize alignedSize = align(Size, 256);
+
+    if (alignedSize >= StagingBufferSize) {
+      return DxvkBufferSlice(m_device->createBuffer(info,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+    }
+
+    // Otherwise, try to suballocate from an existing buffer
+    if (m_stagingOffset + alignedSize > StagingBufferSize || m_stagingBuffer == nullptr) {
+      info.size = StagingBufferSize;
+
+      m_stagingBuffer = m_device->createBuffer(info,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+      m_stagingOffset = 0;
+    }
+
+    DxvkBufferSlice slice(m_stagingBuffer, m_stagingOffset, Size);
+    m_stagingOffset += alignedSize;
+    return slice;
+  }
+
+
+  void D3D11DeviceContext::ResetStagingBuffer() {
+    m_stagingBuffer = nullptr;
+    m_stagingOffset = 0;
   }
   
 

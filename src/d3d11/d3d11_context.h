@@ -712,7 +712,10 @@ namespace dxvk {
     
     Rc<DxvkDevice>              m_device;
     Rc<DxvkDataBuffer>          m_updateBuffer;
-    
+
+    Rc<DxvkBuffer>              m_stagingBuffer;
+    VkDeviceSize                m_stagingOffset = 0ull;
+
     DxvkCsChunkFlags            m_csFlags;
     DxvkCsChunkRef              m_csChunk;
     
@@ -927,7 +930,9 @@ namespace dxvk {
     
     DxvkBufferSlice AllocStagingBuffer(
             VkDeviceSize                      Size);
-    
+
+    void ResetStagingBuffer();
+
     DxvkCsChunkRef AllocCsChunk();
     
     static void InitDefaultPrimitiveTopology(
