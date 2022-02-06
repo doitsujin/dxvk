@@ -13,7 +13,6 @@ namespace dxvk {
   struct D3D11DeferredContextMapEntry {
     Com<ID3D11Resource>     pResource;
     UINT                    Subresource;
-    D3D11_MAP               MapType;
     UINT                    RowPitch;
     UINT                    DepthPitch;
     void*                   MapPointer;
@@ -98,15 +97,11 @@ namespace dxvk {
 
     HRESULT MapBuffer(
             ID3D11Resource*               pResource,
-            D3D11_MAP                     MapType,
-            UINT                          MapFlags,
             D3D11DeferredContextMapEntry* pMapEntry);
     
     HRESULT MapImage(
             ID3D11Resource*               pResource,
             UINT                          Subresource,
-            D3D11_MAP                     MapType,
-            UINT                          MapFlags,
             D3D11DeferredContextMapEntry* pMapEntry);
     
     void FinalizeQueries();

@@ -197,8 +197,8 @@ namespace dxvk {
       D3D11DeferredContextMapEntry entry;
       
       HRESULT status = resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER
-        ? MapBuffer(pResource,              MapType, MapFlags, &entry)
-        : MapImage (pResource, Subresource, MapType, MapFlags, &entry);
+        ? MapBuffer(pResource,              &entry)
+        : MapImage (pResource, Subresource, &entry);
       
       if (unlikely(FAILED(status))) {
         *pMappedResource = D3D11_MAPPED_SUBRESOURCE();
@@ -226,8 +226,6 @@ namespace dxvk {
       }
       
       // Return same memory region as earlier
-      entry->MapType = D3D11_MAP_WRITE_NO_OVERWRITE;
-      
       pMappedResource->pData      = entry->MapPointer;
       pMappedResource->RowPitch   = entry->RowPitch;
       pMappedResource->DepthPitch = entry->DepthPitch;
@@ -259,8 +257,6 @@ namespace dxvk {
 
   HRESULT D3D11DeferredContext::MapBuffer(
           ID3D11Resource*               pResource,
-          D3D11_MAP                     MapType,
-          UINT                          MapFlags,
           D3D11DeferredContextMapEntry* pMapEntry) {
     D3D11Buffer* pBuffer = static_cast<D3D11Buffer*>(pResource);
     
@@ -271,7 +267,6 @@ namespace dxvk {
     
     pMapEntry->pResource    = pResource;
     pMapEntry->Subresource  = 0;
-    pMapEntry->MapType      = D3D11_MAP_WRITE_DISCARD;
     pMapEntry->RowPitch     = pBuffer->Desc()->ByteWidth;
     pMapEntry->DepthPitch   = pBuffer->Desc()->ByteWidth;
     
@@ -311,8 +306,6 @@ namespace dxvk {
   HRESULT D3D11DeferredContext::MapImage(
           ID3D11Resource*               pResource,
           UINT                          Subresource,
-          D3D11_MAP                     MapType,
-          UINT                          MapFlags,
           D3D11DeferredContextMapEntry* pMapEntry) {
     D3D11CommonTexture* pTexture = GetCommonTexture(pResource);
     
@@ -337,7 +330,6 @@ namespace dxvk {
     
     pMapEntry->pResource    = pResource;
     pMapEntry->Subresource  = Subresource;
-    pMapEntry->MapType      = D3D11_MAP_WRITE_DISCARD;
     pMapEntry->RowPitch     = layout.RowPitch;
     pMapEntry->DepthPitch   = layout.DepthPitch;
     pMapEntry->MapPointer   = dataSlice.mapPtr(0);
