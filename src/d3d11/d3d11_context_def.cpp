@@ -205,15 +205,15 @@ namespace dxvk {
         return status;
       }
       
-      // Adding a new map entry actually overrides the
-      // old one in practice because the lookup function
-      // scans the array in reverse order
-      m_mappedResources.push_back(std::move(entry));
-      
       // Fill mapped resource structure
       pMappedResource->pData      = entry.MapPointer;
       pMappedResource->RowPitch   = entry.RowPitch;
       pMappedResource->DepthPitch = entry.DepthPitch;
+
+      // Adding a new map entry actually overrides the
+      // old one in practice because the lookup function
+      // scans the array in reverse order
+      m_mappedResources.push_back(std::move(entry));
       return S_OK;
     } else if (MapType == D3D11_MAP_WRITE_NO_OVERWRITE) {
       // The resource must be mapped with D3D11_MAP_WRITE_DISCARD
