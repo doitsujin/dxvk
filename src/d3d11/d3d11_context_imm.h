@@ -16,6 +16,7 @@ namespace dxvk {
   class D3D11ImmediateContext : public D3D11DeviceContext {
     friend class D3D11SwapChain;
     friend class D3D11VideoContext;
+    friend class D3D11DeviceContext;
   public:
     
     D3D11ImmediateContext(
@@ -144,6 +145,13 @@ namespace dxvk {
             D3D11CommonTexture*         pResource,
             UINT                        Subresource);
     
+    void UpdateMappedBuffer(
+            D3D11Buffer*                  pDstBuffer,
+            UINT                          Offset,
+            UINT                          Length,
+      const void*                         pSrcData,
+            UINT                          CopyFlags);
+
     void SynchronizeDevice();
     
     bool WaitForResource(

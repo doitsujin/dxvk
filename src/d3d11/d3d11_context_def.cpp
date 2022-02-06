@@ -246,6 +246,31 @@ namespace dxvk {
   }
   
   
+  void STDMETHODCALLTYPE D3D11DeferredContext::UpdateSubresource(
+          ID3D11Resource*                   pDstResource,
+          UINT                              DstSubresource,
+    const D3D11_BOX*                        pDstBox,
+    const void*                             pSrcData,
+          UINT                              SrcRowPitch,
+          UINT                              SrcDepthPitch) {
+    UpdateResource<D3D11DeferredContext>(this, pDstResource,
+      DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, 0);
+  }
+
+
+  void STDMETHODCALLTYPE D3D11DeferredContext::UpdateSubresource1(
+          ID3D11Resource*                   pDstResource,
+          UINT                              DstSubresource,
+    const D3D11_BOX*                        pDstBox,
+    const void*                             pSrcData,
+          UINT                              SrcRowPitch,
+          UINT                              SrcDepthPitch,
+          UINT                              CopyFlags) {
+    UpdateResource<D3D11DeferredContext>(this, pDstResource,
+      DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, CopyFlags);
+  }
+
+
   void STDMETHODCALLTYPE D3D11DeferredContext::SwapDeviceContextState(
           ID3DDeviceContextState*           pState,
           ID3DDeviceContextState**          ppPreviousState) {
@@ -342,6 +367,35 @@ namespace dxvk {
   }
   
   
+  void D3D11DeferredContext::UpdateMappedBuffer(
+          D3D11Buffer*                  pDstBuffer,
+          UINT                          Offset,
+          UINT                          Length,
+    const void*                         pSrcData,
+          UINT                          CopyFlags) {
+    void* mapPtr = nullptr;
+
+    if (unlikely(CopyFlags == D3D11_COPY_NO_OVERWRITE)) {
+      auto entry = FindMapEntry(pDstBuffer, 0);
+
+      if (entry != m_mappedResources.rend())
+        mapPtr = entry->MapPointer;
+    }
+
+    if (likely(!mapPtr)) {
+      // The caller validates the map mode, so we can
+      // safely ignore the MapBuffer return value here
+      D3D11DeferredContextMapEntry entry;
+      MapBuffer(pDstBuffer, &entry);
+
+      mapPtr = entry.MapPointer;
+      m_mappedResources.push_back(std::move(entry));
+    }
+
+    std::memcpy(reinterpret_cast<char*>(mapPtr) + Offset, pSrcData, Length);
+  }
+
+
   void D3D11DeferredContext::FinalizeQueries() {
     for (auto& query : m_queriesBegun) {
       m_commandList->AddQuery(query.ptr());

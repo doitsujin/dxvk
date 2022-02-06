@@ -19,7 +19,7 @@ namespace dxvk {
   };
   
   class D3D11DeferredContext : public D3D11DeviceContext {
-    
+    friend class D3D11DeviceContext;
   public:
     
     D3D11DeferredContext(
@@ -76,6 +76,23 @@ namespace dxvk {
             ID3D11Resource*             pResource,
             UINT                        Subresource);
     
+    void STDMETHODCALLTYPE UpdateSubresource(
+            ID3D11Resource*                   pDstResource,
+            UINT                              DstSubresource,
+      const D3D11_BOX*                        pDstBox,
+      const void*                             pSrcData,
+            UINT                              SrcRowPitch,
+            UINT                              SrcDepthPitch);
+
+    void STDMETHODCALLTYPE UpdateSubresource1(
+            ID3D11Resource*                   pDstResource,
+            UINT                              DstSubresource,
+      const D3D11_BOX*                        pDstBox,
+      const void*                             pSrcData,
+            UINT                              SrcRowPitch,
+            UINT                              SrcDepthPitch,
+            UINT                              CopyFlags);
+
     void STDMETHODCALLTYPE SwapDeviceContextState(
            ID3DDeviceContextState*           pState,
            ID3DDeviceContextState**          ppPreviousState);
@@ -103,7 +120,14 @@ namespace dxvk {
             ID3D11Resource*               pResource,
             UINT                          Subresource,
             D3D11DeferredContextMapEntry* pMapEntry);
-    
+
+    void UpdateMappedBuffer(
+            D3D11Buffer*                  pDstBuffer,
+            UINT                          Offset,
+            UINT                          Length,
+      const void*                         pSrcData,
+            UINT                          CopyFlags);
+
     void FinalizeQueries();
 
     Com<D3D11CommandList> CreateCommandList();
