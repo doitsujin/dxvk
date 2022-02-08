@@ -379,7 +379,9 @@ namespace dxvk {
   class DxvkCsThread {
     
   public:
-    
+
+    constexpr static uint64_t SynchronizeAll = ~0ull;
+
     DxvkCsThread(const Rc<DxvkContext>& context);
     ~DxvkCsThread();
     
@@ -389,41 +391,43 @@ namespace dxvk {
      * Can be used to efficiently play back large
      * command lists recorded on another thread.
      * \param [in] chunk The chunk to dispatch
+     * \returns Sequence number of the submission
      */
-    void dispatchChunk(DxvkCsChunkRef&& chunk);
+    uint64_t dispatchChunk(DxvkCsChunkRef&& chunk);
     
     /**
      * \brief Synchronizes with the thread
      * 
-     * This waits for all chunks in the dispatch
-     * queue to be processed by the thread. Note
-     * that this does \e not implicitly call
-     * \ref flush.
+     * This waits for all chunks in the dispatch queue to
+     * be processed by the thread, up to the given sequence
+     * number. If the sequence number is 0, this will wait
+     * for all pending chunks to complete execution.
+     * \param [in] seq Sequence number to wait for.
      */
-    void synchronize();
+    void synchronize(uint64_t seq);
     
     /**
-     * \brief Checks whether the worker thread is busy
-     * 
-     * Note that this information is only reliable if
-     * only the calling thread dispatches jobs to the
-     * worker queue and if the result is \c false.
-     * \returns \c true if there is still work to do
+     * \brief Retrieves last executed sequence number
+     *
+     * Can be used to avoid synchronization in some cases.
+     * \returns Sequence number of last executed chunk
      */
-    bool isBusy() const {
-      return m_chunksPending.load() != 0;
+    uint64_t lastSequenceNumber() const {
+      return m_chunksExecuted.load();
     }
-    
+
   private:
     
     const Rc<DxvkContext>       m_context;
+
+    std::atomic<uint64_t>       m_chunksDispatched = { 0ull };
+    std::atomic<uint64_t>       m_chunksExecuted   = { 0ull };
     
     std::atomic<bool>           m_stopped = { false };
     dxvk::mutex                 m_mutex;
     dxvk::condition_variable    m_condOnAdd;
     dxvk::condition_variable    m_condOnSync;
     std::queue<DxvkCsChunkRef>  m_chunksQueued;
-    std::atomic<uint32_t>       m_chunksPending = { 0u };
     dxvk::thread                m_thread;
     
     void threadFunc();
