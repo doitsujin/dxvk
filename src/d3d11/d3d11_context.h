@@ -1068,6 +1068,9 @@ namespace dxvk {
       }
     }
     
+    void TrackResourceSequenceNumber(
+            ID3D11Resource*             pResource);
+
     virtual void EmitCsChunk(DxvkCsChunkRef&& chunk) = 0;
     
     virtual void TrackTextureSequenceNumber(
