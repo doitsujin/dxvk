@@ -423,13 +423,17 @@ namespace dxvk {
   void D3D11DeferredContext::TrackTextureSequenceNumber(
           D3D11CommonTexture*         pResource,
           UINT                        Subresource) {
-    // TODO implement
+    m_commandList->TrackResourceUsage(
+      pResource->GetInterface(),
+      pResource->GetDimension(),
+      Subresource);
   }
 
 
   void D3D11DeferredContext::TrackBufferSequenceNumber(
           D3D11Buffer*                pResource) {
-    // TODO implement
+    m_commandList->TrackResourceUsage(
+      pResource, D3D11_RESOURCE_DIMENSION_BUFFER, 0);
   }
 
 
