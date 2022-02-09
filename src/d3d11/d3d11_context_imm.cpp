@@ -212,7 +212,8 @@ namespace dxvk {
     
     // Dispatch command list to the CS thread and
     // restore the immediate context's state
-    commandList->EmitToCsThread(&m_csThread);
+    uint64_t csSeqNum = commandList->EmitToCsThread(&m_csThread);
+    m_csSeqNum = std::max(m_csSeqNum, csSeqNum);
     
     if (RestoreContextState)
       RestoreState();

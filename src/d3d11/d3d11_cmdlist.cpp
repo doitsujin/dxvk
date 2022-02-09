@@ -62,14 +62,17 @@ namespace dxvk {
   }
   
   
-  void D3D11CommandList::EmitToCsThread(DxvkCsThread* CsThread) {
+  uint64_t D3D11CommandList::EmitToCsThread(DxvkCsThread* CsThread) {
+    uint64_t seq = 0;
+
     for (const auto& query : m_queries)
       query->DoDeferredEnd();
 
     for (const auto& chunk : m_chunks)
-      CsThread->dispatchChunk(DxvkCsChunkRef(chunk));
+      seq = CsThread->dispatchChunk(DxvkCsChunkRef(chunk));
     
     MarkSubmitted();
+    return seq;
   }
   
   
