@@ -109,10 +109,11 @@ namespace dxvk {
       const UINT*                             pUAVInitialCounts);
     
     void STDMETHODCALLTYPE SwapDeviceContextState(
-           ID3DDeviceContextState*           pState,
-           ID3DDeviceContextState**          ppPreviousState);
+            ID3DDeviceContextState*           pState,
+            ID3DDeviceContextState**          ppPreviousState);
 
-    void SynchronizeCsThread();
+    void SynchronizeCsThread(
+            uint64_t                          SequenceNumber);
     
   private:
     
@@ -158,6 +159,7 @@ namespace dxvk {
     
     bool WaitForResource(
       const Rc<DxvkResource>&                 Resource,
+            uint64_t                          SequenceNumber,
             D3D11_MAP                         MapType,
             UINT                              MapFlags);
     

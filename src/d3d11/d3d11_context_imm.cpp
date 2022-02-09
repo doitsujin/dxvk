@@ -39,7 +39,7 @@ namespace dxvk {
   
   D3D11ImmediateContext::~D3D11ImmediateContext() {
     Flush();
-    SynchronizeCsThread();
+    SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
     SynchronizeDevice();
   }
   
@@ -368,7 +368,8 @@ namespace dxvk {
     } else {
       // Wait until the resource is no longer in use
       if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
-        if (!WaitForResource(pResource->GetBuffer(), MapType, MapFlags))
+        if (!WaitForResource(pResource->GetBuffer(),
+            pResource->GetSequenceNumber(), MapType, MapFlags))
           return DXGI_ERROR_WAS_STILL_DRAWING;
       }
 
@@ -422,7 +423,8 @@ namespace dxvk {
 
     if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
       // Wait for the resource to become available
-      if (!WaitForResource(mappedImage, MapType, MapFlags))
+      if (!WaitForResource(mappedImage,
+          pResource->GetSequenceNumber(Subresource), MapType, MapFlags))
         return DXGI_ERROR_WAS_STILL_DRAWING;
       
       // Query the subresource's memory layout and hope that
@@ -447,7 +449,8 @@ namespace dxvk {
                  || mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
         
         // Wait for mapped buffer to become available
-        if (wait && !WaitForResource(mappedBuffer, MapType, MapFlags))
+        if (wait && !WaitForResource(mappedBuffer,
+            pResource->GetSequenceNumber(Subresource), MapType, MapFlags))
           return DXGI_ERROR_WAS_STILL_DRAWING;
         
         mapPtr = pResource->GetMappedSlice(Subresource).mapPtr;
@@ -542,14 +545,15 @@ namespace dxvk {
   }
 
 
-  void D3D11ImmediateContext::SynchronizeCsThread() {
+  void D3D11ImmediateContext::SynchronizeCsThread(uint64_t SequenceNumber) {
     D3D10DeviceLock lock = LockContext();
 
     // Dispatch current chunk so that all commands
     // recorded prior to this function will be run
-    FlushCsChunk();
+    if (SequenceNumber > m_csSeqNum)
+      FlushCsChunk();
     
-    m_csThread.synchronize(DxvkCsThread::SynchronizeAll);
+    m_csThread.synchronize(SequenceNumber);
   }
   
   
@@ -560,6 +564,7 @@ namespace dxvk {
   
   bool D3D11ImmediateContext::WaitForResource(
     const Rc<DxvkResource>&                 Resource,
+          uint64_t                          SequenceNumber,
           D3D11_MAP                         MapType,
           UINT                              MapFlags) {
     // Determine access type to wait for based on map mode
@@ -567,29 +572,35 @@ namespace dxvk {
       ? DxvkAccess::Write
       : DxvkAccess::Read;
     
-    // Wait for the any pending D3D11 command to be executed
-    // on the CS thread so that we can determine whether the
-    // resource is currently in use or not.
-    if (!Resource->isInUse(access))
-      SynchronizeCsThread();
-    
-    if (Resource->isInUse(access)) {
-      if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT) {
+    // Wait for any CS chunk using the resource to execute, since
+    // otherwise we cannot accurately determine if the resource is
+    // actually being used by the GPU right now.
+    bool isInUse = Resource->isInUse(access);
+
+    if (!isInUse) {
+      SynchronizeCsThread(SequenceNumber);
+      isInUse = Resource->isInUse(access);
+    }
+
+    if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT) {
+      if (isInUse) {
         // We don't have to wait, but misbehaving games may
         // still try to spin on `Map` until the resource is
         // idle, so we should flush pending commands
         FlushImplicit(FALSE);
         return false;
-      } else {
+      }
+    } else {
+      if (isInUse) {
         // Make sure pending commands using the resource get
         // executed on the the GPU if we have to wait for it
         Flush();
-        SynchronizeCsThread();
-        
+        SynchronizeCsThread(SequenceNumber);
+
         Resource->waitIdle(access);
       }
     }
-    
+
     return true;
   }
   

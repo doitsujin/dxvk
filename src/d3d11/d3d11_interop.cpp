@@ -91,7 +91,7 @@ namespace dxvk {
     
     auto immediateContext = static_cast<D3D11ImmediateContext*>(deviceContext.ptr());
     immediateContext->Flush();
-    immediateContext->SynchronizeCsThread();
+    immediateContext->SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
   }
   
   
