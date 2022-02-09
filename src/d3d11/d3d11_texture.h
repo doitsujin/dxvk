@@ -101,6 +101,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Retrieves D3D11 texture type
+     * \returns D3D11 resource dimension
+     */
+    D3D11_RESOURCE_DIMENSION GetDimension() const {
+      return m_dimension;
+    }
+
+    /**
      * \brief Retrieves Vulkan image type
      *
      * Returns the image type based on the D3D11 resource
