@@ -594,8 +594,21 @@ namespace dxvk {
   
   
   void D3D11ImmediateContext::EmitCsChunk(DxvkCsChunkRef&& chunk) {
-    m_csThread.dispatchChunk(std::move(chunk));
+    m_csSeqNum = m_csThread.dispatchChunk(std::move(chunk));
     m_csIsBusy = true;
+  }
+
+
+  void D3D11ImmediateContext::TrackTextureSequenceNumber(
+          D3D11CommonTexture*         pResource,
+          UINT                        Subresource) {
+    pResource->TrackSequenceNumber(Subresource, m_csSeqNum + 1);
+  }
+
+
+  void D3D11ImmediateContext::TrackBufferSequenceNumber(
+          D3D11Buffer*                pResource) {
+    pResource->TrackSequenceNumber(m_csSeqNum + 1);
   }
 
 

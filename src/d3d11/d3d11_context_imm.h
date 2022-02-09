@@ -116,11 +116,13 @@ namespace dxvk {
     
   private:
     
-    DxvkCsThread m_csThread;
-    bool         m_csIsBusy = false;
+    DxvkCsThread            m_csThread;
+    uint64_t                m_csSeqNum = 0ull;
+    bool                    m_csIsBusy = false;
 
     Rc<sync::CallbackFence> m_eventSignal;
-    uint64_t                m_eventCount = 0;
+    uint64_t                m_eventCount = 0ull;
+
 
     dxvk::high_resolution_clock::time_point m_lastFlush
       = dxvk::high_resolution_clock::now();
@@ -160,6 +162,13 @@ namespace dxvk {
             UINT                              MapFlags);
     
     void EmitCsChunk(DxvkCsChunkRef&& chunk);
+
+    void TrackTextureSequenceNumber(
+            D3D11CommonTexture*         pResource,
+            UINT                        Subresource);
+
+    void TrackBufferSequenceNumber(
+            D3D11Buffer*                pResource);
 
     void FlushImplicit(BOOL StrongHint);
 

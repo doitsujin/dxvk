@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../dxvk/dxvk_cs.h"
 #include "../dxvk/dxvk_device.h"
 
 #include "../d3d10/d3d10_buffer.h"
@@ -117,6 +118,21 @@ namespace dxvk {
       return &m_d3d10;
     }
 
+    bool HasSequenceNumber() const {
+      return m_mapMode != D3D11_COMMON_BUFFER_MAP_MODE_NONE
+          && !(m_desc.MiscFlags & D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS)
+          && !(m_desc.BindFlags);
+    }
+
+    void TrackSequenceNumber(uint64_t Seq) {
+      m_seq = Seq;
+    }
+
+    uint64_t GetSequenceNumber() {
+      return HasSequenceNumber() ? m_seq
+        : DxvkCsThread::SynchronizeAll;
+    }
+
     /**
      * \brief Normalizes buffer description
      * 
@@ -134,6 +150,7 @@ namespace dxvk {
     Rc<DxvkBuffer>                m_buffer;
     Rc<DxvkBuffer>                m_soCounter;
     DxvkBufferSliceHandle         m_mapped;
+    uint64_t                      m_seq = 0ull;
 
     D3D11DXGIResource             m_resource;
     D3D10Buffer                   m_d3d10;

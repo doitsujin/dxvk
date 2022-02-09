@@ -473,6 +473,9 @@ namespace dxvk {
         cSrcSlice.offset(),
         sizeof(uint32_t));
     });
+
+    if (buf->HasSequenceNumber())
+      TrackBufferSequenceNumber(buf);
   }
 
 
@@ -1003,8 +1006,8 @@ namespace dxvk {
       return;
     }
     
-    const D3D11CommonTexture* dstTextureInfo = GetCommonTexture(pDstResource);
-    const D3D11CommonTexture* srcTextureInfo = GetCommonTexture(pSrcResource);
+    D3D11CommonTexture* dstTextureInfo = GetCommonTexture(pDstResource);
+    D3D11CommonTexture* srcTextureInfo = GetCommonTexture(pSrcResource);
     
     const DXGI_VK_FORMAT_INFO dstFormatInfo = m_parent->LookupFormat(dstDesc.Format, DXGI_VK_FORMAT_MODE_ANY);
     const DXGI_VK_FORMAT_INFO srcFormatInfo = m_parent->LookupFormat(srcDesc.Format, DXGI_VK_FORMAT_MODE_ANY);
@@ -1067,6 +1070,9 @@ namespace dxvk {
         ctx->resolveImage(cDstImage, cSrcImage, region, cFormat);
       });
     }
+
+    if (dstTextureInfo->HasSequenceNumber())
+      TrackTextureSequenceNumber(dstTextureInfo, DstSubresource);
   }
   
   
@@ -3276,6 +3282,11 @@ namespace dxvk {
           cSrcBuffer.length());
       }
     });
+
+    if (pDstBuffer->HasSequenceNumber())
+      TrackBufferSequenceNumber(pDstBuffer);
+    if (pSrcBuffer->HasSequenceNumber())
+      TrackBufferSequenceNumber(pSrcBuffer);
   }
 
 
@@ -3510,6 +3521,20 @@ namespace dxvk {
         }
       }
     }
+
+    if (pDstTexture->HasSequenceNumber()) {
+      for (uint32_t i = 0; i < pDstLayers->layerCount; i++) {
+        TrackTextureSequenceNumber(pDstTexture, D3D11CalcSubresource(
+          pDstLayers->mipLevel, pDstLayers->baseArrayLayer + i, pDstTexture->Desc()->MipLevels));
+      }
+    }
+
+    if (pSrcTexture->HasSequenceNumber()) {
+      for (uint32_t i = 0; i < pSrcLayers->layerCount; i++) {
+        TrackTextureSequenceNumber(pSrcTexture, D3D11CalcSubresource(
+          pSrcLayers->mipLevel, pSrcLayers->baseArrayLayer + i, pSrcTexture->Desc()->MipLevels));
+      }
+    }
   }
 
 
@@ -3580,6 +3605,9 @@ namespace dxvk {
           cBufferSlice.length());
       });
     }
+
+    if (pDstBuffer->HasSequenceNumber())
+      TrackBufferSequenceNumber(pDstBuffer);
   }
 
 
@@ -3644,6 +3672,9 @@ namespace dxvk {
           DxvkBufferSlice                   StagingBuffer) {
     bool dstIsImage = pDstTexture->GetMapMode() != D3D11_COMMON_TEXTURE_MAP_MODE_STAGING;
 
+    uint32_t dstSubresource = D3D11CalcSubresource(pDstSubresource->mipLevel,
+      pDstSubresource->arrayLayer, pDstTexture->Desc()->MipLevels);
+
     if (dstIsImage) {
       EmitCs([
         cDstImage         = pDstTexture->GetImage(),
@@ -3674,9 +3705,6 @@ namespace dxvk {
       // the packed buffer copy function which does not know about planes and
       // format metadata, so deal with it manually here.
       VkExtent3D dstMipExtent = pDstTexture->MipLevelExtent(pDstSubresource->mipLevel);
-
-      uint32_t dstSubresource = D3D11CalcSubresource(pDstSubresource->mipLevel,
-        pDstSubresource->arrayLayer, pDstTexture->Desc()->MipLevels);
 
       auto dstFormat = pDstTexture->GetPackedFormat();
       auto dstFormatInfo = imageFormatInfo(dstFormat);
@@ -3725,6 +3753,9 @@ namespace dxvk {
         srcPlaneOffset += util::flattenImageExtent(blockCount) * elementSize;
       }
     }
+
+    if (pDstTexture->HasSequenceNumber())
+      TrackTextureSequenceNumber(pDstTexture, dstSubresource);
   }
 
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../dxvk/dxvk_cs.h"
 #include "../dxvk/dxvk_device.h"
 
 #include "../d3d10/d3d10_texture.h"
@@ -164,8 +165,8 @@ namespace dxvk {
      * \returns Current map mode of that subresource
      */
     D3D11_MAP GetMapType(UINT Subresource) const {
-      return Subresource < m_mapTypes.size()
-        ? D3D11_MAP(m_mapTypes[Subresource])
+      return Subresource < m_mapInfo.size()
+        ? D3D11_MAP(m_mapInfo[Subresource].mapType)
         : D3D11_MAP(~0u);
     }
 
@@ -176,8 +177,8 @@ namespace dxvk {
      * \param [in] MapType The map type
      */
     void SetMapType(UINT Subresource, D3D11_MAP MapType) {
-      if (Subresource < m_mapTypes.size())
-        m_mapTypes[Subresource] = MapType;
+      if (Subresource < m_mapInfo.size())
+        m_mapInfo[Subresource].mapType = MapType;
     }
     
     /**
@@ -240,6 +241,56 @@ namespace dxvk {
       return m_packedFormat;
     }
     
+    /**
+     * \brief Checks whether the resource is eligible for tracking
+     *
+     * Mapped resources with no bind flags can be tracked so that
+     * mapping them will not necessarily cause a CS thread sync.
+     * \returns \c true if tracking is supported for this resource
+     */
+    bool HasSequenceNumber() const {
+      if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_NONE)
+        return false;
+
+      // For buffer-mapped images we only need to track copies to
+      // and from that buffer, so we can safely ignore bind flags
+      if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)
+        return true;
+
+      // Otherwise we can only do accurate tracking if the
+      // image cannot be used in the rendering pipeline.
+      return m_desc.BindFlags == 0;
+    }
+
+    /**
+     * \brief Tracks sequence number for a given subresource
+     *
+     * Stores which CS chunk the resource was last used on.
+     * \param [in] Subresource Subresource index
+     * \param [in] Seq Sequence number
+     */
+    void TrackSequenceNumber(UINT Subresource, uint64_t Seq) {
+      if (Subresource < m_mapInfo.size())
+        m_mapInfo[Subresource].seq = Seq;
+    }
+
+    /**
+     * \brief Queries sequence number for a given subresource
+     *
+     * Returns which CS chunk the resource was last used on.
+     * \param [in] Subresource Subresource index
+     * \returns Sequence number for the given subresource
+     */
+    uint64_t GetSequenceNumber(UINT Subresource) {
+      if (HasSequenceNumber()) {
+        return Subresource < m_buffers.size()
+          ? m_mapInfo[Subresource].seq
+          : 0ull;
+      } else {
+        return DxvkCsThread::SynchronizeAll;
+      }
+    }
+
     /**
      * \brief Computes pixel offset into mapped buffer
      *
@@ -327,6 +378,11 @@ namespace dxvk {
       DxvkBufferSliceHandle slice;
     };
 
+    struct MappedInfo {
+      D3D11_MAP             mapType;
+      uint64_t              seq;
+    };
+
     ID3D11Resource*               m_interface;
     D3D11Device*                  m_device;
     D3D11_RESOURCE_DIMENSION      m_dimension;
@@ -337,7 +393,7 @@ namespace dxvk {
     
     Rc<DxvkImage>                 m_image;
     std::vector<MappedBuffer>     m_buffers;
-    std::vector<D3D11_MAP>        m_mapTypes;
+    std::vector<MappedInfo>       m_mapInfo;
     
     MappedBuffer CreateMappedBuffer(
             UINT                  MipLevel) const;

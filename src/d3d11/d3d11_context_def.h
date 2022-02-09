@@ -134,6 +134,13 @@ namespace dxvk {
     
     void EmitCsChunk(DxvkCsChunkRef&& chunk);
 
+    void TrackTextureSequenceNumber(
+            D3D11CommonTexture*         pResource,
+            UINT                        Subresource);
+
+    void TrackBufferSequenceNumber(
+            D3D11Buffer*                pResource);
+
     static DxvkCsChunkFlags GetCsChunkFlags(
             D3D11Device*                  pDevice);
     

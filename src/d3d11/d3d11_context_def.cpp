@@ -420,6 +420,19 @@ namespace dxvk {
   }
 
 
+  void D3D11DeferredContext::TrackTextureSequenceNumber(
+          D3D11CommonTexture*         pResource,
+          UINT                        Subresource) {
+    // TODO implement
+  }
+
+
+  void D3D11DeferredContext::TrackBufferSequenceNumber(
+          D3D11Buffer*                pResource) {
+    // TODO implement
+  }
+
+
   DxvkCsChunkFlags D3D11DeferredContext::GetCsChunkFlags(
           D3D11Device*                  pDevice) {
     return pDevice->GetOptions()->dcSingleUseMode
