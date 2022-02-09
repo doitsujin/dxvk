@@ -154,4 +154,98 @@ namespace dxvk {
   HRESULT ResourceReleasePrivate(
           ID3D11Resource*             pResource);
 
+  /**
+   * \brief Typed private resource pointer
+   *
+   * Stores a resource and its type, in order to avoid
+   * unnecessary GetType calls. Also optionally stores
+   * a subresource index to avoid struct padding.
+   */
+  class D3D11ResourceRef {
+
+  public:
+
+    D3D11ResourceRef()
+    : m_type(D3D11_RESOURCE_DIMENSION_UNKNOWN),
+      m_subresource(0), m_resource(nullptr) { }
+
+    D3D11ResourceRef(ID3D11Resource* pResource)
+    : m_type(D3D11_RESOURCE_DIMENSION_UNKNOWN),
+      m_subresource(0), m_resource(pResource) {
+      if (m_resource) {
+        m_resource->GetType(&m_type);
+        ResourceAddRefPrivate(m_resource, m_type);
+      }
+    }
+
+    D3D11ResourceRef(ID3D11Resource* pResource, D3D11_RESOURCE_DIMENSION Type)
+    : D3D11ResourceRef(pResource, Type, 0) { }
+
+    D3D11ResourceRef(ID3D11Resource* pResource, D3D11_RESOURCE_DIMENSION Type, UINT Subresource)
+    : m_type(Type), m_subresource(Subresource), m_resource(pResource) {
+      if (m_resource)
+        ResourceAddRefPrivate(m_resource, m_type);
+    }
+
+    D3D11ResourceRef(D3D11ResourceRef&& other)
+    : m_type(other.m_type), m_resource(other.m_resource) {
+      other.m_type = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+      other.m_resource = nullptr;
+    }
+
+    D3D11ResourceRef(const D3D11ResourceRef& other)
+    : m_type(other.m_type), m_resource(other.m_resource) {
+      if (m_resource)
+        ResourceAddRefPrivate(m_resource, m_type);
+    }
+
+    ~D3D11ResourceRef() {
+      if (m_resource)
+        ResourceReleasePrivate(m_resource, m_type);
+    }
+
+    D3D11ResourceRef& operator = (D3D11ResourceRef&& other) {
+      if (m_resource)
+        ResourceReleasePrivate(m_resource, m_type);
+
+      m_type = other.m_type;
+      m_resource = other.m_resource;
+
+      other.m_type = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+      other.m_resource = nullptr;
+      return *this;
+    }
+
+    D3D11ResourceRef& operator = (const D3D11ResourceRef& other) {
+      if (other.m_resource)
+        ResourceAddRefPrivate(other.m_resource, other.m_type);
+
+      if (m_resource)
+        ResourceReleasePrivate(m_resource, m_type);
+
+      m_type = other.m_type;
+      m_resource = other.m_resource;
+      return *this;
+    }
+
+    D3D11_RESOURCE_DIMENSION GetType() const {
+      return m_type;
+    }
+
+    UINT GetSubresource() const {
+      return m_subresource;
+    }
+
+    ID3D11Resource* Get() const {
+      return m_resource;
+    }
+
+  private:
+
+    D3D11_RESOURCE_DIMENSION  m_type;
+    UINT                      m_subresource;
+    ID3D11Resource*           m_resource;
+
+  };
+
 }
