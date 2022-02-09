@@ -72,6 +72,7 @@ namespace dxvk {
   public:
     
     D3D11CommonTexture(
+            ID3D11Resource*             pInterface,
             D3D11Device*                pDevice,
       const D3D11_COMMON_TEXTURE_DESC*  pDesc,
             D3D11_RESOURCE_DIMENSION    Dimension,
@@ -80,6 +81,14 @@ namespace dxvk {
     
     ~D3D11CommonTexture();
     
+    /**
+     * \brief Retrieves resource interface
+     * \returns Resource interface
+     */
+    ID3D11Resource* GetInterface() const {
+      return m_interface;
+    }
+
     /**
      * \brief Texture properties
      * 
@@ -310,7 +319,8 @@ namespace dxvk {
       DxvkBufferSliceHandle slice;
     };
 
-    D3D11Device* const            m_device;
+    ID3D11Resource*               m_interface;
+    D3D11Device*                  m_device;
     D3D11_RESOURCE_DIMENSION      m_dimension;
     D3D11_COMMON_TEXTURE_DESC     m_desc;
     D3D11_COMMON_TEXTURE_MAP_MODE m_mapMode;
