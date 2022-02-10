@@ -170,18 +170,18 @@ namespace dxvk {
       m_subresource(0), m_resource(nullptr) { }
 
     D3D11ResourceRef(ID3D11Resource* pResource)
+    : D3D11ResourceRef(pResource, 0) { }
+
+    D3D11ResourceRef(ID3D11Resource* pResource, UINT Subresource)
     : m_type(D3D11_RESOURCE_DIMENSION_UNKNOWN),
-      m_subresource(0), m_resource(pResource) {
+      m_subresource(Subresource), m_resource(pResource) {
       if (m_resource) {
         m_resource->GetType(&m_type);
         ResourceAddRefPrivate(m_resource, m_type);
       }
     }
 
-    D3D11ResourceRef(ID3D11Resource* pResource, D3D11_RESOURCE_DIMENSION Type)
-    : D3D11ResourceRef(pResource, Type, 0) { }
-
-    D3D11ResourceRef(ID3D11Resource* pResource, D3D11_RESOURCE_DIMENSION Type, UINT Subresource)
+    D3D11ResourceRef(ID3D11Resource* pResource, UINT Subresource, D3D11_RESOURCE_DIMENSION Type)
     : m_type(Type), m_subresource(Subresource), m_resource(pResource) {
       if (m_resource)
         ResourceAddRefPrivate(m_resource, m_type);

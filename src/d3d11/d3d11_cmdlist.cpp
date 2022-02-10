@@ -88,7 +88,7 @@ namespace dxvk {
           ID3D11Resource*     pResource,
           D3D11_RESOURCE_DIMENSION ResourceType,
           UINT                Subresource) {
-    m_resources.emplace_back(pResource, ResourceType, Subresource);
+    m_resources.emplace_back(pResource, Subresource, ResourceType);
   }
 
 
