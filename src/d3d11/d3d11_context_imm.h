@@ -123,6 +123,7 @@ namespace dxvk {
 
     Rc<sync::CallbackFence> m_eventSignal;
     uint64_t                m_eventCount = 0ull;
+    uint32_t                m_mappedImageCount = 0u;
 
 
     dxvk::high_resolution_clock::time_point m_lastFlush

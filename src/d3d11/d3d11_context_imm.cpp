@@ -273,12 +273,17 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11ImmediateContext::Unmap(
           ID3D11Resource*             pResource,
           UINT                        Subresource) {
-    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
-    pResource->GetType(&resourceDim);
-    
-    if (unlikely(resourceDim != D3D11_RESOURCE_DIMENSION_BUFFER)) {
-      D3D10DeviceLock lock = LockContext();
-      UnmapImage(GetCommonTexture(pResource), Subresource);
+    // Since it is very uncommon for images to be mapped compared
+    // to buffers, we count the currently mapped images in order
+    // to avoid a virtual method call in the common case.
+    if (unlikely(m_mappedImageCount > 0)) {
+      D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+      pResource->GetType(&resourceDim);
+
+      if (resourceDim != D3D11_RESOURCE_DIMENSION_BUFFER) {
+        D3D10DeviceLock lock = LockContext();
+        UnmapImage(GetCommonTexture(pResource), Subresource);
+      }
     }
   }
 
@@ -467,6 +472,7 @@ namespace dxvk {
       pMappedResource->DepthPitch = layout.DepthPitch;
     }
 
+    m_mappedImageCount += 1;
     return S_OK;
   }
   
@@ -477,11 +483,15 @@ namespace dxvk {
     D3D11_MAP mapType = pResource->GetMapType(Subresource);
     pResource->SetMapType(Subresource, D3D11_MAP(~0u));
 
-    if (mapType == D3D11_MAP(~0u)
-     || mapType == D3D11_MAP_READ)
+    if (mapType == D3D11_MAP(~0u))
       return;
-    
-    if (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER) {
+
+    // Decrement mapped image counter only after making sure
+    // the given subresource is actually mapped right now
+    m_mappedImageCount -= 1;
+
+    if ((mapType != D3D11_MAP_READ) &&
+        (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)) {
       // Now that data has been written into the buffer,
       // we need to copy its contents into the image
       VkImageAspectFlags aspectMask = imageFormatInfo(pResource->GetPackedFormat())->aspectMask;
