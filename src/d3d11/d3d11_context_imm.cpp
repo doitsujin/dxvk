@@ -469,24 +469,83 @@ namespace dxvk {
     VkFormat packedFormat = m_parent->LookupPackedFormat(
       pResource->Desc()->Format, pResource->GetFormatMode()).Format;
     
+    uint64_t sequenceNumber = pResource->GetSequenceNumber(Subresource);
+
     auto formatInfo = imageFormatInfo(packedFormat);
     void* mapPtr;
 
     if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
-      // Wait for the resource to become available
-      if (!WaitForResource(mappedImage,
-          pResource->GetSequenceNumber(Subresource), MapType, MapFlags))
-        return DXGI_ERROR_WAS_STILL_DRAWING;
+      // Wait for the resource to become available. We do not
+      // support image renaming, so stall on DISCARD instead.
+      if (MapType == D3D11_MAP_WRITE_DISCARD)
+        MapFlags &= ~D3D11_MAP_FLAG_DO_NOT_WAIT;
+
+      if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
+        if (!WaitForResource(mappedImage, sequenceNumber, MapType, MapFlags))
+          return DXGI_ERROR_WAS_STILL_DRAWING;
+      }
       
       // Query the subresource's memory layout and hope that
       // the application respects the returned pitch values.
       mapPtr = mappedImage->mapPtr(0);
     } else {
-      if (MapType == D3D11_MAP_WRITE_DISCARD) {
-        // We do not have to preserve the contents of the
-        // buffer if the entire image gets discarded.
+      constexpr uint32_t DoInvalidate = (1u << 0);
+      constexpr uint32_t DoPreserve   = (1u << 1);
+      constexpr uint32_t DoWait       = (1u << 2);
+      uint32_t doFlags;
+
+      if (MapType == D3D11_MAP_READ) {
+        // Reads will not change the image content, so we only need
+        // to wait for the GPU to finish writing to the mapped buffer.
+        doFlags = DoWait;
+      } else if (MapType == D3D11_MAP_WRITE_DISCARD) {
+        doFlags = DoInvalidate;
+
+        // If we know for sure that the mapped buffer is currently not
+        // in use by the GPU, we don't have to allocate a new slice.
+        if (m_csThread.lastSequenceNumber() >= sequenceNumber && !mappedBuffer->isInUse(DxvkAccess::Read))
+          doFlags = 0;
+      } else if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_STAGING && (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT)) {
+        // Always respect DO_NOT_WAIT for mapped staging images
+        doFlags = DoWait;
+      } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE || mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER) {
+        // Need to synchronize thread to determine pending GPU accesses
+        SynchronizeCsThread(sequenceNumber);
+
+        // Don't implicitly discard large buffers or buffers of images with
+        // multiple subresources, as that is likely to cause memory issues.
+        VkDeviceSize bufferSize = pResource->CountSubresources() == 1
+          ? pResource->GetMappedSlice(Subresource).length
+          : MaxImplicitDiscardSize;
+
+        if (bufferSize >= MaxImplicitDiscardSize) {
+          // Don't check access flags, WaitForResource will return
+          // early anyway if the resource is currently in use
+          doFlags = DoWait;
+        } else if (mappedBuffer->isInUse(DxvkAccess::Write)) {
+          // There are pending GPU writes, need to wait for those
+          doFlags = DoWait;
+        } else if (mappedBuffer->isInUse(DxvkAccess::Read)) {
+          // All pending GPU accesses are reads, so the buffer data
+          // is still current, and we can prevent GPU synchronization
+          // by creating a new slice with an exact copy of the data.
+          doFlags = DoInvalidate | DoPreserve;
+        } else {
+          // There are no pending accesses, so we don't need to wait
+          doFlags = 0;
+        }
+      } else {
+        // No need to synchronize staging resources with NO_OVERWRITE
+        // since the buffer will be used directly.
+        doFlags = 0;
+      }
+
+      if (doFlags & DoInvalidate) {
+        FlushImplicit(TRUE);
+
+        DxvkBufferSliceHandle prevSlice = pResource->GetMappedSlice(Subresource);
         DxvkBufferSliceHandle physSlice = pResource->DiscardSlice(Subresource);
-        
+
         EmitCs([
           cImageBuffer = mappedBuffer,
           cBufferSlice = physSlice
@@ -494,16 +553,22 @@ namespace dxvk {
           ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
         });
 
+        if (doFlags & DoPreserve)
+          std::memcpy(physSlice.mapPtr, prevSlice.mapPtr, physSlice.length);
+
         mapPtr = physSlice.mapPtr;
       } else {
-        bool wait = MapType != D3D11_MAP_WRITE_NO_OVERWRITE
-                 || mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
-        
-        // Wait for mapped buffer to become available
-        if (wait && !WaitForResource(mappedBuffer,
-            pResource->GetSequenceNumber(Subresource), MapType, MapFlags))
-          return DXGI_ERROR_WAS_STILL_DRAWING;
-        
+        if (doFlags & DoWait) {
+          // We cannot respect DO_NOT_WAIT for buffer-mapped resources since
+          // our internal copies need to be transparent to the application.
+          if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)
+            MapFlags &= ~D3D11_MAP_FLAG_DO_NOT_WAIT;
+
+          // Wait for mapped buffer to become available
+          if (!WaitForResource(mappedBuffer, sequenceNumber, MapType, MapFlags))
+            return DXGI_ERROR_WAS_STILL_DRAWING;
+        }
+
         mapPtr = pResource->GetMappedSlice(Subresource).mapPtr;
       }
     }
