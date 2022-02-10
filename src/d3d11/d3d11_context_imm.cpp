@@ -7,6 +7,8 @@ constexpr static uint32_t MinFlushIntervalUs = 750;
 constexpr static uint32_t IncFlushIntervalUs = 250;
 constexpr static uint32_t MaxPendingSubmits  = 6;
 
+constexpr static VkDeviceSize MaxImplicitDiscardSize = 256ull << 10;
+
 namespace dxvk {
   
   D3D11ImmediateContext::D3D11ImmediateContext(
@@ -352,15 +354,17 @@ namespace dxvk {
       Logger::err("D3D11: Cannot map a device-local buffer");
       return E_INVALIDARG;
     }
-    
-    if (MapType == D3D11_MAP_WRITE_DISCARD) {
+
+    VkDeviceSize bufferSize = pResource->Desc()->ByteWidth;
+
+    if (likely(MapType == D3D11_MAP_WRITE_DISCARD)) {
       // Allocate a new backing slice for the buffer and set
       // it as the 'new' mapped slice. This assumes that the
       // only way to invalidate a buffer is by mapping it.
       auto physSlice = pResource->DiscardSlice();
       pMappedResource->pData      = physSlice.mapPtr;
-      pMappedResource->RowPitch   = pResource->Desc()->ByteWidth;
-      pMappedResource->DepthPitch = pResource->Desc()->ByteWidth;
+      pMappedResource->RowPitch   = bufferSize;
+      pMappedResource->DepthPitch = bufferSize;
       
       EmitCs([
         cBuffer      = pResource->GetBuffer(),
@@ -370,23 +374,65 @@ namespace dxvk {
       });
 
       return S_OK;
+    } else if (likely(MapType == D3D11_MAP_WRITE_NO_OVERWRITE)) {
+      // Put this on a fast path without any extra checks since it's
+      // a somewhat desired method to partially update large buffers
+      DxvkBufferSliceHandle physSlice = pResource->GetMappedSlice();
+      pMappedResource->pData      = physSlice.mapPtr;
+      pMappedResource->RowPitch   = bufferSize;
+      pMappedResource->DepthPitch = bufferSize;
+      return S_OK;
     } else {
-      // Wait until the resource is no longer in use
-      if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
-        if (!WaitForResource(pResource->GetBuffer(),
-            pResource->GetSequenceNumber(), MapType, MapFlags))
-          return DXGI_ERROR_WAS_STILL_DRAWING;
+      // Quantum Break likes using MAP_WRITE on resources which would force
+      // us to synchronize with the GPU multiple times per frame. In those
+      // situations, if there are no pending GPU writes to the resource, we
+      // can promote it to MAP_WRITE_DISCARD, but preserve the data by doing
+      // a CPU copy from the previous buffer slice, to avoid the sync point.
+      bool doInvalidatePreserve = false;
+
+      auto buffer = pResource->GetBuffer();
+      auto sequenceNumber = pResource->GetSequenceNumber();
+
+      if (MapType != D3D11_MAP_READ && !MapFlags && bufferSize <= MaxImplicitDiscardSize) {
+        SynchronizeCsThread(sequenceNumber);
+
+        bool hasWoAccess = buffer->isInUse(DxvkAccess::Write);
+        bool hasRwAccess = buffer->isInUse(DxvkAccess::Read);
+
+        if (hasRwAccess && !hasWoAccess) {
+          // Uncached reads can be so slow that a GPU sync may actually be faster
+          doInvalidatePreserve = buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+        }
       }
 
-      // Use map pointer from previous map operation. This
-      // way we don't have to synchronize with the CS thread
-      // if the map mode is D3D11_MAP_WRITE_NO_OVERWRITE.
-      DxvkBufferSliceHandle physSlice = pResource->GetMappedSlice();
-      
-      pMappedResource->pData      = physSlice.mapPtr;
-      pMappedResource->RowPitch   = pResource->Desc()->ByteWidth;
-      pMappedResource->DepthPitch = pResource->Desc()->ByteWidth;
-      return S_OK;
+      if (doInvalidatePreserve) {
+        FlushImplicit(TRUE);
+
+        auto prevSlice = pResource->GetMappedSlice();
+        auto physSlice = pResource->DiscardSlice();
+
+        EmitCs([
+          cBuffer      = std::move(buffer),
+          cBufferSlice = physSlice
+        ] (DxvkContext* ctx) {
+          ctx->invalidateBuffer(cBuffer, cBufferSlice);
+        });
+
+        std::memcpy(physSlice.mapPtr, prevSlice.mapPtr, physSlice.length);
+        pMappedResource->pData      = physSlice.mapPtr;
+        pMappedResource->RowPitch   = bufferSize;
+        pMappedResource->DepthPitch = bufferSize;
+        return S_OK;
+      } else {
+        if (!WaitForResource(buffer, sequenceNumber, MapType, MapFlags))
+          return DXGI_ERROR_WAS_STILL_DRAWING;
+
+        DxvkBufferSliceHandle physSlice = pResource->GetMappedSlice();
+        pMappedResource->pData      = physSlice.mapPtr;
+        pMappedResource->RowPitch   = bufferSize;
+        pMappedResource->DepthPitch = bufferSize;
+        return S_OK;
+      }
     }
   }
   
