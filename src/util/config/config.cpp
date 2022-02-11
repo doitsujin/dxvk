@@ -252,6 +252,10 @@ namespace dxvk {
       { "d3d11.relaxedBarriers",            "True" },
       { "dxgi.nvapiHack",                   "False" },
     }} },
+    /* AoE 2 DE - runs poorly for some users      */
+    { R"(\\AoE2DE_s\.exe$)", {{
+      { "d3d11.apitraceMode",               "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
