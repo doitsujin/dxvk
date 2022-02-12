@@ -1013,15 +1013,6 @@ namespace dxvk {
             uint64_t            value);
     
     /**
-     * \brief Trims staging buffers
-     * 
-     * Releases staging buffer resources. Calling
-     * this may be useful if data updates on a
-     * given context are rare.
-     */
-    void trimStagingBuffers();
-   
-    /**
      * \brief Begins a debug label region
      * \param [in] label The debug label
      *

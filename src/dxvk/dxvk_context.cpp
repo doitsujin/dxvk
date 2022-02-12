@@ -2598,10 +2598,6 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::trimStagingBuffers() {
-    m_staging.reset();
-  }
-
   void DxvkContext::beginDebugLabel(VkDebugUtilsLabelEXT *label) {
     if (!m_device->instance()->extensions().extDebugUtils)
       return;
