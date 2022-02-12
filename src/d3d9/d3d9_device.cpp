@@ -4068,6 +4068,8 @@ namespace dxvk {
         return false;
       }
       else {
+        m_waitForResourceCount++;
+
         // Make sure pending commands using the resource get
         // executed on the the GPU if we have to wait for it
         Flush();
@@ -4754,6 +4756,8 @@ namespace dxvk {
 
   void D3D9DeviceEx::SynchronizeCsThread() {
     D3D9DeviceLock lock = LockDevice();
+
+    m_csSyncCount++;
 
     // Dispatch current chunk so that all commands
     // recorded prior to this function will be run

@@ -28,4 +28,46 @@ namespace dxvk::hud {
 
   };
 
+  class HudWaitForResourceCount : public HudItem {
+
+  public:
+
+    HudWaitForResourceCount(D3D9DeviceEx* device);
+
+    void update(dxvk::high_resolution_clock::time_point time);
+
+    HudPos render(
+            HudRenderer&      renderer,
+            HudPos            position);
+
+  private:
+
+    D3D9DeviceEx* m_device;
+
+    std::string m_waitForResourceCount;
+
+  };
+
+
+
+  class HudCsSyncCount : public HudItem {
+
+  public:
+
+    HudCsSyncCount(D3D9DeviceEx* device);
+
+    void update(dxvk::high_resolution_clock::time_point time);
+
+    HudPos render(
+            HudRenderer&      renderer,
+            HudPos            position);
+
+  private:
+
+    D3D9DeviceEx* m_device;
+
+    std::string m_syncCount;
+
+  };
+
 }

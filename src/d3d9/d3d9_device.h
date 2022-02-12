@@ -916,6 +916,23 @@ namespace dxvk {
       return m_samplerCount.load();
     }
 
+    void UpdateFrameHudCounters() {
+      uint32_t csSyncs = m_csSyncCount;
+      uint32_t waitForResource = m_waitForResourceCount;
+      m_csSyncCount = 0;
+      m_waitForResourceCount = 0;
+      m_csSyncCountLastFrame.store(csSyncs, std::memory_order_seq_cst);
+      m_waitForResourceCountLastFrame.store(waitForResource, std::memory_order_seq_cst);
+    }
+
+    UINT GetCsSyncCount() const {
+      return m_csSyncCountLastFrame.load();
+    }
+
+    UINT GetWaitForResourceCount() const {
+      return m_waitForResourceCountLastFrame.load();
+    }
+
   private:
 
     DxvkCsChunkRef AllocCsChunk() {
@@ -1246,6 +1263,13 @@ namespace dxvk {
 
     std::atomic<int64_t>            m_availableMemory = { 0 };
     std::atomic<int32_t>            m_samplerCount    = { 0 };
+
+    std::atomic<int32_t>            m_waitForResourceCountLastFrame = { 0 };
+    std::atomic<int32_t>            m_csSyncCountLastFrame          = { 0 };
+
+    uint32_t m_waitForResourceCount = 0;
+    uint32_t m_csSyncCount          = 0;
+
 
     Direct3DState9                  m_state;
 
