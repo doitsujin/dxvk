@@ -17,7 +17,7 @@ namespace dxvk {
     m_execBarriers(DxvkCmdBuffer::ExecBuffer),
     m_gfxBarriers (DxvkCmdBuffer::ExecBuffer),
     m_queryManager(m_common->queryPool()),
-    m_staging     (device) {
+    m_staging     (device, StagingBufferSize) {
     if (m_device->features().extRobustness2.nullDescriptor)
       m_features.set(DxvkContextFeature::NullDescriptors);
     if (m_device->features().extExtendedDynamicState.extendedDynamicState)
@@ -2599,7 +2599,7 @@ namespace dxvk {
 
 
   void DxvkContext::trimStagingBuffers() {
-    m_staging.trim();
+    m_staging.reset();
   }
 
   void DxvkContext::beginDebugLabel(VkDebugUtilsLabelEXT *label) {

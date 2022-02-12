@@ -19,7 +19,7 @@ namespace dxvk {
    * recorded.
    */
   class DxvkContext : public RcObject {
-    
+    constexpr static VkDeviceSize StagingBufferSize = 32ull << 20;
   public:
     
     DxvkContext(const Rc<DxvkDevice>& device);
@@ -1082,7 +1082,7 @@ namespace dxvk {
     DxvkBarrierControlFlags m_barrierControl;
     
     DxvkGpuQueryManager     m_queryManager;
-    DxvkStagingDataAlloc    m_staging;
+    DxvkStagingBuffer       m_staging;
     
     DxvkRenderTargetLayouts m_rtLayouts = { };
 
