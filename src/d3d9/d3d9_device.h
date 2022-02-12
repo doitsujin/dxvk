@@ -662,6 +662,7 @@ namespace dxvk {
 
     bool WaitForResource(
       const Rc<DxvkResource>&                 Resource,
+            uint64_t                          SequenceNumber,
             DWORD                             MapFlags);
 
     /**
@@ -731,7 +732,7 @@ namespace dxvk {
 
     void CreateConstantBuffers();
 
-    void SynchronizeCsThread();
+    void SynchronizeCsThread(uint64_t SequenceNumber);
 
     void Flush();
 
