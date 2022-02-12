@@ -3572,8 +3572,9 @@ namespace dxvk {
     const void*                             pSrcData) {
     DxvkBufferSlice bufferSlice = pDstBuffer->GetBufferSlice(Offset, Length);
 
-    if (Length <= 65536) {
-      // The backend has special code paths for small buffer updates
+    if (Length <= 1024 && !(Offset & 0x3) && !(Length & 0x3)) {
+      // The backend has special code paths for small buffer updates,
+      // however both offset and size must be aligned to four bytes.
       DxvkDataSlice dataSlice = AllocUpdateBufferSlice(Length);
       std::memcpy(dataSlice.ptr(), pSrcData, Length);
 
