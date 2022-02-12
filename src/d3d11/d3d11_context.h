@@ -3,6 +3,7 @@
 #include "../dxvk/dxvk_adapter.h"
 #include "../dxvk/dxvk_cs.h"
 #include "../dxvk/dxvk_device.h"
+#include "../dxvk/dxvk_staging.h"
 
 #include "../d3d10/d3d10_multithread.h"
 
@@ -21,6 +22,8 @@ namespace dxvk {
     friend class D3D11DeviceContextExt;
     // Needed in order to call EmitCs for pushing markers
     friend class D3D11UserDefinedAnnotation;
+
+    constexpr static VkDeviceSize StagingBufferSize = 4ull << 20;
   public:
     
     D3D11DeviceContext(
@@ -696,8 +699,7 @@ namespace dxvk {
     Rc<DxvkDevice>              m_device;
     Rc<DxvkDataBuffer>          m_updateBuffer;
 
-    Rc<DxvkBuffer>              m_stagingBuffer;
-    VkDeviceSize                m_stagingOffset = 0ull;
+    DxvkStagingBuffer           m_staging;
 
     DxvkCsChunkFlags            m_csFlags;
     DxvkCsChunkRef              m_csChunk;
