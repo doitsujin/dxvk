@@ -136,9 +136,15 @@ namespace dxvk {
       if (seq == SynchronizeAll)
         seq = m_chunksDispatched.load();
 
+      auto t0 = dxvk::high_resolution_clock::now();
       m_condOnSync.wait(lock, [this, seq] {
         return m_chunksExecuted.load() >= seq;
       });
+      auto t1 = dxvk::high_resolution_clock::now();
+      auto ticks = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0);
+
+      m_device->addStatCtr(DxvkStatCounter::CsSyncCount, 1);
+      m_device->addStatCtr(DxvkStatCounter::CsSyncTicks, ticks.count());
     }
   }
   
@@ -171,8 +177,10 @@ namespace dxvk {
           }
         }
         
-        if (chunk)
+        if (chunk) {
+          m_context->addStatCtr(DxvkStatCounter::CsChunkCount, 1);
           chunk->executeAll(m_context.ptr());
+        }
       }
     } catch (const DxvkError& e) {
       Logger::err("Exception on CS thread!");
