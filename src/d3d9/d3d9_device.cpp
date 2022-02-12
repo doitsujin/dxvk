@@ -913,6 +913,7 @@ namespace dxvk {
     });
 
     dstTexInfo->SetWrittenByGPU(dst->GetSubresource(), true);
+    TrackTextureMappingBufferSequenceNumber(dstTexInfo, dst->GetSubresource());
 
     return D3D_OK;
   }
@@ -2681,6 +2682,7 @@ namespace dxvk {
     }
 
     dst->SetWrittenByGPU(true);
+    TrackBufferMappingBufferSequenceNumber(dst);
 
     return D3D_OK;
   }
@@ -4532,6 +4534,8 @@ namespace dxvk {
     if (pResource->IsAutomaticMip())
       MarkTextureMipsDirty(pResource);
 
+    TrackTextureMappingBufferSequenceNumber(pResource, Subresource);
+
     return D3D_OK;
   }
 
@@ -4732,7 +4736,7 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::EmitCsChunk(DxvkCsChunkRef&& chunk) {
-    m_csThread.dispatchChunk(std::move(chunk));
+    m_csSeqNum = m_csThread.dispatchChunk(std::move(chunk));
     m_csIsBusy = true;
   }
 
@@ -7334,6 +7338,26 @@ namespace dxvk {
     SynchronizeCsThread();
 
     return D3D_OK;
+  }
+
+  void D3D9DeviceEx::TrackBufferMappingBufferSequenceNumber(
+        D3D9CommonBuffer* pResource) {
+    uint64_t sequenceNumber = GetCurrentSequenceNumber();
+    pResource->TrackMappingBufferSequenceNumber(sequenceNumber);
+  }
+
+  void D3D9DeviceEx::TrackTextureMappingBufferSequenceNumber(
+      D3D9CommonTexture* pResource,
+      UINT Subresource) {
+    uint64_t sequenceNumber = GetCurrentSequenceNumber();
+    pResource->TrackMappingBufferSequenceNumber(Subresource, sequenceNumber);
+  }
+
+  uint64_t D3D9DeviceEx::GetCurrentSequenceNumber() {
+    // We do not flush empty chunks, so if we are tracking a resource
+    // immediately after a flush, we need to use the sequence number
+    // of the previously submitted chunk to prevent deadlocks.
+    return m_csChunk->empty() ? m_csSeqNum : m_csSeqNum + 1;
   }
 
 }

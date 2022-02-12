@@ -187,6 +187,28 @@ namespace dxvk {
 
     void PreLoad();
 
+     /**
+     * \brief Tracks sequence number
+     *
+     * Stores which CS chunk the resource was last used on.
+     * \param [in] Seq Sequence number
+     */
+    void TrackMappingBufferSequenceNumber(uint64_t Seq) {
+      m_seq = Seq;
+    }
+
+
+    /**
+     * \brief Queries sequence number for a given subresource
+     *
+     * Returns which CS chunk the resource was last used on.
+     * \param [in] Subresource Subresource index
+     * \returns Sequence number for the given subresource
+     */
+    uint64_t GetMappingBufferSequenceNumber() const {
+      return m_seq;
+    }
+
   private:
 
     Rc<DxvkBuffer> CreateBuffer() const;
@@ -219,6 +241,8 @@ namespace dxvk {
     D3D9Range                   m_gpuReadingRange;
 
     uint32_t                    m_lockCount = 0;
+
+    uint64_t                    m_seq = 0ull;
 
   };
 
