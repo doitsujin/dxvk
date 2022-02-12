@@ -2180,63 +2180,6 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::updateImage(
-    const Rc<DxvkImage>&            image,
-    const VkImageSubresourceLayers& subresources,
-          VkOffset3D                imageOffset,
-          VkExtent3D                imageExtent,
-    const void*                     data,
-          VkDeviceSize              pitchPerRow,
-          VkDeviceSize              pitchPerLayer) {
-    this->spillRenderPass(true);
-
-    // Prepare the image layout. If the given extent covers
-    // the entire image, we may discard its previous contents.
-    auto subresourceRange = vk::makeSubresourceRange(subresources);
-    subresourceRange.aspectMask = image->formatInfo()->aspectMask;
-
-    this->prepareImage(m_execBarriers, image, subresourceRange);
-
-    if (m_execBarriers.isImageDirty(image, subresourceRange, DxvkAccess::Write))
-      m_execBarriers.recordCommands(m_cmd);
-
-    // Initialize the image if the entire subresource is covered
-    VkImageLayout imageLayoutInitial  = image->info().layout;
-    VkImageLayout imageLayoutTransfer = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-    if (image->isFullSubresource(subresources, imageExtent))
-      imageLayoutInitial = VK_IMAGE_LAYOUT_UNDEFINED;
-
-    if (imageLayoutTransfer != imageLayoutInitial) {
-      m_execAcquires.accessImage(
-        image, subresourceRange,
-        imageLayoutInitial,
-        VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-        imageLayoutTransfer,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_WRITE_BIT);
-    }
-
-    m_execAcquires.recordCommands(m_cmd);
-    
-    this->copyImageHostData(DxvkCmdBuffer::ExecBuffer,
-      image, subresources, imageOffset, imageExtent,
-      data, pitchPerRow, pitchPerLayer);
-    
-    // Transition image back into its optimal layout
-    m_execBarriers.accessImage(
-      image, subresourceRange,
-      imageLayoutTransfer,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_WRITE_BIT,
-      image->info().layout,
-      image->info().stages,
-      image->info().access);
-    
-    m_cmd->trackResource<DxvkAccess::Write>(image);
-  }
-  
-  
   void DxvkContext::updateDepthStencilImage(
     const Rc<DxvkImage>&            image,
     const VkImageSubresourceLayers& subresources,
