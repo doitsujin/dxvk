@@ -513,6 +513,85 @@ namespace dxvk::hud {
   }
 
 
+  HudCsThreadItem::HudCsThreadItem(const Rc<DxvkDevice>& device)
+  : m_device(device) {
+
+  }
+
+
+  HudCsThreadItem::~HudCsThreadItem() {
+
+  }
+
+
+  void HudCsThreadItem::update(dxvk::high_resolution_clock::time_point time) {
+    uint64_t ticks = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate).count();
+
+    // Capture the maximum here since it's more useful to
+    // identify stutters than using any sort of average
+    DxvkStatCounters counters = m_device->getStatCounters();
+    uint64_t currCsSyncCount = counters.getCtr(DxvkStatCounter::CsSyncCount);
+    uint64_t currCsSyncTicks = counters.getCtr(DxvkStatCounter::CsSyncTicks);
+
+    m_maxCsSyncCount = std::max(m_maxCsSyncCount, currCsSyncCount - m_prevCsSyncCount);
+    m_maxCsSyncTicks = std::max(m_maxCsSyncTicks, currCsSyncTicks - m_prevCsSyncTicks);
+
+    m_prevCsSyncCount = currCsSyncCount;
+    m_prevCsSyncTicks = currCsSyncTicks;
+
+    m_updateCount++;
+
+    if (ticks >= UpdateInterval) {
+      uint64_t currCsChunks = counters.getCtr(DxvkStatCounter::CsChunkCount);
+      uint64_t diffCsChunks = (currCsChunks - m_prevCsChunks) / m_updateCount;
+      m_prevCsChunks = currCsChunks;
+
+      uint64_t syncTicks = m_maxCsSyncTicks / 100;
+
+      m_csChunkString = str::format(diffCsChunks);
+      m_csSyncString = m_maxCsSyncCount
+        ? str::format(m_maxCsSyncCount, " (", (syncTicks / 10), ".", (syncTicks % 10), " ms)")
+        : str::format(m_maxCsSyncCount);
+
+      m_maxCsSyncCount = 0;
+      m_maxCsSyncTicks = 0;
+
+      m_updateCount = 0;
+      m_lastUpdate = time;
+    }
+  }
+
+
+  HudPos HudCsThreadItem::render(
+          HudRenderer&      renderer,
+          HudPos            position) {
+    position.y += 16.0f;
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 0.25f, 1.0f, 0.25f, 1.0f },
+      "CS chunks:");
+
+    renderer.drawText(16.0f,
+      { position.x + 132.0f, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      m_csChunkString);
+
+    position.y += 20.0f;
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 0.25f, 1.0f, 0.25f, 1.0f },
+      "CS syncs:");
+
+    renderer.drawText(16.0f,
+      { position.x + 132.0f, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      m_csSyncString);
+
+    position.y += 8.0f;
+    return position;
+  }
+
+
   HudGpuLoadItem::HudGpuLoadItem(const Rc<DxvkDevice>& device)
   : m_device(device) {
 
