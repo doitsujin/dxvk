@@ -1,3 +1,4 @@
+#include "dxvk_barrier.h"
 #include "dxvk_buffer.h"
 #include "dxvk_device.h"
 
@@ -107,6 +108,12 @@ namespace dxvk {
 
     if (isGpuWritable)
       hints.set(DxvkMemoryFlag::GpuWritable);
+
+    // Staging buffers that can't even be used as a transfer destinations
+    // are likely short-lived, so we should put them on a separate memory
+    // pool in order to avoid fragmentation
+    if (DxvkBarrierSet::getAccessTypes(m_info.access) == DxvkAccess::Read)
+      hints.set(DxvkMemoryFlag::Transient);
 
     // Ask driver whether we should be using a dedicated allocation
     handle.memory = m_memAlloc->alloc(&memReq.memoryRequirements,

@@ -165,7 +165,8 @@ namespace dxvk {
     Small             = 0,  ///< Small allocation
     GpuReadable       = 1,  ///< Medium-priority resource
     GpuWritable       = 2,  ///< High-priority resource
-    IgnoreConstraints = 3,  ///< Ignore most allocation flags
+    Transient         = 3,  ///< Resource is short-lived
+    IgnoreConstraints = 4,  ///< Ignore most allocation flags
   };
 
   using DxvkMemoryFlags = Flags<DxvkMemoryFlag>;
