@@ -1120,6 +1120,15 @@ namespace dxvk {
 
     void UpdateSamplerDepthModeSpecConstant(uint32_t value);
 
+    void TrackBufferMappingBufferSequenceNumber(
+      D3D9CommonBuffer* pResource);
+
+    void TrackTextureMappingBufferSequenceNumber(
+      D3D9CommonTexture* pResource,
+      UINT Subresource);
+
+    uint64_t GetCurrentSequenceNumber();
+
     Com<D3D9InterfaceEx>            m_parent;
     D3DDEVTYPE                      m_deviceType;
     HWND                            m_window;
@@ -1242,6 +1251,7 @@ namespace dxvk {
       = dxvk::high_resolution_clock::now();
     DxvkCsThread                    m_csThread;
     DxvkCsChunkRef                  m_csChunk;
+    uint64_t                        m_csSeqNum = 0ull;
     bool                            m_csIsBusy = false;
 
     std::atomic<int64_t>            m_availableMemory = { 0 };
