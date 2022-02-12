@@ -651,33 +651,46 @@ namespace dxvk {
     const Rc<DxvkBuffer>&       srcBuffer,
           VkDeviceSize          srcOffset,
           VkDeviceSize          numBytes) {
-    if (numBytes == 0)
-      return;
-    
-    this->spillRenderPass(true);
-    
-    auto dstSlice = dstBuffer->getSliceHandle(dstOffset, numBytes);
-    auto srcSlice = srcBuffer->getSliceHandle(srcOffset, numBytes);
+    // When overwriting small buffers, we can allocate a new slice in order to
+    // avoid suspending the current render pass or inserting barriers. The source
+    // buffer must be read-only since otherwise we cannot schedule the copy early.
+    bool srcIsReadOnly = DxvkBarrierSet::getAccessTypes(srcBuffer->info().access) == DxvkAccess::Read;
+    bool replaceBuffer = srcIsReadOnly && this->tryInvalidateDeviceLocalBuffer(dstBuffer, numBytes);
 
-    if (m_execBarriers.isBufferDirty(srcSlice, DxvkAccess::Read)
-     || m_execBarriers.isBufferDirty(dstSlice, DxvkAccess::Write))
-      m_execBarriers.recordCommands(m_cmd);
+    auto srcSlice = srcBuffer->getSliceHandle(srcOffset, numBytes);
+    auto dstSlice = dstBuffer->getSliceHandle(dstOffset, numBytes);
+
+    if (!replaceBuffer) {
+      this->spillRenderPass(true);
+
+      if (m_execBarriers.isBufferDirty(srcSlice, DxvkAccess::Read)
+       || m_execBarriers.isBufferDirty(dstSlice, DxvkAccess::Write))
+        m_execBarriers.recordCommands(m_cmd);
+    }
+
+    DxvkCmdBuffer cmdBuffer = replaceBuffer
+      ? DxvkCmdBuffer::InitBuffer
+      : DxvkCmdBuffer::ExecBuffer;
 
     VkBufferCopy bufferRegion;
     bufferRegion.srcOffset = srcSlice.offset;
     bufferRegion.dstOffset = dstSlice.offset;
     bufferRegion.size      = dstSlice.length;
 
-    m_cmd->cmdCopyBuffer(DxvkCmdBuffer::ExecBuffer,
+    m_cmd->cmdCopyBuffer(cmdBuffer,
       srcSlice.handle, dstSlice.handle, 1, &bufferRegion);
 
-    m_execBarriers.accessBuffer(srcSlice,
+    auto& barriers = replaceBuffer
+      ? m_initBarriers
+      : m_execBarriers;
+
+    barriers.accessBuffer(srcSlice,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT,
       srcBuffer->info().stages,
       srcBuffer->info().access);
 
-    m_execBarriers.accessBuffer(dstSlice,
+    barriers.accessBuffer(dstSlice,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
       dstBuffer->info().stages,
