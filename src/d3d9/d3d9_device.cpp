@@ -2598,6 +2598,9 @@ namespace dxvk {
       return D3D_OK;
     }
 
+    if (!VertexCount)
+      return D3D_OK;
+
     D3D9CommonBuffer* dst  = static_cast<D3D9VertexBuffer*>(pDestBuffer)->GetCommonBuffer();
     D3D9VertexDecl*   decl = static_cast<D3D9VertexDecl*>  (pVertexDecl);
 
