@@ -95,8 +95,11 @@ namespace dxvk {
   }
   
   
-  DxvkCsThread::DxvkCsThread(const Rc<DxvkContext>& context)
-  : m_context(context), m_thread([this] { threadFunc(); }) {
+  DxvkCsThread::DxvkCsThread(
+    const Rc<DxvkDevice>&   device,
+    const Rc<DxvkContext>&  context)
+  : m_device(device), m_context(context),
+    m_thread([this] { threadFunc(); }) {
     
   }
   

@@ -6,6 +6,8 @@
 #include <queue>
 
 #include "../util/thread.h"
+
+#include "dxvk_device.h"
 #include "dxvk_context.h"
 
 namespace dxvk {
@@ -382,7 +384,9 @@ namespace dxvk {
 
     constexpr static uint64_t SynchronizeAll = ~0ull;
 
-    DxvkCsThread(const Rc<DxvkContext>& context);
+    DxvkCsThread(
+      const Rc<DxvkDevice>&   device,
+      const Rc<DxvkContext>&  context);
     ~DxvkCsThread();
     
     /**
@@ -418,7 +422,8 @@ namespace dxvk {
 
   private:
     
-    const Rc<DxvkContext>       m_context;
+    Rc<DxvkDevice>              m_device;
+    Rc<DxvkContext>             m_context;
 
     std::atomic<uint64_t>       m_chunksDispatched = { 0ull };
     std::atomic<uint64_t>       m_chunksExecuted   = { 0ull };
