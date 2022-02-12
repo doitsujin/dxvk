@@ -506,7 +506,7 @@ namespace dxvk {
     // Try to waste a bit less system memory especially in
     // 32-bit applications due to address space constraints
     if (type.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-      chunkSize = 16 << 20;
+      chunkSize = (env::is32BitHostPlatform() ? 16 : 64) << 20;
 
     // Reduce the chunk size on small heaps so
     // we can at least fit in 15 allocations
