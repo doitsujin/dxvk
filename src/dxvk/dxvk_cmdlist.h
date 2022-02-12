@@ -102,7 +102,7 @@ namespace dxvk {
      * \param [in] ctr The counter to increment
      * \param [in] val The value to add
      */
-    void addStatCtr(DxvkStatCounter ctr, uint32_t val) {
+    void addStatCtr(DxvkStatCounter ctr, uint64_t val) {
       m_statCounters.addCtr(ctr, val);
     }
     

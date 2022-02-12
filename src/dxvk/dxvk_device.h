@@ -457,6 +457,17 @@ namespace dxvk {
     }
 
     /**
+     * \brief Increments a given stat counter
+     *
+     * \param [in] counter Stat counter to increment
+     * \param [in] value Increment value
+     */
+    void addStatCtr(DxvkStatCounter counter, uint64_t value) {
+      std::lock_guard<sync::Spinlock> lock(m_statLock);
+      m_statCounters.addCtr(counter, value);
+    }
+
+    /**
      * \brief Waits for a given submission
      * 
      * \param [in,out] status Submission status
