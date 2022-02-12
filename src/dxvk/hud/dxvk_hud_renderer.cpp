@@ -12,13 +12,13 @@ namespace dxvk::hud {
   : m_mode          (Mode::RenderNone),
     m_scale         (1.0f),
     m_surfaceSize   { 0, 0 },
-    m_textShaders   (createTextShaders(device)),
-    m_lineShaders   (createLineShaders(device)),
-    m_fontImage     (createFontImage(device)),
-    m_fontView      (createFontView(device)),
-    m_fontSampler   (createFontSampler(device)),
-    m_vertexBuffer  (createVertexBuffer(device)) {
-    this->initFontTexture(device);
+    m_device        (device),
+    m_textShaders   (createTextShaders()),
+    m_lineShaders   (createLineShaders()),
+    m_fontImage     (createFontImage()),
+    m_fontView      (createFontView()),
+    m_fontSampler   (createFontSampler()),
+    m_vertexBuffer  (createVertexBuffer()) {
     this->initCharMap();
   }
   
@@ -29,6 +29,9 @@ namespace dxvk::hud {
   
   
   void HudRenderer::beginFrame(const Rc<DxvkContext>& context, VkExtent2D surfaceSize, float scale) {
+    if (!m_initialized)
+      this->initFontTexture(context);
+
     context->bindResourceSampler(0, m_fontSampler);
     context->bindResourceView   (0, m_fontView, nullptr);
     
@@ -214,7 +217,7 @@ namespace dxvk::hud {
   }
   
 
-  HudRenderer::ShaderPair HudRenderer::createTextShaders(const Rc<DxvkDevice>& device) {
+  HudRenderer::ShaderPair HudRenderer::createTextShaders() {
     ShaderPair result;
 
     const SpirvCodeBuffer vsCode(hud_text_vert);
@@ -225,11 +228,11 @@ namespace dxvk::hud {
       { 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_IMAGE_VIEW_TYPE_2D },
     }};
     
-    result.vert = device->createShader(
+    result.vert = m_device->createShader(
       VK_SHADER_STAGE_VERTEX_BIT,
       0, nullptr, { 0x7, 0x3 }, vsCode);
     
-    result.frag = device->createShader(
+    result.frag = m_device->createShader(
       VK_SHADER_STAGE_FRAGMENT_BIT,
       fsResources.size(),
       fsResources.data(),
@@ -240,17 +243,17 @@ namespace dxvk::hud {
   }
   
   
-  HudRenderer::ShaderPair HudRenderer::createLineShaders(const Rc<DxvkDevice>& device) {
+  HudRenderer::ShaderPair HudRenderer::createLineShaders() {
     ShaderPair result;
 
     const SpirvCodeBuffer vsCode(hud_line_vert);
     const SpirvCodeBuffer fsCode(hud_line_frag);
     
-    result.vert = device->createShader(
+    result.vert = m_device->createShader(
       VK_SHADER_STAGE_VERTEX_BIT,
       0, nullptr, { 0x3, 0x1 }, vsCode);
     
-    result.frag = device->createShader(
+    result.frag = m_device->createShader(
       VK_SHADER_STAGE_FRAGMENT_BIT,
       0, nullptr, { 0x1, 0x1 }, fsCode);
     
@@ -258,7 +261,7 @@ namespace dxvk::hud {
   }
   
   
-  Rc<DxvkImage> HudRenderer::createFontImage(const Rc<DxvkDevice>& device) {
+  Rc<DxvkImage> HudRenderer::createFontImage() {
     DxvkImageCreateInfo info;
     info.type           = VK_IMAGE_TYPE_2D;
     info.format         = VK_FORMAT_R8_UNORM;
@@ -276,11 +279,11 @@ namespace dxvk::hud {
     info.tiling         = VK_IMAGE_TILING_OPTIMAL;
     info.layout         = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     
-    return device->createImage(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    return m_device->createImage(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
   
   
-  Rc<DxvkImageView> HudRenderer::createFontView(const Rc<DxvkDevice>& device) {
+  Rc<DxvkImageView> HudRenderer::createFontView() {
     DxvkImageViewCreateInfo info;
     info.type           = VK_IMAGE_VIEW_TYPE_2D;
     info.format         = m_fontImage->info().format;
@@ -291,11 +294,11 @@ namespace dxvk::hud {
     info.minLayer       = 0;
     info.numLayers      = 1;
     
-    return device->createImageView(m_fontImage, info);
+    return m_device->createImageView(m_fontImage, info);
   }
   
   
-  Rc<DxvkSampler> HudRenderer::createFontSampler(const Rc<DxvkDevice>& device) {
+  Rc<DxvkSampler> HudRenderer::createFontSampler() {
     DxvkSamplerCreateInfo info;
     info.magFilter      = VK_FILTER_LINEAR;
     info.minFilter      = VK_FILTER_LINEAR;
@@ -313,18 +316,18 @@ namespace dxvk::hud {
     info.borderColor    = VkClearColorValue();
     info.usePixelCoord  = VK_TRUE;
     
-    return device->createSampler(info);
+    return m_device->createSampler(info);
   }
   
   
-  Rc<DxvkBuffer> HudRenderer::createVertexBuffer(const Rc<DxvkDevice>& device) {
+  Rc<DxvkBuffer> HudRenderer::createVertexBuffer() {
     DxvkBufferCreateInfo info;
     info.size           = sizeof(VertexBufferData);
     info.usage          = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     info.stages         = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
     info.access         = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
     
-    return device->createBuffer(info,
+    return m_device->createBuffer(info,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
@@ -332,26 +335,24 @@ namespace dxvk::hud {
   
   
   void HudRenderer::initFontTexture(
-    const Rc<DxvkDevice>&  device) {
-    Rc<DxvkContext> context = device->createContext();
+    const Rc<DxvkContext>& context) {
+    DxvkBufferCreateInfo bufferInfo;
+    bufferInfo.size = g_hudFont.width * g_hudFont.height;
+    bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    bufferInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    bufferInfo.access = VK_ACCESS_TRANSFER_READ_BIT;
+
+    auto stagingBuffer = m_device->createBuffer(bufferInfo,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    std::memcpy(stagingBuffer->mapPtr(0), g_hudFont.texture, bufferInfo.size);
+
+    context->copyBufferToImage(m_fontImage,
+      VkImageSubresourceLayers { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
+      VkOffset3D { 0,               0,                0 },
+      VkExtent3D { g_hudFont.width, g_hudFont.height, 1 },
+      stagingBuffer, 0, 0, 0);
     
-    context->beginRecording(
-      device->createCommandList());
-    
-    context->uploadImage(m_fontImage,
-      VkImageSubresourceLayers {
-        VK_IMAGE_ASPECT_COLOR_BIT,
-        0, 0, 1 },
-      g_hudFont.texture,
-      g_hudFont.width,
-      g_hudFont.width * g_hudFont.height);
-    
-    device->submitCommandList(
-      context->endRecording(),
-      VK_NULL_HANDLE,
-      VK_NULL_HANDLE);
-    
-    context->trimStagingBuffers();
+    m_initialized = true;
   }
   
   

@@ -132,6 +132,8 @@ namespace dxvk::hud {
     Mode                m_mode;
     float               m_scale;
     VkExtent2D          m_surfaceSize;
+
+    Rc<DxvkDevice>      m_device;
     Rc<DxvkContext>     m_context;
     
     ShaderPair          m_textShaders;
@@ -148,32 +150,25 @@ namespace dxvk::hud {
     uint32_t            m_currTextInstance  = 0;
     uint32_t            m_currLineVertex    = 0;
 
+    bool                m_initialized = false;
+
     void allocVertexBufferSlice();
     
     void beginTextRendering();
     
     void beginLineRendering();
     
-    ShaderPair createTextShaders(
-      const Rc<DxvkDevice>& device);
+    ShaderPair createTextShaders();
+    ShaderPair createLineShaders();
+
+    Rc<DxvkImage> createFontImage();
+    Rc<DxvkImageView> createFontView();
     
-    ShaderPair createLineShaders(
-      const Rc<DxvkDevice>& device);
-    
-    Rc<DxvkImage> createFontImage(
-      const Rc<DxvkDevice>& device);
-    
-    Rc<DxvkImageView> createFontView(
-      const Rc<DxvkDevice>& device);
-    
-    Rc<DxvkSampler> createFontSampler(
-      const Rc<DxvkDevice>& device);
-    
-    Rc<DxvkBuffer> createVertexBuffer(
-      const Rc<DxvkDevice>& device);
+    Rc<DxvkSampler> createFontSampler();
+    Rc<DxvkBuffer> createVertexBuffer();
     
     void initFontTexture(
-      const Rc<DxvkDevice>&  device);
+      const Rc<DxvkContext>& context);
     
     void initCharMap();
     
