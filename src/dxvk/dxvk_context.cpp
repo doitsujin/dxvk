@@ -2133,34 +2133,19 @@ namespace dxvk {
           VkDeviceSize              offset,
           VkDeviceSize              size,
     const void*                     data) {
-    bool isHostVisible = buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-    bool replaceBuffer = size == buffer->info().size && !isHostVisible;
-    
-    DxvkBufferSliceHandle bufferSlice;
-    DxvkCmdBuffer         cmdBuffer;
+    bool replaceBuffer = this->tryInvalidateDeviceLocalBuffer(buffer, size);
+    auto bufferSlice = buffer->getSliceHandle(offset, size);
 
-    if (replaceBuffer) {
-      // Suspend render pass so that we don't mess with the
-      // currently bound transform feedback counter buffers
-      if (m_flags.test(DxvkContextFlag::GpXfbActive))
-        this->spillRenderPass(true);
-
-      // As an optimization, allocate a free slice and perform
-      // the copy in the initialization command buffer instead
-      // interrupting the render pass and stalling the pipeline.
-      bufferSlice = buffer->allocSlice();
-      cmdBuffer   = DxvkCmdBuffer::InitBuffer;
-
-      this->invalidateBuffer(buffer, bufferSlice);
-    } else {
+    if (!replaceBuffer) {
       this->spillRenderPass(true);
     
-      bufferSlice = buffer->getSliceHandle(offset, size);
-      cmdBuffer   = DxvkCmdBuffer::ExecBuffer;
-
       if (m_execBarriers.isBufferDirty(bufferSlice, DxvkAccess::Write))
         m_execBarriers.recordCommands(m_cmd);
     }
+
+    DxvkCmdBuffer cmdBuffer = replaceBuffer
+      ? DxvkCmdBuffer::InitBuffer
+      : DxvkCmdBuffer::ExecBuffer;
 
     m_cmd->cmdUpdateBuffer(cmdBuffer,
       bufferSlice.handle,
@@ -2172,8 +2157,7 @@ namespace dxvk {
       ? m_initBarriers
       : m_execBarriers;
 
-    barriers.accessBuffer(
-      bufferSlice,
+    barriers.accessBuffer(bufferSlice,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
       buffer->info().stages,
@@ -5299,6 +5283,29 @@ namespace dxvk {
       if (m_state.id.cntBuffer.defined())
         m_cmd->trackResource<DxvkAccess::Read>(m_state.id.cntBuffer.buffer());
     }
+  }
+
+
+  bool DxvkContext::tryInvalidateDeviceLocalBuffer(
+      const Rc<DxvkBuffer>&           buffer,
+            VkDeviceSize              copySize) {
+    // We can only discard if the full buffer gets written, and we will only discard
+    // small buffers in order to not waste significant amounts of memory.
+    if (copySize != buffer->info().size || copySize > 0x40000)
+      return false;
+
+    // Don't discard host-visible buffers since that may interfere with the frontend
+    if (buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+      return false;
+
+    // Suspend the current render pass if transform feedback is active prior to
+    // invalidating the buffer, since otherwise we may invalidate a bound buffer.
+    if ((buffer->info().usage & VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT)
+     && (m_flags.test(DxvkContextFlag::GpXfbActive)))
+      this->spillRenderPass(true);
+
+    this->invalidateBuffer(buffer, buffer->allocSlice());
+    return true;
   }
   
 
