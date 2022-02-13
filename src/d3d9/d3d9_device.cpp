@@ -4208,7 +4208,7 @@ namespace dxvk {
         ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
       });
     }
-    else if ((managed && !m_d3d9Options.evictManagedOnUnlock) || scratch || systemmem) {
+    else if ((managed && !needsReadback) || scratch || systemmem) {
       // Managed and scratch resources
       // are meant to be able to provide readback without waiting.
       // We always keep a copy of them in system memory for this reason.
@@ -4337,8 +4337,7 @@ namespace dxvk {
     pResource->SetLocked(Subresource, true);
 
     const bool noDirtyUpdate = Flags & D3DLOCK_NO_DIRTY_UPDATE;
-    if (likely((pResource->IsManaged() && m_d3d9Options.evictManagedOnUnlock)
-      || ((desc.Pool == D3DPOOL_DEFAULT || !noDirtyUpdate) && !readOnly))) {
+    if (likely((desc.Pool == D3DPOOL_DEFAULT || !noDirtyUpdate) && !readOnly)) {
       if (pBox && MipLevel != 0) {
         D3DBOX scaledBox = *pBox;
         scaledBox.Left   <<= MipLevel;
@@ -4353,7 +4352,7 @@ namespace dxvk {
       }
     }
 
-    if (managed && !m_d3d9Options.evictManagedOnUnlock && !readOnly) {
+    if (managed && !readOnly) {
       pResource->SetNeedsUpload(Subresource, true);
 
       for (uint32_t i : bit::BitMask(m_activeTextures)) {
@@ -4401,7 +4400,7 @@ namespace dxvk {
     const D3DBOX& box = pResource->GetDirtyBox(Face);
     bool shouldFlush  = pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED;
          shouldFlush &= box.Left < box.Right && box.Top < box.Bottom && box.Front < box.Back;
-         shouldFlush &= !pResource->IsManaged() || m_d3d9Options.evictManagedOnUnlock;
+         shouldFlush &= !pResource->IsManaged();
 
     if (shouldFlush) {
         this->FlushImage(pResource, Subresource);
@@ -4413,7 +4412,7 @@ namespace dxvk {
     // and we aren't managed (for sysmem copy.)
     bool shouldToss  = pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED;
          shouldToss &= !pResource->IsDynamic();
-         shouldToss &= !pResource->IsManaged() || m_d3d9Options.evictManagedOnUnlock;
+         shouldToss &= !pResource->IsManaged();
 
     if (shouldToss) {
       pResource->DestroyBufferSubresource(Subresource);
