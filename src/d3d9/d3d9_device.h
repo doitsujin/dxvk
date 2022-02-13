@@ -933,6 +933,10 @@ namespace dxvk {
       return &m_memoryAllocator;
     }
 
+    void BumpFrame() {
+      m_frameCounter++;
+    }
+
   private:
 
     DxvkCsChunkRef AllocCsChunk() {
@@ -1279,6 +1283,8 @@ namespace dxvk {
     std::atomic<int32_t>            m_samplerCount    = { 0 };
 
     Direct3DState9                  m_state;
+
+    uint64_t                        m_frameCounter = 0;
 
   };
 

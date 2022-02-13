@@ -252,6 +252,8 @@ namespace dxvk {
           DWORD    dwFlags) {
     D3D9DeviceLock lock = m_parent->LockDevice();
 
+    m_parent->BumpFrame();
+
     uint32_t presentInterval = m_presentParams.PresentationInterval;
 
     // This is not true directly in d3d9 to to timing differences that don't matter for us.
