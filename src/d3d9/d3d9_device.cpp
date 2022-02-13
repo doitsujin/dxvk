@@ -1,6 +1,7 @@
 #include "d3d9_device.h"
 
 #include "d3d9_annotation.h"
+#include "d3d9_common_texture.h"
 #include "d3d9_interface.h"
 #include "d3d9_swapchain.h"
 #include "d3d9_caps.h"
@@ -4201,6 +4202,7 @@ namespace dxvk {
         pResource->GetBuffer(Subresource, !needsReadback);
       }
 
+      // Don't use MapTexture here to keep the mapped list small while the resource is still locked.
       mapPtr = pResource->GetData(Subresource);
 
       if (needsReadback) {
@@ -4298,6 +4300,8 @@ namespace dxvk {
 
     pResource->SetLocked(Subresource, true);
 
+    UnmapTextures();
+
     const bool noDirtyUpdate = Flags & D3DLOCK_NO_DIRTY_UPDATE;
     if ((desc.Pool == D3DPOOL_DEFAULT || !noDirtyUpdate) && !readOnly) {
       if (pBox && MipLevel != 0) {
@@ -4354,6 +4358,7 @@ namespace dxvk {
     if (unlikely(!pResource->GetLocked(Subresource)))
       return D3D_OK;
 
+    MapTexture(pResource, Subresource); // Add it to the list of mapped resources
     pResource->SetLocked(Subresource, false);
 
     // Flush image contents from staging if we aren't read only
@@ -4380,6 +4385,7 @@ namespace dxvk {
       pResource->SetNeedsReadback(Subresource, true);
     }
 
+    UnmapTextures();
     return D3D_OK;
   }
 
@@ -4463,7 +4469,7 @@ namespace dxvk {
           + srcOffsetBlockCount.y * pitch
           + srcOffsetBlockCount.x * formatInfo->elementSize;
 
-      const void* mapPtr = pSrcTexture->GetData(SrcSubresource);
+      const void* mapPtr = MapTexture(pSrcTexture, SrcSubresource);
       VkDeviceSize dirtySize = extentBlockCount.width * extentBlockCount.height * extentBlockCount.depth * formatInfo->elementSize;
       D3D9BufferSlice slice = AllocStagingBuffer(dirtySize);
       const void* srcData = reinterpret_cast<const uint8_t*>(mapPtr) + copySrcOffset;
@@ -4489,7 +4495,7 @@ namespace dxvk {
     }
     else {
       const DxvkFormatInfo* formatInfo = lookupFormatInfo(pDestTexture->GetFormatMapping().FormatColor);
-      const void* mapPtr = pSrcTexture->GetData(SrcSubresource);
+      const void* mapPtr = MapTexture(pSrcTexture, SrcSubresource);
 
       // Add more blocks for the other planes that we might have.
       // TODO: PLEASE CLEAN ME
@@ -4522,6 +4528,7 @@ namespace dxvk {
         image, dstLayers,
         slice.slice);
     }
+    UnmapTextures();
   }
 
   void D3D9DeviceEx::EmitGenerateMips(
@@ -4643,6 +4650,7 @@ namespace dxvk {
     pResource->SetMapFlags(Flags | oldFlags);
     pResource->IncrementLockCount();
 
+    UnmapTextures();
     return D3D_OK;
   }
 
@@ -4675,7 +4683,8 @@ namespace dxvk {
     pResource->DirtyRange().Clear();
     TrackBufferMappingBufferSequenceNumber(pResource);
 
-	  return D3D_OK;
+    UnmapTextures();
+    return D3D_OK;
   }
 
 
@@ -7219,6 +7228,63 @@ namespace dxvk {
     // immediately after a flush, we need to use the sequence number
     // of the previously submitted chunk to prevent deadlocks.
     return m_csChunk->empty() ? m_csSeqNum : m_csSeqNum + 1;
+  }
+
+
+  void* D3D9DeviceEx::MapTexture(D3D9CommonTexture* pTexture, UINT Subresource) {
+    // Will only be called inside the device lock
+    void *ptr = pTexture->GetData(Subresource);
+
+#ifdef D3D9_ALLOW_UNMAPPING
+    if (likely(pTexture->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE)) {
+      m_mappedTextures.insert(pTexture);
+    }
+#endif
+
+    return ptr;
+  }
+
+  void D3D9DeviceEx::TouchMappedTexture(D3D9CommonTexture* pTexture) {
+#ifdef D3D9_ALLOW_UNMAPPING
+    if (pTexture->GetMapMode() != D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE)
+      return;
+
+    D3D9DeviceLock lock = LockDevice();
+    m_mappedTextures.touch(pTexture);
+#endif
+  }
+
+  void D3D9DeviceEx::RemoveMappedTexture(D3D9CommonTexture* pTexture) {
+#ifdef D3D9_ALLOW_UNMAPPING
+    if (pTexture->GetMapMode() != D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE)
+      return;
+
+    D3D9DeviceLock lock = LockDevice();
+    m_mappedTextures.remove(pTexture);
+#endif
+  }
+
+  void D3D9DeviceEx::UnmapTextures() {
+    // Will only be called inside the device lock
+
+#ifdef D3D9_ALLOW_UNMAPPING
+    uint32_t mappedMemory = m_memoryAllocator.MappedMemory();
+    if (likely(mappedMemory < uint32_t(m_d3d9Options.textureMemory)))
+      return;
+
+    uint32_t threshold = (m_d3d9Options.textureMemory / 4) * 3;
+
+    auto iter = m_mappedTextures.leastRecentlyUsedIter();
+    while (m_memoryAllocator.MappedMemory() >= threshold && iter != m_mappedTextures.leastRecentlyUsedEndIter()) {
+      if (unlikely((*iter)->IsAnySubresourceLocked() != 0)) {
+        iter++;
+        continue;
+      }
+      (*iter)->UnmapData();
+
+      iter = m_mappedTextures.remove(iter);
+    }
+#endif
   }
 
 }

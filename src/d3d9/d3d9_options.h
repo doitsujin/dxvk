@@ -157,6 +157,9 @@ namespace dxvk {
 
     /// Don't use non seamless cube maps
     bool seamlessCubes;
+
+    /// How much virtual memory will be used for textures (in MB).
+    int32_t textureMemory;
   };
 
 }

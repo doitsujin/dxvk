@@ -90,6 +90,7 @@ namespace dxvk {
     if (m_texture.IsManaged())
       m_texture.SetAllNeedUpload();
 
+    m_parent->TouchMappedTexture(&m_texture);
     return D3D_OK;
   }
 
@@ -174,6 +175,7 @@ namespace dxvk {
     if (m_texture.IsManaged())
       m_texture.SetAllNeedUpload();
 
+    m_parent->TouchMappedTexture(&m_texture);
     return D3D_OK;
   }
 
@@ -267,6 +269,7 @@ namespace dxvk {
       }
     }
 
+    m_parent->TouchMappedTexture(&m_texture);
     return D3D_OK;
   }
 
