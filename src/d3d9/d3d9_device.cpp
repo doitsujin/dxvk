@@ -716,7 +716,7 @@ namespace dxvk {
 
     UpdateTextureFromBuffer(dstTextureInfo, srcTextureInfo, dst->GetSubresource(), src->GetSubresource(), srcOffset, extent, dstOffset);
 
-    dstTextureInfo->SetWrittenByGPU(dst->GetSubresource(), true);
+    dstTextureInfo->SetNeedsReadback(dst->GetSubresource(), true);
 
     if (dstTextureInfo->IsAutomaticMip())
       MarkTextureMipsDirty(dstTextureInfo);
@@ -781,7 +781,7 @@ namespace dxvk {
         VkOffset3D offset = util::computeMipLevelOffset(mip0Offset, srcMip);
 
         UpdateTextureFromBuffer(dstTexInfo, srcTexInfo, dstSubresource, srcSubresource, offset, extent, offset);
-        dstTexInfo->SetWrittenByGPU(dstSubresource, true);
+        dstTexInfo->SetNeedsReadback(dstSubresource, true);
       }
     }
 
@@ -849,7 +849,7 @@ namespace dxvk {
         cLevelExtent);
     });
 
-    dstTexInfo->SetWrittenByGPU(dst->GetSubresource(), true);
+    dstTexInfo->SetNeedsReadback(dst->GetSubresource(), true);
     TrackTextureMappingBufferSequenceNumber(dstTexInfo, dst->GetSubresource());
 
     return D3D_OK;
@@ -1063,7 +1063,7 @@ namespace dxvk {
       });
     }
 
-    dstTextureInfo->SetWrittenByGPU(dst->GetSubresource(), true);
+    dstTextureInfo->SetNeedsReadback(dst->GetSubresource(), true);
 
     if (dstTextureInfo->IsAutomaticMip())
       MarkTextureMipsDirty(dstTextureInfo);
@@ -1141,7 +1141,7 @@ namespace dxvk {
       });
     }
 
-    dstTextureInfo->SetWrittenByGPU(dst->GetSubresource(), true);
+    dstTextureInfo->SetNeedsReadback(dst->GetSubresource(), true);
 
     if (dstTextureInfo->IsAutomaticMip())
       MarkTextureMipsDirty(dstTextureInfo);
@@ -1235,7 +1235,7 @@ namespace dxvk {
       if (texInfo->IsAutomaticMip())
         texInfo->SetNeedsMipGen(true);
 
-      texInfo->SetWrittenByGPU(rt->GetSubresource(), true);
+      texInfo->SetNeedsReadback(rt->GetSubresource(), true);
     }
 
     if (originalAlphaSwizzleRTs != m_alphaSwizzleRTs)
@@ -2618,7 +2618,7 @@ namespace dxvk {
       });
     }
 
-    dst->SetWrittenByGPU(true);
+    dst->SetNeedsReadback(true);
     TrackBufferMappingBufferSequenceNumber(dst);
 
     return D3D_OK;
@@ -4131,8 +4131,8 @@ namespace dxvk {
     // then we need to copy -> buffer
     // We are also always dirty if we are a render target,
     // a depth stencil, or auto generate mipmaps.
-    bool wasWrittenByGPU = pResource->WasWrittenByGPU(Subresource) || renderable;
-    pResource->SetWrittenByGPU(Subresource, false);
+    bool needsReadback = pResource->NeedsReachback(Subresource) || renderable;
+    pResource->SetNeedsReadback(Subresource, false);
 
     DxvkBufferSliceHandle physSlice;
 
@@ -4160,7 +4160,7 @@ namespace dxvk {
       // or is reading. Remember! This will only trigger for MANAGED resources
       // that cannot get affected by GPU, therefore readonly is A-OK for NOT waiting.
       const bool usesStagingBuffer = pResource->DoesStagingBufferUploads(Subresource);
-      const bool skipWait = (scratch || managed || (systemmem && !wasWrittenByGPU))
+      const bool skipWait = (scratch || managed || (systemmem && !needsReadback))
         && (usesStagingBuffer || readOnly);
 
       if (alloced) {
@@ -4177,8 +4177,8 @@ namespace dxvk {
     else {
       physSlice = pResource->GetMappedSlice(Subresource);
 
-      if (!alloced || wasWrittenByGPU) {
-        if (unlikely(wasWrittenByGPU)) {
+      if (!alloced || needsReadback) {
+        if (unlikely(needsReadback)) {
           Rc<DxvkImage> resourceImage = pResource->GetImage();
 
           Rc<DxvkImage> mappedImage = resourceImage->info().sampleCount != 1
@@ -4357,7 +4357,7 @@ namespace dxvk {
 
     if (shouldToss) {
       pResource->DestroyBufferSubresource(Subresource);
-      pResource->SetWrittenByGPU(Subresource, true);
+      pResource->SetNeedsReadback(Subresource, true);
     }
 
     return D3D_OK;
@@ -4589,7 +4589,7 @@ namespace dxvk {
         ctx->invalidateBuffer(cBuffer, cBufferSlice);
       });
 
-      pResource->SetWrittenByGPU(false);
+      pResource->SetNeedsReadback(false);
       pResource->GPUReadingRange().Clear();
     }
     else {
@@ -4604,13 +4604,13 @@ namespace dxvk {
 
       // If we are respecting the bounds ie. (MANAGED) we can test overlap
       // of our bounds, otherwise we just ignore this and go for it all the time.
-      const bool wasWrittenByGPU = pResource->WasWrittenByGPU();
+      const bool needsReadback = pResource->NeedsReadback();
       const bool readOnly = Flags & D3DLOCK_READONLY;
       const bool noOverlap = !pResource->GPUReadingRange().Overlaps(lockRange);
       const bool noOverwrite = Flags & D3DLOCK_NOOVERWRITE;
       const bool usesStagingBuffer = pResource->DoesStagingBufferUploads();
       const bool directMapping = pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_DIRECT;
-      const bool skipWait = (!wasWrittenByGPU && (usesStagingBuffer || readOnly || (noOverlap && !directMapping))) || noOverwrite;
+      const bool skipWait = (!needsReadback && (usesStagingBuffer || readOnly || (noOverlap && !directMapping))) || noOverwrite;
       if (!skipWait) {
         if (!(Flags & D3DLOCK_DONOTWAIT) && !WaitForResource(mappingBuffer, pResource->GetMappingBufferSequenceNumber(), D3DLOCK_DONOTWAIT))
           pResource->EnableStagingBufferUploads();
@@ -4618,7 +4618,7 @@ namespace dxvk {
         if (!WaitForResource(mappingBuffer, pResource->GetMappingBufferSequenceNumber(), Flags))
           return D3DERR_WASSTILLDRAWING;
 
-        pResource->SetWrittenByGPU(false);
+        pResource->SetNeedsReadback(false);
         pResource->GPUReadingRange().Clear();
       }
     }
@@ -5335,7 +5335,7 @@ namespace dxvk {
 
   void D3D9DeviceEx::MarkTextureMipsDirty(D3D9CommonTexture* pResource) {
     pResource->SetNeedsMipGen(true);
-    pResource->MarkAllWrittenByGPU();
+    pResource->MarkAllNeedReadback();
 
     for (uint32_t i : bit::BitMask(m_activeTextures)) {
       // Guaranteed to not be nullptr...
@@ -6960,7 +6960,7 @@ namespace dxvk {
       });
     }
 
-    dstTextureInfo->MarkAllWrittenByGPU();
+    dstTextureInfo->MarkAllNeedReadback();
   }
 
 
