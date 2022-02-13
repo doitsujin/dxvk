@@ -89,6 +89,8 @@ namespace dxvk {
   D3D9CommonTexture::~D3D9CommonTexture() {
     if (m_size != 0)
       m_device->ChangeReportedMemory(m_size);
+
+    m_device->RemoveMappedTexture(this);
   }
 
 
@@ -488,7 +490,7 @@ namespace dxvk {
       return D3D9_COMMON_TEXTURE_MAP_MODE_NONE;
 
 #ifdef D3D9_ALLOW_UNMAPPING
-    if (m_desc.Pool != D3DPOOL_DEFAULT)
+    if (m_device->GetOptions()->textureMemory != 0 && m_desc.Pool != D3DPOOL_DEFAULT)
       return D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE;
 #endif
 
