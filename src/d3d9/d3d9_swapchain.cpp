@@ -468,8 +468,8 @@ namespace dxvk {
         cImage, cSubresources, VkOffset3D { 0, 0, 0 },
         cLevelExtent);
     });
-    
-    dstTexInfo->SetWrittenByGPU(dst->GetSubresource(), true);
+
+    dstTexInfo->SetNeedsReadback(dst->GetSubresource(), true);
 
     return D3D_OK;
   }

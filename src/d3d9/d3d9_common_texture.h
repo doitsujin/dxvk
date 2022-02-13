@@ -239,7 +239,7 @@ namespace dxvk {
      */
     void DestroyBufferSubresource(UINT Subresource) {
       m_buffers[Subresource] = nullptr;
-      SetWrittenByGPU(Subresource, true);
+      SetNeedsReadback(Subresource, true);
     }
 
     bool IsDynamic() const {
@@ -326,11 +326,11 @@ namespace dxvk {
 
     bool IsAnySubresourceLocked() const { return m_locked.any(); }
 
-    void SetWrittenByGPU(UINT Subresource, bool value) { m_wasWrittenByGPU.set(Subresource, value); }
+    void SetNeedsReadback(UINT Subresource, bool value) { m_needsReadback.set(Subresource, value); }
 
-    bool WasWrittenByGPU(UINT Subresource) const { return m_wasWrittenByGPU.get(Subresource); }
+    bool NeedsReachback(UINT Subresource) const { return m_needsReadback.get(Subresource); }
 
-    void MarkAllWrittenByGPU() { m_wasWrittenByGPU.setAll(); }
+    void MarkAllNeedReadback() { m_needsReadback.setAll(); }
 
     void SetReadOnlyLocked(UINT Subresource, bool readOnly) { return m_readOnly.set(Subresource, readOnly); }
 
@@ -466,7 +466,7 @@ namespace dxvk {
 
     D3D9SubresourceBitset         m_readOnly = { };
 
-    D3D9SubresourceBitset         m_wasWrittenByGPU = { };
+    D3D9SubresourceBitset         m_needsReadback = { };
 
     D3D9SubresourceBitset         m_needsUpload = { };
 
