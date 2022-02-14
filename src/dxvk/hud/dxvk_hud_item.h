@@ -294,6 +294,7 @@ namespace dxvk::hud {
     uint64_t          m_gpCount = 0;
     uint64_t          m_cpCount = 0;
     uint64_t          m_rpCount = 0;
+    uint64_t          m_pbCount = 0;
 
     dxvk::high_resolution_clock::time_point m_lastUpdate
       = dxvk::high_resolution_clock::now();
