@@ -31,7 +31,7 @@ namespace dxvk {
     VkDeviceSize alignedSize = dxvk::align(size, align);
     VkDeviceSize alignedOffset = dxvk::align(m_offset, align);
 
-    if (alignedSize >= m_size) {
+    if (2 * alignedSize > m_size) {
       return DxvkBufferSlice(m_device->createBuffer(info,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
     }
