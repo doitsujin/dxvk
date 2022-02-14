@@ -4582,6 +4582,9 @@ namespace dxvk {
     if (desc.Usage & D3DUSAGE_DYNAMIC)
       Flags &= ~D3DLOCK_DONOTWAIT;
 
+
+    bool alloced = pResource->EnsureStagingBuffer();
+
     // We only bounds check for MANAGED.
     // (TODO: Apparently this is meant to happen for DYNAMIC too but I am not sure
     //  how that works given it is meant to be a DIRECT access..?)
@@ -4636,7 +4639,10 @@ namespace dxvk {
       const bool usesStagingBuffer = pResource->DoesStagingBufferUploads();
       const bool directMapping = pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_DIRECT;
       const bool skipWait = (!needsReadback && (usesStagingBuffer || readOnly || (noOverlap && !directMapping))) || noOverwrite;
-      if (!skipWait) {
+      if (alloced && !needsReadback) {
+        std::memset(physSlice.mapPtr, 0, physSlice.length);
+      }
+      else if (!skipWait) {
         if (!(Flags & D3DLOCK_DONOTWAIT) && !WaitForResource(mappingBuffer, D3DLOCK_DONOTWAIT))
           pResource->EnableStagingBufferUploads();
 

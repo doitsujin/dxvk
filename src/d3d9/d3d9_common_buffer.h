@@ -135,6 +135,16 @@ namespace dxvk {
       return m_sliceHandle;
     }
 
+    /**
+     * \brief Creates the staging buffer if necessary
+     * Creates the mapping and staging buffer
+     * allocates a new buffer if necessary
+     * \returns Whether an allocation happened
+     */
+    bool EnsureStagingBuffer();
+
+    void DestroyStagingBuffer();
+
     inline DWORD GetMapFlags() const      { return m_mapFlags; }
     inline void SetMapFlags(DWORD Flags)  { m_mapFlags = Flags; }
 
@@ -190,7 +200,6 @@ namespace dxvk {
   private:
 
     Rc<DxvkBuffer> CreateBuffer() const;
-    Rc<DxvkBuffer> CreateStagingBuffer() const;
 
     inline const Rc<DxvkBuffer>& GetMapBuffer() const {
       return m_stagingBuffer != nullptr ? m_stagingBuffer : m_buffer;
