@@ -719,7 +719,8 @@ namespace dxvk {
             DWORD                   Flags);
 
     HRESULT FlushBuffer(
-            D3D9CommonBuffer*       pResource);
+            D3D9CommonBuffer*       pResource,
+            bool                    TrackResource);
 
     HRESULT UnlockBuffer(
             D3D9CommonBuffer*       pResource);
@@ -923,11 +924,12 @@ namespace dxvk {
 
     void BumpFrame() {
       m_frameCounter++;
-      ClearUnusedManagedTextures();
+      ClearUnusedManagedResources();
     }
 
     void TrackManagedTexture(D3D9CommonTexture* pResource);
     void RemoveManagedTexture(D3D9CommonTexture* pResource);
+    void RemoveManagedBuffer(D3D9CommonBuffer* pResource);
 
   private:
 
@@ -1133,7 +1135,8 @@ namespace dxvk {
 
     void UpdateSamplerDepthModeSpecConstant(uint32_t value);
 
-    void ClearUnusedManagedTextures();
+    void TrackManagedBuffer(D3D9CommonBuffer* pResource);
+    void ClearUnusedManagedResources();
 
     Com<D3D9InterfaceEx>            m_parent;
     D3DDEVTYPE                      m_deviceType;
@@ -1266,6 +1269,7 @@ namespace dxvk {
 
     uint64_t                                         m_frameCounter = 0;
     std::unordered_map<D3D9CommonTexture*, uint64_t> m_managedTextures;
+    std::unordered_map<D3D9CommonBuffer*, uint64_t>  m_managedBuffers;
 
   };
 

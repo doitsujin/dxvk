@@ -18,6 +18,10 @@ namespace dxvk {
       m_dirtyRange = D3D9Range(0, m_desc.Size);
   }
 
+  D3D9CommonBuffer::~D3D9CommonBuffer() {
+    m_parent->RemoveManagedBuffer(this);
+  }
+
 
   HRESULT D3D9CommonBuffer::Lock(
           UINT   OffsetToLock,
@@ -51,7 +55,7 @@ namespace dxvk {
       auto lock = m_parent->LockDevice();
 
       if (NeedsUpload())
-        m_parent->FlushBuffer(this);
+        m_parent->FlushBuffer(this, true);
     }
   }
 

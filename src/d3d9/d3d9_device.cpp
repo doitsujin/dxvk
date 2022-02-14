@@ -4584,6 +4584,7 @@ namespace dxvk {
 
 
     bool alloced = pResource->EnsureStagingBuffer();
+    TrackManagedBuffer(pResource);
 
     // We only bounds check for MANAGED.
     // (TODO: Apparently this is meant to happen for DYNAMIC too but I am not sure
@@ -4684,7 +4685,8 @@ namespace dxvk {
 
 
   HRESULT D3D9DeviceEx::FlushBuffer(
-        D3D9CommonBuffer*       pResource) {
+        D3D9CommonBuffer*       pResource,
+        bool                    TrackResource) {
     auto dstBuffer = pResource->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>();
     auto srcSlice = pResource->GetMappedSlice();
 
@@ -4717,6 +4719,9 @@ namespace dxvk {
     pResource->GPUReadingRange().Conjoin(pResource->DirtyRange());
     pResource->DirtyRange().Clear();
 
+    if (TrackResource)
+      TrackManagedBuffer(pResource);
+
 	  return D3D_OK;
   }
 
@@ -4741,7 +4746,7 @@ namespace dxvk {
 
     FlushImplicit(FALSE);
 
-    FlushBuffer(pResource);
+    FlushBuffer(pResource, true);
 
     return D3D_OK;
   }
@@ -6065,7 +6070,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < caps::MaxStreams; i++) {
       auto* vbo = GetCommonBuffer(m_state.vertexBuffers[i].vertexBuffer);
       if (vbo != nullptr && vbo->NeedsUpload())
-        FlushBuffer(vbo);
+        FlushBuffer(vbo, true);
     }
 
     const uint32_t usedSamplerMask = m_psShaderMasks.samplerMask | m_vsShaderMasks.samplerMask;
@@ -6081,7 +6086,7 @@ namespace dxvk {
 
     auto* ibo = GetCommonBuffer(m_state.indices);
     if (ibo != nullptr && ibo->NeedsUpload())
-      FlushBuffer(ibo);
+      FlushBuffer(ibo, true);
 
     UpdateFog();
 
@@ -7383,7 +7388,33 @@ namespace dxvk {
     }
   }
 
-  void D3D9DeviceEx::ClearUnusedManagedTextures() {
+  void D3D9DeviceEx::TrackManagedBuffer(D3D9CommonBuffer* pResource) {
+    if (!env::is32BitHostPlatform())
+      return;
+
+    if (!IsPoolManaged(pResource->Desc()->Pool))
+      return;
+
+    auto existing = m_managedBuffers.find(pResource);
+    if (existing != m_managedBuffers.end()) {
+      existing->second = m_frameCounter;
+    } else {
+      m_managedBuffers.emplace(pResource, m_frameCounter);
+    }
+  }
+
+  void D3D9DeviceEx::RemoveManagedBuffer(D3D9CommonBuffer *pResource) {
+    if (!env::is32BitHostPlatform())
+      return;
+
+    if (!IsPoolManaged(pResource->Desc()->Pool))
+      return;
+
+    D3D9DeviceLock lock = LockDevice();
+    m_managedBuffers.erase(pResource);
+  }
+
+  void D3D9DeviceEx::ClearUnusedManagedResources() {
     if (!env::is32BitHostPlatform())
       return;
 
@@ -7403,6 +7434,25 @@ namespace dxvk {
           iter->first->DestroyBufferSubresource(i);
         }
         iter = m_managedTextures.erase(iter);
+      } else {
+        iter++;
+      }
+    }
+
+    for (auto iter = m_managedBuffers.begin(); iter != m_managedBuffers.end();) {
+      const bool needsUpload = iter->first->NeedsUpload();
+      const bool forceUpload = needsUpload && m_frameCounter - iter->second > 256;
+      const bool mappingBufferUnused = (!needsUpload || forceUpload) && m_frameCounter - iter->second > 16;
+
+      if (forceUpload) {
+        // The texture was marked dirty but never actually used.
+        // Just upload it after a while so we can free the mapping buffer.
+        FlushBuffer(iter->first, false);
+      }
+
+      if (mappingBufferUnused) {
+        iter->first->DestroyStagingBuffer();
+        iter = m_managedBuffers.erase(iter);
       } else {
         iter++;
       }
