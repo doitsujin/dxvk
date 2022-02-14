@@ -19,7 +19,7 @@ namespace dxvk {
    * recorded.
    */
   class DxvkContext : public RcObject {
-    constexpr static VkDeviceSize StagingBufferSize = 32ull << 20;
+    constexpr static VkDeviceSize StagingBufferSize = 4ull << 20;
   public:
     
     DxvkContext(const Rc<DxvkDevice>& device);
