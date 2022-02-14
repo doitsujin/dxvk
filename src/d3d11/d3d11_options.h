@@ -92,6 +92,9 @@ namespace dxvk {
     /// Limit frame rate
     int32_t maxFrameRate;
 
+    /// Limit discardable resource size
+    VkDeviceSize maxImplicitDiscardSize;
+
     /// Defer surface creation until first present call. This
     /// fixes issues with games that create multiple swap chains
     /// for a single window that may interfere with each other.

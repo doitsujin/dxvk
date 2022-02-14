@@ -7,8 +7,6 @@ constexpr static uint32_t MinFlushIntervalUs = 750;
 constexpr static uint32_t IncFlushIntervalUs = 250;
 constexpr static uint32_t MaxPendingSubmits  = 6;
 
-constexpr static VkDeviceSize MaxImplicitDiscardSize = 256ull << 10;
-
 namespace dxvk {
   
   D3D11ImmediateContext::D3D11ImmediateContext(
@@ -16,6 +14,7 @@ namespace dxvk {
     const Rc<DxvkDevice>& Device)
   : D3D11DeviceContext(pParent, Device, DxvkCsChunkFlag::SingleUse),
     m_csThread(Device, Device->createContext()),
+    m_maxImplicitDiscardSize(pParent->GetOptions()->maxImplicitDiscardSize),
     m_videoContext(this, Device) {
     EmitCs([
       cDevice                 = m_device,
@@ -393,7 +392,7 @@ namespace dxvk {
       auto buffer = pResource->GetBuffer();
       auto sequenceNumber = pResource->GetSequenceNumber();
 
-      if (MapType != D3D11_MAP_READ && !MapFlags && bufferSize <= MaxImplicitDiscardSize) {
+      if (MapType != D3D11_MAP_READ && !MapFlags && bufferSize <= m_maxImplicitDiscardSize) {
         SynchronizeCsThread(sequenceNumber);
 
         bool hasWoAccess = buffer->isInUse(DxvkAccess::Write);
@@ -514,11 +513,9 @@ namespace dxvk {
 
         // Don't implicitly discard large buffers or buffers of images with
         // multiple subresources, as that is likely to cause memory issues.
-        VkDeviceSize bufferSize = pResource->CountSubresources() == 1
-          ? pResource->GetMappedSlice(Subresource).length
-          : MaxImplicitDiscardSize;
+        VkDeviceSize bufferSize = pResource->GetMappedSlice(Subresource).length;
 
-        if (bufferSize >= MaxImplicitDiscardSize) {
+        if (bufferSize >= m_maxImplicitDiscardSize || pResource->CountSubresources() > 1) {
           // Don't check access flags, WaitForResource will return
           // early anyway if the resource is currently in use
           doFlags = DoWait;

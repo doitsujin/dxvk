@@ -25,6 +25,11 @@ namespace dxvk {
     this->syncInterval          = config.getOption<int32_t>("dxgi.syncInterval", -1);
     this->tearFree              = config.getOption<Tristate>("dxgi.tearFree", Tristate::Auto);
 
+    int32_t maxImplicitDiscardSize = config.getOption<int32_t>("d3d11.maxImplicitDiscardSize", 256);
+    this->maxImplicitDiscardSize = maxImplicitDiscardSize >= 0
+      ? VkDeviceSize(maxImplicitDiscardSize) << 10
+      : VkDeviceSize(~0ull);
+
     this->constantBufferRangeCheck = config.getOption<bool>("d3d11.constantBufferRangeCheck", false)
       && DxvkGpuVendor(devInfo.core.properties.vendorID) != DxvkGpuVendor::Amd;
 

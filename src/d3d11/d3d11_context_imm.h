@@ -125,6 +125,7 @@ namespace dxvk {
     uint64_t                m_eventCount = 0ull;
     uint32_t                m_mappedImageCount = 0u;
 
+    VkDeviceSize            m_maxImplicitDiscardSize = 0ull;
 
     dxvk::high_resolution_clock::time_point m_lastFlush
       = dxvk::high_resolution_clock::now();
