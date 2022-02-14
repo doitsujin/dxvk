@@ -718,7 +718,7 @@ namespace dxvk {
         Flush();
         SynchronizeCsThread(SequenceNumber);
 
-        Resource->waitIdle(access);
+        m_device->waitForResource(Resource, access);
       }
     }
 
