@@ -199,6 +199,14 @@ namespace dxvk {
 
     void PreLoad();
 
+    inline bool DoesRetainManagedMappingBuffer() {
+      return m_managedReadbackCount > 16;
+    }
+
+    inline void NotifyReadback() {
+      m_managedReadbackCount++;
+    }
+
   private:
 
     Rc<DxvkBuffer> CreateBuffer() const;
@@ -230,6 +238,8 @@ namespace dxvk {
     D3D9Range                   m_gpuReadingRange;
 
     uint32_t                    m_lockCount = 0;
+
+    uint32_t                    m_managedReadbackCount = 0;
 
   };
 

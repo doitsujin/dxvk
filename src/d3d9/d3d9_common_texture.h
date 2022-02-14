@@ -437,6 +437,15 @@ namespace dxvk {
     static VkImageType GetImageTypeFromResourceType(
             D3DRESOURCETYPE  Dimension);
 
+    inline bool DoesRetainManagedMappingBuffer() {
+      return m_managedReadbackCount > 16;
+    }
+
+    inline void NotifyReadback() {
+      m_managedReadbackCount++;
+    }
+
+
   private:
 
     D3D9DeviceEx*                 m_device;
@@ -481,6 +490,8 @@ namespace dxvk {
     D3DTEXTUREFILTERTYPE          m_mipFilter = D3DTEXF_LINEAR;
 
     std::array<D3DBOX, 6>         m_dirtyBoxes;
+
+    uint32_t                      m_managedReadbackCount = 0;
 
     /**
      * \brief Mip level

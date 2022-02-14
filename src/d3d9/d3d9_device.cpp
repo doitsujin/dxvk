@@ -4240,6 +4240,7 @@ namespace dxvk {
 
       if (!alloced || needsReadback) {
         if (unlikely(needsReadback)) {
+          pResource->NotifyReadback();
 
           Rc<DxvkImage> resourceImage = pResource->GetImage();
 
@@ -4648,6 +4649,8 @@ namespace dxvk {
           pResource->EnableStagingBufferUploads();
 
         if (unlikely(needsReadback)) {
+          pResource->NotifyReadback();
+
           EmitCs([
             cMappingBuffer = mappingBuffer,
             cBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_REAL>()
@@ -7380,6 +7383,9 @@ namespace dxvk {
 
     D3D9DeviceLock lock = LockDevice();
 
+    if (pResource->DoesRetainManagedMappingBuffer())
+      return;
+
     auto existing = m_managedTextures.find(pResource);
     if (existing != m_managedTextures.end()) {
       existing->second = m_frameCounter;
@@ -7392,7 +7398,7 @@ namespace dxvk {
     if (!env::is32BitHostPlatform())
       return;
 
-    if (!IsPoolManaged(pResource->Desc()->Pool))
+    if (!IsPoolManaged(pResource->Desc()->Pool) || pResource->DoesRetainManagedMappingBuffer())
       return;
 
     auto existing = m_managedBuffers.find(pResource);
@@ -7421,7 +7427,8 @@ namespace dxvk {
     for (auto iter = m_managedTextures.begin(); iter != m_managedTextures.end();) {
       const bool needsUpload = iter->first->NeedsAnyUpload();
       const bool forceUpload = needsUpload && m_frameCounter - iter->second > 256;
-      const bool mappingBufferUnused = (!needsUpload || forceUpload) && m_frameCounter - iter->second > 16;
+      const bool retainBuffer = iter->first->DoesRetainManagedMappingBuffer();
+      const bool mappingBufferUnused = (!needsUpload || forceUpload) && m_frameCounter - iter->second > 16 && !retainBuffer;
 
       if (forceUpload) {
         // The texture was marked dirty but never actually used.
@@ -7434,6 +7441,8 @@ namespace dxvk {
           iter->first->DestroyBufferSubresource(i);
         }
         iter = m_managedTextures.erase(iter);
+      } else if (retainBuffer) {
+        iter = m_managedTextures.erase(iter);
       } else {
         iter++;
       }
@@ -7442,7 +7451,8 @@ namespace dxvk {
     for (auto iter = m_managedBuffers.begin(); iter != m_managedBuffers.end();) {
       const bool needsUpload = iter->first->NeedsUpload();
       const bool forceUpload = needsUpload && m_frameCounter - iter->second > 256;
-      const bool mappingBufferUnused = (!needsUpload || forceUpload) && m_frameCounter - iter->second > 16;
+      const bool retainBuffer = iter->first->DoesRetainManagedMappingBuffer();
+      const bool mappingBufferUnused = (!needsUpload || forceUpload) && m_frameCounter - iter->second > 16 && !retainBuffer;
 
       if (forceUpload) {
         // The texture was marked dirty but never actually used.
@@ -7452,6 +7462,8 @@ namespace dxvk {
 
       if (mappingBufferUnused) {
         iter->first->DestroyStagingBuffer();
+        iter = m_managedBuffers.erase(iter);
+      } else if (retainBuffer) {
         iter = m_managedBuffers.erase(iter);
       } else {
         iter++;
