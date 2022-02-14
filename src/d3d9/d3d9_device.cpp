@@ -4208,12 +4208,7 @@ namespace dxvk {
       ] (DxvkContext* ctx) {
         ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
       });
-    }
-    else if ((managed && !needsReadback) || scratch || systemmem) {
-      // Managed and scratch resources
-      // are meant to be able to provide readback without waiting.
-      // We always keep a copy of them in system memory for this reason.
-      // No need to wait as its not in use.
+    } else {
       physSlice = pResource->GetMappedSlice(Subresource);
 
       // We do not need to wait for the resource in the event the
@@ -4221,24 +4216,13 @@ namespace dxvk {
       // or is reading. Remember! This will only trigger for MANAGED resources
       // that cannot get affected by GPU, therefore readonly is A-OK for NOT waiting.
       const bool usesStagingBuffer = pResource->DoesStagingBufferUploads(Subresource);
-      const bool skipWait = (scratch || managed || (systemmem && !needsReadback))
+      const bool skipWait = (scratch || managed || systemmem) && !needsReadback
         && (usesStagingBuffer || readOnly);
 
-      if (alloced) {
+      if (alloced && !needsReadback) {
         std::memset(physSlice.mapPtr, 0, physSlice.length);
       }
       else if (!skipWait) {
-        if (!(Flags & D3DLOCK_DONOTWAIT) && !WaitForResource(mappedBuffer, D3DLOCK_DONOTWAIT))
-          pResource->EnableStagingBufferUploads(Subresource);
-
-        if (!WaitForResource(mappedBuffer, Flags))
-          return D3DERR_WASSTILLDRAWING;
-      }
-    }
-    else {
-      physSlice = pResource->GetMappedSlice(Subresource);
-
-      if (!alloced || needsReadback) {
         if (unlikely(needsReadback)) {
           pResource->NotifyReadback();
 
@@ -4310,16 +4294,12 @@ namespace dxvk {
                 cPackedFormat);
             }
           });
+        } else if (!(Flags & D3DLOCK_DONOTWAIT) && !WaitForResource(mappedBuffer, D3DLOCK_DONOTWAIT)) {
+          pResource->EnableStagingBufferUploads(Subresource);
         }
 
         if (!WaitForResource(mappedBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
-      } else {
-        // If we are a new alloc, and we weren't written by the GPU
-        // that means that we are a newly initialized
-        // texture, and hence can just memset -> 0 and
-        // avoid a wait here.
-        std::memset(physSlice.mapPtr, 0, physSlice.length);
       }
     }
 
@@ -4645,9 +4625,6 @@ namespace dxvk {
         std::memset(physSlice.mapPtr, 0, physSlice.length);
       }
       else if (!skipWait) {
-        if (!(Flags & D3DLOCK_DONOTWAIT) && !WaitForResource(mappingBuffer, D3DLOCK_DONOTWAIT))
-          pResource->EnableStagingBufferUploads();
-
         if (unlikely(needsReadback)) {
           pResource->NotifyReadback();
 
@@ -4657,6 +4634,8 @@ namespace dxvk {
           ] (DxvkContext* ctx) {
             ctx->copyBuffer(cMappingBuffer, 0, cBuffer, 0, cBuffer->info().size);
           });
+        } else if (!(Flags & D3DLOCK_DONOTWAIT) && !WaitForResource(mappingBuffer, D3DLOCK_DONOTWAIT)) {
+          pResource->EnableStagingBufferUploads();
         }
 
         if (!WaitForResource(mappingBuffer, Flags))
