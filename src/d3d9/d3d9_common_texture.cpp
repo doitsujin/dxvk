@@ -500,7 +500,7 @@ namespace dxvk {
       return;
 
     auto lock = m_device->LockDevice();
-    m_device->UploadManagedTexture(this);
+    m_device->UploadManagedTexture(this, true);
     m_device->MarkTextureUploaded(this);
   }
 

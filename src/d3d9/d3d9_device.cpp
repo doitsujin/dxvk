@@ -4137,6 +4137,7 @@ namespace dxvk {
     auto& desc = *(pResource->Desc());
 
     bool alloced = pResource->CreateBufferSubresource(Subresource);
+    TrackManagedTexture(pResource);
 
     const Rc<DxvkBuffer> mappedBuffer = pResource->GetBuffer(Subresource);
 
@@ -4239,7 +4240,6 @@ namespace dxvk {
 
       if (!alloced || needsReadback) {
         if (unlikely(needsReadback)) {
-          RefreshManagedTextureTracking(pResource);
 
           Rc<DxvkImage> resourceImage = pResource->GetImage();
 
@@ -4540,7 +4540,7 @@ namespace dxvk {
   void D3D9DeviceEx::EmitGenerateMips(
     D3D9CommonTexture* pResource) {
     if (pResource->IsManaged())
-      UploadManagedTexture(pResource);
+      UploadManagedTexture(pResource, true);
 
     EmitCs([
       cImageView = pResource->GetSampleView(false),
@@ -5321,7 +5321,7 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::UploadManagedTexture(D3D9CommonTexture* pResource) {
+  void D3D9DeviceEx::UploadManagedTexture(D3D9CommonTexture* pResource, bool trackManaged) {
     for (uint32_t subresource = 0; subresource < pResource->CountSubresources(); subresource++) {
       if (!pResource->NeedsUpload(subresource) || pResource->GetBuffer(subresource) == nullptr)
         continue;
@@ -5332,16 +5332,15 @@ namespace dxvk {
     pResource->ClearDirtyBoxes();
     pResource->ClearNeedsUpload();
 
-    // Now that the texture has been uploaded, it is a potential candidate
-    // to free it's mapping buffer
-    TrackManagedTexture(pResource);
+    if (trackManaged)
+      TrackManagedTexture(pResource);
   }
 
 
   void D3D9DeviceEx::UploadManagedTextures(uint32_t mask) {
     // Guaranteed to not be nullptr...
     for (uint32_t texIdx : bit::BitMask(mask))
-      UploadManagedTexture(GetCommonTexture(m_state.textures[texIdx]));
+      UploadManagedTexture(GetCommonTexture(m_state.textures[texIdx]), true);
 
     m_activeTexturesToUpload &= ~mask;
   }
@@ -7356,8 +7355,10 @@ namespace dxvk {
     if (!env::is32BitHostPlatform())
       return;
 
-    if (!pResource->IsManaged() || pResource->AnySubresourceDoesStagingBufferUpload())
+    if (!pResource->IsManaged())
       return;
+
+    D3D9DeviceLock lock = LockDevice();
 
     auto existing = m_managedTextures.find(pResource);
     if (existing != m_managedTextures.end()) {
@@ -7367,37 +7368,29 @@ namespace dxvk {
     }
   }
 
-  void D3D9DeviceEx::RefreshManagedTextureTracking(D3D9CommonTexture* pResource) {
-    if (!env::is32BitHostPlatform())
-      return;
-
-    D3D9DeviceLock lock = LockDevice();
-
-    if (!pResource->IsManaged() || pResource->AnySubresourceDoesStagingBufferUpload())
-      return;
-
-    auto existing = m_managedTextures.find(pResource);
-    if (existing != m_managedTextures.end()) {
-      existing->second = m_frameCounter;
-    }
-  }
-
   void D3D9DeviceEx::ClearUnusedManagedTextures() {
     if (!env::is32BitHostPlatform())
       return;
 
     for (auto iter = m_managedTextures.begin(); iter != m_managedTextures.end();) {
       const bool needsUpload = iter->first->NeedsAnyUpload();
-      const bool mappingBufferUnused = !needsUpload && m_frameCounter - iter->second < 16;
+      const bool forceUpload = needsUpload && m_frameCounter - iter->second > 256;
+      const bool mappingBufferUnused = (!needsUpload || forceUpload) && m_frameCounter - iter->second > 16;
+
+      if (forceUpload) {
+        // The texture was marked dirty but never actually used.
+        // Just upload it after a while so we can free the mapping buffer.
+        UploadManagedTexture(iter->first, false);
+      }
 
       if (mappingBufferUnused) {
         for (uint32_t i = 0; i < iter->first->CountSubresources(); i++) {
           iter->first->DestroyBufferSubresource(i);
         }
-      }
-
-      if (needsUpload || mappingBufferUnused)
         iter = m_managedTextures.erase(iter);
+      } else {
+        iter++;
+      }
     }
   }
 

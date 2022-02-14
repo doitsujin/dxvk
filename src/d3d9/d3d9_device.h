@@ -752,7 +752,7 @@ namespace dxvk {
 
     void MarkRenderHazards();
 
-    void UploadManagedTexture(D3D9CommonTexture* pResource);
+    void UploadManagedTexture(D3D9CommonTexture* pResource, bool trackManaged);
 
     void UploadManagedTextures(uint32_t mask);
 
@@ -926,7 +926,7 @@ namespace dxvk {
       ClearUnusedManagedTextures();
     }
 
-    void RefreshManagedTextureTracking(D3D9CommonTexture* pResource);
+    void TrackManagedTexture(D3D9CommonTexture* pResource);
     void RemoveManagedTexture(D3D9CommonTexture* pResource);
 
   private:
@@ -1133,7 +1133,6 @@ namespace dxvk {
 
     void UpdateSamplerDepthModeSpecConstant(uint32_t value);
 
-    void TrackManagedTexture(D3D9CommonTexture* pResource);
     void ClearUnusedManagedTextures();
 
     Com<D3D9InterfaceEx>            m_parent;
