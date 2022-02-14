@@ -4640,6 +4640,15 @@ namespace dxvk {
         if (!(Flags & D3DLOCK_DONOTWAIT) && !WaitForResource(mappingBuffer, D3DLOCK_DONOTWAIT))
           pResource->EnableStagingBufferUploads();
 
+        if (unlikely(needsReadback)) {
+          EmitCs([
+            cMappingBuffer = mappingBuffer,
+            cBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_REAL>()
+          ] (DxvkContext* ctx) {
+            ctx->copyBuffer(cMappingBuffer, 0, cBuffer, 0, cBuffer->info().size);
+          });
+        }
+
         if (!WaitForResource(mappingBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
 
