@@ -924,6 +924,7 @@ namespace dxvk {
 
     void BumpFrame() {
       m_frameCounter++;
+      m_managedCleanupThresholdBumpedInFrame = false;
       ClearUnusedManagedResources();
     }
 
@@ -1266,6 +1267,9 @@ namespace dxvk {
     std::atomic<int32_t>            m_samplerCount    = { 0 };
 
     Direct3DState9                  m_state;
+
+    uint32_t                        m_managedCleanupThreshold = 16;
+    bool                            m_managedCleanupThresholdBumpedInFrame = false;
 
     uint64_t                                         m_frameCounter = 0;
     std::unordered_map<D3D9CommonTexture*, uint64_t> m_managedTextures;

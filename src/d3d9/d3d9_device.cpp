@@ -4225,6 +4225,11 @@ namespace dxvk {
       else if (!skipWait) {
         if (unlikely(needsReadback)) {
           pResource->NotifyReadback();
+          if (!m_managedCleanupThresholdBumpedInFrame) {
+            Logger::warn(str::format("Bumped threshold to: ", m_managedCleanupThreshold));
+            m_managedCleanupThreshold += 256;
+            m_managedCleanupThresholdBumpedInFrame = true;
+          }
 
           Rc<DxvkImage> resourceImage = pResource->GetImage();
 
@@ -4627,6 +4632,10 @@ namespace dxvk {
       else if (!skipWait) {
         if (unlikely(needsReadback)) {
           pResource->NotifyReadback();
+          if (!m_managedCleanupThresholdBumpedInFrame) {
+            m_managedCleanupThreshold += 256;
+            m_managedCleanupThresholdBumpedInFrame = true;
+          }
 
           EmitCs([
             cMappingBuffer = mappingBuffer,
@@ -7405,9 +7414,9 @@ namespace dxvk {
 
     for (auto iter = m_managedTextures.begin(); iter != m_managedTextures.end();) {
       const bool needsUpload = iter->first->NeedsAnyUpload();
-      const bool forceUpload = needsUpload && m_frameCounter - iter->second > 256;
+      const bool forceUpload = needsUpload && m_frameCounter - iter->second > m_managedCleanupThreshold;
       const bool retainBuffer = iter->first->DoesRetainManagedMappingBuffer();
-      const bool mappingBufferUnused = (!needsUpload || forceUpload) && m_frameCounter - iter->second > 16 && !retainBuffer;
+      const bool mappingBufferUnused = (!needsUpload || forceUpload) && m_frameCounter - iter->second > m_managedCleanupThreshold * 2 && !retainBuffer;
 
       if (forceUpload) {
         // The texture was marked dirty but never actually used.
@@ -7429,9 +7438,9 @@ namespace dxvk {
 
     for (auto iter = m_managedBuffers.begin(); iter != m_managedBuffers.end();) {
       const bool needsUpload = iter->first->NeedsUpload();
-      const bool forceUpload = needsUpload && m_frameCounter - iter->second > 256;
+      const bool forceUpload = needsUpload && m_frameCounter - iter->second > m_managedCleanupThreshold;
       const bool retainBuffer = iter->first->DoesRetainManagedMappingBuffer();
-      const bool mappingBufferUnused = (!needsUpload || forceUpload) && m_frameCounter - iter->second > 16 && !retainBuffer;
+      const bool mappingBufferUnused = (!needsUpload || forceUpload) && m_frameCounter - iter->second > m_managedCleanupThreshold * 2 && !retainBuffer;
 
       if (forceUpload) {
         // The texture was marked dirty but never actually used.
