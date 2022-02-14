@@ -87,6 +87,11 @@ namespace dxvk {
     void*           mapPtr = nullptr;
   };
 
+  struct D3D9ManagedTexture {
+    D3D9CommonTexture *pResource;
+    uint64_t           lastUpload;
+  };
+
   class D3D9DeviceEx final : public ComObjectClamp<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
     constexpr static uint32_t MaxFrameLatency     = 20;
@@ -918,7 +923,11 @@ namespace dxvk {
 
     void BumpFrame() {
       m_frameCounter++;
+      ClearUnusedManagedTextures();
     }
+
+    void RefreshManagedTextureTracking(D3D9CommonTexture* pResource);
+    void RemoveManagedTexture(D3D9CommonTexture* pResource);
 
   private:
 
@@ -1124,6 +1133,9 @@ namespace dxvk {
 
     void UpdateSamplerDepthModeSpecConstant(uint32_t value);
 
+    void TrackManagedTexture(D3D9CommonTexture* pResource);
+    void ClearUnusedManagedTextures();
+
     Com<D3D9InterfaceEx>            m_parent;
     D3DDEVTYPE                      m_deviceType;
     HWND                            m_window;
@@ -1253,7 +1265,8 @@ namespace dxvk {
 
     Direct3DState9                  m_state;
 
-    uint64_t                        m_frameCounter = 0;
+    uint64_t                                         m_frameCounter = 0;
+    std::unordered_map<D3D9CommonTexture*, uint64_t> m_managedTextures;
 
   };
 

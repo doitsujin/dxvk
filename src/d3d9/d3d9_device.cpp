@@ -4239,6 +4239,8 @@ namespace dxvk {
 
       if (!alloced || needsReadback) {
         if (unlikely(needsReadback)) {
+          RefreshManagedTextureTracking(pResource);
+
           Rc<DxvkImage> resourceImage = pResource->GetImage();
 
           Rc<DxvkImage> mappedImage = resourceImage->info().sampleCount != 1
@@ -5329,6 +5331,10 @@ namespace dxvk {
 
     pResource->ClearDirtyBoxes();
     pResource->ClearNeedsUpload();
+
+    // Now that the texture has been uploaded, it is a potential candidate
+    // to free it's mapping buffer
+    TrackManagedTexture(pResource);
   }
 
 
@@ -7333,6 +7339,66 @@ namespace dxvk {
     SynchronizeCsThread();
 
     return D3D_OK;
+  }
+
+  void D3D9DeviceEx::RemoveManagedTexture(D3D9CommonTexture *pResource) {
+    if (!env::is32BitHostPlatform())
+      return;
+
+    if (!pResource->IsManaged())
+      return;
+
+    D3D9DeviceLock lock = LockDevice();
+    m_managedTextures.erase(pResource);
+  }
+
+  void D3D9DeviceEx::TrackManagedTexture(D3D9CommonTexture* pResource) {
+    if (!env::is32BitHostPlatform())
+      return;
+
+    if (!pResource->IsManaged() || pResource->AnySubresourceDoesStagingBufferUpload())
+      return;
+
+    auto existing = m_managedTextures.find(pResource);
+    if (existing != m_managedTextures.end()) {
+      existing->second = m_frameCounter;
+    } else {
+      m_managedTextures.emplace(pResource, m_frameCounter);
+    }
+  }
+
+  void D3D9DeviceEx::RefreshManagedTextureTracking(D3D9CommonTexture* pResource) {
+    if (!env::is32BitHostPlatform())
+      return;
+
+    D3D9DeviceLock lock = LockDevice();
+
+    if (!pResource->IsManaged() || pResource->AnySubresourceDoesStagingBufferUpload())
+      return;
+
+    auto existing = m_managedTextures.find(pResource);
+    if (existing != m_managedTextures.end()) {
+      existing->second = m_frameCounter;
+    }
+  }
+
+  void D3D9DeviceEx::ClearUnusedManagedTextures() {
+    if (!env::is32BitHostPlatform())
+      return;
+
+    for (auto iter = m_managedTextures.begin(); iter != m_managedTextures.end();) {
+      const bool needsUpload = iter->first->NeedsAnyUpload();
+      const bool mappingBufferUnused = !needsUpload && m_frameCounter - iter->second < 16;
+
+      if (mappingBufferUnused) {
+        for (uint32_t i = 0; i < iter->first->CountSubresources(); i++) {
+          iter->first->DestroyBufferSubresource(i);
+        }
+      }
+
+      if (needsUpload || mappingBufferUnused)
+        iter = m_managedTextures.erase(iter);
+    }
   }
 
 }

@@ -379,6 +379,8 @@ namespace dxvk {
     void ClearNeedsUpload() { return m_needsUpload.clearAll();  }
     bool DoesStagingBufferUploads(UINT Subresource) const { return m_uploadUsingStaging.get(Subresource); }
 
+    inline bool AnySubresourceDoesStagingBufferUpload() const { return m_uploadUsingStaging.any(); }
+
     void EnableStagingBufferUploads(UINT Subresource) {
       m_uploadUsingStaging.set(Subresource, true);
     }
