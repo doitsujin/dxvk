@@ -5184,6 +5184,8 @@ namespace dxvk {
     m_cmd->cmdPipelineBarrier(
       DxvkCmdBuffer::ExecBuffer, srcStages, dstStages,
       flags, 1, &barrier, 0, nullptr, 0, nullptr);
+
+    m_cmd->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1);
   }
 
 
