@@ -474,6 +474,14 @@ namespace dxvk {
      * \returns Result of the submission
      */
     VkResult waitForSubmission(DxvkSubmitStatus* status);
+
+    /**
+     * \brief Waits for resource to become idle
+     *
+     * \param [in] resource Resource to wait for
+     * \param [in] access Access mode to check
+     */
+    void waitForResource(const Rc<DxvkResource>& resource, DxvkAccess access);
     
     /**
      * \brief Waits until the device becomes idle
