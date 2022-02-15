@@ -188,13 +188,14 @@ namespace dxvk {
     }
 
     D3D11ResourceRef(D3D11ResourceRef&& other)
-    : m_type(other.m_type), m_resource(other.m_resource) {
+    : m_type(other.m_type), m_subresource(other.m_subresource), m_resource(other.m_resource) {
       other.m_type = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+      other.m_subresource = 0;
       other.m_resource = nullptr;
     }
 
     D3D11ResourceRef(const D3D11ResourceRef& other)
-    : m_type(other.m_type), m_resource(other.m_resource) {
+    : m_type(other.m_type), m_subresource(other.m_subresource), m_resource(other.m_resource) {
       if (m_resource)
         ResourceAddRefPrivate(m_resource, m_type);
     }
@@ -209,9 +210,11 @@ namespace dxvk {
         ResourceReleasePrivate(m_resource, m_type);
 
       m_type = other.m_type;
+      m_subresource = other.m_subresource;
       m_resource = other.m_resource;
 
       other.m_type = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+      other.m_subresource = 0;
       other.m_resource = nullptr;
       return *this;
     }
@@ -224,6 +227,7 @@ namespace dxvk {
         ResourceReleasePrivate(m_resource, m_type);
 
       m_type = other.m_type;
+      m_subresource = other.m_subresource;
       m_resource = other.m_resource;
       return *this;
     }
