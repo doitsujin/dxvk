@@ -140,11 +140,13 @@ namespace dxvk {
       cQuery->End(ctx);
     });
 
-    if (unlikely(query->IsEvent())) {
+    if (unlikely(query->TrackStalls())) {
       query->NotifyEnd();
-      query->IsStalling()
-        ? Flush()
-        : FlushImplicit(TRUE);
+
+      if (query->IsStalling())
+        Flush();
+      else if (query->IsEvent())
+        FlushImplicit(TRUE);
     }
   }
 

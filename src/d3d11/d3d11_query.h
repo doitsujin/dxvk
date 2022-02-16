@@ -62,6 +62,12 @@ namespace dxvk {
       return m_desc.Query == D3D11_QUERY_EVENT;
     }
 
+    bool TrackStalls() const {
+      return m_desc.Query == D3D11_QUERY_EVENT
+          || m_desc.Query == D3D11_QUERY_TIMESTAMP
+          || m_desc.Query == D3D11_QUERY_TIMESTAMP_DISJOINT;
+    }
+
     bool IsStalling() const {
       return m_stallFlag;
     }
