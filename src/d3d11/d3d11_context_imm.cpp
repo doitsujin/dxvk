@@ -735,12 +735,16 @@ namespace dxvk {
           D3D11CommonTexture*         pResource,
           UINT                        Subresource) {
     pResource->TrackSequenceNumber(Subresource, m_csSeqNum + 1);
+
+    FlushImplicit(TRUE);
   }
 
 
   void D3D11ImmediateContext::TrackBufferSequenceNumber(
           D3D11Buffer*                pResource) {
     pResource->TrackSequenceNumber(m_csSeqNum + 1);
+
+    FlushImplicit(TRUE);
   }
 
 
