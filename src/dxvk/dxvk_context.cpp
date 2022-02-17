@@ -1648,18 +1648,101 @@ namespace dxvk {
 
 
   void DxvkContext::initImage(
-    const Rc<DxvkImage>&           image,
-    const VkImageSubresourceRange& subresources,
-          VkImageLayout            initialLayout) {
-    m_execBarriers.accessImage(image, subresources,
-      initialLayout, 0, 0,
-      image->info().layout,
-      image->info().stages,
-      image->info().access);
-    
-    (initialLayout == VK_IMAGE_LAYOUT_PREINITIALIZED)
-      ? m_cmd->trackResource<DxvkAccess::None> (image)
-      : m_cmd->trackResource<DxvkAccess::Write>(image);
+    const Rc<DxvkImage>&            image,
+    const VkImageSubresourceRange&  subresources,
+          VkImageLayout             initialLayout) {
+    if (initialLayout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
+      m_initBarriers.accessImage(image, subresources,
+        initialLayout, 0, 0,
+        image->info().layout,
+        image->info().stages,
+        image->info().access);
+
+      m_cmd->trackResource<DxvkAccess::None>(image);
+    } else {
+      VkImageLayout clearLayout = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+      m_execAcquires.accessImage(image, subresources,
+        initialLayout, 0, 0, clearLayout,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT);
+      m_execAcquires.recordCommands(m_cmd);
+
+      auto formatInfo = image->formatInfo();
+
+      if (formatInfo->flags.any(DxvkFormatFlag::BlockCompressed, DxvkFormatFlag::MultiPlane)) {
+        for (auto aspects = formatInfo->aspectMask; aspects; ) {
+          auto aspect = vk::getNextAspect(aspects);
+          auto extent = image->mipLevelExtent(subresources.baseMipLevel);
+          auto elementSize = formatInfo->elementSize;
+
+          if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+            auto plane = &formatInfo->planes[vk::getPlaneIndex(aspect)];
+            extent.width  /= plane->blockSize.width;
+            extent.height /= plane->blockSize.height;
+            elementSize = plane->elementSize;
+          }
+
+          // Allocate enough staging buffer memory to fit one
+          // single subresource, then dispatch multiple copies
+          VkExtent3D blockCount = util::computeBlockCount(extent, formatInfo->blockSize);
+          VkDeviceSize dataSize = util::flattenImageExtent(blockCount) * elementSize;
+
+          auto zeroBuffer = createZeroBuffer(dataSize);
+          auto zeroHandle = zeroBuffer->getSliceHandle();
+
+          for (uint32_t level = 0; level < subresources.levelCount; level++) {
+            VkOffset3D offset = VkOffset3D { 0, 0, 0 };
+            VkExtent3D extent = image->mipLevelExtent(subresources.baseMipLevel + level);
+
+            if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+              auto plane = &formatInfo->planes[vk::getPlaneIndex(aspect)];
+              extent.width  /= plane->blockSize.width;
+              extent.height /= plane->blockSize.height;
+            }
+
+            for (uint32_t layer = 0; layer < subresources.layerCount; layer++) {
+              VkBufferImageCopy region;
+              region.bufferOffset       = zeroHandle.offset;
+              region.bufferRowLength    = 0;
+              region.bufferImageHeight  = 0;
+              region.imageSubresource   = vk::makeSubresourceLayers(
+                vk::pickSubresource(subresources, level, layer));
+              region.imageSubresource.aspectMask = aspect;
+              region.imageOffset        = offset;
+              region.imageExtent        = extent;
+
+              m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer,
+                zeroHandle.handle, image->handle(), clearLayout, 1, &region);
+            }
+          }
+
+          m_cmd->trackResource<DxvkAccess::Read>(zeroBuffer);
+        }
+      } else {
+        if (subresources.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+          VkClearDepthStencilValue value = { };
+
+          m_cmd->cmdClearDepthStencilImage(image->handle(),
+            clearLayout, &value, 1, &subresources);
+        } else {
+          VkClearColorValue value = { };
+
+          m_cmd->cmdClearColorImage(image->handle(),
+            clearLayout, &value, 1, &subresources);
+        }
+      }
+
+      m_execBarriers.accessImage(image, subresources,
+        clearLayout,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        image->info().layout,
+        image->info().stages,
+        image->info().access);
+
+      m_cmd->trackResource<DxvkAccess::Write>(image);
+    }
   }
   
   

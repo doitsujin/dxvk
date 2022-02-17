@@ -674,10 +674,11 @@ namespace dxvk {
             VkFilter                  filter);
     
     /**
-     * \brief Initializes or invalidates an image
+     * \brief Initializes an image
      * 
-     * Sets up the image layout for future operations
-     * while discarding any previous contents.
+     * Transitions the image into its default layout, and clears
+     * it to black unless the initial layout is preinitialized.
+     * Only safe to call if the image is not in use by the GPU.
      * \param [in] image The image to initialize
      * \param [in] subresources Image subresources
      * \param [in] initialLayout Initial image layout

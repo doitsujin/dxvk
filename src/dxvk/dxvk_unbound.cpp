@@ -186,12 +186,12 @@ namespace dxvk {
   void DxvkUnboundResources::clearImage(
     const Rc<DxvkContext>&  ctx,
     const Rc<DxvkImage>&    image) {
-    ctx->clearColorImage(image,
-      VkClearColorValue { },
+    ctx->initImage(image,
       VkImageSubresourceRange {
         VK_IMAGE_ASPECT_COLOR_BIT,
         0, image->info().mipLevels,
-        0, image->info().numLayers });
+        0, image->info().numLayers },
+      VK_IMAGE_LAYOUT_UNDEFINED);
   }
   
 }
