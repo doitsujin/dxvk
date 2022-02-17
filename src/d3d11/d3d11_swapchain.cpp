@@ -523,17 +523,11 @@ namespace dxvk {
     subresources.baseArrayLayer = 0;
     subresources.layerCount     = 1;
 
-    VkClearColorValue clearColor;
-    clearColor.float32[0] = 0.0f;
-    clearColor.float32[1] = 0.0f;
-    clearColor.float32[2] = 0.0f;
-    clearColor.float32[3] = 0.0f;
-
     m_context->beginRecording(
       m_device->createCommandList());
     
-    m_context->clearColorImage(
-      m_swapImage, clearColor, subresources);
+    m_context->initImage(m_swapImage,
+      subresources, VK_IMAGE_LAYOUT_UNDEFINED);
 
     m_device->submitCommandList(
       m_context->endRecording(),
