@@ -56,11 +56,8 @@ namespace dxvk {
 
     m_transferCommands += 1;
 
-    m_context->clearBuffer(
-      Slice.buffer(),
-      Slice.offset(),
-      Slice.length(),
-      0u);
+    m_context->initBuffer(
+      Slice.buffer());
 
     FlushImplicit();
   }
