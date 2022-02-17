@@ -1505,6 +1505,22 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::initBuffer(
+    const Rc<DxvkBuffer>&           buffer) {
+    auto slice = buffer->getSliceHandle();
+
+    m_cmd->cmdFillBuffer(DxvkCmdBuffer::InitBuffer,
+      slice.handle, slice.offset,
+      dxvk::align(slice.length, 4), 0);
+
+    m_initBarriers.accessBuffer(slice,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      buffer->info().stages,
+      buffer->info().access);
+  }
+
+
   void DxvkContext::initImage(
     const Rc<DxvkImage>&            image,
     const VkImageSubresourceRange&  subresources,
@@ -5234,8 +5250,7 @@ namespace dxvk {
     m_zeroBuffer = m_device->createBuffer(bufInfo,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    clearBuffer(m_zeroBuffer, 0, bufInfo.size, 0);
-    m_execBarriers.recordCommands(m_cmd);
+    this->initBuffer(m_zeroBuffer);
     return m_zeroBuffer;
   }
   

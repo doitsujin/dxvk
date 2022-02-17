@@ -179,7 +179,7 @@ namespace dxvk {
   void DxvkUnboundResources::clearBuffer(
     const Rc<DxvkContext>&  ctx,
     const Rc<DxvkBuffer>&   buffer) {
-    ctx->clearBuffer(buffer, 0, buffer->info().size, 0);
+    ctx->initBuffer(buffer);
   }
   
   

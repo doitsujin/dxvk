@@ -638,7 +638,17 @@ namespace dxvk {
     void generateMipmaps(
       const Rc<DxvkImageView>&        imageView,
             VkFilter                  filter);
-    
+
+    /**
+     * \brief Initializes a buffer
+     *
+     * Clears the given buffer to zero. Only safe to call
+     * if the buffer is not currently in use by the GPU.
+     * \param [in] buffer Buffer to clear
+     */
+    void initBuffer(
+      const Rc<DxvkBuffer>&           buffer);
+
     /**
      * \brief Initializes an image
      * 
