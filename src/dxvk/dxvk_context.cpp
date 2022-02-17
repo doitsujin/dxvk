@@ -1518,6 +1518,8 @@ namespace dxvk {
       VK_ACCESS_TRANSFER_WRITE_BIT,
       buffer->info().stages,
       buffer->info().access);
+
+    m_cmd->trackResource<DxvkAccess::Write>(buffer);
   }
 
 
