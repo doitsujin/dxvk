@@ -599,11 +599,14 @@ namespace dxvk {
 
 
     void cmdFillBuffer(
+            DxvkCmdBuffer           cmdBuffer,
             VkBuffer                dstBuffer,
             VkDeviceSize            dstOffset,
             VkDeviceSize            size,
             uint32_t                data) {
-      m_vkd->vkCmdFillBuffer(m_execBuffer,
+      m_cmdBuffersUsed.set(cmdBuffer);
+
+      m_vkd->vkCmdFillBuffer(getCmdBuffer(cmdBuffer),
         dstBuffer, dstOffset, size, data);
     }
     

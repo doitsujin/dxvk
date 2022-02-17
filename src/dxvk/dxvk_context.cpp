@@ -341,11 +341,8 @@ namespace dxvk {
     if (m_execBarriers.isBufferDirty(slice, DxvkAccess::Write))
       m_execBarriers.recordCommands(m_cmd);
     
-    m_cmd->cmdFillBuffer(
-      slice.handle,
-      slice.offset,
-      slice.length,
-      value);
+    m_cmd->cmdFillBuffer(DxvkCmdBuffer::ExecBuffer,
+      slice.handle, slice.offset, slice.length, value);
     
     m_execBarriers.accessBuffer(slice,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
