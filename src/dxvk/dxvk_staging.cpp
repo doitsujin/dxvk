@@ -39,6 +39,9 @@ namespace dxvk {
     if (alignedOffset + alignedSize > m_size || m_buffer == nullptr) {
       info.size = m_size;
 
+      // Free resources first if possible, in some rare
+      // situations this may help avoid a memory allocation.
+      m_buffer = nullptr;
       m_buffer = m_device->createBuffer(info,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
       alignedOffset = 0;
