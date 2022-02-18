@@ -174,6 +174,8 @@ namespace dxvk {
     void TrackBufferSequenceNumber(
             D3D11Buffer*                pResource);
 
+    uint64_t GetCurrentSequenceNumber();
+
     void FlushImplicit(BOOL StrongHint);
 
     void SignalEvent(HANDLE hEvent);

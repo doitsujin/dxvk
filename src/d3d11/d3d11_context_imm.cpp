@@ -734,7 +734,8 @@ namespace dxvk {
   void D3D11ImmediateContext::TrackTextureSequenceNumber(
           D3D11CommonTexture*         pResource,
           UINT                        Subresource) {
-    pResource->TrackSequenceNumber(Subresource, m_csSeqNum + 1);
+    uint64_t sequenceNumber = GetCurrentSequenceNumber();
+    pResource->TrackSequenceNumber(Subresource, sequenceNumber);
 
     FlushImplicit(TRUE);
   }
@@ -742,9 +743,18 @@ namespace dxvk {
 
   void D3D11ImmediateContext::TrackBufferSequenceNumber(
           D3D11Buffer*                pResource) {
-    pResource->TrackSequenceNumber(m_csSeqNum + 1);
+    uint64_t sequenceNumber = GetCurrentSequenceNumber();
+    pResource->TrackSequenceNumber(sequenceNumber);
 
     FlushImplicit(TRUE);
+  }
+
+
+  uint64_t D3D11ImmediateContext::GetCurrentSequenceNumber() {
+    // We do not flush empty chunks, so if we are tracking a resource
+    // immediately after a flush, we need to use the sequence number
+    // of the previously submitted chunk to prevent deadlocks.
+    return m_csChunk->empty() ? m_csSeqNum : m_csSeqNum + 1;
   }
 
 
