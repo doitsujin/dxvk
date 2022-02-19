@@ -3124,13 +3124,21 @@ namespace dxvk {
           D3D11Buffer*                      pBuffer,
           UINT                              Offset,
           UINT                              Stride) {
-    EmitCs([
-      cSlotId       = Slot,
-      cBufferSlice  = pBuffer != nullptr ? pBuffer->GetBufferSlice(Offset) : DxvkBufferSlice(),
-      cStride       = Stride
-    ] (DxvkContext* ctx) {
-      ctx->bindVertexBuffer(cSlotId, cBufferSlice, cStride);
-    });
+    if (likely(pBuffer != nullptr)) {
+      EmitCs([
+        cSlotId       = Slot,
+        cBufferSlice  = pBuffer->GetBufferSlice(Offset),
+        cStride       = Stride
+      ] (DxvkContext* ctx) {
+        ctx->bindVertexBuffer(cSlotId, cBufferSlice, cStride);
+      });
+    } else {
+      EmitCs([
+        cSlotId       = Slot
+      ] (DxvkContext* ctx) {
+        ctx->bindVertexBuffer(cSlotId, DxvkBufferSlice(), 0);
+      });
+    }
   }
   
   
