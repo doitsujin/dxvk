@@ -8,8 +8,6 @@ namespace dxvk::str {
     if (len <= 1)
       return "";
 
-    len -= 1;
-
     std::string result;
     result.resize(len);
     ::WideCharToMultiByte(CP_UTF8, 0, ws, -1,
@@ -30,8 +28,6 @@ namespace dxvk::str {
     
     if (len <= 1)
       return L"";
-
-    len -= 1;
 
     std::wstring result;
     result.resize(len);
