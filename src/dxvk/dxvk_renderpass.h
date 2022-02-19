@@ -4,6 +4,8 @@
 #include <vector>
 #include <unordered_map>
 
+#include "../util/sync/sync_list.h"
+
 #include "dxvk_hash.h"
 #include "dxvk_include.h"
 #include "dxvk_limits.h"
@@ -178,8 +180,11 @@ namespace dxvk {
     DxvkRenderPassFormat    m_format;
     VkRenderPass            m_default;
     
-    sync::Spinlock          m_mutex;
-    std::vector<Instance>   m_instances;
+    dxvk::mutex             m_mutex;
+    sync::List<Instance>    m_instances;
+
+    VkRenderPass findHandle(
+      const DxvkRenderPassOps& ops);
     
     VkRenderPass createRenderPass(
       const DxvkRenderPassOps& ops);

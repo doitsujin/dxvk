@@ -60,18 +60,31 @@ namespace dxvk {
   
   
   VkRenderPass DxvkRenderPass::getHandle(const DxvkRenderPassOps& ops) {
-    std::lock_guard<sync::Spinlock> lock(m_mutex);
+    VkRenderPass handle = this->findHandle(ops);
+
+    if (unlikely(!handle)) {
+      std::lock_guard<dxvk::mutex> lock(m_mutex);
+      handle = this->findHandle(ops);
+
+      if (!handle) {
+        handle = this->createRenderPass(ops);
+        m_instances.insert({ ops, handle });
+      }
+    }
     
+    return handle;
+  }
+
+
+  VkRenderPass DxvkRenderPass::findHandle(const DxvkRenderPassOps& ops) {
     for (const auto& i : m_instances) {
       if (compareOps(i.ops, ops))
         return i.handle;
     }
-    
-    VkRenderPass handle = this->createRenderPass(ops);
-    m_instances.push_back({ ops, handle });
-    return handle;
+
+    return VK_NULL_HANDLE;
   }
-  
+
   
   VkRenderPass DxvkRenderPass::createRenderPass(const DxvkRenderPassOps& ops) {
     std::vector<VkAttachmentDescription> attachments;
