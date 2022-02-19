@@ -5,7 +5,7 @@ This fork contains code to:
 * option to allow forcing SGSSAA-like AA.  It's brute force and I suspect can be done much smarter, by appliying sample shading only to some pipelines, I am not yet sure how - suggestions welcome!
 * option to allow focing 32bit float depth buffer.
 
-I am not submitting my stuff to main repo because I am not a graphics guru and I doubt anyone needs my hacks  That said, if this is useful to anyone, I would greatly appreciate hints and suggestions, especially on how to minimize GPU idle time in VR.
+I am not submitting my stuff to the main repo because I am not exactly a graphics guru and I doubt anyone needs my hacks.  That said, if this is useful to anyone, I would greatly appreciate hints and suggestions, especially on how to minimize GPU idle time in VR and applying sample shading AA smarter.
 
 Main branch is: vr-dx9-rel
 
