@@ -71,7 +71,7 @@ namespace dxvk {
   DxvkCsChunk* DxvkCsChunkPool::allocChunk(DxvkCsChunkFlags flags) {
     DxvkCsChunk* chunk = nullptr;
 
-    { std::lock_guard<sync::Spinlock> lock(m_mutex);
+    { std::lock_guard<dxvk::mutex> lock(m_mutex);
       
       if (m_chunks.size() != 0) {
         chunk = m_chunks.back();
@@ -90,7 +90,7 @@ namespace dxvk {
   void DxvkCsChunkPool::freeChunk(DxvkCsChunk* chunk) {
     chunk->reset();
     
-    std::lock_guard<sync::Spinlock> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
     m_chunks.push_back(chunk);
   }
   

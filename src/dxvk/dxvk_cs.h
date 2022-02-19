@@ -286,7 +286,7 @@ namespace dxvk {
     
   private:
     
-    sync::Spinlock            m_mutex;
+    dxvk::mutex               m_mutex;
     std::vector<DxvkCsChunk*> m_chunks;
     
   };
