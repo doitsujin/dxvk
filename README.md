@@ -1,11 +1,11 @@
 # About this fork:
 
 This fork contains code to:
-* allow DX9->Vulkan VR (Based on Joshie Ashton's work).
-* allow forcing SGSSAA-like AA.  It's brute force and can be done much better, by appliying sample shading only to some pipeline, I am not yet sure how - suggestions welcome!
-* allow focing 32bit float depth buffer.
+* allow DX9->Vulkan OpenVR (Based on Joshie Ashton's work).
+* option to allow forcing SGSSAA-like AA.  It's brute force and I suspect can be done much smarter, by appliying sample shading only to some pipelines, I am not yet sure how - suggestions welcome!
+* option to allow focing 32bit float depth buffer.
 
-I am not submitting my stuff to main repo because I am not a graphics guru and I doubt anyone needs my hacks  That said, I would greatly appreciate hints and suggestions, especially on how to minimize GPU idle time in VR.
+I am not submitting my stuff to main repo because I am not a graphics guru and I doubt anyone needs my hacks  That said, if this is useful to anyone, I would greatly appreciate hints and suggestions, especially on how to minimize GPU idle time in VR.
 
 Main branch is: vr-dx9-rel
 
