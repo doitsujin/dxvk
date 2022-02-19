@@ -1,3 +1,14 @@
+# About this fork:
+
+This fork contains code to:
+* allow DX9->Vulkan VR (Based on Joshie Ashton's work).
+* allow forcing SGSSAA-like AA.  It's brute force and can be done much better, by appliying sample shading only to some pipeline, I am not yet sure how - suggestions welcome!
+* allow focing 32bit float depth buffer.
+
+I am not submitting my stuff to main repo because I am not a graphics guru and I doubt anyone needs my hacks  That said, I would greatly appreciate hints and suggestions, especially on how to minimize GPU idle time in VR.
+
+Main branch is: vr-dx9-rel
+
 # DXVK
 
 A Vulkan-based translation layer for Direct3D 9/10/11 which allows running 3D applications on Linux using Wine.
