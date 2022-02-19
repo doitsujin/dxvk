@@ -1,7 +1,8 @@
 #pragma once
 
-#include <atomic>
 #include <vector>
+
+#include "../util/sync/sync_list.h"
 
 #include "dxvk_bind_mask.h"
 #include "dxvk_graphics_state.h"
@@ -143,8 +144,9 @@ namespace dxvk {
     
     Rc<DxvkPipelineLayout>      m_layout;
     
-    sync::Spinlock                           m_mutex;
-    std::vector<DxvkComputePipelineInstance> m_pipelines;
+    alignas(CACHE_LINE_SIZE)
+    dxvk::mutex                             m_mutex;
+    sync::List<DxvkComputePipelineInstance> m_pipelines;
     
     DxvkComputePipelineInstance* createInstance(
       const DxvkComputePipelineStateInfo& state);
