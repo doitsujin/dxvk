@@ -226,8 +226,7 @@ namespace dxvk::hud {
   HudPos HudFrameTimeItem::render(
           HudRenderer&      renderer,
           HudPos            position) {
-    std::array<HudLineVertex, NumDataPoints * 2> vData;
-    position.y += 40.0f;
+    std::array<HudGraphPoint, NumDataPoints> points;
 
     // 60 FPS = optimal, 10 FPS = worst
     const float targetUs =  16'666.6f;
@@ -255,21 +254,18 @@ namespace dxvk::hud {
         uint8_t(255.0f * (g / l)),
         uint8_t(0), uint8_t(255) };
       
-      float x = position.x + float(i);
-      float y = position.y;
-      
       float hVal = std::log2(std::max((us - minUs) / targetUs + 1.0f, 1.0f))
                  / std::log2((maxUs - minUs) / targetUs);
-      float h = std::min(std::max(40.0f * hVal, 2.0f), 40.0f);
       
-      vData[2 * i + 0] = HudLineVertex { { x, y     }, color };
-      vData[2 * i + 1] = HudLineVertex { { x, y - h }, color };
+      points[i].value = std::max(hVal, 1.0f / 40.0f);
+      points[i].color = color;
     }
     
-    renderer.drawLines(vData.size(), vData.data());
+    renderer.drawGraph(position,
+      HudPos { float(NumDataPoints), 40.0f },
+      points.size(), points.data());
     
-    // Paint min/max frame times in the entire window
-    position.y += 18.0f;
+    position.y += 58.0f;
 
     renderer.drawText(12.0f,
       { position.x, position.y },

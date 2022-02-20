@@ -213,7 +213,7 @@ namespace dxvk::hud {
    * \brief HUD item to display the frame rate
    */
   class HudFrameTimeItem : public HudItem {
-    constexpr static size_t NumDataPoints = 300;
+    constexpr static size_t NumDataPoints = 304;
   public:
 
     HudFrameTimeItem();

@@ -32,20 +32,21 @@ namespace dxvk::hud {
 
   /**
    * \brief Normalized color
+   *
    * SRGB color with alpha channel.
    */
   struct HudNormColor {
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
     uint8_t a;
+    uint8_t b;
+    uint8_t g;
+    uint8_t r;
   };
   
   /**
-   * \brief Line vertex and color
+   * \brief Graph point with color
    */
-  struct HudLineVertex {
-    HudPos        position;
+  struct HudGraphPoint {
+    float         value;
     HudNormColor  color;
   };
 
@@ -57,6 +58,14 @@ namespace dxvk::hud {
     HudPos pos;
     uint32_t offset;
     float size;
+    HudPos scale;
+  };
+
+  struct HudGraphPushConstants {
+    uint32_t offset;
+    uint32_t count;
+    HudPos pos;
+    HudPos size;
     HudPos scale;
   };
 
@@ -87,11 +96,6 @@ namespace dxvk::hud {
    */
   class HudRenderer {
     constexpr static VkDeviceSize DataBufferSize = 16384;
-    constexpr static uint32_t MaxLineVertexCount    = 1024;
-
-    struct VertexBufferData {
-      HudLineVertex lineVertices[MaxLineVertexCount];
-    };
   public:
     
     HudRenderer(
@@ -110,9 +114,11 @@ namespace dxvk::hud {
             HudColor          color,
       const std::string&      text);
     
-    void drawLines(
-            size_t            vertexCount,
-      const HudLineVertex*    vertexData);
+    void drawGraph(
+            HudPos            pos,
+            HudPos            size,
+            size_t            pointCount,
+      const HudGraphPoint*    pointData);
     
     VkExtent2D surfaceSize() const {
       return m_surfaceSize;
@@ -127,7 +133,7 @@ namespace dxvk::hud {
     enum class Mode {
       RenderNone,
       RenderText,
-      RenderLines,
+      RenderGraph,
     };
 
     struct ShaderPair {
@@ -143,7 +149,7 @@ namespace dxvk::hud {
     Rc<DxvkContext>     m_context;
     
     ShaderPair          m_textShaders;
-    ShaderPair          m_lineShaders;
+    ShaderPair          m_graphShaders;
     
     Rc<DxvkBuffer>      m_dataBuffer;
     Rc<DxvkBufferView>  m_dataView;
@@ -153,24 +159,17 @@ namespace dxvk::hud {
     Rc<DxvkImage>       m_fontImage;
     Rc<DxvkImageView>   m_fontView;
     Rc<DxvkSampler>     m_fontSampler;
-    
-    Rc<DxvkBuffer>      m_vertexBuffer;
-    VertexBufferData*   m_vertexData = nullptr;
-
-    uint32_t            m_currLineVertex    = 0;
 
     bool                m_initialized = false;
 
-    void allocVertexBufferSlice();
-    
     void beginTextRendering();
     
-    void beginLineRendering();
+    void beginGraphRendering();
 
     VkDeviceSize allocDataBuffer(VkDeviceSize size);
 
     ShaderPair createTextShaders();
-    ShaderPair createLineShaders();
+    ShaderPair createGraphShaders();
 
     Rc<DxvkBuffer> createDataBuffer();
     Rc<DxvkBufferView> createDataView();
@@ -179,8 +178,6 @@ namespace dxvk::hud {
     Rc<DxvkImage> createFontImage();
     Rc<DxvkImageView> createFontView();
     Rc<DxvkSampler> createFontSampler();
-
-    Rc<DxvkBuffer> createVertexBuffer();
     
     void initFontTexture(
       const Rc<DxvkContext>& context);
