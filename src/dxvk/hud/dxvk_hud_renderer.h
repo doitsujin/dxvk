@@ -18,17 +18,6 @@ namespace dxvk::hud {
   };
   
   /**
-   * \brief Texture coordinates
-   * 
-   * Absolute texture coordinates that are used
-   * to pick letters in the font texture.
-   */
-  struct HudTexCoord {
-    uint32_t u;
-    uint32_t v;
-  };
-  
-  /**
    * \brief Color
    * 
    * SRGB color with alpha channel. The text
@@ -53,21 +42,43 @@ namespace dxvk::hud {
   };
   
   /**
-   * \brief Text vertex and texture coordinates
-   */
-  struct HudTextVertex {
-    HudPos        position;
-    HudTexCoord   texcoord;
-  };
-
-  /**
    * \brief Line vertex and color
    */
   struct HudLineVertex {
     HudPos        position;
     HudNormColor  color;
   };
-  
+
+  /**
+   * \brief HUD push constant data
+   */
+  struct HudTextPushConstants {
+    HudColor color;
+    HudPos pos;
+    uint32_t offset;
+    float size;
+    HudPos scale;
+  };
+
+  /**
+   * \brief Glyph data
+   */
+  struct HudGlyphGpuData {
+    int16_t x;
+    int16_t y;
+    int16_t w;
+    int16_t h;
+    int16_t originX;
+    int16_t originY;
+  };
+
+  struct HudFontGpuData {
+    float size;
+    float advance;
+    uint32_t padding[2];
+    HudGlyphGpuData glyphs[256];
+  };
+
   /**
    * \brief Text renderer for the HUD
    * 
@@ -75,14 +86,11 @@ namespace dxvk::hud {
    * display performance and driver information.
    */
   class HudRenderer {
-    constexpr static uint32_t MaxTextVertexCount    = 512 * 6;
-    constexpr static uint32_t MaxTextInstanceCount  = 64;
+    constexpr static VkDeviceSize DataBufferSize = 16384;
     constexpr static uint32_t MaxLineVertexCount    = 1024;
 
     struct VertexBufferData {
-      HudColor              textColors[MaxTextInstanceCount];
-      HudTextVertex         textVertices[MaxTextVertexCount];
-      HudLineVertex         lineVertices[MaxLineVertexCount];
+      HudLineVertex lineVertices[MaxLineVertexCount];
     };
   public:
     
@@ -127,8 +135,6 @@ namespace dxvk::hud {
       Rc<DxvkShader> frag;
     };
     
-    std::array<uint8_t, 256> m_charMap;
-    
     Mode                m_mode;
     float               m_scale;
     VkExtent2D          m_surfaceSize;
@@ -139,6 +145,11 @@ namespace dxvk::hud {
     ShaderPair          m_textShaders;
     ShaderPair          m_lineShaders;
     
+    Rc<DxvkBuffer>      m_dataBuffer;
+    Rc<DxvkBufferView>  m_dataView;
+    VkDeviceSize        m_dataOffset;
+
+    Rc<DxvkBuffer>      m_fontBuffer;
     Rc<DxvkImage>       m_fontImage;
     Rc<DxvkImageView>   m_fontView;
     Rc<DxvkSampler>     m_fontSampler;
@@ -146,8 +157,6 @@ namespace dxvk::hud {
     Rc<DxvkBuffer>      m_vertexBuffer;
     VertexBufferData*   m_vertexData = nullptr;
 
-    uint32_t            m_currTextVertex    = 0;
-    uint32_t            m_currTextInstance  = 0;
     uint32_t            m_currLineVertex    = 0;
 
     bool                m_initialized = false;
@@ -157,20 +166,24 @@ namespace dxvk::hud {
     void beginTextRendering();
     
     void beginLineRendering();
-    
+
+    VkDeviceSize allocDataBuffer(VkDeviceSize size);
+
     ShaderPair createTextShaders();
     ShaderPair createLineShaders();
 
+    Rc<DxvkBuffer> createDataBuffer();
+    Rc<DxvkBufferView> createDataView();
+
+    Rc<DxvkBuffer> createFontBuffer();
     Rc<DxvkImage> createFontImage();
     Rc<DxvkImageView> createFontView();
-    
     Rc<DxvkSampler> createFontSampler();
+
     Rc<DxvkBuffer> createVertexBuffer();
     
     void initFontTexture(
       const Rc<DxvkContext>& context);
-    
-    void initCharMap();
     
   };
   
