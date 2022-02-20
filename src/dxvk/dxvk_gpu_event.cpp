@@ -49,7 +49,7 @@ namespace dxvk {
   DxvkGpuEventHandle DxvkGpuEventPool::allocEvent() {
     VkEvent event = VK_NULL_HANDLE;
 
-    { std::lock_guard<sync::Spinlock> lock(m_mutex);
+    { std::lock_guard<dxvk::mutex> lock(m_mutex);
       
       if (m_events.size() > 0) {
         event = m_events.back();
@@ -77,7 +77,7 @@ namespace dxvk {
 
 
   void DxvkGpuEventPool::freeEvent(VkEvent event) {
-    std::lock_guard<sync::Spinlock> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
     m_events.push_back(event);
   }
 
