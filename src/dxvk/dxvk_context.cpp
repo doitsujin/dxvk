@@ -241,10 +241,6 @@ namespace dxvk {
     m_state.vi.vertexBuffers[binding] = buffer;
     m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
     
-    if (unlikely(!buffer.defined())
-     && unlikely(!m_features.test(DxvkContextFeature::NullDescriptors)))
-      stride = 0;
-    
     if (unlikely(m_state.vi.vertexStrides[binding] != stride)) {
       m_state.vi.vertexStrides[binding] = stride;
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);

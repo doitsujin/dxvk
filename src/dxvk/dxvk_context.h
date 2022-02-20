@@ -156,6 +156,7 @@ namespace dxvk {
     /**
      * \brief Binds vertex buffer
      * 
+     * When binding a null buffer, stride must be 0.
      * \param [in] binding Vertex buffer binding
      * \param [in] buffer New vertex buffer
      * \param [in] stride Stride between vertices
@@ -164,7 +165,7 @@ namespace dxvk {
             uint32_t              binding,
       const DxvkBufferSlice&      buffer,
             uint32_t              stride);
-    
+
     /**
      * \brief Binds transform feedback buffer
      * 
