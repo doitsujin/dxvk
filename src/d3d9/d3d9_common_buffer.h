@@ -88,10 +88,17 @@ namespace dxvk {
     /**
     * \brief Determine the mapping mode of the buffer, (ie. direct mapping or backed)
     */
-    inline D3D9_COMMON_BUFFER_MAP_MODE GetMapMode() const {
-      return (m_desc.Pool == D3DPOOL_DEFAULT && (m_desc.Usage & (D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY)))
+    inline D3D9_COMMON_BUFFER_MAP_MODE DetermineMapMode(const D3D9Options* options) const {
+      return (m_desc.Pool == D3DPOOL_DEFAULT && (m_desc.Usage & (D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY)) && options->allowDirectBufferMapping)
         ? D3D9_COMMON_BUFFER_MAP_MODE_DIRECT
         : D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
+    }
+
+    /**
+    * \brief Get the mapping mode of the buffer, (ie. direct mapping or backed)
+    */
+    inline D3D9_COMMON_BUFFER_MAP_MODE GetMapMode() const {
+      return m_mapMode;
     }
 
     /**
@@ -155,12 +162,12 @@ namespace dxvk {
     /**
     * \brief Whether or not the buffer was written to by the GPU (in IDirect3DDevice9::ProcessVertices)
     */
-    inline bool WasWrittenByGPU() const     { return m_wasWrittenByGPU; }
+    inline bool NeedsReadback() const     { return m_needsReadback; }
 
     /**
     * \brief Sets whether or not the buffer was written to by the GPU
     */
-    inline void SetWrittenByGPU(bool state) { m_wasWrittenByGPU = state; }
+    inline void SetNeedsReadback(bool state) { m_needsReadback = state; }
 
     inline uint32_t IncrementLockCount() { return ++m_lockCount; }
     inline uint32_t DecrementLockCount() {
@@ -187,6 +194,28 @@ namespace dxvk {
 
     void PreLoad();
 
+     /**
+     * \brief Tracks sequence number
+     *
+     * Stores which CS chunk the resource was last used on.
+     * \param [in] Seq Sequence number
+     */
+    void TrackMappingBufferSequenceNumber(uint64_t Seq) {
+      m_seq = Seq;
+    }
+
+
+    /**
+     * \brief Queries sequence number for a given subresource
+     *
+     * Returns which CS chunk the resource was last used on.
+     * \param [in] Subresource Subresource index
+     * \returns Sequence number for the given subresource
+     */
+    uint64_t GetMappingBufferSequenceNumber() const {
+      return m_seq;
+    }
+
   private:
 
     Rc<DxvkBuffer> CreateBuffer() const;
@@ -207,8 +236,9 @@ namespace dxvk {
     D3D9DeviceEx*               m_parent;
     const D3D9_BUFFER_DESC      m_desc;
     DWORD                       m_mapFlags;
-    bool                        m_wasWrittenByGPU = false;
+    bool                        m_needsReadback = false;
     bool                        m_uploadUsingStaging = false;
+    D3D9_COMMON_BUFFER_MAP_MODE m_mapMode;
 
     Rc<DxvkBuffer>              m_buffer;
     Rc<DxvkBuffer>              m_stagingBuffer;
@@ -219,6 +249,8 @@ namespace dxvk {
     D3D9Range                   m_gpuReadingRange;
 
     uint32_t                    m_lockCount = 0;
+
+    uint64_t                    m_seq = 0ull;
 
   };
 

@@ -239,7 +239,7 @@ namespace dxvk {
      */
     void DestroyBufferSubresource(UINT Subresource) {
       m_buffers[Subresource] = nullptr;
-      SetWrittenByGPU(Subresource, true);
+      SetNeedsReadback(Subresource, true);
     }
 
     bool IsDynamic() const {
@@ -326,11 +326,11 @@ namespace dxvk {
 
     bool IsAnySubresourceLocked() const { return m_locked.any(); }
 
-    void SetWrittenByGPU(UINT Subresource, bool value) { m_wasWrittenByGPU.set(Subresource, value); }
+    void SetNeedsReadback(UINT Subresource, bool value) { m_needsReadback.set(Subresource, value); }
 
-    bool WasWrittenByGPU(UINT Subresource) const { return m_wasWrittenByGPU.get(Subresource); }
+    bool NeedsReachback(UINT Subresource) const { return m_needsReadback.get(Subresource) && m_image != nullptr; }
 
-    void MarkAllWrittenByGPU() { m_wasWrittenByGPU.setAll(); }
+    void MarkAllNeedReadback() { m_needsReadback.setAll(); }
 
     void SetReadOnlyLocked(UINT Subresource, bool readOnly) { return m_readOnly.set(Subresource, readOnly); }
 
@@ -435,6 +435,31 @@ namespace dxvk {
     static VkImageType GetImageTypeFromResourceType(
             D3DRESOURCETYPE  Dimension);
 
+     /**
+     * \brief Tracks sequence number for a given subresource
+     *
+     * Stores which CS chunk the resource was last used on.
+     * \param [in] Subresource Subresource index
+     * \param [in] Seq Sequence number
+     */
+    void TrackMappingBufferSequenceNumber(UINT Subresource, uint64_t Seq) {
+      if (Subresource < m_seqs.size())
+        m_seqs[Subresource] = Seq;
+    }
+
+    /**
+     * \brief Queries sequence number for a given subresource
+     *
+     * Returns which CS chunk the resource was last used on.
+     * \param [in] Subresource Subresource index
+     * \returns Sequence number for the given subresource
+     */
+    uint64_t GetMappingBufferSequenceNumber(UINT Subresource) {
+      return Subresource < m_seqs.size()
+        ? m_seqs[Subresource]
+        : 0ull;
+    }
+
   private:
 
     D3D9DeviceEx*                 m_device;
@@ -448,6 +473,8 @@ namespace dxvk {
       Rc<DxvkBuffer>>             m_buffers;
     D3D9SubresourceArray<
       DxvkBufferSliceHandle>      m_mappedSlices;
+    D3D9SubresourceArray<
+      uint64_t>                   m_seqs = { };
 
     D3D9_VK_FORMAT_MAPPING        m_mapping;
 
@@ -466,7 +493,7 @@ namespace dxvk {
 
     D3D9SubresourceBitset         m_readOnly = { };
 
-    D3D9SubresourceBitset         m_wasWrittenByGPU = { };
+    D3D9SubresourceBitset         m_needsReadback = { };
 
     D3D9SubresourceBitset         m_needsUpload = { };
 

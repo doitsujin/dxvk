@@ -112,7 +112,8 @@ namespace dxvk {
     // Staging buffers that can't even be used as a transfer destinations
     // are likely short-lived, so we should put them on a separate memory
     // pool in order to avoid fragmentation
-    if (DxvkBarrierSet::getAccessTypes(m_info.access) == DxvkAccess::Read)
+    if ((DxvkBarrierSet::getAccessTypes(m_info.access) == DxvkAccess::Read)
+     && (m_info.usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT))
       hints.set(DxvkMemoryFlag::Transient);
 
     // Ask driver whether we should be using a dedicated allocation

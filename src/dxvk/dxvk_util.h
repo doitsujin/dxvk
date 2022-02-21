@@ -132,7 +132,21 @@ namespace dxvk::util {
     size.depth  = std::max(1u, size.depth  >> level);
     return size;
   }
-  
+
+  /**
+   * \brief Computes offset in a given mip level
+   *
+   * \param [in] size Base mip level offset
+   * \param [in] level mip level to compute
+   * \returns Offset on the given mip level
+   */
+  inline VkOffset3D computeMipLevelOffset(VkOffset3D offset, uint32_t level) {
+    offset.x  = offset.x >> level;
+    offset.y  = offset.y >> level;
+    offset.z  = offset.z >> level;
+    return offset;
+  }
+
   /**
    * \brief Computes mip level extent
    *

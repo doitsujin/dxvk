@@ -662,6 +662,7 @@ namespace dxvk {
 
     bool WaitForResource(
       const Rc<DxvkResource>&                 Resource,
+            uint64_t                          SequenceNumber,
             DWORD                             MapFlags);
 
     /**
@@ -703,6 +704,15 @@ namespace dxvk {
             D3D9CommonTexture*      pResource,
             UINT                    Subresource);
 
+    void UpdateTextureFromBuffer(
+            D3D9CommonTexture*      pDestTexture,
+            D3D9CommonTexture*      pSrcTexture,
+            UINT                    DestSubresource,
+            UINT                    SrcSubresource,
+            VkOffset3D              SrcOffset,
+            VkExtent3D              SrcExtent,
+            VkOffset3D              DestOffset);
+
     void EmitGenerateMips(
             D3D9CommonTexture* pResource);
 
@@ -731,7 +741,7 @@ namespace dxvk {
 
     void CreateConstantBuffers();
 
-    void SynchronizeCsThread();
+    void SynchronizeCsThread(uint64_t SequenceNumber);
 
     void Flush();
 
@@ -1120,6 +1130,15 @@ namespace dxvk {
 
     void UpdateSamplerDepthModeSpecConstant(uint32_t value);
 
+    void TrackBufferMappingBufferSequenceNumber(
+      D3D9CommonBuffer* pResource);
+
+    void TrackTextureMappingBufferSequenceNumber(
+      D3D9CommonTexture* pResource,
+      UINT Subresource);
+
+    uint64_t GetCurrentSequenceNumber();
+
     Com<D3D9InterfaceEx>            m_parent;
     D3DDEVTYPE                      m_deviceType;
     HWND                            m_window;
@@ -1242,6 +1261,7 @@ namespace dxvk {
       = dxvk::high_resolution_clock::now();
     DxvkCsThread                    m_csThread;
     DxvkCsChunkRef                  m_csChunk;
+    uint64_t                        m_csSeqNum = 0ull;
     bool                            m_csIsBusy = false;
 
     std::atomic<int64_t>            m_availableMemory = { 0 };
