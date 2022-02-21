@@ -849,7 +849,6 @@ namespace dxvk {
         cLevelExtent);
     });
 
-    dstTexInfo->SetNeedsReadback(dst->GetSubresource(), true);
     TrackTextureMappingBufferSequenceNumber(dstTexInfo, dst->GetSubresource());
 
     return D3D_OK;
@@ -1234,8 +1233,6 @@ namespace dxvk {
 
       if (texInfo->IsAutomaticMip())
         texInfo->SetNeedsMipGen(true);
-
-      texInfo->SetNeedsReadback(rt->GetSubresource(), true);
     }
 
     if (originalAlphaSwizzleRTs != m_alphaSwizzleRTs)
