@@ -469,8 +469,6 @@ namespace dxvk {
         cLevelExtent);
     });
 
-    dstTexInfo->SetNeedsReadback(dst->GetSubresource(), true);
-
     return D3D_OK;
   }
 
