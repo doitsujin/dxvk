@@ -4228,6 +4228,7 @@ namespace dxvk {
                 cPackedFormat);
             }
           });
+          TrackTextureMappingBufferSequenceNumber(pResource, Subresource);
         } else if (!(Flags & D3DLOCK_DONOTWAIT) && !WaitForResource(mappedBuffer, pResource->GetMappingBufferSequenceNumber(Subresource), D3DLOCK_DONOTWAIT)) {
           pResource->EnableStagingBufferUploads(Subresource);
         }
@@ -4589,7 +4590,10 @@ namespace dxvk {
       const bool directMapping = pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_DIRECT;
       const bool skipWait = (!needsReadback && (usesStagingBuffer || readOnly || (noOverlap && !directMapping))) || noOverwrite;
       if (!skipWait) {
-        if (!(Flags & D3DLOCK_DONOTWAIT) && !WaitForResource(mappingBuffer, pResource->GetMappingBufferSequenceNumber(), D3DLOCK_DONOTWAIT))
+        if (unlikely(needsReadback)) {
+          Logger::warn("Buffer readback is unimplemented.");
+          // Remember to update the sequence number when implementing buffer readback.
+        } else if (!(Flags & D3DLOCK_DONOTWAIT) && !WaitForResource(mappingBuffer, pResource->GetMappingBufferSequenceNumber(), D3DLOCK_DONOTWAIT))
           pResource->EnableStagingBufferUploads();
 
         if (!WaitForResource(mappingBuffer, pResource->GetMappingBufferSequenceNumber(), Flags))
