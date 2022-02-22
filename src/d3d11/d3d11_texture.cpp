@@ -593,7 +593,7 @@ namespace dxvk {
     VkMemoryPropertyFlags memType = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                                   | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
     
-    if (m_desc.Usage == D3D11_USAGE_STAGING)
+    if (m_desc.Usage == D3D11_USAGE_STAGING || m_device->GetOptions()->apitraceMode)
       memType |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
     
     MappedBuffer result;
