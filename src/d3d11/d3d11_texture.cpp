@@ -553,16 +553,6 @@ namespace dxvk {
     if (!m_desc.BindFlags && m_desc.Usage != D3D11_USAGE_DEFAULT)
       return D3D11_COMMON_TEXTURE_MAP_MODE_STAGING;
 
-    // Write-only images should go through a buffer for multiple reasons:
-    // 1. Some games do not respect the row and depth pitch that is returned
-    //    by the Map() method, which leads to incorrect rendering (e.g. Nier)
-    // 2. Since the image will most likely be read for rendering by the GPU,
-    //    writing the image to device-local image may be more efficient than
-    //    reading its contents from host memory.
-    if (m_desc.Usage         == D3D11_USAGE_DYNAMIC
-     && m_desc.TextureLayout != D3D11_TEXTURE_LAYOUT_ROW_MAJOR)
-      return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
-    
     // Depth-stencil formats in D3D11 can be mapped and follow special
     // packing rules, so we need to copy that data into a buffer first
     if (GetPackedDepthStencilFormat(m_desc.Format))
@@ -572,13 +562,29 @@ namespace dxvk {
     if (imageFormatInfo(pImageInfo->format)->flags.test(DxvkFormatFlag::MultiPlane))
       return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
 
-    // Images that can be read by the host should be mapped directly in
-    // order to avoid expensive synchronization with the GPU. This does
-    // however require linear tiling, which may not be supported for all
-    // combinations of image parameters.
-    return this->CheckImageSupport(pImageInfo, VK_IMAGE_TILING_LINEAR)
-      ? D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT
-      : D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
+    // If we can't use linear tiling for this image, we have to use a buffer
+    if (!this->CheckImageSupport(pImageInfo, VK_IMAGE_TILING_LINEAR))
+      return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
+
+    // If supported and requested, create a linear image. Default images
+    // can be used for resolves and other operations regardless of bind
+    // flags, so we need to use a proper image for those.
+    if (m_desc.TextureLayout == D3D11_TEXTURE_LAYOUT_ROW_MAJOR
+     || m_desc.Usage         == D3D11_USAGE_DEFAULT)
+      return D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT;
+
+    // The overhead of frequently uploading large dynamic images may outweigh
+    // the benefit of linear tiling, so use a linear image in those cases.
+    VkDeviceSize threshold = m_device->GetOptions()->maxDynamicImageBufferSize;
+    VkDeviceSize size = util::computeImageDataSize(pImageInfo->format, pImageInfo->extent);
+
+    if (size > threshold)
+      return D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT;
+
+    // Dynamic images that can be sampled by a shader should generally go
+    // through a buffer to allow optimal tiling and to avoid running into
+    // bugs where games ignore the pitch when mapping the image.
+    return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
   }
   
   

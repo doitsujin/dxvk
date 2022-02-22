@@ -95,6 +95,9 @@ namespace dxvk {
     /// Limit discardable resource size
     VkDeviceSize maxImplicitDiscardSize;
 
+    /// Limit size of buffer-mapped images
+    VkDeviceSize maxDynamicImageBufferSize;
+
     /// Defer surface creation until first present call. This
     /// fixes issues with games that create multiple swap chains
     /// for a single window that may interfere with each other.
