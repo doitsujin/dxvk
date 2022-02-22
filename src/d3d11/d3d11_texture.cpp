@@ -203,11 +203,8 @@ namespace dxvk {
     // in case it is going to be mapped directly.
     VkMemoryPropertyFlags memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     
-    if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
-      memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-                       | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-    }
+    if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT)
+      memoryProperties = GetMemoryFlags();
     
     if (vkImage == VK_NULL_HANDLE)
       m_image = m_device->GetDXVKDevice()->createImage(imageInfo, memoryProperties);
@@ -531,6 +528,19 @@ namespace dxvk {
   }
 
   
+  VkMemoryPropertyFlags D3D11CommonTexture::GetMemoryFlags() const {
+    VkMemoryPropertyFlags memoryFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                                      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    if ((m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ) || m_device->GetOptions()->apitraceMode)
+      memoryFlags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+    else if (m_desc.Usage == D3D11_USAGE_DEFAULT || m_desc.BindFlags)
+      memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    return memoryFlags;
+  }
+
+
   D3D11_COMMON_TEXTURE_MAP_MODE D3D11CommonTexture::DetermineMapMode(
     const DxvkImageCreateInfo*  pImageInfo) const {
     // Don't map an image unless the application requests it
