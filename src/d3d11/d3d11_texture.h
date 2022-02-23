@@ -78,7 +78,8 @@ namespace dxvk {
       const D3D11_COMMON_TEXTURE_DESC*  pDesc,
             D3D11_RESOURCE_DIMENSION    Dimension,
             DXGI_USAGE                  DxgiUsage,
-            VkImage                     vkImage);
+            VkImage                     vkImage,
+            HANDLE                      hSharedHandle);
     
     ~D3D11CommonTexture();
     
@@ -418,13 +419,14 @@ namespace dxvk {
     
     D3D11_COMMON_TEXTURE_MAP_MODE DetermineMapMode(
       const DxvkImageCreateInfo*  pImageInfo) const;
+
+    void ExportImageInfo();
     
     static VkImageType GetImageTypeFromResourceDim(
             D3D11_RESOURCE_DIMENSION  Dimension);
     
     static VkImageLayout OptimizeLayout(
             VkImageUsageFlags         Usage);
-    
   };
 
 
@@ -599,7 +601,8 @@ namespace dxvk {
     
     D3D11Texture2D(
             D3D11Device*                pDevice,
-      const D3D11_COMMON_TEXTURE_DESC*  pDesc);
+      const D3D11_COMMON_TEXTURE_DESC*  pDesc,
+            HANDLE                      hSharedHandle);
 
     D3D11Texture2D(
             D3D11Device*                pDevice,

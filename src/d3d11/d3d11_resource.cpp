@@ -81,9 +81,17 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D11DXGIResource::GetSharedHandle(
           HANDLE*                 pSharedHandle) {
-    InitReturnPtr(pSharedHandle);
-    Logger::err("D3D11DXGIResource::GetSharedHandle: Stub");
-    return E_NOTIMPL;
+    auto texture = GetCommonTexture(m_resource);
+    if (texture == nullptr || pSharedHandle == nullptr)
+      return E_INVALIDARG;
+
+    HANDLE kmtHandle = texture->GetImage()->sharedHandle();
+
+    if (kmtHandle == INVALID_HANDLE_VALUE)
+      return E_INVALIDARG;
+
+    *pSharedHandle = kmtHandle;
+    return S_OK;
   }
 
 
@@ -132,9 +140,20 @@ namespace dxvk {
           DWORD                   dwAccess,
           LPCWSTR                 lpName,
           HANDLE*                 pHandle) {
-    InitReturnPtr(pHandle);
-    Logger::err("D3D11DXGIResource::CreateSharedHandle: Stub");
-    return E_NOTIMPL;
+    auto texture = GetCommonTexture(m_resource);
+    if (texture == nullptr || pHandle == nullptr)
+      return E_INVALIDARG;
+
+    if (lpName)
+      Logger::warn("Naming shared resources not supported");
+
+    HANDLE handle = texture->GetImage()->sharedHandle();
+
+    if (handle == INVALID_HANDLE_VALUE)
+      return E_INVALIDARG;
+
+    *pHandle = handle;
+    return S_OK;
   }
 
 
