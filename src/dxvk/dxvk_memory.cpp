@@ -283,7 +283,7 @@ namespace dxvk {
     VkMemoryPropertyFlags remFlags = 0;
     
     while (!result && (flags & optFlags)) {
-      remFlags |= optFlags & -optFlags;
+      remFlags |= optFlags & (~optFlags + 1);
       optFlags &= ~remFlags;
 
       result = this->tryAlloc(req, dedAllocPtr, flags & ~remFlags, hints);

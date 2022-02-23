@@ -131,7 +131,7 @@ namespace dxvk::vk {
       // Depth-stencil isn't considered multi-planar
       return std::exchange(mask, VkImageAspectFlags(0));
     } else {
-      VkImageAspectFlags result = mask & -mask;
+      VkImageAspectFlags result = mask & (~mask + 1);
       mask &= ~result;
       return result;
     }
