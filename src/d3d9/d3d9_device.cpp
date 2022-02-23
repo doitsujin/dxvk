@@ -4215,7 +4215,7 @@ namespace dxvk {
       });
     } else {
       const bool alloced = pResource->AllocLockingData(Subresource);
-      mapPtr = pResource->GetLockingData(Subresource);
+      mapPtr = MapTexture(pResource, Subresource);
 
       // We do not need to wait for the resource in the event the
       // calling app promises not to overwrite data that is in use
@@ -4495,7 +4495,7 @@ namespace dxvk {
       VkDeviceSize rowAlignment = 1;
       DxvkBufferSlice copySrcSlice;
       if (pSrcTexture->DoesStagingBufferUploads(SrcSubresource)) {
-        const void* mapPtr = pSrcTexture->GetLockingData(SrcSubresource);
+        const void* mapPtr = MapTexture(pSrcTexture, SrcSubresource);
         VkDeviceSize dirtySize = extentBlockCount.width * extentBlockCount.height * extentBlockCount.depth * formatInfo->elementSize;
         D3D9BufferSlice slice = AllocTempBuffer<false>(dirtySize);
         copySrcSlice = slice.slice;
@@ -7394,6 +7394,58 @@ namespace dxvk {
     // immediately after a flush, we need to use the sequence number
     // of the previously submitted chunk to prevent deadlocks.
     return m_csChunk->empty() ? m_csSeqNum : m_csSeqNum + 1;
+  }
+
+
+  void* D3D9DeviceEx::MapTexture(D3D9CommonTexture* pTexture, UINT Subresource) {
+    // Will only be called inside the device lock
+    void *ptr = pTexture->GetLockingData(Subresource);
+
+#ifdef D3D9_USE_MEM_FILE_FOR_MANAGED
+    if (pTexture->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_MANAGED) {
+      m_mappedTextures.insert(pTexture);
+      pTexture->SetMappingFrame(m_frameCounter);
+    }
+#endif
+
+    return ptr;
+  }
+
+  void D3D9DeviceEx::TouchMappedTexture(D3D9CommonTexture* pTexture) {
+#ifdef D3D9_USE_MEM_FILE_FOR_MANAGED
+    if (pTexture->GetMapMode() != D3D9_COMMON_TEXTURE_MAP_MODE_MANAGED)
+      return;
+
+    D3D9DeviceLock lock = LockDevice();
+    pTexture->SetMappingFrame(m_frameCounter);
+#endif
+  }
+
+  void D3D9DeviceEx::RemoveMappedTexture(D3D9CommonTexture* pTexture) {
+#ifdef D3D9_USE_MEM_FILE_FOR_MANAGED
+    if (pTexture->GetMapMode() != D3D9_COMMON_TEXTURE_MAP_MODE_MANAGED)
+      return;
+
+    D3D9DeviceLock lock = LockDevice();
+    m_mappedTextures.erase(pTexture);
+#endif
+  }
+
+  void D3D9DeviceEx::UnmapTextures() {
+    // Will only be called inside the device lock
+#ifdef D3D9_USE_MEM_FILE_FOR_MANAGED
+    const bool force = m_memoryAllocator.MappedMemory() > 512 << 20;
+    for (auto iter = m_mappedTextures.begin(); iter != m_mappedTextures.end();) {
+      const bool mappingBufferUnused = (m_frameCounter - (*iter)->GetMappingFrame() > 16 || force) && !(*iter)->IsAnySubresourceLocked();
+      if (!mappingBufferUnused) {
+         iter++;
+        continue;
+      }
+
+      (*iter)->UnmapLockingData();
+      iter = m_mappedTextures.erase(iter);
+    }
+#endif
   }
 
 }
