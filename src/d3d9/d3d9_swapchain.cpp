@@ -1038,7 +1038,7 @@ namespace dxvk {
     desc.IsAttachmentOnly   = FALSE;
 
     for (uint32_t i = 0; i < m_backBuffers.size(); i++)
-      m_backBuffers[i] = new D3D9Surface(m_parent, &desc, this);
+      m_backBuffers[i] = new D3D9Surface(m_parent, &desc, this, nullptr);
 
     auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
 
