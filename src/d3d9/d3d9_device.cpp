@@ -427,12 +427,17 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     try {
-      const Com<D3D9Texture2D> texture = new D3D9Texture2D(this, &desc);
-
       void* initialData = nullptr;
 
-      if (Pool == D3DPOOL_SYSTEMMEM && Levels == 1 && pSharedHandle != nullptr)
+      if (Pool == D3DPOOL_SYSTEMMEM && Levels == 1 && pSharedHandle != nullptr) {
         initialData = *(reinterpret_cast<void**>(pSharedHandle));
+        pSharedHandle = nullptr;
+      }
+
+      if (pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT)
+        return D3DERR_INVALIDCALL;
+
+      const Com<D3D9Texture2D> texture = new D3D9Texture2D(this, &desc, pSharedHandle);
 
       m_initializer->InitTexture(texture->GetCommonTexture(), initialData);
       *ppTexture = texture.ref();
@@ -460,6 +465,9 @@ namespace dxvk {
 
     if (unlikely(ppVolumeTexture == nullptr))
       return D3DERR_INVALIDCALL;
+
+    if (pSharedHandle)
+        Logger::err("CreateVolumeTexture: Shared volume textures not supported");
 
     D3D9_COMMON_TEXTURE_DESC desc;
     desc.Width              = Width;
@@ -506,6 +514,9 @@ namespace dxvk {
     if (unlikely(ppCubeTexture == nullptr))
       return D3DERR_INVALIDCALL;
 
+    if (pSharedHandle)
+        Logger::err("CreateCubeTexture: Shared cube textures not supported");
+
     D3D9_COMMON_TEXTURE_DESC desc;
     desc.Width              = EdgeLength;
     desc.Height             = EdgeLength;
@@ -550,6 +561,9 @@ namespace dxvk {
     if (unlikely(ppVertexBuffer == nullptr))
       return D3DERR_INVALIDCALL;
 
+    if (pSharedHandle)
+        Logger::err("CreateVertexBuffer: Shared vertex buffers not supported");
+
     D3D9_BUFFER_DESC desc;
     desc.Format = D3D9Format::VERTEXDATA;
     desc.FVF    = FVF;
@@ -585,6 +599,9 @@ namespace dxvk {
 
     if (unlikely(ppIndexBuffer == nullptr))
       return D3DERR_INVALIDCALL;
+
+    if (pSharedHandle)
+        Logger::err("CreateIndexBuffer: Shared index buffers not supported");
 
     D3D9_BUFFER_DESC desc;
     desc.Format = EnumerateFormat(Format);
@@ -3427,7 +3444,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     try {
-      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, nullptr);
+      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, nullptr, pSharedHandle);
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
       return D3D_OK;
@@ -3470,8 +3487,11 @@ namespace dxvk {
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
 
+    if (pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT)
+      return D3DERR_INVALIDCALL;
+
     try {
-      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, nullptr);
+      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, nullptr, pSharedHandle);
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
       return D3D_OK;
@@ -3517,7 +3537,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     try {
-      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, nullptr);
+      const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, nullptr, pSharedHandle);
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
       return D3D_OK;
@@ -7264,7 +7284,7 @@ namespace dxvk {
       if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
         return D3DERR_NOTAVAILABLE;
 
-      m_autoDepthStencil = new D3D9Surface(this, &desc, nullptr);
+      m_autoDepthStencil = new D3D9Surface(this, &desc, nullptr, nullptr);
       m_initializer->InitTexture(m_autoDepthStencil->GetCommonTexture());
       SetDepthStencilSurface(m_autoDepthStencil.ptr());
     }
