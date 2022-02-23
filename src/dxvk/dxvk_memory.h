@@ -17,8 +17,33 @@ namespace dxvk {
     VkDeviceSize memoryAllocated = 0;
     VkDeviceSize memoryUsed      = 0;
   };
-  
-  
+
+
+  enum class DxvkSharedHandleMode {
+      None,
+      Import,
+      Export,
+  };
+
+  /**
+   * \brief Shared handle info
+   *
+   * The shared resource information for a given resource.
+   */
+  struct DxvkSharedHandleInfo {
+    DxvkSharedHandleMode mode = DxvkSharedHandleMode::None;
+    VkExternalMemoryHandleTypeFlagBits type   = VK_EXTERNAL_MEMORY_HANDLE_TYPE_FLAG_BITS_MAX_ENUM;
+    union {
+#ifdef _WIN32
+      HANDLE                             handle = INVALID_HANDLE_VALUE;
+#else
+      // Placeholder for other handle types, such as FD
+      void *dummy;
+#endif
+    };
+  };
+
+
   /**
    * \brief Device memory object
    * 
