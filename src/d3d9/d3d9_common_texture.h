@@ -328,7 +328,7 @@ namespace dxvk {
 
     void SetNeedsReadback(UINT Subresource, bool value) { m_needsReadback.set(Subresource, value); }
 
-    bool NeedsReachback(UINT Subresource) const { return m_needsReadback.get(Subresource) && m_image != nullptr; }
+    bool NeedsReachback(UINT Subresource) const { return m_needsReadback.get(Subresource); }
 
     void MarkAllNeedReadback() { m_needsReadback.setAll(); }
 

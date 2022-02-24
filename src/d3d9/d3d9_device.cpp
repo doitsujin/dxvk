@@ -849,6 +849,7 @@ namespace dxvk {
         cLevelExtent);
     });
 
+    dstTexInfo->SetNeedsReadback(dst->GetSubresource(), true);
     TrackTextureMappingBufferSequenceNumber(dstTexInfo, dst->GetSubresource());
 
     return D3D_OK;
@@ -4159,7 +4160,7 @@ namespace dxvk {
         std::memset(physSlice.mapPtr, 0, physSlice.length);
       }
       else if (!skipWait) {
-        if (unlikely(needsReadback)) {
+        if (unlikely(needsReadback) && pResource->GetImage() != nullptr) {
           Rc<DxvkImage> resourceImage = pResource->GetImage();
 
           Rc<DxvkImage> mappedImage = resourceImage->info().sampleCount != 1
