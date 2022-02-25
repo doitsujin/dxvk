@@ -1,7 +1,7 @@
 # About this fork:
 
 This fork contains the following changes:
-* GTR2 specifici tweaks for higher framerate.  Might be helpful for other gMotor based/derived DX9 games (but GTR2 is the sole focus of this fork).  Differences vs main repo are marked with GTR2_SPECIFIC symbol.
+* GTR2 specific tweaks for higher framerate.  Might be helpful for other gMotor based/derived DX9 games, but GTR2 is the sole focus of this fork.  Differences vs main repo are marked with GTR2_SPECIFIC symbol.
 * allow DX9->Vulkan OpenVR (Based on Joshua Ashton's work).
 * option to allow forcing SGSSAA-like AA.  It's brute force and I suspect can be done much smarter, by appliying sample shading only to some pipelines, I am not yet sure how - suggestions welcome!
 * option to allow focing 32bit float depth buffer.
