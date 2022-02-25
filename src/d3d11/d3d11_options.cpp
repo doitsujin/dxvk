@@ -30,6 +30,11 @@ namespace dxvk {
       ? VkDeviceSize(maxImplicitDiscardSize) << 10
       : VkDeviceSize(~0ull);
 
+    int32_t maxDynamicImageBufferSize = config.getOption<int32_t>("d3d11.maxDynamicImageBufferSize", -1);
+    this->maxDynamicImageBufferSize = maxDynamicImageBufferSize >= 0
+      ? VkDeviceSize(maxDynamicImageBufferSize) << 10
+      : VkDeviceSize(~0ull);
+
     this->constantBufferRangeCheck = config.getOption<bool>("d3d11.constantBufferRangeCheck", false)
       && DxvkGpuVendor(devInfo.core.properties.vendorID) != DxvkGpuVendor::Amd;
 

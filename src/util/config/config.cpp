@@ -260,6 +260,10 @@ namespace dxvk {
     { R"(\\AoE2DE_s\.exe$)", {{
       { "d3d11.apitraceMode",               "True" },
     }} },
+    /* Total War: Warhammer III                   */
+    { R"(\\Warhammer3\.exe$)", {{
+      { "d3d11.maxDynamicImageBufferSize",  "4096" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */

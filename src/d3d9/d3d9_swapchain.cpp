@@ -469,6 +469,9 @@ namespace dxvk {
         cLevelExtent);
     });
 
+    dstTexInfo->SetNeedsReadback(dst->GetSubresource(), true);
+    m_parent->TrackTextureMappingBufferSequenceNumber(dstTexInfo, dst->GetSubresource());
+
     return D3D_OK;
   }
 
