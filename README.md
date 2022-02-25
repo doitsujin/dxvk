@@ -6,7 +6,7 @@ This fork contains the following changes:
 * option to force SGSSAA-like AA.  It's brute force and I suspect can be done much smarter, by appliying sample shading only to some pipelines, I am not yet sure how - suggestions welcome!
 * option to force 32bit float depth buffer.
 
-I am not submitting my stuff to the main repo because I am not exactly a graphics guru and I doubt anyone needs my hacks there (at least no one expressed interest).  That said, if this is useful to anyone, I would greatly appreciate hints and suggestions, especially on how to minimize GPU idle time in VR and applying sample shading AA smarter.
+I am not submitting my stuff to the main repo because I am not exactly a graphics guru and I doubt anyone needs my hacks there (at least no one expressed interest).  That said, if this is useful to anyone, I would greatly appreciate hints and suggestions, especially on how to minimize GPU idle time in VR and applying sample shading AA smarter.  Also, any ideas for further DX9 gMotor specific tweaks are welcome.
 
 Main branch is: vr-dx9-rel
 
