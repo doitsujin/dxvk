@@ -117,7 +117,7 @@ namespace dxvk {
     { R"(\\NieR Replicant ver\.1\.22474487139\.exe)", {{
       { "dxgi.syncInterval",                "1"    },
       { "dxgi.maxFrameRate",                "60"   },
-      { "d3d11.apitraceMode",               "True" },
+      { "d3d11.cachedDynamicResources",     "vi"   },
     }} },
     /* SteamVR performance test                   */
     { R"(\\vr\.exe$)", {{
@@ -148,13 +148,13 @@ namespace dxvk {
      * game parts                                   */
     { R"(\\Crysis3\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
-      { "d3d11.apitraceMode",               "True" },
+      { "d3d11.cachedDynamicResources",     "a"    },
     }} },
     /* Crysis 3 Remastered                          *
      * Apitrace mode helps massively in cpu bound   *
      * game parts                                   */
     { R"(\\Crysis3Remastered\.exe$)", {{
-      { "d3d11.apitraceMode",               "True" },
+      { "d3d11.cachedDynamicResources",     "a"    },
     }} },
     /* Atelier series - games try to render video *
      * with a D3D9 swap chain over the DXGI swap  *
@@ -202,23 +202,23 @@ namespace dxvk {
     /* Darksiders Warmastered - apparently reads  *
      * from write-only mapped buffers             */
     { R"(\\darksiders1\.exe$)", {{
-      { "d3d11.apitraceMode",               "True" },
+      { "d3d11.cachedDynamicResources",     "a"    },
     }} },
     /* Monster Hunter World                       */
     { R"(\\MonsterHunterWorld\.exe$)", {{
-      { "d3d11.apitraceMode",               "True" },
+      { "d3d11.cachedDynamicResources",     "a"    },
     }} },
     /* Kingdome Come: Deliverance                 */
     { R"(\\KingdomCome\.exe$)", {{
-      { "d3d11.apitraceMode",               "True" },
+      { "d3d11.cachedDynamicResources",     "a"    },
     }} },
     /* Homefront: The Revolution                  */
     { R"(\\Homefront2_Release\.exe$)", {{
-      { "d3d11.apitraceMode",               "True" },
+      { "d3d11.cachedDynamicResources",     "a"    },
     }} },
     /* Sniper Ghost Warrior Contracts             */
     { R"(\\SGWContracts\.exe$)", {{
-      { "d3d11.apitraceMode",               "True" },
+      { "d3d11.cachedDynamicResources",     "a"    },
     }} },
     /* Shadow of the Tomb Raider - invariant      *
      * position breaks character rendering on NV  */
@@ -258,7 +258,7 @@ namespace dxvk {
     }} },
     /* AoE 2 DE - runs poorly for some users      */
     { R"(\\AoE2DE_s\.exe$)", {{
-      { "d3d11.apitraceMode",               "True" },
+      { "d3d11.cachedDynamicResources",     "a"    },
     }} },
     /* Total War: Warhammer III                   */
     { R"(\\Warhammer3\.exe$)", {{

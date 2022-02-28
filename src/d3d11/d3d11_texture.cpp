@@ -532,7 +532,10 @@ namespace dxvk {
     VkMemoryPropertyFlags memoryFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
-    if ((m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ) || m_device->GetOptions()->apitraceMode)
+    bool useCached = (m_device->GetOptions()->cachedDynamicResources == ~0u)
+                  || (m_device->GetOptions()->cachedDynamicResources & m_desc.BindFlags);
+
+    if (m_desc.Usage == D3D11_USAGE_STAGING || useCached)
       memoryFlags |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
     else if (m_desc.Usage == D3D11_USAGE_DEFAULT || m_desc.BindFlags)
       memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -609,7 +612,9 @@ namespace dxvk {
     VkMemoryPropertyFlags memType = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                                   | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
     
-    if (m_desc.Usage == D3D11_USAGE_STAGING || m_device->GetOptions()->apitraceMode)
+    bool useCached = m_device->GetOptions()->cachedDynamicResources == ~0u;
+
+    if (m_desc.Usage == D3D11_USAGE_STAGING || useCached)
       memType |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
     
     MappedBuffer result;

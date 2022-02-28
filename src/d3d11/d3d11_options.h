@@ -9,7 +9,7 @@
 #include "d3d11_include.h"
 
 namespace dxvk {
-  
+
   struct D3D11Options {
     D3D11Options(const Config& config, const Rc<DxvkDevice>& device);
 
@@ -107,9 +107,10 @@ namespace dxvk {
     /// performs the required shader and resolve fixups.
     bool disableMsaa;
 
-    /// Apitrace mode: Maps all buffers in cached memory.
-    /// Enabled automatically if dxgitrace.dll is attached.
-    bool apitraceMode;
+    /// Dynamic resources with the given bind flags will be allocated
+    /// in cached system memory. Enabled automatically when recording
+    /// an api trace.
+    uint32_t cachedDynamicResources;
   };
   
 }
