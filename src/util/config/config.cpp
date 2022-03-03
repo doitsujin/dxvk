@@ -68,6 +68,10 @@ namespace dxvk {
     { R"(\\anno2205\.exe$)", {{
       { "dxvk.enableStateCache",            "False" },
     }} },
+    /* Anno 1800: Poor performance without this   */
+    { R"(\\Anno1800\.exe$)", {{
+      { "d3d11.cachedDynamicResources",     "c"    },
+    }} },
     /* Fifa '19+: Binds typed buffer SRV to shader *
      * that expects raw/structured buffer SRV     */
     { R"(\\FIFA(19|[2-9][0-9])(_demo)?\.exe$)", {{
