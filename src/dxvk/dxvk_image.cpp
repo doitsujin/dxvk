@@ -155,7 +155,7 @@ namespace dxvk {
       case VK_IMAGE_VIEW_TYPE_2D:
       case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
         this->createView(VK_IMAGE_VIEW_TYPE_2D, 1);
-        /* fall through */
+        [[fallthrough]];
 
       case VK_IMAGE_VIEW_TYPE_CUBE:
       case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY: {
