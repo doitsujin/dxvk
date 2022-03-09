@@ -107,6 +107,36 @@ namespace dxvk {
     CreateConstantBuffers();
 
     m_availableMemory = DetermineInitialTextureMemory();
+
+    // Initially set all the dirty flags so we
+    // always end up giving the backend *something* to work with.
+    m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+    m_flags.set(D3D9DeviceFlag::DirtyClipPlanes);
+    m_flags.set(D3D9DeviceFlag::DirtyDepthStencilState);
+    m_flags.set(D3D9DeviceFlag::DirtyBlendState);
+    m_flags.set(D3D9DeviceFlag::DirtyRasterizerState);
+    m_flags.set(D3D9DeviceFlag::DirtyDepthBias);
+    m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
+    m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
+    m_flags.set(D3D9DeviceFlag::DirtyViewportScissor);
+    m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
+
+    m_flags.set(D3D9DeviceFlag::DirtyFogState);
+    m_flags.set(D3D9DeviceFlag::DirtyFogColor);
+    m_flags.set(D3D9DeviceFlag::DirtyFogDensity);
+    m_flags.set(D3D9DeviceFlag::DirtyFogScale);
+    m_flags.set(D3D9DeviceFlag::DirtyFogEnd);
+
+    m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
+    m_flags.set(D3D9DeviceFlag::DirtyFFVertexBlend);
+    m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
+    m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+    m_flags.set(D3D9DeviceFlag::DirtyFFViewport);
+    m_flags.set(D3D9DeviceFlag::DirtyFFPixelData);
+    m_flags.set(D3D9DeviceFlag::DirtyProgVertexShader);
+    m_flags.set(D3D9DeviceFlag::DirtySharedPixelShaderData);
+    m_flags.set(D3D9DeviceFlag::DirtyDepthBounds);
+    m_flags.set(D3D9DeviceFlag::DirtyPointScale);
   }
 
 
