@@ -48,6 +48,10 @@ if not dxvk_is_msvc
   endif
 endif
 
+if dxvk_compiler.has_argument('-Wimplicit-fallthrough')
+  add_project_arguments('-Wimplicit-fallthrough', language: 'cpp')
+endif
+
 dxvk_include_path = include_directories('./include')
 
 if (cpu_family == 'x86_64')
