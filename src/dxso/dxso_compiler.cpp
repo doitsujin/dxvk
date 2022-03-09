@@ -1225,6 +1225,12 @@ namespace dxvk {
                 spv::StorageClassOutput, spv::BuiltInPointSize);
             }
             return m_vs.oPSize;
+
+          default: {
+            DxsoRegisterPointer nullPointer;
+            nullPointer.id = 0;
+            return nullPointer;
+          }
         }
 
       case DxsoRegisterType::ColorOut: {
