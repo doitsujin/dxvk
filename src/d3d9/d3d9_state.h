@@ -27,7 +27,7 @@ namespace dxvk {
   }
   
   struct D3D9ClipPlane {
-    float coeff[4];
+    float coeff[4] = {};
   };
 
   struct D3D9RenderStateInfo {
@@ -189,40 +189,40 @@ namespace dxvk {
     Com<D3D9VertexDecl,  false>                       vertexDecl;
     Com<D3D9IndexBuffer, false>                       indices;
 
-    std::array<DWORD, RenderStateCount>              renderStates = { 0 };
+    std::array<DWORD, RenderStateCount>              renderStates = {};
 
     std::array<
       std::array<DWORD, SamplerStateCount>,
-      SamplerCount>                                  samplerStates;
+      SamplerCount>                                  samplerStates = {};
 
-    std::array<D3D9VBO, caps::MaxStreams>            vertexBuffers;
+    std::array<D3D9VBO, caps::MaxStreams>            vertexBuffers = {};
 
     std::array<
       IDirect3DBaseTexture9*,
-      SamplerCount>                                  textures;
+      SamplerCount>                                  textures = {};
 
     Com<D3D9VertexShader, false>                     vertexShader;
     Com<D3D9PixelShader,  false>                     pixelShader;
 
-    D3DVIEWPORT9                                     viewport;
-    RECT                                             scissorRect;
+    D3DVIEWPORT9                                     viewport = {};
+    RECT                                             scissorRect = {};
 
     std::array<
       D3D9ClipPlane,
-      caps::MaxClipPlanes>                           clipPlanes;
+      caps::MaxClipPlanes>                           clipPlanes = {};
 
     std::array<
       std::array<DWORD, TextureStageStateCount>,
-      caps::TextureStageCount>                       textureStages;
+      caps::TextureStageCount>                       textureStages = {};
 
     D3D9ShaderConstantsVSSoftware                    vsConsts;
     D3D9ShaderConstantsPS                            psConsts;
 
-    std::array<UINT, caps::MaxStreams>               streamFreq;
+    std::array<UINT, caps::MaxStreams>               streamFreq = {};
 
-    std::array<Matrix4, caps::MaxTransforms>         transforms;
+    std::array<Matrix4, caps::MaxTransforms>         transforms = {};
 
-    D3DMATERIAL9                                     material = D3DMATERIAL9();
+    D3DMATERIAL9                                     material = {};
 
     std::vector<std::optional<D3DLIGHT9>>            lights;
     std::array<DWORD, caps::MaxEnabledLights>        enabledLightIndices;
