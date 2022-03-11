@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../dxvk/dxvk_device.h"
+#include "../dxvk/dxvk_cs.h"
 
 #include "d3d9_device_child.h"
 #include "d3d9_format.h"
@@ -194,6 +195,10 @@ namespace dxvk {
 
     void PreLoad();
 
+    bool HasSequenceNumber() const {
+      return m_mapMode != D3D9_COMMON_BUFFER_MAP_MODE_DIRECT;
+    }
+
      /**
      * \brief Tracks sequence number
      *
@@ -213,7 +218,8 @@ namespace dxvk {
      * \returns Sequence number for the given subresource
      */
     uint64_t GetMappingBufferSequenceNumber() const {
-      return m_seq;
+      return HasSequenceNumber() ? m_seq
+        : DxvkCsThread::SynchronizeAll;
     }
 
   private:
