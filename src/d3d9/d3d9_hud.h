@@ -6,7 +6,7 @@
 namespace dxvk::hud {
 
   /**
-   * \brief HUD item to display DXVK version
+   * \brief HUD item to display sampler count
    */
   class HudSamplerCount : public HudItem {
 
@@ -27,5 +27,28 @@ namespace dxvk::hud {
     std::string m_samplerCount;
 
   };
+
+    /**
+     * \brief HUD item to display managed texture memory
+     */
+    class HudManagedMemory : public HudItem {
+
+    public:
+
+        HudManagedMemory(D3D9DeviceEx* device);
+
+        void update(dxvk::high_resolution_clock::time_point time);
+
+        HudPos render(
+                HudRenderer&      renderer,
+                HudPos            position);
+
+    private:
+
+        D3D9DeviceEx* m_device;
+
+        std::string m_memoryText;
+
+    };
 
 }
