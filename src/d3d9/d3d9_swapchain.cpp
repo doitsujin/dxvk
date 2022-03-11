@@ -1081,6 +1081,10 @@ namespace dxvk {
     if (m_hud != nullptr) {
       m_hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
       m_hud->addItem<hud::HudSamplerCount>("samplers", -1, m_parent);
+
+#ifdef D3D9_ALLOW_UNMAPPING
+      m_hud->addItem<hud::HudTextureMemory>("memory", -1, m_parent);
+#endif
     }
   }
 
