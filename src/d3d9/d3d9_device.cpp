@@ -4485,8 +4485,6 @@ namespace dxvk {
           slice.mapPtr, srcData, extentBlockCount, formatInfo->elementSize,
           pitch, pitch * srcTexLevelExtentBlockCount.height);
       } else {
-        TrackTextureMappingBufferSequenceNumber(pSrcTexture, SrcSubresource);
-
         copySrcSlice = DxvkBufferSlice(pSrcTexture->GetBuffer(SrcSubresource), copySrcOffset, srcSlice.length);
         rowAlignment = pitch; // row alignment can act as the pitch parameter
       }
@@ -4505,6 +4503,8 @@ namespace dxvk {
           cSrcSlice.buffer(), cSrcSlice.offset(),
           cRowAlignment, 0);
       });
+
+      TrackTextureMappingBufferSequenceNumber(pSrcTexture, SrcSubresource);
     }
     else {
       const DxvkFormatInfo* formatInfo = imageFormatInfo(pDestTexture->GetFormatMapping().FormatColor);
