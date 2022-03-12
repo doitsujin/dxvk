@@ -140,6 +140,11 @@ namespace dxvk {
     if (isGpuWritable)
       hints.set(DxvkMemoryFlag::GpuWritable);
 
+    if (m_shared) {
+      dedicatedRequirements.prefersDedicatedAllocation  = VK_TRUE;
+      dedicatedRequirements.requiresDedicatedAllocation = VK_TRUE;
+    }
+
     // Ask driver whether we should be using a dedicated allocation
     m_image.memory = memAlloc.alloc(&memReq.memoryRequirements,
       dedicatedRequirements, dedMemoryAllocInfo, memFlags, hints);
