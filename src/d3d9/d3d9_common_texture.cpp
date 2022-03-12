@@ -494,10 +494,12 @@ namespace dxvk {
     switch (m_desc.Format) {
       case D3D9Format::A2B10G10R10: dxgiFormat = DXGI_FORMAT_R10G10B10A2_UNORM; break;
       case D3D9Format::A16B16G16R16F: dxgiFormat = DXGI_FORMAT_R16G16B16A16_FLOAT; break;
-      case D3D9Format::A8B8G8R8: dxgiFormat = DXGI_FORMAT_B8G8R8A8_UNORM; break;
+      case D3D9Format::A8B8G8R8: dxgiFormat = DXGI_FORMAT_R8G8B8A8_UNORM; break;
+      case D3D9Format::X8B8G8R8: dxgiFormat = DXGI_FORMAT_R8G8B8A8_UNORM; break; /* No RGBX in DXGI */
+      case D3D9Format::A8R8G8B8: dxgiFormat = DXGI_FORMAT_B8G8R8A8_UNORM; break;
       case D3D9Format::X8R8G8B8: dxgiFormat = DXGI_FORMAT_B8G8R8X8_UNORM; break;
       default:
-        Logger::warn(str::format("D3D9: Unsupported format for shared textures", m_desc.Format));
+        Logger::warn(str::format("D3D9: Unsupported format for shared textures: ", m_desc.Format));
         return;
     }
 
