@@ -241,13 +241,14 @@ namespace dxvk {
     imageInfo.tiling          = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.layout          = VK_IMAGE_LAYOUT_GENERAL;
     imageInfo.shared          = m_desc.IsBackBuffer;
+
     if (pSharedHandle) {
       imageInfo.sharing.type = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT;
-      if (*pSharedHandle) {
-        imageInfo.shared = true;
-        imageInfo.sharing.mode = *pSharedHandle == INVALID_HANDLE_VALUE ? DxvkSharedHandleMode::Export : DxvkSharedHandleMode::Import;
-        imageInfo.sharing.handle = *pSharedHandle;
-      }
+      imageInfo.sharing.mode = (*pSharedHandle == INVALID_HANDLE_VALUE || *pSharedHandle == nullptr)
+        ? DxvkSharedHandleMode::Export
+        : DxvkSharedHandleMode::Import;
+      imageInfo.sharing.type = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT;
+      imageInfo.sharing.handle = *pSharedHandle;
       // TODO: validate metadata?
     }
 
