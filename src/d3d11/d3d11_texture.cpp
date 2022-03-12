@@ -69,8 +69,15 @@ namespace dxvk {
 
       if (formatBase.Format != formatInfo.Format
        && formatBase.Format != VK_FORMAT_UNDEFINED) {
-        formatFamily.Add(formatBase.Format);
         formatFamily.Add(formatInfo.Format);
+        formatFamily.Add(formatBase.Format);
+      }
+
+      if (IsR32UavCompatibleFormat(m_desc.Format)) {
+        formatFamily.Add(formatInfo.Format);
+        formatFamily.Add(VK_FORMAT_R32_SFLOAT);
+        formatFamily.Add(VK_FORMAT_R32_UINT);
+        formatFamily.Add(VK_FORMAT_R32_SINT);
       }
     }
 
@@ -79,19 +86,14 @@ namespace dxvk {
     // be reinterpreted in Vulkan, so we'll ignore those.
     auto formatProperties = imageFormatInfo(formatInfo.Format);
     
-    bool isTypeless = formatInfo.Aspect == 0;
     bool isMutable = formatFamily.FormatCount > 1;
     bool isMultiPlane = (formatProperties->aspectMask & VK_IMAGE_ASPECT_PLANE_0_BIT) != 0;
     bool isColorFormat = (formatProperties->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) != 0;
 
     if (isMutable && (isColorFormat || isMultiPlane)) {
       imageInfo.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
-
-      // Typeless UAV images have relaxed reinterpretation rules
-      if (!isTypeless || !(m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS)) {
-        imageInfo.viewFormatCount = formatFamily.FormatCount;
-        imageInfo.viewFormats     = formatFamily.Formats;
-      }
+      imageInfo.viewFormatCount = formatFamily.FormatCount;
+      imageInfo.viewFormats     = formatFamily.Formats;
     }
 
     // Adjust image flags based on the corresponding D3D flags
@@ -644,6 +646,17 @@ namespace dxvk {
   }
   
   
+  BOOL D3D11CommonTexture::IsR32UavCompatibleFormat(
+          DXGI_FORMAT           Format) {
+    return Format == DXGI_FORMAT_R8G8B8A8_TYPELESS
+        || Format == DXGI_FORMAT_B8G8R8A8_TYPELESS
+        || Format == DXGI_FORMAT_B8G8R8X8_TYPELESS
+        || Format == DXGI_FORMAT_R10G10B10A2_TYPELESS
+        || Format == DXGI_FORMAT_R16G16_TYPELESS
+        || Format == DXGI_FORMAT_R32_TYPELESS;
+  }
+
+
   D3D11CommonTexture::MappedBuffer D3D11CommonTexture::CreateMappedBuffer(UINT MipLevel) const {
     const DxvkFormatInfo* formatInfo = imageFormatInfo(
       m_device->LookupPackedFormat(m_desc.Format, GetFormatMode()).Format);

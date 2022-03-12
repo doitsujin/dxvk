@@ -422,6 +422,9 @@ namespace dxvk {
 
     void ExportImageInfo();
     
+    static BOOL IsR32UavCompatibleFormat(
+            DXGI_FORMAT           Format);
+
     static VkImageType GetImageTypeFromResourceDim(
             D3D11_RESOURCE_DIMENSION  Dimension);
     
