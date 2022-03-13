@@ -249,6 +249,7 @@ namespace dxvk {
         : DxvkSharedHandleMode::Import;
       imageInfo.sharing.type = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT;
       imageInfo.sharing.handle = *pSharedHandle;
+      imageInfo.shared = true;
       // TODO: validate metadata?
     }
 
