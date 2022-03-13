@@ -167,6 +167,10 @@ namespace dxvk {
     { R"(\\Atelier_(Ayesha|Escha_and_Logy|Shallie)(_EN)?\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
+    /* Atelier Firis                              */
+    { R"(\\A18\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",        "True" },
+    }} },
     /* Atelier Rorona/Totori/Meruru               */
     { R"(\\A(11R|12V|13V)_x64_Release(_en)?\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
