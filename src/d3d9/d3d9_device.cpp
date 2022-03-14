@@ -4709,6 +4709,7 @@ namespace dxvk {
 
     pResource->GPUReadingRange().Conjoin(pResource->DirtyRange());
     pResource->DirtyRange().Clear();
+    TrackBufferMappingBufferSequenceNumber(pResource);
 
 	  return D3D_OK;
   }
