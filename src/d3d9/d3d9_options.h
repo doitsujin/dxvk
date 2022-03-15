@@ -36,9 +36,6 @@ namespace dxvk {
     /// Set the max shader model the device can support in the caps.
     int32_t shaderModel;
 
-    /// Whether or not managed resources should stay in memory until unlock, or until manually evicted.
-    bool evictManagedOnUnlock;
-
     /// Whether or not to set the process as DPI aware in Windows when the API interface is created.
     bool dpiAware;
 
