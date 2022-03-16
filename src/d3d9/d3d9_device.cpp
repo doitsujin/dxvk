@@ -4495,11 +4495,11 @@ namespace dxvk {
       VkDeviceSize rowAlignment = 1;
       DxvkBufferSlice copySrcSlice;
       if (pSrcTexture->DoesStagingBufferUploads(SrcSubresource)) {
-        void* mapPtr = pSrcTexture->GetLockingData(SrcSubresource);
+        const void* mapPtr = pSrcTexture->GetLockingData(SrcSubresource);
         VkDeviceSize dirtySize = extentBlockCount.width * extentBlockCount.height * extentBlockCount.depth * formatInfo->elementSize;
         D3D9BufferSlice slice = AllocTempBuffer<false>(dirtySize);
         copySrcSlice = slice.slice;
-        void* srcData = reinterpret_cast<uint8_t*>(mapPtr) + copySrcOffset;
+        const void* srcData = reinterpret_cast<const uint8_t*>(mapPtr) + copySrcOffset;
         util::packImageData(
           slice.mapPtr, srcData, extentBlockCount, formatInfo->elementSize,
           pitch, pitch * srcTexLevelExtentBlockCount.height);
