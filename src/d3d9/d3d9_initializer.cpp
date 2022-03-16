@@ -40,13 +40,15 @@ namespace dxvk {
 
   void D3D9Initializer::InitTexture(
           D3D9CommonTexture* pTexture,
-          void*              pInitialData) {    
+          void*              pInitialData) {
     if (pTexture->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_NONE)
       return;
 
-    (pTexture->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED)
-      ? InitDeviceLocalTexture(pTexture)
-      : InitHostVisibleTexture(pTexture, pInitialData);
+    if (pTexture->GetImage() != nullptr)
+      InitDeviceLocalTexture(pTexture);
+
+    if (pTexture->Desc()->Pool != D3DPOOL_DEFAULT)
+      InitHostVisibleTexture(pTexture, pInitialData);
   }
 
 
@@ -115,7 +117,8 @@ namespace dxvk {
     for (uint32_t a = 0; a < desc->ArraySize; a++) {
       for (uint32_t m = 0; m < desc->MipLevels; m++) {
         uint32_t subresource = pTexture->CalcSubresource(a, m);
-        DxvkBufferSliceHandle mapSlice  = pTexture->GetBuffer(subresource)->getSliceHandle();
+        void* mapPtr = pTexture->GetData(subresource);
+        uint32_t length = pTexture->GetMipSize(subresource);
 
         if (pInitialData != nullptr) {
           VkExtent3D mipExtent = pTexture->GetExtentMip(m);
@@ -125,7 +128,7 @@ namespace dxvk {
           uint32_t alignedPitch = align(pitch, 4);
 
           util::packImageData(
-            mapSlice.mapPtr,
+            mapPtr,
             pInitialData,
             pitch,
             pitch * blockCount.height,
@@ -138,11 +141,13 @@ namespace dxvk {
             VK_IMAGE_ASPECT_COLOR_BIT);
         } else {
           std::memset(
-            mapSlice.mapPtr, 0,
-            mapSlice.length);
+            mapPtr, 0,
+            length);
         }
       }
     }
+    if (pTexture->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE)
+      pTexture->UnmapData();
   }
 
 
