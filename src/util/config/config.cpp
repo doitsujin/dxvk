@@ -306,10 +306,12 @@ namespace dxvk {
     { R"(\\Borderlands(2|PreSequel)\.exe$)", {{
       { "d3d9.lenientClear",                "True" },
       { "d3d9.supportDFFormats",            "False" },
+      { "d3d9.unmapDelay",                  "4" },
     }} },
     /* Borderlands                                */
     { R"(\\Borderlands\.exe$)", {{
       { "d3d9.lenientClear",                "True" },
+      { "d3d9.unmapDelay",                  "4" },
     }} },
     /* Gothic 3                                   */
     { R"(\\Gothic(3|3Final| III Forsaken Gods)\.exe$)", {{
