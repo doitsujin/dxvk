@@ -40,7 +40,8 @@ namespace dxvk {
     m_shadow         = DetermineShadowState();
     m_supportsFetch4 = DetermineFetch4Compatibility();
 
-    if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED) {
+    const bool createImage = m_desc.Pool != D3DPOOL_SYSTEMMEM && m_desc.Pool != D3DPOOL_SCRATCH && m_desc.Format != D3D9Format::NULL_FORMAT;
+    if (createImage) {
       bool plainSurface = m_type == D3DRTYPE_SURFACE &&
                           !(m_desc.Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL));
 
@@ -73,7 +74,9 @@ namespace dxvk {
       }
     }
 
-    if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM)
+    if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE)
+      AllocData();
+    else if (m_mapMode != D3D9_COMMON_TEXTURE_MAP_MODE_NONE && m_desc.Pool != D3DPOOL_DEFAULT)
       CreateBuffers();
 
     m_exposedMipLevels = m_desc.MipLevels;
@@ -165,11 +168,16 @@ namespace dxvk {
     return D3D_OK;
   }
 
+  void* D3D9CommonTexture::GetData(UINT Subresource) {
+    if (unlikely(m_mappedSlices[Subresource].mapPtr != nullptr || m_mapMode != D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE))
+      return m_mappedSlices[Subresource].mapPtr;
 
-  bool D3D9CommonTexture::CreateBufferSubresource(UINT Subresource) {
-    if (m_buffers[Subresource] != nullptr)
-      return false;
+    D3D9Memory& memory = m_data[Subresource];
+    memory.Map();
+    return memory.Ptr();
+  }
 
+  void D3D9CommonTexture::CreateBufferSubresource(UINT Subresource) {
     DxvkBufferCreateInfo info;
     info.size   = GetMipSize(Subresource);
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
@@ -190,8 +198,6 @@ namespace dxvk {
 
     m_buffers[Subresource] = m_device->GetDXVKDevice()->createBuffer(info, memType);
     m_mappedSlices[Subresource] = m_buffers[Subresource]->getSliceHandle();
-
-    return true;
   }
 
 
@@ -477,6 +483,20 @@ namespace dxvk {
     return VK_IMAGE_LAYOUT_GENERAL;
   }
 
+  D3D9_COMMON_TEXTURE_MAP_MODE D3D9CommonTexture::DetermineMapMode() const {
+    if (m_desc.Format == D3D9Format::NULL_FORMAT)
+      return D3D9_COMMON_TEXTURE_MAP_MODE_NONE;
+
+#ifdef D3D9_ALLOW_UNMAPPING
+    if (m_desc.Pool != D3DPOOL_DEFAULT)
+      return D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE;
+#endif
+
+    if (m_desc.Pool == D3DPOOL_SYSTEMMEM || m_desc.Pool == D3DPOOL_SCRATCH)
+      return D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM;
+
+    return D3D9_COMMON_TEXTURE_MAP_MODE_BACKED;
+  }
 
   void D3D9CommonTexture::ExportImageInfo() {
     /* From MSDN:
@@ -606,5 +626,30 @@ namespace dxvk {
       m_sampleView.Srgb = CreateView(AllLayers, Lod, VK_IMAGE_USAGE_SAMPLED_BIT, true);
   }
 
+  void D3D9CommonTexture::AllocData() {
+    // D3D9Initializer will handle clearing the data
+    const uint32_t count = CountSubresources();
+    for (uint32_t i = 0; i < count; i++) {
+      m_data[i] = m_device->GetAllocator()->Alloc(GetMipSize(i));
+    }
+  }
+
+  const Rc<DxvkBuffer>&  D3D9CommonTexture::GetBuffer(UINT Subresource, bool Initialize) {
+    if (unlikely(m_buffers[Subresource] == nullptr)) {
+      CreateBufferSubresource(Subresource);
+
+      if (Initialize) {
+        if (m_data[Subresource]) {
+          m_data[Subresource].Map();
+          memcpy(m_mappedSlices[Subresource].mapPtr, m_data[Subresource].Ptr(), GetMipSize(Subresource));
+        } else {
+          memset(m_mappedSlices[Subresource].mapPtr, 0, GetMipSize(Subresource));
+        }
+      }
+      m_data[Subresource] = {};
+    }
+
+    return m_buffers[Subresource];
+  }
 
 }
