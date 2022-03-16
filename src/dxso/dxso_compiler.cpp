@@ -1523,12 +1523,16 @@ namespace dxvk {
   DxsoRegisterValue DxsoCompiler::emitCross(
           DxsoRegisterValue       a,
           DxsoRegisterValue       b) {
+    uint32_t typeId = getVectorTypeId(a.type);
+
+    if (m_moduleInfo.options.d3d9FloatEmulation != D3D9FloatEmulation::Strict)
+      return {a.type, m_module.opCross(typeId, a.id, b.id)};
+
     const std::array<uint32_t, 4> shiftIndices = { 1, 2, 0, 1 };
 
     DxsoRegisterValue result;
     result.type = { DxsoScalarType::Float32, 3 };
 
-    uint32_t typeId = getVectorTypeId(result.type);
     std::array<DxsoRegisterValue, 2> products;
 
     for (uint32_t i = 0; i < 2; i++) {
