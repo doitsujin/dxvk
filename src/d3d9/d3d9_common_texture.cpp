@@ -40,7 +40,7 @@ namespace dxvk {
     m_shadow         = DetermineShadowState();
     m_supportsFetch4 = DetermineFetch4Compatibility();
 
-    if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED) {
+    if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED || m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE) {
       bool plainSurface = m_type == D3DRTYPE_SURFACE &&
                           !(m_desc.Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL));
 
@@ -165,6 +165,28 @@ namespace dxvk {
     return D3D_OK;
   }
 
+  bool D3D9CommonTexture::AllocLockingData(UINT Subresource) {
+    if (m_mapMode != D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE) {
+      return CreateBufferSubresource(Subresource);
+    }
+
+    D3D9Memory& memory = m_lockingData[Subresource];
+    if (likely(memory))
+      return false;
+
+    memory = m_device->GetAllocator()->Alloc(GetMipSize(Subresource));
+    memory.Map();
+    return true;
+  }
+
+  void* D3D9CommonTexture::GetLockingData(UINT Subresource) {
+    if (m_mapMode != D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE)
+      return m_mappedSlices[Subresource].mapPtr;
+
+    D3D9Memory& memory = m_lockingData[Subresource];
+    memory.Map();
+    return memory.Ptr();
+  }
 
   bool D3D9CommonTexture::CreateBufferSubresource(UINT Subresource) {
     if (m_buffers[Subresource] != nullptr)
