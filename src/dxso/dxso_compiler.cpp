@@ -1500,6 +1500,25 @@ namespace dxvk {
     return dot;
   }
 
+  DxsoRegisterValue DxsoCompiler::emitMix(
+            DxsoRegisterValue       x,
+            DxsoRegisterValue       y,
+            DxsoRegisterValue       a) {
+    uint32_t typeId = getVectorTypeId(x.type);
+
+    if (m_moduleInfo.options.d3d9FloatEmulation != D3D9FloatEmulation::Strict)
+      return {x.type, m_module.opFMix(typeId, x.id, y.id, a.id)};
+
+    uint32_t oneId = m_module.constfReplicant(1.0f, a.type.ccount);
+
+    DxsoRegisterValue revA;
+    revA.type = a.type;
+    revA.id   = m_module.opFSub(typeId, oneId, a.id);
+
+    DxsoRegisterValue xRevA = emitMul(x, revA);
+    return emitFma(a, y, xRevA);
+  }
+
 
   DxsoRegisterValue DxsoCompiler::emitCross(
           DxsoRegisterValue       a,
@@ -2226,10 +2245,10 @@ namespace dxvk {
         }
         break;
       case DxsoOpcode::Lrp:
-        result.id = m_module.opFMix(typeId,
-          emitRegisterLoad(src[2], mask).id,
-          emitRegisterLoad(src[1], mask).id,
-          emitRegisterLoad(src[0], mask).id);
+        result.id = emitMix(
+          emitRegisterLoad(src[2], mask),
+          emitRegisterLoad(src[1], mask),
+          emitRegisterLoad(src[0], mask)).id;
         break;
       case DxsoOpcode::Frc:
         result.id = m_module.opFract(typeId,
