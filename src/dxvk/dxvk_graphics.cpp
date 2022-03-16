@@ -213,11 +213,13 @@ namespace dxvk {
           omBlendAttachments[i].colorWriteMask = util::remapComponentMask(
             state.omBlend[i].colorWriteMask(), state.omSwizzle[i].mapping());
         }
-        
+
         omBlendAttachments[i].colorWriteMask &= formatInfo->componentMask;
 
-        if (omBlendAttachments[i].colorWriteMask)
-          omBlendAttachments[i].colorWriteMask |= ~formatInfo->componentMask;
+        if (omBlendAttachments[i].colorWriteMask == formatInfo->componentMask) {
+          omBlendAttachments[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                                               | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        }
       }
     }
 
