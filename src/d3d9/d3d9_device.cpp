@@ -7434,9 +7434,12 @@ namespace dxvk {
   void D3D9DeviceEx::UnmapTextures() {
     // Will only be called inside the device lock
 #ifdef D3D9_USE_MEM_FILE_FOR_MANAGED
+    if (m_d3d9Options.unmapDelay == 0)
+      return;
+
     const bool force = m_memoryAllocator.MappedMemory() > 512 << 20;
     for (auto iter = m_mappedTextures.begin(); iter != m_mappedTextures.end();) {
-      const bool mappingBufferUnused = (m_frameCounter - (*iter)->GetMappingFrame() > 16 || force) && !(*iter)->IsAnySubresourceLocked();
+      const bool mappingBufferUnused = (m_frameCounter - (*iter)->GetMappingFrame() > uint32_t(m_d3d9Options.unmapDelay) || force) && !(*iter)->IsAnySubresourceLocked();
       if (!mappingBufferUnused) {
          iter++;
         continue;

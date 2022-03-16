@@ -501,6 +501,21 @@ namespace dxvk {
     return VK_IMAGE_LAYOUT_GENERAL;
   }
 
+  D3D9_COMMON_TEXTURE_MAP_MODE D3D9CommonTexture::DetermineMapMode() const {
+    if (m_desc.Format == D3D9Format::NULL_FORMAT)
+    return D3D9_COMMON_TEXTURE_MAP_MODE_NONE;
+
+    if (m_desc.Pool == D3DPOOL_SYSTEMMEM || m_desc.Pool == D3DPOOL_SCRATCH)
+    return D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM;
+
+#ifdef D3D9_ALLOW_UNMAPPING
+    if (IsManaged() && m_device->GetOptions()->unmapDelay != 0)
+        return D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE;
+#endif
+
+    return D3D9_COMMON_TEXTURE_MAP_MODE_BACKED;
+}
+
 
   void D3D9CommonTexture::ExportImageInfo() {
     /* From MSDN:

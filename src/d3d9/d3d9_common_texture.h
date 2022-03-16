@@ -570,20 +570,7 @@ namespace dxvk {
             VkFormat              Format,
             VkImageTiling         Tiling) const;
 
-    D3D9_COMMON_TEXTURE_MAP_MODE DetermineMapMode() const {
-      if (m_desc.Format == D3D9Format::NULL_FORMAT)
-        return D3D9_COMMON_TEXTURE_MAP_MODE_NONE;
-
-      if (m_desc.Pool == D3DPOOL_SYSTEMMEM || m_desc.Pool == D3DPOOL_SCRATCH)
-        return D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM;
-
-#ifdef D3D9_ALLOW_UNMAPPING
-      if (IsManaged())
-        return D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE;
-#endif
-
-      return D3D9_COMMON_TEXTURE_MAP_MODE_BACKED;
-    }
+    D3D9_COMMON_TEXTURE_MAP_MODE DetermineMapMode() const;
 
     VkImageLayout OptimizeLayout(
             VkImageUsageFlags         Usage) const;
