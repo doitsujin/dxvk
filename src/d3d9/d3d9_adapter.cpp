@@ -126,6 +126,9 @@ namespace dxvk {
 
     const bool srgb = (Usage & (D3DUSAGE_QUERY_SRGBREAD | D3DUSAGE_QUERY_SRGBWRITE)) != 0;
 
+    if (surface && CheckFormat == D3D9Format::D32)
+      return D3DERR_NOTAVAILABLE;
+
     if (CheckFormat == D3D9Format::INST)
       return D3D_OK;
 
