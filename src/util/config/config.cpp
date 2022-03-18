@@ -244,6 +244,11 @@ namespace dxvk {
     { R"(\\DIRT5\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
+    /* Stranger of Paradise: Final Fantasy Origin *
+     * crashes unless a NVIDIA GPU is reported    */
+    { R"(\\SOPFFO\.exe$)", {{
+      { "dxgi.customVendorId",              "10de" },
+    }} },
     /* Crazy Machines 3 - crashes on long device  *
      * descriptions                               */
     { R"(\\cm3\.exe$)", {{
