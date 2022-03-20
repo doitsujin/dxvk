@@ -1,14 +1,11 @@
 #include "dxvk_device_filter.h"
 
-std::string convertUUID(const uint8_t* uuid) {
-  std::string uuidStr{VK_UUID_SIZE};
-
-  for(unsigned int i = 0; i < VK_UUID_SIZE; i++)
-  {
-    uuidStr[i] = uuid[i];
+std::string convertUUID(const uint8_t uuid[VK_UUID_SIZE]) {
+  std::ostringstream stream;
+  for (unsigned int i = 0; i < VK_UUID_SIZE; i++) {
+    stream << static_cast<uint32_t>(uuid[i]);
   }
-
-  return uuidStr;
+  return stream.str();
 }
 
 namespace dxvk {
