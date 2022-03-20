@@ -527,31 +527,7 @@ namespace dxvk {
   void DxgiOutput::FilterModesByDesc(
           std::vector<DXGI_MODE_DESC1>& Modes,
     const DXGI_MODE_DESC1&              TargetMode) {
-    uint32_t minDiffResolution  = 0;
-    uint32_t minDiffRefreshRate = 0;
-
-    if (TargetMode.Width) {
-      minDiffResolution = std::accumulate(
-        Modes.begin(), Modes.end(), std::numeric_limits<uint32_t>::max(),
-        [&TargetMode] (uint32_t current, const DXGI_MODE_DESC1& mode) {
-          uint32_t diff = std::abs(int32_t(TargetMode.Width  - mode.Width))
-                        + std::abs(int32_t(TargetMode.Height - mode.Height));
-          return std::min(current, diff);
-        });
-    }
-
-    if (TargetMode.RefreshRate.Numerator && TargetMode.RefreshRate.Denominator) {
-      minDiffRefreshRate = std::accumulate(
-        Modes.begin(), Modes.end(), std::numeric_limits<uint64_t>::max(),
-        [&TargetMode] (uint64_t current, const DXGI_MODE_DESC1& mode) {
-          uint64_t rate = uint64_t(mode.RefreshRate.Numerator)
-                        * uint64_t(TargetMode.RefreshRate.Denominator)
-                        / uint64_t(mode.RefreshRate.Denominator);
-          uint64_t diff = std::abs(int64_t(rate - uint64_t(TargetMode.RefreshRate.Numerator)));
-          return std::min(current, diff);
-        });
-    }
-
+    // Filter modes based on format properties
     bool testScanlineOrder = false;
     bool testScaling       = false;
     bool testFormat        = false;
@@ -577,21 +553,53 @@ namespace dxvk {
       if (testFormat)
         skipMode |= it->Format != TargetMode.Format;
 
-      if (TargetMode.Width) {
+      it = skipMode ? Modes.erase(it) : ++it;
+    }
+
+    // Filter by closest resolution
+    uint32_t minDiffResolution  = 0;
+
+    if (TargetMode.Width) {
+      minDiffResolution = std::accumulate(
+        Modes.begin(), Modes.end(), std::numeric_limits<uint32_t>::max(),
+        [&TargetMode] (uint32_t current, const DXGI_MODE_DESC1& mode) {
+          uint32_t diff = std::abs(int32_t(TargetMode.Width  - mode.Width))
+                        + std::abs(int32_t(TargetMode.Height - mode.Height));
+          return std::min(current, diff);
+        });
+
+      for (auto it = Modes.begin(); it != Modes.end(); ) {
         uint32_t diff = std::abs(int32_t(TargetMode.Width  - it->Width))
                       + std::abs(int32_t(TargetMode.Height - it->Height));
-        skipMode |= diff != minDiffResolution;
-      }
 
-      if (TargetMode.RefreshRate.Numerator && TargetMode.RefreshRate.Denominator) {
+        bool skipMode = diff != minDiffResolution;
+        it = skipMode ? Modes.erase(it) : ++it;
+      }
+    }
+
+    // Filter by closest refresh rate
+    uint32_t minDiffRefreshRate = 0;
+
+    if (TargetMode.RefreshRate.Numerator && TargetMode.RefreshRate.Denominator) {
+      minDiffRefreshRate = std::accumulate(
+        Modes.begin(), Modes.end(), std::numeric_limits<uint64_t>::max(),
+        [&TargetMode] (uint64_t current, const DXGI_MODE_DESC1& mode) {
+          uint64_t rate = uint64_t(mode.RefreshRate.Numerator)
+                        * uint64_t(TargetMode.RefreshRate.Denominator)
+                        / uint64_t(mode.RefreshRate.Denominator);
+          uint64_t diff = std::abs(int64_t(rate - uint64_t(TargetMode.RefreshRate.Numerator)));
+          return std::min(current, diff);
+        });
+
+      for (auto it = Modes.begin(); it != Modes.end(); ) {
         uint64_t rate = uint64_t(it->RefreshRate.Numerator)
                       * uint64_t(TargetMode.RefreshRate.Denominator)
                       / uint64_t(it->RefreshRate.Denominator);
         uint64_t diff = std::abs(int64_t(rate - uint64_t(TargetMode.RefreshRate.Numerator)));
-        skipMode |= diff != minDiffRefreshRate;
-      }
 
-      it = skipMode ? Modes.erase(it) : ++it;
+        bool skipMode = diff != minDiffRefreshRate;
+        it = skipMode ? Modes.erase(it) : ++it;
+      }
     }
   }
 

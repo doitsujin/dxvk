@@ -175,6 +175,7 @@ namespace dxvk {
       ClearState();
     
     m_mappedResources.clear();
+    ResetStagingBuffer();
     return S_OK;
   }
   
@@ -190,47 +191,35 @@ namespace dxvk {
     if (unlikely(!pResource || !pMappedResource))
       return E_INVALIDARG;
     
-    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
-    pResource->GetType(&resourceDim);
-    
     if (MapType == D3D11_MAP_WRITE_DISCARD) {
-      D3D11DeferredContextMapEntry entry;
-      
+      D3D11_RESOURCE_DIMENSION resourceDim;
+      pResource->GetType(&resourceDim);
+
+      D3D11_MAPPED_SUBRESOURCE mapInfo;
       HRESULT status = resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER
-        ? MapBuffer(pResource,              MapType, MapFlags, &entry)
-        : MapImage (pResource, Subresource, MapType, MapFlags, &entry);
+        ? MapBuffer(pResource,              &mapInfo)
+        : MapImage (pResource, Subresource, &mapInfo);
       
       if (unlikely(FAILED(status))) {
         *pMappedResource = D3D11_MAPPED_SUBRESOURCE();
         return status;
       }
       
-      // Adding a new map entry actually overrides the
-      // old one in practice because the lookup function
-      // scans the array in reverse order
-      m_mappedResources.push_back(std::move(entry));
-      
-      // Fill mapped resource structure
-      pMappedResource->pData      = entry.MapPointer;
-      pMappedResource->RowPitch   = entry.RowPitch;
-      pMappedResource->DepthPitch = entry.DepthPitch;
+      AddMapEntry(pResource, Subresource, resourceDim, mapInfo);
+      *pMappedResource = mapInfo;
       return S_OK;
     } else if (MapType == D3D11_MAP_WRITE_NO_OVERWRITE) {
       // The resource must be mapped with D3D11_MAP_WRITE_DISCARD
       // before it can be mapped with D3D11_MAP_WRITE_NO_OVERWRITE.
       auto entry = FindMapEntry(pResource, Subresource);
       
-      if (unlikely(entry == m_mappedResources.rend())) {
+      if (unlikely(!entry)) {
         *pMappedResource = D3D11_MAPPED_SUBRESOURCE();
         return E_INVALIDARG;
       }
       
       // Return same memory region as earlier
-      entry->MapType = D3D11_MAP_WRITE_NO_OVERWRITE;
-      
-      pMappedResource->pData      = entry->MapPointer;
-      pMappedResource->RowPitch   = entry->RowPitch;
-      pMappedResource->DepthPitch = entry->DepthPitch;
+      *pMappedResource = entry->MapInfo;
       return S_OK;
     } else {
       // Not allowed on deferred contexts
@@ -247,6 +236,31 @@ namespace dxvk {
   }
   
   
+  void STDMETHODCALLTYPE D3D11DeferredContext::UpdateSubresource(
+          ID3D11Resource*                   pDstResource,
+          UINT                              DstSubresource,
+    const D3D11_BOX*                        pDstBox,
+    const void*                             pSrcData,
+          UINT                              SrcRowPitch,
+          UINT                              SrcDepthPitch) {
+    UpdateResource<D3D11DeferredContext>(this, pDstResource,
+      DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, 0);
+  }
+
+
+  void STDMETHODCALLTYPE D3D11DeferredContext::UpdateSubresource1(
+          ID3D11Resource*                   pDstResource,
+          UINT                              DstSubresource,
+    const D3D11_BOX*                        pDstBox,
+    const void*                             pSrcData,
+          UINT                              SrcRowPitch,
+          UINT                              SrcDepthPitch,
+          UINT                              CopyFlags) {
+    UpdateResource<D3D11DeferredContext>(this, pDstResource,
+      DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, CopyFlags);
+  }
+
+
   void STDMETHODCALLTYPE D3D11DeferredContext::SwapDeviceContextState(
           ID3DDeviceContextState*           pState,
           ID3DDeviceContextState**          ppPreviousState) {
@@ -259,9 +273,7 @@ namespace dxvk {
 
   HRESULT D3D11DeferredContext::MapBuffer(
           ID3D11Resource*               pResource,
-          D3D11_MAP                     MapType,
-          UINT                          MapFlags,
-          D3D11DeferredContextMapEntry* pMapEntry) {
+          D3D11_MAPPED_SUBRESOURCE*     pMappedResource) {
     D3D11Buffer* pBuffer = static_cast<D3D11Buffer*>(pResource);
     
     if (unlikely(pBuffer->GetMapMode() == D3D11_COMMON_BUFFER_MAP_MODE_NONE)) {
@@ -269,18 +281,15 @@ namespace dxvk {
       return E_INVALIDARG;
     }
     
-    pMapEntry->pResource    = pResource;
-    pMapEntry->Subresource  = 0;
-    pMapEntry->MapType      = D3D11_MAP_WRITE_DISCARD;
-    pMapEntry->RowPitch     = pBuffer->Desc()->ByteWidth;
-    pMapEntry->DepthPitch   = pBuffer->Desc()->ByteWidth;
+    pMappedResource->RowPitch     = pBuffer->Desc()->ByteWidth;
+    pMappedResource->DepthPitch   = pBuffer->Desc()->ByteWidth;
     
     if (likely(m_csFlags.test(DxvkCsChunkFlag::SingleUse))) {
       // For resources that cannot be written by the GPU,
       // we may write to the buffer resource directly and
       // just swap in the buffer slice as needed.
       auto bufferSlice = pBuffer->AllocSlice();
-      pMapEntry->MapPointer = bufferSlice.mapPtr;
+      pMappedResource->pData = bufferSlice.mapPtr;
 
       EmitCs([
         cDstBuffer = pBuffer->GetBuffer(),
@@ -292,7 +301,7 @@ namespace dxvk {
       // For GPU-writable resources, we need a data slice
       // to perform the update operation at execution time.
       auto dataSlice = AllocUpdateBufferSlice(pBuffer->Desc()->ByteWidth);
-      pMapEntry->MapPointer = dataSlice.ptr();
+      pMappedResource->pData = dataSlice.ptr();
 
       EmitCs([
         cDstBuffer = pBuffer->GetBuffer(),
@@ -311,9 +320,7 @@ namespace dxvk {
   HRESULT D3D11DeferredContext::MapImage(
           ID3D11Resource*               pResource,
           UINT                          Subresource,
-          D3D11_MAP                     MapType,
-          UINT                          MapFlags,
-          D3D11DeferredContextMapEntry* pMapEntry) {
+          D3D11_MAPPED_SUBRESOURCE*     pMappedResource) {
     D3D11CommonTexture* pTexture = GetCommonTexture(pResource);
     
     if (unlikely(pTexture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_NONE)) {
@@ -335,12 +342,9 @@ namespace dxvk {
     auto layout = pTexture->GetSubresourceLayout(formatInfo->aspectMask, Subresource);
     auto dataSlice = AllocStagingBuffer(util::computeImageDataSize(packedFormat, levelExtent));
     
-    pMapEntry->pResource    = pResource;
-    pMapEntry->Subresource  = Subresource;
-    pMapEntry->MapType      = D3D11_MAP_WRITE_DISCARD;
-    pMapEntry->RowPitch     = layout.RowPitch;
-    pMapEntry->DepthPitch   = layout.DepthPitch;
-    pMapEntry->MapPointer   = dataSlice.mapPtr(0);
+    pMappedResource->RowPitch   = layout.RowPitch;
+    pMappedResource->DepthPitch = layout.DepthPitch;
+    pMappedResource->pData      = dataSlice.mapPtr(0);
 
     UpdateImage(pTexture, &subresource,
       VkOffset3D { 0, 0, 0 }, levelExtent,
@@ -349,6 +353,34 @@ namespace dxvk {
   }
   
   
+  void D3D11DeferredContext::UpdateMappedBuffer(
+          D3D11Buffer*                  pDstBuffer,
+          UINT                          Offset,
+          UINT                          Length,
+    const void*                         pSrcData,
+          UINT                          CopyFlags) {
+    void* mapPtr = nullptr;
+
+    if (unlikely(CopyFlags == D3D11_COPY_NO_OVERWRITE)) {
+      auto entry = FindMapEntry(pDstBuffer, 0);
+
+      if (entry)
+        mapPtr = entry->MapInfo.pData;
+    }
+
+    if (likely(!mapPtr)) {
+      // The caller validates the map mode, so we can
+      // safely ignore the MapBuffer return value here
+      D3D11_MAPPED_SUBRESOURCE mapInfo;
+      MapBuffer(pDstBuffer, &mapInfo);
+      AddMapEntry(pDstBuffer, 0, D3D11_RESOURCE_DIMENSION_BUFFER, mapInfo);
+      mapPtr = mapInfo.pData;
+    }
+
+    std::memcpy(reinterpret_cast<char*>(mapPtr) + Offset, pSrcData, Length);
+  }
+
+
   void D3D11DeferredContext::FinalizeQueries() {
     for (auto& query : m_queriesBegun) {
       m_commandList->AddQuery(query.ptr());
@@ -370,6 +402,52 @@ namespace dxvk {
   
   void D3D11DeferredContext::EmitCsChunk(DxvkCsChunkRef&& chunk) {
     m_commandList->AddChunk(std::move(chunk));
+  }
+
+
+  void D3D11DeferredContext::TrackTextureSequenceNumber(
+          D3D11CommonTexture*         pResource,
+          UINT                        Subresource) {
+    m_commandList->TrackResourceUsage(
+      pResource->GetInterface(),
+      pResource->GetDimension(),
+      Subresource);
+  }
+
+
+  void D3D11DeferredContext::TrackBufferSequenceNumber(
+          D3D11Buffer*                pResource) {
+    m_commandList->TrackResourceUsage(
+      pResource, D3D11_RESOURCE_DIMENSION_BUFFER, 0);
+  }
+
+
+  D3D11DeferredContextMapEntry* D3D11DeferredContext::FindMapEntry(
+          ID3D11Resource*               pResource,
+          UINT                          Subresource) {
+    // Recently mapped resources as well as entries with
+    // up-to-date map infos will be located at the end
+    // of the resource array, so scan in reverse order.
+    size_t size = m_mappedResources.size();
+
+    for (size_t i = 1; i <= size; i++) {
+      auto entry = &m_mappedResources[size - i];
+
+      if (entry->Resource.Get()            == pResource
+       && entry->Resource.GetSubresource() == Subresource)
+        return entry;
+    }
+
+    return nullptr;
+  }
+
+  void D3D11DeferredContext::AddMapEntry(
+          ID3D11Resource*               pResource,
+          UINT                          Subresource,
+          D3D11_RESOURCE_DIMENSION      ResourceType,
+    const D3D11_MAPPED_SUBRESOURCE&     MapInfo) {
+    m_mappedResources.emplace_back(pResource,
+      Subresource, ResourceType, MapInfo);
   }
 
 

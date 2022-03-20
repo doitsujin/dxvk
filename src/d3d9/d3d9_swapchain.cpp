@@ -468,8 +468,9 @@ namespace dxvk {
         cImage, cSubresources, VkOffset3D { 0, 0, 0 },
         cLevelExtent);
     });
-    
-    dstTexInfo->SetWrittenByGPU(dst->GetSubresource(), true);
+
+    dstTexInfo->SetNeedsReadback(dst->GetSubresource(), true);
+    m_parent->TrackTextureMappingBufferSequenceNumber(dstTexInfo, dst->GetSubresource());
 
     return D3D_OK;
   }
@@ -996,7 +997,7 @@ namespace dxvk {
       VkImage imageHandle = m_presenter->getImage(i).image;
       
       Rc<DxvkImage> image = new DxvkImage(
-        m_device->vkd(), imageInfo, imageHandle);
+        m_device.ptr(), imageInfo, imageHandle);
 
       m_imageViews[i] = new DxvkImageView(
         m_device->vkd(), image, viewInfo);
@@ -1037,7 +1038,7 @@ namespace dxvk {
     desc.IsAttachmentOnly   = FALSE;
 
     for (uint32_t i = 0; i < m_backBuffers.size(); i++)
-      m_backBuffers[i] = new D3D9Surface(m_parent, &desc, this);
+      m_backBuffers[i] = new D3D9Surface(m_parent, &desc, this, nullptr);
 
     auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
 
@@ -1050,19 +1051,13 @@ namespace dxvk {
     subresources.baseArrayLayer = 0;
     subresources.layerCount     = 1;
 
-    VkClearColorValue clearColor;
-    clearColor.float32[0] = 0.0f;
-    clearColor.float32[1] = 0.0f;
-    clearColor.float32[2] = 0.0f;
-    clearColor.float32[3] = 0.0f;
-
     m_context->beginRecording(
       m_device->createCommandList());
     
     for (uint32_t i = 0; i < m_backBuffers.size(); i++) {
-      m_context->clearColorImage(
+      m_context->initImage(
         m_backBuffers[i]->GetCommonTexture()->GetImage(),
-        clearColor, subresources);
+        subresources, VK_IMAGE_LAYOUT_UNDEFINED);
     }
 
     m_device->submitCommandList(
@@ -1122,8 +1117,9 @@ namespace dxvk {
 
     switch (Format) {
       default:
-        Logger::warn(str::format("D3D9SwapChainEx: Unexpected format: ", Format));
-        
+        Logger::warn(str::format("D3D9SwapChainEx: Unexpected format: ", Format));      
+     [[fallthrough]];
+
       case D3D9Format::A8R8G8B8:
       case D3D9Format::X8R8G8B8:
       case D3D9Format::A8B8G8R8:
@@ -1143,12 +1139,12 @@ namespace dxvk {
         pDstFormats[n++] = { VK_FORMAT_B5G5R5A1_UNORM_PACK16, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
         pDstFormats[n++] = { VK_FORMAT_R5G5B5A1_UNORM_PACK16, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
         pDstFormats[n++] = { VK_FORMAT_A1R5G5B5_UNORM_PACK16, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-      }
+      } break;
 
       case D3D9Format::R5G6B5: {
         pDstFormats[n++] = { VK_FORMAT_B5G6R5_UNORM_PACK16, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
         pDstFormats[n++] = { VK_FORMAT_R5G6B5_UNORM_PACK16, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-      }
+      } break;
     }
 
     return n;

@@ -30,6 +30,13 @@ namespace dxvk {
       rc->acquire(Access);
       m_resources.emplace_back(std::move(rc), Access);
     }
+
+    /**
+     * \brief Releases resources
+     *
+     * Marks all tracked resources as unused.
+     */
+    void notify();
     
     /**
      * \brief Resets the command list
@@ -42,6 +49,7 @@ namespace dxvk {
   private:
     
     std::vector<std::pair<Rc<DxvkResource>, DxvkAccess>> m_resources;
+    bool m_notified = false;
     
   };
   

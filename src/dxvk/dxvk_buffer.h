@@ -289,21 +289,23 @@ namespace dxvk {
     
     DxvkBufferHandle        m_buffer;
     DxvkBufferSliceHandle   m_physSlice;
-
     uint32_t                m_vertexStride = 0;
+
+    alignas(CACHE_LINE_SIZE)
+    sync::Spinlock          m_freeMutex;
+
     uint32_t                m_lazyAlloc = false;
-    
-    sync::Spinlock m_freeMutex;
-    sync::Spinlock m_swapMutex;
-    
-    std::vector<DxvkBufferHandle>        m_buffers;
-    std::vector<DxvkBufferSliceHandle>   m_freeSlices;
-    std::vector<DxvkBufferSliceHandle>   m_nextSlices;
-    
-    VkDeviceSize m_physSliceLength   = 0;
-    VkDeviceSize m_physSliceStride   = 0;
-    VkDeviceSize m_physSliceCount    = 1;
-    VkDeviceSize m_physSliceMaxCount = 1;
+    VkDeviceSize            m_physSliceLength   = 0;
+    VkDeviceSize            m_physSliceStride   = 0;
+    VkDeviceSize            m_physSliceCount    = 1;
+    VkDeviceSize            m_physSliceMaxCount = 1;
+
+    std::vector<DxvkBufferHandle>       m_buffers;
+    std::vector<DxvkBufferSliceHandle>  m_freeSlices;
+
+    alignas(CACHE_LINE_SIZE)
+    sync::Spinlock                      m_swapMutex;
+    std::vector<DxvkBufferSliceHandle>  m_nextSlices;
 
     void pushSlice(const DxvkBufferHandle& handle, uint32_t index) {
       DxvkBufferSliceHandle slice;

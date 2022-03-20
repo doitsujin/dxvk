@@ -71,7 +71,7 @@ namespace dxvk {
   DxvkCsChunk* DxvkCsChunkPool::allocChunk(DxvkCsChunkFlags flags) {
     DxvkCsChunk* chunk = nullptr;
 
-    { std::lock_guard<sync::Spinlock> lock(m_mutex);
+    { std::lock_guard<dxvk::mutex> lock(m_mutex);
       
       if (m_chunks.size() != 0) {
         chunk = m_chunks.back();
@@ -90,13 +90,16 @@ namespace dxvk {
   void DxvkCsChunkPool::freeChunk(DxvkCsChunk* chunk) {
     chunk->reset();
     
-    std::lock_guard<sync::Spinlock> lock(m_mutex);
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
     m_chunks.push_back(chunk);
   }
   
   
-  DxvkCsThread::DxvkCsThread(const Rc<DxvkContext>& context)
-  : m_context(context), m_thread([this] { threadFunc(); }) {
+  DxvkCsThread::DxvkCsThread(
+    const Rc<DxvkDevice>&   device,
+    const Rc<DxvkContext>&  context)
+  : m_device(device), m_context(context),
+    m_thread([this] { threadFunc(); }) {
     
   }
   
@@ -111,22 +114,38 @@ namespace dxvk {
   }
   
   
-  void DxvkCsThread::dispatchChunk(DxvkCsChunkRef&& chunk) {
+  uint64_t DxvkCsThread::dispatchChunk(DxvkCsChunkRef&& chunk) {
+    uint64_t seq;
+
     { std::unique_lock<dxvk::mutex> lock(m_mutex);
+      seq = ++m_chunksDispatched;
       m_chunksQueued.push(std::move(chunk));
-      m_chunksPending += 1;
     }
     
     m_condOnAdd.notify_one();
+    return seq;
   }
   
   
-  void DxvkCsThread::synchronize() {
-    std::unique_lock<dxvk::mutex> lock(m_mutex);
-    
-    m_condOnSync.wait(lock, [this] {
-      return !m_chunksPending.load();
-    });
+  void DxvkCsThread::synchronize(uint64_t seq) {
+    // Avoid locking if we know the sync is a no-op, may
+    // reduce overhead if this is being called frequently
+    if (seq > m_chunksExecuted.load(std::memory_order_acquire)) {
+      std::unique_lock<dxvk::mutex> lock(m_mutex);
+
+      if (seq == SynchronizeAll)
+        seq = m_chunksDispatched.load();
+
+      auto t0 = dxvk::high_resolution_clock::now();
+      m_condOnSync.wait(lock, [this, seq] {
+        return m_chunksExecuted.load() >= seq;
+      });
+      auto t1 = dxvk::high_resolution_clock::now();
+      auto ticks = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0);
+
+      m_device->addStatCtr(DxvkStatCounter::CsSyncCount, 1);
+      m_device->addStatCtr(DxvkStatCounter::CsSyncTicks, ticks.count());
+    }
   }
   
   
@@ -139,8 +158,8 @@ namespace dxvk {
       while (!m_stopped.load()) {
         { std::unique_lock<dxvk::mutex> lock(m_mutex);
           if (chunk) {
-            if (--m_chunksPending == 0)
-              m_condOnSync.notify_one();
+            m_chunksExecuted++;
+            m_condOnSync.notify_one();
             
             chunk = DxvkCsChunkRef();
           }
@@ -158,8 +177,10 @@ namespace dxvk {
           }
         }
         
-        if (chunk)
+        if (chunk) {
+          m_context->addStatCtr(DxvkStatCounter::CsChunkCount, 1);
           chunk->executeAll(m_context.ptr());
+        }
       }
     } catch (const DxvkError& e) {
       Logger::err("Exception on CS thread!");

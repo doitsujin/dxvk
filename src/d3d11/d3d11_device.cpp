@@ -23,6 +23,8 @@
 #include "d3d11_texture.h"
 #include "d3d11_video.h"
 
+#include "../util/util_shared_res.h"
+
 namespace dxvk {
   
   constexpr uint32_t D3D11DXGIDevice::DefaultFrameLatency;
@@ -207,7 +209,7 @@ namespace dxvk {
       return S_FALSE;
     
     try {
-      Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &desc);
+      Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &desc, nullptr);
       m_initializer->InitTexture(texture->GetCommonTexture(), pInitialData);
       *ppTexture2D = texture.ref();
       return S_OK;
@@ -1388,10 +1390,8 @@ namespace dxvk {
           HANDLE      hResource,
           REFIID      ReturnedInterface,
           void**      ppResource) {
-    InitReturnPtr(ppResource);
-    
-    Logger::err("D3D11Device::OpenSharedResource: Not implemented");
-    return E_NOTIMPL;
+    return OpenSharedResourceGeneric<true>(
+      hResource, ReturnedInterface, ppResource);
   }
   
   
@@ -1399,10 +1399,8 @@ namespace dxvk {
           HANDLE      hResource,
           REFIID      ReturnedInterface,
           void**      ppResource) {
-    InitReturnPtr(ppResource);
-    
-    Logger::err("D3D11Device::OpenSharedResource1: Not implemented");
-    return E_NOTIMPL;
+    return OpenSharedResourceGeneric<false>(
+      hResource, ReturnedInterface, ppResource);
   }
 
   
@@ -2257,6 +2255,61 @@ namespace dxvk {
     }
 
     return ~0u;
+  }
+
+
+  template<bool IsKmtHandle>
+  HRESULT D3D11Device::OpenSharedResourceGeneric(
+          HANDLE      hResource,
+          REFIID      ReturnedInterface,
+          void**      ppResource) {
+    InitReturnPtr(ppResource);
+
+    if (ppResource == nullptr)
+      return S_FALSE;
+
+    HANDLE ntHandle = IsKmtHandle ? openKmtHandle(hResource) : hResource;
+
+    if (ntHandle == INVALID_HANDLE_VALUE) {
+      Logger::warn(str::format("D3D11Device::OpenSharedResourceGeneric: Handle not found: ", hResource));
+      return E_INVALIDARG;
+    }
+
+    DxvkSharedTextureMetadata metadata;
+    bool ret = getSharedMetadata(ntHandle, &metadata, sizeof(metadata), NULL);
+
+    if (IsKmtHandle)
+      ::CloseHandle(ntHandle);
+
+    if (!ret) {
+      Logger::warn("D3D11Device::OpenSharedResourceGeneric: Failed to get shared resource info for a texture");
+      return E_INVALIDARG;
+    }
+
+    D3D11_COMMON_TEXTURE_DESC d3d11Desc;
+    d3d11Desc.Width          = metadata.Width;
+    d3d11Desc.Height         = metadata.Height;
+    d3d11Desc.Depth          = 1,
+    d3d11Desc.MipLevels      = metadata.MipLevels;
+    d3d11Desc.ArraySize      = metadata.ArraySize;
+    d3d11Desc.Format         = metadata.Format;
+    d3d11Desc.SampleDesc     = metadata.SampleDesc;
+    d3d11Desc.Usage          = metadata.Usage;
+    d3d11Desc.BindFlags      = metadata.BindFlags;
+    d3d11Desc.CPUAccessFlags = metadata.CPUAccessFlags;
+    d3d11Desc.MiscFlags      = metadata.MiscFlags;
+    d3d11Desc.TextureLayout  = metadata.TextureLayout;
+
+    // Only 2D textures may be shared
+    try {
+      const Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &d3d11Desc, hResource);
+      texture->QueryInterface(ReturnedInterface, ppResource);
+      return S_OK;
+    }
+    catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_INVALIDARG;
+    }
   }
 
 

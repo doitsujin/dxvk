@@ -20,12 +20,8 @@ namespace dxvk {
     m_options = DxvkOptions(m_config);
 
     m_extProviders.push_back(&DxvkPlatformExts::s_instance);
-
-    if (m_options.enableOpenVR)
-      m_extProviders.push_back(&VrInstance::s_instance);
-
-    if (m_options.enableOpenXR)
-      m_extProviders.push_back(&DxvkXrProvider::s_instance);
+    m_extProviders.push_back(&VrInstance::s_instance);
+    m_extProviders.push_back(&DxvkXrProvider::s_instance);
 
     Logger::info("Built-in extension providers:");
     for (const auto& provider : m_extProviders)
@@ -98,8 +94,10 @@ namespace dxvk {
 
     // Hide VK_EXT_debug_utils behind an environment variable. This extension
     // adds additional overhead to winevulkan
-    if (env::getEnvVar("DXVK_PERF_EVENTS") == "1") {
+    if ((env::getEnvVar("DXVK_PERF_EVENTS") == "1") || 
+      (m_options.enableDebugUtils)) {
         insExtensionList.push_back(&insExtensions.extDebugUtils);
+        Logger::warn("DXVK: Debug Utils are enabled, perf events are ON. May affect performance!");
     }
 
     DxvkNameSet extensionsEnabled;
@@ -130,7 +128,7 @@ namespace dxvk {
     appInfo.pApplicationName      = appName.c_str();
     appInfo.applicationVersion    = 0;
     appInfo.pEngineName           = "DXVK";
-    appInfo.engineVersion         = VK_MAKE_VERSION(1, 9, 2);
+    appInfo.engineVersion         = VK_MAKE_VERSION(1, 10, 0);
     appInfo.apiVersion            = VK_MAKE_VERSION(1, 1, 0);
     
     VkInstanceCreateInfo info;

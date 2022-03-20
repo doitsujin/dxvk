@@ -71,7 +71,8 @@ namespace dxvk {
     D3D9CommonTexture(
             D3D9DeviceEx*             pDevice,
       const D3D9_COMMON_TEXTURE_DESC* pDesc,
-            D3DRESOURCETYPE           ResourceType);
+            D3DRESOURCETYPE           ResourceType,
+            HANDLE*                   pSharedHandle);
 
     ~D3D9CommonTexture();
 
@@ -191,6 +192,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief FETCH4 compatibility
+     * \returns Whether the format of the texture supports the FETCH4 hack
+     */
+    bool SupportsFetch4() const {
+      return m_supportsFetch4;
+    }
+
+    /**
      * \brief Null
      * \returns Whether the texture is D3DFMT_NULL or not
      */
@@ -231,7 +240,7 @@ namespace dxvk {
      */
     void DestroyBufferSubresource(UINT Subresource) {
       m_buffers[Subresource] = nullptr;
-      SetWrittenByGPU(Subresource, true);
+      SetNeedsReadback(Subresource, true);
     }
 
     bool IsDynamic() const {
@@ -318,11 +327,11 @@ namespace dxvk {
 
     bool IsAnySubresourceLocked() const { return m_locked.any(); }
 
-    void SetWrittenByGPU(UINT Subresource, bool value) { m_wasWrittenByGPU.set(Subresource, value); }
+    void SetNeedsReadback(UINT Subresource, bool value) { m_needsReadback.set(Subresource, value); }
 
-    bool WasWrittenByGPU(UINT Subresource) const { return m_wasWrittenByGPU.get(Subresource); }
+    bool NeedsReachback(UINT Subresource) const { return m_needsReadback.get(Subresource); }
 
-    void MarkAllWrittenByGPU() { m_wasWrittenByGPU.setAll(); }
+    void MarkAllNeedReadback() { m_needsReadback.setAll(); }
 
     void SetReadOnlyLocked(UINT Subresource, bool readOnly) { return m_readOnly.set(Subresource, readOnly); }
 
@@ -362,6 +371,9 @@ namespace dxvk {
             bool                   Srgb);
     D3D9SubresourceBitset& GetUploadBitmask() { return m_needsUpload; }
 
+    void SetAllNeedUpload() {
+      m_needsUpload.setAll();
+    }
     void SetNeedsUpload(UINT Subresource, bool upload) { m_needsUpload.set(Subresource, upload); }
     bool NeedsUpload(UINT Subresource) const { return m_needsUpload.get(Subresource); }
     bool NeedsAnyUpload() { return m_needsUpload.any(); }
@@ -424,6 +436,31 @@ namespace dxvk {
     static VkImageType GetImageTypeFromResourceType(
             D3DRESOURCETYPE  Dimension);
 
+     /**
+     * \brief Tracks sequence number for a given subresource
+     *
+     * Stores which CS chunk the resource was last used on.
+     * \param [in] Subresource Subresource index
+     * \param [in] Seq Sequence number
+     */
+    void TrackMappingBufferSequenceNumber(UINT Subresource, uint64_t Seq) {
+      if (Subresource < m_seqs.size())
+        m_seqs[Subresource] = Seq;
+    }
+
+    /**
+     * \brief Queries sequence number for a given subresource
+     *
+     * Returns which CS chunk the resource was last used on.
+     * \param [in] Subresource Subresource index
+     * \returns Sequence number for the given subresource
+     */
+    uint64_t GetMappingBufferSequenceNumber(UINT Subresource) {
+      return Subresource < m_seqs.size()
+        ? m_seqs[Subresource]
+        : 0ull;
+    }
+
   private:
 
     D3D9DeviceEx*                 m_device;
@@ -437,10 +474,13 @@ namespace dxvk {
       Rc<DxvkBuffer>>             m_buffers;
     D3D9SubresourceArray<
       DxvkBufferSliceHandle>      m_mappedSlices;
+    D3D9SubresourceArray<
+      uint64_t>                   m_seqs = { };
 
     D3D9_VK_FORMAT_MAPPING        m_mapping;
 
     bool                          m_shadow; //< Depth Compare-ness
+    bool                          m_supportsFetch4;
 
     int64_t                       m_size = 0;
 
@@ -454,7 +494,7 @@ namespace dxvk {
 
     D3D9SubresourceBitset         m_readOnly = { };
 
-    D3D9SubresourceBitset         m_wasWrittenByGPU = { };
+    D3D9SubresourceBitset         m_needsReadback = { };
 
     D3D9SubresourceBitset         m_needsUpload = { };
 
@@ -474,11 +514,13 @@ namespace dxvk {
      */
     VkDeviceSize GetMipSize(UINT Subresource) const;
 
-    Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType, bool TryOffscreenRT) const;
+    Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType, bool TryOffscreenRT, HANDLE* pSharedHandle) const;
 
     Rc<DxvkImage> CreateResolveImage() const;
 
     BOOL DetermineShadowState() const;
+
+    BOOL DetermineFetch4Compatibility() const;
 
     BOOL CheckImageSupport(
       const DxvkImageCreateInfo*  pImageInfo,
@@ -500,6 +542,8 @@ namespace dxvk {
 
     VkImageLayout OptimizeLayout(
             VkImageUsageFlags         Usage) const;
+
+    void ExportImageInfo();
 
     static VkImageViewType GetImageViewTypeFromResourceType(
             D3DRESOURCETYPE  Dimension,

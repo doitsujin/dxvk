@@ -65,6 +65,9 @@ namespace dxvk {
     // be used with this image
     uint32_t        viewFormatCount = 0;
     const VkFormat* viewFormats     = nullptr;
+
+    // Shared handle info
+    DxvkSharedHandleInfo sharing;
   };
   
   
@@ -124,7 +127,7 @@ namespace dxvk {
   public:
     
     DxvkImage(
-      const Rc<vk::DeviceFn>&     vkd,
+      const DxvkDevice*           device,
       const DxvkImageCreateInfo&  createInfo,
             DxvkMemoryAllocator&  memAlloc,
             VkMemoryPropertyFlags memFlags);
@@ -138,7 +141,7 @@ namespace dxvk {
      * otherwise some image operations may fail.
      */
     DxvkImage(
-      const Rc<vk::DeviceFn>&     vkd,
+      const DxvkDevice*           device,
       const DxvkImageCreateInfo&  info,
             VkImage               image);
     
@@ -313,16 +316,26 @@ namespace dxvk {
       result.layerCount     = info().numLayers;
       return result;
     }
+
+    /**
+     * \brief Create a new shared handle to dedicated memory backing the image
+     * \returns The shared handle with the type given by DxvkSharedHandleInfo::type
+     */
+    HANDLE sharedHandle() const;
     
   private:
     
     Rc<vk::DeviceFn>      m_vkd;
+    const DxvkDevice*     m_device;
     DxvkImageCreateInfo   m_info;
     VkMemoryPropertyFlags m_memFlags;
     DxvkPhysicalImage     m_image;
+    bool m_shared = false;
 
     small_vector<VkFormat, 4> m_viewFormats;
     
+    bool canShareImage(const VkImageCreateInfo&  createInfo, const DxvkSharedHandleInfo& sharingInfo) const;
+
   };
   
   

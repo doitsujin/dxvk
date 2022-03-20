@@ -1,6 +1,6 @@
 #pragma once
 
-#include "d3d9_include.h"
+#include <d3d9.h>
 #include "d3d9_options.h"
 
 #include "../dxvk/dxvk_adapter.h"

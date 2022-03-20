@@ -81,9 +81,17 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D11DXGIResource::GetSharedHandle(
           HANDLE*                 pSharedHandle) {
-    InitReturnPtr(pSharedHandle);
-    Logger::err("D3D11DXGIResource::GetSharedHandle: Stub");
-    return E_NOTIMPL;
+    auto texture = GetCommonTexture(m_resource);
+    if (texture == nullptr || pSharedHandle == nullptr)
+      return E_INVALIDARG;
+
+    HANDLE kmtHandle = texture->GetImage()->sharedHandle();
+
+    if (kmtHandle == INVALID_HANDLE_VALUE)
+      return E_INVALIDARG;
+
+    *pSharedHandle = kmtHandle;
+    return S_OK;
   }
 
 
@@ -132,9 +140,20 @@ namespace dxvk {
           DWORD                   dwAccess,
           LPCWSTR                 lpName,
           HANDLE*                 pHandle) {
-    InitReturnPtr(pHandle);
-    Logger::err("D3D11DXGIResource::CreateSharedHandle: Stub");
-    return E_NOTIMPL;
+    auto texture = GetCommonTexture(m_resource);
+    if (texture == nullptr || pHandle == nullptr)
+      return E_INVALIDARG;
+
+    if (lpName)
+      Logger::warn("Naming shared resources not supported");
+
+    HANDLE handle = texture->GetImage()->sharedHandle();
+
+    if (handle == INVALID_HANDLE_VALUE)
+      return E_INVALIDARG;
+
+    *pHandle = handle;
+    return S_OK;
   }
 
 
@@ -198,11 +217,8 @@ namespace dxvk {
   }
 
 
-  HRESULT ResourceAddRefPrivate(ID3D11Resource* pResource) {
-    D3D11_RESOURCE_DIMENSION dim;
-    pResource->GetType(&dim);
-
-    switch (dim) {
+  HRESULT ResourceAddRefPrivate(ID3D11Resource* pResource, D3D11_RESOURCE_DIMENSION Type) {
+    switch (Type) {
       case D3D11_RESOURCE_DIMENSION_BUFFER:    static_cast<D3D11Buffer*>   (pResource)->AddRefPrivate(); return S_OK;
       case D3D11_RESOURCE_DIMENSION_TEXTURE1D: static_cast<D3D11Texture1D*>(pResource)->AddRefPrivate(); return S_OK;
       case D3D11_RESOURCE_DIMENSION_TEXTURE2D: static_cast<D3D11Texture2D*>(pResource)->AddRefPrivate(); return S_OK;
@@ -212,17 +228,30 @@ namespace dxvk {
   }
   
 
-  HRESULT ResourceReleasePrivate(ID3D11Resource* pResource) {
+  HRESULT ResourceAddRefPrivate(ID3D11Resource* pResource) {
     D3D11_RESOURCE_DIMENSION dim;
     pResource->GetType(&dim);
 
-    switch (dim) {
+    return ResourceAddRefPrivate(pResource, dim);
+  }
+
+
+  HRESULT ResourceReleasePrivate(ID3D11Resource* pResource, D3D11_RESOURCE_DIMENSION Type) {
+    switch (Type) {
       case D3D11_RESOURCE_DIMENSION_BUFFER:    static_cast<D3D11Buffer*>   (pResource)->ReleasePrivate(); return S_OK;
       case D3D11_RESOURCE_DIMENSION_TEXTURE1D: static_cast<D3D11Texture1D*>(pResource)->ReleasePrivate(); return S_OK;
       case D3D11_RESOURCE_DIMENSION_TEXTURE2D: static_cast<D3D11Texture2D*>(pResource)->ReleasePrivate(); return S_OK;
       case D3D11_RESOURCE_DIMENSION_TEXTURE3D: static_cast<D3D11Texture3D*>(pResource)->ReleasePrivate(); return S_OK;
       default: return E_INVALIDARG;
     }
+  }
+
+
+  HRESULT ResourceReleasePrivate(ID3D11Resource* pResource) {
+    D3D11_RESOURCE_DIMENSION dim;
+    pResource->GetType(&dim);
+
+    return ResourceReleasePrivate(pResource, dim);
   }
 
 }

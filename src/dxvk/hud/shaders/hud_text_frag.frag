@@ -2,7 +2,7 @@
 
 layout(constant_id = 1225) const bool srgbSwapchain = false;
 
-layout(set = 0, binding = 0) uniform sampler2D s_font;
+layout(binding = 2) uniform sampler2D s_font;
 
 layout(location = 0) in vec2 v_texcoord;
 layout(location = 1) in vec4 v_color;

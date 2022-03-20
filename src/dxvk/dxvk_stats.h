@@ -14,12 +14,18 @@ namespace dxvk {
     CmdDrawCalls,             ///< Number of draw calls
     CmdDispatchCalls,         ///< Number of compute calls
     CmdRenderPassCount,       ///< Number of render passes
+    CmdBarrierCount,          ///< Number of pipeline barriers
     PipeCountGraphics,        ///< Number of graphics pipelines
     PipeCountCompute,         ///< Number of compute pipelines
     PipeCompilerBusy,         ///< Boolean indicating compiler activity
     QueueSubmitCount,         ///< Number of command buffer submissions
     QueuePresentCount,        ///< Number of present calls / frames
+    GpuSyncCount,             ///< Number of GPU synchronizations
+    GpuSyncTicks,             ///< Time spent waiting for GPU
     GpuIdleTicks,             ///< GPU idle time in microseconds
+    CsSyncCount,              ///< CS thread synchronizations
+    CsSyncTicks,              ///< Time spent waiting on CS
+    CsChunkCount,             ///< Submitted CS chunks
     NumCounters,              ///< Number of counters available
   };
   

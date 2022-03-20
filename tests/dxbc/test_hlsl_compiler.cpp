@@ -53,7 +53,8 @@ int WINAPI WinMain(HINSTANCE hInstance,
   HRESULT hr = D3DCompile(
     hlslCode.data(),
     hlslCode.size(),
-    "Shader", nullptr, nullptr,
+    "Shader", nullptr,
+    D3D_COMPILE_STANDARD_FILE_INCLUDE,
     str::fromws(entryPoint).c_str(),
     str::fromws(target).c_str(),
     D3DCOMPILE_OPTIMIZATION_LEVEL3 |

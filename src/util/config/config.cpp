@@ -35,6 +35,7 @@ namespace dxvk {
      * multiple times                             */
     { R"(\\EvilWithin(Demo)?\.exe$)", {{
       { "d3d11.dcSingleUseMode",            "False" },
+      { "d3d11.cachedDynamicResources",     "vi"   },
     }} },
     /* Far Cry 3: Assumes clear(0.5) on an UNORM  *
      * format to result in 128 on AMD and 127 on  *
@@ -57,13 +58,20 @@ namespace dxvk {
       { "dxgi.deferSurfaceCreation",        "True" },
     }} },
     /* Quantum Break: Mever initializes shared    *
-     * memory in one of its compute shaders       */
+     * memory in one of its compute shaders.      *
+     * Also loves using MAP_WRITE on the same     *
+     * set of resources multiple times per frame. */
     { R"(\\QuantumBreak\.exe$)", {{
       { "d3d11.zeroInitWorkgroupMemory",    "True" },
+      { "d3d11.maxImplicitDiscardSize",     "-1"   },
     }} },
     /* Anno 2205: Random crashes with state cache */
     { R"(\\anno2205\.exe$)", {{
       { "dxvk.enableStateCache",            "False" },
+    }} },
+    /* Anno 1800: Poor performance without this   */
+    { R"(\\Anno1800\.exe$)", {{
+      { "d3d11.cachedDynamicResources",     "c"    },
     }} },
     /* Fifa '19+: Binds typed buffer SRV to shader *
      * that expects raw/structured buffer SRV     */
@@ -112,8 +120,9 @@ namespace dxvk {
     }} },
     /* NieR Replicant                             */
     { R"(\\NieR Replicant ver\.1\.22474487139\.exe)", {{
-      { "dxgi.syncInterval",                "1"   },
-      { "dxgi.maxFrameRate",                "60"  },
+      { "dxgi.syncInterval",                "1"    },
+      { "dxgi.maxFrameRate",                "60"   },
+      { "d3d11.cachedDynamicResources",     "vi"   },
     }} },
     /* SteamVR performance test                   */
     { R"(\\vr\.exe$)", {{
@@ -139,31 +148,27 @@ namespace dxvk {
     { R"(\\SaintsRowTheThird_DX11\.exe$)", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
     }} },
-    /* Metal Gear Solid 5                         */
-    { R"(\\mgsvtpp\.exe$)", {{
-      { "dxvk.enableOpenVR",                "False" },
-    }} },
-    /* Raft                                       */
-    { R"(\\Raft\.exe$)", {{
-      { "dxvk.enableOpenVR",                "False" },
-    }} },
     /* Crysis 3 - slower if it notices AMD card     *
      * Apitrace mode helps massively in cpu bound   *
      * game parts                                   */
     { R"(\\Crysis3\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
-      { "d3d11.apitraceMode",               "True" },
+      { "d3d11.cachedDynamicResources",     "a"    },
     }} },
     /* Crysis 3 Remastered                          *
      * Apitrace mode helps massively in cpu bound   *
      * game parts                                   */
     { R"(\\Crysis3Remastered\.exe$)", {{
-      { "d3d11.apitraceMode",               "True" },
+      { "d3d11.cachedDynamicResources",     "a"    },
     }} },
     /* Atelier series - games try to render video *
      * with a D3D9 swap chain over the DXGI swap  *
      * chain, which breaks D3D11 presentation     */
     { R"(\\Atelier_(Ayesha|Escha_and_Logy|Shallie)(_EN)?\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",        "True" },
+    }} },
+    /* Atelier Firis                              */
+    { R"(\\A18\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
     /* Atelier Rorona/Totori/Meruru               */
@@ -195,10 +200,6 @@ namespace dxvk {
     { R"(\\F1_20(1[89]|[2-9][0-9])\.exe$)", {{
       { "d3d11.forceTgsmBarriers",          "True" },
     }} },
-    /* Subnautica                                 */
-    { R"(\\Subnautica\.exe$)", {{
-      { "dxvk.enableOpenVR",                "False" },
-    }} },
     /* Blue Reflection                            */
     { R"(\\BLUE_REFLECTION\.exe$)", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
@@ -210,23 +211,23 @@ namespace dxvk {
     /* Darksiders Warmastered - apparently reads  *
      * from write-only mapped buffers             */
     { R"(\\darksiders1\.exe$)", {{
-      { "d3d11.apitraceMode",               "True" },
+      { "d3d11.cachedDynamicResources",     "a"    },
     }} },
     /* Monster Hunter World                       */
     { R"(\\MonsterHunterWorld\.exe$)", {{
-      { "d3d11.apitraceMode",               "True" },
+      { "d3d11.cachedDynamicResources",     "a"    },
     }} },
     /* Kingdome Come: Deliverance                 */
     { R"(\\KingdomCome\.exe$)", {{
-      { "d3d11.apitraceMode",               "True" },
+      { "d3d11.cachedDynamicResources",     "a"    },
     }} },
     /* Homefront: The Revolution                  */
     { R"(\\Homefront2_Release\.exe$)", {{
-      { "d3d11.apitraceMode",               "True" },
+      { "d3d11.cachedDynamicResources",     "a"    },
     }} },
     /* Sniper Ghost Warrior Contracts             */
     { R"(\\SGWContracts\.exe$)", {{
-      { "d3d11.apitraceMode",               "True" },
+      { "d3d11.cachedDynamicResources",     "a"    },
     }} },
     /* Shadow of the Tomb Raider - invariant      *
      * position breaks character rendering on NV  */
@@ -256,6 +257,26 @@ namespace dxvk {
     /* Final Fantasy XIV - Stuttering on NV       */
     { R"(\\ffxiv_dx11\.exe$)", {{
       { "dxvk.shrinkNvidiaHvvHeap",         "True" },
+      { "d3d11.cachedDynamicResources",     "vi"   },
+    }} },
+    /* God of War - relies on NVAPI/AMDAGS for    *
+     * barrier stuff, needs nvapi for DLSS        */
+    { R"(\\GoW\.exe$)", {{
+      { "d3d11.ignoreGraphicsBarriers",     "True" },
+      { "d3d11.relaxedBarriers",            "True" },
+      { "dxgi.nvapiHack",                   "False" },
+    }} },
+    /* AoE 2 DE - runs poorly for some users      */
+    { R"(\\AoE2DE_s\.exe$)", {{
+      { "d3d11.cachedDynamicResources",     "a"    },
+    }} },
+    /* Total War: Warhammer III                   */
+    { R"(\\Warhammer3\.exe$)", {{
+      { "d3d11.maxDynamicImageBufferSize",  "4096" },
+    }} },
+    /* Assassin's Creed 3 and 4                   */
+    { R"(\\ac(3|4bf)[sm]p\.exe$)", {{
+      { "d3d11.cachedDynamicResources",     "a"    },
     }} },
 
     /**********************************************/
@@ -490,6 +511,14 @@ namespace dxvk {
     /* BlazBlue Centralfiction                  */
     { R"(\\BBCF\.exe$)", {{
       { "d3d9.floatEmulation",              "Strict" },
+    }} },
+    /* James Cameron's Avatar needs invariantPosition to fix black flickering vegetation */
+    { R"(\\Avatar\.exe$)", {{
+      { "d3d9.invariantPosition",              "True" },
+    }} },
+    /* Resident Evil games                      */
+    { R"(\\(rerev|rerev2|re0hd|bhd|re5dx9|BH6)\.exe$)", {{
+      { "d3d9.allowDirectBufferMapping",                "False" },
     }} },
   }};
 

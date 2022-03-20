@@ -25,18 +25,40 @@ namespace dxvk {
     this->syncInterval          = config.getOption<int32_t>("dxgi.syncInterval", -1);
     this->tearFree              = config.getOption<Tristate>("dxgi.tearFree", Tristate::Auto);
 
+    int32_t maxImplicitDiscardSize = config.getOption<int32_t>("d3d11.maxImplicitDiscardSize", 256);
+    this->maxImplicitDiscardSize = maxImplicitDiscardSize >= 0
+      ? VkDeviceSize(maxImplicitDiscardSize) << 10
+      : VkDeviceSize(~0ull);
+
+    int32_t maxDynamicImageBufferSize = config.getOption<int32_t>("d3d11.maxDynamicImageBufferSize", -1);
+    this->maxDynamicImageBufferSize = maxDynamicImageBufferSize >= 0
+      ? VkDeviceSize(maxDynamicImageBufferSize) << 10
+      : VkDeviceSize(~0ull);
+
     this->constantBufferRangeCheck = config.getOption<bool>("d3d11.constantBufferRangeCheck", false)
       && DxvkGpuVendor(devInfo.core.properties.vendorID) != DxvkGpuVendor::Amd;
 
-    bool apitraceAttached = false;
-    apitraceAttached = ::GetModuleHandle("dxgitrace.dll") != nullptr;
+    auto cachedDynamicResources = config.getOption<std::string>("d3d11.cachedDynamicResources", std::string());
 
-    this->apitraceMode = config.getOption<bool>("d3d11.apitraceMode", apitraceAttached);
+    if (::GetModuleHandle("dxgitrace.dll")) {
+      // apitrace reads back all mapped resources on the CPU, so
+      // allocating everything in cached memory is necessary to
+      // achieve acceptable performance
+      this->cachedDynamicResources = ~0u;
+    } else {
+      this->cachedDynamicResources = 0u;
 
-    // Inform user in case they have the option enabled or a game
-    // ships a file called dxgitrace.dll for whatever reason.
-    if (this->apitraceMode)
-      Logger::warn("D3D11: Apitrace mode enabled, may affect performance!");
+      for (char c : cachedDynamicResources) {
+        switch (c) {
+          case 'c': this->cachedDynamicResources |= D3D11_BIND_CONSTANT_BUFFER;   break;
+          case 'v': this->cachedDynamicResources |= D3D11_BIND_VERTEX_BUFFER;     break;
+          case 'i': this->cachedDynamicResources |= D3D11_BIND_INDEX_BUFFER;      break;
+          case 'r': this->cachedDynamicResources |= D3D11_BIND_SHADER_RESOURCE;   break;
+          case 'a': this->cachedDynamicResources  = ~0u;                          break;
+          default:  Logger::warn(str::format("Unknown flag for d3d11.cachedDynamicResources option: ", c));
+        }
+      }
+    }
   }
   
 }

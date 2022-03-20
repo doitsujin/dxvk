@@ -226,8 +226,7 @@ namespace dxvk::hud {
   HudPos HudFrameTimeItem::render(
           HudRenderer&      renderer,
           HudPos            position) {
-    std::array<HudLineVertex, NumDataPoints * 2> vData;
-    position.y += 40.0f;
+    std::array<HudGraphPoint, NumDataPoints> points;
 
     // 60 FPS = optimal, 10 FPS = worst
     const float targetUs =  16'666.6f;
@@ -255,21 +254,18 @@ namespace dxvk::hud {
         uint8_t(255.0f * (g / l)),
         uint8_t(0), uint8_t(255) };
       
-      float x = position.x + float(i);
-      float y = position.y;
-      
       float hVal = std::log2(std::max((us - minUs) / targetUs + 1.0f, 1.0f))
                  / std::log2((maxUs - minUs) / targetUs);
-      float h = std::min(std::max(40.0f * hVal, 2.0f), 40.0f);
       
-      vData[2 * i + 0] = HudLineVertex { { x, y     }, color };
-      vData[2 * i + 1] = HudLineVertex { { x, y - h }, color };
+      points[i].value = std::max(hVal, 1.0f / 40.0f);
+      points[i].color = color;
     }
     
-    renderer.drawLines(vData.size(), vData.data());
+    renderer.drawGraph(position,
+      HudPos { float(NumDataPoints), 40.0f },
+      points.size(), points.data());
     
-    // Paint min/max frame times in the entire window
-    position.y += 18.0f;
+    position.y += 58.0f;
 
     renderer.drawText(12.0f,
       { position.x, position.y },
@@ -310,15 +306,32 @@ namespace dxvk::hud {
   void HudSubmissionStatsItem::update(dxvk::high_resolution_clock::time_point time) {
     DxvkStatCounters counters = m_device->getStatCounters();
     
-    uint32_t currCounter = counters.getCtr(DxvkStatCounter::QueueSubmitCount);
-    m_diffCounter = std::max(m_diffCounter, currCounter - m_prevCounter);
-    m_prevCounter = currCounter;
+    uint64_t currSubmitCount = counters.getCtr(DxvkStatCounter::QueueSubmitCount);
+    uint64_t currSyncCount = counters.getCtr(DxvkStatCounter::GpuSyncCount);
+    uint64_t currSyncTicks = counters.getCtr(DxvkStatCounter::GpuSyncTicks);
+
+    m_maxSubmitCount = std::max(m_maxSubmitCount, currSubmitCount - m_prevSubmitCount);
+    m_maxSyncCount = std::max(m_maxSyncCount, currSyncCount - m_prevSyncCount);
+    m_maxSyncTicks = std::max(m_maxSyncTicks, currSyncTicks - m_prevSyncTicks);
+
+    m_prevSubmitCount = currSubmitCount;
+    m_prevSyncCount = currSyncCount;
+    m_prevSyncTicks = currSyncTicks;
 
     auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate);
 
     if (elapsed.count() >= UpdateInterval) {
-      m_showCounter = m_diffCounter;
-      m_diffCounter = 0;
+      m_submitString = str::format(m_maxSubmitCount);
+
+      uint64_t syncTicks = m_maxSyncTicks / 100;
+
+      m_syncString = m_maxSyncCount
+        ? str::format(m_maxSyncCount, " (", (syncTicks / 10), ".", (syncTicks % 10), " ms)")
+        : str::format(m_maxSyncCount);
+
+      m_maxSubmitCount = 0;
+      m_maxSyncCount = 0;
+      m_maxSyncTicks = 0;
 
       m_lastUpdate = time;
     }
@@ -333,12 +346,23 @@ namespace dxvk::hud {
     renderer.drawText(16.0f,
       { position.x, position.y },
       { 1.0f, 0.5f, 0.25f, 1.0f },
-      "Queue submissions: ");
+      "Queue submissions:");
 
     renderer.drawText(16.0f,
       { position.x + 228.0f, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
-      str::format(m_showCounter));
+      m_submitString);
+
+    position.y += 20.0f;
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 1.0f, 0.5f, 0.25f, 1.0f },
+      "Queue syncs:");
+
+    renderer.drawText(16.0f,
+      { position.x + 228.0f, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      m_syncString);
 
     position.y += 8.0f;
     return position;
@@ -366,6 +390,7 @@ namespace dxvk::hud {
       m_gpCount = diffCounters.getCtr(DxvkStatCounter::CmdDrawCalls);
       m_cpCount = diffCounters.getCtr(DxvkStatCounter::CmdDispatchCalls);
       m_rpCount = diffCounters.getCtr(DxvkStatCounter::CmdRenderPassCount);
+      m_pbCount = diffCounters.getCtr(DxvkStatCounter::CmdBarrierCount);
 
       m_lastUpdate = time;
     }
@@ -409,6 +434,17 @@ namespace dxvk::hud {
       { position.x + 192.0f, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       str::format(m_rpCount));
+    
+    position.y += 20.0f;
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 0.25f, 0.5f, 1.0f, 1.0f },
+      "Barriers:");
+    
+    renderer.drawText(16.0f,
+      { position.x + 192.0f, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      str::format(m_pbCount));
     
     position.y += 8.0f;
     return position;
@@ -488,10 +524,12 @@ namespace dxvk::hud {
       bool isDeviceLocal = m_memory.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
 
       uint64_t memUsedMib = m_heaps[i].memoryUsed >> 20;
-      uint64_t percentage = (100 * m_heaps[i].memoryUsed) / m_memory.memoryHeaps[i].size;
+      uint64_t memAllocatedMib = m_heaps[i].memoryAllocated >> 20;
+      uint64_t percentage = (100 * m_heaps[i].memoryAllocated) / m_memory.memoryHeaps[i].size;
 
-      std::string label = str::format(isDeviceLocal ? "Vidmem" : "Sysmem", " heap ", i, ":");
-      std::string text  = str::format(std::setfill(' '), std::setw(5), memUsedMib, " MB (", percentage, "%)");
+      std::string label = str::format(isDeviceLocal ? "Vidmem" : "Sysmem", " heap ", i, ": ");
+      std::string text  = str::format(std::setfill(' '), std::setw(5), memAllocatedMib, " MB (", percentage, "%) ",
+        std::setw(5 + (percentage < 10 ? 1 : 0) + (percentage < 100 ? 1 : 0)), memUsedMib, " MB used");
 
       position.y += 16.0f;
       renderer.drawText(16.0f,
@@ -507,6 +545,85 @@ namespace dxvk::hud {
     }
 
     position.y += 4.0f;
+    return position;
+  }
+
+
+  HudCsThreadItem::HudCsThreadItem(const Rc<DxvkDevice>& device)
+  : m_device(device) {
+
+  }
+
+
+  HudCsThreadItem::~HudCsThreadItem() {
+
+  }
+
+
+  void HudCsThreadItem::update(dxvk::high_resolution_clock::time_point time) {
+    uint64_t ticks = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate).count();
+
+    // Capture the maximum here since it's more useful to
+    // identify stutters than using any sort of average
+    DxvkStatCounters counters = m_device->getStatCounters();
+    uint64_t currCsSyncCount = counters.getCtr(DxvkStatCounter::CsSyncCount);
+    uint64_t currCsSyncTicks = counters.getCtr(DxvkStatCounter::CsSyncTicks);
+
+    m_maxCsSyncCount = std::max(m_maxCsSyncCount, currCsSyncCount - m_prevCsSyncCount);
+    m_maxCsSyncTicks = std::max(m_maxCsSyncTicks, currCsSyncTicks - m_prevCsSyncTicks);
+
+    m_prevCsSyncCount = currCsSyncCount;
+    m_prevCsSyncTicks = currCsSyncTicks;
+
+    m_updateCount++;
+
+    if (ticks >= UpdateInterval) {
+      uint64_t currCsChunks = counters.getCtr(DxvkStatCounter::CsChunkCount);
+      uint64_t diffCsChunks = (currCsChunks - m_prevCsChunks) / m_updateCount;
+      m_prevCsChunks = currCsChunks;
+
+      uint64_t syncTicks = m_maxCsSyncTicks / 100;
+
+      m_csChunkString = str::format(diffCsChunks);
+      m_csSyncString = m_maxCsSyncCount
+        ? str::format(m_maxCsSyncCount, " (", (syncTicks / 10), ".", (syncTicks % 10), " ms)")
+        : str::format(m_maxCsSyncCount);
+
+      m_maxCsSyncCount = 0;
+      m_maxCsSyncTicks = 0;
+
+      m_updateCount = 0;
+      m_lastUpdate = time;
+    }
+  }
+
+
+  HudPos HudCsThreadItem::render(
+          HudRenderer&      renderer,
+          HudPos            position) {
+    position.y += 16.0f;
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 0.25f, 1.0f, 0.25f, 1.0f },
+      "CS chunks:");
+
+    renderer.drawText(16.0f,
+      { position.x + 132.0f, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      m_csChunkString);
+
+    position.y += 20.0f;
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 0.25f, 1.0f, 0.25f, 1.0f },
+      "CS syncs:");
+
+    renderer.drawText(16.0f,
+      { position.x + 132.0f, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      m_csSyncString);
+
+    position.y += 8.0f;
     return position;
   }
 

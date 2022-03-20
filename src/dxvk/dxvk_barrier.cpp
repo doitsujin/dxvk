@@ -234,6 +234,8 @@ namespace dxvk {
         m_imgBarriers.size(),
         m_imgBarriers.data());
       
+      commandList->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1);
+
       this->reset();
     }
   }

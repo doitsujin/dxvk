@@ -102,7 +102,7 @@ namespace dxvk {
      * \param [in] ctr The counter to increment
      * \param [in] val The value to add
      */
-    void addStatCtr(DxvkStatCounter ctr, uint32_t val) {
+    void addStatCtr(DxvkStatCounter ctr, uint64_t val) {
       m_statCounters.addCtr(ctr, val);
     }
     
@@ -194,9 +194,10 @@ namespace dxvk {
     }
 
     /**
-     * \brief Notifies signals
+     * \brief Notifies resources and signals
      */
-    void notifySignals() {
+    void notifyObjects() {
+      m_resources.notify();
       m_signalTracker.notify();
     }
     
@@ -598,11 +599,14 @@ namespace dxvk {
 
 
     void cmdFillBuffer(
+            DxvkCmdBuffer           cmdBuffer,
             VkBuffer                dstBuffer,
             VkDeviceSize            dstOffset,
             VkDeviceSize            size,
             uint32_t                data) {
-      m_vkd->vkCmdFillBuffer(m_execBuffer,
+      m_cmdBuffersUsed.set(cmdBuffer);
+
+      m_vkd->vkCmdFillBuffer(getCmdBuffer(cmdBuffer),
         dstBuffer, dstOffset, size, data);
     }
     

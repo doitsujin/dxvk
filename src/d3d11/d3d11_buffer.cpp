@@ -74,6 +74,8 @@ namespace dxvk {
     m_buffer = m_parent->GetDXVKDevice()->createBuffer(info, GetMemoryFlags());
     m_mapped = m_buffer->getSliceHandle();
 
+    m_mapMode = DetermineMapMode();
+
     // For Stream Output buffers we need a counter
     if (pDesc->BindFlags & D3D11_BIND_STREAM_OUTPUT)
       m_soCounter = CreateSoCounterBuffer();
@@ -245,7 +247,10 @@ namespace dxvk {
         break;
     }
     
-    if (memoryFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT && m_parent->GetOptions()->apitraceMode) {
+    bool useCached = (m_parent->GetOptions()->cachedDynamicResources == ~0u)
+                  || (m_parent->GetOptions()->cachedDynamicResources & m_desc.BindFlags);
+
+    if ((memoryFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) && useCached) {
       memoryFlags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
                   |  VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
     }
@@ -272,6 +277,13 @@ namespace dxvk {
                 | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT
                 | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT;
     return device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  }
+
+
+  D3D11_COMMON_BUFFER_MAP_MODE D3D11Buffer::DetermineMapMode() {
+    return (m_buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+      ? D3D11_COMMON_BUFFER_MAP_MODE_DIRECT
+      : D3D11_COMMON_BUFFER_MAP_MODE_NONE;
   }
   
 

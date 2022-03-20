@@ -18,17 +18,6 @@ namespace dxvk::hud {
   };
   
   /**
-   * \brief Texture coordinates
-   * 
-   * Absolute texture coordinates that are used
-   * to pick letters in the font texture.
-   */
-  struct HudTexCoord {
-    uint32_t u;
-    uint32_t v;
-  };
-  
-  /**
    * \brief Color
    * 
    * SRGB color with alpha channel. The text
@@ -43,31 +32,62 @@ namespace dxvk::hud {
 
   /**
    * \brief Normalized color
+   *
    * SRGB color with alpha channel.
    */
   struct HudNormColor {
-    uint8_t r;
-    uint8_t g;
-    uint8_t b;
     uint8_t a;
+    uint8_t b;
+    uint8_t g;
+    uint8_t r;
   };
   
   /**
-   * \brief Text vertex and texture coordinates
+   * \brief Graph point with color
    */
-  struct HudTextVertex {
-    HudPos        position;
-    HudTexCoord   texcoord;
+  struct HudGraphPoint {
+    float         value;
+    HudNormColor  color;
   };
 
   /**
-   * \brief Line vertex and color
+   * \brief HUD push constant data
    */
-  struct HudLineVertex {
-    HudPos        position;
-    HudNormColor  color;
+  struct HudTextPushConstants {
+    HudColor color;
+    HudPos pos;
+    uint32_t offset;
+    float size;
+    HudPos scale;
   };
-  
+
+  struct HudGraphPushConstants {
+    uint32_t offset;
+    uint32_t count;
+    HudPos pos;
+    HudPos size;
+    HudPos scale;
+  };
+
+  /**
+   * \brief Glyph data
+   */
+  struct HudGlyphGpuData {
+    int16_t x;
+    int16_t y;
+    int16_t w;
+    int16_t h;
+    int16_t originX;
+    int16_t originY;
+  };
+
+  struct HudFontGpuData {
+    float size;
+    float advance;
+    uint32_t padding[2];
+    HudGlyphGpuData glyphs[256];
+  };
+
   /**
    * \brief Text renderer for the HUD
    * 
@@ -75,15 +95,7 @@ namespace dxvk::hud {
    * display performance and driver information.
    */
   class HudRenderer {
-    constexpr static uint32_t MaxTextVertexCount    = 512 * 6;
-    constexpr static uint32_t MaxTextInstanceCount  = 64;
-    constexpr static uint32_t MaxLineVertexCount    = 1024;
-
-    struct VertexBufferData {
-      HudColor              textColors[MaxTextInstanceCount];
-      HudTextVertex         textVertices[MaxTextVertexCount];
-      HudLineVertex         lineVertices[MaxLineVertexCount];
-    };
+    constexpr static VkDeviceSize DataBufferSize = 16384;
   public:
     
     HudRenderer(
@@ -102,9 +114,11 @@ namespace dxvk::hud {
             HudColor          color,
       const std::string&      text);
     
-    void drawLines(
-            size_t            vertexCount,
-      const HudLineVertex*    vertexData);
+    void drawGraph(
+            HudPos            pos,
+            HudPos            size,
+            size_t            pointCount,
+      const HudGraphPoint*    pointData);
     
     VkExtent2D surfaceSize() const {
       return m_surfaceSize;
@@ -119,7 +133,7 @@ namespace dxvk::hud {
     enum class Mode {
       RenderNone,
       RenderText,
-      RenderLines,
+      RenderGraph,
     };
 
     struct ShaderPair {
@@ -127,55 +141,46 @@ namespace dxvk::hud {
       Rc<DxvkShader> frag;
     };
     
-    std::array<uint8_t, 256> m_charMap;
-    
     Mode                m_mode;
     float               m_scale;
     VkExtent2D          m_surfaceSize;
+
+    Rc<DxvkDevice>      m_device;
     Rc<DxvkContext>     m_context;
     
     ShaderPair          m_textShaders;
-    ShaderPair          m_lineShaders;
+    ShaderPair          m_graphShaders;
     
+    Rc<DxvkBuffer>      m_dataBuffer;
+    Rc<DxvkBufferView>  m_dataView;
+    VkDeviceSize        m_dataOffset;
+
+    Rc<DxvkBuffer>      m_fontBuffer;
     Rc<DxvkImage>       m_fontImage;
     Rc<DxvkImageView>   m_fontView;
     Rc<DxvkSampler>     m_fontSampler;
-    
-    Rc<DxvkBuffer>      m_vertexBuffer;
-    VertexBufferData*   m_vertexData = nullptr;
 
-    uint32_t            m_currTextVertex    = 0;
-    uint32_t            m_currTextInstance  = 0;
-    uint32_t            m_currLineVertex    = 0;
+    bool                m_initialized = false;
 
-    void allocVertexBufferSlice();
-    
     void beginTextRendering();
     
-    void beginLineRendering();
-    
-    ShaderPair createTextShaders(
-      const Rc<DxvkDevice>& device);
-    
-    ShaderPair createLineShaders(
-      const Rc<DxvkDevice>& device);
-    
-    Rc<DxvkImage> createFontImage(
-      const Rc<DxvkDevice>& device);
-    
-    Rc<DxvkImageView> createFontView(
-      const Rc<DxvkDevice>& device);
-    
-    Rc<DxvkSampler> createFontSampler(
-      const Rc<DxvkDevice>& device);
-    
-    Rc<DxvkBuffer> createVertexBuffer(
-      const Rc<DxvkDevice>& device);
+    void beginGraphRendering();
+
+    VkDeviceSize allocDataBuffer(VkDeviceSize size);
+
+    ShaderPair createTextShaders();
+    ShaderPair createGraphShaders();
+
+    Rc<DxvkBuffer> createDataBuffer();
+    Rc<DxvkBufferView> createDataView();
+
+    Rc<DxvkBuffer> createFontBuffer();
+    Rc<DxvkImage> createFontImage();
+    Rc<DxvkImageView> createFontView();
+    Rc<DxvkSampler> createFontSampler();
     
     void initFontTexture(
-      const Rc<DxvkDevice>&  device);
-    
-    void initCharMap();
+      const Rc<DxvkContext>& context);
     
   };
   

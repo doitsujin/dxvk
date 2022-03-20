@@ -7,7 +7,7 @@
 
 namespace dxvk {
 
-  enum D3D9VertexDeclFlag {
+  enum class D3D9VertexDeclFlag {
     HasColor0,
     HasColor1,
     HasPositionT,
@@ -56,6 +56,10 @@ namespace dxvk {
 
     bool TestFlag(D3D9VertexDeclFlag flag) const {
       return m_flags.test(flag);
+    }
+
+    D3D9VertexDeclFlags GetFlags() const {
+      return m_flags;
     }
 
     uint32_t GetTexcoordMask() const {

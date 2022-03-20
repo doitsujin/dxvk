@@ -38,7 +38,8 @@ d3d9_src = [
   'd3d9_names.cpp',
   'd3d9_swvp_emu.cpp',
   'd3d9_format_helpers.cpp',
-  'd3d9_hud.cpp'
+  'd3d9_hud.cpp',
+  'd3d9_annotation.cpp'
 ]
 
 d3d9_dll = shared_library('d3d9'+dll_ext, d3d9_src, glsl_generator.process(d3d9_shaders), d3d9_res,
@@ -47,8 +48,9 @@ d3d9_dll = shared_library('d3d9'+dll_ext, d3d9_src, glsl_generator.process(d3d9_
   include_directories : dxvk_include_path,
   install             : true,
   vs_module_defs      : 'd3d9'+def_spec_ext,
-  override_options    : ['cpp_std='+dxvk_cpp_std])
+)
 
 d3d9_dep = declare_dependency(
   link_with           : [ d3d9_dll ],
-  include_directories : [ dxvk_include_path ])
+  include_directories : [ dxvk_include_path ],
+)

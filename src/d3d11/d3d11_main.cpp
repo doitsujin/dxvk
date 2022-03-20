@@ -242,4 +242,24 @@ extern "C" {
       ppDevice, pFeatureLevel, ppImmediateContext);
   }
   
+
+  DLLEXPORT HRESULT __stdcall D3D11On12CreateDevice(
+          IUnknown*             pDevice,
+          UINT                  Flags,
+    const D3D_FEATURE_LEVEL*    pFeatureLevels,
+          UINT                  FeatureLevels,
+          IUnknown* const*      ppCommandQueues,
+          UINT                  NumQueues,
+          UINT                  NodeMask,
+          ID3D11Device**        ppDevice,
+          ID3D11DeviceContext** ppImmediateContext,
+          D3D_FEATURE_LEVEL*    pChosenFeatureLevel) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11On12CreateDevice: Not implemented");
+
+    return E_NOTIMPL;
+  }
+
 }

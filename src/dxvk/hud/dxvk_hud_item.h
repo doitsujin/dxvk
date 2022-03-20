@@ -213,7 +213,7 @@ namespace dxvk::hud {
    * \brief HUD item to display the frame rate
    */
   class HudFrameTimeItem : public HudItem {
-    constexpr static size_t NumDataPoints = 300;
+    constexpr static size_t NumDataPoints = 304;
   public:
 
     HudFrameTimeItem();
@@ -238,7 +238,7 @@ namespace dxvk::hud {
 
 
   /**
-   * \brief HUD item to display queue submissions
+   * \brief HUD item to display queue statistics
    */
   class HudSubmissionStatsItem : public HudItem {
     constexpr static int64_t UpdateInterval = 500'000;
@@ -258,9 +258,16 @@ namespace dxvk::hud {
 
     Rc<DxvkDevice>  m_device;
 
-    uint64_t        m_prevCounter = 0;
-    uint64_t        m_diffCounter = 0;
-    uint64_t        m_showCounter = 0;
+    uint64_t        m_prevSubmitCount = 0;
+    uint64_t        m_prevSyncCount   = 0;
+    uint64_t        m_prevSyncTicks   = 0;
+
+    uint64_t        m_maxSubmitCount  = 0;
+    uint64_t        m_maxSyncCount    = 0;
+    uint64_t        m_maxSyncTicks    = 0;
+
+    std::string     m_submitString;
+    std::string     m_syncString;
 
     dxvk::high_resolution_clock::time_point m_lastUpdate
       = dxvk::high_resolution_clock::now();
@@ -294,6 +301,7 @@ namespace dxvk::hud {
     uint64_t          m_gpCount = 0;
     uint64_t          m_cpCount = 0;
     uint64_t          m_rpCount = 0;
+    uint64_t          m_pbCount = 0;
 
     dxvk::high_resolution_clock::time_point m_lastUpdate
       = dxvk::high_resolution_clock::now();
@@ -350,6 +358,45 @@ namespace dxvk::hud {
     Rc<DxvkDevice>                    m_device;
     VkPhysicalDeviceMemoryProperties  m_memory;
     DxvkMemoryStats                   m_heaps[VK_MAX_MEMORY_HEAPS];
+
+  };
+
+
+  /**
+   * \brief HUD item to display CS thread statistics
+   */
+  class HudCsThreadItem : public HudItem {
+    constexpr static int64_t UpdateInterval = 500'000;
+  public:
+
+    HudCsThreadItem(const Rc<DxvkDevice>& device);
+
+    ~HudCsThreadItem();
+
+    void update(dxvk::high_resolution_clock::time_point time);
+
+    HudPos render(
+            HudRenderer&      renderer,
+            HudPos            position);
+
+  private:
+
+    Rc<DxvkDevice> m_device;
+
+    uint64_t m_prevCsSyncCount  = 0;
+    uint64_t m_prevCsSyncTicks  = 0;
+    uint64_t m_prevCsChunks     = 0;
+
+    uint64_t m_maxCsSyncCount   = 0;
+    uint64_t m_maxCsSyncTicks   = 0;
+
+    uint64_t m_updateCount      = 0;
+
+    std::string m_csSyncString;
+    std::string m_csChunkString;
+
+    dxvk::high_resolution_clock::time_point m_lastUpdate
+      = dxvk::high_resolution_clock::now();
 
   };
 

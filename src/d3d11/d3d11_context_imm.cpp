@@ -13,7 +13,8 @@ namespace dxvk {
           D3D11Device*    pParent,
     const Rc<DxvkDevice>& Device)
   : D3D11DeviceContext(pParent, Device, DxvkCsChunkFlag::SingleUse),
-    m_csThread(Device->createContext()),
+    m_csThread(Device, Device->createContext()),
+    m_maxImplicitDiscardSize(pParent->GetOptions()->maxImplicitDiscardSize),
     m_videoContext(this, Device) {
     EmitCs([
       cDevice                 = m_device,
@@ -39,7 +40,7 @@ namespace dxvk {
   
   D3D11ImmediateContext::~D3D11ImmediateContext() {
     Flush();
-    SynchronizeCsThread();
+    SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
     SynchronizeDevice();
   }
   
@@ -139,11 +140,13 @@ namespace dxvk {
       cQuery->End(ctx);
     });
 
-    if (unlikely(query->IsEvent())) {
+    if (unlikely(query->TrackStalls())) {
       query->NotifyEnd();
-      query->IsStalling()
-        ? Flush()
-        : FlushImplicit(TRUE);
+
+      if (query->IsStalling())
+        Flush();
+      else if (query->IsEvent())
+        FlushImplicit(TRUE);
     }
   }
 
@@ -212,7 +215,8 @@ namespace dxvk {
     
     // Dispatch command list to the CS thread and
     // restore the immediate context's state
-    commandList->EmitToCsThread(&m_csThread);
+    uint64_t csSeqNum = commandList->EmitToCsThread(&m_csThread);
+    m_csSeqNum = std::max(m_csSeqNum, csSeqNum);
     
     if (RestoreContextState)
       RestoreState();
@@ -272,12 +276,17 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11ImmediateContext::Unmap(
           ID3D11Resource*             pResource,
           UINT                        Subresource) {
-    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
-    pResource->GetType(&resourceDim);
-    
-    if (unlikely(resourceDim != D3D11_RESOURCE_DIMENSION_BUFFER)) {
-      D3D10DeviceLock lock = LockContext();
-      UnmapImage(GetCommonTexture(pResource), Subresource);
+    // Since it is very uncommon for images to be mapped compared
+    // to buffers, we count the currently mapped images in order
+    // to avoid a virtual method call in the common case.
+    if (unlikely(m_mappedImageCount > 0)) {
+      D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+      pResource->GetType(&resourceDim);
+
+      if (resourceDim != D3D11_RESOURCE_DIMENSION_BUFFER) {
+        D3D10DeviceLock lock = LockContext();
+        UnmapImage(GetCommonTexture(pResource), Subresource);
+      }
     }
   }
 
@@ -288,11 +297,8 @@ namespace dxvk {
     const void*                             pSrcData,
           UINT                              SrcRowPitch,
           UINT                              SrcDepthPitch) {
-    FlushImplicit(FALSE);
-
-    D3D11DeviceContext::UpdateSubresource(
-      pDstResource, DstSubresource, pDstBox,
-      pSrcData, SrcRowPitch, SrcDepthPitch);
+    UpdateResource<D3D11ImmediateContext>(this, pDstResource,
+      DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, 0);
   }
 
   
@@ -304,12 +310,8 @@ namespace dxvk {
           UINT                              SrcRowPitch,
           UINT                              SrcDepthPitch,
           UINT                              CopyFlags) {
-    FlushImplicit(FALSE);
-
-    D3D11DeviceContext::UpdateSubresource1(
-      pDstResource, DstSubresource, pDstBox,
-      pSrcData, SrcRowPitch, SrcDepthPitch,
-      CopyFlags);
+    UpdateResource<D3D11ImmediateContext>(this, pDstResource,
+      DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, CopyFlags);
   }
   
   
@@ -353,15 +355,17 @@ namespace dxvk {
       Logger::err("D3D11: Cannot map a device-local buffer");
       return E_INVALIDARG;
     }
-    
-    if (MapType == D3D11_MAP_WRITE_DISCARD) {
+
+    VkDeviceSize bufferSize = pResource->Desc()->ByteWidth;
+
+    if (likely(MapType == D3D11_MAP_WRITE_DISCARD)) {
       // Allocate a new backing slice for the buffer and set
       // it as the 'new' mapped slice. This assumes that the
       // only way to invalidate a buffer is by mapping it.
       auto physSlice = pResource->DiscardSlice();
       pMappedResource->pData      = physSlice.mapPtr;
-      pMappedResource->RowPitch   = pResource->Desc()->ByteWidth;
-      pMappedResource->DepthPitch = pResource->Desc()->ByteWidth;
+      pMappedResource->RowPitch   = bufferSize;
+      pMappedResource->DepthPitch = bufferSize;
       
       EmitCs([
         cBuffer      = pResource->GetBuffer(),
@@ -371,22 +375,65 @@ namespace dxvk {
       });
 
       return S_OK;
+    } else if (likely(MapType == D3D11_MAP_WRITE_NO_OVERWRITE)) {
+      // Put this on a fast path without any extra checks since it's
+      // a somewhat desired method to partially update large buffers
+      DxvkBufferSliceHandle physSlice = pResource->GetMappedSlice();
+      pMappedResource->pData      = physSlice.mapPtr;
+      pMappedResource->RowPitch   = bufferSize;
+      pMappedResource->DepthPitch = bufferSize;
+      return S_OK;
     } else {
-      // Wait until the resource is no longer in use
-      if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
-        if (!WaitForResource(pResource->GetBuffer(), MapType, MapFlags))
-          return DXGI_ERROR_WAS_STILL_DRAWING;
+      // Quantum Break likes using MAP_WRITE on resources which would force
+      // us to synchronize with the GPU multiple times per frame. In those
+      // situations, if there are no pending GPU writes to the resource, we
+      // can promote it to MAP_WRITE_DISCARD, but preserve the data by doing
+      // a CPU copy from the previous buffer slice, to avoid the sync point.
+      bool doInvalidatePreserve = false;
+
+      auto buffer = pResource->GetBuffer();
+      auto sequenceNumber = pResource->GetSequenceNumber();
+
+      if (MapType != D3D11_MAP_READ && !MapFlags && bufferSize <= m_maxImplicitDiscardSize) {
+        SynchronizeCsThread(sequenceNumber);
+
+        bool hasWoAccess = buffer->isInUse(DxvkAccess::Write);
+        bool hasRwAccess = buffer->isInUse(DxvkAccess::Read);
+
+        if (hasRwAccess && !hasWoAccess) {
+          // Uncached reads can be so slow that a GPU sync may actually be faster
+          doInvalidatePreserve = buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+        }
       }
 
-      // Use map pointer from previous map operation. This
-      // way we don't have to synchronize with the CS thread
-      // if the map mode is D3D11_MAP_WRITE_NO_OVERWRITE.
-      DxvkBufferSliceHandle physSlice = pResource->GetMappedSlice();
-      
-      pMappedResource->pData      = physSlice.mapPtr;
-      pMappedResource->RowPitch   = pResource->Desc()->ByteWidth;
-      pMappedResource->DepthPitch = pResource->Desc()->ByteWidth;
-      return S_OK;
+      if (doInvalidatePreserve) {
+        FlushImplicit(TRUE);
+
+        auto prevSlice = pResource->GetMappedSlice();
+        auto physSlice = pResource->DiscardSlice();
+
+        EmitCs([
+          cBuffer      = std::move(buffer),
+          cBufferSlice = physSlice
+        ] (DxvkContext* ctx) {
+          ctx->invalidateBuffer(cBuffer, cBufferSlice);
+        });
+
+        std::memcpy(physSlice.mapPtr, prevSlice.mapPtr, physSlice.length);
+        pMappedResource->pData      = physSlice.mapPtr;
+        pMappedResource->RowPitch   = bufferSize;
+        pMappedResource->DepthPitch = bufferSize;
+        return S_OK;
+      } else {
+        if (!WaitForResource(buffer, sequenceNumber, MapType, MapFlags))
+          return DXGI_ERROR_WAS_STILL_DRAWING;
+
+        DxvkBufferSliceHandle physSlice = pResource->GetMappedSlice();
+        pMappedResource->pData      = physSlice.mapPtr;
+        pMappedResource->RowPitch   = bufferSize;
+        pMappedResource->DepthPitch = bufferSize;
+        return S_OK;
+      }
     }
   }
   
@@ -423,23 +470,81 @@ namespace dxvk {
     VkFormat packedFormat = m_parent->LookupPackedFormat(
       pResource->Desc()->Format, pResource->GetFormatMode()).Format;
     
+    uint64_t sequenceNumber = pResource->GetSequenceNumber(Subresource);
+
     auto formatInfo = imageFormatInfo(packedFormat);
     void* mapPtr;
 
     if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
-      // Wait for the resource to become available
-      if (!WaitForResource(mappedImage, MapType, MapFlags))
-        return DXGI_ERROR_WAS_STILL_DRAWING;
+      // Wait for the resource to become available. We do not
+      // support image renaming, so stall on DISCARD instead.
+      if (MapType == D3D11_MAP_WRITE_DISCARD)
+        MapFlags &= ~D3D11_MAP_FLAG_DO_NOT_WAIT;
+
+      if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
+        if (!WaitForResource(mappedImage, sequenceNumber, MapType, MapFlags))
+          return DXGI_ERROR_WAS_STILL_DRAWING;
+      }
       
       // Query the subresource's memory layout and hope that
       // the application respects the returned pitch values.
       mapPtr = mappedImage->mapPtr(0);
     } else {
-      if (MapType == D3D11_MAP_WRITE_DISCARD) {
-        // We do not have to preserve the contents of the
-        // buffer if the entire image gets discarded.
+      constexpr uint32_t DoInvalidate = (1u << 0);
+      constexpr uint32_t DoPreserve   = (1u << 1);
+      constexpr uint32_t DoWait       = (1u << 2);
+      uint32_t doFlags;
+
+      if (MapType == D3D11_MAP_READ) {
+        // Reads will not change the image content, so we only need
+        // to wait for the GPU to finish writing to the mapped buffer.
+        doFlags = DoWait;
+      } else if (MapType == D3D11_MAP_WRITE_DISCARD) {
+        doFlags = DoInvalidate;
+
+        // If we know for sure that the mapped buffer is currently not
+        // in use by the GPU, we don't have to allocate a new slice.
+        if (m_csThread.lastSequenceNumber() >= sequenceNumber && !mappedBuffer->isInUse(DxvkAccess::Read))
+          doFlags = 0;
+      } else if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_STAGING && (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT)) {
+        // Always respect DO_NOT_WAIT for mapped staging images
+        doFlags = DoWait;
+      } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE || mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER) {
+        // Need to synchronize thread to determine pending GPU accesses
+        SynchronizeCsThread(sequenceNumber);
+
+        // Don't implicitly discard large buffers or buffers of images with
+        // multiple subresources, as that is likely to cause memory issues.
+        VkDeviceSize bufferSize = pResource->GetMappedSlice(Subresource).length;
+
+        if (bufferSize >= m_maxImplicitDiscardSize || pResource->CountSubresources() > 1) {
+          // Don't check access flags, WaitForResource will return
+          // early anyway if the resource is currently in use
+          doFlags = DoWait;
+        } else if (mappedBuffer->isInUse(DxvkAccess::Write)) {
+          // There are pending GPU writes, need to wait for those
+          doFlags = DoWait;
+        } else if (mappedBuffer->isInUse(DxvkAccess::Read)) {
+          // All pending GPU accesses are reads, so the buffer data
+          // is still current, and we can prevent GPU synchronization
+          // by creating a new slice with an exact copy of the data.
+          doFlags = DoInvalidate | DoPreserve;
+        } else {
+          // There are no pending accesses, so we don't need to wait
+          doFlags = 0;
+        }
+      } else {
+        // No need to synchronize staging resources with NO_OVERWRITE
+        // since the buffer will be used directly.
+        doFlags = 0;
+      }
+
+      if (doFlags & DoInvalidate) {
+        FlushImplicit(TRUE);
+
+        DxvkBufferSliceHandle prevSlice = pResource->GetMappedSlice(Subresource);
         DxvkBufferSliceHandle physSlice = pResource->DiscardSlice(Subresource);
-        
+
         EmitCs([
           cImageBuffer = mappedBuffer,
           cBufferSlice = physSlice
@@ -447,15 +552,22 @@ namespace dxvk {
           ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
         });
 
+        if (doFlags & DoPreserve)
+          std::memcpy(physSlice.mapPtr, prevSlice.mapPtr, physSlice.length);
+
         mapPtr = physSlice.mapPtr;
       } else {
-        bool wait = MapType != D3D11_MAP_WRITE_NO_OVERWRITE
-                 || mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
-        
-        // Wait for mapped buffer to become available
-        if (wait && !WaitForResource(mappedBuffer, MapType, MapFlags))
-          return DXGI_ERROR_WAS_STILL_DRAWING;
-        
+        if (doFlags & DoWait) {
+          // We cannot respect DO_NOT_WAIT for buffer-mapped resources since
+          // our internal copies need to be transparent to the application.
+          if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)
+            MapFlags &= ~D3D11_MAP_FLAG_DO_NOT_WAIT;
+
+          // Wait for mapped buffer to become available
+          if (!WaitForResource(mappedBuffer, sequenceNumber, MapType, MapFlags))
+            return DXGI_ERROR_WAS_STILL_DRAWING;
+        }
+
         mapPtr = pResource->GetMappedSlice(Subresource).mapPtr;
       }
     }
@@ -470,6 +582,7 @@ namespace dxvk {
       pMappedResource->DepthPitch = layout.DepthPitch;
     }
 
+    m_mappedImageCount += 1;
     return S_OK;
   }
   
@@ -480,11 +593,15 @@ namespace dxvk {
     D3D11_MAP mapType = pResource->GetMapType(Subresource);
     pResource->SetMapType(Subresource, D3D11_MAP(~0u));
 
-    if (mapType == D3D11_MAP(~0u)
-     || mapType == D3D11_MAP_READ)
+    if (mapType == D3D11_MAP(~0u))
       return;
-    
-    if (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER) {
+
+    // Decrement mapped image counter only after making sure
+    // the given subresource is actually mapped right now
+    m_mappedImageCount -= 1;
+
+    if ((mapType != D3D11_MAP_READ) &&
+        (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)) {
       // Now that data has been written into the buffer,
       // we need to copy its contents into the image
       VkImageAspectFlags aspectMask = imageFormatInfo(pResource->GetPackedFormat())->aspectMask;
@@ -497,6 +614,31 @@ namespace dxvk {
   }
   
   
+  void D3D11ImmediateContext::UpdateMappedBuffer(
+          D3D11Buffer*                  pDstBuffer,
+          UINT                          Offset,
+          UINT                          Length,
+    const void*                         pSrcData,
+          UINT                          CopyFlags) {
+    DxvkBufferSliceHandle slice;
+
+    if (likely(CopyFlags != D3D11_COPY_NO_OVERWRITE)) {
+      slice = pDstBuffer->DiscardSlice();
+
+      EmitCs([
+        cBuffer      = pDstBuffer->GetBuffer(),
+        cBufferSlice = slice
+      ] (DxvkContext* ctx) {
+        ctx->invalidateBuffer(cBuffer, cBufferSlice);
+      });
+    } else {
+      slice = pDstBuffer->GetMappedSlice();
+    }
+
+    std::memcpy(reinterpret_cast<char*>(slice.mapPtr) + Offset, pSrcData, Length);
+  }
+
+
   void STDMETHODCALLTYPE D3D11ImmediateContext::SwapDeviceContextState(
           ID3DDeviceContextState*           pState,
           ID3DDeviceContextState**          ppPreviousState) {
@@ -523,15 +665,15 @@ namespace dxvk {
   }
 
 
-  void D3D11ImmediateContext::SynchronizeCsThread() {
+  void D3D11ImmediateContext::SynchronizeCsThread(uint64_t SequenceNumber) {
     D3D10DeviceLock lock = LockContext();
 
     // Dispatch current chunk so that all commands
     // recorded prior to this function will be run
-    FlushCsChunk();
+    if (SequenceNumber > m_csSeqNum)
+      FlushCsChunk();
     
-    if (m_csThread.isBusy())
-      m_csThread.synchronize();
+    m_csThread.synchronize(SequenceNumber);
   }
   
   
@@ -542,6 +684,7 @@ namespace dxvk {
   
   bool D3D11ImmediateContext::WaitForResource(
     const Rc<DxvkResource>&                 Resource,
+          uint64_t                          SequenceNumber,
           D3D11_MAP                         MapType,
           UINT                              MapFlags) {
     // Determine access type to wait for based on map mode
@@ -549,36 +692,69 @@ namespace dxvk {
       ? DxvkAccess::Write
       : DxvkAccess::Read;
     
-    // Wait for the any pending D3D11 command to be executed
-    // on the CS thread so that we can determine whether the
-    // resource is currently in use or not.
-    if (!Resource->isInUse(access))
-      SynchronizeCsThread();
-    
-    if (Resource->isInUse(access)) {
-      if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT) {
+    // Wait for any CS chunk using the resource to execute, since
+    // otherwise we cannot accurately determine if the resource is
+    // actually being used by the GPU right now.
+    bool isInUse = Resource->isInUse(access);
+
+    if (!isInUse) {
+      SynchronizeCsThread(SequenceNumber);
+      isInUse = Resource->isInUse(access);
+    }
+
+    if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT) {
+      if (isInUse) {
         // We don't have to wait, but misbehaving games may
         // still try to spin on `Map` until the resource is
         // idle, so we should flush pending commands
         FlushImplicit(FALSE);
         return false;
-      } else {
+      }
+    } else {
+      if (isInUse) {
         // Make sure pending commands using the resource get
         // executed on the the GPU if we have to wait for it
         Flush();
-        SynchronizeCsThread();
-        
-        Resource->waitIdle(access);
+        SynchronizeCsThread(SequenceNumber);
+
+        m_device->waitForResource(Resource, access);
       }
     }
-    
+
     return true;
   }
   
   
   void D3D11ImmediateContext::EmitCsChunk(DxvkCsChunkRef&& chunk) {
-    m_csThread.dispatchChunk(std::move(chunk));
+    m_csSeqNum = m_csThread.dispatchChunk(std::move(chunk));
     m_csIsBusy = true;
+  }
+
+
+  void D3D11ImmediateContext::TrackTextureSequenceNumber(
+          D3D11CommonTexture*         pResource,
+          UINT                        Subresource) {
+    uint64_t sequenceNumber = GetCurrentSequenceNumber();
+    pResource->TrackSequenceNumber(Subresource, sequenceNumber);
+
+    FlushImplicit(TRUE);
+  }
+
+
+  void D3D11ImmediateContext::TrackBufferSequenceNumber(
+          D3D11Buffer*                pResource) {
+    uint64_t sequenceNumber = GetCurrentSequenceNumber();
+    pResource->TrackSequenceNumber(sequenceNumber);
+
+    FlushImplicit(TRUE);
+  }
+
+
+  uint64_t D3D11ImmediateContext::GetCurrentSequenceNumber() {
+    // We do not flush empty chunks, so if we are tracking a resource
+    // immediately after a flush, we need to use the sequence number
+    // of the previously submitted chunk to prevent deadlocks.
+    return m_csChunk->empty() ? m_csSeqNum : m_csSeqNum + 1;
   }
 
 

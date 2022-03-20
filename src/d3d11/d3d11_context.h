@@ -3,6 +3,7 @@
 #include "../dxvk/dxvk_adapter.h"
 #include "../dxvk/dxvk_cs.h"
 #include "../dxvk/dxvk_device.h"
+#include "../dxvk/dxvk_staging.h"
 
 #include "../d3d10/d3d10_multithread.h"
 
@@ -21,6 +22,8 @@ namespace dxvk {
     friend class D3D11DeviceContextExt;
     // Needed in order to call EmitCs for pushing markers
     friend class D3D11UserDefinedAnnotation;
+
+    constexpr static VkDeviceSize StagingBufferSize = 4ull << 20;
   public:
     
     D3D11DeviceContext(
@@ -133,23 +136,6 @@ namespace dxvk {
     void STDMETHODCALLTYPE GenerateMips(
             ID3D11ShaderResourceView*         pShaderResourceView);
     
-    void STDMETHODCALLTYPE UpdateSubresource(
-            ID3D11Resource*                   pDstResource,
-            UINT                              DstSubresource,
-      const D3D11_BOX*                        pDstBox,
-      const void*                             pSrcData,
-            UINT                              SrcRowPitch,
-            UINT                              SrcDepthPitch);
-    
-    void STDMETHODCALLTYPE UpdateSubresource1(
-            ID3D11Resource*                   pDstResource,
-            UINT                              DstSubresource,
-      const D3D11_BOX*                        pDstBox,
-      const void*                             pSrcData,
-            UINT                              SrcRowPitch,
-            UINT                              SrcDepthPitch,
-            UINT                              CopyFlags);
-
     HRESULT STDMETHODCALLTYPE UpdateTileMappings(
             ID3D11Resource*                   pTiledResource,
             UINT                              NumTiledResourceRegions,
@@ -707,12 +693,16 @@ namespace dxvk {
   protected:
     
     D3D11DeviceContextExt       m_contextExt;
-    D3D11UserDefinedAnnotation  m_annotation;
     D3D10Multithread            m_multithread;
     
     Rc<DxvkDevice>              m_device;
     Rc<DxvkDataBuffer>          m_updateBuffer;
-    
+
+    DxvkStagingBuffer           m_staging;
+   
+    //has to be declared after m_device, as compiler initialize in order of declaration in the class
+    D3D11UserDefinedAnnotation  m_annotation;
+
     DxvkCsChunkFlags            m_csFlags;
     DxvkCsChunkRef              m_csChunk;
     
@@ -803,6 +793,82 @@ namespace dxvk {
     void DiscardTexture(
             ID3D11Resource*                   pResource,
             UINT                              Subresource);
+
+    template<typename ContextType>
+    static void UpdateResource(
+            ContextType*                      pContext,
+            ID3D11Resource*                   pDstResource,
+            UINT                              DstSubresource,
+      const D3D11_BOX*                        pDstBox,
+      const void*                             pSrcData,
+            UINT                              SrcRowPitch,
+            UINT                              SrcDepthPitch,
+            UINT                              CopyFlags) {
+      D3D10DeviceLock lock = pContext->LockContext();
+
+      if (!pDstResource)
+        return;
+
+      // We need a different code path for buffers
+      D3D11_RESOURCE_DIMENSION resourceType;
+      pDstResource->GetType(&resourceType);
+
+      if (likely(resourceType == D3D11_RESOURCE_DIMENSION_BUFFER)) {
+        const auto bufferResource = static_cast<D3D11Buffer*>(pDstResource);
+        uint64_t bufferSize = bufferResource->Desc()->ByteWidth;
+
+        // Provide a fast path for mapped buffer updates since some
+        // games use UpdateSubresource to update constant buffers.
+        if (likely(bufferResource->GetMapMode() == D3D11_COMMON_BUFFER_MAP_MODE_DIRECT) && likely(!pDstBox)) {
+          pContext->UpdateMappedBuffer(bufferResource, 0, bufferSize, pSrcData, 0);
+          return;
+        }
+
+        // Validate buffer range to update
+        uint64_t offset = 0;
+        uint64_t length = bufferSize;
+
+        if (pDstBox) {
+          offset = pDstBox->left;
+          length = pDstBox->right - offset;
+        }
+
+        if (unlikely(offset + length > bufferSize))
+          return;
+
+        // Still try to be fast if a box is provided but we update the full buffer
+        if (likely(bufferResource->GetMapMode() == D3D11_COMMON_BUFFER_MAP_MODE_DIRECT)) {
+          CopyFlags &= D3D11_COPY_DISCARD | D3D11_COPY_NO_OVERWRITE;
+
+          if (likely(length == bufferSize) || unlikely(CopyFlags != 0)) {
+            pContext->UpdateMappedBuffer(bufferResource, offset, length, pSrcData, CopyFlags);
+            return;
+          }
+        }
+
+        // Otherwise we can't really do anything fancy, so just do a GPU copy
+        pContext->UpdateBuffer(bufferResource, offset, length, pSrcData);
+      } else {
+        D3D11CommonTexture* textureResource = GetCommonTexture(pDstResource);
+
+        pContext->UpdateTexture(textureResource,
+          DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch);
+      }
+    }
+
+    void UpdateBuffer(
+            D3D11Buffer*                      pDstBuffer,
+            UINT                              Offset,
+            UINT                              Length,
+      const void*                             pSrcData);
+
+    void UpdateTexture(
+            D3D11CommonTexture*               pDstTexture,
+            UINT                              DstSubresource,
+      const D3D11_BOX*                        pDstBox,
+      const void*                             pSrcData,
+            UINT                              SrcRowPitch,
+            UINT                              SrcDepthPitch);
 
     void UpdateImage(
             D3D11CommonTexture*               pDstTexture,
@@ -918,7 +984,7 @@ namespace dxvk {
             UINT                              NumViews,
             ID3D11RenderTargetView* const*    ppRenderTargetViews,
             ID3D11DepthStencilView*           pDepthStencilView);
-    
+
     VkClearValue ConvertColorValue(
       const FLOAT                             Color[4],
       const DxvkFormatInfo*                   pFormatInfo);
@@ -927,7 +993,9 @@ namespace dxvk {
     
     DxvkBufferSlice AllocStagingBuffer(
             VkDeviceSize                      Size);
-    
+
+    void ResetStagingBuffer();
+
     DxvkCsChunkRef AllocCsChunk();
     
     static void InitDefaultPrimitiveTopology(
@@ -1004,8 +1072,18 @@ namespace dxvk {
       }
     }
     
+    void TrackResourceSequenceNumber(
+            ID3D11Resource*             pResource);
+
     virtual void EmitCsChunk(DxvkCsChunkRef&& chunk) = 0;
     
+    virtual void TrackTextureSequenceNumber(
+            D3D11CommonTexture*         pResource,
+            UINT                        Subresource) = 0;
+
+    virtual void TrackBufferSequenceNumber(
+            D3D11Buffer*                pResource) = 0;
+
   };
   
 }

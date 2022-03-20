@@ -169,9 +169,8 @@ namespace dxvk {
   
   
   void DxvkCommandList::reset() {
-    // Signal resources and events to
-    // avoid stalling main thread
-    m_signalTracker.reset();
+    // Free resources and other objects
+    // that are no longer in use
     m_resources.reset();
 
     // Recycle heavy Vulkan objects
@@ -185,6 +184,7 @@ namespace dxvk {
     m_gpuEventTracker.reset();
 
     // Less important stuff
+    m_signalTracker.reset();
     m_statCounters.reset();
   }
 

@@ -5,22 +5,26 @@
 #include "d3d11_context.h"
 #include "d3d11_texture.h"
 
-#include <algorithm>
 #include <vector>
 
 namespace dxvk {
   
   struct D3D11DeferredContextMapEntry {
-    Com<ID3D11Resource>     pResource;
-    UINT                    Subresource;
-    D3D11_MAP               MapType;
-    UINT                    RowPitch;
-    UINT                    DepthPitch;
-    void*                   MapPointer;
+    D3D11DeferredContextMapEntry() { }
+    D3D11DeferredContextMapEntry(
+            ID3D11Resource*           pResource,
+            UINT                      Subresource,
+            D3D11_RESOURCE_DIMENSION  ResourceType,
+      const D3D11_MAPPED_SUBRESOURCE& MappedResource)
+    : Resource(pResource, Subresource, ResourceType),
+      MapInfo(MappedResource) { }
+
+    D3D11ResourceRef          Resource;
+    D3D11_MAPPED_SUBRESOURCE  MapInfo;
   };
   
   class D3D11DeferredContext : public D3D11DeviceContext {
-    
+    friend class D3D11DeviceContext;
   public:
     
     D3D11DeferredContext(
@@ -77,6 +81,23 @@ namespace dxvk {
             ID3D11Resource*             pResource,
             UINT                        Subresource);
     
+    void STDMETHODCALLTYPE UpdateSubresource(
+            ID3D11Resource*                   pDstResource,
+            UINT                              DstSubresource,
+      const D3D11_BOX*                        pDstBox,
+      const void*                             pSrcData,
+            UINT                              SrcRowPitch,
+            UINT                              SrcDepthPitch);
+
+    void STDMETHODCALLTYPE UpdateSubresource1(
+            ID3D11Resource*                   pDstResource,
+            UINT                              DstSubresource,
+      const D3D11_BOX*                        pDstBox,
+      const void*                             pSrcData,
+            UINT                              SrcRowPitch,
+            UINT                              SrcDepthPitch,
+            UINT                              CopyFlags);
+
     void STDMETHODCALLTYPE SwapDeviceContextState(
            ID3DDeviceContextState*           pState,
            ID3DDeviceContextState**          ppPreviousState);
@@ -98,33 +119,45 @@ namespace dxvk {
 
     HRESULT MapBuffer(
             ID3D11Resource*               pResource,
-            D3D11_MAP                     MapType,
-            UINT                          MapFlags,
-            D3D11DeferredContextMapEntry* pMapEntry);
+            D3D11_MAPPED_SUBRESOURCE*     pMappedResource);
     
     HRESULT MapImage(
             ID3D11Resource*               pResource,
             UINT                          Subresource,
-            D3D11_MAP                     MapType,
-            UINT                          MapFlags,
-            D3D11DeferredContextMapEntry* pMapEntry);
-    
+            D3D11_MAPPED_SUBRESOURCE*     pMappedResource);
+
+    void UpdateMappedBuffer(
+            D3D11Buffer*                  pDstBuffer,
+            UINT                          Offset,
+            UINT                          Length,
+      const void*                         pSrcData,
+            UINT                          CopyFlags);
+
     void FinalizeQueries();
 
     Com<D3D11CommandList> CreateCommandList();
     
     void EmitCsChunk(DxvkCsChunkRef&& chunk);
 
+    void TrackTextureSequenceNumber(
+            D3D11CommonTexture*           pResource,
+            UINT                          Subresource);
+
+    void TrackBufferSequenceNumber(
+            D3D11Buffer*                  pResource);
+
+    D3D11DeferredContextMapEntry* FindMapEntry(
+            ID3D11Resource*               pResource,
+            UINT                          Subresource);
+
+    void AddMapEntry(
+            ID3D11Resource*               pResource,
+            UINT                          Subresource,
+            D3D11_RESOURCE_DIMENSION      ResourceType,
+      const D3D11_MAPPED_SUBRESOURCE&     MapInfo);
+
     static DxvkCsChunkFlags GetCsChunkFlags(
             D3D11Device*                  pDevice);
-    
-    auto FindMapEntry(ID3D11Resource* pResource, UINT Subresource) {
-      return std::find_if(m_mappedResources.rbegin(), m_mappedResources.rend(),
-        [pResource, Subresource] (const D3D11DeferredContextMapEntry& entry) {
-          return entry.pResource   == pResource
-              && entry.Subresource == Subresource;
-        });
-    }
     
   };
   

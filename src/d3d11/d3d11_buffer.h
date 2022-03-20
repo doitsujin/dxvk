@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../dxvk/dxvk_cs.h"
 #include "../dxvk/dxvk_device.h"
 
 #include "../d3d10/d3d10_buffer.h"
@@ -67,9 +68,7 @@ namespace dxvk {
     }
 
     D3D11_COMMON_BUFFER_MAP_MODE GetMapMode() const {
-      return (m_buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-        ? D3D11_COMMON_BUFFER_MAP_MODE_DIRECT
-        : D3D11_COMMON_BUFFER_MAP_MODE_NONE;
+      return m_mapMode;
     }
 
     Rc<DxvkBuffer> GetBuffer() const {
@@ -119,6 +118,21 @@ namespace dxvk {
       return &m_d3d10;
     }
 
+    bool HasSequenceNumber() const {
+      return m_mapMode != D3D11_COMMON_BUFFER_MAP_MODE_NONE
+          && !(m_desc.MiscFlags & D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS)
+          && !(m_desc.BindFlags);
+    }
+
+    void TrackSequenceNumber(uint64_t Seq) {
+      m_seq = Seq;
+    }
+
+    uint64_t GetSequenceNumber() {
+      return HasSequenceNumber() ? m_seq
+        : DxvkCsThread::SynchronizeAll;
+    }
+
     /**
      * \brief Normalizes buffer description
      * 
@@ -130,14 +144,16 @@ namespace dxvk {
 
   private:
     
-    const D3D11_BUFFER_DESC     m_desc;
+    D3D11_BUFFER_DESC             m_desc;
+    D3D11_COMMON_BUFFER_MAP_MODE  m_mapMode;
     
-    Rc<DxvkBuffer>              m_buffer;
-    Rc<DxvkBuffer>              m_soCounter;
-    DxvkBufferSliceHandle       m_mapped;
+    Rc<DxvkBuffer>                m_buffer;
+    Rc<DxvkBuffer>                m_soCounter;
+    DxvkBufferSliceHandle         m_mapped;
+    uint64_t                      m_seq = 0ull;
 
-    D3D11DXGIResource           m_resource;
-    D3D10Buffer                 m_d3d10;
+    D3D11DXGIResource             m_resource;
+    D3D10Buffer                   m_d3d10;
 
     BOOL CheckFormatFeatureSupport(
             VkFormat              Format,
@@ -146,6 +162,8 @@ namespace dxvk {
     VkMemoryPropertyFlags GetMemoryFlags() const;
 
     Rc<DxvkBuffer> CreateSoCounterBuffer();
+
+    D3D11_COMMON_BUFFER_MAP_MODE DetermineMapMode();
 
   };
 

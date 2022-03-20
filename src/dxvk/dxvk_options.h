@@ -8,14 +8,11 @@ namespace dxvk {
     DxvkOptions() { }
     DxvkOptions(const Config& config);
 
+    /// Enable debug utils (alternative to DXVK_PERF_EVENTS=1)
+    bool enableDebugUtils;
+
     /// Enable state cache
     bool enableStateCache;
-
-    /// Enables OpenVR loading
-    bool enableOpenVR;
-
-    /// Enables OpenXR loading
-    bool enableOpenXR;
 
     /// Number of compiler threads
     /// when using the state cache

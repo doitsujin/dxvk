@@ -562,6 +562,11 @@ namespace dxvk {
             DxsoRegisterValue       a,
             DxsoRegisterValue       b);
 
+    DxsoRegisterValue emitMix(
+            DxsoRegisterValue       x,
+            DxsoRegisterValue       y,
+            DxsoRegisterValue       a);
+
     DxsoRegisterValue emitCross(
             DxsoRegisterValue       a,
             DxsoRegisterValue       b);

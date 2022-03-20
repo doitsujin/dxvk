@@ -193,6 +193,13 @@ namespace dxvk {
       ctx->launchCuKernelNVX(cLaunchInfo.nvxLaunchInfo, cLaunchInfo.buffers, cLaunchInfo.images);
     });
 
+    // Track resource usage as necessary
+    for (uint32_t i = 0; i < NumReadResources; i++)
+      m_ctx->TrackResourceSequenceNumber(static_cast<ID3D11Resource*>(pReadResources[i]));
+
+    for (uint32_t i = 0; i < NumWriteResources; i++)
+      m_ctx->TrackResourceSequenceNumber(static_cast<ID3D11Resource*>(pWriteResources[i]));
+
     return true;
   }
 }

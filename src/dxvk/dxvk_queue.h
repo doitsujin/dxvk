@@ -146,6 +146,18 @@ namespace dxvk {
     void synchronize();
 
     /**
+     * \brief Synchronizes until a given condition becomes true
+     *
+     * Useful to wait for the GPU without busy-waiting.
+     * \param [in] pred Predicate to check
+     */
+    template<typename Pred>
+    void synchronizeUntil(const Pred& pred) {
+      std::unique_lock<dxvk::mutex> lock(m_mutex);
+      m_finishCond.wait(lock, pred);
+    }
+
+    /**
      * \brief Locks device queue
      *
      * Locks the mutex that protects the Vulkan queue

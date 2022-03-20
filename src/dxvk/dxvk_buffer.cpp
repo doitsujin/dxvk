@@ -1,3 +1,4 @@
+#include "dxvk_barrier.h"
 #include "dxvk_buffer.h"
 #include "dxvk_device.h"
 
@@ -22,7 +23,7 @@ namespace dxvk {
     m_physSliceCount  = std::max<VkDeviceSize>(1, 256 / m_physSliceStride);
 
     // Limit size of multi-slice buffers to reduce fragmentation
-    constexpr VkDeviceSize MaxBufferSize = 4 << 20;
+    constexpr VkDeviceSize MaxBufferSize = 256 << 10;
 
     m_physSliceMaxCount = MaxBufferSize >= m_physSliceStride
       ? MaxBufferSize / m_physSliceStride
@@ -102,11 +103,22 @@ namespace dxvk {
     bool isGpuWritable = (m_info.access & (
       VK_ACCESS_SHADER_WRITE_BIT |
       VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT)) != 0;
-    float priority = isGpuWritable ? 1.0f : 0.5f;
-    
+
+    DxvkMemoryFlags hints(DxvkMemoryFlag::GpuReadable);
+
+    if (isGpuWritable)
+      hints.set(DxvkMemoryFlag::GpuWritable);
+
+    // Staging buffers that can't even be used as a transfer destinations
+    // are likely short-lived, so we should put them on a separate memory
+    // pool in order to avoid fragmentation
+    if ((DxvkBarrierSet::getAccessTypes(m_info.access) == DxvkAccess::Read)
+     && (m_info.usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT))
+      hints.set(DxvkMemoryFlag::Transient);
+
     // Ask driver whether we should be using a dedicated allocation
     handle.memory = m_memAlloc->alloc(&memReq.memoryRequirements,
-      dedicatedRequirements, dedMemoryAllocInfo, m_memFlags, priority);
+      dedicatedRequirements, dedMemoryAllocInfo, m_memFlags, hints);
     
     if (vkd->vkBindBufferMemory(vkd->device(), handle.buffer,
         handle.memory.memory(), handle.memory.offset()) != VK_SUCCESS)

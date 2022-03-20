@@ -41,6 +41,7 @@ namespace dxvk {
   class D3D9Query;
   class D3D9StateBlock;
   class D3D9FormatHelper;
+  class D3D9UserDefinedAnnotation;
 
   enum class D3D9DeviceFlag : uint32_t {
     DirtyFramebuffer,
@@ -98,6 +99,7 @@ namespace dxvk {
     constexpr static uint32_t NullStreamIdx = caps::MaxStreams;
 
     friend class D3D9SwapChainEx;
+    friend class D3D9UserDefinedAnnotation;
   public:
 
     D3D9DeviceEx(
@@ -662,6 +664,7 @@ namespace dxvk {
 
     bool WaitForResource(
       const Rc<DxvkResource>&                 Resource,
+            uint64_t                          SequenceNumber,
             DWORD                             MapFlags);
 
     /**
@@ -703,6 +706,15 @@ namespace dxvk {
             D3D9CommonTexture*      pResource,
             UINT                    Subresource);
 
+    void UpdateTextureFromBuffer(
+            D3D9CommonTexture*      pDestTexture,
+            D3D9CommonTexture*      pSrcTexture,
+            UINT                    DestSubresource,
+            UINT                    SrcSubresource,
+            VkOffset3D              SrcOffset,
+            VkExtent3D              SrcExtent,
+            VkOffset3D              DestOffset);
+
     void EmitGenerateMips(
             D3D9CommonTexture* pResource);
 
@@ -731,7 +743,7 @@ namespace dxvk {
 
     void CreateConstantBuffers();
 
-    void SynchronizeCsThread();
+    void SynchronizeCsThread(uint64_t SequenceNumber);
 
     void Flush();
 
@@ -1120,6 +1132,15 @@ namespace dxvk {
 
     void UpdateSamplerDepthModeSpecConstant(uint32_t value);
 
+    void TrackBufferMappingBufferSequenceNumber(
+      D3D9CommonBuffer* pResource);
+
+    void TrackTextureMappingBufferSequenceNumber(
+      D3D9CommonTexture* pResource,
+      UINT Subresource);
+
+    uint64_t GetCurrentSequenceNumber();
+
     Com<D3D9InterfaceEx>            m_parent;
     D3DDEVTYPE                      m_deviceType;
     HWND                            m_window;
@@ -1234,6 +1255,8 @@ namespace dxvk {
     D3D9ConstantLayout              m_vsLayout;
     D3D9ConstantLayout              m_psLayout;
     D3D9ConstantSets                m_consts[DxsoProgramTypes::Count];
+	
+	D3D9UserDefinedAnnotation*      m_annotation = nullptr;
 
     D3D9ViewportInfo                m_viewportInfo;
 
@@ -1242,6 +1265,7 @@ namespace dxvk {
       = dxvk::high_resolution_clock::now();
     DxvkCsThread                    m_csThread;
     DxvkCsChunkRef                  m_csChunk;
+    uint64_t                        m_csSeqNum = 0ull;
     bool                            m_csIsBusy = false;
 
     std::atomic<int64_t>            m_availableMemory = { 0 };

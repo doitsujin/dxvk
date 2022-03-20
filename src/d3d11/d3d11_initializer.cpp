@@ -83,11 +83,8 @@ namespace dxvk {
     } else {
       m_transferCommands += 1;
 
-      m_context->clearBuffer(
-        bufferSlice.buffer(),
-        bufferSlice.offset(),
-        bufferSlice.length(),
-        0u);
+      m_context->initBuffer(
+        bufferSlice.buffer());
     }
 
     FlushImplicit();
@@ -181,8 +178,7 @@ namespace dxvk {
         
         // While the Microsoft docs state that resource contents are
         // undefined if no initial data is provided, some applications
-        // expect a resource to be pre-cleared. We can only do that
-        // for non-compressed images, but that should be fine.
+        // expect a resource to be pre-cleared.
         VkImageSubresourceRange subresources;
         subresources.aspectMask     = formatInfo->aspectMask;
         subresources.baseMipLevel   = 0;
@@ -190,23 +186,7 @@ namespace dxvk {
         subresources.baseArrayLayer = 0;
         subresources.layerCount     = desc->ArraySize;
 
-        if (formatInfo->flags.any(DxvkFormatFlag::BlockCompressed, DxvkFormatFlag::MultiPlane)) {
-          m_context->clearCompressedColorImage(image, subresources);
-        } else {
-          if (subresources.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT) {
-            VkClearColorValue value = { };
-
-            m_context->clearColorImage(
-              image, value, subresources);
-          } else {
-            VkClearDepthStencilValue value;
-            value.depth   = 0.0f;
-            value.stencil = 0;
-            
-            m_context->clearDepthStencilImage(
-              image, value, subresources);
-          }
-        }
+        m_context->initImage(image, subresources, VK_IMAGE_LAYOUT_UNDEFINED);
       }
 
       if (mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_NONE) {

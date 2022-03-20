@@ -705,10 +705,7 @@ namespace dxvk {
           HANDLE                            hResource,
           REFIID                            ReturnedInterface,
           void**                            ppResource) {
-    InitReturnPtr(ppResource);
-    
-    Logger::err("D3D10Device::OpenSharedResource: Not implemented");
-    return E_NOTIMPL;
+    return m_device->OpenSharedResource(hResource, ReturnedInterface, ppResource);
   }
 
 

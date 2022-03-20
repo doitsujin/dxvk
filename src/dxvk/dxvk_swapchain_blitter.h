@@ -76,10 +76,12 @@ namespace dxvk {
     Rc<DxvkShader>      m_fsResolve;
     Rc<DxvkShader>      m_vs;
 
+    Rc<DxvkBuffer>      m_gammaBuffer;
     Rc<DxvkImage>       m_gammaImage;
     Rc<DxvkImageView>   m_gammaView;
+    uint32_t            m_gammaCpCount = 0;
     bool                m_gammaDirty = false;
-    std::vector<DxvkGammaCp> m_gammaRamp;
+    DxvkBufferSliceHandle m_gammaSlice = { };
 
     Rc<DxvkImage>       m_resolveImage;
     Rc<DxvkImageView>   m_resolveView;

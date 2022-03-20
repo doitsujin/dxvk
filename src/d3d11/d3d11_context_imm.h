@@ -16,6 +16,7 @@ namespace dxvk {
   class D3D11ImmediateContext : public D3D11DeviceContext {
     friend class D3D11SwapChain;
     friend class D3D11VideoContext;
+    friend class D3D11DeviceContext;
   public:
     
     D3D11ImmediateContext(
@@ -108,18 +109,23 @@ namespace dxvk {
       const UINT*                             pUAVInitialCounts);
     
     void STDMETHODCALLTYPE SwapDeviceContextState(
-           ID3DDeviceContextState*           pState,
-           ID3DDeviceContextState**          ppPreviousState);
+            ID3DDeviceContextState*           pState,
+            ID3DDeviceContextState**          ppPreviousState);
 
-    void SynchronizeCsThread();
+    void SynchronizeCsThread(
+            uint64_t                          SequenceNumber);
     
   private:
     
-    DxvkCsThread m_csThread;
-    bool         m_csIsBusy = false;
+    DxvkCsThread            m_csThread;
+    uint64_t                m_csSeqNum = 0ull;
+    bool                    m_csIsBusy = false;
 
     Rc<sync::CallbackFence> m_eventSignal;
-    uint64_t                m_eventCount = 0;
+    uint64_t                m_eventCount = 0ull;
+    uint32_t                m_mappedImageCount = 0u;
+
+    VkDeviceSize            m_maxImplicitDiscardSize = 0ull;
 
     dxvk::high_resolution_clock::time_point m_lastFlush
       = dxvk::high_resolution_clock::now();
@@ -144,14 +150,31 @@ namespace dxvk {
             D3D11CommonTexture*         pResource,
             UINT                        Subresource);
     
+    void UpdateMappedBuffer(
+            D3D11Buffer*                  pDstBuffer,
+            UINT                          Offset,
+            UINT                          Length,
+      const void*                         pSrcData,
+            UINT                          CopyFlags);
+
     void SynchronizeDevice();
     
     bool WaitForResource(
       const Rc<DxvkResource>&                 Resource,
+            uint64_t                          SequenceNumber,
             D3D11_MAP                         MapType,
             UINT                              MapFlags);
     
     void EmitCsChunk(DxvkCsChunkRef&& chunk);
+
+    void TrackTextureSequenceNumber(
+            D3D11CommonTexture*         pResource,
+            UINT                        Subresource);
+
+    void TrackBufferSequenceNumber(
+            D3D11Buffer*                pResource);
+
+    uint64_t GetCurrentSequenceNumber();
 
     void FlushImplicit(BOOL StrongHint);
 
