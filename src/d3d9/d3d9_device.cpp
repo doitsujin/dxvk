@@ -793,14 +793,17 @@ namespace dxvk {
     if (unlikely(srcTexInfo->Desc()->Pool != D3DPOOL_SYSTEMMEM || dstTexInfo->Desc()->Pool != D3DPOOL_DEFAULT))
       return D3DERR_INVALIDCALL;
 
-    if (srcTexInfo->Desc()->MipLevels < dstTexInfo->Desc()->MipLevels)
+    if (unlikely(srcTexInfo->Desc()->MipLevels < dstTexInfo->Desc()->MipLevels && !dstTexInfo->IsAutomaticMip()))
       return D3DERR_INVALIDCALL;
 
-    if (dstTexInfo->Desc()->Format != srcTexInfo->Desc()->Format)
+    if (unlikely(dstTexInfo->Desc()->Format != srcTexInfo->Desc()->Format))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(srcTexInfo->IsAutomaticMip() && !dstTexInfo->IsAutomaticMip()))
       return D3DERR_INVALIDCALL;
 
     const Rc<DxvkImage> dstImage  = dstTexInfo->GetImage();
-    uint32_t mipLevels = dstTexInfo->Desc()->MipLevels;
+    uint32_t mipLevels = dstTexInfo->IsAutomaticMip() ? 1 : dstTexInfo->Desc()->MipLevels;
     uint32_t arraySlices = std::min(srcTexInfo->Desc()->ArraySize, dstTexInfo->Desc()->ArraySize);
 
     uint32_t srcMipOffset = srcTexInfo->Desc()->MipLevels - mipLevels;
@@ -808,12 +811,6 @@ namespace dxvk {
     VkExtent3D dstFirstMipExtent = dstTexInfo->GetExtent();
     if (srcFirstMipExtent != dstFirstMipExtent)
       return D3DERR_INVALIDCALL;
-
-    if (unlikely(srcTexInfo->IsAutomaticMip() && !dstTexInfo->IsAutomaticMip()))
-      return D3DERR_INVALIDCALL;
-
-    if (dstTexInfo->IsAutomaticMip())
-      mipLevels = 1;
 
     for (uint32_t a = 0; a < arraySlices; a++) {
       const D3DBOX& box = srcTexInfo->GetDirtyBox(a);
