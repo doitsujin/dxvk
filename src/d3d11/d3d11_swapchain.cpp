@@ -490,7 +490,7 @@ namespace dxvk {
      || m_desc.SwapEffect == DXGI_SWAP_EFFECT_FLIP_DISCARD)
       dxgiUsage |= DXGI_USAGE_DISCARD_ON_PRESENT;
 
-    m_backBuffer = new D3D11Texture2D(m_parent, &desc, dxgiUsage, VK_NULL_HANDLE);
+    m_backBuffer = new D3D11Texture2D(m_parent, this, &desc, dxgiUsage);
     m_swapImage = GetCommonTexture(m_backBuffer.ptr())->GetImage();
 
     // Create an image view that allows the
