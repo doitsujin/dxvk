@@ -98,7 +98,7 @@ namespace dxvk {
 
     Rc<hud::Hud>              m_hud;
 
-    D3D11Texture2D*           m_backBuffer = nullptr;
+    Com<D3D11Texture2D, false> m_backBuffer;
     DxvkSubmitStatus          m_presentStatus;
 
     std::vector<Rc<DxvkImageView>> m_imageViews;
