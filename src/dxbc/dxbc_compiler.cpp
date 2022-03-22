@@ -70,6 +70,9 @@ namespace dxvk {
   
   
   void DxbcCompiler::processInstruction(const DxbcShaderInstruction& ins) {
+    m_lastOp = m_currOp;
+    m_currOp = ins.op;
+
     switch (ins.opClass) {
       case DxbcInstClass::Declaration:
         return this->emitDcl(ins);
@@ -3877,12 +3880,17 @@ namespace dxvk {
     // The source operand must be a 32-bit immediate.
     if (ins.src[0].type != DxbcOperandType::Imm32)
       throw DxvkError("DxbcCompiler: Invalid operand type for 'Case'");
-    
-    // Use the last label allocated for 'case'. The block starting
-    // with that label is guaranteed to be empty unless a previous
-    // 'case' block was not properly closed in the DXBC shader.
+
+    // Use the last label allocated for 'case'.
     DxbcCfgBlockSwitch* block = &m_controlFlowBlocks.back().b_switch;
-    
+
+    if (caseBlockIsFallthrough()) {
+      block->labelCase = m_module.allocateId();
+
+      m_module.opBranch(block->labelCase);
+      m_module.opLabel (block->labelCase);
+    }
+
     DxbcSwitchLabel label;
     label.desc.literal = ins.src[0].imm.u32_1;
     label.desc.labelId = block->labelCase;
@@ -3896,9 +3904,17 @@ namespace dxvk {
      || m_controlFlowBlocks.back().type != DxbcCfgBlockType::Switch)
       throw DxvkError("DxbcCompiler: 'Default' without 'Switch' found");
     
+    DxbcCfgBlockSwitch* block = &m_controlFlowBlocks.back().b_switch;
+
+    if (caseBlockIsFallthrough()) {
+      block->labelCase = m_module.allocateId();
+
+      m_module.opBranch(block->labelCase);
+      m_module.opLabel (block->labelCase);
+    }
+
     // Set the last label allocated for 'case' as the default label.
-    m_controlFlowBlocks.back().b_switch.labelDefault
-      = m_controlFlowBlocks.back().b_switch.labelCase;
+    block->labelDefault = block->labelCase;
   }
   
   
@@ -7801,6 +7817,13 @@ namespace dxvk {
 
     return result;
   }
+
+  bool DxbcCompiler::caseBlockIsFallthrough() const {
+    return m_lastOp != DxbcOpcode::Case
+        && m_lastOp != DxbcOpcode::Break
+        && m_lastOp != DxbcOpcode::Ret;
+  }
+
 
   uint32_t DxbcCompiler::getScalarTypeId(DxbcScalarType type) {
     if (type == DxbcScalarType::Float64)
