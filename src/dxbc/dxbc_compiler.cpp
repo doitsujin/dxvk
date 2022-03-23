@@ -3926,12 +3926,12 @@ namespace dxvk {
     // Remove the block from the stack, it's closed
     DxbcCfgBlock block = m_controlFlowBlocks.back();
     m_controlFlowBlocks.pop_back();
-    
-    // If no 'default' label was specified, use the last allocated
-    // 'case' label. This is guaranteed to be an empty block unless
-    // a previous 'case' block was not closed properly.
-    if (block.b_switch.labelDefault == 0)
-      block.b_switch.labelDefault = block.b_switch.labelCase;
+
+    if (!block.b_switch.labelDefault) {
+      block.b_switch.labelDefault = caseBlockIsFallthrough()
+        ? block.b_switch.labelBreak
+        : block.b_switch.labelCase;
+    }
     
     // Close the current 'case' block
     m_module.opBranch(block.b_switch.labelBreak);
@@ -7820,6 +7820,7 @@ namespace dxvk {
 
   bool DxbcCompiler::caseBlockIsFallthrough() const {
     return m_lastOp != DxbcOpcode::Case
+        && m_lastOp != DxbcOpcode::Default
         && m_lastOp != DxbcOpcode::Break
         && m_lastOp != DxbcOpcode::Ret;
   }
