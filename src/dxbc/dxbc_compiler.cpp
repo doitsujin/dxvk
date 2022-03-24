@@ -5721,29 +5721,31 @@ namespace dxvk {
   void DxbcCompiler::emitRegisterStore(
     const DxbcRegister&           reg,
           DxbcRegisterValue       value) {
-    bool doRangeCheck = false;
-
-    if (reg.type == DxbcOperandType::IndexableTemp)
-      doRangeCheck = reg.idx[1].relReg != nullptr;
-
-    if (doRangeCheck) {
+    if (reg.type == DxbcOperandType::IndexableTemp) {
+      bool doBoundsCheck = reg.idx[1].relReg != nullptr;
       DxbcRegisterValue vectorId = emitIndexLoad(reg.idx[1]);
-      uint32_t boundsCheck = m_module.opULessThan(
-        m_module.defBoolType(), vectorId.id,
-        m_module.constu32(m_xRegs.at(reg.idx[0].offset).alength));
-      
-      DxbcConditional cond;
-      cond.labelIf  = m_module.allocateId();
-      cond.labelEnd = m_module.allocateId();
-      
-      m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
-      m_module.opBranchConditional(boundsCheck, cond.labelIf, cond.labelEnd);
-      
-      m_module.opLabel(cond.labelIf);
-      emitValueStore(getIndexableTempPtr(reg, vectorId), value, reg.mask);
-      
-      m_module.opBranch(cond.labelEnd);
-      m_module.opLabel (cond.labelEnd);
+
+      if (doBoundsCheck) {
+        uint32_t boundsCheck = m_module.opULessThan(
+          m_module.defBoolType(), vectorId.id,
+          m_module.constu32(m_xRegs.at(reg.idx[0].offset).alength));
+        
+        DxbcConditional cond;
+        cond.labelIf  = m_module.allocateId();
+        cond.labelEnd = m_module.allocateId();
+        
+        m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
+        m_module.opBranchConditional(boundsCheck, cond.labelIf, cond.labelEnd);
+        
+        m_module.opLabel(cond.labelIf);
+
+        emitValueStore(getIndexableTempPtr(reg, vectorId), value, reg.mask);
+
+        m_module.opBranch(cond.labelEnd);
+        m_module.opLabel (cond.labelEnd);
+      } else {
+        emitValueStore(getIndexableTempPtr(reg, vectorId), value, reg.mask);
+      }
     } else {
       emitValueStore(emitGetOperandPtr(reg), value, reg.mask);
     }
