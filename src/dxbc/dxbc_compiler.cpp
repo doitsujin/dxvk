@@ -5721,7 +5721,12 @@ namespace dxvk {
   void DxbcCompiler::emitRegisterStore(
     const DxbcRegister&           reg,
           DxbcRegisterValue       value) {
-    if (reg.type == DxbcOperandType::IndexableTemp) {
+    bool doRangeCheck = false;
+
+    if (reg.type == DxbcOperandType::IndexableTemp)
+      doRangeCheck = reg.idx[1].relReg != nullptr;
+
+    if (doRangeCheck) {
       DxbcRegisterValue vectorId = emitIndexLoad(reg.idx[1]);
       uint32_t boundsCheck = m_module.opULessThan(
         m_module.defBoolType(), vectorId.id,
