@@ -78,7 +78,14 @@ namespace dxvk {
       } break;
       
       default:
-        return;
+        break;
+    }
+
+    for (uint32_t i = 0; i < ins.dstCount; i++) {
+      if (ins.dst[0].type == DxbcOperandType::IndexableTemp) {
+        uint32_t index = ins.dst[0].idx[0].offset;
+        m_analysis->xRegMasks[index] |= ins.dst[0].mask;
+      }
     }
   }
   

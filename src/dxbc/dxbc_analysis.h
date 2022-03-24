@@ -35,6 +35,7 @@ namespace dxvk {
    */
   struct DxbcAnalysisInfo {
     std::array<DxbcUavInfo, 64> uavInfos;
+    std::array<DxbcRegMask, 4096> xRegMasks;
     
     DxbcClipCullInfo clipCullIn;
     DxbcClipCullInfo clipCullOut;

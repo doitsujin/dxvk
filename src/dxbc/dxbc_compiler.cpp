@@ -381,15 +381,16 @@ namespace dxvk {
     // dcl_indexable_temps has three operands:
     //    (imm0) Array register index (x#)
     //    (imm1) Number of vectors stored in the array
-    //    (imm2) Component count of each individual vector
+    //    (imm2) Component count of each individual vector. This is
+    //    always 4 in fxc-generated binaries and therefore useless.
+    const uint32_t regId = ins.imm[0].u32;
+
     DxbcRegisterInfo info;
     info.type.ctype   = DxbcScalarType::Float32;
-    info.type.ccount  = ins.imm[2].u32;
+    info.type.ccount  = m_analysis->xRegMasks.at(regId).minComponents();
     info.type.alength = ins.imm[1].u32;
     info.sclass       = spv::StorageClassPrivate;
-    
-    const uint32_t regId = ins.imm[0].u32;
-    
+
     if (regId >= m_xRegs.size())
       m_xRegs.resize(regId + 1);
     
