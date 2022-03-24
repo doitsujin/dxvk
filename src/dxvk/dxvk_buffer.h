@@ -245,7 +245,7 @@ namespace dxvk {
       // backing buffer and add all slices to the free list.
       if (unlikely(m_freeSlices.empty())) {
         if (likely(!m_lazyAlloc)) {
-          DxvkBufferHandle handle = allocBuffer(m_physSliceCount);
+          DxvkBufferHandle handle = allocBuffer(m_physSliceCount, true);
 
           for (uint32_t i = 0; i < m_physSliceCount; i++)
             pushSlice(handle, i);
@@ -317,7 +317,8 @@ namespace dxvk {
     }
 
     DxvkBufferHandle allocBuffer(
-            VkDeviceSize          sliceCount) const;
+            VkDeviceSize          sliceCount,
+            bool                  clear) const;
 
     VkDeviceSize computeSliceAlignment() const;
     
