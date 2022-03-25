@@ -279,6 +279,10 @@ namespace dxvk {
     { R"(\\ac(3|4bf)[sm]p\.exe$)", {{
       { "d3d11.cachedDynamicResources",     "a"    },
     }} },
+    /* Stranger of Paradise - FF Origin           */
+    { R"(\\SOPFFO\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",        "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
