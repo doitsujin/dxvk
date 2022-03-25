@@ -3981,7 +3981,7 @@ namespace dxvk {
         currentSlice.slice  = DxvkBufferSlice(m_dxvkDevice->createBuffer(info, memoryFlags));
         currentSlice.mapPtr = currentSlice.slice.mapPtr(0);
       } else if (unlikely(currentSlice.slice.length() < size)) {
-        auto physSlice = currentSlice.slice.buffer()->allocSlice();
+        auto physSlice = currentSlice.slice.buffer()->allocSlice(false);
 
         currentSlice.slice  = DxvkBufferSlice(currentSlice.slice.buffer());
         currentSlice.mapPtr = physSlice.mapPtr;
@@ -5003,7 +5003,7 @@ namespace dxvk {
       dstBuffer = CreateConstantBuffer(useSSBO, size, DxsoProgramType::VertexShader, cBufferTarget);
       slice = dstBuffer->getSliceHandle();
     } else {
-      slice = dstBuffer->allocSlice();
+      slice = dstBuffer->allocSlice(false);
       EmitCs([
         cBuffer = dstBuffer,
         cSlice  = slice
@@ -5058,7 +5058,7 @@ namespace dxvk {
       boundConstantBufferSize = bufferSize;
     }
 
-    DxvkBufferSliceHandle slice = constSet.buffer->allocSlice();
+    DxvkBufferSliceHandle slice = constSet.buffer->allocSlice(false);
 
     EmitCs([
       cBuffer = constSet.buffer,
@@ -5103,7 +5103,7 @@ namespace dxvk {
   void D3D9DeviceEx::UpdateClipPlanes() {
     m_flags.clr(D3D9DeviceFlag::DirtyClipPlanes);
 
-    auto slice = m_vsClipPlanes->allocSlice();
+    auto slice = m_vsClipPlanes->allocSlice(false);
     auto dst = reinterpret_cast<D3D9ClipPlane*>(slice.mapPtr);
 
     for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {
@@ -6188,7 +6188,7 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtySharedPixelShaderData)) {
       m_flags.clr(D3D9DeviceFlag::DirtySharedPixelShaderData);
 
-      DxvkBufferSliceHandle slice = m_psShared->allocSlice();
+      DxvkBufferSliceHandle slice = m_psShared->allocSlice(false);
 
       EmitCs([
         cBuffer = m_psShared,
@@ -6655,7 +6655,7 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexData)) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFVertexData);
 
-      DxvkBufferSliceHandle slice = m_vsFixedFunction->allocSlice();
+      DxvkBufferSliceHandle slice = m_vsFixedFunction->allocSlice(false);
 
       EmitCs([
         cBuffer = m_vsFixedFunction,
@@ -6696,7 +6696,7 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexBlend) && vertexBlendMode == D3D9FF_VertexBlendMode_Normal) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFVertexBlend);
 
-      DxvkBufferSliceHandle slice = m_vsVertexBlend->allocSlice();
+      DxvkBufferSliceHandle slice = m_vsVertexBlend->allocSlice(false);
 
       EmitCs([
         cBuffer = m_vsVertexBlend,
@@ -6814,7 +6814,7 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelData)) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFPixelData);
 
-      DxvkBufferSliceHandle slice = m_psFixedFunction->allocSlice();
+      DxvkBufferSliceHandle slice = m_psFixedFunction->allocSlice(false);
 
       EmitCs([
         cBuffer = m_psFixedFunction,
