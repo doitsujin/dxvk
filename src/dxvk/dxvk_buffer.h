@@ -232,7 +232,7 @@ namespace dxvk {
      * \brief Allocates new buffer slice
      * \returns The new buffer slice
      */
-    DxvkBufferSliceHandle allocSlice() {
+    DxvkBufferSliceHandle allocSlice(bool clear = true) {
       std::unique_lock<sync::Spinlock> freeLock(m_freeMutex);
       
       // If no slices are available, swap the two free lists.
@@ -245,7 +245,7 @@ namespace dxvk {
       // backing buffer and add all slices to the free list.
       if (unlikely(m_freeSlices.empty())) {
         if (likely(!m_lazyAlloc)) {
-          DxvkBufferHandle handle = allocBuffer(m_physSliceCount, true);
+          DxvkBufferHandle handle = allocBuffer(m_physSliceCount, clear);
 
           for (uint32_t i = 0; i < m_physSliceCount; i++)
             pushSlice(handle, i);
