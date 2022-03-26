@@ -52,6 +52,7 @@ namespace dxvk {
      * after creating the DXGI swap chain         */
     { R"(\\Frostpunk\.exe$)", {{
       { "dxgi.deferSurfaceCreation",        "True" },
+      { "d3d11.cachedDynamicResources",     "c" },
     }} },
     /* Nioh: See Frostpunk, apparently?           */
     { R"(\\nioh\.exe$)", {{
