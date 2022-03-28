@@ -526,6 +526,10 @@ namespace dxvk {
     { R"(\\(rerev|rerev2|re0hd|bhd|re5dx9|BH6)\.exe$)", {{
       { "d3d9.allowDirectBufferMapping",                "False" },
     }} },
+    /* Limbo                                    */
+    { R"(\\limbo\.exe$)", {{
+      { "d3d9.maxFrameRate",                "60" },
+    }} },
   }};
 
 
