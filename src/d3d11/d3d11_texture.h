@@ -613,8 +613,18 @@ namespace dxvk {
             DXGI_USAGE                  DxgiUsage,
             VkImage                     vkImage);
     
+    D3D11Texture2D(
+            D3D11Device*                pDevice,
+            IUnknown*                   pSwapChain,
+      const D3D11_COMMON_TEXTURE_DESC*  pDesc,
+            DXGI_USAGE                  DxgiUsage);
+    
     ~D3D11Texture2D();
     
+    ULONG STDMETHODCALLTYPE AddRef();
+    
+    ULONG STDMETHODCALLTYPE Release();
+
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
             void**  ppvObject) final;
@@ -647,6 +657,7 @@ namespace dxvk {
     D3D11DXGISurface      m_surface;
     D3D11DXGIResource     m_resource;
     D3D10Texture2D        m_d3d10;
+    IUnknown*             m_swapChain;
     
   };
   

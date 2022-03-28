@@ -270,10 +270,10 @@ namespace dxvk {
 
   VkCullModeFlags DecodeCullMode(D3DCULL Mode) {
     switch (Mode) {
-      case D3DCULL_NONE: return VK_CULL_MODE_NONE;
       case D3DCULL_CW:   return VK_CULL_MODE_FRONT_BIT;
-      default:
       case D3DCULL_CCW:  return VK_CULL_MODE_BACK_BIT;
+      default:
+      case D3DCULL_NONE: return VK_CULL_MODE_NONE;
     }
   }
 

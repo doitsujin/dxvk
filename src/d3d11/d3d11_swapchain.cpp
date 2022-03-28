@@ -38,9 +38,6 @@ namespace dxvk {
     m_device->waitForSubmission(&m_presentStatus);
     m_device->waitForIdle();
     
-    if (m_backBuffer)
-      m_backBuffer->ReleasePrivate();
-
     DestroyFrameLatencyEvent();
   }
 
@@ -456,9 +453,6 @@ namespace dxvk {
   void D3D11SwapChain::CreateBackBuffer() {
     // Explicitly destroy current swap image before
     // creating a new one to free up resources
-    if (m_backBuffer)
-      m_backBuffer->ReleasePrivate();
-    
     m_swapImage         = nullptr;
     m_swapImageView     = nullptr;
     m_backBuffer        = nullptr;
@@ -496,10 +490,8 @@ namespace dxvk {
      || m_desc.SwapEffect == DXGI_SWAP_EFFECT_FLIP_DISCARD)
       dxgiUsage |= DXGI_USAGE_DISCARD_ON_PRESENT;
 
-    m_backBuffer = new D3D11Texture2D(m_parent, &desc, dxgiUsage, VK_NULL_HANDLE);
-    m_backBuffer->AddRefPrivate();
-
-    m_swapImage = GetCommonTexture(m_backBuffer)->GetImage();
+    m_backBuffer = new D3D11Texture2D(m_parent, this, &desc, dxgiUsage);
+    m_swapImage = GetCommonTexture(m_backBuffer.ptr())->GetImage();
 
     // Create an image view that allows the
     // image to be bound as a shader resource.

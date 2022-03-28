@@ -2,6 +2,30 @@
 
 namespace dxvk {
   
+  constexpr static VkAccessFlags AccessReadMask
+    = VK_ACCESS_INDIRECT_COMMAND_READ_BIT
+    | VK_ACCESS_INDEX_READ_BIT
+    | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
+    | VK_ACCESS_UNIFORM_READ_BIT
+    | VK_ACCESS_INPUT_ATTACHMENT_READ_BIT
+    | VK_ACCESS_SHADER_READ_BIT
+    | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+    | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
+    | VK_ACCESS_TRANSFER_READ_BIT
+    | VK_ACCESS_HOST_READ_BIT
+    | VK_ACCESS_MEMORY_READ_BIT
+    | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT;
+    
+  constexpr static VkAccessFlags AccessWriteMask
+    = VK_ACCESS_SHADER_WRITE_BIT
+    | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+    | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+    | VK_ACCESS_TRANSFER_WRITE_BIT
+    | VK_ACCESS_HOST_WRITE_BIT
+    | VK_ACCESS_MEMORY_WRITE_BIT
+    | VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT
+    | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT;
+  
   DxvkBarrierSet:: DxvkBarrierSet(DxvkCmdBuffer cmdBuffer)
   : m_cmdBuffer(cmdBuffer) {
 
@@ -18,11 +42,15 @@ namespace dxvk {
           VkAccessFlags             srcAccess,
           VkPipelineStageFlags      dstStages,
           VkAccessFlags             dstAccess) {
+    DxvkAccessFlags access = this->getAccessTypes(srcAccess);
+
     m_srcStages |= srcStages;
     m_dstStages |= dstStages;
     
-    m_srcAccess |= srcAccess;
-    m_dstAccess |= dstAccess;
+    m_srcAccess |= srcAccess & AccessWriteMask;
+
+    if (access.test(DxvkAccess::Write))
+      m_dstAccess |= dstAccess;
   }
 
 
@@ -41,8 +69,10 @@ namespace dxvk {
     m_srcStages |= srcStages;
     m_dstStages |= dstStages;
     
-    m_srcAccess |= srcAccess;
-    m_dstAccess |= dstAccess;
+    m_srcAccess |= srcAccess & AccessWriteMask;
+
+    if (access.test(DxvkAccess::Write))
+      m_dstAccess |= dstAccess;
 
     m_bufSlices.insert(bufSlice.handle,
       DxvkBarrierBufferSlice(bufSlice.offset, bufSlice.length, access));
@@ -69,13 +99,15 @@ namespace dxvk {
     m_dstStages |= dstStages;
     
     if (srcLayout == dstLayout) {
-      m_srcAccess |= srcAccess;
-      m_dstAccess |= dstAccess;
+      m_srcAccess |= srcAccess & AccessWriteMask;
+
+      if (access.test(DxvkAccess::Write))
+        m_dstAccess |= dstAccess;
     } else {
       VkImageMemoryBarrier barrier;
       barrier.sType                       = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
       barrier.pNext                       = nullptr;
-      barrier.srcAccessMask               = srcAccess;
+      barrier.srcAccessMask               = srcAccess & AccessWriteMask;
       barrier.dstAccessMask               = dstAccess;
       barrier.oldLayout                   = srcLayout;
       barrier.newLayout                   = dstLayout;
@@ -109,7 +141,7 @@ namespace dxvk {
     VkBufferMemoryBarrier barrier;
     barrier.sType                       = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
     barrier.pNext                       = nullptr;
-    barrier.srcAccessMask               = srcAccess;
+    barrier.srcAccessMask               = srcAccess & AccessWriteMask;
     barrier.dstAccessMask               = 0;
     barrier.srcQueueFamilyIndex         = srcQueue;
     barrier.dstQueueFamilyIndex         = dstQueue;
@@ -150,7 +182,7 @@ namespace dxvk {
     VkImageMemoryBarrier barrier;
     barrier.sType                       = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
     barrier.pNext                       = nullptr;
-    barrier.srcAccessMask               = srcAccess;
+    barrier.srcAccessMask               = srcAccess & AccessWriteMask;
     barrier.dstAccessMask               = 0;
     barrier.oldLayout                   = srcLayout;
     barrier.newLayout                   = dstLayout;
@@ -257,33 +289,9 @@ namespace dxvk {
   
   
   DxvkAccessFlags DxvkBarrierSet::getAccessTypes(VkAccessFlags flags) {
-    const VkAccessFlags rflags
-      = VK_ACCESS_INDIRECT_COMMAND_READ_BIT
-      | VK_ACCESS_INDEX_READ_BIT
-      | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
-      | VK_ACCESS_UNIFORM_READ_BIT
-      | VK_ACCESS_INPUT_ATTACHMENT_READ_BIT
-      | VK_ACCESS_SHADER_READ_BIT
-      | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
-      | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
-      | VK_ACCESS_TRANSFER_READ_BIT
-      | VK_ACCESS_HOST_READ_BIT
-      | VK_ACCESS_MEMORY_READ_BIT
-      | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT;
-      
-    const VkAccessFlags wflags
-      = VK_ACCESS_SHADER_WRITE_BIT
-      | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
-      | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-      | VK_ACCESS_TRANSFER_WRITE_BIT
-      | VK_ACCESS_HOST_WRITE_BIT
-      | VK_ACCESS_MEMORY_WRITE_BIT
-      | VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT
-      | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT;
-    
     DxvkAccessFlags result;
-    if (flags & rflags) result.set(DxvkAccess::Read);
-    if (flags & wflags) result.set(DxvkAccess::Write);
+    if (flags & AccessReadMask)  result.set(DxvkAccess::Read);
+    if (flags & AccessWriteMask) result.set(DxvkAccess::Write);
     return result;
   }
   

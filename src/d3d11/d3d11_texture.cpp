@@ -1097,12 +1097,12 @@ namespace dxvk {
     const D3D11_COMMON_TEXTURE_DESC*  pDesc,
           HANDLE                      hSharedHandle)
   : D3D11DeviceChild<ID3D11Texture2D1>(pDevice),
-    m_texture (this, pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D, 0, VK_NULL_HANDLE, hSharedHandle),
-    m_interop (this, &m_texture),
-    m_surface (this, &m_texture),
-    m_resource(this),
-    m_d3d10   (this) {
-    
+    m_texture   (this, pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D, 0, VK_NULL_HANDLE, hSharedHandle),
+    m_interop   (this, &m_texture),
+    m_surface   (this, &m_texture),
+    m_resource  (this),
+    m_d3d10     (this),
+    m_swapChain (nullptr) {
   }
 
 
@@ -1112,11 +1112,28 @@ namespace dxvk {
           DXGI_USAGE                  DxgiUsage,
           VkImage                     vkImage)
   : D3D11DeviceChild<ID3D11Texture2D1>(pDevice),
-    m_texture (this, pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D, DxgiUsage, vkImage, nullptr),
-    m_interop (this, &m_texture),
-    m_surface (this, &m_texture),
-    m_resource(this),
-    m_d3d10   (this) {
+    m_texture   (this, pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D, DxgiUsage, vkImage, nullptr),
+    m_interop   (this, &m_texture),
+    m_surface   (this, &m_texture),
+    m_resource  (this),
+    m_d3d10     (this),
+    m_swapChain (nullptr) {
+    
+  }
+
+
+  D3D11Texture2D::D3D11Texture2D(
+          D3D11Device*                pDevice,
+          IUnknown*                   pSwapChain,
+    const D3D11_COMMON_TEXTURE_DESC*  pDesc,
+          DXGI_USAGE                  DxgiUsage)
+  : D3D11DeviceChild<ID3D11Texture2D1>(pDevice),
+    m_texture   (this, pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D, DxgiUsage, VK_NULL_HANDLE, nullptr),
+    m_interop   (this, &m_texture),
+    m_surface   (this, &m_texture),
+    m_resource  (this),
+    m_d3d10     (this),
+    m_swapChain (pSwapChain) {
     
   }
   
@@ -1126,6 +1143,34 @@ namespace dxvk {
   }
   
   
+  ULONG STDMETHODCALLTYPE D3D11Texture2D::AddRef() {
+    uint32_t refCount = m_refCount++;
+
+    if (unlikely(!refCount)) {
+      if (m_swapChain)
+        m_swapChain->AddRef();
+
+      AddRefPrivate();
+    }
+
+    return refCount + 1;
+  }
+  
+
+  ULONG STDMETHODCALLTYPE D3D11Texture2D::Release() {
+    uint32_t refCount = --m_refCount;
+
+    if (unlikely(!refCount)) {
+      if (m_swapChain)
+        m_swapChain->Release();
+
+      ReleasePrivate();
+    }
+
+    return refCount;
+  }
+
+
   HRESULT STDMETHODCALLTYPE D3D11Texture2D::QueryInterface(REFIID riid, void** ppvObject) {
     if (ppvObject == nullptr)
       return E_POINTER;

@@ -29,8 +29,10 @@ namespace dxvk {
       ? MaxBufferSize / m_physSliceStride
       : 1;
 
-    // Allocate the initial set of buffer slices
-    m_buffer = allocBuffer(m_physSliceCount);
+    // Allocate the initial set of buffer slices. Only clear
+    // buffer memory if there is more than one slice, since
+    // we expect the client api to initialize the first slice.
+    m_buffer = allocBuffer(m_physSliceCount, m_physSliceCount > 1);
 
     DxvkBufferSliceHandle slice;
     slice.handle = m_buffer.buffer;
@@ -52,7 +54,7 @@ namespace dxvk {
   }
   
   
-  DxvkBufferHandle DxvkBuffer::allocBuffer(VkDeviceSize sliceCount) const {
+  DxvkBufferHandle DxvkBuffer::allocBuffer(VkDeviceSize sliceCount, bool clear) const {
     auto vkd = m_device->vkd();
 
     VkBufferCreateInfo info;
@@ -124,6 +126,9 @@ namespace dxvk {
         handle.memory.memory(), handle.memory.offset()) != VK_SUCCESS)
       throw DxvkError("DxvkBuffer: Failed to bind device memory");
     
+    if (clear && (m_memFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+      std::memset(handle.memory.mapPtr(0), 0, info.size);
+
     return handle;
   }
 

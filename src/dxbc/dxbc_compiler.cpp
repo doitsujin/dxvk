@@ -70,6 +70,9 @@ namespace dxvk {
   
   
   void DxbcCompiler::processInstruction(const DxbcShaderInstruction& ins) {
+    m_lastOp = m_currOp;
+    m_currOp = ins.op;
+
     switch (ins.opClass) {
       case DxbcInstClass::Declaration:
         return this->emitDcl(ins);
@@ -378,15 +381,16 @@ namespace dxvk {
     // dcl_indexable_temps has three operands:
     //    (imm0) Array register index (x#)
     //    (imm1) Number of vectors stored in the array
-    //    (imm2) Component count of each individual vector
+    //    (imm2) Component count of each individual vector. This is
+    //    always 4 in fxc-generated binaries and therefore useless.
+    const uint32_t regId = ins.imm[0].u32;
+
     DxbcRegisterInfo info;
     info.type.ctype   = DxbcScalarType::Float32;
-    info.type.ccount  = ins.imm[2].u32;
+    info.type.ccount  = m_analysis->xRegMasks.at(regId).minComponents();
     info.type.alength = ins.imm[1].u32;
     info.sclass       = spv::StorageClassPrivate;
-    
-    const uint32_t regId = ins.imm[0].u32;
-    
+
     if (regId >= m_xRegs.size())
       m_xRegs.resize(regId + 1);
     
@@ -3877,12 +3881,17 @@ namespace dxvk {
     // The source operand must be a 32-bit immediate.
     if (ins.src[0].type != DxbcOperandType::Imm32)
       throw DxvkError("DxbcCompiler: Invalid operand type for 'Case'");
-    
-    // Use the last label allocated for 'case'. The block starting
-    // with that label is guaranteed to be empty unless a previous
-    // 'case' block was not properly closed in the DXBC shader.
+
+    // Use the last label allocated for 'case'.
     DxbcCfgBlockSwitch* block = &m_controlFlowBlocks.back().b_switch;
-    
+
+    if (caseBlockIsFallthrough()) {
+      block->labelCase = m_module.allocateId();
+
+      m_module.opBranch(block->labelCase);
+      m_module.opLabel (block->labelCase);
+    }
+
     DxbcSwitchLabel label;
     label.desc.literal = ins.src[0].imm.u32_1;
     label.desc.labelId = block->labelCase;
@@ -3896,9 +3905,17 @@ namespace dxvk {
      || m_controlFlowBlocks.back().type != DxbcCfgBlockType::Switch)
       throw DxvkError("DxbcCompiler: 'Default' without 'Switch' found");
     
+    DxbcCfgBlockSwitch* block = &m_controlFlowBlocks.back().b_switch;
+
+    if (caseBlockIsFallthrough()) {
+      block->labelCase = m_module.allocateId();
+
+      m_module.opBranch(block->labelCase);
+      m_module.opLabel (block->labelCase);
+    }
+
     // Set the last label allocated for 'case' as the default label.
-    m_controlFlowBlocks.back().b_switch.labelDefault
-      = m_controlFlowBlocks.back().b_switch.labelCase;
+    block->labelDefault = block->labelCase;
   }
   
   
@@ -3910,12 +3927,12 @@ namespace dxvk {
     // Remove the block from the stack, it's closed
     DxbcCfgBlock block = m_controlFlowBlocks.back();
     m_controlFlowBlocks.pop_back();
-    
-    // If no 'default' label was specified, use the last allocated
-    // 'case' label. This is guaranteed to be an empty block unless
-    // a previous 'case' block was not closed properly.
-    if (block.b_switch.labelDefault == 0)
-      block.b_switch.labelDefault = block.b_switch.labelCase;
+
+    if (!block.b_switch.labelDefault) {
+      block.b_switch.labelDefault = caseBlockIsFallthrough()
+        ? block.b_switch.labelBreak
+        : block.b_switch.labelCase;
+    }
     
     // Close the current 'case' block
     m_module.opBranch(block.b_switch.labelBreak);
@@ -5705,23 +5722,30 @@ namespace dxvk {
     const DxbcRegister&           reg,
           DxbcRegisterValue       value) {
     if (reg.type == DxbcOperandType::IndexableTemp) {
+      bool doBoundsCheck = reg.idx[1].relReg != nullptr;
       DxbcRegisterValue vectorId = emitIndexLoad(reg.idx[1]);
-      uint32_t boundsCheck = m_module.opULessThan(
-        m_module.defBoolType(), vectorId.id,
-        m_module.constu32(m_xRegs.at(reg.idx[0].offset).alength));
-      
-      DxbcConditional cond;
-      cond.labelIf  = m_module.allocateId();
-      cond.labelEnd = m_module.allocateId();
-      
-      m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
-      m_module.opBranchConditional(boundsCheck, cond.labelIf, cond.labelEnd);
-      
-      m_module.opLabel(cond.labelIf);
-      emitValueStore(getIndexableTempPtr(reg, vectorId), value, reg.mask);
-      
-      m_module.opBranch(cond.labelEnd);
-      m_module.opLabel (cond.labelEnd);
+
+      if (doBoundsCheck) {
+        uint32_t boundsCheck = m_module.opULessThan(
+          m_module.defBoolType(), vectorId.id,
+          m_module.constu32(m_xRegs.at(reg.idx[0].offset).alength));
+        
+        DxbcConditional cond;
+        cond.labelIf  = m_module.allocateId();
+        cond.labelEnd = m_module.allocateId();
+        
+        m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
+        m_module.opBranchConditional(boundsCheck, cond.labelIf, cond.labelEnd);
+        
+        m_module.opLabel(cond.labelIf);
+
+        emitValueStore(getIndexableTempPtr(reg, vectorId), value, reg.mask);
+
+        m_module.opBranch(cond.labelEnd);
+        m_module.opLabel (cond.labelEnd);
+      } else {
+        emitValueStore(getIndexableTempPtr(reg, vectorId), value, reg.mask);
+      }
     } else {
       emitValueStore(emitGetOperandPtr(reg), value, reg.mask);
     }
@@ -7801,6 +7825,14 @@ namespace dxvk {
 
     return result;
   }
+
+  bool DxbcCompiler::caseBlockIsFallthrough() const {
+    return m_lastOp != DxbcOpcode::Case
+        && m_lastOp != DxbcOpcode::Default
+        && m_lastOp != DxbcOpcode::Break
+        && m_lastOp != DxbcOpcode::Ret;
+  }
+
 
   uint32_t DxbcCompiler::getScalarTypeId(DxbcScalarType type) {
     if (type == DxbcScalarType::Float64)
