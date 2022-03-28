@@ -2,6 +2,8 @@
 #include "d3d11_texture.h"
 #include "d3d11_resource.h"
 
+#include "../util/util_shared_res.h"
+
 namespace dxvk {
 
   D3D11DXGIResource::D3D11DXGIResource(
@@ -82,7 +84,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11DXGIResource::GetSharedHandle(
           HANDLE*                 pSharedHandle) {
     auto texture = GetCommonTexture(m_resource);
-    if (texture == nullptr || pSharedHandle == nullptr)
+    if (texture == nullptr || pSharedHandle == nullptr || !(texture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_SHARED))
       return E_INVALIDARG;
 
     HANDLE kmtHandle = texture->GetImage()->sharedHandle();
@@ -141,7 +143,8 @@ namespace dxvk {
           LPCWSTR                 lpName,
           HANDLE*                 pHandle) {
     auto texture = GetCommonTexture(m_resource);
-    if (texture == nullptr || pHandle == nullptr)
+    if (texture == nullptr || pHandle == nullptr ||
+        !(texture->Desc()->MiscFlags & (D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX | D3D11_RESOURCE_MISC_SHARED_NTHANDLE)))
       return E_INVALIDARG;
 
     if (lpName)
@@ -151,6 +154,9 @@ namespace dxvk {
 
     if (handle == INVALID_HANDLE_VALUE)
       return E_INVALIDARG;
+
+    if (texture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_SHARED)
+      handle = openKmtHandle( handle );
 
     *pHandle = handle;
     return S_OK;
