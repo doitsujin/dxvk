@@ -1795,8 +1795,9 @@ namespace dxvk {
       return m_recorder->SetRenderState(State, Value);
 
     auto& states = m_state.renderStates;
+    DWORD old = states[State];
 
-    bool changed = states[State] != Value;
+    bool changed = old != Value;
 
     if (likely(changed)) {
       const bool oldClipPlaneEnabled = IsClipPlaneEnabled();
@@ -1880,19 +1881,31 @@ namespace dxvk {
           break;
 
         case D3DRS_COLORWRITEENABLE:
-          UpdateActiveRTs(0);
+          if (likely(!old != !Value)) {
+            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+            UpdateActiveRTs(0);
+          }
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE1:
-          UpdateActiveRTs(1);
+          if (likely(!old != !Value && m_state.renderTargets[1] != nullptr)) {
+            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+            UpdateActiveRTs(1);
+          }
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE2:
-          UpdateActiveRTs(2);
+          if (likely(!old != !Value && m_state.renderTargets[2] != nullptr)) {
+            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+            UpdateActiveRTs(2);
+          }
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE3:
-          UpdateActiveRTs(3);
+          if (likely(!old != !Value && m_state.renderTargets[3] != nullptr)) {
+            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+            UpdateActiveRTs(3);
+          }
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
 
@@ -5553,6 +5566,9 @@ namespace dxvk {
       if (likely(sampleCount == VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM))
         sampleCount = rtImageInfo.sampleCount;
       else if (unlikely(sampleCount != rtImageInfo.sampleCount))
+        continue;
+
+      if (!m_state.renderStates[ColorWriteIndex(i)])
         continue;
 
       attachments.color[i] = {
