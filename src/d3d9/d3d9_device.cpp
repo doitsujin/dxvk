@@ -1922,17 +1922,17 @@ namespace dxvk {
             m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
           break;
 
+        case D3DRS_STENCILENABLE:
         case D3DRS_ZWRITEENABLE:
-          if (m_activeHazardsDS != 0)
+        case D3DRS_ZENABLE:
+          if (likely(m_state.depthStencil != nullptr))
             m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
           m_flags.set(D3D9DeviceFlag::DirtyDepthStencilState);
           break;
 
-        case D3DRS_ZENABLE:
         case D3DRS_ZFUNC:
         case D3DRS_TWOSIDEDSTENCILMODE:
-        case D3DRS_STENCILENABLE:
         case D3DRS_STENCILFAIL:
         case D3DRS_STENCILZFAIL:
         case D3DRS_STENCILPASS:
@@ -5560,7 +5560,10 @@ namespace dxvk {
         m_state.renderTargets[i]->GetRenderTargetLayout() };
     }
 
-    if (m_state.depthStencil != nullptr) {
+    if (m_state.depthStencil != nullptr &&
+      (m_state.renderStates[D3DRS_ZENABLE]
+        || m_state.renderStates[D3DRS_ZWRITEENABLE]
+        || m_state.renderStates[D3DRS_STENCILENABLE])) {
       const DxvkImageCreateInfo& dsImageInfo = m_state.depthStencil->GetCommonTexture()->GetImage()->info();
       const bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
 
