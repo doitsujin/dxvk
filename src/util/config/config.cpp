@@ -530,6 +530,10 @@ namespace dxvk {
     { R"(\\limbo\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
+    /* Scrapland (Remastered)                   */
+    { R"(\\Scrap\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",        "True" },
+    }} },
   }};
 
 
