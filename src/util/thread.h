@@ -144,6 +144,9 @@ namespace dxvk {
 
   };
 
+  using mutex              = std::mutex;
+  using recursive_mutex    = std::recursive_mutex;
+  using condition_variable = std::condition_variable;
 
   namespace this_thread {
     inline void yield() {
