@@ -46,7 +46,7 @@ namespace dxvk {
     // Enforce anisotropy specified in the device options
     int32_t samplerAnisotropyOption = device->GetOptions()->samplerAnisotropy;
 
-    if (samplerAnisotropyOption >= 0) {
+    if (samplerAnisotropyOption >= 0 && info.minFilter == VK_FILTER_LINEAR) {
       info.useAnisotropy = samplerAnisotropyOption > 0;
       info.maxAnisotropy = float(samplerAnisotropyOption);
     }
