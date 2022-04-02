@@ -177,7 +177,7 @@ namespace dxvk {
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
     /* Just how many of these games are there?    */
-    { R"(\\Atelier_(Lulua|Lydie_and_Suelle|Ryza(_2)|Sophie_2?)\.exe$)", {{
+    { R"(\\Atelier_(Lulua|Lydie_and_Suelle|Ryza(_2)?|Sophie_2)\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
     /* ...                                        */
@@ -525,6 +525,10 @@ namespace dxvk {
     /* Resident Evil games                      */
     { R"(\\(rerev|rerev2|re0hd|bhd|re5dx9|BH6)\.exe$)", {{
       { "d3d9.allowDirectBufferMapping",                "False" },
+    }} },
+    /* Limbo                                    */
+    { R"(\\limbo\.exe$)", {{
+      { "d3d9.maxFrameRate",                "60" },
     }} },
   }};
 
