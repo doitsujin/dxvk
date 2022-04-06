@@ -128,6 +128,7 @@ namespace dxvk {
       windowData.swapchain->GetDevice()->GetCreationParameters(&create_parms);
 
       if (!(create_parms.BehaviorFlags & D3DCREATE_NOWINDOWCHANGES)) {
+        D3D9WindowMessageFilter filter(window);
         if (wparam) {
           // Heroes of Might and Magic V needs this to resume drawing after a focus loss
           D3DPRESENT_PARAMETERS params;
