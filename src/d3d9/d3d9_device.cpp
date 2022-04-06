@@ -4478,6 +4478,7 @@ namespace dxvk {
           + srcOffsetBlockCount.y * pitch
           + srcOffsetBlockCount.x * formatInfo->elementSize;
 
+      VkDeviceSize sliceAlignment = 1;
       VkDeviceSize rowAlignment = 1;
       DxvkBufferSlice copySrcSlice;
       if (pSrcTexture->DoesStagingBufferUploads(SrcSubresource)) {
@@ -4490,7 +4491,9 @@ namespace dxvk {
           pitch, pitch * srcTexLevelExtentBlockCount.height);
       } else {
         copySrcSlice = DxvkBufferSlice(pSrcTexture->GetBuffer(SrcSubresource), copySrcOffset, srcSlice.length);
-        rowAlignment = pitch; // row alignment can act as the pitch parameter
+        // row/slice alignment can act as the pitch parameter
+        rowAlignment = pitch;
+        sliceAlignment = srcTexLevelExtentBlockCount.height * pitch;
       }
 
       EmitCs([
@@ -4499,13 +4502,14 @@ namespace dxvk {
         cDstLayers      = dstLayers,
         cDstLevelExtent = alignedExtent,
         cOffset         = alignedDestOffset,
-        cRowAlignment   = rowAlignment
+        cRowAlignment   = rowAlignment,
+        cSliceAlignment = sliceAlignment
       ] (DxvkContext* ctx) {
         ctx->copyBufferToImage(
           cDstImage,  cDstLayers,
           cOffset, cDstLevelExtent,
           cSrcSlice.buffer(), cSrcSlice.offset(),
-          cRowAlignment, 0);
+          cRowAlignment, cSliceAlignment);
       });
 
       TrackTextureMappingBufferSequenceNumber(pSrcTexture, SrcSubresource);
