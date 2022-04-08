@@ -530,6 +530,13 @@ namespace dxvk {
     { R"(\\limbo\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
+    /* Star Wars The Force Unleashed 2          *
+     * Black particles because it tries to bind *
+     * a 2D texture for a shader that           *
+     * declares a 3d texture.                   */
+    { R"(\\SWTFU2\.exe$)", {{
+      { "d3d9.forceSamplerTypeSpecConstants",  "True" },
+    }} },
   }};
 
 

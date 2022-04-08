@@ -10,6 +10,7 @@ namespace dxvk {
   struct D3D9WindowData {
     bool unicode;
     bool filter;
+    bool activateProcessed;
     WNDPROC proc;
     D3D9SwapChainEx* swapchain;
   };
@@ -18,6 +19,13 @@ namespace dxvk {
   static dxvk::recursive_mutex g_windowProcMapMutex;
   static std::unordered_map<HWND, D3D9WindowData> g_windowProcMap;
 
+  static void SetActivateProcessed(HWND window, bool processed)
+  {
+      std::lock_guard lock(g_windowProcMapMutex);
+      auto it = g_windowProcMap.find(window);
+      if (it != g_windowProcMap.end())
+        it->second.activateProcessed = processed;
+  }
 
   template <typename T, typename J, typename ... Args>
   auto CallCharsetFunction(T unicode, J ascii, bool isUnicode, Args... args) {
@@ -88,6 +96,7 @@ namespace dxvk {
     D3D9WindowData windowData;
     windowData.unicode = IsWindowUnicode(window);
     windowData.filter  = false;
+    windowData.activateProcessed = false;
     windowData.proc = reinterpret_cast<WNDPROC>(
       CallCharsetFunction(
       SetWindowLongPtrW, SetWindowLongPtrA, windowData.unicode,
@@ -128,7 +137,8 @@ namespace dxvk {
       windowData.swapchain->GetDevice()->GetCreationParameters(&create_parms);
 
       if (!(create_parms.BehaviorFlags & D3DCREATE_NOWINDOWCHANGES)) {
-        if (wparam) {
+        D3D9WindowMessageFilter filter(window);
+        if (wparam && !windowData.activateProcessed) {
           // Heroes of Might and Magic V needs this to resume drawing after a focus loss
           D3DPRESENT_PARAMETERS params;
           RECT rect;
@@ -137,10 +147,12 @@ namespace dxvk {
           windowData.swapchain->GetPresentParameters(&params);
           SetWindowPos(window, nullptr, rect.left, rect.top, params.BackBufferWidth, params.BackBufferHeight,
                        SWP_NOACTIVATE | SWP_NOZORDER);
+          SetActivateProcessed(window, true);
         }
-        else {
+        else if (!wparam) {
           if (IsWindowVisible(window))
             ShowWindow(window, SW_MINIMIZE);
+          SetActivateProcessed(window, false);
         }
       }
     }
