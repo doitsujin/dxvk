@@ -230,6 +230,10 @@ namespace dxvk {
     { R"(\\SGWContracts\.exe$)", {{
       { "d3d11.cachedDynamicResources",     "a"    },
     }} },
+    /* Armored Warfare             */
+    { R"(\\armoredwarfare\.exe$)", {{
+      { "d3d11.cachedDynamicResources",     "c"    },
+    }} },
     /* Shadow of the Tomb Raider - invariant      *
      * position breaks character rendering on NV  */
     { R"(\\SOTTR\.exe$)", {{
