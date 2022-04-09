@@ -326,8 +326,8 @@ namespace dxvk {
           D3D11ImmediateContext*  pContext,
     const Rc<DxvkDevice>&         Device)
   : m_ctx(pContext) {
-    const SpirvCodeBuffer vsCode(d3d11_video_blit_vert);
-    const SpirvCodeBuffer fsCode(d3d11_video_blit_frag);
+    SpirvCodeBuffer vsCode(d3d11_video_blit_vert);
+    SpirvCodeBuffer fsCode(d3d11_video_blit_frag);
 
     const std::array<DxvkResourceSlot, 4> fsResourceSlots = {{
       { 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC               },
@@ -336,17 +336,18 @@ namespace dxvk {
       { 3, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_IMAGE_VIEW_TYPE_2D },
     }};
 
-    m_vs = Device->createShader(
-      VK_SHADER_STAGE_VERTEX_BIT,
-      0, nullptr, { 0u, 1u },
-      vsCode);
-    
-    m_fs = Device->createShader(
-      VK_SHADER_STAGE_FRAGMENT_BIT,
-      fsResourceSlots.size(),
-      fsResourceSlots.data(),
-      { 1u, 1u, 0u, 0u },
-      fsCode);
+    DxvkShaderCreateInfo vsInfo;
+    vsInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vsInfo.outputMask = 0x1;
+    m_vs = new DxvkShader(vsInfo, std::move(vsCode));
+
+    DxvkShaderCreateInfo fsInfo;
+    fsInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fsInfo.resourceSlotCount = fsResourceSlots.size();
+    fsInfo.resourceSlots = fsResourceSlots.data();
+    fsInfo.inputMask = 0x1;
+    fsInfo.outputMask = 0x1;
+    m_fs = new DxvkShader(fsInfo, std::move(fsCode));
 
     DxvkSamplerCreateInfo samplerInfo;
     samplerInfo.magFilter       = VK_FILTER_LINEAR;
