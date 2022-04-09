@@ -13,13 +13,12 @@ namespace dxvk {
    * to keep memory footprint low.
    */
   class SpirvCompressedBuffer {
-    constexpr static uint32_t NumMaskWords = 32;
+
   public:
 
     SpirvCompressedBuffer();
 
-    SpirvCompressedBuffer(
-      const SpirvCodeBuffer&  code);
+    SpirvCompressedBuffer(SpirvCodeBuffer& code);
     
     ~SpirvCompressedBuffer();
     
@@ -27,9 +26,12 @@ namespace dxvk {
 
   private:
 
-    uint32_t              m_size;
-    std::vector<uint64_t> m_mask;
-    std::vector<uint64_t> m_code;
+    size_t                m_size;
+    std::vector<uint32_t> m_code;
+
+    void encodeDword(uint32_t dw);
+
+    uint32_t decodeDword(size_t& offset) const;
 
   };
 
