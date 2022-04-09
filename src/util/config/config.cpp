@@ -315,10 +315,6 @@ namespace dxvk {
     { R"(\\Gothic(3|3Final| III Forsaken Gods)\.exe$)", {{
       { "d3d9.supportDFFormats",            "False" },
     }} },
-    /* Risen                                      */
-    { R"(\\Risen[23]?\.exe$)", {{
-      { "d3d9.invariantPosition",           "True" },
-    }} },
     /* Sonic Adventure 2                          */
     { R"(\\Sonic Adventure 2\\(launcher|sonic2app)\.exe$)", {{
       { "d3d9.floatEmulation",              "False" },
@@ -342,13 +338,8 @@ namespace dxvk {
     { R"(\\Dead Space\.exe$)", {{
       { "d3d9.supportDFFormats",                 "False" },
     }} },
-    /* Halo 2                                     */
-    { R"(\\halo2\.exe$)", {{
-      { "d3d9.invariantPosition",           "True" },
-    }} },
     /* Halo CE/HaloPC                             */
     { R"(\\halo(ce)?\.exe$)", {{
-      { "d3d9.invariantPosition",           "True" },
       // Game enables minor decal layering fixes
       // specifically when it detects AMD.
       // Avoids chip being detected as unsupported
@@ -421,7 +412,6 @@ namespace dxvk {
     /* Battlefield 2 (bad z-pass)                 */
     { R"(\\BF2\.exe$)", {{
       { "d3d9.longMad",                     "True" },
-      { "d3d9.invariantPosition",           "True" },
     }} },
     /* SpellForce 2 Series                        */
     { R"(\\SpellForce2.*\.exe$)", {{
@@ -521,10 +511,6 @@ namespace dxvk {
     /* BlazBlue Centralfiction                  */
     { R"(\\BBCF\.exe$)", {{
       { "d3d9.floatEmulation",              "Strict" },
-    }} },
-    /* James Cameron's Avatar needs invariantPosition to fix black flickering vegetation */
-    { R"(\\Avatar\.exe$)", {{
-      { "d3d9.invariantPosition",              "True" },
     }} },
     /* Resident Evil games                      */
     { R"(\\(rerev|rerev2|re0hd|bhd|re5dx9|BH6)\.exe$)", {{
