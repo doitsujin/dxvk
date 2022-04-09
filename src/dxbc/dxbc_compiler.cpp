@@ -248,24 +248,24 @@ namespace dxvk {
       m_entryPointInterfaces.data());
     m_module.setDebugName(m_entryPointId, "main");
 
-    DxvkShaderOptions shaderOptions = { };
+    // Create the shader object
+    DxvkShaderCreateInfo info;
+    info.stage = m_programInfo.shaderStage();
+    info.resourceSlotCount = m_resourceSlots.size();
+    info.resourceSlots = m_resourceSlots.data();
+    info.inputMask = m_inputMask;
+    info.outputMask = m_outputMask;
+    info.uniformSize = m_immConstData.size();
+    info.uniformData = m_immConstData.data();
 
-    if (m_moduleInfo.xfb != nullptr) {
-      shaderOptions.rasterizedStream = m_moduleInfo.xfb->rasterizedStream;
+    if (m_moduleInfo.xfb) {
+      info.xfbRasterizedStream = m_moduleInfo.xfb->rasterizedStream;
 
       for (uint32_t i = 0; i < 4; i++)
-        shaderOptions.xfbStrides[i] = m_moduleInfo.xfb->strides[i];
+        info.xfbStrides[i] = m_moduleInfo.xfb->strides[i];
     }
 
-    // Create the shader module object
-    return new DxvkShader(
-      m_programInfo.shaderStage(),
-      m_resourceSlots.size(),
-      m_resourceSlots.data(),
-      m_interfaceSlots,
-      m_module.compile(),
-      shaderOptions,
-      std::move(m_immConstData));
+    return new DxvkShader(info, m_module.compile());
   }
   
   
@@ -686,7 +686,7 @@ namespace dxvk {
       }
 
       // Declare the input slot as defined
-      m_interfaceSlots.inputSlots |= 1u << regIdx;
+      m_inputMask |= 1u << regIdx;
       m_vArrayLength = std::max(m_vArrayLength, regIdx + 1);
     } else if (sv != DxbcSystemValue::None) {
       // Add a new system value mapping if needed
@@ -759,7 +759,7 @@ namespace dxvk {
       m_oRegs.at(regIdx) = { regType, varId };
       
       // Declare the output slot as defined
-      m_interfaceSlots.outputSlots |= 1u << regIdx;
+      m_outputMask |= 1u << regIdx;
     }
   }
   
@@ -1534,7 +1534,8 @@ namespace dxvk {
     const uint32_t*               dwordArray) {
     this->emitDclConstantBufferVar(Icb_BindingSlotId, dwordCount / 4, "icb",
       m_moduleInfo.options.dynamicIndexedConstantBufferAsSsbo);
-    m_immConstData = DxvkShaderConstData(dwordCount, dwordArray);
+    m_immConstData.resize(dwordCount * sizeof(uint32_t));
+    std::memcpy(m_immConstData.data(), dwordArray, m_immConstData.size());
   }
 
 
