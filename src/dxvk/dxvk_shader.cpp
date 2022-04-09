@@ -6,43 +6,6 @@
 
 namespace dxvk {
   
-  DxvkShaderConstData::DxvkShaderConstData()
-  : m_size(0), m_data(nullptr) {
-
-  }
-
-
-  DxvkShaderConstData::DxvkShaderConstData(
-          size_t                dwordCount,
-    const uint32_t*             dwordArray)
-  : m_size(dwordCount), m_data(new uint32_t[dwordCount]) {
-    for (size_t i = 0; i < dwordCount; i++)
-      m_data[i] = dwordArray[i];
-  }
-
-
-  DxvkShaderConstData::DxvkShaderConstData(DxvkShaderConstData&& other)
-  : m_size(other.m_size), m_data(other.m_data) {
-    other.m_size = 0;
-    other.m_data = nullptr;
-  }
-
-
-  DxvkShaderConstData& DxvkShaderConstData::operator = (DxvkShaderConstData&& other) {
-    delete[] m_data;
-    this->m_size = other.m_size;
-    this->m_data = other.m_data;
-    other.m_size = 0;
-    other.m_data = nullptr;
-    return *this;
-  }
-
-
-  DxvkShaderConstData::~DxvkShaderConstData() {
-    delete[] m_data;
-  }
-
-
   DxvkShaderModule::DxvkShaderModule()
   : m_vkd(nullptr), m_stage() {
 
@@ -94,27 +57,6 @@ namespace dxvk {
     this->m_stage = other.m_stage;
     other.m_stage = VkPipelineShaderStageCreateInfo();
     return *this;
-  }
-
-
-  DxvkShader::DxvkShader(
-          VkShaderStageFlagBits   stage,
-          uint32_t                slotCount,
-    const DxvkResourceSlot*       slotInfos,
-    const DxvkInterfaceSlots&     iface,
-          SpirvCodeBuffer         code,
-    const DxvkShaderOptions&      options,
-          DxvkShaderConstData&&   constData)
-  : DxvkShader(DxvkShaderCreateInfo {
-      stage, slotCount, slotInfos,
-      iface.inputSlots, iface.outputSlots,
-      iface.pushConstOffset, iface.pushConstSize,
-      uint32_t(constData.sizeInBytes()),
-      reinterpret_cast<const char*>(constData.data()),
-      options.rasterizedStream,
-      { options.xfbStrides[0], options.xfbStrides[1],
-        options.xfbStrides[2], options.xfbStrides[3] }
-    }, std::move(code)) {
   }
 
 
