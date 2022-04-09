@@ -57,7 +57,7 @@ namespace dxvk {
     this->supportX4R4G4B4               = config.getOption<bool>        ("d3d9.supportX4R4G4B4",               true);
     this->supportD32                    = config.getOption<bool>        ("d3d9.supportD32",                    true);
     this->disableA8RT                   = config.getOption<bool>        ("d3d9.disableA8RT",                   false);
-    this->invariantPosition             = config.getOption<bool>        ("d3d9.invariantPosition",             false);
+    this->invariantPosition             = config.getOption<bool>        ("d3d9.invariantPosition",             true);
     this->memoryTrackTest               = config.getOption<bool>        ("d3d9.memoryTrackTest",               false);
     this->supportVCache                 = config.getOption<bool>        ("d3d9.supportVCache",                 vendorId == 0x10de);
     this->enableDialogMode              = config.getOption<bool>        ("d3d9.enableDialogMode",              false);
