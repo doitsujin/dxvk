@@ -364,6 +364,11 @@ namespace dxvk::vk {
     #ifdef VK_KHR_buffer_device_address
     VULKAN_FN(vkGetBufferDeviceAddressKHR);
     #endif
+
+    #ifdef VK_KHR_external_memory_win32
+    VULKAN_FN(vkGetMemoryWin32HandleKHR);
+    VULKAN_FN(vkGetMemoryWin32HandlePropertiesKHR);
+    #endif
   };
   
 }

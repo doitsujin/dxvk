@@ -203,15 +203,24 @@ namespace dxvk {
       | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      auto formatInfo = imageFormatInfo(passFormat.color[i].format);
       omBlendAttachments[i] = state.omBlend[i].state();
 
-      if (omBlendAttachments[i].colorWriteMask != fullMask) {
-        omBlendAttachments[i].colorWriteMask = util::remapComponentMask(
-          state.omBlend[i].colorWriteMask(), state.omSwizzle[i].mapping());
-      }
-      
-      if ((m_fsOut & (1 << i)) == 0)
+      if (!(m_fsOut & (1 << i)) || !formatInfo) {
         omBlendAttachments[i].colorWriteMask = 0;
+      } else {
+        if (omBlendAttachments[i].colorWriteMask != fullMask) {
+          omBlendAttachments[i].colorWriteMask = util::remapComponentMask(
+            state.omBlend[i].colorWriteMask(), state.omSwizzle[i].mapping());
+        }
+
+        omBlendAttachments[i].colorWriteMask &= formatInfo->componentMask;
+
+        if (omBlendAttachments[i].colorWriteMask == formatInfo->componentMask) {
+          omBlendAttachments[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                                               | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        }
+      }
     }
 
     // Generate per-instance attribute divisors

@@ -102,7 +102,6 @@ namespace dxvk {
    */
   struct DxvkGpuQueryHandle {
     DxvkGpuQueryAllocator* allocator  = nullptr;
-    VkEvent                resetEvent = VK_NULL_HANDLE;
     VkQueryPool            queryPool  = VK_NULL_HANDLE;
     uint32_t               queryId    = 0;
   };

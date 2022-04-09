@@ -643,39 +643,6 @@ namespace dxvk {
     }
 
 
-    void cmdResetQuery(
-            VkQueryPool             queryPool,
-            uint32_t                queryId,
-            VkEvent                 event) {
-      if (event == VK_NULL_HANDLE) {
-        m_vkd->vkResetQueryPoolEXT(
-          m_vkd->device(), queryPool, queryId, 1);
-      } else {
-        m_cmdBuffersUsed.set(DxvkCmdBuffer::InitBuffer);
-
-        m_vkd->vkResetEvent(
-          m_vkd->device(), event);
-        
-        m_vkd->vkCmdResetQueryPool(
-          m_initBuffer, queryPool, queryId, 1);
-        
-        m_vkd->vkCmdSetEvent(m_initBuffer,
-          event, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
-      }
-    }
-    
-    
-    void cmdResetQueryPool(
-            VkQueryPool             queryPool,
-            uint32_t                firstQuery,
-            uint32_t                queryCount) {
-      m_cmdBuffersUsed.set(DxvkCmdBuffer::InitBuffer);
-      
-      m_vkd->vkCmdResetQueryPool(m_initBuffer,
-        queryPool, firstQuery, queryCount);
-    }
-    
-    
     void cmdResolveImage(
             VkImage                 srcImage,
             VkImageLayout           srcImageLayout,
@@ -774,6 +741,13 @@ namespace dxvk {
     void cmdEndDebugUtilsLabel();
 
     void cmdInsertDebugUtilsLabel(VkDebugUtilsLabelEXT *pLabelInfo);
+
+    void resetQuery(
+            VkQueryPool             queryPool,
+            uint32_t                queryId) {
+      m_vkd->vkResetQueryPoolEXT(
+        m_vkd->device(), queryPool, queryId, 1);
+    }
 
   private:
     

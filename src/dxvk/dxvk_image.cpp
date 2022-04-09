@@ -1,16 +1,18 @@
 #include "dxvk_image.h"
 
+#include "dxvk_device.h"
+
 namespace dxvk {
   
   std::atomic<uint64_t> DxvkImageView::s_cookie = { 0ull };
 
 
   DxvkImage::DxvkImage(
-    const Rc<vk::DeviceFn>&     vkd,
+    const DxvkDevice*           device,
     const DxvkImageCreateInfo&  createInfo,
           DxvkMemoryAllocator&  memAlloc,
           VkMemoryPropertyFlags memFlags)
-  : m_vkd(vkd), m_info(createInfo), m_memFlags(memFlags) {
+  : m_vkd(device->vkd()), m_device(device), m_info(createInfo), m_memFlags(memFlags) {
 
     // Copy the compatible view formats to a persistent array
     m_viewFormats.resize(createInfo.viewFormatCount);
@@ -42,6 +44,17 @@ namespace dxvk {
     info.queueFamilyIndexCount = 0;
     info.pQueueFamilyIndices   = nullptr;
     info.initialLayout         = createInfo.initialLayout;
+
+    m_shared = canShareImage(info, createInfo.sharing);
+
+    VkExternalMemoryImageCreateInfo externalInfo;
+    if (m_shared) {
+      externalInfo.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
+      externalInfo.pNext = nullptr;
+      externalInfo.handleTypes = createInfo.sharing.type;
+
+      formatList.pNext = &externalInfo;
+    }
     
     if (m_vkd->vkCreateImage(m_vkd->device(),
           &info, nullptr, &m_image.image) != VK_SUCCESS) {
@@ -83,7 +96,29 @@ namespace dxvk {
     dedMemoryAllocInfo.pNext  = VK_NULL_HANDLE;
     dedMemoryAllocInfo.buffer = VK_NULL_HANDLE;
     dedMemoryAllocInfo.image  = m_image.image;
-    
+
+    VkExportMemoryAllocateInfo exportInfo;
+    if (m_shared && createInfo.sharing.mode == DxvkSharedHandleMode::Export) {
+      exportInfo.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
+      exportInfo.pNext = nullptr;
+      exportInfo.handleTypes = createInfo.sharing.type;
+
+      dedMemoryAllocInfo.pNext = &exportInfo;
+    }
+
+#ifdef _WIN32
+    VkImportMemoryWin32HandleInfoKHR importInfo;
+    if (m_shared && createInfo.sharing.mode == DxvkSharedHandleMode::Import) {
+      importInfo.sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR;
+      importInfo.pNext = nullptr;
+      importInfo.handleType = createInfo.sharing.type;
+      importInfo.handle = createInfo.sharing.handle;
+      importInfo.name = nullptr;
+
+      dedMemoryAllocInfo.pNext = &importInfo;
+    }
+#endif
+
     m_vkd->vkGetImageMemoryRequirements2(
       m_vkd->device(), &memReqInfo, &memReq);
 
@@ -105,6 +140,11 @@ namespace dxvk {
     if (isGpuWritable)
       hints.set(DxvkMemoryFlag::GpuWritable);
 
+    if (m_shared) {
+      dedicatedRequirements.prefersDedicatedAllocation  = VK_TRUE;
+      dedicatedRequirements.requiresDedicatedAllocation = VK_TRUE;
+    }
+
     // Ask driver whether we should be using a dedicated allocation
     m_image.memory = memAlloc.alloc(&memReq.memoryRequirements,
       dedicatedRequirements, dedMemoryAllocInfo, memFlags, hints);
@@ -117,10 +157,10 @@ namespace dxvk {
   
   
   DxvkImage::DxvkImage(
-    const Rc<vk::DeviceFn>&     vkd,
+    const DxvkDevice*           device,
     const DxvkImageCreateInfo&  info,
           VkImage               image)
-  : m_vkd(vkd), m_info(info), m_image({ image }) {
+  : m_vkd(device->vkd()), m_device(device), m_info(info), m_image({ image }) {
     
     m_viewFormats.resize(info.viewFormatCount);
     for (uint32_t i = 0; i < info.viewFormatCount; i++)
@@ -135,8 +175,87 @@ namespace dxvk {
     if (m_image.memory.memory() != VK_NULL_HANDLE)
       m_vkd->vkDestroyImage(m_vkd->device(), m_image.image, nullptr);
   }
-  
-  
+
+
+  bool DxvkImage::canShareImage(const VkImageCreateInfo&  createInfo, const DxvkSharedHandleInfo& sharingInfo) const {
+    if (sharingInfo.mode == DxvkSharedHandleMode::None)
+      return false;
+
+    if (!m_device->extensions().khrExternalMemoryWin32) {
+      Logger::err("Failed to create shared resource: VK_KHR_EXTERNAL_MEMORY_WIN32 not supported");
+      return false;
+    }
+
+    VkPhysicalDeviceExternalImageFormatInfo externalImageFormatInfo;
+    externalImageFormatInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO;
+    externalImageFormatInfo.pNext = VK_NULL_HANDLE;
+    externalImageFormatInfo.handleType = sharingInfo.type;
+
+    VkPhysicalDeviceImageFormatInfo2 imageFormatInfo;
+    imageFormatInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2;
+    imageFormatInfo.pNext = &externalImageFormatInfo;
+    imageFormatInfo.format = createInfo.format;
+    imageFormatInfo.type = createInfo.imageType;
+    imageFormatInfo.tiling = createInfo.tiling;
+    imageFormatInfo.usage = createInfo.usage;
+    imageFormatInfo.flags = createInfo.flags;
+
+    VkExternalImageFormatProperties externalImageFormatProperties;
+    externalImageFormatProperties.sType = VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES;
+    externalImageFormatProperties.pNext = nullptr;
+    externalImageFormatProperties.externalMemoryProperties = {};
+
+    VkImageFormatProperties2 imageFormatProperties;
+    imageFormatProperties.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2;
+    imageFormatProperties.pNext = &externalImageFormatProperties;
+    imageFormatProperties.imageFormatProperties = {};
+
+    VkResult vr = m_device->adapter()->vki()->vkGetPhysicalDeviceImageFormatProperties2(
+      m_device->adapter()->handle(), &imageFormatInfo, &imageFormatProperties);
+
+    if (vr != VK_SUCCESS) {
+      Logger::err(str::format("Failed to create shared resource: getImageProperties failed:", vr));
+      return false;
+    }
+
+    if (sharingInfo.mode == DxvkSharedHandleMode::Export) {
+      bool ret = externalImageFormatProperties.externalMemoryProperties.externalMemoryFeatures & VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT;
+      if (!ret)
+        Logger::err("Failed to create shared resource: image cannot be exported");
+      return ret;
+    }
+
+    if (sharingInfo.mode == DxvkSharedHandleMode::Import) {
+      bool ret = externalImageFormatProperties.externalMemoryProperties.externalMemoryFeatures & VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT;
+      if (!ret)
+        Logger::err("Failed to create shared resource: image cannot be imported");
+      return ret;
+    }
+
+    return false;
+  }
+
+
+  HANDLE DxvkImage::sharedHandle() const {
+    HANDLE handle = INVALID_HANDLE_VALUE;
+
+    if (!m_shared)
+      return INVALID_HANDLE_VALUE;
+
+#ifdef _WIN32
+    VkMemoryGetWin32HandleInfoKHR handleInfo;
+    handleInfo.sType = VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR;
+    handleInfo.pNext = nullptr;
+    handleInfo.handleType = m_info.sharing.type;
+    handleInfo.memory = m_image.memory.memory();
+    if (m_vkd->vkGetMemoryWin32HandleKHR(m_vkd->device(), &handleInfo, &handle) != VK_SUCCESS)
+      Logger::warn("DxvkImage::DxvkImage: Failed to get shared handle for image");
+#endif
+
+    return handle;
+  }
+
+
   DxvkImageView::DxvkImageView(
     const Rc<vk::DeviceFn>&         vkd,
     const Rc<DxvkImage>&            image,
@@ -155,7 +274,7 @@ namespace dxvk {
       case VK_IMAGE_VIEW_TYPE_2D:
       case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
         this->createView(VK_IMAGE_VIEW_TYPE_2D, 1);
-        /* fall through */
+        [[fallthrough]];
 
       case VK_IMAGE_VIEW_TYPE_CUBE:
       case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY: {

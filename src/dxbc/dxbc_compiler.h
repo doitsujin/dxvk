@@ -543,6 +543,9 @@ namespace dxvk {
     // Global state stuff
     bool m_precise = true;
 
+    DxbcOpcode m_lastOp = DxbcOpcode::Nop;
+    DxbcOpcode m_currOp = DxbcOpcode::Nop;
+
     /////////////////////////////////////////////////////
     // Shader interface and metadata declaration methods
     void emitDcl(
@@ -1238,7 +1241,9 @@ namespace dxvk {
     DxbcRegisterPointer getIndexableTempPtr(
       const DxbcRegister&           operand,
             DxbcRegisterValue       vectorId);
-    
+
+    bool caseBlockIsFallthrough() const;
+
     ///////////////////////////
     // Type definition methods
     uint32_t getScalarTypeId(

@@ -36,6 +36,9 @@ namespace dxvk {
     /// formats, this is the size of a block, in bytes.
     VkDeviceSize elementSize = 0;
     
+    /// Available component mask
+    VkColorComponentFlags componentMask = 0;
+    
     /// Available image aspect flags
     VkImageAspectFlags aspectMask = 0;
     

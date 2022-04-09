@@ -40,7 +40,11 @@ namespace dxvk {
     this->maxDeviceMemory = VkDeviceSize(config.getOption<int32_t>("dxgi.maxDeviceMemory", 0)) << 20;
     this->maxSharedMemory = VkDeviceSize(config.getOption<int32_t>("dxgi.maxSharedMemory", 0)) << 20;
 
-    this->nvapiHack   = config.getOption<bool>("dxgi.nvapiHack", true);
+    // Force nvapiHack to be disabled if NvAPI is enabled in environment
+    if (env::getEnvVar("DXVK_ENABLE_NVAPI") == "1")
+      this->nvapiHack = false;
+    else
+      this->nvapiHack = config.getOption<bool>("dxgi.nvapiHack", true);
   }
   
 }

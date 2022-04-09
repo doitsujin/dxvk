@@ -226,10 +226,7 @@ namespace dxvk {
         VK_FORMAT_UNDEFINED,
         VK_IMAGE_ASPECT_DEPTH_BIT };
 
-      case D3D9Format::D32: return {
-        VK_FORMAT_D32_SFLOAT,
-        VK_FORMAT_UNDEFINED,
-        VK_IMAGE_ASPECT_DEPTH_BIT };
+      case D3D9Format::D32: return {}; // Unsupported (everywhere)
 
       case D3D9Format::D15S1: return {}; // Unsupported (everywhere)
 

@@ -10,7 +10,7 @@ namespace dxvk {
     const D3D9_COMMON_TEXTURE_DESC* pDesc)
     : D3D9VolumeBase(
         pDevice,
-        new D3D9CommonTexture( pDevice, pDesc, D3DRTYPE_VOLUMETEXTURE ),
+        new D3D9CommonTexture( pDevice, pDesc, D3DRTYPE_VOLUMETEXTURE, nullptr ),
         0, 0,
         nullptr,
         nullptr) { }

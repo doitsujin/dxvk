@@ -473,6 +473,12 @@ namespace dxvk {
             VkFormat    Format,
             VkImageType Type) const;
 
+    template<bool IsKmtHandle>
+    HRESULT OpenSharedResourceGeneric(
+            HANDLE      hResource,
+            REFIID      ReturnedInterface,
+            void**      ppResource);
+
     uint32_t GetViewPlaneIndex(
             ID3D11Resource*         pResource,
             DXGI_FORMAT             ViewFormat);

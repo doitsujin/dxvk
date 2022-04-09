@@ -16,8 +16,9 @@ dxso_src = files([
 
 dxso_lib = static_library('dxso', dxso_src,
   include_directories : [ dxvk_include_path ],
-  override_options    : ['cpp_std='+dxvk_cpp_std])
+)
 
 dxso_dep = declare_dependency(
   link_with           : [ dxso_lib ],
-  include_directories : [ dxvk_include_path ])
+  include_directories : [ dxvk_include_path ],
+)

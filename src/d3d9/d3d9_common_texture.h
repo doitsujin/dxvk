@@ -71,7 +71,8 @@ namespace dxvk {
     D3D9CommonTexture(
             D3D9DeviceEx*             pDevice,
       const D3D9_COMMON_TEXTURE_DESC* pDesc,
-            D3DRESOURCETYPE           ResourceType);
+            D3DRESOURCETYPE           ResourceType,
+            HANDLE*                   pSharedHandle);
 
     ~D3D9CommonTexture();
 
@@ -513,7 +514,7 @@ namespace dxvk {
      */
     VkDeviceSize GetMipSize(UINT Subresource) const;
 
-    Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType, bool TryOffscreenRT) const;
+    Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType, bool TryOffscreenRT, HANDLE* pSharedHandle) const;
 
     Rc<DxvkImage> CreateResolveImage() const;
 
@@ -541,6 +542,8 @@ namespace dxvk {
 
     VkImageLayout OptimizeLayout(
             VkImageUsageFlags         Usage) const;
+
+    void ExportImageInfo();
 
     static VkImageViewType GetImageViewTypeFromResourceType(
             D3DRESOURCETYPE  Dimension,

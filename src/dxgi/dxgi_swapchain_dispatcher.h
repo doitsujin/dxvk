@@ -16,16 +16,28 @@ namespace dxvk {
     }
 
     ULONG STDMETHODCALLTYPE AddRef() {
-      return m_dispatch->AddRef();
+      if (likely(m_dispatch != nullptr))
+        return m_dispatch->AddRef();
+
+      return 0;
     }
 
     ULONG STDMETHODCALLTYPE Release() {
-      ULONG refCount = m_dispatch->Release();
+      if (likely(m_dispatch != nullptr)) {
+        ULONG refCount = m_dispatch->Release();
 
-      if (unlikely(!refCount))
-        delete this;
+        if (unlikely(!refCount)) {
+          // Clear the underlying swap chain pointer. Helps in
+          // use-after-free situations encountered in Divinity
+          // Original Sin Enhanced Edition.
+          m_dispatch = nullptr;
+          delete this;
+        }
 
-      return refCount;
+        return refCount;
+      }
+
+      return ~0u;
     }
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
@@ -114,7 +126,16 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetFullscreenState(
             BOOL*                     pFullscreen,
             IDXGIOutput**             ppTarget) final {
-      return m_dispatch->GetFullscreenState(pFullscreen, ppTarget);
+      if (likely(m_dispatch != nullptr))
+        return m_dispatch->GetFullscreenState(pFullscreen, ppTarget);
+
+      if (pFullscreen)
+        *pFullscreen = FALSE;
+
+      if (ppTarget)
+        *ppTarget = nullptr;
+
+      return S_OK;
     }
 
     HRESULT STDMETHODCALLTYPE GetFullscreenDesc(

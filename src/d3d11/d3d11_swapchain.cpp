@@ -38,9 +38,6 @@ namespace dxvk {
     m_device->waitForSubmission(&m_presentStatus);
     m_device->waitForIdle();
     
-    if (m_backBuffer)
-      m_backBuffer->ReleasePrivate();
-
     DestroyFrameLatencyEvent();
   }
 
@@ -445,7 +442,7 @@ namespace dxvk {
       VkImage imageHandle = m_presenter->getImage(i).image;
       
       Rc<DxvkImage> image = new DxvkImage(
-        m_device->vkd(), imageInfo, imageHandle);
+        m_device.ptr(), imageInfo, imageHandle);
 
       m_imageViews[i] = new DxvkImageView(
         m_device->vkd(), image, viewInfo);
@@ -456,9 +453,6 @@ namespace dxvk {
   void D3D11SwapChain::CreateBackBuffer() {
     // Explicitly destroy current swap image before
     // creating a new one to free up resources
-    if (m_backBuffer)
-      m_backBuffer->ReleasePrivate();
-    
     m_swapImage         = nullptr;
     m_swapImageView     = nullptr;
     m_backBuffer        = nullptr;
@@ -496,10 +490,8 @@ namespace dxvk {
      || m_desc.SwapEffect == DXGI_SWAP_EFFECT_FLIP_DISCARD)
       dxgiUsage |= DXGI_USAGE_DISCARD_ON_PRESENT;
 
-    m_backBuffer = new D3D11Texture2D(m_parent, &desc, dxgiUsage, VK_NULL_HANDLE);
-    m_backBuffer->AddRefPrivate();
-
-    m_swapImage = GetCommonTexture(m_backBuffer)->GetImage();
+    m_backBuffer = new D3D11Texture2D(m_parent, this, &desc, dxgiUsage);
+    m_swapImage = GetCommonTexture(m_backBuffer.ptr())->GetImage();
 
     // Create an image view that allows the
     // image to be bound as a shader resource.
@@ -588,7 +580,8 @@ namespace dxvk {
     switch (Format) {
       default:
         Logger::warn(str::format("D3D11SwapChain: Unexpected format: ", m_desc.Format));
-        
+      [[fallthrough]];
+      
       case DXGI_FORMAT_R8G8B8A8_UNORM:
       case DXGI_FORMAT_B8G8R8A8_UNORM: {
         pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };

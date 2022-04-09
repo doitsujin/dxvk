@@ -23,9 +23,10 @@ namespace dxvk {
     D3D9BaseTexture(
             D3D9DeviceEx*             pDevice,
       const D3D9_COMMON_TEXTURE_DESC* pDesc,
-            D3DRESOURCETYPE           ResourceType)
+            D3DRESOURCETYPE           ResourceType,
+            HANDLE*                   pSharedHandle)
       : D3D9Resource<Base...> ( pDevice )
-      , m_texture             ( pDevice, pDesc, ResourceType )
+      , m_texture             ( pDevice, pDesc, ResourceType, pSharedHandle )
       , m_lod                 ( 0 ) {
       const uint32_t arraySlices = m_texture.Desc()->ArraySize;
       const uint32_t mipLevels   = m_texture.Desc()->MipLevels;
@@ -130,7 +131,8 @@ namespace dxvk {
 
     D3D9Texture2D(
             D3D9DeviceEx*             pDevice,
-      const D3D9_COMMON_TEXTURE_DESC* pDesc);
+      const D3D9_COMMON_TEXTURE_DESC* pDesc,
+            HANDLE*                   pSharedHandle);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 

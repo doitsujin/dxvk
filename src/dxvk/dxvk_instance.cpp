@@ -94,8 +94,10 @@ namespace dxvk {
 
     // Hide VK_EXT_debug_utils behind an environment variable. This extension
     // adds additional overhead to winevulkan
-    if (env::getEnvVar("DXVK_PERF_EVENTS") == "1") {
+    if ((env::getEnvVar("DXVK_PERF_EVENTS") == "1") || 
+      (m_options.enableDebugUtils)) {
         insExtensionList.push_back(&insExtensions.extDebugUtils);
+        Logger::warn("DXVK: Debug Utils are enabled, perf events are ON. May affect performance!");
     }
 
     DxvkNameSet extensionsEnabled;
@@ -126,7 +128,7 @@ namespace dxvk {
     appInfo.pApplicationName      = appName.c_str();
     appInfo.applicationVersion    = 0;
     appInfo.pEngineName           = "DXVK";
-    appInfo.engineVersion         = VK_MAKE_VERSION(1, 9, 4);
+    appInfo.engineVersion         = VK_MAKE_VERSION(1, 10, 1);
     appInfo.apiVersion            = VK_MAKE_VERSION(1, 1, 0);
     
     VkInstanceCreateInfo info;

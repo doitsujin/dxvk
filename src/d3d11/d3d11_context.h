@@ -693,13 +693,15 @@ namespace dxvk {
   protected:
     
     D3D11DeviceContextExt       m_contextExt;
-    D3D11UserDefinedAnnotation  m_annotation;
     D3D10Multithread            m_multithread;
     
     Rc<DxvkDevice>              m_device;
     Rc<DxvkDataBuffer>          m_updateBuffer;
 
     DxvkStagingBuffer           m_staging;
+   
+    //has to be declared after m_device, as compiler initialize in order of declaration in the class
+    D3D11UserDefinedAnnotation  m_annotation;
 
     DxvkCsChunkFlags            m_csFlags;
     DxvkCsChunkRef              m_csChunk;
