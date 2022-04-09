@@ -118,6 +118,31 @@ namespace dxvk {
 
 
   /**
+   * \brief Shader info
+   */
+  struct DxvkShaderCreateInfo {
+    /// Shader stage
+    VkShaderStageFlagBits stage;
+    /// Descriptor info
+    uint32_t resourceSlotCount = 0;
+    const DxvkResourceSlot* resourceSlots = nullptr;
+    /// Input and output register mask
+    uint32_t inputMask = 0;
+    uint32_t outputMask = 0;
+    /// Push constant range
+    uint32_t pushConstOffset = 0;
+    uint32_t pushConstSize = 0;
+    /// Uniform buffer data
+    uint32_t uniformSize = 0;
+    const char* uniformData = nullptr;
+    /// Rasterized stream, or -1
+    int32_t xfbRasterizedStream = 0;
+    /// Transform feedback vertex strides
+    uint32_t xfbStrides[MaxNumXfbBuffers] = { };
+  };
+
+
+  /**
    * \brief Shader module create info
    */
   struct DxvkShaderModuleCreateInfo {
@@ -146,15 +171,27 @@ namespace dxvk {
             SpirvCodeBuffer         code,
       const DxvkShaderOptions&      options,
             DxvkShaderConstData&&   constData);
-    
+
+    DxvkShader(
+      const DxvkShaderCreateInfo&   info,
+            SpirvCodeBuffer&&       spirv);
+
     ~DxvkShader();
     
+    /**
+     * \brief Shader info
+     * \returns Shader info
+     */
+    const DxvkShaderCreateInfo& info() const {
+      return m_info;
+    }
+
     /**
      * \brief Shader stage
      * \returns Shader stage
      */
     VkShaderStageFlagBits stage() const {
-      return m_stage;
+      return m_info.stage;
     }
     
     /**
@@ -197,7 +234,12 @@ namespace dxvk {
      * \returns Shader interface slots
      */
     DxvkInterfaceSlots interfaceSlots() const {
-      return m_interface;
+      DxvkInterfaceSlots iface = { };
+      iface.inputSlots = m_info.inputMask;
+      iface.outputSlots = m_info.outputMask;
+      iface.pushConstOffset = m_info.pushConstOffset;
+      iface.pushConstSize = m_info.pushConstSize;
+      return iface;
     }
 
     /**
@@ -205,7 +247,11 @@ namespace dxvk {
      * \returns Shader options
      */
     DxvkShaderOptions shaderOptions() const {
-      return m_options;
+      DxvkShaderOptions options = { };
+      options.rasterizedStream = m_info.xfbRasterizedStream;
+      for (uint32_t i = 0; i < MaxNumXfbBuffers; i++)
+        options.xfbStrides[i] = m_info.xfbStrides[i];
+      return options;
     }
 
     /**
@@ -216,8 +262,11 @@ namespace dxvk {
      * shader object.
      * \returns Shader constant data
      */
-    const DxvkShaderConstData& shaderConstants() const {
-      return m_constData;
+    DxvkShaderConstData shaderConstants() const {
+      return m_info.uniformSize
+        ? DxvkShaderConstData(m_info.uniformSize / sizeof(uint32_t),
+            reinterpret_cast<const uint32_t*>(m_info.uniformData))
+        : DxvkShaderConstData();
     }
     
     /**
@@ -279,20 +328,19 @@ namespace dxvk {
     
   private:
     
-    VkShaderStageFlagBits m_stage;
-    SpirvCompressedBuffer m_code;
+    DxvkShaderCreateInfo          m_info;
+    SpirvCompressedBuffer         m_code;
     
-    std::vector<DxvkResourceSlot> m_slots;
-    std::vector<size_t>           m_idOffsets;
-    DxvkInterfaceSlots            m_interface;
     DxvkShaderFlags               m_flags;
-    DxvkShaderOptions             m_options;
-    DxvkShaderConstData           m_constData;
     DxvkShaderKey                 m_key;
     size_t                        m_hash = 0;
 
-    size_t m_o1IdxOffset = 0;
-    size_t m_o1LocOffset = 0;
+    size_t                        m_o1IdxOffset = 0;
+    size_t                        m_o1LocOffset = 0;
+
+    std::vector<DxvkResourceSlot> m_slots;
+    std::vector<char>             m_uniformData;
+    std::vector<size_t>           m_idOffsets;
 
     static void eliminateInput(SpirvCodeBuffer& code, uint32_t location);
 

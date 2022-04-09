@@ -64,7 +64,7 @@ namespace dxvk {
     m_stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     m_stage.pNext = nullptr;
     m_stage.flags = 0;
-    m_stage.stage = shader->stage();
+    m_stage.stage = shader->info().stage;
     m_stage.module = VK_NULL_HANDLE;
     m_stage.pName = "main";
     m_stage.pSpecializationInfo = nullptr;
@@ -105,14 +105,44 @@ namespace dxvk {
           SpirvCodeBuffer         code,
     const DxvkShaderOptions&      options,
           DxvkShaderConstData&&   constData)
-  : m_stage(stage), m_code(code), m_interface(iface),
-    m_options(options), m_constData(std::move(constData)) {
-    // Write back resource slot infos
-    for (uint32_t i = 0; i < slotCount; i++)
-      m_slots.push_back(slotInfos[i]);
-    
-    // Gather the offsets where the binding IDs
-    // are stored so we can quickly remap them.
+  : DxvkShader(DxvkShaderCreateInfo {
+      stage, slotCount, slotInfos,
+      iface.inputSlots, iface.outputSlots,
+      iface.pushConstOffset, iface.pushConstSize,
+      uint32_t(constData.sizeInBytes()),
+      reinterpret_cast<const char*>(constData.data()),
+      options.rasterizedStream,
+      { options.xfbStrides[0], options.xfbStrides[1],
+        options.xfbStrides[2], options.xfbStrides[3] }
+    }, std::move(code)) {
+  }
+
+
+  DxvkShader::DxvkShader(
+    const DxvkShaderCreateInfo&   info,
+          SpirvCodeBuffer&&       spirv)
+  : m_info(info), m_code(spirv) {
+    m_info.resourceSlots = nullptr;
+    m_info.uniformData = nullptr;
+
+    // Copy resource binding slot infos
+    if (info.resourceSlotCount) {
+      m_slots.resize(info.resourceSlotCount);
+      for (uint32_t i = 0; i < info.resourceSlotCount; i++)
+        m_slots[i] = info.resourceSlots[i];
+      m_info.resourceSlots = m_slots.data();
+    }
+
+    // Copy uniform buffer data
+    if (info.uniformSize) {
+      m_uniformData.resize(info.uniformSize);
+      std::memcpy(m_uniformData.data(), info.uniformData, info.uniformSize);
+      m_info.uniformData = m_uniformData.data();
+    }
+
+    // Run an analysis pass over the SPIR-V code to gather some
+    // info that we may need during pipeline compilation.
+    SpirvCodeBuffer code = std::move(spirv);
     uint32_t o1VarId = 0;
     
     for (auto ins : code) {
@@ -147,8 +177,8 @@ namespace dxvk {
       }
     }
   }
-  
-  
+
+
   DxvkShader::~DxvkShader() {
     
   }
@@ -157,12 +187,12 @@ namespace dxvk {
   void DxvkShader::defineResourceSlots(
           DxvkDescriptorSlotMapping& mapping) const {
     for (const auto& slot : m_slots)
-      mapping.defineSlot(m_stage, slot);
+      mapping.defineSlot(m_info.stage, slot);
     
-    if (m_interface.pushConstSize) {
-      mapping.definePushConstRange(m_stage,
-        m_interface.pushConstOffset,
-        m_interface.pushConstSize);
+    if (m_info.pushConstSize) {
+      mapping.definePushConstRange(m_info.stage,
+        m_info.pushConstOffset,
+        m_info.pushConstSize);
     }
   }
   
