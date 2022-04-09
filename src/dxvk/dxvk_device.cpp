@@ -158,19 +158,6 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkShader> DxvkDevice::createShader(
-          VkShaderStageFlagBits     stage,
-          uint32_t                  slotCount,
-    const DxvkResourceSlot*         slotInfos,
-    const DxvkInterfaceSlots&       iface,
-    const SpirvCodeBuffer&          code) {
-    return new DxvkShader(stage,
-      slotCount, slotInfos, iface, code,
-      DxvkShaderOptions(),
-      DxvkShaderConstData());
-  }
-  
-  
   DxvkStatCounters DxvkDevice::getStatCounters() {
     DxvkPipelineCount pipe = m_objects.pipelineManager().getPipelineCount();
     
