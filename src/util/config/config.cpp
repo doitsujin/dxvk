@@ -541,6 +541,11 @@ namespace dxvk {
     { R"(\\SWTFU2\.exe$)", {{
       { "d3d9.forceSamplerTypeSpecConstants",  "True" },
     }} },
+    /* Port Royale 3                            *
+     * Fixes infinite loading screens           */
+    { R"(\\PortRoyale3\.exe$)", {{
+      { "d3d9.allowDoNotWait",  "False" },
+    }} },
   }};
 
 
