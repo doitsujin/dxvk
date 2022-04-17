@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstring>
 #include <string>
 #include <sstream>
 #include <vector>
@@ -38,6 +39,12 @@ namespace dxvk::str {
     std::stringstream stream;
     format1(stream, args...);
     return stream.str();
+  }
+
+  inline void strlcpy(char* dst, const char* src, size_t count) {
+    std::strncpy(dst, src, count);
+    if (count > 0)
+      dst[count - 1] = '\0';
   }
   
 }
