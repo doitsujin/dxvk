@@ -14,6 +14,7 @@
 
 namespace dxvk {
 
+#ifdef _WIN32
   /**
    * \brief Thread priority
    */
@@ -146,6 +147,10 @@ namespace dxvk {
   namespace this_thread {
     inline void yield() {
       SwitchToThread();
+    }
+
+    inline uint32_t get_id() {
+      return uint32_t(GetCurrentThreadId());
     }
   }
 
@@ -322,5 +327,20 @@ namespace dxvk {
     CONDITION_VARIABLE m_cond;
 
   };
+
+#else
+  using mutex              = std::mutex;
+  using thread             = std::thread;
+  using recursive_mutex    = std::recursive_mutex;
+  using condition_variable = std::condition_variable;
+
+  namespace this_thread {
+    inline void yield() {
+      std::this_thread::yield();
+    }
+
+    uint32_t get_id();
+  }
+#endif
 
 }
