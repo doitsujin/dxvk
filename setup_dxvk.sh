@@ -56,36 +56,36 @@ export WINEDEBUG=-all
 # wine gecko and mono
 export WINEDLLOVERRIDES="mscoree,mshtml="
 
-wine="wine"
-wine64="wine64"
-wineboot="wineboot"
+# support custom Wine versions
+[ -z "$WINE" ] && WINE="$(command -v wine)"
+[ -z "$WINE64" ] && WINE64="${WINE}64"
 
 # $PATH is the way for user to control where wine is located (including custom Wine versions).
 # Pure 64-bit Wine (non Wow64) requries skipping 32-bit steps.
 # In such case, wine64 and winebooot will be present, but wine binary will be missing,
 # however it can be present in other PATHs, so it shouldn't be used, to avoid versions mixing.
-wine_path=$(dirname "$(which $wineboot)")
+wine_path=$(dirname "$WINE")
 wow64=true
-if ! [ -f "$wine_path/$wine" ]; then
-   wine=$wine64
+if ! [ -f "$wine_path/wine" ]; then
+   WINE="$WINE64"
    wow64=false
 fi
 
 # resolve 32-bit and 64-bit system32 path
-winever=$($wine --version | grep wine)
+winever=$("$WINE" --version | grep wine)
 if [ -z "$winever" ]; then
-    echo "$wine:"' Not a wine executable. Check your $wine.' >&2
+    echo "$WINE:"' Not a wine executable. Check your $WINE.' >&2
     exit 1
 fi
 
 # ensure wine placeholder dlls are recreated
 # if they are missing
-$wineboot -u
+"$WINE" wineboot -u
 
-win64_sys_path=$($wine64 winepath -u 'C:\windows\system32' 2> /dev/null)
+win64_sys_path=$("$WINE64" winepath -u 'C:\windows\system32' 2> /dev/null)
 win64_sys_path="${win64_sys_path/$'\r'/}"
 if $wow64; then
-  win32_sys_path=$($wine winepath -u 'C:\windows\system32' 2> /dev/null)
+  win32_sys_path=$("$WINE" winepath -u 'C:\windows\system32' 2> /dev/null)
   win32_sys_path="${win32_sys_path/$'\r'/}"
 fi
 
@@ -96,7 +96,7 @@ fi
 
 # create native dll override
 overrideDll() {
-  $wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d native /f >/dev/null 2>&1
+  "$WINE" reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d native /f >/dev/null 2>&1
   if [ $? -ne 0 ]; then
     echo -e "Failed to add override for $1"
     exit 1
@@ -105,7 +105,7 @@ overrideDll() {
 
 # remove dll override
 restoreDll() {
-  $wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /f > /dev/null 2>&1
+  "$WINE" reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /f > /dev/null 2>&1
   if [ $? -ne 0 ]; then
     echo "Failed to remove override for $1"
   fi
