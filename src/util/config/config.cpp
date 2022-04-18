@@ -541,6 +541,14 @@ namespace dxvk {
     { R"(\\SWTFU2\.exe$)", {{
       { "d3d9.forceSamplerTypeSpecConstants",  "True" },
     }} },
+    /* Majesty 2 (Collection)                   *
+     * Crashes on UMA without a memory limit,   *
+     * since the game(s) will allocate all      *
+     * available VRAM on startup.               */
+    { R"(\\Majesty2\.exe$)", {{
+      { "d3d9.memoryTrackTest",             "True" },
+      { "d3d9.maxAvailableMemory",          "2048" },
+    }} },
   }};
 
 
