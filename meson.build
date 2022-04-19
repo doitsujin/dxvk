@@ -1,14 +1,13 @@
 project('dxvk', ['c', 'cpp'], version : 'v1.10.1', meson_version : '>= 0.49', default_options : [ 'cpp_std=c++17' ])
 
 cpu_family = target_machine.cpu_family()
+platform   = target_machine.system()
 
 cpp = meson.get_compiler('cpp')
 cc = meson.get_compiler('c')
 dxvk_is_msvc = cpp.get_id() == 'msvc'
 
 compiler_args = [
-  '-DNOMINMAX',
-  '-D_WIN32_WINNT=0xa00',
   '-msse',
   '-msse2',
   '-msse3',
@@ -19,22 +18,7 @@ compiler_args = [
   '-Wno-microsoft-exception-spec',
 ]
 
-link_args = [
-  '-static',
-  '-static-libgcc',
-  '-static-libstdc++',
-  # We need to set the section alignment for debug symbols to
-  # work properly as well as avoiding a memcpy from the Wine loader.
-  '-Wl,--file-alignment=4096',
-]
-
-# Wine's built-in back traces only work with dwarf2 symbols
-if get_option('debug') and target_machine.system() == 'windows'
-  compiler_args += [
-    '-gstrict-dwarf',
-    '-gdwarf-2',
-  ]
-endif
+link_args = []
 
 if get_option('build_id')
   link_args += [
@@ -42,11 +26,80 @@ if get_option('build_id')
   ]
 endif
 
-if cpu_family == 'x86'
-  link_args += [
-    '-Wl,--enable-stdcall-fixup',
-    '-Wl,--add-stdcall-alias',
+if platform == 'windows'
+  compiler_args += [
+    '-DNOMINMAX',
+    '-D_WIN32_WINNT=0xa00',
   ]
+
+  link_args += [
+    '-static',
+    '-static-libgcc',
+    '-static-libstdc++',
+    # We need to set the section alignment for debug symbols to
+    # work properly as well as avoiding a memcpy from the Wine loader.
+    '-Wl,--file-alignment=4096',
+  ]
+
+  # Wine's built-in back traces only work with dwarf2 symbols
+  if get_option('debug')
+    compiler_args += [
+      '-gstrict-dwarf',
+      '-gdwarf-2',
+    ]
+  endif
+
+  # Enable stdcall fixup on 32-bit
+  if cpu_family == 'x86'
+    link_args += [
+      '-Wl,--enable-stdcall-fixup',
+      '-Wl,--add-stdcall-alias',
+  ]
+  endif
+
+  if (cpu_family == 'x86_64')
+    dxvk_library_path = meson.source_root() + '/lib'
+  else
+    dxvk_library_path = meson.source_root() + '/lib32'
+  endif
+
+  lib_vulkan  = cpp.find_library('vulkan-1', dirs : dxvk_library_path)
+  lib_d3d9    = cpp.find_library('d3d9')
+  lib_d3d11   = cpp.find_library('d3d11')
+  lib_dxgi    = cpp.find_library('dxgi')
+  lib_d3dcompiler_43 = cpp.find_library('d3dcompiler_43', dirs : dxvk_library_path)
+
+  if dxvk_is_msvc
+    lib_d3dcompiler_47 = cpp.find_library('d3dcompiler')
+  else
+    lib_d3dcompiler_47 = cpp.find_library('d3dcompiler_47')
+  endif
+
+  if dxvk_is_msvc
+    res_ext = '.res'
+    wrc = find_program('rc')
+    wrc_generator = generator(wrc,
+      output    : [ '@BASENAME@' + res_ext ],
+      arguments : [ '/fo', '@OUTPUT@', '@INPUT@' ],
+    )
+  else
+    res_ext = '.o'
+    wrc = find_program('windres')
+    wrc_generator = generator(wrc,
+      output    : [ '@BASENAME@' + res_ext ],
+      arguments : [ '-i', '@INPUT@', '-o', '@OUTPUT@' ],
+    )
+  endif
+
+  dxvk_include_path = include_directories('./include')
+else
+  lib_vulkan = cpp.find_library('vulkan')
+  lib_sdl2   = cpp.find_library('SDL2')
+
+  wrc           = find_program('touch')
+  wrc_generator = generator(wrc, output : [ '@BASENAME@_ignored.h' ], arguments : [ '@OUTPUT@' ] )
+
+  dxvk_include_path = include_directories('./include', './include/native', './include/native/windows', './include/native/directx')
 endif
 
 add_project_arguments(cpp.get_supported_arguments(compiler_args), language: 'cpp')
@@ -54,31 +107,8 @@ add_project_arguments(cc.get_supported_arguments(compiler_args), language: 'c')
 add_project_link_arguments(cpp.get_supported_link_arguments(link_args), language: 'cpp')
 add_project_link_arguments(cc.get_supported_link_arguments(link_args), language: 'c')
 
-dxvk_include_path = include_directories('./include')
-
-if (cpu_family == 'x86_64')
-  dxvk_library_path = meson.source_root() + '/lib'
-else
-  dxvk_library_path = meson.source_root() + '/lib32'
-endif
-
-dxvk_extradep = [ ]
-
-lib_vulkan  = cpp.find_library('vulkan-1', dirs : dxvk_library_path)
-lib_d3d9    = cpp.find_library('d3d9')
-lib_d3d11   = cpp.find_library('d3d11')
-lib_dxgi    = cpp.find_library('dxgi')
-lib_d3dcompiler_43 = cpp.find_library('d3dcompiler_43', dirs : dxvk_library_path)
-
-if dxvk_is_msvc
-  lib_d3dcompiler_47 = cpp.find_library('d3dcompiler')
-else
-  lib_d3dcompiler_47 = cpp.find_library('d3dcompiler_47')
-endif
-
 exe_ext = ''
 dll_ext = ''
-
 def_spec_ext = '.def'
 
 glsl_compiler = find_program('glslangValidator')
@@ -91,27 +121,15 @@ glsl_generator = generator(glsl_compiler,
   arguments : glsl_args,
 )
 
-if dxvk_is_msvc
-  res_ext = '.res'
-  wrc = find_program('rc')
-  wrc_generator = generator(wrc,
-    output    : [ '@BASENAME@' + res_ext ],
-    arguments : [ '/fo', '@OUTPUT@', '@INPUT@' ],
-  )
-else
-  res_ext = '.o'
-  wrc = find_program('windres')
-  wrc_generator = generator(wrc,
-    output    : [ '@BASENAME@' + res_ext ],
-    arguments : [ '-i', '@INPUT@', '-o', '@OUTPUT@' ],
-  )
-endif
-
 dxvk_version = vcs_tag(
   command: ['git', 'describe', '--dirty=+'],
   input:  'version.h.in',
   output: 'version.h',
 )
+
+if platform != 'windows'
+  error('Non-Windows platforms not supported... yet.')
+endif
 
 subdir('src')
 
