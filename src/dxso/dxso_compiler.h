@@ -355,7 +355,10 @@ namespace dxvk {
     ////////////////////////////////////////////
     // Inter-stage shader interface slots. Also
     // covers vertex input and fragment output.
-    DxvkInterfaceSlots m_interfaceSlots;
+    uint32_t m_inputMask = 0u;
+    uint32_t m_outputMask = 0u;
+    uint32_t m_pushConstOffset = 0u;
+    uint32_t m_pushConstSize = 0u;
 
     ///////////////////////////////////
     // Shader-specific data structures
@@ -435,14 +438,14 @@ namespace dxvk {
             DxsoTextureType type);
 
     bool defineInput(uint32_t idx) {
-      bool alreadyDefined = m_interfaceSlots.inputSlots & 1u << idx;
-      m_interfaceSlots.inputSlots |= 1u << idx;
+      bool alreadyDefined = m_inputMask & 1u << idx;
+      m_inputMask |= 1u << idx;
       return alreadyDefined;
     }
 
     bool defineOutput(uint32_t idx) {
-      bool alreadyDefined = m_interfaceSlots.outputSlots & 1u << idx;
-      m_interfaceSlots.outputSlots |= 1u << idx;
+      bool alreadyDefined = m_outputMask & 1u << idx;
+      m_outputMask |= 1u << idx;
       return alreadyDefined;
     }
 

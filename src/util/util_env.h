@@ -4,6 +4,12 @@
 
 namespace dxvk::env {
   
+#ifdef _WIN32
+  constexpr char PlatformDirSlash = '\\';
+#else
+  constexpr char PlatformDirSlash = '/';
+#endif
+
   /**
    * \brief Checks whether the host platform is 32-bit
    */

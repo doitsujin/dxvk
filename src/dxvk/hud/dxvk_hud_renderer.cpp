@@ -156,8 +156,8 @@ namespace dxvk::hud {
   HudRenderer::ShaderPair HudRenderer::createTextShaders() {
     ShaderPair result;
 
-    const SpirvCodeBuffer vsCode(hud_text_vert);
-    const SpirvCodeBuffer fsCode(hud_text_frag);
+    SpirvCodeBuffer vsCode(hud_text_vert);
+    SpirvCodeBuffer fsCode(hud_text_frag);
     
     const std::array<DxvkResourceSlot, 3> vsResources = {{
       { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       VK_IMAGE_VIEW_TYPE_MAX_ENUM },
@@ -168,20 +168,22 @@ namespace dxvk::hud {
       { 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_IMAGE_VIEW_TYPE_2D },
     }};
     
-    result.vert = m_device->createShader(
-      VK_SHADER_STAGE_VERTEX_BIT,
-      vsResources.size(),
-      vsResources.data(),
-      { 0x0, 0x3, 0, sizeof(HudTextPushConstants) },
-      vsCode);
-    
-    result.frag = m_device->createShader(
-      VK_SHADER_STAGE_FRAGMENT_BIT,
-      fsResources.size(),
-      fsResources.data(),
-      { 0x3, 0x1 },
-      fsCode);
-    
+    DxvkShaderCreateInfo vsInfo;
+    vsInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vsInfo.resourceSlotCount = vsResources.size();
+    vsInfo.resourceSlots = vsResources.data();
+    vsInfo.outputMask = 0x3;
+    vsInfo.pushConstSize = sizeof(HudTextPushConstants);
+    result.vert = new DxvkShader(vsInfo, std::move(vsCode));
+
+    DxvkShaderCreateInfo fsInfo;
+    fsInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fsInfo.resourceSlotCount = fsResources.size();
+    fsInfo.resourceSlots = fsResources.data();
+    fsInfo.inputMask = 0x3;
+    fsInfo.outputMask = 0x1;
+    result.frag = new DxvkShader(fsInfo, std::move(fsCode));
+
     return result;
   }
   
@@ -189,24 +191,27 @@ namespace dxvk::hud {
   HudRenderer::ShaderPair HudRenderer::createGraphShaders() {
     ShaderPair result;
 
-    const SpirvCodeBuffer vsCode(hud_graph_vert);
-    const SpirvCodeBuffer fsCode(hud_graph_frag);
+    SpirvCodeBuffer vsCode(hud_graph_vert);
+    SpirvCodeBuffer fsCode(hud_graph_frag);
     
     const std::array<DxvkResourceSlot, 1> fsResources = {{
       { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_IMAGE_VIEW_TYPE_MAX_ENUM },
     }};
 
-    result.vert = m_device->createShader(
-      VK_SHADER_STAGE_VERTEX_BIT, 0, nullptr,
-      { 0x3, 0x1, 0, sizeof(HudGraphPushConstants) },
-      vsCode);
+    DxvkShaderCreateInfo vsInfo;
+    vsInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vsInfo.outputMask = 0x1;
+    vsInfo.pushConstSize = sizeof(HudGraphPushConstants);
+    result.vert = new DxvkShader(vsInfo, std::move(vsCode));
     
-    result.frag = m_device->createShader(
-      VK_SHADER_STAGE_FRAGMENT_BIT,
-      fsResources.size(),
-      fsResources.data(),
-      { 0x1, 0x1, 0, sizeof(HudGraphPushConstants) },
-      fsCode);
+    DxvkShaderCreateInfo fsInfo;
+    fsInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fsInfo.resourceSlotCount = fsResources.size();
+    fsInfo.resourceSlots = fsResources.data();
+    fsInfo.inputMask = 0x1;
+    fsInfo.outputMask = 0x1;
+    fsInfo.pushConstSize = sizeof(HudGraphPushConstants);
+    result.frag = new DxvkShader(fsInfo, std::move(fsCode));
     
     return result;
   }
