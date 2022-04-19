@@ -4,6 +4,7 @@
 #include <condition_variable>
 #include <functional>
 #include <mutex>
+#include <thread>
 
 #include "util_error.h"
 
