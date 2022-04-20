@@ -20,6 +20,9 @@ Note that Proton and the Lutris Wine runner disables dxvk logging by default and
 -->
 **Reports with no log files will be ignored.**
 
+### Issue description
+Describe what is wrong. Include screenshots or videos if relevant.
+
 ### Software information
 Name of the game, settings used etc.
 
