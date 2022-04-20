@@ -14,6 +14,9 @@ In order to create a trace for **D3D11/D3D10**: Run `wine apitrace.exe trace -a 
 In order to create a trace for **D3D9**: Follow https://github.com/doitsujin/dxvk/wiki/Making-a-Trace.
 Preferably record the trace on Windows, or wined3d if possible.
 
+Log files should appear in the same folder as the game or application `.exe`. 
+Note that Proton and the Lutris Wine runner disables dxvk logging by default and can be enabled by setting `DXVK_LOG_LEVEL=info`. Alternatively you can enable logging in either Proton or the Lutris Wine runner itself.
+
 **Reports with no log files will be ignored.**
 
 ### Software information
