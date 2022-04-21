@@ -130,12 +130,10 @@ namespace dxvk {
       m_module.decorateDescriptorSet(buffer, 0);
       m_module.decorateBinding(buffer, bufferSlot);
 
-      DxvkResourceSlot bufferRes;
-      bufferRes.slot   = bufferSlot;
-      bufferRes.type   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-      bufferRes.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-      bufferRes.access = VK_ACCESS_SHADER_WRITE_BIT;
-      m_resourceSlots.push_back(bufferRes);
+      m_bufferResource.slot   = bufferSlot;
+      m_bufferResource.type   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      m_bufferResource.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+      m_bufferResource.access = VK_ACCESS_SHADER_WRITE_BIT;
 
       // Load our builtins
       uint32_t primitiveIdPtr = m_module.newVar(m_module.defPointerType(uint_t, spv::StorageClassInput), spv::StorageClassInput);
@@ -168,7 +166,7 @@ namespace dxvk {
           uint32_t slotIdx      = RegisterLinkerSlot(semantic);
 
           m_module.decorateLocation(elementPtr, slotIdx);
-          m_interfaceSlots.inputSlots |= 1u << slotIdx;
+          m_inputMask |= 1u << slotIdx;
         }
 
         uint32_t zero = m_module.constu32(0);
@@ -283,16 +281,13 @@ namespace dxvk {
         m_entryPointInterfaces.data());
       m_module.setDebugName(m_entryPointId, "main");
 
-      DxvkShaderConstData constData = { };
+      DxvkShaderCreateInfo info;
+      info.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
+      info.resourceSlotCount = 1;
+      info.resourceSlots = &m_bufferResource;
+      info.inputMask = m_inputMask;
 
-      return new DxvkShader(
-        VK_SHADER_STAGE_GEOMETRY_BIT,
-        m_resourceSlots.size(),
-        m_resourceSlots.data(),
-        m_interfaceSlots,
-        m_module.compile(),
-        DxvkShaderOptions(),
-        std::move(constData));
+      return new DxvkShader(info, m_module.compile());
     }
 
   private:
@@ -301,9 +296,8 @@ namespace dxvk {
 
     std::vector<uint32_t> m_entryPointInterfaces;
     uint32_t              m_entryPointId = 0;
-
-    std::vector<DxvkResourceSlot> m_resourceSlots;
-    DxvkInterfaceSlots m_interfaceSlots;
+    uint32_t              m_inputMask = 0u;
+    DxvkResourceSlot      m_bufferResource;
 
   };
 

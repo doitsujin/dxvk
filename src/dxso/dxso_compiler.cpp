@@ -246,17 +246,16 @@ namespace dxvk {
 
 
   Rc<DxvkShader> DxsoCompiler::compileShader() {
-    DxvkShaderOptions shaderOptions = { };
-    DxvkShaderConstData constData = { };
+    DxvkShaderCreateInfo info;
+    info.stage = m_programInfo.shaderStage();
+    info.resourceSlotCount = m_resourceSlots.size();
+    info.resourceSlots = m_resourceSlots.data();
+    info.inputMask = m_inputMask;
+    info.outputMask = m_outputMask;
+    info.pushConstOffset = m_pushConstOffset;
+    info.pushConstSize = m_pushConstOffset;
 
-    return new DxvkShader(
-      m_programInfo.shaderStage(),
-      m_resourceSlots.size(),
-      m_resourceSlots.data(),
-      m_interfaceSlots,
-      m_module.compile(),
-      shaderOptions,
-      std::move(constData));
+    return new DxvkShader(info, m_module.compile());
   }
 
   void DxsoCompiler::emitInit() {
@@ -709,8 +708,8 @@ namespace dxvk {
     uint32_t slot = 0;
 
     uint32_t& slots = input
-      ? m_interfaceSlots.inputSlots
-      : m_interfaceSlots.outputSlots;
+      ? m_inputMask
+      : m_outputMask;
 
     uint16_t& explicits = input
       ? m_explicitInputs
@@ -1200,8 +1199,8 @@ namespace dxvk {
               uint32_t slot = RegisterLinkerSlot(semantic);
 
               uint32_t& slots = input
-                ? m_interfaceSlots.inputSlots
-                : m_interfaceSlots.outputSlots;
+                ? m_inputMask
+                : m_outputMask;
 
               slots |= 1u << slot;
 
@@ -1243,7 +1242,7 @@ namespace dxvk {
             m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f),
             spv::StorageClassOutput);
 
-          m_interfaceSlots.outputSlots |= 1u << idx;
+          m_outputMask |= 1u << idx;
           m_module.decorateLocation(m_ps.oColor[idx].id, idx);
           m_module.decorateIndex(m_ps.oColor[idx].id, 0);
 
@@ -3596,7 +3595,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       m_module.setDebugName(outputPtr, name.c_str());
 
-      m_interfaceSlots.outputSlots |= 1u << slot;
+      m_outputMask |= 1u << slot;
       m_entryPointInterfaces.push_back(outputPtr);
     };
 
@@ -3714,20 +3713,20 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     // No FF fog component.
     if (m_programInfo.type() == DxsoProgramType::PixelShader) {
       if (m_programInfo.majorVersion() == 3) {
-        m_interfaceSlots.pushConstOffset = offsetof(D3D9RenderStateInfo, alphaRef);
-        m_interfaceSlots.pushConstSize   = sizeof(float);
+        m_pushConstOffset = offsetof(D3D9RenderStateInfo, alphaRef);
+        m_pushConstSize   = sizeof(float);
       }
       else {
-        m_interfaceSlots.pushConstOffset = 0;
-        m_interfaceSlots.pushConstSize   = offsetof(D3D9RenderStateInfo, pointSize);
+        m_pushConstOffset = 0;
+        m_pushConstSize   = offsetof(D3D9RenderStateInfo, pointSize);
       }
 
       count = 5;
     }
     else {
-      m_interfaceSlots.pushConstOffset = offsetof(D3D9RenderStateInfo, pointSize);
+      m_pushConstOffset = offsetof(D3D9RenderStateInfo, pointSize);
       // Point scale never triggers on programmable
-      m_interfaceSlots.pushConstSize   = sizeof(float) * 3;
+      m_pushConstSize   = sizeof(float) * 3;
       count = 8;
     }
 

@@ -1795,8 +1795,9 @@ namespace dxvk {
       return m_recorder->SetRenderState(State, Value);
 
     auto& states = m_state.renderStates;
+    DWORD old = states[State];
 
-    bool changed = states[State] != Value;
+    bool changed = old != Value;
 
     if (likely(changed)) {
       const bool oldClipPlaneEnabled = IsClipPlaneEnabled();
@@ -1880,19 +1881,31 @@ namespace dxvk {
           break;
 
         case D3DRS_COLORWRITEENABLE:
-          UpdateActiveRTs(0);
+          if (likely(!old != !Value)) {
+            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+            UpdateActiveRTs(0);
+          }
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE1:
-          UpdateActiveRTs(1);
+          if (likely(!old != !Value && m_state.renderTargets[1] != nullptr)) {
+            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+            UpdateActiveRTs(1);
+          }
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE2:
-          UpdateActiveRTs(2);
+          if (likely(!old != !Value && m_state.renderTargets[2] != nullptr)) {
+            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+            UpdateActiveRTs(2);
+          }
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE3:
-          UpdateActiveRTs(3);
+          if (likely(!old != !Value && m_state.renderTargets[3] != nullptr)) {
+            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+            UpdateActiveRTs(3);
+          }
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
 
@@ -1922,17 +1935,17 @@ namespace dxvk {
             m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
           break;
 
+        case D3DRS_STENCILENABLE:
         case D3DRS_ZWRITEENABLE:
-          if (m_activeHazardsDS != 0)
+        case D3DRS_ZENABLE:
+          if (likely(m_state.depthStencil != nullptr))
             m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
           m_flags.set(D3D9DeviceFlag::DirtyDepthStencilState);
           break;
 
-        case D3DRS_ZENABLE:
         case D3DRS_ZFUNC:
         case D3DRS_TWOSIDEDSTENCILMODE:
-        case D3DRS_STENCILENABLE:
         case D3DRS_STENCILFAIL:
         case D3DRS_STENCILZFAIL:
         case D3DRS_STENCILPASS:
@@ -5555,12 +5568,18 @@ namespace dxvk {
       else if (unlikely(sampleCount != rtImageInfo.sampleCount))
         continue;
 
+      if (!m_state.renderStates[ColorWriteIndex(i)])
+        continue;
+
       attachments.color[i] = {
         m_state.renderTargets[i]->GetRenderTargetView(srgb),
         m_state.renderTargets[i]->GetRenderTargetLayout() };
     }
 
-    if (m_state.depthStencil != nullptr) {
+    if (m_state.depthStencil != nullptr &&
+      (m_state.renderStates[D3DRS_ZENABLE]
+        || m_state.renderStates[D3DRS_ZWRITEENABLE]
+        || m_state.renderStates[D3DRS_STENCILENABLE])) {
       const DxvkImageCreateInfo& dsImageInfo = m_state.depthStencil->GetCommonTexture()->GetImage()->info();
       const bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
 

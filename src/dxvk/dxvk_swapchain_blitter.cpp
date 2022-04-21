@@ -312,43 +312,36 @@ namespace dxvk {
   }
 
   void DxvkSwapchainBlitter::createShaders() {
-    const SpirvCodeBuffer vsCode(dxvk_present_vert);
-    const SpirvCodeBuffer fsCodeBlit(dxvk_present_frag_blit);
-    const SpirvCodeBuffer fsCodeCopy(dxvk_present_frag);
-    const SpirvCodeBuffer fsCodeResolve(dxvk_present_frag_ms);
-    const SpirvCodeBuffer fsCodeResolveAmd(dxvk_present_frag_ms_amd);
+    SpirvCodeBuffer vsCode(dxvk_present_vert);
+    SpirvCodeBuffer fsCodeBlit(dxvk_present_frag_blit);
+    SpirvCodeBuffer fsCodeCopy(dxvk_present_frag);
+    SpirvCodeBuffer fsCodeResolve(dxvk_present_frag_ms);
+    SpirvCodeBuffer fsCodeResolveAmd(dxvk_present_frag_ms_amd);
     
     const std::array<DxvkResourceSlot, 2> fsResourceSlots = {{
       { BindingIds::Image, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_IMAGE_VIEW_TYPE_2D },
       { BindingIds::Gamma, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_IMAGE_VIEW_TYPE_1D },
     }};
 
-    m_vs = m_device->createShader(
-      VK_SHADER_STAGE_VERTEX_BIT,
-      0, nullptr, { 0u, 1u },
-      vsCode);
+    DxvkShaderCreateInfo vsInfo;
+    vsInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vsInfo.outputMask = 0x1;
+    m_vs = new DxvkShader(vsInfo, std::move(vsCode));
     
-    m_fsBlit = m_device->createShader(
-      VK_SHADER_STAGE_FRAGMENT_BIT,
-      fsResourceSlots.size(),
-      fsResourceSlots.data(),
-      { 1u, 1u, 0u, sizeof(PresenterArgs) },
-      fsCodeBlit);
+    DxvkShaderCreateInfo fsInfo;
+    fsInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fsInfo.resourceSlotCount = fsResourceSlots.size();
+    fsInfo.resourceSlots = fsResourceSlots.data();
+    fsInfo.pushConstSize = sizeof(PresenterArgs);
+    fsInfo.inputMask = 0x1;
+    fsInfo.outputMask = 0x1;
+    m_fsBlit = new DxvkShader(fsInfo, std::move(fsCodeBlit));
     
-    m_fsCopy = m_device->createShader(
-      VK_SHADER_STAGE_FRAGMENT_BIT,
-      fsResourceSlots.size(),
-      fsResourceSlots.data(),
-      { 0u, 1u, 0u, sizeof(PresenterArgs) },
-      fsCodeCopy);
-    
-    m_fsResolve = m_device->createShader(
-      VK_SHADER_STAGE_FRAGMENT_BIT,
-      fsResourceSlots.size(),
-      fsResourceSlots.data(),
-      { 0u, 1u, 0u, sizeof(PresenterArgs) },
-      m_device->extensions().amdShaderFragmentMask
-        ? fsCodeResolveAmd : fsCodeResolve);
+    fsInfo.inputMask = 0;
+    m_fsCopy = new DxvkShader(fsInfo, std::move(fsCodeCopy));
+    m_fsResolve = new DxvkShader(fsInfo, m_device->extensions().amdShaderFragmentMask
+      ? std::move(fsCodeResolveAmd)
+      : std::move(fsCodeResolve));
   }
 
   void DxvkSwapchainBlitter::createResolveImage(const DxvkImageCreateInfo& info) {
