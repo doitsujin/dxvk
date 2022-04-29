@@ -1,4 +1,12 @@
+#include <array>
+#include <cstdlib>
+#include <filesystem>
 #include <numeric>
+
+#ifdef __linux__
+#include <unistd.h>
+#include <limits.h>
+#endif
 
 #include "util_env.h"
 
@@ -7,6 +15,7 @@
 namespace dxvk::env {
 
   std::string getEnvVar(const char* name) {
+#ifdef _WIN32
     std::vector<WCHAR> result;
     result.resize(MAX_PATH + 1);
 
@@ -14,6 +23,10 @@ namespace dxvk::env {
     result.resize(len);
 
     return str::fromws(result.data());
+#else
+    const char* result = std::getenv(name);
+    return result ? result : "";
+#endif
   }
 
 
@@ -36,7 +49,7 @@ namespace dxvk::env {
 
   std::string getExeName() {
     std::string fullPath = getExePath();
-    auto n = fullPath.find_last_of('\\');
+    auto n = fullPath.find_last_of(env::PlatformDirSlash);
     
     return (n != std::string::npos)
       ? fullPath.substr(n + 1)
@@ -46,16 +59,19 @@ namespace dxvk::env {
 
   std::string getExeBaseName() {
     auto exeName = getExeName();
+#ifdef _WIN32
     auto extp = matchFileExtension(exeName, "exe");
 
     if (extp != std::string::npos)
       exeName.erase(extp);
+#endif
 
     return exeName;
   }
 
 
   std::string getExePath() {
+#if defined(_WIN32)
     std::vector<WCHAR> exePath;
     exePath.resize(MAX_PATH + 1);
 
@@ -63,10 +79,18 @@ namespace dxvk::env {
     exePath.resize(len);
 
     return str::fromws(exePath.data());
+#elif defined(__linux__)
+    std::array<char, PATH_MAX> exePath = {};
+
+    size_t count = readlink("/proc/self/exe", exePath.data(), exePath.size());
+
+    return std::string(exePath.begin(), exePath.begin() + count);
+#endif
   }
   
   
   void setThreadName(const std::string& name) {
+#ifdef _WIN32
     using SetThreadDescriptionProc = HRESULT (WINAPI *) (HANDLE, PCWSTR);
 
     static auto proc = reinterpret_cast<SetThreadDescriptionProc>(
@@ -77,13 +101,22 @@ namespace dxvk::env {
       str::tows(name.c_str(), wideName.data(), wideName.size());
       (*proc)(::GetCurrentThread(), wideName.data());
     }
+#else
+    std::array<char, 16> posixName = {};
+    dxvk::str::strlcpy(posixName.data(), name.c_str(), 16);
+    ::pthread_setname_np(pthread_self(), posixName.data());
+#endif
   }
 
 
   bool createDirectory(const std::string& path) {
+#ifdef _WIN32
     WCHAR widePath[MAX_PATH];
     str::tows(path.c_str(), widePath);
     return !!CreateDirectoryW(widePath, nullptr);
+#else
+    return std::filesystem::create_directories(path);
+#endif
   }
   
 }

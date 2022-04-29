@@ -604,8 +604,12 @@ namespace dxvk {
     SpirvModule           m_module;
     std::vector
       <DxvkResourceSlot>  m_resourceSlots;
-    DxvkInterfaceSlots    m_interfaceSlots;
     std::vector<uint32_t> m_entryPointInterfaces;
+
+    uint32_t              m_inputMask = 0u;
+    uint32_t              m_outputMask = 0u;
+    uint32_t              m_pushConstOffset = 0u;
+    uint32_t              m_pushConstSize = 0u;
 
     DxsoProgramType       m_programType;
     D3D9FFShaderKeyVS     m_vsKey;
@@ -706,19 +710,17 @@ namespace dxvk {
       m_entryPointInterfaces.size(),
       m_entryPointInterfaces.data());
 
-    DxvkShaderOptions shaderOptions = { };
-
-    DxvkShaderConstData constData = { };
-
     // Create the shader module object
-    return new DxvkShader(
-      isVS() ? VK_SHADER_STAGE_VERTEX_BIT : VK_SHADER_STAGE_FRAGMENT_BIT,
-      m_resourceSlots.size(),
-      m_resourceSlots.data(),
-      m_interfaceSlots,
-      m_module.compile(),
-      shaderOptions,
-      std::move(constData));
+    DxvkShaderCreateInfo info;
+    info.stage = isVS() ? VK_SHADER_STAGE_VERTEX_BIT : VK_SHADER_STAGE_FRAGMENT_BIT;
+    info.resourceSlotCount = m_resourceSlots.size();
+    info.resourceSlots = m_resourceSlots.data();
+    info.inputMask = m_inputMask;
+    info.outputMask = m_outputMask;
+    info.pushConstOffset = m_pushConstOffset;
+    info.pushConstSize = m_pushConstOffset;
+
+    return new DxvkShader(info, m_module.compile());
   }
 
 
@@ -728,8 +730,8 @@ namespace dxvk {
       ? m_isgn : m_osgn;
 
     uint32_t& slots = input
-      ? m_interfaceSlots.inputSlots
-      : m_interfaceSlots.outputSlots;
+      ? m_inputMask
+      : m_outputMask;
 
     uint32_t i = sgn.elemCount++;
 
@@ -1186,13 +1188,13 @@ namespace dxvk {
     uint32_t count;
 
     if (m_programType == DxsoProgramType::PixelShader) {
-      m_interfaceSlots.pushConstOffset = 0;
-      m_interfaceSlots.pushConstSize   = offsetof(D3D9RenderStateInfo, pointSize);
+      m_pushConstOffset = 0;
+      m_pushConstSize   = offsetof(D3D9RenderStateInfo, pointSize);
       count = 5;
     }
     else {
-      m_interfaceSlots.pushConstOffset = offsetof(D3D9RenderStateInfo, pointSize);
-      m_interfaceSlots.pushConstSize   = sizeof(float) * 6;
+      m_pushConstOffset = offsetof(D3D9RenderStateInfo, pointSize);
+      m_pushConstSize   = sizeof(float) * 6;
       count = 11;
     }
 

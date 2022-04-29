@@ -50,70 +50,27 @@ namespace dxvk {
   using DxvkShaderFlags = Flags<DxvkShaderFlag>;
   
   /**
-   * \brief Shader interface slots
-   * 
-   * Stores a bit mask of which shader
-   * interface slots are defined. Used
-   * purely for validation purposes.
+   * \brief Shader info
    */
-  struct DxvkInterfaceSlots {
-    uint32_t inputSlots      = 0;
-    uint32_t outputSlots     = 0;
+  struct DxvkShaderCreateInfo {
+    /// Shader stage
+    VkShaderStageFlagBits stage;
+    /// Descriptor info
+    uint32_t resourceSlotCount = 0;
+    const DxvkResourceSlot* resourceSlots = nullptr;
+    /// Input and output register mask
+    uint32_t inputMask = 0;
+    uint32_t outputMask = 0;
+    /// Push constant range
     uint32_t pushConstOffset = 0;
-    uint32_t pushConstSize   = 0;
-  };
-
-
-  /**
-   * \brief Additional shader options
-   * 
-   * Contains additional properties that should be
-   * taken into account when creating pipelines.
-   */
-  struct DxvkShaderOptions {
+    uint32_t pushConstSize = 0;
+    /// Uniform buffer data
+    uint32_t uniformSize = 0;
+    const char* uniformData = nullptr;
     /// Rasterized stream, or -1
-    int32_t rasterizedStream;
-    /// Xfb vertex strides
-    uint32_t xfbStrides[MaxNumXfbBuffers];
-  };
-
-
-  /**
-   * \brief Shader constants
-   * 
-   * Each shader can have constant data associated
-   * with it, which needs to be copied to a uniform
-   * buffer. The client API must then bind that buffer
-   * to an API-specific buffer binding when using the
-   * shader for rendering.
-   */
-  class DxvkShaderConstData {
-
-  public:
-
-    DxvkShaderConstData();
-    DxvkShaderConstData(
-            size_t                dwordCount,
-      const uint32_t*             dwordArray);
-
-    DxvkShaderConstData             (DxvkShaderConstData&& other);
-    DxvkShaderConstData& operator = (DxvkShaderConstData&& other);
-
-    ~DxvkShaderConstData();
-
-    const uint32_t* data() const {
-      return m_data;
-    }
-
-    size_t sizeInBytes() const {
-      return m_size * sizeof(uint32_t);
-    }
-
-  private:
-
-    size_t    m_size = 0;
-    uint32_t* m_data = nullptr;
-
+    int32_t xfbRasterizedStream = 0;
+    /// Transform feedback vertex strides
+    uint32_t xfbStrides[MaxNumXfbBuffers] = { };
   };
 
 
@@ -139,24 +96,19 @@ namespace dxvk {
   public:
     
     DxvkShader(
-            VkShaderStageFlagBits   stage,
-            uint32_t                slotCount,
-      const DxvkResourceSlot*       slotInfos,
-      const DxvkInterfaceSlots&     iface,
-            SpirvCodeBuffer         code,
-      const DxvkShaderOptions&      options,
-            DxvkShaderConstData&&   constData);
-    
+      const DxvkShaderCreateInfo&   info,
+            SpirvCodeBuffer&&       spirv);
+
     ~DxvkShader();
     
     /**
-     * \brief Shader stage
-     * \returns Shader stage
+     * \brief Shader info
+     * \returns Shader info
      */
-    VkShaderStageFlagBits stage() const {
-      return m_stage;
+    const DxvkShaderCreateInfo& info() const {
+      return m_info;
     }
-    
+
     /**
      * \brief Retrieves shader flags
      * \returns Shader flags
@@ -188,37 +140,6 @@ namespace dxvk {
       const Rc<vk::DeviceFn>&          vkd,
       const DxvkDescriptorSlotMapping& mapping,
       const DxvkShaderModuleCreateInfo& info);
-    
-    /**
-     * \brief Inter-stage interface slots
-     * 
-     * Retrieves the input and output
-     * registers used by the shader.
-     * \returns Shader interface slots
-     */
-    DxvkInterfaceSlots interfaceSlots() const {
-      return m_interface;
-    }
-
-    /**
-     * \brief Shader options
-     * \returns Shader options
-     */
-    DxvkShaderOptions shaderOptions() const {
-      return m_options;
-    }
-
-    /**
-     * \brief Shader constant data
-     * 
-     * Returns a read-only reference to the 
-     * constant data associated with this
-     * shader object.
-     * \returns Shader constant data
-     */
-    const DxvkShaderConstData& shaderConstants() const {
-      return m_constData;
-    }
     
     /**
      * \brief Dumps SPIR-V shader
@@ -279,20 +200,19 @@ namespace dxvk {
     
   private:
     
-    VkShaderStageFlagBits m_stage;
-    SpirvCompressedBuffer m_code;
+    DxvkShaderCreateInfo          m_info;
+    SpirvCompressedBuffer         m_code;
     
-    std::vector<DxvkResourceSlot> m_slots;
-    std::vector<size_t>           m_idOffsets;
-    DxvkInterfaceSlots            m_interface;
     DxvkShaderFlags               m_flags;
-    DxvkShaderOptions             m_options;
-    DxvkShaderConstData           m_constData;
     DxvkShaderKey                 m_key;
     size_t                        m_hash = 0;
 
-    size_t m_o1IdxOffset = 0;
-    size_t m_o1LocOffset = 0;
+    size_t                        m_o1IdxOffset = 0;
+    size_t                        m_o1LocOffset = 0;
+
+    std::vector<DxvkResourceSlot> m_slots;
+    std::vector<char>             m_uniformData;
+    std::vector<size_t>           m_idOffsets;
 
     static void eliminateInput(SpirvCodeBuffer& code, uint32_t location);
 
