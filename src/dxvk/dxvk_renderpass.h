@@ -219,10 +219,19 @@ namespace dxvk {
      */
     DxvkRenderPass* getRenderPass(
       const DxvkRenderPassFormat&  fmt);
-    
+
+    /**
+     * \brief Validates render pass format
+     *
+     * \param [in] fmt The render pass format
+     * \returns \c true if the format is supported
+     */
+    bool validateRenderPassFormat(
+      const DxvkRenderPassFormat&  fmt);
+
   private:
     
-    const Rc<vk::DeviceFn> m_vkd;
+    const DxvkDevice*               m_device;
     
     dxvk::mutex                     m_mutex;
     std::unordered_map<

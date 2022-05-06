@@ -371,8 +371,10 @@ namespace dxvk {
       for (auto e = entries.first; e != entries.second; e++) {
         const auto& entry = m_entries[e->second];
 
-        auto rp = m_passManager->getRenderPass(entry.format);
-        pipeline->compilePipeline(entry.gpState, rp);
+        if (m_passManager->validateRenderPassFormat(entry.format)) {
+          auto rp = m_passManager->getRenderPass(entry.format);
+          pipeline->compilePipeline(entry.gpState, rp);
+        }
       }
     } else {
       auto pipeline = m_pipeManager->createComputePipeline(item.cp);

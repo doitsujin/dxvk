@@ -269,7 +269,7 @@ namespace dxvk {
   
   
   DxvkRenderPassPool::DxvkRenderPassPool(const DxvkDevice* device)
-  : m_vkd(device->vkd()) {
+  : m_device(device) {
     
   }
   
@@ -288,8 +288,45 @@ namespace dxvk {
     
     auto result = m_renderPasses.emplace(std::piecewise_construct,
       std::tuple(fmt),
-      std::tuple(m_vkd, fmt));
+      std::tuple(m_device->vkd(), fmt));
     return &result.first->second;
+  }
+
+
+  bool DxvkRenderPassPool::validateRenderPassFormat(
+    const DxvkRenderPassFormat&  fmt) {
+    Rc<DxvkAdapter> adapter = m_device->adapter();
+
+    if (fmt.depth.format) {
+      VkFormatProperties depthInfo = adapter->formatProperties(fmt.depth.format);
+      VkFormatFeatureFlags depthFlags = depthInfo.linearTilingFeatures | depthInfo.optimalTilingFeatures;
+
+      if (!(depthFlags & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))
+        return false;
+
+      if (fmt.depth.layout != VK_IMAGE_LAYOUT_GENERAL
+       && fmt.depth.layout != VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
+       && fmt.depth.layout != VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
+       && fmt.depth.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+       && fmt.depth.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
+        return false;
+    }
+
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      if (fmt.color[i].format) {
+        VkFormatProperties colorInfo = adapter->formatProperties(fmt.color[i].format);
+        VkFormatFeatureFlags colorFlags = colorInfo.linearTilingFeatures | colorInfo.optimalTilingFeatures;
+
+        if (!(colorFlags & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))
+          return false;
+
+        if (fmt.color[i].layout != VK_IMAGE_LAYOUT_GENERAL
+         && fmt.color[i].layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+          return false;
+      }
+    }
+
+    return true;
   }
   
 }
