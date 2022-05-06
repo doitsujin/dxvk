@@ -208,9 +208,10 @@ namespace dxvk {
      * After this call, new instructions will be
      * appended to the stream. In other words,
      * this will restore default behaviour.
+     * \returns Previous instruction pointer
      */
-    void endInsertion() {
-      m_ptr = m_code.size();
+    size_t endInsertion() {
+      return std::exchange(m_ptr, m_code.size());
     }
     
   private:

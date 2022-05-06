@@ -318,16 +318,37 @@ namespace dxvk {
       }
     }
 
-    // Remove location declarations
-    for (auto ins : code) {
-      if (ins.opCode() == spv::OpDecorate
-       && ins.arg(2) == spv::DecorationLocation
-       && ins.arg(1) == inputVarId) {
-        code.beginInsertion(ins.offset());
-        code.erase(4);
-        code.endInsertion();
-        break;
+    // Remove location and other declarations
+    for (auto iter = code.begin(); iter != code.end(); ) {
+      auto ins = *(iter++);
+
+      if (ins.opCode() == spv::OpDecorate && ins.arg(1) == inputVarId) {
+        uint32_t numWords;
+
+        switch (ins.arg(2)) {
+          case spv::DecorationLocation:
+          case spv::DecorationFlat:
+          case spv::DecorationNoPerspective:
+          case spv::DecorationCentroid:
+          case spv::DecorationPatch:
+          case spv::DecorationSample:
+            numWords = ins.length();
+            break;
+
+          default:
+            numWords = 0;
+        }
+
+        if (numWords) {
+          code.beginInsertion(ins.offset());
+          code.erase(numWords);
+
+          iter = SpirvInstructionIterator(code.data(), code.endInsertion(), code.dwords());
+        }
       }
+
+      if (ins.opCode() == spv::OpFunction)
+        break;
     }
 
     // Fix up pointer types used in access chain instructions
