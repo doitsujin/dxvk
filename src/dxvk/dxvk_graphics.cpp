@@ -67,7 +67,7 @@ namespace dxvk {
 
     if (unlikely(!instance)) {
       // Exit early if the state vector is invalid
-      if (!this->validatePipelineState(state))
+      if (!this->validatePipelineState(state, true))
         return VK_NULL_HANDLE;
 
       // Prevent other threads from adding new instances and check again
@@ -90,7 +90,7 @@ namespace dxvk {
     const DxvkGraphicsPipelineStateInfo& state,
     const DxvkRenderPass*                renderPass) {
     // Exit early if the state vector is invalid
-    if (!this->validatePipelineState(state))
+    if (!this->validatePipelineState(state, false))
       return;
 
     // Keep the object locked while compiling a pipeline since compiling
@@ -510,7 +510,8 @@ namespace dxvk {
 
 
   bool DxvkGraphicsPipeline::validatePipelineState(
-    const DxvkGraphicsPipelineStateInfo& state) const {
+    const DxvkGraphicsPipelineStateInfo&  state,
+          bool                            trusted) const {
     // Tessellation shaders and patches must be used together
     bool hasPatches = state.ia.primitiveTopology() == VK_PRIMITIVE_TOPOLOGY_PATCH_LIST;
 
@@ -528,8 +529,69 @@ namespace dxvk {
     if (state.il.attributeCount() > DxvkLimits::MaxNumVertexAttributes
      || state.il.bindingCount()   > DxvkLimits::MaxNumVertexBindings)
       return false;
-    
-    // No errors
+
+    // Exit here on the fast path, perform more thorough validation if
+    // the state vector comes from an untrusted source (i.e. the cache)
+    if (trusted)
+      return true;
+
+    // Validate shaders
+    if (!m_shaders.validate()) {
+      Logger::err("Invalid pipeline: Shader types do not match stage");
+      return false;
+    }
+
+    // Validate vertex input layout
+    const DxvkDevice* device = m_pipeMgr->m_device;
+    uint32_t ilLocationMask = 0;
+    uint32_t ilBindingMask = 0;
+
+    for (uint32_t i = 0; i < state.il.bindingCount(); i++)
+      ilBindingMask |= 1u << state.ilBindings[i].binding();
+
+    for (uint32_t i = 0; i < state.il.attributeCount(); i++) {
+      const DxvkIlAttribute& attribute = state.ilAttributes[i];
+
+      if (ilLocationMask & (1u << attribute.location())) {
+        Logger::err(str::format("Invalid pipeline: Vertex location ", attribute.location(), " defined twice"));
+        return false;
+      }
+
+      if (!(ilBindingMask & (1u << attribute.binding()))) {
+        Logger::err(str::format("Invalid pipeline: Vertex binding ", attribute.binding(), " not defined"));
+        return false;
+      }
+
+      VkFormatProperties formatInfo = device->adapter()->formatProperties(attribute.format());
+
+      if (!(formatInfo.bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT)) {
+        Logger::err(str::format("Invalid pipeline: Format ", attribute.format(), " not supported for vertex buffers"));
+        return false;
+      }
+
+      ilLocationMask |= 1u << attribute.location();
+    }
+
+    // Validate rasterization state
+    if (state.rs.conservativeMode() != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT) {
+      if (!device->extensions().extConservativeRasterization) {
+        Logger::err("Conservative rasterization not supported by device");
+        return false;
+      }
+
+      if (state.rs.conservativeMode() == VK_CONSERVATIVE_RASTERIZATION_MODE_UNDERESTIMATE_EXT
+       && !device->properties().extConservativeRasterization.primitiveUnderestimation) {
+        Logger::err("Primitive underestimation not supported by device");
+        return false;
+      }
+    }
+
+    // Validate depth-stencil state
+    if (state.ds.enableDepthBoundsTest() && !device->features().core.features.depthBounds) {
+      Logger::err("Depth bounds not supported by device");
+      return false;
+    }
+
     return true;
   }
   
