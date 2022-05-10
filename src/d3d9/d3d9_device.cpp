@@ -944,6 +944,9 @@ namespace dxvk {
     Rc<DxvkImage> dstImage = dstTextureInfo->GetImage();
     Rc<DxvkImage> srcImage = srcTextureInfo->GetImage();
 
+    if (dstImage == nullptr || srcImage == nullptr)
+        return D3DERR_INVALIDCALL;
+
     const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstImage->info().format);
     const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
 
