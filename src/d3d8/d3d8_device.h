@@ -746,7 +746,7 @@ namespace dxvk {
             UINT                    Stride) {
       D3D8VertexBuffer* buffer = static_cast<D3D8VertexBuffer*>(pStreamData);
 
-      return GetD3D9()->SetStreamSource(StreamNumber, buffer->GetD3D9(), 0, Stride);
+      return GetD3D9()->SetStreamSource(StreamNumber, buffer->GetD3D9Nullable(), 0, Stride);
     }
 
     HRESULT STDMETHODCALLTYPE GetStreamSource D3D8_DEVICE_STUB(
@@ -766,7 +766,7 @@ namespace dxvk {
 
       m_indices = buffer;
 
-      return GetD3D9()->SetIndices(buffer->GetD3D9());
+      return GetD3D9()->SetIndices(buffer->GetD3D9Nullable());
     }
 
     HRESULT STDMETHODCALLTYPE GetIndices(
