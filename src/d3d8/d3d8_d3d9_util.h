@@ -102,7 +102,7 @@ namespace dxvk {
     switch (StageType) {
       // 13-21:
       case D3DTSS_ADDRESSU:       return d3d9::D3DSAMP_ADDRESSU;
-      case D3DTSS_ADDRESSV:       return d3d9::D3DSAMP_ADDRESSW;
+      case D3DTSS_ADDRESSV:       return d3d9::D3DSAMP_ADDRESSV;
       case D3DTSS_BORDERCOLOR:    return d3d9::D3DSAMP_BORDERCOLOR;
       case D3DTSS_MAGFILTER:      return d3d9::D3DSAMP_MAGFILTER;
       case D3DTSS_MINFILTER:      return d3d9::D3DSAMP_MINFILTER;
