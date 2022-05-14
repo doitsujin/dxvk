@@ -4,6 +4,7 @@
 
 #include "d3d8_include.h"
 #include "d3d8_d3d9_util.h"
+#include "d3d8_options.h"
 #include "../d3d9/d3d9_bridge.h"
 
 //#include "../dxvk/dxvk_instance.h"
@@ -169,6 +170,7 @@ namespace dxvk {
     bool m_extended;
 
     IDxvkD3D8InterfaceBridge* m_bridge;
+    D3D8Options               m_d3d8Options;
 
     //std::vector<D3D9Adapter> m_adapters;
   };
