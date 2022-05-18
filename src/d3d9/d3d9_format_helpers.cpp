@@ -130,10 +130,14 @@ namespace dxvk {
       { BindingIds::Buffer, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, VK_IMAGE_VIEW_TYPE_1D },
     } };
 
-    return m_device->createShader(
-      VK_SHADER_STAGE_COMPUTE_BIT,
-      resourceSlots.size(), resourceSlots.data(),
-      { 0u, 0u, 0u, sizeof(VkExtent2D) }, code);
+    DxvkShaderCreateInfo info;
+    info.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    info.resourceSlotCount = resourceSlots.size();
+    info.resourceSlots = resourceSlots.data();
+    info.pushConstOffset = 0;
+    info.pushConstSize = sizeof(VkExtent2D);
+
+    return new DxvkShader(info, std::move(code));
   }
 
 

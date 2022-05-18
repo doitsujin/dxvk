@@ -341,23 +341,6 @@ namespace dxvk {
       const DxvkSamplerCreateInfo&  createInfo);
     
     /**
-     * \brief Creates a shader module
-     * 
-     * \param [in] stage Shader stage
-     * \param [in] slotCount Resource slot count
-     * \param [in] slotInfos Resource slot descriptions
-     * \param [in] iface Inter-stage interface slots
-     * \param [in] code Shader code
-     * \returns New shader module
-     */
-    Rc<DxvkShader> createShader(
-            VkShaderStageFlagBits     stage,
-            uint32_t                  slotCount,
-      const DxvkResourceSlot*         slotInfos,
-      const DxvkInterfaceSlots&       iface,
-      const SpirvCodeBuffer&          code);
-    
-    /**
      * \brief Retrieves stat counters
      * 
      * Can be used by the HUD to display some

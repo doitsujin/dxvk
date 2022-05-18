@@ -4651,7 +4651,7 @@ namespace dxvk {
   
   
   void DxvkContext::updateTransformFeedbackBuffers() {
-    auto gsOptions = m_state.gp.shaders.gs->shaderOptions();
+    const auto& gsInfo = m_state.gp.shaders.gs->info();
 
     VkBuffer     xfbBuffers[MaxNumXfbBuffers];
     VkDeviceSize xfbOffsets[MaxNumXfbBuffers];
@@ -4669,7 +4669,7 @@ namespace dxvk {
       
       if (physSlice.handle != VK_NULL_HANDLE) {
         const Rc<DxvkBuffer>& buffer = m_state.xfb.buffers[i].buffer();
-        buffer->setXfbVertexStride(gsOptions.xfbStrides[i]);
+        buffer->setXfbVertexStride(gsInfo.xfbStrides[i]);
         
         m_cmd->trackResource<DxvkAccess::Write>(buffer);
       }
