@@ -195,11 +195,14 @@ namespace dxvk {
       return GetD3D9()->GetCreationParameters((d3d9::D3DDEVICE_CREATION_PARAMETERS*)pParameters);
     }
 
-    // TODO: SetCursorProperties
-    HRESULT STDMETHODCALLTYPE SetCursorProperties D3D8_DEVICE_STUB(
+    HRESULT STDMETHODCALLTYPE SetCursorProperties(
       UINT               XHotSpot,
       UINT               YHotSpot,
-      IDirect3DSurface8* pCursorBitmap);
+      IDirect3DSurface8* pCursorBitmap) {
+
+      D3D8Surface* surf = static_cast<D3D8Surface*>(pCursorBitmap);
+      return GetD3D9()->SetCursorProperties(XHotSpot, YHotSpot, surf->GetD3D9Nullable());
+    }
 
     void    STDMETHODCALLTYPE SetCursorPosition(UINT XScreenSpace, UINT YScreenSpace, DWORD Flags) {
       // TODO: do we need to convert from screenspace?
