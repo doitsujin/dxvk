@@ -287,6 +287,10 @@ namespace dxvk {
     /* Stranger of Paradise - FF Origin           */
     { R"(\\SOPFFO\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
+    /* Small Radios Big Televisions               */
+    }} },
+    { R"(\\SRBT\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",        "True" },
     }} },
 
     /**********************************************/
