@@ -474,6 +474,8 @@ namespace dxvk {
 
     SAFE_RELEASE(pPixelShader);
 
+    m_pixelShaders[Handle] = nullptr;
+
     return D3D_OK;
   }
 
