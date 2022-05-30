@@ -252,9 +252,18 @@ namespace dxvk {
     DxvkDeviceFilter filter(filterFlags);
     std::vector<Rc<DxvkAdapter>> result;
 
+    uint32_t numDGPU = 0;
+    uint32_t numIGPU = 0;
+
     for (uint32_t i = 0; i < numAdapters; i++) {
-      if (filter.testAdapter(deviceProperties[i]))
+      if (filter.testAdapter(deviceProperties[i])) {
         result.push_back(new DxvkAdapter(m_vki, adapters[i]));
+
+        if (deviceProperties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+          numDGPU += 1;
+        else if (deviceProperties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+          numIGPU += 1;
+      }
     }
     
     std::stable_sort(result.begin(), result.end(),
@@ -276,9 +285,11 @@ namespace dxvk {
         return aRank < bRank;
       });
     
-    if (result.size() == 0) {
+    if (result.empty()) {
       Logger::warn("DXVK: No adapters found. Please check your "
                    "device filter settings and Vulkan setup.");
+    } else if (numDGPU == 1 && numIGPU == 1) {
+      result[1]->linkToDGPU(result[0]);
     }
     
     return result;
