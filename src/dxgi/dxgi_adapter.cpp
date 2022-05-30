@@ -148,12 +148,15 @@ namespace dxvk {
     
     if (ppOutput == nullptr)
       return E_INVALIDARG;
-    
-    HMONITOR monitor = wsi::enumMonitors(Output);
-    
+
+    const auto deviceId   = m_adapter->devicePropertiesExt().vk11;
+
+    HMONITOR monitor = wsi::enumMonitors(
+      deviceId.deviceLUIDValid ? reinterpret_cast<const LUID *>(deviceId.deviceLUID) : nullptr, Output);
+
     if (monitor == nullptr)
       return DXGI_ERROR_NOT_FOUND;
-    
+
     *ppOutput = ref(new DxgiOutput(m_factory, this, monitor));
     return S_OK;
   }
