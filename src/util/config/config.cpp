@@ -554,6 +554,13 @@ namespace dxvk {
       { "d3d9.memoryTrackTest",             "True" },
       { "d3d9.maxAvailableMemory",          "2048" },
     }} },
+    /* Myst V End of Ages                             
+       Game has white textures on amd radv.
+       Expects Nvidia, Intel or ATI VendorId.
+       "Radeon" in gpu description also works   */
+    { R"(\\eoa\.exe$)", {{
+      { "d3d9.customVendorId",              "10de" },
+    }} },
   }};
 
 
