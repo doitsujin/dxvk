@@ -531,6 +531,10 @@ namespace dxvk {
     { R"(\\SWTFU2\.exe$)", {{
       { "d3d9.forceSamplerTypeSpecConstants",  "True" },
     }} },
+    /* Scrapland (Remastered)                   */
+    { R"(\\Scrap\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",        "True" },
+    }} },
     /* Majesty 2 (Collection)                   *
      * Crashes on UMA without a memory limit,   *
      * since the game(s) will allocate all      *
