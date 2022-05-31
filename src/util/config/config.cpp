@@ -530,6 +530,11 @@ namespace dxvk {
     { R"(\\RoRLauncher\.exe$)", {{
       { "d3d9.shaderModel",                 "1" },
     }} },
+    /* Halo CE SPV3 launcher
+       Same issue as Warhammer: RoR above       */
+    { R"(\\spv3\.exe$)", {{
+      { "d3d9.shaderModel",                 "1" },
+    }} },
     /* Star Wars The Force Unleashed 2          *
      * Black particles because it tries to bind *
      * a 2D texture for a shader that           *
