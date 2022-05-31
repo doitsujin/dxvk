@@ -631,21 +631,6 @@ namespace dxvk {
     if (pPresentParams->Windowed) {
       if (changeFullscreen)
         this->LeaveFullscreenMode();
-
-      // Adjust window position and size
-      RECT newRect = { 0, 0, 0, 0 };
-      RECT oldRect = { 0, 0, 0, 0 };
-      
-      ::GetWindowRect(m_window, &oldRect);
-      ::MapWindowPoints(HWND_DESKTOP, ::GetParent(m_window), reinterpret_cast<POINT*>(&oldRect), 1);
-      ::SetRect(&newRect, 0, 0, pPresentParams->BackBufferWidth, pPresentParams->BackBufferHeight);
-      ::AdjustWindowRectEx(&newRect,
-        ::GetWindowLongW(m_window, GWL_STYLE), FALSE,
-        ::GetWindowLongW(m_window, GWL_EXSTYLE));
-      ::SetRect(&newRect, 0, 0, newRect.right - newRect.left, newRect.bottom - newRect.top);
-      ::OffsetRect(&newRect, oldRect.left, oldRect.top);    
-      ::MoveWindow(m_window, newRect.left, newRect.top,
-        newRect.right - newRect.left, newRect.bottom - newRect.top, TRUE);
     }
     else {
       if (changeFullscreen) {

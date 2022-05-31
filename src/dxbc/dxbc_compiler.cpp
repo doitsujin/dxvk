@@ -5577,6 +5577,49 @@ namespace dxvk {
 
   DxbcRegisterValue DxbcCompiler::emitRegisterLoadRaw(
     const DxbcRegister&           reg) {
+    if (reg.type == DxbcOperandType::IndexableTemp) {
+      bool doBoundsCheck = reg.idx[1].relReg != nullptr;
+      DxbcRegisterValue vectorId = emitIndexLoad(reg.idx[1]);
+
+      if (doBoundsCheck) {
+        uint32_t boundsCheck = m_module.opULessThan(
+          m_module.defBoolType(), vectorId.id,
+          m_module.constu32(m_xRegs.at(reg.idx[0].offset).alength));
+
+        // Kind of ugly to have an empty else block here but there's no
+        // way for us to know the current block ID for the phi below
+        DxbcConditional cond;
+        cond.labelIf   = m_module.allocateId();
+        cond.labelElse = m_module.allocateId();
+        cond.labelEnd  = m_module.allocateId();
+
+        m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
+        m_module.opBranchConditional(boundsCheck, cond.labelIf, cond.labelElse);
+
+        m_module.opLabel(cond.labelIf);
+
+        DxbcRegisterValue returnValue = emitValueLoad(emitGetOperandPtr(reg));
+
+        m_module.opBranch(cond.labelEnd);
+        m_module.opLabel (cond.labelElse);
+
+        DxbcRegisterValue zeroValue = emitBuildZeroVector(returnValue.type);
+
+        m_module.opBranch(cond.labelEnd);
+        m_module.opLabel (cond.labelEnd);
+
+        std::array<SpirvPhiLabel, 2> phiLabels = {{
+          { returnValue.id, cond.labelIf   },
+          { zeroValue.id,   cond.labelElse },
+        }};
+
+        returnValue.id = m_module.opPhi(
+          getVectorTypeId(returnValue.type),
+          phiLabels.size(), phiLabels.data());
+        return returnValue;
+      }
+    }
+
     return emitValueLoad(emitGetOperandPtr(reg));
   }
   

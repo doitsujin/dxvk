@@ -60,25 +60,11 @@ namespace dxvk {
     if (!pDevice->GetOptions()->disableMsaa)
       DecodeSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount);
 
-    // Integer clear operations on UAVs are implemented using
-    // a view with a bit-compatible integer format, so we'll
-    // have to include that format in the format family
-    if (m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
-      DXGI_VK_FORMAT_INFO formatBase = m_device->LookupFormat(
-        m_desc.Format, DXGI_VK_FORMAT_MODE_RAW);
-
-      if (formatBase.Format != formatInfo.Format
-       && formatBase.Format != VK_FORMAT_UNDEFINED) {
-        formatFamily.Add(formatInfo.Format);
-        formatFamily.Add(formatBase.Format);
-      }
-
-      if (IsR32UavCompatibleFormat(m_desc.Format)) {
-        formatFamily.Add(formatInfo.Format);
-        formatFamily.Add(VK_FORMAT_R32_SFLOAT);
-        formatFamily.Add(VK_FORMAT_R32_UINT);
-        formatFamily.Add(VK_FORMAT_R32_SINT);
-      }
+    if ((m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS) && IsR32UavCompatibleFormat(m_desc.Format)) {
+      formatFamily.Add(formatInfo.Format);
+      formatFamily.Add(VK_FORMAT_R32_SFLOAT);
+      formatFamily.Add(VK_FORMAT_R32_UINT);
+      formatFamily.Add(VK_FORMAT_R32_SINT);
     }
 
     // The image must be marked as mutable if it can be reinterpreted
