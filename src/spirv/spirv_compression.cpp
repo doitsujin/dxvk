@@ -8,58 +8,76 @@ namespace dxvk {
   }
 
 
-  SpirvCompressedBuffer::SpirvCompressedBuffer(
-    const SpirvCodeBuffer& code)
+  SpirvCompressedBuffer::SpirvCompressedBuffer(SpirvCodeBuffer& code)
   : m_size(code.dwords()) {
+    // The compression (detailed below) achieves roughly 55% of the
+    // original size on average and is very consistent, so an initial
+    // estimate of roughly 58% will be accurate most of the time.
     const uint32_t* data = code.data();
+    m_code.reserve((m_size * 75) / 128);
 
-    // The compression works by eliminating leading null bytes
-    // from DWORDs, exploiting that SPIR-V IDs are consecutive
-    // integers that usually fall into the 16-bit range. For
-    // each DWORD, a two-bit integer is stored which indicates
-    // the number of bytes it takes in the compressed buffer.
-    // This way, it can achieve a compression ratio of ~50%.
-    m_mask.reserve((m_size + NumMaskWords - 1) / NumMaskWords);
-    m_code.reserve((m_size + 1) / 2);
+    std::array<uint32_t, 16> block;
+    uint32_t blockMask = 0;
+    uint32_t blockOffset = 0;
 
-    uint64_t dstWord  = 0;
-    uint32_t dstShift = 0;
+    // The algorithm used is a simple variable-to-fixed compression that
+    // encodes up to two consecutive SPIR-V tokens into one DWORD using
+    // a small number of different encodings. While not achieving great
+    // compression ratios, the main goal is to allow decompression code
+    // to be fast, with short dependency chains.
+    // Compressed tokens are stored in blocks of 16 DWORDs, each preceeded
+    // by a single DWORD which stores the layout for each DWORD, two bits
+    // each. The supported layouts, are as follows:
+    // 0x0: 1x 32-bit;  0x1: 1x 20-bit + 1x 12-bit
+    // 0x2: 2x 16-bit;  0x3: 1x 12-bit + 1x 20-bit
+    // These layouts are chosen to allow reasonably efficient encoding of
+    // opcode tokens, which usually fit into 20 bits, followed by type IDs,
+    // which tend to be low as well since most types are defined early.
+    for (size_t i = 0; i < m_size; ) {
+      if (likely(i + 1 < m_size)) {
+        uint32_t a = data[i];
+        uint32_t b = data[i + 1];
+        uint32_t schema;
+        uint32_t encode;
 
-    for (uint32_t i = 0; i < m_size; i += NumMaskWords) {
-      uint64_t byteCounts = 0;
-
-      for (uint32_t w = 0; w < NumMaskWords && i + w < m_size; w++) {
-        uint64_t word = data[i + w];
-        uint64_t bytes = 0;
-
-        if      (word < (1 <<  8)) bytes = 0;
-        else if (word < (1 << 16)) bytes = 1;
-        else if (word < (1 << 24)) bytes = 2;
-        else                       bytes = 3;
-
-        byteCounts |= bytes << (2 * w);
-
-        uint32_t bits = 8 * bytes + 8;
-        uint32_t rem  = bit::pack(dstWord, dstShift, word, bits);
-
-        if (unlikely(rem != 0)) {
-          m_code.push_back(dstWord);
-
-          dstWord  = 0;
-          dstShift = 0;
-
-          bit::pack(dstWord, dstShift, word >> (bits - rem), rem);
+        if (std::max(a, b) < (1u << 16)) {
+          schema = 0x2;
+          encode = a | (b << 16);
+        } else if (a < (1u << 20) && b < (1u << 12)) {
+          schema = 0x1;
+          encode = a | (b << 20);
+        } else if (a < (1u << 12) && b < (1u << 20)) {
+          schema = 0x3;
+          encode = a | (b << 12);
+        } else {
+          schema = 0x0;
+          encode = a;
         }
+
+        block[blockOffset] = encode;
+        blockMask |= schema << (blockOffset << 1);
+        blockOffset += 1;
+
+        i += schema ? 2 : 1;
+      } else {
+        block[blockOffset] = data[i++];
+        blockOffset += 1;
       }
 
-      m_mask.push_back(byteCounts);
+      if (unlikely(blockOffset == 16) || unlikely(i == m_size)) {
+        m_code.insert(m_code.end(), blockMask);
+        m_code.insert(m_code.end(), block.begin(), block.begin() + blockOffset);
+
+        blockMask = 0;
+        blockOffset = 0;
+      }
     }
 
-    if (dstShift)
-      m_code.push_back(dstWord);
-
-    m_mask.shrink_to_fit();
-    m_code.shrink_to_fit();
+    // Only shrink the array if we have lots of overhead for some reason.
+    // This should only happen on shaders where our initial estimate was
+    // too small. In general, we want to avoid reallocation here.
+    if (m_code.capacity() > (m_code.size() * 10) / 9)
+      m_code.shrink_to_fit();
   }
 
     
@@ -72,36 +90,31 @@ namespace dxvk {
     SpirvCodeBuffer code(m_size);
     uint32_t* data = code.data();
 
-    if (m_size == 0)
-      return code;
+    uint32_t srcOffset = 0;
+    uint32_t dstOffset = 0;
 
-    uint32_t maskIdx = 0;
-    uint32_t codeIdx = 0;
+    constexpr uint32_t shiftAmounts = 0x0c101420;
 
-    uint64_t srcWord  = m_code[codeIdx++];
-    uint32_t srcShift = 0;
+    while (dstOffset < m_size) {
+      uint32_t blockMask = m_code[srcOffset];
 
-    for (uint32_t i = 0; i < m_size; i += NumMaskWords) {
-      uint64_t srcMask = m_mask[maskIdx++];
+      for (uint32_t i = 0; i < 16 && dstOffset < m_size; i++) {
+        // Use 64-bit integers for some of the operands so we can
+        // shift by 32 bits and not handle it as a special cases
+        uint32_t schema = (blockMask >> (i << 1)) & 0x3;
+        uint32_t shift  = (shiftAmounts >> (schema << 3)) & 0xff;
+        uint64_t mask   = ~(~0ull << shift);
+        uint64_t encode = m_code[srcOffset + i + 1];
 
-      for (uint32_t w = 0; w < NumMaskWords && i + w < m_size; w++) {
-        uint32_t bits = 8 * ((srcMask & 3) + 1);
+        data[dstOffset] = encode & mask;
 
-        uint64_t word = 0;
-        uint32_t rem = bit::unpack(word, srcWord, srcShift, bits);
+        if (likely(schema))
+          data[dstOffset + 1] = encode >> shift;
 
-        if (unlikely(rem != 0)) {
-          srcWord  = m_code[codeIdx++];
-          srcShift = 0;
-
-          uint64_t tmp = 0;
-          bit::unpack(tmp, srcWord, srcShift, rem);
-          word |= tmp << (bits - rem);
-        }
-
-        data[i + w] = word;
-        srcMask >>= 2;
+        dstOffset += schema ? 2 : 1;
       }
+
+      srcOffset += 17;
     }
 
     return code;

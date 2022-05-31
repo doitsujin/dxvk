@@ -248,24 +248,24 @@ namespace dxvk {
       m_entryPointInterfaces.data());
     m_module.setDebugName(m_entryPointId, "main");
 
-    DxvkShaderOptions shaderOptions = { };
+    // Create the shader object
+    DxvkShaderCreateInfo info;
+    info.stage = m_programInfo.shaderStage();
+    info.resourceSlotCount = m_resourceSlots.size();
+    info.resourceSlots = m_resourceSlots.data();
+    info.inputMask = m_inputMask;
+    info.outputMask = m_outputMask;
+    info.uniformSize = m_immConstData.size();
+    info.uniformData = m_immConstData.data();
 
-    if (m_moduleInfo.xfb != nullptr) {
-      shaderOptions.rasterizedStream = m_moduleInfo.xfb->rasterizedStream;
+    if (m_moduleInfo.xfb) {
+      info.xfbRasterizedStream = m_moduleInfo.xfb->rasterizedStream;
 
       for (uint32_t i = 0; i < 4; i++)
-        shaderOptions.xfbStrides[i] = m_moduleInfo.xfb->strides[i];
+        info.xfbStrides[i] = m_moduleInfo.xfb->strides[i];
     }
 
-    // Create the shader module object
-    return new DxvkShader(
-      m_programInfo.shaderStage(),
-      m_resourceSlots.size(),
-      m_resourceSlots.data(),
-      m_interfaceSlots,
-      m_module.compile(),
-      shaderOptions,
-      std::move(m_immConstData));
+    return new DxvkShader(info, m_module.compile());
   }
   
   
@@ -686,7 +686,7 @@ namespace dxvk {
       }
 
       // Declare the input slot as defined
-      m_interfaceSlots.inputSlots |= 1u << regIdx;
+      m_inputMask |= 1u << regIdx;
       m_vArrayLength = std::max(m_vArrayLength, regIdx + 1);
     } else if (sv != DxbcSystemValue::None) {
       // Add a new system value mapping if needed
@@ -759,7 +759,7 @@ namespace dxvk {
       m_oRegs.at(regIdx) = { regType, varId };
       
       // Declare the output slot as defined
-      m_interfaceSlots.outputSlots |= 1u << regIdx;
+      m_outputMask |= 1u << regIdx;
     }
   }
   
@@ -1534,7 +1534,8 @@ namespace dxvk {
     const uint32_t*               dwordArray) {
     this->emitDclConstantBufferVar(Icb_BindingSlotId, dwordCount / 4, "icb",
       m_moduleInfo.options.dynamicIndexedConstantBufferAsSsbo);
-    m_immConstData = DxvkShaderConstData(dwordCount, dwordArray);
+    m_immConstData.resize(dwordCount * sizeof(uint32_t));
+    std::memcpy(m_immConstData.data(), dwordArray, m_immConstData.size());
   }
 
 
@@ -5576,6 +5577,49 @@ namespace dxvk {
 
   DxbcRegisterValue DxbcCompiler::emitRegisterLoadRaw(
     const DxbcRegister&           reg) {
+    if (reg.type == DxbcOperandType::IndexableTemp) {
+      bool doBoundsCheck = reg.idx[1].relReg != nullptr;
+      DxbcRegisterValue vectorId = emitIndexLoad(reg.idx[1]);
+
+      if (doBoundsCheck) {
+        uint32_t boundsCheck = m_module.opULessThan(
+          m_module.defBoolType(), vectorId.id,
+          m_module.constu32(m_xRegs.at(reg.idx[0].offset).alength));
+
+        // Kind of ugly to have an empty else block here but there's no
+        // way for us to know the current block ID for the phi below
+        DxbcConditional cond;
+        cond.labelIf   = m_module.allocateId();
+        cond.labelElse = m_module.allocateId();
+        cond.labelEnd  = m_module.allocateId();
+
+        m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
+        m_module.opBranchConditional(boundsCheck, cond.labelIf, cond.labelElse);
+
+        m_module.opLabel(cond.labelIf);
+
+        DxbcRegisterValue returnValue = emitValueLoad(emitGetOperandPtr(reg));
+
+        m_module.opBranch(cond.labelEnd);
+        m_module.opLabel (cond.labelElse);
+
+        DxbcRegisterValue zeroValue = emitBuildZeroVector(returnValue.type);
+
+        m_module.opBranch(cond.labelEnd);
+        m_module.opLabel (cond.labelEnd);
+
+        std::array<SpirvPhiLabel, 2> phiLabels = {{
+          { returnValue.id, cond.labelIf   },
+          { zeroValue.id,   cond.labelElse },
+        }};
+
+        returnValue.id = m_module.opPhi(
+          getVectorTypeId(returnValue.type),
+          phiLabels.size(), phiLabels.data());
+        return returnValue;
+      }
+    }
+
     return emitValueLoad(emitGetOperandPtr(reg));
   }
   

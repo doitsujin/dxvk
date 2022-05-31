@@ -578,25 +578,22 @@ namespace dxvk {
       return;
     }
 
-    // Set up clear color struct
     VkClearValue clearValue;
-    clearValue.color.uint32[0] = Values[0];
-    clearValue.color.uint32[1] = Values[1];
-    clearValue.color.uint32[2] = Values[2];
-    clearValue.color.uint32[3] = Values[3];
 
-    // R11G11B10 is a special cases since there's no corresponding integer format
-    // with the same bit layout, and creating an R32 view may disable compression,
-    // so if we can't preserve the bit pattern for non-zero values, we can create
-    // a temporary buffer instead and perform a copy from that.
-    bool useBuffer = false;
-
-    if (rawFormat == VK_FORMAT_B10G11R11_UFLOAT_PACK32) {
-      useBuffer = (Values[0] | Values[1] | Values[2]) != 0;
-
+    // R11G11B10 is a special case since there's no corresponding
+    // integer format with the same bit layout. Use R32 instead.
+    if (uavFormat == VK_FORMAT_B10G11R11_UFLOAT_PACK32) {
       clearValue.color.uint32[0] = ((Values[0] & 0x7FF) <<  0)
                                  | ((Values[1] & 0x7FF) << 11)
                                  | ((Values[2] & 0x3FF) << 22);
+      clearValue.color.uint32[1] = 0;
+      clearValue.color.uint32[2] = 0;
+      clearValue.color.uint32[3] = 0;
+    } else {
+      clearValue.color.uint32[0] = Values[0];
+      clearValue.color.uint32[1] = Values[1];
+      clearValue.color.uint32[2] = Values[2];
+      clearValue.color.uint32[3] = Values[3];
     }
 
     if (uav->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
@@ -639,57 +636,85 @@ namespace dxvk {
             cClearValue.color);
         });
       }
-    } else if (useBuffer) {
-      Rc<DxvkImageView> imageView = uav->GetImageView();
-
-      DxvkBufferCreateInfo bufferInfo;
-      bufferInfo.size   = imageView->formatInfo()->elementSize
-                        * imageView->info().numLayers
-                        * util::flattenImageExtent(imageView->mipLevelExtent(0));
-      bufferInfo.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-                        | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-      bufferInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
-      bufferInfo.access = VK_ACCESS_TRANSFER_READ_BIT
-                        | VK_ACCESS_TRANSFER_WRITE_BIT;
-
-      Rc<DxvkBuffer> buffer = m_device->createBuffer(bufferInfo,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-      EmitCs([
-        cDstView    = std::move(imageView),
-        cSrcBuffer  = std::move(buffer),
-        cClearValue = clearValue.color.uint32[0]
-      ] (DxvkContext* ctx) {
-        ctx->clearBuffer(cSrcBuffer, 0,
-          cSrcBuffer->info().size, cClearValue);
-
-        ctx->copyBufferToImage(cDstView->image(),
-          vk::pickSubresourceLayers(cDstView->subresources(), 0),
-          VkOffset3D { 0, 0, 0 },
-          cDstView->mipLevelExtent(0),
-          cSrcBuffer, 0, 0, 0);
-      });
     } else {
-      // Create a view with an integer format if necessary
       Rc<DxvkImageView> imageView = uav->GetImageView();
-      
-      if (uavFormat != rawFormat) {
-        DxvkImageViewCreateInfo info = imageView->info();
-        info.format = rawFormat;
-        
-        imageView = m_device->createImageView(imageView->image(), info);
+
+      // If the clear value is zero, we can use the original view regardless of
+      // the format since the bit pattern will not change in any supported format.
+      bool isZeroClearValue = !(clearValue.color.uint32[0] | clearValue.color.uint32[1]
+                              | clearValue.color.uint32[2] | clearValue.color.uint32[3]);
+
+      // Check if we can create an image view with the given raw format. If not,
+      // we'll have to use a fallback using a texel buffer view and buffer copies.
+      bool isViewCompatible = uavFormat == rawFormat;
+
+      if (!isViewCompatible && (imageView->imageInfo().flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT)) {
+        uint32_t formatCount = imageView->imageInfo().viewFormatCount;
+        isViewCompatible = formatCount == 0;
+
+        for (uint32_t i = 0; i < formatCount && !isViewCompatible; i++)
+          isViewCompatible = imageView->imageInfo().viewFormats[i] == rawFormat;
       }
-      
-      EmitCs([
-        cClearValue = clearValue,
-        cDstView    = imageView
-      ] (DxvkContext* ctx) {
-        ctx->clearImageView(cDstView,
-          VkOffset3D { 0, 0, 0 },
-          cDstView->mipLevelExtent(0),
-          VK_IMAGE_ASPECT_COLOR_BIT,
-          cClearValue);
-      });
+
+      if (isViewCompatible || isZeroClearValue) {
+        // Create a view with an integer format if necessary
+        if (uavFormat != rawFormat && !isZeroClearValue) {
+          DxvkImageViewCreateInfo info = imageView->info();
+          info.format = rawFormat;
+          
+          imageView = m_device->createImageView(imageView->image(), info);
+        }
+        
+        EmitCs([
+          cClearValue = clearValue,
+          cDstView    = imageView
+        ] (DxvkContext* ctx) {
+          ctx->clearImageView(cDstView,
+            VkOffset3D { 0, 0, 0 },
+            cDstView->mipLevelExtent(0),
+            VK_IMAGE_ASPECT_COLOR_BIT,
+            cClearValue);
+        });
+      } else {
+        DxvkBufferCreateInfo bufferInfo;
+        bufferInfo.size   = imageView->formatInfo()->elementSize
+                          * imageView->info().numLayers
+                          * util::flattenImageExtent(imageView->mipLevelExtent(0));
+        bufferInfo.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+                          | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+        bufferInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
+                          | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+        bufferInfo.access = VK_ACCESS_TRANSFER_READ_BIT
+                          | VK_ACCESS_SHADER_WRITE_BIT;
+
+        Rc<DxvkBuffer> buffer = m_device->createBuffer(bufferInfo,
+          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+        DxvkBufferViewCreateInfo bufferViewInfo;
+        bufferViewInfo.format      = rawFormat;
+        bufferViewInfo.rangeOffset = 0;
+        bufferViewInfo.rangeLength = bufferInfo.size;
+
+        Rc<DxvkBufferView> bufferView = m_device->createBufferView(buffer,
+          bufferViewInfo);
+
+        EmitCs([
+          cDstView    = std::move(imageView),
+          cSrcView    = std::move(bufferView),
+          cClearValue = clearValue.color
+        ] (DxvkContext* ctx) {
+          ctx->clearBufferView(
+            cSrcView, 0,
+            cSrcView->elementCount(),
+            cClearValue);
+
+          ctx->copyBufferToImage(cDstView->image(),
+            vk::pickSubresourceLayers(cDstView->subresources(), 0),
+            VkOffset3D { 0, 0, 0 },
+            cDstView->mipLevelExtent(0),
+            cSrcView->buffer(), 0, 0, 0);
+        });
+      }
     }
   }
   

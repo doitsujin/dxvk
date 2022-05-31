@@ -177,7 +177,7 @@ namespace dxvk {
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
     /* Just how many of these games are there?    */
-    { R"(\\Atelier_(Lulua|Lydie_and_Suelle|Ryza(_2)|Sophie_2?)\.exe$)", {{
+    { R"(\\Atelier_(Lulua|Lydie_and_Suelle|Ryza(_2)?|Sophie_2)\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
     /* ...                                        */
@@ -229,6 +229,10 @@ namespace dxvk {
     /* Sniper Ghost Warrior Contracts             */
     { R"(\\SGWContracts\.exe$)", {{
       { "d3d11.cachedDynamicResources",     "a"    },
+    }} },
+    /* Armored Warfare             */
+    { R"(\\armoredwarfare\.exe$)", {{
+      { "d3d11.cachedDynamicResources",     "c"    },
     }} },
     /* Shadow of the Tomb Raider - invariant      *
      * position breaks character rendering on NV  */
@@ -283,6 +287,10 @@ namespace dxvk {
     /* Stranger of Paradise - FF Origin           */
     { R"(\\SOPFFO\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
+    /* Small Radios Big Televisions               */
+    }} },
+    { R"(\\SRBT\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",        "True" },
     }} },
 
     /**********************************************/
@@ -311,10 +319,6 @@ namespace dxvk {
     { R"(\\Gothic(3|3Final| III Forsaken Gods)\.exe$)", {{
       { "d3d9.supportDFFormats",            "False" },
     }} },
-    /* Risen                                      */
-    { R"(\\Risen[23]?\.exe$)", {{
-      { "d3d9.invariantPosition",           "True" },
-    }} },
     /* Sonic Adventure 2                          */
     { R"(\\Sonic Adventure 2\\(launcher|sonic2app)\.exe$)", {{
       { "d3d9.floatEmulation",              "False" },
@@ -338,13 +342,8 @@ namespace dxvk {
     { R"(\\Dead Space\.exe$)", {{
       { "d3d9.supportDFFormats",                 "False" },
     }} },
-    /* Halo 2                                     */
-    { R"(\\halo2\.exe$)", {{
-      { "d3d9.invariantPosition",           "True" },
-    }} },
     /* Halo CE/HaloPC                             */
     { R"(\\halo(ce)?\.exe$)", {{
-      { "d3d9.invariantPosition",           "True" },
       // Game enables minor decal layering fixes
       // specifically when it detects AMD.
       // Avoids chip being detected as unsupported
@@ -417,7 +416,6 @@ namespace dxvk {
     /* Battlefield 2 (bad z-pass)                 */
     { R"(\\BF2\.exe$)", {{
       { "d3d9.longMad",                     "True" },
-      { "d3d9.invariantPosition",           "True" },
     }} },
     /* SpellForce 2 Series                        */
     { R"(\\SpellForce2.*\.exe$)", {{
@@ -518,10 +516,6 @@ namespace dxvk {
     { R"(\\BBCF\.exe$)", {{
       { "d3d9.floatEmulation",              "Strict" },
     }} },
-    /* James Cameron's Avatar needs invariantPosition to fix black flickering vegetation */
-    { R"(\\Avatar\.exe$)", {{
-      { "d3d9.invariantPosition",              "True" },
-    }} },
     /* Resident Evil games                      */
     { R"(\\(rerev|rerev2|re0hd|bhd|re5dx9|BH6)\.exe$)", {{
       { "d3d9.allowDirectBufferMapping",                "False" },
@@ -535,6 +529,25 @@ namespace dxvk {
        the lack of support for partial presentation */
     { R"(\\RoRLauncher\.exe$)", {{
       { "d3d9.shaderModel",                 "1" },
+    }} },
+    /* Star Wars The Force Unleashed 2          *
+     * Black particles because it tries to bind *
+     * a 2D texture for a shader that           *
+     * declares a 3d texture.                   */
+    { R"(\\SWTFU2\.exe$)", {{
+      { "d3d9.forceSamplerTypeSpecConstants",  "True" },
+    }} },
+    /* Scrapland (Remastered)                   */
+    { R"(\\Scrap\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",        "True" },
+    }} },
+    /* Majesty 2 (Collection)                   *
+     * Crashes on UMA without a memory limit,   *
+     * since the game(s) will allocate all      *
+     * available VRAM on startup.               */
+    { R"(\\Majesty2\.exe$)", {{
+      { "d3d9.memoryTrackTest",             "True" },
+      { "d3d9.maxAvailableMemory",          "2048" },
     }} },
   }};
 

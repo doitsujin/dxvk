@@ -90,21 +90,8 @@ namespace dxvk {
     const DxvkGpuQueryHandle& handle) const {
     DxvkQueryData tmpData;
 
-    // Wait for the query to be reset first
-    VkResult result;
-    
-    if (handle.resetEvent) {
-      result = m_vkd->vkGetEventStatus(
-        m_vkd->device(), handle.resetEvent);
-    
-      if (result == VK_EVENT_RESET)
-        return DxvkGpuQueryStatus::Pending;
-      else if (result != VK_EVENT_SET)
-        return DxvkGpuQueryStatus::Failed;
-    }
-    
     // Try to copy query data to temporary structure
-    result = m_vkd->vkGetQueryPoolResults(m_vkd->device(),
+    VkResult result = m_vkd->vkGetQueryPoolResults(m_vkd->device(),
       handle.queryPool, handle.queryId, 1,
       sizeof(DxvkQueryData), &tmpData,
       sizeof(DxvkQueryData), VK_QUERY_RESULT_64_BIT);
@@ -167,11 +154,6 @@ namespace dxvk {
 
   
   DxvkGpuQueryAllocator::~DxvkGpuQueryAllocator() {
-    for (DxvkGpuQueryHandle handle : m_handles) {
-      m_vkd->vkDestroyEvent(m_vkd->device(),
-        handle.resetEvent, nullptr);
-    }
-
     for (VkQueryPool pool : m_pools) {
       m_vkd->vkDestroyQueryPool(
         m_vkd->device(), pool, nullptr);
@@ -233,22 +215,8 @@ namespace dxvk {
 
     m_pools.push_back(queryPool);
 
-    VkEventCreateInfo eventInfo;
-    eventInfo.sType = VK_STRUCTURE_TYPE_EVENT_CREATE_INFO;
-    eventInfo.pNext = nullptr;
-    eventInfo.flags = 0;
-    
-    for (uint32_t i = 0; i < m_queryPoolSize; i++) {
-      VkEvent event = VK_NULL_HANDLE;
-
-      if (!m_device->features().extHostQueryReset.hostQueryReset
-       && m_vkd->vkCreateEvent(m_vkd->device(), &eventInfo, nullptr, &event) != VK_SUCCESS) {
-        Logger::err("DXVK: Failed to create query reset event");
-        return;
-      }
-
-      m_handles.push_back({ this, event, queryPool, i });
-    }
+    for (uint32_t i = 0; i < m_queryPoolSize; i++)
+      m_handles.push_back({ this, queryPool, i });
   }
 
 
@@ -337,10 +305,9 @@ namespace dxvk {
     query->addQueryHandle(handle);
     query->end();
 
-    cmd->cmdResetQuery(
+    cmd->resetQuery(
       handle.queryPool,
-      handle.queryId,
-      handle.resetEvent);
+      handle.queryId);
     
     cmd->cmdWriteTimestamp(
       VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
@@ -380,10 +347,9 @@ namespace dxvk {
     const Rc<DxvkGpuQuery>&     query) {
     DxvkGpuQueryHandle handle = m_pool->allocQuery(query->type());
     
-    cmd->cmdResetQuery(
+    cmd->resetQuery(
       handle.queryPool,
-      handle.queryId,
-      handle.resetEvent);
+      handle.queryId);
     
     if (query->isIndexed()) {
       cmd->cmdBeginQueryIndexed(

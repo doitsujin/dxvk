@@ -404,7 +404,7 @@ namespace dxvk {
           HANDLE                        hEvent,
           DWORD*                        pdwCookie) {
     if (!hEvent || !pdwCookie)
-      return E_INVALIDARG;
+      return DXGI_ERROR_INVALID_CALL;
 
     std::unique_lock<dxvk::mutex> lock(m_mutex);
     DWORD cookie = ++m_eventCookie;

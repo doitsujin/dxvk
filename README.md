@@ -35,7 +35,7 @@ export WINEPREFIX=/path/to/.wine-prefix
 
 ### Requirements:
 - [wine 3.10](https://www.winehq.org/) or newer
-- [Meson](https://mesonbuild.com/) build system (at least version 0.46)
+- [Meson](https://mesonbuild.com/) build system (at least version 0.49)
 - [Mingw-w64](https://www.mingw-w64.org) compiler and headers (at least version 8.0)
 - [glslang](https://github.com/KhronosGroup/glslang) compiler
 

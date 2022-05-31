@@ -45,8 +45,7 @@ namespace dxvk {
 
   template <size_t N>
   static void copyToStringArray(char (&dst)[N], const char* src) {
-    std::strncpy(dst, src, N);
-    dst[N - 1] = '\0';
+    dxvk::str::strlcpy(dst, src, N);
   }
 
 
