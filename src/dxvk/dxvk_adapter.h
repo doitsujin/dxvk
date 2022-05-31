@@ -274,7 +274,23 @@ namespace dxvk {
      * \returns \c true if the system has unified memory.
      */
     bool isUnifiedMemoryArchitecture() const;
-    
+
+    void linkToDGPU(Rc<DxvkAdapter> dpgu_adapter)
+    {
+        dpgu_adapter->m_linkedIGPUAdapter = this;
+        m_linkedToDGPU = true;
+    }
+
+    Rc<DxvkAdapter> linkedIGPUAdapter() const
+    {
+        return m_linkedIGPUAdapter;
+    }
+
+    bool isLinkedToDGPU() const
+    {
+        return m_linkedToDGPU;
+    }
+
   private:
     
     Rc<vk::InstanceFn>  m_vki;
@@ -286,7 +302,10 @@ namespace dxvk {
     DxvkDeviceFeatures  m_deviceFeatures;
 
     bool                m_hasMemoryBudget;
-    
+
+    Rc<DxvkAdapter>     m_linkedIGPUAdapter;
+    bool                m_linkedToDGPU = false;
+
     std::vector<VkQueueFamilyProperties> m_queueFamilies;
 
     std::array<std::atomic<uint64_t>, VK_MAX_MEMORY_HEAPS> m_memoryAllocated = { };

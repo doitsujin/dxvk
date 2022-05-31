@@ -58,14 +58,14 @@ namespace dxvk::wsi {
     return info.oMonitor;
   }
 
-  HMONITOR enumMonitors(const LUID *adapterLUID, uint32_t index) {
+  HMONITOR enumMonitors(const LUID *adapterLUID[], uint32_t numLUIDs, uint32_t index) {
 
-    if (!adapterLUID)
+    if (!numLUIDs)
       return enumMonitors(index);
 
     std::vector<DISPLAYCONFIG_PATH_INFO> paths;
     std::vector<DISPLAYCONFIG_MODE_INFO> modes;
-    std::set<uint32_t> sources;
+    std::set<std::pair<uint32_t, uint32_t>> sources;
     UINT32 pathCount, modeCount;
     LONG result;
 
@@ -95,11 +95,19 @@ namespace dxvk::wsi {
 
     for (const auto &path : paths)
     {
-      if (std::memcmp(&path.sourceInfo.adapterId, adapterLUID, sizeof(path.sourceInfo.adapterId)))
+      uint32_t i;
+
+      for (i = 0; i < numLUIDs; ++i)
+      {
+        if (!std::memcmp(&path.sourceInfo.adapterId, adapterLUID[i], sizeof(path.sourceInfo.adapterId)))
+          break;
+      }
+      if (i == numLUIDs)
         continue;
+
       /* Mirrored displays appear as multiple paths with the same GDI device name, that comes as single
        * dxgi output. */
-      if (!sources.insert(path.sourceInfo.id).second)
+      if (!sources.insert(std::pair<uint32_t, uint32_t>(i, path.sourceInfo.id)).second)
         continue;
 
       DISPLAYCONFIG_SOURCE_DEVICE_NAME deviceName;

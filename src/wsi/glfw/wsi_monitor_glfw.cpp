@@ -22,7 +22,7 @@ namespace dxvk::wsi {
          : nullptr;
   }
 
-  HMONITOR enumMonitors(const LUID *adapterLUID, uint32_t index) {
+  HMONITOR enumMonitors(const LUID *adapterLUID[], uint32_t numLUIDs, uint32_t index) {
     return enumMonitors(index);
   }
 

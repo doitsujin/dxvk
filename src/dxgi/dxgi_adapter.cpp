@@ -150,9 +150,28 @@ namespace dxvk {
       return E_INVALIDARG;
 
     const auto deviceId   = m_adapter->devicePropertiesExt().vk11;
+    const LUID *adapterLUIDs[2];
+    uint32_t numLUIDs = 0;
 
-    HMONITOR monitor = wsi::enumMonitors(
-      deviceId.deviceLUIDValid ? reinterpret_cast<const LUID *>(deviceId.deviceLUID) : nullptr, Output);
+    if (m_adapter->isLinkedToDGPU())
+      return DXGI_ERROR_NOT_FOUND;
+
+    if (deviceId.deviceLUIDValid)
+      adapterLUIDs[numLUIDs++] = reinterpret_cast<const LUID *>(deviceId.deviceLUID);
+
+    auto linkedAdapter = m_adapter->linkedIGPUAdapter();
+    /* If either LUID is not valid enumerate all monitors. */
+    if (numLUIDs && linkedAdapter != nullptr)
+    {
+      const auto *deviceId   = &linkedAdapter->devicePropertiesExt().vk11;
+
+      if (deviceId->deviceLUIDValid)
+        adapterLUIDs[numLUIDs++] = reinterpret_cast<const LUID *>(deviceId->deviceLUID);
+      else
+        numLUIDs = 0;
+    }
+
+    HMONITOR monitor = wsi::enumMonitors(adapterLUIDs, numLUIDs, Output);
 
     if (monitor == nullptr)
       return DXGI_ERROR_NOT_FOUND;
