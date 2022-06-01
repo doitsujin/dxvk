@@ -3,6 +3,7 @@
 #include <spirv/spirv.hpp>
 
 #include <iostream>
+#include <utility>
 #include <vector>
 
 #include "spirv_instruction.h"
