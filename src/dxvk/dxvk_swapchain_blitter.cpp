@@ -191,11 +191,11 @@ namespace dxvk {
     else
       ctx->clearRenderTarget(dstView, VK_IMAGE_ASPECT_COLOR_BIT, VkClearValue());
 
-    ctx->bindResourceSampler(BindingIds::Image, m_samplerPresent);
-    ctx->bindResourceSampler(BindingIds::Gamma, m_samplerGamma);
+    ctx->bindResourceSampler(VK_SHADER_STAGE_FRAGMENT_BIT, BindingIds::Image, m_samplerPresent);
+    ctx->bindResourceSampler(VK_SHADER_STAGE_FRAGMENT_BIT, BindingIds::Gamma, m_samplerGamma);
 
-    ctx->bindResourceView(BindingIds::Image, srcView, nullptr);
-    ctx->bindResourceView(BindingIds::Gamma, m_gammaView, nullptr);
+    ctx->bindResourceView(VK_SHADER_STAGE_FRAGMENT_BIT, BindingIds::Image, srcView, nullptr);
+    ctx->bindResourceView(VK_SHADER_STAGE_FRAGMENT_BIT, BindingIds::Gamma, m_gammaView, nullptr);
 
     ctx->bindShader(VK_SHADER_STAGE_VERTEX_BIT, m_vs);
     ctx->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, fs);
