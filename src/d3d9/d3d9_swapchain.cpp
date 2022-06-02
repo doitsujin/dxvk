@@ -199,7 +199,7 @@ namespace dxvk {
     m_window = m_presentParams.hDeviceWindow;
 
     UpdatePresentRegion(nullptr, nullptr);
-    if (!pDevice->GetOptions()->deferSurfaceCreation)
+    if (m_window && !pDevice->GetOptions()->deferSurfaceCreation)
       CreatePresenter();
 
     CreateBackBuffers(m_presentParams.BackBufferCount);
