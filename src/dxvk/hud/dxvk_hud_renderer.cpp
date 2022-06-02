@@ -107,10 +107,10 @@ namespace dxvk::hud {
       m_context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,   m_textShaders.vert);
       m_context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_textShaders.frag);
       
-      m_context->bindResourceBuffer (0, DxvkBufferSlice(m_fontBuffer));
-      m_context->bindResourceView   (1, nullptr, m_dataView);
-      m_context->bindResourceSampler(2, m_fontSampler);
-      m_context->bindResourceView   (2, m_fontView, nullptr);
+      m_context->bindResourceBuffer (VK_SHADER_STAGE_VERTEX_BIT,   0, DxvkBufferSlice(m_fontBuffer));
+      m_context->bindResourceView   (VK_SHADER_STAGE_VERTEX_BIT,   1, nullptr, m_dataView);
+      m_context->bindResourceSampler(VK_SHADER_STAGE_FRAGMENT_BIT, 2, m_fontSampler);
+      m_context->bindResourceView   (VK_SHADER_STAGE_FRAGMENT_BIT, 2, m_fontView, nullptr);
       
       static const DxvkInputAssemblyState iaState = {
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
@@ -129,7 +129,7 @@ namespace dxvk::hud {
       m_context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,   m_graphShaders.vert);
       m_context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_graphShaders.frag);
       
-      m_context->bindResourceBuffer(0, DxvkBufferSlice(m_dataBuffer));
+      m_context->bindResourceBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 0, DxvkBufferSlice(m_dataBuffer));
 
       static const DxvkInputAssemblyState iaState = {
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
