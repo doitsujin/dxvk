@@ -1199,7 +1199,7 @@ namespace dxvk {
       ctx->bindRenderTargets(rt);
       ctx->bindShader(VK_SHADER_STAGE_VERTEX_BIT, m_vs);
       ctx->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_fs);
-      ctx->bindResourceBuffer(0, DxvkBufferSlice(m_ubo));
+      ctx->bindResourceBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 0, DxvkBufferSlice(m_ubo));
 
       DxvkInputAssemblyState iaState;
       iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -1292,10 +1292,10 @@ namespace dxvk {
 
       ctx->invalidateBuffer(m_ubo, uboSlice);
       ctx->setViewports(1, &viewport, &scissor);
-      ctx->bindResourceSampler(1, m_sampler);
+      ctx->bindResourceSampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1, m_sampler);
 
       for (uint32_t i = 0; i < cViews.size(); i++)
-        ctx->bindResourceView(2 + i, cViews[i], nullptr);
+        ctx->bindResourceView(VK_SHADER_STAGE_FRAGMENT_BIT, 2 + i, cViews[i], nullptr);
 
       ctx->draw(3, 1, 0, 0);
     });
