@@ -151,13 +151,6 @@ namespace dxvk {
           VkShaderStageFlags    stages,
           uint32_t              slot,
     const DxvkBufferSlice&      buffer) {
-    bindResourceBuffer(slot, buffer);
-  }
-  
-  
-  void DxvkContext::bindResourceBuffer(
-          uint32_t              slot,
-    const DxvkBufferSlice&      buffer) {
     bool needsUpdate = !m_rc[slot].bufferSlice.matchesBuffer(buffer);
 
     if (likely(needsUpdate))
@@ -184,14 +177,6 @@ namespace dxvk {
           uint32_t              slot,
     const Rc<DxvkImageView>&    imageView,
     const Rc<DxvkBufferView>&   bufferView) {
-    bindResourceView(slot, imageView, bufferView);
-  }
-  
-  
-  void DxvkContext::bindResourceView(
-          uint32_t              slot,
-    const Rc<DxvkImageView>&    imageView,
-    const Rc<DxvkBufferView>&   bufferView) {
     m_rc[slot].imageView   = imageView;
     m_rc[slot].bufferView  = bufferView;
     m_rc[slot].bufferSlice = bufferView != nullptr
@@ -207,13 +192,6 @@ namespace dxvk {
   
   void DxvkContext::bindResourceSampler(
           VkShaderStageFlags    stages,
-          uint32_t              slot,
-    const Rc<DxvkSampler>&      sampler) {
-    bindResourceSampler(slot, sampler);
-  }
-  
-  
-  void DxvkContext::bindResourceSampler(
           uint32_t              slot,
     const Rc<DxvkSampler>&      sampler) {
     m_rc[slot].sampler = sampler;

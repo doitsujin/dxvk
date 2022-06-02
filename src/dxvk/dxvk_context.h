@@ -118,10 +118,6 @@ namespace dxvk {
             uint32_t              slot,
       const DxvkBufferSlice&      buffer);
     
-    void bindResourceBuffer(
-            uint32_t              slot,
-      const DxvkBufferSlice&      buffer);
-    
     /**
      * \brief Binds image or buffer view
      * 
@@ -139,11 +135,6 @@ namespace dxvk {
       const Rc<DxvkImageView>&    imageView,
       const Rc<DxvkBufferView>&   bufferView);
     
-    void bindResourceView(
-            uint32_t              slot,
-      const Rc<DxvkImageView>&    imageView,
-      const Rc<DxvkBufferView>&   bufferView);
-    
     /**
      * \brief Binds image sampler
      * 
@@ -155,10 +146,6 @@ namespace dxvk {
      */
     void bindResourceSampler(
             VkShaderStageFlags    stages,
-            uint32_t              slot,
-      const Rc<DxvkSampler>&      sampler);
-    
-    void bindResourceSampler(
             uint32_t              slot,
       const Rc<DxvkSampler>&      sampler);
     
