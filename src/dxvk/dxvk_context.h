@@ -109,9 +109,15 @@ namespace dxvk {
      * \brief Binds buffer as a shader resource
      * 
      * Can be used for uniform and storage buffers.
+     * \param [in] stages Shader stages that access the binding
      * \param [in] slot Resource binding slot
      * \param [in] buffer Buffer to bind
      */
+    void bindResourceBuffer(
+            VkShaderStageFlags    stages,
+            uint32_t              slot,
+      const DxvkBufferSlice&      buffer);
+    
     void bindResourceBuffer(
             uint32_t              slot,
       const DxvkBufferSlice&      buffer);
@@ -122,10 +128,17 @@ namespace dxvk {
      * Can be used for sampled images with a dedicated
      * sampler and for storage images, as well as for
      * uniform texel buffers and storage texel buffers.
+     * \param [in] stages Shader stages that access the binding
      * \param [in] slot Resource binding slot
      * \param [in] imageView Image view to bind
      * \param [in] bufferView Buffer view to bind
      */
+    void bindResourceView(
+            VkShaderStageFlags    stages,
+            uint32_t              slot,
+      const Rc<DxvkImageView>&    imageView,
+      const Rc<DxvkBufferView>&   bufferView);
+    
     void bindResourceView(
             uint32_t              slot,
       const Rc<DxvkImageView>&    imageView,
@@ -136,9 +149,15 @@ namespace dxvk {
      * 
      * Binds a sampler that can be used together with
      * an image in order to read from a texture.
+     * \param [in] stages Shader stages that access the binding
      * \param [in] slot Resource binding slot
      * \param [in] sampler Sampler view to bind
      */
+    void bindResourceSampler(
+            VkShaderStageFlags    stages,
+            uint32_t              slot,
+      const Rc<DxvkSampler>&      sampler);
+    
     void bindResourceSampler(
             uint32_t              slot,
       const Rc<DxvkSampler>&      sampler);
