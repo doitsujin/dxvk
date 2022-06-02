@@ -159,7 +159,7 @@ namespace dxvk::hud {
     SpirvCodeBuffer vsCode(hud_text_vert);
     SpirvCodeBuffer fsCode(hud_text_frag);
     
-    const std::array<DxvkResourceSlot, 3> vsResources = {{
+    const std::array<DxvkResourceSlot, 2> vsResources = {{
       { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       VK_IMAGE_VIEW_TYPE_MAX_ENUM },
       { 1, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, VK_IMAGE_VIEW_TYPE_MAX_ENUM },
     }};
