@@ -2653,11 +2653,11 @@ namespace dxvk {
       ctx->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr);
 
       ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT, shader);
-      ctx->bindResourceBuffer(getSWVPBufferSlot(), cBufferSlice);
+      ctx->bindResourceBuffer(VK_SHADER_STAGE_GEOMETRY_BIT, getSWVPBufferSlot(), cBufferSlice);
       ctx->draw(
         drawInfo.vertexCount, drawInfo.instanceCount,
         cStartIndex, 0);
-      ctx->bindResourceBuffer(getSWVPBufferSlot(), DxvkBufferSlice());
+      ctx->bindResourceBuffer(VK_SHADER_STAGE_GEOMETRY_BIT, getSWVPBufferSlot(), DxvkBufferSlice());
       ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT, nullptr);
     });
 
@@ -4889,10 +4889,11 @@ namespace dxvk {
       BufferType);
 
     EmitCs([
-      cSlotId = slotId,
-      cBuffer = buffer
+      cShaderStage  = GetShaderStage(ShaderStage),
+      cSlotId       = slotId,
+      cBuffer       = buffer
     ] (DxvkContext* ctx) {
-      ctx->bindResourceBuffer(cSlotId,
+      ctx->bindResourceBuffer(cShaderStage, cSlotId,
         DxvkBufferSlice(cBuffer, 0, cBuffer->info().size));
     });
 
@@ -5072,7 +5073,9 @@ namespace dxvk {
         cSlotId = slotId,
         cSize   = bufferSize
       ] (DxvkContext* ctx) {
-        ctx->bindResourceBuffer(cSlotId,
+        VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+
+        ctx->bindResourceBuffer(stage, cSlotId,
           DxvkBufferSlice(cBuffer, 0, cSize));
       });
       boundConstantBufferSize = bufferSize;
@@ -5929,9 +5932,11 @@ namespace dxvk {
       cSlot = slot,
       cKey  = key
     ] (DxvkContext* ctx) {
+      VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
       auto pair = m_samplers.find(cKey);
       if (pair != m_samplers.end()) {
-        ctx->bindResourceSampler(cSlot, pair->second);
+        ctx->bindResourceSampler(stage, cSlot, pair->second);
         return;
       }
 
@@ -5971,7 +5976,7 @@ namespace dxvk {
         auto sampler = m_dxvkDevice->createSampler(info);
 
         m_samplers.insert(std::make_pair(cKey, sampler));
-        ctx->bindResourceSampler(cSlot, std::move(sampler));
+        ctx->bindResourceSampler(stage, cSlot, std::move(sampler));
 
         m_samplerCount++;
       }
@@ -5998,7 +6003,8 @@ namespace dxvk {
       cSlot = slot,
       cImageView = commonTex->GetSampleView(srgb)
     ](DxvkContext* ctx) {
-      ctx->bindResourceView(cSlot, cImageView, nullptr);
+      VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+      ctx->bindResourceView(stage, cSlot, cImageView, nullptr);
     });
   }
 
@@ -6013,7 +6019,8 @@ namespace dxvk {
         uint32_t slot = computeResourceSlotId(shaderSampler.first,
           DxsoBindingType::Image, uint32_t(shaderSampler.second));
 
-        ctx->bindResourceView(slot, nullptr, nullptr);
+        VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        ctx->bindResourceView(stage, slot, nullptr, nullptr);
       }
     });
   }
@@ -7251,10 +7258,12 @@ namespace dxvk {
     EmitCs([
       cSize = m_state.textures.size()
     ](DxvkContext* ctx) {
+      VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
       for (uint32_t i = 0; i < cSize; i++) {
         auto samplerInfo = RemapStateSamplerShader(DWORD(i));
         uint32_t slot = computeResourceSlotId(samplerInfo.first, DxsoBindingType::Image, uint32_t(samplerInfo.second));
-        ctx->bindResourceView(slot, nullptr, nullptr);
+        ctx->bindResourceView(stage, slot, nullptr, nullptr);
       }
     });
 
