@@ -2282,7 +2282,7 @@ namespace dxvk {
             m_state.cs.unorderedAccessViews[uavId] = nullptr;
             m_state.cs.uavMask.clr(uavId);
 
-            BindUnorderedAccessView(
+            BindUnorderedAccessView<DxbcProgramType::ComputeShader>(
               uavSlotId + uavId, nullptr,
               ctrSlotId + uavId, ~0u);
           }
@@ -2303,7 +2303,7 @@ namespace dxvk {
         m_state.cs.unorderedAccessViews[StartSlot + i] = uav;
         m_state.cs.uavMask.set(StartSlot + i, uav != nullptr);
 
-        BindUnorderedAccessView(
+        BindUnorderedAccessView<DxbcProgramType::ComputeShader>(
           uavSlotId + StartSlot + i, uav,
           ctrSlotId + StartSlot + i, ctr);
         
@@ -2471,7 +2471,7 @@ namespace dxvk {
           if (m_state.ps.unorderedAccessViews[i] != uav || ctr != ~0u) {
             m_state.ps.unorderedAccessViews[i] = uav;
 
-            BindUnorderedAccessView(
+            BindUnorderedAccessView<DxbcProgramType::PixelShader>(
               uavSlotId + i, uav,
               ctrSlotId + i, ctr);
             
@@ -3135,8 +3135,8 @@ namespace dxvk {
       uint32_t slotId = computeConstantBufferBinding(ShaderStage,
         D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT);
 
-      ctx->bindShader        (stage,  cShader);
-      ctx->bindResourceBuffer(slotId, cSlice);
+      ctx->bindShader        (stage, cShader);
+      ctx->bindResourceBuffer(stage, slotId, cSlice);
     });
   }
 
@@ -3253,6 +3253,7 @@ namespace dxvk {
   }
 
 
+  template<DxbcProgramType ShaderStage>
   void D3D11DeviceContext::BindConstantBuffer(
           UINT                              Slot,
           D3D11Buffer*                      pBuffer,
@@ -3262,11 +3263,13 @@ namespace dxvk {
       cSlotId      = Slot,
       cBufferSlice = Length ? pBuffer->GetBufferSlice(16 * Offset, 16 * Length) : DxvkBufferSlice()
     ] (DxvkContext* ctx) {
-      ctx->bindResourceBuffer(cSlotId, cBufferSlice);
+      VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+      ctx->bindResourceBuffer(stage, cSlotId, cBufferSlice);
     });
   }
   
   
+  template<DxbcProgramType ShaderStage>
   void D3D11DeviceContext::BindSampler(
           UINT                              Slot,
           D3D11SamplerState*                pSampler) {
@@ -3274,11 +3277,13 @@ namespace dxvk {
       cSlotId   = Slot,
       cSampler  = pSampler != nullptr ? pSampler->GetDXVKSampler() : nullptr
     ] (DxvkContext* ctx) {
-      ctx->bindResourceSampler(cSlotId, cSampler);
+      VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+      ctx->bindResourceSampler(stage, cSlotId, cSampler);
     });
   }
   
   
+  template<DxbcProgramType ShaderStage>
   void D3D11DeviceContext::BindShaderResource(
           UINT                              Slot,
           D3D11ShaderResourceView*          pResource) {
@@ -3287,11 +3292,13 @@ namespace dxvk {
       cImageView  = pResource != nullptr ? pResource->GetImageView()  : nullptr,
       cBufferView = pResource != nullptr ? pResource->GetBufferView() : nullptr
     ] (DxvkContext* ctx) {
-      ctx->bindResourceView(cSlotId, cImageView, cBufferView);
+      VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+      ctx->bindResourceView(stage, cSlotId, cImageView, cBufferView);
     });
   }
   
   
+  template<DxbcProgramType ShaderStage>
   void D3D11DeviceContext::BindUnorderedAccessView(
           UINT                              UavSlot,
           D3D11UnorderedAccessView*         pUav,
@@ -3305,6 +3312,10 @@ namespace dxvk {
       cCounterSlice = pUav != nullptr ? pUav->GetCounterSlice() : DxvkBufferSlice(),
       cCounterValue = Counter
     ] (DxvkContext* ctx) {
+      VkShaderStageFlags stages = ShaderStage == DxbcProgramType::PixelShader
+        ? VK_SHADER_STAGE_ALL_GRAPHICS
+        : VK_SHADER_STAGE_COMPUTE_BIT;
+
       if (cCounterSlice.defined() && cCounterValue != ~0u) {
         ctx->updateBuffer(
           cCounterSlice.buffer(),
@@ -3313,8 +3324,8 @@ namespace dxvk {
           &cCounterValue);
       }
 
-      ctx->bindResourceView   (cUavSlotId, cImageView, cBufferView);
-      ctx->bindResourceBuffer (cCtrSlotId, cCounterSlice);
+      ctx->bindResourceView   (stages, cUavSlotId, cImageView, cBufferView);
+      ctx->bindResourceBuffer (stages, cCtrSlotId, cCounterSlice);
     });
   }
   
@@ -3871,7 +3882,7 @@ namespace dxvk {
         Bindings[StartSlot + i].constantCount  = constantCount;
         Bindings[StartSlot + i].constantBound  = constantCount;
         
-        BindConstantBuffer(slotId + i, newBuffer, 0, constantCount);
+        BindConstantBuffer<ShaderStage>(slotId + i, newBuffer, 0, constantCount);
       }
     }
   }
@@ -3931,7 +3942,7 @@ namespace dxvk {
         Bindings[StartSlot + i].constantCount  = constantCount;
         Bindings[StartSlot + i].constantBound  = constantBound;
         
-        BindConstantBuffer(slotId + i, newBuffer, constantOffset, constantBound);
+        BindConstantBuffer<ShaderStage>(slotId + i, newBuffer, constantOffset, constantBound);
       }
     }
   }
@@ -3950,7 +3961,7 @@ namespace dxvk {
       
       if (Bindings[StartSlot + i] != sampler) {
         Bindings[StartSlot + i] = sampler;
-        BindSampler(slotId + i, sampler);
+        BindSampler<ShaderStage>(slotId + i, sampler);
       }
     }
   }
@@ -3979,7 +3990,7 @@ namespace dxvk {
         }
 
         Bindings.views[StartSlot + i] = resView;
-        BindShaderResource(slotId + i, resView);
+        BindShaderResource<ShaderStage>(slotId + i, resView);
       }
     }
   }
@@ -4100,35 +4111,41 @@ namespace dxvk {
       // Unbind per-shader stage resources
       for (uint32_t i = 0; i < 6; i++) {
         auto programType = DxbcProgramType(i);
-        ctx->bindShader(GetShaderStage(programType), nullptr);
+        auto stage = GetShaderStage(programType);
+
+        ctx->bindShader(stage, nullptr);
 
         // Unbind constant buffers, including the shader's ICB
         auto cbSlotId = computeConstantBufferBinding(programType, 0);
 
         for (uint32_t j = 0; j <= D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT; j++)
-          ctx->bindResourceBuffer(cbSlotId + j, DxvkBufferSlice());
+          ctx->bindResourceBuffer(stage, cbSlotId + j, DxvkBufferSlice());
 
         // Unbind shader resource views
         auto srvSlotId = computeSrvBinding(programType, 0);
 
         for (uint32_t j = 0; j < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; j++)
-          ctx->bindResourceView(srvSlotId + j, nullptr, nullptr);
+          ctx->bindResourceView(stage, srvSlotId + j, nullptr, nullptr);
 
         // Unbind texture samplers
         auto samplerSlotId = computeSamplerBinding(programType, 0);
 
         for (uint32_t j = 0; j < D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT; j++)
-          ctx->bindResourceSampler(samplerSlotId + j, nullptr);
+          ctx->bindResourceSampler(stage, samplerSlotId + j, nullptr);
 
         // Unbind UAVs for supported stages
         if (programType == DxbcProgramType::PixelShader
          || programType == DxbcProgramType::ComputeShader) {
+          VkShaderStageFlags stages = programType == DxbcProgramType::PixelShader
+            ? VK_SHADER_STAGE_ALL_GRAPHICS
+            : VK_SHADER_STAGE_COMPUTE_BIT;
+
           auto uavSlotId = computeUavBinding(programType, 0);
           auto ctrSlotId = computeUavCounterBinding(programType, 0);
 
           for (uint32_t j = 0; j < D3D11_1_UAV_SLOT_COUNT; j++) {
-            ctx->bindResourceView   (uavSlotId, nullptr, nullptr);
-            ctx->bindResourceBuffer (ctrSlotId, DxvkBufferSlice());
+            ctx->bindResourceView   (stages, uavSlotId, nullptr, nullptr);
+            ctx->bindResourceBuffer (stages, ctrSlotId, DxvkBufferSlice());
           }
         }
       }
@@ -4206,7 +4223,7 @@ namespace dxvk {
     uint32_t slotId = computeConstantBufferBinding(Stage, 0);
     
     for (uint32_t i = 0; i < Bindings.size(); i++) {
-      BindConstantBuffer(slotId + i, Bindings[i].buffer.ptr(),
+      BindConstantBuffer<Stage>(slotId + i, Bindings[i].buffer.ptr(),
         Bindings[i].constantOffset, Bindings[i].constantBound);
     }
   }
@@ -4218,7 +4235,7 @@ namespace dxvk {
     uint32_t slotId = computeSamplerBinding(Stage, 0);
     
     for (uint32_t i = 0; i < Bindings.size(); i++)
-      BindSampler(slotId + i, Bindings[i]);
+      BindSampler<Stage>(slotId + i, Bindings[i]);
   }
   
   
@@ -4228,7 +4245,7 @@ namespace dxvk {
     uint32_t slotId = computeSrvBinding(Stage, 0);
     
     for (uint32_t i = 0; i < Bindings.views.size(); i++)
-      BindShaderResource(slotId + i, Bindings.views[i].ptr());
+      BindShaderResource<Stage>(slotId + i, Bindings.views[i].ptr());
   }
   
   
@@ -4239,7 +4256,7 @@ namespace dxvk {
     uint32_t ctrSlotId = computeUavCounterBinding(Stage, 0);
     
     for (uint32_t i = 0; i < Bindings.size(); i++) {
-      BindUnorderedAccessView(
+      BindUnorderedAccessView<Stage>(
         uavSlotId + i,
         Bindings[i].ptr(),
         ctrSlotId + i, ~0u);
@@ -4333,7 +4350,7 @@ namespace dxvk {
           Bindings.views[srvId] = nullptr;
           Bindings.hazardous.clr(srvId);
 
-          BindShaderResource(slotId + srvId, nullptr);
+          BindShaderResource<ShaderStage>(slotId + srvId, nullptr);
         }
       } else {
         // Avoid further redundant iterations
@@ -4400,7 +4417,7 @@ namespace dxvk {
       if (CheckViewOverlap(pView, m_state.ps.unorderedAccessViews[i].ptr())) {
         m_state.ps.unorderedAccessViews[i] = nullptr;
 
-        BindUnorderedAccessView(
+        BindUnorderedAccessView<DxbcProgramType::PixelShader>(
           uavSlotId + i, nullptr,
           ctrSlotId + i, ~0u);
       }

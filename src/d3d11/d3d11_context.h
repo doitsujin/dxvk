@@ -751,20 +751,24 @@ namespace dxvk {
             D3D11Buffer*                      pBuffer,
             UINT                              Offset);
     
+    template<DxbcProgramType ShaderStage>
     void BindConstantBuffer(
             UINT                              Slot,
             D3D11Buffer*                      pBuffer,
             UINT                              Offset,
             UINT                              Length);
     
+    template<DxbcProgramType ShaderStage>
     void BindSampler(
             UINT                              Slot,
             D3D11SamplerState*                pSampler);
     
+    template<DxbcProgramType ShaderStage>
     void BindShaderResource(
             UINT                              Slot,
             D3D11ShaderResourceView*          pResource);
     
+    template<DxbcProgramType ShaderStage>
     void BindUnorderedAccessView(
             UINT                              UavSlot,
             D3D11UnorderedAccessView*         pUav,
