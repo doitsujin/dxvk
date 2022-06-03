@@ -66,6 +66,7 @@ namespace dxvk {
   : m_info(info), m_code(spirv) {
     m_info.resourceSlots = nullptr;
     m_info.uniformData = nullptr;
+    m_info.bindings = nullptr;
 
     // Copy resource binding slot infos
     if (info.resourceSlotCount) {
@@ -73,6 +74,21 @@ namespace dxvk {
       for (uint32_t i = 0; i < info.resourceSlotCount; i++)
         m_slots[i] = info.resourceSlots[i];
       m_info.resourceSlots = m_slots.data();
+    }
+
+    for (uint32_t i = 0; i < info.bindingCount; i++) {
+      DxvkBindingInfo binding = info.bindings[i];
+      binding.stages = info.stage;
+      m_bindings.addBinding(binding);
+    }
+
+    if (info.pushConstSize) {
+      VkPushConstantRange pushConst;
+      pushConst.stageFlags = info.stage;
+      pushConst.offset = info.pushConstOffset;
+      pushConst.size = info.pushConstSize;
+
+      m_bindings.addPushConstantRange(pushConst);
     }
 
     // Copy uniform buffer data

@@ -58,6 +58,8 @@ namespace dxvk {
     /// Descriptor info
     uint32_t resourceSlotCount = 0;
     const DxvkResourceSlot* resourceSlots = nullptr;
+    uint32_t bindingCount = 0;
+    const DxvkBindingInfo* bindings = nullptr;
     /// Input and output register mask
     uint32_t inputMask = 0;
     uint32_t outputMask = 0;
@@ -115,6 +117,14 @@ namespace dxvk {
      */
     DxvkShaderFlags flags() const {
       return m_flags;
+    }
+
+    /**
+     * \brief Retrieves binding layout
+     * \returns Binding layout
+     */
+    const DxvkBindingLayout& getBindings() const {
+      return m_bindings;
     }
     
     /**
@@ -213,6 +223,8 @@ namespace dxvk {
     std::vector<DxvkResourceSlot> m_slots;
     std::vector<char>             m_uniformData;
     std::vector<size_t>           m_idOffsets;
+
+    DxvkBindingLayout             m_bindings;
 
     static void eliminateInput(SpirvCodeBuffer& code, uint32_t location);
 
