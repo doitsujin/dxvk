@@ -253,6 +253,8 @@ namespace dxvk {
     info.stage = m_programInfo.shaderStage();
     info.resourceSlotCount = m_resourceSlots.size();
     info.resourceSlots = m_resourceSlots.data();
+    info.bindingCount = m_bindings.size();
+    info.bindings = m_bindings.data();
     info.inputMask = m_inputMask;
     info.outputMask = m_outputMask;
     info.uniformSize = m_immConstData.size();
@@ -834,14 +836,22 @@ namespace dxvk {
     m_constantBuffers.at(regIdx) = buf;
     
     // Store descriptor info for the shader interface
-    DxvkResourceSlot resource;
-    resource.slot = bindingId;
-    resource.type = asSsbo
+    VkDescriptorType descriptorType = asSsbo
       ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
       : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+
+    DxvkResourceSlot resource;
+    resource.slot = bindingId;
+    resource.type = descriptorType;
     resource.view = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     resource.access = VK_ACCESS_UNIFORM_READ_BIT;
     m_resourceSlots.push_back(resource);
+
+    DxvkBindingInfo binding = { descriptorType };
+    binding.viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    binding.access = VK_ACCESS_UNIFORM_READ_BIT;
+    binding.resourceBinding = bindingId;
+    m_bindings.push_back(binding);
   }
 
 
@@ -879,6 +889,11 @@ namespace dxvk {
     resource.view = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     resource.access = 0;
     m_resourceSlots.push_back(resource);
+
+    DxvkBindingInfo binding = { VK_DESCRIPTOR_TYPE_SAMPLER };
+    binding.viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    binding.resourceBinding = bindingId;
+    m_bindings.push_back(binding);
   }
   
   
@@ -1064,11 +1079,6 @@ namespace dxvk {
         ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
         : VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
       resource.access = m_analysis->uavInfos[registerId].accessFlags;
-
-      if (!(resource.access & VK_ACCESS_SHADER_WRITE_BIT))
-        m_module.decorate(varId, spv::DecorationNonWritable);
-      if (!(resource.access & VK_ACCESS_SHADER_READ_BIT))
-        m_module.decorate(varId, spv::DecorationNonReadable);
     } else {
       resource.type = resourceType == DxbcResourceDim::Buffer
         ? VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
@@ -1077,6 +1087,29 @@ namespace dxvk {
     }
     
     m_resourceSlots.push_back(resource);
+
+    DxvkBindingInfo binding = { };
+    binding.viewType = typeInfo.vtype;
+    binding.resourceBinding = bindingId;
+
+    if (isUav) {
+      binding.descriptorType = resourceType == DxbcResourceDim::Buffer
+        ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
+        : VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+      binding.access = m_analysis->uavInfos[registerId].accessFlags;
+
+      if (!(binding.access & VK_ACCESS_SHADER_WRITE_BIT))
+        m_module.decorate(varId, spv::DecorationNonWritable);
+      if (!(binding.access & VK_ACCESS_SHADER_READ_BIT))
+        m_module.decorate(varId, spv::DecorationNonReadable);
+    } else {
+      binding.descriptorType = resourceType == DxbcResourceDim::Buffer
+        ? VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
+        : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+      binding.access = VK_ACCESS_SHADER_READ_BIT;
+    }
+
+    m_bindings.push_back(binding);
   }
   
   
@@ -1214,14 +1247,26 @@ namespace dxvk {
       ? m_analysis->uavInfos[registerId].accessFlags
       : VK_ACCESS_SHADER_READ_BIT;
 
+    m_resourceSlots.push_back(resource);
+
+    DxvkBindingInfo binding = { };
+    binding.descriptorType = useRawSsbo
+      ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+      : (isUav ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
+    binding.viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    binding.resourceBinding = bindingId;
+    binding.access = isUav
+      ? m_analysis->uavInfos[registerId].accessFlags
+      : VK_ACCESS_SHADER_READ_BIT;
+
     if (useRawSsbo || isUav) {
-      if (!(resource.access & VK_ACCESS_SHADER_WRITE_BIT))
+      if (!(binding.access & VK_ACCESS_SHADER_WRITE_BIT))
         m_module.decorate(varId, spv::DecorationNonWritable);
-      if (!(resource.access & VK_ACCESS_SHADER_READ_BIT))
+      if (!(binding.access & VK_ACCESS_SHADER_READ_BIT))
         m_module.decorate(varId, spv::DecorationNonReadable);
     }
 
-    m_resourceSlots.push_back(resource);
+    m_bindings.push_back(binding);
   }
   
   
@@ -1461,6 +1506,12 @@ namespace dxvk {
                     | VK_ACCESS_SHADER_WRITE_BIT;
     m_resourceSlots.push_back(resource);
     
+    DxvkBindingInfo binding = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
+    binding.resourceBinding = bindingId;
+    binding.viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    binding.access = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+    m_bindings.push_back(binding);
+
     return varId;
   }
   
