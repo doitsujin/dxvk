@@ -38,7 +38,7 @@ namespace dxvk {
   public:
     
     DxvkPipelineManager(
-      const DxvkDevice*         device,
+            DxvkDevice*         device,
             DxvkRenderPassPool* passManager);
     
     ~DxvkPipelineManager();
@@ -97,7 +97,7 @@ namespace dxvk {
     
   private:
     
-    const DxvkDevice*         m_device;
+    DxvkDevice*               m_device;
     Rc<DxvkPipelineCache>     m_cache;
     Rc<DxvkStateCache>        m_stateCache;
 

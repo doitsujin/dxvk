@@ -5,7 +5,7 @@
 namespace dxvk {
   
   DxvkPipelineManager::DxvkPipelineManager(
-    const DxvkDevice*         device,
+          DxvkDevice*         device,
           DxvkRenderPassPool* passManager)
   : m_device    (device),
     m_cache     (new DxvkPipelineCache(device->vkd())) {
