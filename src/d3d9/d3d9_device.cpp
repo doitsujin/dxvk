@@ -3944,6 +3944,8 @@ namespace dxvk {
       enabled.extCustomBorderColor.customBorderColorWithoutFormat = VK_TRUE;
     }
 
+    enabled.extNonSeamlessCubeMap.nonSeamlessCubeMap = supported.extNonSeamlessCubeMap.nonSeamlessCubeMap;
+
     return enabled;
   }
 
@@ -5961,7 +5963,7 @@ namespace dxvk {
       info.mipmapLodMin   = mipFilter.MipsEnabled ? float(cKey.MaxMipLevel) : 0;
       info.mipmapLodMax   = mipFilter.MipsEnabled ? FLT_MAX                 : 0;
       info.usePixelCoord  = VK_FALSE;
-      info.nonSeamless    = VK_FALSE;
+      info.nonSeamless    = m_dxvkDevice->features().extNonSeamlessCubeMap.nonSeamlessCubeMap;
 
       DecodeD3DCOLOR(cKey.BorderColor, info.borderColor.float32);
 
