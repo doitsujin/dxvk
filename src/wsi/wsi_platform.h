@@ -80,6 +80,10 @@ namespace dxvk::wsi {
 
     virtual bool isWindow(HWND hWindow) = 0;
 
+    virtual bool isMinimized(HWND hWindow) = 0;
+
+    virtual bool isOccluded(HWND hWindow) = 0;
+
     virtual void updateFullscreenWindow(
             HMONITOR hMonitor,
             HWND     hWindow,

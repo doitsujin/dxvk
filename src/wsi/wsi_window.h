@@ -118,6 +118,22 @@ namespace dxvk::wsi {
   bool isWindow(HWND hWindow);
 
   /**
+    * \brief Is window minimized?
+    *
+    * \param [in] hWindow The window
+    * \returns Is window minimized?
+    */
+  bool isMinimized(HWND hWindow);
+
+  /**
+    * \brief Is window occluded?
+    *
+    * \param [in] hWindow The window
+    * \returns Is window occluded?
+    */
+  bool isOccluded(HWND hWindow);
+
+  /**
     * \brief Update a fullscreen window's position/size
     *
     * \param [in] hMonitor The monitor
