@@ -38,6 +38,7 @@ namespace dxvk {
       info.borderColor.float32[i] = desc.BorderColor[i];
     
     info.usePixelCoord  = VK_FALSE;  // Not supported in D3D11
+    info.nonSeamless    = VK_FALSE;
     
     // Make sure to use a valid anisotropy value
     if (desc.MaxAnisotropy <  1) info.maxAnisotropy =  1.0f;

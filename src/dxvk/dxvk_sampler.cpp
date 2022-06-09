@@ -16,7 +16,7 @@ namespace dxvk {
     VkSamplerCreateInfo samplerInfo;
     samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     samplerInfo.pNext                   = nullptr;
-    samplerInfo.flags                   = 0;
+    samplerInfo.flags                   = info.nonSeamless ? VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT : 0;
     samplerInfo.magFilter               = info.magFilter;
     samplerInfo.minFilter               = info.minFilter;
     samplerInfo.mipmapMode              = info.mipmapMode;

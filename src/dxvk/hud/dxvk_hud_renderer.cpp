@@ -311,6 +311,7 @@ namespace dxvk::hud {
     info.compareOp      = VK_COMPARE_OP_NEVER;
     info.borderColor    = VkClearColorValue();
     info.usePixelCoord  = VK_TRUE;
+    info.nonSeamless    = VK_FALSE;
     
     return m_device->createSampler(info);
   }

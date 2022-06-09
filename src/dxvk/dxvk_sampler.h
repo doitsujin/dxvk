@@ -38,6 +38,9 @@ namespace dxvk {
     
     /// Enables unnormalized coordinates
     VkBool32 usePixelCoord;
+
+    /// Enables non seamless cube map filtering
+    VkBool32 nonSeamless;
   };
   
   

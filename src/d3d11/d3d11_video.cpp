@@ -365,6 +365,7 @@ namespace dxvk {
     samplerInfo.compareOp       = VK_COMPARE_OP_ALWAYS;
     samplerInfo.borderColor     = VkClearColorValue();
     samplerInfo.usePixelCoord   = VK_FALSE;
+    samplerInfo.nonSeamless     = VK_FALSE;
     m_sampler = Device->createSampler(samplerInfo);
 
     DxvkBufferCreateInfo bufferInfo;
