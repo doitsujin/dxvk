@@ -53,6 +53,7 @@ namespace dxvk {
     info.compareOp      = VK_COMPARE_OP_NEVER;
     info.borderColor    = VkClearColorValue();
     info.usePixelCoord  = VK_FALSE;
+    info.nonSeamless    = VK_FALSE;
     
     return dev->createSampler(info);
   }

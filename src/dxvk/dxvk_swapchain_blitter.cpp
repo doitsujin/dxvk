@@ -302,6 +302,7 @@ namespace dxvk {
     samplerInfo.compareOp       = VK_COMPARE_OP_ALWAYS;
     samplerInfo.borderColor     = VkClearColorValue();
     samplerInfo.usePixelCoord   = VK_TRUE;
+    samplerInfo.nonSeamless     = VK_FALSE;
     m_samplerPresent = m_device->createSampler(samplerInfo);
 
     samplerInfo.addressModeU    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
