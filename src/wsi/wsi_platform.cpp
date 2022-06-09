@@ -112,6 +112,14 @@ namespace dxvk::wsi {
     return s_driver->isWindow(hWindow);
   }
 
+  bool isMinimized(HWND hWindow) {
+    return s_driver->isMinimized(hWindow);
+  }
+
+  bool isOccluded(HWND hWindow) {
+    return s_driver->isOccluded(hWindow);
+  }
+
   void updateFullscreenWindow(
           HMONITOR hMonitor,
           HWND     hWindow,
