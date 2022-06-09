@@ -5961,6 +5961,7 @@ namespace dxvk {
       info.mipmapLodMin   = mipFilter.MipsEnabled ? float(cKey.MaxMipLevel) : 0;
       info.mipmapLodMax   = mipFilter.MipsEnabled ? FLT_MAX                 : 0;
       info.usePixelCoord  = VK_FALSE;
+      info.nonSeamless    = VK_FALSE;
 
       DecodeD3DCOLOR(cKey.BorderColor, info.borderColor.float32);
 
