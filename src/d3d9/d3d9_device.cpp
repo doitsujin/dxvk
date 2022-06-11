@@ -5593,6 +5593,22 @@ namespace dxvk {
       }
     }
 
+    if (unlikely(m_d3d9Options.roundDepth && m_state.depthStencil != nullptr)) {
+      D3D9Format format = m_state.depthStencil->GetCommonTexture()->Desc()->Format;
+      uint32_t depthRoundingValue = 0;
+      D3D9_VK_FORMAT_MAPPING fmtMapping = ConvertFormatUnfixed(format);
+      if (fmtMapping.FormatColor == VK_FORMAT_D24_UNORM_S8_UINT && !m_adapter->SupportsD24S8()) {
+        depthRoundingValue = 1;
+      }
+      if (fmtMapping.FormatColor == VK_FORMAT_D16_UNORM_S8_UINT  && !m_adapter->SupportsD16S8()) {
+        depthRoundingValue = 2;
+      }
+
+      EmitCs([cDepthRoundingValue = depthRoundingValue] (DxvkContext* ctx) {
+        ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::DepthFormatRounding, cDepthRoundingValue);
+      });
+    }
+
     // Create and bind the framebuffer object to the context
     EmitCs([
       cAttachments = std::move(attachments)

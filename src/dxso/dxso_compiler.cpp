@@ -3996,6 +3996,58 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     this->emitPsProcessing();
     this->emitOutputDepthClamp();
+
+    if (m_moduleInfo.options.roundDepth) {
+      const uint32_t boolType  = m_module.defBoolType();
+      const uint32_t floatType = m_module.defFloatType(32);
+      const uint32_t roundLabel  = m_module.allocateId();
+      const uint32_t dontRoundLabel  = m_module.allocateId();
+      const uint32_t endLabel    = m_module.allocateId();
+
+      uint32_t depthRoundingSpecConst = m_module.specConst32(m_module.defIntType(32, 0), 0);
+      m_module.decorateSpecId(depthRoundingSpecConst, getSpecId(D3D9SpecConstantId::DepthFormatRounding));
+      m_module.setDebugName(depthRoundingSpecConst, "s_depth_rounding");
+
+      uint32_t originalDepthId;
+      if (m_ps.oDepth.id == 0) {
+        DxsoRegisterPointer fragCoordPtr = this->emitRegisterPtr(
+          "ps_depth_rounding_frag_coord", DxsoScalarType::Float32, 4, 0,
+          spv::StorageClassInput, spv::BuiltInFragCoord);
+        DxsoRegisterValue fragCoordId = this->emitValueLoad(fragCoordPtr);
+        uint32_t index = 2;
+        originalDepthId = m_module.opCompositeExtract(floatType, fragCoordId.id, 1, &index);
+      } else {
+        originalDepthId = emitValueLoad(m_ps.oDepth).id;
+      }
+
+      DxsoRegister fragDepthReg;
+      fragDepthReg.id.type = DxsoRegisterType::DepthOut;
+      DxsoRegisterPointer depthOutPtr = emitGetOperandPtr(fragDepthReg);
+
+      const uint32_t noRoundingConstValueId = m_module.constu32(0);
+      const uint32_t roundCondition = m_module.opINotEqual(boolType, depthRoundingSpecConst, noRoundingConstValueId);
+      m_module.opSelectionMerge(endLabel, spv::SelectionControlMaskNone);
+      m_module.opBranchConditional(roundCondition, roundLabel, dontRoundLabel);
+
+      m_module.opLabel(roundLabel);
+      const uint32_t depthBase24Id = m_module.constf32(16777216 - 1); // 2^24 - 1
+      const uint32_t depthBase16Id = m_module.constf32(65535 - 1); // 2^16 - 1
+      const uint32_t depth24SpecConstValueId = m_module.constu32(1);
+      uint32_t depthBaseCondition = m_module.opIEqual(boolType, depthRoundingSpecConst, depth24SpecConstValueId);
+      const uint32_t depthBaseId = m_module.opSelect(floatType, depthBaseCondition, depthBase24Id, depthBase16Id);
+      uint32_t depthId = m_module.opFMul(floatType, originalDepthId, depthBaseId);
+      depthId = m_module.opRound(floatType, depthId);
+      depthId = m_module.opFDiv(floatType, depthId, depthBaseId);
+      m_module.opStore(depthOutPtr.id, depthId);
+      m_module.opBranch(endLabel);
+
+      m_module.opLabel(dontRoundLabel);
+      m_module.opStore(depthOutPtr.id, originalDepthId);
+      m_module.opBranch(endLabel);
+
+      m_module.opLabel(endLabel);
+    }
+
     this->emitFunctionEnd();
   }
 

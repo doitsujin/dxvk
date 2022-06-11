@@ -19,6 +19,8 @@ namespace dxvk {
     Fetch4            = 9,
 
     SamplerDepthMode  = 10,
+
+    DepthFormatRounding = 11,
   };
 
 }

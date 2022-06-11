@@ -157,6 +157,9 @@ namespace dxvk {
 
     /// Disable direct buffer mapping
     bool allowDirectBufferMapping;
+
+    /// Should we round depth when using the D24->D32 or D16->D24/D32 workaround
+    bool roundDepth;
   };
 
 }

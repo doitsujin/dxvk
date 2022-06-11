@@ -87,6 +87,14 @@ namespace dxvk {
       return m_d3d9Formats.GetUnsupportedFormatInfo(Format);
     }
 
+    bool SupportsD24S8() const {
+      return m_d3d9Formats.SupportsD24S8();
+    }
+
+    bool SupportsD16S8() const {
+      return m_d3d9Formats.SupportsD16S8();
+    }
+
   private:
 
     HRESULT CheckDeviceVkFormat(

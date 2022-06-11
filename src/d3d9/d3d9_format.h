@@ -204,6 +204,14 @@ namespace dxvk {
     const DxvkFormatInfo* GetUnsupportedFormatInfo(
       D3D9Format            Format) const;
 
+    bool SupportsD24S8() const {
+      return m_d24s8Support;
+    }
+
+    bool SupportsD16S8() const {
+      return m_d16s8Support;
+    }
+
   private:
 
     bool CheckImageFormatSupport(

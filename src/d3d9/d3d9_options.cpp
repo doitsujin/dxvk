@@ -73,6 +73,7 @@ namespace dxvk {
     this->apitraceMode                  = config.getOption<bool>        ("d3d9.apitraceMode",                  false);
     this->deviceLocalConstantBuffers    = config.getOption<bool>        ("d3d9.deviceLocalConstantBuffers",    false);
     this->allowDirectBufferMapping      = config.getOption<bool>        ("d3d9.allowDirectBufferMapping",      true);
+    this->roundDepth                    = config.getOption<bool>        ("d3d9.roundDepth",                    false);
 
     // If we are not Nvidia, enable general hazards.
     this->generalHazards = adapter != nullptr

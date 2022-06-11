@@ -57,6 +57,9 @@ namespace dxvk {
 
     /// Whether or not we can rely on robustness2 to handle oob constant access
     bool robustness2Supported;
+
+    /// Should we round depth when using the D24->D32 or D16->D24/D32 workaround
+    bool roundDepth;
   };
 
 }

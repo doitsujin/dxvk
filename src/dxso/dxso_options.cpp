@@ -45,6 +45,8 @@ namespace dxvk {
     alphaTestWiggleRoom = options.alphaTestWiggleRoom;
 
     robustness2Supported = devFeatures.extRobustness2.robustBufferAccess2;
+
+    roundDepth = options.roundDepth;
   }
 
 }
