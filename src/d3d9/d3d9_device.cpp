@@ -4142,10 +4142,6 @@ namespace dxvk {
     VkExtent3D levelExtent = pResource->GetExtentMip(MipLevel);
     VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
 
-    const bool systemmem = desc.Pool == D3DPOOL_SYSTEMMEM;
-    const bool managed   = IsPoolManaged(desc.Pool);
-    const bool scratch   = desc.Pool == D3DPOOL_SCRATCH;
-
     bool fullResource = pBox == nullptr;
     if (unlikely(!fullResource)) {
       VkOffset3D lockOffset;
@@ -4187,7 +4183,7 @@ namespace dxvk {
 
     DxvkBufferSliceHandle physSlice;
 
-    if (Flags & D3DLOCK_DISCARD) {
+    if ((Flags & D3DLOCK_DISCARD) && needsReadback) {
       // We do not have to preserve the contents of the
       // buffer if the entire image gets discarded.
       physSlice = pResource->DiscardMapSlice(Subresource);
@@ -4201,18 +4197,8 @@ namespace dxvk {
     } else {
       physSlice = pResource->GetMappedSlice(Subresource);
 
-      // We do not need to wait for the resource in the event the
-      // calling app promises not to overwrite data that is in use
-      // or is reading. Remember! This will only trigger for MANAGED resources
-      // that cannot get affected by GPU, therefore readonly is A-OK for NOT waiting.
-      const bool usesStagingBuffer = pResource->DoesStagingBufferUploads(Subresource);
-      const bool skipWait = (scratch || managed || systemmem) && !needsReadback
-        && (usesStagingBuffer || readOnly);
-
-      if (alloced && !needsReadback) {
-        std::memset(physSlice.mapPtr, 0, physSlice.length);
-      }
-      else if (!skipWait) {
+      if (needsReadback) {
+        const Rc<DxvkBuffer> mappedBuffer = pResource->GetBuffer(Subresource);
         if (unlikely(needsReadback) && pResource->GetImage() != nullptr) {
           Rc<DxvkImage> resourceImage = pResource->GetImage();
 
@@ -4283,12 +4269,12 @@ namespace dxvk {
             }
           });
           TrackTextureMappingBufferSequenceNumber(pResource, Subresource);
-        } else if (!(Flags & D3DLOCK_DONOTWAIT) && !WaitForResource(mappedBuffer, pResource->GetMappingBufferSequenceNumber(Subresource), D3DLOCK_DONOTWAIT)) {
-          pResource->EnableStagingBufferUploads(Subresource);
         }
 
         if (!WaitForResource(mappedBuffer, pResource->GetMappingBufferSequenceNumber(Subresource), Flags))
           return D3DERR_WASSTILLDRAWING;
+      } else if (alloced) {
+        std::memset(physSlice.mapPtr, 0, physSlice.length);
       }
     }
 
@@ -4324,7 +4310,7 @@ namespace dxvk {
       }
     }
 
-    if (managed && !readOnly) {
+    if (IsPoolManaged(desc.Pool) && !readOnly) {
       pResource->SetNeedsUpload(Subresource, true);
 
       for (uint32_t i : bit::BitMask(m_activeTextures)) {
@@ -4475,38 +4461,25 @@ namespace dxvk {
           + srcOffsetBlockCount.y * pitch
           + srcOffsetBlockCount.x * formatInfo->elementSize;
 
-      VkDeviceSize sliceAlignment = 1;
-      VkDeviceSize rowAlignment = 1;
-      DxvkBufferSlice copySrcSlice;
-      if (pSrcTexture->DoesStagingBufferUploads(SrcSubresource)) {
-        VkDeviceSize dirtySize = extentBlockCount.width * extentBlockCount.height * extentBlockCount.depth * formatInfo->elementSize;
-        D3D9BufferSlice slice = AllocStagingBuffer(dirtySize);
-        copySrcSlice = slice.slice;
-        void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + copySrcOffset;
-        util::packImageData(
-          slice.mapPtr, srcData, extentBlockCount, formatInfo->elementSize,
-          pitch, pitch * srcTexLevelExtentBlockCount.height);
-      } else {
-        copySrcSlice = DxvkBufferSlice(pSrcTexture->GetBuffer(SrcSubresource), copySrcOffset, srcSlice.length);
-        // row/slice alignment can act as the pitch parameter
-        rowAlignment = pitch;
-        sliceAlignment = srcTexLevelExtentBlockCount.height * pitch;
-      }
+      VkDeviceSize dirtySize = extentBlockCount.width * extentBlockCount.height * extentBlockCount.depth * formatInfo->elementSize;
+      D3D9BufferSlice slice = AllocStagingBuffer(dirtySize);
+      const void* srcData = reinterpret_cast<const uint8_t*>(srcSlice.mapPtr) + copySrcOffset;
+      util::packImageData(
+        slice.mapPtr, srcData, extentBlockCount, formatInfo->elementSize,
+        pitch, pitch * srcTexLevelExtentBlockCount.height);
 
       EmitCs([
-        cSrcSlice       = std::move(copySrcSlice),
+        cSrcSlice       = slice.slice,
         cDstImage       = image,
         cDstLayers      = dstLayers,
         cDstLevelExtent = alignedExtent,
-        cOffset         = alignedDestOffset,
-        cRowAlignment   = rowAlignment,
-        cSliceAlignment = sliceAlignment
+        cOffset         = alignedDestOffset
       ] (DxvkContext* ctx) {
         ctx->copyBufferToImage(
           cDstImage,  cDstLayers,
           cOffset, cDstLevelExtent,
           cSrcSlice.buffer(), cSrcSlice.offset(),
-          cRowAlignment, cSliceAlignment);
+          1, 1);
       });
 
       TrackTextureMappingBufferSequenceNumber(pSrcTexture, SrcSubresource);
@@ -4607,11 +4580,14 @@ namespace dxvk {
     if ((desc.Pool == D3DPOOL_DEFAULT || !(Flags & D3DLOCK_NO_DIRTY_UPDATE)) && !(Flags & D3DLOCK_READONLY))
       pResource->DirtyRange().Conjoin(lockRange);
 
+    const bool directMapping = pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_DIRECT;
+    const bool needsReadback = pResource->NeedsReadback();
+
     Rc<DxvkBuffer> mappingBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
 
     DxvkBufferSliceHandle physSlice;
 
-    if (Flags & D3DLOCK_DISCARD) {
+    if ((Flags & D3DLOCK_DISCARD) && (directMapping || needsReadback)) {
       // Allocate a new backing slice for the buffer and set
       // it as the 'new' mapped slice. This assumes that the
       // only way to invalidate a buffer is by mapping it.
@@ -4625,7 +4601,6 @@ namespace dxvk {
       });
 
       pResource->SetNeedsReadback(false);
-      pResource->GPUReadingRange().Clear();
     }
     else {
       // Use map pointer from previous map operation. This
@@ -4633,31 +4608,18 @@ namespace dxvk {
       // if the map mode is D3DLOCK_NOOVERWRITE.
       physSlice = pResource->GetMappedSlice();
 
-      // NOOVERWRITE promises that they will not write in a currently used area.
-      // Therefore we can skip waiting for these two cases.
-      // We can also skip waiting if there is not dirty range overlap, if we are one of those resources.
-
-      // If we are respecting the bounds ie. (MANAGED) we can test overlap
-      // of our bounds, otherwise we just ignore this and go for it all the time.
       const bool needsReadback = pResource->NeedsReadback();
       const bool readOnly = Flags & D3DLOCK_READONLY;
-      const bool noOverlap = !pResource->GPUReadingRange().Overlaps(lockRange);
+      // NOOVERWRITE promises that they will not write in a currently used area.
       const bool noOverwrite = Flags & D3DLOCK_NOOVERWRITE;
-      const bool usesStagingBuffer = pResource->DoesStagingBufferUploads();
       const bool directMapping = pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_DIRECT;
-      const bool skipWait = (!needsReadback && (usesStagingBuffer || readOnly || (noOverlap && !directMapping))) || noOverwrite;
+      const bool skipWait = (!needsReadback && (readOnly || !directMapping)) || noOverwrite;
       if (!skipWait) {
-        if (unlikely(needsReadback)) {
-          Logger::warn("Buffer readback is unimplemented.");
-          // Remember to update the sequence number when implementing buffer readback.
-        } else if (!(Flags & D3DLOCK_DONOTWAIT) && !WaitForResource(mappingBuffer, pResource->GetMappingBufferSequenceNumber(), D3DLOCK_DONOTWAIT))
-          pResource->EnableStagingBufferUploads();
-
+        const Rc<DxvkBuffer> mappingBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
         if (!WaitForResource(mappingBuffer, pResource->GetMappingBufferSequenceNumber(), Flags))
           return D3DERR_WASSTILLDRAWING;
 
         pResource->SetNeedsReadback(false);
-        pResource->GPUReadingRange().Clear();
       }
     }
 
@@ -4688,19 +4650,13 @@ namespace dxvk {
 
     D3D9Range& range = pResource->DirtyRange();
 
-    DxvkBufferSlice copySrcSlice;
-    if (pResource->DoesStagingBufferUploads()) {
-      D3D9BufferSlice slice = AllocStagingBuffer(range.max - range.min);
-      copySrcSlice = slice.slice;
-      void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + range.min;
-      memcpy(slice.mapPtr, srcData, range.max - range.min);
-    } else {
-      copySrcSlice = DxvkBufferSlice(pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>(), range.min, range.max - range.min);
-    }
+    D3D9BufferSlice slice = AllocStagingBuffer(range.max - range.min);
+    void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + range.min;
+    memcpy(slice.mapPtr, srcData, range.max - range.min);
 
     EmitCs([
       cDstSlice  = dstBuffer,
-      cSrcSlice  = copySrcSlice,
+      cSrcSlice  = slice.slice,
       cDstOffset = range.min,
       cLength    = range.max - range.min
     ] (DxvkContext* ctx) {
@@ -4712,7 +4668,6 @@ namespace dxvk {
         cLength);
     });
 
-    pResource->GPUReadingRange().Conjoin(pResource->DirtyRange());
     pResource->DirtyRange().Clear();
     TrackBufferMappingBufferSequenceNumber(pResource);
 
