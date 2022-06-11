@@ -561,6 +561,19 @@ namespace dxvk {
     { R"(\\eoa\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
     }} },
+    /* Assassin's Creed Brotherhood has shadow acne issues
+       with the D24->D32 workaround. */
+    { R"(\\(ACBSP|ACBMP)\.exe$)", {{
+      { "d3d9.roundDepth",                  "true" },
+    }} },
+    /* SimCity has shadow issues with the D24->D32 workaround. */
+    { R"(\\SimCity\.exe$)", {{
+      { "d3d9.roundDepth",                  "true" },
+    }} },
+    /* The Saboteur has shadow issues with the D24->D32 workaround. */
+    { R"(\\Saboteur\.exe$)", {{
+      { "d3d9.roundDepth",                  "true" },
+    }} },
   }};
 
 
