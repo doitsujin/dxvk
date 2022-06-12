@@ -561,6 +561,10 @@ namespace dxvk {
     { R"(\\eoa\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
     }} },
+    /* Supreme Commander.                       */
+    { R"(\\SupremeCommander\.exe$)", {{
+      { "d3d9.floatEmulation",        "Strict" },
+    }} },
   }};
 
 
