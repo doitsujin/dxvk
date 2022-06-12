@@ -133,9 +133,6 @@ namespace dxvk {
 
     if (pDesc->Width == 0 || pDesc->Height == 0 || pDesc->Depth == 0)
       return D3DERR_INVALIDCALL;
-    
-    if (FAILED(DecodeMultiSampleType(pDesc->MultiSample, pDesc->MultisampleQuality, nullptr)))
-      return D3DERR_INVALIDCALL;
 
     // Using MANAGED pool with DYNAMIC usage is illegal
     if (IsPoolManaged(pDesc->Pool) && (pDesc->Usage & D3DUSAGE_DYNAMIC))
@@ -258,8 +255,6 @@ namespace dxvk {
       imageInfo.stages |= VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
     }
 
-    DecodeMultiSampleType(m_desc.MultiSample, m_desc.MultisampleQuality, &imageInfo.sampleCount);
-
     // The image must be marked as mutable if it can be reinterpreted
     // by a view with a different format. Depth-stencil formats cannot
     // be reinterpreted in Vulkan, so we'll ignore those.
@@ -267,6 +262,8 @@ namespace dxvk {
 
     bool isMutable     = m_mapping.FormatSrgb != VK_FORMAT_UNDEFINED;
     bool isColorFormat = (formatProperties->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) != 0;
+
+    imageInfo.sampleCount = DecodeMultiSampleType(m_device, m_desc.MultiSample, m_desc.MultisampleQuality);
 
     if (isMutable && isColorFormat) {
       imageInfo.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;

@@ -17,6 +17,8 @@
 
 namespace dxvk {
 
+  class D3D9DeviceEx;
+
   struct D3D9ShaderMasks {
     uint32_t samplerMask;
     uint32_t rtMask;
@@ -94,10 +96,10 @@ namespace dxvk {
           char*      pComments, 
           ID3DBlob** ppDisassembly);
 
-  HRESULT DecodeMultiSampleType(
-        D3DMULTISAMPLE_TYPE       MultiSample,
-        DWORD                     MultisampleQuality,
-        VkSampleCountFlagBits*    pCount);
+  VkSampleCountFlagBits DecodeMultiSampleType(
+          D3D9DeviceEx*           pDevice,
+          D3DMULTISAMPLE_TYPE     MultiSample,
+          DWORD                   MultisampleQuality);
 
   VkFormat GetPackedDepthStencilFormat(D3D9Format Format);
 

@@ -1,4 +1,5 @@
 #include "d3d9_util.h"
+#include "d3d9_device.h"
 
 namespace dxvk {
 
@@ -36,23 +37,25 @@ namespace dxvk {
   }
 
 
-  HRESULT DecodeMultiSampleType(
+  VkSampleCountFlagBits DecodeMultiSampleType(
+          D3D9DeviceEx*       pDevice,
           D3DMULTISAMPLE_TYPE       MultiSample,
-          DWORD                     MultisampleQuality,
-          VkSampleCountFlagBits*    pCount) {
+          DWORD                     MultisampleQuality) {
     uint32_t sampleCount = std::max<uint32_t>(MultiSample, 1u);
-
-    // Check if this is a power of two...
-    if (sampleCount & (sampleCount - 1))
-      return D3DERR_INVALIDCALL;
+    const Rc<DxvkDevice>& device = pDevice->GetDXVKDevice();
+    const Rc<DxvkAdapter>& adapter = device->adapter();
+    const VkPhysicalDeviceLimits& limits = adapter->deviceProperties().limits;
+    VkSampleCountFlags supportedSampleCounts = limits.framebufferColorSampleCounts & limits.framebufferDepthSampleCounts;
+    // Round down to next power of two
+    sampleCount = 1 << bit::bsr(sampleCount);
+    // Find a supported sample count that is either lower or equal to the rounded sample count
+    uint32_t acceptedSampleCountsMask = (sampleCount - 1) | sampleCount;
+    sampleCount = 1 << bit::bsr(supportedSampleCounts & acceptedSampleCountsMask);
 
     if (MultiSample == D3DMULTISAMPLE_NONMASKABLE)
       sampleCount = 1u << MultisampleQuality;
 
-    if (pCount != nullptr)
-      *pCount = VkSampleCountFlagBits(sampleCount);
-
-    return D3D_OK;
+    return VkSampleCountFlagBits(sampleCount);
   }
 
 
