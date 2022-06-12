@@ -96,6 +96,25 @@ namespace dxvk::bit {
     #endif
   }
 
+  inline uint32_t bsr(uint32_t n) {
+    #if defined(_MSC_VER) && !defined(__clang__)
+    unsigned long index;
+    _BitScanReverse(&index, n);
+    return uint32_t(index);
+    #elif defined(__GNUC__) || defined(__clang__)
+    return 31 - __builtin_clz(n);
+    #else
+    if (n == 0)
+      return 0;
+    uint32_t i = 0;
+    while (n) {
+      i++;
+      n = n >> 1;
+    }
+    return i - 1;
+    #endif
+  }
+
   inline uint32_t lzcnt(uint32_t n) {
     #if (defined(_MSC_VER) && !defined(__clang__)) || defined(__LZCNT__)
     return _lzcnt_u32(n);
