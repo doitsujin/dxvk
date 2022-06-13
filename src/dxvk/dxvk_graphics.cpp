@@ -10,9 +10,10 @@ namespace dxvk {
 
   DxvkGraphicsPipeline::DxvkGraphicsPipeline(
           DxvkPipelineManager*        pipeMgr,
-          DxvkGraphicsPipelineShaders shaders)
+          DxvkGraphicsPipelineShaders shaders,
+          DxvkBindingLayoutObjects*   layout)
   : m_vkd(pipeMgr->m_device->vkd()), m_pipeMgr(pipeMgr),
-    m_shaders(std::move(shaders)) {
+    m_shaders(std::move(shaders)), m_bindings(layout) {
     if (m_shaders.vs  != nullptr) m_shaders.vs ->defineResourceSlots(m_slotMapping);
     if (m_shaders.tcs != nullptr) m_shaders.tcs->defineResourceSlots(m_slotMapping);
     if (m_shaders.tes != nullptr) m_shaders.tes->defineResourceSlots(m_slotMapping);

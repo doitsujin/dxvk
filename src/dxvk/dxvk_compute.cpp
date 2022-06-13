@@ -12,9 +12,10 @@ namespace dxvk {
   
   DxvkComputePipeline::DxvkComputePipeline(
           DxvkPipelineManager*        pipeMgr,
-          DxvkComputePipelineShaders  shaders)
+          DxvkComputePipelineShaders  shaders,
+          DxvkBindingLayoutObjects*   layout)
   : m_vkd(pipeMgr->m_device->vkd()), m_pipeMgr(pipeMgr),
-    m_shaders(std::move(shaders)) {
+    m_shaders(std::move(shaders)), m_bindings(layout) {
     m_shaders.cs->defineResourceSlots(m_slotMapping);
 
     m_slotMapping.makeDescriptorsDynamic(

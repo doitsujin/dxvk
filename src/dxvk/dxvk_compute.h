@@ -91,7 +91,8 @@ namespace dxvk {
     
     DxvkComputePipeline(
             DxvkPipelineManager*        pipeMgr,
-            DxvkComputePipelineShaders  shaders);
+            DxvkComputePipelineShaders  shaders,
+            DxvkBindingLayoutObjects*   layout);
 
     ~DxvkComputePipeline();
     
@@ -113,6 +114,18 @@ namespace dxvk {
      */
     DxvkPipelineLayout* layout() const {
       return m_layout.ptr();
+    }
+
+    /**
+     * \brief Pipeline layout
+     * 
+     * Stores the pipeline layout and the descriptor set
+     * layouts, as well as information on the resource
+     * slots used by the pipeline.
+     * \returns Pipeline layout
+     */
+    DxvkBindingLayoutObjects* getBindings() const {
+      return m_bindings;
     }
     
     /**
@@ -142,6 +155,7 @@ namespace dxvk {
     DxvkComputePipelineShaders  m_shaders;
     DxvkDescriptorSlotMapping   m_slotMapping;
     
+    DxvkBindingLayoutObjects*   m_bindings;
     Rc<DxvkPipelineLayout>      m_layout;
     
     alignas(CACHE_LINE_SIZE)

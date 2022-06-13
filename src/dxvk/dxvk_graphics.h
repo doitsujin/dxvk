@@ -149,7 +149,8 @@ namespace dxvk {
     
     DxvkGraphicsPipeline(
             DxvkPipelineManager*        pipeMgr,
-            DxvkGraphicsPipelineShaders shaders);
+            DxvkGraphicsPipelineShaders shaders,
+            DxvkBindingLayoutObjects*   layout);
 
     ~DxvkGraphicsPipeline();
 
@@ -181,6 +182,18 @@ namespace dxvk {
       return m_layout.ptr();
     }
     
+    /**
+     * \brief Pipeline layout
+     * 
+     * Stores the pipeline layout and the descriptor set
+     * layout, as well as information on the resource
+     * slots used by the pipeline.
+     * \returns Pipeline layout
+     */
+    DxvkBindingLayoutObjects* getBindings() const {
+      return m_bindings;
+    }
+
     /**
      * \brief Queries shader for a given stage
      * 
@@ -225,6 +238,7 @@ namespace dxvk {
     DxvkGraphicsPipelineShaders m_shaders;
     DxvkDescriptorSlotMapping   m_slotMapping;
 
+    DxvkBindingLayoutObjects*   m_bindings;
     Rc<DxvkPipelineLayout>      m_layout;
     
     uint32_t m_vsIn  = 0;
