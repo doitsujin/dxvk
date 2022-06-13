@@ -561,9 +561,9 @@ namespace dxvk {
     { R"(\\eoa\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
     }} },
-    /* Supreme Commander.                       */
-    { R"(\\SupremeCommander\.exe$)", {{
-      { "d3d9.floatEmulation",        "Strict" },
+    /* Supreme Commander & Forged Alliance Forever */
+    { R"(\\(SupremeCommander|ForgedAlliance)\.exe$)", {{
+      { "d3d9.floatEmulation",            "Strict" },
     }} },
     /* Star Wars The Old Republic */
     { R"(\\swtor\.exe$)", {{
