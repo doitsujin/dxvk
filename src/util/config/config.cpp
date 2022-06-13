@@ -565,6 +565,10 @@ namespace dxvk {
     { R"(\\SupremeCommander\.exe$)", {{
       { "d3d9.floatEmulation",        "Strict" },
     }} },
+    /* Star Wars The Old Republic */
+    { R"(\\swtor\.exe$)", {{
+      { "d3d9.forceSamplerTypeSpecConstants", "True" },
+    }} },
   }};
 
 
