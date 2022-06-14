@@ -4155,6 +4155,199 @@ namespace dxvk {
   }
   
   
+  template<VkPipelineBindPoint BindPoint>
+  void DxvkContext::updateResourceBindings(const DxvkBindingLayoutObjects* layout) {
+    std::array<VkDescriptorSet, DxvkDescriptorSets::SetCount> sets = { VK_NULL_HANDLE, VK_NULL_HANDLE };
+    std::array<DxvkDescriptorInfo, MaxNumActiveBindings> descriptors;
+
+    const auto& bindings = layout->layout();
+
+    // This relies on the bind mask being cleared when the pipeline layout changes.
+    DxvkBindingMask& refBindMask = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+      ? m_state.gp.state.bsBindingMask
+      : m_state.cp.state.bsBindingMask;
+
+    DxvkBindingMask newBindMask = refBindMask;
+
+    uint32_t bindingIndex = 0;
+
+    for (uint32_t i = 0; i < DxvkDescriptorSets::SetCount; i++) {
+      // Initialize binding mask for the current set, only
+      // clear bits if certain resources are actually unbound.
+      uint32_t bindingCount = bindings.getBindingCount(i);
+
+      // TODO skip if set is unmodified
+      if (true) {
+        newBindMask.setRange(bindingIndex, bindingCount);
+
+        for (uint32_t j = 0; j < bindingCount; j++) {
+          const auto& binding = bindings.getBinding(i, j);
+
+          switch (binding.descriptorType) {
+            case VK_DESCRIPTOR_TYPE_SAMPLER: {
+              const auto& res = m_rc[binding.resourceBinding];
+
+              if (res.sampler != nullptr) {
+                descriptors[j].image.sampler     = res.sampler->handle();
+                descriptors[j].image.imageView   = VK_NULL_HANDLE;
+                descriptors[j].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+                if (m_rcTracked.set(binding.resourceBinding))
+                  m_cmd->trackResource<DxvkAccess::None>(res.sampler);
+              } else {
+                descriptors[j].image = m_common->dummyResources().samplerDescriptor();
+              }
+            } break;
+
+            case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
+              const auto& res = m_rc[binding.resourceBinding];
+
+              if (res.imageView != nullptr && res.imageView->handle(binding.viewType) != VK_NULL_HANDLE) {
+                descriptors[j].image.sampler     = VK_NULL_HANDLE;
+                descriptors[j].image.imageView   = res.imageView->handle(binding.viewType);
+                descriptors[j].image.imageLayout = res.imageView->imageInfo().layout;
+
+                if (m_rcTracked.set(binding.resourceBinding)) {
+                  m_cmd->trackResource<DxvkAccess::None>(res.imageView);
+                  m_cmd->trackResource<DxvkAccess::Read>(res.imageView->image());
+                }
+              } else {
+                descriptors[j].image = m_common->dummyResources().imageViewDescriptor(binding.viewType, true);
+                newBindMask.clr(bindingIndex + j);
+              }
+            } break;
+
+            case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
+              const auto& res = m_rc[binding.resourceBinding];
+
+              if (res.imageView != nullptr && res.imageView->handle(binding.viewType) != VK_NULL_HANDLE) {
+                descriptors[j].image.sampler     = VK_NULL_HANDLE;
+                descriptors[j].image.imageView   = res.imageView->handle(binding.viewType);
+                descriptors[j].image.imageLayout = res.imageView->imageInfo().layout;
+
+                if (m_rcTracked.set(binding.resourceBinding)) {
+                  m_cmd->trackResource<DxvkAccess::None>(res.imageView);
+                  m_cmd->trackResource<DxvkAccess::Write>(res.imageView->image());
+                }
+              } else {
+                descriptors[j].image = m_common->dummyResources().imageViewDescriptor(binding.viewType, false);
+                newBindMask.clr(bindingIndex + j);
+              }
+            } break;
+
+            case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+              const auto& res = m_rc[binding.resourceBinding];
+
+              if (res.sampler != nullptr && res.imageView != nullptr
+              && res.imageView->handle(binding.viewType) != VK_NULL_HANDLE) {
+                descriptors[j].image.sampler     = res.sampler->handle();
+                descriptors[j].image.imageView   = res.imageView->handle(binding.viewType);
+                descriptors[j].image.imageLayout = res.imageView->imageInfo().layout;
+
+                if (m_rcTracked.set(binding.resourceBinding)) {
+                  m_cmd->trackResource<DxvkAccess::None>(res.sampler);
+                  m_cmd->trackResource<DxvkAccess::None>(res.imageView);
+                  m_cmd->trackResource<DxvkAccess::Read>(res.imageView->image());
+                }
+              } else {
+                descriptors[j].image = m_common->dummyResources().imageSamplerDescriptor(binding.viewType);
+                newBindMask.clr(bindingIndex + j);
+              }
+            } break;
+
+            case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
+              const auto& res = m_rc[binding.resourceBinding];
+
+              if (res.bufferView != nullptr) {
+                res.bufferView->updateView();
+                descriptors[j].texelBuffer = res.bufferView->handle();
+
+                if (m_rcTracked.set(binding.resourceBinding)) {
+                  m_cmd->trackResource<DxvkAccess::None>(res.bufferView);
+                  m_cmd->trackResource<DxvkAccess::Read>(res.bufferView->buffer());
+                }
+              } else {
+                descriptors[j].texelBuffer = m_common->dummyResources().bufferViewDescriptor();
+                newBindMask.clr(bindingIndex + j);
+              }
+            } break;
+
+            case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+              const auto& res = m_rc[binding.resourceBinding];
+
+              if (res.bufferView != nullptr) {
+                res.bufferView->updateView();
+                descriptors[j].texelBuffer = res.bufferView->handle();
+
+                if (m_rcTracked.set(binding.resourceBinding)) {
+                  m_cmd->trackResource<DxvkAccess::None>(res.bufferView);
+                  m_cmd->trackResource<DxvkAccess::Write>(res.bufferView->buffer());
+                }
+              } else {
+                descriptors[j].texelBuffer = m_common->dummyResources().bufferViewDescriptor();
+                newBindMask.clr(bindingIndex + j);
+              }
+            } break;
+
+            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
+              const auto& res = m_rc[binding.resourceBinding];
+
+              if (res.bufferSlice.defined()) {
+                descriptors[j] = res.bufferSlice.getDescriptor();
+
+                if (m_rcTracked.set(binding.resourceBinding))
+                  m_cmd->trackResource<DxvkAccess::Read>(res.bufferSlice.buffer());
+              } else {
+                descriptors[j].buffer = m_common->dummyResources().bufferDescriptor();
+              }
+            } break;
+
+            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
+              const auto& res = m_rc[binding.resourceBinding];
+
+              if (res.bufferSlice.defined()) {
+                descriptors[j] = res.bufferSlice.getDescriptor();
+
+                if (m_rcTracked.set(binding.resourceBinding))
+                  m_cmd->trackResource<DxvkAccess::Write>(res.bufferSlice.buffer());
+              } else {
+                descriptors[j].buffer = m_common->dummyResources().bufferDescriptor();
+                newBindMask.clr(bindingIndex + j);
+              }
+            } break;
+
+            default:
+              Logger::err(str::format("DxvkContext: Unhandled descriptor type: ", binding.descriptorType));
+          }
+        }
+      }
+
+      // Create and populate descriptor set with the given descriptors
+      sets[i] = allocateDescriptorSet(layout->getSetLayout(i));
+
+      m_cmd->updateDescriptorSetWithTemplate(sets[i],
+        layout->getSetUpdateTemplate(i), descriptors.data());
+
+      bindingIndex += bindingCount;
+    }
+
+    // Bind all required descriptor sets
+    m_cmd->cmdBindDescriptorSets(BindPoint,
+      layout->getPipelineLayout(),
+      0, sets.size(), sets.data(),
+      0, nullptr);
+
+    // Update pipeline if there are unbound resources
+    if (refBindMask != newBindMask) {
+      refBindMask = newBindMask;
+
+      m_flags.set(BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+        ? DxvkContextFlag::GpDirtyPipelineState
+        : DxvkContextFlag::CpDirtyPipelineState);
+    }
+  }
+
+
   void DxvkContext::updateComputeShaderResources() {
     if ((m_flags.test(DxvkContextFlag::CpDirtyResources))
      || (m_state.cp.pipeline->layout()->hasStaticBufferBindings()))
