@@ -573,6 +573,11 @@ namespace dxvk {
     { R"(\\swtor\.exe$)", {{
       { "d3d9.forceSamplerTypeSpecConstants", "True" },
     }} },
+    /* Bionic Commando                          
+       Physics break at high fps               */
+    { R"(\\bionic_commando\.exe$)", {{
+      { "d3d9.maxFrameRate",                "60" },
+    }} },
   }};
 
 
