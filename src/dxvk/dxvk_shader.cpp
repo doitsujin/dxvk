@@ -100,15 +100,32 @@ namespace dxvk {
 
     // Run an analysis pass over the SPIR-V code to gather some
     // info that we may need during pipeline compilation.
+    std::vector<BindingOffsets> bindingOffsets;
+    std::vector<ConstOffsets> constIdOffsets;
+    std::vector<uint32_t> varIds;
+
     SpirvCodeBuffer code = std::move(spirv);
     uint32_t o1VarId = 0;
     
     for (auto ins : code) {
       if (ins.opCode() == spv::OpDecorate) {
-        if (ins.arg(2) == spv::DecorationBinding
-         || ins.arg(2) == spv::DecorationSpecId)
-          m_idOffsets.push_back(ins.offset() + 3);
-        
+        if (ins.arg(2) == spv::DecorationBinding) {
+          uint32_t varId = ins.arg(1);
+          bindingOffsets.resize(std::max(bindingOffsets.size(), size_t(varId + 1)));
+          bindingOffsets[varId].bindingId = ins.arg(3);
+          bindingOffsets[varId].bindingOffset = ins.offset() + 3;
+          varIds.push_back(varId);
+        }
+
+        if (ins.arg(2) == spv::DecorationDescriptorSet) {
+          uint32_t varId = ins.arg(1);
+          bindingOffsets.resize(std::max(bindingOffsets.size(), size_t(varId + 1)));
+          bindingOffsets[varId].setOffset = ins.offset() + 3;
+        }
+
+        if (ins.arg(2) == spv::DecorationSpecId)
+          constIdOffsets.push_back({ ins.arg(3), ins.offset() + 3 });
+
         if (ins.arg(2) == spv::DecorationLocation && ins.arg(3) == 1) {
           m_o1LocOffset = ins.offset() + 3;
           o1VarId = ins.arg(1);
@@ -133,6 +150,25 @@ namespace dxvk {
         if (ins.arg(1) == spv::CapabilityShaderViewportIndexLayerEXT)
           m_flags.set(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage);
       }
+
+      // Ignore the actual shader code, there's nothing interesting for us in there.
+      if (ins.opCode() == spv::OpFunction)
+        break;
+    }
+
+    // Combine spec constant IDs with other binding info
+    for (auto varId : varIds) {
+      BindingOffsets info = bindingOffsets[varId];
+
+      for (const auto& specOfs : constIdOffsets) {
+        if (info.bindingId == specOfs.bindingId) {
+          info.constIdOffset = specOfs.constIdOffset;
+          break;
+        }
+      }
+
+      if (info.bindingOffset)
+        m_bindingOffsets.push_back(info);
     }
   }
 
@@ -163,9 +199,15 @@ namespace dxvk {
     uint32_t* code = spirvCode.data();
     
     // Remap resource binding IDs
-    for (uint32_t ofs : m_idOffsets) {
-      if (code[ofs] < MaxNumResourceSlots)
-        code[ofs] = mapping.getBindingId(code[ofs]);
+    for (const auto& info : m_bindingOffsets) {
+      uint32_t mappedBinding = mapping.getBindingId(info.bindingId);
+      code[info.bindingOffset] = mappedBinding;
+
+      if (info.constIdOffset)
+        code[info.constIdOffset] = mappedBinding;
+
+      if (code[info.setOffset])
+        code[info.setOffset] = 0;
     }
 
     // For dual-source blending we need to re-map

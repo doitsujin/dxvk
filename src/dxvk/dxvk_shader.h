@@ -209,7 +209,19 @@ namespace dxvk {
     }
     
   private:
-    
+
+    struct ConstOffsets {
+      uint32_t bindingId;
+      uint32_t constIdOffset;
+    };
+
+    struct BindingOffsets {
+      uint32_t bindingId;
+      uint32_t constIdOffset;
+      uint32_t bindingOffset;
+      uint32_t setOffset;
+    };
+
     DxvkShaderCreateInfo          m_info;
     SpirvCompressedBuffer         m_code;
     
@@ -222,7 +234,7 @@ namespace dxvk {
 
     std::vector<DxvkResourceSlot> m_slots;
     std::vector<char>             m_uniformData;
-    std::vector<size_t>           m_idOffsets;
+    std::vector<BindingOffsets>   m_bindingOffsets;
 
     DxvkBindingLayout             m_bindings;
 
