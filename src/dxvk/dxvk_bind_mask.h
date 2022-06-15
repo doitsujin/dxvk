@@ -88,12 +88,31 @@ namespace dxvk {
 
     /**
      * \brief Enables multiple bindings
-     * \param [in] n Number of bindings
+     *
+     * Leaves bindings outside of this range unaffected.
+     * \param [in] first First binding to enable
+     * \param [in] count Number of bindings to enable
      */
-    void setFirst(uint32_t n) {
-      for (uint32_t i = 0; i < IntCount; i++) {
-        m_slots[i] = n >= BitCount ? ~0u : ~(~0u << n);
-        n = n >= BitCount ? n - BitCount : 0;
+    void setRange(uint32_t first, uint32_t count) {
+      if (!count)
+        return;
+
+      uint32_t firstInt = first / BitCount;
+      uint32_t firstBit = first % BitCount;
+
+      uint32_t lastInt = (first + count - 1) / BitCount;
+      uint32_t lastBit = (first + count - 1) % BitCount + 1;
+
+      if (firstInt == lastInt) {
+        m_slots[firstInt] |= (count < BitCount)
+          ? ((1u << count) - 1) << firstBit
+          : ~0u;
+      } else {
+        m_slots[firstInt] |= ~0u << firstBit;
+        m_slots[lastInt] |= ~0u >> (BitCount - lastBit);
+
+        for (uint32_t i = firstInt + 1; i < lastInt; i++)
+          m_slots[i] = ~0u;
       }
     }
 

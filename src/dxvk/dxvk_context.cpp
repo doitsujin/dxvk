@@ -4187,7 +4187,8 @@ namespace dxvk {
 
     // Assume that all bindings are active as a fast path
     DxvkBindingMask bindMask;
-    bindMask.setFirst(layout->bindingCount());
+    bindMask.clear();
+    bindMask.setRange(0, layout->bindingCount());
 
     for (uint32_t i = 0; i < layout->bindingCount(); i++) {
       const auto& binding = layout->binding(i);
