@@ -77,6 +77,34 @@ namespace dxvk::bit {
     #endif
   }
 
+  inline uint32_t tzcnt(uint64_t n) {
+    #if defined(_M_X64) && defined(_MSC_VER) && !defined(__clang__)
+    return _tzcnt_u64(n);
+    #elif defined(__x86_64__) && defined(__BMI__)
+    return __tzcnt_u64(n);
+    #elif defined(__x86_64__) && defined(__GNUC__) || defined(__clang__)
+    uint64_t res;
+    uint64_t tmp;
+    asm (
+      "mov  $64, %1;"
+      "bsf   %2, %0;"
+      "cmovz %1, %0;"
+      : "=&r" (res), "=&r" (tmp)
+      : "r" (n));
+    return res;
+    #else
+    uint32_t r = 63;
+    n &= -n;
+    r -= (n & 0x00000000FFFFFFFFull) ? 32 : 0;
+    r -= (n & 0x0000FFFF0000FFFFull) ? 16 : 0;
+    r -= (n & 0x00FF00FF00FF00FFull) ?  8 : 0;
+    r -= (n & 0x0F0F0F0F0F0F0F0Full) ?  4 : 0;
+    r -= (n & 0x3333333333333333ull) ?  2 : 0;
+    r -= (n & 0x5555555555555555ull) ?  1 : 0;
+    return n != 0 ? r : 64;
+    #endif
+  }
+
   inline uint32_t bsf(uint32_t n) {
     #if defined(_MSC_VER) && !defined(__clang__)
     unsigned long index;
