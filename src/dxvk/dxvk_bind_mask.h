@@ -1,5 +1,7 @@
 #pragma once
 
+#include <type_traits>
+
 #include "dxvk_buffer.h"
 #include "dxvk_descriptor.h"
 #include "dxvk_image.h"
@@ -18,7 +20,12 @@ namespace dxvk {
    */
   template<uint32_t BindingCount>
   class DxvkBindingSet {
-    constexpr static uint32_t BitCount = 32;
+    using MaskType = std::conditional_t<(BindingCount > 32), uintptr_t, uint32_t>;
+
+    constexpr static MaskType SetBit = MaskType(1u);
+    constexpr static MaskType SetMask = ~MaskType(0u);
+
+    constexpr static uint32_t BitCount = 8 * sizeof(MaskType);
     constexpr static uint32_t IntCount = (BindingCount + BitCount - 1) / BitCount;
   public:
     
@@ -29,9 +36,9 @@ namespace dxvk {
      * \returns \c true if the binding is active
      */
     bool test(uint32_t slot) const {
-      const uint32_t intId = slot / BitCount;
-      const uint32_t bitId = slot % BitCount;
-      const uint32_t bitMask = 1u << bitId;
+      const uint32_t intId = computeIntId(slot);
+      const uint32_t bitId = computeBitId(slot);
+      const MaskType bitMask = SetBit << bitId;
       return (m_slots[intId] & bitMask) != 0;
     }
     
@@ -43,12 +50,12 @@ namespace dxvk {
      * \returns \c true if the state has changed
      */
     bool set(uint32_t slot, bool value) {
-      const uint32_t intId = slot / BitCount;
-      const uint32_t bitId = slot % BitCount;
-      const uint32_t bitMask = 1u << bitId;
+      const uint32_t intId = computeIntId(slot);
+      const uint32_t bitId = computeBitId(slot);
+      const MaskType bitMask = SetBit << bitId;
       
-      const uint32_t prev = m_slots[intId];
-      const uint32_t next = value
+      const MaskType prev = m_slots[intId];
+      const MaskType next = value
         ? prev |  bitMask
         : prev & ~bitMask;
       m_slots[intId] = next;
@@ -97,22 +104,22 @@ namespace dxvk {
       if (!count)
         return;
 
-      uint32_t firstInt = first / BitCount;
-      uint32_t firstBit = first % BitCount;
+      uint32_t firstInt = computeIntId(first);
+      uint32_t firstBit = computeBitId(first);
 
-      uint32_t lastInt = (first + count - 1) / BitCount;
-      uint32_t lastBit = (first + count - 1) % BitCount + 1;
+      uint32_t lastInt = computeIntId(first + count - 1);
+      uint32_t lastBit = computeBitId(first + count - 1) + 1;
 
       if (firstInt == lastInt) {
         m_slots[firstInt] |= (count < BitCount)
-          ? ((1u << count) - 1) << firstBit
-          : ~0u;
+          ? ((SetBit << count) - 1) << firstBit
+          : (SetMask);
       } else {
-        m_slots[firstInt] |= ~0u << firstBit;
-        m_slots[lastInt] |= ~0u >> (BitCount - lastBit);
+        m_slots[firstInt] |= SetMask << firstBit;
+        m_slots[lastInt] |= SetMask >> (BitCount - lastBit);
 
         for (uint32_t i = firstInt + 1; i < lastInt; i++)
-          m_slots[i] = ~0u;
+          m_slots[i] = SetMask;
       }
     }
 
@@ -126,10 +133,10 @@ namespace dxvk {
       if (unlikely(first >= BindingCount))
         return -1;
 
-      uint32_t intId = first / BitCount;
-      uint32_t bitId = first % BitCount;
+      uint32_t intId = computeIntId(first);
+      uint32_t bitId = computeBitId(first);
 
-      auto mask = m_slots[intId] & ~((1 << bitId) - 1);
+      MaskType mask = m_slots[intId] & ~((SetBit << bitId) - 1);
 
       while (!mask && ++intId < IntCount)
         mask = m_slots[intId];
@@ -153,7 +160,21 @@ namespace dxvk {
     
   private:
     
-    uint32_t m_slots[IntCount];
+    MaskType m_slots[IntCount];
+
+    static uint32_t computeIntId(uint32_t slot) {
+      if constexpr (IntCount > 1)
+        return slot / BitCount;
+      else
+        return 0;
+    }
+
+    static uint32_t computeBitId(uint32_t slot) {
+      if constexpr (IntCount > 1)
+        return slot % BitCount;
+      else
+        return slot;
+    }
     
   };
 
