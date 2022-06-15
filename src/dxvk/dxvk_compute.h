@@ -113,7 +113,7 @@ namespace dxvk {
      * \returns Pipeline layout
      */
     DxvkPipelineLayout* layout() const {
-      return m_layout.ptr();
+      return nullptr;
     }
 
     /**
@@ -153,10 +153,7 @@ namespace dxvk {
     DxvkPipelineManager*        m_pipeMgr;
 
     DxvkComputePipelineShaders  m_shaders;
-    DxvkDescriptorSlotMapping   m_slotMapping;
-    
     DxvkBindingLayoutObjects*   m_bindings;
-    Rc<DxvkPipelineLayout>      m_layout;
     
     alignas(CACHE_LINE_SIZE)
     dxvk::mutex                             m_mutex;

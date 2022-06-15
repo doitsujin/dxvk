@@ -16,14 +16,7 @@ namespace dxvk {
           DxvkBindingLayoutObjects*   layout)
   : m_vkd(pipeMgr->m_device->vkd()), m_pipeMgr(pipeMgr),
     m_shaders(std::move(shaders)), m_bindings(layout) {
-    m_shaders.cs->defineResourceSlots(m_slotMapping);
 
-    m_slotMapping.makeDescriptorsDynamic(
-      m_pipeMgr->m_device->options().maxNumDynamicUniformBuffers,
-      m_pipeMgr->m_device->options().maxNumDynamicStorageBuffers);
-    
-    m_layout = new DxvkPipelineLayout(m_vkd,
-      m_slotMapping, VK_PIPELINE_BIND_POINT_COMPUTE);
   }
   
   
@@ -90,8 +83,14 @@ namespace dxvk {
     }
     
     DxvkSpecConstants specData;
-    for (uint32_t i = 0; i < m_layout->bindingCount(); i++)
-      specData.set(i, state.bsBindingMask.test(i), true);
+    uint32_t bindingIndex = 0;
+
+    for (uint32_t i = 0; i < DxvkDescriptorSets::SetCount; i++) {
+      for (uint32_t j = 0; j < m_bindings->layout().getBindingCount(i); j++) {
+        specData.set(bindingIndex, state.bsBindingMask.test(bindingIndex), true);
+        bindingIndex += 1;
+      }
+    }
     
     for (uint32_t i = 0; i < MaxNumSpecConstants; i++)
       specData.set(getSpecId(i), state.sc.specConstants[i], 0u);
@@ -101,14 +100,14 @@ namespace dxvk {
     DxvkShaderModuleCreateInfo moduleInfo;
     moduleInfo.fsDualSrcBlend = false;
 
-    auto csm = m_shaders.cs->createShaderModule(m_vkd, m_slotMapping, moduleInfo);
+    auto csm = m_shaders.cs->createShaderModule(m_vkd, m_bindings, moduleInfo);
 
     VkComputePipelineCreateInfo info;
     info.sType                = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     info.pNext                = nullptr;
     info.flags                = 0;
     info.stage                = csm.stageInfo(&specInfo);
-    info.layout               = m_layout->pipelineLayout();
+    info.layout               = m_bindings->getPipelineLayout();
     info.basePipelineHandle   = VK_NULL_HANDLE;
     info.basePipelineIndex    = -1;
     

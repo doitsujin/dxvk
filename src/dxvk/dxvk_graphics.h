@@ -179,7 +179,7 @@ namespace dxvk {
      * \returns Pipeline layout
      */
     DxvkPipelineLayout* layout() const {
-      return m_layout.ptr();
+      return nullptr;
     }
     
     /**
@@ -236,10 +236,7 @@ namespace dxvk {
     DxvkPipelineManager*        m_pipeMgr;
 
     DxvkGraphicsPipelineShaders m_shaders;
-    DxvkDescriptorSlotMapping   m_slotMapping;
-
     DxvkBindingLayoutObjects*   m_bindings;
-    Rc<DxvkPipelineLayout>      m_layout;
     
     uint32_t m_vsIn  = 0;
     uint32_t m_fsOut = 0;

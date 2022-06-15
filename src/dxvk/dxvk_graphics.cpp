@@ -14,26 +14,13 @@ namespace dxvk {
           DxvkBindingLayoutObjects*   layout)
   : m_vkd(pipeMgr->m_device->vkd()), m_pipeMgr(pipeMgr),
     m_shaders(std::move(shaders)), m_bindings(layout) {
-    if (m_shaders.vs  != nullptr) m_shaders.vs ->defineResourceSlots(m_slotMapping);
-    if (m_shaders.tcs != nullptr) m_shaders.tcs->defineResourceSlots(m_slotMapping);
-    if (m_shaders.tes != nullptr) m_shaders.tes->defineResourceSlots(m_slotMapping);
-    if (m_shaders.gs  != nullptr) m_shaders.gs ->defineResourceSlots(m_slotMapping);
-    if (m_shaders.fs  != nullptr) m_shaders.fs ->defineResourceSlots(m_slotMapping);
-    
-    m_slotMapping.makeDescriptorsDynamic(
-      pipeMgr->m_device->options().maxNumDynamicUniformBuffers,
-      pipeMgr->m_device->options().maxNumDynamicStorageBuffers);
-    
-    m_layout = new DxvkPipelineLayout(m_vkd,
-      m_slotMapping, VK_PIPELINE_BIND_POINT_GRAPHICS);
-    
     m_vsIn  = m_shaders.vs != nullptr ? m_shaders.vs->info().inputMask  : 0;
     m_fsOut = m_shaders.fs != nullptr ? m_shaders.fs->info().outputMask : 0;
 
     if (m_shaders.gs != nullptr && m_shaders.gs->flags().test(DxvkShaderFlag::HasTransformFeedback))
       m_flags.set(DxvkGraphicsPipelineFlag::HasTransformFeedback);
     
-    if (m_layout->getStorageDescriptorStages())
+    if (layout->getAccessFlags() & VK_ACCESS_SHADER_WRITE_BIT)
       m_flags.set(DxvkGraphicsPipelineFlag::HasStorageDescriptors);
     
     m_common.msSampleShadingEnable = m_shaders.fs != nullptr && m_shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading);
@@ -166,9 +153,15 @@ namespace dxvk {
     // Set up some specialization constants
     DxvkSpecConstants specData;
     specData.set(uint32_t(DxvkSpecConstantId::RasterizerSampleCount), sampleCount, VK_SAMPLE_COUNT_1_BIT);
-    
-    for (uint32_t i = 0; i < m_layout->bindingCount(); i++)
-      specData.set(i, state.bsBindingMask.test(i), true);
+
+    uint32_t bindingIndex = 0;
+
+    for (uint32_t i = 0; i < DxvkDescriptorSets::SetCount; i++) {
+      for (uint32_t j = 0; j < m_bindings->layout().getBindingCount(i); j++) {
+        specData.set(bindingIndex, state.bsBindingMask.test(bindingIndex), true);
+        bindingIndex += 1;
+      }
+    }
     
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       if ((m_fsOut & (1 << i)) != 0) {
@@ -408,7 +401,7 @@ namespace dxvk {
     info.pDepthStencilState       = &dsInfo;
     info.pColorBlendState         = &cbInfo;
     info.pDynamicState            = &dyInfo;
-    info.layout                   = m_layout->pipelineLayout();
+    info.layout                   = m_bindings->getPipelineLayout();
     info.renderPass               = renderPass->getDefaultHandle();
     info.subpass                  = 0;
     info.basePipelineHandle       = VK_NULL_HANDLE;
@@ -481,7 +474,7 @@ namespace dxvk {
     }
 
     info.undefinedInputs = (providedInputs & consumedInputs) ^ consumedInputs;
-    return shader->createShaderModule(m_vkd, m_slotMapping, info);
+    return shader->createShaderModule(m_vkd, m_bindings, info);
   }
 
 
