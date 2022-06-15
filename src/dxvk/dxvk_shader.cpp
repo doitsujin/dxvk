@@ -223,6 +223,41 @@ namespace dxvk {
   }
   
   
+  DxvkShaderModule DxvkShader::createShaderModule(
+    const Rc<vk::DeviceFn>&           vkd,
+    const DxvkBindingLayoutObjects*   layout,
+    const DxvkShaderModuleCreateInfo& info) {
+    SpirvCodeBuffer spirvCode = m_code.decompress();
+    uint32_t* code = spirvCode.data();
+    
+    // Remap resource binding IDs
+    for (const auto& info : m_bindingOffsets) {
+      auto mappedBinding = layout->lookupBinding(info.bindingId);
+
+      if (mappedBinding) {
+        code[info.bindingOffset] = mappedBinding->binding;
+
+        if (info.constIdOffset)
+          code[info.constIdOffset] = mappedBinding->constId;
+
+        if (info.setOffset)
+          code[info.setOffset] = mappedBinding->set;
+      }
+    }
+
+    // For dual-source blending we need to re-map
+    // location 1, index 0 to location 0, index 1
+    if (info.fsDualSrcBlend && m_o1IdxOffset && m_o1LocOffset)
+      std::swap(code[m_o1IdxOffset], code[m_o1LocOffset]);
+    
+    // Replace undefined input variables with zero
+    for (uint32_t u : bit::BitMask(info.undefinedInputs))
+      eliminateInput(spirvCode, u);
+
+    return DxvkShaderModule(vkd, this, spirvCode);
+  }
+  
+  
   void DxvkShader::dump(std::ostream& outputStream) const {
     m_code.decompress().store(outputStream);
   }

@@ -150,7 +150,22 @@ namespace dxvk {
       const Rc<vk::DeviceFn>&          vkd,
       const DxvkDescriptorSlotMapping& mapping,
       const DxvkShaderModuleCreateInfo& info);
-    
+
+    /**
+     * \brief Creates a shader module
+     *
+     * Remaps resource binding and descriptor set
+     * numbers to match the given binding layout.
+     * \param [in] vkd Vulkan device functions
+     * \param [in] layout Binding layout
+     * \param [in] info Module create info
+     * \returns The shader module
+     */
+    DxvkShaderModule createShaderModule(
+      const Rc<vk::DeviceFn>&           vkd,
+      const DxvkBindingLayoutObjects*   layout,
+      const DxvkShaderModuleCreateInfo& info);
+
     /**
      * \brief Dumps SPIR-V shader
      * 
