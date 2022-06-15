@@ -329,6 +329,13 @@ namespace dxvk {
     SpirvCodeBuffer vsCode(d3d11_video_blit_vert);
     SpirvCodeBuffer fsCode(d3d11_video_blit_frag);
 
+    const std::array<DxvkBindingInfo, 4> fsBindings = {{
+      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_IMAGE_VIEW_TYPE_MAX_ENUM, 0, VK_ACCESS_UNIFORM_READ_BIT },
+      { VK_DESCRIPTOR_TYPE_SAMPLER,        1, VK_IMAGE_VIEW_TYPE_MAX_ENUM, 0, 0 },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  2, VK_IMAGE_VIEW_TYPE_2D,       0, VK_ACCESS_SHADER_READ_BIT },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  3, VK_IMAGE_VIEW_TYPE_2D,       0, VK_ACCESS_SHADER_READ_BIT },
+    }};
+
     const std::array<DxvkResourceSlot, 4> fsResourceSlots = {{
       { 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC               },
       { 1, VK_DESCRIPTOR_TYPE_SAMPLER                              },
@@ -343,6 +350,8 @@ namespace dxvk {
 
     DxvkShaderCreateInfo fsInfo;
     fsInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fsInfo.bindingCount = fsBindings.size();
+    fsInfo.bindings = fsBindings.data();
     fsInfo.resourceSlotCount = fsResourceSlots.size();
     fsInfo.resourceSlots = fsResourceSlots.data();
     fsInfo.inputMask = 0x1;
