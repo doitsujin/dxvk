@@ -4161,184 +4161,190 @@ namespace dxvk {
 
     DxvkBindingMask newBindMask = refBindMask;
 
+    uint32_t layoutSetMask = layout->getSetMask();
+
     uint32_t dirtySetMask = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
       ? m_descriptorState.getDirtyGraphicsSets()
       : m_descriptorState.getDirtyComputeSets();
+    dirtySetMask &= layoutSetMask;
 
-    uint32_t bindingIndex = 0;
-    uint32_t firstUpdated = DxvkDescriptorSets::SetCount;
+    uint32_t firstUpdated = bit::tzcnt(dirtySetMask);
 
-    for (uint32_t i = 0; i < DxvkDescriptorSets::SetCount; i++) {
+    while (dirtySetMask) {
+      uint32_t setIndex = bit::tzcnt(dirtySetMask);
+
       // Initialize binding mask for the current set, only
       // clear bits if certain resources are actually unbound.
-      uint32_t bindingCount = bindings.getBindingCount(i);
+      uint32_t bindingIndex = layout->getFirstBinding(setIndex);
+      uint32_t bindingCount = bindings.getBindingCount(setIndex);
 
-      if ((dirtySetMask & (1u << i)) || !m_descriptorState.getSet<BindPoint>(i)) {
-        firstUpdated = std::min(firstUpdated, i);
-        newBindMask.setRange(bindingIndex, bindingCount);
+      newBindMask.setRange(bindingIndex, bindingCount);
 
-        for (uint32_t j = 0; j < bindingCount; j++) {
-          const auto& binding = bindings.getBinding(i, j);
+      for (uint32_t j = 0; j < bindingCount; j++) {
+        const auto& binding = bindings.getBinding(setIndex, j);
 
-          switch (binding.descriptorType) {
-            case VK_DESCRIPTOR_TYPE_SAMPLER: {
-              const auto& res = m_rc[binding.resourceBinding];
+        switch (binding.descriptorType) {
+          case VK_DESCRIPTOR_TYPE_SAMPLER: {
+            const auto& res = m_rc[binding.resourceBinding];
 
-              if (res.sampler != nullptr) {
-                descriptors[j].image.sampler     = res.sampler->handle();
-                descriptors[j].image.imageView   = VK_NULL_HANDLE;
-                descriptors[j].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            if (res.sampler != nullptr) {
+              descriptors[j].image.sampler     = res.sampler->handle();
+              descriptors[j].image.imageView   = VK_NULL_HANDLE;
+              descriptors[j].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-                if (m_rcTracked.set(binding.resourceBinding))
-                  m_cmd->trackResource<DxvkAccess::None>(res.sampler);
-              } else {
-                descriptors[j].image = m_common->dummyResources().samplerDescriptor();
+              if (m_rcTracked.set(binding.resourceBinding))
+                m_cmd->trackResource<DxvkAccess::None>(res.sampler);
+            } else {
+              descriptors[j].image = m_common->dummyResources().samplerDescriptor();
+            }
+          } break;
+
+          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
+            const auto& res = m_rc[binding.resourceBinding];
+
+            if (res.imageView != nullptr && res.imageView->handle(binding.viewType) != VK_NULL_HANDLE) {
+              descriptors[j].image.sampler     = VK_NULL_HANDLE;
+              descriptors[j].image.imageView   = res.imageView->handle(binding.viewType);
+              descriptors[j].image.imageLayout = res.imageView->imageInfo().layout;
+
+              if (m_rcTracked.set(binding.resourceBinding)) {
+                m_cmd->trackResource<DxvkAccess::None>(res.imageView);
+                m_cmd->trackResource<DxvkAccess::Read>(res.imageView->image());
               }
-            } break;
+            } else {
+              descriptors[j].image = m_common->dummyResources().imageViewDescriptor(binding.viewType, true);
+              newBindMask.clr(bindingIndex + j);
+            }
+          } break;
 
-            case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE: {
-              const auto& res = m_rc[binding.resourceBinding];
+          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
+            const auto& res = m_rc[binding.resourceBinding];
 
-              if (res.imageView != nullptr && res.imageView->handle(binding.viewType) != VK_NULL_HANDLE) {
-                descriptors[j].image.sampler     = VK_NULL_HANDLE;
-                descriptors[j].image.imageView   = res.imageView->handle(binding.viewType);
-                descriptors[j].image.imageLayout = res.imageView->imageInfo().layout;
+            if (res.imageView != nullptr && res.imageView->handle(binding.viewType) != VK_NULL_HANDLE) {
+              descriptors[j].image.sampler     = VK_NULL_HANDLE;
+              descriptors[j].image.imageView   = res.imageView->handle(binding.viewType);
+              descriptors[j].image.imageLayout = res.imageView->imageInfo().layout;
 
-                if (m_rcTracked.set(binding.resourceBinding)) {
-                  m_cmd->trackResource<DxvkAccess::None>(res.imageView);
-                  m_cmd->trackResource<DxvkAccess::Read>(res.imageView->image());
-                }
-              } else {
-                descriptors[j].image = m_common->dummyResources().imageViewDescriptor(binding.viewType, true);
-                newBindMask.clr(bindingIndex + j);
+              if (m_rcTracked.set(binding.resourceBinding)) {
+                m_cmd->trackResource<DxvkAccess::None>(res.imageView);
+                m_cmd->trackResource<DxvkAccess::Write>(res.imageView->image());
               }
-            } break;
+            } else {
+              descriptors[j].image = m_common->dummyResources().imageViewDescriptor(binding.viewType, false);
+              newBindMask.clr(bindingIndex + j);
+            }
+          } break;
 
-            case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE: {
-              const auto& res = m_rc[binding.resourceBinding];
+          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+            const auto& res = m_rc[binding.resourceBinding];
 
-              if (res.imageView != nullptr && res.imageView->handle(binding.viewType) != VK_NULL_HANDLE) {
-                descriptors[j].image.sampler     = VK_NULL_HANDLE;
-                descriptors[j].image.imageView   = res.imageView->handle(binding.viewType);
-                descriptors[j].image.imageLayout = res.imageView->imageInfo().layout;
+            if (res.sampler != nullptr && res.imageView != nullptr
+            && res.imageView->handle(binding.viewType) != VK_NULL_HANDLE) {
+              descriptors[j].image.sampler     = res.sampler->handle();
+              descriptors[j].image.imageView   = res.imageView->handle(binding.viewType);
+              descriptors[j].image.imageLayout = res.imageView->imageInfo().layout;
 
-                if (m_rcTracked.set(binding.resourceBinding)) {
-                  m_cmd->trackResource<DxvkAccess::None>(res.imageView);
-                  m_cmd->trackResource<DxvkAccess::Write>(res.imageView->image());
-                }
-              } else {
-                descriptors[j].image = m_common->dummyResources().imageViewDescriptor(binding.viewType, false);
-                newBindMask.clr(bindingIndex + j);
+              if (m_rcTracked.set(binding.resourceBinding)) {
+                m_cmd->trackResource<DxvkAccess::None>(res.sampler);
+                m_cmd->trackResource<DxvkAccess::None>(res.imageView);
+                m_cmd->trackResource<DxvkAccess::Read>(res.imageView->image());
               }
-            } break;
+            } else {
+              descriptors[j].image = m_common->dummyResources().imageSamplerDescriptor(binding.viewType);
+              newBindMask.clr(bindingIndex + j);
+            }
+          } break;
 
-            case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-              const auto& res = m_rc[binding.resourceBinding];
+          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
+            const auto& res = m_rc[binding.resourceBinding];
 
-              if (res.sampler != nullptr && res.imageView != nullptr
-              && res.imageView->handle(binding.viewType) != VK_NULL_HANDLE) {
-                descriptors[j].image.sampler     = res.sampler->handle();
-                descriptors[j].image.imageView   = res.imageView->handle(binding.viewType);
-                descriptors[j].image.imageLayout = res.imageView->imageInfo().layout;
+            if (res.bufferView != nullptr) {
+              res.bufferView->updateView();
+              descriptors[j].texelBuffer = res.bufferView->handle();
 
-                if (m_rcTracked.set(binding.resourceBinding)) {
-                  m_cmd->trackResource<DxvkAccess::None>(res.sampler);
-                  m_cmd->trackResource<DxvkAccess::None>(res.imageView);
-                  m_cmd->trackResource<DxvkAccess::Read>(res.imageView->image());
-                }
-              } else {
-                descriptors[j].image = m_common->dummyResources().imageSamplerDescriptor(binding.viewType);
-                newBindMask.clr(bindingIndex + j);
+              if (m_rcTracked.set(binding.resourceBinding)) {
+                m_cmd->trackResource<DxvkAccess::None>(res.bufferView);
+                m_cmd->trackResource<DxvkAccess::Read>(res.bufferView->buffer());
               }
-            } break;
+            } else {
+              descriptors[j].texelBuffer = m_common->dummyResources().bufferViewDescriptor();
+              newBindMask.clr(bindingIndex + j);
+            }
+          } break;
 
-            case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER: {
-              const auto& res = m_rc[binding.resourceBinding];
+          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+            const auto& res = m_rc[binding.resourceBinding];
 
-              if (res.bufferView != nullptr) {
-                res.bufferView->updateView();
-                descriptors[j].texelBuffer = res.bufferView->handle();
+            if (res.bufferView != nullptr) {
+              res.bufferView->updateView();
+              descriptors[j].texelBuffer = res.bufferView->handle();
 
-                if (m_rcTracked.set(binding.resourceBinding)) {
-                  m_cmd->trackResource<DxvkAccess::None>(res.bufferView);
-                  m_cmd->trackResource<DxvkAccess::Read>(res.bufferView->buffer());
-                }
-              } else {
-                descriptors[j].texelBuffer = m_common->dummyResources().bufferViewDescriptor();
-                newBindMask.clr(bindingIndex + j);
+              if (m_rcTracked.set(binding.resourceBinding)) {
+                m_cmd->trackResource<DxvkAccess::None>(res.bufferView);
+                m_cmd->trackResource<DxvkAccess::Write>(res.bufferView->buffer());
               }
-            } break;
+            } else {
+              descriptors[j].texelBuffer = m_common->dummyResources().bufferViewDescriptor();
+              newBindMask.clr(bindingIndex + j);
+            }
+          } break;
 
-            case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
-              const auto& res = m_rc[binding.resourceBinding];
+          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
+            const auto& res = m_rc[binding.resourceBinding];
 
-              if (res.bufferView != nullptr) {
-                res.bufferView->updateView();
-                descriptors[j].texelBuffer = res.bufferView->handle();
+            if (res.bufferSlice.defined()) {
+              descriptors[j] = res.bufferSlice.getDescriptor();
 
-                if (m_rcTracked.set(binding.resourceBinding)) {
-                  m_cmd->trackResource<DxvkAccess::None>(res.bufferView);
-                  m_cmd->trackResource<DxvkAccess::Write>(res.bufferView->buffer());
-                }
-              } else {
-                descriptors[j].texelBuffer = m_common->dummyResources().bufferViewDescriptor();
-                newBindMask.clr(bindingIndex + j);
-              }
-            } break;
+              if (m_rcTracked.set(binding.resourceBinding))
+                m_cmd->trackResource<DxvkAccess::Read>(res.bufferSlice.buffer());
+            } else {
+              descriptors[j].buffer = m_common->dummyResources().bufferDescriptor();
+            }
+          } break;
 
-            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
-              const auto& res = m_rc[binding.resourceBinding];
+          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
+            const auto& res = m_rc[binding.resourceBinding];
 
-              if (res.bufferSlice.defined()) {
-                descriptors[j] = res.bufferSlice.getDescriptor();
+            if (res.bufferSlice.defined()) {
+              descriptors[j] = res.bufferSlice.getDescriptor();
 
-                if (m_rcTracked.set(binding.resourceBinding))
-                  m_cmd->trackResource<DxvkAccess::Read>(res.bufferSlice.buffer());
-              } else {
-                descriptors[j].buffer = m_common->dummyResources().bufferDescriptor();
-              }
-            } break;
+              if (m_rcTracked.set(binding.resourceBinding))
+                m_cmd->trackResource<DxvkAccess::Write>(res.bufferSlice.buffer());
+            } else {
+              descriptors[j].buffer = m_common->dummyResources().bufferDescriptor();
+              newBindMask.clr(bindingIndex + j);
+            }
+          } break;
 
-            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
-              const auto& res = m_rc[binding.resourceBinding];
-
-              if (res.bufferSlice.defined()) {
-                descriptors[j] = res.bufferSlice.getDescriptor();
-
-                if (m_rcTracked.set(binding.resourceBinding))
-                  m_cmd->trackResource<DxvkAccess::Write>(res.bufferSlice.buffer());
-              } else {
-                descriptors[j].buffer = m_common->dummyResources().bufferDescriptor();
-                newBindMask.clr(bindingIndex + j);
-              }
-            } break;
-
-            default:
-              Logger::err(str::format("DxvkContext: Unhandled descriptor type: ", binding.descriptorType));
-          }
-        }
-
-        // Create and populate descriptor set with the given descriptors
-        VkDescriptorSet& set = m_descriptorState.getSet<BindPoint>(i);
-        set = allocateDescriptorSet(layout->getSetLayout(i));
-
-        if (bindingCount) {
-          m_cmd->updateDescriptorSetWithTemplate(set,
-            layout->getSetUpdateTemplate(i), descriptors.data());
+          default:
+            Logger::err(str::format("DxvkContext: Unhandled descriptor type: ", binding.descriptorType));
         }
       }
 
-      bindingIndex += bindingCount;
+      // Create and populate descriptor set with the given descriptors
+      VkDescriptorSet& set = m_descriptorState.getSet<BindPoint>(setIndex);
+      set = allocateDescriptorSet(layout->getSetLayout(setIndex));
+
+      m_cmd->updateDescriptorSetWithTemplate(set,
+        layout->getSetUpdateTemplate(setIndex), descriptors.data());
+
+      dirtySetMask &= dirtySetMask - 1;
     }
 
-    // Bind all updated descriptor sets
-    uint32_t setCount = DxvkDescriptorSets::SetCount - firstUpdated;
-    const VkDescriptorSet* setData = &m_descriptorState.getSet<BindPoint>(firstUpdated);
+    // Bind all descriptor sets that need updating
+    uint32_t bindSetMask = layoutSetMask & ~((1u << firstUpdated) - 1);
 
-    m_cmd->cmdBindDescriptorSets(BindPoint,
-      layout->getPipelineLayout(),
-      firstUpdated, setCount, setData,
-      0, nullptr);
+    while (bindSetMask) {
+      uint32_t setIndex = bit::tzcnt(bindSetMask);
+
+      VkDescriptorSet& set = m_descriptorState.getSet<BindPoint>(setIndex);
+
+      m_cmd->cmdBindDescriptorSets(BindPoint,
+        layout->getPipelineLayout(),
+        setIndex, 1, &set, 0, nullptr);
+
+      bindSetMask &= bindSetMask - 1;
+    }
 
     // Update pipeline if there are unbound resources
     if (refBindMask != newBindMask) {
