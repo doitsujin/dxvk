@@ -178,18 +178,6 @@ namespace dxvk {
      * slots used by the pipeline.
      * \returns Pipeline layout
      */
-    DxvkPipelineLayout* layout() const {
-      return nullptr;
-    }
-    
-    /**
-     * \brief Pipeline layout
-     * 
-     * Stores the pipeline layout and the descriptor set
-     * layout, as well as information on the resource
-     * slots used by the pipeline.
-     * \returns Pipeline layout
-     */
     DxvkBindingLayoutObjects* getBindings() const {
       return m_bindings;
     }
