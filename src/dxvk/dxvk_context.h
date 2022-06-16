@@ -1065,9 +1065,6 @@ namespace dxvk {
     VkPipeline m_gpActivePipeline = VK_NULL_HANDLE;
     VkPipeline m_cpActivePipeline = VK_NULL_HANDLE;
 
-    VkDescriptorSet m_gpSet = VK_NULL_HANDLE;
-    VkDescriptorSet m_cpSet = VK_NULL_HANDLE;
-
     DxvkBindingSet<MaxNumVertexBindings + 1>  m_vbTracked;
     DxvkBindingSet<MaxNumResourceSlots>       m_rcTracked;
 
@@ -1224,15 +1221,6 @@ namespace dxvk {
 
     void updateComputeShaderResources();
     void updateGraphicsShaderResources();
-
-    template<VkPipelineBindPoint BindPoint>
-    void updateShaderResources(
-      const DxvkPipelineLayout*     layout);
-    
-    template<VkPipelineBindPoint BindPoint>
-    void updateShaderDescriptorSetBinding(
-            VkDescriptorSet         set,
-      const DxvkPipelineLayout*     layout);
 
     DxvkFramebufferInfo makeFramebufferInfo(
       const DxvkRenderTargets&      renderTargets);
