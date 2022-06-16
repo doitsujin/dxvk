@@ -1070,6 +1070,9 @@ namespace dxvk {
 
     std::vector<DxvkDeferredClear> m_deferredClears;
 
+    std::array<VkWriteDescriptorSet, MaxNumActiveBindings> m_descriptorWrites;
+    std::array<DxvkDescriptorInfo,   MaxNumActiveBindings> m_descriptors;
+
     std::array<DxvkShaderResourceSlot, MaxNumResourceSlots>  m_rc;
     std::array<DxvkGraphicsPipeline*, 4096> m_gpLookupCache = { };
     std::array<DxvkComputePipeline*,   256> m_cpLookupCache = { };

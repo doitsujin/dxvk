@@ -235,7 +235,7 @@ namespace dxvk {
 
     /**
      * \brief Queries descriptor template
-     * \returns Descriptor set template
+     * \returns Descriptor update template
      */
     VkDescriptorUpdateTemplate getSetUpdateTemplate() const {
       return m_template;
