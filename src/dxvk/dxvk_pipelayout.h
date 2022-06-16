@@ -471,6 +471,84 @@ namespace dxvk {
 
 
   /**
+   * \brief Dirty descriptor set state
+   */
+  class DxvkDescriptorState {
+
+  public:
+
+    void dirtyBuffers(VkShaderStageFlags stages) {
+      m_dirtyBuffers  |= stages;
+    }
+
+    void dirtyViews(VkShaderStageFlags stages) {
+      m_dirtyViews    |= stages;
+    }
+
+    void dirtyStages(VkShaderStageFlags stages) {
+      m_dirtyBuffers  |= stages;
+      m_dirtyViews    |= stages;
+    }
+
+    void clearStages(VkShaderStageFlags stages) {
+      m_dirtyBuffers  &= ~stages;
+      m_dirtyViews    &= ~stages;
+    }
+
+    bool hasDirtyGraphicsSets() const {
+      return (m_dirtyBuffers | m_dirtyViews) & (VK_SHADER_STAGE_ALL_GRAPHICS);
+    }
+
+    bool hasDirtyComputeSets() const {
+      return (m_dirtyBuffers | m_dirtyViews) & (VK_SHADER_STAGE_COMPUTE_BIT);
+    }
+
+    uint32_t getDirtyGraphicsSets() const {
+      uint32_t result = 0;
+      if (m_dirtyBuffers & VK_SHADER_STAGE_FRAGMENT_BIT)
+        result |= (1u << DxvkDescriptorSets::FsBuffers);
+      if (m_dirtyViews & VK_SHADER_STAGE_FRAGMENT_BIT)
+        result |= (1u << DxvkDescriptorSets::FsViews) | (1u << DxvkDescriptorSets::FsBuffers);
+      if ((m_dirtyBuffers | m_dirtyViews) & (VK_SHADER_STAGE_ALL_GRAPHICS & ~VK_SHADER_STAGE_FRAGMENT_BIT))
+        result |= (1u << DxvkDescriptorSets::VsAll);
+      return result;
+    }
+
+    uint32_t getDirtyComputeSets() const {
+      uint32_t result = 0;
+      if (m_dirtyBuffers & VK_SHADER_STAGE_COMPUTE_BIT)
+        result |= (1u << DxvkDescriptorSets::FsBuffers);
+      if (m_dirtyViews & VK_SHADER_STAGE_COMPUTE_BIT)
+        result |= (1u << DxvkDescriptorSets::FsViews) | (1u << DxvkDescriptorSets::FsBuffers);
+      return result;
+    }
+
+    void clearSets() {
+      for (size_t i = 0; i < m_sets.size(); i++)
+        m_sets[i] = VK_NULL_HANDLE;
+    }
+
+    template<VkPipelineBindPoint BindPoint>
+    VkDescriptorSet& getSet(uint32_t index) {
+      return m_sets[BindPoint * DxvkDescriptorSets::SetCount + index];
+    }
+
+    template<VkPipelineBindPoint BindPoint>
+    const VkDescriptorSet& getSet(uint32_t index) const {
+      return m_sets[BindPoint * DxvkDescriptorSets::SetCount + index];
+    }
+
+  private:
+
+    VkShaderStageFlags m_dirtyBuffers   = 0;
+    VkShaderStageFlags m_dirtyViews     = 0;
+
+    std::array<VkDescriptorSet, 2 * DxvkDescriptorSets::SetCount> m_sets;
+
+  };
+
+
+  /**
    * \brief Resource slot
    * 
    * Describes the type of a single resource
