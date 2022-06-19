@@ -4384,18 +4384,19 @@ namespace dxvk {
       m_cmd->updateDescriptorSets(k, m_descriptorWrites.data());
 
     // Bind all descriptor sets that need updating
-    uint32_t bindSetMask = layoutSetMask & ~((1u << firstUpdated) - 1);
+    uint32_t bindSetMask = layoutSetMask & ((~0u) << firstUpdated);
 
     while (bindSetMask) {
       uint32_t setIndex = bit::tzcnt(bindSetMask);
+      uint32_t setCount = bit::tzcnt(~(bindSetMask >> setIndex));
 
-      VkDescriptorSet& set = m_descriptorState.getSet<BindPoint>(setIndex);
+      VkDescriptorSet* sets = &m_descriptorState.getSet<BindPoint>(setIndex);
 
       m_cmd->cmdBindDescriptorSets(BindPoint,
         layout->getPipelineLayout(),
-        setIndex, 1, &set, 0, nullptr);
+        setIndex, setCount, sets, 0, nullptr);
 
-      bindSetMask &= bindSetMask - 1;
+      bindSetMask &= (~0u) << (setIndex + setCount);
     }
 
     // Update pipeline if there are unbound resources
