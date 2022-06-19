@@ -200,7 +200,7 @@ namespace dxvk {
       m_resources.notify();
       m_signalTracker.notify();
     }
-    
+
     /**
      * \brief Resets the command list
      * 
@@ -763,6 +763,12 @@ namespace dxvk {
         m_vkd->device(), queryPool, queryId, 1);
     }
 
+    void trackDescriptorPool(
+      const Rc<DxvkPersistentDescriptorPool>&       pool,
+      const Rc<DxvkDescriptorManager>&    manager) {
+      m_descriptorPools.push_back({ pool, manager });
+    }
+
   private:
     
     DxvkDevice*         m_device;
@@ -788,6 +794,10 @@ namespace dxvk {
     DxvkGpuQueryTracker m_gpuQueryTracker;
     DxvkBufferTracker   m_bufferTracker;
     DxvkStatCounters    m_statCounters;
+
+    std::vector<std::pair<
+      Rc<DxvkPersistentDescriptorPool>,
+      Rc<DxvkDescriptorManager>>> m_descriptorPools;
 
     VkCommandBuffer getCmdBuffer(DxvkCmdBuffer cmdBuffer) const {
       if (cmdBuffer == DxvkCmdBuffer::ExecBuffer) return m_execBuffer;
