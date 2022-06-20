@@ -40,6 +40,8 @@ namespace dxvk {
       m_descriptorWrites[i].pBufferInfo = &m_descriptors[i].buffer;
       m_descriptorWrites[i].pTexelBufferView = &m_descriptors[i].texelBuffer;
     }
+
+    m_descriptorManager = new DxvkDescriptorManager(device.ptr(), type);
   }
   
   
@@ -84,6 +86,9 @@ namespace dxvk {
       VK_SHADER_STAGE_COMPUTE_BIT);
 
     m_descriptorState.clearSets();
+
+    if (m_descriptorPool == nullptr)
+      m_descriptorPool = m_descriptorManager->getDescriptorPool();
   }
   
   
@@ -95,13 +100,21 @@ namespace dxvk {
     m_initBarriers.recordCommands(m_cmd);
     m_execBarriers.recordCommands(m_cmd);
 
+    if (m_type != DxvkContextType::Primary) {
+      m_cmd->trackDescriptorPool(m_descriptorPool, m_descriptorManager);
+      m_descriptorPool = nullptr;
+    }
+
     m_cmd->endRecording();
     return std::exchange(m_cmd, nullptr);
   }
 
 
   void DxvkContext::endFrame() {
-
+    if (m_descriptorPool != nullptr) {
+      m_cmd->trackDescriptorPool(m_descriptorPool, m_descriptorManager);
+      m_descriptorPool = m_descriptorManager->getDescriptorPool();
+    }
   }
 
 
@@ -405,7 +418,7 @@ namespace dxvk {
     // Create a descriptor set pointing to the view
     VkBufferView viewObject = bufferView->handle();
     
-    VkDescriptorSet descriptorSet = allocateDescriptorSet(pipeInfo.dsetLayout);
+    VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.dsetLayout);
     
     VkWriteDescriptorSet descriptorWrite;
     descriptorWrite.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -894,7 +907,7 @@ namespace dxvk {
     descriptors.srcDepth   = dView->getDescriptor(VK_IMAGE_VIEW_TYPE_2D_ARRAY, layout).image;
     descriptors.srcStencil = sView->getDescriptor(VK_IMAGE_VIEW_TYPE_2D_ARRAY, layout).image;
 
-    VkDescriptorSet dset = allocateDescriptorSet(pipeInfo.dsetLayout);
+    VkDescriptorSet dset = m_descriptorPool->alloc(pipeInfo.dsetLayout);
     m_cmd->updateDescriptorSetWithTemplate(dset, pipeInfo.dsetTemplate, &descriptors);
 
     // Since this is a meta operation, the image may be
@@ -1054,7 +1067,7 @@ namespace dxvk {
     }
 
     auto pipeInfo = m_common->metaCopy().getCopyBufferImagePipeline();
-    VkDescriptorSet descriptorSet = allocateDescriptorSet(pipeInfo.dsetLayout);
+    VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.dsetLayout);
 
     std::array<VkWriteDescriptorSet, 2> descriptorWrites;
 
@@ -1212,7 +1225,7 @@ namespace dxvk {
     descriptors.dstStencil = tmpBufferViewS->handle();
     descriptors.srcBuffer  = srcBuffer->getDescriptor(srcBufferOffset, VK_WHOLE_SIZE).buffer;
 
-    VkDescriptorSet dset = allocateDescriptorSet(pipeInfo.dsetLayout);
+    VkDescriptorSet dset = m_descriptorPool->alloc(pipeInfo.dsetLayout);
     m_cmd->updateDescriptorSetWithTemplate(dset, pipeInfo.dsetTemplate, &descriptors);
 
     // Unpack the source buffer to temporary buffers
@@ -1704,7 +1717,7 @@ namespace dxvk {
       
       // Create descriptor set with the current source view
       descriptorImage.imageView = pass.srcView;
-      descriptorWrite.dstSet = allocateDescriptorSet(pipeInfo.dsetLayout);
+      descriptorWrite.dstSet = m_descriptorPool->alloc(pipeInfo.dsetLayout);
       m_cmd->updateDescriptorSets(1, &descriptorWrite);
       
       // Set up viewport and scissor rect
@@ -2706,7 +2719,7 @@ namespace dxvk {
     VkWriteDescriptorSet descriptorWrite;
     descriptorWrite.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     descriptorWrite.pNext            = nullptr;
-    descriptorWrite.dstSet           = allocateDescriptorSet(pipeInfo.dsetLayout);
+    descriptorWrite.dstSet           = m_descriptorPool->alloc(pipeInfo.dsetLayout);
     descriptorWrite.dstBinding       = 0;
     descriptorWrite.dstArrayElement  = 0;
     descriptorWrite.descriptorCount  = 1;
@@ -3086,7 +3099,7 @@ namespace dxvk {
       imageView->type(), imageFormatInfo(imageView->info().format)->flags);
     
     // Create a descriptor set pointing to the view
-    VkDescriptorSet descriptorSet = allocateDescriptorSet(pipeInfo.dsetLayout);
+    VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.dsetLayout);
     
     VkDescriptorImageInfo viewInfo;
     viewInfo.sampler      = VK_NULL_HANDLE;
@@ -3395,7 +3408,7 @@ namespace dxvk {
     descriptorWrite.pBufferInfo      = nullptr;
     descriptorWrite.pTexelBufferView = nullptr;
     
-    descriptorWrite.dstSet = allocateDescriptorSet(pipeInfo.dsetLayout);
+    descriptorWrite.dstSet = m_descriptorPool->alloc(pipeInfo.dsetLayout);
     m_cmd->updateDescriptorSets(1, &descriptorWrite);
 
     if (srcSubresource.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) {
@@ -3759,7 +3772,7 @@ namespace dxvk {
     descriptorWrite.pBufferInfo      = nullptr;
     descriptorWrite.pTexelBufferView = nullptr;
     
-    descriptorWrite.dstSet = allocateDescriptorSet(pipeInfo.dsetLayout);
+    descriptorWrite.dstSet = m_descriptorPool->alloc(pipeInfo.dsetLayout);
     m_cmd->updateDescriptorSets(1, &descriptorWrite);
 
     if (srcStencilView != nullptr) {
@@ -4193,6 +4206,9 @@ namespace dxvk {
     uint32_t firstUpdated = bit::tzcnt(dirtySetMask);
     uint32_t k = 0;
 
+    std::array<VkDescriptorSet, DxvkDescriptorSets::SetCount> sets = { };
+    m_descriptorPool->alloc(layout, dirtySetMask, sets.data());
+
     while (dirtySetMask) {
       uint32_t setIndex = bit::tzcnt(dirtySetMask);
 
@@ -4203,8 +4219,8 @@ namespace dxvk {
 
       newBindMask.setRange(bindingIndex, bindingCount);
 
-      VkDescriptorSet& set = m_descriptorState.getSet<BindPoint>(setIndex);
-      set = allocateDescriptorSet(layout->getSetLayout(setIndex));
+      VkDescriptorSet set = sets[setIndex];
+      m_descriptorState.getSet<BindPoint>(setIndex) = set;
 
       for (uint32_t j = 0; j < bindingCount; j++) {
         const auto& binding = bindings.getBinding(setIndex, j);
