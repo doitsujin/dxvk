@@ -230,16 +230,6 @@ namespace dxvk {
     Rc<DxvkCommandList> createCommandList();
     
     /**
-     * \brief Creates a descriptor pool
-     * 
-     * Returns a previously recycled pool, or creates
-     * a new one if necessary. The context should take
-     * ownership of the returned pool.
-     * \returns Descriptor pool
-     */
-    Rc<DxvkDescriptorPool> createDescriptorPool();
-    
-    /**
      * \brief Creates a context
      * 
      * Creates a context object that can
@@ -497,8 +487,7 @@ namespace dxvk {
     
     DxvkDeviceQueueSet          m_queues;
     
-    DxvkRecycler<DxvkCommandList,    16> m_recycledCommandLists;
-    DxvkRecycler<DxvkDescriptorPool, 16> m_recycledDescriptorPools;
+    DxvkRecycler<DxvkCommandList, 16> m_recycledCommandLists;
     
     DxvkSubmissionQueue m_submissionQueue;
 
@@ -506,9 +495,6 @@ namespace dxvk {
     
     void recycleCommandList(
       const Rc<DxvkCommandList>& cmdList);
-    
-    void recycleDescriptorPool(
-      const Rc<DxvkDescriptorPool>& pool);
     
     DxvkDeviceQueue getQueue(
             uint32_t                family,

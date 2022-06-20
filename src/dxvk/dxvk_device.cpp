@@ -84,16 +84,6 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkDescriptorPool> DxvkDevice::createDescriptorPool() {
-    Rc<DxvkDescriptorPool> pool = m_recycledDescriptorPools.retrieveObject();
-
-    if (pool == nullptr)
-      pool = new DxvkDescriptorPool(m_vkd);
-    
-    return pool;
-  }
-  
-  
   Rc<DxvkContext> DxvkDevice::createContext(DxvkContextType type) {
     return new DxvkContext(this, type);
   }
@@ -278,11 +268,6 @@ namespace dxvk {
     m_recycledCommandLists.returnObject(cmdList);
   }
   
-
-  void DxvkDevice::recycleDescriptorPool(const Rc<DxvkDescriptorPool>& pool) {
-    m_recycledDescriptorPools.returnObject(pool);
-  }
-
 
   DxvkDeviceQueue DxvkDevice::getQueue(
           uint32_t                family,

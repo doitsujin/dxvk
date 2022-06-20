@@ -5256,24 +5256,6 @@ namespace dxvk {
   }
 
 
-  VkDescriptorSet DxvkContext::allocateDescriptorSet(
-          VkDescriptorSetLayout     layout) {
-    if (m_descPool == nullptr)
-      m_descPool = m_device->createDescriptorPool();
-    
-    VkDescriptorSet set = m_descPool->alloc(layout);
-
-    if (set == VK_NULL_HANDLE) {
-      m_cmd->trackDescriptorPool(std::move(m_descPool));
-
-      m_descPool = m_device->createDescriptorPool();
-      set = m_descPool->alloc(layout);
-    }
-
-    return set;
-  }
-
-  
   void DxvkContext::trackDrawBuffer() {
     if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer)) {
       m_flags.clr(DxvkContextFlag::DirtyDrawBuffer);

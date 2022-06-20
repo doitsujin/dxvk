@@ -152,14 +152,6 @@ namespace dxvk {
     }
     
     /**
-     * \brief Tracks a descriptor pool
-     * \param [in] pool The descriptor pool
-     */
-    void trackDescriptorPool(Rc<DxvkDescriptorPool> pool) {
-      m_descriptorPoolTracker.trackDescriptorPool(pool);
-    }
-    
-    /**
      * \brief Tracks a GPU event
      * 
      * The event will be returned to its event pool
@@ -788,7 +780,6 @@ namespace dxvk {
     
     DxvkCmdBufferFlags  m_cmdBuffersUsed;
     DxvkLifetimeTracker m_resources;
-    DxvkDescriptorPoolTracker m_descriptorPoolTracker;
     DxvkSignalTracker   m_signalTracker;
     DxvkGpuEventTracker m_gpuEventTracker;
     DxvkGpuQueryTracker m_gpuQueryTracker;
