@@ -768,6 +768,10 @@ namespace dxvk {
     if (appConfig != g_appDefaults.end()) {
       // Inform the user that we loaded a default config
       Logger::info(str::format("Found built-in config:"));
+
+      for (auto& pair : appConfig->second.m_options)
+        Logger::info(str::format("  ", pair.first, " = ", pair.second));
+
       return appConfig->second;
     }
 
