@@ -747,6 +747,8 @@ namespace dxvk {
 
     void Flush();
 
+    void EndFrame();
+
     void UpdateBoundRTs(uint32_t index);
 
     void UpdateActiveRTs(uint32_t index);

@@ -5241,6 +5241,13 @@ namespace dxvk {
   }
 
 
+  void D3D9DeviceEx::EndFrame() {
+    EmitCs([] (DxvkContext* ctx) {
+      ctx->endFrame();
+    });
+  }
+
+
   inline void D3D9DeviceEx::UpdateBoundRTs(uint32_t index) {
     const uint32_t bit = 1 << index;
     

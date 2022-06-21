@@ -809,6 +809,7 @@ namespace dxvk {
 
 
   void D3D9SwapChainEx::PresentImage(UINT SyncInterval) {
+    m_parent->EndFrame();
     m_parent->Flush();
 
     // Retrieve the image and image view to present
