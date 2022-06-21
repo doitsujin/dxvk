@@ -248,6 +248,8 @@ namespace dxvk {
   Rc<DxvkShader> DxsoCompiler::compileShader() {
     DxvkShaderCreateInfo info;
     info.stage = m_programInfo.shaderStage();
+    info.bindingCount = m_bindings.size();
+    info.bindings = m_bindings.data();
     info.resourceSlotCount = m_resourceSlots.size();
     info.resourceSlots = m_resourceSlots.data();
     info.inputMask = m_inputMask;
@@ -336,6 +338,12 @@ namespace dxvk {
     resource.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     resource.access = VK_ACCESS_UNIFORM_READ_BIT;
     m_resourceSlots.push_back(resource);
+
+    DxvkBindingInfo binding = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER };
+    binding.resourceBinding = bindingId;
+    binding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    binding.access          = VK_ACCESS_UNIFORM_READ_BIT;
+    m_bindings.push_back(binding);
 
     m_boolSpecConstant = m_module.specConst32(m_module.defIntType(32, 0), 0);
     m_module.decorateSpecId(m_boolSpecConstant, getSpecId(
@@ -433,6 +441,17 @@ namespace dxvk {
     resource.access = asSsbo ? VK_ACCESS_MEMORY_READ_BIT : VK_ACCESS_UNIFORM_READ_BIT;
     m_resourceSlots.push_back(resource);
 
+    DxvkBindingInfo binding = { };
+    binding.descriptorType  = asSsbo
+      ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
+      : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    binding.resourceBinding = bindingId;
+    binding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    binding.access          = asSsbo
+      ? VK_ACCESS_SHADER_READ_BIT
+      : VK_ACCESS_UNIFORM_READ_BIT;
+    m_bindings.push_back(binding);
+
     return constantBufferId;
   }
 
@@ -516,6 +535,12 @@ namespace dxvk {
     resource.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     resource.access = VK_ACCESS_UNIFORM_READ_BIT;
     m_resourceSlots.push_back(resource);
+
+    DxvkBindingInfo binding = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER };
+    binding.resourceBinding = bindingId;
+    binding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    binding.access          = VK_ACCESS_UNIFORM_READ_BIT;
+    m_bindings.push_back(binding);
   }
 
 
@@ -858,6 +883,12 @@ namespace dxvk {
     resource.view   = implicit ? VK_IMAGE_VIEW_TYPE_MAX_ENUM : viewType;
     resource.access = VK_ACCESS_SHADER_READ_BIT;
     m_resourceSlots.push_back(resource);
+
+    DxvkBindingInfo bindingInfo = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER };
+    bindingInfo.resourceBinding = binding;
+    bindingInfo.viewType        = implicit ? VK_IMAGE_VIEW_TYPE_MAX_ENUM : viewType;
+    bindingInfo.access          = VK_ACCESS_SHADER_READ_BIT;
+    m_bindings.push_back(bindingInfo);
   }
 
 
@@ -3659,6 +3690,12 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     resource.access = VK_ACCESS_UNIFORM_READ_BIT;
     m_resourceSlots.push_back(resource);
     
+    DxvkBindingInfo binding = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER };
+    binding.resourceBinding = bindingId;
+    binding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    binding.access          = VK_ACCESS_UNIFORM_READ_BIT;
+    m_bindings.push_back(binding);
+
     // Declare output array for clip distances
     uint32_t clipDistArray = m_module.newVar(
       m_module.defPointerType(
