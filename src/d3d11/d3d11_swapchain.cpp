@@ -259,6 +259,7 @@ namespace dxvk {
 
     // Flush pending rendering commands before
     auto immediateContext = static_cast<D3D11ImmediateContext*>(deviceContext.ptr());
+    immediateContext->EndFrame();
     immediateContext->Flush();
 
     // Bump our frame id.

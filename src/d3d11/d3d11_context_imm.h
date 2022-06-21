@@ -158,6 +158,8 @@ namespace dxvk {
             UINT                          CopyFlags);
 
     void SynchronizeDevice();
+
+    void EndFrame();
     
     bool WaitForResource(
       const Rc<DxvkResource>&                 Resource,

@@ -682,6 +682,13 @@ namespace dxvk {
   }
   
   
+  void D3D11ImmediateContext::EndFrame() {
+    EmitCs([] (DxvkContext* ctx) {
+      ctx->endFrame();
+    });
+  }
+
+
   bool D3D11ImmediateContext::WaitForResource(
     const Rc<DxvkResource>&                 Resource,
           uint64_t                          SequenceNumber,
