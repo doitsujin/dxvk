@@ -3,17 +3,17 @@
 
 namespace dxvk {
 
-  DxvkPersistentDescriptorSetList::DxvkPersistentDescriptorSetList() {
+  DxvkDescriptorSetList::DxvkDescriptorSetList() {
 
   }
 
 
-  DxvkPersistentDescriptorSetList::~DxvkPersistentDescriptorSetList() {
+  DxvkDescriptorSetList::~DxvkDescriptorSetList() {
 
   }
 
 
-  VkDescriptorSet DxvkPersistentDescriptorSetList::alloc() {
+  VkDescriptorSet DxvkDescriptorSetList::alloc() {
     if (unlikely(m_next == m_sets.size()))
       return VK_NULL_HANDLE;
 
@@ -21,19 +21,19 @@ namespace dxvk {
   }
 
 
-  void DxvkPersistentDescriptorSetList::addSet(VkDescriptorSet set) {
+  void DxvkDescriptorSetList::addSet(VkDescriptorSet set) {
     m_sets.push_back(set);
     m_next = m_sets.size();
   }
 
 
-  void DxvkPersistentDescriptorSetList::reset() {
+  void DxvkDescriptorSetList::reset() {
     m_next = 0;
   }
 
 
 
-  DxvkPersistentDescriptorPool::DxvkPersistentDescriptorPool(
+  DxvkDescriptorPool::DxvkDescriptorPool(
           DxvkDevice*               device,
           DxvkContextType           contextType)
   : m_device(device), m_contextType(contextType),
@@ -42,7 +42,7 @@ namespace dxvk {
   }
 
 
-  DxvkPersistentDescriptorPool::~DxvkPersistentDescriptorPool() {
+  DxvkDescriptorPool::~DxvkDescriptorPool() {
     auto vk = m_device->vkd();
 
     for (auto pool : m_descriptorPools)
@@ -50,7 +50,7 @@ namespace dxvk {
   }
 
 
-  void DxvkPersistentDescriptorPool::alloc(
+  void DxvkDescriptorPool::alloc(
     const DxvkBindingLayoutObjects* layout,
           uint32_t                  setMask,
           VkDescriptorSet*          sets) {
@@ -69,14 +69,14 @@ namespace dxvk {
   }
 
 
-  VkDescriptorSet DxvkPersistentDescriptorPool::alloc(
+  VkDescriptorSet DxvkDescriptorPool::alloc(
           VkDescriptorSetLayout     layout) {
     auto setList = getSetList(layout);
     return allocSet(setList, layout);
   }
 
 
-  void DxvkPersistentDescriptorPool::reset() {
+  void DxvkDescriptorPool::reset() {
     // As a heuristic to save memory, check how many descriptors
     // have actively been used in the past couple of submissions.
     bool isLowUsageFrame = false;
@@ -118,7 +118,7 @@ namespace dxvk {
   }
 
 
-  DxvkPersistentDescriptorSetMap* DxvkPersistentDescriptorPool::getSetMapCached(
+  DxvkDescriptorSetMap* DxvkDescriptorPool::getSetMapCached(
     const DxvkBindingLayoutObjects*           layout) {
     if (likely(m_cachedEntry.first == layout))
       return m_cachedEntry.second;
@@ -129,7 +129,7 @@ namespace dxvk {
   }
 
 
-  DxvkPersistentDescriptorSetMap* DxvkPersistentDescriptorPool::getSetMap(
+  DxvkDescriptorSetMap* DxvkDescriptorPool::getSetMap(
     const DxvkBindingLayoutObjects*           layout) {
     auto pair = m_setMaps.find(layout->getPipelineLayout());
     if (likely(pair != m_setMaps.end())) {
@@ -151,7 +151,7 @@ namespace dxvk {
   }
 
 
-  DxvkPersistentDescriptorSetList* DxvkPersistentDescriptorPool::getSetList(
+  DxvkDescriptorSetList* DxvkDescriptorPool::getSetList(
           VkDescriptorSetLayout               layout) {
     auto pair = m_setLists.find(layout);
     if (pair != m_setLists.end())
@@ -165,8 +165,8 @@ namespace dxvk {
   }
 
 
-  VkDescriptorSet DxvkPersistentDescriptorPool::allocSet(
-          DxvkPersistentDescriptorSetList*    list,
+  VkDescriptorSet DxvkDescriptorPool::allocSet(
+          DxvkDescriptorSetList*    list,
           VkDescriptorSetLayout               layout) {
     VkDescriptorSet set = list->alloc();
 
@@ -185,7 +185,7 @@ namespace dxvk {
   }
 
 
-  VkDescriptorSet DxvkPersistentDescriptorPool::allocSetFromPool(
+  VkDescriptorSet DxvkDescriptorPool::allocSetFromPool(
           VkDescriptorPool                    pool,
           VkDescriptorSetLayout               layout) {
     auto vk = m_device->vkd();
@@ -204,7 +204,7 @@ namespace dxvk {
   }
 
 
-  VkDescriptorPool DxvkPersistentDescriptorPool::addPool() {
+  VkDescriptorPool DxvkDescriptorPool::addPool() {
     auto vk = m_device->vkd();
 
     uint32_t maxSets = m_contextType == DxvkContextType::Primary
@@ -251,18 +251,18 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkPersistentDescriptorPool> DxvkDescriptorManager::getDescriptorPool() {
-    Rc<DxvkPersistentDescriptorPool> pool = m_pools.retrieveObject();
+  Rc<DxvkDescriptorPool> DxvkDescriptorManager::getDescriptorPool() {
+    Rc<DxvkDescriptorPool> pool = m_pools.retrieveObject();
 
     if (pool == nullptr)
-      pool = new DxvkPersistentDescriptorPool(m_device, m_contextType);
+      pool = new DxvkDescriptorPool(m_device, m_contextType);
 
     return pool;
   }
 
 
   void DxvkDescriptorManager::recycleDescriptorPool(
-    const Rc<DxvkPersistentDescriptorPool>&     pool) {
+    const Rc<DxvkDescriptorPool>&     pool) {
     pool->reset();
 
     m_pools.returnObject(pool);

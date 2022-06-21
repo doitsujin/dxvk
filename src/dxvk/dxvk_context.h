@@ -1057,7 +1057,7 @@ namespace dxvk {
     DxvkContextFeatures     m_features;
     DxvkDescriptorState     m_descriptorState;
 
-    Rc<DxvkPersistentDescriptorPool>  m_descriptorPool;
+    Rc<DxvkDescriptorPool>  m_descriptorPool;
     Rc<DxvkDescriptorManager> m_descriptorManager;
 
     DxvkBarrierSet          m_sdmaAcquires;

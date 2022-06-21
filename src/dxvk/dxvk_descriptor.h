@@ -36,12 +36,12 @@ namespace dxvk {
   /**
    * \brief Descriptor set list
    */
-  class DxvkPersistentDescriptorSetList {
+  class DxvkDescriptorSetList {
 
   public:
 
-    DxvkPersistentDescriptorSetList();
-    ~DxvkPersistentDescriptorSetList();
+    DxvkDescriptorSetList();
+    ~DxvkDescriptorSetList();
 
     VkDescriptorSet alloc();
 
@@ -63,8 +63,8 @@ namespace dxvk {
    * Points to a list of set maps for each
    * defined set in a pipeline layout.
    */
-  struct DxvkPersistentDescriptorSetMap {
-    std::array<DxvkPersistentDescriptorSetList*, DxvkDescriptorSets::SetCount> sets;
+  struct DxvkDescriptorSetMap {
+    std::array<DxvkDescriptorSetList*, DxvkDescriptorSets::SetCount> sets;
   };
 
   
@@ -77,15 +77,15 @@ namespace dxvk {
    * but allocated sets will have unspecified contents and need
    * to be updated.
    */
-  class DxvkPersistentDescriptorPool : public RcObject {
+  class DxvkDescriptorPool : public RcObject {
 
   public:
 
-    DxvkPersistentDescriptorPool(
+    DxvkDescriptorPool(
             DxvkDevice*               device,
             DxvkContextType           contextType);
 
-    ~DxvkPersistentDescriptorPool();
+    ~DxvkDescriptorPool();
 
     /**
      * \brief Allocates one or multiple descriptor sets
@@ -118,26 +118,26 @@ namespace dxvk {
     DxvkDevice*               m_device;
     DxvkContextType           m_contextType;
 
-    std::vector<VkDescriptorPool>                                               m_descriptorPools;
-    std::unordered_map<VkDescriptorSetLayout, DxvkPersistentDescriptorSetList>  m_setLists;
-    std::unordered_map<VkPipelineLayout,      DxvkPersistentDescriptorSetMap>   m_setMaps;
-    std::pair<const DxvkBindingLayoutObjects*, DxvkPersistentDescriptorSetMap*> m_cachedEntry;
+    std::vector<VkDescriptorPool>                                     m_descriptorPools;
+    std::unordered_map<VkDescriptorSetLayout, DxvkDescriptorSetList>  m_setLists;
+    std::unordered_map<VkPipelineLayout,      DxvkDescriptorSetMap>   m_setMaps;
+    std::pair<const DxvkBindingLayoutObjects*, DxvkDescriptorSetMap*> m_cachedEntry;
 
     uint32_t m_setsAllocated  = 0;
     uint32_t m_setsUsed       = 0;
     uint32_t m_lowUsageFrames = 0;
 
-    DxvkPersistentDescriptorSetMap* getSetMapCached(
+    DxvkDescriptorSetMap* getSetMapCached(
       const DxvkBindingLayoutObjects*           layout);
 
-    DxvkPersistentDescriptorSetMap* getSetMap(
+    DxvkDescriptorSetMap* getSetMap(
       const DxvkBindingLayoutObjects*           layout);
 
-    DxvkPersistentDescriptorSetList* getSetList(
+    DxvkDescriptorSetList* getSetList(
             VkDescriptorSetLayout               layout);
 
     VkDescriptorSet allocSet(
-            DxvkPersistentDescriptorSetList*    list,
+            DxvkDescriptorSetList*    list,
             VkDescriptorSetLayout               layout);
 
     VkDescriptorSet allocSetFromPool(
@@ -165,7 +165,7 @@ namespace dxvk {
      * \brief Retrieves or creates a descriptor type
      * \returns The descriptor pool
      */
-    Rc<DxvkPersistentDescriptorPool> getDescriptorPool();
+    Rc<DxvkDescriptorPool> getDescriptorPool();
 
     /**
      * \brief Recycles descriptor pool
@@ -174,13 +174,13 @@ namespace dxvk {
      * descriptor pool for future use.
      */
     void recycleDescriptorPool(
-      const Rc<DxvkPersistentDescriptorPool>&     pool);
+      const Rc<DxvkDescriptorPool>&     pool);
 
   private:
 
     DxvkDevice*                         m_device;
     DxvkContextType                     m_contextType;
-    DxvkRecycler<DxvkPersistentDescriptorPool, 8> m_pools;
+    DxvkRecycler<DxvkDescriptorPool, 8> m_pools;
 
   };
 
