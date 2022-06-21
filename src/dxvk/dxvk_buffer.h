@@ -142,6 +142,16 @@ namespace dxvk {
     void* mapPtr(VkDeviceSize offset) const {
       return reinterpret_cast<char*>(m_physSlice.mapPtr) + offset;
     }
+
+    /**
+     * \brief Queries shader stages that can access this buffer
+     *
+     * Derived from the pipeline stage mask passed in during creation.
+     * \returns Shader stages that may access this buffer
+     */
+    VkShaderStageFlags getShaderStages() const {
+      return m_shaderStages;
+    }
     
     /**
      * \brief Retrieves slice handle
@@ -286,6 +296,7 @@ namespace dxvk {
     DxvkBufferCreateInfo    m_info;
     DxvkMemoryAllocator*    m_memAlloc;
     VkMemoryPropertyFlags   m_memFlags;
+    VkShaderStageFlags      m_shaderStages;
     
     DxvkBufferHandle        m_buffer;
     DxvkBufferSliceHandle   m_physSlice;

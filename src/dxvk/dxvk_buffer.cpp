@@ -14,7 +14,8 @@ namespace dxvk {
   : m_device        (device),
     m_info          (createInfo),
     m_memAlloc      (&memAlloc),
-    m_memFlags      (memFlags) {
+    m_memFlags      (memFlags),
+    m_shaderStages  (util::shaderStages(createInfo.stages)) {
     // Align slices so that we don't violate any alignment
     // requirements imposed by the Vulkan device/driver
     VkDeviceSize sliceAlignment = computeSliceAlignment();
