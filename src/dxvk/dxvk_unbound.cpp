@@ -21,7 +21,7 @@ namespace dxvk {
   
   
   void DxvkUnboundResources::clearResources(DxvkDevice* dev) {
-    const Rc<DxvkContext> ctx = dev->createContext();
+    const Rc<DxvkContext> ctx = dev->createContext(DxvkContextType::Supplementary);
     ctx->beginRecording(dev->createCommandList());
     
     this->clearBuffer(ctx, m_buffer);

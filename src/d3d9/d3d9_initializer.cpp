@@ -6,7 +6,7 @@ namespace dxvk {
 
   D3D9Initializer::D3D9Initializer(
     const Rc<DxvkDevice>&             Device)
-  : m_device(Device), m_context(m_device->createContext()) {
+  : m_device(Device), m_context(m_device->createContext(DxvkContextType::Supplementary)) {
     m_context->beginRecording(
       m_device->createCommandList());
   }

@@ -9,6 +9,16 @@ namespace dxvk {
   class DxvkDevice;
   
   /**
+   * \brief DXVK context type
+   *
+   * Used as a hint to optimize certain usage patterns.
+   */
+  enum class DxvkContextType : uint32_t {
+    Primary       = 0,
+    Supplementary = 1,
+  };
+
+  /**
    * \brief Descriptor info
    * 
    * Stores information that is required to

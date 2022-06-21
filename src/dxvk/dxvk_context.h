@@ -22,7 +22,7 @@ namespace dxvk {
     constexpr static VkDeviceSize StagingBufferSize = 4ull << 20;
   public:
     
-    DxvkContext(const Rc<DxvkDevice>& device);
+    DxvkContext(const Rc<DxvkDevice>& device, DxvkContextType type);
     ~DxvkContext();
     
     /**
@@ -1038,6 +1038,7 @@ namespace dxvk {
   private:
     
     Rc<DxvkDevice>          m_device;
+    DxvkContextType         m_type;
     DxvkObjects*            m_common;
     
     Rc<DxvkCommandList>     m_cmd;

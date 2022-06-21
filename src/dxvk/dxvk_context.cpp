@@ -7,8 +7,9 @@
 
 namespace dxvk {
   
-  DxvkContext::DxvkContext(const Rc<DxvkDevice>& device)
+  DxvkContext::DxvkContext(const Rc<DxvkDevice>& device, DxvkContextType type)
   : m_device      (device),
+    m_type        (type),
     m_common      (&device->m_objects),
     m_sdmaAcquires(DxvkCmdBuffer::SdmaBuffer),
     m_sdmaBarriers(DxvkCmdBuffer::SdmaBuffer),

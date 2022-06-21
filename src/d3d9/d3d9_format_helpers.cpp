@@ -10,7 +10,7 @@
 namespace dxvk {
 
   D3D9FormatHelper::D3D9FormatHelper(const Rc<DxvkDevice>& device)
-    : m_device(device), m_context(m_device->createContext()) {
+    : m_device(device), m_context(m_device->createContext(DxvkContextType::Supplementary)) {
     m_context->beginRecording(
       m_device->createCommandList());
 

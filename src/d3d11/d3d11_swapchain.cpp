@@ -21,7 +21,7 @@ namespace dxvk {
     m_window    (hWnd),
     m_desc      (*pDesc),
     m_device    (pDevice->GetDXVKDevice()),
-    m_context   (m_device->createContext()),
+    m_context   (m_device->createContext(DxvkContextType::Supplementary)),
     m_frameLatencyCap(pDevice->GetOptions()->maxFrameLatency) {
     CreateFrameLatencyEvent();
 

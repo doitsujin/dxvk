@@ -9,7 +9,7 @@ namespace dxvk {
           D3D11Device*                pParent)
   : m_parent(pParent),
     m_device(pParent->GetDXVKDevice()),
-    m_context(m_device->createContext()) {
+    m_context(m_device->createContext(DxvkContextType::Supplementary)) {
     m_context->beginRecording(
       m_device->createCommandList());
   }
