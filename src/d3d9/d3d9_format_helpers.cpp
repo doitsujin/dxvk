@@ -125,6 +125,11 @@ namespace dxvk {
 
 
   Rc<DxvkShader> D3D9FormatHelper::InitShader(SpirvCodeBuffer code) {
+    const std::array<DxvkBindingInfo, 2> bindings = { {
+      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,        BindingIds::Image,  VK_IMAGE_VIEW_TYPE_2D, 0, VK_ACCESS_SHADER_WRITE_BIT },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, BindingIds::Buffer, VK_IMAGE_VIEW_TYPE_1D, 0, VK_ACCESS_SHADER_READ_BIT  },
+    } };
+
     const std::array<DxvkResourceSlot, 2> resourceSlots = { {
       { BindingIds::Image,  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,        VK_IMAGE_VIEW_TYPE_2D },
       { BindingIds::Buffer, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, VK_IMAGE_VIEW_TYPE_1D },
@@ -132,6 +137,8 @@ namespace dxvk {
 
     DxvkShaderCreateInfo info;
     info.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+    info.bindingCount = bindings.size();
+    info.bindings = bindings.data();
     info.resourceSlotCount = resourceSlots.size();
     info.resourceSlots = resourceSlots.data();
     info.pushConstOffset = 0;

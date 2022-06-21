@@ -130,6 +130,12 @@ namespace dxvk {
       m_module.decorateDescriptorSet(buffer, 0);
       m_module.decorateBinding(buffer, bufferSlot);
 
+      m_bufferBinding.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      m_bufferBinding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+      m_bufferBinding.resourceBinding = bufferSlot;
+      m_bufferBinding.access          = VK_ACCESS_SHADER_WRITE_BIT;
+      m_bufferBinding.stages          = 0;
+
       m_bufferResource.slot   = bufferSlot;
       m_bufferResource.type   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
       m_bufferResource.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
@@ -283,6 +289,8 @@ namespace dxvk {
 
       DxvkShaderCreateInfo info;
       info.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
+      info.bindingCount = 1;
+      info.bindings = &m_bufferBinding;
       info.resourceSlotCount = 1;
       info.resourceSlots = &m_bufferResource;
       info.inputMask = m_inputMask;
@@ -297,6 +305,7 @@ namespace dxvk {
     std::vector<uint32_t> m_entryPointInterfaces;
     uint32_t              m_entryPointId = 0;
     uint32_t              m_inputMask = 0u;
+    DxvkBindingInfo       m_bufferBinding;
     DxvkResourceSlot      m_bufferResource;
 
   };
