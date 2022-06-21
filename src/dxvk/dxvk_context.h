@@ -1074,9 +1074,6 @@ namespace dxvk {
     
     DxvkRenderTargetLayouts m_rtLayouts = { };
 
-    VkPipeline m_gpActivePipeline = VK_NULL_HANDLE;
-    VkPipeline m_cpActivePipeline = VK_NULL_HANDLE;
-
     DxvkBindingSet<MaxNumVertexBindings + 1>  m_vbTracked;
     DxvkBindingSet<MaxNumResourceSlots>       m_rcTracked;
 
@@ -1231,6 +1228,8 @@ namespace dxvk {
     bool updateGraphicsPipeline();
     bool updateGraphicsPipelineState();
     
+    void invalidateState();
+
     template<VkPipelineBindPoint BindPoint>
     void updateResourceBindings(const DxvkBindingLayoutObjects* layout);
 

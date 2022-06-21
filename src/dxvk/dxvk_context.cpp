@@ -87,6 +87,9 @@ namespace dxvk {
 
     m_descriptorState.clearSets();
 
+    m_state.gp.pipeline = nullptr;
+    m_state.cp.pipeline = nullptr;
+
     if (m_descriptorPool == nullptr)
       m_descriptorPool = m_descriptorManager->getDescriptorPool();
   }
@@ -400,7 +403,7 @@ namespace dxvk {
           VkDeviceSize          length,
           VkClearColorValue     value) {
     this->spillRenderPass(true);
-    this->unbindComputePipeline();
+    this->invalidateState();
 
     // The view range might have been invalidated, so
     // we need to make sure the handle is up to date
@@ -874,7 +877,7 @@ namespace dxvk {
     this->spillRenderPass(true);
     this->prepareImage(m_execBarriers, srcImage, vk::makeSubresourceRange(srcSubresource));
 
-    this->unbindComputePipeline();
+    this->invalidateState();
 
     // Retrieve compute pipeline for the given format
     auto pipeInfo = m_common->metaPack().getPackPipeline(format);
@@ -990,7 +993,7 @@ namespace dxvk {
           VkExtent3D            extent,
           VkDeviceSize          elementSize) {
     this->spillRenderPass(true);
-    this->unbindComputePipeline();
+    this->invalidateState();
 
     auto dstBufferSlice = dstBuffer->getSliceHandle(dstBufferOffset, elementSize * util::flattenImageExtent(dstSize));
     auto srcBufferSlice = srcBuffer->getSliceHandle(srcBufferOffset, elementSize * util::flattenImageExtent(srcSize));
@@ -1154,9 +1157,9 @@ namespace dxvk {
           VkExtent2D            srcExtent,
           VkFormat              format) {
     this->spillRenderPass(true);
-    this->prepareImage(m_execBarriers, dstImage, vk::makeSubresourceRange(dstSubresource));
+    this->invalidateState();
 
-    this->unbindComputePipeline();
+    this->prepareImage(m_execBarriers, dstImage, vk::makeSubresourceRange(dstSubresource));
 
     if (m_execBarriers.isBufferDirty(srcBuffer->getSliceHandle(), DxvkAccess::Read)
      || m_execBarriers.isImageDirty(dstImage, vk::makeSubresourceRange(dstSubresource), DxvkAccess::Write))
@@ -1669,6 +1672,7 @@ namespace dxvk {
       return;
     
     this->spillRenderPass(false);
+    this->invalidateState();
 
     m_execBarriers.recordCommands(m_cmd);
     
@@ -2616,6 +2620,8 @@ namespace dxvk {
     const VkImageBlit&          region,
     const VkComponentMapping&   mapping,
           VkFilter              filter) {
+    this->invalidateState();
+
     auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
 
@@ -3086,7 +3092,7 @@ namespace dxvk {
           VkExtent3D            extent,
           VkClearValue          value) {
     this->spillRenderPass(false);
-    this->unbindComputePipeline();
+    this->invalidateState();
     
     if (m_execBarriers.isImageDirty(
           imageView->image(),
@@ -3270,6 +3276,8 @@ namespace dxvk {
           VkImageSubresourceLayers srcSubresource,
           VkOffset3D            srcOffset,
           VkExtent3D            extent) {
+    this->invalidateState();
+
     auto dstSubresourceRange = vk::makeSubresourceRange(dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(srcSubresource);
     
@@ -3691,6 +3699,8 @@ namespace dxvk {
           VkFormat                  format,
           VkResolveModeFlagBitsKHR  depthMode,
           VkResolveModeFlagBitsKHR  stencilMode) {
+    this->invalidateState();
+
     auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
     
@@ -3840,7 +3850,22 @@ namespace dxvk {
       this->applyRenderTargetLoadLayouts();
       this->flushClears(true);
 
-      m_flags.set(DxvkContextFlag::GpRenderPassBound);
+      // Make sure all graphics state gets reapplied on the next draw
+      m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
+
+      m_flags.set(
+        DxvkContextFlag::GpRenderPassBound,
+        DxvkContextFlag::GpDirtyPipelineState,
+        DxvkContextFlag::GpDirtyVertexBuffers,
+        DxvkContextFlag::GpDirtyIndexBuffer,
+        DxvkContextFlag::GpDirtyXfbBuffers,
+        DxvkContextFlag::GpDirtyBlendConstants,
+        DxvkContextFlag::GpDirtyStencilRef,
+        DxvkContextFlag::GpDirtyViewport,
+        DxvkContextFlag::GpDirtyDepthBias,
+        DxvkContextFlag::GpDirtyDepthBounds,
+        DxvkContextFlag::DirtyPushConstants);
+
       m_flags.clr(DxvkContextFlag::GpRenderPassSuspended);
 
       m_execBarriers.recordCommands(m_cmd);
@@ -3884,8 +3909,6 @@ namespace dxvk {
         this->transitionRenderTargetLayouts(m_gfxBarriers, false);
 
       m_gfxBarriers.recordCommands(m_cmd);
-
-      this->unbindGraphicsPipeline();
     } else if (!suspend) {
       // We may end a previously suspended render pass
       if (m_flags.test(DxvkContextFlag::GpRenderPassSuspended)) {
@@ -4036,17 +4059,16 @@ namespace dxvk {
     m_flags.set(
       DxvkContextFlag::CpDirtyPipeline,
       DxvkContextFlag::CpDirtyPipelineState);
-    
-    m_descriptorState.dirtyStages(VK_SHADER_STAGE_COMPUTE_BIT);
 
-    m_state.cp.state.bsBindingMask.clear();
-    m_cpActivePipeline = VK_NULL_HANDLE;
+    m_state.cp.pipeline = nullptr;
   }
   
   
   bool DxvkContext::updateComputePipeline() {
-    auto newPipeline = lookupComputePipeline(m_state.cp.shaders);
+    if (unlikely(m_state.gp.pipeline != nullptr))
+      this->unbindGraphicsPipeline();
 
+    auto newPipeline = lookupComputePipeline(m_state.cp.shaders);
     m_state.cp.pipeline = newPipeline;
 
     if (unlikely(!newPipeline))
@@ -4064,14 +4086,14 @@ namespace dxvk {
   
   
   bool DxvkContext::updateComputePipelineState() {
-    m_cpActivePipeline = m_state.cp.pipeline->getPipelineHandle(m_state.cp.state);
+    VkPipeline pipeline = m_state.cp.pipeline->getPipelineHandle(m_state.cp.state);
     
-    if (unlikely(!m_cpActivePipeline))
+    if (unlikely(!pipeline))
       return false;
 
     m_cmd->cmdBindPipeline(
       VK_PIPELINE_BIND_POINT_COMPUTE,
-      m_cpActivePipeline);
+      pipeline);
 
     m_flags.clr(DxvkContextFlag::CpDirtyPipelineState);
     return true;
@@ -4090,17 +4112,16 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyViewport,
       DxvkContextFlag::GpDirtyDepthBias,
       DxvkContextFlag::GpDirtyDepthBounds);
-    
-    m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
 
-    m_state.gp.state.bsBindingMask.clear();
-    m_gpActivePipeline = VK_NULL_HANDLE;
+    m_state.gp.pipeline = nullptr;
   }
   
   
   bool DxvkContext::updateGraphicsPipeline() {
-    auto newPipeline = lookupGraphicsPipeline(m_state.gp.shaders);
+    if (unlikely(m_state.cp.pipeline != nullptr))
+      this->unbindComputePipeline();
 
+    auto newPipeline = lookupGraphicsPipeline(m_state.gp.shaders);
     m_state.gp.pipeline = newPipeline;
 
     if (unlikely(!newPipeline)) {
@@ -4165,20 +4186,26 @@ namespace dxvk {
       : DxvkContextFlag::GpDirtyStencilRef);
     
     // Retrieve and bind actual Vulkan pipeline handle
-    m_gpActivePipeline = m_state.gp.pipeline->getPipelineHandle(
+    VkPipeline pipeline = m_state.gp.pipeline->getPipelineHandle(
       m_state.gp.state, m_state.om.framebufferInfo.renderPass());
 
-    if (unlikely(!m_gpActivePipeline))
+    if (unlikely(!pipeline))
       return false;
 
     m_cmd->cmdBindPipeline(
       VK_PIPELINE_BIND_POINT_GRAPHICS,
-      m_gpActivePipeline);
+      pipeline);
 
     m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
     return true;
   }
-  
+
+
+  void DxvkContext::invalidateState() {
+    this->unbindComputePipeline();
+    this->unbindGraphicsPipeline();
+  }
+
   
   template<VkPipelineBindPoint BindPoint>
   void DxvkContext::updateResourceBindings(const DxvkBindingLayoutObjects* layout) {
@@ -4748,9 +4775,6 @@ namespace dxvk {
 
   
   void DxvkContext::updateDynamicState() {
-    if (!m_gpActivePipeline)
-      return;
-    
     if (m_flags.test(DxvkContextFlag::GpDirtyViewport)) {
       m_flags.clr(DxvkContextFlag::GpDirtyViewport);
 
