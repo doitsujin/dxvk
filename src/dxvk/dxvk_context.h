@@ -50,6 +50,14 @@ namespace dxvk {
     Rc<DxvkCommandList> endRecording();
 
     /**
+     * \brief Ends frame
+     *
+     * Must be called once per frame before the
+     * final call to \ref endRecording.
+     */
+    void endFrame();
+
+    /**
      * \brief Flushes command buffer
      * 
      * Transparently submits the current command

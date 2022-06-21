@@ -100,6 +100,11 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::endFrame() {
+
+  }
+
+
   void DxvkContext::flushCommandList() {
     m_device->submitCommandList(
       this->endRecording(),
