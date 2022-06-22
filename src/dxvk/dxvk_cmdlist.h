@@ -758,6 +758,7 @@ namespace dxvk {
     void trackDescriptorPool(
       const Rc<DxvkDescriptorPool>&       pool,
       const Rc<DxvkDescriptorManager>&    manager) {
+      pool->updateStats(m_statCounters);
       m_descriptorPools.push_back({ pool, manager });
     }
 

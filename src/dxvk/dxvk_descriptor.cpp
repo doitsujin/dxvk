@@ -35,8 +35,9 @@ namespace dxvk {
 
   DxvkDescriptorPool::DxvkDescriptorPool(
           DxvkDevice*               device,
-          DxvkDescriptorManager*    manager)
-  : m_device(device), m_manager(manager),
+          DxvkDescriptorManager*    manager,
+          DxvkContextType           contextType)
+  : m_device(device), m_manager(manager), m_contextType(contextType),
     m_cachedEntry(nullptr, nullptr) {
 
   }
@@ -47,6 +48,13 @@ namespace dxvk {
 
     for (auto pool : m_descriptorPools)
       vk->vkDestroyDescriptorPool(vk->device(), pool, nullptr);
+
+    if (m_contextType == DxvkContextType::Primary) {
+      m_device->addStatCtr(DxvkStatCounter::DescriptorPoolCount,
+        uint64_t(-int64_t(m_descriptorPools.size())));
+      m_device->addStatCtr(DxvkStatCounter::DescriptorSetCount,
+        uint64_t(-int64_t(m_setsAllocated)));
+    }
   }
 
 
@@ -133,6 +141,16 @@ namespace dxvk {
   }
 
 
+  void DxvkDescriptorPool::updateStats(DxvkStatCounters& counters) {
+    if (m_contextType == DxvkContextType::Primary) {
+      counters.addCtr(DxvkStatCounter::DescriptorSetCount,
+        uint64_t(int64_t(m_setsAllocated) - int64_t(m_prevSetsAllocated)));
+    }
+
+    m_prevSetsAllocated = m_setsAllocated;
+  }
+
+
   DxvkDescriptorSetMap* DxvkDescriptorPool::getSetMapCached(
     const DxvkBindingLayoutObjects*           layout) {
     if (likely(m_cachedEntry.first == layout))
@@ -181,7 +199,7 @@ namespace dxvk {
 
 
   VkDescriptorSet DxvkDescriptorPool::allocSet(
-          DxvkDescriptorSetList*    list,
+          DxvkDescriptorSetList*              list,
           VkDescriptorSetLayout               layout) {
     VkDescriptorSet set = list->alloc();
 
@@ -239,6 +257,11 @@ namespace dxvk {
 
     for (size_t i = 0; i < m_vkPoolCount; i++)
       vk->vkDestroyDescriptorPool(vk->device(), m_vkPools[i], nullptr);
+
+    if (m_contextType == DxvkContextType::Primary) {
+      m_device->addStatCtr(DxvkStatCounter::DescriptorPoolCount,
+        uint64_t(-int64_t(m_vkPoolCount)));
+    }
   }
 
 
@@ -246,7 +269,7 @@ namespace dxvk {
     Rc<DxvkDescriptorPool> pool = m_pools.retrieveObject();
 
     if (pool == nullptr)
-      pool = new DxvkDescriptorPool(m_device, this);
+      pool = new DxvkDescriptorPool(m_device, this, m_contextType);
 
     return pool;
   }
@@ -295,6 +318,8 @@ namespace dxvk {
     if (vk->vkCreateDescriptorPool(vk->device(), &info, nullptr, &pool) != VK_SUCCESS)
       throw DxvkError("DxvkDescriptorPool: Failed to create descriptor pool");
 
+    if (m_contextType == DxvkContextType::Primary)
+      m_device->addStatCtr(DxvkStatCounter::DescriptorPoolCount, 1);
     return pool;
   }
 
@@ -310,6 +335,9 @@ namespace dxvk {
         return;
       }
     }
+
+    if (m_contextType == DxvkContextType::Primary)
+      m_device->addStatCtr(DxvkStatCounter::DescriptorPoolCount, uint64_t(-1ll));
 
     vk->vkDestroyDescriptorPool(vk->device(), pool, nullptr);
   }

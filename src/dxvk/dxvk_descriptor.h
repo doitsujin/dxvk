@@ -5,6 +5,7 @@
 #include "dxvk_include.h"
 #include "dxvk_pipelayout.h"
 #include "dxvk_recycler.h"
+#include "dxvk_stats.h"
 
 namespace dxvk {
 
@@ -84,7 +85,8 @@ namespace dxvk {
 
     DxvkDescriptorPool(
             DxvkDevice*               device,
-            DxvkDescriptorManager*    manager);
+            DxvkDescriptorManager*    manager,
+            DxvkContextType           contextType);
 
     ~DxvkDescriptorPool();
 
@@ -122,10 +124,17 @@ namespace dxvk {
      */
     void reset();
 
+    /**
+     * \brief Updates stat counters with set count
+     * \param [out] counters Stat counters
+     */
+    void updateStats(DxvkStatCounters& counters);
+
   private:
 
     DxvkDevice*               m_device;
     DxvkDescriptorManager*    m_manager;
+    DxvkContextType           m_contextType;
 
     std::vector<VkDescriptorPool>                                     m_descriptorPools;
     std::unordered_map<VkDescriptorSetLayout, DxvkDescriptorSetList>  m_setLists;
@@ -134,6 +143,9 @@ namespace dxvk {
 
     uint32_t m_setsAllocated  = 0;
     uint32_t m_setsUsed       = 0;
+
+    uint32_t m_prevSetsAllocated = 0;
+
     uint32_t m_lowUsageFrames = 0;
 
     DxvkDescriptorSetMap* getSetMapCached(

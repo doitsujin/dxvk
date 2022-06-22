@@ -26,6 +26,8 @@ namespace dxvk {
     CsSyncCount,              ///< CS thread synchronizations
     CsSyncTicks,              ///< Time spent waiting on CS
     CsChunkCount,             ///< Submitted CS chunks
+    DescriptorPoolCount,      ///< Descriptor pool count
+    DescriptorSetCount,       ///< Descriptor sets allocated
     NumCounters,              ///< Number of counters available
   };
   
