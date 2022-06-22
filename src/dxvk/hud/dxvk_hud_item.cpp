@@ -500,6 +500,55 @@ namespace dxvk::hud {
   }
 
 
+  HudDescriptorStatsItem::HudDescriptorStatsItem(const Rc<DxvkDevice>& device)
+  : m_device(device) {
+
+  }
+
+
+  HudDescriptorStatsItem::~HudDescriptorStatsItem() {
+
+  }
+
+
+  void HudDescriptorStatsItem::update(dxvk::high_resolution_clock::time_point time) {
+    DxvkStatCounters counters = m_device->getStatCounters();
+
+    m_descriptorPoolCount = counters.getCtr(DxvkStatCounter::DescriptorPoolCount);
+    m_descriptorSetCount  = counters.getCtr(DxvkStatCounter::DescriptorSetCount);
+  }
+
+
+  HudPos HudDescriptorStatsItem::render(
+          HudRenderer&      renderer,
+          HudPos            position) {
+    position.y += 16.0f;
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 1.0f, 0.25f, 0.5f, 1.0f },
+      "Descriptor pools:");
+    
+    renderer.drawText(16.0f,
+      { position.x + 216.0f, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      str::format(m_descriptorPoolCount));
+    
+    position.y += 20.0f;
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 1.0f, 0.25f, 0.5f, 1.0f },
+      "Descriptor sets:");
+
+    renderer.drawText(16.0f,
+      { position.x + 216.0f, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      str::format(m_descriptorSetCount));
+
+    position.y += 8.0f;
+    return position;
+  }
+
+
   HudMemoryStatsItem::HudMemoryStatsItem(const Rc<DxvkDevice>& device)
   : m_device(device), m_memory(device->adapter()->memoryProperties()) {
 

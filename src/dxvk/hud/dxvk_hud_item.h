@@ -337,6 +337,33 @@ namespace dxvk::hud {
 
 
   /**
+   * \brief HUD item to display descriptor stats
+   */
+  class HudDescriptorStatsItem : public HudItem {
+
+  public:
+
+    HudDescriptorStatsItem(const Rc<DxvkDevice>& device);
+
+    ~HudDescriptorStatsItem();
+
+    void update(dxvk::high_resolution_clock::time_point time);
+
+    HudPos render(
+            HudRenderer&      renderer,
+            HudPos            position);
+
+  private:
+
+    Rc<DxvkDevice> m_device;
+
+    uint64_t m_descriptorPoolCount = 0;
+    uint64_t m_descriptorSetCount  = 0;
+
+  };
+
+
+  /**
    * \brief HUD item to display memory usage
    */
   class HudMemoryStatsItem : public HudItem {
