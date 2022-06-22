@@ -9,6 +9,7 @@
 namespace dxvk {
 
   class DxvkDevice;
+  class DxvkDescriptorManager;
   
   /**
    * \brief DXVK context type
@@ -83,7 +84,7 @@ namespace dxvk {
 
     DxvkDescriptorPool(
             DxvkDevice*               device,
-            DxvkContextType           contextType);
+            DxvkDescriptorManager*    manager);
 
     ~DxvkDescriptorPool();
 
@@ -116,7 +117,7 @@ namespace dxvk {
   private:
 
     DxvkDevice*               m_device;
-    DxvkContextType           m_contextType;
+    DxvkDescriptorManager*    m_manager;
 
     std::vector<VkDescriptorPool>                                     m_descriptorPools;
     std::unordered_map<VkDescriptorSetLayout, DxvkDescriptorSetList>  m_setLists;
@@ -176,11 +177,34 @@ namespace dxvk {
     void recycleDescriptorPool(
       const Rc<DxvkDescriptorPool>&     pool);
 
+    /**
+     * \brief Creates a Vulkan descriptor pool
+     *
+     * Returns an existing unused pool or
+     * creates a new one if necessary.
+     * \returns The descriptor pool
+     */
+    VkDescriptorPool createVulkanDescriptorPool();
+
+    /**
+     * \brief Returns unused descriptor pool
+     *
+     * Caches the pool for future use, or destroys
+     * it if there are too many objects in the cache
+     * already.
+     * \param [in] pool Vulkan descriptor pool
+     */
+    void recycleVulkanDescriptorPool(VkDescriptorPool pool);
+
   private:
 
     DxvkDevice*                         m_device;
     DxvkContextType                     m_contextType;
     DxvkRecycler<DxvkDescriptorPool, 8> m_pools;
+
+    dxvk::mutex                         m_mutex;
+    std::array<VkDescriptorPool, 8>     m_vkPools;
+    size_t                              m_vkPoolCount = 0;
 
   };
 

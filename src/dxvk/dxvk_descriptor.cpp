@@ -35,8 +35,8 @@ namespace dxvk {
 
   DxvkDescriptorPool::DxvkDescriptorPool(
           DxvkDevice*               device,
-          DxvkContextType           contextType)
-  : m_device(device), m_contextType(contextType),
+          DxvkDescriptorManager*    manager)
+  : m_device(device), m_manager(manager),
     m_cachedEntry(nullptr, nullptr) {
 
   }
@@ -100,13 +100,10 @@ namespace dxvk {
       // If most sets are no longer being used, reset and destroy
       // descriptor pools and reset all lookup tables in order to
       // accomodate more descriptors of different layouts.
-      auto vk = m_device->vkd();
-      vk->vkResetDescriptorPool(vk->device(), m_descriptorPools[0], 0);
+      for (auto pool : m_descriptorPools)
+        m_manager->recycleVulkanDescriptorPool(pool);
 
-      for (uint32_t i = 1; i < m_descriptorPools.size(); i++)
-        vk->vkDestroyDescriptorPool(vk->device(), m_descriptorPools[i], nullptr);
-
-      m_descriptorPools.resize(1);
+      m_descriptorPools.clear();
       m_setLists.clear();
       m_setMaps.clear();
 
@@ -205,7 +202,54 @@ namespace dxvk {
 
 
   VkDescriptorPool DxvkDescriptorPool::addPool() {
+    VkDescriptorPool pool = m_manager->createVulkanDescriptorPool();
+    m_descriptorPools.push_back(pool);
+    return pool;
+  }
+
+  
+  DxvkDescriptorManager::DxvkDescriptorManager(
+          DxvkDevice*                 device,
+          DxvkContextType             contextType)
+  : m_device(device), m_contextType(contextType) {
+
+  }
+
+
+  DxvkDescriptorManager::~DxvkDescriptorManager() {
     auto vk = m_device->vkd();
+
+    for (size_t i = 0; i < m_vkPoolCount; i++)
+      vk->vkDestroyDescriptorPool(vk->device(), m_vkPools[i], nullptr);
+  }
+
+
+  Rc<DxvkDescriptorPool> DxvkDescriptorManager::getDescriptorPool() {
+    Rc<DxvkDescriptorPool> pool = m_pools.retrieveObject();
+
+    if (pool == nullptr)
+      pool = new DxvkDescriptorPool(m_device, this);
+
+    return pool;
+  }
+
+
+  void DxvkDescriptorManager::recycleDescriptorPool(
+    const Rc<DxvkDescriptorPool>&     pool) {
+    pool->reset();
+
+    m_pools.returnObject(pool);
+  }
+
+
+  VkDescriptorPool DxvkDescriptorManager::createVulkanDescriptorPool() {
+    auto vk = m_device->vkd();
+
+    { std::lock_guard lock(m_mutex);
+
+      if (m_vkPoolCount)
+        return m_vkPools[--m_vkPoolCount];
+    }
 
     uint32_t maxSets = m_contextType == DxvkContextType::Primary
       ? 8192 : 256;
@@ -233,39 +277,23 @@ namespace dxvk {
     if (vk->vkCreateDescriptorPool(vk->device(), &info, nullptr, &pool) != VK_SUCCESS)
       throw DxvkError("DxvkDescriptorPool: Failed to create descriptor pool");
 
-    m_descriptorPools.push_back(pool);
     return pool;
   }
 
   
-  DxvkDescriptorManager::DxvkDescriptorManager(
-          DxvkDevice*                 device,
-          DxvkContextType             contextType)
-  : m_device(device), m_contextType(contextType) {
+  void DxvkDescriptorManager::recycleVulkanDescriptorPool(VkDescriptorPool pool) {
+    auto vk = m_device->vkd();
+    vk->vkResetDescriptorPool(vk->device(), pool, 0);
 
-  }
+    { std::lock_guard lock(m_mutex);
 
+      if (m_vkPoolCount < m_vkPools.size()) {
+        m_vkPools[m_vkPoolCount++] = pool;
+        return;
+      }
+    }
 
-  DxvkDescriptorManager::~DxvkDescriptorManager() {
-
-  }
-
-
-  Rc<DxvkDescriptorPool> DxvkDescriptorManager::getDescriptorPool() {
-    Rc<DxvkDescriptorPool> pool = m_pools.retrieveObject();
-
-    if (pool == nullptr)
-      pool = new DxvkDescriptorPool(m_device, m_contextType);
-
-    return pool;
-  }
-
-
-  void DxvkDescriptorManager::recycleDescriptorPool(
-    const Rc<DxvkDescriptorPool>&     pool) {
-    pool->reset();
-
-    m_pools.returnObject(pool);
+    vk->vkDestroyDescriptorPool(vk->device(), pool, nullptr);
   }
 
 }
