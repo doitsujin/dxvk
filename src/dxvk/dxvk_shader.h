@@ -56,8 +56,6 @@ namespace dxvk {
     /// Shader stage
     VkShaderStageFlagBits stage;
     /// Descriptor info
-    uint32_t resourceSlotCount = 0;
-    const DxvkResourceSlot* resourceSlots = nullptr;
     uint32_t bindingCount = 0;
     const DxvkBindingInfo* bindings = nullptr;
     /// Input and output register mask
@@ -127,30 +125,6 @@ namespace dxvk {
       return m_bindings;
     }
     
-    /**
-     * \brief Adds resource slots definitions to a mapping
-     * 
-     * Used to generate the exact descriptor set layout when
-     * compiling a graphics or compute pipeline. Slot indices
-     * have to be mapped to actual binding numbers.
-     */
-    void defineResourceSlots(
-            DxvkDescriptorSlotMapping& mapping) const;
-    
-    /**
-     * \brief Creates a shader module
-     * 
-     * Maps the binding slot numbers 
-     * \param [in] vkd Vulkan device functions
-     * \param [in] mapping Resource slot mapping
-     * \param [in] info Module create info
-     * \returns The shader module
-     */
-    DxvkShaderModule createShaderModule(
-      const Rc<vk::DeviceFn>&          vkd,
-      const DxvkDescriptorSlotMapping& mapping,
-      const DxvkShaderModuleCreateInfo& info);
-
     /**
      * \brief Creates a shader module
      *
@@ -247,7 +221,6 @@ namespace dxvk {
     size_t                        m_o1IdxOffset = 0;
     size_t                        m_o1LocOffset = 0;
 
-    std::vector<DxvkResourceSlot> m_slots;
     std::vector<char>             m_uniformData;
     std::vector<BindingOffsets>   m_bindingOffsets;
 

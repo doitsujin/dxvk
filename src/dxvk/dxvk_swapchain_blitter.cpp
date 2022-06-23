@@ -323,11 +323,6 @@ namespace dxvk {
       { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, BindingIds::Gamma, VK_IMAGE_VIEW_TYPE_2D, 0, VK_ACCESS_SHADER_READ_BIT },
     }};
 
-    const std::array<DxvkResourceSlot, 2> fsResourceSlots = {{
-      { BindingIds::Image, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_IMAGE_VIEW_TYPE_2D },
-      { BindingIds::Gamma, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_IMAGE_VIEW_TYPE_1D },
-    }};
-
     DxvkShaderCreateInfo vsInfo;
     vsInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
     vsInfo.outputMask = 0x1;
@@ -337,8 +332,6 @@ namespace dxvk {
     fsInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     fsInfo.bindingCount = fsBindings.size();
     fsInfo.bindings = fsBindings.data();
-    fsInfo.resourceSlotCount = fsResourceSlots.size();
-    fsInfo.resourceSlots = fsResourceSlots.data();
     fsInfo.pushConstSize = sizeof(PresenterArgs);
     fsInfo.inputMask = 0x1;
     fsInfo.outputMask = 0x1;

@@ -168,21 +168,10 @@ namespace dxvk::hud {
       { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, VK_IMAGE_VIEW_TYPE_MAX_ENUM, 0, VK_ACCESS_SHADER_READ_BIT },
     }};
 
-    const std::array<DxvkResourceSlot, 2> vsResources = {{
-      { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       VK_IMAGE_VIEW_TYPE_MAX_ENUM },
-      { 1, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, VK_IMAGE_VIEW_TYPE_MAX_ENUM },
-    }};
-    
-    const std::array<DxvkResourceSlot, 1> fsResources = {{
-      { 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_IMAGE_VIEW_TYPE_2D },
-    }};
-    
     DxvkShaderCreateInfo vsInfo;
     vsInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
     vsInfo.bindingCount = vsBindings.size();
     vsInfo.bindings = vsBindings.data();
-    vsInfo.resourceSlotCount = vsResources.size();
-    vsInfo.resourceSlots = vsResources.data();
     vsInfo.outputMask = 0x3;
     vsInfo.pushConstSize = sizeof(HudTextPushConstants);
     result.vert = new DxvkShader(vsInfo, std::move(vsCode));
@@ -191,8 +180,6 @@ namespace dxvk::hud {
     fsInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     fsInfo.bindingCount = fsBindings.size();
     fsInfo.bindings = fsBindings.data();
-    fsInfo.resourceSlotCount = fsResources.size();
-    fsInfo.resourceSlots = fsResources.data();
     fsInfo.inputMask = 0x3;
     fsInfo.outputMask = 0x1;
     result.frag = new DxvkShader(fsInfo, std::move(fsCode));
@@ -211,10 +198,6 @@ namespace dxvk::hud {
       { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, VK_IMAGE_VIEW_TYPE_MAX_ENUM, 0, VK_ACCESS_SHADER_READ_BIT },
     }};
 
-    const std::array<DxvkResourceSlot, 1> fsResources = {{
-      { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_IMAGE_VIEW_TYPE_MAX_ENUM },
-    }};
-
     DxvkShaderCreateInfo vsInfo;
     vsInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
     vsInfo.outputMask = 0x1;
@@ -225,8 +208,6 @@ namespace dxvk::hud {
     fsInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     fsInfo.bindingCount = fsBindings.size();
     fsInfo.bindings = fsBindings.data();
-    fsInfo.resourceSlotCount = fsResources.size();
-    fsInfo.resourceSlots = fsResources.data();
     fsInfo.inputMask = 0x1;
     fsInfo.outputMask = 0x1;
     fsInfo.pushConstSize = sizeof(HudGraphPushConstants);

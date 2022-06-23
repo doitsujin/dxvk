@@ -424,7 +424,6 @@ namespace dxvk {
     ///////////////////////////////////////////////////////
     // Resource slot description for the shader. This will
     // be used to map D3D11 bindings to DXVK bindings.
-    std::vector<DxvkResourceSlot> m_resourceSlots;
     std::vector<DxvkBindingInfo> m_bindings;
     
     ////////////////////////////////////////////////

@@ -64,18 +64,10 @@ namespace dxvk {
     const DxvkShaderCreateInfo&   info,
           SpirvCodeBuffer&&       spirv)
   : m_info(info), m_code(spirv) {
-    m_info.resourceSlots = nullptr;
     m_info.uniformData = nullptr;
     m_info.bindings = nullptr;
 
     // Copy resource binding slot infos
-    if (info.resourceSlotCount) {
-      m_slots.resize(info.resourceSlotCount);
-      for (uint32_t i = 0; i < info.resourceSlotCount; i++)
-        m_slots[i] = info.resourceSlots[i];
-      m_info.resourceSlots = m_slots.data();
-    }
-
     for (uint32_t i = 0; i < info.bindingCount; i++) {
       DxvkBindingInfo binding = info.bindings[i];
       binding.stages = info.stage;
@@ -175,51 +167,6 @@ namespace dxvk {
 
   DxvkShader::~DxvkShader() {
     
-  }
-  
-  
-  void DxvkShader::defineResourceSlots(
-          DxvkDescriptorSlotMapping& mapping) const {
-    for (const auto& slot : m_slots)
-      mapping.defineSlot(m_info.stage, slot);
-    
-    if (m_info.pushConstSize) {
-      mapping.definePushConstRange(m_info.stage,
-        m_info.pushConstOffset,
-        m_info.pushConstSize);
-    }
-  }
-  
-  
-  DxvkShaderModule DxvkShader::createShaderModule(
-    const Rc<vk::DeviceFn>&          vkd,
-    const DxvkDescriptorSlotMapping& mapping,
-    const DxvkShaderModuleCreateInfo& info) {
-    SpirvCodeBuffer spirvCode = m_code.decompress();
-    uint32_t* code = spirvCode.data();
-    
-    // Remap resource binding IDs
-    for (const auto& info : m_bindingOffsets) {
-      uint32_t mappedBinding = mapping.getBindingId(info.bindingId);
-      code[info.bindingOffset] = mappedBinding;
-
-      if (info.constIdOffset)
-        code[info.constIdOffset] = mappedBinding;
-
-      if (code[info.setOffset])
-        code[info.setOffset] = 0;
-    }
-
-    // For dual-source blending we need to re-map
-    // location 1, index 0 to location 0, index 1
-    if (info.fsDualSrcBlend && m_o1IdxOffset && m_o1LocOffset)
-      std::swap(code[m_o1IdxOffset], code[m_o1LocOffset]);
-    
-    // Replace undefined input variables with zero
-    for (uint32_t u : bit::BitMask(info.undefinedInputs))
-      eliminateInput(spirvCode, u);
-
-    return DxvkShaderModule(vkd, this, spirvCode);
   }
   
   

@@ -251,8 +251,6 @@ namespace dxvk {
     // Create the shader object
     DxvkShaderCreateInfo info;
     info.stage = m_programInfo.shaderStage();
-    info.resourceSlotCount = m_resourceSlots.size();
-    info.resourceSlots = m_resourceSlots.data();
     info.bindingCount = m_bindings.size();
     info.bindings = m_bindings.data();
     info.inputMask = m_inputMask;
@@ -840,13 +838,6 @@ namespace dxvk {
       ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
       : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 
-    DxvkResourceSlot resource;
-    resource.slot = bindingId;
-    resource.type = descriptorType;
-    resource.view = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-    resource.access = VK_ACCESS_UNIFORM_READ_BIT;
-    m_resourceSlots.push_back(resource);
-
     DxvkBindingInfo binding = { descriptorType };
     binding.viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     binding.access = VK_ACCESS_UNIFORM_READ_BIT;
@@ -883,13 +874,6 @@ namespace dxvk {
     m_module.decorateBinding(varId, bindingId);
     
     // Store descriptor info for the shader interface
-    DxvkResourceSlot resource;
-    resource.slot = bindingId;
-    resource.type = VK_DESCRIPTOR_TYPE_SAMPLER;
-    resource.view = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-    resource.access = 0;
-    m_resourceSlots.push_back(resource);
-
     DxvkBindingInfo binding = { VK_DESCRIPTOR_TYPE_SAMPLER };
     binding.viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     binding.resourceBinding = bindingId;
@@ -1070,24 +1054,6 @@ namespace dxvk {
     }
     
     // Store descriptor info for the shader interface
-    DxvkResourceSlot resource;
-    resource.slot = bindingId;
-    resource.view = typeInfo.vtype;
-    
-    if (isUav) {
-      resource.type = resourceType == DxbcResourceDim::Buffer
-        ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
-        : VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-      resource.access = m_analysis->uavInfos[registerId].accessFlags;
-    } else {
-      resource.type = resourceType == DxbcResourceDim::Buffer
-        ? VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
-        : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-      resource.access = VK_ACCESS_SHADER_READ_BIT;
-    }
-    
-    m_resourceSlots.push_back(resource);
-
     DxvkBindingInfo binding = { };
     binding.viewType = typeInfo.vtype;
     binding.resourceBinding = bindingId;
@@ -1235,20 +1201,6 @@ namespace dxvk {
     }
     
     // Store descriptor info for the shader interface
-    DxvkResourceSlot resource;
-    resource.slot = bindingId;
-    resource.type = useRawSsbo
-      ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-      : (isUav
-        ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
-        : VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER);
-    resource.view = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-    resource.access = isUav
-      ? m_analysis->uavInfos[registerId].accessFlags
-      : VK_ACCESS_SHADER_READ_BIT;
-
-    m_resourceSlots.push_back(resource);
-
     DxvkBindingInfo binding = { };
     binding.descriptorType = useRawSsbo
       ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
@@ -1498,14 +1450,6 @@ namespace dxvk {
     m_module.decorateBinding(varId, bindingId);
     
     // Declare the storage buffer binding
-    DxvkResourceSlot resource;
-    resource.slot = bindingId;
-    resource.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    resource.view = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-    resource.access = VK_ACCESS_SHADER_READ_BIT
-                    | VK_ACCESS_SHADER_WRITE_BIT;
-    m_resourceSlots.push_back(resource);
-    
     DxvkBindingInfo binding = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
     binding.resourceBinding = bindingId;
     binding.viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
