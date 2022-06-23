@@ -89,6 +89,14 @@ namespace dxvk {
     ~DxvkDescriptorPool();
 
     /**
+     * \brief Tests whether the descriptor pool should be replaced
+     *
+     * \param [in] endFrame Whether this is the end of the frame
+     * \returns \c true if the pool should be submitted
+     */
+    bool shouldSubmit(bool endFrame);
+
+    /**
      * \brief Allocates one or multiple descriptor sets
      *
      * \param [in] layout Binding layout

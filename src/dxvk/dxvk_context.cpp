@@ -103,9 +103,9 @@ namespace dxvk {
     m_initBarriers.recordCommands(m_cmd);
     m_execBarriers.recordCommands(m_cmd);
 
-    if (m_type != DxvkContextType::Primary) {
+    if (m_descriptorPool->shouldSubmit(false)) {
       m_cmd->trackDescriptorPool(m_descriptorPool, m_descriptorManager);
-      m_descriptorPool = nullptr;
+      m_descriptorPool = m_descriptorManager->getDescriptorPool();
     }
 
     m_cmd->endRecording();
@@ -114,7 +114,7 @@ namespace dxvk {
 
 
   void DxvkContext::endFrame() {
-    if (m_descriptorPool != nullptr) {
+    if (m_descriptorPool->shouldSubmit(true)) {
       m_cmd->trackDescriptorPool(m_descriptorPool, m_descriptorManager);
       m_descriptorPool = m_descriptorManager->getDescriptorPool();
     }

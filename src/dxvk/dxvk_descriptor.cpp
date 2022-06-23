@@ -50,6 +50,24 @@ namespace dxvk {
   }
 
 
+  bool DxvkDescriptorPool::shouldSubmit(bool endFrame) {
+    // Never submit empty descriptor pools
+    if (!m_setsAllocated)
+      return false;
+
+    // No frame tracking for supplementary contexts, so
+    // always submit those at the end of a command list
+    if (endFrame || m_contextType != DxvkContextType::Primary)
+      return true;
+
+    // Submit very large descriptor pools to prevent extreme
+    // memory bloat. This may be necessary for off-screen
+    // rendering applications, or in situations where games
+    // pre-render a lot of images without presenting in between.
+    return m_descriptorPools.size() >= 8;
+  }
+
+
   void DxvkDescriptorPool::alloc(
     const DxvkBindingLayoutObjects* layout,
           uint32_t                  setMask,
