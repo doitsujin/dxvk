@@ -292,7 +292,10 @@ namespace dxvk {
     { R"(\\SRBT\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
-
+    /* A Way Out: fix for stuttering and low fps  */
+    { R"(\\AWayOut(_friend)\.exe$)", {{
+      { "dxgi.maxFrameLatency",                "1" },
+    }} },
     /**********************************************/
     /* D3D9 GAMES                                 */
     /**********************************************/
