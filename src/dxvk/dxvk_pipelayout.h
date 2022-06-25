@@ -523,27 +523,10 @@ namespace dxvk {
       return result;
     }
 
-    void clearSets() {
-      for (size_t i = 0; i < m_sets.size(); i++)
-        m_sets[i] = VK_NULL_HANDLE;
-    }
-
-    template<VkPipelineBindPoint BindPoint>
-    VkDescriptorSet& getSet(uint32_t index) {
-      return m_sets[BindPoint * DxvkDescriptorSets::SetCount + index];
-    }
-
-    template<VkPipelineBindPoint BindPoint>
-    const VkDescriptorSet& getSet(uint32_t index) const {
-      return m_sets[BindPoint * DxvkDescriptorSets::SetCount + index];
-    }
-
   private:
 
     VkShaderStageFlags m_dirtyBuffers   = 0;
     VkShaderStageFlags m_dirtyViews     = 0;
-
-    std::array<VkDescriptorSet, 2 * DxvkDescriptorSets::SetCount> m_sets;
 
   };
   

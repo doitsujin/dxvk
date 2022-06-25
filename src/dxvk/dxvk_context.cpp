@@ -85,8 +85,6 @@ namespace dxvk {
       VK_SHADER_STAGE_ALL_GRAPHICS |
       VK_SHADER_STAGE_COMPUTE_BIT);
 
-    m_descriptorState.clearSets();
-
     m_state.gp.pipeline = nullptr;
     m_state.cp.pipeline = nullptr;
 
@@ -4113,10 +4111,10 @@ namespace dxvk {
       : m_descriptorState.getDirtyComputeSets();
     dirtySetMask &= layoutSetMask;
 
-    uint32_t firstUpdated = bit::tzcnt(dirtySetMask);
+    uint32_t bindCount = 0;
     uint32_t k = 0;
 
-    std::array<VkDescriptorSet, DxvkDescriptorSets::SetCount> sets = { };
+    std::array<VkDescriptorSet, DxvkDescriptorSets::SetCount> sets;
     m_descriptorPool->alloc(layout, dirtySetMask, sets.data());
 
     while (dirtySetMask) {
@@ -4130,7 +4128,6 @@ namespace dxvk {
       newBindMask.setRange(bindingIndex, bindingCount);
 
       VkDescriptorSet set = sets[setIndex];
-      m_descriptorState.getSet<BindPoint>(setIndex) = set;
 
       for (uint32_t j = 0; j < bindingCount; j++) {
         const auto& binding = bindings.getBinding(setIndex, j);
@@ -4287,26 +4284,27 @@ namespace dxvk {
           &m_descriptors[k - bindingCount]);
       }
 
+      bindCount += 1;
+
+      // If the next set is not dirty, update and bind all previously
+      // updated sets in one go in order to reduce api call overhead.
+      if (!(dirtySetMask & (1u << (setIndex + 1)))) {
+        if (!useDescriptorTemplates) {
+          m_cmd->updateDescriptorSets(k, m_descriptorWrites.data());
+          k = 0;
+        }
+
+        uint32_t firstSet = setIndex + 1 - bindCount;
+
+        m_cmd->cmdBindDescriptorSets(BindPoint,
+          layout->getPipelineLayout(),
+          firstSet, bindCount, &sets[firstSet],
+          0, nullptr);
+
+        bindCount = 0;
+      }
+
       dirtySetMask &= dirtySetMask - 1;
-    }
-
-    if (!useDescriptorTemplates && k)
-      m_cmd->updateDescriptorSets(k, m_descriptorWrites.data());
-
-    // Bind all descriptor sets that need updating
-    uint32_t bindSetMask = layoutSetMask & ((~0u) << firstUpdated);
-
-    while (bindSetMask) {
-      uint32_t setIndex = bit::tzcnt(bindSetMask);
-      uint32_t setCount = bit::tzcnt(~(bindSetMask >> setIndex));
-
-      VkDescriptorSet* sets = &m_descriptorState.getSet<BindPoint>(setIndex);
-
-      m_cmd->cmdBindDescriptorSets(BindPoint,
-        layout->getPipelineLayout(),
-        setIndex, setCount, sets, 0, nullptr);
-
-      bindSetMask &= (~0u) << (setIndex + setCount);
     }
 
     // Update pipeline if there are unbound resources
