@@ -4,7 +4,7 @@
 
 namespace dxvk {
   
-  enum class DxvkAccess {
+  enum class DxvkAccess : uint32_t {
     Read    = 0,
     Write   = 1,
     None    = 2,
@@ -19,12 +19,59 @@ namespace dxvk {
    * by the GPU. As soon as a command that uses the resource
    * is recorded, it will be marked as 'in use'.
    */
-  class DxvkResource : public RcObject {
+  class DxvkResource {
+    static constexpr uint64_t RdAccessShift = 24;
+    static constexpr uint64_t WrAccessShift = 44;
 
+    static constexpr uint64_t RefcountMask  = (1ull << RdAccessShift) - 1;
+    static constexpr uint64_t RdAccessMask  = ((1ull << (WrAccessShift - RdAccessShift)) - 1) << RdAccessShift;
+    static constexpr uint64_t WrAccessMask  = ((1ull << (64 - WrAccessShift)) - 1) << WrAccessShift;
+
+    static constexpr uint64_t RefcountInc   = 1ull;
+    static constexpr uint64_t RdAccessInc   = 1ull << RdAccessShift;
+    static constexpr uint64_t WrAccessInc   = 1ull << WrAccessShift;
   public:
     
     virtual ~DxvkResource();
-    
+
+    /**
+     * \brief Increments reference count
+     * \returns New reference count
+     */
+    uint32_t incRef() {
+      return acquire(DxvkAccess::None);
+    }
+
+    /**
+     * \brief Decrements reference count
+     * \returns New reference count
+     */
+    uint32_t decRef() {
+      return release(DxvkAccess::None);
+    }
+
+    /**
+     * \brief Acquires resource with given access
+     *
+     * Atomically increments both the reference count
+     * as well as the use count for the given access.
+     * \returns New reference count
+     */
+    uint32_t acquire(DxvkAccess access) {
+      return uint32_t((m_useCount += getIncrement(access)) & RefcountMask);
+    }
+
+    /**
+     * \brief Releases resource with given access
+     *
+     * Atomically decrements both the reference count
+     * as well as the use count for the given access.
+     * \returns New reference count
+     */
+    uint32_t release(DxvkAccess access) {
+      return uint32_t((m_useCount -= getIncrement(access)) & RefcountMask);
+    }
+
     /**
      * \brief Checks whether resource is in use
      * 
@@ -36,40 +83,12 @@ namespace dxvk {
      * \returns \c true if the resource is in use
      */
     bool isInUse(DxvkAccess access = DxvkAccess::Read) const {
-      bool result = m_useCountW.load() != 0;
+      uint64_t mask = WrAccessMask;
       if (access == DxvkAccess::Read)
-        result |= m_useCountR.load() != 0;
-      return result;
+        mask |= RdAccessMask;
+      return bool(m_useCount.load() & mask);
     }
     
-    /**
-     * \brief Acquires resource
-     * 
-     * Increments use count for the given access type.
-     * \param Access Resource access type
-     */
-    void acquire(DxvkAccess access) {
-      if (access != DxvkAccess::None) {
-        (access == DxvkAccess::Read
-          ? m_useCountR
-          : m_useCountW) += 1;
-      }
-    }
-
-    /**
-     * \brief Releases resource
-     * 
-     * Decrements use count for the given access type.
-     * \param Access Resource access type
-     */
-    void release(DxvkAccess access) {
-      if (access != DxvkAccess::None) {
-        (access == DxvkAccess::Read
-          ? m_useCountR
-          : m_useCountW) -= 1;
-      }
-    }
-
     /**
      * \brief Waits for resource to become unused
      *
@@ -85,9 +104,19 @@ namespace dxvk {
     
   private:
     
-    std::atomic<uint32_t> m_useCountR = { 0u };
-    std::atomic<uint32_t> m_useCountW = { 0u };
+    std::atomic<uint64_t> m_useCount = { 0ull };
+
+    static constexpr uint64_t getIncrement(DxvkAccess access) {
+      uint64_t increment = RefcountInc;
+
+      if (access != DxvkAccess::None) {
+        increment |= (access == DxvkAccess::Read)
+          ? RdAccessInc : WrAccessInc;
+      }
+
+      return increment;
+    }
 
   };
-  
+
 }
