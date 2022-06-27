@@ -55,6 +55,18 @@ namespace dxvk {
       state.add(DxvkShader::getHash(fs));
       return state;
     }
+
+    bool validate() const {
+      return validateShaderType(vs, VK_SHADER_STAGE_VERTEX_BIT)
+          && validateShaderType(tcs, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)
+          && validateShaderType(tes, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
+          && validateShaderType(gs, VK_SHADER_STAGE_GEOMETRY_BIT)
+          && validateShaderType(fs, VK_SHADER_STAGE_FRAGMENT_BIT);
+    }
+
+    static bool validateShaderType(const Rc<DxvkShader>& shader, VkShaderStageFlagBits stage) {
+      return shader == nullptr || shader->info().stage == stage;
+    }
   };
   
   
@@ -249,7 +261,8 @@ namespace dxvk {
             VkShaderStageFlagBits          stage) const;
 
     bool validatePipelineState(
-      const DxvkGraphicsPipelineStateInfo& state) const;
+      const DxvkGraphicsPipelineStateInfo& state,
+            bool                           trusted) const;
     
     void writePipelineStateToCache(
       const DxvkGraphicsPipelineStateInfo& state,

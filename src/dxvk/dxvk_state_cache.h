@@ -28,7 +28,7 @@ namespace dxvk {
   public:
 
     DxvkStateCache(
-      const DxvkDevice*           device,
+            DxvkDevice*           device,
             DxvkPipelineManager*  pipeManager,
             DxvkRenderPassPool*   passManager);
     
@@ -93,6 +93,7 @@ namespace dxvk {
       DxvkComputePipelineShaders  cp;
     };
 
+    DxvkDevice*                       m_device;
     DxvkPipelineManager*              m_pipeManager;
     DxvkRenderPassPool*               m_passManager;
 
@@ -180,6 +181,10 @@ namespace dxvk {
     void workerFunc();
 
     void writerFunc();
+
+    void createWorkers();
+
+    void createWriter();
 
     std::wstring getCacheFileName() const;
     
