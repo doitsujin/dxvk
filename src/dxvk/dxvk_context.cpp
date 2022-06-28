@@ -5058,7 +5058,7 @@ namespace dxvk {
           if ((slot.bufferSlice.defined())
            && (slot.bufferSlice.bufferInfo().access & storageBufferAccess)) {
             srcAccess = this->checkGfxBufferBarrier<DoEmit>(slot.bufferSlice,
-              binding.stages, binding.access);
+              util::pipelineStages(binding.stages), binding.access);
           }
           break;
 
@@ -5067,7 +5067,7 @@ namespace dxvk {
           if ((slot.bufferView != nullptr)
            && (slot.bufferView->bufferInfo().access & storageBufferAccess)) {
             srcAccess = this->checkGfxBufferBarrier<DoEmit>(slot.bufferView->slice(),
-              binding.stages, binding.access);
+              util::pipelineStages(binding.stages), binding.access);
           }
           break;
 
@@ -5077,7 +5077,7 @@ namespace dxvk {
           if ((slot.imageView != nullptr)
            && (slot.imageView->imageInfo().access & storageImageAccess)) {
             srcAccess = this->checkGfxImageBarrier<DoEmit>(slot.imageView,
-              binding.stages, binding.access);
+              util::pipelineStages(binding.stages), binding.access);
           }
           break;
 
