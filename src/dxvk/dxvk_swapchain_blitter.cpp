@@ -211,8 +211,10 @@ namespace dxvk {
     ctx->pushConstants(0, sizeof(args), &args);
 
     ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, 0, srcView->imageInfo().sampleCount);
+    ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, 1, m_gammaView != nullptr);
     ctx->draw(3, 1, 0, 0);
     ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, 0, 0);
+    ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, 1, 0);
   }
 
   void DxvkSwapchainBlitter::resolve(
