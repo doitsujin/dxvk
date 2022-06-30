@@ -4165,7 +4165,7 @@ namespace dxvk {
                 m_cmd->trackResource<DxvkAccess::Read>(res.imageView->image());
               }
             } else {
-              m_descriptors[k].image = m_common->dummyResources().imageViewDescriptor(binding.viewType, true);
+              m_descriptors[k].image = VkDescriptorImageInfo();
               newBindMask.clr(bindingIndex + j);
             }
           } break;
@@ -4183,7 +4183,7 @@ namespace dxvk {
                 m_cmd->trackResource<DxvkAccess::Write>(res.imageView->image());
               }
             } else {
-              m_descriptors[k].image = m_common->dummyResources().imageViewDescriptor(binding.viewType, false);
+              m_descriptors[k].image = VkDescriptorImageInfo();
               newBindMask.clr(bindingIndex + j);
             }
           } break;
@@ -4203,7 +4203,7 @@ namespace dxvk {
                 m_cmd->trackResource<DxvkAccess::Read>(res.imageView->image());
               }
             } else {
-              m_descriptors[k].image = m_common->dummyResources().imageSamplerDescriptor(binding.viewType);
+              m_descriptors[k].image = m_common->dummyResources().samplerDescriptor();
               newBindMask.clr(bindingIndex + j);
             }
           } break;
@@ -4220,7 +4220,7 @@ namespace dxvk {
                 m_cmd->trackResource<DxvkAccess::Read>(res.bufferView->buffer());
               }
             } else {
-              m_descriptors[k].texelBuffer = m_common->dummyResources().bufferViewDescriptor();
+              m_descriptors[k].texelBuffer = VK_NULL_HANDLE;
               newBindMask.clr(bindingIndex + j);
             }
           } break;
@@ -4237,7 +4237,7 @@ namespace dxvk {
                 m_cmd->trackResource<DxvkAccess::Write>(res.bufferView->buffer());
               }
             } else {
-              m_descriptors[k].texelBuffer = m_common->dummyResources().bufferViewDescriptor();
+              m_descriptors[k].texelBuffer = VK_NULL_HANDLE;
               newBindMask.clr(bindingIndex + j);
             }
           } break;
@@ -4251,7 +4251,7 @@ namespace dxvk {
               if (m_rcTracked.set(binding.resourceBinding))
                 m_cmd->trackResource<DxvkAccess::Read>(res.bufferSlice.buffer());
             } else {
-              m_descriptors[k].buffer = m_common->dummyResources().bufferDescriptor();
+              m_descriptors[k].buffer = VkDescriptorBufferInfo();
             }
           } break;
 
@@ -4264,7 +4264,7 @@ namespace dxvk {
               if (m_rcTracked.set(binding.resourceBinding))
                 m_cmd->trackResource<DxvkAccess::Write>(res.bufferSlice.buffer());
             } else {
-              m_descriptors[k].buffer = m_common->dummyResources().bufferDescriptor();
+              m_descriptors[k].buffer = VkDescriptorBufferInfo();
               newBindMask.clr(bindingIndex + j);
             }
           } break;
