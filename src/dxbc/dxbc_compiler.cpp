@@ -821,13 +821,6 @@ namespace dxvk {
     if (asSsbo)
       m_module.decorate(varId, spv::DecorationNonWritable);
 
-    // Declare a specialization constant which will
-    // store whether or not the resource is bound.
-    const uint32_t specConstId = m_module.specConstBool(true);
-    m_module.decorateSpecId(specConstId, bindingId);
-    m_module.setDebugName(specConstId,
-      str::format(name, "_bound").c_str());
-    
     DxbcConstantBuffer buf;
     buf.varId  = varId;
     buf.size   = numConstants;
@@ -1008,18 +1001,12 @@ namespace dxvk {
     
     // Declare a specialization constant which will
     // store whether or not the resource is bound.
-    const uint32_t specConstId = m_module.specConstBool(true);
-    m_module.decorateSpecId(specConstId, bindingId);
-    m_module.setDebugName(specConstId,
-      str::format(isUav ? "u" : "t", registerId, "_bound").c_str());
-    
     if (isUav) {
       DxbcUav uav;
       uav.type          = DxbcResourceType::Typed;
       uav.imageInfo     = typeInfo;
       uav.varId         = varId;
       uav.ctrId         = 0;
-      uav.specId        = specConstId;
       uav.sampledType   = sampledType;
       uav.sampledTypeId = sampledTypeId;
       uav.imageTypeId   = imageTypeId;
@@ -1031,7 +1018,6 @@ namespace dxvk {
       res.type          = DxbcResourceType::Typed;
       res.imageInfo     = typeInfo;
       res.varId         = varId;
-      res.specId        = specConstId;
       res.sampledType   = sampledType;
       res.sampledTypeId = sampledTypeId;
       res.imageTypeId   = imageTypeId;
@@ -1164,20 +1150,12 @@ namespace dxvk {
     if (ins.controls.uavFlags().test(DxbcUavFlag::GloballyCoherent))
       m_module.decorate(varId, spv::DecorationCoherent);
     
-    // Declare a specialization constant which will
-    // store whether or not the resource is bound.
-    const uint32_t specConstId = m_module.specConstBool(true);
-    m_module.decorateSpecId(specConstId, bindingId);
-    m_module.setDebugName(specConstId,
-      str::format(isUav ? "u" : "t", registerId, "_bound").c_str());
-    
     if (isUav) {
       DxbcUav uav;
       uav.type          = resType;
       uav.imageInfo     = typeInfo;
       uav.varId         = varId;
       uav.ctrId         = 0;
-      uav.specId        = specConstId;
       uav.sampledType   = sampledType;
       uav.sampledTypeId = sampledTypeId;
       uav.imageTypeId   = resTypeId;
@@ -1189,7 +1167,6 @@ namespace dxvk {
       res.type          = resType;
       res.imageInfo     = typeInfo;
       res.varId         = varId;
-      res.specId        = specConstId;
       res.sampledType   = sampledType;
       res.sampledTypeId = sampledTypeId;
       res.imageTypeId   = resTypeId;
@@ -3421,18 +3398,7 @@ namespace dxvk {
     result = emitRegisterSwizzle(result,
       ins.src[1].swizzle, ins.dst[0].mask);
     
-    // If the texture is not bound, return zeroes
-    DxbcRegisterValue bound;
-    bound.type = { DxbcScalarType::Bool, 1 };
-    bound.id = texture.specId;
-    
-    DxbcRegisterValue mergedResult;
-    mergedResult.type = result.type;
-    mergedResult.id = m_module.opSelect(getVectorTypeId(mergedResult.type),
-      emitBuildVector(bound, result.type.ccount).id, result.id,
-      emitBuildZeroVector(result.type).id);
-    
-    emitRegisterStore(ins.dst[0], mergedResult);
+    emitRegisterStore(ins.dst[0], result);
   }
   
   
@@ -3537,14 +3503,6 @@ namespace dxvk {
     result = emitRegisterSwizzle(result,
       textureReg.swizzle, ins.dst[0].mask);
     
-    DxbcRegisterValue bound;
-    bound.type = { DxbcScalarType::Bool, 1 };
-    bound.id = texture.specId;
-    
-    result.id = m_module.opSelect(getVectorTypeId(result.type),
-      emitBuildVector(bound, result.type.ccount).id, result.id,
-      emitBuildZeroVector(result.type).id);
-
     emitRegisterStore(ins.dst[0], result);
   }
   
@@ -3692,14 +3650,6 @@ namespace dxvk {
         textureReg.swizzle, ins.dst[0].mask);
     }
     
-    DxbcRegisterValue bound;
-    bound.type = { DxbcScalarType::Bool, 1 };
-    bound.id = texture.specId;
-    
-    result.id = m_module.opSelect(getVectorTypeId(result.type),
-      emitBuildVector(bound, result.type.ccount).id, result.id,
-      emitBuildZeroVector(result.type).id);
-
     emitRegisterStore(ins.dst[0], result);
   }
   
@@ -5311,9 +5261,6 @@ namespace dxvk {
       getVectorTypeId(result.type),
       bufferInfo.varId, 0);
 
-    // Report a size of 0 if resource is not bound
-    result.id = m_module.opSelect(getVectorTypeId(result.type),
-      bufferInfo.specId, result.id, m_module.constu32(0));
     return result;
   }
   
@@ -5334,9 +5281,6 @@ namespace dxvk {
     result.id = m_module.opImageQuerySize(
       getVectorTypeId(result.type), bufferId);
 
-    // Report a size of 0 if resource is not bound
-    result.id = m_module.opSelect(getVectorTypeId(result.type),
-      bufferInfo.specId, result.id, m_module.constu32(0));
     return result;
   }
   
@@ -5358,9 +5302,6 @@ namespace dxvk {
       result.id = m_module.constu32(1);
     }
 
-    // Report zero LODs for unbound images
-    result.id = m_module.opSelect(getVectorTypeId(result.type),
-      info.specId, result.id, m_module.constu32(0));
     return result;
   }
   
@@ -5398,9 +5339,6 @@ namespace dxvk {
         result.id = m_module.constu32(1);
       }
       
-      // Report a sample count of 0 for unbound images
-      result.id = m_module.opSelect(getVectorTypeId(result.type),
-        info.specId, result.id, m_module.constu32(0));
       return result;
     }
   }
@@ -5426,26 +5364,6 @@ namespace dxvk {
         m_module.opLoad(info.typeId, info.varId));
     }
 
-    // Report a size of zero for unbound textures
-    uint32_t zero = m_module.constu32(0);
-    uint32_t cond = info.specId;
-
-    if (result.type.ccount > 1) {
-      std::array<uint32_t, 4> zeroes = {{ zero, zero, zero, zero }};
-      std::array<uint32_t, 4> conds  = {{ cond, cond, cond, cond }};
-
-      zero = m_module.opCompositeConstruct(
-        getVectorTypeId(result.type),
-        result.type.ccount, zeroes.data());
-      
-      cond = m_module.opCompositeConstruct(
-        m_module.defVectorType(m_module.defBoolType(), result.type.ccount),
-        result.type.ccount, conds.data());
-    }
-
-    result.id = m_module.opSelect(
-      getVectorTypeId(result.type),
-      cond, result.id, zero);
     return result;
   }
   
@@ -6644,13 +6562,15 @@ namespace dxvk {
   
   uint32_t DxbcCompiler::emitUavWriteTest(const DxbcBufferInfo& uav) {
     uint32_t typeId = m_module.defBoolType();
-    uint32_t testId = uav.specId;
+    uint32_t testId = 0;
     
     if (m_ps.killState != 0) {
       uint32_t killState = m_module.opLoad(typeId, m_ps.killState);
       
       testId = m_module.opLogicalAnd(typeId, testId,
         m_module.opLogicalNot(typeId, killState));
+    } else {
+      testId = m_module.constBool(true);
     }
     
     return testId;
@@ -7649,7 +7569,6 @@ namespace dxvk {
         result.type   = texture.type;
         result.typeId = texture.imageTypeId;
         result.varId  = texture.varId;
-        result.specId = texture.specId;
         result.stride = texture.structStride;
         result.align  = texture.structAlign;
         return result;
@@ -7664,7 +7583,6 @@ namespace dxvk {
         result.type   = uav.type;
         result.typeId = uav.imageTypeId;
         result.varId  = uav.varId;
-        result.specId = uav.specId;
         result.stride = uav.structStride;
         result.align  = uav.structAlign;
         return result;
@@ -7679,7 +7597,6 @@ namespace dxvk {
           getScalarTypeId(DxbcScalarType::Uint32),
           spv::StorageClassWorkgroup);
         result.varId  = m_gRegs.at(registerId).varId;
-        result.specId = 0;
         result.stride = m_gRegs.at(registerId).elementStride;
         result.align  = 0;
         return result;
