@@ -1126,13 +1126,9 @@ namespace dxvk {
 
     void UpdateBoolSpecConstantPixel(uint32_t value);
 
-    void UpdateSamplerSpecConsant(uint32_t value);
+    void UpdatePsSamplerSpecConstants(uint32_t types, uint32_t projections, uint32_t fetch4);
 
-    void UpdateProjectionSpecConstant(uint32_t value);
-
-    void UpdateFetch4SpecConstant(uint32_t value);
-
-    void UpdateSamplerDepthModeSpecConstant(uint32_t value);
+    void UpdateCommonSamplerSpecConstants(uint32_t boundMask, uint32_t depthMask);
 
     void TrackBufferMappingBufferSequenceNumber(
       D3D9CommonBuffer* pResource);
@@ -1228,6 +1224,7 @@ namespace dxvk {
     uint32_t                        m_lastBoolSpecConstantPixel  = 0;
     uint32_t                        m_lastSamplerDepthMode = 0;
     uint32_t                        m_lastProjectionBitfield = 0;
+    uint32_t                        m_lastSamplerNull = 0;
     uint32_t                        m_lastSamplerTypes = 0;
     uint32_t                        m_lastPointMode = 0;
     uint32_t                        m_lastFetch4    = 0;
