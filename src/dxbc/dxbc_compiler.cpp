@@ -258,6 +258,9 @@ namespace dxvk {
     info.uniformSize = m_immConstData.size();
     info.uniformData = m_immConstData.data();
 
+    if (m_programInfo.type() == DxbcProgramType::PixelShader && m_ps.pushConstantId)
+      info.pushConstSize = sizeof(DxbcPushConstants);
+
     if (m_moduleInfo.xfb) {
       info.xfbRasterizedStream = m_moduleInfo.xfb->rasterizedStream;
 
@@ -5309,19 +5312,20 @@ namespace dxvk {
   DxbcRegisterValue DxbcCompiler::emitQueryTextureSamples(
     const DxbcRegister&           resource) {
     if (resource.type == DxbcOperandType::Rasterizer) {
-      // SPIR-V has no gl_NumSamples equivalent, so we have
-      // to work around it using a specialization constant
-      if (!m_ps.specRsSampleCount) {
-        m_ps.specRsSampleCount = emitNewSpecConstant(
-          DxvkSpecConstantId::RasterizerSampleCount,
-          DxbcScalarType::Uint32, 1,
-          "RasterizerSampleCount");
-      }
+      // SPIR-V has no gl_NumSamples equivalent, so we
+      // have to work around it using a push constant
+      if (!m_ps.pushConstantId)
+        m_ps.pushConstantId = emitPushConstants();
+
+      uint32_t uintTypeId = m_module.defIntType(32, 0);
+      uint32_t ptrTypeId = m_module.defPointerType(uintTypeId, spv::StorageClassPushConstant);
+      uint32_t index = m_module.constu32(0);
 
       DxbcRegisterValue result;
       result.type.ctype  = DxbcScalarType::Uint32;
       result.type.ccount = 1;
-      result.id = m_ps.specRsSampleCount;
+      result.id = m_module.opLoad(uintTypeId,
+        m_module.opAccessChain(ptrTypeId, m_ps.pushConstantId, 1, &index));
       return result;
     } else {
       DxbcBufferInfo info = getBufferInfo(resource);
@@ -7532,6 +7536,22 @@ namespace dxvk {
   }
   
   
+  uint32_t DxbcCompiler::emitPushConstants() {
+    uint32_t uintTypeId = m_module.defIntType(32, 0);
+    uint32_t structTypeId = m_module.defStructTypeUnique(1, &uintTypeId);
+
+    m_module.setDebugName(structTypeId, "pc_t");
+    m_module.setDebugMemberName(structTypeId, 0, "RasterizerSampleCount");
+    m_module.memberDecorateOffset(structTypeId, 0, 0);
+
+    uint32_t ptrTypeId = m_module.defPointerType(structTypeId, spv::StorageClassPushConstant);
+    uint32_t varId = m_module.newVar(ptrTypeId, spv::StorageClassPushConstant);
+
+    m_module.setDebugName(varId, "pc");
+    return varId;
+  }
+
+
   void DxbcCompiler::enableShaderViewportIndexLayer() {
     if (!m_extensions.shaderViewportIndexLayer) {
       m_extensions.shaderViewportIndexLayer = true;

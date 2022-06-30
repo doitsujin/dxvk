@@ -723,6 +723,8 @@ namespace dxvk {
     
     void ApplyRasterizerState();
     
+    void ApplyRasterizerSampleCount();
+
     void ApplyViewportState();
 
     template<DxbcProgramType ShaderStage>

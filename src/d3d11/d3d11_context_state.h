@@ -129,6 +129,8 @@ namespace dxvk {
     D3D11DepthStencilState* dsState = nullptr;
     
     FLOAT blendFactor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+
+    UINT  sampleCount    = 0u;
     UINT  sampleMask     = 0xFFFFFFFFu;
     UINT  stencilRef     = 0u;
 

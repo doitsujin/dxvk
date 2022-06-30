@@ -9,7 +9,7 @@
 #include "../dxbc/dxbc_util.h"
 
 namespace dxvk {
-  
+
   D3D11DeviceContext::D3D11DeviceContext(
           D3D11Device*            pParent,
     const Rc<DxvkDevice>&         Device,
@@ -230,6 +230,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < 4; i++)
       m_state.om.blendFactor[i] = 1.0f;
     
+    m_state.om.sampleCount = 0;
     m_state.om.sampleMask = D3D11_DEFAULT_SAMPLE_MASK;
     m_state.om.stencilRef = D3D11_DEFAULT_STENCIL_REFERENCE;
 
@@ -2606,23 +2607,24 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::RSSetState(ID3D11RasterizerState* pRasterizerState) {
     D3D10DeviceLock lock = LockContext();
     
-    auto rasterizerState = static_cast<D3D11RasterizerState*>(pRasterizerState);
+    auto currRasterizerState = m_state.rs.state;
+    auto nextRasterizerState = static_cast<D3D11RasterizerState*>(pRasterizerState);
     
-    bool currScissorEnable = m_state.rs.state != nullptr
-      ? m_state.rs.state->Desc()->ScissorEnable
-      : false;
-    
-    bool nextScissorEnable = rasterizerState != nullptr
-      ? rasterizerState->Desc()->ScissorEnable
-      : false;
-
-    if (m_state.rs.state != rasterizerState) {
-      m_state.rs.state = rasterizerState;
-
-      // In D3D11, the rasterizer state defines whether the
-      // scissor test is enabled, so we have to update the
-      // scissor rectangles as well.
+    if (m_state.rs.state != nextRasterizerState) {
+      m_state.rs.state = nextRasterizerState;
       ApplyRasterizerState();
+
+      // If necessary, update the rasterizer sample count push constant
+      uint32_t currSampleCount = currRasterizerState != nullptr ? currRasterizerState->Desc()->ForcedSampleCount : 0;
+      uint32_t nextSampleCount = nextRasterizerState != nullptr ? nextRasterizerState->Desc()->ForcedSampleCount : 0;
+
+      if (currSampleCount != nextSampleCount)
+        ApplyRasterizerSampleCount();
+
+      // In D3D11, the rasterizer state defines whether the scissor test is
+      // enabled, so if that changes, we need to update scissor rects as well.
+      bool currScissorEnable = currRasterizerState != nullptr ? currRasterizerState->Desc()->ScissorEnable : false;
+      bool nextScissorEnable = nextRasterizerState != nullptr ? nextRasterizerState->Desc()->ScissorEnable : false;
 
       if (currScissorEnable != nextScissorEnable)
         ApplyViewportState();
@@ -3025,6 +3027,25 @@ namespace dxvk {
   }
   
   
+  void D3D11DeviceContext::ApplyRasterizerSampleCount() {
+    DxbcPushConstants pc;
+    pc.rasterizerSampleCount = m_state.om.sampleCount;
+
+    if (unlikely(!m_state.om.sampleCount)) {
+      pc.rasterizerSampleCount = m_state.rs.state->Desc()->ForcedSampleCount;
+
+      if (!m_state.om.sampleCount)
+        pc.rasterizerSampleCount = 1;
+    }
+
+    EmitCs([
+      cPushConstants = pc
+    ] (DxvkContext* ctx) {
+      ctx->pushConstants(0, sizeof(cPushConstants), &cPushConstants);
+    });
+  }
+
+
   void D3D11DeviceContext::ApplyViewportState() {
     std::array<VkViewport, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> viewports;
     std::array<VkRect2D,   D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> scissors;
@@ -3143,7 +3164,8 @@ namespace dxvk {
 
   void D3D11DeviceContext::BindFramebuffer() {
     DxvkRenderTargets attachments;
-    
+    uint32_t sampleCount = 0;
+
     // D3D11 doesn't have the concept of a framebuffer object,
     // so we'll just create a new one every time the render
     // target bindings are updated. Set up the attachments.
@@ -3152,6 +3174,7 @@ namespace dxvk {
         attachments.color[i] = {
           m_state.om.renderTargetViews[i]->GetImageView(),
           m_state.om.renderTargetViews[i]->GetRenderLayout() };
+        sampleCount = m_state.om.renderTargetViews[i]->GetSampleCount();
       }
     }
     
@@ -3159,6 +3182,7 @@ namespace dxvk {
       attachments.depth = {
         m_state.om.depthStencilView->GetImageView(),
         m_state.om.depthStencilView->GetRenderLayout() };
+      sampleCount = m_state.om.depthStencilView->GetSampleCount();
     }
     
     // Create and bind the framebuffer object to the context
@@ -3167,6 +3191,12 @@ namespace dxvk {
     ] (DxvkContext* ctx) {
       ctx->bindRenderTargets(cAttachments);
     });
+
+    // If necessary, update push constant for the sample count
+    if (m_state.om.sampleCount != sampleCount) {
+      m_state.om.sampleCount = sampleCount;
+      ApplyRasterizerSampleCount();
+    }
   }
   
   
@@ -4149,6 +4179,11 @@ namespace dxvk {
           }
         }
       }
+
+      // Initialize push constants
+      DxbcPushConstants pc;
+      pc.rasterizerSampleCount = 1;
+      ctx->pushConstants(0, sizeof(pc), &pc);
     });
   }
 
@@ -4170,6 +4205,7 @@ namespace dxvk {
     ApplyDepthStencilState();
     ApplyStencilRef();
     ApplyRasterizerState();
+    ApplyRasterizerSampleCount();
     ApplyViewportState();
 
     BindDrawBuffers(
