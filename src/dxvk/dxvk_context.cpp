@@ -4806,53 +4806,57 @@ namespace dxvk {
       uint32_t bindingCount = layout.getBindingCount(i);
 
       for (uint32_t j = 0; j < bindingCount && !requiresBarrier; j++) {
-        if (m_state.cp.state.bsBindingMask.test(index + j)) {
-          const DxvkBindingInfo& binding = layout.getBinding(i, j);
-          const DxvkShaderResourceSlot& slot = m_rc[binding.resourceBinding];
+        const DxvkBindingInfo& binding = layout.getBinding(i, j);
+        const DxvkShaderResourceSlot& slot = m_rc[binding.resourceBinding];
 
-          DxvkAccessFlags dstAccess = DxvkBarrierSet::getAccessTypes(binding.access);
-          DxvkAccessFlags srcAccess = 0;
-          
-          switch (binding.descriptorType) {
-            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+        DxvkAccessFlags dstAccess = DxvkBarrierSet::getAccessTypes(binding.access);
+        DxvkAccessFlags srcAccess = 0;
+        
+        switch (binding.descriptorType) {
+          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+            if (likely(slot.bufferSlice.defined())) {
               srcAccess = m_execBarriers.getBufferAccess(
                 slot.bufferSlice.getSliceHandle());
-              break;
-          
-            case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-            case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+            }
+            break;
+        
+          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+            if (likely(slot.bufferView != nullptr)) {
               srcAccess = m_execBarriers.getBufferAccess(
                 slot.bufferView->getSliceHandle());
-              break;
-            
-            case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-            case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-            case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+            }
+            break;
+          
+          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+            if (likely(slot.imageView != nullptr)) {
               srcAccess = m_execBarriers.getImageAccess(
                 slot.imageView->image(),
                 slot.imageView->imageSubresources());
-              break;
+            }
+            break;
 
-            default:
-              /* nothing to do */;
-          }
-
-          if (srcAccess == 0)
-            continue;
-
-          // Skip write-after-write barriers if explicitly requested
-          VkPipelineStageFlags stageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
-                                        | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
-
-          if ((m_barrierControl.test(DxvkBarrierControl::IgnoreWriteAfterWrite))
-          && (!(m_execBarriers.getSrcStages() & ~stageMask))
-          && ((srcAccess | dstAccess) == DxvkAccess::Write))
-            continue;
-
-          requiresBarrier = (srcAccess | dstAccess).test(DxvkAccess::Write);
+          default:
+            /* nothing to do */;
         }
+
+        if (srcAccess == 0)
+          continue;
+
+        // Skip write-after-write barriers if explicitly requested
+        VkPipelineStageFlags stageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+                                      | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+
+        if ((m_barrierControl.test(DxvkBarrierControl::IgnoreWriteAfterWrite))
+        && (!(m_execBarriers.getSrcStages() & ~stageMask))
+        && ((srcAccess | dstAccess) == DxvkAccess::Write))
+          continue;
+
+        requiresBarrier = (srcAccess | dstAccess).test(DxvkAccess::Write);
       }
 
       index += bindingCount;
@@ -4871,36 +4875,40 @@ namespace dxvk {
       uint32_t bindingCount = layout.getBindingCount(i);
 
       for (uint32_t j = 0; j < bindingCount; j++) {
-        if (m_state.cp.state.bsBindingMask.test(index + j)) {
-          const DxvkBindingInfo& binding = layout.getBinding(i, j);
-          const DxvkShaderResourceSlot& slot = m_rc[binding.resourceBinding];
+        const DxvkBindingInfo& binding = layout.getBinding(i, j);
+        const DxvkShaderResourceSlot& slot = m_rc[binding.resourceBinding];
 
-          VkPipelineStageFlags stages = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-          VkAccessFlags        access = binding.access;
-          
-          switch (binding.descriptorType) {
-            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+        VkPipelineStageFlags stages = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+        VkAccessFlags        access = binding.access;
+        
+        switch (binding.descriptorType) {
+          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+            if (likely(slot.bufferSlice.defined())) {
               m_execBarriers.accessBuffer(
                 slot.bufferSlice.getSliceHandle(),
                 stages, access,
                 slot.bufferSlice.bufferInfo().stages,
                 slot.bufferSlice.bufferInfo().access);
-              break;
-          
-            case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-            case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+            }
+            break;
+        
+          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+            if (likely(slot.bufferView != nullptr)) {
               m_execBarriers.accessBuffer(
                 slot.bufferView->getSliceHandle(),
                 stages, access,
                 slot.bufferView->bufferInfo().stages,
                 slot.bufferView->bufferInfo().access);
-              break;
-            
-            case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-            case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-            case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+            }
+            break;
+          
+          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+            if (likely(slot.imageView != nullptr)) {
               m_execBarriers.accessImage(
                 slot.imageView->image(),
                 slot.imageView->imageSubresources(),
@@ -4909,11 +4917,11 @@ namespace dxvk {
                 slot.imageView->imageInfo().layout,
                 slot.imageView->imageInfo().stages,
                 slot.imageView->imageInfo().access);
-              break;
+            }
+            break;
 
-            default:
-              /* nothing to do */;
-          }
+          default:
+            /* nothing to do */;
         }
       }
 
