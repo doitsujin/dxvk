@@ -271,6 +271,10 @@ namespace dxvk {
       this->emitDclConstantBuffer();
     }
 
+    m_nullSpecConstant = m_module.specConst32(m_module.defIntType(32, 0), 0);
+    m_module.decorateSpecId(m_nullSpecConstant, getSpecId(D3D9SpecConstantId::SamplerNull));
+    m_module.setDebugName(m_nullSpecConstant, "nullSamplers");
+
     m_depthSpecConstant = m_module.specConst32(m_module.defIntType(32, 0), 0);
     m_module.decorateSpecId(m_depthSpecConstant, getSpecId(D3D9SpecConstantId::SamplerDepthMode));
     m_module.setDebugName(m_depthSpecConstant, "depthSamplers");
@@ -844,12 +848,7 @@ namespace dxvk {
       }
     }
 
-    DxsoSampler& sampler = m_samplers[idx];
-    sampler.boundConst = m_module.specConstBool(true);
-    sampler.type = type;
-    m_module.decorateSpecId(sampler.boundConst, binding);
-    m_module.setDebugName(sampler.boundConst,
-      str::format("s", idx, "_bound").c_str());
+    m_samplers[idx].type = type;
 
     // Store descriptor info for the shader interface
     DxvkBindingInfo bindingInfo = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER };
@@ -2892,7 +2891,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     DxsoSampler sampler = m_samplers.at(samplerIdx);
 
-    auto SampleImage = [this, opcode, dst, ctx, samplerIdx, GetProjectionValue](DxsoRegisterValue texcoordVar, DxsoSamplerInfo& sampler, bool depth, DxsoSamplerType samplerType, uint32_t specConst) {
+    auto SampleImage = [this, opcode, dst, ctx, samplerIdx, GetProjectionValue](DxsoRegisterValue texcoordVar, DxsoSamplerInfo& sampler, bool depth, DxsoSamplerType samplerType, uint32_t isNull) {
       DxsoRegisterValue result;
       result.type.ctype  = dst.type.ctype;
       result.type.ccount = depth ? 1 : 4;
@@ -3015,12 +3014,12 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       // If we are sampling depth we've already specc'ed this!
       // This path is always size 4 because it only hits on color.
-      if (specConst != 0) {
+      if (isNull != 0) {
         uint32_t bool_t = m_module.defBoolType();
         uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
-        std::array<uint32_t, 4> indices = { specConst, specConst, specConst, specConst };
-        specConst = m_module.opCompositeConstruct(bvec4_t, indices.size(), indices.data());
-        result.id = m_module.opSelect(typeId, specConst, result.id, m_module.constvec4f32(0.0f, 0.0f, 0.0f, 1.0f));
+        std::array<uint32_t, 4> indices = { isNull, isNull, isNull, isNull };
+        isNull = m_module.opCompositeConstruct(bvec4_t, indices.size(), indices.data());
+        result.id = m_module.opSelect(typeId, isNull, m_module.constvec4f32(0.0f, 0.0f, 0.0f, 1.0f), result.id);
       }
 
       // Apply operand swizzle to the operand value
@@ -3055,6 +3054,13 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     };
 
     auto SampleType = [&](DxsoSamplerType samplerType) {
+      uint32_t typeId = m_module.defIntType(32, 0);
+      uint32_t offset  = m_module.consti32(m_programInfo.type() == DxsoProgramTypes::VertexShader ? samplerIdx + 17 : samplerIdx);
+      uint32_t bitCnt  = m_module.consti32(1);
+
+      uint32_t isNull = m_module.opBitFieldUExtract(typeId, m_nullSpecConstant, offset, bitCnt);
+      isNull = m_module.opIEqual(m_module.defBoolType(), isNull, m_module.constu32(1));
+
       // Only do the check for depth comp. samplers
       // if we aren't a 3D texture
       if (samplerType != SamplerTypeTexture3D) {
@@ -3062,9 +3068,6 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         uint32_t depthLabel  = m_module.allocateId();
         uint32_t endLabel    = m_module.allocateId();
 
-        uint32_t typeId = m_module.defIntType(32, 0);
-        uint32_t offset  = m_module.consti32(m_programInfo.type() == DxsoProgramTypes::VertexShader ? samplerIdx + 17 : samplerIdx);
-        uint32_t bitCnt  = m_module.consti32(1);
         uint32_t isDepth = m_module.opBitFieldUExtract(typeId, m_depthSpecConstant, offset, bitCnt);
         isDepth = m_module.opIEqual(m_module.defBoolType(), isDepth, m_module.constu32(1));
 
@@ -3072,7 +3075,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         m_module.opBranchConditional(isDepth, depthLabel, colorLabel);
 
         m_module.opLabel(colorLabel);
-        SampleImage(texcoordVar, sampler.color[samplerType], false, samplerType, sampler.boundConst);
+        SampleImage(texcoordVar, sampler.color[samplerType], false, samplerType, isNull);
         m_module.opBranch(endLabel);
 
         m_module.opLabel(depthLabel);
@@ -3083,7 +3086,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         m_module.opLabel(endLabel);
       }
       else
-        SampleImage(texcoordVar, sampler.color[samplerType], false, samplerType, sampler.boundConst);
+        SampleImage(texcoordVar, sampler.color[samplerType], false, samplerType, isNull);
     };
 
     if (m_programInfo.majorVersion() >= 2 && !m_moduleInfo.options.forceSamplerTypeSpecConstants) {

@@ -129,8 +129,6 @@ namespace dxvk {
     DxsoSamplerInfo color[SamplerTypeCount];
     DxsoSamplerInfo depth[SamplerTypeCount];
 
-    uint32_t boundConst;
-
     DxsoTextureType type;
   };
 
@@ -272,6 +270,7 @@ namespace dxvk {
     SpirvModule                m_module;
 
     uint32_t                   m_boolSpecConstant;
+    uint32_t                   m_nullSpecConstant;
     uint32_t                   m_depthSpecConstant;
 
     ///////////////////////////////////////////////////////
