@@ -83,14 +83,6 @@ namespace dxvk {
     }
     
     DxvkSpecConstants specData;
-    uint32_t bindingIndex = 0;
-
-    for (uint32_t i = 0; i < DxvkDescriptorSets::SetCount; i++) {
-      for (uint32_t j = 0; j < m_bindings->layout().getBindingCount(i); j++) {
-        specData.set(bindingIndex, state.bsBindingMask.test(bindingIndex), true);
-        bindingIndex += 1;
-      }
-    }
     
     for (uint32_t i = 0; i < MaxNumSpecConstants; i++)
       specData.set(getSpecId(i), state.sc.specConstants[i], 0u);

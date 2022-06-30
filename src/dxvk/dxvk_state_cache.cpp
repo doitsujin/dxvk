@@ -45,6 +45,10 @@ namespace dxvk {
     }
 
     bool read(DxvkBindingMask& data, uint32_t version) {
+      // v11 removes this field
+      if (version >= 11)
+        return true;
+
       if (version < 9) {
         DxvkBindingMaskV8 v8;
 
@@ -551,8 +555,10 @@ namespace dxvk {
         keys[i] = g_nullShaderKey;
     }
 
+    DxvkBindingMask dummyBindingMask = { };
+
     if (stageMask & VK_SHADER_STAGE_COMPUTE_BIT) {
-      if (!data.read(entry.cpState.bsBindingMask, version))
+      if (!data.read(dummyBindingMask, version))
         return false;
     } else {
       // Read packed render pass format
@@ -582,7 +588,7 @@ namespace dxvk {
         return false;
 
       // Read common pipeline state
-      if (!data.read(entry.gpState.bsBindingMask, version)
+      if (!data.read(dummyBindingMask, version)
        || !data.read(entry.gpState.ia, version)
        || !data.read(entry.gpState.il, version)
        || !data.read(entry.gpState.rs, version)
@@ -659,10 +665,7 @@ namespace dxvk {
       }
     }
 
-    if (stageMask & VK_SHADER_STAGE_COMPUTE_BIT) {
-      // Nothing else here to write out
-      data.write(entry.cpState.bsBindingMask);
-    } else {
+    if (!(stageMask & VK_SHADER_STAGE_COMPUTE_BIT)) {
       // Pack render pass format
       data.write(uint8_t(entry.format.sampleCount));
       data.write(uint8_t(entry.format.depth.format));
@@ -674,7 +677,6 @@ namespace dxvk {
       }
 
       // Write out common pipeline state
-      data.write(entry.gpState.bsBindingMask);
       data.write(entry.gpState.ia);
       data.write(entry.gpState.il);
       data.write(entry.gpState.rs);
@@ -821,9 +823,6 @@ namespace dxvk {
     out.hash    = in.hash;
 
     if (in.shaders.cs.eq(g_nullShaderKey)) {
-      // Binding mask
-      out.gpState.bsBindingMask = in.gpState.bsBindingMask.convert();
-
       // Graphics state
       out.gpState.ia = DxvkIaInfo(
         in.gpState.iaPrimitiveTopology,
@@ -898,9 +897,6 @@ namespace dxvk {
       for (uint32_t i = 0; i < 8 && i < MaxNumSpecConstants; i++)
         out.cpState.sc.specConstants[i] = in.cpState.scSpecConstants[i];
     } else {
-      // Binding mask
-      out.cpState.bsBindingMask = in.cpState.bsBindingMask.convert();
-
       for (uint32_t i = 0; i < 8 && i < MaxNumSpecConstants; i++)
         out.gpState.sc.specConstants[i] = in.gpState.scSpecConstants[i];
     }

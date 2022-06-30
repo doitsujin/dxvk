@@ -679,7 +679,6 @@ namespace dxvk {
       return result;
     }
     
-    DxvkBindingMask         bsBindingMask;
     DxvkIaInfo              ia;
     DxvkIlInfo              il;
     DxvkRsInfo              rs;
@@ -721,7 +720,6 @@ namespace dxvk {
       return !bit::bcmpeq(this, &other);
     }
     
-    DxvkBindingMask         bsBindingMask;
     DxvkScInfo              sc;
   };
 

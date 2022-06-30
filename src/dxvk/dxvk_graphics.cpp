@@ -154,15 +154,6 @@ namespace dxvk {
     DxvkSpecConstants specData;
     specData.set(uint32_t(DxvkSpecConstantId::RasterizerSampleCount), sampleCount, VK_SAMPLE_COUNT_1_BIT);
 
-    uint32_t bindingIndex = 0;
-
-    for (uint32_t i = 0; i < DxvkDescriptorSets::SetCount; i++) {
-      for (uint32_t j = 0; j < m_bindings->layout().getBindingCount(i); j++) {
-        specData.set(bindingIndex, state.bsBindingMask.test(bindingIndex), true);
-        bindingIndex += 1;
-      }
-    }
-    
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       if ((m_fsOut & (1 << i)) != 0) {
         specData.set(uint32_t(DxvkSpecConstantId::ColorComponentMappings) + i,
