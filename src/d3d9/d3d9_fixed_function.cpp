@@ -540,7 +540,6 @@ namespace dxvk {
       uint32_t texcoordCnt;
       uint32_t typeId;
       uint32_t varId;
-      uint32_t bound;
     } samplers[8];
 
     struct {
@@ -1657,12 +1656,6 @@ namespace dxvk {
 
             texture = m_module.opVectorTimesScalar(m_vec4Type, texture, scale);
           }
-
-          uint32_t bool_t = m_module.defBoolType();
-          uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
-          std::array<uint32_t, 4> boundIndices = { m_ps.samplers[i].bound, m_ps.samplers[i].bound, m_ps.samplers[i].bound, m_ps.samplers[i].bound };
-          uint32_t bound4 = m_module.opCompositeConstruct(bvec4_t, boundIndices.size(), boundIndices.data());
-          texture = m_module.opSelect(m_vec4Type, bound4, texture, m_module.constvec4f32(0.0f, 0.0f, 0.0f, 1.0f));
         }
 
         processedTexture = true;
@@ -2092,11 +2085,6 @@ namespace dxvk {
 
       const uint32_t bindingId = computeResourceSlotId(DxsoProgramType::PixelShader,
         DxsoBindingType::Image, i);
-
-      sampler.bound = m_module.specConstBool(true);
-      m_module.decorateSpecId(sampler.bound, bindingId);
-      m_module.setDebugName(sampler.bound,
-        str::format("s", i, "_bound").c_str());
 
       m_module.decorateDescriptorSet(sampler.varId, 0);
       m_module.decorateBinding(sampler.varId, bindingId);
