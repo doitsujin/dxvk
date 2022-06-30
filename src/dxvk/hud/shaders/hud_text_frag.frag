@@ -1,6 +1,6 @@
 #version 450
 
-layout(constant_id = 1225) const bool srgbSwapchain = false;
+layout(constant_id = 0) const bool srgbSwapchain = false;
 
 layout(binding = 2) uniform sampler2D s_font;
 

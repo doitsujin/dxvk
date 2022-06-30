@@ -24,14 +24,10 @@ namespace dxvk {
    * implementation at pipeline compilation time.
    */
   enum class DxvkSpecConstantId : uint32_t {
+    FirstPipelineConstant       = 0,
     /// Special constant ranges that do not count
     /// towards the spec constant min/max values
-    ColorComponentMappings      = MaxNumResourceSlots,
-
-    // Specialization constants for pipeline state
-    SpecConstantRangeStart      = ColorComponentMappings + MaxNumRenderTargets,
-    RasterizerSampleCount       = SpecConstantRangeStart + 0,
-    FirstPipelineConstant
+    ColorComponentMappings      = DxvkLimits::MaxNumSpecConstants,
   };
 
   /**

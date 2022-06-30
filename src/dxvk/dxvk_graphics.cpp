@@ -152,7 +152,6 @@ namespace dxvk {
     
     // Set up some specialization constants
     DxvkSpecConstants specData;
-    specData.set(uint32_t(DxvkSpecConstantId::RasterizerSampleCount), sampleCount, VK_SAMPLE_COUNT_1_BIT);
 
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       if ((m_fsOut & (1 << i)) != 0) {
