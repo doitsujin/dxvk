@@ -585,6 +585,7 @@ namespace dxvk {
       float colorMatrix[3][4];
       float coordMatrix[3][2];
       float yMin, yMax;
+      VkBool32 isPlanar;
     };
 
     D3D11ImmediateContext* m_ctx;

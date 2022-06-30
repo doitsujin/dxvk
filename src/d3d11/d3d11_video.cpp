@@ -1278,6 +1278,7 @@ namespace dxvk {
       uboData.coordMatrix[1][1] = 1.0f;
       uboData.yMin = 0.0f;
       uboData.yMax = 1.0f;
+      uboData.isPlanar = cViews[1] != nullptr;
 
       if (cIsYCbCr)
         ApplyYCbCrMatrix(uboData.colorMatrix, cStreamState.colorSpace.YCbCr_Matrix);
