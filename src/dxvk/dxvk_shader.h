@@ -199,14 +199,8 @@ namespace dxvk {
     
   private:
 
-    struct ConstOffsets {
-      uint32_t bindingId;
-      uint32_t constIdOffset;
-    };
-
     struct BindingOffsets {
       uint32_t bindingId;
-      uint32_t constIdOffset;
       uint32_t bindingOffset;
       uint32_t setOffset;
     };

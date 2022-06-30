@@ -93,7 +93,6 @@ namespace dxvk {
     // Run an analysis pass over the SPIR-V code to gather some
     // info that we may need during pipeline compilation.
     std::vector<BindingOffsets> bindingOffsets;
-    std::vector<ConstOffsets> constIdOffsets;
     std::vector<uint32_t> varIds;
 
     SpirvCodeBuffer code = std::move(spirv);
@@ -114,9 +113,6 @@ namespace dxvk {
           bindingOffsets.resize(std::max(bindingOffsets.size(), size_t(varId + 1)));
           bindingOffsets[varId].setOffset = ins.offset() + 3;
         }
-
-        if (ins.arg(2) == spv::DecorationSpecId)
-          constIdOffsets.push_back({ ins.arg(3), ins.offset() + 3 });
 
         if (ins.arg(2) == spv::DecorationLocation && ins.arg(3) == 1) {
           m_o1LocOffset = ins.offset() + 3;
@@ -152,13 +148,6 @@ namespace dxvk {
     for (auto varId : varIds) {
       BindingOffsets info = bindingOffsets[varId];
 
-      for (const auto& specOfs : constIdOffsets) {
-        if (info.bindingId == specOfs.bindingId) {
-          info.constIdOffset = specOfs.constIdOffset;
-          break;
-        }
-      }
-
       if (info.bindingOffset)
         m_bindingOffsets.push_back(info);
     }
@@ -183,9 +172,6 @@ namespace dxvk {
 
       if (mappedBinding) {
         code[info.bindingOffset] = mappedBinding->binding;
-
-        if (info.constIdOffset)
-          code[info.constIdOffset] = mappedBinding->constId;
 
         if (info.setOffset)
           code[info.setOffset] = mappedBinding->set;
