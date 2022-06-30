@@ -19,8 +19,6 @@ namespace dxvk {
     m_gfxBarriers (DxvkCmdBuffer::ExecBuffer),
     m_queryManager(m_common->queryPool()),
     m_staging     (device, StagingBufferSize) {
-    if (m_device->features().extRobustness2.nullDescriptor)
-      m_features.set(DxvkContextFeature::NullDescriptors);
     if (m_device->features().extExtendedDynamicState.extendedDynamicState)
       m_features.set(DxvkContextFeature::ExtendedDynamicState);
 
@@ -4589,12 +4587,8 @@ namespace dxvk {
         
         if (m_vbTracked.set(binding))
           m_cmd->trackResource<DxvkAccess::Read>(m_state.vi.vertexBuffers[binding].buffer());
-      } else if (m_features.test(DxvkContextFeature::NullDescriptors)) {
-        buffers[i] = VK_NULL_HANDLE;
-        offsets[i] = 0;
-        lengths[i] = 0;
       } else {
-        buffers[i] = m_common->dummyResources().bufferHandle();
+        buffers[i] = VK_NULL_HANDLE;
         offsets[i] = 0;
         lengths[i] = 0;
       }

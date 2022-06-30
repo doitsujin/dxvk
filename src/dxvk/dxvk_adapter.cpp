@@ -329,6 +329,8 @@ namespace dxvk {
     enabledFeatures.ext4444Formats.formatA4B4G4R4 = m_deviceFeatures.ext4444Formats.formatA4B4G4R4;
     enabledFeatures.ext4444Formats.formatA4R4G4B4 = m_deviceFeatures.ext4444Formats.formatA4R4G4B4;
     
+    enabledFeatures.extRobustness2.nullDescriptor = VK_TRUE;
+
     Logger::info(str::format("Device properties:"
       "\n  Device name:     : ", m_deviceInfo.core.properties.deviceName,
       "\n  Driver version   : ",
