@@ -251,7 +251,13 @@ namespace dxvk {
       m_vkd->vkCmdBeginQueryIndexedEXT(
         m_execBuffer, queryPool, query, flags, index);
     }
-    
+
+
+    void cmdBeginRendering(
+      const VkRenderingInfoKHR*     pRenderingInfo) {
+      m_vkd->vkCmdBeginRenderingKHR(m_execBuffer, pRenderingInfo);
+    }
+
     
     void cmdBeginRenderPass(
       const VkRenderPassBeginInfo*  pRenderPassBegin,
@@ -588,6 +594,11 @@ namespace dxvk {
         m_execBuffer, queryPool, query, index);
     }
     
+    
+    void cmdEndRendering() {
+      m_vkd->vkCmdEndRenderingKHR(m_execBuffer);
+    }
+
     
     void cmdEndRenderPass() {
       m_vkd->vkCmdEndRenderPass(m_execBuffer);
