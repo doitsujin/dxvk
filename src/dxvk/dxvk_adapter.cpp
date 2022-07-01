@@ -265,7 +265,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 30> devExtensionList = {{
+    std::array<DxvkExt*, 31> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.ext4444Formats,
@@ -289,6 +289,7 @@ namespace dxvk {
       &devExtensions.khrDepthStencilResolve,
       &devExtensions.khrDrawIndirectCount,
       &devExtensions.khrDriverProperties,
+      &devExtensions.khrDynamicRendering,
       &devExtensions.khrExternalMemoryWin32,
       &devExtensions.khrImageFormatList,
       &devExtensions.khrSamplerMirrorClampToEdge,
@@ -333,6 +334,8 @@ namespace dxvk {
     enabledFeatures.ext4444Formats.formatA4R4G4B4 = m_deviceFeatures.ext4444Formats.formatA4R4G4B4;
     
     enabledFeatures.extRobustness2.nullDescriptor = VK_TRUE;
+
+    enabledFeatures.khrDynamicRendering.dynamicRendering = VK_TRUE;
 
     Logger::info(str::format("Device properties:"
       "\n  Device name:     : ", m_deviceInfo.core.properties.deviceName,
@@ -410,6 +413,11 @@ namespace dxvk {
     if (devExtensions.khrBufferDeviceAddress) {
       enabledFeatures.khrBufferDeviceAddress.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR;
       enabledFeatures.khrBufferDeviceAddress.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrBufferDeviceAddress);
+    }
+
+    if (devExtensions.khrDynamicRendering) {
+      enabledFeatures.khrDynamicRendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
+      enabledFeatures.khrDynamicRendering.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrDynamicRendering);
     }
 
     // Report the desired overallocation behaviour to the driver
@@ -722,6 +730,11 @@ namespace dxvk {
       m_deviceFeatures.khrBufferDeviceAddress.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrBufferDeviceAddress);
     }
 
+    if (m_deviceExtensions.supports(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)) {
+      m_deviceFeatures.khrDynamicRendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
+      m_deviceFeatures.khrDynamicRendering.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrDynamicRendering);
+    }
+
     m_vki->vkGetPhysicalDeviceFeatures2(m_handle, &m_deviceFeatures.core);
   }
 
@@ -817,7 +830,9 @@ namespace dxvk {
       "\n  vertexAttributeInstanceRateDivisor     : ", features.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor ? "1" : "0",
       "\n  vertexAttributeInstanceRateZeroDivisor : ", features.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor ? "1" : "0",
       "\n", VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-      "\n  bufferDeviceAddress                    : ", features.khrBufferDeviceAddress.bufferDeviceAddress));
+      "\n  bufferDeviceAddress                    : ", features.khrBufferDeviceAddress.bufferDeviceAddress ? "1" : "0",
+      "\n", VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
+      "\n  dynamicRendering                       : ", features.khrDynamicRendering.dynamicRendering ? "1" : "0"));
   }
 
 

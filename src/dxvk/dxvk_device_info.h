@@ -49,6 +49,7 @@ namespace dxvk {
     VkPhysicalDeviceTransformFeedbackFeaturesEXT              extTransformFeedback;
     VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT         extVertexAttributeDivisor;
     VkPhysicalDeviceBufferDeviceAddressFeaturesKHR            khrBufferDeviceAddress;
+    VkPhysicalDeviceDynamicRenderingFeaturesKHR               khrDynamicRendering;
   };
 
 }

@@ -365,6 +365,11 @@ namespace dxvk::vk {
     VULKAN_FN(vkGetBufferDeviceAddressKHR);
     #endif
 
+    #ifdef VK_KHR_dynamic_rendering
+    VULKAN_FN(vkCmdBeginRenderingKHR);
+    VULKAN_FN(vkCmdEndRenderingKHR);
+    #endif
+
     #ifdef VK_KHR_external_memory_win32
     VULKAN_FN(vkGetMemoryWin32HandleKHR);
     VULKAN_FN(vkGetMemoryWin32HandlePropertiesKHR);
