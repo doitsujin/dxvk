@@ -88,20 +88,6 @@ namespace dxvk {
   
   
   /**
-   * \brief Blit framebuffer
-   * 
-   * Stores the image views and framebuffer
-   * handle used to generate one mip level.
-   */
-  struct DxvkMetaBlitPass {
-    VkImageView   srcView;
-    VkImageView   dstView;
-    VkRenderPass  renderPass;
-    VkFramebuffer framebuffer;
-  };
-  
-
-  /**
    * \brief Blit render pass
    *
    * Stores image view, render pass and framebuffer
@@ -126,7 +112,8 @@ namespace dxvk {
     uint32_t framebufferLayerIndex() const;
     uint32_t framebufferLayerCount() const;
 
-    DxvkMetaBlitPass pass() const;
+    VkImageView getDstView() const { return m_dstView; }
+    VkImageView getSrcView() const { return m_srcView; }
 
   private:
 
@@ -137,14 +124,9 @@ namespace dxvk {
     VkImageBlit       m_region;
     VkImageView       m_dstView;
     VkImageView       m_srcView;
-    VkRenderPass      m_renderPass;
-    VkFramebuffer     m_framebuffer;
 
     VkImageView createDstView();
     VkImageView createSrcView(const VkComponentMapping& mapping);
-
-    VkRenderPass createRenderPass();
-    VkFramebuffer createFramebuffer();
 
   };
 
@@ -202,18 +184,9 @@ namespace dxvk {
     dxvk::mutex m_mutex;
     
     std::unordered_map<
-      DxvkMetaBlitRenderPassKey,
-      VkRenderPass,
-      DxvkHash, DxvkEq> m_renderPasses;
-    
-    std::unordered_map<
       DxvkMetaBlitPipelineKey,
       DxvkMetaBlitPipeline,
       DxvkHash, DxvkEq> m_pipelines;
-    
-    VkRenderPass getRenderPass(
-            VkFormat                    viewFormat,
-            VkSampleCountFlagBits       samples);
     
     VkSampler createSampler(
             VkFilter                    filter) const;
@@ -224,10 +197,6 @@ namespace dxvk {
     DxvkMetaBlitPipeline createPipeline(
       const DxvkMetaBlitPipelineKey&    key);
     
-    VkRenderPass createRenderPass(
-            VkFormat                    format,
-            VkSampleCountFlagBits       samples) const;
-    
     VkDescriptorSetLayout createDescriptorSetLayout(
             VkImageViewType             viewType) const;
     
@@ -235,9 +204,9 @@ namespace dxvk {
             VkDescriptorSetLayout       descriptorSetLayout) const;
     
     VkPipeline createPipeline(
-            VkImageViewType             imageViewType,
             VkPipelineLayout            pipelineLayout,
-            VkRenderPass                renderPass,
+            VkImageViewType             imageViewType,
+            VkFormat                    format,
             VkSampleCountFlagBits       samples) const;
     
   };
