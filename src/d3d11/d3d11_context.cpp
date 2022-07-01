@@ -4434,6 +4434,13 @@ namespace dxvk {
           if (curView->imageInfo().sampleCount
            != refView->imageInfo().sampleCount)
             return false;
+
+          VkExtent3D curExtent = curView->mipLevelExtent(0);
+          VkExtent3D refExtent = refView->mipLevelExtent(0);
+
+          if (curExtent.width  != refExtent.width
+           || curExtent.height != refExtent.height)
+            return false;
         } else {
           // Set reference view. All remaining views
           // must be compatible to the reference view.
