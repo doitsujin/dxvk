@@ -253,7 +253,7 @@ namespace dxvk {
     info.inputMask = m_inputMask;
     info.outputMask = m_outputMask;
     info.pushConstOffset = m_pushConstOffset;
-    info.pushConstSize = m_pushConstOffset;
+    info.pushConstSize = m_pushConstSize;
 
     return new DxvkShader(info, m_module.compile());
   }
