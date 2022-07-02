@@ -18,7 +18,6 @@ namespace dxvk {
    * that is used for fragment shader resolve.
    */
   struct DxvkMetaResolvePipeline {
-    VkRenderPass          renderPass;
     VkDescriptorSetLayout dsetLayout;
     VkPipelineLayout      pipeLayout;
     VkPipeline            pipeHandle;
@@ -52,62 +51,34 @@ namespace dxvk {
   };
 
   /**
-   * \brief Meta resolve render pass
-   * 
-   * Stores a framebuffer and image view objects
-   * for a meta resolve operation. Can be tracked.
+   * \brief Meta resolve views for attachment-based resolves
    */
-  class DxvkMetaResolveRenderPass : public DxvkResource {
-    
-  public:
-    
-    DxvkMetaResolveRenderPass(
-      const Rc<vk::DeviceFn>&   vkd,
-      const Rc<DxvkImageView>&  dstImageView,
-      const Rc<DxvkImageView>&  srcImageView,
-      const Rc<DxvkImageView>&  srcStencilView,
-            bool                discardDst);
-    
-    DxvkMetaResolveRenderPass(
-      const Rc<vk::DeviceFn>&        vkd,
-      const Rc<DxvkImageView>&       dstImageView,
-      const Rc<DxvkImageView>&       srcImageView,
-            VkResolveModeFlagBitsKHR modeD,
-            VkResolveModeFlagBitsKHR modeS);
-    
-    ~DxvkMetaResolveRenderPass();
-    
-    VkRenderPass renderPass() const {
-      return m_renderPass;
-    }
+  class DxvkMetaResolveViews : public DxvkResource {
 
-    VkFramebuffer framebuffer() const {
-      return m_framebuffer;
-    }
+  public:
+
+    DxvkMetaResolveViews(
+      const Rc<vk::DeviceFn>&         vkd,
+      const Rc<DxvkImage>&            dstImage,
+      const VkImageSubresourceLayers& dstSubresources,
+      const Rc<DxvkImage>&            srcImage,
+      const VkImageSubresourceLayers& srcSubresources,
+            VkFormat                  format);
+
+    ~DxvkMetaResolveViews();
+
+    VkImageView getDstView() const { return m_dstImageView; }
+    VkImageView getSrcView() const { return m_srcImageView; }
 
   private:
-    
-    const Rc<vk::DeviceFn>  m_vkd;
 
-    const Rc<DxvkImageView> m_dstImageView;
-    const Rc<DxvkImageView> m_srcImageView;
-    const Rc<DxvkImageView> m_srcStencilView;
-    
-    VkRenderPass  m_renderPass  = VK_NULL_HANDLE;
-    VkFramebuffer m_framebuffer = VK_NULL_HANDLE;
+    Rc<vk::DeviceFn> m_vkd;
 
-    VkRenderPass createShaderRenderPass(bool discard) const;
-    
-    VkRenderPass createAttachmentRenderPass(
-            VkResolveModeFlagBitsKHR modeD,
-            VkResolveModeFlagBitsKHR modeS) const;
-
-    VkFramebuffer createShaderFramebuffer() const;
-    
-    VkFramebuffer createAttachmentFramebuffer() const;
+    VkImageView m_dstImageView = VK_NULL_HANDLE;
+    VkImageView m_srcImageView = VK_NULL_HANDLE;
 
   };
-  
+
 
   /**
    * \brief Meta resolve objects
@@ -166,9 +137,6 @@ namespace dxvk {
     DxvkMetaResolvePipeline createPipeline(
       const DxvkMetaResolvePipelineKey& key);
 
-    VkRenderPass createRenderPass(
-      const DxvkMetaResolvePipelineKey& key);
-    
     VkDescriptorSetLayout createDescriptorSetLayout(
       const DxvkMetaResolvePipelineKey& key);
     
@@ -177,8 +145,7 @@ namespace dxvk {
     
     VkPipeline createPipelineObject(
       const DxvkMetaResolvePipelineKey& key,
-            VkPipelineLayout       pipelineLayout,
-            VkRenderPass           renderPass);
+            VkPipelineLayout       pipelineLayout);
     
   };
 

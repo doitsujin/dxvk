@@ -77,7 +77,8 @@ namespace dxvk {
       const VkImageSubresourceLayers& dstSubresources,
             VkFormat                  dstFormat,
       const Rc<DxvkImage>&            srcImage,
-      const VkImageSubresourceLayers& srcSubresources);
+      const VkImageSubresourceLayers& srcSubresources,
+            VkFormat                  srcFormat);
     
     ~DxvkMetaCopyViews();
 

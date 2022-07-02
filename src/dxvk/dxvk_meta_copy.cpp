@@ -24,7 +24,8 @@ namespace dxvk {
     const VkImageSubresourceLayers& dstSubresources,
           VkFormat                  dstFormat,
     const Rc<DxvkImage>&            srcImage,
-    const VkImageSubresourceLayers& srcSubresources)
+    const VkImageSubresourceLayers& srcSubresources,
+          VkFormat                  srcFormat)
   : m_vkd(vkd) {
     VkImageAspectFlags dstAspects = dstImage->formatInfo()->aspectMask;
     VkImageAspectFlags srcAspects = srcImage->formatInfo()->aspectMask;
@@ -55,7 +56,7 @@ namespace dxvk {
 
     info.image = srcImage->handle();
     info.viewType = m_srcViewType;
-    info.format = srcImage->info().format;
+    info.format = srcFormat;
     info.subresourceRange = vk::makeSubresourceRange(srcSubresources);
     info.subresourceRange.aspectMask = srcAspects & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT);
 

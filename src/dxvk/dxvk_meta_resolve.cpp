@@ -14,273 +14,41 @@
 
 namespace dxvk {
   
-  DxvkMetaResolveRenderPass::DxvkMetaResolveRenderPass(
-    const Rc<vk::DeviceFn>&   vkd,
-    const Rc<DxvkImageView>&  dstImageView,
-    const Rc<DxvkImageView>&  srcImageView,
-    const Rc<DxvkImageView>&  srcStencilView,
-          bool                discardDst)
-  : m_vkd(vkd),
-    m_dstImageView(dstImageView),
-    m_srcImageView(srcImageView),
-    m_srcStencilView(srcStencilView),
-    m_renderPass  (createShaderRenderPass(discardDst)),
-    m_framebuffer (createShaderFramebuffer()) { }
+  DxvkMetaResolveViews::DxvkMetaResolveViews(
+    const Rc<vk::DeviceFn>&         vkd,
+    const Rc<DxvkImage>&            dstImage,
+    const VkImageSubresourceLayers& dstSubresources,
+    const Rc<DxvkImage>&            srcImage,
+    const VkImageSubresourceLayers& srcSubresources,
+          VkFormat                  format)
+  : m_vkd(vkd) {
+    VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
+    usageInfo.usage = (imageFormatInfo(format)->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
+      ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+      : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
+    VkImageViewCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, &usageInfo };
+    info.image = dstImage->handle();
+    info.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+    info.format = format;
+    info.subresourceRange = vk::makeSubresourceRange(dstSubresources);
 
-  DxvkMetaResolveRenderPass::DxvkMetaResolveRenderPass(
-    const Rc<vk::DeviceFn>&        vkd,
-    const Rc<DxvkImageView>&       dstImageView,
-    const Rc<DxvkImageView>&       srcImageView,
-          VkResolveModeFlagBitsKHR modeD,
-          VkResolveModeFlagBitsKHR modeS)
-  : m_vkd(vkd),
-    m_dstImageView(dstImageView),
-    m_srcImageView(srcImageView),
-    m_renderPass  (createAttachmentRenderPass(modeD, modeS)),
-    m_framebuffer (createAttachmentFramebuffer()) { }
-  
+    if (m_vkd->vkCreateImageView(m_vkd->device(), &info, nullptr, &m_dstImageView))
+      throw DxvkError("DxvkMetaResolveViews: Failed to create destination view");
 
-  DxvkMetaResolveRenderPass::~DxvkMetaResolveRenderPass() {
-    m_vkd->vkDestroyFramebuffer(m_vkd->device(), m_framebuffer, nullptr);
-    m_vkd->vkDestroyRenderPass (m_vkd->device(), m_renderPass,  nullptr);
+    info.image = srcImage->handle();
+    info.subresourceRange = vk::makeSubresourceRange(srcSubresources);
+
+    if (m_vkd->vkCreateImageView(m_vkd->device(), &info, nullptr, &m_srcImageView))
+      throw DxvkError("DxvkMetaResolveViews: Failed to create source view");
   }
 
 
-  VkRenderPass DxvkMetaResolveRenderPass::createShaderRenderPass(bool discard) const {
-    auto formatInfo = m_dstImageView->formatInfo();
-    bool isColorImage = (formatInfo->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT);
-
-    VkAttachmentDescription attachment;
-    attachment.flags            = 0;
-    attachment.format           = m_dstImageView->info().format;
-    attachment.samples          = VK_SAMPLE_COUNT_1_BIT;
-    attachment.loadOp           = VK_ATTACHMENT_LOAD_OP_LOAD;
-    attachment.storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
-    attachment.stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_LOAD;
-    attachment.stencilStoreOp   = VK_ATTACHMENT_STORE_OP_STORE;
-    attachment.initialLayout    = m_dstImageView->imageInfo().layout;
-    attachment.finalLayout      = m_dstImageView->imageInfo().layout;
-
-    if (discard) {
-      attachment.loadOp         = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-      attachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-      attachment.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-    }
-
-    VkImageLayout layout = isColorImage
-      ? m_dstImageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
-      : m_dstImageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-    
-    VkAttachmentReference dstRef;
-    dstRef.attachment    = 0;
-    dstRef.layout        = layout;
-    
-    VkSubpassDescription subpass;
-    subpass.flags                   = 0;
-    subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.inputAttachmentCount    = 0;
-    subpass.pInputAttachments       = nullptr;
-    subpass.colorAttachmentCount    = isColorImage ? 1 : 0;
-    subpass.pColorAttachments       = isColorImage ? &dstRef : nullptr;
-    subpass.pResolveAttachments     = nullptr;
-    subpass.pDepthStencilAttachment = isColorImage ? nullptr : &dstRef;
-    subpass.preserveAttachmentCount = 0;
-    subpass.pPreserveAttachments    = nullptr;
-
-    VkPipelineStageFlags cpyStages = 0;
-    VkAccessFlags        cpyAccess = 0;
-
-    if (isColorImage) {
-      cpyStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-      cpyAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-      if (!discard)
-        cpyAccess |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
-    } else {
-      cpyStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-                |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-      cpyAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-      if (!discard)
-        cpyAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-    }
-
-    // Resolve targets are required to be render targets
-    VkPipelineStageFlags extStages = m_dstImageView->imageInfo().stages | m_srcImageView->imageInfo().stages;
-    VkAccessFlags        extAccess = m_dstImageView->imageInfo().access;
-
-    std::array<VkSubpassDependency, 2> dependencies = {{
-      { VK_SUBPASS_EXTERNAL, 0, cpyStages, cpyStages, 0,         cpyAccess, 0 },
-      { 0, VK_SUBPASS_EXTERNAL, cpyStages, extStages, cpyAccess, extAccess, 0 },
-    }};
-
-    VkRenderPassCreateInfo info;
-    info.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    info.pNext                  = nullptr;
-    info.flags                  = 0;
-    info.attachmentCount        = 1;
-    info.pAttachments           = &attachment;
-    info.subpassCount           = 1;
-    info.pSubpasses             = &subpass;
-    info.dependencyCount        = dependencies.size();
-    info.pDependencies          = dependencies.data();
-
-    VkRenderPass result = VK_NULL_HANDLE;
-    if (m_vkd->vkCreateRenderPass(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaResolveRenderPass: Failed to create render pass");
-    return result;
+  DxvkMetaResolveViews::~DxvkMetaResolveViews() {
+    m_vkd->vkDestroyImageView(m_vkd->device(), m_srcImageView, nullptr);
+    m_vkd->vkDestroyImageView(m_vkd->device(), m_dstImageView, nullptr);
   }
 
-
-  VkRenderPass DxvkMetaResolveRenderPass::createAttachmentRenderPass(
-          VkResolveModeFlagBitsKHR modeD,
-          VkResolveModeFlagBitsKHR modeS) const {
-    std::array<VkAttachmentDescription2KHR, 2> attachments;
-    attachments[0].sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2_KHR;
-    attachments[0].pNext          = nullptr;
-    attachments[0].flags          = 0;
-    attachments[0].format         = m_srcImageView->info().format;
-    attachments[0].samples        = m_srcImageView->imageInfo().sampleCount;
-    attachments[0].loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD;
-    attachments[0].storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
-    attachments[0].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_LOAD;
-    attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-    attachments[0].initialLayout  = m_srcImageView->imageInfo().layout;
-    attachments[0].finalLayout    = m_srcImageView->imageInfo().layout;
-
-    attachments[1].sType          = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2_KHR;
-    attachments[1].pNext          = nullptr;
-    attachments[1].flags          = 0;
-    attachments[1].format         = m_dstImageView->info().format;
-    attachments[1].samples        = VK_SAMPLE_COUNT_1_BIT;
-    attachments[1].loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD;
-    attachments[1].storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
-    attachments[1].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_LOAD;
-    attachments[1].stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-    attachments[1].initialLayout  = m_dstImageView->imageInfo().layout;
-    attachments[1].finalLayout    = m_dstImageView->imageInfo().layout;
-
-    if (modeD != VK_RESOLVE_MODE_NONE_KHR && modeS != VK_RESOLVE_MODE_NONE_KHR) {
-      attachments[1].loadOp         = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-      attachments[1].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-      attachments[1].initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
-    }
-
-    VkAttachmentReference2KHR srcRef;
-    srcRef.sType                = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2_KHR;
-    srcRef.pNext                = nullptr;
-    srcRef.attachment           = 0;
-    srcRef.layout               = m_srcImageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-    srcRef.aspectMask           = m_srcImageView->formatInfo()->aspectMask;
-
-    VkAttachmentReference2KHR dstRef;
-    dstRef.sType                = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2_KHR;
-    dstRef.pNext                = nullptr;
-    dstRef.attachment           = 1;
-    dstRef.layout               = m_dstImageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-    dstRef.aspectMask           = m_dstImageView->formatInfo()->aspectMask;
-
-    VkSubpassDescriptionDepthStencilResolveKHR subpassResolve;
-    subpassResolve.sType        = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE_KHR;
-    subpassResolve.pNext        = nullptr;
-    subpassResolve.depthResolveMode   = modeD;
-    subpassResolve.stencilResolveMode = modeS;
-    subpassResolve.pDepthStencilResolveAttachment = &dstRef;
-    
-    VkSubpassDescription2KHR subpass;
-    subpass.sType               = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2_KHR;
-    subpass.pNext               = &subpassResolve;
-    subpass.flags               = 0;
-    subpass.pipelineBindPoint   = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.viewMask            = 0;
-    subpass.inputAttachmentCount = 0;
-    subpass.pInputAttachments   = nullptr;
-    subpass.colorAttachmentCount = 0;
-    subpass.pColorAttachments   = nullptr;
-    subpass.pResolveAttachments = nullptr;
-    subpass.pDepthStencilAttachment = &srcRef;
-    subpass.preserveAttachmentCount = 0;
-    subpass.pPreserveAttachments = nullptr;
-
-    VkPipelineStageFlags cpyStages = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    VkPipelineStageFlags extStages = m_dstImageView->imageInfo().stages | m_srcImageView->imageInfo().stages;
-    VkAccessFlags cpyAccess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
-    VkAccessFlags extAccess = m_dstImageView->imageInfo().access;
-
-    std::array<VkSubpassDependency2KHR, 2> dependencies = {{
-      { VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2_KHR, nullptr, VK_SUBPASS_EXTERNAL, 0, cpyStages, cpyStages, 0,         cpyAccess, 0 },
-      { VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2_KHR, nullptr, 0, VK_SUBPASS_EXTERNAL, cpyStages, extStages, cpyAccess, extAccess, 0 },
-    }};
-
-    VkRenderPassCreateInfo2KHR info;
-    info.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2_KHR;
-    info.pNext                  = nullptr;
-    info.flags                  = 0;
-    info.attachmentCount        = attachments.size();
-    info.pAttachments           = attachments.data();
-    info.subpassCount           = 1;
-    info.pSubpasses             = &subpass;
-    info.dependencyCount        = dependencies.size();
-    info.pDependencies          = dependencies.data();
-    info.correlatedViewMaskCount = 0;
-    info.pCorrelatedViewMasks   = nullptr;
-
-    VkRenderPass result = VK_NULL_HANDLE;
-    if (m_vkd->vkCreateRenderPass2KHR(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaResolveRenderPass: Failed to create render pass");
-    return result;
-  }
-
-
-  VkFramebuffer DxvkMetaResolveRenderPass::createShaderFramebuffer() const {
-    VkImageSubresourceRange dstSubresources = m_dstImageView->subresources();
-    VkExtent3D              dstExtent       = m_dstImageView->mipLevelExtent(0);
-    VkImageView             dstHandle       = m_dstImageView->handle();
-
-    VkFramebufferCreateInfo fboInfo;
-    fboInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    fboInfo.pNext           = nullptr;
-    fboInfo.flags           = 0;
-    fboInfo.renderPass      = m_renderPass;
-    fboInfo.attachmentCount = 1;
-    fboInfo.pAttachments    = &dstHandle;
-    fboInfo.width           = dstExtent.width;
-    fboInfo.height          = dstExtent.height;
-    fboInfo.layers          = dstSubresources.layerCount;
-    
-    VkFramebuffer result = VK_NULL_HANDLE;
-    if (m_vkd->vkCreateFramebuffer(m_vkd->device(), &fboInfo, nullptr, &result) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaResolveRenderPass: Failed to create target framebuffer");
-    return result;
-  }
-
-
-  VkFramebuffer DxvkMetaResolveRenderPass::createAttachmentFramebuffer() const {
-    VkImageSubresourceRange dstSubresources = m_dstImageView->subresources();
-    VkExtent3D              dstExtent       = m_dstImageView->mipLevelExtent(0);
-
-    std::array<VkImageView, 2> handles = {{
-      m_srcImageView->handle(),
-      m_dstImageView->handle(),
-    }};
-
-    VkFramebufferCreateInfo fboInfo;
-    fboInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    fboInfo.pNext           = nullptr;
-    fboInfo.flags           = 0;
-    fboInfo.renderPass      = m_renderPass;
-    fboInfo.attachmentCount = handles.size();
-    fboInfo.pAttachments    = handles.data();
-    fboInfo.width           = dstExtent.width;
-    fboInfo.height          = dstExtent.height;
-    fboInfo.layers          = dstSubresources.layerCount;
-    
-    VkFramebuffer result = VK_NULL_HANDLE;
-    if (m_vkd->vkCreateFramebuffer(m_vkd->device(), &fboInfo, nullptr, &result) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaResolveRenderPass: Failed to create target framebuffer");
-    return result;
-  }
 
 
 
@@ -310,7 +78,6 @@ namespace dxvk {
       m_vkd->vkDestroyPipeline(m_vkd->device(), pair.second.pipeHandle, nullptr);
       m_vkd->vkDestroyPipelineLayout(m_vkd->device(), pair.second.pipeLayout, nullptr);
       m_vkd->vkDestroyDescriptorSetLayout(m_vkd->device(), pair.second.dsetLayout, nullptr);
-      m_vkd->vkDestroyRenderPass(m_vkd->device(), pair.second.renderPass, nullptr);
     }
 
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderFragDS, nullptr);
@@ -395,87 +162,24 @@ namespace dxvk {
   DxvkMetaResolvePipeline DxvkMetaResolveObjects::createPipeline(
     const DxvkMetaResolvePipelineKey& key) {
     DxvkMetaResolvePipeline pipeline;
-    pipeline.renderPass = this->createRenderPass(key);
     pipeline.dsetLayout = this->createDescriptorSetLayout(key);
     pipeline.pipeLayout = this->createPipelineLayout(pipeline.dsetLayout);
-    pipeline.pipeHandle = this->createPipelineObject(key, pipeline.pipeLayout, pipeline.renderPass);
+    pipeline.pipeHandle = this->createPipelineObject(key, pipeline.pipeLayout);
     return pipeline;
   }
 
 
-  VkRenderPass DxvkMetaResolveObjects::createRenderPass(
-    const DxvkMetaResolvePipelineKey& key) {
-    auto formatInfo = imageFormatInfo(key.format);
-    bool isColorImage = (formatInfo->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT);
-
-    VkAttachmentDescription attachment;
-    attachment.flags            = 0;
-    attachment.format           = key.format;
-    attachment.samples          = VK_SAMPLE_COUNT_1_BIT;
-    attachment.loadOp           = VK_ATTACHMENT_LOAD_OP_LOAD;
-    attachment.storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
-    attachment.stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_LOAD;
-    attachment.stencilStoreOp   = VK_ATTACHMENT_STORE_OP_STORE;
-    attachment.initialLayout    = VK_IMAGE_LAYOUT_GENERAL;
-    attachment.finalLayout      = VK_IMAGE_LAYOUT_GENERAL;
-
-    VkImageLayout layout = isColorImage
-      ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-      : VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    
-    VkAttachmentReference attachmentRef;
-    attachmentRef.attachment    = 0;
-    attachmentRef.layout        = layout;
-    
-    VkSubpassDescription subpass;
-    subpass.flags                   = 0;
-    subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.inputAttachmentCount    = 0;
-    subpass.pInputAttachments       = nullptr;
-    subpass.colorAttachmentCount    = isColorImage ? 1 : 0;
-    subpass.pColorAttachments       = isColorImage ? &attachmentRef : nullptr;
-    subpass.pResolveAttachments     = nullptr;
-    subpass.pDepthStencilAttachment = isColorImage ? nullptr : &attachmentRef;
-    subpass.preserveAttachmentCount = 0;
-    subpass.pPreserveAttachments    = nullptr;
-
-    VkRenderPassCreateInfo info;
-    info.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    info.pNext                  = nullptr;
-    info.flags                  = 0;
-    info.attachmentCount        = 1;
-    info.pAttachments           = &attachment;
-    info.subpassCount           = 1;
-    info.pSubpasses             = &subpass;
-    info.dependencyCount        = 0;
-    info.pDependencies          = nullptr;
-
-    VkRenderPass result = VK_NULL_HANDLE;
-    if (m_vkd->vkCreateRenderPass(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaResolveObjects: Failed to create render pass");
-    return result;
-  }
-
-  
   VkDescriptorSetLayout DxvkMetaResolveObjects::createDescriptorSetLayout(
     const DxvkMetaResolvePipelineKey& key) {
-    auto formatInfo = imageFormatInfo(key.format);
-
     std::array<VkDescriptorSetLayoutBinding, 2> bindings = {{
       { 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, &m_sampler },
       { 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, &m_sampler },
     }};
     
-    VkDescriptorSetLayoutCreateInfo info;
-    info.sType                  = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    info.pNext                  = nullptr;
-    info.flags                  = 0;
-    info.bindingCount           = 1;
-    info.pBindings              = bindings.data();
+    VkDescriptorSetLayoutCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+    info.bindingCount = bindings.size();
+    info.pBindings = bindings.data();
 
-    if ((formatInfo->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) && key.modeS != VK_RESOLVE_MODE_NONE_KHR)
-      info.bindingCount = 2;
-    
     VkDescriptorSetLayout result = VK_NULL_HANDLE;
     if (m_vkd->vkCreateDescriptorSetLayout(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
       throw DxvkError("DxvkMetaResolveObjects: Failed to create descriptor set layout");
@@ -485,15 +189,9 @@ namespace dxvk {
 
   VkPipelineLayout DxvkMetaResolveObjects::createPipelineLayout(
           VkDescriptorSetLayout  descriptorSetLayout) {
-    VkPushConstantRange push;
-    push.stageFlags             = VK_SHADER_STAGE_FRAGMENT_BIT;
-    push.offset                 = 0;
-    push.size                   = sizeof(VkOffset2D);
+    VkPushConstantRange push = { VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(VkOffset2D) };
 
-    VkPipelineLayoutCreateInfo info;
-    info.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    info.pNext                  = nullptr;
-    info.flags                  = 0;
+    VkPipelineLayoutCreateInfo info = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
     info.setLayoutCount         = 1;
     info.pSetLayouts            = &descriptorSetLayout;
     info.pushConstantRangeCount = 1;
@@ -508,10 +206,8 @@ namespace dxvk {
 
   VkPipeline DxvkMetaResolveObjects::createPipelineObject(
     const DxvkMetaResolvePipelineKey& key,
-          VkPipelineLayout       pipelineLayout,
-          VkRenderPass           renderPass) {
+          VkPipelineLayout       pipelineLayout) {
     auto formatInfo = imageFormatInfo(key.format);
-    bool isColorImage = formatInfo->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT;
 
     std::array<VkPipelineShaderStageCreateInfo, 3> stages;
     uint32_t stageCount = 0;
@@ -528,181 +224,117 @@ namespace dxvk {
     specInfo.dataSize           = sizeof(key);
     specInfo.pData              = &key;
     
-    VkPipelineShaderStageCreateInfo& vsStage = stages[stageCount++];
-    vsStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    vsStage.pNext               = nullptr;
-    vsStage.flags               = 0;
-    vsStage.stage               = VK_SHADER_STAGE_VERTEX_BIT;
-    vsStage.module              = m_shaderVert;
-    vsStage.pName               = "main";
-    vsStage.pSpecializationInfo = nullptr;
+    stages[stageCount++] = VkPipelineShaderStageCreateInfo {
+      VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+      VK_SHADER_STAGE_VERTEX_BIT, m_shaderVert, "main" };
     
     if (m_shaderGeom) {
-      VkPipelineShaderStageCreateInfo& gsStage = stages[stageCount++];
-      gsStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-      gsStage.pNext               = nullptr;
-      gsStage.flags               = 0;
-      gsStage.stage               = VK_SHADER_STAGE_GEOMETRY_BIT;
-      gsStage.module              = m_shaderGeom;
-      gsStage.pName               = "main";
-      gsStage.pSpecializationInfo = nullptr;
+      stages[stageCount++] = VkPipelineShaderStageCreateInfo {
+        VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+        VK_SHADER_STAGE_GEOMETRY_BIT, m_shaderGeom, "main" };
     }
     
-    VkPipelineShaderStageCreateInfo& psStage = stages[stageCount++];
-    psStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    psStage.pNext               = nullptr;
-    psStage.flags               = 0;
-    psStage.stage               = VK_SHADER_STAGE_FRAGMENT_BIT;
-    psStage.module              = VK_NULL_HANDLE;
-    psStage.pName               = "main";
-    psStage.pSpecializationInfo = &specInfo;
+    VkShaderModule psModule = VK_NULL_HANDLE;
 
     if ((formatInfo->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) && key.modeS != VK_RESOLVE_MODE_NONE_KHR) {
       if (m_shaderFragDS) {
-        psStage.module = m_shaderFragDS;
+        psModule = m_shaderFragDS;
       } else {
-        psStage.module = m_shaderFragD;
+        psModule = m_shaderFragD;
         Logger::err("DXVK: Stencil export not supported by device, skipping stencil resolve");
       }
     } else if (formatInfo->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
-      psStage.module = m_shaderFragD;
+      psModule = m_shaderFragD;
     else if (formatInfo->flags.test(DxvkFormatFlag::SampledUInt))
-      psStage.module = m_shaderFragU;
+      psModule = m_shaderFragU;
     else if (formatInfo->flags.test(DxvkFormatFlag::SampledSInt))
-      psStage.module = m_shaderFragI;
+      psModule = m_shaderFragI;
     else
-      psStage.module = m_shaderFragF;
-    
+      psModule = m_shaderFragF;
+
+    stages[stageCount++] = VkPipelineShaderStageCreateInfo {
+      VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, nullptr, 0,
+      VK_SHADER_STAGE_FRAGMENT_BIT, psModule, "main", &specInfo };
+
     std::array<VkDynamicState, 2> dynStates = {{
       VK_DYNAMIC_STATE_VIEWPORT,
       VK_DYNAMIC_STATE_SCISSOR,
     }};
     
-    VkPipelineDynamicStateCreateInfo dynState;
-    dynState.sType              = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynState.pNext              = nullptr;
-    dynState.flags              = 0;
+    VkPipelineDynamicStateCreateInfo dynState = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
     dynState.dynamicStateCount  = dynStates.size();
     dynState.pDynamicStates     = dynStates.data();
     
-    VkPipelineVertexInputStateCreateInfo viState;
-    viState.sType               = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    viState.pNext               = nullptr;
-    viState.flags               = 0;
-    viState.vertexBindingDescriptionCount   = 0;
-    viState.pVertexBindingDescriptions      = nullptr;
-    viState.vertexAttributeDescriptionCount = 0;
-    viState.pVertexAttributeDescriptions    = nullptr;
+    VkPipelineVertexInputStateCreateInfo viState = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
     
-    VkPipelineInputAssemblyStateCreateInfo iaState;
-    iaState.sType               = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    iaState.pNext               = nullptr;
-    iaState.flags               = 0;
+    VkPipelineInputAssemblyStateCreateInfo iaState = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
     iaState.topology            = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    iaState.primitiveRestartEnable = VK_FALSE;
     
-    VkPipelineViewportStateCreateInfo vpState;
-    vpState.sType               = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    vpState.pNext               = nullptr;
-    vpState.flags               = 0;
+    VkPipelineViewportStateCreateInfo vpState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
     vpState.viewportCount       = 1;
-    vpState.pViewports          = nullptr;
     vpState.scissorCount        = 1;
-    vpState.pScissors           = nullptr;
     
-    VkPipelineRasterizationStateCreateInfo rsState;
-    rsState.sType               = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rsState.pNext               = nullptr;
-    rsState.flags               = 0;
+    VkPipelineRasterizationStateCreateInfo rsState = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
     rsState.depthClampEnable    = VK_TRUE;
-    rsState.rasterizerDiscardEnable = VK_FALSE;
     rsState.polygonMode         = VK_POLYGON_MODE_FILL;
     rsState.cullMode            = VK_CULL_MODE_NONE;
     rsState.frontFace           = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    rsState.depthBiasEnable     = VK_FALSE;
-    rsState.depthBiasConstantFactor = 0.0f;
-    rsState.depthBiasClamp          = 0.0f;
-    rsState.depthBiasSlopeFactor    = 0.0f;
     rsState.lineWidth           = 1.0f;
     
     uint32_t msMask = 0xFFFFFFFF;
-    VkPipelineMultisampleStateCreateInfo msState;
-    msState.sType                 = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    msState.pNext                 = nullptr;
-    msState.flags                 = 0;
+    VkPipelineMultisampleStateCreateInfo msState = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
     msState.rasterizationSamples  = VK_SAMPLE_COUNT_1_BIT;
-    msState.sampleShadingEnable   = VK_FALSE;
-    msState.minSampleShading      = 1.0f;
     msState.pSampleMask           = &msMask;
-    msState.alphaToCoverageEnable = VK_FALSE;
-    msState.alphaToOneEnable      = VK_FALSE;
 
-    VkPipelineColorBlendAttachmentState cbAttachment;
-    cbAttachment.blendEnable         = VK_FALSE;
-    cbAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-    cbAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-    cbAttachment.colorBlendOp        = VK_BLEND_OP_ADD;
-    cbAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-    cbAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-    cbAttachment.alphaBlendOp        = VK_BLEND_OP_ADD;
-    cbAttachment.colorWriteMask      =
+    VkPipelineColorBlendAttachmentState cbAttachment = { };
+    cbAttachment.colorWriteMask =
       VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
       VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     
-    VkPipelineColorBlendStateCreateInfo cbState;
-    cbState.sType               = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    cbState.pNext               = nullptr;
-    cbState.flags               = 0;
-    cbState.logicOpEnable       = VK_FALSE;
-    cbState.logicOp             = VK_LOGIC_OP_NO_OP;
+    VkPipelineColorBlendStateCreateInfo cbState = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
     cbState.attachmentCount     = 1;
     cbState.pAttachments        = &cbAttachment;
     
-    for (uint32_t i = 0; i < 4; i++)
-      cbState.blendConstants[i] = 0.0f;
-    
-    VkStencilOpState stencilOp;
+    VkStencilOpState stencilOp = { };
     stencilOp.failOp            = VK_STENCIL_OP_REPLACE;
     stencilOp.passOp            = VK_STENCIL_OP_REPLACE;
     stencilOp.depthFailOp       = VK_STENCIL_OP_REPLACE;
     stencilOp.compareOp         = VK_COMPARE_OP_ALWAYS;
     stencilOp.compareMask       = 0xFFFFFFFF;
     stencilOp.writeMask         = 0xFFFFFFFF;
-    stencilOp.reference         = 0;
 
-    VkPipelineDepthStencilStateCreateInfo dsState;
-    dsState.sType               = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    dsState.pNext               = nullptr;
-    dsState.flags               = 0;
+    VkPipelineDepthStencilStateCreateInfo dsState = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
     dsState.depthTestEnable     = key.modeD != VK_RESOLVE_MODE_NONE_KHR;
     dsState.depthWriteEnable    = key.modeD != VK_RESOLVE_MODE_NONE_KHR;
     dsState.depthCompareOp      = VK_COMPARE_OP_ALWAYS;
-    dsState.depthBoundsTestEnable = VK_FALSE;
     dsState.stencilTestEnable   = key.modeS != VK_RESOLVE_MODE_NONE_KHR;
     dsState.front               = stencilOp;
     dsState.back                = stencilOp;
-    dsState.minDepthBounds      = 0.0f;
-    dsState.maxDepthBounds      = 1.0f;
 
-    VkGraphicsPipelineCreateInfo info;
-    info.sType                  = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    info.pNext                  = nullptr;
-    info.flags                  = 0;
+    VkPipelineRenderingCreateInfoKHR rtState = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR };
+
+    if (formatInfo->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
+      rtState.colorAttachmentCount = 1;
+      rtState.pColorAttachmentFormats = &key.format;
+    } else {
+      if (formatInfo->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
+        rtState.depthAttachmentFormat = key.format;
+      if (formatInfo->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
+        rtState.stencilAttachmentFormat = key.format;
+    }
+
+    VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &rtState };
     info.stageCount             = stageCount;
     info.pStages                = stages.data();
     info.pVertexInputState      = &viState;
     info.pInputAssemblyState    = &iaState;
-    info.pTessellationState     = nullptr;
     info.pViewportState         = &vpState;
     info.pRasterizationState    = &rsState;
     info.pMultisampleState      = &msState;
-    info.pColorBlendState       = isColorImage ? &cbState : nullptr;
-    info.pDepthStencilState     = isColorImage ? nullptr : &dsState;
+    info.pColorBlendState       = (formatInfo->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) ? &cbState : nullptr;
+    info.pDepthStencilState     = (formatInfo->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) ? nullptr : &dsState;
     info.pDynamicState          = &dynState;
     info.layout                 = pipelineLayout;
-    info.renderPass             = renderPass;
-    info.subpass                = 0;
-    info.basePipelineHandle     = VK_NULL_HANDLE;
     info.basePipelineIndex      = -1;
     
     VkPipeline result = VK_NULL_HANDLE;
