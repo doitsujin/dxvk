@@ -62,6 +62,14 @@ namespace dxvk {
       return read(data);
     }
 
+    bool read(DxvkRtInfo& data, uint32_t version) {
+      // v12 introduced this field
+      if (version < 12)
+        return true;
+
+      return read(data);
+    }
+
     bool read(DxvkIlBinding& data, uint32_t version) {
       if (version < 10) {
         DxvkIlBindingV9 v9;
@@ -75,6 +83,34 @@ namespace dxvk {
 
       return read(data);
     }
+
+
+    bool read(DxvkRenderPassFormatV11& data, uint32_t version) {
+      uint8_t sampleCount = 0;
+      uint8_t imageFormat = 0;
+      uint8_t imageLayout = 0;
+
+      if (!read(sampleCount)
+       || !read(imageFormat)
+       || !read(imageLayout))
+        return false;
+
+      data.sampleCount = VkSampleCountFlagBits(sampleCount);
+      data.depth.format = VkFormat(imageFormat);
+      data.depth.layout = unpackImageLayoutV11(imageLayout);
+
+      for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+        if (!read(imageFormat)
+         || !read(imageLayout))
+          return false;
+
+        data.color[i].format = VkFormat(imageFormat);
+        data.color[i].layout = unpackImageLayoutV11(imageLayout);
+      }
+
+      return true;
+    }
+
 
     template<typename T>
     bool write(const T& data) {
@@ -112,6 +148,15 @@ namespace dxvk {
       std::memcpy(&data, &m_data[m_read], sizeof(T));
       m_read += sizeof(T);
       return true;
+    }
+
+    static VkImageLayout unpackImageLayoutV11(
+            uint8_t                   layout) {
+      switch (layout) {
+        case 0x80: return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
+        case 0x81: return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
+        default: return VkImageLayout(layout);
+      }
     }
 
   };
@@ -199,8 +244,7 @@ namespace dxvk {
 
   void DxvkStateCache::addGraphicsPipeline(
     const DxvkStateCacheKey&              shaders,
-    const DxvkGraphicsPipelineStateInfo&  state,
-    const DxvkRenderPassFormat&           format) {
+    const DxvkGraphicsPipelineStateInfo&  state) {
     if (shaders.vs.eq(g_nullShaderKey))
       return;
     
@@ -210,7 +254,7 @@ namespace dxvk {
     for (auto e = entries.first; e != entries.second; e++) {
       const DxvkStateCacheEntry& entry = m_entries[e->second];
 
-      if (entry.format.eq(format) && entry.gpState == state)
+      if (entry.gpState == state)
         return;
     }
 
@@ -218,8 +262,7 @@ namespace dxvk {
     std::unique_lock<dxvk::mutex> lock(m_writerLock);
 
     m_writerQueue.push({ shaders, state,
-      DxvkComputePipelineStateInfo(),
-      format, g_nullHash });
+      DxvkComputePipelineStateInfo(), g_nullHash });
     m_writerCond.notify_one();
 
     createWriter();
@@ -244,8 +287,7 @@ namespace dxvk {
     std::unique_lock<dxvk::mutex> lock(m_writerLock);
 
     m_writerQueue.push({ shaders,
-      DxvkGraphicsPipelineStateInfo(), state,
-      DxvkRenderPassFormat(), g_nullHash });
+      DxvkGraphicsPipelineStateInfo(), state, g_nullHash });
     m_writerCond.notify_one();
 
     createWriter();
@@ -360,11 +402,7 @@ namespace dxvk {
 
       for (auto e = entries.first; e != entries.second; e++) {
         const auto& entry = m_entries[e->second];
-
-        if (m_passManager->validateRenderPassFormat(entry.format)) {
-          auto rp = m_passManager->getRenderPass(entry.format);
-          pipeline->compilePipeline(entry.gpState, rp);
-        }
+        pipeline->compilePipeline(entry.gpState);
       }
     } else {
       auto pipeline = m_pipeManager->createComputePipeline(item.cp);
@@ -504,30 +542,11 @@ namespace dxvk {
         return false;
     } else {
       // Read packed render pass format
-      uint8_t sampleCount = 0;
-      uint8_t imageFormat = 0;
-      uint8_t imageLayout = 0;
-
-      if (!data.read(sampleCount, version)
-       || !data.read(imageFormat, version)
-       || !data.read(imageLayout, version))
-        return false;
-
-      entry.format.sampleCount = VkSampleCountFlagBits(sampleCount);
-      entry.format.depth.format = VkFormat(imageFormat);
-      entry.format.depth.layout = unpackImageLayout(imageLayout);
-
-      for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-        if (!data.read(imageFormat, version)
-         || !data.read(imageLayout, version))
-          return false;
-
-        entry.format.color[i].format = VkFormat(imageFormat);
-        entry.format.color[i].layout = unpackImageLayout(imageLayout);
+      if (version < 12) {
+        DxvkRenderPassFormatV11 v11;
+        data.read(v11, version);
+        entry.gpState.rt = v11.convert();
       }
-
-      if (!validateRenderPassFormat(entry.format))
-        return false;
 
       // Read common pipeline state
       if (!data.read(dummyBindingMask, version)
@@ -537,6 +556,7 @@ namespace dxvk {
        || !data.read(entry.gpState.ms, version)
        || !data.read(entry.gpState.ds, version)
        || !data.read(entry.gpState.om, version)
+       || !data.read(entry.gpState.rt, version)
        || !data.read(entry.gpState.dsFront, version)
        || !data.read(entry.gpState.dsBack, version))
         return false;
@@ -608,16 +628,6 @@ namespace dxvk {
     }
 
     if (!(stageMask & VK_SHADER_STAGE_COMPUTE_BIT)) {
-      // Pack render pass format
-      data.write(uint8_t(entry.format.sampleCount));
-      data.write(uint8_t(entry.format.depth.format));
-      data.write(packImageLayout(entry.format.depth.layout));
-
-      for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-        data.write(uint8_t(entry.format.color[i].format));
-        data.write(packImageLayout(entry.format.color[i].layout));
-      }
-
       // Write out common pipeline state
       data.write(entry.gpState.ia);
       data.write(entry.gpState.il);
@@ -625,6 +635,7 @@ namespace dxvk {
       data.write(entry.gpState.ms);
       data.write(entry.gpState.ds);
       data.write(entry.gpState.om);
+      data.write(entry.gpState.rt);
       data.write(entry.gpState.dsFront);
       data.write(entry.gpState.dsBack);
 
@@ -783,49 +794,6 @@ namespace dxvk {
 
   std::string DxvkStateCache::getCacheDir() const {
     return env::getEnvVar("DXVK_STATE_CACHE_PATH");
-  }
-
-
-  uint8_t DxvkStateCache::packImageLayout(
-          VkImageLayout             layout) {
-    switch (layout) {
-      case VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL: return 0x80;
-      case VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL: return 0x81;
-      default: return uint8_t(layout);
-    }
-  }
-
-
-  VkImageLayout DxvkStateCache::unpackImageLayout(
-          uint8_t                   layout) {
-    switch (layout) {
-      case 0x80: return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
-      case 0x81: return VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
-      default: return VkImageLayout(layout);
-    }
-  }
-
-
-  bool DxvkStateCache::validateRenderPassFormat(
-    const DxvkRenderPassFormat&     format) {
-    bool valid = true;
-
-    if (format.depth.format) {
-      valid &= format.depth.layout == VK_IMAGE_LAYOUT_GENERAL
-            || format.depth.layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-            || format.depth.layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
-            || format.depth.layout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
-            || format.depth.layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
-    }
-
-    for (uint32_t i = 0; i < MaxNumRenderTargets && valid; i++) {
-      if (format.color[i].format) {
-        valid &= format.color[i].layout == VK_IMAGE_LAYOUT_GENERAL
-              || format.color[i].layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-      }
-    }
-
-    return valid;
   }
 
 }

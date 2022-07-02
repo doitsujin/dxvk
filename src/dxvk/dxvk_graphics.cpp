@@ -51,7 +51,7 @@ namespace dxvk {
   VkPipeline DxvkGraphicsPipeline::getPipelineHandle(
     const DxvkGraphicsPipelineStateInfo& state,
     const DxvkRenderPass*                renderPass) {
-    DxvkGraphicsPipelineInstance* instance = this->findInstance(state, renderPass);
+    DxvkGraphicsPipelineInstance* instance = this->findInstance(state);
 
     if (unlikely(!instance)) {
       // Exit early if the state vector is invalid
@@ -60,13 +60,13 @@ namespace dxvk {
 
       // Prevent other threads from adding new instances and check again
       std::lock_guard<dxvk::mutex> lock(m_mutex);
-      instance = this->findInstance(state, renderPass);
+      instance = this->findInstance(state);
 
       if (!instance) {
         // Keep pipeline object locked, at worst we're going to stall
         // a state cache worker and the current thread needs priority.
-        instance = this->createInstance(state, renderPass);
-        this->writePipelineStateToCache(state, renderPass->format());
+        instance = this->createInstance(state);
+        this->writePipelineStateToCache(state);
       }
     }
 
@@ -75,8 +75,7 @@ namespace dxvk {
 
 
   void DxvkGraphicsPipeline::compilePipeline(
-    const DxvkGraphicsPipelineStateInfo& state,
-    const DxvkRenderPass*                renderPass) {
+    const DxvkGraphicsPipelineStateInfo& state) {
     // Exit early if the state vector is invalid
     if (!this->validatePipelineState(state, false))
       return;
@@ -85,26 +84,24 @@ namespace dxvk {
     // similar pipelines concurrently is fragile on some drivers
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
-    if (!this->findInstance(state, renderPass))
-      this->createInstance(state, renderPass);
+    if (!this->findInstance(state))
+      this->createInstance(state);
   }
 
 
   DxvkGraphicsPipelineInstance* DxvkGraphicsPipeline::createInstance(
-    const DxvkGraphicsPipelineStateInfo& state,
-    const DxvkRenderPass*                renderPass) {
-    VkPipeline pipeline = this->createPipeline(state, renderPass);
+    const DxvkGraphicsPipelineStateInfo& state) {
+    VkPipeline pipeline = this->createPipeline(state);
 
     m_pipeMgr->m_numGraphicsPipelines += 1;
-    return &(*m_pipelines.emplace(state, renderPass, pipeline));
+    return &(*m_pipelines.emplace(state, pipeline));
   }
   
   
   DxvkGraphicsPipelineInstance* DxvkGraphicsPipeline::findInstance(
-    const DxvkGraphicsPipelineStateInfo& state,
-    const DxvkRenderPass*                renderPass) {
+    const DxvkGraphicsPipelineStateInfo& state) {
     for (auto& instance : m_pipelines) {
-      if (instance.isCompatible(state, renderPass))
+      if (instance.isCompatible(state))
         return &instance;
     }
     
@@ -113,8 +110,7 @@ namespace dxvk {
   
   
   VkPipeline DxvkGraphicsPipeline::createPipeline(
-    const DxvkGraphicsPipelineStateInfo& state,
-    const DxvkRenderPass*                renderPass) const {
+    const DxvkGraphicsPipelineStateInfo& state) const {
     if (Logger::logLevel() <= LogLevel::Debug) {
       Logger::debug("Compiling graphics pipeline...");
       this->logPipelineState(LogLevel::Debug, state);
@@ -551,8 +547,7 @@ namespace dxvk {
   
   
   void DxvkGraphicsPipeline::writePipelineStateToCache(
-    const DxvkGraphicsPipelineStateInfo& state,
-    const DxvkRenderPassFormat&          format) const {
+    const DxvkGraphicsPipelineStateInfo& state) const {
     if (m_pipeMgr->m_stateCache == nullptr)
       return;
     
@@ -563,7 +558,7 @@ namespace dxvk {
     if (m_shaders.gs  != nullptr) key.gs = m_shaders.gs->getShaderKey();
     if (m_shaders.fs  != nullptr) key.fs = m_shaders.fs->getShaderKey();
 
-    m_pipeMgr->m_stateCache->addGraphicsPipeline(key, state, format);
+    m_pipeMgr->m_stateCache->addGraphicsPipeline(key, state);
   }
   
   

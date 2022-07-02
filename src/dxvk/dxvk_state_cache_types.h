@@ -38,7 +38,6 @@ namespace dxvk {
     DxvkStateCacheKey             shaders;
     DxvkGraphicsPipelineStateInfo gpState;
     DxvkComputePipelineStateInfo  cpState;
-    DxvkRenderPassFormat          format;
     Sha1Hash                      hash;
   };
 
@@ -52,7 +51,7 @@ namespace dxvk {
    */
   struct DxvkStateCacheHeader {
     char     magic[4]   = { 'D', 'X', 'V', 'K' };
-    uint32_t version    = 11;
+    uint32_t version    = 12;
     uint32_t entrySize  = 0; /* no longer meaningful */
   };
 
@@ -87,6 +86,41 @@ namespace dxvk {
         VkVertexInputRate(m_inputRate), m_divisor);
     }
 
+  };
+
+  /**
+   * \brief Old attachment format struct
+   */
+  struct DxvkAttachmentFormatV11 {
+    VkFormat      format = VK_FORMAT_UNDEFINED;
+    VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
+  };
+  
+  
+  /**
+   * \brief Old render pass format struct
+   */
+  struct DxvkRenderPassFormatV11 {
+    VkSampleCountFlagBits sampleCount;
+    DxvkAttachmentFormatV11 depth;
+    DxvkAttachmentFormatV11 color[MaxNumRenderTargets];
+
+    DxvkRtInfo convert() const {
+      VkImageAspectFlags readOnlyAspects = 0;
+      auto depthFormatInfo = imageFormatInfo(depth.format);
+
+      if (depth.format && depthFormatInfo) {
+        readOnlyAspects = depthFormatInfo->aspectMask
+          & ~vk::getWritableAspectsForLayout(depth.layout);
+      }
+
+      std::array<VkFormat, MaxNumRenderTargets> colorFormats;
+      for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
+        colorFormats[i] = color[i].format;
+
+      return DxvkRtInfo(MaxNumRenderTargets, colorFormats.data(),
+        depth.format, readOnlyAspects);
+    }
   };
 
 }

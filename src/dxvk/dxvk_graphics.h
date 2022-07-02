@@ -94,15 +94,12 @@ namespace dxvk {
 
     DxvkGraphicsPipelineInstance()
     : m_stateVector (),
-      m_renderPass  (nullptr),
       m_pipeline    (VK_NULL_HANDLE) { }
 
     DxvkGraphicsPipelineInstance(
       const DxvkGraphicsPipelineStateInfo&  state,
-      const DxvkRenderPass*                 rp,
             VkPipeline                      pipe)
     : m_stateVector (state),
-      m_renderPass  (rp),
       m_pipeline    (pipe) { }
 
     /**
@@ -113,10 +110,8 @@ namespace dxvk {
      * \returns \c true if the specialization is compatible
      */
     bool isCompatible(
-      const DxvkGraphicsPipelineStateInfo&  state,
-      const DxvkRenderPass*                 rp) {
-      return m_renderPass  == rp
-          && m_stateVector == state;
+      const DxvkGraphicsPipelineStateInfo&  state) {
+      return m_stateVector == state;
     }
 
     /**
@@ -130,7 +125,6 @@ namespace dxvk {
   private:
 
     DxvkGraphicsPipelineStateInfo m_stateVector;
-    const DxvkRenderPass*         m_renderPass;
     VkPipeline                    m_pipeline;
 
   };
@@ -212,11 +206,9 @@ namespace dxvk {
      * Asynchronously compiles the given pipeline
      * and stores the result for future use.
      * \param [in] state Pipeline state vector
-     * \param [in] renderPass The render pass
      */
     void compilePipeline(
-      const DxvkGraphicsPipelineStateInfo&    state,
-      const DxvkRenderPass*                   renderPass);
+      const DxvkGraphicsPipelineStateInfo&    state);
     
   private:
     
@@ -238,16 +230,13 @@ namespace dxvk {
     sync::List<DxvkGraphicsPipelineInstance>  m_pipelines;
     
     DxvkGraphicsPipelineInstance* createInstance(
-      const DxvkGraphicsPipelineStateInfo& state,
-      const DxvkRenderPass*                renderPass);
+      const DxvkGraphicsPipelineStateInfo& state);
     
     DxvkGraphicsPipelineInstance* findInstance(
-      const DxvkGraphicsPipelineStateInfo& state,
-      const DxvkRenderPass*                renderPass);
+      const DxvkGraphicsPipelineStateInfo& state);
     
     VkPipeline createPipeline(
-      const DxvkGraphicsPipelineStateInfo& state,
-      const DxvkRenderPass*                renderPass) const;
+      const DxvkGraphicsPipelineStateInfo& state) const;
     
     void destroyPipeline(
             VkPipeline                     pipeline) const;
@@ -264,8 +253,7 @@ namespace dxvk {
             bool                           trusted) const;
     
     void writePipelineStateToCache(
-      const DxvkGraphicsPipelineStateInfo& state,
-      const DxvkRenderPassFormat&          format) const;
+      const DxvkGraphicsPipelineStateInfo& state) const;
     
     void logPipelineState(
             LogLevel                       level,

@@ -45,8 +45,7 @@ namespace dxvk {
      */
     void addGraphicsPipeline(
       const DxvkStateCacheKey&              shaders,
-      const DxvkGraphicsPipelineStateInfo&  state,
-      const DxvkRenderPassFormat&           format);
+      const DxvkGraphicsPipelineStateInfo&  state);
 
     /**
      * Adds a compute pipeline to the cache
@@ -169,15 +168,6 @@ namespace dxvk {
     std::wstring getCacheFileName() const;
     
     std::string getCacheDir() const;
-
-    static uint8_t packImageLayout(
-            VkImageLayout             layout);
-
-    static VkImageLayout unpackImageLayout(
-            uint8_t                   layout);
-
-    static bool validateRenderPassFormat(
-      const DxvkRenderPassFormat&     format);
 
   };
 
