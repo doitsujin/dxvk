@@ -1066,7 +1066,7 @@ namespace dxvk {
           ctx->resolveDepthStencilImage(
             cDstImage, cSrcImage, cRegion,
             VK_RESOLVE_MODE_AVERAGE_BIT_KHR,
-            VK_RESOLVE_MODE_AVERAGE_BIT_KHR);
+            VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR);
         }
       });
     };
