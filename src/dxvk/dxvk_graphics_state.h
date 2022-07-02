@@ -478,6 +478,97 @@ namespace dxvk {
 
 
   /**
+   * \brief Packed render target formats
+   *
+   * Compact representation of depth-stencil and color attachments,
+   * as well as the read-only mask for the depth-stencil attachment,
+   * which needs to be known at pipeline compile time.
+   */
+  class DxvkRtInfo {
+
+  public:
+
+    DxvkRtInfo() = default;
+
+    DxvkRtInfo(
+            uint32_t            colorFormatCount,
+      const VkFormat*           colorFormats,
+            VkFormat            depthStencilFormat,
+            VkImageAspectFlags  depthStencilReadOnlyAspects)
+    : m_packedData(0ull) {
+      m_packedData |= encodeDepthStencilFormat(depthStencilFormat);
+      m_packedData |= encodeDepthStencilAspects(depthStencilReadOnlyAspects);
+
+      for (uint32_t i = 0; i < colorFormatCount; i++)
+        m_packedData |= encodeColorFormat(colorFormats[i], i);
+    }
+
+    VkFormat getColorFormat(uint32_t index) const {
+      return decodeColorFormat(m_packedData, index);
+    }
+
+    VkFormat getDepthStencilFormat() const {
+      return decodeDepthStencilFormat(m_packedData);
+    }
+
+    VkImageAspectFlags getDepthStencilReadOnlyAspects() const {
+      return decodeDepthStencilAspects(m_packedData);
+    }
+
+  private:
+
+    uint64_t m_packedData;
+
+    static uint64_t encodeDepthStencilAspects(VkImageAspectFlags aspects) {
+      return uint64_t(aspects) << 61;
+    }
+
+    static uint64_t encodeDepthStencilFormat(VkFormat format) {
+      return format
+        ? (uint64_t(format) - uint64_t(VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)) << 56
+        : (uint64_t(0));
+    }
+
+    static uint64_t encodeColorFormat(VkFormat format, uint32_t index) {
+      uint64_t value = uint64_t(format);
+
+      if (value >= uint64_t(VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT)) {
+        value -= uint64_t(VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT);
+        value += uint64_t(VK_FORMAT_E5B9G9R9_UFLOAT_PACK32) + 1;
+      } else if (value > uint64_t(VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)) {
+        value = 0;
+      }
+
+      return value << (7 * index);
+    }
+
+    static VkImageAspectFlags decodeDepthStencilAspects(uint64_t value) {
+      return VkImageAspectFlags((value >> 61) & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
+    }
+
+    static VkFormat decodeDepthStencilFormat(uint64_t value) {
+      value = (value >> 56) & 0x1F;
+
+      return value
+        ? VkFormat(value + uint64_t(VK_FORMAT_E5B9G9R9_UFLOAT_PACK32))
+        : VkFormat(VK_FORMAT_UNDEFINED);
+    }
+
+    static VkFormat decodeColorFormat(uint64_t value, uint32_t index) {
+      value = (value >> (7 * index)) & 0x7F;
+
+      if (value > uint64_t(VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)) {
+        value -= uint64_t(VK_FORMAT_E5B9G9R9_UFLOAT_PACK32) + 1ull;
+        value += uint64_t(VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT);
+      }
+
+      return VkFormat(value);
+    }
+
+  };
+
+
+  /**
    * \brief Packed attachment blend mode
    *
    * Stores blendig parameters for a single
@@ -685,6 +776,7 @@ namespace dxvk {
     DxvkMsInfo              ms;
     DxvkDsInfo              ds;
     DxvkOmInfo              om;
+    DxvkRtInfo              rt;
     DxvkScInfo              sc;
     DxvkDsStencilOp         dsFront;
     DxvkDsStencilOp         dsBack;

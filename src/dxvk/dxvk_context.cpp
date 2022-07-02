@@ -1932,10 +1932,7 @@ namespace dxvk {
     }
     
     if (attachmentIndex < 0) {
-      if (m_execBarriers.isImageDirty(
-          imageView->image(),
-          imageView->imageSubresources(),
-          DxvkAccess::Write))
+      if (m_execBarriers.isImageDirty(imageView->image(), imageView->imageSubresources(), DxvkAccess::Write))
         m_execBarriers.recordCommands(m_cmd);
       
       // Set up and bind a temporary framebuffer
@@ -3982,6 +3979,133 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::renderPassEmitInitBarriers(
+    const DxvkFramebufferInfo&  framebufferInfo,
+    const DxvkRenderPassOps&    ops) {
+    // If any of the involved images are dirty, emit all pending barriers now.
+    // Otherwise, skip this step so that we can more efficiently batch barriers.
+    for (uint32_t i = 0; i < framebufferInfo.numAttachments(); i++) {
+      const auto& attachment = framebufferInfo.getAttachment(i);
+
+      if (m_execBarriers.isImageDirty(
+          attachment.view->image(),
+          attachment.view->imageSubresources(),
+          DxvkAccess::Write)) {
+        m_execBarriers.recordCommands(m_cmd);
+        break;
+      }
+    }
+
+    // Transition all images to the render layout as necessary
+    const auto& depthAttachment = framebufferInfo.getDepthTarget();
+
+    if (depthAttachment.layout != ops.depthOps.loadLayout
+     && depthAttachment.view != nullptr) {
+      VkImageAspectFlags depthAspects = depthAttachment.view->info().aspect;
+
+      VkPipelineStageFlags depthStages =
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+      VkAccessFlags depthAccess = 0;
+
+      if (((depthAspects & VK_IMAGE_ASPECT_DEPTH_BIT) && ops.depthOps.loadOpD == VK_ATTACHMENT_LOAD_OP_LOAD)
+       || ((depthAspects & VK_IMAGE_ASPECT_STENCIL_BIT) && ops.depthOps.loadOpS == VK_ATTACHMENT_LOAD_OP_LOAD))
+        depthAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+
+      if (((depthAspects & VK_IMAGE_ASPECT_DEPTH_BIT) && ops.depthOps.loadOpD != VK_ATTACHMENT_LOAD_OP_LOAD)
+       || ((depthAspects & VK_IMAGE_ASPECT_STENCIL_BIT) && ops.depthOps.loadOpS != VK_ATTACHMENT_LOAD_OP_LOAD)
+       || (depthAttachment.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL))
+        depthAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+      if (depthAttachment.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
+        depthStages |= m_device->getShaderPipelineStages();
+        depthAccess |= VK_ACCESS_SHADER_READ_BIT;
+      }
+
+      m_execBarriers.accessImage(
+        depthAttachment.view->image(),
+        depthAttachment.view->imageSubresources(),
+        ops.depthOps.loadLayout,
+        depthStages, 0,
+        depthAttachment.layout,
+        depthStages, depthAccess);
+    }
+
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      const auto& colorAttachment = framebufferInfo.getColorTarget(i);
+
+      if (colorAttachment.layout != ops.colorOps[i].loadLayout
+       && colorAttachment.view != nullptr) {
+        VkAccessFlags colorAccess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+        if (ops.colorOps[i].loadOp == VK_ATTACHMENT_LOAD_OP_LOAD)
+          colorAccess |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+
+        m_execBarriers.accessImage(
+          colorAttachment.view->image(),
+          colorAttachment.view->imageSubresources(),
+          ops.colorOps[i].loadLayout,
+          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0,
+          colorAttachment.layout,
+          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+          colorAccess);
+      }
+    }
+
+    // Unconditionally emit barriers here. We need to do this
+    // even if there are no layout transitions, since we don't
+    // track resource usage during render passes.
+    m_execBarriers.recordCommands(m_cmd);
+  }
+
+
+  void DxvkContext::renderPassEmitPostBarriers(
+    const DxvkFramebufferInfo&  framebufferInfo,
+    const DxvkRenderPassOps&    ops) {
+    const auto& depthAttachment = framebufferInfo.getDepthTarget();
+
+    if (depthAttachment.view != nullptr) {
+      m_execBarriers.accessImage(
+        depthAttachment.view->image(),
+        depthAttachment.view->imageSubresources(),
+        depthAttachment.layout,
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        ops.depthOps.storeLayout,
+        depthAttachment.view->imageInfo().stages,
+        depthAttachment.view->imageInfo().access);
+    }
+
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      const auto& colorAttachment = framebufferInfo.getColorTarget(i);
+
+      if (colorAttachment.view != nullptr) {
+        m_execBarriers.accessImage(
+          colorAttachment.view->image(),
+          colorAttachment.view->imageSubresources(),
+          colorAttachment.layout,
+          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+          VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+          ops.colorOps[i].storeLayout,
+          colorAttachment.view->imageInfo().stages,
+          colorAttachment.view->imageInfo().access);
+      }
+    }
+
+    m_execBarriers.accessMemory(
+      ops.barrier.srcStages,
+      ops.barrier.srcAccess,
+      ops.barrier.dstStages,
+      ops.barrier.dstAccess);
+
+    // Do not flush barriers here. This is intended since
+    // we pre-record them when binding the framebuffer.
+  }
+
+
   void DxvkContext::renderPassBindFramebuffer(
     const DxvkFramebufferInfo&  framebufferInfo,
     const DxvkRenderPassOps&    ops,
@@ -3989,26 +4113,75 @@ namespace dxvk {
     const VkClearValue*         clearValues) {
     const DxvkFramebufferSize fbSize = framebufferInfo.size();
 
-    Rc<DxvkFramebuffer> framebuffer = this->lookupFramebuffer(framebufferInfo);
+    this->renderPassEmitInitBarriers(framebufferInfo, ops);
+    this->renderPassEmitPostBarriers(framebufferInfo, ops);
 
-    VkRect2D renderArea;
-    renderArea.offset = VkOffset2D { 0, 0 };
-    renderArea.extent = VkExtent2D { fbSize.width, fbSize.height };
-    
-    VkRenderPassBeginInfo info;
-    info.sType                = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    info.pNext                = nullptr;
-    info.renderPass           = framebufferInfo.renderPass()->getHandle(ops);
-    info.framebuffer          = framebuffer->handle();
-    info.renderArea           = renderArea;
-    info.clearValueCount      = clearValueCount;
-    info.pClearValues         = clearValues;
-    
-    m_cmd->cmdBeginRenderPass(&info,
-      VK_SUBPASS_CONTENTS_INLINE);
-    
-    m_cmd->trackResource<DxvkAccess::None>(framebuffer);
+    uint32_t clearValueIndex = 0;
+    uint32_t colorInfoCount = 0;
 
+    std::array<VkRenderingAttachmentInfoKHR, MaxNumRenderTargets> colorInfos;
+
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      const auto& colorTarget = framebufferInfo.getColorTarget(i);
+      colorInfos[i] = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR };
+
+      if (colorTarget.view != nullptr) {
+        colorInfos[i].imageView = colorTarget.view->handle();
+        colorInfos[i].imageLayout = colorTarget.layout;
+        colorInfos[i].loadOp = ops.colorOps[i].loadOp;
+        colorInfos[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+        if (ops.colorOps[i].loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR)
+          colorInfos[i].clearValue = clearValues[clearValueIndex];
+
+        clearValueIndex += 1;
+        colorInfoCount = i + 1;
+      }
+    }
+
+    VkRenderingAttachmentInfoKHR depthInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR };
+    VkImageAspectFlags depthStencilAspects = 0;
+
+    if (framebufferInfo.getDepthTarget().view != nullptr) {
+      const auto& depthTarget = framebufferInfo.getDepthTarget();
+      depthStencilAspects = depthTarget.view->info().aspect;
+      depthInfo.imageView = depthTarget.view->handle();
+      depthInfo.imageLayout = depthTarget.layout;
+      depthInfo.loadOp = ops.depthOps.loadOpD;
+      depthInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+      if (ops.depthOps.loadOpD == VK_ATTACHMENT_LOAD_OP_CLEAR)
+        depthInfo.clearValue = clearValues[clearValueIndex];
+    }
+    
+    VkRenderingAttachmentInfoKHR stencilInfo = depthInfo;
+
+    if (framebufferInfo.getDepthTarget().view != nullptr) {
+      stencilInfo.loadOp = ops.depthOps.loadOpS;
+      stencilInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+      if (ops.depthOps.loadOpS == VK_ATTACHMENT_LOAD_OP_CLEAR)
+        stencilInfo.clearValue = clearValues[clearValueIndex];
+    }
+
+    VkRenderingInfoKHR renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO_KHR };
+    renderingInfo.renderArea.offset = VkOffset2D { 0, 0 };
+    renderingInfo.renderArea.extent = VkExtent2D { fbSize.width, fbSize.height };
+    renderingInfo.layerCount = fbSize.layers;
+
+    if (colorInfoCount) {
+      renderingInfo.colorAttachmentCount = colorInfoCount;
+      renderingInfo.pColorAttachments = colorInfos.data();
+    }
+
+    if (depthStencilAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
+      renderingInfo.pDepthAttachment = &depthInfo;
+
+    if (depthStencilAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
+      renderingInfo.pStencilAttachment = &stencilInfo;
+
+    m_cmd->cmdBeginRendering(&renderingInfo);
+    
     for (uint32_t i = 0; i < framebufferInfo.numAttachments(); i++) {
       m_cmd->trackResource<DxvkAccess::None> (framebufferInfo.getAttachment(i).view);
       m_cmd->trackResource<DxvkAccess::Write>(framebufferInfo.getAttachment(i).view->image());
@@ -4019,7 +4192,11 @@ namespace dxvk {
   
   
   void DxvkContext::renderPassUnbindFramebuffer() {
-    m_cmd->cmdEndRenderPass();
+    m_cmd->cmdEndRendering();
+
+    // TODO Try to get rid of this for performance reasons.
+    // This only exists to emulate render pass barriers.
+    m_execBarriers.recordCommands(m_cmd);
   }
   
   
@@ -4499,7 +4676,9 @@ namespace dxvk {
       DxvkFramebufferInfo fbInfo = makeFramebufferInfo(m_state.om.renderTargets);
       this->updateRenderTargetLayouts(fbInfo, m_state.om.framebufferInfo);
 
+      // Update relevant graphics pipeline state
       m_state.gp.state.ms.setSampleCount(fbInfo.getSampleCount());
+      m_state.gp.state.rt = fbInfo.getRtInfo();
       m_state.om.framebufferInfo = fbInfo;
 
       for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {

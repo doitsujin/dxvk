@@ -120,9 +120,6 @@ namespace dxvk {
       this->logPipelineState(LogLevel::Debug, state);
     }
 
-    // Render pass format and image layouts
-    DxvkRenderPassFormat passFormat = renderPass->format();
-    
     // Set up dynamic states as needed
     std::array<VkDynamicState, 6> dynamicStates;
     uint32_t                      dynamicStateCount = 0;
@@ -180,29 +177,41 @@ namespace dxvk {
     if (fsm)  stages.push_back(fsm.stageInfo(&specInfo));
 
     // Fix up color write masks using the component mappings
-    std::array<VkPipelineColorBlendAttachmentState, MaxNumRenderTargets> omBlendAttachments;
+    VkImageAspectFlags rtReadOnlyAspects = state.rt.getDepthStencilReadOnlyAspects();
+    VkFormat rtDepthFormat = state.rt.getDepthStencilFormat();
+    auto rtDepthFormatInfo = imageFormatInfo(rtDepthFormat);
+
+    std::array<VkPipelineColorBlendAttachmentState, MaxNumRenderTargets> omBlendAttachments = { };
+    std::array<VkFormat, DxvkLimits::MaxNumRenderTargets> rtColorFormats;
+    uint32_t rtColorFormatCount = 0;
 
     const VkColorComponentFlags fullMask
       = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
       | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      auto formatInfo = imageFormatInfo(passFormat.color[i].format);
-      omBlendAttachments[i] = state.omBlend[i].state();
+      rtColorFormats[i] = state.rt.getColorFormat(i);
 
-      if (!(m_fsOut & (1 << i)) || !formatInfo) {
-        omBlendAttachments[i].colorWriteMask = 0;
-      } else {
-        if (omBlendAttachments[i].colorWriteMask != fullMask) {
-          omBlendAttachments[i].colorWriteMask = util::remapComponentMask(
-            state.omBlend[i].colorWriteMask(), state.omSwizzle[i].mapping());
-        }
+      if (rtColorFormats[i]) {
+        rtColorFormatCount = i + 1;
 
-        omBlendAttachments[i].colorWriteMask &= formatInfo->componentMask;
+        auto formatInfo = imageFormatInfo(rtColorFormats[i]);
+        omBlendAttachments[i] = state.omBlend[i].state();
 
-        if (omBlendAttachments[i].colorWriteMask == formatInfo->componentMask) {
-          omBlendAttachments[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
-                                               | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        if (!(m_fsOut & (1 << i)) || !formatInfo) {
+          omBlendAttachments[i].colorWriteMask = 0;
+        } else {
+          if (omBlendAttachments[i].colorWriteMask != fullMask) {
+            omBlendAttachments[i].colorWriteMask = util::remapComponentMask(
+              state.omBlend[i].colorWriteMask(), state.omSwizzle[i].mapping());
+          }
+
+          omBlendAttachments[i].colorWriteMask &= formatInfo->componentMask;
+
+          if (omBlendAttachments[i].colorWriteMask == formatInfo->componentMask) {
+            omBlendAttachments[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                                                 | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+          }
         }
       }
     }
@@ -241,16 +250,11 @@ namespace dxvk {
       viAttribs[i].binding = viBindingMap[state.ilAttributes[i].binding()];
     }
 
-    VkPipelineVertexInputDivisorStateCreateInfoEXT viDivisorInfo;
-    viDivisorInfo.sType                     = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT;
-    viDivisorInfo.pNext                     = nullptr;
+    VkPipelineVertexInputDivisorStateCreateInfoEXT viDivisorInfo = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT };
     viDivisorInfo.vertexBindingDivisorCount = viDivisorCount;
     viDivisorInfo.pVertexBindingDivisors    = viDivisorDesc.data();
     
-    VkPipelineVertexInputStateCreateInfo viInfo;
-    viInfo.sType                            = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    viInfo.pNext                            = &viDivisorInfo;
-    viInfo.flags                            = 0;
+    VkPipelineVertexInputStateCreateInfo viInfo = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, &viDivisorInfo };
     viInfo.vertexBindingDescriptionCount    = state.il.bindingCount();
     viInfo.pVertexBindingDescriptions       = viBindings.data();
     viInfo.vertexAttributeDescriptionCount  = state.il.attributeCount();
@@ -263,60 +267,34 @@ namespace dxvk {
     if (!m_pipeMgr->m_device->features().extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor)
       viInfo.pNext = viDivisorInfo.pNext;
     
-    VkPipelineInputAssemblyStateCreateInfo iaInfo;
-    iaInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    iaInfo.pNext                  = nullptr;
-    iaInfo.flags                  = 0;
+    VkPipelineInputAssemblyStateCreateInfo iaInfo = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
     iaInfo.topology               = state.ia.primitiveTopology();
     iaInfo.primitiveRestartEnable = state.ia.primitiveRestart();
     
-    VkPipelineTessellationStateCreateInfo tsInfo;
-    tsInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
-    tsInfo.pNext                  = nullptr;
-    tsInfo.flags                  = 0;
+    VkPipelineTessellationStateCreateInfo tsInfo = { VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO };
     tsInfo.patchControlPoints     = state.ia.patchVertexCount();
     
-    VkPipelineViewportStateCreateInfo vpInfo;
-    vpInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    vpInfo.pNext                  = nullptr;
-    vpInfo.flags                  = 0;
+    VkPipelineViewportStateCreateInfo vpInfo = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
     vpInfo.viewportCount          = state.rs.viewportCount();
-    vpInfo.pViewports             = nullptr;
     vpInfo.scissorCount           = state.rs.viewportCount();
-    vpInfo.pScissors              = nullptr;
     
-    VkPipelineRasterizationConservativeStateCreateInfoEXT conservativeInfo;
-    conservativeInfo.sType        = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT;
-    conservativeInfo.pNext        = nullptr;
-    conservativeInfo.flags        = 0;
+    VkPipelineRasterizationConservativeStateCreateInfoEXT conservativeInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT };
     conservativeInfo.conservativeRasterizationMode = state.rs.conservativeMode();
     conservativeInfo.extraPrimitiveOverestimationSize = 0.0f;
 
-    VkPipelineRasterizationStateStreamCreateInfoEXT xfbStreamInfo;
-    xfbStreamInfo.sType           = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT;
-    xfbStreamInfo.pNext           = nullptr;
-    xfbStreamInfo.flags           = 0;
+    VkPipelineRasterizationStateStreamCreateInfoEXT xfbStreamInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT };
     xfbStreamInfo.rasterizationStream = uint32_t(rasterizedStream);
 
-    VkPipelineRasterizationDepthClipStateCreateInfoEXT rsDepthClipInfo;
-    rsDepthClipInfo.sType         = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT;
-    rsDepthClipInfo.pNext         = nullptr;
-    rsDepthClipInfo.flags         = 0;
+    VkPipelineRasterizationDepthClipStateCreateInfoEXT rsDepthClipInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT };
     rsDepthClipInfo.depthClipEnable = state.rs.depthClipEnable();
 
-    VkPipelineRasterizationStateCreateInfo rsInfo;
-    rsInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rsInfo.pNext                  = nullptr;
-    rsInfo.flags                  = 0;
+    VkPipelineRasterizationStateCreateInfo rsInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
     rsInfo.depthClampEnable       = VK_TRUE;
     rsInfo.rasterizerDiscardEnable = rasterizedStream < 0;
     rsInfo.polygonMode            = state.rs.polygonMode();
     rsInfo.cullMode               = state.rs.cullMode();
     rsInfo.frontFace              = state.rs.frontFace();
     rsInfo.depthBiasEnable        = state.rs.depthBiasEnable();
-    rsInfo.depthBiasConstantFactor= 0.0f;
-    rsInfo.depthBiasClamp         = 0.0f;
-    rsInfo.depthBiasSlopeFactor   = 0.0f;
     rsInfo.lineWidth              = 1.0f;
     
     if (rasterizedStream > 0)
@@ -332,10 +310,7 @@ namespace dxvk {
 
     uint32_t sampleMask = state.ms.sampleMask();
 
-    VkPipelineMultisampleStateCreateInfo msInfo;
-    msInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    msInfo.pNext                  = nullptr;
-    msInfo.flags                  = 0;
+    VkPipelineMultisampleStateCreateInfo msInfo = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
     msInfo.rasterizationSamples   = sampleCount;
     msInfo.sampleShadingEnable    = m_common.msSampleShadingEnable;
     msInfo.minSampleShading       = m_common.msSampleShadingFactor;
@@ -343,43 +318,41 @@ namespace dxvk {
     msInfo.alphaToCoverageEnable  = state.ms.enableAlphaToCoverage();
     msInfo.alphaToOneEnable       = VK_FALSE;
     
-    VkPipelineDepthStencilStateCreateInfo dsInfo;
-    dsInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    dsInfo.pNext                  = nullptr;
-    dsInfo.flags                  = 0;
+    VkPipelineDepthStencilStateCreateInfo dsInfo = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
     dsInfo.depthTestEnable        = state.ds.enableDepthTest();
-    dsInfo.depthWriteEnable       = state.ds.enableDepthWrite() && !util::isDepthReadOnlyLayout(passFormat.depth.layout);
+    dsInfo.depthWriteEnable       = state.ds.enableDepthWrite() && !(rtReadOnlyAspects & VK_IMAGE_ASPECT_DEPTH_BIT);
     dsInfo.depthCompareOp         = state.ds.depthCompareOp();
     dsInfo.depthBoundsTestEnable  = state.ds.enableDepthBoundsTest();
     dsInfo.stencilTestEnable      = state.ds.enableStencilTest();
     dsInfo.front                  = state.dsFront.state();
     dsInfo.back                   = state.dsBack.state();
-    dsInfo.minDepthBounds         = 0.0f;
-    dsInfo.maxDepthBounds         = 1.0f;
     
-    VkPipelineColorBlendStateCreateInfo cbInfo;
-    cbInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    cbInfo.pNext                  = nullptr;
-    cbInfo.flags                  = 0;
+    VkPipelineColorBlendStateCreateInfo cbInfo = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
     cbInfo.logicOpEnable          = state.om.enableLogicOp();
     cbInfo.logicOp                = state.om.logicOp();
-    cbInfo.attachmentCount        = DxvkLimits::MaxNumRenderTargets;
+    cbInfo.attachmentCount        = rtColorFormatCount;
     cbInfo.pAttachments           = omBlendAttachments.data();
     
-    for (uint32_t i = 0; i < 4; i++)
-      cbInfo.blendConstants[i] = 0.0f;
-    
-    VkPipelineDynamicStateCreateInfo dyInfo;
-    dyInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dyInfo.pNext                  = nullptr;
-    dyInfo.flags                  = 0;
+    VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
     dyInfo.dynamicStateCount      = dynamicStateCount;
     dyInfo.pDynamicStates         = dynamicStates.data();
-    
-    VkGraphicsPipelineCreateInfo info;
-    info.sType                    = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    info.pNext                    = nullptr;
-    info.flags                    = 0;
+
+    VkPipelineRenderingCreateInfoKHR rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR };
+
+    if (rtColorFormatCount) {
+      rtInfo.colorAttachmentCount = rtColorFormatCount;
+      rtInfo.pColorAttachmentFormats = rtColorFormats.data();
+    }
+
+    if (rtDepthFormat) {
+      if (rtDepthFormatInfo->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
+        rtInfo.depthAttachmentFormat = rtDepthFormat;
+
+      if (rtDepthFormatInfo->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
+        rtInfo.stencilAttachmentFormat = rtDepthFormat;
+    }
+
+    VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &rtInfo };
     info.stageCount               = stages.size();
     info.pStages                  = stages.data();
     info.pVertexInputState        = &viInfo;
@@ -392,12 +365,9 @@ namespace dxvk {
     info.pColorBlendState         = &cbInfo;
     info.pDynamicState            = &dyInfo;
     info.layout                   = m_bindings->getPipelineLayout();
-    info.renderPass               = renderPass->getDefaultHandle();
-    info.subpass                  = 0;
-    info.basePipelineHandle       = VK_NULL_HANDLE;
     info.basePipelineIndex        = -1;
     
-    if (tsInfo.patchControlPoints == 0)
+    if (!tsInfo.patchControlPoints)
       info.pTessellationState = nullptr;
     
     // Time pipeline compilation for debugging purposes

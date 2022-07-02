@@ -88,6 +88,27 @@ namespace dxvk {
   }
 
 
+  DxvkRtInfo DxvkFramebufferInfo::getRtInfo() const {
+    VkFormat depthStencilFormat = VK_FORMAT_UNDEFINED;
+    VkImageAspectFlags depthStencilReadOnlyAspects = 0;
+
+    if (m_renderTargets.depth.view != nullptr) {
+      depthStencilFormat = m_renderTargets.depth.view->info().format;
+      depthStencilReadOnlyAspects = m_renderTargets.depth.view->formatInfo()->aspectMask
+        & ~vk::getWritableAspectsForLayout(m_renderTargets.depth.layout);
+    }
+
+    std::array<VkFormat, MaxNumRenderTargets> colorFormats = { };
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      if (m_renderTargets.color[i].view != nullptr)
+        colorFormats[i] = m_renderTargets.color[i].view->info().format;
+    }
+
+    return DxvkRtInfo(MaxNumRenderTargets, colorFormats.data(),
+      depthStencilFormat, depthStencilReadOnlyAspects);
+  }
+
+
   DxvkRenderPassFormat DxvkFramebufferInfo::getRenderPassFormat(const DxvkRenderTargets& renderTargets) {
     DxvkRenderPassFormat format;
 

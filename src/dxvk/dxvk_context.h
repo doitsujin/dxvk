@@ -1286,6 +1286,14 @@ namespace dxvk {
     void startRenderPass();
     void spillRenderPass(bool suspend);
     
+    void renderPassEmitInitBarriers(
+      const DxvkFramebufferInfo&  framebufferInfo,
+      const DxvkRenderPassOps&    ops);
+
+    void renderPassEmitPostBarriers(
+      const DxvkFramebufferInfo&  framebufferInfo,
+      const DxvkRenderPassOps&    ops);
+
     void renderPassBindFramebuffer(
       const DxvkFramebufferInfo&  framebufferInfo,
       const DxvkRenderPassOps&    ops,

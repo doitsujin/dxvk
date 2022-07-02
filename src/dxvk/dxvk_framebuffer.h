@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dxvk_image.h"
+#include "dxvk_graphics_state.h"
 #include "dxvk_renderpass.h"
 
 namespace dxvk {
@@ -224,6 +225,12 @@ namespace dxvk {
      * \returns Framebuffer key
      */
     DxvkFramebufferKey key() const;
+
+    /**
+     * \brief Generates render target state
+     * \returns Render target state info
+     */
+    DxvkRtInfo getRtInfo() const;
 
     /**
      * \brief Generatess render pass format
