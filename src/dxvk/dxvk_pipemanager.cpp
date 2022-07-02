@@ -5,14 +5,13 @@
 namespace dxvk {
   
   DxvkPipelineManager::DxvkPipelineManager(
-          DxvkDevice*         device,
-          DxvkRenderPassPool* passManager)
+          DxvkDevice*         device)
   : m_device    (device),
     m_cache     (new DxvkPipelineCache(device->vkd())) {
     std::string useStateCache = env::getEnvVar("DXVK_STATE_CACHE");
     
     if (useStateCache != "0" && device->config().enableStateCache)
-      m_stateCache = new DxvkStateCache(device, this, passManager);
+      m_stateCache = new DxvkStateCache(device, this);
   }
   
   

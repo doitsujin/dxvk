@@ -4420,8 +4420,7 @@ namespace dxvk {
       : DxvkContextFlag::GpDirtyStencilRef);
     
     // Retrieve and bind actual Vulkan pipeline handle
-    VkPipeline pipeline = m_state.gp.pipeline->getPipelineHandle(
-      m_state.gp.state, m_state.om.framebufferInfo.renderPass());
+    VkPipeline pipeline = m_state.gp.pipeline->getPipelineHandle(m_state.gp.state);
 
     if (unlikely(!pipeline))
       return false;
@@ -4660,10 +4659,7 @@ namespace dxvk {
   
   DxvkFramebufferInfo DxvkContext::makeFramebufferInfo(
     const DxvkRenderTargets&      renderTargets) {
-    auto renderPassFormat = DxvkFramebufferInfo::getRenderPassFormat(renderTargets);
-    auto renderPassObject = m_common->renderPassPool().getRenderPass(renderPassFormat);
-
-    return DxvkFramebufferInfo(renderTargets, m_device->getDefaultFramebufferSize(), renderPassObject);
+    return DxvkFramebufferInfo(renderTargets, m_device->getDefaultFramebufferSize());
   }
 
 
@@ -5524,18 +5520,6 @@ namespace dxvk {
       m_cpLookupCache[idx] = m_common->pipelineManager().createComputePipeline(shaders);
 
     return m_cpLookupCache[idx];
-  }
-
-
-  Rc<DxvkFramebuffer> DxvkContext::lookupFramebuffer(
-    const DxvkFramebufferInfo&      framebufferInfo) {
-    DxvkFramebufferKey key = framebufferInfo.key();
-    size_t idx = key.hash() % m_framebufferCache.size();
-
-    if (m_framebufferCache[idx] == nullptr || !m_framebufferCache[idx]->key().eq(key))
-      m_framebufferCache[idx] = m_device->createFramebuffer(framebufferInfo);
-
-    return m_framebufferCache[idx];
   }
 
 

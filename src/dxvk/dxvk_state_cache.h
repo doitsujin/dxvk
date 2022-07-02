@@ -29,8 +29,7 @@ namespace dxvk {
 
     DxvkStateCache(
             DxvkDevice*           device,
-            DxvkPipelineManager*  pipeManager,
-            DxvkRenderPassPool*   passManager);
+            DxvkPipelineManager*  pipeManager);
     
     ~DxvkStateCache();
 
@@ -94,7 +93,6 @@ namespace dxvk {
 
     DxvkDevice*                       m_device;
     DxvkPipelineManager*              m_pipeManager;
-    DxvkRenderPassPool*               m_passManager;
 
     std::vector<DxvkStateCacheEntry>  m_entries;
     std::atomic<bool>                 m_stopThreads = { false };

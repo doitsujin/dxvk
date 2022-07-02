@@ -200,11 +200,9 @@ namespace dxvk {
 
   DxvkStateCache::DxvkStateCache(
           DxvkDevice*           device,
-          DxvkPipelineManager*  pipeManager,
-          DxvkRenderPassPool*   passManager)
+          DxvkPipelineManager*  pipeManager)
   : m_device      (device),
-    m_pipeManager (pipeManager),
-    m_passManager (passManager) {
+    m_pipeManager (pipeManager) {
     bool newFile = !readCacheFile();
 
     if (newFile) {

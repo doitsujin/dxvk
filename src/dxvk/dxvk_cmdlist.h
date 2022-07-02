@@ -259,14 +259,6 @@ namespace dxvk {
     }
 
     
-    void cmdBeginRenderPass(
-      const VkRenderPassBeginInfo*  pRenderPassBegin,
-            VkSubpassContents       contents) {
-      m_vkd->vkCmdBeginRenderPass(m_execBuffer,
-        pRenderPassBegin, contents);
-    }
-
-
     void cmdBeginTransformFeedback(
             uint32_t                  firstBuffer,
             uint32_t                  bufferCount,
@@ -599,11 +591,6 @@ namespace dxvk {
       m_vkd->vkCmdEndRenderingKHR(m_execBuffer);
     }
 
-    
-    void cmdEndRenderPass() {
-      m_vkd->vkCmdEndRenderPass(m_execBuffer);
-    }
-    
     
     void cmdEndTransformFeedback(
             uint32_t                  firstBuffer,

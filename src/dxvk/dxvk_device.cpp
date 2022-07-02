@@ -102,12 +102,6 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkFramebuffer> DxvkDevice::createFramebuffer(
-    const DxvkFramebufferInfo&  info) {
-    return new DxvkFramebuffer(m_vkd, info);
-  }
-  
-  
   Rc<DxvkBuffer> DxvkDevice::createBuffer(
     const DxvkBufferCreateInfo& createInfo,
           VkMemoryPropertyFlags memoryType) {

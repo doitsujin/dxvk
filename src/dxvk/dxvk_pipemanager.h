@@ -38,8 +38,7 @@ namespace dxvk {
   public:
     
     DxvkPipelineManager(
-            DxvkDevice*         device,
-            DxvkRenderPassPool* passManager);
+            DxvkDevice*         device);
     
     ~DxvkPipelineManager();
     

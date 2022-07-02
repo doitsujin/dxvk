@@ -106,7 +106,6 @@ namespace dxvk {
      * \brief Checks for matching pipeline state
      * 
      * \param [in] stateVector Graphics pipeline state
-     * \param [in] renderPass Render pass handle
      * \returns \c true if the specialization is compatible
      */
     bool isCompatible(
@@ -193,12 +192,10 @@ namespace dxvk {
      * Retrieves a pipeline handle for the given pipeline
      * state. If necessary, a new pipeline will be created.
      * \param [in] state Pipeline state vector
-     * \param [in] renderPass The render pass
      * \returns Pipeline handle
      */
     VkPipeline getPipelineHandle(
-      const DxvkGraphicsPipelineStateInfo&    state,
-      const DxvkRenderPass*                   renderPass);
+      const DxvkGraphicsPipelineStateInfo&    state);
     
     /**
      * \brief Compiles a pipeline

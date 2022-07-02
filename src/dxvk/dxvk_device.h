@@ -259,15 +259,6 @@ namespace dxvk {
             uint32_t              index);
     
     /**
-     * \brief Creates framebuffer for a set of render targets
-     * 
-     * \param [in] info Framebuffer info
-     * \returns The framebuffer object
-     */
-    Rc<DxvkFramebuffer> createFramebuffer(
-      const DxvkFramebufferInfo&  info);
-    
-    /**
      * \brief Creates a buffer object
      * 
      * \param [in] createInfo Buffer create info
