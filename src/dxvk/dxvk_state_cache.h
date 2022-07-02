@@ -149,11 +149,6 @@ namespace dxvk {
             std::istream&             stream,
             DxvkStateCacheHeader&     header) const;
 
-    bool readCacheEntryV7(
-            uint32_t                  version,
-            std::istream&             stream, 
-            DxvkStateCacheEntry&      entry) const;
-    
     bool readCacheEntry(
             uint32_t                  version,
             std::istream&             stream, 
@@ -162,21 +157,6 @@ namespace dxvk {
     void writeCacheEntry(
             std::ostream&             stream, 
             DxvkStateCacheEntry&      entry) const;
-    
-    bool convertEntryV2(
-            DxvkStateCacheEntryV4&    entry) const;
-    
-    bool convertEntryV4(
-      const DxvkStateCacheEntryV4&    in,
-            DxvkStateCacheEntryV6&    out) const;
-    
-    bool convertEntryV5(
-      const DxvkStateCacheEntryV5&    in,
-            DxvkStateCacheEntryV6&    out) const;
-    
-    bool convertEntryV6(
-      const DxvkStateCacheEntryV6&    in,
-            DxvkStateCacheEntry&      out) const;
     
     void workerFunc();
 

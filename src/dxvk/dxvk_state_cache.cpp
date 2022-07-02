@@ -397,25 +397,8 @@ namespace dxvk {
       return false;
     }
 
-    // Struct size hasn't changed between v2 and v4
-    size_t expectedSize = newHeader.entrySize;
-
-    if (curHeader.version <= 4)
-      expectedSize = sizeof(DxvkStateCacheEntryV4);
-    else if (curHeader.version <= 5)
-      expectedSize = sizeof(DxvkStateCacheEntryV5);
-    else if (curHeader.version <= 6)
-      expectedSize = sizeof(DxvkStateCacheEntryV6);
-    else if (curHeader.version <= 7)
-      expectedSize = sizeof(DxvkStateCacheEntry);
-
-    if (curHeader.entrySize != expectedSize) {
-      Logger::warn("DXVK: State cache entry size changed");
-      return false;
-    }
-
     // Discard caches of unsupported versions
-    if (curHeader.version < 2 || curHeader.version > newHeader.version) {
+    if (curHeader.version < 8 || curHeader.version > newHeader.version) {
       Logger::warn("DXVK: State cache version not supported");
       return false;
     }
@@ -485,51 +468,10 @@ namespace dxvk {
   }
 
 
-  bool DxvkStateCache::readCacheEntryV7(
-          uint32_t                  version,
-          std::istream&             stream, 
-          DxvkStateCacheEntry&      entry) const {
-    if (version <= 6) {
-      DxvkStateCacheEntryV6 v6;
-
-      if (version <= 4) {
-        DxvkStateCacheEntryV4 v4;
-
-        if (!readCacheEntryTyped(stream, v4))
-          return false;
-
-        if (version == 2)
-          convertEntryV2(v4);
-
-        if (!convertEntryV4(v4, v6))
-          return false;
-      } else if (version <= 5) {
-        DxvkStateCacheEntryV5 v5;
-
-        if (!readCacheEntryTyped(stream, v5))
-          return false;
-
-        if (!convertEntryV5(v5, v6))
-          return false;
-      } else {
-        if (!readCacheEntryTyped(stream, v6))
-          return false;
-      }
-
-      return convertEntryV6(v6, entry);
-    } else {
-      return readCacheEntryTyped(stream, entry);
-    }
-  }
-
-
   bool DxvkStateCache::readCacheEntry(
           uint32_t                  version,
           std::istream&             stream, 
           DxvkStateCacheEntry&      entry) const {
-    if (version < 8)
-      return readCacheEntryV7(version, stream, entry);
-
     // Read entry metadata and actual data
     DxvkStateCacheEntryHeader header;
     DxvkStateCacheEntryData data;
@@ -729,179 +671,6 @@ namespace dxvk {
     stream.write(reinterpret_cast<char*>(&hash), sizeof(hash));
     stream.write(data.data(), data.size());
     stream.flush();
-  }
-
-
-  bool DxvkStateCache::convertEntryV2(
-          DxvkStateCacheEntryV4&    entry) const {
-    // Semantics changed:
-    // v2: rsDepthClampEnable
-    // v3: rsDepthClipEnable
-    entry.gpState.rsDepthClipEnable = !entry.gpState.rsDepthClipEnable;
-
-    // Frontend changed: Depth bias
-    // will typically be disabled
-    entry.gpState.rsDepthBiasEnable = VK_FALSE;
-    return true;
-  }
-
-
-  bool DxvkStateCache::convertEntryV4(
-    const DxvkStateCacheEntryV4&    in,
-          DxvkStateCacheEntryV6&    out) const {
-    out.shaders = in.shaders;
-    out.format  = in.format;
-    out.hash    = in.hash;
-
-    out.cpState.bsBindingMask           = in.cpState.bsBindingMask;
-    out.gpState.bsBindingMask           = in.gpState.bsBindingMask;
-    
-    out.gpState.iaPrimitiveTopology     = in.gpState.iaPrimitiveTopology;
-    out.gpState.iaPrimitiveRestart      = in.gpState.iaPrimitiveRestart;
-    out.gpState.iaPatchVertexCount      = in.gpState.iaPatchVertexCount;
-    
-    out.gpState.ilAttributeCount        = in.gpState.ilAttributeCount;
-    out.gpState.ilBindingCount          = in.gpState.ilBindingCount;
-
-    for (uint32_t i = 0; i < in.gpState.ilAttributeCount; i++)
-      out.gpState.ilAttributes[i]       = in.gpState.ilAttributes[i];
-
-    for (uint32_t i = 0; i < in.gpState.ilBindingCount; i++) {
-      out.gpState.ilBindings[i]         = in.gpState.ilBindings[i];
-      out.gpState.ilDivisors[i]         = in.gpState.ilDivisors[i];
-    }
-    
-    out.gpState.rsDepthClipEnable       = in.gpState.rsDepthClipEnable;
-    out.gpState.rsDepthBiasEnable       = in.gpState.rsDepthBiasEnable;
-    out.gpState.rsPolygonMode           = in.gpState.rsPolygonMode;
-    out.gpState.rsCullMode              = in.gpState.rsCullMode;
-    out.gpState.rsFrontFace             = in.gpState.rsFrontFace;
-    out.gpState.rsViewportCount         = in.gpState.rsViewportCount;
-    out.gpState.rsSampleCount           = in.gpState.rsSampleCount;
-    
-    out.gpState.msSampleCount           = in.gpState.msSampleCount;
-    out.gpState.msSampleMask            = in.gpState.msSampleMask;
-    out.gpState.msEnableAlphaToCoverage = in.gpState.msEnableAlphaToCoverage;
-    
-    out.gpState.dsEnableDepthTest       = in.gpState.dsEnableDepthTest;
-    out.gpState.dsEnableDepthWrite      = in.gpState.dsEnableDepthWrite;
-    out.gpState.dsEnableStencilTest     = in.gpState.dsEnableStencilTest;
-    out.gpState.dsDepthCompareOp        = in.gpState.dsDepthCompareOp;
-    out.gpState.dsStencilOpFront        = in.gpState.dsStencilOpFront;
-    out.gpState.dsStencilOpBack         = in.gpState.dsStencilOpBack;
-    
-    out.gpState.omEnableLogicOp         = in.gpState.omEnableLogicOp;
-    out.gpState.omLogicOp               = in.gpState.omLogicOp;
-
-    for (uint32_t i = 0; i < 8; i++) {
-      out.gpState.omBlendAttachments[i] = in.gpState.omBlendAttachments[i];
-      out.gpState.omComponentMapping[i] = in.gpState.omComponentMapping[i];
-    }
-
-    return true;
-  }
-
-
-  bool DxvkStateCache::convertEntryV5(
-    const DxvkStateCacheEntryV5&    in,
-          DxvkStateCacheEntryV6&    out) const {
-    out.shaders = in.shaders;
-    out.gpState = in.gpState;
-    out.format  = in.format;
-    out.hash    = in.hash;
-
-    out.cpState.bsBindingMask = in.cpState.bsBindingMask;
-    return true;
-  }
-
-
-  bool DxvkStateCache::convertEntryV6(
-    const DxvkStateCacheEntryV6&    in,
-          DxvkStateCacheEntry&      out) const {
-    out.shaders = in.shaders;
-    out.format  = in.format;
-    out.hash    = in.hash;
-
-    if (in.shaders.cs.eq(g_nullShaderKey)) {
-      // Graphics state
-      out.gpState.ia = DxvkIaInfo(
-        in.gpState.iaPrimitiveTopology,
-        in.gpState.iaPrimitiveRestart,
-        in.gpState.iaPatchVertexCount);
-      
-      out.gpState.il = DxvkIlInfo(
-        in.gpState.ilAttributeCount,
-        in.gpState.ilBindingCount);
-      
-      for (uint32_t i = 0; i < in.gpState.ilAttributeCount; i++) {
-        out.gpState.ilAttributes[i] = DxvkIlAttribute(
-          in.gpState.ilAttributes[i].location,
-          in.gpState.ilAttributes[i].binding,
-          in.gpState.ilAttributes[i].format,
-          in.gpState.ilAttributes[i].offset);
-      }
-      
-      for (uint32_t i = 0; i < in.gpState.ilBindingCount; i++) {
-        out.gpState.ilBindings[i] = DxvkIlBinding(
-          in.gpState.ilBindings[i].binding,
-          in.gpState.ilBindings[i].stride,
-          in.gpState.ilBindings[i].inputRate,
-          in.gpState.ilDivisors[i]);
-      }
-      
-      out.gpState.rs = DxvkRsInfo(
-        in.gpState.rsDepthClipEnable,
-        in.gpState.rsDepthBiasEnable,
-        in.gpState.rsPolygonMode,
-        in.gpState.rsCullMode,
-        in.gpState.rsFrontFace,
-        in.gpState.rsViewportCount,
-        in.gpState.rsSampleCount,
-        VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT);
-
-      out.gpState.ms = DxvkMsInfo(
-        in.gpState.msSampleCount,
-        in.gpState.msSampleMask,
-        in.gpState.msEnableAlphaToCoverage);
-      
-      out.gpState.ds = DxvkDsInfo(
-        in.gpState.dsEnableDepthTest,
-        in.gpState.dsEnableDepthWrite,
-        in.gpState.dsEnableDepthBoundsTest,
-        in.gpState.dsEnableStencilTest,
-        in.gpState.dsDepthCompareOp);
-      
-      out.gpState.dsFront = DxvkDsStencilOp(in.gpState.dsStencilOpFront);
-      out.gpState.dsBack  = DxvkDsStencilOp(in.gpState.dsStencilOpBack);
-
-      out.gpState.om = DxvkOmInfo(
-        in.gpState.omEnableLogicOp,
-        in.gpState.omLogicOp);
-      
-      for (uint32_t i = 0; i < 8 && i < MaxNumRenderTargets; i++) {
-        out.gpState.omBlend[i] = DxvkOmAttachmentBlend(
-          in.gpState.omBlendAttachments[i].blendEnable,
-          in.gpState.omBlendAttachments[i].srcColorBlendFactor,
-          in.gpState.omBlendAttachments[i].dstColorBlendFactor,
-          in.gpState.omBlendAttachments[i].colorBlendOp,
-          in.gpState.omBlendAttachments[i].srcAlphaBlendFactor,
-          in.gpState.omBlendAttachments[i].dstAlphaBlendFactor,
-          in.gpState.omBlendAttachments[i].alphaBlendOp,
-          in.gpState.omBlendAttachments[i].colorWriteMask);
-        
-        out.gpState.omSwizzle[i] = DxvkOmAttachmentSwizzle(
-          in.gpState.omComponentMapping[i]);
-      }
-
-      // Specialization constants
-      for (uint32_t i = 0; i < 8 && i < MaxNumSpecConstants; i++)
-        out.cpState.sc.specConstants[i] = in.cpState.scSpecConstants[i];
-    } else {
-      for (uint32_t i = 0; i < 8 && i < MaxNumSpecConstants; i++)
-        out.gpState.sc.specConstants[i] = in.gpState.scSpecConstants[i];
-    }
-
-    return true;
   }
 
 
