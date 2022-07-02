@@ -570,6 +570,11 @@ namespace dxvk {
     { R"(\\eoa\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
     }} },
+    /* Beyond Good And Evil                     *
+     * Fixes missing sun and light shafts       */
+    { R"(\\BGE\.exe$)", {{
+      { "d3d9.allowDoNotWait",              "False" },
+    }} },
     /* Supreme Commander & Forged Alliance Forever */
     { R"(\\(SupremeCommander|ForgedAlliance)\.exe$)", {{
       { "d3d9.floatEmulation",            "Strict" },
