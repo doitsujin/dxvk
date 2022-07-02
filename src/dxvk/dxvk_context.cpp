@@ -1417,13 +1417,14 @@ namespace dxvk {
 
 
   void DxvkContext::emitRenderTargetReadbackBarrier() {
-    if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
-      emitMemoryBarrier(VK_DEPENDENCY_BY_REGION_BIT,
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        VK_ACCESS_SHADER_READ_BIT);
-    }
+    if (m_flags.test(DxvkContextFlag::GpRenderPassBound))
+      this->spillRenderPass(true);
+
+    emitMemoryBarrier(0,
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+      VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+      VK_ACCESS_SHADER_READ_BIT);
   }
 
 
