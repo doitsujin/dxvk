@@ -1661,8 +1661,8 @@ namespace dxvk {
       m_cmd->cmdBindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS,
         pipeInfo.pipeLayout, descriptorWrite.dstSet, 0, nullptr);
       
-      m_cmd->cmdSetViewport(0, 1, &viewport);
-      m_cmd->cmdSetScissor (0, 1, &scissor);
+      m_cmd->cmdSetViewport(1, &viewport);
+      m_cmd->cmdSetScissor(1, &scissor);
       
       m_cmd->cmdPushConstants(
         pipeInfo.pipeLayout,
@@ -2290,13 +2290,8 @@ namespace dxvk {
           uint32_t            viewportCount,
     const VkViewport*         viewports,
     const VkRect2D*           scissorRects) {
-    if (m_state.gp.state.rs.viewportCount() != viewportCount) {
-      m_state.gp.state.rs.setViewportCount(viewportCount);
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
-    }
-    
     for (uint32_t i = 0; i < viewportCount; i++) {
-      m_state.vp.viewports[i]    = viewports[i];
+      m_state.vp.viewports[i] = viewports[i];
       m_state.vp.scissorRects[i] = scissorRects[i];
       
       // Vulkan viewports are not allowed to have a width or
@@ -2311,6 +2306,7 @@ namespace dxvk {
       }
     }
     
+    m_state.vp.viewportCount = viewportCount;
     m_flags.set(DxvkContextFlag::GpDirtyViewport);
   }
   
@@ -2711,8 +2707,8 @@ namespace dxvk {
     scissor.offset            = { dstOffsets[0].x, dstOffsets[0].y  };
     scissor.extent            = { dstExtent.width, dstExtent.height };
 
-    m_cmd->cmdSetViewport(0, 1, &viewport);
-    m_cmd->cmdSetScissor (0, 1, &scissor);
+    m_cmd->cmdSetViewport(1, &viewport);
+    m_cmd->cmdSetScissor(1, &scissor);
 
     // Bind source image view
     VkDescriptorImageInfo descriptorImage;
@@ -3508,8 +3504,8 @@ namespace dxvk {
     m_cmd->cmdBindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS,
       pipeInfo.pipeLayout, descriptorSet, 0, nullptr);
 
-    m_cmd->cmdSetViewport(0, 1, &viewport);
-    m_cmd->cmdSetScissor (0, 1, &scissor);
+    m_cmd->cmdSetViewport(1, &viewport);
+    m_cmd->cmdSetScissor(1, &scissor);
 
     VkOffset2D srcCoordOffset = {
       srcOffset.x - dstOffset.x,
@@ -3941,8 +3937,8 @@ namespace dxvk {
     m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeHandle);
     m_cmd->cmdBindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS,
       pipeInfo.pipeLayout, descriptorSet, 0, nullptr);
-    m_cmd->cmdSetViewport(0, 1, &viewport);
-    m_cmd->cmdSetScissor (0, 1, &scissor);
+    m_cmd->cmdSetViewport(1, &viewport);
+    m_cmd->cmdSetScissor(1, &scissor);
     m_cmd->cmdPushConstants(pipeInfo.pipeLayout,
       VK_SHADER_STAGE_FRAGMENT_BIT,
       0, sizeof(srcOffset), &srcOffset);
@@ -5037,9 +5033,8 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyViewport)) {
       m_flags.clr(DxvkContextFlag::GpDirtyViewport);
 
-      uint32_t viewportCount = m_state.gp.state.rs.viewportCount();
-      m_cmd->cmdSetViewport(0, viewportCount, m_state.vp.viewports.data());
-      m_cmd->cmdSetScissor (0, viewportCount, m_state.vp.scissorRects.data());
+      m_cmd->cmdSetViewport(m_state.vp.viewportCount, m_state.vp.viewports.data());
+      m_cmd->cmdSetScissor(m_state.vp.viewportCount, m_state.vp.scissorRects.data());
     }
 
     if (m_flags.all(DxvkContextFlag::GpDirtyBlendConstants,

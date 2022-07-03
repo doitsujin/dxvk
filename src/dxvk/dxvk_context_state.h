@@ -90,6 +90,7 @@ namespace dxvk {
   
   
   struct DxvkViewportState {
+    uint32_t viewportCount = 0;
     std::array<VkViewport, DxvkLimits::MaxNumViewports> viewports    = { };
     std::array<VkRect2D,   DxvkLimits::MaxNumViewports> scissorRects = { };
   };

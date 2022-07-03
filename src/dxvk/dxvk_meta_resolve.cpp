@@ -257,8 +257,8 @@ namespace dxvk {
       VK_SHADER_STAGE_FRAGMENT_BIT, psModule, "main", &specInfo };
 
     std::array<VkDynamicState, 2> dynStates = {{
-      VK_DYNAMIC_STATE_VIEWPORT,
-      VK_DYNAMIC_STATE_SCISSOR,
+      VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT,
+      VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT,
     }};
     
     VkPipelineDynamicStateCreateInfo dynState = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };

@@ -119,8 +119,8 @@ namespace dxvk {
     std::array<VkDynamicState, 6> dynamicStates;
     uint32_t                      dynamicStateCount = 0;
     
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT;
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_SCISSOR;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT;
 
     if (state.useDynamicDepthBias())
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BIAS;
@@ -270,8 +270,6 @@ namespace dxvk {
     tsInfo.patchControlPoints     = state.ia.patchVertexCount();
     
     VkPipelineViewportStateCreateInfo vpInfo = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-    vpInfo.viewportCount          = state.rs.viewportCount();
-    vpInfo.scissorCount           = state.rs.viewportCount();
     
     VkPipelineRasterizationConservativeStateCreateInfoEXT conservativeInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT };
     conservativeInfo.conservativeRasterizationMode = state.rs.conservativeMode();

@@ -707,14 +707,13 @@ namespace dxvk {
 
     
     void cmdSetScissor(
-            uint32_t                firstScissor,
             uint32_t                scissorCount,
       const VkRect2D*               scissors) {
-      m_vkd->vkCmdSetScissor(m_execBuffer,
-        firstScissor, scissorCount, scissors);
+      m_vkd->vkCmdSetScissorWithCountEXT(
+        m_execBuffer, scissorCount, scissors);
     }
-    
-    
+
+
     void cmdSetStencilReference(
             VkStencilFaceFlags      faceMask,
             uint32_t                reference) {
@@ -724,14 +723,13 @@ namespace dxvk {
     
     
     void cmdSetViewport(
-            uint32_t                firstViewport,
             uint32_t                viewportCount,
       const VkViewport*             viewports) {
-      m_vkd->vkCmdSetViewport(m_execBuffer,
-        firstViewport, viewportCount, viewports);
+      m_vkd->vkCmdSetViewportWithCountEXT(
+        m_execBuffer, viewportCount, viewports);
     }
-    
-    
+
+
     void cmdWriteTimestamp(
             VkPipelineStageFlagBits pipelineStage,
             VkQueryPool             queryPool,
