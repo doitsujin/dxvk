@@ -2400,7 +2400,6 @@ namespace dxvk {
       rs.polygonMode,
       rs.cullMode,
       rs.frontFace,
-      m_state.gp.state.rs.viewportCount(),
       rs.sampleCount,
       rs.conservativeMode);
 

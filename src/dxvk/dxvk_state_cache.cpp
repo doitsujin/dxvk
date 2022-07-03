@@ -62,6 +62,20 @@ namespace dxvk {
       return read(data);
     }
 
+    bool read(DxvkRsInfo& data, uint32_t version) {
+      if (version < 13) {
+        DxvkRsInfoV12 v12;
+
+        if (!read(v12))
+          return false;
+
+        data = v12.convert();
+        return true;
+      }
+
+      return read(data);
+    }
+
     bool read(DxvkRtInfo& data, uint32_t version) {
       // v12 introduced this field
       if (version < 12)

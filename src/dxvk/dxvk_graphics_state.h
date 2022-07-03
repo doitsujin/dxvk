@@ -223,17 +223,15 @@ namespace dxvk {
             VkPolygonMode         polygonMode,
             VkCullModeFlags       cullMode,
             VkFrontFace           frontFace,
-            uint32_t              viewportCount,
             VkSampleCountFlags    sampleCount,
             VkConservativeRasterizationModeEXT conservativeMode)
-    : m_depthClipEnable (uint32_t(depthClipEnable)),
-      m_depthBiasEnable (uint32_t(depthBiasEnable)),
-      m_polygonMode     (uint32_t(polygonMode)),
-      m_cullMode        (uint32_t(cullMode)),
-      m_frontFace       (uint32_t(frontFace)),
-      m_viewportCount   (uint32_t(viewportCount)),
-      m_sampleCount     (uint32_t(sampleCount)),
-      m_conservativeMode(uint32_t(conservativeMode)),
+    : m_depthClipEnable (uint16_t(depthClipEnable)),
+      m_depthBiasEnable (uint16_t(depthBiasEnable)),
+      m_polygonMode     (uint16_t(polygonMode)),
+      m_cullMode        (uint16_t(cullMode)),
+      m_frontFace       (uint16_t(frontFace)),
+      m_sampleCount     (uint16_t(sampleCount)),
+      m_conservativeMode(uint16_t(conservativeMode)),
       m_reserved        (0) { }
     
     VkBool32 depthClipEnable() const {
@@ -256,10 +254,6 @@ namespace dxvk {
       return VkFrontFace(m_frontFace);
     }
 
-    uint32_t viewportCount() const {
-      return m_viewportCount;
-    }
-
     VkSampleCountFlags sampleCount() const {
       return VkSampleCountFlags(m_sampleCount);
     }
@@ -268,21 +262,16 @@ namespace dxvk {
       return VkConservativeRasterizationModeEXT(m_conservativeMode);
     }
 
-    void setViewportCount(uint32_t viewportCount) {
-      m_viewportCount = viewportCount;
-    }
-
   private:
 
-    uint32_t m_depthClipEnable        : 1;
-    uint32_t m_depthBiasEnable        : 1;
-    uint32_t m_polygonMode            : 2;
-    uint32_t m_cullMode               : 2;
-    uint32_t m_frontFace              : 1;
-    uint32_t m_viewportCount          : 5;
-    uint32_t m_sampleCount            : 5;
-    uint32_t m_conservativeMode       : 2;
-    uint32_t m_reserved               : 13;
+    uint16_t m_depthClipEnable        : 1;
+    uint16_t m_depthBiasEnable        : 1;
+    uint16_t m_polygonMode            : 2;
+    uint16_t m_cullMode               : 2;
+    uint16_t m_frontFace              : 1;
+    uint16_t m_sampleCount            : 5;
+    uint16_t m_conservativeMode       : 2;
+    uint16_t m_reserved               : 2;
   
   };
 
