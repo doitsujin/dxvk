@@ -958,8 +958,8 @@ namespace dxvk {
         m_writerQueue.pop();
       }
 
-      if (!file) {
-        file = std::ofstream(getCacheFileName().c_str(),
+      if (!file.is_open()) {
+        file.open(getCacheFileName().c_str(),
           std::ios_base::binary |
           std::ios_base::app);
       }
