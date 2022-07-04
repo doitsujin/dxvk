@@ -1137,12 +1137,14 @@ namespace dxvk {
     DxvkBarrierSet          m_initBarriers;
     DxvkBarrierSet          m_execAcquires;
     DxvkBarrierSet          m_execBarriers;
-    DxvkBarrierSet          m_gfxBarriers;
     DxvkBarrierControlFlags m_barrierControl;
 
     DxvkGpuQueryManager     m_queryManager;
     DxvkStagingBuffer       m_staging;
     
+    DxvkGlobalPipelineBarrier m_globalRoGraphicsBarrier;
+    DxvkGlobalPipelineBarrier m_globalRwGraphicsBarrier;
+
     DxvkRenderTargetLayouts m_rtLayouts = { };
 
     DxvkBindingSet<MaxNumVertexBindings + 1>  m_vbTracked;
@@ -1314,7 +1316,7 @@ namespace dxvk {
     
     void unbindGraphicsPipeline();
     bool updateGraphicsPipeline();
-    bool updateGraphicsPipelineState();
+    bool updateGraphicsPipelineState(DxvkGlobalPipelineBarrier srcBarrier);
     
     void invalidateState();
 

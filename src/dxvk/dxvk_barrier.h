@@ -333,6 +333,14 @@ namespace dxvk {
       m_list.clear();
     }
 
+    /**
+     * \brief Checks whether set is empty
+     * \returns \c true if there are no entries
+     */
+    bool empty() const {
+      return m_used == 0;
+    }
+
   private:
 
     struct ListEntry {
@@ -537,6 +545,11 @@ namespace dxvk {
       const Rc<DxvkCommandList>&      commandList);
     
     void reset();
+
+    bool hasResourceBarriers() const {
+      return !m_bufSlices.empty()
+          || !m_imgSlices.empty();
+    }
 
     static DxvkAccessFlags getAccessTypes(VkAccessFlags flags);
     
