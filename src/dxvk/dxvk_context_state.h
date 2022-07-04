@@ -54,7 +54,7 @@ namespace dxvk {
    * \brief Context feature bits
    */
   enum class DxvkContextFeature {
-    ExtendedDynamicState,
+    FeatureCount
   };
 
   using DxvkContextFeatures = Flags<DxvkContextFeature>;

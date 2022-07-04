@@ -19,9 +19,6 @@ namespace dxvk {
     m_gfxBarriers (DxvkCmdBuffer::ExecBuffer),
     m_queryManager(m_common->queryPool()),
     m_staging     (device, StagingBufferSize) {
-    if (m_device->features().extExtendedDynamicState.extendedDynamicState)
-      m_features.set(DxvkContextFeature::ExtendedDynamicState);
-
     // Init framebuffer info with default render pass in case
     // the app does not explicitly bind any render targets
     m_state.om.framebufferInfo = makeFramebufferInfo(m_state.om.renderTargets);
@@ -4988,13 +4985,8 @@ namespace dxvk {
     
     // Vertex bindigs get remapped when compiling the
     // pipeline, so this actually does the right thing
-    if (m_features.test(DxvkContextFeature::ExtendedDynamicState)) {
-      m_cmd->cmdBindVertexBuffers2(0, m_state.gp.state.il.bindingCount(),
-        buffers.data(), offsets.data(), lengths.data(), nullptr);
-    } else {
-      m_cmd->cmdBindVertexBuffers(0, m_state.gp.state.il.bindingCount(),
-        buffers.data(), offsets.data());
-    }
+    m_cmd->cmdBindVertexBuffers2(0, m_state.gp.state.il.bindingCount(),
+      buffers.data(), offsets.data(), lengths.data(), nullptr);
   }
   
   

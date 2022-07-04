@@ -328,7 +328,7 @@ namespace dxvk {
     DxvkNameList extensionNameList = extensionsEnabled.toNameList();
 
     // Enable additional device features if supported
-    enabledFeatures.extExtendedDynamicState.extendedDynamicState = m_deviceFeatures.extExtendedDynamicState.extendedDynamicState;
+    enabledFeatures.extExtendedDynamicState.extendedDynamicState = VK_TRUE;
 
     enabledFeatures.ext4444Formats.formatA4B4G4R4 = m_deviceFeatures.ext4444Formats.formatA4B4G4R4;
     enabledFeatures.ext4444Formats.formatA4R4G4B4 = m_deviceFeatures.ext4444Formats.formatA4R4G4B4;
