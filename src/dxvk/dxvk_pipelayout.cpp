@@ -323,15 +323,18 @@ namespace dxvk {
   }
 
 
-  VkAccessFlags DxvkBindingLayoutObjects::getAccessFlags() const {
-    VkAccessFlags flags = 0;
+  DxvkGlobalPipelineBarrier DxvkBindingLayoutObjects::getGlobalBarrier() const {
+    DxvkGlobalPipelineBarrier barrier = { };
 
     for (uint32_t i = 0; i < DxvkDescriptorSets::SetCount; i++) {
-      for (uint32_t j = 0; j < m_layout.getBindingCount(i); j++)
-        flags |= m_layout.getBinding(i, j).access;
+      for (uint32_t j = 0; j < m_layout.getBindingCount(i); j++) {
+        const auto& binding = m_layout.getBinding(i, j);
+        barrier.stages |= util::pipelineStages(binding.stages);
+        barrier.access |= binding.access;
+      }
     }
 
-    return flags;
+    return barrier;
   }
 
 }

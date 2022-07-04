@@ -357,6 +357,17 @@ namespace dxvk {
   };
 
   /**
+   * \brief Global resource barrier
+   *
+   * Stores the way any resources will be
+   * accessed by this pipeline.
+   */
+  struct DxvkGlobalPipelineBarrier {
+    VkPipelineStageFlags  stages;
+    VkAccessFlags         access;
+  };
+
+  /**
    * \brief Pipeline and descriptor set layouts for a given binding layout
    *
    * Creates the following Vulkan objects for a given binding layout:
@@ -435,12 +446,14 @@ namespace dxvk {
     }
 
     /**
-     * \brief Queries accumulated resource access flags
+     * \brief Queries global resource barrier
      *
      * Can be used to determine whether the pipeline
-     * reads or writes any resources.
+     * reads or writes any resources, and which shader
+     * stages it uses.
+     * \returns Global barrier
      */
-    VkAccessFlags getAccessFlags() const;
+    DxvkGlobalPipelineBarrier getGlobalBarrier() const;
 
   private:
 

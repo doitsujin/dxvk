@@ -185,7 +185,20 @@ namespace dxvk {
      */
     Rc<DxvkShader> getShader(
             VkShaderStageFlagBits             stage) const;
-    
+
+    /**
+     * \brief Queries global resource barrier
+     *
+     * Returns the stages that can access resources in this
+     * pipeline with the given pipeline state, as well as
+     * the ways in which resources are accessed. This does
+     * not include render targets. The barrier is meant to
+     * be executed after the render pass.
+     * \returns Global barrier
+     */
+    DxvkGlobalPipelineBarrier getGlobalBarrier(
+      const DxvkGraphicsPipelineStateInfo&    state) const;
+
     /**
      * \brief Pipeline handle
      * 
@@ -218,6 +231,7 @@ namespace dxvk {
     uint32_t m_vsIn  = 0;
     uint32_t m_fsOut = 0;
     
+    DxvkGlobalPipelineBarrier           m_barrier;
     DxvkGraphicsPipelineFlags           m_flags;
     DxvkGraphicsCommonPipelineStateInfo m_common;
     

@@ -13,14 +13,22 @@ namespace dxvk {
           DxvkGraphicsPipelineShaders shaders,
           DxvkBindingLayoutObjects*   layout)
   : m_vkd(pipeMgr->m_device->vkd()), m_pipeMgr(pipeMgr),
-    m_shaders(std::move(shaders)), m_bindings(layout) {
+    m_shaders(std::move(shaders)), m_bindings(layout),
+    m_barrier(layout->getGlobalBarrier()) {
     m_vsIn  = m_shaders.vs != nullptr ? m_shaders.vs->info().inputMask  : 0;
     m_fsOut = m_shaders.fs != nullptr ? m_shaders.fs->info().outputMask : 0;
 
-    if (m_shaders.gs != nullptr && m_shaders.gs->flags().test(DxvkShaderFlag::HasTransformFeedback))
+    if (m_shaders.gs != nullptr && m_shaders.gs->flags().test(DxvkShaderFlag::HasTransformFeedback)) {
       m_flags.set(DxvkGraphicsPipelineFlag::HasTransformFeedback);
+
+      m_barrier.stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT
+                       |  VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
+      m_barrier.access |= VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT
+                       |  VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT
+                       |  VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT;
+    }
     
-    if (layout->getAccessFlags() & VK_ACCESS_SHADER_WRITE_BIT)
+    if (m_barrier.access & VK_ACCESS_SHADER_WRITE_BIT)
       m_flags.set(DxvkGraphicsPipelineFlag::HasStorageDescriptors);
     
     m_common.msSampleShadingEnable = m_shaders.fs != nullptr && m_shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading);
@@ -45,6 +53,19 @@ namespace dxvk {
       default:
         return nullptr;
     }
+  }
+
+
+  DxvkGlobalPipelineBarrier DxvkGraphicsPipeline::getGlobalBarrier(
+    const DxvkGraphicsPipelineStateInfo&    state) const {
+    DxvkGlobalPipelineBarrier barrier = m_barrier;
+
+    if (state.il.bindingCount()) {
+      barrier.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+      barrier.access |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+    }
+
+    return barrier;
   }
 
 
