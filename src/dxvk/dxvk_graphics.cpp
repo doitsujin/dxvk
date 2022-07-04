@@ -8,6 +8,131 @@
 
 namespace dxvk {
 
+  DxvkGraphicsPipelineVertexInputState::DxvkGraphicsPipelineVertexInputState() {
+    
+  }
+
+
+  DxvkGraphicsPipelineVertexInputState::DxvkGraphicsPipelineVertexInputState(
+    const DxvkDevice*                     device,
+    const DxvkGraphicsPipelineStateInfo&  state) {
+    std::array<uint32_t, MaxNumVertexBindings> viBindingMap = { };
+
+    iaInfo.topology               = state.ia.primitiveTopology();
+    iaInfo.primitiveRestartEnable = state.ia.primitiveRestart();
+
+    viInfo.vertexBindingDescriptionCount    = state.il.bindingCount();
+    viInfo.vertexAttributeDescriptionCount  = state.il.attributeCount();
+
+    // Process vertex bindings. We will compact binding numbers on
+    // the fly so that vertex buffers can be updated more easily.
+    for (uint32_t i = 0; i < state.il.bindingCount(); i++) {
+      viBindingMap[state.ilBindings[i].binding()] = i;
+
+      viBindings[i].binding = i;
+      viBindings[i].stride = state.ilBindings[i].stride();
+      viBindings[i].inputRate = state.ilBindings[i].inputRate();
+
+      if (state.ilBindings[i].inputRate() == VK_VERTEX_INPUT_RATE_INSTANCE
+       && state.ilBindings[i].divisor()   != 1) {
+        uint32_t index = viDivisorInfo.vertexBindingDivisorCount++;
+
+        viDivisors[index].binding = i;
+        viDivisors[index].divisor = state.ilBindings[i].divisor();
+      }
+    }
+
+    if (viInfo.vertexBindingDescriptionCount)
+      viInfo.pVertexBindingDescriptions = viBindings.data();
+
+    if (viDivisorInfo.vertexBindingDivisorCount) {
+      viDivisorInfo.pVertexBindingDivisors = viDivisors.data();
+
+      if (device->features().extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor)
+        viInfo.pNext = &viDivisorInfo;
+    }
+
+    // Process vertex attributes, using binding map generated above
+    for (uint32_t i = 0; i < state.il.attributeCount(); i++) {
+      viAttributes[i].location = state.ilAttributes[i].location();
+      viAttributes[i].binding = viBindingMap[state.ilAttributes[i].binding()];
+      viAttributes[i].format = state.ilAttributes[i].format();
+      viAttributes[i].offset = state.ilAttributes[i].offset();
+    }
+
+    if (viInfo.vertexAttributeDescriptionCount)
+      viInfo.pVertexAttributeDescriptions = viAttributes.data();
+  }
+
+
+  bool DxvkGraphicsPipelineVertexInputState::eq(const DxvkGraphicsPipelineVertexInputState& other) const {
+    bool eq = iaInfo.topology                         == other.iaInfo.topology
+           && iaInfo.primitiveRestartEnable           == other.iaInfo.primitiveRestartEnable
+           && viInfo.vertexBindingDescriptionCount    == other.viInfo.vertexBindingDescriptionCount
+           && viInfo.vertexAttributeDescriptionCount  == other.viInfo.vertexAttributeDescriptionCount
+           && viDivisorInfo.vertexBindingDivisorCount == other.viDivisorInfo.vertexBindingDivisorCount;
+
+    for (uint32_t i = 0; i < viInfo.vertexBindingDescriptionCount && eq; i++) {
+      const auto& a = viBindings[i];
+      const auto& b = other.viBindings[i];
+
+      eq = a.binding    == b.binding
+        && a.stride     == b.stride
+        && a.inputRate  == b.inputRate;
+    }
+
+    for (uint32_t i = 0; i < viInfo.vertexAttributeDescriptionCount && eq; i++) {
+      const auto& a = viAttributes[i];
+      const auto& b = other.viAttributes[i];
+
+      eq = a.location   == b.location
+        && a.binding    == b.binding
+        && a.format     == b.format
+        && a.offset     == b.offset;
+    }
+
+    for (uint32_t i = 0; i < viDivisorInfo.vertexBindingDivisorCount; i++) {
+      const auto& a = viDivisors[i];
+      const auto& b = other.viDivisors[i];
+
+      eq = a.binding    == b.binding
+        && a.divisor    == b.divisor;
+    }
+
+    return eq;
+  }
+
+
+  size_t DxvkGraphicsPipelineVertexInputState::hash() const {
+    DxvkHashState hash;
+    hash.add(uint32_t(iaInfo.topology));
+    hash.add(uint32_t(iaInfo.primitiveRestartEnable));
+    hash.add(uint32_t(viInfo.vertexBindingDescriptionCount));
+    hash.add(uint32_t(viInfo.vertexAttributeDescriptionCount));
+    hash.add(uint32_t(viDivisorInfo.vertexBindingDivisorCount));
+
+    for (uint32_t i = 0; i < viInfo.vertexBindingDescriptionCount; i++) {
+      hash.add(uint32_t(viBindings[i].binding));
+      hash.add(uint32_t(viBindings[i].stride));
+      hash.add(uint32_t(viBindings[i].inputRate));
+    }
+
+    for (uint32_t i = 0; i < viInfo.vertexAttributeDescriptionCount; i++) {
+      hash.add(uint32_t(viAttributes[i].location));
+      hash.add(uint32_t(viAttributes[i].binding));
+      hash.add(uint32_t(viAttributes[i].format));
+      hash.add(uint32_t(viAttributes[i].offset));
+    }
+
+    for (uint32_t i = 0; i < viDivisorInfo.vertexBindingDivisorCount; i++) {
+      hash.add(uint32_t(viDivisors[i].binding));
+      hash.add(uint32_t(viDivisors[i].divisor));
+    }
+
+    return hash;
+  }
+
+
   DxvkGraphicsPipeline::DxvkGraphicsPipeline(
           DxvkPipelineManager*        pipeMgr,
           DxvkGraphicsPipelineShaders shaders,
@@ -131,6 +256,8 @@ namespace dxvk {
   
   VkPipeline DxvkGraphicsPipeline::createPipeline(
     const DxvkGraphicsPipelineStateInfo& state) const {
+    const DxvkDevice* device = m_pipeMgr->m_device;
+
     if (Logger::logLevel() <= LogLevel::Debug) {
       Logger::debug("Compiling graphics pipeline...");
       this->logPipelineState(LogLevel::Debug, state);
@@ -232,61 +359,12 @@ namespace dxvk {
       }
     }
 
-    // Generate per-instance attribute divisors
-    std::array<VkVertexInputBindingDivisorDescriptionEXT, MaxNumVertexBindings> viDivisorDesc;
-    uint32_t                                                                    viDivisorCount = 0;
-
-    for (uint32_t i = 0; i < state.il.bindingCount(); i++) {
-      if (state.ilBindings[i].inputRate() == VK_VERTEX_INPUT_RATE_INSTANCE
-       && state.ilBindings[i].divisor()   != 1) {
-        const uint32_t id = viDivisorCount++;
-        
-        viDivisorDesc[id].binding = i; /* see below */
-        viDivisorDesc[id].divisor = state.ilBindings[i].divisor();
-      }
-    }
-
     int32_t rasterizedStream = m_shaders.gs != nullptr
       ? m_shaders.gs->info().xfbRasterizedStream
       : 0;
-    
-    // Compact vertex bindings so that we can more easily update vertex buffers
-    std::array<VkVertexInputAttributeDescription, MaxNumVertexAttributes> viAttribs;
-    std::array<VkVertexInputBindingDescription,   MaxNumVertexBindings>   viBindings;
-    std::array<uint32_t,                          MaxNumVertexBindings>   viBindingMap = { };
 
-    for (uint32_t i = 0; i < state.il.bindingCount(); i++) {
-      viBindings[i] = state.ilBindings[i].description();
-      viBindings[i].binding = i;
-      viBindingMap[state.ilBindings[i].binding()] = i;
-    }
+    DxvkGraphicsPipelineVertexInputState viState(device, state);
 
-    for (uint32_t i = 0; i < state.il.attributeCount(); i++) {
-      viAttribs[i] = state.ilAttributes[i].description();
-      viAttribs[i].binding = viBindingMap[state.ilAttributes[i].binding()];
-    }
-
-    VkPipelineVertexInputDivisorStateCreateInfoEXT viDivisorInfo = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT };
-    viDivisorInfo.vertexBindingDivisorCount = viDivisorCount;
-    viDivisorInfo.pVertexBindingDivisors    = viDivisorDesc.data();
-    
-    VkPipelineVertexInputStateCreateInfo viInfo = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO, &viDivisorInfo };
-    viInfo.vertexBindingDescriptionCount    = state.il.bindingCount();
-    viInfo.pVertexBindingDescriptions       = viBindings.data();
-    viInfo.vertexAttributeDescriptionCount  = state.il.attributeCount();
-    viInfo.pVertexAttributeDescriptions     = viAttribs.data();
-    
-    if (viDivisorCount == 0)
-      viInfo.pNext = viDivisorInfo.pNext;
-    
-    // TODO remove this once the extension is widely supported
-    if (!m_pipeMgr->m_device->features().extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor)
-      viInfo.pNext = viDivisorInfo.pNext;
-    
-    VkPipelineInputAssemblyStateCreateInfo iaInfo = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
-    iaInfo.topology               = state.ia.primitiveTopology();
-    iaInfo.primitiveRestartEnable = state.ia.primitiveRestart();
-    
     VkPipelineTessellationStateCreateInfo tsInfo = { VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO };
     tsInfo.patchControlPoints     = state.ia.patchVertexCount();
     
@@ -369,8 +447,8 @@ namespace dxvk {
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &rtInfo };
     info.stageCount               = stages.size();
     info.pStages                  = stages.data();
-    info.pVertexInputState        = &viInfo;
-    info.pInputAssemblyState      = &iaInfo;
+    info.pVertexInputState        = &viState.viInfo;
+    info.pInputAssemblyState      = &viState.iaInfo;
     info.pTessellationState       = &tsInfo;
     info.pViewportState           = &vpInfo;
     info.pRasterizationState      = &rsInfo;

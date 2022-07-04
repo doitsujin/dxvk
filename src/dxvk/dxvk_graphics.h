@@ -20,6 +20,34 @@ namespace dxvk {
   class DxvkPipelineManager;
 
   /**
+   * \brief Vertex input info for graphics pipelines
+   *
+   * Can be used to compile dedicated vertex input pipelines for
+   * use in a graphics pipeline library, or as part of the data
+   * required to compile a full graphics pipeline.
+   */
+  struct DxvkGraphicsPipelineVertexInputState {
+    DxvkGraphicsPipelineVertexInputState();
+
+    DxvkGraphicsPipelineVertexInputState(
+      const DxvkDevice*                     device,
+      const DxvkGraphicsPipelineStateInfo&  state);
+
+    VkPipelineInputAssemblyStateCreateInfo          iaInfo        = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
+    VkPipelineVertexInputStateCreateInfo            viInfo        = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
+    VkPipelineVertexInputDivisorStateCreateInfoEXT  viDivisorInfo = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT };
+
+    std::array<VkVertexInputBindingDescription,           MaxNumVertexBindings>   viBindings    = { };
+    std::array<VkVertexInputBindingDivisorDescriptionEXT, MaxNumVertexBindings>   viDivisors    = { };
+    std::array<VkVertexInputAttributeDescription,         MaxNumVertexAttributes> viAttributes  = { };
+
+    bool eq(const DxvkGraphicsPipelineVertexInputState& other) const;
+
+    size_t hash() const;
+  };
+
+
+  /**
    * \brief Flags that describe pipeline properties
    */
   enum class DxvkGraphicsPipelineFlag {
@@ -68,8 +96,8 @@ namespace dxvk {
       return shader == nullptr || shader->info().stage == stage;
     }
   };
-  
-  
+
+
   /**
    * \brief Common graphics pipeline state
    * 
