@@ -24,6 +24,7 @@ namespace dxvk {
     VkAttachmentLoadOp  loadOp      = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     VkImageLayout       loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
     VkImageLayout       storeLayout = VK_IMAGE_LAYOUT_GENERAL;
+    VkClearColorValue   clearValue  = VkClearColorValue();
   };
   
   
@@ -38,6 +39,7 @@ namespace dxvk {
     VkAttachmentLoadOp  loadOpS     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     VkImageLayout       loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
     VkImageLayout       storeLayout = VK_IMAGE_LAYOUT_GENERAL;
+    VkClearDepthStencilValue clearValue = VkClearDepthStencilValue();
   };
   
   

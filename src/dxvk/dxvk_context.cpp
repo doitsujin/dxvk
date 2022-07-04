@@ -2046,17 +2046,17 @@ namespace dxvk {
         if (m_state.om.renderPassOps.colorOps[colorIndex].loadOp != VK_ATTACHMENT_LOAD_OP_LOAD && !is3D)
           m_state.om.renderPassOps.colorOps[colorIndex].loadLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-        m_state.om.clearValues[attachmentIndex].color = clearValue.color;
+        m_state.om.renderPassOps.colorOps[colorIndex].clearValue = clearValue.color;
       }
       
       if ((clearAspects | discardAspects) & VK_IMAGE_ASPECT_DEPTH_BIT) {
         m_state.om.renderPassOps.depthOps.loadOpD = depthOp.loadOpD;
-        m_state.om.clearValues[attachmentIndex].depthStencil.depth = clearValue.depthStencil.depth;
+        m_state.om.renderPassOps.depthOps.clearValue.depth = clearValue.depthStencil.depth;
       }
       
       if ((clearAspects | discardAspects) & VK_IMAGE_ASPECT_STENCIL_BIT) {
         m_state.om.renderPassOps.depthOps.loadOpS = depthOp.loadOpS;
-        m_state.om.clearValues[attachmentIndex].depthStencil.stencil = clearValue.depthStencil.stencil;
+        m_state.om.renderPassOps.depthOps.clearValue.stencil = clearValue.depthStencil.stencil;
       }
 
       if ((clearAspects | discardAspects) & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
@@ -4010,9 +4010,7 @@ namespace dxvk {
 
       this->renderPassBindFramebuffer(
         m_state.om.framebufferInfo,
-        m_state.om.renderPassOps,
-        m_state.om.framebufferInfo.numAttachments(),
-        m_state.om.clearValues.data());
+        m_state.om.renderPassOps);
 
       // Track the final layout of each render target
       this->applyRenderTargetStoreLayouts();
@@ -4207,15 +4205,12 @@ namespace dxvk {
 
   void DxvkContext::renderPassBindFramebuffer(
     const DxvkFramebufferInfo&  framebufferInfo,
-    const DxvkRenderPassOps&    ops,
-          uint32_t              clearValueCount,
-    const VkClearValue*         clearValues) {
+    const DxvkRenderPassOps&    ops) {
     const DxvkFramebufferSize fbSize = framebufferInfo.size();
 
     this->renderPassEmitInitBarriers(framebufferInfo, ops);
     this->renderPassEmitPostBarriers(framebufferInfo, ops);
 
-    uint32_t clearValueIndex = 0;
     uint32_t colorInfoCount = 0;
 
     std::array<VkRenderingAttachmentInfoKHR, MaxNumRenderTargets> colorInfos;
@@ -4231,9 +4226,8 @@ namespace dxvk {
         colorInfos[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
         if (ops.colorOps[i].loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR)
-          colorInfos[i].clearValue = clearValues[clearValueIndex];
+          colorInfos[i].clearValue.color = ops.colorOps[i].clearValue;
 
-        clearValueIndex += 1;
         colorInfoCount = i + 1;
       }
     }
@@ -4250,7 +4244,7 @@ namespace dxvk {
       depthInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
       if (ops.depthOps.loadOpD == VK_ATTACHMENT_LOAD_OP_CLEAR)
-        depthInfo.clearValue = clearValues[clearValueIndex];
+        depthInfo.clearValue.depthStencil.depth = ops.depthOps.clearValue.depth;
     }
     
     VkRenderingAttachmentInfoKHR stencilInfo = depthInfo;
@@ -4260,7 +4254,7 @@ namespace dxvk {
       stencilInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
       if (ops.depthOps.loadOpS == VK_ATTACHMENT_LOAD_OP_CLEAR)
-        stencilInfo.clearValue = clearValues[clearValueIndex];
+        stencilInfo.clearValue.depthStencil.stencil = ops.depthOps.clearValue.stencil;
     }
 
     VkRenderingInfoKHR renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO_KHR };

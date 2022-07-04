@@ -1297,9 +1297,7 @@ namespace dxvk {
 
     void renderPassBindFramebuffer(
       const DxvkFramebufferInfo&  framebufferInfo,
-      const DxvkRenderPassOps&    ops,
-            uint32_t              clearValueCount,
-      const VkClearValue*         clearValues);
+      const DxvkRenderPassOps&    ops);
     
     void renderPassUnbindFramebuffer();
     

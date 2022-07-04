@@ -97,8 +97,6 @@ namespace dxvk {
 
 
   struct DxvkOutputMergerState {
-    std::array<VkClearValue, MaxNumRenderTargets + 1> clearValues = { };
-    
     DxvkRenderTargets   renderTargets;
     DxvkRenderPassOps   renderPassOps;
     DxvkFramebufferInfo framebufferInfo;
