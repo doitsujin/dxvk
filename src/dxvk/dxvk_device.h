@@ -198,6 +198,12 @@ namespace dxvk {
     bool isUnifiedMemoryArchitecture() const;
 
     /**
+     * \brief Checks whether graphics pipeline libraries can be used
+     * \returns \c true if all required features are supported.
+     */
+    bool canUseGraphicsPipelineLibrary() const;
+
+    /**
      * \brief Queries default framebuffer size
      * \returns Default framebuffer size
      */

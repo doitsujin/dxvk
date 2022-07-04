@@ -41,6 +41,15 @@ namespace dxvk {
   }
 
 
+  bool DxvkDevice::canUseGraphicsPipelineLibrary() const {
+    // Without graphicsPipelineLibraryIndependentInterpolationDecoration, we
+    // cannot use this effectively in many games since no client API provides
+    // interpoation qualifiers in vertex shaders.
+    return m_features.extGraphicsPipelineLibrary.graphicsPipelineLibrary
+        && m_properties.extGraphicsPipelineLibrary.graphicsPipelineLibraryIndependentInterpolationDecoration;
+  }
+
+
   DxvkFramebufferSize DxvkDevice::getDefaultFramebufferSize() const {
     return DxvkFramebufferSize {
       m_properties.core.properties.limits.maxFramebufferWidth,
