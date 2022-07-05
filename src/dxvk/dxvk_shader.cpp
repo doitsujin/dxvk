@@ -115,6 +115,9 @@ namespace dxvk {
           bindingOffsets[varId].setOffset = ins.offset() + 3;
         }
 
+        if (ins.arg(2) == spv::DecorationSpecId && ins.arg(3) < MaxNumSpecConstants)
+          m_flags.set(DxvkShaderFlag::HasSpecConstants);
+
         if (ins.arg(2) == spv::DecorationLocation && ins.arg(3) == 1) {
           m_o1LocOffset = ins.offset() + 3;
           o1VarId = ins.arg(1);
