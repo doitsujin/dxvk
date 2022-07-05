@@ -208,14 +208,29 @@ namespace dxvk {
   }
 
 
-  DxvkBindingLayout::DxvkBindingLayout()
-  : m_pushConst { 0, 0, 0 } {
+  DxvkBindingLayout::DxvkBindingLayout(VkShaderStageFlags stages)
+  : m_pushConst { 0, 0, 0 }, m_stages(stages) {
 
   }
 
 
   DxvkBindingLayout::~DxvkBindingLayout() {
 
+  }
+
+
+  uint32_t DxvkBindingLayout::getSetMask() const {
+    uint32_t mask = 0;
+
+    if (m_stages & (VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)) {
+      mask |= (1u << DxvkDescriptorSets::FsViews)
+           |  (1u << DxvkDescriptorSets::FsBuffers);
+    }
+
+    if (m_stages & (VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT))
+      mask |= (1u << DxvkDescriptorSets::VsAll);
+
+    return mask;
   }
 
 
@@ -244,6 +259,9 @@ namespace dxvk {
 
 
   bool DxvkBindingLayout::eq(const DxvkBindingLayout& other) const {
+    if (m_stages != other.m_stages)
+      return false;
+
     for (uint32_t i = 0; i < m_bindings.size(); i++) {
       if (!m_bindings[i].eq(other.m_bindings[i]))
         return false;
@@ -260,6 +278,7 @@ namespace dxvk {
 
   size_t DxvkBindingLayout::hash() const {
     DxvkHashState hash;
+    hash.add(m_stages);
 
     for (uint32_t i = 0; i < m_bindings.size(); i++)
       hash.add(m_bindings[i].hash());
@@ -278,26 +297,30 @@ namespace dxvk {
   : m_device(device), m_layout(layout) {
     auto vk = m_device->vkd();
 
-    std::array<VkDescriptorSetLayout, DxvkDescriptorSets::SetCount> setLayouts;
+    std::array<VkDescriptorSetLayout, DxvkDescriptorSets::SetCount> setLayouts = { };
 
     for (uint32_t i = 0; i < DxvkDescriptorSets::SetCount; i++) {
       m_bindingObjects[i] = setObjects[i];
-      setLayouts[i] = setObjects[i]->getSetLayout();
 
-      uint32_t bindingCount = m_layout.getBindingCount(i);
+      // Sets can be null for partial layouts
+      if (setObjects[i]) {
+        setLayouts[i] = setObjects[i]->getSetLayout();
 
-      for (uint32_t j = 0; j < bindingCount; j++) {
-        const DxvkBindingInfo& binding = m_layout.getBinding(i, j);
+        uint32_t bindingCount = m_layout.getBindingCount(i);
 
-        DxvkBindingMapping mapping;
-        mapping.set = i;
-        mapping.binding = j;
+        for (uint32_t j = 0; j < bindingCount; j++) {
+          const DxvkBindingInfo& binding = m_layout.getBinding(i, j);
 
-        m_mapping.insert({ binding.resourceBinding, mapping });
+          DxvkBindingMapping mapping;
+          mapping.set = i;
+          mapping.binding = j;
+
+          m_mapping.insert({ binding.resourceBinding, mapping });
+        }
+
+        if (bindingCount)
+          m_setMask |= 1u << i;
       }
-
-      if (bindingCount)
-        m_setMask |= 1u << i;
     }
 
     VkPushConstantRange pushConst = m_layout.getPushConstantRange();
@@ -305,6 +328,9 @@ namespace dxvk {
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
     pipelineLayoutInfo.setLayoutCount = setLayouts.size();
     pipelineLayoutInfo.pSetLayouts = setLayouts.data();
+
+    if (m_layout.getSetMask() != (1u << DxvkDescriptorSets::SetCount) - 1)
+      pipelineLayoutInfo.flags = VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT;
 
     if (pushConst.stageFlags && pushConst.size) {
       pipelineLayoutInfo.pushConstantRangeCount = 1;

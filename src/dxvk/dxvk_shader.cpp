@@ -63,7 +63,7 @@ namespace dxvk {
   DxvkShader::DxvkShader(
     const DxvkShaderCreateInfo&   info,
           SpirvCodeBuffer&&       spirv)
-  : m_info(info), m_code(spirv) {
+  : m_info(info), m_code(spirv), m_bindings(info.stage) {
     m_info.uniformData = nullptr;
     m_info.bindings = nullptr;
 

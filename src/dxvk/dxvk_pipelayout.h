@@ -261,7 +261,7 @@ namespace dxvk {
 
   public:
 
-    DxvkBindingLayout();
+    DxvkBindingLayout(VkShaderStageFlags stages);
     ~DxvkBindingLayout();
 
     /**
@@ -305,6 +305,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries defined descriptor set layouts
+     *
+     * Any set layout not included in this must be null.
+     * \returns Bit mask of defined descriptor sets
+     */
+    uint32_t getSetMask() const;
+
+    /**
      * \brief Adds a binding to the layout
      * \param [in] binding Binding info
      */
@@ -345,6 +353,7 @@ namespace dxvk {
 
     std::array<DxvkBindingList, DxvkDescriptorSets::SetCount> m_bindings;
     VkPushConstantRange                                       m_pushConst;
+    VkShaderStageFlags                                        m_stages;
 
   };
 

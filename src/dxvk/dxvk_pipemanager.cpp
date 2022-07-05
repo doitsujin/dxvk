@@ -52,7 +52,7 @@ namespace dxvk {
     if (pair != m_graphicsPipelines.end())
       return &pair->second;
 
-    DxvkBindingLayout mergedLayout;
+    DxvkBindingLayout mergedLayout(VK_SHADER_STAGE_ALL_GRAPHICS);
     mergedLayout.merge(shaders.vs->getBindings());
 
     if (shaders.tcs != nullptr)
@@ -157,9 +157,12 @@ namespace dxvk {
       return &pair->second;
 
     std::array<const DxvkBindingSetLayout*, DxvkDescriptorSets::SetCount> setLayouts = { };
+    uint32_t setMask = layout.getSetMask();
 
-    for (uint32_t i = 0; i < setLayouts.size(); i++)
-      setLayouts[i] = createDescriptorSetLayout(layout.getBindingList(i));
+    for (uint32_t i = 0; i < setLayouts.size(); i++) {
+      if (setMask & (1u << i))
+        setLayouts[i] = createDescriptorSetLayout(layout.getBindingList(i));
+    }
 
     auto iter = m_pipelineLayouts.emplace(
       std::piecewise_construct,
