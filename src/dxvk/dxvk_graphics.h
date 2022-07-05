@@ -401,7 +401,7 @@ namespace dxvk {
     void destroyPipeline(
             VkPipeline                     pipeline) const;
     
-    DxvkShaderModule createShaderModule(
+    SpirvCodeBuffer getShaderCode(
       const Rc<DxvkShader>&                shader,
       const DxvkGraphicsPipelineStateInfo& state) const;
     

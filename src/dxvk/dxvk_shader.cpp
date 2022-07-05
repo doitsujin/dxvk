@@ -7,60 +7,6 @@
 
 namespace dxvk {
   
-  DxvkShaderModule::DxvkShaderModule()
-  : m_vkd(nullptr), m_stage() {
-
-  }
-
-
-  DxvkShaderModule::DxvkShaderModule(DxvkShaderModule&& other)
-  : m_vkd(std::move(other.m_vkd)) {
-    this->m_stage = other.m_stage;
-    other.m_stage = VkPipelineShaderStageCreateInfo();
-  }
-
-
-  DxvkShaderModule::DxvkShaderModule(
-    const Rc<vk::DeviceFn>&     vkd,
-    const Rc<DxvkShader>&       shader,
-    const SpirvCodeBuffer&      code)
-  : m_vkd(vkd), m_stage() {
-    m_stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    m_stage.pNext = nullptr;
-    m_stage.flags = 0;
-    m_stage.stage = shader->info().stage;
-    m_stage.module = VK_NULL_HANDLE;
-    m_stage.pName = "main";
-    m_stage.pSpecializationInfo = nullptr;
-
-    VkShaderModuleCreateInfo info;
-    info.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    info.pNext    = nullptr;
-    info.flags    = 0;
-    info.codeSize = code.size();
-    info.pCode    = code.data();
-    
-    if (m_vkd->vkCreateShaderModule(m_vkd->device(), &info, nullptr, &m_stage.module) != VK_SUCCESS)
-      throw DxvkError("DxvkComputePipeline::DxvkComputePipeline: Failed to create shader module");
-  }
-  
-  
-  DxvkShaderModule::~DxvkShaderModule() {
-    if (m_vkd != nullptr) {
-      m_vkd->vkDestroyShaderModule(
-        m_vkd->device(), m_stage.module, nullptr);
-    }
-  }
-  
-  
-  DxvkShaderModule& DxvkShaderModule::operator = (DxvkShaderModule&& other) {
-    this->m_vkd   = std::move(other.m_vkd);
-    this->m_stage = other.m_stage;
-    other.m_stage = VkPipelineShaderStageCreateInfo();
-    return *this;
-  }
-
-
   DxvkShader::DxvkShader(
     const DxvkShaderCreateInfo&   info,
           SpirvCodeBuffer&&       spirv)
@@ -194,14 +140,6 @@ namespace dxvk {
   }
 
 
-  DxvkShaderModule DxvkShader::createShaderModule(
-    const Rc<vk::DeviceFn>&           vkd,
-    const DxvkBindingLayoutObjects*   layout,
-    const DxvkShaderModuleCreateInfo& info) {
-    return DxvkShaderModule(vkd, this, getCode(layout, info));
-  }
-  
-  
   bool DxvkShader::canUsePipelineLibrary() const {
     // Pipeline libraries are unsupported for geometry and
     // tessellation stages since we'd need to compile them
@@ -427,6 +365,62 @@ namespace dxvk {
     }
   }
   
+
+  DxvkShaderStageInfo::DxvkShaderStageInfo(const DxvkDevice* device)
+  : m_device(device) {
+
+  }
+
+  void DxvkShaderStageInfo::addStage(
+          VkShaderStageFlagBits   stage,
+          SpirvCodeBuffer&&       code,
+    const VkSpecializationInfo*   specInfo) {
+    // Take ownership of the SPIR-V code buffer
+    auto& codeBuffer = m_codeBuffers[m_stageCount];
+    codeBuffer = std::move(code);
+
+    // For graphics pipelines, as long as graphics pipeline libraries are
+    // enabled, we do not need to create a shader module object and can
+    // instead chain the create info to the shader stage info struct.
+    // For compute pipelines, this doesn't work and we still need a module.
+    auto& moduleInfo = m_moduleInfos[m_stageCount];
+    moduleInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+    moduleInfo.codeSize = codeBuffer.size();
+    moduleInfo.pCode = codeBuffer.data();
+
+    VkShaderModule shaderModule = VK_NULL_HANDLE;
+    if (!m_device->features().extGraphicsPipelineLibrary.graphicsPipelineLibrary || stage == VK_SHADER_STAGE_COMPUTE_BIT) {
+      auto vk = m_device->vkd();
+
+      if (vk->vkCreateShaderModule(vk->device(), &moduleInfo, nullptr, &shaderModule))
+        throw DxvkError("DxvkShaderStageInfo: Failed to create shader module");
+    }
+
+    // Set up shader stage info with the data provided
+    auto& stageInfo = m_stageInfos[m_stageCount];
+    stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
+
+    if (!stageInfo.module)
+      stageInfo.pNext = &moduleInfo;
+
+    stageInfo.stage = stage;
+    stageInfo.module = shaderModule;
+    stageInfo.pName = "main";
+    stageInfo.pSpecializationInfo = specInfo;
+
+    m_stageCount++;
+  }
+  
+
+  DxvkShaderStageInfo::~DxvkShaderStageInfo() {
+    auto vk = m_device->vkd();
+
+    for (uint32_t i = 0; i < m_stageCount; i++) {
+      if (m_stageInfos[i].module)
+        vk->vkDestroyShaderModule(vk->device(), m_stageInfos[i].module, nullptr);
+    }
+  }
+
 
   DxvkShaderPipelineLibrary::DxvkShaderPipelineLibrary(
     const DxvkDevice*               device,

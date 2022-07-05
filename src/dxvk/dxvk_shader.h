@@ -136,21 +136,6 @@ namespace dxvk {
       const DxvkShaderModuleCreateInfo& state) const;
     
     /**
-     * \brief Creates a shader module
-     *
-     * Remaps resource binding and descriptor set
-     * numbers to match the given binding layout.
-     * \param [in] vkd Vulkan device functions
-     * \param [in] layout Binding layout
-     * \param [in] info Module create info
-     * \returns The shader module
-     */
-    DxvkShaderModule createShaderModule(
-      const Rc<vk::DeviceFn>&           vkd,
-      const DxvkBindingLayoutObjects*   layout,
-      const DxvkShaderModuleCreateInfo& info);
-
-    /**
      * \brief Tests whether this shader supports pipeline libraries
      *
      * This is true for any vertex, fragment, or compute shader that does not
@@ -252,49 +237,54 @@ namespace dxvk {
    * context will create pipeline objects on the
    * fly when executing draw calls.
    */
-  class DxvkShaderModule {
+  class DxvkShaderStageInfo {
     
   public:
 
-    DxvkShaderModule();
+    DxvkShaderStageInfo(const DxvkDevice* device);
 
-    DxvkShaderModule(DxvkShaderModule&& other);
-    
-    DxvkShaderModule(
-      const Rc<vk::DeviceFn>&     vkd,
-      const Rc<DxvkShader>&       shader,
-      const SpirvCodeBuffer&      code);
-    
-    ~DxvkShaderModule();
+    DxvkShaderStageInfo             (DxvkShaderStageInfo&& other) = delete;
+    DxvkShaderStageInfo& operator = (DxvkShaderStageInfo&& other) = delete;
 
-    DxvkShaderModule& operator = (DxvkShaderModule&& other);
-    
+    ~DxvkShaderStageInfo();
+
     /**
-     * \brief Shader stage creation info
-     * 
-     * \param [in] specInfo Specialization info
-     * \returns Shader stage create info
+     * \brief Counts shader stages
+     * \returns Shader stage count
      */
-    VkPipelineShaderStageCreateInfo stageInfo(
-      const VkSpecializationInfo* specInfo) const {
-      VkPipelineShaderStageCreateInfo stage = m_stage;
-      stage.pSpecializationInfo = specInfo;
-      return stage;
+    uint32_t getStageCount() const {
+      return m_stageCount;
     }
-    
+
     /**
-     * \brief Checks whether module is valid
-     * \returns \c true if module is valid
+     * \brief Queries shader stage infos
+     * \returns Pointer to shader stage infos
      */
-    operator bool () const {
-      return m_stage.module != VK_NULL_HANDLE;
+    const VkPipelineShaderStageCreateInfo* getStageInfos() const {
+      return m_stageInfos.data();
     }
-    
+
+    /**
+     * \brief Adds a shader stage with specialization info
+     *
+     * \param [in] stage Shader stage
+     * \param [in] code SPIR-V code
+     * \param [in] specinfo Specialization info
+     */
+    void addStage(
+            VkShaderStageFlagBits   stage,
+            SpirvCodeBuffer&&       code,
+      const VkSpecializationInfo*   specInfo);
+
   private:
-    
-    Rc<vk::DeviceFn>                m_vkd;
-    VkPipelineShaderStageCreateInfo m_stage;
-    
+
+    const DxvkDevice* m_device;
+
+    std::array<SpirvCodeBuffer,                 5>  m_codeBuffers;
+    std::array<VkShaderModuleCreateInfo,        5>  m_moduleInfos = { };
+    std::array<VkPipelineShaderStageCreateInfo, 5>  m_stageInfos  = { };
+    uint32_t                                        m_stageCount  = 0;
+
   };
 
 

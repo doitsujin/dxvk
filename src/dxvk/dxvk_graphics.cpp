@@ -1,3 +1,5 @@
+#include <optional>
+
 #include "../util/util_time.h"
 
 #include "dxvk_device.h"
@@ -621,19 +623,19 @@ namespace dxvk {
       specData.set(getSpecId(i), state.sc.specConstants[i], 0u);
     
     VkSpecializationInfo specInfo = specData.getSpecInfo();
-    
-    auto vsm  = createShaderModule(m_shaders.vs,  state);
-    auto tcsm = createShaderModule(m_shaders.tcs, state);
-    auto tesm = createShaderModule(m_shaders.tes, state);
-    auto gsm  = createShaderModule(m_shaders.gs,  state);
-    auto fsm  = createShaderModule(m_shaders.fs,  state);
 
-    std::vector<VkPipelineShaderStageCreateInfo> stages;
-    if (vsm)  stages.push_back(vsm.stageInfo(&specInfo));
-    if (tcsm) stages.push_back(tcsm.stageInfo(&specInfo));
-    if (tesm) stages.push_back(tesm.stageInfo(&specInfo));
-    if (gsm)  stages.push_back(gsm.stageInfo(&specInfo));
-    if (fsm)  stages.push_back(fsm.stageInfo(&specInfo));
+    // Build stage infos for all provided shaders
+    DxvkShaderStageInfo stageInfo(m_device);
+    stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, getShaderCode(m_shaders.vs, state), &specInfo);
+
+    if (m_shaders.tcs != nullptr)
+      stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, getShaderCode(m_shaders.tcs, state), &specInfo);
+    if (m_shaders.tes != nullptr)
+      stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, getShaderCode(m_shaders.tes, state), &specInfo);
+    if (m_shaders.gs != nullptr)
+      stageInfo.addStage(VK_SHADER_STAGE_GEOMETRY_BIT, getShaderCode(m_shaders.gs, state), &specInfo);
+    if (m_shaders.fs != nullptr)
+      stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, getShaderCode(m_shaders.fs, state), &specInfo);
 
     DxvkGraphicsPipelineVertexInputState      viState(m_device, state);
     DxvkGraphicsPipelinePreRasterizationState prState(m_device, state, m_shaders.gs.ptr());
@@ -645,8 +647,8 @@ namespace dxvk {
     dyInfo.pDynamicStates         = dynamicStates.data();
 
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &foState.rtInfo };
-    info.stageCount               = stages.size();
-    info.pStages                  = stages.data();
+    info.stageCount               = stageInfo.getStageCount();
+    info.pStages                  = stageInfo.getStageInfos();
     info.pVertexInputState        = &viState.viInfo;
     info.pInputAssemblyState      = &viState.iaInfo;
     info.pTessellationState       = &prState.tsInfo;
@@ -692,13 +694,10 @@ namespace dxvk {
   }
 
 
-  DxvkShaderModule DxvkGraphicsPipeline::createShaderModule(
+  SpirvCodeBuffer DxvkGraphicsPipeline::getShaderCode(
     const Rc<DxvkShader>&                shader,
     const DxvkGraphicsPipelineStateInfo& state) const {
     auto vk = m_device->vkd();
-
-    if (shader == nullptr)
-      return DxvkShaderModule();
 
     const DxvkShaderCreateInfo& shaderInfo = shader->info();
     DxvkShaderModuleCreateInfo info;
@@ -729,7 +728,8 @@ namespace dxvk {
     }
 
     info.undefinedInputs = (providedInputs & consumedInputs) ^ consumedInputs;
-    return shader->createShaderModule(vk, m_bindings, info);
+
+    return shader->getCode(m_bindings, info);
   }
 
 

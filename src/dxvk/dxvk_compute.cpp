@@ -94,13 +94,13 @@ namespace dxvk {
 
     VkSpecializationInfo specInfo = specData.getSpecInfo();
     
-    DxvkShaderModuleCreateInfo moduleInfo;
-    moduleInfo.fsDualSrcBlend = false;
-
-    auto csm = m_shaders.cs->createShaderModule(vk, m_bindings, moduleInfo);
+    DxvkShaderStageInfo stageInfo(m_device);
+    stageInfo.addStage(VK_SHADER_STAGE_COMPUTE_BIT, 
+      m_shaders.cs->getCode(m_bindings, DxvkShaderModuleCreateInfo()),
+      &specInfo);
 
     VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
-    info.stage                = csm.stageInfo(&specInfo);
+    info.stage                = *stageInfo.getStageInfos();
     info.layout               = m_bindings->getPipelineLayout();
     info.basePipelineIndex    = -1;
     
