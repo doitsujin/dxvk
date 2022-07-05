@@ -1,43 +1,55 @@
 #include "util_string.h"
+#include "util_utf.h"
 
 namespace dxvk::str {
-  std::string fromws(const WCHAR *ws) {
-    size_t len = ::WideCharToMultiByte(CP_UTF8,
-      0, ws, -1, nullptr, 0, nullptr, nullptr);
 
-    if (len <= 1)
-      return "";
+  template <typename FromChar, typename ToChar>
+  size_t reencodeString(const FromChar* from, ToChar* to, size_t toLen = 0) {
+    using UTFFromChar = typename utf::UTFTypeTraits<FromChar>::CharType;
+    using UTFToChar   = typename utf::UTFTypeTraits<ToChar>::CharType;
 
-    len -= 1;
+    const UTFFromChar* utfFrom = reinterpret_cast<const UTFFromChar*>(from);
+    UTFToChar* utfTo = reinterpret_cast<UTFToChar*>(to);
 
-    std::string result;
-    result.resize(len);
-    ::WideCharToMultiByte(CP_UTF8, 0, ws, -1,
-      &result.at(0), len, nullptr, nullptr);
-    return result;
+    size_t totalSize = 0;
+    while (*from) {
+      char32_t utf32char = utf::decodeUTF<UTFFromChar>(&utfFrom);
+      size_t nextCharSize = utf::encodeUTF<UTFToChar>(utf32char, nullptr);
+      if (utfTo) {
+        if (toLen && totalSize + nextCharSize > toLen)
+          return totalSize;
+
+        utf::encodeUTF<UTFToChar>(utf32char, utfTo);
+      }
+
+      totalSize += nextCharSize;
+    }
+
+    return totalSize;
   }
 
+  std::string fromws(const WCHAR* ws) {
+    size_t len = reencodeString<WCHAR, char>(ws, nullptr);
+
+    std::string str;
+    str.resize(len);
+    reencodeString<WCHAR, char>(ws, str.data());
+
+    return str;
+  }
 
   void tows(const char* mbs, WCHAR* wcs, size_t wcsLen) {
-    ::MultiByteToWideChar(
-      CP_UTF8, 0, mbs, -1,
-      wcs, wcsLen);
+    reencodeString(mbs, wcs, wcsLen);
   }
 
   std::wstring tows(const char* mbs) {
-    size_t len = ::MultiByteToWideChar(CP_UTF8,
-      0, mbs, -1, nullptr, 0);
-    
-    if (len <= 1)
-      return L"";
+    size_t len = reencodeString<char, wchar_t>(mbs, nullptr);
 
-    len -= 1;
+    std::wstring str;
+    str.resize(len);
+    reencodeString<char, wchar_t>(mbs, str.data());
 
-    std::wstring result;
-    result.resize(len);
-    ::MultiByteToWideChar(CP_UTF8, 0, mbs, -1,
-      &result.at(0), len);
-    return result;
+    return str;
   }
 
 }
