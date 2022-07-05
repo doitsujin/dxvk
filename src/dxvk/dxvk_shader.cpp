@@ -486,16 +486,9 @@ namespace dxvk {
     const DxvkShaderPipelineLibraryCompileArgs& args) {
     auto vk = m_device->vkd();
 
-    // Set up shader stage. Do not create a shader module.
-    SpirvCodeBuffer spirv = m_shader->getCode(m_layout, DxvkShaderModuleCreateInfo());
-
-    VkShaderModuleCreateInfo codeInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-    codeInfo.codeSize = spirv.size();
-    codeInfo.pCode    = spirv.data();
-
-    VkPipelineShaderStageCreateInfo stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, &codeInfo };
-    stageInfo.stage   = VK_SHADER_STAGE_VERTEX_BIT;
-    stageInfo.pName   = "main";
+    DxvkShaderStageInfo stageInfo(m_device);
+    stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT,
+      m_shader->getCode(m_layout, DxvkShaderModuleCreateInfo()), nullptr);
 
     // Set up dynamic state. We do not know any pipeline state
     // at this time, so make as much state dynamic as we can.
@@ -542,8 +535,8 @@ namespace dxvk {
 
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };
     info.flags                = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
-    info.stageCount           = 1;
-    info.pStages              = &stageInfo;
+    info.stageCount           = stageInfo.getStageCount();
+    info.pStages              = stageInfo.getStageInfos();
     info.pViewportState       = &vpInfo;
     info.pRasterizationState  = &rsInfo;
     info.pDynamicState        = &dyInfo;
@@ -562,16 +555,9 @@ namespace dxvk {
   VkPipeline DxvkShaderPipelineLibrary::compileFragmentShaderPipeline(VkPipelineCache cache) {
     auto vk = m_device->vkd();
 
-    // Set up shader stage. Do not create a shader module.
-    SpirvCodeBuffer spirv = m_shader->getCode(m_layout, DxvkShaderModuleCreateInfo());
-
-    VkShaderModuleCreateInfo codeInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-    codeInfo.codeSize = spirv.size();
-    codeInfo.pCode    = spirv.data();
-
-    VkPipelineShaderStageCreateInfo stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, &codeInfo };
-    stageInfo.stage   = VK_SHADER_STAGE_FRAGMENT_BIT;
-    stageInfo.pName   = "main";
+    DxvkShaderStageInfo stageInfo(m_device);
+    stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT,
+      m_shader->getCode(m_layout, DxvkShaderModuleCreateInfo()), nullptr);
 
     // Set up dynamic state. We do not know any pipeline state
     // at this time, so make as much state dynamic as we can.
@@ -619,8 +605,8 @@ namespace dxvk {
 
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };
     info.flags                = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
-    info.stageCount           = 1;
-    info.pStages              = &stageInfo;
+    info.stageCount           = stageInfo.getStageCount();
+    info.pStages              = stageInfo.getStageInfos();
     info.pDepthStencilState   = &dsInfo;
     info.pDynamicState        = &dyInfo;
     info.layout               = m_layout->getPipelineLayout();
@@ -641,21 +627,13 @@ namespace dxvk {
   VkPipeline DxvkShaderPipelineLibrary::compileComputeShaderPipeline(VkPipelineCache cache) {
     auto vk = m_device->vkd();
 
-    // Set up shader stage. Do not create a shader module since we only
-    // ever call this if graphics pipeline libraries are supported.
-    SpirvCodeBuffer spirv = m_shader->getCode(m_layout, DxvkShaderModuleCreateInfo());
-
-    VkShaderModuleCreateInfo codeInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
-    codeInfo.codeSize = spirv.size();
-    codeInfo.pCode    = spirv.data();
-
-    VkPipelineShaderStageCreateInfo stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, &codeInfo };
-    stageInfo.stage   = VK_SHADER_STAGE_COMPUTE_BIT;
-    stageInfo.pName   = "main";
+    DxvkShaderStageInfo stageInfo(m_device);
+    stageInfo.addStage(VK_SHADER_STAGE_COMPUTE_BIT,
+      m_shader->getCode(m_layout, DxvkShaderModuleCreateInfo()), nullptr);
 
     // Compile the compute pipeline as normal
     VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
-    info.stage        = stageInfo;
+    info.stage        = *stageInfo.getStageInfos();
     info.layout       = m_layout->getPipelineLayout();
     info.basePipelineIndex = -1;
 
