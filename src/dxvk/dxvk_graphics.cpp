@@ -340,6 +340,32 @@ namespace dxvk {
   }
 
 
+  DxvkGraphicsPipelineFragmentShaderState::DxvkGraphicsPipelineFragmentShaderState() {
+
+  }
+
+
+  DxvkGraphicsPipelineFragmentShaderState::DxvkGraphicsPipelineFragmentShaderState(
+    const DxvkDevice*                     device,
+    const DxvkGraphicsPipelineStateInfo&  state) {
+    dsInfo.depthTestEnable        = state.ds.enableDepthTest();
+    dsInfo.depthWriteEnable       = state.ds.enableDepthWrite();
+    dsInfo.depthCompareOp         = state.ds.depthCompareOp();
+    dsInfo.depthBoundsTestEnable  = state.ds.enableDepthBoundsTest();
+    dsInfo.stencilTestEnable      = state.ds.enableStencilTest();
+    dsInfo.front                  = state.dsFront.state();
+    dsInfo.back                   = state.dsBack.state();
+
+    if ((state.rt.getDepthStencilReadOnlyAspects() & VK_IMAGE_ASPECT_DEPTH_BIT))
+      dsInfo.depthWriteEnable     = VK_FALSE;
+
+    if ((state.rt.getDepthStencilReadOnlyAspects() & VK_IMAGE_ASPECT_STENCIL_BIT)) {
+      dsInfo.front.writeMask      = 0;
+      dsInfo.back.writeMask       = 0;
+    }
+  }
+
+
   DxvkGraphicsPipeline::DxvkGraphicsPipeline(
           DxvkPipelineManager*        pipeMgr,
           DxvkGraphicsPipelineShaders shaders,
@@ -517,19 +543,8 @@ namespace dxvk {
 
     DxvkGraphicsPipelineVertexInputState      viState(device, state);
     DxvkGraphicsPipelinePreRasterizationState prState(device, state, m_shaders.gs.ptr());
+    DxvkGraphicsPipelineFragmentShaderState   fsState(device, state);
     DxvkGraphicsPipelineFragmentOutputState   foState(device, state, m_shaders.fs.ptr());
-
-    VkPipelineDepthStencilStateCreateInfo dsInfo = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
-    dsInfo.depthTestEnable        = state.ds.enableDepthTest();
-    dsInfo.depthWriteEnable       = state.ds.enableDepthWrite();
-    dsInfo.depthCompareOp         = state.ds.depthCompareOp();
-    dsInfo.depthBoundsTestEnable  = state.ds.enableDepthBoundsTest();
-    dsInfo.stencilTestEnable      = state.ds.enableStencilTest();
-    dsInfo.front                  = state.dsFront.state();
-    dsInfo.back                   = state.dsBack.state();
-
-    if ((state.rt.getDepthStencilReadOnlyAspects() & VK_IMAGE_ASPECT_DEPTH_BIT))
-      dsInfo.depthWriteEnable     = VK_FALSE;
 
     VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
     dyInfo.dynamicStateCount      = dynamicStateCount;
@@ -544,7 +559,7 @@ namespace dxvk {
     info.pViewportState           = &prState.vpInfo;
     info.pRasterizationState      = &prState.rsInfo;
     info.pMultisampleState        = &foState.msInfo;
-    info.pDepthStencilState       = &dsInfo;
+    info.pDepthStencilState       = &fsState.dsInfo;
     info.pColorBlendState         = &foState.cbInfo;
     info.pDynamicState            = &dyInfo;
     info.layout                   = m_bindings->getPipelineLayout();

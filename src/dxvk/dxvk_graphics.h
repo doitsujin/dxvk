@@ -98,6 +98,23 @@ namespace dxvk {
     VkPipelineRasterizationConservativeStateCreateInfoEXT rsConservativeInfo  = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT };
   };
 
+
+  /**
+   * \brief Fragment shader state info for graphics pipelines
+   *
+   * Can only be used when compiling full graphics pipelines
+   * when all pipeline state is known.
+   */
+  struct DxvkGraphicsPipelineFragmentShaderState {
+    DxvkGraphicsPipelineFragmentShaderState();
+
+    DxvkGraphicsPipelineFragmentShaderState(
+      const DxvkDevice*                     device,
+      const DxvkGraphicsPipelineStateInfo&  state);
+
+    VkPipelineDepthStencilStateCreateInfo           dsInfo = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+  };
+
   
   /**
    * \brief Flags that describe pipeline properties
