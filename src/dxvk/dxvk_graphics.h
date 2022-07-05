@@ -75,6 +75,29 @@ namespace dxvk {
     size_t hash() const;
   };
 
+
+  /**
+   * \brief Pre-rasterization info for graphics pipelines
+   *
+   * Can only be used when compiling full graphics pipelines
+   * when all pipeline state is known.
+   */
+  struct DxvkGraphicsPipelinePreRasterizationState {
+    DxvkGraphicsPipelinePreRasterizationState();
+
+    DxvkGraphicsPipelinePreRasterizationState(
+      const DxvkDevice*                     device,
+      const DxvkGraphicsPipelineStateInfo&  state,
+      const DxvkShader*                     gs);
+
+    VkPipelineViewportStateCreateInfo                     vpInfo              = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
+    VkPipelineTessellationStateCreateInfo                 tsInfo              = { VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO };
+    VkPipelineRasterizationStateCreateInfo                rsInfo              = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+    VkPipelineRasterizationDepthClipStateCreateInfoEXT    rsDepthClipInfo     = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT };
+    VkPipelineRasterizationStateStreamCreateInfoEXT       rsXfbStreamInfo     = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT };
+    VkPipelineRasterizationConservativeStateCreateInfoEXT rsConservativeInfo  = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT };
+  };
+
   
   /**
    * \brief Flags that describe pipeline properties

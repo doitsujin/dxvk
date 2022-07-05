@@ -291,6 +291,55 @@ namespace dxvk {
   }
 
 
+  DxvkGraphicsPipelinePreRasterizationState::DxvkGraphicsPipelinePreRasterizationState() {
+    
+  }
+
+
+  DxvkGraphicsPipelinePreRasterizationState::DxvkGraphicsPipelinePreRasterizationState(
+    const DxvkDevice*                     device,
+    const DxvkGraphicsPipelineStateInfo&  state,
+    const DxvkShader*                     gs) {
+    // Set up tessellation state
+    tsInfo.patchControlPoints = state.ia.patchVertexCount();
+    
+    // Set up basic rasterization state
+    rsInfo.depthClampEnable         = VK_TRUE;
+    rsInfo.polygonMode              = state.rs.polygonMode();
+    rsInfo.cullMode                 = state.rs.cullMode();
+    rsInfo.frontFace                = state.rs.frontFace();
+    rsInfo.depthBiasEnable          = state.rs.depthBiasEnable();
+    rsInfo.lineWidth                = 1.0f;
+
+    // Set up rasterized stream depending on geometry shader state.
+    // Rasterizing stream 0 is default behaviour in all situations.
+    int32_t streamIndex = gs ? gs->info().xfbRasterizedStream : 0;
+
+    if (streamIndex > 0) {
+      rsXfbStreamInfo.pNext = std::exchange(rsInfo.pNext, &rsXfbStreamInfo);
+      rsXfbStreamInfo.rasterizationStream = uint32_t(streamIndex);
+    } else if (streamIndex < 0) {
+      rsInfo.rasterizerDiscardEnable = VK_TRUE;
+    }
+
+    // Set up depth clip state. If the extension is not supported,
+    // use depth clamp instead, even though this is not accurate.
+    if (device->features().extDepthClipEnable.depthClipEnable) {
+      rsDepthClipInfo.pNext = std::exchange(rsInfo.pNext, &rsDepthClipInfo);
+      rsDepthClipInfo.depthClipEnable = state.rs.depthClipEnable();
+    } else {
+      rsInfo.depthClampEnable = !state.rs.depthClipEnable();
+    }
+
+    // Set up conservative rasterization if requested by the application.
+    if (state.rs.conservativeMode() != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT) {
+      rsConservativeInfo.pNext = std::exchange(rsInfo.pNext, &rsConservativeInfo);
+      rsConservativeInfo.conservativeRasterizationMode = state.rs.conservativeMode();
+      rsConservativeInfo.extraPrimitiveOverestimationSize = 0.0f;
+    }
+  }
+
+
   DxvkGraphicsPipeline::DxvkGraphicsPipeline(
           DxvkPipelineManager*        pipeMgr,
           DxvkGraphicsPipelineShaders shaders,
@@ -466,47 +515,9 @@ namespace dxvk {
     if (gsm)  stages.push_back(gsm.stageInfo(&specInfo));
     if (fsm)  stages.push_back(fsm.stageInfo(&specInfo));
 
-    int32_t rasterizedStream = m_shaders.gs != nullptr
-      ? m_shaders.gs->info().xfbRasterizedStream
-      : 0;
-
-    DxvkGraphicsPipelineVertexInputState    viState(device, state);
-    DxvkGraphicsPipelineFragmentOutputState foState(device, state, m_shaders.fs.ptr());
-
-    VkPipelineTessellationStateCreateInfo tsInfo = { VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO };
-    tsInfo.patchControlPoints     = state.ia.patchVertexCount();
-    
-    VkPipelineViewportStateCreateInfo vpInfo = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-    
-    VkPipelineRasterizationConservativeStateCreateInfoEXT conservativeInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT };
-    conservativeInfo.conservativeRasterizationMode = state.rs.conservativeMode();
-    conservativeInfo.extraPrimitiveOverestimationSize = 0.0f;
-
-    VkPipelineRasterizationStateStreamCreateInfoEXT xfbStreamInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT };
-    xfbStreamInfo.rasterizationStream = uint32_t(rasterizedStream);
-
-    VkPipelineRasterizationDepthClipStateCreateInfoEXT rsDepthClipInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT };
-    rsDepthClipInfo.depthClipEnable = state.rs.depthClipEnable();
-
-    VkPipelineRasterizationStateCreateInfo rsInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
-    rsInfo.depthClampEnable       = VK_TRUE;
-    rsInfo.rasterizerDiscardEnable = rasterizedStream < 0;
-    rsInfo.polygonMode            = state.rs.polygonMode();
-    rsInfo.cullMode               = state.rs.cullMode();
-    rsInfo.frontFace              = state.rs.frontFace();
-    rsInfo.depthBiasEnable        = state.rs.depthBiasEnable();
-    rsInfo.lineWidth              = 1.0f;
-    
-    if (rasterizedStream > 0)
-      xfbStreamInfo.pNext = std::exchange(rsInfo.pNext, &xfbStreamInfo);
-
-    if (conservativeInfo.conservativeRasterizationMode != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT)
-      conservativeInfo.pNext = std::exchange(rsInfo.pNext, &conservativeInfo);
-
-    if (m_pipeMgr->m_device->features().extDepthClipEnable.depthClipEnable)
-      rsDepthClipInfo.pNext = std::exchange(rsInfo.pNext, &rsDepthClipInfo);
-    else
-      rsInfo.depthClampEnable = !state.rs.depthClipEnable();
+    DxvkGraphicsPipelineVertexInputState      viState(device, state);
+    DxvkGraphicsPipelinePreRasterizationState prState(device, state, m_shaders.gs.ptr());
+    DxvkGraphicsPipelineFragmentOutputState   foState(device, state, m_shaders.fs.ptr());
 
     VkPipelineDepthStencilStateCreateInfo dsInfo = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
     dsInfo.depthTestEnable        = state.ds.enableDepthTest();
@@ -529,9 +540,9 @@ namespace dxvk {
     info.pStages                  = stages.data();
     info.pVertexInputState        = &viState.viInfo;
     info.pInputAssemblyState      = &viState.iaInfo;
-    info.pTessellationState       = &tsInfo;
-    info.pViewportState           = &vpInfo;
-    info.pRasterizationState      = &rsInfo;
+    info.pTessellationState       = &prState.tsInfo;
+    info.pViewportState           = &prState.vpInfo;
+    info.pRasterizationState      = &prState.rsInfo;
     info.pMultisampleState        = &foState.msInfo;
     info.pDepthStencilState       = &dsInfo;
     info.pColorBlendState         = &foState.cbInfo;
@@ -539,7 +550,7 @@ namespace dxvk {
     info.layout                   = m_bindings->getPipelineLayout();
     info.basePipelineIndex        = -1;
     
-    if (!tsInfo.patchControlPoints)
+    if (!prState.tsInfo.patchControlPoints)
       info.pTessellationState = nullptr;
     
     // Time pipeline compilation for debugging purposes
