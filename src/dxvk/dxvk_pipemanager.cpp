@@ -7,7 +7,7 @@ namespace dxvk {
   DxvkPipelineManager::DxvkPipelineManager(
           DxvkDevice*         device)
   : m_device    (device),
-    m_cache     (new DxvkPipelineCache(device->vkd())) {
+    m_cache     (device) {
     std::string useStateCache = env::getEnvVar("DXVK_STATE_CACHE");
     
     if (useStateCache != "0" && device->config().enableStateCache)
@@ -88,7 +88,7 @@ namespace dxvk {
     auto iter = m_vertexInputLibraries.emplace(
       std::piecewise_construct,
       std::tuple(state),
-      std::tuple(m_device, state, m_cache->handle()));
+      std::tuple(m_device, state, m_cache.handle()));
     return &iter.first->second;
   }
 
@@ -104,7 +104,7 @@ namespace dxvk {
     auto iter = m_fragmentOutputLibraries.emplace(
       std::piecewise_construct,
       std::tuple(state),
-      std::tuple(m_device, state, m_cache->handle()));
+      std::tuple(m_device, state, m_cache.handle()));
     return &iter.first->second;
   }
   

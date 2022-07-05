@@ -114,12 +114,12 @@ namespace dxvk {
     
   private:
     
-    DxvkDevice*               m_device;
-    Rc<DxvkPipelineCache>     m_cache;
-    Rc<DxvkStateCache>        m_stateCache;
+    DxvkDevice*                 m_device;
+    DxvkPipelineCache           m_cache;
+    Rc<DxvkStateCache>          m_stateCache;
 
-    std::atomic<uint32_t>     m_numComputePipelines  = { 0 };
-    std::atomic<uint32_t>     m_numGraphicsPipelines = { 0 };
+    std::atomic<uint32_t> m_numComputePipelines  = { 0 };
+    std::atomic<uint32_t> m_numGraphicsPipelines = { 0 };
     
     dxvk::mutex m_mutex;
     

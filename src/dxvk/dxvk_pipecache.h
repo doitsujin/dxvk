@@ -1,28 +1,22 @@
 #pragma once
 
-#include <atomic>
-#include <condition_variable>
-#include <fstream>
-
 #include "dxvk_include.h"
-
-#include "../util/sha1/sha1_util.h"
-#include "../util/util_env.h"
-#include "../util/util_time.h"
 
 namespace dxvk {
   
+  class DxvkDevice;
+
   /**
    * \brief Pipeline cache
    * 
    * Allows the Vulkan implementation to
    * re-use previously compiled pipelines.
    */
-  class DxvkPipelineCache : public RcObject {
+  class DxvkPipelineCache {
     
   public:
     
-    DxvkPipelineCache(const Rc<vk::DeviceFn>& vkd);
+    DxvkPipelineCache(DxvkDevice* device);
     ~DxvkPipelineCache();
     
     /**
@@ -35,8 +29,8 @@ namespace dxvk {
     
   private:
     
-    Rc<vk::DeviceFn>        m_vkd;
-    VkPipelineCache         m_handle;
+    DxvkDevice*     m_device;
+    VkPipelineCache m_handle = VK_NULL_HANDLE;
     
   };
   
