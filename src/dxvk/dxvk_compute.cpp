@@ -134,15 +134,12 @@ namespace dxvk {
   
   void DxvkComputePipeline::writePipelineStateToCache(
     const DxvkComputePipelineStateInfo& state) const {
-    if (m_pipeMgr->m_stateCache == nullptr)
-      return;
-    
     DxvkStateCacheKey key;
 
     if (m_shaders.cs != nullptr)
       key.cs = m_shaders.cs->getShaderKey();
 
-    m_pipeMgr->m_stateCache->addComputePipeline(key, state);
+    m_pipeMgr->m_stateCache.addComputePipeline(key, state);
   }
   
 }

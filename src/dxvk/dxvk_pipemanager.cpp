@@ -7,11 +7,8 @@ namespace dxvk {
   DxvkPipelineManager::DxvkPipelineManager(
           DxvkDevice*         device)
   : m_device    (device),
-    m_cache     (device) {
-    std::string useStateCache = env::getEnvVar("DXVK_STATE_CACHE");
-    
-    if (useStateCache != "0" && device->config().enableStateCache)
-      m_stateCache = new DxvkStateCache(device, this);
+    m_cache     (device),
+    m_stateCache(device, this) {
   }
   
   
@@ -111,8 +108,7 @@ namespace dxvk {
   
   void DxvkPipelineManager::registerShader(
     const Rc<DxvkShader>&         shader) {
-    if (m_stateCache != nullptr)
-      m_stateCache->registerShader(shader);
+    m_stateCache.registerShader(shader);
   }
 
 
@@ -125,14 +121,12 @@ namespace dxvk {
 
 
   bool DxvkPipelineManager::isCompilingShaders() const {
-    return m_stateCache != nullptr
-        && m_stateCache->isCompilingShaders();
+    return m_stateCache.isCompilingShaders();
   }
 
 
-  void DxvkPipelineManager::stopWorkerThreads() const {
-    if (m_stateCache != nullptr)
-      m_stateCache->stopWorkerThreads();
+  void DxvkPipelineManager::stopWorkerThreads() {
+    m_stateCache.stopWorkerThreads();
   }
 
 

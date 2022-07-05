@@ -1,6 +1,7 @@
 #pragma once
 
-#include "dxvk_pipemanager.h"
+#include "dxvk_compute.h"
+#include "dxvk_graphics.h"
 #include "dxvk_renderpass.h"
 
 namespace dxvk {

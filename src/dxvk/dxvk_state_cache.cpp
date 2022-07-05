@@ -217,6 +217,9 @@ namespace dxvk {
           DxvkPipelineManager*  pipeManager)
   : m_device      (device),
     m_pipeManager (pipeManager) {
+    std::string useStateCache = env::getEnvVar("DXVK_STATE_CACHE");
+    m_enable = useStateCache != "0" && device->config().enableStateCache;
+
     bool newFile = !readCacheFile();
 
     if (newFile) {
@@ -257,7 +260,7 @@ namespace dxvk {
   void DxvkStateCache::addGraphicsPipeline(
     const DxvkStateCacheKey&              shaders,
     const DxvkGraphicsPipelineStateInfo&  state) {
-    if (shaders.vs.eq(g_nullShaderKey))
+    if (!m_enable || shaders.vs.eq(g_nullShaderKey))
       return;
     
     // Do not add an entry that is already in the cache
@@ -284,7 +287,7 @@ namespace dxvk {
   void DxvkStateCache::addComputePipeline(
     const DxvkStateCacheKey&              shaders,
     const DxvkComputePipelineStateInfo&   state) {
-    if (shaders.cs.eq(g_nullShaderKey))
+    if (!m_enable || shaders.cs.eq(g_nullShaderKey))
       return;
 
     // Do not add an entry that is already in the cache
@@ -307,6 +310,9 @@ namespace dxvk {
 
 
   void DxvkStateCache::registerShader(const Rc<DxvkShader>& shader) {
+    if (!m_enable)
+      return;
+
     DxvkShaderKey key = shader->getShaderKey();
 
     if (key.eq(g_nullShaderKey))

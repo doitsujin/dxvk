@@ -6,6 +6,7 @@
 
 #include "dxvk_compute.h"
 #include "dxvk_graphics.h"
+#include "dxvk_state_cache.h"
 
 namespace dxvk {
 
@@ -110,13 +111,13 @@ namespace dxvk {
     /**
      * \brief Stops async compiler threads
      */
-    void stopWorkerThreads() const;
+    void stopWorkerThreads();
     
   private:
     
-    DxvkDevice*                 m_device;
-    DxvkPipelineCache           m_cache;
-    Rc<DxvkStateCache>          m_stateCache;
+    DxvkDevice*               m_device;
+    DxvkPipelineCache         m_cache;
+    DxvkStateCache            m_stateCache;
 
     std::atomic<uint32_t> m_numComputePipelines  = { 0 };
     std::atomic<uint32_t> m_numGraphicsPipelines = { 0 };

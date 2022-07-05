@@ -23,7 +23,7 @@ namespace dxvk {
    * of time instead of compiling them on the first
    * draw.
    */
-  class DxvkStateCache : public RcObject {
+  class DxvkStateCache {
 
   public:
 
@@ -78,7 +78,7 @@ namespace dxvk {
      * \brief Checks whether compiler threads are busy
      * \returns \c true if we're compiling shaders
      */
-    bool isCompilingShaders() {
+    bool isCompilingShaders() const {
       return m_workerBusy.load() > 0;
     }
 
@@ -93,6 +93,7 @@ namespace dxvk {
 
     DxvkDevice*                       m_device;
     DxvkPipelineManager*              m_pipeManager;
+    bool                              m_enable = false;
 
     std::vector<DxvkStateCacheEntry>  m_entries;
     std::atomic<bool>                 m_stopThreads = { false };
