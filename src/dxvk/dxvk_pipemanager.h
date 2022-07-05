@@ -2,6 +2,7 @@
 #pragma once
 
 #include <mutex>
+#include <queue>
 #include <unordered_map>
 
 #include "dxvk_compute.h"
@@ -10,7 +11,7 @@
 
 namespace dxvk {
 
-  class DxvkStateCache;
+  class DxvkDevice;
 
   /**
    * \brief Pipeline count
@@ -22,7 +23,101 @@ namespace dxvk {
     uint32_t numGraphicsPipelines;
     uint32_t numComputePipelines;
   };
-  
+
+
+  /**
+   * \brief Pipeline manager worker threads
+   *
+   * Spawns worker threads to compile shader pipeline
+   * libraries and optimized pipelines asynchronously.
+   */
+  class DxvkPipelineWorkers {
+
+  public:
+
+    DxvkPipelineWorkers(
+            DxvkDevice*                     device,
+            DxvkPipelineCache*              cache);
+
+    ~DxvkPipelineWorkers();
+
+    /**
+     * \brief Compiles a pipeline library
+     *
+     * Asynchronously compiles a basic variant of
+     * the pipeline with default compile arguments.
+     * Note that pipeline libraries are high priority.
+     * \param [in] library The pipeline library
+     */
+    void compilePipelineLibrary(
+            DxvkShaderPipelineLibrary*      library);
+
+    /**
+     * \brief Compiles an optimized compute pipeline
+     *
+     * \param [in] pipeline Compute pipeline
+     * \param [in] state Pipeline state
+     */
+    void compileComputePipeline(
+            DxvkComputePipeline*            pipeline,
+      const DxvkComputePipelineStateInfo&   state);
+
+    /**
+     * \brief Compiles an optimized graphics pipeline
+     *
+     * \param [in] pipeline Compute pipeline
+     * \param [in] state Pipeline state
+     */
+    void compileGraphicsPipeline(
+            DxvkGraphicsPipeline*           pipeline,
+      const DxvkGraphicsPipelineStateInfo&  state);
+
+    /**
+     * \brief Checks whether workers are busy
+     * \returns \c true if there is unfinished work
+     */
+    bool isBusy() const;
+
+    /**
+     * \brief Stops all worker threads
+     *
+     * Stops threads and waits for their current work
+     * to complete. Queued work will be discarded.
+     */
+    void stopWorkers();
+
+  private:
+
+    struct PipelineEntry {
+      DxvkComputePipeline*          computePipeline;
+      DxvkGraphicsPipeline*         graphicsPipeline;
+      DxvkComputePipelineStateInfo  computeState;
+      DxvkGraphicsPipelineStateInfo graphicsState;
+    };
+
+    struct PipelineLibraryEntry {
+      DxvkShaderPipelineLibrary*    pipelineLibrary;
+    };
+
+    DxvkPipelineCache*                m_cache;
+    std::atomic<uint64_t>             m_pendingTasks = { 0ull };
+
+    dxvk::mutex                       m_queueLock;
+    dxvk::condition_variable          m_queueCond;
+
+    std::queue<PipelineLibraryEntry>  m_queuedLibraries;
+    std::queue<PipelineEntry>         m_queuedPipelines;
+
+    uint32_t                          m_workerCount = 0;
+    bool                              m_workersRunning = false;
+    std::vector<dxvk::thread>         m_workers;
+
+    void startWorkers();
+
+    void runWorker();
+
+  };
+
   
   /**
    * \brief Pipeline manager
