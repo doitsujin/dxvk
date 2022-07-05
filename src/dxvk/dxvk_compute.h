@@ -96,7 +96,8 @@ namespace dxvk {
             DxvkDevice*                 device,
             DxvkPipelineManager*        pipeMgr,
             DxvkComputePipelineShaders  shaders,
-            DxvkBindingLayoutObjects*   layout);
+            DxvkBindingLayoutObjects*   layout,
+            DxvkShaderPipelineLibrary*  library);
 
     ~DxvkComputePipeline();
     
@@ -145,6 +146,9 @@ namespace dxvk {
     DxvkPipelineCache*          m_cache;
     DxvkStateCache*             m_stateCache;
     DxvkPipelineStats*          m_stats;
+
+    DxvkShaderPipelineLibrary*  m_library;
+    VkPipeline                  m_libraryHandle;
 
     DxvkComputePipelineShaders  m_shaders;
     DxvkBindingLayoutObjects*   m_bindings;

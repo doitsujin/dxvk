@@ -14,11 +14,14 @@ namespace dxvk {
           DxvkDevice*                 device,
           DxvkPipelineManager*        pipeMgr,
           DxvkComputePipelineShaders  shaders,
-          DxvkBindingLayoutObjects*   layout)
+          DxvkBindingLayoutObjects*   layout,
+          DxvkShaderPipelineLibrary*  library)
   : m_device        (device),
     m_cache         (&pipeMgr->m_cache),
     m_stateCache    (&pipeMgr->m_stateCache),
     m_stats         (&pipeMgr->m_stats),
+    m_library       (library),
+    m_libraryHandle (VK_NULL_HANDLE),
     m_shaders       (std::move(shaders)),
     m_bindings      (layout) {
 
@@ -33,28 +36,43 @@ namespace dxvk {
   
   VkPipeline DxvkComputePipeline::getPipelineHandle(
     const DxvkComputePipelineStateInfo& state) {
-    DxvkComputePipelineInstance* instance = this->findInstance(state);
-
-    if (unlikely(!instance)) {
-      std::lock_guard<dxvk::mutex> lock(m_mutex);
-      instance = this->findInstance(state);
-
-      if (!instance) {
-        instance = this->createInstance(state);
-        this->writePipelineStateToCache(state);
+    if (m_library) {
+      // For compute pipelines that can be precompiled, we can use that
+      // pipeline variant unconditionally since there is no state for us
+      // to worry about other than specialization constants
+      if (unlikely(!m_libraryHandle)) {
+        m_libraryHandle = m_library->getPipelineHandle(m_cache->handle(),
+          DxvkShaderPipelineLibraryCompileArgs());
+        m_stats->numComputePipelines += 1;
       }
-    }
 
-    return instance->pipeline();
+      return m_libraryHandle;
+    } else {
+      DxvkComputePipelineInstance* instance = this->findInstance(state);
+
+      if (unlikely(!instance)) {
+        std::lock_guard<dxvk::mutex> lock(m_mutex);
+        instance = this->findInstance(state);
+
+        if (!instance) {
+          instance = this->createInstance(state);
+          this->writePipelineStateToCache(state);
+        }
+      }
+
+      return instance->pipeline();
+    }
   }
 
 
   void DxvkComputePipeline::compilePipeline(
     const DxvkComputePipelineStateInfo& state) {
-    std::lock_guard<dxvk::mutex> lock(m_mutex);
+    if (!m_library) {
+      std::lock_guard<dxvk::mutex> lock(m_mutex);
 
-    if (!this->findInstance(state))
-      this->createInstance(state);
+      if (!this->findInstance(state))
+        this->createInstance(state);
+    }
   }
   
   

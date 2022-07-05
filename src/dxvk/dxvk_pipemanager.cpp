@@ -189,11 +189,12 @@ namespace dxvk {
       return &pair->second;
 
     auto layout = createPipelineLayout(shaders.cs->getBindings());
+    auto library = findPipelineLibrary(shaders.cs);
 
     auto iter = m_computePipelines.emplace(
       std::piecewise_construct,
       std::tuple(shaders),
-      std::tuple(m_device, this, shaders, layout));
+      std::tuple(m_device, this, shaders, layout, library));
     return &iter.first->second;
   }
   
@@ -340,6 +341,19 @@ namespace dxvk {
       std::tuple(key),
       std::tuple(m_device, shader.ptr(), layout));
     return &iter.first->second;
+  }
+
+
+  DxvkShaderPipelineLibrary* DxvkPipelineManager::findPipelineLibrary(
+    const Rc<DxvkShader>&     shader) {
+    DxvkShaderPipelineLibraryKey key;
+    key.shader = shader;
+
+    auto pair = m_shaderLibraries.find(key);
+    if (pair == m_shaderLibraries.end())
+      return nullptr;
+
+    return &pair->second;
   }
   
 }
