@@ -278,12 +278,9 @@ namespace dxvk {
   : m_device(device), m_layout(layout) {
     auto vk = m_device->vkd();
 
-    uint32_t constId = 0;
-
     std::array<VkDescriptorSetLayout, DxvkDescriptorSets::SetCount> setLayouts;
 
     for (uint32_t i = 0; i < DxvkDescriptorSets::SetCount; i++) {
-      m_bindingOffsets[i] = constId;
       m_bindingObjects[i] = setObjects[i];
       setLayouts[i] = setObjects[i]->getSetLayout();
 
@@ -295,7 +292,6 @@ namespace dxvk {
         DxvkBindingMapping mapping;
         mapping.set = i;
         mapping.binding = j;
-        mapping.constId = constId++;
 
         m_mapping.insert({ binding.resourceBinding, mapping });
       }

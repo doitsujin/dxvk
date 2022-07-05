@@ -354,7 +354,6 @@ namespace dxvk {
   struct DxvkBindingMapping {
     uint32_t set;
     uint32_t binding;
-    uint32_t constId;
   };
 
   /**
@@ -390,17 +389,6 @@ namespace dxvk {
      */
     uint32_t getSetMask() const {
       return m_setMask;
-    }
-
-    /**
-     * \brief Queries first binding number for a given set
-     *
-     * This is relevant for generating binding masks.
-     * \param [in] set Descriptor set index
-     * \returns First binding in the given set
-     */
-    uint32_t getFirstBinding(uint32_t set) const {
-      return m_bindingOffsets[set];
     }
 
     /**
@@ -463,7 +451,6 @@ namespace dxvk {
     uint32_t            m_setMask         = 0;
 
     std::array<const DxvkBindingSetLayout*, DxvkDescriptorSets::SetCount> m_bindingObjects = { };
-    std::array<uint32_t,                    DxvkDescriptorSets::SetCount> m_bindingOffsets = { };
 
     std::unordered_map<uint32_t, DxvkBindingMapping> m_mapping;
 
