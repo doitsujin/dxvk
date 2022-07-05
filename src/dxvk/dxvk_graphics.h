@@ -17,7 +17,10 @@
 namespace dxvk {
   
   class DxvkDevice;
+  class DxvkStateCache;
   class DxvkPipelineManager;
+  class DxvkPipelineWorkers;
+  struct DxvkPipelineStats;
 
   /**
    * \brief Vertex input info for graphics pipelines
@@ -286,6 +289,7 @@ namespace dxvk {
   public:
     
     DxvkGraphicsPipeline(
+            DxvkDevice*                 device,
             DxvkPipelineManager*        pipeMgr,
             DxvkGraphicsPipelineShaders shaders,
             DxvkBindingLayoutObjects*   layout);
@@ -366,9 +370,11 @@ namespace dxvk {
       const DxvkGraphicsPipelineStateInfo&    state);
     
   private:
-    
-    Rc<vk::DeviceFn>            m_vkd;
-    DxvkPipelineManager*        m_pipeMgr;
+
+    DxvkDevice*                 m_device;    
+    DxvkPipelineCache*          m_cache;
+    DxvkStateCache*             m_stateCache;
+    DxvkPipelineStats*          m_stats;
 
     DxvkGraphicsPipelineShaders m_shaders;
     DxvkBindingLayoutObjects*   m_bindings;

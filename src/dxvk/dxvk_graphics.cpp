@@ -456,12 +456,17 @@ namespace dxvk {
 
 
   DxvkGraphicsPipeline::DxvkGraphicsPipeline(
+          DxvkDevice*                 device,
           DxvkPipelineManager*        pipeMgr,
           DxvkGraphicsPipelineShaders shaders,
           DxvkBindingLayoutObjects*   layout)
-  : m_vkd(pipeMgr->m_device->vkd()), m_pipeMgr(pipeMgr),
-    m_shaders(std::move(shaders)), m_bindings(layout),
-    m_barrier(layout->getGlobalBarrier()) {
+  : m_device        (device),
+    m_cache         (&pipeMgr->m_cache),
+    m_stateCache    (&pipeMgr->m_stateCache),
+    m_stats         (&pipeMgr->m_stats),
+    m_shaders       (std::move(shaders)),
+    m_bindings      (layout),
+    m_barrier       (layout->getGlobalBarrier()) {
     m_vsIn  = m_shaders.vs != nullptr ? m_shaders.vs->info().inputMask  : 0;
     m_fsOut = m_shaders.fs != nullptr ? m_shaders.fs->info().outputMask : 0;
 
@@ -557,7 +562,7 @@ namespace dxvk {
     const DxvkGraphicsPipelineStateInfo& state) {
     VkPipeline pipeline = this->createPipeline(state);
 
-    m_pipeMgr->m_numGraphicsPipelines += 1;
+    m_stats->numGraphicsPipelines += 1;
     return &(*m_pipelines.emplace(state, pipeline));
   }
   
@@ -575,7 +580,7 @@ namespace dxvk {
   
   VkPipeline DxvkGraphicsPipeline::createPipeline(
     const DxvkGraphicsPipelineStateInfo& state) const {
-    const DxvkDevice* device = m_pipeMgr->m_device;
+    auto vk = m_device->vkd();
 
     if (Logger::logLevel() <= LogLevel::Debug) {
       Logger::debug("Compiling graphics pipeline...");
@@ -630,10 +635,10 @@ namespace dxvk {
     if (gsm)  stages.push_back(gsm.stageInfo(&specInfo));
     if (fsm)  stages.push_back(fsm.stageInfo(&specInfo));
 
-    DxvkGraphicsPipelineVertexInputState      viState(device, state);
-    DxvkGraphicsPipelinePreRasterizationState prState(device, state, m_shaders.gs.ptr());
-    DxvkGraphicsPipelineFragmentShaderState   fsState(device, state);
-    DxvkGraphicsPipelineFragmentOutputState   foState(device, state, m_shaders.fs.ptr());
+    DxvkGraphicsPipelineVertexInputState      viState(m_device, state);
+    DxvkGraphicsPipelinePreRasterizationState prState(m_device, state, m_shaders.gs.ptr());
+    DxvkGraphicsPipelineFragmentShaderState   fsState(m_device, state);
+    DxvkGraphicsPipelineFragmentOutputState   foState(m_device, state, m_shaders.fs.ptr());
 
     VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
     dyInfo.dynamicStateCount      = dynamicStateCount;
@@ -664,7 +669,7 @@ namespace dxvk {
       t0 = dxvk::high_resolution_clock::now();
     
     VkPipeline pipeline = VK_NULL_HANDLE;
-    if (m_vkd->vkCreateGraphicsPipelines(m_vkd->device(), m_pipeMgr->m_cache.handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
+    if (vk->vkCreateGraphicsPipelines(vk->device(), m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
       Logger::err("DxvkGraphicsPipeline: Failed to compile pipeline");
       this->logPipelineState(LogLevel::Error, state);
       return VK_NULL_HANDLE;
@@ -681,13 +686,17 @@ namespace dxvk {
   
   
   void DxvkGraphicsPipeline::destroyPipeline(VkPipeline pipeline) const {
-    m_vkd->vkDestroyPipeline(m_vkd->device(), pipeline, nullptr);
+    auto vk = m_device->vkd();
+
+    vk->vkDestroyPipeline(vk->device(), pipeline, nullptr);
   }
 
 
   DxvkShaderModule DxvkGraphicsPipeline::createShaderModule(
     const Rc<DxvkShader>&                shader,
     const DxvkGraphicsPipelineStateInfo& state) const {
+    auto vk = m_device->vkd();
+
     if (shader == nullptr)
       return DxvkShaderModule();
 
@@ -720,7 +729,7 @@ namespace dxvk {
     }
 
     info.undefinedInputs = (providedInputs & consumedInputs) ^ consumedInputs;
-    return shader->createShaderModule(m_vkd, m_bindings, info);
+    return shader->createShaderModule(vk, m_bindings, info);
   }
 
 
@@ -782,7 +791,6 @@ namespace dxvk {
     }
 
     // Validate vertex input layout
-    const DxvkDevice* device = m_pipeMgr->m_device;
     uint32_t ilLocationMask = 0;
     uint32_t ilBindingMask = 0;
 
@@ -802,7 +810,7 @@ namespace dxvk {
         return false;
       }
 
-      VkFormatProperties formatInfo = device->adapter()->formatProperties(attribute.format());
+      VkFormatProperties formatInfo = m_device->adapter()->formatProperties(attribute.format());
 
       if (!(formatInfo.bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT)) {
         Logger::err(str::format("Invalid pipeline: Format ", attribute.format(), " not supported for vertex buffers"));
@@ -814,20 +822,20 @@ namespace dxvk {
 
     // Validate rasterization state
     if (state.rs.conservativeMode() != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT) {
-      if (!device->extensions().extConservativeRasterization) {
+      if (!m_device->extensions().extConservativeRasterization) {
         Logger::err("Conservative rasterization not supported by device");
         return false;
       }
 
       if (state.rs.conservativeMode() == VK_CONSERVATIVE_RASTERIZATION_MODE_UNDERESTIMATE_EXT
-       && !device->properties().extConservativeRasterization.primitiveUnderestimation) {
+       && !m_device->properties().extConservativeRasterization.primitiveUnderestimation) {
         Logger::err("Primitive underestimation not supported by device");
         return false;
       }
     }
 
     // Validate depth-stencil state
-    if (state.ds.enableDepthBoundsTest() && !device->features().core.features.depthBounds) {
+    if (state.ds.enableDepthBoundsTest() && !m_device->features().core.features.depthBounds) {
       Logger::err("Depth bounds not supported by device");
       return false;
     }
@@ -845,7 +853,7 @@ namespace dxvk {
     if (m_shaders.gs  != nullptr) key.gs = m_shaders.gs->getShaderKey();
     if (m_shaders.fs  != nullptr) key.fs = m_shaders.fs->getShaderKey();
 
-    m_pipeMgr->m_stateCache.addGraphicsPipeline(key, state);
+    m_stateCache->addGraphicsPipeline(key, state);
   }
   
   

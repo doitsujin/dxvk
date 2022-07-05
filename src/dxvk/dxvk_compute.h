@@ -15,8 +15,11 @@
 namespace dxvk {
   
   class DxvkDevice;
+  class DxvkStateCache;
   class DxvkPipelineManager;
-  
+  struct DxvkPipelineStats;
+
+
   /**
    * \brief Shaders used in compute pipelines
    */
@@ -90,6 +93,7 @@ namespace dxvk {
   public:
     
     DxvkComputePipeline(
+            DxvkDevice*                 device,
             DxvkPipelineManager*        pipeMgr,
             DxvkComputePipelineShaders  shaders,
             DxvkBindingLayoutObjects*   layout);
@@ -137,8 +141,10 @@ namespace dxvk {
     
   private:
     
-    Rc<vk::DeviceFn>            m_vkd;
-    DxvkPipelineManager*        m_pipeMgr;
+    DxvkDevice*                 m_device;    
+    DxvkPipelineCache*          m_cache;
+    DxvkStateCache*             m_stateCache;
+    DxvkPipelineStats*          m_stats;
 
     DxvkComputePipelineShaders  m_shaders;
     DxvkBindingLayoutObjects*   m_bindings;

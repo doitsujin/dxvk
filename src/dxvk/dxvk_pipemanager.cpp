@@ -192,7 +192,7 @@ namespace dxvk {
     auto iter = m_computePipelines.emplace(
       std::piecewise_construct,
       std::tuple(shaders),
-      std::tuple(this, shaders, layout));
+      std::tuple(m_device, this, shaders, layout));
     return &iter.first->second;
   }
   
@@ -228,7 +228,7 @@ namespace dxvk {
     auto iter = m_graphicsPipelines.emplace(
       std::piecewise_construct,
       std::tuple(shaders),
-      std::tuple(this, shaders, layout));
+      std::tuple(m_device, this, shaders, layout));
     return &iter.first->second;
   }
 
@@ -273,8 +273,8 @@ namespace dxvk {
 
   DxvkPipelineCount DxvkPipelineManager::getPipelineCount() const {
     DxvkPipelineCount result;
-    result.numComputePipelines  = m_numComputePipelines.load();
-    result.numGraphicsPipelines = m_numGraphicsPipelines.load();
+    result.numComputePipelines  = m_stats.numComputePipelines.load();
+    result.numGraphicsPipelines = m_stats.numGraphicsPipelines.load();
     return result;
   }
 

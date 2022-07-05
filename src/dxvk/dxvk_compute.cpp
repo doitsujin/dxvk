@@ -11,11 +11,16 @@
 namespace dxvk {
   
   DxvkComputePipeline::DxvkComputePipeline(
+          DxvkDevice*                 device,
           DxvkPipelineManager*        pipeMgr,
           DxvkComputePipelineShaders  shaders,
           DxvkBindingLayoutObjects*   layout)
-  : m_vkd(pipeMgr->m_device->vkd()), m_pipeMgr(pipeMgr),
-    m_shaders(std::move(shaders)), m_bindings(layout) {
+  : m_device        (device),
+    m_cache         (&pipeMgr->m_cache),
+    m_stateCache    (&pipeMgr->m_stateCache),
+    m_stats         (&pipeMgr->m_stats),
+    m_shaders       (std::move(shaders)),
+    m_bindings      (layout) {
 
   }
   
@@ -57,7 +62,7 @@ namespace dxvk {
     const DxvkComputePipelineStateInfo& state) {
     VkPipeline newPipelineHandle = this->createPipeline(state);
 
-    m_pipeMgr->m_numComputePipelines += 1;
+    m_stats->numComputePipelines += 1;
     return &(*m_pipelines.emplace(state, newPipelineHandle));
   }
 
@@ -75,7 +80,7 @@ namespace dxvk {
   
   VkPipeline DxvkComputePipeline::createPipeline(
     const DxvkComputePipelineStateInfo& state) const {
-    std::vector<VkDescriptorSetLayoutBinding> bindings;
+    auto vk = m_device->vkd();
 
     if (Logger::logLevel() <= LogLevel::Debug) {
       Logger::debug("Compiling compute pipeline..."); 
@@ -92,15 +97,11 @@ namespace dxvk {
     DxvkShaderModuleCreateInfo moduleInfo;
     moduleInfo.fsDualSrcBlend = false;
 
-    auto csm = m_shaders.cs->createShaderModule(m_vkd, m_bindings, moduleInfo);
+    auto csm = m_shaders.cs->createShaderModule(vk, m_bindings, moduleInfo);
 
-    VkComputePipelineCreateInfo info;
-    info.sType                = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    info.pNext                = nullptr;
-    info.flags                = 0;
+    VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
     info.stage                = csm.stageInfo(&specInfo);
     info.layout               = m_bindings->getPipelineLayout();
-    info.basePipelineHandle   = VK_NULL_HANDLE;
     info.basePipelineIndex    = -1;
     
     // Time pipeline compilation for debugging purposes
@@ -110,8 +111,8 @@ namespace dxvk {
       t0 = dxvk::high_resolution_clock::now();
     
     VkPipeline pipeline = VK_NULL_HANDLE;
-    if (m_vkd->vkCreateComputePipelines(m_vkd->device(),
-          m_pipeMgr->m_cache.handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
+    if (vk->vkCreateComputePipelines(vk->device(),
+          m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
       Logger::err("DxvkComputePipeline: Failed to compile pipeline");
       Logger::err(str::format("  cs  : ", m_shaders.cs->debugName()));
       return VK_NULL_HANDLE;
@@ -128,7 +129,9 @@ namespace dxvk {
 
 
   void DxvkComputePipeline::destroyPipeline(VkPipeline pipeline) {
-    m_vkd->vkDestroyPipeline(m_vkd->device(), pipeline, nullptr);
+    auto vk = m_device->vkd();
+
+    vk->vkDestroyPipeline(vk->device(), pipeline, nullptr);
   }
   
   
@@ -139,7 +142,7 @@ namespace dxvk {
     if (m_shaders.cs != nullptr)
       key.cs = m_shaders.cs->getShaderKey();
 
-    m_pipeMgr->m_stateCache.addComputePipeline(key, state);
+    m_stateCache->addComputePipeline(key, state);
   }
   
 }

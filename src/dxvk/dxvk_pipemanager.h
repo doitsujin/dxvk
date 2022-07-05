@@ -24,6 +24,13 @@ namespace dxvk {
     uint32_t numComputePipelines;
   };
 
+  /**
+   * \brief Pipeline stats
+   */
+  struct DxvkPipelineStats {
+    std::atomic<uint32_t> numGraphicsPipelines  = { 0u };
+    std::atomic<uint32_t> numComputePipelines   = { 0u };
+  };
 
   /**
    * \brief Pipeline manager worker threads
@@ -216,9 +223,7 @@ namespace dxvk {
     DxvkPipelineCache         m_cache;
     DxvkPipelineWorkers       m_workers;
     DxvkStateCache            m_stateCache;
-
-    std::atomic<uint32_t> m_numComputePipelines  = { 0 };
-    std::atomic<uint32_t> m_numGraphicsPipelines = { 0 };
+    DxvkPipelineStats         m_stats;
     
     dxvk::mutex m_mutex;
     
