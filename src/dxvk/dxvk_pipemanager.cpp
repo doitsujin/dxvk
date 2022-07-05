@@ -77,6 +77,22 @@ namespace dxvk {
   }
 
   
+  DxvkGraphicsPipelineVertexInputLibrary* DxvkPipelineManager::createVertexInputLibrary(
+    const DxvkGraphicsPipelineVertexInputState& state) {
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
+
+    auto pair = m_vertexInputLibraries.find(state);
+    if (pair != m_vertexInputLibraries.end())
+      return &pair->second;
+
+    auto iter = m_vertexInputLibraries.emplace(
+      std::piecewise_construct,
+      std::tuple(state),
+      std::tuple(m_device, state, m_cache->handle()));
+    return &iter.first->second;
+  }
+
+
   void DxvkPipelineManager::registerShader(
     const Rc<DxvkShader>&         shader) {
     if (m_stateCache != nullptr)

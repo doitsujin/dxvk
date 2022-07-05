@@ -133,6 +133,37 @@ namespace dxvk {
   }
 
 
+  DxvkGraphicsPipelineVertexInputLibrary::DxvkGraphicsPipelineVertexInputLibrary(
+          DxvkDevice*                           device,
+    const DxvkGraphicsPipelineVertexInputState& state,
+          VkPipelineCache                       cache)
+  : m_device(device) {
+    auto vk = m_device->vkd();
+
+    VkGraphicsPipelineLibraryCreateInfoEXT libInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT };
+    libInfo.flags = VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT;
+
+    VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };
+    info.flags                = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
+    info.pVertexInputState    = &state.viInfo;
+    info.pInputAssemblyState  = &state.iaInfo;
+    info.basePipelineIndex    = -1;
+
+    VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(),
+      cache, 1, &info, nullptr, &m_pipeline);
+
+    if (vr)
+      throw DxvkError("Failed to create vertex input pipeline library");
+  }
+
+
+  DxvkGraphicsPipelineVertexInputLibrary::~DxvkGraphicsPipelineVertexInputLibrary() {
+    auto vk = m_device->vkd();
+
+    vk->vkDestroyPipeline(vk->device(), m_pipeline, nullptr);
+  }
+
+
   DxvkGraphicsPipelineFragmentOutputState::DxvkGraphicsPipelineFragmentOutputState() {
 
   }

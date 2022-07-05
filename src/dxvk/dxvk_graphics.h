@@ -48,6 +48,35 @@ namespace dxvk {
 
 
   /**
+   * \brief Vertex input pipeline library
+   *
+   * Creates a Vulkan pipeline object for a
+   * given vertex input state vector.
+   */
+  class DxvkGraphicsPipelineVertexInputLibrary {
+
+  public:
+
+    DxvkGraphicsPipelineVertexInputLibrary(
+            DxvkDevice*                           device,
+      const DxvkGraphicsPipelineVertexInputState& state,
+            VkPipelineCache                       cache);
+
+    ~DxvkGraphicsPipelineVertexInputLibrary();
+
+    VkPipeline getHandle() const {
+      return m_pipeline;
+    }
+
+  private:
+
+    DxvkDevice* m_device;
+    VkPipeline  m_pipeline;
+
+  };
+
+
+  /**
    * \brief Fragment output info for graphics pipelines
    *
    * Can be used to compile dedicated pipeline objects for use
