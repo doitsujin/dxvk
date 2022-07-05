@@ -141,7 +141,7 @@ namespace dxvk {
     auto vk = m_device->vkd();
 
     VkGraphicsPipelineLibraryCreateInfoEXT libInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT };
-    libInfo.flags = VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT;
+    libInfo.flags             = VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT;
 
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };
     info.flags                = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
@@ -250,6 +250,21 @@ namespace dxvk {
   }
 
 
+  bool DxvkGraphicsPipelineFragmentOutputState::useDynamicBlendConstants() const {
+    bool result = false;
+
+    for (uint32_t i = 0; i < MaxNumRenderTargets && !result; i++) {
+      result = cbAttachments[i].blendEnable
+        && (util::isBlendConstantBlendFactor(cbAttachments[i].srcColorBlendFactor)
+         || util::isBlendConstantBlendFactor(cbAttachments[i].dstColorBlendFactor)
+         || util::isBlendConstantBlendFactor(cbAttachments[i].srcAlphaBlendFactor)
+         || util::isBlendConstantBlendFactor(cbAttachments[i].dstAlphaBlendFactor));
+    }
+
+    return result;
+  }
+
+
   bool DxvkGraphicsPipelineFragmentOutputState::eq(const DxvkGraphicsPipelineFragmentOutputState& other) const {
     bool eq = rtInfo.colorAttachmentCount     == other.rtInfo.colorAttachmentCount
            && rtInfo.depthAttachmentFormat    == other.rtInfo.depthAttachmentFormat
@@ -319,6 +334,49 @@ namespace dxvk {
     }
 
     return hash;
+  }
+
+
+  DxvkGraphicsPipelineFragmentOutputLibrary::DxvkGraphicsPipelineFragmentOutputLibrary(
+          DxvkDevice*                               device,
+    const DxvkGraphicsPipelineFragmentOutputState&  state,
+          VkPipelineCache                           cache)
+  : m_device(device) {
+    auto vk = m_device->vkd();
+
+    VkDynamicState dynamicState = VK_DYNAMIC_STATE_BLEND_CONSTANTS;
+    VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+
+    if (state.useDynamicBlendConstants()) {
+      dyInfo.dynamicStateCount  = 1;
+      dyInfo.pDynamicStates     = &dynamicState;
+    }
+
+    // pNext is non-const for some reason, but this is only an input
+    // structure, so we should be able to safely use const_cast.
+    VkGraphicsPipelineLibraryCreateInfoEXT libInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT };
+    libInfo.pNext             = const_cast<VkPipelineRenderingCreateInfoKHR*>(&state.rtInfo);
+    libInfo.flags             = VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT;
+
+    VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };
+    info.flags                = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
+    info.pColorBlendState     = &state.cbInfo;
+    info.pMultisampleState    = &state.msInfo;
+    info.pDynamicState        = &dyInfo;
+    info.basePipelineIndex    = -1;
+
+    VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(),
+      cache, 1, &info, nullptr, &m_pipeline);
+
+    if (vr)
+      throw DxvkError("Failed to create vertex input pipeline library");
+  }
+
+
+  DxvkGraphicsPipelineFragmentOutputLibrary::~DxvkGraphicsPipelineFragmentOutputLibrary() {
+    auto vk = m_device->vkd();
+
+    vk->vkDestroyPipeline(vk->device(), m_pipeline, nullptr);
   }
 
 

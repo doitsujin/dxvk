@@ -99,9 +99,40 @@ namespace dxvk {
     std::array<VkPipelineColorBlendAttachmentState, MaxNumRenderTargets> cbAttachments  = { };
     std::array<VkFormat,                            MaxNumRenderTargets> rtColorFormats = { };
 
+    bool useDynamicBlendConstants() const;
+
     bool eq(const DxvkGraphicsPipelineFragmentOutputState& other) const;
 
     size_t hash() const;
+  };
+
+
+  /**
+   * \brief Vertex input pipeline library
+   *
+   * Creates a Vulkan pipeline object for a
+   * given vertex input state vector.
+   */
+  class DxvkGraphicsPipelineFragmentOutputLibrary {
+
+  public:
+
+    DxvkGraphicsPipelineFragmentOutputLibrary(
+            DxvkDevice*                               device,
+      const DxvkGraphicsPipelineFragmentOutputState&  state,
+            VkPipelineCache                           cache);
+
+    ~DxvkGraphicsPipelineFragmentOutputLibrary();
+
+    VkPipeline getHandle() const {
+      return m_pipeline;
+    }
+
+  private:
+
+    DxvkDevice* m_device;
+    VkPipeline  m_pipeline;
+
   };
 
 

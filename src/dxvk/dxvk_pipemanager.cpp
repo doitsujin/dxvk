@@ -93,6 +93,22 @@ namespace dxvk {
   }
 
 
+  DxvkGraphicsPipelineFragmentOutputLibrary* DxvkPipelineManager::createFragmentOutputLibrary(
+    const DxvkGraphicsPipelineFragmentOutputState& state) {
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
+
+    auto pair = m_fragmentOutputLibraries.find(state);
+    if (pair != m_fragmentOutputLibraries.end())
+      return &pair->second;
+
+    auto iter = m_fragmentOutputLibraries.emplace(
+      std::piecewise_construct,
+      std::tuple(state),
+      std::tuple(m_device, state, m_cache->handle()));
+    return &iter.first->second;
+  }
+  
+  
   void DxvkPipelineManager::registerShader(
     const Rc<DxvkShader>&         shader) {
     if (m_stateCache != nullptr)

@@ -75,6 +75,15 @@ namespace dxvk {
     DxvkGraphicsPipelineVertexInputLibrary* createVertexInputLibrary(
       const DxvkGraphicsPipelineVertexInputState& state);
 
+    /**
+     * \brief Retrieves a fragment output pipeline library
+     *
+     * \param [in] state Fragment output state
+     * \returns Pipeline library object
+     */
+    DxvkGraphicsPipelineFragmentOutputLibrary* createFragmentOutputLibrary(
+      const DxvkGraphicsPipelineFragmentOutputState& state);
+
     /*
      * \brief Registers a shader
      * 
@@ -138,6 +147,11 @@ namespace dxvk {
       DxvkGraphicsPipelineVertexInputState,
       DxvkGraphicsPipelineVertexInputLibrary,
       DxvkHash, DxvkEq> m_vertexInputLibraries;
+
+    std::unordered_map<
+      DxvkGraphicsPipelineFragmentOutputState,
+      DxvkGraphicsPipelineFragmentOutputLibrary,
+      DxvkHash, DxvkEq> m_fragmentOutputLibraries;
 
     DxvkBindingSetLayout* createDescriptorSetLayout(
       const DxvkBindingSetLayoutKey& key);
