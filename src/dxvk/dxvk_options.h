@@ -18,6 +18,9 @@ namespace dxvk {
     /// when using the state cache
     int32_t numCompilerThreads;
 
+    /// Enable graphics pipeline library
+    Tristate enableGraphicsPipelineLibrary;
+
     /// Shader-related options
     Tristate useRawSsbo;
 

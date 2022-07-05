@@ -167,7 +167,8 @@ namespace dxvk {
     m_cache     (device),
     m_workers   (device, &m_cache),
     m_stateCache(device, this, &m_workers) {
-
+    Logger::info(str::format("DXVK: Graphics pipeline libraries ",
+      (m_device->canUseGraphicsPipelineLibrary() ? "supported" : "not supported")));
   }
   
   

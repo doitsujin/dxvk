@@ -46,7 +46,8 @@ namespace dxvk {
     // cannot use this effectively in many games since no client API provides
     // interpoation qualifiers in vertex shaders.
     return m_features.extGraphicsPipelineLibrary.graphicsPipelineLibrary
-        && m_properties.extGraphicsPipelineLibrary.graphicsPipelineLibraryIndependentInterpolationDecoration;
+        && m_properties.extGraphicsPipelineLibrary.graphicsPipelineLibraryIndependentInterpolationDecoration
+        && m_options.enableGraphicsPipelineLibrary != Tristate::False;
   }
 
 
