@@ -22,8 +22,8 @@ namespace dxvk {
   /**
    * \brief Vertex input info for graphics pipelines
    *
-   * Can be used to compile dedicated vertex input pipelines for
-   * use in a graphics pipeline library, or as part of the data
+   * Can be used to compile dedicated pipeline objects for use
+   * in a graphics pipeline library, or as part of the data
    * required to compile a full graphics pipeline.
    */
   struct DxvkGraphicsPipelineVertexInputState {
@@ -47,6 +47,35 @@ namespace dxvk {
   };
 
 
+  /**
+   * \brief Fragment output info for graphics pipelines
+   *
+   * Can be used to compile dedicated pipeline objects for use
+   * in a graphics pipeline library, or as part of the data
+   * required to compile a full graphics pipeline.
+   */
+  struct DxvkGraphicsPipelineFragmentOutputState {
+    DxvkGraphicsPipelineFragmentOutputState();
+
+    DxvkGraphicsPipelineFragmentOutputState(
+      const DxvkDevice*                     device,
+      const DxvkGraphicsPipelineStateInfo&  state,
+      const DxvkShader*                     fs);
+
+    VkPipelineRenderingCreateInfoKHR                rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR };
+    VkPipelineColorBlendStateCreateInfo             cbInfo = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
+    VkPipelineMultisampleStateCreateInfo            msInfo = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+
+    uint32_t                                                             msSampleMask   = 0u;
+    std::array<VkPipelineColorBlendAttachmentState, MaxNumRenderTargets> cbAttachments  = { };
+    std::array<VkFormat,                            MaxNumRenderTargets> rtColorFormats = { };
+
+    bool eq(const DxvkGraphicsPipelineFragmentOutputState& other) const;
+
+    size_t hash() const;
+  };
+
+  
   /**
    * \brief Flags that describe pipeline properties
    */
@@ -98,18 +127,6 @@ namespace dxvk {
   };
 
 
-  /**
-   * \brief Common graphics pipeline state
-   * 
-   * Non-dynamic pipeline state that cannot
-   * be changed dynamically.
-   */
-  struct DxvkGraphicsCommonPipelineStateInfo {
-    bool                                msSampleShadingEnable;
-    float                               msSampleShadingFactor;
-  };
-  
-  
   /**
    * \brief Graphics pipeline instance
    * 
@@ -255,13 +272,11 @@ namespace dxvk {
 
     DxvkGraphicsPipelineShaders m_shaders;
     DxvkBindingLayoutObjects*   m_bindings;
-    
+    DxvkGlobalPipelineBarrier   m_barrier;
+    DxvkGraphicsPipelineFlags   m_flags;
+
     uint32_t m_vsIn  = 0;
     uint32_t m_fsOut = 0;
-    
-    DxvkGlobalPipelineBarrier           m_barrier;
-    DxvkGraphicsPipelineFlags           m_flags;
-    DxvkGraphicsCommonPipelineStateInfo m_common;
     
     // List of pipeline instances, shared between threads
     alignas(CACHE_LINE_SIZE)

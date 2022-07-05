@@ -133,6 +133,164 @@ namespace dxvk {
   }
 
 
+  DxvkGraphicsPipelineFragmentOutputState::DxvkGraphicsPipelineFragmentOutputState() {
+
+  }
+
+
+  DxvkGraphicsPipelineFragmentOutputState::DxvkGraphicsPipelineFragmentOutputState(
+    const DxvkDevice*                     device,
+    const DxvkGraphicsPipelineStateInfo&  state,
+    const DxvkShader*                     fs) {
+    // Set up color formats and attachment blend states. Disable the write
+    // mask for any attachment that the fragment shader does not write to.
+    uint32_t fsOutputMask = fs ? fs->info().outputMask : 0u;
+
+    const VkColorComponentFlags rgbaWriteMask
+      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+      | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+    cbInfo.logicOpEnable  = state.om.enableLogicOp();
+    cbInfo.logicOp        = state.om.logicOp();
+
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      rtColorFormats[i] = state.rt.getColorFormat(i);
+
+      if (rtColorFormats[i]) {
+        rtInfo.colorAttachmentCount = i + 1;
+
+        auto formatInfo = imageFormatInfo(rtColorFormats[i]);
+        cbAttachments[i] = state.omBlend[i].state();
+
+        if (!(fsOutputMask & (1 << i)) || !formatInfo) {
+          cbAttachments[i].colorWriteMask = 0;
+        } else {
+          if (cbAttachments[i].colorWriteMask != rgbaWriteMask) {
+            cbAttachments[i].colorWriteMask = util::remapComponentMask(
+              state.omBlend[i].colorWriteMask(), state.omSwizzle[i].mapping());
+          }
+
+          cbAttachments[i].colorWriteMask &= formatInfo->componentMask;
+
+          if (cbAttachments[i].colorWriteMask == formatInfo->componentMask) {
+            cbAttachments[i].colorWriteMask = rgbaWriteMask;
+          }
+        }
+      }
+    }
+
+    if (rtInfo.colorAttachmentCount) {
+      rtInfo.pColorAttachmentFormats = rtColorFormats.data();
+
+      cbInfo.attachmentCount = rtInfo.colorAttachmentCount;
+      cbInfo.pAttachments = cbAttachments.data();
+    }
+
+    // Set up depth-stencil format accordingly.
+    VkFormat rtDepthFormat = state.rt.getDepthStencilFormat();
+
+    if (rtDepthFormat) {
+      auto rtDepthFormatInfo = imageFormatInfo(rtDepthFormat);
+
+      if (rtDepthFormatInfo->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
+        rtInfo.depthAttachmentFormat = rtDepthFormat;
+
+      if (rtDepthFormatInfo->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
+        rtInfo.stencilAttachmentFormat = rtDepthFormat;
+    }
+
+    // Set up multisample state based on shader info as well
+    // as rasterization state and render target sample counts.
+    if (state.ms.sampleCount())
+      msInfo.rasterizationSamples = VkSampleCountFlagBits(state.ms.sampleCount());
+    else if (state.rs.sampleCount())
+      msInfo.rasterizationSamples = VkSampleCountFlagBits(state.rs.sampleCount());
+    else
+      msInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+    if (fs && fs->flags().test(DxvkShaderFlag::HasSampleRateShading)) {
+      msInfo.sampleShadingEnable  = VK_TRUE;
+      msInfo.minSampleShading     = 1.0f;
+    }
+
+    msSampleMask                  = state.ms.sampleMask() & ((1u << msInfo.rasterizationSamples) - 1);
+    msInfo.pSampleMask            = &msSampleMask;
+    msInfo.alphaToCoverageEnable  = state.ms.enableAlphaToCoverage();
+  }
+
+
+  bool DxvkGraphicsPipelineFragmentOutputState::eq(const DxvkGraphicsPipelineFragmentOutputState& other) const {
+    bool eq = rtInfo.colorAttachmentCount     == other.rtInfo.colorAttachmentCount
+           && rtInfo.depthAttachmentFormat    == other.rtInfo.depthAttachmentFormat
+           && rtInfo.stencilAttachmentFormat  == other.rtInfo.stencilAttachmentFormat
+           && cbInfo.logicOpEnable            == other.cbInfo.logicOpEnable
+           && cbInfo.logicOp                  == other.cbInfo.logicOp
+           && cbInfo.attachmentCount          == other.cbInfo.attachmentCount
+           && msInfo.rasterizationSamples     == other.msInfo.rasterizationSamples
+           && msInfo.sampleShadingEnable      == other.msInfo.sampleShadingEnable
+           && msInfo.minSampleShading         == other.msInfo.minSampleShading
+           && msInfo.alphaToCoverageEnable    == other.msInfo.alphaToCoverageEnable
+           && msInfo.alphaToOneEnable         == other.msInfo.alphaToOneEnable
+           && msSampleMask                    == other.msSampleMask;
+
+    for (uint32_t i = 0; i < rtInfo.colorAttachmentCount && eq; i++)
+      eq = rtColorFormats[i] == other.rtColorFormats[i];
+
+    for (uint32_t i = 0; i < cbInfo.attachmentCount && eq; i++) {
+      const auto& a = cbAttachments[i];
+      const auto& b = other.cbAttachments[i];
+
+      eq = a.blendEnable    == b.blendEnable
+        && a.colorWriteMask == b.colorWriteMask;
+
+      if (a.blendEnable && eq) {
+        eq = a.srcColorBlendFactor == b.srcColorBlendFactor
+          && a.dstColorBlendFactor == b.dstColorBlendFactor
+          && a.colorBlendOp        == b.colorBlendOp
+          && a.srcAlphaBlendFactor == b.srcAlphaBlendFactor
+          && a.dstAlphaBlendFactor == b.dstAlphaBlendFactor
+          && a.alphaBlendOp        == b.alphaBlendOp;
+      }
+    }
+
+    return eq;
+  }
+
+
+  size_t DxvkGraphicsPipelineFragmentOutputState::hash() const {
+    DxvkHashState hash;
+    hash.add(uint32_t(rtInfo.colorAttachmentCount));
+    hash.add(uint32_t(rtInfo.depthAttachmentFormat));
+    hash.add(uint32_t(rtInfo.stencilAttachmentFormat));
+    hash.add(uint32_t(cbInfo.logicOpEnable));
+    hash.add(uint32_t(cbInfo.logicOp));
+    hash.add(uint32_t(cbInfo.attachmentCount));
+    hash.add(uint32_t(msInfo.rasterizationSamples));
+    hash.add(uint32_t(msInfo.alphaToCoverageEnable));
+    hash.add(uint32_t(msInfo.alphaToOneEnable));
+    hash.add(uint32_t(msSampleMask));
+
+    for (uint32_t i = 0; i < rtInfo.colorAttachmentCount; i++)
+      hash.add(uint32_t(rtColorFormats[i]));
+
+    for (uint32_t i = 0; i < cbInfo.attachmentCount; i++) {
+      hash.add(uint32_t(cbAttachments[i].blendEnable));
+      hash.add(uint32_t(cbAttachments[i].colorWriteMask));
+
+      if (cbAttachments[i].blendEnable) {
+        hash.add(uint32_t(cbAttachments[i].srcColorBlendFactor));
+        hash.add(uint32_t(cbAttachments[i].dstColorBlendFactor));
+        hash.add(uint32_t(cbAttachments[i].colorBlendOp));
+        hash.add(uint32_t(cbAttachments[i].srcAlphaBlendFactor));
+        hash.add(uint32_t(cbAttachments[i].dstAlphaBlendFactor));
+        hash.add(uint32_t(cbAttachments[i].alphaBlendOp));
+      }
+    }
+
+    return hash;
+  }
+
+
   DxvkGraphicsPipeline::DxvkGraphicsPipeline(
           DxvkPipelineManager*        pipeMgr,
           DxvkGraphicsPipelineShaders shaders,
@@ -155,9 +313,6 @@ namespace dxvk {
     
     if (m_barrier.access & VK_ACCESS_SHADER_WRITE_BIT)
       m_flags.set(DxvkGraphicsPipelineFlag::HasStorageDescriptors);
-    
-    m_common.msSampleShadingEnable = m_shaders.fs != nullptr && m_shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading);
-    m_common.msSampleShadingFactor = 1.0f;
   }
   
   
@@ -282,14 +437,6 @@ namespace dxvk {
     if (state.useDynamicStencilRef())
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
 
-    // Figure out the actual sample count to use
-    VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
-
-    if (state.ms.sampleCount())
-      sampleCount = VkSampleCountFlagBits(state.ms.sampleCount());
-    else if (state.rs.sampleCount())
-      sampleCount = VkSampleCountFlagBits(state.rs.sampleCount());
-    
     // Set up some specialization constants
     DxvkSpecConstants specData;
 
@@ -319,51 +466,12 @@ namespace dxvk {
     if (gsm)  stages.push_back(gsm.stageInfo(&specInfo));
     if (fsm)  stages.push_back(fsm.stageInfo(&specInfo));
 
-    // Fix up color write masks using the component mappings
-    VkImageAspectFlags rtReadOnlyAspects = state.rt.getDepthStencilReadOnlyAspects();
-    VkFormat rtDepthFormat = state.rt.getDepthStencilFormat();
-    auto rtDepthFormatInfo = imageFormatInfo(rtDepthFormat);
-
-    std::array<VkPipelineColorBlendAttachmentState, MaxNumRenderTargets> omBlendAttachments = { };
-    std::array<VkFormat, DxvkLimits::MaxNumRenderTargets> rtColorFormats;
-    uint32_t rtColorFormatCount = 0;
-
-    const VkColorComponentFlags fullMask
-      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
-      | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-
-    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      rtColorFormats[i] = state.rt.getColorFormat(i);
-
-      if (rtColorFormats[i]) {
-        rtColorFormatCount = i + 1;
-
-        auto formatInfo = imageFormatInfo(rtColorFormats[i]);
-        omBlendAttachments[i] = state.omBlend[i].state();
-
-        if (!(m_fsOut & (1 << i)) || !formatInfo) {
-          omBlendAttachments[i].colorWriteMask = 0;
-        } else {
-          if (omBlendAttachments[i].colorWriteMask != fullMask) {
-            omBlendAttachments[i].colorWriteMask = util::remapComponentMask(
-              state.omBlend[i].colorWriteMask(), state.omSwizzle[i].mapping());
-          }
-
-          omBlendAttachments[i].colorWriteMask &= formatInfo->componentMask;
-
-          if (omBlendAttachments[i].colorWriteMask == formatInfo->componentMask) {
-            omBlendAttachments[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
-                                                 | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-          }
-        }
-      }
-    }
-
     int32_t rasterizedStream = m_shaders.gs != nullptr
       ? m_shaders.gs->info().xfbRasterizedStream
       : 0;
 
-    DxvkGraphicsPipelineVertexInputState viState(device, state);
+    DxvkGraphicsPipelineVertexInputState    viState(device, state);
+    DxvkGraphicsPipelineFragmentOutputState foState(device, state, m_shaders.fs.ptr());
 
     VkPipelineTessellationStateCreateInfo tsInfo = { VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO };
     tsInfo.patchControlPoints     = state.ia.patchVertexCount();
@@ -400,51 +508,23 @@ namespace dxvk {
     else
       rsInfo.depthClampEnable = !state.rs.depthClipEnable();
 
-    uint32_t sampleMask = state.ms.sampleMask();
-
-    VkPipelineMultisampleStateCreateInfo msInfo = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-    msInfo.rasterizationSamples   = sampleCount;
-    msInfo.sampleShadingEnable    = m_common.msSampleShadingEnable;
-    msInfo.minSampleShading       = m_common.msSampleShadingFactor;
-    msInfo.pSampleMask            = &sampleMask;
-    msInfo.alphaToCoverageEnable  = state.ms.enableAlphaToCoverage();
-    msInfo.alphaToOneEnable       = VK_FALSE;
-    
     VkPipelineDepthStencilStateCreateInfo dsInfo = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
     dsInfo.depthTestEnable        = state.ds.enableDepthTest();
-    dsInfo.depthWriteEnable       = state.ds.enableDepthWrite() && !(rtReadOnlyAspects & VK_IMAGE_ASPECT_DEPTH_BIT);
+    dsInfo.depthWriteEnable       = state.ds.enableDepthWrite();
     dsInfo.depthCompareOp         = state.ds.depthCompareOp();
     dsInfo.depthBoundsTestEnable  = state.ds.enableDepthBoundsTest();
     dsInfo.stencilTestEnable      = state.ds.enableStencilTest();
     dsInfo.front                  = state.dsFront.state();
     dsInfo.back                   = state.dsBack.state();
-    
-    VkPipelineColorBlendStateCreateInfo cbInfo = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
-    cbInfo.logicOpEnable          = state.om.enableLogicOp();
-    cbInfo.logicOp                = state.om.logicOp();
-    cbInfo.attachmentCount        = rtColorFormatCount;
-    cbInfo.pAttachments           = omBlendAttachments.data();
-    
+
+    if ((state.rt.getDepthStencilReadOnlyAspects() & VK_IMAGE_ASPECT_DEPTH_BIT))
+      dsInfo.depthWriteEnable     = VK_FALSE;
+
     VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
     dyInfo.dynamicStateCount      = dynamicStateCount;
     dyInfo.pDynamicStates         = dynamicStates.data();
 
-    VkPipelineRenderingCreateInfoKHR rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR };
-
-    if (rtColorFormatCount) {
-      rtInfo.colorAttachmentCount = rtColorFormatCount;
-      rtInfo.pColorAttachmentFormats = rtColorFormats.data();
-    }
-
-    if (rtDepthFormat) {
-      if (rtDepthFormatInfo->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
-        rtInfo.depthAttachmentFormat = rtDepthFormat;
-
-      if (rtDepthFormatInfo->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
-        rtInfo.stencilAttachmentFormat = rtDepthFormat;
-    }
-
-    VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &rtInfo };
+    VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &foState.rtInfo };
     info.stageCount               = stages.size();
     info.pStages                  = stages.data();
     info.pVertexInputState        = &viState.viInfo;
@@ -452,9 +532,9 @@ namespace dxvk {
     info.pTessellationState       = &tsInfo;
     info.pViewportState           = &vpInfo;
     info.pRasterizationState      = &rsInfo;
-    info.pMultisampleState        = &msInfo;
+    info.pMultisampleState        = &foState.msInfo;
     info.pDepthStencilState       = &dsInfo;
-    info.pColorBlendState         = &cbInfo;
+    info.pColorBlendState         = &foState.cbInfo;
     info.pDynamicState            = &dyInfo;
     info.layout                   = m_bindings->getPipelineLayout();
     info.basePipelineIndex        = -1;
