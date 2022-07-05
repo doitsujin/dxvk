@@ -157,6 +157,9 @@ namespace dxvk {
 
     /// Disable direct buffer mapping
     bool allowDirectBufferMapping;
+
+    /// Don't use non seamless cube maps
+    bool seamlessCubes;
   };
 
 }
