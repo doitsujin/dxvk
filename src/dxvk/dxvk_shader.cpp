@@ -202,6 +202,20 @@ namespace dxvk {
   }
   
   
+  bool DxvkShader::canUsePipelineLibrary() const {
+    // Pipeline libraries are unsupported for geometry and
+    // tessellation stages since we'd need to compile them
+    // all into one library
+    if (m_info.stage != VK_SHADER_STAGE_VERTEX_BIT
+     && m_info.stage != VK_SHADER_STAGE_FRAGMENT_BIT
+     && m_info.stage != VK_SHADER_STAGE_COMPUTE_BIT)
+      return false;
+
+    // Ignore shaders that have user-defined spec constants
+    return !m_flags.test(DxvkShaderFlag::HasSpecConstants);
+  }
+
+
   void DxvkShader::dump(std::ostream& outputStream) const {
     m_code.decompress().store(outputStream);
   }

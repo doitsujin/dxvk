@@ -151,6 +151,15 @@ namespace dxvk {
       const DxvkShaderModuleCreateInfo& info);
 
     /**
+     * \brief Tests whether this shader supports pipeline libraries
+     *
+     * This is true for any vertex, fragment, or compute shader that does not
+     * require additional pipeline state to be compiled into something useful.
+     * \returns \c true if this shader can be used with pipeline libraries
+     */
+    bool canUsePipelineLibrary() const;
+
+    /**
      * \brief Dumps SPIR-V shader
      * 
      * Can be used to store the SPIR-V code in a file.
@@ -301,6 +310,22 @@ namespace dxvk {
 
     bool operator != (const DxvkShaderPipelineLibraryCompileArgs& other) const {
       return !this->operator == (other);
+    }
+  };
+
+
+  /**
+   * \brief Shader pipeline library key
+   */
+  struct DxvkShaderPipelineLibraryKey {
+    Rc<DxvkShader> shader;
+
+    bool eq(const DxvkShaderPipelineLibraryKey& other) const {
+      return shader == other.shader;
+    }
+
+    size_t hash() const {
+      return DxvkShader::getHash(shader);
     }
   };
 

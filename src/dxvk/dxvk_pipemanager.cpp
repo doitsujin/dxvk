@@ -268,6 +268,11 @@ namespace dxvk {
   
   void DxvkPipelineManager::registerShader(
     const Rc<DxvkShader>&         shader) {
+    if (m_device->canUseGraphicsPipelineLibrary() && shader->canUsePipelineLibrary()) {
+      auto library = createPipelineLibrary(shader);
+      m_workers.compilePipelineLibrary(library);
+    }
+
     m_stateCache.registerShader(shader);
   }
 
@@ -318,6 +323,22 @@ namespace dxvk {
       std::piecewise_construct,
       std::tuple(layout),
       std::tuple(m_device, layout, setLayouts.data()));
+    return &iter.first->second;
+  }
+
+
+  DxvkShaderPipelineLibrary* DxvkPipelineManager::createPipelineLibrary(
+    const Rc<DxvkShader>&     shader) {
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
+    auto layout = createPipelineLayout(shader->getBindings());
+
+    DxvkShaderPipelineLibraryKey key;
+    key.shader = shader;
+
+    auto iter = m_shaderLibraries.emplace(
+      std::piecewise_construct,
+      std::tuple(key),
+      std::tuple(m_device, shader.ptr(), layout));
     return &iter.first->second;
   }
   

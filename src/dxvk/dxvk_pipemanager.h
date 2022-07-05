@@ -257,11 +257,19 @@ namespace dxvk {
       DxvkGraphicsPipelineFragmentOutputLibrary,
       DxvkHash, DxvkEq> m_fragmentOutputLibraries;
 
+    std::unordered_map<
+      DxvkShaderPipelineLibraryKey,
+      DxvkShaderPipelineLibrary,
+      DxvkHash, DxvkEq> m_shaderLibraries;
+
     DxvkBindingSetLayout* createDescriptorSetLayout(
       const DxvkBindingSetLayoutKey& key);
 
     DxvkBindingLayoutObjects* createPipelineLayout(
       const DxvkBindingLayout& layout);
+
+    DxvkShaderPipelineLibrary* createPipelineLibrary(
+      const Rc<DxvkShader>&     shader);
 
   };
   
