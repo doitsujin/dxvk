@@ -120,6 +120,19 @@ namespace dxvk {
     const DxvkBindingLayout& getBindings() const {
       return m_bindings;
     }
+
+    /**
+     * \brief Patches code using given info
+     *
+     * Rewrites binding IDs and potentially fixes up other
+     * parts of the code depending on pipeline state.
+     * \param [in] layout Biding layout
+     * \param [in] state Pipeline state info
+     * \returns Uncompressed SPIR-V code buffer
+     */
+    SpirvCodeBuffer getCode(
+      const DxvkBindingLayoutObjects*   layout,
+      const DxvkShaderModuleCreateInfo& state) const;
     
     /**
      * \brief Creates a shader module
@@ -272,6 +285,86 @@ namespace dxvk {
     Rc<vk::DeviceFn>                m_vkd;
     VkPipelineShaderStageCreateInfo m_stage;
     
+  };
+
+
+  /**
+   * \brief Shader pipeline library compile args
+   */
+  struct DxvkShaderPipelineLibraryCompileArgs {
+    VkBool32 depthClipEnable = VK_TRUE;
+
+    bool operator == (const DxvkShaderPipelineLibraryCompileArgs& other) const {
+      return depthClipEnable == other.depthClipEnable;
+    }
+
+    bool operator != (const DxvkShaderPipelineLibraryCompileArgs& other) const {
+      return !this->operator == (other);
+    }
+  };
+
+
+  /**
+   * \brief Shader pipeline library
+   *
+   * Stores a pipeline object for either a complete compute
+   * pipeline, a pre-rasterization pipeline library consisting
+   * of a single vertex shader, or a fragment shader pipeline
+   * library. All state unknown at shader compile time will
+   * be made dynamic.
+   */
+  class DxvkShaderPipelineLibrary {
+
+  public:
+
+    DxvkShaderPipelineLibrary(
+      const DxvkDevice*               device,
+      const DxvkShader*               shader,
+      const DxvkBindingLayoutObjects* layout);
+
+    ~DxvkShaderPipelineLibrary();
+
+    /**
+     * \brief Queries pipeline handle for the given set of arguments
+     *
+     * Either returns an already compiled pipeline library object, or
+     * performs the compilation step if that has not happened yet.
+     * \param [in] cache Pipeline cache handle
+     * \param [in] args Compile arguments
+     * \returns Vulkan pipeline handle
+     */
+    VkPipeline getPipelineHandle(
+            VkPipelineCache                       cache,
+      const DxvkShaderPipelineLibraryCompileArgs& args);
+
+    /**
+     * \brief Compiles the pipeline with default arguments
+     *
+     * This is meant to be called from a worker thread in
+     * order to reduce the amount of work done on the app's
+     * main thread.
+     * \param [in] cache Pipeline cache handle
+     */
+    void compilePipeline(VkPipelineCache cache);
+
+  private:
+
+    const DxvkDevice*               m_device;
+    const DxvkShader*               m_shader;
+    const DxvkBindingLayoutObjects* m_layout;
+
+    dxvk::mutex     m_mutex;
+    VkPipeline      m_pipeline             = VK_NULL_HANDLE;
+    VkPipeline      m_pipelineNoDepthClip  = VK_NULL_HANDLE;
+
+    VkPipeline compileVertexShaderPipeline(
+            VkPipelineCache                       cache,
+      const DxvkShaderPipelineLibraryCompileArgs& args);
+
+    VkPipeline compileFragmentShaderPipeline(VkPipelineCache cache);
+
+    VkPipeline compileComputeShaderPipeline(VkPipelineCache cache);
+
   };
   
 }

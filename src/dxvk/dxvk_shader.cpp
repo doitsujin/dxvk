@@ -1,3 +1,4 @@
+#include "dxvk_device.h"
 #include "dxvk_shader.h"
 
 #include <algorithm>
@@ -159,10 +160,9 @@ namespace dxvk {
   }
   
   
-  DxvkShaderModule DxvkShader::createShaderModule(
-    const Rc<vk::DeviceFn>&           vkd,
+  SpirvCodeBuffer DxvkShader::getCode(
     const DxvkBindingLayoutObjects*   layout,
-    const DxvkShaderModuleCreateInfo& info) {
+    const DxvkShaderModuleCreateInfo& state) const {
     SpirvCodeBuffer spirvCode = m_code.decompress();
     uint32_t* code = spirvCode.data();
     
@@ -180,14 +180,22 @@ namespace dxvk {
 
     // For dual-source blending we need to re-map
     // location 1, index 0 to location 0, index 1
-    if (info.fsDualSrcBlend && m_o1IdxOffset && m_o1LocOffset)
+    if (state.fsDualSrcBlend && m_o1IdxOffset && m_o1LocOffset)
       std::swap(code[m_o1IdxOffset], code[m_o1LocOffset]);
     
     // Replace undefined input variables with zero
-    for (uint32_t u : bit::BitMask(info.undefinedInputs))
+    for (uint32_t u : bit::BitMask(state.undefinedInputs))
       eliminateInput(spirvCode, u);
 
-    return DxvkShaderModule(vkd, this, spirvCode);
+    return spirvCode;
+  }
+
+
+  DxvkShaderModule DxvkShader::createShaderModule(
+    const Rc<vk::DeviceFn>&           vkd,
+    const DxvkBindingLayoutObjects*   layout,
+    const DxvkShaderModuleCreateInfo& info) {
+    return DxvkShaderModule(vkd, this, getCode(layout, info));
   }
   
   
@@ -402,4 +410,250 @@ namespace dxvk {
     }
   }
   
+
+  DxvkShaderPipelineLibrary::DxvkShaderPipelineLibrary(
+    const DxvkDevice*               device,
+    const DxvkShader*               shader,
+    const DxvkBindingLayoutObjects* layout)
+  : m_device(device), m_shader(shader), m_layout(layout) {
+
+  }
+
+
+  DxvkShaderPipelineLibrary::~DxvkShaderPipelineLibrary() {
+    auto vk = m_device->vkd();
+
+    vk->vkDestroyPipeline(vk->device(), m_pipeline, nullptr);
+    vk->vkDestroyPipeline(vk->device(), m_pipelineNoDepthClip, nullptr);
+  }
+
+
+  VkPipeline DxvkShaderPipelineLibrary::getPipelineHandle(
+          VkPipelineCache                       cache,
+    const DxvkShaderPipelineLibraryCompileArgs& args) {
+    std::lock_guard lock(m_mutex);
+
+    VkPipeline& pipeline = (m_shader->info().stage == VK_SHADER_STAGE_VERTEX_BIT && !args.depthClipEnable)
+      ? m_pipelineNoDepthClip
+      : m_pipeline;
+
+    if (pipeline)
+      return pipeline;
+
+    switch (m_shader->info().stage) {
+      case VK_SHADER_STAGE_VERTEX_BIT:
+        pipeline = compileVertexShaderPipeline(cache, args);
+        break;
+
+      case VK_SHADER_STAGE_FRAGMENT_BIT:
+        pipeline = compileFragmentShaderPipeline(cache);
+        break;
+
+      case VK_SHADER_STAGE_COMPUTE_BIT:
+        pipeline = compileComputeShaderPipeline(cache);
+        break;
+
+      default:
+        // Should be unreachable
+        pipeline = VK_NULL_HANDLE;
+    }
+
+    return pipeline;
+  }
+
+
+  void DxvkShaderPipelineLibrary::compilePipeline(VkPipelineCache cache) {
+    // Just compile the pipeline with default args. Implicitly skips
+    // this step if another thread has compiled the pipeline in the
+    // meantime, in order to avoid duplicate work.
+    getPipelineHandle(cache, DxvkShaderPipelineLibraryCompileArgs());
+  }
+
+
+  VkPipeline DxvkShaderPipelineLibrary::compileVertexShaderPipeline(
+          VkPipelineCache                       cache,
+    const DxvkShaderPipelineLibraryCompileArgs& args) {
+    auto vk = m_device->vkd();
+
+    // Set up shader stage. Do not create a shader module.
+    SpirvCodeBuffer spirv = m_shader->getCode(m_layout, DxvkShaderModuleCreateInfo());
+
+    VkShaderModuleCreateInfo codeInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+    codeInfo.codeSize = spirv.size();
+    codeInfo.pCode    = spirv.data();
+
+    VkPipelineShaderStageCreateInfo stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, &codeInfo };
+    stageInfo.stage   = VK_SHADER_STAGE_VERTEX_BIT;
+    stageInfo.pName   = "main";
+
+    // Set up dynamic state. We do not know any pipeline state
+    // at this time, so make as much state dynamic as we can.
+    std::array<VkDynamicState, 5> dynamicStates = {{
+      VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT,
+      VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT,
+      VK_DYNAMIC_STATE_DEPTH_BIAS,
+      VK_DYNAMIC_STATE_CULL_MODE_EXT,
+      VK_DYNAMIC_STATE_FRONT_FACE_EXT,
+    }};
+
+    VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+    dyInfo.dynamicStateCount  = dynamicStates.size();
+    dyInfo.pDynamicStates     = dynamicStates.data();
+
+    // All viewport state is dynamic, so we do not need to initialize this.
+    VkPipelineViewportStateCreateInfo vpInfo = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
+
+    // Set up rasterizer state. Depth bias, cull mode and front face are all
+    // dynamic, but we do not have dynamic state for depth bias enablement
+    // with the original version of VK_EXT_extended_dynamic_state, so always
+    // enable that. Do not support any polygon modes other than FILL.
+    VkPipelineRasterizationDepthClipStateCreateInfoEXT rsDepthClipInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT };
+
+    VkPipelineRasterizationStateCreateInfo rsInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
+    rsInfo.depthClampEnable   = VK_TRUE;
+    rsInfo.rasterizerDiscardEnable = VK_FALSE;
+    rsInfo.polygonMode        = VK_POLYGON_MODE_FILL;
+    rsInfo.depthBiasEnable    = VK_TRUE;
+    rsInfo.lineWidth          = 1.0f;
+
+    if (m_device->features().extDepthClipEnable.depthClipEnable) {
+      rsDepthClipInfo.pNext   = std::exchange(rsInfo.pNext, &rsDepthClipInfo);
+      rsDepthClipInfo.depthClipEnable = args.depthClipEnable;
+    } else {
+      rsInfo.depthClampEnable = !args.depthClipEnable;
+    }
+
+    // Only the view mask is used as input, and since we do not use MultiView, it is always 0
+    VkPipelineRenderingCreateInfo rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR };
+
+    VkGraphicsPipelineLibraryCreateInfoEXT libInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT, &rtInfo };
+    libInfo.flags             = VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT;
+
+    VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };
+    info.flags                = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
+    info.stageCount           = 1;
+    info.pStages              = &stageInfo;
+    info.pViewportState       = &vpInfo;
+    info.pRasterizationState  = &rsInfo;
+    info.pDynamicState        = &dyInfo;
+    info.layout               = m_layout->getPipelineLayout();
+    info.basePipelineIndex    = -1;
+
+    VkPipeline pipeline = VK_NULL_HANDLE;
+
+    if (vk->vkCreateGraphicsPipelines(vk->device(), cache, 1, &info, nullptr, &pipeline))
+      throw DxvkError("DxvkShaderPipelineLibrary: Failed to create compute pipeline");
+
+    return pipeline;
+  }
+
+
+  VkPipeline DxvkShaderPipelineLibrary::compileFragmentShaderPipeline(VkPipelineCache cache) {
+    auto vk = m_device->vkd();
+
+    // Set up shader stage. Do not create a shader module.
+    SpirvCodeBuffer spirv = m_shader->getCode(m_layout, DxvkShaderModuleCreateInfo());
+
+    VkShaderModuleCreateInfo codeInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+    codeInfo.codeSize = spirv.size();
+    codeInfo.pCode    = spirv.data();
+
+    VkPipelineShaderStageCreateInfo stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, &codeInfo };
+    stageInfo.stage   = VK_SHADER_STAGE_FRAGMENT_BIT;
+    stageInfo.pName   = "main";
+
+    // Set up dynamic state. We do not know any pipeline state
+    // at this time, so make as much state dynamic as we can.
+    uint32_t dynamicStateCount = 0;
+    std::array<VkDynamicState, 10> dynamicStates;
+
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_WRITE_MASK;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_OP_EXT;
+
+    if (m_device->features().core.features.depthBounds) {
+      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE_EXT;
+      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS;
+    }
+
+    VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+    dyInfo.dynamicStateCount  = dynamicStateCount;
+    dyInfo.pDynamicStates     = dynamicStates.data();
+
+    // Set up multisample state. If sample shading is enabled, assume that
+    // we only have one sample enabled, with a non-zero sample mask and no
+    // alpha-to-coverage.
+    uint32_t msSampleMask = 0x1;
+
+    VkPipelineMultisampleStateCreateInfo msInfo = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
+    msInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    msInfo.pSampleMask          = &msSampleMask;
+    msInfo.sampleShadingEnable  = VK_TRUE;
+    msInfo.minSampleShading     = 1.0f;
+
+    // All depth-stencil state is dynamic, so no need to initialize this.
+    // Depth bounds testing is disabled on devices which don't support it.
+    VkPipelineDepthStencilStateCreateInfo dsInfo = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+
+    // Only the view mask is used as input, and since we do not use MultiView, it is always 0
+    VkPipelineRenderingCreateInfo rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR };
+
+    VkGraphicsPipelineLibraryCreateInfoEXT libInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT, &rtInfo };
+    libInfo.flags             = VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT;
+
+    VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };
+    info.flags                = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
+    info.stageCount           = 1;
+    info.pStages              = &stageInfo;
+    info.pDepthStencilState   = &dsInfo;
+    info.pDynamicState        = &dyInfo;
+    info.layout               = m_layout->getPipelineLayout();
+    info.basePipelineIndex    = -1;
+
+    if (m_shader->flags().test(DxvkShaderFlag::HasSampleRateShading))
+      info.pMultisampleState  = &msInfo;
+
+    VkPipeline pipeline = VK_NULL_HANDLE;
+
+    if (vk->vkCreateGraphicsPipelines(vk->device(), cache, 1, &info, nullptr, &pipeline))
+      throw DxvkError("DxvkShaderPipelineLibrary: Failed to create compute pipeline");
+
+    return pipeline;
+  }
+
+
+  VkPipeline DxvkShaderPipelineLibrary::compileComputeShaderPipeline(VkPipelineCache cache) {
+    auto vk = m_device->vkd();
+
+    // Set up shader stage. Do not create a shader module since we only
+    // ever call this if graphics pipeline libraries are supported.
+    SpirvCodeBuffer spirv = m_shader->getCode(m_layout, DxvkShaderModuleCreateInfo());
+
+    VkShaderModuleCreateInfo codeInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+    codeInfo.codeSize = spirv.size();
+    codeInfo.pCode    = spirv.data();
+
+    VkPipelineShaderStageCreateInfo stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO, &codeInfo };
+    stageInfo.stage   = VK_SHADER_STAGE_COMPUTE_BIT;
+    stageInfo.pName   = "main";
+
+    // Compile the compute pipeline as normal
+    VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
+    info.stage        = stageInfo;
+    info.layout       = m_layout->getPipelineLayout();
+    info.basePipelineIndex = -1;
+
+    VkPipeline pipeline = VK_NULL_HANDLE;
+
+    if (vk->vkCreateComputePipelines(vk->device(), cache, 1, &info, nullptr, &pipeline))
+      throw DxvkError("DxvkShaderPipelineLibrary: Failed to create compute pipeline");
+
+    return pipeline;
+  }
+
 }
