@@ -201,7 +201,9 @@ namespace dxvk {
      * \brief Checks whether async compiler is busy
      * \returns \c true if shaders are being compiled
      */
-    bool isCompilingShaders() const;
+    bool isCompilingShaders() const {
+      return m_workers.isBusy();
+    }
 
     /**
      * \brief Stops async compiler threads
@@ -212,6 +214,7 @@ namespace dxvk {
     
     DxvkDevice*               m_device;
     DxvkPipelineCache         m_cache;
+    DxvkPipelineWorkers       m_workers;
     DxvkStateCache            m_stateCache;
 
     std::atomic<uint32_t> m_numComputePipelines  = { 0 };

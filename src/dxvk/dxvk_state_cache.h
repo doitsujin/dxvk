@@ -13,6 +13,8 @@
 namespace dxvk {
 
   class DxvkDevice;
+  class DxvkPipelineManager;
+  class DxvkPipelineWorkers;
 
   /**
    * \brief State cache
@@ -29,8 +31,9 @@ namespace dxvk {
 
     DxvkStateCache(
             DxvkDevice*           device,
-            DxvkPipelineManager*  pipeManager);
-    
+            DxvkPipelineManager*  pipeManager,
+            DxvkPipelineWorkers*  pipeWorkers);
+
     ~DxvkStateCache();
 
     /**
@@ -72,15 +75,7 @@ namespace dxvk {
     /**
      * \brief Explicitly stops worker threads
      */
-    void stopWorkerThreads();
-
-    /**
-     * \brief Checks whether compiler threads are busy
-     * \returns \c true if we're compiling shaders
-     */
-    bool isCompilingShaders() const {
-      return m_workerBusy.load() > 0;
-    }
+    void stopWorkers();
 
   private:
 
@@ -93,6 +88,7 @@ namespace dxvk {
 
     DxvkDevice*                       m_device;
     DxvkPipelineManager*              m_pipeManager;
+    DxvkPipelineWorkers*              m_pipeWorkers;
     bool                              m_enable = false;
 
     std::vector<DxvkStateCacheEntry>  m_entries;
@@ -115,8 +111,7 @@ namespace dxvk {
     dxvk::mutex                       m_workerLock;
     dxvk::condition_variable          m_workerCond;
     std::queue<WorkerItem>            m_workerQueue;
-    std::atomic<uint32_t>             m_workerBusy;
-    std::vector<dxvk::thread>         m_workerThreads;
+    dxvk::thread                      m_workerThread;
 
     dxvk::mutex                       m_writerLock;
     dxvk::condition_variable          m_writerCond;
@@ -160,7 +155,7 @@ namespace dxvk {
 
     void writerFunc();
 
-    void createWorkers();
+    void createWorker();
 
     void createWriter();
 

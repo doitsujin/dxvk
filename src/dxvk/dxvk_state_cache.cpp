@@ -214,9 +214,11 @@ namespace dxvk {
 
   DxvkStateCache::DxvkStateCache(
           DxvkDevice*           device,
-          DxvkPipelineManager*  pipeManager)
+          DxvkPipelineManager*  pipeManager,
+          DxvkPipelineWorkers*  pipeWorkers)
   : m_device      (device),
-    m_pipeManager (pipeManager) {
+    m_pipeManager (pipeManager),
+    m_pipeWorkers (pipeWorkers) {
     std::string useStateCache = env::getEnvVar("DXVK_STATE_CACHE");
     m_enable = useStateCache != "0" && device->config().enableStateCache;
 
@@ -253,7 +255,7 @@ namespace dxvk {
   
 
   DxvkStateCache::~DxvkStateCache() {
-    this->stopWorkerThreads();
+    this->stopWorkers();
   }
 
 
@@ -346,12 +348,12 @@ namespace dxvk {
 
     if (workerLock) {
       m_workerCond.notify_all();
-      createWorkers();
+      createWorker();
     }
   }
 
 
-  void DxvkStateCache::stopWorkerThreads() {
+  void DxvkStateCache::stopWorkers() {
     { std::lock_guard<dxvk::mutex> workerLock(m_workerLock);
       std::lock_guard<dxvk::mutex> writerLock(m_writerLock);
 
@@ -362,8 +364,8 @@ namespace dxvk {
       m_writerCond.notify_all();
     }
 
-    for (auto& worker : m_workerThreads)
-      worker.join();
+    if (m_workerThread.joinable())
+      m_workerThread.join();
     
     if (m_writerThread.joinable())
       m_writerThread.join();
@@ -420,7 +422,7 @@ namespace dxvk {
 
       for (auto e = entries.first; e != entries.second; e++) {
         const auto& entry = m_entries[e->second];
-        pipeline->compilePipeline(entry.gpState);
+        m_pipeWorkers->compileGraphicsPipeline(pipeline, entry.gpState);
       }
     } else {
       auto pipeline = m_pipeManager->createComputePipeline(item.cp);
@@ -428,7 +430,7 @@ namespace dxvk {
 
       for (auto e = entries.first; e != entries.second; e++) {
         const auto& entry = m_entries[e->second];
-        pipeline->compilePipeline(entry.cpState);
+        m_pipeWorkers->compileComputePipeline(pipeline, entry.cpState);
       }
     }
   }
@@ -704,7 +706,7 @@ namespace dxvk {
 
 
   void DxvkStateCache::workerFunc() {
-    env::setThreadName("dxvk-shader");
+    env::setThreadName("dxvk-worker");
 
     while (!m_stopThreads.load()) {
       WorkerItem item;
@@ -712,14 +714,10 @@ namespace dxvk {
       { std::unique_lock<dxvk::mutex> lock(m_workerLock);
 
         if (m_workerQueue.empty()) {
-          m_workerBusy -= 1;
           m_workerCond.wait(lock, [this] () {
             return m_workerQueue.size()
                 || m_stopThreads.load();
           });
-
-          if (!m_workerQueue.empty())
-            m_workerBusy += 1;
         }
 
         if (m_workerQueue.empty())
@@ -767,28 +765,9 @@ namespace dxvk {
   }
 
 
-  void DxvkStateCache::createWorkers() {
-    if (m_workerThreads.empty()) {
-      // Use half the available CPU cores for pipeline compilation
-      uint32_t numCpuCores = dxvk::thread::hardware_concurrency();
-      uint32_t numWorkers  = ((std::max(1u, numCpuCores) - 1) * 5) / 7;
-
-      if (numWorkers <  1) numWorkers =  1;
-      if (numWorkers > 32) numWorkers = 32;
-
-      if (m_device->config().numCompilerThreads > 0)
-        numWorkers = m_device->config().numCompilerThreads;
-
-      Logger::info(str::format("DXVK: Using ", numWorkers, " compiler threads"));
-
-      // Start the worker threads and the file writer
-      m_workerBusy.store(numWorkers);
-
-      for (uint32_t i = 0; i < numWorkers; i++) {
-        m_workerThreads.emplace_back([this] () { workerFunc(); });
-        m_workerThreads[i].set_priority(ThreadPriority::Lowest);
-      }
-    }
+  void DxvkStateCache::createWorker() {
+    if (!m_workerThread.joinable())
+      m_workerThread = dxvk::thread([this] () { workerFunc(); });
   }
 
 

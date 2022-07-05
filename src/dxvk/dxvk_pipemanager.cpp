@@ -165,7 +165,9 @@ namespace dxvk {
           DxvkDevice*         device)
   : m_device    (device),
     m_cache     (device),
-    m_stateCache(device, this) {
+    m_workers   (device, &m_cache),
+    m_stateCache(device, this, &m_workers) {
+
   }
   
   
@@ -277,13 +279,9 @@ namespace dxvk {
   }
 
 
-  bool DxvkPipelineManager::isCompilingShaders() const {
-    return m_stateCache.isCompilingShaders();
-  }
-
-
   void DxvkPipelineManager::stopWorkerThreads() {
-    m_stateCache.stopWorkerThreads();
+    m_workers.stopWorkers();
+    m_stateCache.stopWorkers();
   }
 
 
