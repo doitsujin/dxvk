@@ -598,10 +598,26 @@ namespace dxvk {
 
   DxvkGraphicsPipelineInstance* DxvkGraphicsPipeline::createInstance(
     const DxvkGraphicsPipelineStateInfo& state) {
-    VkPipeline pipeline = this->createOptimizedPipeline(state);
+    VkPipeline baseHandle = VK_NULL_HANDLE;
+    VkPipeline fastHandle = VK_NULL_HANDLE;
+
+    if (this->canCreateBasePipeline(state)) {
+      DxvkGraphicsPipelineVertexInputState    viState(m_device, state);
+      DxvkGraphicsPipelineFragmentOutputState foState(m_device, state, m_shaders.fs.ptr());
+
+      DxvkGraphicsPipelineBaseInstanceKey key;
+      key.viLibrary = m_manager->createVertexInputLibrary(viState);
+      key.foLibrary = m_manager->createFragmentOutputLibrary(foState);
+      key.args.depthClipEnable = state.rs.depthClipEnable();
+
+      baseHandle = this->createBasePipeline(key);
+    } else {
+      // Create optimized variant right away, no choice
+      fastHandle = this->createOptimizedPipeline(state);
+    }
 
     m_stats->numGraphicsPipelines += 1;
-    return &(*m_pipelines.emplace(state, VK_NULL_HANDLE, pipeline));
+    return &(*m_pipelines.emplace(state, baseHandle, fastHandle));
   }
   
   
@@ -615,6 +631,86 @@ namespace dxvk {
     return nullptr;
   }
   
+  
+  bool DxvkGraphicsPipeline::canCreateBasePipeline(
+    const DxvkGraphicsPipelineStateInfo& state) const {
+    if (!m_vsLibrary || !m_fsLibrary)
+      return false;
+
+    // Certain rasterization states cannot be set dynamically,
+    // so we're assuming defaults for them, most notably the
+    // polygon mode and conservative rasterization settings
+    if (state.rs.polygonMode() != VK_POLYGON_MODE_FILL
+     || state.rs.conservativeMode() != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT)
+      return false;
+
+    if (m_shaders.fs != nullptr) {
+      // If the fragment shader has inputs not produced by the
+      // vertex shader, we need to patch the fragment shader
+      uint32_t vsIoMask = m_shaders.vs->info().outputMask;
+      uint32_t fsIoMask = m_shaders.fs->info().inputMask;
+
+      if ((vsIoMask & fsIoMask) != fsIoMask)
+        return false;
+
+      // Dual-source blending requires patching the fragment shader
+      if (state.useDualSourceBlending())
+        return false;
+
+      // Multisample state must match in this case, and the
+      // library assumes that MSAA is disabled in this case.
+      if (m_shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading)) {
+        if (state.ms.sampleCount() != VK_SAMPLE_COUNT_1_BIT
+         || state.ms.sampleMask() == 0
+         || state.ms.enableAlphaToCoverage())
+          return false;
+      }
+    }
+
+    // Remapping fragment shader outputs would require spec constants
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      VkFormat rtFormat = state.rt.getColorFormat(i);
+
+      if (rtFormat && (m_fsOut & (1u << i)) && state.omBlend[i].colorWriteMask()) {
+        auto mapping = state.omSwizzle[i].mapping();
+
+        if (mapping.r != VK_COMPONENT_SWIZZLE_R
+         || mapping.g != VK_COMPONENT_SWIZZLE_G
+         || mapping.b != VK_COMPONENT_SWIZZLE_B
+         || mapping.a != VK_COMPONENT_SWIZZLE_A)
+          return false;
+      }
+    }
+
+    return true;
+  }
+
+
+  VkPipeline DxvkGraphicsPipeline::createBasePipeline(
+    const DxvkGraphicsPipelineBaseInstanceKey& key) const {
+    auto vk = m_device->vkd();
+
+    std::array<VkPipeline, 4> libraries = {{
+      key.viLibrary->getHandle(),
+      m_vsLibrary->getPipelineHandle(m_cache->handle(), key.args),
+      m_fsLibrary->getPipelineHandle(m_cache->handle(), key.args),
+      key.foLibrary->getHandle(),
+    }};
+
+		VkPipelineLibraryCreateInfoKHR libInfo = { VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR };
+		libInfo.libraryCount = libraries.size();
+		libInfo.pLibraries = libraries.data();
+
+    VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };
+
+    VkPipeline pipeline = VK_NULL_HANDLE;
+
+    if ((vk->vkCreateGraphicsPipelines(vk->device(), m_cache->handle(), 1, &info, nullptr, &pipeline)))
+      Logger::err("DxvkGraphicsPipeline: Failed to create base pipeline");
+
+    return pipeline;
+  }
+
   
   VkPipeline DxvkGraphicsPipeline::createOptimizedPipeline(
     const DxvkGraphicsPipelineStateInfo& state) const {
@@ -739,13 +835,8 @@ namespace dxvk {
     DxvkShaderModuleCreateInfo info;
 
     // Fix up fragment shader outputs for dual-source blending
-    if (shaderInfo.stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
-      info.fsDualSrcBlend = state.omBlend[0].blendEnable() && (
-        util::isDualSourceBlendFactor(state.omBlend[0].srcColorBlendFactor()) ||
-        util::isDualSourceBlendFactor(state.omBlend[0].dstColorBlendFactor()) ||
-        util::isDualSourceBlendFactor(state.omBlend[0].srcAlphaBlendFactor()) ||
-        util::isDualSourceBlendFactor(state.omBlend[0].dstAlphaBlendFactor()));
-    }
+    if (shaderInfo.stage == VK_SHADER_STAGE_FRAGMENT_BIT)
+      info.fsDualSrcBlend = state.useDualSourceBlending();
 
     // Deal with undefined shader inputs
     uint32_t consumedInputs = shaderInfo.inputMask;

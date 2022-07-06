@@ -262,6 +262,13 @@ namespace dxvk {
     std::atomic<VkBool32>         isCompiling = { VK_FALSE };
   };
 
+
+  struct DxvkGraphicsPipelineBaseInstanceKey {
+    const DxvkGraphicsPipelineVertexInputLibrary*     viLibrary;
+    const DxvkGraphicsPipelineFragmentOutputLibrary*  foLibrary;
+    DxvkShaderPipelineLibraryCompileArgs              args;
+  };
+
   
   /**
    * \brief Graphics pipeline
@@ -387,6 +394,12 @@ namespace dxvk {
     
     DxvkGraphicsPipelineInstance* findInstance(
       const DxvkGraphicsPipelineStateInfo& state);
+
+    bool canCreateBasePipeline(
+      const DxvkGraphicsPipelineStateInfo& state) const;
+
+    VkPipeline createBasePipeline(
+      const DxvkGraphicsPipelineBaseInstanceKey& key) const;
     
     VkPipeline createOptimizedPipeline(
       const DxvkGraphicsPipelineStateInfo& state) const;

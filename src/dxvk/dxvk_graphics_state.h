@@ -758,7 +758,15 @@ namespace dxvk {
 
       return result;
     }
-    
+
+    bool useDualSourceBlending() const {
+      return omBlend[0].blendEnable() && (
+        util::isDualSourceBlendFactor(omBlend[0].srcColorBlendFactor()) ||
+        util::isDualSourceBlendFactor(omBlend[0].dstColorBlendFactor()) ||
+        util::isDualSourceBlendFactor(omBlend[0].srcAlphaBlendFactor()) ||
+        util::isDualSourceBlendFactor(omBlend[0].dstAlphaBlendFactor()));
+    }
+
     DxvkIaInfo              ia;
     DxvkIlInfo              il;
     DxvkRsInfo              rs;
