@@ -1,6 +1,8 @@
 #include "dxvk_device.h"
 #include "dxvk_shader.h"
 
+#include <dxvk_dummy_frag.h>
+
 #include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
@@ -444,14 +446,19 @@ namespace dxvk {
     const DxvkShaderPipelineLibraryCompileArgs& args) {
     std::lock_guard lock(m_mutex);
 
-    VkPipeline& pipeline = (m_shader->info().stage == VK_SHADER_STAGE_VERTEX_BIT && !args.depthClipEnable)
+    VkShaderStageFlagBits stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    if (m_shader)
+      stage = m_shader->info().stage;
+
+    VkPipeline& pipeline = (stage == VK_SHADER_STAGE_VERTEX_BIT && !args.depthClipEnable)
       ? m_pipelineNoDepthClip
       : m_pipeline;
 
     if (pipeline)
       return pipeline;
 
-    switch (m_shader->info().stage) {
+    switch (stage) {
       case VK_SHADER_STAGE_VERTEX_BIT:
         pipeline = compileVertexShaderPipeline(cache, args);
         break;
@@ -555,9 +562,18 @@ namespace dxvk {
   VkPipeline DxvkShaderPipelineLibrary::compileFragmentShaderPipeline(VkPipelineCache cache) {
     auto vk = m_device->vkd();
 
+    // Initialize code buffer. As a special case, it is possible that
+    // we have to deal with a null shader, but the pipeline library
+    // extension requires us to always specify a fragment shader.
     DxvkShaderStageInfo stageInfo(m_device);
-    stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT,
-      m_shader->getCode(m_layout, DxvkShaderModuleCreateInfo()), nullptr);
+
+    if (m_shader) {
+      stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT,
+        m_shader->getCode(m_layout, DxvkShaderModuleCreateInfo()), nullptr);
+    } else {
+      stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT,
+        SpirvCodeBuffer(dxvk_dummy_frag), nullptr);
+    }
 
     // Set up dynamic state. We do not know any pipeline state
     // at this time, so make as much state dynamic as we can.
@@ -612,7 +628,7 @@ namespace dxvk {
     info.layout               = m_layout->getPipelineLayout();
     info.basePipelineIndex    = -1;
 
-    if (m_shader->flags().test(DxvkShaderFlag::HasSampleRateShading))
+    if (m_shader && m_shader->flags().test(DxvkShaderFlag::HasSampleRateShading))
       info.pMultisampleState  = &msInfo;
 
     VkPipeline pipeline = VK_NULL_HANDLE;
