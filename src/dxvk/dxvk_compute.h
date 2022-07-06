@@ -39,44 +39,15 @@ namespace dxvk {
   /**
    * \brief Compute pipeline instance
    */
-  class DxvkComputePipelineInstance {
-
-  public:
-
-    DxvkComputePipelineInstance()
-    : m_stateVector (),
-      m_pipeline    (VK_NULL_HANDLE) { }
-
+  struct DxvkComputePipelineInstance {
+    DxvkComputePipelineInstance() { }
     DxvkComputePipelineInstance(
-      const DxvkComputePipelineStateInfo& state,
-            VkPipeline                    pipe)
-    : m_stateVector (state),
-      m_pipeline    (pipe) { }
+      const DxvkComputePipelineStateInfo& state_,
+            VkPipeline                    handle_)
+    : state(state_), handle(handle_) { }
 
-    /**
-     * \brief Checks for matching pipeline state
-     * 
-     * \param [in] stateVector Graphics pipeline state
-     * \param [in] renderPass Render pass handle
-     * \returns \c true if the specialization is compatible
-     */
-    bool isCompatible(const DxvkComputePipelineStateInfo& state) const {
-      return m_stateVector == state;
-    }
-
-    /**
-     * \brief Retrieves pipeline
-     * \returns The pipeline handle
-     */
-    VkPipeline pipeline() const {
-      return m_pipeline;
-    }
-
-  private:
-
-    DxvkComputePipelineStateInfo m_stateVector;
-    VkPipeline                   m_pipeline;
-
+    DxvkComputePipelineStateInfo state;
+    VkPipeline                   handle = VK_NULL_HANDLE;
   };
   
   

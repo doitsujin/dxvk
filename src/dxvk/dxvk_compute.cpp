@@ -30,7 +30,7 @@ namespace dxvk {
   
   DxvkComputePipeline::~DxvkComputePipeline() {
     for (const auto& instance : m_pipelines)
-      this->destroyPipeline(instance.pipeline());
+      this->destroyPipeline(instance.handle);
   }
   
   
@@ -60,7 +60,7 @@ namespace dxvk {
         }
       }
 
-      return instance->pipeline();
+      return instance->handle;
     }
   }
 
@@ -88,7 +88,7 @@ namespace dxvk {
   DxvkComputePipelineInstance* DxvkComputePipeline::findInstance(
     const DxvkComputePipelineStateInfo& state) {
     for (auto& instance : m_pipelines) {
-      if (instance.isCompatible(state))
+      if (instance.state == state)
         return &instance;
     }
     

@@ -493,7 +493,7 @@ namespace dxvk {
   
   DxvkGraphicsPipeline::~DxvkGraphicsPipeline() {
     for (const auto& instance : m_pipelines)
-      this->destroyPipeline(instance.pipeline());
+      this->destroyPipeline(instance.handle);
   }
   
   
@@ -545,7 +545,7 @@ namespace dxvk {
       }
     }
 
-    return instance->pipeline();
+    return instance->handle;
   }
 
 
@@ -576,7 +576,7 @@ namespace dxvk {
   DxvkGraphicsPipelineInstance* DxvkGraphicsPipeline::findInstance(
     const DxvkGraphicsPipelineStateInfo& state) {
     for (auto& instance : m_pipelines) {
-      if (instance.isCompatible(state))
+      if (instance.state == state)
         return &instance;
     }
     

@@ -236,44 +236,15 @@ namespace dxvk {
    * Stores a state vector and the
    * corresponding pipeline handle.
    */
-  class DxvkGraphicsPipelineInstance {
-
-  public:
-
-    DxvkGraphicsPipelineInstance()
-    : m_stateVector (),
-      m_pipeline    (VK_NULL_HANDLE) { }
-
+  struct DxvkGraphicsPipelineInstance {
+    DxvkGraphicsPipelineInstance() { }
     DxvkGraphicsPipelineInstance(
-      const DxvkGraphicsPipelineStateInfo&  state,
-            VkPipeline                      pipe)
-    : m_stateVector (state),
-      m_pipeline    (pipe) { }
+      const DxvkGraphicsPipelineStateInfo&  state_,
+            VkPipeline                      handle_)
+    : state(state_), handle(handle_) { }
 
-    /**
-     * \brief Checks for matching pipeline state
-     * 
-     * \param [in] stateVector Graphics pipeline state
-     * \returns \c true if the specialization is compatible
-     */
-    bool isCompatible(
-      const DxvkGraphicsPipelineStateInfo&  state) {
-      return m_stateVector == state;
-    }
-
-    /**
-     * \brief Retrieves pipeline
-     * \returns The pipeline handle
-     */
-    VkPipeline pipeline() const {
-      return m_pipeline;
-    }
-
-  private:
-
-    DxvkGraphicsPipelineStateInfo m_stateVector;
-    VkPipeline                    m_pipeline;
-
+    DxvkGraphicsPipelineStateInfo state;
+    VkPipeline                    handle = VK_NULL_HANDLE;
   };
 
   
