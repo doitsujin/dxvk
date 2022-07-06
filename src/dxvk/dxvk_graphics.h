@@ -360,6 +360,8 @@ namespace dxvk {
   private:
 
     DxvkDevice*                 m_device;    
+    DxvkPipelineManager*        m_manager;
+    DxvkPipelineWorkers*        m_workers;
     DxvkPipelineCache*          m_cache;
     DxvkStateCache*             m_stateCache;
     DxvkPipelineStats*          m_stats;

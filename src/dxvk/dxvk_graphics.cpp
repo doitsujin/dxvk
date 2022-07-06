@@ -465,6 +465,8 @@ namespace dxvk {
           DxvkShaderPipelineLibrary*  vsLibrary,
           DxvkShaderPipelineLibrary*  fsLibrary)
   : m_device        (device),
+    m_manager       (pipeMgr),
+    m_workers       (&pipeMgr->m_workers),
     m_cache         (&pipeMgr->m_cache),
     m_stateCache    (&pipeMgr->m_stateCache),
     m_stats         (&pipeMgr->m_stats),
@@ -544,6 +546,10 @@ namespace dxvk {
         // a state cache worker and the current thread needs priority.
         instance = this->createInstance(state);
         this->writePipelineStateToCache(state);
+
+        // If necessary, compile an optimized pipeline variant
+        if (!instance->fastHandle.load())
+          m_workers->compileGraphicsPipeline(this, state);
       }
     }
 
