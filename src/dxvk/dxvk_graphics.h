@@ -388,7 +388,7 @@ namespace dxvk {
     DxvkGraphicsPipelineInstance* findInstance(
       const DxvkGraphicsPipelineStateInfo& state);
     
-    VkPipeline createPipeline(
+    VkPipeline createOptimizedPipeline(
       const DxvkGraphicsPipelineStateInfo& state) const;
     
     void destroyPipeline(

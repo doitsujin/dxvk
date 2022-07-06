@@ -566,22 +566,39 @@ namespace dxvk {
 
   void DxvkGraphicsPipeline::compilePipeline(
     const DxvkGraphicsPipelineStateInfo& state) {
-    // Exit early if the state vector is invalid
-    if (!this->validatePipelineState(state, false))
+    if (m_device->config().enableGraphicsPipelineLibrary == Tristate::True)
       return;
 
-    // Keep the object locked while compiling a pipeline since compiling
-    // similar pipelines concurrently is fragile on some drivers
-    std::lock_guard<dxvk::mutex> lock(m_mutex);
+    // Try to find an existing instance that contains a base pipeline
+    DxvkGraphicsPipelineInstance* instance = this->findInstance(state);
 
-    if (!this->findInstance(state))
-      this->createInstance(state);
+    if (!instance) {
+      // Exit early if the state vector is invalid
+      if (!this->validatePipelineState(state, false))
+        return;
+
+      // Prevent other threads from adding new instances and check again
+      std::lock_guard<dxvk::mutex> lock(m_mutex);
+      instance = this->findInstance(state);
+
+      if (!instance)
+        instance = this->createInstance(state);
+    }
+
+    // Exit if another thread is already compiling
+    // an optimized version of this pipeline
+    if (instance->isCompiling.load()
+     || instance->isCompiling.exchange(VK_TRUE, std::memory_order_acquire))
+      return;
+
+    VkPipeline pipeline = this->createOptimizedPipeline(state);
+    instance->fastHandle.store(pipeline, std::memory_order_release);
   }
 
 
   DxvkGraphicsPipelineInstance* DxvkGraphicsPipeline::createInstance(
     const DxvkGraphicsPipelineStateInfo& state) {
-    VkPipeline pipeline = this->createPipeline(state);
+    VkPipeline pipeline = this->createOptimizedPipeline(state);
 
     m_stats->numGraphicsPipelines += 1;
     return &(*m_pipelines.emplace(state, VK_NULL_HANDLE, pipeline));
@@ -599,7 +616,7 @@ namespace dxvk {
   }
   
   
-  VkPipeline DxvkGraphicsPipeline::createPipeline(
+  VkPipeline DxvkGraphicsPipeline::createOptimizedPipeline(
     const DxvkGraphicsPipelineStateInfo& state) const {
     auto vk = m_device->vkd();
 
