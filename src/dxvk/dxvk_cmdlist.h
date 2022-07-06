@@ -699,10 +699,37 @@ namespace dxvk {
     }
 
 
+    void cmdSetDepthBoundsState(
+            VkBool32                depthBoundsTestEnable) {
+      m_vkd->vkCmdSetDepthBoundsTestEnableEXT(m_execBuffer, depthBoundsTestEnable);
+    }
+
+
+    void cmdSetDepthState(
+            VkBool32                depthTestEnable,
+            VkBool32                depthWriteEnable,
+            VkCompareOp             depthCompareOp) {
+      m_vkd->vkCmdSetDepthTestEnableEXT(m_execBuffer, depthTestEnable);
+
+      if (depthTestEnable) {
+        m_vkd->vkCmdSetDepthWriteEnableEXT(m_execBuffer, depthWriteEnable);
+        m_vkd->vkCmdSetDepthCompareOpEXT(m_execBuffer, depthCompareOp);
+      }
+    }
+
+
     void cmdSetEvent(
             VkEvent                 event,
             VkPipelineStageFlags    stages) {
       m_vkd->vkCmdSetEvent(m_execBuffer, event, stages);
+    }
+
+
+    void cmdSetRasterizerState(
+            VkCullModeFlags         cullMode,
+            VkFrontFace             frontFace) {
+      m_vkd->vkCmdSetCullModeEXT(m_execBuffer, cullMode);
+      m_vkd->vkCmdSetFrontFaceEXT(m_execBuffer, frontFace);
     }
 
     
@@ -711,6 +738,33 @@ namespace dxvk {
       const VkRect2D*               scissors) {
       m_vkd->vkCmdSetScissorWithCountEXT(
         m_execBuffer, scissorCount, scissors);
+    }
+
+
+    void cmdSetStencilState(
+            VkBool32                enableStencilTest,
+      const VkStencilOpState&       front,
+      const VkStencilOpState&       back) {
+      m_vkd->vkCmdSetStencilTestEnableEXT(
+        m_execBuffer, enableStencilTest);
+
+      if (enableStencilTest) {
+        m_vkd->vkCmdSetStencilOpEXT(m_execBuffer,
+          VK_STENCIL_FACE_FRONT_BIT, front.failOp,
+          front.passOp, front.depthFailOp, front.compareOp);
+        m_vkd->vkCmdSetStencilCompareMask(m_execBuffer,
+          VK_STENCIL_FACE_FRONT_BIT, front.compareMask);
+        m_vkd->vkCmdSetStencilWriteMask(m_execBuffer,
+          VK_STENCIL_FACE_FRONT_BIT, front.writeMask);
+
+        m_vkd->vkCmdSetStencilOpEXT(m_execBuffer,
+          VK_STENCIL_FACE_BACK_BIT, back.failOp,
+          back.passOp, back.depthFailOp, back.compareOp);
+        m_vkd->vkCmdSetStencilCompareMask(m_execBuffer,
+          VK_STENCIL_FACE_BACK_BIT, back.compareMask);
+        m_vkd->vkCmdSetStencilWriteMask(m_execBuffer,
+          VK_STENCIL_FACE_BACK_BIT, back.writeMask);
+      }
     }
 
 
