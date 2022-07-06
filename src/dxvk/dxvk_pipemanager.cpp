@@ -169,6 +169,11 @@ namespace dxvk {
     m_stateCache(device, this, &m_workers) {
     Logger::info(str::format("DXVK: Graphics pipeline libraries ",
       (m_device->canUseGraphicsPipelineLibrary() ? "supported" : "not supported")));
+
+    if (m_device->canUseGraphicsPipelineLibrary()) {
+      auto library = createNullFsPipelineLibrary();
+      library->compilePipeline(m_cache.handle());
+    }
   }
   
   
@@ -231,7 +236,6 @@ namespace dxvk {
     DxvkShaderPipelineLibrary* fsLibrary = nullptr;
 
     if (shaders.tcs == nullptr && shaders.tes == nullptr && shaders.gs == nullptr) {
-      // TODO handle null fs properly
       vsLibrary = findPipelineLibrary(shaders.vs);
       fsLibrary = findPipelineLibrary(shaders.fs);
     }
@@ -350,6 +354,19 @@ namespace dxvk {
       std::piecewise_construct,
       std::tuple(key),
       std::tuple(m_device, shader.ptr(), layout));
+    return &iter.first->second;
+  }
+
+
+  DxvkShaderPipelineLibrary* DxvkPipelineManager::createNullFsPipelineLibrary() {
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
+    auto layout = createPipelineLayout(DxvkBindingLayout(
+      VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT));
+
+    auto iter = m_shaderLibraries.emplace(
+      std::piecewise_construct,
+      std::tuple(),
+      std::tuple(m_device, nullptr, layout));
     return &iter.first->second;
   }
 

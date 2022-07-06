@@ -271,6 +271,8 @@ namespace dxvk {
     DxvkShaderPipelineLibrary* createPipelineLibrary(
       const Rc<DxvkShader>&     shader);
 
+    DxvkShaderPipelineLibrary* createNullFsPipelineLibrary();
+
     DxvkShaderPipelineLibrary* findPipelineLibrary(
       const Rc<DxvkShader>&     shader);
 
