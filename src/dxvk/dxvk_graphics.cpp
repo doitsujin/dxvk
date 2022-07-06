@@ -461,14 +461,18 @@ namespace dxvk {
           DxvkDevice*                 device,
           DxvkPipelineManager*        pipeMgr,
           DxvkGraphicsPipelineShaders shaders,
-          DxvkBindingLayoutObjects*   layout)
+          DxvkBindingLayoutObjects*   layout,
+          DxvkShaderPipelineLibrary*  vsLibrary,
+          DxvkShaderPipelineLibrary*  fsLibrary)
   : m_device        (device),
     m_cache         (&pipeMgr->m_cache),
     m_stateCache    (&pipeMgr->m_stateCache),
     m_stats         (&pipeMgr->m_stats),
     m_shaders       (std::move(shaders)),
     m_bindings      (layout),
-    m_barrier       (layout->getGlobalBarrier()) {
+    m_barrier       (layout->getGlobalBarrier()),
+    m_vsLibrary     (vsLibrary),
+    m_fsLibrary     (fsLibrary) {
     m_vsIn  = m_shaders.vs != nullptr ? m_shaders.vs->info().inputMask  : 0;
     m_fsOut = m_shaders.fs != nullptr ? m_shaders.fs->info().outputMask : 0;
 

@@ -292,7 +292,9 @@ namespace dxvk {
             DxvkDevice*                 device,
             DxvkPipelineManager*        pipeMgr,
             DxvkGraphicsPipelineShaders shaders,
-            DxvkBindingLayoutObjects*   layout);
+            DxvkBindingLayoutObjects*   layout,
+            DxvkShaderPipelineLibrary*  vsLibrary,
+            DxvkShaderPipelineLibrary*  fsLibrary);
 
     ~DxvkGraphicsPipeline();
 
@@ -380,6 +382,9 @@ namespace dxvk {
     DxvkBindingLayoutObjects*   m_bindings;
     DxvkGlobalPipelineBarrier   m_barrier;
     DxvkGraphicsPipelineFlags   m_flags;
+
+    DxvkShaderPipelineLibrary*  m_vsLibrary;
+    DxvkShaderPipelineLibrary*  m_fsLibrary;
 
     uint32_t m_vsIn  = 0;
     uint32_t m_fsOut = 0;

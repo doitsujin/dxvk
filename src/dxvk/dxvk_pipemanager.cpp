@@ -227,10 +227,20 @@ namespace dxvk {
 
     auto layout = createPipelineLayout(mergedLayout);
 
+    DxvkShaderPipelineLibrary* vsLibrary = nullptr;
+    DxvkShaderPipelineLibrary* fsLibrary = nullptr;
+
+    if (shaders.tcs == nullptr && shaders.tes == nullptr && shaders.gs == nullptr) {
+      // TODO handle null fs properly
+      vsLibrary = findPipelineLibrary(shaders.vs);
+      fsLibrary = findPipelineLibrary(shaders.fs);
+    }
+
     auto iter = m_graphicsPipelines.emplace(
       std::piecewise_construct,
       std::tuple(shaders),
-      std::tuple(m_device, this, shaders, layout));
+      std::tuple(m_device, this, shaders,
+        layout, vsLibrary, fsLibrary));
     return &iter.first->second;
   }
 
