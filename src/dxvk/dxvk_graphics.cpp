@@ -492,8 +492,10 @@ namespace dxvk {
   
   
   DxvkGraphicsPipeline::~DxvkGraphicsPipeline() {
-    for (const auto& instance : m_pipelines)
-      this->destroyPipeline(instance.handle);
+    for (const auto& instance : m_pipelines) {
+      this->destroyPipeline(instance.baseHandle.load());
+      this->destroyPipeline(instance.fastHandle.load());
+    }
   }
   
   
@@ -545,7 +547,14 @@ namespace dxvk {
       }
     }
 
-    return std::make_pair(instance->handle, DxvkGraphicsPipelineType::FastPipeline);
+    // Find a pipeline handle to use. If no optimized pipeline has
+    // been compiled yet, use the slower base pipeline instead.
+    VkPipeline fastHandle = instance->fastHandle.load();
+
+    if (likely(fastHandle != VK_NULL_HANDLE))
+      return std::make_pair(fastHandle, DxvkGraphicsPipelineType::FastPipeline);
+
+    return std::make_pair(instance->baseHandle.load(), DxvkGraphicsPipelineType::BasePipeline);
   }
 
 
@@ -569,7 +578,7 @@ namespace dxvk {
     VkPipeline pipeline = this->createPipeline(state);
 
     m_stats->numGraphicsPipelines += 1;
-    return &(*m_pipelines.emplace(state, pipeline));
+    return &(*m_pipelines.emplace(state, VK_NULL_HANDLE, pipeline));
   }
   
   

@@ -249,11 +249,17 @@ namespace dxvk {
     DxvkGraphicsPipelineInstance() { }
     DxvkGraphicsPipelineInstance(
       const DxvkGraphicsPipelineStateInfo&  state_,
-            VkPipeline                      handle_)
-    : state(state_), handle(handle_) { }
+            VkPipeline                      baseHandle_,
+            VkPipeline                      fastHandle_)
+    : state       (state_),
+      baseHandle  (baseHandle_),
+      fastHandle  (fastHandle_),
+      isCompiling (fastHandle_ != VK_NULL_HANDLE) { }
 
     DxvkGraphicsPipelineStateInfo state;
-    VkPipeline                    handle = VK_NULL_HANDLE;
+    std::atomic<VkPipeline>       baseHandle  = { VK_NULL_HANDLE };
+    std::atomic<VkPipeline>       fastHandle  = { VK_NULL_HANDLE };
+    std::atomic<VkBool32>         isCompiling = { VK_FALSE };
   };
 
   
