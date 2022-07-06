@@ -40,6 +40,11 @@ namespace dxvk {
   
   
   D3D11ImmediateContext::~D3D11ImmediateContext() {
+    // Avoids hanging when in this state, see comment
+    // in DxvkDevice::~DxvkDevice.
+    if (this_thread::isInModuleDetachment())
+      return;
+
     Flush();
     SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
     SynchronizeDevice();
