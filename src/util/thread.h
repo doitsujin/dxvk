@@ -153,6 +153,8 @@ namespace dxvk {
     inline uint32_t get_id() {
       return uint32_t(GetCurrentThreadId());
     }
+
+    bool isInModuleDetachment();
   }
 
 
@@ -341,6 +343,10 @@ namespace dxvk {
     }
 
     uint32_t get_id();
+
+    inline bool isInModuleDetachment() {
+      return false;
+    }
   }
 #endif
 
