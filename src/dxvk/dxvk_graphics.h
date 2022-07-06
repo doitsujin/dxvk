@@ -231,6 +231,15 @@ namespace dxvk {
 
 
   /**
+   * \brief Graphics pipeline type
+   */
+  enum class DxvkGraphicsPipelineType : uint32_t {
+    BasePipeline = 0, ///< Unoptimized pipeline using graphics pipeline libraries
+    FastPipeline = 1, ///< Monolithic pipeline with less dynamic state
+  };
+
+
+  /**
    * \brief Graphics pipeline instance
    * 
    * Stores a state vector and the
@@ -327,9 +336,9 @@ namespace dxvk {
      * Retrieves a pipeline handle for the given pipeline
      * state. If necessary, a new pipeline will be created.
      * \param [in] state Pipeline state vector
-     * \returns Pipeline handle
+     * \returns Pipeline handle and handle type
      */
-    VkPipeline getPipelineHandle(
+    std::pair<VkPipeline, DxvkGraphicsPipelineType> getPipelineHandle(
       const DxvkGraphicsPipelineStateInfo&    state);
     
     /**

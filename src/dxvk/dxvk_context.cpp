@@ -4500,14 +4500,40 @@ namespace dxvk {
       : DxvkContextFlag::GpDirtyStencilRef);
     
     // Retrieve and bind actual Vulkan pipeline handle
-    VkPipeline pipeline = m_state.gp.pipeline->getPipelineHandle(m_state.gp.state);
+    auto pipelineInfo = m_state.gp.pipeline->getPipelineHandle(m_state.gp.state);
 
-    if (unlikely(!pipeline))
+    if (unlikely(!pipelineInfo.first))
       return false;
 
     m_cmd->cmdBindPipeline(
       VK_PIPELINE_BIND_POINT_GRAPHICS,
-      pipeline);
+      pipelineInfo.first);
+
+    // For pipelines created from graphics pipeline libraries, we need
+    // to apply a bunch of dynamic state that is otherwise static
+    if (pipelineInfo.second == DxvkGraphicsPipelineType::BasePipeline) {
+      m_cmd->cmdSetRasterizerState(
+        m_state.gp.state.rs.cullMode(),
+        m_state.gp.state.rs.frontFace());
+
+      m_cmd->cmdSetDepthState(
+        m_state.gp.state.ds.enableDepthTest(),
+        m_state.gp.state.ds.enableDepthWrite(),
+        m_state.gp.state.ds.depthCompareOp());
+
+      m_cmd->cmdSetStencilState(
+        m_state.gp.state.ds.enableStencilTest(),
+        m_state.gp.state.dsFront.state(),
+        m_state.gp.state.dsBack.state());
+
+      if (m_device->features().core.features.depthBounds) {
+        m_cmd->cmdSetDepthBoundsState(
+          m_state.gp.state.ds.enableDepthBoundsTest());
+      }
+
+      if (!m_state.gp.state.rs.depthBiasEnable())
+        m_cmd->cmdSetDepthBias(0.0f, 0.0f, 0.0f);
+    }
 
     // Emit barrier based on pipeline properties, in order to avoid
     // accidental write-after-read hazards after the render pass.

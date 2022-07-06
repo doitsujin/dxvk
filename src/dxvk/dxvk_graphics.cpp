@@ -524,14 +524,14 @@ namespace dxvk {
   }
 
 
-  VkPipeline DxvkGraphicsPipeline::getPipelineHandle(
+  std::pair<VkPipeline, DxvkGraphicsPipelineType> DxvkGraphicsPipeline::getPipelineHandle(
     const DxvkGraphicsPipelineStateInfo& state) {
     DxvkGraphicsPipelineInstance* instance = this->findInstance(state);
 
     if (unlikely(!instance)) {
       // Exit early if the state vector is invalid
       if (!this->validatePipelineState(state, true))
-        return VK_NULL_HANDLE;
+        return std::make_pair(VK_NULL_HANDLE, DxvkGraphicsPipelineType::FastPipeline);
 
       // Prevent other threads from adding new instances and check again
       std::lock_guard<dxvk::mutex> lock(m_mutex);
@@ -545,7 +545,7 @@ namespace dxvk {
       }
     }
 
-    return instance->handle;
+    return std::make_pair(instance->handle, DxvkGraphicsPipelineType::FastPipeline);
   }
 
 
