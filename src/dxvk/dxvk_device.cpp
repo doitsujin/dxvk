@@ -26,6 +26,13 @@ namespace dxvk {
   
   
   DxvkDevice::~DxvkDevice() {
+    // If we are being destroyed during/after DLL process detachment
+    // from TerminateProcess, etc, our CS threads are already destroyed
+    // and we cannot synchronize against them.
+    // The best we can do is just wait for the Vulkan device to be idle.
+    if (this_thread::isInModuleDetachment())
+      return;
+
     // Wait for all pending Vulkan commands to be
     // executed before we destroy any resources.
     this->waitForIdle();

@@ -3,7 +3,22 @@
 
 #include <atomic>
 
-#ifndef _WIN32
+#ifdef _WIN32
+
+namespace dxvk::this_thread {
+
+  bool isInModuleDetachment() {
+    using PFN_RtlDllShutdownInProgress = BOOLEAN (WINAPI *)();
+
+    static auto RtlDllShutdownInProgress = reinterpret_cast<PFN_RtlDllShutdownInProgress>(
+      ::GetProcAddress(::GetModuleHandleW(L"ntdll.dll"), "RtlDllShutdownInProgress"));
+
+    return RtlDllShutdownInProgress();
+  }
+
+}
+
+#else
 
 namespace dxvk::this_thread {
   

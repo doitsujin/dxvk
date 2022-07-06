@@ -35,6 +35,11 @@ namespace dxvk {
 
 
   D3D11SwapChain::~D3D11SwapChain() {
+    // Avoids hanging when in this state, see comment
+    // in DxvkDevice::~DxvkDevice.
+    if (this_thread::isInModuleDetachment())
+      return;
+
     m_device->waitForSubmission(&m_presentStatus);
     m_device->waitForIdle();
     

@@ -145,6 +145,11 @@ namespace dxvk {
 
 
   D3D9DeviceEx::~D3D9DeviceEx() {
+    // Avoids hanging when in this state, see comment
+    // in DxvkDevice::~DxvkDevice.
+    if (this_thread::isInModuleDetachment())
+      return;
+
     Flush();
     SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
 
