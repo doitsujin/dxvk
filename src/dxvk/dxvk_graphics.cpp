@@ -1,4 +1,4 @@
-#include <optional>
+#include <iomanip>
 
 #include "../util/util_time.h"
 
@@ -989,22 +989,163 @@ namespace dxvk {
   void DxvkGraphicsPipeline::logPipelineState(
           LogLevel                       level,
     const DxvkGraphicsPipelineStateInfo& state) const {
-    if (m_shaders.vs  != nullptr) Logger::log(level, str::format("  vs  : ", m_shaders.vs ->debugName()));
-    if (m_shaders.tcs != nullptr) Logger::log(level, str::format("  tcs : ", m_shaders.tcs->debugName()));
-    if (m_shaders.tes != nullptr) Logger::log(level, str::format("  tes : ", m_shaders.tes->debugName()));
-    if (m_shaders.gs  != nullptr) Logger::log(level, str::format("  gs  : ", m_shaders.gs ->debugName()));
-    if (m_shaders.fs  != nullptr) Logger::log(level, str::format("  fs  : ", m_shaders.fs ->debugName()));
+    std::stringstream sstr;
+    sstr << "Shader stages:" << std::endl;
+    if (m_shaders.vs  != nullptr) sstr << "  vs  : " << m_shaders.vs ->debugName() << std::endl;
+    if (m_shaders.tcs != nullptr) sstr << "  tcs : " << m_shaders.tcs->debugName() << std::endl;
+    if (m_shaders.tes != nullptr) sstr << "  tes : " << m_shaders.tes->debugName() << std::endl;
+    if (m_shaders.gs  != nullptr) sstr << "  gs  : " << m_shaders.gs ->debugName() << std::endl;
+    if (m_shaders.fs  != nullptr) sstr << "  fs  : " << m_shaders.fs ->debugName() << std::endl;
 
-    for (uint32_t i = 0; i < state.il.attributeCount(); i++) {
-      const auto& attr = state.ilAttributes[i];
-      Logger::log(level, str::format("  attr ", i, " : location ", attr.location(), ", binding ", attr.binding(), ", format ", attr.format(), ", offset ", attr.offset()));
-    }
+    // Log input assembly state
+    VkPrimitiveTopology topology = state.ia.primitiveTopology();
+    sstr << std::dec << "Primitive topology: " << topology;
+
+    if (topology == VK_PRIMITIVE_TOPOLOGY_PATCH_LIST)
+      sstr << " [" << state.ia.patchVertexCount() << "]" << std::endl;
+    else
+      sstr << " [restart: " << (state.ia.primitiveRestart() ? "yes]" : "no]") << std::endl;
+
+    // Log vertex input state
     for (uint32_t i = 0; i < state.il.bindingCount(); i++) {
-      const auto& bind = state.ilBindings[i];
-      Logger::log(level, str::format("  binding ", i, " : binding ", bind.binding(), ", stride ", bind.stride(), ", rate ", bind.inputRate(), ", divisor ", bind.divisor()));
+      const auto& binding = state.ilBindings[i];
+      sstr << "Vertex binding " << binding.binding() << " [" << binding.stride() << "]" << std::endl;
+
+      for (uint32_t j = 0; j < state.il.attributeCount(); j++) {
+        const auto& attribute = state.ilAttributes[j];
+
+        if (attribute.binding() == binding.binding())
+          sstr << "  " << attribute.location() << " [" << attribute.offset() << "]: " << attribute.format() << std::endl;
+      }
     }
-    
-    // TODO log more pipeline state
+
+    // Log rasterizer state
+    std::string cullMode;
+
+    switch (state.rs.cullMode()) {
+      case VK_CULL_MODE_NONE: cullMode = "VK_CULL_MODE_NONE"; break;
+      case VK_CULL_MODE_BACK_BIT: cullMode = "VK_CULL_MODE_BACK_BIT"; break;
+      case VK_CULL_MODE_FRONT_BIT: cullMode = "VK_CULL_MODE_FRONT_BIT"; break;
+      case VK_CULL_MODE_FRONT_AND_BACK: cullMode = "VK_CULL_MODE_FRONT_AND_BACK"; break;
+      default: cullMode = str::format(state.rs.cullMode());
+    }
+
+    sstr << "Rasterizer state:" << std::endl
+         << "  depth clip:      " << (state.rs.depthClipEnable() ? "yes" : "no") << std::endl
+         << "  depth bias:      " << (state.rs.depthBiasEnable() ? "yes" : "no") << std::endl
+         << "  polygon mode:    " << state.rs.polygonMode() << std::endl
+         << "  cull mode:       " << cullMode << std::endl
+         << "  front face:      " << state.rs.frontFace() << std::endl
+         << "  conservative:    " << (state.rs.conservativeMode() == VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT ? "no" : "yes") << std::endl;
+
+    // Log multisample state
+    VkSampleCountFlags sampleCount = VK_SAMPLE_COUNT_1_BIT;
+
+    if (state.ms.sampleCount())
+      sampleCount = state.ms.sampleCount();
+    else if (state.rs.sampleCount())
+      sampleCount = state.rs.sampleCount();
+
+    sstr << "Sample count: " << sampleCount << " [0x" << std::hex << state.ms.sampleMask() << std::dec << "]" << std::endl
+         << "  alphaToCoverage: " << (state.ms.enableAlphaToCoverage() ? "yes" : "no") << std::endl;
+
+    // Log depth-stencil state
+    sstr << "Depth test:        ";
+
+    if (state.ds.enableDepthTest())
+      sstr << "yes [write: " << (state.ds.enableDepthWrite() ? "yes" : "no") << ", op: " << state.ds.depthCompareOp() << "]" << std::endl;
+    else
+      sstr << "no" << std::endl;
+
+    sstr << "Depth bounds test: " << (state.ds.enableDepthBoundsTest() ? "yes" : "no") << std::endl
+         << "Stencil test:      " << (state.ds.enableStencilTest() ? "yes" : "no") << std::endl;
+
+    if (state.ds.enableStencilTest()) {
+      std::array<VkStencilOpState, 2> states = {{
+        state.dsFront.state(),
+        state.dsBack.state(),
+      }};
+
+      for (size_t i = 0; i < states.size(); i++) {
+        sstr << std::hex << (i ? "  back:  " : "  front: ")
+             << "[c=0x" << states[i].compareMask << ",w=0x" << states[i].writeMask << ",op=" << states[i].compareOp << "] "
+             << "fail=" << states[i].failOp << ",pass=" << states[i].passOp << ",depthFail=" << states[i].depthFailOp << std::dec << std::endl;
+      }
+    }
+
+    // Log logic op state
+    sstr << "Logic op:          ";
+
+    if (state.om.enableLogicOp())
+      sstr << "yes [" << state.om.logicOp() << "]" << std::endl;
+    else
+      sstr << "no" << std::endl;
+
+    // Log render target and blend state
+    auto depthFormat = state.rt.getDepthStencilFormat();
+    auto depthFormatInfo = imageFormatInfo(depthFormat);
+
+    VkImageAspectFlags writableAspects = depthFormat
+      ? (depthFormatInfo->aspectMask & ~state.rt.getDepthStencilReadOnlyAspects())
+      : 0u;
+
+    sstr << "Depth attachment: " << depthFormat;
+
+    if (depthFormat) {
+      sstr << " ["
+        << ((writableAspects & VK_IMAGE_ASPECT_DEPTH_BIT) ? "d" : " ")
+        << ((writableAspects & VK_IMAGE_ASPECT_STENCIL_BIT) ? "s" : " ")
+        << "]" << std::endl;
+    } else {
+      sstr << std::endl;
+    }
+
+    bool hasColorAttachments = false;
+
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      auto format = state.rt.getColorFormat(i);
+
+      if (format) {
+        if (!hasColorAttachments) {
+          sstr << "Color attachments:" << std::endl;
+          hasColorAttachments = true;
+        }
+
+        const char* components = "rgba";
+        const auto& blend = state.omBlend[i];
+        const auto& swizzle = state.omSwizzle[i];
+
+        VkColorComponentFlags writeMask = blend.colorWriteMask();
+        char r = (writeMask & (1u << swizzle.rIndex())) ? components[swizzle.rIndex()] : ' ';
+        char g = (writeMask & (1u << swizzle.gIndex())) ? components[swizzle.gIndex()] : ' ';
+        char b = (writeMask & (1u << swizzle.bIndex())) ? components[swizzle.bIndex()] : ' ';
+        char a = (writeMask & (1u << swizzle.aIndex())) ? components[swizzle.aIndex()] : ' ';
+
+        sstr << "  " << i << ": " << format << " [" << r << g << b << a << "] blend: ";
+
+        if (blend.blendEnable())
+          sstr << "yes (c:" << blend.srcColorBlendFactor() << "," << blend.dstColorBlendFactor() << "," << blend.colorBlendOp()
+               <<     ";a:" << blend.srcAlphaBlendFactor() << "," << blend.dstAlphaBlendFactor() << "," << blend.alphaBlendOp() << ")" << std::endl;
+        else
+          sstr << "no" << std::endl;
+      }
+    }
+
+    // Log spec constants
+    bool hasSpecConstants = false;
+
+    for (uint32_t i = 0; i < MaxNumSpecConstants; i++) {
+      if (state.sc.specConstants[i]) {
+        if (!hasSpecConstants) {
+          sstr << "Specialization constants:" << std::endl;
+          hasSpecConstants = true;
+        }
+
+        sstr << "  " << i << ": 0x" << std::hex << std::setw(8) << std::setfill('0') << state.sc.specConstants[i] << std::dec << std::endl;
+      }
+    }
+
+    Logger::log(level, sstr.str());
   }
   
 }
