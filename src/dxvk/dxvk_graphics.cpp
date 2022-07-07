@@ -494,10 +494,11 @@ namespace dxvk {
   
   
   DxvkGraphicsPipeline::~DxvkGraphicsPipeline() {
-    for (const auto& instance : m_pipelines) {
-      this->destroyPipeline(instance.baseHandle.load());
+    for (const auto& instance : m_pipelines)
       this->destroyPipeline(instance.fastHandle.load());
-    }
+
+    for (const auto& instance : m_basePipelines)
+      this->destroyPipeline(instance.handle);
   }
   
   
@@ -610,7 +611,7 @@ namespace dxvk {
       key.foLibrary = m_manager->createFragmentOutputLibrary(foState);
       key.args.depthClipEnable = state.rs.depthClipEnable();
 
-      baseHandle = this->createBasePipeline(key);
+      baseHandle = this->createBaseInstance(key)->handle;
     } else {
       // Create optimized variant right away, no choice
       fastHandle = this->createOptimizedPipeline(state);
@@ -632,6 +633,20 @@ namespace dxvk {
   }
   
   
+  DxvkGraphicsPipelineBaseInstance* DxvkGraphicsPipeline::createBaseInstance(
+    const DxvkGraphicsPipelineBaseInstanceKey& key) {
+    for (auto& instance : m_basePipelines) {
+      if (instance.key.viLibrary == key.viLibrary
+       && instance.key.foLibrary == key.foLibrary
+       && instance.key.args == key.args)
+        return &instance;
+    }
+
+    VkPipeline handle = createBasePipeline(key);
+    return &(*m_basePipelines.emplace(key, handle));
+  }
+
+
   bool DxvkGraphicsPipeline::canCreateBasePipeline(
     const DxvkGraphicsPipelineStateInfo& state) const {
     if (!m_vsLibrary || !m_fsLibrary)

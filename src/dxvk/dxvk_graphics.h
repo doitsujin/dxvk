@@ -263,10 +263,33 @@ namespace dxvk {
   };
 
 
+  /**
+   * \brief Base instance key
+   *
+   * Stores the libraries and arguments used to
+   * compile a base pipeline.
+   */
   struct DxvkGraphicsPipelineBaseInstanceKey {
-    const DxvkGraphicsPipelineVertexInputLibrary*     viLibrary;
-    const DxvkGraphicsPipelineFragmentOutputLibrary*  foLibrary;
+    const DxvkGraphicsPipelineVertexInputLibrary*     viLibrary = nullptr;
+    const DxvkGraphicsPipelineFragmentOutputLibrary*  foLibrary = nullptr;
     DxvkShaderPipelineLibraryCompileArgs              args;
+  };
+
+
+  /**
+   * \brief Base pipeline instance
+   *
+   * Stores the key and handle of a base pipeline.
+   */
+  struct DxvkGraphicsPipelineBaseInstance {
+    DxvkGraphicsPipelineBaseInstance() { }
+    DxvkGraphicsPipelineBaseInstance(
+      const DxvkGraphicsPipelineBaseInstanceKey&  key_,
+            VkPipeline                            handle_)
+    : key(key_), handle(handle_) { }
+
+    DxvkGraphicsPipelineBaseInstanceKey key;
+    VkPipeline                          handle = VK_NULL_HANDLE;
   };
 
   
@@ -386,14 +409,18 @@ namespace dxvk {
     
     // List of pipeline instances, shared between threads
     alignas(CACHE_LINE_SIZE)
-    dxvk::mutex                               m_mutex;
-    sync::List<DxvkGraphicsPipelineInstance>  m_pipelines;
+    dxvk::mutex                                   m_mutex;
+    sync::List<DxvkGraphicsPipelineInstance>      m_pipelines;
+    sync::List<DxvkGraphicsPipelineBaseInstance>  m_basePipelines;
     
     DxvkGraphicsPipelineInstance* createInstance(
       const DxvkGraphicsPipelineStateInfo& state);
     
     DxvkGraphicsPipelineInstance* findInstance(
       const DxvkGraphicsPipelineStateInfo& state);
+
+    DxvkGraphicsPipelineBaseInstance* createBaseInstance(
+      const DxvkGraphicsPipelineBaseInstanceKey& key);
 
     bool canCreateBasePipeline(
       const DxvkGraphicsPipelineStateInfo& state) const;
