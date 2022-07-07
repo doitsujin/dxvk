@@ -698,10 +698,12 @@ namespace dxvk {
     }};
 
 		VkPipelineLibraryCreateInfoKHR libInfo = { VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR };
-		libInfo.libraryCount = libraries.size();
-		libInfo.pLibraries = libraries.data();
+		libInfo.libraryCount    = libraries.size();
+		libInfo.pLibraries      = libraries.data();
 
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };
+    info.layout             = m_bindings->getPipelineLayout(true);
+    info.basePipelineIndex  = -1;
 
     VkPipeline pipeline = VK_NULL_HANDLE;
 
@@ -790,7 +792,7 @@ namespace dxvk {
     info.pDepthStencilState       = &fsState.dsInfo;
     info.pColorBlendState         = &foState.cbInfo;
     info.pDynamicState            = &dyInfo;
-    info.layout                   = m_bindings->getPipelineLayout();
+    info.layout                   = m_bindings->getPipelineLayout(false);
     info.basePipelineIndex        = -1;
     
     if (!prState.tsInfo.patchControlPoints)

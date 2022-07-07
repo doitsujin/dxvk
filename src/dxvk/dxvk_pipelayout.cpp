@@ -323,29 +323,40 @@ namespace dxvk {
       }
     }
 
+    // Create pipeline layout objects
     VkPushConstantRange pushConst = m_layout.getPushConstantRange();
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
     pipelineLayoutInfo.setLayoutCount = setLayouts.size();
     pipelineLayoutInfo.pSetLayouts = setLayouts.data();
 
-    if (m_layout.getSetMask() != (1u << DxvkDescriptorSets::SetCount) - 1)
-      pipelineLayoutInfo.flags = VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT;
-
     if (pushConst.stageFlags && pushConst.size) {
       pipelineLayoutInfo.pushConstantRangeCount = 1;
       pipelineLayoutInfo.pPushConstantRanges = &pushConst;
     }
 
-    if (vk->vkCreatePipelineLayout(vk->device(), &pipelineLayoutInfo, nullptr, &m_pipelineLayout))
-      throw DxvkError("DxvkBindingLayoutObjects: Failed to create pipeline layout");
+    // If the full set is defined, create a layout without INDEPENDENT_SET_BITS
+    if (m_layout.getSetMask() == (1u << DxvkDescriptorSets::SetCount) - 1) {
+      if (vk->vkCreatePipelineLayout(vk->device(), &pipelineLayoutInfo, nullptr, &m_completeLayout))
+        throw DxvkError("DxvkBindingLayoutObjects: Failed to create pipeline layout");
+    }
+
+    // If graphics pipeline libraries are supported, also create a variand with the
+    // bit. It will be used to create shader-based libraries and link pipelines.
+    if (m_device->canUseGraphicsPipelineLibrary() && (m_layout.getStages() & VK_SHADER_STAGE_ALL_GRAPHICS)) {
+      pipelineLayoutInfo.flags = VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT;
+
+      if (vk->vkCreatePipelineLayout(vk->device(), &pipelineLayoutInfo, nullptr, &m_independentLayout))
+        throw DxvkError("DxvkBindingLayoutObjects: Failed to create pipeline layout");
+    }
   }
 
 
   DxvkBindingLayoutObjects::~DxvkBindingLayoutObjects() {
     auto vk = m_device->vkd();
 
-    vk->vkDestroyPipelineLayout(vk->device(), m_pipelineLayout, nullptr);
+    vk->vkDestroyPipelineLayout(vk->device(), m_completeLayout, nullptr);
+    vk->vkDestroyPipelineLayout(vk->device(), m_independentLayout, nullptr);
   }
 
 

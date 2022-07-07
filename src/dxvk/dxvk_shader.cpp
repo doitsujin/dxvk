@@ -547,7 +547,7 @@ namespace dxvk {
     info.pViewportState       = &vpInfo;
     info.pRasterizationState  = &rsInfo;
     info.pDynamicState        = &dyInfo;
-    info.layout               = m_layout->getPipelineLayout();
+    info.layout               = m_layout->getPipelineLayout(true);
     info.basePipelineIndex    = -1;
 
     VkPipeline pipeline = VK_NULL_HANDLE;
@@ -625,7 +625,7 @@ namespace dxvk {
     info.pStages              = stageInfo.getStageInfos();
     info.pDepthStencilState   = &dsInfo;
     info.pDynamicState        = &dyInfo;
-    info.layout               = m_layout->getPipelineLayout();
+    info.layout               = m_layout->getPipelineLayout(true);
     info.basePipelineIndex    = -1;
 
     if (m_shader && m_shader->flags().test(DxvkShaderFlag::HasSampleRateShading))
@@ -650,7 +650,7 @@ namespace dxvk {
     // Compile the compute pipeline as normal
     VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
     info.stage        = *stageInfo.getStageInfos();
-    info.layout       = m_layout->getPipelineLayout();
+    info.layout       = m_layout->getPipelineLayout(false);
     info.basePipelineIndex = -1;
 
     VkPipeline pipeline = VK_NULL_HANDLE;

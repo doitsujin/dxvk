@@ -39,6 +39,7 @@ namespace dxvk {
     GpDynamicDepthBias,         ///< Depth bias is dynamic
     GpDynamicDepthBounds,       ///< Depth bounds are dynamic
     GpDynamicStencilRef,        ///< Stencil reference is dynamic
+    GpIndependentSets,          ///< Graphics pipeline layout was created with independent sets
     
     CpDirtyPipeline,            ///< Compute pipeline binding are out of date
     CpDirtyPipelineState,       ///< Compute pipeline needs to be recompiled

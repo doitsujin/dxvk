@@ -84,7 +84,8 @@ namespace dxvk {
     // before any draw or dispatch command is recorded.
     m_flags.clr(
       DxvkContextFlag::GpRenderPassBound,
-      DxvkContextFlag::GpXfbActive);
+      DxvkContextFlag::GpXfbActive,
+      DxvkContextFlag::GpIndependentSets);
     
     m_flags.set(
       DxvkContextFlag::GpDirtyFramebuffer,
@@ -3995,6 +3996,7 @@ namespace dxvk {
 
       m_flags.set(
         DxvkContextFlag::GpRenderPassBound,
+        DxvkContextFlag::GpDirtyPipeline,
         DxvkContextFlag::GpDirtyPipelineState,
         DxvkContextFlag::GpDirtyVertexBuffers,
         DxvkContextFlag::GpDirtyIndexBuffer,
@@ -4006,7 +4008,9 @@ namespace dxvk {
         DxvkContextFlag::GpDirtyDepthBounds,
         DxvkContextFlag::DirtyPushConstants);
 
-      m_flags.clr(DxvkContextFlag::GpRenderPassSuspended);
+      m_flags.clr(
+        DxvkContextFlag::GpRenderPassSuspended,
+        DxvkContextFlag::GpIndependentSets);
 
       this->renderPassBindFramebuffer(
         m_state.om.framebufferInfo,
@@ -4470,18 +4474,21 @@ namespace dxvk {
   
   
   bool DxvkContext::updateGraphicsPipelineState(DxvkGlobalPipelineBarrier srcBarrier) {
+    bool oldIndependentSets = m_flags.test(DxvkContextFlag::GpIndependentSets);
+
     // Set up vertex buffer strides for active bindings
     for (uint32_t i = 0; i < m_state.gp.state.il.bindingCount(); i++) {
       const uint32_t binding = m_state.gp.state.ilBindings[i].binding();
       m_state.gp.state.ilBindings[i].setStride(m_state.vi.vertexStrides[binding]);
     }
-    
+
     // Check which dynamic states need to be active. States that
     // are not dynamic will be invalidated in the command buffer.
     m_flags.clr(DxvkContextFlag::GpDynamicBlendConstants,
                 DxvkContextFlag::GpDynamicDepthBias,
                 DxvkContextFlag::GpDynamicDepthBounds,
-                DxvkContextFlag::GpDynamicStencilRef);
+                DxvkContextFlag::GpDynamicStencilRef,
+                DxvkContextFlag::GpIndependentSets);
     
     m_flags.set(m_state.gp.state.useDynamicBlendConstants()
       ? DxvkContextFlag::GpDynamicBlendConstants
@@ -4533,7 +4540,15 @@ namespace dxvk {
 
       if (!m_state.gp.state.rs.depthBiasEnable())
         m_cmd->cmdSetDepthBias(0.0f, 0.0f, 0.0f);
+
+      m_flags.set(DxvkContextFlag::GpIndependentSets);
     }
+
+    // If necessary, dirty descriptor sets due to layout incompatibilities
+    bool newIndependentSets = m_flags.test(DxvkContextFlag::GpIndependentSets);
+
+    if (newIndependentSets != oldIndependentSets)
+      m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
 
     // Emit barrier based on pipeline properties, in order to avoid
     // accidental write-after-read hazards after the render pass.
@@ -4569,6 +4584,9 @@ namespace dxvk {
     // to struct conversion, so we should use descriptor update templates.
     // For 64-bit applications, using templates is slower on some drivers.
     constexpr bool useDescriptorTemplates = env::is32BitHostPlatform();
+
+    bool independentSets = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+                        && m_flags.test(DxvkContextFlag::GpIndependentSets);
 
     uint32_t layoutSetMask = layout->getSetMask();
     uint32_t dirtySetMask = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
@@ -4752,7 +4770,7 @@ namespace dxvk {
         uint32_t firstSet = setIndex + 1 - bindCount;
 
         m_cmd->cmdBindDescriptorSets(BindPoint,
-          layout->getPipelineLayout(),
+          layout->getPipelineLayout(independentSets),
           firstSet, bindCount, &sets[firstSet],
           0, nullptr);
 
@@ -5147,9 +5165,11 @@ namespace dxvk {
 
     if (!pushConstRange.size)
       return;
-    
+
+    // Push constants should be compatible between complete and
+    // independent layouts, so always ask for the complete one
     m_cmd->cmdPushConstants(
-      bindings->getPipelineLayout(),
+      bindings->getPipelineLayout(false),
       pushConstRange.stageFlags,
       pushConstRange.offset,
       pushConstRange.size,

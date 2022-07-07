@@ -305,6 +305,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries shader stages
+     * \returns Shader stages
+     */
+    VkShaderStageFlags getStages() const {
+      return m_stages;
+    }
+
+    /**
      * \brief Queries defined descriptor set layouts
      *
      * Any set layout not included in this must be null.
@@ -433,10 +441,14 @@ namespace dxvk {
 
     /**
      * \brief Retrieves pipeline layout
-     * \returns Pipeline layout
+     *
+     * \param [in] independent Request INDEPENDENT_SETS_BIT
+     * \returns Pipeline layout handle
      */
-    VkPipelineLayout getPipelineLayout() const {
-      return m_pipelineLayout;
+    VkPipelineLayout getPipelineLayout(bool independent) const {
+      return independent
+        ? m_independentLayout
+        : m_completeLayout;
     }
 
     /**
@@ -468,9 +480,10 @@ namespace dxvk {
 
     DxvkDevice*         m_device;
     DxvkBindingLayout   m_layout;
-    VkPipelineLayout    m_pipelineLayout  = VK_NULL_HANDLE;
+    VkPipelineLayout    m_completeLayout    = VK_NULL_HANDLE;
+    VkPipelineLayout    m_independentLayout = VK_NULL_HANDLE;
 
-    uint32_t            m_setMask         = 0;
+    uint32_t            m_setMask           = 0;
 
     std::array<const DxvkBindingSetLayout*, DxvkDescriptorSets::SetCount> m_bindingObjects = { };
 

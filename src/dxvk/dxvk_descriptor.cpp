@@ -164,14 +164,14 @@ namespace dxvk {
 
   DxvkDescriptorSetMap* DxvkDescriptorPool::getSetMap(
     const DxvkBindingLayoutObjects*           layout) {
-    auto pair = m_setMaps.find(layout->getPipelineLayout());
+    auto pair = m_setMaps.find(layout->getPipelineLayout(false));
     if (likely(pair != m_setMaps.end())) {
       return &pair->second;
     }
 
     auto iter = m_setMaps.emplace(
       std::piecewise_construct,
-      std::tuple(layout->getPipelineLayout()),
+      std::tuple(layout->getPipelineLayout(false)),
       std::tuple());
 
     for (uint32_t i = 0; i < DxvkDescriptorSets::SetCount; i++) {
