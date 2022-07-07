@@ -798,12 +798,6 @@ namespace dxvk {
     if (!prState.tsInfo.patchControlPoints)
       info.pTessellationState = nullptr;
     
-    // Time pipeline compilation for debugging purposes
-    dxvk::high_resolution_clock::time_point t0, t1;
-
-    if (Logger::logLevel() <= LogLevel::Debug)
-      t0 = dxvk::high_resolution_clock::now();
-    
     VkPipeline pipeline = VK_NULL_HANDLE;
     if (vk->vkCreateGraphicsPipelines(vk->device(), m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
       Logger::err("DxvkGraphicsPipeline: Failed to compile pipeline");
@@ -811,12 +805,6 @@ namespace dxvk {
       return VK_NULL_HANDLE;
     }
     
-    if (Logger::logLevel() <= LogLevel::Debug) {
-      t1 = dxvk::high_resolution_clock::now();
-      auto td = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0);
-      Logger::debug(str::format("DxvkGraphicsPipeline: Finished in ", td.count(), " ms"));
-    }
-
     return pipeline;
   }
   
