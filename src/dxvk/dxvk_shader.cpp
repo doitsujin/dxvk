@@ -1,4 +1,5 @@
 #include "dxvk_device.h"
+#include "dxvk_pipemanager.h"
 #include "dxvk_shader.h"
 
 #include <dxvk_dummy_frag.h>
@@ -426,9 +427,14 @@ namespace dxvk {
 
   DxvkShaderPipelineLibrary::DxvkShaderPipelineLibrary(
     const DxvkDevice*               device,
+          DxvkPipelineManager*      manager,
     const DxvkShader*               shader,
     const DxvkBindingLayoutObjects* layout)
-  : m_device(device), m_shader(shader), m_layout(layout) {
+  : m_device      (device),
+    m_cache       (&manager->m_cache),
+    m_stats       (&manager->m_stats),
+    m_shader      (shader),
+    m_layout      (layout) {
 
   }
 
@@ -442,7 +448,6 @@ namespace dxvk {
 
 
   VkPipeline DxvkShaderPipelineLibrary::getPipelineHandle(
-          VkPipelineCache                       cache,
     const DxvkShaderPipelineLibraryCompileArgs& args) {
     std::lock_guard lock(m_mutex);
 
@@ -460,15 +465,15 @@ namespace dxvk {
 
     switch (stage) {
       case VK_SHADER_STAGE_VERTEX_BIT:
-        pipeline = compileVertexShaderPipeline(cache, args);
+        pipeline = compileVertexShaderPipeline(args);
         break;
 
       case VK_SHADER_STAGE_FRAGMENT_BIT:
-        pipeline = compileFragmentShaderPipeline(cache);
+        pipeline = compileFragmentShaderPipeline();
         break;
 
       case VK_SHADER_STAGE_COMPUTE_BIT:
-        pipeline = compileComputeShaderPipeline(cache);
+        pipeline = compileComputeShaderPipeline();
         break;
 
       default:
@@ -480,16 +485,15 @@ namespace dxvk {
   }
 
 
-  void DxvkShaderPipelineLibrary::compilePipeline(VkPipelineCache cache) {
+  void DxvkShaderPipelineLibrary::compilePipeline() {
     // Just compile the pipeline with default args. Implicitly skips
     // this step if another thread has compiled the pipeline in the
     // meantime, in order to avoid duplicate work.
-    getPipelineHandle(cache, DxvkShaderPipelineLibraryCompileArgs());
+    getPipelineHandle(DxvkShaderPipelineLibraryCompileArgs());
   }
 
 
   VkPipeline DxvkShaderPipelineLibrary::compileVertexShaderPipeline(
-          VkPipelineCache                       cache,
     const DxvkShaderPipelineLibraryCompileArgs& args) {
     auto vk = m_device->vkd();
 
@@ -552,14 +556,14 @@ namespace dxvk {
 
     VkPipeline pipeline = VK_NULL_HANDLE;
 
-    if (vk->vkCreateGraphicsPipelines(vk->device(), cache, 1, &info, nullptr, &pipeline))
+    if (vk->vkCreateGraphicsPipelines(vk->device(), m_cache->handle(), 1, &info, nullptr, &pipeline))
       throw DxvkError("DxvkShaderPipelineLibrary: Failed to create compute pipeline");
 
     return pipeline;
   }
 
 
-  VkPipeline DxvkShaderPipelineLibrary::compileFragmentShaderPipeline(VkPipelineCache cache) {
+  VkPipeline DxvkShaderPipelineLibrary::compileFragmentShaderPipeline() {
     auto vk = m_device->vkd();
 
     // Initialize code buffer. As a special case, it is possible that
@@ -633,14 +637,14 @@ namespace dxvk {
 
     VkPipeline pipeline = VK_NULL_HANDLE;
 
-    if (vk->vkCreateGraphicsPipelines(vk->device(), cache, 1, &info, nullptr, &pipeline))
+    if (vk->vkCreateGraphicsPipelines(vk->device(), m_cache->handle(), 1, &info, nullptr, &pipeline))
       throw DxvkError("DxvkShaderPipelineLibrary: Failed to create compute pipeline");
 
     return pipeline;
   }
 
 
-  VkPipeline DxvkShaderPipelineLibrary::compileComputeShaderPipeline(VkPipelineCache cache) {
+  VkPipeline DxvkShaderPipelineLibrary::compileComputeShaderPipeline() {
     auto vk = m_device->vkd();
 
     DxvkShaderStageInfo stageInfo(m_device);
@@ -655,7 +659,7 @@ namespace dxvk {
 
     VkPipeline pipeline = VK_NULL_HANDLE;
 
-    if (vk->vkCreateComputePipelines(vk->device(), cache, 1, &info, nullptr, &pipeline))
+    if (vk->vkCreateComputePipelines(vk->device(), m_cache->handle(), 1, &info, nullptr, &pipeline))
       throw DxvkError("DxvkShaderPipelineLibrary: Failed to create compute pipeline");
 
     return pipeline;

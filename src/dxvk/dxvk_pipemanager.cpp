@@ -144,7 +144,7 @@ namespace dxvk {
 
       if (l) {
         if (l->pipelineLibrary)
-          l->pipelineLibrary->compilePipeline(m_cache->handle());
+          l->pipelineLibrary->compilePipeline();
 
         m_pendingTasks -= 1;
       }
@@ -172,7 +172,7 @@ namespace dxvk {
 
     if (m_device->canUseGraphicsPipelineLibrary()) {
       auto library = createNullFsPipelineLibrary();
-      library->compilePipeline(m_cache.handle());
+      library->compilePipeline();
     }
   }
   
@@ -353,7 +353,7 @@ namespace dxvk {
     auto iter = m_shaderLibraries.emplace(
       std::piecewise_construct,
       std::tuple(key),
-      std::tuple(m_device, shader.ptr(), layout));
+      std::tuple(m_device, this, shader.ptr(), layout));
     return &iter.first->second;
   }
 
@@ -366,7 +366,7 @@ namespace dxvk {
     auto iter = m_shaderLibraries.emplace(
       std::piecewise_construct,
       std::tuple(),
-      std::tuple(m_device, nullptr, layout));
+      std::tuple(m_device, this, nullptr, layout));
     return &iter.first->second;
   }
 

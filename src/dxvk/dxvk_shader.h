@@ -4,6 +4,7 @@
 
 #include "dxvk_include.h"
 #include "dxvk_limits.h"
+#include "dxvk_pipecache.h"
 #include "dxvk_pipelayout.h"
 #include "dxvk_shader_key.h"
 
@@ -14,6 +15,8 @@ namespace dxvk {
   
   class DxvkShader;
   class DxvkShaderModule;
+  class DxvkPipelineManager;
+  struct DxvkPipelineStats;
   
   /**
    * \brief Built-in specialization constants
@@ -335,6 +338,7 @@ namespace dxvk {
 
     DxvkShaderPipelineLibrary(
       const DxvkDevice*               device,
+            DxvkPipelineManager*      manager,
       const DxvkShader*               shader,
       const DxvkBindingLayoutObjects* layout);
 
@@ -345,12 +349,10 @@ namespace dxvk {
      *
      * Either returns an already compiled pipeline library object, or
      * performs the compilation step if that has not happened yet.
-     * \param [in] cache Pipeline cache handle
      * \param [in] args Compile arguments
      * \returns Vulkan pipeline handle
      */
     VkPipeline getPipelineHandle(
-            VkPipelineCache                       cache,
       const DxvkShaderPipelineLibraryCompileArgs& args);
 
     /**
@@ -359,13 +361,14 @@ namespace dxvk {
      * This is meant to be called from a worker thread in
      * order to reduce the amount of work done on the app's
      * main thread.
-     * \param [in] cache Pipeline cache handle
      */
-    void compilePipeline(VkPipelineCache cache);
+    void compilePipeline();
 
   private:
 
     const DxvkDevice*               m_device;
+          DxvkPipelineCache*        m_cache;
+          DxvkPipelineStats*        m_stats;
     const DxvkShader*               m_shader;
     const DxvkBindingLayoutObjects* m_layout;
 
@@ -374,12 +377,11 @@ namespace dxvk {
     VkPipeline      m_pipelineNoDepthClip  = VK_NULL_HANDLE;
 
     VkPipeline compileVertexShaderPipeline(
-            VkPipelineCache                       cache,
       const DxvkShaderPipelineLibraryCompileArgs& args);
 
-    VkPipeline compileFragmentShaderPipeline(VkPipelineCache cache);
+    VkPipeline compileFragmentShaderPipeline();
 
-    VkPipeline compileComputeShaderPipeline(VkPipelineCache cache);
+    VkPipeline compileComputeShaderPipeline();
 
   };
   

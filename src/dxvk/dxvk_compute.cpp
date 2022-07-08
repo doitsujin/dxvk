@@ -41,7 +41,7 @@ namespace dxvk {
       // pipeline variant unconditionally since there is no state for us
       // to worry about other than specialization constants
       if (unlikely(!m_libraryHandle)) {
-        m_libraryHandle = m_library->getPipelineHandle(m_cache->handle(),
+        m_libraryHandle = m_library->getPipelineHandle(
           DxvkShaderPipelineLibraryCompileArgs());
         m_stats->numComputePipelines += 1;
       }

@@ -707,8 +707,8 @@ namespace dxvk {
 
     std::array<VkPipeline, 4> libraries = {{
       key.viLibrary->getHandle(),
-      m_vsLibrary->getPipelineHandle(m_cache->handle(), key.args),
-      m_fsLibrary->getPipelineHandle(m_cache->handle(), key.args),
+      m_vsLibrary->getPipelineHandle(key.args),
+      m_fsLibrary->getPipelineHandle(key.args),
       key.foLibrary->getHandle(),
     }};
 

@@ -138,6 +138,7 @@ namespace dxvk {
   class DxvkPipelineManager {
     friend class DxvkComputePipeline;
     friend class DxvkGraphicsPipeline;
+    friend class DxvkShaderPipelineLibrary;
   public:
     
     DxvkPipelineManager(
