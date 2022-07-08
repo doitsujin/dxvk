@@ -250,6 +250,8 @@ namespace dxvk {
                 || !required.extRobustness2.robustImageAccess2)
         && (m_deviceFeatures.extRobustness2.nullDescriptor
                 || !required.extRobustness2.nullDescriptor)
+        && (m_deviceFeatures.extShaderModuleIdentifier.shaderModuleIdentifier
+                || !required.extShaderModuleIdentifier.shaderModuleIdentifier)
         && (m_deviceFeatures.extTransformFeedback.transformFeedback
                 || !required.extTransformFeedback.transformFeedback)
         && (m_deviceFeatures.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor
@@ -269,7 +271,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 34> devExtensionList = {{
+    std::array<DxvkExt*, 35> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.ext4444Formats,
@@ -286,6 +288,7 @@ namespace dxvk {
       &devExtensions.extPipelineCreationCacheControl,
       &devExtensions.extRobustness2,
       &devExtensions.extShaderDemoteToHelperInvocation,
+      &devExtensions.extShaderModuleIdentifier,
       &devExtensions.extShaderStencilExport,
       &devExtensions.extShaderViewportIndexLayer,
       &devExtensions.extTransformFeedback,
@@ -347,6 +350,9 @@ namespace dxvk {
     enabledFeatures.ext4444Formats.formatA4R4G4B4 = m_deviceFeatures.ext4444Formats.formatA4R4G4B4;
     
     enabledFeatures.extRobustness2.nullDescriptor = VK_TRUE;
+
+    enabledFeatures.extShaderModuleIdentifier.shaderModuleIdentifier =
+      m_deviceFeatures.extShaderModuleIdentifier.shaderModuleIdentifier;
 
     enabledFeatures.khrDynamicRendering.dynamicRendering = VK_TRUE;
 
@@ -416,6 +422,11 @@ namespace dxvk {
     if (devExtensions.extShaderDemoteToHelperInvocation) {
       enabledFeatures.extShaderDemoteToHelperInvocation.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT;
       enabledFeatures.extShaderDemoteToHelperInvocation.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extShaderDemoteToHelperInvocation);
+    }
+
+    if (devExtensions.extShaderModuleIdentifier) {
+      enabledFeatures.extShaderModuleIdentifier.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_FEATURES_EXT;
+      enabledFeatures.extShaderModuleIdentifier.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extShaderModuleIdentifier);
     }
 
     if (devExtensions.extRobustness2) {
@@ -753,6 +764,11 @@ namespace dxvk {
       m_deviceFeatures.extShaderDemoteToHelperInvocation.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extShaderDemoteToHelperInvocation);
     }
 
+    if (m_deviceExtensions.supports(VK_EXT_SHADER_MODULE_IDENTIFIER_EXTENSION_NAME)) {
+      m_deviceFeatures.extShaderModuleIdentifier.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_FEATURES_EXT;
+      m_deviceFeatures.extShaderModuleIdentifier.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extShaderModuleIdentifier);
+    }
+
     if (m_deviceExtensions.supports(VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME)) {
       m_deviceFeatures.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
       m_deviceFeatures.extTransformFeedback.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extTransformFeedback);
@@ -865,6 +881,8 @@ namespace dxvk {
       "\n  nullDescriptor                         : ", features.extRobustness2.nullDescriptor ? "1" : "0",
       "\n", VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME,
       "\n  shaderDemoteToHelperInvocation         : ", features.extShaderDemoteToHelperInvocation.shaderDemoteToHelperInvocation ? "1" : "0",
+      "\n", VK_EXT_SHADER_MODULE_IDENTIFIER_EXTENSION_NAME,
+      "\n  shaderModuleIdentifier                 : ", features.extShaderModuleIdentifier.shaderModuleIdentifier ? "1" : "0",
       "\n", VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME,
       "\n  transformFeedback                      : ", features.extTransformFeedback.transformFeedback ? "1" : "0",
       "\n  geometryStreams                        : ", features.extTransformFeedback.geometryStreams ? "1" : "0",

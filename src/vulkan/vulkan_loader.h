@@ -339,6 +339,11 @@ namespace dxvk::vk {
     VULKAN_FN(vkResetQueryPoolEXT);
     #endif
 
+    #ifdef VK_EXT_shader_module_identifier
+    VULKAN_FN(vkGetShaderModuleCreateInfoIdentifierEXT);
+    VULKAN_FN(vkGetShaderModuleIdentifierEXT);
+    #endif
+
     #ifdef VK_EXT_transform_feedback
     VULKAN_FN(vkCmdBindTransformFeedbackBuffersEXT);
     VULKAN_FN(vkCmdBeginTransformFeedbackEXT);
