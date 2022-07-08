@@ -278,12 +278,34 @@ namespace dxvk {
             SpirvCodeBuffer&&       code,
       const VkSpecializationInfo*   specInfo);
 
+    /**
+     * \brief Adds stage using a module identifier
+     *
+     * \param [in] stage Shader stage
+     * \param [in] identifier Shader module identifier
+     * \param [in] specinfo Specialization info
+     */
+    void addStage(
+            VkShaderStageFlagBits   stage,
+      const VkShaderModuleIdentifierEXT& identifier,
+      const VkSpecializationInfo*   specInfo);
+
   private:
 
     const DxvkDevice* m_device;
 
+    struct ShaderModuleIdentifier {
+      VkPipelineShaderStageModuleIdentifierCreateInfoEXT createInfo;
+      std::array<uint8_t, VK_MAX_SHADER_MODULE_IDENTIFIER_SIZE_EXT> data;
+    };
+
+    union ShaderModuleInfo {
+      ShaderModuleIdentifier    moduleIdentifier;
+      VkShaderModuleCreateInfo  moduleInfo;
+    };
+
     std::array<SpirvCodeBuffer,                 5>  m_codeBuffers;
-    std::array<VkShaderModuleCreateInfo,        5>  m_moduleInfos = { };
+    std::array<ShaderModuleInfo,                5>  m_moduleInfos = { };
     std::array<VkPipelineShaderStageCreateInfo, 5>  m_stageInfos  = { };
     uint32_t                                        m_stageCount  = 0;
 

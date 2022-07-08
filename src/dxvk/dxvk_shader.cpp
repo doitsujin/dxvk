@@ -386,7 +386,7 @@ namespace dxvk {
     // enabled, we do not need to create a shader module object and can
     // instead chain the create info to the shader stage info struct.
     // For compute pipelines, this doesn't work and we still need a module.
-    auto& moduleInfo = m_moduleInfos[m_stageCount];
+    auto& moduleInfo = m_moduleInfos[m_stageCount].moduleInfo;
     moduleInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
     moduleInfo.codeSize = codeBuffer.size();
     moduleInfo.pCode = codeBuffer.data();
@@ -414,6 +414,31 @@ namespace dxvk {
     m_stageCount++;
   }
   
+
+  void DxvkShaderStageInfo::addStage(
+          VkShaderStageFlagBits   stage,
+    const VkShaderModuleIdentifierEXT& identifier,
+    const VkSpecializationInfo*   specInfo) {
+    // Copy relevant bits of the module identifier
+    uint32_t identifierSize = std::min(identifier.identifierSize, VK_MAX_SHADER_MODULE_IDENTIFIER_SIZE_EXT);
+
+    auto& moduleId = m_moduleInfos[m_stageCount].moduleIdentifier;
+    moduleId.createInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_MODULE_IDENTIFIER_CREATE_INFO_EXT };
+    moduleId.createInfo.identifierSize = identifierSize;
+    moduleId.createInfo.pIdentifier = moduleId.data.data();
+    std::memcpy(moduleId.data.data(), identifier.identifier, identifierSize);
+
+    // Set up stage info using the module identifier
+    auto& stageInfo = m_stageInfos[m_stageCount];
+    stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
+    stageInfo.pNext = &moduleId.createInfo;
+    stageInfo.stage = stage;
+    stageInfo.pName = "main";
+    stageInfo.pSpecializationInfo = specInfo;
+
+    m_stageCount++;
+  }
+
 
   DxvkShaderStageInfo::~DxvkShaderStageInfo() {
     auto vk = m_device->vkd();
