@@ -21,6 +21,7 @@ namespace dxvk {
    */
   struct DxvkPipelineCount {
     uint32_t numGraphicsPipelines;
+    uint32_t numGraphicsLibraries;
     uint32_t numComputePipelines;
   };
 
@@ -29,6 +30,7 @@ namespace dxvk {
    */
   struct DxvkPipelineStats {
     std::atomic<uint32_t> numGraphicsPipelines  = { 0u };
+    std::atomic<uint32_t> numGraphicsLibraries  = { 0u };
     std::atomic<uint32_t> numComputePipelines   = { 0u };
   };
 

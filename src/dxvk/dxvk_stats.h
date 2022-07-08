@@ -16,6 +16,7 @@ namespace dxvk {
     CmdRenderPassCount,       ///< Number of render passes
     CmdBarrierCount,          ///< Number of pipeline barriers
     PipeCountGraphics,        ///< Number of graphics pipelines
+    PipeCountLibrary,         ///< Number of graphics shader libraries
     PipeCountCompute,         ///< Number of compute pipelines
     PipeCompilerBusy,         ///< Boolean indicating compiler activity
     QueueSubmitCount,         ///< Number of command buffer submissions

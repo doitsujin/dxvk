@@ -294,8 +294,9 @@ namespace dxvk {
 
   DxvkPipelineCount DxvkPipelineManager::getPipelineCount() const {
     DxvkPipelineCount result;
-    result.numComputePipelines  = m_stats.numComputePipelines.load();
     result.numGraphicsPipelines = m_stats.numGraphicsPipelines.load();
+    result.numGraphicsLibraries = m_stats.numGraphicsLibraries.load();
+    result.numComputePipelines  = m_stats.numComputePipelines.load();
     return result;
   }
 

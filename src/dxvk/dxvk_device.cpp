@@ -157,6 +157,7 @@ namespace dxvk {
     
     DxvkStatCounters result;
     result.setCtr(DxvkStatCounter::PipeCountGraphics, pipe.numGraphicsPipelines);
+    result.setCtr(DxvkStatCounter::PipeCountLibrary,  pipe.numGraphicsLibraries);
     result.setCtr(DxvkStatCounter::PipeCountCompute,  pipe.numComputePipelines);
     result.setCtr(DxvkStatCounter::PipeCompilerBusy,  m_objects.pipelineManager().isCompilingShaders());
     result.setCtr(DxvkStatCounter::GpuIdleTicks,      m_submissionQueue.gpuIdleTicks());

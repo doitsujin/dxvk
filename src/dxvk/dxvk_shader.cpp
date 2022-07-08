@@ -478,8 +478,11 @@ namespace dxvk {
 
       default:
         // Should be unreachable
-        pipeline = VK_NULL_HANDLE;
+        return VK_NULL_HANDLE;
     }
+
+    if (args == DxvkShaderPipelineLibraryCompileArgs())
+      m_stats->numGraphicsLibraries += 1;
 
     return pipeline;
   }
