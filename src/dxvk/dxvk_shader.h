@@ -344,6 +344,16 @@ namespace dxvk {
     ~DxvkShaderPipelineLibrary();
 
     /**
+     * \brief Queries shader module identifier
+     *
+     * Can be used to compile an optimized pipeline using the same
+     * shader code, but without having to wait for the pipeline
+     * library for this shader shader to compile first.
+     * \returns Shader module identifier
+     */
+    VkShaderModuleIdentifierEXT getModuleIdentifier();
+
+    /**
      * \brief Queries pipeline handle for the given set of arguments
      *
      * Either returns an already compiled pipeline library object, or
@@ -374,12 +384,23 @@ namespace dxvk {
     VkPipeline      m_pipeline             = VK_NULL_HANDLE;
     VkPipeline      m_pipelineNoDepthClip  = VK_NULL_HANDLE;
 
+    dxvk::mutex                 m_identifierMutex;
+    VkShaderModuleIdentifierEXT m_identifier = { VK_STRUCTURE_TYPE_SHADER_MODULE_IDENTIFIER_EXT };
+
     VkPipeline compileVertexShaderPipeline(
       const DxvkShaderPipelineLibraryCompileArgs& args);
 
     VkPipeline compileFragmentShaderPipeline();
 
     VkPipeline compileComputeShaderPipeline();
+
+    SpirvCodeBuffer getShaderCode() const;
+
+    void generateModuleIdentifier(
+      const SpirvCodeBuffer& spirvCode);
+
+    void generateModuleIdentifierLocked(
+      const SpirvCodeBuffer& spirvCode);
 
   };
   

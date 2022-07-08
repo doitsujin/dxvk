@@ -446,6 +446,20 @@ namespace dxvk {
   }
 
 
+  VkShaderModuleIdentifierEXT DxvkShaderPipelineLibrary::getModuleIdentifier() {
+    std::lock_guard lock(m_identifierMutex);
+
+    if (!m_identifier.identifierSize) {
+      // Unfortunate, but we'll have to decode the
+      // shader code here to retrieve the identifier
+      SpirvCodeBuffer spirvCode = this->getShaderCode();
+      this->generateModuleIdentifierLocked(spirvCode);
+    }
+
+    return m_identifier;
+  }
+
+
   VkPipeline DxvkShaderPipelineLibrary::getPipelineHandle(
     const DxvkShaderPipelineLibraryCompileArgs& args) {
     std::lock_guard lock(m_mutex);
@@ -499,9 +513,12 @@ namespace dxvk {
     const DxvkShaderPipelineLibraryCompileArgs& args) {
     auto vk = m_device->vkd();
 
+    SpirvCodeBuffer spirvCode = this->getShaderCode();
+    this->generateModuleIdentifier(spirvCode);
+
+    // Set up shader stage info
     DxvkShaderStageInfo stageInfo(m_device);
-    stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT,
-      m_shader->getCode(m_layout, DxvkShaderModuleCreateInfo()), nullptr);
+    stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, std::move(spirvCode), nullptr);
 
     // Set up dynamic state. We do not know any pipeline state
     // at this time, so make as much state dynamic as we can.
@@ -568,18 +585,12 @@ namespace dxvk {
   VkPipeline DxvkShaderPipelineLibrary::compileFragmentShaderPipeline() {
     auto vk = m_device->vkd();
 
-    // Initialize code buffer. As a special case, it is possible that
-    // we have to deal with a null shader, but the pipeline library
-    // extension requires us to always specify a fragment shader.
-    DxvkShaderStageInfo stageInfo(m_device);
+    SpirvCodeBuffer spirvCode = this->getShaderCode();
+    this->generateModuleIdentifier(spirvCode);
 
-    if (m_shader) {
-      stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT,
-        m_shader->getCode(m_layout, DxvkShaderModuleCreateInfo()), nullptr);
-    } else {
-      stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT,
-        SpirvCodeBuffer(dxvk_dummy_frag), nullptr);
-    }
+    // Set up shader stage info with the given code
+    DxvkShaderStageInfo stageInfo(m_device);
+    stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, std::move(spirvCode), nullptr);
 
     // Set up dynamic state. We do not know any pipeline state
     // at this time, so make as much state dynamic as we can.
@@ -649,9 +660,12 @@ namespace dxvk {
   VkPipeline DxvkShaderPipelineLibrary::compileComputeShaderPipeline() {
     auto vk = m_device->vkd();
 
+    SpirvCodeBuffer spirvCode = this->getShaderCode();
+    this->generateModuleIdentifier(spirvCode);
+
+    // Set up shader stage info
     DxvkShaderStageInfo stageInfo(m_device);
-    stageInfo.addStage(VK_SHADER_STAGE_COMPUTE_BIT,
-      m_shader->getCode(m_layout, DxvkShaderModuleCreateInfo()), nullptr);
+    stageInfo.addStage(VK_SHADER_STAGE_COMPUTE_BIT, std::move(spirvCode), nullptr);
 
     // Compile the compute pipeline as normal
     VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
@@ -665,6 +679,43 @@ namespace dxvk {
       throw DxvkError("DxvkShaderPipelineLibrary: Failed to create compute pipeline");
 
     return pipeline;
+  }
+
+
+  SpirvCodeBuffer DxvkShaderPipelineLibrary::getShaderCode() const {
+    // As a special case, it is possible that we have to deal with
+    // a null shader, but the pipeline library extension requires
+    // us to always specify a fragment shader for fragment stages,
+    // so we need to return a dummy shader in that case.
+    if (!m_shader)
+      return SpirvCodeBuffer(dxvk_dummy_frag);
+
+    return m_shader->getCode(m_layout, DxvkShaderModuleCreateInfo());
+  }
+
+
+  void DxvkShaderPipelineLibrary::generateModuleIdentifier(
+    const SpirvCodeBuffer& spirvCode) {
+    if (!m_device->features().extShaderModuleIdentifier.shaderModuleIdentifier)
+      return;
+
+    std::lock_guard lock(m_identifierMutex);
+
+    if (!m_identifier.identifierSize)
+      this->generateModuleIdentifierLocked(spirvCode);
+  }
+
+
+  void DxvkShaderPipelineLibrary::generateModuleIdentifierLocked(
+    const SpirvCodeBuffer& spirvCode) {
+    auto vk = m_device->vkd();
+
+    VkShaderModuleCreateInfo info = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
+    info.codeSize = spirvCode.size();
+    info.pCode = spirvCode.data();
+
+    vk->vkGetShaderModuleCreateInfoIdentifierEXT(
+      vk->device(), &info, &m_identifier);
   }
 
 }
