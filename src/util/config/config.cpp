@@ -582,6 +582,16 @@ namespace dxvk {
     { R"(\\swtor\.exe$)", {{
       { "d3d9.forceSamplerTypeSpecConstants", "True" },
     }} },
+    /* Bionic Commando                          
+       Physics break at high fps               */
+    { R"(\\bionic_commando\.exe$)", {{
+      { "d3d9.maxFrameRate",                "60" },
+    }} },
+    /* Port Royale 3                            *
+     * Fixes infinite loading screens           */
+    { R"(\\PortRoyale3\.exe$)", {{
+      { "d3d9.allowDoNotWait",           "False" },
+    }} },
   }};
 
 
