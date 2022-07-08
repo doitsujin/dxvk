@@ -466,6 +466,7 @@ namespace dxvk::hud {
     DxvkStatCounters counters = m_device->getStatCounters();
 
     m_graphicsPipelines = counters.getCtr(DxvkStatCounter::PipeCountGraphics);
+    m_graphicsLibraries = counters.getCtr(DxvkStatCounter::PipeCountLibrary);
     m_computePipelines  = counters.getCtr(DxvkStatCounter::PipeCountCompute);
   }
 
@@ -483,7 +484,20 @@ namespace dxvk::hud {
       { position.x + 240.0f, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       str::format(m_graphicsPipelines));
-    
+
+    if (m_graphicsLibraries) {
+      position.y += 20.0f;
+      renderer.drawText(16.0f,
+        { position.x, position.y },
+        { 1.0f, 0.25f, 1.0f, 1.0f },
+        "Graphics shaders:");
+
+      renderer.drawText(16.0f,
+        { position.x + 240.0f, position.y },
+        { 1.0f, 1.0f, 1.0f, 1.0f },
+        str::format(m_graphicsLibraries));
+    }
+
     position.y += 20.0f;
     renderer.drawText(16.0f,
       { position.x, position.y },

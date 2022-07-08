@@ -330,8 +330,9 @@ namespace dxvk::hud {
 
     Rc<DxvkDevice> m_device;
 
-    uint64_t m_graphicsPipelines = 0;
-    uint64_t m_computePipelines = 0;
+    uint64_t m_graphicsPipelines  = 0;
+    uint64_t m_graphicsLibraries  = 0;
+    uint64_t m_computePipelines   = 0;
 
   };
 
