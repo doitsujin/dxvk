@@ -589,7 +589,7 @@ namespace dxvk {
      || instance->isCompiling.exchange(VK_TRUE, std::memory_order_acquire))
       return;
 
-    VkPipeline pipeline = this->createOptimizedPipeline(state);
+    VkPipeline pipeline = this->createOptimizedPipeline(state, 0);
     instance->fastHandle.store(pipeline, std::memory_order_release);
   }
 
@@ -600,18 +600,29 @@ namespace dxvk {
     VkPipeline fastHandle = VK_NULL_HANDLE;
 
     if (this->canCreateBasePipeline(state)) {
-      DxvkGraphicsPipelineVertexInputState    viState(m_device, state);
-      DxvkGraphicsPipelineFragmentOutputState foState(m_device, state, m_shaders.fs.ptr());
+      // Try to create an optimized pipeline from the cache
+      // first, since this is expected to be the fastest path.
+      if (m_device->canUsePipelineCacheControl()) {
+        fastHandle = this->createOptimizedPipeline(state,
+          VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT);
+      }
 
-      DxvkGraphicsPipelineBaseInstanceKey key;
-      key.viLibrary = m_manager->createVertexInputLibrary(viState);
-      key.foLibrary = m_manager->createFragmentOutputLibrary(foState);
-      key.args.depthClipEnable = state.rs.depthClipEnable();
+      if (!fastHandle) {
+        // If that didn't succeed, link a pipeline using the
+        // pre-compiled fragment and vertex shader libraries.
+        DxvkGraphicsPipelineVertexInputState    viState(m_device, state);
+        DxvkGraphicsPipelineFragmentOutputState foState(m_device, state, m_shaders.fs.ptr());
 
-      baseHandle = this->createBaseInstance(key)->handle;
+        DxvkGraphicsPipelineBaseInstanceKey key;
+        key.viLibrary = m_manager->createVertexInputLibrary(viState);
+        key.foLibrary = m_manager->createFragmentOutputLibrary(foState);
+        key.args.depthClipEnable = state.rs.depthClipEnable();
+
+        baseHandle = this->createBaseInstance(key)->handle;
+      }
     } else {
       // Create optimized variant right away, no choice
-      fastHandle = this->createOptimizedPipeline(state);
+      fastHandle = this->createOptimizedPipeline(state, 0);
     }
 
     m_stats->numGraphicsPipelines += 1;
@@ -727,7 +738,8 @@ namespace dxvk {
 
   
   VkPipeline DxvkGraphicsPipeline::createOptimizedPipeline(
-    const DxvkGraphicsPipelineStateInfo& state) const {
+    const DxvkGraphicsPipelineStateInfo& state,
+          VkPipelineCreateFlags          flags) const {
     auto vk = m_device->vkd();
 
     if (Logger::logLevel() <= LogLevel::Debug) {
@@ -772,16 +784,24 @@ namespace dxvk {
 
     // Build stage infos for all provided shaders
     DxvkShaderStageInfo stageInfo(m_device);
-    stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, getShaderCode(m_shaders.vs, state), &specInfo);
 
-    if (m_shaders.tcs != nullptr)
-      stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, getShaderCode(m_shaders.tcs, state), &specInfo);
-    if (m_shaders.tes != nullptr)
-      stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, getShaderCode(m_shaders.tes, state), &specInfo);
-    if (m_shaders.gs != nullptr)
-      stageInfo.addStage(VK_SHADER_STAGE_GEOMETRY_BIT, getShaderCode(m_shaders.gs, state), &specInfo);
-    if (m_shaders.fs != nullptr)
-      stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, getShaderCode(m_shaders.fs, state), &specInfo);
+    if (flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT) {
+      stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, m_vsLibrary->getModuleIdentifier(), &specInfo);
+
+      if (m_shaders.fs != nullptr)
+        stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, m_fsLibrary->getModuleIdentifier(), &specInfo);
+    } else {
+      stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, getShaderCode(m_shaders.vs, state), &specInfo);
+
+      if (m_shaders.tcs != nullptr)
+        stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, getShaderCode(m_shaders.tcs, state), &specInfo);
+      if (m_shaders.tes != nullptr)
+        stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, getShaderCode(m_shaders.tes, state), &specInfo);
+      if (m_shaders.gs != nullptr)
+        stageInfo.addStage(VK_SHADER_STAGE_GEOMETRY_BIT, getShaderCode(m_shaders.gs, state), &specInfo);
+      if (m_shaders.fs != nullptr)
+        stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, getShaderCode(m_shaders.fs, state), &specInfo);
+    }
 
     DxvkGraphicsPipelineVertexInputState      viState(m_device, state);
     DxvkGraphicsPipelinePreRasterizationState prState(m_device, state, m_shaders.gs.ptr());
@@ -793,6 +813,7 @@ namespace dxvk {
     dyInfo.pDynamicStates         = dynamicStates.data();
 
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &foState.rtInfo };
+    info.flags                    = flags;
     info.stageCount               = stageInfo.getStageCount();
     info.pStages                  = stageInfo.getStageInfos();
     info.pVertexInputState        = &viState.viInfo;
@@ -811,9 +832,16 @@ namespace dxvk {
       info.pTessellationState = nullptr;
     
     VkPipeline pipeline = VK_NULL_HANDLE;
-    if (vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
-      Logger::err("DxvkGraphicsPipeline: Failed to compile pipeline");
-      this->logPipelineState(LogLevel::Error, state);
+    VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
+
+    if (vr != VK_SUCCESS) {
+      // Ignore any error if we're trying to create a cached pipeline. If linking or
+      // compiling an optimized pipeline fail later, we'll still be printing errors.
+      if (!(flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT)) {
+        Logger::err(str::format("DxvkGraphicsPipeline: Failed to compile pipeline: ", vr));
+        this->logPipelineState(LogLevel::Error, state);
+      }
+
       return VK_NULL_HANDLE;
     }
     

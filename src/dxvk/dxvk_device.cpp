@@ -51,6 +51,16 @@ namespace dxvk {
   }
 
 
+  bool DxvkDevice::canUsePipelineCacheControl() const {
+    // Don't bother with this unless the device also supports shader module
+    // identifiers, since decoding and hashing the shaders is slow otherwise
+    // and likely provides no benefit over linking pipeline libraries.
+    return m_features.extPipelineCreationCacheControl.pipelineCreationCacheControl
+        && m_features.extShaderModuleIdentifier.shaderModuleIdentifier
+        && m_options.enableGraphicsPipelineLibrary != Tristate::True;
+  }
+
+
   DxvkFramebufferSize DxvkDevice::getDefaultFramebufferSize() const {
     return DxvkFramebufferSize {
       m_properties.core.properties.limits.maxFramebufferWidth,

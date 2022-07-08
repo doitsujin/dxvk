@@ -425,7 +425,8 @@ namespace dxvk {
       const DxvkGraphicsPipelineBaseInstanceKey& key) const;
     
     VkPipeline createOptimizedPipeline(
-      const DxvkGraphicsPipelineStateInfo& state) const;
+      const DxvkGraphicsPipelineStateInfo& state,
+            VkPipelineCreateFlags          flags) const;
     
     void destroyPipeline(
             VkPipeline                     pipeline) const;

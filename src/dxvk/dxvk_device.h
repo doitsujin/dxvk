@@ -203,6 +203,12 @@ namespace dxvk {
     bool canUseGraphicsPipelineLibrary() const;
 
     /**
+     * \brief Checks whether pipeline creation cache control can be used
+     * \returns \c true if all required features are supported.
+     */
+    bool canUsePipelineCacheControl() const;
+
+    /**
      * \brief Queries default framebuffer size
      * \returns Default framebuffer size
      */
