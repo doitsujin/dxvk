@@ -592,6 +592,11 @@ namespace dxvk {
     { R"(\\bionic_commando\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
+    /* Port Royale 3                            *
+     * Fixes infinite loading screens           */
+    { R"(\\PortRoyale3\.exe$)", {{
+      { "d3d9.allowDoNotWait",           "False" },
+    }} },
   }};
 
 
