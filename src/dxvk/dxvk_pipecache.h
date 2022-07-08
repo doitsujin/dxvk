@@ -22,21 +22,15 @@ namespace dxvk {
     
   public:
     
-    DxvkPipelineCache(const Rc<vk::DeviceFn>& vkd);
-    ~DxvkPipelineCache();
+    DxvkPipelineCache(const Rc<vk::DeviceFn>& vkd) { }
     
     /**
      * \brief Pipeline cache handle
      * \returns Pipeline cache handle
      */
     VkPipelineCache handle() const {
-      return m_handle;
+      return VK_NULL_HANDLE;
     }
-    
-  private:
-    
-    Rc<vk::DeviceFn>        m_vkd;
-    VkPipelineCache         m_handle;
     
   };
   
