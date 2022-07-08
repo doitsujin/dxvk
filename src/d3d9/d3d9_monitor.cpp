@@ -57,7 +57,8 @@ namespace dxvk {
         || BackBufferFormat == D3D9Format::X8R8G8B8
         || BackBufferFormat == D3D9Format::A1R5G5B5
         || BackBufferFormat == D3D9Format::X1R5G5B5
-        || BackBufferFormat == D3D9Format::R5G6B5;
+        || BackBufferFormat == D3D9Format::R5G6B5
+        || BackBufferFormat == D3D9Format::Unknown;
   }
 
 }
