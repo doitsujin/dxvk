@@ -242,6 +242,8 @@ namespace dxvk {
                 || !required.extMemoryPriority.memoryPriority)
         && (m_deviceFeatures.extNonSeamlessCubeMap.nonSeamlessCubeMap
                 || !required.extNonSeamlessCubeMap.nonSeamlessCubeMap)
+        && (m_deviceFeatures.extPipelineCreationCacheControl.pipelineCreationCacheControl
+                || !required.extPipelineCreationCacheControl.pipelineCreationCacheControl)
         && (m_deviceFeatures.extRobustness2.robustBufferAccess2
                 || !required.extRobustness2.robustBufferAccess2)
         && (m_deviceFeatures.extRobustness2.robustImageAccess2
@@ -267,7 +269,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 33> devExtensionList = {{
+    std::array<DxvkExt*, 34> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.ext4444Formats,
@@ -281,6 +283,7 @@ namespace dxvk {
       &devExtensions.extMemoryBudget,
       &devExtensions.extMemoryPriority,
       &devExtensions.extNonSeamlessCubeMap,
+      &devExtensions.extPipelineCreationCacheControl,
       &devExtensions.extRobustness2,
       &devExtensions.extShaderDemoteToHelperInvocation,
       &devExtensions.extShaderStencilExport,
@@ -334,7 +337,11 @@ namespace dxvk {
     // Enable additional device features if supported
     enabledFeatures.extExtendedDynamicState.extendedDynamicState = VK_TRUE;
 
-    enabledFeatures.extGraphicsPipelineLibrary.graphicsPipelineLibrary = m_deviceFeatures.extGraphicsPipelineLibrary.graphicsPipelineLibrary;
+    enabledFeatures.extGraphicsPipelineLibrary.graphicsPipelineLibrary =
+      m_deviceFeatures.extGraphicsPipelineLibrary.graphicsPipelineLibrary;
+
+    enabledFeatures.extPipelineCreationCacheControl.pipelineCreationCacheControl =
+      m_deviceFeatures.extPipelineCreationCacheControl.pipelineCreationCacheControl;
 
     enabledFeatures.ext4444Formats.formatA4B4G4R4 = m_deviceFeatures.ext4444Formats.formatA4B4G4R4;
     enabledFeatures.ext4444Formats.formatA4R4G4B4 = m_deviceFeatures.ext4444Formats.formatA4R4G4B4;
@@ -399,6 +406,11 @@ namespace dxvk {
     if (devExtensions.extNonSeamlessCubeMap) {
       enabledFeatures.extNonSeamlessCubeMap.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT;
       enabledFeatures.extNonSeamlessCubeMap.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extNonSeamlessCubeMap);
+    }
+
+    if (devExtensions.extPipelineCreationCacheControl) {
+      enabledFeatures.extPipelineCreationCacheControl.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT;
+      enabledFeatures.extPipelineCreationCacheControl.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extPipelineCreationCacheControl);
     }
 
     if (devExtensions.extShaderDemoteToHelperInvocation) {
@@ -726,6 +738,11 @@ namespace dxvk {
       m_deviceFeatures.extNonSeamlessCubeMap.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extNonSeamlessCubeMap);
     }
 
+    if (m_deviceExtensions.supports(VK_EXT_PIPELINE_CREATION_CACHE_CONTROL_EXTENSION_NAME)) {
+      m_deviceFeatures.extPipelineCreationCacheControl.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PIPELINE_CREATION_CACHE_CONTROL_FEATURES_EXT;
+      m_deviceFeatures.extPipelineCreationCacheControl.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extPipelineCreationCacheControl);
+    }
+
     if (m_deviceExtensions.supports(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME)) {
       m_deviceFeatures.extRobustness2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
       m_deviceFeatures.extRobustness2.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extRobustness2);
@@ -840,6 +857,8 @@ namespace dxvk {
       "\n  memoryPriority                         : ", features.extMemoryPriority.memoryPriority ? "1" : "0",
       "\n", VK_EXT_NON_SEAMLESS_CUBE_MAP_EXTENSION_NAME,
       "\n  nonSeamlessCubeMap                     : ", features.extNonSeamlessCubeMap.nonSeamlessCubeMap ? "1" : "0",
+      "\n", VK_EXT_PIPELINE_CREATION_CACHE_CONTROL_EXTENSION_NAME,
+      "\n  pipelineCreationCacheControl           : ", features.extPipelineCreationCacheControl.pipelineCreationCacheControl ? "1" : "0",
       "\n", VK_EXT_ROBUSTNESS_2_EXTENSION_NAME,
       "\n  robustBufferAccess2                    : ", features.extRobustness2.robustBufferAccess2 ? "1" : "0",
       "\n  robustImageAccess2                     : ", features.extRobustness2.robustImageAccess2 ? "1" : "0",

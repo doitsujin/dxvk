@@ -46,6 +46,7 @@ namespace dxvk {
     VkPhysicalDeviceHostQueryResetFeaturesEXT                 extHostQueryReset;
     VkPhysicalDeviceMemoryPriorityFeaturesEXT                 extMemoryPriority;
     VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT             extNonSeamlessCubeMap;
+    VkPhysicalDevicePipelineCreationCacheControlFeaturesEXT   extPipelineCreationCacheControl;
     VkPhysicalDeviceRobustness2FeaturesEXT                    extRobustness2;
     VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT extShaderDemoteToHelperInvocation;
     VkPhysicalDeviceTransformFeedbackFeaturesEXT              extTransformFeedback;
