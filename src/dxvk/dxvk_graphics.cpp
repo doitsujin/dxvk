@@ -137,8 +137,7 @@ namespace dxvk {
 
   DxvkGraphicsPipelineVertexInputLibrary::DxvkGraphicsPipelineVertexInputLibrary(
           DxvkDevice*                           device,
-    const DxvkGraphicsPipelineVertexInputState& state,
-          VkPipelineCache                       cache)
+    const DxvkGraphicsPipelineVertexInputState& state)
   : m_device(device) {
     auto vk = m_device->vkd();
 
@@ -152,7 +151,7 @@ namespace dxvk {
     info.basePipelineIndex    = -1;
 
     VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(),
-      cache, 1, &info, nullptr, &m_pipeline);
+      VK_NULL_HANDLE, 1, &info, nullptr, &m_pipeline);
 
     if (vr)
       throw DxvkError("Failed to create vertex input pipeline library");
@@ -341,8 +340,7 @@ namespace dxvk {
 
   DxvkGraphicsPipelineFragmentOutputLibrary::DxvkGraphicsPipelineFragmentOutputLibrary(
           DxvkDevice*                               device,
-    const DxvkGraphicsPipelineFragmentOutputState&  state,
-          VkPipelineCache                           cache)
+    const DxvkGraphicsPipelineFragmentOutputState&  state)
   : m_device(device) {
     auto vk = m_device->vkd();
 
@@ -368,7 +366,7 @@ namespace dxvk {
     info.basePipelineIndex    = -1;
 
     VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(),
-      cache, 1, &info, nullptr, &m_pipeline);
+      VK_NULL_HANDLE, 1, &info, nullptr, &m_pipeline);
 
     if (vr)
       throw DxvkError("Failed to create vertex input pipeline library");
@@ -467,7 +465,6 @@ namespace dxvk {
   : m_device        (device),
     m_manager       (pipeMgr),
     m_workers       (&pipeMgr->m_workers),
-    m_cache         (&pipeMgr->m_cache),
     m_stateCache    (&pipeMgr->m_stateCache),
     m_stats         (&pipeMgr->m_stats),
     m_shaders       (std::move(shaders)),
@@ -722,7 +719,7 @@ namespace dxvk {
 
     VkPipeline pipeline = VK_NULL_HANDLE;
 
-    if ((vk->vkCreateGraphicsPipelines(vk->device(), m_cache->handle(), 1, &info, nullptr, &pipeline)))
+    if ((vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline)))
       Logger::err("DxvkGraphicsPipeline: Failed to create base pipeline");
 
     return pipeline;
@@ -814,7 +811,7 @@ namespace dxvk {
       info.pTessellationState = nullptr;
     
     VkPipeline pipeline = VK_NULL_HANDLE;
-    if (vk->vkCreateGraphicsPipelines(vk->device(), m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
+    if (vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
       Logger::err("DxvkGraphicsPipeline: Failed to compile pipeline");
       this->logPipelineState(LogLevel::Error, state);
       return VK_NULL_HANDLE;

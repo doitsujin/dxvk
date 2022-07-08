@@ -13,7 +13,6 @@
 #include "dxvk_meta_clear.h"
 #include "dxvk_objects.h"
 #include "dxvk_options.h"
-#include "dxvk_pipecache.h"
 #include "dxvk_pipemanager.h"
 #include "dxvk_queue.h"
 #include "dxvk_recycler.h"

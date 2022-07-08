@@ -6,7 +6,6 @@
 
 #include "dxvk_bind_mask.h"
 #include "dxvk_graphics_state.h"
-#include "dxvk_pipecache.h"
 #include "dxvk_pipelayout.h"
 #include "dxvk_resource.h"
 #include "dxvk_shader.h"
@@ -114,7 +113,6 @@ namespace dxvk {
   private:
     
     DxvkDevice*                 m_device;    
-    DxvkPipelineCache*          m_cache;
     DxvkStateCache*             m_stateCache;
     DxvkPipelineStats*          m_stats;
 

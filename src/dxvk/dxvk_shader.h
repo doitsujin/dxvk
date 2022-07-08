@@ -4,7 +4,6 @@
 
 #include "dxvk_include.h"
 #include "dxvk_limits.h"
-#include "dxvk_pipecache.h"
 #include "dxvk_pipelayout.h"
 #include "dxvk_shader_key.h"
 
@@ -367,7 +366,6 @@ namespace dxvk {
   private:
 
     const DxvkDevice*               m_device;
-          DxvkPipelineCache*        m_cache;
           DxvkPipelineStats*        m_stats;
     const DxvkShader*               m_shader;
     const DxvkBindingLayoutObjects* m_layout;

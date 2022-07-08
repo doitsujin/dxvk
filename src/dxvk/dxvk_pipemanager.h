@@ -45,8 +45,7 @@ namespace dxvk {
   public:
 
     DxvkPipelineWorkers(
-            DxvkDevice*                     device,
-            DxvkPipelineCache*              cache);
+            DxvkDevice*                     device);
 
     ~DxvkPipelineWorkers();
 
@@ -108,7 +107,6 @@ namespace dxvk {
       DxvkShaderPipelineLibrary*    pipelineLibrary;
     };
 
-    DxvkPipelineCache*                m_cache;
     std::atomic<uint64_t>             m_pendingTasks = { 0ull };
 
     dxvk::mutex                       m_queueLock;
@@ -223,7 +221,6 @@ namespace dxvk {
   private:
     
     DxvkDevice*               m_device;
-    DxvkPipelineCache         m_cache;
     DxvkPipelineWorkers       m_workers;
     DxvkStateCache            m_stateCache;
     DxvkPipelineStats         m_stats;

@@ -431,7 +431,6 @@ namespace dxvk {
     const DxvkShader*               shader,
     const DxvkBindingLayoutObjects* layout)
   : m_device      (device),
-    m_cache       (&manager->m_cache),
     m_stats       (&manager->m_stats),
     m_shader      (shader),
     m_layout      (layout) {
@@ -559,7 +558,7 @@ namespace dxvk {
 
     VkPipeline pipeline = VK_NULL_HANDLE;
 
-    if (vk->vkCreateGraphicsPipelines(vk->device(), m_cache->handle(), 1, &info, nullptr, &pipeline))
+    if (vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline))
       throw DxvkError("DxvkShaderPipelineLibrary: Failed to create compute pipeline");
 
     return pipeline;
@@ -640,7 +639,7 @@ namespace dxvk {
 
     VkPipeline pipeline = VK_NULL_HANDLE;
 
-    if (vk->vkCreateGraphicsPipelines(vk->device(), m_cache->handle(), 1, &info, nullptr, &pipeline))
+    if (vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline))
       throw DxvkError("DxvkShaderPipelineLibrary: Failed to create compute pipeline");
 
     return pipeline;
@@ -662,7 +661,7 @@ namespace dxvk {
 
     VkPipeline pipeline = VK_NULL_HANDLE;
 
-    if (vk->vkCreateComputePipelines(vk->device(), m_cache->handle(), 1, &info, nullptr, &pipeline))
+    if (vk->vkCreateComputePipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline))
       throw DxvkError("DxvkShaderPipelineLibrary: Failed to create compute pipeline");
 
     return pipeline;

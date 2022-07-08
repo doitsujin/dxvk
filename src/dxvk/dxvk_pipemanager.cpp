@@ -7,9 +7,7 @@
 namespace dxvk {
   
   DxvkPipelineWorkers::DxvkPipelineWorkers(
-          DxvkDevice*                     device,
-          DxvkPipelineCache*              cache)
-  : m_cache(cache) {
+          DxvkDevice*                     device) {
     // Use a reasonably large number of threads for compiling, but
     // leave some cores to the application to avoid excessive stutter
     uint32_t numCpuCores = dxvk::thread::hardware_concurrency();
@@ -164,8 +162,7 @@ namespace dxvk {
   DxvkPipelineManager::DxvkPipelineManager(
           DxvkDevice*         device)
   : m_device    (device),
-    m_cache     (device),
-    m_workers   (device, &m_cache),
+    m_workers   (device),
     m_stateCache(device, this, &m_workers) {
     Logger::info(str::format("DXVK: Graphics pipeline libraries ",
       (m_device->canUseGraphicsPipelineLibrary() ? "supported" : "not supported")));
@@ -260,7 +257,7 @@ namespace dxvk {
     auto iter = m_vertexInputLibraries.emplace(
       std::piecewise_construct,
       std::tuple(state),
-      std::tuple(m_device, state, m_cache.handle()));
+      std::tuple(m_device, state));
     return &iter.first->second;
   }
 
@@ -276,7 +273,7 @@ namespace dxvk {
     auto iter = m_fragmentOutputLibraries.emplace(
       std::piecewise_construct,
       std::tuple(state),
-      std::tuple(m_device, state, m_cache.handle()));
+      std::tuple(m_device, state));
     return &iter.first->second;
   }
   

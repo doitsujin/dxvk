@@ -7,7 +7,6 @@
 #include "dxvk_bind_mask.h"
 #include "dxvk_constant_state.h"
 #include "dxvk_graphics_state.h"
-#include "dxvk_pipecache.h"
 #include "dxvk_pipelayout.h"
 #include "dxvk_renderpass.h"
 #include "dxvk_resource.h"
@@ -62,8 +61,7 @@ namespace dxvk {
 
     DxvkGraphicsPipelineVertexInputLibrary(
             DxvkDevice*                           device,
-      const DxvkGraphicsPipelineVertexInputState& state,
-            VkPipelineCache                       cache);
+      const DxvkGraphicsPipelineVertexInputState& state);
 
     ~DxvkGraphicsPipelineVertexInputLibrary();
 
@@ -122,8 +120,7 @@ namespace dxvk {
 
     DxvkGraphicsPipelineFragmentOutputLibrary(
             DxvkDevice*                               device,
-      const DxvkGraphicsPipelineFragmentOutputState&  state,
-            VkPipelineCache                           cache);
+      const DxvkGraphicsPipelineFragmentOutputState&  state);
 
     ~DxvkGraphicsPipelineFragmentOutputLibrary();
 
@@ -392,7 +389,6 @@ namespace dxvk {
     DxvkDevice*                 m_device;    
     DxvkPipelineManager*        m_manager;
     DxvkPipelineWorkers*        m_workers;
-    DxvkPipelineCache*          m_cache;
     DxvkStateCache*             m_stateCache;
     DxvkPipelineStats*          m_stats;
 

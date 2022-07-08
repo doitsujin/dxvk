@@ -17,7 +17,6 @@ namespace dxvk {
           DxvkBindingLayoutObjects*   layout,
           DxvkShaderPipelineLibrary*  library)
   : m_device        (device),
-    m_cache         (&pipeMgr->m_cache),
     m_stateCache    (&pipeMgr->m_stateCache),
     m_stats         (&pipeMgr->m_stats),
     m_library       (library),
@@ -130,7 +129,7 @@ namespace dxvk {
     
     VkPipeline pipeline = VK_NULL_HANDLE;
     if (vk->vkCreateComputePipelines(vk->device(),
-          m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
+          VK_NULL_HANDLE, 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
       Logger::err("DxvkComputePipeline: Failed to compile pipeline");
       Logger::err(str::format("  cs  : ", m_shaders.cs->debugName()));
       return VK_NULL_HANDLE;
