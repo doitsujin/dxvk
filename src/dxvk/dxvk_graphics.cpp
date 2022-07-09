@@ -997,6 +997,31 @@ namespace dxvk {
       return false;
     }
 
+    // Validate render target format support
+    VkFormat depthFormat = state.rt.getDepthStencilFormat();
+
+    if (depthFormat) {
+      VkFormatProperties formatInfo = m_device->adapter()->formatProperties(depthFormat);
+
+      if (!(formatInfo.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+        Logger::err(str::format(depthFormat, " not supported as depth-stencil attachment"));
+        return false;
+      }
+    }
+
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      VkFormat colorFormat = state.rt.getColorFormat(i);
+
+      if (colorFormat) {
+        VkFormatProperties formatInfo = m_device->adapter()->formatProperties(colorFormat);
+
+        if (!(formatInfo.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)) {
+          Logger::err(str::format(depthFormat, " not supported as color attachment"));
+          return false;
+        }
+      }
+    }
+
     return true;
   }
   
