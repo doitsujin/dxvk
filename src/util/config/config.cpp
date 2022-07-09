@@ -301,6 +301,10 @@ namespace dxvk {
     { R"(\\GW2.Main_Win64_Retail\.exe$)", {{
       { "dxgi.customVendorId",           "10de"   },
     }} },
+    /* DayZ */
+    { R"(\\DayZ_x64\.exe$)", {{
+      { "d3d11.cachedDynamicResources",     "cr" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
