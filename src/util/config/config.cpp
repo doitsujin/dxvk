@@ -597,6 +597,10 @@ namespace dxvk {
     { R"(\\PortRoyale3\.exe$)", {{
       { "d3d9.allowDoNotWait",           "False" },
     }} },
+    /* DayZ */
+    { R"(\\DayZ_x64\.exe$)", {{
+      { "d3d11.cachedDynamicResources",     "cr" },
+    }} },
   }};
 
 
