@@ -591,6 +591,10 @@ namespace dxvk {
 
     VkPipeline pipeline = this->createOptimizedPipeline(state, 0);
     instance->fastHandle.store(pipeline, std::memory_order_release);
+
+    // Log pipeline state on error
+    if (!pipeline)
+      this->logPipelineState(LogLevel::Error, state);
   }
 
 
@@ -624,6 +628,10 @@ namespace dxvk {
       // Create optimized variant right away, no choice
       fastHandle = this->createOptimizedPipeline(state, 0);
     }
+
+    // Log pipeline state if requested, or on failure
+    if (!fastHandle && !baseHandle)
+      this->logPipelineState(LogLevel::Error, state);
 
     m_stats->numGraphicsPipelines += 1;
     return &(*m_pipelines.emplace(state, baseHandle, fastHandle));
@@ -729,9 +737,10 @@ namespace dxvk {
     info.basePipelineIndex  = -1;
 
     VkPipeline pipeline = VK_NULL_HANDLE;
+    VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
 
-    if ((vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline)))
-      Logger::err("DxvkGraphicsPipeline: Failed to create base pipeline");
+    if (vr != VK_SUCCESS)
+      Logger::err(str::format("DxvkGraphicsPipeline: Failed to create base pipeline: ", vr));
 
     return pipeline;
   }
@@ -741,11 +750,6 @@ namespace dxvk {
     const DxvkGraphicsPipelineStateInfo& state,
           VkPipelineCreateFlags          flags) const {
     auto vk = m_device->vkd();
-
-    if (Logger::logLevel() <= LogLevel::Debug) {
-      Logger::debug("Compiling graphics pipeline...");
-      this->logPipelineState(LogLevel::Debug, state);
-    }
 
     // Set up dynamic states as needed
     std::array<VkDynamicState, 6> dynamicStates;
@@ -837,10 +841,8 @@ namespace dxvk {
     if (vr != VK_SUCCESS) {
       // Ignore any error if we're trying to create a cached pipeline. If linking or
       // compiling an optimized pipeline fail later, we'll still be printing errors.
-      if (!(flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT)) {
+      if (!(flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT))
         Logger::err(str::format("DxvkGraphicsPipeline: Failed to compile pipeline: ", vr));
-        this->logPipelineState(LogLevel::Error, state);
-      }
 
       return VK_NULL_HANDLE;
     }
