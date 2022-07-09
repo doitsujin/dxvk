@@ -301,6 +301,10 @@ namespace dxvk {
     { R"(\\GW2.Main_Win64_Retail\.exe$)", {{
       { "dxgi.customVendorId",           "10de"   },
     }} },
+    /* DayZ */
+    { R"(\\DayZ_x64\.exe$)", {{
+      { "d3d11.cachedDynamicResources",     "cr" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
@@ -596,10 +600,6 @@ namespace dxvk {
      * Fixes infinite loading screens           */
     { R"(\\PortRoyale3\.exe$)", {{
       { "d3d9.allowDoNotWait",           "False" },
-    }} },
-    /* DayZ */
-    { R"(\\DayZ_x64\.exe$)", {{
-      { "d3d11.cachedDynamicResources",     "cr" },
     }} },
   }};
 
