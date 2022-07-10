@@ -6790,6 +6790,8 @@ namespace dxvk {
             break;
         }
 
+        stage.TextureBound = m_state.textures[idx] != nullptr ? 1 : 0;
+
         stage.ColorOp = data[DXVK_TSS_COLOROP];
         stage.AlphaOp = data[DXVK_TSS_ALPHAOP];
 

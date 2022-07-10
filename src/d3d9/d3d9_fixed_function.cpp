@@ -1551,8 +1551,10 @@ namespace dxvk {
     uint32_t current = diffuse;
     // Temp starts off as equal to vec4(0)
     uint32_t temp  = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
-    
+
     uint32_t texture = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 1.0f);
+
+    uint32_t unboundTextureConstId = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 1.0f);
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       const auto& stage = m_fsKey.Stages[i].Contents;
@@ -1712,7 +1714,11 @@ namespace dxvk {
             reg = temp;
             break;
           case D3DTA_TEXTURE:
-            reg = GetTexture();
+            if (stage.TextureBound != 0) {
+              reg = GetTexture();
+            } else {
+              reg = unboundTextureConstId;
+            }
             break;
           case D3DTA_TFACTOR:
             reg = m_ps.constants.textureFactor;
