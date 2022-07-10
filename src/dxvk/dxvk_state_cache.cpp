@@ -222,6 +222,9 @@ namespace dxvk {
     std::string useStateCache = env::getEnvVar("DXVK_STATE_CACHE");
     m_enable = useStateCache != "0" && device->config().enableStateCache;
 
+    if (!m_enable)
+      return;
+
     bool newFile = !readCacheFile();
 
     if (newFile) {
