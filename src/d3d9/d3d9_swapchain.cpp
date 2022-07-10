@@ -333,7 +333,7 @@ namespace dxvk {
     D3D9CommonTexture* dstTexInfo = dst->GetCommonTexture();
     D3D9CommonTexture* srcTexInfo = m_backBuffers.back()->GetCommonTexture();
 
-    if (unlikely(dstTexInfo->Desc()->Pool != D3DPOOL_SYSTEMMEM))
+    if (unlikely(dstTexInfo->Desc()->Pool != D3DPOOL_SYSTEMMEM && dstTexInfo->Desc()->Pool != D3DPOOL_SCRATCH))
       return D3DERR_INVALIDCALL;
 
     Rc<DxvkBuffer> dstBuffer = dstTexInfo->GetBuffer(dst->GetSubresource());
