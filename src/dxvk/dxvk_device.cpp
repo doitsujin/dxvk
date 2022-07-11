@@ -188,11 +188,6 @@ namespace dxvk {
   }
   
   
-  void DxvkDevice::initResources() {
-    m_objects.dummyResources().clearResources(this);
-  }
-
-
   void DxvkDevice::registerShader(const Rc<DxvkShader>& shader) {
     m_objects.pipelineManager().registerShader(shader);
   }

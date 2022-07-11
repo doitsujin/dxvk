@@ -357,15 +357,6 @@ namespace dxvk {
     uint32_t getCurrentFrameId() const;
     
     /**
-     * \brief Initializes dummy resources
-     * 
-     * Should be called after creating the device in
-     * case the device initialization was successful
-     * and the device is usable.
-     */
-    void initResources();
-    
-    /**
      * \brief Registers a shader
      * \param [in] shader Newly compiled shader
      */
