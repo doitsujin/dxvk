@@ -542,12 +542,17 @@ namespace dxvk {
       if (!instance) {
         // Keep pipeline object locked, at worst we're going to stall
         // a state cache worker and the current thread needs priority.
-        instance = this->createInstance(state);
-        this->writePipelineStateToCache(state);
+        bool canCreateBasePipeline = this->canCreateBasePipeline(state);
+        instance = this->createInstance(state, canCreateBasePipeline);
 
         // If necessary, compile an optimized pipeline variant
         if (!instance->fastHandle.load())
           m_workers->compileGraphicsPipeline(this, state);
+
+        // Only store pipelines in the state cache that cannot benefit
+        // from pipeline libraries, or if that feature is disabled.
+        if (!canCreateBasePipeline)
+          this->writePipelineStateToCache(state);
       }
     }
 
@@ -575,12 +580,17 @@ namespace dxvk {
       if (!this->validatePipelineState(state, false))
         return;
 
+      // Do not compile if this pipeline can be fast linked. This essentially
+      // disables the state cache for pipelines that do not benefit from it.
+      if (this->canCreateBasePipeline(state))
+        return;
+
       // Prevent other threads from adding new instances and check again
       std::lock_guard<dxvk::mutex> lock(m_mutex);
       instance = this->findInstance(state);
 
       if (!instance)
-        instance = this->createInstance(state);
+        instance = this->createInstance(state, false);
     }
 
     // Exit if another thread is already compiling
@@ -599,11 +609,12 @@ namespace dxvk {
 
 
   DxvkGraphicsPipelineInstance* DxvkGraphicsPipeline::createInstance(
-    const DxvkGraphicsPipelineStateInfo& state) {
+    const DxvkGraphicsPipelineStateInfo& state,
+          bool                           doCreateBasePipeline) {
     VkPipeline baseHandle = VK_NULL_HANDLE;
     VkPipeline fastHandle = VK_NULL_HANDLE;
 
-    if (this->canCreateBasePipeline(state)) {
+    if (doCreateBasePipeline) {
       // Try to create an optimized pipeline from the cache
       // first, since this is expected to be the fastest path.
       if (m_device->canUsePipelineCacheControl()) {

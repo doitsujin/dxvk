@@ -410,7 +410,8 @@ namespace dxvk {
     sync::List<DxvkGraphicsPipelineBaseInstance>  m_basePipelines;
     
     DxvkGraphicsPipelineInstance* createInstance(
-      const DxvkGraphicsPipelineStateInfo& state);
+      const DxvkGraphicsPipelineStateInfo& state,
+            bool                           doCreateBasePipeline);
     
     DxvkGraphicsPipelineInstance* findInstance(
       const DxvkGraphicsPipelineStateInfo& state);
