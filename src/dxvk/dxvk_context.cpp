@@ -5234,18 +5234,25 @@ namespace dxvk {
         return false;
     }
     
-    if (m_state.gp.flags.any(DxvkGraphicsPipelineFlag::HasStorageDescriptors,
-                             DxvkGraphicsPipelineFlag::HasTransformFeedback)) {
-      this->commitGraphicsBarriers<Indexed, Indirect, false>();
-      this->commitGraphicsBarriers<Indexed, Indirect, true>();
-    }
-
     if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer))
       this->updateFramebuffer();
 
     if (!m_flags.test(DxvkContextFlag::GpRenderPassBound))
       this->startRenderPass();
     
+    if (m_state.gp.flags.any(
+          DxvkGraphicsPipelineFlag::HasStorageDescriptors,
+          DxvkGraphicsPipelineFlag::HasTransformFeedback)) {
+      this->commitGraphicsBarriers<Indexed, Indirect, false>();
+
+      // This can only happen if the render pass was active before,
+      // so we'll never strat the render pass twice in one draw
+      if (!m_flags.test(DxvkContextFlag::GpRenderPassBound))
+        this->startRenderPass();
+
+      this->commitGraphicsBarriers<Indexed, Indirect, true>();
+    }
+
     if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer) && Indexed) {
       if (unlikely(!this->updateIndexBufferBinding()))
         return false;
