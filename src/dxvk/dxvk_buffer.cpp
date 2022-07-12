@@ -135,31 +135,35 @@ namespace dxvk {
 
 
   VkDeviceSize DxvkBuffer::computeSliceAlignment() const {
-    const auto& devInfo = m_device->properties().core.properties;
+    const auto& devInfo = m_device->properties();
 
     VkDeviceSize result = sizeof(uint32_t);
 
-    if (m_info.usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
-      result = std::max(result, devInfo.limits.minUniformBufferOffsetAlignment);
+    if (m_info.usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT) {
+      result = std::max(result, devInfo.core.properties.limits.minUniformBufferOffsetAlignment);
+      result = std::max(result, devInfo.extRobustness2.robustUniformBufferAccessSizeAlignment);
+    }
 
-    if (m_info.usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
-      result = std::max(result, devInfo.limits.minStorageBufferOffsetAlignment);
+    if (m_info.usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT) {
+      result = std::max(result, devInfo.core.properties.limits.minStorageBufferOffsetAlignment);
+      result = std::max(result, devInfo.extRobustness2.robustStorageBufferAccessSizeAlignment);
+    }
 
     if (m_info.usage & (VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT)) {
-      result = std::max(result, devInfo.limits.minTexelBufferOffsetAlignment);
+      result = std::max(result, devInfo.core.properties.limits.minTexelBufferOffsetAlignment);
       result = std::max(result, VkDeviceSize(16));
     }
 
     if (m_info.usage & (VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT)
-     && m_info.size > (devInfo.limits.optimalBufferCopyOffsetAlignment / 2))
-      result = std::max(result, devInfo.limits.optimalBufferCopyOffsetAlignment);
+     && m_info.size > (devInfo.core.properties.limits.optimalBufferCopyOffsetAlignment / 2))
+      result = std::max(result, devInfo.core.properties.limits.optimalBufferCopyOffsetAlignment);
 
     // For some reason, Warhammer Chaosbane breaks otherwise
     if (m_info.usage & (VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT))
       result = std::max(result, VkDeviceSize(256));
 
     if (m_memFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-      result = std::max(result, devInfo.limits.nonCoherentAtomSize);
+      result = std::max(result, devInfo.core.properties.limits.nonCoherentAtomSize);
       result = std::max(result, VkDeviceSize(64));
     }
 

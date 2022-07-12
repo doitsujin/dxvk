@@ -349,6 +349,8 @@ namespace dxvk {
     enabledFeatures.ext4444Formats.formatA4B4G4R4 = m_deviceFeatures.ext4444Formats.formatA4B4G4R4;
     enabledFeatures.ext4444Formats.formatA4R4G4B4 = m_deviceFeatures.ext4444Formats.formatA4R4G4B4;
     
+    enabledFeatures.extRobustness2.robustBufferAccess2 = VK_TRUE;
+    enabledFeatures.extRobustness2.robustImageAccess2 = m_deviceFeatures.extRobustness2.robustImageAccess2;
     enabledFeatures.extRobustness2.nullDescriptor = VK_TRUE;
 
     enabledFeatures.extShaderModuleIdentifier.shaderModuleIdentifier =
