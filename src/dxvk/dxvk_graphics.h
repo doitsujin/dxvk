@@ -180,6 +180,7 @@ namespace dxvk {
    * \brief Flags that describe pipeline properties
    */
   enum class DxvkGraphicsPipelineFlag {
+    HasRasterizerDiscard,
     HasTransformFeedback,
     HasStorageDescriptors,
   };

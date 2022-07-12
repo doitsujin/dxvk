@@ -475,14 +475,19 @@ namespace dxvk {
     m_vsIn  = m_shaders.vs != nullptr ? m_shaders.vs->info().inputMask  : 0;
     m_fsOut = m_shaders.fs != nullptr ? m_shaders.fs->info().outputMask : 0;
 
-    if (m_shaders.gs != nullptr && m_shaders.gs->flags().test(DxvkShaderFlag::HasTransformFeedback)) {
-      m_flags.set(DxvkGraphicsPipelineFlag::HasTransformFeedback);
+    if (m_shaders.gs != nullptr) {
+      if (m_shaders.gs->flags().test(DxvkShaderFlag::HasTransformFeedback)) {
+        m_flags.set(DxvkGraphicsPipelineFlag::HasTransformFeedback);
 
-      m_barrier.stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT
-                       |  VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
-      m_barrier.access |= VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT
-                       |  VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT
-                       |  VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT;
+        m_barrier.stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT
+                         |  VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
+        m_barrier.access |= VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT
+                         |  VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT
+                         |  VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT;
+      }
+
+      if (m_shaders.gs->info().xfbRasterizedStream < 0)
+        m_flags.set(DxvkGraphicsPipelineFlag::HasRasterizerDiscard);
     }
     
     if (m_barrier.access & VK_ACCESS_SHADER_WRITE_BIT)
