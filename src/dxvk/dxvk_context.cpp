@@ -96,6 +96,7 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyXfbBuffers,
       DxvkContextFlag::GpDirtyBlendConstants,
       DxvkContextFlag::GpDirtyStencilRef,
+      DxvkContextFlag::GpDirtyRasterizerState,
       DxvkContextFlag::GpDirtyViewport,
       DxvkContextFlag::GpDirtyDepthBias,
       DxvkContextFlag::GpDirtyDepthBounds,
@@ -2421,16 +2422,29 @@ namespace dxvk {
   
   
   void DxvkContext::setRasterizerState(const DxvkRasterizerState& rs) {
-    m_state.gp.state.rs = DxvkRsInfo(
-      rs.depthClipEnable,
-      rs.depthBiasEnable,
-      rs.polygonMode,
-      rs.cullMode,
-      rs.frontFace,
-      rs.sampleCount,
-      rs.conservativeMode);
+    if (m_state.dyn.cullMode != rs.cullMode || m_state.dyn.frontFace != rs.frontFace) {
+      m_state.dyn.cullMode = rs.cullMode;
+      m_state.dyn.frontFace = rs.frontFace;
 
-    m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      m_flags.set(DxvkContextFlag::GpDirtyRasterizerState);
+    }
+
+    if (m_state.gp.state.rs.depthClipEnable() != rs.depthClipEnable
+     || m_state.gp.state.rs.depthBiasEnable() != rs.depthBiasEnable
+     || m_state.gp.state.rs.polygonMode() != rs.polygonMode
+     || m_state.gp.state.rs.sampleCount() != rs.sampleCount
+     || m_state.gp.state.rs.conservativeMode() != rs.conservativeMode) {
+      m_state.gp.state.rs = DxvkRsInfo(
+        rs.depthClipEnable,
+        rs.depthBiasEnable,
+        rs.polygonMode,
+        rs.cullMode,
+        rs.frontFace,
+        rs.sampleCount,
+        rs.conservativeMode);
+
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+    }
   }
   
   
@@ -4003,6 +4017,7 @@ namespace dxvk {
         DxvkContextFlag::GpDirtyXfbBuffers,
         DxvkContextFlag::GpDirtyBlendConstants,
         DxvkContextFlag::GpDirtyStencilRef,
+        DxvkContextFlag::GpDirtyRasterizerState,
         DxvkContextFlag::GpDirtyViewport,
         DxvkContextFlag::GpDirtyDepthBias,
         DxvkContextFlag::GpDirtyDepthBounds,
@@ -4428,6 +4443,7 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyXfbBuffers,
       DxvkContextFlag::GpDirtyBlendConstants,
       DxvkContextFlag::GpDirtyStencilRef,
+      DxvkContextFlag::GpDirtyRasterizerState,
       DxvkContextFlag::GpDirtyViewport,
       DxvkContextFlag::GpDirtyDepthBias,
       DxvkContextFlag::GpDirtyDepthBounds);
@@ -4488,6 +4504,7 @@ namespace dxvk {
                 DxvkContextFlag::GpDynamicDepthBias,
                 DxvkContextFlag::GpDynamicDepthBounds,
                 DxvkContextFlag::GpDynamicStencilRef,
+                DxvkContextFlag::GpDynamicRasterizerState,
                 DxvkContextFlag::GpIndependentSets);
     
     m_flags.set(m_state.gp.state.useDynamicBlendConstants()
@@ -4505,7 +4522,11 @@ namespace dxvk {
     m_flags.set(m_state.gp.state.useDynamicStencilRef()
       ? DxvkContextFlag::GpDynamicStencilRef
       : DxvkContextFlag::GpDirtyStencilRef);
-    
+
+    m_flags.set((!m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasRasterizerDiscard))
+      ? DxvkContextFlag::GpDynamicRasterizerState
+      : DxvkContextFlag::GpDirtyRasterizerState);
+
     // Retrieve and bind actual Vulkan pipeline handle
     auto pipelineInfo = m_state.gp.pipeline->getPipelineHandle(m_state.gp.state);
 
@@ -4519,10 +4540,6 @@ namespace dxvk {
     // For pipelines created from graphics pipeline libraries, we need
     // to apply a bunch of dynamic state that is otherwise static
     if (pipelineInfo.second == DxvkGraphicsPipelineType::BasePipeline) {
-      m_cmd->cmdSetRasterizerState(
-        m_state.gp.state.rs.cullMode(),
-        m_state.gp.state.rs.frontFace());
-
       m_cmd->cmdSetDepthState(
         m_state.gp.state.ds.enableDepthTest(),
         m_state.gp.state.ds.enableDepthWrite(),
@@ -4538,8 +4555,11 @@ namespace dxvk {
           m_state.gp.state.ds.enableDepthBoundsTest());
       }
 
-      if (!m_state.gp.state.rs.depthBiasEnable())
+      if (!m_flags.test(DxvkContextFlag::GpDynamicDepthBias))
         m_cmd->cmdSetDepthBias(0.0f, 0.0f, 0.0f);
+
+      if (!m_flags.test(DxvkContextFlag::GpDynamicRasterizerState))
+        m_cmd->cmdSetRasterizerState(VK_CULL_MODE_FRONT_AND_BACK, VK_FRONT_FACE_CLOCKWISE);
 
       m_flags.set(DxvkContextFlag::GpIndependentSets);
     }
@@ -5117,6 +5137,15 @@ namespace dxvk {
       m_cmd->cmdSetScissor(m_state.vp.viewportCount, m_state.vp.scissorRects.data());
     }
 
+    if (m_flags.all(DxvkContextFlag::GpDirtyRasterizerState,
+                    DxvkContextFlag::GpDynamicRasterizerState)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyRasterizerState);
+
+      m_cmd->cmdSetRasterizerState(
+        m_state.dyn.cullMode,
+        m_state.dyn.frontFace);
+    }
+
     if (m_flags.all(DxvkContextFlag::GpDirtyBlendConstants,
                     DxvkContextFlag::GpDynamicBlendConstants)) {
       m_flags.clr(DxvkContextFlag::GpDirtyBlendConstants);
@@ -5255,7 +5284,8 @@ namespace dxvk {
           DxvkContextFlag::GpDirtyBlendConstants,
           DxvkContextFlag::GpDirtyStencilRef,
           DxvkContextFlag::GpDirtyDepthBias,
-          DxvkContextFlag::GpDirtyDepthBounds))
+          DxvkContextFlag::GpDirtyDepthBounds,
+          DxvkContextFlag::GpDirtyRasterizerState))
       this->updateDynamicState();
     
     if (m_flags.test(DxvkContextFlag::DirtyPushConstants))

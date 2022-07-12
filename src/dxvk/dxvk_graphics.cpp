@@ -768,7 +768,7 @@ namespace dxvk {
     auto vk = m_device->vkd();
 
     // Set up dynamic states as needed
-    std::array<VkDynamicState, 6> dynamicStates;
+    std::array<VkDynamicState, 8> dynamicStates;
     uint32_t                      dynamicStateCount = 0;
     
     dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT;
@@ -785,6 +785,11 @@ namespace dxvk {
     
     if (state.useDynamicStencilRef())
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
+
+    if (!m_flags.test(DxvkGraphicsPipelineFlag::HasRasterizerDiscard)) {
+      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_CULL_MODE_EXT;
+      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_FRONT_FACE_EXT;
+    }
 
     // Set up some specialization constants
     DxvkSpecConstants specData;
