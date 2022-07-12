@@ -395,8 +395,6 @@ namespace dxvk {
     // Set up basic rasterization state
     rsInfo.depthClampEnable         = VK_TRUE;
     rsInfo.polygonMode              = state.rs.polygonMode();
-    rsInfo.cullMode                 = state.rs.cullMode();
-    rsInfo.frontFace                = state.rs.frontFace();
     rsInfo.depthBiasEnable          = state.rs.depthBiasEnable();
     rsInfo.lineWidth                = 1.0f;
 
@@ -1096,22 +1094,10 @@ namespace dxvk {
     }
 
     // Log rasterizer state
-    std::string cullMode;
-
-    switch (state.rs.cullMode()) {
-      case VK_CULL_MODE_NONE: cullMode = "VK_CULL_MODE_NONE"; break;
-      case VK_CULL_MODE_BACK_BIT: cullMode = "VK_CULL_MODE_BACK_BIT"; break;
-      case VK_CULL_MODE_FRONT_BIT: cullMode = "VK_CULL_MODE_FRONT_BIT"; break;
-      case VK_CULL_MODE_FRONT_AND_BACK: cullMode = "VK_CULL_MODE_FRONT_AND_BACK"; break;
-      default: cullMode = str::format(state.rs.cullMode());
-    }
-
     sstr << "Rasterizer state:" << std::endl
          << "  depth clip:      " << (state.rs.depthClipEnable() ? "yes" : "no") << std::endl
          << "  depth bias:      " << (state.rs.depthBiasEnable() ? "yes" : "no") << std::endl
          << "  polygon mode:    " << state.rs.polygonMode() << std::endl
-         << "  cull mode:       " << cullMode << std::endl
-         << "  front face:      " << state.rs.frontFace() << std::endl
          << "  conservative:    " << (state.rs.conservativeMode() == VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT ? "no" : "yes") << std::endl;
 
     // Log multisample state

@@ -73,6 +73,16 @@ namespace dxvk {
         return true;
       }
 
+      if (version < 14) {
+        DxvkRsInfoV13 v13;
+
+        if (!read(v13))
+          return false;
+
+        data = v13.convert();
+        return true;
+      }
+
       return read(data);
     }
 

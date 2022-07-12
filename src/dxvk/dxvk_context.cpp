@@ -2438,8 +2438,6 @@ namespace dxvk {
         rs.depthClipEnable,
         rs.depthBiasEnable,
         rs.polygonMode,
-        rs.cullMode,
-        rs.frontFace,
         rs.sampleCount,
         rs.conservativeMode);
 
