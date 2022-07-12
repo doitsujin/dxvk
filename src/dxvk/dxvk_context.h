@@ -707,12 +707,14 @@ namespace dxvk {
             uint32_t          counterBias);
     
     /**
-     * \brief Emits barrier for render target readback
+     * \brief Emits graphics barrier
      *
-     * Use between draw calls if the fragment shader
-     * reads one of the currently bound render targets.
+     * Needs to be used when the fragment shader reads a bound
+     * render target, or when subsequent draw calls access any
+     * given resource for writing. It is assumed that no hazards
+     * can happen between storage descriptors and other resources.
      */
-    void emitRenderTargetReadbackBarrier();
+    void emitGraphicsBarrier();
 
     /**
      * \brief Generates mip maps

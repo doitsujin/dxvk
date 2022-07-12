@@ -1441,18 +1441,6 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::emitRenderTargetReadbackBarrier() {
-    if (m_flags.test(DxvkContextFlag::GpRenderPassBound))
-      this->spillRenderPass(true);
-
-    emitMemoryBarrier(0,
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-      VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-      VK_ACCESS_SHADER_READ_BIT);
-  }
-
-
   void DxvkContext::initBuffer(
     const Rc<DxvkBuffer>&           buffer) {
     auto slice = buffer->getSliceHandle();
@@ -1570,6 +1558,12 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::emitGraphicsBarrier() {
+    if (!m_barrierControl.test(DxvkBarrierControl::IgnoreGraphicsBarriers))
+      this->spillRenderPass(true);
+  }
+
+
   void DxvkContext::generateMipmaps(
     const Rc<DxvkImageView>&        imageView,
           VkFilter                  filter) {

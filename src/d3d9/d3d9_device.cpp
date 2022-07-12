@@ -6084,7 +6084,7 @@ namespace dxvk {
   void D3D9DeviceEx::PrepareDraw(D3DPRIMITIVETYPE PrimitiveType) {
     if (unlikely(m_activeHazardsRT != 0)) {
       EmitCs([](DxvkContext* ctx) {
-        ctx->emitRenderTargetReadbackBarrier();
+        ctx->emitGraphicsBarrier();
       });
 
       if (m_d3d9Options.generalHazards)
