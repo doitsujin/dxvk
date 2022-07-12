@@ -35,9 +35,6 @@ namespace dxvk {
       ? VkDeviceSize(maxDynamicImageBufferSize) << 10
       : VkDeviceSize(~0ull);
 
-    this->constantBufferRangeCheck = config.getOption<bool>("d3d11.constantBufferRangeCheck", false)
-      && DxvkGpuVendor(devInfo.core.properties.vendorID) != DxvkGpuVendor::Amd;
-
     auto cachedDynamicResources = config.getOption<std::string>("d3d11.cachedDynamicResources", std::string());
 
     if (::GetModuleHandle("dxgitrace.dll")) {

@@ -24,11 +24,6 @@ namespace dxvk {
     /// outputs with zero
     bool enableRtOutputNanFixup;
 
-    /// Enables out-of-bounds access check for constant
-    /// buffers. Workaround for a few broken games that
-    /// access random data inside their shaders.
-    bool constantBufferRangeCheck;
-
     /// Zero-initialize workgroup memory
     ///
     /// Workargound for games that don't initialize

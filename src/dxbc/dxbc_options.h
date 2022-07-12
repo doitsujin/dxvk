@@ -44,10 +44,6 @@ namespace dxvk {
     /// Enables NaN fixup for render target outputs
     bool enableRtOutputNanFixup = false;
 
-    /// Implement dynamically indexed uniform buffers
-    /// with storage buffers for tight bounds checking
-    bool dynamicIndexedConstantBufferAsSsbo = false;
-
     /// Clear thread-group shared memory to zero
     bool zeroInitWorkgroupMemory = false;
 

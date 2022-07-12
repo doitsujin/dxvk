@@ -107,18 +107,6 @@ namespace dxvk {
     { R"(\\starwarsbattlefront(trial)?\.exe$)", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
-    /* Dark Souls Remastered                      */
-    { R"(\\DarkSoulsRemastered\.exe$)", {{
-      { "d3d11.constantBufferRangeCheck",   "True" },
-    }} },
-    /* Grim Dawn                                  */
-    { R"(\\Grim Dawn\.exe$)", {{
-      { "d3d11.constantBufferRangeCheck",   "True" },
-    }} },
-    /* NieR:Automata                              */
-    { R"(\\NieRAutomata\.exe$)", {{
-      { "d3d11.constantBufferRangeCheck",   "True" },
-    }} },
     /* NieR Replicant                             */
     { R"(\\NieR Replicant ver\.1\.22474487139\.exe)", {{
       { "dxgi.syncInterval",                "1"    },
@@ -136,18 +124,6 @@ namespace dxvk {
     /* Modern Warfare Remastered                  */
     { R"(\\h1_[ms]p64_ship\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
-    }} },
-    /* Titan Quest                                */
-    { R"(\\TQ\.exe$)", {{
-      { "d3d11.constantBufferRangeCheck",   "True" },
-    }} },
-    /* Saints Row IV                              */
-    { R"(\\SaintsRowIV\.exe$)", {{
-      { "d3d11.constantBufferRangeCheck",   "True" },
-    }} },
-    /* Saints Row: The Third                      */
-    { R"(\\SaintsRowTheThird_DX11\.exe$)", {{
-      { "d3d11.constantBufferRangeCheck",   "True" },
     }} },
     /* Crysis 3 - slower if it notices AMD card     *
      * Apitrace mode helps massively in cpu bound   *
@@ -200,14 +176,6 @@ namespace dxvk {
      * in a compute shader, causing artifacts     */
     { R"(\\F1_20(1[89]|[2-9][0-9])\.exe$)", {{
       { "d3d11.forceTgsmBarriers",          "True" },
-    }} },
-    /* Blue Reflection                            */
-    { R"(\\BLUE_REFLECTION\.exe$)", {{
-      { "d3d11.constantBufferRangeCheck",   "True" },
-    }} },
-    /* Secret World Legends                       */
-    { R"(\\SecretWorldLegendsDX11\.exe$)", {{
-      { "d3d11.constantBufferRangeCheck",   "True" },
     }} },
     /* Darksiders Warmastered - apparently reads  *
      * from write-only mapped buffers             */

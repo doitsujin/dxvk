@@ -774,19 +774,15 @@ namespace dxvk {
     const uint32_t bufferId     = ins.dst[0].idx[0].offset;
     const uint32_t elementCount = ins.dst[0].idx[1].offset;
 
-    bool asSsbo = m_moduleInfo.options.dynamicIndexedConstantBufferAsSsbo
-      && ins.controls.accessType() == DxbcConstantBufferAccessType::DynamicallyIndexed;
-    
     this->emitDclConstantBufferVar(bufferId, elementCount,
-      str::format("cb", bufferId).c_str(), asSsbo);
+      str::format("cb", bufferId).c_str());
   }
   
   
   void DxbcCompiler::emitDclConstantBufferVar(
           uint32_t                regIdx,
           uint32_t                numConstants,
-    const char*                   name,
-          bool                    asSsbo) {
+    const char*                   name) {
     // Uniform buffer data is stored as a fixed-size array
     // of 4x32-bit vectors. SPIR-V requires explicit strides.
     const uint32_t arrayType = m_module.defArrayTypeUnique(
@@ -798,9 +794,7 @@ namespace dxvk {
     // struct and decorate that struct as a block.
     const uint32_t structType = m_module.defStructTypeUnique(1, &arrayType);
     
-    m_module.decorate(structType, asSsbo
-      ? spv::DecorationBufferBlock
-      : spv::DecorationBlock);
+    m_module.decorate(structType, spv::DecorationBlock);
     m_module.memberDecorateOffset(structType, 0, 0);
     
     m_module.setDebugName        (structType, str::format(name, "_t").c_str());
@@ -821,20 +815,13 @@ namespace dxvk {
     m_module.decorateDescriptorSet(varId, 0);
     m_module.decorateBinding(varId, bindingId);
 
-    if (asSsbo)
-      m_module.decorate(varId, spv::DecorationNonWritable);
-
     DxbcConstantBuffer buf;
     buf.varId  = varId;
     buf.size   = numConstants;
     m_constantBuffers.at(regIdx) = buf;
     
     // Store descriptor info for the shader interface
-    VkDescriptorType descriptorType = asSsbo
-      ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER
-      : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-
-    DxvkBindingInfo binding = { descriptorType };
+    DxvkBindingInfo binding = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER };
     binding.viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     binding.access = VK_ACCESS_UNIFORM_READ_BIT;
     binding.resourceBinding = bindingId;
@@ -1507,8 +1494,7 @@ namespace dxvk {
   void DxbcCompiler::emitDclImmediateConstantBufferUbo(
           uint32_t                dwordCount,
     const uint32_t*               dwordArray) {
-    this->emitDclConstantBufferVar(Icb_BindingSlotId, dwordCount / 4, "icb",
-      m_moduleInfo.options.dynamicIndexedConstantBufferAsSsbo);
+    this->emitDclConstantBufferVar(Icb_BindingSlotId, dwordCount / 4, "icb");
     m_immConstData.resize(dwordCount * sizeof(uint32_t));
     std::memcpy(m_immConstData.data(), dwordArray, m_immConstData.size());
   }
