@@ -95,9 +95,10 @@ namespace dxvk {
           ID3DBlob** ppDisassembly);
 
   HRESULT DecodeMultiSampleType(
-        D3DMULTISAMPLE_TYPE       MultiSample,
-        DWORD                     MultisampleQuality,
-        VkSampleCountFlagBits*    pCount);
+    const Rc<DxvkDevice>&           pDevice,
+          D3DMULTISAMPLE_TYPE       MultiSample,
+          DWORD                     MultisampleQuality,
+          VkSampleCountFlagBits*    pSampleCount);
 
   VkFormat GetPackedDepthStencilFormat(D3D9Format Format);
 
