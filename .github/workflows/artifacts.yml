@@ -22,6 +22,7 @@ jobs:
       uses: Joshua-Ashton/arch-mingw-github-action@v7
       with:
         command: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           export VERSION_NAME="${GITHUB_REF##*/}-${GITHUB_SHA##*/}"
           ./package-release.sh ${VERSION_NAME} build --no-package
           echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_ENV
