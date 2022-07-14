@@ -1162,12 +1162,12 @@ namespace dxvk {
 
     Rc<D3D9ShaderModuleSet>         m_shaderModules;
 
-    Rc<DxvkBuffer>                  m_vsClipPlanes;
+    D3D9ConstantBuffer              m_vsClipPlanes;
 
-    Rc<DxvkBuffer>                  m_vsFixedFunction;
-    Rc<DxvkBuffer>                  m_vsVertexBlend;
-    Rc<DxvkBuffer>                  m_psFixedFunction;
-    Rc<DxvkBuffer>                  m_psShared;
+    D3D9ConstantBuffer              m_vsFixedFunction;
+    D3D9ConstantBuffer              m_vsVertexBlend;
+    D3D9ConstantBuffer              m_psFixedFunction;
+    D3D9ConstantBuffer              m_psShared;
 
     D3D9BufferSlice                 m_upBuffer;
     D3D9BufferSlice                 m_managedUploadBuffer;
