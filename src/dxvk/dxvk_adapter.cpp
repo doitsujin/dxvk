@@ -291,7 +291,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 22> devExtensionList = {{
+    std::array<DxvkExt*, 21> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.ext4444Formats,
@@ -304,7 +304,6 @@ namespace dxvk {
       &devExtensions.extMemoryPriority,
       &devExtensions.extNonSeamlessCubeMap,
       &devExtensions.extRobustness2,
-      &devExtensions.extShaderDemoteToHelperInvocation,
       &devExtensions.extShaderModuleIdentifier,
       &devExtensions.extShaderStencilExport,
       &devExtensions.extTransformFeedback,
@@ -419,11 +418,6 @@ namespace dxvk {
     if (devExtensions.extNonSeamlessCubeMap) {
       enabledFeatures.extNonSeamlessCubeMap.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT;
       enabledFeatures.extNonSeamlessCubeMap.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extNonSeamlessCubeMap);
-    }
-
-    if (devExtensions.extShaderDemoteToHelperInvocation) {
-      enabledFeatures.extShaderDemoteToHelperInvocation.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT;
-      enabledFeatures.extShaderDemoteToHelperInvocation.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extShaderDemoteToHelperInvocation);
     }
 
     if (devExtensions.extShaderModuleIdentifier) {
@@ -721,11 +715,6 @@ namespace dxvk {
       m_deviceFeatures.extRobustness2.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extRobustness2);
     }
 
-    if (m_deviceExtensions.supports(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME)) {
-      m_deviceFeatures.extShaderDemoteToHelperInvocation.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT;
-      m_deviceFeatures.extShaderDemoteToHelperInvocation.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extShaderDemoteToHelperInvocation);
-    }
-
     if (m_deviceExtensions.supports(VK_EXT_SHADER_MODULE_IDENTIFIER_EXTENSION_NAME)) {
       m_deviceFeatures.extShaderModuleIdentifier.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_FEATURES_EXT;
       m_deviceFeatures.extShaderModuleIdentifier.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extShaderModuleIdentifier);
@@ -842,8 +831,6 @@ namespace dxvk {
       "\n  robustBufferAccess2                    : ", features.extRobustness2.robustBufferAccess2 ? "1" : "0",
       "\n  robustImageAccess2                     : ", features.extRobustness2.robustImageAccess2 ? "1" : "0",
       "\n  nullDescriptor                         : ", features.extRobustness2.nullDescriptor ? "1" : "0",
-      "\n", VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME,
-      "\n  shaderDemoteToHelperInvocation         : ", features.extShaderDemoteToHelperInvocation.shaderDemoteToHelperInvocation ? "1" : "0",
       "\n", VK_EXT_SHADER_MODULE_IDENTIFIER_EXTENSION_NAME,
       "\n  shaderModuleIdentifier                 : ", features.extShaderModuleIdentifier.shaderModuleIdentifier ? "1" : "0",
       "\n", VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME,

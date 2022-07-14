@@ -23,7 +23,7 @@ namespace dxvk {
       = (devInfo.vk11.subgroupSupportedStages     & VK_SHADER_STAGE_COMPUTE_BIT)
      && (devInfo.vk11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_BALLOT_BIT);
     useDemoteToHelperInvocation
-      = (devFeatures.extShaderDemoteToHelperInvocation.shaderDemoteToHelperInvocation);
+      = (devFeatures.vk13.shaderDemoteToHelperInvocation);
     useSubgroupOpsForEarlyDiscard
       = (devInfo.vk11.subgroupSize >= 4)
      && (devInfo.vk11.subgroupSupportedStages     & VK_SHADER_STAGE_FRAGMENT_BIT)

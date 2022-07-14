@@ -3903,9 +3903,9 @@ namespace dxvk {
 
     enabled.vk12.samplerMirrorClampToEdge = VK_TRUE;
 
-    enabled.extMemoryPriority.memoryPriority = supported.extMemoryPriority.memoryPriority;
+    enabled.vk13.shaderDemoteToHelperInvocation = supported.vk13.shaderDemoteToHelperInvocation;
 
-    enabled.extShaderDemoteToHelperInvocation.shaderDemoteToHelperInvocation = supported.extShaderDemoteToHelperInvocation.shaderDemoteToHelperInvocation;
+    enabled.extMemoryPriority.memoryPriority = supported.extMemoryPriority.memoryPriority;
 
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor;
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor;

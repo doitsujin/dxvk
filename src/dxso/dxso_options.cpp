@@ -15,7 +15,7 @@ namespace dxvk {
     const DxvkDeviceInfo& devInfo = adapter->devicePropertiesExt();
 
     useDemoteToHelperInvocation
-      = (devFeatures.extShaderDemoteToHelperInvocation.shaderDemoteToHelperInvocation);
+      = (devFeatures.vk13.shaderDemoteToHelperInvocation);
 
     useSubgroupOpsForEarlyDiscard
        = (devInfo.vk11.subgroupSize >= 4)
