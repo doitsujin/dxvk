@@ -2500,7 +2500,7 @@ namespace dxvk {
 
       case D3D11_VK_NVX_BINARY_IMPORT:
         return deviceExtensions.nvxBinaryImport
-            && deviceExtensions.khrBufferDeviceAddress;
+            && deviceFeatures.vk12.bufferDeviceAddress;
 
       default:
         return false;
@@ -2659,9 +2659,10 @@ namespace dxvk {
       const DxvkBufferSliceHandle bufSliceHandle = buffer->GetBuffer()->getSliceHandle();
       VkBuffer vkBuffer = bufSliceHandle.handle;
 
-      VkBufferDeviceAddressInfoKHR bdaInfo = { VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR };
+      VkBufferDeviceAddressInfo bdaInfo = { VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO };
       bdaInfo.buffer = vkBuffer;
-      VkDeviceAddress bufAddr = dxvkDevice->vkd()->vkGetBufferDeviceAddressKHR(vkDevice, &bdaInfo);
+
+      VkDeviceAddress bufAddr = dxvkDevice->vkd()->vkGetBufferDeviceAddress(vkDevice, &bdaInfo);
       *gpuVAStart = uint64_t(bufAddr) + bufSliceHandle.offset;
       *gpuVASize = bufSliceHandle.length;
     }

@@ -245,6 +245,7 @@ namespace dxvk::vk {
     VULKAN_FN(vkDestroyDescriptorUpdateTemplate);
     VULKAN_FN(vkUpdateDescriptorSetWithTemplate);
     VULKAN_FN(vkResetQueryPool);
+    VULKAN_FN(vkGetBufferDeviceAddress);
     VULKAN_FN(vkCmdBindPipeline);
     VULKAN_FN(vkCmdSetViewport);
     VULKAN_FN(vkCmdSetScissor);
@@ -358,10 +359,6 @@ namespace dxvk::vk {
     VULKAN_FN(vkDestroyCuModuleNVX);
     VULKAN_FN(vkDestroyCuFunctionNVX);
     VULKAN_FN(vkCmdCuLaunchKernelNVX);
-    #endif
-
-    #ifdef VK_KHR_buffer_device_address
-    VULKAN_FN(vkGetBufferDeviceAddressKHR);
     #endif
 
     #ifdef VK_KHR_dynamic_rendering

@@ -283,7 +283,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 32> devExtensionList = {{
+    std::array<DxvkExt*, 31> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.ext4444Formats,
@@ -304,7 +304,6 @@ namespace dxvk {
       &devExtensions.extShaderViewportIndexLayer,
       &devExtensions.extTransformFeedback,
       &devExtensions.extVertexAttributeDivisor,
-      &devExtensions.khrBufferDeviceAddress,
       &devExtensions.khrCreateRenderPass2,
       &devExtensions.khrDepthStencilResolve,
       &devExtensions.khrDriverProperties,
@@ -324,14 +323,13 @@ namespace dxvk {
     bool enableCudaInterop = !env::is32BitHostPlatform() &&
       m_deviceExtensions.supports(devExtensions.nvxBinaryImport.name()) &&
       m_deviceExtensions.supports(devExtensions.nvxImageViewHandle.name()) &&
-      m_deviceFeatures.khrBufferDeviceAddress.bufferDeviceAddress;
+      m_deviceFeatures.vk12.bufferDeviceAddress;
 
     if (enableCudaInterop) {
       devExtensions.nvxBinaryImport.setMode(DxvkExtMode::Optional);
       devExtensions.nvxImageViewHandle.setMode(DxvkExtMode::Optional);
-      devExtensions.khrBufferDeviceAddress.setMode(DxvkExtMode::Optional);
 
-      enabledFeatures.khrBufferDeviceAddress.bufferDeviceAddress = VK_TRUE;
+      enabledFeatures.vk12.bufferDeviceAddress = VK_TRUE;
     }
 
     DxvkNameSet extensionsEnabled;
@@ -513,14 +511,10 @@ namespace dxvk {
       // that in advance since the extensions are reported as supported anyway.
       Logger::err("DxvkAdapter: Failed to create device, retrying without CUDA interop extensions");
 
-      extensionsEnabled.disableExtension(devExtensions.khrBufferDeviceAddress);
       extensionsEnabled.disableExtension(devExtensions.nvxBinaryImport);
       extensionsEnabled.disableExtension(devExtensions.nvxImageViewHandle);
 
-      enabledFeatures.khrBufferDeviceAddress.bufferDeviceAddress = VK_FALSE;
-
-      vk::removeStructFromPNextChain(&enabledFeatures.core.pNext,
-        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR);
+      enabledFeatures.vk12.bufferDeviceAddress = VK_FALSE;
 
       extensionNameList = extensionsEnabled.toNameList();
       info.enabledExtensionCount      = extensionNameList.count();
@@ -782,11 +776,6 @@ namespace dxvk {
       m_deviceFeatures.extVertexAttributeDivisor.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extVertexAttributeDivisor);
     }
 
-    if (m_deviceExtensions.supports(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)) {
-      m_deviceFeatures.khrBufferDeviceAddress.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR;
-      m_deviceFeatures.khrBufferDeviceAddress.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrBufferDeviceAddress);
-    }
-
     if (m_deviceExtensions.supports(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)) {
       m_deviceFeatures.khrDynamicRendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
       m_deviceFeatures.khrDynamicRendering.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrDynamicRendering);
@@ -900,8 +889,6 @@ namespace dxvk {
       "\n", VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME,
       "\n  vertexAttributeInstanceRateDivisor     : ", features.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor ? "1" : "0",
       "\n  vertexAttributeInstanceRateZeroDivisor : ", features.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor ? "1" : "0",
-      "\n", VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-      "\n  bufferDeviceAddress                    : ", features.khrBufferDeviceAddress.bufferDeviceAddress ? "1" : "0",
       "\n", VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
       "\n  dynamicRendering                       : ", features.khrDynamicRendering.dynamicRendering ? "1" : "0"));
   }
