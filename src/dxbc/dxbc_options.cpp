@@ -49,20 +49,20 @@ namespace dxvk {
     
     // Figure out float control flags to match D3D11 rules
     if (options.floatControls) {
-      if (devInfo.khrShaderFloatControls.shaderSignedZeroInfNanPreserveFloat32)
+      if (devInfo.vk12.shaderSignedZeroInfNanPreserveFloat32)
         floatControl.set(DxbcFloatControlFlag::PreserveNan32);
-      if (devInfo.khrShaderFloatControls.shaderSignedZeroInfNanPreserveFloat64)
+      if (devInfo.vk12.shaderSignedZeroInfNanPreserveFloat64)
         floatControl.set(DxbcFloatControlFlag::PreserveNan64);
 
-      if (devInfo.khrShaderFloatControls.denormBehaviorIndependence != VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_NONE) {
-        if (devInfo.khrShaderFloatControls.shaderDenormFlushToZeroFloat32)
+      if (devInfo.vk12.denormBehaviorIndependence != VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_NONE) {
+        if (devInfo.vk12.shaderDenormFlushToZeroFloat32)
           floatControl.set(DxbcFloatControlFlag::DenormFlushToZero32);
-        if (devInfo.khrShaderFloatControls.shaderDenormPreserveFloat64)
+        if (devInfo.vk12.shaderDenormPreserveFloat64)
           floatControl.set(DxbcFloatControlFlag::DenormPreserve64);
       }
     }
 
-    if (!devInfo.khrShaderFloatControls.shaderSignedZeroInfNanPreserveFloat32
+    if (!devInfo.vk12.shaderSignedZeroInfNanPreserveFloat32
      || adapter->matchesDriver(DxvkGpuVendor::Amd, VK_DRIVER_ID_MESA_RADV_KHR, 0, VK_MAKE_VERSION(20, 3, 0)))
       enableRtOutputNanFixup = true;
   }

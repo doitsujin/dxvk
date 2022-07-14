@@ -23,7 +23,6 @@ namespace dxvk {
     VkPhysicalDeviceTransformFeedbackPropertiesEXT            extTransformFeedback;
     VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT       extVertexAttributeDivisor;
     VkPhysicalDeviceDriverPropertiesKHR                       khrDeviceDriverProperties;
-    VkPhysicalDeviceFloatControlsPropertiesKHR                khrShaderFloatControls;
   };
 
 
