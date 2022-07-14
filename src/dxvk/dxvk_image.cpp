@@ -22,8 +22,8 @@ namespace dxvk {
 
     // If defined, we should provide a format list, which
     // allows some drivers to enable image compression
-    VkImageFormatListCreateInfoKHR formatList;
-    formatList.sType           = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR;
+    VkImageFormatListCreateInfo formatList;
+    formatList.sType           = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO;
     formatList.pNext           = nullptr;
     formatList.viewFormatCount = createInfo.viewFormatCount;
     formatList.pViewFormats    = createInfo.viewFormats;
