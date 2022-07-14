@@ -3922,7 +3922,7 @@ namespace dxvk {
         constantCount = std::min(newBuffer->Desc()->ByteWidth / 16, UINT(D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT));
       
       if (Bindings[StartSlot + i].buffer         != newBuffer
-       || Bindings[StartSlot + i].constantCount  != constantCount) {
+       || Bindings[StartSlot + i].constantBound  != constantCount) {
         Bindings[StartSlot + i].buffer         = newBuffer;
         Bindings[StartSlot + i].constantOffset = 0;
         Bindings[StartSlot + i].constantCount  = constantCount;
