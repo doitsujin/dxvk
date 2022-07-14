@@ -8,6 +8,7 @@
 #include "d3d9_format.h"
 #include "d3d9_multithread.h"
 #include "d3d9_adapter.h"
+#include "d3d9_constant_buffer.h"
 #include "d3d9_constant_set.h"
 
 #include "d3d9_state.h"
@@ -99,6 +100,7 @@ namespace dxvk {
     constexpr static uint32_t NullStreamIdx = caps::MaxStreams;
 
     friend class D3D9SwapChainEx;
+    friend class D3D9ConstantBuffer;
     friend class D3D9UserDefinedAnnotation;
   public:
 

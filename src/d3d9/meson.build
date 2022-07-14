@@ -20,6 +20,7 @@ d3d9_src = [
   'd3d9_swapchain.cpp',
   'd3d9_format.cpp',
   'd3d9_common_texture.cpp',
+  'd3d9_constant_buffer.cpp',
   'd3d9_texture.cpp',
   'd3d9_surface.cpp',
   'd3d9_volume.cpp',
