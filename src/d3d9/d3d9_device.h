@@ -969,7 +969,8 @@ namespace dxvk {
 
     void DetermineConstantLayouts(bool canSWVP);
 
-    template<bool UpBuffer>
+    D3D9BufferSlice AllocUPBuffer(VkDeviceSize size);
+
     D3D9BufferSlice AllocTempBuffer(VkDeviceSize size);
 
     bool ShouldRecord();
@@ -1163,7 +1164,10 @@ namespace dxvk {
     D3D9ConstantBuffer              m_psFixedFunction;
     D3D9ConstantBuffer              m_psShared;
 
-    D3D9BufferSlice                 m_upBuffer;
+    Rc<DxvkBuffer>                  m_upBuffer;
+    VkDeviceSize                    m_upBufferOffset  = 0ull;
+    void*                           m_upBufferMapPtr  = nullptr;
+
     D3D9BufferSlice                 m_managedUploadBuffer;
 
     D3D9Cursor                      m_cursor;
