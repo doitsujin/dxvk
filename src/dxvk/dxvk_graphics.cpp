@@ -622,7 +622,7 @@ namespace dxvk {
       // first, since this is expected to be the fastest path.
       if (m_device->canUsePipelineCacheControl()) {
         fastHandle = this->createOptimizedPipeline(state,
-          VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT);
+          VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT);
       }
 
       if (!fastHandle) {
@@ -808,7 +808,7 @@ namespace dxvk {
     // Build stage infos for all provided shaders
     DxvkShaderStageInfo stageInfo(m_device);
 
-    if (flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT) {
+    if (flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT) {
       stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, m_vsLibrary->getModuleIdentifier(), &specInfo);
 
       if (m_shaders.fs != nullptr)
@@ -860,7 +860,7 @@ namespace dxvk {
     if (vr != VK_SUCCESS) {
       // Ignore any error if we're trying to create a cached pipeline. If linking or
       // compiling an optimized pipeline fail later, we'll still be printing errors.
-      if (!(flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT_EXT))
+      if (!(flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT))
         Logger::err(str::format("DxvkGraphicsPipeline: Failed to compile pipeline: ", vr));
 
       return VK_NULL_HANDLE;
