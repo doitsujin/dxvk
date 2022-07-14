@@ -1809,8 +1809,8 @@ namespace dxvk {
     } else {
       this->resolveImageFb(
         dstImage, srcImage, region, format,
-        VK_RESOLVE_MODE_NONE_KHR,
-        VK_RESOLVE_MODE_NONE_KHR);
+        VK_RESOLVE_MODE_NONE,
+        VK_RESOLVE_MODE_NONE);
     }
   }
 
@@ -1819,8 +1819,8 @@ namespace dxvk {
     const Rc<DxvkImage>&            dstImage,
     const Rc<DxvkImage>&            srcImage,
     const VkImageResolve&           region,
-          VkResolveModeFlagBitsKHR  depthMode,
-          VkResolveModeFlagBitsKHR  stencilMode) {
+          VkResolveModeFlagBits     depthMode,
+          VkResolveModeFlagBits     stencilMode) {
     this->spillRenderPass(true);
     this->prepareImage(m_execBarriers, dstImage, vk::makeSubresourceRange(region.dstSubresource));
     this->prepareImage(m_execBarriers, srcImage, vk::makeSubresourceRange(region.srcSubresource));
@@ -1834,7 +1834,7 @@ namespace dxvk {
     if (!(region.dstSubresource.aspectMask
         & region.srcSubresource.aspectMask
         & VK_IMAGE_ASPECT_STENCIL_BIT))
-      stencilMode = VK_RESOLVE_MODE_NONE_KHR;
+      stencilMode = VK_RESOLVE_MODE_NONE;
 
     // We can only use the depth-stencil resolve path if we are resolving
     // a full subresource and both images have the same format.
@@ -1844,7 +1844,7 @@ namespace dxvk {
     
     if (!useFb) {
       // Additionally, the given mode combination must be supported.
-      const auto& properties = m_device->properties().khrDepthStencilResolve;
+      const auto& properties = m_device->properties().vk12;
 
       useFb |= (properties.supportedDepthResolveModes   & depthMode)   != depthMode
             || (properties.supportedStencilResolveModes & stencilMode) != stencilMode;
@@ -3711,8 +3711,8 @@ namespace dxvk {
     const Rc<DxvkImage>&            dstImage,
     const Rc<DxvkImage>&            srcImage,
     const VkImageResolve&           region,
-          VkResolveModeFlagBitsKHR  depthMode,
-          VkResolveModeFlagBitsKHR  stencilMode) {
+          VkResolveModeFlagBits     depthMode,
+          VkResolveModeFlagBits     stencilMode) {
     auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
 
@@ -3813,8 +3813,8 @@ namespace dxvk {
     const Rc<DxvkImage>&            srcImage,
     const VkImageResolve&           region,
           VkFormat                  format,
-          VkResolveModeFlagBitsKHR  depthMode,
-          VkResolveModeFlagBitsKHR  stencilMode) {
+          VkResolveModeFlagBits     depthMode,
+          VkResolveModeFlagBits     stencilMode) {
     this->invalidateState();
 
     auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
@@ -3829,9 +3829,9 @@ namespace dxvk {
     bool doDiscard = dstImage->isFullSubresource(region.dstSubresource, region.extent);
 
     if (region.dstSubresource.aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
-      doDiscard &= depthMode != VK_RESOLVE_MODE_NONE_KHR;
+      doDiscard &= depthMode != VK_RESOLVE_MODE_NONE;
     if (region.dstSubresource.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
-      doDiscard &= stencilMode != VK_RESOLVE_MODE_NONE_KHR;
+      doDiscard &= stencilMode != VK_RESOLVE_MODE_NONE;
 
     VkPipelineStageFlags dstStages;
     VkImageLayout dstLayout;

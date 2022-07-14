@@ -1071,8 +1071,8 @@ namespace dxvk {
         else {
           ctx->resolveDepthStencilImage(
             cDstImage, cSrcImage, cRegion,
-            VK_RESOLVE_MODE_AVERAGE_BIT_KHR,
-            VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR);
+            VK_RESOLVE_MODE_AVERAGE_BIT,
+            VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
         }
       });
     };
@@ -4250,8 +4250,8 @@ namespace dxvk {
               else {
                 ctx->resolveDepthStencilImage(
                   cResolveImage, cMainImage, region,
-                  VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR,
-                  VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR);
+                  VK_RESOLVE_MODE_SAMPLE_ZERO_BIT,
+                  VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
               }
             });
           }
@@ -6876,7 +6876,7 @@ namespace dxvk {
         // We should resolve using the first sample according to
         // http://amd-dev.wpengine.netdna-cdn.com/wordpress/media/2012/10/Advanced-DX9-Capabilities-for-ATI-Radeon-Cards_v2.pdf
         // "The resolve operation copies the depth value from the *first sample only* into the resolved depth stencil texture."
-        constexpr auto resolveMode = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR;
+        constexpr auto resolveMode = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
 
         VkImageResolve region;
         region.srcSubresource = cSrcSubres;

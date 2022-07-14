@@ -32,8 +32,8 @@ namespace dxvk {
   struct DxvkMetaResolvePipelineKey {
     VkFormat                  format;
     VkSampleCountFlagBits     samples;
-    VkResolveModeFlagBitsKHR  modeD;
-    VkResolveModeFlagBitsKHR  modeS;
+    VkResolveModeFlagBits     modeD;
+    VkResolveModeFlagBits     modeS;
 
     bool eq(const DxvkMetaResolvePipelineKey& other) const {
       return this->format  == other.format
@@ -105,8 +105,8 @@ namespace dxvk {
     DxvkMetaResolvePipeline getPipeline(
             VkFormat                  format,
             VkSampleCountFlagBits     samples,
-            VkResolveModeFlagBitsKHR  depthResolveMode,
-            VkResolveModeFlagBitsKHR  stencilResolveMode);
+            VkResolveModeFlagBits     depthResolveMode,
+            VkResolveModeFlagBits     stencilResolveMode);
 
   private:
 

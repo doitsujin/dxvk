@@ -95,8 +95,8 @@ namespace dxvk {
   DxvkMetaResolvePipeline DxvkMetaResolveObjects::getPipeline(
           VkFormat                  format,
           VkSampleCountFlagBits     samples,
-          VkResolveModeFlagBitsKHR  depthResolveMode,
-          VkResolveModeFlagBitsKHR  stencilResolveMode) {
+          VkResolveModeFlagBits     depthResolveMode,
+          VkResolveModeFlagBits     stencilResolveMode) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     DxvkMetaResolvePipelineKey key;
@@ -214,8 +214,8 @@ namespace dxvk {
 
     std::array<VkSpecializationMapEntry, 3> specEntries = {{
       { 0, offsetof(DxvkMetaResolvePipelineKey, samples), sizeof(VkSampleCountFlagBits) },
-      { 1, offsetof(DxvkMetaResolvePipelineKey, modeD),   sizeof(VkResolveModeFlagBitsKHR) },
-      { 2, offsetof(DxvkMetaResolvePipelineKey, modeS),   sizeof(VkResolveModeFlagBitsKHR) },
+      { 1, offsetof(DxvkMetaResolvePipelineKey, modeD),   sizeof(VkResolveModeFlagBits) },
+      { 2, offsetof(DxvkMetaResolvePipelineKey, modeS),   sizeof(VkResolveModeFlagBits) },
     }};
 
     VkSpecializationInfo specInfo;
@@ -304,10 +304,10 @@ namespace dxvk {
     stencilOp.writeMask         = 0xFFFFFFFF;
 
     VkPipelineDepthStencilStateCreateInfo dsState = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
-    dsState.depthTestEnable     = key.modeD != VK_RESOLVE_MODE_NONE_KHR;
-    dsState.depthWriteEnable    = key.modeD != VK_RESOLVE_MODE_NONE_KHR;
+    dsState.depthTestEnable     = key.modeD != VK_RESOLVE_MODE_NONE;
+    dsState.depthWriteEnable    = key.modeD != VK_RESOLVE_MODE_NONE;
     dsState.depthCompareOp      = VK_COMPARE_OP_ALWAYS;
-    dsState.stencilTestEnable   = key.modeS != VK_RESOLVE_MODE_NONE_KHR;
+    dsState.stencilTestEnable   = key.modeS != VK_RESOLVE_MODE_NONE;
     dsState.front               = stencilOp;
     dsState.back                = stencilOp;
 

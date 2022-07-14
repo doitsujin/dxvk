@@ -22,7 +22,6 @@ namespace dxvk {
     VkPhysicalDeviceRobustness2PropertiesEXT                  extRobustness2;
     VkPhysicalDeviceTransformFeedbackPropertiesEXT            extTransformFeedback;
     VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT       extVertexAttributeDivisor;
-    VkPhysicalDeviceDepthStencilResolvePropertiesKHR          khrDepthStencilResolve;
     VkPhysicalDeviceDriverPropertiesKHR                       khrDeviceDriverProperties;
     VkPhysicalDeviceFloatControlsPropertiesKHR                khrShaderFloatControls;
   };

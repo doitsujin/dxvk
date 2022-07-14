@@ -832,8 +832,8 @@ namespace dxvk {
       const Rc<DxvkImage>&            dstImage,
       const Rc<DxvkImage>&            srcImage,
       const VkImageResolve&           region,
-            VkResolveModeFlagBitsKHR  depthMode,
-            VkResolveModeFlagBitsKHR  stencilMode);
+            VkResolveModeFlagBits     depthMode,
+            VkResolveModeFlagBits     stencilMode);
 
     /**
      * \brief Transforms image subresource layouts
@@ -1270,16 +1270,16 @@ namespace dxvk {
       const Rc<DxvkImage>&            dstImage,
       const Rc<DxvkImage>&            srcImage,
       const VkImageResolve&           region,
-            VkResolveModeFlagBitsKHR  depthMode,
-            VkResolveModeFlagBitsKHR  stencilMode);
+            VkResolveModeFlagBits     depthMode,
+            VkResolveModeFlagBits     stencilMode);
     
     void resolveImageFb(
       const Rc<DxvkImage>&            dstImage,
       const Rc<DxvkImage>&            srcImage,
       const VkImageResolve&           region,
             VkFormat                  format,
-            VkResolveModeFlagBitsKHR  depthMode,
-            VkResolveModeFlagBitsKHR  stencilMode);
+            VkResolveModeFlagBits     depthMode,
+            VkResolveModeFlagBits     stencilMode);
     
     void performClear(
       const Rc<DxvkImageView>&        imageView,
