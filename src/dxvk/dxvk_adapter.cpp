@@ -236,6 +236,18 @@ namespace dxvk {
                 || !required.vk12.shaderOutputViewportIndex)
         && (m_deviceFeatures.vk12.shaderOutputLayer
                 || !required.vk12.shaderOutputLayer)
+        && (m_deviceFeatures.vk13.pipelineCreationCacheControl
+                || !required.vk13.pipelineCreationCacheControl)
+        && (m_deviceFeatures.vk13.shaderDemoteToHelperInvocation
+                || !required.vk13.shaderDemoteToHelperInvocation)
+        && (m_deviceFeatures.vk13.shaderZeroInitializeWorkgroupMemory
+                || !required.vk13.shaderZeroInitializeWorkgroupMemory)
+        && (m_deviceFeatures.vk13.synchronization2
+                || !required.vk13.synchronization2)
+        && (m_deviceFeatures.vk13.dynamicRendering
+                || !required.vk13.dynamicRendering)
+        && (m_deviceFeatures.vk13.maintenance4
+                || !required.vk13.maintenance4)
         && (m_deviceFeatures.ext4444Formats.formatA4R4G4B4
                 || !required.ext4444Formats.formatA4R4G4B4)
         && (m_deviceFeatures.ext4444Formats.formatA4B4G4R4
@@ -344,6 +356,11 @@ namespace dxvk {
     enabledFeatures.vk12.shaderOutputViewportIndex = m_deviceFeatures.vk12.shaderOutputViewportIndex;
     enabledFeatures.vk12.shaderOutputLayer = m_deviceFeatures.vk12.shaderOutputLayer;
 
+    enabledFeatures.vk13.pipelineCreationCacheControl = m_deviceFeatures.vk13.pipelineCreationCacheControl;
+    enabledFeatures.vk13.synchronization2 = VK_TRUE;
+    enabledFeatures.vk13.dynamicRendering = VK_TRUE;
+    enabledFeatures.vk13.maintenance4 = VK_TRUE;
+
     enabledFeatures.extExtendedDynamicState.extendedDynamicState = VK_TRUE;
 
     enabledFeatures.extGraphicsPipelineLibrary.graphicsPipelineLibrary =
@@ -384,6 +401,9 @@ namespace dxvk {
 
     enabledFeatures.vk12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
     enabledFeatures.vk12.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.vk12);
+
+    enabledFeatures.vk13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+    enabledFeatures.vk13.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.vk13);
 
     if (devExtensions.ext4444Formats) {
       enabledFeatures.ext4444Formats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT;
@@ -625,6 +645,9 @@ namespace dxvk {
     m_deviceInfo.vk12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
     m_deviceInfo.vk12.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.vk12);
 
+    m_deviceInfo.vk13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_PROPERTIES;
+    m_deviceInfo.vk13.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.vk13);
+
     if (m_deviceExtensions.supports(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME)) {
       m_deviceInfo.extConservativeRasterization.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT;
       m_deviceInfo.extConservativeRasterization.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extConservativeRasterization);
@@ -688,6 +711,9 @@ namespace dxvk {
 
     m_deviceFeatures.vk12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
     m_deviceFeatures.vk12.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.vk12);
+
+    m_deviceFeatures.vk13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+    m_deviceFeatures.vk13.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.vk13);
 
     if (m_deviceExtensions.supports(VK_EXT_4444_FORMATS_EXTENSION_NAME)) {
       m_deviceFeatures.ext4444Formats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT;
@@ -835,6 +861,13 @@ namespace dxvk {
       "\n  bufferDeviceAddress                    : ", features.vk12.bufferDeviceAddress,
       "\n  shaderOutputViewportIndex              : ", features.vk12.shaderOutputViewportIndex,
       "\n  shaderOutputLayer                      : ", features.vk12.shaderOutputLayer,
+      "\nVulkan 1.3",
+      "\n  pipelineCreationCacheControl           : ", features.vk13.pipelineCreationCacheControl,
+      "\n  shaderDemoteToHelperInvocation         : ", features.vk13.shaderDemoteToHelperInvocation,
+      "\n  shaderZeroInitializeWorkgroupMemory    : ", features.vk13.shaderZeroInitializeWorkgroupMemory,
+      "\n  synchronization2                       : ", features.vk13.synchronization2,
+      "\n  dynamicRendering                       : ", features.vk13.dynamicRendering,
+      "\n  maintenance4                           : ", features.vk13.maintenance4,
       "\n", VK_EXT_4444_FORMATS_EXTENSION_NAME,
       "\n  formatA4R4G4B4                         : ", features.ext4444Formats.formatA4R4G4B4 ? "1" : "0",
       "\n  formatA4B4G4R4                         : ", features.ext4444Formats.formatA4B4G4R4 ? "1" : "0",
