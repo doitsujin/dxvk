@@ -2484,7 +2484,7 @@ namespace dxvk {
     const uint32_t dataSize = GetUPDataSize(drawInfo.vertexCount, VertexStreamZeroStride);
     const uint32_t bufferSize = GetUPBufferSize(drawInfo.vertexCount, VertexStreamZeroStride);
 
-    auto upSlice = AllocTempBuffer<true>(bufferSize);
+    auto upSlice = AllocUPBuffer(bufferSize);
     FillUPVertexBuffer(upSlice.mapPtr, pVertexStreamZeroData, dataSize, bufferSize);
 
     EmitCs([this,
@@ -2542,7 +2542,7 @@ namespace dxvk {
 
     const uint32_t upSize = vertexBufferSize + indicesSize;
 
-    auto upSlice = AllocTempBuffer<true>(upSize);
+    auto upSlice = AllocUPBuffer(upSize);
     uint8_t* data = reinterpret_cast<uint8_t*>(upSlice.mapPtr);
     FillUPVertexBuffer(data, pVertexStreamZeroData, vertexDataSize, vertexBufferSize);
     std::memcpy(data + vertexBufferSize, pIndexData, indicesSize);
@@ -3962,7 +3962,52 @@ namespace dxvk {
   }
 
 
-  template<bool UpBuffer>
+  D3D9BufferSlice D3D9DeviceEx::AllocUPBuffer(VkDeviceSize size) {
+    constexpr VkDeviceSize UPBufferSize = 1 << 20;
+
+    if (unlikely(m_upBuffer == nullptr)) {
+      VkMemoryPropertyFlags memoryFlags
+        = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+        | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+        | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+      DxvkBufferCreateInfo info;
+      info.size   = UPBufferSize;
+      info.usage  = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+                  | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+      info.access = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
+                  | VK_ACCESS_INDEX_READ_BIT;
+      info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+
+      m_upBuffer = m_dxvkDevice->createBuffer(info, memoryFlags);
+      m_upBufferMapPtr = m_upBuffer->mapPtr(0);
+    }
+
+    VkDeviceSize alignedSize = align(size, CACHE_LINE_SIZE);
+
+    if (unlikely(m_upBufferOffset + alignedSize > UPBufferSize)) {
+      auto sliceHandle = m_upBuffer->allocSlice();
+
+      m_upBufferOffset = 0;
+      m_upBufferMapPtr = sliceHandle.mapPtr;
+
+      EmitCs([
+        cBuffer = m_upBuffer,
+        cSlice  = sliceHandle
+      ] (DxvkContext* ctx) {
+        ctx->invalidateBuffer(cBuffer, cSlice);
+      });
+    }
+
+    D3D9BufferSlice result;
+    result.slice = DxvkBufferSlice(m_upBuffer, m_upBufferOffset, size);
+    result.mapPtr = reinterpret_cast<char*>(m_upBufferMapPtr) + m_upBufferOffset;
+
+    m_upBufferOffset += alignedSize;
+    return result;
+  }
+
+
   D3D9BufferSlice D3D9DeviceEx::AllocTempBuffer(VkDeviceSize size) {
     constexpr VkDeviceSize DefaultSize = 1 << 20;
 
@@ -3970,27 +4015,15 @@ namespace dxvk {
       = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
       | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
 
-    if constexpr (UpBuffer) {
-      memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-    }
-
-    D3D9BufferSlice& currentSlice = UpBuffer ? m_upBuffer : m_managedUploadBuffer;
+    D3D9BufferSlice& currentSlice = m_managedUploadBuffer;
 
     if (size <= DefaultSize) {
       if (unlikely(!currentSlice.slice.defined())) {
         DxvkBufferCreateInfo info;
         info.size   = DefaultSize;
-        if constexpr (UpBuffer) {
-          info.usage  = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
-                      | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-          info.access = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
-                      | VK_ACCESS_INDEX_READ_BIT;
-          info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-        } else {
-          info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
-          info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-          info.access = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
-        }
+        info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+        info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+        info.access = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
 
         currentSlice.slice  = DxvkBufferSlice(m_dxvkDevice->createBuffer(info, memoryFlags));
         currentSlice.mapPtr = currentSlice.slice.mapPtr(0);
@@ -4019,17 +4052,11 @@ namespace dxvk {
       // Create a temporary buffer for very large allocations
       DxvkBufferCreateInfo info;
       info.size   = size;
-      if constexpr (UpBuffer) {
-        info.usage  = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
-                    | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-        info.access = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
-                    | VK_ACCESS_INDEX_READ_BIT;
-        info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-      } else {
-        info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
-        info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-        info.access = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
-      }
+      info.usage  = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+                  | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+      info.access = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
+                  | VK_ACCESS_INDEX_READ_BIT;
+      info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
 
       D3D9BufferSlice result;
       result.slice  = DxvkBufferSlice(m_dxvkDevice->createBuffer(info, memoryFlags));
@@ -4497,7 +4524,7 @@ namespace dxvk {
       DxvkBufferSlice copySrcSlice;
       if (pSrcTexture->DoesStagingBufferUploads(SrcSubresource)) {
         VkDeviceSize dirtySize = extentBlockCount.width * extentBlockCount.height * extentBlockCount.depth * formatInfo->elementSize;
-        D3D9BufferSlice slice = AllocTempBuffer<false>(dirtySize);
+        D3D9BufferSlice slice = AllocTempBuffer(dirtySize);
         copySrcSlice = slice.slice;
         void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + copySrcOffset;
         util::packImageData(
@@ -4547,7 +4574,7 @@ namespace dxvk {
       }
 
       // the converter can not handle the 4 aligned pitch so we always repack into a staging buffer
-      D3D9BufferSlice slice = AllocTempBuffer<false>(srcSlice.length);
+      D3D9BufferSlice slice = AllocTempBuffer(srcSlice.length);
       VkDeviceSize pitch = align(srcTexLevelExtentBlockCount.width * formatInfo->elementSize, 4);
 
       util::packImageData(
@@ -4707,7 +4734,7 @@ namespace dxvk {
 
     DxvkBufferSlice copySrcSlice;
     if (pResource->DoesStagingBufferUploads()) {
-      D3D9BufferSlice slice = AllocTempBuffer<false>(range.max - range.min);
+      D3D9BufferSlice slice = AllocTempBuffer(range.max - range.min);
       copySrcSlice = slice.slice;
       void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + range.min;
       memcpy(slice.mapPtr, srcData, range.max - range.min);
