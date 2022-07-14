@@ -4905,51 +4905,47 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::CreateConstantBuffers() {
+    constexpr VkDeviceSize DefaultConstantBufferSize  = 1024ull << 10;
+
     if (!m_isSWVP) {
-      m_consts[DxsoProgramTypes::VertexShader].buffer =
-        CreateConstantBuffer(false,
-                             m_vsLayout.totalSize(),
-                             DxsoProgramType::VertexShader,
-                             DxsoConstantBuffers::VSConstantBuffer);
+      m_consts[DxsoProgramTypes::VertexShader].buffer = D3D9ConstantBuffer(this,
+        DxsoProgramType::VertexShader,
+        DxsoConstantBuffers::VSConstantBuffer,
+        DefaultConstantBufferSize);
     }
+
     // SWVP constant buffers are created late based on the amount of constants set by the application
-    m_consts[DxsoProgramTypes::PixelShader].buffer =
-      CreateConstantBuffer(false,
-                          m_psLayout.totalSize(),
-                          DxsoProgramType::PixelShader,
-                          DxsoConstantBuffers::PSConstantBuffer);
+    m_consts[DxsoProgramTypes::PixelShader].buffer = D3D9ConstantBuffer(this,
+      DxsoProgramType::PixelShader,
+      DxsoConstantBuffers::PSConstantBuffer,
+      DefaultConstantBufferSize);
 
-    m_vsClipPlanes =
-      CreateConstantBuffer(false,
-                           caps::MaxClipPlanes * sizeof(D3D9ClipPlane),
-                           DxsoProgramType::VertexShader,
-                           DxsoConstantBuffers::VSClipPlanes);
+    m_vsClipPlanes = D3D9ConstantBuffer(this,
+      DxsoProgramType::VertexShader,
+      DxsoConstantBuffers::VSClipPlanes,
+      caps::MaxClipPlanes * sizeof(D3D9ClipPlane));
 
-    m_vsFixedFunction =
-      CreateConstantBuffer(false,
-                           sizeof(D3D9FixedFunctionVS),
-                           DxsoProgramType::VertexShader,
-                           DxsoConstantBuffers::VSFixedFunction);
+    m_vsFixedFunction = D3D9ConstantBuffer(this,
+      DxsoProgramType::VertexShader,
+      DxsoConstantBuffers::VSFixedFunction,
+      sizeof(D3D9FixedFunctionVS));
 
-    m_psFixedFunction =
-      CreateConstantBuffer(false,
-                           sizeof(D3D9FixedFunctionPS),
-                           DxsoProgramType::PixelShader,
-                           DxsoConstantBuffers::PSFixedFunction);
+    m_psFixedFunction = D3D9ConstantBuffer(this,
+      DxsoProgramType::PixelShader,
+      DxsoConstantBuffers::PSFixedFunction,
+      sizeof(D3D9FixedFunctionPS));
 
-    m_psShared =
-      CreateConstantBuffer(false,
-                           sizeof(D3D9SharedPS),
-                           DxsoProgramType::PixelShader,
-                           DxsoConstantBuffers::PSShared);
+    m_psShared = D3D9ConstantBuffer(this,
+      DxsoProgramType::PixelShader,
+      DxsoConstantBuffers::PSShared,
+      sizeof(D3D9SharedPS));
 
-    m_vsVertexBlend =
-      CreateConstantBuffer(true,
-                           CanSWVP()
-                            ? sizeof(D3D9FixedFunctionVertexBlendDataSW)
-                            : sizeof(D3D9FixedFunctionVertexBlendDataHW),
-                           DxsoProgramType::VertexShader,
-                           DxsoConstantBuffers::VSVertexBlendData);
+    m_vsVertexBlend = D3D9ConstantBuffer(this,
+      DxsoProgramType::VertexShader,
+      DxsoConstantBuffers::VSVertexBlendData,
+      CanSWVP()
+        ? sizeof(D3D9FixedFunctionVertexBlendDataSW)
+        : sizeof(D3D9FixedFunctionVertexBlendDataHW));
   }
 
 
@@ -5059,36 +5055,12 @@ namespace dxvk {
     const uint32_t intRange = caps::MaxOtherConstants * sizeof(Vector4i);
     const uint32_t intDataSize = constSet.meta.maxConstIndexI * sizeof(Vector4i);
     uint32_t floatDataSize = floatCount * sizeof(Vector4);
-    const uint32_t alignment = std::max(m_robustUBOAlignment, 64u); // Make sure we do not recreate the buffer because the new one has to be a tiny bit larger
+    const uint32_t alignment = constSet.buffer.GetAlignment();
     const uint32_t bufferSize = align(std::max(floatDataSize + intRange, alignment), alignment);
-    floatDataSize = bufferSize - intRange; // Read additional floats for padding so we don't end up with garbage data
+    floatDataSize = bufferSize - intRange;
 
-    VkDeviceSize& boundConstantBufferSize = ShaderStage == DxsoProgramType::VertexShader ? m_boundVSConstantsBufferSize : m_boundPSConstantsBufferSize;
-    if (boundConstantBufferSize < bufferSize) {
-      constexpr uint32_t slotId = computeResourceSlotId(ShaderStage, DxsoBindingType::ConstantBuffer, 0);
-      EmitCs([
-        cBuffer = constSet.buffer,
-        cSlotId = slotId,
-        cSize   = bufferSize
-      ] (DxvkContext* ctx) {
-        VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
-
-        ctx->bindResourceBuffer(stage, cSlotId,
-          DxvkBufferSlice(cBuffer, 0, cSize));
-      });
-      boundConstantBufferSize = bufferSize;
-    }
-
-    DxvkBufferSliceHandle slice = constSet.buffer->allocSlice();
-
-    EmitCs([
-      cBuffer = constSet.buffer,
-      cSlice  = slice
-    ] (DxvkContext* ctx) {
-      ctx->invalidateBuffer(cBuffer, cSlice);
-    });
-
-    auto* dst = reinterpret_cast<HardwareLayoutType*>(slice.mapPtr);
+    void* mapPtr = constSet.buffer.Alloc(bufferSize);
+    auto* dst = reinterpret_cast<HardwareLayoutType*>(mapPtr);
 
     if (constSet.meta.maxConstIndexI != 0)
       std::memcpy(dst->iConsts, Src.iConsts, intDataSize);
@@ -5124,21 +5096,14 @@ namespace dxvk {
   void D3D9DeviceEx::UpdateClipPlanes() {
     m_flags.clr(D3D9DeviceFlag::DirtyClipPlanes);
 
-    auto slice = m_vsClipPlanes->allocSlice();
-    auto dst = reinterpret_cast<D3D9ClipPlane*>(slice.mapPtr);
+    auto mapPtr = m_vsClipPlanes.AllocSlice();
+    auto dst = reinterpret_cast<D3D9ClipPlane*>(mapPtr);
 
     for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {
       dst[i] = (m_state.renderStates[D3DRS_CLIPPLANEENABLE] & (1 << i))
         ? m_state.clipPlanes[i]
         : D3D9ClipPlane();
     }
-
-    EmitCs([
-      cBuffer = m_vsClipPlanes,
-      cSlice  = slice
-    ] (DxvkContext* ctx) {
-      ctx->invalidateBuffer(cBuffer, cSlice);
-    });
   }
 
 
@@ -6216,16 +6181,8 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtySharedPixelShaderData)) {
       m_flags.clr(D3D9DeviceFlag::DirtySharedPixelShaderData);
 
-      DxvkBufferSliceHandle slice = m_psShared->allocSlice();
-
-      EmitCs([
-        cBuffer = m_psShared,
-        cSlice  = slice
-      ] (DxvkContext* ctx) {
-        ctx->invalidateBuffer(cBuffer, cSlice);
-      });
-
-      D3D9SharedPS* data = reinterpret_cast<D3D9SharedPS*>(slice.mapPtr);
+      auto mapPtr = m_psShared.AllocSlice();
+      D3D9SharedPS* data = reinterpret_cast<D3D9SharedPS*>(mapPtr);
 
       for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
         DecodeD3DCOLOR(D3DCOLOR(m_state.textureStages[i][DXVK_TSS_CONSTANT]), data->Stages[i].Constant);
@@ -6683,19 +6640,12 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexData)) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFVertexData);
 
-      DxvkBufferSliceHandle slice = m_vsFixedFunction->allocSlice();
-
-      EmitCs([
-        cBuffer = m_vsFixedFunction,
-        cSlice  = slice
-      ] (DxvkContext* ctx) {
-        ctx->invalidateBuffer(cBuffer, cSlice);
-      });
+      auto mapPtr = m_vsFixedFunction.AllocSlice();
 
       auto WorldView    = m_state.transforms[GetTransformIndex(D3DTS_VIEW)] * m_state.transforms[GetTransformIndex(D3DTS_WORLD)];
       auto NormalMatrix = inverse(WorldView);
 
-      D3D9FixedFunctionVS* data = reinterpret_cast<D3D9FixedFunctionVS*>(slice.mapPtr);
+      D3D9FixedFunctionVS* data = reinterpret_cast<D3D9FixedFunctionVS*>(mapPtr);
       data->WorldView    = WorldView;
       data->NormalMatrix = NormalMatrix;
       data->InverseView  = transpose(inverse(m_state.transforms[GetTransformIndex(D3DTS_VIEW)]));
@@ -6724,23 +6674,15 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexBlend) && vertexBlendMode == D3D9FF_VertexBlendMode_Normal) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFVertexBlend);
 
-      DxvkBufferSliceHandle slice = m_vsVertexBlend->allocSlice();
-
-      EmitCs([
-        cBuffer = m_vsVertexBlend,
-        cSlice  = slice
-      ] (DxvkContext* ctx) {
-        ctx->invalidateBuffer(cBuffer, cSlice);
-      });
-
+      auto mapPtr = m_vsVertexBlend.AllocSlice();
       auto UploadVertexBlendData = [&](auto data) {
         for (uint32_t i = 0; i < std::size(data->WorldView); i++)
           data->WorldView[i] = m_state.transforms[GetTransformIndex(D3DTS_VIEW)] * m_state.transforms[GetTransformIndex(D3DTS_WORLDMATRIX(i))];
       };
 
       (m_isSWVP && indexedVertexBlend)
-        ? UploadVertexBlendData(reinterpret_cast<D3D9FixedFunctionVertexBlendDataSW*>(slice.mapPtr))
-        : UploadVertexBlendData(reinterpret_cast<D3D9FixedFunctionVertexBlendDataHW*>(slice.mapPtr));
+        ? UploadVertexBlendData(reinterpret_cast<D3D9FixedFunctionVertexBlendDataSW*>(mapPtr))
+        : UploadVertexBlendData(reinterpret_cast<D3D9FixedFunctionVertexBlendDataHW*>(mapPtr));
     }
   }
 
@@ -6842,18 +6784,10 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelData)) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFPixelData);
 
-      DxvkBufferSliceHandle slice = m_psFixedFunction->allocSlice();
-
-      EmitCs([
-        cBuffer = m_psFixedFunction,
-        cSlice  = slice
-      ] (DxvkContext* ctx) {
-        ctx->invalidateBuffer(cBuffer, cSlice);
-      });
-
+      auto mapPtr = m_psFixedFunction.AllocSlice();
       auto& rs = m_state.renderStates;
 
-      D3D9FixedFunctionPS* data = reinterpret_cast<D3D9FixedFunctionPS*>(slice.mapPtr);
+      D3D9FixedFunctionPS* data = reinterpret_cast<D3D9FixedFunctionPS*>(mapPtr);
       DecodeD3DCOLOR((D3DCOLOR)rs[D3DRS_TEXTUREFACTOR], data->textureFactor.data);
     }
   }
