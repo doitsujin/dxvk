@@ -283,7 +283,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 26> devExtensionList = {{
+    std::array<DxvkExt*, 25> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.ext4444Formats,
@@ -303,7 +303,6 @@ namespace dxvk {
       &devExtensions.extShaderStencilExport,
       &devExtensions.extTransformFeedback,
       &devExtensions.extVertexAttributeDivisor,
-      &devExtensions.khrDriverProperties,
       &devExtensions.khrDynamicRendering,
       &devExtensions.khrExternalMemoryWin32,
       &devExtensions.khrPipelineLibrary,
@@ -546,13 +545,10 @@ namespace dxvk {
 
 
   bool DxvkAdapter::matchesDriver(
-          DxvkGpuVendor       vendor,
           VkDriverIdKHR       driver,
           uint32_t            minVer,
           uint32_t            maxVer) const {
-    bool driverMatches = m_deviceInfo.khrDeviceDriverProperties.driverID
-      ? driver == m_deviceInfo.khrDeviceDriverProperties.driverID
-      : vendor == DxvkGpuVendor(m_deviceInfo.core.properties.vendorID);
+    bool driverMatches = driver == m_deviceInfo.vk12.driverID;
 
     if (minVer) driverMatches &= m_deviceInfo.core.properties.driverVersion >= minVer;
     if (maxVer) driverMatches &= m_deviceInfo.core.properties.driverVersion <  maxVer;
@@ -659,16 +655,11 @@ namespace dxvk {
       m_deviceInfo.extVertexAttributeDivisor.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extVertexAttributeDivisor);
     }
 
-    if (m_deviceExtensions.supports(VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME)) {
-      m_deviceInfo.khrDeviceDriverProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR;
-      m_deviceInfo.khrDeviceDriverProperties.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.khrDeviceDriverProperties);
-    }
-
     // Query full device properties for all enabled extensions
     m_vki->vkGetPhysicalDeviceProperties2(m_handle, &m_deviceInfo.core);
     
     // Some drivers reports the driver version in a slightly different format
-    switch (m_deviceInfo.khrDeviceDriverProperties.driverID) {
+    switch (m_deviceInfo.vk12.driverID) {
       case VK_DRIVER_ID_NVIDIA_PROPRIETARY:
         m_deviceInfo.core.properties.driverVersion = VK_MAKE_VERSION(
           (m_deviceInfo.core.properties.driverVersion >> 22) & 0x3ff,

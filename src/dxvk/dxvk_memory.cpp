@@ -217,7 +217,7 @@ namespace dxvk {
     /* Work around an issue on Nvidia drivers where using the entire
      * device_local | host_visible heap can cause crashes or slowdowns */
     if (m_device->properties().core.properties.vendorID == uint16_t(DxvkGpuVendor::Nvidia)) {
-      bool shrinkNvidiaHvvHeap = device->adapter()->matchesDriver(DxvkGpuVendor::Nvidia,
+      bool shrinkNvidiaHvvHeap = device->adapter()->matchesDriver(
         VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, VK_MAKE_VERSION(465, 0, 0));
 
       applyTristate(shrinkNvidiaHvvHeap, device->config().shrinkNvidiaHvvHeap);

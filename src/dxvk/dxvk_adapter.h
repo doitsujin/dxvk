@@ -226,15 +226,12 @@ namespace dxvk {
     /**
      * \brief Tests if the driver matches certain criteria
      *
-     * \param [in] vendor GPU vendor
-     * \param [in] driver Driver. Ignored when the
-     *    driver properties extension is not supported.
+     * \param [in] driver Driver ID
      * \param [in] minVer Match versions starting with this one
      * \param [in] maxVer Match versions lower than this one
      * \returns \c True if the driver matches these criteria
      */
     bool matchesDriver(
-            DxvkGpuVendor       vendor,
             VkDriverIdKHR       driver,
             uint32_t            minVer,
             uint32_t            maxVer) const;

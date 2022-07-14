@@ -29,7 +29,7 @@ namespace dxvk {
      && (devInfo.vk11.subgroupSupportedStages     & VK_SHADER_STAGE_FRAGMENT_BIT)
      && (devInfo.vk11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_BALLOT_BIT);
     useSdivForBufferIndex
-      = adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0);
+      = adapter->matchesDriver(VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0);
     
     switch (device->config().useRawSsbo) {
       case Tristate::Auto:  minSsboAlignment = devInfo.core.properties.limits.minStorageBufferOffsetAlignment; break;
@@ -44,7 +44,7 @@ namespace dxvk {
     disableMsaa              = options.disableMsaa;
 
     // Disable subgroup early discard on Nvidia because it may hurt performance
-    if (adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0))
+    if (adapter->matchesDriver(VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0))
       useSubgroupOpsForEarlyDiscard = false;
     
     // Figure out float control flags to match D3D11 rules
@@ -63,7 +63,7 @@ namespace dxvk {
     }
 
     if (!devInfo.vk12.shaderSignedZeroInfNanPreserveFloat32
-     || adapter->matchesDriver(DxvkGpuVendor::Amd, VK_DRIVER_ID_MESA_RADV_KHR, 0, VK_MAKE_VERSION(20, 3, 0)))
+     || adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV_KHR, 0, VK_MAKE_VERSION(20, 3, 0)))
       enableRtOutputNanFixup = true;
   }
   
