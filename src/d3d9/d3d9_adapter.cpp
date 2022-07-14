@@ -195,9 +195,8 @@ namespace dxvk {
     // Therefore...
     VkSampleCountFlags sampleFlags = VkSampleCountFlags(sampleCount);
 
-    auto availableFlags = !IsDepthFormat(SurfaceFormat)
-      ? m_adapter->deviceProperties().limits.framebufferColorSampleCounts
-      : m_adapter->deviceProperties().limits.framebufferDepthSampleCounts;
+    auto availableFlags = m_adapter->deviceProperties().limits.framebufferColorSampleCounts
+                        & m_adapter->deviceProperties().limits.framebufferDepthSampleCounts;
 
     if (!(availableFlags & sampleFlags))
       return D3DERR_NOTAVAILABLE;
