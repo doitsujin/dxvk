@@ -25,7 +25,7 @@ namespace dxvk {
     Tristate useRawSsbo;
 
     /// Workaround for NVIDIA driver bug 3114283
-    Tristate shrinkNvidiaHvvHeap;
+    bool shrinkNvidiaHvvHeap;
 
     /// HUD elements
     std::string hud;
