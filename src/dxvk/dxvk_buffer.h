@@ -518,7 +518,18 @@ namespace dxvk {
       return this->m_offset == other.m_offset
           && this->m_length == other.m_length;
     }
-    
+
+    /**
+     * \brief Sets buffer range
+     *
+     * \param [in] offset New offset
+     * \param [in] length New length
+     */
+    void setRange(VkDeviceSize offset, VkDeviceSize length) {
+      m_offset = offset;
+      m_length = length;
+    }
+
   private:
     
     Rc<DxvkBuffer> m_buffer = nullptr;

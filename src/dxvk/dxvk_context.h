@@ -166,6 +166,22 @@ namespace dxvk {
     }
     
     /**
+     * \brief Changes bound range of a resource buffer
+     * 
+     * Can be used to quickly bind a new sub-range of
+     * a buffer rather than re-binding the entire buffer.
+     */
+    void bindResourceBufferRange(
+            VkShaderStageFlags    stages,
+            uint32_t              slot,
+            VkDeviceSize          offset,
+            VkDeviceSize          length) {
+      m_rc[slot].bufferSlice.setRange(offset, length);
+
+      m_descriptorState.dirtyBuffers(stages);
+    }
+    
+    /**
      * \brief Binds image or buffer view
      * 
      * Can be used for sampled images with a dedicated
