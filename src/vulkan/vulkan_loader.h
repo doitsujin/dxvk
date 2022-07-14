@@ -244,6 +244,7 @@ namespace dxvk::vk {
     VULKAN_FN(vkCreateDescriptorUpdateTemplate);
     VULKAN_FN(vkDestroyDescriptorUpdateTemplate);
     VULKAN_FN(vkUpdateDescriptorSetWithTemplate);
+    VULKAN_FN(vkResetQueryPool);
     VULKAN_FN(vkCmdBindPipeline);
     VULKAN_FN(vkCmdSetViewport);
     VULKAN_FN(vkCmdSetScissor);
@@ -330,10 +331,6 @@ namespace dxvk::vk {
     VULKAN_FN(vkAcquireFullScreenExclusiveModeEXT);
     VULKAN_FN(vkReleaseFullScreenExclusiveModeEXT);
     VULKAN_FN(vkGetDeviceGroupSurfacePresentModes2EXT);
-    #endif
-
-    #ifdef VK_EXT_host_query_reset
-    VULKAN_FN(vkResetQueryPoolEXT);
     #endif
 
     #ifdef VK_EXT_shader_module_identifier

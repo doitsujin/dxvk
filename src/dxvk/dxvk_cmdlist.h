@@ -801,7 +801,7 @@ namespace dxvk {
     void resetQuery(
             VkQueryPool             queryPool,
             uint32_t                queryId) {
-      m_vkd->vkResetQueryPoolEXT(
+      m_vkd->vkResetQueryPool(
         m_vkd->device(), queryPool, queryId, 1);
     }
 
