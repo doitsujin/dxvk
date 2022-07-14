@@ -64,7 +64,7 @@ namespace dxvk {
     if (device->extensions().extShaderStencilExport)
       m_shaderFragDS = createShaderModule(dxvk_resolve_frag_ds);
 
-    if (device->extensions().extShaderViewportIndexLayer) {
+    if (device->features().vk12.shaderOutputLayer) {
       m_shaderVert = createShaderModule(dxvk_fullscreen_layer_vert);
     } else {
       m_shaderVert = createShaderModule(dxvk_fullscreen_vert);

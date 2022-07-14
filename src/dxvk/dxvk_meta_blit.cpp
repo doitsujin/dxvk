@@ -133,7 +133,7 @@ namespace dxvk {
     m_shaderFrag1D(createShaderModule(dxvk_blit_frag_1d)),
     m_shaderFrag2D(createShaderModule(dxvk_blit_frag_2d)),
     m_shaderFrag3D(createShaderModule(dxvk_blit_frag_3d)) {
-    if (device->extensions().extShaderViewportIndexLayer) {
+    if (device->features().vk12.shaderOutputLayer) {
       m_shaderVert = createShaderModule(dxvk_fullscreen_layer_vert);
     } else {
       m_shaderVert = createShaderModule(dxvk_fullscreen_vert);

@@ -89,7 +89,7 @@ namespace dxvk {
       createShaderModule(dxvk_copy_depth_1d),
       createShaderModule(dxvk_copy_depth_2d),
       createShaderModule(dxvk_copy_depth_ms) } {
-    if (device->extensions().extShaderViewportIndexLayer) {
+    if (device->features().vk12.shaderOutputLayer) {
       m_shaderVert = createShaderModule(dxvk_fullscreen_layer_vert);
     } else {
       m_shaderVert = createShaderModule(dxvk_fullscreen_vert);

@@ -1712,10 +1712,12 @@ namespace dxvk {
         if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_D3D11_OPTIONS3))
           return E_INVALIDARG;
 
-        const auto& extensions = m_dxvkDevice->extensions();
+        const auto& features = m_dxvkDevice->features();
 
         auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS3*>(pFeatureSupportData);
-        info->VPAndRTArrayIndexFromAnyShaderFeedingRasterizer = extensions.extShaderViewportIndexLayer;
+        info->VPAndRTArrayIndexFromAnyShaderFeedingRasterizer =
+          features.vk12.shaderOutputViewportIndex &&
+          features.vk12.shaderOutputLayer;
       } return S_OK;
 
       case D3D11_FEATURE_GPU_VIRTUAL_ADDRESS_SUPPORT: {
@@ -2023,7 +2025,8 @@ namespace dxvk {
       return E_INVALIDARG;
 
     if (shader->flags().test(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage)
-     && !m_dxvkDevice->extensions().extShaderViewportIndexLayer)
+     && (!m_dxvkDevice->features().vk12.shaderOutputViewportIndex
+      || !m_dxvkDevice->features().vk12.shaderOutputLayer))
       return E_INVALIDARG;
 
     *pShaderModule = std::move(commonShader);

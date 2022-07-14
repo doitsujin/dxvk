@@ -283,7 +283,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 31> devExtensionList = {{
+    std::array<DxvkExt*, 30> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.ext4444Formats,
@@ -301,7 +301,6 @@ namespace dxvk {
       &devExtensions.extShaderDemoteToHelperInvocation,
       &devExtensions.extShaderModuleIdentifier,
       &devExtensions.extShaderStencilExport,
-      &devExtensions.extShaderViewportIndexLayer,
       &devExtensions.extTransformFeedback,
       &devExtensions.extVertexAttributeDivisor,
       &devExtensions.khrCreateRenderPass2,
@@ -347,6 +346,8 @@ namespace dxvk {
     // Enable additional device features if supported
     enabledFeatures.vk12.drawIndirectCount = m_deviceFeatures.vk12.drawIndirectCount;
     enabledFeatures.vk12.hostQueryReset = VK_TRUE;
+    enabledFeatures.vk12.shaderOutputViewportIndex = m_deviceFeatures.vk12.shaderOutputViewportIndex;
+    enabledFeatures.vk12.shaderOutputLayer = m_deviceFeatures.vk12.shaderOutputLayer;
 
     enabledFeatures.extExtendedDynamicState.extendedDynamicState = VK_TRUE;
 
