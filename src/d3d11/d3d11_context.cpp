@@ -3291,7 +3291,7 @@ namespace dxvk {
           UINT                              Length) {
     EmitCs([
       cSlotId      = Slot,
-      cBufferSlice = Length ? pBuffer->GetBufferSlice(16 * Offset, 16 * Length) : DxvkBufferSlice()
+      cBufferSlice = pBuffer ? pBuffer->GetBufferSlice(16 * Offset, 16 * Length) : DxvkBufferSlice()
     ] (DxvkContext* ctx) {
       VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
       ctx->bindResourceBuffer(stage, cSlotId, cBufferSlice);
@@ -3299,6 +3299,22 @@ namespace dxvk {
   }
   
   
+  template<DxbcProgramType ShaderStage>
+  void D3D11DeviceContext::BindConstantBufferRange(
+          UINT                              Slot,
+          UINT                              Offset,
+          UINT                              Length) {
+    EmitCs([
+      cSlotId       = Slot,
+      cOffset       = 16 * Offset,
+      cLength       = 16 * Length
+    ] (DxvkContext* ctx) {
+      VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+      ctx->bindResourceBufferRange(stage, cSlotId, cOffset, cLength);
+    });
+  }
+
+
   template<DxbcProgramType ShaderStage>
   void D3D11DeviceContext::BindSampler(
           UINT                              Slot,
@@ -3959,20 +3975,30 @@ namespace dxvk {
         constantBound   = 0;
       }
 
+      // Do a full rebind if either the buffer changes, or if either the current or
+      // the previous number of bound constants were zero, since we're binding a null
+      // buffer to the backend in that case.
       bool needsUpdate = Bindings[StartSlot + i].buffer != newBuffer;
 
-      if (needsUpdate)
-        Bindings[StartSlot + i].buffer = newBuffer;
+      if (!needsUpdate) {
+        needsUpdate |= !constantBound;
+        needsUpdate |= !Bindings[StartSlot + i].constantBound;
+      }
 
-      needsUpdate |= Bindings[StartSlot + i].constantOffset != constantOffset
-                  || Bindings[StartSlot + i].constantCount  != constantCount;
-      
       if (needsUpdate) {
+        Bindings[StartSlot + i].buffer = newBuffer;
         Bindings[StartSlot + i].constantOffset = constantOffset;
         Bindings[StartSlot + i].constantCount  = constantCount;
         Bindings[StartSlot + i].constantBound  = constantBound;
-        
+
         BindConstantBuffer<ShaderStage>(slotId + i, newBuffer, constantOffset, constantBound);
+      } else if (Bindings[StartSlot + i].constantOffset != constantOffset
+              || Bindings[StartSlot + i].constantCount  != constantCount) {
+        Bindings[StartSlot + i].constantOffset = constantOffset;
+        Bindings[StartSlot + i].constantCount  = constantCount;
+        Bindings[StartSlot + i].constantBound  = constantBound;
+
+        BindConstantBufferRange<ShaderStage>(slotId + i, constantOffset, constantBound);
       }
     }
   }

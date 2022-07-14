@@ -761,6 +761,12 @@ namespace dxvk {
             UINT                              Length);
     
     template<DxbcProgramType ShaderStage>
+    void BindConstantBufferRange(
+            UINT                              Slot,
+            UINT                              Offset,
+            UINT                              Length);
+
+    template<DxbcProgramType ShaderStage>
     void BindSampler(
             UINT                              Slot,
             D3D11SamplerState*                pSampler);
