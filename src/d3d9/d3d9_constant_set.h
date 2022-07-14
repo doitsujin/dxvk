@@ -40,13 +40,12 @@ namespace dxvk {
   };
 
   struct D3D9SwvpConstantBuffers {
-    Rc<DxvkBuffer>        floatBuffer;
-    Rc<DxvkBuffer>        intBuffer;
-    Rc<DxvkBuffer>        boolBuffer;
+    D3D9ConstantBuffer        intBuffer;
+    D3D9ConstantBuffer        boolBuffer;
   };
 
   struct D3D9ConstantSets {
-    D3D9SwvpConstantBuffers   swvpBuffers;
+    D3D9SwvpConstantBuffers   swvp;
     D3D9ConstantBuffer        buffer;
     DxsoShaderMetaInfo        meta  = {};
     bool                      dirty = true;
