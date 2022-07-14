@@ -1927,6 +1927,8 @@ namespace dxvk {
 
     enabled.vk11.shaderDrawParameters                             = VK_TRUE;
 
+    enabled.vk12.samplerMirrorClampToEdge                         = VK_TRUE;
+
     enabled.extMemoryPriority.memoryPriority                      = supported.extMemoryPriority.memoryPriority;
 
     enabled.extShaderDemoteToHelperInvocation.shaderDemoteToHelperInvocation  = supported.extShaderDemoteToHelperInvocation.shaderDemoteToHelperInvocation;

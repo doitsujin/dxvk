@@ -3901,6 +3901,8 @@ namespace dxvk {
     enabled.core.features.geometryShader = VK_TRUE;
     enabled.core.features.robustBufferAccess = VK_TRUE;
 
+    enabled.vk12.samplerMirrorClampToEdge = VK_TRUE;
+
     enabled.extMemoryPriority.memoryPriority = supported.extMemoryPriority.memoryPriority;
 
     enabled.extShaderDemoteToHelperInvocation.shaderDemoteToHelperInvocation = supported.extShaderDemoteToHelperInvocation.shaderDemoteToHelperInvocation;
