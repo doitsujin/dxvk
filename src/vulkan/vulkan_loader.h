@@ -231,6 +231,7 @@ namespace dxvk::vk {
     VULKAN_FN(vkCreateFramebuffer);
     VULKAN_FN(vkDestroyFramebuffer);
     VULKAN_FN(vkCreateRenderPass);
+    VULKAN_FN(vkCreateRenderPass2);
     VULKAN_FN(vkDestroyRenderPass);
     VULKAN_FN(vkGetRenderAreaGranularity);
     VULKAN_FN(vkCreateCommandPool);
@@ -289,17 +290,13 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdCopyQueryPoolResults);
     VULKAN_FN(vkCmdPushConstants);
     VULKAN_FN(vkCmdBeginRenderPass);
+    VULKAN_FN(vkCmdBeginRenderPass2);
     VULKAN_FN(vkCmdNextSubpass);
+    VULKAN_FN(vkCmdNextSubpass2);
     VULKAN_FN(vkCmdEndRenderPass);
+    VULKAN_FN(vkCmdEndRenderPass2);
     VULKAN_FN(vkCmdExecuteCommands);
 
-    #ifdef VK_KHR_create_renderpass2
-    VULKAN_FN(vkCreateRenderPass2KHR);
-    VULKAN_FN(vkCmdBeginRenderPass2KHR);
-    VULKAN_FN(vkCmdNextSubpass2KHR);
-    VULKAN_FN(vkCmdEndRenderPass2KHR);
-    #endif
-    
     #ifdef VK_KHR_swapchain
     VULKAN_FN(vkCreateSwapchainKHR);
     VULKAN_FN(vkDestroySwapchainKHR);

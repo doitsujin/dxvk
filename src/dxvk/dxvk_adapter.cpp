@@ -283,7 +283,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 30> devExtensionList = {{
+    std::array<DxvkExt*, 29> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.ext4444Formats,
@@ -303,7 +303,6 @@ namespace dxvk {
       &devExtensions.extShaderStencilExport,
       &devExtensions.extTransformFeedback,
       &devExtensions.extVertexAttributeDivisor,
-      &devExtensions.khrCreateRenderPass2,
       &devExtensions.khrDepthStencilResolve,
       &devExtensions.khrDriverProperties,
       &devExtensions.khrDynamicRendering,
