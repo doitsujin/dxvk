@@ -507,8 +507,8 @@ namespace dxvk {
     static uint64_t encodeColorFormat(VkFormat format, uint32_t index) {
       uint64_t value = uint64_t(format);
 
-      if (value >= uint64_t(VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT)) {
-        value -= uint64_t(VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT);
+      if (value >= uint64_t(VK_FORMAT_A4R4G4B4_UNORM_PACK16)) {
+        value -= uint64_t(VK_FORMAT_A4R4G4B4_UNORM_PACK16);
         value += uint64_t(VK_FORMAT_E5B9G9R9_UFLOAT_PACK32) + 1;
       } else if (value > uint64_t(VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)) {
         value = 0;
@@ -534,7 +534,7 @@ namespace dxvk {
 
       if (value > uint64_t(VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)) {
         value -= uint64_t(VK_FORMAT_E5B9G9R9_UFLOAT_PACK32) + 1ull;
-        value += uint64_t(VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT);
+        value += uint64_t(VK_FORMAT_A4R4G4B4_UNORM_PACK16);
       }
 
       return VkFormat(value);

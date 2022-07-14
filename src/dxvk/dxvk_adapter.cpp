@@ -248,10 +248,6 @@ namespace dxvk {
                 || !required.vk13.dynamicRendering)
         && (m_deviceFeatures.vk13.maintenance4
                 || !required.vk13.maintenance4)
-        && (m_deviceFeatures.ext4444Formats.formatA4R4G4B4
-                || !required.ext4444Formats.formatA4R4G4B4)
-        && (m_deviceFeatures.ext4444Formats.formatA4B4G4R4
-                || !required.ext4444Formats.formatA4B4G4R4)
         && (m_deviceFeatures.extCustomBorderColor.customBorderColors
                 || !required.extCustomBorderColor.customBorderColors)
         && (m_deviceFeatures.extCustomBorderColor.customBorderColorWithoutFormat
@@ -291,10 +287,9 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 21> devExtensionList = {{
+    std::array<DxvkExt*, 20> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
-      &devExtensions.ext4444Formats,
       &devExtensions.extConservativeRasterization,
       &devExtensions.extCustomBorderColor,
       &devExtensions.extDepthClipEnable,
@@ -356,9 +351,6 @@ namespace dxvk {
     enabledFeatures.extGraphicsPipelineLibrary.graphicsPipelineLibrary =
       m_deviceFeatures.extGraphicsPipelineLibrary.graphicsPipelineLibrary;
 
-    enabledFeatures.ext4444Formats.formatA4B4G4R4 = m_deviceFeatures.ext4444Formats.formatA4B4G4R4;
-    enabledFeatures.ext4444Formats.formatA4R4G4B4 = m_deviceFeatures.ext4444Formats.formatA4R4G4B4;
-    
     enabledFeatures.extRobustness2.robustBufferAccess2 = VK_TRUE;
     enabledFeatures.extRobustness2.robustImageAccess2 = m_deviceFeatures.extRobustness2.robustImageAccess2;
     enabledFeatures.extRobustness2.nullDescriptor = VK_TRUE;
@@ -389,11 +381,6 @@ namespace dxvk {
 
     enabledFeatures.vk13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
     enabledFeatures.vk13.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.vk13);
-
-    if (devExtensions.ext4444Formats) {
-      enabledFeatures.ext4444Formats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT;
-      enabledFeatures.ext4444Formats.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.ext4444Formats);
-    }
 
     if (devExtensions.extCustomBorderColor) {
       enabledFeatures.extCustomBorderColor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT;
@@ -680,11 +667,6 @@ namespace dxvk {
     m_deviceFeatures.vk13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
     m_deviceFeatures.vk13.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.vk13);
 
-    if (m_deviceExtensions.supports(VK_EXT_4444_FORMATS_EXTENSION_NAME)) {
-      m_deviceFeatures.ext4444Formats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT;
-      m_deviceFeatures.ext4444Formats.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.ext4444Formats);
-    }
-
     if (m_deviceExtensions.supports(VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME)) {
       m_deviceFeatures.extCustomBorderColor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT;
       m_deviceFeatures.extCustomBorderColor.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extCustomBorderColor);
@@ -813,9 +795,6 @@ namespace dxvk {
       "\n  synchronization2                       : ", features.vk13.synchronization2,
       "\n  dynamicRendering                       : ", features.vk13.dynamicRendering,
       "\n  maintenance4                           : ", features.vk13.maintenance4,
-      "\n", VK_EXT_4444_FORMATS_EXTENSION_NAME,
-      "\n  formatA4R4G4B4                         : ", features.ext4444Formats.formatA4R4G4B4 ? "1" : "0",
-      "\n  formatA4B4G4R4                         : ", features.ext4444Formats.formatA4B4G4R4 ? "1" : "0",
       "\n", VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME,
       "\n  customBorderColors                     : ", features.extCustomBorderColor.customBorderColors ? "1" : "0",
       "\n  customBorderColorWithoutFormat         : ", features.extCustomBorderColor.customBorderColorWithoutFormat ? "1" : "0",

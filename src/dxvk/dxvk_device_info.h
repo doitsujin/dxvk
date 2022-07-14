@@ -38,7 +38,6 @@ namespace dxvk {
     VkPhysicalDeviceVulkan11Features                          vk11;
     VkPhysicalDeviceVulkan12Features                          vk12;
     VkPhysicalDeviceVulkan13Features                          vk13;
-    VkPhysicalDevice4444FormatsFeaturesEXT                    ext4444Formats;
     VkPhysicalDeviceCustomBorderColorFeaturesEXT              extCustomBorderColor;
     VkPhysicalDeviceDepthClipEnableFeaturesEXT                extDepthClipEnable;
     VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT        extGraphicsPipelineLibrary;
