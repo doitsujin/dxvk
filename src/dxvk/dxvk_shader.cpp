@@ -547,10 +547,11 @@ namespace dxvk {
 
     // Set up dynamic state. We do not know any pipeline state
     // at this time, so make as much state dynamic as we can.
-    std::array<VkDynamicState, 5> dynamicStates = {{
+    std::array<VkDynamicState, 6> dynamicStates = {{
       VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
       VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
       VK_DYNAMIC_STATE_DEPTH_BIAS,
+      VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE,
       VK_DYNAMIC_STATE_CULL_MODE,
       VK_DYNAMIC_STATE_FRONT_FACE,
     }};
@@ -562,17 +563,14 @@ namespace dxvk {
     // All viewport state is dynamic, so we do not need to initialize this.
     VkPipelineViewportStateCreateInfo vpInfo = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
 
-    // Set up rasterizer state. Depth bias, cull mode and front face are all
-    // dynamic, but we do not have dynamic state for depth bias enablement
-    // with the original version of VK_EXT_extended_dynamic_state, so always
-    // enable that. Do not support any polygon modes other than FILL.
+    // Set up rasterizer state. Depth bias, cull mode and front face are
+    // all dynamic. Do not support any polygon modes other than FILL.
     VkPipelineRasterizationDepthClipStateCreateInfoEXT rsDepthClipInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT };
 
     VkPipelineRasterizationStateCreateInfo rsInfo = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
     rsInfo.depthClampEnable   = VK_TRUE;
     rsInfo.rasterizerDiscardEnable = VK_FALSE;
     rsInfo.polygonMode        = VK_POLYGON_MODE_FILL;
-    rsInfo.depthBiasEnable    = VK_TRUE;
     rsInfo.lineWidth          = 1.0f;
 
     if (m_device->features().extDepthClipEnable.depthClipEnable) {

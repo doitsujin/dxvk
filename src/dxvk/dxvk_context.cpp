@@ -4547,8 +4547,8 @@ namespace dxvk {
           m_state.gp.state.ds.enableDepthBoundsTest());
       }
 
-      if (!m_flags.test(DxvkContextFlag::GpDynamicDepthBias))
-        m_cmd->cmdSetDepthBias(0.0f, 0.0f, 0.0f);
+      m_cmd->cmdSetDepthBiasState(
+        m_state.gp.state.rs.depthBiasEnable());
 
       if (!m_flags.test(DxvkContextFlag::GpDynamicRasterizerState))
         m_cmd->cmdSetRasterizerState(VK_CULL_MODE_FRONT_AND_BACK, VK_FRONT_FACE_CLOCKWISE);

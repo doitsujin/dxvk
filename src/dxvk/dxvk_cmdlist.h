@@ -669,6 +669,12 @@ namespace dxvk {
     }
     
 
+    void cmdSetDepthBiasState(
+            VkBool32                depthBiasEnable) {
+      m_vkd->vkCmdSetDepthBiasEnable(m_execBuffer, depthBiasEnable);
+    }
+
+
     void cmdSetDepthBias(
             float                   depthBiasConstantFactor,
             float                   depthBiasClamp,
