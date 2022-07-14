@@ -355,7 +355,7 @@ namespace dxvk {
     // pNext is non-const for some reason, but this is only an input
     // structure, so we should be able to safely use const_cast.
     VkGraphicsPipelineLibraryCreateInfoEXT libInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT };
-    libInfo.pNext             = const_cast<VkPipelineRenderingCreateInfoKHR*>(&state.rtInfo);
+    libInfo.pNext             = const_cast<VkPipelineRenderingCreateInfo*>(&state.rtInfo);
     libInfo.flags             = VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT;
 
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };

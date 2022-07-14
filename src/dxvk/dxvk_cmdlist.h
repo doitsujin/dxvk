@@ -254,8 +254,8 @@ namespace dxvk {
 
 
     void cmdBeginRendering(
-      const VkRenderingInfoKHR*     pRenderingInfo) {
-      m_vkd->vkCmdBeginRenderingKHR(m_execBuffer, pRenderingInfo);
+      const VkRenderingInfo*        pRenderingInfo) {
+      m_vkd->vkCmdBeginRendering(m_execBuffer, pRenderingInfo);
     }
 
     
@@ -588,7 +588,7 @@ namespace dxvk {
     
     
     void cmdEndRendering() {
-      m_vkd->vkCmdEndRenderingKHR(m_execBuffer);
+      m_vkd->vkCmdEndRendering(m_execBuffer);
     }
 
     

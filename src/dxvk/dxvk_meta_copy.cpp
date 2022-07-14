@@ -400,7 +400,7 @@ namespace dxvk {
     dsState.front = stencilOp;
     dsState.back = stencilOp;
     
-    VkPipelineRenderingCreateInfoKHR rtState = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR };
+    VkPipelineRenderingCreateInfo rtState = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
 
     if (aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
       rtState.colorAttachmentCount = 1;

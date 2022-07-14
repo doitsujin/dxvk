@@ -92,7 +92,7 @@ namespace dxvk {
       const DxvkGraphicsPipelineStateInfo&  state,
       const DxvkShader*                     fs);
 
-    VkPipelineRenderingCreateInfoKHR                rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR };
+    VkPipelineRenderingCreateInfo                   rtInfo = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
     VkPipelineColorBlendStateCreateInfo             cbInfo = { VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO };
     VkPipelineMultisampleStateCreateInfo            msInfo = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
 

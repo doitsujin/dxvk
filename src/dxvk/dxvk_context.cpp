@@ -1620,12 +1620,12 @@ namespace dxvk {
     descriptorWrite.pImageInfo       = &descriptorImage;
     
     // Common render pass info
-    VkRenderingAttachmentInfoKHR attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR };
+    VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
     attachmentInfo.imageLayout = dstLayout;
     attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-    VkRenderingInfoKHR renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO_KHR };
+    VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
     renderingInfo.colorAttachmentCount = 1;
     renderingInfo.pColorAttachments = &attachmentInfo;
     
@@ -1960,17 +1960,17 @@ namespace dxvk {
         ? imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
         : imageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-      VkRenderingAttachmentInfoKHR attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR };
+      VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
       attachmentInfo.imageView = imageView->handle();
       attachmentInfo.imageLayout = imageLayout;
       attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
       attachmentInfo.clearValue = clearValue;
 
-      VkRenderingAttachmentInfoKHR stencilInfo = attachmentInfo;
+      VkRenderingAttachmentInfo stencilInfo = attachmentInfo;
 
       VkExtent3D extent = imageView->mipLevelExtent(0);
 
-      VkRenderingInfoKHR renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO_KHR };
+      VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
       renderingInfo.renderArea.extent = { extent.width, extent.height };
       renderingInfo.layerCount = imageView->info().numLayers;
 
@@ -2704,13 +2704,13 @@ namespace dxvk {
 
     VkExtent3D imageExtent = dstImage->mipLevelExtent(region.dstSubresource.mipLevel);
 
-    VkRenderingAttachmentInfoKHR attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR };
+    VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
     attachmentInfo.imageView = pass->getDstView();
     attachmentInfo.imageLayout = dstLayout;
     attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-    VkRenderingInfoKHR renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO_KHR };
+    VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
     renderingInfo.renderArea = VkRect2D {
       VkOffset2D { 0, 0 },
       VkExtent2D { imageExtent.width, imageExtent.height } };
@@ -3043,13 +3043,13 @@ namespace dxvk {
 
       VkExtent3D extent = imageView->mipLevelExtent(0);
 
-      VkRenderingAttachmentInfoKHR attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR };
+      VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
       attachmentInfo.imageView = imageView->handle();
       attachmentInfo.imageLayout = clearLayout;
       attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
       attachmentInfo.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-      VkRenderingInfoKHR renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO_KHR };
+      VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
       renderingInfo.renderArea.extent = { extent.width, extent.height };
       renderingInfo.layerCount = imageView->info().numLayers;
 
@@ -3504,7 +3504,7 @@ namespace dxvk {
 
     VkExtent3D mipExtent = dstImage->mipLevelExtent(dstSubresource.mipLevel);
 
-    VkRenderingAttachmentInfoKHR attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR };
+    VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
     attachmentInfo.imageView = views->getDstView();
     attachmentInfo.imageLayout = dstLayout;
     attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
@@ -3513,7 +3513,7 @@ namespace dxvk {
     if (doDiscard)
       attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
-    VkRenderingInfoKHR renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO_KHR };
+    VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
     renderingInfo.renderArea.offset = VkOffset2D { 0, 0 };
     renderingInfo.renderArea.extent = VkExtent2D { mipExtent.width, mipExtent.height };
     renderingInfo.layerCount = dstSubresource.layerCount;
@@ -3755,7 +3755,7 @@ namespace dxvk {
       dstImage, region.dstSubresource, srcImage, region.srcSubresource,
       dstImage->info().format);
 
-    VkRenderingAttachmentInfoKHR depthAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR };
+    VkRenderingAttachmentInfo depthAttachment = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
     depthAttachment.imageView = views->getSrcView();
     depthAttachment.imageLayout = srcLayout;
     depthAttachment.resolveMode = depthMode;
@@ -3764,12 +3764,12 @@ namespace dxvk {
     depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-    VkRenderingAttachmentInfoKHR stencilAttachment = depthAttachment;
+    VkRenderingAttachmentInfo stencilAttachment = depthAttachment;
     stencilAttachment.resolveMode = stencilMode;
 
     VkExtent3D extent = dstImage->mipLevelExtent(region.dstSubresource.mipLevel);
 
-    VkRenderingInfoKHR renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO_KHR };
+    VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
     renderingInfo.renderArea.offset = VkOffset2D { 0, 0 };
     renderingInfo.renderArea.extent = VkExtent2D { extent.width, extent.height };
     renderingInfo.layerCount = region.dstSubresource.layerCount;
@@ -3934,7 +3934,7 @@ namespace dxvk {
     scissor.offset    = { region.dstOffset.x,  region.dstOffset.y   };
     scissor.extent    = { region.extent.width, region.extent.height };
 
-    VkRenderingAttachmentInfoKHR attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR };
+    VkRenderingAttachmentInfo attachmentInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
     attachmentInfo.imageView = views->getDstView();
     attachmentInfo.imageLayout = dstLayout;
     attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
@@ -3943,7 +3943,7 @@ namespace dxvk {
     if (doDiscard)
       attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
-    VkRenderingInfoKHR renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO_KHR };
+    VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
     renderingInfo.renderArea.offset = VkOffset2D { 0, 0 };
     renderingInfo.renderArea.extent = VkExtent2D { passExtent.width, passExtent.height };
     renderingInfo.layerCount = region.dstSubresource.layerCount;
@@ -4224,11 +4224,11 @@ namespace dxvk {
 
     uint32_t colorInfoCount = 0;
 
-    std::array<VkRenderingAttachmentInfoKHR, MaxNumRenderTargets> colorInfos;
+    std::array<VkRenderingAttachmentInfo, MaxNumRenderTargets> colorInfos;
 
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       const auto& colorTarget = framebufferInfo.getColorTarget(i);
-      colorInfos[i] = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR };
+      colorInfos[i] = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
 
       if (colorTarget.view != nullptr) {
         colorInfos[i].imageView = colorTarget.view->handle();
@@ -4243,7 +4243,7 @@ namespace dxvk {
       }
     }
 
-    VkRenderingAttachmentInfoKHR depthInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO_KHR };
+    VkRenderingAttachmentInfo depthInfo = { VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO };
     VkImageAspectFlags depthStencilAspects = 0;
 
     if (framebufferInfo.getDepthTarget().view != nullptr) {
@@ -4258,7 +4258,7 @@ namespace dxvk {
         depthInfo.clearValue.depthStencil.depth = ops.depthOps.clearValue.depth;
     }
     
-    VkRenderingAttachmentInfoKHR stencilInfo = depthInfo;
+    VkRenderingAttachmentInfo stencilInfo = depthInfo;
 
     if (framebufferInfo.getDepthTarget().view != nullptr) {
       stencilInfo.loadOp = ops.depthOps.loadOpS;
@@ -4268,7 +4268,7 @@ namespace dxvk {
         stencilInfo.clearValue.depthStencil.stencil = ops.depthOps.clearValue.stencil;
     }
 
-    VkRenderingInfoKHR renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO_KHR };
+    VkRenderingInfo renderingInfo = { VK_STRUCTURE_TYPE_RENDERING_INFO };
     renderingInfo.renderArea.offset = VkOffset2D { 0, 0 };
     renderingInfo.renderArea.extent = VkExtent2D { fbSize.width, fbSize.height };
     renderingInfo.layerCount = fbSize.layers;

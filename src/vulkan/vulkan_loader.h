@@ -295,6 +295,8 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdNextSubpass2);
     VULKAN_FN(vkCmdEndRenderPass);
     VULKAN_FN(vkCmdEndRenderPass2);
+    VULKAN_FN(vkCmdBeginRendering);
+    VULKAN_FN(vkCmdEndRendering);
     VULKAN_FN(vkCmdExecuteCommands);
 
     #ifdef VK_KHR_swapchain
@@ -356,11 +358,6 @@ namespace dxvk::vk {
     VULKAN_FN(vkDestroyCuModuleNVX);
     VULKAN_FN(vkDestroyCuFunctionNVX);
     VULKAN_FN(vkCmdCuLaunchKernelNVX);
-    #endif
-
-    #ifdef VK_KHR_dynamic_rendering
-    VULKAN_FN(vkCmdBeginRenderingKHR);
-    VULKAN_FN(vkCmdEndRenderingKHR);
     #endif
 
     #ifdef VK_KHR_external_memory_win32

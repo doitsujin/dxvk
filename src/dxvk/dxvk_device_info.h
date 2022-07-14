@@ -51,7 +51,6 @@ namespace dxvk {
     VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT         extShaderModuleIdentifier;
     VkPhysicalDeviceTransformFeedbackFeaturesEXT              extTransformFeedback;
     VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT         extVertexAttributeDivisor;
-    VkPhysicalDeviceDynamicRenderingFeaturesKHR               khrDynamicRendering;
   };
 
 }

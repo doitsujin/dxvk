@@ -295,7 +295,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 25> devExtensionList = {{
+    std::array<DxvkExt*, 24> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.ext4444Formats,
@@ -315,7 +315,6 @@ namespace dxvk {
       &devExtensions.extShaderStencilExport,
       &devExtensions.extTransformFeedback,
       &devExtensions.extVertexAttributeDivisor,
-      &devExtensions.khrDynamicRendering,
       &devExtensions.khrExternalMemoryWin32,
       &devExtensions.khrPipelineLibrary,
       &devExtensions.khrSwapchain,
@@ -378,8 +377,6 @@ namespace dxvk {
 
     enabledFeatures.extShaderModuleIdentifier.shaderModuleIdentifier =
       m_deviceFeatures.extShaderModuleIdentifier.shaderModuleIdentifier;
-
-    enabledFeatures.khrDynamicRendering.dynamicRendering = VK_TRUE;
 
     Logger::info(str::format("Device properties:"
       "\n  Device name:     : ", m_deviceInfo.core.properties.deviceName,
@@ -468,11 +465,6 @@ namespace dxvk {
     if (devExtensions.extVertexAttributeDivisor.revision() >= 3) {
       enabledFeatures.extVertexAttributeDivisor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
       enabledFeatures.extVertexAttributeDivisor.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extVertexAttributeDivisor);
-    }
-
-    if (devExtensions.khrDynamicRendering) {
-      enabledFeatures.khrDynamicRendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
-      enabledFeatures.khrDynamicRendering.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrDynamicRendering);
     }
 
     // Report the desired overallocation behaviour to the driver
@@ -780,11 +772,6 @@ namespace dxvk {
       m_deviceFeatures.extVertexAttributeDivisor.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extVertexAttributeDivisor);
     }
 
-    if (m_deviceExtensions.supports(VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME)) {
-      m_deviceFeatures.khrDynamicRendering.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DYNAMIC_RENDERING_FEATURES_KHR;
-      m_deviceFeatures.khrDynamicRendering.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrDynamicRendering);
-    }
-
     m_vki->vkGetPhysicalDeviceFeatures2(m_handle, &m_deviceFeatures.core);
   }
 
@@ -899,9 +886,7 @@ namespace dxvk {
       "\n  geometryStreams                        : ", features.extTransformFeedback.geometryStreams ? "1" : "0",
       "\n", VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME,
       "\n  vertexAttributeInstanceRateDivisor     : ", features.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor ? "1" : "0",
-      "\n  vertexAttributeInstanceRateZeroDivisor : ", features.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor ? "1" : "0",
-      "\n", VK_KHR_DYNAMIC_RENDERING_EXTENSION_NAME,
-      "\n  dynamicRendering                       : ", features.khrDynamicRendering.dynamicRendering ? "1" : "0"));
+      "\n  vertexAttributeInstanceRateZeroDivisor : ", features.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor ? "1" : "0"));
   }
 
 

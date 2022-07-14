@@ -345,7 +345,7 @@ namespace dxvk {
     cbState.attachmentCount     = 1;
     cbState.pAttachments        = &cbAttachment;
 
-    VkPipelineRenderingCreateInfoKHR rtState = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR };
+    VkPipelineRenderingCreateInfo rtState = { VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO };
     rtState.colorAttachmentCount = 1;
     rtState.pColorAttachmentFormats = &format;
 
