@@ -5073,7 +5073,7 @@ namespace dxvk {
     
     // Vertex bindigs get remapped when compiling the
     // pipeline, so this actually does the right thing
-    m_cmd->cmdBindVertexBuffers2(0, m_state.gp.state.il.bindingCount(),
+    m_cmd->cmdBindVertexBuffers(0, m_state.gp.state.il.bindingCount(),
       buffers.data(), offsets.data(), lengths.data(), nullptr);
   }
   

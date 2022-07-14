@@ -327,20 +327,10 @@ namespace dxvk {
             uint32_t                firstBinding,
             uint32_t                bindingCount,
       const VkBuffer*               pBuffers,
-      const VkDeviceSize*           pOffsets) {
-      m_vkd->vkCmdBindVertexBuffers(m_execBuffer,
-        firstBinding, bindingCount, pBuffers, pOffsets);
-    }
-    
-    
-    void cmdBindVertexBuffers2(
-            uint32_t                firstBinding,
-            uint32_t                bindingCount,
-      const VkBuffer*               pBuffers,
       const VkDeviceSize*           pOffsets,
       const VkDeviceSize*           pSizes,
       const VkDeviceSize*           pStrides) {
-      m_vkd->vkCmdBindVertexBuffers2EXT(m_execBuffer,
+      m_vkd->vkCmdBindVertexBuffers2(m_execBuffer,
         firstBinding, bindingCount, pBuffers, pOffsets,
         pSizes, pStrides);
     }
@@ -701,7 +691,7 @@ namespace dxvk {
 
     void cmdSetDepthBoundsState(
             VkBool32                depthBoundsTestEnable) {
-      m_vkd->vkCmdSetDepthBoundsTestEnableEXT(m_execBuffer, depthBoundsTestEnable);
+      m_vkd->vkCmdSetDepthBoundsTestEnable(m_execBuffer, depthBoundsTestEnable);
     }
 
 
@@ -709,11 +699,11 @@ namespace dxvk {
             VkBool32                depthTestEnable,
             VkBool32                depthWriteEnable,
             VkCompareOp             depthCompareOp) {
-      m_vkd->vkCmdSetDepthTestEnableEXT(m_execBuffer, depthTestEnable);
+      m_vkd->vkCmdSetDepthTestEnable(m_execBuffer, depthTestEnable);
 
       if (depthTestEnable) {
-        m_vkd->vkCmdSetDepthWriteEnableEXT(m_execBuffer, depthWriteEnable);
-        m_vkd->vkCmdSetDepthCompareOpEXT(m_execBuffer, depthCompareOp);
+        m_vkd->vkCmdSetDepthWriteEnable(m_execBuffer, depthWriteEnable);
+        m_vkd->vkCmdSetDepthCompareOp(m_execBuffer, depthCompareOp);
       }
     }
 
@@ -728,15 +718,15 @@ namespace dxvk {
     void cmdSetRasterizerState(
             VkCullModeFlags         cullMode,
             VkFrontFace             frontFace) {
-      m_vkd->vkCmdSetCullModeEXT(m_execBuffer, cullMode);
-      m_vkd->vkCmdSetFrontFaceEXT(m_execBuffer, frontFace);
+      m_vkd->vkCmdSetCullMode(m_execBuffer, cullMode);
+      m_vkd->vkCmdSetFrontFace(m_execBuffer, frontFace);
     }
 
     
     void cmdSetScissor(
             uint32_t                scissorCount,
       const VkRect2D*               scissors) {
-      m_vkd->vkCmdSetScissorWithCountEXT(
+      m_vkd->vkCmdSetScissorWithCount(
         m_execBuffer, scissorCount, scissors);
     }
 
@@ -745,11 +735,11 @@ namespace dxvk {
             VkBool32                enableStencilTest,
       const VkStencilOpState&       front,
       const VkStencilOpState&       back) {
-      m_vkd->vkCmdSetStencilTestEnableEXT(
+      m_vkd->vkCmdSetStencilTestEnable(
         m_execBuffer, enableStencilTest);
 
       if (enableStencilTest) {
-        m_vkd->vkCmdSetStencilOpEXT(m_execBuffer,
+        m_vkd->vkCmdSetStencilOp(m_execBuffer,
           VK_STENCIL_FACE_FRONT_BIT, front.failOp,
           front.passOp, front.depthFailOp, front.compareOp);
         m_vkd->vkCmdSetStencilCompareMask(m_execBuffer,
@@ -757,7 +747,7 @@ namespace dxvk {
         m_vkd->vkCmdSetStencilWriteMask(m_execBuffer,
           VK_STENCIL_FACE_FRONT_BIT, front.writeMask);
 
-        m_vkd->vkCmdSetStencilOpEXT(m_execBuffer,
+        m_vkd->vkCmdSetStencilOp(m_execBuffer,
           VK_STENCIL_FACE_BACK_BIT, back.failOp,
           back.passOp, back.depthFailOp, back.compareOp);
         m_vkd->vkCmdSetStencilCompareMask(m_execBuffer,
@@ -779,7 +769,7 @@ namespace dxvk {
     void cmdSetViewport(
             uint32_t                viewportCount,
       const VkViewport*             viewports) {
-      m_vkd->vkCmdSetViewportWithCountEXT(
+      m_vkd->vkCmdSetViewportWithCount(
         m_execBuffer, viewportCount, viewports);
     }
 

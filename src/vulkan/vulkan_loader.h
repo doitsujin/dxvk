@@ -257,6 +257,21 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdSetStencilCompareMask);
     VULKAN_FN(vkCmdSetStencilWriteMask);
     VULKAN_FN(vkCmdSetStencilReference);
+    VULKAN_FN(vkCmdBindVertexBuffers2);
+    VULKAN_FN(vkCmdSetCullMode);
+    VULKAN_FN(vkCmdSetDepthBoundsTestEnable);
+    VULKAN_FN(vkCmdSetDepthCompareOp);
+    VULKAN_FN(vkCmdSetDepthTestEnable);
+    VULKAN_FN(vkCmdSetDepthWriteEnable);
+    VULKAN_FN(vkCmdSetFrontFace);
+    VULKAN_FN(vkCmdSetPrimitiveTopology);
+    VULKAN_FN(vkCmdSetScissorWithCount);
+    VULKAN_FN(vkCmdSetStencilOp);
+    VULKAN_FN(vkCmdSetStencilTestEnable);
+    VULKAN_FN(vkCmdSetViewportWithCount);
+    VULKAN_FN(vkCmdSetRasterizerDiscardEnable);
+    VULKAN_FN(vkCmdSetDepthBiasEnable);
+    VULKAN_FN(vkCmdSetPrimitiveRestartEnable);
     VULKAN_FN(vkCmdBindDescriptorSets);
     VULKAN_FN(vkCmdBindIndexBuffer);
     VULKAN_FN(vkCmdBindVertexBuffers);
@@ -310,21 +325,6 @@ namespace dxvk::vk {
     #ifdef VK_EXT_conditional_rendering
     VULKAN_FN(vkCmdBeginConditionalRenderingEXT);
     VULKAN_FN(vkCmdEndConditionalRenderingEXT);
-    #endif
-
-    #ifdef VK_EXT_extended_dynamic_state
-    VULKAN_FN(vkCmdBindVertexBuffers2EXT);
-    VULKAN_FN(vkCmdSetCullModeEXT);
-    VULKAN_FN(vkCmdSetDepthBoundsTestEnableEXT);
-    VULKAN_FN(vkCmdSetDepthCompareOpEXT);
-    VULKAN_FN(vkCmdSetDepthTestEnableEXT);
-    VULKAN_FN(vkCmdSetDepthWriteEnableEXT);
-    VULKAN_FN(vkCmdSetFrontFaceEXT);
-    VULKAN_FN(vkCmdSetPrimitiveTopologyEXT);
-    VULKAN_FN(vkCmdSetScissorWithCountEXT);
-    VULKAN_FN(vkCmdSetStencilOpEXT);
-    VULKAN_FN(vkCmdSetStencilTestEnableEXT);
-    VULKAN_FN(vkCmdSetViewportWithCountEXT);
     #endif
 
     #ifdef VK_EXT_full_screen_exclusive

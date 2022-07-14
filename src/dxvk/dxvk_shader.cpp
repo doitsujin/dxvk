@@ -548,11 +548,11 @@ namespace dxvk {
     // Set up dynamic state. We do not know any pipeline state
     // at this time, so make as much state dynamic as we can.
     std::array<VkDynamicState, 5> dynamicStates = {{
-      VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT,
-      VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT,
+      VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
+      VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
       VK_DYNAMIC_STATE_DEPTH_BIAS,
-      VK_DYNAMIC_STATE_CULL_MODE_EXT,
-      VK_DYNAMIC_STATE_FRONT_FACE_EXT,
+      VK_DYNAMIC_STATE_CULL_MODE,
+      VK_DYNAMIC_STATE_FRONT_FACE,
     }};
 
     VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
@@ -622,17 +622,17 @@ namespace dxvk {
     uint32_t dynamicStateCount = 0;
     std::array<VkDynamicState, 10> dynamicStates;
 
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT;
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT;
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_COMPARE_OP;
     dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK;
     dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_WRITE_MASK;
     dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT;
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_OP_EXT;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_OP;
 
     if (m_device->features().core.features.depthBounds) {
-      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE_EXT;
+      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE;
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS;
     }
 
