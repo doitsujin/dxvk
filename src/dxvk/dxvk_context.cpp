@@ -4545,6 +4545,8 @@ namespace dxvk {
       if (m_device->features().core.features.depthBounds) {
         m_cmd->cmdSetDepthBoundsState(
           m_state.gp.state.ds.enableDepthBoundsTest());
+
+        m_flags.set(DxvkContextFlag::GpDynamicDepthBounds);
       }
 
       m_cmd->cmdSetDepthBiasState(
@@ -4553,7 +4555,10 @@ namespace dxvk {
       if (!m_flags.test(DxvkContextFlag::GpDynamicRasterizerState))
         m_cmd->cmdSetRasterizerState(VK_CULL_MODE_FRONT_AND_BACK, VK_FRONT_FACE_CLOCKWISE);
 
-      m_flags.set(DxvkContextFlag::GpIndependentSets);
+      m_flags.set(
+        DxvkContextFlag::GpDynamicDepthBias,
+        DxvkContextFlag::GpDynamicStencilRef,
+        DxvkContextFlag::GpIndependentSets);
     }
 
     // If necessary, dirty descriptor sets due to layout incompatibilities
