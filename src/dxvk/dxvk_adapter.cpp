@@ -222,6 +222,20 @@ namespace dxvk {
                 || !required.core.features.inheritedQueries)
         && (m_deviceFeatures.vk11.shaderDrawParameters
                 || !required.vk11.shaderDrawParameters)
+        && (m_deviceFeatures.vk12.samplerMirrorClampToEdge
+                || !required.vk12.samplerMirrorClampToEdge)
+        && (m_deviceFeatures.vk12.drawIndirectCount
+                || !required.vk12.drawIndirectCount)
+        && (m_deviceFeatures.vk12.hostQueryReset
+                || !required.vk12.hostQueryReset)
+        && (m_deviceFeatures.vk12.timelineSemaphore
+                || !required.vk12.timelineSemaphore)
+        && (m_deviceFeatures.vk12.bufferDeviceAddress
+                || !required.vk12.bufferDeviceAddress)
+        && (m_deviceFeatures.vk12.shaderOutputViewportIndex
+                || !required.vk12.shaderOutputViewportIndex)
+        && (m_deviceFeatures.vk12.shaderOutputLayer
+                || !required.vk12.shaderOutputLayer)
         && (m_deviceFeatures.ext4444Formats.formatA4R4G4B4
                 || !required.ext4444Formats.formatA4R4G4B4)
         && (m_deviceFeatures.ext4444Formats.formatA4B4G4R4
@@ -375,6 +389,9 @@ namespace dxvk {
 
     enabledFeatures.vk11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
     enabledFeatures.vk11.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.vk11);
+
+    enabledFeatures.vk12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    enabledFeatures.vk12.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.vk12);
 
     if (devExtensions.ext4444Formats) {
       enabledFeatures.ext4444Formats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT;
@@ -630,6 +647,9 @@ namespace dxvk {
     m_deviceInfo.vk11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES;
     m_deviceInfo.vk11.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.vk11);
 
+    m_deviceInfo.vk12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_PROPERTIES;
+    m_deviceInfo.vk12.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.vk12);
+
     if (m_deviceExtensions.supports(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME)) {
       m_deviceInfo.extConservativeRasterization.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT;
       m_deviceInfo.extConservativeRasterization.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extConservativeRasterization);
@@ -705,6 +725,9 @@ namespace dxvk {
 
     m_deviceFeatures.vk11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
     m_deviceFeatures.vk11.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.vk11);
+
+    m_deviceFeatures.vk12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    m_deviceFeatures.vk12.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.vk12);
 
     if (m_deviceExtensions.supports(VK_EXT_4444_FORMATS_EXTENSION_NAME)) {
       m_deviceFeatures.ext4444Formats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT;
@@ -854,6 +877,14 @@ namespace dxvk {
       "\n  variableMultisampleRate                : ", features.core.features.variableMultisampleRate ? "1" : "0",
       "\nVulkan 1.1",
       "\n  shaderDrawParameters                   : ", features.vk11.shaderDrawParameters,
+      "\nVulkan 1.2",
+      "\n  samplerMirrorClampToEdge               : ", features.vk12.samplerMirrorClampToEdge,
+      "\n  drawIndirectCount                      : ", features.vk12.drawIndirectCount,
+      "\n  hostQueryReset                         : ", features.vk12.hostQueryReset,
+      "\n  timelineSemaphore                      : ", features.vk12.timelineSemaphore,
+      "\n  bufferDeviceAddress                    : ", features.vk12.bufferDeviceAddress,
+      "\n  shaderOutputViewportIndex              : ", features.vk12.shaderOutputViewportIndex,
+      "\n  shaderOutputLayer                      : ", features.vk12.shaderOutputLayer,
       "\n", VK_EXT_4444_FORMATS_EXTENSION_NAME,
       "\n  formatA4R4G4B4                         : ", features.ext4444Formats.formatA4R4G4B4 ? "1" : "0",
       "\n  formatA4B4G4R4                         : ", features.ext4444Formats.formatA4B4G4R4 ? "1" : "0",
