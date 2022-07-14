@@ -46,6 +46,7 @@ namespace dxvk {
     , m_adapter        ( pAdapter )
     , m_dxvkDevice     ( dxvkDevice )
     , m_shaderModules  ( new D3D9ShaderModuleSet )
+    , m_stagingBuffer  ( dxvkDevice, StagingBufferSize )
     , m_d3d9Options    ( dxvkDevice, pParent->GetInstance()->config() )
     , m_multithread    ( BehaviorFlags & D3DCREATE_MULTITHREADED )
     , m_isSWVP         ( (BehaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING) ? true : false )
@@ -4013,61 +4014,11 @@ namespace dxvk {
   }
 
 
-  D3D9BufferSlice D3D9DeviceEx::AllocTempBuffer(VkDeviceSize size) {
-    constexpr VkDeviceSize DefaultSize = 1 << 20;
-
-    VkMemoryPropertyFlags memoryFlags
-      = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-      | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-
-    D3D9BufferSlice& currentSlice = m_managedUploadBuffer;
-
-    if (size <= DefaultSize) {
-      if (unlikely(!currentSlice.slice.defined())) {
-        DxvkBufferCreateInfo info;
-        info.size   = DefaultSize;
-        info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
-        info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-        info.access = VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_SHADER_READ_BIT;
-
-        currentSlice.slice  = DxvkBufferSlice(m_dxvkDevice->createBuffer(info, memoryFlags));
-        currentSlice.mapPtr = currentSlice.slice.mapPtr(0);
-      } else if (unlikely(currentSlice.slice.length() < size)) {
-        auto physSlice = currentSlice.slice.buffer()->allocSlice();
-
-        currentSlice.slice  = DxvkBufferSlice(currentSlice.slice.buffer());
-        currentSlice.mapPtr = physSlice.mapPtr;
-
-        EmitCs([
-          cBuffer = currentSlice.slice.buffer(),
-          cSlice  = physSlice
-        ] (DxvkContext* ctx) {
-          ctx->invalidateBuffer(cBuffer, cSlice);
-        });
-      }
-
-      D3D9BufferSlice result;
-      result.slice  = currentSlice.slice.subSlice(0, size);
-      result.mapPtr = reinterpret_cast<char*>(currentSlice.mapPtr) + currentSlice.slice.offset();
-
-      VkDeviceSize adjust = align(size, CACHE_LINE_SIZE);
-      currentSlice.slice = currentSlice.slice.subSlice(adjust, currentSlice.slice.length() - adjust);
-      return result;
-    } else {
-      // Create a temporary buffer for very large allocations
-      DxvkBufferCreateInfo info;
-      info.size   = size;
-      info.usage  = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
-                  | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-      info.access = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
-                  | VK_ACCESS_INDEX_READ_BIT;
-      info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-
-      D3D9BufferSlice result;
-      result.slice  = DxvkBufferSlice(m_dxvkDevice->createBuffer(info, memoryFlags));
-      result.mapPtr = result.slice.mapPtr(0);
-      return result;
-    }
+  D3D9BufferSlice D3D9DeviceEx::AllocStagingBuffer(VkDeviceSize size) {
+    D3D9BufferSlice result;
+    result.slice = m_stagingBuffer.alloc(256, size);
+    result.mapPtr = result.slice.mapPtr(0);
+    return result;
   }
 
   bool D3D9DeviceEx::ShouldRecord() {
@@ -4529,7 +4480,7 @@ namespace dxvk {
       DxvkBufferSlice copySrcSlice;
       if (pSrcTexture->DoesStagingBufferUploads(SrcSubresource)) {
         VkDeviceSize dirtySize = extentBlockCount.width * extentBlockCount.height * extentBlockCount.depth * formatInfo->elementSize;
-        D3D9BufferSlice slice = AllocTempBuffer(dirtySize);
+        D3D9BufferSlice slice = AllocStagingBuffer(dirtySize);
         copySrcSlice = slice.slice;
         void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + copySrcOffset;
         util::packImageData(
@@ -4579,7 +4530,7 @@ namespace dxvk {
       }
 
       // the converter can not handle the 4 aligned pitch so we always repack into a staging buffer
-      D3D9BufferSlice slice = AllocTempBuffer(srcSlice.length);
+      D3D9BufferSlice slice = AllocStagingBuffer(srcSlice.length);
       VkDeviceSize pitch = align(srcTexLevelExtentBlockCount.width * formatInfo->elementSize, 4);
 
       util::packImageData(
@@ -4739,7 +4690,7 @@ namespace dxvk {
 
     DxvkBufferSlice copySrcSlice;
     if (pResource->DoesStagingBufferUploads()) {
-      D3D9BufferSlice slice = AllocTempBuffer(range.max - range.min);
+      D3D9BufferSlice slice = AllocStagingBuffer(range.max - range.min);
       copySrcSlice = slice.slice;
       void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + range.min;
       memcpy(slice.mapPtr, srcData, range.max - range.min);

@@ -2,6 +2,7 @@
 
 #include "../dxvk/dxvk_device.h"
 #include "../dxvk/dxvk_cs.h"
+#include "../dxvk/dxvk_staging.h"
 
 #include "d3d9_include.h"
 #include "d3d9_cursor.h"
@@ -98,6 +99,8 @@ namespace dxvk {
     constexpr static uint32_t MaxPendingSubmits = 6;
 
     constexpr static uint32_t NullStreamIdx = caps::MaxStreams;
+
+    constexpr static VkDeviceSize StagingBufferSize = 4ull << 20;
 
     friend class D3D9SwapChainEx;
     friend class D3D9ConstantBuffer;
@@ -971,7 +974,7 @@ namespace dxvk {
 
     D3D9BufferSlice AllocUPBuffer(VkDeviceSize size);
 
-    D3D9BufferSlice AllocTempBuffer(VkDeviceSize size);
+    D3D9BufferSlice AllocStagingBuffer(VkDeviceSize size);
 
     bool ShouldRecord();
 
@@ -1168,7 +1171,7 @@ namespace dxvk {
     VkDeviceSize                    m_upBufferOffset  = 0ull;
     void*                           m_upBufferMapPtr  = nullptr;
 
-    D3D9BufferSlice                 m_managedUploadBuffer;
+    DxvkStagingBuffer               m_stagingBuffer;
 
     D3D9Cursor                      m_cursor;
 
