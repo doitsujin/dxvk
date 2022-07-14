@@ -710,6 +710,9 @@ namespace dxvk {
       if (depthTestEnable) {
         m_vkd->vkCmdSetDepthWriteEnable(m_execBuffer, depthWriteEnable);
         m_vkd->vkCmdSetDepthCompareOp(m_execBuffer, depthCompareOp);
+      } else {
+        m_vkd->vkCmdSetDepthWriteEnable(m_execBuffer, VK_FALSE);
+        m_vkd->vkCmdSetDepthCompareOp(m_execBuffer, VK_COMPARE_OP_ALWAYS);
       }
     }
 
@@ -760,6 +763,15 @@ namespace dxvk {
           VK_STENCIL_FACE_BACK_BIT, back.compareMask);
         m_vkd->vkCmdSetStencilWriteMask(m_execBuffer,
           VK_STENCIL_FACE_BACK_BIT, back.writeMask);
+      } else {
+        m_vkd->vkCmdSetStencilOp(m_execBuffer,
+          VK_STENCIL_FACE_FRONT_AND_BACK,
+          VK_STENCIL_OP_KEEP, VK_STENCIL_OP_KEEP,
+          VK_STENCIL_OP_KEEP, VK_COMPARE_OP_ALWAYS);
+        m_vkd->vkCmdSetStencilCompareMask(m_execBuffer,
+          VK_STENCIL_FACE_FRONT_AND_BACK, 0x0);
+        m_vkd->vkCmdSetStencilWriteMask(m_execBuffer,
+          VK_STENCIL_FACE_FRONT_AND_BACK, 0x0);
       }
     }
 
