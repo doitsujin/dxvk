@@ -4532,15 +4532,13 @@ namespace dxvk {
     // For pipelines created from graphics pipeline libraries, we need
     // to apply a bunch of dynamic state that is otherwise static
     if (pipelineInfo.second == DxvkGraphicsPipelineType::BasePipeline) {
+      VkImageAspectFlags dsReadOnlyAspects = m_state.gp.state.rt.getDepthStencilReadOnlyAspects();
+
       m_cmd->cmdSetDepthState(
         m_state.gp.state.ds.enableDepthTest(),
-        m_state.gp.state.ds.enableDepthWrite(),
+        m_state.gp.state.ds.enableDepthWrite() &&
+          !(dsReadOnlyAspects & VK_IMAGE_ASPECT_DEPTH_BIT),
         m_state.gp.state.ds.depthCompareOp());
-
-      m_cmd->cmdSetStencilState(
-        m_state.gp.state.ds.enableStencilTest(),
-        m_state.gp.state.dsFront.state(),
-        m_state.gp.state.dsBack.state());
 
       if (m_device->features().core.features.depthBounds) {
         m_cmd->cmdSetDepthBoundsState(
@@ -4549,11 +4547,20 @@ namespace dxvk {
         m_flags.set(DxvkContextFlag::GpDynamicDepthBounds);
       }
 
+      VkStencilOpState dsFront = m_state.gp.state.dsFront.state();
+      VkStencilOpState dsBack = m_state.gp.state.dsBack.state();
+
+      if (dsReadOnlyAspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+        dsFront.writeMask = 0;
+        dsBack.writeMask = 0;
+      }
+
+      m_cmd->cmdSetStencilState(
+        m_state.gp.state.ds.enableStencilTest(),
+        dsFront, dsBack);
+
       m_cmd->cmdSetDepthBiasState(
         m_state.gp.state.rs.depthBiasEnable());
-
-      if (!m_flags.test(DxvkContextFlag::GpDynamicRasterizerState))
-        m_cmd->cmdSetRasterizerState(VK_CULL_MODE_FRONT_AND_BACK, VK_FRONT_FACE_CLOCKWISE);
 
       m_flags.set(
         DxvkContextFlag::GpDynamicDepthBias,
