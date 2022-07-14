@@ -4906,15 +4906,23 @@ namespace dxvk {
 
   void D3D9DeviceEx::CreateConstantBuffers() {
     constexpr VkDeviceSize DefaultConstantBufferSize  = 1024ull << 10;
+    constexpr VkDeviceSize SmallConstantBufferSize    =   64ull << 10;
 
-    if (!m_isSWVP) {
-      m_consts[DxsoProgramTypes::VertexShader].buffer = D3D9ConstantBuffer(this,
-        DxsoProgramType::VertexShader,
-        DxsoConstantBuffers::VSConstantBuffer,
-        DefaultConstantBufferSize);
-    }
+    m_consts[DxsoProgramTypes::VertexShader].buffer = D3D9ConstantBuffer(this,
+      DxsoProgramType::VertexShader,
+      DxsoConstantBuffers::VSConstantBuffer,
+      DefaultConstantBufferSize);
 
-    // SWVP constant buffers are created late based on the amount of constants set by the application
+    m_consts[DxsoProgramTypes::VertexShader].swvp.intBuffer = D3D9ConstantBuffer(this,
+      DxsoProgramType::VertexShader,
+      DxsoConstantBuffers::VSIntConstantBuffer,
+      SmallConstantBufferSize);
+
+    m_consts[DxsoProgramTypes::VertexShader].swvp.boolBuffer = D3D9ConstantBuffer(this,
+      DxsoProgramType::VertexShader,
+      DxsoConstantBuffers::VSBoolConstantBuffer,
+      SmallConstantBufferSize);
+
     m_consts[DxsoProgramTypes::PixelShader].buffer = D3D9ConstantBuffer(this,
       DxsoProgramType::PixelShader,
       DxsoConstantBuffers::PSConstantBuffer,
@@ -4975,14 +4983,13 @@ namespace dxvk {
     const uint32_t intDataSize   = std::min(constSet.meta.maxConstIndexI, m_vsIntConstsCount) * sizeof(Vector4i);
     const uint32_t boolDataSize  = divCeil(std::min(constSet.meta.maxConstIndexB, m_vsBoolConstsCount), 32u) * uint32_t(sizeof(uint32_t));
 
-    Rc<DxvkBuffer>& floatBuffer = constSet.swvpBuffers.floatBuffer;
     // Max copy source size is 8192 * 16 => always aligned to any plausible value
     // => we won't copy out of bounds
-    if (likely(constSet.meta.maxConstIndexF != 0 || floatBuffer == nullptr)) {
-      DxvkBufferSliceHandle floatBufferSlice = CopySoftwareConstants(DxsoConstantBuffers::VSFloatConstantBuffer, floatBuffer, Src.fConsts, floatDataSize, m_dxsoOptions.vertexFloatConstantBufferAsSSBO);
+    if (likely(constSet.meta.maxConstIndexF != 0)) {
+      auto mapPtr = CopySoftwareConstants(constSet.buffer, Src.fConsts, floatDataSize);
 
       if (constSet.meta.needsConstantCopies) {
-        Vector4* data = reinterpret_cast<Vector4*>(floatBufferSlice.mapPtr);
+        Vector4* data = reinterpret_cast<Vector4*>(mapPtr);
 
         auto& shaderConsts = GetCommonShader(m_state.vertexShader)->GetConstants();
 
@@ -4993,42 +5000,24 @@ namespace dxvk {
       }
     }
 
-    Rc<DxvkBuffer>& intBuffer = constSet.swvpBuffers.intBuffer;
     // Max copy source size is 2048 * 16 => always aligned to any plausible value
     // => we won't copy out of bounds
-    if (likely(constSet.meta.maxConstIndexI != 0 || intBuffer == nullptr)) {
-      CopySoftwareConstants(DxsoConstantBuffers::VSIntConstantBuffer, intBuffer, Src.iConsts, intDataSize, false);
-    }
+    if (likely(constSet.meta.maxConstIndexI != 0))
+      CopySoftwareConstants(constSet.swvp.intBuffer, Src.iConsts, intDataSize);
 
-    Rc<DxvkBuffer>& boolBuffer = constSet.swvpBuffers.boolBuffer;
-    if (likely(constSet.meta.maxConstIndexB != 0 || boolBuffer == nullptr)) {
-      CopySoftwareConstants(DxsoConstantBuffers::VSBoolConstantBuffer, boolBuffer, Src.bConsts, boolDataSize, false);
-    }
+    if (likely(constSet.meta.maxConstIndexB != 0))
+      CopySoftwareConstants(constSet.swvp.boolBuffer, Src.bConsts, boolDataSize);
   }
 
 
-  inline DxvkBufferSliceHandle D3D9DeviceEx::CopySoftwareConstants(DxsoConstantBuffers cBufferTarget, Rc<DxvkBuffer>& dstBuffer, const void* src, uint32_t size, bool useSSBO) {
-    uint32_t alignment = useSSBO ? m_robustSSBOAlignment : m_robustUBOAlignment;
-    alignment = std::max(alignment, 64u);
+  inline void* D3D9DeviceEx::CopySoftwareConstants(D3D9ConstantBuffer& dstBuffer, const void* src, uint32_t size) {
+    uint32_t alignment = dstBuffer.GetAlignment();
     size = std::max(size, alignment);
     size = align(size, alignment);
 
-    DxvkBufferSliceHandle slice;
-    if (unlikely(dstBuffer == nullptr || dstBuffer->info().size < size)) {
-      dstBuffer = CreateConstantBuffer(useSSBO, size, DxsoProgramType::VertexShader, cBufferTarget);
-      slice = dstBuffer->getSliceHandle();
-    } else {
-      slice = dstBuffer->allocSlice();
-      EmitCs([
-        cBuffer = dstBuffer,
-        cSlice  = slice
-      ] (DxvkContext* ctx) {
-        ctx->invalidateBuffer(cBuffer, cSlice);
-      });
-    }
-
-    std::memcpy(slice.mapPtr, src, size);
-    return slice;
+    auto mapPtr = dstBuffer.Alloc(size);
+    std::memcpy(mapPtr, src, size);
+    return mapPtr;
   }
 
 
