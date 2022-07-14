@@ -2491,7 +2491,7 @@ namespace dxvk {
         
       case D3D11_VK_EXT_MULTI_DRAW_INDIRECT_COUNT:
         return deviceFeatures.core.features.multiDrawIndirect
-            && deviceExtensions.khrDrawIndirectCount;
+            && deviceFeatures.vk12.drawIndirectCount;
       
       case D3D11_VK_EXT_DEPTH_BOUNDS:
         return deviceFeatures.core.features.depthBounds;

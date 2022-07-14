@@ -518,7 +518,7 @@ namespace dxvk {
             VkDeviceSize            countOffset,
             uint32_t                maxDrawCount,
             uint32_t                stride) {
-      m_vkd->vkCmdDrawIndirectCountKHR(m_execBuffer,
+      m_vkd->vkCmdDrawIndirectCount(m_execBuffer,
         buffer, offset, countBuffer, countOffset, maxDrawCount, stride);
     }
     
@@ -553,7 +553,7 @@ namespace dxvk {
             VkDeviceSize            countOffset,
             uint32_t                maxDrawCount,
             uint32_t                stride) {
-      m_vkd->vkCmdDrawIndexedIndirectCountKHR(m_execBuffer,
+      m_vkd->vkCmdDrawIndexedIndirectCount(m_execBuffer,
         buffer, offset, countBuffer, countOffset, maxDrawCount, stride);
     }
     

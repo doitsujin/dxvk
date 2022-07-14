@@ -260,7 +260,9 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdDraw);
     VULKAN_FN(vkCmdDrawIndexed);
     VULKAN_FN(vkCmdDrawIndirect);
+    VULKAN_FN(vkCmdDrawIndirectCount);
     VULKAN_FN(vkCmdDrawIndexedIndirect);
+    VULKAN_FN(vkCmdDrawIndexedIndirectCount);
     VULKAN_FN(vkCmdDispatch);
     VULKAN_FN(vkCmdDispatchIndirect);
     VULKAN_FN(vkCmdCopyBuffer);
@@ -294,11 +296,6 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdBeginRenderPass2KHR);
     VULKAN_FN(vkCmdNextSubpass2KHR);
     VULKAN_FN(vkCmdEndRenderPass2KHR);
-    #endif
-    
-    #ifdef VK_KHR_draw_indirect_count
-    VULKAN_FN(vkCmdDrawIndirectCountKHR);
-    VULKAN_FN(vkCmdDrawIndexedIndirectCountKHR);
     #endif
     
     #ifdef VK_KHR_swapchain

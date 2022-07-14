@@ -285,7 +285,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 34> devExtensionList = {{
+    std::array<DxvkExt*, 33> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.ext4444Formats,
@@ -310,7 +310,6 @@ namespace dxvk {
       &devExtensions.khrBufferDeviceAddress,
       &devExtensions.khrCreateRenderPass2,
       &devExtensions.khrDepthStencilResolve,
-      &devExtensions.khrDrawIndirectCount,
       &devExtensions.khrDriverProperties,
       &devExtensions.khrDynamicRendering,
       &devExtensions.khrExternalMemoryWin32,
@@ -351,6 +350,8 @@ namespace dxvk {
     DxvkNameList extensionNameList = extensionsEnabled.toNameList();
 
     // Enable additional device features if supported
+    enabledFeatures.vk12.drawIndirectCount = m_deviceFeatures.vk12.drawIndirectCount;
+
     enabledFeatures.extExtendedDynamicState.extendedDynamicState = VK_TRUE;
 
     enabledFeatures.extGraphicsPipelineLibrary.graphicsPipelineLibrary =
