@@ -67,7 +67,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
     }
 
-    GUID guid          = bit::cast<GUID>(m_adapter->devicePropertiesExt().coreDeviceId.deviceUUID);
+    GUID guid          = bit::cast<GUID>(m_adapter->devicePropertiesExt().vk11.deviceUUID);
 
     uint32_t vendorId  = options.customVendorId == -1     ? props.vendorID   : uint32_t(options.customVendorId);
     uint32_t deviceId  = options.customDeviceId == -1     ? props.deviceID   : uint32_t(options.customDeviceId);
@@ -702,10 +702,10 @@ namespace dxvk {
     if (pLUID == nullptr)
       return D3DERR_INVALIDCALL;
 
-    auto& deviceId = m_adapter->devicePropertiesExt().coreDeviceId;
+    auto& vk11 = m_adapter->devicePropertiesExt().vk11;
 
-    if (deviceId.deviceLUIDValid)
-      *pLUID = bit::cast<LUID>(deviceId.deviceLUID);
+    if (vk11.deviceLUIDValid)
+      *pLUID = bit::cast<LUID>(vk11.deviceLUID);
     else
       *pLUID = dxvk::GetAdapterLUID(m_ordinal);
 

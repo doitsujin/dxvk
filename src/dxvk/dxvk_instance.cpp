@@ -61,7 +61,7 @@ namespace dxvk {
 
   Rc<DxvkAdapter> DxvkInstance::findAdapterByLuid(const void* luid) const {
     for (const auto& adapter : m_adapters) {
-      const auto& props = adapter->devicePropertiesExt().coreDeviceId;
+      const auto& props = adapter->devicePropertiesExt().vk11;
 
       if (props.deviceLUIDValid && !std::memcmp(luid, props.deviceLUID, VK_LUID_SIZE))
         return adapter;

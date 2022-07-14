@@ -220,8 +220,8 @@ namespace dxvk {
                 || !required.core.features.variableMultisampleRate)
         && (m_deviceFeatures.core.features.inheritedQueries
                 || !required.core.features.inheritedQueries)
-        && (m_deviceFeatures.shaderDrawParameters.shaderDrawParameters
-                || !required.shaderDrawParameters.shaderDrawParameters)
+        && (m_deviceFeatures.vk11.shaderDrawParameters
+                || !required.vk11.shaderDrawParameters)
         && (m_deviceFeatures.ext4444Formats.formatA4R4G4B4
                 || !required.ext4444Formats.formatA4R4G4B4)
         && (m_deviceFeatures.ext4444Formats.formatA4B4G4R4
@@ -373,8 +373,8 @@ namespace dxvk {
     enabledFeatures.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
     enabledFeatures.core.pNext = nullptr;
 
-    enabledFeatures.shaderDrawParameters.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
-    enabledFeatures.shaderDrawParameters.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.shaderDrawParameters);
+    enabledFeatures.vk11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+    enabledFeatures.vk11.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.vk11);
 
     if (devExtensions.ext4444Formats) {
       enabledFeatures.ext4444Formats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT;
@@ -627,11 +627,8 @@ namespace dxvk {
     // Query info now so that we have basic device properties available
     m_vki->vkGetPhysicalDeviceProperties2(m_handle, &m_deviceInfo.core);
 
-    m_deviceInfo.coreDeviceId.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
-    m_deviceInfo.coreDeviceId.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.coreDeviceId);
-
-    m_deviceInfo.coreSubgroup.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
-    m_deviceInfo.coreSubgroup.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.coreSubgroup);
+    m_deviceInfo.vk11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES;
+    m_deviceInfo.vk11.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.vk11);
 
     if (m_deviceExtensions.supports(VK_EXT_CONSERVATIVE_RASTERIZATION_EXTENSION_NAME)) {
       m_deviceInfo.extConservativeRasterization.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT;
@@ -706,8 +703,8 @@ namespace dxvk {
     m_deviceFeatures.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
     m_deviceFeatures.core.pNext = nullptr;
 
-    m_deviceFeatures.shaderDrawParameters.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES;
-    m_deviceFeatures.shaderDrawParameters.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.shaderDrawParameters);
+    m_deviceFeatures.vk11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+    m_deviceFeatures.vk11.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.vk11);
 
     if (m_deviceExtensions.supports(VK_EXT_4444_FORMATS_EXTENSION_NAME)) {
       m_deviceFeatures.ext4444Formats.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT;
@@ -855,6 +852,8 @@ namespace dxvk {
       "\n  shaderFloat64                          : ", features.core.features.shaderFloat64 ? "1" : "0",
       "\n  shaderInt64                            : ", features.core.features.shaderInt64 ? "1" : "0",
       "\n  variableMultisampleRate                : ", features.core.features.variableMultisampleRate ? "1" : "0",
+      "\nVulkan 1.1",
+      "\n  shaderDrawParameters                   : ", features.vk11.shaderDrawParameters,
       "\n", VK_EXT_4444_FORMATS_EXTENSION_NAME,
       "\n  formatA4R4G4B4                         : ", features.ext4444Formats.formatA4R4G4B4 ? "1" : "0",
       "\n  formatA4B4G4R4                         : ", features.ext4444Formats.formatA4B4G4R4 ? "1" : "0",

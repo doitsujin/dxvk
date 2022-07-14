@@ -20,14 +20,14 @@ namespace dxvk {
     useStorageImageReadWithoutFormat
       = devFeatures.core.features.shaderStorageImageReadWithoutFormat;
     useSubgroupOpsForAtomicCounters
-      = (devInfo.coreSubgroup.supportedStages     & VK_SHADER_STAGE_COMPUTE_BIT)
-     && (devInfo.coreSubgroup.supportedOperations & VK_SUBGROUP_FEATURE_BALLOT_BIT);
+      = (devInfo.vk11.subgroupSupportedStages     & VK_SHADER_STAGE_COMPUTE_BIT)
+     && (devInfo.vk11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_BALLOT_BIT);
     useDemoteToHelperInvocation
       = (devFeatures.extShaderDemoteToHelperInvocation.shaderDemoteToHelperInvocation);
     useSubgroupOpsForEarlyDiscard
-      = (devInfo.coreSubgroup.subgroupSize >= 4)
-     && (devInfo.coreSubgroup.supportedStages     & VK_SHADER_STAGE_FRAGMENT_BIT)
-     && (devInfo.coreSubgroup.supportedOperations & VK_SUBGROUP_FEATURE_BALLOT_BIT);
+      = (devInfo.vk11.subgroupSize >= 4)
+     && (devInfo.vk11.subgroupSupportedStages     & VK_SHADER_STAGE_FRAGMENT_BIT)
+     && (devInfo.vk11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_BALLOT_BIT);
     useSdivForBufferIndex
       = adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0);
     

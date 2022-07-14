@@ -14,8 +14,7 @@ namespace dxvk {
    */
   struct DxvkDeviceInfo {
     VkPhysicalDeviceProperties2                               core;
-    VkPhysicalDeviceIDProperties                              coreDeviceId;
-    VkPhysicalDeviceSubgroupProperties                        coreSubgroup;
+    VkPhysicalDeviceVulkan11Properties                        vk11;
     VkPhysicalDeviceConservativeRasterizationPropertiesEXT    extConservativeRasterization;
     VkPhysicalDeviceCustomBorderColorPropertiesEXT            extCustomBorderColor;
     VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT      extGraphicsPipelineLibrary;
@@ -37,7 +36,7 @@ namespace dxvk {
    */
   struct DxvkDeviceFeatures {
     VkPhysicalDeviceFeatures2                                 core;
-    VkPhysicalDeviceShaderDrawParametersFeatures              shaderDrawParameters;
+    VkPhysicalDeviceVulkan11Features                          vk11;
     VkPhysicalDevice4444FormatsFeaturesEXT                    ext4444Formats;
     VkPhysicalDeviceCustomBorderColorFeaturesEXT              extCustomBorderColor;
     VkPhysicalDeviceDepthClipEnableFeaturesEXT                extDepthClipEnable;
