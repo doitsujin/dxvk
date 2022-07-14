@@ -4413,20 +4413,28 @@ namespace dxvk {
           ID3D11RenderTargetView* const*    ppRenderTargetViews,
           ID3D11DepthStencilView*           pDepthStencilView) {
     Rc<DxvkImageView> refView;
-    
+
+    VkExtent3D dsvExtent = { 0u, 0u, 0u };
+    VkExtent3D rtvExtent = { 0u, 0u, 0u };
+
     if (pDepthStencilView != nullptr) {
       refView = static_cast<D3D11DepthStencilView*>(
         pDepthStencilView)->GetImageView();
+      dsvExtent = refView->mipLevelExtent(0);
     }
     
     for (uint32_t i = 0; i < NumViews; i++) {
       if (ppRenderTargetViews[i] != nullptr) {
         auto curView = static_cast<D3D11RenderTargetView*>(
           ppRenderTargetViews[i])->GetImageView();
-        
+
+        if (!rtvExtent.width)
+          rtvExtent = curView->mipLevelExtent(0);
+
         if (refView != nullptr) {
-          // Render target views must all have the same
-          // size, sample count, layer count, and type
+          // Render target views must all have the same sample count,
+          // layer count, and type. The size can mismatch under certain
+          // conditions, the D3D11 documentation is wrong here.
           if (curView->info().type      != refView->info().type
            || curView->info().numLayers != refView->info().numLayers)
             return false;
@@ -4435,11 +4443,11 @@ namespace dxvk {
            != refView->imageInfo().sampleCount)
             return false;
 
+          // Color targets must all be the same size
           VkExtent3D curExtent = curView->mipLevelExtent(0);
-          VkExtent3D refExtent = refView->mipLevelExtent(0);
 
-          if (curExtent.width  != refExtent.width
-           || curExtent.height != refExtent.height)
+          if (curExtent.width  != rtvExtent.width
+           || curExtent.height != rtvExtent.height)
             return false;
         } else {
           // Set reference view. All remaining views
@@ -4448,7 +4456,15 @@ namespace dxvk {
         }
       }
     }
-    
+
+    // Based on testing, the depth-stencil target is allowed
+    // to be larger than all color targets, but not smaller
+    if (rtvExtent.width && dsvExtent.width) {
+      if (rtvExtent.width  > dsvExtent.width
+       || rtvExtent.height > dsvExtent.height)
+        return false;
+    }
+
     return true;
   }
   
