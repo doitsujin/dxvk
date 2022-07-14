@@ -4861,49 +4861,6 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkBuffer> D3D9DeviceEx::CreateConstantBuffer(
-          bool                SSBO,
-          VkDeviceSize        Size,
-          DxsoProgramType     ShaderStage,
-          DxsoConstantBuffers BufferType) {
-    DxvkBufferCreateInfo info = { };
-    info.usage  = SSBO ? VK_BUFFER_USAGE_STORAGE_BUFFER_BIT : VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-    info.access = SSBO ? VK_ACCESS_SHADER_READ_BIT          : VK_ACCESS_UNIFORM_READ_BIT;
-    info.size   = Size;
-    info.stages = ShaderStage == DxsoProgramType::VertexShader
-      ? VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
-      : VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-
-    VkMemoryPropertyFlags memoryFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                                      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-
-    if (m_d3d9Options.deviceLocalConstantBuffers)
-      memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-    Rc<DxvkBuffer> buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
-
-    const uint32_t slotId = computeResourceSlotId(
-      ShaderStage, DxsoBindingType::ConstantBuffer,
-      BufferType);
-
-    EmitCs([
-      cShaderStage  = GetShaderStage(ShaderStage),
-      cSlotId       = slotId,
-      cBuffer       = buffer
-    ] (DxvkContext* ctx) {
-      ctx->bindResourceBuffer(cShaderStage, cSlotId,
-        DxvkBufferSlice(cBuffer, 0, cBuffer->info().size));
-    });
-
-    if (ShaderStage == DxsoProgramType::PixelShader)
-      m_boundPSConstantsBufferSize = buffer->info().size;
-    else
-      m_boundVSConstantsBufferSize = buffer->info().size;
-
-    return buffer;
-  }
-
-
   void D3D9DeviceEx::CreateConstantBuffers() {
     constexpr VkDeviceSize DefaultConstantBufferSize  = 1024ull << 10;
     constexpr VkDeviceSize SmallConstantBufferSize    =   64ull << 10;
