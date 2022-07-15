@@ -105,7 +105,15 @@ namespace dxvk {
         return true;
       }
 
-      return read(data);
+      if (!read(data))
+        return false;
+
+      // Format hasn't changed, but we introduced
+      // dynamic vertex strides in the meantime
+      if (version < 15)
+        data.setStride(0);
+
+      return true;
     }
 
 
