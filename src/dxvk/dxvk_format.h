@@ -78,7 +78,7 @@ namespace dxvk {
     if (likely(format <= VK_FORMAT_BC7_SRGB_BLOCK))
       return &g_formatInfos[uint32_t(format)];
     else
-      return lookupFormatInfo(format);
+      return lookupFormatInfoSlow(format);
   }
 
 }
