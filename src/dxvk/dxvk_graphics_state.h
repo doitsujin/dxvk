@@ -747,7 +747,7 @@ namespace dxvk {
       bool result = false;
       
       for (uint32_t i = 0; i < MaxNumRenderTargets && !result; i++) {
-        result |= omBlend[i].blendEnable()
+        result |= rt.getColorFormat(i) && omBlend[i].blendEnable()
          && (util::isBlendConstantBlendFactor(omBlend[i].srcColorBlendFactor())
           || util::isBlendConstantBlendFactor(omBlend[i].dstColorBlendFactor())
           || util::isBlendConstantBlendFactor(omBlend[i].srcAlphaBlendFactor())

@@ -285,21 +285,10 @@ namespace dxvk {
     msSampleMask                  = state.ms.sampleMask() & ((1u << msInfo.rasterizationSamples) - 1);
     msInfo.pSampleMask            = &msSampleMask;
     msInfo.alphaToCoverageEnable  = state.ms.enableAlphaToCoverage();
-  }
 
-
-  bool DxvkGraphicsPipelineFragmentOutputState::useDynamicBlendConstants() const {
-    bool result = false;
-
-    for (uint32_t i = 0; i < MaxNumRenderTargets && !result; i++) {
-      result = cbAttachments[i].blendEnable
-        && (util::isBlendConstantBlendFactor(cbAttachments[i].srcColorBlendFactor)
-         || util::isBlendConstantBlendFactor(cbAttachments[i].dstColorBlendFactor)
-         || util::isBlendConstantBlendFactor(cbAttachments[i].srcAlphaBlendFactor)
-         || util::isBlendConstantBlendFactor(cbAttachments[i].dstAlphaBlendFactor));
-    }
-
-    return result;
+    // We need to be fully consistent with the pipeline state here, and
+    // while we could consistently infer it, just don't take any chances
+    cbUseDynamicBlendConstants = state.useDynamicBlendConstants();
   }
 
 
@@ -315,7 +304,8 @@ namespace dxvk {
            && msInfo.minSampleShading         == other.msInfo.minSampleShading
            && msInfo.alphaToCoverageEnable    == other.msInfo.alphaToCoverageEnable
            && msInfo.alphaToOneEnable         == other.msInfo.alphaToOneEnable
-           && msSampleMask                    == other.msSampleMask;
+           && msSampleMask                    == other.msSampleMask
+           && cbUseDynamicBlendConstants      == other.cbUseDynamicBlendConstants;
 
     for (uint32_t i = 0; i < rtInfo.colorAttachmentCount && eq; i++)
       eq = rtColorFormats[i] == other.rtColorFormats[i];
@@ -353,6 +343,7 @@ namespace dxvk {
     hash.add(uint32_t(msInfo.alphaToCoverageEnable));
     hash.add(uint32_t(msInfo.alphaToOneEnable));
     hash.add(uint32_t(msSampleMask));
+    hash.add(uint32_t(cbUseDynamicBlendConstants));
 
     for (uint32_t i = 0; i < rtInfo.colorAttachmentCount; i++)
       hash.add(uint32_t(rtColorFormats[i]));
@@ -384,7 +375,7 @@ namespace dxvk {
     VkDynamicState dynamicState = VK_DYNAMIC_STATE_BLEND_CONSTANTS;
     VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
 
-    if (state.useDynamicBlendConstants()) {
+    if (state.cbUseDynamicBlendConstants) {
       dyInfo.dynamicStateCount  = 1;
       dyInfo.pDynamicStates     = &dynamicState;
     }
