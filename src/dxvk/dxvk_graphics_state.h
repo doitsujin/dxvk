@@ -731,6 +731,18 @@ namespace dxvk {
       return ds.enableDepthBoundsTest();
     }
 
+    bool useDynamicVertexStrides() const {
+      if (!il.bindingCount())
+        return false;
+
+      bool result = true;
+
+      for (uint32_t i = 0; i < il.bindingCount() && result; i++)
+        result = !ilBindings[i].stride();
+
+      return result;
+    }
+
     bool useDynamicBlendConstants() const {
       bool result = false;
       

@@ -43,6 +43,8 @@ namespace dxvk {
     std::array<VkVertexInputBindingDivisorDescriptionEXT, MaxNumVertexBindings>   viDivisors    = { };
     std::array<VkVertexInputAttributeDescription,         MaxNumVertexAttributes> viAttributes  = { };
 
+    bool useDynamicVertexStrides() const;
+
     bool eq(const DxvkGraphicsPipelineVertexInputState& other) const;
 
     size_t hash() const;

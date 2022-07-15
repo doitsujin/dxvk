@@ -252,12 +252,8 @@ namespace dxvk {
         m_vbTracked.clr(binding);
 
       m_state.vi.vertexBuffers[binding] = buffer;
+      m_state.vi.vertexStrides[binding] = stride;
       m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
-      
-      if (unlikely(m_state.vi.vertexStrides[binding] != stride)) {
-        m_state.vi.vertexStrides[binding] = stride;
-        m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
-      }
     }
 
     /**

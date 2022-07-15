@@ -67,6 +67,21 @@ namespace dxvk {
   }
 
 
+  bool DxvkGraphicsPipelineVertexInputState::useDynamicVertexStrides() const {
+    if (!viInfo.vertexBindingDescriptionCount)
+      return false;
+
+    // The backend will set all strides to 0 if dynamic strides are
+    // allowed, since the restrictions only apply to non-zero strides
+    bool dynamicStride = true;
+
+    for (uint32_t i = 0; i < viInfo.vertexBindingDescriptionCount && dynamicStride; i++)
+      dynamicStride = !viBindings[i].stride;
+
+    return dynamicStride;
+  }
+
+
   bool DxvkGraphicsPipelineVertexInputState::eq(const DxvkGraphicsPipelineVertexInputState& other) const {
     bool eq = iaInfo.topology                         == other.iaInfo.topology
            && iaInfo.primitiveRestartEnable           == other.iaInfo.primitiveRestartEnable
@@ -141,6 +156,14 @@ namespace dxvk {
   : m_device(device) {
     auto vk = m_device->vkd();
 
+    VkDynamicState dynamicState = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE;
+    VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+
+    if (state.useDynamicVertexStrides()) {
+      dyInfo.dynamicStateCount = 1;
+      dyInfo.pDynamicStates = &dynamicState;
+    }
+
     VkGraphicsPipelineLibraryCreateInfoEXT libInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT };
     libInfo.flags             = VK_GRAPHICS_PIPELINE_LIBRARY_VERTEX_INPUT_INTERFACE_BIT_EXT;
 
@@ -148,6 +171,7 @@ namespace dxvk {
     info.flags                = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
     info.pVertexInputState    = &state.viInfo;
     info.pInputAssemblyState  = &state.iaInfo;
+    info.pDynamicState        = &dyInfo;
     info.basePipelineIndex    = -1;
 
     VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(),
@@ -766,11 +790,14 @@ namespace dxvk {
     auto vk = m_device->vkd();
 
     // Set up dynamic states as needed
-    std::array<VkDynamicState, 8> dynamicStates;
+    std::array<VkDynamicState, 9> dynamicStates;
     uint32_t                      dynamicStateCount = 0;
     
     dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT;
     dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT;
+
+    if (state.useDynamicVertexStrides())
+      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE;
 
     if (state.useDynamicDepthBias())
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BIAS;

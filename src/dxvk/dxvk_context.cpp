@@ -2392,24 +2392,29 @@ namespace dxvk {
     m_flags.set(
       DxvkContextFlag::GpDirtyPipelineState,
       DxvkContextFlag::GpDirtyVertexBuffers);
+
+    for (uint32_t i = 0; i < bindingCount; i++) {
+      m_state.gp.state.ilBindings[i] = DxvkIlBinding(
+        bindings[i].binding, 0, bindings[i].inputRate,
+        bindings[i].fetchRate);
+      m_state.vi.vertexExtents[bindings[i].binding] = 0;
+    }
+
+    for (uint32_t i = bindingCount; i < m_state.gp.state.il.bindingCount(); i++)
+      m_state.gp.state.ilBindings[i] = DxvkIlBinding();
     
     for (uint32_t i = 0; i < attributeCount; i++) {
       m_state.gp.state.ilAttributes[i] = DxvkIlAttribute(
         attributes[i].location, attributes[i].binding,
         attributes[i].format,   attributes[i].offset);
+
+      uint32_t extent = attributes[i].offset + lookupFormatInfo(attributes[i].format)->elementSize;
+      m_state.vi.vertexExtents[attributes[i].binding] = std::max(extent,
+        m_state.vi.vertexExtents[attributes[i].binding]);
     }
     
     for (uint32_t i = attributeCount; i < m_state.gp.state.il.attributeCount(); i++)
       m_state.gp.state.ilAttributes[i] = DxvkIlAttribute();
-    
-    for (uint32_t i = 0; i < bindingCount; i++) {
-      m_state.gp.state.ilBindings[i] = DxvkIlBinding(
-        bindings[i].binding, 0, bindings[i].inputRate,
-        bindings[i].fetchRate);
-    }
-    
-    for (uint32_t i = bindingCount; i < m_state.gp.state.il.bindingCount(); i++)
-      m_state.gp.state.ilBindings[i] = DxvkIlBinding();
     
     m_state.gp.state.il = DxvkIlInfo(attributeCount, bindingCount);
   }
@@ -4484,12 +4489,6 @@ namespace dxvk {
   bool DxvkContext::updateGraphicsPipelineState(DxvkGlobalPipelineBarrier srcBarrier) {
     bool oldIndependentSets = m_flags.test(DxvkContextFlag::GpIndependentSets);
 
-    // Set up vertex buffer strides for active bindings
-    for (uint32_t i = 0; i < m_state.gp.state.il.bindingCount(); i++) {
-      const uint32_t binding = m_state.gp.state.ilBindings[i].binding();
-      m_state.gp.state.ilBindings[i].setStride(m_state.vi.vertexStrides[binding]);
-    }
-
     // Check which dynamic states need to be active. States that
     // are not dynamic will be invalidated in the command buffer.
     m_flags.clr(DxvkContextFlag::GpDynamicBlendConstants,
@@ -5074,7 +5073,11 @@ namespace dxvk {
     std::array<VkBuffer,     MaxNumVertexBindings> buffers;
     std::array<VkDeviceSize, MaxNumVertexBindings> offsets;
     std::array<VkDeviceSize, MaxNumVertexBindings> lengths;
+    std::array<VkDeviceSize, MaxNumVertexBindings> strides;
     
+    bool oldDynamicStrides = m_flags.test(DxvkContextFlag::GpDynamicVertexStrides);
+    bool newDynamicStrides = true;
+
     // Set buffer handles and offsets for active bindings
     for (uint32_t i = 0; i < m_state.gp.state.il.bindingCount(); i++) {
       uint32_t binding = m_state.gp.state.ilBindings[i].binding();
@@ -5085,20 +5088,48 @@ namespace dxvk {
         buffers[i] = vbo.buffer.buffer;
         offsets[i] = vbo.buffer.offset;
         lengths[i] = vbo.buffer.range;
-        
+        strides[i] = m_state.vi.vertexStrides[binding];
+
+        if (strides[i]) {
+          // Dynamic strides are only allowed if the stride is not smaller
+          // than highest attribute offset + format size for given binding
+          newDynamicStrides &= strides[i] >= m_state.vi.vertexExtents[binding];
+        }
+
         if (m_vbTracked.set(binding))
           m_cmd->trackResource<DxvkAccess::Read>(m_state.vi.vertexBuffers[binding].buffer());
       } else {
         buffers[i] = VK_NULL_HANDLE;
         offsets[i] = 0;
         lengths[i] = 0;
+        strides[i] = 0;
       }
     }
-    
+
+    // If vertex strides are static or if we are switching between static or
+    // dynamic strides, we'll have to apply them to the pipeline state and
+    // also sort out our state flags
+    if (unlikely(!oldDynamicStrides) || unlikely(!newDynamicStrides)) {
+      m_flags.clr(DxvkContextFlag::GpDynamicVertexStrides);
+
+      for (uint32_t i = 0; i < m_state.gp.state.il.bindingCount(); i++) {
+        uint32_t stride = newDynamicStrides ? 0 : strides[i];
+
+        if (m_state.gp.state.ilBindings[i].stride() != stride) {
+          m_state.gp.state.ilBindings[i].setStride(stride);
+          m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+        }
+      }
+
+      if (newDynamicStrides)
+        m_flags.set(DxvkContextFlag::GpDynamicVertexStrides);
+    }
+
     // Vertex bindigs get remapped when compiling the
     // pipeline, so this actually does the right thing
     m_cmd->cmdBindVertexBuffers(0, m_state.gp.state.il.bindingCount(),
-      buffers.data(), offsets.data(), lengths.data(), nullptr);
+      buffers.data(), offsets.data(), lengths.data(),
+      newDynamicStrides ? strides.data() : nullptr);
   }
   
   

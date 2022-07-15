@@ -41,6 +41,7 @@ namespace dxvk {
     GpDynamicDepthBounds,       ///< Depth bounds are dynamic
     GpDynamicStencilRef,        ///< Stencil reference is dynamic
     GpDynamicRasterizerState,   ///< Cull mode and front face are dynamic
+    GpDynamicVertexStrides,     ///< Vertex buffer strides are dynamic
     GpIndependentSets,          ///< Graphics pipeline layout was created with independent sets
     
     CpDirtyPipeline,            ///< Compute pipeline binding are out of date
@@ -89,6 +90,7 @@ namespace dxvk {
     
     std::array<DxvkBufferSlice, DxvkLimits::MaxNumVertexBindings> vertexBuffers = { };
     std::array<uint32_t,        DxvkLimits::MaxNumVertexBindings> vertexStrides = { };
+    std::array<uint32_t,        DxvkLimits::MaxNumVertexBindings> vertexExtents = { };
   };
   
   
