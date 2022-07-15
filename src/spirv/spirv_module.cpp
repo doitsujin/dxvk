@@ -3593,7 +3593,7 @@ namespace dxvk {
   
   
   void SpirvModule::opDemoteToHelperInvocation() {
-    m_code.putIns (spv::OpDemoteToHelperInvocationEXT, 1);
+    m_code.putIns (spv::OpDemoteToHelperInvocation, 1);
   }
   
   

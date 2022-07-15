@@ -19,7 +19,7 @@ namespace dxvk {
     const DxbcAnalysisInfo&   analysis)
   : m_moduleInfo (moduleInfo),
     m_programInfo(programInfo),
-    m_module     (spvVersion(1, 3)),
+    m_module     (spvVersion(1, 6)),
     m_isgn       (isgn),
     m_osgn       (osgn),
     m_psgn       (psgn),
@@ -1483,7 +1483,9 @@ namespace dxvk {
     m_immConstBuf = m_module.newVarInit(
       pointerTypeId, spv::StorageClassPrivate,
       arrayId);
+
     m_module.setDebugName(m_immConstBuf, "icb");
+    m_module.decorate(m_immConstBuf, spv::DecorationNonWritable);
   }
   
   
@@ -6262,7 +6264,7 @@ namespace dxvk {
       
       case DxbcSystemValue::RenderTargetId: {
         if (m_programInfo.type() != DxbcProgramType::GeometryShader)
-          enableShaderViewportIndexLayer();
+          m_module.enableCapability(spv::CapabilityShaderLayer);
 
         if (m_gs.builtinLayer == 0) {
           m_module.enableCapability(spv::CapabilityGeometry);
@@ -6285,7 +6287,7 @@ namespace dxvk {
       
       case DxbcSystemValue::ViewportId: {
         if (m_programInfo.type() != DxbcProgramType::GeometryShader)
-          enableShaderViewportIndexLayer();
+          m_module.enableCapability(spv::CapabilityShaderViewportIndex);
 
         if (m_gs.builtinViewportId == 0) {
           m_module.enableCapability(spv::CapabilityMultiViewport);
@@ -6801,8 +6803,7 @@ namespace dxvk {
 
     if (m_analysis->usesKill && m_moduleInfo.options.useDemoteToHelperInvocation) {
       // This extension basically implements D3D-style discard
-      m_module.enableExtension("SPV_EXT_demote_to_helper_invocation");
-      m_module.enableCapability(spv::CapabilityDemoteToHelperInvocationEXT);
+      m_module.enableCapability(spv::CapabilityDemoteToHelperInvocation);
     } else if (m_analysis->usesKill && m_analysis->usesDerivatives) {
       // We may have to defer kill operations to the end of
       // the shader in order to keep derivatives correct.
@@ -7409,6 +7410,7 @@ namespace dxvk {
       spv::StorageClassPrivate, samplePosArray);
     
     m_module.setDebugName(varId, "g_sample_pos");
+    m_module.decorate(varId, spv::DecorationNonWritable);
     return varId;
   }
   
@@ -7512,16 +7514,6 @@ namespace dxvk {
 
     m_module.setDebugName(varId, "pc");
     return varId;
-  }
-
-
-  void DxbcCompiler::enableShaderViewportIndexLayer() {
-    if (!m_extensions.shaderViewportIndexLayer) {
-      m_extensions.shaderViewportIndexLayer = true;
-      
-      m_module.enableExtension("SPV_EXT_shader_viewport_index_layer");
-      m_module.enableCapability(spv::CapabilityShaderViewportIndexLayerEXT);
-    }
   }
 
 
