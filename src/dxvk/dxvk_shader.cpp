@@ -88,7 +88,8 @@ namespace dxvk {
         if (ins.arg(1) == spv::CapabilitySampleRateShading)
           m_flags.set(DxvkShaderFlag::HasSampleRateShading);
 
-        if (ins.arg(1) == spv::CapabilityShaderViewportIndexLayerEXT)
+        if (ins.arg(1) == spv::CapabilityShaderViewportIndex
+         || ins.arg(1) == spv::CapabilityShaderLayer)
           m_flags.set(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage);
       }
 
