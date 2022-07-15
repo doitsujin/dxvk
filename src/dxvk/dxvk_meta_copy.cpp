@@ -358,8 +358,6 @@ namespace dxvk {
     iaState.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     
     VkPipelineViewportStateCreateInfo vpState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-    vpState.viewportCount = 1;
-    vpState.scissorCount = 1;
     
     VkPipelineRasterizationStateCreateInfo rsState = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
     rsState.depthClampEnable = VK_TRUE;

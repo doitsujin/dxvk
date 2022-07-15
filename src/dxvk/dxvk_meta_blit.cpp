@@ -322,8 +322,6 @@ namespace dxvk {
     iaState.primitiveRestartEnable = VK_FALSE;
     
     VkPipelineViewportStateCreateInfo vpState = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
-    vpState.viewportCount = 1;
-    vpState.scissorCount = 1;
     
     VkPipelineRasterizationStateCreateInfo rsState = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO };
     rsState.polygonMode = VK_POLYGON_MODE_FILL;
