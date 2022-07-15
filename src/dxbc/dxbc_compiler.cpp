@@ -1099,13 +1099,13 @@ namespace dxvk {
       uint32_t elemType   = getScalarTypeId(DxbcScalarType::Uint32);
       uint32_t arrayType  = m_module.defRuntimeArrayTypeUnique(elemType);
       uint32_t structType = m_module.defStructTypeUnique(1, &arrayType);
-      uint32_t ptrType    = m_module.defPointerType(structType, spv::StorageClassUniform);
+      uint32_t ptrType    = m_module.defPointerType(structType, spv::StorageClassStorageBuffer);
 
-      resTypeId = m_module.defPointerType(elemType, spv::StorageClassUniform);
-      varId     = m_module.newVar(ptrType, spv::StorageClassUniform);
+      resTypeId = m_module.defPointerType(elemType, spv::StorageClassStorageBuffer);
+      varId     = m_module.newVar(ptrType, spv::StorageClassStorageBuffer);
       
       m_module.decorateArrayStride(arrayType, sizeof(uint32_t));
-      m_module.decorate(structType, spv::DecorationBufferBlock);
+      m_module.decorate(structType, spv::DecorationBlock);
       m_module.memberDecorateOffset(structType, 0, 0);
 
       m_module.setDebugName(structType,
@@ -1388,7 +1388,7 @@ namespace dxvk {
       const uint32_t t_u32    = m_module.defIntType(32, 0);
       const uint32_t t_struct = m_module.defStructTypeUnique(1, &t_u32);
       
-      m_module.decorate(t_struct, spv::DecorationBufferBlock);
+      m_module.decorate(t_struct, spv::DecorationBlock);
       m_module.memberDecorateOffset(t_struct, 0, 0);
       
       m_module.setDebugName      (t_struct, "uav_meta");
@@ -1396,12 +1396,12 @@ namespace dxvk {
       
       m_uavCtrStructType  = t_struct;
       m_uavCtrPointerType = m_module.defPointerType(
-        t_struct, spv::StorageClassUniform);
+        t_struct, spv::StorageClassStorageBuffer);
     }
     
     // Declare the buffer variable
     const uint32_t varId = m_module.newVar(
-      m_uavCtrPointerType, spv::StorageClassUniform);
+      m_uavCtrPointerType, spv::StorageClassStorageBuffer);
     
     m_module.setDebugName(varId,
       str::format("u", regId, "_meta").c_str());
@@ -2496,7 +2496,7 @@ namespace dxvk {
     ptrType.type.ctype   = DxbcScalarType::Uint32;
     ptrType.type.ccount  = 1;
     ptrType.type.alength = 0;
-    ptrType.sclass = spv::StorageClassUniform;
+    ptrType.sclass = spv::StorageClassStorageBuffer;
     
     uint32_t zeroId = m_module.consti32(0);
     uint32_t ptrId  = m_module.opAccessChain(
