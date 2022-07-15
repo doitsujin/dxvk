@@ -42,12 +42,8 @@ namespace dxvk {
      * still require different behaviour.
      * \returns Dummy sampler descriptor
      */
-    VkDescriptorImageInfo samplerDescriptor() const {
-      VkDescriptorImageInfo result;
-      result.sampler     = m_sampler->handle();
-      result.imageView   = VK_NULL_HANDLE;
-      result.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-      return result;
+    VkSampler samplerHandle() const {
+      return m_sampler->handle();
     }
     
   private:

@@ -4646,14 +4646,16 @@ namespace dxvk {
             const auto& res = m_rc[binding.resourceBinding];
 
             if (res.sampler != nullptr) {
-              m_descriptors[k].image.sampler     = res.sampler->handle();
-              m_descriptors[k].image.imageView   = VK_NULL_HANDLE;
+              m_descriptors[k].image.sampler = res.sampler->handle();
+              m_descriptors[k].image.imageView = VK_NULL_HANDLE;
               m_descriptors[k].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
               if (m_rcTracked.set(binding.resourceBinding))
                 m_cmd->trackResource<DxvkAccess::None>(res.sampler);
             } else {
-              m_descriptors[k].image = m_common->dummyResources().samplerDescriptor();
+              m_descriptors[k].image.sampler = m_common->dummyResources().samplerHandle();
+              m_descriptors[k].image.imageView = VK_NULL_HANDLE;
+              m_descriptors[k].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             }
           } break;
 
@@ -4661,8 +4663,8 @@ namespace dxvk {
             const auto& res = m_rc[binding.resourceBinding];
 
             if (res.imageView != nullptr && res.imageView->handle(binding.viewType) != VK_NULL_HANDLE) {
-              m_descriptors[k].image.sampler     = VK_NULL_HANDLE;
-              m_descriptors[k].image.imageView   = res.imageView->handle(binding.viewType);
+              m_descriptors[k].image.sampler = VK_NULL_HANDLE;
+              m_descriptors[k].image.imageView = res.imageView->handle(binding.viewType);
               m_descriptors[k].image.imageLayout = res.imageView->imageInfo().layout;
 
               if (m_rcTracked.set(binding.resourceBinding)) {
@@ -4670,7 +4672,9 @@ namespace dxvk {
                 m_cmd->trackResource<DxvkAccess::Read>(res.imageView->image());
               }
             } else {
-              m_descriptors[k].image = VkDescriptorImageInfo();
+              m_descriptors[k].image.sampler = VK_NULL_HANDLE;
+              m_descriptors[k].image.imageView = VK_NULL_HANDLE;
+              m_descriptors[k].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             }
           } break;
 
@@ -4678,8 +4682,8 @@ namespace dxvk {
             const auto& res = m_rc[binding.resourceBinding];
 
             if (res.imageView != nullptr && res.imageView->handle(binding.viewType) != VK_NULL_HANDLE) {
-              m_descriptors[k].image.sampler     = VK_NULL_HANDLE;
-              m_descriptors[k].image.imageView   = res.imageView->handle(binding.viewType);
+              m_descriptors[k].image.sampler = VK_NULL_HANDLE;
+              m_descriptors[k].image.imageView = res.imageView->handle(binding.viewType);
               m_descriptors[k].image.imageLayout = res.imageView->imageInfo().layout;
 
               if (m_rcTracked.set(binding.resourceBinding)) {
@@ -4687,7 +4691,9 @@ namespace dxvk {
                 m_cmd->trackResource<DxvkAccess::Write>(res.imageView->image());
               }
             } else {
-              m_descriptors[k].image = VkDescriptorImageInfo();
+              m_descriptors[k].image.sampler = VK_NULL_HANDLE;
+              m_descriptors[k].image.imageView = VK_NULL_HANDLE;
+              m_descriptors[k].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             }
           } break;
 
@@ -4696,8 +4702,8 @@ namespace dxvk {
 
             if (res.sampler != nullptr && res.imageView != nullptr
             && res.imageView->handle(binding.viewType) != VK_NULL_HANDLE) {
-              m_descriptors[k].image.sampler     = res.sampler->handle();
-              m_descriptors[k].image.imageView   = res.imageView->handle(binding.viewType);
+              m_descriptors[k].image.sampler = res.sampler->handle();
+              m_descriptors[k].image.imageView = res.imageView->handle(binding.viewType);
               m_descriptors[k].image.imageLayout = res.imageView->imageInfo().layout;
 
               if (m_rcTracked.set(binding.resourceBinding)) {
@@ -4706,7 +4712,9 @@ namespace dxvk {
                 m_cmd->trackResource<DxvkAccess::Read>(res.imageView->image());
               }
             } else {
-              m_descriptors[k].image = m_common->dummyResources().samplerDescriptor();
+              m_descriptors[k].image.sampler = m_common->dummyResources().samplerHandle();
+              m_descriptors[k].image.imageView = VK_NULL_HANDLE;
+              m_descriptors[k].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             }
           } break;
 
@@ -4751,7 +4759,9 @@ namespace dxvk {
               if (m_rcTracked.set(binding.resourceBinding))
                 m_cmd->trackResource<DxvkAccess::Read>(res.bufferSlice.buffer());
             } else {
-              m_descriptors[k].buffer = VkDescriptorBufferInfo();
+              m_descriptors[k].buffer.buffer = VK_NULL_HANDLE;
+              m_descriptors[k].buffer.offset = 0;
+              m_descriptors[k].buffer.range = VK_WHOLE_SIZE;
             }
           } break;
 
@@ -4764,7 +4774,9 @@ namespace dxvk {
               if (m_rcTracked.set(binding.resourceBinding))
                 m_cmd->trackResource<DxvkAccess::Write>(res.bufferSlice.buffer());
             } else {
-              m_descriptors[k].buffer = VkDescriptorBufferInfo();
+              m_descriptors[k].buffer.buffer = VK_NULL_HANDLE;
+              m_descriptors[k].buffer.offset = 0;
+              m_descriptors[k].buffer.range = VK_WHOLE_SIZE;
             }
           } break;
 
