@@ -7,7 +7,7 @@ namespace dxvk {
   constexpr VkColorComponentFlags RG   = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT;
   constexpr VkColorComponentFlags R    = VK_COLOR_COMPONENT_R_BIT;
 
-  const std::array<DxvkFormatInfo, 152> g_formatInfos = {{
+  const std::array<DxvkFormatInfo, DxvkFormatCount> g_formatInfos = {{
     // VK_FORMAT_UNDEFINED
     { },
     
@@ -572,7 +572,7 @@ namespace dxvk {
   }};
   
   
-  const DxvkFormatInfo* lookupFormatInfo(VkFormat format) {
+  const DxvkFormatInfo* lookupFormatInfoSlow(VkFormat format) {
     uint32_t indexOffset = 0;
     
     for (const auto& group : g_formatGroups) {

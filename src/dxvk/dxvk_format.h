@@ -52,9 +52,33 @@ namespace dxvk {
     /// Plane info for multi-planar formats
     std::array<DxvkPlaneFormatInfo, 3> planes;
   };
-  
-  
-  
-  const DxvkFormatInfo* lookupFormatInfo(VkFormat format);
-  
+
+  /// Number of formats defined in lookup table  
+  constexpr size_t DxvkFormatCount = 152;
+
+  /// Format lookup table
+  extern const std::array<DxvkFormatInfo, DxvkFormatCount> g_formatInfos;
+
+  /**
+   * \brief Looks up format info
+   *
+   * \param [in] format Format to look up
+   * \returns Info for the given format
+   */
+  const DxvkFormatInfo* lookupFormatInfoSlow(VkFormat format);
+
+  /**
+   * \brief Queries image format info
+   *
+   * Provides a fast path for the most common base formats.
+   * \param [in] format Format to look up
+   * \returns Info for the given format
+   */
+  inline const DxvkFormatInfo* lookupFormatInfo(VkFormat format) {
+    if (likely(format <= VK_FORMAT_BC7_SRGB_BLOCK))
+      return &g_formatInfos[uint32_t(format)];
+    else
+      return lookupFormatInfo(format);
+  }
+
 }
