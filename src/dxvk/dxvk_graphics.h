@@ -33,7 +33,8 @@ namespace dxvk {
 
     DxvkGraphicsPipelineVertexInputState(
       const DxvkDevice*                     device,
-      const DxvkGraphicsPipelineStateInfo&  state);
+      const DxvkGraphicsPipelineStateInfo&  state,
+      const DxvkShader*                     vs);
 
     VkPipelineInputAssemblyStateCreateInfo          iaInfo        = { VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO };
     VkPipelineVertexInputStateCreateInfo            viInfo        = { VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO };
@@ -43,7 +44,7 @@ namespace dxvk {
     std::array<VkVertexInputBindingDivisorDescriptionEXT, MaxNumVertexBindings>   viDivisors    = { };
     std::array<VkVertexInputAttributeDescription,         MaxNumVertexAttributes> viAttributes  = { };
 
-    bool useDynamicVertexStrides() const;
+    VkBool32 viUseDynamicVertexStrides = VK_FALSE;
 
     bool eq(const DxvkGraphicsPipelineVertexInputState& other) const;
 

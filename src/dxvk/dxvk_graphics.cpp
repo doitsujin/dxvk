@@ -17,68 +17,79 @@ namespace dxvk {
 
   DxvkGraphicsPipelineVertexInputState::DxvkGraphicsPipelineVertexInputState(
     const DxvkDevice*                     device,
-    const DxvkGraphicsPipelineStateInfo&  state) {
+    const DxvkGraphicsPipelineStateInfo&  state,
+    const DxvkShader*                     vs) {
     std::array<uint32_t, MaxNumVertexBindings> viBindingMap = { };
 
     iaInfo.topology               = state.ia.primitiveTopology();
     iaInfo.primitiveRestartEnable = state.ia.primitiveRestart();
 
-    viInfo.vertexBindingDescriptionCount    = state.il.bindingCount();
-    viInfo.vertexAttributeDescriptionCount  = state.il.attributeCount();
+    uint32_t attrMask = vs->info().inputMask;
+    uint32_t bindingMask = 0;
+
+    // Find out which bindings are used based on the attribute mask
+    for (uint32_t i = 0; i < state.il.attributeCount(); i++) {
+      if (attrMask & (1u << state.ilAttributes[i].location()))
+        bindingMask |= 1u << state.ilAttributes[i].binding();
+    }
 
     // Process vertex bindings. We will compact binding numbers on
     // the fly so that vertex buffers can be updated more easily.
+    uint32_t bindingCount = 0;
+
     for (uint32_t i = 0; i < state.il.bindingCount(); i++) {
-      viBindingMap[state.ilBindings[i].binding()] = i;
+      uint32_t bindingIndex = state.ilBindings[i].binding();
 
-      viBindings[i].binding = i;
-      viBindings[i].stride = state.ilBindings[i].stride();
-      viBindings[i].inputRate = state.ilBindings[i].inputRate();
+      if (bindingMask & (1u << bindingIndex)) {
+        viBindingMap[bindingIndex] = i;
 
-      if (state.ilBindings[i].inputRate() == VK_VERTEX_INPUT_RATE_INSTANCE
-       && state.ilBindings[i].divisor()   != 1) {
-        uint32_t index = viDivisorInfo.vertexBindingDivisorCount++;
+        VkVertexInputBindingDescription& binding = viBindings[bindingCount++];
+        binding.binding = i;
+        binding.stride = state.ilBindings[i].stride();
+        binding.inputRate = state.ilBindings[i].inputRate();
 
-        viDivisors[index].binding = i;
-        viDivisors[index].divisor = state.ilBindings[i].divisor();
+        if (state.ilBindings[i].inputRate() == VK_VERTEX_INPUT_RATE_INSTANCE
+         && state.ilBindings[i].divisor()   != 1) {
+          VkVertexInputBindingDivisorDescriptionEXT& divisor = viDivisors[viDivisorInfo.vertexBindingDivisorCount++];
+          divisor.binding = i;
+          divisor.divisor = state.ilBindings[i].divisor();
+        }
       }
     }
 
-    if (viInfo.vertexBindingDescriptionCount)
+    if (bindingCount) {
+      bool supportsDivisor = device->features().extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor;
+
+      viInfo.vertexBindingDescriptionCount = bindingCount;
       viInfo.pVertexBindingDescriptions = viBindings.data();
 
-    if (viDivisorInfo.vertexBindingDivisorCount) {
-      viDivisorInfo.pVertexBindingDivisors = viDivisors.data();
-
-      if (device->features().extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor)
+      if (viDivisorInfo.vertexBindingDivisorCount && supportsDivisor) {
+        viDivisorInfo.pVertexBindingDivisors = viDivisors.data();
         viInfo.pNext = &viDivisorInfo;
+      }
     }
 
-    // Process vertex attributes, using binding map generated above
+    // Process vertex attributes, filtering out unused ones
+    uint32_t attrCount = 0;
+
     for (uint32_t i = 0; i < state.il.attributeCount(); i++) {
-      viAttributes[i].location = state.ilAttributes[i].location();
-      viAttributes[i].binding = viBindingMap[state.ilAttributes[i].binding()];
-      viAttributes[i].format = state.ilAttributes[i].format();
-      viAttributes[i].offset = state.ilAttributes[i].offset();
+      if (attrMask & (1u << state.ilAttributes[i].location())) {
+        VkVertexInputAttributeDescription& attr = viAttributes[attrCount++];
+        attr.location = state.ilAttributes[i].location();
+        attr.binding = viBindingMap[state.ilAttributes[i].binding()];
+        attr.format = state.ilAttributes[i].format();
+        attr.offset = state.ilAttributes[i].offset();
+      }
     }
 
-    if (viInfo.vertexAttributeDescriptionCount)
+    if (attrCount) {
+      viInfo.vertexAttributeDescriptionCount = attrCount;
       viInfo.pVertexAttributeDescriptions = viAttributes.data();
-  }
+    }
 
-
-  bool DxvkGraphicsPipelineVertexInputState::useDynamicVertexStrides() const {
-    if (!viInfo.vertexBindingDescriptionCount)
-      return false;
-
-    // The backend will set all strides to 0 if dynamic strides are
-    // allowed, since the restrictions only apply to non-zero strides
-    bool dynamicStride = true;
-
-    for (uint32_t i = 0; i < viInfo.vertexBindingDescriptionCount && dynamicStride; i++)
-      dynamicStride = !viBindings[i].stride;
-
-    return dynamicStride;
+    // We need to be consistent with the pipeline state vector since
+    // the normalized state may otherwise change beavhiour here.
+    viUseDynamicVertexStrides = state.useDynamicVertexStrides();
   }
 
 
@@ -87,7 +98,8 @@ namespace dxvk {
            && iaInfo.primitiveRestartEnable           == other.iaInfo.primitiveRestartEnable
            && viInfo.vertexBindingDescriptionCount    == other.viInfo.vertexBindingDescriptionCount
            && viInfo.vertexAttributeDescriptionCount  == other.viInfo.vertexAttributeDescriptionCount
-           && viDivisorInfo.vertexBindingDivisorCount == other.viDivisorInfo.vertexBindingDivisorCount;
+           && viDivisorInfo.vertexBindingDivisorCount == other.viDivisorInfo.vertexBindingDivisorCount
+           && viUseDynamicVertexStrides               == other.viUseDynamicVertexStrides;
 
     for (uint32_t i = 0; i < viInfo.vertexBindingDescriptionCount && eq; i++) {
       const auto& a = viBindings[i];
@@ -127,6 +139,7 @@ namespace dxvk {
     hash.add(uint32_t(viInfo.vertexBindingDescriptionCount));
     hash.add(uint32_t(viInfo.vertexAttributeDescriptionCount));
     hash.add(uint32_t(viDivisorInfo.vertexBindingDivisorCount));
+    hash.add(uint32_t(viUseDynamicVertexStrides));
 
     for (uint32_t i = 0; i < viInfo.vertexBindingDescriptionCount; i++) {
       hash.add(uint32_t(viBindings[i].binding));
@@ -159,7 +172,7 @@ namespace dxvk {
     VkDynamicState dynamicState = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE;
     VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
 
-    if (state.useDynamicVertexStrides()) {
+    if (state.viUseDynamicVertexStrides) {
       dyInfo.dynamicStateCount = 1;
       dyInfo.pDynamicStates = &dynamicState;
     }
@@ -652,7 +665,7 @@ namespace dxvk {
       if (!fastHandle) {
         // If that didn't succeed, link a pipeline using the
         // pre-compiled fragment and vertex shader libraries.
-        DxvkGraphicsPipelineVertexInputState    viState(m_device, state);
+        DxvkGraphicsPipelineVertexInputState    viState(m_device, state, m_shaders.vs.ptr());
         DxvkGraphicsPipelineFragmentOutputState foState(m_device, state, m_shaders.fs.ptr());
 
         DxvkGraphicsPipelineBaseInstanceKey key;
@@ -853,7 +866,7 @@ namespace dxvk {
         stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, getShaderCode(m_shaders.fs, state), &specInfo);
     }
 
-    DxvkGraphicsPipelineVertexInputState      viState(m_device, state);
+    DxvkGraphicsPipelineVertexInputState      viState(m_device, state, m_shaders.vs.ptr());
     DxvkGraphicsPipelinePreRasterizationState prState(m_device, state, m_shaders.gs.ptr());
     DxvkGraphicsPipelineFragmentShaderState   fsState(m_device, state);
     DxvkGraphicsPipelineFragmentOutputState   foState(m_device, state, m_shaders.fs.ptr());
