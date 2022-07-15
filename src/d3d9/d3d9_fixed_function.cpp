@@ -343,7 +343,7 @@ namespace dxvk {
   }
 
 
-  uint32_t GetPointCoord(SpirvModule& spvModule, std::vector<uint32_t>& entryPointInterfaces) {
+  uint32_t GetPointCoord(SpirvModule& spvModule) {
     uint32_t floatType  = spvModule.defFloatType(32);
     uint32_t vec2Type   = spvModule.defVectorType(floatType, 2);
     uint32_t vec4Type   = spvModule.defVectorType(floatType, 4);
@@ -352,7 +352,6 @@ namespace dxvk {
     uint32_t pointCoordPtr = spvModule.newVar(vec2Ptr, spv::StorageClassInput);
 
     spvModule.decorateBuiltIn(pointCoordPtr, spv::BuiltInPointCoord);
-    entryPointInterfaces.push_back(pointCoordPtr);
 
     uint32_t pointCoord    = spvModule.opLoad(vec2Type, pointCoordPtr);
 
@@ -603,7 +602,6 @@ namespace dxvk {
     SpirvModule           m_module;
     std::vector
       <DxvkBindingInfo>   m_bindings;
-    std::vector<uint32_t> m_entryPointInterfaces;
 
     uint32_t              m_inputMask = 0u;
     uint32_t              m_outputMask = 0u;
@@ -705,9 +703,7 @@ namespace dxvk {
     // Declare the entry point, we now have all the
     // information we need, including the interfaces
     m_module.addEntryPoint(m_entryPointId,
-      isVS() ? spv::ExecutionModelVertex : spv::ExecutionModelFragment, "main",
-      m_entryPointInterfaces.size(),
-      m_entryPointInterfaces.data());
+      isVS() ? spv::ExecutionModelVertex : spv::ExecutionModelFragment, "main");
 
     // Create the shader module object
     DxvkShaderCreateInfo info;
@@ -772,8 +768,6 @@ namespace dxvk {
 
     std::string name = str::format(input ? "in_" : "out_", semantic.usage, semantic.usageIndex);
     m_module.setDebugName(ptr, name.c_str());
-
-    m_entryPointInterfaces.push_back(ptr);
 
     if (input)
       return m_module.opLoad(type, ptr);
@@ -1974,7 +1968,7 @@ namespace dxvk {
     m_module.setExecutionMode(m_entryPointId,
       spv::ExecutionModeOriginUpperLeft);
 
-    uint32_t pointCoord = GetPointCoord(m_module, m_entryPointInterfaces);
+    uint32_t pointCoord = GetPointCoord(m_module);
     auto pointInfo = GetPointSizeInfoPS(m_module, m_rsBlock);
 
     // We need to replace TEXCOORD inputs with gl_PointCoord
@@ -2164,7 +2158,6 @@ namespace dxvk {
       spv::StorageClassOutput);
 
     m_module.decorateBuiltIn(clipDistArray, spv::BuiltInClipDistance);
-    m_entryPointInterfaces.push_back(clipDistArray);
 
     // Compute clip distances
     for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {

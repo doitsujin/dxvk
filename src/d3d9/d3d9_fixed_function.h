@@ -64,7 +64,7 @@ namespace dxvk {
 
   D3D9PointSizeInfoPS GetPointSizeInfoPS(SpirvModule& spvModule, uint32_t rsBlock);
 
-  uint32_t GetPointCoord(SpirvModule& spvModule, std::vector<uint32_t>& entryPointInterfaces);
+  uint32_t GetPointCoord(SpirvModule& spvModule);
 
   uint32_t GetSharedConstants(SpirvModule& spvModule);
 

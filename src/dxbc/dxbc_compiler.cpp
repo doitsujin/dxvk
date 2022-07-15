@@ -243,9 +243,7 @@ namespace dxvk {
     // Declare the entry point, we now have all the
     // information we need, including the interfaces
     m_module.addEntryPoint(m_entryPointId,
-      m_programInfo.executionModel(), "main",
-      m_entryPointInterfaces.size(),
-      m_entryPointInterfaces.data());
+      m_programInfo.executionModel(), "main");
     m_module.setDebugName(m_entryPointId, "main");
 
     // Create the shader object
@@ -665,7 +663,6 @@ namespace dxvk {
       
       m_module.decorateLocation(varId, regIdx);
       m_module.setDebugName(varId, str::format("v", regIdx).c_str());
-      m_entryPointInterfaces.push_back(varId);
       
       m_vRegs.at(regIdx) = { regType, varId };
       
@@ -747,7 +744,6 @@ namespace dxvk {
       
       if (info.sclass == spv::StorageClassOutput) {
         m_module.decorateLocation(varId, regIdx);
-        m_entryPointInterfaces.push_back(varId);
 
         // Add index decoration for potential dual-source blending
         if (m_programInfo.type() == DxbcProgramType::PixelShader)
@@ -6631,7 +6627,6 @@ namespace dxvk {
     
     m_perVertexOut = m_module.newVar(
       perVertexPointer, spv::StorageClassOutput);
-    m_entryPointInterfaces.push_back(m_perVertexOut);
     m_module.setDebugName(m_perVertexOut, "vs_vertex_out");
     
     // Standard input array
@@ -6704,7 +6699,6 @@ namespace dxvk {
     
     m_perVertexOut = m_module.newVar(
       perVertexPointer, spv::StorageClassOutput);
-    m_entryPointInterfaces.push_back(m_perVertexOut);
     m_module.setDebugName(m_perVertexOut, "ds_vertex_out");
     
     // Main function of the domain shader
@@ -6743,7 +6737,6 @@ namespace dxvk {
       
       m_perVertexOut = m_module.newVar(
         perVertexPointer, spv::StorageClassOutput);
-      m_entryPointInterfaces.push_back(m_perVertexOut);
       m_module.setDebugName(m_perVertexOut, "gs_vertex_out");
     }
     
@@ -6996,7 +6989,6 @@ namespace dxvk {
       xfbVar.dstMask = DxbcRegMask(dstComponentMask);
       m_xfbVars.push_back(xfbVar);
 
-      m_entryPointInterfaces.push_back(xfbVar.varId);
       m_module.setDebugName(xfbVar.varId,
         str::format("xfb", i).c_str());
       
@@ -7118,8 +7110,6 @@ namespace dxvk {
     m_perVertexIn = m_module.newVar(
       ptrTypeId, spv::StorageClassInput);
     m_module.setDebugName(m_perVertexIn, varName);
-    
-    m_entryPointInterfaces.push_back(m_perVertexIn);
   }
   
   
@@ -7141,7 +7131,6 @@ namespace dxvk {
         ? "clip_distances"
         : "cull_distances");
     
-    m_entryPointInterfaces.push_back(varId);
     return varId;
   }
   
@@ -7332,8 +7321,6 @@ namespace dxvk {
     if (storageClass != spv::StorageClassPrivate) {
       m_module.decorate         (varId, spv::DecorationPatch);
       m_module.decorateLocation (varId, 0);
-
-      m_entryPointInterfaces.push_back(varId);
     }
 
     return varId;
@@ -7362,9 +7349,6 @@ namespace dxvk {
     
     m_module.setDebugName     (varId, isInput ? "vVertex" : "oVertex");
     m_module.decorateLocation (varId, locIdx);
-    
-    if (storageClass != spv::StorageClassPrivate)
-      m_entryPointInterfaces.push_back(varId);
     return varId;
   }
   
@@ -7484,8 +7468,7 @@ namespace dxvk {
      && info.type.ctype != DxbcScalarType::Bool
      && info.sclass == spv::StorageClassInput)
       m_module.decorate(varId, spv::DecorationFlat);
-    
-    m_entryPointInterfaces.push_back(varId);
+
     return varId;
   }
   

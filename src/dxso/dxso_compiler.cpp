@@ -216,9 +216,7 @@ namespace dxvk {
     // Declare the entry point, we now have all the
     // information we need, including the interfaces
     m_module.addEntryPoint(m_entryPointId,
-      m_programInfo.executionModel(), "main",
-      m_entryPointInterfaces.size(),
-      m_entryPointInterfaces.data());
+      m_programInfo.executionModel(), "main");
     m_module.setDebugName(m_entryPointId, "main");
   }
 
@@ -664,7 +662,6 @@ namespace dxvk {
      && info.sclass == spv::StorageClassInput)
       m_module.decorate(varId, spv::DecorationFlat);
 
-    m_entryPointInterfaces.push_back(varId);
     return varId;
   }
 
@@ -1208,8 +1205,6 @@ namespace dxvk {
                 input ? 0 : m_module.constf32(1.0f),
                 input ? spv::StorageClassInput : spv::StorageClassOutput);
 
-              m_entryPointInterfaces.push_back(m_fog.id);
-
               m_module.decorateLocation(m_fog.id, slot);
             }
             return m_fog;
@@ -1244,7 +1239,6 @@ namespace dxvk {
           m_module.decorateLocation(m_ps.oColor[idx].id, idx);
           m_module.decorateIndex(m_ps.oColor[idx].id, 0);
 
-          m_entryPointInterfaces.push_back(m_ps.oColor[idx].id);
           m_usedRTs |= (1u << idx);
         }
         return m_ps.oColor[idx];
@@ -3371,7 +3365,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     D3D9PointSizeInfoPS pointInfo;
 
     if (m_programInfo.type() == DxsoProgramType::PixelShader) {
-      pointCoord = GetPointCoord(m_module, m_entryPointInterfaces);
+      pointCoord = GetPointCoord(m_module);
       pointInfo  = GetPointSizeInfoPS(m_module, m_rsBlock);
     }
 
@@ -3398,8 +3392,6 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       if (elem.centroid)
         m_module.decorate(inputPtr.id, spv::DecorationCentroid);
-
-      m_entryPointInterfaces.push_back(inputPtr.id);
 
       uint32_t typeId    = this->getVectorTypeId({ DxsoScalarType::Float32, 4 });
       uint32_t ptrTypeId = m_module.defPointerType(typeId, spv::StorageClassPrivate);
@@ -3520,8 +3512,6 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         }
       }
 
-      m_entryPointInterfaces.push_back(outputPtr.id);
-
       uint32_t typeId    = this->getVectorTypeId({ DxsoScalarType::Float32, 4 });
       uint32_t ptrTypeId = m_module.defPointerType(typeId, spv::StorageClassPrivate);
 
@@ -3598,7 +3588,6 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       m_module.setDebugName(outputPtr, name.c_str());
 
       m_outputMask |= 1u << slot;
-      m_entryPointInterfaces.push_back(outputPtr);
     };
 
     if (!outputtedColor0)
@@ -3668,7 +3657,6 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       spv::StorageClassOutput);
 
     m_module.decorateBuiltIn(clipDistArray, spv::BuiltInClipDistance);
-    m_entryPointInterfaces.push_back(clipDistArray);
 
     if (m_moduleInfo.options.invariantPosition)
       m_module.decorate(m_vs.oPos.id, spv::DecorationInvariant);

@@ -139,7 +139,6 @@ namespace dxvk {
       // Load our builtins
       uint32_t primitiveIdPtr = m_module.newVar(m_module.defPointerType(uint_t, spv::StorageClassInput), spv::StorageClassInput);
       m_module.decorateBuiltIn(primitiveIdPtr, spv::BuiltInPrimitiveId);
-      m_entryPointInterfaces.push_back(primitiveIdPtr);
 
       uint32_t primitiveId = m_module.opLoad(uint_t, primitiveIdPtr);
 
@@ -173,8 +172,6 @@ namespace dxvk {
         uint32_t zero = m_module.constu32(0);
         elementVar = m_module.opAccessChain(m_module.defPointerType(vec4_t, spv::StorageClassInput), elementPtr, 1, &zero);
         elementVar = m_module.opLoad(vec4_t, elementVar);
-
-        m_entryPointInterfaces.push_back(elementPtr);
 
         // The offset of this element from the beginning of any given vertex
         uint32_t perVertexElementOffset = m_module.constu32(element.Offset / sizeof(uint32_t));
@@ -277,9 +274,7 @@ namespace dxvk {
       m_module.functionEnd();
 
       m_module.addEntryPoint(m_entryPointId,
-        spv::ExecutionModelGeometry, "main",
-        m_entryPointInterfaces.size(),
-        m_entryPointInterfaces.data());
+        spv::ExecutionModelGeometry, "main");
       m_module.setDebugName(m_entryPointId, "main");
 
       DxvkShaderCreateInfo info;
@@ -295,7 +290,6 @@ namespace dxvk {
 
     SpirvModule m_module;
 
-    std::vector<uint32_t> m_entryPointInterfaces;
     uint32_t              m_entryPointId = 0;
     uint32_t              m_inputMask = 0u;
     DxvkBindingInfo       m_bufferBinding;

@@ -77,9 +77,7 @@ namespace dxvk {
     void addEntryPoint(
             uint32_t                entryPointId,
             spv::ExecutionModel     executionModel,
-      const char*                   name,
-            uint32_t                interfaceCount,
-      const uint32_t*               interfaceIds);
+      const char*                   name);
     
     void setMemoryModel(
             spv::AddressingModel    addressModel,
@@ -1255,7 +1253,9 @@ namespace dxvk {
     SpirvCodeBuffer m_code;
 
     std::unordered_set<uint32_t> m_lateConsts;
-    
+
+    std::vector<uint32_t> m_interfaceVars;
+
     uint32_t defType(
             spv::Op                 op, 
             uint32_t                argCount,
@@ -1274,7 +1274,10 @@ namespace dxvk {
     
     void putImageOperands(
       const SpirvImageOperands&     op);
-    
+
+    bool isInterfaceVar(
+            spv::StorageClass       sclass) const;
+
   };
   
 }

@@ -348,7 +348,6 @@ namespace dxvk {
     ///////////////////////////////////////////////////
     // Entry point description - we'll need to declare
     // the function ID and all input/output variables.
-    std::vector<uint32_t> m_entryPointInterfaces;
     uint32_t m_entryPointId = 0;
 
     ////////////////////////////////////////////
