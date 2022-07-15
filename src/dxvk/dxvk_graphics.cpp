@@ -215,6 +215,10 @@ namespace dxvk {
     // mask for any attachment that the fragment shader does not write to.
     uint32_t fsOutputMask = fs ? fs->info().outputMask : 0u;
 
+    // Dual-source blending can only write to one render target
+    if (state.useDualSourceBlending())
+      fsOutputMask &= 0x1;
+
     const VkColorComponentFlags rgbaWriteMask
       = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
       | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -229,20 +233,23 @@ namespace dxvk {
         rtInfo.colorAttachmentCount = i + 1;
 
         auto formatInfo = lookupFormatInfo(rtColorFormats[i]);
-        cbAttachments[i] = state.omBlend[i].state();
 
-        if (!(fsOutputMask & (1 << i)) || !formatInfo) {
-          cbAttachments[i].colorWriteMask = 0;
-        } else {
-          if (cbAttachments[i].colorWriteMask != rgbaWriteMask) {
-            cbAttachments[i].colorWriteMask = util::remapComponentMask(
+        if ((fsOutputMask & (1 << i)) && formatInfo) {
+          VkColorComponentFlags writeMask = state.omBlend[i].colorWriteMask();
+
+          if (writeMask != rgbaWriteMask) {
+            writeMask = util::remapComponentMask(
               state.omBlend[i].colorWriteMask(), state.omSwizzle[i].mapping());
           }
 
-          cbAttachments[i].colorWriteMask &= formatInfo->componentMask;
+          writeMask &= formatInfo->componentMask;
 
-          if (cbAttachments[i].colorWriteMask == formatInfo->componentMask) {
-            cbAttachments[i].colorWriteMask = rgbaWriteMask;
+          if (writeMask == formatInfo->componentMask)
+            writeMask = rgbaWriteMask;
+
+          if (writeMask) {
+            cbAttachments[i] = state.omBlend[i].state();
+            cbAttachments[i].colorWriteMask = writeMask;
           }
         }
       }
