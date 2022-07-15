@@ -320,7 +320,7 @@ namespace dxvk {
     
     // Query pipeline objects to use for this clear operation
     DxvkMetaClearPipeline pipeInfo = m_common->metaClear().getClearBufferPipeline(
-      imageFormatInfo(bufferView->info().format)->flags);
+      lookupFormatInfo(bufferView->info().format)->flags);
     
     // Create a descriptor set pointing to the view
     VkBufferView viewObject = bufferView->handle();
@@ -1098,8 +1098,8 @@ namespace dxvk {
 
     // Create temporary buffer for depth/stencil data
     VkDeviceSize pixelCount = dstExtent.width * dstExtent.height * dstSubresource.layerCount;
-    VkDeviceSize dataSizeD = align(pixelCount * imageFormatInfo(dataFormatD)->elementSize, 256);
-    VkDeviceSize dataSizeS = align(pixelCount * imageFormatInfo(dataFormatS)->elementSize, 256);
+    VkDeviceSize dataSizeD = align(pixelCount * lookupFormatInfo(dataFormatD)->elementSize, 256);
+    VkDeviceSize dataSizeS = align(pixelCount * lookupFormatInfo(dataFormatS)->elementSize, 256);
 
     DxvkBufferCreateInfo tmpBufferInfo;
     tmpBufferInfo.size    = dataSizeD + dataSizeS;
@@ -2189,7 +2189,7 @@ namespace dxvk {
           VkDeviceSize              pitchPerRow,
           VkDeviceSize              pitchPerLayer,
           VkFormat                  format) {
-    auto formatInfo = imageFormatInfo(format);
+    auto formatInfo = lookupFormatInfo(format);
     
     VkExtent3D extent3D;
     extent3D.width  = imageExtent.width;
@@ -3144,7 +3144,7 @@ namespace dxvk {
     
     // Query pipeline objects to use for this clear operation
     DxvkMetaClearPipeline pipeInfo = m_common->metaClear().getClearImagePipeline(
-      imageView->type(), imageFormatInfo(imageView->info().format)->flags);
+      imageView->type(), lookupFormatInfo(imageView->info().format)->flags);
     
     // Create a descriptor set pointing to the view
     VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.dsetLayout);

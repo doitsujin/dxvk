@@ -191,7 +191,7 @@ namespace dxvk {
       if (rtColorFormats[i]) {
         rtInfo.colorAttachmentCount = i + 1;
 
-        auto formatInfo = imageFormatInfo(rtColorFormats[i]);
+        auto formatInfo = lookupFormatInfo(rtColorFormats[i]);
         cbAttachments[i] = state.omBlend[i].state();
 
         if (!(fsOutputMask & (1 << i)) || !formatInfo) {
@@ -222,7 +222,7 @@ namespace dxvk {
     VkFormat rtDepthFormat = state.rt.getDepthStencilFormat();
 
     if (rtDepthFormat) {
-      auto rtDepthFormatInfo = imageFormatInfo(rtDepthFormat);
+      auto rtDepthFormatInfo = lookupFormatInfo(rtDepthFormat);
 
       if (rtDepthFormatInfo->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
         rtInfo.depthAttachmentFormat = rtDepthFormat;
@@ -1145,7 +1145,7 @@ namespace dxvk {
 
     // Log render target and blend state
     auto depthFormat = state.rt.getDepthStencilFormat();
-    auto depthFormatInfo = imageFormatInfo(depthFormat);
+    auto depthFormatInfo = lookupFormatInfo(depthFormat);
 
     VkImageAspectFlags writableAspects = depthFormat
       ? (depthFormatInfo->aspectMask & ~state.rt.getDepthStencilReadOnlyAspects())

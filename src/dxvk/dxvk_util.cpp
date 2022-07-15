@@ -144,7 +144,7 @@ namespace dxvk::util {
 
 
   VkDeviceSize computeImageDataSize(VkFormat format, VkExtent3D extent) {
-    const DxvkFormatInfo* formatInfo = imageFormatInfo(format);
+    const DxvkFormatInfo* formatInfo = lookupFormatInfo(format);
 
     VkDeviceSize size = 0;
 

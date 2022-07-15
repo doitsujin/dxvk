@@ -70,7 +70,7 @@ namespace dxvk {
     // The image must be marked as mutable if it can be reinterpreted
     // by a view with a different format. Depth-stencil formats cannot
     // be reinterpreted in Vulkan, so we'll ignore those.
-    auto formatProperties = imageFormatInfo(formatInfo.Format);
+    auto formatProperties = lookupFormatInfo(formatInfo.Format);
     
     bool isMutable = formatFamily.FormatCount > 1;
     bool isMultiPlane = (formatProperties->aspectMask & VK_IMAGE_ASPECT_PLANE_0_BIT) != 0;
@@ -229,7 +229,7 @@ namespace dxvk {
   
   
   VkDeviceSize D3D11CommonTexture::ComputeMappedOffset(UINT Subresource, UINT Plane, VkOffset3D Offset) const {
-    auto packedFormatInfo = imageFormatInfo(m_packedFormat);
+    auto packedFormatInfo = lookupFormatInfo(m_packedFormat);
 
     VkImageAspectFlags aspectMask = packedFormatInfo->aspectMask;
     VkDeviceSize elementSize = packedFormatInfo->elementSize;
@@ -281,7 +281,7 @@ namespace dxvk {
       case D3D11_COMMON_TEXTURE_MAP_MODE_NONE:
       case D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER:
       case D3D11_COMMON_TEXTURE_MAP_MODE_STAGING: {
-        auto packedFormatInfo = imageFormatInfo(m_packedFormat);
+        auto packedFormatInfo = lookupFormatInfo(m_packedFormat);
 
         VkImageAspectFlags aspects = packedFormatInfo->aspectMask;
         VkExtent3D mipExtent = MipLevelExtent(subresource.mipLevel);
@@ -379,8 +379,8 @@ namespace dxvk {
 
       // Otherwise, all bit-compatible formats can be used.
       if (imageInfo.viewFormatCount == 0 && planeCount == 1) {
-        auto baseFormatInfo = imageFormatInfo(baseFormat.Format);
-        auto viewFormatInfo = imageFormatInfo(viewFormat.Format);
+        auto baseFormatInfo = lookupFormatInfo(baseFormat.Format);
+        auto viewFormatInfo = lookupFormatInfo(viewFormat.Format);
         
         return baseFormatInfo->aspectMask  == viewFormatInfo->aspectMask
             && baseFormatInfo->elementSize == viewFormatInfo->elementSize;
@@ -530,7 +530,7 @@ namespace dxvk {
     const auto dsMask = VK_IMAGE_ASPECT_DEPTH_BIT
                       | VK_IMAGE_ASPECT_STENCIL_BIT;
 
-    auto formatInfo = imageFormatInfo(Format);
+    auto formatInfo = lookupFormatInfo(Format);
 
     return formatInfo->aspectMask == dsMask
       ? VK_IMAGE_USAGE_SAMPLED_BIT
@@ -572,7 +572,7 @@ namespace dxvk {
       return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
 
     // Multi-plane images have a special memory layout in D3D11
-    if (imageFormatInfo(pImageInfo->format)->flags.test(DxvkFormatFlag::MultiPlane))
+    if (lookupFormatInfo(pImageInfo->format)->flags.test(DxvkFormatFlag::MultiPlane))
       return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
 
     // If we can't use linear tiling for this image, we have to use a buffer
@@ -644,7 +644,7 @@ namespace dxvk {
 
 
   D3D11CommonTexture::MappedBuffer D3D11CommonTexture::CreateMappedBuffer(UINT MipLevel) const {
-    const DxvkFormatInfo* formatInfo = imageFormatInfo(
+    const DxvkFormatInfo* formatInfo = lookupFormatInfo(
       m_device->LookupPackedFormat(m_desc.Format, GetFormatMode()).Format);
     
     DxvkBufferCreateInfo info;

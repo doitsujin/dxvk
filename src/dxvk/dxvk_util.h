@@ -174,7 +174,7 @@ namespace dxvk::util {
    */
   inline VkExtent3D computeMipLevelExtent(VkExtent3D size, uint32_t level, VkFormat format, VkImageAspectFlags aspect) {
     if (unlikely(!(aspect & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)))) {
-      auto plane = &imageFormatInfo(format)->planes[vk::getPlaneIndex(aspect)];
+      auto plane = &lookupFormatInfo(format)->planes[vk::getPlaneIndex(aspect)];
       size.width  /= plane->blockSize.width;
       size.height /= plane->blockSize.height;
     }

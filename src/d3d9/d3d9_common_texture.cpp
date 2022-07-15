@@ -199,7 +199,7 @@ namespace dxvk {
     const UINT MipLevel = Subresource % m_desc.MipLevels;
 
     const DxvkFormatInfo* formatInfo = m_mapping.FormatColor != VK_FORMAT_UNDEFINED
-      ? imageFormatInfo(m_mapping.FormatColor)
+      ? lookupFormatInfo(m_mapping.FormatColor)
       : m_device->UnsupportedFormatInfo(m_desc.Format);
 
     const VkExtent3D mipExtent = util::computeMipLevelExtent(
@@ -263,7 +263,7 @@ namespace dxvk {
     // The image must be marked as mutable if it can be reinterpreted
     // by a view with a different format. Depth-stencil formats cannot
     // be reinterpreted in Vulkan, so we'll ignore those.
-    auto formatProperties = imageFormatInfo(m_mapping.FormatColor);
+    auto formatProperties = lookupFormatInfo(m_mapping.FormatColor);
 
     bool isMutable     = m_mapping.FormatSrgb != VK_FORMAT_UNDEFINED;
     bool isColorFormat = (formatProperties->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) != 0;
@@ -541,7 +541,7 @@ namespace dxvk {
     viewInfo.format    = m_mapping.ConversionFormatInfo.FormatColor != VK_FORMAT_UNDEFINED
                        ? PickSRGB(m_mapping.ConversionFormatInfo.FormatColor, m_mapping.ConversionFormatInfo.FormatSrgb, Srgb)
                        : PickSRGB(m_mapping.FormatColor, m_mapping.FormatSrgb, Srgb);
-    viewInfo.aspect    = imageFormatInfo(viewInfo.format)->aspectMask;
+    viewInfo.aspect    = lookupFormatInfo(viewInfo.format)->aspectMask;
     viewInfo.swizzle   = m_mapping.Swizzle;
     viewInfo.usage     = UsageFlags;
     viewInfo.type      = GetImageViewTypeFromResourceType(m_type, Layer);

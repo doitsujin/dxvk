@@ -58,7 +58,7 @@ namespace dxvk {
       } else {
         viewInfo.format = pDevice->LookupFormat(pDesc->Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
         
-        const DxvkFormatInfo* formatInfo = imageFormatInfo(viewInfo.format);
+        const DxvkFormatInfo* formatInfo = lookupFormatInfo(viewInfo.format);
         viewInfo.rangeOffset = formatInfo->elementSize * bufInfo.FirstElement;
         viewInfo.rangeLength = formatInfo->elementSize * bufInfo.NumElements;
       }

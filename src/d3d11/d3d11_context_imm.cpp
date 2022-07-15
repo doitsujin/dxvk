@@ -477,7 +477,7 @@ namespace dxvk {
     
     uint64_t sequenceNumber = pResource->GetSequenceNumber(Subresource);
 
-    auto formatInfo = imageFormatInfo(packedFormat);
+    auto formatInfo = lookupFormatInfo(packedFormat);
     void* mapPtr;
 
     if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
@@ -609,7 +609,7 @@ namespace dxvk {
         (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)) {
       // Now that data has been written into the buffer,
       // we need to copy its contents into the image
-      VkImageAspectFlags aspectMask = imageFormatInfo(pResource->GetPackedFormat())->aspectMask;
+      VkImageAspectFlags aspectMask = lookupFormatInfo(pResource->GetPackedFormat())->aspectMask;
       VkImageSubresource subresource = pResource->GetSubresourceFromIndex(aspectMask, Subresource);
 
       UpdateImage(pResource, &subresource, VkOffset3D { 0, 0, 0 },

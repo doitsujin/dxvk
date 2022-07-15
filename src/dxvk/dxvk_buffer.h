@@ -574,7 +574,7 @@ namespace dxvk {
      * \returns Element count
      */
     VkDeviceSize elementCount() const {
-      auto format = imageFormatInfo(m_info.format);
+      auto format = lookupFormatInfo(m_info.format);
       return m_info.rangeLength / format->elementSize;
     }
     
@@ -607,7 +607,7 @@ namespace dxvk {
      * \returns View format info
      */
     const DxvkFormatInfo* formatInfo() const {
-      return imageFormatInfo(m_info.format);
+      return lookupFormatInfo(m_info.format);
     }
 
     /**

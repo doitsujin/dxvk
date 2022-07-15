@@ -424,8 +424,8 @@ namespace dxvk {
       Rc<DxvkImage> blittedSrc = m_device->createImage(
         blitCreateInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-      const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(blittedSrc->info().format);
-      const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
+      const DxvkFormatInfo* dstFormatInfo = lookupFormatInfo(blittedSrc->info().format);
+      const DxvkFormatInfo* srcFormatInfo = lookupFormatInfo(srcImage->info().format);
 
       const VkImageSubresource dstSubresource = dstTexInfo->GetSubresourceFromIndex(dstFormatInfo->aspectMask, 0);
       const VkImageSubresource srcSubresource = srcTexInfo->GetSubresourceFromIndex(srcFormatInfo->aspectMask, 0);
@@ -467,7 +467,7 @@ namespace dxvk {
       srcImage = std::move(blittedSrc);
     }
 
-    const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
+    const DxvkFormatInfo* srcFormatInfo = lookupFormatInfo(srcImage->info().format);
     const VkImageSubresource srcSubresource = srcTexInfo->GetSubresourceFromIndex(srcFormatInfo->aspectMask, 0);
     VkImageSubresourceLayers srcSubresourceLayers = {
       srcSubresource.aspectMask,

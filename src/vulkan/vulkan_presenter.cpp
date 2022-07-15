@@ -378,10 +378,10 @@ namespace dxvk::vk {
 
       // If that didn't work, we'll fall back to a format
       // which has similar properties to the preferred one
-      DxvkFormatFlags prefFlags = imageFormatInfo(pDesired[0].format)->flags;
+      DxvkFormatFlags prefFlags = lookupFormatInfo(pDesired[0].format)->flags;
 
       for (uint32_t j = 0; j < numSupported; j++) {
-        auto currFlags = imageFormatInfo(pSupported[j].format)->flags;
+        auto currFlags = lookupFormatInfo(pSupported[j].format)->flags;
 
         if ((currFlags & DxvkFormatFlag::ColorSpaceSrgb)
          == (prefFlags & DxvkFormatFlag::ColorSpaceSrgb))

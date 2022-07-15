@@ -299,7 +299,7 @@ namespace dxvk {
   VkPipeline DxvkMetaCopyObjects::createPipelineObject(
     const DxvkMetaCopyPipelineKey&  key,
           VkPipelineLayout          pipelineLayout) {
-    auto aspect = imageFormatInfo(key.format)->aspectMask;
+    auto aspect = lookupFormatInfo(key.format)->aspectMask;
 
     std::array<VkPipelineShaderStageCreateInfo, 3> stages;
     uint32_t stageCount = 0;

@@ -202,7 +202,7 @@ namespace dxvk {
      * \returns Image format info
      */
     const DxvkFormatInfo* formatInfo() const {
-      return imageFormatInfo(m_info.format);
+      return lookupFormatInfo(m_info.format);
     }
     
     /**
@@ -428,7 +428,7 @@ namespace dxvk {
      * \returns View format info
      */
     const DxvkFormatInfo* formatInfo() const {
-      return imageFormatInfo(m_info.format);
+      return lookupFormatInfo(m_info.format);
     }
     
     /**

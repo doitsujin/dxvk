@@ -159,7 +159,7 @@ namespace dxvk {
     DXGI_VK_FORMAT_INFO formatInfo = pDevice->LookupFormat(resourceDesc.Format, DXGI_VK_FORMAT_MODE_COLOR);
     DXGI_VK_FORMAT_FAMILY formatFamily = pDevice->LookupFamily(resourceDesc.Format, DXGI_VK_FORMAT_MODE_COLOR);
 
-    VkImageAspectFlags aspectMask = imageFormatInfo(formatInfo.Format)->aspectMask;
+    VkImageAspectFlags aspectMask = lookupFormatInfo(formatInfo.Format)->aspectMask;
 
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.format  = formatInfo.Format;
@@ -257,7 +257,7 @@ namespace dxvk {
 
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.format  = formatInfo.Format;
-    viewInfo.aspect  = imageFormatInfo(viewInfo.format)->aspectMask;
+    viewInfo.aspect  = lookupFormatInfo(viewInfo.format)->aspectMask;
     viewInfo.swizzle = formatInfo.Swizzle;
     viewInfo.usage   = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 

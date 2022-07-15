@@ -123,7 +123,7 @@ namespace dxvk {
     auto desc = pTexture->Desc();
 
     VkFormat packedFormat = m_parent->LookupPackedFormat(desc->Format, pTexture->GetFormatMode()).Format;
-    auto formatInfo = imageFormatInfo(packedFormat);
+    auto formatInfo = lookupFormatInfo(packedFormat);
 
     if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {
       // pInitialData is an array that stores an entry for

@@ -108,7 +108,7 @@ namespace dxvk {
 
     DxvkRtInfo convert() const {
       VkImageAspectFlags readOnlyAspects = 0;
-      auto depthFormatInfo = imageFormatInfo(depth.format);
+      auto depthFormatInfo = lookupFormatInfo(depth.format);
 
       if (depth.format && depthFormatInfo) {
         readOnlyAspects = depthFormatInfo->aspectMask

@@ -333,7 +333,7 @@ namespace dxvk {
     
     VkFormat packedFormat = pTexture->GetPackedFormat();
     
-    auto formatInfo = imageFormatInfo(packedFormat);
+    auto formatInfo = lookupFormatInfo(packedFormat);
     auto subresource = pTexture->GetSubresourceFromIndex(
         formatInfo->aspectMask, Subresource);
     

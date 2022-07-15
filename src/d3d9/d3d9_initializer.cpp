@@ -82,7 +82,7 @@ namespace dxvk {
       if (image == nullptr)
         return;
 
-      auto formatInfo = imageFormatInfo(image->info().format);
+      auto formatInfo = lookupFormatInfo(image->info().format);
 
       m_transferCommands += 1;
       
@@ -119,7 +119,7 @@ namespace dxvk {
 
         if (pInitialData != nullptr) {
           VkExtent3D mipExtent = pTexture->GetExtentMip(m);
-          const DxvkFormatInfo* formatInfo = imageFormatInfo(pTexture->GetFormatMapping().FormatColor);
+          const DxvkFormatInfo* formatInfo = lookupFormatInfo(pTexture->GetFormatMapping().FormatColor);
           VkExtent3D blockCount = util::computeBlockCount(mipExtent, formatInfo->blockSize);
           uint32_t pitch = blockCount.width * formatInfo->elementSize;
           uint32_t alignedPitch = align(pitch, 4);

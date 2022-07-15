@@ -55,6 +55,6 @@ namespace dxvk {
   
   
   
-  const DxvkFormatInfo* imageFormatInfo(VkFormat format);
+  const DxvkFormatInfo* lookupFormatInfo(VkFormat format);
   
 }

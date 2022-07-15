@@ -23,7 +23,7 @@ namespace dxvk {
           VkFormat                  format)
   : m_vkd(vkd) {
     VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
-    usageInfo.usage = (imageFormatInfo(format)->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
+    usageInfo.usage = (lookupFormatInfo(format)->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
       ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
       : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
@@ -207,7 +207,7 @@ namespace dxvk {
   VkPipeline DxvkMetaResolveObjects::createPipelineObject(
     const DxvkMetaResolvePipelineKey& key,
           VkPipelineLayout       pipelineLayout) {
-    auto formatInfo = imageFormatInfo(key.format);
+    auto formatInfo = lookupFormatInfo(key.format);
 
     std::array<VkPipelineShaderStageCreateInfo, 3> stages;
     uint32_t stageCount = 0;

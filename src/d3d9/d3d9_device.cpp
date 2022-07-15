@@ -735,7 +735,7 @@ namespace dxvk {
     if (unlikely(srcTextureInfo->Desc()->Format != dstTextureInfo->Desc()->Format))
       return D3DERR_INVALIDCALL;
 
-    const DxvkFormatInfo* formatInfo = imageFormatInfo(dstTextureInfo->GetFormatMapping().FormatColor);
+    const DxvkFormatInfo* formatInfo = lookupFormatInfo(dstTextureInfo->GetFormatMapping().FormatColor);
 
     VkOffset3D srcOffset = { 0u, 0u, 0u };
     VkOffset3D dstOffset = { 0u, 0u, 0u };
@@ -878,7 +878,7 @@ namespace dxvk {
     Rc<DxvkBuffer> dstBuffer = dstTexInfo->GetBuffer(dst->GetSubresource());
 
     Rc<DxvkImage>  srcImage                 = srcTexInfo->GetImage();
-    const DxvkFormatInfo* srcFormatInfo     = imageFormatInfo(srcImage->info().format);
+    const DxvkFormatInfo* srcFormatInfo     = lookupFormatInfo(srcImage->info().format);
 
     const VkImageSubresource srcSubresource = srcTexInfo->GetSubresourceFromIndex(srcFormatInfo->aspectMask, src->GetSubresource());
     VkImageSubresourceLayers srcSubresourceLayers = {
@@ -953,8 +953,8 @@ namespace dxvk {
     if (dstImage == nullptr || srcImage == nullptr)
         return D3DERR_INVALIDCALL;
 
-    const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstImage->info().format);
-    const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
+    const DxvkFormatInfo* dstFormatInfo = lookupFormatInfo(dstImage->info().format);
+    const DxvkFormatInfo* srcFormatInfo = lookupFormatInfo(srcImage->info().format);
 
     const VkImageSubresource dstSubresource = dstTextureInfo->GetSubresourceFromIndex(dstFormatInfo->aspectMask, dst->GetSubresource());
     const VkImageSubresource srcSubresource = srcTextureInfo->GetSubresourceFromIndex(srcFormatInfo->aspectMask, src->GetSubresource());
@@ -1464,7 +1464,7 @@ namespace dxvk {
       if (Flags & D3DCLEAR_STENCIL)
         depthAspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 
-      depthAspectMask &= imageFormatInfo(m_state.depthStencil->GetCommonTexture()->GetFormatMapping().FormatColor)->aspectMask;
+      depthAspectMask &= lookupFormatInfo(m_state.depthStencil->GetCommonTexture()->GetFormatMapping().FormatColor)->aspectMask;
     }
 
     auto ClearImageView = [this](
@@ -4134,7 +4134,7 @@ namespace dxvk {
     auto& formatMapping = pResource->GetFormatMapping();
 
     const DxvkFormatInfo* formatInfo = formatMapping.IsValid()
-      ? imageFormatInfo(formatMapping.FormatColor) : UnsupportedFormatInfo(pResource->Desc()->Format);
+      ? lookupFormatInfo(formatMapping.FormatColor) : UnsupportedFormatInfo(pResource->Desc()->Format);
 
     auto subresource = pResource->GetSubresourceFromIndex(
         formatInfo->aspectMask, Subresource);
@@ -4401,7 +4401,7 @@ namespace dxvk {
         UINT                    Subresource) {
 
     const Rc<DxvkImage> image = pResource->GetImage();
-    auto formatInfo  = imageFormatInfo(image->info().format);
+    auto formatInfo  = lookupFormatInfo(image->info().format);
     auto subresource = pResource->GetSubresourceFromIndex(
       formatInfo->aspectMask, Subresource);
 
@@ -4435,7 +4435,7 @@ namespace dxvk {
     // we need to copy its contents into the image
     const DxvkBufferSliceHandle srcSlice = pSrcTexture->GetMappedSlice(SrcSubresource);
 
-    auto formatInfo  = imageFormatInfo(image->info().format);
+    auto formatInfo  = lookupFormatInfo(image->info().format);
     auto srcSubresource = pSrcTexture->GetSubresourceFromIndex(
       formatInfo->aspectMask, SrcSubresource);
 
@@ -4513,7 +4513,7 @@ namespace dxvk {
       TrackTextureMappingBufferSequenceNumber(pSrcTexture, SrcSubresource);
     }
     else {
-      const DxvkFormatInfo* formatInfo = imageFormatInfo(pDestTexture->GetFormatMapping().FormatColor);
+      const DxvkFormatInfo* formatInfo = lookupFormatInfo(pDestTexture->GetFormatMapping().FormatColor);
 
       // Add more blocks for the other planes that we might have.
       // TODO: PLEASE CLEAN ME
@@ -6830,8 +6830,8 @@ namespace dxvk {
     const D3D9_VK_FORMAT_MAPPING srcFormatInfo = LookupFormat(srcDesc->Format);
     const D3D9_VK_FORMAT_MAPPING dstFormatInfo = LookupFormat(dstDesc->Format);
 
-    auto srcVulkanFormatInfo = imageFormatInfo(srcFormatInfo.FormatColor);
-    auto dstVulkanFormatInfo = imageFormatInfo(dstFormatInfo.FormatColor);
+    auto srcVulkanFormatInfo = lookupFormatInfo(srcFormatInfo.FormatColor);
+    auto dstVulkanFormatInfo = lookupFormatInfo(dstFormatInfo.FormatColor);
 
     const VkImageSubresource dstSubresource =
       dstTextureInfo->GetSubresourceFromIndex(
