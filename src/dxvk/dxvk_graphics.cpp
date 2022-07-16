@@ -470,21 +470,18 @@ namespace dxvk {
   DxvkGraphicsPipelineFragmentShaderState::DxvkGraphicsPipelineFragmentShaderState(
     const DxvkDevice*                     device,
     const DxvkGraphicsPipelineStateInfo&  state) {
+    VkImageAspectFlags dsReadOnlyAspects = state.rt.getDepthStencilReadOnlyAspects();
+
+    bool enableDepthWrites = !(dsReadOnlyAspects & VK_IMAGE_ASPECT_DEPTH_BIT);
+    bool enableStencilWrites = !(dsReadOnlyAspects & VK_IMAGE_ASPECT_STENCIL_BIT);
+
     dsInfo.depthTestEnable        = state.ds.enableDepthTest();
-    dsInfo.depthWriteEnable       = state.ds.enableDepthWrite();
+    dsInfo.depthWriteEnable       = state.ds.enableDepthWrite() && enableDepthWrites;
     dsInfo.depthCompareOp         = state.ds.depthCompareOp();
     dsInfo.depthBoundsTestEnable  = state.ds.enableDepthBoundsTest();
     dsInfo.stencilTestEnable      = state.ds.enableStencilTest();
-    dsInfo.front                  = state.dsFront.state();
-    dsInfo.back                   = state.dsBack.state();
-
-    if ((state.rt.getDepthStencilReadOnlyAspects() & VK_IMAGE_ASPECT_DEPTH_BIT))
-      dsInfo.depthWriteEnable     = VK_FALSE;
-
-    if ((state.rt.getDepthStencilReadOnlyAspects() & VK_IMAGE_ASPECT_STENCIL_BIT)) {
-      dsInfo.front.writeMask      = 0;
-      dsInfo.back.writeMask       = 0;
-    }
+    dsInfo.front                  = state.dsFront.state(enableStencilWrites);
+    dsInfo.back                   = state.dsBack.state(enableStencilWrites);
   }
 
 
@@ -1162,8 +1159,8 @@ namespace dxvk {
 
     if (state.ds.enableStencilTest()) {
       std::array<VkStencilOpState, 2> states = {{
-        state.dsFront.state(),
-        state.dsBack.state(),
+        state.dsFront.state(true),
+        state.dsBack.state(true),
       }};
 
       for (size_t i = 0; i < states.size(); i++) {

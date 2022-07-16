@@ -395,14 +395,14 @@ namespace dxvk {
       m_compareMask (uint32_t(state.compareMask)),
       m_writeMask   (uint32_t(state.writeMask)) { }
     
-    VkStencilOpState state() const {
+    VkStencilOpState state(bool write) const {
       VkStencilOpState result;
       result.failOp      = VkStencilOp(m_failOp);
       result.passOp      = VkStencilOp(m_passOp);
       result.depthFailOp = VkStencilOp(m_depthFailOp);
       result.compareOp   = VkCompareOp(m_compareOp);
       result.compareMask = m_compareMask;
-      result.writeMask   = m_writeMask;
+      result.writeMask   = write ? m_writeMask : 0;
       result.reference   = 0;
       return result;
     }

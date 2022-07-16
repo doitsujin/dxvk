@@ -31,12 +31,14 @@ namespace dxvk {
     GpDirtyIndexBuffer,         ///< Index buffer binding are out of date
     GpDirtyXfbBuffers,          ///< Transform feedback buffer bindings are out of date
     GpDirtyBlendConstants,      ///< Blend constants have changed
+    GpDirtyDepthStencilState,   ///< Depth-stencil state has changed
     GpDirtyDepthBias,           ///< Depth bias has changed
     GpDirtyDepthBounds,         ///< Depth bounds have changed
     GpDirtyStencilRef,          ///< Stencil reference has changed
     GpDirtyRasterizerState,     ///< Cull mode and front face have changed
     GpDirtyViewport,            ///< Viewport state has changed
     GpDynamicBlendConstants,    ///< Blend constants are dynamic
+    GpDynamicDepthStencilState, ///< Depth-stencil state is dynamic
     GpDynamicDepthBias,         ///< Depth bias is dynamic
     GpDynamicDepthBounds,       ///< Depth bounds are dynamic
     GpDynamicStencilRef,        ///< Stencil reference is dynamic

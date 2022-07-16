@@ -100,6 +100,7 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyViewport,
       DxvkContextFlag::GpDirtyDepthBias,
       DxvkContextFlag::GpDirtyDepthBounds,
+      DxvkContextFlag::GpDirtyDepthStencilState,
       DxvkContextFlag::CpDirtyPipeline,
       DxvkContextFlag::CpDirtyPipelineState,
       DxvkContextFlag::DirtyDrawBuffer);
@@ -2437,6 +2438,12 @@ namespace dxvk {
 
     if (!m_state.gp.state.rs.eq(rsInfo)) {
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+
+      // Since depth bias enable is only dynamic for base pipelines,
+      // it is applied as part of the dynamic depth-stencil state
+      if (m_state.gp.state.rs.depthBiasEnable() != rs.depthBiasEnable)
+        m_flags.set(DxvkContextFlag::GpDirtyDepthStencilState);
+
       m_state.gp.state.rs = rsInfo;
     }
   }
@@ -2463,7 +2470,9 @@ namespace dxvk {
     m_state.gp.state.dsFront = DxvkDsStencilOp(ds.stencilOpFront);
     m_state.gp.state.dsBack  = DxvkDsStencilOp(ds.stencilOpBack);
     
-    m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+    m_flags.set(
+      DxvkContextFlag::GpDirtyPipelineState,
+      DxvkContextFlag::GpDirtyDepthStencilState);
   }
   
   
@@ -4015,6 +4024,7 @@ namespace dxvk {
         DxvkContextFlag::GpDirtyViewport,
         DxvkContextFlag::GpDirtyDepthBias,
         DxvkContextFlag::GpDirtyDepthBounds,
+        DxvkContextFlag::GpDirtyDepthStencilState,
         DxvkContextFlag::DirtyPushConstants);
 
       m_flags.clr(
@@ -4440,7 +4450,8 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyRasterizerState,
       DxvkContextFlag::GpDirtyViewport,
       DxvkContextFlag::GpDirtyDepthBias,
-      DxvkContextFlag::GpDirtyDepthBounds);
+      DxvkContextFlag::GpDirtyDepthBounds,
+      DxvkContextFlag::GpDirtyDepthStencilState);
 
     m_state.gp.pipeline = nullptr;
   }
@@ -4489,6 +4500,7 @@ namespace dxvk {
     // Check which dynamic states need to be active. States that
     // are not dynamic will be invalidated in the command buffer.
     m_flags.clr(DxvkContextFlag::GpDynamicBlendConstants,
+                DxvkContextFlag::GpDynamicDepthStencilState,
                 DxvkContextFlag::GpDynamicDepthBias,
                 DxvkContextFlag::GpDynamicDepthBounds,
                 DxvkContextFlag::GpDynamicStencilRef,
@@ -4499,18 +4511,6 @@ namespace dxvk {
       ? DxvkContextFlag::GpDynamicBlendConstants
       : DxvkContextFlag::GpDirtyBlendConstants);
     
-    m_flags.set(m_state.gp.state.useDynamicDepthBias()
-      ? DxvkContextFlag::GpDynamicDepthBias
-      : DxvkContextFlag::GpDirtyDepthBias);
-    
-    m_flags.set(m_state.gp.state.useDynamicDepthBounds()
-      ? DxvkContextFlag::GpDynamicDepthBounds
-      : DxvkContextFlag::GpDirtyDepthBounds);
-    
-    m_flags.set(m_state.gp.state.useDynamicStencilRef()
-      ? DxvkContextFlag::GpDynamicStencilRef
-      : DxvkContextFlag::GpDirtyStencilRef);
-
     m_flags.set((!m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasRasterizerDiscard))
       ? DxvkContextFlag::GpDynamicRasterizerState
       : DxvkContextFlag::GpDirtyRasterizerState);
@@ -4525,43 +4525,31 @@ namespace dxvk {
       VK_PIPELINE_BIND_POINT_GRAPHICS,
       pipelineInfo.first);
 
-    // For pipelines created from graphics pipeline libraries, we need
-    // to apply a bunch of dynamic state that is otherwise static
+    // For pipelines created from graphics pipeline libraries, we need to
+    // apply a bunch of dynamic state that is otherwise static or unused
     if (pipelineInfo.second == DxvkGraphicsPipelineType::BasePipeline) {
-      VkImageAspectFlags dsReadOnlyAspects = m_state.gp.state.rt.getDepthStencilReadOnlyAspects();
-
-      m_cmd->cmdSetDepthState(
-        m_state.gp.state.ds.enableDepthTest(),
-        m_state.gp.state.ds.enableDepthWrite() &&
-          !(dsReadOnlyAspects & VK_IMAGE_ASPECT_DEPTH_BIT),
-        m_state.gp.state.ds.depthCompareOp());
-
-      if (m_device->features().core.features.depthBounds) {
-        m_cmd->cmdSetDepthBoundsState(
-          m_state.gp.state.ds.enableDepthBoundsTest());
-
-        m_flags.set(DxvkContextFlag::GpDynamicDepthBounds);
-      }
-
-      VkStencilOpState dsFront = m_state.gp.state.dsFront.state();
-      VkStencilOpState dsBack = m_state.gp.state.dsBack.state();
-
-      if (dsReadOnlyAspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
-        dsFront.writeMask = 0;
-        dsBack.writeMask = 0;
-      }
-
-      m_cmd->cmdSetStencilState(
-        m_state.gp.state.ds.enableStencilTest(),
-        dsFront, dsBack);
-
-      m_cmd->cmdSetDepthBiasState(
-        m_state.gp.state.rs.depthBiasEnable());
-
       m_flags.set(
+        DxvkContextFlag::GpDynamicDepthStencilState,
         DxvkContextFlag::GpDynamicDepthBias,
         DxvkContextFlag::GpDynamicStencilRef,
         DxvkContextFlag::GpIndependentSets);
+
+      if (m_device->features().core.features.depthBounds)
+        m_flags.set(DxvkContextFlag::GpDynamicDepthBounds);
+    } else {
+      m_flags.set(m_state.gp.state.useDynamicDepthBias()
+        ? DxvkContextFlag::GpDynamicDepthBias
+        : DxvkContextFlag::GpDirtyDepthBias);
+
+      m_flags.set(m_state.gp.state.useDynamicDepthBounds()
+        ? DxvkContextFlag::GpDynamicDepthBounds
+        : DxvkContextFlag::GpDirtyDepthBounds);
+
+      m_flags.set(m_state.gp.state.useDynamicStencilRef()
+        ? DxvkContextFlag::GpDynamicStencilRef
+        : DxvkContextFlag::GpDirtyStencilRef);
+
+      m_flags.set(DxvkContextFlag::GpDirtyDepthStencilState);
     }
 
     // If necessary, dirty descriptor sets due to layout incompatibilities
@@ -5181,6 +5169,39 @@ namespace dxvk {
       m_cmd->cmdSetScissor(m_state.vp.viewportCount, m_state.vp.scissorRects.data());
     }
 
+    if (m_flags.all(DxvkContextFlag::GpDirtyDepthStencilState,
+                    DxvkContextFlag::GpDynamicDepthStencilState)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyDepthStencilState);
+
+      // Make sure to not enable writes to aspects that cannot be
+      // written in the current depth-stencil attachment layout.
+      // This mirrors what we do for monolithic pipelines.
+      VkImageAspectFlags dsReadOnlyAspects = m_state.gp.state.rt.getDepthStencilReadOnlyAspects();
+
+      bool enableDepthWrites = !(dsReadOnlyAspects & VK_IMAGE_ASPECT_DEPTH_BIT);
+      bool enableStencilWrites = !(dsReadOnlyAspects & VK_IMAGE_ASPECT_STENCIL_BIT);
+
+      m_cmd->cmdSetDepthState(
+        m_state.gp.state.ds.enableDepthTest(),
+        m_state.gp.state.ds.enableDepthWrite() && enableDepthWrites,
+        m_state.gp.state.ds.depthCompareOp());
+
+      if (m_device->features().core.features.depthBounds) {
+        m_cmd->cmdSetDepthBoundsState(
+          m_state.gp.state.ds.enableDepthBoundsTest());
+
+        m_flags.set(DxvkContextFlag::GpDynamicDepthBounds);
+      }
+
+      m_cmd->cmdSetStencilState(
+        m_state.gp.state.ds.enableStencilTest(),
+        m_state.gp.state.dsFront.state(enableStencilWrites),
+        m_state.gp.state.dsBack.state(enableStencilWrites));
+
+      m_cmd->cmdSetDepthBiasState(
+        m_state.gp.state.rs.depthBiasEnable());
+    }
+
     if (m_flags.all(DxvkContextFlag::GpDirtyRasterizerState,
                     DxvkContextFlag::GpDynamicRasterizerState)) {
       m_flags.clr(DxvkContextFlag::GpDirtyRasterizerState);
@@ -5333,10 +5354,11 @@ namespace dxvk {
     if (m_flags.any(
           DxvkContextFlag::GpDirtyViewport,
           DxvkContextFlag::GpDirtyBlendConstants,
-          DxvkContextFlag::GpDirtyStencilRef,
           DxvkContextFlag::GpDirtyDepthBias,
           DxvkContextFlag::GpDirtyDepthBounds,
-          DxvkContextFlag::GpDirtyRasterizerState))
+          DxvkContextFlag::GpDirtyDepthStencilState,
+          DxvkContextFlag::GpDirtyRasterizerState,
+          DxvkContextFlag::GpDirtyStencilRef))
       this->updateDynamicState();
     
     if (m_flags.test(DxvkContextFlag::DirtyPushConstants))
