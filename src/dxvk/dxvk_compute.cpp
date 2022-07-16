@@ -35,18 +35,20 @@ namespace dxvk {
   
   VkPipeline DxvkComputePipeline::getPipelineHandle(
     const DxvkComputePipelineStateInfo& state) {
-    if (m_library) {
-      // For compute pipelines that can be precompiled, we can use that
-      // pipeline variant unconditionally since there is no state for us
-      // to worry about other than specialization constants
-      if (unlikely(!m_libraryHandle)) {
-        m_libraryHandle = m_library->getPipelineHandle(
-          DxvkShaderPipelineLibraryCompileArgs());
-        m_stats->numComputePipelines += 1;
-      }
+    if (m_libraryHandle) {
+      // Compute pipelines without spec constants are always
+      // pre-compiled, so we'll almost always hit this path
+      return m_libraryHandle;
+    } else if (m_library) {
+      // Retrieve actual pipeline handle on first use. This
+      // may wait for an ongoing compile job to finish, or
+      // compile the pipeline immediately on the calling thread.
+      m_libraryHandle = m_library->getPipelineHandle(
+        DxvkShaderPipelineLibraryCompileArgs());
 
       return m_libraryHandle;
     } else {
+      // Slow path for compute shaders that do use spec constants
       DxvkComputePipelineInstance* instance = this->findInstance(state);
 
       if (unlikely(!instance)) {

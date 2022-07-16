@@ -502,26 +502,34 @@ namespace dxvk {
     if (pipeline)
       return pipeline;
 
+    bool usesDefaultArgs = (args == DxvkShaderPipelineLibraryCompileArgs());
+
     switch (stage) {
       case VK_SHADER_STAGE_VERTEX_BIT:
         pipeline = compileVertexShaderPipeline(args);
+
+        if (usesDefaultArgs)
+          m_stats->numGraphicsLibraries += 1;
         break;
 
       case VK_SHADER_STAGE_FRAGMENT_BIT:
         pipeline = compileFragmentShaderPipeline();
+
+        if (usesDefaultArgs)
+          m_stats->numGraphicsLibraries += 1;
         break;
 
       case VK_SHADER_STAGE_COMPUTE_BIT:
         pipeline = compileComputeShaderPipeline();
+
+        if (usesDefaultArgs)
+          m_stats->numComputePipelines += 1;
         break;
 
       default:
         // Should be unreachable
         return VK_NULL_HANDLE;
     }
-
-    if (args == DxvkShaderPipelineLibraryCompileArgs())
-      m_stats->numGraphicsLibraries += 1;
 
     return pipeline;
   }

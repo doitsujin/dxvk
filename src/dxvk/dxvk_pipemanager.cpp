@@ -280,7 +280,7 @@ namespace dxvk {
   
   void DxvkPipelineManager::registerShader(
     const Rc<DxvkShader>&         shader) {
-    if (m_device->canUseGraphicsPipelineLibrary() && shader->canUsePipelineLibrary()) {
+    if (canPrecompileShader(shader)) {
       auto library = createPipelineLibrary(shader);
       m_workers.compilePipelineLibrary(library);
     }
@@ -380,5 +380,17 @@ namespace dxvk {
 
     return &pair->second;
   }
-  
+
+
+  bool DxvkPipelineManager::canPrecompileShader(
+    const Rc<DxvkShader>&     shader) const {
+    if (!shader->canUsePipelineLibrary())
+      return false;
+
+    if (shader->info().stage == VK_SHADER_STAGE_COMPUTE_BIT)
+      return true;
+
+    return m_device->canUseGraphicsPipelineLibrary();
+  }
+
 }
