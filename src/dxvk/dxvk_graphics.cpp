@@ -534,20 +534,6 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkShader> DxvkGraphicsPipeline::getShader(
-          VkShaderStageFlagBits             stage) const {
-    switch (stage) {
-      case VK_SHADER_STAGE_VERTEX_BIT:                  return m_shaders.vs;
-      case VK_SHADER_STAGE_GEOMETRY_BIT:                return m_shaders.gs;
-      case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:    return m_shaders.tcs;
-      case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT: return m_shaders.tes;
-      case VK_SHADER_STAGE_FRAGMENT_BIT:                return m_shaders.fs;
-      default:
-        return nullptr;
-    }
-  }
-
-
   DxvkGlobalPipelineBarrier DxvkGraphicsPipeline::getGlobalBarrier(
     const DxvkGraphicsPipelineStateInfo&    state) const {
     DxvkGlobalPipelineBarrier barrier = m_barrier;

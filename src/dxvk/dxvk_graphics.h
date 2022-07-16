@@ -344,17 +344,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Queries shader for a given stage
-     * 
-     * In case no shader is specified for the
-     * given stage, \c nullptr will be returned.
-     * \param [in] stage The shader stage
-     * \returns Shader of the given stage
-     */
-    Rc<DxvkShader> getShader(
-            VkShaderStageFlagBits             stage) const;
-
-    /**
      * \brief Queries global resource barrier
      *
      * Returns the stages that can access resources in this
