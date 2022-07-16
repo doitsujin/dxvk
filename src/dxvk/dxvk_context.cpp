@@ -2428,19 +2428,16 @@ namespace dxvk {
       m_flags.set(DxvkContextFlag::GpDirtyRasterizerState);
     }
 
-    if (m_state.gp.state.rs.depthClipEnable() != rs.depthClipEnable
-     || m_state.gp.state.rs.depthBiasEnable() != rs.depthBiasEnable
-     || m_state.gp.state.rs.polygonMode() != rs.polygonMode
-     || m_state.gp.state.rs.sampleCount() != rs.sampleCount
-     || m_state.gp.state.rs.conservativeMode() != rs.conservativeMode) {
-      m_state.gp.state.rs = DxvkRsInfo(
-        rs.depthClipEnable,
-        rs.depthBiasEnable,
-        rs.polygonMode,
-        rs.sampleCount,
-        rs.conservativeMode);
+    DxvkRsInfo rsInfo(
+      rs.depthClipEnable,
+      rs.depthBiasEnable,
+      rs.polygonMode,
+      rs.sampleCount,
+      rs.conservativeMode);
 
+    if (!m_state.gp.state.rs.eq(rsInfo)) {
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      m_state.gp.state.rs = rsInfo;
     }
   }
   

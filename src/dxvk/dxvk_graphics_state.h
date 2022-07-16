@@ -250,6 +250,10 @@ namespace dxvk {
       return VkConservativeRasterizationModeEXT(m_conservativeMode);
     }
 
+    bool eq(const DxvkRsInfo& other) const {
+      return !std::memcmp(this, &other, sizeof(*this));
+    }
+
   private:
 
     uint16_t m_depthClipEnable        : 1;
