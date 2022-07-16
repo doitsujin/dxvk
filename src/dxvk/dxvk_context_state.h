@@ -46,8 +46,7 @@ namespace dxvk {
     GpDynamicVertexStrides,     ///< Vertex buffer strides are dynamic
     GpIndependentSets,          ///< Graphics pipeline layout was created with independent sets
     
-    CpDirtyPipeline,            ///< Compute pipeline binding are out of date
-    CpDirtyPipelineState,       ///< Compute pipeline needs to be recompiled
+    CpDirtyPipelineState,       ///< Compute pipeline is out of date
     
     DirtyDrawBuffer,            ///< Indirect argument buffer is dirty
     DirtyPushConstants,         ///< Push constant data has changed

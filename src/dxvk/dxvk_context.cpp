@@ -101,7 +101,6 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyDepthBias,
       DxvkContextFlag::GpDirtyDepthBounds,
       DxvkContextFlag::GpDirtyDepthStencilState,
-      DxvkContextFlag::CpDirtyPipeline,
       DxvkContextFlag::CpDirtyPipelineState,
       DxvkContextFlag::DirtyDrawBuffer);
 
@@ -183,7 +182,6 @@ namespace dxvk {
 
     if (stage == VK_SHADER_STAGE_COMPUTE_BIT) {
       m_flags.set(
-        DxvkContextFlag::CpDirtyPipeline,
         DxvkContextFlag::CpDirtyPipelineState);
     } else {
       m_flags.set(
@@ -4395,43 +4393,38 @@ namespace dxvk {
 
 
   void DxvkContext::unbindComputePipeline() {
-    m_flags.set(
-      DxvkContextFlag::CpDirtyPipeline,
-      DxvkContextFlag::CpDirtyPipelineState);
+    m_flags.set(DxvkContextFlag::CpDirtyPipelineState);
 
     m_state.cp.pipeline = nullptr;
   }
   
   
-  bool DxvkContext::updateComputePipeline() {
+  bool DxvkContext::updateComputePipelineState() {
     if (unlikely(m_state.gp.pipeline != nullptr))
       this->unbindGraphicsPipeline();
 
+    // Look up pipeline object based on the bound compute shader
     auto newPipeline = lookupComputePipeline(m_state.cp.shaders);
     m_state.cp.pipeline = newPipeline;
 
     if (unlikely(!newPipeline))
       return false;
 
-    m_descriptorState.dirtyStages(VK_SHADER_STAGE_COMPUTE_BIT);
-
-    if (m_state.cp.pipeline->getBindings()->layout().getPushConstantRange().size)
-      m_flags.set(DxvkContextFlag::DirtyPushConstants);
-
-    m_flags.clr(DxvkContextFlag::CpDirtyPipeline);
-    return true;
-  }
-  
-  
-  bool DxvkContext::updateComputePipelineState() {
-    VkPipeline pipeline = m_state.cp.pipeline->getPipelineHandle(m_state.cp.state);
+    // Look up Vulkan pipeline handle for the given compute state
+    auto pipelineHandle = newPipeline->getPipelineHandle(m_state.cp.state);
     
-    if (unlikely(!pipeline))
+    if (unlikely(!pipelineHandle))
       return false;
 
     m_cmd->cmdBindPipeline(
       VK_PIPELINE_BIND_POINT_COMPUTE,
-      pipeline);
+      pipelineHandle);
+
+    // Mark compute resources and push constants as dirty
+    m_descriptorState.dirtyStages(VK_SHADER_STAGE_COMPUTE_BIT);
+
+    if (newPipeline->getBindings()->layout().getPushConstantRange().size)
+      m_flags.set(DxvkContextFlag::DirtyPushConstants);
 
     m_flags.clr(DxvkContextFlag::CpDirtyPipelineState);
     return true;
@@ -5274,11 +5267,6 @@ namespace dxvk {
   bool DxvkContext::commitComputeState() {
     this->spillRenderPass(false);
 
-    if (m_flags.test(DxvkContextFlag::CpDirtyPipeline)) {
-      if (unlikely(!this->updateComputePipeline()))
-        return false;
-    }
-    
     if (m_flags.test(DxvkContextFlag::CpDirtyPipelineState)) {
       if (unlikely(!this->updateComputePipelineState()))
         return false;

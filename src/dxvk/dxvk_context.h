@@ -1323,7 +1323,6 @@ namespace dxvk {
     void pauseTransformFeedback();
     
     void unbindComputePipeline();
-    bool updateComputePipeline();
     bool updateComputePipelineState();
     
     void unbindGraphicsPipeline();
