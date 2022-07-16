@@ -5162,15 +5162,15 @@ namespace dxvk {
 
   
   void DxvkContext::updateDynamicState() {
-    if (m_flags.test(DxvkContextFlag::GpDirtyViewport)) {
+    if (unlikely(m_flags.test(DxvkContextFlag::GpDirtyViewport))) {
       m_flags.clr(DxvkContextFlag::GpDirtyViewport);
 
       m_cmd->cmdSetViewport(m_state.vp.viewportCount, m_state.vp.viewports.data());
       m_cmd->cmdSetScissor(m_state.vp.viewportCount, m_state.vp.scissorRects.data());
     }
 
-    if (m_flags.all(DxvkContextFlag::GpDirtyDepthStencilState,
-                    DxvkContextFlag::GpDynamicDepthStencilState)) {
+    if (unlikely(m_flags.all(DxvkContextFlag::GpDirtyDepthStencilState,
+                             DxvkContextFlag::GpDynamicDepthStencilState))) {
       m_flags.clr(DxvkContextFlag::GpDirtyDepthStencilState);
 
       // Make sure to not enable writes to aspects that cannot be
@@ -5202,6 +5202,12 @@ namespace dxvk {
         m_state.gp.state.rs.depthBiasEnable());
     }
 
+    if (unlikely(m_flags.all(DxvkContextFlag::GpDirtyBlendConstants,
+                             DxvkContextFlag::GpDynamicBlendConstants))) {
+      m_flags.clr(DxvkContextFlag::GpDirtyBlendConstants);
+      m_cmd->cmdSetBlendConstants(&m_state.dyn.blendConstants.r);
+    }
+
     if (m_flags.all(DxvkContextFlag::GpDirtyRasterizerState,
                     DxvkContextFlag::GpDynamicRasterizerState)) {
       m_flags.clr(DxvkContextFlag::GpDirtyRasterizerState);
@@ -5209,12 +5215,6 @@ namespace dxvk {
       m_cmd->cmdSetRasterizerState(
         m_state.dyn.cullMode,
         m_state.dyn.frontFace);
-    }
-
-    if (m_flags.all(DxvkContextFlag::GpDirtyBlendConstants,
-                    DxvkContextFlag::GpDynamicBlendConstants)) {
-      m_flags.clr(DxvkContextFlag::GpDirtyBlendConstants);
-      m_cmd->cmdSetBlendConstants(&m_state.dyn.blendConstants.r);
     }
 
     if (m_flags.all(DxvkContextFlag::GpDirtyStencilRef,
@@ -5351,15 +5351,7 @@ namespace dxvk {
     if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasTransformFeedback))
       this->updateTransformFeedbackState();
     
-    if (m_flags.any(
-          DxvkContextFlag::GpDirtyViewport,
-          DxvkContextFlag::GpDirtyBlendConstants,
-          DxvkContextFlag::GpDirtyDepthBias,
-          DxvkContextFlag::GpDirtyDepthBounds,
-          DxvkContextFlag::GpDirtyDepthStencilState,
-          DxvkContextFlag::GpDirtyRasterizerState,
-          DxvkContextFlag::GpDirtyStencilRef))
-      this->updateDynamicState();
+    this->updateDynamicState();
     
     if (m_flags.test(DxvkContextFlag::DirtyPushConstants))
       this->updatePushConstants<VK_PIPELINE_BIND_POINT_GRAPHICS>();
