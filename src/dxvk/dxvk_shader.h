@@ -80,6 +80,8 @@ namespace dxvk {
   struct DxvkShaderModuleCreateInfo {
     bool      fsDualSrcBlend  = false;
     uint32_t  undefinedInputs = 0;
+
+    std::array<VkComponentMapping, MaxNumRenderTargets> rtSwizzles = { };
   };
   
   
@@ -227,7 +229,14 @@ namespace dxvk {
 
     DxvkBindingLayout             m_bindings;
 
-    static void eliminateInput(SpirvCodeBuffer& code, uint32_t location);
+    static void eliminateInput(
+            SpirvCodeBuffer&          code,
+            uint32_t                  location);
+
+    static void emitOutputSwizzles(
+            SpirvCodeBuffer&          code,
+            uint32_t                  outputMask,
+            const VkComponentMapping* swizzles);
 
   };
   
