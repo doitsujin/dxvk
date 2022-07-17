@@ -250,6 +250,16 @@ namespace dxvk {
           if (writeMask) {
             cbAttachments[i] = state.omBlend[i].state();
             cbAttachments[i].colorWriteMask = writeMask;
+
+            // If we're rendering to an emulated alpha-only render target, fix up blending
+            if (cbAttachments[i].blendEnable && formatInfo->componentMask == VK_COLOR_COMPONENT_R_BIT && state.omSwizzle[i].rIndex() == 3) {
+              cbAttachments[i].srcColorBlendFactor = util::remapAlphaToColorBlendFactor(
+                std::exchange(cbAttachments[i].srcAlphaBlendFactor, VK_BLEND_FACTOR_ONE));
+              cbAttachments[i].dstColorBlendFactor = util::remapAlphaToColorBlendFactor(
+                std::exchange(cbAttachments[i].dstAlphaBlendFactor, VK_BLEND_FACTOR_ZERO));
+              cbAttachments[i].colorBlendOp =
+                std::exchange(cbAttachments[i].alphaBlendOp, VK_BLEND_OP_ADD);
+            }
           }
         }
       }

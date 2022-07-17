@@ -272,6 +272,48 @@ namespace dxvk::util {
   }
 
 
+  VkBlendFactor remapAlphaToColorBlendFactor(VkBlendFactor factor) {
+    switch (factor) {
+      // Make sure we use the red component from the
+      // fragment shader since alpha may be undefined
+      case VK_BLEND_FACTOR_SRC_ALPHA:
+        return VK_BLEND_FACTOR_SRC_COLOR;
+
+      case VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA:
+        return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+
+      case VK_BLEND_FACTOR_SRC1_ALPHA:
+        return VK_BLEND_FACTOR_SRC1_COLOR;
+
+      case VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA:
+        return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
+
+      // This is defined to always be 1 for alpha
+      case VK_BLEND_FACTOR_SRC_ALPHA_SATURATE:
+        return VK_BLEND_FACTOR_ONE;
+
+      // Make sure we use the red component from the
+      // attachment since there is no alpha component
+      case VK_BLEND_FACTOR_DST_ALPHA:
+        return VK_BLEND_FACTOR_DST_COLOR;
+
+      case VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA:
+        return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+
+      // For blend constants we actually need to do the
+      // opposite and make sure we always use alpha
+      case VK_BLEND_FACTOR_CONSTANT_COLOR:
+        return VK_BLEND_FACTOR_CONSTANT_ALPHA;
+
+      case VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR:
+        return VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA;
+
+      default:
+        return factor;
+    }
+  }
+
+
   bool isIdentityMapping(
           VkComponentMapping          mapping) {
     return (mapping.r == VK_COMPONENT_SWIZZLE_R || mapping.r == VK_COMPONENT_SWIZZLE_IDENTITY)

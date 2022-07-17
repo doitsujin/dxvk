@@ -339,7 +339,17 @@ namespace dxvk::util {
   VkComponentMapping resolveSrcComponentMapping(
           VkComponentMapping          dstMapping,
           VkComponentMapping          srcMapping);
-  
+
+  /**
+   * \brief Remaps alpha blend factor to a color one
+   *
+   * Needed when rendering to alpha-only render targets
+   * which we only support through single-channel formats.
+   * \param [in] factor Alpha blend factor
+   * \returns Corresponding color blend factor
+   */
+  VkBlendFactor remapAlphaToColorBlendFactor(VkBlendFactor factor);
+
   bool isIdentityMapping(
           VkComponentMapping          mapping);
 
