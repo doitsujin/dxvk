@@ -31,6 +31,12 @@ namespace dxvk {
     { R"(\\EthanCarter-Win64-Shipping\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
+     /* EVE Online: Needs this to expose D3D12     *
+     * otherwise D3D12 option on launcher is      *
+     * greyed out                                 */
+    { R"(\\evelauncher\.exe$)", {{
+      { "d3d11.maxFeatureLevel",            "12_1" },
+    }} },
     /* The Evil Within: Submits command lists     * 
      * multiple times                             */
     { R"(\\EvilWithin(Demo)?\.exe$)", {{
