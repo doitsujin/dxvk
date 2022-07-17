@@ -171,6 +171,8 @@ namespace dxvk {
       spv::StorageClass storageClass  = spv::StorageClassMax;
     };
 
+    uint32_t spirvVersion = code.data()[1];
+
     std::unordered_map<uint32_t, SpirvTypeInfo> types;
     std::unordered_map<uint32_t, uint32_t>      constants;
     std::unordered_set<uint32_t>                candidates;
@@ -214,6 +216,9 @@ namespace dxvk {
           break;
         }
       }
+
+      if (ins.opCode() == spv::OpFunction)
+        break;
     }
 
     if (!inputVarId)
@@ -292,21 +297,25 @@ namespace dxvk {
     code.endInsertion();
 
     // Remove variable from interface list
-    for (auto ins : code) {
-      if (ins.opCode() == spv::OpEntryPoint) {
-        uint32_t argIdx = 2 + code.strLen(ins.chr(2));
+    if (spirvVersion < spvVersion(1, 4)) {
+      for (auto ins : code) {
+        if (ins.opCode() == spv::OpEntryPoint) {
+          uint32_t argIdx = 2 + code.strLen(ins.chr(2));
 
-        while (argIdx < ins.length()) {
-          if (ins.arg(argIdx) == inputVarId) {
-            ins.setArg(0, spv::OpEntryPoint | ((ins.length() - 1) << spv::WordCountShift));
+          while (argIdx < ins.length()) {
+            if (ins.arg(argIdx) == inputVarId) {
+              ins.setArg(0, spv::OpEntryPoint | ((ins.length() - 1) << spv::WordCountShift));
 
-            code.beginInsertion(ins.offset() + argIdx);
-            code.erase(1);
-            code.endInsertion();
-            break;
+              code.beginInsertion(ins.offset() + argIdx);
+              code.erase(1);
+              code.endInsertion();
+              break;
+            }
+
+            argIdx += 1;
           }
 
-          argIdx += 1;
+          break;
         }
       }
     }

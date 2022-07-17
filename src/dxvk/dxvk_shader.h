@@ -9,6 +9,7 @@
 
 #include "../spirv/spirv_code_buffer.h"
 #include "../spirv/spirv_compression.h"
+#include "../spirv/spirv_module.h"
 
 namespace dxvk {
   
