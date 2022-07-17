@@ -732,17 +732,8 @@ namespace dxvk {
 
     // Remapping fragment shader outputs would require spec constants
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      VkFormat rtFormat = state.rt.getColorFormat(i);
-
-      if (rtFormat && (m_fsOut & (1u << i)) && state.omBlend[i].colorWriteMask()) {
-        auto mapping = state.omSwizzle[i].mapping();
-
-        if (mapping.r != VK_COMPONENT_SWIZZLE_R
-         || mapping.g != VK_COMPONENT_SWIZZLE_G
-         || mapping.b != VK_COMPONENT_SWIZZLE_B
-         || mapping.a != VK_COMPONENT_SWIZZLE_A)
-          return false;
-      }
+      if (writesRenderTarget(state, i) && !util::isIdentityMapping(state.omSwizzle[i].mapping()))
+        return false;
     }
 
     return true;
@@ -812,14 +803,6 @@ namespace dxvk {
 
     // Set up some specialization constants
     DxvkSpecConstants specData;
-
-    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      if ((m_fsOut & (1 << i)) != 0) {
-        specData.set(uint32_t(DxvkSpecConstantId::ColorComponentMappings) + i,
-          state.omSwizzle[i].rIndex() << 0 | state.omSwizzle[i].gIndex() << 4 |
-          state.omSwizzle[i].bIndex() << 8 | state.omSwizzle[i].aIndex() << 12, 0x3210u);
-      }
-    }
 
     for (uint32_t i = 0; i < MaxNumSpecConstants; i++)
       specData.set(getSpecId(i), state.sc.specConstants[i], 0u);
@@ -907,8 +890,14 @@ namespace dxvk {
     DxvkShaderModuleCreateInfo info;
 
     // Fix up fragment shader outputs for dual-source blending
-    if (shaderInfo.stage == VK_SHADER_STAGE_FRAGMENT_BIT)
+    if (shaderInfo.stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
       info.fsDualSrcBlend = state.useDualSourceBlending();
+
+      for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+        if (writesRenderTarget(state, i))
+          info.rtSwizzles[i] = state.omSwizzle[i].mapping();
+      }
+    }
 
     // Deal with undefined shader inputs
     uint32_t consumedInputs = shaderInfo.inputMask;
@@ -927,7 +916,6 @@ namespace dxvk {
     }
 
     info.undefinedInputs = (providedInputs & consumedInputs) ^ consumedInputs;
-
     return shader->getCode(m_bindings, info);
   }
 
@@ -954,6 +942,20 @@ namespace dxvk {
       result = m_shaders.gs;
 
     return result;
+  }
+
+
+  bool DxvkGraphicsPipeline::writesRenderTarget(
+    const DxvkGraphicsPipelineStateInfo& state,
+          uint32_t                       target) const {
+    if (!(m_fsOut & (1u << target)))
+      return false;
+
+    if (!state.omBlend[target].colorWriteMask())
+      return false;
+
+    VkFormat rtFormat = state.rt.getColorFormat(target);
+    return rtFormat != VK_FORMAT_UNDEFINED;
   }
 
 

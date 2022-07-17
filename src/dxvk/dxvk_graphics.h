@@ -432,6 +432,10 @@ namespace dxvk {
     Rc<DxvkShader> getPrevStageShader(
             VkShaderStageFlagBits          stage) const;
 
+    bool writesRenderTarget(
+      const DxvkGraphicsPipelineStateInfo& state,
+            uint32_t                       target) const;
+
     bool validatePipelineState(
       const DxvkGraphicsPipelineStateInfo& state,
             bool                           trusted) const;

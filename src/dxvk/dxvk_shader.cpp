@@ -140,6 +140,10 @@ namespace dxvk {
     for (uint32_t u : bit::BitMask(state.undefinedInputs))
       eliminateInput(spirvCode, u);
 
+    // Emit fragment shader swizzles as necessary
+    if (m_info.stage == VK_SHADER_STAGE_FRAGMENT_BIT)
+      emitOutputSwizzles(spirvCode, m_info.outputMask, state.rtSwizzles.data());
+
     return spirvCode;
   }
 
