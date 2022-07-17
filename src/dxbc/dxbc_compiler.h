@@ -999,21 +999,12 @@ namespace dxvk {
       const DxbcRegister&           reg,
             DxbcRegisterValue       value);
     
-    ////////////////////////////////////////
-    // Spec constant declaration and access
-    uint32_t emitNewSpecConstant(
-            DxvkSpecConstantId      specId,
-            DxbcScalarType          type,
-            uint32_t                value,
-      const char*                   name);
-
     ////////////////////////////
     // Input/output preparation
     void emitInputSetup();
     void emitInputSetup(uint32_t vertexCount);
     
     void emitOutputSetup();
-    void emitOutputMapping();
     void emitOutputDepthClamp();
     
     void emitInitWorkgroupMemory();

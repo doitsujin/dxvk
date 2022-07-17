@@ -5691,20 +5691,6 @@ namespace dxvk {
   }
   
   
-  uint32_t DxbcCompiler::emitNewSpecConstant(
-          DxvkSpecConstantId      specId,
-          DxbcScalarType          type,
-          uint32_t                value,
-    const char*                   name) {
-    uint32_t id = m_module.specConst32(
-      getScalarTypeId(type), value);
-    
-    m_module.decorateSpecId(id, uint32_t(specId));
-    m_module.setDebugName(id, name);
-    return id;
-  }
-  
-  
   void DxbcCompiler::emitInputSetup() {
     m_module.setLateConst(m_vArrayLengthId, &m_vArrayLength);
 
@@ -5843,51 +5829,6 @@ namespace dxvk {
         case DxbcProgramType::PixelShader:    emitPsSystemValueStore(sv, mask, value); break;
         case DxbcProgramType::ComputeShader:  break;
       }
-    }
-  }
-
-
-  void DxbcCompiler::emitOutputMapping() {
-    // For pixel shaders, we need to swizzle the
-    // output vectors using some spec constants.
-    for (uint32_t i = 0; i < m_oRegs.size(); i++) {
-      if (m_oRegs[i].id == 0 || m_oRegs[i].type.ccount < 2)
-        continue;
-      
-      DxbcRegisterValue vector = emitValueLoad(m_oRegs[i]);
-
-      uint32_t specTypeId = getScalarTypeId(DxbcScalarType::Uint32);
-      uint32_t compTypeId = getScalarTypeId(vector.type.ctype);
-      
-      uint32_t specId = m_module.specConst32(specTypeId, 0x3210);
-      m_module.decorateSpecId(specId, uint32_t(DxvkSpecConstantId::ColorComponentMappings) + i);
-      m_module.setDebugName(specId, str::format("omap", i).c_str());
-
-      std::array<uint32_t, 4> scalars;
-      for (uint32_t c = 0; c < vector.type.ccount; c++) {
-        scalars[c] = m_module.opVectorExtractDynamic(compTypeId, vector.id,
-          m_module.opBitFieldUExtract(specTypeId, specId,
-            m_module.constu32(4 * c), m_module.constu32(4)));
-      }
-
-      uint32_t typeId = getVectorTypeId(vector.type);
-      vector.id = m_module.opCompositeConstruct(typeId, vector.type.ccount, scalars.data());
-
-      // Replace NaN by zero if requested
-      if (m_moduleInfo.options.enableRtOutputNanFixup && vector.type.ctype == DxbcScalarType::Float32) {
-        uint32_t boolType = m_module.defBoolType();
-
-        if (vector.type.ccount > 1)
-          boolType = m_module.defVectorType(boolType, vector.type.ccount);
-
-        uint32_t zero = emitBuildConstVecf32(0.0f, 0.0f, 0.0f, 0.0f,
-          DxbcRegMask((1u << vector.type.ccount) - 1)).id;
-        uint32_t isNan = m_module.opIsNan(boolType, vector.id);
-        vector.id = m_module.opSelect(typeId, isNan, zero, vector.id);
-      }
-      
-      emitValueStore(m_oRegs[i], vector,
-        DxbcRegMask::firstN(vector.type.ccount));
     }
   }
 
@@ -6937,7 +6878,6 @@ namespace dxvk {
     }
     
     this->emitOutputSetup();
-    this->emitOutputMapping();
 
     if (m_moduleInfo.options.useDepthClipWorkaround)
       this->emitOutputDepthClamp();
