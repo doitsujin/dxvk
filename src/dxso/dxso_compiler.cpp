@@ -270,11 +270,11 @@ namespace dxvk {
     }
 
     m_nullSpecConstant = m_module.specConst32(m_module.defIntType(32, 0), 0);
-    m_module.decorateSpecId(m_nullSpecConstant, getSpecId(D3D9SpecConstantId::SamplerNull));
+    m_module.decorateSpecId(m_nullSpecConstant, D3D9SpecConstantId::SamplerNull);
     m_module.setDebugName(m_nullSpecConstant, "nullSamplers");
 
     m_depthSpecConstant = m_module.specConst32(m_module.defIntType(32, 0), 0);
-    m_module.decorateSpecId(m_depthSpecConstant, getSpecId(D3D9SpecConstantId::SamplerDepthMode));
+    m_module.decorateSpecId(m_depthSpecConstant, D3D9SpecConstantId::SamplerDepthMode);
     m_module.setDebugName(m_depthSpecConstant, "depthSamplers");
 
     this->emitDclInputArray();
@@ -339,10 +339,10 @@ namespace dxvk {
     m_bindings.push_back(binding);
 
     m_boolSpecConstant = m_module.specConst32(m_module.defIntType(32, 0), 0);
-    m_module.decorateSpecId(m_boolSpecConstant, getSpecId(
+    m_module.decorateSpecId(m_boolSpecConstant,
       m_programInfo.type() == DxsoProgramType::VertexShader
       ? D3D9SpecConstantId::VertexShaderBools
-      : D3D9SpecConstantId::PixelShaderBools));
+      : D3D9SpecConstantId::PixelShaderBools);
     m_module.setDebugName(m_boolSpecConstant, "boolConstants");
   }
 
@@ -534,18 +534,18 @@ namespace dxvk {
 
     if (m_programInfo.majorVersion() < 2 || m_moduleInfo.options.forceSamplerTypeSpecConstants) {
       m_ps.samplerTypeSpec = m_module.specConst32(m_module.defIntType(32, 0), 0);
-      m_module.decorateSpecId(m_ps.samplerTypeSpec, getSpecId(D3D9SpecConstantId::SamplerType));
+      m_module.decorateSpecId(m_ps.samplerTypeSpec, D3D9SpecConstantId::SamplerType);
       m_module.setDebugName(m_ps.samplerTypeSpec, "s_sampler_types");
 
       if (m_programInfo.majorVersion() < 2) {
         m_ps.projectionSpec = m_module.specConst32(m_module.defIntType(32, 0), 0);
-        m_module.decorateSpecId(m_ps.projectionSpec, getSpecId(D3D9SpecConstantId::ProjectionType));
+        m_module.decorateSpecId(m_ps.projectionSpec, D3D9SpecConstantId::ProjectionType);
         m_module.setDebugName(m_ps.projectionSpec, "s_projections");
       }
     }
 
     m_ps.fetch4Spec = m_module.specConst32(m_module.defIntType(32, 0), 0);
-    m_module.decorateSpecId(m_ps.fetch4Spec, getSpecId(D3D9SpecConstantId::Fetch4));
+    m_module.decorateSpecId(m_ps.fetch4Spec, D3D9SpecConstantId::Fetch4);
     m_module.setDebugName(m_ps.fetch4Spec, "s_fetch4");
 
     this->setupRenderStateInfo();
@@ -3759,7 +3759,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     
     uint32_t alphaFuncId = m_module.specConst32(m_module.defIntType(32, 0), 0);
     m_module.setDebugName   (alphaFuncId, "alpha_func");
-    m_module.decorateSpecId (alphaFuncId, getSpecId(D3D9SpecConstantId::AlphaCompareOp));
+    m_module.decorateSpecId (alphaFuncId, D3D9SpecConstantId::AlphaCompareOp);
 
     // Implement alpha test and fog
     DxsoRegister color0;

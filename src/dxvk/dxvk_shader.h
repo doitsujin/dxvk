@@ -19,21 +19,6 @@ namespace dxvk {
   struct DxvkPipelineStats;
   
   /**
-   * \brief Built-in specialization constants
-   * 
-   * These specialization constants allow the SPIR-V
-   * shaders to access some pipeline state like D3D
-   * shaders do. They need to be filled in by the
-   * implementation at pipeline compilation time.
-   */
-  enum class DxvkSpecConstantId : uint32_t {
-    FirstPipelineConstant       = 0,
-    /// Special constant ranges that do not count
-    /// towards the spec constant min/max values
-    ColorComponentMappings      = DxvkLimits::MaxNumSpecConstants,
-  };
-
-  /**
    * \brief Shader flags
    *
    * Provides extra information about the features

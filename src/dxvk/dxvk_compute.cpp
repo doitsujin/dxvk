@@ -109,7 +109,7 @@ namespace dxvk {
     DxvkSpecConstants specData;
     
     for (uint32_t i = 0; i < MaxNumSpecConstants; i++)
-      specData.set(getSpecId(i), state.sc.specConstants[i], 0u);
+      specData.set(i, state.sc.specConstants[i], 0u);
 
     VkSpecializationInfo specInfo = specData.getSpecInfo();
     

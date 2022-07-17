@@ -74,18 +74,5 @@ namespace dxvk {
     void setAsUint32(uint32_t specId, uint32_t value);
 
   };
-
-
-  /**
-   * \brief Computes specialization constant ID
-   * 
-   * Computest the specId to use within shaders
-   * for a given pipeline specialization constant.
-   * \param [in] index Spec constant index
-   * \returns Specialization constant ID
-   */
-  inline uint32_t getSpecId(uint32_t index) {
-    return uint32_t(DxvkSpecConstantId::FirstPipelineConstant) + index;
-  }
   
 }

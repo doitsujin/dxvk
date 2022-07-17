@@ -45,16 +45,16 @@ namespace dxvk {
 
     if (!fogCtx.IsPixel) {
       spvModule.setDebugName(fogMode, "vertex_fog_mode");
-      spvModule.decorateSpecId(fogMode, getSpecId(D3D9SpecConstantId::VertexFogMode));
+      spvModule.decorateSpecId(fogMode, D3D9SpecConstantId::VertexFogMode);
     }
     else {
       spvModule.setDebugName(fogMode, "pixel_fog_mode");
-      spvModule.decorateSpecId(fogMode, getSpecId(D3D9SpecConstantId::PixelFogMode));
+      spvModule.decorateSpecId(fogMode, D3D9SpecConstantId::PixelFogMode);
     }
 
     uint32_t fogEnabled = spvModule.specConstBool(false);
     spvModule.setDebugName(fogEnabled, "fog_enabled");
-    spvModule.decorateSpecId(fogEnabled, getSpecId(D3D9SpecConstantId::FogEnabled));
+    spvModule.decorateSpecId(fogEnabled, D3D9SpecConstantId::FogEnabled);
 
     uint32_t doFog   = spvModule.allocateId();
     uint32_t skipFog = spvModule.allocateId();
@@ -272,7 +272,7 @@ namespace dxvk {
     if (isFixedFunction) {
       uint32_t pointMode = spvModule.specConst32(uint32Type, 0);
       spvModule.setDebugName(pointMode, "point_mode");
-      spvModule.decorateSpecId(pointMode, getSpecId(D3D9SpecConstantId::PointMode));
+      spvModule.decorateSpecId(pointMode, D3D9SpecConstantId::PointMode);
 
       uint32_t scaleBit  = spvModule.opBitFieldUExtract(uint32Type, pointMode, spvModule.consti32(0), spvModule.consti32(1));
       uint32_t isScale   = spvModule.opIEqual(boolType, scaleBit, spvModule.constu32(1));
@@ -325,7 +325,7 @@ namespace dxvk {
 
     uint32_t pointMode = spvModule.specConst32(uint32Type, 0);
     spvModule.setDebugName(pointMode, "point_mode");
-    spvModule.decorateSpecId(pointMode, getSpecId(D3D9SpecConstantId::PointMode));
+    spvModule.decorateSpecId(pointMode, D3D9SpecConstantId::PointMode);
 
     uint32_t spriteBit  = spvModule.opBitFieldUExtract(uint32Type, pointMode, spvModule.consti32(1), spvModule.consti32(1));
     uint32_t isSprite   = spvModule.opIEqual(boolType, spriteBit, spvModule.constu32(1));
@@ -2190,7 +2190,7 @@ namespace dxvk {
     // Declare spec constants for render states
     uint32_t alphaFuncId = m_module.specConst32(m_module.defIntType(32, 0), 0);
     m_module.setDebugName(alphaFuncId, "alpha_func");
-    m_module.decorateSpecId(alphaFuncId, getSpecId(D3D9SpecConstantId::AlphaCompareOp));
+    m_module.decorateSpecId(alphaFuncId, D3D9SpecConstantId::AlphaCompareOp);
 
     // Implement alpha test
     auto oC0 = m_ps.out.COLOR;

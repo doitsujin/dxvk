@@ -1024,9 +1024,8 @@ namespace dxvk {
     /**
      * \brief Sets specialization constants
      * 
-     * Replaces current specialization constants with
-     * the given list of constant entries. The specId
-     * in the shader can be computed with \c getSpecId.
+     * Replaces current specialization constants
+     * with the given list of constant entries.
      * \param [in] pipeline Graphics or Compute pipeline
      * \param [in] index Constant index
      * \param [in] value Constant value
