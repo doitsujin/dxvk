@@ -7,15 +7,10 @@ namespace dxvk {
           DxvkDevice*             device,
     const DxvkSamplerCreateInfo&  info)
   : m_vkd(device->vkd()) {
-    VkSamplerCustomBorderColorCreateInfoEXT borderColorInfo;
-    borderColorInfo.sType               = VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT;
-    borderColorInfo.pNext               = nullptr;
+    VkSamplerCustomBorderColorCreateInfoEXT borderColorInfo = { VK_STRUCTURE_TYPE_SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT };
     borderColorInfo.customBorderColor   = info.borderColor;
-    borderColorInfo.format              = VK_FORMAT_UNDEFINED;
 
-    VkSamplerCreateInfo samplerInfo;
-    samplerInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    samplerInfo.pNext                   = nullptr;
+    VkSamplerCreateInfo samplerInfo = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
     samplerInfo.flags                   = info.nonSeamless ? VK_SAMPLER_CREATE_NON_SEAMLESS_CUBE_MAP_BIT_EXT : 0;
     samplerInfo.magFilter               = info.magFilter;
     samplerInfo.minFilter               = info.minFilter;
@@ -42,7 +37,7 @@ namespace dxvk {
       samplerInfo.borderColor = getBorderColor(device, info);
 
     if (samplerInfo.borderColor == VK_BORDER_COLOR_FLOAT_CUSTOM_EXT)
-      samplerInfo.pNext = &borderColorInfo;
+      borderColorInfo.pNext = std::exchange(samplerInfo.pNext, &borderColorInfo);
 
     if (m_vkd->vkCreateSampler(m_vkd->device(),
         &samplerInfo, nullptr, &m_sampler) != VK_SUCCESS)
