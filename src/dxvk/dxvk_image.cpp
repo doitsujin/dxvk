@@ -41,13 +41,11 @@ namespace dxvk {
 
     m_shared = canShareImage(info, createInfo.sharing);
 
-    VkExternalMemoryImageCreateInfo externalInfo;
-    if (m_shared) {
-      externalInfo.sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO;
-      externalInfo.pNext = nullptr;
-      externalInfo.handleTypes = createInfo.sharing.type;
+    VkExternalMemoryImageCreateInfo externalInfo = { VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO };
 
-      formatList.pNext = &externalInfo;
+    if (m_shared) {
+      externalInfo.pNext = std::exchange(info.pNext, &externalInfo);
+      externalInfo.handleTypes = createInfo.sharing.type;
     }
     
     if (m_vkd->vkCreateImage(m_vkd->device(),

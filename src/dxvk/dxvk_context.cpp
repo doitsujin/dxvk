@@ -23,11 +23,7 @@ namespace dxvk {
     m_state.om.framebufferInfo = makeFramebufferInfo(m_state.om.renderTargets);
 
     for (uint32_t i = 0; i < MaxNumActiveBindings; i++) {
-      m_descriptorWrites[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-      m_descriptorWrites[i].pNext = nullptr;
-      m_descriptorWrites[i].dstSet = VK_NULL_HANDLE;
-      m_descriptorWrites[i].dstBinding = 0;
-      m_descriptorWrites[i].dstArrayElement = 0;
+      m_descriptorWrites[i] = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
       m_descriptorWrites[i].descriptorCount = 1;
       m_descriptorWrites[i].descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
       m_descriptorWrites[i].pImageInfo = &m_descriptors[i].image;
@@ -326,16 +322,12 @@ namespace dxvk {
     
     VkDescriptorSet descriptorSet = m_descriptorPool->alloc(pipeInfo.dsetLayout);
     
-    VkWriteDescriptorSet descriptorWrite;
-    descriptorWrite.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrite.pNext            = nullptr;
+    VkWriteDescriptorSet descriptorWrite = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
     descriptorWrite.dstSet           = descriptorSet;
     descriptorWrite.dstBinding       = 0;
     descriptorWrite.dstArrayElement  = 0;
     descriptorWrite.descriptorCount  = 1;
     descriptorWrite.descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
-    descriptorWrite.pImageInfo       = nullptr;
-    descriptorWrite.pBufferInfo      = nullptr;
     descriptorWrite.pTexelBufferView = &viewObject;
     m_cmd->updateDescriptorSets(1, &descriptorWrite);
     
@@ -3163,17 +3155,13 @@ namespace dxvk {
     viewInfo.imageView    = imageView->handle();
     viewInfo.imageLayout  = imageView->imageInfo().layout;
     
-    VkWriteDescriptorSet descriptorWrite;
-    descriptorWrite.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrite.pNext            = nullptr;
+    VkWriteDescriptorSet descriptorWrite = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
     descriptorWrite.dstSet           = descriptorSet;
     descriptorWrite.dstBinding       = 0;
     descriptorWrite.dstArrayElement  = 0;
     descriptorWrite.descriptorCount  = 1;
     descriptorWrite.descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
     descriptorWrite.pImageInfo       = &viewInfo;
-    descriptorWrite.pBufferInfo      = nullptr;
-    descriptorWrite.pTexelBufferView = nullptr;
     m_cmd->updateDescriptorSets(1, &descriptorWrite);
     
     // Prepare shader arguments
@@ -5681,9 +5669,7 @@ namespace dxvk {
           VkAccessFlags             srcAccess,
           VkPipelineStageFlags      dstStages,
           VkAccessFlags             dstAccess) {
-    VkMemoryBarrier barrier;
-    barrier.sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-    barrier.pNext         = nullptr;
+    VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
     barrier.srcAccessMask = srcAccess;
     barrier.dstAccessMask = dstAccess;
 
