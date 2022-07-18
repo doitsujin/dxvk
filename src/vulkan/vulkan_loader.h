@@ -165,6 +165,7 @@ namespace dxvk::vk {
     VULKAN_FN(vkDestroyDevice);
     VULKAN_FN(vkGetDeviceQueue);
     VULKAN_FN(vkQueueSubmit);
+    VULKAN_FN(vkQueueSubmit2);
     VULKAN_FN(vkQueueWaitIdle);
     VULKAN_FN(vkDeviceWaitIdle);
     VULKAN_FN(vkAllocateMemory);
@@ -295,13 +296,18 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdClearAttachments);
     VULKAN_FN(vkCmdResolveImage);
     VULKAN_FN(vkCmdSetEvent);
+    VULKAN_FN(vkCmdSetEvent2);
     VULKAN_FN(vkCmdResetEvent);
+    VULKAN_FN(vkCmdResetEvent2);
     VULKAN_FN(vkCmdWaitEvents);
+    VULKAN_FN(vkCmdWaitEvents2);
     VULKAN_FN(vkCmdPipelineBarrier);
+    VULKAN_FN(vkCmdPipelineBarrier2);
     VULKAN_FN(vkCmdBeginQuery);
     VULKAN_FN(vkCmdEndQuery);
     VULKAN_FN(vkCmdResetQueryPool);
     VULKAN_FN(vkCmdWriteTimestamp);
+    VULKAN_FN(vkCmdWriteTimestamp2);
     VULKAN_FN(vkCmdCopyQueryPoolResults);
     VULKAN_FN(vkCmdPushConstants);
     VULKAN_FN(vkCmdBeginRenderPass);
