@@ -118,7 +118,7 @@ namespace dxvk {
 
     VkPipelineLayout createPipelineLayout(
             VkDescriptorSetLayout       dsetLayout,
-            size_t                      pushLayout);
+            uint32_t                    pushLayout);
 
     VkDescriptorUpdateTemplateKHR createPackDescriptorUpdateTemplate();
 

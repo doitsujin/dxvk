@@ -92,23 +92,13 @@ namespace dxvk {
 
 
   VkSampler DxvkMetaPackObjects::createSampler() {
-    VkSamplerCreateInfo info;
-    info.sType                  = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    info.pNext                  = nullptr;
-    info.flags                  = 0;
+    VkSamplerCreateInfo info = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
     info.magFilter              = VK_FILTER_NEAREST;
     info.minFilter              = VK_FILTER_NEAREST;
     info.mipmapMode             = VK_SAMPLER_MIPMAP_MODE_NEAREST;
     info.addressModeU           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     info.addressModeV           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     info.addressModeW           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.mipLodBias             = 0.0f;
-    info.anisotropyEnable       = VK_FALSE;
-    info.maxAnisotropy          = 1.0f;
-    info.compareEnable          = VK_FALSE;
-    info.compareOp              = VK_COMPARE_OP_ALWAYS;
-    info.minLod                 = 0.0f;
-    info.maxLod                 = 0.0f;
     info.borderColor            = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
     info.unnormalizedCoordinates = VK_FALSE;
     
@@ -126,10 +116,7 @@ namespace dxvk {
       { 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, &m_sampler },
     }};
 
-    VkDescriptorSetLayoutCreateInfo dsetInfo;
-    dsetInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    dsetInfo.pNext        = nullptr;
-    dsetInfo.flags        = 0;
+    VkDescriptorSetLayoutCreateInfo dsetInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
     dsetInfo.bindingCount = bindings.size();
     dsetInfo.pBindings    = bindings.data();
 
@@ -147,10 +134,7 @@ namespace dxvk {
       { 2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
     }};
 
-    VkDescriptorSetLayoutCreateInfo dsetInfo;
-    dsetInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    dsetInfo.pNext        = nullptr;
-    dsetInfo.flags        = 0;
+    VkDescriptorSetLayoutCreateInfo dsetInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
     dsetInfo.bindingCount = bindings.size();
     dsetInfo.pBindings    = bindings.data();
 
@@ -163,16 +147,10 @@ namespace dxvk {
 
   VkPipelineLayout DxvkMetaPackObjects::createPipelineLayout(
           VkDescriptorSetLayout       dsetLayout,
-          size_t                      pushLayout) {
-    VkPushConstantRange push;
-    push.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-    push.offset     = 0;
-    push.size       = pushLayout;
+          uint32_t                    pushLayout) {
+    VkPushConstantRange push = { VK_SHADER_STAGE_COMPUTE_BIT, 0, pushLayout };
 
-    VkPipelineLayoutCreateInfo layoutInfo;
-    layoutInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layoutInfo.pNext                  = nullptr;
-    layoutInfo.flags                  = 0;
+    VkPipelineLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
     layoutInfo.setLayoutCount         = 1;
     layoutInfo.pSetLayouts            = &dsetLayout;
     layoutInfo.pushConstantRangeCount = 1;
@@ -192,17 +170,13 @@ namespace dxvk {
       { 2, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, offsetof(DxvkMetaPackDescriptors, srcStencil), 0 },
     }};
 
-    VkDescriptorUpdateTemplateCreateInfo templateInfo;
-    templateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO;
-    templateInfo.pNext = nullptr;
-    templateInfo.flags = 0;
+    VkDescriptorUpdateTemplateCreateInfo templateInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO };
     templateInfo.descriptorUpdateEntryCount = bindings.size();
     templateInfo.pDescriptorUpdateEntries   = bindings.data();
     templateInfo.templateType               = VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET;
     templateInfo.descriptorSetLayout        = m_dsetLayoutPack;
     templateInfo.pipelineBindPoint          = VK_PIPELINE_BIND_POINT_COMPUTE;
     templateInfo.pipelineLayout             = m_pipeLayoutPack;
-    templateInfo.set                        = 0;
 
     VkDescriptorUpdateTemplate result = VK_NULL_HANDLE;
     if (m_vkd->vkCreateDescriptorUpdateTemplate(m_vkd->device(),
@@ -219,10 +193,7 @@ namespace dxvk {
       { 2, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       offsetof(DxvkMetaUnpackDescriptors, srcBuffer),  0 },
     }};
 
-    VkDescriptorUpdateTemplateCreateInfo templateInfo;
-    templateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO;
-    templateInfo.pNext = nullptr;
-    templateInfo.flags = 0;
+    VkDescriptorUpdateTemplateCreateInfo templateInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO };
     templateInfo.descriptorUpdateEntryCount = bindings.size();
     templateInfo.pDescriptorUpdateEntries   = bindings.data();
     templateInfo.templateType               = VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET;
@@ -242,10 +213,7 @@ namespace dxvk {
   VkPipeline DxvkMetaPackObjects::createPipeline(
           VkPipelineLayout      pipeLayout,
     const SpirvCodeBuffer&      code) {
-    VkShaderModuleCreateInfo shaderInfo;
-    shaderInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    shaderInfo.pNext    = nullptr;
-    shaderInfo.flags    = 0;
+    VkShaderModuleCreateInfo shaderInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
     shaderInfo.codeSize = code.size();
     shaderInfo.pCode    = code.data();
 
@@ -254,22 +222,14 @@ namespace dxvk {
     if (m_vkd->vkCreateShaderModule(m_vkd->device(), &shaderInfo, nullptr, &module) != VK_SUCCESS)
       throw DxvkError("DxvkMetaPackObjects: Failed to create shader module");
     
-    VkPipelineShaderStageCreateInfo stageInfo;
-    stageInfo.sType     = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    stageInfo.pNext     = nullptr;
-    stageInfo.flags     = 0;
+    VkPipelineShaderStageCreateInfo stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
     stageInfo.stage     = VK_SHADER_STAGE_COMPUTE_BIT;
     stageInfo.module    = module;
     stageInfo.pName     = "main";
-    stageInfo.pSpecializationInfo = nullptr;
     
-    VkComputePipelineCreateInfo pipeInfo;
-    pipeInfo.sType      = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    pipeInfo.pNext      = nullptr;
-    pipeInfo.flags      = 0;
+    VkComputePipelineCreateInfo pipeInfo = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
     pipeInfo.stage      = stageInfo;
     pipeInfo.layout     = pipeLayout;
-    pipeInfo.basePipelineHandle = VK_NULL_HANDLE;
     pipeInfo.basePipelineIndex  = -1;
 
     VkPipeline result = VK_NULL_HANDLE;

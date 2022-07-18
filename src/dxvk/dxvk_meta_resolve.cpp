@@ -116,25 +116,14 @@ namespace dxvk {
   
   
   VkSampler DxvkMetaResolveObjects::createSampler() const {
-    VkSamplerCreateInfo info;
-    info.sType                  = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    info.pNext                  = nullptr;
-    info.flags                  = 0;
+    VkSamplerCreateInfo info = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
     info.magFilter              = VK_FILTER_NEAREST;
     info.minFilter              = VK_FILTER_NEAREST;
     info.mipmapMode             = VK_SAMPLER_MIPMAP_MODE_NEAREST;
     info.addressModeU           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     info.addressModeV           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     info.addressModeW           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.mipLodBias             = 0.0f;
-    info.anisotropyEnable       = VK_FALSE;
-    info.maxAnisotropy          = 1.0f;
-    info.compareEnable          = VK_FALSE;
-    info.compareOp              = VK_COMPARE_OP_ALWAYS;
-    info.minLod                 = 0.0f;
-    info.maxLod                 = 0.0f;
     info.borderColor            = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-    info.unnormalizedCoordinates = VK_FALSE;
     
     VkSampler result = VK_NULL_HANDLE;
     if (m_vkd->vkCreateSampler(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
@@ -145,10 +134,7 @@ namespace dxvk {
   
   VkShaderModule DxvkMetaResolveObjects::createShaderModule(
     const SpirvCodeBuffer&       code) const {
-    VkShaderModuleCreateInfo info;
-    info.sType                  = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    info.pNext                  = nullptr;
-    info.flags                  = 0;
+    VkShaderModuleCreateInfo info = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
     info.codeSize               = code.size();
     info.pCode                  = code.data();
     

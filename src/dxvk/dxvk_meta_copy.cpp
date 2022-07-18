@@ -192,10 +192,7 @@ namespace dxvk {
   
   VkShaderModule DxvkMetaCopyObjects::createShaderModule(
     const SpirvCodeBuffer&          code) const {
-    VkShaderModuleCreateInfo info;
-    info.sType                  = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    info.pNext                  = nullptr;
-    info.flags                  = 0;
+    VkShaderModuleCreateInfo info = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
     info.codeSize               = code.size();
     info.pCode                  = code.data();
     

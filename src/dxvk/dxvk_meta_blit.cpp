@@ -74,15 +74,10 @@ namespace dxvk {
       VK_IMAGE_VIEW_TYPE_2D_ARRAY,
     }};
 
-    VkImageViewUsageCreateInfo usageInfo;
-    usageInfo.sType       = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
-    usageInfo.pNext       = nullptr;
+    VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
     usageInfo.usage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    VkImageViewCreateInfo info;
-    info.sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    info.pNext            = &usageInfo;
-    info.flags            = 0;
+    VkImageViewCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, &usageInfo };
     info.image            = m_dstImage->handle();
     info.viewType         = viewTypes.at(uint32_t(m_dstImage->info().type));
     info.format           = m_dstImage->info().format;
@@ -102,15 +97,10 @@ namespace dxvk {
 
 
   VkImageView DxvkMetaBlitRenderPass::createSrcView(const VkComponentMapping& mapping) {
-    VkImageViewUsageCreateInfo usageInfo;
-    usageInfo.sType       = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
-    usageInfo.pNext       = nullptr;
+    VkImageViewUsageCreateInfo usageInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
     usageInfo.usage       = VK_IMAGE_USAGE_SAMPLED_BIT;
 
-    VkImageViewCreateInfo info;
-    info.sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    info.pNext            = &usageInfo;
-    info.flags            = 0;
+    VkImageViewCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, &usageInfo };
     info.image            = m_srcImage->handle();
     info.viewType         = this->viewType();
     info.format           = m_srcImage->info().format;
@@ -189,25 +179,14 @@ namespace dxvk {
   
   
   VkSampler DxvkMetaBlitObjects::createSampler(VkFilter filter) const {
-    VkSamplerCreateInfo info;
-    info.sType                  = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-    info.pNext                  = nullptr;
-    info.flags                  = 0;
+    VkSamplerCreateInfo info = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
     info.magFilter              = filter;
     info.minFilter              = filter;
     info.mipmapMode             = VK_SAMPLER_MIPMAP_MODE_NEAREST;
     info.addressModeU           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     info.addressModeV           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     info.addressModeW           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.mipLodBias             = 0.0f;
-    info.anisotropyEnable       = VK_FALSE;
-    info.maxAnisotropy          = 1.0f;
-    info.compareEnable          = VK_FALSE;
-    info.compareOp              = VK_COMPARE_OP_ALWAYS;
-    info.minLod                 = 0.0f;
-    info.maxLod                 = 0.0f;
     info.borderColor            = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-    info.unnormalizedCoordinates = VK_FALSE;
     
     VkSampler result = VK_NULL_HANDLE;
     if (m_vkd->vkCreateSampler(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
@@ -217,10 +196,7 @@ namespace dxvk {
   
   
   VkShaderModule DxvkMetaBlitObjects::createShaderModule(const SpirvCodeBuffer& code) const {
-    VkShaderModuleCreateInfo info;
-    info.sType                  = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    info.pNext                  = nullptr;
-    info.flags                  = 0;
+    VkShaderModuleCreateInfo info = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
     info.codeSize               = code.size();
     info.pCode                  = code.data();
     
