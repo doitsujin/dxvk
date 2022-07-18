@@ -707,8 +707,8 @@ namespace dxvk {
 
     void cmdSetEvent(
             VkEvent                 event,
-            VkPipelineStageFlags    stages) {
-      m_vkd->vkCmdSetEvent(m_execBuffer, event, stages);
+      const VkDependencyInfo*       dependencyInfo) {
+      m_vkd->vkCmdSetEvent2(m_execBuffer, event, dependencyInfo);
     }
 
 

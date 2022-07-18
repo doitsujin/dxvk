@@ -2524,8 +2524,17 @@ namespace dxvk {
     
     DxvkGpuEventHandle handle = m_common->eventPool().allocEvent();
 
-    m_cmd->cmdSetEvent(handle.event,
-      VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
+    // Supported client APIs can't access device memory in a defined manner
+    // without triggering a queue submission first, so we really only need
+    // to wait for prior commands, especially queries, to complete.
+    VkMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+    barrier.srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+
+    VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+    depInfo.memoryBarrierCount = 1;
+    depInfo.pMemoryBarriers = &barrier;
+
+    m_cmd->cmdSetEvent(handle.event, &depInfo);
 
     m_cmd->trackGpuEvent(event->reset(handle));
     m_cmd->trackResource<DxvkAccess::None>(event);
