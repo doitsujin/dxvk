@@ -446,7 +446,7 @@ namespace dxvk {
       queueInfos.push_back(graphicsQueue);
     }
 
-    VkDeviceCreateInfo info = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO, &enabledFeatures.core.pNext };
+    VkDeviceCreateInfo info = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO, enabledFeatures.core.pNext };
     info.queueCreateInfoCount       = queueInfos.size();
     info.pQueueCreateInfos          = queueInfos.data();
     info.enabledExtensionCount      = extensionNameList.count();
