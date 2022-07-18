@@ -28,12 +28,8 @@ namespace dxvk {
   
   
   DxvkAdapterMemoryInfo DxvkAdapter::getMemoryHeapInfo() const {
-    VkPhysicalDeviceMemoryBudgetPropertiesEXT memBudget = { };
-    memBudget.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT;
-    memBudget.pNext = nullptr;
-
-    VkPhysicalDeviceMemoryProperties2 memProps = { };
-    memProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
+    VkPhysicalDeviceMemoryBudgetPropertiesEXT memBudget = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT };
+    VkPhysicalDeviceMemoryProperties2 memProps = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2 };
     memProps.pNext = m_hasMemoryBudget ? &memBudget : nullptr;
 
     m_vki->vkGetPhysicalDeviceMemoryProperties2(m_handle, &memProps);
@@ -428,9 +424,7 @@ namespace dxvk {
     }
 
     // Report the desired overallocation behaviour to the driver
-    VkDeviceMemoryOverallocationCreateInfoAMD overallocInfo;
-    overallocInfo.sType = VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD;
-    overallocInfo.pNext = nullptr;
+    VkDeviceMemoryOverallocationCreateInfoAMD overallocInfo = { VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD };
     overallocInfo.overallocationBehavior = VK_MEMORY_OVERALLOCATION_BEHAVIOR_ALLOWED_AMD;
     
     // Create the requested queues
@@ -445,24 +439,16 @@ namespace dxvk {
     this->logQueueFamilies(queueFamilies);
     
     for (uint32_t family : queueFamiliySet) {
-      VkDeviceQueueCreateInfo graphicsQueue;
-      graphicsQueue.sType             = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-      graphicsQueue.pNext             = nullptr;
-      graphicsQueue.flags             = 0;
+      VkDeviceQueueCreateInfo graphicsQueue = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
       graphicsQueue.queueFamilyIndex  = family;
       graphicsQueue.queueCount        = 1;
       graphicsQueue.pQueuePriorities  = &queuePriority;
       queueInfos.push_back(graphicsQueue);
     }
 
-    VkDeviceCreateInfo info;
-    info.sType                      = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    info.pNext                      = enabledFeatures.core.pNext;
-    info.flags                      = 0;
+    VkDeviceCreateInfo info = { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO, &enabledFeatures.core.pNext };
     info.queueCreateInfoCount       = queueInfos.size();
     info.pQueueCreateInfos          = queueInfos.data();
-    info.enabledLayerCount          = 0;
-    info.ppEnabledLayerNames        = nullptr;
     info.enabledExtensionCount      = extensionNameList.count();
     info.ppEnabledExtensionNames    = extensionNameList.names();
     info.pEnabledFeatures           = &enabledFeatures.core.features;
