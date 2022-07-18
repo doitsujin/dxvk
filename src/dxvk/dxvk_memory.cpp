@@ -407,16 +407,15 @@ namespace dxvk {
     result.memFlags = flags;
     result.priority = priority;
 
-    VkMemoryPriorityAllocateInfoEXT prio;
-    prio.sType            = VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT;
-    prio.pNext            = dedAllocInfo;
+    VkMemoryPriorityAllocateInfoEXT prio = { VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT };
     prio.priority         = priority;
 
-    VkMemoryAllocateInfo info;
-    info.sType            = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    info.pNext            = useMemoryPriority ? &prio : prio.pNext;
+    VkMemoryAllocateInfo info = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO, dedAllocInfo };
     info.allocationSize   = size;
     info.memoryTypeIndex  = type->memTypeId;
+
+    if (useMemoryPriority)
+      prio.pNext = std::exchange(info.pNext, &prio);
 
     if (m_vkd->vkAllocateMemory(m_vkd->device(), &info, nullptr, &result.memHandle) != VK_SUCCESS)
       return DxvkDeviceMemory();

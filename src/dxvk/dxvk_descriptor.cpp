@@ -305,10 +305,7 @@ namespace dxvk {
       { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   maxSets / 64 },
       { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxSets * 1  } }};
     
-    VkDescriptorPoolCreateInfo info;
-    info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    info.pNext         = nullptr;
-    info.flags         = 0;
+    VkDescriptorPoolCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
     info.maxSets       = maxSets;
     info.poolSizeCount = pools.size();
     info.pPoolSizes    = pools.data();
