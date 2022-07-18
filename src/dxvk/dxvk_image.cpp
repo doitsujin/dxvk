@@ -22,15 +22,11 @@ namespace dxvk {
 
     // If defined, we should provide a format list, which
     // allows some drivers to enable image compression
-    VkImageFormatListCreateInfo formatList;
-    formatList.sType           = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO;
-    formatList.pNext           = nullptr;
+    VkImageFormatListCreateInfo formatList = { VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO };
     formatList.viewFormatCount = createInfo.viewFormatCount;
     formatList.pViewFormats    = createInfo.viewFormats;
     
-    VkImageCreateInfo info;
-    info.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    info.pNext                 = &formatList;
+    VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, &formatList };
     info.flags                 = createInfo.flags;
     info.imageType             = createInfo.type;
     info.format                = createInfo.format;
@@ -41,8 +37,6 @@ namespace dxvk {
     info.tiling                = createInfo.tiling;
     info.usage                 = createInfo.usage;
     info.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
-    info.queueFamilyIndexCount = 0;
-    info.pQueueFamilyIndices   = nullptr;
     info.initialLayout         = createInfo.initialLayout;
 
     m_shared = canShareImage(info, createInfo.sharing);
@@ -76,46 +70,27 @@ namespace dxvk {
     // alignment on non-linear images in order not to violate the
     // bufferImageGranularity limit, which may be greater than the
     // required resource memory alignment on some GPUs.
-    VkMemoryDedicatedRequirements dedicatedRequirements;
-    dedicatedRequirements.sType                       = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
-    dedicatedRequirements.pNext                       = VK_NULL_HANDLE;
-    dedicatedRequirements.prefersDedicatedAllocation  = VK_FALSE;
-    dedicatedRequirements.requiresDedicatedAllocation = VK_FALSE;
+    VkMemoryDedicatedRequirements dedicatedRequirements = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS };
+    VkMemoryRequirements2 memReq = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2, &dedicatedRequirements };
     
-    VkMemoryRequirements2 memReq;
-    memReq.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
-    memReq.pNext = &dedicatedRequirements;
-    
-    VkImageMemoryRequirementsInfo2 memReqInfo;
-    memReqInfo.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2;
+    VkImageMemoryRequirementsInfo2 memReqInfo = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2 };
     memReqInfo.image = m_image.image;
-    memReqInfo.pNext = VK_NULL_HANDLE;
 
-    VkMemoryDedicatedAllocateInfo dedMemoryAllocInfo;
-    dedMemoryAllocInfo.sType  = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
-    dedMemoryAllocInfo.pNext  = VK_NULL_HANDLE;
-    dedMemoryAllocInfo.buffer = VK_NULL_HANDLE;
+    VkMemoryDedicatedAllocateInfo dedMemoryAllocInfo = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
     dedMemoryAllocInfo.image  = m_image.image;
 
-    VkExportMemoryAllocateInfo exportInfo;
+    VkExportMemoryAllocateInfo exportInfo = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO };
     if (m_shared && createInfo.sharing.mode == DxvkSharedHandleMode::Export) {
-      exportInfo.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
-      exportInfo.pNext = nullptr;
+      exportInfo.pNext = std::exchange(dedMemoryAllocInfo.pNext, &exportInfo);
       exportInfo.handleTypes = createInfo.sharing.type;
-
-      dedMemoryAllocInfo.pNext = &exportInfo;
     }
 
 #ifdef _WIN32
-    VkImportMemoryWin32HandleInfoKHR importInfo;
+    VkImportMemoryWin32HandleInfoKHR importInfo = { VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR };
     if (m_shared && createInfo.sharing.mode == DxvkSharedHandleMode::Import) {
-      importInfo.sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR;
-      importInfo.pNext = nullptr;
+      importInfo.pNext = std::exchange(dedMemoryAllocInfo.pNext, &importInfo);
       importInfo.handleType = createInfo.sharing.type;
       importInfo.handle = createInfo.sharing.handle;
-      importInfo.name = nullptr;
-
-      dedMemoryAllocInfo.pNext = &importInfo;
     }
 #endif
 
@@ -186,29 +161,18 @@ namespace dxvk {
       return false;
     }
 
-    VkPhysicalDeviceExternalImageFormatInfo externalImageFormatInfo;
-    externalImageFormatInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO;
-    externalImageFormatInfo.pNext = VK_NULL_HANDLE;
+    VkPhysicalDeviceExternalImageFormatInfo externalImageFormatInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO };
     externalImageFormatInfo.handleType = sharingInfo.type;
 
-    VkPhysicalDeviceImageFormatInfo2 imageFormatInfo;
-    imageFormatInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2;
-    imageFormatInfo.pNext = &externalImageFormatInfo;
+    VkPhysicalDeviceImageFormatInfo2 imageFormatInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2, &externalImageFormatInfo };
     imageFormatInfo.format = createInfo.format;
     imageFormatInfo.type = createInfo.imageType;
     imageFormatInfo.tiling = createInfo.tiling;
     imageFormatInfo.usage = createInfo.usage;
     imageFormatInfo.flags = createInfo.flags;
 
-    VkExternalImageFormatProperties externalImageFormatProperties;
-    externalImageFormatProperties.sType = VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES;
-    externalImageFormatProperties.pNext = nullptr;
-    externalImageFormatProperties.externalMemoryProperties = {};
-
-    VkImageFormatProperties2 imageFormatProperties;
-    imageFormatProperties.sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2;
-    imageFormatProperties.pNext = &externalImageFormatProperties;
-    imageFormatProperties.imageFormatProperties = {};
+    VkExternalImageFormatProperties externalImageFormatProperties = { VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES };
+    VkImageFormatProperties2 imageFormatProperties = { VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2, &externalImageFormatProperties };
 
     VkResult vr = m_device->adapter()->vki()->vkGetPhysicalDeviceImageFormatProperties2(
       m_device->adapter()->handle(), &imageFormatInfo, &imageFormatProperties);
@@ -243,9 +207,7 @@ namespace dxvk {
       return INVALID_HANDLE_VALUE;
 
 #ifdef _WIN32
-    VkMemoryGetWin32HandleInfoKHR handleInfo;
-    handleInfo.sType = VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR;
-    handleInfo.pNext = nullptr;
+    VkMemoryGetWin32HandleInfoKHR handleInfo = { VK_STRUCTURE_TYPE_MEMORY_GET_WIN32_HANDLE_INFO_KHR };
     handleInfo.handleType = m_info.sharing.type;
     handleInfo.memory = m_image.memory.memory();
     if (m_vkd->vkGetMemoryWin32HandleKHR(m_vkd->device(), &handleInfo, &handle) != VK_SUCCESS)
@@ -319,15 +281,10 @@ namespace dxvk {
     subresourceRange.baseArrayLayer = m_info.minLayer;
     subresourceRange.layerCount     = numLayers;
 
-    VkImageViewUsageCreateInfo viewUsage;
-    viewUsage.sType           = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO;
-    viewUsage.pNext           = nullptr;
+    VkImageViewUsageCreateInfo viewUsage = { VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO };
     viewUsage.usage           = m_info.usage;
     
-    VkImageViewCreateInfo viewInfo;
-    viewInfo.sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.pNext            = &viewUsage;
-    viewInfo.flags            = 0;
+    VkImageViewCreateInfo viewInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO, &viewUsage };
     viewInfo.image            = m_image->handle();
     viewInfo.viewType         = type;
     viewInfo.format           = m_info.format;
