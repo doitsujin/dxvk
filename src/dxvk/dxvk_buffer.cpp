@@ -58,15 +58,10 @@ namespace dxvk {
   DxvkBufferHandle DxvkBuffer::allocBuffer(VkDeviceSize sliceCount, bool clear) const {
     auto vkd = m_device->vkd();
 
-    VkBufferCreateInfo info;
-    info.sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    info.pNext                 = nullptr;
-    info.flags                 = 0;
+    VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
     info.size                  = m_physSliceStride * sliceCount;
     info.usage                 = m_info.usage;
     info.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
-    info.queueFamilyIndexCount = 0;
-    info.pQueueFamilyIndices   = nullptr;
     
     DxvkBufferHandle handle;
 
@@ -78,26 +73,14 @@ namespace dxvk {
         "\n  usage: ", info.usage));
     }
     
-    VkMemoryDedicatedRequirements dedicatedRequirements;
-    dedicatedRequirements.sType                       = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
-    dedicatedRequirements.pNext                       = VK_NULL_HANDLE;
-    dedicatedRequirements.prefersDedicatedAllocation  = VK_FALSE;
-    dedicatedRequirements.requiresDedicatedAllocation = VK_FALSE;
+    VkMemoryDedicatedRequirements dedicatedRequirements = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS };
+    VkMemoryRequirements2 memReq = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2, &dedicatedRequirements };
     
-    VkMemoryRequirements2 memReq;
-    memReq.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
-    memReq.pNext = &dedicatedRequirements;
-    
-    VkBufferMemoryRequirementsInfo2 memReqInfo;
-    memReqInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2;
+    VkBufferMemoryRequirementsInfo2 memReqInfo = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2 };
     memReqInfo.buffer = handle.buffer;
-    memReqInfo.pNext  = VK_NULL_HANDLE;
     
-    VkMemoryDedicatedAllocateInfo dedMemoryAllocInfo;
-    dedMemoryAllocInfo.sType  = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO;
-    dedMemoryAllocInfo.pNext  = VK_NULL_HANDLE;
+    VkMemoryDedicatedAllocateInfo dedMemoryAllocInfo = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
     dedMemoryAllocInfo.buffer = handle.buffer;
-    dedMemoryAllocInfo.image  = VK_NULL_HANDLE;
 
     vkd->vkGetBufferMemoryRequirements2(
        vkd->device(), &memReqInfo, &memReq);
@@ -199,10 +182,7 @@ namespace dxvk {
   
   VkBufferView DxvkBufferView::createBufferView(
     const DxvkBufferSliceHandle& slice) {
-    VkBufferViewCreateInfo viewInfo;
-    viewInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
-    viewInfo.pNext  = nullptr;
-    viewInfo.flags  = 0;
+    VkBufferViewCreateInfo viewInfo = { VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO };
     viewInfo.buffer = slice.handle;
     viewInfo.format = m_info.format;
     viewInfo.offset = slice.offset;
