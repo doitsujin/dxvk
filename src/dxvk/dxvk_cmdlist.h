@@ -38,13 +38,12 @@ namespace dxvk {
    * only, array sizes are based on need.
    */
   struct DxvkQueueSubmission {
-    uint32_t              waitCount;
-    VkSemaphore           waitSync[2];
-    VkPipelineStageFlags  waitMask[2];
-    uint32_t              wakeCount;
-    VkSemaphore           wakeSync[2];
-    uint32_t              cmdBufferCount;
-    VkCommandBuffer       cmdBuffers[4];
+    uint32_t                  waitCount;
+    VkSemaphoreSubmitInfo     waitSync[2];
+    uint32_t                  wakeCount;
+    VkSemaphoreSubmitInfo     wakeSync[2];
+    uint32_t                  cmdBufferCount;
+    VkCommandBufferSubmitInfo cmdBuffers[4];
   };
 
   /**
