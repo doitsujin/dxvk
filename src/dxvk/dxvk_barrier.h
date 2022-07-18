@@ -538,7 +538,7 @@ namespace dxvk {
       const VkImageSubresourceRange&  imgSubres);
     
     VkPipelineStageFlags getSrcStages() {
-      return m_srcStages;
+      return m_allBarrierSrcStages;
     }
     
     void recordCommands(
@@ -567,15 +567,12 @@ namespace dxvk {
     };
 
     DxvkCmdBuffer m_cmdBuffer;
-    
-    VkPipelineStageFlags m_srcStages = 0;
-    VkPipelineStageFlags m_dstStages = 0;
 
-    VkAccessFlags m_srcAccess = 0;
-    VkAccessFlags m_dstAccess = 0;
-    
-    std::vector<VkBufferMemoryBarrier> m_bufBarriers;
-    std::vector<VkImageMemoryBarrier>  m_imgBarriers;
+    VkPipelineStageFlags2 m_allBarrierSrcStages = 0;
+
+    VkMemoryBarrier2 m_memBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+    std::vector<VkBufferMemoryBarrier2> m_bufBarriers;
+    std::vector<VkImageMemoryBarrier2>  m_imgBarriers;
 
     DxvkBarrierSubresourceSet<VkBuffer, DxvkBarrierBufferSlice> m_bufSlices;
     DxvkBarrierSubresourceSet<VkImage,  DxvkBarrierImageSlice>  m_imgSlices;

@@ -950,7 +950,7 @@ namespace dxvk {
         srcBufferSlice.handle, tmpBufferSlice.handle,
         1, &copyRegion);
 
-      emitMemoryBarrier(0,
+      emitMemoryBarrier(
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_WRITE_BIT,
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
@@ -1456,7 +1456,8 @@ namespace dxvk {
           VkImageLayout             initialLayout) {
     if (initialLayout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
       m_initBarriers.accessImage(image, subresources,
-        initialLayout, 0, 0,
+        initialLayout,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
         image->info().layout,
         image->info().stages,
         image->info().access);
@@ -1466,7 +1467,9 @@ namespace dxvk {
       VkImageLayout clearLayout = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
       m_execAcquires.accessImage(image, subresources,
-        initialLayout, 0, 0, clearLayout,
+        initialLayout,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
+        clearLayout,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_WRITE_BIT);
       m_execAcquires.recordCommands(m_cmd);
@@ -2261,7 +2264,8 @@ namespace dxvk {
     // Discard previous subresource contents
     barriers->accessImage(image,
       vk::makeSubresourceRange(subresources),
-      VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
+      VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
       image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
@@ -4545,14 +4549,16 @@ namespace dxvk {
     srcBarrier.stages |= pipelineBarrier.stages;
     srcBarrier.access |= pipelineBarrier.access;
 
-    DxvkAccessFlags access = DxvkBarrierSet::getAccessTypes(srcBarrier.access);
-    DxvkGlobalPipelineBarrier dstBarrier = access.test(DxvkAccess::Write)
-      ? m_globalRwGraphicsBarrier
-      : m_globalRoGraphicsBarrier;
+    if (srcBarrier.stages) {
+      DxvkAccessFlags access = DxvkBarrierSet::getAccessTypes(srcBarrier.access);
+      DxvkGlobalPipelineBarrier dstBarrier = access.test(DxvkAccess::Write)
+        ? m_globalRwGraphicsBarrier
+        : m_globalRoGraphicsBarrier;
 
-    m_execBarriers.accessMemory(
-      srcBarrier.stages, srcBarrier.access,
-      dstBarrier.stages, dstBarrier.access);
+      m_execBarriers.accessMemory(
+        srcBarrier.stages, srcBarrier.access,
+        dstBarrier.stages, dstBarrier.access);
+    }
 
     m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
     return true;
@@ -5664,19 +5670,21 @@ namespace dxvk {
 
 
   void DxvkContext::emitMemoryBarrier(
-          VkDependencyFlags         flags,
           VkPipelineStageFlags      srcStages,
           VkAccessFlags             srcAccess,
           VkPipelineStageFlags      dstStages,
           VkAccessFlags             dstAccess) {
-    VkMemoryBarrier barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
+    VkMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+    barrier.srcStageMask = srcStages;
     barrier.srcAccessMask = srcAccess;
+    barrier.dstStageMask = dstStages;
     barrier.dstAccessMask = dstAccess;
 
-    m_cmd->cmdPipelineBarrier(
-      DxvkCmdBuffer::ExecBuffer, srcStages, dstStages,
-      flags, 1, &barrier, 0, nullptr, 0, nullptr);
+    VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+    depInfo.memoryBarrierCount = 1;
+    depInfo.pMemoryBarriers = &barrier;
 
+    m_cmd->cmdPipelineBarrier(DxvkCmdBuffer::ExecBuffer, &depInfo);
     m_cmd->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1);
   }
 

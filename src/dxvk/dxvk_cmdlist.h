@@ -607,22 +607,10 @@ namespace dxvk {
     
     void cmdPipelineBarrier(
             DxvkCmdBuffer           cmdBuffer,
-            VkPipelineStageFlags    srcStageMask,
-            VkPipelineStageFlags    dstStageMask,
-            VkDependencyFlags       dependencyFlags,
-            uint32_t                memoryBarrierCount,
-      const VkMemoryBarrier*        pMemoryBarriers,
-            uint32_t                bufferMemoryBarrierCount,
-      const VkBufferMemoryBarrier*  pBufferMemoryBarriers,
-            uint32_t                imageMemoryBarrierCount,
-      const VkImageMemoryBarrier*   pImageMemoryBarriers) {
+      const VkDependencyInfo*       dependencyInfo) {
       m_cmdBuffersUsed.set(cmdBuffer);
 
-      m_vkd->vkCmdPipelineBarrier(getCmdBuffer(cmdBuffer),
-        srcStageMask, dstStageMask, dependencyFlags,
-        memoryBarrierCount,       pMemoryBarriers,
-        bufferMemoryBarrierCount, pBufferMemoryBarriers,
-        imageMemoryBarrierCount,  pImageMemoryBarriers);
+      m_vkd->vkCmdPipelineBarrier2(getCmdBuffer(cmdBuffer), dependencyInfo);
     }
     
     

@@ -44,13 +44,13 @@ namespace dxvk {
           VkAccessFlags             dstAccess) {
     DxvkAccessFlags access = this->getAccessTypes(srcAccess);
 
-    m_srcStages |= srcStages;
-    m_dstStages |= dstStages;
-    
-    m_srcAccess |= srcAccess & AccessWriteMask;
+    m_allBarrierSrcStages |= srcStages;
+    m_memBarrier.srcStageMask  |= srcStages;
+    m_memBarrier.srcAccessMask |= srcAccess & AccessWriteMask;
+    m_memBarrier.dstStageMask  |= dstStages;
 
     if (access.test(DxvkAccess::Write))
-      m_dstAccess |= dstAccess;
+      m_memBarrier.dstAccessMask |= dstAccess;
   }
 
 
@@ -62,17 +62,13 @@ namespace dxvk {
           VkAccessFlags             dstAccess) {
     DxvkAccessFlags access = this->getAccessTypes(srcAccess);
     
-    if (srcStages == VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
-     || dstStages == VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)
-      access.set(DxvkAccess::Write);
+    m_allBarrierSrcStages |= srcStages;
+    m_memBarrier.srcStageMask  |= srcStages;
+    m_memBarrier.srcAccessMask |= srcAccess & AccessWriteMask;
+    m_memBarrier.dstStageMask  |= dstStages;
     
-    m_srcStages |= srcStages;
-    m_dstStages |= dstStages;
-    
-    m_srcAccess |= srcAccess & AccessWriteMask;
-
     if (access.test(DxvkAccess::Write))
-      m_dstAccess |= dstAccess;
+      m_memBarrier.dstAccessMask |= dstAccess;
 
     m_bufSlices.insert(bufSlice.handle,
       DxvkBarrierBufferSlice(bufSlice.offset, bufSlice.length, access));
@@ -90,22 +86,20 @@ namespace dxvk {
           VkAccessFlags             dstAccess) {
     DxvkAccessFlags access = this->getAccessTypes(srcAccess);
 
-    if (srcStages == VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
-     || dstStages == VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
-     || srcLayout != dstLayout)
-      access.set(DxvkAccess::Write);
-    
-    m_srcStages |= srcStages;
-    m_dstStages |= dstStages;
-    
+    m_allBarrierSrcStages |= srcStages;
+
     if (srcLayout == dstLayout) {
-      m_srcAccess |= srcAccess & AccessWriteMask;
+      m_memBarrier.srcStageMask  |= srcStages;
+      m_memBarrier.srcAccessMask |= srcAccess & AccessWriteMask;
+      m_memBarrier.dstStageMask  |= dstStages;
 
       if (access.test(DxvkAccess::Write))
-        m_dstAccess |= dstAccess;
+        m_memBarrier.dstAccessMask |= dstAccess;
     } else {
-      VkImageMemoryBarrier barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+      VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
+      barrier.srcStageMask                = srcStages;
       barrier.srcAccessMask               = srcAccess & AccessWriteMask;
+      barrier.dstStageMask                = dstStages;
       barrier.dstAccessMask               = dstAccess;
       barrier.oldLayout                   = srcLayout;
       barrier.newLayout                   = dstLayout;
@@ -115,6 +109,8 @@ namespace dxvk {
       barrier.subresourceRange            = subresources;
       barrier.subresourceRange.aspectMask = image->formatInfo()->aspectMask;
       m_imgBarriers.push_back(barrier);
+
+      access.set(DxvkAccess::Write);
     }
 
     m_imgSlices.insert(image->handle(),
@@ -133,11 +129,12 @@ namespace dxvk {
           VkAccessFlags             dstAccess) {
     auto& release = *this;
 
-    release.m_srcStages |= srcStages;
-    acquire.m_dstStages |= dstStages;
+    m_allBarrierSrcStages |= srcStages;
 
-    VkBufferMemoryBarrier barrier = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER };
+    VkBufferMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2 };
+    barrier.srcStageMask                = srcStages;
     barrier.srcAccessMask               = srcAccess & AccessWriteMask;
+    barrier.dstStageMask                = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
     barrier.dstAccessMask               = 0;
     barrier.srcQueueFamilyIndex         = srcQueue;
     barrier.dstQueueFamilyIndex         = dstQueue;
@@ -146,7 +143,9 @@ namespace dxvk {
     barrier.size                        = bufSlice.length;
     release.m_bufBarriers.push_back(barrier);
 
+    barrier.srcStageMask                = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
     barrier.srcAccessMask               = 0;
+    barrier.dstStageMask                = dstStages;
     barrier.dstAccessMask               = dstAccess;
     acquire.m_bufBarriers.push_back(barrier);
 
@@ -172,13 +171,12 @@ namespace dxvk {
           VkAccessFlags             dstAccess) {
     auto& release = *this;
 
-    release.m_srcStages |= srcStages;
-    acquire.m_dstStages |= dstStages;
+    m_allBarrierSrcStages |= srcStages;
 
-    VkImageMemoryBarrier barrier;
-    barrier.sType                       = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.pNext                       = nullptr;
+    VkImageMemoryBarrier2 barrier = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2 };
+    barrier.srcStageMask                = srcStages;
     barrier.srcAccessMask               = srcAccess & AccessWriteMask;
+    barrier.dstStageMask                = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
     barrier.dstAccessMask               = 0;
     barrier.oldLayout                   = srcLayout;
     barrier.newLayout                   = dstLayout;
@@ -192,7 +190,9 @@ namespace dxvk {
     if (srcQueue == dstQueue)
       barrier.oldLayout = dstLayout;
 
+    barrier.srcStageMask                = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
     barrier.srcAccessMask               = 0;
+    barrier.dstStageMask                = dstStages;
     barrier.dstAccessMask               = dstAccess;
     acquire.m_imgBarriers.push_back(barrier);
 
@@ -237,29 +237,25 @@ namespace dxvk {
 
 
   void DxvkBarrierSet::recordCommands(const Rc<DxvkCommandList>& commandList) {
-    if (m_srcStages | m_dstStages) {
-      VkPipelineStageFlags srcFlags = m_srcStages;
-      VkPipelineStageFlags dstFlags = m_dstStages;
-      
-      if (!srcFlags) srcFlags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-      if (!dstFlags) dstFlags = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+    VkDependencyInfo depInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
 
-      VkMemoryBarrier memBarrier = { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
-      memBarrier.srcAccessMask = m_srcAccess;
-      memBarrier.dstAccessMask = m_dstAccess;
+    if (m_memBarrier.srcStageMask | m_memBarrier.dstStageMask) {
+      depInfo.memoryBarrierCount = 1;
+      depInfo.pMemoryBarriers = &m_memBarrier;
+    }
 
-      VkMemoryBarrier* pMemBarrier = nullptr;
-      if (m_srcAccess | m_dstAccess)
-        pMemBarrier = &memBarrier;
-      
-      commandList->cmdPipelineBarrier(
-        m_cmdBuffer, srcFlags, dstFlags, 0,
-        pMemBarrier ? 1 : 0, pMemBarrier,
-        m_bufBarriers.size(),
-        m_bufBarriers.data(),
-        m_imgBarriers.size(),
-        m_imgBarriers.data());
-      
+    if (!m_bufBarriers.empty()) {
+      depInfo.bufferMemoryBarrierCount = m_bufBarriers.size();
+      depInfo.pBufferMemoryBarriers = m_bufBarriers.data();
+    }
+
+    if (!m_imgBarriers.empty()) {
+      depInfo.imageMemoryBarrierCount = m_imgBarriers.size();
+      depInfo.pImageMemoryBarriers = m_imgBarriers.data();
+    }
+
+    if (depInfo.memoryBarrierCount + depInfo.bufferMemoryBarrierCount + depInfo.imageMemoryBarrierCount) {
+      commandList->cmdPipelineBarrier(m_cmdBuffer, &depInfo);
       commandList->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1);
 
       this->reset();
@@ -268,11 +264,12 @@ namespace dxvk {
   
   
   void DxvkBarrierSet::reset() {
-    m_srcStages = 0;
-    m_dstStages = 0;
+    m_allBarrierSrcStages = 0;
 
-    m_srcAccess = 0;
-    m_dstAccess = 0;
+    m_memBarrier.srcStageMask = 0;
+    m_memBarrier.srcAccessMask = 0;
+    m_memBarrier.dstStageMask = 0;
+    m_memBarrier.dstAccessMask = 0;
     
     m_bufBarriers.resize(0);
     m_imgBarriers.resize(0);

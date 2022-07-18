@@ -1404,7 +1404,6 @@ namespace dxvk {
             VkAccessFlags             access);
 
     void emitMemoryBarrier(
-            VkDependencyFlags         flags,
             VkPipelineStageFlags      srcStages,
             VkAccessFlags             srcAccess,
             VkPipelineStageFlags      dstStages,
