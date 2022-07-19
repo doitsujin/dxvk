@@ -468,13 +468,18 @@ namespace dxvk {
       ? DxvkCmdBuffer::InitBuffer
       : DxvkCmdBuffer::ExecBuffer;
 
-    VkBufferCopy bufferRegion;
-    bufferRegion.srcOffset = srcSlice.offset;
-    bufferRegion.dstOffset = dstSlice.offset;
-    bufferRegion.size      = dstSlice.length;
+    VkBufferCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
+    copyRegion.srcOffset = srcSlice.offset;
+    copyRegion.dstOffset = dstSlice.offset;
+    copyRegion.size      = dstSlice.length;
 
-    m_cmd->cmdCopyBuffer(cmdBuffer,
-      srcSlice.handle, dstSlice.handle, 1, &bufferRegion);
+    VkCopyBufferInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
+    copyInfo.srcBuffer = srcSlice.handle;
+    copyInfo.dstBuffer = dstSlice.handle;
+    copyInfo.regionCount = 1;
+    copyInfo.pRegions = &copyRegion;
+
+    m_cmd->cmdCopyBuffer(cmdBuffer, &copyInfo);
 
     auto& barriers = replaceBuffer
       ? m_initBarriers
@@ -941,14 +946,18 @@ namespace dxvk {
 
       auto tmpBufferSlice = tmpBuffer->getSliceHandle();
 
-      VkBufferCopy copyRegion;
+      VkBufferCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
       copyRegion.srcOffset = srcBufferSlice.offset;
       copyRegion.dstOffset = tmpBufferSlice.offset;
       copyRegion.size = tmpBufferSlice.length;
 
-      m_cmd->cmdCopyBuffer(DxvkCmdBuffer::ExecBuffer,
-        srcBufferSlice.handle, tmpBufferSlice.handle,
-        1, &copyRegion);
+      VkCopyBufferInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
+      copyInfo.srcBuffer = srcBufferSlice.handle;
+      copyInfo.dstBuffer = tmpBufferSlice.handle;
+      copyInfo.regionCount = 1;
+      copyInfo.pRegions = &copyRegion;
+
+      m_cmd->cmdCopyBuffer(DxvkCmdBuffer::ExecBuffer, &copyInfo);
 
       emitMemoryBarrier(
         VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -2222,13 +2231,18 @@ namespace dxvk {
     auto stagingHandle = stagingSlice.getSliceHandle();
     std::memcpy(stagingHandle.mapPtr, data, bufferSlice.length);
 
-    VkBufferCopy region;
-    region.srcOffset = stagingHandle.offset;
-    region.dstOffset = bufferSlice.offset;
-    region.size      = bufferSlice.length;
+    VkBufferCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
+    copyRegion.srcOffset = stagingHandle.offset;
+    copyRegion.dstOffset = bufferSlice.offset;
+    copyRegion.size      = bufferSlice.length;
 
-    m_cmd->cmdCopyBuffer(DxvkCmdBuffer::SdmaBuffer,
-      stagingHandle.handle, bufferSlice.handle, 1, &region);
+    VkCopyBufferInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
+    copyInfo.srcBuffer = stagingHandle.handle;
+    copyInfo.dstBuffer = bufferSlice.handle;
+    copyInfo.regionCount = 1;
+    copyInfo.pRegions = &copyRegion;
+
+    m_cmd->cmdCopyBuffer(DxvkCmdBuffer::SdmaBuffer, &copyInfo);
 
     m_sdmaBarriers.releaseBuffer(
       m_initBarriers, bufferSlice,

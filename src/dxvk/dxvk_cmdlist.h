@@ -381,15 +381,10 @@ namespace dxvk {
     
     void cmdCopyBuffer(
             DxvkCmdBuffer           cmdBuffer,
-            VkBuffer                srcBuffer,
-            VkBuffer                dstBuffer,
-            uint32_t                regionCount,
-      const VkBufferCopy*           pRegions) {
+      const VkCopyBufferInfo2*      copyInfo) {
       m_cmdBuffersUsed.set(cmdBuffer);
 
-      m_vkd->vkCmdCopyBuffer(getCmdBuffer(cmdBuffer),
-        srcBuffer, dstBuffer,
-        regionCount, pRegions);
+      m_vkd->vkCmdCopyBuffer2(getCmdBuffer(cmdBuffer), copyInfo);
     }
     
     
