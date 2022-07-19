@@ -3705,11 +3705,23 @@ namespace dxvk {
     }
 
     m_execAcquires.recordCommands(m_cmd);
-    
-    m_cmd->cmdResolveImage(
-      srcImage->handle(), srcLayout,
-      dstImage->handle(), dstLayout,
-      1, &region);
+
+    VkImageResolve2 resolveRegion = { VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2 };
+    resolveRegion.srcSubresource = region.srcSubresource;
+    resolveRegion.srcOffset = region.srcOffset;
+    resolveRegion.dstSubresource = region.dstSubresource;
+    resolveRegion.dstOffset = region.dstOffset;
+    resolveRegion.extent = region.extent;
+
+    VkResolveImageInfo2 resolveInfo = { VK_STRUCTURE_TYPE_RESOLVE_IMAGE_INFO_2 };
+    resolveInfo.srcImage = srcImage->handle();
+    resolveInfo.srcImageLayout = srcLayout;
+    resolveInfo.dstImage = dstImage->handle();
+    resolveInfo.dstImageLayout = dstLayout;
+    resolveInfo.regionCount = 1;
+    resolveInfo.pRegions = &resolveRegion;
+
+    m_cmd->cmdResolveImage(&resolveInfo);
   
     m_execBarriers.accessImage(
       dstImage, dstSubresourceRange, dstLayout,

@@ -616,16 +616,8 @@ namespace dxvk {
 
 
     void cmdResolveImage(
-            VkImage                 srcImage,
-            VkImageLayout           srcImageLayout,
-            VkImage                 dstImage,
-            VkImageLayout           dstImageLayout,
-            uint32_t                regionCount,
-      const VkImageResolve*         pRegions) {
-      m_vkd->vkCmdResolveImage(m_execBuffer,
-        srcImage, srcImageLayout,
-        dstImage, dstImageLayout,
-        regionCount, pRegions);
+      const VkResolveImageInfo2*    resolveInfo) {
+      m_vkd->vkCmdResolveImage2(m_execBuffer, resolveInfo);
     }
     
     
