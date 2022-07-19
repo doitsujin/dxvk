@@ -1202,17 +1202,27 @@ namespace dxvk {
     VkImageSubresourceLayers dstSubresourceS = dstSubresource;
     dstSubresourceS.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
 
-    std::array<VkBufferImageCopy, 2> copyRegions = {{
-      { tmpBufferViewD->info().rangeOffset, 0, 0, dstSubresourceD, dstOffset3D, dstExtent3D },
-      { tmpBufferViewS->info().rangeOffset, 0, 0, dstSubresourceS, dstOffset3D, dstExtent3D },
-    }};
+    std::array<VkBufferImageCopy2, 2> copyRegions;
+    copyRegions[0] = { VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2 };
+    copyRegions[0].bufferOffset = tmpBufferViewD->info().rangeOffset;
+    copyRegions[0].imageSubresource = dstSubresourceD;
+    copyRegions[0].imageOffset = dstOffset3D;
+    copyRegions[0].imageExtent = dstExtent3D;
 
-    m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer,
-      tmpBuffer->getSliceHandle().handle,
-      dstImage->handle(),
-      dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
-      copyRegions.size(),
-      copyRegions.data());
+    copyRegions[1] = { VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2 };
+    copyRegions[1].bufferOffset = tmpBufferViewS->info().rangeOffset;
+    copyRegions[1].imageSubresource = dstSubresourceS;
+    copyRegions[1].imageOffset = dstOffset3D;
+    copyRegions[1].imageExtent = dstExtent3D;
+
+    VkCopyBufferToImageInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2 };
+    copyInfo.srcBuffer = tmpBuffer->getSliceHandle().handle;
+    copyInfo.dstImage = dstImage->handle();
+    copyInfo.dstImageLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    copyInfo.regionCount = copyRegions.size();
+    copyInfo.pRegions = copyRegions.data();
+
+    m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer, &copyInfo);
     
     m_execBarriers.accessImage(
       dstImage, vk::makeSubresourceRange(dstSubresource),
@@ -1517,18 +1527,22 @@ namespace dxvk {
             }
 
             for (uint32_t layer = 0; layer < subresources.layerCount; layer++) {
-              VkBufferImageCopy region;
-              region.bufferOffset       = zeroHandle.offset;
-              region.bufferRowLength    = 0;
-              region.bufferImageHeight  = 0;
-              region.imageSubresource   = vk::makeSubresourceLayers(
+              VkBufferImageCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2 };
+              copyRegion.bufferOffset = zeroHandle.offset;
+              copyRegion.imageSubresource = vk::makeSubresourceLayers(
                 vk::pickSubresource(subresources, level, layer));
-              region.imageSubresource.aspectMask = aspect;
-              region.imageOffset        = offset;
-              region.imageExtent        = extent;
+              copyRegion.imageSubresource.aspectMask = aspect;
+              copyRegion.imageOffset = offset;
+              copyRegion.imageExtent = extent;
 
-              m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer,
-                zeroHandle.handle, image->handle(), clearLayout, 1, &region);
+              VkCopyBufferToImageInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2 };
+              copyInfo.srcBuffer = zeroHandle.handle;
+              copyInfo.dstImage = image->handle();
+              copyInfo.dstImageLayout = clearLayout;
+              copyInfo.regionCount = 1;
+              copyInfo.pRegions = &copyRegion;
+
+              m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer, &copyInfo);
             }
           }
 
@@ -2943,7 +2957,7 @@ namespace dxvk {
         auto aspect = vk::getNextAspect(aspects);
         auto elementSize = formatInfo->elementSize;
 
-        VkBufferImageCopy copyRegion = { };
+        VkBufferImageCopy2 copyRegion = { VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2 };
         copyRegion.imageSubresource.aspectMask = aspect;
         copyRegion.imageSubresource.baseArrayLayer = imageSubresource.baseArrayLayer + i;
         copyRegion.imageSubresource.layerCount = layers;
@@ -2979,11 +2993,23 @@ namespace dxvk {
 
         // Perform the actual copy
         if constexpr (ToImage) {
-          m_cmd->cmdCopyBufferToImage(cmd, bufferSlice.handle,
-            image->handle(), imageLayout, 1, &copyRegion);
+          VkCopyBufferToImageInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2 };
+          copyInfo.srcBuffer = bufferSlice.handle;
+          copyInfo.dstImage = image->handle();
+          copyInfo.dstImageLayout = imageLayout;
+          copyInfo.regionCount = 1;
+          copyInfo.pRegions = &copyRegion;
+
+          m_cmd->cmdCopyBufferToImage(cmd, &copyInfo);
         } else {
-          m_cmd->cmdCopyImageToBuffer(cmd, image->handle(), imageLayout,
-            bufferSlice.handle, 1, &copyRegion);
+          VkCopyImageToBufferInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2 };
+          copyInfo.srcImage = image->handle();
+          copyInfo.srcImageLayout = imageLayout;
+          copyInfo.dstBuffer = bufferSlice.handle;
+          copyInfo.regionCount = 1;
+          copyInfo.pRegions = &copyRegion;
+
+          m_cmd->cmdCopyImageToBuffer(cmd, &copyInfo);
         }
 
         aspectOffset += blockCount.depth * slicePitch;
