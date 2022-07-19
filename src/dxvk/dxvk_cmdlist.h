@@ -405,18 +405,10 @@ namespace dxvk {
     
     void cmdCopyImage(
             DxvkCmdBuffer           cmdBuffer,
-            VkImage                 srcImage,
-            VkImageLayout           srcImageLayout,
-            VkImage                 dstImage,
-            VkImageLayout           dstImageLayout,
-            uint32_t                regionCount,
-      const VkImageCopy*            pRegions) {
+      const VkCopyImageInfo2*       copyInfo) {
       m_cmdBuffersUsed.set(cmdBuffer);
 
-      m_vkd->vkCmdCopyImage(getCmdBuffer(cmdBuffer),
-        srcImage, srcImageLayout,
-        dstImage, dstImageLayout,
-        regionCount, pRegions);
+      m_vkd->vkCmdCopyImage2(getCmdBuffer(cmdBuffer), copyInfo);
     }
     
     

@@ -3301,29 +3301,34 @@ namespace dxvk {
     for (auto aspects = dstSubresource.aspectMask; aspects; ) {
       auto aspect = vk::getNextAspect(aspects);
 
-      VkImageCopy imageRegion;
-      imageRegion.srcSubresource = srcSubresource;
-      imageRegion.srcSubresource.aspectMask = aspect;
-      imageRegion.srcOffset      = srcOffset;
-      imageRegion.dstSubresource = dstSubresource;
-      imageRegion.dstSubresource.aspectMask = aspect;
-      imageRegion.dstOffset      = dstOffset;
-      imageRegion.extent         = extent;
+      VkImageCopy2 copyRegion = { VK_STRUCTURE_TYPE_IMAGE_COPY_2 };
+      copyRegion.srcSubresource = srcSubresource;
+      copyRegion.srcSubresource.aspectMask = aspect;
+      copyRegion.srcOffset = srcOffset;
+      copyRegion.dstSubresource = dstSubresource;
+      copyRegion.dstSubresource.aspectMask = aspect;
+      copyRegion.dstOffset = dstOffset;
+      copyRegion.extent = extent;
 
       if (dstFormatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
         auto plane = &dstFormatInfo->planes[vk::getPlaneIndex(aspect)];
-        imageRegion.srcOffset.x /= plane->blockSize.width;
-        imageRegion.srcOffset.y /= plane->blockSize.height;
-        imageRegion.dstOffset.x /= plane->blockSize.width;
-        imageRegion.dstOffset.y /= plane->blockSize.height;
-        imageRegion.extent.width  /= plane->blockSize.width;
-        imageRegion.extent.height /= plane->blockSize.height;
+        copyRegion.srcOffset.x /= plane->blockSize.width;
+        copyRegion.srcOffset.y /= plane->blockSize.height;
+        copyRegion.dstOffset.x /= plane->blockSize.width;
+        copyRegion.dstOffset.y /= plane->blockSize.height;
+        copyRegion.extent.width /= plane->blockSize.width;
+        copyRegion.extent.height /= plane->blockSize.height;
       }
 
-      m_cmd->cmdCopyImage(DxvkCmdBuffer::ExecBuffer,
-        srcImage->handle(), srcImageLayout,
-        dstImage->handle(), dstImageLayout,
-        1, &imageRegion);
+      VkCopyImageInfo2 copyInfo = { VK_STRUCTURE_TYPE_COPY_IMAGE_INFO_2 };
+      copyInfo.srcImage = srcImage->handle();
+      copyInfo.srcImageLayout = srcImageLayout;
+      copyInfo.dstImage = dstImage->handle();
+      copyInfo.dstImageLayout = dstImageLayout;
+      copyInfo.regionCount = 1;
+      copyInfo.pRegions = &copyRegion;
+
+      m_cmd->cmdCopyImage(DxvkCmdBuffer::ExecBuffer, &copyInfo);
     }
     
     m_execBarriers.accessImage(
