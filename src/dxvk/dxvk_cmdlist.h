@@ -339,17 +339,8 @@ namespace dxvk {
     }
     
     void cmdBlitImage(
-            VkImage                 srcImage,
-            VkImageLayout           srcImageLayout,
-            VkImage                 dstImage,
-            VkImageLayout           dstImageLayout,
-            uint32_t                regionCount,
-      const VkImageBlit*            pRegions,
-            VkFilter                filter) {
-      m_vkd->vkCmdBlitImage(m_execBuffer,
-        srcImage, srcImageLayout,
-        dstImage, dstImageLayout,
-        regionCount, pRegions, filter);
+        const VkBlitImageInfo2*     pBlitInfo) {
+      m_vkd->vkCmdBlitImage2(m_execBuffer, pBlitInfo);
     }
     
     

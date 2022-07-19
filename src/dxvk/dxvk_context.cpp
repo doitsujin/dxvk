@@ -2861,10 +2861,25 @@ namespace dxvk {
     m_execAcquires.recordCommands(m_cmd);
 
     // Perform the blit operation
-    m_cmd->cmdBlitImage(
-      srcImage->handle(), srcLayout,
-      dstImage->handle(), dstLayout,
-      1, &region, filter);
+    VkImageBlit2 blitRegion = { VK_STRUCTURE_TYPE_IMAGE_BLIT_2 };
+    blitRegion.srcSubresource = region.srcSubresource;
+    blitRegion.dstSubresource = region.dstSubresource;
+
+    for (uint32_t i = 0; i < 2; i++) {
+      blitRegion.srcOffsets[i] = region.srcOffsets[i];
+      blitRegion.dstOffsets[i] = region.dstOffsets[i];
+    }
+
+    VkBlitImageInfo2 blitInfo = { VK_STRUCTURE_TYPE_BLIT_IMAGE_INFO_2 };
+    blitInfo.srcImage = srcImage->handle();
+    blitInfo.srcImageLayout = srcLayout;
+    blitInfo.dstImage = dstImage->handle();
+    blitInfo.dstImageLayout = dstLayout;
+    blitInfo.regionCount = 1;
+    blitInfo.pRegions = &blitRegion;
+    blitInfo.filter = filter;
+
+    m_cmd->cmdBlitImage(&blitInfo);
     
     m_execBarriers.accessImage(
       dstImage, dstSubresourceRange, dstLayout,
