@@ -333,24 +333,48 @@ namespace dxvk {
     extensionsEnabled.merge(m_extraExtensions);
     DxvkNameList extensionNameList = extensionsEnabled.toNameList();
 
-    // Enable additional device features if supported
-    enabledFeatures.vk12.drawIndirectCount = m_deviceFeatures.vk12.drawIndirectCount;
-    enabledFeatures.vk12.hostQueryReset = VK_TRUE;
-    enabledFeatures.vk12.shaderOutputViewportIndex = m_deviceFeatures.vk12.shaderOutputViewportIndex;
-    enabledFeatures.vk12.shaderOutputLayer = m_deviceFeatures.vk12.shaderOutputLayer;
+    // Optionally used by some client API extensions
+    enabledFeatures.vk12.drawIndirectCount =
+      m_deviceFeatures.vk12.drawIndirectCount;
 
-    enabledFeatures.vk13.pipelineCreationCacheControl = m_deviceFeatures.vk13.pipelineCreationCacheControl;
+    // Required since we no longer have a fallback for GPU queries
+    enabledFeatures.vk12.hostQueryReset = VK_TRUE;
+
+    // Used by some internal shaders, and can be used by applications
+    enabledFeatures.vk12.shaderOutputViewportIndex =
+      m_deviceFeatures.vk12.shaderOutputViewportIndex;
+    enabledFeatures.vk12.shaderOutputLayer =
+      m_deviceFeatures.vk12.shaderOutputLayer;
+
+    // Only enable the base image robustness feature if robustness 2 isn't
+    // supported, since this is only a subset of what we actually want.
+    enabledFeatures.vk13.robustImageAccess =
+      m_deviceFeatures.vk13.robustImageAccess &&
+      !m_deviceFeatures.extRobustness2.robustImageAccess2;
+
+    // Only used in combination with pipeline libraries
+    // right now, but enabling it won't hurt anyway
+    enabledFeatures.vk13.pipelineCreationCacheControl =
+      m_deviceFeatures.vk13.pipelineCreationCacheControl;
+
+    // Core features that we're relying on in various places
     enabledFeatures.vk13.synchronization2 = VK_TRUE;
     enabledFeatures.vk13.dynamicRendering = VK_TRUE;
     enabledFeatures.vk13.maintenance4 = VK_TRUE;
 
+    // Used for both pNext shader module info, and fast-linking pipelines provided
+    // that graphicsPipelineLibraryIndependentInterpolationDecoration is supported
     enabledFeatures.extGraphicsPipelineLibrary.graphicsPipelineLibrary =
       m_deviceFeatures.extGraphicsPipelineLibrary.graphicsPipelineLibrary;
 
+    // Require robustBufferAccess2 since we use the robustness alignment
+    // info in a number of places, and require null descriptor support
+    // since we no longer have a fallback for those in the backend
     enabledFeatures.extRobustness2.robustBufferAccess2 = VK_TRUE;
     enabledFeatures.extRobustness2.robustImageAccess2 = m_deviceFeatures.extRobustness2.robustImageAccess2;
     enabledFeatures.extRobustness2.nullDescriptor = VK_TRUE;
 
+    // We use this to avoid decompressing SPIR-V shaders in some situations
     enabledFeatures.extShaderModuleIdentifier.shaderModuleIdentifier =
       m_deviceFeatures.extShaderModuleIdentifier.shaderModuleIdentifier;
 
@@ -775,6 +799,7 @@ namespace dxvk {
       "\n  shaderOutputViewportIndex              : ", features.vk12.shaderOutputViewportIndex,
       "\n  shaderOutputLayer                      : ", features.vk12.shaderOutputLayer,
       "\nVulkan 1.3",
+      "\n  robustImageAccess                      : ", features.vk13.robustImageAccess,
       "\n  pipelineCreationCacheControl           : ", features.vk13.pipelineCreationCacheControl,
       "\n  shaderDemoteToHelperInvocation         : ", features.vk13.shaderDemoteToHelperInvocation,
       "\n  shaderZeroInitializeWorkgroupMemory    : ", features.vk13.shaderZeroInitializeWorkgroupMemory,
