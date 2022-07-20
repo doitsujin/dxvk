@@ -14,7 +14,8 @@ namespace dxvk {
     D3D11Fence(
             D3D11Device*        pDevice,
             UINT64              InitialValue,
-            D3D11_FENCE_FLAG    Flags);
+            D3D11_FENCE_FLAG    Flags,
+            HANDLE              hFence);
 
     ~D3D11Fence();
     
@@ -41,6 +42,7 @@ namespace dxvk {
   private:
     
     Rc<DxvkFence> m_fence;
+    D3D11_FENCE_FLAG m_flags;
 
   };
   

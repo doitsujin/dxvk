@@ -1353,7 +1353,7 @@ namespace dxvk {
     InitReturnPtr(ppFence);
 
     try {
-      Com<D3D11Fence> fence = new D3D11Fence(this, InitialValue, Flags);
+      Com<D3D11Fence> fence = new D3D11Fence(this, InitialValue, Flags, INVALID_HANDLE_VALUE);
       return fence->QueryInterface(riid, ppFence);
     } catch (const DxvkError& e) {
       Logger::err(e.message());
@@ -1424,8 +1424,16 @@ namespace dxvk {
           void**      ppFence) {
     InitReturnPtr(ppFence);
 
-    Logger::err("D3D11Device::OpenSharedFence: Not implemented");
-    return E_NOTIMPL;
+    if (ppFence == nullptr)
+      return S_FALSE;
+
+    try {
+      Com<D3D11Fence> fence = new D3D11Fence(this, 0, D3D11_FENCE_FLAG_SHARED, hFence);
+      return fence->QueryInterface(ReturnedInterface, ppFence);
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_FAIL;
+    }
   }
 
 
