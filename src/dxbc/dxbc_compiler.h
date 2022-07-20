@@ -1063,8 +1063,9 @@ namespace dxvk {
     
     ///////////////////////////////
     // Some state checking methods
-    uint32_t emitUavWriteTest(
-      const DxbcBufferInfo&         uav);
+    DxbcConditional emitBeginPsKillTest();
+
+    void emitEndPsKillTest(const DxbcConditional& cond);
     
     //////////////////////////////////////
     // Common function definition methods
