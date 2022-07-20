@@ -512,7 +512,7 @@ namespace dxvk {
       { "d3d9.floatEmulation",              "Strict" },
     }} },
     /* Resident Evil games                      */
-    { R"(\\(rerev|rerev2|re0hd|bhd|re5dx9|BH6)\.exe$)", {{
+    { R"(\\(rerev|rerev2|re0hd|bhd|re5dx9)\.exe$)", {{
       { "d3d9.allowDirectBufferMapping",                "False" },
     }} },
     /* Limbo                                    */
