@@ -238,12 +238,13 @@ namespace dxvk {
     m_pipeManager (pipeManager),
     m_pipeWorkers (pipeWorkers) {
     std::string useStateCache = env::getEnvVar("DXVK_STATE_CACHE");
-    m_enable = useStateCache != "0" && device->config().enableStateCache;
+    m_enable = useStateCache != "0" && useStateCache != "disable" &&
+      device->config().enableStateCache;
 
     if (!m_enable)
       return;
 
-    bool newFile = !readCacheFile();
+    bool newFile = (useStateCache == "reset") || (!readCacheFile());
 
     if (newFile) {
       Logger::warn("DXVK: Creating new state cache file");
