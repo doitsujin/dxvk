@@ -21,6 +21,15 @@ namespace dxvk {
    */
   struct DxvkFenceCreateInfo {
     uint64_t        initialValue;
+    VkExternalSemaphoreHandleTypeFlagBits sharedType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_FLAG_BITS_MAX_ENUM;
+    union {
+#ifdef _WIN32
+      HANDLE          sharedHandle = INVALID_HANDLE_VALUE;
+#else
+      // Placeholder for other handle types, such as FD
+      void *dummy;
+#endif
+    };
   };
 
   /**
@@ -77,6 +86,12 @@ namespace dxvk {
      * \param [in] event Callback
      */
     void enqueueWait(uint64_t value, DxvkFenceEvent&& event);
+
+    /**
+     * \brief Create a new shared handle to timeline semaphore backing the fence
+     * \returns The shared handle with the type given by DxvkFenceCreateInfo::sharedType
+     */
+    HANDLE sharedHandle() const;
 
   private:
 
