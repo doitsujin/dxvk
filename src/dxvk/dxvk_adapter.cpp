@@ -283,7 +283,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 20> devExtensionList = {{
+    std::array<DxvkExt*, 21> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.extConservativeRasterization,
@@ -300,6 +300,7 @@ namespace dxvk {
       &devExtensions.extTransformFeedback,
       &devExtensions.extVertexAttributeDivisor,
       &devExtensions.khrExternalMemoryWin32,
+      &devExtensions.khrExternalSemaphoreWin32,
       &devExtensions.khrPipelineLibrary,
       &devExtensions.khrSwapchain,
       &devExtensions.nvxBinaryImport,
