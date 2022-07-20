@@ -1346,16 +1346,13 @@ namespace dxvk {
     void applyRenderTargetStoreLayouts();
 
     void transitionRenderTargetLayouts(
-            DxvkBarrierSet&         barriers,
             bool                    sharedOnly);
 
     void transitionColorAttachment(
-            DxvkBarrierSet&         barriers,
       const DxvkAttachment&         attachment,
             VkImageLayout           oldLayout);
 
     void transitionDepthAttachment(
-            DxvkBarrierSet&         barriers,
       const DxvkAttachment&         attachment,
             VkImageLayout           oldLayout);
 
@@ -1364,7 +1361,6 @@ namespace dxvk {
       const DxvkFramebufferInfo&    oldFb);
 
     void prepareImage(
-            DxvkBarrierSet&         barriers,
       const Rc<DxvkImage>&          image,
       const VkImageSubresourceRange& subresources,
             bool                    flushClears = true);

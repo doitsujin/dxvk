@@ -195,8 +195,8 @@ namespace dxvk {
     const VkImageBlit&          region,
           VkFilter              filter) {
     this->spillRenderPass(true);
-    this->prepareImage(m_execBarriers, dstImage, vk::makeSubresourceRange(region.dstSubresource));
-    this->prepareImage(m_execBarriers, srcImage, vk::makeSubresourceRange(region.srcSubresource));
+    this->prepareImage(dstImage, vk::makeSubresourceRange(region.dstSubresource));
+    this->prepareImage(srcImage, vk::makeSubresourceRange(region.srcSubresource));
 
     auto mapping = util::resolveSrcComponentMapping(dstMapping, srcMapping);
 
@@ -230,7 +230,7 @@ namespace dxvk {
 
       VkImageSubresourceRange subresources = image->getAvailableSubresources();
 
-      this->prepareImage(m_execBarriers, image, subresources);
+      this->prepareImage(image, subresources);
 
       if (m_execBarriers.isImageDirty(image, subresources, DxvkAccess::Write))
         m_execBarriers.recordCommands(m_cmd);
@@ -393,7 +393,7 @@ namespace dxvk {
       //    will indirectly emit barriers for the given render target.
       // If there is overlap, we need to explicitly transition affected attachments.
       this->spillRenderPass(true);
-      this->prepareImage(m_execBarriers, imageView->image(), imageView->subresources(), false);
+      this->prepareImage(imageView->image(), imageView->subresources(), false);
     } else if (!m_state.om.framebufferInfo.isWritable(attachmentIndex, clearAspects)) {
       // We cannot inline clears if the clear aspects are not writable
       this->spillRenderPass(true);
@@ -542,7 +542,7 @@ namespace dxvk {
           VkDeviceSize          rowAlignment,
           VkDeviceSize          sliceAlignment) {
     this->spillRenderPass(true);
-    this->prepareImage(m_execBarriers, dstImage, vk::makeSubresourceRange(dstSubresource));
+    this->prepareImage(dstImage, vk::makeSubresourceRange(dstSubresource));
 
     auto srcSlice = srcBuffer->getSliceHandle(srcOffset, 0);
 
@@ -612,8 +612,8 @@ namespace dxvk {
     if (this->copyImageClear(dstImage, dstSubresource, dstOffset, extent, srcImage, srcSubresource))
       return;
 
-    this->prepareImage(m_execBarriers, dstImage, vk::makeSubresourceRange(dstSubresource));
-    this->prepareImage(m_execBarriers, srcImage, vk::makeSubresourceRange(srcSubresource));
+    this->prepareImage(dstImage, vk::makeSubresourceRange(dstSubresource));
+    this->prepareImage(srcImage, vk::makeSubresourceRange(srcSubresource));
 
     bool useFb = dstSubresource.aspectMask != srcSubresource.aspectMask;
 
@@ -713,7 +713,7 @@ namespace dxvk {
           VkOffset3D            srcOffset,
           VkExtent3D            srcExtent) {
     this->spillRenderPass(true);
-    this->prepareImage(m_execBarriers, srcImage, vk::makeSubresourceRange(srcSubresource));
+    this->prepareImage(srcImage, vk::makeSubresourceRange(srcSubresource));
 
     auto dstSlice = dstBuffer->getSliceHandle(dstOffset, 0);
 
@@ -775,7 +775,7 @@ namespace dxvk {
           VkExtent2D            srcExtent,
           VkFormat              format) {
     this->spillRenderPass(true);
-    this->prepareImage(m_execBarriers, srcImage, vk::makeSubresourceRange(srcSubresource));
+    this->prepareImage(srcImage, vk::makeSubresourceRange(srcSubresource));
 
     this->invalidateState();
 
@@ -1063,7 +1063,7 @@ namespace dxvk {
     this->spillRenderPass(true);
     this->invalidateState();
 
-    this->prepareImage(m_execBarriers, dstImage, vk::makeSubresourceRange(dstSubresource));
+    this->prepareImage(dstImage, vk::makeSubresourceRange(dstSubresource));
 
     if (m_execBarriers.isBufferDirty(srcBuffer->getSliceHandle(), DxvkAccess::Read)
      || m_execBarriers.isImageDirty(dstImage, vk::makeSubresourceRange(dstSubresource), DxvkAccess::Write))
@@ -1806,8 +1806,8 @@ namespace dxvk {
     const VkImageResolve&           region,
           VkFormat                  format) {
     this->spillRenderPass(true);
-    this->prepareImage(m_execBarriers, dstImage, vk::makeSubresourceRange(region.dstSubresource));
-    this->prepareImage(m_execBarriers, srcImage, vk::makeSubresourceRange(region.srcSubresource));
+    this->prepareImage(dstImage, vk::makeSubresourceRange(region.dstSubresource));
+    this->prepareImage(srcImage, vk::makeSubresourceRange(region.srcSubresource));
 
     if (format == VK_FORMAT_UNDEFINED)
       format = srcImage->info().format;
@@ -1839,8 +1839,8 @@ namespace dxvk {
           VkResolveModeFlagBits     depthMode,
           VkResolveModeFlagBits     stencilMode) {
     this->spillRenderPass(true);
-    this->prepareImage(m_execBarriers, dstImage, vk::makeSubresourceRange(region.dstSubresource));
-    this->prepareImage(m_execBarriers, srcImage, vk::makeSubresourceRange(region.srcSubresource));
+    this->prepareImage(dstImage, vk::makeSubresourceRange(region.dstSubresource));
+    this->prepareImage(srcImage, vk::makeSubresourceRange(region.srcSubresource));
 
     // Technically legal, but no-op
     if (!depthMode && !stencilMode)
@@ -2154,7 +2154,7 @@ namespace dxvk {
       }
     }
 
-    this->transitionRenderTargetLayouts(m_execBarriers, true);
+    this->transitionRenderTargetLayouts(true);
   }
 
 
@@ -2590,7 +2590,7 @@ namespace dxvk {
       srcStages |= r.first->info().stages;
       srcAccess |= r.first->info().access;
 
-      this->prepareImage(m_execBarriers, r.first, r.first->getAvailableSubresources());
+      this->prepareImage(r.first, r.first->getAvailableSubresources());
     }
 
     m_execBarriers.accessMemory(srcStages, srcAccess,
@@ -4136,14 +4136,14 @@ namespace dxvk {
       if (suspend)
         m_flags.set(DxvkContextFlag::GpRenderPassSuspended);
       else
-        this->transitionRenderTargetLayouts(m_execBarriers, false);
+        this->transitionRenderTargetLayouts(false);
 
       m_execBarriers.recordCommands(m_cmd);
     } else if (!suspend) {
       // We may end a previously suspended render pass
       if (m_flags.test(DxvkContextFlag::GpRenderPassSuspended)) {
         m_flags.clr(DxvkContextFlag::GpRenderPassSuspended);
-        this->transitionRenderTargetLayouts(m_execBarriers, false);
+        this->transitionRenderTargetLayouts(false);
         m_execBarriers.recordCommands(m_cmd);
       }
 
@@ -4936,13 +4936,12 @@ namespace dxvk {
 
 
   void DxvkContext::transitionRenderTargetLayouts(
-          DxvkBarrierSet&         barriers,
           bool                    sharedOnly) {
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       const DxvkAttachment& color = m_state.om.framebufferInfo.getColorTarget(i);
 
       if (color.view != nullptr && (!sharedOnly || color.view->imageInfo().shared)) {
-        this->transitionColorAttachment(barriers, color, m_rtLayouts.color[i]);
+        this->transitionColorAttachment(color, m_rtLayouts.color[i]);
         m_rtLayouts.color[i] = color.view->imageInfo().layout;
       }
     }
@@ -4950,18 +4949,17 @@ namespace dxvk {
     const DxvkAttachment& depth = m_state.om.framebufferInfo.getDepthTarget();
 
     if (depth.view != nullptr && (!sharedOnly || depth.view->imageInfo().shared)) {
-      this->transitionDepthAttachment(barriers, depth, m_rtLayouts.depth);
+      this->transitionDepthAttachment(depth, m_rtLayouts.depth);
       m_rtLayouts.depth = depth.view->imageInfo().layout;
     }
   }
 
 
   void DxvkContext::transitionColorAttachment(
-          DxvkBarrierSet&         barriers,
     const DxvkAttachment&         attachment,
           VkImageLayout           oldLayout) {
     if (oldLayout != attachment.view->imageInfo().layout) {
-      barriers.accessImage(
+      m_execBarriers.accessImage(
         attachment.view->image(),
         attachment.view->imageSubresources(), oldLayout,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -4976,11 +4974,10 @@ namespace dxvk {
 
 
   void DxvkContext::transitionDepthAttachment(
-          DxvkBarrierSet&         barriers,
     const DxvkAttachment&         attachment,
           VkImageLayout           oldLayout) {
     if (oldLayout != attachment.view->imageInfo().layout) {
-      barriers.accessImage(
+      m_execBarriers.accessImage(
         attachment.view->image(),
         attachment.view->imageSubresources(), oldLayout,
         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
@@ -5030,7 +5027,7 @@ namespace dxvk {
         }
 
         if (!found && m_flags.test(DxvkContextFlag::GpRenderPassSuspended))
-          this->transitionColorAttachment(m_execBarriers, oldAttachment, m_rtLayouts.color[i]);
+          this->transitionColorAttachment(oldAttachment, m_rtLayouts.color[i]);
       }
     }
 
@@ -5046,7 +5043,7 @@ namespace dxvk {
       if (found)
         layouts.depth = m_rtLayouts.depth;
       else if (m_flags.test(DxvkContextFlag::GpRenderPassSuspended))
-        this->transitionDepthAttachment(m_execBarriers, oldAttachment, m_rtLayouts.depth);
+        this->transitionDepthAttachment(oldAttachment, m_rtLayouts.depth);
     }
 
     m_rtLayouts = layouts;
@@ -5054,7 +5051,6 @@ namespace dxvk {
   
   
   void DxvkContext::prepareImage(
-          DxvkBarrierSet&         barriers,
     const Rc<DxvkImage>&          image,
     const VkImageSubresourceRange& subresources,
           bool                    flushClears) {
@@ -5082,7 +5078,7 @@ namespace dxvk {
 
         if (attachment.view != nullptr && attachment.view->image() == image
          && (is3D || vk::checkSubresourceRangeOverlap(attachment.view->subresources(), subresources))) {
-          this->transitionColorAttachment(barriers, attachment, m_rtLayouts.color[i]);
+          this->transitionColorAttachment(attachment, m_rtLayouts.color[i]);
           m_rtLayouts.color[i] = image->info().layout;
         }
       }
@@ -5091,7 +5087,7 @@ namespace dxvk {
 
       if (attachment.view != nullptr && attachment.view->image() == image
        && (is3D || vk::checkSubresourceRangeOverlap(attachment.view->subresources(), subresources))) {
-        this->transitionDepthAttachment(barriers, attachment, m_rtLayouts.depth);
+        this->transitionDepthAttachment(attachment, m_rtLayouts.depth);
         m_rtLayouts.depth = image->info().layout;
       }
     }
