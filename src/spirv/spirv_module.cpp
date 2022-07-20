@@ -2986,6 +2986,8 @@ namespace dxvk {
   void SpirvModule::opLabel(uint32_t labelId) {
     m_code.putIns (spv::OpLabel, 2);
     m_code.putWord(labelId);
+
+    m_blockId = labelId;
   }
   
   
@@ -3533,6 +3535,8 @@ namespace dxvk {
           uint32_t                label) {
     m_code.putIns (spv::OpBranch, 2);
     m_code.putWord(label);
+
+    m_blockId = 0;
   }
   
   
@@ -3544,6 +3548,8 @@ namespace dxvk {
     m_code.putWord(condition);
     m_code.putWord(trueLabel);
     m_code.putWord(falseLabel);
+
+    m_blockId = 0;
   }
   
   
@@ -3560,6 +3566,8 @@ namespace dxvk {
       m_code.putWord(caseLabels[i].literal);
       m_code.putWord(caseLabels[i].labelId);
     }
+
+    m_blockId = 0;
   }
   
   
@@ -3584,11 +3592,13 @@ namespace dxvk {
     
   void SpirvModule::opReturn() {
     m_code.putIns (spv::OpReturn, 1);
+    m_blockId = 0;
   }
   
   
   void SpirvModule::opKill() {
     m_code.putIns (spv::OpKill, 1);
+    m_blockId = 0;
   }
   
   
