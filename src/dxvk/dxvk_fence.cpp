@@ -11,6 +11,12 @@ namespace dxvk {
     typeInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
     typeInfo.initialValue = info.initialValue;
     
+    VkExportSemaphoreCreateInfo exportInfo = { VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO };
+    exportInfo.handleTypes = info.sharedType;
+
+    if (info.sharedType != VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_FLAG_BITS_MAX_ENUM)
+      typeInfo.pNext = &exportInfo;
+
     VkSemaphoreCreateInfo semaphoreInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, &typeInfo };
 
     VkResult vr = m_vkd->vkCreateSemaphore(m_vkd->device(),
@@ -18,6 +24,17 @@ namespace dxvk {
 
     if (vr != VK_SUCCESS)
       throw DxvkError("Failed to create timeline semaphore");
+
+    if (info.sharedHandle != INVALID_HANDLE_VALUE) {
+      VkImportSemaphoreWin32HandleInfoKHR importInfo = { VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHR };
+      importInfo.semaphore = m_semaphore;
+      importInfo.handleType = info.sharedType;
+      importInfo.handle = info.sharedHandle;
+
+      vr = m_vkd->vkImportSemaphoreWin32HandleKHR(m_vkd->device(), &importInfo);
+      if (vr != VK_SUCCESS)
+        throw DxvkError("Failed to import timeline semaphore");
+    }
 
     m_thread = dxvk::thread([this] { run(); });
   }
@@ -92,4 +109,20 @@ namespace dxvk {
     }
   }
 
+  HANDLE DxvkFence::sharedHandle() const {
+    if (m_info.sharedType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_FLAG_BITS_MAX_ENUM)
+      return INVALID_HANDLE_VALUE;
+
+    VkSemaphoreGetWin32HandleInfoKHR win32HandleInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_GET_WIN32_HANDLE_INFO_KHR };
+    win32HandleInfo.semaphore = m_semaphore;
+    win32HandleInfo.handleType = m_info.sharedType;
+
+    HANDLE sharedHandle = INVALID_HANDLE_VALUE;
+    VkResult vr = m_vkd->vkGetSemaphoreWin32HandleKHR(m_vkd->device(), &win32HandleInfo, &sharedHandle);
+
+    if (vr != VK_SUCCESS)
+      Logger::err(str::format("Failed to get semaphore handle: ", vr));
+
+    return sharedHandle;
+  }
 }
