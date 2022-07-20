@@ -579,6 +579,11 @@ namespace dxvk {
     { R"(\\PortRoyale3\.exe$)", {{
       { "d3d9.allowDoNotWait",           "False" },
     }} },
+    /* Fallout: New Vegas                       
+     * Prevents black screen on startup         */
+    { R"(\\FalloutNV\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",      "True" },
+    }} },
   }};
 
 
