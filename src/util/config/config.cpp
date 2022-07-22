@@ -601,6 +601,10 @@ namespace dxvk {
     { R"(\\PortRoyale3\.exe$)", {{
       { "d3d9.allowDoNotWait",           "False" },
     }} },
+    /* Need For Speed 3 modern patch            */
+    { R"(\\nfs3\.exe$)", {{
+      { "d3d9.enableDialogMode",          "True" },
+    }} },
   }};
 
 
