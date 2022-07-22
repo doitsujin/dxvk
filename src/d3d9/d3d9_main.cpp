@@ -98,4 +98,7 @@ extern "C" {
     dxvk::D3D9GlobalAnnotationList::Instance().UnregisterAnnotator(annotation);
   }
 
+  DLLEXPORT void __stdcall Direct3D9ForceHybridEnumeration(UINT uHybrid) {
+  }
+
 }
