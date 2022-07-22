@@ -583,6 +583,11 @@ namespace dxvk {
     { R"(\\nfs3\.exe$)", {{
       { "d3d9.enableDialogMode",          "True" },
     }} },
+    /* Ninja Blade                              *
+     * Transparent main character on Nvidia     */
+    { R"(\\NinjaBlade\.exe$)", {{
+      { "d3d9.alphaTestWiggleRoom",       "True" },
+    }} },
   }};
 
 
