@@ -305,6 +305,12 @@ namespace dxvk {
     { R"(\\DayZ_x64\.exe$)", {{
       { "d3d11.cachedDynamicResources",     "cr" },
     }} },
+    /* Stray - writes to the same UAV every draw, *
+     * presumably for culling, which doesn't play *
+     * nicely with D3D11 without vendor libraries */
+    { R"(\\Stray-Win64-Shipping\.exe$)", {{
+      { "d3d11.ignoreGraphicsBarriers",     "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
