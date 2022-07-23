@@ -762,10 +762,10 @@ namespace dxvk {
 
 
     void cmdWriteTimestamp(
-            VkPipelineStageFlagBits pipelineStage,
+            VkPipelineStageFlagBits2 pipelineStage,
             VkQueryPool             queryPool,
             uint32_t                query) {
-      m_vkd->vkCmdWriteTimestamp(m_execBuffer,
+      m_vkd->vkCmdWriteTimestamp2(m_execBuffer,
         pipelineStage, queryPool, query);
     }
     
