@@ -56,11 +56,17 @@ namespace dxvk::bit {
     #elif defined(__BMI__)
     return __tzcnt_u32(n);
     #elif defined(__GNUC__) || defined(__clang__)
+    // tzcnt is encoded as rep bsf, so we can use it on all
+    // processors, but the behaviour of zero inputs differs:
+    // - bsf:   zf = 1, cf = ?, result = ?
+    // - tzcnt: zf = 0, cf = 1, result = 32
+    // We'll have to handle this case manually.
     uint32_t res;
     uint32_t tmp;
     asm (
+      "tzcnt %2, %0;"
       "mov  $32, %1;"
-      "bsf   %2, %0;"
+      "test  %2, %2;"
       "cmovz %1, %0;"
       : "=&r" (res), "=&r" (tmp)
       : "r" (n));
@@ -86,41 +92,21 @@ namespace dxvk::bit {
     uint64_t res;
     uint64_t tmp;
     asm (
+      "tzcnt %2, %0;"
       "mov  $64, %1;"
-      "bsf   %2, %0;"
+      "test  %2, %2;"
       "cmovz %1, %0;"
       : "=&r" (res), "=&r" (tmp)
       : "r" (n));
     return res;
     #else
-    uint32_t r = 63;
-    n &= -n;
-    r -= (n & 0x00000000FFFFFFFFull) ? 32 : 0;
-    r -= (n & 0x0000FFFF0000FFFFull) ? 16 : 0;
-    r -= (n & 0x00FF00FF00FF00FFull) ?  8 : 0;
-    r -= (n & 0x0F0F0F0F0F0F0F0Full) ?  4 : 0;
-    r -= (n & 0x3333333333333333ull) ?  2 : 0;
-    r -= (n & 0x5555555555555555ull) ?  1 : 0;
-    return n != 0 ? r : 64;
-    #endif
-  }
-
-  inline uint32_t bsf(uint32_t n) {
-    #if defined(_MSC_VER) && !defined(__clang__)
-    unsigned long index;
-    _BitScanForward(&index, n);
-    return uint32_t(index);
-    #elif defined(__GNUC__) || defined(__clang__)
-    return __builtin_ctz(n);
-    #else
-    uint32_t r = 31;
-    n &= -n;
-    r -= (n & 0x0000FFFF) ? 16 : 0;
-    r -= (n & 0x00FF00FF) ?  8 : 0;
-    r -= (n & 0x0F0F0F0F) ?  4 : 0;
-    r -= (n & 0x33333333) ?  2 : 0;
-    r -= (n & 0x55555555) ?  1 : 0;
-    return r;
+    uint32_t lo = uint32_t(n);
+    if (lo) {
+      return tzcnt(lo);
+    } else {
+      uint32_t hi = uint32_t(n >> 32);
+      return tzcnt(hi) + 32;
+    }
     #endif
   }
 
@@ -348,7 +334,7 @@ namespace dxvk::bit {
       }
 
       uint32_t operator * () const {
-        return bsf(m_mask);
+        return tzcnt(m_mask);
       }
 
       bool operator == (iterator other) const { return m_mask == other.m_mask; }
