@@ -616,6 +616,11 @@ namespace dxvk {
     { R"(\\NinjaBlade\.exe$)", {{
       { "d3d9.alphaTestWiggleRoom",       "True" },
     }} },
+    /* YS Origin                                *
+     * Helps very bad frametimes in some areas  */
+    { R"(\\yso_win\.exe$)", {{
+      { "d3d9.maxFrameLatency",              "1" },
+    }} },
   }};
 
 
