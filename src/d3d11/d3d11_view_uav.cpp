@@ -59,7 +59,18 @@ namespace dxvk {
       DxvkImageViewCreateInfo viewInfo;
       viewInfo.format  = formatInfo.Format;
       viewInfo.aspect  = formatInfo.Aspect;
-      viewInfo.swizzle = formatInfo.Swizzle;
+      // CrossOver bug 18050:
+      // Vulkan does not allow swizzled textures to be bound
+      // to VK_DESCRIPTOR_TYPE_STORAGE_IMAGE descriptors.
+      // In the particular case of MoltenVK, MTLPixelFormatA8Unorm
+      // textures (or the swizzled equivalent) are not writeable.
+      if (pDesc->Format != DXGI_FORMAT_A8_UNORM) {
+        if (formatInfo.Swizzle.r || formatInfo.Swizzle.g || formatInfo.Swizzle.b || formatInfo.Swizzle.a)
+          Logger::warn(str::format("Swizzled format in UAV: ", pDesc->Format));
+        viewInfo.swizzle = formatInfo.Swizzle;
+      } else {
+          Logger::info("Skipping DXGI_FORMAT_A8_UNORM swizzle for UAV");
+      }
       viewInfo.usage   = VK_IMAGE_USAGE_STORAGE_BIT;
       
       switch (pDesc->ViewDimension) {

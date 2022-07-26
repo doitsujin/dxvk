@@ -293,7 +293,9 @@ namespace dxvk {
       case VK_IMAGE_VIEW_TYPE_3D: {
         this->createView(VK_IMAGE_VIEW_TYPE_3D, 1);
         
-        if (m_image->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT && m_info.numLevels == 1) {
+          if (m_image->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR &&
+                info.usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT|VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) &&
+                info.numLevels == 1) {
           this->createView(VK_IMAGE_VIEW_TYPE_2D,       1);
           this->createView(VK_IMAGE_VIEW_TYPE_2D_ARRAY, m_image->mipLevelExtent(m_info.minLevel).depth);
         }
@@ -346,8 +348,9 @@ namespace dxvk {
         "DxvkImageView: Failed to create image view:"
         "\n  View type:       ", viewInfo.viewType,
         "\n  View format:     ", viewInfo.format,
+        "\n  Usage:           ", std::hex, viewUsage.usage,
         "\n  Subresources:    ",
-        "\n    Aspect mask:   ", std::hex, viewInfo.subresourceRange.aspectMask,
+        "\n    Aspect mask:   ", viewInfo.subresourceRange.aspectMask, std::dec,
         "\n    Mip levels:    ", viewInfo.subresourceRange.baseMipLevel, " - ",
                                  viewInfo.subresourceRange.levelCount,
         "\n    Array layers:  ", viewInfo.subresourceRange.baseArrayLayer, " - ",
@@ -361,7 +364,7 @@ namespace dxvk {
         "\n    Mip levels:    ", m_image->info().mipLevels,
         "\n    Array layers:  ", m_image->info().numLayers,
         "\n    Samples:       ", m_image->info().sampleCount,
-        "\n    Usage:         ", std::hex, m_image->info().usage,
+        "\n    Usage:         ", std::hex, m_image->info().usage, std::dec,
         "\n    Tiling:        ", m_image->info().tiling));
     }
   }

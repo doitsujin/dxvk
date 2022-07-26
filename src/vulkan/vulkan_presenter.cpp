@@ -135,7 +135,15 @@ namespace dxvk::vk {
     // Select actual swap chain properties and create swap chain
     m_info.format       = pickFormat(formats.size(), formats.data(), desc.numFormats, desc.formats);
     m_info.presentMode  = pickPresentMode(modes.size(), modes.data(), desc.numPresentModes, desc.presentModes);
-    m_info.imageExtent  = pickImageExtent(caps, desc.imageExtent);
+    /* HACK: FFXIX wants to make sure that the client size of its window is at least 1024x720 and enforces that
+    * by increasing the size in WM_WINDOWPOSCHANGING. Unfortunately it adds the size of the window decorations
+    * in fullscreen mode even though the window does not have any decorations, causing an incorrect rendering
+    * size and mouse pointer offsets at low fullscreen resolutions.
+    *
+    * The game does the same thing on Windows and the bug can be reproduced in borderless windowed fullscreen
+    * mode if the desktop resolution is set to 1280x720. It seems that native d3d ignores the actual window
+    * size in real fullscreen mode. Try to do the same. */
+    m_info.imageExtent  = desc.imageExtent; //pickImageExtent(caps, desc.imageExtent);
     m_info.imageCount   = pickImageCount(caps, m_info.presentMode, desc.imageCount);
 
     if (!m_info.imageExtent.width || !m_info.imageExtent.height) {

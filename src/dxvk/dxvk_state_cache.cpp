@@ -374,9 +374,9 @@ namespace dxvk {
   }
 
 
-  bool DxvkStateCache::readCacheFile() {
+    bool DxvkStateCache::realReadCacheFile(std::wstring name) {
     // Open state file and just fail if it doesn't exist
-    std::ifstream ifile(getCacheFileName().c_str(), std::ios_base::binary);
+    std::ifstream ifile(name.c_str(), std::ios_base::binary);
 
     if (!ifile) {
       Logger::warn("DXVK: No state cache file found");
@@ -458,6 +458,11 @@ namespace dxvk {
     
     // Rewrite entire state cache if it is outdated
     return curHeader.version == newHeader.version;
+  }
+
+  bool DxvkStateCache::readCacheFile() {
+    realReadCacheFile(getBaseCacheFileName());
+    return realReadCacheFile(getCacheFileName());
   }
 
 
@@ -1012,6 +1017,17 @@ namespace dxvk {
     
     std::string exeName = env::getExeBaseName();
     path += exeName + ".dxvk-cache";
+    return str::tows(path.c_str());
+  }
+
+  std::wstring DxvkStateCache::getBaseCacheFileName() const {
+    std::string path = getCacheDir();
+
+    if (!path.empty() && *path.rbegin() != '/')
+      path += '/';
+
+    std::string exeName = env::getExeBaseName();
+    path += exeName + ".dxvk-cache-base";
     return str::tows(path.c_str());
   }
 
