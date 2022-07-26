@@ -244,7 +244,7 @@ namespace dxvk {
     
     auto deviceProp = m_adapter->deviceProperties();
     auto memoryProp = m_adapter->memoryProperties();
-    auto vk11       = m_adapter->devicePropertiesExt().vk11;
+    auto deviceId   = m_adapter->devicePropertiesExt().coreDeviceId;
     
     // Custom Vendor / Device ID
     if (options->customVendorId >= 0)
@@ -322,8 +322,8 @@ namespace dxvk {
     pDesc->GraphicsPreemptionGranularity  = DXGI_GRAPHICS_PREEMPTION_DMA_BUFFER_BOUNDARY;
     pDesc->ComputePreemptionGranularity   = DXGI_COMPUTE_PREEMPTION_DMA_BUFFER_BOUNDARY;
 
-    if (vk11.deviceLUIDValid)
-      std::memcpy(&pDesc->AdapterLuid, vk11.deviceLUID, VK_LUID_SIZE);
+    if (deviceId.deviceLUIDValid)
+      std::memcpy(&pDesc->AdapterLuid, deviceId.deviceLUID, VK_LUID_SIZE);
     else
       pDesc->AdapterLuid = GetAdapterLUID(m_index);
 
