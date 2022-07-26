@@ -54,10 +54,10 @@ namespace dxvk {
       this->draw(ctx, m_fsResolve,
         dstView, dstRect, srcView, srcRect);
     } else {
-        if (m_resolveImage == nullptr
-         || m_resolveImage->info().extent != srcView->imageInfo().extent
-         || m_resolveImage->info().format != srcView->imageInfo().format)
-          this->createResolveImage(srcView->imageInfo());
+      if (m_resolveImage == nullptr
+       || m_resolveImage->info().extent != srcView->imageInfo().extent
+       || m_resolveImage->info().format != srcView->imageInfo().format)
+        this->createResolveImage(srcView->imageInfo());
 
       this->resolve(ctx, m_resolveView, srcView);
       this->draw(ctx, m_fsBlit, dstView, dstRect, m_resolveView, srcRect);
