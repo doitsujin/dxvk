@@ -6,6 +6,7 @@
 
 #include "dxvk_compute.h"
 #include "dxvk_graphics.h"
+#include "dxvk_pipecompiler.h"
 
 namespace dxvk {
 
@@ -100,6 +101,7 @@ namespace dxvk {
     DxvkDevice*               m_device;
     Rc<DxvkPipelineCache>     m_cache;
     Rc<DxvkStateCache>        m_stateCache;
+    Rc<DxvkPipelineCompiler>  m_compiler;
 
     std::atomic<uint32_t>     m_numComputePipelines  = { 0 };
     std::atomic<uint32_t>     m_numGraphicsPipelines = { 0 };

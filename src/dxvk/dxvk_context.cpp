@@ -4148,7 +4148,7 @@ namespace dxvk {
     
     // Retrieve and bind actual Vulkan pipeline handle
     m_gpActivePipeline = m_state.gp.pipeline->getPipelineHandle(
-      m_state.gp.state, m_state.om.framebufferInfo.renderPass());
+      m_state.gp.state, m_state.om.framebufferInfo.renderPass(), this->checkAsyncCompilationCompat());
 
     if (unlikely(!m_gpActivePipeline))
       return false;
@@ -4389,7 +4389,7 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::updateFramebuffer() {
+  void DxvkContext::updateFramebuffer(bool isDraw) {
     if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer)) {
       m_flags.clr(DxvkContextFlag::GpDirtyFramebuffer);
 
@@ -4409,6 +4409,11 @@ namespace dxvk {
           : VkComponentMapping();
 
         m_state.gp.state.omSwizzle[i] = DxvkOmAttachmentSwizzle(mapping);
+      }
+
+      if (isDraw) {
+        for (uint32_t i = 0; i < fbInfo.numAttachments(); i++)
+          fbInfo.getAttachment(i).view->setRtBindingFrameId(m_device->getCurrentFrameId());
       }
 
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
@@ -4814,7 +4819,7 @@ namespace dxvk {
     }
 
     if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer))
-      this->updateFramebuffer();
+      this->updateFramebuffer(true);
 
     if (!m_flags.test(DxvkContextFlag::GpRenderPassBound))
       this->startRenderPass();
@@ -5228,6 +5233,14 @@ namespace dxvk {
     return true;
   }
   
+  bool DxvkContext::checkAsyncCompilationCompat() {
+    bool fbCompat = true;
+    for (uint32_t i = 0; fbCompat && i < m_state.om.framebufferInfo.numAttachments(); i++) {
+      const auto& attachment = m_state.om.framebufferInfo.getAttachment(i);
+      fbCompat &= attachment.view->getRtBindingAsyncCompilationCompat();
+    }
+    return fbCompat;
+  }
 
   DxvkGraphicsPipeline* DxvkContext::lookupGraphicsPipeline(
     const DxvkGraphicsPipelineShaders&  shaders) {

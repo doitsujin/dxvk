@@ -11,8 +11,8 @@ fi
 
 DXVK_VERSION="$1"
 DXVK_SRC_DIR="$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd -P)"
-DXVK_BUILD_DIR=${2}"/dxvk-macOS-$DXVK_VERSION"
-DXVK_ARCHIVE_PATH=${2}"/dxvk-macOS-$DXVK_VERSION.tar.gz"
+DXVK_BUILD_DIR=${2}"/dxvk-macOS-async-$DXVK_VERSION"
+DXVK_ARCHIVE_PATH=${2}"/dxvk-macOS-async-$DXVK_VERSION.tar.gz"
 
 if [ -e "$DXVK_BUILD_DIR" ]; then
   echo "Build directory $DXVK_BUILD_DIR already exists"
@@ -82,8 +82,8 @@ function copy_extras {
 
 function package {
   cd "$DXVK_BUILD_DIR/.."
-  tar -czf "$DXVK_ARCHIVE_PATH" "dxvk-macOS-$DXVK_VERSION"
-  rm -R "dxvk-macOS-$DXVK_VERSION"
+  tar -czf "$DXVK_ARCHIVE_PATH" "dxvk-macOS-async-$DXVK_VERSION"
+  rm -R "dxvk-macOS-async-$DXVK_VERSION"
 }
 
 build_arch 64

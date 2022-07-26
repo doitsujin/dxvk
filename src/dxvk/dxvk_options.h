@@ -18,6 +18,13 @@ namespace dxvk {
     /// when using the state cache
     int32_t numCompilerThreads;
 
+    // Enable async pipelines
+    bool enableAsync;
+
+    /// Number of compiler threads
+    /// when using async pipelines
+    int32_t numAsyncThreads;
+
     /// Shader-related options
     Tristate useRawSsbo;
 
