@@ -1,3 +1,3 @@
 #pragma once
 
-#define DXVK_VERSION "@VCS_TAG@"
+#define DXVK_VERSION "v1.10.3-20230402-async (macOS)"
