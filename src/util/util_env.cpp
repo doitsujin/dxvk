@@ -115,9 +115,14 @@ namespace dxvk::env {
 
   bool createDirectory(const std::string& path) {
 #ifdef _WIN32
-    WCHAR widePath[MAX_PATH];
-    str::tows(path.c_str(), widePath);
-    return !!CreateDirectoryW(widePath, nullptr);
+    std::array<WCHAR, MAX_PATH + 1> widePath;
+
+    size_t length = str::transcodeString(
+      widePath.data(), widePath.size() - 1,
+      path.data(), path.size());
+
+    widePath[length] = L'\0';
+    return !!CreateDirectoryW(widePath.data(), nullptr);
 #else
     return std::filesystem::create_directories(path);
 #endif
