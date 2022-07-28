@@ -93,13 +93,17 @@ namespace dxvk::env {
 #ifdef _WIN32
     using SetThreadDescriptionProc = HRESULT (WINAPI *) (HANDLE, PCWSTR);
 
-    static auto proc = reinterpret_cast<SetThreadDescriptionProc>(
+    static auto SetThreadDescription = reinterpret_cast<SetThreadDescriptionProc>(
       ::GetProcAddress(::GetModuleHandleW(L"kernel32.dll"), "SetThreadDescription"));
 
-    if (proc != nullptr) {
-      auto wideName = std::vector<WCHAR>(name.length() + 1);
-      str::tows(name.c_str(), wideName.data(), wideName.size());
-      (*proc)(::GetCurrentThread(), wideName.data());
+    if (SetThreadDescription) {
+      std::array<wchar_t, 16> wideName = { };
+
+      str::transcodeString(
+        wideName.data(), wideName.size() - 1,
+        name.data(), name.size());
+
+      SetThreadDescription(::GetCurrentThread(), wideName.data());
     }
 #else
     std::array<char, 16> posixName = {};
