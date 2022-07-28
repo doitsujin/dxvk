@@ -252,11 +252,10 @@ namespace dxvk {
     
     if (options->customDeviceId >= 0)
       deviceProp.deviceID = options->customDeviceId;
-    
-    const char* description = deviceProp.deviceName;
-    // Custom device description
-    if (!options->customDeviceDesc.empty())
-      description = options->customDeviceDesc.c_str();
+
+    std::string description = options->customDeviceDesc.empty()
+      ? std::string(deviceProp.deviceName)
+      : options->customDeviceDesc;
     
     // XXX nvapi workaround for a lot of Unreal Engine 4 games
     if (options->customVendorId < 0 && options->customDeviceId < 0

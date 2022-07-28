@@ -161,15 +161,20 @@ namespace dxvk::str {
     return totalLength;
   }
 
-  std::string fromws(const WCHAR *ws);
+  /**
+   * \brief Creates string object from wide char array
+   *
+   * \param [in] ws Null-terminated wide string
+   * \returns Regular string object
+   */
+  std::string fromws(const WCHAR* ws);
 
-  void tows(const char* mbs, WCHAR* wcs, size_t wcsLen);
-
-  template <size_t N>
-  void tows(const char* mbs, WCHAR (&wcs)[N]) {
-    return tows(mbs, wcs, N);
-  }
-
+  /**
+   * \brief Creates wide string object from char array
+   *
+   * \param [in] mbs Null-terminated string
+   * \returns Wide string object
+   */
   std::wstring tows(const char* mbs);
   
   inline void format1(std::stringstream&) { }
