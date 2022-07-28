@@ -85,40 +85,35 @@ namespace dxvk {
     const auto& graphics = m_device->queues().graphics;
     const auto& transfer = m_device->queues().transfer;
 
-    DxvkQueueSubmission info = DxvkQueueSubmission();
+    m_submission.reset();
 
     if (m_cmdBuffersUsed.test(DxvkCmdBuffer::SdmaBuffer)) {
-      info.cmdBuffers[info.cmdBufferCount++] = m_sdmaBuffer;
+      m_submission.cmdBuffers.push_back(m_sdmaBuffer);
 
       if (m_device->hasDedicatedTransferQueue()) {
-        info.wakeSync[info.wakeCount++] = m_sdmaSemaphore;
-        VkResult status = submitToQueue(transfer.queueHandle, VK_NULL_HANDLE, info);
+        m_submission.addWakeSemaphore(m_sdmaSemaphore, 0);
+        VkResult status = submitToQueue(transfer.queueHandle, VK_NULL_HANDLE, m_submission);
 
         if (status != VK_SUCCESS)
           return status;
 
-        info = DxvkQueueSubmission();
-        info.waitSync[info.waitCount] = m_sdmaSemaphore;
-        info.waitMask[info.waitCount] = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-        info.waitCount += 1;
+        m_submission.reset();
+        m_submission.addWaitSemaphore(m_sdmaSemaphore, 0, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
       }
     }
 
     if (m_cmdBuffersUsed.test(DxvkCmdBuffer::InitBuffer))
-      info.cmdBuffers[info.cmdBufferCount++] = m_initBuffer;
+      m_submission.cmdBuffers.push_back(m_initBuffer);
     if (m_cmdBuffersUsed.test(DxvkCmdBuffer::ExecBuffer))
-      info.cmdBuffers[info.cmdBufferCount++] = m_execBuffer;
+      m_submission.cmdBuffers.push_back(m_execBuffer);
     
-    if (waitSemaphore) {
-      info.waitSync[info.waitCount] = waitSemaphore;
-      info.waitMask[info.waitCount] = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-      info.waitCount += 1;
-    }
+    if (waitSemaphore)
+      m_submission.addWaitSemaphore(waitSemaphore, 0, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 
     if (wakeSemaphore)
-      info.wakeSync[info.wakeCount++] = wakeSemaphore;
+      m_submission.addWakeSemaphore(wakeSemaphore, 0);
     
-    return submitToQueue(graphics.queueHandle, m_fence, info);
+    return submitToQueue(graphics.queueHandle, m_fence, m_submission);
   }
   
   
@@ -193,16 +188,23 @@ namespace dxvk {
           VkQueue               queue,
           VkFence               fence,
     const DxvkQueueSubmission&  info) {
-    VkSubmitInfo submitInfo;
-    submitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.pNext                = nullptr;
-    submitInfo.waitSemaphoreCount   = info.waitCount;
-    submitInfo.pWaitSemaphores      = info.waitSync;
-    submitInfo.pWaitDstStageMask    = info.waitMask;
-    submitInfo.commandBufferCount   = info.cmdBufferCount;
-    submitInfo.pCommandBuffers      = info.cmdBuffers;
-    submitInfo.signalSemaphoreCount = info.wakeCount;
-    submitInfo.pSignalSemaphores    = info.wakeSync;
+    VkTimelineSemaphoreSubmitInfoKHR timelineInfo = { VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO_KHR };
+    timelineInfo.waitSemaphoreValueCount    = info.waitValues.size();
+    timelineInfo.pWaitSemaphoreValues       = info.waitValues.data();
+    timelineInfo.signalSemaphoreValueCount  = info.wakeValues.size();
+    timelineInfo.pSignalSemaphoreValues     = info.wakeValues.data();
+
+    VkSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO };
+    submitInfo.waitSemaphoreCount   = info.waitSync.size();
+    submitInfo.pWaitSemaphores      = info.waitSync.data();
+    submitInfo.pWaitDstStageMask    = info.waitMask.data();
+    submitInfo.commandBufferCount   = info.cmdBuffers.size();
+    submitInfo.pCommandBuffers      = info.cmdBuffers.data();
+    submitInfo.signalSemaphoreCount = info.wakeSync.size();
+    submitInfo.pSignalSemaphores    = info.wakeSync.data();
+
+    if (m_device->features().khrTimelineSemaphore.timelineSemaphore)
+      submitInfo.pNext = &timelineInfo;
     
     return m_vkd->vkQueueSubmit(queue, 1, &submitInfo, fence);
   }

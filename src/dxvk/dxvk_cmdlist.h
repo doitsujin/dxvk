@@ -38,13 +38,32 @@ namespace dxvk {
    * only, array sizes are based on need.
    */
   struct DxvkQueueSubmission {
-    uint32_t              waitCount;
-    VkSemaphore           waitSync[2];
-    VkPipelineStageFlags  waitMask[2];
-    uint32_t              wakeCount;
-    VkSemaphore           wakeSync[2];
-    uint32_t              cmdBufferCount;
-    VkCommandBuffer       cmdBuffers[4];
+    std::vector<VkSemaphore> waitSync;
+    std::vector<VkPipelineStageFlags> waitMask;
+    std::vector<uint64_t> waitValues;
+    std::vector<VkSemaphore> wakeSync;
+    std::vector<uint64_t> wakeValues;
+    std::vector<VkCommandBuffer> cmdBuffers;
+
+    void addWaitSemaphore(VkSemaphore semaphore, uint64_t value, VkPipelineStageFlags stageMask) {
+      waitSync.push_back(semaphore);
+      waitMask.push_back(stageMask);
+      waitValues.push_back(value);
+    }
+
+    void addWakeSemaphore(VkSemaphore semaphore, uint64_t value) {
+      wakeSync.push_back(semaphore);
+      wakeValues.push_back(value);
+    }
+
+    void reset() {
+      waitSync.clear();
+      waitMask.clear();
+      waitValues.clear();
+      wakeSync.clear();
+      wakeValues.clear();
+      cmdBuffers.clear();
+    }
   };
 
   /**
@@ -774,6 +793,7 @@ namespace dxvk {
     DxvkGpuQueryTracker m_gpuQueryTracker;
     DxvkBufferTracker   m_bufferTracker;
     DxvkStatCounters    m_statCounters;
+    DxvkQueueSubmission m_submission;
 
     VkCommandBuffer getCmdBuffer(DxvkCmdBuffer cmdBuffer) const {
       if (cmdBuffer == DxvkCmdBuffer::ExecBuffer) return m_execBuffer;
