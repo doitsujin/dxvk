@@ -4596,7 +4596,8 @@ namespace dxvk {
 
     DxvkBufferSliceHandle physSlice;
 
-    if ((Flags & D3DLOCK_DISCARD) && (directMapping || needsReadback)) {
+    bool smallEnoughForDiscard = !env::is32BitHostPlatform() || desc.Size < 2 << 20;
+    if ((Flags & D3DLOCK_DISCARD) && (directMapping || needsReadback) && smallEnoughForDiscard) {
       // Allocate a new backing slice for the buffer and set
       // it as the 'new' mapped slice. This assumes that the
       // only way to invalidate a buffer is by mapping it.
