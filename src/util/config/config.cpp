@@ -607,6 +607,11 @@ namespace dxvk {
     { R"(\\witcher\.exe$)", {{
       { "d3d9.apitraceMode",              "True" },
     }} },
+    /* Guitar Hero World Tour                   *
+     * Very prone to address space crashes      */
+    { R"(\\(GHWT|GHWT_Definitive)\.exe$)", {{
+      { "d3d9.textureMemory",               "16" },
+    }} },
   }};
 
 
