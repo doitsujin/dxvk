@@ -3976,22 +3976,32 @@ namespace dxvk {
   D3D9BufferSlice D3D9DeviceEx::AllocUPBuffer(VkDeviceSize size) {
     constexpr VkDeviceSize UPBufferSize = 1 << 20;
 
-    if (unlikely(m_upBuffer == nullptr)) {
+    if (unlikely(m_upBuffer == nullptr || size > UPBufferSize)) {
       VkMemoryPropertyFlags memoryFlags
         = VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
         | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
         | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
       DxvkBufferCreateInfo info;
-      info.size   = UPBufferSize;
+      info.size   = std::max(UPBufferSize, size);
       info.usage  = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
                   | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
       info.access = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
                   | VK_ACCESS_INDEX_READ_BIT;
       info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
 
-      m_upBuffer = m_dxvkDevice->createBuffer(info, memoryFlags);
-      m_upBufferMapPtr = m_upBuffer->mapPtr(0);
+      Rc<DxvkBuffer> buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
+
+      if (size <= UPBufferSize) {
+        m_upBuffer = std::move(buffer);
+        m_upBufferMapPtr = m_upBuffer->mapPtr(0);
+      } else {
+        // Temporary buffer
+        D3D9BufferSlice result;
+        result.slice = DxvkBufferSlice(std::move(buffer), 0, size);
+        result.mapPtr = buffer->mapPtr(0);
+        return result;
+      }
     }
 
     VkDeviceSize alignedSize = align(size, CACHE_LINE_SIZE);
