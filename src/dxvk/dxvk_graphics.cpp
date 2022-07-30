@@ -1018,10 +1018,8 @@ namespace dxvk {
       return true;
 
     // Validate shaders
-    if (!m_shaders.validate()) {
-      Logger::err("Invalid pipeline: Shader types do not match stage");
+    if (!m_shaders.validate())
       return false;
-    }
 
     // Validate vertex input layout
     uint32_t ilLocationMask = 0;
@@ -1033,45 +1031,33 @@ namespace dxvk {
     for (uint32_t i = 0; i < state.il.attributeCount(); i++) {
       const DxvkIlAttribute& attribute = state.ilAttributes[i];
 
-      if (ilLocationMask & (1u << attribute.location())) {
-        Logger::err(str::format("Invalid pipeline: Vertex location ", attribute.location(), " defined twice"));
+      if (ilLocationMask & (1u << attribute.location()))
         return false;
-      }
 
-      if (!(ilBindingMask & (1u << attribute.binding()))) {
-        Logger::err(str::format("Invalid pipeline: Vertex binding ", attribute.binding(), " not defined"));
+      if (!(ilBindingMask & (1u << attribute.binding())))
         return false;
-      }
 
       VkFormatProperties formatInfo = m_device->adapter()->formatProperties(attribute.format());
 
-      if (!(formatInfo.bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT)) {
-        Logger::err(str::format("Invalid pipeline: Format ", attribute.format(), " not supported for vertex buffers"));
+      if (!(formatInfo.bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT))
         return false;
-      }
 
       ilLocationMask |= 1u << attribute.location();
     }
 
     // Validate rasterization state
     if (state.rs.conservativeMode() != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT) {
-      if (!m_device->extensions().extConservativeRasterization) {
-        Logger::err("Conservative rasterization not supported by device");
+      if (!m_device->extensions().extConservativeRasterization)
         return false;
-      }
 
       if (state.rs.conservativeMode() == VK_CONSERVATIVE_RASTERIZATION_MODE_UNDERESTIMATE_EXT
-       && !m_device->properties().extConservativeRasterization.primitiveUnderestimation) {
-        Logger::err("Primitive underestimation not supported by device");
+       && !m_device->properties().extConservativeRasterization.primitiveUnderestimation)
         return false;
-      }
     }
 
     // Validate depth-stencil state
-    if (state.ds.enableDepthBoundsTest() && !m_device->features().core.features.depthBounds) {
-      Logger::err("Depth bounds not supported by device");
+    if (state.ds.enableDepthBoundsTest() && !m_device->features().core.features.depthBounds)
       return false;
-    }
 
     // Validate render target format support
     VkFormat depthFormat = state.rt.getDepthStencilFormat();
@@ -1079,10 +1065,8 @@ namespace dxvk {
     if (depthFormat) {
       VkFormatProperties formatInfo = m_device->adapter()->formatProperties(depthFormat);
 
-      if (!(formatInfo.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
-        Logger::err(str::format(depthFormat, " not supported as depth-stencil attachment"));
+      if (!(formatInfo.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))
         return false;
-      }
     }
 
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
@@ -1091,10 +1075,8 @@ namespace dxvk {
       if (colorFormat) {
         VkFormatProperties formatInfo = m_device->adapter()->formatProperties(colorFormat);
 
-        if (!(formatInfo.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)) {
-          Logger::err(str::format(depthFormat, " not supported as color attachment"));
+        if (!(formatInfo.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))
           return false;
-        }
       }
     }
 
