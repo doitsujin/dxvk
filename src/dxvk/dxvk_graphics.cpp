@@ -514,6 +514,7 @@ namespace dxvk {
     m_fsLibrary     (fsLibrary) {
     m_vsIn  = m_shaders.vs != nullptr ? m_shaders.vs->info().inputMask  : 0;
     m_fsOut = m_shaders.fs != nullptr ? m_shaders.fs->info().outputMask : 0;
+    m_specConstantMask = this->computeSpecConstantMask();
 
     if (m_shaders.gs != nullptr) {
       if (m_shaders.gs->flags().test(DxvkShaderFlag::HasTransformFeedback)) {
@@ -814,8 +815,13 @@ namespace dxvk {
     // Set up some specialization constants
     DxvkSpecConstants specData;
 
-    for (uint32_t i = 0; i < MaxNumSpecConstants; i++)
-      specData.set(i, state.sc.specConstants[i], 0u);
+    for (uint32_t i = 0; i < MaxNumSpecConstants; i++) {
+      if (m_specConstantMask & (1u << i))
+        specData.set(i, state.sc.specConstants[i], 0u);
+    }
+
+    if (m_specConstantMask & (1u << MaxNumSpecConstants))
+      specData.set(MaxNumSpecConstants, 1u, 0u);
     
     VkSpecializationInfo specInfo = specData.getSpecInfo();
 
@@ -966,6 +972,22 @@ namespace dxvk {
 
     VkFormat rtFormat = state.rt.getColorFormat(target);
     return rtFormat != VK_FORMAT_UNDEFINED;
+  }
+
+
+  uint32_t DxvkGraphicsPipeline::computeSpecConstantMask() const {
+    uint32_t mask = m_shaders.vs->getSpecConstantMask();
+
+    if (m_shaders.tcs != nullptr)
+      mask |= m_shaders.tcs->getSpecConstantMask();
+    if (m_shaders.tes != nullptr)
+      mask |= m_shaders.tes->getSpecConstantMask();
+    if (m_shaders.gs != nullptr)
+      mask |= m_shaders.gs->getSpecConstantMask();
+    if (m_shaders.fs != nullptr)
+      mask |= m_shaders.fs->getSpecConstantMask();
+
+    return mask;
   }
 
 

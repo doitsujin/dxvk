@@ -395,7 +395,9 @@ namespace dxvk {
 
     uint32_t m_vsIn  = 0;
     uint32_t m_fsOut = 0;
-    
+
+    uint32_t m_specConstantMask = 0;
+
     // List of pipeline instances, shared between threads
     alignas(CACHE_LINE_SIZE)
     dxvk::mutex                                   m_mutex;
@@ -435,6 +437,8 @@ namespace dxvk {
     bool writesRenderTarget(
       const DxvkGraphicsPipelineStateInfo& state,
             uint32_t                       target) const;
+
+    uint32_t computeSpecConstantMask() const;
 
     bool validatePipelineState(
       const DxvkGraphicsPipelineStateInfo& state,
