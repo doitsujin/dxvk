@@ -180,6 +180,10 @@ namespace dxvk {
       const DxvkGraphicsPipelineStateInfo&  state);
 
     VkPipelineDepthStencilStateCreateInfo           dsInfo = { VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO };
+
+    bool eq(const DxvkGraphicsPipelineFragmentShaderState& other) const;
+
+    size_t hash() const;
   };
 
   

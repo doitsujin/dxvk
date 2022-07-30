@@ -542,6 +542,65 @@ namespace dxvk {
   }
 
 
+  bool DxvkGraphicsPipelineFragmentShaderState::eq(const DxvkGraphicsPipelineFragmentShaderState& other) const {
+    bool eq = dsInfo.depthTestEnable       == other.dsInfo.depthTestEnable
+           && dsInfo.depthBoundsTestEnable == other.dsInfo.depthBoundsTestEnable
+           && dsInfo.stencilTestEnable     == other.dsInfo.stencilTestEnable;
+
+    if (eq && dsInfo.depthTestEnable) {
+      eq = dsInfo.depthWriteEnable == other.dsInfo.depthWriteEnable
+        && dsInfo.depthCompareOp   == other.dsInfo.depthCompareOp;
+    }
+
+    if (eq && dsInfo.stencilTestEnable) {
+      eq = dsInfo.front.failOp      == other.dsInfo.front.failOp
+        && dsInfo.front.passOp      == other.dsInfo.front.passOp
+        && dsInfo.front.depthFailOp == other.dsInfo.front.depthFailOp
+        && dsInfo.front.compareOp   == other.dsInfo.front.compareOp
+        && dsInfo.front.compareMask == other.dsInfo.front.compareMask
+        && dsInfo.front.writeMask   == other.dsInfo.front.writeMask
+        && dsInfo.back.failOp       == other.dsInfo.back.failOp
+        && dsInfo.back.passOp       == other.dsInfo.back.passOp
+        && dsInfo.back.depthFailOp  == other.dsInfo.back.depthFailOp
+        && dsInfo.back.compareOp    == other.dsInfo.back.compareOp
+        && dsInfo.back.compareMask  == other.dsInfo.back.compareMask
+        && dsInfo.back.writeMask    == other.dsInfo.back.writeMask;
+    }
+
+    return eq;
+  }
+
+
+  size_t DxvkGraphicsPipelineFragmentShaderState::hash() const {
+    DxvkHashState hash;
+    hash.add(dsInfo.depthTestEnable);
+    hash.add(dsInfo.depthBoundsTestEnable);
+    hash.add(dsInfo.stencilTestEnable);
+
+    if (dsInfo.depthTestEnable) {
+      hash.add(dsInfo.depthWriteEnable);
+      hash.add(dsInfo.depthCompareOp);
+    }
+
+    if (dsInfo.stencilTestEnable) {
+      hash.add(dsInfo.front.failOp);
+      hash.add(dsInfo.front.passOp);
+      hash.add(dsInfo.front.depthFailOp);
+      hash.add(dsInfo.front.compareOp);
+      hash.add(dsInfo.front.compareMask);
+      hash.add(dsInfo.front.writeMask);
+      hash.add(dsInfo.back.failOp);
+      hash.add(dsInfo.back.passOp);
+      hash.add(dsInfo.back.depthFailOp);
+      hash.add(dsInfo.back.compareOp);
+      hash.add(dsInfo.back.compareMask);
+      hash.add(dsInfo.back.writeMask);
+    }
+
+    return hash;
+  }
+
+
   DxvkGraphicsPipeline::DxvkGraphicsPipeline(
           DxvkDevice*                 device,
           DxvkPipelineManager*        pipeMgr,
