@@ -2766,7 +2766,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         m_module.defIntType(32, 0), m_spec.get(m_module, SpecProjectionType),
         m_module.consti32(samplerIdx), m_module.consti32(1));
 
-      shouldProj = m_module.opIEqual(bool_t, shouldProj, m_module.constu32(1));
+      shouldProj = m_module.opINotEqual(bool_t, shouldProj, m_module.constu32(0));
 
       uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
       std::array<uint32_t, 4> indices = { shouldProj, shouldProj, shouldProj, shouldProj };
@@ -2934,7 +2934,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
           m_module.consti32(samplerIdx), m_module.consti32(1));
 
         uint32_t bool_t = m_module.defBoolType();
-        fetch4 = m_module.opIEqual(bool_t, fetch4, m_module.constu32(1));
+        fetch4 = m_module.opINotEqual(bool_t, fetch4, m_module.constu32(0));
 
         uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
         std::array<uint32_t, 4> indices = { fetch4, fetch4, fetch4, fetch4 };
@@ -2966,7 +2966,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
           m_module.defIntType(32, 0), m_spec.get(m_module, SpecProjectionType),
           m_module.consti32(samplerIdx), m_module.consti32(1));
 
-        shouldProj = m_module.opIEqual(m_module.defBoolType(), shouldProj, m_module.constu32(1));
+        shouldProj = m_module.opINotEqual(m_module.defBoolType(), shouldProj, m_module.constu32(0));
 
         // Depth  -> .x
         // Colour -> .xyzw
@@ -3027,7 +3027,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       uint32_t bitCnt  = m_module.consti32(1);
 
       uint32_t isNull = m_module.opBitFieldUExtract(typeId, m_spec.get(m_module, SpecSamplerNull), offset, bitCnt);
-      isNull = m_module.opIEqual(m_module.defBoolType(), isNull, m_module.constu32(1));
+      isNull = m_module.opINotEqual(m_module.defBoolType(), isNull, m_module.constu32(0));
 
       // Only do the check for depth comp. samplers
       // if we aren't a 3D texture
@@ -3037,7 +3037,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         uint32_t endLabel    = m_module.allocateId();
 
         uint32_t isDepth = m_module.opBitFieldUExtract(typeId, m_spec.get(m_module, SpecSamplerDepthMode), offset, bitCnt);
-        isDepth = m_module.opIEqual(m_module.defBoolType(), isDepth, m_module.constu32(1));
+        isDepth = m_module.opINotEqual(m_module.defBoolType(), isDepth, m_module.constu32(0));
 
         m_module.opSelectionMerge(endLabel, spv::SelectionControlMaskNone);
         m_module.opBranchConditional(isDepth, depthLabel, colorLabel);
