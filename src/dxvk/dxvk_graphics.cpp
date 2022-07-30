@@ -1080,6 +1080,12 @@ namespace dxvk {
       }
     }
 
+    // Validate spec constant state
+    for (uint32_t i = 0; i < MaxNumSpecConstants; i++) {
+      if (state.sc.specConstants[i] && !(m_specConstantMask & (1u << i)))
+        return false;
+    }
+
     return true;
   }
   
