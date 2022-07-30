@@ -144,6 +144,8 @@ namespace dxvk {
     m_flags.set(D3D9DeviceFlag::DirtySharedPixelShaderData);
     m_flags.set(D3D9DeviceFlag::DirtyDepthBounds);
     m_flags.set(D3D9DeviceFlag::DirtyPointScale);
+
+    m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
   }
 
 
@@ -5314,42 +5316,31 @@ namespace dxvk {
   }
 
 
-  template <bool Points>
-  void D3D9DeviceEx::UpdatePointMode() {
-    if constexpr (!Points) {
-      m_lastPointMode = 0;
-
-      EmitCs([](DxvkContext* ctx) {
-        ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::PointMode, 0);
-      });
+  void D3D9DeviceEx::UpdatePointMode(bool pointList) {
+    if (!pointList) {
+      UpdatePointModeSpec(0);
+      return;
     }
-    else {
-      auto& rs = m_state.renderStates;
 
-      const bool scale  = rs[D3DRS_POINTSCALEENABLE] && !UseProgrammableVS();
-      const bool sprite = rs[D3DRS_POINTSPRITEENABLE];
+    auto& rs = m_state.renderStates;
 
-      const uint32_t scaleBit  = scale  ? 1u : 0u;
-      const uint32_t spriteBit = sprite ? 2u : 0u;
+    const bool scale  = rs[D3DRS_POINTSCALEENABLE] && !UseProgrammableVS();
+    const bool sprite = rs[D3DRS_POINTSPRITEENABLE];
 
-      uint32_t mode = scaleBit | spriteBit;
+    const uint32_t scaleBit  = scale  ? 1u : 0u;
+    const uint32_t spriteBit = sprite ? 2u : 0u;
 
-      if (rs[D3DRS_POINTSCALEENABLE] && m_flags.test(D3D9DeviceFlag::DirtyPointScale)) {
-        m_flags.clr(D3D9DeviceFlag::DirtyPointScale);
+    uint32_t mode = scaleBit | spriteBit;
 
-        UpdatePushConstant<D3D9RenderStateItem::PointScaleA>();
-        UpdatePushConstant<D3D9RenderStateItem::PointScaleB>();
-        UpdatePushConstant<D3D9RenderStateItem::PointScaleC>();
-      }
+    if (rs[D3DRS_POINTSCALEENABLE] && m_flags.test(D3D9DeviceFlag::DirtyPointScale)) {
+      m_flags.clr(D3D9DeviceFlag::DirtyPointScale);
 
-      if (unlikely(mode != m_lastPointMode)) {
-        EmitCs([cMode = mode] (DxvkContext* ctx) {
-          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::PointMode, cMode);
-        });
-
-        m_lastPointMode = mode;
-      }
+      UpdatePushConstant<D3D9RenderStateItem::PointScaleA>();
+      UpdatePushConstant<D3D9RenderStateItem::PointScaleB>();
+      UpdatePushConstant<D3D9RenderStateItem::PointScaleC>();
     }
+
+    UpdatePointModeSpec(mode);
   }
 
 
@@ -5394,11 +5385,7 @@ namespace dxvk {
       if (m_flags.test(D3D9DeviceFlag::DirtyFogState)) {
         m_flags.clr(D3D9DeviceFlag::DirtyFogState);
 
-        EmitCs([cMode = mode] (DxvkContext* ctx) {
-          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::FogEnabled,    true);
-          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::VertexFogMode, cMode);
-          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::PixelFogMode,  D3DFOG_NONE);
-        });
+        UpdateFogModeSpec(true, mode, D3DFOG_NONE);
       }
     }
     else if (pixelFog) {
@@ -5409,11 +5396,7 @@ namespace dxvk {
       if (m_flags.test(D3D9DeviceFlag::DirtyFogState)) {
         m_flags.clr(D3D9DeviceFlag::DirtyFogState);
 
-        EmitCs([cMode = mode] (DxvkContext* ctx) {
-          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::FogEnabled,    true);
-          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::VertexFogMode, D3DFOG_NONE);
-          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::PixelFogMode,  cMode);
-        });
+        UpdateFogModeSpec(true, D3DFOG_NONE, mode);
       }
     }
     else {
@@ -5423,11 +5406,7 @@ namespace dxvk {
       if (m_flags.test(D3D9DeviceFlag::DirtyFogState)) {
         m_flags.clr(D3D9DeviceFlag::DirtyFogState);
 
-        EmitCs([cEnabled = fogEnabled] (DxvkContext* ctx) {
-          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::FogEnabled,    cEnabled);
-          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::VertexFogMode, D3DFOG_NONE);
-          ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::PixelFogMode,  D3DFOG_NONE);
-        });
+        UpdateFogModeSpec(fogEnabled, D3DFOG_NONE, D3DFOG_NONE);
       }
     }
   }
@@ -5756,9 +5735,7 @@ namespace dxvk {
       ? DecodeCompareOp(D3DCMPFUNC(rs[D3DRS_ALPHAFUNC]))
       : VK_COMPARE_OP_ALWAYS;
 
-    EmitCs([cAlphaOp = alphaOp] (DxvkContext* ctx) {
-      ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::AlphaCompareOp, cAlphaOp);
-    });
+    UpdateAlphaTestSpec(alphaOp);
   }
 
 
@@ -6029,10 +6006,7 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyClipPlanes))
       UpdateClipPlanes();
 
-    if (PrimitiveType == D3DPT_POINTLIST)
-      UpdatePointMode<true>();
-    else if (m_lastPointMode != 0)
-      UpdatePointMode<false>();
+    UpdatePointMode(PrimitiveType == D3DPT_POINTLIST);
 
     if (likely(UseProgrammableVS())) {
       if (unlikely(m_flags.test(D3D9DeviceFlag::DirtyProgVertexShader))) {
@@ -6045,14 +6019,14 @@ namespace dxvk {
       UploadConstants<DxsoProgramTypes::VertexShader>();
 
       if (likely(!CanSWVP())) {
-        UpdateBoolSpecConstantVertex(
+        UpdateVertexBoolSpec(
           m_state.vsConsts.bConsts[0] &
           m_consts[DxsoProgramType::VertexShader].meta.boolConstantMask);
       } else
-        UpdateBoolSpecConstantVertex(0);
+        UpdateVertexBoolSpec(0);
     }
     else {
-      UpdateBoolSpecConstantVertex(0);
+      UpdateVertexBoolSpec(0);
       UpdateFixedFunctionVS();
     }
 
@@ -6069,24 +6043,24 @@ namespace dxvk {
       const auto& programInfo = GetCommonShader(m_state.pixelShader)->GetInfo();
 
       if (programInfo.majorVersion() >= 2)
-        UpdatePsSamplerSpecConstants(m_d3d9Options.forceSamplerTypeSpecConstants ? m_textureTypes : 0u, 0u, fetch4);
+        UpdatePixelShaderSamplerSpec(m_d3d9Options.forceSamplerTypeSpecConstants ? m_textureTypes : 0u, 0u, fetch4);
       else
-        UpdatePsSamplerSpecConstants(m_textureTypes, programInfo.minorVersion() >= 4 ? 0u : projected, fetch4); // For implicit samplers...
+        UpdatePixelShaderSamplerSpec(m_textureTypes, programInfo.minorVersion() >= 4 ? 0u : projected, fetch4); // For implicit samplers...
 
-      UpdateBoolSpecConstantPixel(
+      UpdatePixelBoolSpec(
         m_state.psConsts.bConsts[0] &
         m_consts[DxsoProgramType::PixelShader].meta.boolConstantMask);
     }
     else {
-      UpdateBoolSpecConstantPixel(0);
-      UpdatePsSamplerSpecConstants(0u, 0u, 0u);
+      UpdatePixelBoolSpec(0);
+      UpdatePixelShaderSamplerSpec(0u, 0u, 0u);
 
       UpdateFixedFunctionPS();
     }
 
     const uint32_t nullTextureMask = usedSamplerMask & ~usedTextureMask;
     const uint32_t depthTextureMask = m_depthTextures & usedTextureMask;
-    UpdateCommonSamplerSpecConstants(nullTextureMask, depthTextureMask);
+    UpdateCommonSamplerSpec(nullTextureMask, depthTextureMask);
 
     if (m_flags.test(D3D9DeviceFlag::DirtySharedPixelShaderData)) {
       m_flags.clr(D3D9DeviceFlag::DirtySharedPixelShaderData);
@@ -6123,6 +6097,8 @@ namespace dxvk {
         ctx->setDepthBounds(cDepthBounds);
       });
     }
+
+    BindSpecConstants();
   }
 
 
@@ -6717,65 +6693,6 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::UpdateBoolSpecConstantVertex(uint32_t value) {
-    if (value == m_lastBoolSpecConstantVertex)
-      return;
-
-    EmitCs([cBitfield = value](DxvkContext* ctx) {
-      ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::VertexShaderBools, cBitfield);
-      });
-
-    m_lastBoolSpecConstantVertex = value;
-  }
-
-
-  void D3D9DeviceEx::UpdateBoolSpecConstantPixel(uint32_t value) {
-    if (value == m_lastBoolSpecConstantPixel)
-      return;
-
-    EmitCs([cBitfield = value](DxvkContext* ctx) {
-      ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::PixelShaderBools, cBitfield);
-      });
-
-    m_lastBoolSpecConstantPixel = value;
-  }
-
-
-  void D3D9DeviceEx::UpdatePsSamplerSpecConstants(uint32_t types, uint32_t projections, uint32_t fetch4) {
-    if (m_lastSamplerTypes != types || m_lastProjectionBitfield  != projections || m_lastFetch4 != fetch4) {
-      m_lastSamplerTypes = types;
-      m_lastProjectionBitfield  = projections;
-      m_lastFetch4 = fetch4;
-
-      EmitCs([
-        cSamplerType = types,
-        cProjectionType = projections,
-        cFetch4 = fetch4
-      ] (DxvkContext* ctx) {
-        ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::SamplerType, cSamplerType);
-        ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::ProjectionType, cProjectionType);
-        ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::Fetch4, cFetch4);
-      });
-    }
-  }
-
-
-  void D3D9DeviceEx::UpdateCommonSamplerSpecConstants(uint32_t nullMask, uint32_t depthMask) {
-    if (m_lastSamplerNull != nullMask || m_lastSamplerDepthMode != depthMask) {
-      m_lastSamplerNull = nullMask;
-      m_lastSamplerDepthMode = depthMask;
-
-      EmitCs([
-        cNullMask = nullMask,
-        cDepthMask = depthMask
-      ] (DxvkContext* ctx) {
-        ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::SamplerNull, cNullMask);
-        ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, D3D9SpecConstantId::SamplerDepthMode, cDepthMask);
-      });
-    }
-  }
-
-
   void D3D9DeviceEx::ApplyPrimitiveType(
     DxvkContext*      pContext,
     D3DPRIMITIVETYPE  PrimType) {
@@ -7018,7 +6935,7 @@ namespace dxvk {
     UpdatePushConstant<D3D9RenderStateItem::PointSizeMin>();
     UpdatePushConstant<D3D9RenderStateItem::PointSizeMax>();
     m_flags.set(D3D9DeviceFlag::DirtyPointScale);
-    UpdatePointMode<false>();
+    UpdatePointMode(false);
 
     rs[D3DRS_SRGBWRITEENABLE]            = 0;
 
@@ -7140,10 +7057,10 @@ namespace dxvk {
     // We should do this...
     m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
 
-    UpdatePsSamplerSpecConstants(0u, 0u, 0u);
-    UpdateBoolSpecConstantVertex(0u);
-    UpdateBoolSpecConstantPixel(0u);
-    UpdateCommonSamplerSpecConstants(0u, 0u);
+    UpdatePixelShaderSamplerSpec(0u, 0u, 0u);
+    UpdateVertexBoolSpec(0u);
+    UpdatePixelBoolSpec(0u);
+    UpdateCommonSamplerSpec(0u, 0u);
 
     return D3D_OK;
   }
@@ -7300,6 +7217,77 @@ namespace dxvk {
       iter = m_mappedTextures.remove(iter);
     }
 #endif
+  }
+
+  ////////////////////////////////////
+  // D3D9 Device Specialization State
+  ////////////////////////////////////
+
+  void D3D9DeviceEx::UpdateAlphaTestSpec(VkCompareOp alphaOp) {
+    uint32_t value = uint32_t(alphaOp);
+
+    if (m_specInfo.set<SpecAlphaCompareOp>(value))
+      m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
+  }
+
+
+  void D3D9DeviceEx::UpdateVertexBoolSpec(uint32_t value) {
+    if (m_specInfo.set<SpecVertexShaderBools>(value))
+      m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
+  }
+
+
+  void D3D9DeviceEx::UpdatePixelBoolSpec(uint32_t value) {
+    if (m_specInfo.set<SpecPixelShaderBools>(value))
+      m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
+  }
+
+
+  void D3D9DeviceEx::UpdatePixelShaderSamplerSpec(uint32_t types, uint32_t projections, uint32_t fetch4) {
+    bool dirty  = m_specInfo.set<SpecSamplerType>(types);
+         dirty |= m_specInfo.set<SpecProjectionType>(projections);
+         dirty |= m_specInfo.set<SpecFetch4>(fetch4);
+
+    if (dirty)
+      m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
+  }
+
+
+  void D3D9DeviceEx::UpdateCommonSamplerSpec(uint32_t nullMask, uint32_t depthMask) {
+    bool dirty  = m_specInfo.set<SpecSamplerDepthMode>(depthMask);
+         dirty |= m_specInfo.set<SpecSamplerNull>(nullMask);
+
+    if (dirty)
+      m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
+  }
+
+
+  void D3D9DeviceEx::UpdatePointModeSpec(uint32_t mode) {
+    if (m_specInfo.set<SpecPointMode>(mode))
+      m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
+  }
+
+
+  void D3D9DeviceEx::UpdateFogModeSpec(bool fogEnabled, D3DFOGMODE vertexFogMode, D3DFOGMODE pixelFogMode) {
+    bool dirty  = m_specInfo.set<SpecFogEnabled>(fogEnabled);
+         dirty |= m_specInfo.set<SpecVertexFogMode>(vertexFogMode);
+         dirty |= m_specInfo.set<SpecPixelFogMode>(pixelFogMode);
+
+    if (dirty)
+      m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
+  }
+
+
+  void D3D9DeviceEx::BindSpecConstants() {
+    if (!m_flags.test(D3D9DeviceFlag::DirtySpecializationEntries))
+      return;
+
+    EmitCs([cSpecInfo = m_specInfo](DxvkContext* ctx) {
+      for (size_t i = 0; i < cSpecInfo.data.size(); i++)
+        ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, i, cSpecInfo.data[i]);
+    });
+
+    m_flags.clr(D3D9DeviceFlag::DirtySpecializationEntries);
   }
 
 }
