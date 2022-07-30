@@ -13,8 +13,9 @@ namespace dxvk {
     PixelFogMode    = 4,    // Range: 0 -> 3          | Bits: 2
 
     PointMode       = 5,    // Range: 0 -> 3          | Bits: 3
-    ProjectionType  = 6,    // 1 bit for 16 samplers  | Bits: 16
+    ProjectionType  = 6,    // 1 bit for 6 samplers   | Bits: 6
                             // ^ not supported for vertex shaders
+                            //   PS 1.x only supports up to 6 samplers
 
     VertexShaderBools = 7,  // 16 bools               | Bits: 16
     PixelShaderBools  = 8,  // 16 bools               | Bits: 16
