@@ -186,7 +186,34 @@ namespace dxvk {
     size_t hash() const;
   };
 
-  
+
+  /**
+   * \brief Specialization constant state for pipelines
+   *
+   * Can only be used when all pipeline state is known.
+   */
+  struct DxvkPipelineSpecConstantState {
+    DxvkPipelineSpecConstantState();
+
+    DxvkPipelineSpecConstantState(
+            uint32_t                        mask,
+      const DxvkScInfo&                     state);
+
+    VkSpecializationInfo                                            scInfo         = { };
+    std::array<VkSpecializationMapEntry,  MaxNumSpecConstants + 1>  scConstantMap  = { };
+    std::array<uint32_t,                  MaxNumSpecConstants + 1>  scConstantData = { };
+
+    bool eq(const DxvkPipelineSpecConstantState& other) const;
+
+    size_t hash() const;
+
+  private:
+
+    void addConstant(uint32_t id, uint32_t value);
+
+  };
+
+
   /**
    * \brief Flags that describe pipeline properties
    */

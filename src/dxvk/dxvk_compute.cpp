@@ -4,6 +4,7 @@
 
 #include "dxvk_compute.h"
 #include "dxvk_device.h"
+#include "dxvk_graphics.h"
 #include "dxvk_pipemanager.h"
 #include "dxvk_spec_const.h"
 #include "dxvk_state_cache.h"
@@ -106,23 +107,12 @@ namespace dxvk {
       Logger::debug(str::format("  cs  : ", m_shaders.cs->debugName()));
     }
     
-    uint32_t specConstantMask = m_shaders.cs->getSpecConstantMask();
-    DxvkSpecConstants specData;
-
-    for (uint32_t i = 0; i < MaxNumSpecConstants; i++) {
-      if (specConstantMask & (1u << i))
-        specData.set(i, state.sc.specConstants[i], 0u);
-    }
-
-    if (specConstantMask & (1u << MaxNumSpecConstants))
-      specData.set(MaxNumSpecConstants, 1u, 0u);
-
-    VkSpecializationInfo specInfo = specData.getSpecInfo();
+    DxvkPipelineSpecConstantState scState(m_shaders.cs->getSpecConstantMask(), state.sc);
     
     DxvkShaderStageInfo stageInfo(m_device);
     stageInfo.addStage(VK_SHADER_STAGE_COMPUTE_BIT, 
       m_shaders.cs->getCode(m_bindings, DxvkShaderModuleCreateInfo()),
-      &specInfo);
+      &scState.scInfo);
 
     VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
     info.stage                = *stageInfo.getStageInfos();

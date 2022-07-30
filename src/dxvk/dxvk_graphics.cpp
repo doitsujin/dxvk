@@ -601,6 +601,68 @@ namespace dxvk {
   }
 
 
+  DxvkPipelineSpecConstantState::DxvkPipelineSpecConstantState() {
+
+  }
+
+
+  DxvkPipelineSpecConstantState::DxvkPipelineSpecConstantState(
+          uint32_t                        mask,
+    const DxvkScInfo&                     state) {
+    for (uint32_t i = 0; i < MaxNumSpecConstants; i++) {
+      if (mask & (1u << i))
+        addConstant(i, state.specConstants[i]);
+    }
+
+    if (mask & (1u << MaxNumSpecConstants))
+      addConstant(MaxNumSpecConstants, VK_TRUE);
+
+    if (scInfo.mapEntryCount) {
+      scInfo.pMapEntries = scConstantMap.data();
+      scInfo.dataSize = scInfo.mapEntryCount * sizeof(uint32_t);
+      scInfo.pData = scConstantData.data();
+    }
+  }
+
+
+  bool DxvkPipelineSpecConstantState::eq(const DxvkPipelineSpecConstantState& other) const {
+    bool eq = scInfo.mapEntryCount == other.scInfo.mapEntryCount;
+
+    for (uint32_t i = 0; i < scInfo.mapEntryCount && eq; i++) {
+      eq = scConstantMap[i].constantID == other.scConstantMap[i].constantID
+        && scConstantData[i]           == other.scConstantData[i];
+    }
+
+    return eq;
+  }
+
+
+  size_t DxvkPipelineSpecConstantState::hash() const {
+    DxvkHashState hash;
+    hash.add(scInfo.mapEntryCount);
+
+    for (uint32_t i = 0; i < scInfo.mapEntryCount; i++) {
+      hash.add(scConstantMap[i].constantID);
+      hash.add(scConstantData[i]);
+    }
+
+    return hash;
+  }
+
+
+  void DxvkPipelineSpecConstantState::addConstant(uint32_t id, uint32_t value) {
+    if (value) {
+      uint32_t index = scInfo.mapEntryCount++;
+
+      scConstantMap[index].constantID = id;
+      scConstantMap[index].offset = sizeof(uint32_t) * index;
+      scConstantMap[index].size = sizeof(uint32_t);
+
+      scConstantData[index] = value;
+    }
+  }
+
+
   DxvkGraphicsPipeline::DxvkGraphicsPipeline(
           DxvkDevice*                 device,
           DxvkPipelineManager*        pipeMgr,
@@ -915,44 +977,33 @@ namespace dxvk {
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_FRONT_FACE;
     }
 
-    // Set up some specialization constants
-    DxvkSpecConstants specData;
-
-    for (uint32_t i = 0; i < MaxNumSpecConstants; i++) {
-      if (m_specConstantMask & (1u << i))
-        specData.set(i, state.sc.specConstants[i], 0u);
-    }
-
-    if (m_specConstantMask & (1u << MaxNumSpecConstants))
-      specData.set(MaxNumSpecConstants, 1u, 0u);
-    
-    VkSpecializationInfo specInfo = specData.getSpecInfo();
+    // Set up pipeline state
+    DxvkGraphicsPipelineVertexInputState      viState(m_device, state, m_shaders.vs.ptr());
+    DxvkGraphicsPipelinePreRasterizationState prState(m_device, state, m_shaders.gs.ptr());
+    DxvkGraphicsPipelineFragmentShaderState   fsState(m_device, state);
+    DxvkGraphicsPipelineFragmentOutputState   foState(m_device, state, m_shaders.fs.ptr());
+    DxvkPipelineSpecConstantState             scState(m_specConstantMask, state.sc);
 
     // Build stage infos for all provided shaders
     DxvkShaderStageInfo stageInfo(m_device);
 
     if (flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT) {
-      stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, m_vsLibrary->getModuleIdentifier(), &specInfo);
+      stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, m_vsLibrary->getModuleIdentifier(), &scState.scInfo);
 
       if (m_shaders.fs != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, m_fsLibrary->getModuleIdentifier(), &specInfo);
+        stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, m_fsLibrary->getModuleIdentifier(), &scState.scInfo);
     } else {
-      stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, getShaderCode(m_shaders.vs, state), &specInfo);
+      stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, getShaderCode(m_shaders.vs, state), &scState.scInfo);
 
       if (m_shaders.tcs != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, getShaderCode(m_shaders.tcs, state), &specInfo);
+        stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, getShaderCode(m_shaders.tcs, state), &scState.scInfo);
       if (m_shaders.tes != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, getShaderCode(m_shaders.tes, state), &specInfo);
+        stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, getShaderCode(m_shaders.tes, state), &scState.scInfo);
       if (m_shaders.gs != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_GEOMETRY_BIT, getShaderCode(m_shaders.gs, state), &specInfo);
+        stageInfo.addStage(VK_SHADER_STAGE_GEOMETRY_BIT, getShaderCode(m_shaders.gs, state), &scState.scInfo);
       if (m_shaders.fs != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, getShaderCode(m_shaders.fs, state), &specInfo);
+        stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, getShaderCode(m_shaders.fs, state), &scState.scInfo);
     }
-
-    DxvkGraphicsPipelineVertexInputState      viState(m_device, state, m_shaders.vs.ptr());
-    DxvkGraphicsPipelinePreRasterizationState prState(m_device, state, m_shaders.gs.ptr());
-    DxvkGraphicsPipelineFragmentShaderState   fsState(m_device, state);
-    DxvkGraphicsPipelineFragmentOutputState   foState(m_device, state, m_shaders.fs.ptr());
 
     VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
     dyInfo.dynamicStateCount      = dynamicStateCount;
