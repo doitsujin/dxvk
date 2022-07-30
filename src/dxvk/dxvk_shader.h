@@ -27,7 +27,6 @@ namespace dxvk {
   enum DxvkShaderFlag : uint64_t {
     HasSampleRateShading,
     HasTransformFeedback,
-    HasSpecConstants,
     ExportsStencilRef,
     ExportsViewportIndexLayerFromVertexStage,
   };
@@ -110,6 +109,14 @@ namespace dxvk {
      */
     const DxvkBindingLayout& getBindings() const {
       return m_bindings;
+    }
+
+    /**
+     * \brief Retrieves spec constant mask
+     * \returns Bit mask of used spec constants
+     */
+    uint32_t getSpecConstantMask() const {
+      return m_specConstantMask;
     }
 
     /**
@@ -208,6 +215,8 @@ namespace dxvk {
 
     size_t                        m_o1IdxOffset = 0;
     size_t                        m_o1LocOffset = 0;
+
+    uint32_t                      m_specConstantMask = 0;
 
     std::vector<char>             m_uniformData;
     std::vector<BindingOffsets>   m_bindingOffsets;

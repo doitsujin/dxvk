@@ -64,8 +64,10 @@ namespace dxvk {
           bindingOffsets[varId].setOffset = ins.offset() + 3;
         }
 
-        if (ins.arg(2) == spv::DecorationSpecId && ins.arg(3) < MaxNumSpecConstants)
-          m_flags.set(DxvkShaderFlag::HasSpecConstants);
+        if (ins.arg(2) == spv::DecorationSpecId) {
+          if (ins.arg(3) <= MaxNumSpecConstants)
+            m_specConstantMask |= 1u << ins.arg(3);
+        }
 
         if (ins.arg(2) == spv::DecorationLocation && ins.arg(3) == 1) {
           m_o1LocOffset = ins.offset() + 3;
@@ -158,7 +160,8 @@ namespace dxvk {
       return false;
 
     // Ignore shaders that have user-defined spec constants
-    return !m_flags.test(DxvkShaderFlag::HasSpecConstants);
+    // and no selector to read their contents from elsewhere
+    return !m_specConstantMask || (m_specConstantMask & (1u << MaxNumSpecConstants));
   }
 
 
