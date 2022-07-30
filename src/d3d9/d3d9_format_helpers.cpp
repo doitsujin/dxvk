@@ -93,9 +93,7 @@ namespace dxvk {
     bufferViewInfo.rangeLength = srcSlice.length();
     auto tmpBufferView = m_device->createBufferView(srcSlice.buffer(), bufferViewInfo);
 
-    if (specConstantValue)
-      m_context->setSpecConstant(VK_PIPELINE_BIND_POINT_COMPUTE, 0, specConstantValue);
-
+    m_context->setSpecConstant(VK_PIPELINE_BIND_POINT_COMPUTE, 0, specConstantValue);
     m_context->bindResourceView(VK_SHADER_STAGE_COMPUTE_BIT, BindingIds::Image, tmpImageView, nullptr);
     m_context->bindResourceView(VK_SHADER_STAGE_COMPUTE_BIT, BindingIds::Buffer, nullptr, tmpBufferView);
     m_context->bindShader(VK_SHADER_STAGE_COMPUTE_BIT, m_shaders[videoFormat.FormatType]);
