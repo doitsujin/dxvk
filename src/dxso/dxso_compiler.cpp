@@ -236,7 +236,10 @@ namespace dxvk {
       if (m_ps.specularColorIn)
         m_module.decorate(m_ps.specularColorIn, spv::DecorationFlat);
 
-      permutations[D3D9ShaderPermutations::FlatShade] = compileShader();
+      if (m_ps.diffuseColorIn || m_ps.specularColorIn)
+        permutations[D3D9ShaderPermutations::FlatShade] = compileShader();
+      else
+        permutations[D3D9ShaderPermutations::FlatShade] = permutations[D3D9ShaderPermutations::None];
     }
 
     return permutations;

@@ -90,7 +90,7 @@ namespace dxvk {
 
     pDevice->GetDXVKDevice()->registerShader(m_shaders[0]);
 
-    if (m_shaders[1] != nullptr)
+    if (m_shaders[1] != nullptr && m_shaders[1] != m_shaders[0])
       pDevice->GetDXVKDevice()->registerShader(m_shaders[1]);
   }
 
