@@ -1790,16 +1790,6 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::pushConstants(
-          uint32_t                  offset,
-          uint32_t                  size,
-    const void*                     data) {
-    std::memcpy(&m_state.pc.data[offset], data, size);
-
-    m_flags.set(DxvkContextFlag::DirtyPushConstants);
-  }
-  
-  
   void DxvkContext::resolveImage(
     const Rc<DxvkImage>&            dstImage,
     const Rc<DxvkImage>&            srcImage,

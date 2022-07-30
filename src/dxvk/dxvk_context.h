@@ -793,8 +793,12 @@ namespace dxvk {
     void pushConstants(
             uint32_t                  offset,
             uint32_t                  size,
-      const void*                     data);
-    
+      const void*                     data) {
+      std::memcpy(&m_state.pc.data[offset], data, size);
+
+      m_flags.set(DxvkContextFlag::DirtyPushConstants);
+    }
+
     /**
      * \brief Resolves a multisampled image resource
      * 
