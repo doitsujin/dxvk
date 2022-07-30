@@ -37,6 +37,7 @@ namespace dxvk {
     GpDirtyStencilRef,          ///< Stencil reference has changed
     GpDirtyRasterizerState,     ///< Cull mode and front face have changed
     GpDirtyViewport,            ///< Viewport state has changed
+    GpDirtySpecConstants,       ///< Graphics spec constants are out of date
     GpDynamicBlendConstants,    ///< Blend constants are dynamic
     GpDynamicDepthStencilState, ///< Depth-stencil state is dynamic
     GpDynamicDepthBias,         ///< Depth bias is dynamic
@@ -47,6 +48,7 @@ namespace dxvk {
     GpIndependentSets,          ///< Graphics pipeline layout was created with independent sets
     
     CpDirtyPipelineState,       ///< Compute pipeline is out of date
+    CpDirtySpecConstants,       ///< Compute spec constants are out of date
     
     DirtyDrawBuffer,            ///< Indirect argument buffer is dirty
     DirtyPushConstants,         ///< Push constant data has changed
@@ -120,11 +122,18 @@ namespace dxvk {
   };
   
   
+  struct DxvkSpecConstantState {
+    uint32_t                                  mask = 0;
+    std::array<uint32_t, MaxNumSpecConstants> data = { };
+  };
+  
+  
   struct DxvkGraphicsPipelineState {
     DxvkGraphicsPipelineShaders   shaders;
     DxvkGraphicsPipelineStateInfo state;
     DxvkGraphicsPipelineFlags     flags;
     DxvkGraphicsPipeline*         pipeline = nullptr;
+    DxvkSpecConstantState         constants;
   };
   
   
@@ -132,6 +141,7 @@ namespace dxvk {
     DxvkComputePipelineShaders    shaders;
     DxvkComputePipelineStateInfo  state;
     DxvkComputePipeline*          pipeline = nullptr;
+    DxvkSpecConstantState         constants;
   };
 
 

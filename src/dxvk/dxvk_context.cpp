@@ -2524,24 +2524,6 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::setSpecConstant(
-          VkPipelineBindPoint pipeline,
-          uint32_t            index,
-          uint32_t            value) {
-    auto& specConst = pipeline == VK_PIPELINE_BIND_POINT_GRAPHICS
-      ? m_state.gp.state.sc.specConstants[index]
-      : m_state.cp.state.sc.specConstants[index];
-    
-    if (specConst != value) {
-      specConst = value;
-
-      m_flags.set(pipeline == VK_PIPELINE_BIND_POINT_GRAPHICS
-        ? DxvkContextFlag::GpDirtyPipelineState
-        : DxvkContextFlag::CpDirtyPipelineState);
-    }
-  }
-  
-  
   void DxvkContext::setBarrierControl(DxvkBarrierControlFlags control) {
     m_barrierControl = control;
   }
@@ -4493,6 +4475,12 @@ namespace dxvk {
     if (unlikely(!newPipeline))
       return false;
 
+    if (unlikely(newPipeline->getSpecConstantMask() != m_state.cp.constants.mask))
+      this->resetSpecConstants<VK_PIPELINE_BIND_POINT_COMPUTE>(newPipeline->getSpecConstantMask());
+
+    if (m_flags.test(DxvkContextFlag::CpDirtySpecConstants))
+      this->updateSpecConstants<VK_PIPELINE_BIND_POINT_COMPUTE>();
+
     // Look up Vulkan pipeline handle for the given compute state
     auto pipelineHandle = newPipeline->getPipelineHandle(m_state.cp.state);
     
@@ -4544,6 +4532,9 @@ namespace dxvk {
       m_state.gp.flags = DxvkGraphicsPipelineFlags();
       return false;
     }
+
+    if (unlikely(newPipeline->getSpecConstantMask() != m_state.gp.constants.mask))
+      this->resetSpecConstants<VK_PIPELINE_BIND_POINT_GRAPHICS>(newPipeline->getSpecConstantMask());
 
     if (m_state.gp.flags != newPipeline->flags()) {
       m_state.gp.flags = newPipeline->flags();
@@ -4653,6 +4644,49 @@ namespace dxvk {
 
     m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
     return true;
+  }
+
+
+  template<VkPipelineBindPoint BindPoint>
+  void DxvkContext::resetSpecConstants(
+          uint32_t                newMask) {
+    auto& scInfo  = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS ? m_state.gp.state.sc  : m_state.cp.state.sc;
+    auto& scState = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS ? m_state.gp.constants : m_state.cp.constants;
+
+    // Set all constants to 0 that were used by the previous pipeline
+    // but are not used by the old one. Any stale data could otherwise
+    // lead to unnecessary pipeline variants being created.
+    for (auto i : bit::BitMask(scState.mask & ~newMask))
+      scInfo.specConstants[i] = 0;
+
+    scState.mask = newMask;
+
+    auto flag = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+      ? DxvkContextFlag::GpDirtySpecConstants
+      : DxvkContextFlag::CpDirtySpecConstants;
+
+    if (newMask)
+      m_flags.set(flag);
+    else
+      m_flags.clr(flag);
+  }
+
+
+  template<VkPipelineBindPoint BindPoint>
+  void DxvkContext::updateSpecConstants() {
+    auto& scInfo  = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS ? m_state.gp.state.sc  : m_state.cp.state.sc;
+    auto& scState = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS ? m_state.gp.constants : m_state.cp.constants;
+
+    for (auto i : bit::BitMask(scState.mask))
+      scInfo.specConstants[i] = scState.data[i];
+
+    if (BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
+      m_flags.clr(DxvkContextFlag::GpDirtySpecConstants);
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+    } else {
+      m_flags.clr(DxvkContextFlag::CpDirtySpecConstants);
+      m_flags.set(DxvkContextFlag::CpDirtyPipelineState);
+    }
   }
 
 
@@ -5348,7 +5382,9 @@ namespace dxvk {
   bool DxvkContext::commitComputeState() {
     this->spillRenderPass(false);
 
-    if (m_flags.test(DxvkContextFlag::CpDirtyPipelineState)) {
+    if (m_flags.any(
+      DxvkContextFlag::CpDirtyPipelineState,
+      DxvkContextFlag::CpDirtySpecConstants)) {
       if (unlikely(!this->updateComputePipelineState()))
         return false;
     }
@@ -5397,6 +5433,9 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyVertexBuffers))
       this->updateVertexBufferBindings();
     
+    if (m_flags.test(DxvkContextFlag::GpDirtySpecConstants))
+      this->updateSpecConstants<VK_PIPELINE_BIND_POINT_GRAPHICS>();
+
     if (m_flags.test(DxvkContextFlag::GpDirtyPipelineState)) {
       DxvkGlobalPipelineBarrier barrier = { };
 

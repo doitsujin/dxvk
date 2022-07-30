@@ -90,6 +90,17 @@ namespace dxvk {
     DxvkBindingLayoutObjects* getBindings() const {
       return m_bindings;
     }
+
+    /**
+     * \brief Queries spec constant mask
+     *
+     * This only includes user spec constants.
+     * \returns Bit mask of used spec constants
+     */
+    uint32_t getSpecConstantMask() const {
+      constexpr uint32_t globalMask = (1u << MaxNumSpecConstants) - 1;
+      return m_shaders.cs->getSpecConstantMask() & globalMask;
+    }
     
     /**
      * \brief Retrieves pipeline handle

@@ -1033,7 +1033,20 @@ namespace dxvk {
     void setSpecConstant(
             VkPipelineBindPoint pipeline,
             uint32_t            index,
-            uint32_t            value);
+            uint32_t            value) {
+      auto& scState = pipeline == VK_PIPELINE_BIND_POINT_GRAPHICS
+        ? m_state.gp.constants : m_state.cp.constants;
+      
+      if (scState.data[index] != value) {
+        scState.data[index] = value;
+
+        if (scState.mask & (1u << index)) {
+          m_flags.set(pipeline == VK_PIPELINE_BIND_POINT_GRAPHICS
+            ? DxvkContextFlag::GpDirtySpecConstants
+            : DxvkContextFlag::CpDirtySpecConstants);
+        }
+      }
+    }
     
     /**
      * \brief Sets barrier control flags
@@ -1347,7 +1360,14 @@ namespace dxvk {
     void unbindGraphicsPipeline();
     bool updateGraphicsPipeline();
     bool updateGraphicsPipelineState(DxvkGlobalPipelineBarrier srcBarrier);
-    
+
+    template<VkPipelineBindPoint BindPoint>
+    void resetSpecConstants(
+            uint32_t                newMask);
+
+    template<VkPipelineBindPoint BindPoint>
+    void updateSpecConstants();
+
     void invalidateState();
 
     template<VkPipelineBindPoint BindPoint>
