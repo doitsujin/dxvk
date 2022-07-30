@@ -17,6 +17,7 @@ namespace dxvk {
   class SpirvModule;
 
   struct D3D9Options;
+  class D3D9ShaderSpecConstantManager;
 
   struct D3D9FogContext {
     // General inputs...
@@ -44,7 +45,7 @@ namespace dxvk {
 
   // Returns new oFog if VS
   // Returns new oColor if PS
-  uint32_t DoFixedFunctionFog(SpirvModule& spvModule, const D3D9FogContext& fogCtx);
+  uint32_t DoFixedFunctionFog(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, const D3D9FogContext& fogCtx);
 
   // Returns a render state block
   uint32_t SetupRenderStateBlock(SpirvModule& spvModule, uint32_t count);
@@ -56,13 +57,13 @@ namespace dxvk {
   };
 
   // Default point size and point scale magic!
-  D3D9PointSizeInfoVS GetPointSizeInfoVS(SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t perVertPointSize, uint32_t rsBlock, bool isFixedFunction);
+  D3D9PointSizeInfoVS GetPointSizeInfoVS(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t perVertPointSize, uint32_t rsBlock, bool isFixedFunction);
 
   struct D3D9PointSizeInfoPS {
     uint32_t isSprite;
   };
 
-  D3D9PointSizeInfoPS GetPointSizeInfoPS(SpirvModule& spvModule, uint32_t rsBlock);
+  D3D9PointSizeInfoPS GetPointSizeInfoPS(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, uint32_t rsBlock);
 
   uint32_t GetPointCoord(SpirvModule& spvModule);
 

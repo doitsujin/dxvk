@@ -16,9 +16,8 @@ namespace dxvk {
     invariantPosition = options->invariantPosition;
   }
 
-  uint32_t DoFixedFunctionFog(SpirvModule& spvModule, const D3D9FogContext& fogCtx) {
+  uint32_t DoFixedFunctionFog(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, const D3D9FogContext& fogCtx) {
     uint32_t floatType  = spvModule.defFloatType(32);
-    uint32_t uint32Type = spvModule.defIntType(32, 0);
     uint32_t vec3Type   = spvModule.defVectorType(floatType, 3);
     uint32_t vec4Type   = spvModule.defVectorType(floatType, 4);
     uint32_t floatPtr   = spvModule.defPointerType(floatType, spv::StorageClassPushConstant);
@@ -40,20 +39,12 @@ namespace dxvk {
     uint32_t fogDensity = spvModule.opLoad(floatType,
       spvModule.opAccessChain(floatPtr, fogCtx.RenderState, 1, &fogDensityMember));
 
-    uint32_t fogMode = spvModule.specConst32(uint32Type, 0);
+    uint32_t fogMode = spec.get(
+      spvModule,
+      fogCtx.IsPixel ? SpecPixelFogMode : SpecVertexFogMode);
 
-    if (!fogCtx.IsPixel) {
-      spvModule.setDebugName(fogMode, "vertex_fog_mode");
-      spvModule.decorateSpecId(fogMode, D3D9SpecConstantId::VertexFogMode);
-    }
-    else {
-      spvModule.setDebugName(fogMode, "pixel_fog_mode");
-      spvModule.decorateSpecId(fogMode, D3D9SpecConstantId::PixelFogMode);
-    }
-
-    uint32_t fogEnabled = spvModule.specConstBool(false);
-    spvModule.setDebugName(fogEnabled, "fog_enabled");
-    spvModule.decorateSpecId(fogEnabled, D3D9SpecConstantId::FogEnabled);
+    uint32_t fogEnabled = spec.get(spvModule, SpecFogEnabled);
+    fogEnabled = spvModule.opINotEqual(spvModule.defBoolType(), fogEnabled, spvModule.constu32(0));
 
     uint32_t doFog   = spvModule.allocateId();
     uint32_t skipFog = spvModule.allocateId();
@@ -253,7 +244,7 @@ namespace dxvk {
   }
 
 
-  D3D9PointSizeInfoVS GetPointSizeInfoVS(SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t perVertPointSize, uint32_t rsBlock, bool isFixedFunction) {
+  D3D9PointSizeInfoVS GetPointSizeInfoVS(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t perVertPointSize, uint32_t rsBlock, bool isFixedFunction) {
     uint32_t floatType  = spvModule.defFloatType(32);
     uint32_t floatPtr   = spvModule.defPointerType(floatType, spv::StorageClassPushConstant);
     uint32_t vec3Type   = spvModule.defVectorType(floatType, 3);
@@ -269,9 +260,7 @@ namespace dxvk {
     uint32_t value = perVertPointSize != 0 ? perVertPointSize : LoadFloat(D3D9RenderStateItem::PointSize);
 
     if (isFixedFunction) {
-      uint32_t pointMode = spvModule.specConst32(uint32Type, 0);
-      spvModule.setDebugName(pointMode, "point_mode");
-      spvModule.decorateSpecId(pointMode, D3D9SpecConstantId::PointMode);
+      uint32_t pointMode = spec.get(spvModule, SpecPointMode);
 
       uint32_t scaleBit  = spvModule.opBitFieldUExtract(uint32Type, pointMode, spvModule.consti32(0), spvModule.consti32(1));
       uint32_t isScale   = spvModule.opIEqual(boolType, scaleBit, spvModule.constu32(1));
@@ -317,14 +306,12 @@ namespace dxvk {
   }
 
 
-  D3D9PointSizeInfoPS GetPointSizeInfoPS(SpirvModule& spvModule, uint32_t rsBlock) {
+  D3D9PointSizeInfoPS GetPointSizeInfoPS(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, uint32_t rsBlock) {
     uint32_t uint32Type = spvModule.defIntType(32, 0);
     uint32_t boolType   = spvModule.defBoolType();
     uint32_t boolVec4   = spvModule.defVectorType(boolType, 4);
 
-    uint32_t pointMode = spvModule.specConst32(uint32Type, 0);
-    spvModule.setDebugName(pointMode, "point_mode");
-    spvModule.decorateSpecId(pointMode, D3D9SpecConstantId::PointMode);
+    uint32_t pointMode = spec.get(spvModule, SpecPointMode);
 
     uint32_t spriteBit  = spvModule.opBitFieldUExtract(uint32Type, pointMode, spvModule.consti32(1), spvModule.consti32(1));
     uint32_t isSprite   = spvModule.opIEqual(boolType, spriteBit, spvModule.constu32(1));
@@ -631,6 +618,8 @@ namespace dxvk {
     uint32_t              m_mainFuncLabel;
 
     D3D9FixedFunctionOptions m_options;
+
+    D3D9ShaderSpecConstantManager m_spec;
   };
 
   D3D9FFShaderCompiler::D3D9FFShaderCompiler(
@@ -1164,9 +1153,9 @@ namespace dxvk {
     fogCtx.IsPositionT = m_vsKey.Data.Contents.HasPositionT;
     fogCtx.HasSpecular = m_vsKey.Data.Contents.HasColor1;
     fogCtx.Specular    = m_vs.in.COLOR[1];
-    m_module.opStore(m_vs.out.FOG, DoFixedFunctionFog(m_module, fogCtx));
+    m_module.opStore(m_vs.out.FOG, DoFixedFunctionFog(m_spec, m_module, fogCtx));
 
-    auto pointInfo = GetPointSizeInfoVS(m_module, 0, vtx, m_vs.in.POINTSIZE, m_rsBlock, true);
+    auto pointInfo = GetPointSizeInfoVS(m_spec, m_module, 0, vtx, m_vs.in.POINTSIZE, m_rsBlock, true);
 
     uint32_t pointSize = m_module.opFClamp(m_floatType, pointInfo.defaultValue, pointInfo.min, pointInfo.max);
     m_module.opStore(m_vs.out.POINTSIZE, pointSize);
@@ -1957,7 +1946,7 @@ namespace dxvk {
     fogCtx.IsPositionT = false;
     fogCtx.HasSpecular = false;
     fogCtx.Specular    = 0;
-    current = DoFixedFunctionFog(m_module, fogCtx);
+    current = DoFixedFunctionFog(m_spec, m_module, fogCtx);
 
     m_module.opStore(m_ps.out.COLOR, current);
 
@@ -1974,7 +1963,7 @@ namespace dxvk {
       spv::ExecutionModeOriginUpperLeft);
 
     uint32_t pointCoord = GetPointCoord(m_module);
-    auto pointInfo = GetPointSizeInfoPS(m_module, m_rsBlock);
+    auto pointInfo = GetPointSizeInfoPS(m_spec, m_module, m_rsBlock);
 
     // We need to replace TEXCOORD inputs with gl_PointCoord
     // if D3DRS_POINTSPRITEENABLE is set.
@@ -2193,9 +2182,7 @@ namespace dxvk {
     uint32_t floatPtr = m_module.defPointerType(m_floatType, spv::StorageClassPushConstant);
 
     // Declare spec constants for render states
-    uint32_t alphaFuncId = m_module.specConst32(m_module.defIntType(32, 0), 0);
-    m_module.setDebugName(alphaFuncId, "alpha_func");
-    m_module.decorateSpecId(alphaFuncId, D3D9SpecConstantId::AlphaCompareOp);
+    uint32_t alphaFuncId = m_spec.get(m_module, SpecAlphaCompareOp);
 
     // Implement alpha test
     auto oC0 = m_ps.out.COLOR;
