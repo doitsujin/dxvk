@@ -9,8 +9,6 @@
 #include "../d3d9/d3d9_fixed_function.h"
 #include "dxso_util.h"
 
-#include "../dxvk/dxvk_spec_const.h"
-
 #include <cfloat>
 
 namespace dxvk {

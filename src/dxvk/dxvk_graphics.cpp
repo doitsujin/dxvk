@@ -5,7 +5,6 @@
 #include "dxvk_device.h"
 #include "dxvk_graphics.h"
 #include "dxvk_pipemanager.h"
-#include "dxvk_spec_const.h"
 #include "dxvk_state_cache.h"
 
 namespace dxvk {

@@ -5,7 +5,6 @@
 #include "d3d9_spec_constants.h"
 
 #include "../dxvk/dxvk_hash.h"
-#include "../dxvk/dxvk_spec_const.h"
 
 #include "../spirv/spirv_module.h"
 
