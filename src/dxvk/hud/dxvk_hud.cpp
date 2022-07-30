@@ -66,7 +66,6 @@ namespace dxvk::hud {
           VkExtent2D        surfaceSize) {
     this->setupRendererState(ctx, surfaceFormat, surfaceSize);
     this->renderHudElements(ctx);
-    this->resetRendererState(ctx);
   }
   
   
@@ -99,11 +98,6 @@ namespace dxvk::hud {
 
     ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, 0, isSrgb);
     m_renderer.beginFrame(ctx, surfaceSize, m_scale);
-  }
-
-
-  void Hud::resetRendererState(const Rc<DxvkContext>& ctx) {
-    ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, 0, 0);
   }
 
 

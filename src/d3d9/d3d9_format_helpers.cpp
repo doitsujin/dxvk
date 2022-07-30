@@ -105,10 +105,6 @@ namespace dxvk {
       (imageExtent.height / 8) + (imageExtent.height % 8),
       1);
 
-    // Reset the spec constants used...
-    if (specConstantValue)
-      m_context->setSpecConstant(VK_PIPELINE_BIND_POINT_COMPUTE, 0, 0);
-    
     m_transferCommands += 1;
   }
 

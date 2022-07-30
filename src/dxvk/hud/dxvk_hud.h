@@ -90,9 +90,6 @@ namespace dxvk::hud {
             VkSurfaceFormatKHR surfaceFormat,
             VkExtent2D        surfaceSize);
 
-    void resetRendererState(
-      const Rc<DxvkContext>&  ctx);
-
     void renderHudElements(
       const Rc<DxvkContext>&  ctx);
     
