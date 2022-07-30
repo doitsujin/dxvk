@@ -329,6 +329,10 @@ namespace dxvk {
     bool operator != (const DxvkShaderPipelineLibraryCompileArgs& other) const {
       return !this->operator == (other);
     }
+
+    size_t hash() const {
+      return size_t(depthClipEnable);
+    }
   };
 
 

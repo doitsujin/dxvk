@@ -541,7 +541,7 @@ namespace dxvk {
       this->destroyPipeline(instance.fastHandle.load());
 
     for (const auto& instance : m_basePipelines)
-      this->destroyPipeline(instance.handle);
+      this->destroyPipeline(instance.second);
   }
   
   
@@ -654,19 +654,10 @@ namespace dxvk {
           VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT);
       }
 
-      if (!fastHandle) {
-        // If that didn't succeed, link a pipeline using the
-        // pre-compiled fragment and vertex shader libraries.
-        DxvkGraphicsPipelineVertexInputState    viState(m_device, state, m_shaders.vs.ptr());
-        DxvkGraphicsPipelineFragmentOutputState foState(m_device, state, m_shaders.fs.ptr());
-
-        DxvkGraphicsPipelineBaseInstanceKey key;
-        key.viLibrary = m_manager->createVertexInputLibrary(viState);
-        key.foLibrary = m_manager->createFragmentOutputLibrary(foState);
-        key.args.depthClipEnable = state.rs.depthClipEnable();
-
-        baseHandle = this->createBaseInstance(key)->handle;
-      }
+      // If that didn't succeed, link a pipeline using the
+      // pre-compiled fragment and vertex shader libraries.
+      if (!fastHandle)
+        baseHandle = this->getBasePipeline(state);
     } else {
       // Create optimized variant right away, no choice
       fastHandle = this->createOptimizedPipeline(state, 0);
@@ -692,20 +683,6 @@ namespace dxvk {
   }
   
   
-  DxvkGraphicsPipelineBaseInstance* DxvkGraphicsPipeline::createBaseInstance(
-    const DxvkGraphicsPipelineBaseInstanceKey& key) {
-    for (auto& instance : m_basePipelines) {
-      if (instance.key.viLibrary == key.viLibrary
-       && instance.key.foLibrary == key.foLibrary
-       && instance.key.args == key.args)
-        return &instance;
-    }
-
-    VkPipeline handle = createBasePipeline(key);
-    return &(*m_basePipelines.emplace(key, handle));
-  }
-
-
   bool DxvkGraphicsPipeline::canCreateBasePipeline(
     const DxvkGraphicsPipelineStateInfo& state) const {
     if (!m_vsLibrary || !m_fsLibrary)
@@ -748,6 +725,26 @@ namespace dxvk {
     }
 
     return true;
+  }
+
+
+  VkPipeline DxvkGraphicsPipeline::getBasePipeline(
+    const DxvkGraphicsPipelineStateInfo& state) {
+    DxvkGraphicsPipelineVertexInputState    viState(m_device, state, m_shaders.vs.ptr());
+    DxvkGraphicsPipelineFragmentOutputState foState(m_device, state, m_shaders.fs.ptr());
+
+    DxvkGraphicsPipelineBaseInstanceKey key;
+    key.viLibrary = m_manager->createVertexInputLibrary(viState);
+    key.foLibrary = m_manager->createFragmentOutputLibrary(foState);
+    key.args.depthClipEnable = state.rs.depthClipEnable();
+
+    auto entry = m_basePipelines.find(key);
+    if (entry != m_basePipelines.end())
+      return entry->second;
+
+    VkPipeline handle = createBasePipeline(key);
+    m_basePipelines.insert({ key, handle });
+    return handle;
   }
 
 

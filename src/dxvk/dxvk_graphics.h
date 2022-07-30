@@ -274,26 +274,23 @@ namespace dxvk {
     const DxvkGraphicsPipelineVertexInputLibrary*     viLibrary = nullptr;
     const DxvkGraphicsPipelineFragmentOutputLibrary*  foLibrary = nullptr;
     DxvkShaderPipelineLibraryCompileArgs              args;
+
+    bool eq(const DxvkGraphicsPipelineBaseInstanceKey& other) const {
+      return viLibrary == other.viLibrary
+          && foLibrary == other.foLibrary
+          && args      == other.args;
+    }
+
+    size_t hash() const {
+      DxvkHashState hash;
+      hash.add(size_t(viLibrary));
+      hash.add(size_t(foLibrary));
+      hash.add(args.hash());
+      return hash;
+    }
   };
 
 
-  /**
-   * \brief Base pipeline instance
-   *
-   * Stores the key and handle of a base pipeline.
-   */
-  struct DxvkGraphicsPipelineBaseInstance {
-    DxvkGraphicsPipelineBaseInstance() { }
-    DxvkGraphicsPipelineBaseInstance(
-      const DxvkGraphicsPipelineBaseInstanceKey&  key_,
-            VkPipeline                            handle_)
-    : key(key_), handle(handle_) { }
-
-    DxvkGraphicsPipelineBaseInstanceKey key;
-    VkPipeline                          handle = VK_NULL_HANDLE;
-  };
-
-  
   /**
    * \brief Graphics pipeline
    * 
@@ -413,7 +410,10 @@ namespace dxvk {
     alignas(CACHE_LINE_SIZE)
     dxvk::mutex                                   m_mutex;
     sync::List<DxvkGraphicsPipelineInstance>      m_pipelines;
-    sync::List<DxvkGraphicsPipelineBaseInstance>  m_basePipelines;
+
+    std::unordered_map<
+      DxvkGraphicsPipelineBaseInstanceKey,
+      VkPipeline, DxvkHash, DxvkEq>               m_basePipelines;
     
     DxvkGraphicsPipelineInstance* createInstance(
       const DxvkGraphicsPipelineStateInfo& state,
@@ -422,11 +422,11 @@ namespace dxvk {
     DxvkGraphicsPipelineInstance* findInstance(
       const DxvkGraphicsPipelineStateInfo& state);
 
-    DxvkGraphicsPipelineBaseInstance* createBaseInstance(
-      const DxvkGraphicsPipelineBaseInstanceKey& key);
-
     bool canCreateBasePipeline(
       const DxvkGraphicsPipelineStateInfo& state) const;
+
+    VkPipeline getBasePipeline(
+      const DxvkGraphicsPipelineStateInfo& state);
 
     VkPipeline createBasePipeline(
       const DxvkGraphicsPipelineBaseInstanceKey& key) const;
