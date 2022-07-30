@@ -868,8 +868,8 @@ namespace dxvk {
   
   
   DxvkGraphicsPipeline::~DxvkGraphicsPipeline() {
-    for (const auto& instance : m_pipelines)
-      this->destroyPipeline(instance.fastHandle.load());
+    for (const auto& instance : m_fastPipelines)
+      this->destroyPipeline(instance.second);
 
     for (const auto& instance : m_basePipelines)
       this->destroyPipeline(instance.second);
@@ -962,7 +962,7 @@ namespace dxvk {
      || instance->isCompiling.exchange(VK_TRUE, std::memory_order_acquire))
       return;
 
-    VkPipeline pipeline = this->createOptimizedPipeline(state, 0);
+    VkPipeline pipeline = this->getOptimizedPipeline(state, 0);
     instance->fastHandle.store(pipeline, std::memory_order_release);
 
     // Log pipeline state on error
@@ -981,7 +981,7 @@ namespace dxvk {
       // Try to create an optimized pipeline from the cache
       // first, since this is expected to be the fastest path.
       if (m_device->canUsePipelineCacheControl()) {
-        fastHandle = this->createOptimizedPipeline(state,
+        fastHandle = this->getOptimizedPipeline(state,
           VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT);
       }
 
@@ -991,7 +991,7 @@ namespace dxvk {
         baseHandle = this->getBasePipeline(state);
     } else {
       // Create optimized variant right away, no choice
-      fastHandle = this->createOptimizedPipeline(state, 0);
+      fastHandle = this->getOptimizedPipeline(state, 0);
     }
 
     // Log pipeline state if requested, or on failure
@@ -1108,59 +1108,74 @@ namespace dxvk {
     return pipeline;
   }
 
-  
-  VkPipeline DxvkGraphicsPipeline::createOptimizedPipeline(
+
+  VkPipeline DxvkGraphicsPipeline::getOptimizedPipeline(
     const DxvkGraphicsPipelineStateInfo& state,
+          VkPipelineCreateFlags          flags) {
+    DxvkGraphicsPipelineFastInstanceKey key(m_device,
+      m_shaders, state, m_flags, m_specConstantMask);
+
+    std::lock_guard lock(m_fastMutex);
+
+    auto entry = m_fastPipelines.find(key);
+    if (entry != m_fastPipelines.end())
+      return entry->second;
+
+    // Keep pipeline locked to prevent multiple threads from compiling
+    // identical Vulkan pipelines. This should be rare, but has been
+    // buggy on some drivers in the past, so just don't allow it.
+    VkPipeline handle = createOptimizedPipeline(key, flags);
+
+    if (handle)
+      m_fastPipelines.insert({ key, handle });
+
+    return handle;
+  }
+
+
+  VkPipeline DxvkGraphicsPipeline::createOptimizedPipeline(
+    const DxvkGraphicsPipelineFastInstanceKey& key,
           VkPipelineCreateFlags          flags) const {
     auto vk = m_device->vkd();
-
-    // Set up pipeline state
-    DxvkGraphicsPipelineShaderState           shState(m_shaders, state);
-    DxvkGraphicsPipelineDynamicState          dyState(m_device, state, m_flags);
-    DxvkGraphicsPipelineVertexInputState      viState(m_device, state, m_shaders.vs.ptr());
-    DxvkGraphicsPipelinePreRasterizationState prState(m_device, state, m_shaders.gs.ptr());
-    DxvkGraphicsPipelineFragmentShaderState   fsState(m_device, state);
-    DxvkGraphicsPipelineFragmentOutputState   foState(m_device, state, m_shaders.fs.ptr());
-    DxvkPipelineSpecConstantState             scState(m_specConstantMask, state.sc);
 
     // Build stage infos for all provided shaders
     DxvkShaderStageInfo stageInfo(m_device);
 
     if (flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT) {
-      stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, m_vsLibrary->getModuleIdentifier(), &scState.scInfo);
+      stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, m_vsLibrary->getModuleIdentifier(), &key.scState.scInfo);
 
       if (m_shaders.fs != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, m_fsLibrary->getModuleIdentifier(), &scState.scInfo);
+        stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, m_fsLibrary->getModuleIdentifier(), &key.scState.scInfo);
     } else {
-      stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, getShaderCode(m_shaders.vs, shState.vsInfo), &scState.scInfo);
+      stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, getShaderCode(m_shaders.vs, key.shState.vsInfo), &key.scState.scInfo);
 
       if (m_shaders.tcs != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, getShaderCode(m_shaders.tcs, shState.tcsInfo), &scState.scInfo);
+        stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, getShaderCode(m_shaders.tcs, key.shState.tcsInfo), &key.scState.scInfo);
       if (m_shaders.tes != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, getShaderCode(m_shaders.tes, shState.tesInfo), &scState.scInfo);
+        stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, getShaderCode(m_shaders.tes, key.shState.tesInfo), &key.scState.scInfo);
       if (m_shaders.gs != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_GEOMETRY_BIT, getShaderCode(m_shaders.gs, shState.gsInfo), &scState.scInfo);
+        stageInfo.addStage(VK_SHADER_STAGE_GEOMETRY_BIT, getShaderCode(m_shaders.gs, key.shState.gsInfo), &key.scState.scInfo);
       if (m_shaders.fs != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, getShaderCode(m_shaders.fs, shState.fsInfo), &scState.scInfo);
+        stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, getShaderCode(m_shaders.fs, key.shState.fsInfo), &key.scState.scInfo);
     }
 
-    VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &foState.rtInfo };
+    VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &key.foState.rtInfo };
     info.flags                    = flags;
     info.stageCount               = stageInfo.getStageCount();
     info.pStages                  = stageInfo.getStageInfos();
-    info.pVertexInputState        = &viState.viInfo;
-    info.pInputAssemblyState      = &viState.iaInfo;
-    info.pTessellationState       = &prState.tsInfo;
-    info.pViewportState           = &prState.vpInfo;
-    info.pRasterizationState      = &prState.rsInfo;
-    info.pMultisampleState        = &foState.msInfo;
-    info.pDepthStencilState       = &fsState.dsInfo;
-    info.pColorBlendState         = &foState.cbInfo;
-    info.pDynamicState            = &dyState.dyInfo;
+    info.pVertexInputState        = &key.viState.viInfo;
+    info.pInputAssemblyState      = &key.viState.iaInfo;
+    info.pTessellationState       = &key.prState.tsInfo;
+    info.pViewportState           = &key.prState.vpInfo;
+    info.pRasterizationState      = &key.prState.rsInfo;
+    info.pMultisampleState        = &key.foState.msInfo;
+    info.pDepthStencilState       = &key.fsState.dsInfo;
+    info.pColorBlendState         = &key.foState.cbInfo;
+    info.pDynamicState            = &key.dyState.dyInfo;
     info.layout                   = m_bindings->getPipelineLayout(false);
     info.basePipelineIndex        = -1;
     
-    if (!prState.tsInfo.patchControlPoints)
+    if (!key.prState.tsInfo.patchControlPoints)
       info.pTessellationState = nullptr;
     
     VkPipeline pipeline = VK_NULL_HANDLE;

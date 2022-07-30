@@ -386,6 +386,61 @@ namespace dxvk {
 
 
   /**
+   * \brief Fast instance key
+   *
+   * Stores pipeline state used to compile an
+   * optimized pipeline.
+   */
+  struct DxvkGraphicsPipelineFastInstanceKey {
+    DxvkGraphicsPipelineFastInstanceKey() { }
+
+    DxvkGraphicsPipelineFastInstanceKey(
+            DxvkDevice*                       device,
+      const DxvkGraphicsPipelineShaders&      shaders,
+      const DxvkGraphicsPipelineStateInfo&    state,
+            DxvkGraphicsPipelineFlags         flags,
+            uint32_t                          specConstantMask)
+    : shState(shaders, state),
+      dyState(device, state, flags),
+      viState(device, state, shaders.vs.ptr()),
+      prState(device, state, shaders.gs.ptr()),
+      fsState(device, state),
+      foState(device, state, shaders.fs.ptr()),
+      scState(specConstantMask, state.sc) { }
+
+    DxvkGraphicsPipelineShaderState           shState;
+    DxvkGraphicsPipelineDynamicState          dyState;
+    DxvkGraphicsPipelineVertexInputState      viState;
+    DxvkGraphicsPipelinePreRasterizationState prState;
+    DxvkGraphicsPipelineFragmentShaderState   fsState;
+    DxvkGraphicsPipelineFragmentOutputState   foState;
+    DxvkPipelineSpecConstantState             scState;
+
+    bool eq(const DxvkGraphicsPipelineFastInstanceKey& other) const {
+      return shState.eq(other.shState)
+          && dyState.eq(other.dyState)
+          && viState.eq(other.viState)
+          && prState.eq(other.prState)
+          && fsState.eq(other.fsState)
+          && foState.eq(other.foState)
+          && scState.eq(other.scState);
+    }
+
+    size_t hash() const {
+      DxvkHashState hash;
+      hash.add(shState.hash());
+      hash.add(dyState.hash());
+      hash.add(viState.hash());
+      hash.add(prState.hash());
+      hash.add(fsState.hash());
+      hash.add(foState.hash());
+      hash.add(scState.hash());
+      return hash;
+    }
+  };
+
+
+  /**
    * \brief Graphics pipeline
    * 
    * Stores the pipeline layout as well as methods to
@@ -500,7 +555,6 @@ namespace dxvk {
 
     uint32_t m_specConstantMask = 0;
 
-    // List of pipeline instances, shared between threads
     alignas(CACHE_LINE_SIZE)
     dxvk::mutex                                   m_mutex;
     sync::List<DxvkGraphicsPipelineInstance>      m_pipelines;
@@ -508,6 +562,12 @@ namespace dxvk {
     std::unordered_map<
       DxvkGraphicsPipelineBaseInstanceKey,
       VkPipeline, DxvkHash, DxvkEq>               m_basePipelines;
+    
+    alignas(CACHE_LINE_SIZE)
+    dxvk::mutex                                   m_fastMutex;
+    std::unordered_map<
+      DxvkGraphicsPipelineFastInstanceKey,
+      VkPipeline, DxvkHash, DxvkEq>               m_fastPipelines;
     
     DxvkGraphicsPipelineInstance* createInstance(
       const DxvkGraphicsPipelineStateInfo& state,
@@ -525,10 +585,14 @@ namespace dxvk {
     VkPipeline createBasePipeline(
       const DxvkGraphicsPipelineBaseInstanceKey& key) const;
     
-    VkPipeline createOptimizedPipeline(
+    VkPipeline getOptimizedPipeline(
       const DxvkGraphicsPipelineStateInfo& state,
+            VkPipelineCreateFlags          flags);
+
+    VkPipeline createOptimizedPipeline(
+      const DxvkGraphicsPipelineFastInstanceKey& key,
             VkPipelineCreateFlags          flags) const;
-    
+
     void destroyPipeline(
             VkPipeline                     pipeline) const;
     
