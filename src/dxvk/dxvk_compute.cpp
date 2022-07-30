@@ -106,10 +106,16 @@ namespace dxvk {
       Logger::debug(str::format("  cs  : ", m_shaders.cs->debugName()));
     }
     
+    uint32_t specConstantMask = m_shaders.cs->getSpecConstantMask();
     DxvkSpecConstants specData;
-    
-    for (uint32_t i = 0; i < MaxNumSpecConstants; i++)
-      specData.set(i, state.sc.specConstants[i], 0u);
+
+    for (uint32_t i = 0; i < MaxNumSpecConstants; i++) {
+      if (specConstantMask & (1u << i))
+        specData.set(i, state.sc.specConstants[i], 0u);
+    }
+
+    if (specConstantMask & (1u << MaxNumSpecConstants))
+      specData.set(MaxNumSpecConstants, 1u, 0u);
 
     VkSpecializationInfo specInfo = specData.getSpecInfo();
     
