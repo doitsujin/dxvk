@@ -601,6 +601,112 @@ namespace dxvk {
   }
 
 
+  DxvkGraphicsPipelineShaderState::DxvkGraphicsPipelineShaderState() {
+
+  }
+
+
+  DxvkGraphicsPipelineShaderState::DxvkGraphicsPipelineShaderState(
+    const DxvkGraphicsPipelineShaders&    shaders,
+    const DxvkGraphicsPipelineStateInfo&  state)
+  : vsInfo  (getCreateInfo(shaders, shaders.vs, state)),
+    tcsInfo (getCreateInfo(shaders, shaders.tcs, state)),
+    tesInfo (getCreateInfo(shaders, shaders.tes, state)),
+    gsInfo  (getCreateInfo(shaders, shaders.gs, state)),
+    fsInfo  (getCreateInfo(shaders, shaders.fs, state)) {
+
+  }
+
+
+  bool DxvkGraphicsPipelineShaderState::eq(const DxvkGraphicsPipelineShaderState& other) const {
+    return vsInfo.eq(other.vsInfo)
+        && tcsInfo.eq(other.tcsInfo)
+        && tesInfo.eq(other.tesInfo)
+        && gsInfo.eq(other.gsInfo)
+        && fsInfo.eq(other.fsInfo);
+  }
+
+
+  size_t DxvkGraphicsPipelineShaderState::hash() const {
+    DxvkHashState hash;
+    hash.add(vsInfo.hash());
+    hash.add(tcsInfo.hash());
+    hash.add(tesInfo.hash());
+    hash.add(gsInfo.hash());
+    hash.add(fsInfo.hash());
+    return hash;
+  }
+
+
+  DxvkShaderModuleCreateInfo DxvkGraphicsPipelineShaderState::getCreateInfo(
+    const DxvkGraphicsPipelineShaders&    shaders,
+    const Rc<DxvkShader>&                 shader,
+    const DxvkGraphicsPipelineStateInfo&  state) {
+    DxvkShaderModuleCreateInfo info;
+
+    if (shader == nullptr)
+      return info;
+
+    // Fix up fragment shader outputs for dual-source blending
+    const DxvkShaderCreateInfo& shaderInfo = shader->info();
+
+    if (shaderInfo.stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
+      info.fsDualSrcBlend = state.useDualSourceBlending();
+
+      for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+        if ((shaderInfo.outputMask & (1u << i)) && state.writesRenderTarget(i))
+          info.rtSwizzles[i] = state.omSwizzle[i].mapping();
+      }
+    }
+
+    // Deal with undefined shader inputs
+    uint32_t consumedInputs = shaderInfo.inputMask;
+    uint32_t providedInputs = 0;
+
+    if (shaderInfo.stage == VK_SHADER_STAGE_VERTEX_BIT) {
+      for (uint32_t i = 0; i < state.il.attributeCount(); i++)
+        providedInputs |= 1u << state.ilAttributes[i].location();
+    } else if (shaderInfo.stage != VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) {
+      auto prevStage = getPrevStageShader(shaders, shaderInfo.stage);
+      providedInputs = prevStage->info().outputMask;
+    } else {
+      // Technically not correct, but this
+      // would need a lot of extra care
+      providedInputs = consumedInputs;
+    }
+
+    info.undefinedInputs = (providedInputs & consumedInputs) ^ consumedInputs;
+    return info;
+  }
+
+
+  Rc<DxvkShader> DxvkGraphicsPipelineShaderState::getPrevStageShader(
+    const DxvkGraphicsPipelineShaders&    shaders,
+    const VkShaderStageFlagBits           stage) {
+    if (stage == VK_SHADER_STAGE_VERTEX_BIT)
+      return nullptr;
+
+    if (stage == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
+      return shaders.tcs;
+
+    Rc<DxvkShader> result = shaders.vs;
+
+    if (stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)
+      return result;
+
+    if (shaders.tes != nullptr)
+      result = shaders.tes;
+
+    if (stage == VK_SHADER_STAGE_GEOMETRY_BIT)
+      return result;
+
+    if (shaders.gs != nullptr)
+      result = shaders.gs;
+
+    return result;
+  }
+
+
   DxvkPipelineSpecConstantState::DxvkPipelineSpecConstantState() {
 
   }
@@ -888,7 +994,8 @@ namespace dxvk {
 
     // Remapping fragment shader outputs would require spec constants
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      if (writesRenderTarget(state, i) && !util::isIdentityMapping(state.omSwizzle[i].mapping()))
+      if ((m_fsOut & (1u << i)) && state.writesRenderTarget(i)
+       && !util::isIdentityMapping(state.omSwizzle[i].mapping()))
         return false;
     }
 
@@ -978,6 +1085,7 @@ namespace dxvk {
     }
 
     // Set up pipeline state
+    DxvkGraphicsPipelineShaderState           shState(m_shaders, state);
     DxvkGraphicsPipelineVertexInputState      viState(m_device, state, m_shaders.vs.ptr());
     DxvkGraphicsPipelinePreRasterizationState prState(m_device, state, m_shaders.gs.ptr());
     DxvkGraphicsPipelineFragmentShaderState   fsState(m_device, state);
@@ -993,16 +1101,16 @@ namespace dxvk {
       if (m_shaders.fs != nullptr)
         stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, m_fsLibrary->getModuleIdentifier(), &scState.scInfo);
     } else {
-      stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, getShaderCode(m_shaders.vs, state), &scState.scInfo);
+      stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, getShaderCode(m_shaders.vs, shState.vsInfo), &scState.scInfo);
 
       if (m_shaders.tcs != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, getShaderCode(m_shaders.tcs, state), &scState.scInfo);
+        stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, getShaderCode(m_shaders.tcs, shState.tcsInfo), &scState.scInfo);
       if (m_shaders.tes != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, getShaderCode(m_shaders.tes, state), &scState.scInfo);
+        stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, getShaderCode(m_shaders.tes, shState.tesInfo), &scState.scInfo);
       if (m_shaders.gs != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_GEOMETRY_BIT, getShaderCode(m_shaders.gs, state), &scState.scInfo);
+        stageInfo.addStage(VK_SHADER_STAGE_GEOMETRY_BIT, getShaderCode(m_shaders.gs, shState.gsInfo), &scState.scInfo);
       if (m_shaders.fs != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, getShaderCode(m_shaders.fs, state), &scState.scInfo);
+        stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, getShaderCode(m_shaders.fs, shState.fsInfo), &scState.scInfo);
     }
 
     VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
@@ -1053,79 +1161,8 @@ namespace dxvk {
 
   SpirvCodeBuffer DxvkGraphicsPipeline::getShaderCode(
     const Rc<DxvkShader>&                shader,
-    const DxvkGraphicsPipelineStateInfo& state) const {
-    auto vk = m_device->vkd();
-
-    const DxvkShaderCreateInfo& shaderInfo = shader->info();
-    DxvkShaderModuleCreateInfo info;
-
-    // Fix up fragment shader outputs for dual-source blending
-    if (shaderInfo.stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
-      info.fsDualSrcBlend = state.useDualSourceBlending();
-
-      for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-        if (writesRenderTarget(state, i))
-          info.rtSwizzles[i] = state.omSwizzle[i].mapping();
-      }
-    }
-
-    // Deal with undefined shader inputs
-    uint32_t consumedInputs = shaderInfo.inputMask;
-    uint32_t providedInputs = 0;
-
-    if (shaderInfo.stage == VK_SHADER_STAGE_VERTEX_BIT) {
-      for (uint32_t i = 0; i < state.il.attributeCount(); i++)
-        providedInputs |= 1u << state.ilAttributes[i].location();
-    } else if (shaderInfo.stage != VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT) {
-      auto prevStage = getPrevStageShader(shaderInfo.stage);
-      providedInputs = prevStage->info().outputMask;
-    } else {
-      // Technically not correct, but this
-      // would need a lot of extra care
-      providedInputs = consumedInputs;
-    }
-
-    info.undefinedInputs = (providedInputs & consumedInputs) ^ consumedInputs;
+    const DxvkShaderModuleCreateInfo&    info) const {
     return shader->getCode(m_bindings, info);
-  }
-
-
-  Rc<DxvkShader> DxvkGraphicsPipeline::getPrevStageShader(VkShaderStageFlagBits stage) const {
-    if (stage == VK_SHADER_STAGE_VERTEX_BIT)
-      return nullptr;
-
-    if (stage == VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
-      return m_shaders.tcs;
-
-    Rc<DxvkShader> result = m_shaders.vs;
-
-    if (stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)
-      return result;
-
-    if (m_shaders.tes != nullptr)
-      result = m_shaders.tes;
-
-    if (stage == VK_SHADER_STAGE_GEOMETRY_BIT)
-      return result;
-
-    if (m_shaders.gs != nullptr)
-      result = m_shaders.gs;
-
-    return result;
-  }
-
-
-  bool DxvkGraphicsPipeline::writesRenderTarget(
-    const DxvkGraphicsPipelineStateInfo& state,
-          uint32_t                       target) const {
-    if (!(m_fsOut & (1u << target)))
-      return false;
-
-    if (!state.omBlend[target].colorWriteMask())
-      return false;
-
-    VkFormat rtFormat = state.rt.getColorFormat(target);
-    return rtFormat != VK_FORMAT_UNDEFINED;
   }
 
 

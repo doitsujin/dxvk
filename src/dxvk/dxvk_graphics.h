@@ -19,6 +19,8 @@ namespace dxvk {
   class DxvkStateCache;
   class DxvkPipelineManager;
   class DxvkPipelineWorkers;
+
+  struct DxvkGraphicsPipelineShaders;
   struct DxvkPipelineStats;
 
   /**
@@ -184,6 +186,42 @@ namespace dxvk {
     bool eq(const DxvkGraphicsPipelineFragmentShaderState& other) const;
 
     size_t hash() const;
+  };
+
+
+  /**
+   * \brief Shader create info state for graphics pipelines
+   *
+   * Can only be used when all pipeline state is known.
+   */
+  struct DxvkGraphicsPipelineShaderState {
+    DxvkGraphicsPipelineShaderState();
+
+    DxvkGraphicsPipelineShaderState(
+      const DxvkGraphicsPipelineShaders&    shaders,
+      const DxvkGraphicsPipelineStateInfo&  state);
+
+    DxvkShaderModuleCreateInfo vsInfo;
+    DxvkShaderModuleCreateInfo tcsInfo;
+    DxvkShaderModuleCreateInfo tesInfo;
+    DxvkShaderModuleCreateInfo gsInfo;
+    DxvkShaderModuleCreateInfo fsInfo;
+
+    bool eq(const DxvkGraphicsPipelineShaderState& other) const;
+
+    size_t hash() const;
+
+  private:
+
+    DxvkShaderModuleCreateInfo getCreateInfo(
+      const DxvkGraphicsPipelineShaders&    shaders,
+      const Rc<DxvkShader>&                 shader,
+      const DxvkGraphicsPipelineStateInfo&  state);
+
+    Rc<DxvkShader> getPrevStageShader(
+      const DxvkGraphicsPipelineShaders&    shaders,
+      const VkShaderStageFlagBits           stage);
+
   };
 
 
@@ -475,15 +513,8 @@ namespace dxvk {
     
     SpirvCodeBuffer getShaderCode(
       const Rc<DxvkShader>&                shader,
-      const DxvkGraphicsPipelineStateInfo& state) const;
+      const DxvkShaderModuleCreateInfo&    info) const;
     
-    Rc<DxvkShader> getPrevStageShader(
-            VkShaderStageFlagBits          stage) const;
-
-    bool writesRenderTarget(
-      const DxvkGraphicsPipelineStateInfo& state,
-            uint32_t                       target) const;
-
     uint32_t computeSpecConstantMask() const;
 
     bool validatePipelineState(

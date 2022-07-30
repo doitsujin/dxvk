@@ -769,6 +769,16 @@ namespace dxvk {
         util::isDualSourceBlendFactor(omBlend[0].dstAlphaBlendFactor()));
     }
 
+    bool writesRenderTarget(
+            uint32_t                        target) const {
+      if (!omBlend[target].colorWriteMask())
+        return false;
+
+      VkFormat rtFormat = rt.getColorFormat(target);
+      return rtFormat != VK_FORMAT_UNDEFINED;
+    }
+
+
     DxvkIaInfo              ia;
     DxvkIlInfo              il;
     DxvkRsInfo              rs;
