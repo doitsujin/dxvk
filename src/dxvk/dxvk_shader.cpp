@@ -10,6 +10,37 @@
 
 namespace dxvk {
   
+  bool DxvkShaderModuleCreateInfo::eq(const DxvkShaderModuleCreateInfo& other) const {
+    bool eq = fsDualSrcBlend  == other.fsDualSrcBlend
+           && undefinedInputs == other.undefinedInputs;
+
+    for (uint32_t i = 0; i < rtSwizzles.size() && eq; i++) {
+      eq = rtSwizzles[i].r == other.rtSwizzles[i].r
+        && rtSwizzles[i].g == other.rtSwizzles[i].g
+        && rtSwizzles[i].b == other.rtSwizzles[i].b
+        && rtSwizzles[i].a == other.rtSwizzles[i].a;
+    }
+
+    return eq;
+  }
+
+
+  size_t DxvkShaderModuleCreateInfo::hash() const {
+    DxvkHashState hash;
+    hash.add(uint32_t(fsDualSrcBlend));
+    hash.add(undefinedInputs);
+
+    for (uint32_t i = 0; i < rtSwizzles.size(); i++) {
+      hash.add(rtSwizzles[i].r);
+      hash.add(rtSwizzles[i].g);
+      hash.add(rtSwizzles[i].b);
+      hash.add(rtSwizzles[i].a);
+    }
+
+    return hash;
+  }
+
+
   DxvkShader::DxvkShader(
     const DxvkShaderCreateInfo&   info,
           SpirvCodeBuffer&&       spirv)

@@ -66,6 +66,10 @@ namespace dxvk {
     uint32_t  undefinedInputs = 0;
 
     std::array<VkComponentMapping, MaxNumRenderTargets> rtSwizzles = { };
+
+    bool eq(const DxvkShaderModuleCreateInfo& other) const;
+
+    size_t hash() const;
   };
   
   
