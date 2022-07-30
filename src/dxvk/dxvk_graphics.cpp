@@ -472,6 +472,53 @@ namespace dxvk {
   }
 
 
+
+  bool DxvkGraphicsPipelinePreRasterizationState::eq(const DxvkGraphicsPipelinePreRasterizationState& other) const {
+    bool eq = tsInfo.patchControlPoints == other.tsInfo.patchControlPoints;
+
+    if (eq) {
+      eq = rsInfo.depthClampEnable         == other.rsInfo.depthClampEnable
+        && rsInfo.rasterizerDiscardEnable  == other.rsInfo.rasterizerDiscardEnable
+        && rsInfo.polygonMode              == other.rsInfo.polygonMode
+        && rsInfo.depthBiasEnable          == other.rsInfo.depthBiasEnable
+        && rsInfo.lineWidth                == other.rsInfo.lineWidth;
+    }
+
+    if (eq)
+      eq = rsXfbStreamInfo.rasterizationStream == other.rsXfbStreamInfo.rasterizationStream;
+
+    if (eq)
+      eq = rsDepthClipInfo.depthClipEnable == other.rsDepthClipInfo.depthClipEnable;
+
+    if (eq) {
+      eq = rsConservativeInfo.conservativeRasterizationMode    == other.rsConservativeInfo.conservativeRasterizationMode
+        && rsConservativeInfo.extraPrimitiveOverestimationSize == other.rsConservativeInfo.extraPrimitiveOverestimationSize;
+    }
+
+    return eq;
+  }
+
+
+  size_t DxvkGraphicsPipelinePreRasterizationState::hash() const {
+    DxvkHashState hash;
+    hash.add(tsInfo.patchControlPoints);
+
+    hash.add(rsInfo.depthClampEnable);
+    hash.add(rsInfo.rasterizerDiscardEnable);
+    hash.add(rsInfo.polygonMode);
+    hash.add(rsInfo.depthBiasEnable);
+    hash.add(bit::cast<uint32_t>(rsInfo.lineWidth));
+
+    hash.add(rsXfbStreamInfo.rasterizationStream);
+
+    hash.add(rsDepthClipInfo.depthClipEnable);
+
+    hash.add(rsConservativeInfo.conservativeRasterizationMode);
+    hash.add(bit::cast<uint32_t>(rsConservativeInfo.extraPrimitiveOverestimationSize));
+    return hash;
+  }
+
+
   DxvkGraphicsPipelineFragmentShaderState::DxvkGraphicsPipelineFragmentShaderState() {
 
   }
