@@ -601,6 +601,64 @@ namespace dxvk {
   }
 
 
+  DxvkGraphicsPipelineDynamicState::DxvkGraphicsPipelineDynamicState() {
+    
+  }
+
+
+  DxvkGraphicsPipelineDynamicState::DxvkGraphicsPipelineDynamicState(
+    const DxvkDevice*                     device,
+    const DxvkGraphicsPipelineStateInfo&  state,
+          DxvkGraphicsPipelineFlags       flags) {
+    dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT;
+    dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT;
+
+    if (state.useDynamicVertexStrides())
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE;
+
+    if (state.useDynamicDepthBias())
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BIAS;
+    
+    if (state.useDynamicDepthBounds())
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS;
+    
+    if (state.useDynamicBlendConstants())
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_BLEND_CONSTANTS;
+    
+    if (state.useDynamicStencilRef())
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
+
+    if (!flags.test(DxvkGraphicsPipelineFlag::HasRasterizerDiscard)) {
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_CULL_MODE;
+      dyStates[dyInfo.dynamicStateCount++] = VK_DYNAMIC_STATE_FRONT_FACE;
+    }
+
+    if (dyInfo.dynamicStateCount)
+      dyInfo.pDynamicStates = dyStates.data();
+  }
+
+
+  bool DxvkGraphicsPipelineDynamicState::eq(const DxvkGraphicsPipelineDynamicState& other) const {
+    bool eq = dyInfo.dynamicStateCount == other.dyInfo.dynamicStateCount;
+
+    for (uint32_t i = 0; i < dyInfo.dynamicStateCount && eq; i++)
+      eq = dyStates[i] == other.dyStates[i];
+
+    return eq;
+  }
+
+
+  size_t DxvkGraphicsPipelineDynamicState::hash() const {
+    DxvkHashState hash;
+    hash.add(dyInfo.dynamicStateCount);
+
+    for (uint32_t i = 0; i < dyInfo.dynamicStateCount; i++)
+      hash.add(dyStates[i]);
+
+    return hash;
+  }
+
+
   DxvkGraphicsPipelineShaderState::DxvkGraphicsPipelineShaderState() {
 
   }
@@ -1057,35 +1115,9 @@ namespace dxvk {
           VkPipelineCreateFlags          flags) const {
     auto vk = m_device->vkd();
 
-    // Set up dynamic states as needed
-    std::array<VkDynamicState, 9> dynamicStates;
-    uint32_t                      dynamicStateCount = 0;
-    
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT;
-    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT;
-
-    if (state.useDynamicVertexStrides())
-      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE;
-
-    if (state.useDynamicDepthBias())
-      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BIAS;
-    
-    if (state.useDynamicDepthBounds())
-      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS;
-    
-    if (state.useDynamicBlendConstants())
-      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_BLEND_CONSTANTS;
-    
-    if (state.useDynamicStencilRef())
-      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
-
-    if (!m_flags.test(DxvkGraphicsPipelineFlag::HasRasterizerDiscard)) {
-      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_CULL_MODE;
-      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_FRONT_FACE;
-    }
-
     // Set up pipeline state
     DxvkGraphicsPipelineShaderState           shState(m_shaders, state);
+    DxvkGraphicsPipelineDynamicState          dyState(m_device, state, m_flags);
     DxvkGraphicsPipelineVertexInputState      viState(m_device, state, m_shaders.vs.ptr());
     DxvkGraphicsPipelinePreRasterizationState prState(m_device, state, m_shaders.gs.ptr());
     DxvkGraphicsPipelineFragmentShaderState   fsState(m_device, state);
@@ -1113,10 +1145,6 @@ namespace dxvk {
         stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, getShaderCode(m_shaders.fs, shState.fsInfo), &scState.scInfo);
     }
 
-    VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
-    dyInfo.dynamicStateCount      = dynamicStateCount;
-    dyInfo.pDynamicStates         = dynamicStates.data();
-
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &foState.rtInfo };
     info.flags                    = flags;
     info.stageCount               = stageInfo.getStageCount();
@@ -1129,7 +1157,7 @@ namespace dxvk {
     info.pMultisampleState        = &foState.msInfo;
     info.pDepthStencilState       = &fsState.dsInfo;
     info.pColorBlendState         = &foState.cbInfo;
-    info.pDynamicState            = &dyInfo;
+    info.pDynamicState            = &dyState.dyInfo;
     info.layout                   = m_bindings->getPipelineLayout(false);
     info.basePipelineIndex        = -1;
     

@@ -24,6 +24,18 @@ namespace dxvk {
   struct DxvkPipelineStats;
 
   /**
+   * \brief Flags that describe pipeline properties
+   */
+  enum class DxvkGraphicsPipelineFlag {
+    HasRasterizerDiscard,
+    HasTransformFeedback,
+    HasStorageDescriptors,
+  };
+
+  using DxvkGraphicsPipelineFlags = Flags<DxvkGraphicsPipelineFlag>;
+
+
+  /**
    * \brief Vertex input info for graphics pipelines
    *
    * Can be used to compile dedicated pipeline objects for use
@@ -190,6 +202,27 @@ namespace dxvk {
 
 
   /**
+   * \brief Dynamic state for graphics pipelines
+   *
+   */
+  struct DxvkGraphicsPipelineDynamicState {
+    DxvkGraphicsPipelineDynamicState();
+
+    DxvkGraphicsPipelineDynamicState(
+      const DxvkDevice*                     device,
+      const DxvkGraphicsPipelineStateInfo&  state,
+            DxvkGraphicsPipelineFlags       flags);
+
+    VkPipelineDynamicStateCreateInfo  dyInfo    = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
+    std::array<VkDynamicState, 12>    dyStates  = { };
+
+    bool eq(const DxvkGraphicsPipelineDynamicState& other) const;
+
+    size_t hash() const;
+  };
+
+
+  /**
    * \brief Shader create info state for graphics pipelines
    *
    * Can only be used when all pipeline state is known.
@@ -250,18 +283,6 @@ namespace dxvk {
     void addConstant(uint32_t id, uint32_t value);
 
   };
-
-
-  /**
-   * \brief Flags that describe pipeline properties
-   */
-  enum class DxvkGraphicsPipelineFlag {
-    HasRasterizerDiscard,
-    HasTransformFeedback,
-    HasStorageDescriptors,
-  };
-
-  using DxvkGraphicsPipelineFlags = Flags<DxvkGraphicsPipelineFlag>;
 
 
   /**
