@@ -18,10 +18,10 @@ EXPORTS
 
   Direct3D9EnableMaximizedWindowedModeShim @36
 
-  Direct3DCreate9 @ 37
-  Direct3DCreate9Ex @ 38
+  Direct3DCreate9 @37
+  Direct3DCreate9Ex @38
 
-  DXVK_RegisterAnnotation @ 28257 NONAME
-  DXVK_UnRegisterAnnotation @ 28258 NONAME
+  DXVK_RegisterAnnotation @28257 NONAME
+  DXVK_UnRegisterAnnotation @28258 NONAME
 
   Direct3D9ForceHybridEnumeration @16 NONAME PRIVATE
