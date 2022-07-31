@@ -53,6 +53,10 @@ namespace dxvk {
     return DxsoConstantBuffers::VSCount + caps::MaxTexturesVS + DxsoConstantBuffers::PSCount + caps::MaxTexturesPS + 1; // From last pixel shader slot, above.
   }
 
+  constexpr uint32_t getSpecConstantBufferSlot() {
+    return getSWVPBufferSlot() + 1;
+  }
+
   uint32_t RegisterLinkerSlot(DxsoSemantic semantic);
 
 }
