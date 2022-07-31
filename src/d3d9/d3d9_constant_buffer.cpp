@@ -13,9 +13,21 @@ namespace dxvk {
           DxsoProgramType       ShaderStage,
           DxsoConstantBuffers   BufferType,
           VkDeviceSize          Size)
+  : D3D9ConstantBuffer(pDevice, GetShaderStage(ShaderStage),
+      computeResourceSlotId(ShaderStage, DxsoBindingType::ConstantBuffer, BufferType),
+      Size) {
+
+  }
+
+
+  D3D9ConstantBuffer::D3D9ConstantBuffer(
+          D3D9DeviceEx*         pDevice,
+          VkShaderStageFlags    Stages,
+          uint32_t              ResourceSlot,
+          VkDeviceSize          Size)
   : m_device    (pDevice)
-  , m_binding   (computeResourceSlotId(ShaderStage, DxsoBindingType::ConstantBuffer, BufferType))
-  , m_stages    (GetShaderStage(ShaderStage))
+  , m_binding   (ResourceSlot)
+  , m_stages    (Stages)
   , m_size      (Size)
   , m_align     (getAlignment(pDevice->GetDXVKDevice())) {
 
