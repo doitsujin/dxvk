@@ -27,6 +27,12 @@ namespace dxvk {
             DxsoConstantBuffers   BufferType,
             VkDeviceSize          Size);
 
+    D3D9ConstantBuffer(
+            D3D9DeviceEx*         pDevice,
+            VkShaderStageFlags    Stages,
+            uint32_t              ResourceSlot,
+            VkDeviceSize          Size);
+
     ~D3D9ConstantBuffer();
 
     /**
