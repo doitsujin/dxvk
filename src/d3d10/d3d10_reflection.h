@@ -17,7 +17,7 @@ namespace dxvk {
     D3D10ShaderReflectionType(
             ID3D11ShaderReflectionType*     d3d11);
     
-    ~D3D10ShaderReflectionType();
+    virtual ~D3D10ShaderReflectionType();
 
     HRESULT STDMETHODCALLTYPE GetDesc(
             D3D10_SHADER_TYPE_DESC*         pDesc);
