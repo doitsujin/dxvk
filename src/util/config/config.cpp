@@ -767,7 +767,9 @@ namespace dxvk {
 
     if (value[0] == '-') {
       negate = true;
-      pos += 1;
+
+      if (++pos == value.size())
+        return false;
     }
 
     // Parse integer part
@@ -811,7 +813,7 @@ namespace dxvk {
     if (negate)
       result = -result;
 
-    return true;
+    return std::isfinite(result);
   }
 
 
