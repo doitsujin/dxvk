@@ -90,17 +90,22 @@ namespace dxvk {
   class D3D9ShaderSpecConstantManager {
   public:
     uint32_t get(SpirvModule &module, D3D9SpecConstantId id) {
+      return get(module, id, 0, 32);
+    }
+
+    uint32_t get(SpirvModule &module, D3D9SpecConstantId id, uint32_t bitOffset, uint32_t bitCount) {
       const auto &layout = D3D9SpecializationInfo::Layout[id];
 
       uint32_t val = getSpecConstDword(module, layout.dwordOffset);
-      if (layout.sizeInBits == 32)
+      bitCount = std::min(bitCount, layout.sizeInBits - bitOffset);
+
+      if (bitCount == 32)
         return val;
 
       return module.opBitFieldUExtract(
-        module.defIntType(32, 0),
-        val,
-        module.consti32(layout.bitOffset),
-        module.consti32(layout.sizeInBits));
+        module.defIntType(32, 0), val,
+        module.consti32(bitOffset + layout.bitOffset),
+        module.consti32(bitCount));
     }
 
   private:
