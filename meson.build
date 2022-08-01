@@ -12,6 +12,7 @@ compiler_args = [
   '-msse2',
   '-msse3',
   '-mfpmath=sse',
+  '-fno-finite-math-only',
   '-Wimplicit-fallthrough',
   # clang
   '-Wno-unused-private-field',
