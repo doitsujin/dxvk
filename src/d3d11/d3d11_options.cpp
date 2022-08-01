@@ -1,4 +1,4 @@
-#include <unordered_map>
+#include "../util/util_math.h"
 
 #include "d3d11_options.h"
 
@@ -13,6 +13,7 @@ namespace dxvk {
     this->ignoreGraphicsBarriers = config.getOption<bool>("d3d11.ignoreGraphicsBarriers", false);
     this->maxTessFactor         = config.getOption<int32_t>("d3d11.maxTessFactor", 0);
     this->samplerAnisotropy     = config.getOption<int32_t>("d3d11.samplerAnisotropy", -1);
+    this->samplerLodBias        = config.getOption<float>("d3d11.samplerLodBias", 0.0f);
     this->invariantPosition     = config.getOption<bool>("d3d11.invariantPosition", true);
     this->floatControls         = config.getOption<bool>("d3d11.floatControls", true);
     this->disableMsaa           = config.getOption<bool>("d3d11.disableMsaa", false);
@@ -22,6 +23,9 @@ namespace dxvk {
     this->maxFrameRate          = config.getOption<int32_t>("dxgi.maxFrameRate", 0);
     this->syncInterval          = config.getOption<int32_t>("dxgi.syncInterval", -1);
     this->tearFree              = config.getOption<Tristate>("dxgi.tearFree", Tristate::Auto);
+
+    // Clamp LOD bias so that people don't abuse this in unintended ways
+    this->samplerLodBias = dxvk::fclamp(this->samplerLodBias, -2.0f, 1.0f);
 
     int32_t maxImplicitDiscardSize = config.getOption<int32_t>("d3d11.maxImplicitDiscardSize", 256);
     this->maxImplicitDiscardSize = maxImplicitDiscardSize >= 0

@@ -44,6 +44,10 @@ namespace dxvk {
     if (desc.MaxAnisotropy <  1) info.maxAnisotropy =  1.0f;
     if (desc.MaxAnisotropy > 16) info.maxAnisotropy = 16.0f;
     
+    // Enforce LOD bias specified in the device options
+    if (info.minFilter == VK_FILTER_LINEAR && info.magFilter == VK_FILTER_LINEAR)
+      info.mipmapLodBias += device->GetOptions()->samplerLodBias;
+
     // Enforce anisotropy specified in the device options
     int32_t samplerAnisotropyOption = device->GetOptions()->samplerAnisotropy;
 
@@ -51,7 +55,7 @@ namespace dxvk {
       info.useAnisotropy = samplerAnisotropyOption > 0;
       info.maxAnisotropy = float(samplerAnisotropyOption);
     }
-    
+
     m_sampler = device->GetDXVKDevice()->createSampler(info);
   }
   

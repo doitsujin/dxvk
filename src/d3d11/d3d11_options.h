@@ -61,7 +61,12 @@ namespace dxvk {
     /// Enforces anisotropic filtering with the
     /// given anisotropy value for all samplers.
     int32_t samplerAnisotropy;
-    
+
+    /// Mipmap LOD bias
+    ///
+    /// Enforces the given LOD bias for all samplers.
+    float samplerLodBias;
+
     /// Declare vertex positions in shaders as invariant
     bool invariantPosition;
 
