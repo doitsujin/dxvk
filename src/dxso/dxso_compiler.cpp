@@ -1015,7 +1015,7 @@ namespace dxvk {
       uint32_t uvec4Type = getVectorTypeId({ DxsoScalarType::Uint32, 4 });
 
       // If not SWVP, spec const this
-      uint32_t bitfield;
+      uint32_t bit;
       if (m_layout->bitmaskCount != 1) {
         std::array<uint32_t, 2> indices = { m_module.constu32(0), m_module.constu32(reg.id.num / 128) };
 
@@ -1026,23 +1026,22 @@ namespace dxvk {
           m_module.defPointerType(accessType, spv::StorageClassUniform),
           m_cBoolBuffer, indexCount, indices.data());
 
-        bitfield = m_module.opLoad(accessType, ptrId);
-      }
-      else {
-        bitfield = m_spec.get(m_module,
-          m_programInfo.type() == DxsoProgramType::VertexShader
-            ? SpecVertexShaderBools
-            : SpecPixelShaderBools);
-      }
+        uint32_t bitfield = m_module.opLoad(accessType, ptrId);
+        uint32_t bitIdx = m_module.consti32(reg.id.num % 32);
 
-      uint32_t bitIdx = m_module.consti32(reg.id.num % 32);
-
-      if (m_layout->bitmaskCount != 1) {
         uint32_t index = (reg.id.num % 128) / 32;
         bitfield = m_module.opCompositeExtract(uintType, bitfield, 1, &index);
+
+        bit = m_module.opBitFieldUExtract(
+          uintType, bitfield, bitIdx, m_module.consti32(1));
       }
-      uint32_t bit = m_module.opBitFieldUExtract(
-        uintType, bitfield, bitIdx, m_module.consti32(1));
+      else {
+        bit = m_spec.get(m_module,
+          m_programInfo.type() == DxsoProgramType::VertexShader
+            ? SpecVertexShaderBools
+            : SpecPixelShaderBools,
+          reg.id.num, 1);
+      }
 
       result.id = m_module.opINotEqual(
         getVectorTypeId(result.type),
@@ -2762,10 +2761,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       // Of course it does...
       uint32_t bool_t = m_module.defBoolType();
 
-      uint32_t shouldProj = m_module.opBitFieldUExtract(
-        m_module.defIntType(32, 0), m_spec.get(m_module, SpecProjectionType),
-        m_module.consti32(samplerIdx), m_module.consti32(1));
-
+      uint32_t shouldProj = m_spec.get(m_module, SpecProjectionType, samplerIdx, 1);
       shouldProj = m_module.opINotEqual(bool_t, shouldProj, m_module.constu32(0));
 
       uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
@@ -2929,9 +2925,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       uint32_t fetch4 = 0;
       if (m_programInfo.type() == DxsoProgramType::PixelShader && samplerType != SamplerTypeTexture3D) {
-        fetch4 = m_module.opBitFieldUExtract(
-          m_module.defIntType(32, 0), m_spec.get(m_module, SpecFetch4),
-          m_module.consti32(samplerIdx), m_module.consti32(1));
+        fetch4 = m_spec.get(m_module, SpecFetch4, samplerIdx, 1);
 
         uint32_t bool_t = m_module.defBoolType();
         fetch4 = m_module.opINotEqual(bool_t, fetch4, m_module.constu32(0));
@@ -2962,10 +2956,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
           fetch4,
           imageOperands);
 
-        uint32_t shouldProj = m_module.opBitFieldUExtract(
-          m_module.defIntType(32, 0), m_spec.get(m_module, SpecProjectionType),
-          m_module.consti32(samplerIdx), m_module.consti32(1));
-
+        uint32_t shouldProj = m_spec.get(m_module, SpecProjectionType, samplerIdx, 1);
         shouldProj = m_module.opINotEqual(m_module.defBoolType(), shouldProj, m_module.constu32(0));
 
         // Depth  -> .x
@@ -3022,11 +3013,11 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     };
 
     auto SampleType = [&](DxsoSamplerType samplerType) {
-      uint32_t typeId = m_module.defIntType(32, 0);
-      uint32_t offset  = m_module.consti32(m_programInfo.type() == DxsoProgramTypes::VertexShader ? samplerIdx + caps::MaxTexturesPS : samplerIdx);
-      uint32_t bitCnt  = m_module.consti32(1);
+      uint32_t bitOffset = m_programInfo.type() == DxsoProgramTypes::VertexShader
+        ? samplerIdx + caps::MaxTexturesPS
+        : samplerIdx;
 
-      uint32_t isNull = m_module.opBitFieldUExtract(typeId, m_spec.get(m_module, SpecSamplerNull), offset, bitCnt);
+      uint32_t isNull = m_spec.get(m_module, SpecSamplerNull, bitOffset, 1);
       isNull = m_module.opINotEqual(m_module.defBoolType(), isNull, m_module.constu32(0));
 
       // Only do the check for depth comp. samplers
@@ -3036,7 +3027,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         uint32_t depthLabel  = m_module.allocateId();
         uint32_t endLabel    = m_module.allocateId();
 
-        uint32_t isDepth = m_module.opBitFieldUExtract(typeId, m_spec.get(m_module, SpecSamplerDepthMode), offset, bitCnt);
+        uint32_t isDepth = m_spec.get(m_module, SpecSamplerDepthMode, bitOffset, 1);
         isDepth = m_module.opINotEqual(m_module.defBoolType(), isDepth, m_module.constu32(0));
 
         m_module.opSelectionMerge(endLabel, spv::SelectionControlMaskNone);
@@ -3071,12 +3062,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       }};
 
       uint32_t switchEndLabel = m_module.allocateId();
-
-      uint32_t typeId = m_module.defIntType(32, 0);
-
-      uint32_t offset  = m_module.consti32(samplerIdx * 2);
-      uint32_t bitCnt  = m_module.consti32(2);
-      uint32_t type    = m_module.opBitFieldUExtract(typeId, m_spec.get(m_module, SpecSamplerType), offset, bitCnt);
+      uint32_t type = m_spec.get(m_module, SpecSamplerType, samplerIdx * 2, 2);
 
       m_module.opSelectionMerge(switchEndLabel, spv::SelectionControlMaskNone);
       m_module.opSwitch(type,
