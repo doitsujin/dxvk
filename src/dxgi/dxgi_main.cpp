@@ -22,20 +22,20 @@ namespace dxvk {
 }
 
 extern "C" {
-  DLLEXPORT HRESULT __stdcall CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFactory) {
+  HRESULT __stdcall CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFactory) {
     dxvk::Logger::warn("CreateDXGIFactory2: Ignoring flags");
     return dxvk::createDxgiFactory(Flags, riid, ppFactory);
   }
 
-  DLLEXPORT HRESULT __stdcall CreateDXGIFactory1(REFIID riid, void **ppFactory) {
+  HRESULT __stdcall CreateDXGIFactory1(REFIID riid, void **ppFactory) {
     return dxvk::createDxgiFactory(0, riid, ppFactory);
   }
   
-  DLLEXPORT HRESULT __stdcall CreateDXGIFactory(REFIID riid, void **ppFactory) {
+  HRESULT __stdcall CreateDXGIFactory(REFIID riid, void **ppFactory) {
     return dxvk::createDxgiFactory(0, riid, ppFactory);
   }
 
-  DLLEXPORT HRESULT __stdcall DXGIDeclareAdapterRemovalSupport() {
+  HRESULT __stdcall DXGIDeclareAdapterRemovalSupport() {
     static bool enabled = false;
 
     if (std::exchange(enabled, true))
@@ -45,7 +45,7 @@ extern "C" {
     return S_OK;
   }
 
-  DLLEXPORT HRESULT __stdcall DXGIGetDebugInterface1(UINT Flags, REFIID riid, void **ppDebug) {
+  HRESULT __stdcall DXGIGetDebugInterface1(UINT Flags, REFIID riid, void **ppDebug) {
     static bool errorShown = false;
 
     if (!std::exchange(errorShown, true))
