@@ -203,7 +203,7 @@ extern "C" {
   }
   
 
-  DLLEXPORT HRESULT __stdcall D3D11CreateDevice(
+  HRESULT WINAPI D3D11CreateDevice(
           IDXGIAdapter*         pAdapter,
           D3D_DRIVER_TYPE       DriverType,
           HMODULE               Software,
@@ -222,7 +222,7 @@ extern "C" {
   }
   
   
-  DLLEXPORT HRESULT __stdcall D3D11CreateDeviceAndSwapChain(
+  HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
           IDXGIAdapter*         pAdapter,
           D3D_DRIVER_TYPE       DriverType,
           HMODULE               Software,
@@ -243,7 +243,7 @@ extern "C" {
   }
   
 
-  DLLEXPORT HRESULT __stdcall D3D11On12CreateDevice(
+  HRESULT WINAPI D3D11On12CreateDevice(
           IUnknown*             pDevice,
           UINT                  Flags,
     const D3D_FEATURE_LEVEL*    pFeatureLevels,
