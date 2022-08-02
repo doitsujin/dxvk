@@ -85,6 +85,7 @@ namespace dxvk::vk {
     VULKAN_FN(vkDestroyInstance);
     VULKAN_FN(vkEnumerateDeviceExtensionProperties);
     VULKAN_FN(vkEnumeratePhysicalDevices);
+    VULKAN_FN(vkGetPhysicalDeviceExternalSemaphoreProperties);
     VULKAN_FN(vkGetPhysicalDeviceFeatures);
     VULKAN_FN(vkGetPhysicalDeviceFeatures2);
     VULKAN_FN(vkGetPhysicalDeviceFormatProperties);

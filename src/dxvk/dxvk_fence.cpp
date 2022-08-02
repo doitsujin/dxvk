@@ -14,8 +14,25 @@ namespace dxvk {
     VkExportSemaphoreCreateInfo exportInfo = { VK_STRUCTURE_TYPE_EXPORT_SEMAPHORE_CREATE_INFO };
     exportInfo.handleTypes = info.sharedType;
 
-    if (info.sharedType != VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_FLAG_BITS_MAX_ENUM)
-      typeInfo.pNext = &exportInfo;
+    VkExternalSemaphoreFeatureFlags externalFeatures = 0;
+
+    if (info.sharedType != VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_FLAG_BITS_MAX_ENUM) {
+      auto vki = device->adapter()->vki();
+
+      VkPhysicalDeviceExternalSemaphoreInfo externalInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_SEMAPHORE_INFO, &typeInfo };
+      externalInfo.handleType = info.sharedType;
+
+      VkExternalSemaphoreProperties externalProperties = { };
+      vki->vkGetPhysicalDeviceExternalSemaphoreProperties(
+        device->adapter()->handle(), &externalInfo, &externalProperties);
+
+      externalFeatures = externalProperties.externalSemaphoreFeatures;
+
+      if (externalFeatures & VK_EXTERNAL_SEMAPHORE_FEATURE_EXPORTABLE_BIT)
+        typeInfo.pNext = &exportInfo;
+      else
+        Logger::warn(str::format("Exporting semaphores of type ", info.sharedType, " not supported by device"));
+    }
 
     VkSemaphoreCreateInfo semaphoreInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, &typeInfo };
 
@@ -26,14 +43,18 @@ namespace dxvk {
       throw DxvkError("Failed to create timeline semaphore");
 
     if (info.sharedHandle != INVALID_HANDLE_VALUE) {
-      VkImportSemaphoreWin32HandleInfoKHR importInfo = { VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHR };
-      importInfo.semaphore = m_semaphore;
-      importInfo.handleType = info.sharedType;
-      importInfo.handle = info.sharedHandle;
+      if (externalFeatures & VK_EXTERNAL_SEMAPHORE_FEATURE_IMPORTABLE_BIT) {
+        VkImportSemaphoreWin32HandleInfoKHR importInfo = { VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_WIN32_HANDLE_INFO_KHR };
+        importInfo.semaphore = m_semaphore;
+        importInfo.handleType = info.sharedType;
+        importInfo.handle = info.sharedHandle;
 
-      vr = m_vkd->vkImportSemaphoreWin32HandleKHR(m_vkd->device(), &importInfo);
-      if (vr != VK_SUCCESS)
-        throw DxvkError("Failed to import timeline semaphore");
+        vr = m_vkd->vkImportSemaphoreWin32HandleKHR(m_vkd->device(), &importInfo);
+        if (vr != VK_SUCCESS)
+          throw DxvkError("Failed to import timeline semaphore");
+      } else {
+        Logger::warn(str::format("Importing semaphores of type ", info.sharedType, " not supported by device"));
+      }
     }
 
     m_thread = dxvk::thread([this] { run(); });
