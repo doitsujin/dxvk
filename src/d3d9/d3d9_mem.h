@@ -12,6 +12,8 @@
   #include <winbase.h>
 #endif
 
+#include <vector>
+
 namespace dxvk {
 
   class D3D9MemoryAllocator;
