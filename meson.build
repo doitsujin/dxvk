@@ -1,4 +1,4 @@
-project('dxvk', ['c', 'cpp'], version : 'v1.10.2', meson_version : '>= 0.49', default_options : [ 'cpp_std=c++17' ])
+project('dxvk', ['c', 'cpp'], version : 'v1.10.3', meson_version : '>= 0.49', default_options : [ 'cpp_std=c++17' ])
 
 cpu_family = target_machine.cpu_family()
 

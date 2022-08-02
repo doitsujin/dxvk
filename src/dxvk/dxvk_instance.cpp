@@ -128,7 +128,7 @@ namespace dxvk {
     appInfo.pApplicationName      = appName.c_str();
     appInfo.applicationVersion    = 0;
     appInfo.pEngineName           = "DXVK";
-    appInfo.engineVersion         = VK_MAKE_VERSION(1, 10, 2);
+    appInfo.engineVersion         = VK_MAKE_VERSION(1, 10, 3);
     appInfo.apiVersion            = VK_MAKE_VERSION(1, 1, 0);
     
     VkInstanceCreateInfo info;
