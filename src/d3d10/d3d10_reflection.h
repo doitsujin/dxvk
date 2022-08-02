@@ -10,7 +10,7 @@
 
 namespace dxvk {
 
-  class D3D10ShaderReflectionType : public ID3D10ShaderReflectionType {
+  class D3D10ShaderReflectionType final : public ID3D10ShaderReflectionType {
 
   public:
 
@@ -49,7 +49,7 @@ namespace dxvk {
   };
 
 
-  class D3D10ShaderReflectionVariable : public ID3D10ShaderReflectionVariable {
+  class D3D10ShaderReflectionVariable final : public ID3D10ShaderReflectionVariable {
 
   public:
 
@@ -75,7 +75,7 @@ namespace dxvk {
   };
 
 
-  class D3D10ShaderReflectionConstantBuffer : public ID3D10ShaderReflectionConstantBuffer {
+  class D3D10ShaderReflectionConstantBuffer final : public ID3D10ShaderReflectionConstantBuffer {
 
   public:
 
