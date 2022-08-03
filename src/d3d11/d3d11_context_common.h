@@ -743,6 +743,12 @@ namespace dxvk {
     D3D11DeviceContextExt<ContextType>        m_contextExt;
     D3D11UserDefinedAnnotation<ContextType>   m_annotation;
 
+    DxvkCsChunkFlags            m_csFlags;
+    DxvkCsChunkRef              m_csChunk;
+    D3D11CmdData*               m_cmdData;
+
+    DxvkCsChunkRef AllocCsChunk();
+    
     void ApplyInputLayout();
     
     void ApplyPrimitiveTopology();
@@ -986,6 +992,43 @@ namespace dxvk {
             UINT                              NumViews,
             ID3D11RenderTargetView* const*    ppRenderTargetViews,
             ID3D11DepthStencilView*           pDepthStencilView);
+
+    template<typename Cmd>
+    void EmitCs(Cmd&& command) {
+      m_cmdData = nullptr;
+
+      if (unlikely(!m_csChunk->push(command))) {
+        GetTypedContext()->EmitCsChunk(std::move(m_csChunk));
+        
+        m_csChunk = AllocCsChunk();
+        m_csChunk->push(command);
+      }
+    }
+
+    template<typename M, typename Cmd, typename... Args>
+    M* EmitCsCmd(Cmd&& command, Args&&... args) {
+      M* data = m_csChunk->pushCmd<M, Cmd, Args...>(
+        command, std::forward<Args>(args)...);
+
+      if (unlikely(!data)) {
+        GetTypedContext()->EmitCsChunk(std::move(m_csChunk));
+        
+        m_csChunk = AllocCsChunk();
+        data = m_csChunk->pushCmd<M, Cmd, Args...>(
+          command, std::forward<Args>(args)...);
+      }
+
+      m_cmdData = data;
+      return data;
+    }
+
+    void FlushCsChunk() {
+      if (likely(!m_csChunk->empty())) {
+        GetTypedContext()->EmitCsChunk(std::move(m_csChunk));
+        m_csChunk = AllocCsChunk();
+        m_cmdData = nullptr;
+      }
+    }
 
   private:
 

@@ -9,9 +9,12 @@ namespace dxvk {
           D3D11Device*            pParent,
     const Rc<DxvkDevice>&         Device,
           DxvkCsChunkFlags        CsFlags)
-  : D3D11DeviceContext(pParent, Device, CsFlags),
+  : D3D11DeviceContext(pParent, Device),
     m_contextExt(GetTypedContext()),
-    m_annotation(GetTypedContext(), Device) {
+    m_annotation(GetTypedContext(), Device),
+    m_csFlags   (CsFlags),
+    m_csChunk   (AllocCsChunk()),
+    m_cmdData   (nullptr) {
 
   }
 
@@ -2978,6 +2981,12 @@ namespace dxvk {
     });
   }
 
+
+  template<typename ContextType>
+  DxvkCsChunkRef D3D11CommonContext<ContextType>::AllocCsChunk() {
+    return m_parent->AllocCsChunk(m_csFlags);
+  }
+  
 
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::ApplyInputLayout() {

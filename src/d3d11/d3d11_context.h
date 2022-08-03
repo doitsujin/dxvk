@@ -30,8 +30,7 @@ namespace dxvk {
     
     D3D11DeviceContext(
             D3D11Device*            pParent,
-      const Rc<DxvkDevice>&         Device,
-            DxvkCsChunkFlags        CsFlags);
+      const Rc<DxvkDevice>&         Device);
     ~D3D11DeviceContext();
     
     D3D10DeviceLock LockContext() {
@@ -47,11 +46,7 @@ namespace dxvk {
 
     DxvkStagingBuffer           m_staging;
 
-    DxvkCsChunkFlags            m_csFlags;
-    DxvkCsChunkRef              m_csChunk;
-    
     D3D11ContextState           m_state;
-    D3D11CmdData*               m_cmdData;
     
     VkClearValue ConvertColorValue(
       const FLOAT                             Color[4],
@@ -64,8 +59,6 @@ namespace dxvk {
 
     void ResetStagingBuffer();
 
-    DxvkCsChunkRef AllocCsChunk();
-    
     static void InitDefaultPrimitiveTopology(
             DxvkInputAssemblyState*           pIaState);
 
@@ -103,48 +96,9 @@ namespace dxvk {
       return bufferSize >= Offset + Size;
     }
     
-    template<typename Cmd>
-    void EmitCs(Cmd&& command) {
-      m_cmdData = nullptr;
-
-      if (unlikely(!m_csChunk->push(command))) {
-        EmitCsChunk(std::move(m_csChunk));
-        
-        m_csChunk = AllocCsChunk();
-        m_csChunk->push(command);
-      }
-    }
-
-    template<typename M, typename Cmd, typename... Args>
-    M* EmitCsCmd(Cmd&& command, Args&&... args) {
-      M* data = m_csChunk->pushCmd<M, Cmd, Args...>(
-        command, std::forward<Args>(args)...);
-
-      if (unlikely(!data)) {
-        EmitCsChunk(std::move(m_csChunk));
-        
-        m_csChunk = AllocCsChunk();
-        data = m_csChunk->pushCmd<M, Cmd, Args...>(
-          command, std::forward<Args>(args)...);
-      }
-
-      m_cmdData = data;
-      return data;
-    }
-    
-    void FlushCsChunk() {
-      if (likely(!m_csChunk->empty())) {
-        EmitCsChunk(std::move(m_csChunk));
-        m_csChunk = AllocCsChunk();
-        m_cmdData = nullptr;
-      }
-    }
-    
     void TrackResourceSequenceNumber(
             ID3D11Resource*             pResource);
 
-    virtual void EmitCsChunk(DxvkCsChunkRef&& chunk) = 0;
-    
     virtual void TrackTextureSequenceNumber(
             D3D11CommonTexture*         pResource,
             UINT                        Subresource) = 0;
