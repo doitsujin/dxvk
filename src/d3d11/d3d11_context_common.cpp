@@ -1661,6 +1661,73 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::SOSetTargets(
+          UINT                              NumBuffers,
+          ID3D11Buffer* const*              ppSOTargets,
+    const UINT*                             pOffsets) {
+    D3D10DeviceLock lock = LockContext();
+
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      D3D11Buffer* buffer = static_cast<D3D11Buffer*>(ppSOTargets[i]);
+      UINT         offset = pOffsets != nullptr ? pOffsets[i] : 0;
+
+      m_state.so.targets[i].buffer = buffer;
+      m_state.so.targets[i].offset = offset;
+    }
+
+    for (uint32_t i = NumBuffers; i < D3D11_SO_BUFFER_SLOT_COUNT; i++) {
+      m_state.so.targets[i].buffer = nullptr;
+      m_state.so.targets[i].offset = 0;
+    }
+
+    for (uint32_t i = 0; i < D3D11_SO_BUFFER_SLOT_COUNT; i++) {
+      BindXfbBuffer(i,
+        m_state.so.targets[i].buffer.ptr(),
+        m_state.so.targets[i].offset);
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::SOGetTargets(
+          UINT                              NumBuffers,
+          ID3D11Buffer**                    ppSOTargets) {
+    D3D10DeviceLock lock = LockContext();
+
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      ppSOTargets[i] = i < m_state.so.targets.size()
+        ? m_state.so.targets[i].buffer.ref()
+        : nullptr;
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::SOGetTargetsWithOffsets(
+          UINT                              NumBuffers,
+          ID3D11Buffer**                    ppSOTargets,
+          UINT*                             pOffsets) {
+    D3D10DeviceLock lock = LockContext();
+
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      const bool inRange = i < m_state.so.targets.size();
+
+      if (ppSOTargets) {
+        ppSOTargets[i] = inRange
+          ? m_state.so.targets[i].buffer.ref()
+          : nullptr;
+      }
+
+      if (pOffsets) {
+        pOffsets[i] = inRange
+          ? m_state.so.targets[i].offset
+          : 0u;
+      }
+    }
+  }
+
+
+  template<typename ContextType>
   BOOL STDMETHODCALLTYPE D3D11CommonContext<ContextType>::IsAnnotationEnabled() {
     return m_annotation.GetStatus();
   }

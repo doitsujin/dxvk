@@ -206,20 +206,6 @@ namespace dxvk {
             ID3D11Buffer*   pBufferForArgs,
             UINT            AlignedByteOffsetForArgs);
     
-    void STDMETHODCALLTYPE SOSetTargets(
-            UINT                              NumBuffers,
-            ID3D11Buffer* const*              ppSOTargets,
-      const UINT*                             pOffsets);
-    
-    void STDMETHODCALLTYPE SOGetTargets(
-            UINT                              NumBuffers,
-            ID3D11Buffer**                    ppSOTargets);
-    
-    void STDMETHODCALLTYPE SOGetTargetsWithOffsets(
-            UINT                              NumBuffers,
-            ID3D11Buffer**                    ppSOTargets,
-            UINT*                             pOffsets);
-    
     void STDMETHODCALLTYPE SetMarkerInt(
             LPCWSTR                           pLabel,
             INT                               Data);
