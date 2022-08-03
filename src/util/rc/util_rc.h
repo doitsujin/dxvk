@@ -2,6 +2,8 @@
 
 #include <atomic>
 
+#include "../util_likely.h"
+
 namespace dxvk {
   
   /**
@@ -15,7 +17,7 @@ namespace dxvk {
      * \brief Increments reference count
      * \returns New reference count
      */
-    uint32_t incRef() {
+    always_inline uint32_t incRef() {
       return ++m_refCount;
     }
     
@@ -23,7 +25,7 @@ namespace dxvk {
      * \brief Decrements reference count
      * \returns New reference count
      */
-    uint32_t decRef() {
+    always_inline uint32_t decRef() {
       return --m_refCount;
     }
     

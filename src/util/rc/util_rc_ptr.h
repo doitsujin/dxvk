@@ -102,12 +102,12 @@ namespace dxvk {
     
     T* m_object = nullptr;
     
-    void incRef() const {
+    always_inline void incRef() const {
       if (m_object != nullptr)
         m_object->incRef();
     }
     
-    void decRef() const {
+    always_inline void decRef() const {
       if (m_object != nullptr) {
         if (m_object->decRef() == 0)
           delete m_object;
