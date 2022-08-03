@@ -27,49 +27,6 @@ namespace dxvk {
 
     ~D3D11DeviceContext();
 
-  protected:
-    
-    VkClearValue ConvertColorValue(
-      const FLOAT                             Color[4],
-      const DxvkFormatInfo*                   pFormatInfo);
-    
-    static void InitDefaultPrimitiveTopology(
-            DxvkInputAssemblyState*           pIaState);
-
-    static void InitDefaultRasterizerState(
-            DxvkRasterizerState*              pRsState);
-
-    static void InitDefaultDepthStencilState(
-            DxvkDepthStencilState*            pDsState);
-
-    static void InitDefaultBlendState(
-            DxvkBlendMode*                    pCbState,
-            DxvkLogicOpState*                 pLoState,
-            DxvkMultisampleState*             pMsState,
-            UINT                              SampleMask);
-
-    template<typename T>
-    const D3D11CommonShader* GetCommonShader(T* pShader) const {
-      return pShader != nullptr ? pShader->GetCommonShader() : nullptr;
-    }
-
-    static uint32_t GetIndirectCommandStride(const D3D11CmdDrawIndirectData* cmdData, uint32_t offset, uint32_t minStride) {
-      if (likely(cmdData->stride))
-        return cmdData->offset + cmdData->count * cmdData->stride == offset ? cmdData->stride : 0;
-
-      uint32_t stride = offset - cmdData->offset;
-      return stride >= minStride && stride <= 32 ? stride : 0;
-    }
-
-    static bool ValidateDrawBufferSize(ID3D11Buffer* pBuffer, UINT Offset, UINT Size) {
-      UINT bufferSize = 0;
-
-      if (likely(pBuffer != nullptr))
-        bufferSize = static_cast<D3D11Buffer*>(pBuffer)->Desc()->ByteWidth;
-
-      return bufferSize >= Offset + Size;
-    }
-
   };
   
 }

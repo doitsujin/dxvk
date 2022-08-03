@@ -3541,6 +3541,30 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  VkClearValue D3D11CommonContext<ContextType>::ConvertColorValue(
+    const FLOAT                             Color[4],
+    const DxvkFormatInfo*                   pFormatInfo) {
+    VkClearValue result;
+
+    if (pFormatInfo->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
+      for (uint32_t i = 0; i < 4; i++) {
+        if (pFormatInfo->flags.test(DxvkFormatFlag::SampledUInt))
+          result.color.uint32[i] = uint32_t(std::max(0.0f, Color[i]));
+        else if (pFormatInfo->flags.test(DxvkFormatFlag::SampledSInt))
+          result.color.int32[i] = int32_t(Color[i]);
+        else
+          result.color.float32[i] = Color[i];
+      }
+    } else {
+      result.depthStencil.depth = Color[0];
+      result.depthStencil.stencil = 0;
+    }
+
+    return result;
+  }
+
+
+  template<typename ContextType>
   void D3D11CommonContext<ContextType>::CopyBuffer(
           D3D11Buffer*                      pDstBuffer,
           VkDeviceSize                      DstOffset,
@@ -4915,6 +4939,72 @@ namespace dxvk {
     return true;
   }
 
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::InitDefaultPrimitiveTopology(
+          DxvkInputAssemblyState*           pIaState) {
+    pIaState->primitiveTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+    pIaState->primitiveRestart  = VK_FALSE;
+    pIaState->patchVertexCount  = 0;
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::InitDefaultRasterizerState(
+          DxvkRasterizerState*              pRsState) {
+    pRsState->polygonMode     = VK_POLYGON_MODE_FILL;
+    pRsState->cullMode        = VK_CULL_MODE_BACK_BIT;
+    pRsState->frontFace       = VK_FRONT_FACE_CLOCKWISE;
+    pRsState->depthClipEnable = VK_TRUE;
+    pRsState->depthBiasEnable = VK_FALSE;
+    pRsState->conservativeMode = VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
+    pRsState->sampleCount     = 0;
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::InitDefaultDepthStencilState(
+          DxvkDepthStencilState*            pDsState) {
+    VkStencilOpState stencilOp;
+    stencilOp.failOp            = VK_STENCIL_OP_KEEP;
+    stencilOp.passOp            = VK_STENCIL_OP_KEEP;
+    stencilOp.depthFailOp       = VK_STENCIL_OP_KEEP;
+    stencilOp.compareOp         = VK_COMPARE_OP_ALWAYS;
+    stencilOp.compareMask       = D3D11_DEFAULT_STENCIL_READ_MASK;
+    stencilOp.writeMask         = D3D11_DEFAULT_STENCIL_WRITE_MASK;
+    stencilOp.reference         = 0;
+
+    pDsState->enableDepthTest   = VK_TRUE;
+    pDsState->enableDepthWrite  = VK_TRUE;
+    pDsState->enableStencilTest = VK_FALSE;
+    pDsState->depthCompareOp    = VK_COMPARE_OP_LESS;
+    pDsState->stencilOpFront    = stencilOp;
+    pDsState->stencilOpBack     = stencilOp;
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::InitDefaultBlendState(
+          DxvkBlendMode*                    pCbState,
+          DxvkLogicOpState*                 pLoState,
+          DxvkMultisampleState*             pMsState,
+          UINT                              SampleMask) {
+    pCbState->enableBlending    = VK_FALSE;
+    pCbState->colorSrcFactor    = VK_BLEND_FACTOR_ONE;
+    pCbState->colorDstFactor    = VK_BLEND_FACTOR_ZERO;
+    pCbState->colorBlendOp      = VK_BLEND_OP_ADD;
+    pCbState->alphaSrcFactor    = VK_BLEND_FACTOR_ONE;
+    pCbState->alphaDstFactor    = VK_BLEND_FACTOR_ZERO;
+    pCbState->alphaBlendOp      = VK_BLEND_OP_ADD;
+    pCbState->writeMask         = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                                | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+    pLoState->enableLogicOp     = VK_FALSE;
+    pLoState->logicOp           = VK_LOGIC_OP_NO_OP;
+
+    pMsState->sampleMask            = SampleMask;
+    pMsState->enableAlphaToCoverage = VK_FALSE;
+  }
 
   // Explicitly instantiate here
   template class D3D11CommonContext<D3D11DeferredContext>;
