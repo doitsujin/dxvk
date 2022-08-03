@@ -2789,8 +2789,193 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::SetResourceMinLOD(
+          ID3D11Resource*                   pResource,
+          FLOAT                             MinLOD) {
+    bool s_errorShown = false;
+
+    if (std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::SetResourceMinLOD: Not implemented");
+  }
+  
+  
+  template<typename ContextType>
+  FLOAT STDMETHODCALLTYPE D3D11CommonContext<ContextType>::GetResourceMinLOD(ID3D11Resource* pResource) {
+    bool s_errorShown = false;
+
+    if (std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::GetResourceMinLOD: Not implemented");
+
+    return 0.0f;
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CopyTiles(
+          ID3D11Resource*                   pTiledResource,
+    const D3D11_TILED_RESOURCE_COORDINATE*  pTileRegionStartCoordinate,
+    const D3D11_TILE_REGION_SIZE*           pTileRegionSize,
+          ID3D11Buffer*                     pBuffer,
+          UINT64                            BufferStartOffsetInBytes,
+          UINT                              Flags) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::CopyTiles: Not implemented");
+  }
+
+
+  template<typename ContextType>
+  HRESULT STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CopyTileMappings(
+          ID3D11Resource*                   pDestTiledResource,
+    const D3D11_TILED_RESOURCE_COORDINATE*  pDestRegionStartCoordinate,
+          ID3D11Resource*                   pSourceTiledResource,
+    const D3D11_TILED_RESOURCE_COORDINATE*  pSourceRegionStartCoordinate,
+    const D3D11_TILE_REGION_SIZE*           pTileRegionSize,
+          UINT                              Flags) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::CopyTileMappings: Not implemented");
+
+    return DXGI_ERROR_INVALID_CALL;
+  }
+
+
+  template<typename ContextType>
+  HRESULT STDMETHODCALLTYPE D3D11CommonContext<ContextType>::ResizeTilePool(
+          ID3D11Buffer*                     pTilePool,
+          UINT64                            NewSizeInBytes) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::ResizeTilePool: Not implemented");
+
+    return DXGI_ERROR_INVALID_CALL;
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::TiledResourceBarrier(
+          ID3D11DeviceChild*                pTiledResourceOrViewAccessBeforeBarrier,
+          ID3D11DeviceChild*                pTiledResourceOrViewAccessAfterBarrier) {
+
+  }
+
+
+  template<typename ContextType>
+  HRESULT STDMETHODCALLTYPE D3D11CommonContext<ContextType>::UpdateTileMappings(
+          ID3D11Resource*                   pTiledResource,
+          UINT                              NumTiledResourceRegions,
+    const D3D11_TILED_RESOURCE_COORDINATE*  pTiledResourceRegionStartCoordinates,
+    const D3D11_TILE_REGION_SIZE*           pTiledResourceRegionSizes,
+          ID3D11Buffer*                     pTilePool,
+          UINT                              NumRanges,
+    const UINT*                             pRangeFlags,
+    const UINT*                             pTilePoolStartOffsets,
+    const UINT*                             pRangeTileCounts,
+          UINT                              Flags) {
+    bool s_errorShown = false;
+
+    if (std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::UpdateTileMappings: Not implemented");
+
+    return DXGI_ERROR_INVALID_CALL;
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::UpdateTiles(
+          ID3D11Resource*                   pDestTiledResource,
+    const D3D11_TILED_RESOURCE_COORDINATE*  pDestTileRegionStartCoordinate,
+    const D3D11_TILE_REGION_SIZE*           pDestTileRegionSize,
+    const void*                             pSourceTileData,
+          UINT                              Flags) {
+    bool s_errorShown = false;
+
+    if (std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::UpdateTiles: Not implemented");
+  }
+
+
+  template<typename ContextType>
   BOOL STDMETHODCALLTYPE D3D11CommonContext<ContextType>::IsAnnotationEnabled() {
     return m_annotation.GetStatus();
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::SetMarkerInt(
+          LPCWSTR                           pLabel,
+          INT                               Data) {
+    // Not implemented in the backend, ignore
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::BeginEventInt(
+          LPCWSTR                           pLabel,
+          INT                               Data) {
+    // Not implemented in the backend, ignore
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::EndEvent() {
+    // Not implemented in the backend, ignore
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::GetHardwareProtectionState(
+          BOOL*                             pHwProtectionEnable) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::GetHardwareProtectionState: Not implemented");
+
+    if (pHwProtectionEnable)
+      *pHwProtectionEnable = FALSE;
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::SetHardwareProtectionState(
+          BOOL                              HwProtectionEnable) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::SetHardwareProtectionState: Not implemented");
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::TransitionSurfaceLayout(
+          IDXGIVkInteropSurface*    pSurface,
+    const VkImageSubresourceRange*  pSubresources,
+          VkImageLayout             OldLayout,
+          VkImageLayout             NewLayout) {
+    D3D10DeviceLock lock = LockContext();
+
+    // Get the underlying D3D11 resource
+    Com<ID3D11Resource> resource;
+
+    pSurface->QueryInterface(__uuidof(ID3D11Resource),
+      reinterpret_cast<void**>(&resource));
+
+    // Get the texture from that resource
+    D3D11CommonTexture* texture = GetCommonTexture(resource.ptr());
+
+    EmitCs([
+      cImage        = texture->GetImage(),
+      cSubresources = *pSubresources,
+      cOldLayout    = OldLayout,
+      cNewLayout    = NewLayout
+    ] (DxvkContext* ctx) {
+      ctx->transformImage(
+        cImage, cSubresources,
+        cOldLayout, cNewLayout);
+    });
   }
 
 
