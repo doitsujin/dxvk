@@ -78,20 +78,6 @@ namespace dxvk {
             ID3D11Resource*             pResource,
             UINT                        Subresource);
             
-    void STDMETHODCALLTYPE OMSetRenderTargets(
-            UINT                              NumViews,
-            ID3D11RenderTargetView* const*    ppRenderTargetViews,
-            ID3D11DepthStencilView*           pDepthStencilView);
-    
-    void STDMETHODCALLTYPE OMSetRenderTargetsAndUnorderedAccessViews(
-            UINT                              NumRTVs,
-            ID3D11RenderTargetView* const*    ppRenderTargetViews,
-            ID3D11DepthStencilView*           pDepthStencilView,
-            UINT                              UAVStartSlot,
-            UINT                              NumUAVs,
-            ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
-      const UINT*                             pUAVInitialCounts);
-    
     void STDMETHODCALLTYPE SwapDeviceContextState(
             ID3DDeviceContextState*           pState,
             ID3DDeviceContextState**          ppPreviousState);

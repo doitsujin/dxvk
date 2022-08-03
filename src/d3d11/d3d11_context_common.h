@@ -85,6 +85,51 @@ namespace dxvk {
             UINT                              SrcDepthPitch,
             UINT                              CopyFlags);
 
+    void STDMETHODCALLTYPE OMSetRenderTargets(
+            UINT                              NumViews,
+            ID3D11RenderTargetView* const*    ppRenderTargetViews,
+            ID3D11DepthStencilView*           pDepthStencilView);
+
+    void STDMETHODCALLTYPE OMSetRenderTargetsAndUnorderedAccessViews(
+            UINT                              NumRTVs,
+            ID3D11RenderTargetView* const*    ppRenderTargetViews,
+            ID3D11DepthStencilView*           pDepthStencilView,
+            UINT                              UAVStartSlot,
+            UINT                              NumUAVs,
+            ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
+      const UINT*                             pUAVInitialCounts);
+
+    void STDMETHODCALLTYPE OMSetBlendState(
+            ID3D11BlendState*                 pBlendState,
+      const FLOAT                             BlendFactor[4],
+            UINT                              SampleMask);
+
+    void STDMETHODCALLTYPE OMSetDepthStencilState(
+            ID3D11DepthStencilState*          pDepthStencilState,
+            UINT                              StencilRef);
+
+    void STDMETHODCALLTYPE OMGetRenderTargets(
+            UINT                              NumViews,
+            ID3D11RenderTargetView**          ppRenderTargetViews,
+            ID3D11DepthStencilView**          ppDepthStencilView);
+
+    void STDMETHODCALLTYPE OMGetRenderTargetsAndUnorderedAccessViews(
+            UINT                              NumRTVs,
+            ID3D11RenderTargetView**          ppRenderTargetViews,
+            ID3D11DepthStencilView**          ppDepthStencilView,
+            UINT                              UAVStartSlot,
+            UINT                              NumUAVs,
+            ID3D11UnorderedAccessView**       ppUnorderedAccessViews);
+
+    void STDMETHODCALLTYPE OMGetBlendState(
+            ID3D11BlendState**                ppBlendState,
+            FLOAT                             BlendFactor[4],
+            UINT*                             pSampleMask);
+
+    void STDMETHODCALLTYPE OMGetDepthStencilState(
+            ID3D11DepthStencilState**         ppDepthStencilState,
+            UINT*                             pStencilRef);
+
     BOOL STDMETHODCALLTYPE IsAnnotationEnabled();
 
   protected:
@@ -194,6 +239,17 @@ namespace dxvk {
             UINT                              SrcRowPitch,
             UINT                              SrcDepthPitch,
             UINT                              CopyFlags);
+
+    bool ValidateRenderTargets(
+            UINT                              NumViews,
+            ID3D11RenderTargetView* const*    ppRenderTargetViews,
+            ID3D11DepthStencilView*           pDepthStencilView);
+
+  private:
+
+    ContextType* GetTypedContext() {
+      return static_cast<ContextType*>(this);
+    }
 
   };
   

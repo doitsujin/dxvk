@@ -321,34 +321,7 @@ namespace dxvk {
     }
   }
 
-  void STDMETHODCALLTYPE D3D11ImmediateContext::OMSetRenderTargets(
-          UINT                              NumViews,
-          ID3D11RenderTargetView* const*    ppRenderTargetViews,
-          ID3D11DepthStencilView*           pDepthStencilView) {
-    FlushImplicit(TRUE);
-    
-    D3D11DeviceContext::OMSetRenderTargets(
-      NumViews, ppRenderTargetViews, pDepthStencilView);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11ImmediateContext::OMSetRenderTargetsAndUnorderedAccessViews(
-          UINT                              NumRTVs,
-          ID3D11RenderTargetView* const*    ppRenderTargetViews,
-          ID3D11DepthStencilView*           pDepthStencilView,
-          UINT                              UAVStartSlot,
-          UINT                              NumUAVs,
-          ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
-    const UINT*                             pUAVInitialCounts) {
-    FlushImplicit(TRUE);
 
-    D3D11DeviceContext::OMSetRenderTargetsAndUnorderedAccessViews(
-      NumRTVs, ppRenderTargetViews, pDepthStencilView,
-      UAVStartSlot, NumUAVs, ppUnorderedAccessViews,
-      pUAVInitialCounts);
-  }
-  
-  
   HRESULT D3D11ImmediateContext::MapBuffer(
           D3D11Buffer*                pResource,
           D3D11_MAP                   MapType,

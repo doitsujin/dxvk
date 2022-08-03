@@ -10,8 +10,8 @@ namespace dxvk {
     const Rc<DxvkDevice>&         Device,
           DxvkCsChunkFlags        CsFlags)
   : D3D11DeviceContext(pParent, Device, CsFlags),
-    m_contextExt(static_cast<ContextType*>(this)),
-    m_annotation(static_cast<ContextType*>(this), Device) {
+    m_contextExt(GetTypedContext()),
+    m_annotation(GetTypedContext(), Device) {
 
   }
 
@@ -87,6 +87,162 @@ namespace dxvk {
           UINT                              CopyFlags) {
     UpdateResource(pDstResource, DstSubresource, pDstBox,
       pSrcData, SrcRowPitch, SrcDepthPitch, CopyFlags);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::OMSetRenderTargets(
+          UINT                              NumViews,
+          ID3D11RenderTargetView* const*    ppRenderTargetViews,
+          ID3D11DepthStencilView*           pDepthStencilView) {
+    D3D10DeviceLock lock = LockContext();
+
+    if constexpr (!IsDeferred)
+      GetTypedContext()->FlushImplicit(true);
+
+    SetRenderTargetsAndUnorderedAccessViews(
+      NumViews, ppRenderTargetViews, pDepthStencilView,
+      NumViews, 0, nullptr, nullptr);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::OMSetRenderTargetsAndUnorderedAccessViews(
+          UINT                              NumRTVs,
+          ID3D11RenderTargetView* const*    ppRenderTargetViews,
+          ID3D11DepthStencilView*           pDepthStencilView,
+          UINT                              UAVStartSlot,
+          UINT                              NumUAVs,
+          ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
+    const UINT*                             pUAVInitialCounts) {
+    D3D10DeviceLock lock = LockContext();
+
+    if constexpr (!IsDeferred)
+      GetTypedContext()->FlushImplicit(true);
+
+    SetRenderTargetsAndUnorderedAccessViews(
+      NumRTVs, ppRenderTargetViews, pDepthStencilView,
+      UAVStartSlot, NumUAVs, ppUnorderedAccessViews, pUAVInitialCounts);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::OMSetBlendState(
+          ID3D11BlendState*                 pBlendState,
+    const FLOAT                             BlendFactor[4],
+          UINT                              SampleMask) {
+    D3D10DeviceLock lock = LockContext();
+
+    auto blendState = static_cast<D3D11BlendState*>(pBlendState);
+
+    if (m_state.om.cbState    != blendState
+     || m_state.om.sampleMask != SampleMask) {
+      m_state.om.cbState    = blendState;
+      m_state.om.sampleMask = SampleMask;
+
+      ApplyBlendState();
+    }
+
+    if (BlendFactor != nullptr) {
+      for (uint32_t i = 0; i < 4; i++)
+        m_state.om.blendFactor[i] = BlendFactor[i];
+
+      ApplyBlendFactor();
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::OMSetDepthStencilState(
+          ID3D11DepthStencilState*          pDepthStencilState,
+          UINT                              StencilRef) {
+    D3D10DeviceLock lock = LockContext();
+
+    auto depthStencilState = static_cast<D3D11DepthStencilState*>(pDepthStencilState);
+
+    if (m_state.om.dsState != depthStencilState) {
+      m_state.om.dsState = depthStencilState;
+      ApplyDepthStencilState();
+    }
+
+    if (m_state.om.stencilRef != StencilRef) {
+      m_state.om.stencilRef = StencilRef;
+      ApplyStencilRef();
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::OMGetRenderTargets(
+          UINT                              NumViews,
+          ID3D11RenderTargetView**          ppRenderTargetViews,
+          ID3D11DepthStencilView**          ppDepthStencilView) {
+    OMGetRenderTargetsAndUnorderedAccessViews(
+      NumViews, ppRenderTargetViews, ppDepthStencilView,
+      NumViews, 0, nullptr);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::OMGetRenderTargetsAndUnorderedAccessViews(
+          UINT                              NumRTVs,
+          ID3D11RenderTargetView**          ppRenderTargetViews,
+          ID3D11DepthStencilView**          ppDepthStencilView,
+          UINT                              UAVStartSlot,
+          UINT                              NumUAVs,
+          ID3D11UnorderedAccessView**       ppUnorderedAccessViews) {
+    D3D10DeviceLock lock = LockContext();
+
+    if (ppRenderTargetViews) {
+      for (UINT i = 0; i < NumRTVs; i++) {
+        ppRenderTargetViews[i] = i < m_state.om.renderTargetViews.size()
+          ? m_state.om.renderTargetViews[i].ref()
+          : nullptr;
+      }
+    }
+
+    if (ppDepthStencilView)
+      *ppDepthStencilView = m_state.om.depthStencilView.ref();
+
+    if (ppUnorderedAccessViews) {
+      for (UINT i = 0; i < NumUAVs; i++) {
+        ppUnorderedAccessViews[i] = UAVStartSlot + i < m_state.ps.unorderedAccessViews.size()
+          ? m_state.ps.unorderedAccessViews[UAVStartSlot + i].ref()
+          : nullptr;
+      }
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::OMGetBlendState(
+          ID3D11BlendState**                ppBlendState,
+          FLOAT                             BlendFactor[4],
+          UINT*                             pSampleMask) {
+    D3D10DeviceLock lock = LockContext();
+
+    if (ppBlendState)
+      *ppBlendState = ref(m_state.om.cbState);
+
+    if (BlendFactor)
+      std::memcpy(BlendFactor, m_state.om.blendFactor, sizeof(FLOAT) * 4);
+
+    if (pSampleMask)
+      *pSampleMask = m_state.om.sampleMask;
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::OMGetDepthStencilState(
+          ID3D11DepthStencilState**         ppDepthStencilState,
+          UINT*                             pStencilRef) {
+    D3D10DeviceLock lock = LockContext();
+
+    if (ppDepthStencilState)
+      *ppDepthStencilState = ref(m_state.om.dsState);
+
+    if (pStencilRef)
+      *pStencilRef = m_state.om.stencilRef;
   }
 
 
@@ -460,6 +616,90 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void D3D11CommonContext<ContextType>::SetRenderTargetsAndUnorderedAccessViews(
+          UINT                              NumRTVs,
+          ID3D11RenderTargetView* const*    ppRenderTargetViews,
+          ID3D11DepthStencilView*           pDepthStencilView,
+          UINT                              UAVStartSlot,
+          UINT                              NumUAVs,
+          ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
+    const UINT*                             pUAVInitialCounts) {
+    if (TestRtvUavHazards(NumRTVs, ppRenderTargetViews, NumUAVs, ppUnorderedAccessViews))
+      return;
+
+    bool needsUpdate = false;
+
+    if (likely(NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)) {
+      // Native D3D11 does not change the render targets if
+      // the parameters passed to this method are invalid.
+      if (!ValidateRenderTargets(NumRTVs, ppRenderTargetViews, pDepthStencilView))
+        return;
+
+      for (uint32_t i = 0; i < m_state.om.renderTargetViews.size(); i++) {
+        auto rtv = i < NumRTVs
+          ? static_cast<D3D11RenderTargetView*>(ppRenderTargetViews[i])
+          : nullptr;
+
+        if (m_state.om.renderTargetViews[i] != rtv) {
+          m_state.om.renderTargetViews[i] = rtv;
+          needsUpdate = true;
+          ResolveOmSrvHazards(rtv);
+
+          if (NumUAVs == D3D11_KEEP_UNORDERED_ACCESS_VIEWS)
+            ResolveOmUavHazards(rtv);
+        }
+      }
+
+      auto dsv = static_cast<D3D11DepthStencilView*>(pDepthStencilView);
+
+      if (m_state.om.depthStencilView != dsv) {
+        m_state.om.depthStencilView = dsv;
+        needsUpdate = true;
+        ResolveOmSrvHazards(dsv);
+      }
+
+      m_state.om.maxRtv = NumRTVs;
+    }
+
+    if (unlikely(NumUAVs || m_state.om.maxUav)) {
+      uint32_t uavSlotId = computeUavBinding       (DxbcProgramType::PixelShader, 0);
+      uint32_t ctrSlotId = computeUavCounterBinding(DxbcProgramType::PixelShader, 0);
+
+      if (likely(NumUAVs != D3D11_KEEP_UNORDERED_ACCESS_VIEWS)) {
+        uint32_t newMaxUav = NumUAVs ? UAVStartSlot + NumUAVs : 0;
+        uint32_t oldMaxUav = std::exchange(m_state.om.maxUav, newMaxUav);
+
+        for (uint32_t i = 0; i < std::max(oldMaxUav, newMaxUav); i++) {
+          D3D11UnorderedAccessView* uav = nullptr;
+          uint32_t                  ctr = ~0u;
+
+          if (i >= UAVStartSlot && i < UAVStartSlot + NumUAVs) {
+            uav = static_cast<D3D11UnorderedAccessView*>(ppUnorderedAccessViews[i - UAVStartSlot]);
+            ctr = pUAVInitialCounts ? pUAVInitialCounts[i - UAVStartSlot] : ~0u;
+          }
+
+          if (m_state.ps.unorderedAccessViews[i] != uav || ctr != ~0u) {
+            m_state.ps.unorderedAccessViews[i] = uav;
+
+            BindUnorderedAccessView<DxbcProgramType::PixelShader>(
+              uavSlotId + i, uav,
+              ctrSlotId + i, ctr);
+
+            ResolveOmSrvHazards(uav);
+
+            if (NumRTVs == D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)
+              needsUpdate |= ResolveOmRtvHazards(uav);
+          }
+        }
+      }
+    }
+
+    if (needsUpdate)
+      BindFramebuffer();
+  }
+
+
+  template<typename ContextType>
   bool D3D11CommonContext<ContextType>::TestRtvUavHazards(
           UINT                              NumRTVs,
           ID3D11RenderTargetView* const*    ppRTVs,
@@ -590,6 +830,68 @@ namespace dxvk {
       context->UpdateTexture(textureResource,
         DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch);
     }
+  }
+
+
+  template<typename ContextType>
+  bool D3D11CommonContext<ContextType>::ValidateRenderTargets(
+          UINT                              NumViews,
+          ID3D11RenderTargetView* const*    ppRenderTargetViews,
+          ID3D11DepthStencilView*           pDepthStencilView) {
+    Rc<DxvkImageView> refView;
+
+    VkExtent3D dsvExtent = { 0u, 0u, 0u };
+    VkExtent3D rtvExtent = { 0u, 0u, 0u };
+
+    if (pDepthStencilView != nullptr) {
+      refView = static_cast<D3D11DepthStencilView*>(
+        pDepthStencilView)->GetImageView();
+      dsvExtent = refView->mipLevelExtent(0);
+    }
+
+    for (uint32_t i = 0; i < NumViews; i++) {
+      if (ppRenderTargetViews[i] != nullptr) {
+        auto curView = static_cast<D3D11RenderTargetView*>(
+          ppRenderTargetViews[i])->GetImageView();
+
+        if (!rtvExtent.width)
+          rtvExtent = curView->mipLevelExtent(0);
+
+        if (refView != nullptr) {
+          // Render target views must all have the same sample count,
+          // layer count, and type. The size can mismatch under certain
+          // conditions, the D3D11 documentation is wrong here.
+          if (curView->info().type      != refView->info().type
+           || curView->info().numLayers != refView->info().numLayers)
+            return false;
+
+          if (curView->imageInfo().sampleCount
+           != refView->imageInfo().sampleCount)
+            return false;
+
+          // Color targets must all be the same size
+          VkExtent3D curExtent = curView->mipLevelExtent(0);
+
+          if (curExtent.width  != rtvExtent.width
+           || curExtent.height != rtvExtent.height)
+            return false;
+        } else {
+          // Set reference view. All remaining views
+          // must be compatible to the reference view.
+          refView = curView;
+        }
+      }
+    }
+
+    // Based on testing, the depth-stencil target is allowed
+    // to be larger than all color targets, but not smaller
+    if (rtvExtent.width && dsvExtent.width) {
+      if (rtvExtent.width  > dsvExtent.width
+       || rtvExtent.height > dsvExtent.height)
+        return false;
+    }
+
+    return true;
   }
 
 

@@ -579,51 +579,6 @@ namespace dxvk {
             UINT                              NumUAVs,
             ID3D11UnorderedAccessView**       ppUnorderedAccessViews);
     
-    void STDMETHODCALLTYPE OMSetRenderTargets(
-            UINT                              NumViews,
-            ID3D11RenderTargetView* const*    ppRenderTargetViews,
-            ID3D11DepthStencilView*           pDepthStencilView);
-    
-    void STDMETHODCALLTYPE OMSetRenderTargetsAndUnorderedAccessViews(
-            UINT                              NumRTVs,
-            ID3D11RenderTargetView* const*    ppRenderTargetViews,
-            ID3D11DepthStencilView*           pDepthStencilView,
-            UINT                              UAVStartSlot,
-            UINT                              NumUAVs,
-            ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
-      const UINT*                             pUAVInitialCounts);
-    
-    void STDMETHODCALLTYPE OMSetBlendState(
-            ID3D11BlendState*                 pBlendState,
-      const FLOAT                             BlendFactor[4],
-            UINT                              SampleMask);
-    
-    void STDMETHODCALLTYPE OMSetDepthStencilState(
-            ID3D11DepthStencilState*          pDepthStencilState,
-            UINT                              StencilRef);
-    
-    void STDMETHODCALLTYPE OMGetRenderTargets(
-            UINT                              NumViews,
-            ID3D11RenderTargetView**          ppRenderTargetViews,
-            ID3D11DepthStencilView**          ppDepthStencilView);
-    
-    void STDMETHODCALLTYPE OMGetRenderTargetsAndUnorderedAccessViews(
-            UINT                              NumRTVs,
-            ID3D11RenderTargetView**          ppRenderTargetViews,
-            ID3D11DepthStencilView**          ppDepthStencilView,
-            UINT                              UAVStartSlot,
-            UINT                              NumUAVs,
-            ID3D11UnorderedAccessView**       ppUnorderedAccessViews);
-    
-    void STDMETHODCALLTYPE OMGetBlendState(
-            ID3D11BlendState**                ppBlendState,
-            FLOAT                             BlendFactor[4],
-            UINT*                             pSampleMask);
-    
-    void STDMETHODCALLTYPE OMGetDepthStencilState(
-            ID3D11DepthStencilState**         ppDepthStencilState,
-            UINT*                             pStencilRef);
-    
     void STDMETHODCALLTYPE RSSetState(
             ID3D11RasterizerState*            pRasterizerState);
     
@@ -911,21 +866,6 @@ namespace dxvk {
     template<typename T>
     void ResolveCsSrvHazards(
             T*                                pView);
-
-    template<typename T>
-    void ResolveOmSrvHazards(
-            T*                                pView);
-    
-    bool ResolveOmRtvHazards(
-            D3D11UnorderedAccessView*         pView);
-    
-    void ResolveOmUavHazards(
-            D3D11RenderTargetView*            pView);
-    
-    bool ValidateRenderTargets(
-            UINT                              NumViews,
-            ID3D11RenderTargetView* const*    ppRenderTargetViews,
-            ID3D11DepthStencilView*           pDepthStencilView);
 
     VkClearValue ConvertColorValue(
       const FLOAT                             Color[4],
