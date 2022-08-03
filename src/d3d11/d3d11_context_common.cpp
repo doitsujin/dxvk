@@ -97,6 +97,272 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  template<DxbcProgramType ShaderStage>
+  void D3D11CommonContext<ContextType>::BindShader(
+    const D3D11CommonShader*    pShaderModule) {
+    // Bind the shader and the ICB at once
+    EmitCs([
+      cSlice  = pShaderModule           != nullptr
+             && pShaderModule->GetIcb() != nullptr
+        ? DxvkBufferSlice(pShaderModule->GetIcb())
+        : DxvkBufferSlice(),
+      cShader = pShaderModule != nullptr
+        ? pShaderModule->GetShader()
+        : nullptr
+    ] (DxvkContext* ctx) mutable {
+      VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+
+      uint32_t slotId = computeConstantBufferBinding(ShaderStage,
+        D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT);
+
+      ctx->bindShader(stage,
+        Forwarder::move(cShader));
+      ctx->bindResourceBuffer(stage, slotId,
+        Forwarder::move(cSlice));
+    });
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::BindFramebuffer() {
+    DxvkRenderTargets attachments;
+    uint32_t sampleCount = 0;
+
+    // D3D11 doesn't have the concept of a framebuffer object,
+    // so we'll just create a new one every time the render
+    // target bindings are updated. Set up the attachments.
+    for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
+      if (m_state.om.renderTargetViews[i] != nullptr) {
+        attachments.color[i] = {
+          m_state.om.renderTargetViews[i]->GetImageView(),
+          m_state.om.renderTargetViews[i]->GetRenderLayout() };
+        sampleCount = m_state.om.renderTargetViews[i]->GetSampleCount();
+      }
+    }
+
+    if (m_state.om.depthStencilView != nullptr) {
+      attachments.depth = {
+        m_state.om.depthStencilView->GetImageView(),
+        m_state.om.depthStencilView->GetRenderLayout() };
+      sampleCount = m_state.om.depthStencilView->GetSampleCount();
+    }
+
+    // Create and bind the framebuffer object to the context
+    EmitCs([
+      cAttachments = std::move(attachments)
+    ] (DxvkContext* ctx) mutable {
+      ctx->bindRenderTargets(Forwarder::move(cAttachments));
+    });
+
+    // If necessary, update push constant for the sample count
+    if (m_state.om.sampleCount != sampleCount) {
+      m_state.om.sampleCount = sampleCount;
+      ApplyRasterizerSampleCount();
+    }
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::BindDrawBuffers(
+          D3D11Buffer*                     pBufferForArgs,
+          D3D11Buffer*                     pBufferForCount) {
+    EmitCs([
+      cArgBuffer = pBufferForArgs  ? pBufferForArgs->GetBufferSlice()  : DxvkBufferSlice(),
+      cCntBuffer = pBufferForCount ? pBufferForCount->GetBufferSlice() : DxvkBufferSlice()
+    ] (DxvkContext* ctx) mutable {
+      ctx->bindDrawBuffers(
+        Forwarder::move(cArgBuffer),
+        Forwarder::move(cCntBuffer));
+    });
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::BindVertexBuffer(
+          UINT                              Slot,
+          D3D11Buffer*                      pBuffer,
+          UINT                              Offset,
+          UINT                              Stride) {
+    if (likely(pBuffer != nullptr)) {
+      EmitCs([
+        cSlotId       = Slot,
+        cBufferSlice  = pBuffer->GetBufferSlice(Offset),
+        cStride       = Stride
+      ] (DxvkContext* ctx) mutable {
+        ctx->bindVertexBuffer(cSlotId,
+          Forwarder::move(cBufferSlice),
+          cStride);
+      });
+    } else {
+      EmitCs([
+        cSlotId       = Slot
+      ] (DxvkContext* ctx) {
+        ctx->bindVertexBuffer(cSlotId, DxvkBufferSlice(), 0);
+      });
+    }
+  }
+  
+  
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::BindIndexBuffer(
+          D3D11Buffer*                      pBuffer,
+          UINT                              Offset,
+          DXGI_FORMAT                       Format) {
+    VkIndexType indexType = Format == DXGI_FORMAT_R16_UINT
+      ? VK_INDEX_TYPE_UINT16
+      : VK_INDEX_TYPE_UINT32;
+
+    EmitCs([
+      cBufferSlice  = pBuffer != nullptr ? pBuffer->GetBufferSlice(Offset) : DxvkBufferSlice(),
+      cIndexType    = indexType
+    ] (DxvkContext* ctx) mutable {
+      ctx->bindIndexBuffer(
+        Forwarder::move(cBufferSlice),
+        cIndexType);
+    });
+  }
+  
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::BindXfbBuffer(
+          UINT                              Slot,
+          D3D11Buffer*                      pBuffer,
+          UINT                              Offset) {
+    DxvkBufferSlice bufferSlice;
+    DxvkBufferSlice counterSlice;
+
+    if (pBuffer != nullptr) {
+      bufferSlice  = pBuffer->GetBufferSlice();
+      counterSlice = pBuffer->GetSOCounter();
+    }
+
+    EmitCs([
+      cSlotId       = Slot,
+      cOffset       = Offset,
+      cBufferSlice  = bufferSlice,
+      cCounterSlice = counterSlice
+    ] (DxvkContext* ctx) mutable {
+      if (cCounterSlice.defined() && cOffset != ~0u) {
+        ctx->updateBuffer(
+          cCounterSlice.buffer(),
+          cCounterSlice.offset(),
+          sizeof(cOffset),
+          &cOffset);
+      }
+
+      ctx->bindXfbBuffer(cSlotId,
+        Forwarder::move(cBufferSlice),
+        Forwarder::move(cCounterSlice));
+    });
+  }
+
+
+  template<typename ContextType>
+  template<DxbcProgramType ShaderStage>
+  void D3D11CommonContext<ContextType>::BindConstantBuffer(
+          UINT                              Slot,
+          D3D11Buffer*                      pBuffer,
+          UINT                              Offset,
+          UINT                              Length) {
+    EmitCs([
+      cSlotId      = Slot,
+      cBufferSlice = pBuffer ? pBuffer->GetBufferSlice(16 * Offset, 16 * Length) : DxvkBufferSlice()
+    ] (DxvkContext* ctx) mutable {
+      VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+      ctx->bindResourceBuffer(stage, cSlotId,
+        Forwarder::move(cBufferSlice));
+    });
+  }
+  
+  
+  template<typename ContextType>
+  template<DxbcProgramType ShaderStage>
+  void D3D11CommonContext<ContextType>::BindConstantBufferRange(
+          UINT                              Slot,
+          UINT                              Offset,
+          UINT                              Length) {
+    EmitCs([
+      cSlotId       = Slot,
+      cOffset       = 16 * Offset,
+      cLength       = 16 * Length
+    ] (DxvkContext* ctx) {
+      VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+      ctx->bindResourceBufferRange(stage, cSlotId, cOffset, cLength);
+    });
+  }
+
+
+  template<typename ContextType>
+  template<DxbcProgramType ShaderStage>
+  void D3D11CommonContext<ContextType>::BindSampler(
+          UINT                              Slot,
+          D3D11SamplerState*                pSampler) {
+    EmitCs([
+      cSlotId   = Slot,
+      cSampler  = pSampler != nullptr ? pSampler->GetDXVKSampler() : nullptr
+    ] (DxvkContext* ctx) mutable {
+      VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+      ctx->bindResourceSampler(stage, cSlotId,
+        Forwarder::move(cSampler));
+    });
+  }
+
+
+  template<typename ContextType>
+  template<DxbcProgramType ShaderStage>
+  void D3D11CommonContext<ContextType>::BindShaderResource(
+          UINT                              Slot,
+          D3D11ShaderResourceView*          pResource) {
+    EmitCs([
+      cSlotId     = Slot,
+      cImageView  = pResource != nullptr ? pResource->GetImageView()  : nullptr,
+      cBufferView = pResource != nullptr ? pResource->GetBufferView() : nullptr
+    ] (DxvkContext* ctx) mutable {
+      VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+      ctx->bindResourceView(stage, cSlotId,
+        Forwarder::move(cImageView),
+        Forwarder::move(cBufferView));
+    });
+  }
+
+
+  template<typename ContextType>
+  template<DxbcProgramType ShaderStage>
+  void D3D11CommonContext<ContextType>::BindUnorderedAccessView(
+          UINT                              UavSlot,
+          D3D11UnorderedAccessView*         pUav,
+          UINT                              CtrSlot,
+          UINT                              Counter) {
+    EmitCs([
+      cUavSlotId    = UavSlot,
+      cCtrSlotId    = CtrSlot,
+      cImageView    = pUav != nullptr ? pUav->GetImageView()    : nullptr,
+      cBufferView   = pUav != nullptr ? pUav->GetBufferView()   : nullptr,
+      cCounterSlice = pUav != nullptr ? pUav->GetCounterSlice() : DxvkBufferSlice(),
+      cCounterValue = Counter
+    ] (DxvkContext* ctx) mutable {
+      VkShaderStageFlags stages = ShaderStage == DxbcProgramType::PixelShader
+        ? VK_SHADER_STAGE_ALL_GRAPHICS
+        : VK_SHADER_STAGE_COMPUTE_BIT;
+
+      if (cCounterSlice.defined() && cCounterValue != ~0u) {
+        ctx->updateBuffer(
+          cCounterSlice.buffer(),
+          cCounterSlice.offset(),
+          sizeof(uint32_t),
+          &cCounterValue);
+      }
+
+      ctx->bindResourceView(stages, cUavSlotId,
+        Forwarder::move(cImageView),
+        Forwarder::move(cBufferView));
+      ctx->bindResourceBuffer(stages, cCtrSlotId,
+        Forwarder::move(cCounterSlice));
+    });
+  }
+
+
+  template<typename ContextType>
   void D3D11CommonContext<ContextType>::UpdateResource(
           ID3D11Resource*                   pDstResource,
           UINT                              DstSubresource,

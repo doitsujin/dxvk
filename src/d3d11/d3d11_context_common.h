@@ -92,6 +92,62 @@ namespace dxvk {
     D3D11DeviceContextExt<ContextType>        m_contextExt;
     D3D11UserDefinedAnnotation<ContextType>   m_annotation;
 
+    template<DxbcProgramType ShaderStage>
+    void BindShader(
+      const D3D11CommonShader*                pShaderModule);
+
+    void BindFramebuffer();
+
+    void BindDrawBuffers(
+            D3D11Buffer*                      pBufferForArgs,
+            D3D11Buffer*                      pBufferForCount);
+
+    void BindVertexBuffer(
+            UINT                              Slot,
+            D3D11Buffer*                      pBuffer,
+            UINT                              Offset,
+            UINT                              Stride);
+
+    void BindIndexBuffer(
+            D3D11Buffer*                      pBuffer,
+            UINT                              Offset,
+            DXGI_FORMAT                       Format);
+
+    void BindXfbBuffer(
+            UINT                              Slot,
+            D3D11Buffer*                      pBuffer,
+            UINT                              Offset);
+
+    template<DxbcProgramType ShaderStage>
+    void BindConstantBuffer(
+            UINT                              Slot,
+            D3D11Buffer*                      pBuffer,
+            UINT                              Offset,
+            UINT                              Length);
+
+    template<DxbcProgramType ShaderStage>
+    void BindConstantBufferRange(
+            UINT                              Slot,
+            UINT                              Offset,
+            UINT                              Length);
+
+    template<DxbcProgramType ShaderStage>
+    void BindSampler(
+            UINT                              Slot,
+            D3D11SamplerState*                pSampler);
+
+    template<DxbcProgramType ShaderStage>
+    void BindShaderResource(
+            UINT                              Slot,
+            D3D11ShaderResourceView*          pResource);
+
+    template<DxbcProgramType ShaderStage>
+    void BindUnorderedAccessView(
+            UINT                              UavSlot,
+            D3D11UnorderedAccessView*         pUav,
+            UINT                              CtrSlot,
+            UINT                              Counter);
+
     void UpdateResource(
             ID3D11Resource*                   pDstResource,
             UINT                              DstSubresource,
