@@ -58,6 +58,8 @@ namespace dxvk {
 
     template<typename T> friend class D3D11DeviceContextExt;
     template<typename T> friend class D3D11UserDefinedAnnotation;
+
+    constexpr static VkDeviceSize StagingBufferSize = 4ull << 20;
   public:
     
     D3D11CommonContext(
@@ -748,12 +750,24 @@ namespace dxvk {
     D3D11UserDefinedAnnotation<ContextType>   m_annotation;
     D3D10Multithread                          m_multithread;
 
+    Rc<DxvkDevice>              m_device;
+
+    D3D11ContextState           m_state;
+
+    DxvkStagingBuffer           m_staging;
+    Rc<DxvkDataBuffer>          m_updateBuffer;
+
     DxvkCsChunkFlags            m_csFlags;
     DxvkCsChunkRef              m_csChunk;
     D3D11CmdData*               m_cmdData;
 
     DxvkCsChunkRef AllocCsChunk();
     
+    DxvkDataSlice AllocUpdateBufferSlice(size_t Size);
+    
+    DxvkBufferSlice AllocStagingBuffer(
+            VkDeviceSize                      Size);
+
     void ApplyInputLayout();
     
     void ApplyPrimitiveTopology();
@@ -870,6 +884,8 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState**              ppSamplers);
+
+    void ResetStagingBuffer();
 
     void ResetState();
 

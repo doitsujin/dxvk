@@ -11,11 +11,8 @@
 namespace dxvk {
 
   D3D11DeviceContext::D3D11DeviceContext(
-          D3D11Device*            pParent,
-    const Rc<DxvkDevice>&         Device)
-  : D3D11DeviceChild<ID3D11DeviceContext4>(pParent),
-    m_device    (Device),
-    m_staging   (Device, StagingBufferSize) {
+          D3D11Device*            pParent)
+  : D3D11DeviceChild<ID3D11DeviceContext4>(pParent) {
 
   }
   
@@ -47,39 +44,6 @@ namespace dxvk {
     return result;
   }
 
-
-  DxvkDataSlice D3D11DeviceContext::AllocUpdateBufferSlice(size_t Size) {
-    constexpr size_t UpdateBufferSize = 1 * 1024 * 1024;
-    
-    if (Size >= UpdateBufferSize) {
-      Rc<DxvkDataBuffer> buffer = new DxvkDataBuffer(Size);
-      return buffer->alloc(Size);
-    } else {
-      if (m_updateBuffer == nullptr)
-        m_updateBuffer = new DxvkDataBuffer(UpdateBufferSize);
-      
-      DxvkDataSlice slice = m_updateBuffer->alloc(Size);
-      
-      if (slice.ptr() == nullptr) {
-        m_updateBuffer = new DxvkDataBuffer(UpdateBufferSize);
-        slice = m_updateBuffer->alloc(Size);
-      }
-      
-      return slice;
-    }
-  }
-  
-  
-  DxvkBufferSlice D3D11DeviceContext::AllocStagingBuffer(
-          VkDeviceSize                      Size) {
-    return m_staging.alloc(256, Size);
-  }
-
-
-  void D3D11DeviceContext::ResetStagingBuffer() {
-    m_staging.reset();
-  }
-  
 
   void D3D11DeviceContext::InitDefaultPrimitiveTopology(
           DxvkInputAssemblyState*           pIaState) {

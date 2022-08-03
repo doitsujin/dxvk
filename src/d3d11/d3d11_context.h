@@ -19,41 +19,20 @@ namespace dxvk {
   class D3D11Device;
   
   class D3D11DeviceContext : public D3D11DeviceChild<ID3D11DeviceContext4> {
-    template<typename T>
-    friend class D3D11DeviceContextExt;
-    // Needed in order to call EmitCs for pushing markers
-    template<typename T>
-    friend class D3D11UserDefinedAnnotation;
 
-    constexpr static VkDeviceSize StagingBufferSize = 4ull << 20;
   public:
 
     D3D11DeviceContext(
-            D3D11Device*            pParent,
-      const Rc<DxvkDevice>&         Device);
+            D3D11Device*            pParent);
 
     ~D3D11DeviceContext();
 
   protected:
     
-    Rc<DxvkDevice>              m_device;
-    Rc<DxvkDataBuffer>          m_updateBuffer;
-
-    DxvkStagingBuffer           m_staging;
-
-    D3D11ContextState           m_state;
-
     VkClearValue ConvertColorValue(
       const FLOAT                             Color[4],
       const DxvkFormatInfo*                   pFormatInfo);
     
-    DxvkDataSlice AllocUpdateBufferSlice(size_t Size);
-    
-    DxvkBufferSlice AllocStagingBuffer(
-            VkDeviceSize                      Size);
-
-    void ResetStagingBuffer();
-
     static void InitDefaultPrimitiveTopology(
             DxvkInputAssemblyState*           pIaState);
 

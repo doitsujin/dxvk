@@ -9,10 +9,12 @@ namespace dxvk {
           D3D11Device*            pParent,
     const Rc<DxvkDevice>&         Device,
           DxvkCsChunkFlags        CsFlags)
-  : D3D11DeviceContext(pParent, Device),
+  : D3D11DeviceContext(pParent),
     m_contextExt(GetTypedContext()),
     m_annotation(GetTypedContext(), Device),
     m_multithread(this, false),
+    m_device    (Device),
+    m_staging   (Device, StagingBufferSize),
     m_csFlags   (CsFlags),
     m_csChunk   (AllocCsChunk()),
     m_cmdData   (nullptr) {
@@ -2987,7 +2989,37 @@ namespace dxvk {
   DxvkCsChunkRef D3D11CommonContext<ContextType>::AllocCsChunk() {
     return m_parent->AllocCsChunk(m_csFlags);
   }
-  
+
+
+  template<typename ContextType>
+  DxvkDataSlice D3D11CommonContext<ContextType>::AllocUpdateBufferSlice(size_t Size) {
+    constexpr size_t UpdateBufferSize = 1 * 1024 * 1024;
+    
+    if (Size >= UpdateBufferSize) {
+      Rc<DxvkDataBuffer> buffer = new DxvkDataBuffer(Size);
+      return buffer->alloc(Size);
+    } else {
+      if (m_updateBuffer == nullptr)
+        m_updateBuffer = new DxvkDataBuffer(UpdateBufferSize);
+      
+      DxvkDataSlice slice = m_updateBuffer->alloc(Size);
+      
+      if (slice.ptr() == nullptr) {
+        m_updateBuffer = new DxvkDataBuffer(UpdateBufferSize);
+        slice = m_updateBuffer->alloc(Size);
+      }
+      
+      return slice;
+    }
+  }
+
+
+  template<typename ContextType>
+  DxvkBufferSlice D3D11CommonContext<ContextType>::AllocStagingBuffer(
+          VkDeviceSize                      Size) {
+    return m_staging.alloc(256, Size);
+  }
+
 
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::ApplyInputLayout() {
@@ -3887,6 +3919,12 @@ namespace dxvk {
         ? ref(Bindings[StartSlot + i])
         : nullptr;
     }
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ResetStagingBuffer() {
+    m_staging.reset();
   }
 
 
