@@ -117,8 +117,8 @@ namespace dxvk {
       cStages   = m_stages,
       cBinding  = m_binding,
       cSlice    = DxvkBufferSlice(m_buffer)
-    ] (DxvkContext* ctx) {
-      ctx->bindResourceBuffer(cStages, cBinding, cSlice);
+    ] (DxvkContext* ctx) mutable {
+      ctx->bindResourceBuffer(cStages, cBinding, std::move(cSlice));
     });
   }
 

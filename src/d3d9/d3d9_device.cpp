@@ -2503,12 +2503,12 @@ namespace dxvk {
       cPrimCount    = PrimitiveCount,
       cInstanceCount = GetInstanceCount(),
       cStride       = VertexStreamZeroStride
-    ](DxvkContext* ctx) {
+    ](DxvkContext* ctx) mutable {
       auto drawInfo = GenerateDrawInfo(cPrimType, cPrimCount, cInstanceCount);
 
       ApplyPrimitiveType(ctx, cPrimType);
 
-      ctx->bindVertexBuffer(0, cBufferSlice, cStride);
+      ctx->bindVertexBuffer(0, std::move(cBufferSlice), cStride);
       ctx->draw(
         drawInfo.vertexCount, drawInfo.instanceCount,
         0, 0);
@@ -2645,7 +2645,7 @@ namespace dxvk {
       cInstanceCount = GetInstanceCount(),
       cBufferSlice   = slice,
       cIndexed       = m_state.indices != nullptr
-    ](DxvkContext* ctx) {
+    ](DxvkContext* ctx) mutable {
       Rc<DxvkShader> shader = m_swvpEmulator.GetShaderModule(this, cDecl);
 
       auto drawInfo = GenerateDrawInfo(D3DPT_POINTLIST, cVertexCount, cInstanceCount);
@@ -2662,8 +2662,8 @@ namespace dxvk {
       // to avoid val errors / UB.
       ctx->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr);
 
-      ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT, shader);
-      ctx->bindResourceBuffer(VK_SHADER_STAGE_GEOMETRY_BIT, getSWVPBufferSlot(), cBufferSlice);
+      ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT, std::move(shader));
+      ctx->bindResourceBuffer(VK_SHADER_STAGE_GEOMETRY_BIT, getSWVPBufferSlot(), std::move(cBufferSlice));
       ctx->draw(
         drawInfo.vertexCount, drawInfo.instanceCount,
         cStartIndex, 0);
@@ -5476,8 +5476,8 @@ namespace dxvk {
     // Create and bind the framebuffer object to the context
     EmitCs([
       cAttachments = std::move(attachments)
-    ] (DxvkContext* ctx) {
-      ctx->bindRenderTargets(cAttachments);
+    ] (DxvkContext* ctx) mutable {
+      ctx->bindRenderTargets(std::move(cAttachments));
     });
   }
 
@@ -5813,7 +5813,8 @@ namespace dxvk {
 
       auto pair = m_samplers.find(cKey);
       if (pair != m_samplers.end()) {
-        ctx->bindResourceSampler(stage, cSlot, pair->second);
+        ctx->bindResourceSampler(stage, cSlot,
+          Rc<DxvkSampler>(pair->second));
         return;
       }
 
@@ -5880,9 +5881,9 @@ namespace dxvk {
     EmitCs([
       cSlot = slot,
       cImageView = commonTex->GetSampleView(srgb)
-    ](DxvkContext* ctx) {
+    ](DxvkContext* ctx) mutable {
       VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-      ctx->bindResourceView(stage, cSlot, cImageView, nullptr);
+      ctx->bindResourceView(stage, cSlot, std::move(cImageView), nullptr);
     });
   }
 
@@ -6129,8 +6130,8 @@ namespace dxvk {
         D3D9ShaderPermutation             Permutation) {
     EmitCs([
       cShader = pShaderModule->GetShader(Permutation)
-    ] (DxvkContext* ctx) {
-      ctx->bindShader(GetShaderStage(ShaderStage), cShader);
+    ] (DxvkContext* ctx) mutable {
+      ctx->bindShader(GetShaderStage(ShaderStage), std::move(cShader));
     });
   }
 
@@ -6259,8 +6260,8 @@ namespace dxvk {
           pBuffer->GetCommonBuffer()->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>(Offset)
         : DxvkBufferSlice(),
       cStride       = pBuffer != nullptr ? Stride : 0
-    ] (DxvkContext* ctx) {
-      ctx->bindVertexBuffer(cSlotId, cBufferSlice, cStride);
+    ] (DxvkContext* ctx) mutable {
+      ctx->bindVertexBuffer(cSlotId, std::move(cBufferSlice), cStride);
     });
   }
 
@@ -6276,8 +6277,8 @@ namespace dxvk {
     EmitCs([
       cBufferSlice = buffer != nullptr ? buffer->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>() : DxvkBufferSlice(),
       cIndexType   = indexType
-    ](DxvkContext* ctx) {
-      ctx->bindIndexBuffer(cBufferSlice, cIndexType);
+    ](DxvkContext* ctx) mutable {
+      ctx->bindIndexBuffer(std::move(cBufferSlice), cIndexType);
     });
   }
 
