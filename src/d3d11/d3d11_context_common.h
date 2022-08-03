@@ -143,6 +143,11 @@ namespace dxvk {
             UINT                              NumViews,
             ID3D11ShaderResourceView* const*  ppShaderResourceViews);
 
+    void STDMETHODCALLTYPE VSSetSamplers(
+            UINT                              StartSlot,
+            UINT                              NumSamplers,
+            ID3D11SamplerState* const*        ppSamplers);
+
     void STDMETHODCALLTYPE VSGetShader(
             ID3D11VertexShader**              ppVertexShader,
             ID3D11ClassInstance**             ppClassInstances,
@@ -164,6 +169,11 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView**        ppShaderResourceViews);
+
+    void STDMETHODCALLTYPE VSGetSamplers(
+            UINT                              StartSlot,
+            UINT                              NumSamplers,
+            ID3D11SamplerState**              ppSamplers);
 
     void STDMETHODCALLTYPE HSSetShader(
             ID3D11HullShader*                 pHullShader,
@@ -187,6 +197,11 @@ namespace dxvk {
             UINT                              NumViews,
             ID3D11ShaderResourceView* const*  ppShaderResourceViews);
 
+    void STDMETHODCALLTYPE HSSetSamplers(
+            UINT                              StartSlot,
+            UINT                              NumSamplers,
+            ID3D11SamplerState* const*        ppSamplers);
+
     void STDMETHODCALLTYPE HSGetShader(
             ID3D11HullShader**                ppHullShader,
             ID3D11ClassInstance**             ppClassInstances,
@@ -208,6 +223,11 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView**        ppShaderResourceViews);
+
+    void STDMETHODCALLTYPE HSGetSamplers(
+            UINT                              StartSlot,
+            UINT                              NumSamplers,
+            ID3D11SamplerState**              ppSamplers);
 
     void STDMETHODCALLTYPE DSSetShader(
             ID3D11DomainShader*               pDomainShader,
@@ -231,6 +251,11 @@ namespace dxvk {
             UINT                              NumViews,
             ID3D11ShaderResourceView* const*  ppShaderResourceViews);
 
+    void STDMETHODCALLTYPE DSSetSamplers(
+            UINT                              StartSlot,
+            UINT                              NumSamplers,
+            ID3D11SamplerState* const*        ppSamplers);
+
     void STDMETHODCALLTYPE DSGetShader(
             ID3D11DomainShader**              ppDomainShader,
             ID3D11ClassInstance**             ppClassInstances,
@@ -252,6 +277,11 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView**        ppShaderResourceViews);
+
+    void STDMETHODCALLTYPE DSGetSamplers(
+            UINT                              StartSlot,
+            UINT                              NumSamplers,
+            ID3D11SamplerState**              ppSamplers);
 
     void STDMETHODCALLTYPE GSSetShader(
             ID3D11GeometryShader*             pShader,
@@ -275,6 +305,11 @@ namespace dxvk {
             UINT                              NumViews,
             ID3D11ShaderResourceView* const*  ppShaderResourceViews);
 
+    void STDMETHODCALLTYPE GSSetSamplers(
+            UINT                              StartSlot,
+            UINT                              NumSamplers,
+            ID3D11SamplerState* const*        ppSamplers);
+
     void STDMETHODCALLTYPE GSGetShader(
             ID3D11GeometryShader**            ppGeometryShader,
             ID3D11ClassInstance**             ppClassInstances,
@@ -296,6 +331,11 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView**        ppShaderResourceViews);
+
+    void STDMETHODCALLTYPE GSGetSamplers(
+            UINT                              StartSlot,
+            UINT                              NumSamplers,
+            ID3D11SamplerState**              ppSamplers);
 
     void STDMETHODCALLTYPE PSSetShader(
             ID3D11PixelShader*                pPixelShader,
@@ -319,6 +359,11 @@ namespace dxvk {
             UINT                              NumViews,
             ID3D11ShaderResourceView* const*  ppShaderResourceViews);
 
+    void STDMETHODCALLTYPE PSSetSamplers(
+            UINT                              StartSlot,
+            UINT                              NumSamplers,
+            ID3D11SamplerState* const*        ppSamplers);
+
     void STDMETHODCALLTYPE PSGetShader(
             ID3D11PixelShader**               ppPixelShader,
             ID3D11ClassInstance**             ppClassInstances,
@@ -340,6 +385,11 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView**        ppShaderResourceViews);
+
+    void STDMETHODCALLTYPE PSGetSamplers(
+            UINT                              StartSlot,
+            UINT                              NumSamplers,
+            ID3D11SamplerState**              ppSamplers);
 
     void STDMETHODCALLTYPE CSSetShader(
             ID3D11ComputeShader*              pComputeShader,
@@ -363,6 +413,11 @@ namespace dxvk {
             UINT                              NumViews,
             ID3D11ShaderResourceView* const*  ppShaderResourceViews);
 
+    void STDMETHODCALLTYPE CSSetSamplers(
+            UINT                              StartSlot,
+            UINT                              NumSamplers,
+            ID3D11SamplerState* const*        ppSamplers);
+
     void STDMETHODCALLTYPE CSGetShader(
             ID3D11ComputeShader**             ppComputeShader,
             ID3D11ClassInstance**             ppClassInstances,
@@ -384,6 +439,11 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView**        ppShaderResourceViews);
+
+    void STDMETHODCALLTYPE CSGetSamplers(
+            UINT                              StartSlot,
+            UINT                              NumSamplers,
+            ID3D11SamplerState**              ppSamplers);
 
     void STDMETHODCALLTYPE OMSetRenderTargets(
             UINT                              NumViews,
@@ -507,6 +567,12 @@ namespace dxvk {
             UINT                              NumViews,
             ID3D11ShaderResourceView**        ppShaderResourceViews);
 
+    void GetSamplers(
+      const D3D11SamplerBindings&             Bindings,
+            UINT                              StartSlot,
+            UINT                              NumSamplers,
+            ID3D11SamplerState**              ppSamplers);
+
     template<DxbcProgramType ShaderStage, typename T>
     void ResolveSrvHazards(
             T*                                pView,
@@ -548,6 +614,13 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumResources,
             ID3D11ShaderResourceView* const*  ppResources);
+
+    template<DxbcProgramType ShaderStage>
+    void SetSamplers(
+            D3D11SamplerBindings&             Bindings,
+            UINT                              StartSlot,
+            UINT                              NumSamplers,
+            ID3D11SamplerState* const*        ppSamplers);
 
     void SetRenderTargetsAndUnorderedAccessViews(
             UINT                              NumRTVs,

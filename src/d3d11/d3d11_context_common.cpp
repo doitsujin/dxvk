@@ -312,6 +312,20 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::VSSetSamplers(
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D11SamplerState* const*        ppSamplers) {
+    D3D10DeviceLock lock = LockContext();
+
+    SetSamplers<DxbcProgramType::VertexShader>(
+      m_state.vs.samplers,
+      StartSlot, NumSamplers,
+      ppSamplers);
+  }
+
+
+  template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::VSGetShader(
           ID3D11VertexShader**              ppVertexShader,
           ID3D11ClassInstance**             ppClassInstances,
@@ -368,6 +382,18 @@ namespace dxvk {
 
     GetShaderResources(m_state.vs.shaderResources,
       StartSlot, NumViews, ppShaderResourceViews);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::VSGetSamplers(
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D11SamplerState**              ppSamplers) {
+    D3D10DeviceLock lock = LockContext();
+
+    GetSamplers(m_state.vs.samplers,
+      StartSlot, NumSamplers, ppSamplers);
   }
 
 
@@ -438,6 +464,20 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::HSSetSamplers(
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D11SamplerState* const*        ppSamplers) {
+    D3D10DeviceLock lock = LockContext();
+
+    SetSamplers<DxbcProgramType::HullShader>(
+      m_state.hs.samplers,
+      StartSlot, NumSamplers,
+      ppSamplers);
+  }
+
+
+  template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::HSGetShader(
           ID3D11HullShader**                ppHullShader,
           ID3D11ClassInstance**             ppClassInstances,
@@ -494,6 +534,18 @@ namespace dxvk {
 
     GetShaderResources(m_state.hs.shaderResources,
       StartSlot, NumViews, ppShaderResourceViews);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::HSGetSamplers(
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D11SamplerState**              ppSamplers) {
+    D3D10DeviceLock lock = LockContext();
+
+    GetSamplers(m_state.hs.samplers,
+      StartSlot, NumSamplers, ppSamplers);
   }
 
 
@@ -564,6 +616,20 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DSSetSamplers(
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D11SamplerState* const*        ppSamplers) {
+    D3D10DeviceLock lock = LockContext();
+
+    SetSamplers<DxbcProgramType::DomainShader>(
+      m_state.ds.samplers,
+      StartSlot, NumSamplers,
+      ppSamplers);
+  }
+
+
+  template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DSGetShader(
           ID3D11DomainShader**              ppDomainShader,
           ID3D11ClassInstance**             ppClassInstances,
@@ -620,6 +686,18 @@ namespace dxvk {
 
     GetShaderResources(m_state.ds.shaderResources,
       StartSlot, NumViews, ppShaderResourceViews);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DSGetSamplers(
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D11SamplerState**              ppSamplers) {
+    D3D10DeviceLock lock = LockContext();
+
+    GetSamplers(m_state.ds.samplers,
+      StartSlot, NumSamplers, ppSamplers);
   }
 
 
@@ -690,6 +768,20 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::GSSetSamplers(
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D11SamplerState* const*        ppSamplers) {
+    D3D10DeviceLock lock = LockContext();
+
+    SetSamplers<DxbcProgramType::GeometryShader>(
+      m_state.gs.samplers,
+      StartSlot, NumSamplers,
+      ppSamplers);
+  }
+
+
+  template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::GSGetShader(
           ID3D11GeometryShader**            ppGeometryShader,
           ID3D11ClassInstance**             ppClassInstances,
@@ -746,6 +838,18 @@ namespace dxvk {
 
     GetShaderResources(m_state.gs.shaderResources,
       StartSlot, NumViews, ppShaderResourceViews);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::GSGetSamplers(
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D11SamplerState**              ppSamplers) {
+    D3D10DeviceLock lock = LockContext();
+
+    GetSamplers(m_state.gs.samplers,
+      StartSlot, NumSamplers, ppSamplers);
   }
 
 
@@ -816,6 +920,20 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::PSSetSamplers(
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D11SamplerState* const*        ppSamplers) {
+    D3D10DeviceLock lock = LockContext();
+
+    SetSamplers<DxbcProgramType::PixelShader>(
+      m_state.ps.samplers,
+      StartSlot, NumSamplers,
+      ppSamplers);
+  }
+
+
+  template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::PSGetShader(
           ID3D11PixelShader**               ppPixelShader,
           ID3D11ClassInstance**             ppClassInstances,
@@ -872,6 +990,18 @@ namespace dxvk {
 
     GetShaderResources(m_state.ps.shaderResources,
       StartSlot, NumViews, ppShaderResourceViews);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::PSGetSamplers(
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D11SamplerState**              ppSamplers) {
+    D3D10DeviceLock lock = LockContext();
+
+    GetSamplers(m_state.ps.samplers,
+      StartSlot, NumSamplers, ppSamplers);
   }
 
 
@@ -942,6 +1072,20 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CSSetSamplers(
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D11SamplerState* const*        ppSamplers) {
+    D3D10DeviceLock lock = LockContext();
+
+    SetSamplers<DxbcProgramType::ComputeShader>(
+      m_state.cs.samplers,
+      StartSlot, NumSamplers,
+      ppSamplers);
+  }
+
+
+  template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CSGetShader(
           ID3D11ComputeShader**             ppComputeShader,
           ID3D11ClassInstance**             ppClassInstances,
@@ -998,6 +1142,18 @@ namespace dxvk {
 
     GetShaderResources(m_state.cs.shaderResources,
       StartSlot, NumViews, ppShaderResourceViews);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CSGetSamplers(
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D11SamplerState**              ppSamplers) {
+    D3D10DeviceLock lock = LockContext();
+
+    GetSamplers(m_state.cs.samplers,
+      StartSlot, NumSamplers, ppSamplers);
   }
 
 
@@ -1476,6 +1632,20 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void D3D11CommonContext<ContextType>::GetSamplers(
+    const D3D11SamplerBindings&             Bindings,
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D11SamplerState**              ppSamplers) {
+    for (uint32_t i = 0; i < NumSamplers; i++) {
+      ppSamplers[i] = StartSlot + i < Bindings.size()
+        ? ref(Bindings[StartSlot + i])
+        : nullptr;
+    }
+  }
+
+
+  template<typename ContextType>
   template<DxbcProgramType ShaderStage, typename T>
   void D3D11CommonContext<ContextType>::ResolveSrvHazards(
           T*                                pView,
@@ -1698,6 +1868,26 @@ namespace dxvk {
 
         Bindings.views[StartSlot + i] = resView;
         BindShaderResource<ShaderStage>(slotId + i, resView);
+      }
+    }
+  }
+
+
+  template<typename ContextType>
+  template<DxbcProgramType ShaderStage>
+  void D3D11CommonContext<ContextType>::SetSamplers(
+          D3D11SamplerBindings&             Bindings,
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D11SamplerState* const*        ppSamplers) {
+    uint32_t slotId = computeSamplerBinding(ShaderStage, StartSlot);
+
+    for (uint32_t i = 0; i < NumSamplers; i++) {
+      auto sampler = static_cast<D3D11SamplerState*>(ppSamplers[i]);
+
+      if (Bindings[StartSlot + i] != sampler) {
+        Bindings[StartSlot + i] = sampler;
+        BindSampler<ShaderStage>(slotId + i, sampler);
       }
     }
   }

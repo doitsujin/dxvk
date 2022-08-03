@@ -208,71 +208,11 @@ namespace dxvk {
             ID3D11Buffer*   pBufferForArgs,
             UINT            AlignedByteOffsetForArgs);
     
-    void STDMETHODCALLTYPE VSSetSamplers(
-            UINT                              StartSlot,
-            UINT                              NumSamplers,
-            ID3D11SamplerState* const*        ppSamplers);
-    
-    void STDMETHODCALLTYPE VSGetSamplers(
-            UINT                              StartSlot,
-            UINT                              NumSamplers,
-            ID3D11SamplerState**              ppSamplers);
-    
-    void STDMETHODCALLTYPE HSSetSamplers(
-            UINT                              StartSlot,
-            UINT                              NumSamplers,
-            ID3D11SamplerState* const*        ppSamplers);
-    
-    void STDMETHODCALLTYPE HSGetSamplers(
-            UINT                              StartSlot,
-            UINT                              NumSamplers,
-            ID3D11SamplerState**              ppSamplers);
-    
-    void STDMETHODCALLTYPE DSSetSamplers(
-            UINT                              StartSlot,
-            UINT                              NumSamplers,
-            ID3D11SamplerState* const*        ppSamplers);
-    
-    void STDMETHODCALLTYPE DSGetSamplers(
-            UINT                              StartSlot,
-            UINT                              NumSamplers,
-            ID3D11SamplerState**              ppSamplers);
-    
-    void STDMETHODCALLTYPE GSSetSamplers(
-            UINT                              StartSlot,
-            UINT                              NumSamplers,
-            ID3D11SamplerState* const*        ppSamplers);
-    
-    void STDMETHODCALLTYPE GSGetSamplers(
-            UINT                              StartSlot,
-            UINT                              NumSamplers,
-            ID3D11SamplerState**              ppSamplers);
-    
-    void STDMETHODCALLTYPE PSSetSamplers(
-            UINT                              StartSlot,
-            UINT                              NumSamplers,
-            ID3D11SamplerState* const*        ppSamplers);
-    
-    void STDMETHODCALLTYPE PSGetSamplers(
-            UINT                              StartSlot,
-            UINT                              NumSamplers,
-            ID3D11SamplerState**              ppSamplers);
-    
-    void STDMETHODCALLTYPE CSSetSamplers(
-            UINT                              StartSlot,
-            UINT                              NumSamplers,
-            ID3D11SamplerState* const*        ppSamplers);
-    
     void STDMETHODCALLTYPE CSSetUnorderedAccessViews(
             UINT                              StartSlot,
             UINT                              NumUAVs,
             ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
       const UINT*                             pUAVInitialCounts);
-    
-    void STDMETHODCALLTYPE CSGetSamplers(
-            UINT                              StartSlot,
-            UINT                              NumSamplers,
-            ID3D11SamplerState**              ppSamplers);
     
     void STDMETHODCALLTYPE CSGetUnorderedAccessViews(
             UINT                              StartSlot,
@@ -478,19 +418,6 @@ namespace dxvk {
             ID3D11Buffer*                     pBufferForArgs,
             ID3D11Buffer*                     pBufferForCount);
     
-    template<DxbcProgramType ShaderStage>
-    void SetSamplers(
-            D3D11SamplerBindings&             Bindings,
-            UINT                              StartSlot,
-            UINT                              NumSamplers,
-            ID3D11SamplerState* const*        ppSamplers);
-    
-    void GetSamplers(
-      const D3D11SamplerBindings&             Bindings,
-            UINT                              StartSlot,
-            UINT                              NumSamplers,
-            ID3D11SamplerState**              ppSamplers);
-
     void ResetState();
 
     void RestoreState();

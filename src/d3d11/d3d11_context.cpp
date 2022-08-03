@@ -1284,139 +1284,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContext::VSSetSamplers(
-          UINT                              StartSlot,
-          UINT                              NumSamplers,
-          ID3D11SamplerState* const*        ppSamplers) {
-    D3D10DeviceLock lock = LockContext();
-    
-    SetSamplers<DxbcProgramType::VertexShader>(
-      m_state.vs.samplers,
-      StartSlot, NumSamplers,
-      ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::VSGetSamplers(
-          UINT                              StartSlot,
-          UINT                              NumSamplers,
-          ID3D11SamplerState**              ppSamplers) {
-    D3D10DeviceLock lock = LockContext();
-    
-    GetSamplers(m_state.vs.samplers,
-      StartSlot, NumSamplers, ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::HSSetSamplers(
-          UINT                              StartSlot,
-          UINT                              NumSamplers,
-          ID3D11SamplerState* const*        ppSamplers) {
-    D3D10DeviceLock lock = LockContext();
-    
-    SetSamplers<DxbcProgramType::HullShader>(
-      m_state.hs.samplers,
-      StartSlot, NumSamplers,
-      ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::HSGetSamplers(
-          UINT                              StartSlot,
-          UINT                              NumSamplers,
-          ID3D11SamplerState**              ppSamplers) {
-    D3D10DeviceLock lock = LockContext();
-    
-    GetSamplers(m_state.hs.samplers,
-      StartSlot, NumSamplers, ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::DSSetSamplers(
-          UINT                              StartSlot,
-          UINT                              NumSamplers,
-          ID3D11SamplerState* const*        ppSamplers) {
-    D3D10DeviceLock lock = LockContext();
-    
-    SetSamplers<DxbcProgramType::DomainShader>(
-      m_state.ds.samplers,
-      StartSlot, NumSamplers,
-      ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::DSGetSamplers(
-          UINT                              StartSlot,
-          UINT                              NumSamplers,
-          ID3D11SamplerState**              ppSamplers) {
-    D3D10DeviceLock lock = LockContext();
-    
-    GetSamplers(m_state.ds.samplers,
-      StartSlot, NumSamplers, ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::GSSetSamplers(
-          UINT                              StartSlot,
-          UINT                              NumSamplers,
-          ID3D11SamplerState* const*        ppSamplers) {
-    D3D10DeviceLock lock = LockContext();
-    
-    SetSamplers<DxbcProgramType::GeometryShader>(
-      m_state.gs.samplers,
-      StartSlot, NumSamplers,
-      ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::GSGetSamplers(
-          UINT                              StartSlot,
-          UINT                              NumSamplers,
-          ID3D11SamplerState**              ppSamplers) {
-    D3D10DeviceLock lock = LockContext();
-    
-    GetSamplers(m_state.gs.samplers,
-      StartSlot, NumSamplers, ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::PSSetSamplers(
-          UINT                              StartSlot,
-          UINT                              NumSamplers,
-          ID3D11SamplerState* const*        ppSamplers) {
-    D3D10DeviceLock lock = LockContext();
-    
-    SetSamplers<DxbcProgramType::PixelShader>(
-      m_state.ps.samplers,
-      StartSlot, NumSamplers,
-      ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::PSGetSamplers(
-          UINT                              StartSlot,
-          UINT                              NumSamplers,
-          ID3D11SamplerState**              ppSamplers) {
-    D3D10DeviceLock lock = LockContext();
-    
-    GetSamplers(m_state.ps.samplers,
-      StartSlot, NumSamplers, ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::CSSetSamplers(
-          UINT                              StartSlot,
-          UINT                              NumSamplers,
-          ID3D11SamplerState* const*        ppSamplers) {
-    D3D10DeviceLock lock = LockContext();
-    
-    SetSamplers<DxbcProgramType::ComputeShader>(
-      m_state.cs.samplers,
-      StartSlot, NumSamplers,
-      ppSamplers);
-  }
-  
-  
   void STDMETHODCALLTYPE D3D11DeviceContext::CSSetUnorderedAccessViews(
           UINT                              StartSlot,
           UINT                              NumUAVs,
@@ -1470,17 +1337,6 @@ namespace dxvk {
         ResolveCsSrvHazards(uav);
       }
     }
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::CSGetSamplers(
-          UINT                              StartSlot,
-          UINT                              NumSamplers,
-          ID3D11SamplerState**              ppSamplers) {
-    D3D10DeviceLock lock = LockContext();
-    
-    GetSamplers(m_state.cs.samplers,
-      StartSlot, NumSamplers, ppSamplers);
   }
   
   
@@ -2790,38 +2646,6 @@ namespace dxvk {
       m_state.id.cntBuffer = cntBuffer;
 
       BindDrawBuffers(argBuffer, cntBuffer);
-    }
-  }
-
-
-  template<DxbcProgramType ShaderStage>
-  void D3D11DeviceContext::SetSamplers(
-          D3D11SamplerBindings&             Bindings,
-          UINT                              StartSlot,
-          UINT                              NumSamplers,
-          ID3D11SamplerState* const*        ppSamplers) {
-    uint32_t slotId = computeSamplerBinding(ShaderStage, StartSlot);
-    
-    for (uint32_t i = 0; i < NumSamplers; i++) {
-      auto sampler = static_cast<D3D11SamplerState*>(ppSamplers[i]);
-      
-      if (Bindings[StartSlot + i] != sampler) {
-        Bindings[StartSlot + i] = sampler;
-        BindSampler<ShaderStage>(slotId + i, sampler);
-      }
-    }
-  }
-  
-  
-  void D3D11DeviceContext::GetSamplers(
-    const D3D11SamplerBindings&             Bindings,
-          UINT                              StartSlot,
-          UINT                              NumSamplers,
-          ID3D11SamplerState**              ppSamplers) {
-    for (uint32_t i = 0; i < NumSamplers; i++) {
-      ppSamplers[i] = StartSlot + i < Bindings.size()
-        ? ref(Bindings[StartSlot + i])
-        : nullptr;
     }
   }
 
