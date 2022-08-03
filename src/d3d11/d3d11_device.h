@@ -31,7 +31,6 @@ namespace dxvk {
   class D3D11CommonShader;
   class D3D11CommonTexture;
   class D3D11Counter;
-  class D3D11DeviceContext;
   class D3D11DXGIDevice;
   class D3D11ImmediateContext;
   class D3D11Predicate;

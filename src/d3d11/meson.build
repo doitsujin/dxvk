@@ -29,7 +29,6 @@ d3d11_src = [
   'd3d11_buffer.cpp',
   'd3d11_class_linkage.cpp',
   'd3d11_cmdlist.cpp',
-  'd3d11_context.cpp',
   'd3d11_context_common.cpp',
   'd3d11_context_def.cpp',
   'd3d11_context_ext.cpp',

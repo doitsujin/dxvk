@@ -9,7 +9,7 @@ namespace dxvk {
           D3D11Device*            pParent,
     const Rc<DxvkDevice>&         Device,
           DxvkCsChunkFlags        CsFlags)
-  : D3D11DeviceContext(pParent),
+  : D3D11DeviceChild<ID3D11DeviceContext4>(pParent),
     m_contextExt(GetTypedContext()),
     m_annotation(GetTypedContext(), Device),
     m_multithread(this, false),

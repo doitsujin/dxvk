@@ -6,7 +6,6 @@ namespace dxvk {
 
   class D3D10Device;
   class D3D11Device;
-  class D3D11DeviceContext;
   class D3D11Query;
 
   class D3D10Query : public ID3D10Predicate {

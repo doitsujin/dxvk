@@ -12,7 +12,6 @@
 namespace dxvk {
   
   class D3D11Device;
-  class D3D11DeviceContext;
 
 
   /**

@@ -3,8 +3,19 @@
 #include <type_traits>
 #include <vector>
 
+#include "../dxvk/dxvk_adapter.h"
+#include "../dxvk/dxvk_cs.h"
+#include "../dxvk/dxvk_device.h"
+#include "../dxvk/dxvk_staging.h"
+
+#include "../d3d10/d3d10_multithread.h"
+
+#include "d3d11_annotation.h"
 #include "d3d11_buffer.h"
-#include "d3d11_context.h"
+#include "d3d11_cmd.h"
+#include "d3d11_context_ext.h"
+#include "d3d11_context_state.h"
+#include "d3d11_device_child.h"
 #include "d3d11_texture.h"
 
 namespace dxvk {
@@ -52,7 +63,7 @@ namespace dxvk {
    * having to use virtual methods.
    */
   template<typename ContextType>
-  class D3D11CommonContext : public D3D11DeviceContext {
+  class D3D11CommonContext : public D3D11DeviceChild<ID3D11DeviceContext4> {
     constexpr static bool IsDeferred = std::is_same_v<ContextType, D3D11DeferredContext>;
     using Forwarder = D3D11ContextObjectForwarder<IsDeferred>;
 

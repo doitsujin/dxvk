@@ -1,6 +1,6 @@
 #pragma once
 
-#include "d3d11_context.h"
+#include "d3d11_context_common.h"
 
 namespace dxvk {
   

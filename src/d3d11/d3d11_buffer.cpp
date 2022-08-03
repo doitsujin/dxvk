@@ -1,5 +1,5 @@
 #include "d3d11_buffer.h"
-#include "d3d11_context.h"
+#include "d3d11_context_common.h"
 #include "d3d11_device.h"
 
 #include "../dxvk/dxvk_data.h"
