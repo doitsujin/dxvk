@@ -206,28 +206,6 @@ namespace dxvk {
             ID3D11Buffer*   pBufferForArgs,
             UINT            AlignedByteOffsetForArgs);
     
-    void STDMETHODCALLTYPE RSSetState(
-            ID3D11RasterizerState*            pRasterizerState);
-    
-    void STDMETHODCALLTYPE RSSetViewports(
-            UINT                              NumViewports,
-      const D3D11_VIEWPORT*                   pViewports);
-    
-    void STDMETHODCALLTYPE RSSetScissorRects(
-            UINT                              NumRects,
-      const D3D11_RECT*                       pRects);
-    
-    void STDMETHODCALLTYPE RSGetState(
-            ID3D11RasterizerState**           ppRasterizerState);
-    
-    void STDMETHODCALLTYPE RSGetViewports(
-            UINT*                             pNumViewports,
-            D3D11_VIEWPORT*                   pViewports);
-    
-    void STDMETHODCALLTYPE RSGetScissorRects(
-            UINT*                             pNumRects,
-            D3D11_RECT*                       pRects);
-    
     void STDMETHODCALLTYPE SOSetTargets(
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppSOTargets,
