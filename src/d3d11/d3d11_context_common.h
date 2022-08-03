@@ -109,6 +109,30 @@ namespace dxvk {
             UINT                              DstAlignedByteOffset,
             ID3D11UnorderedAccessView*        pSrcView);
 
+    void STDMETHODCALLTYPE ClearRenderTargetView(
+            ID3D11RenderTargetView*           pRenderTargetView,
+      const FLOAT                             ColorRGBA[4]);
+
+    void STDMETHODCALLTYPE ClearUnorderedAccessViewUint(
+            ID3D11UnorderedAccessView*        pUnorderedAccessView,
+      const UINT                              Values[4]);
+
+    void STDMETHODCALLTYPE ClearUnorderedAccessViewFloat(
+            ID3D11UnorderedAccessView*        pUnorderedAccessView,
+      const FLOAT                             Values[4]);
+
+    void STDMETHODCALLTYPE ClearDepthStencilView(
+            ID3D11DepthStencilView*           pDepthStencilView,
+            UINT                              ClearFlags,
+            FLOAT                             Depth,
+            UINT8                             Stencil);
+
+    void STDMETHODCALLTYPE ClearView(
+            ID3D11View                        *pView,
+      const FLOAT                             Color[4],
+      const D3D11_RECT                        *pRect,
+            UINT                              NumRects);
+
     void STDMETHODCALLTYPE UpdateSubresource(
             ID3D11Resource*                   pDstResource,
             UINT                              DstSubresource,
