@@ -159,34 +159,6 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::bindShader(
-          VkShaderStageFlagBits stage,
-    const Rc<DxvkShader>&       shader) {
-    Rc<DxvkShader>* shaderStage;
-    
-    switch (stage) {
-      case VK_SHADER_STAGE_VERTEX_BIT:                  shaderStage = &m_state.gp.shaders.vs;  break;
-      case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:    shaderStage = &m_state.gp.shaders.tcs; break;
-      case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT: shaderStage = &m_state.gp.shaders.tes; break;
-      case VK_SHADER_STAGE_GEOMETRY_BIT:                shaderStage = &m_state.gp.shaders.gs;  break;
-      case VK_SHADER_STAGE_FRAGMENT_BIT:                shaderStage = &m_state.gp.shaders.fs;  break;
-      case VK_SHADER_STAGE_COMPUTE_BIT:                 shaderStage = &m_state.cp.shaders.cs;  break;
-      default: return;
-    }
-    
-    *shaderStage = shader;
-
-    if (stage == VK_SHADER_STAGE_COMPUTE_BIT) {
-      m_flags.set(
-        DxvkContextFlag::CpDirtyPipelineState);
-    } else {
-      m_flags.set(
-        DxvkContextFlag::GpDirtyPipeline,
-        DxvkContextFlag::GpDirtyPipelineState);
-    }
-  }
-  
-  
   void DxvkContext::blitImage(
     const Rc<DxvkImage>&        dstImage,
     const VkComponentMapping&   dstMapping,
