@@ -336,7 +336,16 @@ namespace dxvk::bit {
       }
 
       uint32_t operator * () const {
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(__BMI__)
+        uint32_t res;
+        asm ("tzcnt %1,%0"
+        : "=r" (res)
+        : "r" (m_mask)
+        : "cc");
+        return res;
+#else
         return tzcnt(m_mask);
+#endif
       }
 
       bool operator == (iterator other) const { return m_mask == other.m_mask; }
