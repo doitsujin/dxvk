@@ -173,102 +173,13 @@ namespace dxvk {
     D3D11ContextState           m_state;
     D3D11CmdData*               m_cmdData;
     
-    void ApplyInputLayout();
-    
-    void ApplyPrimitiveTopology();
-    
-    void ApplyBlendState();
-    
-    void ApplyBlendFactor();
-    
-    void ApplyDepthStencilState();
-    
-    void ApplyStencilRef();
-    
-    void ApplyRasterizerState();
-    
-    void ApplyRasterizerSampleCount();
-
-    void ApplyViewportState();
-
-    template<DxbcProgramType ShaderStage>
-    void BindShader(
-      const D3D11CommonShader*                pShaderModule);
-    
-    void BindFramebuffer();
-    
     void BindDrawBuffers(
-            D3D11Buffer*                      pBufferForArgs,
-            D3D11Buffer*                      pBufferForCount);
-    
-    void BindVertexBuffer(
-            UINT                              Slot,
-            D3D11Buffer*                      pBuffer,
-            UINT                              Offset,
-            UINT                              Stride);
-    
-    void BindIndexBuffer(
-            D3D11Buffer*                      pBuffer,
-            UINT                              Offset,
-            DXGI_FORMAT                       Format);
-    
-    void BindXfbBuffer(
-            UINT                              Slot,
-            D3D11Buffer*                      pBuffer,
-            UINT                              Offset);
-    
-    template<DxbcProgramType ShaderStage>
-    void BindConstantBuffer(
-            UINT                              Slot,
-            D3D11Buffer*                      pBuffer,
-            UINT                              Offset,
-            UINT                              Length);
-    
-    template<DxbcProgramType ShaderStage>
-    void BindConstantBufferRange(
-            UINT                              Slot,
-            UINT                              Offset,
-            UINT                              Length);
-
-    template<DxbcProgramType ShaderStage>
-    void BindSampler(
-            UINT                              Slot,
-            D3D11SamplerState*                pSampler);
-    
-    template<DxbcProgramType ShaderStage>
-    void BindShaderResource(
-            UINT                              Slot,
-            D3D11ShaderResourceView*          pResource);
-    
-    template<DxbcProgramType ShaderStage>
-    void BindUnorderedAccessView(
-            UINT                              UavSlot,
-            D3D11UnorderedAccessView*         pUav,
-            UINT                              CtrSlot,
-            UINT                              Counter);
+            D3D11Buffer*                     pBufferForArgs,
+            D3D11Buffer*                     pBufferForCount);
 
     void SetDrawBuffers(
             ID3D11Buffer*                     pBufferForArgs,
             ID3D11Buffer*                     pBufferForCount);
-    
-    bool TestRtvUavHazards(
-            UINT                              NumRTVs,
-            ID3D11RenderTargetView* const*    ppRTVs,
-            UINT                              NumUAVs,
-            ID3D11UnorderedAccessView* const* ppUAVs);
-    
-    template<DxbcProgramType ShaderStage>
-    bool TestSrvHazards(
-            D3D11ShaderResourceView*          pView);
-
-    template<DxbcProgramType ShaderStage, typename T>
-    void ResolveSrvHazards(
-            T*                                pView,
-            D3D11ShaderResourceBindings&      Bindings);
-    
-    template<typename T>
-    void ResolveCsSrvHazards(
-            T*                                pView);
 
     VkClearValue ConvertColorValue(
       const FLOAT                             Color[4],

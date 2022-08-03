@@ -620,6 +620,24 @@ namespace dxvk {
     D3D11DeviceContextExt<ContextType>        m_contextExt;
     D3D11UserDefinedAnnotation<ContextType>   m_annotation;
 
+    void ApplyInputLayout();
+    
+    void ApplyPrimitiveTopology();
+    
+    void ApplyBlendState();
+    
+    void ApplyBlendFactor();
+    
+    void ApplyDepthStencilState();
+    
+    void ApplyStencilRef();
+    
+    void ApplyRasterizerState();
+    
+    void ApplyRasterizerSampleCount();
+
+    void ApplyViewportState();
+
     template<DxbcProgramType ShaderStage>
     void BindShader(
       const D3D11CommonShader*                pShaderModule);

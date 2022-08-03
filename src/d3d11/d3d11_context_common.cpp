@@ -2484,6 +2484,259 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ApplyInputLayout() {
+    auto inputLayout = m_state.ia.inputLayout.prvRef();
+
+    if (likely(inputLayout != nullptr)) {
+      EmitCs([
+        cInputLayout = std::move(inputLayout)
+      ] (DxvkContext* ctx) {
+        cInputLayout->BindToContext(ctx);
+      });
+    } else {
+      EmitCs([] (DxvkContext* ctx) {
+        ctx->setInputLayout(0, nullptr, 0, nullptr);
+      });
+    }
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ApplyPrimitiveTopology() {
+    D3D11_PRIMITIVE_TOPOLOGY topology = m_state.ia.primitiveTopology;
+    DxvkInputAssemblyState iaState = { };
+
+    if (topology <= D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ) {
+      static const std::array<DxvkInputAssemblyState, 14> s_iaStates = {{
+        { VK_PRIMITIVE_TOPOLOGY_MAX_ENUM,       VK_FALSE, 0 },
+        { VK_PRIMITIVE_TOPOLOGY_POINT_LIST,     VK_FALSE, 0 },
+        { VK_PRIMITIVE_TOPOLOGY_LINE_LIST,      VK_FALSE, 0 },
+        { VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,     VK_TRUE,  0 },
+        { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,  VK_FALSE, 0 },
+        { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, VK_TRUE,  0 },
+        { }, { }, { }, { }, // Random gap that exists for no reason
+        { VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY,       VK_FALSE, 0 },
+        { VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY,      VK_TRUE,  0 },
+        { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY,   VK_FALSE, 0 },
+        { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY,  VK_TRUE,  0 },
+      }};
+
+      iaState = s_iaStates[uint32_t(topology)];
+    } else if (topology >= D3D11_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST
+            && topology <= D3D11_PRIMITIVE_TOPOLOGY_32_CONTROL_POINT_PATCHLIST) {
+      // The number of control points per patch can be inferred from the enum value in D3D11
+      uint32_t vertexCount = uint32_t(topology - D3D11_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST + 1);
+      iaState = { VK_PRIMITIVE_TOPOLOGY_PATCH_LIST, VK_FALSE, vertexCount };
+    }
+    
+    EmitCs([iaState] (DxvkContext* ctx) {
+      ctx->setInputAssemblyState(iaState);
+    });
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ApplyBlendState() {
+    if (m_state.om.cbState != nullptr) {
+      EmitCs([
+        cBlendState = m_state.om.cbState,
+        cSampleMask = m_state.om.sampleMask
+      ] (DxvkContext* ctx) {
+        cBlendState->BindToContext(ctx, cSampleMask);
+      });
+    } else {
+      EmitCs([
+        cSampleMask = m_state.om.sampleMask
+      ] (DxvkContext* ctx) {
+        DxvkBlendMode cbState;
+        DxvkLogicOpState loState;
+        DxvkMultisampleState msState;
+        InitDefaultBlendState(&cbState, &loState, &msState, cSampleMask);
+
+        for (uint32_t i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
+          ctx->setBlendMode(i, cbState);
+
+        ctx->setLogicOpState(loState);
+        ctx->setMultisampleState(msState);
+      });
+    }
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ApplyBlendFactor() {
+    EmitCs([
+      cBlendConstants = DxvkBlendConstants {
+        m_state.om.blendFactor[0], m_state.om.blendFactor[1],
+        m_state.om.blendFactor[2], m_state.om.blendFactor[3] }
+    ] (DxvkContext* ctx) {
+      ctx->setBlendConstants(cBlendConstants);
+    });
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ApplyDepthStencilState() {
+    if (m_state.om.dsState != nullptr) {
+      EmitCs([
+        cDepthStencilState = m_state.om.dsState
+      ] (DxvkContext* ctx) {
+        cDepthStencilState->BindToContext(ctx);
+      });
+    } else {
+      EmitCs([] (DxvkContext* ctx) {
+        DxvkDepthStencilState dsState;
+        InitDefaultDepthStencilState(&dsState);
+
+        ctx->setDepthStencilState(dsState);
+      });
+    }
+  }
+  
+  
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ApplyStencilRef() {
+    EmitCs([
+      cStencilRef = m_state.om.stencilRef
+    ] (DxvkContext* ctx) {
+      ctx->setStencilReference(cStencilRef);
+    });
+  }
+  
+  
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ApplyRasterizerState() {
+    if (m_state.rs.state != nullptr) {
+      EmitCs([
+        cRasterizerState = m_state.rs.state
+      ] (DxvkContext* ctx) {
+        cRasterizerState->BindToContext(ctx);
+      });
+    } else {
+      EmitCs([] (DxvkContext* ctx) {
+        DxvkRasterizerState rsState;
+        InitDefaultRasterizerState(&rsState);
+
+        ctx->setRasterizerState(rsState);
+      });
+    }
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ApplyRasterizerSampleCount() {
+    DxbcPushConstants pc;
+    pc.rasterizerSampleCount = m_state.om.sampleCount;
+
+    if (unlikely(!m_state.om.sampleCount)) {
+      pc.rasterizerSampleCount = m_state.rs.state->Desc()->ForcedSampleCount;
+
+      if (!m_state.om.sampleCount)
+        pc.rasterizerSampleCount = 1;
+    }
+
+    EmitCs([
+      cPushConstants = pc
+    ] (DxvkContext* ctx) {
+      ctx->pushConstants(0, sizeof(cPushConstants), &cPushConstants);
+    });
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ApplyViewportState() {
+    std::array<VkViewport, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> viewports;
+    std::array<VkRect2D,   D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> scissors;
+
+    // The backend can't handle a viewport count of zero,
+    // so we should at least specify one empty viewport
+    uint32_t viewportCount = m_state.rs.numViewports;
+
+    if (unlikely(!viewportCount)) {
+      viewportCount = 1;
+      viewports[0] = VkViewport();
+      scissors [0] = VkRect2D();
+    }
+
+    // D3D11's coordinate system has its origin in the bottom left,
+    // but the viewport coordinates are aligned to the top-left
+    // corner so we can get away with flipping the viewport.
+    for (uint32_t i = 0; i < m_state.rs.numViewports; i++) {
+      const D3D11_VIEWPORT& vp = m_state.rs.viewports[i];
+
+      viewports[i] = VkViewport {
+        vp.TopLeftX, vp.Height + vp.TopLeftY,
+        vp.Width,   -vp.Height,
+        vp.MinDepth, vp.MaxDepth,
+      };
+    }
+
+    // Scissor rectangles. Vulkan does not provide an easy way
+    // to disable the scissor test, so we'll have to set scissor
+    // rects that are at least as large as the framebuffer.
+    bool enableScissorTest = false;
+  
+    if (m_state.rs.state != nullptr) {
+      D3D11_RASTERIZER_DESC rsDesc;
+      m_state.rs.state->GetDesc(&rsDesc);
+      enableScissorTest = rsDesc.ScissorEnable;
+    }
+
+    for (uint32_t i = 0; i < m_state.rs.numViewports; i++) {
+      if (!enableScissorTest) {
+        scissors[i] = VkRect2D {
+          VkOffset2D { 0, 0 },
+          VkExtent2D {
+            D3D11_VIEWPORT_BOUNDS_MAX,
+            D3D11_VIEWPORT_BOUNDS_MAX } };
+      } else if (i >= m_state.rs.numScissors) {
+        scissors[i] = VkRect2D {
+          VkOffset2D { 0, 0 },
+          VkExtent2D { 0, 0 } };
+      } else {
+        D3D11_RECT sr = m_state.rs.scissors[i];
+
+        VkOffset2D srPosA;
+        srPosA.x = std::max<int32_t>(0, sr.left);
+        srPosA.y = std::max<int32_t>(0, sr.top);
+
+        VkOffset2D srPosB;
+        srPosB.x = std::max<int32_t>(srPosA.x, sr.right);
+        srPosB.y = std::max<int32_t>(srPosA.y, sr.bottom);
+
+        VkExtent2D srSize;
+        srSize.width  = uint32_t(srPosB.x - srPosA.x);
+        srSize.height = uint32_t(srPosB.y - srPosA.y);
+
+        scissors[i] = VkRect2D { srPosA, srSize };
+      }
+    }
+
+    if (likely(viewportCount == 1)) {
+      EmitCs([
+        cViewport = viewports[0],
+        cScissor  = scissors[0]
+      ] (DxvkContext* ctx) {
+        ctx->setViewports(1,
+          &cViewport,
+          &cScissor);
+      });
+    } else {
+      EmitCs([
+        cViewportCount = viewportCount,
+        cViewports     = viewports,
+        cScissors      = scissors
+      ] (DxvkContext* ctx) {
+        ctx->setViewports(
+          cViewportCount,
+          cViewports.data(),
+          cScissors.data());
+      });
+    }
+  }
+
+
+  template<typename ContextType>
   template<DxbcProgramType ShaderStage>
   void D3D11CommonContext<ContextType>::BindShader(
     const D3D11CommonShader*    pShaderModule) {
