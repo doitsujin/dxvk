@@ -68,6 +68,8 @@ namespace dxvk {
             REFIID  riid,
             void**  ppvObject);
 
+    void STDMETHODCALLTYPE ClearState();
+
     void STDMETHODCALLTYPE UpdateSubresource(
             ID3D11Resource*                   pDstResource,
             UINT                              DstSubresource,
@@ -584,6 +586,8 @@ namespace dxvk {
             UINT                              NumSamplers,
             ID3D11SamplerState**              ppSamplers);
 
+    void ResetState();
+
     template<DxbcProgramType ShaderStage, typename T>
     void ResolveSrvHazards(
             T*                                pView,
@@ -603,6 +607,24 @@ namespace dxvk {
     void ResolveOmUavHazards(
             D3D11RenderTargetView*            pView);
 
+    void RestoreState();
+    
+    template<DxbcProgramType Stage>
+    void RestoreConstantBuffers(
+            D3D11ConstantBufferBindings&      Bindings);
+    
+    template<DxbcProgramType Stage>
+    void RestoreSamplers(
+            D3D11SamplerBindings&             Bindings);
+    
+    template<DxbcProgramType Stage>
+    void RestoreShaderResources(
+            D3D11ShaderResourceBindings&      Bindings);
+    
+    template<DxbcProgramType Stage>
+    void RestoreUnorderedAccessViews(
+            D3D11UnorderedAccessBindings&     Bindings);
+    
     template<DxbcProgramType ShaderStage>
     void SetConstantBuffers(
             D3D11ConstantBufferBindings&      Bindings,

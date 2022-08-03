@@ -43,8 +43,6 @@ namespace dxvk {
       const D3D11_RECT*                      pRects,
             UINT                             NumRects);
     
-    void STDMETHODCALLTYPE ClearState();
-    
     void STDMETHODCALLTYPE SetPredication(
             ID3D11Predicate*                  pPredicate,
             BOOL                              PredicateValue);
@@ -406,26 +404,6 @@ namespace dxvk {
     void SetDrawBuffers(
             ID3D11Buffer*                     pBufferForArgs,
             ID3D11Buffer*                     pBufferForCount);
-    
-    void ResetState();
-
-    void RestoreState();
-    
-    template<DxbcProgramType Stage>
-    void RestoreConstantBuffers(
-            D3D11ConstantBufferBindings&      Bindings);
-    
-    template<DxbcProgramType Stage>
-    void RestoreSamplers(
-            D3D11SamplerBindings&             Bindings);
-    
-    template<DxbcProgramType Stage>
-    void RestoreShaderResources(
-            D3D11ShaderResourceBindings&      Bindings);
-    
-    template<DxbcProgramType Stage>
-    void RestoreUnorderedAccessViews(
-            D3D11UnorderedAccessBindings&     Bindings);
     
     bool TestRtvUavHazards(
             UINT                              NumRTVs,
