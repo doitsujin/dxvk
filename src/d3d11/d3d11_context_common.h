@@ -138,6 +138,11 @@ namespace dxvk {
       const UINT*                             pFirstConstant,
       const UINT*                             pNumConstants);
 
+    void STDMETHODCALLTYPE VSSetShaderResources(
+            UINT                              StartSlot,
+            UINT                              NumViews,
+            ID3D11ShaderResourceView* const*  ppShaderResourceViews);
+
     void STDMETHODCALLTYPE VSGetShader(
             ID3D11VertexShader**              ppVertexShader,
             ID3D11ClassInstance**             ppClassInstances,
@@ -154,6 +159,11 @@ namespace dxvk {
             ID3D11Buffer**                    ppConstantBuffers,
             UINT*                             pFirstConstant,
             UINT*                             pNumConstants);
+
+    void STDMETHODCALLTYPE VSGetShaderResources(
+            UINT                              StartSlot,
+            UINT                              NumViews,
+            ID3D11ShaderResourceView**        ppShaderResourceViews);
 
     void STDMETHODCALLTYPE HSSetShader(
             ID3D11HullShader*                 pHullShader,
@@ -172,6 +182,11 @@ namespace dxvk {
       const UINT*                             pFirstConstant,
       const UINT*                             pNumConstants);
 
+    void STDMETHODCALLTYPE HSSetShaderResources(
+            UINT                              StartSlot,
+            UINT                              NumViews,
+            ID3D11ShaderResourceView* const*  ppShaderResourceViews);
+
     void STDMETHODCALLTYPE HSGetShader(
             ID3D11HullShader**                ppHullShader,
             ID3D11ClassInstance**             ppClassInstances,
@@ -188,6 +203,11 @@ namespace dxvk {
             ID3D11Buffer**                    ppConstantBuffers,
             UINT*                             pFirstConstant,
             UINT*                             pNumConstants);
+
+    void STDMETHODCALLTYPE HSGetShaderResources(
+            UINT                              StartSlot,
+            UINT                              NumViews,
+            ID3D11ShaderResourceView**        ppShaderResourceViews);
 
     void STDMETHODCALLTYPE DSSetShader(
             ID3D11DomainShader*               pDomainShader,
@@ -206,6 +226,11 @@ namespace dxvk {
       const UINT*                             pFirstConstant,
       const UINT*                             pNumConstants);
 
+    void STDMETHODCALLTYPE DSSetShaderResources(
+            UINT                              StartSlot,
+            UINT                              NumViews,
+            ID3D11ShaderResourceView* const*  ppShaderResourceViews);
+
     void STDMETHODCALLTYPE DSGetShader(
             ID3D11DomainShader**              ppDomainShader,
             ID3D11ClassInstance**             ppClassInstances,
@@ -222,6 +247,11 @@ namespace dxvk {
             ID3D11Buffer**                    ppConstantBuffers,
             UINT*                             pFirstConstant,
             UINT*                             pNumConstants);
+
+    void STDMETHODCALLTYPE DSGetShaderResources(
+            UINT                              StartSlot,
+            UINT                              NumViews,
+            ID3D11ShaderResourceView**        ppShaderResourceViews);
 
     void STDMETHODCALLTYPE GSSetShader(
             ID3D11GeometryShader*             pShader,
@@ -240,6 +270,11 @@ namespace dxvk {
       const UINT*                             pFirstConstant,
       const UINT*                             pNumConstants);
 
+    void STDMETHODCALLTYPE GSSetShaderResources(
+            UINT                              StartSlot,
+            UINT                              NumViews,
+            ID3D11ShaderResourceView* const*  ppShaderResourceViews);
+
     void STDMETHODCALLTYPE GSGetShader(
             ID3D11GeometryShader**            ppGeometryShader,
             ID3D11ClassInstance**             ppClassInstances,
@@ -256,6 +291,11 @@ namespace dxvk {
             ID3D11Buffer**                    ppConstantBuffers,
             UINT*                             pFirstConstant,
             UINT*                             pNumConstants);
+
+    void STDMETHODCALLTYPE GSGetShaderResources(
+            UINT                              StartSlot,
+            UINT                              NumViews,
+            ID3D11ShaderResourceView**        ppShaderResourceViews);
 
     void STDMETHODCALLTYPE PSSetShader(
             ID3D11PixelShader*                pPixelShader,
@@ -274,6 +314,11 @@ namespace dxvk {
       const UINT*                             pFirstConstant,
       const UINT*                             pNumConstants);
 
+    void STDMETHODCALLTYPE PSSetShaderResources(
+            UINT                              StartSlot,
+            UINT                              NumViews,
+            ID3D11ShaderResourceView* const*  ppShaderResourceViews);
+
     void STDMETHODCALLTYPE PSGetShader(
             ID3D11PixelShader**               ppPixelShader,
             ID3D11ClassInstance**             ppClassInstances,
@@ -290,6 +335,11 @@ namespace dxvk {
             ID3D11Buffer**                    ppConstantBuffers,
             UINT*                             pFirstConstant,
             UINT*                             pNumConstants);
+
+    void STDMETHODCALLTYPE PSGetShaderResources(
+            UINT                              StartSlot,
+            UINT                              NumViews,
+            ID3D11ShaderResourceView**        ppShaderResourceViews);
 
     void STDMETHODCALLTYPE CSSetShader(
             ID3D11ComputeShader*              pComputeShader,
@@ -308,6 +358,11 @@ namespace dxvk {
       const UINT*                             pFirstConstant,
       const UINT*                             pNumConstants);
 
+    void STDMETHODCALLTYPE CSSetShaderResources(
+            UINT                              StartSlot,
+            UINT                              NumViews,
+            ID3D11ShaderResourceView* const*  ppShaderResourceViews);
+
     void STDMETHODCALLTYPE CSGetShader(
             ID3D11ComputeShader**             ppComputeShader,
             ID3D11ClassInstance**             ppClassInstances,
@@ -324,6 +379,11 @@ namespace dxvk {
             ID3D11Buffer**                    ppConstantBuffers,
             UINT*                             pFirstConstant,
             UINT*                             pNumConstants);
+
+    void STDMETHODCALLTYPE CSGetShaderResources(
+            UINT                              StartSlot,
+            UINT                              NumViews,
+            ID3D11ShaderResourceView**        ppShaderResourceViews);
 
     void STDMETHODCALLTYPE OMSetRenderTargets(
             UINT                              NumViews,
@@ -441,6 +501,12 @@ namespace dxvk {
             UINT*                             pFirstConstant,
             UINT*                             pNumConstants);
 
+    void GetShaderResources(
+      const D3D11ShaderResourceBindings&      Bindings,
+            UINT                              StartSlot,
+            UINT                              NumViews,
+            ID3D11ShaderResourceView**        ppShaderResourceViews);
+
     template<DxbcProgramType ShaderStage, typename T>
     void ResolveSrvHazards(
             T*                                pView,
@@ -475,6 +541,13 @@ namespace dxvk {
             ID3D11Buffer* const*              ppConstantBuffers,
       const UINT*                             pFirstConstant,
       const UINT*                             pNumConstants);
+
+    template<DxbcProgramType ShaderStage>
+    void SetShaderResources(
+            D3D11ShaderResourceBindings&      Bindings,
+            UINT                              StartSlot,
+            UINT                              NumResources,
+            ID3D11ShaderResourceView* const*  ppResources);
 
     void SetRenderTargetsAndUnorderedAccessViews(
             UINT                              NumRTVs,

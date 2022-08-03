@@ -298,6 +298,20 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::VSSetShaderResources(
+          UINT                              StartSlot,
+          UINT                              NumViews,
+          ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
+    D3D10DeviceLock lock = LockContext();
+
+    SetShaderResources<DxbcProgramType::VertexShader>(
+      m_state.vs.shaderResources,
+      StartSlot, NumViews,
+      ppShaderResourceViews);
+  }
+
+
+  template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::VSGetShader(
           ID3D11VertexShader**              ppVertexShader,
           ID3D11ClassInstance**             ppClassInstances,
@@ -342,6 +356,18 @@ namespace dxvk {
       ppConstantBuffers,
       pFirstConstant,
       pNumConstants);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::VSGetShaderResources(
+          UINT                              StartSlot,
+          UINT                              NumViews,
+          ID3D11ShaderResourceView**        ppShaderResourceViews) {
+    D3D10DeviceLock lock = LockContext();
+
+    GetShaderResources(m_state.vs.shaderResources,
+      StartSlot, NumViews, ppShaderResourceViews);
   }
 
 
@@ -398,6 +424,20 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::HSSetShaderResources(
+          UINT                              StartSlot,
+          UINT                              NumViews,
+          ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
+    D3D10DeviceLock lock = LockContext();
+
+    SetShaderResources<DxbcProgramType::HullShader>(
+      m_state.hs.shaderResources,
+      StartSlot, NumViews,
+      ppShaderResourceViews);
+  }
+
+
+  template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::HSGetShader(
           ID3D11HullShader**                ppHullShader,
           ID3D11ClassInstance**             ppClassInstances,
@@ -442,6 +482,18 @@ namespace dxvk {
       ppConstantBuffers,
       pFirstConstant,
       pNumConstants);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::HSGetShaderResources(
+          UINT                              StartSlot,
+          UINT                              NumViews,
+          ID3D11ShaderResourceView**        ppShaderResourceViews) {
+    D3D10DeviceLock lock = LockContext();
+
+    GetShaderResources(m_state.hs.shaderResources,
+      StartSlot, NumViews, ppShaderResourceViews);
   }
 
 
@@ -498,6 +550,20 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DSSetShaderResources(
+          UINT                              StartSlot,
+          UINT                              NumViews,
+          ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
+    D3D10DeviceLock lock = LockContext();
+
+    SetShaderResources<DxbcProgramType::DomainShader>(
+      m_state.ds.shaderResources,
+      StartSlot, NumViews,
+      ppShaderResourceViews);
+  }
+
+
+  template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DSGetShader(
           ID3D11DomainShader**              ppDomainShader,
           ID3D11ClassInstance**             ppClassInstances,
@@ -542,6 +608,18 @@ namespace dxvk {
       ppConstantBuffers,
       pFirstConstant,
       pNumConstants);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DSGetShaderResources(
+          UINT                              StartSlot,
+          UINT                              NumViews,
+          ID3D11ShaderResourceView**        ppShaderResourceViews) {
+    D3D10DeviceLock lock = LockContext();
+
+    GetShaderResources(m_state.ds.shaderResources,
+      StartSlot, NumViews, ppShaderResourceViews);
   }
 
 
@@ -598,6 +676,20 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::GSSetShaderResources(
+          UINT                              StartSlot,
+          UINT                              NumViews,
+          ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
+    D3D10DeviceLock lock = LockContext();
+
+    SetShaderResources<DxbcProgramType::GeometryShader>(
+      m_state.gs.shaderResources,
+      StartSlot, NumViews,
+      ppShaderResourceViews);
+  }
+
+
+  template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::GSGetShader(
           ID3D11GeometryShader**            ppGeometryShader,
           ID3D11ClassInstance**             ppClassInstances,
@@ -642,6 +734,18 @@ namespace dxvk {
       ppConstantBuffers,
       pFirstConstant,
       pNumConstants);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::GSGetShaderResources(
+          UINT                              StartSlot,
+          UINT                              NumViews,
+          ID3D11ShaderResourceView**        ppShaderResourceViews) {
+    D3D10DeviceLock lock = LockContext();
+
+    GetShaderResources(m_state.gs.shaderResources,
+      StartSlot, NumViews, ppShaderResourceViews);
   }
 
 
@@ -698,6 +802,20 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::PSSetShaderResources(
+          UINT                              StartSlot,
+          UINT                              NumViews,
+          ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
+    D3D10DeviceLock lock = LockContext();
+
+    SetShaderResources<DxbcProgramType::PixelShader>(
+      m_state.ps.shaderResources,
+      StartSlot, NumViews,
+      ppShaderResourceViews);
+  }
+
+
+  template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::PSGetShader(
           ID3D11PixelShader**               ppPixelShader,
           ID3D11ClassInstance**             ppClassInstances,
@@ -742,6 +860,18 @@ namespace dxvk {
       ppConstantBuffers,
       pFirstConstant,
       pNumConstants);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::PSGetShaderResources(
+          UINT                              StartSlot,
+          UINT                              NumViews,
+          ID3D11ShaderResourceView**        ppShaderResourceViews) {
+    D3D10DeviceLock lock = LockContext();
+
+    GetShaderResources(m_state.ps.shaderResources,
+      StartSlot, NumViews, ppShaderResourceViews);
   }
 
 
@@ -798,6 +928,20 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CSSetShaderResources(
+          UINT                              StartSlot,
+          UINT                              NumViews,
+          ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
+    D3D10DeviceLock lock = LockContext();
+
+    SetShaderResources<DxbcProgramType::ComputeShader>(
+      m_state.cs.shaderResources,
+      StartSlot, NumViews,
+      ppShaderResourceViews);
+  }
+
+
+  template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CSGetShader(
           ID3D11ComputeShader**             ppComputeShader,
           ID3D11ClassInstance**             ppClassInstances,
@@ -842,6 +986,18 @@ namespace dxvk {
       ppConstantBuffers,
       pFirstConstant,
       pNumConstants);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CSGetShaderResources(
+          UINT                              StartSlot,
+          UINT                              NumViews,
+          ID3D11ShaderResourceView**        ppShaderResourceViews) {
+    D3D10DeviceLock lock = LockContext();
+
+    GetShaderResources(m_state.cs.shaderResources,
+      StartSlot, NumViews, ppShaderResourceViews);
   }
 
 
@@ -1306,6 +1462,20 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void D3D11CommonContext<ContextType>::GetShaderResources(
+    const D3D11ShaderResourceBindings&      Bindings,
+          UINT                              StartSlot,
+          UINT                              NumViews,
+          ID3D11ShaderResourceView**        ppShaderResourceViews) {
+    for (uint32_t i = 0; i < NumViews; i++) {
+      ppShaderResourceViews[i] = StartSlot + i < Bindings.views.size()
+        ? Bindings.views[StartSlot + i].ref()
+        : nullptr;
+    }
+  }
+
+
+  template<typename ContextType>
   template<DxbcProgramType ShaderStage, typename T>
   void D3D11CommonContext<ContextType>::ResolveSrvHazards(
           T*                                pView,
@@ -1498,6 +1668,36 @@ namespace dxvk {
         Bindings[StartSlot + i].constantBound  = constantBound;
 
         BindConstantBufferRange<ShaderStage>(slotId + i, constantOffset, constantBound);
+      }
+    }
+  }
+
+
+  template<typename ContextType>
+  template<DxbcProgramType ShaderStage>
+  void D3D11CommonContext<ContextType>::SetShaderResources(
+          D3D11ShaderResourceBindings&      Bindings,
+          UINT                              StartSlot,
+          UINT                              NumResources,
+          ID3D11ShaderResourceView* const*  ppResources) {
+    uint32_t slotId = computeSrvBinding(ShaderStage, StartSlot);
+
+    for (uint32_t i = 0; i < NumResources; i++) {
+      auto resView = static_cast<D3D11ShaderResourceView*>(ppResources[i]);
+
+      if (Bindings.views[StartSlot + i] != resView) {
+        if (unlikely(resView && resView->TestHazards())) {
+          if (TestSrvHazards<ShaderStage>(resView))
+            resView = nullptr;
+
+          // Only set if necessary, but don't reset it on every
+          // bind as this would be more expensive than a few
+          // redundant checks in OMSetRenderTargets and friends.
+          Bindings.hazardous.set(StartSlot + i, resView);
+        }
+
+        Bindings.views[StartSlot + i] = resView;
+        BindShaderResource<ShaderStage>(slotId + i, resView);
       }
     }
   }

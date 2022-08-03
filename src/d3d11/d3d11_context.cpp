@@ -1284,19 +1284,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContext::VSSetShaderResources(
-          UINT                              StartSlot,
-          UINT                              NumViews,
-          ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
-    D3D10DeviceLock lock = LockContext();
-    
-    SetShaderResources<DxbcProgramType::VertexShader>(
-      m_state.vs.shaderResources,
-      StartSlot, NumViews,
-      ppShaderResourceViews);
-  }
-  
-  
   void STDMETHODCALLTYPE D3D11DeviceContext::VSSetSamplers(
           UINT                              StartSlot,
           UINT                              NumSamplers,
@@ -1310,17 +1297,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContext::VSGetShaderResources(
-          UINT                              StartSlot,
-          UINT                              NumViews,
-          ID3D11ShaderResourceView**        ppShaderResourceViews) {
-    D3D10DeviceLock lock = LockContext();
-    
-    GetShaderResources(m_state.vs.shaderResources,
-      StartSlot, NumViews, ppShaderResourceViews);
-  }
-  
-  
   void STDMETHODCALLTYPE D3D11DeviceContext::VSGetSamplers(
           UINT                              StartSlot,
           UINT                              NumSamplers,
@@ -1329,19 +1305,6 @@ namespace dxvk {
     
     GetSamplers(m_state.vs.samplers,
       StartSlot, NumSamplers, ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::HSSetShaderResources(
-          UINT                              StartSlot,
-          UINT                              NumViews,
-          ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
-    D3D10DeviceLock lock = LockContext();
-    
-    SetShaderResources<DxbcProgramType::HullShader>(
-      m_state.hs.shaderResources,
-      StartSlot, NumViews,
-      ppShaderResourceViews);
   }
   
   
@@ -1358,17 +1321,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContext::HSGetShaderResources(
-          UINT                              StartSlot,
-          UINT                              NumViews,
-          ID3D11ShaderResourceView**        ppShaderResourceViews) {
-    D3D10DeviceLock lock = LockContext();
-    
-    GetShaderResources(m_state.hs.shaderResources,
-      StartSlot, NumViews, ppShaderResourceViews);
-  }
-  
-  
   void STDMETHODCALLTYPE D3D11DeviceContext::HSGetSamplers(
           UINT                              StartSlot,
           UINT                              NumSamplers,
@@ -1377,19 +1329,6 @@ namespace dxvk {
     
     GetSamplers(m_state.hs.samplers,
       StartSlot, NumSamplers, ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::DSSetShaderResources(
-          UINT                              StartSlot,
-          UINT                              NumViews,
-          ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
-    D3D10DeviceLock lock = LockContext();
-    
-    SetShaderResources<DxbcProgramType::DomainShader>(
-      m_state.ds.shaderResources,
-      StartSlot, NumViews,
-      ppShaderResourceViews);
   }
   
   
@@ -1406,17 +1345,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContext::DSGetShaderResources(
-          UINT                              StartSlot,
-          UINT                              NumViews,
-          ID3D11ShaderResourceView**        ppShaderResourceViews) {
-    D3D10DeviceLock lock = LockContext();
-    
-    GetShaderResources(m_state.ds.shaderResources,
-      StartSlot, NumViews, ppShaderResourceViews);
-  }
-  
-  
   void STDMETHODCALLTYPE D3D11DeviceContext::DSGetSamplers(
           UINT                              StartSlot,
           UINT                              NumSamplers,
@@ -1425,19 +1353,6 @@ namespace dxvk {
     
     GetSamplers(m_state.ds.samplers,
       StartSlot, NumSamplers, ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::GSSetShaderResources(
-          UINT                              StartSlot,
-          UINT                              NumViews,
-          ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
-    D3D10DeviceLock lock = LockContext();
-    
-    SetShaderResources<DxbcProgramType::GeometryShader>(
-      m_state.gs.shaderResources,
-      StartSlot, NumViews,
-      ppShaderResourceViews);
   }
   
   
@@ -1454,17 +1369,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContext::GSGetShaderResources(
-          UINT                              StartSlot,
-          UINT                              NumViews,
-          ID3D11ShaderResourceView**        ppShaderResourceViews) {
-    D3D10DeviceLock lock = LockContext();
-    
-    GetShaderResources(m_state.gs.shaderResources,
-      StartSlot, NumViews, ppShaderResourceViews);
-  }
-  
-  
   void STDMETHODCALLTYPE D3D11DeviceContext::GSGetSamplers(
           UINT                              StartSlot,
           UINT                              NumSamplers,
@@ -1473,19 +1377,6 @@ namespace dxvk {
     
     GetSamplers(m_state.gs.samplers,
       StartSlot, NumSamplers, ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::PSSetShaderResources(
-          UINT                              StartSlot,
-          UINT                              NumViews,
-          ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
-    D3D10DeviceLock lock = LockContext();
-    
-    SetShaderResources<DxbcProgramType::PixelShader>(
-      m_state.ps.shaderResources,
-      StartSlot, NumViews,
-      ppShaderResourceViews);
   }
   
   
@@ -1502,17 +1393,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContext::PSGetShaderResources(
-          UINT                              StartSlot,
-          UINT                              NumViews,
-          ID3D11ShaderResourceView**        ppShaderResourceViews) {
-    D3D10DeviceLock lock = LockContext();
-    
-    GetShaderResources(m_state.ps.shaderResources,
-      StartSlot, NumViews, ppShaderResourceViews);
-  }
-  
-  
   void STDMETHODCALLTYPE D3D11DeviceContext::PSGetSamplers(
           UINT                              StartSlot,
           UINT                              NumSamplers,
@@ -1521,19 +1401,6 @@ namespace dxvk {
     
     GetSamplers(m_state.ps.samplers,
       StartSlot, NumSamplers, ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::CSSetShaderResources(
-          UINT                              StartSlot,
-          UINT                              NumViews,
-          ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
-    D3D10DeviceLock lock = LockContext();
-    
-    SetShaderResources<DxbcProgramType::ComputeShader>(
-      m_state.cs.shaderResources,
-      StartSlot, NumViews,
-      ppShaderResourceViews);
   }
   
   
@@ -1603,17 +1470,6 @@ namespace dxvk {
         ResolveCsSrvHazards(uav);
       }
     }
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::CSGetShaderResources(
-          UINT                              StartSlot,
-          UINT                              NumViews,
-          ID3D11ShaderResourceView**        ppShaderResourceViews) {
-    D3D10DeviceLock lock = LockContext();
-    
-    GetShaderResources(m_state.cs.shaderResources,
-      StartSlot, NumViews, ppShaderResourceViews);
   }
   
   
@@ -2957,48 +2813,6 @@ namespace dxvk {
   }
   
   
-  template<DxbcProgramType ShaderStage>
-  void D3D11DeviceContext::SetShaderResources(
-          D3D11ShaderResourceBindings&      Bindings,
-          UINT                              StartSlot,
-          UINT                              NumResources,
-          ID3D11ShaderResourceView* const*  ppResources) {
-    uint32_t slotId = computeSrvBinding(ShaderStage, StartSlot);
-    
-    for (uint32_t i = 0; i < NumResources; i++) {
-      auto resView = static_cast<D3D11ShaderResourceView*>(ppResources[i]);
-      
-      if (Bindings.views[StartSlot + i] != resView) {
-        if (unlikely(resView && resView->TestHazards())) {
-          if (TestSrvHazards<ShaderStage>(resView))
-            resView = nullptr;
-
-          // Only set if necessary, but don't reset it on every
-          // bind as this would be more expensive than a few
-          // redundant checks in OMSetRenderTargets and friends.
-          Bindings.hazardous.set(StartSlot + i, resView);
-        }
-
-        Bindings.views[StartSlot + i] = resView;
-        BindShaderResource<ShaderStage>(slotId + i, resView);
-      }
-    }
-  }
-  
-  
-  void D3D11DeviceContext::GetShaderResources(
-    const D3D11ShaderResourceBindings&      Bindings,
-          UINT                              StartSlot,
-          UINT                              NumViews,
-          ID3D11ShaderResourceView**        ppShaderResourceViews) {
-    for (uint32_t i = 0; i < NumViews; i++) {
-      ppShaderResourceViews[i] = StartSlot + i < Bindings.views.size()
-        ? Bindings.views[StartSlot + i].ref()
-        : nullptr;
-    }
-  }
-
-
   void D3D11DeviceContext::GetSamplers(
     const D3D11SamplerBindings&             Bindings,
           UINT                              StartSlot,
