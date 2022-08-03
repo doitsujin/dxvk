@@ -1805,6 +1805,37 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::SetPredication(
+          ID3D11Predicate*                  pPredicate,
+          BOOL                              PredicateValue) {
+    D3D10DeviceLock lock = LockContext();
+
+    auto predicate = D3D11Query::FromPredicate(pPredicate);
+    m_state.pr.predicateObject = predicate;
+    m_state.pr.predicateValue  = PredicateValue;
+
+    static bool s_errorShown = false;
+
+    if (pPredicate && !std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::SetPredication: Stub");
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::GetPredication(
+          ID3D11Predicate**                 ppPredicate,
+          BOOL*                             pPredicateValue) {
+    D3D10DeviceLock lock = LockContext();
+
+    if (ppPredicate)
+      *ppPredicate = D3D11Query::AsPredicate(m_state.pr.predicateObject.ref());
+
+    if (pPredicateValue)
+      *pPredicateValue = m_state.pr.predicateValue;
+  }
+
+
+  template<typename ContextType>
   BOOL STDMETHODCALLTYPE D3D11CommonContext<ContextType>::IsAnnotationEnabled() {
     return m_annotation.GetStatus();
   }

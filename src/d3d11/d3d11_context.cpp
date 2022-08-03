@@ -30,35 +30,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContext::SetPredication(
-          ID3D11Predicate*                  pPredicate,
-          BOOL                              PredicateValue) {
-    D3D10DeviceLock lock = LockContext();
-
-    auto predicate = D3D11Query::FromPredicate(pPredicate);
-    m_state.pr.predicateObject = predicate;
-    m_state.pr.predicateValue  = PredicateValue;
-
-    static bool s_errorShown = false;
-
-    if (pPredicate && !std::exchange(s_errorShown, true))
-      Logger::err("D3D11DeviceContext::SetPredication: Stub");
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::GetPredication(
-          ID3D11Predicate**                 ppPredicate,
-          BOOL*                             pPredicateValue) {
-    D3D10DeviceLock lock = LockContext();
-
-    if (ppPredicate)
-      *ppPredicate = D3D11Query::AsPredicate(m_state.pr.predicateObject.ref());
-    
-    if (pPredicateValue)
-      *pPredicateValue = m_state.pr.predicateValue;
-  }
-  
-  
   void STDMETHODCALLTYPE D3D11DeviceContext::CopySubresourceRegion(
           ID3D11Resource*                   pDstResource,
           UINT                              DstSubresource,

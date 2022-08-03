@@ -34,14 +34,6 @@ namespace dxvk {
             DxvkCsChunkFlags        CsFlags);
     ~D3D11DeviceContext();
     
-    void STDMETHODCALLTYPE SetPredication(
-            ID3D11Predicate*                  pPredicate,
-            BOOL                              PredicateValue);
-    
-    void STDMETHODCALLTYPE GetPredication(
-            ID3D11Predicate**                 ppPredicate,
-            BOOL*                             pPredicateValue);
-    
     void STDMETHODCALLTYPE CopySubresourceRegion(
             ID3D11Resource*                   pDstResource,
             UINT                              DstSubresource,

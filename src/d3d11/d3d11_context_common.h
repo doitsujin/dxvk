@@ -548,6 +548,14 @@ namespace dxvk {
             ID3D11Buffer**                    ppSOTargets,
             UINT*                             pOffsets);
 
+    void STDMETHODCALLTYPE SetPredication(
+            ID3D11Predicate*                  pPredicate,
+            BOOL                              PredicateValue);
+
+    void STDMETHODCALLTYPE GetPredication(
+            ID3D11Predicate**                 ppPredicate,
+            BOOL*                             pPredicateValue);
+
     BOOL STDMETHODCALLTYPE IsAnnotationEnabled();
 
   protected:
