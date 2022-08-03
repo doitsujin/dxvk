@@ -48,7 +48,7 @@ namespace dxvk {
     , m_dxvkDevice      ( dxvkDevice )
     , m_memoryAllocator ( )
     , m_shaderModules   ( new D3D9ShaderModuleSet )
-    , m_stagingBuffer   ( dxvkDevice, StagingBufferSize )
+    , m_stagingBuffer   ( this )
     , m_d3d9Options     ( dxvkDevice, pParent->GetInstance()->config() )
     , m_multithread     ( BehaviorFlags & D3DCREATE_MULTITHREADED )
     , m_isSWVP          ( (BehaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING) ? true : false )
@@ -855,8 +855,6 @@ namespace dxvk {
     srcTexInfo->ClearDirtyBoxes();
     if (dstTexInfo->IsAutomaticMip() && mipLevels != dstTexInfo->Desc()->MipLevels)
       MarkTextureMipsDirty(dstTexInfo);
-
-    FlushImplicit(false);
 
     return D3D_OK;
   }
@@ -4016,14 +4014,6 @@ namespace dxvk {
     return result;
   }
 
-
-  D3D9BufferSlice D3D9DeviceEx::AllocStagingBuffer(VkDeviceSize size) {
-    D3D9BufferSlice result;
-    result.slice = m_stagingBuffer.alloc(256, size);
-    result.mapPtr = result.slice.mapPtr(0);
-    return result;
-  }
-
   bool D3D9DeviceEx::ShouldRecord() {
     return m_recorder != nullptr && !m_recorder->IsApplying();
   }
@@ -4469,14 +4459,14 @@ namespace dxvk {
 
       const void* mapPtr = MapTexture(pSrcTexture, SrcSubresource);
       VkDeviceSize dirtySize = extentBlockCount.width * extentBlockCount.height * extentBlockCount.depth * formatInfo->elementSize;
-      D3D9BufferSlice slice = AllocStagingBuffer(dirtySize);
+      DxvkBufferSlice slice = m_stagingBuffer.Alloc(dirtySize);
       const void* srcData = reinterpret_cast<const uint8_t*>(mapPtr) + copySrcOffset;
       util::packImageData(
-        slice.mapPtr, srcData, extentBlockCount, formatInfo->elementSize,
+        slice.mapPtr(0), srcData, extentBlockCount, formatInfo->elementSize,
         pitch, pitch * srcTexLevelExtentBlockCount.height);
 
       EmitCs([
-        cSrcSlice       = slice.slice,
+        cSrcSlice       = slice,
         cDstImage       = image,
         cDstLayers      = dstLayers,
         cDstLevelExtent = alignedExtent,
@@ -4511,11 +4501,11 @@ namespace dxvk {
       }
 
       // the converter can not handle the 4 aligned pitch so we always repack into a staging buffer
-      D3D9BufferSlice slice = AllocStagingBuffer(pSrcTexture->GetMipSize(SrcSubresource));
+      DxvkBufferSlice slice = m_stagingBuffer.Alloc(pSrcTexture->GetMipSize(SrcSubresource));
       VkDeviceSize pitch = align(srcTexLevelExtentBlockCount.width * formatInfo->elementSize, 4);
 
       util::packImageData(
-        slice.mapPtr, mapPtr, srcTexLevelExtentBlockCount, formatInfo->elementSize,
+        slice.mapPtr(0), mapPtr, srcTexLevelExtentBlockCount, formatInfo->elementSize,
         pitch, std::min(convertFormat.PlaneCount, 2u) * pitch * srcTexLevelExtentBlockCount.height);
 
       Flush();
@@ -4524,10 +4514,10 @@ namespace dxvk {
       m_converter->ConvertFormat(
         convertFormat,
         image, dstLayers,
-        slice.slice);
+        slice);
     }
     UnmapTextures();
-    FlushImplicit(false);
+    FlushImplicit(m_d3d9Options.stagingMemory != 0 && m_stagingBuffer.StagingMemory() >= uint32_t(m_d3d9Options.stagingMemory) / 2);
   }
 
   void D3D9DeviceEx::EmitGenerateMips(
@@ -4662,13 +4652,13 @@ namespace dxvk {
 
     D3D9Range& range = pResource->DirtyRange();
 
-    D3D9BufferSlice slice = AllocStagingBuffer(range.max - range.min);
+    DxvkBufferSlice slice = m_stagingBuffer.Alloc(range.max - range.min);
     void* srcData = reinterpret_cast<uint8_t*>(srcSlice.mapPtr) + range.min;
-    memcpy(slice.mapPtr, srcData, range.max - range.min);
+    memcpy(slice.mapPtr(0), srcData, range.max - range.min);
 
     EmitCs([
       cDstSlice  = dstBuffer,
-      cSrcSlice  = slice.slice,
+      cSrcSlice  = slice,
       cDstOffset = range.min,
       cLength    = range.max - range.min
     ] (DxvkContext* ctx) {
@@ -4684,7 +4674,8 @@ namespace dxvk {
     TrackBufferMappingBufferSequenceNumber(pResource);
 
     UnmapTextures();
-    FlushImplicit(false);
+    FlushImplicit(m_d3d9Options.stagingMemory != 0 && m_stagingBuffer.StagingMemory() >= uint32_t(m_d3d9Options.stagingMemory) / 2);
+
     return D3D_OK;
   }
 

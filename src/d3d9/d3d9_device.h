@@ -12,6 +12,7 @@
 #include "d3d9_constant_buffer.h"
 #include "d3d9_constant_set.h"
 #include "d3d9_mem.h"
+#include "d3d9_staging.h"
 
 #include "d3d9_state.h"
 
@@ -107,11 +108,11 @@ namespace dxvk {
 
     constexpr static uint32_t NullStreamIdx = caps::MaxStreams;
 
-    constexpr static VkDeviceSize StagingBufferSize = 4ull << 20;
-
     friend class D3D9SwapChainEx;
     friend class D3D9ConstantBuffer;
     friend class D3D9UserDefinedAnnotation;
+    friend class D3D9StagingBuffer;
+
   public:
 
     D3D9DeviceEx(
@@ -1194,7 +1195,7 @@ namespace dxvk {
     VkDeviceSize                    m_upBufferOffset  = 0ull;
     void*                           m_upBufferMapPtr  = nullptr;
 
-    DxvkStagingBuffer               m_stagingBuffer;
+    D3D9StagingBuffer               m_stagingBuffer;
 
     D3D9Cursor                      m_cursor;
 
