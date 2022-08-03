@@ -136,6 +136,13 @@ namespace dxvk {
     void STDMETHODCALLTYPE GenerateMips(
             ID3D11ShaderResourceView*         pShaderResourceView);
 
+    void STDMETHODCALLTYPE ResolveSubresource(
+            ID3D11Resource*                   pDstResource,
+            UINT                              DstSubresource,
+            ID3D11Resource*                   pSrcResource,
+            UINT                              SrcSubresource,
+            DXGI_FORMAT                       Format);
+
     void STDMETHODCALLTYPE UpdateSubresource(
             ID3D11Resource*                   pDstResource,
             UINT                              DstSubresource,

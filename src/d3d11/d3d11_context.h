@@ -84,13 +84,6 @@ namespace dxvk {
     FLOAT STDMETHODCALLTYPE GetResourceMinLOD(
             ID3D11Resource*                   pResource);
     
-    void STDMETHODCALLTYPE ResolveSubresource(
-            ID3D11Resource*                   pDstResource,
-            UINT                              DstSubresource,
-            ID3D11Resource*                   pSrcResource,
-            UINT                              SrcSubresource,
-            DXGI_FORMAT                       Format);
-    
     void STDMETHODCALLTYPE DrawAuto();
     
     void STDMETHODCALLTYPE Draw(
