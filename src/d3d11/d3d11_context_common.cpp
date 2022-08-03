@@ -363,6 +363,174 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  template<DxbcProgramType ShaderStage, typename T>
+  void D3D11CommonContext<ContextType>::ResolveSrvHazards(
+          T*                                pView,
+          D3D11ShaderResourceBindings&      Bindings) {
+    uint32_t slotId = computeSrvBinding(ShaderStage, 0);
+    int32_t srvId = Bindings.hazardous.findNext(0);
+
+    while (srvId >= 0) {
+      auto srv = Bindings.views[srvId].ptr();
+
+      if (likely(srv && srv->TestHazards())) {
+        bool hazard = CheckViewOverlap(pView, srv);
+
+        if (unlikely(hazard)) {
+          Bindings.views[srvId] = nullptr;
+          Bindings.hazardous.clr(srvId);
+
+          BindShaderResource<ShaderStage>(slotId + srvId, nullptr);
+        }
+      } else {
+        // Avoid further redundant iterations
+        Bindings.hazardous.clr(srvId);
+      }
+
+      srvId = Bindings.hazardous.findNext(srvId + 1);
+    }
+  }
+
+
+  template<typename ContextType>
+  template<typename T>
+  void D3D11CommonContext<ContextType>::ResolveCsSrvHazards(
+          T*                                pView) {
+    if (!pView) return;
+    ResolveSrvHazards<DxbcProgramType::ComputeShader>  (pView, m_state.cs.shaderResources);
+  }
+
+
+  template<typename ContextType>
+  template<typename T>
+  void D3D11CommonContext<ContextType>::ResolveOmSrvHazards(
+          T*                                pView) {
+    if (!pView) return;
+    ResolveSrvHazards<DxbcProgramType::VertexShader>   (pView, m_state.vs.shaderResources);
+    ResolveSrvHazards<DxbcProgramType::HullShader>     (pView, m_state.hs.shaderResources);
+    ResolveSrvHazards<DxbcProgramType::DomainShader>   (pView, m_state.ds.shaderResources);
+    ResolveSrvHazards<DxbcProgramType::GeometryShader> (pView, m_state.gs.shaderResources);
+    ResolveSrvHazards<DxbcProgramType::PixelShader>    (pView, m_state.ps.shaderResources);
+  }
+
+
+  template<typename ContextType>
+  bool D3D11CommonContext<ContextType>::ResolveOmRtvHazards(
+          D3D11UnorderedAccessView*         pView) {
+    if (!pView || !pView->HasBindFlag(D3D11_BIND_RENDER_TARGET))
+      return false;
+
+    bool hazard = false;
+
+    if (CheckViewOverlap(pView, m_state.om.depthStencilView.ptr())) {
+      m_state.om.depthStencilView = nullptr;
+      hazard = true;
+    }
+
+    for (uint32_t i = 0; i < m_state.om.maxRtv; i++) {
+      if (CheckViewOverlap(pView, m_state.om.renderTargetViews[i].ptr())) {
+        m_state.om.renderTargetViews[i] = nullptr;
+        hazard = true;
+      }
+    }
+
+    return hazard;
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ResolveOmUavHazards(
+          D3D11RenderTargetView*            pView) {
+    if (!pView || !pView->HasBindFlag(D3D11_BIND_UNORDERED_ACCESS))
+      return;
+
+    uint32_t uavSlotId = computeUavBinding       (DxbcProgramType::PixelShader, 0);
+    uint32_t ctrSlotId = computeUavCounterBinding(DxbcProgramType::PixelShader, 0);
+
+    for (uint32_t i = 0; i < m_state.om.maxUav; i++) {
+      if (CheckViewOverlap(pView, m_state.ps.unorderedAccessViews[i].ptr())) {
+        m_state.ps.unorderedAccessViews[i] = nullptr;
+
+        BindUnorderedAccessView<DxbcProgramType::PixelShader>(
+          uavSlotId + i, nullptr,
+          ctrSlotId + i, ~0u);
+      }
+    }
+  }
+
+
+  template<typename ContextType>
+  bool D3D11CommonContext<ContextType>::TestRtvUavHazards(
+          UINT                              NumRTVs,
+          ID3D11RenderTargetView* const*    ppRTVs,
+          UINT                              NumUAVs,
+          ID3D11UnorderedAccessView* const* ppUAVs) {
+    if (NumRTVs == D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL) NumRTVs = 0;
+    if (NumUAVs == D3D11_KEEP_UNORDERED_ACCESS_VIEWS)           NumUAVs = 0;
+
+    for (uint32_t i = 0; i < NumRTVs; i++) {
+      auto rtv = static_cast<D3D11RenderTargetView*>(ppRTVs[i]);
+
+      if (!rtv)
+        continue;
+
+      for (uint32_t j = 0; j < i; j++) {
+        if (CheckViewOverlap(rtv, static_cast<D3D11RenderTargetView*>(ppRTVs[j])))
+          return true;
+      }
+
+      if (rtv->HasBindFlag(D3D11_BIND_UNORDERED_ACCESS)) {
+        for (uint32_t j = 0; j < NumUAVs; j++) {
+          if (CheckViewOverlap(rtv, static_cast<D3D11UnorderedAccessView*>(ppUAVs[j])))
+            return true;
+        }
+      }
+    }
+
+    for (uint32_t i = 0; i < NumUAVs; i++) {
+      auto uav = static_cast<D3D11UnorderedAccessView*>(ppUAVs[i]);
+
+      if (!uav)
+        continue;
+
+      for (uint32_t j = 0; j < i; j++) {
+        if (CheckViewOverlap(uav, static_cast<D3D11UnorderedAccessView*>(ppUAVs[j])))
+          return true;
+      }
+    }
+
+    return false;
+  }
+
+
+  template<typename ContextType>
+  template<DxbcProgramType ShaderStage>
+  bool D3D11CommonContext<ContextType>::TestSrvHazards(
+          D3D11ShaderResourceView*          pView) {
+    bool hazard = false;
+
+    if (ShaderStage == DxbcProgramType::ComputeShader) {
+      int32_t uav = m_state.cs.uavMask.findNext(0);
+
+      while (uav >= 0 && !hazard) {
+        hazard = CheckViewOverlap(pView, m_state.cs.unorderedAccessViews[uav].ptr());
+        uav = m_state.cs.uavMask.findNext(uav + 1);
+      }
+    } else {
+      hazard = CheckViewOverlap(pView, m_state.om.depthStencilView.ptr());
+
+      for (uint32_t i = 0; !hazard && i < m_state.om.maxRtv; i++)
+        hazard = CheckViewOverlap(pView, m_state.om.renderTargetViews[i].ptr());
+
+      for (uint32_t i = 0; !hazard && i < m_state.om.maxUav; i++)
+        hazard = CheckViewOverlap(pView, m_state.ps.unorderedAccessViews[i].ptr());
+    }
+
+    return hazard;
+  }
+
+
+  template<typename ContextType>
   void D3D11CommonContext<ContextType>::UpdateResource(
           ID3D11Resource*                   pDstResource,
           UINT                              DstSubresource,

@@ -148,6 +148,44 @@ namespace dxvk {
             UINT                              CtrSlot,
             UINT                              Counter);
 
+    template<DxbcProgramType ShaderStage, typename T>
+    void ResolveSrvHazards(
+            T*                                pView,
+            D3D11ShaderResourceBindings&      Bindings);
+
+    template<typename T>
+    void ResolveCsSrvHazards(
+            T*                                pView);
+
+    template<typename T>
+    void ResolveOmSrvHazards(
+            T*                                pView);
+
+    bool ResolveOmRtvHazards(
+            D3D11UnorderedAccessView*         pView);
+
+    void ResolveOmUavHazards(
+            D3D11RenderTargetView*            pView);
+
+    void SetRenderTargetsAndUnorderedAccessViews(
+            UINT                              NumRTVs,
+            ID3D11RenderTargetView* const*    ppRenderTargetViews,
+            ID3D11DepthStencilView*           pDepthStencilView,
+            UINT                              UAVStartSlot,
+            UINT                              NumUAVs,
+            ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
+      const UINT*                             pUAVInitialCounts);
+
+    bool TestRtvUavHazards(
+            UINT                              NumRTVs,
+            ID3D11RenderTargetView* const*    ppRTVs,
+            UINT                              NumUAVs,
+            ID3D11UnorderedAccessView* const* ppUAVs);
+
+    template<DxbcProgramType ShaderStage>
+    bool TestSrvHazards(
+            D3D11ShaderResourceView*          pView);
+
     void UpdateResource(
             ID3D11Resource*                   pDstResource,
             UINT                              DstSubresource,
