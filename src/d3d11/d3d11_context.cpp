@@ -1284,25 +1284,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContext::VSSetShader(
-          ID3D11VertexShader*               pVertexShader,
-          ID3D11ClassInstance* const*       ppClassInstances,
-          UINT                              NumClassInstances) {
-    D3D10DeviceLock lock = LockContext();
-    
-    auto shader = static_cast<D3D11VertexShader*>(pVertexShader);
-    
-    if (NumClassInstances != 0)
-      Logger::err("D3D11: Class instances not supported");
-    
-    if (m_state.vs.shader != shader) {
-      m_state.vs.shader = shader;
-
-      BindShader<DxbcProgramType::VertexShader>(GetCommonShader(shader));
-    }
-  }
-  
-  
   void STDMETHODCALLTYPE D3D11DeviceContext::VSSetConstantBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
@@ -1359,20 +1340,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContext::VSGetShader(
-          ID3D11VertexShader**              ppVertexShader,
-          ID3D11ClassInstance**             ppClassInstances,
-          UINT*                             pNumClassInstances) {
-    D3D10DeviceLock lock = LockContext();
-    
-    if (ppVertexShader != nullptr)
-      *ppVertexShader = m_state.vs.shader.ref();
-    
-    if (pNumClassInstances != nullptr)
-      *pNumClassInstances = 0;
-  }
-  
-  
   void STDMETHODCALLTYPE D3D11DeviceContext::VSGetConstantBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
@@ -1423,25 +1390,6 @@ namespace dxvk {
     
     GetSamplers(m_state.vs.samplers,
       StartSlot, NumSamplers, ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::HSSetShader(
-          ID3D11HullShader*                 pHullShader,
-          ID3D11ClassInstance* const*       ppClassInstances,
-          UINT                              NumClassInstances) {
-    D3D10DeviceLock lock = LockContext();
-    
-    auto shader = static_cast<D3D11HullShader*>(pHullShader);
-    
-    if (NumClassInstances != 0)
-      Logger::err("D3D11: Class instances not supported");
-    
-    if (m_state.hs.shader != shader) {
-      m_state.hs.shader = shader;
-
-      BindShader<DxbcProgramType::HullShader>(GetCommonShader(shader));
-    }
   }
   
   
@@ -1501,20 +1449,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContext::HSGetShader(
-          ID3D11HullShader**                ppHullShader,
-          ID3D11ClassInstance**             ppClassInstances,
-          UINT*                             pNumClassInstances) {
-    D3D10DeviceLock lock = LockContext();
-    
-    if (ppHullShader != nullptr)
-      *ppHullShader = m_state.hs.shader.ref();
-    
-    if (pNumClassInstances != nullptr)
-      *pNumClassInstances = 0;
-  }
-  
-  
   void STDMETHODCALLTYPE D3D11DeviceContext::HSGetConstantBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
@@ -1565,25 +1499,6 @@ namespace dxvk {
     
     GetSamplers(m_state.hs.samplers,
       StartSlot, NumSamplers, ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::DSSetShader(
-          ID3D11DomainShader*               pDomainShader,
-          ID3D11ClassInstance* const*       ppClassInstances,
-          UINT                              NumClassInstances) {
-    D3D10DeviceLock lock = LockContext();
-    
-    auto shader = static_cast<D3D11DomainShader*>(pDomainShader);
-    
-    if (NumClassInstances != 0)
-      Logger::err("D3D11: Class instances not supported");
-    
-    if (m_state.ds.shader != shader) {
-      m_state.ds.shader = shader;
-
-      BindShader<DxbcProgramType::DomainShader>(GetCommonShader(shader));
-    }
   }
   
   
@@ -1643,20 +1558,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContext::DSGetShader(
-          ID3D11DomainShader**              ppDomainShader,
-          ID3D11ClassInstance**             ppClassInstances,
-          UINT*                             pNumClassInstances) {
-    D3D10DeviceLock lock = LockContext();
-    
-    if (ppDomainShader != nullptr)
-      *ppDomainShader = m_state.ds.shader.ref();
-    
-    if (pNumClassInstances != nullptr)
-      *pNumClassInstances = 0;
-  }
-  
-  
   void STDMETHODCALLTYPE D3D11DeviceContext::DSGetConstantBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
@@ -1707,25 +1608,6 @@ namespace dxvk {
     
     GetSamplers(m_state.ds.samplers,
       StartSlot, NumSamplers, ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::GSSetShader(
-          ID3D11GeometryShader*             pShader,
-          ID3D11ClassInstance* const*       ppClassInstances,
-          UINT                              NumClassInstances) {
-    D3D10DeviceLock lock = LockContext();
-    
-    auto shader = static_cast<D3D11GeometryShader*>(pShader);
-    
-    if (NumClassInstances != 0)
-      Logger::err("D3D11: Class instances not supported");
-    
-    if (m_state.gs.shader != shader) {
-      m_state.gs.shader = shader;
-
-      BindShader<DxbcProgramType::GeometryShader>(GetCommonShader(shader));
-    }
   }
   
   
@@ -1785,20 +1667,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContext::GSGetShader(
-          ID3D11GeometryShader**            ppGeometryShader,
-          ID3D11ClassInstance**             ppClassInstances,
-          UINT*                             pNumClassInstances) {
-    D3D10DeviceLock lock = LockContext();
-    
-    if (ppGeometryShader != nullptr)
-      *ppGeometryShader = m_state.gs.shader.ref();
-    
-    if (pNumClassInstances != nullptr)
-      *pNumClassInstances = 0;
-  }
-  
-  
   void STDMETHODCALLTYPE D3D11DeviceContext::GSGetConstantBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
@@ -1849,25 +1717,6 @@ namespace dxvk {
     
     GetSamplers(m_state.gs.samplers,
       StartSlot, NumSamplers, ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::PSSetShader(
-          ID3D11PixelShader*                pPixelShader,
-          ID3D11ClassInstance* const*       ppClassInstances,
-          UINT                              NumClassInstances) {
-    D3D10DeviceLock lock = LockContext();
-    
-    auto shader = static_cast<D3D11PixelShader*>(pPixelShader);
-    
-    if (NumClassInstances != 0)
-      Logger::err("D3D11: Class instances not supported");
-    
-    if (m_state.ps.shader != shader) {
-      m_state.ps.shader = shader;
-
-      BindShader<DxbcProgramType::PixelShader>(GetCommonShader(shader));
-    }
   }
   
   
@@ -1927,20 +1776,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContext::PSGetShader(
-          ID3D11PixelShader**               ppPixelShader,
-          ID3D11ClassInstance**             ppClassInstances,
-          UINT*                             pNumClassInstances) {
-    D3D10DeviceLock lock = LockContext();
-    
-    if (ppPixelShader != nullptr)
-      *ppPixelShader = m_state.ps.shader.ref();
-    
-    if (pNumClassInstances != nullptr)
-      *pNumClassInstances = 0;
-  }
-  
-  
   void STDMETHODCALLTYPE D3D11DeviceContext::PSGetConstantBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
@@ -1991,25 +1826,6 @@ namespace dxvk {
     
     GetSamplers(m_state.ps.samplers,
       StartSlot, NumSamplers, ppSamplers);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::CSSetShader(
-          ID3D11ComputeShader*              pComputeShader,
-          ID3D11ClassInstance* const*       ppClassInstances,
-          UINT                              NumClassInstances) {
-    D3D10DeviceLock lock = LockContext();
-    
-    auto shader = static_cast<D3D11ComputeShader*>(pComputeShader);
-    
-    if (NumClassInstances != 0)
-      Logger::err("D3D11: Class instances not supported");
-    
-    if (m_state.cs.shader != shader) {
-      m_state.cs.shader = shader;
-
-      BindShader<DxbcProgramType::ComputeShader>(GetCommonShader(shader));
-    }
   }
   
   
@@ -2122,20 +1938,6 @@ namespace dxvk {
         ResolveCsSrvHazards(uav);
       }
     }
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11DeviceContext::CSGetShader(
-          ID3D11ComputeShader**             ppComputeShader,
-          ID3D11ClassInstance**             ppClassInstances,
-          UINT*                             pNumClassInstances) {
-    D3D10DeviceLock lock = LockContext();
-    
-    if (ppComputeShader != nullptr)
-      *ppComputeShader = m_state.cs.shader.ref();
-    
-    if (pNumClassInstances != nullptr)
-      *pNumClassInstances = 0;
   }
   
   

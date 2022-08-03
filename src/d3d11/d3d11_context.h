@@ -208,11 +208,6 @@ namespace dxvk {
             ID3D11Buffer*   pBufferForArgs,
             UINT            AlignedByteOffsetForArgs);
     
-    void STDMETHODCALLTYPE VSSetShader(
-            ID3D11VertexShader*               pVertexShader,
-            ID3D11ClassInstance* const*       ppClassInstances,
-            UINT                              NumClassInstances);
-    
     void STDMETHODCALLTYPE VSSetConstantBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
@@ -234,11 +229,6 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState* const*        ppSamplers);
-    
-    void STDMETHODCALLTYPE VSGetShader(
-            ID3D11VertexShader**              ppVertexShader,
-            ID3D11ClassInstance**             ppClassInstances,
-            UINT*                             pNumClassInstances);
     
     void STDMETHODCALLTYPE VSGetConstantBuffers(
             UINT                              StartSlot,
@@ -262,11 +252,6 @@ namespace dxvk {
             UINT                              NumSamplers,
             ID3D11SamplerState**              ppSamplers);
     
-    void STDMETHODCALLTYPE HSSetShader(
-            ID3D11HullShader*                 pHullShader,
-            ID3D11ClassInstance* const*       ppClassInstances,
-            UINT                              NumClassInstances);
-    
     void STDMETHODCALLTYPE HSSetShaderResources(
             UINT                              StartSlot,
             UINT                              NumViews,
@@ -288,11 +273,6 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState* const*        ppSamplers);
-    
-    void STDMETHODCALLTYPE HSGetShader(
-            ID3D11HullShader**                ppHullShader,
-            ID3D11ClassInstance**             ppClassInstances,
-            UINT*                             pNumClassInstances);
     
     void STDMETHODCALLTYPE HSGetConstantBuffers(
             UINT                              StartSlot,
@@ -316,11 +296,6 @@ namespace dxvk {
             UINT                              NumSamplers,
             ID3D11SamplerState**              ppSamplers);
     
-    void STDMETHODCALLTYPE DSSetShader(
-            ID3D11DomainShader*               pDomainShader,
-            ID3D11ClassInstance* const*       ppClassInstances,
-            UINT                              NumClassInstances);
-    
     void STDMETHODCALLTYPE DSSetShaderResources(
             UINT                              StartSlot,
             UINT                              NumViews,
@@ -342,11 +317,6 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState* const*        ppSamplers);
-    
-    void STDMETHODCALLTYPE DSGetShader(
-            ID3D11DomainShader**              ppDomainShader,
-            ID3D11ClassInstance**             ppClassInstances,
-            UINT*                             pNumClassInstances);
     
     void STDMETHODCALLTYPE DSGetConstantBuffers(
             UINT                              StartSlot,
@@ -370,11 +340,6 @@ namespace dxvk {
             UINT                              NumSamplers,
             ID3D11SamplerState**              ppSamplers);
     
-    void STDMETHODCALLTYPE GSSetShader(
-            ID3D11GeometryShader*             pShader,
-            ID3D11ClassInstance* const*       ppClassInstances,
-            UINT                              NumClassInstances);
-    
     void STDMETHODCALLTYPE GSSetConstantBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
@@ -396,11 +361,6 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState* const*        ppSamplers);
-    
-    void STDMETHODCALLTYPE GSGetShader(
-            ID3D11GeometryShader**            ppGeometryShader,
-            ID3D11ClassInstance**             ppClassInstances,
-            UINT*                             pNumClassInstances);
     
     void STDMETHODCALLTYPE GSGetConstantBuffers(
             UINT                              StartSlot,
@@ -424,11 +384,6 @@ namespace dxvk {
             UINT                              NumSamplers,
             ID3D11SamplerState**              ppSamplers);
     
-    void STDMETHODCALLTYPE PSSetShader(
-            ID3D11PixelShader*                pPixelShader,
-            ID3D11ClassInstance* const*       ppClassInstances,
-            UINT                              NumClassInstances);
-    
     void STDMETHODCALLTYPE PSSetConstantBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
@@ -451,11 +406,6 @@ namespace dxvk {
             UINT                              NumSamplers,
             ID3D11SamplerState* const*        ppSamplers);
     
-    void STDMETHODCALLTYPE PSGetShader(
-            ID3D11PixelShader**               ppPixelShader,
-            ID3D11ClassInstance**             ppClassInstances,
-            UINT*                             pNumClassInstances);
-    
     void STDMETHODCALLTYPE PSGetConstantBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
@@ -477,11 +427,6 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState**              ppSamplers);
-    
-    void STDMETHODCALLTYPE CSSetShader(
-            ID3D11ComputeShader*              pComputeShader,
-            ID3D11ClassInstance* const*       ppClassInstances,
-            UINT                              NumClassInstances);
     
     void STDMETHODCALLTYPE CSSetConstantBuffers(
             UINT                              StartSlot,
@@ -510,11 +455,6 @@ namespace dxvk {
             UINT                              NumUAVs,
             ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
       const UINT*                             pUAVInitialCounts);
-    
-    void STDMETHODCALLTYPE CSGetShader(
-            ID3D11ComputeShader**             ppComputeShader,
-            ID3D11ClassInstance**             ppClassInstances,
-            UINT*                             pNumClassInstances);
     
     void STDMETHODCALLTYPE CSGetConstantBuffers(
             UINT                              StartSlot,

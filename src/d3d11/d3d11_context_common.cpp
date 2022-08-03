@@ -246,6 +246,216 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::VSSetShader(
+          ID3D11VertexShader*               pVertexShader,
+          ID3D11ClassInstance* const*       ppClassInstances,
+          UINT                              NumClassInstances) {
+    D3D10DeviceLock lock = LockContext();
+
+    auto shader = static_cast<D3D11VertexShader*>(pVertexShader);
+
+    if (NumClassInstances)
+      Logger::err("D3D11: Class instances not supported");
+
+    if (m_state.vs.shader != shader) {
+      m_state.vs.shader = shader;
+
+      BindShader<DxbcProgramType::VertexShader>(GetCommonShader(shader));
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::VSGetShader(
+          ID3D11VertexShader**              ppVertexShader,
+          ID3D11ClassInstance**             ppClassInstances,
+          UINT*                             pNumClassInstances) {
+    D3D10DeviceLock lock = LockContext();
+
+    if (ppVertexShader)
+      *ppVertexShader = m_state.vs.shader.ref();
+
+    if (pNumClassInstances)
+      *pNumClassInstances = 0;
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::HSSetShader(
+          ID3D11HullShader*                 pHullShader,
+          ID3D11ClassInstance* const*       ppClassInstances,
+          UINT                              NumClassInstances) {
+    D3D10DeviceLock lock = LockContext();
+
+    auto shader = static_cast<D3D11HullShader*>(pHullShader);
+
+    if (NumClassInstances)
+      Logger::err("D3D11: Class instances not supported");
+
+    if (m_state.hs.shader != shader) {
+      m_state.hs.shader = shader;
+
+      BindShader<DxbcProgramType::HullShader>(GetCommonShader(shader));
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::HSGetShader(
+          ID3D11HullShader**                ppHullShader,
+          ID3D11ClassInstance**             ppClassInstances,
+          UINT*                             pNumClassInstances) {
+    D3D10DeviceLock lock = LockContext();
+
+    if (ppHullShader)
+      *ppHullShader = m_state.hs.shader.ref();
+
+    if (pNumClassInstances)
+      *pNumClassInstances = 0;
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DSSetShader(
+          ID3D11DomainShader*               pDomainShader,
+          ID3D11ClassInstance* const*       ppClassInstances,
+          UINT                              NumClassInstances) {
+    D3D10DeviceLock lock = LockContext();
+
+    auto shader = static_cast<D3D11DomainShader*>(pDomainShader);
+
+    if (NumClassInstances)
+      Logger::err("D3D11: Class instances not supported");
+
+    if (m_state.ds.shader != shader) {
+      m_state.ds.shader = shader;
+
+      BindShader<DxbcProgramType::DomainShader>(GetCommonShader(shader));
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DSGetShader(
+          ID3D11DomainShader**              ppDomainShader,
+          ID3D11ClassInstance**             ppClassInstances,
+          UINT*                             pNumClassInstances) {
+    D3D10DeviceLock lock = LockContext();
+
+    if (ppDomainShader)
+      *ppDomainShader = m_state.ds.shader.ref();
+
+    if (pNumClassInstances)
+      *pNumClassInstances = 0;
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::GSSetShader(
+          ID3D11GeometryShader*             pShader,
+          ID3D11ClassInstance* const*       ppClassInstances,
+          UINT                              NumClassInstances) {
+    D3D10DeviceLock lock = LockContext();
+
+    auto shader = static_cast<D3D11GeometryShader*>(pShader);
+
+    if (NumClassInstances)
+      Logger::err("D3D11: Class instances not supported");
+
+    if (m_state.gs.shader != shader) {
+      m_state.gs.shader = shader;
+
+      BindShader<DxbcProgramType::GeometryShader>(GetCommonShader(shader));
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::GSGetShader(
+          ID3D11GeometryShader**            ppGeometryShader,
+          ID3D11ClassInstance**             ppClassInstances,
+          UINT*                             pNumClassInstances) {
+    D3D10DeviceLock lock = LockContext();
+
+    if (ppGeometryShader)
+      *ppGeometryShader = m_state.gs.shader.ref();
+
+    if (pNumClassInstances)
+      *pNumClassInstances = 0;
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::PSSetShader(
+          ID3D11PixelShader*                pPixelShader,
+          ID3D11ClassInstance* const*       ppClassInstances,
+          UINT                              NumClassInstances) {
+    D3D10DeviceLock lock = LockContext();
+
+    auto shader = static_cast<D3D11PixelShader*>(pPixelShader);
+
+    if (NumClassInstances)
+      Logger::err("D3D11: Class instances not supported");
+
+    if (m_state.ps.shader != shader) {
+      m_state.ps.shader = shader;
+
+      BindShader<DxbcProgramType::PixelShader>(GetCommonShader(shader));
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::PSGetShader(
+          ID3D11PixelShader**               ppPixelShader,
+          ID3D11ClassInstance**             ppClassInstances,
+          UINT*                             pNumClassInstances) {
+    D3D10DeviceLock lock = LockContext();
+
+    if (ppPixelShader)
+      *ppPixelShader = m_state.ps.shader.ref();
+
+    if (pNumClassInstances)
+      *pNumClassInstances = 0;
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CSSetShader(
+          ID3D11ComputeShader*              pComputeShader,
+          ID3D11ClassInstance* const*       ppClassInstances,
+          UINT                              NumClassInstances) {
+    D3D10DeviceLock lock = LockContext();
+
+    auto shader = static_cast<D3D11ComputeShader*>(pComputeShader);
+
+    if (NumClassInstances)
+      Logger::err("D3D11: Class instances not supported");
+
+    if (m_state.cs.shader != shader) {
+      m_state.cs.shader = shader;
+
+      BindShader<DxbcProgramType::ComputeShader>(GetCommonShader(shader));
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CSGetShader(
+          ID3D11ComputeShader**             ppComputeShader,
+          ID3D11ClassInstance**             ppClassInstances,
+          UINT*                             pNumClassInstances) {
+    D3D10DeviceLock lock = LockContext();
+
+    if (ppComputeShader)
+      *ppComputeShader = m_state.cs.shader.ref();
+
+    if (pNumClassInstances)
+      *pNumClassInstances = 0;
+  }
+
+
+  template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::OMSetRenderTargets(
           UINT                              NumViews,
           ID3D11RenderTargetView* const*    ppRenderTargetViews,

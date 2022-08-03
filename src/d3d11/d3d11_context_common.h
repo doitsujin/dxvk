@@ -121,6 +121,66 @@ namespace dxvk {
             DXGI_FORMAT*                      pFormat,
             UINT*                             pOffset);
 
+    void STDMETHODCALLTYPE VSSetShader(
+            ID3D11VertexShader*               pVertexShader,
+            ID3D11ClassInstance* const*       ppClassInstances,
+            UINT                              NumClassInstances);
+
+    void STDMETHODCALLTYPE VSGetShader(
+            ID3D11VertexShader**              ppVertexShader,
+            ID3D11ClassInstance**             ppClassInstances,
+            UINT*                             pNumClassInstances);
+
+    void STDMETHODCALLTYPE HSSetShader(
+            ID3D11HullShader*                 pHullShader,
+            ID3D11ClassInstance* const*       ppClassInstances,
+            UINT                              NumClassInstances);
+
+    void STDMETHODCALLTYPE HSGetShader(
+            ID3D11HullShader**                ppHullShader,
+            ID3D11ClassInstance**             ppClassInstances,
+            UINT*                             pNumClassInstances);
+
+    void STDMETHODCALLTYPE DSSetShader(
+            ID3D11DomainShader*               pDomainShader,
+            ID3D11ClassInstance* const*       ppClassInstances,
+            UINT                              NumClassInstances);
+
+    void STDMETHODCALLTYPE DSGetShader(
+            ID3D11DomainShader**              ppDomainShader,
+            ID3D11ClassInstance**             ppClassInstances,
+            UINT*                             pNumClassInstances);
+
+    void STDMETHODCALLTYPE GSSetShader(
+            ID3D11GeometryShader*             pShader,
+            ID3D11ClassInstance* const*       ppClassInstances,
+            UINT                              NumClassInstances);
+
+    void STDMETHODCALLTYPE GSGetShader(
+            ID3D11GeometryShader**            ppGeometryShader,
+            ID3D11ClassInstance**             ppClassInstances,
+            UINT*                             pNumClassInstances);
+
+    void STDMETHODCALLTYPE PSSetShader(
+            ID3D11PixelShader*                pPixelShader,
+            ID3D11ClassInstance* const*       ppClassInstances,
+            UINT                              NumClassInstances);
+
+    void STDMETHODCALLTYPE PSGetShader(
+            ID3D11PixelShader**               ppPixelShader,
+            ID3D11ClassInstance**             ppClassInstances,
+            UINT*                             pNumClassInstances);
+
+    void STDMETHODCALLTYPE CSSetShader(
+            ID3D11ComputeShader*              pComputeShader,
+            ID3D11ClassInstance* const*       ppClassInstances,
+            UINT                              NumClassInstances);
+
+    void STDMETHODCALLTYPE CSGetShader(
+            ID3D11ComputeShader**             ppComputeShader,
+            ID3D11ClassInstance**             ppClassInstances,
+            UINT*                             pNumClassInstances);
+
     void STDMETHODCALLTYPE OMSetRenderTargets(
             UINT                              NumViews,
             ID3D11RenderTargetView* const*    ppRenderTargetViews,
