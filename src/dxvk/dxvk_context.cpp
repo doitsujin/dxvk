@@ -5855,4 +5855,9 @@ namespace dxvk {
     }
   }
 
+
+  void DxvkContext::insertMarker(const Rc<DxvkMarker>& marker) {
+    m_cmd->trackResource<DxvkAccess::Write>(marker);
+  }
+
 }
