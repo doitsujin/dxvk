@@ -3772,12 +3772,19 @@ namespace dxvk {
         m_dirtySamplerStates |= 1u << StateSampler;
       }
 
-      if (unlikely(m_fetch4Enabled & (1u << StateSampler) && !(m_fetch4 & (1u << StateSampler)))) {
-        bool textureSupportsFetch4 = newTexture->SupportsFetch4();
-        if (textureSupportsFetch4
-          && m_state.samplerStates[StateSampler][D3DSAMP_MAGFILTER] == D3DTEXF_POINT
-          && m_state.samplerStates[StateSampler][D3DSAMP_MINFILTER] == D3DTEXF_POINT) {
+      if (unlikely(m_fetch4Enabled & (1u << StateSampler))) {
+        const bool samplerFetch4 = (m_fetch4 & (1u << StateSampler)) != 0;
+        const bool pointFilter = m_state.samplerStates[StateSampler][D3DSAMP_MAGFILTER] == D3DTEXF_POINT
+                                  && m_state.samplerStates[StateSampler][D3DSAMP_MINFILTER] == D3DTEXF_POINT;
+        const bool textureSupportsFetch4 = newTexture->SupportsFetch4();
+
+        if (unlikely(textureSupportsFetch4 && pointFilter && !samplerFetch4)) {
+          // We're swapping a multi channel texture for a single channel texture => turn on fetch4
           m_fetch4 |= 1u << StateSampler;
+          m_dirtySamplerStates |= 1u << StateSampler;
+        } else if (unlikely(!textureSupportsFetch4 && samplerFetch4)) {
+          // We're swapping a single channel texture for a multi channel one => turn off fetch4
+          m_fetch4 &= ~(1u << StateSampler);
           m_dirtySamplerStates |= 1u << StateSampler;
         }
       }
