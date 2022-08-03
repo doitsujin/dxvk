@@ -9,7 +9,8 @@ namespace dxvk {
           D3D11Device*            pParent,
     const Rc<DxvkDevice>&         Device,
           DxvkCsChunkFlags        CsFlags)
-  : D3D11DeviceContext(pParent, Device, CsFlags) {
+  : D3D11DeviceContext(pParent, Device, CsFlags),
+    m_annotation(static_cast<ContextType*>(this), Device) {
 
   }
 
@@ -85,6 +86,12 @@ namespace dxvk {
           UINT                              CopyFlags) {
     UpdateResource(pDstResource, DstSubresource, pDstBox,
       pSrcData, SrcRowPitch, SrcDepthPitch, CopyFlags);
+  }
+
+
+  template<typename ContextType>
+  BOOL STDMETHODCALLTYPE D3D11CommonContext<ContextType>::IsAnnotationEnabled() {
+    return m_annotation.GetStatus();
   }
 
 

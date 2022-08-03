@@ -85,7 +85,11 @@ namespace dxvk {
             UINT                              SrcDepthPitch,
             UINT                              CopyFlags);
 
+    BOOL STDMETHODCALLTYPE IsAnnotationEnabled();
+
   protected:
+
+    D3D11UserDefinedAnnotation<ContextType>   m_annotation;
 
     void UpdateResource(
             ID3D11Resource*                   pDstResource,

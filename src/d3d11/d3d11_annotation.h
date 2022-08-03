@@ -1,5 +1,7 @@
 #pragma once
 
+#include <type_traits>
+
 #include "d3d11_include.h"
 
 #include "../dxvk/dxvk_annotation.h"
@@ -7,14 +9,16 @@
 
 namespace dxvk {
 
-  class D3D11DeviceContext;
+  class D3D11DeferredContext;
+  class D3D11ImmediateContext;
 
+  template<typename ContextType>
   class D3D11UserDefinedAnnotation final : public IDXVKUserDefinedAnnotation {
-
+    constexpr static bool IsDeferred = std::is_same_v<ContextType, D3D11DeferredContext>;
   public:
 
     D3D11UserDefinedAnnotation(
-            D3D11DeviceContext*   container,
+            ContextType*          container,
       const Rc<DxvkDevice>&       dxvkDevice);
 
     ~D3D11UserDefinedAnnotation();
@@ -44,9 +48,9 @@ namespace dxvk {
 
   private:
 
-    D3D11DeviceContext*   m_container;
-    int32_t               m_eventDepth;
-    bool                  m_annotationsEnabled;
+    ContextType*  m_container;
+    int32_t       m_eventDepth;
+    bool          m_annotationsEnabled;
   };
 
 }

@@ -21,6 +21,7 @@ namespace dxvk {
   class D3D11DeviceContext : public D3D11DeviceChild<ID3D11DeviceContext4> {
     friend class D3D11DeviceContextExt;
     // Needed in order to call EmitCs for pushing markers
+    template<typename T>
     friend class D3D11UserDefinedAnnotation;
 
     constexpr static VkDeviceSize StagingBufferSize = 4ull << 20;
@@ -658,8 +659,6 @@ namespace dxvk {
             ID3D11Buffer**                    ppSOTargets,
             UINT*                             pOffsets);
     
-    BOOL STDMETHODCALLTYPE IsAnnotationEnabled();
-
     void STDMETHODCALLTYPE SetMarkerInt(
             LPCWSTR                           pLabel,
             INT                               Data);
@@ -695,9 +694,6 @@ namespace dxvk {
     Rc<DxvkDataBuffer>          m_updateBuffer;
 
     DxvkStagingBuffer           m_staging;
-   
-    //has to be declared after m_device, as compiler initialize in order of declaration in the class
-    D3D11UserDefinedAnnotation  m_annotation;
 
     DxvkCsChunkFlags            m_csFlags;
     DxvkCsChunkRef              m_csChunk;
