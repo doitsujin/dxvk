@@ -45,6 +45,7 @@ namespace dxvk::hud {
     m_maxAllocated = std::max(m_maxAllocated, allocator->AllocatedMemory());
     m_maxUsed = std::max(m_maxUsed, allocator->UsedMemory());
     m_maxMapped = std::max(m_maxMapped, allocator->MappedMemory());
+    m_maxStaging = std::max(m_maxStaging, m_device->StagingMemory());
 
     auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(time - m_lastUpdate);
 
@@ -53,9 +54,11 @@ namespace dxvk::hud {
 
     m_allocatedString = str::format(m_maxAllocated >> 20, " MB (Used: ", m_maxUsed >> 20, " MB)");
     m_mappedString = str::format(m_maxMapped >> 20, " MB");
+    m_stagingString = str::format(m_maxStaging >> 20, " MB");
     m_maxAllocated = 0;
     m_maxUsed = 0;
     m_maxMapped = 0;
+    m_maxStaging = 0;
     m_lastUpdate = time;
   }
 
@@ -86,6 +89,20 @@ namespace dxvk::hud {
                       { position.x + 120.0f, position.y },
                       { 1.0f, 1.0f, 1.0f, 1.0f },
                       m_mappedString);
+
+    if (env::is32BitHostPlatform() && m_device->GetOptions()->stagingMemory != 0) {
+      position.y += 24.0f;
+
+      renderer.drawText(16.0f,
+                        { position.x, position.y },
+                        { 0.0f, 1.0f, 0.75f, 1.0f },
+                        "Staging:");
+
+      renderer.drawText(16.0f,
+                        { position.x + 120.0f, position.y },
+                        { 1.0f, 1.0f, 1.0f, 1.0f },
+                        m_stagingString);
+    }
 
     position.y += 8.0f;
 

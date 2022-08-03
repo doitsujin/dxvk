@@ -944,6 +944,10 @@ namespace dxvk {
     void TouchMappedTexture(D3D9CommonTexture* pTexture);
     void RemoveMappedTexture(D3D9CommonTexture* pTexture);
 
+    uint32_t StagingMemory() {
+      return m_stagingBuffer.StagingMemory();
+    }
+
   private:
 
     DxvkCsChunkRef AllocCsChunk() {
