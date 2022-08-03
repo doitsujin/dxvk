@@ -85,6 +85,42 @@ namespace dxvk {
             UINT                              SrcDepthPitch,
             UINT                              CopyFlags);
 
+    void STDMETHODCALLTYPE IASetInputLayout(
+            ID3D11InputLayout*                pInputLayout);
+
+    void STDMETHODCALLTYPE IASetPrimitiveTopology(
+            D3D11_PRIMITIVE_TOPOLOGY          Topology);
+
+    void STDMETHODCALLTYPE IASetVertexBuffers(
+            UINT                              StartSlot,
+            UINT                              NumBuffers,
+            ID3D11Buffer* const*              ppVertexBuffers,
+      const UINT*                             pStrides,
+      const UINT*                             pOffsets);
+
+    void STDMETHODCALLTYPE IASetIndexBuffer(
+            ID3D11Buffer*                     pIndexBuffer,
+            DXGI_FORMAT                       Format,
+            UINT                              Offset);
+
+    void STDMETHODCALLTYPE IAGetInputLayout(
+            ID3D11InputLayout**               ppInputLayout);
+
+    void STDMETHODCALLTYPE IAGetPrimitiveTopology(
+            D3D11_PRIMITIVE_TOPOLOGY*         pTopology);
+
+    void STDMETHODCALLTYPE IAGetVertexBuffers(
+            UINT                              StartSlot,
+            UINT                              NumBuffers,
+            ID3D11Buffer**                    ppVertexBuffers,
+            UINT*                             pStrides,
+            UINT*                             pOffsets);
+
+    void STDMETHODCALLTYPE IAGetIndexBuffer(
+            ID3D11Buffer**                    ppIndexBuffer,
+            DXGI_FORMAT*                      pFormat,
+            UINT*                             pOffset);
+
     void STDMETHODCALLTYPE OMSetRenderTargets(
             UINT                              NumViews,
             ID3D11RenderTargetView* const*    ppRenderTargetViews,

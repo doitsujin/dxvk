@@ -91,6 +91,161 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::IASetInputLayout(ID3D11InputLayout* pInputLayout) {
+    D3D10DeviceLock lock = LockContext();
+
+    auto inputLayout = static_cast<D3D11InputLayout*>(pInputLayout);
+
+    if (m_state.ia.inputLayout != inputLayout) {
+      bool equal = false;
+
+      // Some games (e.g. Grim Dawn) create lots and lots of
+      // identical input layouts, so we'll only apply the state
+      // if the input layouts has actually changed between calls.
+      if (m_state.ia.inputLayout != nullptr && inputLayout != nullptr)
+        equal = m_state.ia.inputLayout->Compare(inputLayout);
+
+      m_state.ia.inputLayout = inputLayout;
+
+      if (!equal)
+        ApplyInputLayout();
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY Topology) {
+    D3D10DeviceLock lock = LockContext();
+
+    if (m_state.ia.primitiveTopology != Topology) {
+      m_state.ia.primitiveTopology = Topology;
+      ApplyPrimitiveTopology();
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::IASetVertexBuffers(
+          UINT                              StartSlot,
+          UINT                              NumBuffers,
+          ID3D11Buffer* const*              ppVertexBuffers,
+    const UINT*                             pStrides,
+    const UINT*                             pOffsets) {
+    D3D10DeviceLock lock = LockContext();
+
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      auto newBuffer = static_cast<D3D11Buffer*>(ppVertexBuffers[i]);
+      bool needsUpdate = m_state.ia.vertexBuffers[StartSlot + i].buffer != newBuffer;
+
+      if (needsUpdate)
+        m_state.ia.vertexBuffers[StartSlot + i].buffer = newBuffer;
+
+      needsUpdate |= m_state.ia.vertexBuffers[StartSlot + i].offset != pOffsets[i]
+                  || m_state.ia.vertexBuffers[StartSlot + i].stride != pStrides[i];
+
+      if (needsUpdate) {
+        m_state.ia.vertexBuffers[StartSlot + i].offset = pOffsets[i];
+        m_state.ia.vertexBuffers[StartSlot + i].stride = pStrides[i];
+
+        BindVertexBuffer(StartSlot + i, newBuffer, pOffsets[i], pStrides[i]);
+      }
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::IASetIndexBuffer(
+          ID3D11Buffer*                     pIndexBuffer,
+          DXGI_FORMAT                       Format,
+          UINT                              Offset) {
+    D3D10DeviceLock lock = LockContext();
+
+    auto newBuffer = static_cast<D3D11Buffer*>(pIndexBuffer);
+    bool needsUpdate = m_state.ia.indexBuffer.buffer != newBuffer;
+
+    if (needsUpdate)
+      m_state.ia.indexBuffer.buffer = newBuffer;
+
+    needsUpdate |= m_state.ia.indexBuffer.offset != Offset
+                || m_state.ia.indexBuffer.format != Format;
+
+    if (needsUpdate) {
+      m_state.ia.indexBuffer.offset = Offset;
+      m_state.ia.indexBuffer.format = Format;
+
+      BindIndexBuffer(newBuffer, Offset, Format);
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::IAGetInputLayout(ID3D11InputLayout** ppInputLayout) {
+    D3D10DeviceLock lock = LockContext();
+
+    *ppInputLayout = m_state.ia.inputLayout.ref();
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::IAGetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY* pTopology) {
+    D3D10DeviceLock lock = LockContext();
+
+    *pTopology = m_state.ia.primitiveTopology;
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::IAGetVertexBuffers(
+          UINT                              StartSlot,
+          UINT                              NumBuffers,
+          ID3D11Buffer**                    ppVertexBuffers,
+          UINT*                             pStrides,
+          UINT*                             pOffsets) {
+    D3D10DeviceLock lock = LockContext();
+
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      const bool inRange = StartSlot + i < m_state.ia.vertexBuffers.size();
+
+      if (ppVertexBuffers) {
+        ppVertexBuffers[i] = inRange
+          ? m_state.ia.vertexBuffers[StartSlot + i].buffer.ref()
+          : nullptr;
+      }
+
+      if (pStrides) {
+        pStrides[i] = inRange
+          ? m_state.ia.vertexBuffers[StartSlot + i].stride
+          : 0u;
+      }
+
+      if (pOffsets) {
+        pOffsets[i] = inRange
+          ? m_state.ia.vertexBuffers[StartSlot + i].offset
+          : 0u;
+      }
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::IAGetIndexBuffer(
+          ID3D11Buffer**                    ppIndexBuffer,
+          DXGI_FORMAT*                      pFormat,
+          UINT*                             pOffset) {
+    D3D10DeviceLock lock = LockContext();
+
+    if (ppIndexBuffer)
+      *ppIndexBuffer = m_state.ia.indexBuffer.buffer.ref();
+
+    if (pFormat)
+      *pFormat = m_state.ia.indexBuffer.format;
+
+    if (pOffset)
+      *pOffset = m_state.ia.indexBuffer.offset;
+  }
+
+
+  template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::OMSetRenderTargets(
           UINT                              NumViews,
           ID3D11RenderTargetView* const*    ppRenderTargetViews,
