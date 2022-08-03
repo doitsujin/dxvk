@@ -247,27 +247,6 @@ namespace dxvk {
             UINT                              CtrSlot,
             UINT                              Counter);
 
-    void UpdateBuffer(
-            D3D11Buffer*                      pDstBuffer,
-            UINT                              Offset,
-            UINT                              Length,
-      const void*                             pSrcData);
-
-    void UpdateTexture(
-            D3D11CommonTexture*               pDstTexture,
-            UINT                              DstSubresource,
-      const D3D11_BOX*                        pDstBox,
-      const void*                             pSrcData,
-            UINT                              SrcRowPitch,
-            UINT                              SrcDepthPitch);
-
-    void UpdateImage(
-            D3D11CommonTexture*               pDstTexture,
-      const VkImageSubresource*               pDstSubresource,
-            VkOffset3D                        DstOffset,
-            VkExtent3D                        DstExtent,
-            DxvkBufferSlice                   StagingBuffer);
-
     void SetDrawBuffers(
             ID3D11Buffer*                     pBufferForArgs,
             ID3D11Buffer*                     pBufferForCount);

@@ -807,6 +807,27 @@ namespace dxvk {
     bool TestSrvHazards(
             D3D11ShaderResourceView*          pView);
 
+    void UpdateBuffer(
+            D3D11Buffer*                      pDstBuffer,
+            UINT                              Offset,
+            UINT                              Length,
+      const void*                             pSrcData);
+
+    void UpdateTexture(
+            D3D11CommonTexture*               pDstTexture,
+            UINT                              DstSubresource,
+      const D3D11_BOX*                        pDstBox,
+      const void*                             pSrcData,
+            UINT                              SrcRowPitch,
+            UINT                              SrcDepthPitch);
+
+    void UpdateImage(
+            D3D11CommonTexture*               pDstTexture,
+      const VkImageSubresource*               pDstSubresource,
+            VkOffset3D                        DstOffset,
+            VkExtent3D                        DstExtent,
+            DxvkBufferSlice                   StagingBuffer);
+
     void UpdateResource(
             ID3D11Resource*                   pDstResource,
             UINT                              DstSubresource,
