@@ -30,80 +30,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContext::DiscardResource(ID3D11Resource* pResource) {
-    D3D10DeviceLock lock = LockContext();
-
-    if (!pResource)
-      return;
-    
-    // We don't support the Discard API for images
-    D3D11_RESOURCE_DIMENSION resType = D3D11_RESOURCE_DIMENSION_UNKNOWN;
-    pResource->GetType(&resType);
-
-    if (resType == D3D11_RESOURCE_DIMENSION_BUFFER) {
-      DiscardBuffer(pResource);
-    } else {
-      auto texture = GetCommonTexture(pResource);
-
-      for (uint32_t i = 0; i < texture->CountSubresources(); i++)
-        DiscardTexture(pResource, i);
-    }
-  }
-
-
-  void STDMETHODCALLTYPE D3D11DeviceContext::DiscardView(ID3D11View* pResourceView) {
-    DiscardView1(pResourceView, nullptr, 0);
-  }
-
-
-  void STDMETHODCALLTYPE D3D11DeviceContext::DiscardView1(
-          ID3D11View*              pResourceView,
-    const D3D11_RECT*              pRects,
-          UINT                     NumRects) {
-    D3D10DeviceLock lock = LockContext();
-
-    // We don't support discarding individual rectangles
-    if (!pResourceView || (NumRects && pRects))
-      return;
-
-    // ID3D11View has no methods to query the exact type of
-    // the view, so we'll have to check each possible class
-    auto dsv = dynamic_cast<D3D11DepthStencilView*>(pResourceView);
-    auto rtv = dynamic_cast<D3D11RenderTargetView*>(pResourceView);
-    auto uav = dynamic_cast<D3D11UnorderedAccessView*>(pResourceView);
-
-    Rc<DxvkImageView> view;
-    if (dsv) view = dsv->GetImageView();
-    if (rtv) view = rtv->GetImageView();
-    if (uav) view = uav->GetImageView();
-
-    if (view == nullptr)
-      return;
-
-    // Get information about underlying resource
-    Com<ID3D11Resource> resource;
-    pResourceView->GetResource(&resource);
-
-    uint32_t mipCount = GetCommonTexture(resource.ptr())->Desc()->MipLevels;
-
-    // Discard mip levels one by one
-    VkImageSubresourceRange sr = view->subresources();
-
-    for (uint32_t layer = 0; layer < sr.layerCount; layer++) {
-      for (uint32_t mip = 0; mip < sr.levelCount; mip++) {
-        DiscardTexture(resource.ptr(), D3D11CalcSubresource(
-          sr.baseMipLevel + mip, sr.baseArrayLayer + layer, mipCount));
-      }
-    }
-
-    // Since we don't handle SRVs here, we can assume that the
-    // view covers all aspects of the underlying resource.
-    EmitCs([cView = view] (DxvkContext* ctx) {
-      ctx->discardImageView(cView, cView->formatInfo()->aspectMask);
-    });
-  }
-  
-  
   void STDMETHODCALLTYPE D3D11DeviceContext::SetPredication(
           ID3D11Predicate*                  pPredicate,
           BOOL                              PredicateValue) {
@@ -2006,33 +1932,6 @@ namespace dxvk {
         TrackTextureSequenceNumber(pSrcTexture, D3D11CalcSubresource(
           pSrcLayers->mipLevel, pSrcLayers->baseArrayLayer + i, pSrcTexture->Desc()->MipLevels));
       }
-    }
-  }
-
-
-  void D3D11DeviceContext::DiscardBuffer(
-          ID3D11Resource*                   pResource) {
-    auto buffer = static_cast<D3D11Buffer*>(pResource);
-
-    if (buffer->GetMapMode() != D3D11_COMMON_BUFFER_MAP_MODE_NONE) {
-      D3D11_MAPPED_SUBRESOURCE sr;
-
-      Map(pResource, 0, D3D11_MAP_WRITE_DISCARD, 0, &sr);
-      Unmap(pResource, 0);
-    }
-  }
-
-
-  void D3D11DeviceContext::DiscardTexture(
-          ID3D11Resource*                   pResource,
-          UINT                              Subresource) {
-    auto texture = GetCommonTexture(pResource);
-
-    if (texture->GetMapMode() != D3D11_COMMON_TEXTURE_MAP_MODE_NONE) {
-      D3D11_MAPPED_SUBRESOURCE sr;
-
-      Map(pResource, Subresource, D3D11_MAP_WRITE_DISCARD, 0, &sr);
-      Unmap(pResource, Subresource);
     }
   }
 

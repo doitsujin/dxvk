@@ -34,15 +34,6 @@ namespace dxvk {
             DxvkCsChunkFlags        CsFlags);
     ~D3D11DeviceContext();
     
-    void STDMETHODCALLTYPE DiscardResource(ID3D11Resource *pResource);
-
-    void STDMETHODCALLTYPE DiscardView(ID3D11View* pResourceView);
-
-    void STDMETHODCALLTYPE DiscardView1(
-            ID3D11View*                      pResourceView,
-      const D3D11_RECT*                      pRects,
-            UINT                             NumRects);
-    
     void STDMETHODCALLTYPE SetPredication(
             ID3D11Predicate*                  pPredicate,
             BOOL                              PredicateValue);
@@ -336,13 +327,6 @@ namespace dxvk {
       const VkImageSubresourceLayers*         pSrcLayers,
             VkOffset3D                        SrcOffset,
             VkExtent3D                        SrcExtent);
-
-    void DiscardBuffer(
-            ID3D11Resource*                   pResource);
-    
-    void DiscardTexture(
-            ID3D11Resource*                   pResource,
-            UINT                              Subresource);
 
     void UpdateBuffer(
             D3D11Buffer*                      pDstBuffer,

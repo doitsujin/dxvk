@@ -70,6 +70,15 @@ namespace dxvk {
 
     void STDMETHODCALLTYPE ClearState();
 
+    void STDMETHODCALLTYPE DiscardResource(ID3D11Resource *pResource);
+
+    void STDMETHODCALLTYPE DiscardView(ID3D11View* pResourceView);
+
+    void STDMETHODCALLTYPE DiscardView1(
+            ID3D11View*                      pResourceView,
+      const D3D11_RECT*                      pRects,
+            UINT                             NumRects);
+
     void STDMETHODCALLTYPE UpdateSubresource(
             ID3D11Resource*                   pDstResource,
             UINT                              DstSubresource,
@@ -601,6 +610,13 @@ namespace dxvk {
             D3D11UnorderedAccessView*         pUav,
             UINT                              CtrSlot,
             UINT                              Counter);
+
+    void DiscardBuffer(
+            ID3D11Resource*                   pResource);
+
+    void DiscardTexture(
+            ID3D11Resource*                   pResource,
+            UINT                              Subresource);
 
     void GetConstantBuffers(
       const D3D11ConstantBufferBindings&      Bindings,
