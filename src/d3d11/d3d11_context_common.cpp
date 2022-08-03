@@ -1044,6 +1044,200 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DrawAuto() {
+    D3D10DeviceLock lock = LockContext();
+
+    D3D11Buffer* buffer = m_state.ia.vertexBuffers[0].buffer.ptr();
+
+    if (!buffer)
+      return;
+
+    DxvkBufferSlice vtxBuf = buffer->GetBufferSlice();
+    DxvkBufferSlice ctrBuf = buffer->GetSOCounter();
+
+    if (!ctrBuf.defined())
+      return;
+
+    EmitCs([=] (DxvkContext* ctx) {
+      ctx->drawIndirectXfb(ctrBuf,
+        vtxBuf.buffer()->getXfbVertexStride(),
+        vtxBuf.offset());
+    });
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::Draw(
+          UINT            VertexCount,
+          UINT            StartVertexLocation) {
+    D3D10DeviceLock lock = LockContext();
+
+    EmitCs([=] (DxvkContext* ctx) {
+      ctx->draw(
+        VertexCount, 1,
+        StartVertexLocation, 0);
+    });
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DrawIndexed(
+          UINT            IndexCount,
+          UINT            StartIndexLocation,
+          INT             BaseVertexLocation) {
+    D3D10DeviceLock lock = LockContext();
+
+    EmitCs([=] (DxvkContext* ctx) {
+      ctx->drawIndexed(
+        IndexCount, 1,
+        StartIndexLocation,
+        BaseVertexLocation, 0);
+    });
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DrawInstanced(
+          UINT            VertexCountPerInstance,
+          UINT            InstanceCount,
+          UINT            StartVertexLocation,
+          UINT            StartInstanceLocation) {
+    D3D10DeviceLock lock = LockContext();
+
+    EmitCs([=] (DxvkContext* ctx) {
+      ctx->draw(
+        VertexCountPerInstance,
+        InstanceCount,
+        StartVertexLocation,
+        StartInstanceLocation);
+    });
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DrawIndexedInstanced(
+          UINT            IndexCountPerInstance,
+          UINT            InstanceCount,
+          UINT            StartIndexLocation,
+          INT             BaseVertexLocation,
+          UINT            StartInstanceLocation) {
+    D3D10DeviceLock lock = LockContext();
+
+    EmitCs([=] (DxvkContext* ctx) {
+      ctx->drawIndexed(
+        IndexCountPerInstance,
+        InstanceCount,
+        StartIndexLocation,
+        BaseVertexLocation,
+        StartInstanceLocation);
+    });
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DrawIndexedInstancedIndirect(
+          ID3D11Buffer*   pBufferForArgs,
+          UINT            AlignedByteOffsetForArgs) {
+    D3D10DeviceLock lock = LockContext();
+    SetDrawBuffers(pBufferForArgs, nullptr);
+
+    if (!ValidateDrawBufferSize(pBufferForArgs, AlignedByteOffsetForArgs, sizeof(VkDrawIndexedIndirectCommand)))
+      return;
+
+    // If possible, batch up multiple indirect draw calls of
+    // the same type into one single multiDrawIndirect call
+    auto cmdData = static_cast<D3D11CmdDrawIndirectData*>(m_cmdData);
+    auto stride = 0u;
+
+    if (cmdData && cmdData->type == D3D11CmdType::DrawIndirectIndexed)
+      stride = GetIndirectCommandStride(cmdData, AlignedByteOffsetForArgs, sizeof(VkDrawIndexedIndirectCommand));
+
+    if (stride) {
+      cmdData->count += 1;
+      cmdData->stride = stride;
+    } else {
+      cmdData = EmitCsCmd<D3D11CmdDrawIndirectData>(
+        [] (DxvkContext* ctx, const D3D11CmdDrawIndirectData* data) {
+          ctx->drawIndexedIndirect(data->offset, data->count, data->stride);
+        });
+
+      cmdData->type   = D3D11CmdType::DrawIndirectIndexed;
+      cmdData->offset = AlignedByteOffsetForArgs;
+      cmdData->count  = 1;
+      cmdData->stride = 0;
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DrawInstancedIndirect(
+          ID3D11Buffer*   pBufferForArgs,
+          UINT            AlignedByteOffsetForArgs) {
+    D3D10DeviceLock lock = LockContext();
+    SetDrawBuffers(pBufferForArgs, nullptr);
+
+    if (!ValidateDrawBufferSize(pBufferForArgs, AlignedByteOffsetForArgs, sizeof(VkDrawIndirectCommand)))
+      return;
+
+    // If possible, batch up multiple indirect draw calls of
+    // the same type into one single multiDrawIndirect call
+    auto cmdData = static_cast<D3D11CmdDrawIndirectData*>(m_cmdData);
+    auto stride = 0u;
+
+    if (cmdData && cmdData->type == D3D11CmdType::DrawIndirect)
+      stride = GetIndirectCommandStride(cmdData, AlignedByteOffsetForArgs, sizeof(VkDrawIndirectCommand));
+
+    if (stride) {
+      cmdData->count += 1;
+      cmdData->stride = stride;
+    } else {
+      cmdData = EmitCsCmd<D3D11CmdDrawIndirectData>(
+        [] (DxvkContext* ctx, const D3D11CmdDrawIndirectData* data) {
+          ctx->drawIndirect(data->offset, data->count, data->stride);
+        });
+
+      cmdData->type   = D3D11CmdType::DrawIndirect;
+      cmdData->offset = AlignedByteOffsetForArgs;
+      cmdData->count  = 1;
+      cmdData->stride = 0;
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::Dispatch(
+          UINT            ThreadGroupCountX,
+          UINT            ThreadGroupCountY,
+          UINT            ThreadGroupCountZ) {
+    D3D10DeviceLock lock = LockContext();
+
+    EmitCs([=] (DxvkContext* ctx) {
+      ctx->dispatch(
+        ThreadGroupCountX,
+        ThreadGroupCountY,
+        ThreadGroupCountZ);
+    });
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::DispatchIndirect(
+          ID3D11Buffer*   pBufferForArgs,
+          UINT            AlignedByteOffsetForArgs) {
+    D3D10DeviceLock lock = LockContext();
+    SetDrawBuffers(pBufferForArgs, nullptr);
+
+    if (!ValidateDrawBufferSize(pBufferForArgs, AlignedByteOffsetForArgs, sizeof(VkDispatchIndirectCommand)))
+      return;
+
+    EmitCs([cOffset = AlignedByteOffsetForArgs]
+    (DxvkContext* ctx) {
+      ctx->dispatchIndirect(cOffset);
+    });
+  }
+
+
+  template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::IASetInputLayout(ID3D11InputLayout* pInputLayout) {
     D3D10DeviceLock lock = LockContext();
 
@@ -3705,6 +3899,123 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void D3D11CommonContext<ContextType>::RestoreState() {
+    BindFramebuffer();
+
+    BindShader<DxbcProgramType::VertexShader>   (GetCommonShader(m_state.vs.shader.ptr()));
+    BindShader<DxbcProgramType::HullShader>     (GetCommonShader(m_state.hs.shader.ptr()));
+    BindShader<DxbcProgramType::DomainShader>   (GetCommonShader(m_state.ds.shader.ptr()));
+    BindShader<DxbcProgramType::GeometryShader> (GetCommonShader(m_state.gs.shader.ptr()));
+    BindShader<DxbcProgramType::PixelShader>    (GetCommonShader(m_state.ps.shader.ptr()));
+    BindShader<DxbcProgramType::ComputeShader>  (GetCommonShader(m_state.cs.shader.ptr()));
+
+    ApplyInputLayout();
+    ApplyPrimitiveTopology();
+    ApplyBlendState();
+    ApplyBlendFactor();
+    ApplyDepthStencilState();
+    ApplyStencilRef();
+    ApplyRasterizerState();
+    ApplyRasterizerSampleCount();
+    ApplyViewportState();
+
+    BindDrawBuffers(
+      m_state.id.argBuffer.ptr(),
+      m_state.id.cntBuffer.ptr());
+
+    BindIndexBuffer(
+      m_state.ia.indexBuffer.buffer.ptr(),
+      m_state.ia.indexBuffer.offset,
+      m_state.ia.indexBuffer.format);
+
+    for (uint32_t i = 0; i < m_state.ia.vertexBuffers.size(); i++) {
+      BindVertexBuffer(i,
+        m_state.ia.vertexBuffers[i].buffer.ptr(),
+        m_state.ia.vertexBuffers[i].offset,
+        m_state.ia.vertexBuffers[i].stride);
+    }
+
+    for (uint32_t i = 0; i < m_state.so.targets.size(); i++)
+      BindXfbBuffer(i, m_state.so.targets[i].buffer.ptr(), ~0u);
+
+    RestoreConstantBuffers<DxbcProgramType::VertexShader>   (m_state.vs.constantBuffers);
+    RestoreConstantBuffers<DxbcProgramType::HullShader>     (m_state.hs.constantBuffers);
+    RestoreConstantBuffers<DxbcProgramType::DomainShader>   (m_state.ds.constantBuffers);
+    RestoreConstantBuffers<DxbcProgramType::GeometryShader> (m_state.gs.constantBuffers);
+    RestoreConstantBuffers<DxbcProgramType::PixelShader>    (m_state.ps.constantBuffers);
+    RestoreConstantBuffers<DxbcProgramType::ComputeShader>  (m_state.cs.constantBuffers);
+
+    RestoreSamplers<DxbcProgramType::VertexShader>  (m_state.vs.samplers);
+    RestoreSamplers<DxbcProgramType::HullShader>    (m_state.hs.samplers);
+    RestoreSamplers<DxbcProgramType::DomainShader>  (m_state.ds.samplers);
+    RestoreSamplers<DxbcProgramType::GeometryShader>(m_state.gs.samplers);
+    RestoreSamplers<DxbcProgramType::PixelShader>   (m_state.ps.samplers);
+    RestoreSamplers<DxbcProgramType::ComputeShader> (m_state.cs.samplers);
+
+    RestoreShaderResources<DxbcProgramType::VertexShader>   (m_state.vs.shaderResources);
+    RestoreShaderResources<DxbcProgramType::HullShader>     (m_state.hs.shaderResources);
+    RestoreShaderResources<DxbcProgramType::DomainShader>   (m_state.ds.shaderResources);
+    RestoreShaderResources<DxbcProgramType::GeometryShader> (m_state.gs.shaderResources);
+    RestoreShaderResources<DxbcProgramType::PixelShader>    (m_state.ps.shaderResources);
+    RestoreShaderResources<DxbcProgramType::ComputeShader>  (m_state.cs.shaderResources);
+
+    RestoreUnorderedAccessViews<DxbcProgramType::PixelShader>   (m_state.ps.unorderedAccessViews);
+    RestoreUnorderedAccessViews<DxbcProgramType::ComputeShader> (m_state.cs.unorderedAccessViews);
+  }
+
+
+  template<typename ContextType>
+  template<DxbcProgramType Stage>
+  void D3D11CommonContext<ContextType>::RestoreConstantBuffers(
+          D3D11ConstantBufferBindings&      Bindings) {
+    uint32_t slotId = computeConstantBufferBinding(Stage, 0);
+
+    for (uint32_t i = 0; i < Bindings.size(); i++) {
+      BindConstantBuffer<Stage>(slotId + i, Bindings[i].buffer.ptr(),
+        Bindings[i].constantOffset, Bindings[i].constantBound);
+    }
+  }
+
+
+  template<typename ContextType>
+  template<DxbcProgramType Stage>
+  void D3D11CommonContext<ContextType>::RestoreSamplers(
+          D3D11SamplerBindings&             Bindings) {
+    uint32_t slotId = computeSamplerBinding(Stage, 0);
+
+    for (uint32_t i = 0; i < Bindings.size(); i++)
+      BindSampler<Stage>(slotId + i, Bindings[i]);
+  }
+
+
+  template<typename ContextType>
+  template<DxbcProgramType Stage>
+  void D3D11CommonContext<ContextType>::RestoreShaderResources(
+          D3D11ShaderResourceBindings&      Bindings) {
+    uint32_t slotId = computeSrvBinding(Stage, 0);
+
+    for (uint32_t i = 0; i < Bindings.views.size(); i++)
+      BindShaderResource<Stage>(slotId + i, Bindings.views[i].ptr());
+  }
+
+
+  template<typename ContextType>
+  template<DxbcProgramType Stage>
+  void D3D11CommonContext<ContextType>::RestoreUnorderedAccessViews(
+          D3D11UnorderedAccessBindings&     Bindings) {
+    uint32_t uavSlotId = computeUavBinding       (Stage, 0);
+    uint32_t ctrSlotId = computeUavCounterBinding(Stage, 0);
+
+    for (uint32_t i = 0; i < Bindings.size(); i++) {
+      BindUnorderedAccessView<Stage>(
+        uavSlotId + i,
+        Bindings[i].ptr(),
+        ctrSlotId + i, ~0u);
+    }
+  }
+
+
+  template<typename ContextType>
   template<DxbcProgramType ShaderStage>
   void D3D11CommonContext<ContextType>::SetConstantBuffers(
           D3D11ConstantBufferBindings&      Bindings,
@@ -3940,118 +4251,18 @@ namespace dxvk {
 
 
   template<typename ContextType>
-  void D3D11CommonContext<ContextType>::RestoreState() {
-    BindFramebuffer();
-    
-    BindShader<DxbcProgramType::VertexShader>   (GetCommonShader(m_state.vs.shader.ptr()));
-    BindShader<DxbcProgramType::HullShader>     (GetCommonShader(m_state.hs.shader.ptr()));
-    BindShader<DxbcProgramType::DomainShader>   (GetCommonShader(m_state.ds.shader.ptr()));
-    BindShader<DxbcProgramType::GeometryShader> (GetCommonShader(m_state.gs.shader.ptr()));
-    BindShader<DxbcProgramType::PixelShader>    (GetCommonShader(m_state.ps.shader.ptr()));
-    BindShader<DxbcProgramType::ComputeShader>  (GetCommonShader(m_state.cs.shader.ptr()));
-    
-    ApplyInputLayout();
-    ApplyPrimitiveTopology();
-    ApplyBlendState();
-    ApplyBlendFactor();
-    ApplyDepthStencilState();
-    ApplyStencilRef();
-    ApplyRasterizerState();
-    ApplyRasterizerSampleCount();
-    ApplyViewportState();
+  void D3D11CommonContext<ContextType>::SetDrawBuffers(
+          ID3D11Buffer*                     pBufferForArgs,
+          ID3D11Buffer*                     pBufferForCount) {
+    auto argBuffer = static_cast<D3D11Buffer*>(pBufferForArgs);
+    auto cntBuffer = static_cast<D3D11Buffer*>(pBufferForCount);
 
-    BindDrawBuffers(
-      m_state.id.argBuffer.ptr(),
-      m_state.id.cntBuffer.ptr());
-    
-    BindIndexBuffer(
-      m_state.ia.indexBuffer.buffer.ptr(),
-      m_state.ia.indexBuffer.offset,
-      m_state.ia.indexBuffer.format);
-    
-    for (uint32_t i = 0; i < m_state.ia.vertexBuffers.size(); i++) {
-      BindVertexBuffer(i,
-        m_state.ia.vertexBuffers[i].buffer.ptr(),
-        m_state.ia.vertexBuffers[i].offset,
-        m_state.ia.vertexBuffers[i].stride);
-    }
+    if (m_state.id.argBuffer != argBuffer
+     || m_state.id.cntBuffer != cntBuffer) {
+      m_state.id.argBuffer = argBuffer;
+      m_state.id.cntBuffer = cntBuffer;
 
-    for (uint32_t i = 0; i < m_state.so.targets.size(); i++)
-      BindXfbBuffer(i, m_state.so.targets[i].buffer.ptr(), ~0u);
-    
-    RestoreConstantBuffers<DxbcProgramType::VertexShader>   (m_state.vs.constantBuffers);
-    RestoreConstantBuffers<DxbcProgramType::HullShader>     (m_state.hs.constantBuffers);
-    RestoreConstantBuffers<DxbcProgramType::DomainShader>   (m_state.ds.constantBuffers);
-    RestoreConstantBuffers<DxbcProgramType::GeometryShader> (m_state.gs.constantBuffers);
-    RestoreConstantBuffers<DxbcProgramType::PixelShader>    (m_state.ps.constantBuffers);
-    RestoreConstantBuffers<DxbcProgramType::ComputeShader>  (m_state.cs.constantBuffers);
-    
-    RestoreSamplers<DxbcProgramType::VertexShader>  (m_state.vs.samplers);
-    RestoreSamplers<DxbcProgramType::HullShader>    (m_state.hs.samplers);
-    RestoreSamplers<DxbcProgramType::DomainShader>  (m_state.ds.samplers);
-    RestoreSamplers<DxbcProgramType::GeometryShader>(m_state.gs.samplers);
-    RestoreSamplers<DxbcProgramType::PixelShader>   (m_state.ps.samplers);
-    RestoreSamplers<DxbcProgramType::ComputeShader> (m_state.cs.samplers);
-    
-    RestoreShaderResources<DxbcProgramType::VertexShader>   (m_state.vs.shaderResources);
-    RestoreShaderResources<DxbcProgramType::HullShader>     (m_state.hs.shaderResources);
-    RestoreShaderResources<DxbcProgramType::DomainShader>   (m_state.ds.shaderResources);
-    RestoreShaderResources<DxbcProgramType::GeometryShader> (m_state.gs.shaderResources);
-    RestoreShaderResources<DxbcProgramType::PixelShader>    (m_state.ps.shaderResources);
-    RestoreShaderResources<DxbcProgramType::ComputeShader>  (m_state.cs.shaderResources);
-    
-    RestoreUnorderedAccessViews<DxbcProgramType::PixelShader>   (m_state.ps.unorderedAccessViews);
-    RestoreUnorderedAccessViews<DxbcProgramType::ComputeShader> (m_state.cs.unorderedAccessViews);
-  }
-
-
-  template<typename ContextType>
-  template<DxbcProgramType Stage>
-  void D3D11CommonContext<ContextType>::RestoreConstantBuffers(
-          D3D11ConstantBufferBindings&      Bindings) {
-    uint32_t slotId = computeConstantBufferBinding(Stage, 0);
-
-    for (uint32_t i = 0; i < Bindings.size(); i++) {
-      BindConstantBuffer<Stage>(slotId + i, Bindings[i].buffer.ptr(),
-        Bindings[i].constantOffset, Bindings[i].constantBound);
-    }
-  }
-
-
-  template<typename ContextType>
-  template<DxbcProgramType Stage>
-  void D3D11CommonContext<ContextType>::RestoreSamplers(
-          D3D11SamplerBindings&             Bindings) {
-    uint32_t slotId = computeSamplerBinding(Stage, 0);
-
-    for (uint32_t i = 0; i < Bindings.size(); i++)
-      BindSampler<Stage>(slotId + i, Bindings[i]);
-  }
-
-
-  template<typename ContextType>
-  template<DxbcProgramType Stage>
-  void D3D11CommonContext<ContextType>::RestoreShaderResources(
-          D3D11ShaderResourceBindings&      Bindings) {
-    uint32_t slotId = computeSrvBinding(Stage, 0);
-
-    for (uint32_t i = 0; i < Bindings.views.size(); i++)
-      BindShaderResource<Stage>(slotId + i, Bindings.views[i].ptr());
-  }
-
-
-  template<typename ContextType>
-  template<DxbcProgramType Stage>
-  void D3D11CommonContext<ContextType>::RestoreUnorderedAccessViews(
-          D3D11UnorderedAccessBindings&     Bindings) {
-    uint32_t uavSlotId = computeUavBinding       (Stage, 0);
-    uint32_t ctrSlotId = computeUavCounterBinding(Stage, 0);
-
-    for (uint32_t i = 0; i < Bindings.size(); i++) {
-      BindUnorderedAccessView<Stage>(
-        uavSlotId + i,
-        Bindings[i].ptr(),
-        ctrSlotId + i, ~0u);
+      BindDrawBuffers(argBuffer, cntBuffer);
     }
   }
 

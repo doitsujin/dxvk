@@ -55,6 +55,9 @@ namespace dxvk {
   class D3D11CommonContext : public D3D11DeviceContext {
     constexpr static bool IsDeferred = std::is_same_v<ContextType, D3D11DeferredContext>;
     using Forwarder = D3D11ContextObjectForwarder<IsDeferred>;
+
+    template<typename T> friend class D3D11DeviceContextExt;
+    template<typename T> friend class D3D11UserDefinedAnnotation;
   public:
     
     D3D11CommonContext(
@@ -159,6 +162,47 @@ namespace dxvk {
             UINT                              SrcRowPitch,
             UINT                              SrcDepthPitch,
             UINT                              CopyFlags);
+
+    void STDMETHODCALLTYPE DrawAuto();
+
+    void STDMETHODCALLTYPE Draw(
+            UINT            VertexCount,
+            UINT            StartVertexLocation);
+
+    void STDMETHODCALLTYPE DrawIndexed(
+            UINT            IndexCount,
+            UINT            StartIndexLocation,
+            INT             BaseVertexLocation);
+
+    void STDMETHODCALLTYPE DrawInstanced(
+            UINT            VertexCountPerInstance,
+            UINT            InstanceCount,
+            UINT            StartVertexLocation,
+            UINT            StartInstanceLocation);
+
+    void STDMETHODCALLTYPE DrawIndexedInstanced(
+            UINT            IndexCountPerInstance,
+            UINT            InstanceCount,
+            UINT            StartIndexLocation,
+            INT             BaseVertexLocation,
+            UINT            StartInstanceLocation);
+
+    void STDMETHODCALLTYPE DrawIndexedInstancedIndirect(
+            ID3D11Buffer*   pBufferForArgs,
+            UINT            AlignedByteOffsetForArgs);
+
+    void STDMETHODCALLTYPE DrawInstancedIndirect(
+            ID3D11Buffer*   pBufferForArgs,
+            UINT            AlignedByteOffsetForArgs);
+
+    void STDMETHODCALLTYPE Dispatch(
+            UINT            ThreadGroupCountX,
+            UINT            ThreadGroupCountY,
+            UINT            ThreadGroupCountZ);
+
+    void STDMETHODCALLTYPE DispatchIndirect(
+            ID3D11Buffer*   pBufferForArgs,
+            UINT            AlignedByteOffsetForArgs);
 
     void STDMETHODCALLTYPE IASetInputLayout(
             ID3D11InputLayout*                pInputLayout);
@@ -821,6 +865,10 @@ namespace dxvk {
             UINT                              NumUAVs,
             ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
       const UINT*                             pUAVInitialCounts);
+
+    void SetDrawBuffers(
+            ID3D11Buffer*                     pBufferForArgs,
+            ID3D11Buffer*                     pBufferForCount);
 
     bool TestRtvUavHazards(
             UINT                              NumRTVs,

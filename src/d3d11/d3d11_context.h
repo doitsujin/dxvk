@@ -84,47 +84,6 @@ namespace dxvk {
     FLOAT STDMETHODCALLTYPE GetResourceMinLOD(
             ID3D11Resource*                   pResource);
     
-    void STDMETHODCALLTYPE DrawAuto();
-    
-    void STDMETHODCALLTYPE Draw(
-            UINT            VertexCount,
-            UINT            StartVertexLocation);
-    
-    void STDMETHODCALLTYPE DrawIndexed(
-            UINT            IndexCount,
-            UINT            StartIndexLocation,
-            INT             BaseVertexLocation);
-    
-    void STDMETHODCALLTYPE DrawInstanced(
-            UINT            VertexCountPerInstance,
-            UINT            InstanceCount,
-            UINT            StartVertexLocation,
-            UINT            StartInstanceLocation);
-    
-    void STDMETHODCALLTYPE DrawIndexedInstanced(
-            UINT            IndexCountPerInstance,
-            UINT            InstanceCount,
-            UINT            StartIndexLocation,
-            INT             BaseVertexLocation,
-            UINT            StartInstanceLocation);
-    
-    void STDMETHODCALLTYPE DrawIndexedInstancedIndirect(
-            ID3D11Buffer*   pBufferForArgs,
-            UINT            AlignedByteOffsetForArgs);
-    
-    void STDMETHODCALLTYPE DrawInstancedIndirect(
-            ID3D11Buffer*   pBufferForArgs,
-            UINT            AlignedByteOffsetForArgs);
-    
-    void STDMETHODCALLTYPE Dispatch(
-            UINT            ThreadGroupCountX,
-            UINT            ThreadGroupCountY,
-            UINT            ThreadGroupCountZ);
-    
-    void STDMETHODCALLTYPE DispatchIndirect(
-            ID3D11Buffer*   pBufferForArgs,
-            UINT            AlignedByteOffsetForArgs);
-    
     void STDMETHODCALLTYPE SetMarkerInt(
             LPCWSTR                           pLabel,
             INT                               Data);
@@ -166,14 +125,6 @@ namespace dxvk {
     D3D11ContextState           m_state;
     D3D11CmdData*               m_cmdData;
     
-    void BindDrawBuffers(
-            D3D11Buffer*                     pBufferForArgs,
-            D3D11Buffer*                     pBufferForCount);
-
-    void SetDrawBuffers(
-            ID3D11Buffer*                     pBufferForArgs,
-            ID3D11Buffer*                     pBufferForCount);
-
     VkClearValue ConvertColorValue(
       const FLOAT                             Color[4],
       const DxvkFormatInfo*                   pFormatInfo);
