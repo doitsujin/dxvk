@@ -19,7 +19,7 @@ namespace dxvk {
     m_multithread(this, false),
     m_device    (Device),
     m_staging   (Device, StagingBufferSize),
-    m_annotation(this),
+    m_annotation(this, Device),
     m_csFlags   (CsFlags),
     m_csChunk   (AllocCsChunk()),
     m_cmdData   (nullptr) {
@@ -2821,7 +2821,7 @@ namespace dxvk {
 
 
   BOOL STDMETHODCALLTYPE D3D11DeviceContext::IsAnnotationEnabled() {
-    return m_device->instance()->extensions().extDebugUtils;
+    return m_annotation.GetStatus();
   }
 
 

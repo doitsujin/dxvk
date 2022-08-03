@@ -30,21 +30,18 @@ namespace dxvk {
     registrationFunction(annotation);
   }
 
-  D3D11UserDefinedAnnotation::D3D11UserDefinedAnnotation(D3D11DeviceContext* ctx)
-  : m_container(ctx),
-    m_eventDepth(0) {
-    if (m_container->IsAnnotationEnabled())
+  D3D11UserDefinedAnnotation::D3D11UserDefinedAnnotation(
+          D3D11DeviceContext*   container,
+    const Rc<DxvkDevice>&       dxvkDevice)
+  : m_container(container), m_eventDepth(0),
+    m_annotationsEnabled(dxvkDevice->instance()->extensions().extDebugUtils) {
+    if (m_annotationsEnabled)
       RegisterUserDefinedAnnotation<true>(this);
   }
 
-  D3D11UserDefinedAnnotation::D3D11UserDefinedAnnotation(const D3D11UserDefinedAnnotation&)
-  {
-    if (m_container->IsAnnotationEnabled())
-      RegisterUserDefinedAnnotation<true>(this);
-  }
 
   D3D11UserDefinedAnnotation::~D3D11UserDefinedAnnotation() {
-    if (m_container->IsAnnotationEnabled())
+    if (m_annotationsEnabled)
       RegisterUserDefinedAnnotation<false>(this);
   }
 
@@ -69,7 +66,7 @@ namespace dxvk {
   INT STDMETHODCALLTYPE D3D11UserDefinedAnnotation::BeginEvent(
           D3DCOLOR                Color,
           LPCWSTR                 Name) {
-    if (!m_container->IsAnnotationEnabled())
+    if (!m_annotationsEnabled)
       return -1;
 
     D3D10DeviceLock lock = m_container->LockContext();
@@ -89,7 +86,7 @@ namespace dxvk {
 
 
   INT STDMETHODCALLTYPE D3D11UserDefinedAnnotation::EndEvent() {
-    if (!m_container->IsAnnotationEnabled())
+    if (!m_annotationsEnabled)
       return -1;
 
     D3D10DeviceLock lock = m_container->LockContext();
@@ -105,7 +102,7 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11UserDefinedAnnotation::SetMarker(
           D3DCOLOR                Color,
           LPCWSTR                 Name) {
-    if (!m_container->IsAnnotationEnabled())
+    if (!m_annotationsEnabled)
       return;
 
     D3D10DeviceLock lock = m_container->LockContext();
@@ -123,7 +120,7 @@ namespace dxvk {
 
 
   BOOL STDMETHODCALLTYPE D3D11UserDefinedAnnotation::GetStatus() {
-    return m_container->IsAnnotationEnabled();
+    return m_annotationsEnabled;
   }
 
 }
