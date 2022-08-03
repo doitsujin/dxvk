@@ -7,20 +7,9 @@ namespace dxvk {
           D3D11Device*    pParent,
     const Rc<DxvkDevice>& Device,
           UINT            ContextFlags)
-  : D3D11CommonContext<D3D11DeferredContext>(pParent, Device, GetCsChunkFlags(pParent)),
-    m_contextFlags(ContextFlags),
+  : D3D11CommonContext<D3D11DeferredContext>(pParent, Device, ContextFlags, GetCsChunkFlags(pParent)),
     m_commandList (CreateCommandList()) {
     ClearState();
-  }
-  
-  
-  D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE D3D11DeferredContext::GetType() {
-    return D3D11_DEVICE_CONTEXT_DEFERRED;
-  }
-  
-  
-  UINT STDMETHODCALLTYPE D3D11DeferredContext::GetContextFlags() {
-    return m_contextFlags;
   }
   
   
@@ -371,7 +360,7 @@ namespace dxvk {
 
 
   Com<D3D11CommandList> D3D11DeferredContext::CreateCommandList() {
-    return new D3D11CommandList(m_parent, m_contextFlags);
+    return new D3D11CommandList(m_parent, m_flags);
   }
   
   

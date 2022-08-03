@@ -76,6 +76,7 @@ namespace dxvk {
     D3D11CommonContext(
             D3D11Device*            pParent,
       const Rc<DxvkDevice>&         Device,
+            UINT                    ContextFlags,
             DxvkCsChunkFlags        CsFlags);
 
     ~D3D11CommonContext();
@@ -84,6 +85,10 @@ namespace dxvk {
             REFIID  riid,
             void**  ppvObject);
 
+    D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE GetType();
+
+    UINT STDMETHODCALLTYPE GetContextFlags();
+    
     void STDMETHODCALLTYPE ClearState();
 
     void STDMETHODCALLTYPE DiscardResource(ID3D11Resource *pResource);
@@ -764,6 +769,7 @@ namespace dxvk {
     Rc<DxvkDevice>              m_device;
 
     D3D11ContextState           m_state;
+    UINT                        m_flags;
 
     DxvkStagingBuffer           m_staging;
     Rc<DxvkDataBuffer>          m_updateBuffer;

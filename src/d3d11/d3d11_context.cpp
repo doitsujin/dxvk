@@ -8,12 +8,14 @@ namespace dxvk {
   D3D11CommonContext<ContextType>::D3D11CommonContext(
           D3D11Device*            pParent,
     const Rc<DxvkDevice>&         Device,
+          UINT                    ContextFlags,
           DxvkCsChunkFlags        CsFlags)
   : D3D11DeviceChild<ID3D11DeviceContext4>(pParent),
     m_contextExt(GetTypedContext()),
     m_annotation(GetTypedContext(), Device),
     m_multithread(this, false),
     m_device    (Device),
+    m_flags     (ContextFlags),
     m_staging   (Device, StagingBufferSize),
     m_csFlags   (CsFlags),
     m_csChunk   (AllocCsChunk()),
@@ -66,6 +68,20 @@ namespace dxvk {
     Logger::warn("D3D11DeviceContext::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
+  }
+
+
+  template<typename ContextType>
+  D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE D3D11CommonContext<ContextType>::GetType() {
+    return IsDeferred
+      ? D3D11_DEVICE_CONTEXT_DEFERRED
+      : D3D11_DEVICE_CONTEXT_IMMEDIATE;
+  }
+
+
+  template<typename ContextType>
+  UINT STDMETHODCALLTYPE D3D11CommonContext<ContextType>::GetContextFlags() {
+    return m_flags;
   }
 
 

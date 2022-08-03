@@ -29,10 +29,6 @@ namespace dxvk {
             REFIID  riid,
             void**  ppvObject);
 
-    D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE GetType();
-    
-    UINT STDMETHODCALLTYPE GetContextFlags();
-    
     HRESULT STDMETHODCALLTYPE GetData(
             ID3D11Asynchronous*         pAsync,
             void*                       pData,

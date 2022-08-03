@@ -31,10 +31,6 @@ namespace dxvk {
       const Rc<DxvkDevice>& Device,
             UINT            ContextFlags);
     
-    D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE GetType();
-    
-    UINT STDMETHODCALLTYPE GetContextFlags();
-    
     HRESULT STDMETHODCALLTYPE GetData(
             ID3D11Asynchronous*         pAsync,
             void*                       pData,
@@ -85,8 +81,6 @@ namespace dxvk {
            ID3DDeviceContextState**          ppPreviousState);
 
   private:
-    
-    const UINT m_contextFlags;
     
     // Command list that we're recording
     Com<D3D11CommandList> m_commandList;
