@@ -418,6 +418,12 @@ namespace dxvk {
             UINT                              NumSamplers,
             ID3D11SamplerState* const*        ppSamplers);
 
+    void STDMETHODCALLTYPE CSSetUnorderedAccessViews(
+            UINT                              StartSlot,
+            UINT                              NumUAVs,
+            ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
+      const UINT*                             pUAVInitialCounts);
+
     void STDMETHODCALLTYPE CSGetShader(
             ID3D11ComputeShader**             ppComputeShader,
             ID3D11ClassInstance**             ppClassInstances,
@@ -444,6 +450,11 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState**              ppSamplers);
+
+    void STDMETHODCALLTYPE CSGetUnorderedAccessViews(
+            UINT                              StartSlot,
+            UINT                              NumUAVs,
+            ID3D11UnorderedAccessView**       ppUnorderedAccessViews);
 
     void STDMETHODCALLTYPE OMSetRenderTargets(
             UINT                              NumViews,

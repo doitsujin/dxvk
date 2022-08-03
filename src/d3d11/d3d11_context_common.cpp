@@ -1086,6 +1086,63 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CSSetUnorderedAccessViews(
+          UINT                              StartSlot,
+          UINT                              NumUAVs,
+          ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
+    const UINT*                             pUAVInitialCounts) {
+    D3D10DeviceLock lock = LockContext();
+
+    if (TestRtvUavHazards(0, nullptr, NumUAVs, ppUnorderedAccessViews))
+      return;
+
+    // Unbind previously bound conflicting UAVs
+    uint32_t uavSlotId = computeUavBinding       (DxbcProgramType::ComputeShader, 0);
+    uint32_t ctrSlotId = computeUavCounterBinding(DxbcProgramType::ComputeShader, 0);
+
+    int32_t uavId = m_state.cs.uavMask.findNext(0);
+
+    while (uavId >= 0) {
+      if (uint32_t(uavId) < StartSlot || uint32_t(uavId) >= StartSlot + NumUAVs) {
+        for (uint32_t i = 0; i < NumUAVs; i++) {
+          auto uav = static_cast<D3D11UnorderedAccessView*>(ppUnorderedAccessViews[i]);
+
+          if (CheckViewOverlap(uav, m_state.cs.unorderedAccessViews[uavId].ptr())) {
+            m_state.cs.unorderedAccessViews[uavId] = nullptr;
+            m_state.cs.uavMask.clr(uavId);
+
+            BindUnorderedAccessView<DxbcProgramType::ComputeShader>(
+              uavSlotId + uavId, nullptr,
+              ctrSlotId + uavId, ~0u);
+          }
+        }
+
+        uavId = m_state.cs.uavMask.findNext(uavId + 1);
+      } else {
+        uavId = m_state.cs.uavMask.findNext(StartSlot + NumUAVs);
+      }
+    }
+
+    // Actually bind the given UAVs
+    for (uint32_t i = 0; i < NumUAVs; i++) {
+      auto uav = static_cast<D3D11UnorderedAccessView*>(ppUnorderedAccessViews[i]);
+      auto ctr = pUAVInitialCounts ? pUAVInitialCounts[i] : ~0u;
+
+      if (m_state.cs.unorderedAccessViews[StartSlot + i] != uav || ctr != ~0u) {
+        m_state.cs.unorderedAccessViews[StartSlot + i] = uav;
+        m_state.cs.uavMask.set(StartSlot + i, uav != nullptr);
+
+        BindUnorderedAccessView<DxbcProgramType::ComputeShader>(
+          uavSlotId + StartSlot + i, uav,
+          ctrSlotId + StartSlot + i, ctr);
+
+        ResolveCsSrvHazards(uav);
+      }
+    }
+  }
+
+
+  template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CSGetShader(
           ID3D11ComputeShader**             ppComputeShader,
           ID3D11ClassInstance**             ppClassInstances,
@@ -1154,6 +1211,21 @@ namespace dxvk {
 
     GetSamplers(m_state.cs.samplers,
       StartSlot, NumSamplers, ppSamplers);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CSGetUnorderedAccessViews(
+          UINT                              StartSlot,
+          UINT                              NumUAVs,
+          ID3D11UnorderedAccessView**       ppUnorderedAccessViews) {
+    D3D10DeviceLock lock = LockContext();
+
+    for (uint32_t i = 0; i < NumUAVs; i++) {
+      ppUnorderedAccessViews[i] = StartSlot + i < m_state.cs.unorderedAccessViews.size()
+        ? m_state.cs.unorderedAccessViews[StartSlot + i].ref()
+        : nullptr;
+    }
   }
 
 

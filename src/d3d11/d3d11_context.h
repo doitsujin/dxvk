@@ -208,17 +208,6 @@ namespace dxvk {
             ID3D11Buffer*   pBufferForArgs,
             UINT            AlignedByteOffsetForArgs);
     
-    void STDMETHODCALLTYPE CSSetUnorderedAccessViews(
-            UINT                              StartSlot,
-            UINT                              NumUAVs,
-            ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
-      const UINT*                             pUAVInitialCounts);
-    
-    void STDMETHODCALLTYPE CSGetUnorderedAccessViews(
-            UINT                              StartSlot,
-            UINT                              NumUAVs,
-            ID3D11UnorderedAccessView**       ppUnorderedAccessViews);
-    
     void STDMETHODCALLTYPE RSSetState(
             ID3D11RasterizerState*            pRasterizerState);
     
