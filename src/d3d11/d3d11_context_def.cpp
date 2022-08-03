@@ -236,31 +236,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeferredContext::UpdateSubresource(
-          ID3D11Resource*                   pDstResource,
-          UINT                              DstSubresource,
-    const D3D11_BOX*                        pDstBox,
-    const void*                             pSrcData,
-          UINT                              SrcRowPitch,
-          UINT                              SrcDepthPitch) {
-    UpdateResource<D3D11DeferredContext>(this, pDstResource,
-      DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, 0);
-  }
-
-
-  void STDMETHODCALLTYPE D3D11DeferredContext::UpdateSubresource1(
-          ID3D11Resource*                   pDstResource,
-          UINT                              DstSubresource,
-    const D3D11_BOX*                        pDstBox,
-    const void*                             pSrcData,
-          UINT                              SrcRowPitch,
-          UINT                              SrcDepthPitch,
-          UINT                              CopyFlags) {
-    UpdateResource<D3D11DeferredContext>(this, pDstResource,
-      DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, CopyFlags);
-  }
-
-
   void STDMETHODCALLTYPE D3D11DeferredContext::SwapDeviceContextState(
           ID3DDeviceContextState*           pState,
           ID3DDeviceContextState**          ppPreviousState) {
