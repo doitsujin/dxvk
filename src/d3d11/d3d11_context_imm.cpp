@@ -57,7 +57,7 @@ namespace dxvk {
       return S_OK;
     }
 
-    return D3D11DeviceContext::QueryInterface(riid, ppvObject);
+    return D3D11CommonContext<D3D11ImmediateContext>::QueryInterface(riid, ppvObject);
   }
 
 

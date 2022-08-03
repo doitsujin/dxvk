@@ -64,6 +64,10 @@ namespace dxvk {
 
     ~D3D11CommonContext();
 
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID  riid,
+            void**  ppvObject);
+
     void STDMETHODCALLTYPE UpdateSubresource(
             ID3D11Resource*                   pDstResource,
             UINT                              DstSubresource,

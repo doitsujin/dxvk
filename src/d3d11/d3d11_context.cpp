@@ -32,46 +32,6 @@ namespace dxvk {
   }
   
   
-  HRESULT STDMETHODCALLTYPE D3D11DeviceContext::QueryInterface(REFIID riid, void** ppvObject) {
-    if (ppvObject == nullptr)
-      return E_POINTER;
-
-    *ppvObject = nullptr;
-    
-    if (riid == __uuidof(IUnknown)
-     || riid == __uuidof(ID3D11DeviceChild)
-     || riid == __uuidof(ID3D11DeviceContext)
-     || riid == __uuidof(ID3D11DeviceContext1)
-     || riid == __uuidof(ID3D11DeviceContext2)
-     || riid == __uuidof(ID3D11DeviceContext3)
-     || riid == __uuidof(ID3D11DeviceContext4)) {
-      *ppvObject = ref(this);
-      return S_OK;
-    }
-    
-    if (riid == __uuidof(ID3D11VkExtContext)
-     || riid == __uuidof(ID3D11VkExtContext1)) {
-      *ppvObject = ref(&m_contextExt);
-      return S_OK;
-    }
-    
-    if (riid == __uuidof(ID3DUserDefinedAnnotation)
-     || riid == __uuidof(IDXVKUserDefinedAnnotation)) {
-      *ppvObject = ref(&m_annotation);
-      return S_OK;
-    }
-
-    if (riid == __uuidof(ID3D10Multithread)) {
-      *ppvObject = ref(&m_multithread);
-      return S_OK;
-    }
-  
-    Logger::warn("D3D11DeviceContext::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
-    return E_NOINTERFACE;
-  }
-  
-
   void STDMETHODCALLTYPE D3D11DeviceContext::DiscardResource(ID3D11Resource* pResource) {
     D3D10DeviceLock lock = LockContext();
 

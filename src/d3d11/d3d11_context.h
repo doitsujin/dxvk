@@ -32,10 +32,6 @@ namespace dxvk {
             DxvkCsChunkFlags        CsFlags);
     ~D3D11DeviceContext();
     
-    HRESULT STDMETHODCALLTYPE QueryInterface(
-            REFIID  riid,
-            void**  ppvObject);
-    
     void STDMETHODCALLTYPE DiscardResource(ID3D11Resource *pResource);
 
     void STDMETHODCALLTYPE DiscardView(ID3D11View* pResourceView);
