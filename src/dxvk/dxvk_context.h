@@ -8,6 +8,7 @@
 #include "dxvk_objects.h"
 #include "dxvk_resource.h"
 #include "dxvk_util.h"
+#include "dxvk_marker.h"
 
 namespace dxvk {
   
@@ -1251,6 +1252,15 @@ namespace dxvk {
      * tools to mark different workloads within a frame.
      */
     void insertDebugLabel(VkDebugUtilsLabelEXT *label);
+
+    /**
+     * \brief Inserts a marker object
+     * \param [in] marker The marker
+     */
+    template<typename T>
+    void insertMarker(const Rc<DxvkMarker<T>>& marker) {
+      m_cmd->trackResource<DxvkAccess::Write>(marker);
+    }
 
     /**
      * \brief Increments a given stat counter
