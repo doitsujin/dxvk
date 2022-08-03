@@ -4,7 +4,7 @@
 
 #include "../util/sync/sync_signal.h"
 
-#include "d3d11_context.h"
+#include "d3d11_context_common.h"
 #include "d3d11_state_object.h"
 #include "d3d11_video.h"
 
@@ -13,10 +13,11 @@ namespace dxvk {
   class D3D11Buffer;
   class D3D11CommonTexture;
   
-  class D3D11ImmediateContext : public D3D11DeviceContext {
+  class D3D11ImmediateContext : public D3D11CommonContext<D3D11ImmediateContext> {
+    template<typename T>
+    friend class D3D11CommonContext;
     friend class D3D11SwapChain;
     friend class D3D11VideoContext;
-    friend class D3D11DeviceContext;
   public:
     
     D3D11ImmediateContext(

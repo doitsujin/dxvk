@@ -1,9 +1,7 @@
 #pragma once
 
-#include "d3d11_buffer.h"
 #include "d3d11_cmdlist.h"
-#include "d3d11_context.h"
-#include "d3d11_texture.h"
+#include "d3d11_context_common.h"
 
 #include <vector>
 
@@ -23,8 +21,9 @@ namespace dxvk {
     D3D11_MAPPED_SUBRESOURCE  MapInfo;
   };
   
-  class D3D11DeferredContext : public D3D11DeviceContext {
-    friend class D3D11DeviceContext;
+  class D3D11DeferredContext : public D3D11CommonContext<D3D11DeferredContext> {
+    template<typename T>
+    friend class D3D11CommonContext;
   public:
     
     D3D11DeferredContext(

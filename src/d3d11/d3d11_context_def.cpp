@@ -7,7 +7,7 @@ namespace dxvk {
           D3D11Device*    pParent,
     const Rc<DxvkDevice>& Device,
           UINT            ContextFlags)
-  : D3D11DeviceContext(pParent, Device, GetCsChunkFlags(pParent)),
+  : D3D11CommonContext<D3D11DeferredContext>(pParent, Device, GetCsChunkFlags(pParent)),
     m_contextFlags(ContextFlags),
     m_commandList (CreateCommandList()) {
     ClearState();

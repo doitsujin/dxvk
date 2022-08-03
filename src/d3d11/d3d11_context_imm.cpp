@@ -13,7 +13,7 @@ namespace dxvk {
   D3D11ImmediateContext::D3D11ImmediateContext(
           D3D11Device*    pParent,
     const Rc<DxvkDevice>& Device)
-  : D3D11DeviceContext(pParent, Device, DxvkCsChunkFlag::SingleUse),
+  : D3D11CommonContext<D3D11ImmediateContext>(pParent, Device, DxvkCsChunkFlag::SingleUse),
     m_csThread(Device, Device->createContext(DxvkContextType::Primary)),
     m_maxImplicitDiscardSize(pParent->GetOptions()->maxImplicitDiscardSize),
     m_videoContext(this, Device) {
