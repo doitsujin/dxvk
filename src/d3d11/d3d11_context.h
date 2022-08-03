@@ -27,19 +27,14 @@ namespace dxvk {
 
     constexpr static VkDeviceSize StagingBufferSize = 4ull << 20;
   public:
-    
+
     D3D11DeviceContext(
             D3D11Device*            pParent,
       const Rc<DxvkDevice>&         Device);
+
     ~D3D11DeviceContext();
-    
-    D3D10DeviceLock LockContext() {
-      return m_multithread.AcquireLock();
-    }
 
   protected:
-    
-    D3D10Multithread            m_multithread;
     
     Rc<DxvkDevice>              m_device;
     Rc<DxvkDataBuffer>          m_updateBuffer;
@@ -47,7 +42,7 @@ namespace dxvk {
     DxvkStagingBuffer           m_staging;
 
     D3D11ContextState           m_state;
-    
+
     VkClearValue ConvertColorValue(
       const FLOAT                             Color[4],
       const DxvkFormatInfo*                   pFormatInfo);

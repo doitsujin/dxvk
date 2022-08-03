@@ -12,6 +12,7 @@ namespace dxvk {
   : D3D11DeviceContext(pParent, Device),
     m_contextExt(GetTypedContext()),
     m_annotation(GetTypedContext(), Device),
+    m_multithread(this, false),
     m_csFlags   (CsFlags),
     m_csChunk   (AllocCsChunk()),
     m_cmdData   (nullptr) {

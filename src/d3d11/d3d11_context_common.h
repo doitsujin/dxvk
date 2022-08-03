@@ -738,10 +738,15 @@ namespace dxvk {
             VkImageLayout             OldLayout,
             VkImageLayout             NewLayout);
 
+    D3D10DeviceLock LockContext() {
+      return m_multithread.AcquireLock();
+    }
+
   protected:
 
     D3D11DeviceContextExt<ContextType>        m_contextExt;
     D3D11UserDefinedAnnotation<ContextType>   m_annotation;
+    D3D10Multithread                          m_multithread;
 
     DxvkCsChunkFlags            m_csFlags;
     DxvkCsChunkRef              m_csChunk;

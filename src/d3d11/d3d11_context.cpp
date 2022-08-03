@@ -14,7 +14,6 @@ namespace dxvk {
           D3D11Device*            pParent,
     const Rc<DxvkDevice>&         Device)
   : D3D11DeviceChild<ID3D11DeviceContext4>(pParent),
-    m_multithread(this, false),
     m_device    (Device),
     m_staging   (Device, StagingBufferSize) {
 
