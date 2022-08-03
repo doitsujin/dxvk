@@ -79,26 +79,6 @@ namespace dxvk {
   }
 
 
-  void STDMETHODCALLTYPE D3D11DeviceContext::GenerateMips(ID3D11ShaderResourceView* pShaderResourceView) {
-    D3D10DeviceLock lock = LockContext();
-
-    auto view = static_cast<D3D11ShaderResourceView*>(pShaderResourceView);
-
-    if (!view || view->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER)
-      return;
-
-    D3D11_COMMON_RESOURCE_DESC resourceDesc = view->GetResourceDesc();
-
-    if (!(resourceDesc.MiscFlags & D3D11_RESOURCE_MISC_GENERATE_MIPS))
-      return;
-
-    EmitCs([cDstImageView = view->GetImageView()]
-    (DxvkContext* ctx) {
-      ctx->generateMipmaps(cDstImageView, VK_FILTER_LINEAR);
-    });
-  }
-  
-
   HRESULT STDMETHODCALLTYPE D3D11DeviceContext::UpdateTileMappings(
           ID3D11Resource*                   pTiledResource,
           UINT                              NumTiledResourceRegions,

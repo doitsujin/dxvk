@@ -133,6 +133,9 @@ namespace dxvk {
       const D3D11_RECT                        *pRect,
             UINT                              NumRects);
 
+    void STDMETHODCALLTYPE GenerateMips(
+            ID3D11ShaderResourceView*         pShaderResourceView);
+
     void STDMETHODCALLTYPE UpdateSubresource(
             ID3D11Resource*                   pDstResource,
             UINT                              DstSubresource,

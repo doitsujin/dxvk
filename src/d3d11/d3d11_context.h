@@ -58,9 +58,6 @@ namespace dxvk {
             ID3D11DeviceChild*                pTiledResourceOrViewAccessBeforeBarrier,
             ID3D11DeviceChild*                pTiledResourceOrViewAccessAfterBarrier);
 
-    void STDMETHODCALLTYPE GenerateMips(
-            ID3D11ShaderResourceView*         pShaderResourceView);
-    
     HRESULT STDMETHODCALLTYPE UpdateTileMappings(
             ID3D11Resource*                   pTiledResource,
             UINT                              NumTiledResourceRegions,
