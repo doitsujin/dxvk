@@ -87,26 +87,6 @@ namespace dxvk {
      * \param [in] targets Render targets to bind
      */
     void bindRenderTargets(
-      const DxvkRenderTargets&    targets) {
-      // Set up default render pass ops
-      m_state.om.renderTargets = targets;
-      
-      this->resetRenderPassOps(
-        m_state.om.renderTargets,
-        m_state.om.renderPassOps);
-
-      if (!m_state.om.framebufferInfo.hasTargets(targets)) {
-        // Create a new framebuffer object next
-        // time we start rendering something
-        m_flags.set(DxvkContextFlag::GpDirtyFramebuffer);
-      } else {
-        // Don't redundantly spill the render pass if
-        // the same render targets are bound again
-        m_flags.clr(DxvkContextFlag::GpDirtyFramebuffer);
-      }
-    }
-    
-    void bindRenderTargets(
             DxvkRenderTargets&&   targets) {
       // Set up default render pass ops
       m_state.om.renderTargets = std::move(targets);
@@ -135,15 +115,6 @@ namespace dxvk {
      * \param [in] cntBuffer New count buffer
      */
     void bindDrawBuffers(
-      const DxvkBufferSlice&      argBuffer,
-      const DxvkBufferSlice&      cntBuffer) {
-      m_state.id.argBuffer = argBuffer;
-      m_state.id.cntBuffer = cntBuffer;
-
-      m_flags.set(DxvkContextFlag::DirtyDrawBuffer);
-    }
-    
-    void bindDrawBuffers(
             DxvkBufferSlice&&     argBuffer,
             DxvkBufferSlice&&     cntBuffer) {
       m_state.id.argBuffer = std::move(argBuffer);
@@ -160,18 +131,6 @@ namespace dxvk {
      * \param [in] buffer New index buffer
      * \param [in] indexType Index type
      */
-    void bindIndexBuffer(
-      const DxvkBufferSlice&      buffer,
-            VkIndexType           indexType) {
-      if (!m_state.vi.indexBuffer.matchesBuffer(buffer))
-        m_vbTracked.clr(MaxNumVertexBindings);
-
-      m_state.vi.indexBuffer = buffer;
-      m_state.vi.indexType   = indexType;
-
-      m_flags.set(DxvkContextFlag::GpDirtyIndexBuffer);
-    }
-    
     void bindIndexBuffer(
             DxvkBufferSlice&&     buffer,
             VkIndexType           indexType) {
@@ -192,20 +151,6 @@ namespace dxvk {
      * \param [in] slot Resource binding slot
      * \param [in] buffer Buffer to bind
      */
-    void bindResourceBuffer(
-            VkShaderStageFlags    stages,
-            uint32_t              slot,
-      const DxvkBufferSlice&      buffer) {
-      bool needsUpdate = !m_rc[slot].bufferSlice.matchesBuffer(buffer);
-
-      if (likely(needsUpdate))
-        m_rcTracked.clr(slot);
-
-      m_rc[slot].bufferSlice = buffer;
-
-      m_descriptorState.dirtyBuffers(stages);
-    }
-    
     void bindResourceBuffer(
             VkShaderStageFlags    stages,
             uint32_t              slot,
@@ -250,21 +195,6 @@ namespace dxvk {
     void bindResourceView(
             VkShaderStageFlags    stages,
             uint32_t              slot,
-      const Rc<DxvkImageView>&    imageView,
-      const Rc<DxvkBufferView>&   bufferView) {
-      m_rc[slot].imageView   = imageView;
-      m_rc[slot].bufferView  = bufferView;
-      m_rc[slot].bufferSlice = bufferView != nullptr
-        ? bufferView->slice()
-        : DxvkBufferSlice();
-      m_rcTracked.clr(slot);
-
-      m_descriptorState.dirtyViews(stages);
-    }
-    
-    void bindResourceView(
-            VkShaderStageFlags    stages,
-            uint32_t              slot,
             Rc<DxvkImageView>&&   imageView,
             Rc<DxvkBufferView>&&  bufferView) {
       m_rc[slot].bufferSlice = bufferView != nullptr
@@ -289,16 +219,6 @@ namespace dxvk {
     void bindResourceSampler(
             VkShaderStageFlags    stages,
             uint32_t              slot,
-      const Rc<DxvkSampler>&      sampler) {
-      m_rc[slot].sampler = sampler;
-      m_rcTracked.clr(slot);
-
-      m_descriptorState.dirtyViews(stages);
-    }
-    
-    void bindResourceSampler(
-            VkShaderStageFlags    stages,
-            uint32_t              slot,
             Rc<DxvkSampler>&&     sampler) {
       m_rc[slot].sampler = std::move(sampler);
       m_rcTracked.clr(slot);
@@ -312,33 +232,6 @@ namespace dxvk {
      * \param [in] stage Target shader stage
      * \param [in] shader The shader to bind
      */
-    void bindShader(
-            VkShaderStageFlagBits stage,
-      const Rc<DxvkShader>&       shader) {
-      Rc<DxvkShader>* shaderStage;
-      
-      switch (stage) {
-        case VK_SHADER_STAGE_VERTEX_BIT:                  shaderStage = &m_state.gp.shaders.vs;  break;
-        case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:    shaderStage = &m_state.gp.shaders.tcs; break;
-        case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT: shaderStage = &m_state.gp.shaders.tes; break;
-        case VK_SHADER_STAGE_GEOMETRY_BIT:                shaderStage = &m_state.gp.shaders.gs;  break;
-        case VK_SHADER_STAGE_FRAGMENT_BIT:                shaderStage = &m_state.gp.shaders.fs;  break;
-        case VK_SHADER_STAGE_COMPUTE_BIT:                 shaderStage = &m_state.cp.shaders.cs;  break;
-        default: return;
-      }
-      
-      *shaderStage = shader;
-
-      if (stage == VK_SHADER_STAGE_COMPUTE_BIT) {
-        m_flags.set(
-          DxvkContextFlag::CpDirtyPipelineState);
-      } else {
-        m_flags.set(
-          DxvkContextFlag::GpDirtyPipeline,
-          DxvkContextFlag::GpDirtyPipelineState);
-      }
-    }
-    
     void bindShader(
             VkShaderStageFlagBits stage,
             Rc<DxvkShader>&&      shader) {
@@ -391,18 +284,6 @@ namespace dxvk {
      */
     void bindVertexBuffer(
             uint32_t              binding,
-      const DxvkBufferSlice&      buffer,
-            uint32_t              stride) {
-      if (!m_state.vi.vertexBuffers[binding].matchesBuffer(buffer))
-        m_vbTracked.clr(binding);
-
-      m_state.vi.vertexBuffers[binding] = buffer;
-      m_state.vi.vertexStrides[binding] = stride;
-      m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
-    }
-
-    void bindVertexBuffer(
-            uint32_t              binding,
             DxvkBufferSlice&&     buffer,
             uint32_t              stride) {
       if (!m_state.vi.vertexBuffers[binding].matchesBuffer(buffer))
@@ -420,19 +301,6 @@ namespace dxvk {
      * \param [in] buffer The buffer to bind
      * \param [in] counter Xfb counter buffer
      */
-    void bindXfbBuffer(
-            uint32_t              binding,
-      const DxvkBufferSlice&      buffer,
-      const DxvkBufferSlice&      counter) {
-      if (!m_state.xfb.buffers [binding].matches(buffer)
-       || !m_state.xfb.counters[binding].matches(counter)) {
-        m_state.xfb.buffers [binding] = buffer;
-        m_state.xfb.counters[binding] = counter;
-        
-        m_flags.set(DxvkContextFlag::GpDirtyXfbBuffers);
-      }
-    }
-    
     void bindXfbBuffer(
             uint32_t              binding,
             DxvkBufferSlice&&     buffer,
