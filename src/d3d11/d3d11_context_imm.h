@@ -4,7 +4,7 @@
 
 #include "../util/sync/sync_signal.h"
 
-#include "d3d11_context_common.h"
+#include "d3d11_context.h"
 #include "d3d11_state_object.h"
 #include "d3d11_video.h"
 

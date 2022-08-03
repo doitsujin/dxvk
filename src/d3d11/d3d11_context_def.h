@@ -1,7 +1,7 @@
 #pragma once
 
 #include "d3d11_cmdlist.h"
-#include "d3d11_context_common.h"
+#include "d3d11_context.h"
 
 #include <vector>
 
