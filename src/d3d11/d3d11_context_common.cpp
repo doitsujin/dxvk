@@ -258,6 +258,201 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CopySubresourceRegion(
+          ID3D11Resource*                   pDstResource,
+          UINT                              DstSubresource,
+          UINT                              DstX,
+          UINT                              DstY,
+          UINT                              DstZ,
+          ID3D11Resource*                   pSrcResource,
+          UINT                              SrcSubresource,
+    const D3D11_BOX*                        pSrcBox) {
+    CopySubresourceRegion1(
+      pDstResource, DstSubresource, DstX, DstY, DstZ,
+      pSrcResource, SrcSubresource, pSrcBox, 0);
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CopySubresourceRegion1(
+          ID3D11Resource*                   pDstResource,
+          UINT                              DstSubresource,
+          UINT                              DstX,
+          UINT                              DstY,
+          UINT                              DstZ,
+          ID3D11Resource*                   pSrcResource,
+          UINT                              SrcSubresource,
+    const D3D11_BOX*                        pSrcBox,
+          UINT                              CopyFlags) {
+    D3D10DeviceLock lock = LockContext();
+
+    if (!pDstResource || !pSrcResource)
+      return;
+
+    if (pSrcBox
+     && (pSrcBox->left  >= pSrcBox->right
+      || pSrcBox->top   >= pSrcBox->bottom
+      || pSrcBox->front >= pSrcBox->back))
+      return;
+
+    D3D11_RESOURCE_DIMENSION dstResourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    D3D11_RESOURCE_DIMENSION srcResourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+
+    pDstResource->GetType(&dstResourceDim);
+    pSrcResource->GetType(&srcResourceDim);
+
+    if (dstResourceDim == D3D11_RESOURCE_DIMENSION_BUFFER && srcResourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
+      auto dstBuffer = static_cast<D3D11Buffer*>(pDstResource);
+      auto srcBuffer = static_cast<D3D11Buffer*>(pSrcResource);
+
+      VkDeviceSize dstOffset = DstX;
+      VkDeviceSize srcOffset = 0;
+      VkDeviceSize byteCount = -1;
+
+      if (pSrcBox) {
+        srcOffset = pSrcBox->left;
+        byteCount = pSrcBox->right - pSrcBox->left;
+      }
+
+      CopyBuffer(dstBuffer, dstOffset, srcBuffer, srcOffset, byteCount);
+    } else if (dstResourceDim != D3D11_RESOURCE_DIMENSION_BUFFER && srcResourceDim != D3D11_RESOURCE_DIMENSION_BUFFER) {
+      auto dstTexture = GetCommonTexture(pDstResource);
+      auto srcTexture = GetCommonTexture(pSrcResource);
+
+      if (DstSubresource >= dstTexture->CountSubresources()
+       || SrcSubresource >= srcTexture->CountSubresources())
+        return;
+
+      auto dstFormatInfo = lookupFormatInfo(dstTexture->GetPackedFormat());
+      auto srcFormatInfo = lookupFormatInfo(srcTexture->GetPackedFormat());
+
+      auto dstLayers = vk::makeSubresourceLayers(dstTexture->GetSubresourceFromIndex(dstFormatInfo->aspectMask, DstSubresource));
+      auto srcLayers = vk::makeSubresourceLayers(srcTexture->GetSubresourceFromIndex(srcFormatInfo->aspectMask, SrcSubresource));
+
+      VkOffset3D srcOffset = { 0, 0, 0 };
+      VkOffset3D dstOffset = { int32_t(DstX), int32_t(DstY), int32_t(DstZ) };
+
+      VkExtent3D srcExtent = srcTexture->MipLevelExtent(srcLayers.mipLevel);
+
+      if (pSrcBox) {
+        srcOffset.x = pSrcBox->left;
+        srcOffset.y = pSrcBox->top;
+        srcOffset.z = pSrcBox->front;
+
+        srcExtent.width  = pSrcBox->right -  pSrcBox->left;
+        srcExtent.height = pSrcBox->bottom - pSrcBox->top;
+        srcExtent.depth  = pSrcBox->back -   pSrcBox->front;
+      }
+
+      CopyImage(
+        dstTexture, &dstLayers, dstOffset,
+        srcTexture, &srcLayers, srcOffset,
+        srcExtent);
+    } else {
+      Logger::err(str::format(
+        "D3D11: CopySubresourceRegion1: Incompatible resources",
+        "\n  Dst resource type: ", dstResourceDim,
+        "\n  Src resource type: ", srcResourceDim));
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CopyResource(
+          ID3D11Resource*                   pDstResource,
+          ID3D11Resource*                   pSrcResource) {
+    D3D10DeviceLock lock = LockContext();
+
+    if (!pDstResource || !pSrcResource || (pDstResource == pSrcResource))
+      return;
+
+    D3D11_RESOURCE_DIMENSION dstResourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    D3D11_RESOURCE_DIMENSION srcResourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+
+    pDstResource->GetType(&dstResourceDim);
+    pSrcResource->GetType(&srcResourceDim);
+
+    if (dstResourceDim != srcResourceDim) {
+      Logger::err(str::format(
+        "D3D11: CopyResource: Incompatible resources",
+        "\n  Dst resource type: ", dstResourceDim,
+        "\n  Src resource type: ", srcResourceDim));
+      return;
+    }
+
+    if (dstResourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
+      auto dstBuffer = static_cast<D3D11Buffer*>(pDstResource);
+      auto srcBuffer = static_cast<D3D11Buffer*>(pSrcResource);
+
+      if (dstBuffer->Desc()->ByteWidth != srcBuffer->Desc()->ByteWidth)
+        return;
+
+      CopyBuffer(dstBuffer, 0, srcBuffer, 0, -1);
+    } else {
+      auto dstTexture = GetCommonTexture(pDstResource);
+      auto srcTexture = GetCommonTexture(pSrcResource);
+
+      auto dstDesc = dstTexture->Desc();
+      auto srcDesc = srcTexture->Desc();
+
+      // The subresource count must match as well
+      if (dstDesc->ArraySize != srcDesc->ArraySize
+       || dstDesc->MipLevels != srcDesc->MipLevels) {
+        Logger::err("D3D11: CopyResource: Incompatible images");
+        return;
+      }
+
+      auto dstFormatInfo = lookupFormatInfo(dstTexture->GetPackedFormat());
+      auto srcFormatInfo = lookupFormatInfo(srcTexture->GetPackedFormat());
+
+      for (uint32_t i = 0; i < dstDesc->MipLevels; i++) {
+        VkImageSubresourceLayers dstLayers = { dstFormatInfo->aspectMask, i, 0, dstDesc->ArraySize };
+        VkImageSubresourceLayers srcLayers = { srcFormatInfo->aspectMask, i, 0, srcDesc->ArraySize };
+
+        CopyImage(
+          dstTexture, &dstLayers, VkOffset3D(),
+          srcTexture, &srcLayers, VkOffset3D(),
+          srcTexture->MipLevelExtent(i));
+      }
+    }
+  }
+
+
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CopyStructureCount(
+          ID3D11Buffer*                     pDstBuffer,
+          UINT                              DstAlignedByteOffset,
+          ID3D11UnorderedAccessView*        pSrcView) {
+    D3D10DeviceLock lock = LockContext();
+
+    auto buf = static_cast<D3D11Buffer*>(pDstBuffer);
+    auto uav = static_cast<D3D11UnorderedAccessView*>(pSrcView);
+
+    if (!buf || !uav)
+      return;
+
+    auto counterSlice = uav->GetCounterSlice();
+    if (!counterSlice.defined())
+      return;
+
+    EmitCs([
+      cDstSlice = buf->GetBufferSlice(DstAlignedByteOffset),
+      cSrcSlice = std::move(counterSlice)
+    ] (DxvkContext* ctx) {
+      ctx->copyBuffer(
+        cDstSlice.buffer(),
+        cDstSlice.offset(),
+        cSrcSlice.buffer(),
+        cSrcSlice.offset(),
+        sizeof(uint32_t));
+    });
+
+    if (buf->HasSequenceNumber())
+      TrackBufferSequenceNumber(buf);
+  }
+
+
+  template<typename ContextType>
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::UpdateSubresource(
           ID3D11Resource*                   pDstResource,
           UINT                              DstSubresource,
@@ -2104,6 +2299,299 @@ namespace dxvk {
       ctx->bindResourceBuffer(stages, cCtrSlotId,
         Forwarder::move(cCounterSlice));
     });
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::CopyBuffer(
+          D3D11Buffer*                      pDstBuffer,
+          VkDeviceSize                      DstOffset,
+          D3D11Buffer*                      pSrcBuffer,
+          VkDeviceSize                      SrcOffset,
+          VkDeviceSize                      ByteCount) {
+    // Clamp copy region to prevent out-of-bounds access
+    VkDeviceSize dstLength = pDstBuffer->Desc()->ByteWidth;
+    VkDeviceSize srcLength = pSrcBuffer->Desc()->ByteWidth;
+
+    if (SrcOffset >= srcLength || DstOffset >= dstLength || !ByteCount)
+      return;
+
+    ByteCount = std::min(dstLength - DstOffset, ByteCount);
+    ByteCount = std::min(srcLength - SrcOffset, ByteCount);
+
+    EmitCs([
+      cDstBuffer = pDstBuffer->GetBufferSlice(DstOffset, ByteCount),
+      cSrcBuffer = pSrcBuffer->GetBufferSlice(SrcOffset, ByteCount)
+    ] (DxvkContext* ctx) {
+      if (cDstBuffer.buffer() != cSrcBuffer.buffer()) {
+        ctx->copyBuffer(
+          cDstBuffer.buffer(),
+          cDstBuffer.offset(),
+          cSrcBuffer.buffer(),
+          cSrcBuffer.offset(),
+          cSrcBuffer.length());
+      } else {
+        ctx->copyBufferRegion(
+          cDstBuffer.buffer(),
+          cDstBuffer.offset(),
+          cSrcBuffer.offset(),
+          cSrcBuffer.length());
+      }
+    });
+
+    if (pDstBuffer->HasSequenceNumber())
+      TrackBufferSequenceNumber(pDstBuffer);
+    if (pSrcBuffer->HasSequenceNumber())
+      TrackBufferSequenceNumber(pSrcBuffer);
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::CopyImage(
+          D3D11CommonTexture*               pDstTexture,
+    const VkImageSubresourceLayers*         pDstLayers,
+          VkOffset3D                        DstOffset,
+          D3D11CommonTexture*               pSrcTexture,
+    const VkImageSubresourceLayers*         pSrcLayers,
+          VkOffset3D                        SrcOffset,
+          VkExtent3D                        SrcExtent) {
+    // Image formats must be size-compatible
+    auto dstFormatInfo = lookupFormatInfo(pDstTexture->GetPackedFormat());
+    auto srcFormatInfo = lookupFormatInfo(pSrcTexture->GetPackedFormat());
+
+    if (dstFormatInfo->elementSize != srcFormatInfo->elementSize) {
+      Logger::err("D3D11: CopyImage: Incompatible texel size");
+      return;
+    }
+
+    // Sample counts must match
+    if (pDstTexture->Desc()->SampleDesc.Count != pSrcTexture->Desc()->SampleDesc.Count) {
+      Logger::err("D3D11: CopyImage: Incompatible sample count");
+      return;
+    }
+
+    // Obviously, the copy region must not be empty
+    VkExtent3D dstMipExtent = pDstTexture->MipLevelExtent(pDstLayers->mipLevel);
+    VkExtent3D srcMipExtent = pSrcTexture->MipLevelExtent(pSrcLayers->mipLevel);
+
+    if (uint32_t(DstOffset.x) >= dstMipExtent.width
+     || uint32_t(DstOffset.y) >= dstMipExtent.height
+     || uint32_t(DstOffset.z) >= dstMipExtent.depth)
+      return;
+
+    if (uint32_t(SrcOffset.x) >= srcMipExtent.width
+     || uint32_t(SrcOffset.y) >= srcMipExtent.height
+     || uint32_t(SrcOffset.z) >= srcMipExtent.depth)
+      return;
+
+    // Don't perform the copy if the offsets aren't block-aligned
+    if (!util::isBlockAligned(SrcOffset, srcFormatInfo->blockSize)
+     || !util::isBlockAligned(DstOffset, dstFormatInfo->blockSize)) {
+      Logger::err(str::format("D3D11: CopyImage: Unaligned block offset"));
+      return;
+    }
+
+    // Clamp the image region in order to avoid out-of-bounds access
+    VkExtent3D blockCount    = util::computeBlockCount(SrcExtent, srcFormatInfo->blockSize);
+    VkExtent3D dstBlockCount = util::computeMaxBlockCount(DstOffset, dstMipExtent, dstFormatInfo->blockSize);
+    VkExtent3D srcBlockCount = util::computeMaxBlockCount(SrcOffset, srcMipExtent, srcFormatInfo->blockSize);
+
+    blockCount = util::minExtent3D(blockCount, dstBlockCount);
+    blockCount = util::minExtent3D(blockCount, srcBlockCount);
+
+    SrcExtent = util::computeBlockExtent(blockCount, srcFormatInfo->blockSize);
+    SrcExtent = util::snapExtent3D(SrcOffset, SrcExtent, srcMipExtent);
+
+    if (!SrcExtent.width || !SrcExtent.height || !SrcExtent.depth)
+      return;
+
+    // While copying between 2D and 3D images is allowed in CopySubresourceRegion,
+    // copying more than one slice at a time is not suppoted. Layer counts are 1.
+    if ((pDstTexture->GetVkImageType() == VK_IMAGE_TYPE_3D)
+     != (pSrcTexture->GetVkImageType() == VK_IMAGE_TYPE_3D))
+      SrcExtent.depth = 1;
+
+    // Certain types of copies require us to pass the destination extent to
+    // the backend. This may be different when copying between compressed
+    // and uncompressed image formats.
+    VkExtent3D dstExtent = util::computeBlockExtent(blockCount, dstFormatInfo->blockSize);
+    dstExtent = util::snapExtent3D(DstOffset, dstExtent, dstMipExtent);
+
+    // It is possible for any of the given images to be a staging image with
+    // no actual image, so we need to account for all possibilities here.
+    bool dstIsImage = pDstTexture->GetMapMode() != D3D11_COMMON_TEXTURE_MAP_MODE_STAGING;
+    bool srcIsImage = pSrcTexture->GetMapMode() != D3D11_COMMON_TEXTURE_MAP_MODE_STAGING;
+
+    if (dstIsImage && srcIsImage) {
+      EmitCs([
+        cDstImage  = pDstTexture->GetImage(),
+        cSrcImage  = pSrcTexture->GetImage(),
+        cDstLayers = *pDstLayers,
+        cSrcLayers = *pSrcLayers,
+        cDstOffset = DstOffset,
+        cSrcOffset = SrcOffset,
+        cExtent    = SrcExtent
+      ] (DxvkContext* ctx) {
+        // CopyResource can only copy between different images, and
+        // CopySubresourceRegion can only copy data from one single
+        // subresource at a time, so this check is safe.
+        if (cDstImage != cSrcImage || cDstLayers != cSrcLayers) {
+          ctx->copyImage(
+            cDstImage, cDstLayers, cDstOffset,
+            cSrcImage, cSrcLayers, cSrcOffset,
+            cExtent);
+        } else {
+          ctx->copyImageRegion(
+            cDstImage, cDstLayers, cDstOffset,
+            cSrcOffset, cExtent);
+        }
+      });
+    } else {
+      // Since each subresource uses a dedicated buffer, we are going
+      // to need one call per subresource for staging resource copies
+      for (uint32_t i = 0; i < pDstLayers->layerCount; i++) {
+        uint32_t dstSubresource = D3D11CalcSubresource(pDstLayers->mipLevel, pDstLayers->baseArrayLayer + i, pDstTexture->Desc()->MipLevels);
+        uint32_t srcSubresource = D3D11CalcSubresource(pSrcLayers->mipLevel, pSrcLayers->baseArrayLayer + i, pSrcTexture->Desc()->MipLevels);
+
+        // For multi-plane image data stored in a buffer, the backend
+        // assumes that the second plane immediately follows the first
+        // plane in memory, which is only true if we copy the full image.
+        uint32_t planeCount = 1;
+
+        if (dstFormatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+          bool needsSeparateCopies = !dstIsImage && !srcIsImage;
+
+          if (!dstIsImage)
+            needsSeparateCopies |= pDstTexture->MipLevelExtent(pDstLayers->mipLevel) != SrcExtent;
+          if (!srcIsImage)
+            needsSeparateCopies |= pSrcTexture->MipLevelExtent(pSrcLayers->mipLevel) != SrcExtent;
+
+          if (needsSeparateCopies)
+            planeCount = vk::getPlaneCount(srcFormatInfo->aspectMask);
+        }
+
+        for (uint32_t j = 0; j < planeCount; j++) {
+          VkImageAspectFlags dstAspectMask = dstFormatInfo->aspectMask;
+          VkImageAspectFlags srcAspectMask = srcFormatInfo->aspectMask;
+
+          if (planeCount > 1) {
+            dstAspectMask = vk::getPlaneAspect(j);
+            srcAspectMask = dstAspectMask;
+          }
+
+          if (dstIsImage) {
+            VkImageSubresourceLayers dstLayer = { dstAspectMask,
+              pDstLayers->mipLevel, pDstLayers->baseArrayLayer + i, 1 };
+
+            EmitCs([
+              cDstImage   = pDstTexture->GetImage(),
+              cDstLayers  = dstLayer,
+              cDstOffset  = DstOffset,
+              cDstExtent  = dstExtent,
+              cSrcBuffer  = pSrcTexture->GetMappedBuffer(srcSubresource),
+              cSrcLayout  = pSrcTexture->GetSubresourceLayout(srcAspectMask, srcSubresource),
+              cSrcOffset  = pSrcTexture->ComputeMappedOffset(srcSubresource, j, SrcOffset),
+              cSrcCoord   = SrcOffset,
+              cSrcExtent  = srcMipExtent,
+              cSrcFormat  = pSrcTexture->GetPackedFormat()
+            ] (DxvkContext* ctx) {
+              if (cDstLayers.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+                ctx->copyBufferToImage(cDstImage, cDstLayers, cDstOffset, cDstExtent,
+                  cSrcBuffer, cSrcOffset, cSrcLayout.RowPitch, cSrcLayout.DepthPitch);
+              } else {
+                ctx->copyPackedBufferToDepthStencilImage(cDstImage, cDstLayers,
+                  VkOffset2D { cDstOffset.x,     cDstOffset.y      },
+                  VkExtent2D { cDstExtent.width, cDstExtent.height },
+                  cSrcBuffer, cSrcLayout.Offset,
+                  VkOffset2D { cSrcCoord.x,      cSrcCoord.y       },
+                  VkExtent2D { cSrcExtent.width, cSrcExtent.height },
+                  cSrcFormat);
+              }
+            });
+          } else if (srcIsImage) {
+            VkImageSubresourceLayers srcLayer = { srcAspectMask,
+              pSrcLayers->mipLevel, pSrcLayers->baseArrayLayer + i, 1 };
+
+            EmitCs([
+              cSrcImage   = pSrcTexture->GetImage(),
+              cSrcLayers  = srcLayer,
+              cSrcOffset  = SrcOffset,
+              cSrcExtent  = SrcExtent,
+              cDstBuffer  = pDstTexture->GetMappedBuffer(dstSubresource),
+              cDstLayout  = pDstTexture->GetSubresourceLayout(dstAspectMask, dstSubresource),
+              cDstOffset  = pDstTexture->ComputeMappedOffset(dstSubresource, j, DstOffset),
+              cDstCoord   = DstOffset,
+              cDstExtent  = dstMipExtent,
+              cDstFormat  = pDstTexture->GetPackedFormat()
+            ] (DxvkContext* ctx) {
+              if (cSrcLayers.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+                ctx->copyImageToBuffer(cDstBuffer, cDstOffset, cDstLayout.RowPitch,
+                  cDstLayout.DepthPitch, cSrcImage, cSrcLayers, cSrcOffset, cSrcExtent);
+              } else {
+                ctx->copyDepthStencilImageToPackedBuffer(cDstBuffer, cDstLayout.Offset,
+                  VkOffset2D { cDstCoord.x,      cDstCoord.y       },
+                  VkExtent2D { cDstExtent.width, cDstExtent.height },
+                  cSrcImage, cSrcLayers,
+                  VkOffset2D { cSrcOffset.x,     cSrcOffset.y      },
+                  VkExtent2D { cSrcExtent.width, cSrcExtent.height },
+                  cDstFormat);
+              }
+            });
+          } else {
+            // The backend is not aware of image metadata in this case,
+            // so we need to handle image planes and block sizes here
+            VkDeviceSize elementSize = dstFormatInfo->elementSize;
+            VkExtent3D dstBlockSize = dstFormatInfo->blockSize;
+            VkExtent3D srcBlockSize = srcFormatInfo->blockSize;
+            VkExtent3D planeBlockSize = { 1u, 1u, 1u };
+
+            if (planeCount > 1) {
+              auto plane = &dstFormatInfo->planes[j];
+              dstBlockSize.width  *= plane->blockSize.width;
+              dstBlockSize.height *= plane->blockSize.height;
+              srcBlockSize.width  *= plane->blockSize.width;
+              srcBlockSize.height *= plane->blockSize.height;
+
+              planeBlockSize.width  = plane->blockSize.width;
+              planeBlockSize.height = plane->blockSize.height;
+              elementSize = plane->elementSize;
+            }
+
+            EmitCs([
+              cPixelSize = elementSize,
+              cSrcBuffer = pSrcTexture->GetMappedBuffer(srcSubresource),
+              cSrcStart  = pSrcTexture->GetSubresourceLayout(srcAspectMask, srcSubresource).Offset,
+              cSrcOffset = util::computeBlockOffset(SrcOffset, srcBlockSize),
+              cSrcSize   = util::computeBlockCount(srcMipExtent, srcBlockSize),
+              cDstBuffer = pDstTexture->GetMappedBuffer(dstSubresource),
+              cDstStart  = pDstTexture->GetSubresourceLayout(dstAspectMask, dstSubresource).Offset,
+              cDstOffset = util::computeBlockOffset(DstOffset, dstBlockSize),
+              cDstSize   = util::computeBlockCount(dstMipExtent, dstBlockSize),
+              cExtent    = util::computeBlockCount(blockCount, planeBlockSize)
+            ] (DxvkContext* ctx) {
+              ctx->copyPackedBufferImage(
+                cDstBuffer, cDstStart, cDstOffset, cDstSize,
+                cSrcBuffer, cSrcStart, cSrcOffset, cSrcSize,
+                cExtent, cPixelSize);
+            });
+          }
+        }
+      }
+    }
+
+    if (pDstTexture->HasSequenceNumber()) {
+      for (uint32_t i = 0; i < pDstLayers->layerCount; i++) {
+        TrackTextureSequenceNumber(pDstTexture, D3D11CalcSubresource(
+          pDstLayers->mipLevel, pDstLayers->baseArrayLayer + i, pDstTexture->Desc()->MipLevels));
+      }
+    }
+
+    if (pSrcTexture->HasSequenceNumber()) {
+      for (uint32_t i = 0; i < pSrcLayers->layerCount; i++) {
+        TrackTextureSequenceNumber(pSrcTexture, D3D11CalcSubresource(
+          pSrcLayers->mipLevel, pSrcLayers->baseArrayLayer + i, pSrcTexture->Desc()->MipLevels));
+      }
+    }
   }
 
 

@@ -79,6 +79,36 @@ namespace dxvk {
       const D3D11_RECT*                      pRects,
             UINT                             NumRects);
 
+    void STDMETHODCALLTYPE CopySubresourceRegion(
+            ID3D11Resource*                   pDstResource,
+            UINT                              DstSubresource,
+            UINT                              DstX,
+            UINT                              DstY,
+            UINT                              DstZ,
+            ID3D11Resource*                   pSrcResource,
+            UINT                              SrcSubresource,
+      const D3D11_BOX*                        pSrcBox);
+
+    void STDMETHODCALLTYPE CopySubresourceRegion1(
+            ID3D11Resource*                   pDstResource,
+            UINT                              DstSubresource,
+            UINT                              DstX,
+            UINT                              DstY,
+            UINT                              DstZ,
+            ID3D11Resource*                   pSrcResource,
+            UINT                              SrcSubresource,
+      const D3D11_BOX*                        pSrcBox,
+            UINT                              CopyFlags);
+
+    void STDMETHODCALLTYPE CopyResource(
+            ID3D11Resource*                   pDstResource,
+            ID3D11Resource*                   pSrcResource);
+
+    void STDMETHODCALLTYPE CopyStructureCount(
+            ID3D11Buffer*                     pDstBuffer,
+            UINT                              DstAlignedByteOffset,
+            ID3D11UnorderedAccessView*        pSrcView);
+
     void STDMETHODCALLTYPE UpdateSubresource(
             ID3D11Resource*                   pDstResource,
             UINT                              DstSubresource,
@@ -618,6 +648,22 @@ namespace dxvk {
             D3D11UnorderedAccessView*         pUav,
             UINT                              CtrSlot,
             UINT                              Counter);
+
+    void CopyBuffer(
+            D3D11Buffer*                      pDstBuffer,
+            VkDeviceSize                      DstOffset,
+            D3D11Buffer*                      pSrcBuffer,
+            VkDeviceSize                      SrcOffset,
+            VkDeviceSize                      ByteCount);
+
+    void CopyImage(
+            D3D11CommonTexture*               pDstTexture,
+      const VkImageSubresourceLayers*         pDstLayers,
+            VkOffset3D                        DstOffset,
+            D3D11CommonTexture*               pSrcTexture,
+      const VkImageSubresourceLayers*         pSrcLayers,
+            VkOffset3D                        SrcOffset,
+            VkExtent3D                        SrcExtent);
 
     void DiscardBuffer(
             ID3D11Resource*                   pResource);
