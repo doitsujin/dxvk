@@ -451,7 +451,7 @@ namespace dxvk {
     });
 
     if (buf->HasSequenceNumber())
-      TrackBufferSequenceNumber(buf);
+      GetTypedContext()->TrackBufferSequenceNumber(buf);
   }
 
 
@@ -1015,7 +1015,7 @@ namespace dxvk {
     }
 
     if (dstTextureInfo->HasSequenceNumber())
-      TrackTextureSequenceNumber(dstTextureInfo, DstSubresource);
+      GetTypedContext()->TrackTextureSequenceNumber(dstTextureInfo, DstSubresource);
   }
 
 
@@ -3545,9 +3545,9 @@ namespace dxvk {
     });
 
     if (pDstBuffer->HasSequenceNumber())
-      TrackBufferSequenceNumber(pDstBuffer);
+      GetTypedContext()->TrackBufferSequenceNumber(pDstBuffer);
     if (pSrcBuffer->HasSequenceNumber())
-      TrackBufferSequenceNumber(pSrcBuffer);
+      GetTypedContext()->TrackBufferSequenceNumber(pSrcBuffer);
   }
 
 
@@ -3786,14 +3786,14 @@ namespace dxvk {
 
     if (pDstTexture->HasSequenceNumber()) {
       for (uint32_t i = 0; i < pDstLayers->layerCount; i++) {
-        TrackTextureSequenceNumber(pDstTexture, D3D11CalcSubresource(
+        GetTypedContext()->TrackTextureSequenceNumber(pDstTexture, D3D11CalcSubresource(
           pDstLayers->mipLevel, pDstLayers->baseArrayLayer + i, pDstTexture->Desc()->MipLevels));
       }
     }
 
     if (pSrcTexture->HasSequenceNumber()) {
       for (uint32_t i = 0; i < pSrcLayers->layerCount; i++) {
-        TrackTextureSequenceNumber(pSrcTexture, D3D11CalcSubresource(
+        GetTypedContext()->TrackTextureSequenceNumber(pSrcTexture, D3D11CalcSubresource(
           pSrcLayers->mipLevel, pSrcLayers->baseArrayLayer + i, pSrcTexture->Desc()->MipLevels));
       }
     }
@@ -4533,6 +4533,28 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void D3D11CommonContext<ContextType>::TrackResourceSequenceNumber(
+          ID3D11Resource*             pResource) {
+    if (!pResource)
+      return;
+
+    D3D11CommonTexture* texture = GetCommonTexture(pResource);
+
+    if (texture) {
+      if (texture->HasSequenceNumber()) {
+        for (uint32_t i = 0; i < texture->CountSubresources(); i++)
+          GetTypedContext()->TrackTextureSequenceNumber(texture, i);
+      }
+    } else {
+      D3D11Buffer* buffer = static_cast<D3D11Buffer*>(pResource);
+
+      if (buffer->HasSequenceNumber())
+        GetTypedContext()->TrackBufferSequenceNumber(buffer);
+    }
+  }
+
+
+  template<typename ContextType>
   void D3D11CommonContext<ContextType>::UpdateBuffer(
           D3D11Buffer*                      pDstBuffer,
           UINT                              Offset,
@@ -4576,7 +4598,7 @@ namespace dxvk {
     }
 
     if (pDstBuffer->HasSequenceNumber())
-      TrackBufferSequenceNumber(pDstBuffer);
+      GetTypedContext()->TrackBufferSequenceNumber(pDstBuffer);
   }
 
 
@@ -4726,7 +4748,7 @@ namespace dxvk {
     }
 
     if (pDstTexture->HasSequenceNumber())
-      TrackTextureSequenceNumber(pDstTexture, dstSubresource);
+      GetTypedContext()->TrackTextureSequenceNumber(pDstTexture, dstSubresource);
   }
 
 

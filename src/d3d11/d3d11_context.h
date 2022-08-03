@@ -95,16 +95,6 @@ namespace dxvk {
 
       return bufferSize >= Offset + Size;
     }
-    
-    void TrackResourceSequenceNumber(
-            ID3D11Resource*             pResource);
-
-    virtual void TrackTextureSequenceNumber(
-            D3D11CommonTexture*         pResource,
-            UINT                        Subresource) = 0;
-
-    virtual void TrackBufferSequenceNumber(
-            D3D11Buffer*                pResource) = 0;
 
   };
   

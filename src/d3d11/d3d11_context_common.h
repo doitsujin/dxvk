@@ -958,6 +958,9 @@ namespace dxvk {
     bool TestSrvHazards(
             D3D11ShaderResourceView*          pView);
 
+    void TrackResourceSequenceNumber(
+            ID3D11Resource*                   pResource);
+
     void UpdateBuffer(
             D3D11Buffer*                      pDstBuffer,
             UINT                              Offset,

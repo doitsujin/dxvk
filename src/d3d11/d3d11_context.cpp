@@ -144,25 +144,4 @@ namespace dxvk {
     pMsState->enableAlphaToCoverage = VK_FALSE;
   }
 
-
-  void D3D11DeviceContext::TrackResourceSequenceNumber(
-          ID3D11Resource*             pResource) {
-    if (!pResource)
-      return;
-
-    D3D11CommonTexture* texture = GetCommonTexture(pResource);
-
-    if (texture) {
-      if (texture->HasSequenceNumber()) {
-        for (uint32_t i = 0; i < texture->CountSubresources(); i++)
-          TrackTextureSequenceNumber(texture, i);
-      }
-    } else {
-      D3D11Buffer* buffer = static_cast<D3D11Buffer*>(pResource);
-
-      if (buffer->HasSequenceNumber())
-        TrackBufferSequenceNumber(buffer);
-    }
-  }
-
 }
