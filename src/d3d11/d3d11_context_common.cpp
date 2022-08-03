@@ -10,6 +10,7 @@ namespace dxvk {
     const Rc<DxvkDevice>&         Device,
           DxvkCsChunkFlags        CsFlags)
   : D3D11DeviceContext(pParent, Device, CsFlags),
+    m_contextExt(static_cast<ContextType*>(this)),
     m_annotation(static_cast<ContextType*>(this), Device) {
 
   }

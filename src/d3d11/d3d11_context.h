@@ -19,6 +19,7 @@ namespace dxvk {
   class D3D11Device;
   
   class D3D11DeviceContext : public D3D11DeviceChild<ID3D11DeviceContext4> {
+    template<typename T>
     friend class D3D11DeviceContextExt;
     // Needed in order to call EmitCs for pushing markers
     template<typename T>
@@ -687,7 +688,6 @@ namespace dxvk {
 
   protected:
     
-    D3D11DeviceContextExt       m_contextExt;
     D3D10Multithread            m_multithread;
     
     Rc<DxvkDevice>              m_device;

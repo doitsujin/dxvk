@@ -89,6 +89,7 @@ namespace dxvk {
 
   protected:
 
+    D3D11DeviceContextExt<ContextType>        m_contextExt;
     D3D11UserDefinedAnnotation<ContextType>   m_annotation;
 
     void UpdateResource(

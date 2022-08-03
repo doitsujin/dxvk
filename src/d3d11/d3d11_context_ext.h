@@ -4,14 +4,16 @@
 
 namespace dxvk {
   
-  class D3D11DeviceContext;
+  class D3D11DeferredContext;
+  class D3D11ImmediateContext;
 
+  template<typename ContextType>
   class D3D11DeviceContextExt : public ID3D11VkExtContext1 {
     
   public:
     
     D3D11DeviceContextExt(
-            D3D11DeviceContext*     pContext);
+            ContextType*            pContext);
     
     ULONG STDMETHODCALLTYPE AddRef();
     
@@ -71,7 +73,7 @@ namespace dxvk {
 
   private:
     
-    D3D11DeviceContext* m_ctx;
+    ContextType* m_ctx;
 
   };
 
