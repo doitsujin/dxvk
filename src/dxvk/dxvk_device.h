@@ -22,6 +22,7 @@
 #include "dxvk_shader.h"
 #include "dxvk_stats.h"
 #include "dxvk_unbound.h"
+#include "dxvk_marker.h"
 
 #include "../vulkan/vulkan_presenter.h"
 
@@ -348,7 +349,7 @@ namespace dxvk {
      */
     Rc<DxvkSampler> createSampler(
       const DxvkSamplerCreateInfo&  createInfo);
-    
+
     /**
      * \brief Retrieves stat counters
      * 
