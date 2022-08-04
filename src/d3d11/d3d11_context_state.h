@@ -127,11 +127,14 @@ namespace dxvk {
     D3D11ShaderStageUavBinding              views = { };
     DxvkBindingSet<D3D11_1_UAV_SLOT_COUNT>  mask  = { };
 
+    uint32_t maxCount = 0;
+
     void reset() {
-      for (uint32_t i = 0; i < views.size(); i++)
+      for (uint32_t i = 0; i < maxCount; i++)
         views[i] = nullptr;
 
       mask.clear();
+      maxCount = 0;
     }
   };
 

@@ -2126,6 +2126,9 @@ namespace dxvk {
         ResolveCsSrvHazards(uav);
       }
     }
+
+    m_state.uav.maxCount = std::clamp(StartSlot + NumUAVs,
+      m_state.uav.maxCount, uint32_t(m_state.uav.views.size()));
   }
 
 
@@ -3795,8 +3798,8 @@ namespace dxvk {
       result.stages[i].reserved = 0;
     }
 
-    result.stages[uint32_t(DxbcProgramType::PixelShader)].uavCount = D3D11_1_UAV_SLOT_COUNT;
-    result.stages[uint32_t(DxbcProgramType::ComputeShader)].uavCount = D3D11_1_UAV_SLOT_COUNT;
+    result.stages[uint32_t(DxbcProgramType::PixelShader)].uavCount = m_state.om.maxUav;
+    result.stages[uint32_t(DxbcProgramType::ComputeShader)].uavCount = m_state.uav.maxCount;
 
     result.vbCount = m_state.ia.maxVbCount;
     result.soCount = D3D11_SO_BUFFER_SLOT_COUNT;
@@ -4151,10 +4154,14 @@ namespace dxvk {
       ? m_state.uav.views
       : m_state.om.uavs;
 
-    uint32_t uavSlotId = computeUavBinding       (Stage, 0);
+    uint32_t maxCount = Stage == DxbcProgramType::ComputeShader
+      ? m_state.uav.maxCount
+      : m_state.om.maxUav;
+
+    uint32_t uavSlotId = computeUavBinding(Stage, 0);
     uint32_t ctrSlotId = computeUavCounterBinding(Stage, 0);
 
-    for (uint32_t i = 0; i < views.size(); i++) {
+    for (uint32_t i = 0; i < maxCount; i++) {
       BindUnorderedAccessView<Stage>(
         uavSlotId + i, views[i].ptr(),
         ctrSlotId + i, ~0u);
