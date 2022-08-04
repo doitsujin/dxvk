@@ -89,116 +89,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::ClearState() {
     D3D10DeviceLock lock = LockContext();
 
-    // Default shaders
-    m_state.vs.shader = nullptr;
-    m_state.hs.shader = nullptr;
-    m_state.ds.shader = nullptr;
-    m_state.gs.shader = nullptr;
-    m_state.ps.shader = nullptr;
-    m_state.cs.shader = nullptr;
-
-    // Default constant buffers
-    for (uint32_t i = 0; i < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT; i++) {
-      m_state.vs.constantBuffers[i] = { nullptr, 0, 0 };
-      m_state.hs.constantBuffers[i] = { nullptr, 0, 0 };
-      m_state.ds.constantBuffers[i] = { nullptr, 0, 0 };
-      m_state.gs.constantBuffers[i] = { nullptr, 0, 0 };
-      m_state.ps.constantBuffers[i] = { nullptr, 0, 0 };
-      m_state.cs.constantBuffers[i] = { nullptr, 0, 0 };
-    }
-
-    // Default samplers
-    for (uint32_t i = 0; i < D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT; i++) {
-      m_state.vs.samplers[i] = nullptr;
-      m_state.hs.samplers[i] = nullptr;
-      m_state.ds.samplers[i] = nullptr;
-      m_state.gs.samplers[i] = nullptr;
-      m_state.ps.samplers[i] = nullptr;
-      m_state.cs.samplers[i] = nullptr;
-    }
-
-    // Default shader resources
-    for (uint32_t i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
-      m_state.vs.shaderResources.views[i] = nullptr;
-      m_state.hs.shaderResources.views[i] = nullptr;
-      m_state.ds.shaderResources.views[i] = nullptr;
-      m_state.gs.shaderResources.views[i] = nullptr;
-      m_state.ps.shaderResources.views[i] = nullptr;
-      m_state.cs.shaderResources.views[i] = nullptr;
-    }
-
-    m_state.vs.shaderResources.hazardous.clear();
-    m_state.hs.shaderResources.hazardous.clear();
-    m_state.ds.shaderResources.hazardous.clear();
-    m_state.gs.shaderResources.hazardous.clear();
-    m_state.ps.shaderResources.hazardous.clear();
-    m_state.cs.shaderResources.hazardous.clear();
-
-    // Default UAVs
-    for (uint32_t i = 0; i < D3D11_1_UAV_SLOT_COUNT; i++) {
-      m_state.ps.unorderedAccessViews[i] = nullptr;
-      m_state.cs.unorderedAccessViews[i] = nullptr;
-    }
-
-    m_state.cs.uavMask.clear();
-
-    // Default ID state
-    m_state.id.argBuffer = nullptr;
-
-    // Default IA state
-    m_state.ia.inputLayout       = nullptr;
-    m_state.ia.primitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
-
-    for (uint32_t i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
-      m_state.ia.vertexBuffers[i].buffer = nullptr;
-      m_state.ia.vertexBuffers[i].offset = 0;
-      m_state.ia.vertexBuffers[i].stride = 0;
-    }
-
-    m_state.ia.indexBuffer.buffer = nullptr;
-    m_state.ia.indexBuffer.offset = 0;
-    m_state.ia.indexBuffer.format = DXGI_FORMAT_UNKNOWN;
-
-    // Default OM State
-    for (uint32_t i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
-      m_state.om.renderTargetViews[i] = nullptr;
-    m_state.om.depthStencilView = nullptr;
-
-    m_state.om.cbState = nullptr;
-    m_state.om.dsState = nullptr;
-
-    for (uint32_t i = 0; i < 4; i++)
-      m_state.om.blendFactor[i] = 1.0f;
-
-    m_state.om.sampleCount = 0;
-    m_state.om.sampleMask = D3D11_DEFAULT_SAMPLE_MASK;
-    m_state.om.stencilRef = D3D11_DEFAULT_STENCIL_REFERENCE;
-
-    m_state.om.maxRtv = 0;
-    m_state.om.maxUav = 0;
-
-    // Default RS state
-    m_state.rs.state        = nullptr;
-    m_state.rs.numViewports = 0;
-    m_state.rs.numScissors  = 0;
-
-    for (uint32_t i = 0; i < D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; i++) {
-      m_state.rs.viewports[i] = D3D11_VIEWPORT { };
-      m_state.rs.scissors [i] = D3D11_RECT     { };
-    }
-
-    // Default SO state
-    for (uint32_t i = 0; i < D3D11_SO_BUFFER_SLOT_COUNT; i++) {
-      m_state.so.targets[i].buffer = nullptr;
-      m_state.so.targets[i].offset = 0;
-    }
-
-    // Default predication
-    m_state.pr.predicateObject = nullptr;
-    m_state.pr.predicateValue  = FALSE;
-
-    // Make sure to apply all state
-    ResetState();
+    ResetCommandListState();
+    ResetContextState();
   }
 
 
@@ -3963,13 +3855,7 @@ namespace dxvk {
 
 
   template<typename ContextType>
-  void D3D11CommonContext<ContextType>::ResetStagingBuffer() {
-    m_staging.reset();
-  }
-
-
-  template<typename ContextType>
-  void D3D11CommonContext<ContextType>::ResetState() {
+  void D3D11CommonContext<ContextType>::ResetCommandListState() {
     EmitCs([] (DxvkContext* ctx) {
       // Reset render targets
       ctx->bindRenderTargets(DxvkRenderTargets());
@@ -4075,6 +3961,124 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ResetContextState() {
+    // Default shaders
+    m_state.vs.shader = nullptr;
+    m_state.hs.shader = nullptr;
+    m_state.ds.shader = nullptr;
+    m_state.gs.shader = nullptr;
+    m_state.ps.shader = nullptr;
+    m_state.cs.shader = nullptr;
+
+    // Default constant buffers
+    for (uint32_t i = 0; i < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT; i++) {
+      m_state.vs.constantBuffers[i] = { nullptr, 0, 0 };
+      m_state.hs.constantBuffers[i] = { nullptr, 0, 0 };
+      m_state.ds.constantBuffers[i] = { nullptr, 0, 0 };
+      m_state.gs.constantBuffers[i] = { nullptr, 0, 0 };
+      m_state.ps.constantBuffers[i] = { nullptr, 0, 0 };
+      m_state.cs.constantBuffers[i] = { nullptr, 0, 0 };
+    }
+
+    // Default samplers
+    for (uint32_t i = 0; i < D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT; i++) {
+      m_state.vs.samplers[i] = nullptr;
+      m_state.hs.samplers[i] = nullptr;
+      m_state.ds.samplers[i] = nullptr;
+      m_state.gs.samplers[i] = nullptr;
+      m_state.ps.samplers[i] = nullptr;
+      m_state.cs.samplers[i] = nullptr;
+    }
+
+    // Default shader resources
+    for (uint32_t i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
+      m_state.vs.shaderResources.views[i] = nullptr;
+      m_state.hs.shaderResources.views[i] = nullptr;
+      m_state.ds.shaderResources.views[i] = nullptr;
+      m_state.gs.shaderResources.views[i] = nullptr;
+      m_state.ps.shaderResources.views[i] = nullptr;
+      m_state.cs.shaderResources.views[i] = nullptr;
+    }
+
+    m_state.vs.shaderResources.hazardous.clear();
+    m_state.hs.shaderResources.hazardous.clear();
+    m_state.ds.shaderResources.hazardous.clear();
+    m_state.gs.shaderResources.hazardous.clear();
+    m_state.ps.shaderResources.hazardous.clear();
+    m_state.cs.shaderResources.hazardous.clear();
+
+    // Default UAVs
+    for (uint32_t i = 0; i < D3D11_1_UAV_SLOT_COUNT; i++) {
+      m_state.ps.unorderedAccessViews[i] = nullptr;
+      m_state.cs.unorderedAccessViews[i] = nullptr;
+    }
+
+    m_state.cs.uavMask.clear();
+
+    // Default ID state
+    m_state.id.argBuffer = nullptr;
+
+    // Default IA state
+    m_state.ia.inputLayout       = nullptr;
+    m_state.ia.primitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
+
+    for (uint32_t i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
+      m_state.ia.vertexBuffers[i].buffer = nullptr;
+      m_state.ia.vertexBuffers[i].offset = 0;
+      m_state.ia.vertexBuffers[i].stride = 0;
+    }
+
+    m_state.ia.indexBuffer.buffer = nullptr;
+    m_state.ia.indexBuffer.offset = 0;
+    m_state.ia.indexBuffer.format = DXGI_FORMAT_UNKNOWN;
+
+    // Default OM State
+    for (uint32_t i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
+      m_state.om.renderTargetViews[i] = nullptr;
+    m_state.om.depthStencilView = nullptr;
+
+    m_state.om.cbState = nullptr;
+    m_state.om.dsState = nullptr;
+
+    for (uint32_t i = 0; i < 4; i++)
+      m_state.om.blendFactor[i] = 1.0f;
+
+    m_state.om.sampleCount = 0;
+    m_state.om.sampleMask = D3D11_DEFAULT_SAMPLE_MASK;
+    m_state.om.stencilRef = D3D11_DEFAULT_STENCIL_REFERENCE;
+
+    m_state.om.maxRtv = 0;
+    m_state.om.maxUav = 0;
+
+    // Default RS state
+    m_state.rs.state        = nullptr;
+    m_state.rs.numViewports = 0;
+    m_state.rs.numScissors  = 0;
+
+    for (uint32_t i = 0; i < D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; i++) {
+      m_state.rs.viewports[i] = D3D11_VIEWPORT { };
+      m_state.rs.scissors [i] = D3D11_RECT     { };
+    }
+
+    // Default SO state
+    for (uint32_t i = 0; i < D3D11_SO_BUFFER_SLOT_COUNT; i++) {
+      m_state.so.targets[i].buffer = nullptr;
+      m_state.so.targets[i].offset = 0;
+    }
+
+    // Default predication
+    m_state.pr.predicateObject = nullptr;
+    m_state.pr.predicateValue  = FALSE;
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::ResetStagingBuffer() {
+    m_staging.reset();
+  }
+
+
+  template<typename ContextType>
   template<DxbcProgramType ShaderStage, typename T>
   void D3D11CommonContext<ContextType>::ResolveSrvHazards(
           T*                                pView,
@@ -4172,7 +4176,7 @@ namespace dxvk {
 
 
   template<typename ContextType>
-  void D3D11CommonContext<ContextType>::RestoreState() {
+  void D3D11CommonContext<ContextType>::RestoreCommandListState() {
     BindFramebuffer();
 
     BindShader<DxbcProgramType::VertexShader>   (GetCommonShader(m_state.vs.shader.ptr()));

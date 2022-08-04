@@ -906,9 +906,11 @@ namespace dxvk {
             UINT                              NumSamplers,
             ID3D11SamplerState**              ppSamplers);
 
-    void ResetStagingBuffer();
+    void ResetCommandListState();
 
-    void ResetState();
+    void ResetContextState();
+
+    void ResetStagingBuffer();
 
     template<DxbcProgramType ShaderStage, typename T>
     void ResolveSrvHazards(
@@ -929,7 +931,7 @@ namespace dxvk {
     void ResolveOmUavHazards(
             D3D11RenderTargetView*            pView);
 
-    void RestoreState();
+    void RestoreCommandListState();
     
     template<DxbcProgramType Stage>
     void RestoreConstantBuffers(

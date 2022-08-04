@@ -140,7 +140,7 @@ namespace dxvk {
     static_cast<D3D11CommandList*>(pCommandList)->EmitToCommandList(m_commandList.ptr());
     
     if (RestoreContextState)
-      RestoreState();
+      RestoreCommandListState();
     else
       ClearState();
   }
@@ -159,7 +159,7 @@ namespace dxvk {
     m_commandList = CreateCommandList();
     
     if (RestoreDeferredContextState)
-      RestoreState();
+      RestoreCommandListState();
     else
       ClearState();
     

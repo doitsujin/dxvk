@@ -1047,7 +1047,7 @@ namespace dxvk {
         continue;
 
       if (!hasStreamsEnabled) {
-        m_ctx->ResetState();
+        m_ctx->ResetCommandListState();
         BindOutputView(pOutputView);
         hasStreamsEnabled = true;
       }
@@ -1056,7 +1056,7 @@ namespace dxvk {
     }
 
     if (hasStreamsEnabled)
-      m_ctx->RestoreState();
+      m_ctx->RestoreCommandListState();
 
     return S_OK;
   }

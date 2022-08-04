@@ -240,7 +240,7 @@ namespace dxvk {
     m_csSeqNum = std::max(m_csSeqNum, csSeqNum);
     
     if (RestoreContextState)
-      RestoreState();
+      RestoreCommandListState();
     else
       ClearState();
     
@@ -630,7 +630,7 @@ namespace dxvk {
     oldState->SetState(m_state);
     newState->GetState(m_state);
 
-    RestoreState();
+    RestoreCommandListState();
   }
 
 
