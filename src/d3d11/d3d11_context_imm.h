@@ -14,8 +14,7 @@ namespace dxvk {
   class D3D11CommonTexture;
   
   class D3D11ImmediateContext : public D3D11CommonContext<D3D11ImmediateContext> {
-    template<typename T>
-    friend class D3D11CommonContext;
+    friend class D3D11CommonContext<D3D11ImmediateContext>;
     friend class D3D11SwapChain;
     friend class D3D11VideoContext;
   public:

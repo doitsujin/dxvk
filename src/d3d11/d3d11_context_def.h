@@ -22,8 +22,7 @@ namespace dxvk {
   };
   
   class D3D11DeferredContext : public D3D11CommonContext<D3D11DeferredContext> {
-    template<typename T>
-    friend class D3D11CommonContext;
+    friend class D3D11CommonContext<D3D11DeferredContext>;
   public:
     
     D3D11DeferredContext(
