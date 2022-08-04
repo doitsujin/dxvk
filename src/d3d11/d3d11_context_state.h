@@ -15,6 +15,41 @@
 
 namespace dxvk {
   
+  /**
+   * \brief Per-stage state
+   *
+   * Stores an object of the given type for each shader stage.
+   * \tparam Object type
+   */
+  template<typename T>
+  class D3D11ShaderStageState {
+
+  public:
+
+          T& operator [] (DxbcProgramType type)       { return m_state[uint32_t(type)]; }
+    const T& operator [] (DxbcProgramType type) const { return m_state[uint32_t(type)]; }
+
+    /**
+     * \brief Calls reset method on all objects
+     */
+    void reset() {
+      for (auto& state : m_state)
+        state.reset();
+    }
+
+  private:
+
+    std::array<T, 6> m_state = { };
+
+  };
+
+
+  /**
+   * \brief Constant buffer bindings
+   *
+   * Stores the bound buffer range from a runtime point of view,
+   * as well as the range that is actually bound to the context.
+   */
   struct D3D11ConstantBufferBinding {
     Com<D3D11Buffer> buffer         = nullptr;
     UINT             constantOffset = 0;
@@ -22,9 +57,16 @@ namespace dxvk {
     UINT             constantBound  = 0;
   };
   
-  using D3D11ConstantBufferBindings = std::array<
-    D3D11ConstantBufferBinding, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT>;
-  
+  struct D3D11ShaderStageCbvBinding {
+    std::array<D3D11ConstantBufferBinding, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT> buffers = { };
+
+    void reset() {
+      for (uint32_t i = 0; i < buffers.size(); i++)
+        buffers[i] = D3D11ConstantBufferBinding();
+    }
+  };
+
+  using D3D11CbvBindings = D3D11ShaderStageState<D3D11ShaderStageCbvBinding>;
   
   using D3D11SamplerBindings = std::array<
     D3D11SamplerState*, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT>;
@@ -42,7 +84,6 @@ namespace dxvk {
   
   struct D3D11ContextStateVS {
     Com<D3D11VertexShader>        shader = nullptr;
-    D3D11ConstantBufferBindings   constantBuffers = { };
     D3D11SamplerBindings          samplers        = { };
     D3D11ShaderResourceBindings   shaderResources = { };
   };
@@ -50,7 +91,6 @@ namespace dxvk {
   
   struct D3D11ContextStateHS {
     Com<D3D11HullShader>          shader = nullptr;
-    D3D11ConstantBufferBindings   constantBuffers = { };
     D3D11SamplerBindings          samplers        = { };
     D3D11ShaderResourceBindings   shaderResources = { };
   };
@@ -58,7 +98,6 @@ namespace dxvk {
   
   struct D3D11ContextStateDS {
     Com<D3D11DomainShader>        shader = nullptr;
-    D3D11ConstantBufferBindings   constantBuffers = { };
     D3D11SamplerBindings          samplers        = { };
     D3D11ShaderResourceBindings   shaderResources = { };
   };
@@ -66,7 +105,6 @@ namespace dxvk {
   
   struct D3D11ContextStateGS {
     Com<D3D11GeometryShader>      shader = nullptr;
-    D3D11ConstantBufferBindings   constantBuffers = { };
     D3D11SamplerBindings          samplers        = { };
     D3D11ShaderResourceBindings   shaderResources = { };
   };
@@ -74,7 +112,6 @@ namespace dxvk {
   
   struct D3D11ContextStatePS {
     Com<D3D11PixelShader>         shader = nullptr;
-    D3D11ConstantBufferBindings   constantBuffers = { };
     D3D11SamplerBindings          samplers        = { };
     D3D11ShaderResourceBindings   shaderResources = { };
     D3D11UnorderedAccessBindings  unorderedAccessViews = { };
@@ -83,7 +120,6 @@ namespace dxvk {
   
   struct D3D11ContextStateCS {
     Com<D3D11ComputeShader>       shader = nullptr;
-    D3D11ConstantBufferBindings   constantBuffers = { };
     D3D11SamplerBindings          samplers        = { };
     D3D11ShaderResourceBindings   shaderResources = { };
     D3D11UnorderedAccessBindings  unorderedAccessViews = { };
@@ -184,6 +220,8 @@ namespace dxvk {
     D3D11ContextStateRS rs;
     D3D11ContextStateSO so;
     D3D11ContextStatePR pr;
+
+    D3D11CbvBindings    cbv;
   };
   
 }

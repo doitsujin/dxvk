@@ -886,8 +886,8 @@ namespace dxvk {
             ID3D11Resource*                   pResource,
             UINT                              Subresource);
 
+    template<DxbcProgramType ShaderStage>
     void GetConstantBuffers(
-      const D3D11ConstantBufferBindings&      Bindings,
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppConstantBuffers,
@@ -934,8 +934,7 @@ namespace dxvk {
     void RestoreCommandListState();
     
     template<DxbcProgramType Stage>
-    void RestoreConstantBuffers(
-            D3D11ConstantBufferBindings&      Bindings);
+    void RestoreConstantBuffers();
     
     template<DxbcProgramType Stage>
     void RestoreSamplers(
@@ -951,14 +950,12 @@ namespace dxvk {
     
     template<DxbcProgramType ShaderStage>
     void SetConstantBuffers(
-            D3D11ConstantBufferBindings&      Bindings,
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers);
 
     template<DxbcProgramType ShaderStage>
     void SetConstantBuffers1(
-            D3D11ConstantBufferBindings&      Bindings,
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers,

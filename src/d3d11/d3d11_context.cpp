@@ -1334,9 +1334,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetConstantBuffers<DxbcProgramType::VertexShader>(
-      m_state.vs.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers);
+      StartSlot, NumBuffers, ppConstantBuffers);
   }
 
 
@@ -1350,11 +1348,8 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetConstantBuffers1<DxbcProgramType::VertexShader>(
-      m_state.vs.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers,
-      pFirstConstant,
-      pNumConstants);
+      StartSlot, NumBuffers, ppConstantBuffers,
+      pFirstConstant, pNumConstants);
   }
 
 
@@ -1408,10 +1403,8 @@ namespace dxvk {
           ID3D11Buffer**                    ppConstantBuffers) {
     D3D10DeviceLock lock = LockContext();
 
-    GetConstantBuffers(
-      m_state.vs.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers,
+    GetConstantBuffers<DxbcProgramType::VertexShader>(
+      StartSlot, NumBuffers, ppConstantBuffers,
       nullptr, nullptr);
   }
 
@@ -1425,12 +1418,9 @@ namespace dxvk {
           UINT*                             pNumConstants) {
     D3D10DeviceLock lock = LockContext();
 
-    GetConstantBuffers(
-      m_state.vs.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers,
-      pFirstConstant,
-      pNumConstants);
+    GetConstantBuffers<DxbcProgramType::VertexShader>(
+      StartSlot, NumBuffers, ppConstantBuffers,
+      pFirstConstant, pNumConstants);
   }
 
 
@@ -1486,9 +1476,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetConstantBuffers<DxbcProgramType::HullShader>(
-      m_state.hs.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers);
+      StartSlot, NumBuffers, ppConstantBuffers);
   }
 
 
@@ -1502,11 +1490,8 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetConstantBuffers1<DxbcProgramType::HullShader>(
-      m_state.hs.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers,
-      pFirstConstant,
-      pNumConstants);
+      StartSlot, NumBuffers, ppConstantBuffers,
+      pFirstConstant, pNumConstants);
   }
 
 
@@ -1560,10 +1545,8 @@ namespace dxvk {
           ID3D11Buffer**                    ppConstantBuffers) {
     D3D10DeviceLock lock = LockContext();
 
-    GetConstantBuffers(
-      m_state.hs.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers,
+    GetConstantBuffers<DxbcProgramType::HullShader>(
+      StartSlot, NumBuffers, ppConstantBuffers,
       nullptr, nullptr);
   }
 
@@ -1577,12 +1560,9 @@ namespace dxvk {
           UINT*                             pNumConstants) {
     D3D10DeviceLock lock = LockContext();
 
-    GetConstantBuffers(
-      m_state.hs.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers,
-      pFirstConstant,
-      pNumConstants);
+    GetConstantBuffers<DxbcProgramType::HullShader>(
+      StartSlot, NumBuffers, ppConstantBuffers,
+      pFirstConstant, pNumConstants);
   }
 
 
@@ -1638,9 +1618,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetConstantBuffers<DxbcProgramType::DomainShader>(
-      m_state.ds.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers);
+      StartSlot, NumBuffers, ppConstantBuffers);
   }
 
 
@@ -1654,11 +1632,8 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetConstantBuffers1<DxbcProgramType::DomainShader>(
-      m_state.ds.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers,
-      pFirstConstant,
-      pNumConstants);
+      StartSlot, NumBuffers, ppConstantBuffers,
+      pFirstConstant, pNumConstants);
   }
 
 
@@ -1712,10 +1687,8 @@ namespace dxvk {
           ID3D11Buffer**                    ppConstantBuffers) {
     D3D10DeviceLock lock = LockContext();
 
-    GetConstantBuffers(
-      m_state.ds.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers,
+    GetConstantBuffers<DxbcProgramType::DomainShader>(
+      StartSlot, NumBuffers, ppConstantBuffers,
       nullptr, nullptr);
   }
 
@@ -1729,12 +1702,9 @@ namespace dxvk {
           UINT*                             pNumConstants) {
     D3D10DeviceLock lock = LockContext();
 
-    GetConstantBuffers(
-      m_state.ds.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers,
-      pFirstConstant,
-      pNumConstants);
+    GetConstantBuffers<DxbcProgramType::DomainShader>(
+      StartSlot, NumBuffers, ppConstantBuffers,
+      pFirstConstant, pNumConstants);
   }
 
 
@@ -1790,9 +1760,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetConstantBuffers<DxbcProgramType::GeometryShader>(
-      m_state.gs.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers);
+      StartSlot, NumBuffers, ppConstantBuffers);
   }
 
 
@@ -1806,11 +1774,8 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetConstantBuffers1<DxbcProgramType::GeometryShader>(
-      m_state.gs.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers,
-      pFirstConstant,
-      pNumConstants);
+      StartSlot, NumBuffers, ppConstantBuffers,
+      pFirstConstant, pNumConstants);
   }
 
 
@@ -1864,10 +1829,8 @@ namespace dxvk {
           ID3D11Buffer**                    ppConstantBuffers) {
     D3D10DeviceLock lock = LockContext();
 
-    GetConstantBuffers(
-      m_state.gs.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers,
+    GetConstantBuffers<DxbcProgramType::GeometryShader>(
+      StartSlot, NumBuffers, ppConstantBuffers,
       nullptr, nullptr);
   }
 
@@ -1881,12 +1844,9 @@ namespace dxvk {
           UINT*                             pNumConstants) {
     D3D10DeviceLock lock = LockContext();
 
-    GetConstantBuffers(
-      m_state.gs.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers,
-      pFirstConstant,
-      pNumConstants);
+    GetConstantBuffers<DxbcProgramType::GeometryShader>(
+      StartSlot, NumBuffers, ppConstantBuffers,
+      pFirstConstant, pNumConstants);
   }
 
 
@@ -1942,9 +1902,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetConstantBuffers<DxbcProgramType::PixelShader>(
-      m_state.ps.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers);
+      StartSlot, NumBuffers, ppConstantBuffers);
   }
 
 
@@ -1958,11 +1916,8 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetConstantBuffers1<DxbcProgramType::PixelShader>(
-      m_state.ps.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers,
-      pFirstConstant,
-      pNumConstants);
+      StartSlot, NumBuffers, ppConstantBuffers,
+      pFirstConstant, pNumConstants);
   }
 
 
@@ -2016,10 +1971,8 @@ namespace dxvk {
           ID3D11Buffer**                    ppConstantBuffers) {
     D3D10DeviceLock lock = LockContext();
 
-    GetConstantBuffers(
-      m_state.ps.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers,
+    GetConstantBuffers<DxbcProgramType::PixelShader>(
+      StartSlot, NumBuffers, ppConstantBuffers,
       nullptr, nullptr);
   }
 
@@ -2033,12 +1986,9 @@ namespace dxvk {
           UINT*                             pNumConstants) {
     D3D10DeviceLock lock = LockContext();
 
-    GetConstantBuffers(
-      m_state.ps.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers,
-      pFirstConstant,
-      pNumConstants);
+    GetConstantBuffers<DxbcProgramType::PixelShader>(
+      StartSlot, NumBuffers, ppConstantBuffers,
+      pFirstConstant, pNumConstants);
   }
 
 
@@ -2094,9 +2044,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetConstantBuffers<DxbcProgramType::ComputeShader>(
-      m_state.cs.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers);
+      StartSlot, NumBuffers, ppConstantBuffers);
   }
 
 
@@ -2110,11 +2058,8 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetConstantBuffers1<DxbcProgramType::ComputeShader>(
-      m_state.cs.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers,
-      pFirstConstant,
-      pNumConstants);
+      StartSlot, NumBuffers, ppConstantBuffers,
+      pFirstConstant, pNumConstants);
   }
 
 
@@ -2225,10 +2170,8 @@ namespace dxvk {
           ID3D11Buffer**                    ppConstantBuffers) {
     D3D10DeviceLock lock = LockContext();
 
-    GetConstantBuffers(
-      m_state.cs.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers,
+    GetConstantBuffers<DxbcProgramType::ComputeShader>(
+      StartSlot, NumBuffers, ppConstantBuffers,
       nullptr, nullptr);
   }
 
@@ -2242,12 +2185,9 @@ namespace dxvk {
           UINT*                             pNumConstants) {
     D3D10DeviceLock lock = LockContext();
 
-    GetConstantBuffers(
-      m_state.cs.constantBuffers,
-      StartSlot, NumBuffers,
-      ppConstantBuffers,
-      pFirstConstant,
-      pNumConstants);
+    GetConstantBuffers<DxbcProgramType::ComputeShader>(
+      StartSlot, NumBuffers, ppConstantBuffers,
+      pFirstConstant, pNumConstants);
   }
 
 
@@ -3795,31 +3735,33 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  template<DxbcProgramType ShaderStage>
   void D3D11CommonContext<ContextType>::GetConstantBuffers(
-    const D3D11ConstantBufferBindings&      Bindings,
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppConstantBuffers,
           UINT*                             pFirstConstant,
           UINT*                             pNumConstants) {
+    const auto& bindings = m_state.cbv[ShaderStage];
+
     for (uint32_t i = 0; i < NumBuffers; i++) {
-      const bool inRange = StartSlot + i < Bindings.size();
+      const bool inRange = StartSlot + i < bindings.buffers.size();
 
       if (ppConstantBuffers) {
         ppConstantBuffers[i] = inRange
-          ? Bindings[StartSlot + i].buffer.ref()
+          ? bindings.buffers[StartSlot + i].buffer.ref()
           : nullptr;
       }
 
       if (pFirstConstant) {
         pFirstConstant[i] = inRange
-          ? Bindings[StartSlot + i].constantOffset
+          ? bindings.buffers[StartSlot + i].constantOffset
           : 0u;
       }
 
       if (pNumConstants) {
         pNumConstants[i] = inRange
-          ? Bindings[StartSlot + i].constantCount
+          ? bindings.buffers[StartSlot + i].constantCount
           : 0u;
       }
     }
@@ -3970,15 +3912,8 @@ namespace dxvk {
     m_state.ps.shader = nullptr;
     m_state.cs.shader = nullptr;
 
-    // Default constant buffers
-    for (uint32_t i = 0; i < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT; i++) {
-      m_state.vs.constantBuffers[i] = { nullptr, 0, 0 };
-      m_state.hs.constantBuffers[i] = { nullptr, 0, 0 };
-      m_state.ds.constantBuffers[i] = { nullptr, 0, 0 };
-      m_state.gs.constantBuffers[i] = { nullptr, 0, 0 };
-      m_state.ps.constantBuffers[i] = { nullptr, 0, 0 };
-      m_state.cs.constantBuffers[i] = { nullptr, 0, 0 };
-    }
+    // Reset resource bindings
+    m_state.cbv.reset();
 
     // Default samplers
     for (uint32_t i = 0; i < D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT; i++) {
@@ -4215,12 +4150,12 @@ namespace dxvk {
     for (uint32_t i = 0; i < m_state.so.targets.size(); i++)
       BindXfbBuffer(i, m_state.so.targets[i].buffer.ptr(), ~0u);
 
-    RestoreConstantBuffers<DxbcProgramType::VertexShader>   (m_state.vs.constantBuffers);
-    RestoreConstantBuffers<DxbcProgramType::HullShader>     (m_state.hs.constantBuffers);
-    RestoreConstantBuffers<DxbcProgramType::DomainShader>   (m_state.ds.constantBuffers);
-    RestoreConstantBuffers<DxbcProgramType::GeometryShader> (m_state.gs.constantBuffers);
-    RestoreConstantBuffers<DxbcProgramType::PixelShader>    (m_state.ps.constantBuffers);
-    RestoreConstantBuffers<DxbcProgramType::ComputeShader>  (m_state.cs.constantBuffers);
+    RestoreConstantBuffers<DxbcProgramType::VertexShader>();
+    RestoreConstantBuffers<DxbcProgramType::HullShader>();
+    RestoreConstantBuffers<DxbcProgramType::DomainShader>();
+    RestoreConstantBuffers<DxbcProgramType::GeometryShader>();
+    RestoreConstantBuffers<DxbcProgramType::PixelShader>();
+    RestoreConstantBuffers<DxbcProgramType::ComputeShader>();
 
     RestoreSamplers<DxbcProgramType::VertexShader>  (m_state.vs.samplers);
     RestoreSamplers<DxbcProgramType::HullShader>    (m_state.hs.samplers);
@@ -4243,13 +4178,13 @@ namespace dxvk {
 
   template<typename ContextType>
   template<DxbcProgramType Stage>
-  void D3D11CommonContext<ContextType>::RestoreConstantBuffers(
-          D3D11ConstantBufferBindings&      Bindings) {
+  void D3D11CommonContext<ContextType>::RestoreConstantBuffers() {
+    const auto& bindings = m_state.cbv[Stage];
     uint32_t slotId = computeConstantBufferBinding(Stage, 0);
 
-    for (uint32_t i = 0; i < Bindings.size(); i++) {
-      BindConstantBuffer<Stage>(slotId + i, Bindings[i].buffer.ptr(),
-        Bindings[i].constantOffset, Bindings[i].constantBound);
+    for (uint32_t i = 0; i < bindings.buffers.size(); i++) {
+      BindConstantBuffer<Stage>(slotId + i, bindings.buffers[i].buffer.ptr(),
+        bindings.buffers[i].constantOffset, bindings.buffers[i].constantBound);
     }
   }
 
@@ -4295,10 +4230,10 @@ namespace dxvk {
   template<typename ContextType>
   template<DxbcProgramType ShaderStage>
   void D3D11CommonContext<ContextType>::SetConstantBuffers(
-          D3D11ConstantBufferBindings&      Bindings,
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
+    auto& bindings = m_state.cbv[ShaderStage];
     uint32_t slotId = computeConstantBufferBinding(ShaderStage, StartSlot);
 
     for (uint32_t i = 0; i < NumBuffers; i++) {
@@ -4309,12 +4244,12 @@ namespace dxvk {
       if (likely(newBuffer != nullptr))
         constantCount = std::min(newBuffer->Desc()->ByteWidth / 16, UINT(D3D11_REQ_CONSTANT_BUFFER_ELEMENT_COUNT));
 
-      if (Bindings[StartSlot + i].buffer         != newBuffer
-       || Bindings[StartSlot + i].constantBound  != constantCount) {
-        Bindings[StartSlot + i].buffer         = newBuffer;
-        Bindings[StartSlot + i].constantOffset = 0;
-        Bindings[StartSlot + i].constantCount  = constantCount;
-        Bindings[StartSlot + i].constantBound  = constantCount;
+      if (bindings.buffers[StartSlot + i].buffer         != newBuffer
+       || bindings.buffers[StartSlot + i].constantBound  != constantCount) {
+        bindings.buffers[StartSlot + i].buffer         = newBuffer;
+        bindings.buffers[StartSlot + i].constantOffset = 0;
+        bindings.buffers[StartSlot + i].constantCount  = constantCount;
+        bindings.buffers[StartSlot + i].constantBound  = constantCount;
 
         BindConstantBuffer<ShaderStage>(slotId + i, newBuffer, 0, constantCount);
       }
@@ -4325,12 +4260,13 @@ namespace dxvk {
   template<typename ContextType>
   template<DxbcProgramType ShaderStage>
   void D3D11CommonContext<ContextType>::SetConstantBuffers1(
-          D3D11ConstantBufferBindings&      Bindings,
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers,
     const UINT*                             pFirstConstant,
     const UINT*                             pNumConstants) {
+    auto& bindings = m_state.cbv[ShaderStage];
+
     uint32_t slotId = computeConstantBufferBinding(ShaderStage, StartSlot);
 
     for (uint32_t i = 0; i < NumBuffers; i++) {
@@ -4367,25 +4303,25 @@ namespace dxvk {
       // Do a full rebind if either the buffer changes, or if either the current or
       // the previous number of bound constants were zero, since we're binding a null
       // buffer to the backend in that case.
-      bool needsUpdate = Bindings[StartSlot + i].buffer != newBuffer;
+      bool needsUpdate = bindings.buffers[StartSlot + i].buffer != newBuffer;
 
       if (!needsUpdate) {
         needsUpdate |= !constantBound;
-        needsUpdate |= !Bindings[StartSlot + i].constantBound;
+        needsUpdate |= !bindings.buffers[StartSlot + i].constantBound;
       }
 
       if (needsUpdate) {
-        Bindings[StartSlot + i].buffer = newBuffer;
-        Bindings[StartSlot + i].constantOffset = constantOffset;
-        Bindings[StartSlot + i].constantCount  = constantCount;
-        Bindings[StartSlot + i].constantBound  = constantBound;
+        bindings.buffers[StartSlot + i].buffer = newBuffer;
+        bindings.buffers[StartSlot + i].constantOffset = constantOffset;
+        bindings.buffers[StartSlot + i].constantCount  = constantCount;
+        bindings.buffers[StartSlot + i].constantBound  = constantBound;
 
         BindConstantBuffer<ShaderStage>(slotId + i, newBuffer, constantOffset, constantBound);
-      } else if (Bindings[StartSlot + i].constantOffset != constantOffset
-              || Bindings[StartSlot + i].constantCount  != constantCount) {
-        Bindings[StartSlot + i].constantOffset = constantOffset;
-        Bindings[StartSlot + i].constantCount  = constantCount;
-        Bindings[StartSlot + i].constantBound  = constantBound;
+      } else if (bindings.buffers[StartSlot + i].constantOffset != constantOffset
+              || bindings.buffers[StartSlot + i].constantCount  != constantCount) {
+        bindings.buffers[StartSlot + i].constantOffset = constantOffset;
+        bindings.buffers[StartSlot + i].constantCount  = constantCount;
+        bindings.buffers[StartSlot + i].constantBound  = constantBound;
 
         BindConstantBufferRange<ShaderStage>(slotId + i, constantOffset, constantBound);
       }
