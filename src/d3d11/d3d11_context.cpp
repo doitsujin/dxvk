@@ -2082,16 +2082,16 @@ namespace dxvk {
     uint32_t uavSlotId = computeUavBinding       (DxbcProgramType::ComputeShader, 0);
     uint32_t ctrSlotId = computeUavCounterBinding(DxbcProgramType::ComputeShader, 0);
 
-    int32_t uavId = m_state.cs.uavMask.findNext(0);
+    int32_t uavId = m_state.uav.mask.findNext(0);
 
     while (uavId >= 0) {
       if (uint32_t(uavId) < StartSlot || uint32_t(uavId) >= StartSlot + NumUAVs) {
         for (uint32_t i = 0; i < NumUAVs; i++) {
           auto uav = static_cast<D3D11UnorderedAccessView*>(ppUnorderedAccessViews[i]);
 
-          if (CheckViewOverlap(uav, m_state.cs.unorderedAccessViews[uavId].ptr())) {
-            m_state.cs.unorderedAccessViews[uavId] = nullptr;
-            m_state.cs.uavMask.clr(uavId);
+          if (CheckViewOverlap(uav, m_state.uav.views[uavId].ptr())) {
+            m_state.uav.views[uavId] = nullptr;
+            m_state.uav.mask.clr(uavId);
 
             BindUnorderedAccessView<DxbcProgramType::ComputeShader>(
               uavSlotId + uavId, nullptr,
@@ -2099,9 +2099,9 @@ namespace dxvk {
           }
         }
 
-        uavId = m_state.cs.uavMask.findNext(uavId + 1);
+        uavId = m_state.uav.mask.findNext(uavId + 1);
       } else {
-        uavId = m_state.cs.uavMask.findNext(StartSlot + NumUAVs);
+        uavId = m_state.uav.mask.findNext(StartSlot + NumUAVs);
       }
     }
 
@@ -2110,9 +2110,9 @@ namespace dxvk {
       auto uav = static_cast<D3D11UnorderedAccessView*>(ppUnorderedAccessViews[i]);
       auto ctr = pUAVInitialCounts ? pUAVInitialCounts[i] : ~0u;
 
-      if (m_state.cs.unorderedAccessViews[StartSlot + i] != uav || ctr != ~0u) {
-        m_state.cs.unorderedAccessViews[StartSlot + i] = uav;
-        m_state.cs.uavMask.set(StartSlot + i, uav != nullptr);
+      if (m_state.uav.views[StartSlot + i] != uav || ctr != ~0u) {
+        m_state.uav.views[StartSlot + i] = uav;
+        m_state.uav.mask.set(StartSlot + i, uav != nullptr);
 
         BindUnorderedAccessView<DxbcProgramType::ComputeShader>(
           uavSlotId + StartSlot + i, uav,
@@ -2199,8 +2199,8 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     for (uint32_t i = 0; i < NumUAVs; i++) {
-      ppUnorderedAccessViews[i] = StartSlot + i < m_state.cs.unorderedAccessViews.size()
-        ? m_state.cs.unorderedAccessViews[StartSlot + i].ref()
+      ppUnorderedAccessViews[i] = StartSlot + i < m_state.uav.views.size()
+        ? m_state.uav.views[StartSlot + i].ref()
         : nullptr;
     }
   }
@@ -2311,19 +2311,19 @@ namespace dxvk {
 
     if (ppRenderTargetViews) {
       for (UINT i = 0; i < NumRTVs; i++) {
-        ppRenderTargetViews[i] = i < m_state.om.renderTargetViews.size()
-          ? m_state.om.renderTargetViews[i].ref()
+        ppRenderTargetViews[i] = i < m_state.om.rtvs.size()
+          ? m_state.om.rtvs[i].ref()
           : nullptr;
       }
     }
 
     if (ppDepthStencilView)
-      *ppDepthStencilView = m_state.om.depthStencilView.ref();
+      *ppDepthStencilView = m_state.om.dsv.ref();
 
     if (ppUnorderedAccessViews) {
       for (UINT i = 0; i < NumUAVs; i++) {
-        ppUnorderedAccessViews[i] = UAVStartSlot + i < m_state.ps.unorderedAccessViews.size()
-          ? m_state.ps.unorderedAccessViews[UAVStartSlot + i].ref()
+        ppUnorderedAccessViews[i] = UAVStartSlot + i < m_state.om.uavs.size()
+          ? m_state.om.uavs[UAVStartSlot + i].ref()
           : nullptr;
       }
     }
@@ -3133,20 +3133,20 @@ namespace dxvk {
     // D3D11 doesn't have the concept of a framebuffer object,
     // so we'll just create a new one every time the render
     // target bindings are updated. Set up the attachments.
-    for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
-      if (m_state.om.renderTargetViews[i] != nullptr) {
+    for (UINT i = 0; i < m_state.om.rtvs.size(); i++) {
+      if (m_state.om.rtvs[i] != nullptr) {
         attachments.color[i] = {
-          m_state.om.renderTargetViews[i]->GetImageView(),
-          m_state.om.renderTargetViews[i]->GetRenderLayout() };
-        sampleCount = m_state.om.renderTargetViews[i]->GetSampleCount();
+          m_state.om.rtvs[i]->GetImageView(),
+          m_state.om.rtvs[i]->GetRenderLayout() };
+        sampleCount = m_state.om.rtvs[i]->GetSampleCount();
       }
     }
 
-    if (m_state.om.depthStencilView != nullptr) {
+    if (m_state.om.dsv != nullptr) {
       attachments.depth = {
-        m_state.om.depthStencilView->GetImageView(),
-        m_state.om.depthStencilView->GetRenderLayout() };
-      sampleCount = m_state.om.depthStencilView->GetSampleCount();
+        m_state.om.dsv->GetImageView(),
+        m_state.om.dsv->GetRenderLayout() };
+      sampleCount = m_state.om.dsv->GetSampleCount();
     }
 
     // Create and bind the framebuffer object to the context
@@ -3895,15 +3895,9 @@ namespace dxvk {
     // Reset resource bindings
     m_state.cbv.reset();
     m_state.srv.reset();
+    m_state.uav.reset();
     m_state.samplers.reset();
-
-    // Default UAVs
-    for (uint32_t i = 0; i < D3D11_1_UAV_SLOT_COUNT; i++) {
-      m_state.ps.unorderedAccessViews[i] = nullptr;
-      m_state.cs.unorderedAccessViews[i] = nullptr;
-    }
-
-    m_state.cs.uavMask.clear();
+    m_state.om.reset();
 
     // Default ID state
     m_state.id.argBuffer = nullptr;
@@ -3921,24 +3915,6 @@ namespace dxvk {
     m_state.ia.indexBuffer.buffer = nullptr;
     m_state.ia.indexBuffer.offset = 0;
     m_state.ia.indexBuffer.format = DXGI_FORMAT_UNKNOWN;
-
-    // Default OM State
-    for (uint32_t i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
-      m_state.om.renderTargetViews[i] = nullptr;
-    m_state.om.depthStencilView = nullptr;
-
-    m_state.om.cbState = nullptr;
-    m_state.om.dsState = nullptr;
-
-    for (uint32_t i = 0; i < 4; i++)
-      m_state.om.blendFactor[i] = 1.0f;
-
-    m_state.om.sampleCount = 0;
-    m_state.om.sampleMask = D3D11_DEFAULT_SAMPLE_MASK;
-    m_state.om.stencilRef = D3D11_DEFAULT_STENCIL_REFERENCE;
-
-    m_state.om.maxRtv = 0;
-    m_state.om.maxUav = 0;
 
     // Default RS state
     m_state.rs.state        = nullptr;
@@ -4029,14 +4005,14 @@ namespace dxvk {
 
     bool hazard = false;
 
-    if (CheckViewOverlap(pView, m_state.om.depthStencilView.ptr())) {
-      m_state.om.depthStencilView = nullptr;
+    if (CheckViewOverlap(pView, m_state.om.dsv.ptr())) {
+      m_state.om.dsv = nullptr;
       hazard = true;
     }
 
     for (uint32_t i = 0; i < m_state.om.maxRtv; i++) {
-      if (CheckViewOverlap(pView, m_state.om.renderTargetViews[i].ptr())) {
-        m_state.om.renderTargetViews[i] = nullptr;
+      if (CheckViewOverlap(pView, m_state.om.rtvs[i].ptr())) {
+        m_state.om.rtvs[i] = nullptr;
         hazard = true;
       }
     }
@@ -4055,8 +4031,8 @@ namespace dxvk {
     uint32_t ctrSlotId = computeUavCounterBinding(DxbcProgramType::PixelShader, 0);
 
     for (uint32_t i = 0; i < m_state.om.maxUav; i++) {
-      if (CheckViewOverlap(pView, m_state.ps.unorderedAccessViews[i].ptr())) {
-        m_state.ps.unorderedAccessViews[i] = nullptr;
+      if (CheckViewOverlap(pView, m_state.om.uavs[i].ptr())) {
+        m_state.om.uavs[i] = nullptr;
 
         BindUnorderedAccessView<DxbcProgramType::PixelShader>(
           uavSlotId + i, nullptr,
@@ -4120,8 +4096,8 @@ namespace dxvk {
     RestoreShaderResources<DxbcProgramType::PixelShader>();
     RestoreShaderResources<DxbcProgramType::ComputeShader>();
 
-    RestoreUnorderedAccessViews<DxbcProgramType::PixelShader>   (m_state.ps.unorderedAccessViews);
-    RestoreUnorderedAccessViews<DxbcProgramType::ComputeShader> (m_state.cs.unorderedAccessViews);
+    RestoreUnorderedAccessViews<DxbcProgramType::PixelShader>();
+    RestoreUnorderedAccessViews<DxbcProgramType::ComputeShader>();
 
     RestoreSamplers<DxbcProgramType::VertexShader>();
     RestoreSamplers<DxbcProgramType::HullShader>();
@@ -4169,15 +4145,17 @@ namespace dxvk {
 
   template<typename ContextType>
   template<DxbcProgramType Stage>
-  void D3D11CommonContext<ContextType>::RestoreUnorderedAccessViews(
-          D3D11UnorderedAccessBindings&     Bindings) {
+  void D3D11CommonContext<ContextType>::RestoreUnorderedAccessViews() {
+    const auto& views = Stage == DxbcProgramType::ComputeShader
+      ? m_state.uav.views
+      : m_state.om.uavs;
+
     uint32_t uavSlotId = computeUavBinding       (Stage, 0);
     uint32_t ctrSlotId = computeUavCounterBinding(Stage, 0);
 
-    for (uint32_t i = 0; i < Bindings.size(); i++) {
+    for (uint32_t i = 0; i < views.size(); i++) {
       BindUnorderedAccessView<Stage>(
-        uavSlotId + i,
-        Bindings[i].ptr(),
+        uavSlotId + i, views[i].ptr(),
         ctrSlotId + i, ~0u);
     }
   }
@@ -4355,13 +4333,13 @@ namespace dxvk {
       if (!ValidateRenderTargets(NumRTVs, ppRenderTargetViews, pDepthStencilView))
         return;
 
-      for (uint32_t i = 0; i < m_state.om.renderTargetViews.size(); i++) {
+      for (uint32_t i = 0; i < m_state.om.rtvs.size(); i++) {
         auto rtv = i < NumRTVs
           ? static_cast<D3D11RenderTargetView*>(ppRenderTargetViews[i])
           : nullptr;
 
-        if (m_state.om.renderTargetViews[i] != rtv) {
-          m_state.om.renderTargetViews[i] = rtv;
+        if (m_state.om.rtvs[i] != rtv) {
+          m_state.om.rtvs[i] = rtv;
           needsUpdate = true;
           ResolveOmSrvHazards(rtv);
 
@@ -4372,8 +4350,8 @@ namespace dxvk {
 
       auto dsv = static_cast<D3D11DepthStencilView*>(pDepthStencilView);
 
-      if (m_state.om.depthStencilView != dsv) {
-        m_state.om.depthStencilView = dsv;
+      if (m_state.om.dsv != dsv) {
+        m_state.om.dsv = dsv;
         needsUpdate = true;
         ResolveOmSrvHazards(dsv);
       }
@@ -4398,8 +4376,8 @@ namespace dxvk {
             ctr = pUAVInitialCounts ? pUAVInitialCounts[i - UAVStartSlot] : ~0u;
           }
 
-          if (m_state.ps.unorderedAccessViews[i] != uav || ctr != ~0u) {
-            m_state.ps.unorderedAccessViews[i] = uav;
+          if (m_state.om.uavs[i] != uav || ctr != ~0u) {
+            m_state.om.uavs[i] = uav;
 
             BindUnorderedAccessView<DxbcProgramType::PixelShader>(
               uavSlotId + i, uav,
@@ -4487,20 +4465,20 @@ namespace dxvk {
     bool hazard = false;
 
     if (ShaderStage == DxbcProgramType::ComputeShader) {
-      int32_t uav = m_state.cs.uavMask.findNext(0);
+      int32_t uav = m_state.uav.mask.findNext(0);
 
       while (uav >= 0 && !hazard) {
-        hazard = CheckViewOverlap(pView, m_state.cs.unorderedAccessViews[uav].ptr());
-        uav = m_state.cs.uavMask.findNext(uav + 1);
+        hazard = CheckViewOverlap(pView, m_state.uav.views[uav].ptr());
+        uav = m_state.uav.mask.findNext(uav + 1);
       }
     } else {
-      hazard = CheckViewOverlap(pView, m_state.om.depthStencilView.ptr());
+      hazard = CheckViewOverlap(pView, m_state.om.dsv.ptr());
 
       for (uint32_t i = 0; !hazard && i < m_state.om.maxRtv; i++)
-        hazard = CheckViewOverlap(pView, m_state.om.renderTargetViews[i].ptr());
+        hazard = CheckViewOverlap(pView, m_state.om.rtvs[i].ptr());
 
       for (uint32_t i = 0; !hazard && i < m_state.om.maxUav; i++)
-        hazard = CheckViewOverlap(pView, m_state.ps.unorderedAccessViews[i].ptr());
+        hazard = CheckViewOverlap(pView, m_state.om.uavs[i].ptr());
     }
 
     return hazard;

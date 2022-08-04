@@ -103,11 +103,28 @@ namespace dxvk {
   };
     
   using D3D11SamplerBindings = D3D11ShaderStageState<D3D11ShaderStageSamplerBinding>;
+
+  /**
+   * \brief UAV bindings
+   *
+   * Stores bound UAVs. For compute shader UAVs,
+   * we also store a bit mask of bound UAVs.
+   */
+  using D3D11ShaderStageUavBinding = std::array<Com<D3D11UnorderedAccessView>, D3D11_1_UAV_SLOT_COUNT>;
   
-  using D3D11UnorderedAccessBindings = std::array<
-    Com<D3D11UnorderedAccessView>, D3D11_1_UAV_SLOT_COUNT>;
-  
-  
+  struct D3D11UavBindings {
+    D3D11ShaderStageUavBinding              views = { };
+    DxvkBindingSet<D3D11_1_UAV_SLOT_COUNT>  mask  = { };
+
+    void reset() {
+      for (uint32_t i = 0; i < views.size(); i++)
+        views[i] = nullptr;
+
+      mask.clear();
+    }
+  };
+
+
   struct D3D11ContextStateVS {
     Com<D3D11VertexShader>        shader = nullptr;
   };
@@ -130,15 +147,11 @@ namespace dxvk {
   
   struct D3D11ContextStatePS {
     Com<D3D11PixelShader>         shader = nullptr;
-    D3D11UnorderedAccessBindings  unorderedAccessViews = { };
   };
   
   
   struct D3D11ContextStateCS {
     Com<D3D11ComputeShader>       shader = nullptr;
-    D3D11UnorderedAccessBindings  unorderedAccessViews = { };
-
-    DxvkBindingSet<D3D11_1_UAV_SLOT_COUNT> uavMask = { };
   };
   
   
@@ -170,10 +183,17 @@ namespace dxvk {
     D3D11IndexBufferBinding                                                         indexBuffer   = { };
   };
   
+  /**
+   * \brief Output merger state
+   *
+   * Stores RTV, DSV, and graphics UAV bindings, as well as related state.
+   */
+  using D3D11RenderTargetViewBinding = std::array<Com<D3D11RenderTargetView, false>, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT>;
   
   struct D3D11ContextStateOM {
-    std::array<Com<D3D11RenderTargetView, false>, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> renderTargetViews = { };
-    Com<D3D11DepthStencilView, false>                                                     depthStencilView  = { };
+    D3D11ShaderStageUavBinding        uavs  = { };
+    D3D11RenderTargetViewBinding      rtvs  = { };
+    Com<D3D11DepthStencilView, false> dsv   = { };
     
     D3D11BlendState*        cbState = nullptr;
     D3D11DepthStencilState* dsState = nullptr;
@@ -181,11 +201,34 @@ namespace dxvk {
     FLOAT blendFactor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
 
     UINT  sampleCount    = 0u;
-    UINT  sampleMask     = 0xFFFFFFFFu;
-    UINT  stencilRef     = 0u;
+    UINT  sampleMask     = D3D11_DEFAULT_SAMPLE_MASK;
+    UINT  stencilRef     = D3D11_DEFAULT_STENCIL_REFERENCE;
 
     UINT  maxRtv         = 0u;
     UINT  maxUav         = 0u;
+
+    void reset() {
+      for (uint32_t i = 0; i < maxUav; i++)
+        uavs[i] = nullptr;
+
+      for (uint32_t i = 0; i < maxRtv; i++)
+        rtvs[i] = nullptr;
+
+      dsv = nullptr;
+
+      cbState = nullptr;
+      dsState = nullptr;
+
+      for (uint32_t i = 0; i < 4; i++)
+        blendFactor[i] = 1.0f;
+
+      sampleCount = 0u;
+      sampleMask = D3D11_DEFAULT_SAMPLE_MASK;
+      stencilRef = D3D11_DEFAULT_STENCIL_REFERENCE;
+
+      maxRtv = 0;
+      maxUav = 0;
+    }
   };
   
   
@@ -237,6 +280,7 @@ namespace dxvk {
 
     D3D11CbvBindings    cbv;
     D3D11SrvBindings    srv;
+    D3D11UavBindings    uav;
     D3D11SamplerBindings samplers;
   };
   

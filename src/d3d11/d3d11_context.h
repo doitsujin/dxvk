@@ -942,8 +942,7 @@ namespace dxvk {
     void RestoreShaderResources();
     
     template<DxbcProgramType Stage>
-    void RestoreUnorderedAccessViews(
-            D3D11UnorderedAccessBindings&     Bindings);
+    void RestoreUnorderedAccessViews();
     
     template<DxbcProgramType ShaderStage>
     void SetConstantBuffers(
