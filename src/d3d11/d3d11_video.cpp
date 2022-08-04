@@ -1055,8 +1055,10 @@ namespace dxvk {
       BlitStream(streamState, &pStreams[i]);
     }
 
-    if (hasStreamsEnabled)
+    if (hasStreamsEnabled) {
+      UnbindResources();
       m_ctx->RestoreCommandListState();
+    }
 
     return S_OK;
   }
@@ -1299,6 +1301,23 @@ namespace dxvk {
         ctx->bindResourceView(VK_SHADER_STAGE_FRAGMENT_BIT, 2 + i, Rc<DxvkImageView>(cViews[i]), nullptr);
 
       ctx->draw(3, 1, 0, 0);
+
+      ctx->bindResourceSampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1, nullptr);
+
+      for (uint32_t i = 0; i < cViews.size(); i++)
+        ctx->bindResourceView(VK_SHADER_STAGE_FRAGMENT_BIT, 2 + i, nullptr, nullptr);
+    });
+  }
+
+
+  void D3D11VideoContext::UnbindResources() {
+    m_ctx->EmitCs([this] (DxvkContext* ctx) {
+      ctx->bindRenderTargets(DxvkRenderTargets());
+
+      ctx->bindShader(VK_SHADER_STAGE_VERTEX_BIT, nullptr);
+      ctx->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr);
+
+      ctx->bindResourceBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 0, DxvkBufferSlice());
     });
   }
 

@@ -608,6 +608,8 @@ namespace dxvk {
       const D3D11VideoProcessorStreamState* pStreamState,
       const D3D11_VIDEO_PROCESSOR_STREAM*   pStream);
 
+    void UnbindResources();
+
   };
 
 }
