@@ -894,8 +894,8 @@ namespace dxvk {
             UINT*                             pFirstConstant,
             UINT*                             pNumConstants);
 
+    template<DxbcProgramType ShaderStage>
     void GetShaderResources(
-      const D3D11ShaderResourceBindings&      Bindings,
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView**        ppShaderResourceViews);
@@ -914,8 +914,7 @@ namespace dxvk {
 
     template<DxbcProgramType ShaderStage, typename T>
     void ResolveSrvHazards(
-            T*                                pView,
-            D3D11ShaderResourceBindings&      Bindings);
+            T*                                pView);
 
     template<typename T>
     void ResolveCsSrvHazards(
@@ -941,8 +940,7 @@ namespace dxvk {
             D3D11SamplerBindings&             Bindings);
     
     template<DxbcProgramType Stage>
-    void RestoreShaderResources(
-            D3D11ShaderResourceBindings&      Bindings);
+    void RestoreShaderResources();
     
     template<DxbcProgramType Stage>
     void RestoreUnorderedAccessViews(
@@ -964,7 +962,6 @@ namespace dxvk {
 
     template<DxbcProgramType ShaderStage>
     void SetShaderResources(
-            D3D11ShaderResourceBindings&      Bindings,
             UINT                              StartSlot,
             UINT                              NumResources,
             ID3D11ShaderResourceView* const*  ppResources);

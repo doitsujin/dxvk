@@ -1361,9 +1361,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetShaderResources<DxbcProgramType::VertexShader>(
-      m_state.vs.shaderResources,
-      StartSlot, NumViews,
-      ppShaderResourceViews);
+      StartSlot, NumViews, ppShaderResourceViews);
   }
 
 
@@ -1431,7 +1429,7 @@ namespace dxvk {
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
     D3D10DeviceLock lock = LockContext();
 
-    GetShaderResources(m_state.vs.shaderResources,
+    GetShaderResources<DxbcProgramType::VertexShader>(
       StartSlot, NumViews, ppShaderResourceViews);
   }
 
@@ -1503,9 +1501,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetShaderResources<DxbcProgramType::HullShader>(
-      m_state.hs.shaderResources,
-      StartSlot, NumViews,
-      ppShaderResourceViews);
+      StartSlot, NumViews, ppShaderResourceViews);
   }
 
 
@@ -1573,7 +1569,7 @@ namespace dxvk {
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
     D3D10DeviceLock lock = LockContext();
 
-    GetShaderResources(m_state.hs.shaderResources,
+    GetShaderResources<DxbcProgramType::HullShader>(
       StartSlot, NumViews, ppShaderResourceViews);
   }
 
@@ -1645,9 +1641,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetShaderResources<DxbcProgramType::DomainShader>(
-      m_state.ds.shaderResources,
-      StartSlot, NumViews,
-      ppShaderResourceViews);
+      StartSlot, NumViews, ppShaderResourceViews);
   }
 
 
@@ -1715,7 +1709,7 @@ namespace dxvk {
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
     D3D10DeviceLock lock = LockContext();
 
-    GetShaderResources(m_state.ds.shaderResources,
+    GetShaderResources<DxbcProgramType::DomainShader>(
       StartSlot, NumViews, ppShaderResourceViews);
   }
 
@@ -1787,9 +1781,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetShaderResources<DxbcProgramType::GeometryShader>(
-      m_state.gs.shaderResources,
-      StartSlot, NumViews,
-      ppShaderResourceViews);
+      StartSlot, NumViews, ppShaderResourceViews);
   }
 
 
@@ -1857,7 +1849,7 @@ namespace dxvk {
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
     D3D10DeviceLock lock = LockContext();
 
-    GetShaderResources(m_state.gs.shaderResources,
+    GetShaderResources<DxbcProgramType::GeometryShader>(
       StartSlot, NumViews, ppShaderResourceViews);
   }
 
@@ -1929,9 +1921,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetShaderResources<DxbcProgramType::PixelShader>(
-      m_state.ps.shaderResources,
-      StartSlot, NumViews,
-      ppShaderResourceViews);
+      StartSlot, NumViews, ppShaderResourceViews);
   }
 
 
@@ -1999,7 +1989,7 @@ namespace dxvk {
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
     D3D10DeviceLock lock = LockContext();
 
-    GetShaderResources(m_state.ps.shaderResources,
+    GetShaderResources<DxbcProgramType::PixelShader>(
       StartSlot, NumViews, ppShaderResourceViews);
   }
 
@@ -2071,9 +2061,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetShaderResources<DxbcProgramType::ComputeShader>(
-      m_state.cs.shaderResources,
-      StartSlot, NumViews,
-      ppShaderResourceViews);
+      StartSlot, NumViews, ppShaderResourceViews);
   }
 
 
@@ -2198,7 +2186,7 @@ namespace dxvk {
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
     D3D10DeviceLock lock = LockContext();
 
-    GetShaderResources(m_state.cs.shaderResources,
+    GetShaderResources<DxbcProgramType::ComputeShader>(
       StartSlot, NumViews, ppShaderResourceViews);
   }
 
@@ -3769,14 +3757,16 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  template<DxbcProgramType ShaderStage>
   void D3D11CommonContext<ContextType>::GetShaderResources(
-    const D3D11ShaderResourceBindings&      Bindings,
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
+    const auto& bindings = m_state.srv[ShaderStage];
+
     for (uint32_t i = 0; i < NumViews; i++) {
-      ppShaderResourceViews[i] = StartSlot + i < Bindings.views.size()
-        ? Bindings.views[StartSlot + i].ref()
+      ppShaderResourceViews[i] = StartSlot + i < bindings.views.size()
+        ? bindings.views[StartSlot + i].ref()
         : nullptr;
     }
   }
@@ -3914,6 +3904,7 @@ namespace dxvk {
 
     // Reset resource bindings
     m_state.cbv.reset();
+    m_state.srv.reset();
 
     // Default samplers
     for (uint32_t i = 0; i < D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT; i++) {
@@ -3924,23 +3915,6 @@ namespace dxvk {
       m_state.ps.samplers[i] = nullptr;
       m_state.cs.samplers[i] = nullptr;
     }
-
-    // Default shader resources
-    for (uint32_t i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
-      m_state.vs.shaderResources.views[i] = nullptr;
-      m_state.hs.shaderResources.views[i] = nullptr;
-      m_state.ds.shaderResources.views[i] = nullptr;
-      m_state.gs.shaderResources.views[i] = nullptr;
-      m_state.ps.shaderResources.views[i] = nullptr;
-      m_state.cs.shaderResources.views[i] = nullptr;
-    }
-
-    m_state.vs.shaderResources.hazardous.clear();
-    m_state.hs.shaderResources.hazardous.clear();
-    m_state.ds.shaderResources.hazardous.clear();
-    m_state.gs.shaderResources.hazardous.clear();
-    m_state.ps.shaderResources.hazardous.clear();
-    m_state.cs.shaderResources.hazardous.clear();
 
     // Default UAVs
     for (uint32_t i = 0; i < D3D11_1_UAV_SLOT_COUNT; i++) {
@@ -4016,29 +3990,30 @@ namespace dxvk {
   template<typename ContextType>
   template<DxbcProgramType ShaderStage, typename T>
   void D3D11CommonContext<ContextType>::ResolveSrvHazards(
-          T*                                pView,
-          D3D11ShaderResourceBindings&      Bindings) {
+          T*                                pView) {
+    auto& bindings = m_state.srv[ShaderStage];
+
     uint32_t slotId = computeSrvBinding(ShaderStage, 0);
-    int32_t srvId = Bindings.hazardous.findNext(0);
+    int32_t srvId = bindings.hazardous.findNext(0);
 
     while (srvId >= 0) {
-      auto srv = Bindings.views[srvId].ptr();
+      auto srv = bindings.views[srvId].ptr();
 
       if (likely(srv && srv->TestHazards())) {
         bool hazard = CheckViewOverlap(pView, srv);
 
         if (unlikely(hazard)) {
-          Bindings.views[srvId] = nullptr;
-          Bindings.hazardous.clr(srvId);
+          bindings.views[srvId] = nullptr;
+          bindings.hazardous.clr(srvId);
 
           BindShaderResource<ShaderStage>(slotId + srvId, nullptr);
         }
       } else {
         // Avoid further redundant iterations
-        Bindings.hazardous.clr(srvId);
+        bindings.hazardous.clr(srvId);
       }
 
-      srvId = Bindings.hazardous.findNext(srvId + 1);
+      srvId = bindings.hazardous.findNext(srvId + 1);
     }
   }
 
@@ -4048,7 +4023,7 @@ namespace dxvk {
   void D3D11CommonContext<ContextType>::ResolveCsSrvHazards(
           T*                                pView) {
     if (!pView) return;
-    ResolveSrvHazards<DxbcProgramType::ComputeShader>  (pView, m_state.cs.shaderResources);
+    ResolveSrvHazards<DxbcProgramType::ComputeShader>(pView);
   }
 
 
@@ -4057,11 +4032,11 @@ namespace dxvk {
   void D3D11CommonContext<ContextType>::ResolveOmSrvHazards(
           T*                                pView) {
     if (!pView) return;
-    ResolveSrvHazards<DxbcProgramType::VertexShader>   (pView, m_state.vs.shaderResources);
-    ResolveSrvHazards<DxbcProgramType::HullShader>     (pView, m_state.hs.shaderResources);
-    ResolveSrvHazards<DxbcProgramType::DomainShader>   (pView, m_state.ds.shaderResources);
-    ResolveSrvHazards<DxbcProgramType::GeometryShader> (pView, m_state.gs.shaderResources);
-    ResolveSrvHazards<DxbcProgramType::PixelShader>    (pView, m_state.ps.shaderResources);
+    ResolveSrvHazards<DxbcProgramType::VertexShader>(pView);
+    ResolveSrvHazards<DxbcProgramType::HullShader>(pView);
+    ResolveSrvHazards<DxbcProgramType::DomainShader>(pView);
+    ResolveSrvHazards<DxbcProgramType::GeometryShader>(pView);
+    ResolveSrvHazards<DxbcProgramType::PixelShader>(pView);
   }
 
 
@@ -4164,12 +4139,12 @@ namespace dxvk {
     RestoreSamplers<DxbcProgramType::PixelShader>   (m_state.ps.samplers);
     RestoreSamplers<DxbcProgramType::ComputeShader> (m_state.cs.samplers);
 
-    RestoreShaderResources<DxbcProgramType::VertexShader>   (m_state.vs.shaderResources);
-    RestoreShaderResources<DxbcProgramType::HullShader>     (m_state.hs.shaderResources);
-    RestoreShaderResources<DxbcProgramType::DomainShader>   (m_state.ds.shaderResources);
-    RestoreShaderResources<DxbcProgramType::GeometryShader> (m_state.gs.shaderResources);
-    RestoreShaderResources<DxbcProgramType::PixelShader>    (m_state.ps.shaderResources);
-    RestoreShaderResources<DxbcProgramType::ComputeShader>  (m_state.cs.shaderResources);
+    RestoreShaderResources<DxbcProgramType::VertexShader>();
+    RestoreShaderResources<DxbcProgramType::HullShader>();
+    RestoreShaderResources<DxbcProgramType::DomainShader>();
+    RestoreShaderResources<DxbcProgramType::GeometryShader>();
+    RestoreShaderResources<DxbcProgramType::PixelShader>();
+    RestoreShaderResources<DxbcProgramType::ComputeShader>();
 
     RestoreUnorderedAccessViews<DxbcProgramType::PixelShader>   (m_state.ps.unorderedAccessViews);
     RestoreUnorderedAccessViews<DxbcProgramType::ComputeShader> (m_state.cs.unorderedAccessViews);
@@ -4202,12 +4177,12 @@ namespace dxvk {
 
   template<typename ContextType>
   template<DxbcProgramType Stage>
-  void D3D11CommonContext<ContextType>::RestoreShaderResources(
-          D3D11ShaderResourceBindings&      Bindings) {
+  void D3D11CommonContext<ContextType>::RestoreShaderResources() {
+    const auto& bindings = m_state.srv[Stage];
     uint32_t slotId = computeSrvBinding(Stage, 0);
 
-    for (uint32_t i = 0; i < Bindings.views.size(); i++)
-      BindShaderResource<Stage>(slotId + i, Bindings.views[i].ptr());
+    for (uint32_t i = 0; i < bindings.views.size(); i++)
+      BindShaderResource<Stage>(slotId + i, bindings.views[i].ptr());
   }
 
 
@@ -4332,16 +4307,16 @@ namespace dxvk {
   template<typename ContextType>
   template<DxbcProgramType ShaderStage>
   void D3D11CommonContext<ContextType>::SetShaderResources(
-          D3D11ShaderResourceBindings&      Bindings,
           UINT                              StartSlot,
           UINT                              NumResources,
           ID3D11ShaderResourceView* const*  ppResources) {
+    auto& bindings = m_state.srv[ShaderStage];
     uint32_t slotId = computeSrvBinding(ShaderStage, StartSlot);
 
     for (uint32_t i = 0; i < NumResources; i++) {
       auto resView = static_cast<D3D11ShaderResourceView*>(ppResources[i]);
 
-      if (Bindings.views[StartSlot + i] != resView) {
+      if (bindings.views[StartSlot + i] != resView) {
         if (unlikely(resView && resView->TestHazards())) {
           if (TestSrvHazards<ShaderStage>(resView))
             resView = nullptr;
@@ -4349,10 +4324,10 @@ namespace dxvk {
           // Only set if necessary, but don't reset it on every
           // bind as this would be more expensive than a few
           // redundant checks in OMSetRenderTargets and friends.
-          Bindings.hazardous.set(StartSlot + i, resView);
+          bindings.hazardous.set(StartSlot + i, resView);
         }
 
-        Bindings.views[StartSlot + i] = resView;
+        bindings.views[StartSlot + i] = resView;
         BindShaderResource<ShaderStage>(slotId + i, resView);
       }
     }

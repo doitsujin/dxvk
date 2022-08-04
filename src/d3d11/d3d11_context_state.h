@@ -68,16 +68,30 @@ namespace dxvk {
 
   using D3D11CbvBindings = D3D11ShaderStageState<D3D11ShaderStageCbvBinding>;
   
+  /**
+   * \brief Shader resource bindings
+   *
+   * Stores bound shader resource views, as well as a bit
+   * set of views that are potentially hazardous.
+   */
+  struct D3D11ShaderStageSrvBinding {
+    std::array<Com<D3D11ShaderResourceView>, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT> views     = { };
+    DxvkBindingSet<D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT>                           hazardous = { };
+
+    void reset() {
+      for (uint32_t i = 0; i < views.size(); i++)
+        views[i] = nullptr;
+
+      hazardous.clear();
+    }
+  };
+    
+  using D3D11SrvBindings = D3D11ShaderStageState<D3D11ShaderStageSrvBinding>;
+    
   using D3D11SamplerBindings = std::array<
     D3D11SamplerState*, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT>;
     
   
-  struct D3D11ShaderResourceBindings {
-    std::array<Com<D3D11ShaderResourceView>, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT> views     = { };
-    DxvkBindingSet<D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT>                           hazardous = { };
-  };
-    
-    
   using D3D11UnorderedAccessBindings = std::array<
     Com<D3D11UnorderedAccessView>, D3D11_1_UAV_SLOT_COUNT>;
   
@@ -85,35 +99,30 @@ namespace dxvk {
   struct D3D11ContextStateVS {
     Com<D3D11VertexShader>        shader = nullptr;
     D3D11SamplerBindings          samplers        = { };
-    D3D11ShaderResourceBindings   shaderResources = { };
   };
   
   
   struct D3D11ContextStateHS {
     Com<D3D11HullShader>          shader = nullptr;
     D3D11SamplerBindings          samplers        = { };
-    D3D11ShaderResourceBindings   shaderResources = { };
   };
   
   
   struct D3D11ContextStateDS {
     Com<D3D11DomainShader>        shader = nullptr;
     D3D11SamplerBindings          samplers        = { };
-    D3D11ShaderResourceBindings   shaderResources = { };
   };
   
   
   struct D3D11ContextStateGS {
     Com<D3D11GeometryShader>      shader = nullptr;
     D3D11SamplerBindings          samplers        = { };
-    D3D11ShaderResourceBindings   shaderResources = { };
   };
   
   
   struct D3D11ContextStatePS {
     Com<D3D11PixelShader>         shader = nullptr;
     D3D11SamplerBindings          samplers        = { };
-    D3D11ShaderResourceBindings   shaderResources = { };
     D3D11UnorderedAccessBindings  unorderedAccessViews = { };
   };
   
@@ -121,7 +130,6 @@ namespace dxvk {
   struct D3D11ContextStateCS {
     Com<D3D11ComputeShader>       shader = nullptr;
     D3D11SamplerBindings          samplers        = { };
-    D3D11ShaderResourceBindings   shaderResources = { };
     D3D11UnorderedAccessBindings  unorderedAccessViews = { };
 
     DxvkBindingSet<D3D11_1_UAV_SLOT_COUNT> uavMask = { };
@@ -222,6 +230,7 @@ namespace dxvk {
     D3D11ContextStatePR pr;
 
     D3D11CbvBindings    cbv;
+    D3D11SrvBindings    srv;
   };
   
 }
