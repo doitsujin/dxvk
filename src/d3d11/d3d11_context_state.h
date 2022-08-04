@@ -124,36 +124,6 @@ namespace dxvk {
     }
   };
 
-
-  struct D3D11ContextStateVS {
-    Com<D3D11VertexShader>        shader = nullptr;
-  };
-  
-  
-  struct D3D11ContextStateHS {
-    Com<D3D11HullShader>          shader = nullptr;
-  };
-  
-  
-  struct D3D11ContextStateDS {
-    Com<D3D11DomainShader>        shader = nullptr;
-  };
-  
-  
-  struct D3D11ContextStateGS {
-    Com<D3D11GeometryShader>      shader = nullptr;
-  };
-  
-  
-  struct D3D11ContextStatePS {
-    Com<D3D11PixelShader>         shader = nullptr;
-  };
-  
-  
-  struct D3D11ContextStateCS {
-    Com<D3D11ComputeShader>       shader = nullptr;
-  };
-  
   /**
    * \brief Input assembly state
    *
@@ -321,13 +291,13 @@ namespace dxvk {
    * \brief Context state
    */
   struct D3D11ContextState {
-    D3D11ContextStateCS cs;
-    D3D11ContextStateDS ds;
-    D3D11ContextStateGS gs;
-    D3D11ContextStateHS hs;
-    D3D11ContextStatePS ps;
-    D3D11ContextStateVS vs;
-    
+    Com<D3D11VertexShader>    vs;
+    Com<D3D11HullShader>      hs;
+    Com<D3D11DomainShader>    ds;
+    Com<D3D11GeometryShader>  gs;
+    Com<D3D11PixelShader>     ps;
+    Com<D3D11ComputeShader>   cs;
+
     D3D11ContextStateID id;
     D3D11ContextStateIA ia;
     D3D11ContextStateOM om;

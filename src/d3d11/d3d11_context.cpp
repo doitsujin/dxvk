@@ -1318,8 +1318,8 @@ namespace dxvk {
     if (NumClassInstances)
       Logger::err("D3D11: Class instances not supported");
 
-    if (m_state.vs.shader != shader) {
-      m_state.vs.shader = shader;
+    if (m_state.vs != shader) {
+      m_state.vs = shader;
 
       BindShader<DxbcProgramType::VertexShader>(GetCommonShader(shader));
     }
@@ -1385,7 +1385,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     if (ppVertexShader)
-      *ppVertexShader = m_state.vs.shader.ref();
+      *ppVertexShader = m_state.vs.ref();
 
     if (pNumClassInstances)
       *pNumClassInstances = 0;
@@ -1456,8 +1456,8 @@ namespace dxvk {
     if (NumClassInstances)
       Logger::err("D3D11: Class instances not supported");
 
-    if (m_state.hs.shader != shader) {
-      m_state.hs.shader = shader;
+    if (m_state.hs != shader) {
+      m_state.hs = shader;
 
       BindShader<DxbcProgramType::HullShader>(GetCommonShader(shader));
     }
@@ -1523,7 +1523,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     if (ppHullShader)
-      *ppHullShader = m_state.hs.shader.ref();
+      *ppHullShader = m_state.hs.ref();
 
     if (pNumClassInstances)
       *pNumClassInstances = 0;
@@ -1594,8 +1594,8 @@ namespace dxvk {
     if (NumClassInstances)
       Logger::err("D3D11: Class instances not supported");
 
-    if (m_state.ds.shader != shader) {
-      m_state.ds.shader = shader;
+    if (m_state.ds != shader) {
+      m_state.ds = shader;
 
       BindShader<DxbcProgramType::DomainShader>(GetCommonShader(shader));
     }
@@ -1661,7 +1661,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     if (ppDomainShader)
-      *ppDomainShader = m_state.ds.shader.ref();
+      *ppDomainShader = m_state.ds.ref();
 
     if (pNumClassInstances)
       *pNumClassInstances = 0;
@@ -1732,8 +1732,8 @@ namespace dxvk {
     if (NumClassInstances)
       Logger::err("D3D11: Class instances not supported");
 
-    if (m_state.gs.shader != shader) {
-      m_state.gs.shader = shader;
+    if (m_state.gs != shader) {
+      m_state.gs = shader;
 
       BindShader<DxbcProgramType::GeometryShader>(GetCommonShader(shader));
     }
@@ -1799,7 +1799,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     if (ppGeometryShader)
-      *ppGeometryShader = m_state.gs.shader.ref();
+      *ppGeometryShader = m_state.gs.ref();
 
     if (pNumClassInstances)
       *pNumClassInstances = 0;
@@ -1870,8 +1870,8 @@ namespace dxvk {
     if (NumClassInstances)
       Logger::err("D3D11: Class instances not supported");
 
-    if (m_state.ps.shader != shader) {
-      m_state.ps.shader = shader;
+    if (m_state.ps != shader) {
+      m_state.ps = shader;
 
       BindShader<DxbcProgramType::PixelShader>(GetCommonShader(shader));
     }
@@ -1937,7 +1937,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     if (ppPixelShader)
-      *ppPixelShader = m_state.ps.shader.ref();
+      *ppPixelShader = m_state.ps.ref();
 
     if (pNumClassInstances)
       *pNumClassInstances = 0;
@@ -2008,8 +2008,8 @@ namespace dxvk {
     if (NumClassInstances)
       Logger::err("D3D11: Class instances not supported");
 
-    if (m_state.cs.shader != shader) {
-      m_state.cs.shader = shader;
+    if (m_state.cs != shader) {
+      m_state.cs = shader;
 
       BindShader<DxbcProgramType::ComputeShader>(GetCommonShader(shader));
     }
@@ -2132,7 +2132,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     if (ppComputeShader)
-      *ppComputeShader = m_state.cs.shader.ref();
+      *ppComputeShader = m_state.cs.ref();
 
     if (pNumClassInstances)
       *pNumClassInstances = 0;
@@ -3884,13 +3884,13 @@ namespace dxvk {
 
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::ResetContextState() {
-    // Default shaders
-    m_state.vs.shader = nullptr;
-    m_state.hs.shader = nullptr;
-    m_state.ds.shader = nullptr;
-    m_state.gs.shader = nullptr;
-    m_state.ps.shader = nullptr;
-    m_state.cs.shader = nullptr;
+    // Reset shaders
+    m_state.vs = nullptr;
+    m_state.hs = nullptr;
+    m_state.ds = nullptr;
+    m_state.gs = nullptr;
+    m_state.ps = nullptr;
+    m_state.cs = nullptr;
 
     // Reset render state
     m_state.id.reset();
@@ -4016,12 +4016,12 @@ namespace dxvk {
   void D3D11CommonContext<ContextType>::RestoreCommandListState() {
     BindFramebuffer();
 
-    BindShader<DxbcProgramType::VertexShader>   (GetCommonShader(m_state.vs.shader.ptr()));
-    BindShader<DxbcProgramType::HullShader>     (GetCommonShader(m_state.hs.shader.ptr()));
-    BindShader<DxbcProgramType::DomainShader>   (GetCommonShader(m_state.ds.shader.ptr()));
-    BindShader<DxbcProgramType::GeometryShader> (GetCommonShader(m_state.gs.shader.ptr()));
-    BindShader<DxbcProgramType::PixelShader>    (GetCommonShader(m_state.ps.shader.ptr()));
-    BindShader<DxbcProgramType::ComputeShader>  (GetCommonShader(m_state.cs.shader.ptr()));
+    BindShader<DxbcProgramType::VertexShader>(GetCommonShader(m_state.vs.ptr()));
+    BindShader<DxbcProgramType::HullShader>(GetCommonShader(m_state.hs.ptr()));
+    BindShader<DxbcProgramType::DomainShader>(GetCommonShader(m_state.ds.ptr()));
+    BindShader<DxbcProgramType::GeometryShader>(GetCommonShader(m_state.gs.ptr()));
+    BindShader<DxbcProgramType::PixelShader>(GetCommonShader(m_state.ps.ptr()));
+    BindShader<DxbcProgramType::ComputeShader>(GetCommonShader(m_state.cs.ptr()));
 
     ApplyInputLayout();
     ApplyPrimitiveTopology();
