@@ -154,13 +154,17 @@ namespace dxvk {
     Com<D3D11ComputeShader>       shader = nullptr;
   };
   
-  
+  /**
+   * \brief Input assembly state
+   *
+   * Stores vertex buffers, the index buffer, the
+   * input layout, and the dynamic primitive topology.
+   */
   struct D3D11VertexBufferBinding {
     Com<D3D11Buffer> buffer = nullptr;
     UINT             offset = 0;
     UINT             stride = 0;
   };
-  
   
   struct D3D11IndexBufferBinding {
     Com<D3D11Buffer> buffer = nullptr;
@@ -168,19 +172,23 @@ namespace dxvk {
     DXGI_FORMAT      format = DXGI_FORMAT_UNKNOWN;
   };
 
-
-  struct D3D11ContextStateID {
-    Com<D3D11Buffer> argBuffer = nullptr;
-    Com<D3D11Buffer> cntBuffer = nullptr;
-  };
-  
-  
   struct D3D11ContextStateIA {
     Com<D3D11InputLayout>    inputLayout       = nullptr;
     D3D11_PRIMITIVE_TOPOLOGY primitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
     
     std::array<D3D11VertexBufferBinding, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> vertexBuffers = { };
     D3D11IndexBufferBinding                                                         indexBuffer   = { };
+
+    void reset() {
+      inputLayout = nullptr;
+
+      primitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
+
+      for (uint32_t i = 0; i < vertexBuffers.size(); i++)
+        vertexBuffers[i] = D3D11VertexBufferBinding();
+
+      indexBuffer = D3D11IndexBufferBinding();
+    }
   };
   
   /**
@@ -231,7 +239,27 @@ namespace dxvk {
     }
   };
   
-  
+  /**
+   * \brief Indirect draw state
+   *
+   * Stores the current indirct draw
+   * argument and draw count buffer.
+   */
+  struct D3D11ContextStateID {
+    Com<D3D11Buffer> argBuffer = nullptr;
+    Com<D3D11Buffer> cntBuffer = nullptr;
+
+    void reset() {
+      argBuffer = nullptr;
+      cntBuffer = nullptr;
+    }
+  };
+
+  /**
+   * \brief Rasterizer state
+   *
+   * Stores viewport info and the rasterizer state object.
+   */
   struct D3D11ContextStateRS {
     uint32_t numViewports = 0;
     uint32_t numScissors  = 0;
@@ -240,25 +268,54 @@ namespace dxvk {
     std::array<D3D11_RECT,     D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> scissors  = { };
     
     D3D11RasterizerState* state = nullptr;
+
+    void reset() {
+      for (uint32_t i = 0; i < numViewports; i++)
+        viewports[i] = D3D11_VIEWPORT();
+
+      for (uint32_t i = 0; i < numScissors; i++)
+        scissors[i] = D3D11_RECT();
+
+      numViewports = 0;
+      numScissors = 0;
+
+      state = nullptr;
+    }
   };
 
-
+  /**
+   * \brief Stream output binding
+   *
+   * Stores stream output buffers with offset.
+   */
   struct D3D11ContextSoTarget {
     Com<D3D11Buffer> buffer = nullptr;
     UINT             offset = 0;
   };
-  
 
   struct D3D11ContextStateSO {
     std::array<D3D11ContextSoTarget, D3D11_SO_BUFFER_SLOT_COUNT> targets = { };
+
+    void reset() {
+      for (uint32_t i = 0; i < targets.size(); i++)
+        targets[i] = D3D11ContextSoTarget();
+    }
   };
   
-  
+  /**
+   * \brief Predication state
+   *
+   * Stores predication info.
+   */
   struct D3D11ContextStatePR {
     Com<D3D11Query> predicateObject = nullptr;
-    BOOL            predicateValue  = FALSE;
+    BOOL            predicateValue  = false;
+
+    void reset() {
+      predicateObject = nullptr;
+      predicateValue = false;
+    }
   };
-  
   
   /**
    * \brief Context state

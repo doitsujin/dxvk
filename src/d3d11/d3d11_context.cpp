@@ -3892,49 +3892,19 @@ namespace dxvk {
     m_state.ps.shader = nullptr;
     m_state.cs.shader = nullptr;
 
+    // Reset render state
+    m_state.id.reset();
+    m_state.ia.reset();
+    m_state.om.reset();
+    m_state.rs.reset();
+    m_state.so.reset();
+    m_state.pr.reset();
+
     // Reset resource bindings
     m_state.cbv.reset();
     m_state.srv.reset();
     m_state.uav.reset();
     m_state.samplers.reset();
-    m_state.om.reset();
-
-    // Default ID state
-    m_state.id.argBuffer = nullptr;
-
-    // Default IA state
-    m_state.ia.inputLayout       = nullptr;
-    m_state.ia.primitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
-
-    for (uint32_t i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
-      m_state.ia.vertexBuffers[i].buffer = nullptr;
-      m_state.ia.vertexBuffers[i].offset = 0;
-      m_state.ia.vertexBuffers[i].stride = 0;
-    }
-
-    m_state.ia.indexBuffer.buffer = nullptr;
-    m_state.ia.indexBuffer.offset = 0;
-    m_state.ia.indexBuffer.format = DXGI_FORMAT_UNKNOWN;
-
-    // Default RS state
-    m_state.rs.state        = nullptr;
-    m_state.rs.numViewports = 0;
-    m_state.rs.numScissors  = 0;
-
-    for (uint32_t i = 0; i < D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; i++) {
-      m_state.rs.viewports[i] = D3D11_VIEWPORT { };
-      m_state.rs.scissors [i] = D3D11_RECT     { };
-    }
-
-    // Default SO state
-    for (uint32_t i = 0; i < D3D11_SO_BUFFER_SLOT_COUNT; i++) {
-      m_state.so.targets[i].buffer = nullptr;
-      m_state.so.targets[i].offset = 0;
-    }
-
-    // Default predication
-    m_state.pr.predicateObject = nullptr;
-    m_state.pr.predicateValue  = FALSE;
   }
 
 
