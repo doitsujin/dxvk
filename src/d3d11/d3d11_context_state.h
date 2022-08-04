@@ -60,9 +60,13 @@ namespace dxvk {
   struct D3D11ShaderStageCbvBinding {
     std::array<D3D11ConstantBufferBinding, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT> buffers = { };
 
+    uint32_t maxCount = 0;
+
     void reset() {
-      for (uint32_t i = 0; i < buffers.size(); i++)
+      for (uint32_t i = 0; i < maxCount; i++)
         buffers[i] = D3D11ConstantBufferBinding();
+
+      maxCount = 0;
     }
   };
 

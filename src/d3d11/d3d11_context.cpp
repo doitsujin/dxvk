@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "d3d11_context.h"
 #include "d3d11_context_def.h"
 #include "d3d11_context_imm.h"
@@ -3781,7 +3783,9 @@ namespace dxvk {
     D3D11MaxUsedBindings result;
 
     for (uint32_t i = 0; i < result.stages.size(); i++) {
-      result.stages[i].cbvCount = D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT;
+      auto stage = DxbcProgramType(i);
+
+      result.stages[i].cbvCount = m_state.cbv[stage].maxCount;
       result.stages[i].srvCount = D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT;
       result.stages[i].uavCount = 0;
       result.stages[i].samplerCount = D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT;
@@ -4108,7 +4112,7 @@ namespace dxvk {
     const auto& bindings = m_state.cbv[Stage];
     uint32_t slotId = computeConstantBufferBinding(Stage, 0);
 
-    for (uint32_t i = 0; i < bindings.buffers.size(); i++) {
+    for (uint32_t i = 0; i < bindings.maxCount; i++) {
       BindConstantBuffer<Stage>(slotId + i, bindings.buffers[i].buffer.ptr(),
         bindings.buffers[i].constantOffset, bindings.buffers[i].constantBound);
     }
@@ -4182,6 +4186,9 @@ namespace dxvk {
         BindConstantBuffer<ShaderStage>(slotId + i, newBuffer, 0, constantCount);
       }
     }
+
+    bindings.maxCount = std::clamp(StartSlot + NumBuffers,
+      bindings.maxCount, uint32_t(bindings.buffers.size()));
   }
 
 
@@ -4254,6 +4261,9 @@ namespace dxvk {
         BindConstantBufferRange<ShaderStage>(slotId + i, constantOffset, constantBound);
       }
     }
+
+    bindings.maxCount = std::clamp(StartSlot + NumBuffers,
+      bindings.maxCount, uint32_t(bindings.buffers.size()));
   }
 
 
