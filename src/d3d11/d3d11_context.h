@@ -906,6 +906,8 @@ namespace dxvk {
             UINT                              NumSamplers,
             ID3D11SamplerState**              ppSamplers);
 
+    D3D11MaxUsedBindings GetMaxUsedBindings();
+
     void ResetCommandListState();
 
     void ResetContextState();

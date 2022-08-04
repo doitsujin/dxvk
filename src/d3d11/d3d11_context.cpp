@@ -3777,8 +3777,31 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  D3D11MaxUsedBindings D3D11CommonContext<ContextType>::GetMaxUsedBindings() {
+    D3D11MaxUsedBindings result;
+
+    for (uint32_t i = 0; i < result.stages.size(); i++) {
+      result.stages[i].cbvCount = D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT;
+      result.stages[i].srvCount = D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT;
+      result.stages[i].uavCount = 0;
+      result.stages[i].samplerCount = D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT;
+      result.stages[i].reserved = 0;
+    }
+
+    result.stages[uint32_t(DxbcProgramType::PixelShader)].uavCount = D3D11_1_UAV_SLOT_COUNT;
+    result.stages[uint32_t(DxbcProgramType::ComputeShader)].uavCount = D3D11_1_UAV_SLOT_COUNT;
+
+    result.vbCount = D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
+    result.soCount = D3D11_SO_BUFFER_SLOT_COUNT;
+    return result;
+  }
+
+
+  template<typename ContextType>
   void D3D11CommonContext<ContextType>::ResetCommandListState() {
-    EmitCs([] (DxvkContext* ctx) {
+    EmitCs([
+      cUsedBindings = GetMaxUsedBindings()
+    ] (DxvkContext* ctx) {
       // Reset render targets
       ctx->bindRenderTargets(DxvkRenderTargets());
 
@@ -3825,11 +3848,11 @@ namespace dxvk {
       // Unbind index and vertex buffers
       ctx->bindIndexBuffer(DxvkBufferSlice(), VK_INDEX_TYPE_UINT32);
 
-      for (uint32_t i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++)
+      for (uint32_t i = 0; i < cUsedBindings.vbCount; i++)
         ctx->bindVertexBuffer(i, DxvkBufferSlice(), 0);
 
       // Unbind transform feedback buffers
-      for (uint32_t i = 0; i < D3D11_SO_BUFFER_SLOT_COUNT; i++)
+      for (uint32_t i = 0; i < cUsedBindings.soCount; i++)
         ctx->bindXfbBuffer(i, DxvkBufferSlice(), DxvkBufferSlice());
 
       // Unbind per-shader stage resources
@@ -3837,24 +3860,25 @@ namespace dxvk {
         auto programType = DxbcProgramType(i);
         auto stage = GetShaderStage(programType);
 
-        ctx->bindShader(stage, nullptr);
-
         // Unbind constant buffers, including the shader's ICB
         auto cbSlotId = computeConstantBufferBinding(programType, 0);
 
-        for (uint32_t j = 0; j <= D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT; j++)
+        ctx->bindShader(stage, nullptr);
+        ctx->bindResourceBuffer(stage, cbSlotId + D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, DxvkBufferSlice());
+
+        for (uint32_t j = 0; j < cUsedBindings.stages[i].cbvCount; j++)
           ctx->bindResourceBuffer(stage, cbSlotId + j, DxvkBufferSlice());
 
         // Unbind shader resource views
         auto srvSlotId = computeSrvBinding(programType, 0);
 
-        for (uint32_t j = 0; j < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; j++)
+        for (uint32_t j = 0; j < cUsedBindings.stages[i].srvCount; j++)
           ctx->bindResourceView(stage, srvSlotId + j, nullptr, nullptr);
 
         // Unbind texture samplers
         auto samplerSlotId = computeSamplerBinding(programType, 0);
 
-        for (uint32_t j = 0; j < D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT; j++)
+        for (uint32_t j = 0; j < cUsedBindings.stages[i].samplerCount; j++)
           ctx->bindResourceSampler(stage, samplerSlotId + j, nullptr);
 
         // Unbind UAVs for supported stages
@@ -3867,9 +3891,9 @@ namespace dxvk {
           auto uavSlotId = computeUavBinding(programType, 0);
           auto ctrSlotId = computeUavCounterBinding(programType, 0);
 
-          for (uint32_t j = 0; j < D3D11_1_UAV_SLOT_COUNT; j++) {
-            ctx->bindResourceView   (stages, uavSlotId, nullptr, nullptr);
-            ctx->bindResourceBuffer (stages, ctrSlotId, DxvkBufferSlice());
+          for (uint32_t j = 0; j < cUsedBindings.stages[i].uavCount; j++) {
+            ctx->bindResourceView(stages, uavSlotId, nullptr, nullptr);
+            ctx->bindResourceBuffer(stages, ctrSlotId, DxvkBufferSlice());
           }
         }
       }

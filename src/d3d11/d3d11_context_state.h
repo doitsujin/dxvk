@@ -310,5 +310,25 @@ namespace dxvk {
     D3D11UavBindings    uav;
     D3D11SamplerBindings samplers;
   };
-  
+
+  /**
+   * \brief Maximum used binding numbers in a shader stage
+   */
+  struct D3D11MaxUsedStageBindings {
+    uint32_t cbvCount     : 5;
+    uint32_t srvCount     : 9;
+    uint32_t uavCount     : 7;
+    uint32_t samplerCount : 5;
+    uint32_t reserved     : 6;
+  };
+
+  /**
+   * \brief Maximum used binding numbers for all context state
+   */
+  struct D3D11MaxUsedBindings {
+    std::array<D3D11MaxUsedStageBindings, 6> stages;
+    uint32_t  vbCount;
+    uint32_t  soCount;
+  };
+
 }
