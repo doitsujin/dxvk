@@ -621,7 +621,10 @@ namespace dxvk {
 
     if (!pState)
       return;
-    
+
+    // Reset all state affected by the current context state
+    ResetCommandListState();
+
     Com<D3D11DeviceContextState> oldState = std::move(m_stateObject);
     Com<D3D11DeviceContextState> newState = static_cast<D3D11DeviceContextState*>(pState);
 
@@ -636,6 +639,7 @@ namespace dxvk {
     oldState->SetState(m_state);
     newState->GetState(m_state);
 
+    // Restore all state affected by the new context state
     RestoreCommandListState();
   }
 
