@@ -103,9 +103,13 @@ namespace dxvk {
   struct D3D11ShaderStageSamplerBinding {
     std::array<D3D11SamplerState*, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT> samplers = { };
 
+    uint32_t maxCount = 0;
+
     void reset() {
-      for (uint32_t i = 0; i < samplers.size(); i++)
+      for (uint32_t i = 0; i < maxCount; i++)
         samplers[i] = nullptr;
+
+      maxCount = 0;
     }
   };
     

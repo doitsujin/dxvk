@@ -3788,7 +3788,7 @@ namespace dxvk {
       result.stages[i].cbvCount = m_state.cbv[stage].maxCount;
       result.stages[i].srvCount = m_state.srv[stage].maxCount;
       result.stages[i].uavCount = 0;
-      result.stages[i].samplerCount = D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT;
+      result.stages[i].samplerCount = m_state.samplers[stage].maxCount;
       result.stages[i].reserved = 0;
     }
 
@@ -4125,7 +4125,7 @@ namespace dxvk {
     const auto& bindings = m_state.samplers[Stage];
     uint32_t slotId = computeSamplerBinding(Stage, 0);
 
-    for (uint32_t i = 0; i < bindings.samplers.size(); i++)
+    for (uint32_t i = 0; i < bindings.maxCount; i++)
       BindSampler<Stage>(slotId + i, bindings.samplers[i]);
   }
 
@@ -4319,6 +4319,9 @@ namespace dxvk {
         BindSampler<ShaderStage>(slotId + i, sampler);
       }
     }
+
+    bindings.maxCount = std::clamp(StartSlot + NumSamplers,
+      bindings.maxCount, uint32_t(bindings.samplers.size()));
   }
 
 
