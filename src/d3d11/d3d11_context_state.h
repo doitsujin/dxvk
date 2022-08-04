@@ -87,10 +87,22 @@ namespace dxvk {
   };
     
   using D3D11SrvBindings = D3D11ShaderStageState<D3D11ShaderStageSrvBinding>;
+
+  /**
+   * \brief Sampler bindings
+   *
+   * Stores bound samplers.
+   */
+  struct D3D11ShaderStageSamplerBinding {
+    std::array<D3D11SamplerState*, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT> samplers = { };
+
+    void reset() {
+      for (uint32_t i = 0; i < samplers.size(); i++)
+        samplers[i] = nullptr;
+    }
+  };
     
-  using D3D11SamplerBindings = std::array<
-    D3D11SamplerState*, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT>;
-    
+  using D3D11SamplerBindings = D3D11ShaderStageState<D3D11ShaderStageSamplerBinding>;
   
   using D3D11UnorderedAccessBindings = std::array<
     Com<D3D11UnorderedAccessView>, D3D11_1_UAV_SLOT_COUNT>;
@@ -98,38 +110,32 @@ namespace dxvk {
   
   struct D3D11ContextStateVS {
     Com<D3D11VertexShader>        shader = nullptr;
-    D3D11SamplerBindings          samplers        = { };
   };
   
   
   struct D3D11ContextStateHS {
     Com<D3D11HullShader>          shader = nullptr;
-    D3D11SamplerBindings          samplers        = { };
   };
   
   
   struct D3D11ContextStateDS {
     Com<D3D11DomainShader>        shader = nullptr;
-    D3D11SamplerBindings          samplers        = { };
   };
   
   
   struct D3D11ContextStateGS {
     Com<D3D11GeometryShader>      shader = nullptr;
-    D3D11SamplerBindings          samplers        = { };
   };
   
   
   struct D3D11ContextStatePS {
     Com<D3D11PixelShader>         shader = nullptr;
-    D3D11SamplerBindings          samplers        = { };
     D3D11UnorderedAccessBindings  unorderedAccessViews = { };
   };
   
   
   struct D3D11ContextStateCS {
     Com<D3D11ComputeShader>       shader = nullptr;
-    D3D11SamplerBindings          samplers        = { };
     D3D11UnorderedAccessBindings  unorderedAccessViews = { };
 
     DxvkBindingSet<D3D11_1_UAV_SLOT_COUNT> uavMask = { };
@@ -231,6 +237,7 @@ namespace dxvk {
 
     D3D11CbvBindings    cbv;
     D3D11SrvBindings    srv;
+    D3D11SamplerBindings samplers;
   };
   
 }

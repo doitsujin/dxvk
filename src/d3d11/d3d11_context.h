@@ -900,8 +900,8 @@ namespace dxvk {
             UINT                              NumViews,
             ID3D11ShaderResourceView**        ppShaderResourceViews);
 
+    template<DxbcProgramType ShaderStage>
     void GetSamplers(
-      const D3D11SamplerBindings&             Bindings,
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState**              ppSamplers);
@@ -936,8 +936,7 @@ namespace dxvk {
     void RestoreConstantBuffers();
     
     template<DxbcProgramType Stage>
-    void RestoreSamplers(
-            D3D11SamplerBindings&             Bindings);
+    void RestoreSamplers();
     
     template<DxbcProgramType Stage>
     void RestoreShaderResources();
@@ -968,7 +967,6 @@ namespace dxvk {
 
     template<DxbcProgramType ShaderStage>
     void SetSamplers(
-            D3D11SamplerBindings&             Bindings,
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState* const*        ppSamplers);

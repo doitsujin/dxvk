@@ -1373,9 +1373,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetSamplers<DxbcProgramType::VertexShader>(
-      m_state.vs.samplers,
-      StartSlot, NumSamplers,
-      ppSamplers);
+      StartSlot, NumSamplers, ppSamplers);
   }
 
 
@@ -1441,7 +1439,7 @@ namespace dxvk {
           ID3D11SamplerState**              ppSamplers) {
     D3D10DeviceLock lock = LockContext();
 
-    GetSamplers(m_state.vs.samplers,
+    GetSamplers<DxbcProgramType::VertexShader>(
       StartSlot, NumSamplers, ppSamplers);
   }
 
@@ -1513,9 +1511,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetSamplers<DxbcProgramType::HullShader>(
-      m_state.hs.samplers,
-      StartSlot, NumSamplers,
-      ppSamplers);
+      StartSlot, NumSamplers, ppSamplers);
   }
 
 
@@ -1581,7 +1577,7 @@ namespace dxvk {
           ID3D11SamplerState**              ppSamplers) {
     D3D10DeviceLock lock = LockContext();
 
-    GetSamplers(m_state.hs.samplers,
+    GetSamplers<DxbcProgramType::HullShader>(
       StartSlot, NumSamplers, ppSamplers);
   }
 
@@ -1653,9 +1649,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetSamplers<DxbcProgramType::DomainShader>(
-      m_state.ds.samplers,
-      StartSlot, NumSamplers,
-      ppSamplers);
+      StartSlot, NumSamplers, ppSamplers);
   }
 
 
@@ -1721,7 +1715,7 @@ namespace dxvk {
           ID3D11SamplerState**              ppSamplers) {
     D3D10DeviceLock lock = LockContext();
 
-    GetSamplers(m_state.ds.samplers,
+    GetSamplers<DxbcProgramType::DomainShader>(
       StartSlot, NumSamplers, ppSamplers);
   }
 
@@ -1793,9 +1787,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetSamplers<DxbcProgramType::GeometryShader>(
-      m_state.gs.samplers,
-      StartSlot, NumSamplers,
-      ppSamplers);
+      StartSlot, NumSamplers, ppSamplers);
   }
 
 
@@ -1861,7 +1853,7 @@ namespace dxvk {
           ID3D11SamplerState**              ppSamplers) {
     D3D10DeviceLock lock = LockContext();
 
-    GetSamplers(m_state.gs.samplers,
+    GetSamplers<DxbcProgramType::GeometryShader>(
       StartSlot, NumSamplers, ppSamplers);
   }
 
@@ -1933,9 +1925,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetSamplers<DxbcProgramType::PixelShader>(
-      m_state.ps.samplers,
-      StartSlot, NumSamplers,
-      ppSamplers);
+      StartSlot, NumSamplers, ppSamplers);
   }
 
 
@@ -2001,7 +1991,7 @@ namespace dxvk {
           ID3D11SamplerState**              ppSamplers) {
     D3D10DeviceLock lock = LockContext();
 
-    GetSamplers(m_state.ps.samplers,
+    GetSamplers<DxbcProgramType::PixelShader>(
       StartSlot, NumSamplers, ppSamplers);
   }
 
@@ -2073,9 +2063,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     SetSamplers<DxbcProgramType::ComputeShader>(
-      m_state.cs.samplers,
-      StartSlot, NumSamplers,
-      ppSamplers);
+      StartSlot, NumSamplers, ppSamplers);
   }
 
 
@@ -2198,7 +2186,7 @@ namespace dxvk {
           ID3D11SamplerState**              ppSamplers) {
     D3D10DeviceLock lock = LockContext();
 
-    GetSamplers(m_state.cs.samplers,
+    GetSamplers<DxbcProgramType::ComputeShader>(
       StartSlot, NumSamplers, ppSamplers);
   }
 
@@ -3773,14 +3761,16 @@ namespace dxvk {
 
 
   template<typename ContextType>
+  template<DxbcProgramType ShaderStage>
   void D3D11CommonContext<ContextType>::GetSamplers(
-    const D3D11SamplerBindings&             Bindings,
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState**              ppSamplers) {
+    const auto& bindings = m_state.samplers[ShaderStage];
+
     for (uint32_t i = 0; i < NumSamplers; i++) {
-      ppSamplers[i] = StartSlot + i < Bindings.size()
-        ? ref(Bindings[StartSlot + i])
+      ppSamplers[i] = StartSlot + i < bindings.samplers.size()
+        ? ref(bindings.samplers[StartSlot + i])
         : nullptr;
     }
   }
@@ -3905,16 +3895,7 @@ namespace dxvk {
     // Reset resource bindings
     m_state.cbv.reset();
     m_state.srv.reset();
-
-    // Default samplers
-    for (uint32_t i = 0; i < D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT; i++) {
-      m_state.vs.samplers[i] = nullptr;
-      m_state.hs.samplers[i] = nullptr;
-      m_state.ds.samplers[i] = nullptr;
-      m_state.gs.samplers[i] = nullptr;
-      m_state.ps.samplers[i] = nullptr;
-      m_state.cs.samplers[i] = nullptr;
-    }
+    m_state.samplers.reset();
 
     // Default UAVs
     for (uint32_t i = 0; i < D3D11_1_UAV_SLOT_COUNT; i++) {
@@ -4132,13 +4113,6 @@ namespace dxvk {
     RestoreConstantBuffers<DxbcProgramType::PixelShader>();
     RestoreConstantBuffers<DxbcProgramType::ComputeShader>();
 
-    RestoreSamplers<DxbcProgramType::VertexShader>  (m_state.vs.samplers);
-    RestoreSamplers<DxbcProgramType::HullShader>    (m_state.hs.samplers);
-    RestoreSamplers<DxbcProgramType::DomainShader>  (m_state.ds.samplers);
-    RestoreSamplers<DxbcProgramType::GeometryShader>(m_state.gs.samplers);
-    RestoreSamplers<DxbcProgramType::PixelShader>   (m_state.ps.samplers);
-    RestoreSamplers<DxbcProgramType::ComputeShader> (m_state.cs.samplers);
-
     RestoreShaderResources<DxbcProgramType::VertexShader>();
     RestoreShaderResources<DxbcProgramType::HullShader>();
     RestoreShaderResources<DxbcProgramType::DomainShader>();
@@ -4148,6 +4122,13 @@ namespace dxvk {
 
     RestoreUnorderedAccessViews<DxbcProgramType::PixelShader>   (m_state.ps.unorderedAccessViews);
     RestoreUnorderedAccessViews<DxbcProgramType::ComputeShader> (m_state.cs.unorderedAccessViews);
+
+    RestoreSamplers<DxbcProgramType::VertexShader>();
+    RestoreSamplers<DxbcProgramType::HullShader>();
+    RestoreSamplers<DxbcProgramType::DomainShader>();
+    RestoreSamplers<DxbcProgramType::GeometryShader>();
+    RestoreSamplers<DxbcProgramType::PixelShader>();
+    RestoreSamplers<DxbcProgramType::ComputeShader>();
   }
 
 
@@ -4166,12 +4147,12 @@ namespace dxvk {
 
   template<typename ContextType>
   template<DxbcProgramType Stage>
-  void D3D11CommonContext<ContextType>::RestoreSamplers(
-          D3D11SamplerBindings&             Bindings) {
+  void D3D11CommonContext<ContextType>::RestoreSamplers() {
+    const auto& bindings = m_state.samplers[Stage];
     uint32_t slotId = computeSamplerBinding(Stage, 0);
 
-    for (uint32_t i = 0; i < Bindings.size(); i++)
-      BindSampler<Stage>(slotId + i, Bindings[i]);
+    for (uint32_t i = 0; i < bindings.samplers.size(); i++)
+      BindSampler<Stage>(slotId + i, bindings.samplers[i]);
   }
 
 
@@ -4337,17 +4318,17 @@ namespace dxvk {
   template<typename ContextType>
   template<DxbcProgramType ShaderStage>
   void D3D11CommonContext<ContextType>::SetSamplers(
-          D3D11SamplerBindings&             Bindings,
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
+    auto& bindings = m_state.samplers[ShaderStage];
     uint32_t slotId = computeSamplerBinding(ShaderStage, StartSlot);
 
     for (uint32_t i = 0; i < NumSamplers; i++) {
       auto sampler = static_cast<D3D11SamplerState*>(ppSamplers[i]);
 
-      if (Bindings[StartSlot + i] != sampler) {
-        Bindings[StartSlot + i] = sampler;
+      if (bindings.samplers[StartSlot + i] != sampler) {
+        bindings.samplers[StartSlot + i] = sampler;
         BindSampler<ShaderStage>(slotId + i, sampler);
       }
     }
