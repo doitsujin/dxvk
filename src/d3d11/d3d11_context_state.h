@@ -160,12 +160,14 @@ namespace dxvk {
     std::array<D3D11VertexBufferBinding, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> vertexBuffers = { };
     D3D11IndexBufferBinding                                                         indexBuffer   = { };
 
+    uint32_t maxVbCount = 0;
+
     void reset() {
       inputLayout = nullptr;
 
       primitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
 
-      for (uint32_t i = 0; i < vertexBuffers.size(); i++)
+      for (uint32_t i = 0; i < maxVbCount; i++)
         vertexBuffers[i] = D3D11VertexBufferBinding();
 
       indexBuffer = D3D11IndexBufferBinding();

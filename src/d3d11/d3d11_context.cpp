@@ -1213,6 +1213,9 @@ namespace dxvk {
         BindVertexBuffer(StartSlot + i, newBuffer, pOffsets[i], pStrides[i]);
       }
     }
+
+    m_state.ia.maxVbCount = std::clamp(StartSlot + NumBuffers,
+      m_state.ia.maxVbCount, uint32_t(m_state.ia.vertexBuffers.size()));
   }
 
 
@@ -3795,7 +3798,7 @@ namespace dxvk {
     result.stages[uint32_t(DxbcProgramType::PixelShader)].uavCount = D3D11_1_UAV_SLOT_COUNT;
     result.stages[uint32_t(DxbcProgramType::ComputeShader)].uavCount = D3D11_1_UAV_SLOT_COUNT;
 
-    result.vbCount = D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT;
+    result.vbCount = m_state.ia.maxVbCount;
     result.soCount = D3D11_SO_BUFFER_SLOT_COUNT;
     return result;
   }
@@ -4070,7 +4073,7 @@ namespace dxvk {
       m_state.ia.indexBuffer.offset,
       m_state.ia.indexBuffer.format);
 
-    for (uint32_t i = 0; i < m_state.ia.vertexBuffers.size(); i++) {
+    for (uint32_t i = 0; i < m_state.ia.maxVbCount; i++) {
       BindVertexBuffer(i,
         m_state.ia.vertexBuffers[i].buffer.ptr(),
         m_state.ia.vertexBuffers[i].offset,
