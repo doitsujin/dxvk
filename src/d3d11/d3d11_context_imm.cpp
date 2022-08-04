@@ -226,6 +226,12 @@ namespace dxvk {
 
     auto commandList = static_cast<D3D11CommandList*>(pCommandList);
     
+    // Clear state so that the command list can't observe any
+    // current context state. The command list itself will clean
+    // up after execution to ensure that no state changes done
+    // by the command list are visible to the immediate context.
+    ResetCommandListState();
+
     // Flush any outstanding commands so that
     // we don't mess up the execution order
     FlushCsChunk();
@@ -242,7 +248,7 @@ namespace dxvk {
     if (RestoreContextState)
       RestoreCommandListState();
     else
-      ClearState();
+      ResetContextState();
     
     // Mark CS thread as busy so that subsequent
     // flush operations get executed correctly.

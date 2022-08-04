@@ -9,7 +9,7 @@ namespace dxvk {
           UINT            ContextFlags)
   : D3D11CommonContext<D3D11DeferredContext>(pParent, Device, ContextFlags, GetCsChunkFlags(pParent)),
     m_commandList (CreateCommandList()) {
-    ClearState();
+    ResetContextState();
   }
   
   
@@ -135,14 +135,25 @@ namespace dxvk {
           BOOL                RestoreContextState) {
     D3D10DeviceLock lock = LockContext();
 
+    // Clear state so that the command list can't observe any
+    // current context state. The command list itself will clean
+    // up after execution to ensure that no state changes done
+    // by the command list are visible to the immediate context.
+    ResetCommandListState();
+
+    // Flush any outstanding commands so that
+    // we don't mess up the execution order
     FlushCsChunk();
     
-    static_cast<D3D11CommandList*>(pCommandList)->EmitToCommandList(m_commandList.ptr());
+    // Record any chunks from the given command list into the
+    // current command list and deal with context state
+    auto commandList = static_cast<D3D11CommandList*>(pCommandList);
+    commandList->EmitToCommandList(m_commandList.ptr());
     
     if (RestoreContextState)
       RestoreCommandListState();
     else
-      ClearState();
+      ResetContextState();
   }
   
   
@@ -151,17 +162,29 @@ namespace dxvk {
           ID3D11CommandList   **ppCommandList) {
     D3D10DeviceLock lock = LockContext();
 
+    // End all queries that were left active by the app
     FinalizeQueries();
+
+    // Clean up command list state so that the any state changed
+    // by this command list does not affect the calling context
+    ResetCommandListState();
+
+    // Make sure all commands are visible to the command list
     FlushCsChunk();
     
-    if (ppCommandList != nullptr)
+    if (ppCommandList)
       *ppCommandList = m_commandList.ref();
+
+    // Create a clean command list, and if requested, restore all
+    // previously set context state. Otherwise, reset the context.
+    // Any use of ExecuteCommandList will reset command list state
+    // before the command list is actually executed.
     m_commandList = CreateCommandList();
     
     if (RestoreDeferredContextState)
       RestoreCommandListState();
     else
-      ClearState();
+      ResetContextState();
     
     m_mappedResources.clear();
     ResetStagingBuffer();
