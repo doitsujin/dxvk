@@ -3786,7 +3786,7 @@ namespace dxvk {
       auto stage = DxbcProgramType(i);
 
       result.stages[i].cbvCount = m_state.cbv[stage].maxCount;
-      result.stages[i].srvCount = D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT;
+      result.stages[i].srvCount = m_state.srv[stage].maxCount;
       result.stages[i].uavCount = 0;
       result.stages[i].samplerCount = D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT;
       result.stages[i].reserved = 0;
@@ -4136,7 +4136,7 @@ namespace dxvk {
     const auto& bindings = m_state.srv[Stage];
     uint32_t slotId = computeSrvBinding(Stage, 0);
 
-    for (uint32_t i = 0; i < bindings.views.size(); i++)
+    for (uint32_t i = 0; i < bindings.maxCount; i++)
       BindShaderResource<Stage>(slotId + i, bindings.views[i].ptr());
   }
 
@@ -4280,20 +4280,25 @@ namespace dxvk {
       auto resView = static_cast<D3D11ShaderResourceView*>(ppResources[i]);
 
       if (bindings.views[StartSlot + i] != resView) {
-        if (unlikely(resView && resView->TestHazards())) {
-          if (TestSrvHazards<ShaderStage>(resView))
-            resView = nullptr;
+        if (likely(resView != nullptr)) {
+          if (unlikely(resView->TestHazards())) {
+            if (TestSrvHazards<ShaderStage>(resView))
+              resView = nullptr;
 
-          // Only set if necessary, but don't reset it on every
-          // bind as this would be more expensive than a few
-          // redundant checks in OMSetRenderTargets and friends.
-          bindings.hazardous.set(StartSlot + i, resView);
+            // Only set if necessary, but don't reset it on every
+            // bind as this would be more expensive than a few
+            // redundant checks in OMSetRenderTargets and friends.
+            bindings.hazardous.set(StartSlot + i, resView);
+          }
         }
 
         bindings.views[StartSlot + i] = resView;
         BindShaderResource<ShaderStage>(slotId + i, resView);
       }
     }
+
+    bindings.maxCount = std::clamp(StartSlot + NumResources,
+      bindings.maxCount, uint32_t(bindings.views.size()));
   }
 
 

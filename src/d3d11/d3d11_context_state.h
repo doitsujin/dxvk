@@ -82,11 +82,14 @@ namespace dxvk {
     std::array<Com<D3D11ShaderResourceView>, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT> views     = { };
     DxvkBindingSet<D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT>                           hazardous = { };
 
+    uint32_t maxCount = 0;
+
     void reset() {
-      for (uint32_t i = 0; i < views.size(); i++)
+      for (uint32_t i = 0; i < maxCount; i++)
         views[i] = nullptr;
 
       hazardous.clear();
+      maxCount = 0;
     }
   };
     
