@@ -67,10 +67,6 @@ namespace dxvk {
     /// Defer surface creation
     bool deferSurfaceCreation;
 
-    /// Whether to transition to general
-    /// for rendering hazards
-    bool generalHazards;
-
     /// Anisotropic filter override
     ///
     /// Enforces anisotropic filtering with the

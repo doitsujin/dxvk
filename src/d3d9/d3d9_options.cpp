@@ -75,13 +75,6 @@ namespace dxvk {
     this->seamlessCubes                 = config.getOption<bool>        ("d3d9.seamlessCubes",                 false);
     this->textureMemory                 = config.getOption<int32_t>     ("d3d9.textureMemory",                100) << 20;
 
-    // If we are not Nvidia, enable general hazards.
-    this->generalHazards = adapter != nullptr
-                        && !adapter->matchesDriver(
-                            VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR,
-                            0, 0);
-    applyTristate(this->generalHazards, config.getOption<Tristate>("d3d9.generalHazards", Tristate::Auto));
-
     std::string floatEmulation = Config::toLower(config.getOption<std::string>("d3d9.floatEmulation", "auto"));
     if (floatEmulation == "strict") {
       d3d9FloatEmulation = D3D9FloatEmulation::Strict;

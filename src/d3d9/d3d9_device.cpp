@@ -5241,6 +5241,10 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::MarkRenderHazards() {
+    EmitCs([](DxvkContext* ctx) {
+      ctx->emitGraphicsBarrier();
+    });
+
     for (uint32_t rtIdx : bit::BitMask(m_activeHazardsRT)) {
       // Guaranteed to not be nullptr...
       auto tex = m_state.renderTargets[rtIdx]->GetCommonTexture();
@@ -5957,14 +5961,8 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::PrepareDraw(D3DPRIMITIVETYPE PrimitiveType) {
-    if (unlikely(m_activeHazardsRT != 0)) {
-      EmitCs([](DxvkContext* ctx) {
-        ctx->emitGraphicsBarrier();
-      });
-
-      if (m_d3d9Options.generalHazards)
-        MarkRenderHazards();
-    }
+    if (unlikely(m_activeHazardsRT != 0))
+      MarkRenderHazards();
 
     if (unlikely((m_lastHazardsDS == 0) != (m_activeHazardsDS == 0))) {
       m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
