@@ -5464,11 +5464,20 @@ namespace dxvk {
       }
     }
 
+    VkImageAspectFlags feedbackLoopAspects = 0u;
+    if (m_hazardLayout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT) {
+      if (m_activeHazardsRT != 0)
+        feedbackLoopAspects |= VK_IMAGE_ASPECT_COLOR_BIT;
+      if (m_activeHazardsDS != 0)
+        feedbackLoopAspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
+    }
+
     // Create and bind the framebuffer object to the context
     EmitCs([
-      cAttachments = std::move(attachments)
+      cAttachments         = std::move(attachments),
+      cFeedbackLoopAspects = feedbackLoopAspects
     ] (DxvkContext* ctx) mutable {
-      ctx->bindRenderTargets(std::move(cAttachments), 0u);
+      ctx->bindRenderTargets(std::move(cAttachments), cFeedbackLoopAspects);
     });
   }
 
