@@ -87,9 +87,15 @@ namespace dxvk {
      * \param [in] targets Render targets to bind
      */
     void bindRenderTargets(
-            DxvkRenderTargets&&   targets) {
+            DxvkRenderTargets&&   targets,
+            VkImageAspectFlags    feedbackLoop) {
       // Set up default render pass ops
       m_state.om.renderTargets = std::move(targets);
+
+      if (unlikely(m_state.gp.state.om.feedbackLoop() != feedbackLoop)) {
+        m_state.gp.state.om.setFeedbackLoop(feedbackLoop);
+        m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      }
 
       this->resetRenderPassOps(
         m_state.om.renderTargets,

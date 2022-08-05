@@ -3161,7 +3161,7 @@ namespace dxvk {
     EmitCs([
       cAttachments = std::move(attachments)
     ] (DxvkContext* ctx) mutable {
-      ctx->bindRenderTargets(Forwarder::move(cAttachments));
+      ctx->bindRenderTargets(Forwarder::move(cAttachments), 0u);
     });
 
     // If necessary, update push constant for the sample count
@@ -3813,7 +3813,7 @@ namespace dxvk {
       cUsedBindings = GetMaxUsedBindings()
     ] (DxvkContext* ctx) {
       // Reset render targets
-      ctx->bindRenderTargets(DxvkRenderTargets());
+      ctx->bindRenderTargets(DxvkRenderTargets(), 0u);
 
       // Reset vertex input state
       ctx->setInputLayout(0, nullptr, 0, nullptr);
