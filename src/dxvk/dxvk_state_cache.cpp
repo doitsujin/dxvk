@@ -44,19 +44,14 @@ namespace dxvk {
       return read(data);
     }
 
-    bool read(DxvkBindingMask& data, uint32_t version) {
+    bool read(DxvkBindingMaskV10& data, uint32_t version) {
       // v11 removes this field
       if (version >= 11)
         return true;
 
       if (version < 9) {
         DxvkBindingMaskV8 v8;
-
-        if (!read(v8))
-          return false;
-
-        data = v8.convert();
-        return true;
+        return read(v8);
       }
 
       return read(data);
@@ -577,7 +572,7 @@ namespace dxvk {
         keys[i] = g_nullShaderKey;
     }
 
-    DxvkBindingMask dummyBindingMask = { };
+    DxvkBindingMaskV10 dummyBindingMask = { };
 
     if (stageMask & VK_SHADER_STAGE_COMPUTE_BIT) {
       if (!data.read(dummyBindingMask, version))

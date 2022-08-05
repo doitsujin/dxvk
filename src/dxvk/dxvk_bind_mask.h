@@ -178,9 +178,6 @@ namespace dxvk {
     
   };
 
-  using DxvkBindingMask = DxvkBindingSet<MaxNumActiveBindings>;
-  
-  
   /**
    * \brief Bound shader resources
    * 

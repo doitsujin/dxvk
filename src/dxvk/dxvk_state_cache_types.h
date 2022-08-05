@@ -58,19 +58,8 @@ namespace dxvk {
 
   static_assert(sizeof(DxvkStateCacheHeader) == 12);
 
-
-  class DxvkBindingMaskV8 : DxvkBindingSet<128> {
-
-  public:
-
-    DxvkBindingMask convert() const {
-      DxvkBindingMask result = { };
-      for (uint32_t i = 0; i < 128; i++)
-        result.set(i, test(i));
-      return result;
-    }
-
-  };
+  using DxvkBindingMaskV10 = DxvkBindingSet<384>;
+  using DxvkBindingMaskV8 = DxvkBindingSet<128>;
 
   class DxvkIlBindingV9 {
 
