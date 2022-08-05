@@ -3963,6 +3963,9 @@ namespace dxvk {
       enabled.extCustomBorderColor.customBorderColorWithoutFormat = VK_TRUE;
     }
 
+    if (supported.extAttachmentFeedbackLoopLayout.attachmentFeedbackLoopLayout)
+      enabled.extAttachmentFeedbackLoopLayout.attachmentFeedbackLoopLayout = VK_TRUE;
+
     enabled.extNonSeamlessCubeMap.nonSeamlessCubeMap = supported.extNonSeamlessCubeMap.nonSeamlessCubeMap;
 
     return enabled;
