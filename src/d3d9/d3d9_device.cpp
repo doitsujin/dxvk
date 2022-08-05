@@ -115,6 +115,10 @@ namespace dxvk {
 
     m_availableMemory = DetermineInitialTextureMemory();
 
+    m_hazardLayout = dxvkDevice->features().extAttachmentFeedbackLoopLayout.attachmentFeedbackLoopLayout
+      ? VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT
+      : VK_IMAGE_LAYOUT_GENERAL;
+
     // Initially set all the dirty flags so we
     // always end up giving the backend *something* to work with.
     m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
@@ -5241,7 +5245,7 @@ namespace dxvk {
       // Guaranteed to not be nullptr...
       auto tex = m_state.renderTargets[rtIdx]->GetCommonTexture();
       if (unlikely(!tex->MarkHazardous())) {
-        TransitionImage(tex, VK_IMAGE_LAYOUT_GENERAL);
+        TransitionImage(tex, m_hazardLayout);
         m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
       }
     }
@@ -5447,7 +5451,7 @@ namespace dxvk {
 
       attachments.color[i] = {
         m_state.renderTargets[i]->GetRenderTargetView(srgb),
-        m_state.renderTargets[i]->GetRenderTargetLayout() };
+        m_state.renderTargets[i]->GetRenderTargetLayout(m_hazardLayout) };
     }
 
     if (m_state.depthStencil != nullptr &&
@@ -5460,7 +5464,7 @@ namespace dxvk {
       if (likely(sampleCount == VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM || sampleCount == dsImageInfo.sampleCount)) {
         attachments.depth = {
           m_state.depthStencil->GetDepthStencilView(),
-          m_state.depthStencil->GetDepthStencilLayout(depthWrite, m_activeHazardsDS != 0) };
+          m_state.depthStencil->GetDepthStencilLayout(depthWrite, m_activeHazardsDS != 0, m_hazardLayout) };
       }
     }
 

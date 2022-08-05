@@ -95,8 +95,8 @@ namespace dxvk {
       return view;
     }
 
-    inline VkImageLayout GetRenderTargetLayout() const {
-      return m_texture->DetermineRenderTargetLayout();
+    inline VkImageLayout GetRenderTargetLayout(VkImageLayout hazardLayout) const {
+      return m_texture->DetermineRenderTargetLayout(hazardLayout);
     }
 
     inline const Rc<DxvkImageView>& GetDepthStencilView() {
@@ -108,8 +108,8 @@ namespace dxvk {
       return view;
     }
 
-    inline VkImageLayout GetDepthStencilLayout(bool write, bool hazardous) const {
-      return m_texture->DetermineDepthStencilLayout(write, hazardous);
+    inline VkImageLayout GetDepthStencilLayout(bool write, bool hazardous, VkImageLayout hazardLayout) const {
+      return m_texture->DetermineDepthStencilLayout(write, hazardous, hazardLayout);
     }
 
     inline bool IsNull() {
