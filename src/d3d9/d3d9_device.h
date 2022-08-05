@@ -767,6 +767,8 @@ namespace dxvk {
 
     void MarkRenderHazards();
 
+    void UpdateActiveFetch4(uint32_t stateSampler);
+
     void UploadManagedTexture(D3D9CommonTexture* pResource);
 
     void UploadManagedTextures(uint32_t mask);
@@ -1240,6 +1242,12 @@ namespace dxvk {
     uint32_t                        m_activeTexturesToUpload = 0;
     uint32_t                        m_activeTexturesToGen    = 0;
 
+    // m_fetch4Enabled is whether fetch4 is currently enabled
+    // from the application.
+    //
+    // m_fetch4 is whether it should be enabled in the shader
+    // ie. are we in a correct state to use it
+    // (enabled + texture supports it + point sampled)
     uint32_t                        m_fetch4Enabled = 0;
     uint32_t                        m_fetch4        = 0;
 
