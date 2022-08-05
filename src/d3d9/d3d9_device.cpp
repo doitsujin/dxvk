@@ -3691,6 +3691,8 @@ namespace dxvk {
 
     state[StateSampler][Type] = Value;
 
+    const uint32_t samplerBit = 1u << StateSampler;
+
     if (Type == D3DSAMP_ADDRESSU
      || Type == D3DSAMP_ADDRESSV
      || Type == D3DSAMP_ADDRESSW
@@ -3701,38 +3703,24 @@ namespace dxvk {
      || Type == D3DSAMP_MIPMAPLODBIAS
      || Type == D3DSAMP_MAXMIPLEVEL
      || Type == D3DSAMP_BORDERCOLOR)
-      m_dirtySamplerStates |= 1u << StateSampler;
-    else if (Type == D3DSAMP_SRGBTEXTURE && (m_activeTextures & (1u << StateSampler)))
-      m_dirtyTextures |= 1u << StateSampler;
+      m_dirtySamplerStates |= samplerBit;
+    else if (Type == D3DSAMP_SRGBTEXTURE && (m_activeTextures & samplerBit))
+      m_dirtyTextures |= samplerBit;
 
     constexpr DWORD Fetch4Enabled  = MAKEFOURCC('G', 'E', 'T', '4');
     constexpr DWORD Fetch4Disabled = MAKEFOURCC('G', 'E', 'T', '1');
 
     if (unlikely(Type == D3DSAMP_MIPMAPLODBIAS)) {
-      auto texture = GetCommonTexture(m_state.textures[StateSampler]);
-      bool textureSupportsFetch4 = texture != nullptr && texture->SupportsFetch4();
+      if (unlikely(Value == Fetch4Enabled))
+        m_fetch4Enabled |= samplerBit;
+      else if (unlikely(Value == Fetch4Disabled))
+        m_fetch4Enabled &= ~samplerBit;
 
-      if (unlikely(Value == Fetch4Enabled)) {
-        m_fetch4Enabled |= 1u << StateSampler;
-        if (textureSupportsFetch4 && state[StateSampler][D3DSAMP_MAGFILTER] == D3DTEXF_POINT) {
-          m_fetch4 |= 1u << StateSampler;
-        }
-      }
-      else if (unlikely(Value == Fetch4Disabled)) {
-        m_fetch4Enabled &= ~(1u << StateSampler);
-        m_fetch4        &= ~(1u << StateSampler);
-      }
+      UpdateActiveFetch4(StateSampler);
     }
 
-    if (unlikely(Type == D3DSAMP_MAGFILTER && (m_fetch4Enabled & (1u << StateSampler)))) {
-      auto texture = GetCommonTexture(m_state.textures[StateSampler]);
-      bool textureSupportsFetch4 = texture != nullptr && texture->SupportsFetch4();
-
-      if (Value == D3DTEXF_POINT && textureSupportsFetch4)
-        m_fetch4 |=   1u << StateSampler;
-      else
-        m_fetch4 &= ~(1u << StateSampler);
-    }
+    if (unlikely(Type == D3DSAMP_MAGFILTER && (m_fetch4Enabled & samplerBit)))
+      UpdateActiveFetch4(StateSampler);
 
     return D3D_OK;
   }
@@ -3783,25 +3771,11 @@ namespace dxvk {
         m_dirtySamplerStates |= 1u << StateSampler;
       }
 
-      if (unlikely(m_fetch4Enabled & (1u << StateSampler))) {
-        const bool samplerFetch4 = (m_fetch4 & (1u << StateSampler)) != 0;
-        const bool pointFilter = m_state.samplerStates[StateSampler][D3DSAMP_MAGFILTER] == D3DTEXF_POINT
-                                  && m_state.samplerStates[StateSampler][D3DSAMP_MINFILTER] == D3DTEXF_POINT;
-        const bool textureSupportsFetch4 = newTexture->SupportsFetch4();
-
-        if (unlikely(textureSupportsFetch4 && pointFilter && !samplerFetch4)) {
-          // We're swapping a multi channel texture for a single channel texture => turn on fetch4
-          m_fetch4 |= 1u << StateSampler;
-          m_dirtySamplerStates |= 1u << StateSampler;
-        } else if (unlikely(!textureSupportsFetch4 && samplerFetch4)) {
-          // We're swapping a single channel texture for a multi channel one => turn off fetch4
-          m_fetch4 &= ~(1u << StateSampler);
-          m_dirtySamplerStates |= 1u << StateSampler;
-        }
-      }
-    } else if (unlikely(m_fetch4 & (1u << StateSampler))) {
-      m_fetch4 &= ~(1u << StateSampler);
-      m_dirtySamplerStates |= 1u << StateSampler;
+      if (unlikely(m_fetch4Enabled & (1u << StateSampler)))
+        UpdateActiveFetch4(StateSampler);
+    } else {
+      if (unlikely(m_fetch4 & (1u << StateSampler)))
+        UpdateActiveFetch4(StateSampler);
     }
 
     DWORD combinedUsage = oldUsage | newUsage;
@@ -5252,6 +5226,27 @@ namespace dxvk {
         TransitionImage(tex, m_hazardLayout);
         m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
       }
+    }
+  }
+
+
+  void D3D9DeviceEx::UpdateActiveFetch4(uint32_t stateSampler) {
+    auto& state = m_state.samplerStates;
+
+    const uint32_t samplerBit = 1u << stateSampler;
+
+    auto texture = GetCommonTexture(m_state.textures[stateSampler]);
+    const bool textureSupportsFetch4 = texture != nullptr && texture->SupportsFetch4();
+
+    const bool fetch4Enabled = m_fetch4Enabled & samplerBit;
+    const bool pointSampled  = state[stateSampler][D3DSAMP_MAGFILTER] == D3DTEXF_POINT;
+    const bool shouldFetch4  = fetch4Enabled && textureSupportsFetch4 && pointSampled;
+
+    if (unlikely(shouldFetch4 != !!(m_fetch4 & samplerBit))) {
+      if (shouldFetch4)
+        m_fetch4 |= samplerBit;
+      else
+        m_fetch4 &= ~samplerBit;
     }
   }
 
