@@ -251,6 +251,13 @@ namespace dxvk {
      * \returns A compatible image layout
      */
     VkImageLayout pickLayout(VkImageLayout layout) const {
+      if (unlikely(m_info.layout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT)) {
+        if (layout != VK_IMAGE_LAYOUT_GENERAL
+         && layout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+         && layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+          return VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
+      }
+
       return m_info.layout == VK_IMAGE_LAYOUT_GENERAL
         ? VK_IMAGE_LAYOUT_GENERAL : layout;
     }
