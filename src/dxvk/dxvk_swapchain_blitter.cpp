@@ -180,7 +180,7 @@ namespace dxvk {
     renderTargets.color[0].view   = dstView;
     renderTargets.color[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-    ctx->bindRenderTargets(std::move(renderTargets));
+    ctx->bindRenderTargets(std::move(renderTargets), 0u);
 
     VkExtent2D dstExtent = {
       dstView->imageInfo().extent.width,
