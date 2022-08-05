@@ -1255,6 +1255,8 @@ namespace dxvk {
     bool                            m_amdATOC         = false;
     bool                            m_nvATOC          = false;
     bool                            m_ffZTest         = false;
+    
+    VkImageLayout                   m_hazardLayout = VK_IMAGE_LAYOUT_GENERAL;
 
     float                           m_depthBiasScale  = 0.0f;
 
