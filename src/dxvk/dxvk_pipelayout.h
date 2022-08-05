@@ -412,6 +412,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries total number of bindings
+     * \returns Binding count in all sets
+     */
+    uint32_t getBindingCount() const {
+      return m_bindingCount;
+    }
+
+    /**
      * \brief Queries active descriptor set mask
      * \returns Bit mask of non-empty descriptor sets
      */
@@ -483,6 +491,7 @@ namespace dxvk {
     VkPipelineLayout    m_completeLayout    = VK_NULL_HANDLE;
     VkPipelineLayout    m_independentLayout = VK_NULL_HANDLE;
 
+    uint32_t            m_bindingCount      = 0;
     uint32_t            m_setMask           = 0;
 
     std::array<const DxvkBindingSetLayout*, DxvkDescriptorSets::SetCount> m_bindingObjects = { };

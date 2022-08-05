@@ -324,8 +324,10 @@ namespace dxvk {
           m_mapping.insert({ binding.resourceBinding, mapping });
         }
 
-        if (bindingCount)
+        if (bindingCount) {
+          m_bindingCount += bindingCount;
           m_setMask |= 1u << i;
+        }
       }
     }
 

@@ -21,16 +21,6 @@ namespace dxvk {
     // Init framebuffer info with default render pass in case
     // the app does not explicitly bind any render targets
     m_state.om.framebufferInfo = makeFramebufferInfo(m_state.om.renderTargets);
-
-    for (uint32_t i = 0; i < MaxNumActiveBindings; i++) {
-      m_descriptorWrites[i] = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-      m_descriptorWrites[i].descriptorCount = 1;
-      m_descriptorWrites[i].descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
-      m_descriptorWrites[i].pImageInfo = &m_descriptors[i].image;
-      m_descriptorWrites[i].pBufferInfo = &m_descriptors[i].buffer;
-      m_descriptorWrites[i].pTexelBufferView = &m_descriptors[i].texelBuffer;
-    }
-
     m_descriptorManager = new DxvkDescriptorManager(device.ptr(), type);
 
     // Default destination barriers for graphics pipelines
@@ -4661,6 +4651,10 @@ namespace dxvk {
   void DxvkContext::updateResourceBindings(const DxvkBindingLayoutObjects* layout) {
     const auto& bindings = layout->layout();
 
+    // Ensure that the arrays we write descriptor info to are big enough
+    if (unlikely(layout->getBindingCount() > m_descriptors.size()))
+      this->resizeDescriptorArrays(layout->getBindingCount());
+
     // On 32-bit wine, vkUpdateDescriptorSets has significant overhead due
     // to struct conversion, so we should use descriptor update templates.
     // For 64-bit applications, using templates is slower on some drivers.
@@ -5849,4 +5843,20 @@ namespace dxvk {
     return m_zeroBuffer;
   }
   
+
+  void DxvkContext::resizeDescriptorArrays(
+          uint32_t                  bindingCount) {
+    m_descriptors.resize(bindingCount);
+    m_descriptorWrites.resize(bindingCount);
+
+    for (uint32_t i = 0; i < bindingCount; i++) {
+      m_descriptorWrites[i] = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+      m_descriptorWrites[i].descriptorCount = 1;
+      m_descriptorWrites[i].descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
+      m_descriptorWrites[i].pImageInfo = &m_descriptors[i].image;
+      m_descriptorWrites[i].pBufferInfo = &m_descriptors[i].buffer;
+      m_descriptorWrites[i].pTexelBufferView = &m_descriptors[i].texelBuffer;
+    }
+  }
+
 }
