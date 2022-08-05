@@ -5112,6 +5112,8 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::EndFrame() {
+    D3D9DeviceLock lock = LockDevice();
+
     EmitCs([] (DxvkContext* ctx) {
       ctx->endFrame();
     });
