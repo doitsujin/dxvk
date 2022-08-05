@@ -1,4 +1,5 @@
 #include <cstring>
+#include <vector>
 
 #include "dxvk_device.h"
 #include "dxvk_descriptor.h"
@@ -158,38 +159,43 @@ namespace dxvk {
   : m_device(device) {
     auto vk = m_device->vkd();
 
-    std::array<VkDescriptorSetLayoutBinding, MaxNumActiveBindings> bindingInfos;
-    std::array<VkDescriptorUpdateTemplateEntry, MaxNumActiveBindings> templateInfos;
+    std::vector<VkDescriptorSetLayoutBinding> bindingInfos;
+    std::vector<VkDescriptorUpdateTemplateEntry> templateInfos;
 
-    VkDescriptorSetLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
-    layoutInfo.bindingCount = key.getBindingCount();
-    layoutInfo.pBindings = bindingInfos.data();
+    bindingInfos.reserve(key.getBindingCount());
+    templateInfos.reserve(key.getBindingCount());
 
     for (uint32_t i = 0; i < key.getBindingCount(); i++) {
       auto entry = key.getBinding(i);
 
-      VkDescriptorSetLayoutBinding& bindingInfo = bindingInfos[i];
+      VkDescriptorSetLayoutBinding bindingInfo;
       bindingInfo.binding = i;
       bindingInfo.descriptorType = entry.descriptorType;
       bindingInfo.descriptorCount = 1;
       bindingInfo.stageFlags = entry.stages;
       bindingInfo.pImmutableSamplers = nullptr;
+      bindingInfos.push_back(bindingInfo);
 
-      VkDescriptorUpdateTemplateEntry& templateInfo = templateInfos[i];
+      VkDescriptorUpdateTemplateEntry templateInfo;
       templateInfo.dstBinding = i;
       templateInfo.dstArrayElement = 0;
       templateInfo.descriptorCount = 1;
       templateInfo.descriptorType = entry.descriptorType;
       templateInfo.offset = sizeof(DxvkDescriptorInfo) * i;
       templateInfo.stride = sizeof(DxvkDescriptorInfo);
+      templateInfos.push_back(templateInfo);
     }
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+    layoutInfo.bindingCount = bindingInfos.size();
+    layoutInfo.pBindings = bindingInfos.data();
 
     if (vk->vkCreateDescriptorSetLayout(vk->device(), &layoutInfo, nullptr, &m_layout) != VK_SUCCESS)
       throw DxvkError("DxvkBindingSetLayoutKey: Failed to create descriptor set layout");
 
     if (layoutInfo.bindingCount) {
       VkDescriptorUpdateTemplateCreateInfo templateInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO };
-      templateInfo.descriptorUpdateEntryCount = layoutInfo.bindingCount;
+      templateInfo.descriptorUpdateEntryCount = templateInfos.size();
       templateInfo.pDescriptorUpdateEntries = templateInfos.data();
       templateInfo.templateType = VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET;
       templateInfo.descriptorSetLayout = m_layout;
