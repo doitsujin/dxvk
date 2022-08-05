@@ -4675,17 +4675,12 @@ namespace dxvk {
       : m_descriptorState.getDirtyComputeSets();
     dirtySetMask &= layoutSetMask;
 
-    uint32_t bindCount = 0;
-    uint32_t k = 0;
-
     std::array<VkDescriptorSet, DxvkDescriptorSets::SetCount> sets;
     m_descriptorPool->alloc(layout, dirtySetMask, sets.data());
 
-    while (dirtySetMask) {
-      uint32_t setIndex = bit::tzcnt(dirtySetMask);
+    uint32_t descriptorCount = 0;
 
-      // Initialize binding mask for the current set, only
-      // clear bits if certain resources are actually unbound.
+    for (auto setIndex : bit::BitMask(dirtySetMask)) {
       uint32_t bindingCount = bindings.getBindingCount(setIndex);
       VkDescriptorSet set = sets[setIndex];
 
@@ -4693,26 +4688,29 @@ namespace dxvk {
         const auto& binding = bindings.getBinding(setIndex, j);
 
         if (!useDescriptorTemplates) {
-          m_descriptorWrites[k].dstSet = set;
-          m_descriptorWrites[k].dstBinding = j;
-          m_descriptorWrites[k].descriptorType = binding.descriptorType;
+          auto& descriptorWrite = m_descriptorWrites[descriptorCount];
+          descriptorWrite.dstSet = set;
+          descriptorWrite.dstBinding = j;
+          descriptorWrite.descriptorType = binding.descriptorType;
         }
+
+        auto& descriptorInfo = m_descriptors[descriptorCount++];
 
         switch (binding.descriptorType) {
           case VK_DESCRIPTOR_TYPE_SAMPLER: {
             const auto& res = m_rc[binding.resourceBinding];
 
             if (res.sampler != nullptr) {
-              m_descriptors[k].image.sampler = res.sampler->handle();
-              m_descriptors[k].image.imageView = VK_NULL_HANDLE;
-              m_descriptors[k].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+              descriptorInfo.image.sampler = res.sampler->handle();
+              descriptorInfo.image.imageView = VK_NULL_HANDLE;
+              descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
               if (m_rcTracked.set(binding.resourceBinding))
                 m_cmd->trackResource<DxvkAccess::None>(res.sampler);
             } else {
-              m_descriptors[k].image.sampler = m_common->dummyResources().samplerHandle();
-              m_descriptors[k].image.imageView = VK_NULL_HANDLE;
-              m_descriptors[k].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+              descriptorInfo.image.sampler = m_common->dummyResources().samplerHandle();
+              descriptorInfo.image.imageView = VK_NULL_HANDLE;
+              descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             }
           } break;
 
@@ -4720,18 +4718,18 @@ namespace dxvk {
             const auto& res = m_rc[binding.resourceBinding];
 
             if (res.imageView != nullptr && res.imageView->handle(binding.viewType) != VK_NULL_HANDLE) {
-              m_descriptors[k].image.sampler = VK_NULL_HANDLE;
-              m_descriptors[k].image.imageView = res.imageView->handle(binding.viewType);
-              m_descriptors[k].image.imageLayout = res.imageView->imageInfo().layout;
+              descriptorInfo.image.sampler = VK_NULL_HANDLE;
+              descriptorInfo.image.imageView = res.imageView->handle(binding.viewType);
+              descriptorInfo.image.imageLayout = res.imageView->imageInfo().layout;
 
               if (m_rcTracked.set(binding.resourceBinding)) {
                 m_cmd->trackResource<DxvkAccess::None>(res.imageView);
                 m_cmd->trackResource<DxvkAccess::Read>(res.imageView->image());
               }
             } else {
-              m_descriptors[k].image.sampler = VK_NULL_HANDLE;
-              m_descriptors[k].image.imageView = VK_NULL_HANDLE;
-              m_descriptors[k].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+              descriptorInfo.image.sampler = VK_NULL_HANDLE;
+              descriptorInfo.image.imageView = VK_NULL_HANDLE;
+              descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             }
           } break;
 
@@ -4739,18 +4737,18 @@ namespace dxvk {
             const auto& res = m_rc[binding.resourceBinding];
 
             if (res.imageView != nullptr && res.imageView->handle(binding.viewType) != VK_NULL_HANDLE) {
-              m_descriptors[k].image.sampler = VK_NULL_HANDLE;
-              m_descriptors[k].image.imageView = res.imageView->handle(binding.viewType);
-              m_descriptors[k].image.imageLayout = res.imageView->imageInfo().layout;
+              descriptorInfo.image.sampler = VK_NULL_HANDLE;
+              descriptorInfo.image.imageView = res.imageView->handle(binding.viewType);
+              descriptorInfo.image.imageLayout = res.imageView->imageInfo().layout;
 
               if (m_rcTracked.set(binding.resourceBinding)) {
                 m_cmd->trackResource<DxvkAccess::None>(res.imageView);
                 m_cmd->trackResource<DxvkAccess::Write>(res.imageView->image());
               }
             } else {
-              m_descriptors[k].image.sampler = VK_NULL_HANDLE;
-              m_descriptors[k].image.imageView = VK_NULL_HANDLE;
-              m_descriptors[k].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+              descriptorInfo.image.sampler = VK_NULL_HANDLE;
+              descriptorInfo.image.imageView = VK_NULL_HANDLE;
+              descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             }
           } break;
 
@@ -4759,9 +4757,9 @@ namespace dxvk {
 
             if (res.sampler != nullptr && res.imageView != nullptr
             && res.imageView->handle(binding.viewType) != VK_NULL_HANDLE) {
-              m_descriptors[k].image.sampler = res.sampler->handle();
-              m_descriptors[k].image.imageView = res.imageView->handle(binding.viewType);
-              m_descriptors[k].image.imageLayout = res.imageView->imageInfo().layout;
+              descriptorInfo.image.sampler = res.sampler->handle();
+              descriptorInfo.image.imageView = res.imageView->handle(binding.viewType);
+              descriptorInfo.image.imageLayout = res.imageView->imageInfo().layout;
 
               if (m_rcTracked.set(binding.resourceBinding)) {
                 m_cmd->trackResource<DxvkAccess::None>(res.sampler);
@@ -4769,9 +4767,9 @@ namespace dxvk {
                 m_cmd->trackResource<DxvkAccess::Read>(res.imageView->image());
               }
             } else {
-              m_descriptors[k].image.sampler = m_common->dummyResources().samplerHandle();
-              m_descriptors[k].image.imageView = VK_NULL_HANDLE;
-              m_descriptors[k].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+              descriptorInfo.image.sampler = m_common->dummyResources().samplerHandle();
+              descriptorInfo.image.imageView = VK_NULL_HANDLE;
+              descriptorInfo.image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             }
           } break;
 
@@ -4780,14 +4778,14 @@ namespace dxvk {
 
             if (res.bufferView != nullptr) {
               res.bufferView->updateView();
-              m_descriptors[k].texelBuffer = res.bufferView->handle();
+              descriptorInfo.texelBuffer = res.bufferView->handle();
 
               if (m_rcTracked.set(binding.resourceBinding)) {
                 m_cmd->trackResource<DxvkAccess::None>(res.bufferView);
                 m_cmd->trackResource<DxvkAccess::Read>(res.bufferView->buffer());
               }
             } else {
-              m_descriptors[k].texelBuffer = VK_NULL_HANDLE;
+              descriptorInfo.texelBuffer = VK_NULL_HANDLE;
             }
           } break;
 
@@ -4796,14 +4794,14 @@ namespace dxvk {
 
             if (res.bufferView != nullptr) {
               res.bufferView->updateView();
-              m_descriptors[k].texelBuffer = res.bufferView->handle();
+              descriptorInfo.texelBuffer = res.bufferView->handle();
 
               if (m_rcTracked.set(binding.resourceBinding)) {
                 m_cmd->trackResource<DxvkAccess::None>(res.bufferView);
                 m_cmd->trackResource<DxvkAccess::Write>(res.bufferView->buffer());
               }
             } else {
-              m_descriptors[k].texelBuffer = VK_NULL_HANDLE;
+              descriptorInfo.texelBuffer = VK_NULL_HANDLE;
             }
           } break;
 
@@ -4811,14 +4809,14 @@ namespace dxvk {
             const auto& res = m_rc[binding.resourceBinding];
 
             if (res.bufferSlice.defined()) {
-              m_descriptors[k] = res.bufferSlice.getDescriptor();
+              descriptorInfo = res.bufferSlice.getDescriptor();
 
               if (m_rcTracked.set(binding.resourceBinding))
                 m_cmd->trackResource<DxvkAccess::Read>(res.bufferSlice.buffer());
             } else {
-              m_descriptors[k].buffer.buffer = VK_NULL_HANDLE;
-              m_descriptors[k].buffer.offset = 0;
-              m_descriptors[k].buffer.range = VK_WHOLE_SIZE;
+              descriptorInfo.buffer.buffer = VK_NULL_HANDLE;
+              descriptorInfo.buffer.offset = 0;
+              descriptorInfo.buffer.range = VK_WHOLE_SIZE;
             }
           } break;
 
@@ -4826,51 +4824,48 @@ namespace dxvk {
             const auto& res = m_rc[binding.resourceBinding];
 
             if (res.bufferSlice.defined()) {
-              m_descriptors[k] = res.bufferSlice.getDescriptor();
+              descriptorInfo = res.bufferSlice.getDescriptor();
 
               if (m_rcTracked.set(binding.resourceBinding))
                 m_cmd->trackResource<DxvkAccess::Write>(res.bufferSlice.buffer());
             } else {
-              m_descriptors[k].buffer.buffer = VK_NULL_HANDLE;
-              m_descriptors[k].buffer.offset = 0;
-              m_descriptors[k].buffer.range = VK_WHOLE_SIZE;
+              descriptorInfo.buffer.buffer = VK_NULL_HANDLE;
+              descriptorInfo.buffer.offset = 0;
+              descriptorInfo.buffer.range = VK_WHOLE_SIZE;
             }
           } break;
 
           default:
             break;
         }
-
-        k += 1;
       }
 
       if (useDescriptorTemplates) {
         m_cmd->updateDescriptorSetWithTemplate(set,
           layout->getSetUpdateTemplate(setIndex),
-          &m_descriptors[k - bindingCount]);
+          &m_descriptors[0]);
+        descriptorCount = 0;
       }
-
-      bindCount += 1;
 
       // If the next set is not dirty, update and bind all previously
       // updated sets in one go in order to reduce api call overhead.
-      if (!(dirtySetMask & (1u << (setIndex + 1)))) {
+      if (!(((dirtySetMask >> 1) >> setIndex) & 1u)) {
         if (!useDescriptorTemplates) {
-          m_cmd->updateDescriptorSets(k, m_descriptorWrites.data());
-          k = 0;
+          m_cmd->updateDescriptorSets(descriptorCount,
+            m_descriptorWrites.data());
+          descriptorCount = 0;
         }
 
-        uint32_t firstSet = setIndex + 1 - bindCount;
+        // Find first dirty set in the mask and clear bits
+        // for all sets that we're going to update here.
+        uint32_t firstSet = bit::tzcnt(dirtySetMask);
+        dirtySetMask &= (~1u) << setIndex;
 
         m_cmd->cmdBindDescriptorSets(BindPoint,
           layout->getPipelineLayout(independentSets),
-          firstSet, bindCount, &sets[firstSet],
+          firstSet, setIndex - firstSet + 1, &sets[firstSet],
           0, nullptr);
-
-        bindCount = 0;
       }
-
-      dirtySetMask &= dirtySetMask - 1;
     }
   }
 
