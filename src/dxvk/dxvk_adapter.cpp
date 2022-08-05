@@ -244,6 +244,8 @@ namespace dxvk {
                 || !required.vk13.dynamicRendering)
         && (m_deviceFeatures.vk13.maintenance4
                 || !required.vk13.maintenance4)
+        && (m_deviceFeatures.extAttachmentFeedbackLoopLayout.attachmentFeedbackLoopLayout
+                || !required.extAttachmentFeedbackLoopLayout.attachmentFeedbackLoopLayout)
         && (m_deviceFeatures.extCustomBorderColor.customBorderColors
                 || !required.extCustomBorderColor.customBorderColors)
         && (m_deviceFeatures.extCustomBorderColor.customBorderColorWithoutFormat
@@ -283,9 +285,10 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 21> devExtensionList = {{
+    std::array<DxvkExt*, 22> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
+      &devExtensions.extAttachmentFeedbackLoopLayout,
       &devExtensions.extConservativeRasterization,
       &devExtensions.extCustomBorderColor,
       &devExtensions.extDepthClipEnable,
@@ -402,6 +405,11 @@ namespace dxvk {
 
     enabledFeatures.vk13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
     enabledFeatures.vk13.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.vk13);
+
+    if (devExtensions.extAttachmentFeedbackLoopLayout) {
+      enabledFeatures.extAttachmentFeedbackLoopLayout.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_FEATURES_EXT;
+      enabledFeatures.extAttachmentFeedbackLoopLayout.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extAttachmentFeedbackLoopLayout);
+    }
 
     if (devExtensions.extCustomBorderColor) {
       enabledFeatures.extCustomBorderColor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT;
@@ -681,6 +689,11 @@ namespace dxvk {
     m_deviceFeatures.vk13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
     m_deviceFeatures.vk13.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.vk13);
 
+    if (m_deviceExtensions.supports(VK_EXT_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_EXTENSION_NAME)) {
+      m_deviceFeatures.extAttachmentFeedbackLoopLayout.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_FEATURES_EXT;
+      m_deviceFeatures.extAttachmentFeedbackLoopLayout.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extAttachmentFeedbackLoopLayout);
+    }
+
     if (m_deviceExtensions.supports(VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME)) {
       m_deviceFeatures.extCustomBorderColor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT;
       m_deviceFeatures.extCustomBorderColor.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extCustomBorderColor);
@@ -811,6 +824,8 @@ namespace dxvk {
       "\n  synchronization2                       : ", features.vk13.synchronization2,
       "\n  dynamicRendering                       : ", features.vk13.dynamicRendering,
       "\n  maintenance4                           : ", features.vk13.maintenance4,
+      "\n", VK_EXT_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_EXTENSION_NAME,
+      "\n  attachmentFeedbackLoopLayout           : ", features.extAttachmentFeedbackLoopLayout.attachmentFeedbackLoopLayout ? "1" : "0",
       "\n", VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME,
       "\n  customBorderColors                     : ", features.extCustomBorderColor.customBorderColors ? "1" : "0",
       "\n  customBorderColorWithoutFormat         : ", features.extCustomBorderColor.customBorderColorWithoutFormat ? "1" : "0",
