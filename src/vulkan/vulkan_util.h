@@ -90,6 +90,7 @@ namespace dxvk::vk {
 
   inline VkImageAspectFlags getWritableAspectsForLayout(VkImageLayout layout) {
     switch (layout) {
+      case VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT:
       case VK_IMAGE_LAYOUT_GENERAL:
         return VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
       case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
