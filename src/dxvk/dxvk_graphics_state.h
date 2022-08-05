@@ -433,10 +433,12 @@ namespace dxvk {
     DxvkOmInfo() = default;
 
     DxvkOmInfo(
-            VkBool32          enableLogicOp,
-            VkLogicOp         logicOp)
+            VkBool32           enableLogicOp,
+            VkLogicOp          logicOp,
+            VkImageAspectFlags feedbackLoop)
     : m_enableLogicOp (uint16_t(enableLogicOp)),
       m_logicOp       (uint16_t(logicOp)),
+      m_feedbackLoop  (uint16_t(feedbackLoop)),
       m_reserved      (0) { }
     
     VkBool32 enableLogicOp() const {
@@ -447,11 +449,20 @@ namespace dxvk {
       return VkLogicOp(m_logicOp);
     }
 
+    VkImageAspectFlags feedbackLoop() const {
+      return VkImageAspectFlags(m_feedbackLoop);
+    }
+
+    void setFeedbackLoop(VkImageAspectFlags feedbackLoop) {
+      m_feedbackLoop = uint16_t(feedbackLoop);
+    }
+
   private:
 
     uint16_t m_enableLogicOp          : 1;
     uint16_t m_logicOp                : 4;
-    uint16_t m_reserved               : 11;
+    uint16_t m_feedbackLoop           : 2;
+    uint16_t m_reserved               : 9;
 
   };
 

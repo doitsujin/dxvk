@@ -2462,7 +2462,8 @@ namespace dxvk {
   void DxvkContext::setLogicOpState(const DxvkLogicOpState& lo) {
     m_state.gp.state.om = DxvkOmInfo(
       lo.enableLogicOp,
-      lo.logicOp);
+      lo.logicOp,
+      m_state.gp.state.om.feedbackLoop());
     
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
