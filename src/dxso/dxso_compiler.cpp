@@ -3050,7 +3050,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     auto SampleType = [&](DxsoSamplerType samplerType) {
       uint32_t typeId = m_module.defIntType(32, 0);
-      uint32_t offset  = m_module.consti32(m_programInfo.type() == DxsoProgramTypes::VertexShader ? samplerIdx + 17 : samplerIdx);
+      uint32_t offset  = m_module.consti32(m_programInfo.type() == DxsoProgramTypes::VertexShader ? samplerIdx + caps::MaxTexturesPS : samplerIdx);
       uint32_t bitCnt  = m_module.consti32(1);
 
       uint32_t isNull = m_module.opBitFieldUExtract(typeId, m_nullSpecConstant, offset, bitCnt);
