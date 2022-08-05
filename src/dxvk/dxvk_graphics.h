@@ -119,6 +119,8 @@ namespace dxvk {
     std::array<VkPipelineColorBlendAttachmentState, MaxNumRenderTargets> cbAttachments  = { };
     std::array<VkFormat,                            MaxNumRenderTargets> rtColorFormats = { };
 
+    VkImageAspectFlags                              feedbackLoop = 0u;
+
     bool eq(const DxvkGraphicsPipelineFragmentOutputState& other) const;
 
     size_t hash() const;

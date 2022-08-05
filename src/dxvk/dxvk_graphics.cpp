@@ -225,6 +225,8 @@ namespace dxvk {
     cbInfo.logicOpEnable  = state.om.enableLogicOp();
     cbInfo.logicOp        = state.om.logicOp();
 
+    feedbackLoop = state.om.feedbackLoop();
+
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       rtColorFormats[i] = state.rt.getColorFormat(i);
 
@@ -321,7 +323,8 @@ namespace dxvk {
            && msInfo.alphaToCoverageEnable    == other.msInfo.alphaToCoverageEnable
            && msInfo.alphaToOneEnable         == other.msInfo.alphaToOneEnable
            && msSampleMask                    == other.msSampleMask
-           && cbUseDynamicBlendConstants      == other.cbUseDynamicBlendConstants;
+           && cbUseDynamicBlendConstants      == other.cbUseDynamicBlendConstants
+           && feedbackLoop                    == other.feedbackLoop;
 
     for (uint32_t i = 0; i < rtInfo.colorAttachmentCount && eq; i++)
       eq = rtColorFormats[i] == other.rtColorFormats[i];
@@ -360,6 +363,7 @@ namespace dxvk {
     hash.add(uint32_t(msInfo.alphaToOneEnable));
     hash.add(uint32_t(msSampleMask));
     hash.add(uint32_t(cbUseDynamicBlendConstants));
+    hash.add(uint32_t(feedbackLoop));
 
     for (uint32_t i = 0; i < rtInfo.colorAttachmentCount; i++)
       hash.add(uint32_t(rtColorFormats[i]));
@@ -396,6 +400,13 @@ namespace dxvk {
       dyInfo.pDynamicStates     = &dynamicState;
     }
 
+    VkPipelineCreateFlags flags = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
+    if (state.feedbackLoop & VK_IMAGE_ASPECT_COLOR_BIT)
+      flags |= VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
+
+    if (state.feedbackLoop & VK_IMAGE_ASPECT_DEPTH_BIT)
+      flags |= VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
+
     // pNext is non-const for some reason, but this is only an input
     // structure, so we should be able to safely use const_cast.
     VkGraphicsPipelineLibraryCreateInfoEXT libInfo = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT };
@@ -403,7 +414,7 @@ namespace dxvk {
     libInfo.flags             = VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_OUTPUT_INTERFACE_BIT_EXT;
 
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };
-    info.flags                = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
+    info.flags                = flags;
     info.pColorBlendState     = &state.cbInfo;
     info.pMultisampleState    = &state.msInfo;
     info.pDynamicState        = &dyInfo;
@@ -1158,6 +1169,12 @@ namespace dxvk {
       if (m_shaders.fs != nullptr)
         stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, getShaderCode(m_shaders.fs, key.shState.fsInfo), &key.scState.scInfo);
     }
+
+    if (key.foState.feedbackLoop & VK_IMAGE_ASPECT_COLOR_BIT)
+      flags |= VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
+
+    if (key.foState.feedbackLoop & VK_IMAGE_ASPECT_DEPTH_BIT)
+      flags |= VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
 
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &key.foState.rtInfo };
     info.flags                    = flags;
