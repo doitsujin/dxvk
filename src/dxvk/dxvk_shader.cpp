@@ -89,6 +89,11 @@ namespace dxvk {
           varIds.push_back(varId);
         }
 
+        if (ins.arg(2) == spv::DecorationBuiltIn) {
+          if (ins.arg(3) == spv::BuiltInPosition)
+            m_flags.set(DxvkShaderFlag::ExportsPosition);
+        }
+
         if (ins.arg(2) == spv::DecorationDescriptorSet) {
           uint32_t varId = ins.arg(1);
           bindingOffsets.resize(std::max(bindingOffsets.size(), size_t(varId + 1)));
@@ -188,6 +193,11 @@ namespace dxvk {
     if (m_info.stage != VK_SHADER_STAGE_VERTEX_BIT
      && m_info.stage != VK_SHADER_STAGE_FRAGMENT_BIT
      && m_info.stage != VK_SHADER_STAGE_COMPUTE_BIT)
+      return false;
+
+    // Standalone vertex shaders must export vertex position
+    if (m_info.stage == VK_SHADER_STAGE_VERTEX_BIT
+     && !m_flags.test(DxvkShaderFlag::ExportsPosition))
       return false;
 
     // Ignore shaders that have user-defined spec constants

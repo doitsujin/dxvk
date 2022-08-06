@@ -27,6 +27,7 @@ namespace dxvk {
   enum DxvkShaderFlag : uint64_t {
     HasSampleRateShading,
     HasTransformFeedback,
+    ExportsPosition,
     ExportsStencilRef,
     ExportsViewportIndexLayerFromVertexStage,
   };
