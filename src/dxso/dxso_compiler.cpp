@@ -523,6 +523,8 @@ namespace dxvk {
     this->setupRenderStateInfo();
     this->emitPsSharedConstants();
 
+    m_specUbo = SetupSpecUBO(m_module, m_bindings);
+
     this->emitFunctionBegin(
       m_ps.functionId,
       m_module.defVoidType(),
