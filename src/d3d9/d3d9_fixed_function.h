@@ -35,6 +35,7 @@ namespace dxvk {
     bool     IsPositionT;
     bool     HasSpecular;
     uint32_t Specular;
+    uint32_t SpecUBO;
   };
 
   struct D3D9FixedFunctionOptions {
@@ -57,17 +58,19 @@ namespace dxvk {
   };
 
   // Default point size and point scale magic!
-  D3D9PointSizeInfoVS GetPointSizeInfoVS(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t perVertPointSize, uint32_t rsBlock, bool isFixedFunction);
+  D3D9PointSizeInfoVS GetPointSizeInfoVS(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t perVertPointSize, uint32_t rsBlock, uint32_t specUbo, bool isFixedFunction);
 
   struct D3D9PointSizeInfoPS {
     uint32_t isSprite;
   };
 
-  D3D9PointSizeInfoPS GetPointSizeInfoPS(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, uint32_t rsBlock);
+  D3D9PointSizeInfoPS GetPointSizeInfoPS(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, uint32_t rsBlock, uint32_t specUbo);
 
   uint32_t GetPointCoord(SpirvModule& spvModule);
 
   uint32_t GetSharedConstants(SpirvModule& spvModule);
+
+  uint32_t SetupSpecUBO(SpirvModule& spvModule, std::vector<DxvkBindingInfo>& bindings);
 
   constexpr uint32_t TCIOffset = 16;
   constexpr uint32_t TCIMask   = 0b111 << TCIOffset;

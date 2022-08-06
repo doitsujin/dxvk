@@ -40,10 +40,10 @@ namespace dxvk {
       spvModule.opAccessChain(floatPtr, fogCtx.RenderState, 1, &fogDensityMember));
 
     uint32_t fogMode = spec.get(
-      spvModule,
+      spvModule, fogCtx.SpecUBO,
       fogCtx.IsPixel ? SpecPixelFogMode : SpecVertexFogMode);
 
-    uint32_t fogEnabled = spec.get(spvModule, SpecFogEnabled);
+    uint32_t fogEnabled = spec.get(spvModule, fogCtx.SpecUBO, SpecFogEnabled);
     fogEnabled = spvModule.opINotEqual(spvModule.defBoolType(), fogEnabled, spvModule.constu32(0));
 
     uint32_t doFog   = spvModule.allocateId();
@@ -244,7 +244,43 @@ namespace dxvk {
   }
 
 
-  D3D9PointSizeInfoVS GetPointSizeInfoVS(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t perVertPointSize, uint32_t rsBlock, bool isFixedFunction) {
+  uint32_t SetupSpecUBO(SpirvModule& spvModule, std::vector<DxvkBindingInfo>& bindings) {
+    uint32_t uintType = spvModule.defIntType(32, 0);
+
+    std::array<uint32_t, SpecConstantCount> specMembers;
+    for (auto& x : specMembers)
+      x = uintType;
+
+    uint32_t specStruct = spvModule.defStructTypeUnique(uint32_t(specMembers.size()), specMembers.data());
+
+    spvModule.setDebugName         (specStruct, "spec_state_t");
+    spvModule.decorate             (specStruct, spv::DecorationBlock);
+
+    for (uint32_t i = 0; i < SpecConstantCount; i++) {
+      std::string name = str::format("dword", i);
+      spvModule.setDebugMemberName   (specStruct, i, name.c_str());
+      spvModule.memberDecorateOffset (specStruct, i, sizeof(uint32_t) * i);
+    }
+
+    uint32_t specBlock = spvModule.newVar(
+      spvModule.defPointerType(specStruct, spv::StorageClassUniform),
+      spv::StorageClassUniform);
+
+    spvModule.setDebugName         (specBlock, "spec_state");
+    spvModule.decorateDescriptorSet(specBlock, 0);
+    spvModule.decorateBinding      (specBlock, getSpecConstantBufferSlot());
+
+    DxvkBindingInfo binding = { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER };
+    binding.resourceBinding = getSpecConstantBufferSlot();
+    binding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    binding.access          = VK_ACCESS_UNIFORM_READ_BIT;
+    bindings.push_back(binding);
+
+    return specBlock;
+  }
+
+
+  D3D9PointSizeInfoVS GetPointSizeInfoVS(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t perVertPointSize, uint32_t rsBlock, uint32_t specUbo, bool isFixedFunction) {
     uint32_t floatType  = spvModule.defFloatType(32);
     uint32_t floatPtr   = spvModule.defPointerType(floatType, spv::StorageClassPushConstant);
     uint32_t vec3Type   = spvModule.defVectorType(floatType, 3);
@@ -260,7 +296,7 @@ namespace dxvk {
     uint32_t value = perVertPointSize != 0 ? perVertPointSize : LoadFloat(D3D9RenderStateItem::PointSize);
 
     if (isFixedFunction) {
-      uint32_t pointMode = spec.get(spvModule, SpecPointMode);
+      uint32_t pointMode = spec.get(spvModule, specUbo, SpecPointMode);
 
       uint32_t scaleBit  = spvModule.opBitFieldUExtract(uint32Type, pointMode, spvModule.consti32(0), spvModule.consti32(1));
       uint32_t isScale   = spvModule.opIEqual(boolType, scaleBit, spvModule.constu32(1));
@@ -306,12 +342,12 @@ namespace dxvk {
   }
 
 
-  D3D9PointSizeInfoPS GetPointSizeInfoPS(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, uint32_t rsBlock) {
+  D3D9PointSizeInfoPS GetPointSizeInfoPS(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, uint32_t rsBlock, uint32_t specUbo) {
     uint32_t uint32Type = spvModule.defIntType(32, 0);
     uint32_t boolType   = spvModule.defBoolType();
     uint32_t boolVec4   = spvModule.defVectorType(boolType, 4);
 
-    uint32_t pointMode = spec.get(spvModule, SpecPointMode);
+    uint32_t pointMode = spec.get(spvModule, specUbo, SpecPointMode);
 
     uint32_t spriteBit  = spvModule.opBitFieldUExtract(uint32Type, pointMode, spvModule.consti32(1), spvModule.consti32(1));
     uint32_t isSprite   = spvModule.opIEqual(boolType, spriteBit, spvModule.constu32(1));
@@ -615,6 +651,7 @@ namespace dxvk {
     uint32_t              m_entryPointId;
 
     uint32_t              m_rsBlock;
+    uint32_t              m_specUbo;
     uint32_t              m_mainFuncLabel;
 
     D3D9FixedFunctionOptions m_options;
@@ -1155,7 +1192,7 @@ namespace dxvk {
     fogCtx.Specular    = m_vs.in.COLOR[1];
     m_module.opStore(m_vs.out.FOG, DoFixedFunctionFog(m_spec, m_module, fogCtx));
 
-    auto pointInfo = GetPointSizeInfoVS(m_spec, m_module, 0, vtx, m_vs.in.POINTSIZE, m_rsBlock, true);
+    auto pointInfo = GetPointSizeInfoVS(m_spec, m_module, 0, vtx, m_vs.in.POINTSIZE, m_rsBlock, m_specUbo, true);
 
     uint32_t pointSize = m_module.opFClamp(m_floatType, pointInfo.defaultValue, pointInfo.min, pointInfo.max);
     m_module.opStore(m_vs.out.POINTSIZE, pointSize);
@@ -1946,6 +1983,7 @@ namespace dxvk {
     fogCtx.IsPositionT = false;
     fogCtx.HasSpecular = false;
     fogCtx.Specular    = 0;
+    fogCtx.SpecUBO     = m_specUbo;
     current = DoFixedFunctionFog(m_spec, m_module, fogCtx);
 
     m_module.opStore(m_ps.out.COLOR, current);
@@ -1955,6 +1993,7 @@ namespace dxvk {
 
   void D3D9FFShaderCompiler::setupPS() {
     setupRenderStateInfo();
+    m_specUbo = SetupSpecUBO(m_module, m_bindings);
 
     // PS Caps
     m_module.enableCapability(spv::CapabilityDerivativeControl);
@@ -1963,7 +2002,7 @@ namespace dxvk {
       spv::ExecutionModeOriginUpperLeft);
 
     uint32_t pointCoord = GetPointCoord(m_module);
-    auto pointInfo = GetPointSizeInfoPS(m_spec, m_module, m_rsBlock);
+    auto pointInfo = GetPointSizeInfoPS(m_spec, m_module, m_rsBlock, m_specUbo);
 
     // We need to replace TEXCOORD inputs with gl_PointCoord
     // if D3DRS_POINTSPRITEENABLE is set.
@@ -2182,7 +2221,7 @@ namespace dxvk {
     uint32_t floatPtr = m_module.defPointerType(m_floatType, spv::StorageClassPushConstant);
 
     // Declare spec constants for render states
-    uint32_t alphaFuncId = m_spec.get(m_module, SpecAlphaCompareOp);
+    uint32_t alphaFuncId = m_spec.get(m_module, m_specUbo, SpecAlphaCompareOp);
 
     // Implement alpha test
     auto oC0 = m_ps.out.COLOR;

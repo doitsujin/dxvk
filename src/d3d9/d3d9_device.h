@@ -1188,6 +1188,7 @@ namespace dxvk {
     D3D9ConstantBuffer              m_vsVertexBlend;
     D3D9ConstantBuffer              m_psFixedFunction;
     D3D9ConstantBuffer              m_psShared;
+    D3D9ConstantBuffer              m_specBuffer;
 
     Rc<DxvkBuffer>                  m_upBuffer;
     VkDeviceSize                    m_upBufferOffset  = 0ull;
@@ -1265,6 +1266,8 @@ namespace dxvk {
     bool                            m_ffZTest         = false;
     
     VkImageLayout                   m_hazardLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+    bool                            m_usingGraphicsPipelines = false;
 
     float                           m_depthBiasScale  = 0.0f;
 

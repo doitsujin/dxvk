@@ -480,6 +480,8 @@ namespace dxvk {
 
     this->setupRenderStateInfo();
 
+    m_specUbo = SetupSpecUBO(m_module, m_bindings);
+
     this->emitFunctionBegin(
       m_vs.functionId,
       m_module.defVoidType(),
@@ -1036,7 +1038,7 @@ namespace dxvk {
           uintType, bitfield, bitIdx, m_module.consti32(1));
       }
       else {
-        bit = m_spec.get(m_module,
+        bit = m_spec.get(m_module, m_specUbo,
           m_programInfo.type() == DxsoProgramType::VertexShader
             ? SpecVertexShaderBools
             : SpecPixelShaderBools,
@@ -2761,7 +2763,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       // Of course it does...
       uint32_t bool_t = m_module.defBoolType();
 
-      uint32_t shouldProj = m_spec.get(m_module, SpecProjectionType, samplerIdx, 1);
+      uint32_t shouldProj = m_spec.get(m_module, m_specUbo, SpecProjectionType, samplerIdx, 1);
       shouldProj = m_module.opINotEqual(bool_t, shouldProj, m_module.constu32(0));
 
       uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
@@ -2925,7 +2927,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       uint32_t fetch4 = 0;
       if (m_programInfo.type() == DxsoProgramType::PixelShader && samplerType != SamplerTypeTexture3D) {
-        fetch4 = m_spec.get(m_module, SpecFetch4, samplerIdx, 1);
+        fetch4 = m_spec.get(m_module, m_specUbo, SpecFetch4, samplerIdx, 1);
 
         uint32_t bool_t = m_module.defBoolType();
         fetch4 = m_module.opINotEqual(bool_t, fetch4, m_module.constu32(0));
@@ -2956,7 +2958,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
           fetch4,
           imageOperands);
 
-        uint32_t shouldProj = m_spec.get(m_module, SpecProjectionType, samplerIdx, 1);
+        uint32_t shouldProj = m_spec.get(m_module, m_specUbo, SpecProjectionType, samplerIdx, 1);
         shouldProj = m_module.opINotEqual(m_module.defBoolType(), shouldProj, m_module.constu32(0));
 
         // Depth  -> .x
@@ -3017,7 +3019,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         ? samplerIdx + caps::MaxTexturesPS
         : samplerIdx;
 
-      uint32_t isNull = m_spec.get(m_module, SpecSamplerNull, bitOffset, 1);
+      uint32_t isNull = m_spec.get(m_module, m_specUbo, SpecSamplerNull, bitOffset, 1);
       isNull = m_module.opINotEqual(m_module.defBoolType(), isNull, m_module.constu32(0));
 
       // Only do the check for depth comp. samplers
@@ -3027,7 +3029,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         uint32_t depthLabel  = m_module.allocateId();
         uint32_t endLabel    = m_module.allocateId();
 
-        uint32_t isDepth = m_spec.get(m_module, SpecSamplerDepthMode, bitOffset, 1);
+        uint32_t isDepth = m_spec.get(m_module, m_specUbo, SpecSamplerDepthMode, bitOffset, 1);
         isDepth = m_module.opINotEqual(m_module.defBoolType(), isDepth, m_module.constu32(0));
 
         m_module.opSelectionMerge(endLabel, spv::SelectionControlMaskNone);
@@ -3062,7 +3064,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       }};
 
       uint32_t switchEndLabel = m_module.allocateId();
-      uint32_t type = m_spec.get(m_module, SpecSamplerType, samplerIdx * 2, 2);
+      uint32_t type = m_spec.get(m_module, m_specUbo, SpecSamplerType, samplerIdx * 2, 2);
 
       m_module.opSelectionMerge(switchEndLabel, spv::SelectionControlMaskNone);
       m_module.opSwitch(type,
@@ -3326,7 +3328,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     if (m_programInfo.type() == DxsoProgramType::PixelShader) {
       pointCoord = GetPointCoord(m_module);
-      pointInfo  = GetPointSizeInfoPS(m_spec, m_module, m_rsBlock);
+      pointInfo  = GetPointSizeInfoPS(m_spec, m_module, m_rsBlock, m_specUbo);
     }
 
     for (uint32_t i = 0; i < m_isgn.elemCount; i++) {
@@ -3556,7 +3558,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     if (!outputtedColor1)
       OutputDefault(DxsoSemantic{ DxsoUsage::Color, 1 });
 
-    auto pointInfo = GetPointSizeInfoVS(m_spec, m_module, m_vs.oPos.id, 0, 0, m_rsBlock, false);
+    auto pointInfo = GetPointSizeInfoVS(m_spec, m_module, m_vs.oPos.id, 0, 0, m_rsBlock, m_specUbo, false);
 
     if (m_vs.oPSize.id == 0) {
       m_vs.oPSize = this->emitRegisterPtr(
@@ -3707,6 +3709,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     fogCtx.IsPositionT = false;
     fogCtx.HasSpecular = false;
     fogCtx.Specular    = 0;
+    fogCtx.SpecUBO     = m_specUbo;
 
     m_module.opStore(oColor0Ptr.id, DoFixedFunctionFog(m_spec, m_module, fogCtx));
   }
@@ -3717,7 +3720,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     uint32_t floatType = m_module.defFloatType(32);
     uint32_t floatPtr  = m_module.defPointerType(floatType, spv::StorageClassPushConstant);
     
-    uint32_t alphaFuncId = m_spec.get(m_module, SpecAlphaCompareOp);
+    uint32_t alphaFuncId = m_spec.get(m_module, m_specUbo, SpecAlphaCompareOp);
 
     // Implement alpha test and fog
     DxsoRegister color0;

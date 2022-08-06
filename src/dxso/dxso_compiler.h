@@ -367,6 +367,8 @@ namespace dxvk {
     uint32_t m_usedSamplers;
     uint32_t m_usedRTs;
 
+    uint32_t m_specUbo = 0;
+
     uint32_t m_rsBlock = 0;
     uint32_t m_mainFuncLabel = 0;
 
