@@ -599,6 +599,10 @@ namespace dxvk {
     { R"(\\yso_win\.exe$)", {{
       { "d3d9.maxFrameLatency",              "1" },
     }} },
+    /* Saints Row 2 - Prevents unmap crash      */
+    { R"(\\SR2_pc\.exe$)", {{
+      { "d3d9.textureMemory",                "0" },
+    }} },
   }};
 
 
