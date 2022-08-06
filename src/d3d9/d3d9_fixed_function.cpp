@@ -1190,6 +1190,7 @@ namespace dxvk {
     fogCtx.IsPositionT = m_vsKey.Data.Contents.HasPositionT;
     fogCtx.HasSpecular = m_vsKey.Data.Contents.HasColor1;
     fogCtx.Specular    = m_vs.in.COLOR[1];
+    fogCtx.SpecUBO     = m_specUbo;
     m_module.opStore(m_vs.out.FOG, DoFixedFunctionFog(m_spec, m_module, fogCtx));
 
     auto pointInfo = GetPointSizeInfoVS(m_spec, m_module, 0, vtx, m_vs.in.POINTSIZE, m_rsBlock, m_specUbo, true);
@@ -1453,6 +1454,7 @@ namespace dxvk {
 
   void D3D9FFShaderCompiler::setupVS() {
     setupRenderStateInfo();
+    m_specUbo = SetupSpecUBO(m_module, m_bindings);
 
     // VS Caps
     m_module.enableCapability(spv::CapabilityClipDistance);
