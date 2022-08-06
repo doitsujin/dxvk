@@ -3760,6 +3760,10 @@ namespace dxvk {
 
     DWORD oldUsage = oldTexture != nullptr ? oldTexture->Desc()->Usage : 0;
     DWORD newUsage = newTexture != nullptr ? newTexture->Desc()->Usage : 0;
+    DWORD combinedUsage = oldUsage | newUsage;
+    TextureChangePrivate(m_state.textures[StateSampler], pTexture);
+    m_dirtyTextures |= 1u << StateSampler;
+    UpdateActiveTextures(StateSampler, combinedUsage);
 
     if (newTexture != nullptr) {
       const bool oldDepth = m_depthTextures & (1u << StateSampler);
@@ -3779,14 +3783,6 @@ namespace dxvk {
       if (unlikely(m_fetch4 & (1u << StateSampler)))
         UpdateActiveFetch4(StateSampler);
     }
-
-    DWORD combinedUsage = oldUsage | newUsage;
-
-    TextureChangePrivate(m_state.textures[StateSampler], pTexture);
-
-    m_dirtyTextures |= 1u << StateSampler;
-
-    UpdateActiveTextures(StateSampler, combinedUsage);
 
     return D3D_OK;
   }
