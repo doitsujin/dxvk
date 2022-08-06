@@ -114,6 +114,13 @@ namespace dxvk {
           m_o1IdxOffset = ins.offset() + 3;
       }
 
+      if (ins.opCode() == spv::OpMemberDecorate) {
+        if (ins.arg(3) == spv::DecorationBuiltIn) {
+          if (ins.arg(4) == spv::BuiltInPosition)
+            m_flags.set(DxvkShaderFlag::ExportsPosition);
+        }
+      }
+
       if (ins.opCode() == spv::OpExecutionMode) {
         if (ins.arg(2) == spv::ExecutionModeStencilRefReplacingEXT)
           m_flags.set(DxvkShaderFlag::ExportsStencilRef);
