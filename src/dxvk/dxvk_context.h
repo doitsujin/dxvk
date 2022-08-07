@@ -214,6 +214,55 @@ namespace dxvk {
     }
 
     /**
+     * \brief Binds image view
+     *
+     * \param [in] stages Shader stages that access the binding
+     * \param [in] slot Resource binding slot
+     * \param [in] view Image view to bind
+     */
+    void bindResourceImageView(
+            VkShaderStageFlags    stages,
+            uint32_t              slot,
+            Rc<DxvkImageView>&&   view) {
+      if (m_rc[slot].bufferView != nullptr) {
+        m_rc[slot].bufferSlice = DxvkBufferSlice();
+        m_rc[slot].bufferView  = nullptr;
+      }
+
+      m_rc[slot].imageView = std::move(view);
+      m_rcTracked.clr(slot);
+
+      m_descriptorState.dirtyViews(stages);
+    }
+
+    /**
+     * \brief Binds buffer view
+     *
+     * \param [in] stages Shader stages that access the binding
+     * \param [in] slot Resource binding slot
+     * \param [in] view Buffer view to bind
+     */
+    void bindResourceBufferView(
+            VkShaderStageFlags    stages,
+            uint32_t              slot,
+            Rc<DxvkBufferView>&&  view) {
+      if (m_rc[slot].imageView != nullptr)
+        m_rc[slot].imageView = nullptr;
+
+      if (view != nullptr) {
+        m_rc[slot].bufferSlice = view->slice();
+        m_rc[slot].bufferView = std::move(view);
+      } else {
+        m_rc[slot].bufferSlice = DxvkBufferSlice();
+        m_rc[slot].bufferView = nullptr;
+      }
+
+      m_rcTracked.clr(slot);
+
+      m_descriptorState.dirtyViews(stages);
+    }
+
+    /**
      * \brief Binds image sampler
      * 
      * Binds a sampler that can be used together with
