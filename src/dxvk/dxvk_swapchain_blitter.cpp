@@ -194,8 +194,8 @@ namespace dxvk {
     ctx->bindResourceSampler(VK_SHADER_STAGE_FRAGMENT_BIT, BindingIds::Image, Rc<DxvkSampler>(m_samplerPresent));
     ctx->bindResourceSampler(VK_SHADER_STAGE_FRAGMENT_BIT, BindingIds::Gamma, Rc<DxvkSampler>(m_samplerGamma));
 
-    ctx->bindResourceView(VK_SHADER_STAGE_FRAGMENT_BIT, BindingIds::Image, Rc<DxvkImageView>(srcView), nullptr);
-    ctx->bindResourceView(VK_SHADER_STAGE_FRAGMENT_BIT, BindingIds::Gamma, Rc<DxvkImageView>(m_gammaView), nullptr);
+    ctx->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, BindingIds::Image, Rc<DxvkImageView>(srcView));
+    ctx->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, BindingIds::Gamma, Rc<DxvkImageView>(m_gammaView));
 
     ctx->bindShader(VK_SHADER_STAGE_VERTEX_BIT, Rc<DxvkShader>(m_vs));
     ctx->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, Rc<DxvkShader>(fs));
