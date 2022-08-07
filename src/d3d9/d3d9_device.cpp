@@ -6206,6 +6206,7 @@ namespace dxvk {
 
           DxvkVertexBinding binding;
           binding.binding = attrib.binding;
+          binding.extent = attrib.offset + lookupFormatInfo(attrib.format)->elementSize;
 
           uint32_t instanceData = cStreamFreq[binding.binding % caps::MaxStreams];
           if (instanceData & D3DSTREAMSOURCE_INSTANCEDATA) {
@@ -6217,19 +6218,12 @@ namespace dxvk {
             binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
           }
 
-          // Check if the binding was already defined.
-          bool bindingDefined = false;
-
-          for (uint32_t j = 0; j < i; j++) {
-            uint32_t bindingId = attrList.at(j).binding;
-
-            if (binding.binding == bindingId) {
-              bindingDefined = true;
-            }
-          }
-
-          if (!bindingDefined)
+          if (bindMask & (1u << binding.binding)) {
+            bindList.at(binding.binding).extent = std::max(
+              bindList.at(binding.binding).extent, binding.extent);
+          } else {
             bindList.at(binding.binding) = binding;
+          }
 
           attrMask |= 1u << i;
           bindMask |= 1u << binding.binding;
