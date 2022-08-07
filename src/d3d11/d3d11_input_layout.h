@@ -25,8 +25,7 @@ namespace dxvk {
             REFIID                riid,
             void**                ppvObject) final;
     
-    void BindToContext(
-      const Rc<DxvkContext>&      ctx);
+    void BindToContext(DxvkContext* ctx);
     
     bool Compare(
       const D3D11InputLayout*     pOther) const;

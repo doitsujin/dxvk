@@ -113,7 +113,7 @@ namespace dxvk {
   }
 
   
-  void D3D11RasterizerState::BindToContext(const Rc<DxvkContext>& ctx) {
+  void D3D11RasterizerState::BindToContext(DxvkContext* ctx) {
     ctx->setRasterizerState(m_state);
     
     if (m_state.depthBiasEnable)

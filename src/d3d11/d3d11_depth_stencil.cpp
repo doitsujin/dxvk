@@ -52,7 +52,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DepthStencilState::BindToContext(const Rc<DxvkContext>& ctx) {
+  void D3D11DepthStencilState::BindToContext(DxvkContext* ctx) {
     ctx->setDepthStencilState(m_state);
   }
   
