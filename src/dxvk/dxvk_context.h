@@ -188,32 +188,6 @@ namespace dxvk {
     }
     
     /**
-     * \brief Binds image or buffer view
-     * 
-     * Can be used for sampled images with a dedicated
-     * sampler and for storage images, as well as for
-     * uniform texel buffers and storage texel buffers.
-     * \param [in] stages Shader stages that access the binding
-     * \param [in] slot Resource binding slot
-     * \param [in] imageView Image view to bind
-     * \param [in] bufferView Buffer view to bind
-     */
-    void bindResourceView(
-            VkShaderStageFlags    stages,
-            uint32_t              slot,
-            Rc<DxvkImageView>&&   imageView,
-            Rc<DxvkBufferView>&&  bufferView) {
-      m_rc[slot].bufferSlice = bufferView != nullptr
-        ? bufferView->slice()
-        : DxvkBufferSlice();
-      m_rc[slot].bufferView  = std::move(bufferView);
-      m_rc[slot].imageView   = std::move(imageView);
-      m_rcTracked.clr(slot);
-
-      m_descriptorState.dirtyViews(stages);
-    }
-
-    /**
      * \brief Binds image view
      *
      * \param [in] stages Shader stages that access the binding
