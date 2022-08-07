@@ -5889,7 +5889,7 @@ namespace dxvk {
       cImageView = commonTex->GetSampleView(srgb)
     ](DxvkContext* ctx) mutable {
       VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-      ctx->bindResourceView(stage, cSlot, std::move(cImageView), nullptr);
+      ctx->bindResourceImageView(stage, cSlot, std::move(cImageView));
     });
   }
 
@@ -5905,7 +5905,7 @@ namespace dxvk {
           DxsoBindingType::Image, uint32_t(shaderSampler.second));
 
         VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-        ctx->bindResourceView(stage, slot, nullptr, nullptr);
+        ctx->bindResourceImageView(stage, slot, nullptr);
       }
     });
   }
@@ -7035,7 +7035,7 @@ namespace dxvk {
       for (uint32_t i = 0; i < cSize; i++) {
         auto samplerInfo = RemapStateSamplerShader(DWORD(i));
         uint32_t slot = computeResourceSlotId(samplerInfo.first, DxsoBindingType::Image, uint32_t(samplerInfo.second));
-        ctx->bindResourceView(stage, slot, nullptr, nullptr);
+        ctx->bindResourceImageView(stage, slot, nullptr);
       }
     });
 

@@ -94,8 +94,8 @@ namespace dxvk {
     auto tmpBufferView = m_device->createBufferView(srcSlice.buffer(), bufferViewInfo);
 
     m_context->setSpecConstant(VK_PIPELINE_BIND_POINT_COMPUTE, 0, specConstantValue);
-    m_context->bindResourceView(VK_SHADER_STAGE_COMPUTE_BIT, BindingIds::Image, std::move(tmpImageView), nullptr);
-    m_context->bindResourceView(VK_SHADER_STAGE_COMPUTE_BIT, BindingIds::Buffer, nullptr, std::move(tmpBufferView));
+    m_context->bindResourceImageView(VK_SHADER_STAGE_COMPUTE_BIT, BindingIds::Image, std::move(tmpImageView));
+    m_context->bindResourceBufferView(VK_SHADER_STAGE_COMPUTE_BIT, BindingIds::Buffer, std::move(tmpBufferView));
     m_context->bindShader(VK_SHADER_STAGE_COMPUTE_BIT, Rc<DxvkShader>(m_shaders[videoFormat.FormatType]));
     m_context->pushConstants(0, sizeof(VkExtent2D), &imageExtent);
     m_context->dispatch(
