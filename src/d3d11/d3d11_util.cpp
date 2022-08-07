@@ -78,19 +78,6 @@ namespace dxvk {
   }
 
 
-  VkShaderStageFlagBits GetShaderStage(DxbcProgramType ProgramType) {
-    switch (ProgramType) {
-      case DxbcProgramType::VertexShader:   return VK_SHADER_STAGE_VERTEX_BIT;
-      case DxbcProgramType::HullShader:     return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-      case DxbcProgramType::DomainShader:   return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-      case DxbcProgramType::GeometryShader: return VK_SHADER_STAGE_GEOMETRY_BIT;
-      case DxbcProgramType::PixelShader:    return VK_SHADER_STAGE_FRAGMENT_BIT;
-      case DxbcProgramType::ComputeShader:  return VK_SHADER_STAGE_COMPUTE_BIT;
-      default:                              return VkShaderStageFlagBits(0);
-    }
-  }
-  
-
   VkFormatFeatureFlags GetBufferFormatFeatures(UINT BindFlags) {
     VkFormatFeatureFlags features = 0;
 

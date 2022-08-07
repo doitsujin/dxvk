@@ -6130,7 +6130,8 @@ namespace dxvk {
     EmitCs([
       cShader = pShaderModule->GetShader(Permutation)
     ] (DxvkContext* ctx) mutable {
-      ctx->bindShader(GetShaderStage(ShaderStage), std::move(cShader));
+      constexpr VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+      ctx->bindShader(stage, std::move(cShader));
     });
   }
 

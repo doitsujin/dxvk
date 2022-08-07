@@ -3120,7 +3120,7 @@ namespace dxvk {
         ? pShaderModule->GetShader()
         : nullptr
     ] (DxvkContext* ctx) mutable {
-      VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+      constexpr VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
 
       uint32_t slotId = computeConstantBufferBinding(ShaderStage,
         D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT);

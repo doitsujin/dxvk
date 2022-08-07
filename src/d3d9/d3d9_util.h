@@ -110,7 +110,7 @@ namespace dxvk {
     return srgb ? srgbFormat : format;
   }
 
-  inline VkShaderStageFlagBits GetShaderStage(DxsoProgramType ProgramType) {
+  constexpr VkShaderStageFlagBits GetShaderStage(DxsoProgramType ProgramType) {
     switch (ProgramType) {
       case DxsoProgramTypes::VertexShader:  return VK_SHADER_STAGE_VERTEX_BIT;
       case DxsoProgramTypes::PixelShader:   return VK_SHADER_STAGE_FRAGMENT_BIT;
