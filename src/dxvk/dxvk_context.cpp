@@ -2371,20 +2371,18 @@ namespace dxvk {
       m_state.gp.state.ilBindings[i] = DxvkIlBinding(
         bindings[i].binding, 0, bindings[i].inputRate,
         bindings[i].fetchRate);
-      m_state.vi.vertexExtents[bindings[i].binding] = 0;
+      m_state.vi.vertexExtents[i] = bindings[i].extent;
     }
 
-    for (uint32_t i = bindingCount; i < m_state.gp.state.il.bindingCount(); i++)
+    for (uint32_t i = bindingCount; i < m_state.gp.state.il.bindingCount(); i++) {
       m_state.gp.state.ilBindings[i] = DxvkIlBinding();
+      m_state.vi.vertexExtents[i] = 0;
+    }
     
     for (uint32_t i = 0; i < attributeCount; i++) {
       m_state.gp.state.ilAttributes[i] = DxvkIlAttribute(
         attributes[i].location, attributes[i].binding,
         attributes[i].format,   attributes[i].offset);
-
-      uint32_t extent = attributes[i].offset + lookupFormatInfo(attributes[i].format)->elementSize;
-      m_state.vi.vertexExtents[attributes[i].binding] = std::max(extent,
-        m_state.vi.vertexExtents[attributes[i].binding]);
     }
     
     for (uint32_t i = attributeCount; i < m_state.gp.state.il.attributeCount(); i++)
@@ -5137,7 +5135,7 @@ namespace dxvk {
         if (strides[i]) {
           // Dynamic strides are only allowed if the stride is not smaller
           // than highest attribute offset + format size for given binding
-          newDynamicStrides &= strides[i] >= m_state.vi.vertexExtents[binding];
+          newDynamicStrides &= strides[i] >= m_state.vi.vertexExtents[i];
         }
 
         if (m_vbTracked.set(binding))
