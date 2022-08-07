@@ -652,6 +652,10 @@ namespace dxvk {
     { R"(\\SinEpisodes\.exe$)", {{
       { "d3d9.memoryTrackTest",             "True" },
     }} },
+    /* Witcher 1: Very long loading times       */
+    { R"(\\witcher\.exe$)", {{
+      { "d3d9.apitraceMode",              "True" },
+    }} },
   }};
 
 
