@@ -31,8 +31,22 @@ namespace dxvk {
     static constexpr uint64_t RdAccessInc   = 1ull << RdAccessShift;
     static constexpr uint64_t WrAccessInc   = 1ull << WrAccessShift;
   public:
-    
+
+    DxvkResource();
+
     virtual ~DxvkResource();
+
+    /**
+     * \brief Unique object identifier
+     *
+     * Can be used to identify an object even when
+     * the lifetime of the object is unknown, and
+     * without referencing the actual object.
+     * \returns Unique identifier
+     */
+    uint64_t cookie() const {
+      return m_cookie;
+    }
 
     /**
      * \brief Increments reference count
@@ -104,7 +118,8 @@ namespace dxvk {
     
   private:
     
-    std::atomic<uint64_t> m_useCount = { 0ull };
+    std::atomic<uint64_t> m_useCount;
+    uint64_t              m_cookie;
 
     static constexpr uint64_t getIncrement(DxvkAccess access) {
       uint64_t increment = RefcountInc;
@@ -116,6 +131,8 @@ namespace dxvk {
 
       return increment;
     }
+
+    static std::atomic<uint64_t> s_cookie;
 
   };
 

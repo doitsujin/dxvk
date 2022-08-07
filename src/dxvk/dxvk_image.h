@@ -439,18 +439,6 @@ namespace dxvk {
     }
     
     /**
-     * \brief Unique object identifier
-     *
-     * Can be used to identify an object even when
-     * the lifetime of the object is unknown, and
-     * without referencing the actual object.
-     * \returns Unique identifier
-     */
-    uint64_t cookie() const {
-      return m_cookie;
-    }
-
-    /**
      * \brief Mip level size
      * 
      * Computes the mip level size relative to
@@ -566,10 +554,6 @@ namespace dxvk {
     
     DxvkImageViewCreateInfo m_info;
     VkImageView             m_views[ViewCount];
-
-    uint64_t          m_cookie;
-
-    static std::atomic<uint64_t> s_cookie;
 
     void createView(VkImageViewType type, uint32_t numLayers);
     

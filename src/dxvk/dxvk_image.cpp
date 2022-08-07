@@ -4,9 +4,6 @@
 
 namespace dxvk {
   
-  std::atomic<uint64_t> DxvkImageView::s_cookie = { 0ull };
-
-
   DxvkImage::DxvkImage(
     const DxvkDevice*           device,
     const DxvkImageCreateInfo&  createInfo,
@@ -220,7 +217,7 @@ namespace dxvk {
     const Rc<vk::DeviceFn>&         vkd,
     const Rc<DxvkImage>&            image,
     const DxvkImageViewCreateInfo&  info)
-  : m_vkd(vkd), m_image(image), m_info(info), m_cookie(++s_cookie) {
+  : m_vkd(vkd), m_image(image), m_info(info) {
     for (uint32_t i = 0; i < ViewCount; i++)
       m_views[i] = VK_NULL_HANDLE;
     
