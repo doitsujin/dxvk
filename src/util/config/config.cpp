@@ -603,6 +603,10 @@ namespace dxvk {
     { R"(\\SR2_pc\.exe$)", {{
       { "d3d9.textureMemory",                "0" },
     }} },
+    /* Witcher 1: Very long loading times       */
+    { R"(\\witcher\.exe$)", {{
+      { "d3d9.apitraceMode",              "True" },
+    }} },
   }};
 
 
