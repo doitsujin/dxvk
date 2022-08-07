@@ -3125,7 +3125,7 @@ namespace dxvk {
       uint32_t slotId = computeConstantBufferBinding(ShaderStage,
         D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT);
 
-      ctx->bindShader(stage,
+      ctx->bindShader<stage>(
         Forwarder::move(cShader));
       ctx->bindResourceBuffer(stage, slotId,
         Forwarder::move(cSlice));
@@ -3911,6 +3911,14 @@ namespace dxvk {
       for (uint32_t i = 0; i < cUsedBindings.soCount; i++)
         ctx->bindXfbBuffer(i, DxvkBufferSlice(), DxvkBufferSlice());
 
+      // Unbind all shaders
+      ctx->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(nullptr);
+      ctx->bindShader<VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT>(nullptr);
+      ctx->bindShader<VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT>(nullptr);
+      ctx->bindShader<VK_SHADER_STAGE_GEOMETRY_BIT>(nullptr);
+      ctx->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(nullptr);
+      ctx->bindShader<VK_SHADER_STAGE_COMPUTE_BIT>(nullptr);
+
       // Unbind per-shader stage resources
       for (uint32_t i = 0; i < 6; i++) {
         auto programType = DxbcProgramType(i);
@@ -3918,8 +3926,6 @@ namespace dxvk {
 
         // Unbind constant buffers, including the shader's ICB
         auto cbSlotId = computeConstantBufferBinding(programType, 0);
-
-        ctx->bindShader(stage, nullptr);
         ctx->bindResourceBuffer(stage, cbSlotId + D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, DxvkBufferSlice());
 
         for (uint32_t j = 0; j < cUsedBindings.stages[i].cbvCount; j++)

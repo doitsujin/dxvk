@@ -261,10 +261,10 @@ namespace dxvk {
      * \param [in] stage Target shader stage
      * \param [in] shader The shader to bind
      */
+    template<VkShaderStageFlagBits Stage>
     void bindShader(
-            VkShaderStageFlagBits stage,
             Rc<DxvkShader>&&      shader) {
-      switch (stage) {
+      switch (Stage) {
         case VK_SHADER_STAGE_VERTEX_BIT:
           m_state.gp.shaders.vs = std::move(shader);
           break;
@@ -293,7 +293,7 @@ namespace dxvk {
           return;
       }
 
-      if (stage == VK_SHADER_STAGE_COMPUTE_BIT) {
+      if (Stage == VK_SHADER_STAGE_COMPUTE_BIT) {
         m_flags.set(
           DxvkContextFlag::CpDirtyPipelineState);
       } else {

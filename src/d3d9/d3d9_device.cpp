@@ -2668,15 +2668,15 @@ namespace dxvk {
 
       // Unbind the pixel shader, we aren't drawing
       // to avoid val errors / UB.
-      ctx->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr);
+      ctx->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(nullptr);
 
-      ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT, std::move(shader));
+      ctx->bindShader<VK_SHADER_STAGE_GEOMETRY_BIT>(std::move(shader));
       ctx->bindResourceBuffer(VK_SHADER_STAGE_GEOMETRY_BIT, getSWVPBufferSlot(), std::move(cBufferSlice));
       ctx->draw(
         drawInfo.vertexCount, drawInfo.instanceCount,
         cStartIndex, 0);
       ctx->bindResourceBuffer(VK_SHADER_STAGE_GEOMETRY_BIT, getSWVPBufferSlot(), DxvkBufferSlice());
-      ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT, nullptr);
+      ctx->bindShader<VK_SHADER_STAGE_GEOMETRY_BIT>(nullptr);
     });
 
     // We unbound the pixel shader before,
@@ -6131,7 +6131,7 @@ namespace dxvk {
       cShader = pShaderModule->GetShader(Permutation)
     ] (DxvkContext* ctx) mutable {
       constexpr VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
-      ctx->bindShader(stage, std::move(cShader));
+      ctx->bindShader<stage>(std::move(cShader));
     });
   }
 
@@ -6504,7 +6504,7 @@ namespace dxvk {
        &cShaders = m_ffModules
       ](DxvkContext* ctx) {
         auto shader = cShaders.GetShaderModule(this, cKey);
-        ctx->bindShader(VK_SHADER_STAGE_VERTEX_BIT, shader.GetShader());
+        ctx->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(shader.GetShader());
       });
     }
 
@@ -6679,7 +6679,7 @@ namespace dxvk {
        &cShaders = m_ffModules
       ](DxvkContext* ctx) {
         auto shader = cShaders.GetShaderModule(this, cKey);
-        ctx->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, shader.GetShader());
+        ctx->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(shader.GetShader());
       });
     }
 

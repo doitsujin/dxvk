@@ -104,8 +104,8 @@ namespace dxvk::hud {
     if (m_mode != Mode::RenderText) {
       m_mode = Mode::RenderText;
 
-      m_context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,   Rc<DxvkShader>(m_textShaders.vert));
-      m_context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, Rc<DxvkShader>(m_textShaders.frag));
+      m_context->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(Rc<DxvkShader>(m_textShaders.vert));
+      m_context->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(Rc<DxvkShader>(m_textShaders.frag));
       
       m_context->bindResourceBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0, DxvkBufferSlice(m_fontBuffer));
       m_context->bindResourceBufferView(VK_SHADER_STAGE_VERTEX_BIT, 1, Rc<DxvkBufferView>(m_dataView));
@@ -126,8 +126,8 @@ namespace dxvk::hud {
     if (m_mode != Mode::RenderGraph) {
       m_mode = Mode::RenderGraph;
 
-      m_context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,   Rc<DxvkShader>(m_graphShaders.vert));
-      m_context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, Rc<DxvkShader>(m_graphShaders.frag));
+      m_context->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(Rc<DxvkShader>(m_graphShaders.vert));
+      m_context->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(Rc<DxvkShader>(m_graphShaders.frag));
       
       m_context->bindResourceBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 0, DxvkBufferSlice(m_dataBuffer));
 

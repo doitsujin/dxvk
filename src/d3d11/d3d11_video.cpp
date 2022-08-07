@@ -1199,8 +1199,8 @@ namespace dxvk {
       rt.color[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
       ctx->bindRenderTargets(std::move(rt), 0u);
-      ctx->bindShader(VK_SHADER_STAGE_VERTEX_BIT, Rc<DxvkShader>(m_vs));
-      ctx->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, Rc<DxvkShader>(m_fs));
+      ctx->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(Rc<DxvkShader>(m_vs));
+      ctx->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(Rc<DxvkShader>(m_fs));
       ctx->bindResourceBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 0, DxvkBufferSlice(m_ubo));
 
       DxvkInputAssemblyState iaState;
@@ -1314,8 +1314,8 @@ namespace dxvk {
     m_ctx->EmitCs([this] (DxvkContext* ctx) {
       ctx->bindRenderTargets(DxvkRenderTargets(), 0u);
 
-      ctx->bindShader(VK_SHADER_STAGE_VERTEX_BIT, nullptr);
-      ctx->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, nullptr);
+      ctx->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(nullptr);
+      ctx->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(nullptr);
 
       ctx->bindResourceBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 0, DxvkBufferSlice());
     });

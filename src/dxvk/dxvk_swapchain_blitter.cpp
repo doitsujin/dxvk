@@ -197,8 +197,8 @@ namespace dxvk {
     ctx->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, BindingIds::Image, Rc<DxvkImageView>(srcView));
     ctx->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, BindingIds::Gamma, Rc<DxvkImageView>(m_gammaView));
 
-    ctx->bindShader(VK_SHADER_STAGE_VERTEX_BIT, Rc<DxvkShader>(m_vs));
-    ctx->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, Rc<DxvkShader>(fs));
+    ctx->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(Rc<DxvkShader>(m_vs));
+    ctx->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(Rc<DxvkShader>(fs));
 
     PresenterArgs args;
     args.srcOffset = srcRect.offset;
