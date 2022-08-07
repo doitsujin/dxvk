@@ -4801,7 +4801,7 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
             const auto& res = m_rc[binding.resourceBinding];
 
-            if (res.bufferSlice.defined()) {
+            if (res.bufferSlice.length()) {
               descriptorInfo = res.bufferSlice.getDescriptor();
 
               if (m_rcTracked.set(binding.resourceBinding))
@@ -4816,7 +4816,7 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
             const auto& res = m_rc[binding.resourceBinding];
 
-            if (res.bufferSlice.defined()) {
+            if (res.bufferSlice.length()) {
               descriptorInfo = res.bufferSlice.getDescriptor();
 
               if (m_rcTracked.set(binding.resourceBinding))
@@ -5088,7 +5088,7 @@ namespace dxvk {
 
 
   bool DxvkContext::updateIndexBufferBinding() {
-    if (unlikely(!m_state.vi.indexBuffer.defined()))
+    if (unlikely(!m_state.vi.indexBuffer.length()))
       return false;
 
     m_flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
@@ -5124,7 +5124,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < m_state.gp.state.il.bindingCount(); i++) {
       uint32_t binding = m_state.gp.state.ilBindings[i].binding();
       
-      if (likely(m_state.vi.vertexBuffers[binding].defined())) {
+      if (likely(m_state.vi.vertexBuffers[binding].length())) {
         auto vbo = m_state.vi.vertexBuffers[binding].getDescriptor();
         
         buffers[i] = vbo.buffer.buffer;
@@ -5440,8 +5440,7 @@ namespace dxvk {
         switch (binding.descriptorType) {
           case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-            if (likely(slot.bufferSlice.defined())) {
+            if (likely(slot.bufferSlice.length())) {
               srcAccess = m_execBarriers.getBufferAccess(
                 slot.bufferSlice.getSliceHandle());
             }
@@ -5509,8 +5508,7 @@ namespace dxvk {
         switch (binding.descriptorType) {
           case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-            if (likely(slot.bufferSlice.defined())) {
+            if (likely(slot.bufferSlice.length())) {
               m_execBarriers.accessBuffer(
                 slot.bufferSlice.getSliceHandle(),
                 stages, access,
@@ -5573,7 +5571,7 @@ namespace dxvk {
       }};
 
       for (uint32_t i = 0; i < slices.size() && !requiresBarrier; i++) {
-        if ((slices[i]->defined())
+        if ((slices[i]->length())
          && (slices[i]->bufferInfo().access & storageBufferAccess)) {
           requiresBarrier = this->checkGfxBufferBarrier<DoEmit>(*slices[i],
             VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
@@ -5587,7 +5585,7 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer) && !requiresBarrier && Indexed) {
       const auto& indexBufferSlice = m_state.vi.indexBuffer;
 
-      if ((indexBufferSlice.defined())
+      if ((indexBufferSlice.length())
        && (indexBufferSlice.bufferInfo().access & storageBufferAccess)) {
         requiresBarrier = this->checkGfxBufferBarrier<DoEmit>(indexBufferSlice,
           VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
@@ -5603,7 +5601,7 @@ namespace dxvk {
         uint32_t binding = m_state.gp.state.ilBindings[i].binding();
         const auto& vertexBufferSlice = m_state.vi.vertexBuffers[binding];
 
-        if ((vertexBufferSlice.defined())
+        if ((vertexBufferSlice.length())
          && (vertexBufferSlice.bufferInfo().access & storageBufferAccess)) {
           requiresBarrier = this->checkGfxBufferBarrier<DoEmit>(vertexBufferSlice,
             VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
@@ -5620,12 +5618,12 @@ namespace dxvk {
         const auto& xfbBufferSlice = m_state.xfb.buffers[i];
         const auto& xfbCounterSlice = m_state.xfb.counters[i];
 
-        if (xfbBufferSlice.defined()) {
+        if (xfbBufferSlice.length()) {
           requiresBarrier = this->checkGfxBufferBarrier<DoEmit>(xfbBufferSlice,
             VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
             VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT) != 0;
 
-          if (xfbCounterSlice.defined()) {
+          if (xfbCounterSlice.length()) {
             requiresBarrier |= this->checkGfxBufferBarrier<DoEmit>(xfbCounterSlice,
               VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
               VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
@@ -5652,8 +5650,7 @@ namespace dxvk {
         switch (binding.descriptorType) {
           case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-            if ((slot.bufferSlice.defined())
+            if ((slot.bufferSlice.length())
              && (slot.bufferSlice.bufferInfo().access & storageBufferAccess)) {
                srcAccess = this->checkGfxBufferBarrier<DoEmit>(slot.bufferSlice,
                  util::pipelineStages(binding.stages), binding.access);
@@ -5768,10 +5765,10 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer)) {
       m_flags.clr(DxvkContextFlag::DirtyDrawBuffer);
 
-      if (m_state.id.argBuffer.defined())
+      if (m_state.id.argBuffer.length())
         m_cmd->trackResource<DxvkAccess::Read>(m_state.id.argBuffer.buffer());
 
-      if (m_state.id.cntBuffer.defined())
+      if (m_state.id.cntBuffer.length())
         m_cmd->trackResource<DxvkAccess::Read>(m_state.id.cntBuffer.buffer());
     }
   }

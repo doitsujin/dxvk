@@ -306,7 +306,6 @@ namespace dxvk {
     /**
      * \brief Binds vertex buffer
      * 
-     * When binding a null buffer, stride must be 0.
      * \param [in] binding Vertex buffer binding
      * \param [in] buffer New vertex buffer
      * \param [in] stride Stride between vertices
