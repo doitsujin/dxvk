@@ -819,6 +819,12 @@ namespace dxvk {
             UINT                              Offset,
             UINT                              Stride);
 
+    void BindVertexBufferRange(
+            UINT                              Slot,
+            D3D11Buffer*                      pBuffer,
+            UINT                              Offset,
+            UINT                              Stride);
+
     void BindIndexBuffer(
             D3D11Buffer*                      pBuffer,
             UINT                              Offset,

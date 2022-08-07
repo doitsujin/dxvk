@@ -1198,19 +1198,19 @@ namespace dxvk {
 
     for (uint32_t i = 0; i < NumBuffers; i++) {
       auto newBuffer = static_cast<D3D11Buffer*>(ppVertexBuffers[i]);
-      bool needsUpdate = m_state.ia.vertexBuffers[StartSlot + i].buffer != newBuffer;
 
-      if (needsUpdate)
+      if (m_state.ia.vertexBuffers[StartSlot + i].buffer != newBuffer) {
         m_state.ia.vertexBuffers[StartSlot + i].buffer = newBuffer;
-
-      needsUpdate |= m_state.ia.vertexBuffers[StartSlot + i].offset != pOffsets[i]
-                  || m_state.ia.vertexBuffers[StartSlot + i].stride != pStrides[i];
-
-      if (needsUpdate) {
         m_state.ia.vertexBuffers[StartSlot + i].offset = pOffsets[i];
         m_state.ia.vertexBuffers[StartSlot + i].stride = pStrides[i];
 
         BindVertexBuffer(StartSlot + i, newBuffer, pOffsets[i], pStrides[i]);
+      } else if (m_state.ia.vertexBuffers[StartSlot + i].offset != pOffsets[i]
+              || m_state.ia.vertexBuffers[StartSlot + i].stride != pStrides[i]) {
+        m_state.ia.vertexBuffers[StartSlot + i].offset = pOffsets[i];
+        m_state.ia.vertexBuffers[StartSlot + i].stride = pStrides[i];
+
+        BindVertexBufferRange(StartSlot + i, newBuffer, pOffsets[i], pStrides[i]);
       }
     }
 
@@ -3213,6 +3213,29 @@ namespace dxvk {
   }
   
   
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::BindVertexBufferRange(
+          UINT                              Slot,
+          D3D11Buffer*                      pBuffer,
+          UINT                              Offset,
+          UINT                              Stride) {
+    if (pBuffer) {
+      VkDeviceSize offset = Offset;
+      VkDeviceSize length = pBuffer->GetRemainingSize(Offset);
+
+      EmitCs([
+        cSlotId       = Slot,
+        cBufferOffset = offset,
+        cBufferLength = length,
+        cStride       = Stride
+      ] (DxvkContext* ctx) mutable {
+        ctx->bindVertexBufferRange(cSlotId,
+          cBufferOffset, cBufferLength, cStride);
+      });
+    }
+  }
+
+
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::BindIndexBuffer(
           D3D11Buffer*                      pBuffer,
