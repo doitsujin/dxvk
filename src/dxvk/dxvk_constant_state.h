@@ -188,6 +188,7 @@ namespace dxvk {
     uint32_t          binding;
     uint32_t          fetchRate;
     VkVertexInputRate inputRate;
+    uint32_t          extent;
   };
   
   
