@@ -3193,7 +3193,7 @@ namespace dxvk {
           D3D11Buffer*                      pBuffer,
           UINT                              Offset,
           UINT                              Stride) {
-    if (likely(pBuffer != nullptr)) {
+    if (pBuffer) {
       EmitCs([
         cSlotId       = Slot,
         cBufferSlice  = pBuffer->GetBufferSlice(Offset),
@@ -3222,14 +3222,22 @@ namespace dxvk {
       ? VK_INDEX_TYPE_UINT16
       : VK_INDEX_TYPE_UINT32;
 
-    EmitCs([
-      cBufferSlice  = pBuffer != nullptr ? pBuffer->GetBufferSlice(Offset) : DxvkBufferSlice(),
-      cIndexType    = indexType
-    ] (DxvkContext* ctx) mutable {
-      ctx->bindIndexBuffer(
-        Forwarder::move(cBufferSlice),
-        cIndexType);
-    });
+    if (pBuffer) {
+      EmitCs([
+        cBufferSlice  = pBuffer->GetBufferSlice(Offset),
+        cIndexType    = indexType
+      ] (DxvkContext* ctx) mutable {
+        ctx->bindIndexBuffer(
+          Forwarder::move(cBufferSlice),
+          cIndexType);
+      });
+    } else {
+      EmitCs([
+        cIndexType    = indexType
+      ] (DxvkContext* ctx) {
+        ctx->bindIndexBuffer(DxvkBufferSlice(), cIndexType);
+      });
+    }
   }
   
 
@@ -3238,32 +3246,34 @@ namespace dxvk {
           UINT                              Slot,
           D3D11Buffer*                      pBuffer,
           UINT                              Offset) {
-    DxvkBufferSlice bufferSlice;
-    DxvkBufferSlice counterSlice;
+    if (pBuffer) {
+      EmitCs([
+        cSlotId       = Slot,
+        cOffset       = Offset,
+        cBufferSlice  = pBuffer->GetBufferSlice(),
+        cCounterSlice = pBuffer->GetSOCounter()
+      ] (DxvkContext* ctx) mutable {
+        if (cCounterSlice.defined() && cOffset != ~0u) {
+          ctx->updateBuffer(
+            cCounterSlice.buffer(),
+            cCounterSlice.offset(),
+            sizeof(cOffset),
+            &cOffset);
+        }
 
-    if (pBuffer != nullptr) {
-      bufferSlice  = pBuffer->GetBufferSlice();
-      counterSlice = pBuffer->GetSOCounter();
+        ctx->bindXfbBuffer(cSlotId,
+          Forwarder::move(cBufferSlice),
+          Forwarder::move(cCounterSlice));
+      });
+    } else {
+      EmitCs([
+        cSlotId       = Slot
+      ] (DxvkContext* ctx) {
+        ctx->bindXfbBuffer(cSlotId,
+          DxvkBufferSlice(),
+          DxvkBufferSlice());
+      });
     }
-
-    EmitCs([
-      cSlotId       = Slot,
-      cOffset       = Offset,
-      cBufferSlice  = bufferSlice,
-      cCounterSlice = counterSlice
-    ] (DxvkContext* ctx) mutable {
-      if (cCounterSlice.defined() && cOffset != ~0u) {
-        ctx->updateBuffer(
-          cCounterSlice.buffer(),
-          cCounterSlice.offset(),
-          sizeof(cOffset),
-          &cOffset);
-      }
-
-      ctx->bindXfbBuffer(cSlotId,
-        Forwarder::move(cBufferSlice),
-        Forwarder::move(cCounterSlice));
-    });
   }
 
 
@@ -3274,14 +3284,23 @@ namespace dxvk {
           D3D11Buffer*                      pBuffer,
           UINT                              Offset,
           UINT                              Length) {
-    EmitCs([
-      cSlotId      = Slot,
-      cBufferSlice = pBuffer ? pBuffer->GetBufferSlice(16 * Offset, 16 * Length) : DxvkBufferSlice()
-    ] (DxvkContext* ctx) mutable {
-      VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
-      ctx->bindResourceBuffer(stage, cSlotId,
-        Forwarder::move(cBufferSlice));
-    });
+    if (pBuffer) {
+      EmitCs([
+        cSlotId      = Slot,
+        cBufferSlice = pBuffer->GetBufferSlice(16 * Offset, 16 * Length)
+      ] (DxvkContext* ctx) mutable {
+        VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+        ctx->bindResourceBuffer(stage, cSlotId,
+          Forwarder::move(cBufferSlice));
+      });
+    } else {
+      EmitCs([
+        cSlotId      = Slot
+      ] (DxvkContext* ctx) {
+        VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+        ctx->bindResourceBuffer(stage, cSlotId, DxvkBufferSlice());
+      });
+    }
   }
   
   
@@ -3307,14 +3326,23 @@ namespace dxvk {
   void D3D11CommonContext<ContextType>::BindSampler(
           UINT                              Slot,
           D3D11SamplerState*                pSampler) {
-    EmitCs([
-      cSlotId   = Slot,
-      cSampler  = pSampler != nullptr ? pSampler->GetDXVKSampler() : nullptr
-    ] (DxvkContext* ctx) mutable {
-      VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
-      ctx->bindResourceSampler(stage, cSlotId,
-        Forwarder::move(cSampler));
-    });
+    if (pSampler) {
+      EmitCs([
+        cSlotId   = Slot,
+        cSampler  = pSampler->GetDXVKSampler()
+      ] (DxvkContext* ctx) mutable {
+        VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+        ctx->bindResourceSampler(stage, cSlotId,
+          Forwarder::move(cSampler));
+      });
+    } else {
+      EmitCs([
+        cSlotId   = Slot
+      ] (DxvkContext* ctx) {
+        VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+        ctx->bindResourceSampler(stage, cSlotId, nullptr);
+      });
+    }
   }
 
 
@@ -4297,17 +4325,8 @@ namespace dxvk {
         constantBound   = 0;
       }
 
-      // Do a full rebind if either the buffer changes, or if either the current or
-      // the previous number of bound constants were zero, since we're binding a null
-      // buffer to the backend in that case.
-      bool needsUpdate = bindings.buffers[StartSlot + i].buffer != newBuffer;
-
-      if (!needsUpdate) {
-        needsUpdate |= !constantBound;
-        needsUpdate |= !bindings.buffers[StartSlot + i].constantBound;
-      }
-
-      if (needsUpdate) {
+      // Do a full rebind if either the buffer changes
+      if (bindings.buffers[StartSlot + i].buffer != newBuffer) {
         bindings.buffers[StartSlot + i].buffer = newBuffer;
         bindings.buffers[StartSlot + i].constantOffset = constantOffset;
         bindings.buffers[StartSlot + i].constantCount  = constantCount;
