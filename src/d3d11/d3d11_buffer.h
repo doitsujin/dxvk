@@ -80,18 +80,14 @@ namespace dxvk {
     
     DxvkBufferSlice GetBufferSlice(VkDeviceSize offset) const {
       VkDeviceSize size = m_desc.ByteWidth;
-
-      return likely(offset < size)
-        ? DxvkBufferSlice(m_buffer, offset, size - offset)
-        : DxvkBufferSlice();
+      offset = std::min(offset, size);
+      return DxvkBufferSlice(m_buffer, offset, size - offset);
     }
     
     DxvkBufferSlice GetBufferSlice(VkDeviceSize offset, VkDeviceSize length) const {
       VkDeviceSize size = m_desc.ByteWidth;
-
-      return likely(offset < size)
-        ? DxvkBufferSlice(m_buffer, offset, std::min(length, size - offset))
-        : DxvkBufferSlice();
+      offset = std::min(offset, size);
+      return DxvkBufferSlice(m_buffer, offset, std::min(length, size - offset));
     }
 
     DxvkBufferSlice GetSOCounter() {
