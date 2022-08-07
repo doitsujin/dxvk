@@ -824,6 +824,11 @@ namespace dxvk {
             UINT                              Offset,
             DXGI_FORMAT                       Format);
 
+    void BindIndexBufferRange(
+            D3D11Buffer*                      pBuffer,
+            UINT                              Offset,
+            DXGI_FORMAT                       Format);
+
     void BindXfbBuffer(
             UINT                              Slot,
             D3D11Buffer*                      pBuffer,

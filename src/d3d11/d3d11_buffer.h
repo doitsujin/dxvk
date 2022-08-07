@@ -90,6 +90,12 @@ namespace dxvk {
       return DxvkBufferSlice(m_buffer, offset, std::min(length, size - offset));
     }
 
+    VkDeviceSize GetRemainingSize(VkDeviceSize offset) const {
+      VkDeviceSize size = m_desc.ByteWidth;
+      offset = std::min(offset, size);
+      return size - offset;
+    }
+
     DxvkBufferSlice GetSOCounter() {
       return m_soCounter != nullptr
         ? DxvkBufferSlice(m_soCounter)

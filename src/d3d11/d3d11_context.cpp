@@ -1227,19 +1227,19 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
 
     auto newBuffer = static_cast<D3D11Buffer*>(pIndexBuffer);
-    bool needsUpdate = m_state.ia.indexBuffer.buffer != newBuffer;
 
-    if (needsUpdate)
+    if (m_state.ia.indexBuffer.buffer != newBuffer) {
       m_state.ia.indexBuffer.buffer = newBuffer;
-
-    needsUpdate |= m_state.ia.indexBuffer.offset != Offset
-                || m_state.ia.indexBuffer.format != Format;
-
-    if (needsUpdate) {
       m_state.ia.indexBuffer.offset = Offset;
       m_state.ia.indexBuffer.format = Format;
 
       BindIndexBuffer(newBuffer, Offset, Format);
+    } else if (m_state.ia.indexBuffer.offset != Offset
+            || m_state.ia.indexBuffer.format != Format) {
+      m_state.ia.indexBuffer.offset = Offset;
+      m_state.ia.indexBuffer.format = Format;
+
+      BindIndexBufferRange(newBuffer, Offset, Format);
     }
   }
 
@@ -3239,7 +3239,33 @@ namespace dxvk {
       });
     }
   }
-  
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::BindIndexBufferRange(
+          D3D11Buffer*                      pBuffer,
+          UINT                              Offset,
+          DXGI_FORMAT                       Format) {
+    if (pBuffer) {
+      VkIndexType indexType = Format == DXGI_FORMAT_R16_UINT
+        ? VK_INDEX_TYPE_UINT16
+        : VK_INDEX_TYPE_UINT32;
+
+      VkDeviceSize offset = Offset;
+      VkDeviceSize length = pBuffer->GetRemainingSize(Offset);
+
+      EmitCs([
+        cBufferOffset = offset,
+        cBufferLength = length,
+        cIndexType    = indexType
+      ] (DxvkContext* ctx) mutable {
+        ctx->bindIndexBufferRange(
+          cBufferOffset, cBufferLength,
+          cIndexType);
+      });
+    }
+  }
+
 
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::BindXfbBuffer(
