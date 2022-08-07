@@ -1298,14 +1298,14 @@ namespace dxvk {
       ctx->bindResourceSampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1, Rc<DxvkSampler>(m_sampler));
 
       for (uint32_t i = 0; i < cViews.size(); i++)
-        ctx->bindResourceView(VK_SHADER_STAGE_FRAGMENT_BIT, 2 + i, Rc<DxvkImageView>(cViews[i]), nullptr);
+        ctx->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, 2 + i, Rc<DxvkImageView>(cViews[i]));
 
       ctx->draw(3, 1, 0, 0);
 
       ctx->bindResourceSampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1, nullptr);
 
       for (uint32_t i = 0; i < cViews.size(); i++)
-        ctx->bindResourceView(VK_SHADER_STAGE_FRAGMENT_BIT, 2 + i, nullptr, nullptr);
+        ctx->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, 2 + i, nullptr);
     });
   }
 

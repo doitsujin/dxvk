@@ -3323,16 +3323,34 @@ namespace dxvk {
   void D3D11CommonContext<ContextType>::BindShaderResource(
           UINT                              Slot,
           D3D11ShaderResourceView*          pResource) {
-    EmitCs([
-      cSlotId     = Slot,
-      cImageView  = pResource != nullptr ? pResource->GetImageView()  : nullptr,
-      cBufferView = pResource != nullptr ? pResource->GetBufferView() : nullptr
-    ] (DxvkContext* ctx) mutable {
-      VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
-      ctx->bindResourceView(stage, cSlotId,
-        Forwarder::move(cImageView),
-        Forwarder::move(cBufferView));
-    });
+    if (pResource) {
+      if (pResource->GetViewInfo().Dimension != D3D11_RESOURCE_DIMENSION_BUFFER) {
+        EmitCs([
+          cSlotId = Slot,
+          cView   = pResource->GetImageView()
+        ] (DxvkContext* ctx) mutable {
+          VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+          ctx->bindResourceImageView(stage, cSlotId,
+            Forwarder::move(cView));
+        });
+      } else {
+        EmitCs([
+          cSlotId = Slot,
+          cView   = pResource->GetBufferView()
+        ] (DxvkContext* ctx) mutable {
+          VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+          ctx->bindResourceBufferView(stage, cSlotId,
+            Forwarder::move(cView));
+        });
+      }
+    } else {
+      EmitCs([
+        cSlotId = Slot
+      ] (DxvkContext* ctx) {
+        VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+        ctx->bindResourceImageView(stage, cSlotId, nullptr);
+      });
+    }
   }
 
 
@@ -3343,32 +3361,60 @@ namespace dxvk {
           D3D11UnorderedAccessView*         pUav,
           UINT                              CtrSlot,
           UINT                              Counter) {
-    EmitCs([
-      cUavSlotId    = UavSlot,
-      cCtrSlotId    = CtrSlot,
-      cImageView    = pUav != nullptr ? pUav->GetImageView()    : nullptr,
-      cBufferView   = pUav != nullptr ? pUav->GetBufferView()   : nullptr,
-      cCounterSlice = pUav != nullptr ? pUav->GetCounterSlice() : DxvkBufferSlice(),
-      cCounterValue = Counter
-    ] (DxvkContext* ctx) mutable {
-      VkShaderStageFlags stages = ShaderStage == DxbcProgramType::PixelShader
-        ? VK_SHADER_STAGE_ALL_GRAPHICS
-        : VK_SHADER_STAGE_COMPUTE_BIT;
+    if (pUav) {
+      if (pUav->GetViewInfo().Dimension == D3D11_RESOURCE_DIMENSION_BUFFER) {
+        EmitCs([
+          cUavSlotId    = UavSlot,
+          cCtrSlotId    = CtrSlot,
+          cBufferView   = pUav->GetBufferView(),
+          cCounterSlice = pUav->GetCounterSlice(),
+          cCounterValue = Counter
+        ] (DxvkContext* ctx) mutable {
+          VkShaderStageFlags stages = ShaderStage == DxbcProgramType::ComputeShader
+            ? VK_SHADER_STAGE_COMPUTE_BIT
+            : VK_SHADER_STAGE_ALL_GRAPHICS;
 
-      if (cCounterSlice.defined() && cCounterValue != ~0u) {
-        ctx->updateBuffer(
-          cCounterSlice.buffer(),
-          cCounterSlice.offset(),
-          sizeof(uint32_t),
-          &cCounterValue);
+          if (cCounterSlice.defined() && cCounterValue != ~0u) {
+            ctx->updateBuffer(
+              cCounterSlice.buffer(),
+              cCounterSlice.offset(),
+              sizeof(uint32_t),
+              &cCounterValue);
+          }
+
+          ctx->bindResourceBufferView(stages, cUavSlotId,
+            Forwarder::move(cBufferView));
+          ctx->bindResourceBuffer(stages, cCtrSlotId,
+            Forwarder::move(cCounterSlice));
+        });
+      } else {
+        EmitCs([
+          cUavSlotId    = UavSlot,
+          cCtrSlotId    = CtrSlot,
+          cImageView    = pUav->GetImageView()
+        ] (DxvkContext* ctx) mutable {
+          VkShaderStageFlags stages = ShaderStage == DxbcProgramType::ComputeShader
+            ? VK_SHADER_STAGE_COMPUTE_BIT
+            : VK_SHADER_STAGE_ALL_GRAPHICS;
+
+          ctx->bindResourceImageView(stages, cUavSlotId,
+            Forwarder::move(cImageView));
+          ctx->bindResourceBuffer(stages, cCtrSlotId, DxvkBufferSlice());
+        });
       }
+    } else {
+      EmitCs([
+        cUavSlotId    = UavSlot,
+        cCtrSlotId    = CtrSlot
+      ] (DxvkContext* ctx) {
+        VkShaderStageFlags stages = ShaderStage == DxbcProgramType::ComputeShader
+          ? VK_SHADER_STAGE_COMPUTE_BIT
+          : VK_SHADER_STAGE_ALL_GRAPHICS;
 
-      ctx->bindResourceView(stages, cUavSlotId,
-        Forwarder::move(cImageView),
-        Forwarder::move(cBufferView));
-      ctx->bindResourceBuffer(stages, cCtrSlotId,
-        Forwarder::move(cCounterSlice));
-    });
+        ctx->bindResourceImageView(stages, cUavSlotId, nullptr);
+        ctx->bindResourceBuffer(stages, cCtrSlotId, DxvkBufferSlice());
+      });
+    }
   }
 
 
@@ -3883,7 +3929,7 @@ namespace dxvk {
         auto srvSlotId = computeSrvBinding(programType, 0);
 
         for (uint32_t j = 0; j < cUsedBindings.stages[i].srvCount; j++)
-          ctx->bindResourceView(stage, srvSlotId + j, nullptr, nullptr);
+          ctx->bindResourceImageView(stage, srvSlotId + j, nullptr);
 
         // Unbind texture samplers
         auto samplerSlotId = computeSamplerBinding(programType, 0);
@@ -3902,7 +3948,7 @@ namespace dxvk {
           auto ctrSlotId = computeUavCounterBinding(programType, 0);
 
           for (uint32_t j = 0; j < cUsedBindings.stages[i].uavCount; j++) {
-            ctx->bindResourceView(stages, uavSlotId, nullptr, nullptr);
+            ctx->bindResourceImageView(stages, uavSlotId, nullptr);
             ctx->bindResourceBuffer(stages, ctrSlotId, DxvkBufferSlice());
           }
         }
