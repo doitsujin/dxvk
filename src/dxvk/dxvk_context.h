@@ -150,6 +150,24 @@ namespace dxvk {
     }
 
     /**
+     * \brief Binds index buffer range
+     * 
+     * Canges the offset and size of the bound index buffer.
+     * \param [in] offset Index buffer offset
+     * \param [in] length Index buffer size
+     * \param [in] indexType Index type
+     */
+    void bindIndexBufferRange(
+            VkDeviceSize          offset,
+            VkDeviceSize          length,
+            VkIndexType           indexType) {
+      m_state.vi.indexBuffer.setRange(offset, length);
+      m_state.vi.indexType = indexType;
+
+      m_flags.set(DxvkContextFlag::GpDirtyIndexBuffer);
+    }
+
+    /**
      * \brief Binds buffer as a shader resource
      * 
      * Can be used for uniform and storage buffers.
@@ -318,6 +336,25 @@ namespace dxvk {
         m_vbTracked.clr(binding);
 
       m_state.vi.vertexBuffers[binding] = std::move(buffer);
+      m_state.vi.vertexStrides[binding] = stride;
+      m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
+    }
+
+    /**
+     * \brief Binds vertex buffer range
+     * 
+     * Only changes offsets of a bound vertex buffer.
+     * \param [in] binding Vertex buffer binding
+     * \param [in] offset Vertex buffer offset
+     * \param [in] length Vertex buffer size
+     * \param [in] stride Stride between vertices
+     */
+    void bindVertexBufferRange(
+            uint32_t              binding,
+            VkDeviceSize          offset,
+            VkDeviceSize          length,
+            uint32_t              stride) {
+      m_state.vi.vertexBuffers[binding].setRange(offset, length);
       m_state.vi.vertexStrides[binding] = stride;
       m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
     }
