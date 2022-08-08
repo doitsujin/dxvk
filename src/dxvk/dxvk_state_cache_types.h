@@ -133,7 +133,8 @@ namespace dxvk {
         VkBool32(m_depthBiasEnable),
         VkPolygonMode(m_polygonMode),
         VkSampleCountFlags(m_sampleCount),
-        VkConservativeRasterizationModeEXT(m_conservativeMode));
+        VkConservativeRasterizationModeEXT(m_conservativeMode),
+        VK_FALSE);
     }
 
   };
@@ -158,7 +159,8 @@ namespace dxvk {
         VkBool32(m_depthBiasEnable),
         VkPolygonMode(m_polygonMode),
         VkSampleCountFlags(m_sampleCount),
-        VkConservativeRasterizationModeEXT(m_conservativeMode));
+        VkConservativeRasterizationModeEXT(m_conservativeMode),
+        VK_FALSE);
     }
 
   };
