@@ -64,6 +64,7 @@ namespace dxvk {
     std::unique_lock lock(m_queueLock);
     this->startWorkers();
 
+    pipeline->acquirePipeline();
     m_pendingTasks += 1;
 
     PipelineEntry e = { };
@@ -148,10 +149,12 @@ namespace dxvk {
       }
 
       if (p) {
-        if (p->computePipeline)
+        if (p->computePipeline) {
           p->computePipeline->compilePipeline(p->computeState);
-        else if (p->graphicsPipeline)
+        } else if (p->graphicsPipeline) {
           p->graphicsPipeline->compilePipeline(p->graphicsState);
+          p->graphicsPipeline->releasePipeline();
+        }
 
         m_pendingTasks -= 1;
       }

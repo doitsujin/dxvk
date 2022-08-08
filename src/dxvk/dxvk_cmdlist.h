@@ -8,6 +8,7 @@
 #include "dxvk_fence.h"
 #include "dxvk_gpu_event.h"
 #include "dxvk_gpu_query.h"
+#include "dxvk_graphics.h"
 #include "dxvk_lifetime.h"
 #include "dxvk_limits.h"
 #include "dxvk_pipelayout.h"
@@ -30,7 +31,7 @@ namespace dxvk {
   };
   
   using DxvkCmdBufferFlags = Flags<DxvkCmdBuffer>;
-  
+
   /**
    * \brief Queue submission info
    *
@@ -176,6 +177,15 @@ namespace dxvk {
       m_gpuQueryTracker.trackQuery(handle);
     }
     
+    /**
+     * \brief Tracks a graphics pipeline
+     * \param [in] pipeline Pipeline
+     */
+    void trackGraphicsPipeline(DxvkGraphicsPipeline* pipeline) {
+      pipeline->acquirePipeline();
+      m_pipelines.push_back(pipeline);
+    }
+
     /**
      * \brief Queues signal
      * 
@@ -821,6 +831,8 @@ namespace dxvk {
     std::vector<std::pair<
       Rc<DxvkDescriptorPool>,
       Rc<DxvkDescriptorManager>>> m_descriptorPools;
+
+    std::vector<DxvkGraphicsPipeline*> m_pipelines;
 
     VkCommandBuffer getCmdBuffer(DxvkCmdBuffer cmdBuffer) const {
       if (cmdBuffer == DxvkCmdBuffer::ExecBuffer) return m_execBuffer;

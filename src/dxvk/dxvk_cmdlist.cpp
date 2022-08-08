@@ -219,10 +219,17 @@ namespace dxvk {
     m_signalTracker.reset();
     m_statCounters.reset();
 
+    // Recycle descriptor pools
     for (const auto& descriptorPools : m_descriptorPools)
       descriptorPools.second->recycleDescriptorPool(descriptorPools.first);
 
     m_descriptorPools.clear();
+
+    // Release pipelines
+    for (auto pipeline : m_pipelines)
+      pipeline->releasePipeline();
+
+    m_pipelines.clear();
 
     m_waitSemaphores.clear();
     m_signalSemaphores.clear();

@@ -535,7 +535,24 @@ namespace dxvk {
      */
     void compilePipeline(
       const DxvkGraphicsPipelineStateInfo&    state);
-    
+
+    /**
+     * \brief Acquires the pipeline
+     *
+     * Increments the use count by one and prevents any Vulkan
+     * pipelines from being destroyed. Must be called before
+     * \ref getPipelineHandle or \ref compilePipeline.
+     */
+    void acquirePipeline();
+
+    /**
+     * \brief Releases the pipeline
+     *
+     * Decrements the use count by one. If the counter reaches
+     * zero, any Vulkan pipeline objects may be destroyed.
+     */
+    void releasePipeline();
+
   private:
 
     DxvkDevice*                 m_device;    
@@ -560,11 +577,12 @@ namespace dxvk {
     alignas(CACHE_LINE_SIZE)
     dxvk::mutex                                   m_mutex;
     sync::List<DxvkGraphicsPipelineInstance>      m_pipelines;
+    uint32_t                                      m_useCount = 0;
 
     std::unordered_map<
       DxvkGraphicsPipelineBaseInstanceKey,
       VkPipeline, DxvkHash, DxvkEq>               m_basePipelines;
-    
+
     alignas(CACHE_LINE_SIZE)
     dxvk::mutex                                   m_fastMutex;
     std::unordered_map<
@@ -595,7 +613,11 @@ namespace dxvk {
       const DxvkGraphicsPipelineFastInstanceKey& key,
             VkPipelineCreateFlags          flags) const;
 
-    void destroyPipeline(
+    void destroyBasePipelines();
+
+    void destroyOptimizedPipelines();
+
+    void destroyVulkanPipeline(
             VkPipeline                     pipeline) const;
     
     SpirvCodeBuffer getShaderCode(
