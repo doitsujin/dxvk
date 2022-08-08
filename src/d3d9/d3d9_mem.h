@@ -47,11 +47,6 @@ namespace dxvk {
       D3D9MemoryChunk             (D3D9MemoryChunk&& other) = delete;
       D3D9MemoryChunk& operator = (D3D9MemoryChunk&& other) = delete;
 
-#ifdef D3D9_MEM_MAP_CHUNKS
-      void IncMapCounter();
-      void DecMapCounter();
-      void* Ptr() const { return m_ptr; }
-#endif
       D3D9Memory Alloc(uint32_t Size);
       void Free(D3D9Memory* Memory);
       bool IsEmpty();
@@ -71,11 +66,6 @@ namespace dxvk {
       uint32_t m_mappingGranularity;
       std::vector<D3D9MemoryRange> m_freeRanges;
       std::vector<D3D9MappingRange> m_mappingRanges;
-
-#ifdef D3D9_MEM_MAP_CHUNKS
-      uint32_t m_mapCounter = 0;
-      void* m_ptr;
-#endif
   };
 
   class D3D9Memory {
