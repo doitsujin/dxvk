@@ -4533,6 +4533,7 @@ namespace dxvk {
         slice.slice);
     }
     UnmapTextures();
+    FlushImplicit(false);
   }
 
   void D3D9DeviceEx::EmitGenerateMips(
@@ -4688,6 +4689,7 @@ namespace dxvk {
     TrackBufferMappingBufferSequenceNumber(pResource);
 
     UnmapTextures();
+    FlushImplicit(false);
     return D3D_OK;
   }
 
@@ -4709,8 +4711,6 @@ namespace dxvk {
 
     if (pResource->Desc()->Pool != D3DPOOL_DEFAULT)
       return D3D_OK;
-
-    FlushImplicit(FALSE);
 
     FlushBuffer(pResource);
 
