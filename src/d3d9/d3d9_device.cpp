@@ -47,6 +47,7 @@ namespace dxvk {
     , m_adapter         ( pAdapter )
     , m_dxvkDevice      ( dxvkDevice )
     , m_memoryAllocator ( )
+    , m_shaderAllocator ( )
     , m_shaderModules   ( new D3D9ShaderModuleSet )
     , m_stagingBuffer   ( dxvkDevice, StagingBufferSize )
     , m_d3d9Options     ( dxvkDevice, pParent->GetInstance()->config() )
@@ -2829,7 +2830,11 @@ namespace dxvk {
       &moduleInfo)))
       return D3DERR_INVALIDCALL;
 
-    *ppShader = ref(new D3D9VertexShader(this, module, pFunction, bytecodeLength));
+    *ppShader = ref(new D3D9VertexShader(this,
+      &m_shaderAllocator,
+      module,
+      pFunction,
+      bytecodeLength));
 
     return D3D_OK;
   }
@@ -3160,7 +3165,11 @@ namespace dxvk {
       &moduleInfo)))
       return D3DERR_INVALIDCALL;
 
-    *ppShader = ref(new D3D9PixelShader(this, module, pFunction, bytecodeLength));
+    *ppShader = ref(new D3D9PixelShader(this,
+      &m_shaderAllocator,
+      module,
+      pFunction,
+      bytecodeLength));
 
     return D3D_OK;
   }
