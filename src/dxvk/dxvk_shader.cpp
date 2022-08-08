@@ -213,9 +213,13 @@ namespace dxvk {
      && !m_flags.test(DxvkShaderFlag::ExportsPosition))
       return false;
 
-    // Ignore shaders that have user-defined spec constants
-    // and no selector to read their contents from elsewhere
-    return !m_specConstantMask || (m_specConstantMask & (1u << MaxNumSpecConstants));
+    // Spec constant selectors are only supported in graphics
+    if (m_specConstantMask & (1u << MaxNumSpecConstants))
+      return m_info.stage != VK_SHADER_STAGE_COMPUTE_BIT;
+
+    // Always late-compile shaders with spec constants
+    // that don't use the spec constant selector
+    return !m_specConstantMask;
   }
 
 
