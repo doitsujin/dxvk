@@ -17,8 +17,6 @@ namespace dxvk {
       const DxsoAnalysisInfo&     AnalysisInfo,
             DxsoModule*           pModule) {
     const uint32_t bytecodeLength = AnalysisInfo.bytecodeByteLength;
-    m_bytecode.resize(bytecodeLength);
-    std::memcpy(m_bytecode.data(), pShaderBytecode, bytecodeLength);
 
     const std::string name = Key.toString();
     Logger::debug(str::format("Compiling shader ", name));
@@ -90,6 +88,7 @@ namespace dxvk {
   void D3D9ShaderModuleSet::GetShaderModule(
             D3D9DeviceEx*         pDevice,
             D3D9CommonShader*     pShaderModule,
+            uint32_t*             pLength,
             VkShaderStageFlagBits ShaderStage,
       const DxsoModuleInfo*       pDxbcModuleInfo,
       const void*                 pShaderBytecode) {
@@ -105,6 +104,7 @@ namespace dxvk {
       throw DxvkError("GetShaderModule: Bytecode does not match shader stage");
 
     DxsoAnalysisInfo info = module.analyze();
+    *pLength = info.bytecodeByteLength;
 
     DxvkShaderKey lookupKey = DxvkShaderKey(
       ShaderStage,

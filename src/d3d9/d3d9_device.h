@@ -981,6 +981,7 @@ namespace dxvk {
 
     HRESULT               CreateShaderModule(
             D3D9CommonShader*     pShaderModule,
+            uint32_t*             pLength,
             VkShaderStageFlagBits ShaderStage,
       const DWORD*                pShaderBytecode,
       const DxsoModuleInfo*       pModuleInfo);

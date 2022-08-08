@@ -2820,14 +2820,16 @@ namespace dxvk {
     moduleInfo.options = m_dxsoOptions;
 
     D3D9CommonShader module;
+    uint32_t bytecodeLength;
 
     if (FAILED(this->CreateShaderModule(&module,
+      &bytecodeLength,
       VK_SHADER_STAGE_VERTEX_BIT,
       pFunction,
       &moduleInfo)))
       return D3DERR_INVALIDCALL;
 
-    *ppShader = ref(new D3D9VertexShader(this, module));
+    *ppShader = ref(new D3D9VertexShader(this, module, pFunction, bytecodeLength));
 
     return D3D_OK;
   }
@@ -3149,14 +3151,16 @@ namespace dxvk {
     moduleInfo.options = m_dxsoOptions;
 
     D3D9CommonShader module;
+    uint32_t bytecodeLength;
 
     if (FAILED(this->CreateShaderModule(&module,
+      &bytecodeLength,
       VK_SHADER_STAGE_FRAGMENT_BIT,
       pFunction,
       &moduleInfo)))
       return D3DERR_INVALIDCALL;
 
-    *ppShader = ref(new D3D9PixelShader(this, module));
+    *ppShader = ref(new D3D9PixelShader(this, module, pFunction, bytecodeLength));
 
     return D3D_OK;
   }
@@ -6312,12 +6316,13 @@ namespace dxvk {
 
   HRESULT D3D9DeviceEx::CreateShaderModule(
         D3D9CommonShader*     pShaderModule,
+        uint32_t*             pLength,
         VkShaderStageFlagBits ShaderStage,
   const DWORD*                pShaderBytecode,
   const DxsoModuleInfo*       pModuleInfo) {
     try {
       m_shaderModules->GetShaderModule(this, pShaderModule,
-        ShaderStage, pModuleInfo, pShaderBytecode);
+        pLength, ShaderStage, pModuleInfo, pShaderBytecode);
 
       return D3D_OK;
     }
