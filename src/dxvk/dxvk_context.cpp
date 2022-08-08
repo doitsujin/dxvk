@@ -49,6 +49,11 @@ namespace dxvk {
 
     if (m_device->features().extTransformFeedback.transformFeedback)
       m_globalRwGraphicsBarrier.access |= VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT;
+
+    // Store the lifetime tracking bit as a context feature so
+    // that we don't have to scan device features at draw time
+    if (m_device->mustTrackPipelineLifetime())
+      m_features.set(DxvkContextFeature::TrackGraphicsPipeline);
   }
   
   
@@ -4483,6 +4488,9 @@ namespace dxvk {
       m_state.gp.flags = DxvkGraphicsPipelineFlags();
       return false;
     }
+
+    if (m_features.test(DxvkContextFeature::TrackGraphicsPipeline))
+      m_cmd->trackGraphicsPipeline(newPipeline);
 
     if (unlikely(newPipeline->getSpecConstantMask() != m_state.gp.constants.mask))
       this->resetSpecConstants<VK_PIPELINE_BIND_POINT_GRAPHICS>(newPipeline->getSpecConstantMask());

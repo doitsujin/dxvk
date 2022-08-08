@@ -880,15 +880,8 @@ namespace dxvk {
   
   
   DxvkGraphicsPipeline::~DxvkGraphicsPipeline() {
-    for (const auto& instance : m_fastPipelines) {
-      this->destroyPipeline(instance.second);
-
-      m_vsLibrary->releasePipelineHandle();
-      m_fsLibrary->releasePipelineHandle();
-    }
-
-    for (const auto& instance : m_basePipelines)
-      this->destroyPipeline(instance.second);
+    this->destroyBasePipelines();
+    this->destroyOptimizedPipelines();
   }
   
   
@@ -915,7 +908,7 @@ namespace dxvk {
         return std::make_pair(VK_NULL_HANDLE, DxvkGraphicsPipelineType::FastPipeline);
 
       // Prevent other threads from adding new instances and check again
-      std::lock_guard<dxvk::mutex> lock(m_mutex);
+      std::unique_lock<dxvk::mutex> lock(m_mutex);
       instance = this->findInstance(state);
 
       if (!instance) {
@@ -923,6 +916,10 @@ namespace dxvk {
         // a state cache worker and the current thread needs priority.
         bool canCreateBasePipeline = this->canCreateBasePipeline(state);
         instance = this->createInstance(state, canCreateBasePipeline);
+
+        // Unlock here since we may dispatch the pipeline to a worker,
+        // which will then acquire it to increment the use counter.
+        lock.unlock();
 
         // If necessary, compile an optimized pipeline variant
         if (!instance->fastHandle.load())
@@ -965,7 +962,7 @@ namespace dxvk {
         return;
 
       // Prevent other threads from adding new instances and check again
-      std::lock_guard<dxvk::mutex> lock(m_mutex);
+      std::unique_lock<dxvk::mutex> lock(m_mutex);
       instance = this->findInstance(state);
 
       if (!instance)
@@ -984,6 +981,45 @@ namespace dxvk {
     // Log pipeline state on error
     if (!pipeline)
       this->logPipelineState(LogLevel::Error, state);
+  }
+
+
+  void DxvkGraphicsPipeline::acquirePipeline() {
+    if (!m_device->mustTrackPipelineLifetime())
+      return;
+
+    // We need to lock here to make sure that any ongoing pipeline
+    // destruction finishes before the calling thread can access the
+    // pipeline, and that no pipelines get destroyed afterwards.
+    std::unique_lock<dxvk::mutex> lock(m_mutex);
+    m_useCount += 1;
+  }
+
+
+  void DxvkGraphicsPipeline::releasePipeline() {
+    if (!m_device->mustTrackPipelineLifetime())
+      return;
+
+    std::unique_lock<dxvk::mutex> lock(m_mutex);
+
+    if (!(--m_useCount)) {
+      // Don't destroy base pipelines if that's all we're going to
+      // use, since that would pretty much ruin the experience.
+      if (m_device->config().enableGraphicsPipelineLibrary == Tristate::True)
+        return;
+
+      // Exit early if there's nothing to do
+      if (m_basePipelines.empty())
+        return;
+
+      // Remove any base pipeline references, but
+      // keep the optimized pipelines around.
+      for (auto& entry : m_pipelines)
+        entry.baseHandle.store(VK_NULL_HANDLE);
+
+      // Destroy the actual Vulkan pipelines
+      this->destroyBasePipelines();
+    }
   }
 
 
@@ -1220,7 +1256,27 @@ namespace dxvk {
   }
   
   
-  void DxvkGraphicsPipeline::destroyPipeline(VkPipeline pipeline) const {
+  void DxvkGraphicsPipeline::destroyBasePipelines() {
+    for (const auto& instance : m_basePipelines) {
+      this->destroyVulkanPipeline(instance.second);
+
+      m_vsLibrary->releasePipelineHandle();
+      m_fsLibrary->releasePipelineHandle();
+    }
+
+    m_basePipelines.clear();
+  }
+
+
+  void DxvkGraphicsPipeline::destroyOptimizedPipelines() {
+    for (const auto& instance : m_fastPipelines)
+      this->destroyVulkanPipeline(instance.second);
+
+    m_fastPipelines.clear();
+  }
+
+
+  void DxvkGraphicsPipeline::destroyVulkanPipeline(VkPipeline pipeline) const {
     auto vk = m_device->vkd();
 
     vk->vkDestroyPipeline(vk->device(), pipeline, nullptr);
