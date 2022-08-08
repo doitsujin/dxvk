@@ -7,6 +7,8 @@
 
 #ifdef D3D9_ALLOW_UNMAPPING
 #include <sysinfoapi.h>
+#else
+#include <stdlib.h>
 #endif
 
 namespace dxvk {
@@ -286,6 +288,59 @@ namespace dxvk {
   void* D3D9Memory::Ptr() {
     return m_ptr;
   }
+
+#else
+
+  D3D9Memory D3D9MemoryAllocator::Alloc(uint32_t Size) {
+    D3D9Memory memory(this, Size);
+    m_allocatedMemory += Size;
+    return memory;
+  }
+
+  uint32_t D3D9MemoryAllocator::MappedMemory() {
+    return m_allocatedMemory.load();
+  }
+
+  uint32_t D3D9MemoryAllocator::UsedMemory() {
+    return m_allocatedMemory.load();
+  }
+
+  uint32_t D3D9MemoryAllocator::AllocatedMemory() {
+    return m_allocatedMemory.load();
+  }
+
+  D3D9Memory::D3D9Memory(D3D9MemoryAllocator* pAllocator, size_t Size)
+    : m_allocator (pAllocator),
+      m_ptr       (malloc(Size)),
+      m_size      (Size) {}
+
+  D3D9Memory::D3D9Memory(D3D9Memory&& other)
+    : m_allocator(std::exchange(other.m_allocator, nullptr)),
+      m_ptr(std::exchange(other.m_ptr, nullptr)),
+      m_size(std::exchange(other.m_size, 0)) {}
+
+  D3D9Memory::~D3D9Memory() {
+    this->Free();
+  }
+
+  D3D9Memory& D3D9Memory::operator = (D3D9Memory&& other) {
+    this->Free();
+
+    m_allocator = std::exchange(other.m_allocator, nullptr);
+    m_ptr = std::exchange(other.m_ptr, nullptr);
+    m_size = std::exchange(other.m_size, 0);
+    return *this;
+  }
+
+  void D3D9Memory::Free() {
+    if (m_ptr == nullptr)
+      return;
+
+    free(m_ptr);
+    m_ptr = nullptr;
+    m_allocator->NotifyFreed(m_size);
+  }
+
 
 #endif
 
