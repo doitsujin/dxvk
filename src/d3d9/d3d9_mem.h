@@ -126,25 +126,49 @@ namespace dxvk {
   };
 
 #else
-    class D3D9Memory {
+  class D3D9Memory {
+    friend D3D9MemoryAllocator;
+
     public:
-      operator bool() const { return false; }
+      D3D9Memory() {}
+      ~D3D9Memory();
+
+      D3D9Memory             (const D3D9Memory&) = delete;
+      D3D9Memory& operator = (const D3D9Memory&) = delete;
+
+      D3D9Memory             (D3D9Memory&& other);
+      D3D9Memory& operator = (D3D9Memory&& other);
+
+      operator bool() const { return m_ptr != nullptr; }
 
       void Map() {}
       void Unmap() {}
-      void* Ptr() { return nullptr; }
+      void* Ptr() { return m_ptr; }
+      size_t GetSize() const { return m_size; }
 
     private:
+      D3D9Memory(D3D9MemoryAllocator* pAllocator, size_t Size);
       void Free();
+
+      D3D9MemoryAllocator* m_allocator = nullptr;
+      void* m_ptr                      = nullptr;
+      size_t m_size                    = 0;
     };
 
     class D3D9MemoryAllocator {
 
     public:
-      D3D9Memory Alloc(uint32_t Size) { return { }; }
-      uint32_t MappedMemory() { return 0; }
-      uint32_t UsedMemory() { return 0; }
-      uint32_t AllocatedMemory() { return 0; }
+      D3D9Memory Alloc(uint32_t Size);
+      uint32_t MappedMemory();
+      uint32_t UsedMemory();
+      uint32_t AllocatedMemory();
+      void NotifyFreed(uint32_t Size) {
+        m_allocatedMemory -= Size;
+      }
+
+    private:
+      std::atomic<size_t> m_allocatedMemory = 0;
+
     };
 
 #endif
