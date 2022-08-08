@@ -960,28 +960,24 @@ namespace dxvk {
     VkShaderStageFlagBits stage = getShaderStage();
     VkPipeline pipeline = VK_NULL_HANDLE;
 
-    // Compile pipeline of the appropriate type
-    switch (stage) {
-      case VK_SHADER_STAGE_VERTEX_BIT:
-        pipeline = compileVertexShaderPipeline(args);
-        break;
-
-      case VK_SHADER_STAGE_FRAGMENT_BIT:
-        pipeline = compileFragmentShaderPipeline();
-        break;
-
-      case VK_SHADER_STAGE_COMPUTE_BIT:
-        pipeline = compileComputeShaderPipeline();
-        break;
-
-      default:
-        // Should be unreachable
-        return VK_NULL_HANDLE;
+    // If this is not the first time we're compiling the pipeline,
+    // try to get a cache hit using the shader module identifier
+    // so that we don't have to decompress our SPIR-V shader again.
+    if (m_compiledOnce && canUsePipelineCacheControl()) {
+      pipeline = this->compileShaderPipeline(args, stage,
+        VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT);
     }
+
+    if (!pipeline)
+      pipeline = this->compileShaderPipeline(args, stage, 0);
+
+    // Well that didn't work
+    if (!pipeline)
+      return VK_NULL_HANDLE;
 
     // Increment stat counter the first time this
     // shader pipeline gets compiled successfully
-    if (!m_compiledOnce && pipeline) {
+    if (!m_compiledOnce) {
       if (stage == VK_SHADER_STAGE_COMPUTE_BIT)
         m_stats->numComputePipelines += 1;
       else
@@ -994,16 +990,56 @@ namespace dxvk {
   }
 
 
-  VkPipeline DxvkShaderPipelineLibrary::compileVertexShaderPipeline(
-    const DxvkShaderPipelineLibraryCompileArgs& args) {
-    auto vk = m_device->vkd();
-
-    SpirvCodeBuffer spirvCode = this->getShaderCode();
-    this->generateModuleIdentifier(spirvCode);
-
-    // Set up shader stage info
+  VkPipeline DxvkShaderPipelineLibrary::compileShaderPipeline(
+    const DxvkShaderPipelineLibraryCompileArgs& args,
+          VkShaderStageFlagBits                 stage,
+          VkPipelineCreateFlags                 flags) {
     DxvkShaderStageInfo stageInfo(m_device);
-    stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, std::move(spirvCode), nullptr);
+
+    { std::lock_guard lock(m_identifierMutex);
+
+      if (flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT) {
+        // Fail if we have no idenfitier for whatever reason, caller
+        // should fall back to the slow path if this happens
+        if (!m_identifier.identifierSize)
+          return VK_NULL_HANDLE;
+
+        stageInfo.addStage(stage, m_identifier, nullptr);
+      } else {
+        // Decompress code and generate identifier as needed
+        SpirvCodeBuffer spirvCode = this->getShaderCode();
+
+        if (!m_identifier.identifierSize)
+          this->generateModuleIdentifierLocked(spirvCode);
+
+        stageInfo.addStage(stage, std::move(spirvCode), nullptr);
+      }
+    }
+
+    switch (stage) {
+      case VK_SHADER_STAGE_VERTEX_BIT:
+        return compileVertexShaderPipeline(args, stageInfo, flags);
+        break;
+
+      case VK_SHADER_STAGE_FRAGMENT_BIT:
+        return compileFragmentShaderPipeline(stageInfo, flags);
+        break;
+
+      case VK_SHADER_STAGE_COMPUTE_BIT:
+        return compileComputeShaderPipeline(stageInfo, flags);
+
+      default:
+        // Should be unreachable
+        return VK_NULL_HANDLE;
+    }
+  }
+
+
+  VkPipeline DxvkShaderPipelineLibrary::compileVertexShaderPipeline(
+    const DxvkShaderPipelineLibraryCompileArgs& args,
+    const DxvkShaderStageInfo&          stageInfo,
+          VkPipelineCreateFlags         flags) {
+    auto vk = m_device->vkd();
 
     // Set up dynamic state. We do not know any pipeline state
     // at this time, so make as much state dynamic as we can.
@@ -1047,7 +1083,7 @@ namespace dxvk {
     libInfo.flags             = VK_GRAPHICS_PIPELINE_LIBRARY_PRE_RASTERIZATION_SHADERS_BIT_EXT;
 
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };
-    info.flags                = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
+    info.flags                = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR | flags;
     info.stageCount           = stageInfo.getStageCount();
     info.pStages              = stageInfo.getStageInfos();
     info.pViewportState       = &vpInfo;
@@ -1057,23 +1093,19 @@ namespace dxvk {
     info.basePipelineIndex    = -1;
 
     VkPipeline pipeline = VK_NULL_HANDLE;
+    VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
 
-    if (vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline))
-      throw DxvkError("DxvkShaderPipelineLibrary: Failed to create compute pipeline");
+    if (vr && !(flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT))
+      throw DxvkError(str::format("DxvkShaderPipelineLibrary: Failed to create vertex shader pipeline: ", vr));
 
     return pipeline;
   }
 
 
-  VkPipeline DxvkShaderPipelineLibrary::compileFragmentShaderPipeline() {
+  VkPipeline DxvkShaderPipelineLibrary::compileFragmentShaderPipeline(
+    const DxvkShaderStageInfo&          stageInfo,
+          VkPipelineCreateFlags         flags) {
     auto vk = m_device->vkd();
-
-    SpirvCodeBuffer spirvCode = this->getShaderCode();
-    this->generateModuleIdentifier(spirvCode);
-
-    // Set up shader stage info with the given code
-    DxvkShaderStageInfo stageInfo(m_device);
-    stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, std::move(spirvCode), nullptr);
 
     // Set up dynamic state. We do not know any pipeline state
     // at this time, so make as much state dynamic as we can.
@@ -1120,7 +1152,7 @@ namespace dxvk {
     libInfo.flags             = VK_GRAPHICS_PIPELINE_LIBRARY_FRAGMENT_SHADER_BIT_EXT;
 
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };
-    info.flags                = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
+    info.flags                = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR | flags;
     info.stageCount           = stageInfo.getStageCount();
     info.pStages              = stageInfo.getStageInfos();
     info.pDepthStencilState   = &dsInfo;
@@ -1132,34 +1164,32 @@ namespace dxvk {
       info.pMultisampleState  = &msInfo;
 
     VkPipeline pipeline = VK_NULL_HANDLE;
+    VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
 
-    if (vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline))
-      throw DxvkError("DxvkShaderPipelineLibrary: Failed to create compute pipeline");
+    if (vr && !(flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT))
+      throw DxvkError(str::format("DxvkShaderPipelineLibrary: Failed to create fragment shader pipeline: ", vr));
 
     return pipeline;
   }
 
 
-  VkPipeline DxvkShaderPipelineLibrary::compileComputeShaderPipeline() {
+  VkPipeline DxvkShaderPipelineLibrary::compileComputeShaderPipeline(
+    const DxvkShaderStageInfo&          stageInfo,
+          VkPipelineCreateFlags         flags) {
     auto vk = m_device->vkd();
-
-    SpirvCodeBuffer spirvCode = this->getShaderCode();
-    this->generateModuleIdentifier(spirvCode);
-
-    // Set up shader stage info
-    DxvkShaderStageInfo stageInfo(m_device);
-    stageInfo.addStage(VK_SHADER_STAGE_COMPUTE_BIT, std::move(spirvCode), nullptr);
 
     // Compile the compute pipeline as normal
     VkComputePipelineCreateInfo info = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
+    info.flags        = flags;
     info.stage        = *stageInfo.getStageInfos();
     info.layout       = m_layout->getPipelineLayout(false);
     info.basePipelineIndex = -1;
 
     VkPipeline pipeline = VK_NULL_HANDLE;
+    VkResult vr = vk->vkCreateComputePipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
 
-    if (vk->vkCreateComputePipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline))
-      throw DxvkError("DxvkShaderPipelineLibrary: Failed to create compute pipeline");
+    if (vr && !(flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT))
+      throw DxvkError(str::format("DxvkShaderPipelineLibrary: Failed to create compute shader pipeline: ", vr));
 
     return pipeline;
   }
@@ -1177,21 +1207,12 @@ namespace dxvk {
   }
 
 
-  void DxvkShaderPipelineLibrary::generateModuleIdentifier(
-    const SpirvCodeBuffer& spirvCode) {
-    if (!m_device->features().extShaderModuleIdentifier.shaderModuleIdentifier)
-      return;
-
-    std::lock_guard lock(m_identifierMutex);
-
-    if (!m_identifier.identifierSize)
-      this->generateModuleIdentifierLocked(spirvCode);
-  }
-
-
   void DxvkShaderPipelineLibrary::generateModuleIdentifierLocked(
     const SpirvCodeBuffer& spirvCode) {
     auto vk = m_device->vkd();
+
+    if (!canUsePipelineCacheControl())
+      return;
 
     VkShaderModuleCreateInfo info = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
     info.codeSize = spirvCode.size();
@@ -1209,6 +1230,14 @@ namespace dxvk {
       stage = m_shader->info().stage;
 
     return stage;
+  }
+
+
+  bool DxvkShaderPipelineLibrary::canUsePipelineCacheControl() const {
+    const auto& features = m_device->features();
+
+    return features.vk13.pipelineCreationCacheControl
+        && features.extShaderModuleIdentifier.shaderModuleIdentifier;
   }
 
 }

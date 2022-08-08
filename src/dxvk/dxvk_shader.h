@@ -433,22 +433,32 @@ namespace dxvk {
     VkPipeline compileShaderPipelineLocked(
       const DxvkShaderPipelineLibraryCompileArgs& args);
 
+    VkPipeline compileShaderPipeline(
+      const DxvkShaderPipelineLibraryCompileArgs& args,
+            VkShaderStageFlagBits                 stage,
+            VkPipelineCreateFlags                 flags);
+
     VkPipeline compileVertexShaderPipeline(
-      const DxvkShaderPipelineLibraryCompileArgs& args);
+      const DxvkShaderPipelineLibraryCompileArgs& args,
+      const DxvkShaderStageInfo&          stageInfo,
+            VkPipelineCreateFlags         flags);
 
-    VkPipeline compileFragmentShaderPipeline();
+    VkPipeline compileFragmentShaderPipeline(
+      const DxvkShaderStageInfo&          stageInfo,
+            VkPipelineCreateFlags         flags);
 
-    VkPipeline compileComputeShaderPipeline();
+    VkPipeline compileComputeShaderPipeline(
+      const DxvkShaderStageInfo&          stageInfo,
+            VkPipelineCreateFlags         flags);
 
     SpirvCodeBuffer getShaderCode() const;
-
-    void generateModuleIdentifier(
-      const SpirvCodeBuffer& spirvCode);
 
     void generateModuleIdentifierLocked(
       const SpirvCodeBuffer& spirvCode);
 
     VkShaderStageFlagBits getShaderStage() const;
+
+    bool canUsePipelineCacheControl() const;
 
   };
   
