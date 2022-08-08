@@ -890,10 +890,7 @@ namespace dxvk {
 
 
   DxvkShaderPipelineLibrary::~DxvkShaderPipelineLibrary() {
-    auto vk = m_device->vkd();
-
-    vk->vkDestroyPipeline(vk->device(), m_pipeline, nullptr);
-    vk->vkDestroyPipeline(vk->device(), m_pipelineNoDepthClip, nullptr);
+    this->destroyShaderPipelinesLocked();
   }
 
 
@@ -911,9 +908,12 @@ namespace dxvk {
   }
 
 
-  VkPipeline DxvkShaderPipelineLibrary::getPipelineHandle(
+  VkPipeline DxvkShaderPipelineLibrary::acquirePipelineHandle(
     const DxvkShaderPipelineLibraryCompileArgs& args) {
     std::lock_guard lock(m_mutex);
+
+    if (m_device->mustTrackPipelineLifetime())
+      m_useCount += 1;
 
     VkShaderStageFlagBits stage = getShaderStage();
 
@@ -926,6 +926,16 @@ namespace dxvk {
 
     pipeline = compileShaderPipelineLocked(args);
     return pipeline;
+  }
+
+
+  void DxvkShaderPipelineLibrary::releasePipelineHandle() {
+    if (m_device->mustTrackPipelineLifetime()) {
+      std::lock_guard lock(m_mutex);
+
+      if (!(--m_useCount))
+        this->destroyShaderPipelinesLocked();
+    }
   }
 
 
@@ -952,6 +962,17 @@ namespace dxvk {
 
     // Write back pipeline handle for future use
     m_pipeline = pipeline;
+  }
+
+
+  void DxvkShaderPipelineLibrary::destroyShaderPipelinesLocked() {
+    auto vk = m_device->vkd();
+
+    vk->vkDestroyPipeline(vk->device(), m_pipeline, nullptr);
+    vk->vkDestroyPipeline(vk->device(), m_pipelineNoDepthClip, nullptr);
+
+    m_pipeline = VK_NULL_HANDLE;
+    m_pipelineNoDepthClip = VK_NULL_HANDLE;
   }
 
 

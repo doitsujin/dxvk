@@ -880,8 +880,12 @@ namespace dxvk {
   
   
   DxvkGraphicsPipeline::~DxvkGraphicsPipeline() {
-    for (const auto& instance : m_fastPipelines)
+    for (const auto& instance : m_fastPipelines) {
       this->destroyPipeline(instance.second);
+
+      m_vsLibrary->releasePipelineHandle();
+      m_fsLibrary->releasePipelineHandle();
+    }
 
     for (const auto& instance : m_basePipelines)
       this->destroyPipeline(instance.second);
@@ -1102,8 +1106,8 @@ namespace dxvk {
 
     std::array<VkPipeline, 4> libraries = {{
       key.viLibrary->getHandle(),
-      m_vsLibrary->getPipelineHandle(key.args),
-      m_fsLibrary->getPipelineHandle(key.args),
+      m_vsLibrary->acquirePipelineHandle(key.args),
+      m_fsLibrary->acquirePipelineHandle(key.args),
       key.foLibrary->getHandle(),
     }};
 
