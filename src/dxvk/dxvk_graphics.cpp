@@ -1102,9 +1102,9 @@ namespace dxvk {
       key.foLibrary->getHandle(),
     }};
 
-		VkPipelineLibraryCreateInfoKHR libInfo = { VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR };
-		libInfo.libraryCount    = libraries.size();
-		libInfo.pLibraries      = libraries.data();
+    VkPipelineLibraryCreateInfoKHR libInfo = { VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR };
+    libInfo.libraryCount    = libraries.size();
+    libInfo.pLibraries      = libraries.data();
 
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };
     info.layout             = m_bindings->getPipelineLayout(true);
