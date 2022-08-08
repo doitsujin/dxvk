@@ -1606,10 +1606,10 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::MultiplyTransform(D3DTRANSFORMSTATETYPE TransformState, const D3DMATRIX* pMatrix) {
     D3D9DeviceLock lock = LockDevice();
 
-    if (unlikely(ShouldRecord()))
-      return m_recorder->MultiplyStateTransform(TransformState, pMatrix);
+    const uint32_t idx = GetTransformIndex(TransformState);
 
-    uint32_t idx = GetTransformIndex(TransformState);
+    if (unlikely(ShouldRecord()))
+      return m_recorder->MultiplyStateTransform(idx, pMatrix);
 
     m_state.transforms[idx] = m_state.transforms[idx] * ConvertMatrix(pMatrix);
 
