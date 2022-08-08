@@ -2,7 +2,6 @@
 
 #include "d3d9_resource.h"
 #include "../dxso/dxso_module.h"
-#include "d3d9_shader_permutations.h"
 #include "d3d9_util.h"
 
 #include <array>
@@ -33,12 +32,12 @@ namespace dxvk {
             DxsoModule*           pModule);
 
 
-    Rc<DxvkShader> GetShader(D3D9ShaderPermutation Permutation) const {
-      return m_shaders[Permutation];
+    Rc<DxvkShader> GetShader() const {
+      return m_shader;
     }
 
     std::string GetName() const {
-      return m_shaders[D3D9ShaderPermutations::None]->debugName();
+      return m_shader->debugName();
     }
 
     const std::vector<uint8_t>& GetBytecode() const {
@@ -69,7 +68,7 @@ namespace dxvk {
     DxsoDefinedConstants  m_constants;
     uint32_t              m_maxDefinedConst;
 
-    DxsoPermutations      m_shaders;
+    Rc<DxvkShader>        m_shader;
 
     std::vector<uint8_t>  m_bytecode;
 

@@ -2098,13 +2098,9 @@ namespace dxvk {
           break;
 
         case D3DRS_SHADEMODE:
-          if (m_state.pixelShader != nullptr) {
-            BindShader<DxsoProgramType::PixelShader>(
-              GetCommonShader(m_state.pixelShader),
-              GetPixelShaderPermutation());
-          }
-
-          m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+          m_flags.set(
+            D3D9DeviceFlag::DirtyFFPixelShader,
+            D3D9DeviceFlag::DirtyRasterizerState);
           break;
 
         case D3DRS_TWEENFACTOR:
@@ -2685,8 +2681,7 @@ namespace dxvk {
 
     if (m_state.pixelShader != nullptr) {
       BindShader<DxsoProgramTypes::PixelShader>(
-        GetCommonShader(m_state.pixelShader),
-        GetPixelShaderPermutation());
+        GetCommonShader(m_state.pixelShader));
     }
 
     if (dst->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER) {
@@ -2873,10 +2868,7 @@ namespace dxvk {
       m_flags.clr(D3D9DeviceFlag::DirtyProgVertexShader);
       m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
 
-      BindShader<DxsoProgramTypes::VertexShader>(
-        GetCommonShader(shader),
-        GetVertexShaderPermutation());
-
+      BindShader<DxsoProgramTypes::VertexShader>(GetCommonShader(shader));
       m_vsShaderMasks = newShader->GetShaderMask();
     }
     else
@@ -3204,10 +3196,7 @@ namespace dxvk {
     if (shader != nullptr) {
       m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
 
-      BindShader<DxsoProgramTypes::PixelShader>(
-        GetCommonShader(shader),
-        GetPixelShaderPermutation());
-
+      BindShader<DxsoProgramTypes::PixelShader>(GetCommonShader(shader));
       m_psShaderMasks = newShader->GetShaderMask();
     }
     else {
@@ -5721,6 +5710,7 @@ namespace dxvk {
     state.depthClipEnable = true;
     state.frontFace       = VK_FRONT_FACE_CLOCKWISE;
     state.polygonMode     = DecodeFillMode(D3DFILLMODE(rs[D3DRS_FILLMODE]));
+    state.flatShading     = m_state.renderStates[D3DRS_SHADEMODE] == D3DSHADE_FLAT;
 
     EmitCs([
       cState  = state
@@ -6032,8 +6022,7 @@ namespace dxvk {
         m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
 
         BindShader<DxsoProgramType::VertexShader>(
-          GetCommonShader(m_state.vertexShader),
-          GetVertexShaderPermutation());
+          GetCommonShader(m_state.vertexShader));
       }
       UploadConstants<DxsoProgramTypes::VertexShader>();
 
@@ -6123,10 +6112,9 @@ namespace dxvk {
 
   template <DxsoProgramType ShaderStage>
   void D3D9DeviceEx::BindShader(
-  const D3D9CommonShader*                 pShaderModule,
-        D3D9ShaderPermutation             Permutation) {
+  const D3D9CommonShader*                 pShaderModule) {
     EmitCs([
-      cShader = pShaderModule->GetShader(Permutation)
+      cShader = pShaderModule->GetShader()
     ] (DxvkContext* ctx) mutable {
       constexpr VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
       ctx->bindShader<stage>(std::move(cShader));

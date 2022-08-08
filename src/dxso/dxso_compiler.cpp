@@ -219,32 +219,7 @@ namespace dxvk {
   }
 
 
-  DxsoPermutations DxsoCompiler::compile() {
-    DxsoPermutations permutations = { };
-
-    // Create the shader module object
-    permutations[D3D9ShaderPermutations::None] = compileShader();
-
-    // If we need to add more permuations, might be worth making a copy of module
-    // before we do anything more. :-)
-    if (m_programInfo.type() == DxsoProgramType::PixelShader) {
-      if (m_ps.diffuseColorIn)
-        m_module.decorate(m_ps.diffuseColorIn, spv::DecorationFlat);
-
-      if (m_ps.specularColorIn)
-        m_module.decorate(m_ps.specularColorIn, spv::DecorationFlat);
-
-      if (m_ps.diffuseColorIn || m_ps.specularColorIn)
-        permutations[D3D9ShaderPermutations::FlatShade] = compileShader();
-      else
-        permutations[D3D9ShaderPermutations::FlatShade] = permutations[D3D9ShaderPermutations::None];
-    }
-
-    return permutations;
-  }
-
-
-  Rc<DxvkShader> DxsoCompiler::compileShader() {
+  Rc<DxvkShader> DxsoCompiler::compile() {
     DxvkShaderCreateInfo info;
     info.stage = m_programInfo.shaderStage();
     info.bindingCount = m_bindings.size();
@@ -253,6 +228,9 @@ namespace dxvk {
     info.outputMask = m_outputMask;
     info.pushConstOffset = m_pushConstOffset;
     info.pushConstSize = m_pushConstSize;
+
+    if (m_programInfo.type() == DxsoProgramTypes::PixelShader)
+      info.flatShadingInputs = m_ps.flatShadingMask;
 
     return new DxvkShader(info, m_module.compile());
   }
@@ -3396,10 +3374,8 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         workingReg.id = m_module.opSelect(getVectorTypeId(workingReg.type), pointInfo.isSprite, pointCoord, workingReg.id);
 
       if (m_programInfo.type() == DxsoProgramType::PixelShader && elem.semantic.usage == DxsoUsage::Color) {
-        if (elem.semantic.usageIndex == 0)
-          m_ps.diffuseColorIn = inputPtr.id;
-        else if (elem.semantic.usageIndex == 1)
-          m_ps.specularColorIn = inputPtr.id;
+        if (elem.semantic.usageIndex < 2)
+          m_ps.flatShadingMask |= 1u << slot;
       }
 
       m_module.opStore(indexPtr.id, workingReg.id);

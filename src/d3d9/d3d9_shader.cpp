@@ -56,7 +56,7 @@ namespace dxvk {
     const D3D9ConstantLayout& constantLayout = ShaderStage == VK_SHADER_STAGE_VERTEX_BIT
       ? pDevice->GetVertexConstantLayout()
       : pDevice->GetPixelConstantLayout();
-    m_shaders      = pModule->compile(*pDxsoModuleInfo, name, AnalysisInfo, constantLayout);
+    m_shader       = pModule->compile(*pDxsoModuleInfo, name, AnalysisInfo, constantLayout);
     m_isgn         = pModule->isgn();
     m_usedSamplers = pModule->usedSamplers();
 
@@ -73,25 +73,17 @@ namespace dxvk {
     m_constants = pModule->constants();
     m_maxDefinedConst = pModule->maxDefinedConstant();
 
-    m_shaders[0]->setShaderKey(Key);
+    m_shader->setShaderKey(Key);
 
-    if (m_shaders[1] != nullptr) {
-      // Lets lie about the shader key type for the state cache.
-      m_shaders[1]->setShaderKey({ VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, Key.sha1() });
-    }
-    
     if (dumpPath.size() != 0) {
       std::ofstream dumpStream(
         str::tows(str::format(dumpPath, "/", name, ".spv").c_str()).c_str(),
         std::ios_base::binary | std::ios_base::trunc);
       
-      m_shaders[0]->dump(dumpStream);
+      m_shader->dump(dumpStream);
     }
 
-    pDevice->GetDXVKDevice()->registerShader(m_shaders[0]);
-
-    if (m_shaders[1] != nullptr && m_shaders[1] != m_shaders[0])
-      pDevice->GetDXVKDevice()->registerShader(m_shaders[1]);
+    pDevice->GetDXVKDevice()->registerShader(m_shader);
   }
 
 
