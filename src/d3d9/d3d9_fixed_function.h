@@ -159,7 +159,6 @@ namespace dxvk {
         // Included in here, read from Stage 0 for packing reasons
         // Affects all stages.
         uint32_t     GlobalSpecularEnable : 1;
-        uint32_t     GlobalFlatShade      : 1;
       } Contents;
 
       uint32_t Primitive[2];
