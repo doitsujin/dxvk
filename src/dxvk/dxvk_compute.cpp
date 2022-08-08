@@ -30,6 +30,9 @@ namespace dxvk {
   
   
   DxvkComputePipeline::~DxvkComputePipeline() {
+    if (m_libraryHandle)
+      m_library->releasePipelineHandle();
+
     for (const auto& instance : m_pipelines)
       this->destroyPipeline(instance.handle);
   }
@@ -45,7 +48,7 @@ namespace dxvk {
       // Retrieve actual pipeline handle on first use. This
       // may wait for an ongoing compile job to finish, or
       // compile the pipeline immediately on the calling thread.
-      m_libraryHandle = m_library->getPipelineHandle(
+      m_libraryHandle = m_library->acquirePipelineHandle(
         DxvkShaderPipelineLibraryCompileArgs());
 
       return m_libraryHandle;

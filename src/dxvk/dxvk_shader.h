@@ -396,15 +396,25 @@ namespace dxvk {
     VkShaderModuleIdentifierEXT getModuleIdentifier();
 
     /**
-     * \brief Queries pipeline handle for the given set of arguments
+     * \brief Acquires pipeline handle for the given set of arguments
      *
      * Either returns an already compiled pipeline library object, or
      * performs the compilation step if that has not happened yet.
+     * Increments the use count by one.
      * \param [in] args Compile arguments
      * \returns Vulkan pipeline handle
      */
-    VkPipeline getPipelineHandle(
+    VkPipeline acquirePipelineHandle(
       const DxvkShaderPipelineLibraryCompileArgs& args);
+
+    /**
+     * \brief Releases pipeline
+     *
+     * Decrements the use count by 1. If the use count reaches 0,
+     * any previously compiled pipeline library object may be
+     * destroyed in order to save memory.
+     */
+    void releasePipelineHandle();
 
     /**
      * \brief Compiles the pipeline with default arguments
@@ -425,10 +435,13 @@ namespace dxvk {
     dxvk::mutex     m_mutex;
     VkPipeline      m_pipeline             = VK_NULL_HANDLE;
     VkPipeline      m_pipelineNoDepthClip  = VK_NULL_HANDLE;
+    uint32_t        m_useCount             = 0u;
     bool            m_compiledOnce         = false;
 
     dxvk::mutex                 m_identifierMutex;
     VkShaderModuleIdentifierEXT m_identifier = { VK_STRUCTURE_TYPE_SHADER_MODULE_IDENTIFIER_EXT };
+
+    void destroyShaderPipelinesLocked();
 
     VkPipeline compileShaderPipelineLocked(
       const DxvkShaderPipelineLibraryCompileArgs& args);
