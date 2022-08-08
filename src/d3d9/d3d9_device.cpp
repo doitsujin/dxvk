@@ -4427,6 +4427,12 @@ namespace dxvk {
 
     auto convertFormat = pDestTexture->GetFormatMapping().ConversionFormatInfo;
 
+    if (unlikely(pSrcTexture->NeedsReadback(SrcSubresource))) {
+      const Rc<DxvkBuffer>& buffer = pSrcTexture->GetBuffer(SrcSubresource, false);
+      WaitForResource(buffer, pSrcTexture->GetMappingBufferSequenceNumber(SrcSubresource), 0);
+      pSrcTexture->SetNeedsReadback(SrcSubresource, false);
+    }
+
     if (likely(convertFormat.FormatType == D3D9ConversionFormat_None)) {
       VkOffset3D alignedDestOffset = {
         int32_t(alignDown(DestOffset.x, formatInfo->blockSize.width)),
