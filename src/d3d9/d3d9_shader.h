@@ -4,6 +4,7 @@
 #include "../dxso/dxso_module.h"
 #include "d3d9_shader_permutations.h"
 #include "d3d9_util.h"
+#include "d3d9_mem.h"
 
 #include <array>
 
@@ -82,15 +83,19 @@ namespace dxvk {
   public:
 
     D3D9Shader(
-            D3D9DeviceEx*      pDevice,
-      const D3D9CommonShader&  CommonShader,
-      const void*              pShaderBytecode,
-            uint32_t           BytecodeLength)
+            D3D9DeviceEx*        pDevice,
+            D3D9MemoryAllocator* pAllocator,
+      const D3D9CommonShader&    CommonShader,
+      const void*                pShaderBytecode,
+            uint32_t             BytecodeLength)
       : D3D9DeviceChild<Base>( pDevice )
-      , m_shader             ( CommonShader ) {
+      , m_shader             ( CommonShader )
+      , m_bytecodeLength     ( BytecodeLength ) {
 
-      m_bytecode.resize(BytecodeLength);
-      std::memcpy(m_bytecode.data(), pShaderBytecode, BytecodeLength);
+      m_bytecode = pAllocator->Alloc(BytecodeLength);
+      m_bytecode.Map();
+      std::memcpy(m_bytecode.Ptr(), pShaderBytecode, BytecodeLength);
+      m_bytecode.Unmap();
     }
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) {
@@ -115,12 +120,14 @@ namespace dxvk {
         return D3DERR_INVALIDCALL;
 
       if (pOut == nullptr) {
-        *pSizeOfData = m_bytecode.size();
+        *pSizeOfData = m_bytecodeLength;
         return D3D_OK;
       }
 
-      size_t copyAmount = std::min(size_t(*pSizeOfData), m_bytecode.size());
-      std::memcpy(pOut, m_bytecode.data(), copyAmount);
+      m_bytecode.Map();
+      uint32_t copyAmount = std::min(*pSizeOfData, m_bytecodeLength);
+      std::memcpy(pOut, m_bytecode.Ptr(), copyAmount);
+      m_bytecode.Unmap();
 
       return D3D_OK;
     }
@@ -133,7 +140,8 @@ namespace dxvk {
 
     D3D9CommonShader m_shader;
 
-    std::vector<uint8_t>  m_bytecode;
+    D3D9Memory       m_bytecode;
+    uint32_t         m_bytecodeLength;
 
   };
 
@@ -144,11 +152,12 @@ namespace dxvk {
   public:
 
     D3D9VertexShader(
-            D3D9DeviceEx*      pDevice,
-      const D3D9CommonShader&  CommonShader,
-      const void*              pShaderBytecode,
-            uint32_t           BytecodeLength)
-      : D3D9Shader<IDirect3DVertexShader9>( pDevice, CommonShader, pShaderBytecode, BytecodeLength ) { }
+            D3D9DeviceEx*        pDevice,
+            D3D9MemoryAllocator* pAllocator,
+      const D3D9CommonShader&    CommonShader,
+      const void*                pShaderBytecode,
+            uint32_t             BytecodeLength)
+      : D3D9Shader<IDirect3DVertexShader9>( pDevice, pAllocator, CommonShader, pShaderBytecode, BytecodeLength ) { }
 
   };
 
@@ -157,11 +166,12 @@ namespace dxvk {
   public:
 
     D3D9PixelShader(
-            D3D9DeviceEx*      pDevice,
-      const D3D9CommonShader&  CommonShader,
-      const void*              pShaderBytecode,
-            uint32_t           BytecodeLength)
-      : D3D9Shader<IDirect3DPixelShader9>( pDevice, CommonShader, pShaderBytecode, BytecodeLength ) { }
+            D3D9DeviceEx*        pDevice,
+            D3D9MemoryAllocator* pAllocator,
+      const D3D9CommonShader&    CommonShader,
+      const void*                pShaderBytecode,
+            uint32_t             BytecodeLength)
+      : D3D9Shader<IDirect3DPixelShader9>( pDevice, pAllocator, CommonShader, pShaderBytecode, BytecodeLength ) { }
 
   };
 
