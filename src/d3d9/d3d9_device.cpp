@@ -4163,7 +4163,7 @@ namespace dxvk {
     // then we need to copy -> buffer
     // We are also always dirty if we are a render target,
     // a depth stencil, or auto generate mipmaps.
-    bool needsReadback = pResource->NeedsReachback(Subresource) || renderable;
+    bool needsReadback = pResource->NeedsReadback(Subresource) || renderable;
     pResource->SetNeedsReadback(Subresource, false);
 
     void* mapPtr;
