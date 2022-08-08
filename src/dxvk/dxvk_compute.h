@@ -151,7 +151,11 @@ namespace dxvk {
 
     void writePipelineStateToCache(
       const DxvkComputePipelineStateInfo& state) const;
-    
+
+    void logPipelineState(
+            LogLevel                      level,
+      const DxvkComputePipelineStateInfo& state) const;
+
   };
   
 }

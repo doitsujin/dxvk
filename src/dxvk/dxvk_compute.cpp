@@ -1,4 +1,6 @@
 #include <cstring>
+#include <iomanip>
+#include <sstream>
 
 #include "../util/util_time.h"
 
@@ -101,11 +103,6 @@ namespace dxvk {
     const DxvkComputePipelineStateInfo& state) const {
     auto vk = m_device->vkd();
 
-    if (Logger::logLevel() <= LogLevel::Debug) {
-      Logger::debug("Compiling compute pipeline..."); 
-      Logger::debug(str::format("  cs  : ", m_shaders.cs->debugName()));
-    }
-    
     DxvkPipelineSpecConstantState scState(m_shaders.cs->getSpecConstantMask(), state.sc);
     
     DxvkShaderStageInfo stageInfo(m_device);
@@ -117,25 +114,15 @@ namespace dxvk {
     info.stage                = *stageInfo.getStageInfos();
     info.layout               = m_bindings->getPipelineLayout(false);
     info.basePipelineIndex    = -1;
-    
-    // Time pipeline compilation for debugging purposes
-    dxvk::high_resolution_clock::time_point t0, t1;
 
-    if (Logger::logLevel() <= LogLevel::Debug)
-      t0 = dxvk::high_resolution_clock::now();
-    
     VkPipeline pipeline = VK_NULL_HANDLE;
-    if (vk->vkCreateComputePipelines(vk->device(),
-          VK_NULL_HANDLE, 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
-      Logger::err("DxvkComputePipeline: Failed to compile pipeline");
-      Logger::err(str::format("  cs  : ", m_shaders.cs->debugName()));
+    VkResult vr = vk->vkCreateComputePipelines(vk->device(),
+          VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
+
+    if (vr != VK_SUCCESS) {
+      Logger::err(str::format("DxvkComputePipeline: Failed to compile pipeline: ", vr));
+      this->logPipelineState(LogLevel::Error, state);
       return VK_NULL_HANDLE;
-    }
-    
-    if (Logger::logLevel() <= LogLevel::Debug) {
-      t1 = dxvk::high_resolution_clock::now();
-      auto td = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0);
-      Logger::debug(str::format("DxvkComputePipeline: Finished in ", td.count(), " ms"));
     }
 
     return pipeline;
@@ -159,4 +146,27 @@ namespace dxvk {
     m_stateCache->addComputePipeline(key, state);
   }
   
+
+  void DxvkComputePipeline::logPipelineState(
+          LogLevel                      level,
+    const DxvkComputePipelineStateInfo& state) const {
+    std::stringstream sstr;
+    sstr << "  cs  : " << m_shaders.cs->debugName() << std::endl;
+
+    bool hasSpecConstants = false;
+
+    for (uint32_t i = 0; i < MaxNumSpecConstants; i++) {
+      if (state.sc.specConstants[i]) {
+        if (!hasSpecConstants) {
+          sstr << "Specialization constants:" << std::endl;
+          hasSpecConstants = true;
+        }
+
+        sstr << "  " << i << ": 0x" << std::hex << std::setw(8) << std::setfill('0') << state.sc.specConstants[i] << std::dec << std::endl;
+      }
+    }
+
+    Logger::log(level, sstr.str());
+  }
+
 }
