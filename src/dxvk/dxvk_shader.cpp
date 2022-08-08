@@ -915,10 +915,7 @@ namespace dxvk {
     const DxvkShaderPipelineLibraryCompileArgs& args) {
     std::lock_guard lock(m_mutex);
 
-    VkShaderStageFlagBits stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-    if (m_shader)
-      stage = m_shader->info().stage;
+    VkShaderStageFlagBits stage = getShaderStage();
 
     VkPipeline& pipeline = (stage == VK_SHADER_STAGE_VERTEX_BIT && !args.depthClipEnable)
       ? m_pipelineNoDepthClip
@@ -927,28 +924,54 @@ namespace dxvk {
     if (pipeline)
       return pipeline;
 
-    bool usesDefaultArgs = (args == DxvkShaderPipelineLibraryCompileArgs());
+    pipeline = compileShaderPipelineLocked(args);
+    return pipeline;
+  }
 
+
+  void DxvkShaderPipelineLibrary::compilePipeline() {
+    std::lock_guard lock(m_mutex);
+
+    // Skip if a pipeline has already been compiled
+    if (m_pipeline)
+      return;
+
+    // Compile the pipeline with default args
+    VkPipeline pipeline = compileShaderPipelineLocked(
+      DxvkShaderPipelineLibraryCompileArgs());
+
+    // On 32-bit, destroy the pipeline immediately in order to
+    // save memory. We should hit the driver's disk cache once
+    // we need to recreate the pipeline.
+    if (m_device->mustTrackPipelineLifetime()) {
+      auto vk = m_device->vkd();
+      vk->vkDestroyPipeline(vk->device(), pipeline, nullptr);
+
+      pipeline = VK_NULL_HANDLE;
+    }
+
+    // Write back pipeline handle for future use
+    m_pipeline = pipeline;
+  }
+
+
+  VkPipeline DxvkShaderPipelineLibrary::compileShaderPipelineLocked(
+    const DxvkShaderPipelineLibraryCompileArgs& args) {
+    VkShaderStageFlagBits stage = getShaderStage();
+    VkPipeline pipeline = VK_NULL_HANDLE;
+
+    // Compile pipeline of the appropriate type
     switch (stage) {
       case VK_SHADER_STAGE_VERTEX_BIT:
         pipeline = compileVertexShaderPipeline(args);
-
-        if (usesDefaultArgs)
-          m_stats->numGraphicsLibraries += 1;
         break;
 
       case VK_SHADER_STAGE_FRAGMENT_BIT:
         pipeline = compileFragmentShaderPipeline();
-
-        if (usesDefaultArgs)
-          m_stats->numGraphicsLibraries += 1;
         break;
 
       case VK_SHADER_STAGE_COMPUTE_BIT:
         pipeline = compileComputeShaderPipeline();
-
-        if (usesDefaultArgs)
-          m_stats->numComputePipelines += 1;
         break;
 
       default:
@@ -956,15 +979,18 @@ namespace dxvk {
         return VK_NULL_HANDLE;
     }
 
+    // Increment stat counter the first time this
+    // shader pipeline gets compiled successfully
+    if (!m_compiledOnce && pipeline) {
+      if (stage == VK_SHADER_STAGE_COMPUTE_BIT)
+        m_stats->numComputePipelines += 1;
+      else
+        m_stats->numGraphicsLibraries += 1;
+
+      m_compiledOnce = true;
+    }
+
     return pipeline;
-  }
-
-
-  void DxvkShaderPipelineLibrary::compilePipeline() {
-    // Just compile the pipeline with default args. Implicitly skips
-    // this step if another thread has compiled the pipeline in the
-    // meantime, in order to avoid duplicate work.
-    getPipelineHandle(DxvkShaderPipelineLibraryCompileArgs());
   }
 
 
@@ -1173,6 +1199,16 @@ namespace dxvk {
 
     vk->vkGetShaderModuleCreateInfoIdentifierEXT(
       vk->device(), &info, &m_identifier);
+  }
+
+
+  VkShaderStageFlagBits DxvkShaderPipelineLibrary::getShaderStage() const {
+    VkShaderStageFlagBits stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    if (m_shader != nullptr)
+      stage = m_shader->info().stage;
+
+    return stage;
   }
 
 }

@@ -425,9 +425,13 @@ namespace dxvk {
     dxvk::mutex     m_mutex;
     VkPipeline      m_pipeline             = VK_NULL_HANDLE;
     VkPipeline      m_pipelineNoDepthClip  = VK_NULL_HANDLE;
+    bool            m_compiledOnce         = false;
 
     dxvk::mutex                 m_identifierMutex;
     VkShaderModuleIdentifierEXT m_identifier = { VK_STRUCTURE_TYPE_SHADER_MODULE_IDENTIFIER_EXT };
+
+    VkPipeline compileShaderPipelineLocked(
+      const DxvkShaderPipelineLibraryCompileArgs& args);
 
     VkPipeline compileVertexShaderPipeline(
       const DxvkShaderPipelineLibraryCompileArgs& args);
@@ -443,6 +447,8 @@ namespace dxvk {
 
     void generateModuleIdentifierLocked(
       const SpirvCodeBuffer& spirvCode);
+
+    VkShaderStageFlagBits getShaderStage() const;
 
   };
   
