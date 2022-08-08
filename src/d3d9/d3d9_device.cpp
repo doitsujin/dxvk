@@ -5715,14 +5715,12 @@ namespace dxvk {
 
     auto& rs = m_state.renderStates;
 
-    DxvkRasterizerState state;
+    DxvkRasterizerState state = { };
     state.cullMode        = DecodeCullMode(D3DCULL(rs[D3DRS_CULLMODE]));
     state.depthBiasEnable = IsDepthBiasEnabled();
     state.depthClipEnable = true;
     state.frontFace       = VK_FRONT_FACE_CLOCKWISE;
     state.polygonMode     = DecodeFillMode(D3DFILLMODE(rs[D3DRS_FILLMODE]));
-    state.conservativeMode = VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
-    state.sampleCount     = 0;
 
     EmitCs([
       cState  = state

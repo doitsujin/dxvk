@@ -124,6 +124,7 @@ namespace dxvk {
     rsState.depthBiasEnable    = VK_FALSE;
     rsState.conservativeMode   = VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
     rsState.sampleCount        = VK_SAMPLE_COUNT_1_BIT;
+    rsState.flatShading        = VK_FALSE;
     ctx->setRasterizerState(rsState);
     
     DxvkMultisampleState msState;

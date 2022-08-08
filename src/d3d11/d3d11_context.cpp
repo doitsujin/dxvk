@@ -4991,6 +4991,7 @@ namespace dxvk {
     pRsState->depthBiasEnable = VK_FALSE;
     pRsState->conservativeMode = VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
     pRsState->sampleCount     = 0;
+    pRsState->flatShading     = VK_FALSE;
   }
 
 

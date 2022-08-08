@@ -105,6 +105,7 @@ namespace dxvk {
     VkBool32            depthBiasEnable;
     VkConservativeRasterizationModeEXT conservativeMode;
     VkSampleCountFlags  sampleCount;
+    VkBool32            flatShading;
   };
   
   

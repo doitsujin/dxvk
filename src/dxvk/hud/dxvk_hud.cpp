@@ -22,6 +22,7 @@ namespace dxvk::hud {
     m_rsState.depthBiasEnable   = VK_FALSE;
     m_rsState.conservativeMode  = VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
     m_rsState.sampleCount       = VK_SAMPLE_COUNT_1_BIT;
+    m_rsState.flatShading       = VK_FALSE;
 
     m_blendMode.enableBlending  = VK_TRUE;
     m_blendMode.colorSrcFactor  = VK_BLEND_FACTOR_ONE;
