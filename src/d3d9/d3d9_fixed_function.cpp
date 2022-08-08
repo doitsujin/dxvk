@@ -627,6 +627,7 @@ namespace dxvk {
 
     uint32_t              m_inputMask = 0u;
     uint32_t              m_outputMask = 0u;
+    uint32_t              m_flatShadingMask = 0u;
     uint32_t              m_pushConstOffset = 0u;
     uint32_t              m_pushConstSize = 0u;
 
@@ -737,6 +738,7 @@ namespace dxvk {
     info.bindings = m_bindings.data();
     info.inputMask = m_inputMask;
     info.outputMask = m_outputMask;
+    info.flatShadingInputs = m_flatShadingMask;
     info.pushConstOffset = m_pushConstOffset;
     info.pushConstSize = m_pushConstSize;
 
@@ -788,8 +790,8 @@ namespace dxvk {
     bool diffuseOrSpec = semantic == DxsoSemantic{ DxsoUsage::Color, 0 }
                       || semantic == DxsoSemantic{ DxsoUsage::Color, 1 };
 
-    if (diffuseOrSpec && m_fsKey.Stages[0].Contents.GlobalFlatShade)
-      m_module.decorate(ptr, spv::DecorationFlat);
+    if (diffuseOrSpec)
+      m_flatShadingMask |= 1u << slot;
 
     std::string name = str::format(input ? "in_" : "out_", semantic.usage, semantic.usageIndex);
     m_module.setDebugName(ptr, name.c_str());

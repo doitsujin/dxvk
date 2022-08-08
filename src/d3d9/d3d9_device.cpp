@@ -2098,9 +2098,7 @@ namespace dxvk {
           break;
 
         case D3DRS_SHADEMODE:
-          m_flags.set(
-            D3D9DeviceFlag::DirtyFFPixelShader,
-            D3D9DeviceFlag::DirtyRasterizerState);
+          m_flags.set(D3D9DeviceFlag::DirtyRasterizerState);
           break;
 
         case D3DRS_TWEENFACTOR:
@@ -6653,7 +6651,6 @@ namespace dxvk {
       }
 
       stage0.GlobalSpecularEnable = m_state.renderStates[D3DRS_SPECULARENABLE];
-      stage0.GlobalFlatShade      = m_state.renderStates[D3DRS_SHADEMODE] == D3DSHADE_FLAT;
 
       // The last stage *always* writes to current.
       if (idx >= 1)
