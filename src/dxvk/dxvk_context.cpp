@@ -2405,7 +2405,8 @@ namespace dxvk {
       rs.depthBiasEnable,
       rs.polygonMode,
       rs.sampleCount,
-      rs.conservativeMode);
+      rs.conservativeMode,
+      rs.flatShading);
 
     if (!m_state.gp.state.rs.eq(rsInfo)) {
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);

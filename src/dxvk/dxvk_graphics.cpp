@@ -1050,6 +1050,10 @@ namespace dxvk {
       if (state.useDualSourceBlending())
         return false;
 
+      // Flat shading requires patching the fragment shader
+      if (state.rs.flatShading() && m_shaders.fs->info().flatShadingInputs)
+        return false;
+
       // Multisample state must match in this case, and the
       // library assumes that MSAA is disabled in this case.
       if (m_shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading)) {
