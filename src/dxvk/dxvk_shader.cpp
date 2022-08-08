@@ -12,6 +12,7 @@ namespace dxvk {
   
   bool DxvkShaderModuleCreateInfo::eq(const DxvkShaderModuleCreateInfo& other) const {
     bool eq = fsDualSrcBlend  == other.fsDualSrcBlend
+           && fsFlatShading   == other.fsFlatShading
            && undefinedInputs == other.undefinedInputs;
 
     for (uint32_t i = 0; i < rtSwizzles.size() && eq; i++) {
@@ -28,6 +29,7 @@ namespace dxvk {
   size_t DxvkShaderModuleCreateInfo::hash() const {
     DxvkHashState hash;
     hash.add(uint32_t(fsDualSrcBlend));
+    hash.add(uint32_t(fsFlatShading));
     hash.add(undefinedInputs);
 
     for (uint32_t i = 0; i < rtSwizzles.size(); i++) {
@@ -188,6 +190,10 @@ namespace dxvk {
     // Emit fragment shader swizzles as necessary
     if (m_info.stage == VK_SHADER_STAGE_FRAGMENT_BIT)
       emitOutputSwizzles(spirvCode, m_info.outputMask, state.rtSwizzles.data());
+
+    // Emit input decorations for flat shading as necessary
+    if (m_info.stage == VK_SHADER_STAGE_FRAGMENT_BIT && state.fsFlatShading)
+      emitFlatShadingDeclarations(spirvCode, m_info.flatShadingInputs);
 
     return spirvCode;
   }
@@ -693,6 +699,95 @@ namespace dxvk {
 
       code.endInsertion();
     }
+  }
+
+
+  void DxvkShader::emitFlatShadingDeclarations(
+          SpirvCodeBuffer&          code,
+          uint32_t                  inputMask) {
+    if (!inputMask)
+      return;
+
+    struct VarInfo {
+      uint32_t varId;
+      size_t decorationOffset;
+    };
+
+    std::unordered_set<uint32_t> candidates;
+    std::unordered_map<uint32_t, size_t> decorations;
+    std::vector<VarInfo> flatVars;
+
+    size_t decorateOffset = 0;
+
+    for (auto ins : code) {
+      switch (ins.opCode()) {
+        case spv::OpDecorate: {
+          decorateOffset = ins.offset() + ins.length();
+          uint32_t varId = ins.arg(1);
+
+          switch (ins.arg(2)) {
+            case spv::DecorationLocation: {
+              uint32_t location = ins.arg(3);
+
+              if (inputMask & (1u << location))
+                candidates.insert(varId);
+            } break;
+
+            case spv::DecorationFlat:
+            case spv::DecorationCentroid:
+            case spv::DecorationSample:
+            case spv::DecorationNoPerspective: {
+              decorations.insert({ varId, ins.offset() + 2 });
+            } break;
+
+            default: ;
+          }
+        } break;
+
+        case spv::OpVariable: {
+          if (ins.arg(3) == spv::StorageClassInput) {
+            uint32_t varId = ins.arg(2);
+
+            // Only consider variables that have a desired location
+            if (candidates.find(varId) != candidates.end()) {
+              VarInfo varInfo;
+              varInfo.varId = varId;
+              varInfo.decorationOffset = 0;
+
+              auto decoration = decorations.find(varId);
+              if (decoration != decorations.end())
+                varInfo.decorationOffset = decoration->second;
+
+              flatVars.push_back(varInfo);
+            }
+          }
+        } break;
+
+        default:
+          break;
+      }
+    }
+
+    // Change existing decorations as necessary
+    for (const auto& var : flatVars) {
+      if (var.decorationOffset) {
+        uint32_t* rawCode = code.data();
+        rawCode[var.decorationOffset] = spv::DecorationFlat;
+      }
+    }
+
+    // Insert new decorations for remaining variables
+    code.beginInsertion(decorateOffset);
+
+    for (const auto& var : flatVars) {
+      if (!var.decorationOffset) {
+        code.putIns(spv::OpDecorate, 3);
+        code.putWord(var.varId);
+        code.putWord(spv::DecorationFlat);
+      }
+    }
+
+    code.endInsertion();
   }
 
 

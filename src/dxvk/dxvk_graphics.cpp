@@ -720,6 +720,7 @@ namespace dxvk {
 
     if (shaderInfo.stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
       info.fsDualSrcBlend = state.useDualSourceBlending();
+      info.fsFlatShading = state.rs.flatShading() && shader->info().flatShadingInputs;
 
       for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
         if ((shaderInfo.outputMask & (1u << i)) && state.writesRenderTarget(i))

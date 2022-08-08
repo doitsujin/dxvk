@@ -46,6 +46,8 @@ namespace dxvk {
     /// Input and output register mask
     uint32_t inputMask = 0;
     uint32_t outputMask = 0;
+    /// Flat shading input mask
+    uint32_t flatShadingInputs = 0;
     /// Push constant range
     uint32_t pushConstOffset = 0;
     uint32_t pushConstSize = 0;
@@ -64,6 +66,7 @@ namespace dxvk {
    */
   struct DxvkShaderModuleCreateInfo {
     bool      fsDualSrcBlend  = false;
+    bool      fsFlatShading   = false;
     uint32_t  undefinedInputs = 0;
 
     std::array<VkComponentMapping, MaxNumRenderTargets> rtSwizzles = { };
@@ -236,6 +239,10 @@ namespace dxvk {
             SpirvCodeBuffer&          code,
             uint32_t                  outputMask,
             const VkComponentMapping* swizzles);
+
+    static void emitFlatShadingDeclarations(
+            SpirvCodeBuffer&          code,
+            uint32_t                  inputMask);
 
   };
   
