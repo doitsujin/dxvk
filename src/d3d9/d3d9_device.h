@@ -96,6 +96,13 @@ namespace dxvk {
     void*           mapPtr = nullptr;
   };
 
+  struct D3D9StagingBufferMarkerPayload {
+    uint64_t        sequenceNumber;
+    VkDeviceSize    allocated;
+  };
+
+  using D3D9StagingBufferMarker = DxvkMarker<D3D9StagingBufferMarkerPayload>;
+
   class D3D9DeviceEx final : public ComObjectClamp<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
     constexpr static uint32_t MaxFrameLatency     = 20;
@@ -977,6 +984,10 @@ namespace dxvk {
 
     D3D9BufferSlice AllocStagingBuffer(VkDeviceSize size);
 
+    void EmitStagingBufferMarker();
+
+    void WaitStagingBuffer();
+
     bool ShouldRecord();
 
     HRESULT               CreateShaderModule(
@@ -1188,6 +1199,10 @@ namespace dxvk {
     void*                           m_upBufferMapPtr  = nullptr;
 
     DxvkStagingBuffer               m_stagingBuffer;
+    VkDeviceSize                    m_stagingBufferAllocated      = 0ull;
+    VkDeviceSize                    m_stagingBufferLastAllocated  = 0ull;
+    VkDeviceSize                    m_stagingBufferLastSignaled   = 0ull;
+    std::queue<Rc<D3D9StagingBufferMarker>> m_stagingBufferMarkers;
 
     D3D9Cursor                      m_cursor;
 
