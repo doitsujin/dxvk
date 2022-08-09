@@ -21,6 +21,9 @@ namespace dxvk {
     /// Enable graphics pipeline library
     Tristate enableGraphicsPipelineLibrary;
 
+    /// Enables pipeline lifetime tracking
+    Tristate trackPipelineLifetime;
+
     /// Shader-related options
     Tristate useRawSsbo;
 
