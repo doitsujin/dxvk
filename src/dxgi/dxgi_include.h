@@ -25,7 +25,6 @@
 #include "../util/util_flags.h"
 #include "../util/util_likely.h"
 #include "../util/util_math.h"
-#include "../util/util_monitor.h"
 #include "../util/util_string.h"
 
 #include <dxgi1_6.h>
