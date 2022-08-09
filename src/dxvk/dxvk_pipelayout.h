@@ -43,24 +43,12 @@ namespace dxvk {
     uint32_t computeSetIndex() const;
 
     /**
-     * \brief Checks whether bindings can be merged
+     * \brief Numeric value of the binding
      *
-     * Bindings can be merged if they access the same resource with
-     * the same view and descriptor type and are part of the same
-     * descriptor set.
-     * \param [in] binding The binding to probe
-     * \returns \c true if the bindings can be merged
+     * Used when sorting bindings.
+     * \returns Numeric value
      */
-    bool canMerge(const DxvkBindingInfo& binding) const;
-
-    /**
-     * \brief Merges bindings
-     *
-     * Merges the stage and access flags of two
-     * otherwise identical binding declarations.
-     * \param [in] binding The binding to merge
-     */
-    void merge(const DxvkBindingInfo& binding);
+    uint32_t value() const;
 
     /**
      * \brief Checks for equality

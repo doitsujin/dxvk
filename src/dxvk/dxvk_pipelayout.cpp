@@ -25,19 +25,8 @@ namespace dxvk {
   }
 
 
-  bool DxvkBindingInfo::canMerge(const DxvkBindingInfo& binding) const {
-    if ((stages & VK_SHADER_STAGE_FRAGMENT_BIT) != (binding.stages & VK_SHADER_STAGE_FRAGMENT_BIT))
-      return false;
-
-    return descriptorType    == binding.descriptorType
-        && resourceBinding   == binding.resourceBinding
-        && viewType          == binding.viewType;
-  }
-
-
-  void DxvkBindingInfo::merge(const DxvkBindingInfo& binding) {
-    stages |= binding.stages;
-    access |= binding.access;
+  uint32_t DxvkBindingInfo::value() const {
+    return (uint32_t(descriptorType) << 24) | resourceBinding;
   }
 
 
@@ -72,14 +61,12 @@ namespace dxvk {
 
 
   void DxvkBindingList::addBinding(const DxvkBindingInfo& binding) {
-    for (auto& b : m_bindings) {
-      if (b.canMerge(binding)) {
-        b.merge(binding);
-        return;
-      }
-    }
+    auto iter = m_bindings.begin();
 
-    m_bindings.push_back(binding);
+    while (iter != m_bindings.end() && iter->value() <= binding.value())
+      iter++;
+
+    m_bindings.insert(iter, binding);
   }
 
 
