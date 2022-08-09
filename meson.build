@@ -92,6 +92,9 @@ if platform == 'windows'
   endif
 
   dxvk_include_path = include_directories('./include')
+
+  dxvk_wsi = 'win32'
+  compiler_args += ['-DDXVK_WSI_WIN32']
 else
   lib_vulkan = cpp.find_library('vulkan')
   lib_sdl2   = cpp.find_library('SDL2')
