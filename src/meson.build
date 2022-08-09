@@ -1,3 +1,4 @@
+subdir('wsi')
 subdir('util')
 subdir('spirv')
 subdir('vulkan')
