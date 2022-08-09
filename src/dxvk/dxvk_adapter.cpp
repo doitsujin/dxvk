@@ -364,7 +364,6 @@ namespace dxvk {
     // Core features that we're relying on in various places
     enabledFeatures.vk13.synchronization2 = VK_TRUE;
     enabledFeatures.vk13.dynamicRendering = VK_TRUE;
-    enabledFeatures.vk13.maintenance4 = VK_TRUE;
 
     // Used for both pNext shader module info, and fast-linking pipelines provided
     // that graphicsPipelineLibraryIndependentInterpolationDecoration is supported
@@ -823,7 +822,6 @@ namespace dxvk {
       "\n  shaderZeroInitializeWorkgroupMemory    : ", features.vk13.shaderZeroInitializeWorkgroupMemory,
       "\n  synchronization2                       : ", features.vk13.synchronization2,
       "\n  dynamicRendering                       : ", features.vk13.dynamicRendering,
-      "\n  maintenance4                           : ", features.vk13.maintenance4,
       "\n", VK_EXT_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_EXTENSION_NAME,
       "\n  attachmentFeedbackLoopLayout           : ", features.extAttachmentFeedbackLoopLayout.attachmentFeedbackLoopLayout ? "1" : "0",
       "\n", VK_EXT_CUSTOM_BORDER_COLOR_EXTENSION_NAME,
