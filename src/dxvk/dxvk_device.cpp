@@ -68,6 +68,13 @@ namespace dxvk {
   }
 
 
+  bool DxvkDevice::mustTrackPipelineLifetime() const {
+    bool result = env::is32BitHostPlatform();
+    applyTristate(result, m_options.trackPipelineLifetime);
+    return result && canUseGraphicsPipelineLibrary();
+  }
+
+
   DxvkFramebufferSize DxvkDevice::getDefaultFramebufferSize() const {
     return DxvkFramebufferSize {
       m_properties.core.properties.limits.maxFramebufferWidth,

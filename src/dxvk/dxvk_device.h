@@ -210,6 +210,12 @@ namespace dxvk {
     bool canUsePipelineCacheControl() const;
 
     /**
+     * \brief Checks whether pipelines should be tracked
+     * \returns \c true if pipelines need to be tracked
+     */
+    bool mustTrackPipelineLifetime() const;
+
+    /**
      * \brief Queries default framebuffer size
      * \returns Default framebuffer size
      */
