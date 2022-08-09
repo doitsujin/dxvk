@@ -4018,11 +4018,90 @@ namespace dxvk {
 
 
   D3D9BufferSlice D3D9DeviceEx::AllocStagingBuffer(VkDeviceSize size) {
+    m_stagingBufferAllocated += size;
+
     D3D9BufferSlice result;
     result.slice = m_stagingBuffer.alloc(256, size);
     result.mapPtr = result.slice.mapPtr(0);
     return result;
   }
+
+
+  void D3D9DeviceEx::EmitStagingBufferMarker() {
+    if (m_stagingBufferLastAllocated == m_stagingBufferAllocated)
+      return;
+
+    D3D9StagingBufferMarkerPayload payload;
+    payload.sequenceNumber = GetCurrentSequenceNumber();
+    payload.allocated = m_stagingBufferAllocated;
+    m_stagingBufferLastAllocated = m_stagingBufferAllocated;
+
+    Rc<D3D9StagingBufferMarker> marker = new D3D9StagingBufferMarker(payload);
+    m_stagingBufferMarkers.push(marker);
+
+    EmitCs([
+      cMarker = std::move(marker)
+    ] (DxvkContext* ctx) {
+      ctx->insertMarker(cMarker);
+    });
+  }
+
+
+  void D3D9DeviceEx::WaitStagingBuffer() {
+    // The number below is not a hard limit, however we can be reasonably
+    // sure that there will never be more than two additional staging buffers
+    // in flight in addition to the number of staging buffers specified here.
+    constexpr VkDeviceSize maxStagingMemoryInFlight = env::is32BitHostPlatform()
+      ? StagingBufferSize * 4
+      : StagingBufferSize * 16;
+
+    // If the game uploads a significant amount of data at once, it's
+    // possible that we exceed the limit while the queue is empty. In
+    // that case, enforce a flush early to populate the marker queue.
+    bool didFlush = false;
+
+    if (m_stagingBufferLastSignaled + maxStagingMemoryInFlight < m_stagingBufferAllocated
+     && m_stagingBufferMarkers.empty()) {
+      Flush();
+      didFlush = true;
+    }
+
+    // Process the marker queue. We'll remove as many markers as we
+    // can without stalling, and will stall until we're below the
+    // allocation limit again.
+    uint64_t lastSequenceNumber = m_csThread.lastSequenceNumber();
+
+    while (!m_stagingBufferMarkers.empty()) {
+      const auto& marker = m_stagingBufferMarkers.front();
+      const auto& payload = marker->payload();
+
+      bool needsStall = m_stagingBufferLastSignaled + maxStagingMemoryInFlight < m_stagingBufferAllocated;
+
+      if (payload.sequenceNumber > lastSequenceNumber) {
+        if (!needsStall)
+          break;
+
+        m_csThread.synchronize(payload.sequenceNumber);
+        lastSequenceNumber = payload.sequenceNumber;
+      }
+
+      if (marker->isInUse(DxvkAccess::Read)) {
+        if (!needsStall)
+          break;
+
+        if (!didFlush) {
+          Flush();
+          didFlush = true;
+        }
+
+        m_dxvkDevice->waitForResource(marker, DxvkAccess::Read);
+      }
+
+      m_stagingBufferLastSignaled = marker->payload().allocated;
+      m_stagingBufferMarkers.pop();
+    }
+  }
+
 
   bool D3D9DeviceEx::ShouldRecord() {
     return m_recorder != nullptr && !m_recorder->IsApplying();
@@ -4419,8 +4498,9 @@ namespace dxvk {
     UINT SrcSubresource,
     VkOffset3D SrcOffset,
     VkExtent3D SrcExtent,
-    VkOffset3D DestOffset
-  ) {
+    VkOffset3D DestOffset) {
+    WaitStagingBuffer();
+
     const Rc<DxvkImage> image = pDestTexture->GetImage();
 
     // Now that data has been written into the buffer,
@@ -4662,6 +4742,8 @@ namespace dxvk {
 
   HRESULT D3D9DeviceEx::FlushBuffer(
         D3D9CommonBuffer*       pResource) {
+    WaitStagingBuffer();
+
     auto dstBuffer = pResource->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>();
     auto srcSlice = pResource->GetMappedSlice();
 
@@ -5095,6 +5177,8 @@ namespace dxvk {
 
     m_initializer->Flush();
     m_converter->Flush();
+
+    EmitStagingBufferMarker();
 
     if (m_csIsBusy || !m_csChunk->empty()) {
       // Add commands to flush the threaded
