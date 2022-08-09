@@ -24,6 +24,8 @@
 #include "d3d11_texture.h"
 #include "d3d11_video.h"
 
+#include "../wsi/wsi_window.h"
+
 #include "../util/util_shared_res.h"
 
 namespace dxvk {
@@ -3047,7 +3049,7 @@ namespace dxvk {
     // Make sure the back buffer size is not zero
     DXGI_SWAP_CHAIN_DESC1 desc = *pDesc;
     
-    GetWindowClientSize(hWnd,
+    wsi::getWindowSize(hWnd,
       desc.Width  ? nullptr : &desc.Width,
       desc.Height ? nullptr : &desc.Height);
     
