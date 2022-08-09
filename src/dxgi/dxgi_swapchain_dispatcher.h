@@ -224,7 +224,9 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE SetFullscreenState(
             BOOL                      Fullscreen,
             IDXGIOutput*              pTarget) final {
-      return m_dispatch->SetFullscreenState(Fullscreen, pTarget);
+      if (likely(m_dispatch != nullptr))
+        return m_dispatch->SetFullscreenState(Fullscreen, pTarget);
+      return S_OK;
     }
 
 
