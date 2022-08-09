@@ -176,6 +176,12 @@ namespace dxvk::str {
    * \returns Wide string object
    */
   std::wstring tows(const char* mbs);
+
+#ifdef _WIN32
+  inline std::wstring topath(const char* mbs) { return tows(mbs); }
+#else
+  inline std::string  topath(const char* mbs) { return std::string(mbs); }
+#endif
   
   inline void format1(std::stringstream&) { }
 
