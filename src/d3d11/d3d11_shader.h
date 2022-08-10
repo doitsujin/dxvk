@@ -43,8 +43,10 @@ namespace dxvk {
       return m_shader;
     }
 
-    Rc<DxvkBuffer> GetIcb() const {
-      return m_buffer;
+    DxvkBufferSlice GetIcb() const {
+      return m_buffer != nullptr
+        ? DxvkBufferSlice(m_buffer)
+        : DxvkBufferSlice();
     }
     
     std::string GetName() const {

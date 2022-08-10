@@ -3110,26 +3110,38 @@ namespace dxvk {
   template<DxbcProgramType ShaderStage>
   void D3D11CommonContext<ContextType>::BindShader(
     const D3D11CommonShader*    pShaderModule) {
-    // Bind the shader and the ICB at once
-    EmitCs([
-      cSlice  = pShaderModule           != nullptr
-             && pShaderModule->GetIcb() != nullptr
-        ? DxvkBufferSlice(pShaderModule->GetIcb())
-        : DxvkBufferSlice(),
-      cShader = pShaderModule != nullptr
-        ? pShaderModule->GetShader()
-        : nullptr
-    ] (DxvkContext* ctx) mutable {
-      constexpr VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+    if (pShaderModule) {
+      auto buffer = pShaderModule->GetIcb();
+      auto shader = pShaderModule->GetShader();
 
-      uint32_t slotId = computeConstantBufferBinding(ShaderStage,
-        D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT);
+      if (unlikely(shader->needsLibraryCompile()))
+        m_device->requestCompileShader(shader);
 
-      ctx->bindShader<stage>(
-        Forwarder::move(cShader));
-      ctx->bindResourceBuffer(stage, slotId,
-        Forwarder::move(cSlice));
-    });
+      EmitCs([
+        cBuffer = std::move(buffer),
+        cShader = std::move(shader)
+      ] (DxvkContext* ctx) mutable {
+        constexpr VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+
+        uint32_t slotId = computeConstantBufferBinding(ShaderStage,
+          D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT);
+
+        ctx->bindShader<stage>(
+          Forwarder::move(cShader));
+        ctx->bindResourceBuffer(stage, slotId,
+          Forwarder::move(cBuffer));
+      });
+    } else {
+      EmitCs([] (DxvkContext* ctx) {
+        constexpr VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
+
+        uint32_t slotId = computeConstantBufferBinding(ShaderStage,
+          D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT);
+
+        ctx->bindShader<stage>(nullptr);
+        ctx->bindResourceBuffer(stage, slotId, DxvkBufferSlice());
+      });
+    }
   }
 
 
