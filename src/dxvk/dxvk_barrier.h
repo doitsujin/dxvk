@@ -357,22 +357,28 @@ namespace dxvk {
 
     uint64_t m_version = 1ull;
     uint64_t m_used    = 0ull;
+    size_t   m_indexMask = 0;
 
     std::vector<ListEntry> m_list;
     std::vector<HashEntry> m_hashMap;
 
     static size_t computeHash(K key) {
-      return size_t(uint64_t(key));
+      size_t hash = size_t(key) * 93887;
+      return hash ^ (hash >> 16);
+    }
+
+    size_t computeSize() const {
+      return m_indexMask
+        ? m_indexMask + 1
+        : 0;
     }
 
     size_t computeIndex(K key) const {
-      return computeHash(key) % m_hashMap.size();
+      return computeHash(key) & (m_indexMask);
     }
 
     size_t advanceIndex(size_t index) const {
-      size_t size = m_hashMap.size();
-      size_t next = index + 1;
-      return next < size ? next : 0;
+      return (index + 1) & m_indexMask;
     }
 
     HashEntry* findHashEntry(K key) {
@@ -416,7 +422,7 @@ namespace dxvk {
     }
 
     void growHashMap(size_t newSize) {
-      size_t oldSize = m_hashMap.size();
+      size_t oldSize = computeSize();
       m_hashMap.resize(newSize);
 
       // Relocate hash entries in place
@@ -436,14 +442,15 @@ namespace dxvk {
       }
 
       m_version += 1;
+      m_indexMask = newSize - 1;
     }
 
     void growHashMapBeforeInsert() {
       // Allow a load factor of 0.7 for performance reasons
-      size_t oldSize = m_hashMap.size();
+      size_t oldSize = computeSize();
 
       if (10 * m_used >= 7 * oldSize) {
-        size_t newSize = oldSize ? (oldSize * 2 + 5) : 37;
+        size_t newSize = oldSize ? oldSize * 2 : 64;
         growHashMap(newSize);
       }
     }
