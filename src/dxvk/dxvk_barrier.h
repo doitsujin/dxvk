@@ -321,23 +321,29 @@ namespace dxvk {
       if (hashEntry) {
         ListEntry* listEntry = getListEntry(hashEntry->next);
 
-        // Only create the linear list if absolutely necessary
-        if (!listEntry && !hashEntry->data.canMerge(slice))
-          listEntry = insertListEntry(hashEntry->data, hashEntry);
-
         if (listEntry) {
-          while (listEntry) {
-            // Avoid adding new list entries if possible
-            if (listEntry->data.canMerge(slice)) {
-              listEntry->data.merge(slice);
-              break;
-            }
+          if (std::is_same_v<T, DxvkBarrierImageSlice>) {
+            // For images, try to merge the slice with existing
+            // entries if possible to keep the list small
+            do {
+              if (listEntry->data.canMerge(slice)) {
+                listEntry->data.merge(slice);
+                break;
+              }
+            } while ((listEntry = getListEntry(listEntry->next)));
 
-            listEntry = getListEntry(listEntry->next);
-          }
-
-          if (!listEntry)
+            if (!listEntry)
+              insertListEntry(slice, hashEntry);
+          } else {
+            // For buffers it's not even worth trying. Most of the
+            // time we won't be able to merge, and traversing the
+            // entire list every time is slow.
             insertListEntry(slice, hashEntry);
+          }
+        } else if (!hashEntry->data.canMerge(slice)) {
+          // Only create the linear list if absolutely necessary
+          insertListEntry(hashEntry->data, hashEntry);
+          insertListEntry(slice, hashEntry);
         }
 
         // Merge hash entry data so that it stores
