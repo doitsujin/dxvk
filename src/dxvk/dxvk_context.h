@@ -1542,13 +1542,19 @@ namespace dxvk {
     void commitGraphicsBarriers();
 
     template<bool DoEmit>
-    DxvkAccessFlags checkGfxBufferBarrier(
+    DxvkAccessFlags checkBufferBarrier(
       const DxvkBufferSlice&          slice,
             VkPipelineStageFlags      stages,
             VkAccessFlags             access);
 
     template<bool DoEmit>
-    DxvkAccessFlags checkGfxImageBarrier(
+    DxvkAccessFlags checkBufferViewBarrier(
+      const Rc<DxvkBufferView>&       slice,
+            VkPipelineStageFlags      stages,
+            VkAccessFlags             access);
+
+    template<bool DoEmit>
+    DxvkAccessFlags checkImageViewBarrier(
       const Rc<DxvkImageView>&        imageView,
             VkPipelineStageFlags      stages,
             VkAccessFlags             access);
