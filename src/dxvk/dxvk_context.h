@@ -1535,7 +1535,9 @@ namespace dxvk {
     template<bool Indexed, bool Indirect>
     bool commitGraphicsState();
     
-    void commitComputeInitBarriers();
+    template<bool DoEmit>
+    void commitComputeBarriers();
+
     void commitComputePostBarriers();
     
     template<bool Indexed, bool Indirect, bool DoEmit>

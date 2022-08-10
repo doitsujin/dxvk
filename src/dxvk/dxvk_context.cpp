@@ -1239,7 +1239,8 @@ namespace dxvk {
           uint32_t y,
           uint32_t z) {
     if (this->commitComputeState()) {
-      this->commitComputeInitBarriers();
+      this->commitComputeBarriers<false>();
+      this->commitComputeBarriers<true>();
 
       m_queryManager.beginQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
@@ -1248,8 +1249,6 @@ namespace dxvk {
       
       m_queryManager.endQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
-      
-      this->commitComputePostBarriers();
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDispatchCalls, 1);
@@ -1265,7 +1264,8 @@ namespace dxvk {
       m_execBarriers.recordCommands(m_cmd);
     
     if (this->commitComputeState()) {
-      this->commitComputeInitBarriers();
+      this->commitComputeBarriers<false>();
+      this->commitComputeBarriers<true>();
 
       m_queryManager.beginQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
@@ -1277,8 +1277,6 @@ namespace dxvk {
       m_queryManager.endQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
-      this->commitComputePostBarriers();
-
       m_execBarriers.accessBuffer(bufferSlice,
         VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
         VK_ACCESS_INDIRECT_COMMAND_READ_BIT,
@@ -5429,47 +5427,47 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::commitComputeInitBarriers() {
+  template<bool DoEmit>
+  void DxvkContext::commitComputeBarriers() {
     const auto& layout = m_state.cp.pipeline->getBindings()->layout();
 
-    bool requiresBarrier = false;
+    // Exit early if we're only checking for hazards and
+    // if the barrier set is empty, to avoid some overhead.
+    if (!DoEmit && !m_execBarriers.hasResourceBarriers())
+      return;
 
-    uint32_t index = 0;
-
-    for (uint32_t i = 0; i < DxvkDescriptorSets::SetCount && !requiresBarrier; i++) {
+    for (uint32_t i = 0; i < DxvkDescriptorSets::CsSetCount; i++) {
       uint32_t bindingCount = layout.getBindingCount(i);
 
-      for (uint32_t j = 0; j < bindingCount && !requiresBarrier; j++) {
+      for (uint32_t j = 0; j < bindingCount; j++) {
         const DxvkBindingInfo& binding = layout.getBinding(i, j);
         const DxvkShaderResourceSlot& slot = m_rc[binding.resourceBinding];
 
-        DxvkAccessFlags dstAccess = DxvkBarrierSet::getAccessTypes(binding.access);
         DxvkAccessFlags srcAccess = 0;
-        
+
         switch (binding.descriptorType) {
           case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
             if (likely(slot.bufferSlice.length())) {
-              srcAccess = m_execBarriers.getBufferAccess(
-                slot.bufferSlice.getSliceHandle());
+              srcAccess = this->checkBufferBarrier<DoEmit>(slot.bufferSlice,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, binding.access);
             }
             break;
-        
+
           case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
           case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
             if (likely(slot.bufferView != nullptr)) {
-              srcAccess = m_execBarriers.getBufferAccess(
-                slot.bufferView->getSliceHandle());
+              srcAccess = this->checkBufferViewBarrier<DoEmit>(slot.bufferView,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, binding.access);
             }
             break;
-          
+
           case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
           case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
           case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
             if (likely(slot.imageView != nullptr)) {
-              srcAccess = m_execBarriers.getImageAccess(
-                slot.imageView->image(),
-                slot.imageView->imageSubresources());
+              srcAccess = this->checkImageViewBarrier<DoEmit>(slot.imageView,
+                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, binding.access);
             }
             break;
 
@@ -5477,10 +5475,12 @@ namespace dxvk {
             /* nothing to do */;
         }
 
-        if (srcAccess == 0)
+        if (DoEmit || srcAccess == 0)
           continue;
 
         // Skip write-after-write barriers if explicitly requested
+        DxvkAccessFlags dstAccess = DxvkBarrierSet::getAccessTypes(binding.access);
+
         VkPipelineStageFlags stageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
                                        | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
 
@@ -5489,79 +5489,15 @@ namespace dxvk {
          && ((srcAccess | dstAccess) == DxvkAccess::Write))
           continue;
 
-        requiresBarrier = (srcAccess | dstAccess).test(DxvkAccess::Write);
-      }
-
-      index += bindingCount;
-    }
-
-    if (requiresBarrier)
-      m_execBarriers.recordCommands(m_cmd);
-  }
-  
-
-  void DxvkContext::commitComputePostBarriers() {
-    const auto& layout = m_state.cp.pipeline->getBindings()->layout();
-    uint32_t index = 0;
-
-    for (uint32_t i = 0; i < DxvkDescriptorSets::SetCount; i++) {
-      uint32_t bindingCount = layout.getBindingCount(i);
-
-      for (uint32_t j = 0; j < bindingCount; j++) {
-        const DxvkBindingInfo& binding = layout.getBinding(i, j);
-        const DxvkShaderResourceSlot& slot = m_rc[binding.resourceBinding];
-
-        VkPipelineStageFlags stages = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-        VkAccessFlags        access = binding.access;
-        
-        switch (binding.descriptorType) {
-          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-            if (likely(slot.bufferSlice.length())) {
-              m_execBarriers.accessBuffer(
-                slot.bufferSlice.getSliceHandle(),
-                stages, access,
-                slot.bufferSlice.bufferInfo().stages,
-                slot.bufferSlice.bufferInfo().access);
-            }
-            break;
-        
-          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-            if (likely(slot.bufferView != nullptr)) {
-              m_execBarriers.accessBuffer(
-                slot.bufferView->getSliceHandle(),
-                stages, access,
-                slot.bufferView->bufferInfo().stages,
-                slot.bufferView->bufferInfo().access);
-            }
-            break;
-          
-          case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-          case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-            if (likely(slot.imageView != nullptr)) {
-              m_execBarriers.accessImage(
-                slot.imageView->image(),
-                slot.imageView->imageSubresources(),
-                slot.imageView->imageInfo().layout,
-                stages, access,
-                slot.imageView->imageInfo().layout,
-                slot.imageView->imageInfo().stages,
-                slot.imageView->imageInfo().access);
-            }
-            break;
-
-          default:
-            /* nothing to do */;
+        if ((srcAccess | dstAccess).test(DxvkAccess::Write)) {
+          m_execBarriers.recordCommands(m_cmd);
+          return;
         }
       }
-
-      index += bindingCount;
     }
   }
   
-  
+
   template<bool Indexed, bool Indirect, bool DoEmit>
   void DxvkContext::commitGraphicsBarriers() {
     if (m_barrierControl.test(DxvkBarrierControl::IgnoreGraphicsBarriers))
