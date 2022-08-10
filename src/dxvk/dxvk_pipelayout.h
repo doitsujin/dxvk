@@ -19,6 +19,9 @@ namespace dxvk {
     static constexpr uint32_t FsBuffers   = 1;
     static constexpr uint32_t VsAll       = 2;
     static constexpr uint32_t SetCount    = 3;
+
+    static constexpr uint32_t CsAll       = 0;
+    static constexpr uint32_t CsSetCount  = 1;
   };
 
   /**
@@ -535,10 +538,8 @@ namespace dxvk {
 
     uint32_t getDirtyComputeSets() const {
       uint32_t result = 0;
-      if (m_dirtyBuffers & VK_SHADER_STAGE_COMPUTE_BIT)
-        result |= (1u << DxvkDescriptorSets::FsBuffers);
-      if (m_dirtyViews & VK_SHADER_STAGE_COMPUTE_BIT)
-        result |= (1u << DxvkDescriptorSets::FsViews) | (1u << DxvkDescriptorSets::FsBuffers);
+      if ((m_dirtyBuffers | m_dirtyViews) & VK_SHADER_STAGE_COMPUTE_BIT)
+        result |= (1u << DxvkDescriptorSets::CsAll);
       return result;
     }
 

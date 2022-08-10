@@ -9,7 +9,10 @@
 namespace dxvk {
   
   uint32_t DxvkBindingInfo::computeSetIndex() const {
-    if (stages & (VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT)) {
+    if (stages & VK_SHADER_STAGE_COMPUTE_BIT) {
+      // Use one single set for compute shaders
+      return DxvkDescriptorSets::CsAll;
+    } else if (stages & VK_SHADER_STAGE_FRAGMENT_BIT) {
       // For fragment shaders, create a separate set for UBOs
       if (descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
        || descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
@@ -215,12 +218,15 @@ namespace dxvk {
   uint32_t DxvkBindingLayout::getSetMask() const {
     uint32_t mask = 0;
 
-    if (m_stages & (VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT)) {
+    if (m_stages & VK_SHADER_STAGE_COMPUTE_BIT)
+      mask |= (1u << DxvkDescriptorSets::CsAll);
+
+    if (m_stages & VK_SHADER_STAGE_FRAGMENT_BIT) {
       mask |= (1u << DxvkDescriptorSets::FsViews)
            |  (1u << DxvkDescriptorSets::FsBuffers);
     }
 
-    if (m_stages & (VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT))
+    if (m_stages & VK_SHADER_STAGE_VERTEX_BIT)
       mask |= (1u << DxvkDescriptorSets::VsAll);
 
     return mask;
@@ -292,7 +298,12 @@ namespace dxvk {
 
     std::array<VkDescriptorSetLayout, DxvkDescriptorSets::SetCount> setLayouts = { };
 
-    for (uint32_t i = 0; i < DxvkDescriptorSets::SetCount; i++) {
+    // Use minimum number of sets for the given pipeline layout type
+    uint32_t setCount = m_layout.getStages() == VK_SHADER_STAGE_COMPUTE_BIT
+      ? DxvkDescriptorSets::CsSetCount
+      : DxvkDescriptorSets::SetCount;
+
+    for (uint32_t i = 0; i < setCount; i++) {
       m_bindingObjects[i] = setObjects[i];
 
       // Sets can be null for partial layouts
@@ -322,7 +333,7 @@ namespace dxvk {
     VkPushConstantRange pushConst = m_layout.getPushConstantRange();
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
-    pipelineLayoutInfo.setLayoutCount = setLayouts.size();
+    pipelineLayoutInfo.setLayoutCount = setCount;
     pipelineLayoutInfo.pSetLayouts = setLayouts.data();
 
     if (pushConst.stageFlags && pushConst.size) {
@@ -331,7 +342,7 @@ namespace dxvk {
     }
 
     // If the full set is defined, create a layout without INDEPENDENT_SET_BITS
-    if (m_layout.getSetMask() == (1u << DxvkDescriptorSets::SetCount) - 1) {
+    if (m_layout.getSetMask() == (1u << setCount) - 1) {
       if (vk->vkCreatePipelineLayout(vk->device(), &pipelineLayoutInfo, nullptr, &m_completeLayout))
         throw DxvkError("DxvkBindingLayoutObjects: Failed to create pipeline layout");
     }
