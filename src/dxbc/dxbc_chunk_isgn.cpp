@@ -99,13 +99,21 @@ namespace dxvk {
 
 
   bool DxbcIsgn::compareSemanticNames(
-    const std::string& a, const std::string& b) const {
+    const std::string& a, const std::string& b) {
     if (a.size() != b.size())
       return false;
     
     for (size_t i = 0; i < a.size(); i++) {
-      if (std::toupper(a[i]) != std::toupper(b[i]))
-        return false;
+      char ac = a[i];
+      char bc = b[i];
+
+      if (ac != bc) {
+        if (ac >= 'A' && ac <= 'Z') ac += 'a' - 'A';
+        if (bc >= 'A' && bc <= 'Z') bc += 'a' - 'A';
+
+        if (ac != bc)
+          return false;
+      }
     }
     
     return true;
