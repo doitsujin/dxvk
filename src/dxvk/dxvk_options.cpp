@@ -9,7 +9,6 @@ namespace dxvk {
     enableGraphicsPipelineLibrary = config.getOption<Tristate>("dxvk.enableGraphicsPipelineLibrary", Tristate::Auto);
     trackPipelineLifetime = config.getOption<Tristate>("dxvk.trackPipelineLifetime",  Tristate::Auto);
     useRawSsbo            = config.getOption<Tristate>("dxvk.useRawSsbo",             Tristate::Auto);
-    shrinkNvidiaHvvHeap   = config.getOption<bool>    ("dxvk.shrinkNvidiaHvvHeap",    false);
     hud                   = config.getOption<std::string>("dxvk.hud", "");
   }
 

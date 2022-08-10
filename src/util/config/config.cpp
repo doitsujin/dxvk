@@ -237,9 +237,9 @@ namespace dxvk {
     { R"(\\MarySkelter2\.exe$)", {{
       { "d3d11.disableMsaa",                "True" },
     }} },
-    /* Final Fantasy XIV - Stuttering on NV       */
+    /* Final Fantasy XIV: Uses lots of HVV and    *
+     * also reads some uncached memory.           */
     { R"(\\ffxiv_dx11\.exe$)", {{
-      { "dxvk.shrinkNvidiaHvvHeap",         "True" },
       { "d3d11.cachedDynamicResources",     "vi"   },
     }} },
     /* God of War - relies on NVAPI/AMDAGS for    *

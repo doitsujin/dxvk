@@ -202,30 +202,6 @@ namespace dxvk {
       m_memTypes[i].memType    = m_memProps.memoryTypes[i];
       m_memTypes[i].memTypeId  = i;
     }
-
-    /* Check what kind of heap the HVV memory type is on, if any. If the
-     * HVV memory type is on the largest device-local heap, we either have
-     * an UMA system or an RBAR-enabled system. Otherwise, there will likely
-     * be a separate, smaller heap for it. */
-    VkDeviceSize largestDeviceLocalHeap = 0;
-
-    for (uint32_t i = 0; i < m_memProps.memoryTypeCount; i++) {
-      if (m_memTypes[i].memType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-        largestDeviceLocalHeap = std::max(largestDeviceLocalHeap, m_memTypes[i].heap->properties.size);
-    }
-
-    /* Work around an issue on Nvidia drivers where using the
-     * entire HVV heap can cause slowdowns in specific games */
-    if (device->adapter()->matchesDriver(VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0)
-     && device->config().shrinkNvidiaHvvHeap) {
-      for (uint32_t i = 0; i < m_memProps.memoryTypeCount; i++) {
-        VkMemoryPropertyFlags hvvFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-
-        if ((m_memTypes[i].memType.propertyFlags & hvvFlags) == hvvFlags
-         && (m_memTypes[i].heap->properties.size < largestDeviceLocalHeap))
-          m_memTypes[i].heap->budget = 32 << 20;
-      }
-    }
   }
   
   
