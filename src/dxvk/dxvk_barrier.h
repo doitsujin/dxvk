@@ -20,10 +20,12 @@ namespace dxvk {
   public:
 
     DxvkBarrierBufferSlice()
-    : m_offset(0), m_length(0), m_access(0) { }
+    : m_loAddr(0), m_hiAddr(0), m_access(0) { }
 
     DxvkBarrierBufferSlice(VkDeviceSize offset, VkDeviceSize length, DxvkAccessFlags access)
-    : m_offset(offset), m_length(length), m_access(access) { }
+    : m_loAddr(offset),
+      m_hiAddr(offset + length),
+      m_access(access) { }
 
     /**
      * \brief Checks whether two slices overlap
@@ -32,8 +34,8 @@ namespace dxvk {
      * \returns \c true if the two slices overlap
      */
     bool overlaps(const DxvkBarrierBufferSlice& slice) const {
-      return m_offset +       m_length > slice.m_offset
-          && m_offset < slice.m_offset + slice.m_length;
+      return m_hiAddr > slice.m_loAddr
+          && m_loAddr < slice.m_hiAddr;
     }
 
     /**
@@ -58,11 +60,11 @@ namespace dxvk {
      */
     bool canMerge(const DxvkBarrierBufferSlice& slice) const {
       if (m_access == slice.m_access) {
-        return m_offset +        m_length >= slice.m_offset
-            && m_offset <= slice.m_offset +  slice.m_length;
+        return m_hiAddr >= slice.m_loAddr
+            && m_loAddr <= slice.m_hiAddr;
       } else {
-        return m_offset == slice.m_offset
-            && m_length == slice.m_length;
+        return m_loAddr == slice.m_loAddr
+            && m_hiAddr == slice.m_hiAddr;
       }
     }
 
@@ -75,10 +77,8 @@ namespace dxvk {
      * \param [in] slice The slice to merge
      */
     void merge(const DxvkBarrierBufferSlice& slice) {
-      VkDeviceSize end = std::max(m_offset + m_length, slice.m_offset + slice.m_length);
-
-      m_offset = std::min(m_offset, slice.m_offset);
-      m_length = end - m_offset;
+      m_loAddr = std::min(m_loAddr, slice.m_loAddr);
+      m_hiAddr = std::max(m_hiAddr, slice.m_hiAddr);
       m_access.set(slice.m_access);
     }
 
@@ -87,13 +87,13 @@ namespace dxvk {
      * \returns Access flags
      */
     DxvkAccessFlags getAccess() const {
-      return m_access;
+      return DxvkAccessFlags(m_access);
     }
 
   private:
 
-    VkDeviceSize    m_offset;
-    VkDeviceSize    m_length;
+    VkDeviceSize    m_loAddr;
+    VkDeviceSize    m_hiAddr;
     DxvkAccessFlags m_access;
 
   };
@@ -110,10 +110,20 @@ namespace dxvk {
   public:
 
     DxvkBarrierImageSlice()
-    : m_range(VkImageSubresourceRange()), m_access(0) { }
+    : m_aspects(0),
+      m_minLayer(0),
+      m_maxLayer(0),
+      m_minLevel(0),
+      m_maxLevel(0),
+      m_access(0) { }
 
     DxvkBarrierImageSlice(VkImageSubresourceRange range, DxvkAccessFlags access)
-    : m_range(range), m_access(access) { }
+    : m_aspects(range.aspectMask),
+      m_minLayer(range.baseArrayLayer),
+      m_maxLayer(range.baseArrayLayer + range.layerCount),
+      m_minLevel(range.baseMipLevel),
+      m_maxLevel(range.baseMipLevel + range.levelCount),
+      m_access(access) { }
 
     /**
      * \brief Checks whether two slices overlap
@@ -122,11 +132,11 @@ namespace dxvk {
      * \returns \c true if the two slices overlap
      */
     bool overlaps(const DxvkBarrierImageSlice& slice) const {
-      return (m_range.aspectMask     & slice.m_range.aspectMask)
-          && (m_range.baseArrayLayer < slice.m_range.baseArrayLayer + slice.m_range.layerCount)
-          && (m_range.baseArrayLayer +       m_range.layerCount     > slice.m_range.baseArrayLayer)
-          && (m_range.baseMipLevel   < slice.m_range.baseMipLevel   + slice.m_range.levelCount)
-          && (m_range.baseMipLevel   +       m_range.levelCount     > slice.m_range.baseMipLevel);
+      return (m_aspects & slice.m_aspects)
+          && (m_minLayer < slice.m_maxLayer)
+          && (m_maxLayer > slice.m_minLayer)
+          && (m_minLevel < slice.m_maxLevel)
+          && (m_maxLevel > slice.m_minLevel);
     }
 
     /**
@@ -143,18 +153,30 @@ namespace dxvk {
     /**
      * \brief Checks whether two slices can be merged
      *
-     * This is a simplified implementation that does not check for
-     * adjacent or overlapping layers or levels, and instead only
-     * returns \c true if both slices contain the same mip levels
-     * and array layers. Access flags and image aspects may differ.
+     * This is a simplified implementation that does only
+     * checks for adjacent subresources in one dimension.
      * \param [in] slice The other image slice to check
      * \returns \c true if the slices can be merged.
      */
     bool canMerge(const DxvkBarrierImageSlice& slice) const {
-      return m_range.baseMipLevel   == slice.m_range.baseMipLevel
-          && m_range.levelCount     == slice.m_range.levelCount
-          && m_range.baseArrayLayer == slice.m_range.baseArrayLayer
-          && m_range.layerCount     == slice.m_range.layerCount;
+      bool sameLayers = m_minLayer == slice.m_minLayer
+                     && m_maxLayer == slice.m_maxLayer;
+      bool sameLevels = m_minLevel == slice.m_minLevel
+                     && m_maxLevel == slice.m_maxLevel;
+
+      if (sameLayers == sameLevels)
+        return sameLayers;
+
+      if (m_access != slice.m_access)
+        return false;
+
+      if (sameLayers) {
+        return m_maxLevel >= slice.m_minLevel
+            && m_minLevel <= slice.m_maxLevel;
+      } else /* if (sameLevels) */ {
+        return m_maxLayer >= slice.m_minLayer
+            && m_minLayer <= slice.m_maxLayer;
+      }
     }
 
     /**
@@ -166,15 +188,11 @@ namespace dxvk {
      * \param [in] slice The slice to merge
      */
     void merge(const DxvkBarrierImageSlice& slice) {
-      uint32_t maxMipLevel = std::max(m_range.baseMipLevel + m_range.levelCount,
-        slice.m_range.baseMipLevel + slice.m_range.levelCount);
-      uint32_t maxArrayLayer = std::max(m_range.baseArrayLayer + m_range.layerCount,
-        slice.m_range.baseArrayLayer + slice.m_range.layerCount);
-      m_range.aspectMask     |= slice.m_range.aspectMask;
-      m_range.baseMipLevel    = std::min(m_range.baseMipLevel, slice.m_range.baseMipLevel);
-      m_range.levelCount      = maxMipLevel - m_range.baseMipLevel;
-      m_range.baseArrayLayer  = std::min(m_range.baseMipLevel, slice.m_range.baseArrayLayer);
-      m_range.layerCount      = maxArrayLayer - m_range.baseArrayLayer;
+      m_aspects |= slice.m_aspects;
+      m_minLayer = std::min(m_minLayer, slice.m_minLayer);
+      m_maxLayer = std::max(m_maxLayer, slice.m_maxLayer);
+      m_minLevel = std::min(m_minLevel, slice.m_minLevel);
+      m_maxLevel = std::max(m_maxLevel, slice.m_maxLevel);
       m_access.set(slice.m_access);
     }
 
@@ -188,8 +206,12 @@ namespace dxvk {
 
   private:
 
-    VkImageSubresourceRange m_range;
-    DxvkAccessFlags         m_access;
+    VkImageAspectFlags  m_aspects;
+    uint32_t            m_minLayer;
+    uint32_t            m_maxLayer;
+    uint32_t            m_minLevel;
+    uint32_t            m_maxLevel;
+    DxvkAccessFlags     m_access;
 
   };
 
