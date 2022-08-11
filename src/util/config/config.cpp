@@ -386,15 +386,6 @@ namespace dxvk {
     { R"(\\TESV\.exe$)", {{
       { "d3d9.customVendorId",              "1002" },
     }} },
-    /* RTHDRIBL Demo                              
-       Uses DONOTWAIT after GetRenderTargetData
-       then goes into an infinite loop if it gets
-       D3DERR_WASSTILLDRAWING.
-       This is a better solution than penalizing
-       other apps that use this properly.         */
-    { R"(\\rthdribl\.exe$)", {{
-      { "d3d9.allowDoNotWait",              "False" },
-    }} },
     /* Hyperdimension Neptunia U: Action Unleashed */
     { R"(\\Neptunia\.exe$)", {{
       { "d3d9.forceAspectRatio",            "16:9" },
@@ -562,11 +553,6 @@ namespace dxvk {
     { R"(\\eoa\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
     }} },
-    /* Beyond Good And Evil                     *
-     * Fixes missing sun and light shafts       */
-    { R"(\\BGE\.exe$)", {{
-      { "d3d9.allowDoNotWait",              "False" },
-    }} },
     /* Supreme Commander & Forged Alliance Forever */
     { R"(\\(SupremeCommander|ForgedAlliance)\.exe$)", {{
       { "d3d9.floatEmulation",            "Strict" },
@@ -579,11 +565,6 @@ namespace dxvk {
        Physics break at high fps               */
     { R"(\\bionic_commando\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
-    }} },
-    /* Port Royale 3                            *
-     * Fixes infinite loading screens           */
-    { R"(\\PortRoyale3\.exe$)", {{
-      { "d3d9.allowDoNotWait",           "False" },
     }} },
     /* Need For Speed 3 modern patch            */
     { R"(\\nfs3\.exe$)", {{

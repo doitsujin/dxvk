@@ -120,9 +120,6 @@ namespace dxvk {
     /// Forces an MSAA level on the swapchain
     int32_t forceSwapchainMSAA;
 
-    /// Allow D3DLOCK_DONOTWAIT
-    bool allowDoNotWait;
-
     /// Allow D3DLOCK_DISCARD
     bool allowDiscard;
 
