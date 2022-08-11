@@ -4081,7 +4081,7 @@ namespace dxvk {
         if (!needsStall)
           break;
 
-        m_csThread.synchronize(payload.sequenceNumber);
+        SynchronizeCsThread(payload.sequenceNumber);
         lastSequenceNumber = payload.sequenceNumber;
       }
 
@@ -4829,7 +4829,8 @@ namespace dxvk {
 
     // Dispatch current chunk so that all commands
     // recorded prior to this function will be run
-    FlushCsChunk();
+    if (SequenceNumber > m_csSeqNum)
+      FlushCsChunk();
 
     m_csThread.synchronize(SequenceNumber);
   }
@@ -5178,9 +5179,9 @@ namespace dxvk {
     m_initializer->Flush();
     m_converter->Flush();
 
-    EmitStagingBufferMarker();
-
     if (m_csIsBusy || !m_csChunk->empty()) {
+      EmitStagingBufferMarker();
+
       // Add commands to flush the threaded
       // context, then flush the command list
       EmitCs([](DxvkContext* ctx) {
