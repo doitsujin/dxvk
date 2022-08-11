@@ -152,6 +152,10 @@ namespace dxvk {
       if (info.bindingOffset)
         m_bindingOffsets.push_back(info);
     }
+
+    // Don't set pipeline library flag if the shader
+    // doesn't actually support pipeline libraries
+    m_needsLibraryCompile = canUsePipelineLibrary();
   }
 
 
@@ -879,7 +883,7 @@ namespace dxvk {
   DxvkShaderPipelineLibrary::DxvkShaderPipelineLibrary(
     const DxvkDevice*               device,
           DxvkPipelineManager*      manager,
-    const DxvkShader*               shader,
+          DxvkShader*               shader,
     const DxvkBindingLayoutObjects* layout)
   : m_device      (device),
     m_stats       (&manager->m_stats),
@@ -980,6 +984,9 @@ namespace dxvk {
     const DxvkShaderPipelineLibraryCompileArgs& args) {
     VkShaderStageFlagBits stage = getShaderStage();
     VkPipeline pipeline = VK_NULL_HANDLE;
+
+    if (m_shader)
+      m_shader->notifyLibraryCompile();
 
     // If this is not the first time we're compiling the pipeline,
     // try to get a cache hit using the shader module identifier

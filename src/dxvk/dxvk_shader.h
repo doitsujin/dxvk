@@ -128,6 +128,28 @@ namespace dxvk {
     }
 
     /**
+     * \brief Tests whether this shader needs to be compiled
+     *
+     * If pipeline libraries are supported, this will return
+     * \c false once the pipeline library is being compiled.
+     * \returns \c true if compilation is still needed
+     */
+    bool needsLibraryCompile() const {
+      return m_needsLibraryCompile.load();
+    }
+
+    /**
+     * \brief Notifies library compile
+     *
+     * Called automatically when pipeline compilation begins.
+     * Subsequent calls to \ref needsLibraryCompile will return
+     * \c false.
+     */
+    void notifyLibraryCompile() {
+      m_needsLibraryCompile.store(false);
+    }
+
+    /**
      * \brief Patches code using given info
      *
      * Rewrites binding IDs and potentially fixes up other
@@ -225,6 +247,7 @@ namespace dxvk {
     size_t                        m_o1LocOffset = 0;
 
     uint32_t                      m_specConstantMask = 0;
+    std::atomic<bool>             m_needsLibraryCompile = { true };
 
     std::vector<char>             m_uniformData;
     std::vector<BindingOffsets>   m_bindingOffsets;
@@ -380,7 +403,7 @@ namespace dxvk {
     DxvkShaderPipelineLibrary(
       const DxvkDevice*               device,
             DxvkPipelineManager*      manager,
-      const DxvkShader*               shader,
+            DxvkShader*               shader,
       const DxvkBindingLayoutObjects* layout);
 
     ~DxvkShaderPipelineLibrary();
@@ -429,7 +452,7 @@ namespace dxvk {
 
     const DxvkDevice*               m_device;
           DxvkPipelineStats*        m_stats;
-    const DxvkShader*               m_shader;
+          DxvkShader*               m_shader;
     const DxvkBindingLayoutObjects* m_layout;
 
     dxvk::mutex     m_mutex;
