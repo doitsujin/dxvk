@@ -5580,8 +5580,8 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
             if ((slot.bufferSlice.length())
              && (slot.bufferSlice.bufferInfo().access & storageBufferAccess)) {
-               requiresBarrier = this->checkBufferBarrier<DoEmit>(slot.bufferSlice,
-                 util::pipelineStages(binding.stages), binding.access);
+              requiresBarrier = this->checkBufferBarrier<DoEmit>(slot.bufferSlice,
+                util::pipelineStages(binding.stages), binding.access);
             }
             break;
 
@@ -5589,8 +5589,9 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
             if ((slot.bufferView != nullptr)
              && (slot.bufferView->bufferInfo().access & storageBufferAccess)) {
-               requiresBarrier = this->checkBufferViewBarrier<DoEmit>(slot.bufferView,
-                 util::pipelineStages(binding.stages), binding.access);
+              slot.bufferView->updateView();
+              requiresBarrier = this->checkBufferViewBarrier<DoEmit>(slot.bufferView,
+                util::pipelineStages(binding.stages), binding.access);
             }
             break;
 
@@ -5599,8 +5600,8 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
             if ((slot.imageView != nullptr)
              && (slot.imageView->imageInfo().access & storageImageAccess)) {
-               requiresBarrier = this->checkImageViewBarrier<DoEmit>(slot.imageView,
-                 util::pipelineStages(binding.stages), binding.access);
+              requiresBarrier = this->checkImageViewBarrier<DoEmit>(slot.imageView,
+                util::pipelineStages(binding.stages), binding.access);
             }
             break;
 
