@@ -611,6 +611,7 @@ namespace dxvk {
      * Very prone to address space crashes      */
     { R"(\\(GHWT|GHWT_Definitive)\.exe$)", {{
       { "d3d9.textureMemory",               "16" },
+      { "d3d9.allowDirectBufferMapping",    "False" },
     }} },
   }};
 
