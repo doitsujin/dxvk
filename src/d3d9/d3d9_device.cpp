@@ -4200,8 +4200,9 @@ namespace dxvk {
     if (unlikely((Flags & (D3DLOCK_DISCARD | D3DLOCK_READONLY)) == (D3DLOCK_DISCARD | D3DLOCK_READONLY)))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(!m_d3d9Options.allowDoNotWait))
-      Flags &= ~D3DLOCK_DONOTWAIT;
+    // We only ever wait for textures that were used with GetRenderTargetData or GetFrontBufferData anyway.
+    // Games like Beyond Good and Evil break if this doesn't succeed.
+    Flags &= ~D3DLOCK_DONOTWAIT;
 
     if (unlikely((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)))
       Flags &= ~D3DLOCK_DISCARD;
