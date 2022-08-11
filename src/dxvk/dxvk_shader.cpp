@@ -947,7 +947,7 @@ namespace dxvk {
     std::lock_guard lock(m_mutex);
 
     // Skip if a pipeline has already been compiled
-    if (m_pipeline)
+    if (m_compiledOnce)
       return;
 
     // Compile the pipeline with default args
