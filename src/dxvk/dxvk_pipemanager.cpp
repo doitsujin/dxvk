@@ -88,6 +88,7 @@ namespace dxvk {
 
       m_workersRunning = false;
       m_queueCond.notify_all();
+      m_queueCondPrioritized.notify_all();
     }
 
     for (auto& worker : m_workers)
