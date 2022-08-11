@@ -6215,8 +6215,13 @@ namespace dxvk {
   template <DxsoProgramType ShaderStage>
   void D3D9DeviceEx::BindShader(
   const D3D9CommonShader*                 pShaderModule) {
+    auto shader = pShaderModule->GetShader();
+
+    if (unlikely(shader->needsLibraryCompile()))
+      m_dxvkDevice->requestCompileShader(shader);
+
     EmitCs([
-      cShader = pShaderModule->GetShader()
+      cShader = std::move(shader)
     ] (DxvkContext* ctx) mutable {
       constexpr VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
       ctx->bindShader<stage>(std::move(cShader));
