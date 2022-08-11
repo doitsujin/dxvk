@@ -702,10 +702,10 @@ namespace dxvk {
     if (pLUID == nullptr)
       return D3DERR_INVALIDCALL;
 
-    auto& deviceId = m_adapter->devicePropertiesExt().coreDeviceId;
+    auto& vk11 = m_adapter->devicePropertiesExt().vk11;
 
-    if (deviceId.deviceLUIDValid)
-      *pLUID = bit::cast<LUID>(deviceId.deviceLUID);
+    if (vk11.deviceLUIDValid)
+      *pLUID = bit::cast<LUID>(vk11.deviceLUID);
     else
       *pLUID = dxvk::GetAdapterLUID(m_ordinal);
 
