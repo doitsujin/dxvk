@@ -213,6 +213,12 @@ namespace dxvk {
   }
   
   
+  void DxvkDevice::requestCompileShader(
+    const Rc<DxvkShader>&           shader) {
+    m_objects.pipelineManager().requestCompileShader(shader);
+  }
+
+
   void DxvkDevice::presentImage(
     const Rc<vk::Presenter>&        presenter,
           DxvkSubmitStatus*         status) {

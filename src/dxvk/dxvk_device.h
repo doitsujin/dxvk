@@ -381,6 +381,13 @@ namespace dxvk {
       const Rc<DxvkShader>&         shader);
     
     /**
+     * \brief Prioritizes compilation of a given shader
+     * \param [in] shader Shader to start compiling
+     */
+    void requestCompileShader(
+      const Rc<DxvkShader>&         shader);
+
+    /**
      * \brief Presents a swap chain image
      * 
      * Invokes the presenter's \c presentImage method on
