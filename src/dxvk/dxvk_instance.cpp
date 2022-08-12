@@ -115,6 +115,19 @@ namespace dxvk {
     for (const auto& provider : m_extProviders)
       extensionsEnabled.merge(provider->getInstanceExtensions());
 
+    const auto& disableExtEnv = env::getEnvVar("DXVK_DISABLE_EXTENSIONS");
+
+    if (!disableExtEnv.empty()) {
+        for (const auto& extName : env::parseEnvValue(disableExtEnv)) {
+            auto result = std::find_if(insExtensionList.begin(), insExtensionList.end(), [&] (DxvkExt* ext) {
+                return extName == ext->name();
+            });
+
+            if (result != insExtensionList.end())
+                extensionsEnabled.disableExtension(**result);
+        }
+    }
+
     DxvkNameList extensionNameList = extensionsEnabled.toNameList();
     
     Logger::info("Enabled instance extensions:");

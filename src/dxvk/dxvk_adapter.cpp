@@ -335,6 +335,20 @@ namespace dxvk {
     
     // Enable additional extensions if necessary
     extensionsEnabled.merge(m_extraExtensions);
+
+    const auto& disableExtEnv = env::getEnvVar("DXVK_DISABLE_EXTENSIONS");
+
+      if (!disableExtEnv.empty()) {
+          for (const auto& extName : env::parseEnvValue(disableExtEnv)) {
+              auto result = std::find_if(devExtensionList.begin(), devExtensionList.end(), [&] (DxvkExt* ext) {
+                  return extName == ext->name();
+              });
+
+              if (result != devExtensionList.end())
+                  extensionsEnabled.disableExtension(**result);
+          }
+      }
+
     DxvkNameList extensionNameList = extensionsEnabled.toNameList();
 
     // Optionally used by some client API extensions
