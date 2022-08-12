@@ -5117,8 +5117,8 @@ namespace dxvk {
     auto& rs = m_state.renderStates;
 
     if constexpr (Item == D3D9RenderStateItem::AlphaRef) {
-      float alpha = float(rs[D3DRS_ALPHAREF] & 0xFF) / 255.0f;
-      UpdatePushConstant<offsetof(D3D9RenderStateInfo, alphaRef), sizeof(float)>(&alpha);
+      uint32_t alpha = rs[D3DRS_ALPHAREF];
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, alphaRef), sizeof(uint32_t)>(&alpha);
     }
     else if constexpr (Item == D3D9RenderStateItem::FogColor) {
       Vector4 color;

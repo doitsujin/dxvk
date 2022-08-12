@@ -22,6 +22,7 @@ namespace dxvk {
 
     SpecSamplerNull,        // 1 bit for 20 samplers          | Bits: 20
     SpecProjectionType,     // 1 bit for 6 PS 1.x samplers    | Bits: 6
+    SpecAlphaPrecisionBits, // Range: 0 -> 8 or 0xF           | Bits: 4
 
     SpecVertexShaderBools,  // 16 bools                       | Bits: 16
     SpecPixelShaderBools,   // 16 bools                       | Bits: 16
@@ -56,6 +57,7 @@ namespace dxvk {
 
       { 2, 0,  20 }, // SamplerNull
       { 2, 20, 6 },  // ProjectionType
+      { 2, 26, 4 },  // AlphaPrecisionBits
 
       { 3, 0,  16 }, // VertexShaderBools
       { 3, 16, 16 }, // PixelShaderBools
