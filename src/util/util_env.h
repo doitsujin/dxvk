@@ -27,6 +27,16 @@ namespace dxvk::env {
    * \returns Value of the variable
    */
   std::string getEnvVar(const char* name);
+
+  /**
+    * \brief Parses the value of environmental variable by comma
+    *
+    * If the variable is not defined, this
+    * will return an empty vector.
+    * \param [in] env Value of the variable
+    * \returns Parsed and packed the value of the variable into a vector
+    */
+  std::vector<std::string> parseEnvValue(const std::string& env);
   
   /**
    * \brief Checks whether a file name has a given extension

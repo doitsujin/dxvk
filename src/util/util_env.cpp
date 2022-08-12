@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <filesystem>
 #include <numeric>
+#include <algorithm>
 
 #ifdef __linux__
 #include <unistd.h>
@@ -29,6 +30,19 @@ namespace dxvk::env {
 #endif
   }
 
+  std::vector<std::string> parseEnvValue(const std::string& env) {
+      std::vector<std::string> result {};
+
+      if (env.empty())
+          return result;
+
+      std::stringstream ss(env);
+      for (std::string str; std::getline(ss, str, ',');) {
+          str.erase(std::remove(str.begin(), str.end(), ' '), str.end());
+          result.push_back(str);
+      }
+      return result;
+  }
 
   size_t matchFileExtension(const std::string& name, const char* ext) {
     auto pos = name.find_last_of('.');
