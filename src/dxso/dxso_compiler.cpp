@@ -3694,9 +3694,9 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
   
   void DxsoCompiler::emitPsProcessing() {
-    uint32_t boolType  = m_module.defBoolType();
     uint32_t floatType = m_module.defFloatType(32);
-    uint32_t floatPtr  = m_module.defPointerType(floatType, spv::StorageClassPushConstant);
+    uint32_t uintType  = m_module.defIntType(32, 0);
+    uint32_t uintPtr   = m_module.defPointerType(uintType, spv::StorageClassPushConstant);
     
     // Implement alpha test and fog
     DxsoRegister color0;
@@ -3712,8 +3712,9 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       D3D9AlphaTestContext alphaTestContext;
       alphaTestContext.alphaFuncId = m_spec.get(m_module, m_specUbo, SpecAlphaCompareOp);
-      alphaTestContext.alphaRefId = m_module.opLoad(floatType,
-        m_module.opAccessChain(floatPtr, m_rsBlock, 1, &alphaRefMember));
+      alphaTestContext.alphaPrecisionId = m_spec.get(m_module, m_specUbo, SpecAlphaPrecisionBits);
+      alphaTestContext.alphaRefId = m_module.opLoad(uintType,
+        m_module.opAccessChain(uintPtr, m_rsBlock, 1, &alphaRefMember));
       alphaTestContext.alphaId = m_module.opCompositeExtract(floatType,
         m_module.opLoad(m_module.defVectorType(floatType, 4), oC0.id),
         1, &alphaComponentId);

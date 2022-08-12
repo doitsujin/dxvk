@@ -40,6 +40,7 @@ namespace dxvk {
 
   struct D3D9AlphaTestContext {
     uint32_t alphaId;
+    uint32_t alphaPrecisionId;
     uint32_t alphaFuncId;
     uint32_t alphaRefId;
   };
