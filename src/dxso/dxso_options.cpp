@@ -41,9 +41,6 @@ namespace dxvk {
     vertexFloatConstantBufferAsSSBO = pDevice->GetVertexConstantLayout().floatSize() > devInfo.core.properties.limits.maxUniformBufferRange;
 
     longMad = options.longMad;
-
-    alphaTestWiggleRoom = options.alphaTestWiggleRoom;
-
     robustness2Supported = devFeatures.extRobustness2.robustBufferAccess2;
   }
 

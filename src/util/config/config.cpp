@@ -413,10 +413,6 @@ namespace dxvk {
     { R"(\\SpellForce2.*\.exe$)", {{
       { "d3d9.forceSamplerTypeSpecConstants", "True" },
     }} },
-    /* Everquest 2                                */
-    { R"(\\EverQuest2.*\.exe$)", {{
-      { "d3d9.alphaTestWiggleRoom", "True" },
-    }} },
     /* Tomb Raider: Legend                       */
     { R"(\\trl\.exe$)", {{
       { "d3d9.apitraceMode",                "True" },
@@ -574,11 +570,6 @@ namespace dxvk {
      * UI breaks at high fps                     */
     { R"(\\BGE\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
-    }} },
-    /* Ninja Blade                              *
-     * Transparent main character on Nvidia     */
-    { R"(\\NinjaBlade\.exe$)", {{
-      { "d3d9.alphaTestWiggleRoom",       "True" },
     }} },
     /* YS Origin                                *
      * Helps very bad frametimes in some areas  */
