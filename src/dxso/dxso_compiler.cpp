@@ -3698,8 +3698,6 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     uint32_t floatType = m_module.defFloatType(32);
     uint32_t floatPtr  = m_module.defPointerType(floatType, spv::StorageClassPushConstant);
     
-    uint32_t alphaFuncId = m_spec.get(m_module, m_specUbo, SpecAlphaCompareOp);
-
     // Implement alpha test and fog
     DxsoRegister color0;
     color0.id = DxsoRegisterId{ DxsoRegisterType::ColorOut, 0 };
@@ -3709,107 +3707,18 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       if (m_programInfo.majorVersion() < 3)
         emitFog();
 
-      // Labels for the alpha test
-      std::array<SpirvSwitchCaseLabel, 8> atestCaseLabels = {{
-        { uint32_t(VK_COMPARE_OP_NEVER),            m_module.allocateId() },
-        { uint32_t(VK_COMPARE_OP_LESS),             m_module.allocateId() },
-        { uint32_t(VK_COMPARE_OP_EQUAL),            m_module.allocateId() },
-        { uint32_t(VK_COMPARE_OP_LESS_OR_EQUAL),    m_module.allocateId() },
-        { uint32_t(VK_COMPARE_OP_GREATER),          m_module.allocateId() },
-        { uint32_t(VK_COMPARE_OP_NOT_EQUAL),        m_module.allocateId() },
-        { uint32_t(VK_COMPARE_OP_GREATER_OR_EQUAL), m_module.allocateId() },
-        { uint32_t(VK_COMPARE_OP_ALWAYS),           m_module.allocateId() },
-      }};
-      
-      uint32_t atestBeginLabel   = m_module.allocateId();
-      uint32_t atestTestLabel    = m_module.allocateId();
-      uint32_t atestDiscardLabel = m_module.allocateId();
-      uint32_t atestKeepLabel    = m_module.allocateId();
-      uint32_t atestSkipLabel    = m_module.allocateId();
-      
-      // if (alpha_func != ALWAYS) { ... }
-      uint32_t isNotAlways = m_module.opINotEqual(boolType, alphaFuncId, m_module.constu32(VK_COMPARE_OP_ALWAYS));
-      m_module.opSelectionMerge(atestSkipLabel, spv::SelectionControlMaskNone);
-      m_module.opBranchConditional(isNotAlways, atestBeginLabel, atestSkipLabel);
-      m_module.opLabel(atestBeginLabel);
-      
-      // Load alpha component
+      uint32_t alphaRefMember = m_module.constu32(uint32_t(D3D9RenderStateItem::AlphaRef));
       uint32_t alphaComponentId = 3;
-      uint32_t alphaId = m_module.opCompositeExtract(floatType,
+
+      D3D9AlphaTestContext alphaTestContext;
+      alphaTestContext.alphaFuncId = m_spec.get(m_module, m_specUbo, SpecAlphaCompareOp);
+      alphaTestContext.alphaRefId = m_module.opLoad(floatType,
+        m_module.opAccessChain(floatPtr, m_rsBlock, 1, &alphaRefMember));
+      alphaTestContext.alphaId = m_module.opCompositeExtract(floatType,
         m_module.opLoad(m_module.defVectorType(floatType, 4), oC0.id),
         1, &alphaComponentId);
 
-      if (m_moduleInfo.options.alphaTestWiggleRoom) {
-        // NV has wonky interpolation of all 1's in a VS -> PS going to 0.999999...
-        // This causes garbage-looking graphics on people's clothing in EverQuest 2 as it does alpha == 1.0.
-
-        // My testing shows the alpha test has a precision of 1/256 for all A8 and below formats,
-        // and around 1 / 2048 for A32F formats and 1 / 4096 for A16F formats (It makes no sense to me too)
-        // so anyway, we're just going to round this to a precision of 1 / 4096 and hopefully this should make things happy
-        // everywhere.
-        const uint32_t alphaSizeId = m_module.constf32(4096.0f);
-
-        alphaId = m_module.opFMul(floatType, alphaId, alphaSizeId);
-        alphaId = m_module.opRound(floatType, alphaId);
-        alphaId = m_module.opFDiv(floatType, alphaId, alphaSizeId);
-      }
-      
-      // Load alpha reference
-      uint32_t alphaRefMember = m_module.constu32(uint32_t(D3D9RenderStateItem::AlphaRef));
-      uint32_t alphaRefId = m_module.opLoad(floatType,
-        m_module.opAccessChain(floatPtr, m_rsBlock, 1, &alphaRefMember));
-      
-      // switch (alpha_func) { ... }
-      m_module.opSelectionMerge(atestTestLabel, spv::SelectionControlMaskNone);
-      m_module.opSwitch(alphaFuncId,
-        atestCaseLabels[uint32_t(VK_COMPARE_OP_ALWAYS)].labelId,
-        atestCaseLabels.size(),
-        atestCaseLabels.data());
-      
-      std::array<SpirvPhiLabel, 8> atestVariables;
-      
-      for (uint32_t i = 0; i < atestCaseLabels.size(); i++) {
-        m_module.opLabel(atestCaseLabels[i].labelId);
-        
-        atestVariables[i].labelId = atestCaseLabels[i].labelId;
-        atestVariables[i].varId   = [&] {
-          switch (VkCompareOp(atestCaseLabels[i].literal)) {
-            case VK_COMPARE_OP_NEVER:            return m_module.constBool(false);
-            case VK_COMPARE_OP_LESS:             return m_module.opFOrdLessThan        (boolType, alphaId, alphaRefId);
-            case VK_COMPARE_OP_EQUAL:            return m_module.opFOrdEqual           (boolType, alphaId, alphaRefId);
-            case VK_COMPARE_OP_LESS_OR_EQUAL:    return m_module.opFOrdLessThanEqual   (boolType, alphaId, alphaRefId);
-            case VK_COMPARE_OP_GREATER:          return m_module.opFOrdGreaterThan     (boolType, alphaId, alphaRefId);
-            case VK_COMPARE_OP_NOT_EQUAL:        return m_module.opFOrdNotEqual        (boolType, alphaId, alphaRefId);
-            case VK_COMPARE_OP_GREATER_OR_EQUAL: return m_module.opFOrdGreaterThanEqual(boolType, alphaId, alphaRefId);
-            default:
-            case VK_COMPARE_OP_ALWAYS:           return m_module.constBool(true);
-          }
-        }();
-        
-        m_module.opBranch(atestTestLabel);
-      }
-      
-      // end switch
-      m_module.opLabel(atestTestLabel);
-      
-      uint32_t atestResult = m_module.opPhi(boolType,
-        atestVariables.size(),
-        atestVariables.data());
-      uint32_t atestDiscard = m_module.opLogicalNot(boolType, atestResult);
-      
-      // if (do_discard) { ... }
-      m_module.opSelectionMerge(atestKeepLabel, spv::SelectionControlMaskNone);
-      m_module.opBranchConditional(atestDiscard, atestDiscardLabel, atestKeepLabel);
-      
-      m_module.opLabel(atestDiscardLabel);
-      m_module.opKill();
-      
-      // end if (do_discard)
-      m_module.opLabel(atestKeepLabel);
-      m_module.opBranch(atestSkipLabel);
-      
-      // end if (alpha_test)
-      m_module.opLabel(atestSkipLabel);
+      DoFixedFunctionAlphaTest(m_module, alphaTestContext);
     }
   }
 
