@@ -790,7 +790,7 @@ namespace dxvk {
     bool diffuseOrSpec = semantic == DxsoSemantic{ DxsoUsage::Color, 0 }
                       || semantic == DxsoSemantic{ DxsoUsage::Color, 1 };
 
-    if (diffuseOrSpec)
+    if (diffuseOrSpec && input)
       m_flatShadingMask |= 1u << slot;
 
     std::string name = str::format(input ? "in_" : "out_", semantic.usage, semantic.usageIndex);
