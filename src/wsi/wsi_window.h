@@ -3,21 +3,11 @@
 #include <windows.h>
 
 #include "wsi_monitor.h"
+#include "wsi_platform.h"
 
 #include "../vulkan/vulkan_loader.h"
 
 namespace dxvk::wsi {
-
-  /**
-    * \brief Impl-dependent state
-    */
-  struct DxvkWindowState {
-#ifdef DXVK_WSI_WIN32
-    LONG style   = 0;
-    LONG exstyle = 0;
-    RECT rect    = { 0, 0, 0, 0 };
-#endif
-  };
 
   /**
     * \brief The size of the window
