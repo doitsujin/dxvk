@@ -8,6 +8,9 @@
 #include "../util/util_bit.h"
 #include "../util/util_luid.h"
 #include "../util/util_ratio.h"
+#include "../util/util_string.h"
+
+#include "../wsi/wsi_monitor.h"
 
 #include <cfloat>
 
@@ -59,13 +62,13 @@ namespace dxvk {
     
     const auto& props = m_adapter->deviceProperties();
 
-    DISPLAY_DEVICEA device = { };
-    device.cb = sizeof(device);
-
-    if (!::EnumDisplayDevicesA(nullptr, m_displayIndex, &device, 0)) {
-      Logger::err("D3D9Adapter::GetAdapterIdentifier: Failed to query display info");
+    WCHAR wideDisplayName[32] = { };
+    if (!wsi::getDisplayName(wsi::getDefaultMonitor(), wideDisplayName)) {
+      Logger::err("D3D9Adapter::GetAdapterIdentifier: Failed to query monitor info");
       return D3DERR_INVALIDCALL;
     }
+
+    std::string displayName = str::fromws(wideDisplayName);
 
     GUID guid          = bit::cast<GUID>(m_adapter->devicePropertiesExt().vk11.deviceUUID);
 
@@ -75,7 +78,7 @@ namespace dxvk {
     const char* driver = GetDriverDLL(DxvkGpuVendor(vendorId));
 
     copyToStringArray(pIdentifier->Description, desc);
-    copyToStringArray(pIdentifier->DeviceName,  device.DeviceName); // The GDI device name. Not the actual device name.
+    copyToStringArray(pIdentifier->DeviceName,  displayName.c_str()); // The GDI device name. Not the actual device name.
     copyToStringArray(pIdentifier->Driver,      driver);            // This is the driver's dll.
 
     pIdentifier->DeviceIdentifier       = guid;
@@ -621,7 +624,7 @@ namespace dxvk {
 
 
   HMONITOR D3D9Adapter::GetMonitor() {
-    return GetDefaultMonitor();
+    return wsi::getDefaultMonitor();
   }
 
 
@@ -680,20 +683,14 @@ namespace dxvk {
     if (pRotation != nullptr)
       *pRotation = D3DDISPLAYROTATION_IDENTITY;
 
-    DEVMODEW devMode = DEVMODEW();
-    devMode.dmSize = sizeof(devMode);
+    wsi::WsiMode mode = { };
 
-    if (!GetMonitorDisplayMode(GetDefaultMonitor(), ENUM_CURRENT_SETTINGS, &devMode)) {
+    if (!wsi::getCurrentDisplayMode(wsi::getDefaultMonitor(), &mode)) {
       Logger::err("D3D9Adapter::GetAdapterDisplayModeEx: Failed to enum display settings");
       return D3DERR_INVALIDCALL;
     }
 
-    pMode->Size             = sizeof(D3DDISPLAYMODEEX);
-    pMode->Width            = devMode.dmPelsWidth;
-    pMode->Height           = devMode.dmPelsHeight;
-    pMode->RefreshRate      = devMode.dmDisplayFrequency;
-    pMode->Format           = D3DFMT_X8R8G8B8;
-    pMode->ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
+    *pMode = ConvertDisplayMode(mode);
     return D3D_OK;
   }
 
@@ -768,32 +765,27 @@ namespace dxvk {
 
     // Walk over all modes that the display supports and
     // return those that match the requested format etc.
-    DEVMODEW devMode = { };
-    devMode.dmSize = sizeof(DEVMODEW);
+    wsi::WsiMode devMode = { };
 
     uint32_t modeIndex = 0;
 
     const auto forcedRatio = Ratio<DWORD>(options.forceAspectRatio);
 
-    while (GetMonitorDisplayMode(GetDefaultMonitor(), modeIndex++, &devMode)) {
+    while (wsi::getDisplayMode(wsi::getDefaultMonitor(), modeIndex++, &devMode)) {
       // Skip interlaced modes altogether
-      if (devMode.dmDisplayFlags & DM_INTERLACED)
+      if (devMode.interlaced)
         continue;
 
       // Skip modes with incompatible formats
-      if (devMode.dmBitsPerPel != GetMonitorFormatBpp(Format))
+      if (devMode.bitsPerPixel != GetMonitorFormatBpp(Format))
         continue;
 
-      if (!forcedRatio.undefined() && Ratio<DWORD>(devMode.dmPelsWidth, devMode.dmPelsHeight) != forcedRatio)
+      if (!forcedRatio.undefined() && Ratio<DWORD>(devMode.width, devMode.height) != forcedRatio)
         continue;
 
-      D3DDISPLAYMODEEX mode;
-      mode.Size             = sizeof(D3DDISPLAYMODEEX);
-      mode.Width            = devMode.dmPelsWidth;
-      mode.Height           = devMode.dmPelsHeight;
-      mode.RefreshRate      = devMode.dmDisplayFrequency;
-      mode.Format           = static_cast<D3DFORMAT>(Format);
-      mode.ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
+      D3DDISPLAYMODEEX mode = ConvertDisplayMode(devMode);
+      // Fix up the D3DFORMAT to match what we are enumerating
+      mode.Format = static_cast<D3DFORMAT>(Format);
 
       m_modes.push_back(mode);
     }
