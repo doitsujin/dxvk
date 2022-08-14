@@ -5,6 +5,8 @@
 #include "dxvk_device.h"
 #include "dxvk_instance.h"
 
+#include "../util/util_array.h"
+
 namespace dxvk {
   
   DxvkAdapter::DxvkAdapter(
@@ -285,7 +287,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 22> devExtensionList = {{
+    auto devExtensionList = array_of<DxvkExt*>(
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.extAttachmentFeedbackLoopLayout,
@@ -307,8 +309,8 @@ namespace dxvk {
       &devExtensions.khrPipelineLibrary,
       &devExtensions.khrSwapchain,
       &devExtensions.nvxBinaryImport,
-      &devExtensions.nvxImageViewHandle,
-    }};
+      &devExtensions.nvxImageViewHandle
+    );
 
     // Only enable Cuda interop extensions in 64-bit builds in
     // order to avoid potential driver or address space issues.
