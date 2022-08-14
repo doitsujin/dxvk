@@ -5,6 +5,7 @@
 namespace dxvk
 {
 
+#ifdef _WIN32
   struct D3D9WindowData {
     bool unicode;
     bool filter;
@@ -139,5 +140,25 @@ namespace dxvk
       if (it != g_windowProcMap.end())
         it->second.activateProcessed = processed;
   }
+#else
+  D3D9WindowMessageFilter::D3D9WindowMessageFilter(HWND window, bool filter) {
+
+  }
+
+  D3D9WindowMessageFilter::~D3D9WindowMessageFilter() {
+
+  }
+
+  void ResetWindowProc(HWND window) {
+
+  }
+
+  void HookWindowProc(HWND window, D3D9SwapChainEx* swapchain) {
+
+  }
+
+  void SetActivateProcessed(HWND window, bool processed) {
+  }
+#endif
 
 }
