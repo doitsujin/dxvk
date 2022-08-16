@@ -570,6 +570,11 @@ namespace dxvk {
     { R"(\\nfs3\.exe$)", {{
       { "d3d9.enableDialogMode",          "True" },
     }} },
+    /* Beyond Good And Evil                     *
+     * UI breaks at high fps                     */
+    { R"(\\BGE\.exe$)", {{
+      { "d3d9.maxFrameRate",                "60" },
+    }} },
     /* Ninja Blade                              *
      * Transparent main character on Nvidia     */
     { R"(\\NinjaBlade\.exe$)", {{
