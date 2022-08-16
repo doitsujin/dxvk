@@ -137,6 +137,14 @@ namespace dxvk {
 
 
   void FpsLimiter::initialize() {
+    updateSleepGranularity();
+    m_sleepThreshold = 4 * m_sleepGranularity;
+    m_lastFrame = dxvk::high_resolution_clock::now();
+    m_initialized = true;
+  }
+
+
+  void FpsLimiter::updateSleepGranularity() {
     HMODULE ntdll = ::GetModuleHandleW(L"ntdll.dll");
 
     if (ntdll) {
@@ -163,10 +171,6 @@ namespace dxvk {
       // Assume 1ms sleep granularity by default
       m_sleepGranularity = TimerDuration(10000);
     }
-
-    m_sleepThreshold = 4 * m_sleepGranularity;
-    m_lastFrame = dxvk::high_resolution_clock::now();
-    m_initialized = true;
   }
 
 }
