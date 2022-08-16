@@ -136,10 +136,19 @@ namespace dxvk {
     DxvkDescriptorManager*    m_manager;
     DxvkContextType           m_contextType;
 
-    std::vector<VkDescriptorPool>                                     m_descriptorPools;
-    std::unordered_map<VkDescriptorSetLayout, DxvkDescriptorSetList>  m_setLists;
-    std::unordered_map<VkPipelineLayout,      DxvkDescriptorSetMap>   m_setMaps;
-    std::pair<const DxvkBindingLayoutObjects*, DxvkDescriptorSetMap*> m_cachedEntry;
+    std::vector<VkDescriptorPool> m_descriptorPools;
+
+    std::unordered_map<
+      VkDescriptorSetLayout,
+      DxvkDescriptorSetList>  m_setLists;
+
+    std::unordered_map<
+      const DxvkBindingLayoutObjects*,
+      DxvkDescriptorSetMap>   m_setMaps;
+
+    std::pair<
+      const DxvkBindingLayoutObjects*,
+      DxvkDescriptorSetMap*>  m_cachedEntry;
 
     uint32_t m_setsAllocated  = 0;
     uint32_t m_setsUsed       = 0;
