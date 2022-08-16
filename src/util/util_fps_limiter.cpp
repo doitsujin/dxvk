@@ -111,14 +111,7 @@ namespace dxvk {
     while (remaining > sleepThreshold) {
       TimerDuration sleepDuration = remaining - sleepThreshold;
 
-      if (NtDelayExecution) {
-        LARGE_INTEGER ticks;
-        ticks.QuadPart = -sleepDuration.count();
-
-        NtDelayExecution(FALSE, &ticks);
-      } else {
-        std::this_thread::sleep_for(sleepDuration);
-      }
+      performSleep(sleepDuration);
 
       t1 = dxvk::high_resolution_clock::now();
       remaining -= std::chrono::duration_cast<TimerDuration>(t1 - t0);
@@ -170,6 +163,18 @@ namespace dxvk {
     } else {
       // Assume 1ms sleep granularity by default
       m_sleepGranularity = TimerDuration(10000);
+    }
+  }
+
+
+  void FpsLimiter::performSleep(TimerDuration sleepDuration) {
+    if (NtDelayExecution) {
+      LARGE_INTEGER ticks;
+      ticks.QuadPart = -sleepDuration.count();
+
+      NtDelayExecution(FALSE, &ticks);
+    } else {
+      std::this_thread::sleep_for(sleepDuration);
     }
   }
 
