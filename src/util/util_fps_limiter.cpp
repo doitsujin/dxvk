@@ -140,6 +140,7 @@ namespace dxvk {
 
 
   void FpsLimiter::updateSleepGranularity() {
+#ifdef _WIN32
     HMODULE ntdll = ::GetModuleHandleW(L"ntdll.dll");
 
     if (ntdll) {
@@ -166,10 +167,15 @@ namespace dxvk {
       // Assume 1ms sleep granularity by default
       m_sleepGranularity = TimerDuration(1ms);
     }
+#else
+    // Assume 0.5ms sleep granularity by default
+    m_sleepGranularity = TimerDuration(500us);
+#endif
   }
 
 
   void FpsLimiter::performSleep(TimerDuration sleepDuration) {
+#ifdef _WIN32
     if (NtDelayExecution) {
       LARGE_INTEGER ticks;
       ticks.QuadPart = -sleepDuration.count();
@@ -178,6 +184,9 @@ namespace dxvk {
     } else {
       std::this_thread::sleep_for(sleepDuration);
     }
+#else
+    std::this_thread::sleep_for(sleepDuration);
+#endif
   }
 
 }

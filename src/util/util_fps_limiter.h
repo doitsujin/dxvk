@@ -60,10 +60,17 @@ namespace dxvk {
 
     using TimePoint = dxvk::high_resolution_clock::time_point;
 
+#ifdef _WIN32
+    // On Windows, we use NtDelayExecution which has units of 100ns.
     using TimerDuration = std::chrono::duration<int64_t, std::ratio<1, 10000000>>;
     using NtQueryTimerResolutionProc = UINT (WINAPI *) (ULONG*, ULONG*, ULONG*);
     using NtSetTimerResolutionProc = UINT (WINAPI *) (ULONG, BOOL, ULONG*);
     using NtDelayExecutionProc = UINT (WINAPI *) (BOOL, LARGE_INTEGER*);
+    NtDelayExecutionProc NtDelayExecution = nullptr;
+#else
+    // On other platforms, we use the std library, which calls through to nanosleep -- which is ns.
+    using TimerDuration = std::chrono::nanoseconds;
+#endif
 
     dxvk::mutex     m_mutex;
 
@@ -77,8 +84,6 @@ namespace dxvk {
 
     TimerDuration   m_sleepGranularity = TimerDuration::zero();
     TimerDuration   m_sleepThreshold   = TimerDuration::zero();
-
-    NtDelayExecutionProc NtDelayExecution = nullptr;
 
     TimePoint sleep(TimePoint t0, TimerDuration duration);
 
