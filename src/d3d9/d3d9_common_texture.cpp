@@ -283,15 +283,21 @@ namespace dxvk {
       imageInfo.viewFormats     = m_mapping.Formats;
     }
 
+    const bool hasAttachmentFeedbackLoops =
+      m_device->GetDXVKDevice()->features().extAttachmentFeedbackLoopLayout.attachmentFeedbackLoopLayout;
+    const bool isRT = m_desc.Usage & D3DUSAGE_RENDERTARGET;
+    const bool isDS = m_desc.Usage & D3DUSAGE_DEPTHSTENCIL;
+    const bool isAutoGen = m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP;
+
     // Are we an RT, need to gen mips or an offscreen plain surface?
-    if (m_desc.Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_AUTOGENMIPMAP) || TryOffscreenRT) {
+    if (isRT || isAutoGen || TryOffscreenRT) {
       imageInfo.usage  |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
       imageInfo.stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
       imageInfo.access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
                        |  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     }
 
-    if (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL) {
+    if (isDS) {
       imageInfo.usage  |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
       imageInfo.stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
                        |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
@@ -299,11 +305,7 @@ namespace dxvk {
                        |  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     }
 
-    const bool hasAttachmentFeedbackLoops =
-      m_device->GetDXVKDevice()->features().extAttachmentFeedbackLoopLayout.attachmentFeedbackLoopLayout;
-    const bool isRT = m_desc.Usage & D3DUSAGE_RENDERTARGET;
-
-    if (isRT && hasAttachmentFeedbackLoops)
+    if ((isRT || isDS) && hasAttachmentFeedbackLoops)
       imageInfo.usage |= VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
 
     if (ResourceType == D3DRTYPE_CUBETEXTURE)
