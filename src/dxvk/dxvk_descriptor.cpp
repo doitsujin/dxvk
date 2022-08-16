@@ -82,15 +82,12 @@ namespace dxvk {
           VkDescriptorSet*          sets) {
     auto setMap = getSetMapCached(layout);
 
-    while (setMask) {
-      uint32_t setIndex = bit::tzcnt(setMask);
-
+    for (auto setIndex : bit::BitMask(setMask)) {
       sets[setIndex] = allocSet(
         setMap->sets[setIndex],
         layout->getSetLayout(setIndex));
 
       m_setsUsed += 1;
-      setMask &= setMask - 1;
     }
   }
 
