@@ -86,6 +86,8 @@ namespace dxvk {
 
     void updateSleepGranularity();
 
+    void performSleep(TimerDuration sleepDuration);
+
   };
 
 }
