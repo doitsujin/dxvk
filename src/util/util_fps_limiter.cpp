@@ -7,6 +7,8 @@
 
 #include "./log/log.h"
 
+using namespace std::chrono_literals;
+
 namespace dxvk {
   
   FpsLimiter::FpsLimiter() {
@@ -162,7 +164,7 @@ namespace dxvk {
       }
     } else {
       // Assume 1ms sleep granularity by default
-      m_sleepGranularity = TimerDuration(10000);
+      m_sleepGranularity = TimerDuration(1ms);
     }
   }
 
