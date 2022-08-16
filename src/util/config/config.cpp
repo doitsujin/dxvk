@@ -601,9 +601,11 @@ namespace dxvk {
       { "d3d9.customVendorId",              "10de" },
     }} },
     /* Beyond Good And Evil                     *
-     * Fixes missing sun and light shafts       */
+     * Fixes missing sun and light shafts       *
+     * UI breaks at high fps                    */
     { R"(\\BGE\.exe$)", {{
-      { "d3d9.allowDoNotWait",              "False" },
+      { "d3d9.allowDoNotWait",             "False" },
+      { "d3d9.maxFrameRate",                  "60" },
     }} },
     /* Supreme Commander & Forged Alliance Forever */
     { R"(\\(SupremeCommander|ForgedAlliance)\.exe$)", {{
