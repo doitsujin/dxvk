@@ -321,8 +321,8 @@ namespace dxvk {
     SpirvCodeBuffer fsCodeResolveAmd(dxvk_present_frag_ms_amd);
 
     const std::array<DxvkBindingInfo, 2> fsBindings = {{
-      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, BindingIds::Image, VK_IMAGE_VIEW_TYPE_2D, 0, VK_ACCESS_SHADER_READ_BIT },
-      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, BindingIds::Gamma, VK_IMAGE_VIEW_TYPE_1D, 0, VK_ACCESS_SHADER_READ_BIT },
+      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, BindingIds::Image, VK_IMAGE_VIEW_TYPE_2D, VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
+      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, BindingIds::Gamma, VK_IMAGE_VIEW_TYPE_1D, VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
     }};
 
     DxvkShaderCreateInfo vsInfo;

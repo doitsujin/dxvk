@@ -53,7 +53,7 @@ namespace dxvk {
     // Copy resource binding slot infos
     for (uint32_t i = 0; i < info.bindingCount; i++) {
       DxvkBindingInfo binding = info.bindings[i];
-      binding.stages = info.stage;
+      binding.stage = info.stage;
       m_bindings.addBinding(binding);
     }
 
@@ -172,7 +172,7 @@ namespace dxvk {
     
     // Remap resource binding IDs
     for (const auto& info : m_bindingOffsets) {
-      auto mappedBinding = layout->lookupBinding(info.bindingId);
+      auto mappedBinding = layout->lookupBinding(m_info.stage, info.bindingId);
 
       if (mappedBinding) {
         code[info.bindingOffset] = mappedBinding->binding;

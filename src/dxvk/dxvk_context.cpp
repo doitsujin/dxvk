@@ -5581,7 +5581,7 @@ namespace dxvk {
             if ((slot.bufferSlice.length())
              && (slot.bufferSlice.bufferInfo().access & storageBufferAccess)) {
               requiresBarrier = this->checkBufferBarrier<DoEmit>(slot.bufferSlice,
-                util::pipelineStages(binding.stages), binding.access);
+                util::pipelineStages(binding.stage), binding.access);
             }
             break;
 
@@ -5591,7 +5591,7 @@ namespace dxvk {
              && (slot.bufferView->bufferInfo().access & storageBufferAccess)) {
               slot.bufferView->updateView();
               requiresBarrier = this->checkBufferViewBarrier<DoEmit>(slot.bufferView,
-                util::pipelineStages(binding.stages), binding.access);
+                util::pipelineStages(binding.stage), binding.access);
             }
             break;
 
@@ -5601,7 +5601,7 @@ namespace dxvk {
             if ((slot.imageView != nullptr)
              && (slot.imageView->imageInfo().access & storageImageAccess)) {
               requiresBarrier = this->checkImageViewBarrier<DoEmit>(slot.imageView,
-                util::pipelineStages(binding.stages), binding.access);
+                util::pipelineStages(binding.stage), binding.access);
             }
             break;
 

@@ -31,11 +31,11 @@ namespace dxvk {
    * a given shader, or for the whole pipeline.
    */
   struct DxvkBindingInfo {
-    VkDescriptorType    descriptorType;   ///< Vulkan descriptor type
-    uint32_t            resourceBinding;  ///< API binding slot for the resource
-    VkImageViewType     viewType;         ///< Image view type
-    VkShaderStageFlags  stages;           ///< Shader stage mask
-    VkAccessFlags       access;           ///< Access mask for the resource
+    VkDescriptorType      descriptorType;   ///< Vulkan descriptor type
+    uint32_t              resourceBinding;  ///< API binding slot for the resource
+    VkImageViewType       viewType;         ///< Image view type
+    VkShaderStageFlagBits stage;            ///< Shader stage
+    VkAccessFlags         access;           ///< Access mask for the resource
 
     /**
      * \brief Computes descriptor set index for the given binding
@@ -365,6 +365,25 @@ namespace dxvk {
   };
 
   /**
+   * \brief Key for binding lookups
+   */
+  struct DxvkBindingKey {
+    VkShaderStageFlagBits stage;
+    uint32_t binding;
+
+    size_t hash() const {
+      DxvkHashState hash;
+      hash.add(uint32_t(stage));
+      hash.add(binding);
+      return hash;
+    }
+
+    bool eq(const DxvkBindingKey& other) const {
+      return stage == other.stage && binding == other.binding;
+    }
+  };
+
+  /**
    * \brief Global resource barrier
    *
    * Stores the way any resources will be
@@ -453,11 +472,13 @@ namespace dxvk {
     /**
      * \brief Looks up set and binding number by resource binding
      *
+     * \param [in] stage Shader stage
      * \param [in] index Resource binding index
      * \returns Descriptor set and binding number
      */
-    std::optional<DxvkBindingMapping> lookupBinding(uint32_t index) const {
-      auto entry = m_mapping.find(index);
+    std::optional<DxvkBindingMapping> lookupBinding(VkShaderStageFlagBits stage, uint32_t index) const {
+      DxvkBindingKey key = { stage, index };
+      auto entry = m_mapping.find(key);
 
       if (entry != m_mapping.end())
         return entry->second;
@@ -487,7 +508,7 @@ namespace dxvk {
 
     std::array<const DxvkBindingSetLayout*, DxvkDescriptorSets::SetCount> m_bindingObjects = { };
 
-    std::unordered_map<uint32_t, DxvkBindingMapping> m_mapping;
+    std::unordered_map<DxvkBindingKey, DxvkBindingMapping, DxvkHash, DxvkEq> m_mapping;
 
   };
 

@@ -9,10 +9,10 @@
 namespace dxvk {
   
   uint32_t DxvkBindingInfo::computeSetIndex() const {
-    if (stages & VK_SHADER_STAGE_COMPUTE_BIT) {
+    if (stage == VK_SHADER_STAGE_COMPUTE_BIT) {
       // Use one single set for compute shaders
       return DxvkDescriptorSets::CsAll;
-    } else if (stages & VK_SHADER_STAGE_FRAGMENT_BIT) {
+    } else if (stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
       // For fragment shaders, create a separate set for UBOs
       if (descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
        || descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
@@ -37,17 +37,17 @@ namespace dxvk {
     return descriptorType    == other.descriptorType
         && resourceBinding   == other.resourceBinding
         && viewType          == other.viewType
-        && stages            == other.stages
+        && stage             == other.stage
         && access            == other.access;
   }
 
 
   size_t DxvkBindingInfo::hash() const {
     DxvkHashState hash;
-    hash.add(descriptorType);
+    hash.add(uint32_t(descriptorType));
     hash.add(resourceBinding);
-    hash.add(viewType);
-    hash.add(stages);
+    hash.add(uint32_t(viewType));
+    hash.add(uint32_t(stage));
     hash.add(access);
     return hash;
   }
@@ -107,7 +107,7 @@ namespace dxvk {
 
     for (uint32_t i = 0; i < list.getBindingCount(); i++) {
       m_bindings[i].descriptorType = list.getBinding(i).descriptorType;
-      m_bindings[i].stages         = list.getBinding(i).stages;
+      m_bindings[i].stages         = list.getBinding(i).stage;
     }
   }
 
@@ -315,11 +315,15 @@ namespace dxvk {
         for (uint32_t j = 0; j < bindingCount; j++) {
           const DxvkBindingInfo& binding = m_layout.getBinding(i, j);
 
+          DxvkBindingKey key;
+          key.stage = binding.stage;
+          key.binding = binding.resourceBinding;
+
           DxvkBindingMapping mapping;
           mapping.set = i;
           mapping.binding = j;
 
-          m_mapping.insert({ binding.resourceBinding, mapping });
+          m_mapping.insert({ key, mapping });
         }
 
         if (bindingCount) {
@@ -372,7 +376,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < DxvkDescriptorSets::SetCount; i++) {
       for (uint32_t j = 0; j < m_layout.getBindingCount(i); j++) {
         const auto& binding = m_layout.getBinding(i, j);
-        barrier.stages |= util::pipelineStages(binding.stages);
+        barrier.stages |= util::pipelineStages(binding.stage);
         barrier.access |= binding.access;
       }
     }
