@@ -3903,7 +3903,6 @@ namespace dxvk {
     enabled.core.features.vertexPipelineStoresAndAtomics = supported.core.features.vertexPipelineStoresAndAtomics;
 
     // DXVK Meta
-    enabled.core.features.shaderStorageImageWriteWithoutFormat = VK_TRUE;
     enabled.core.features.imageCubeArray = VK_TRUE;
 
     // SM1 level hardware

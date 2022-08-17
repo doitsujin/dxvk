@@ -717,32 +717,32 @@ namespace dxvk {
           VkFormat        Format,
           DWORD           Usage,
           D3DRESOURCETYPE RType) {
-    VkFormatFeatureFlags checkFlags = 0;
+    VkFormatFeatureFlags2 checkFlags = 0;
 
     if (RType != D3DRTYPE_SURFACE)
-      checkFlags |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+      checkFlags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
 
     if (Usage & D3DUSAGE_RENDERTARGET) {
-      checkFlags |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+      checkFlags |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT;
 
       if (Usage & D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING)
-        checkFlags |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT;
+        checkFlags |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT;
     }
 
     if (Usage & D3DUSAGE_DEPTHSTENCIL)
-      checkFlags |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+      checkFlags |= VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT;
     else
-      checkFlags |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+      checkFlags |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
 
-    VkFormatFeatureFlags checkFlagsMipGen = checkFlags;
+    VkFormatFeatureFlags2 checkFlagsMipGen = checkFlags;
 
     if (Usage & D3DUSAGE_AUTOGENMIPMAP) {
-      checkFlagsMipGen |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
-      checkFlagsMipGen |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+      checkFlagsMipGen |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
+      checkFlagsMipGen |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT;
     }
 
-    VkFormatProperties   fmtSupport  = m_adapter->formatProperties(Format);
-    VkFormatFeatureFlags imgFeatures = fmtSupport.optimalTilingFeatures | fmtSupport.linearTilingFeatures;
+    DxvkFormatFeatures    fmtSupport  = m_adapter->getFormatFeatures(Format);
+    VkFormatFeatureFlags2 imgFeatures = fmtSupport.optimal | fmtSupport.linear;
 
     if ((imgFeatures & checkFlags) != checkFlags)
       return D3DERR_NOTAVAILABLE;

@@ -435,14 +435,14 @@ namespace dxvk {
     // AMD do not support 24-bit depth buffers on Vulkan,
     // so we have to fall back to a 32-bit depth format.
     m_d24s8Support = CheckImageFormatSupport(adapter, VK_FORMAT_D24_UNORM_S8_UINT,
-      VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
-      VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT);
+      VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT |
+      VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT);
 
     // NVIDIA do not support 16-bit depth buffers with stencil on Vulkan,
     // so we have to fall back to a 32-bit depth format.
     m_d16s8Support = CheckImageFormatSupport(adapter, VK_FORMAT_D16_UNORM_S8_UINT,
-      VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
-      VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT);
+      VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT |
+      VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT);
 
     // VK_EXT_4444_formats
     if (!m_d24s8Support)
@@ -538,11 +538,11 @@ namespace dxvk {
   bool D3D9VkFormatTable::CheckImageFormatSupport(
     const Rc<DxvkAdapter>&      Adapter,
           VkFormat              Format,
-          VkFormatFeatureFlags  Features) const {
-    VkFormatProperties supported = Adapter->formatProperties(Format);
+          VkFormatFeatureFlags2  Features) const {
+    DxvkFormatFeatures supported = Adapter->getFormatFeatures(Format);
     
-    return (supported.linearTilingFeatures  & Features) == Features
-        || (supported.optimalTilingFeatures & Features) == Features;
+    return (supported.linear  & Features) == Features
+        || (supported.optimal & Features) == Features;
   }
 
 }

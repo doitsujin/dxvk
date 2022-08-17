@@ -102,7 +102,7 @@ namespace dxvk {
 
   VkFormat GetPackedDepthStencilFormat(D3D9Format Format);
 
-  VkFormatFeatureFlags GetImageFormatFeatures(DWORD Usage);
+  VkFormatFeatureFlags2 GetImageFormatFeatures(DWORD Usage);
 
   VkImageUsageFlags GetImageUsageFlags(DWORD Usage);
 

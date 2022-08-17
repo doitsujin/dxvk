@@ -379,53 +379,49 @@ namespace dxvk {
   BOOL D3D9CommonTexture::CheckImageSupport(
     const DxvkImageCreateInfo*  pImageInfo,
           VkImageTiling         Tiling) const {
-    const Rc<DxvkAdapter> adapter = m_device->GetDXVKDevice()->adapter();
-    
-    VkImageFormatProperties formatProps = { };
-    
-    VkResult status = adapter->imageFormatProperties(
+    auto properties = m_device->GetDXVKDevice()->getFormatLimits(
       pImageInfo->format, pImageInfo->type, Tiling,
-      pImageInfo->usage, pImageInfo->flags, formatProps);
+      pImageInfo->usage, pImageInfo->flags);
     
-    if (status != VK_SUCCESS)
+    if (!properties)
       return FALSE;
     
-    return (pImageInfo->extent.width  <= formatProps.maxExtent.width)
-        && (pImageInfo->extent.height <= formatProps.maxExtent.height)
-        && (pImageInfo->extent.depth  <= formatProps.maxExtent.depth)
-        && (pImageInfo->numLayers     <= formatProps.maxArrayLayers)
-        && (pImageInfo->mipLevels     <= formatProps.maxMipLevels)
-        && (pImageInfo->sampleCount    & formatProps.sampleCounts);
+    return (pImageInfo->extent.width  <= properties->maxExtent.width)
+        && (pImageInfo->extent.height <= properties->maxExtent.height)
+        && (pImageInfo->extent.depth  <= properties->maxExtent.depth)
+        && (pImageInfo->numLayers     <= properties->maxArrayLayers)
+        && (pImageInfo->mipLevels     <= properties->maxMipLevels)
+        && (pImageInfo->sampleCount    & properties->sampleCounts);
   }
 
 
   VkImageUsageFlags D3D9CommonTexture::EnableMetaCopyUsage(
           VkFormat              Format,
           VkImageTiling         Tiling) const {
-    VkFormatFeatureFlags requestedFeatures = 0;
+    VkFormatFeatureFlags2 requestedFeatures = 0;
 
     if (Format == VK_FORMAT_D16_UNORM || Format == VK_FORMAT_D32_SFLOAT)
-      requestedFeatures |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+      requestedFeatures |= VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT;
 
     if (Format == VK_FORMAT_R16_UNORM || Format == VK_FORMAT_R32_SFLOAT)
-      requestedFeatures |=  VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+      requestedFeatures |=  VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT;
 
-    if (requestedFeatures == 0)
+    if (!requestedFeatures)
       return 0;
 
     // Enable usage flags for all supported and requested features
-    VkFormatProperties properties = m_device->GetDXVKDevice()->adapter()->formatProperties(Format);
+    DxvkFormatFeatures properties = m_device->GetDXVKDevice()->getFormatFeatures(Format);
 
     requestedFeatures &= Tiling == VK_IMAGE_TILING_OPTIMAL
-      ? properties.optimalTilingFeatures
-      : properties.linearTilingFeatures;
+      ? properties.optimal
+      : properties.linear;
     
     VkImageUsageFlags requestedUsage = 0;
     
-    if (requestedFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+    if (requestedFeatures & VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT)
       requestedUsage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     
-    if (requestedFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)
+    if (requestedFeatures & VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT)
       requestedUsage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
     return requestedUsage;

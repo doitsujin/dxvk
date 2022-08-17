@@ -97,14 +97,14 @@ namespace dxvk {
   }
 
 
-  VkFormatFeatureFlags GetImageFormatFeatures(DWORD Usage) {
-    VkFormatFeatureFlags features = VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+  VkFormatFeatureFlags2 GetImageFormatFeatures(DWORD Usage) {
+    VkFormatFeatureFlags2 features = VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
 
     if (Usage & D3DUSAGE_DEPTHSTENCIL)
-      features |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+      features |= VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT;
 
     if (Usage & D3DUSAGE_RENDERTARGET)
-      features |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+      features |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT;
 
     return features;
   }
