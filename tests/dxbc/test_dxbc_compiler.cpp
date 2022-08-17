@@ -43,7 +43,6 @@ int WINAPI WinMain(HINSTANCE hInstance,
     
     DxbcModuleInfo moduleInfo;
     moduleInfo.options.useSubgroupOpsForAtomicCounters = true;
-    moduleInfo.options.useDemoteToHelperInvocation = true;
     moduleInfo.options.minSsboAlignment = 4;
     moduleInfo.xfb = nullptr;
 

@@ -32,13 +32,6 @@ namespace dxvk {
     /// atomic operations for append/consume buffers.
     bool useSubgroupOpsForAtomicCounters = false;
 
-    /// Use a SPIR-V extension to implement D3D-style discards
-    bool useDemoteToHelperInvocation = false;
-
-    /// Use subgroup operations to discard fragment
-    /// shader invocations if derivatives remain valid.
-    bool useSubgroupOpsForEarlyDiscard = false;
-
     /// Enables NaN fixup for render target outputs
     bool enableRtOutputNanFixup = false;
 

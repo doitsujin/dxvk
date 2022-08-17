@@ -2273,9 +2273,6 @@ namespace dxvk {
                && bufferInfo.type != DxbcResourceType::Typed
                && isUav;
 
-    // Perform atomic operations on UAVs only if the invocation is alive
-    DxbcConditional cond = emitBeginPsKillTest();
-    
     // Retrieve destination pointer for the atomic operation>
     const DxbcRegisterPointer pointer = emitGetAtomicPointer(
       ins.dst[ins.dstCount - 1], ins.src[0]);
@@ -2399,8 +2396,6 @@ namespace dxvk {
     // register if this is an imm_atomic_* opcode.
     if (isImm)
       emitRegisterStore(ins.dst[0], value);
-    
-    emitEndPsKillTest(cond);
   }
   
   
@@ -2413,9 +2408,6 @@ namespace dxvk {
     if (m_uavs.at(registerId).ctrId == 0)
       m_uavs.at(registerId).ctrId = emitDclUavCounter(registerId);
     
-    // Only perform the operation if the invocation is alive
-    DxbcConditional cond = emitBeginPsKillTest();
-
     // Only use subgroup ops on compute to avoid having to
     // deal with helper invocations or hardware limitations
     bool useSubgroupOps = m_moduleInfo.options.useSubgroupOpsForAtomicCounters
@@ -2537,7 +2529,6 @@ namespace dxvk {
     
     // Store the result
     emitRegisterStore(ins.dst[0], value);
-    emitEndPsKillTest(cond);
   }
   
   
@@ -3656,9 +3647,6 @@ namespace dxvk {
     //    (src1) The value to store
     const DxbcBufferInfo uavInfo = getBufferInfo(ins.dst[0]);
     
-    // Execute write op only if the invocation is active
-    DxbcConditional cond = emitBeginPsKillTest();
-    
     // Load texture coordinates
     DxbcRegisterValue texCoord = emitLoadTexCoord(ins.src[0], uavInfo.image);
     
@@ -3672,8 +3660,6 @@ namespace dxvk {
     m_module.opImageWrite(
       m_module.opLoad(uavInfo.typeId, uavInfo.varId),
       texCoord.id, texValue.id, SpirvImageOperands());
-
-    emitEndPsKillTest(cond);
   }
   
   
@@ -4031,80 +4017,20 @@ namespace dxvk {
     const DxbcRegisterValue zeroTest = emitRegisterZeroTest(
       condition, ins.controls.zeroTest());
     
-    if (m_ps.killState == 0) {
-      DxbcConditional cond;
-      cond.labelIf  = m_module.allocateId();
-      cond.labelEnd = m_module.allocateId();
-      
-      m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
-      m_module.opBranchConditional(zeroTest.id, cond.labelIf, cond.labelEnd);
-      
-      m_module.opLabel(cond.labelIf);
+    DxbcConditional cond;
+    cond.labelIf  = m_module.allocateId();
+    cond.labelEnd = m_module.allocateId();
+    
+    m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
+    m_module.opBranchConditional(zeroTest.id, cond.labelIf, cond.labelEnd);
+    
+    m_module.opLabel(cond.labelIf);
+    m_module.opDemoteToHelperInvocation();
+    m_module.opBranch(cond.labelEnd);
+    
+    m_module.opLabel(cond.labelEnd);
 
-      if (m_moduleInfo.options.useDemoteToHelperInvocation) {
-        m_module.opDemoteToHelperInvocation();
-        m_module.opBranch(cond.labelEnd);
-      } else {
-        // OpKill terminates the block
-        m_module.opKill();
-      }
-      
-      m_module.opLabel(cond.labelEnd);
-    } else {
-      uint32_t typeId = m_module.defBoolType();
-      
-      uint32_t killState = m_module.opLoad     (typeId, m_ps.killState);
-               killState = m_module.opLogicalOr(typeId, killState, zeroTest.id);
-      m_module.opStore(m_ps.killState, killState);
-
-      if (m_moduleInfo.options.useSubgroupOpsForEarlyDiscard) {
-        uint32_t ballot = m_module.opGroupNonUniformBallot(
-          getVectorTypeId({ DxbcScalarType::Uint32, 4 }),
-          m_module.constu32(spv::ScopeSubgroup),
-          killState);
-        
-        uint32_t laneId = m_module.opLoad(
-          getScalarTypeId(DxbcScalarType::Uint32),
-          m_ps.builtinLaneId);
-        
-        uint32_t laneIdPart = m_module.opShiftRightLogical(
-          getScalarTypeId(DxbcScalarType::Uint32),
-          laneId, m_module.constu32(5));
-        
-        uint32_t laneMask = m_module.opVectorExtractDynamic(
-          getScalarTypeId(DxbcScalarType::Uint32),
-          ballot, laneIdPart);
-        
-        uint32_t laneIdQuad = m_module.opBitwiseAnd(
-          getScalarTypeId(DxbcScalarType::Uint32),
-          laneId, m_module.constu32(0x1c));
-        
-        laneMask = m_module.opShiftRightLogical(
-          getScalarTypeId(DxbcScalarType::Uint32),
-          laneMask, laneIdQuad);
-        
-        laneMask = m_module.opBitwiseAnd(
-          getScalarTypeId(DxbcScalarType::Uint32),
-          laneMask, m_module.constu32(0xf));
-        
-        uint32_t killSubgroup = m_module.opIEqual(
-          m_module.defBoolType(),
-          laneMask, m_module.constu32(0xf));
-        
-        DxbcConditional cond;
-        cond.labelIf  = m_module.allocateId();
-        cond.labelEnd = m_module.allocateId();
-        
-        m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
-        m_module.opBranchConditional(killSubgroup, cond.labelIf, cond.labelEnd);
-        
-        // OpKill terminates the block
-        m_module.opLabel(cond.labelIf);
-        m_module.opKill();
-        
-        m_module.opLabel(cond.labelEnd);
-      }
-    }
+    m_module.enableCapability(spv::CapabilityDemoteToHelperInvocation);
   }
   
   
@@ -5120,9 +5046,6 @@ namespace dxvk {
     bool isSsbo = m_moduleInfo.options.minSsboAlignment <= bufferInfo.align
                && !isTgsm;
     
-    // Perform UAV writes only if the invocation is active
-    DxbcConditional cond = emitBeginPsKillTest();
-    
     // Perform the actual write operation
     uint32_t bufferId = isTgsm || isSsbo ? 0 : m_module.opLoad(bufferInfo.typeId, bufferInfo.varId);
     
@@ -5183,8 +5106,6 @@ namespace dxvk {
         m_module.constu32(spv::MemorySemanticsWorkgroupMemoryMask
                         | spv::MemorySemanticsAcquireReleaseMask));
     }
-
-    emitEndPsKillTest(cond);
   }
 
 
@@ -6434,35 +6355,6 @@ namespace dxvk {
   }
   
   
-  DxbcConditional DxbcCompiler::emitBeginPsKillTest() {
-    if (!m_ps.killState)
-      return DxbcConditional();
-
-    uint32_t boolId = m_module.defBoolType();
-    uint32_t killState = m_module.opLoad(boolId, m_ps.killState);
-    uint32_t testId = m_module.opLogicalNot(boolId, killState);
-
-    DxbcConditional cond;
-    cond.labelIf  = m_module.allocateId();
-    cond.labelEnd = m_module.allocateId();
-    
-    m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
-    m_module.opBranchConditional(testId, cond.labelIf, cond.labelEnd);
-    
-    m_module.opLabel(cond.labelIf);
-    return cond;
-  }
-
-
-  void DxbcCompiler::emitEndPsKillTest(const DxbcConditional& cond) {
-    if (!m_ps.killState)
-      return;
-
-    m_module.opBranch(cond.labelEnd);
-    m_module.opLabel(cond.labelEnd);
-  }
-
-
   void DxbcCompiler::emitInit() {
     // Set up common capabilities for all shaders
     m_module.enableCapability(spv::CapabilityShader);
@@ -6704,32 +6596,6 @@ namespace dxvk {
       m_module.defFunctionType(
         m_module.defVoidType(), 0, nullptr));
     this->emitFunctionLabel();
-
-    if (m_analysis->usesKill && m_moduleInfo.options.useDemoteToHelperInvocation) {
-      // This extension basically implements D3D-style discard
-      m_module.enableCapability(spv::CapabilityDemoteToHelperInvocation);
-    } else if (m_analysis->usesKill && m_analysis->usesDerivatives) {
-      // We may have to defer kill operations to the end of
-      // the shader in order to keep derivatives correct.
-      m_ps.killState = m_module.newVarInit(
-        m_module.defPointerType(m_module.defBoolType(), spv::StorageClassPrivate),
-        spv::StorageClassPrivate, m_module.constBool(false));
-      
-      m_module.setDebugName(m_ps.killState, "ps_kill");
-
-      if (m_moduleInfo.options.useSubgroupOpsForEarlyDiscard) {
-        m_module.enableCapability(spv::CapabilityGroupNonUniform);
-        m_module.enableCapability(spv::CapabilityGroupNonUniformBallot);
-
-        DxbcRegisterInfo laneId;
-        laneId.type = { DxbcScalarType::Uint32, 1, 0 };
-        laneId.sclass = spv::StorageClassInput;
-
-        m_ps.builtinLaneId = emitNewBuiltinVariable(
-          laneId, spv::BuiltInSubgroupLocalInvocationId,
-          "fLaneId");
-      }
-    }
   }
   
   
@@ -6823,23 +6689,7 @@ namespace dxvk {
     m_module.opFunctionCall(
       m_module.defVoidType(),
       m_ps.functionId, 0, nullptr);
-    
-    if (m_ps.killState != 0) {
-      DxbcConditional cond;
-      cond.labelIf  = m_module.allocateId();
-      cond.labelEnd = m_module.allocateId();
-      
-      uint32_t killTest = m_module.opLoad(m_module.defBoolType(), m_ps.killState);
-      
-      m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
-      m_module.opBranchConditional(killTest, cond.labelIf, cond.labelEnd);
-      
-      m_module.opLabel(cond.labelIf);
-      m_module.opKill();
-      
-      m_module.opLabel(cond.labelEnd);
-    }
-    
+
     this->emitOutputSetup();
 
     if (m_moduleInfo.options.useDepthClipWorkaround)
