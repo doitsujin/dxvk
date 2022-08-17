@@ -510,32 +510,10 @@ namespace dxvk {
         m_module.defVoidType(), 0, nullptr));
     this->emitFunctionLabel();
 
-    // We may have to defer kill operations to the end of
-    // the shader in order to keep derivatives correct.
-    if (m_analysis->usesKill && m_moduleInfo.options.useDemoteToHelperInvocation) {
+    if (m_analysis->usesKill) {
       // This extension basically implements D3D-style discard
       m_module.enableExtension("SPV_EXT_demote_to_helper_invocation");
       m_module.enableCapability(spv::CapabilityDemoteToHelperInvocationEXT);
-    }
-    else if (m_analysis->usesKill && m_analysis->usesDerivatives) {
-      m_ps.killState = m_module.newVarInit(
-        m_module.defPointerType(m_module.defBoolType(), spv::StorageClassPrivate),
-        spv::StorageClassPrivate, m_module.constBool(false));
-
-      m_module.setDebugName(m_ps.killState, "ps_kill");
-
-      if (m_moduleInfo.options.useSubgroupOpsForEarlyDiscard) {
-        m_module.enableCapability(spv::CapabilityGroupNonUniform);
-        m_module.enableCapability(spv::CapabilityGroupNonUniformBallot);
-
-        DxsoRegisterInfo laneId;
-        laneId.type = { DxsoScalarType::Uint32, 1, 0 };
-        laneId.sclass = spv::StorageClassInput;
-
-        m_ps.builtinLaneId = emitNewBuiltinVariable(
-          laneId, spv::BuiltInSubgroupLocalInvocationId,
-          "fLaneId", 0);
-      }
     }
   }
 
@@ -3105,79 +3083,17 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     if (texReg.type.ccount != 1)
       result = m_module.opAny(m_module.defBoolType(), result);
 
-    if (m_ps.killState == 0) {
-      uint32_t labelIf = m_module.allocateId();
-      uint32_t labelEnd = m_module.allocateId();
+    uint32_t labelIf = m_module.allocateId();
+    uint32_t labelEnd = m_module.allocateId();
 
-      m_module.opSelectionMerge(labelEnd, spv::SelectionControlMaskNone);
-      m_module.opBranchConditional(result, labelIf, labelEnd);
+    m_module.opSelectionMerge(labelEnd, spv::SelectionControlMaskNone);
+    m_module.opBranchConditional(result, labelIf, labelEnd);
 
-      m_module.opLabel(labelIf);
+    m_module.opLabel(labelIf);
+    m_module.opDemoteToHelperInvocation();
+    m_module.opBranch(labelEnd);
 
-      if (m_moduleInfo.options.useDemoteToHelperInvocation) {
-        m_module.opDemoteToHelperInvocation();
-        m_module.opBranch(labelEnd);
-      } else {
-        // OpKill terminates the block
-        m_module.opKill();
-      }
-
-      m_module.opLabel(labelEnd);
-    }
-    else {
-      uint32_t typeId = m_module.defBoolType();
-      
-      uint32_t killState = m_module.opLoad     (typeId, m_ps.killState);
-               killState = m_module.opLogicalOr(typeId, killState, result);
-      m_module.opStore(m_ps.killState, killState);
-
-      if (m_moduleInfo.options.useSubgroupOpsForEarlyDiscard) {
-        uint32_t ballot = m_module.opGroupNonUniformBallot(
-          getVectorTypeId({ DxsoScalarType::Uint32, 4 }),
-          m_module.constu32(spv::ScopeSubgroup),
-          killState);
-        
-        uint32_t laneId = m_module.opLoad(
-          getScalarTypeId(DxsoScalarType::Uint32),
-          m_ps.builtinLaneId);
-
-        uint32_t laneIdPart = m_module.opShiftRightLogical(
-          getScalarTypeId(DxsoScalarType::Uint32),
-          laneId, m_module.constu32(5));
-
-        uint32_t laneMask = m_module.opVectorExtractDynamic(
-          getScalarTypeId(DxsoScalarType::Uint32),
-          ballot, laneIdPart);
-
-        uint32_t laneIdQuad = m_module.opBitwiseAnd(
-          getScalarTypeId(DxsoScalarType::Uint32),
-          laneId, m_module.constu32(0x1c));
-
-        laneMask = m_module.opShiftRightLogical(
-          getScalarTypeId(DxsoScalarType::Uint32),
-          laneMask, laneIdQuad);
-
-        laneMask = m_module.opBitwiseAnd(
-          getScalarTypeId(DxsoScalarType::Uint32),
-          laneMask, m_module.constu32(0xf));
-        
-        uint32_t killSubgroup = m_module.opIEqual(
-          m_module.defBoolType(),
-          laneMask, m_module.constu32(0xf));
-        
-        uint32_t labelIf  = m_module.allocateId();
-        uint32_t labelEnd = m_module.allocateId();
-        
-        m_module.opSelectionMerge(labelEnd, spv::SelectionControlMaskNone);
-        m_module.opBranchConditional(killSubgroup, labelIf, labelEnd);
-        
-        // OpKill terminates the block
-        m_module.opLabel(labelIf);
-        m_module.opKill();
-        
-        m_module.opLabel(labelEnd);
-      }
-    }
+    m_module.opLabel(labelEnd);
   }
 
   void DxsoCompiler::emitTextureDepth(const DxsoInstructionContext& ctx) {
@@ -3799,21 +3715,6 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     m_module.opFunctionCall(
       m_module.defVoidType(),
       m_ps.functionId, 0, nullptr);
-
-    if (m_ps.killState != 0) {
-      uint32_t labelIf  = m_module.allocateId();
-      uint32_t labelEnd = m_module.allocateId();
-      
-      uint32_t killTest = m_module.opLoad(m_module.defBoolType(), m_ps.killState);
-      
-      m_module.opSelectionMerge(labelEnd, spv::SelectionControlMaskNone);
-      m_module.opBranchConditional(killTest, labelIf, labelEnd);
-      
-      m_module.opLabel(labelIf);
-      m_module.opKill();
-      
-      m_module.opLabel(labelEnd);
-    }
 
     // r0 in PS1 is the colour output register. Move r0 -> cO0 here.
     if (m_programInfo.majorVersion() == 1

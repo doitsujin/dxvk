@@ -173,9 +173,6 @@ namespace dxvk {
     // Shared State
     uint32_t sharedState        = 0;
 
-    uint32_t killState          = 0;
-    uint32_t builtinLaneId      = 0;
-
     uint32_t flatShadingMask    = 0;
   };
 

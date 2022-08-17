@@ -12,13 +12,6 @@ namespace dxvk {
     DxsoOptions();
     DxsoOptions(D3D9DeviceEx* pDevice, const D3D9Options& options);
 
-    /// Use a SPIR-V extension to implement D3D-style discards
-    bool useDemoteToHelperInvocation = false;
-
-    /// Use subgroup operations to discard fragment
-    /// shader invocations if derivatives remain valid.
-    bool useSubgroupOpsForEarlyDiscard = false;
-
     /// True:  Copy our constant set into UBO if we are relative indexing ever.
     /// False: Copy our constant set into UBO if we are relative indexing at the start of a defined constant
     /// Why?:  In theory, FXC should never generate code where this would be an issue.
