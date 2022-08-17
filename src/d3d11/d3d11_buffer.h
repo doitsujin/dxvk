@@ -158,7 +158,7 @@ namespace dxvk {
 
     BOOL CheckFormatFeatureSupport(
             VkFormat              Format,
-            VkFormatFeatureFlags  Features) const;
+            VkFormatFeatureFlags2 Features) const;
     
     VkMemoryPropertyFlags GetMemoryFlags() const;
 

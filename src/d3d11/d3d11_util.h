@@ -31,10 +31,10 @@ namespace dxvk {
   VkConservativeRasterizationModeEXT DecodeConservativeRasterizationMode(
           D3D11_CONSERVATIVE_RASTERIZATION_MODE Mode);
 
-  VkFormatFeatureFlags GetBufferFormatFeatures(
+  VkFormatFeatureFlags2 GetBufferFormatFeatures(
           UINT                      BindFlags);
 
-  VkFormatFeatureFlags GetImageFormatFeatures(
+  VkFormatFeatureFlags2 GetImageFormatFeatures(
           UINT                      BindFlags);
   
   VkFormat GetPackedDepthStencilFormat(

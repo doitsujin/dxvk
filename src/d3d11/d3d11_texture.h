@@ -405,7 +405,7 @@ namespace dxvk {
     
     BOOL CheckFormatFeatureSupport(
             VkFormat              Format,
-            VkFormatFeatureFlags  Features) const;
+            VkFormatFeatureFlags2 Features) const;
     
     VkImageUsageFlags EnableMetaCopyUsage(
             VkFormat              Format,
