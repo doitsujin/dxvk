@@ -1261,6 +1261,7 @@ namespace dxvk {
     uint32_t                        m_fetch4        = 0;
 
     uint32_t                        m_lastHazardsDS = 0;
+    uint32_t                        m_lastHazardsRT = 0;
     uint32_t                        m_lastSamplerTypesFF = 0;
 
     D3D9SpecializationInfo          m_specInfo = D3D9SpecializationInfo();

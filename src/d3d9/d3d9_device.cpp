@@ -6054,9 +6054,11 @@ namespace dxvk {
     if (unlikely(m_activeHazardsRT != 0))
       MarkRenderHazards();
 
-    if (unlikely((m_lastHazardsDS == 0) != (m_activeHazardsDS == 0))) {
+    if (unlikely((!m_lastHazardsDS) != (!m_activeHazardsDS))
+     || unlikely((!m_lastHazardsRT) != (!m_activeHazardsRT))) {
       m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
       m_lastHazardsDS = m_activeHazardsDS;
+      m_lastHazardsRT = m_activeHazardsRT;
     }
 
     for (uint32_t i = 0; i < caps::MaxStreams; i++) {
