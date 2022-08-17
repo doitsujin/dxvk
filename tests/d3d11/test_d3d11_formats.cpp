@@ -158,6 +158,25 @@ std::string GetFormatFlagName(D3D11_FORMAT_SUPPORT Flag) {
 }
 
 
+std::string GetFormatFlagName2(UINT Flag) {
+  switch (Flag) {
+    ENUM_NAME(D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_ADD);
+    ENUM_NAME(D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_BITWISE_OPS);
+    ENUM_NAME(D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_COMPARE_STORE_OR_COMPARE_EXCHANGE);
+    ENUM_NAME(D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_EXCHANGE);
+    ENUM_NAME(D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_SIGNED_MIN_OR_MAX);
+    ENUM_NAME(D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_UNSIGNED_MIN_OR_MAX);
+    ENUM_NAME(D3D11_FORMAT_SUPPORT2_UAV_TYPED_LOAD);
+    ENUM_NAME(D3D11_FORMAT_SUPPORT2_UAV_TYPED_STORE);
+    ENUM_NAME(D3D11_FORMAT_SUPPORT2_OUTPUT_MERGER_LOGIC_OP);
+    ENUM_NAME(D3D11_FORMAT_SUPPORT2_TILED);
+    ENUM_NAME(D3D11_FORMAT_SUPPORT2_SHAREABLE);
+    ENUM_NAME(D3D11_FORMAT_SUPPORT2_MULTIPLANE_OVERLAY);
+    default: return std::to_string(Flag);
+  }
+}
+
+
 int WINAPI WinMain(HINSTANCE hInstance,
                    HINSTANCE hPrevInstance,
                    LPSTR lpCmdLine,
@@ -263,7 +282,19 @@ int WINAPI WinMain(HINSTANCE hInstance,
                     << std::endl;
         }
       }
-      
+
+      D3D11_FEATURE_DATA_FORMAT_SUPPORT2 support2 = { };
+      support2.InFormat = format;
+
+      if (SUCCEEDED(device->CheckFeatureSupport(D3D11_FEATURE_FORMAT_SUPPORT2, &support2, sizeof(support2)))) {
+        for (uint32_t i = 0; i < 32; i++) {
+          if (support2.OutFormatSupport2 & (1u << i)) {
+            std::cout << "  "
+                      << GetFormatFlagName2(1u << i)
+                      << std::endl;
+          }
+        }
+      }
     } else {
       std::cout << "  Not supported" << std::endl;
     }
