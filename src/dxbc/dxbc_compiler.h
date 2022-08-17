@@ -181,9 +181,6 @@ namespace dxvk {
     uint32_t builtinLayer         = 0;
     uint32_t builtinViewportId    = 0;
     
-    uint32_t builtinLaneId        = 0;
-    uint32_t killState            = 0;
-
     uint32_t pushConstantId       = 0;
   };
   
@@ -1060,12 +1057,6 @@ namespace dxvk {
     void emitClipCullLoad(
             DxbcSystemValue         sv,
             uint32_t                srcArray);
-    
-    ///////////////////////////////
-    // Some state checking methods
-    DxbcConditional emitBeginPsKillTest();
-
-    void emitEndPsKillTest(const DxbcConditional& cond);
     
     //////////////////////////////////////
     // Common function definition methods
