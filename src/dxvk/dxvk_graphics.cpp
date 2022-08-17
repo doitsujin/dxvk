@@ -1352,9 +1352,9 @@ namespace dxvk {
       if (!(ilBindingMask & (1u << attribute.binding())))
         return false;
 
-      VkFormatProperties formatInfo = m_device->adapter()->formatProperties(attribute.format());
+      DxvkFormatFeatures formatInfo = m_device->getFormatFeatures(attribute.format());
 
-      if (!(formatInfo.bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT))
+      if (!(formatInfo.buffer & VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT))
         return false;
 
       ilLocationMask |= 1u << attribute.location();
@@ -1378,9 +1378,9 @@ namespace dxvk {
     VkFormat depthFormat = state.rt.getDepthStencilFormat();
 
     if (depthFormat) {
-      VkFormatProperties formatInfo = m_device->adapter()->formatProperties(depthFormat);
+      DxvkFormatFeatures formatInfo = m_device->getFormatFeatures(depthFormat);
 
-      if (!(formatInfo.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT))
+      if (!(formatInfo.optimal & VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT))
         return false;
     }
 
@@ -1388,9 +1388,9 @@ namespace dxvk {
       VkFormat colorFormat = state.rt.getColorFormat(i);
 
       if (colorFormat) {
-        VkFormatProperties formatInfo = m_device->adapter()->formatProperties(colorFormat);
+        DxvkFormatFeatures formatInfo = m_device->getFormatFeatures(colorFormat);
 
-        if (!(formatInfo.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))
+        if (!(formatInfo.optimal & VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT))
           return false;
       }
     }
