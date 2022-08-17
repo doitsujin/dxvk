@@ -60,6 +60,19 @@ namespace dxvk {
   }
   
   
+  DxvkFormatFeatures DxvkAdapter::getFormatFeatures(VkFormat format) const {
+    VkFormatProperties3 properties3 = { VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_3 };
+    VkFormatProperties2 properties2 = { VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2, &properties3 };
+    m_vki->vkGetPhysicalDeviceFormatProperties2(m_handle, format, &properties2);
+
+    DxvkFormatFeatures result;
+    result.optimal = properties3.optimalTilingFeatures;
+    result.linear  = properties3.linearTilingFeatures;
+    result.buffer  = properties3.bufferFeatures;
+    return result;
+  }
+
+
   VkFormatProperties DxvkAdapter::formatProperties(VkFormat format) const {
     VkFormatProperties formatProperties;
     m_vki->vkGetPhysicalDeviceFormatProperties(m_handle, format, &formatProperties);

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "dxvk_adapter.h"
 #include "dxvk_buffer.h"
 #include "dxvk_compute.h"
@@ -177,6 +179,33 @@ namespace dxvk {
     const DxvkDeviceInfo& properties() const {
       return m_properties;
     }
+
+    /**
+     * \brief Queries format feature support
+     *
+     * \param [in] format Format to query
+     * \returns Format feature bits
+     */
+    DxvkFormatFeatures getFormatFeatures(VkFormat format) const {
+      return m_adapter->getFormatFeatures(format);
+    }
+
+    /**
+     * \brief Queries format limits
+     *
+     * \param [in] format Image format to quers
+     * \param [in] type Image type
+     * \param [in] tiling Image tiling
+     * \param [in] usage Image usage flags
+     * \param [in] flags Image create flags
+     * \returns Format limits if the given image is supported
+     */
+    std::optional<DxvkFormatLimits> getFormatLimits(
+            VkFormat                  format,
+            VkImageType               type,
+            VkImageTiling             tiling,
+            VkImageUsageFlags         usage,
+            VkImageCreateFlags        flags) const;
 
     /**
      * \brief Get device status

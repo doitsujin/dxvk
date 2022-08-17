@@ -13,7 +13,27 @@ namespace dxvk {
   };
   
   using DxvkFormatFlags = Flags<DxvkFormatFlag>;
-  
+
+  /**
+   * \brief Format support info
+   */
+  struct DxvkFormatFeatures {
+    VkFormatFeatureFlags2 optimal;
+    VkFormatFeatureFlags2 linear;
+    VkFormatFeatureFlags2 buffer;
+  };
+
+  /**
+   * \brief Format support limits for a given set of image usage flags
+   */
+  struct DxvkFormatLimits {
+    VkExtent3D            maxExtent;
+    uint32_t              maxMipLevels;
+    uint32_t              maxArrayLayers;
+    VkSampleCountFlags    sampleCounts;
+    VkDeviceSize          maxResourceSize;
+  };
+
   /**
    * \brief Planar format info
    */

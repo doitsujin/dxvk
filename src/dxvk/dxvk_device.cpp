@@ -43,6 +43,39 @@ namespace dxvk {
   }
 
 
+  std::optional<DxvkFormatLimits> DxvkDevice::getFormatLimits(
+          VkFormat                  format,
+          VkImageType               type,
+          VkImageTiling             tiling,
+          VkImageUsageFlags         usage,
+          VkImageCreateFlags        flags) const {
+    auto vk = m_adapter->vki();
+
+    VkPhysicalDeviceImageFormatInfo2 info = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2 };
+    info.format = format;
+    info.type   = type;
+    info.tiling = tiling;
+    info.usage  = usage;
+    info.flags  = flags;
+
+    VkImageFormatProperties2 properties = { VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2 };
+
+    VkResult vr = vk->vkGetPhysicalDeviceImageFormatProperties2(
+      m_adapter->handle(), &info, &properties);
+
+    if (vr != VK_SUCCESS)
+      return std::nullopt;
+
+    DxvkFormatLimits result;
+    result.maxExtent        = properties.imageFormatProperties.maxExtent;
+    result.maxMipLevels     = properties.imageFormatProperties.maxMipLevels;
+    result.maxArrayLayers   = properties.imageFormatProperties.maxArrayLayers;
+    result.sampleCounts     = properties.imageFormatProperties.sampleCounts;
+    result.maxResourceSize  = properties.imageFormatProperties.maxResourceSize;
+    return result;
+  }
+
+
   bool DxvkDevice::isUnifiedMemoryArchitecture() const {
     return m_adapter->isUnifiedMemoryArchitecture();
   }

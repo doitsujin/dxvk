@@ -3,6 +3,7 @@
 #include "dxvk_device_info.h"
 #include "dxvk_extensions.h"
 #include "dxvk_include.h"
+#include "dxvk_format.h"
 
 namespace dxvk {
   
@@ -134,6 +135,15 @@ namespace dxvk {
      * \returns Device memory properties
      */
     VkPhysicalDeviceMemoryProperties memoryProperties() const;
+
+    /**
+     * \brief Queries format feature support
+     *
+     * \param [in] format Format to query
+     * \returns Format feature bits
+     */
+    DxvkFormatFeatures getFormatFeatures(
+            VkFormat                  format) const;
 
     /**
      * \brief Queries format support
