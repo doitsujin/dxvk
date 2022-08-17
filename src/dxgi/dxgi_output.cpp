@@ -301,8 +301,8 @@ namespace dxvk {
     std::vector<DXGI_MODE_DESC1> modeList;
     
     while (wsi::getDisplayMode(m_monitor, srcModeId++, &devMode)) {
-      // Skip interlaced modes altogether
-      if (devMode.interlaced)
+      // Only enumerate interlaced modes if requested.
+      if (devMode.interlaced && !(Flags & DXGI_ENUM_MODES_INTERLACED))
         continue;
       
       // Skip modes with incompatible formats
