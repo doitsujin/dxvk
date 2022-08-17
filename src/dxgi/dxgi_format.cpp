@@ -847,13 +847,13 @@ namespace dxvk {
   }};
   
   
-  DXGIVkFormatTable::DXGIVkFormatTable(const Rc<DxvkAdapter>& adapter)
+  DXGIVkFormatTable::DXGIVkFormatTable(const Rc<DxvkDevice>& device)
   : m_dxgiFormats (g_dxgiFormats), m_dxgiFamilies(g_dxgiFamilies) {
     // AMD do not support 24-bit depth buffers on Vulkan,
     // so we have to fall back to a 32-bit depth format.
-    if (!CheckImageFormatSupport(adapter, VK_FORMAT_D24_UNORM_S8_UINT,
-          VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
-          VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
+    if (!CheckImageFormatSupport(device, VK_FORMAT_D24_UNORM_S8_UINT,
+          VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT |
+          VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT)) {
       Logger::info("DXGI: VK_FORMAT_D24_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT");
       RemapDepthFormat(DXGI_FORMAT_R24G8_TYPELESS,        VK_FORMAT_D32_SFLOAT_S8_UINT);
       RemapDepthFormat(DXGI_FORMAT_R24_UNORM_X8_TYPELESS, VK_FORMAT_D32_SFLOAT_S8_UINT);
@@ -943,13 +943,13 @@ namespace dxvk {
   
 
   bool DXGIVkFormatTable::CheckImageFormatSupport(
-    const Rc<DxvkAdapter>&      Adapter,
+    const Rc<DxvkDevice>&       Device,
           VkFormat              Format,
-          VkFormatFeatureFlags  Features) const {
-    VkFormatProperties supported = Adapter->formatProperties(Format);
+          VkFormatFeatureFlags2 Features) const {
+    DxvkFormatFeatures supported = Device->getFormatFeatures(Format);
     
-    return (supported.linearTilingFeatures  & Features) == Features
-        || (supported.optimalTilingFeatures & Features) == Features;
+    return (supported.linear  & Features) == Features
+        || (supported.optimal & Features) == Features;
   }
   
   

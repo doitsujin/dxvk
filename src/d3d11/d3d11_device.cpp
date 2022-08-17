@@ -41,7 +41,7 @@ namespace dxvk {
     m_featureFlags  (FeatureFlags),
     m_dxvkDevice    (pContainer->GetDXVKDevice()),
     m_dxvkAdapter   (m_dxvkDevice->adapter()),
-    m_d3d11Formats  (m_dxvkAdapter),
+    m_d3d11Formats  (m_dxvkDevice),
     m_d3d11Options  (m_dxvkDevice->instance()->config(), m_dxvkDevice),
     m_dxbcOptions   (m_dxvkDevice, m_d3d11Options) {
     m_initializer = new D3D11Initializer(this);
