@@ -876,7 +876,7 @@ namespace dxvk {
     const bool isUav = ins.op == DxbcOpcode::DclUavTyped;
     
     if (isUav) {
-      if (m_moduleInfo.options.useStorageImageReadWithoutFormat)
+      if (m_moduleInfo.options.supportsTypedUavLoadR32)
         m_module.enableCapability(spv::CapabilityStorageImageReadWithoutFormat);
       m_module.enableCapability(spv::CapabilityStorageImageWriteWithoutFormat);
     }
@@ -951,7 +951,7 @@ namespace dxvk {
     if (isUav) {
       if ((m_analysis->uavInfos[registerId].accessAtomicOp)
        || (m_analysis->uavInfos[registerId].accessTypedLoad
-        && !m_moduleInfo.options.useStorageImageReadWithoutFormat))
+        && !m_moduleInfo.options.supportsTypedUavLoadR32))
         imageFormat = getScalarImageFormat(sampledType);
     }
     

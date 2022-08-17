@@ -1681,10 +1681,9 @@ namespace dxvk {
           return E_INVALIDARG;
 
         const auto& extensions = m_dxvkDevice->extensions();
-        const auto& features = m_dxvkDevice->features();
 
         info->PSSpecifiedStencilRefSupported = extensions.extShaderStencilExport;
-        info->TypedUAVLoadAdditionalFormats  = features.core.features.shaderStorageImageReadWithoutFormat;
+        info->TypedUAVLoadAdditionalFormats  = m_dxbcOptions.supportsTypedUavLoadExtended;
         info->ROVsSupported                  = FALSE;
         info->ConservativeRasterizationTier  = D3D11_CONSERVATIVE_RASTERIZATION_NOT_SUPPORTED;
         info->MapOnDefaultTextures           = TRUE;
@@ -1977,7 +1976,6 @@ namespace dxvk {
       enabled.core.features.multiDrawIndirect                     = VK_TRUE;
       enabled.core.features.shaderFloat64                         = supported.core.features.shaderFloat64;
       enabled.core.features.shaderInt64                           = supported.core.features.shaderInt64;
-      enabled.core.features.shaderStorageImageReadWithoutFormat   = supported.core.features.shaderStorageImageReadWithoutFormat;
       enabled.core.features.tessellationShader                    = VK_TRUE;
     }
     

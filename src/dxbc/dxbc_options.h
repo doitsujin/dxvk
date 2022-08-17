@@ -23,8 +23,10 @@ namespace dxvk {
     // clip device feature is not supported
     bool useDepthClipWorkaround = false;
 
-    /// Use the ShaderImageReadWithoutFormat capability.
-    bool useStorageImageReadWithoutFormat = false;
+    /// Determines whether format qualifiers
+    /// on typed UAV loads are required
+    bool supportsTypedUavLoadR32 = false;
+    bool supportsTypedUavLoadExtended = false;
 
     /// Use subgroup operations to reduce the number of
     /// atomic operations for append/consume buffers.

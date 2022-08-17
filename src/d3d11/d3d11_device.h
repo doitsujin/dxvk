@@ -454,7 +454,7 @@ namespace dxvk {
     D3D11StateObjectSet<D3D11RasterizerState>   m_rsStateObjects;
     D3D11StateObjectSet<D3D11SamplerState>      m_samplerObjects;
     D3D11ShaderModuleSet                        m_shaderModules;
-    
+
     HRESULT CreateShaderModule(
             D3D11CommonShader*      pShaderModule,
             DxvkShaderKey           ShaderKey,
