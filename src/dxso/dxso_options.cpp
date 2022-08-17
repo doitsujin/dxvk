@@ -14,18 +14,6 @@ namespace dxvk {
     const DxvkDeviceFeatures& devFeatures = device->features();
     const DxvkDeviceInfo& devInfo = adapter->devicePropertiesExt();
 
-    useDemoteToHelperInvocation
-      = (devFeatures.vk13.shaderDemoteToHelperInvocation);
-
-    useSubgroupOpsForEarlyDiscard
-       = (devInfo.vk11.subgroupSize >= 4)
-      && (devInfo.vk11.subgroupSupportedStages & VK_SHADER_STAGE_FRAGMENT_BIT)
-      && (devInfo.vk11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_BALLOT_BIT);
-
-    // Disable early discard on Nvidia because it may hurt performance
-    if (adapter->matchesDriver(VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0))
-      useSubgroupOpsForEarlyDiscard = false;
-    
     // Apply shader-related options
     strictConstantCopies = options.strictConstantCopies;
 
