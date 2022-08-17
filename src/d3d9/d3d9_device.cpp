@@ -3892,7 +3892,7 @@ namespace dxvk {
 
     enabled.vk12.samplerMirrorClampToEdge = VK_TRUE;
 
-    enabled.vk13.shaderDemoteToHelperInvocation = supported.vk13.shaderDemoteToHelperInvocation;
+    enabled.vk13.shaderDemoteToHelperInvocation = VK_TRUE;
 
     enabled.extMemoryPriority.memoryPriority = supported.extMemoryPriority.memoryPriority;
 
