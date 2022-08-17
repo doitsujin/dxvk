@@ -1283,6 +1283,8 @@ namespace dxvk {
         m_flags.set(D3D9DeviceFlag::DirtyViewportScissor);
         m_state.scissorRect = scissorRect;
       }
+
+      m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
     }
 
     if (m_state.renderTargets[RenderTargetIndex] == rt)
@@ -5843,6 +5845,42 @@ namespace dxvk {
   }
 
 
+  uint32_t D3D9DeviceEx::GetAlphaTestPrecision() {
+    if (m_state.renderTargets[0] == nullptr)
+      return 0;
+
+    D3D9Format format = m_state.renderTargets[0]->GetCommonTexture()->Desc()->Format;
+
+    switch (format) {
+      case D3D9Format::A2B10G10R10:
+      case D3D9Format::A2R10G10B10:
+      case D3D9Format::A2W10V10U10:
+      case D3D9Format::A2B10G10R10_XR_BIAS:
+        return 0x2; /* 10 bit */
+
+      case D3D9Format::R16F:
+      case D3D9Format::G16R16F:
+      case D3D9Format::A16B16G16R16F:
+        return 0x7; /* 15 bit */
+
+      case D3D9Format::G16R16:
+      case D3D9Format::A16B16G16R16:
+      case D3D9Format::V16U16:
+      case D3D9Format::L16:
+      case D3D9Format::Q16W16V16U16:
+        return 0x8; /* 16 bit */
+
+      case D3D9Format::R32F:
+      case D3D9Format::G32R32F:
+      case D3D9Format::A32B32G32R32F:
+        return 0xF; /* float */
+
+      default:
+        return 0x0; /* 8 bit */
+    }
+  }
+
+
   void D3D9DeviceEx::BindAlphaTestState() {
     m_flags.clr(D3D9DeviceFlag::DirtyAlphaTestState);
 
@@ -5852,7 +5890,11 @@ namespace dxvk {
       ? DecodeCompareOp(D3DCMPFUNC(rs[D3DRS_ALPHAFUNC]))
       : VK_COMPARE_OP_ALWAYS;
 
-    UpdateAlphaTestSpec(alphaOp);
+    uint32_t precision = alphaOp != VK_COMPARE_OP_ALWAYS
+      ? GetAlphaTestPrecision()
+      : 0u;
+
+    UpdateAlphaTestSpec(alphaOp, precision);
   }
 
 
@@ -7332,10 +7374,11 @@ namespace dxvk {
   // D3D9 Device Specialization State
   ////////////////////////////////////
 
-  void D3D9DeviceEx::UpdateAlphaTestSpec(VkCompareOp alphaOp) {
-    uint32_t value = uint32_t(alphaOp);
+  void D3D9DeviceEx::UpdateAlphaTestSpec(VkCompareOp alphaOp, uint32_t precision) {
+    bool dirty  = m_specInfo.set<SpecAlphaCompareOp>(uint32_t(alphaOp));
+         dirty |= m_specInfo.set<SpecAlphaPrecisionBits>(precision);
 
-    if (m_specInfo.set<SpecAlphaCompareOp>(value))
+    if (dirty)
       m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
   }
 
