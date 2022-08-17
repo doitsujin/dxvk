@@ -73,25 +73,6 @@ namespace dxvk {
   }
 
 
-  VkFormatProperties DxvkAdapter::formatProperties(VkFormat format) const {
-    VkFormatProperties formatProperties;
-    m_vki->vkGetPhysicalDeviceFormatProperties(m_handle, format, &formatProperties);
-    return formatProperties;
-  }
-  
-    
-  VkResult DxvkAdapter::imageFormatProperties(
-    VkFormat                  format,
-    VkImageType               type,
-    VkImageTiling             tiling,
-    VkImageUsageFlags         usage,
-    VkImageCreateFlags        flags,
-    VkImageFormatProperties&  properties) const {
-    return m_vki->vkGetPhysicalDeviceImageFormatProperties(
-      m_handle, format, type, tiling, usage, flags, &properties);
-  }
-  
-    
   DxvkAdapterQueueIndices DxvkAdapter::findQueueFamilies() const {
     uint32_t graphicsQueue = findQueueFamily(
       VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT,
