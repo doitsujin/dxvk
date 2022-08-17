@@ -1477,13 +1477,10 @@ namespace dxvk {
     // Check if the device supports the given combination of format
     // and sample count. D3D exposes the opaque concept of quality
     // levels to the application, we'll just define one such level.
-    VkImageFormatProperties formatProps;
+    auto properties = m_dxvkDevice->getFormatLimits(format,
+      VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT, 0);
     
-    VkResult status = m_dxvkAdapter->imageFormatProperties(
-      format, VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL,
-      VK_IMAGE_USAGE_SAMPLED_BIT, 0, formatProps);
-    
-    if ((status == VK_SUCCESS) && (formatProps.sampleCounts & sampleCountFlag))
+    if (properties && (properties->sampleCounts & sampleCountFlag))
       *pNumQualityLevels = 1;
     return S_OK;
   }
@@ -1914,7 +1911,6 @@ namespace dxvk {
 
     enabled.core.features.geometryShader                          = VK_TRUE;
     enabled.core.features.robustBufferAccess                      = VK_TRUE;
-    enabled.core.features.shaderStorageImageWriteWithoutFormat    = VK_TRUE;
     enabled.core.features.depthBounds                             = supported.core.features.depthBounds;
 
     enabled.vk11.shaderDrawParameters                             = VK_TRUE;
@@ -2032,33 +2028,33 @@ namespace dxvk {
     if (pFlags2 != nullptr) *pFlags2 = 0;
 
     // Unsupported or invalid format
-    if (Format != DXGI_FORMAT_UNKNOWN && fmtMapping.Format == VK_FORMAT_UNDEFINED)
+    if (Format && fmtMapping.Format == VK_FORMAT_UNDEFINED)
       return E_FAIL;
     
     // Query Vulkan format properties and supported features for it
     const DxvkFormatInfo* fmtProperties = lookupFormatInfo(fmtMapping.Format);
 
-    VkFormatProperties fmtSupport = fmtMapping.Format != VK_FORMAT_UNDEFINED
-      ? m_dxvkAdapter->formatProperties(fmtMapping.Format)
-      : VkFormatProperties();
+    DxvkFormatFeatures fmtSupport = fmtMapping.Format != VK_FORMAT_UNDEFINED
+      ? m_dxvkDevice->getFormatFeatures(fmtMapping.Format)
+      : DxvkFormatFeatures();
     
-    VkFormatFeatureFlags bufFeatures = fmtSupport.bufferFeatures;
-    VkFormatFeatureFlags imgFeatures = fmtSupport.optimalTilingFeatures | fmtSupport.linearTilingFeatures;
+    VkFormatFeatureFlags2 bufFeatures = fmtSupport.buffer;
+    VkFormatFeatureFlags2 imgFeatures = fmtSupport.optimal | fmtSupport.linear;
 
     // For multi-plane images, we want to check available view formats as well
     if (fmtProperties->flags.test(DxvkFormatFlag::MultiPlane)) {
-      const VkFormatFeatureFlags featureMask
-        = VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT
-        | VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT
-        | VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT
-        | VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT
-        | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
+      const VkFormatFeatureFlags2 featureMask
+        = VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT
+        | VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT
+        | VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT
+        | VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT
+        | VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
 
       DXGI_VK_FORMAT_FAMILY formatFamily = LookupFamily(Format, DXGI_VK_FORMAT_MODE_ANY);
 
       for (uint32_t i = 0; i < formatFamily.FormatCount; i++) {
-        VkFormatProperties viewFmtSupport = m_dxvkAdapter->formatProperties(formatFamily.Formats[i]);
-        imgFeatures |= (viewFmtSupport.optimalTilingFeatures | viewFmtSupport.linearTilingFeatures) & featureMask;
+        DxvkFormatFeatures viewFmtSupport = m_dxvkDevice->getFormatFeatures(formatFamily.Formats[i]);
+        imgFeatures |= (viewFmtSupport.optimal | viewFmtSupport.linear) & featureMask;
       }
     }
     
@@ -2066,12 +2062,11 @@ namespace dxvk {
     UINT flags2 = 0;
 
     // Format can be used for shader resource views with buffers
-    if (bufFeatures & VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT
-     || Format == DXGI_FORMAT_UNKNOWN)
+    if ((bufFeatures & VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT) || !Format)
       flags1 |= D3D11_FORMAT_SUPPORT_BUFFER;
     
     // Format can be used for vertex data
-    if (bufFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT)
+    if (bufFeatures & VK_FORMAT_FEATURE_2_VERTEX_BUFFER_BIT)
       flags1 |= D3D11_FORMAT_SUPPORT_IA_VERTEX_BUFFER;
     
     // Format can be used for index data. Only
@@ -2097,19 +2092,18 @@ namespace dxvk {
      || Format == DXGI_FORMAT_R32G32B32A32_SINT)
       flags1 |= D3D11_FORMAT_SUPPORT_SO_BUFFER;
     
-    if (imgFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT
-     || imgFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) {
+    if (imgFeatures & (VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT)) {
       const VkFormat depthFormat = LookupFormat(Format, DXGI_VK_FORMAT_MODE_DEPTH).Format;
       
       if (GetImageTypeSupport(fmtMapping.Format, VK_IMAGE_TYPE_1D)) flags1 |= D3D11_FORMAT_SUPPORT_TEXTURE1D;
       if (GetImageTypeSupport(fmtMapping.Format, VK_IMAGE_TYPE_2D)) flags1 |= D3D11_FORMAT_SUPPORT_TEXTURE2D;
       if (GetImageTypeSupport(fmtMapping.Format, VK_IMAGE_TYPE_3D)) flags1 |= D3D11_FORMAT_SUPPORT_TEXTURE3D;
-      
+
       flags1 |= D3D11_FORMAT_SUPPORT_MIP
              |  D3D11_FORMAT_SUPPORT_CAST_WITHIN_BIT_LAYOUT;
-    
+
       // Format can be read 
-      if (imgFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) {
+      if (imgFeatures & VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT) {
         flags1 |= D3D11_FORMAT_SUPPORT_TEXTURECUBE
                |  D3D11_FORMAT_SUPPORT_SHADER_LOAD
                |  D3D11_FORMAT_SUPPORT_SHADER_GATHER
@@ -2123,7 +2117,7 @@ namespace dxvk {
       }
       
       // Format is a color format that can be used for rendering
-      if (imgFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT) {
+      if (imgFeatures & VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT) {
         flags1 |= D3D11_FORMAT_SUPPORT_RENDER_TARGET
                |  D3D11_FORMAT_SUPPORT_MIP_AUTOGEN
                |  D3D11_FORMAT_SUPPORT_VIDEO_PROCESSOR_OUTPUT;
@@ -2133,14 +2127,14 @@ namespace dxvk {
       }
       
       // Format supports blending when used for rendering
-      if (imgFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT)
+      if (imgFeatures & VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BLEND_BIT)
         flags1 |= D3D11_FORMAT_SUPPORT_BLENDABLE;
       
       // Format is a depth-stencil format that can be used for rendering
-      if (imgFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+      if (imgFeatures & VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT)
         flags1 |= D3D11_FORMAT_SUPPORT_DEPTH_STENCIL;
       
-      // FIXME implement properly. This would require a VkSurface.
+      // Report supported swap chain formats
       if (Format == DXGI_FORMAT_R8G8B8A8_UNORM
        || Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
        || Format == DXGI_FORMAT_B8G8R8A8_UNORM
@@ -2151,16 +2145,14 @@ namespace dxvk {
         flags1 |= D3D11_FORMAT_SUPPORT_DISPLAY;
       
       // Query multisample support for this format
-      VkImageFormatProperties imgFmtProperties;
-      
-      VkResult status = m_dxvkAdapter->imageFormatProperties(fmtMapping.Format,
-        VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL,
-        (fmtProperties->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
-          ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-          : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-        0, imgFmtProperties);
-      
-      if (status == VK_SUCCESS && imgFmtProperties.sampleCounts > VK_SAMPLE_COUNT_1_BIT) {
+      VkImageUsageFlags usage = (fmtProperties->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
+        ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+        : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
+      auto limits = m_dxvkDevice->getFormatLimits(fmtMapping.Format,
+        VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, usage, 0);
+
+      if (limits && limits->sampleCounts > VK_SAMPLE_COUNT_1_BIT) {
         flags1 |= D3D11_FORMAT_SUPPORT_MULTISAMPLE_RENDERTARGET
                |  D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE
                |  D3D11_FORMAT_SUPPORT_MULTISAMPLE_LOAD;
@@ -2168,19 +2160,27 @@ namespace dxvk {
     }
     
     // Format can be used for storage images or storage texel buffers
-    if ((bufFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT)
-     && (imgFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)) {
+    if ((bufFeatures & VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT)
+     && (imgFeatures & VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT)
+     && (imgFeatures & VK_FORMAT_FEATURE_2_STORAGE_WRITE_WITHOUT_FORMAT_BIT)) {
       flags1 |= D3D11_FORMAT_SUPPORT_TYPED_UNORDERED_ACCESS_VIEW;
       flags2 |= D3D11_FORMAT_SUPPORT2_UAV_TYPED_STORE;
       
-      if (m_dxvkDevice->features().core.features.shaderStorageImageReadWithoutFormat
-       || Format == DXGI_FORMAT_R32_UINT
-       || Format == DXGI_FORMAT_R32_SINT
-       || Format == DXGI_FORMAT_R32_FLOAT)
-        flags2 |= D3D11_FORMAT_SUPPORT2_UAV_TYPED_LOAD;
+      if (m_dxbcOptions.supportsTypedUavLoadR32) {
+        // If the R32 formats are supported without format declarations,
+        // we can optionally support additional formats for typed loads
+        if (imgFeatures & VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT)
+          flags2 |= D3D11_FORMAT_SUPPORT2_UAV_TYPED_LOAD;
+      } else {
+        // Otherwise, we need to emit format declarations, so we can
+        // only support the basic set of R32 formats for typed loads
+        if (Format == DXGI_FORMAT_R32_FLOAT
+         || Format == DXGI_FORMAT_R32_UINT
+         || Format == DXGI_FORMAT_R32_SINT)
+          flags2 |= D3D11_FORMAT_SUPPORT2_UAV_TYPED_LOAD;
+      }
       
-      if (Format == DXGI_FORMAT_R32_UINT
-       || Format == DXGI_FORMAT_R32_SINT) {
+      if (Format == DXGI_FORMAT_R32_UINT || Format == DXGI_FORMAT_R32_SINT) {
         flags2 |= D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_ADD
                |  D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_BITWISE_OPS
                |  D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_COMPARE_STORE_OR_COMPARE_EXCHANGE
@@ -2206,19 +2206,15 @@ namespace dxvk {
   
   
   BOOL D3D11Device::GetImageTypeSupport(VkFormat Format, VkImageType Type) const {
-    VkImageFormatProperties props;
+    auto properties = m_dxvkDevice->getFormatLimits(Format,
+      Type, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT, 0);
     
-    VkResult status = m_dxvkAdapter->imageFormatProperties(
-      Format, Type, VK_IMAGE_TILING_OPTIMAL,
-      VK_IMAGE_USAGE_SAMPLED_BIT, 0, props);
-    
-    if (status != VK_SUCCESS) {
-      status = m_dxvkAdapter->imageFormatProperties(
-        Format, Type, VK_IMAGE_TILING_LINEAR,
-        VK_IMAGE_USAGE_SAMPLED_BIT, 0, props);
+    if (!properties) {
+      properties = m_dxvkDevice->getFormatLimits(Format,
+        Type, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT, 0);
     }
     
-    return status == VK_SUCCESS;
+    return properties.has_value();
   }
   
   
