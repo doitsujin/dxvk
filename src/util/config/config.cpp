@@ -571,6 +571,11 @@ namespace dxvk {
     { R"(\\BGE\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
+    /* King Of Fighters XIII                     *
+     * In-game speed increases on high FPS       */
+    { R"(\\kofxiii\.exe$)", {{
+      { "d3d9.maxFrameRate",                "60" },
+    }} },
     /* YS Origin                                *
      * Helps very bad frametimes in some areas  */
     { R"(\\yso_win\.exe$)", {{
