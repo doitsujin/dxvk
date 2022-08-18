@@ -2377,7 +2377,7 @@ namespace dxvk {
     D3D9AlphaTestContext alphaTestContext;
     alphaTestContext.alphaFuncId = m_spec.get(m_module, m_specUbo, SpecAlphaCompareOp);
     alphaTestContext.alphaPrecisionId = m_spec.get(m_module, m_specUbo, SpecAlphaPrecisionBits);
-    alphaTestContext.alphaRefId = m_module.opLoad(m_floatType,
+    alphaTestContext.alphaRefId = m_module.opLoad(m_uint32Type,
       m_module.opAccessChain(uintPtr, m_rsBlock, 1, &alphaRefMember));
     alphaTestContext.alphaId = m_module.opCompositeExtract(m_floatType,
       m_module.opLoad(m_vec4Type, oC0),
