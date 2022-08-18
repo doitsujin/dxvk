@@ -249,7 +249,7 @@ namespace dxvk {
       return &pair->second;
 
     auto layout = createPipelineLayout(shaders.cs->getBindings());
-    auto library = findPipelineLibrary(shaders.cs);
+    auto library = findPipelineLibraryLocked(shaders.cs);
 
     auto iter = m_computePipelines.emplace(
       std::piecewise_construct,
@@ -291,8 +291,8 @@ namespace dxvk {
     DxvkShaderPipelineLibrary* fsLibrary = nullptr;
 
     if (shaders.tcs == nullptr && shaders.tes == nullptr && shaders.gs == nullptr) {
-      vsLibrary = findPipelineLibrary(shaders.vs);
-      fsLibrary = findPipelineLibrary(shaders.fs);
+      vsLibrary = findPipelineLibraryLocked(shaders.vs);
+      fsLibrary = findPipelineLibraryLocked(shaders.fs);
     }
 
     auto iter = m_graphicsPipelines.emplace(
@@ -445,6 +445,13 @@ namespace dxvk {
 
 
   DxvkShaderPipelineLibrary* DxvkPipelineManager::findPipelineLibrary(
+    const Rc<DxvkShader>&     shader) {
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
+    return findPipelineLibraryLocked(shader);
+  }
+
+
+  DxvkShaderPipelineLibrary* DxvkPipelineManager::findPipelineLibraryLocked(
     const Rc<DxvkShader>&     shader) {
     DxvkShaderPipelineLibraryKey key;
     key.shader = shader;

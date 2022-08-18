@@ -302,6 +302,9 @@ namespace dxvk {
     DxvkShaderPipelineLibrary* findPipelineLibrary(
       const Rc<DxvkShader>&     shader);
 
+    DxvkShaderPipelineLibrary* findPipelineLibraryLocked(
+      const Rc<DxvkShader>&     shader);
+
     bool canPrecompileShader(
       const Rc<DxvkShader>&     shader) const;
 
