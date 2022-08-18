@@ -78,10 +78,16 @@ namespace dxvk {
       }
     }
 
+    for (uint32_t i = 0; i < CountSubresources(); i++) {
+      m_memoryOffset[i] = m_totalSize;
+      m_totalSize += GetMipSize(i);
+    }
+
+    // Initialization is handled by D3D9Initializer
     if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE)
-      AllocData();
+      m_data = m_device->GetAllocator()->Alloc(m_totalSize);
     else if (m_mapMode != D3D9_COMMON_TEXTURE_MAP_MODE_NONE && m_desc.Pool != D3DPOOL_DEFAULT)
-      CreateBuffers();
+      CreateBuffer(false);
 
     m_exposedMipLevels = m_desc.MipLevels;
 
@@ -174,22 +180,24 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  void* D3D9CommonTexture::GetData(UINT Subresource) {
-    if (unlikely(m_mappedSlices[Subresource].mapPtr != nullptr || m_mapMode != D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE))
-      return m_mappedSlices[Subresource].mapPtr;
 
-    D3D9Memory& memory = m_data[Subresource];
-    memory.Map();
-    return memory.Ptr();
+  void* D3D9CommonTexture::GetData(UINT Subresource) {
+    if (unlikely(m_buffer != nullptr))
+      return m_buffer->mapPtr(m_memoryOffset[Subresource]);
+
+    m_data.Map();
+    uint8_t* ptr = reinterpret_cast<uint8_t*>(m_data.Ptr());
+    ptr += m_memoryOffset[Subresource];
+    return ptr;
   }
 
-  void D3D9CommonTexture::CreateBufferSubresource(UINT Subresource, bool Initialize) {
-    if (likely(m_buffers[Subresource] != nullptr)) {
+
+  void D3D9CommonTexture::CreateBuffer(bool Initialize) {
+    if (likely(m_buffer != nullptr))
       return;
-    }
 
     DxvkBufferCreateInfo info;
-    info.size   = GetMipSize(Subresource);
+    info.size   = m_totalSize;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
                 | VK_BUFFER_USAGE_TRANSFER_DST_BIT
                 | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
@@ -209,18 +217,17 @@ namespace dxvk {
                                   | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
                                   | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
 
-    m_buffers[Subresource] = m_device->GetDXVKDevice()->createBuffer(info, memType);
-    m_mappedSlices[Subresource] = m_buffers[Subresource]->getSliceHandle();
+    m_buffer = m_device->GetDXVKDevice()->createBuffer(info, memType);
 
     if (Initialize) {
-      if (m_data[Subresource]) {
-        m_data[Subresource].Map();
-        memcpy(m_mappedSlices[Subresource].mapPtr, m_data[Subresource].Ptr(), info.size);
+      if (m_data) {
+        m_data.Map();
+        std::memcpy(m_buffer->mapPtr(0), m_data.Ptr(), m_totalSize);
       } else {
-        memset(m_mappedSlices[Subresource].mapPtr, 0, info.size);
+        std::memset(m_buffer->mapPtr(0), 0, m_totalSize);
       }
     }
-    m_data[Subresource] = {};
+    m_data = {};
   }
 
 
@@ -233,7 +240,7 @@ namespace dxvk {
 
     const VkExtent3D mipExtent = util::computeMipLevelExtent(
       GetExtent(), MipLevel);
-    
+
     const VkExtent3D blockCount = util::computeBlockCount(
       mipExtent, formatInfo->blockSize);
 
@@ -661,16 +668,14 @@ namespace dxvk {
       m_sampleView.Srgb = CreateView(AllLayers, Lod, VK_IMAGE_USAGE_SAMPLED_BIT, true);
   }
 
-  void D3D9CommonTexture::AllocData() {
-    // D3D9Initializer will handle clearing the data
-    const uint32_t count = CountSubresources();
-    for (uint32_t i = 0; i < count; i++) {
-      m_data[i] = m_device->GetAllocator()->Alloc(GetMipSize(i));
-    }
+
+  const Rc<DxvkBuffer>& D3D9CommonTexture::GetBuffer() {
+    return m_buffer;
   }
 
-  const Rc<DxvkBuffer>&  D3D9CommonTexture::GetBuffer(UINT Subresource) {
-    return m_buffers[Subresource];
+
+  DxvkBufferSlice D3D9CommonTexture::GetBufferSlice(UINT Subresource) {
+    return DxvkBufferSlice(GetBuffer(), m_memoryOffset[Subresource], GetMipSize(Subresource));
   }
 
 }
