@@ -264,11 +264,6 @@ namespace dxvk {
         dstTexture, &dstLayers, dstOffset,
         srcTexture, &srcLayers, srcOffset,
         srcExtent);
-    } else {
-      Logger::err(str::format(
-        "D3D11: CopySubresourceRegion1: Incompatible resources",
-        "\n  Dst resource type: ", dstResourceDim,
-        "\n  Src resource type: ", srcResourceDim));
     }
   }
 
@@ -288,13 +283,8 @@ namespace dxvk {
     pDstResource->GetType(&dstResourceDim);
     pSrcResource->GetType(&srcResourceDim);
 
-    if (dstResourceDim != srcResourceDim) {
-      Logger::err(str::format(
-        "D3D11: CopyResource: Incompatible resources",
-        "\n  Dst resource type: ", dstResourceDim,
-        "\n  Src resource type: ", srcResourceDim));
+    if (dstResourceDim != srcResourceDim)
       return;
-    }
 
     if (dstResourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
       auto dstBuffer = static_cast<D3D11Buffer*>(pDstResource);
@@ -313,10 +303,8 @@ namespace dxvk {
 
       // The subresource count must match as well
       if (dstDesc->ArraySize != srcDesc->ArraySize
-       || dstDesc->MipLevels != srcDesc->MipLevels) {
-        Logger::err("D3D11: CopyResource: Incompatible images");
+       || dstDesc->MipLevels != srcDesc->MipLevels)
         return;
-      }
 
       auto dstFormatInfo = lookupFormatInfo(dstTexture->GetPackedFormat());
       auto srcFormatInfo = lookupFormatInfo(srcTexture->GetPackedFormat());
@@ -837,13 +825,8 @@ namespace dxvk {
     pSrcResource->GetType(&srcResourceType);
 
     if (dstResourceType != D3D11_RESOURCE_DIMENSION_TEXTURE2D
-     || srcResourceType != D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
-      Logger::err(str::format(
-        "D3D11: ResolveSubresource: Incompatible resources",
-        "\n  Dst resource type: ", dstResourceType,
-        "\n  Src resource type: ", srcResourceType));
+     || srcResourceType != D3D11_RESOURCE_DIMENSION_TEXTURE2D)
       return;
-    }
 
     auto dstTexture = static_cast<D3D11Texture2D*>(pDstResource);
     auto srcTexture = static_cast<D3D11Texture2D*>(pSrcResource);
@@ -854,13 +837,8 @@ namespace dxvk {
     dstTexture->GetDesc(&dstDesc);
     srcTexture->GetDesc(&srcDesc);
 
-    if (dstDesc.SampleDesc.Count != 1) {
-      Logger::err(str::format(
-        "D3D11: ResolveSubresource: Invalid sample counts",
-        "\n  Dst sample count: ", dstDesc.SampleDesc.Count,
-        "\n  Src sample count: ", srcDesc.SampleDesc.Count));
+    if (dstDesc.SampleDesc.Count != 1)
       return;
-    }
 
     D3D11CommonTexture* dstTextureInfo = GetCommonTexture(pDstResource);
     D3D11CommonTexture* srcTextureInfo = GetCommonTexture(pSrcResource);
@@ -3588,16 +3566,12 @@ namespace dxvk {
     auto dstFormatInfo = lookupFormatInfo(pDstTexture->GetPackedFormat());
     auto srcFormatInfo = lookupFormatInfo(pSrcTexture->GetPackedFormat());
 
-    if (dstFormatInfo->elementSize != srcFormatInfo->elementSize) {
-      Logger::err("D3D11: CopyImage: Incompatible texel size");
+    if (dstFormatInfo->elementSize != srcFormatInfo->elementSize)
       return;
-    }
 
     // Sample counts must match
-    if (pDstTexture->Desc()->SampleDesc.Count != pSrcTexture->Desc()->SampleDesc.Count) {
-      Logger::err("D3D11: CopyImage: Incompatible sample count");
+    if (pDstTexture->Desc()->SampleDesc.Count != pSrcTexture->Desc()->SampleDesc.Count)
       return;
-    }
 
     // Obviously, the copy region must not be empty
     VkExtent3D dstMipExtent = pDstTexture->MipLevelExtent(pDstLayers->mipLevel);
@@ -3615,10 +3589,8 @@ namespace dxvk {
 
     // Don't perform the copy if the offsets aren't block-aligned
     if (!util::isBlockAligned(SrcOffset, srcFormatInfo->blockSize)
-     || !util::isBlockAligned(DstOffset, dstFormatInfo->blockSize)) {
-      Logger::err(str::format("D3D11: CopyImage: Unaligned block offset"));
+     || !util::isBlockAligned(DstOffset, dstFormatInfo->blockSize))
       return;
-    }
 
     // Clamp the image region in order to avoid out-of-bounds access
     VkExtent3D blockCount    = util::computeBlockCount(SrcExtent, srcFormatInfo->blockSize);
@@ -4746,10 +4718,8 @@ namespace dxvk {
       extent.depth  = pDstBox->back - pDstBox->front;
     }
 
-    if (!util::isBlockAligned(offset, extent, formatInfo->blockSize, mipExtent)) {
-      Logger::err("D3D11: UpdateSubresource1: Unaligned region");
+    if (!util::isBlockAligned(offset, extent, formatInfo->blockSize, mipExtent))
       return;
-    }
 
     auto stagingSlice = AllocStagingBuffer(util::computeImageDataSize(packedFormat, extent));
 
