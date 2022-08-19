@@ -889,7 +889,8 @@ namespace dxvk {
     VkExtent3D dstTexExtent = dstTexInfo->GetExtentMip(dst->GetMipLevel());
     VkExtent3D srcTexExtent = srcTexInfo->GetExtentMip(src->GetMipLevel());
 
-    Rc<DxvkBuffer> dstBuffer = dstTexInfo->GetBuffer(dst->GetSubresource(), dstTexExtent.width > srcTexExtent.width || dstTexExtent.height > srcTexExtent.height);
+    dstTexInfo->CreateBufferSubresource(dst->GetSubresource(), dstTexExtent.width > srcTexExtent.width || dstTexExtent.height > srcTexExtent.height);
+    Rc<DxvkBuffer> dstBuffer = dstTexInfo->GetBuffer(dst->GetSubresource());
 
     Rc<DxvkImage>  srcImage                 = srcTexInfo->GetImage();
     const DxvkFormatInfo* srcFormatInfo     = lookupFormatInfo(srcImage->info().format);
@@ -4260,12 +4261,17 @@ namespace dxvk {
     bool needsReadback = pResource->NeedsReadback(Subresource) || renderable;
     pResource->SetNeedsReadback(Subresource, false);
 
+    if (unlikely(pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED || needsReadback)) {
+      // Create mapping buffer if it doesn't exist yet. (POOL_DEFAULT)
+      pResource->CreateBufferSubresource(Subresource, !needsReadback);
+    }
+
     void* mapPtr;
 
     if ((Flags & D3DLOCK_DISCARD) && needsReadback) {
       // We do not have to preserve the contents of the
       // buffer if the entire image gets discarded.
-      const Rc<DxvkBuffer> mappedBuffer = pResource->GetBuffer(Subresource, false);
+      const Rc<DxvkBuffer> mappedBuffer = pResource->GetBuffer(Subresource);
       DxvkBufferSliceHandle physSlice = pResource->DiscardMapSlice(Subresource);
       mapPtr = physSlice.mapPtr;
 
@@ -4276,16 +4282,11 @@ namespace dxvk {
         ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
       });
     } else {
-      if (unlikely(pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED)) {
-        // Create mapping buffer if it doesn't exist yet. (POOL_DEFAULT)
-        pResource->GetBuffer(Subresource, !needsReadback);
-      }
-
       // Don't use MapTexture here to keep the mapped list small while the resource is still locked.
       mapPtr = pResource->GetData(Subresource);
 
       if (needsReadback) {
-        const Rc<DxvkBuffer> mappedBuffer = pResource->GetBuffer(Subresource, false);
+        const Rc<DxvkBuffer> mappedBuffer = pResource->GetBuffer(Subresource);
         if (unlikely(needsReadback) && pResource->GetImage() != nullptr) {
           Rc<DxvkImage> resourceImage = pResource->GetImage();
 
@@ -4523,7 +4524,8 @@ namespace dxvk {
     auto convertFormat = pDestTexture->GetFormatMapping().ConversionFormatInfo;
 
     if (unlikely(pSrcTexture->NeedsReadback(SrcSubresource))) {
-      const Rc<DxvkBuffer>& buffer = pSrcTexture->GetBuffer(SrcSubresource, false);
+      pSrcTexture->CreateBufferSubresource(SrcSubresource, true);
+      const Rc<DxvkBuffer>& buffer = pSrcTexture->GetBuffer(SrcSubresource);
       WaitForResource(buffer, pSrcTexture->GetMappingBufferSequenceNumber(SrcSubresource), 0);
       pSrcTexture->SetNeedsReadback(SrcSubresource, false);
     }

@@ -179,7 +179,11 @@ namespace dxvk {
     return memory.Ptr();
   }
 
-  void D3D9CommonTexture::CreateBufferSubresource(UINT Subresource) {
+  void D3D9CommonTexture::CreateBufferSubresource(UINT Subresource, bool Initialize) {
+    if (likely(m_buffers[Subresource] != nullptr)) {
+      return;
+    }
+
     DxvkBufferCreateInfo info;
     info.size   = GetMipSize(Subresource);
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
@@ -200,6 +204,16 @@ namespace dxvk {
 
     m_buffers[Subresource] = m_device->GetDXVKDevice()->createBuffer(info, memType);
     m_mappedSlices[Subresource] = m_buffers[Subresource]->getSliceHandle();
+
+    if (Initialize) {
+      if (m_data[Subresource]) {
+        m_data[Subresource].Map();
+        memcpy(m_mappedSlices[Subresource].mapPtr, m_data[Subresource].Ptr(), info.size);
+      } else {
+        memset(m_mappedSlices[Subresource].mapPtr, 0, info.size);
+      }
+    }
+    m_data[Subresource] = {};
   }
 
 
@@ -641,21 +655,7 @@ namespace dxvk {
     }
   }
 
-  const Rc<DxvkBuffer>&  D3D9CommonTexture::GetBuffer(UINT Subresource, bool Initialize) {
-    if (unlikely(m_buffers[Subresource] == nullptr)) {
-      CreateBufferSubresource(Subresource);
-
-      if (Initialize) {
-        if (m_data[Subresource]) {
-          m_data[Subresource].Map();
-          memcpy(m_mappedSlices[Subresource].mapPtr, m_data[Subresource].Ptr(), GetMipSize(Subresource));
-        } else {
-          memset(m_mappedSlices[Subresource].mapPtr, 0, GetMipSize(Subresource));
-        }
-      }
-      m_data[Subresource] = {};
-    }
-
+  const Rc<DxvkBuffer>&  D3D9CommonTexture::GetBuffer(UINT Subresource) {
     return m_buffers[Subresource];
   }
 
