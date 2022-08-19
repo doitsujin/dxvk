@@ -2123,18 +2123,18 @@ namespace dxvk {
         DxsoRegMask srcMask(true, true, true, false);
         auto vec3 = emitRegisterLoad(src[0], srcMask);
 
-        DxsoRegisterValue dot = emitDot(vec3, vec3);
-        dot.id = m_module.opInverseSqrt (scalarTypeId, dot.id);
+        // No need for emitDot, either both arguments or none are zero.
+        // mul_zero has the same result as ieee mul.
+        uint32_t dot = m_module.opDot(scalarTypeId, vec3.id, vec3.id);
+        DxsoRegisterValue rcpLength;
+        rcpLength.type = scalarType;
+        rcpLength.id = m_module.opInverseSqrt(scalarTypeId, dot);
         if (m_moduleInfo.options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled) {
-          dot.id = m_module.opNMin        (scalarTypeId, dot.id,
-            m_module.constf32(FLT_MAX));
+          rcpLength.id = m_module.opNMin(scalarTypeId, rcpLength.id, m_module.constf32(FLT_MAX));
         }
 
-        // r * rsq(r . r);
-        result.id = m_module.opVectorTimesScalar(
-          typeId,
-          emitRegisterLoad(src[0], mask).id,
-          dot.id);
+        // r * rsq(r . r)
+        result.id = emitMul(vec3, emitRegisterExtend(rcpLength, 3)).id;
         break;
       }
       case DxsoOpcode::SinCos: {
