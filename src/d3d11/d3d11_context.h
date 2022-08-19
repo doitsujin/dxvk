@@ -912,6 +912,9 @@ namespace dxvk {
             UINT                              NumSamplers,
             ID3D11SamplerState**              ppSamplers);
 
+    DxvkGlobalPipelineBarrier GetTiledResourceDependency(
+            ID3D11DeviceChild*                pObject);
+
     D3D11MaxUsedBindings GetMaxUsedBindings();
 
     void ResetCommandListState();

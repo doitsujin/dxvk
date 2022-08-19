@@ -2669,7 +2669,19 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::TiledResourceBarrier(
           ID3D11DeviceChild*                pTiledResourceOrViewAccessBeforeBarrier,
           ID3D11DeviceChild*                pTiledResourceOrViewAccessAfterBarrier) {
+    DxvkGlobalPipelineBarrier srcBarrier = GetTiledResourceDependency(pTiledResourceOrViewAccessBeforeBarrier);
+    DxvkGlobalPipelineBarrier dstBarrier = GetTiledResourceDependency(pTiledResourceOrViewAccessAfterBarrier);
 
+    if (srcBarrier.stages && dstBarrier.stages) {
+      EmitCs([
+        cSrcBarrier = srcBarrier,
+        cDstBarrier = dstBarrier
+      ] (DxvkContext* ctx) {
+        ctx->emitGraphicsBarrier(
+          cSrcBarrier.stages, cSrcBarrier.access,
+          cDstBarrier.stages, cDstBarrier.access);
+      });
+    }
   }
 
 
@@ -3881,6 +3893,50 @@ namespace dxvk {
       ppSamplers[i] = StartSlot + i < bindings.samplers.size()
         ? ref(bindings.samplers[StartSlot + i])
         : nullptr;
+    }
+  }
+
+
+  template<typename ContextType>
+  DxvkGlobalPipelineBarrier D3D11CommonContext<ContextType>::GetTiledResourceDependency(
+          ID3D11DeviceChild*                pObject) {
+    if (!pObject) {
+      DxvkGlobalPipelineBarrier result;
+      result.stages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+      result.access = VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT;
+      return result;
+    } else {
+      Com<ID3D11Resource> resource;
+
+      if (FAILED(pObject->QueryInterface(IID_PPV_ARGS(&resource)))) {
+        Com<ID3D11View> view;
+
+        if (FAILED(pObject->QueryInterface(IID_PPV_ARGS(&view))))
+          return DxvkGlobalPipelineBarrier();
+
+        view->GetResource(&resource);
+      }
+
+      D3D11CommonTexture* texture = GetCommonTexture(resource.ptr());
+
+      if (texture) {
+        Rc<DxvkImage> image = texture->GetImage();
+
+        DxvkGlobalPipelineBarrier result;
+        result.stages = image->info().stages;
+        result.access = image->info().access;
+        return result;
+      } else {
+        Rc<DxvkBuffer> buffer = static_cast<D3D11Buffer*>(resource.ptr())->GetBuffer();
+
+        if (buffer == nullptr)
+          return DxvkGlobalPipelineBarrier();
+
+        DxvkGlobalPipelineBarrier result;
+        result.stages = buffer->info().stages;
+        result.access = buffer->info().access;
+        return result;
+      }
     }
   }
 
