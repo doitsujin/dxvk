@@ -491,6 +491,10 @@ namespace dxvk {
             UINT                        Subresource,
       const D3D11_BOX*                  pBox);
     
+    static D3D11_TILED_RESOURCES_TIER DetermineTiledResourcesTier(
+      const DxvkDeviceFeatures&         Features,
+      const DxvkDeviceInfo&             Properties);
+
     static D3D_FEATURE_LEVEL GetMaxFeatureLevel(
       const Rc<DxvkInstance>&           pInstance);
     

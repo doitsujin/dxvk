@@ -1948,7 +1948,11 @@ namespace dxvk {
 
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor      = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor;
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor  = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor;
-    
+
+    D3D11_TILED_RESOURCES_TIER sparseTier = DetermineTiledResourcesTier(supported, adapter->devicePropertiesExt());
+    VkBool32 hasSparseTier1 = sparseTier >= D3D11_TILED_RESOURCES_TIER_1;
+    VkBool32 hasSparseTier2 = sparseTier >= D3D11_TILED_RESOURCES_TIER_2;
+
     if (supported.extCustomBorderColor.customBorderColorWithoutFormat) {
       enabled.extCustomBorderColor.customBorderColors             = VK_TRUE;
       enabled.extCustomBorderColor.customBorderColorWithoutFormat = VK_TRUE;
@@ -1997,14 +2001,36 @@ namespace dxvk {
       enabled.core.features.shaderFloat64                         = supported.core.features.shaderFloat64;
       enabled.core.features.shaderInt64                           = supported.core.features.shaderInt64;
       enabled.core.features.tessellationShader                    = VK_TRUE;
+      enabled.core.features.sparseBinding                         = hasSparseTier1;
+      enabled.core.features.sparseResidencyBuffer                 = hasSparseTier1;
+      enabled.core.features.sparseResidencyImage2D                = hasSparseTier1;
+      enabled.core.features.sparseResidencyImage3D                = hasSparseTier1 && supported.core.features.sparseResidencyImage3D;
+      enabled.core.features.sparseResidency2Samples               = hasSparseTier1 && supported.core.features.sparseResidency2Samples;
+      enabled.core.features.sparseResidency4Samples               = hasSparseTier1 && supported.core.features.sparseResidency4Samples;
+      enabled.core.features.sparseResidency8Samples               = hasSparseTier1 && supported.core.features.sparseResidency8Samples;
+      enabled.core.features.sparseResidency16Samples              = hasSparseTier1 && supported.core.features.sparseResidency16Samples;
+      enabled.core.features.sparseResidencyAliased                = hasSparseTier1;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_11_1) {
       enabled.core.features.logicOp                               = VK_TRUE;
       enabled.core.features.variableMultisampleRate               = VK_TRUE;
       enabled.core.features.vertexPipelineStoresAndAtomics        = VK_TRUE;
+      enabled.core.features.shaderResourceResidency               = hasSparseTier2;
+      enabled.core.features.shaderResourceMinLod                  = hasSparseTier2;
+      enabled.vk12.samplerFilterMinmax                            = hasSparseTier2;
     }
-    
+
+    if (featureLevel >= D3D_FEATURE_LEVEL_12_0) {
+      enabled.core.features.shaderResourceResidency               = VK_TRUE;
+      enabled.core.features.shaderResourceMinLod                  = VK_TRUE;
+      enabled.core.features.sparseBinding                         = VK_TRUE;
+      enabled.core.features.sparseResidencyBuffer                 = VK_TRUE;
+      enabled.core.features.sparseResidencyImage2D                = VK_TRUE;
+      enabled.core.features.sparseResidencyAliased                = VK_TRUE;
+      enabled.vk12.samplerFilterMinmax                            = VK_TRUE;
+    }
+
     return enabled;
   }
   
@@ -2437,6 +2463,32 @@ namespace dxvk {
         }
       }
     }
+  }
+
+
+  D3D11_TILED_RESOURCES_TIER D3D11Device::DetermineTiledResourcesTier(
+    const DxvkDeviceFeatures&         Features,
+    const DxvkDeviceInfo&             Properties) {
+    if (!Features.core.features.sparseBinding
+     || !Features.core.features.sparseResidencyBuffer
+     || !Features.core.features.sparseResidencyImage2D
+     || !Features.core.features.sparseResidencyAliased
+     || !Properties.core.properties.sparseProperties.residencyStandard2DBlockShape)
+      return D3D11_TILED_RESOURCES_NOT_SUPPORTED;
+
+    if (!Features.core.features.shaderResourceResidency
+     || !Features.core.features.shaderResourceMinLod
+     || !Features.vk12.samplerFilterMinmax
+     || !Properties.vk12.filterMinmaxSingleComponentFormats
+     || !Properties.core.properties.sparseProperties.residencyNonResidentStrict
+     || Properties.core.properties.sparseProperties.residencyAlignedMipSize)
+      return D3D11_TILED_RESOURCES_TIER_1;
+
+    if (!Features.core.features.sparseResidencyImage3D
+     || !Properties.core.properties.sparseProperties.residencyStandard3DBlockShape)
+      return D3D11_TILED_RESOURCES_TIER_2;
+
+    return D3D11_TILED_RESOURCES_TIER_3;
   }
 
 
