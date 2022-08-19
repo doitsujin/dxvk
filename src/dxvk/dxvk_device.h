@@ -66,6 +66,7 @@ namespace dxvk {
   struct DxvkDeviceQueueSet {
     DxvkDeviceQueue graphics;
     DxvkDeviceQueue transfer;
+    DxvkDeviceQueue sparse;
   };
   
   /**

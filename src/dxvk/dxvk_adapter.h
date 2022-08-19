@@ -49,6 +49,7 @@ namespace dxvk {
   struct DxvkAdapterQueueIndices {
     uint32_t graphics;
     uint32_t transfer;
+    uint32_t sparse;
   };
   
   /**

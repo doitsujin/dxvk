@@ -91,10 +91,22 @@ namespace dxvk {
     
     if (transferQueue == VK_QUEUE_FAMILY_IGNORED)
       transferQueue = computeQueue;
-    
+
+    uint32_t sparseQueue = VK_QUEUE_FAMILY_IGNORED;
+
+    if (m_queueFamilies[graphicsQueue].queueFlags & VK_QUEUE_SPARSE_BINDING_BIT) {
+      // Prefer using the graphics queue as a sparse binding queue
+      sparseQueue = graphicsQueue;
+    } else {
+      sparseQueue = findQueueFamily(
+        VK_QUEUE_SPARSE_BINDING_BIT,
+        VK_QUEUE_SPARSE_BINDING_BIT);
+    }
+
     DxvkAdapterQueueIndices queues;
     queues.graphics = graphicsQueue;
     queues.transfer = transferQueue;
+    queues.sparse = sparseQueue;
     return queues;
   }
 
@@ -465,6 +477,7 @@ namespace dxvk {
     DxvkAdapterQueueIndices queueFamilies = findQueueFamilies();
     queueFamiliySet.insert(queueFamilies.graphics);
     queueFamiliySet.insert(queueFamilies.transfer);
+    queueFamiliySet.insert(queueFamilies.sparse);
     this->logQueueFamilies(queueFamilies);
     
     for (uint32_t family : queueFamiliySet) {
@@ -855,7 +868,8 @@ namespace dxvk {
   void DxvkAdapter::logQueueFamilies(const DxvkAdapterQueueIndices& queues) {
     Logger::info(str::format("Queue families:",
       "\n  Graphics : ", queues.graphics,
-      "\n  Transfer : ", queues.transfer));
+      "\n  Transfer : ", queues.transfer,
+      "\n  Sparse   : ", queues.sparse != VK_QUEUE_FAMILY_IGNORED ? str::format(queues.sparse) : "n/a"));
   }
   
 }
