@@ -180,7 +180,8 @@ namespace dxvk {
     VkExtent3D dstTexExtent = dstTexInfo->GetExtentMip(dst->GetMipLevel());
     VkExtent3D srcTexExtent = srcTexInfo->GetExtentMip(0);
 
-    Rc<DxvkBuffer> dstBuffer = dstTexInfo->GetBuffer(dst->GetSubresource(), dstTexExtent.width > srcTexExtent.width || dstTexExtent.height > srcTexExtent.height);
+    dstTexInfo->CreateBufferSubresource(dst->GetSubresource(), dstTexExtent.width > srcTexExtent.width || dstTexExtent.height > srcTexExtent.height);
+    Rc<DxvkBuffer> dstBuffer = dstTexInfo->GetBuffer(dst->GetSubresource());
     Rc<DxvkImage>  srcImage  = srcTexInfo->GetImage();
 
     if (srcImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT) {

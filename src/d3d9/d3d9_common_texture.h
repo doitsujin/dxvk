@@ -153,7 +153,7 @@ namespace dxvk {
      */
     void* GetData(UINT Subresource);
 
-    const Rc<DxvkBuffer>& GetBuffer(UINT Subresource, bool Initialize);
+    const Rc<DxvkBuffer>& GetBuffer(UINT Subresource);
 
 
     DxvkBufferSliceHandle GetMappedSlice(UINT Subresource) {
@@ -466,6 +466,14 @@ namespace dxvk {
      */
     VkDeviceSize GetMipSize(UINT Subresource) const;
 
+    /**
+     * \brief Creates a buffer
+     * Creates mapping and staging buffers for a given subresource
+     * allocates new buffers if necessary
+     * \returns Whether an allocation happened
+     */
+    void CreateBufferSubresource(UINT Subresource, bool Initialize);
+
   private:
 
     D3D9DeviceEx*                 m_device;
@@ -543,14 +551,6 @@ namespace dxvk {
             UINT             Layer);
 
     /**
-     * \brief Creates a buffer
-     * Creates mapping and staging buffers for a given subresource
-     * allocates new buffers if necessary
-     * \returns Whether an allocation happened
-     */
-    void CreateBufferSubresource(UINT Subresource);
-
-    /**
      * \brief Creates buffers
      * Creates mapping and staging buffers for all subresources
      * allocates new buffers if necessary
@@ -559,7 +559,7 @@ namespace dxvk {
       // D3D9Initializer will handle clearing the buffers
       const uint32_t count = CountSubresources();
       for (uint32_t i = 0; i < count; i++)
-        CreateBufferSubresource(i);
+        CreateBufferSubresource(i, false);
     }
 
     void AllocData();
