@@ -1498,9 +1498,26 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::emitGraphicsBarrier() {
-    if (!m_barrierControl.test(DxvkBarrierControl::IgnoreGraphicsBarriers))
-      this->spillRenderPass(true);
+  void DxvkContext::emitGraphicsBarrier(
+          VkPipelineStageFlags      srcStages,
+          VkAccessFlags             srcAccess,
+          VkPipelineStageFlags      dstStages,
+          VkAccessFlags             dstAccess) {
+    // Emit barrier early so we can fold this into
+    // the spill render pass barrier if possible
+    if (srcStages | dstStages) {
+      m_execBarriers.accessMemory(
+        srcStages, srcAccess,
+        dstStages, dstAccess);
+    }
+
+    this->spillRenderPass(true);
+
+    // Flush barriers if there was no active render pass.
+    // This is necessary because there are no resources
+    // associated with the barrier to allow tracking.
+    if (srcStages | dstStages)
+      m_execBarriers.recordCommands(m_cmd);
   }
 
 

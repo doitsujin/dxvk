@@ -826,8 +826,16 @@ namespace dxvk {
      * render target, or when subsequent draw calls access any
      * given resource for writing. It is assumed that no hazards
      * can happen between storage descriptors and other resources.
+     * \param [in] srcStages Source pipeline stages
+     * \param [in] srcAccess Source access
+     * \param [in] dstStages Destination pipeline stages
+     * \param [in] dstAccess Destination access
      */
-    void emitGraphicsBarrier();
+    void emitGraphicsBarrier(
+          VkPipelineStageFlags      srcStages,
+          VkAccessFlags             srcAccess,
+          VkPipelineStageFlags      dstStages,
+          VkAccessFlags             dstAccess);
 
     /**
      * \brief Generates mip maps
