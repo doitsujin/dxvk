@@ -794,7 +794,7 @@ namespace dxvk {
   }
 
 
-  std::wstring DxvkStateCache::getCacheFileName() const {
+  str::path_string DxvkStateCache::getCacheFileName() const {
     std::string path = getCacheDir();
 
     if (!path.empty() && *path.rbegin() != '/')
@@ -802,7 +802,7 @@ namespace dxvk {
     
     std::string exeName = env::getExeBaseName();
     path += exeName + ".dxvk-cache";
-    return str::tows(path.c_str());
+    return str::topath(path.c_str());
   }
 
 
