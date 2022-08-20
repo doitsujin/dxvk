@@ -98,6 +98,7 @@ dxvk_src = [
   'dxvk_shader.cpp',
   'dxvk_shader_key.cpp',
   'dxvk_signal.cpp',
+  'dxvk_sparse.cpp',
   'dxvk_staging.cpp',
   'dxvk_state_cache.cpp',
   'dxvk_stats.cpp',
