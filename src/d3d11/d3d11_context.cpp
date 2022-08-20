@@ -2656,12 +2656,24 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11CommonContext<ContextType>::ResizeTilePool(
           ID3D11Buffer*                     pTilePool,
           UINT64                            NewSizeInBytes) {
-    static bool s_errorShown = false;
+    if (NewSizeInBytes % SparseMemoryPageSize)
+      return E_INVALIDARG;
 
-    if (!std::exchange(s_errorShown, true))
-      Logger::err("D3D11DeviceContext::ResizeTilePool: Not implemented");
+    auto buffer = static_cast<D3D11Buffer*>(pTilePool);
 
-    return DXGI_ERROR_INVALID_CALL;
+    if (!buffer->IsTilePool())
+      return E_INVALIDARG;
+
+    // Perform the resize operation. This is somewhat trivialized
+    // since all lifetime tracking is done by the backend.
+    EmitCs([
+      cAllocator  = buffer->GetSparseAllocator(),
+      cPageCount  = NewSizeInBytes / SparseMemoryPageSize
+    ] (DxvkContext* ctx) {
+      cAllocator->setCapacity(cPageCount);
+    });
+
+    return S_OK;
   }
 
 

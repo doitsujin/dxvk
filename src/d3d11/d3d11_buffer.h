@@ -66,6 +66,10 @@ namespace dxvk {
       return &m_desc;
     }
 
+    BOOL IsTilePool() const {
+      return bool(m_desc.MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL);
+    }
+
     D3D11_COMMON_BUFFER_MAP_MODE GetMapMode() const {
       return m_mapMode;
     }
