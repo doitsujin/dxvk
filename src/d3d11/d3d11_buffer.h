@@ -73,6 +73,10 @@ namespace dxvk {
     Rc<DxvkBuffer> GetBuffer() const {
       return m_buffer;
     }
+
+    Rc<DxvkSparsePageAllocator> GetSparseAllocator() const {
+      return m_sparseAllocator;
+    }
     
     DxvkBufferSlice GetBufferSlice() const {
       return DxvkBufferSlice(m_buffer, 0, m_desc.ByteWidth);
@@ -152,6 +156,7 @@ namespace dxvk {
     
     Rc<DxvkBuffer>                m_buffer;
     Rc<DxvkBuffer>                m_soCounter;
+    Rc<DxvkSparsePageAllocator>   m_sparseAllocator;
     DxvkBufferSliceHandle         m_mapped;
     uint64_t                      m_seq = 0ull;
 

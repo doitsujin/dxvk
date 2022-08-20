@@ -73,16 +73,24 @@ namespace dxvk {
                   |  VK_BUFFER_CREATE_SPARSE_ALIASED_BIT;
     }
 
-    // Create the buffer and set the entire buffer slice as mapped,
-    // so that we only have to update it when invalidating th buffer
-    m_buffer = m_parent->GetDXVKDevice()->createBuffer(info, GetMemoryFlags());
-    m_mapped = m_buffer->getSliceHandle();
+    if (!(pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL)) {
+      // Create the buffer and set the entire buffer slice as mapped,
+      // so that we only have to update it when invalidating the buffer
+      m_buffer = m_parent->GetDXVKDevice()->createBuffer(info, GetMemoryFlags());
+      m_mapped = m_buffer->getSliceHandle();
 
-    m_mapMode = DetermineMapMode();
+      m_mapMode = DetermineMapMode();
 
-    // For Stream Output buffers we need a counter
-    if (pDesc->BindFlags & D3D11_BIND_STREAM_OUTPUT)
-      m_soCounter = CreateSoCounterBuffer();
+      // For Stream Output buffers we need a counter
+      if (pDesc->BindFlags & D3D11_BIND_STREAM_OUTPUT)
+        m_soCounter = CreateSoCounterBuffer();
+    } else {
+      m_sparseAllocator = m_parent->GetDXVKDevice()->createSparsePageAllocator();
+      m_sparseAllocator->setCapacity(info.size / SparseMemoryPageSize);
+
+      m_mapped = DxvkBufferSliceHandle();
+      m_mapMode = D3D11_COMMON_BUFFER_MAP_MODE_NONE;
+    }
   }
   
   
