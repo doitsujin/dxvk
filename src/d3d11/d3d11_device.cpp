@@ -128,7 +128,8 @@ namespace dxvk {
     desc.MiscFlags      = pDesc->MiscFlags;
     desc.TextureLayout  = D3D11_TEXTURE_LAYOUT_UNDEFINED;
     
-    HRESULT hr = D3D11CommonTexture::NormalizeTextureProperties(&desc);
+    HRESULT hr = D3D11CommonTexture::NormalizeTextureProperties(&desc,
+      D3D11_TILED_RESOURCES_NOT_SUPPORTED);
 
     if (FAILED(hr))
       return hr;
@@ -204,7 +205,7 @@ namespace dxvk {
     desc.MiscFlags      = pDesc->MiscFlags;
     desc.TextureLayout  = pDesc->TextureLayout;
     
-    HRESULT hr = D3D11CommonTexture::NormalizeTextureProperties(&desc);
+    HRESULT hr = D3D11CommonTexture::NormalizeTextureProperties(&desc, m_tiledResourcesTier);
 
     if (FAILED(hr))
       return hr;
@@ -279,11 +280,15 @@ namespace dxvk {
     desc.MiscFlags      = pDesc->MiscFlags;
     desc.TextureLayout  = pDesc->TextureLayout;
     
-    HRESULT hr = D3D11CommonTexture::NormalizeTextureProperties(&desc);
+    HRESULT hr = D3D11CommonTexture::NormalizeTextureProperties(&desc, m_tiledResourcesTier);
 
     if (FAILED(hr))
       return hr;
-    
+
+    if ((desc.MiscFlags & D3D11_RESOURCE_MISC_TILED)
+     && (m_tiledResourcesTier < D3D11_TILED_RESOURCES_TIER_3))
+      return E_INVALIDARG;
+
     if (!ppTexture3D)
       return S_FALSE;
       

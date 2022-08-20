@@ -136,10 +136,16 @@ namespace dxvk {
     if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE)
       imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
     
+    if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_TILED) {
+      imageInfo.flags |= VK_IMAGE_CREATE_SPARSE_BINDING_BIT
+                      |  VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
+                      |  VK_IMAGE_CREATE_SPARSE_ALIASED_BIT;
+    }
+
     if (Dimension == D3D11_RESOURCE_DIMENSION_TEXTURE3D &&
         (m_desc.BindFlags & D3D11_BIND_RENDER_TARGET))
       imageInfo.flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT;
-    
+
     // Swap chain back buffers need to be shader readable
     if (DxgiUsage & DXGI_USAGE_BACK_BUFFER) {
       imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -396,7 +402,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11CommonTexture::NormalizeTextureProperties(D3D11_COMMON_TEXTURE_DESC* pDesc) {
+  HRESULT D3D11CommonTexture::NormalizeTextureProperties(D3D11_COMMON_TEXTURE_DESC* pDesc, D3D11_TILED_RESOURCES_TIER TiledTier) {
     if (pDesc->Width == 0 || pDesc->Height == 0 || pDesc->Depth == 0 || pDesc->ArraySize == 0)
       return E_INVALIDARG;
     
@@ -415,9 +421,23 @@ namespace dxvk {
                          != (D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET))
       return E_INVALIDARG;
 
-    // TILE_POOL is invalid, but we don't support TILED either
-    if (pDesc->MiscFlags & (D3D11_RESOURCE_MISC_TILE_POOL | D3D11_RESOURCE_MISC_TILED))
+    // TILE_POOL is invalid for textures
+    if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL)
       return E_INVALIDARG;
+
+    // Perform basic validation for tiled resources
+    if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILED) {
+      UINT invalidFlags = D3D11_RESOURCE_MISC_SHARED
+                        | D3D11_RESOURCE_MISC_SHARED_NTHANDLE
+                        | D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX
+                        | D3D11_RESOURCE_MISC_GDI_COMPATIBLE;
+
+      if ((pDesc->MiscFlags & invalidFlags)
+       || (pDesc->Usage != D3D11_USAGE_DEFAULT)
+       || (pDesc->CPUAccessFlags)
+       || (!TiledTier))
+        return E_INVALIDARG;
+    }
 
     // Use the maximum possible mip level count if the supplied
     // mip level count is either unspecified (0) or invalid

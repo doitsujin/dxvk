@@ -43,9 +43,12 @@ namespace dxvk {
   void D3D11Initializer::InitTexture(
           D3D11CommonTexture*         pTexture,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
-    (pTexture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT)
-      ? InitHostVisibleTexture(pTexture, pInitialData)
-      : InitDeviceLocalTexture(pTexture, pInitialData);
+    if (pTexture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_TILED)
+      InitTiledTexture(pTexture);
+    else if (pTexture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT)
+      InitHostVisibleTexture(pTexture, pInitialData);
+    else
+      InitDeviceLocalTexture(pTexture, pInitialData);
   }
 
 
@@ -249,6 +252,15 @@ namespace dxvk {
     VkImageSubresourceRange subresources = image->getAvailableSubresources();
     
     m_context->initImage(image, subresources, VK_IMAGE_LAYOUT_PREINITIALIZED);
+
+    m_transferCommands += 1;
+    FlushImplicit();
+  }
+
+
+  void D3D11Initializer::InitTiledTexture(
+          D3D11CommonTexture*         pTexture) {
+    m_context->initSparseImage(pTexture->GetImage());
 
     m_transferCommands += 1;
     FlushImplicit();

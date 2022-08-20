@@ -146,7 +146,8 @@ namespace dxvk {
     desc.MiscFlags      = pDesc->MiscFlags;
     desc.TextureLayout  = pDesc->TextureLayout;
     
-    HRESULT hr = D3D11CommonTexture::NormalizeTextureProperties(&desc);
+    HRESULT hr = D3D11CommonTexture::NormalizeTextureProperties(&desc,
+      D3D11_TILED_RESOURCES_NOT_SUPPORTED);
 
     if (FAILED(hr))
       return hr;
