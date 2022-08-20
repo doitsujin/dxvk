@@ -504,8 +504,8 @@ namespace dxvk {
     { R"(\\BBCF\.exe$)", {{
       { "d3d9.floatEmulation",              "Strict" },
     }} },
-    /* Resident Evil games                      */
-    { R"(\\(rerev|rerev2|re0hd|bhd|re5dx9)\.exe$)", {{
+    /* Resident Evil games using MT Framework   */
+    { R"(\\(rerev|re0hd|bhd)\.exe$)", {{
       { "d3d9.allowDirectBufferMapping",                "False" },
     }} },
     /* Limbo                                    */
