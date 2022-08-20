@@ -16,33 +16,49 @@ namespace dxvk {
     m_memAlloc      (&memAlloc),
     m_memFlags      (memFlags),
     m_shaderStages  (util::shaderStages(createInfo.stages)) {
-    // Align slices so that we don't violate any alignment
-    // requirements imposed by the Vulkan device/driver
-    VkDeviceSize sliceAlignment = computeSliceAlignment();
-    m_physSliceLength = createInfo.size;
-    m_physSliceStride = align(createInfo.size, sliceAlignment);
-    m_physSliceCount  = std::max<VkDeviceSize>(1, 256 / m_physSliceStride);
+    if (!(m_info.flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)) {
+      // Align slices so that we don't violate any alignment
+      // requirements imposed by the Vulkan device/driver
+      VkDeviceSize sliceAlignment = computeSliceAlignment();
+      m_physSliceLength = createInfo.size;
+      m_physSliceStride = align(createInfo.size, sliceAlignment);
+      m_physSliceCount  = std::max<VkDeviceSize>(1, 256 / m_physSliceStride);
 
-    // Limit size of multi-slice buffers to reduce fragmentation
-    constexpr VkDeviceSize MaxBufferSize = 256 << 10;
+      // Limit size of multi-slice buffers to reduce fragmentation
+      constexpr VkDeviceSize MaxBufferSize = 256 << 10;
 
-    m_physSliceMaxCount = MaxBufferSize >= m_physSliceStride
-      ? MaxBufferSize / m_physSliceStride
-      : 1;
+      m_physSliceMaxCount = MaxBufferSize >= m_physSliceStride
+        ? MaxBufferSize / m_physSliceStride
+        : 1;
 
-    // Allocate the initial set of buffer slices. Only clear
-    // buffer memory if there is more than one slice, since
-    // we expect the client api to initialize the first slice.
-    m_buffer = allocBuffer(m_physSliceCount, m_physSliceCount > 1);
+      // Allocate the initial set of buffer slices. Only clear
+      // buffer memory if there is more than one slice, since
+      // we expect the client api to initialize the first slice.
+      m_buffer = allocBuffer(m_physSliceCount, m_physSliceCount > 1);
 
-    DxvkBufferSliceHandle slice;
-    slice.handle = m_buffer.buffer;
-    slice.offset = 0;
-    slice.length = m_physSliceLength;
-    slice.mapPtr = m_buffer.memory.mapPtr(0);
+      m_physSlice.handle = m_buffer.buffer;
+      m_physSlice.offset = 0;
+      m_physSlice.length = m_physSliceLength;
+      m_physSlice.mapPtr = m_buffer.memory.mapPtr(0);
 
-    m_physSlice = slice;
-    m_lazyAlloc = m_physSliceCount > 1;
+      m_lazyAlloc = m_physSliceCount > 1;
+    } else {
+      m_physSliceLength = createInfo.size;
+      m_physSliceStride = createInfo.size;
+      m_physSliceCount  = 1;
+      m_physSliceMaxCount = 1;
+
+      m_buffer = createSparseBuffer();
+
+      m_physSlice.handle = m_buffer.buffer;
+      m_physSlice.offset = 0;
+      m_physSlice.length = createInfo.size;
+      m_physSlice.mapPtr = nullptr;
+
+      m_lazyAlloc = false;
+
+      m_sparsePageTable = DxvkSparsePageTable(device, this);
+    }
   }
 
 
@@ -59,17 +75,19 @@ namespace dxvk {
     auto vkd = m_device->vkd();
 
     VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
-    info.size                  = m_physSliceStride * sliceCount;
-    info.usage                 = m_info.usage;
-    info.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
+    info.flags = m_info.flags;
+    info.size = m_physSliceStride * sliceCount;
+    info.usage = m_info.usage;
+    info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     
     DxvkBufferHandle handle;
 
     if (vkd->vkCreateBuffer(vkd->device(), &info, nullptr, &handle.buffer)) {
       throw DxvkError(str::format(
         "DxvkBuffer: Failed to create buffer:"
-        "\n  size:  ", info.size,
-        "\n  usage: ", info.usage));
+        "\n  flags: ", std::hex, info.flags,
+        "\n  size:  ", std::dec, info.size,
+        "\n  usage: ", std::hex, info.usage));
     }
 
     // Query memory requirements and whether to use a dedicated allocation
@@ -117,6 +135,30 @@ namespace dxvk {
     
     if (clear && (m_memFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
       std::memset(handle.memory.mapPtr(0), 0, info.size);
+
+    return handle;
+  }
+
+
+  DxvkBufferHandle DxvkBuffer::createSparseBuffer() const {
+    auto vkd = m_device->vkd();
+
+    VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    info.flags = m_info.flags;
+    info.size = m_info.size;
+    info.usage = m_info.usage;
+    info.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    DxvkBufferHandle handle = { };
+
+    if (vkd->vkCreateBuffer(vkd->device(),
+          &info, nullptr, &handle.buffer) != VK_SUCCESS) {
+      throw DxvkError(str::format(
+        "DxvkBuffer: Failed to create buffer:"
+        "\n  flags: ", std::hex, info.flags,
+        "\n  size:  ", std::dec, info.size,
+        "\n  usage: ", std::hex, info.usage));
+    }
 
     return handle;
   }

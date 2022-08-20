@@ -8,6 +8,7 @@
 #include "dxvk_hash.h"
 #include "dxvk_memory.h"
 #include "dxvk_resource.h"
+#include "dxvk_sparse.h"
 
 namespace dxvk {
 
@@ -18,6 +19,9 @@ namespace dxvk {
    * passed to \ref DxvkDevice::createBuffer
    */
   struct DxvkBufferCreateInfo {
+    /// Buffer create flags
+    VkBufferCreateFlags flags = 0;
+
     /// Size of the buffer, in bytes
     VkDeviceSize size;
     
@@ -289,7 +293,17 @@ namespace dxvk {
       std::unique_lock<sync::Spinlock> swapLock(m_swapMutex);
       m_nextSlices.push_back(slice);
     }
-    
+
+    /**
+     * \brief Queries sparse page table
+     * \returns Page table, or \c nullptr for a non-sparse resource
+     */
+    DxvkSparsePageTable* getSparsePageTable() {
+      return m_info.flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT
+        ? &m_sparsePageTable
+        : nullptr;
+    }
+
   private:
 
     DxvkDevice*             m_device;
@@ -301,6 +315,8 @@ namespace dxvk {
     DxvkBufferHandle        m_buffer;
     DxvkBufferSliceHandle   m_physSlice;
     uint32_t                m_vertexStride = 0;
+
+    DxvkSparsePageTable     m_sparsePageTable;
 
     alignas(CACHE_LINE_SIZE)
     sync::Spinlock          m_freeMutex;
@@ -330,6 +346,8 @@ namespace dxvk {
     DxvkBufferHandle allocBuffer(
             VkDeviceSize          sliceCount,
             bool                  clear) const;
+
+    DxvkBufferHandle createSparseBuffer() const;
 
     VkDeviceSize computeSliceAlignment() const;
     
