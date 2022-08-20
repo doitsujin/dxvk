@@ -332,8 +332,12 @@ namespace dxvk {
   };
 
 #else
+  class thread : public std::thread {
+  public:
+    using std::thread::thread;
+  };
+
   using mutex              = std::mutex;
-  using thread             = std::thread;
   using recursive_mutex    = std::recursive_mutex;
   using condition_variable = std::condition_variable;
 
