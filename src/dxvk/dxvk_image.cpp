@@ -5,7 +5,7 @@
 namespace dxvk {
   
   DxvkImage::DxvkImage(
-    const DxvkDevice*           device,
+          DxvkDevice*           device,
     const DxvkImageCreateInfo&  createInfo,
           DxvkMemoryAllocator&  memAlloc,
           VkMemoryPropertyFlags memFlags)
@@ -47,6 +47,7 @@ namespace dxvk {
         "DxvkImage: Failed to create image:",
         "\n  Type:            ", info.imageType,
         "\n  Format:          ", info.format,
+        "\n  Flags:           ", info.flags,
         "\n  Extent:          ", "(", info.extent.width,
                                  ",", info.extent.height,
                                  ",", info.extent.depth, ")",
@@ -56,79 +57,107 @@ namespace dxvk {
         "\n  Usage:           ", info.usage,
         "\n  Tiling:          ", info.tiling));
     }
-    
-    // Get memory requirements for the image and ask driver
-    // whether we need to use a dedicated allocation.
-    DxvkMemoryRequirements memoryRequirements = { };
-    memoryRequirements.dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS };
-    memoryRequirements.core = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2, &memoryRequirements.dedicated };
 
     VkImageMemoryRequirementsInfo2 memoryRequirementInfo = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2 };
     memoryRequirementInfo.image = m_image.image;
 
-    m_vkd->vkGetImageMemoryRequirements2(m_vkd->device(),
-      &memoryRequirementInfo, &memoryRequirements.core);
+    if (!(info.flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT)) {
+      // Get memory requirements for the image and ask driver
+      // whether we need to use a dedicated allocation.
+      DxvkMemoryRequirements memoryRequirements = { };
+      memoryRequirements.dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS };
+      memoryRequirements.core = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2, &memoryRequirements.dedicated };
 
-    // Fill in desired memory properties
-    DxvkMemoryProperties memoryProperties = { };
-    memoryProperties.flags = m_memFlags;
+      m_vkd->vkGetImageMemoryRequirements2(m_vkd->device(),
+        &memoryRequirementInfo, &memoryRequirements.core);
 
-    if (m_shared) {
-      memoryRequirements.dedicated.prefersDedicatedAllocation = VK_TRUE;
-      memoryRequirements.dedicated.requiresDedicatedAllocation = VK_TRUE;
+      // Fill in desired memory properties
+      DxvkMemoryProperties memoryProperties = { };
+      memoryProperties.flags = m_memFlags;
 
-      if (createInfo.sharing.mode == DxvkSharedHandleMode::Export) {
-        memoryProperties.sharedExport = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO };
-        memoryProperties.sharedExport.handleTypes = createInfo.sharing.type;
+      if (m_shared) {
+        memoryRequirements.dedicated.prefersDedicatedAllocation = VK_TRUE;
+        memoryRequirements.dedicated.requiresDedicatedAllocation = VK_TRUE;
+
+        if (createInfo.sharing.mode == DxvkSharedHandleMode::Export) {
+          memoryProperties.sharedExport = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO };
+          memoryProperties.sharedExport.handleTypes = createInfo.sharing.type;
+        }
+
+        if (createInfo.sharing.mode == DxvkSharedHandleMode::Import) {
+          memoryProperties.sharedImportWin32 = { VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR };
+          memoryProperties.sharedImportWin32.handleType = createInfo.sharing.type;
+          memoryProperties.sharedImportWin32.handle = createInfo.sharing.handle;
+        }
       }
 
-      if (createInfo.sharing.mode == DxvkSharedHandleMode::Import) {
-        memoryProperties.sharedImportWin32 = { VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR };
-        memoryProperties.sharedImportWin32.handleType = createInfo.sharing.type;
-        memoryProperties.sharedImportWin32.handle = createInfo.sharing.handle;
+      if (memoryRequirements.dedicated.prefersDedicatedAllocation) {
+        memoryProperties.dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
+        memoryProperties.dedicated.image = m_image.image;
       }
-    }
 
-    if (memoryRequirements.dedicated.prefersDedicatedAllocation) {
-      memoryProperties.dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
-      memoryProperties.dedicated.image = m_image.image;
-    }
+      // If there's a chance we won't create the image with a dedicated
+      // allocation, enforce strict alignment for tiled images to not
+      // violate the bufferImageGranularity requirement on some GPUs.
+      if (info.tiling != VK_IMAGE_TILING_LINEAR && !memoryRequirements.dedicated.requiresDedicatedAllocation) {
+        VkDeviceSize granularity = memAlloc.bufferImageGranularity();
 
-    // If there's a chance we won't create the image with a dedicated
-    // allocation, enforce strict alignment for tiled images to not
-    // violate the bufferImageGranularity requirement on some GPUs.
-    if (info.tiling != VK_IMAGE_TILING_LINEAR && !memoryRequirements.dedicated.requiresDedicatedAllocation) {
-      VkDeviceSize granularity = memAlloc.bufferImageGranularity();
+        auto& core = memoryRequirements.core.memoryRequirements;
+        core.size      = align(core.size,       granularity);
+        core.alignment = align(core.alignment,  granularity);
+      }
 
-      auto& core = memoryRequirements.core.memoryRequirements;
-      core.size      = align(core.size,       granularity);
-      core.alignment = align(core.alignment,  granularity);
-    }
+      // Use high memory priority for GPU-writable resources
+      bool isGpuWritable = (m_info.access & (
+        VK_ACCESS_SHADER_WRITE_BIT                  |
+        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT         |
+        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT        |
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)) != 0;
 
-    // Use high memory priority for GPU-writable resources
-    bool isGpuWritable = (m_info.access & (
-      VK_ACCESS_SHADER_WRITE_BIT                  |
-      VK_ACCESS_COLOR_ATTACHMENT_READ_BIT         |
-      VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT        |
-      VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
-      VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT)) != 0;
-    
-    DxvkMemoryFlags hints(DxvkMemoryFlag::GpuReadable);
+      DxvkMemoryFlags hints(DxvkMemoryFlag::GpuReadable);
 
-    if (isGpuWritable)
-      hints.set(DxvkMemoryFlag::GpuWritable);
+      if (isGpuWritable)
+        hints.set(DxvkMemoryFlag::GpuWritable);
 
-    m_image.memory = memAlloc.alloc(memoryRequirements, memoryProperties, hints);
-    
-    // Try to bind the allocated memory slice to the image
-    if (m_vkd->vkBindImageMemory(m_vkd->device(), m_image.image,
+      m_image.memory = memAlloc.alloc(memoryRequirements, memoryProperties, hints);
+
+      // Try to bind the allocated memory slice to the image
+      if (m_vkd->vkBindImageMemory(m_vkd->device(), m_image.image,
           m_image.memory.memory(), m_image.memory.offset()) != VK_SUCCESS)
-      throw DxvkError("DxvkImage::DxvkImage: Failed to bind device memory");
+        throw DxvkError("DxvkImage::DxvkImage: Failed to bind device memory");
+    } else {
+      // Initialize sparse info. We do not immediately bind the metadata
+      // aspects of the image here, the caller needs to explicitly do that.
+      m_sparsePageTable = DxvkSparsePageTable(device, this);
+
+      // Allocate memory for sparse metadata if necessary
+      auto properties = m_sparsePageTable.getProperties();
+
+      if (properties.metadataPageCount) {
+        DxvkMemoryRequirements memoryRequirements = { };
+        memoryRequirements.core = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
+
+        m_vkd->vkGetImageMemoryRequirements2(m_vkd->device(),
+          &memoryRequirementInfo, &memoryRequirements.core);
+
+        DxvkMemoryProperties memoryProperties = { };
+        memoryProperties.flags = m_memFlags;
+
+        // Set size and alignment to match the metadata requirements
+        auto& core = memoryRequirements.core.memoryRequirements;
+        core.size      = SparseMemoryPageSize * properties.metadataPageCount;
+        core.alignment = SparseMemoryPageSize;
+
+        m_image.memory = memAlloc.alloc(memoryRequirements,
+          memoryProperties, DxvkMemoryFlag::GpuReadable);
+      }
+    }
   }
   
   
   DxvkImage::DxvkImage(
-    const DxvkDevice*           device,
+          DxvkDevice*           device,
     const DxvkImageCreateInfo&  info,
           VkImage               image)
   : m_vkd(device->vkd()), m_device(device), m_info(info), m_image({ image }) {
@@ -143,12 +172,13 @@ namespace dxvk {
   DxvkImage::~DxvkImage() {
     // This is a bit of a hack to determine whether
     // the image is implementation-handled or not
-    if (m_image.memory.memory() != VK_NULL_HANDLE)
+    if ((m_image.memory.memory())
+     || (m_info.flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT))
       m_vkd->vkDestroyImage(m_vkd->device(), m_image.image, nullptr);
   }
 
 
-  bool DxvkImage::canShareImage(const VkImageCreateInfo&  createInfo, const DxvkSharedHandleInfo& sharingInfo) const {
+  bool DxvkImage::canShareImage(const VkImageCreateInfo& createInfo, const DxvkSharedHandleInfo& sharingInfo) const {
     if (sharingInfo.mode == DxvkSharedHandleMode::None)
       return false;
 
@@ -156,6 +186,9 @@ namespace dxvk {
       Logger::err("Failed to create shared resource: VK_KHR_EXTERNAL_MEMORY_WIN32 not supported");
       return false;
     }
+
+    if (createInfo.flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT)
+      return false;
 
     VkPhysicalDeviceExternalImageFormatInfo externalImageFormatInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO };
     externalImageFormatInfo.handleType = sharingInfo.type;

@@ -4,6 +4,7 @@
 #include "dxvk_format.h"
 #include "dxvk_memory.h"
 #include "dxvk_resource.h"
+#include "dxvk_sparse.h"
 #include "dxvk_util.h"
 
 namespace dxvk {
@@ -127,7 +128,7 @@ namespace dxvk {
   public:
     
     DxvkImage(
-      const DxvkDevice*           device,
+            DxvkDevice*           device,
       const DxvkImageCreateInfo&  createInfo,
             DxvkMemoryAllocator&  memAlloc,
             VkMemoryPropertyFlags memFlags);
@@ -141,7 +142,7 @@ namespace dxvk {
      * otherwise some image operations may fail.
      */
     DxvkImage(
-      const DxvkDevice*           device,
+            DxvkDevice*           device,
       const DxvkImageCreateInfo&  info,
             VkImage               image);
     
@@ -324,6 +325,16 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries sparse page table
+     * \returns Page table, or \c nullptr for a non-sparse resource
+     */
+    DxvkSparsePageTable* getSparsePageTable() {
+      return m_info.flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT
+        ? &m_sparsePageTable
+        : nullptr;
+    }
+
+    /**
      * \brief Create a new shared handle to dedicated memory backing the image
      * \returns The shared handle with the type given by DxvkSharedHandleInfo::type
      */
@@ -336,6 +347,8 @@ namespace dxvk {
     DxvkImageCreateInfo   m_info;
     VkMemoryPropertyFlags m_memFlags;
     DxvkPhysicalImage     m_image;
+    DxvkSparsePageTable   m_sparsePageTable;
+
     bool m_shared = false;
 
     small_vector<VkFormat, 4> m_viewFormats;
