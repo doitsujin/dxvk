@@ -1837,27 +1837,90 @@ namespace dxvk {
           UINT*                     pNumSubresourceTilings,
           UINT                      FirstSubresourceTilingToGet,
           D3D11_SUBRESOURCE_TILING* pSubresourceTilingsForNonPackedMips) {
-    static bool s_errorShown = false;
+    D3D11_COMMON_RESOURCE_DESC desc = { };
+    GetCommonResourceDesc(pTiledResource, &desc);
 
-    if (!std::exchange(s_errorShown, true))
-      Logger::err("D3D11Device::GetResourceTiling: Tiled resources not supported");
+    if (!(desc.MiscFlags & D3D11_RESOURCE_MISC_TILED)) {
+      if (pNumTilesForEntireResource)
+        *pNumTilesForEntireResource = 0;
 
-    if (pNumTilesForEntireResource)
-      *pNumTilesForEntireResource = 0;
+      if (pPackedMipDesc)
+        *pPackedMipDesc = D3D11_PACKED_MIP_DESC();
 
-    if (pPackedMipDesc)
-      *pPackedMipDesc = D3D11_PACKED_MIP_DESC();
+      if (pStandardTileShapeForNonPackedMips)
+        *pStandardTileShapeForNonPackedMips = D3D11_TILE_SHAPE();
 
-    if (pStandardTileShapeForNonPackedMips)
-      *pStandardTileShapeForNonPackedMips = D3D11_TILE_SHAPE();
+      if (pNumSubresourceTilings) {
+        if (pSubresourceTilingsForNonPackedMips) {
+          for (uint32_t i = 0; i < *pNumSubresourceTilings; i++)
+            pSubresourceTilingsForNonPackedMips[i] = D3D11_SUBRESOURCE_TILING();
+        }
 
-    if (pNumSubresourceTilings) {
-      if (pSubresourceTilingsForNonPackedMips) {
-        for (uint32_t i = 0; i < *pNumSubresourceTilings; i++)
-          pSubresourceTilingsForNonPackedMips[i] = D3D11_SUBRESOURCE_TILING();
+        *pNumSubresourceTilings = 0;
+      }
+    } else {
+      DxvkSparsePageTable* sparseInfo = nullptr;
+      uint32_t mipCount = 0;
+
+      if (desc.Dim == D3D11_RESOURCE_DIMENSION_BUFFER) {
+        Rc<DxvkBuffer> buffer = static_cast<D3D11Buffer*>(pTiledResource)->GetBuffer();
+        sparseInfo = buffer->getSparsePageTable();
+      } else {
+        Rc<DxvkImage> image = GetCommonTexture(pTiledResource)->GetImage();
+        sparseInfo = image->getSparsePageTable();
+        mipCount = image->info().mipLevels;
       }
 
-      *pNumSubresourceTilings = 0;
+      if (pNumTilesForEntireResource)
+        *pNumTilesForEntireResource = sparseInfo->getPageCount();
+
+      if (pPackedMipDesc) {
+        auto properties = sparseInfo->getProperties();
+
+        if (properties.mipTailSize) {
+          pPackedMipDesc->NumStandardMips = properties.pagedMipCount;
+          pPackedMipDesc->NumPackedMips = mipCount - properties.pagedMipCount;
+          pPackedMipDesc->NumTilesForPackedMips = sparseInfo->getPageCount() - properties.mipTailPageIndex;
+          pPackedMipDesc->StartTileIndexInOverallResource = properties.mipTailPageIndex;
+        } else {
+          pPackedMipDesc->NumStandardMips = mipCount;
+          pPackedMipDesc->NumPackedMips = 0;
+          pPackedMipDesc->NumTilesForPackedMips = 0;
+          pPackedMipDesc->StartTileIndexInOverallResource = 0;
+        }
+      }
+
+      if (pStandardTileShapeForNonPackedMips) {
+        auto properties = sparseInfo->getProperties();
+        pStandardTileShapeForNonPackedMips->WidthInTexels = properties.pageRegionExtent.width;
+        pStandardTileShapeForNonPackedMips->HeightInTexels = properties.pageRegionExtent.height;
+        pStandardTileShapeForNonPackedMips->DepthInTexels = properties.pageRegionExtent.depth;
+      }
+
+      if (pNumSubresourceTilings) {
+        uint32_t subresourceCount = sparseInfo->getSubresourceCount();
+        uint32_t tilingCount = subresourceCount - std::min(FirstSubresourceTilingToGet, subresourceCount);
+        tilingCount = std::min(tilingCount, *pNumSubresourceTilings);
+
+        for (uint32_t i = 0; i < tilingCount; i++) {
+          auto subresourceInfo = sparseInfo->getSubresourceProperties(FirstSubresourceTilingToGet + i);
+          auto dstInfo = &pSubresourceTilingsForNonPackedMips[i];
+
+          if (subresourceInfo.isMipTail) {
+            dstInfo->WidthInTiles = 0u;
+            dstInfo->HeightInTiles = 0u;
+            dstInfo->DepthInTiles = 0u;
+            dstInfo->StartTileIndexInOverallResource = D3D11_PACKED_TILE;
+          } else {
+            dstInfo->WidthInTiles = subresourceInfo.pageCount.width;
+            dstInfo->HeightInTiles = subresourceInfo.pageCount.height;
+            dstInfo->DepthInTiles = subresourceInfo.pageCount.depth;
+            dstInfo->StartTileIndexInOverallResource = subresourceInfo.pageIndex;
+          }
+        }
+
+        *pNumSubresourceTilings = tilingCount;
+      }
     }
   }
   
