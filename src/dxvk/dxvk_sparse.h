@@ -10,7 +10,7 @@ namespace dxvk {
   class DxvkBuffer;
   class DxvkImage;
   class DxvkSparsePage;
-  class DxvkSparsePagePool;
+  class DxvkSparsePageAllocator;
 
   constexpr static VkDeviceSize SparseMemoryPageSize = 1ull << 16;
 
@@ -113,6 +113,152 @@ namespace dxvk {
 
 
   /**
+   * \brief Sparse memory page
+   *
+   * Stores a single reference-counted page
+   * of memory. The page size is 64k.
+   */
+  class DxvkSparsePage : public DxvkResource {
+
+  public:
+
+    DxvkSparsePage(DxvkMemory&& memory)
+    : m_memory(std::move(memory)) { }
+
+    /**
+     * \brief Queries memory handle
+     * \returns Memory information
+     */
+    DxvkSparsePageHandle getHandle() const {
+      DxvkSparsePageHandle result;
+      result.memory = m_memory.memory();
+      result.offset = m_memory.offset();
+      result.length = m_memory.length();
+      return result;
+    }
+
+  private:
+
+    DxvkMemory  m_memory;
+
+  };
+
+
+  /**
+   * \brief Sparse page mapping
+   *
+   * Stores a reference to a page as well as the pool that the page
+   * was allocated from, and automatically manages the use counter
+   * of the pool as the reference is being moved or copied around.
+   */
+  class DxvkSparseMapping {
+    friend DxvkSparsePageAllocator;
+  public:
+
+    DxvkSparseMapping();
+
+    DxvkSparseMapping(DxvkSparseMapping&& other);
+    DxvkSparseMapping(const DxvkSparseMapping& other);
+
+    DxvkSparseMapping& operator = (DxvkSparseMapping&& other);
+    DxvkSparseMapping& operator = (const DxvkSparseMapping& other);
+
+    ~DxvkSparseMapping();
+
+    Rc<DxvkSparsePage> getPage() const {
+      return m_page;
+    }
+
+    bool operator == (const DxvkSparseMapping& other) const {
+      // Pool is a function of the page, so no need to check both
+      return m_page == other.m_page;
+    }
+
+    bool operator != (const DxvkSparseMapping& other) const {
+      return m_page != other.m_page;
+    }
+
+    operator bool () const {
+      return m_page != nullptr;
+    }
+
+  private:
+
+    Rc<DxvkSparsePageAllocator> m_pool;
+    Rc<DxvkSparsePage>          m_page;
+
+    DxvkSparseMapping(
+            Rc<DxvkSparsePageAllocator> allocator,
+            Rc<DxvkSparsePage>          page);
+
+    void acquire() const;
+
+    void release() const;
+
+  };
+
+
+  /**
+   * \brief Sparse memory allocator
+   *
+   * Provides an allocator for sparse pages with variable capacity.
+   * Pages are use-counted to make sure they are not removed from
+   * the allocator too early.
+   */
+  class DxvkSparsePageAllocator : public RcObject {
+    friend DxvkSparseMapping;
+  public:
+
+    DxvkSparsePageAllocator(
+            DxvkDevice*           device,
+            DxvkMemoryAllocator&  memoryAllocator);
+
+    ~DxvkSparsePageAllocator();
+
+    /**
+     * \brief Acquires page at the given offset
+     *
+     * If the offset is valid, this will atomically
+     * increment the allocator's use count and return
+     * a reference to the page.
+     * \param [in] page Page index
+     * \returns Page mapping object
+     */
+    DxvkSparseMapping acquirePage(
+            uint32_t              page);
+
+    /**
+     * \brief Changes the allocator's maximum capacity
+     *
+     * Allocates new pages as necessary, and frees existing
+     * pages if none of the pages are currently in use.
+     * \param [in] pageCount New capacity, in pages
+     */
+    void setCapacity(
+            uint32_t              pageCount);
+
+  private:
+
+    DxvkDevice*                       m_device;
+    DxvkMemoryAllocator*              m_memory;
+
+    dxvk::mutex                       m_mutex;
+    uint32_t                          m_pageCount = 0u;
+    uint32_t                          m_useCount = 0u;
+    std::vector<Rc<DxvkSparsePage>>   m_pages;
+
+    Rc<DxvkSparsePage> allocPage();
+
+    void acquirePage(
+      const Rc<DxvkSparsePage>&   page);
+
+    void releasePage(
+      const Rc<DxvkSparsePage>&   page);
+
+  };
+
+
+  /**
    * \brief Sparse page table
    *
    * Stores mappings from a resource region to a given memory page,
@@ -202,6 +348,7 @@ namespace dxvk {
     DxvkSparseImageProperties                         m_properties    = { };
     std::vector<DxvkSparseImageSubresourceProperties> m_subresources;
     std::vector<DxvkSparsePageInfo>                   m_metadata;
+    std::vector<DxvkSparseMapping>                    m_mappings;
 
   };
 

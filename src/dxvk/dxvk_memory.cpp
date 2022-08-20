@@ -179,9 +179,8 @@ namespace dxvk {
   }
 
 
-  DxvkMemoryAllocator::DxvkMemoryAllocator(const DxvkDevice* device)
-  : m_vkd             (device->vkd()),
-    m_device          (device),
+  DxvkMemoryAllocator::DxvkMemoryAllocator(DxvkDevice* device)
+  : m_device          (device),
     m_devProps        (device->adapter()->deviceProperties()),
     m_memProps        (device->adapter()->memoryProperties()) {
     for (uint32_t i = 0; i < m_memProps.memoryHeapCount; i++) {
@@ -202,6 +201,9 @@ namespace dxvk {
       m_memTypes[i].memType    = m_memProps.memoryTypes[i];
       m_memTypes[i].memTypeId  = i;
     }
+
+    if (device->features().core.features.sparseBinding)
+      m_sparseMemoryTypes = determineSparseMemoryTypes(device);
   }
   
   
@@ -366,6 +368,8 @@ namespace dxvk {
           VkDeviceSize                      size,
           DxvkMemoryProperties              info,
           DxvkMemoryFlags                   hints) {
+    auto vk = m_device->vkd();
+
     bool useMemoryPriority = (info.flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                           && (m_device->features().extMemoryPriority.memoryPriority);
     
@@ -403,15 +407,15 @@ namespace dxvk {
     if (useMemoryPriority)
       priorityInfo.pNext = std::exchange(memoryInfo.pNext, &priorityInfo);
 
-    if (m_vkd->vkAllocateMemory(m_vkd->device(), &memoryInfo, nullptr, &result.memHandle) != VK_SUCCESS)
+    if (vk->vkAllocateMemory(vk->device(), &memoryInfo, nullptr, &result.memHandle))
       return DxvkDeviceMemory();
     
     if (info.flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-      VkResult status = m_vkd->vkMapMemory(m_vkd->device(), result.memHandle, 0, VK_WHOLE_SIZE, 0, &result.memPointer);
+      VkResult status = vk->vkMapMemory(vk->device(), result.memHandle, 0, VK_WHOLE_SIZE, 0, &result.memPointer);
 
-      if (status != VK_SUCCESS) {
+      if (status) {
         Logger::err(str::format("DxvkMemoryAllocator: Mapping memory failed with ", status));
-        m_vkd->vkFreeMemory(m_vkd->device(), result.memHandle, nullptr);
+        vk->vkFreeMemory(vk->device(), result.memHandle, nullptr);
         return DxvkDeviceMemory();
       }
     }
@@ -467,7 +471,9 @@ namespace dxvk {
   void DxvkMemoryAllocator::freeDeviceMemory(
           DxvkMemoryType*       type,
           DxvkDeviceMemory      memory) {
-    m_vkd->vkFreeMemory(m_vkd->device(), memory.memHandle, nullptr);
+    auto vk = m_device->vkd();
+    vk->vkFreeMemory(vk->device(), memory.memHandle, nullptr);
+
     type->heap->stats.memoryAllocated -= memory.memSize;
     m_device->adapter()->notifyHeapMemoryFree(type->heapId, memory.memSize);
   }
@@ -540,6 +546,77 @@ namespace dxvk {
           [] (const Rc<DxvkMemoryChunk>& chunk) { return chunk->isEmpty(); }),
         type->chunks.end());
     }
+  }
+
+
+  uint32_t DxvkMemoryAllocator::determineSparseMemoryTypes(
+          DxvkDevice*           device) const {
+    auto vk = device->vkd();
+
+    VkMemoryRequirements requirements = { };
+    uint32_t typeMask = ~0u;
+
+    // Create sparse dummy buffer to find available memory types
+    VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    bufferInfo.flags        = VK_BUFFER_CREATE_SPARSE_BINDING_BIT
+                            | VK_BUFFER_CREATE_SPARSE_ALIASED_BIT
+                            | VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT;
+    bufferInfo.size         = 65536;
+    bufferInfo.usage        = VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT
+                            | VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+                            | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+                            | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                            | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                            | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT
+                            | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
+                            | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                            | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    bufferInfo.sharingMode  = VK_SHARING_MODE_EXCLUSIVE;
+
+    VkBuffer buffer = VK_NULL_HANDLE;
+
+    if (vk->vkCreateBuffer(vk->device(), &bufferInfo, nullptr, &buffer)) {
+      Logger::err("Failed to create dummy buffer to query sparse memory types");
+      return 0;
+    }
+
+    vk->vkGetBufferMemoryRequirements(vk->device(), buffer, &requirements);
+    vk->vkDestroyBuffer(vk->device(), buffer, nullptr);
+    typeMask &= requirements.memoryTypeBits;
+
+    // Create sparse dummy image to find available memory types
+    VkImageCreateInfo imageInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+    imageInfo.flags         = VK_IMAGE_CREATE_SPARSE_BINDING_BIT
+                            | VK_IMAGE_CREATE_SPARSE_ALIASED_BIT
+                            | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT;
+    imageInfo.imageType     = VK_IMAGE_TYPE_2D;
+    imageInfo.format        = VK_FORMAT_R8G8B8A8_UNORM;
+    imageInfo.extent        = { 256, 256, 1 };
+    imageInfo.mipLevels     = 1;
+    imageInfo.arrayLayers   = 1;
+    imageInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                            | VK_IMAGE_USAGE_SAMPLED_BIT
+                            | VK_IMAGE_USAGE_STORAGE_BIT
+                            | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+                            | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+
+    VkImage image = VK_NULL_HANDLE;
+
+    if (vk->vkCreateImage(vk->device(), &imageInfo, nullptr, &image)) {
+      Logger::err("Failed to create dummy image to query sparse memory types");
+      return 0;
+    }
+
+    vk->vkGetImageMemoryRequirements(vk->device(), image, &requirements);
+    vk->vkDestroyImage(vk->device(), image, nullptr);
+    typeMask &= requirements.memoryTypeBits;
+
+    Logger::log(typeMask ? LogLevel::Info : LogLevel::Error,
+      str::format("Memory type mask for sparse resources: 0x", std::hex, typeMask));
+    return typeMask;
   }
 
 }

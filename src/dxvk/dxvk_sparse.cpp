@@ -5,6 +5,156 @@
 
 namespace dxvk {
 
+  DxvkSparseMapping::DxvkSparseMapping()
+  : m_pool(nullptr),
+    m_page(nullptr) {
+
+  }
+
+
+  DxvkSparseMapping::DxvkSparseMapping(
+          Rc<DxvkSparsePageAllocator> allocator,
+          Rc<DxvkSparsePage>          page)
+  : m_pool(std::move(allocator)),
+    m_page(std::move(page)) {
+
+  }
+
+
+  DxvkSparseMapping::DxvkSparseMapping(
+          DxvkSparseMapping&&         other)
+  : m_pool(std::move(other.m_pool)),
+    m_page(std::move(other.m_page)) {
+    // No need to acquire here. The only place from which
+    // this constructor can be called does this atomically.
+  }
+
+
+  DxvkSparseMapping::DxvkSparseMapping(
+    const DxvkSparseMapping&          other)
+  : m_pool(other.m_pool),
+    m_page(other.m_page) {
+    this->acquire();
+  }
+
+
+  DxvkSparseMapping& DxvkSparseMapping::operator = (
+          DxvkSparseMapping&&         other) {
+    this->release();
+
+    m_pool = std::move(other.m_pool);
+    m_page = std::move(other.m_page);
+    return *this;
+  }
+
+
+  DxvkSparseMapping& DxvkSparseMapping::operator = (
+    const DxvkSparseMapping&          other) {
+    other.acquire();
+    this->release();
+
+    m_pool = other.m_pool;
+    m_page = other.m_page;
+    return *this;
+  }
+
+
+  DxvkSparseMapping::~DxvkSparseMapping() {
+    this->release();
+  }
+
+
+  void DxvkSparseMapping::acquire() const {
+    if (m_page != nullptr)
+      m_pool->acquirePage(m_page);
+  }
+
+
+  void DxvkSparseMapping::release() const {
+    if (m_page != nullptr)
+      m_pool->releasePage(m_page);
+  }
+
+
+  DxvkSparsePageAllocator::DxvkSparsePageAllocator(
+          DxvkDevice*           device,
+          DxvkMemoryAllocator&  memoryAllocator)
+  : m_device(device), m_memory(&memoryAllocator) {
+
+  }
+
+
+  DxvkSparsePageAllocator::~DxvkSparsePageAllocator() {
+
+  }
+
+
+  DxvkSparseMapping DxvkSparsePageAllocator::acquirePage(
+          uint32_t              page) {
+    std::lock_guard lock(m_mutex);
+
+    if (unlikely(page >= m_pageCount))
+      return DxvkSparseMapping();
+
+    m_useCount += 1;
+    return DxvkSparseMapping(this, m_pages[page]);
+  }
+
+
+  void DxvkSparsePageAllocator::setCapacity(
+          uint32_t              pageCount) {
+    std::lock_guard lock(m_mutex);
+
+    if (pageCount < m_pageCount) {
+      if (!m_useCount)
+        m_pages.resize(pageCount);
+    } else if (pageCount > m_pageCount) {
+      while (m_pages.size() < pageCount)
+        m_pages.push_back(allocPage());
+    }
+
+    m_pageCount = pageCount;
+  }
+
+
+  Rc<DxvkSparsePage> DxvkSparsePageAllocator::allocPage() {
+    DxvkMemoryRequirements memoryRequirements = { };
+    memoryRequirements.core = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
+
+    // We don't know what kind of resource the memory6
+    // might be bound to, so just guess the memory types
+    auto& core = memoryRequirements.core.memoryRequirements;
+    core.size           = SparseMemoryPageSize;
+    core.alignment      = SparseMemoryPageSize;
+    core.memoryTypeBits = m_memory->getSparseMemoryTypes();
+
+    DxvkMemoryProperties memoryProperties = { };
+    memoryProperties.flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    DxvkMemory memory = m_memory->alloc(memoryRequirements,
+      memoryProperties, DxvkMemoryFlag::GpuReadable);
+
+    return new DxvkSparsePage(std::move(memory));
+  }
+
+
+  void DxvkSparsePageAllocator::acquirePage(
+    const Rc<DxvkSparsePage>&   page) {
+    std::lock_guard lock(m_mutex);
+    m_useCount += 1;
+  }
+
+
+  void DxvkSparsePageAllocator::releasePage(
+    const Rc<DxvkSparsePage>&   page) {
+    std::lock_guard lock(m_mutex);
+    m_useCount -= 1;
+
+    if (!m_useCount)
+      m_pages.resize(m_pageCount);
+  }
+
+
   DxvkSparsePageTable::DxvkSparsePageTable() {
 
   }
@@ -20,6 +170,7 @@ namespace dxvk {
     // and consists of consecutive 64k pages
     size_t pageCount = align(bufferSize, SparseMemoryPageSize) / SparseMemoryPageSize;
     m_metadata.resize(pageCount);
+    m_mappings.resize(pageCount);
 
     for (size_t i = 0; i < pageCount; i++) {
       VkDeviceSize pageOffset = SparseMemoryPageSize * i;
@@ -135,6 +286,7 @@ namespace dxvk {
 
     // Fill in page metadata
     m_metadata.reserve(totalPageCount);
+    m_mappings.resize(totalPageCount);
 
     for (uint32_t l = 0; l < image->info().numLayers; l++) {
       for (uint32_t m = 0; m < m_properties.pagedMipCount; m++) {

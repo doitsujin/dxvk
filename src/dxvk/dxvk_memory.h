@@ -306,7 +306,7 @@ namespace dxvk {
     constexpr static VkDeviceSize SmallAllocationThreshold = 256 << 10;
   public:
     
-    DxvkMemoryAllocator(const DxvkDevice* device);
+    DxvkMemoryAllocator(DxvkDevice* device);
     ~DxvkMemoryAllocator();
     
     /**
@@ -320,7 +320,15 @@ namespace dxvk {
     VkDeviceSize bufferImageGranularity() const {
       return m_devProps.limits.bufferImageGranularity;
     }
-    
+
+    /**
+     * \brief Memory type mask for sparse resources
+     * \returns Sparse resource memory types
+     */
+    uint32_t getSparseMemoryTypes() const {
+      return m_sparseMemoryTypes;
+    }
+
     /**
      * \brief Allocates device memory
      * 
@@ -348,14 +356,15 @@ namespace dxvk {
     
   private:
 
-    const Rc<vk::DeviceFn>                 m_vkd;
-    const DxvkDevice*                      m_device;
-    const VkPhysicalDeviceProperties       m_devProps;
-    const VkPhysicalDeviceMemoryProperties m_memProps;
+    DxvkDevice*                                     m_device;
+    VkPhysicalDeviceProperties                      m_devProps;
+    VkPhysicalDeviceMemoryProperties                m_memProps;
     
     dxvk::mutex                                     m_mutex;
     std::array<DxvkMemoryHeap, VK_MAX_MEMORY_HEAPS> m_memHeaps;
     std::array<DxvkMemoryType, VK_MAX_MEMORY_TYPES> m_memTypes;
+
+    uint32_t m_sparseMemoryTypes = 0u;
 
     DxvkMemory tryAlloc(
       const DxvkMemoryRequirements&           req,
@@ -402,6 +411,9 @@ namespace dxvk {
 
     void freeEmptyChunks(
       const DxvkMemoryHeap*       heap);
+
+    uint32_t determineSparseMemoryTypes(
+            DxvkDevice*           device) const;
 
   };
   

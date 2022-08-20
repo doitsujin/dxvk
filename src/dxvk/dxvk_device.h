@@ -22,6 +22,7 @@
 #include "dxvk_renderpass.h"
 #include "dxvk_sampler.h"
 #include "dxvk_shader.h"
+#include "dxvk_sparse.h"
 #include "dxvk_stats.h"
 #include "dxvk_unbound.h"
 #include "dxvk_marker.h"
@@ -379,6 +380,12 @@ namespace dxvk {
      */
     Rc<DxvkSampler> createSampler(
       const DxvkSamplerCreateInfo&  createInfo);
+
+    /**
+     * \brief Creates a sparse page allocator
+     * \returns Sparse page allocator
+     */
+    Rc<DxvkSparsePageAllocator> createSparsePageAllocator();
 
     /**
      * \brief Retrieves stat counters

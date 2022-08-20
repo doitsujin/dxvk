@@ -216,6 +216,11 @@ namespace dxvk {
   }
   
   
+  Rc<DxvkSparsePageAllocator> DxvkDevice::createSparsePageAllocator() {
+    return new DxvkSparsePageAllocator(this, m_objects.memoryManager());
+  }
+
+
   DxvkStatCounters DxvkDevice::getStatCounters() {
     DxvkPipelineCount pipe = m_objects.pipelineManager().getPipelineCount();
     
