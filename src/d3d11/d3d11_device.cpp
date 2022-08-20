@@ -1475,12 +1475,21 @@ namespace dxvk {
     
     if (FAILED(DecodeSampleCount(SampleCount, &sampleCountFlag)))
       return SampleCount && SampleCount <= 32 ? S_OK : E_FAIL;
-    
+
+    // Get image create flags depending on function arguments
+    VkImageCreateFlags flags = 0;
+
+    if (Flags & D3D11_CHECK_MULTISAMPLE_QUALITY_LEVELS_TILED_RESOURCE) {
+      flags |= VK_IMAGE_CREATE_SPARSE_BINDING_BIT
+            |  VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
+            |  VK_IMAGE_CREATE_SPARSE_ALIASED_BIT;
+    }
+
     // Check if the device supports the given combination of format
     // and sample count. D3D exposes the opaque concept of quality
     // levels to the application, we'll just define one such level.
     auto properties = m_dxvkDevice->getFormatLimits(format,
-      VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+      VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT, flags);
     
     if (properties && (properties->sampleCounts & sampleCountFlag))
       *pNumQualityLevels = 1;
