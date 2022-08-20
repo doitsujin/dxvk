@@ -30,11 +30,13 @@ namespace dxvk {
   void D3D11Initializer::InitBuffer(
           D3D11Buffer*                pBuffer,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
-    VkMemoryPropertyFlags memFlags = pBuffer->GetBuffer()->memFlags();
+    if (!(pBuffer->Desc()->MiscFlags & D3D11_RESOURCE_MISC_TILED)) {
+      VkMemoryPropertyFlags memFlags = pBuffer->GetBuffer()->memFlags();
 
-    (memFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-      ? InitHostVisibleBuffer(pBuffer, pInitialData)
-      : InitDeviceLocalBuffer(pBuffer, pInitialData);
+      (memFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+        ? InitHostVisibleBuffer(pBuffer, pInitialData)
+        : InitDeviceLocalBuffer(pBuffer, pInitialData);
+    }
   }
   
 

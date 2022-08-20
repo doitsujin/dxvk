@@ -13,7 +13,8 @@ namespace dxvk {
     m_desc        (*pDesc),
     m_resource    (this),
     m_d3d10       (this) {
-    DxvkBufferCreateInfo  info;
+    DxvkBufferCreateInfo info;
+    info.flags  = 0;
     info.size   = pDesc->ByteWidth;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
                 | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
@@ -64,6 +65,12 @@ namespace dxvk {
       info.usage  |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
       info.stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
       info.access |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+    }
+
+    if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILED) {
+      info.flags  |= VK_BUFFER_CREATE_SPARSE_BINDING_BIT
+                  |  VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT
+                  |  VK_BUFFER_CREATE_SPARSE_ALIASED_BIT;
     }
 
     // Create the buffer and set the entire buffer slice as mapped,
@@ -162,15 +169,11 @@ namespace dxvk {
   }
 
 
-  HRESULT D3D11Buffer::NormalizeBufferProperties(D3D11_BUFFER_DESC* pDesc) {
+  HRESULT D3D11Buffer::NormalizeBufferProperties(D3D11_BUFFER_DESC* pDesc, D3D11_TILED_RESOURCES_TIER TiledTier) {
     // Zero-sized buffers are illegal
-    if (!pDesc->ByteWidth)
+    if (!pDesc->ByteWidth && !(pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL))
       return E_INVALIDARG;
 
-    // We don't support tiled resources
-    if (pDesc->MiscFlags & (D3D11_RESOURCE_MISC_TILE_POOL | D3D11_RESOURCE_MISC_TILED))
-      return E_INVALIDARG;
-    
     // Constant buffer size must be a multiple of 16
     if ((pDesc->BindFlags & D3D11_BIND_CONSTANT_BUFFER)
      && (pDesc->ByteWidth & 0xF))
@@ -191,7 +194,27 @@ namespace dxvk {
     // Mip generation obviously doesn't work for buffers
     if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_GENERATE_MIPS)
       return E_INVALIDARG;
-    
+
+    // Basic validation for tiled buffers
+    if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILED) {
+      if ((pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL)
+       || (pDesc->Usage != D3D11_USAGE_DEFAULT)
+       || (pDesc->CPUAccessFlags)
+       || (!TiledTier))
+        return E_INVALIDARG;
+    }
+
+    // Basic validation for tile pools
+    if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL) {
+      if ((pDesc->MiscFlags & ~D3D11_RESOURCE_MISC_TILE_POOL)
+       || (pDesc->ByteWidth % SparseMemoryPageSize)
+       || (pDesc->Usage != D3D11_USAGE_DEFAULT)
+       || (pDesc->BindFlags)
+       || (pDesc->CPUAccessFlags)
+       || (!TiledTier))
+        return E_INVALIDARG;
+    }
+
     if (!(pDesc->MiscFlags & D3D11_RESOURCE_MISC_BUFFER_STRUCTURED))
       pDesc->StructureByteStride = 0;
     
@@ -209,7 +232,10 @@ namespace dxvk {
 
   VkMemoryPropertyFlags D3D11Buffer::GetMemoryFlags() const {
     VkMemoryPropertyFlags memoryFlags = 0;
-    
+
+    if (m_desc.MiscFlags & (D3D11_RESOURCE_MISC_TILE_POOL | D3D11_RESOURCE_MISC_TILED))
+      return VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
     switch (m_desc.Usage) {
       case D3D11_USAGE_IMMUTABLE:
         memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;

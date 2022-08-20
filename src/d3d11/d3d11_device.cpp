@@ -45,7 +45,8 @@ namespace dxvk {
     m_dxvkAdapter   (m_dxvkDevice->adapter()),
     m_d3d11Formats  (m_dxvkDevice),
     m_d3d11Options  (m_dxvkDevice->instance()->config(), m_dxvkDevice),
-    m_dxbcOptions   (m_dxvkDevice, m_d3d11Options) {
+    m_dxbcOptions   (m_dxvkDevice, m_d3d11Options),
+    m_tiledResourcesTier(DetermineTiledResourcesTier(m_dxvkDevice->features(), m_dxvkDevice->properties())) {
     m_initializer = new D3D11Initializer(this);
     m_context     = new D3D11ImmediateContext(this, m_dxvkDevice);
     m_d3d10Device = new D3D10Device(this, m_context.ptr());
@@ -84,7 +85,7 @@ namespace dxvk {
       return E_INVALIDARG;
     
     D3D11_BUFFER_DESC desc = *pDesc;
-    HRESULT hr = D3D11Buffer::NormalizeBufferProperties(&desc);
+    HRESULT hr = D3D11Buffer::NormalizeBufferProperties(&desc, m_tiledResourcesTier);
 
     if (FAILED(hr))
       return hr;
