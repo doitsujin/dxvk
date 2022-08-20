@@ -17,7 +17,7 @@ namespace dxvk {
      * \brief Increments reference count
      * \returns New reference count
      */
-    always_inline uint32_t incRef() {
+    force_inline uint32_t incRef() {
       return ++m_refCount;
     }
     
@@ -25,7 +25,7 @@ namespace dxvk {
      * \brief Decrements reference count
      * \returns New reference count
      */
-    always_inline uint32_t decRef() {
+    force_inline uint32_t decRef() {
       return --m_refCount;
     }
     
