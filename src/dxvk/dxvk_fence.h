@@ -23,12 +23,9 @@ namespace dxvk {
     uint64_t        initialValue;
     VkExternalSemaphoreHandleTypeFlagBits sharedType = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_FLAG_BITS_MAX_ENUM;
     union {
-#ifdef _WIN32
+      // When we want to implement this on non-Windows platforms,
+      // we could add a `int fd` here, etc.
       HANDLE          sharedHandle = INVALID_HANDLE_VALUE;
-#else
-      // Placeholder for other handle types, such as FD
-      void *dummy;
-#endif
     };
   };
 
