@@ -205,9 +205,10 @@ namespace dxvk::str {
   }
 
   inline void strlcpy(char* dst, const char* src, size_t count) {
-    std::strncpy(dst, src, count);
-    if (count > 0)
+    if (count > 0) {
+      std::strncpy(dst, src, count - 1);
       dst[count - 1] = '\0';
+    }
   }
   
 }
