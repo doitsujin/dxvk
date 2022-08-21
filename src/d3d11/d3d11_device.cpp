@@ -1658,8 +1658,8 @@ namespace dxvk {
 
         // Min/Max filtering requires Tiled Resources Tier 2 for some reason,
         // so we cannot support it even though Vulkan exposes this feature
-        info->TiledResourcesTier                    = D3D11_TILED_RESOURCES_NOT_SUPPORTED;
-        info->MinMaxFiltering                       = FALSE;
+        info->TiledResourcesTier                    = m_tiledResourcesTier;
+        info->MinMaxFiltering                       = m_tiledResourcesTier >= D3D11_TILED_RESOURCES_TIER_2;
         info->ClearViewAlsoSupportsDepthOnlyFormats = TRUE;
         info->MapOnDefaultBuffers                   = TRUE;
       } return S_OK;
@@ -1707,7 +1707,7 @@ namespace dxvk {
         info->ROVsSupported                  = FALSE;
         info->ConservativeRasterizationTier  = D3D11_CONSERVATIVE_RASTERIZATION_NOT_SUPPORTED;
         info->MapOnDefaultTextures           = TRUE;
-        info->TiledResourcesTier             = D3D11_TILED_RESOURCES_NOT_SUPPORTED;
+        info->TiledResourcesTier             = m_tiledResourcesTier;
         info->StandardSwizzle                = FALSE;
         info->UnifiedMemoryArchitecture      = m_dxvkDevice->isUnifiedMemoryArchitecture();
 
