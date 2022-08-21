@@ -26,7 +26,11 @@ if get_option('build_id')
   ]
 endif
 
-dxvk_include_path = include_directories('./include', './include/vulkan/include', './include/spirv/include')
+dxvk_include_dirs = [
+  './include',
+  './include/vulkan/include',
+  './include/spirv/include'
+]
 
 if platform == 'windows'
   compiler_args += [
@@ -102,11 +106,17 @@ else
   wrc           = find_program('touch')
   wrc_generator = generator(wrc, output : [ '@BASENAME@_ignored.h' ], arguments : [ '@OUTPUT@' ] )
 
-  dxvk_include_path += include_directories('./include/native', './include/native/windows', './include/native/directx')
+  dxvk_include_dirs += [
+    './include/native',
+    './include/native/windows',
+    './include/native/directx'
+  ]
 
   dxvk_wsi = 'sdl2'
   compiler_args += ['-DDXVK_WSI_SDL2']
 endif
+
+dxvk_include_path = include_directories(dxvk_include_dirs)
 
 add_project_arguments(cpp.get_supported_arguments(compiler_args), language: 'cpp')
 add_project_arguments(cc.get_supported_arguments(compiler_args), language: 'c')
