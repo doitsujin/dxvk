@@ -2441,7 +2441,7 @@ namespace dxvk {
 
     if (dumpPath.size() != 0) {
       std::ofstream dumpStream(
-        str::tows(str::format(dumpPath, "/", Name, ".spv").c_str()).c_str(),
+        str::topath(str::format(dumpPath, "/", Name, ".spv").c_str()).c_str(),
         std::ios_base::binary | std::ios_base::trunc);
       
       m_shader->dump(dumpStream);
