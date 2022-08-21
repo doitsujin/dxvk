@@ -60,7 +60,7 @@ dxvk_shaders = files([
   'hud/shaders/hud_text_vert.vert',
 ])
 
-dxvk_src = files([
+dxvk_src = [
   'dxvk_adapter.cpp',
   'dxvk_barrier.cpp',
   'dxvk_buffer.cpp',
@@ -89,8 +89,6 @@ dxvk_src = files([
   'dxvk_meta_mipgen.cpp',
   'dxvk_meta_pack.cpp',
   'dxvk_meta_resolve.cpp',
-  'dxvk_openvr.cpp',
-  'dxvk_openxr.cpp',
   'dxvk_options.cpp',
   'dxvk_pipelayout.cpp',
   'dxvk_pipemanager.cpp',
@@ -113,7 +111,14 @@ dxvk_src = files([
   'hud/dxvk_hud_font.cpp',
   'hud/dxvk_hud_item.cpp',
   'hud/dxvk_hud_renderer.cpp',
-])
+]
+
+if platform == 'windows'
+  dxvk_src += [
+    'dxvk_openvr.cpp',
+    'dxvk_openxr.cpp',
+  ]
+endif
 
 thread_dep = dependency('threads')
 
