@@ -4,6 +4,7 @@
 #include "d3d11_device.h"
 
 #include "../util/util_misc.h"
+#include "../util/util_win32_compat.h"
 
 namespace dxvk {
 
