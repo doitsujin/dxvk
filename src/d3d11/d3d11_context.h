@@ -699,9 +699,9 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE CopyTileMappings(
             ID3D11Resource*                   pDestTiledResource,
-      const D3D11_TILED_RESOURCE_COORDINATE*  pDestRegionStartCoordinate,
+      const D3D11_TILED_RESOURCE_COORDINATE*  pDestRegionCoordinate,
             ID3D11Resource*                   pSourceTiledResource,
-      const D3D11_TILED_RESOURCE_COORDINATE*  pSourceRegionStartCoordinate,
+      const D3D11_TILED_RESOURCE_COORDINATE*  pSourceRegionCoordinate,
       const D3D11_TILE_REGION_SIZE*           pTileRegionSize,
             UINT                              Flags);
 

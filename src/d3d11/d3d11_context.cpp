@@ -2638,17 +2638,82 @@ namespace dxvk {
   template<typename ContextType>
   HRESULT STDMETHODCALLTYPE D3D11CommonContext<ContextType>::CopyTileMappings(
           ID3D11Resource*                   pDestTiledResource,
-    const D3D11_TILED_RESOURCE_COORDINATE*  pDestRegionStartCoordinate,
+    const D3D11_TILED_RESOURCE_COORDINATE*  pDestRegionCoordinate,
           ID3D11Resource*                   pSourceTiledResource,
-    const D3D11_TILED_RESOURCE_COORDINATE*  pSourceRegionStartCoordinate,
+    const D3D11_TILED_RESOURCE_COORDINATE*  pSourceRegionCoordinate,
     const D3D11_TILE_REGION_SIZE*           pTileRegionSize,
           UINT                              Flags) {
-    static bool s_errorShown = false;
+    if (!pDestTiledResource || !pSourceTiledResource)
+      return E_INVALIDARG;
 
-    if (!std::exchange(s_errorShown, true))
-      Logger::err("D3D11DeviceContext::CopyTileMappings: Not implemented");
+    if constexpr (!IsDeferred)
+      GetTypedContext()->FlushImplicit(false);
 
-    return DXGI_ERROR_INVALID_CALL;
+    DxvkSparseBindInfo bindInfo;
+    bindInfo.dstResource = GetPagedResource(pDestTiledResource);
+    bindInfo.srcResource = GetPagedResource(pSourceTiledResource);
+
+    auto dstPageTable = bindInfo.dstResource->getSparsePageTable();
+    auto srcPageTable = bindInfo.srcResource->getSparsePageTable();
+
+    if (!dstPageTable || !srcPageTable)
+      return E_INVALIDARG;
+
+    if (pDestRegionCoordinate->Subresource >= dstPageTable->getSubresourceCount()
+     || pSourceRegionCoordinate->Subresource >= srcPageTable->getSubresourceCount())
+      return E_INVALIDARG;
+
+    VkOffset3D dstRegionOffset = {
+      int32_t(pDestRegionCoordinate->X),
+      int32_t(pDestRegionCoordinate->Y),
+      int32_t(pDestRegionCoordinate->Z) };
+
+    VkOffset3D srcRegionOffset = {
+      int32_t(pSourceRegionCoordinate->X),
+      int32_t(pSourceRegionCoordinate->Y),
+      int32_t(pSourceRegionCoordinate->Z) };
+
+    VkExtent3D regionExtent = {
+      uint32_t(pTileRegionSize->Width),
+      uint32_t(pTileRegionSize->Height),
+      uint32_t(pTileRegionSize->Depth) };
+
+    for (uint32_t i = 0; i < pTileRegionSize->NumTiles; i++) {
+      // We don't know the current tile mappings of either resource since
+      // this may be called on a deferred context and tile mappings are
+      // updated on the CS thread, so just resolve the copy in the backend
+      uint32_t dstTile = dstPageTable->computePageIndex(
+        pDestRegionCoordinate->Subresource, dstRegionOffset,
+        regionExtent, !pTileRegionSize->bUseBox, i);
+
+      uint32_t srcTile = srcPageTable->computePageIndex(
+        pSourceRegionCoordinate->Subresource, srcRegionOffset,
+        regionExtent, !pTileRegionSize->bUseBox, i);
+
+      if (dstTile >= dstPageTable->getPageCount()
+       || srcTile >= srcPageTable->getPageCount())
+        return E_INVALIDARG;
+
+      DxvkSparseBind bind;
+      bind.mode = DxvkSparseBindMode::Copy;
+      bind.dstPage = dstTile;
+      bind.srcPage = srcTile;
+
+      bindInfo.binds.push_back(bind);
+    }
+
+    DxvkSparseBindFlags flags = (Flags & D3D11_TILE_MAPPING_NO_OVERWRITE)
+      ? DxvkSparseBindFlags(DxvkSparseBindFlag::SkipSynchronization)
+      : DxvkSparseBindFlags();
+
+    EmitCs([
+      cBindInfo = std::move(bindInfo),
+      cFlags    = flags
+    ] (DxvkContext* ctx) {
+      ctx->updatePageTable(cBindInfo, cFlags);
+    });
+
+    return S_OK;
   }
 
 
