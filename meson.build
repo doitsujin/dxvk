@@ -26,6 +26,8 @@ if get_option('build_id')
   ]
 endif
 
+dxvk_include_path = include_directories('./include', './include/vulkan/include')
+
 if platform == 'windows'
   compiler_args += [
     '-DNOMINMAX',
@@ -91,8 +93,6 @@ if platform == 'windows'
     )
   endif
 
-  dxvk_include_path = include_directories('./include')
-
   dxvk_wsi = 'win32'
   compiler_args += ['-DDXVK_WSI_WIN32']
 else
@@ -102,7 +102,7 @@ else
   wrc           = find_program('touch')
   wrc_generator = generator(wrc, output : [ '@BASENAME@_ignored.h' ], arguments : [ '@OUTPUT@' ] )
 
-  dxvk_include_path = include_directories('./include', './include/native', './include/native/windows', './include/native/directx')
+  dxvk_include_path += include_directories('./include/native', './include/native/windows', './include/native/directx')
 
   dxvk_wsi = 'sdl2'
   compiler_args += ['-DDXVK_WSI_SDL2']
