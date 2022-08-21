@@ -338,6 +338,17 @@ namespace dxvk {
   class thread : public std::thread {
   public:
     using std::thread::thread;
+
+    void set_priority(ThreadPriority priority) {
+      ::sched_param param = {};
+      int32_t policy;
+      switch (priority) {
+        default:
+        case ThreadPriority::Normal: policy = SCHED_OTHER; break;
+        case ThreadPriority::Lowest: policy = SCHED_IDLE;  break;
+      }
+      ::pthread_setschedparam(this->native_handle(), policy, &param);
+    }
   };
 
   using mutex              = std::mutex;
