@@ -105,8 +105,6 @@ dxvk_src = [
   'dxvk_unbound.cpp',
   'dxvk_util.cpp',
 
-  'platform/dxvk_win32_exts.cpp',
-
   'hud/dxvk_hud.cpp',
   'hud/dxvk_hud_font.cpp',
   'hud/dxvk_hud_item.cpp',
@@ -117,6 +115,16 @@ if platform == 'windows'
   dxvk_src += [
     'dxvk_openvr.cpp',
     'dxvk_openxr.cpp',
+  ]
+endif
+
+if dxvk_wsi == 'win32'
+  dxvk_src += [
+    'platform/dxvk_win32_exts.cpp'
+  ]
+elif dxvk_wsi == 'sdl2'
+  dxvk_src += [
+    'platform/dxvk_sdl2_exts.cpp'
   ]
 endif
 
