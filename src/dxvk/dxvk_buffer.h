@@ -103,7 +103,7 @@ namespace dxvk {
    * unformatted data. Can be accessed by the host
    * if allocated on an appropriate memory type.
    */
-  class DxvkBuffer : public DxvkResource {
+  class DxvkBuffer : public DxvkPagedResource {
     friend class DxvkBufferView;
   public:
     
@@ -294,16 +294,6 @@ namespace dxvk {
       m_nextSlices.push_back(slice);
     }
 
-    /**
-     * \brief Queries sparse page table
-     * \returns Page table, or \c nullptr for a non-sparse resource
-     */
-    DxvkSparsePageTable* getSparsePageTable() {
-      return m_info.flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT
-        ? &m_sparsePageTable
-        : nullptr;
-    }
-
   private:
 
     DxvkDevice*             m_device;
@@ -315,8 +305,6 @@ namespace dxvk {
     DxvkBufferHandle        m_buffer;
     DxvkBufferSliceHandle   m_physSlice;
     uint32_t                m_vertexStride = 0;
-
-    DxvkSparsePageTable     m_sparsePageTable;
 
     alignas(CACHE_LINE_SIZE)
     sync::Spinlock          m_freeMutex;

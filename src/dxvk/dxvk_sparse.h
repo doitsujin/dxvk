@@ -133,6 +133,14 @@ namespace dxvk {
       const DxvkImage*              image);
 
     /**
+     * \brief Checks whether page table is defined
+     * \returns \c true if the page table is defined
+     */
+    operator bool () const {
+      return m_buffer || m_image;
+    }
+
+    /**
      * \brief Counts total number of pages in the resources
      *
      * Counts the number of pages for the entire resource, both
@@ -194,6 +202,33 @@ namespace dxvk {
     DxvkSparseImageProperties                         m_properties    = { };
     std::vector<DxvkSparseImageSubresourceProperties> m_subresources;
     std::vector<DxvkSparsePageInfo>                   m_metadata;
+
+  };
+
+
+  /**
+   * \brief Paged resource
+   *
+   * Base class for any resource that can
+   * hold a sparse page table.
+   */
+  class DxvkPagedResource : public DxvkResource {
+
+  public:
+
+    /**
+     * \brief Queries sparse page table
+     * \returns Sparse page table, if defined
+     */
+    DxvkSparsePageTable* getSparsePageTable() {
+      return m_sparsePageTable
+        ? &m_sparsePageTable
+        : nullptr;
+    }
+
+  protected:
+
+    DxvkSparsePageTable m_sparsePageTable;
 
   };
 

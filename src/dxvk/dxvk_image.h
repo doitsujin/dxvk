@@ -122,7 +122,7 @@ namespace dxvk {
    * Can be accessed by the host if allocated on a suitable
    * memory type and if created with the linear tiling option.
    */
-  class DxvkImage : public DxvkResource {
+  class DxvkImage : public DxvkPagedResource {
     friend class DxvkContext;
     friend class DxvkImageView;
   public:
@@ -325,16 +325,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Queries sparse page table
-     * \returns Page table, or \c nullptr for a non-sparse resource
-     */
-    DxvkSparsePageTable* getSparsePageTable() {
-      return m_info.flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT
-        ? &m_sparsePageTable
-        : nullptr;
-    }
-
-    /**
      * \brief Create a new shared handle to dedicated memory backing the image
      * \returns The shared handle with the type given by DxvkSharedHandleInfo::type
      */
@@ -347,7 +337,6 @@ namespace dxvk {
     DxvkImageCreateInfo   m_info;
     VkMemoryPropertyFlags m_memFlags;
     DxvkPhysicalImage     m_image;
-    DxvkSparsePageTable   m_sparsePageTable;
 
     bool m_shared = false;
 
