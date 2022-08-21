@@ -268,8 +268,8 @@ namespace dxvk {
 
   void DxvkDevice::submitCommandList(
     const Rc<DxvkCommandList>&      commandList) {
-    DxvkSubmitInfo submitInfo;
-    submitInfo.cmdList  = commandList;
+    DxvkSubmitInfo submitInfo = { };
+    submitInfo.cmdList = commandList;
     m_submissionQueue.submit(submitInfo);
 
     std::lock_guard<sync::Spinlock> statLock(m_statLock);
