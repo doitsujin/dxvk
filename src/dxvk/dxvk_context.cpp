@@ -1170,7 +1170,8 @@ namespace dxvk {
 
   void DxvkContext::discardBuffer(
     const Rc<DxvkBuffer>&       buffer) {
-    if (buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+    if ((buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+     || (buffer->info().flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT))
       return;
 
     if (m_execBarriers.isBufferDirty(buffer->getSliceHandle(), DxvkAccess::Write))
@@ -5743,6 +5744,10 @@ namespace dxvk {
 
     // Don't discard host-visible buffers since that may interfere with the frontend
     if (buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+      return false;
+
+    // Don't discard sparse buffers
+    if (buffer->info().flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)
       return false;
 
     // Suspend the current render pass if transform feedback is active prior to
