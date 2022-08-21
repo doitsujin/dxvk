@@ -2256,6 +2256,7 @@ namespace dxvk {
     if (ppResource == nullptr)
       return S_FALSE;
 
+#ifdef _WIN32
     HANDLE ntHandle = IsKmtHandle ? openKmtHandle(hResource) : hResource;
 
     if (ntHandle == INVALID_HANDLE_VALUE) {
@@ -2298,6 +2299,10 @@ namespace dxvk {
       Logger::err(e.message());
       return E_INVALIDARG;
     }
+#else
+    Logger::warn("D3D11Device::OpenSharedResourceGeneric: Not supported on this platform.");
+    return E_INVALIDARG;
+#endif
   }
 
 
