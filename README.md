@@ -33,6 +33,13 @@ export WINEPREFIX=/path/to/.wine-prefix
 
 ## Build instructions
 
+In order to pull in all submodules that are needed for building, clone the repository using the following command:
+```
+git clone --recursive https://github.com/doitsujin/dxvk.git
+```
+
+
+
 ### Requirements:
 - [wine 3.10](https://www.winehq.org/) or newer
 - [Meson](https://mesonbuild.com/) build system (at least version 0.49)
