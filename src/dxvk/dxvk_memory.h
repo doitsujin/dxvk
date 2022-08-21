@@ -34,12 +34,9 @@ namespace dxvk {
     DxvkSharedHandleMode mode = DxvkSharedHandleMode::None;
     VkExternalMemoryHandleTypeFlagBits type   = VK_EXTERNAL_MEMORY_HANDLE_TYPE_FLAG_BITS_MAX_ENUM;
     union {
-#ifdef _WIN32
-      HANDLE                             handle = INVALID_HANDLE_VALUE;
-#else
-      // Placeholder for other handle types, such as FD
-      void *dummy;
-#endif
+      // When we want to implement this on non-Windows platforms,
+      // we could add a `int fd` here, etc.
+      HANDLE handle = INVALID_HANDLE_VALUE;
     };
   };
 
