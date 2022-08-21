@@ -103,7 +103,7 @@ namespace dxvk {
   HRESULT GetCommonResourceDesc(
           ID3D11Resource*             pResource,
           D3D11_COMMON_RESOURCE_DESC* pDesc);
-  
+
   /**
    * \brief Checks whether a format can be used to view a resource
    * 
@@ -121,7 +121,16 @@ namespace dxvk {
           UINT                        BindFlags,
           DXGI_FORMAT                 Format,
           UINT                        Plane);
-  
+
+  /**
+   * \brief Queries paged resource from resource pointer
+   *
+   * \param [in] resource The resource
+   * \returns Paged resource object
+   */
+  Rc<DxvkPagedResource> GetPagedResource(
+          ID3D11Resource*             pResource);
+
   /**
    * \brief Increments private reference count of a resource
    * 

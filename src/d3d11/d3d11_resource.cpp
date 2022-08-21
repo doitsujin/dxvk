@@ -209,6 +209,17 @@ namespace dxvk {
   }
 
 
+  Rc<DxvkPagedResource> GetPagedResource(
+          ID3D11Resource*             pResource) {
+    auto texture = GetCommonTexture(pResource);
+
+    if (texture)
+      return texture->GetImage();
+
+    return static_cast<D3D11Buffer*>(pResource)->GetBuffer();
+  }
+
+
   BOOL CheckResourceViewCompatibility(
           ID3D11Resource*             pResource,
           UINT                        BindFlags,

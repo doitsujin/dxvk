@@ -2700,21 +2700,158 @@ namespace dxvk {
   template<typename ContextType>
   HRESULT STDMETHODCALLTYPE D3D11CommonContext<ContextType>::UpdateTileMappings(
           ID3D11Resource*                   pTiledResource,
-          UINT                              NumTiledResourceRegions,
-    const D3D11_TILED_RESOURCE_COORDINATE*  pTiledResourceRegionStartCoordinates,
-    const D3D11_TILE_REGION_SIZE*           pTiledResourceRegionSizes,
+          UINT                              NumRegions,
+    const D3D11_TILED_RESOURCE_COORDINATE*  pRegionCoordinates,
+    const D3D11_TILE_REGION_SIZE*           pRegionSizes,
           ID3D11Buffer*                     pTilePool,
           UINT                              NumRanges,
     const UINT*                             pRangeFlags,
-    const UINT*                             pTilePoolStartOffsets,
+    const UINT*                             pRangeTileOffsets,
     const UINT*                             pRangeTileCounts,
           UINT                              Flags) {
-    bool s_errorShown = false;
+    if (!pTiledResource || !NumRegions || !NumRanges)
+      return E_INVALIDARG;
 
-    if (std::exchange(s_errorShown, true))
-      Logger::err("D3D11DeviceContext::UpdateTileMappings: Not implemented");
+    if constexpr (!IsDeferred)
+      GetTypedContext()->FlushImplicit(false);
 
-    return DXGI_ERROR_INVALID_CALL;
+    // Find sparse allocator if the tile pool is defined
+    DxvkSparseBindInfo bindInfo;
+
+    if (pTilePool) {
+      auto tilePool = static_cast<D3D11Buffer*>(pTilePool);
+      bindInfo.srcAllocator = tilePool->GetSparseAllocator();
+
+      if (bindInfo.srcAllocator == nullptr)
+        return E_INVALIDARG;
+    }
+
+    // Find resource and sparse page table for the given resource
+    bindInfo.dstResource = GetPagedResource(pTiledResource);
+    auto pageTable = bindInfo.dstResource->getSparsePageTable();
+
+    if (!pageTable)
+      return E_INVALIDARG;
+
+    // Lookup table in case the app tries to bind the same
+    // page multiple times. We should resolve that here and
+    // only consider the last bind to any given page.
+    std::vector<uint32_t> bindIndices(pageTable->getPageCount(), ~0u);
+
+    // This function allows pretty much every parameter to be nullptr
+    // in some way, so initialize some defaults as necessary
+    D3D11_TILED_RESOURCE_COORDINATE regionCoord = { };
+    D3D11_TILE_REGION_SIZE regionSize = { };
+
+    if (!pRegionSizes) {
+      regionSize.NumTiles = pRegionCoordinates
+        ? 1 : pageTable->getPageCount();
+    }
+
+    uint32_t rangeFlag = 0u;
+    uint32_t rangeTileOffset = 0u;
+    uint32_t rangeTileCount = ~0u;
+
+    // For now, just generate a simple list of tile index to
+    // page index mappings, and let the backend optimize later
+    uint32_t regionIdx = 0u;
+    uint32_t regionTile = 0u;
+    uint32_t rangeIdx = 0u;
+    uint32_t rangeTile = 0u;
+
+    while (regionIdx < NumRegions && rangeIdx < NumRanges) {
+      if (!regionTile) {
+        if (pRegionCoordinates)
+          regionCoord = pRegionCoordinates[regionIdx];
+
+        if (pRegionSizes)
+          regionSize = pRegionSizes[regionIdx];
+      }
+
+      if (!rangeTile) {
+        if (pRangeFlags)
+          rangeFlag = pRangeFlags[rangeIdx];
+
+        if (pRangeTileOffsets)
+          rangeTileOffset = pRangeTileOffsets[rangeIdx];
+
+        if (pRangeTileCounts)
+          rangeTileCount = pRangeTileCounts[rangeIdx];
+      }
+
+      if (!(rangeFlag & D3D11_TILE_RANGE_SKIP)) {
+        if (regionCoord.Subresource >= pageTable->getSubresourceCount())
+          return E_INVALIDARG;
+
+        if (regionSize.bUseBox && regionSize.NumTiles !=
+            regionSize.Width * regionSize.Height * regionSize.Depth)
+          return E_INVALIDARG;
+
+        VkOffset3D regionOffset = {
+          int32_t(regionCoord.X),
+          int32_t(regionCoord.Y),
+          int32_t(regionCoord.Z) };
+
+        VkExtent3D regionExtent = {
+          uint32_t(regionSize.Width),
+          uint32_t(regionSize.Height),
+          uint32_t(regionSize.Depth) };
+
+        uint32_t resourceTile = pageTable->computePageIndex(regionCoord.Subresource,
+          regionOffset, regionExtent, !regionSize.bUseBox, regionTile);
+
+        // Fill in bind info for the current tile
+        DxvkSparseBind bind = { };
+        bind.dstPage = resourceTile;
+
+        if (rangeFlag & D3D11_TILE_RANGE_NULL) {
+          bind.mode = DxvkSparseBindMode::Null;
+        } else if (pTilePool) {
+          bind.mode = DxvkSparseBindMode::Bind;
+          bind.srcPage = rangeFlag & D3D11_TILE_RANGE_REUSE_SINGLE_TILE
+            ? rangeTileOffset
+            : rangeTileOffset + rangeTile;
+        } else {
+          return E_INVALIDARG;
+        }
+
+        // Add bind info to the bind list, overriding
+        // any existing bind for the same resource page
+        if (resourceTile < pageTable->getPageCount()) {
+          if (bindIndices[resourceTile] < bindInfo.binds.size())
+            bindInfo.binds[bindIndices[resourceTile]] = bind;
+          else
+            bindInfo.binds.push_back(bind);
+        }
+      }
+
+      if (++regionTile == regionSize.NumTiles) {
+        regionTile = 0;
+        regionIdx += 1;
+      }
+
+      if (++rangeTile == rangeTileCount) {
+        rangeTile = 0;
+        rangeIdx += 1;
+      }
+    }
+
+    // Translate flags. The backend benefits from NO_OVERWRITE since
+    // otherwise we have to serialize execution of the current command
+    // buffer, the sparse binding operation, and subsequent commands.
+    // With NO_OVERWRITE, we can execute it more or less asynchronously.
+    DxvkSparseBindFlags flags = (Flags & D3D11_TILE_MAPPING_NO_OVERWRITE)
+      ? DxvkSparseBindFlags(DxvkSparseBindFlag::SkipSynchronization)
+      : DxvkSparseBindFlags();
+
+    EmitCs([
+      cBindInfo = std::move(bindInfo),
+      cFlags    = flags
+    ] (DxvkContext* ctx) {
+      ctx->updatePageTable(cBindInfo, cFlags);
+    });
+
+    return S_OK;
   }
 
 

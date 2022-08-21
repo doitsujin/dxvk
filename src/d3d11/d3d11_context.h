@@ -715,13 +715,13 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE UpdateTileMappings(
             ID3D11Resource*                   pTiledResource,
-            UINT                              NumTiledResourceRegions,
-      const D3D11_TILED_RESOURCE_COORDINATE*  pTiledResourceRegionStartCoordinates,
-      const D3D11_TILE_REGION_SIZE*           pTiledResourceRegionSizes,
+            UINT                              NumRegions,
+      const D3D11_TILED_RESOURCE_COORDINATE*  pRegionCoordinates,
+      const D3D11_TILE_REGION_SIZE*           pRegionSizes,
             ID3D11Buffer*                     pTilePool,
             UINT                              NumRanges,
       const UINT*                             pRangeFlags,
-      const UINT*                             pTilePoolStartOffsets,
+      const UINT*                             pRangeTileOffsets,
       const UINT*                             pRangeTileCounts,
             UINT                              Flags);
 
