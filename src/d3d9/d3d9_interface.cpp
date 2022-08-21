@@ -20,6 +20,7 @@ namespace dxvk {
     // If we run out of adapters, then we'll just make repeats of the first one.
     // We can't match up by names on Linux/Wine as they don't match at all
     // like on Windows, so this is our best option.
+#ifdef _WIN32
     if (m_d3d9Options.enumerateByDisplays) {
       DISPLAY_DEVICEA device = { };
       device.cb = sizeof(device);
@@ -44,6 +45,7 @@ namespace dxvk {
       }
     }
     else
+#endif
     {
       const uint32_t adapterCount = m_instance->adapterCount();
       m_adapters.reserve(adapterCount);
@@ -52,10 +54,12 @@ namespace dxvk {
         m_adapters.emplace_back(this, m_instance->enumAdapters(i), i, 0);
     }
 
+#ifdef _WIN32
     if (m_d3d9Options.dpiAware) {
       Logger::info("Process set as DPI aware");
       SetProcessDPIAware();
     }
+#endif
   }
 
 
