@@ -4,6 +4,7 @@
 #include "d3d9_device.h"
 
 #include "../util/util_shared_res.h"
+#include "../util/util_win32_compat.h"
 
 #include <algorithm>
 

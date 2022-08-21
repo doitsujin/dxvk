@@ -1,5 +1,7 @@
 #include "d3d9_util.h"
 
+#include "../util/util_win32_compat.h"
+
 namespace dxvk {
 
   typedef HRESULT (STDMETHODCALLTYPE *D3DXDisassembleShader) (
