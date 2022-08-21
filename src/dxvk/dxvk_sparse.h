@@ -9,8 +9,10 @@ namespace dxvk {
   class DxvkDevice;
   class DxvkBuffer;
   class DxvkImage;
+  class DxvkPagedResource;
   class DxvkSparsePage;
   class DxvkSparsePageAllocator;
+  class DxvkSparsePageTable;
 
   constexpr static VkDeviceSize SparseMemoryPageSize = 1ull << 16;
 
@@ -113,6 +115,55 @@ namespace dxvk {
 
 
   /**
+   * \brief Sparse binding flags
+   */
+  enum class DxvkSparseBindFlag : uint32_t {
+    SkipSynchronization,
+  };
+
+  using DxvkSparseBindFlags = Flags<DxvkSparseBindFlag>;
+
+
+  /**
+   * \brief Sparse page binding mode
+   */
+  enum class DxvkSparseBindMode : uint32_t {
+    Null, ///< Unbind the given resource page
+    Bind, ///< Bind to given allocator page
+    Copy, ///< Copy bindig from source resource
+  };
+
+
+  /**
+   * \brief Sparse page binding info for a given page
+   *
+   * Stores the resource page index as well as the index
+   * of the allocator page that should be bound to that
+   * resource page.
+   */
+  struct DxvkSparseBind {
+    DxvkSparseBindMode        mode;
+    uint32_t                  dstPage;
+    uint32_t                  srcPage;
+  };
+
+
+  /**
+   * \brief Sparse binding info
+   *
+   * Stores the resource to change page bindings for, the
+   * allocator from which pages will be allocated, and
+   * a list of page bidnings
+   */
+  struct DxvkSparseBindInfo {
+    Rc<DxvkPagedResource>       dstResource;
+    Rc<DxvkPagedResource>       srcResource;
+    Rc<DxvkSparsePageAllocator> srcAllocator;
+    std::vector<DxvkSparseBind> binds;
+  };
+
+
+  /**
    * \brief Sparse memory page
    *
    * Stores a single reference-counted page
@@ -153,6 +204,7 @@ namespace dxvk {
    */
   class DxvkSparseMapping {
     friend DxvkSparsePageAllocator;
+    friend DxvkSparsePageTable;
   public:
 
     DxvkSparseMapping();
@@ -165,8 +217,15 @@ namespace dxvk {
 
     ~DxvkSparseMapping();
 
-    Rc<DxvkSparsePage> getPage() const {
-      return m_page;
+    /**
+     * \brief Queries memory handle
+     * \returns Memory information
+     */
+    DxvkSparsePageHandle getHandle() const {
+      if (m_page == nullptr)
+        return DxvkSparsePageHandle();
+
+      return m_page->getHandle();
     }
 
     bool operator == (const DxvkSparseMapping& other) const {
@@ -287,6 +346,18 @@ namespace dxvk {
     }
 
     /**
+     * \brief Queries buffer handle
+     * \returns Buffer handle
+     */
+    VkBuffer getBufferHandle() const;
+
+    /**
+     * \brief Queries image handle
+     * \returns Image handle
+     */
+    VkImage getImageHandle() const;
+
+    /**
      * \brief Counts total number of pages in the resources
      *
      * Counts the number of pages for the entire resource, both
@@ -339,6 +410,48 @@ namespace dxvk {
         ? m_metadata[page]
         : DxvkSparsePageInfo();
     }
+
+    /**
+     * \brief Computes page index within a given image region
+     *
+     * \param [in] subresource Subresource index
+     * \param [in] regionOffset Region offset, in pages
+     * \param [in] regionExtent Region extent, in pages
+     * \param [in] regionIsLinear Whether to use the region extent
+     * \param [in] pageIndex Page within the given region
+     * \returns Page index. The returned number may be out
+     *    of bounds if the given region is invalid.
+     */
+    uint32_t computePageIndex(
+            uint32_t                subresource,
+            VkOffset3D              regionOffset,
+            VkExtent3D              regionExtent,
+            VkBool32                regionIsLinear,
+            uint32_t                pageIndex) const;
+
+    /**
+     * \brief Queries page mapping
+     *
+     * \param [in] page Page index
+     * \returns Current page mapping
+     */
+    DxvkSparseMapping getMapping(
+            uint32_t                page);
+
+    /**
+     * \brief Changes a page mapping
+     *
+     * Updates the given page mapping in the table, and ensures
+     * that the previously mapped page does not get destroyed
+     * prematurely by tracking it in the given command list.
+     * \param [in] cmd Command list
+     * \param [in] page Page index
+     * \param [in] mapping New mapping
+     */
+    void updateMapping(
+            DxvkCommandList*        cmd,
+            uint32_t                page,
+            DxvkSparseMapping&&     mapping);
 
   private:
 

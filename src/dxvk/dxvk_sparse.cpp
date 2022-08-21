@@ -335,4 +335,65 @@ namespace dxvk {
     }
   }
 
+
+  VkBuffer DxvkSparsePageTable::getBufferHandle() const {
+    return m_buffer ? m_buffer->getSliceHandle().handle : VK_NULL_HANDLE;
+  }
+
+
+  VkImage DxvkSparsePageTable::getImageHandle() const {
+    return m_image ? m_image->handle() : VK_NULL_HANDLE;
+  }
+
+
+  uint32_t DxvkSparsePageTable::computePageIndex(
+          uint32_t                subresource,
+          VkOffset3D              regionOffset,
+          VkExtent3D              regionExtent,
+          VkBool32                regionIsLinear,
+          uint32_t                pageIndex) const {
+    auto subresourceInfo = getSubresourceProperties(subresource);
+
+    // The mip tail is always linear
+    if (subresourceInfo.isMipTail)
+      return m_properties.mipTailPageIndex + pageIndex;
+
+    // Compute offset into the given subresource
+    VkOffset3D pageOffset = regionOffset;
+
+    if (!regionIsLinear) {
+      pageOffset.x += (pageIndex % regionExtent.width);
+      pageOffset.y += (pageIndex / regionExtent.width) % regionExtent.height;
+      pageOffset.z += (pageIndex / regionExtent.width) / regionExtent.height;
+      pageIndex = 0;
+    }
+
+    uint32_t result = subresourceInfo.pageIndex + pageOffset.x
+      + subresourceInfo.pageCount.width * (pageOffset.y
+      + subresourceInfo.pageCount.height * pageOffset.z);
+
+    return result + pageIndex;
+  }
+
+
+  DxvkSparseMapping DxvkSparsePageTable::getMapping(
+          uint32_t                page) {
+    return page < m_mappings.size()
+      ? m_mappings[page]
+      : DxvkSparseMapping();
+  }
+
+
+  void DxvkSparsePageTable::updateMapping(
+          DxvkCommandList*        cmd,
+          uint32_t                page,
+          DxvkSparseMapping&&     mapping) {
+    if (m_mappings[page] != page) {
+      if (m_mappings[page])
+        cmd->trackResource<DxvkAccess::None>(m_mappings[page].m_page);
+
+      m_mappings[page] = std::move(mapping);
+    }
+  }
+
 }
