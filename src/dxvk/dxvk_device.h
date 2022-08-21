@@ -435,13 +435,9 @@ namespace dxvk {
      * Submits the given command list to the device using
      * the given set of optional synchronization primitives.
      * \param [in] commandList The command list to submit
-     * \param [in] waitSync (Optional) Semaphore to wait on
-     * \param [in] wakeSync (Optional) Semaphore to notify
      */
     void submitCommandList(
-      const Rc<DxvkCommandList>&      commandList,
-            VkSemaphore               waitSync,
-            VkSemaphore               wakeSync);
+      const Rc<DxvkCommandList>&      commandList);
 
     /**
      * \brief Locks submission queue

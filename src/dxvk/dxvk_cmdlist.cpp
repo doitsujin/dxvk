@@ -78,9 +78,7 @@ namespace dxvk {
   }
   
   
-  VkResult DxvkCommandList::submit(
-          VkSemaphore     waitSemaphore,
-          VkSemaphore     wakeSemaphore) {
+  VkResult DxvkCommandList::submit() {
     const auto& graphics = m_device->queues().graphics;
     const auto& transfer = m_device->queues().transfer;
 
@@ -123,16 +121,16 @@ namespace dxvk {
       m_submission.cmdBuffers.push_back(cmdInfo);
     }
     
-    if (waitSemaphore) {
+    if (m_wsiSemaphores.acquire) {
       VkSemaphoreSubmitInfo waitInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
-      waitInfo.semaphore = waitSemaphore;
+      waitInfo.semaphore = m_wsiSemaphores.acquire;
       waitInfo.stageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
       m_submission.waitSync.push_back(waitInfo);
     }
 
-    if (wakeSemaphore) {
+    if (m_wsiSemaphores.present) {
       VkSemaphoreSubmitInfo signalInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
-      signalInfo.semaphore = wakeSemaphore;
+      signalInfo.semaphore = m_wsiSemaphores.present;
       signalInfo.stageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
       m_submission.wakeSync.push_back(signalInfo);
     }
@@ -233,6 +231,8 @@ namespace dxvk {
 
     m_waitSemaphores.clear();
     m_signalSemaphores.clear();
+
+    m_wsiSemaphores = vk::PresenterSync();
   }
 
 

@@ -332,8 +332,8 @@ namespace dxvk {
       cHud         = m_hud,
       cCommandList = m_context->endRecording()
     ] (DxvkContext* ctx) {
-      m_device->submitCommandList(cCommandList,
-        cSync.acquire, cSync.present);
+      cCommandList->setWsiSemaphores(cSync);
+      m_device->submitCommandList(cCommandList);
 
       if (cHud != nullptr && !cFrameId)
         cHud->update();
@@ -526,9 +526,7 @@ namespace dxvk {
       subresources, VK_IMAGE_LAYOUT_UNDEFINED);
 
     m_device->submitCommandList(
-      m_context->endRecording(),
-      VK_NULL_HANDLE,
-      VK_NULL_HANDLE);
+      m_context->endRecording());
   }
 
 

@@ -33,8 +33,6 @@ namespace dxvk {
    */
   struct DxvkSubmitInfo {
     Rc<DxvkCommandList> cmdList;
-    VkSemaphore         waitSync;
-    VkSemaphore         wakeSync;
   };
   
   

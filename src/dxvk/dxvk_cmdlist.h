@@ -2,6 +2,8 @@
 
 #include <limits>
 
+#include "../vulkan/vulkan_presenter.h"
+
 #include "dxvk_bind_mask.h"
 #include "dxvk_buffer.h"
 #include "dxvk_descriptor.h"
@@ -71,13 +73,9 @@ namespace dxvk {
      * \brief Submits command list
      * 
      * \param [in] queue Device queue
-     * \param [in] waitSemaphore Semaphore to wait on
-     * \param [in] wakeSemaphore Semaphore to signal
      * \returns Submission status
      */
-    VkResult submit(
-            VkSemaphore     waitSemaphore,
-            VkSemaphore     wakeSemaphore);
+    VkResult submit();
     
     /**
      * \brief Synchronizes command buffer execution
@@ -225,7 +223,17 @@ namespace dxvk {
     void signalFence(Rc<DxvkFence> fence, uint64_t value) {
       m_signalSemaphores.emplace_back(std::move(fence), value);
     }
-    
+
+    /**
+     * \brief Sets WSI semaphores to synchronize with
+     *
+     * The given semaphores must be binary semaphores.
+     * \param [in] wsiSemaphores Pair of WSI semaphores
+     */
+    void setWsiSemaphores(const vk::PresenterSync& wsiSemaphores) {
+      m_wsiSemaphores = wsiSemaphores;
+    }
+
     /**
      * \brief Resets the command list
      * 
@@ -815,6 +823,8 @@ namespace dxvk {
     VkCommandBuffer     m_sdmaBuffer = VK_NULL_HANDLE;
 
     VkSemaphore         m_sdmaSemaphore = VK_NULL_HANDLE;
+
+    vk::PresenterSync   m_wsiSemaphores = { };
 
     DxvkCmdBufferFlags  m_cmdBuffersUsed;
     DxvkLifetimeTracker m_resources;
