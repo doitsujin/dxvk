@@ -2,11 +2,9 @@
 
 //for some reason we need to specify __declspec(dllexport) for MinGW
 #if defined(__WINE__)
-  #define DLLEXPORT __attribute__((visibility("default")))
-#elif defined(_MSC_VER)
-  #define DLLEXPORT
+#define DLLEXPORT __attribute__((visibility("default")))
 #else
-  #define DLLEXPORT __declspec(dllexport)
+#define DLLEXPORT
 #endif
 
 #include "../util/com/com_guid.h"
