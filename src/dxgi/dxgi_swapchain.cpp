@@ -171,7 +171,7 @@ namespace dxvk {
     pStats->PresentCount = m_presentCount;
     pStats->PresentRefreshCount = 0;
     pStats->SyncRefreshCount = 0;
-    QueryPerformanceCounter(&pStats->SyncQPCTime);
+    pStats->SyncQPCTime.QuadPart = dxvk::high_resolution_clock::get_counter();
     pStats->SyncGPUTime.QuadPart = 0;
     return S_OK;
   }
