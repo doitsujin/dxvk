@@ -42,13 +42,13 @@ namespace dxvk {
    * only, array sizes are based on need.
    */
   struct DxvkQueueSubmission {
-    std::vector<VkSemaphoreSubmitInfo>     waitSync;
-    std::vector<VkSemaphoreSubmitInfo>     wakeSync;
+    std::vector<VkSemaphoreSubmitInfo>     waitInfos;
+    std::vector<VkSemaphoreSubmitInfo>     signalInfos;
     std::vector<VkCommandBufferSubmitInfo> cmdBuffers;
 
     void reset() {
-      waitSync.clear();
-      wakeSync.clear();
+      waitInfos.clear();
+      signalInfos.clear();
       cmdBuffers.clear();
     }
   };
