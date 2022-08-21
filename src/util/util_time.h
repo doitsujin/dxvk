@@ -44,7 +44,15 @@ namespace dxvk {
     }
   };
 #else
-  using high_resolution_clock = std::chrono::high_resolution_clock;
+  struct high_resolution_clock : public std::chrono::high_resolution_clock {
+    static inline int64_t get_frequency() {
+      return period::den;
+    }
+
+    static inline int64_t get_counter() {
+      return dxvk::high_resolution_clock::now().time_since_epoch().count();
+    }
+  };
 #endif
 
 }
