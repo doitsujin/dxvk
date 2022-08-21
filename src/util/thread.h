@@ -15,18 +15,15 @@
 
 namespace dxvk {
 
-#ifdef _WIN32
   /**
    * \brief Thread priority
    */
   enum class ThreadPriority : int32_t {
-    Lowest      = THREAD_PRIORITY_LOWEST,
-    Low         = THREAD_PRIORITY_BELOW_NORMAL,
-    Normal      = THREAD_PRIORITY_NORMAL,
-    High        = THREAD_PRIORITY_ABOVE_NORMAL,
-    Highest     = THREAD_PRIORITY_HIGHEST,
+    Normal,
+    Lowest,
   };
 
+#ifdef _WIN32
   /**
    * \brief Thread helper class
    * 
@@ -74,7 +71,13 @@ namespace dxvk {
     }
 
     void set_priority(ThreadPriority priority) {
-      ::SetThreadPriority(m_handle, int32_t(priority));
+      int32_t value;
+      switch (priority) {
+        default:
+        case ThreadPriority::Normal: value = THREAD_PRIORITY_NORMAL; break;
+        case ThreadPriority::Lowest: value = THREAD_PRIORITY_LOWEST; break;
+      }
+      ::SetThreadPriority(m_handle, int32_t(value));
     }
 
   private:
