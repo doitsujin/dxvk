@@ -133,10 +133,6 @@ dxvk_version = vcs_tag(
   output: 'version.h',
 )
 
-if platform != 'windows'
-  error('Non-Windows platforms not supported... yet.')
-endif
-
 subdir('src')
 
 enable_tests = get_option('enable_tests')
