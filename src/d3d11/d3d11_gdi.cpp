@@ -3,6 +3,7 @@
 #include "d3d11_gdi.h"
 
 #include "../util/util_gdi.h"
+#include "../util/util_win32_compat.h"
 
 namespace dxvk {
   

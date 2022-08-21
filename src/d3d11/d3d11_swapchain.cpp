@@ -2,6 +2,8 @@
 #include "d3d11_device.h"
 #include "d3d11_swapchain.h"
 
+#include "../util/util_win32_compat.h"
+
 namespace dxvk {
 
   static uint16_t MapGammaControlPoint(float x) {

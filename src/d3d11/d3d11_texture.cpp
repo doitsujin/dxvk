@@ -3,6 +3,7 @@
 #include "d3d11_texture.h"
 
 #include "../util/util_shared_res.h"
+#include "../util/util_win32_compat.h"
 
 namespace dxvk {
   

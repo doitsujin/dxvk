@@ -4,6 +4,8 @@
 #include "d3d11_fence.h"
 #include "d3d11_texture.h"
 
+#include "../util/util_win32_compat.h"
+
 constexpr static uint32_t MinFlushIntervalUs = 750;
 constexpr static uint32_t IncFlushIntervalUs = 250;
 constexpr static uint32_t MaxPendingSubmits  = 6;
