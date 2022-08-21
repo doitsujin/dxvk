@@ -344,6 +344,9 @@ namespace dxvk {
     enabledFeatures.vk12.shaderOutputLayer =
       m_deviceFeatures.vk12.shaderOutputLayer;
 
+    // Required for proper GPU synchronization
+    enabledFeatures.vk12.timelineSemaphore = VK_TRUE;
+
     // Only enable the base image robustness feature if robustness 2 isn't
     // supported, since this is only a subset of what we actually want.
     enabledFeatures.vk13.robustImageAccess =

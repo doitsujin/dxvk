@@ -1918,7 +1918,6 @@ namespace dxvk {
     enabled.vk11.shaderDrawParameters                             = VK_TRUE;
 
     enabled.vk12.samplerMirrorClampToEdge                         = VK_TRUE;
-    enabled.vk12.timelineSemaphore                                = VK_TRUE;
 
     enabled.vk13.shaderDemoteToHelperInvocation                   = VK_TRUE;
 
