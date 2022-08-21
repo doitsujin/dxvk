@@ -1,0 +1,3 @@
+[submodule "include/native/directx"]
+	path = include/native/directx
+	url = https://github.com/Joshua-Ashton/mingw-directx-headers
