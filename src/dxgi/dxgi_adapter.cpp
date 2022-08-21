@@ -11,6 +11,7 @@
 #include "dxgi_output.h"
 
 #include "../util/util_luid.h"
+#include "../util/util_win32_compat.h"
 
 #include "../wsi/wsi_monitor.h"
 
