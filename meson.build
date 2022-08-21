@@ -26,7 +26,7 @@ if get_option('build_id')
   ]
 endif
 
-dxvk_include_path = include_directories('./include', './include/vulkan/include')
+dxvk_include_path = include_directories('./include', './include/spirv/include', './include/vulkan/include')
 
 if platform == 'windows'
   compiler_args += [
