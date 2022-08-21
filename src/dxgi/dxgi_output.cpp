@@ -122,9 +122,6 @@ namespace dxvk {
     if ((pModeToMatch->Width == 0) ^ (pModeToMatch->Height == 0))
       return DXGI_ERROR_INVALID_CALL;
 
-    DEVMODEW devMode;
-    devMode.dmSize = sizeof(devMode);
-
     wsi::WsiMode activeWsiMode = { };
     wsi::getCurrentDisplayMode(m_monitor, &activeWsiMode);
 
