@@ -1170,7 +1170,18 @@ namespace dxvk {
      */
     void setBarrierControl(
             DxvkBarrierControlFlags control);
-    
+
+    /**
+     * \brief Updates page table for a given sparse resource
+     *
+     * Note that this is a very high overhead operation.
+     * \param [in] bindInfo Sparse bind info
+     * \param [in] flags Sparse bind flags
+     */
+    void updatePageTable(
+      const DxvkSparseBindInfo&   bindInfo,
+            DxvkSparseBindFlags   flags);
+
     /**
      * \brief Launches a Cuda kernel
      *

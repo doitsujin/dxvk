@@ -2460,6 +2460,97 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::updatePageTable(
+    const DxvkSparseBindInfo&   bindInfo,
+          DxvkSparseBindFlags   flags) {
+    // Split command buffers here so that we execute
+    // the sparse binding operation at the right time
+    if (!flags.test(DxvkSparseBindFlag::SkipSynchronization))
+      this->splitCommands();
+
+    DxvkSparsePageAllocator* srcAllocator = bindInfo.srcAllocator.ptr();
+    DxvkSparsePageTable* dstPageTable = bindInfo.dstResource->getSparsePageTable();
+    DxvkSparsePageTable* srcPageTable = nullptr;
+
+    if (bindInfo.srcResource != nullptr)
+      srcPageTable = bindInfo.srcResource->getSparsePageTable();
+
+    // In order to support copies properly, we need to buffer the new
+    // mappings first before we apply them to the destination resource.
+    size_t bindCount = bindInfo.binds.size();
+    std::vector<DxvkSparseMapping> mappings(bindCount);
+
+    for (size_t i = 0; i < bindCount; i++) {
+      DxvkSparseBind bind = bindInfo.binds[i];
+
+      switch (bind.mode) {
+        case DxvkSparseBindMode::Null:
+          // The mapping array is already default-initialized
+          // so we don't actually need to do anything here
+          break;
+
+        case DxvkSparseBindMode::Bind:
+          mappings[i] = srcAllocator->acquirePage(bind.srcPage);
+          break;
+
+        case DxvkSparseBindMode::Copy:
+          mappings[i] = srcPageTable->getMapping(bind.srcPage);
+          break;
+      }
+    }
+
+    // Process the actual page table updates here and resolve
+    // our internal structures to Vulkan resource and memory
+    // handles. The rest will be done at submission time.
+    for (size_t i = 0; i < bindCount; i++) {
+      DxvkSparseBind bind = bindInfo.binds[i];
+      DxvkSparseMapping mapping = std::move(mappings[i]);
+
+      DxvkSparsePageInfo pageInfo = dstPageTable->getPageInfo(bind.dstPage);
+
+      switch (pageInfo.type) {
+        case DxvkSparsePageType::None:
+          break;
+
+        case DxvkSparsePageType::Buffer: {
+          DxvkSparseBufferBindKey key;
+          key.buffer = dstPageTable->getBufferHandle();
+          key.offset = pageInfo.buffer.offset;
+          key.size   = pageInfo.buffer.length;
+
+          m_cmd->bindBufferMemory(key, mapping.getHandle());
+        } break;
+
+        case DxvkSparsePageType::Image: {
+          DxvkSparseImageBindKey key;
+          key.image = dstPageTable->getImageHandle();
+          key.subresource = pageInfo.image.subresource;
+          key.offset = pageInfo.image.offset;
+          key.extent = pageInfo.image.extent;
+
+          m_cmd->bindImageMemory(key, mapping.getHandle());
+        } break;
+
+        case DxvkSparsePageType::ImageMipTail: {
+          DxvkSparseImageOpaqueBindKey key;
+          key.image  = dstPageTable->getImageHandle();
+          key.offset = pageInfo.mipTail.resourceOffset;
+          key.size   = pageInfo.mipTail.resourceLength;
+          key.flags  = 0;
+
+          m_cmd->bindImageOpaqueMemory(key, mapping.getHandle());
+        } break;
+      }
+
+      // Update the page table mapping for tracking purposes
+      if (pageInfo.type != DxvkSparsePageType::None)
+        dstPageTable->updateMapping(m_cmd.ptr(), bind.dstPage, std::move(mapping));
+    }
+
+    m_cmd->trackResource<DxvkAccess::Write>(bindInfo.dstResource);
+  }
+
+
   void DxvkContext::signalGpuEvent(const Rc<DxvkGpuEvent>& event) {
     this->spillRenderPass(true);
     
