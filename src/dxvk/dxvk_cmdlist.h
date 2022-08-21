@@ -72,19 +72,17 @@ namespace dxvk {
     /**
      * \brief Submits command list
      * 
-     * \param [in] queue Device queue
+     * \param [in] semaphore Global timeline semaphore
+     * \param [in,out] semaphoreValue Semaphore value. On input,
+     *    this is the last signaled value of the semaphore so that
+     *    synchronization can take place as needed. On ouput, this
+     *    will contain the new value the semaphore gets signaled
+     *    to by this submission.
      * \returns Submission status
      */
-    VkResult submit();
-    
-    /**
-     * \brief Synchronizes command buffer execution
-     * 
-     * Waits for the fence associated with
-     * this command buffer to get signaled.
-     * \returns Synchronization status
-     */
-    VkResult synchronize();
+    VkResult submit(
+            VkSemaphore       semaphore,
+            uint64_t&         semaphoreValue);
     
     /**
      * \brief Stat counters
@@ -813,16 +811,12 @@ namespace dxvk {
     Rc<vk::DeviceFn>    m_vkd;
     Rc<vk::InstanceFn>  m_vki;
     
-    VkFence             m_fence;
-    
     VkCommandPool       m_graphicsPool = VK_NULL_HANDLE;
     VkCommandPool       m_transferPool = VK_NULL_HANDLE;
     
     VkCommandBuffer     m_execBuffer = VK_NULL_HANDLE;
     VkCommandBuffer     m_initBuffer = VK_NULL_HANDLE;
     VkCommandBuffer     m_sdmaBuffer = VK_NULL_HANDLE;
-
-    VkSemaphore         m_sdmaSemaphore = VK_NULL_HANDLE;
 
     vk::PresenterSync   m_wsiSemaphores = { };
 
@@ -853,7 +847,6 @@ namespace dxvk {
 
     VkResult submitToQueue(
             VkQueue               queue,
-            VkFence               fence,
       const DxvkQueueSubmission&  info);
     
   };

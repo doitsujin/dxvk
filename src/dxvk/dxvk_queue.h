@@ -33,6 +33,7 @@ namespace dxvk {
    */
   struct DxvkSubmitInfo {
     Rc<DxvkCommandList> cmdList;
+    uint64_t semaphoreValue;
   };
   
   
@@ -175,13 +176,16 @@ namespace dxvk {
     
   private:
 
-    DxvkDevice*             m_device;
+    DxvkDevice*                 m_device;
 
-    std::atomic<VkResult>   m_lastError = { VK_SUCCESS };
+    std::atomic<VkResult>       m_lastError = { VK_SUCCESS };
     
-    std::atomic<bool>       m_stopped = { false };
-    std::atomic<uint32_t>   m_pending = { 0u };
-    std::atomic<uint64_t>   m_gpuIdle = { 0ull };
+    std::atomic<bool>           m_stopped = { false };
+    std::atomic<uint32_t>       m_pending = { 0u };
+    std::atomic<uint64_t>       m_gpuIdle = { 0ull };
+
+    VkSemaphore                 m_semaphore = VK_NULL_HANDLE;
+    uint64_t                    m_semaphoreValue = 0ull;
 
     dxvk::mutex                 m_mutex;
     dxvk::mutex                 m_mutexQueue;
@@ -196,8 +200,8 @@ namespace dxvk {
     dxvk::thread                m_submitThread;
     dxvk::thread                m_finishThread;
 
-    VkResult submitToQueue(
-      const DxvkSubmitInfo& submission);
+    VkResult synchronizeSemaphore(
+            uint64_t        semaphoreValue);
 
     void submitCmdLists();
 
