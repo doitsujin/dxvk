@@ -226,15 +226,4 @@ namespace dxvk {
     return m_vkd->vkQueueSubmit2(queue, 1, &submitInfo, VK_NULL_HANDLE);
   }
   
-  void DxvkCommandList::cmdBeginDebugUtilsLabel(VkDebugUtilsLabelEXT *pLabelInfo) {
-    m_vki->vkCmdBeginDebugUtilsLabelEXT(m_execBuffer, pLabelInfo);
-  }
-
-  void DxvkCommandList::cmdEndDebugUtilsLabel() {
-    m_vki->vkCmdEndDebugUtilsLabelEXT(m_execBuffer);
-  }
-
-  void DxvkCommandList::cmdInsertDebugUtilsLabel(VkDebugUtilsLabelEXT *pLabelInfo) {
-    m_vki->vkCmdInsertDebugUtilsLabelEXT(m_execBuffer, pLabelInfo);
-  }
 }
