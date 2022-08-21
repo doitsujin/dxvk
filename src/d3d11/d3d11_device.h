@@ -464,13 +464,14 @@ namespace dxvk {
       const DxbcModuleInfo*         pModuleInfo);
     
     HRESULT GetFormatSupportFlags(
-            DXGI_FORMAT Format,
-            UINT*       pFlags1,
-            UINT*       pFlags2) const;
+            DXGI_FORMAT             Format,
+            UINT*                   pFlags1,
+            UINT*                   pFlags2) const;
     
     BOOL GetImageTypeSupport(
-            VkFormat    Format,
-            VkImageType Type) const;
+            VkFormat                Format,
+            VkImageType             Type,
+            VkImageCreateFlags      Flags) const;
 
     template<bool IsKmtHandle>
     HRESULT OpenSharedResourceGeneric(

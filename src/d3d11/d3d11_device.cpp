@@ -2217,9 +2217,21 @@ namespace dxvk {
     if (imgFeatures & (VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT)) {
       const VkFormat depthFormat = LookupFormat(Format, DXGI_VK_FORMAT_MODE_DEPTH).Format;
       
-      if (GetImageTypeSupport(fmtMapping.Format, VK_IMAGE_TYPE_1D)) flags1 |= D3D11_FORMAT_SUPPORT_TEXTURE1D;
-      if (GetImageTypeSupport(fmtMapping.Format, VK_IMAGE_TYPE_2D)) flags1 |= D3D11_FORMAT_SUPPORT_TEXTURE2D;
-      if (GetImageTypeSupport(fmtMapping.Format, VK_IMAGE_TYPE_3D)) flags1 |= D3D11_FORMAT_SUPPORT_TEXTURE3D;
+      if (GetImageTypeSupport(fmtMapping.Format, VK_IMAGE_TYPE_1D, 0)) flags1 |= D3D11_FORMAT_SUPPORT_TEXTURE1D;
+      if (GetImageTypeSupport(fmtMapping.Format, VK_IMAGE_TYPE_2D, 0)) flags1 |= D3D11_FORMAT_SUPPORT_TEXTURE2D;
+      if (GetImageTypeSupport(fmtMapping.Format, VK_IMAGE_TYPE_3D, 0)) flags1 |= D3D11_FORMAT_SUPPORT_TEXTURE3D;
+
+      // We only support tiled resources with a single aspect
+      VkImageAspectFlags sparseAspects = VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT;
+
+      if (m_tiledResourcesTier && !(fmtProperties->aspectMask & ~sparseAspects)) {
+        VkImageCreateFlags flags = VK_IMAGE_CREATE_SPARSE_BINDING_BIT
+                                 | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
+                                 | VK_IMAGE_CREATE_SPARSE_ALIASED_BIT;
+
+        if (GetImageTypeSupport(fmtMapping.Format, VK_IMAGE_TYPE_2D, flags))
+          flags2 |= D3D11_FORMAT_SUPPORT2_TILED;
+      }
 
       flags1 |= D3D11_FORMAT_SUPPORT_MIP
              |  D3D11_FORMAT_SUPPORT_CAST_WITHIN_BIT_LAYOUT;
@@ -2327,13 +2339,13 @@ namespace dxvk {
   }
   
   
-  BOOL D3D11Device::GetImageTypeSupport(VkFormat Format, VkImageType Type) const {
+  BOOL D3D11Device::GetImageTypeSupport(VkFormat Format, VkImageType Type, VkImageCreateFlags Flags) const {
     auto properties = m_dxvkDevice->getFormatLimits(Format,
-      Type, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+      Type, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT, Flags);
     
     if (!properties) {
       properties = m_dxvkDevice->getFormatLimits(Format,
-        Type, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+        Type, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT, Flags);
     }
     
     return properties.has_value();
