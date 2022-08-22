@@ -90,8 +90,7 @@ namespace dxvk {
   DxvkCommandList::DxvkCommandList(DxvkDevice* device)
   : m_device        (device),
     m_vkd           (device->vkd()),
-    m_vki           (device->instance()->vki()),
-    m_cmdBuffersUsed(0) {
+    m_vki           (device->instance()->vki()) {
     const auto& graphicsQueue = m_device->queues().graphics;
     const auto& transferQueue = m_device->queues().transfer;
 
@@ -130,9 +129,9 @@ namespace dxvk {
     cmdInfoDma.level             = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     cmdInfoDma.commandBufferCount = 1;
     
-    if (m_vkd->vkAllocateCommandBuffers(m_vkd->device(), &cmdInfoGfx, &m_execBuffer) != VK_SUCCESS
-     || m_vkd->vkAllocateCommandBuffers(m_vkd->device(), &cmdInfoGfx, &m_initBuffer) != VK_SUCCESS
-     || m_vkd->vkAllocateCommandBuffers(m_vkd->device(), &cmdInfoDma, &m_sdmaBuffer) != VK_SUCCESS)
+    if (m_vkd->vkAllocateCommandBuffers(m_vkd->device(), &cmdInfoGfx, &m_cmd.execBuffer) != VK_SUCCESS
+     || m_vkd->vkAllocateCommandBuffers(m_vkd->device(), &cmdInfoGfx, &m_cmd.initBuffer) != VK_SUCCESS
+     || m_vkd->vkAllocateCommandBuffers(m_vkd->device(), &cmdInfoDma, &m_cmd.sdmaBuffer) != VK_SUCCESS)
       throw DxvkError("DxvkCommandList: Failed to allocate command buffer");
   }
   
@@ -157,8 +156,8 @@ namespace dxvk {
 
     m_commandSubmission.reset();
 
-    if (m_cmdBuffersUsed.test(DxvkCmdBuffer::SdmaBuffer)) {
-      m_commandSubmission.executeCommandBuffer(m_sdmaBuffer);
+    if (m_cmd.usedFlags.test(DxvkCmdBuffer::SdmaBuffer)) {
+      m_commandSubmission.executeCommandBuffer(m_cmd.sdmaBuffer);
 
       if (m_device->hasDedicatedTransferQueue()) {
         m_commandSubmission.signalSemaphore(m_sdmaSemaphore, 0, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
@@ -170,11 +169,11 @@ namespace dxvk {
       }
     }
 
-    if (m_cmdBuffersUsed.test(DxvkCmdBuffer::InitBuffer))
-      m_commandSubmission.executeCommandBuffer(m_initBuffer);
+    if (m_cmd.usedFlags.test(DxvkCmdBuffer::InitBuffer))
+      m_commandSubmission.executeCommandBuffer(m_cmd.initBuffer);
 
-    if (m_cmdBuffersUsed.test(DxvkCmdBuffer::ExecBuffer))
-      m_commandSubmission.executeCommandBuffer(m_execBuffer);
+    if (m_cmd.usedFlags.test(DxvkCmdBuffer::ExecBuffer))
+      m_commandSubmission.executeCommandBuffer(m_cmd.execBuffer);
 
     if (m_wsiSemaphores.acquire) {
       m_commandSubmission.waitSemaphore(m_wsiSemaphores.acquire,
@@ -216,21 +215,17 @@ namespace dxvk {
      || (m_transferPool && m_vkd->vkResetCommandPool(m_vkd->device(), m_transferPool, 0) != VK_SUCCESS))
       Logger::err("DxvkCommandList: Failed to reset command buffer");
     
-    if (m_vkd->vkBeginCommandBuffer(m_execBuffer, &info) != VK_SUCCESS
-     || m_vkd->vkBeginCommandBuffer(m_initBuffer, &info) != VK_SUCCESS
-     || m_vkd->vkBeginCommandBuffer(m_sdmaBuffer, &info) != VK_SUCCESS)
+    if (m_vkd->vkBeginCommandBuffer(m_cmd.execBuffer, &info) != VK_SUCCESS
+     || m_vkd->vkBeginCommandBuffer(m_cmd.initBuffer, &info) != VK_SUCCESS
+     || m_vkd->vkBeginCommandBuffer(m_cmd.sdmaBuffer, &info) != VK_SUCCESS)
       Logger::err("DxvkCommandList: Failed to begin command buffer");
-    
-    // Unconditionally mark the exec buffer as used. There
-    // is virtually no use case where this isn't correct.
-    m_cmdBuffersUsed = DxvkCmdBuffer::ExecBuffer;
   }
   
   
   void DxvkCommandList::endRecording() {
-    if (m_vkd->vkEndCommandBuffer(m_execBuffer) != VK_SUCCESS
-     || m_vkd->vkEndCommandBuffer(m_initBuffer) != VK_SUCCESS
-     || m_vkd->vkEndCommandBuffer(m_sdmaBuffer) != VK_SUCCESS)
+    if (m_vkd->vkEndCommandBuffer(m_cmd.execBuffer) != VK_SUCCESS
+     || m_vkd->vkEndCommandBuffer(m_cmd.initBuffer) != VK_SUCCESS
+     || m_vkd->vkEndCommandBuffer(m_cmd.sdmaBuffer) != VK_SUCCESS)
       Logger::err("DxvkCommandList::endRecording: Failed to record command buffer");
   }
   
