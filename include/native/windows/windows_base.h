@@ -96,7 +96,18 @@ typedef HANDLE HWND;
 typedef HANDLE HKEY;
 typedef DWORD COLORREF;
 
+#if INTPTR_MAX == INT64_MAX
+typedef int64_t  INT_PTR;
+typedef uint64_t UINT_PTR;
+#else
+typedef int32_t  INT_PTR;
+typedef uint32_t UINT_PTR;
+#endif
+typedef INT_PTR*  PINT_PTR;
+typedef UINT_PTR* PUINT_PTR;
+
 typedef char* LPSTR;
+typedef wchar_t* LPWSTR;
 typedef const char* LPCSTR;
 typedef const wchar_t* LPCWSTR;
 
