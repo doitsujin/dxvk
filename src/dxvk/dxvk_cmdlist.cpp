@@ -87,6 +87,71 @@ namespace dxvk {
   }
 
 
+  DxvkCommandPool::DxvkCommandPool(
+          DxvkDevice*           device,
+          uint32_t              queueFamily)
+  : m_device(device) {
+    auto vk = m_device->vkd();
+
+    VkCommandPoolCreateInfo poolInfo = { VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO };
+    poolInfo.queueFamilyIndex = queueFamily;
+
+    if (vk->vkCreateCommandPool(vk->device(), &poolInfo, nullptr, &m_commandPool))
+      throw DxvkError("DxvkCommandPool: Failed to create command pool");
+  }
+
+
+  DxvkCommandPool::~DxvkCommandPool() {
+    auto vk = m_device->vkd();
+
+    vk->vkDestroyCommandPool(vk->device(), m_commandPool, nullptr);
+  }
+
+
+  VkCommandBuffer DxvkCommandPool::getCommandBuffer() {
+    auto vk = m_device->vkd();
+
+    if (m_next == m_commandBuffers.size()) {
+      // Allocate a new command buffer and add it to the list
+      VkCommandBufferAllocateInfo allocInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO };
+      allocInfo.commandPool = m_commandPool;
+      allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+      allocInfo.commandBufferCount = 1;
+
+      VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+
+      if (vk->vkAllocateCommandBuffers(vk->device(), &allocInfo, &commandBuffer))
+        throw DxvkError("DxvkCommandPool: Failed to allocate command buffer");
+
+      m_commandBuffers.push_back(commandBuffer);
+    }
+
+    // Take existing command buffer. All command buffers
+    // will be in reset state, so we can begin it safely.
+    VkCommandBuffer commandBuffer = m_commandBuffers[m_next++];
+
+    VkCommandBufferBeginInfo info = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+    info.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    if (vk->vkBeginCommandBuffer(commandBuffer, &info))
+      throw DxvkError("DxvkCommandPool: Failed to begin command buffer");
+
+    return commandBuffer;
+  }
+
+
+  void DxvkCommandPool::reset() {
+    auto vk = m_device->vkd();
+
+    if (m_next) {
+      if (vk->vkResetCommandPool(vk->device(), m_commandPool, 0))
+        throw DxvkError("DxvkCommandPool: Failed to reset command pool");
+
+      m_next = 0;
+    }
+  }
+
+
   DxvkCommandList::DxvkCommandList(DxvkDevice* device)
   : m_device        (device),
     m_vkd           (device->vkd()),

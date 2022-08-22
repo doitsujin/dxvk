@@ -118,7 +118,51 @@ namespace dxvk {
 
 
   /**
-   * \brief DXVK command list
+   * \brief Command pool
+   *
+   * Simple command pool abstraction that allows
+   * us to easily obtain command buffers.
+   */
+  class DxvkCommandPool : public RcObject {
+
+  public:
+
+    /**
+     * \brief Creates command pool
+     *
+     * \param [in] device DXVK device
+     * \param [in] queueFamily Target queue family
+     */
+    DxvkCommandPool(
+            DxvkDevice*           device,
+            uint32_t              queueFamily);
+
+    ~DxvkCommandPool();
+
+    /**
+     * \brief Retrieves or allocates a command buffer
+     * \returns New command buffer in begun state
+     */
+    VkCommandBuffer getCommandBuffer();
+
+    /**
+     * \brief Resets command pool and all command buffers
+     */
+    void reset();
+
+  private:
+
+    DxvkDevice*                   m_device;
+
+    VkCommandPool                 m_commandPool = VK_NULL_HANDLE;
+    std::vector<VkCommandBuffer>  m_commandBuffers;
+    size_t                        m_next        = 0;
+
+  };
+
+
+  /**
+   * \brief Command list
    * 
    * Stores a command buffer that a context can use to record Vulkan
    * commands. The command list shall also reference the resources
