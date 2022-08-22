@@ -194,6 +194,7 @@ namespace dxvk {
 
     const auto& graphics = m_device->queues().graphics;
     const auto& transfer = m_device->queues().transfer;
+    const auto& sparse = m_device->queues().sparse;
 
     m_commandSubmission.reset();
 
@@ -203,13 +204,39 @@ namespace dxvk {
 
       const auto& cmd = m_cmdSubmissions[i];
 
+      auto sparseBind = cmd.sparseBind
+        ? &m_cmdSparseBinds[cmd.sparseCmd]
+        : nullptr;
+
+      if (sparseBind) {
+        // Sparse bindig needs to serialize command execution, so wait
+        // for any prior submissions, then block any subsequent ones
+        sparseBind->waitSemaphore(semaphore, semaphoreValue);
+        sparseBind->signalSemaphore(semaphore, ++semaphoreValue);
+
+        m_commandSubmission.waitSemaphore(semaphore, semaphoreValue,
+          VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
+      }
+
       if (isFirst) {
         // Wait for per-command list semaphores on first submission
         for (const auto& entry : m_waitSemaphores) {
-          m_commandSubmission.waitSemaphore(
-            entry.fence->handle(),
-            entry.value, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
+          if (sparseBind) {
+            sparseBind->waitSemaphore(
+              entry.fence->handle(),
+              entry.value);
+          } else {
+            m_commandSubmission.waitSemaphore(
+              entry.fence->handle(),
+              entry.value, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
+          }
         }
+      }
+
+      // Execute sparse bind
+      if (sparseBind) {
+        if ((status = sparseBind->submit(m_device, sparse.queueHandle)))
+          return status;
       }
 
       // Submit transfer commands as necessary
@@ -353,7 +380,9 @@ namespace dxvk {
 
     m_waitSemaphores.clear();
     m_signalSemaphores.clear();
+
     m_cmdSubmissions.clear();
+    m_cmdSparseBinds.clear();
 
     m_wsiSemaphores = vk::PresenterSync();
 

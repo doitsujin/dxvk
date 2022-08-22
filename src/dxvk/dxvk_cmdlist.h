@@ -15,6 +15,7 @@
 #include "dxvk_limits.h"
 #include "dxvk_pipelayout.h"
 #include "dxvk_signal.h"
+#include "dxvk_sparse.h"
 #include "dxvk_staging.h"
 #include "dxvk_stats.h"
 
@@ -122,6 +123,8 @@ namespace dxvk {
     VkCommandBuffer     execBuffer  = VK_NULL_HANDLE;
     VkCommandBuffer     initBuffer  = VK_NULL_HANDLE;
     VkCommandBuffer     sdmaBuffer  = VK_NULL_HANDLE;
+    VkBool32            sparseBind  = VK_FALSE;
+    uint32_t            sparseCmd   = 0;
   };
 
 
@@ -990,6 +993,7 @@ namespace dxvk {
     std::vector<DxvkFenceValuePair> m_signalSemaphores;
 
     std::vector<DxvkCommandSubmissionInfo> m_cmdSubmissions;
+    std::vector<DxvkSparseBindSubmission>  m_cmdSparseBinds;
     
     std::vector<std::pair<
       Rc<DxvkDescriptorPool>,
