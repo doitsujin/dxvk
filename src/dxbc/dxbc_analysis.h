@@ -19,9 +19,20 @@ namespace dxvk {
   struct DxbcUavInfo {
     bool accessTypedLoad = false;
     bool accessAtomicOp  = false;
+    bool sparseFeedback  = false;
     VkAccessFlags accessFlags = 0;
   };
   
+  /**
+   * \brief Info about shader resource views
+   *
+   * Stores whether an SRV is accessed with
+   * sparse feedback. Useful for buffers.
+   */
+  struct DxbcSrvInfo {
+    bool sparseFeedback  = false;
+  };
+
   /**
    * \brief Counts cull and clip distances
    */
@@ -34,7 +45,8 @@ namespace dxvk {
    * \brief Shader analysis info
    */
   struct DxbcAnalysisInfo {
-    std::array<DxbcUavInfo, 64> uavInfos;
+    std::array<DxbcUavInfo, 64>   uavInfos;
+    std::array<DxbcSrvInfo, 128>  srvInfos;
     std::array<DxbcRegMask, 4096> xRegMasks;
     
     DxbcClipCullInfo clipCullIn;

@@ -1096,7 +1096,11 @@ namespace dxvk {
       : computeSrvBinding(m_programInfo.type(), registerId);
     
     // Test whether we should use a raw SSBO for this resource
-    bool useRawSsbo = m_moduleInfo.options.minSsboAlignment <= resAlign;
+    bool hasSparseFeedback = isUav
+      ? m_analysis->uavInfos[registerId].sparseFeedback
+      : m_analysis->srvInfos[registerId].sparseFeedback;
+
+    bool useRawSsbo = m_moduleInfo.options.minSsboAlignment <= resAlign && !hasSparseFeedback;
     
     if (useRawSsbo) {
       uint32_t elemType   = getScalarTypeId(DxbcScalarType::Uint32);
