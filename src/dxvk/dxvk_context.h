@@ -1588,6 +1588,12 @@ namespace dxvk {
     void resizeDescriptorArrays(
             uint32_t                  bindingCount);
 
+    void beginCurrentCommands();
+
+    void endCurrentCommands();
+
+    void splitCommands();
+
   };
   
 }

@@ -66,54 +66,15 @@ namespace dxvk {
     m_cmd = cmdList;
     m_cmd->init();
 
-    // Mark all resources as untracked
-    m_vbTracked.clear();
-    m_rcTracked.clear();
-    
-    // The current state of the internal command buffer is
-    // undefined, so we have to bind and set up everything
-    // before any draw or dispatch command is recorded.
-    m_flags.clr(
-      DxvkContextFlag::GpRenderPassBound,
-      DxvkContextFlag::GpXfbActive,
-      DxvkContextFlag::GpIndependentSets);
-    
-    m_flags.set(
-      DxvkContextFlag::GpDirtyFramebuffer,
-      DxvkContextFlag::GpDirtyPipeline,
-      DxvkContextFlag::GpDirtyPipelineState,
-      DxvkContextFlag::GpDirtyVertexBuffers,
-      DxvkContextFlag::GpDirtyIndexBuffer,
-      DxvkContextFlag::GpDirtyXfbBuffers,
-      DxvkContextFlag::GpDirtyBlendConstants,
-      DxvkContextFlag::GpDirtyStencilRef,
-      DxvkContextFlag::GpDirtyRasterizerState,
-      DxvkContextFlag::GpDirtyViewport,
-      DxvkContextFlag::GpDirtyDepthBias,
-      DxvkContextFlag::GpDirtyDepthBounds,
-      DxvkContextFlag::GpDirtyDepthStencilState,
-      DxvkContextFlag::CpDirtyPipelineState,
-      DxvkContextFlag::DirtyDrawBuffer);
-
-    m_descriptorState.dirtyStages(
-      VK_SHADER_STAGE_ALL_GRAPHICS |
-      VK_SHADER_STAGE_COMPUTE_BIT);
-
-    m_state.gp.pipeline = nullptr;
-    m_state.cp.pipeline = nullptr;
-
     if (m_descriptorPool == nullptr)
       m_descriptorPool = m_descriptorManager->getDescriptorPool();
+
+    this->beginCurrentCommands();
   }
   
   
   Rc<DxvkCommandList> DxvkContext::endRecording() {
-    this->spillRenderPass(true);
-    this->flushSharedImages();
-
-    m_sdmaBarriers.recordCommands(m_cmd);
-    m_initBarriers.recordCommands(m_cmd);
-    m_execBarriers.recordCommands(m_cmd);
+    this->endCurrentCommands();
 
     if (m_descriptorPool->shouldSubmit(false)) {
       m_cmd->trackDescriptorPool(m_descriptorPool, m_descriptorManager);
@@ -5829,6 +5790,67 @@ namespace dxvk {
       m_descriptorWrites[i].pBufferInfo = &m_descriptors[i].buffer;
       m_descriptorWrites[i].pTexelBufferView = &m_descriptors[i].texelBuffer;
     }
+  }
+
+
+  void DxvkContext::beginCurrentCommands() {
+    // Mark all resources as untracked
+    m_vbTracked.clear();
+    m_rcTracked.clear();
+
+    // The current state of the internal command buffer is
+    // undefined, so we have to bind and set up everything
+    // before any draw or dispatch command is recorded.
+    m_flags.clr(
+      DxvkContextFlag::GpRenderPassBound,
+      DxvkContextFlag::GpXfbActive,
+      DxvkContextFlag::GpIndependentSets);
+
+    m_flags.set(
+      DxvkContextFlag::GpDirtyFramebuffer,
+      DxvkContextFlag::GpDirtyPipeline,
+      DxvkContextFlag::GpDirtyPipelineState,
+      DxvkContextFlag::GpDirtyVertexBuffers,
+      DxvkContextFlag::GpDirtyIndexBuffer,
+      DxvkContextFlag::GpDirtyXfbBuffers,
+      DxvkContextFlag::GpDirtyBlendConstants,
+      DxvkContextFlag::GpDirtyStencilRef,
+      DxvkContextFlag::GpDirtyRasterizerState,
+      DxvkContextFlag::GpDirtyViewport,
+      DxvkContextFlag::GpDirtyDepthBias,
+      DxvkContextFlag::GpDirtyDepthBounds,
+      DxvkContextFlag::GpDirtyDepthStencilState,
+      DxvkContextFlag::CpDirtyPipelineState,
+      DxvkContextFlag::DirtyDrawBuffer);
+
+    m_descriptorState.dirtyStages(
+      VK_SHADER_STAGE_ALL_GRAPHICS |
+      VK_SHADER_STAGE_COMPUTE_BIT);
+
+    m_state.gp.pipeline = nullptr;
+    m_state.cp.pipeline = nullptr;
+  }
+
+
+  void DxvkContext::endCurrentCommands() {
+    this->spillRenderPass(true);
+    this->flushSharedImages();
+
+    m_sdmaBarriers.recordCommands(m_cmd);
+    m_initBarriers.recordCommands(m_cmd);
+    m_execBarriers.recordCommands(m_cmd);
+  }
+
+
+  void DxvkContext::splitCommands() {
+    // This behaves the same as a pair of endRecording and
+    // beginRecording calls, except that we keep the same
+    // command list object for subsequent commands.
+    this->endCurrentCommands();
+
+    m_cmd->next();
+
+    this->beginCurrentCommands();
   }
 
 }
