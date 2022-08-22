@@ -2055,7 +2055,7 @@ namespace dxvk {
         }
 
         // r * rsq(r . r)
-        result.id = emitMul(vec3, emitRegisterExtend(rcpLength, 3)).id;
+        result.id = emitMul(emitRegisterLoad(src[0], mask), emitRegisterExtend(rcpLength, mask.popCount())).id;
         break;
       }
       case DxsoOpcode::SinCos: {
