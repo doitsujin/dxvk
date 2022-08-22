@@ -2,24 +2,14 @@
 #include <fstream>
 #include <vector>
 
-#include <d3dcompiler.h>
-
-#include <shellapi.h>
 #include <windows.h>
-#include <windowsx.h>
+#include <d3dcompiler.h>
 
 #include "../test_utils.h"
 
 using namespace dxvk;
 
-int WINAPI WinMain(HINSTANCE hInstance,
-                   HINSTANCE hPrevInstance,
-                   LPSTR lpCmdLine,
-                   int nCmdShow) {
-  int     argc = 0;
-  LPWSTR* argv = CommandLineToArgvW(
-    GetCommandLineW(), &argc);  
-  
+int main(int argc, char** argv) {
   if (argc < 5) {
     std::cerr << "Usage: hlsl-compiler target entrypoint input.hlsl output.dxbc [--strip] [--text]" << std::endl;
     return 1;
@@ -29,16 +19,16 @@ int WINAPI WinMain(HINSTANCE hInstance,
   bool text = false;
 
   for (int i = 5; i < argc; i++) {
-    strip |= str::fromws(argv[i]) == "--strip";
-    text  |= str::fromws(argv[i]) == "--text";
+    strip |= !strcmp(argv[i], "--strip");
+    text  |= !strcmp(argv[i], "--text");
   }
   
-  const LPWSTR target       = argv[1];
-  const LPWSTR entryPoint   = argv[2];
-  const LPWSTR inputFile    = argv[3];
-  const LPWSTR outputFile   = argv[4];
+  const char* target     = argv[1];
+  const char* entryPoint = argv[2];
+  const char* inputFile  = argv[3];
+  const char* outputFile = argv[4];
   
-  std::ifstream ifile(str::fromws(inputFile), std::ios::binary);
+  std::ifstream ifile(inputFile, std::ios::binary);
   ifile.ignore(std::numeric_limits<std::streamsize>::max());
   std::streamsize length = ifile.gcount();
   ifile.clear();
@@ -55,8 +45,8 @@ int WINAPI WinMain(HINSTANCE hInstance,
     hlslCode.size(),
     "Shader", nullptr,
     D3D_COMPILE_STANDARD_FILE_INCLUDE,
-    str::fromws(entryPoint).c_str(),
-    str::fromws(target).c_str(),
+    entryPoint,
+    target,
     D3DCOMPILE_OPTIMIZATION_LEVEL3 |
     D3DCOMPILE_ENABLE_UNBOUNDED_DESCRIPTOR_TABLES,
     0, &binary, &errors);
@@ -84,8 +74,8 @@ int WINAPI WinMain(HINSTANCE hInstance,
 
   std::ofstream file;
 
-  if (str::fromws(outputFile) != "-")
-    file = std::ofstream(str::fromws(outputFile), std::ios::binary | std::ios::trunc);
+  if (strcmp(outputFile, "-") != 0)
+    file = std::ofstream(outputFile, std::ios::binary | std::ios::trunc);
 
   std::ostream& outputStream = file.is_open() ? file : std::cout;
 
