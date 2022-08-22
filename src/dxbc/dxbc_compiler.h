@@ -938,7 +938,8 @@ namespace dxvk {
     DxbcRegisterValue emitRawBufferLoad(
       const DxbcRegister&           operand,
             DxbcRegisterValue       elementIndex,
-            DxbcRegMask             writeMask);
+            DxbcRegMask             writeMask,
+            uint32_t&               sparseFeedbackId);
     
     void emitRawBufferStore(
       const DxbcRegister&           operand,

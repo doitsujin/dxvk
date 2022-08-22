@@ -2758,7 +2758,8 @@ namespace dxvk {
     //    (src0) Structure index
     //    (src1) Byte offset
     //    (src2) Source register
-    const bool isStructured = ins.op == DxbcOpcode::LdStructured;
+    const bool isStructured = ins.op == DxbcOpcode::LdStructured
+                           || ins.op == DxbcOpcode::LdStructuredS;
     
     // Source register. The exact way we access
     // the data depends on the register type.
@@ -2776,9 +2777,14 @@ namespace dxvk {
           bufferInfo.stride)
       : emitCalcBufferIndexRaw(
           emitRegisterLoad(ins.src[0], DxbcRegMask(true, false, false, false)));
-    
-    emitRegisterStore(dstReg,
-      emitRawBufferLoad(srcReg, elementIndex, dstReg.mask));
+
+    uint32_t sparseFeedbackId = uint32_t(ins.dstCount == 2);
+
+    emitRegisterStore(dstReg, emitRawBufferLoad(srcReg,
+      elementIndex, dstReg.mask, sparseFeedbackId));
+
+    if (sparseFeedbackId)
+      emitStoreSparseFeedback(ins.dst[1], sparseFeedbackId);
   }
   
   
@@ -5111,7 +5117,8 @@ namespace dxvk {
   DxbcRegisterValue DxbcCompiler::emitRawBufferLoad(
     const DxbcRegister&           operand,
           DxbcRegisterValue       elementIndex,
-          DxbcRegMask             writeMask) {
+          DxbcRegMask             writeMask,
+          uint32_t&               sparseFeedbackId) {
     const DxbcBufferInfo bufferInfo = getBufferInfo(operand);
     
     // Shared memory is the only type of buffer that
@@ -5131,7 +5138,14 @@ namespace dxvk {
     std::array<uint32_t, 4> ccomps = { 0, 0, 0, 0 };
     std::array<uint32_t, 4> scomps = { 0, 0, 0, 0 };
     uint32_t                scount = 0;
-    
+
+    // The sparse feedback ID will be non-zero for sparse
+    // instructions on input. We need to reset it to 0.
+    SpirvImageOperands imageOperands;
+    imageOperands.sparse = sparseFeedbackId != 0;
+
+    sparseFeedbackId = 0;
+
     for (uint32_t i = 0; i < 4; i++) {
       uint32_t sindex = operand.swizzle[i];
 
@@ -5155,18 +5169,33 @@ namespace dxvk {
           ccomps[sindex] = m_module.opLoad(scalarTypeId,
             m_module.opAccessChain(bufferInfo.typeId,
               bufferInfo.varId, 2, indices));
-        } else if (operand.type == DxbcOperandType::Resource) {
-          ccomps[sindex] = m_module.opCompositeExtract(scalarTypeId,
-            m_module.opImageFetch(vectorTypeId,
-              bufferId, elementIndexAdjusted,
-              SpirvImageOperands()), 1, &zero);
-        } else if (operand.type == DxbcOperandType::UnorderedAccessView) {
-          ccomps[sindex] = m_module.opCompositeExtract(scalarTypeId,
-            m_module.opImageRead(vectorTypeId,
-              bufferId, elementIndexAdjusted,
-              SpirvImageOperands()), 1, &zero);
         } else {
-          throw DxvkError("DxbcCompiler: Invalid operand type for strucured/raw load");
+          uint32_t resultTypeId = vectorTypeId;
+          uint32_t resultId = 0;
+
+          if (imageOperands.sparse)
+            resultTypeId = getSparseResultTypeId(vectorTypeId);
+
+          if (operand.type == DxbcOperandType::Resource) {
+            resultId = m_module.opImageFetch(resultTypeId,
+              bufferId, elementIndexAdjusted, imageOperands);
+          } else if (operand.type == DxbcOperandType::UnorderedAccessView) {
+            resultId = m_module.opImageRead(resultTypeId,
+              bufferId, elementIndexAdjusted, imageOperands);
+          } else {
+            throw DxvkError("DxbcCompiler: Invalid operand type for strucured/raw load");
+          }
+
+          // Only read sparse feedback once. This may be somewhat inaccurate
+          // for reads that straddle pages, but we can't easily emulate this.
+          if (imageOperands.sparse) {
+            imageOperands.sparse = false;
+            sparseFeedbackId = resultId;
+
+            resultId = emitExtractSparseTexel(vectorTypeId, resultId);
+          }
+
+          ccomps[sindex] = m_module.opCompositeExtract(scalarTypeId, resultId, 1, &zero);
         }
       }
     }
