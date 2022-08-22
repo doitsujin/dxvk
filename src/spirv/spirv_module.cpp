@@ -3082,8 +3082,11 @@ namespace dxvk {
     const SpirvImageOperands&     operands) {
     uint32_t resultId = this->allocateId();
     
-    m_code.putIns (spv::OpImageRead,
-      5 + getImageOperandWordCount(operands));
+    spv::Op op = operands.sparse
+      ? spv::OpImageSparseRead
+      : spv::OpImageRead;
+
+    m_code.putIns(op, 5 + getImageOperandWordCount(operands));
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(image);
@@ -3109,6 +3112,20 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opImageSparseTexelsResident(
+          uint32_t                resultType,
+          uint32_t                residentCode) {
+    uint32_t resultId = this->allocateId();
+
+    m_code.putIns (spv::OpImageSparseTexelsResident, 4);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(residentCode);
+
+    return resultId;
+  }
+
+
   uint32_t SpirvModule::opSampledImage(
           uint32_t                resultType,
           uint32_t                image,
@@ -3216,9 +3233,12 @@ namespace dxvk {
           uint32_t                coordinates,
     const SpirvImageOperands&     operands) {
     uint32_t resultId = this->allocateId();
-    
-    m_code.putIns(spv::OpImageFetch,
-      5 + getImageOperandWordCount(operands));
+
+    spv::Op op = operands.sparse
+      ? spv::OpImageSparseFetch
+      : spv::OpImageFetch;
+
+    m_code.putIns(op, 5 + getImageOperandWordCount(operands));
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(image);
@@ -3237,8 +3257,11 @@ namespace dxvk {
     const SpirvImageOperands&     operands) {
     uint32_t resultId = this->allocateId();
     
-    m_code.putIns(spv::OpImageGather,
-      6 + getImageOperandWordCount(operands));
+    spv::Op op = operands.sparse
+      ? spv::OpImageSparseGather
+      : spv::OpImageGather;
+
+    m_code.putIns(op, 6 + getImageOperandWordCount(operands));
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(sampledImage);
@@ -3258,8 +3281,11 @@ namespace dxvk {
     const SpirvImageOperands&     operands) {
     uint32_t resultId = this->allocateId();
     
-    m_code.putIns(spv::OpImageDrefGather,
-      6 + getImageOperandWordCount(operands));
+    spv::Op op = operands.sparse
+      ? spv::OpImageSparseDrefGather
+      : spv::OpImageDrefGather;
+
+    m_code.putIns(op, 6 + getImageOperandWordCount(operands));
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(sampledImage);
@@ -3278,8 +3304,11 @@ namespace dxvk {
     const SpirvImageOperands&     operands) {
     uint32_t resultId = this->allocateId();
     
-    m_code.putIns(spv::OpImageSampleImplicitLod,
-      5 + getImageOperandWordCount(operands));
+    spv::Op op = operands.sparse
+      ? spv::OpImageSparseSampleImplicitLod
+      : spv::OpImageSampleImplicitLod;
+
+    m_code.putIns(op, 5 + getImageOperandWordCount(operands));
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(sampledImage);
@@ -3297,8 +3326,11 @@ namespace dxvk {
     const SpirvImageOperands&     operands) {
     uint32_t resultId = this->allocateId();
     
-    m_code.putIns(spv::OpImageSampleExplicitLod,
-      5 + getImageOperandWordCount(operands));
+    spv::Op op = operands.sparse
+      ? spv::OpImageSparseSampleExplicitLod
+      : spv::OpImageSampleExplicitLod;
+
+    m_code.putIns(op, 5 + getImageOperandWordCount(operands));
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(sampledImage);
@@ -3316,8 +3348,11 @@ namespace dxvk {
     const SpirvImageOperands&     operands) {
     uint32_t resultId = this->allocateId();
     
-    m_code.putIns(spv::OpImageSampleProjImplicitLod,
-      5 + getImageOperandWordCount(operands));
+    spv::Op op = operands.sparse
+      ? spv::OpImageSparseSampleProjImplicitLod
+      : spv::OpImageSampleProjImplicitLod;
+
+    m_code.putIns(op, 5 + getImageOperandWordCount(operands));
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(sampledImage);
@@ -3335,8 +3370,11 @@ namespace dxvk {
     const SpirvImageOperands&     operands) {
     uint32_t resultId = this->allocateId();
     
-    m_code.putIns(spv::OpImageSampleProjExplicitLod,
-      5 + getImageOperandWordCount(operands));
+    spv::Op op = operands.sparse
+      ? spv::OpImageSparseSampleProjExplicitLod
+      : spv::OpImageSampleProjExplicitLod;
+
+    m_code.putIns(op, 5 + getImageOperandWordCount(operands));
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(sampledImage);
@@ -3355,8 +3393,11 @@ namespace dxvk {
     const SpirvImageOperands&     operands) {
     uint32_t resultId = this->allocateId();
     
-    m_code.putIns(spv::OpImageSampleDrefImplicitLod,
-      6 + getImageOperandWordCount(operands));
+    spv::Op op = operands.sparse
+      ? spv::OpImageSparseSampleDrefImplicitLod
+      : spv::OpImageSampleDrefImplicitLod;
+
+    m_code.putIns(op, 6 + getImageOperandWordCount(operands));
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(sampledImage);
@@ -3376,8 +3417,11 @@ namespace dxvk {
     const SpirvImageOperands&     operands) {
     uint32_t resultId = this->allocateId();
     
-    m_code.putIns(spv::OpImageSampleDrefExplicitLod,
-      6 + getImageOperandWordCount(operands));
+    spv::Op op = operands.sparse
+      ? spv::OpImageSparseSampleDrefExplicitLod
+      : spv::OpImageSampleDrefExplicitLod;
+
+    m_code.putIns(op, 6 + getImageOperandWordCount(operands));
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(sampledImage);
@@ -3397,8 +3441,11 @@ namespace dxvk {
     const SpirvImageOperands&     operands) {
     uint32_t resultId = this->allocateId();
     
-    m_code.putIns(spv::OpImageSampleProjDrefImplicitLod,
-      6 + getImageOperandWordCount(operands));
+    spv::Op op = operands.sparse
+      ? spv::OpImageSparseSampleProjDrefImplicitLod
+      : spv::OpImageSampleProjDrefImplicitLod;
+
+    m_code.putIns(op, 6 + getImageOperandWordCount(operands));
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(sampledImage);
@@ -3418,8 +3465,11 @@ namespace dxvk {
     const SpirvImageOperands&     operands) {
     uint32_t resultId = this->allocateId();
     
-    m_code.putIns(spv::OpImageSampleProjDrefExplicitLod,
-      6 + getImageOperandWordCount(operands));
+    spv::Op op = operands.sparse
+      ? spv::OpImageSparseSampleProjDrefExplicitLod
+      : spv::OpImageSampleProjDrefExplicitLod;
+
+    m_code.putIns(op, 6 + getImageOperandWordCount(operands));
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(sampledImage);

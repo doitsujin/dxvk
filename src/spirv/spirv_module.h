@@ -27,6 +27,7 @@ namespace dxvk {
     uint32_t gConstOffsets = 0;
     uint32_t sSampleId     = 0;
     uint32_t sMinLod       = 0;
+    bool     sparse        = false;
   };
 
   constexpr uint32_t spvVersion(uint32_t major, uint32_t minor) {
@@ -1063,7 +1064,11 @@ namespace dxvk {
             uint32_t                coordinates,
             uint32_t                texel,
       const SpirvImageOperands&     operands);
-    
+
+    uint32_t opImageSparseTexelsResident(
+            uint32_t                resultType,
+            uint32_t                residentCode);
+
     uint32_t opImageTexelPointer(
             uint32_t                resultType,
             uint32_t                image,
