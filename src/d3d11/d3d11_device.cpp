@@ -2007,6 +2007,15 @@ namespace dxvk {
     if (!adapter->checkFeatureSupport(features))
       return false;
     
+    if (featureLevel >= D3D_FEATURE_LEVEL_12_0) {
+      D3D11_TILED_RESOURCES_TIER tiledResourcesTier = DetermineTiledResourcesTier(
+        adapter->features(),
+        adapter->devicePropertiesExt());
+
+      if (tiledResourcesTier < D3D11_TILED_RESOURCES_TIER_2)
+        return false;
+    }
+
     // TODO also check for required limits
     return true;
   }
@@ -2609,9 +2618,10 @@ namespace dxvk {
         return pair.first == maxLevel;
       });
     
-    return entry != s_featureLevels.end()
-      ? entry->second
-      : D3D_FEATURE_LEVEL_11_1;
+    if (entry != s_featureLevels.end())
+      return entry->second;
+
+    return D3D_FEATURE_LEVEL_12_0;
   }
   
 
