@@ -3717,21 +3717,40 @@ namespace dxvk {
     // Load texture coordinates
     DxbcRegisterValue texCoord = emitLoadTexCoord(
       ins.src[0], uavInfo.imageInfo);
-    
+
+    SpirvImageOperands imageOperands;
+    imageOperands.sparse = ins.dstCount == 2;
+
+    DxbcVectorType texelType;
+    texelType.ctype = uavInfo.sampledType;
+    texelType.ccount = 4;
+
+    uint32_t texelTypeId = getVectorTypeId(texelType);
+    uint32_t resultTypeId = texelTypeId;
+    uint32_t resultId = 0;
+
+    if (imageOperands.sparse)
+      resultTypeId = getSparseResultTypeId(texelTypeId);
+
     // Load source value from the UAV
-    DxbcRegisterValue uavValue;
-    uavValue.type.ctype  = uavInfo.sampledType;
-    uavValue.type.ccount = 4;
-    uavValue.id = m_module.opImageRead(
-      getVectorTypeId(uavValue.type),
+    resultId = m_module.opImageRead(resultTypeId,
       m_module.opLoad(uavInfo.imageTypeId, uavInfo.varId),
-      texCoord.id, SpirvImageOperands());
+      texCoord.id, imageOperands);
     
     // Apply component swizzle and mask
+    DxbcRegisterValue uavValue;
+    uavValue.type = texelType;
+    uavValue.id = imageOperands.sparse
+      ? emitExtractSparseTexel(texelTypeId, resultId)
+      : resultId;
+
     uavValue = emitRegisterSwizzle(uavValue,
       ins.src[1].swizzle, ins.dst[0].mask);
     
     emitRegisterStore(ins.dst[0], uavValue);
+
+    if (imageOperands.sparse)
+      emitStoreSparseFeedback(ins.dst[1], resultId);
   }
   
   
