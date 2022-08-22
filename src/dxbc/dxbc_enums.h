@@ -226,6 +226,23 @@ namespace dxvk {
     DtoU                                 = 215,
     ItoD                                 = 216,
     UtoD                                 = 217,
+    ReservedBegin11_2                    = 218,
+    Gather4S                             = 219,
+    Gather4CS                            = 220,
+    Gather4PoS                           = 221,
+    Gather4PoCS                          = 222,
+    LdS                                  = 223,
+    LdMsS                                = 224,
+    LdUavTypedS                          = 225,
+    LdRawS                               = 226,
+    LdStructuredS                        = 227,
+    SampleLS                             = 228,
+    SampleClzS                           = 229,
+    SampleClampS                         = 230,
+    SampleBClampS                        = 231,
+    SampleDClampS                        = 232,
+    SampleCClampS                        = 233,
+    CheckAccessFullyMapped               = 234,
   };
   
   
