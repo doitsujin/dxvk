@@ -882,6 +882,16 @@ namespace dxvk {
             DxbcRegisterValue       value,
             DxbcOpModifiers         modifiers);
     
+    ///////////////////////////
+    // Sparse feedback methods
+    uint32_t emitExtractSparseTexel(
+            uint32_t          texelTypeId,
+            uint32_t          resultId);
+
+    void emitStoreSparseFeedback(
+      const DxbcRegister&     feedbackRegister,
+            uint32_t          resultId);
+
     ////////////////////////////////
     // Pointer manipulation methods
     DxbcRegisterPointer emitArrayAccess(
@@ -1149,7 +1159,7 @@ namespace dxvk {
     uint32_t emitSamplePosArray();
     
     void emitFloatControl();
-    
+
     ///////////////////////////////
     // Variable definition methods
     uint32_t emitNewVariable(
@@ -1223,7 +1233,10 @@ namespace dxvk {
     
     uint32_t getPointerTypeId(
       const DxbcRegisterInfo& type);
-    
+
+    uint32_t getSparseResultTypeId(
+            uint32_t baseType);
+
     uint32_t getPerVertexBlockId();
 
     uint32_t getFunctionId(

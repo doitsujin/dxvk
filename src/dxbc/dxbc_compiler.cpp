@@ -3386,6 +3386,7 @@ namespace dxvk {
   void DxbcCompiler::emitTextureGather(const DxbcShaderInstruction& ins) {
     // Gather4 takes the following operands:
     //    (dst0) The destination register
+    //    (dst1) The residency code for sparse ops
     //    (src0) Texture coordinates
     //    (src1) The texture itself
     //    (src2) The sampler, with a component selector
@@ -3396,7 +3397,9 @@ namespace dxvk {
     // TODO reduce code duplication by moving some common code
     // in both sample() and gather() into separate methods
     const bool isExtendedGather = ins.op == DxbcOpcode::Gather4Po
-                               || ins.op == DxbcOpcode::Gather4PoC;
+                               || ins.op == DxbcOpcode::Gather4PoC
+                               || ins.op == DxbcOpcode::Gather4PoS
+                               || ins.op == DxbcOpcode::Gather4PoCS;
     
     const DxbcRegister& texCoordReg = ins.src[0];
     const DxbcRegister& textureReg  = ins.src[1 + isExtendedGather];
@@ -3415,8 +3418,10 @@ namespace dxvk {
     
     // Load reference value for depth-compare operations
     const bool isDepthCompare = ins.op == DxbcOpcode::Gather4C
-                             || ins.op == DxbcOpcode::Gather4PoC;
-    
+                             || ins.op == DxbcOpcode::Gather4PoC
+                             || ins.op == DxbcOpcode::Gather4CS
+                             || ins.op == DxbcOpcode::Gather4PoCS;
+
     const DxbcRegisterValue referenceValue = isDepthCompare
       ? emitRegisterLoad(ins.src[3 + isExtendedGather],
           DxbcRegMask(true, false, false, false))
@@ -3424,7 +3429,8 @@ namespace dxvk {
     
     // Accumulate additional image operands.
     SpirvImageOperands imageOperands;
-    
+    imageOperands.sparse = ins.dstCount == 2;
+
     if (isExtendedGather) {
       m_module.enableCapability(spv::CapabilityImageGatherExtended);
       
@@ -3445,30 +3451,41 @@ namespace dxvk {
         getVectorTypeId({ DxbcScalarType::Sint32, imageLayerDim }),
         imageLayerDim, offsetIds.data());
     }
-    
+
     // Gathering texels always returns a four-component
     // vector, even for the depth-compare variants.
     uint32_t sampledImageId = emitLoadSampledImage(texture, sampler, isDepthCompare);
 
-    DxbcRegisterValue result;
-    result.type.ctype  = texture.sampledType;
-    result.type.ccount = 4;
-    
+    DxbcVectorType texelType;
+    texelType.ctype = texture.sampledType;
+    texelType.ccount = 4;
+
+    uint32_t texelTypeId = getVectorTypeId(texelType);
+    uint32_t resultTypeId = texelTypeId;
+    uint32_t resultId = 0;
+
+    if (imageOperands.sparse)
+      resultTypeId = getSparseResultTypeId(texelTypeId);
+
     switch (ins.op) {
       // Simple image gather operation
       case DxbcOpcode::Gather4:
-      case DxbcOpcode::Gather4Po: {
-        result.id = m_module.opImageGather(
-          getVectorTypeId(result.type), sampledImageId, coord.id,
+      case DxbcOpcode::Gather4S:
+      case DxbcOpcode::Gather4Po:
+      case DxbcOpcode::Gather4PoS: {
+        resultId = m_module.opImageGather(
+          resultTypeId, sampledImageId, coord.id,
           m_module.consti32(samplerReg.swizzle[0]),
           imageOperands);
       } break;
       
       // Depth-compare operation
       case DxbcOpcode::Gather4C:
-      case DxbcOpcode::Gather4PoC: {
-        result.id = m_module.opImageDrefGather(
-          getVectorTypeId(result.type), sampledImageId, coord.id,
+      case DxbcOpcode::Gather4CS:
+      case DxbcOpcode::Gather4PoC:
+      case DxbcOpcode::Gather4PoCS: {
+        resultId = m_module.opImageDrefGather(
+          resultTypeId, sampledImageId, coord.id,
           referenceValue.id, imageOperands);
       } break;
       
@@ -3478,13 +3495,23 @@ namespace dxvk {
           ins.op));
         return;
     }
-    
+
+    // If necessary, deal with the sparse result
+    DxbcRegisterValue result;
+    result.type = texelType;
+    result.id = imageOperands.sparse
+      ? emitExtractSparseTexel(texelTypeId, resultId)
+      : resultId;
+
     // Swizzle components using the texture swizzle
     // and the destination operand's write mask
     result = emitRegisterSwizzle(result,
       textureReg.swizzle, ins.dst[0].mask);
     
     emitRegisterStore(ins.dst[0], result);
+
+    if (imageOperands.sparse)
+      emitStoreSparseFeedback(ins.dst[1], resultId);
   }
   
   
@@ -4549,6 +4576,33 @@ namespace dxvk {
   }
   
   
+  uint32_t DxbcCompiler::emitExtractSparseTexel(
+          uint32_t          texelTypeId,
+          uint32_t          resultId) {
+    uint32_t index = 1;
+
+    return m_module.opCompositeExtract(
+      texelTypeId, resultId, 1, &index);
+  }
+
+
+  void DxbcCompiler::emitStoreSparseFeedback(
+    const DxbcRegister&     feedbackRegister,
+          uint32_t          resultId) {
+    if (feedbackRegister.type != DxbcOperandType::Null) {
+      uint32_t index = 0;
+
+      DxbcRegisterValue result;
+      result.type = { DxbcScalarType::Uint32, 1 };
+      result.id = m_module.opCompositeExtract(
+        getScalarTypeId(DxbcScalarType::Uint32),
+        resultId, 1, &index);
+
+      emitRegisterStore(feedbackRegister, result);
+    }
+  }
+
+
   DxbcRegisterValue DxbcCompiler::emitDstOperandModifiers(
           DxbcRegisterValue       value,
           DxbcOpModifiers         modifiers) {
@@ -7592,6 +7646,15 @@ namespace dxvk {
   }
   
   
+  uint32_t DxbcCompiler::getSparseResultTypeId(uint32_t baseType) {
+    m_module.enableCapability(spv::CapabilitySparseResidency);
+
+    uint32_t uintType = getScalarTypeId(DxbcScalarType::Uint32);
+    std::array<uint32_t, 2> typeIds = { uintType, baseType };
+    return m_module.defStructType(typeIds.size(), typeIds.data());
+  }
+
+
   uint32_t DxbcCompiler::getPerVertexBlockId() {
     uint32_t t_f32    = m_module.defFloatType(32);
     uint32_t t_f32_v4 = m_module.defVectorType(t_f32, 4);
