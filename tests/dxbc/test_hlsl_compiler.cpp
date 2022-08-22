@@ -58,6 +58,7 @@ int main(int argc, char** argv) {
   }
   
   if (strip) {
+#ifdef _WIN32
     Com<ID3DBlob> strippedBlob;
 
     hr = D3DStripShader(binary->GetBufferPointer(), binary->GetBufferSize(),
@@ -70,6 +71,10 @@ int main(int argc, char** argv) {
     }
 
     binary = strippedBlob;
+#else
+    std::cerr << "Shader stripping not supported on this platform." << std::endl;
+    return 1;
+#endif
   }
 
   std::ofstream file;
