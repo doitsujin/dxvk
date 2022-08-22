@@ -35,22 +35,71 @@ namespace dxvk {
   using DxvkCmdBufferFlags = Flags<DxvkCmdBuffer>;
 
   /**
-   * \brief Queue submission info
+   * \brief Queue command submission
    *
-   * Convenience struct that holds data for
-   * actual command submissions. Internal use
-   * only, array sizes are based on need.
+   * Convenience class that holds data for a single
+   * command submission, which then easily be executed.
    */
-  struct DxvkQueueSubmission {
-    std::vector<VkSemaphoreSubmitInfo>     waitInfos;
-    std::vector<VkSemaphoreSubmitInfo>     signalInfos;
-    std::vector<VkCommandBufferSubmitInfo> cmdBuffers;
+  class DxvkCommandSubmission {
 
-    void reset() {
-      waitInfos.clear();
-      signalInfos.clear();
-      cmdBuffers.clear();
-    }
+  public:
+
+    DxvkCommandSubmission();
+    ~DxvkCommandSubmission();
+
+    /**
+     * \brief Adds a semaphore to wait on
+     *
+     * \param [in] semaphore The semaphore
+     * \param [in] value Semaphore value
+     * \param [in] stageMask Stages to block
+     */
+    void waitSemaphore(
+            VkSemaphore           semaphore,
+            uint64_t              value,
+            VkPipelineStageFlags2 stageMask);
+
+    /**
+     * \brief Adds a semaphore to signal
+     *
+     * \param [in] semaphore The semaphore
+     * \param [in] value Semaphore value
+     * \param [in] stageMask Stages to signal on
+     */
+    void signalSemaphore(
+            VkSemaphore           semaphore,
+            uint64_t              value,
+            VkPipelineStageFlags2 stageMask);
+
+    /**
+     * \brief Adds a command buffer to execute
+     * \param [in] commandBuffer The command buffer
+     */
+    void executeCommandBuffer(
+            VkCommandBuffer       commandBuffer);
+
+    /**
+     * \brief Executes submission and resets object
+     *
+     * \param [in] device DXVK device
+     * \param [in] queue Queue to submit to
+     * \returns Submission return value
+     */
+    VkResult submit(
+            DxvkDevice*           device,
+            VkQueue               queue);
+
+    /**
+     * \brief Resets object
+     */
+    void reset();
+
+  private:
+
+    std::vector<VkSemaphoreSubmitInfo>     m_semaphoreWaits;
+    std::vector<VkSemaphoreSubmitInfo>     m_semaphoreSignals;
+    std::vector<VkCommandBufferSubmitInfo> m_commandBuffers;
+
   };
 
   /**
@@ -862,7 +911,8 @@ namespace dxvk {
     DxvkGpuQueryTracker m_gpuQueryTracker;
     DxvkBufferTracker   m_bufferTracker;
     DxvkStatCounters    m_statCounters;
-    DxvkQueueSubmission m_submission;
+
+    DxvkCommandSubmission     m_commandSubmission;
 
     std::vector<DxvkFenceValuePair> m_waitSemaphores;
     std::vector<DxvkFenceValuePair> m_signalSemaphores;
@@ -879,10 +929,6 @@ namespace dxvk {
       if (cmdBuffer == DxvkCmdBuffer::SdmaBuffer) return m_sdmaBuffer;
       return VK_NULL_HANDLE;
     }
-
-    VkResult submitToQueue(
-            VkQueue               queue,
-      const DxvkQueueSubmission&  info);
     
   };
   
