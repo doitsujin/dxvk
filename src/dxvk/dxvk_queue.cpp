@@ -104,7 +104,13 @@ namespace dxvk {
     waitInfo.pSemaphores = &m_semaphore;
     waitInfo.pValues = &semaphoreValue;
 
-    VkResult vr = vk->vkWaitSemaphores(vk->device(), &waitInfo, ~0ull);
+    // 32-bit winevulkan on Proton seems to be broken here
+    // and returns with VK_TIMEOUT, even though the timeout
+    // is infinite. Work around this by spinning.
+    VkResult vr = VK_TIMEOUT;
+
+    while (vr == VK_TIMEOUT)
+      vr = vk->vkWaitSemaphores(vk->device(), &waitInfo, ~0ull);
 
     if (vr)
       Logger::err(str::format("Failed to synchronize with global timeline semaphore: ", vr));
