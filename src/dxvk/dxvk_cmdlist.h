@@ -958,6 +958,27 @@ namespace dxvk {
     }
 
 
+    void bindBufferMemory(
+      const DxvkSparseBufferBindKey& key,
+      const DxvkSparsePageHandle&   memory) {
+      getSparseBindSubmission().bindBufferMemory(key, memory);
+    }
+
+
+    void bindImageMemory(
+      const DxvkSparseImageBindKey& key,
+      const DxvkSparsePageHandle&   memory) {
+      getSparseBindSubmission().bindImageMemory(key, memory);
+    }
+
+
+    void bindImageOpaqueMemory(
+      const DxvkSparseImageOpaqueBindKey& key,
+      const DxvkSparsePageHandle&   memory) {
+      getSparseBindSubmission().bindImageOpaqueMemory(key, memory);
+    }
+
+
     void trackDescriptorPool(
       const Rc<DxvkDescriptorPool>&       pool,
       const Rc<DxvkDescriptorManager>&    manager) {
@@ -1006,6 +1027,16 @@ namespace dxvk {
       if (cmdBuffer == DxvkCmdBuffer::InitBuffer) return m_cmd.initBuffer;
       if (cmdBuffer == DxvkCmdBuffer::SdmaBuffer) return m_cmd.sdmaBuffer;
       return VK_NULL_HANDLE;
+    }
+
+    DxvkSparseBindSubmission& getSparseBindSubmission() {
+      if (likely(m_cmd.sparseBind))
+        return m_cmdSparseBinds[m_cmd.sparseCmd];
+
+      m_cmd.sparseBind = VK_TRUE;
+      m_cmd.sparseCmd = uint32_t(m_cmdSparseBinds.size());
+
+      return m_cmdSparseBinds.emplace_back();
     }
 
     void endCommandBuffer(VkCommandBuffer cmdBuffer);
