@@ -11,6 +11,9 @@ namespace dxvk {
     const auto& graphicsQueue = m_device->queues().graphics;
     const auto& transferQueue = m_device->queues().transfer;
 
+    VkSemaphoreCreateInfo semaphoreInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+    m_vkd->vkCreateSemaphore(m_vkd->device(), &semaphoreInfo, nullptr, &m_sdmaSemaphore);
+
     VkCommandPoolCreateInfo poolInfo;
     poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     poolInfo.pNext            = nullptr;
@@ -53,6 +56,8 @@ namespace dxvk {
 
     m_vkd->vkDestroyCommandPool(m_vkd->device(), m_graphicsPool, nullptr);
     m_vkd->vkDestroyCommandPool(m_vkd->device(), m_transferPool, nullptr);
+
+    m_vkd->vkDestroySemaphore(m_vkd->device(), m_sdmaSemaphore, nullptr);
   }
   
   
@@ -71,8 +76,7 @@ namespace dxvk {
 
       if (m_device->hasDedicatedTransferQueue()) {
         VkSemaphoreSubmitInfo signalInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
-        signalInfo.semaphore = semaphore;
-        signalInfo.value = ++semaphoreValue;
+        signalInfo.semaphore = m_sdmaSemaphore;
         signalInfo.stageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
         m_submission.signalInfos.push_back(signalInfo);
 
@@ -84,8 +88,7 @@ namespace dxvk {
         m_submission.reset();
 
         VkSemaphoreSubmitInfo waitInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO };
-        waitInfo.semaphore = semaphore;
-        waitInfo.value = semaphoreValue;
+        waitInfo.semaphore = m_sdmaSemaphore;
         waitInfo.stageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
         m_submission.waitInfos.push_back(waitInfo);
       }

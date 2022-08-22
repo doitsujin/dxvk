@@ -818,6 +818,8 @@ namespace dxvk {
     VkCommandBuffer     m_initBuffer = VK_NULL_HANDLE;
     VkCommandBuffer     m_sdmaBuffer = VK_NULL_HANDLE;
 
+    VkSemaphore         m_sdmaSemaphore = VK_NULL_HANDLE;
+
     vk::PresenterSync   m_wsiSemaphores = { };
 
     DxvkCmdBufferFlags  m_cmdBuffersUsed;
