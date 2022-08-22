@@ -203,7 +203,6 @@ namespace dxvk {
         status = synchronizeSemaphore(entry.submit.semaphoreValue);
       
       if (status != VK_SUCCESS) {
-        Logger::err(str::format("DxvkSubmissionQueue: Failed to sync fence: ", status));
         m_lastError = status;
         m_device->waitForIdle();
       }
