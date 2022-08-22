@@ -3536,14 +3536,17 @@ namespace dxvk {
     
     // Load reference value for depth-compare operations
     const bool isDepthCompare = ins.op == DxbcOpcode::SampleC
-                             || ins.op == DxbcOpcode::SampleClz;
+                             || ins.op == DxbcOpcode::SampleClz
+                             || ins.op == DxbcOpcode::SampleCClampS
+                             || ins.op == DxbcOpcode::SampleClzS;
     
     const DxbcRegisterValue referenceValue = isDepthCompare
       ? emitRegisterLoad(ins.src[3], DxbcRegMask(true, false, false, false))
       : DxbcRegisterValue();
     
     // Load explicit gradients for sample operations that require them
-    const bool hasExplicitGradients = ins.op == DxbcOpcode::SampleD;
+    const bool hasExplicitGradients = ins.op == DxbcOpcode::SampleD
+                                   || ins.op == DxbcOpcode::SampleDClampS;
     
     const DxbcRegisterValue explicitGradientX = hasExplicitGradients
       ? emitRegisterLoad(ins.src[3], DxbcRegMask::firstN(imageLayerDim))
@@ -3555,16 +3558,29 @@ namespace dxvk {
     
     // LOD for certain sample operations
     const bool hasLod = ins.op == DxbcOpcode::SampleL
-                     || ins.op == DxbcOpcode::SampleB;
+                     || ins.op == DxbcOpcode::SampleLS
+                     || ins.op == DxbcOpcode::SampleB
+                     || ins.op == DxbcOpcode::SampleBClampS;
     
     const DxbcRegisterValue lod = hasLod
       ? emitRegisterLoad(ins.src[3], DxbcRegMask(true, false, false, false))
       : DxbcRegisterValue();
-    
+
+    // Min LOD for certain sparse operations
+    const bool hasMinLod = ins.op == DxbcOpcode::SampleClampS
+                        || ins.op == DxbcOpcode::SampleBClampS
+                        || ins.op == DxbcOpcode::SampleDClampS
+                        || ins.op == DxbcOpcode::SampleCClampS;
+
+    const DxbcRegisterValue minLod = hasMinLod && ins.src[ins.srcCount - 1].type != DxbcOperandType::Null
+      ? emitRegisterLoad(ins.src[ins.srcCount - 1], DxbcRegMask(true, false, false, false))
+      : DxbcRegisterValue();
+
     // Accumulate additional image operands. These are
     // not part of the actual operand token in SPIR-V.
     SpirvImageOperands imageOperands;
-    
+    imageOperands.sparse = ins.dstCount == 2;
+
     if (ins.sampleControls.u != 0 || ins.sampleControls.v != 0 || ins.sampleControls.w != 0) {
       const std::array<uint32_t, 3> offsetIds = {
         imageLayerDim >= 1 ? m_module.consti32(ins.sampleControls.u) : 0,
@@ -3577,70 +3593,89 @@ namespace dxvk {
         getVectorTypeId({ DxbcScalarType::Sint32, imageLayerDim }),
         imageLayerDim, offsetIds.data());
     }
-    
+
+    if (hasMinLod) {
+      m_module.enableCapability(spv::CapabilityMinLod);
+
+      imageOperands.flags |= spv::ImageOperandsMinLodMask;
+      imageOperands.sMinLod = minLod.id;
+    }
+
     // Combine the texture and the sampler into a sampled image
     uint32_t sampledImageId = emitLoadSampledImage(texture, sampler, isDepthCompare);
     
     // Sampling an image always returns a four-component
     // vector, whereas depth-compare ops return a scalar.
-    DxbcRegisterValue result;
-    result.type.ctype  = texture.sampledType;
-    result.type.ccount = isDepthCompare ? 1 : 4;
-    
+    DxbcVectorType texelType;
+    texelType.ctype  = texture.sampledType;
+    texelType.ccount = isDepthCompare ? 1 : 4;
+
+    uint32_t texelTypeId = getVectorTypeId(texelType);
+    uint32_t resultTypeId = texelTypeId;
+    uint32_t resultId = 0;
+
+    if (imageOperands.sparse)
+      resultTypeId = getSparseResultTypeId(texelTypeId);
+
     switch (ins.op) {
       // Simple image sample operation
-      case DxbcOpcode::Sample: {
-        result.id = m_module.opImageSampleImplicitLod(
-          getVectorTypeId(result.type),
-          sampledImageId, coord.id,
+      case DxbcOpcode::Sample:
+      case DxbcOpcode::SampleClampS: {
+        resultId = m_module.opImageSampleImplicitLod(
+          resultTypeId, sampledImageId, coord.id,
           imageOperands);
       } break;
       
       // Depth-compare operation
-      case DxbcOpcode::SampleC: {
-        result.id = m_module.opImageSampleDrefImplicitLod(
-          getVectorTypeId(result.type), sampledImageId, coord.id,
+      case DxbcOpcode::SampleC:
+      case DxbcOpcode::SampleCClampS: {
+        resultId = m_module.opImageSampleDrefImplicitLod(
+          resultTypeId, sampledImageId, coord.id,
           referenceValue.id, imageOperands);
       } break;
       
       // Depth-compare operation on mip level zero
-      case DxbcOpcode::SampleClz: {
+      case DxbcOpcode::SampleClz:
+      case DxbcOpcode::SampleClzS: {
         imageOperands.flags |= spv::ImageOperandsLodMask;
         imageOperands.sLod = m_module.constf32(0.0f);
         
-        result.id = m_module.opImageSampleDrefExplicitLod(
-          getVectorTypeId(result.type), sampledImageId, coord.id,
+        resultId = m_module.opImageSampleDrefExplicitLod(
+          resultTypeId, sampledImageId, coord.id,
           referenceValue.id, imageOperands);
       } break;
       
       // Sample operation with explicit gradients
-      case DxbcOpcode::SampleD: {
+      case DxbcOpcode::SampleD:
+      case DxbcOpcode::SampleDClampS: {
         imageOperands.flags |= spv::ImageOperandsGradMask;
         imageOperands.sGradX = explicitGradientX.id;
         imageOperands.sGradY = explicitGradientY.id;
         
-        result.id = m_module.opImageSampleExplicitLod(
-          getVectorTypeId(result.type), sampledImageId, coord.id,
+        resultId = m_module.opImageSampleExplicitLod(
+          resultTypeId, sampledImageId, coord.id,
           imageOperands);
       } break;
       
       // Sample operation with explicit LOD
-      case DxbcOpcode::SampleL: {
+      case DxbcOpcode::SampleL:
+      case DxbcOpcode::SampleLS: {
         imageOperands.flags |= spv::ImageOperandsLodMask;
         imageOperands.sLod = lod.id;
         
-        result.id = m_module.opImageSampleExplicitLod(
-          getVectorTypeId(result.type), sampledImageId, coord.id,
+        resultId = m_module.opImageSampleExplicitLod(
+          resultTypeId, sampledImageId, coord.id,
           imageOperands);
       } break;
       
       // Sample operation with LOD bias
-      case DxbcOpcode::SampleB: {
+      case DxbcOpcode::SampleB:
+      case DxbcOpcode::SampleBClampS: {
         imageOperands.flags |= spv::ImageOperandsBiasMask;
         imageOperands.sLodBias = lod.id;
         
-        result.id = m_module.opImageSampleImplicitLod(
-          getVectorTypeId(result.type), sampledImageId, coord.id,
+        resultId = m_module.opImageSampleImplicitLod(
+          resultTypeId, sampledImageId, coord.id,
           imageOperands);
       } break;
       
@@ -3651,6 +3686,12 @@ namespace dxvk {
         return;
     }
     
+    DxbcRegisterValue result;
+    result.type = texelType;
+    result.id = imageOperands.sparse
+      ? emitExtractSparseTexel(texelTypeId, resultId)
+      : resultId;
+
     // Swizzle components using the texture swizzle
     // and the destination operand's write mask
     if (result.type.ccount != 1) {
@@ -3659,6 +3700,9 @@ namespace dxvk {
     }
     
     emitRegisterStore(ins.dst[0], result);
+
+    if (imageOperands.sparse)
+      emitStoreSparseFeedback(ins.dst[1], resultId);
   }
   
   
