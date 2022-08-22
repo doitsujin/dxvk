@@ -3310,6 +3310,9 @@ namespace dxvk {
     const auto& texture = m_textures.at(ins.src[1].idx[0].offset);
     const uint32_t imageLayerDim = getTexLayerDim(texture.imageInfo);
     
+    bool isMultisampled = ins.op == DxbcOpcode::LdMs
+                       || ins.op == DxbcOpcode::LdMsS;
+
     // Load the texture coordinates. The last component
     // contains the LOD if the resource is an image.
     const DxbcRegisterValue address = emitRegisterLoad(
@@ -3318,6 +3321,7 @@ namespace dxvk {
     // Additional image operands. This will store
     // the LOD and the address offset if present.
     SpirvImageOperands imageOperands;
+    imageOperands.sparse = ins.dstCount == 2;
     
     if (ins.sampleControls.u != 0 || ins.sampleControls.v != 0 || ins.sampleControls.w != 0) {
       const std::array<uint32_t, 3> offsetIds = {
@@ -3337,7 +3341,7 @@ namespace dxvk {
     if (texture.imageInfo.dim != spv::DimBuffer && texture.imageInfo.ms == 0) {
       DxbcRegisterValue imageLod;
       
-      if (ins.op != DxbcOpcode::LdMs) {
+      if (!isMultisampled) {
         imageLod = emitRegisterExtract(
           address, DxbcRegMask(false, false, false, true));
       } else {
@@ -3350,9 +3354,9 @@ namespace dxvk {
       imageOperands.sLod = imageLod.id;
     }
     
-    // The ld2ms instruction has a sample index, but we
+    // The ld2dms instruction has a sample index, but we
     // are only allowed to set it for multisample views
-    if (ins.op == DxbcOpcode::LdMs && texture.imageInfo.ms == 1) {
+    if (isMultisampled && texture.imageInfo.ms == 1) {
       DxbcRegisterValue sampleId = emitRegisterLoad(
         ins.src[2], DxbcRegMask(true, false, false, false));
       
@@ -3366,13 +3370,26 @@ namespace dxvk {
     // Reading a typed image or buffer view
     // always returns a four-component vector.
     const uint32_t imageId = m_module.opLoad(texture.imageTypeId, texture.varId);
-    
+
+    DxbcVectorType texelType;
+    texelType.ctype = texture.sampledType;
+    texelType.ccount = 4;
+
+    uint32_t texelTypeId = getVectorTypeId(texelType);
+    uint32_t resultTypeId = texelTypeId;
+    uint32_t resultId = 0;
+
+    if (imageOperands.sparse)
+      resultTypeId = getSparseResultTypeId(texelTypeId);
+
+    resultId = m_module.opImageFetch(resultTypeId,
+      imageId, coord.id, imageOperands);
+
     DxbcRegisterValue result;
-    result.type.ctype  = texture.sampledType;
-    result.type.ccount = 4;
-    result.id = m_module.opImageFetch(
-      getVectorTypeId(result.type), imageId,
-      coord.id, imageOperands);
+    result.type = texelType;
+    result.id = imageOperands.sparse
+      ? emitExtractSparseTexel(texelTypeId, resultId)
+      : resultId;
     
     // Swizzle components using the texture swizzle
     // and the destination operand's write mask
@@ -3380,6 +3397,9 @@ namespace dxvk {
       ins.src[1].swizzle, ins.dst[0].mask);
     
     emitRegisterStore(ins.dst[0], result);
+
+    if (imageOperands.sparse)
+      emitStoreSparseFeedback(ins.dst[1], resultId);
   }
   
   
