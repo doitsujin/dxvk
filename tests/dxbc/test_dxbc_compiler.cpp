@@ -4,9 +4,7 @@
 #include "../../src/dxbc/dxbc_module.h"
 #include "../../src/dxvk/dxvk_shader.h"
 
-#include <shellapi.h>
 #include <windows.h>
-#include <windowsx.h>
 
 namespace dxvk {
   Logger Logger::s_instance("dxbc-compiler.log");
@@ -14,21 +12,14 @@ namespace dxvk {
 
 using namespace dxvk;
 
-int WINAPI WinMain(HINSTANCE hInstance,
-                   HINSTANCE hPrevInstance,
-                   LPSTR lpCmdLine,
-                   int nCmdShow) {
-  int     argc = 0;
-  LPWSTR* argv = CommandLineToArgvW(
-    GetCommandLineW(), &argc);  
-  
+int main(int argc, char** argv) {
   if (argc < 3) {
     Logger::err("Usage: dxbc-compiler input.dxbc output.spv");
     return 1;
   }
   
   try {
-    std::string ifileName = str::fromws(argv[1]);
+    std::string ifileName = argv[1];
     std::ifstream ifile(ifileName, std::ios::binary);
     ifile.ignore(std::numeric_limits<std::streamsize>::max());
     std::streamsize length = ifile.gcount();
@@ -47,7 +38,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
     moduleInfo.xfb = nullptr;
 
     Rc<DxvkShader> shader = module.compile(moduleInfo, ifileName);
-    std::ofstream ofile(str::fromws(argv[2]), std::ios::binary);
+    std::ofstream ofile(argv[2], std::ios::binary);
     shader->dump(ofile);
     return 0;
   } catch (const DxvkError& e) {
