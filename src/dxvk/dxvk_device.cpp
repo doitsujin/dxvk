@@ -274,7 +274,6 @@ namespace dxvk {
 
     std::lock_guard<sync::Spinlock> statLock(m_statLock);
     m_statCounters.merge(commandList->statCounters());
-    m_statCounters.addCtr(DxvkStatCounter::QueueSubmitCount, 1);
   }
   
   

@@ -64,7 +64,7 @@ namespace dxvk {
   
   void DxvkContext::beginRecording(const Rc<DxvkCommandList>& cmdList) {
     m_cmd = cmdList;
-    m_cmd->beginRecording();
+    m_cmd->init();
 
     // Mark all resources as untracked
     m_vbTracked.clear();
@@ -120,7 +120,7 @@ namespace dxvk {
       m_descriptorPool = m_descriptorManager->getDescriptorPool();
     }
 
-    m_cmd->endRecording();
+    m_cmd->finalize();
     return std::exchange(m_cmd, nullptr);
   }
 

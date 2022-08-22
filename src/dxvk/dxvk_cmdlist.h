@@ -94,6 +94,14 @@ namespace dxvk {
      */
     void reset();
 
+    /**
+     * \brief Checks whether the submission is empty
+     *
+     * \returns \c true if there are no command
+     *    buffers or semaphores.
+     */
+    bool isEmpty() const;
+
   private:
 
     std::vector<VkSemaphoreSubmitInfo>     m_semaphoreWaits;
@@ -215,21 +223,29 @@ namespace dxvk {
     }
     
     /**
-     * \brief Begins recording
-     * 
-     * Resets the command buffer and
-     * begins command buffer recording.
+     * \brief Initializes command buffers
+     *
+     * Prepares command list for command recording.
      */
-    void beginRecording();
+    void init();
     
     /**
      * \brief Ends recording
-     * 
+     *
      * Ends command buffer recording, making
      * the command list ready for submission.
      * \param [in] stats Stat counters
      */
-    void endRecording();
+    void finalize();
+
+    /**
+     * \brief Interrupts recording
+     *
+     * Begins a new set of command buffers while adding the
+     * current set to the submission list. This can be useful
+     * to split the command list into multiple submissions.
+     */
+    void next();
     
     /**
      * \brief Frees buffer slice
@@ -972,6 +988,8 @@ namespace dxvk {
 
     std::vector<DxvkFenceValuePair> m_waitSemaphores;
     std::vector<DxvkFenceValuePair> m_signalSemaphores;
+
+    std::vector<DxvkCommandSubmissionInfo> m_cmdSubmissions;
     
     std::vector<std::pair<
       Rc<DxvkDescriptorPool>,
@@ -985,7 +1003,9 @@ namespace dxvk {
       if (cmdBuffer == DxvkCmdBuffer::SdmaBuffer) return m_cmd.sdmaBuffer;
       return VK_NULL_HANDLE;
     }
-    
+
+    void endCommandBuffer(VkCommandBuffer cmdBuffer);
+
   };
   
 }
