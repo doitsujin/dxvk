@@ -709,6 +709,9 @@ namespace dxvk {
     void emitInterpolate(
       const DxbcShaderInstruction&  ins);
     
+    void emitSparseCheckAccess(
+      const DxbcShaderInstruction&  ins);
+    
     void emitTextureQuery(
       const DxbcShaderInstruction&  ins);
     

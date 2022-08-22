@@ -130,7 +130,10 @@ namespace dxvk {
       
       case DxbcInstClass::NoOperation:
         return;
-      
+
+      case DxbcInstClass::SparseCheckAccess:
+        return this->emitSparseCheckAccess(ins);
+
       case DxbcInstClass::TextureQuery:
         return this->emitTextureQuery(ins);
         
@@ -3048,6 +3051,27 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitSparseCheckAccess(
+    const DxbcShaderInstruction&  ins) {
+    // check_access_mapped has two operands:
+    //    (dst0) The destination register
+    //    (src0) The residency code
+    m_module.enableCapability(spv::CapabilitySparseResidency);
+
+    DxbcRegisterValue srcValue = emitRegisterLoad(ins.src[0], ins.dst[0].mask);
+
+    uint32_t boolId = m_module.opImageSparseTexelsResident(
+      m_module.defBoolType(), srcValue.id);
+
+    DxbcRegisterValue dstValue;
+    dstValue.type = { DxbcScalarType::Uint32, 1 };
+    dstValue.id = m_module.opSelect(getScalarTypeId(DxbcScalarType::Uint32),
+      boolId, m_module.constu32(~0u), m_module.constu32(0));
+
+    emitRegisterStore(ins.dst[0], dstValue);
+  }
+
+
   void DxbcCompiler::emitTextureQuery(const DxbcShaderInstruction& ins) {
     // resinfo has three operands:
     //    (dst0) The destination register
