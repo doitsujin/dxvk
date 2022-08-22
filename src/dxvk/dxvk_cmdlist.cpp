@@ -164,48 +164,17 @@ namespace dxvk {
     if (m_vkd->vkCreateSemaphore(m_vkd->device(), &semaphoreInfo, nullptr, &m_sdmaSemaphore))
       throw DxvkError("DxvkCommandList: Failed to create semaphore");
 
-    VkCommandPoolCreateInfo poolInfo;
-    poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    poolInfo.pNext            = nullptr;
-    poolInfo.flags            = 0;
-    poolInfo.queueFamilyIndex = graphicsQueue.queueFamily;
-    
-    if (m_vkd->vkCreateCommandPool(m_vkd->device(), &poolInfo, nullptr, &m_graphicsPool) != VK_SUCCESS)
-      throw DxvkError("DxvkCommandList: Failed to create graphics command pool");
-    
-    if (m_device->hasDedicatedTransferQueue()) {
-      poolInfo.queueFamilyIndex = transferQueue.queueFamily;
+    m_graphicsPool = new DxvkCommandPool(device, graphicsQueue.queueFamily);
 
-      if (m_vkd->vkCreateCommandPool(m_vkd->device(), &poolInfo, nullptr, &m_transferPool) != VK_SUCCESS)
-        throw DxvkError("DxvkCommandList: Failed to create transfer command pool");
-    }
-    
-    VkCommandBufferAllocateInfo cmdInfoGfx;
-    cmdInfoGfx.sType             = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cmdInfoGfx.pNext             = nullptr;
-    cmdInfoGfx.commandPool       = m_graphicsPool;
-    cmdInfoGfx.level             = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    cmdInfoGfx.commandBufferCount = 1;
-    
-    VkCommandBufferAllocateInfo cmdInfoDma;
-    cmdInfoDma.sType             = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cmdInfoDma.pNext             = nullptr;
-    cmdInfoDma.commandPool       = m_transferPool ? m_transferPool : m_graphicsPool;
-    cmdInfoDma.level             = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    cmdInfoDma.commandBufferCount = 1;
-    
-    if (m_vkd->vkAllocateCommandBuffers(m_vkd->device(), &cmdInfoGfx, &m_cmd.execBuffer) != VK_SUCCESS
-     || m_vkd->vkAllocateCommandBuffers(m_vkd->device(), &cmdInfoGfx, &m_cmd.initBuffer) != VK_SUCCESS
-     || m_vkd->vkAllocateCommandBuffers(m_vkd->device(), &cmdInfoDma, &m_cmd.sdmaBuffer) != VK_SUCCESS)
-      throw DxvkError("DxvkCommandList: Failed to allocate command buffer");
+    if (transferQueue.queueFamily != graphicsQueue.queueFamily)
+      m_transferPool = new DxvkCommandPool(device, transferQueue.queueFamily);
+    else
+      m_transferPool = m_graphicsPool;
   }
   
   
   DxvkCommandList::~DxvkCommandList() {
     this->reset();
-
-    m_vkd->vkDestroyCommandPool(m_vkd->device(), m_graphicsPool, nullptr);
-    m_vkd->vkDestroyCommandPool(m_vkd->device(), m_transferPool, nullptr);
 
     m_vkd->vkDestroySemaphore(m_vkd->device(), m_sdmaSemaphore, nullptr);
   }
@@ -270,20 +239,10 @@ namespace dxvk {
   
   
   void DxvkCommandList::beginRecording() {
-    VkCommandBufferBeginInfo info;
-    info.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    info.pNext            = nullptr;
-    info.flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    info.pInheritanceInfo = nullptr;
-    
-    if ((m_graphicsPool && m_vkd->vkResetCommandPool(m_vkd->device(), m_graphicsPool, 0) != VK_SUCCESS)
-     || (m_transferPool && m_vkd->vkResetCommandPool(m_vkd->device(), m_transferPool, 0) != VK_SUCCESS))
-      Logger::err("DxvkCommandList: Failed to reset command buffer");
-    
-    if (m_vkd->vkBeginCommandBuffer(m_cmd.execBuffer, &info) != VK_SUCCESS
-     || m_vkd->vkBeginCommandBuffer(m_cmd.initBuffer, &info) != VK_SUCCESS
-     || m_vkd->vkBeginCommandBuffer(m_cmd.sdmaBuffer, &info) != VK_SUCCESS)
-      Logger::err("DxvkCommandList: Failed to begin command buffer");
+    m_cmd = DxvkCommandSubmissionInfo();
+    m_cmd.execBuffer = m_graphicsPool->getCommandBuffer();
+    m_cmd.initBuffer = m_graphicsPool->getCommandBuffer();
+    m_cmd.sdmaBuffer = m_transferPool->getCommandBuffer();
   }
   
   
@@ -327,6 +286,10 @@ namespace dxvk {
     m_signalSemaphores.clear();
 
     m_wsiSemaphores = vk::PresenterSync();
+
+    // Reset actual command buffers and pools
+    m_graphicsPool->reset();
+    m_transferPool->reset();
   }
 
 }

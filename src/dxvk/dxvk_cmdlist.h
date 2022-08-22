@@ -952,8 +952,8 @@ namespace dxvk {
     Rc<vk::DeviceFn>          m_vkd;
     Rc<vk::InstanceFn>        m_vki;
     
-    VkCommandPool             m_graphicsPool = VK_NULL_HANDLE;
-    VkCommandPool             m_transferPool = VK_NULL_HANDLE;
+    Rc<DxvkCommandPool>       m_graphicsPool;
+    Rc<DxvkCommandPool>       m_transferPool;
 
     VkSemaphore               m_sdmaSemaphore = VK_NULL_HANDLE;
 
