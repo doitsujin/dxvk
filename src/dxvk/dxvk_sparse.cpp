@@ -1,3 +1,5 @@
+#include <sstream>
+
 #include "dxvk_buffer.h"
 #include "dxvk_device.h"
 #include "dxvk_image.h"
@@ -394,6 +396,332 @@ namespace dxvk {
 
       m_mappings[page] = std::move(mapping);
     }
+  }
+
+
+  DxvkSparseBindSubmission::DxvkSparseBindSubmission() {
+
+  }
+
+
+  DxvkSparseBindSubmission::~DxvkSparseBindSubmission() {
+
+  }
+
+
+  void DxvkSparseBindSubmission::waitSemaphore(
+          VkSemaphore             semaphore,
+          uint64_t                value) {
+    m_waitSemaphores.push_back(semaphore);
+    m_waitSemaphoreValues.push_back(value);
+  }
+
+
+  void DxvkSparseBindSubmission::signalSemaphore(
+          VkSemaphore             semaphore,
+          uint64_t                value) {
+    m_signalSemaphores.push_back(semaphore);
+    m_signalSemaphoreValues.push_back(value);
+  }
+
+
+  void DxvkSparseBindSubmission::bindBufferMemory(
+    const DxvkSparseBufferBindKey& key,
+    const DxvkSparsePageHandle&   memory) {
+    m_bufferBinds.insert_or_assign(key, memory);
+  }
+
+
+  void DxvkSparseBindSubmission::bindImageMemory(
+    const DxvkSparseImageBindKey& key,
+    const DxvkSparsePageHandle&   memory) {
+    m_imageBinds.insert_or_assign(key, memory);
+  }
+
+
+  void DxvkSparseBindSubmission::bindImageOpaqueMemory(
+    const DxvkSparseImageOpaqueBindKey& key,
+    const DxvkSparsePageHandle&   memory) {
+    m_imageOpaqueBinds.insert_or_assign(key, memory);
+  }
+
+
+  VkResult DxvkSparseBindSubmission::submit(
+          DxvkDevice*             device,
+          VkQueue                 queue) {
+    auto vk = device->vkd();
+
+    DxvkSparseBufferBindArrays buffer;
+    this->processBufferBinds(buffer);
+
+    DxvkSparseImageBindArrays image;
+    this->processImageBinds(image);
+
+    DxvkSparseImageOpaqueBindArrays opaque;
+    this->processOpaqueBinds(opaque);
+
+    // The sparse binding API has never been updated to take the new
+    // semaphore submission info structs, so we have to do this instead
+    VkTimelineSemaphoreSubmitInfo timelineInfo = { VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO };
+    timelineInfo.waitSemaphoreValueCount = m_waitSemaphoreValues.size();
+    timelineInfo.pWaitSemaphoreValues = m_waitSemaphoreValues.data();
+    timelineInfo.signalSemaphoreValueCount = m_signalSemaphoreValues.size();
+    timelineInfo.pSignalSemaphoreValues = m_signalSemaphoreValues.data();
+
+    VkBindSparseInfo bindInfo = { VK_STRUCTURE_TYPE_BIND_SPARSE_INFO };
+
+    if (!m_waitSemaphores.empty()) {
+      bindInfo.pNext = &timelineInfo;
+      bindInfo.waitSemaphoreCount = m_waitSemaphores.size();
+      bindInfo.pWaitSemaphores = m_waitSemaphores.data();
+    }
+
+    if (!buffer.infos.empty()) {
+      bindInfo.bufferBindCount = buffer.infos.size();
+      bindInfo.pBufferBinds = buffer.infos.data();
+    }
+
+    if (!opaque.infos.empty()) {
+      bindInfo.imageOpaqueBindCount = opaque.infos.size();
+      bindInfo.pImageOpaqueBinds = opaque.infos.data();
+    }
+
+    if (!image.infos.empty()) {
+      bindInfo.imageBindCount = image.infos.size();
+      bindInfo.pImageBinds = image.infos.data();
+    }
+
+    if (!m_signalSemaphores.empty()) {
+      bindInfo.pNext = &timelineInfo;
+      bindInfo.signalSemaphoreCount = m_signalSemaphores.size();
+      bindInfo.pSignalSemaphores = m_signalSemaphores.data();
+    }
+
+    VkResult vr = vk->vkQueueBindSparse(queue, 1, &bindInfo, VK_NULL_HANDLE);
+
+    if (vr) {
+      Logger::err(str::format("Sparse binding failed: ", vr));
+      this->logSparseBindingInfo(LogLevel::Error, &bindInfo);
+    }
+
+    this->reset();
+    return vr;
+  }
+
+
+  void DxvkSparseBindSubmission::reset() {
+    m_waitSemaphoreValues.clear();
+    m_waitSemaphores.clear();
+    m_signalSemaphoreValues.clear();
+    m_signalSemaphores.clear();
+
+    m_bufferBinds.clear();
+    m_imageBinds.clear();
+    m_imageOpaqueBinds.clear();
+  }
+
+
+  bool DxvkSparseBindSubmission::tryMergeMemoryBind(
+          VkSparseMemoryBind&               oldBind,
+    const VkSparseMemoryBind&               newBind) {
+    if (newBind.memory != oldBind.memory || newBind.flags != oldBind.flags)
+      return false;
+
+    // The resource region must be consistent
+    if (newBind.resourceOffset != oldBind.resourceOffset + oldBind.size)
+      return false;
+
+    // If memory is not null, the memory range must also be consistent
+    if (newBind.memory && newBind.memoryOffset != oldBind.memoryOffset + oldBind.size)
+      return false;
+
+    oldBind.size += newBind.size;
+    return true;
+  }
+
+
+  void DxvkSparseBindSubmission::processBufferBinds(
+          DxvkSparseBufferBindArrays&       buffer) {
+    std::vector<std::pair<VkBuffer, VkSparseMemoryBind>> ranges;
+    ranges.reserve(m_bufferBinds.size());
+
+    for (const auto& e : m_bufferBinds) {
+      const auto& key = e.first;
+      const auto& handle = e.second;
+
+      VkSparseMemoryBind bind = { };
+      bind.resourceOffset = key.offset;
+      bind.size           = key.size;
+      bind.memory         = handle.memory;
+      bind.memoryOffset   = handle.offset;
+
+      bool merged = false;
+
+      if (!ranges.empty() && ranges.back().first == key.buffer)
+        merged = tryMergeMemoryBind(ranges.back().second, bind);
+
+      if (!merged)
+        ranges.push_back({ key.buffer, bind });
+    }
+
+    populateOutputArrays(buffer.binds, buffer.infos, ranges);
+  }
+
+
+  void DxvkSparseBindSubmission::processImageBinds(
+          DxvkSparseImageBindArrays&        image) {
+    std::vector<std::pair<VkImage, VkSparseImageMemoryBind>> ranges;
+    ranges.reserve(m_imageBinds.size());
+
+    for (const auto& e : m_imageBinds) {
+      const auto& key = e.first;
+      const auto& handle = e.second;
+
+      VkSparseImageMemoryBind bind = { };
+      bind.subresource    = key.subresource;
+      bind.offset         = key.offset;
+      bind.extent         = key.extent;
+      bind.memory         = handle.memory;
+      bind.memoryOffset   = handle.offset;
+
+      ranges.push_back({ key.image, bind });
+    }
+
+    populateOutputArrays(image.binds, image.infos, ranges);
+  }
+
+
+  void DxvkSparseBindSubmission::processOpaqueBinds(
+          DxvkSparseImageOpaqueBindArrays&  opaque) {
+    std::vector<std::pair<VkImage, VkSparseMemoryBind>> ranges;
+    ranges.reserve(m_imageOpaqueBinds.size());
+
+    for (const auto& e : m_imageOpaqueBinds) {
+      const auto& key = e.first;
+      const auto& handle = e.second;
+
+      VkSparseMemoryBind bind = { };
+      bind.resourceOffset = key.offset;
+      bind.size           = key.size;
+      bind.memory         = handle.memory;
+      bind.memoryOffset   = handle.offset;
+      bind.flags          = key.flags;
+
+      bool merged = false;
+
+      if (!ranges.empty() && ranges.back().first == key.image)
+        merged = tryMergeMemoryBind(ranges.back().second, bind);
+
+      if (!merged)
+        ranges.push_back({ key.image, bind });
+    }
+
+    populateOutputArrays(opaque.binds, opaque.infos, ranges);
+  }
+
+
+  template<typename HandleType, typename BindType, typename InfoType>
+  void DxvkSparseBindSubmission::populateOutputArrays(
+          std::vector<BindType>&            binds,
+          std::vector<InfoType>&            infos,
+    const std::vector<std::pair<HandleType, BindType>>& input) {
+    HandleType handle = VK_NULL_HANDLE;
+
+    // Resize bind array so that pointers remain
+    // valid as we iterate over the input array
+    binds.resize(input.size());
+
+    for (size_t i = 0; i < input.size(); i++) {
+      binds[i] = input[i].second;
+
+      if (handle != input[i].first) {
+        // Create new info entry if the handle
+        // differs from that of the previous entry
+        handle = input[i].first;
+        infos.push_back({ handle, 1u, &binds[i] });
+      } else {
+        // Otherwise just increment the bind count
+        infos.back().bindCount += 1;
+      }
+    }
+  }
+
+
+  void DxvkSparseBindSubmission::logSparseBindingInfo(
+          LogLevel                          level,
+    const VkBindSparseInfo*                 info) {
+    std::stringstream str;
+    str << "VkBindSparseInfo:" << std::endl;
+
+    auto timelineInfo = static_cast<const VkTimelineSemaphoreSubmitInfo*>(info->pNext);
+
+    if (info->waitSemaphoreCount) {
+      str << "  Wait semaphores (" << std::dec << info->waitSemaphoreCount << "):" << std::endl;
+
+      for (uint32_t i = 0; i < info->waitSemaphoreCount; i++)
+        str << "    " << info->pWaitSemaphores[i] << " (" << timelineInfo->pWaitSemaphoreValues[i] << ")" << std::endl;
+    }
+
+    if (info->bufferBindCount) {
+      str << "  Buffer binds (" << std::dec << info->bufferBindCount << "):" << std::endl;
+
+      for (uint32_t i = 0; i < info->bufferBindCount; i++) {
+        const auto* bindInfo = &info->pBufferBinds[i];
+        str << "    VkBuffer " << bindInfo->buffer << " (" << bindInfo->bindCount << "):" << std::endl;
+
+        for (uint32_t j = 0; j < bindInfo->bindCount; j++) {
+          const auto* bind = &bindInfo->pBinds[j];
+          str << "        " << bind->resourceOffset << " -> " << bind->memory
+              << " (" << bind->memoryOffset << "," << bind->size << ")" << std::endl;
+        }
+      }
+    }
+
+    if (info->imageOpaqueBindCount) {
+      str << "  Opaque image binds (" << std::dec << info->imageOpaqueBindCount << "):" << std::endl;
+
+      for (uint32_t i = 0; i < info->imageOpaqueBindCount; i++) {
+        const auto* bindInfo = &info->pImageOpaqueBinds[i];
+        str << "    VkImage " << bindInfo->image << " (" << bindInfo->bindCount << "):" << std::endl;
+
+        for (uint32_t j = 0; j < bindInfo->bindCount; j++) {
+          const auto* bind = &bindInfo->pBinds[j];
+          str << "        " << bind->resourceOffset << " -> " << bind->memory
+              << " (" << bind->memoryOffset << "," << bind->size << ")" << std::endl;
+        }
+      }
+    }
+
+    if (info->imageBindCount) {
+      str << "  Opaque image binds (" << std::dec << info->imageOpaqueBindCount << "):" << std::endl;
+
+      for (uint32_t i = 0; i < info->imageBindCount; i++) {
+        const auto* bindInfo = &info->pImageBinds[i];
+        str << "    VkImage " << bindInfo->image << " (" << bindInfo->bindCount << "):" << std::endl;
+
+        for (uint32_t j = 0; j < bindInfo->bindCount; j++) {
+          const auto* bind = &bindInfo->pBinds[j];
+
+          str << "        Aspect 0x" << std::hex << bind->subresource.aspectMask
+              << ", Mip " << std::dec << bind->subresource.mipLevel
+              << ", Layer " << bind->subresource.arrayLayer
+              << ":" << std::endl;
+
+          str << "        " << bind->offset.x << "," << bind->offset.y << "," << bind->offset.z << ":"
+              << bind->extent.width << "x" << bind->extent.height << "x" << bind->extent.depth
+              << " -> " << bind->memory << " (" << bind->memoryOffset << ")" << std::endl;
+        }
+      }
+    }
+
+    if (info->signalSemaphoreCount) {
+      str << "  Signal semaphores (" << std::dec << info->signalSemaphoreCount << "):" << std::endl;
+
+      for (uint32_t i = 0; i < info->signalSemaphoreCount; i++)
+        str << "    " << info->pSignalSemaphores[i] << " (" << timelineInfo->pSignalSemaphoreValues[i] << ")" << std::endl;
+    }
+
+    Logger::log(level, str.str());
   }
 
 }

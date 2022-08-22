@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+
 #include "dxvk_memory.h"
 #include "dxvk_resource.h"
 
@@ -489,6 +491,266 @@ namespace dxvk {
   protected:
 
     DxvkSparsePageTable m_sparsePageTable;
+
+  };
+
+
+  /**
+   * \brief Key for sparse buffer binding entry
+   *
+   * Provides a strong ordering by resource, resource offset,
+   * and finally, size. The ordering can be used to easily
+   * merge adjacent ranges.
+   */
+  struct DxvkSparseBufferBindKey {
+    VkBuffer                    buffer;
+    VkDeviceSize                offset;
+    VkDeviceSize                size;
+
+    bool operator < (const DxvkSparseBufferBindKey& other) const {
+      if (buffer < other.buffer) return true;
+      if (buffer > other.buffer) return false;
+
+      if (offset < other.offset) return true;
+      if (offset > other.offset) return false;
+
+      return size < other.size;
+    }
+  };
+
+
+  /**
+   * \brief Key for sparse image binding entry
+   *
+   * Provides a strong ordering by resource, subresource,
+   * offset (z -> y -> x), and finally, extent (d -> h -> w).
+   * The ordering can be used to easily merge adjacent regions.
+   */
+  struct DxvkSparseImageBindKey {
+    VkImage                     image;
+    VkImageSubresource          subresource;
+    VkOffset3D                  offset;
+    VkExtent3D                  extent;
+
+    bool operator < (const DxvkSparseImageBindKey& other) const {
+      if (image < other.image) return true;
+      if (image > other.image) return false;
+
+      uint64_t aSubresource = this->encodeSubresource();
+      uint64_t bSubresource = other.encodeSubresource();
+
+      if (aSubresource < bSubresource) return true;
+      if (aSubresource > bSubresource) return false;
+
+      uint64_t aOffset = this->encodeOffset();
+      uint64_t bOffset = other.encodeOffset();
+
+      if (aOffset < bOffset) return true;
+      if (aOffset > bOffset) return false;
+
+      uint64_t aExtent = this->encodeExtent();
+      uint64_t bExtent = other.encodeExtent();
+
+      return aExtent < bExtent;
+    }
+
+    uint64_t encodeSubresource() const {
+      return uint64_t(subresource.aspectMask) << 48
+           | uint64_t(subresource.arrayLayer) << 24
+           | uint64_t(subresource.mipLevel);
+    }
+
+    uint64_t encodeOffset() const {
+      return uint64_t(offset.z) << 48
+           | uint64_t(offset.y) << 24
+           | uint64_t(offset.x);
+    }
+
+    uint64_t encodeExtent() const {
+      return uint64_t(extent.depth) << 48
+           | uint64_t(extent.height) << 24
+           | uint64_t(extent.width);
+    }
+  };
+
+
+  /**
+   * \brief Key for sparse opaque image binding entry
+   *
+   * Provides a strong ordering by resource, resource offset,
+   * and finally, size. The ordering can be used to easily
+   * merge adjacent ranges.
+   */
+  struct DxvkSparseImageOpaqueBindKey {
+    VkImage                     image;
+    VkDeviceSize                offset;
+    VkDeviceSize                size;
+    VkSparseMemoryBindFlags     flags;
+
+    bool operator < (const DxvkSparseImageOpaqueBindKey& other) const {
+      if (image < other.image) return true;
+      if (image > other.image) return false;
+
+      if (offset < other.offset) return true;
+      if (offset > other.offset) return false;
+
+      return size < other.size;
+    }
+  };
+
+
+  /**
+   * \brief Arrays required for buffer binds
+   */
+  struct DxvkSparseBufferBindArrays {
+    std::vector<VkSparseMemoryBind> binds;
+    std::vector<VkSparseBufferMemoryBindInfo> infos;
+  };
+
+
+  /**
+   * \brief Arrays required for image binds
+   */
+  struct DxvkSparseImageBindArrays {
+    std::vector<VkSparseImageMemoryBind> binds;
+    std::vector<VkSparseImageMemoryBindInfo> infos;
+  };
+
+
+  /**
+   * \brief Arrays required for opaque image binds
+   */
+  struct DxvkSparseImageOpaqueBindArrays {
+    std::vector<VkSparseMemoryBind> binds;
+    std::vector<VkSparseImageOpaqueMemoryBindInfo> infos;
+  };
+
+
+  /**
+   * \brief Sparse bind submission
+   *
+   * Stores information for a single sparse binding operation,
+   * and supports submitting that operation to a device queue.
+   *
+   * All methods to add bindings assume that the binding range is
+   * either identical to an existing range, in which case the old
+   * binding will be overwritten, or otherwise, that the range is
+   * disjoint from all existing ranges. Overlapping ranges are not
+   * supported. This condition is trivial to maintain when binding
+   * only one sparse page at a time.
+   */
+  class DxvkSparseBindSubmission {
+
+  public:
+
+    DxvkSparseBindSubmission();
+
+    ~DxvkSparseBindSubmission();
+
+    /**
+     * \brief Waits for a semaphore
+     *
+     * \param [in] semaphore Semaphore to wait for
+     * \param [in] value Semaphore value to wait on
+     */
+    void waitSemaphore(
+            VkSemaphore             semaphore,
+            uint64_t                value);
+
+    /**
+     * \brief Signals a semaphore
+     *
+     * \param [in] semaphore Semaphore to signal
+     * \param [in] value Calue to signal semaphore to
+     */
+    void signalSemaphore(
+            VkSemaphore             semaphore,
+            uint64_t                value);
+
+    /**
+     * \brief Adds a buffer memory bind
+     *
+     * \param [in] key Buffer range key
+     * \param [in] memory Page handle
+     */
+    void bindBufferMemory(
+      const DxvkSparseBufferBindKey& key,
+      const DxvkSparsePageHandle&   memory);
+
+    /**
+     * \brief Adds an image memory bind
+     *
+     * \param [in] key Image region key
+     * \param [in] memory Page handle
+     */
+    void bindImageMemory(
+      const DxvkSparseImageBindKey& key,
+      const DxvkSparsePageHandle&   memory);
+
+    /**
+     * \brief Adds an opaque image memory bind
+     *
+     * \param [in] key Opaque region key
+     * \param [in] memory Page handle
+     */
+    void bindImageOpaqueMemory(
+      const DxvkSparseImageOpaqueBindKey& key,
+      const DxvkSparsePageHandle&   memory);
+
+    /**
+     * \brief Submits sparse binding operation
+     *
+     * Generates structures required for the sparse bind, resolving
+     * any conflicts in the process and merging ranges where possible.
+     * Note that this operation is slow. Resets object after the call.
+     * \param [in] device DXVK device
+     * \param [in] queue Queue to perform the operation on
+     * \returns Return value of the sparse bind operation
+     */
+    VkResult submit(
+            DxvkDevice*             device,
+            VkQueue                 queue);
+
+    /**
+     * \brief Resets object
+     *
+     * Clears all internal structures.
+     */
+    void reset();
+
+  private:
+
+    std::vector<uint64_t>     m_waitSemaphoreValues;
+    std::vector<VkSemaphore>  m_waitSemaphores;
+    std::vector<uint64_t>     m_signalSemaphoreValues;
+    std::vector<VkSemaphore>  m_signalSemaphores;
+
+    std::map<DxvkSparseBufferBindKey,      DxvkSparsePageHandle> m_bufferBinds;
+    std::map<DxvkSparseImageBindKey,       DxvkSparsePageHandle> m_imageBinds;
+    std::map<DxvkSparseImageOpaqueBindKey, DxvkSparsePageHandle> m_imageOpaqueBinds;
+
+    static bool tryMergeMemoryBind(
+            VkSparseMemoryBind&               oldBind,
+      const VkSparseMemoryBind&               newBind);
+
+    void processBufferBinds(
+            DxvkSparseBufferBindArrays&       buffer);
+
+    void processImageBinds(
+            DxvkSparseImageBindArrays&        image);
+
+    void processOpaqueBinds(
+            DxvkSparseImageOpaqueBindArrays&  opaque);
+
+    template<typename HandleType, typename BindType, typename InfoType>
+    void populateOutputArrays(
+            std::vector<BindType>&            binds,
+            std::vector<InfoType>&            infos,
+      const std::vector<std::pair<HandleType, BindType>>& input);
+
+    void logSparseBindingInfo(
+            LogLevel                          level,
+      const VkBindSparseInfo*                 info);
 
   };
 
