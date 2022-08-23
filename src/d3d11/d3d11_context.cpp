@@ -2628,10 +2628,25 @@ namespace dxvk {
           ID3D11Buffer*                     pBuffer,
           UINT64                            BufferStartOffsetInBytes,
           UINT                              Flags) {
-    static bool s_errorShown = false;
+    if (!pTiledResource || !pBuffer)
+      return;
 
-    if (!std::exchange(s_errorShown, true))
-      Logger::err("D3D11DeviceContext::CopyTiles: Not implemented");
+    auto buffer = static_cast<D3D11Buffer*>(pBuffer);
+
+    // Get buffer slice and just forward the call
+    VkDeviceSize bufferSize = pTileRegionSize->NumTiles * SparseMemoryPageSize;
+
+    if (buffer->Desc()->ByteWidth < BufferStartOffsetInBytes + bufferSize)
+      return;
+
+    DxvkBufferSlice slice = buffer->GetBufferSlice(BufferStartOffsetInBytes, bufferSize);
+
+    CopyTiledResourceData(pTiledResource,
+      pTileRegionStartCoordinate,
+      pTileRegionSize, slice, Flags);
+
+    if (buffer->HasSequenceNumber())
+      GetTypedContext()->TrackBufferSequenceNumber(buffer);
   }
 
 
@@ -2927,10 +2942,25 @@ namespace dxvk {
     const D3D11_TILE_REGION_SIZE*           pDestTileRegionSize,
     const void*                             pSourceTileData,
           UINT                              Flags) {
-    bool s_errorShown = false;
+    if (!pDestTiledResource || !pSourceTileData)
+      return;
 
-    if (std::exchange(s_errorShown, true))
-      Logger::err("D3D11DeviceContext::UpdateTiles: Not implemented");
+    // Allocate staging memory and copy source data into it, at a
+    // 64k page granularity. It is not clear whether this behaviour
+    // is correct in case we're writing to incmplete pages.
+    VkDeviceSize bufferSize = pDestTileRegionSize->NumTiles * SparseMemoryPageSize;
+
+    DxvkBufferSlice slice = AllocStagingBuffer(bufferSize);
+    std::memcpy(slice.mapPtr(0), pSourceTileData, bufferSize);
+
+    // Fix up flags. The runtime probably validates this in some
+    // way but our internal function relies on correct flags anyway.
+    Flags &= D3D11_TILE_MAPPING_NO_OVERWRITE;
+    Flags |= D3D11_TILE_COPY_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE;
+
+    CopyTiledResourceData(pDestTiledResource,
+      pDestTileRegionStartCoordinate,
+      pDestTileRegionSize, slice, Flags);
   }
 
 
@@ -4012,6 +4042,94 @@ namespace dxvk {
         GetTypedContext()->TrackTextureSequenceNumber(pSrcTexture, D3D11CalcSubresource(
           pSrcLayers->mipLevel, pSrcLayers->baseArrayLayer + i, pSrcTexture->Desc()->MipLevels));
       }
+    }
+  }
+
+
+  template<typename ContextType>
+  void D3D11CommonContext<ContextType>::CopyTiledResourceData(
+          ID3D11Resource*                   pResource,
+    const D3D11_TILED_RESOURCE_COORDINATE*  pRegionCoordinate,
+    const D3D11_TILE_REGION_SIZE*           pRegionSize,
+          DxvkBufferSlice                   BufferSlice,
+          UINT                              Flags) {
+    Rc<DxvkPagedResource> resource = GetPagedResource(pResource);
+
+    // Do some validation based on page table properties
+    auto pageTable = resource->getSparsePageTable();
+
+    if (!pageTable)
+      return;
+
+    if (pRegionSize->bUseBox && pRegionSize->NumTiles !=
+        pRegionSize->Width * pRegionSize->Height * pRegionSize->Depth)
+      return;
+
+    if (pRegionSize->NumTiles > pageTable->getPageCount())
+      return;
+
+    // Ignore call if buffer access would be out of bounds
+    VkDeviceSize bufferSize = pRegionSize->NumTiles * SparseMemoryPageSize;
+
+    if (BufferSlice.length() < bufferSize)
+      return;
+
+    // Compute list of tile indices to copy
+    std::vector<uint32_t> tiles(pRegionSize->NumTiles);
+
+    for (uint32_t i = 0; i < pRegionSize->NumTiles; i++) {
+      VkOffset3D regionOffset = {
+        int32_t(pRegionCoordinate->X),
+        int32_t(pRegionCoordinate->Y),
+        int32_t(pRegionCoordinate->Z) };
+
+      VkExtent3D regionExtent = {
+        uint32_t(pRegionSize->Width),
+        uint32_t(pRegionSize->Height),
+        uint32_t(pRegionSize->Depth) };
+
+      uint32_t tile = pageTable->computePageIndex(
+        pRegionCoordinate->Subresource, regionOffset,
+        regionExtent, !pRegionSize->bUseBox, i);
+
+      // Check that the tile is valid and not part of the mip tail
+      auto tileInfo = pageTable->getPageInfo(tile);
+
+      if (tileInfo.type != DxvkSparsePageType::Buffer
+       && tileInfo.type != DxvkSparsePageType::Image)
+        return;
+
+      tiles[i] = tile;
+    }
+
+    // If D3D12 is anything to go by, not passing this flag will trigger
+    // the other code path, regardless of whether TO_LINEAR_BUFFER is set.
+    if (Flags & D3D11_TILE_COPY_LINEAR_BUFFER_TO_SWIZZLED_TILED_RESOURCE) {
+      EmitCs([
+        cResource = std::move(resource),
+        cTiles    = std::move(tiles),
+        cBuffer   = std::move(BufferSlice)
+      ] (DxvkContext* ctx) {
+        ctx->copySparsePagesFromBuffer(
+          cResource,
+          cTiles.size(),
+          cTiles.data(),
+          cBuffer.buffer(),
+          cBuffer.offset());
+      });
+    } else {
+      EmitCs([
+        cResource = std::move(resource),
+        cTiles    = std::move(tiles),
+        cBuffer   = std::move(BufferSlice)
+      ] (DxvkContext* ctx) {
+        ctx->copySparsePagesToBuffer(
+          cBuffer.buffer(),
+          cBuffer.offset(),
+          cResource,
+          cTiles.size(),
+          cTiles.data());
+      });
     }
   }
 

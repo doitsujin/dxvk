@@ -885,6 +885,13 @@ namespace dxvk {
             VkOffset3D                        SrcOffset,
             VkExtent3D                        SrcExtent);
 
+    void CopyTiledResourceData(
+            ID3D11Resource*                   pResource,
+      const D3D11_TILED_RESOURCE_COORDINATE*  pRegionCoordinate,
+      const D3D11_TILE_REGION_SIZE*           pRegionSize,
+            DxvkBufferSlice                   BufferSlice,
+            UINT                              Flags);
+
     void DiscardBuffer(
             ID3D11Resource*                   pResource);
 
