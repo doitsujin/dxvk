@@ -746,6 +746,12 @@ namespace dxvk {
     if (unlikely(srcTextureInfo->Desc()->Format != dstTextureInfo->Desc()->Format))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(srcTextureInfo->Desc()->MultiSample != D3DMULTISAMPLE_NONE))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(dstTextureInfo->Desc()->MultiSample != D3DMULTISAMPLE_NONE))
+      return D3DERR_INVALIDCALL;
+
     const DxvkFormatInfo* formatInfo = lookupFormatInfo(dstTextureInfo->GetFormatMapping().FormatColor);
 
     VkOffset3D srcOffset = { 0u, 0u, 0u };
