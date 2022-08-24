@@ -15,7 +15,6 @@ namespace dxvk {
   : D3D11DeviceChild<ID3D11DeviceContext4>(pParent),
     m_contextExt(GetTypedContext()),
     m_annotation(GetTypedContext(), Device),
-    m_multithread(this, false),
     m_device    (Device),
     m_flags     (ContextFlags),
     m_staging   (Device, StagingBufferSize),
@@ -59,11 +58,6 @@ namespace dxvk {
     if (riid == __uuidof(ID3DUserDefinedAnnotation)
      || riid == __uuidof(IDXVKUserDefinedAnnotation)) {
       *ppvObject = ref(&m_annotation);
-      return S_OK;
-    }
-
-    if (riid == __uuidof(ID3D10Multithread)) {
-      *ppvObject = ref(&m_multithread);
       return S_OK;
     }
 

@@ -79,7 +79,11 @@ namespace dxvk {
 
     void SynchronizeCsThread(
             uint64_t                          SequenceNumber);
-    
+
+    D3D10DeviceLock LockContext() {
+      return m_multithread.AcquireLock();
+    }
+
   private:
     
     DxvkCsThread            m_csThread;
@@ -95,6 +99,7 @@ namespace dxvk {
     dxvk::high_resolution_clock::time_point m_lastFlush
       = dxvk::high_resolution_clock::now();
     
+    D3D10Multithread             m_multithread;
     D3D11VideoContext            m_videoContext;
     Com<D3D11DeviceContextState> m_stateObject;
     

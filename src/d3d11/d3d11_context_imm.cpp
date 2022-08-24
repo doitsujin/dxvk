@@ -18,6 +18,7 @@ namespace dxvk {
   : D3D11CommonContext<D3D11ImmediateContext>(pParent, Device, 0, DxvkCsChunkFlag::SingleUse),
     m_csThread(Device, Device->createContext(DxvkContextType::Primary)),
     m_maxImplicitDiscardSize(pParent->GetOptions()->maxImplicitDiscardSize),
+    m_multithread(this, false),
     m_videoContext(this, Device) {
     EmitCs([
       cDevice                 = m_device,
@@ -54,6 +55,11 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::QueryInterface(REFIID riid, void** ppvObject) {
+    if (riid == __uuidof(ID3D10Multithread)) {
+      *ppvObject = ref(&m_multithread);
+      return S_OK;
+    }
+
     if (riid == __uuidof(ID3D11VideoContext)) {
       *ppvObject = ref(&m_videoContext);
       return S_OK;

@@ -79,6 +79,10 @@ namespace dxvk {
            ID3DDeviceContextState*           pState,
            ID3DDeviceContextState**          ppPreviousState);
 
+    D3D10DeviceLock LockContext() {
+      return D3D10DeviceLock();
+    }
+
   private:
     
     // Command list that we're recording
