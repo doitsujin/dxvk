@@ -111,6 +111,11 @@ namespace dxvk {
     /// in cached system memory. Enabled automatically when recording
     /// an api trace.
     uint32_t cachedDynamicResources;
+
+    /// Always lock immediate context on every API call. May be
+    /// useful for debugging purposes or when applications have
+    /// race conditions.
+    bool enableContextLock;
   };
   
 }
