@@ -31,10 +31,10 @@ namespace dxvk {
     info.addressModeV   = DecodeAddressMode(desc.AddressV);
     info.addressModeW   = DecodeAddressMode(desc.AddressW);
     
-    info.compareToDepth = (filterBits & 0x80) ? VK_TRUE : VK_FALSE;
+    info.compareToDepth = (filterBits & 0x180) == 0x80 ? VK_TRUE : VK_FALSE;
     info.compareOp      = DecodeCompareOp(desc.ComparisonFunc);
-    
-    info.reductionMode  = VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
+
+    info.reductionMode  = DecodeReductionMode(filterBits);
 
     for (uint32_t i = 0; i < 4; i++)
       info.borderColor.float32[i] = desc.BorderColor[i];
@@ -100,7 +100,7 @@ namespace dxvk {
   HRESULT D3D11SamplerState::NormalizeDesc(D3D11_SAMPLER_DESC* pDesc) {
     const uint32_t filterBits = uint32_t(pDesc->Filter);
     
-    if (filterBits & 0xFFFFFF2A) {
+    if (filterBits & 0xFFFFFE2A) {
       Logger::err(str::format(
         "D3D11SamplerState: Unhandled filter: ", filterBits));
       return E_INVALIDARG;
@@ -114,7 +114,7 @@ namespace dxvk {
       pDesc->MaxAnisotropy = 0;
     }
     
-    if (filterBits & 0x80 /* compare-to-depth */) {
+    if ((filterBits & 0x180) == 0x80 /* compare-to-depth */) {
       if (!ValidateComparisonFunc(pDesc->ComparisonFunc))
         return E_INVALIDARG;
     } else {

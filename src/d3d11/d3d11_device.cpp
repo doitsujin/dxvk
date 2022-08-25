@@ -1157,8 +1157,11 @@ namespace dxvk {
     
     if (FAILED(D3D11SamplerState::NormalizeDesc(&desc)))
       return E_INVALIDARG;
-    
-    if (ppSamplerState == nullptr)
+
+    if (IsMinMaxFilter(desc.Filter) && m_tiledResourcesTier < D3D11_TILED_RESOURCES_TIER_2)
+      return E_INVALIDARG;
+
+    if (!ppSamplerState)
       return S_FALSE;
     
     try {

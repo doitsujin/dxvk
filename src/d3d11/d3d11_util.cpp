@@ -64,6 +64,19 @@ namespace dxvk {
   }
   
   
+  VkSamplerReductionMode DecodeReductionMode(
+          UINT                      Filter) {
+    switch (Filter & 0x180) {
+      default:
+        return VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
+      case 0x100:
+        return VK_SAMPLER_REDUCTION_MODE_MIN;
+      case 0x180:
+        return VK_SAMPLER_REDUCTION_MODE_MAX;
+    }
+  }
+
+
   VkConservativeRasterizationModeEXT DecodeConservativeRasterizationMode(
           D3D11_CONSERVATIVE_RASTERIZATION_MODE Mode) {
     switch (Mode) {
@@ -123,6 +136,11 @@ namespace dxvk {
       default:
         return VK_FORMAT_UNDEFINED;
     }
+  }
+
+
+  BOOL IsMinMaxFilter(D3D11_FILTER Filter) {
+    return DecodeReductionMode(uint32_t(Filter)) != VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
   }
 
 }

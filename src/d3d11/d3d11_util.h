@@ -21,13 +21,16 @@ namespace dxvk {
   HRESULT DecodeSampleCount(
           UINT                      Count,
           VkSampleCountFlagBits*    pCount);
-    
+  
   VkSamplerAddressMode DecodeAddressMode(
           D3D11_TEXTURE_ADDRESS_MODE  mode);
-  
+
   VkCompareOp DecodeCompareOp(
           D3D11_COMPARISON_FUNC     Mode);
-  
+
+  VkSamplerReductionMode DecodeReductionMode(
+          UINT                      Filter);
+
   VkConservativeRasterizationModeEXT DecodeConservativeRasterizationMode(
           D3D11_CONSERVATIVE_RASTERIZATION_MODE Mode);
 
@@ -39,6 +42,8 @@ namespace dxvk {
   
   VkFormat GetPackedDepthStencilFormat(
           DXGI_FORMAT               Format);
+
+  BOOL IsMinMaxFilter(D3D11_FILTER Filter);
 
   /**
    * \brief Translates D3D11 shader stage to corresponding Vulkan stage
