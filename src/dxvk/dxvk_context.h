@@ -669,7 +669,39 @@ namespace dxvk {
             VkOffset2D            srcOffset,
             VkExtent2D            srcExtent,
             VkFormat              format);
-    
+
+    /**
+     * \brief Copies pages from a sparse resource to a buffer
+     *
+     * \param [in] dstBuffer Buffer to write to
+     * \param [in] dstOffset Buffer offset
+     * \param [in] srcResource Source resource
+     * \param [in] pageCount Number of pages to copy
+     * \param [in] pages Page indices to copy
+     */
+    void copySparsePagesToBuffer(
+      const Rc<DxvkBuffer>&       dstBuffer,
+            VkDeviceSize          dstOffset,
+      const Rc<DxvkPagedResource>& srcResource,
+            uint32_t              pageCount,
+      const uint32_t*             pages);
+
+    /**
+     * \brief Copies pages from a buffer to a sparse resource
+     *
+     * \param [in] dstResource Resource to write to
+     * \param [in] pageCount Number of pages to copy
+     * \param [in] pages Page indices to copy
+     * \param [in] srcBuffer Source buffer
+     * \param [in] srcOffset Buffer offset
+     */
+    void copySparsePagesFromBuffer(
+      const Rc<DxvkPagedResource>& dstResource,
+            uint32_t              pageCount,
+      const uint32_t*             pages,
+      const Rc<DxvkBuffer>&       srcBuffer,
+            VkDeviceSize          srcOffset);
+
     /**
      * \brief Discards a buffer
      * 
@@ -1421,6 +1453,30 @@ namespace dxvk {
             VkExtent3D            dstExtent,
       const Rc<DxvkImage>&        srcImage,
             VkImageSubresourceLayers srcSubresource);
+
+    template<bool ToBuffer>
+    void copySparsePages(
+      const Rc<DxvkPagedResource>& sparse,
+            uint32_t              pageCount,
+      const uint32_t*             pages,
+      const Rc<DxvkBuffer>&       buffer,
+            VkDeviceSize          offset);
+
+    template<bool ToBuffer>
+    void copySparseBufferPages(
+      const Rc<DxvkBuffer>&       sparse,
+            uint32_t              pageCount,
+      const uint32_t*             pages,
+      const Rc<DxvkBuffer>&       buffer,
+            VkDeviceSize          offset);
+
+    template<bool ToBuffer>
+    void copySparseImagePages(
+      const Rc<DxvkImage>&        sparse,
+            uint32_t              pageCount,
+      const uint32_t*             pages,
+      const Rc<DxvkBuffer>&       buffer,
+            VkDeviceSize          offset);
 
     void resolveImageHw(
       const Rc<DxvkImage>&            dstImage,

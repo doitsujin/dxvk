@@ -1168,6 +1168,30 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::copySparsePagesToBuffer(
+    const Rc<DxvkBuffer>&       dstBuffer,
+          VkDeviceSize          dstOffset,
+    const Rc<DxvkPagedResource>& srcResource,
+          uint32_t              pageCount,
+    const uint32_t*             pages) {
+    this->copySparsePages<true>(
+      srcResource, pageCount, pages,
+      dstBuffer, dstOffset);
+  }
+
+
+  void DxvkContext::copySparsePagesFromBuffer(
+    const Rc<DxvkPagedResource>& dstResource,
+          uint32_t              pageCount,
+    const uint32_t*             pages,
+    const Rc<DxvkBuffer>&       srcBuffer,
+          VkDeviceSize          srcOffset) {
+    this->copySparsePages<false>(
+      dstResource, pageCount, pages,
+      srcBuffer, srcOffset);
+  }
+
+
   void DxvkContext::discardBuffer(
     const Rc<DxvkBuffer>&       buffer) {
     if ((buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
@@ -3720,6 +3744,188 @@ namespace dxvk {
     auto view = m_device->createImageView(dstImage, viewInfo);
     this->deferClear(view, srcSubresource.aspectMask, clear->clearValue);
     return true;
+  }
+
+
+  template<bool ToBuffer>
+  void DxvkContext::copySparsePages(
+    const Rc<DxvkPagedResource>& sparse,
+          uint32_t              pageCount,
+    const uint32_t*             pages,
+    const Rc<DxvkBuffer>&       buffer,
+          VkDeviceSize          offset) {
+    auto pageTable = sparse->getSparsePageTable();
+    auto bufferHandle = buffer->getSliceHandle(offset, SparseMemoryPageSize * pageCount);
+
+    if (m_execBarriers.isBufferDirty(bufferHandle,
+        ToBuffer ? DxvkAccess::Write : DxvkAccess::Read))
+      m_execBarriers.recordCommands(m_cmd);
+
+    if (pageTable->getBufferHandle()) {
+      this->copySparseBufferPages<ToBuffer>(
+        static_cast<DxvkBuffer*>(sparse.ptr()),
+        pageCount, pages, buffer, offset);
+    } else {
+      this->copySparseImagePages<ToBuffer>(
+        static_cast<DxvkImage*>(sparse.ptr()),
+        pageCount, pages, buffer, offset);
+    }
+  }
+
+
+  template<bool ToBuffer>
+  void DxvkContext::copySparseBufferPages(
+    const Rc<DxvkBuffer>&       sparse,
+          uint32_t              pageCount,
+    const uint32_t*             pages,
+    const Rc<DxvkBuffer>&       buffer,
+          VkDeviceSize          offset) {
+    std::vector<VkBufferCopy2> regions;
+    regions.reserve(pageCount);
+
+    auto pageTable = sparse->getSparsePageTable();
+
+    auto sparseHandle = sparse->getSliceHandle();
+    auto bufferHandle = buffer->getSliceHandle(offset, SparseMemoryPageSize * pageCount);
+
+    if (m_execBarriers.isBufferDirty(sparseHandle,
+        ToBuffer ? DxvkAccess::Read : DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
+
+    for (uint32_t i = 0; i < pageCount; i++) {
+      auto pageInfo = pageTable->getPageInfo(pages[i]);
+
+      if (pageInfo.type == DxvkSparsePageType::Buffer) {
+        VkDeviceSize sparseOffset = pageInfo.buffer.offset;
+        VkDeviceSize bufferOffset = bufferHandle.offset + SparseMemoryPageSize * i;
+
+        VkBufferCopy2 copy = { VK_STRUCTURE_TYPE_BUFFER_COPY_2 };
+        copy.srcOffset = ToBuffer ? sparseOffset : bufferOffset;
+        copy.dstOffset = ToBuffer ? bufferOffset : sparseOffset;
+        copy.size = pageInfo.buffer.length;
+
+        regions.push_back(copy);
+      }
+    }
+
+    VkCopyBufferInfo2 info = { VK_STRUCTURE_TYPE_COPY_BUFFER_INFO_2 };
+    info.srcBuffer = ToBuffer ? sparseHandle.handle : bufferHandle.handle;
+    info.dstBuffer = ToBuffer ? bufferHandle.handle : sparseHandle.handle;
+    info.regionCount = uint32_t(regions.size());
+    info.pRegions = regions.data();
+
+    if (info.regionCount)
+      m_cmd->cmdCopyBuffer(DxvkCmdBuffer::ExecBuffer, &info);
+
+    m_execBarriers.accessBuffer(sparseHandle,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      ToBuffer ? VK_ACCESS_TRANSFER_READ_BIT : VK_ACCESS_TRANSFER_WRITE_BIT,
+      sparse->info().stages,
+      sparse->info().access);
+
+    m_execBarriers.accessBuffer(bufferHandle,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      ToBuffer ? VK_ACCESS_TRANSFER_WRITE_BIT : VK_ACCESS_TRANSFER_READ_BIT,
+      buffer->info().stages,
+      buffer->info().access);
+
+    m_cmd->trackResource<ToBuffer ? DxvkAccess::Read : DxvkAccess::Write>(sparse);
+    m_cmd->trackResource<ToBuffer ? DxvkAccess::Write : DxvkAccess::Read>(buffer);
+  }
+
+
+  template<bool ToBuffer>
+  void DxvkContext::copySparseImagePages(
+    const Rc<DxvkImage>&        sparse,
+          uint32_t              pageCount,
+    const uint32_t*             pages,
+    const Rc<DxvkBuffer>&       buffer,
+          VkDeviceSize          offset) {
+    std::vector<VkBufferImageCopy2> regions;
+    regions.reserve(pageCount);
+
+    auto pageTable = sparse->getSparsePageTable();
+    auto pageExtent = pageTable->getProperties().pageRegionExtent;
+
+    auto bufferHandle = buffer->getSliceHandle(offset, SparseMemoryPageSize * pageCount);
+    auto sparseSubresources = sparse->getAvailableSubresources();
+
+    if (m_execBarriers.isImageDirty(sparse, sparseSubresources, DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
+
+    VkImageLayout transferLayout = sparse->pickLayout(ToBuffer
+      ? VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+      : VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    VkAccessFlags transferAccess = ToBuffer
+      ? VK_ACCESS_TRANSFER_READ_BIT
+      : VK_ACCESS_TRANSFER_WRITE_BIT;
+
+    if (sparse->info().layout != transferLayout) {
+      m_execAcquires.accessImage(sparse, sparseSubresources,
+        sparse->info().layout,
+        sparse->info().stages, 0,
+        transferLayout,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        transferAccess);
+
+      m_execAcquires.recordCommands(m_cmd);
+    }
+
+    for (uint32_t i = 0; i < pageCount; i++) {
+      auto pageInfo = pageTable->getPageInfo(pages[i]);
+
+      if (pageInfo.type == DxvkSparsePageType::Image) {
+        VkBufferImageCopy2 copy = { VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2 };
+        copy.bufferOffset = bufferHandle.offset + SparseMemoryPageSize * i;
+        copy.bufferRowLength = pageExtent.width;
+        copy.bufferImageHeight = pageExtent.height;
+        copy.imageSubresource = vk::makeSubresourceLayers(pageInfo.image.subresource);
+        copy.imageOffset = pageInfo.image.offset;
+        copy.imageExtent = pageInfo.image.extent;
+
+        regions.push_back(copy);
+      }
+    }
+
+    if (ToBuffer) {
+      VkCopyImageToBufferInfo2 info = { VK_STRUCTURE_TYPE_COPY_IMAGE_TO_BUFFER_INFO_2 };
+      info.srcImage = sparse->handle();
+      info.srcImageLayout = transferLayout;
+      info.dstBuffer = bufferHandle.handle;
+      info.regionCount = regions.size();
+      info.pRegions = regions.data();
+
+      if (info.regionCount)
+        m_cmd->cmdCopyImageToBuffer(DxvkCmdBuffer::ExecBuffer, &info);
+    } else {
+      VkCopyBufferToImageInfo2 info = { VK_STRUCTURE_TYPE_COPY_BUFFER_TO_IMAGE_INFO_2 };
+      info.srcBuffer = bufferHandle.handle;
+      info.dstImage = sparse->handle();
+      info.dstImageLayout = transferLayout;
+      info.regionCount = regions.size();
+      info.pRegions = regions.data();
+
+      if (info.regionCount)
+        m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer, &info);
+    }
+
+    m_execAcquires.accessImage(sparse, sparseSubresources,
+      transferLayout,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      transferAccess,
+      sparse->info().layout,
+      sparse->info().stages,
+      sparse->info().access);
+
+    m_execBarriers.accessBuffer(bufferHandle,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      ToBuffer ? VK_ACCESS_TRANSFER_WRITE_BIT : VK_ACCESS_TRANSFER_READ_BIT,
+      buffer->info().stages,
+      buffer->info().access);
+
+    m_cmd->trackResource<ToBuffer ? DxvkAccess::Read : DxvkAccess::Write>(sparse);
+    m_cmd->trackResource<ToBuffer ? DxvkAccess::Write : DxvkAccess::Read>(buffer);
   }
 
 
