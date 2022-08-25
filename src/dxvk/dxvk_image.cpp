@@ -22,7 +22,10 @@ namespace dxvk {
     VkImageFormatListCreateInfo formatList = { VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO };
     formatList.viewFormatCount = createInfo.viewFormatCount;
     formatList.pViewFormats    = createInfo.viewFormats;
-    
+
+    VkExternalMemoryImageCreateInfo externalInfo = { VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO };
+    externalInfo.handleTypes   = createInfo.sharing.type;
+
     VkImageCreateInfo info = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO, &formatList };
     info.flags                 = createInfo.flags;
     info.imageType             = createInfo.type;
@@ -36,17 +39,10 @@ namespace dxvk {
     info.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
     info.initialLayout         = createInfo.initialLayout;
 
-    m_shared = canShareImage(info, createInfo.sharing);
-
-    VkExternalMemoryImageCreateInfo externalInfo = { VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO };
-
-    if (m_shared) {
+    if ((m_shared = canShareImage(info, createInfo.sharing)))
       externalInfo.pNext = std::exchange(info.pNext, &externalInfo);
-      externalInfo.handleTypes = createInfo.sharing.type;
-    }
-    
-    if (m_vkd->vkCreateImage(m_vkd->device(),
-          &info, nullptr, &m_image.image) != VK_SUCCESS) {
+
+    if (m_vkd->vkCreateImage(m_vkd->device(), &info, nullptr, &m_image.image)) {
       throw DxvkError(str::format(
         "DxvkImage: Failed to create image:",
         "\n  Type:            ", info.imageType,
@@ -61,40 +57,52 @@ namespace dxvk {
         "\n  Tiling:          ", info.tiling));
     }
     
-    // Get memory requirements for the image. We may enforce strict
-    // alignment on non-linear images in order not to violate the
-    // bufferImageGranularity limit, which may be greater than the
-    // required resource memory alignment on some GPUs.
-    VkMemoryDedicatedRequirements dedicatedRequirements = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS };
-    VkMemoryRequirements2 memReq = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2, &dedicatedRequirements };
-    
-    VkImageMemoryRequirementsInfo2 memReqInfo = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2 };
-    memReqInfo.image = m_image.image;
+    // Get memory requirements for the image and ask driver
+    // whether we need to use a dedicated allocation.
+    DxvkMemoryRequirements memoryRequirements = { };
+    memoryRequirements.dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS };
+    memoryRequirements.core = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2, &memoryRequirements.dedicated };
 
-    VkMemoryDedicatedAllocateInfo dedMemoryAllocInfo = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
-    dedMemoryAllocInfo.image  = m_image.image;
+    VkImageMemoryRequirementsInfo2 memoryRequirementInfo = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2 };
+    memoryRequirementInfo.image = m_image.image;
 
-    VkExportMemoryAllocateInfo exportInfo = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO };
-    if (m_shared && createInfo.sharing.mode == DxvkSharedHandleMode::Export) {
-      exportInfo.pNext = std::exchange(dedMemoryAllocInfo.pNext, &exportInfo);
-      exportInfo.handleTypes = createInfo.sharing.type;
+    m_vkd->vkGetImageMemoryRequirements2(m_vkd->device(),
+      &memoryRequirementInfo, &memoryRequirements.core);
+
+    // Fill in desired memory properties
+    DxvkMemoryProperties memoryProperties = { };
+    memoryProperties.flags = m_memFlags;
+
+    if (m_shared) {
+      memoryRequirements.dedicated.prefersDedicatedAllocation = VK_TRUE;
+      memoryRequirements.dedicated.requiresDedicatedAllocation = VK_TRUE;
+
+      if (createInfo.sharing.mode == DxvkSharedHandleMode::Export) {
+        memoryProperties.sharedExport = { VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO };
+        memoryProperties.sharedExport.handleTypes = createInfo.sharing.type;
+      }
+
+      if (createInfo.sharing.mode == DxvkSharedHandleMode::Import) {
+        memoryProperties.sharedImportWin32 = { VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR };
+        memoryProperties.sharedImportWin32.handleType = createInfo.sharing.type;
+        memoryProperties.sharedImportWin32.handle = createInfo.sharing.handle;
+      }
     }
 
-#ifdef _WIN32
-    VkImportMemoryWin32HandleInfoKHR importInfo = { VK_STRUCTURE_TYPE_IMPORT_MEMORY_WIN32_HANDLE_INFO_KHR };
-    if (m_shared && createInfo.sharing.mode == DxvkSharedHandleMode::Import) {
-      importInfo.pNext = std::exchange(dedMemoryAllocInfo.pNext, &importInfo);
-      importInfo.handleType = createInfo.sharing.type;
-      importInfo.handle = createInfo.sharing.handle;
+    if (memoryRequirements.dedicated.prefersDedicatedAllocation) {
+      memoryProperties.dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
+      memoryProperties.dedicated.image = m_image.image;
     }
-#endif
 
-    m_vkd->vkGetImageMemoryRequirements2(
-      m_vkd->device(), &memReqInfo, &memReq);
+    // If there's a chance we won't create the image with a dedicated
+    // allocation, enforce strict alignment for tiled images to not
+    // violate the bufferImageGranularity requirement on some GPUs.
+    if (info.tiling != VK_IMAGE_TILING_LINEAR && !memoryRequirements.dedicated.requiresDedicatedAllocation) {
+      VkDeviceSize granularity = memAlloc.bufferImageGranularity();
 
-    if (info.tiling != VK_IMAGE_TILING_LINEAR && !dedicatedRequirements.prefersDedicatedAllocation) {
-      memReq.memoryRequirements.size      = align(memReq.memoryRequirements.size,       memAlloc.bufferImageGranularity());
-      memReq.memoryRequirements.alignment = align(memReq.memoryRequirements.alignment , memAlloc.bufferImageGranularity());
+      auto& core = memoryRequirements.core.memoryRequirements;
+      core.size      = align(core.size,       granularity);
+      core.alignment = align(core.alignment,  granularity);
     }
 
     // Use high memory priority for GPU-writable resources
@@ -110,14 +118,7 @@ namespace dxvk {
     if (isGpuWritable)
       hints.set(DxvkMemoryFlag::GpuWritable);
 
-    if (m_shared) {
-      dedicatedRequirements.prefersDedicatedAllocation  = VK_TRUE;
-      dedicatedRequirements.requiresDedicatedAllocation = VK_TRUE;
-    }
-
-    // Ask driver whether we should be using a dedicated allocation
-    m_image.memory = memAlloc.alloc(&memReq.memoryRequirements,
-      dedicatedRequirements, dedMemoryAllocInfo, memFlags, hints);
+    m_image.memory = memAlloc.alloc(memoryRequirements, memoryProperties, hints);
     
     // Try to bind the allocated memory slice to the image
     if (m_vkd->vkBindImageMemory(m_vkd->device(), m_image.image,

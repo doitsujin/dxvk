@@ -271,8 +271,28 @@ namespace dxvk {
     bool checkHints(DxvkMemoryFlags hints) const;
     
   };
-  
-  
+
+
+  /**
+   * \brief Memory requirement info
+   */
+  struct DxvkMemoryRequirements {
+    VkMemoryDedicatedRequirements dedicated;
+    VkMemoryRequirements2         core;
+  };
+
+
+  /**
+   * \brief Memory allocation info
+   */
+  struct DxvkMemoryProperties {
+    VkExportMemoryAllocateInfo    sharedExport;
+    VkImportMemoryWin32HandleInfoKHR sharedImportWin32;
+    VkMemoryDedicatedAllocateInfo dedicated;
+    VkMemoryPropertyFlags         flags;
+  };
+
+
   /**
    * \brief Memory allocator
    * 
@@ -305,17 +325,13 @@ namespace dxvk {
      * \brief Allocates device memory
      * 
      * \param [in] req Memory requirements
-     * \param [in] dedAllocReq Dedicated allocation requirements
-     * \param [in] dedAllocInfo Dedicated allocation info
-     * \param [in] flags Memory type flags
+     * \param [in] info Memory properties
      * \param [in] hints Memory hints
      * \returns Allocated memory slice
      */
     DxvkMemory alloc(
-      const VkMemoryRequirements*             req,
-      const VkMemoryDedicatedRequirements&    dedAllocReq,
-      const VkMemoryDedicatedAllocateInfo&    dedAllocInfo,
-            VkMemoryPropertyFlags             flags,
+      const DxvkMemoryRequirements&           req,
+            DxvkMemoryProperties              info,
             DxvkMemoryFlags                   hints);
     
     /**
@@ -342,25 +358,22 @@ namespace dxvk {
     std::array<DxvkMemoryType, VK_MAX_MEMORY_TYPES> m_memTypes;
 
     DxvkMemory tryAlloc(
-      const VkMemoryRequirements*             req,
-      const VkMemoryDedicatedAllocateInfo*    dedAllocInfo,
-            VkMemoryPropertyFlags             flags,
+      const DxvkMemoryRequirements&           req,
+      const DxvkMemoryProperties&             info,
             DxvkMemoryFlags                   hints);
     
     DxvkMemory tryAllocFromType(
             DxvkMemoryType*                   type,
-            VkMemoryPropertyFlags             flags,
             VkDeviceSize                      size,
             VkDeviceSize                      align,
-            DxvkMemoryFlags                   hints,
-      const VkMemoryDedicatedAllocateInfo*    dedAllocInfo);
+      const DxvkMemoryProperties&             info,
+            DxvkMemoryFlags                   hints);
     
     DxvkDeviceMemory tryAllocDeviceMemory(
             DxvkMemoryType*                   type,
-            VkMemoryPropertyFlags             flags,
             VkDeviceSize                      size,
-            DxvkMemoryFlags                   hints,
-      const VkMemoryDedicatedAllocateInfo*    dedAllocInfo);
+            DxvkMemoryProperties              info,
+            DxvkMemoryFlags                   hints);
     
     void free(
       const DxvkMemory&           memory);

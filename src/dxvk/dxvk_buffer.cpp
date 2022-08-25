@@ -65,25 +65,32 @@ namespace dxvk {
     
     DxvkBufferHandle handle;
 
-    if (vkd->vkCreateBuffer(vkd->device(),
-          &info, nullptr, &handle.buffer) != VK_SUCCESS) {
+    if (vkd->vkCreateBuffer(vkd->device(), &info, nullptr, &handle.buffer)) {
       throw DxvkError(str::format(
         "DxvkBuffer: Failed to create buffer:"
         "\n  size:  ", info.size,
         "\n  usage: ", info.usage));
     }
-    
-    VkMemoryDedicatedRequirements dedicatedRequirements = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS };
-    VkMemoryRequirements2 memReq = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2, &dedicatedRequirements };
-    
-    VkBufferMemoryRequirementsInfo2 memReqInfo = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2 };
-    memReqInfo.buffer = handle.buffer;
-    
-    VkMemoryDedicatedAllocateInfo dedMemoryAllocInfo = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
-    dedMemoryAllocInfo.buffer = handle.buffer;
 
-    vkd->vkGetBufferMemoryRequirements2(
-       vkd->device(), &memReqInfo, &memReq);
+    // Query memory requirements and whether to use a dedicated allocation
+    DxvkMemoryRequirements memoryRequirements = { };
+    memoryRequirements.dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS };
+    memoryRequirements.core = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2, &memoryRequirements.dedicated };
+
+    VkBufferMemoryRequirementsInfo2 memoryRequirementInfo = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2 };
+    memoryRequirementInfo.buffer = handle.buffer;
+    
+    vkd->vkGetBufferMemoryRequirements2(vkd->device(),
+      &memoryRequirementInfo, &memoryRequirements.core);
+
+    // Fill in desired memory properties
+    DxvkMemoryProperties memoryProperties = { };
+    memoryProperties.flags = m_memFlags;
+
+    if (memoryRequirements.dedicated.prefersDedicatedAllocation) {
+      memoryProperties.dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO };
+      memoryProperties.dedicated.buffer = handle.buffer;
+    }
 
     // Use high memory priority for GPU-writable resources
     bool isGpuWritable = (m_info.access & (
@@ -102,9 +109,7 @@ namespace dxvk {
      && (m_info.usage & VK_BUFFER_USAGE_TRANSFER_SRC_BIT))
       hints.set(DxvkMemoryFlag::Transient);
 
-    // Ask driver whether we should be using a dedicated allocation
-    handle.memory = m_memAlloc->alloc(&memReq.memoryRequirements,
-      dedicatedRequirements, dedMemoryAllocInfo, m_memFlags, hints);
+    handle.memory = m_memAlloc->alloc(memoryRequirements, memoryProperties, hints);
     
     if (vkd->vkBindBufferMemory(vkd->device(), handle.buffer,
         handle.memory.memory(), handle.memory.offset()) != VK_SUCCESS)
