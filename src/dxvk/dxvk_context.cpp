@@ -3964,15 +3964,20 @@ namespace dxvk {
     m_cmd->cmdDraw(3, region.dstSubresource.layerCount, 0, 0);
     m_cmd->cmdEndRendering();
 
-    if (srcImage->info().layout != srcLayout) {
-      m_execBarriers.accessImage(
-        srcImage, srcSubresourceRange, srcLayout,
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-        srcImage->info().layout,
-        srcImage->info().stages,
-        srcImage->info().access);
-    }
-    
+    m_execBarriers.accessImage(
+      srcImage, srcSubresourceRange, srcLayout,
+      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+      srcImage->info().layout,
+      srcImage->info().stages,
+      srcImage->info().access);
+
+    m_execBarriers.accessImage(
+      dstImage, dstSubresourceRange,
+      dstLayout, dstStages, dstAccess,
+      dstImage->info().layout,
+      dstImage->info().stages,
+      dstImage->info().access);
+
     m_cmd->trackResource<DxvkAccess::Write>(dstImage);
     m_cmd->trackResource<DxvkAccess::Read>(srcImage);
     m_cmd->trackResource<DxvkAccess::None>(views);
