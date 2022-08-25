@@ -33,9 +33,12 @@ namespace dxvk {
     VkBool32    compareToDepth;
     VkCompareOp compareOp;
     
+    /// Reduction mode for min/max samplers
+    VkSamplerReductionMode reductionMode;
+    
     /// Texture border color
     VkClearColorValue borderColor;
-    
+
     /// Enables unnormalized coordinates
     VkBool32 usePixelCoord;
 

@@ -362,6 +362,7 @@ namespace dxvk {
     samplerInfo.addressModeW    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     samplerInfo.compareToDepth  = VK_FALSE;
     samplerInfo.compareOp       = VK_COMPARE_OP_ALWAYS;
+    samplerInfo.reductionMode   = VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
     samplerInfo.borderColor     = VkClearColorValue();
     samplerInfo.usePixelCoord   = VK_FALSE;
     samplerInfo.nonSeamless     = VK_FALSE;

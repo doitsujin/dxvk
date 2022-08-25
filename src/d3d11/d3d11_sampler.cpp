@@ -34,6 +34,8 @@ namespace dxvk {
     info.compareToDepth = (filterBits & 0x80) ? VK_TRUE : VK_FALSE;
     info.compareOp      = DecodeCompareOp(desc.ComparisonFunc);
     
+    info.reductionMode  = VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
+
     for (uint32_t i = 0; i < 4; i++)
       info.borderColor.float32[i] = desc.BorderColor[i];
     
