@@ -162,7 +162,7 @@ namespace dxvk {
     VkImage handle() const {
       return m_image.image;
     }
-    
+
     /**
      * \brief Image properties
      * 
@@ -301,12 +301,11 @@ namespace dxvk {
     }
 
     /**
-     * \brief Memory size
-     * 
-     * \returns The memory size of the image
+     * \brief Memory object
+     * \returns Backing memory
      */
-    VkDeviceSize memSize() const {
-      return m_image.memory.length();
+    const DxvkMemory& memory() const {
+      return m_image.memory;
     }
 
     /**
