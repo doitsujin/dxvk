@@ -311,6 +311,11 @@ namespace dxvk {
     { R"(\\Stray-Win64-Shipping\.exe$)", {{
       { "d3d11.ignoreGraphicsBarriers",     "True" },
     }} },
+    /* Metal Gear Solid V: Ground Zeroes          *
+     * Texture quality can break at high vram     */
+    { R"(\\MgsGroundZeroes\.exe$)", {{
+      { "dxgi.maxDeviceMemory",     "4095" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
