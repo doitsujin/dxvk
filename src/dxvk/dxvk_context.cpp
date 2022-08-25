@@ -1523,6 +1523,60 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::initSparseImage(
+    const Rc<DxvkImage>&            image) {
+    auto vk = m_device->vkd();
+
+    // Query sparse memory requirements
+    uint32_t reqCount = 0;
+    vk->vkGetImageSparseMemoryRequirements(vk->device(), image->handle(), &reqCount, nullptr);
+
+    std::vector<VkSparseImageMemoryRequirements> req(reqCount);
+    vk->vkGetImageSparseMemoryRequirements(vk->device(), image->handle(), &reqCount, req.data());
+
+    // Bind metadata aspects. Since the image was just created,
+    // we do not need to interrupt our command list for that.
+    VkDeviceMemory imageMemory = image->memory().memory();
+    VkDeviceSize   imageOffset = image->memory().offset();
+
+    for (const auto& r : req) {
+      if (!(r.formatProperties.aspectMask & VK_IMAGE_ASPECT_METADATA_BIT))
+        continue;
+
+      uint32_t layerCount = (r.formatProperties.flags & VK_SPARSE_IMAGE_FORMAT_SINGLE_MIPTAIL_BIT)
+        ? 1u : image->info().numLayers;
+
+      for (uint32_t i = 0; i < layerCount; i++) {
+        DxvkSparseImageOpaqueBindKey key;
+        key.image   = image->handle();
+        key.offset  = r.imageMipTailOffset + i * r.imageMipTailStride;
+        key.size    = r.imageMipTailSize;
+        key.flags   = VK_SPARSE_MEMORY_BIND_METADATA_BIT;
+
+        DxvkSparsePageHandle page;
+        page.memory = imageMemory;
+        page.offset = imageOffset;
+        page.length = r.imageMipTailSize;
+
+        m_cmd->bindImageOpaqueMemory(key, page);
+
+        imageOffset += r.imageMipTailSize;
+      }
+    }
+
+    // Perform initial layout transition
+    m_initBarriers.accessImage(image,
+      image->getAvailableSubresources(),
+      VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
+      image->info().layout,
+      image->info().stages,
+      image->info().access);
+
+    m_cmd->trackResource<DxvkAccess::Write>(image);
+  }
+
+
   void DxvkContext::emitGraphicsBarrier(
           VkPipelineStageFlags      srcStages,
           VkAccessFlags             srcAccess,

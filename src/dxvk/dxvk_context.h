@@ -905,7 +905,17 @@ namespace dxvk {
       const Rc<DxvkImage>&            image,
       const VkImageSubresourceRange&  subresources,
             VkImageLayout             initialLayout);
-    
+
+    /**
+     * \brief Initializes sparse image
+     *
+     * Binds any metadata aspects that the image might
+     * have, and performs the initial layout transition.
+     * \param [in] image Image to initialize
+     */
+    void initSparseImage(
+      const Rc<DxvkImage>&            image);
+
     /**
      * \brief Invalidates a buffer's contents
      * 
