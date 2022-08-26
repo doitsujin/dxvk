@@ -1658,7 +1658,7 @@ namespace dxvk {
         if (FeatureSupportDataSize != sizeof(*info))
           return E_INVALIDARG;
 
-        info->Profile = FALSE;
+        info->Profile = m_context->IsAnnotationEnabled();
       } return S_OK;
 
       case D3D11_FEATURE_D3D9_OPTIONS1: {
