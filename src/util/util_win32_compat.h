@@ -11,7 +11,7 @@ inline HMODULE LoadLibraryA(LPCSTR lpLibFileName) {
   return dlopen(lpLibFileName, RTLD_NOW);
 }
 
-inline void CloseLibrary(HMODULE module) {
+inline void FreeLibrary(HMODULE module) {
   dlclose(module);
 }
 
