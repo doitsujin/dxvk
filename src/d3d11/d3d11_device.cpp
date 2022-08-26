@@ -1729,6 +1729,18 @@ namespace dxvk {
         info->ExtendedNV12SharedTextureSupported = TRUE;
       } return S_OK;
 
+      case D3D11_FEATURE_SHADER_CACHE: {
+        auto info = static_cast<D3D11_FEATURE_DATA_SHADER_CACHE*>(pFeatureSupportData);
+
+        if (FeatureSupportDataSize != sizeof(*info))
+          return E_INVALIDARG;
+
+        // DXVK will keep all shaders in memory once created, and all Vulkan
+        // drivers that we know of that can run DXVK have an on-disk cache.
+        info->SupportFlags = D3D11_SHADER_CACHE_SUPPORT_AUTOMATIC_INPROC_CACHE
+                           | D3D11_SHADER_CACHE_SUPPORT_AUTOMATIC_DISK_CACHE;
+      } return S_OK;
+
       default:
         Logger::err(str::format("D3D11Device: CheckFeatureSupport: Unknown feature: ", Feature));
         return E_INVALIDARG;
