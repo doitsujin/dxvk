@@ -1588,7 +1588,7 @@ namespace dxvk {
         info->MultisampleRTVWithForcedSampleCountOne  = TRUE; /* not really */
         info->SAD4ShaderInstructions                  = TRUE;
         info->ExtendedDoublesShaderInstructions       = TRUE;
-        info->ExtendedResourceSharing                 = TRUE; /* not really */
+        info->ExtendedResourceSharing                 = TRUE;
       } return S_OK;
 
       case D3D11_FEATURE_ARCHITECTURE_INFO: {
@@ -1726,7 +1726,7 @@ namespace dxvk {
         if (FeatureSupportDataSize != sizeof(*info))
           return E_INVALIDARG;
 
-        info->ExtendedNV12SharedTextureSupported = FALSE;
+        info->ExtendedNV12SharedTextureSupported = TRUE;
       } return S_OK;
 
       default:
