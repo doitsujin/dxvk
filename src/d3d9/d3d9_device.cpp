@@ -811,9 +811,19 @@ namespace dxvk {
     uint32_t mipLevels = dstTexInfo->IsAutomaticMip() ? 1 : dstTexInfo->Desc()->MipLevels;
     uint32_t arraySlices = std::min(srcTexInfo->Desc()->ArraySize, dstTexInfo->Desc()->ArraySize);
 
-    uint32_t srcMipOffset = srcTexInfo->Desc()->MipLevels - mipLevels;
-    VkExtent3D srcFirstMipExtent = util::computeMipLevelExtent(srcTexInfo->GetExtent(), srcMipOffset);
+    uint32_t srcMipOffset = 0;
+    VkExtent3D srcFirstMipExtent = srcTexInfo->GetExtent();
     VkExtent3D dstFirstMipExtent = dstTexInfo->GetExtent();
+
+    if (srcFirstMipExtent != dstFirstMipExtent) {
+      // UpdateTexture can be used with textures that have different mip lengths.
+      // It will either match the the top mips or the bottom ones.
+
+      srcMipOffset = srcTexInfo->Desc()->MipLevels - mipLevels;
+      srcFirstMipExtent = util::computeMipLevelExtent(srcTexInfo->GetExtent(), srcMipOffset);
+      dstFirstMipExtent = dstTexInfo->GetExtent();
+    }
+
     if (srcFirstMipExtent != dstFirstMipExtent)
       return D3DERR_INVALIDCALL;
 
