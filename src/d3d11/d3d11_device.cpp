@@ -1741,6 +1741,17 @@ namespace dxvk {
                            | D3D11_SHADER_CACHE_SUPPORT_AUTOMATIC_DISK_CACHE;
       } return S_OK;
 
+      case D3D11_FEATURE_D3D11_OPTIONS5: {
+        auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS5*>(pFeatureSupportData);
+
+        if (FeatureSupportDataSize != sizeof(*info))
+          return E_INVALIDARG;
+
+        // Shared resources are all sorts of wonky for obvious
+        // reasons, so don't over-promise things here for now
+        info->SharedResourceTier = D3D11_SHARED_RESOURCE_TIER_1;
+      } return S_OK;
+
       default:
         Logger::err(str::format("D3D11Device: CheckFeatureSupport: Unknown feature: ", Feature));
         return E_INVALIDARG;
