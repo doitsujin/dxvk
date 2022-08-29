@@ -621,6 +621,13 @@ namespace dxvk {
     { R"(\\yso_win\.exe$)", {{
       { "d3d9.maxFrameLatency",              "1" },
     }} },
+    /* Heroes of Annihilated Empires            *
+     * Has issues with texture rendering and    *
+     * video memory detection otherwise.        */
+    { R"(\\Heroes (o|O)f Annihilated Empires.*\\engine\.exe$)", {{
+      { "d3d9.memoryTrackTest",             "True" },
+      { "d3d9.maxAvailableMemory",          "2048" },
+    }} },
   }};
 
 
