@@ -595,6 +595,13 @@ namespace dxvk {
       { "d3d9.textureMemory",               "16" },
       { "d3d9.allowDirectBufferMapping",    "False" },
     }} },
+    /* Heroes of Annihilated Empires            *
+     * Has issues with texture rendering and    *
+     * video memory detection otherwise.        */
+    { R"(\\Heroes (o|O)f Annihilated Empires.*\\engine\.exe$)", {{
+      { "d3d9.memoryTrackTest",             "True" },
+      { "d3d9.maxAvailableMemory",          "2048" },
+    }} },
   }};
 
 
