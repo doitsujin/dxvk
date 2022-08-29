@@ -7271,7 +7271,7 @@ namespace dxvk {
       m_state.streamFreq[i] = 1;
 
     for (uint32_t i = 0; i < m_state.textures.size(); i++)
-      TextureChangePrivate(m_state.textures[i], nullptr);
+      SetStateTexture(i, nullptr);
 
     EmitCs([
       cSize = m_state.textures.size()
