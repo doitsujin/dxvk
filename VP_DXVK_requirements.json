@@ -80,7 +80,6 @@
             "features": {
                 "VkPhysicalDeviceFeatures": {
                     "geometryShader": true,
-                    "shaderStorageImageWriteWithoutFormat": true,
                     "imageCubeArray": true,
                     "depthClamp": true,
                     "depthBiasClamp": true,
@@ -149,7 +148,6 @@
             "features": {
                 "VkPhysicalDeviceFeatures": {
                 	"geometryShader": true,
-                    "shaderStorageImageWriteWithoutFormat": true,
                     "depthBounds": true,
 
                     "imageCubeArray": true,
@@ -297,8 +295,7 @@
             "features": {
                 "VkPhysicalDeviceFeatures": {
                     "shaderFloat64": true,
-                    "shaderInt64": true,
-                    "shaderStorageImageReadWithoutFormat": true
+                    "shaderInt64": true
                 }
             }
         },
