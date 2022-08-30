@@ -312,11 +312,25 @@
             }
         },
         "d3d11_level12_0": {
+            "features": {
+                "VkPhysicalDeviceFeatures": {
+                    "shaderResourceResidency": true,
+                    "shaderResourceMinLod": true,
+                    "sparseBinding": true,
+                    "sparseResidencyBuffer": true,
+                    "sparseResidencyAliased": true,
+                    "sparseResidencyImage2D": true
+                },
+                "VkPhysicalDeviceVulkan12Features": {
+                    "samplerFilterMinmax": true
+                }
+            },
             "properties": {
                 "VkPhysicalDeviceProperties": {
                     "sparseProperties": {
                         "residencyStandard2DBlockShape": true,
-                        "residencyAlignedMipSize": true
+                        "residencyAlignedMipSize": false,
+                        "residencyNonResidentStrict": true
                     }
                 }
             }
@@ -579,6 +593,56 @@
                 "d3d11_level11_0",
                 "d3d11_level11_0_optional",
                 "d3d11_level11_1"
+            ]
+        },
+        "VP_DXVK_d3d11_level_12_0_optimal": {
+            "version": 1,
+            "api-version": "1.3.204",
+            "label": "DXVK D3D11 Level 12.0 Optimal profile",
+            "description": "DXVK for D3D11 Feature Level 12.0 including optional capabilities",
+            "contributors": {
+                "Philip Rebohle": {
+                    "company": "Valve"
+                },
+                "Joshua Ashton": {
+                    "company": "Valve"
+                },
+                "Pierre-Loup A. Griffais": {
+                    "company": "Valve"
+                },
+                "Georg Lehmann": {
+                    "company": "DXVK"
+                },
+                "Christophe Riccio": {
+                    "company": "LunarG"
+                }
+            },
+            "history": [
+                {
+                    "revision": 1,
+                    "date": "2022-08-30",
+                    "author": "Philip Rebohle",
+                    "comment": "Initial revision"
+                }
+            ],
+            "capabilities": [
+                "vulkan10requirements",
+                "vulkan11requirements",
+                "vulkan12requirements",
+                "vulkan13requirements",
+                "d3d11_baseline",
+                "d3d11_baseline_optional",
+                "d3d11_level9_1",
+                "d3d11_level9_1_optional",
+                "d3d11_level9_2",
+                "d3d11_level9_3",
+                "d3d11_level10_0",
+                "d3d11_level10_0_optional",
+                "d3d11_level10_1",
+                "d3d11_level11_0",
+                "d3d11_level11_0_optional",
+                "d3d11_level11_1",
+                "d3d11_level12_0"
             ]
         }
     }
