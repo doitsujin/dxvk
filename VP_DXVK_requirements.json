@@ -132,7 +132,7 @@
                 },
                 "VkPhysicalDeviceCustomBorderColorFeaturesEXT": {
                     "customBorderColors": true,
-                    "customBorderColorWithoutFormat": true,
+                    "customBorderColorWithoutFormat": true
                 },
                 "VkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT": {
                     "attachmentFeedbackLoopLayout": true
@@ -199,7 +199,7 @@
 
                 "VkPhysicalDeviceCustomBorderColorFeaturesEXT": {
                     "customBorderColors": true,
-                    "customBorderColorWithoutFormat": true,
+                    "customBorderColorWithoutFormat": true
                 }
             }
         },
@@ -220,7 +220,7 @@
                 },
                 "VkPhysicalDeviceDepthClipEnableFeaturesEXT": {
                     "depthClipEnable": true
-                },
+                }
             }
         },
         "d3d11_level9_1_optional": {
