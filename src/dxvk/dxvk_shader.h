@@ -150,6 +150,13 @@ namespace dxvk {
     }
 
     /**
+     * \brief Gets raw code without modification
+     */
+    SpirvCodeBuffer getRawCode() const {
+      return m_code.decompress();
+    }
+
+    /**
      * \brief Patches code using given info
      *
      * Rewrites binding IDs and potentially fixes up other
