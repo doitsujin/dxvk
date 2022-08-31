@@ -8,7 +8,7 @@ namespace dxvk {
     DxvkOptions() { }
     DxvkOptions(const Config& config);
 
-    /// Enable debug utils (alternative to DXVK_PERF_EVENTS=1)
+    /// Enable debug utils
     bool enableDebugUtils;
 
     /// Enable state cache
