@@ -296,7 +296,6 @@ namespace dxvk {
 
   private:
 
-    DxvkDevice*             m_device;
     Rc<vk::DeviceFn>        m_vkd;
     DxvkBufferCreateInfo    m_info;
     DxvkMemoryAllocator*    m_memAlloc;
