@@ -271,7 +271,6 @@ namespace dxvk {
   public:
 
     DxvkSparsePageAllocator(
-            DxvkDevice*           device,
             DxvkMemoryAllocator&  memoryAllocator);
 
     ~DxvkSparsePageAllocator();
@@ -300,7 +299,6 @@ namespace dxvk {
 
   private:
 
-    DxvkDevice*                       m_device;
     DxvkMemoryAllocator*              m_memory;
 
     dxvk::mutex                       m_mutex;

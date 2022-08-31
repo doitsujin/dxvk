@@ -79,9 +79,8 @@ namespace dxvk {
 
 
   DxvkSparsePageAllocator::DxvkSparsePageAllocator(
-          DxvkDevice*           device,
           DxvkMemoryAllocator&  memoryAllocator)
-  : m_device(device), m_memory(&memoryAllocator) {
+  : m_memory(&memoryAllocator) {
 
   }
 

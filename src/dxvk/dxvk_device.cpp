@@ -217,7 +217,7 @@ namespace dxvk {
   
   
   Rc<DxvkSparsePageAllocator> DxvkDevice::createSparsePageAllocator() {
-    return new DxvkSparsePageAllocator(this, m_objects.memoryManager());
+    return new DxvkSparsePageAllocator(m_objects.memoryManager());
   }
 
 
