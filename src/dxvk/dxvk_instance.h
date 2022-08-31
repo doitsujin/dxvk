@@ -115,6 +115,11 @@ namespace dxvk {
     Rc<vk::InstanceFn>      m_vki;
     DxvkInstanceExtensions  m_extensions;
 
+    bool m_enablePerfEvents = false;
+    bool m_enableValidation = false;
+
+    VkDebugUtilsMessengerEXT m_messenger = VK_NULL_HANDLE;
+
     std::vector<DxvkExtensionProvider*> m_extProviders;
     std::vector<Rc<DxvkAdapter>> m_adapters;
     
@@ -123,7 +128,13 @@ namespace dxvk {
     std::vector<Rc<DxvkAdapter>> queryAdapters();
     
     static void logNameList(const DxvkNameList& names);
-    
+
+    static VkBool32 VKAPI_CALL debugCallback(
+            VkDebugUtilsMessageSeverityFlagBitsEXT  messageSeverity,
+            VkDebugUtilsMessageTypeFlagsEXT         messageTypes,
+      const VkDebugUtilsMessengerCallbackDataEXT*   pCallbackData,
+            void*                                   pUserData);
+
   };
   
 }

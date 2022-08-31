@@ -6,6 +6,7 @@
 #include "dxvk_platform_exts.h"
 
 #include <algorithm>
+#include <sstream>
 
 namespace dxvk {
   
@@ -37,6 +38,19 @@ namespace dxvk {
       throw DxvkError("Failed to load vulkan-1 library.");
     m_vki = new vk::InstanceFn(m_vkl, true, this->createInstance());
 
+    if (m_enableValidation) {
+      VkDebugUtilsMessengerCreateInfoEXT messengerInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT };
+      messengerInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
+                                    | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
+                                    | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+      messengerInfo.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
+                                    | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+      messengerInfo.pfnUserCallback = &debugCallback;
+
+      if (m_vki->vkCreateDebugUtilsMessengerEXT(m_vki->instance(), &messengerInfo, nullptr, &m_messenger))
+        Logger::err("DxvkInstance::createInstance: Failed to create debug messenger, proceeding without.");
+    }
+
     m_adapters = this->queryAdapters();
 
     for (const auto& provider : m_extProviders)
@@ -52,7 +66,8 @@ namespace dxvk {
   
   
   DxvkInstance::~DxvkInstance() {
-    
+    if (m_messenger)
+      m_vki->vkDestroyDebugUtilsMessengerEXT(m_vki->instance(), m_messenger, nullptr);
   }
   
   
@@ -98,9 +113,28 @@ namespace dxvk {
 
     // Hide VK_EXT_debug_utils behind an environment variable. This extension
     // adds additional overhead to winevulkan
-    if ((!env::getEnvVar("DXVK_DEBUG").empty()) || (m_options.enableDebugUtils)) {
-        insExtensionList.push_back(&insExtensions.extDebugUtils);
-        Logger::warn("DXVK: Debug Utils are enabled, perf events are ON. May affect performance!");
+    std::string debugEnv = env::getEnvVar("DXVK_DEBUG");
+    DxvkNameList layerNameList;
+
+    m_enablePerfEvents = debugEnv == "markers";
+    m_enableValidation = debugEnv == "validation";
+
+    if (m_enablePerfEvents || m_enableValidation || m_options.enableDebugUtils) {
+      insExtensionList.push_back(&insExtensions.extDebugUtils);
+      Logger::warn("Debug Utils are enabled. May affect performance.");
+
+      if (m_enableValidation) {
+        const char* layerName = "VK_LAYER_KHRONOS_validation";
+        DxvkNameSet layers = DxvkNameSet::enumInstanceLayers(m_vkl);
+
+        if (layers.supports(layerName)) {
+          layerNameList.add(layerName);
+          Logger::warn(str::format("Enabled instance layer ", layerName));
+        } else {
+          // This can happen on winevulkan since it does not support layers
+          Logger::warn(str::format("Validation layers not found, set VK_INSTANCE_LAYERS=", layerName));
+        }
+      }
     }
 
     DxvkNameSet extensionsEnabled;
@@ -133,6 +167,8 @@ namespace dxvk {
     
     VkInstanceCreateInfo info = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
     info.pApplicationInfo         = &appInfo;
+    info.enabledLayerCount        = layerNameList.count();
+    info.ppEnabledLayerNames      = layerNameList.names();
     info.enabledExtensionCount    = extensionNameList.count();
     info.ppEnabledExtensionNames  = extensionNameList.names();
     
@@ -141,7 +177,7 @@ namespace dxvk {
 
     if (status != VK_SUCCESS)
       throw DxvkError("DxvkInstance::createInstance: Failed to create Vulkan 1.1 instance");
-    
+
     return result;
   }
   
@@ -206,4 +242,49 @@ namespace dxvk {
       Logger::info(str::format("  ", names.name(i)));
   }
   
+
+  VkBool32 VKAPI_CALL DxvkInstance::debugCallback(
+          VkDebugUtilsMessageSeverityFlagBitsEXT  messageSeverity,
+          VkDebugUtilsMessageTypeFlagsEXT         messageTypes,
+    const VkDebugUtilsMessengerCallbackDataEXT*   pCallbackData,
+          void*                                   pUserData) {
+    LogLevel logLevel;
+
+    switch (messageSeverity) {
+      default:
+      case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:    logLevel = LogLevel::Info;  break;
+      case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: logLevel = LogLevel::Debug; break;
+      case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: logLevel = LogLevel::Warn;  break;
+      case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:   logLevel = LogLevel::Error; break;
+    }
+
+    static const std::array<uint32_t, 5> ignoredIds = {
+      // Ignore image format features for depth-compare instructions.
+      // These errors are expected in D3D9 and some D3D11 apps.
+      0x4b9d1597,
+      // Ignore vkCmdBindPipeline errors related to dynamic rendering.
+      // Validation layers are buggy here and will complain about any
+      // command buffer with more than one render pass.
+      0x11b37e31,
+      0x151f5e5a,
+      0x6c16bfb4,
+      0xd6d77e1e,
+    };
+
+    for (auto id : ignoredIds) {
+      if (uint32_t(pCallbackData->messageIdNumber) == id)
+        return VK_FALSE;
+    }
+
+    std::stringstream str;
+
+    if (pCallbackData->pMessageIdName)
+      str << pCallbackData->pMessageIdName << ": " << std::endl;
+
+    str << pCallbackData->pMessage;
+
+    Logger::log(logLevel, str.str());
+    return VK_FALSE;
+  }
+
 }
