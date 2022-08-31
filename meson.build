@@ -135,9 +135,3 @@ dxvk_version = vcs_tag(
 )
 
 subdir('src')
-
-enable_tests = get_option('enable_tests')
-
-if enable_tests
-  subdir('tests')
-endif
