@@ -11,7 +11,7 @@ namespace dxvk {
     const DxvkBufferCreateInfo& createInfo,
           DxvkMemoryAllocator&  memAlloc,
           VkMemoryPropertyFlags memFlags)
-  : m_device        (device),
+  : m_vkd           (device->vkd()),
     m_info          (createInfo),
     m_memAlloc      (&memAlloc),
     m_memFlags      (memFlags),
@@ -19,7 +19,7 @@ namespace dxvk {
     if (!(m_info.flags & VK_BUFFER_CREATE_SPARSE_BINDING_BIT)) {
       // Align slices so that we don't violate any alignment
       // requirements imposed by the Vulkan device/driver
-      VkDeviceSize sliceAlignment = computeSliceAlignment();
+      VkDeviceSize sliceAlignment = computeSliceAlignment(device);
       m_physSliceLength = createInfo.size;
       m_physSliceStride = align(createInfo.size, sliceAlignment);
       m_physSliceCount  = std::max<VkDeviceSize>(1, 256 / m_physSliceStride);
@@ -63,17 +63,13 @@ namespace dxvk {
 
 
   DxvkBuffer::~DxvkBuffer() {
-    auto vkd = m_device->vkd();
-
     for (const auto& buffer : m_buffers)
-      vkd->vkDestroyBuffer(vkd->device(), buffer.buffer, nullptr);
-    vkd->vkDestroyBuffer(vkd->device(), m_buffer.buffer, nullptr);
+      m_vkd->vkDestroyBuffer(m_vkd->device(), buffer.buffer, nullptr);
+    m_vkd->vkDestroyBuffer(m_vkd->device(), m_buffer.buffer, nullptr);
   }
   
   
   DxvkBufferHandle DxvkBuffer::allocBuffer(VkDeviceSize sliceCount, bool clear) const {
-    auto vkd = m_device->vkd();
-
     VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
     info.flags = m_info.flags;
     info.size = m_physSliceStride * sliceCount;
@@ -82,7 +78,7 @@ namespace dxvk {
     
     DxvkBufferHandle handle;
 
-    if (vkd->vkCreateBuffer(vkd->device(), &info, nullptr, &handle.buffer)) {
+    if (m_vkd->vkCreateBuffer(m_vkd->device(), &info, nullptr, &handle.buffer)) {
       throw DxvkError(str::format(
         "DxvkBuffer: Failed to create buffer:"
         "\n  flags: ", std::hex, info.flags,
@@ -98,7 +94,7 @@ namespace dxvk {
     VkBufferMemoryRequirementsInfo2 memoryRequirementInfo = { VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2 };
     memoryRequirementInfo.buffer = handle.buffer;
     
-    vkd->vkGetBufferMemoryRequirements2(vkd->device(),
+    m_vkd->vkGetBufferMemoryRequirements2(m_vkd->device(),
       &memoryRequirementInfo, &memoryRequirements.core);
 
     // Fill in desired memory properties
@@ -129,7 +125,7 @@ namespace dxvk {
 
     handle.memory = m_memAlloc->alloc(memoryRequirements, memoryProperties, hints);
     
-    if (vkd->vkBindBufferMemory(vkd->device(), handle.buffer,
+    if (m_vkd->vkBindBufferMemory(m_vkd->device(), handle.buffer,
         handle.memory.memory(), handle.memory.offset()) != VK_SUCCESS)
       throw DxvkError("DxvkBuffer: Failed to bind device memory");
     
@@ -141,8 +137,6 @@ namespace dxvk {
 
 
   DxvkBufferHandle DxvkBuffer::createSparseBuffer() const {
-    auto vkd = m_device->vkd();
-
     VkBufferCreateInfo info = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
     info.flags = m_info.flags;
     info.size = m_info.size;
@@ -151,7 +145,7 @@ namespace dxvk {
 
     DxvkBufferHandle handle = { };
 
-    if (vkd->vkCreateBuffer(vkd->device(),
+    if (m_vkd->vkCreateBuffer(m_vkd->device(),
           &info, nullptr, &handle.buffer) != VK_SUCCESS) {
       throw DxvkError(str::format(
         "DxvkBuffer: Failed to create buffer:"
@@ -164,8 +158,8 @@ namespace dxvk {
   }
 
 
-  VkDeviceSize DxvkBuffer::computeSliceAlignment() const {
-    const auto& devInfo = m_device->properties();
+  VkDeviceSize DxvkBuffer::computeSliceAlignment(DxvkDevice* device) const {
+    const auto& devInfo = device->properties();
 
     VkDeviceSize result = sizeof(uint32_t);
 

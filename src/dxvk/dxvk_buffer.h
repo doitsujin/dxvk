@@ -297,6 +297,7 @@ namespace dxvk {
   private:
 
     DxvkDevice*             m_device;
+    Rc<vk::DeviceFn>        m_vkd;
     DxvkBufferCreateInfo    m_info;
     DxvkMemoryAllocator*    m_memAlloc;
     VkMemoryPropertyFlags   m_memFlags;
@@ -337,7 +338,8 @@ namespace dxvk {
 
     DxvkBufferHandle createSparseBuffer() const;
 
-    VkDeviceSize computeSliceAlignment() const;
+    VkDeviceSize computeSliceAlignment(
+            DxvkDevice*           device) const;
     
   };
   
