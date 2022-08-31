@@ -29,6 +29,26 @@ enum D3D11_VK_BARRIER_CONTROL : uint32_t {
 
 
 /**
+ * \brief Extended shader interface
+ */
+MIDL_INTERFACE("bb8a4fb9-3935-4762-b44b-35189a26414a")
+ID3D11VkExtShader : public IUnknown {
+  /**
+   * \brief Retrieves SPIR-V code from a shader object
+   *
+   * \param [in,out] pCodeSize Shader code size, in bytes. If
+   *    \ref pCode is \c nullptr, this will return the total
+   *    code size, otherwise the number of bytes written.
+   * \param [out] pCode SPIR-V shader code
+   * \returns \c S_OK, or \c S_FALSE if the buffer was too small
+   */
+  virtual HRESULT STDMETHODCALLTYPE GetSpirvCode(
+          SIZE_T*                 pCodeSize,
+          void*                   pCode) = 0;
+};
+
+
+/**
  * \brief Extended D3D11 device
  * 
  * Introduces a method to check for extension support.
@@ -164,11 +184,13 @@ ID3D11VkExtContext1 : public ID3D11VkExtContext {
 
 
 #ifdef _MSC_VER
+struct __declspec(uuid("bb8a4fb9-3935-4762-b44b-35189a26414a")) ID3D11VkExtShader;
 struct __declspec(uuid("8a6e3c42-f74c-45b7-8265-a231b677ca17")) ID3D11VkExtDevice;
 struct __declspec(uuid("cfcf64ef-9586-46d0-bca4-97cf2ca61b06")) ID3D11VkExtDevice1;
 struct __declspec(uuid("fd0bca13-5cb6-4c3a-987e-4750de2ca791")) ID3D11VkExtContext;
 struct __declspec(uuid("874b09b2-ae0b-41d8-8476-5f3b7a0e879d")) ID3D11VkExtContext1;
 #else
+__CRT_UUID_DECL(ID3D11VkExtShader,         0xbb8a4fb9,0x3935,0x4762,0xb4,0x4b,0x35,0x18,0x9a,0x26,0x41,0x4a);
 __CRT_UUID_DECL(ID3D11VkExtDevice,         0x8a6e3c42,0xf74c,0x45b7,0x82,0x65,0xa2,0x31,0xb6,0x77,0xca,0x17);
 __CRT_UUID_DECL(ID3D11VkExtDevice1,        0xcfcf64ef,0x9586,0x46d0,0xbc,0xa4,0x97,0xcf,0x2c,0xa6,0x1b,0x06);
 __CRT_UUID_DECL(ID3D11VkExtContext,        0xfd0bca13,0x5cb6,0x4c3a,0x98,0x7e,0x47,0x50,0xde,0x2c,0xa7,0x91);
