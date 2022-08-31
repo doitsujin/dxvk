@@ -145,16 +145,13 @@ namespace dxvk::vk {
     VULKAN_FN(vkGetPhysicalDeviceSurfacePresentModesKHR);
     #endif
     
-    #ifdef VK_EXT_debug_report
-    VULKAN_FN(vkCreateDebugReportCallbackEXT);
-    VULKAN_FN(vkDestroyDebugReportCallbackEXT);
-    VULKAN_FN(vkDebugReportMessageEXT);
-    #endif
-
     #ifdef VK_EXT_debug_utils
     VULKAN_FN(vkCmdBeginDebugUtilsLabelEXT);
     VULKAN_FN(vkCmdEndDebugUtilsLabelEXT);
     VULKAN_FN(vkCmdInsertDebugUtilsLabelEXT);
+    VULKAN_FN(vkCreateDebugUtilsMessengerEXT);
+    VULKAN_FN(vkDestroyDebugUtilsMessengerEXT);
+    VULKAN_FN(vkSubmitDebugUtilsMessageEXT);
     #endif
 
     #ifdef VK_EXT_full_screen_exclusive
@@ -351,6 +348,14 @@ namespace dxvk::vk {
     #ifdef VK_EXT_conditional_rendering
     VULKAN_FN(vkCmdBeginConditionalRenderingEXT);
     VULKAN_FN(vkCmdEndConditionalRenderingEXT);
+    #endif
+
+    #ifdef VK_EXT_debug_utils
+    VULKAN_FN(vkQueueBeginDebugUtilsLabelEXT);
+    VULKAN_FN(vkQueueEndDebugUtilsLabelEXT);
+    VULKAN_FN(vkQueueInsertDebugUtilsLabelEXT);
+    VULKAN_FN(vkSetDebugUtilsObjectNameEXT);
+    VULKAN_FN(vkSetDebugUtilsObjectTagEXT);
     #endif
 
     #ifdef VK_EXT_full_screen_exclusive
