@@ -16,6 +16,9 @@ inline void FreeLibrary(HMODULE module) {
 }
 
 inline void* GetProcAddress(HMODULE module, LPCSTR lpProcName) {
+  if (!module)
+    return nullptr;
+
   return dlsym(module, lpProcName);
 }
 
