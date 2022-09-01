@@ -4,8 +4,19 @@
 
 namespace dxvk::vk {
 
+  static HMODULE loadVulkanLibrary() {
+#ifdef _WIN32
+    return LoadLibraryA("vulkan-1.dll");
+#else
+    HMODULE library = LoadLibraryA("libvulkan.so");
+    if (!library)
+      library = LoadLibraryA("libvulkan.so.1");
+    return library;
+#endif
+  }
+
   LibraryLoader::LibraryLoader()
-  : m_library(LoadLibraryA("vulkan-1"))
+  : m_library(loadVulkanLibrary())
   , m_getInstanceProcAddr(reinterpret_cast<PFN_vkGetInstanceProcAddr>(
         GetProcAddress(m_library, "vkGetInstanceProcAddr"))) {
   }
