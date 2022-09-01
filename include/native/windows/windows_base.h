@@ -94,6 +94,7 @@ typedef HANDLE HMODULE;
 typedef HANDLE HINSTANCE;
 typedef HANDLE HWND;
 typedef HANDLE HKEY;
+typedef HANDLE *LPHANDLE;
 typedef DWORD COLORREF;
 
 #if INTPTR_MAX == INT64_MAX
@@ -320,6 +321,9 @@ typedef struct RGNDATA {
 #define ENUM_REGISTRY_SETTINGS ((DWORD)-2)
 
 #define INVALID_HANDLE_VALUE ((HANDLE)-1)
+
+#define DUPLICATE_CLOSE_SOURCE ((DWORD)0x1)
+#define DUPLICATE_SAME_ACCESS ((DWORD)0x2)
 
 #define FAILED(hr) ((HRESULT)(hr) < 0)
 #define SUCCEEDED(hr) ((HRESULT)(hr) >= 0)
