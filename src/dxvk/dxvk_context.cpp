@@ -3964,7 +3964,7 @@ namespace dxvk {
         m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer, &info);
     }
 
-    m_execAcquires.accessImage(sparse, sparseSubresources,
+    m_execBarriers.accessImage(sparse, sparseSubresources,
       transferLayout,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       transferAccess,
