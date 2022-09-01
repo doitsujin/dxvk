@@ -3786,7 +3786,13 @@ namespace dxvk {
         m_depthTextures &= ~(1u << StateSampler);
         if (newDepth)
           m_depthTextures |= 1u << StateSampler;
+        m_dirtySamplerStates |= 1u << StateSampler;
+      }
 
+      const bool oldCube = m_cubeTextures & (1u << StateSampler);
+      const bool newCube = newTexture->GetType() == D3DRTYPE_CUBETEXTURE;
+      if (oldCube != newCube) {
+        m_cubeTextures ^= 1u << StateSampler;
         m_dirtySamplerStates |= 1u << StateSampler;
       }
 
@@ -5941,6 +5947,12 @@ namespace dxvk {
     key.BorderColor   = D3DCOLOR(state[D3DSAMP_BORDERCOLOR]);
     key.Depth         = m_depthTextures & (1u << Sampler);
 
+    if (m_cubeTextures & (1u << Sampler)) {
+      key.AddressU = D3DTADDRESS_CLAMP;
+      key.AddressV = D3DTADDRESS_CLAMP;
+      key.AddressW = D3DTADDRESS_CLAMP;
+    }
+
     if (m_d3d9Options.samplerAnisotropy != -1) {
       if (key.MagFilter == D3DTEXF_LINEAR)
         key.MagFilter = D3DTEXF_ANISOTROPIC;
@@ -7196,6 +7208,7 @@ namespace dxvk {
 
     m_dirtyTextures = 0;
     m_depthTextures = 0;
+    m_cubeTextures = 0;
 
     auto& ss = m_state.samplerStates;
     for (uint32_t i = 0; i < ss.size(); i++) {
