@@ -45,9 +45,26 @@ inline BOOL SetEvent(HANDLE hEvent) {
   return FALSE;
 }
 
+inline BOOL DuplicateHandle(
+        HANDLE hSourceProcessHandle,
+        HANDLE hSourceHandle,
+        HANDLE hTargetProcessHandle,
+        HANDLE* lpTargetHandle,
+        DWORD dwDesiredAccess,
+        BOOL bInheritHandle,
+        DWORD dwOptions) {
+  dxvk::Logger::warn("DuplicateHandle not implemented.");
+  return FALSE;
+}
+
 inline BOOL CloseHandle(HANDLE hObject) {
   dxvk::Logger::warn("CloseHandle not implemented.");
   return FALSE;
+}
+
+inline HANDLE GetCurrentProcess() {
+  dxvk::Logger::warn("GetCurrentProcess not implemented.");
+  return nullptr;
 }
 
 inline HDC CreateCompatibleDC(HDC hdc) {
