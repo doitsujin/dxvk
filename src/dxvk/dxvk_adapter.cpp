@@ -481,6 +481,10 @@ namespace dxvk {
     this->logQueueFamilies(queueFamilies);
     
     for (uint32_t family : queueFamiliySet) {
+
+      if (family == VK_QUEUE_FAMILY_IGNORED)
+        continue;
+
       VkDeviceQueueCreateInfo graphicsQueue = { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
       graphicsQueue.queueFamilyIndex  = family;
       graphicsQueue.queueCount        = 1;
