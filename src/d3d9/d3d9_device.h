@@ -28,6 +28,8 @@
 
 #include "d3d9_spec_constants.h"
 
+#include "d3d9_depth_bias.h"
+
 #include <unordered_set>
 #include <vector>
 #include <type_traits>
@@ -1313,6 +1315,8 @@ namespace dxvk {
     std::atomic<int32_t>            m_samplerCount    = { 0 };
 
     Direct3DState9                  m_state;
+
+    D3D9DepthBias                   m_depthBiasFactors;
 
 #ifdef D3D9_ALLOW_UNMAPPING
     lru_list<D3D9CommonTexture*>    m_mappedTextures;

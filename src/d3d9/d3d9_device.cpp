@@ -54,7 +54,8 @@ namespace dxvk {
     , m_multithread     ( BehaviorFlags & D3DCREATE_MULTITHREADED )
     , m_isSWVP          ( (BehaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING) ? true : false )
     , m_csThread        ( dxvkDevice, dxvkDevice->createContext(DxvkContextType::Primary) )
-    , m_csChunk         ( AllocCsChunk() ) {
+    , m_csChunk         ( AllocCsChunk() )
+    , m_depthBiasFactors ( dxvkDevice ) {
     // If we can SWVP, then we use an extended constant set
     // as SWVP has many more slots available than HWVP.
     bool canSWVP = CanSWVP();
@@ -1373,7 +1374,7 @@ namespace dxvk {
     m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
     if (ds != nullptr) {
-      float rValue = GetDepthBufferRValue(ds->GetCommonTexture()->GetFormatMapping().FormatColor);
+      float rValue = m_depthBiasFactors.GetFactor(ds->GetCommonTexture()->GetFormatMapping().FormatColor);
       if (m_depthBiasScale != rValue) {
         m_depthBiasScale = rValue;
         m_flags.set(D3D9DeviceFlag::DirtyDepthBias);

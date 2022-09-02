@@ -6,7 +6,8 @@ d3d9_shaders = files([
   'shaders/d3d9_convert_x8l8v8u8.comp',
   'shaders/d3d9_convert_a2w10v10u10.comp',
   'shaders/d3d9_convert_nv12.comp',
-  'shaders/d3d9_convert_yv12.comp'
+  'shaders/d3d9_convert_yv12.comp',
+  'shaders/d3d9_find_depth_bias_factor.vert'
 ])
 
 d3d9_src = [
@@ -42,7 +43,8 @@ d3d9_src = [
   'd3d9_hud.cpp',
   'd3d9_annotation.cpp',
   'd3d9_mem.cpp',
-  'd3d9_window.cpp'
+  'd3d9_window.cpp',
+  'd3d9_depth_bias.cpp'
 ]
 
 d3d9_dll = shared_library('d3d9'+dll_ext, d3d9_src, glsl_generator.process(d3d9_shaders), d3d9_res,
