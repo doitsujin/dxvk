@@ -572,7 +572,10 @@ namespace dxvk {
 
 
   uint32_t D3D11SwapChain::GetActualFrameLatency() {
-    uint32_t maxFrameLatency = m_frameLatency;
+    // DXGI does not seem to implicitly synchronize waitable swap chains,
+    // so in that case we should just respect the user config. For regular
+    // swap chains, pick the latency from the DXGI device.
+    uint32_t maxFrameLatency = DXGI_MAX_SWAP_CHAIN_BUFFERS;
 
     if (!(m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT))
       m_dxgiDevice->GetMaximumFrameLatency(&maxFrameLatency);
