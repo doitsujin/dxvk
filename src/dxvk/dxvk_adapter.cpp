@@ -478,6 +478,7 @@ namespace dxvk {
     queueFamiliySet.insert(queueFamilies.graphics);
     queueFamiliySet.insert(queueFamilies.transfer);
     queueFamiliySet.insert(queueFamilies.sparse);
+    queueFamiliySet.erase(VK_QUEUE_FAMILY_IGNORED);
     this->logQueueFamilies(queueFamilies);
     
     for (uint32_t family : queueFamiliySet) {
