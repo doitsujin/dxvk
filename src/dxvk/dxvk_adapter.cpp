@@ -477,7 +477,10 @@ namespace dxvk {
     DxvkAdapterQueueIndices queueFamilies = findQueueFamilies();
     queueFamiliySet.insert(queueFamilies.graphics);
     queueFamiliySet.insert(queueFamilies.transfer);
-    queueFamiliySet.insert(queueFamilies.sparse);
+
+    if (queueFamilies.sparse != VK_QUEUE_FAMILY_IGNORED)
+      queueFamiliySet.insert(queueFamilies.sparse);
+
     this->logQueueFamilies(queueFamilies);
     
     for (uint32_t family : queueFamiliySet) {
