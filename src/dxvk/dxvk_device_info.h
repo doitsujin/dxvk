@@ -38,16 +38,25 @@ namespace dxvk {
     VkPhysicalDeviceVulkan11Features                          vk11;
     VkPhysicalDeviceVulkan12Features                          vk12;
     VkPhysicalDeviceVulkan13Features                          vk13;
+    VkBool32                                                  amdShaderFragmentMask;
     VkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT   extAttachmentFeedbackLoopLayout;
+    VkBool32                                                  extConservativeRasterization;
     VkPhysicalDeviceCustomBorderColorFeaturesEXT              extCustomBorderColor;
     VkPhysicalDeviceDepthClipEnableFeaturesEXT                extDepthClipEnable;
+    VkBool32                                                  extFullScreenExclusive;
     VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT        extGraphicsPipelineLibrary;
+    VkBool32                                                  extMemoryBudget;
     VkPhysicalDeviceMemoryPriorityFeaturesEXT                 extMemoryPriority;
     VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT             extNonSeamlessCubeMap;
     VkPhysicalDeviceRobustness2FeaturesEXT                    extRobustness2;
     VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT         extShaderModuleIdentifier;
+    VkBool32                                                  extShaderStencilExport;
     VkPhysicalDeviceTransformFeedbackFeaturesEXT              extTransformFeedback;
     VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT         extVertexAttributeDivisor;
+    VkBool32                                                  khrExternalMemoryWin32;
+    VkBool32                                                  khrExternalSemaphoreWin32;
+    VkBool32                                                  nvxBinaryImport;
+    VkBool32                                                  nvxImageViewHandle;
   };
 
 }
