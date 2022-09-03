@@ -1138,7 +1138,7 @@ namespace dxvk {
       return E_INVALIDARG;
 
     if (desc.ConservativeRaster != D3D11_CONSERVATIVE_RASTERIZATION_MODE_OFF
-     && !m_dxvkDevice->features().extConservativeRasterization)
+     && !m_deviceFeatures.GetConservativeRasterizationTier())
       return E_INVALIDARG;
 
     if (!ppRasterizerState)

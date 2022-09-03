@@ -46,6 +46,14 @@ namespace dxvk {
       return m_d3d11Options2.TiledResourcesTier;
     }
 
+    /**
+     * \brief Queries conservative rasterization tier
+     * \returns Conservative rasterization tier
+     */
+    D3D11_CONSERVATIVE_RASTERIZATION_TIER GetConservativeRasterizationTier() const {
+      return m_d3d11Options2.ConservativeRasterizationTier;
+    }
+
   private:
 
     DxvkDeviceFeatures  m_features;
