@@ -401,7 +401,7 @@ namespace dxvk {
     presenterDevice.queueFamily   = graphicsQueue.queueFamily;
     presenterDevice.queue         = graphicsQueue.queueHandle;
     presenterDevice.adapter       = m_device->adapter()->handle();
-    presenterDevice.features.fullScreenExclusive = m_device->extensions().extFullScreenExclusive;
+    presenterDevice.features.fullScreenExclusive = m_device->features().extFullScreenExclusive;
 
     vk::PresenterDesc presenterDesc;
     presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };

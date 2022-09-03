@@ -1134,7 +1134,7 @@ namespace dxvk {
       return E_INVALIDARG;
 
     if (desc.ConservativeRaster != D3D11_CONSERVATIVE_RASTERIZATION_MODE_OFF
-     && !m_dxvkDevice->extensions().extConservativeRasterization)
+     && !m_dxvkDevice->features().extConservativeRasterization)
       return E_INVALIDARG;
 
     if (!ppRasterizerState)
@@ -1700,9 +1700,7 @@ namespace dxvk {
         if (FeatureSupportDataSize != sizeof(*info))
           return E_INVALIDARG;
 
-        const auto& extensions = m_dxvkDevice->extensions();
-
-        info->PSSpecifiedStencilRefSupported = extensions.extShaderStencilExport;
+        info->PSSpecifiedStencilRefSupported = m_dxvkDevice->features().extShaderStencilExport;
         info->TypedUAVLoadAdditionalFormats  = m_dxbcOptions.supportsTypedUavLoadExtended;
         info->ROVsSupported                  = FALSE;
         info->ConservativeRasterizationTier  = D3D11_CONSERVATIVE_RASTERIZATION_NOT_SUPPORTED;
@@ -1711,7 +1709,7 @@ namespace dxvk {
         info->StandardSwizzle                = FALSE;
         info->UnifiedMemoryArchitecture      = m_dxvkDevice->isUnifiedMemoryArchitecture();
 
-        if (m_dxvkDevice->extensions().extConservativeRasterization) {
+        if (m_dxvkDevice->features().extConservativeRasterization) {
           // We don't have a way to query uncertainty regions, so just check degenerate triangle behaviour
           info->ConservativeRasterizationTier = m_dxvkDevice->properties().extConservativeRasterization.degenerateTrianglesRasterized
             ? D3D11_CONSERVATIVE_RASTERIZATION_TIER_2 : D3D11_CONSERVATIVE_RASTERIZATION_TIER_1;
@@ -2150,7 +2148,7 @@ namespace dxvk {
     auto shader = commonShader.GetShader();
 
     if (shader->flags().test(DxvkShaderFlag::ExportsStencilRef)
-     && !m_dxvkDevice->extensions().extShaderStencilExport)
+     && !m_dxvkDevice->features().extShaderStencilExport)
       return E_INVALIDARG;
 
     if (shader->flags().test(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage)
@@ -2655,7 +2653,6 @@ namespace dxvk {
   BOOL STDMETHODCALLTYPE D3D11DeviceExt::GetExtensionSupport(
           D3D11_VK_EXTENSION      Extension) {
     const auto& deviceFeatures = m_device->GetDXVKDevice()->features();
-    const auto& deviceExtensions = m_device->GetDXVKDevice()->extensions();
     
     switch (Extension) {
       case D3D11_VK_EXT_BARRIER_CONTROL:
@@ -2672,10 +2669,10 @@ namespace dxvk {
         return deviceFeatures.core.features.depthBounds;
 
       case D3D11_VK_NVX_IMAGE_VIEW_HANDLE:
-        return deviceExtensions.nvxImageViewHandle;
+        return deviceFeatures.nvxImageViewHandle;
 
       case D3D11_VK_NVX_BINARY_IMPORT:
-        return deviceExtensions.nvxBinaryImport
+        return deviceFeatures.nvxBinaryImport
             && deviceFeatures.vk12.bufferDeviceAddress;
 
       default:
