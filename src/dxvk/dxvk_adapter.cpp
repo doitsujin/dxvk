@@ -561,7 +561,7 @@ namespace dxvk {
     
     return new DxvkDevice(instance, this,
       new vk::DeviceFn(m_vki, true, device),
-      devExtensions, enabledFeatures);
+      enabledFeatures);
   }
   
   

@@ -88,7 +88,6 @@ namespace dxvk {
       const Rc<DxvkInstance>&         instance,
       const Rc<DxvkAdapter>&          adapter,
       const Rc<vk::DeviceFn>&         vkd,
-      const DxvkDeviceExtensions&     extensions,
       const DxvkDeviceFeatures&       features);
       
     ~DxvkDevice();
@@ -158,14 +157,6 @@ namespace dxvk {
       return m_adapter;
     }
 
-    /**
-     * \brief Enabled device extensions
-     * \returns Enabled device extensions
-     */
-    const DxvkDeviceExtensions& extensions() const {
-      return m_extensions;
-    }
-    
     /**
      * \brief Enabled device features
      * \returns Enabled features
@@ -524,7 +515,6 @@ namespace dxvk {
     Rc<DxvkInstance>            m_instance;
     Rc<DxvkAdapter>             m_adapter;
     Rc<vk::DeviceFn>            m_vkd;
-    DxvkDeviceExtensions        m_extensions;
 
     DxvkDeviceFeatures          m_features;
     DxvkDeviceInfo              m_properties;
