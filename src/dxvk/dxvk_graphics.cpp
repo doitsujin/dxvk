@@ -1362,7 +1362,7 @@ namespace dxvk {
 
     // Validate rasterization state
     if (state.rs.conservativeMode() != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT) {
-      if (!m_device->extensions().extConservativeRasterization)
+      if (!m_device->features().extConservativeRasterization)
         return false;
 
       if (state.rs.conservativeMode() == VK_CONSERVATIVE_RASTERIZATION_MODE_UNDERESTIMATE_EXT

@@ -323,11 +323,11 @@ namespace dxvk {
   
   DxvkDevicePerfHints DxvkDevice::getPerfHints() {
     DxvkDevicePerfHints hints;
-    hints.preferFbDepthStencilCopy = m_extensions.extShaderStencilExport
+    hints.preferFbDepthStencilCopy = m_features.extShaderStencilExport
       && (m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV_KHR, 0, 0)
        || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR, 0, 0)
        || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY_KHR, 0, 0));
-    hints.preferFbResolve = m_extensions.amdShaderFragmentMask
+    hints.preferFbResolve = m_features.amdShaderFragmentMask
       && (m_adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR, 0, 0)
        || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY_KHR, 0, 0));
     return hints;

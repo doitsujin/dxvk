@@ -96,7 +96,7 @@ namespace dxvk {
       m_shaderGeom = createShaderModule(dxvk_fullscreen_geom);
     }
     
-    if (device->extensions().extShaderStencilExport) {
+    if (device->features().extShaderStencilExport) {
       m_depthStencil = {
         createShaderModule(dxvk_copy_depth_stencil_1d),
         createShaderModule(dxvk_copy_depth_stencil_2d),

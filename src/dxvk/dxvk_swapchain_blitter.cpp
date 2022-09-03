@@ -342,7 +342,7 @@ namespace dxvk {
     
     fsInfo.inputMask = 0;
     m_fsCopy = new DxvkShader(fsInfo, std::move(fsCodeCopy));
-    m_fsResolve = new DxvkShader(fsInfo, m_device->extensions().amdShaderFragmentMask
+    m_fsResolve = new DxvkShader(fsInfo, m_device->features().amdShaderFragmentMask
       ? std::move(fsCodeResolveAmd)
       : std::move(fsCodeResolve));
   }

@@ -55,13 +55,13 @@ namespace dxvk {
   DxvkMetaResolveObjects::DxvkMetaResolveObjects(const DxvkDevice* device)
   : m_vkd         (device->vkd()),
     m_sampler     (createSampler()),
-    m_shaderFragF (device->extensions().amdShaderFragmentMask
+    m_shaderFragF (device->features().amdShaderFragmentMask
       ? createShaderModule(dxvk_resolve_frag_f_amd)
       : createShaderModule(dxvk_resolve_frag_f)),
     m_shaderFragU (createShaderModule(dxvk_resolve_frag_u)),
     m_shaderFragI (createShaderModule(dxvk_resolve_frag_i)),
     m_shaderFragD (createShaderModule(dxvk_resolve_frag_d)) {
-    if (device->extensions().extShaderStencilExport)
+    if (device->features().extShaderStencilExport)
       m_shaderFragDS = createShaderModule(dxvk_resolve_frag_ds);
 
     if (device->features().vk12.shaderOutputLayer) {

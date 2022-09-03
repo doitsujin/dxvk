@@ -278,7 +278,7 @@ namespace dxvk {
         Logger::err(str::format("Heap ", i, ": ",
           (m_memHeaps[i].stats.memoryAllocated >> 20), " MB allocated, ",
           (m_memHeaps[i].stats.memoryUsed      >> 20), " MB used, ",
-          m_device->extensions().extMemoryBudget
+          m_device->features().extMemoryBudget
             ? str::format(
                 (memHeapInfo.heaps[i].memoryAllocated >> 20), " MB allocated (driver), ",
                 (memHeapInfo.heaps[i].memoryBudget    >> 20), " MB budget (driver), ",

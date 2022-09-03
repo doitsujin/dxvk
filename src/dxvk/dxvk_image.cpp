@@ -182,7 +182,7 @@ namespace dxvk {
     if (sharingInfo.mode == DxvkSharedHandleMode::None)
       return false;
 
-    if (!m_device->extensions().khrExternalMemoryWin32) {
+    if (!m_device->features().khrExternalMemoryWin32) {
       Logger::err("Failed to create shared resource: VK_KHR_EXTERNAL_MEMORY_WIN32 not supported");
       return false;
     }
