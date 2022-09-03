@@ -420,14 +420,12 @@ namespace dxvk {
       return m_d3d10Device;
     }
     
-    static bool CheckFeatureLevelSupport(
-      const Rc<DxvkInstance>& instance,
-      const Rc<DxvkAdapter>&  adapter,
-            D3D_FEATURE_LEVEL featureLevel);
+    static D3D_FEATURE_LEVEL GetMaxFeatureLevel(
+      const Rc<DxvkInstance>& Instance,
+      const Rc<DxvkAdapter>&  Adapter);
     
     static DxvkDeviceFeatures GetDeviceFeatures(
-      const Rc<DxvkAdapter>&  adapter,
-            D3D_FEATURE_LEVEL featureLevel);
+      const Rc<DxvkAdapter>&  Adapter);
     
   private:
     
@@ -455,6 +453,7 @@ namespace dxvk {
     D3D11StateObjectSet<D3D11SamplerState>      m_samplerObjects;
     D3D11ShaderModuleSet                        m_shaderModules;
 
+    D3D_FEATURE_LEVEL               m_maxFeatureLevel;
     D3D11_TILED_RESOURCES_TIER      m_tiledResourcesTier;
 
     HRESULT CreateShaderModule(
@@ -498,9 +497,6 @@ namespace dxvk {
       const DxvkDeviceFeatures&         Features,
       const DxvkDeviceInfo&             Properties);
 
-    static D3D_FEATURE_LEVEL GetMaxFeatureLevel(
-      const Rc<DxvkInstance>&           pInstance);
-    
   };
   
   

@@ -38,14 +38,15 @@ namespace dxvk {
           D3D11DXGIDevice*    pContainer,
           D3D_FEATURE_LEVEL   FeatureLevel,
           UINT                FeatureFlags)
-  : m_container     (pContainer),
-    m_featureLevel  (FeatureLevel),
-    m_featureFlags  (FeatureFlags),
-    m_dxvkDevice    (pContainer->GetDXVKDevice()),
-    m_dxvkAdapter   (m_dxvkDevice->adapter()),
-    m_d3d11Formats  (m_dxvkDevice),
-    m_d3d11Options  (m_dxvkDevice->instance()->config(), m_dxvkDevice),
-    m_dxbcOptions   (m_dxvkDevice, m_d3d11Options),
+  : m_container         (pContainer),
+    m_featureLevel      (FeatureLevel),
+    m_featureFlags      (FeatureFlags),
+    m_dxvkDevice        (pContainer->GetDXVKDevice()),
+    m_dxvkAdapter       (m_dxvkDevice->adapter()),
+    m_d3d11Formats      (m_dxvkDevice),
+    m_d3d11Options      (m_dxvkDevice->instance()->config(), m_dxvkDevice),
+    m_dxbcOptions       (m_dxvkDevice, m_d3d11Options),
+    m_maxFeatureLevel   (GetMaxFeatureLevel(m_dxvkDevice->instance(), m_dxvkDevice->adapter())),
     m_tiledResourcesTier(DetermineTiledResourcesTier(m_dxvkDevice->features(), m_dxvkDevice->properties())) {
     m_initializer = new D3D11Initializer(this);
     m_context     = new D3D11ImmediateContext(this, m_dxvkDevice);
@@ -1308,33 +1309,36 @@ namespace dxvk {
           ID3DDeviceContextState**    ppContextState) {
     InitReturnPtr(ppContextState);
 
-    if (!pFeatureLevels || FeatureLevels == 0)
+    if (!pFeatureLevels || !FeatureLevels)
       return E_INVALIDARG;
-    
+
     if (EmulatedInterface != __uuidof(ID3D10Device)
      && EmulatedInterface != __uuidof(ID3D10Device1)
      && EmulatedInterface != __uuidof(ID3D11Device)
      && EmulatedInterface != __uuidof(ID3D11Device1))
       return E_INVALIDARG;
-    
-    UINT flId;
-    for (flId = 0; flId < FeatureLevels; flId++) {
-      if (CheckFeatureLevelSupport(m_dxvkDevice->instance(), m_dxvkAdapter, pFeatureLevels[flId]))
+
+    D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL();
+
+    for (uint32_t flId = 0; flId < FeatureLevels; flId++) {
+      if (pFeatureLevels[flId] <= m_maxFeatureLevel) {
+        featureLevel = pFeatureLevels[flId];
         break;
+      }
     }
 
-    if (flId == FeatureLevels)
+    if (!featureLevel)
       return E_INVALIDARG;
 
-    if (pFeatureLevels[flId] > m_featureLevel)
-      m_featureLevel = pFeatureLevels[flId];
-    
+    if (m_featureLevel < featureLevel)
+      m_featureLevel = featureLevel;
+
     if (pChosenFeatureLevel)
-      *pChosenFeatureLevel = pFeatureLevels[flId];
-    
+      *pChosenFeatureLevel = featureLevel;
+
     if (!ppContextState)
       return S_FALSE;
-    
+
     *ppContextState = ref(new D3D11DeviceContextState(this));
     return S_OK;
   }
@@ -1991,43 +1995,86 @@ namespace dxvk {
   }
   
   
-  bool D3D11Device::CheckFeatureLevelSupport(
-    const Rc<DxvkInstance>& instance,
-    const Rc<DxvkAdapter>&  adapter,
-          D3D_FEATURE_LEVEL featureLevel) {
-    if (featureLevel > GetMaxFeatureLevel(instance))
-      return false;
+  D3D_FEATURE_LEVEL D3D11Device::GetMaxFeatureLevel(
+    const Rc<DxvkInstance>& Instance,
+    const Rc<DxvkAdapter>&  Adapter) {
+    // Check whether baseline features are supported by the device    
+    DxvkDeviceFeatures features = GetDeviceFeatures(Adapter);
     
-    // Check whether all features are supported
-    const DxvkDeviceFeatures features
-      = GetDeviceFeatures(adapter, featureLevel);
-    
-    if (!adapter->checkFeatureSupport(features))
-      return false;
-    
-    if (featureLevel >= D3D_FEATURE_LEVEL_12_0) {
-      D3D11_TILED_RESOURCES_TIER tiledResourcesTier = DetermineTiledResourcesTier(
-        adapter->features(),
-        adapter->devicePropertiesExt());
+    if (!Adapter->checkFeatureSupport(features))
+      return D3D_FEATURE_LEVEL();
 
-      if (tiledResourcesTier < D3D11_TILED_RESOURCES_TIER_2)
-        return false;
-    }
+    // The feature level override always takes precedence
+    static const std::array<std::pair<std::string, D3D_FEATURE_LEVEL>, 9> s_featureLevels = {{
+      { "12_1", D3D_FEATURE_LEVEL_12_1 },
+      { "12_0", D3D_FEATURE_LEVEL_12_0 },
+      { "11_1", D3D_FEATURE_LEVEL_11_1 },
+      { "11_0", D3D_FEATURE_LEVEL_11_0 },
+      { "10_1", D3D_FEATURE_LEVEL_10_1 },
+      { "10_0", D3D_FEATURE_LEVEL_10_0 },
+      { "9_3",  D3D_FEATURE_LEVEL_9_3  },
+      { "9_2",  D3D_FEATURE_LEVEL_9_2  },
+      { "9_1",  D3D_FEATURE_LEVEL_9_1  },
+    }};
+    
+    std::string maxLevel = Instance->config().getOption<std::string>("d3d11.maxFeatureLevel");
 
-    // TODO also check for required limits
-    return true;
+    auto entry = std::find_if(s_featureLevels.begin(), s_featureLevels.end(),
+      [&] (const std::pair<std::string, D3D_FEATURE_LEVEL>& pair) {
+        return pair.first == maxLevel;
+      });
+
+    if (entry != s_featureLevels.end())
+      return entry->second;
+
+    // Check Feature Level 11_0 features
+    if (!features.core.features.drawIndirectFirstInstance
+     || !features.core.features.fragmentStoresAndAtomics
+     || !features.core.features.multiDrawIndirect
+     || !features.core.features.tessellationShader)
+      return D3D_FEATURE_LEVEL_10_1;
+
+    // Check Feature Level 11_1 features
+    if (!features.core.features.logicOp
+     || !features.core.features.variableMultisampleRate
+     || !features.core.features.vertexPipelineStoresAndAtomics)
+      return D3D_FEATURE_LEVEL_11_0;
+
+    // Check Feature Level 12_0 features
+    D3D11_TILED_RESOURCES_TIER tiledResourcesTier = DetermineTiledResourcesTier(
+      Adapter->features(),
+      Adapter->devicePropertiesExt());
+
+    if (tiledResourcesTier < D3D11_TILED_RESOURCES_TIER_2)
+      return D3D_FEATURE_LEVEL_11_1;
+
+    return D3D_FEATURE_LEVEL_12_0;
   }
   
   
   DxvkDeviceFeatures D3D11Device::GetDeviceFeatures(
-    const Rc<DxvkAdapter>&  adapter,
-          D3D_FEATURE_LEVEL featureLevel) {
-    DxvkDeviceFeatures supported = adapter->features();
+    const Rc<DxvkAdapter>&  Adapter) {
+    DxvkDeviceFeatures supported = Adapter->features();
     DxvkDeviceFeatures enabled   = {};
 
+    // Required for feature level 10_1
+    enabled.core.features.depthBiasClamp                          = VK_TRUE;
+    enabled.core.features.depthClamp                              = VK_TRUE;
+    enabled.core.features.dualSrcBlend                            = VK_TRUE;
+    enabled.core.features.fillModeNonSolid                        = VK_TRUE;
+    enabled.core.features.fullDrawIndexUint32                     = VK_TRUE;
     enabled.core.features.geometryShader                          = VK_TRUE;
-    enabled.core.features.robustBufferAccess                      = VK_TRUE;
-    enabled.core.features.depthBounds                             = supported.core.features.depthBounds;
+    enabled.core.features.imageCubeArray                          = VK_TRUE;
+    enabled.core.features.independentBlend                        = VK_TRUE;
+    enabled.core.features.multiViewport                           = VK_TRUE;
+    enabled.core.features.occlusionQueryPrecise                   = VK_TRUE;
+    enabled.core.features.pipelineStatisticsQuery                 = supported.core.features.pipelineStatisticsQuery;
+    enabled.core.features.sampleRateShading                       = VK_TRUE;
+    enabled.core.features.samplerAnisotropy                       = supported.core.features.samplerAnisotropy;
+    enabled.core.features.shaderClipDistance                      = VK_TRUE;
+    enabled.core.features.shaderCullDistance                      = VK_TRUE;
+    enabled.core.features.shaderImageGatherExtended               = VK_TRUE;
+    enabled.core.features.textureCompressionBC                    = VK_TRUE;
 
     enabled.vk11.shaderDrawParameters                             = VK_TRUE;
 
@@ -2035,92 +2082,46 @@ namespace dxvk {
 
     enabled.vk13.shaderDemoteToHelperInvocation                   = VK_TRUE;
 
-    enabled.extMemoryPriority.memoryPriority                      = supported.extMemoryPriority.memoryPriority;
+    enabled.extCustomBorderColor.customBorderColors               = supported.extCustomBorderColor.customBorderColorWithoutFormat;
+    enabled.extCustomBorderColor.customBorderColorWithoutFormat   = supported.extCustomBorderColor.customBorderColorWithoutFormat;
+
+    enabled.extDepthClipEnable.depthClipEnable                    = supported.extDepthClipEnable.depthClipEnable;
+
+    enabled.extTransformFeedback.transformFeedback                = VK_TRUE;
+    enabled.extTransformFeedback.geometryStreams                  = VK_TRUE;
 
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor      = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor;
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor  = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor;
 
-    D3D11_TILED_RESOURCES_TIER sparseTier = DetermineTiledResourcesTier(supported, adapter->devicePropertiesExt());
-    VkBool32 hasSparseTier1 = sparseTier >= D3D11_TILED_RESOURCES_TIER_1;
-    VkBool32 hasSparseTier2 = sparseTier >= D3D11_TILED_RESOURCES_TIER_2;
+    // Required for Feature Level 11_0
+    enabled.core.features.drawIndirectFirstInstance               = supported.core.features.drawIndirectFirstInstance;
+    enabled.core.features.fragmentStoresAndAtomics                = supported.core.features.fragmentStoresAndAtomics;
+    enabled.core.features.multiDrawIndirect                       = supported.core.features.multiDrawIndirect;
+    enabled.core.features.tessellationShader                      = supported.core.features.tessellationShader;
 
-    if (supported.extCustomBorderColor.customBorderColorWithoutFormat) {
-      enabled.extCustomBorderColor.customBorderColors             = VK_TRUE;
-      enabled.extCustomBorderColor.customBorderColorWithoutFormat = VK_TRUE;
-    }
+    // Required for Feature Level 11_1
+    enabled.core.features.logicOp                                 = supported.core.features.logicOp;
+    enabled.core.features.variableMultisampleRate                 = supported.core.features.variableMultisampleRate;
+    enabled.core.features.vertexPipelineStoresAndAtomics          = supported.core.features.vertexPipelineStoresAndAtomics;
 
-    if (featureLevel >= D3D_FEATURE_LEVEL_9_1) {
-      enabled.core.features.depthClamp                            = VK_TRUE;
-      enabled.core.features.depthBiasClamp                        = VK_TRUE;
-      enabled.core.features.fillModeNonSolid                      = VK_TRUE;
-      enabled.core.features.pipelineStatisticsQuery               = supported.core.features.pipelineStatisticsQuery;
-      enabled.core.features.sampleRateShading                     = VK_TRUE;
-      enabled.core.features.samplerAnisotropy                     = supported.core.features.samplerAnisotropy;
-      enabled.core.features.shaderClipDistance                    = VK_TRUE;
-      enabled.core.features.shaderCullDistance                    = VK_TRUE;
-      enabled.core.features.textureCompressionBC                  = VK_TRUE;
-      enabled.extDepthClipEnable.depthClipEnable                  = supported.extDepthClipEnable.depthClipEnable;
-    }
-    
-    if (featureLevel >= D3D_FEATURE_LEVEL_9_2) {
-      enabled.core.features.occlusionQueryPrecise                 = VK_TRUE;
-    }
-    
-    if (featureLevel >= D3D_FEATURE_LEVEL_9_3) {
-      enabled.core.features.independentBlend                      = VK_TRUE;
-      enabled.core.features.multiViewport                         = VK_TRUE;
-    }
-    
-    if (featureLevel >= D3D_FEATURE_LEVEL_10_0) {
-      enabled.core.features.fullDrawIndexUint32                   = VK_TRUE;
-      enabled.core.features.logicOp                               = supported.core.features.logicOp;
-      enabled.core.features.shaderImageGatherExtended             = VK_TRUE;
-      enabled.core.features.variableMultisampleRate               = supported.core.features.variableMultisampleRate;
-      enabled.extTransformFeedback.transformFeedback              = VK_TRUE;
-      enabled.extTransformFeedback.geometryStreams                = VK_TRUE;
-    }
-    
-    if (featureLevel >= D3D_FEATURE_LEVEL_10_1) {
-      enabled.core.features.dualSrcBlend                          = VK_TRUE;
-      enabled.core.features.imageCubeArray                        = VK_TRUE;
-    }
-    
-    if (featureLevel >= D3D_FEATURE_LEVEL_11_0) {
-      enabled.core.features.drawIndirectFirstInstance             = VK_TRUE;
-      enabled.core.features.fragmentStoresAndAtomics              = VK_TRUE;
-      enabled.core.features.multiDrawIndirect                     = VK_TRUE;
-      enabled.core.features.shaderFloat64                         = supported.core.features.shaderFloat64;
-      enabled.core.features.shaderInt64                           = supported.core.features.shaderInt64;
-      enabled.core.features.tessellationShader                    = VK_TRUE;
-      enabled.core.features.sparseBinding                         = hasSparseTier1;
-      enabled.core.features.sparseResidencyBuffer                 = hasSparseTier1;
-      enabled.core.features.sparseResidencyImage2D                = hasSparseTier1;
-      enabled.core.features.sparseResidencyImage3D                = hasSparseTier1 && supported.core.features.sparseResidencyImage3D;
-      enabled.core.features.sparseResidency2Samples               = hasSparseTier1 && supported.core.features.sparseResidency2Samples;
-      enabled.core.features.sparseResidency4Samples               = hasSparseTier1 && supported.core.features.sparseResidency4Samples;
-      enabled.core.features.sparseResidency8Samples               = hasSparseTier1 && supported.core.features.sparseResidency8Samples;
-      enabled.core.features.sparseResidency16Samples              = hasSparseTier1 && supported.core.features.sparseResidency16Samples;
-      enabled.core.features.sparseResidencyAliased                = hasSparseTier1;
-    }
-    
-    if (featureLevel >= D3D_FEATURE_LEVEL_11_1) {
-      enabled.core.features.logicOp                               = VK_TRUE;
-      enabled.core.features.variableMultisampleRate               = VK_TRUE;
-      enabled.core.features.vertexPipelineStoresAndAtomics        = VK_TRUE;
-      enabled.core.features.shaderResourceResidency               = hasSparseTier2;
-      enabled.core.features.shaderResourceMinLod                  = hasSparseTier2;
-      enabled.vk12.samplerFilterMinmax                            = hasSparseTier2;
-    }
+    // Required for Feature Level 12_0
+    enabled.core.features.sparseBinding                           = supported.core.features.sparseBinding;
+    enabled.core.features.sparseResidencyBuffer                   = supported.core.features.sparseResidencyBuffer;
+    enabled.core.features.sparseResidencyImage2D                  = supported.core.features.sparseResidencyImage2D;
+    enabled.core.features.sparseResidencyImage3D                  = supported.core.features.sparseResidencyImage3D;
+    enabled.core.features.sparseResidency2Samples                 = supported.core.features.sparseResidency2Samples;
+    enabled.core.features.sparseResidency4Samples                 = supported.core.features.sparseResidency4Samples;
+    enabled.core.features.sparseResidency8Samples                 = supported.core.features.sparseResidency8Samples;
+    enabled.core.features.sparseResidency16Samples                = supported.core.features.sparseResidency16Samples;
+    enabled.core.features.sparseResidencyAliased                  = supported.core.features.sparseResidencyAliased;
+    enabled.core.features.shaderResourceResidency                 = supported.core.features.shaderResourceResidency;
+    enabled.core.features.shaderResourceMinLod                    = supported.core.features.shaderResourceMinLod;
+    enabled.vk12.samplerFilterMinmax                              = supported.vk12.samplerFilterMinmax;
 
-    if (featureLevel >= D3D_FEATURE_LEVEL_12_0) {
-      enabled.core.features.shaderResourceResidency               = VK_TRUE;
-      enabled.core.features.shaderResourceMinLod                  = VK_TRUE;
-      enabled.core.features.sparseBinding                         = VK_TRUE;
-      enabled.core.features.sparseResidencyBuffer                 = VK_TRUE;
-      enabled.core.features.sparseResidencyImage2D                = VK_TRUE;
-      enabled.core.features.sparseResidencyAliased                = VK_TRUE;
-      enabled.vk12.samplerFilterMinmax                            = VK_TRUE;
-    }
+    // Optional in any feature level
+    enabled.core.features.depthBounds                             = supported.core.features.depthBounds;
+    enabled.core.features.shaderFloat64                           = supported.core.features.shaderFloat64;
+    enabled.core.features.shaderInt64                             = supported.core.features.shaderInt64;
 
     return enabled;
   }
@@ -2592,34 +2593,6 @@ namespace dxvk {
       return D3D11_TILED_RESOURCES_TIER_2;
 
     return D3D11_TILED_RESOURCES_TIER_3;
-  }
-
-
-  D3D_FEATURE_LEVEL D3D11Device::GetMaxFeatureLevel(const Rc<DxvkInstance>& pInstance) {
-    static const std::array<std::pair<std::string, D3D_FEATURE_LEVEL>, 9> s_featureLevels = {{
-      { "12_1", D3D_FEATURE_LEVEL_12_1 },
-      { "12_0", D3D_FEATURE_LEVEL_12_0 },
-      { "11_1", D3D_FEATURE_LEVEL_11_1 },
-      { "11_0", D3D_FEATURE_LEVEL_11_0 },
-      { "10_1", D3D_FEATURE_LEVEL_10_1 },
-      { "10_0", D3D_FEATURE_LEVEL_10_0 },
-      { "9_3",  D3D_FEATURE_LEVEL_9_3  },
-      { "9_2",  D3D_FEATURE_LEVEL_9_2  },
-      { "9_1",  D3D_FEATURE_LEVEL_9_1  },
-    }};
-    
-    const std::string maxLevel = pInstance->config()
-      .getOption<std::string>("d3d11.maxFeatureLevel");
-    
-    auto entry = std::find_if(s_featureLevels.begin(), s_featureLevels.end(),
-      [&] (const std::pair<std::string, D3D_FEATURE_LEVEL>& pair) {
-        return pair.first == maxLevel;
-      });
-    
-    if (entry != s_featureLevels.end())
-      return entry->second;
-
-    return D3D_FEATURE_LEVEL_12_0;
   }
   
 
@@ -3648,7 +3621,7 @@ namespace dxvk {
 
 
   Rc<DxvkDevice> D3D11DXGIDevice::CreateDevice(D3D_FEATURE_LEVEL FeatureLevel) {
-    DxvkDeviceFeatures deviceFeatures = D3D11Device::GetDeviceFeatures(m_dxvkAdapter, FeatureLevel);
+    DxvkDeviceFeatures deviceFeatures = D3D11Device::GetDeviceFeatures(m_dxvkAdapter);
     return m_dxvkAdapter->createDevice(m_dxvkInstance, deviceFeatures);
   }
 

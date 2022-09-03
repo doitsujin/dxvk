@@ -392,6 +392,10 @@ namespace dxvk {
     enabledFeatures.extGraphicsPipelineLibrary.graphicsPipelineLibrary =
       m_deviceFeatures.extGraphicsPipelineLibrary.graphicsPipelineLibrary;
 
+    // Enable memory priority if supported to improve memory management
+    enabledFeatures.extMemoryPriority.memoryPriority =
+      m_deviceFeatures.extMemoryPriority.memoryPriority;
+
     // Require robustBufferAccess2 since we use the robustness alignment
     // info in a number of places, and require null descriptor support
     // since we no longer have a fallback for those in the backend
