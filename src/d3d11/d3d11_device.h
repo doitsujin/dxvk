@@ -16,6 +16,7 @@
 
 #include "d3d11_cmdlist.h"
 #include "d3d11_cuda.h"
+#include "d3d11_features.h"
 #include "d3d11_initializer.h"
 #include "d3d11_interfaces.h"
 #include "d3d11_interop.h"
@@ -454,6 +455,7 @@ namespace dxvk {
     D3D11ShaderModuleSet                        m_shaderModules;
 
     D3D_FEATURE_LEVEL               m_maxFeatureLevel;
+    D3D11DeviceFeatures             m_deviceFeatures;
     D3D11_TILED_RESOURCES_TIER      m_tiledResourcesTier;
 
     HRESULT CreateShaderModule(

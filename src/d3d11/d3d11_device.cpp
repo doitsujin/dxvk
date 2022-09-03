@@ -47,6 +47,7 @@ namespace dxvk {
     m_d3d11Options      (m_dxvkDevice->instance()->config(), m_dxvkDevice),
     m_dxbcOptions       (m_dxvkDevice, m_d3d11Options),
     m_maxFeatureLevel   (GetMaxFeatureLevel(m_dxvkDevice->instance(), m_dxvkDevice->adapter())),
+    m_deviceFeatures    (m_dxvkDevice->instance(), m_dxvkDevice->adapter(), m_featureLevel),
     m_tiledResourcesTier(DetermineTiledResourcesTier(m_dxvkDevice->features(), m_dxvkDevice->properties())) {
     m_initializer = new D3D11Initializer(this);
     m_context     = new D3D11ImmediateContext(this, m_dxvkDevice);
@@ -1330,8 +1331,13 @@ namespace dxvk {
     if (!featureLevel)
       return E_INVALIDARG;
 
-    if (m_featureLevel < featureLevel)
+    if (m_featureLevel < featureLevel) {
       m_featureLevel = featureLevel;
+      m_deviceFeatures = D3D11DeviceFeatures(
+        m_dxvkDevice->instance(),
+        m_dxvkDevice->adapter(),
+        m_featureLevel);
+    }
 
     if (pChosenFeatureLevel)
       *pChosenFeatureLevel = featureLevel;
@@ -1541,29 +1547,8 @@ namespace dxvk {
           void*         pFeatureSupportData,
           UINT          FeatureSupportDataSize) {
     switch (Feature) {
-      case D3D11_FEATURE_THREADING: {
-        auto info = static_cast<D3D11_FEATURE_DATA_THREADING*>(pFeatureSupportData);
-
-        if (FeatureSupportDataSize != sizeof(*info))
-          return E_INVALIDARG;
-        
-        // We report native support for command lists here so that we do not actually
-        // have to re-implement the UpdateSubresource bug from the D3D11 runtime, see
-        // https://msdn.microsoft.com/en-us/library/windows/desktop/ff476486(v=vs.85).aspx)
-        info->DriverConcurrentCreates = TRUE;
-        info->DriverCommandLists      = TRUE;
-      } return S_OK;
-      
-      case D3D11_FEATURE_DOUBLES: {
-        auto info = static_cast<D3D11_FEATURE_DATA_DOUBLES*>(pFeatureSupportData);
-
-        if (FeatureSupportDataSize != sizeof(*info))
-          return E_INVALIDARG;
-        
-        info->DoublePrecisionFloatShaderOps = m_dxvkDevice->features().core.features.shaderFloat64
-                                           && m_dxvkDevice->features().core.features.shaderInt64;
-      } return S_OK;
-      
+      // Format support queries are special in that they use in-out
+      // structs, and we need the Vulkan device to query them at all
       case D3D11_FEATURE_FORMAT_SUPPORT: {
         auto info = static_cast<D3D11_FEATURE_DATA_FORMAT_SUPPORT*>(pFeatureSupportData);
 
@@ -1572,7 +1557,7 @@ namespace dxvk {
         
         return GetFormatSupportFlags(info->InFormat, &info->OutFormatSupport, nullptr);
       } return S_OK;
-      
+
       case D3D11_FEATURE_FORMAT_SUPPORT2: {
         auto info = static_cast<D3D11_FEATURE_DATA_FORMAT_SUPPORT2*>(pFeatureSupportData);
 
@@ -1581,203 +1566,11 @@ namespace dxvk {
         
         return GetFormatSupportFlags(info->InFormat, nullptr, &info->OutFormatSupport2);
       } return S_OK;
-      
-      case D3D11_FEATURE_D3D10_X_HARDWARE_OPTIONS: {
-        auto info = static_cast<D3D11_FEATURE_DATA_D3D10_X_HARDWARE_OPTIONS*>(pFeatureSupportData);
-
-        if (FeatureSupportDataSize != sizeof(*info))
-          return E_INVALIDARG;
-        
-        info->ComputeShaders_Plus_RawAndStructuredBuffers_Via_Shader_4_x = TRUE;
-      } return S_OK;
-      
-      case D3D11_FEATURE_D3D11_OPTIONS: {
-        auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS*>(pFeatureSupportData);
-
-        if (FeatureSupportDataSize != sizeof(*info))
-          return E_INVALIDARG;
-        
-        // https://msdn.microsoft.com/en-us/library/windows/desktop/hh404457(v=vs.85).aspx
-        const auto& features = m_dxvkDevice->features();
-
-        info->OutputMergerLogicOp                     = features.core.features.logicOp;
-        info->UAVOnlyRenderingForcedSampleCount       = features.core.features.variableMultisampleRate;
-        info->DiscardAPIsSeenByDriver                 = TRUE;
-        info->FlagsForUpdateAndCopySeenByDriver       = TRUE;
-        info->ClearView                               = TRUE;
-        info->CopyWithOverlap                         = TRUE;
-        info->ConstantBufferPartialUpdate             = TRUE;
-        info->ConstantBufferOffsetting                = TRUE;
-        info->MapNoOverwriteOnDynamicConstantBuffer   = TRUE;
-        info->MapNoOverwriteOnDynamicBufferSRV        = TRUE;
-        info->MultisampleRTVWithForcedSampleCountOne  = TRUE; /* not really */
-        info->SAD4ShaderInstructions                  = TRUE;
-        info->ExtendedDoublesShaderInstructions       = TRUE;
-        info->ExtendedResourceSharing                 = TRUE;
-      } return S_OK;
-
-      case D3D11_FEATURE_ARCHITECTURE_INFO: {
-        auto info = static_cast<D3D11_FEATURE_DATA_ARCHITECTURE_INFO*>(pFeatureSupportData);
-
-        if (FeatureSupportDataSize != sizeof(*info))
-          return E_INVALIDARG;
-
-        info->TileBasedDeferredRenderer = FALSE;
-      } return S_OK;
-
-      case D3D11_FEATURE_D3D9_OPTIONS: {
-        auto info = static_cast<D3D11_FEATURE_DATA_D3D9_OPTIONS*>(pFeatureSupportData);
-
-        if (FeatureSupportDataSize != sizeof(*info))
-          return E_INVALIDARG;
-
-        info->FullNonPow2TextureSupport = TRUE;
-      } return S_OK;
-      
-      case D3D11_FEATURE_SHADER_MIN_PRECISION_SUPPORT: {
-        auto info = static_cast<D3D11_FEATURE_DATA_SHADER_MIN_PRECISION_SUPPORT*>(pFeatureSupportData);
-
-        if (FeatureSupportDataSize != sizeof(*info))
-          return E_INVALIDARG;
-        
-        // Report that we only support full 32-bit operations
-        info->PixelShaderMinPrecision          = 0;
-        info->AllOtherShaderStagesMinPrecision = 0;
-      } return S_OK;
-      
-      case D3D11_FEATURE_D3D9_SHADOW_SUPPORT: {
-        auto info = static_cast<D3D11_FEATURE_DATA_D3D9_SHADOW_SUPPORT*>(pFeatureSupportData);
-
-        if (FeatureSupportDataSize != sizeof(*info))
-          return E_INVALIDARG;
-        
-        info->SupportsDepthAsTextureWithLessEqualComparisonFilter = TRUE;
-      } return S_OK;
-
-      case D3D11_FEATURE_D3D11_OPTIONS1: {
-        auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS1*>(pFeatureSupportData);
-
-        if (FeatureSupportDataSize != sizeof(*info))
-          return E_INVALIDARG;
-
-        // Min/Max filtering requires Tiled Resources Tier 2 for some reason,
-        // so we cannot support it even though Vulkan exposes this feature
-        info->TiledResourcesTier                    = m_tiledResourcesTier;
-        info->MinMaxFiltering                       = m_tiledResourcesTier >= D3D11_TILED_RESOURCES_TIER_2;
-        info->ClearViewAlsoSupportsDepthOnlyFormats = TRUE;
-        info->MapOnDefaultBuffers                   = TRUE;
-      } return S_OK;
-
-      case D3D11_FEATURE_D3D9_SIMPLE_INSTANCING_SUPPORT: {
-        auto info = static_cast<D3D11_FEATURE_DATA_D3D9_SIMPLE_INSTANCING_SUPPORT*>(pFeatureSupportData);
-
-        if (FeatureSupportDataSize != sizeof(*info))
-          return E_INVALIDARG;
-
-        info->SimpleInstancingSupported = TRUE;
-      } return S_OK;
-
-      case D3D11_FEATURE_MARKER_SUPPORT: {
-        auto info = static_cast<D3D11_FEATURE_DATA_MARKER_SUPPORT*>(pFeatureSupportData);
-
-        if (FeatureSupportDataSize != sizeof(*info))
-          return E_INVALIDARG;
-
-        info->Profile = m_context->IsAnnotationEnabled();
-      } return S_OK;
-
-      case D3D11_FEATURE_D3D9_OPTIONS1: {
-        auto info = static_cast<D3D11_FEATURE_DATA_D3D9_OPTIONS1*>(pFeatureSupportData);
-
-        if (FeatureSupportDataSize != sizeof(*info))
-          return E_INVALIDARG;
-
-        info->FullNonPow2TextureSupported                                 = TRUE;
-        info->DepthAsTextureWithLessEqualComparisonFilterSupported        = TRUE;
-        info->SimpleInstancingSupported                                   = TRUE;
-        info->TextureCubeFaceRenderTargetWithNonCubeDepthStencilSupported = TRUE;
-      } return S_OK;
-
-      case D3D11_FEATURE_D3D11_OPTIONS2: {
-        auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS2*>(pFeatureSupportData);
-
-        if (FeatureSupportDataSize != sizeof(*info))
-          return E_INVALIDARG;
-
-        info->PSSpecifiedStencilRefSupported = m_dxvkDevice->features().extShaderStencilExport;
-        info->TypedUAVLoadAdditionalFormats  = m_dxbcOptions.supportsTypedUavLoadExtended;
-        info->ROVsSupported                  = FALSE;
-        info->ConservativeRasterizationTier  = D3D11_CONSERVATIVE_RASTERIZATION_NOT_SUPPORTED;
-        info->MapOnDefaultTextures           = TRUE;
-        info->TiledResourcesTier             = m_tiledResourcesTier;
-        info->StandardSwizzle                = FALSE;
-        info->UnifiedMemoryArchitecture      = m_dxvkDevice->isUnifiedMemoryArchitecture();
-
-        if (m_dxvkDevice->features().extConservativeRasterization) {
-          // We don't have a way to query uncertainty regions, so just check degenerate triangle behaviour
-          info->ConservativeRasterizationTier = m_dxvkDevice->properties().extConservativeRasterization.degenerateTrianglesRasterized
-            ? D3D11_CONSERVATIVE_RASTERIZATION_TIER_2 : D3D11_CONSERVATIVE_RASTERIZATION_TIER_1;
-        }
-      } return S_OK;
-
-      case D3D11_FEATURE_D3D11_OPTIONS3: {
-        if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_D3D11_OPTIONS3))
-          return E_INVALIDARG;
-
-        const auto& features = m_dxvkDevice->features();
-
-        auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS3*>(pFeatureSupportData);
-        info->VPAndRTArrayIndexFromAnyShaderFeedingRasterizer =
-          features.vk12.shaderOutputViewportIndex &&
-          features.vk12.shaderOutputLayer;
-      } return S_OK;
-
-      case D3D11_FEATURE_GPU_VIRTUAL_ADDRESS_SUPPORT: {
-        auto info = static_cast<D3D11_FEATURE_DATA_GPU_VIRTUAL_ADDRESS_SUPPORT*>(pFeatureSupportData);
-
-        if (FeatureSupportDataSize != sizeof(*info))
-          return E_INVALIDARG;
-
-        // These numbers are not accurate, but it should not have any effect on D3D11 apps
-        info->MaxGPUVirtualAddressBitsPerResource = 32;
-        info->MaxGPUVirtualAddressBitsPerProcess  = 40;
-      } return S_OK;
-
-      case D3D11_FEATURE_D3D11_OPTIONS4: {
-        auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS4*>(pFeatureSupportData);
-
-        if (FeatureSupportDataSize != sizeof(*info))
-          return E_INVALIDARG;
-
-        info->ExtendedNV12SharedTextureSupported = TRUE;
-      } return S_OK;
-
-      case D3D11_FEATURE_SHADER_CACHE: {
-        auto info = static_cast<D3D11_FEATURE_DATA_SHADER_CACHE*>(pFeatureSupportData);
-
-        if (FeatureSupportDataSize != sizeof(*info))
-          return E_INVALIDARG;
-
-        // DXVK will keep all shaders in memory once created, and all Vulkan
-        // drivers that we know of that can run DXVK have an on-disk cache.
-        info->SupportFlags = D3D11_SHADER_CACHE_SUPPORT_AUTOMATIC_INPROC_CACHE
-                           | D3D11_SHADER_CACHE_SUPPORT_AUTOMATIC_DISK_CACHE;
-      } return S_OK;
-
-      case D3D11_FEATURE_D3D11_OPTIONS5: {
-        auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS5*>(pFeatureSupportData);
-
-        if (FeatureSupportDataSize != sizeof(*info))
-          return E_INVALIDARG;
-
-        // Shared resources are all sorts of wonky for obvious
-        // reasons, so don't over-promise things here for now
-        info->SharedResourceTier = D3D11_SHARED_RESOURCE_TIER_1;
-      } return S_OK;
 
       default:
-        Logger::err(str::format("D3D11Device: CheckFeatureSupport: Unknown feature: ", Feature));
-        return E_INVALIDARG;
+        // For everything else, we can use the device feature struct
+        // that we already initialized during device creation.
+        return m_deviceFeatures.GetFeatureData(Feature, FeatureSupportDataSize, pFeatureSupportData);
     }
   }
   
