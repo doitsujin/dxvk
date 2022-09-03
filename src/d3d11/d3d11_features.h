@@ -38,6 +38,14 @@ namespace dxvk {
             UINT                  FeatureDataSize,
             void*                 pFeatureData) const;
 
+    /**
+     * \brief Queries tiled resources tier
+     * \returns Tiled resources tier
+     */
+    D3D11_TILED_RESOURCES_TIER GetTiledResourcesTier() const {
+      return m_d3d11Options2.TiledResourcesTier;
+    }
+
   private:
 
     DxvkDeviceFeatures  m_features;

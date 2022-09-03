@@ -456,7 +456,6 @@ namespace dxvk {
 
     D3D_FEATURE_LEVEL               m_maxFeatureLevel;
     D3D11DeviceFeatures             m_deviceFeatures;
-    D3D11_TILED_RESOURCES_TIER      m_tiledResourcesTier;
 
     HRESULT CreateShaderModule(
             D3D11CommonShader*      pShaderModule,

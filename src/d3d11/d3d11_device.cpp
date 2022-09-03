@@ -47,8 +47,7 @@ namespace dxvk {
     m_d3d11Options      (m_dxvkDevice->instance()->config(), m_dxvkDevice),
     m_dxbcOptions       (m_dxvkDevice, m_d3d11Options),
     m_maxFeatureLevel   (GetMaxFeatureLevel(m_dxvkDevice->instance(), m_dxvkDevice->adapter())),
-    m_deviceFeatures    (m_dxvkDevice->instance(), m_dxvkDevice->adapter(), m_featureLevel),
-    m_tiledResourcesTier(DetermineTiledResourcesTier(m_dxvkDevice->features(), m_dxvkDevice->properties())) {
+    m_deviceFeatures    (m_dxvkDevice->instance(), m_dxvkDevice->adapter(), m_featureLevel) {
     m_initializer = new D3D11Initializer(this);
     m_context     = new D3D11ImmediateContext(this, m_dxvkDevice);
     m_d3d10Device = new D3D10Device(this, m_context.ptr());
@@ -87,7 +86,8 @@ namespace dxvk {
       return E_INVALIDARG;
     
     D3D11_BUFFER_DESC desc = *pDesc;
-    HRESULT hr = D3D11Buffer::NormalizeBufferProperties(&desc, m_tiledResourcesTier);
+    HRESULT hr = D3D11Buffer::NormalizeBufferProperties(&desc,
+      m_deviceFeatures.GetTiledResourcesTier());
 
     if (FAILED(hr))
       return hr;
@@ -210,7 +210,8 @@ namespace dxvk {
     desc.MiscFlags      = pDesc->MiscFlags;
     desc.TextureLayout  = pDesc->TextureLayout;
     
-    HRESULT hr = D3D11CommonTexture::NormalizeTextureProperties(&desc, m_tiledResourcesTier);
+    HRESULT hr = D3D11CommonTexture::NormalizeTextureProperties(&desc,
+      m_deviceFeatures.GetTiledResourcesTier());
 
     if (FAILED(hr))
       return hr;
@@ -285,13 +286,14 @@ namespace dxvk {
     desc.MiscFlags      = pDesc->MiscFlags;
     desc.TextureLayout  = pDesc->TextureLayout;
     
-    HRESULT hr = D3D11CommonTexture::NormalizeTextureProperties(&desc, m_tiledResourcesTier);
+    D3D11_TILED_RESOURCES_TIER tiledResourcesTier = m_deviceFeatures.GetTiledResourcesTier();
+    HRESULT hr = D3D11CommonTexture::NormalizeTextureProperties(&desc, tiledResourcesTier);
 
     if (FAILED(hr))
       return hr;
 
     if ((desc.MiscFlags & D3D11_RESOURCE_MISC_TILED)
-     && (m_tiledResourcesTier < D3D11_TILED_RESOURCES_TIER_3))
+     && (tiledResourcesTier < D3D11_TILED_RESOURCES_TIER_3))
       return E_INVALIDARG;
 
     if (!ppTexture3D)
@@ -1160,7 +1162,9 @@ namespace dxvk {
     if (FAILED(D3D11SamplerState::NormalizeDesc(&desc)))
       return E_INVALIDARG;
 
-    if (IsMinMaxFilter(desc.Filter) && m_tiledResourcesTier < D3D11_TILED_RESOURCES_TIER_2)
+    D3D11_TILED_RESOURCES_TIER tiledResourcesTier = m_deviceFeatures.GetTiledResourcesTier();
+
+    if (IsMinMaxFilter(desc.Filter) && tiledResourcesTier < D3D11_TILED_RESOURCES_TIER_2)
       return E_INVALIDARG;
 
     if (!ppSamplerState)
@@ -2035,9 +2039,10 @@ namespace dxvk {
       if (GetImageTypeSupport(fmtMapping.Format, VK_IMAGE_TYPE_3D, 0)) flags1 |= D3D11_FORMAT_SUPPORT_TEXTURE3D;
 
       // We only support tiled resources with a single aspect
+      D3D11_TILED_RESOURCES_TIER tiledResourcesTier = m_deviceFeatures.GetTiledResourcesTier();
       VkImageAspectFlags sparseAspects = VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT;
 
-      if (m_tiledResourcesTier && !(fmtProperties->aspectMask & ~sparseAspects)) {
+      if (tiledResourcesTier && !(fmtProperties->aspectMask & ~sparseAspects)) {
         VkImageCreateFlags flags = VK_IMAGE_CREATE_SPARSE_BINDING_BIT
                                  | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT
                                  | VK_IMAGE_CREATE_SPARSE_ALIASED_BIT;
