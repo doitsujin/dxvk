@@ -1824,28 +1824,8 @@ namespace dxvk {
     if (entry != s_featureLevels.end())
       return entry->second;
 
-    // Check Feature Level 11_0 features
-    if (!features.core.features.drawIndirectFirstInstance
-     || !features.core.features.fragmentStoresAndAtomics
-     || !features.core.features.multiDrawIndirect
-     || !features.core.features.tessellationShader)
-      return D3D_FEATURE_LEVEL_10_1;
-
-    // Check Feature Level 11_1 features
-    if (!features.core.features.logicOp
-     || !features.core.features.variableMultisampleRate
-     || !features.core.features.vertexPipelineStoresAndAtomics)
-      return D3D_FEATURE_LEVEL_11_0;
-
-    // Check Feature Level 12_0 features
-    D3D11_TILED_RESOURCES_TIER tiledResourcesTier = DetermineTiledResourcesTier(
-      Adapter->features(),
-      Adapter->devicePropertiesExt());
-
-    if (tiledResourcesTier < D3D11_TILED_RESOURCES_TIER_2)
-      return D3D_FEATURE_LEVEL_11_1;
-
-    return D3D_FEATURE_LEVEL_12_0;
+    // Otherwise, check the actually available device features
+    return D3D11DeviceFeatures::GetMaxFeatureLevel(Instance, Adapter);
   }
   
   
@@ -2366,33 +2346,6 @@ namespace dxvk {
       }
     }
   }
-
-
-  D3D11_TILED_RESOURCES_TIER D3D11Device::DetermineTiledResourcesTier(
-    const DxvkDeviceFeatures&         Features,
-    const DxvkDeviceInfo&             Properties) {
-    if (!Features.core.features.sparseBinding
-     || !Features.core.features.sparseResidencyBuffer
-     || !Features.core.features.sparseResidencyImage2D
-     || !Features.core.features.sparseResidencyAliased
-     || !Properties.core.properties.sparseProperties.residencyStandard2DBlockShape)
-      return D3D11_TILED_RESOURCES_NOT_SUPPORTED;
-
-    if (!Features.core.features.shaderResourceResidency
-     || !Features.core.features.shaderResourceMinLod
-     || !Features.vk12.samplerFilterMinmax
-     || !Properties.vk12.filterMinmaxSingleComponentFormats
-     || !Properties.core.properties.sparseProperties.residencyNonResidentStrict
-     || Properties.core.properties.sparseProperties.residencyAlignedMipSize)
-      return D3D11_TILED_RESOURCES_TIER_1;
-
-    if (!Features.core.features.sparseResidencyImage3D
-     || !Properties.core.properties.sparseProperties.residencyStandard3DBlockShape)
-      return D3D11_TILED_RESOURCES_TIER_2;
-
-    return D3D11_TILED_RESOURCES_TIER_3;
-  }
-  
 
 
 

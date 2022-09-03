@@ -54,6 +54,17 @@ namespace dxvk {
       return m_d3d11Options2.ConservativeRasterizationTier;
     }
 
+    /**
+     * \brief Tests maximum supported feature level
+     *
+     * \param [in] Instance DXVK instance
+     * \param [in] Adapter DXVK adapter
+     * \returns Highest supported feature level
+     */
+    static D3D_FEATURE_LEVEL GetMaxFeatureLevel(
+      const Rc<DxvkInstance>&     Instance,
+      const Rc<DxvkAdapter>&      Adapter);
+
   private:
 
     DxvkDeviceFeatures  m_features;
@@ -99,6 +110,8 @@ namespace dxvk {
     BOOL DetermineUavExtendedTypedLoadSupport(
       const Rc<DxvkAdapter>&      Adapter,
             D3D_FEATURE_LEVEL     FeatureLevel);
+
+    D3D_FEATURE_LEVEL GetMaxFeatureLevel() const;
 
   };
 

@@ -177,6 +177,14 @@ namespace dxvk {
   }
 
 
+  D3D_FEATURE_LEVEL D3D11DeviceFeatures::GetMaxFeatureLevel(
+    const Rc<DxvkInstance>&     Instance,
+    const Rc<DxvkAdapter>&      Adapter) {
+    D3D11DeviceFeatures features(Instance, Adapter, D3D_FEATURE_LEVEL_12_1);
+    return features.GetMaxFeatureLevel();
+  }
+
+
   D3D11_CONSERVATIVE_RASTERIZATION_TIER D3D11DeviceFeatures::DetermineConservativeRasterizationTier(
           D3D_FEATURE_LEVEL     FeatureLevel) {
     if (FeatureLevel < D3D_FEATURE_LEVEL_11_1
@@ -263,6 +271,33 @@ namespace dxvk {
     }
 
     return TRUE;
+  }
+
+
+  D3D_FEATURE_LEVEL D3D11DeviceFeatures::GetMaxFeatureLevel() const {
+    // Check Feature Level 11_0 features
+    if (!m_features.core.features.drawIndirectFirstInstance
+     || !m_features.core.features.fragmentStoresAndAtomics
+     || !m_features.core.features.multiDrawIndirect
+     || !m_features.core.features.tessellationShader)
+      return D3D_FEATURE_LEVEL_10_1;
+
+    // Check Feature Level 11_1 features
+    if (!m_d3d11Options.OutputMergerLogicOp
+     || !m_features.core.features.vertexPipelineStoresAndAtomics)
+      return D3D_FEATURE_LEVEL_11_0;
+
+    // Check Feature Level 12_0 features
+    if (m_d3d11Options2.TiledResourcesTier < D3D11_TILED_RESOURCES_TIER_2
+     || !m_d3d11Options2.TypedUAVLoadAdditionalFormats)
+      return D3D_FEATURE_LEVEL_11_1;
+
+    // Check Feature Level 12_1 features
+    if (!m_d3d11Options2.ConservativeRasterizationTier
+     || !m_d3d11Options2.ROVsSupported)
+      return D3D_FEATURE_LEVEL_12_0;
+
+    return D3D_FEATURE_LEVEL_12_1;
   }
 
 }
