@@ -120,6 +120,10 @@ namespace dxvk {
             D3D11CommonTexture*         pResource,
             UINT                        Subresource);
     
+    void ReadbackImageBuffer(
+            D3D11CommonTexture*         pResource,
+            UINT                        Subresource);
+
     void UpdateMappedBuffer(
             D3D11Buffer*                  pDstBuffer,
             UINT                          Offset,

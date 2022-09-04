@@ -478,6 +478,13 @@ namespace dxvk {
       constexpr uint32_t DoWait       = (1u << 2);
       uint32_t doFlags;
 
+      if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER) {
+        // If the image can be written by the GPU, we need to update the
+        // mapped staging buffer to reflect the current image contents.
+        if (pResource->Desc()->Usage == D3D11_USAGE_DEFAULT)
+          ReadbackImageBuffer(pResource, Subresource);
+      }
+
       if (MapType == D3D11_MAP_READ) {
         // Reads will not change the image content, so we only need
         // to wait for the GPU to finish writing to the mapped buffer.
@@ -583,8 +590,7 @@ namespace dxvk {
     // the given subresource is actually mapped right now
     m_mappedImageCount -= 1;
 
-    if ((mapType != D3D11_MAP_READ) &&
-        (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)) {
+    if ((mapType != D3D11_MAP_READ) && (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)) {
       // Now that data has been written into the buffer,
       // we need to copy its contents into the image
       VkImageAspectFlags aspectMask = lookupFormatInfo(pResource->GetPackedFormat())->aspectMask;
@@ -597,6 +603,40 @@ namespace dxvk {
   }
   
   
+  void D3D11ImmediateContext::ReadbackImageBuffer(
+          D3D11CommonTexture*         pResource,
+          UINT                        Subresource) {
+    VkImageAspectFlags aspectMask = lookupFormatInfo(pResource->GetPackedFormat())->aspectMask;
+    VkImageSubresource subresource = pResource->GetSubresourceFromIndex(aspectMask, Subresource);
+
+    EmitCs([
+      cSrcImage           = pResource->GetImage(),
+      cSrcSubresource     = vk::makeSubresourceLayers(subresource),
+      cDstBuffer          = pResource->GetMappedBuffer(Subresource),
+      cPackedFormat       = pResource->GetPackedFormat()
+    ] (DxvkContext* ctx) {
+      VkOffset3D offset = { 0, 0, 0 };
+      VkExtent3D extent = cSrcImage->mipLevelExtent(cSrcSubresource.mipLevel);
+
+      if (cSrcSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+        ctx->copyImageToBuffer(cDstBuffer, 0, 0, 0,
+          cSrcImage, cSrcSubresource, offset, extent);
+      } else {
+        ctx->copyDepthStencilImageToPackedBuffer(cDstBuffer, 0,
+          VkOffset2D { 0, 0 },
+          VkExtent2D { extent.width, extent.height },
+          cSrcImage, cSrcSubresource,
+          VkOffset2D { 0, 0 },
+          VkExtent2D { extent.width, extent.height },
+          cPackedFormat);
+      }
+    });
+
+    if (pResource->HasSequenceNumber())
+      TrackTextureSequenceNumber(pResource, Subresource);
+  }
+
+
   void D3D11ImmediateContext::UpdateMappedBuffer(
           D3D11Buffer*                  pDstBuffer,
           UINT                          Offset,
