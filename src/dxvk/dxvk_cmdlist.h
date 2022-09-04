@@ -73,6 +73,13 @@ namespace dxvk {
             VkPipelineStageFlags2 stageMask);
 
     /**
+     * \brief Adds a fence to signal
+     * \param [in] fence The fence
+     */
+    void signalFence(
+            VkFence               fence);
+
+    /**
      * \brief Adds a command buffer to execute
      * \param [in] commandBuffer The command buffer
      */
@@ -105,6 +112,7 @@ namespace dxvk {
 
   private:
 
+    VkFence                                m_fence = VK_NULL_HANDLE;
     std::vector<VkSemaphoreSubmitInfo>     m_semaphoreWaits;
     std::vector<VkSemaphoreSubmitInfo>     m_semaphoreSignals;
     std::vector<VkCommandBufferSubmitInfo> m_commandBuffers;
@@ -358,6 +366,12 @@ namespace dxvk {
     void setWsiSemaphores(const vk::PresenterSync& wsiSemaphores) {
       m_wsiSemaphores = wsiSemaphores;
     }
+
+    /**
+     * \brief Synchronizes with command list fence
+     * \returns Return value of vkWaitForFences call
+     */
+    VkResult synchronizeFence();
 
     /**
      * \brief Resets the command list
@@ -996,6 +1010,7 @@ namespace dxvk {
     Rc<DxvkCommandPool>       m_transferPool;
 
     VkSemaphore               m_sdmaSemaphore = VK_NULL_HANDLE;
+    VkFence                   m_fence         = VK_NULL_HANDLE;
 
     DxvkCommandSubmissionInfo m_cmd;
 

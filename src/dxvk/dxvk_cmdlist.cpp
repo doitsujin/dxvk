@@ -39,6 +39,12 @@ namespace dxvk {
   }
 
 
+  void DxvkCommandSubmission::signalFence(
+          VkFence               fence) {
+    m_fence = fence;
+  }
+
+
   void DxvkCommandSubmission::executeCommandBuffer(
           VkCommandBuffer       commandBuffer) {
     VkCommandBufferSubmitInfo submitInfo = { VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO };
@@ -73,7 +79,7 @@ namespace dxvk {
     VkResult vr = VK_SUCCESS;
 
     if (!this->isEmpty())
-      vr = vk->vkQueueSubmit2(queue, 1, &submitInfo, VK_NULL_HANDLE);
+      vr = vk->vkQueueSubmit2(queue, 1, &submitInfo, m_fence);
 
     this->reset();
     return vr;
@@ -81,6 +87,7 @@ namespace dxvk {
 
 
   void DxvkCommandSubmission::reset() {
+    m_fence = VK_NULL_HANDLE;
     m_semaphoreWaits.clear();
     m_semaphoreSignals.clear();
     m_commandBuffers.clear();
@@ -88,7 +95,8 @@ namespace dxvk {
 
 
   bool DxvkCommandSubmission::isEmpty() const {
-    return m_semaphoreWaits.empty()
+    return m_fence == VK_NULL_HANDLE
+        && m_semaphoreWaits.empty()
         && m_semaphoreSignals.empty()
         && m_commandBuffers.empty();
   }
@@ -170,6 +178,11 @@ namespace dxvk {
 
     if (m_vkd->vkCreateSemaphore(m_vkd->device(), &semaphoreInfo, nullptr, &m_sdmaSemaphore))
       throw DxvkError("DxvkCommandList: Failed to create semaphore");
+
+    VkFenceCreateInfo fenceInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
+
+    if (m_vkd->vkCreateFence(m_vkd->device(), &fenceInfo, nullptr, &m_fence))
+      throw DxvkError("DxvkCommandList: Failed to create fence");
 
     m_graphicsPool = new DxvkCommandPool(device, graphicsQueue.queueFamily);
 
@@ -286,6 +299,9 @@ namespace dxvk {
           m_commandSubmission.signalSemaphore(m_wsiSemaphores.present,
             0, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
         }
+
+        // Signal synchronization fence on final submission
+        m_commandSubmission.signalFence(m_fence);
       }
 
       // Finally, submit all graphics commands of the current submission
@@ -350,6 +366,11 @@ namespace dxvk {
   }
 
   
+  VkResult DxvkCommandList::synchronizeFence() {
+    return m_vkd->vkWaitForFences(m_vkd->device(), 1, &m_fence, VK_TRUE, ~0ull);
+  }
+
+
   void DxvkCommandList::reset() {
     // Free resources and other objects
     // that are no longer in use
@@ -389,6 +410,10 @@ namespace dxvk {
     // Reset actual command buffers and pools
     m_graphicsPool->reset();
     m_transferPool->reset();
+
+    // Reset fence
+    if (m_vkd->vkResetFences(m_vkd->device(), 1, &m_fence))
+      Logger::err("DxvkCommandList: Failed to reset fence");
   }
 
 

@@ -32,8 +32,6 @@ namespace dxvk {
     m_submitThread.join();
     m_finishThread.join();
 
-    synchronizeSemaphore(m_semaphoreValue);
-
     vk->vkDestroySemaphore(vk->device(), m_semaphore, nullptr);
   }
   
@@ -95,30 +93,6 @@ namespace dxvk {
   }
 
 
-  VkResult DxvkSubmissionQueue::synchronizeSemaphore(
-          uint64_t        semaphoreValue) {
-    auto vk = m_device->vkd();
-
-    VkSemaphoreWaitInfo waitInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO };
-    waitInfo.semaphoreCount = 1;
-    waitInfo.pSemaphores = &m_semaphore;
-    waitInfo.pValues = &semaphoreValue;
-
-    // 32-bit winevulkan on Proton seems to be broken here
-    // and returns with VK_TIMEOUT, even though the timeout
-    // is infinite. Work around this by spinning.
-    VkResult vr = VK_TIMEOUT;
-
-    while (vr == VK_TIMEOUT)
-      vr = vk->vkWaitSemaphores(vk->device(), &waitInfo, ~0ull);
-
-    if (vr)
-      Logger::err(str::format("Failed to synchronize with global timeline semaphore: ", vr));
-
-    return vr;
-  }
-
-
   void DxvkSubmissionQueue::submitCmdLists() {
     env::setThreadName("dxvk-submit");
 
@@ -141,12 +115,10 @@ namespace dxvk {
       if (m_lastError != VK_ERROR_DEVICE_LOST) {
         std::lock_guard<dxvk::mutex> lock(m_mutexQueue);
 
-        if (entry.submit.cmdList != nullptr) {
+        if (entry.submit.cmdList != nullptr)
           status = entry.submit.cmdList->submit(m_semaphore, m_semaphoreValue);
-          entry.submit.semaphoreValue = m_semaphoreValue;
-        } else if (entry.present.presenter != nullptr) {
+        else if (entry.present.presenter != nullptr)
           status = entry.present.presenter->presentImage();
-        }
       } else {
         // Don't submit anything after device loss
         // so that drivers get a chance to recover
@@ -200,7 +172,7 @@ namespace dxvk {
       VkResult status = m_lastError.load();
       
       if (status != VK_ERROR_DEVICE_LOST)
-        status = synchronizeSemaphore(entry.submit.semaphoreValue);
+        status = entry.submit.cmdList->synchronizeFence();
       
       if (status != VK_SUCCESS) {
         m_lastError = status;

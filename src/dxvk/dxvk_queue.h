@@ -33,7 +33,6 @@ namespace dxvk {
    */
   struct DxvkSubmitInfo {
     Rc<DxvkCommandList> cmdList;
-    uint64_t semaphoreValue;
   };
   
   
@@ -199,9 +198,6 @@ namespace dxvk {
 
     dxvk::thread                m_submitThread;
     dxvk::thread                m_finishThread;
-
-    VkResult synchronizeSemaphore(
-            uint64_t        semaphoreValue);
 
     void submitCmdLists();
 
