@@ -268,8 +268,7 @@
         "d3d11_level10_0_optional": {
             "features": {
                 "VkPhysicalDeviceFeatures": {
-                    "logicOp": true,
-                    "variableMultisampleRate": true
+                    "logicOp": true
                 }
             }
         },
@@ -303,7 +302,6 @@
             "features": {
                 "VkPhysicalDeviceFeatures": {
                     "logicOp": true,
-                    "variableMultisampleRate": true,
                     "vertexPipelineStoresAndAtomics": true
                 }
             }

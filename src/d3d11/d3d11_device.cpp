@@ -1878,7 +1878,6 @@ namespace dxvk {
 
     // Required for Feature Level 11_1
     enabled.core.features.logicOp                                 = supported.core.features.logicOp;
-    enabled.core.features.variableMultisampleRate                 = supported.core.features.variableMultisampleRate;
     enabled.core.features.vertexPipelineStoresAndAtomics          = supported.core.features.vertexPipelineStoresAndAtomics;
 
     // Required for Feature Level 12_0
