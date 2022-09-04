@@ -54,6 +54,13 @@ namespace dxvk {
     // that we don't have to scan device features at draw time
     if (m_device->mustTrackPipelineLifetime())
       m_features.set(DxvkContextFeature::TrackGraphicsPipeline);
+
+    // Variable multisample rate is needed to efficiently support
+    // rendering without bound render targets, otherwise we may
+    // have to interrupt the current render pass whenever the
+    // requested rasterizer sample count changes
+    if (m_device->features().core.features.variableMultisampleRate)
+      m_features.set(DxvkContextFeature::VariableMultisampleRate);
   }
   
   
@@ -2456,6 +2463,11 @@ namespace dxvk {
       m_state.dyn.frontFace = rs.frontFace;
 
       m_flags.set(DxvkContextFlag::GpDirtyRasterizerState);
+    }
+
+    if (unlikely(!m_features.test(DxvkContextFeature::VariableMultisampleRate))) {
+      if (rs.sampleCount != m_state.gp.state.rs.sampleCount())
+        m_flags.set(DxvkContextFlag::GpDirtyFramebuffer);
     }
 
     DxvkRsInfo rsInfo(

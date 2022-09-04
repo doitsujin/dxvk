@@ -349,6 +349,13 @@ namespace dxvk {
     extensionsEnabled.merge(m_extraExtensions);
     DxvkNameList extensionNameList = extensionsEnabled.toNameList();
 
+    // Always enable robust buffer access
+    enabledFeatures.core.features.robustBufferAccess = VK_TRUE;
+
+    // Enable variable multisample rate if supported
+    enabledFeatures.core.features.variableMultisampleRate =
+      m_deviceFeatures.core.features.variableMultisampleRate;
+
     // Optionally used by some client API extensions
     enabledFeatures.vk12.drawIndirectCount =
       m_deviceFeatures.vk12.drawIndirectCount;
