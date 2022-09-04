@@ -143,27 +143,26 @@
         },
         "d3d11_baseline": {
             "extensions": {
-                "VK_EXT_robustness2": 1
+                "VK_EXT_robustness2": 1,
+                "VK_EXT_transform_feedback": 1
             },
             "features": {
                 "VkPhysicalDeviceFeatures": {
-                	"geometryShader": true,
-                    "depthBounds": true,
-
-                    "imageCubeArray": true,
-                    "depthClamp": true,
                     "depthBiasClamp": true,
+                    "depthClamp": true,
+                    "dualSrcBlend": true,
                     "fillModeNonSolid": true,
+                    "fullDrawIndexUint32": true,
+                    "geometryShader": true,
+                    "imageCubeArray": true,
+                    "independentBlend": true,
+                    "multiViewport": true,
+                    "occlusionQueryPrecise": true,
                     "sampleRateShading": true,
                     "shaderClipDistance": true,
                     "shaderCullDistance": true,
-                    "textureCompressionBC": true,
-                    "occlusionQueryPrecise": true,
-                    "multiViewport": true,
-                    "independentBlend": true,
-                    "fullDrawIndexUint32": true,
-
-                    "shaderImageGatherExtended": true
+                    "shaderImageGatherExtended": true,
+                    "textureCompressionBC": true
                 },
                 "VkPhysicalDeviceVulkan11Features": {
                     "shaderDrawParameters": true
@@ -174,6 +173,10 @@
                 "VkPhysicalDeviceRobustness2FeaturesEXT": {
                     "nullDescriptor": true,
                     "robustBufferAccess2": true
+                },
+                "VkPhysicalDeviceTransformFeedbackFeaturesEXT": {
+                    "transformFeedback": true,
+                    "geometryStreams": true
                 }
             }
         },
@@ -181,11 +184,15 @@
             "extensions": {
                 "VK_EXT_memory_priority": 1,
                 "VK_EXT_vertex_attribute_divisor": 1,
-                "VK_EXT_custom_border_color": 1
+                "VK_EXT_custom_border_color": 1,
+                "VK_EXT_depth_clip_enable": 1
             },
             "features": {
                 "VkPhysicalDeviceFeatures": {
-                    "depthBounds": true
+                    "depthBounds": true,
+                    "pipelineStatisticsQuery": true,
+                    "logicOp": true,
+                    "samplerAnisotropy": true
                 },
                 "VkPhysicalDeviceMemoryPriorityFeaturesEXT": {
                     "memoryPriority": true
@@ -194,89 +201,12 @@
                     "vertexAttributeInstanceRateDivisor": true,
                     "vertexAttributeInstanceRateZeroDivisor": true
                 },
-
                 "VkPhysicalDeviceCustomBorderColorFeaturesEXT": {
                     "customBorderColors": true,
                     "customBorderColorWithoutFormat": true
-                }
-            }
-        },
-        "d3d11_level9_1": {
-            "extensions": {
-                "VK_EXT_transform_feedback": 1,
-                "VK_EXT_depth_clip_enable": 1
-            },
-            "features": {
-                "VkPhysicalDeviceFeatures": {
-                    "depthClamp": true,
-                    "depthBiasClamp": true,
-                    "fillModeNonSolid": true,
-                    "sampleRateShading": true,
-                    "shaderClipDistance": true,
-                    "shaderCullDistance": true,
-                    "textureCompressionBC": true
                 },
                 "VkPhysicalDeviceDepthClipEnableFeaturesEXT": {
                     "depthClipEnable": true
-                }
-            }
-        },
-        "d3d11_level9_1_optional": {
-            "extensions": {
-                "VK_EXT_depth_clip_enable": 1
-            },
-            "features": {
-                "VkPhysicalDeviceFeatures": {
-                    "pipelineStatisticsQuery": true,
-                    "samplerAnisotropy": true
-                },
-                "VkPhysicalDeviceDepthClipEnableFeaturesEXT": {
-                    "depthClipEnable": true
-                }
-            }
-        },
-        "d3d11_level9_2": {
-            "features": {
-                "VkPhysicalDeviceFeatures": {
-                    "occlusionQueryPrecise": true
-                }
-            }
-        },
-        "d3d11_level9_3": {
-            "features": {
-                "VkPhysicalDeviceFeatures": {
-                    "independentBlend": true,
-                    "multiViewport": true
-                }
-            }
-        },
-        "d3d11_level10_0": {
-            "extensions": {
-                "VK_EXT_transform_feedback": 1
-            },
-            "features": {
-                "VkPhysicalDeviceFeatures": {
-                    "fullDrawIndexUint32": true,
-                    "shaderImageGatherExtended": true
-                },
-                "VkPhysicalDeviceTransformFeedbackFeaturesEXT": {
-                    "transformFeedback": true,
-                    "geometryStreams": true
-                }
-            }
-        },
-        "d3d11_level10_0_optional": {
-            "features": {
-                "VkPhysicalDeviceFeatures": {
-                    "logicOp": true
-                }
-            }
-        },
-        "d3d11_level10_1": {
-            "features": {
-                "VkPhysicalDeviceFeatures": {
-                    "dualSrcBlend": true,
-                    "imageCubeArray": true
                 }
             }
         },
@@ -444,12 +374,7 @@
                 "vulkan11requirements",
                 "vulkan12requirements",
                 "vulkan13requirements",
-                "d3d11_baseline",
-                "d3d11_level9_1",
-                "d3d11_level9_2",
-                "d3d11_level9_3",
-                "d3d11_level10_0",
-                "d3d11_level10_1"
+                "d3d11_baseline"
             ]
         },
         "VP_DXVK_d3d11_level_11_0_baseline": {
@@ -488,11 +413,6 @@
                 "vulkan12requirements",
                 "vulkan13requirements",
                 "d3d11_baseline",
-                "d3d11_level9_1",
-                "d3d11_level9_2",
-                "d3d11_level9_3",
-                "d3d11_level10_0",
-                "d3d11_level10_1",
                 "d3d11_level11_0"
             ]
         },
@@ -531,12 +451,7 @@
                 "vulkan11requirements",
                 "vulkan12requirements",
                 "vulkan13requirements",
-                "baseline",
-                "d3d11_level9_1",
-                "d3d11_level9_2",
-                "d3d11_level9_3",
-                "d3d11_level10_0",
-                "d3d11_level10_1",
+                "d3d11_baseline",
                 "d3d11_level11_0",
                 "d3d11_level11_1"
             ]
@@ -578,13 +493,6 @@
                 "vulkan13requirements",
                 "d3d11_baseline",
                 "d3d11_baseline_optional",
-                "d3d11_level9_1",
-                "d3d11_level9_1_optional",
-                "d3d11_level9_2",
-                "d3d11_level9_3",
-                "d3d11_level10_0",
-                "d3d11_level10_0_optional",
-                "d3d11_level10_1",
                 "d3d11_level11_0",
                 "d3d11_level11_0_optional",
                 "d3d11_level11_1"
@@ -627,13 +535,6 @@
                 "vulkan13requirements",
                 "d3d11_baseline",
                 "d3d11_baseline_optional",
-                "d3d11_level9_1",
-                "d3d11_level9_1_optional",
-                "d3d11_level9_2",
-                "d3d11_level9_3",
-                "d3d11_level10_0",
-                "d3d11_level10_0_optional",
-                "d3d11_level10_1",
                 "d3d11_level11_0",
                 "d3d11_level11_0_optional",
                 "d3d11_level11_1",
