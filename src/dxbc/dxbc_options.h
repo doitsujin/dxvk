@@ -26,7 +26,6 @@ namespace dxvk {
     /// Determines whether format qualifiers
     /// on typed UAV loads are required
     bool supportsTypedUavLoadR32 = false;
-    bool supportsTypedUavLoadExtended = false;
 
     /// Use subgroup operations to reduce the number of
     /// atomic operations for append/consume buffers.
