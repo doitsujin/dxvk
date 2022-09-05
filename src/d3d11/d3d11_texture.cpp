@@ -599,9 +599,17 @@ namespace dxvk {
     // If supported and requested, create a linear image. Default images
     // can be used for resolves and other operations regardless of bind
     // flags, so we need to use a proper image for those.
-    if (m_desc.TextureLayout == D3D11_TEXTURE_LAYOUT_ROW_MAJOR
-     || m_desc.Usage         == D3D11_USAGE_DEFAULT)
+    if (m_desc.TextureLayout == D3D11_TEXTURE_LAYOUT_ROW_MAJOR)
       return D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT;
+
+    // For default images, prefer direct mapping if the image is CPU readable
+    // since mapping for reads would have to stall otherwise. If the image is
+    // only writable, prefer a write-through buffer.
+    if (m_desc.Usage == D3D11_USAGE_DEFAULT) {
+      return (m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ)
+        ? D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT
+        : D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
+    }
 
     // The overhead of frequently uploading large dynamic images may outweigh
     // the benefit of linear tiling, so use a linear image in those cases.
