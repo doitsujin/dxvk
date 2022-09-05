@@ -490,7 +490,7 @@ namespace dxvk {
             Void*                       pData,
             UINT                        RowPitch,
             UINT                        DepthPitch,
-            ID3D11Resource*             pResource,
+            D3D11CommonTexture*         pTexture,
             UINT                        Subresource,
       const D3D11_BOX*                  pBox);
     

@@ -1378,9 +1378,25 @@ namespace dxvk {
           ID3D11Resource*             pSrcResource,
           UINT                        SrcSubresource,
     const D3D11_BOX*                  pSrcBox) {
+    auto texture = GetCommonTexture(pSrcResource);
+
+    if (!texture)
+      return;
+
+    if (texture->Desc()->Usage != D3D11_USAGE_DEFAULT
+     || texture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_NONE
+     || texture->CountSubresources() <= SrcSubresource)
+      return;
+
+    D3D11_MAP map = texture->GetMapType(SrcSubresource);
+
+    if (map != D3D11_MAP_READ
+     && map != D3D11_MAP_READ_WRITE)
+      return;
+
     CopySubresourceData(
       pDstData, DstRowPitch, DstDepthPitch,
-      pSrcResource, SrcSubresource, pSrcBox);
+      texture, SrcSubresource, pSrcBox);
   }
 
 
@@ -1391,9 +1407,26 @@ namespace dxvk {
     const void*                       pSrcData,
           UINT                        SrcRowPitch,
           UINT                        SrcDepthPitch) {
+    auto texture = GetCommonTexture(pDstResource);
+
+    if (!texture)
+      return;
+
+    if (texture->Desc()->Usage != D3D11_USAGE_DEFAULT
+     || texture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_NONE
+     || texture->CountSubresources() <= DstSubresource)
+      return;
+
+    D3D11_MAP map = texture->GetMapType(DstSubresource);
+
+    if (map != D3D11_MAP_WRITE
+     && map != D3D11_MAP_WRITE_NO_OVERWRITE
+     && map != D3D11_MAP_READ_WRITE)
+      return;
+
     CopySubresourceData(
       pSrcData, SrcRowPitch, SrcRowPitch,
-      pDstResource, DstSubresource, pDstBox);
+      texture, DstSubresource, pDstBox);
   }
 
 
@@ -2240,36 +2273,16 @@ namespace dxvk {
           Void*                       pData,
           UINT                        RowPitch,
           UINT                        DepthPitch,
-          ID3D11Resource*             pResource,
+          D3D11CommonTexture*         pTexture,
           UINT                        Subresource,
     const D3D11_BOX*                  pBox) {
-    auto texture = GetCommonTexture(pResource);
-
-    if (!texture)
-      return;
-    
-    // Validate texture state and skip invalid calls
-    if (texture->Desc()->Usage != D3D11_USAGE_DEFAULT
-     || texture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_NONE
-     || texture->CountSubresources() <= Subresource
-     || texture->GetMapType(Subresource) == D3D11_MAP(~0u))
-      return;
-
-    // Retrieve image format information
-    VkFormat packedFormat = LookupPackedFormat(
-      texture->Desc()->Format,
-      texture->GetFormatMode()).Format;
-    
-    auto formatInfo = lookupFormatInfo(packedFormat);
-    
     // Validate box against subresource dimensions
-    Rc<DxvkImage> image = texture->GetImage();
-
-    auto subresource = texture->GetSubresourceFromIndex(
+    auto formatInfo = lookupFormatInfo(pTexture->GetPackedFormat());
+    auto subresource = pTexture->GetSubresourceFromIndex(
       formatInfo->aspectMask, Subresource);
-    
+
     VkOffset3D offset = { 0, 0, 0 };
-    VkExtent3D extent = image->mipLevelExtent(subresource.mipLevel);
+    VkExtent3D extent = pTexture->MipLevelExtent(subresource.mipLevel);
 
     if (pBox) {
       if (pBox->left >= pBox->right
@@ -2293,56 +2306,47 @@ namespace dxvk {
         pBox->back - pBox->front };
     }
 
-    // We can only operate on full blocks of compressed images
-    offset = util::computeBlockOffset(offset, formatInfo->blockSize);
-    extent = util::computeBlockCount(extent, formatInfo->blockSize);
+    // Copy image data, one plane at a time for multi-plane formats
+    Rc<DxvkImage> image = pTexture->GetImage();
+    VkDeviceSize dataOffset = 0;
 
-    // Determine the memory layout of the image data
-    D3D11_MAPPED_SUBRESOURCE subresourceData = { };
+    for (uint32_t i = 0; i < pTexture->GetPlaneCount(); i++) {
+      // Find current image aspects to process
+      VkImageAspectFlags aspect = formatInfo->aspectMask;
 
-    if (texture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
-      VkSubresourceLayout layout = image->querySubresourceLayout(subresource);
-      subresourceData.pData      = image->mapPtr(layout.offset);
-      subresourceData.RowPitch   = layout.rowPitch;
-      subresourceData.DepthPitch = layout.depthPitch;
-    } else {
-      subresourceData.pData      = texture->GetMappedBuffer(Subresource)->mapPtr(0);
-      subresourceData.RowPitch   = formatInfo->elementSize * extent.width;
-      subresourceData.DepthPitch = formatInfo->elementSize * extent.width * extent.height;
-    }
+      if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane))
+        aspect = vk::getPlaneAspect(i);
 
-    if constexpr (std::is_const<Void>::value) {
-      // WriteToSubresource
-      auto src = reinterpret_cast<const char*>(pData);
-      auto dst = reinterpret_cast<      char*>(subresourceData.pData);
+      // Compute data layout of the current subresource
+      D3D11_COMMON_TEXTURE_SUBRESOURCE_LAYOUT layout = pTexture->GetSubresourceLayout(aspect, Subresource);
 
-      for (uint32_t z = 0; z < extent.depth; z++) {
-        for (uint32_t y = 0; y < extent.height; y++) {
-          std::memcpy(
-            dst + (offset.z + z) * subresourceData.DepthPitch
-                + (offset.y + y) * subresourceData.RowPitch
-                + (offset.x)     * formatInfo->elementSize,
-            src + z * DepthPitch
-                + y * RowPitch,
-            formatInfo->elementSize * extent.width);
-        }
+      // Compute actual map pointer, accounting for the region offset
+      VkDeviceSize mapOffset = pTexture->ComputeMappedOffset(Subresource, i, offset);
+
+      void* mapPtr = pTexture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER
+        ? pTexture->GetMappedBuffer(Subresource)->mapPtr(mapOffset)
+        : image->mapPtr(mapOffset);
+
+      if constexpr (std::is_const<Void>::value) {
+        // WriteToSubresource
+        auto srcData = reinterpret_cast<const char*>(pData) + dataOffset;
+
+        util::packImageData(mapPtr, srcData, RowPitch, DepthPitch,
+          layout.RowPitch, layout.DepthPitch, image->info().type,
+          extent, 1, formatInfo, aspect);
+      } else {
+        // ReadFromSubresource
+        auto dstData = reinterpret_cast<char*>(pData) + dataOffset;
+
+        util::packImageData(dstData, mapPtr,
+          layout.RowPitch, layout.DepthPitch,
+          RowPitch, DepthPitch, image->info().type,
+          extent, 1, formatInfo, aspect);
       }
-    } else {
-      // ReadFromSubresource
-      auto src = reinterpret_cast<const char*>(subresourceData.pData);
-      auto dst = reinterpret_cast<      char*>(pData);
 
-      for (uint32_t z = 0; z < extent.depth; z++) {
-        for (uint32_t y = 0; y < extent.height; y++) {
-          std::memcpy(
-            dst + z * DepthPitch
-                + y * RowPitch,
-            src + (offset.z + z) * subresourceData.DepthPitch
-                + (offset.y + y) * subresourceData.RowPitch
-                + (offset.x)     * formatInfo->elementSize,
-            formatInfo->elementSize * extent.width);
-        }
-      }
+      // Advance linear data pointer by the size of the current aspect
+      dataOffset += util::computeImageDataSize(
+        pTexture->GetPackedFormat(), extent, aspect);
     }
   }
 
