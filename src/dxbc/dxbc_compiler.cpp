@@ -635,6 +635,34 @@ namespace dxvk {
           "vInstanceID");
       } break;
       
+      case DxbcOperandType::InputInnerCoverage: {
+        m_module.enableExtension("SPV_EXT_fragment_fully_covered");
+        m_module.enableCapability(spv::CapabilityFragmentFullyCoveredEXT);
+
+        // This is bool in SPIR-V but uint32 in DXBC. A bool value of
+        // false must be 0, and bit 1 must be set to represent true.
+        uint32_t builtinId = emitNewBuiltinVariable({
+          { DxbcScalarType::Bool, 1, 0 },
+          spv::StorageClassInput },
+          spv::BuiltInFullyCoveredEXT,
+          nullptr);
+
+        m_ps.builtinInnerCoverageId = emitNewVariable({
+          { DxbcScalarType::Uint32, 1, 0 },
+          spv::StorageClassPrivate });
+
+        m_module.setDebugName(m_ps.builtinInnerCoverageId, "vInnerCoverage");
+
+        uint32_t boolTypeId = m_module.defBoolType();
+        uint32_t uintTypeId = m_module.defIntType(32, 0);
+
+        m_module.opStore(m_ps.builtinInnerCoverageId,
+          m_module.opSelect(uintTypeId,
+            m_module.opLoad(boolTypeId, builtinId),
+            m_module.constu32(1),
+            m_module.constu32(0)));
+      } break;
+
       default:
         Logger::err(str::format(
           "DxbcCompiler: Unsupported operand type declaration: ",
@@ -5039,6 +5067,11 @@ namespace dxvk {
           { DxbcScalarType::Uint32, 1 },
           m_gs.builtinInvocationId };
         
+      case DxbcOperandType::InputInnerCoverage:
+        return DxbcRegisterPointer {
+          { DxbcScalarType::Uint32, 1 },
+          m_ps.builtinInnerCoverageId };
+        
       default:
         throw DxvkError(str::format(
           "DxbcCompiler: Unhandled operand type: ",
@@ -7400,7 +7433,9 @@ namespace dxvk {
     const char*             name) {
     const uint32_t varId = emitNewVariable(info);
     
-    m_module.setDebugName(varId, name);
+    if (name)
+      m_module.setDebugName(varId, name);
+
     m_module.decorateBuiltIn(varId, builtIn);
 
     if (m_programInfo.type() == DxbcProgramType::PixelShader
