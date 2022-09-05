@@ -124,6 +124,11 @@ namespace dxvk {
             D3D11CommonTexture*         pResource,
             UINT                        Subresource);
 
+    void UpdateDirtyImageRegion(
+            D3D11CommonTexture*         pResource,
+            UINT                        Subresource,
+      const D3D11_COMMON_TEXTURE_REGION* pRegion);
+
     void UpdateMappedBuffer(
             D3D11Buffer*                  pDstBuffer,
             UINT                          Offset,

@@ -342,13 +342,13 @@ namespace dxvk {
     }
 
     /**
-     * \brief Retrieves dirty regions
+     * \brief Queries a dirty regions
      *
      * \param [in] Subresource Subresource index
      * \param [in] Region Region index
      * \returns Dirty region
      */
-    D3D11_COMMON_TEXTURE_REGION GetDirtyRegionCount(UINT Subresource, UINT Region) {
+    D3D11_COMMON_TEXTURE_REGION GetDirtyRegion(UINT Subresource, UINT Region) {
       return m_buffers[Subresource].dirtyRegions[Region];
     }
 

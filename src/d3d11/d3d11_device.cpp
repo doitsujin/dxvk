@@ -2348,6 +2348,10 @@ namespace dxvk {
       dataOffset += util::computeImageDataSize(
         pTexture->GetPackedFormat(), extent, aspect);
     }
+
+    // Track dirty texture region if necessary
+    if constexpr (std::is_const<Void>::value)
+      pTexture->AddDirtyRegion(Subresource, offset, extent);
   }
 
 

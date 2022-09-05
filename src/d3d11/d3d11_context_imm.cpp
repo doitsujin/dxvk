@@ -481,8 +481,15 @@ namespace dxvk {
       if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER) {
         // If the image can be written by the GPU, we need to update the
         // mapped staging buffer to reflect the current image contents.
-        if (pResource->Desc()->Usage == D3D11_USAGE_DEFAULT)
-          ReadbackImageBuffer(pResource, Subresource);
+        if (pResource->Desc()->Usage == D3D11_USAGE_DEFAULT) {
+          bool needsReadback = !pResource->NeedsDirtyRegionTracking();
+
+          needsReadback |= MapType == D3D11_MAP_READ
+                        || MapType == D3D11_MAP_READ_WRITE;
+
+          if (needsReadback)
+            ReadbackImageBuffer(pResource, Subresource);
+        }
       }
 
       if (MapType == D3D11_MAP_READ) {
@@ -591,14 +598,16 @@ namespace dxvk {
     m_mappedImageCount -= 1;
 
     if ((mapType != D3D11_MAP_READ) && (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)) {
-      // Now that data has been written into the buffer,
-      // we need to copy its contents into the image
-      VkImageAspectFlags aspectMask = lookupFormatInfo(pResource->GetPackedFormat())->aspectMask;
-      VkImageSubresource subresource = pResource->GetSubresourceFromIndex(aspectMask, Subresource);
+      if (pResource->NeedsDirtyRegionTracking()) {
+        for (uint32_t i = 0; i < pResource->GetDirtyRegionCount(Subresource); i++) {
+          D3D11_COMMON_TEXTURE_REGION region = pResource->GetDirtyRegion(Subresource, i);
+          UpdateDirtyImageRegion(pResource, Subresource, &region);
+        }
 
-      UpdateImage(pResource, &subresource, VkOffset3D { 0, 0, 0 },
-        pResource->MipLevelExtent(subresource.mipLevel),
-        DxvkBufferSlice(pResource->GetMappedBuffer(Subresource)));
+        pResource->ClearDirtyRegions(Subresource);
+      } else {
+        UpdateDirtyImageRegion(pResource, Subresource, nullptr);
+      }
     }
   }
   
@@ -631,6 +640,67 @@ namespace dxvk {
           cPackedFormat);
       }
     });
+
+    if (pResource->HasSequenceNumber())
+      TrackTextureSequenceNumber(pResource, Subresource);
+  }
+
+
+  void D3D11ImmediateContext::UpdateDirtyImageRegion(
+          D3D11CommonTexture*         pResource,
+          UINT                        Subresource,
+    const D3D11_COMMON_TEXTURE_REGION* pRegion) {
+    auto formatInfo = lookupFormatInfo(pResource->GetPackedFormat());
+    auto subresource = vk::makeSubresourceLayers(
+      pResource->GetSubresourceFromIndex(formatInfo->aspectMask, Subresource));
+
+    // Update the entire image if no dirty region was specified
+    D3D11_COMMON_TEXTURE_REGION region;
+
+    if (pRegion) {
+      region = *pRegion;
+    } else {
+      region.Offset = VkOffset3D { 0, 0, 0 };
+      region.Extent = pResource->MipLevelExtent(subresource.mipLevel);
+    }
+
+    auto subresourceLayout = pResource->GetSubresourceLayout(formatInfo->aspectMask, Subresource);
+
+    // Update dirty region one aspect at a time, due to
+    // how the data is laid out in the staging buffer.
+    for (uint32_t i = 0; i < pResource->GetPlaneCount(); i++) {
+      subresource.aspectMask = formatInfo->aspectMask;
+
+      if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane))
+        subresource.aspectMask = vk::getPlaneAspect(i);
+
+      EmitCs([
+        cDstImage       = pResource->GetImage(),
+        cDstSubresource = subresource,
+        cDstOffset      = region.Offset,
+        cDstExtent      = region.Extent,
+        cSrcBuffer      = pResource->GetMappedBuffer(Subresource),
+        cSrcOffset      = pResource->ComputeMappedOffset(Subresource, i, region.Offset),
+        cSrcRowPitch    = subresourceLayout.RowPitch,
+        cSrcDepthPitch  = subresourceLayout.DepthPitch,
+        cPackedFormat   = pResource->GetPackedFormat()
+      ] (DxvkContext* ctx) {
+        if (cDstSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+          ctx->copyBufferToImage(
+            cDstImage, cDstSubresource, cDstOffset, cDstExtent,
+            cSrcBuffer, cSrcOffset, cSrcRowPitch, cSrcDepthPitch);
+        } else {
+          ctx->copyPackedBufferToDepthStencilImage(
+            cDstImage, cDstSubresource,
+            VkOffset2D { cDstOffset.x, cDstOffset.y },
+            VkExtent2D { cDstExtent.width, cDstExtent.height },
+            cSrcBuffer, 0,
+            VkOffset2D { cDstOffset.x, cDstOffset.y },
+            VkExtent2D { cDstExtent.width, cDstExtent.height },
+            cPackedFormat);
+        }
+      });
+    }
 
     if (pResource->HasSequenceNumber())
       TrackTextureSequenceNumber(pResource, Subresource);
