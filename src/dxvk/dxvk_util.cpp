@@ -66,10 +66,10 @@ namespace dxvk::util {
           uint32_t          imageLayers,
     const DxvkFormatInfo*   formatInfo,
           VkImageAspectFlags aspectMask) {
-    for (uint32_t i = 0; i < imageLayers; i++) {
-      auto dstData = reinterpret_cast<      char*>(dstBytes);
-      auto srcData = reinterpret_cast<const char*>(srcBytes);
+    auto dstData = reinterpret_cast<      char*>(dstBytes);
+    auto srcData = reinterpret_cast<const char*>(srcBytes);
 
+    for (uint32_t k = 0; k < imageLayers; k++) {
       for (auto aspects = aspectMask; aspects; ) {
         auto aspect = vk::getNextAspect(aspects);
         auto extent = imageExtent;
