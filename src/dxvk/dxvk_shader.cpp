@@ -138,6 +138,9 @@ namespace dxvk {
         if (ins.arg(1) == spv::CapabilityShaderViewportIndex
          || ins.arg(1) == spv::CapabilityShaderLayer)
           m_flags.set(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage);
+
+        if (ins.arg(1) == spv::CapabilityFragmentFullyCoveredEXT)
+          m_flags.set(DxvkShaderFlag::UsesFragmentCoverage);
       }
 
       // Ignore the actual shader code, there's nothing interesting for us in there.
