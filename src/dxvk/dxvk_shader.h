@@ -31,6 +31,7 @@ namespace dxvk {
     ExportsStencilRef,
     ExportsViewportIndexLayerFromVertexStage,
     UsesFragmentCoverage,
+    UsesSparseResidency,
   };
 
   using DxvkShaderFlags = Flags<DxvkShaderFlag>;

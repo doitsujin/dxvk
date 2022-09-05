@@ -139,6 +139,9 @@ namespace dxvk {
          || ins.arg(1) == spv::CapabilityShaderLayer)
           m_flags.set(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage);
 
+        if (ins.arg(1) == spv::CapabilitySparseResidency)
+          m_flags.set(DxvkShaderFlag::UsesSparseResidency);
+
         if (ins.arg(1) == spv::CapabilityFragmentFullyCoveredEXT)
           m_flags.set(DxvkShaderFlag::UsesFragmentCoverage);
       }
