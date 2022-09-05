@@ -145,10 +145,16 @@ namespace dxvk::util {
 
   VkDeviceSize computeImageDataSize(VkFormat format, VkExtent3D extent) {
     const DxvkFormatInfo* formatInfo = lookupFormatInfo(format);
+    return computeImageDataSize(format, extent, formatInfo->aspectMask);
+  }
+
+
+  VkDeviceSize computeImageDataSize(VkFormat format, VkExtent3D extent, VkImageAspectFlags aspects) {
+    const DxvkFormatInfo* formatInfo = lookupFormatInfo(format);
 
     VkDeviceSize size = 0;
 
-    for (auto aspects = formatInfo->aspectMask; aspects; ) {
+    while (aspects) {
       auto aspect = vk::getNextAspect(aspects);
       auto elementSize = formatInfo->elementSize;
       auto planeExtent = extent;

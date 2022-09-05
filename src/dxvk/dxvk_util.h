@@ -299,6 +299,19 @@ namespace dxvk::util {
   VkDeviceSize computeImageDataSize(VkFormat format, VkExtent3D extent);
 
   /**
+   * \brief Computes image data size, in bytes
+   *
+   * Convenience method that can be used to compute the number
+   * of bytes required to store image data in a given format
+   * for the given aspects.
+   * \param [in] format The image format
+   * \param [in] extent Image size, in pixels
+   * \param [in] aspects Aspect mask
+   * \returns Data size, in bytes
+   */
+  VkDeviceSize computeImageDataSize(VkFormat format, VkExtent3D extent, VkImageAspectFlags aspects);
+
+  /**
    * \brief Applies a component mapping to a component mask
    * 
    * For each component, the component specified in the mapping
