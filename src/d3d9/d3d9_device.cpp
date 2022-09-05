@@ -3783,9 +3783,7 @@ namespace dxvk {
       const bool newDepth = newTexture->IsShadow();
 
       if (oldDepth != newDepth) {
-        m_depthTextures &= ~(1u << StateSampler);
-        if (newDepth)
-          m_depthTextures |= 1u << StateSampler;
+        m_depthTextures ^= 1u << StateSampler;
         m_dirtySamplerStates |= 1u << StateSampler;
       }
 
