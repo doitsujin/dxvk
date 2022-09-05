@@ -1966,6 +1966,10 @@ namespace dxvk {
       || !m_dxvkDevice->features().vk12.shaderOutputLayer))
       return E_INVALIDARG;
 
+    if (shader->flags().test(DxvkShaderFlag::UsesFragmentCoverage)
+     && !m_dxvkDevice->properties().extConservativeRasterization.fullyCoveredFragmentShaderInputVariable)
+      return E_INVALIDARG;
+
     *pShaderModule = std::move(commonShader);
     return S_OK;
   }

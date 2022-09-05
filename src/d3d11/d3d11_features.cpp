@@ -196,7 +196,11 @@ namespace dxvk {
     if (!m_properties.extConservativeRasterization.degenerateTrianglesRasterized)
       return D3D11_CONSERVATIVE_RASTERIZATION_TIER_1;
 
-    return D3D11_CONSERVATIVE_RASTERIZATION_TIER_2;
+    // Inner coverage is required for Tier 3 support
+    if (!m_properties.extConservativeRasterization.fullyCoveredFragmentShaderInputVariable)
+      return D3D11_CONSERVATIVE_RASTERIZATION_TIER_2;
+
+    return D3D11_CONSERVATIVE_RASTERIZATION_TIER_3;
   }
 
 
