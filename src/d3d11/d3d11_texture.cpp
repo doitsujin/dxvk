@@ -402,7 +402,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11CommonTexture::NormalizeTextureProperties(D3D11_COMMON_TEXTURE_DESC* pDesc, D3D11_TILED_RESOURCES_TIER TiledTier) {
+  HRESULT D3D11CommonTexture::NormalizeTextureProperties(D3D11_COMMON_TEXTURE_DESC* pDesc) {
     if (pDesc->Width == 0 || pDesc->Height == 0 || pDesc->Depth == 0 || pDesc->ArraySize == 0)
       return E_INVALIDARG;
     
@@ -434,8 +434,7 @@ namespace dxvk {
 
       if ((pDesc->MiscFlags & invalidFlags)
        || (pDesc->Usage != D3D11_USAGE_DEFAULT)
-       || (pDesc->CPUAccessFlags)
-       || (!TiledTier))
+       || (pDesc->CPUAccessFlags))
         return E_INVALIDARG;
     }
 

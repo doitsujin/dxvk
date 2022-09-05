@@ -146,12 +146,10 @@ namespace dxvk {
      * \brief Normalizes buffer description
      * 
      * \param [in] pDesc Buffer description
-     * \param [in] TiledTier Tiled resources tier
      * \returns \c S_OK if the parameters are valid
      */
     static HRESULT NormalizeBufferProperties(
-            D3D11_BUFFER_DESC*      pDesc,
-            D3D11_TILED_RESOURCES_TIER TiledTier);
+            D3D11_BUFFER_DESC*      pDesc);
 
   private:
     

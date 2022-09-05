@@ -177,7 +177,7 @@ namespace dxvk {
   }
 
 
-  HRESULT D3D11Buffer::NormalizeBufferProperties(D3D11_BUFFER_DESC* pDesc, D3D11_TILED_RESOURCES_TIER TiledTier) {
+  HRESULT D3D11Buffer::NormalizeBufferProperties(D3D11_BUFFER_DESC* pDesc) {
     // Zero-sized buffers are illegal
     if (!pDesc->ByteWidth && !(pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL))
       return E_INVALIDARG;
@@ -207,8 +207,7 @@ namespace dxvk {
     if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILED) {
       if ((pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL)
        || (pDesc->Usage != D3D11_USAGE_DEFAULT)
-       || (pDesc->CPUAccessFlags)
-       || (!TiledTier))
+       || (pDesc->CPUAccessFlags))
         return E_INVALIDARG;
     }
 
@@ -218,8 +217,7 @@ namespace dxvk {
        || (pDesc->ByteWidth % SparseMemoryPageSize)
        || (pDesc->Usage != D3D11_USAGE_DEFAULT)
        || (pDesc->BindFlags)
-       || (pDesc->CPUAccessFlags)
-       || (!TiledTier))
+       || (pDesc->CPUAccessFlags))
         return E_INVALIDARG;
     }
 

@@ -442,12 +442,10 @@ namespace dxvk {
      * parameters. Any error returned by this method should
      * be forwarded to the application.
      * \param [in,out] pDesc Texture description
-     * \param [in] TiledTier Tiled resources tier
      * \returns \c S_OK if the parameters are valid
      */
     static HRESULT NormalizeTextureProperties(
-            D3D11_COMMON_TEXTURE_DESC* pDesc,
-            D3D11_TILED_RESOURCES_TIER TiledTier);
+            D3D11_COMMON_TEXTURE_DESC* pDesc);
     
   private:
     

@@ -86,11 +86,14 @@ namespace dxvk {
       return E_INVALIDARG;
     
     D3D11_BUFFER_DESC desc = *pDesc;
-    HRESULT hr = D3D11Buffer::NormalizeBufferProperties(&desc,
-      m_deviceFeatures.GetTiledResourcesTier());
+    HRESULT hr = D3D11Buffer::NormalizeBufferProperties(&desc);
 
     if (FAILED(hr))
       return hr;
+
+    if ((desc.MiscFlags & (D3D11_RESOURCE_MISC_TILED | D3D11_RESOURCE_MISC_TILE_POOL))
+     && !m_deviceFeatures.GetTiledResourcesTier())
+      return E_INVALIDARG;
 
     if (!ppBuffer)
       return S_FALSE;
@@ -133,12 +136,14 @@ namespace dxvk {
     desc.MiscFlags      = pDesc->MiscFlags;
     desc.TextureLayout  = D3D11_TEXTURE_LAYOUT_UNDEFINED;
     
-    HRESULT hr = D3D11CommonTexture::NormalizeTextureProperties(&desc,
-      D3D11_TILED_RESOURCES_NOT_SUPPORTED);
+    HRESULT hr = D3D11CommonTexture::NormalizeTextureProperties(&desc);
 
     if (FAILED(hr))
       return hr;
-    
+
+    if (desc.MiscFlags & D3D11_RESOURCE_MISC_TILED)
+      return E_INVALIDARG;
+
     if (!ppTexture1D)
       return S_FALSE;
     
@@ -210,8 +215,11 @@ namespace dxvk {
     desc.MiscFlags      = pDesc->MiscFlags;
     desc.TextureLayout  = pDesc->TextureLayout;
     
-    HRESULT hr = D3D11CommonTexture::NormalizeTextureProperties(&desc,
-      m_deviceFeatures.GetTiledResourcesTier());
+    HRESULT hr = D3D11CommonTexture::NormalizeTextureProperties(&desc);
+
+    if ((desc.MiscFlags & D3D11_RESOURCE_MISC_TILED)
+     && !m_deviceFeatures.GetTiledResourcesTier())
+      return E_INVALIDARG;
 
     if (FAILED(hr))
       return hr;
@@ -286,14 +294,12 @@ namespace dxvk {
     desc.MiscFlags      = pDesc->MiscFlags;
     desc.TextureLayout  = pDesc->TextureLayout;
     
-    D3D11_TILED_RESOURCES_TIER tiledResourcesTier = m_deviceFeatures.GetTiledResourcesTier();
-    HRESULT hr = D3D11CommonTexture::NormalizeTextureProperties(&desc, tiledResourcesTier);
+    HRESULT hr = D3D11CommonTexture::NormalizeTextureProperties(&desc);
 
     if (FAILED(hr))
       return hr;
 
-    if ((desc.MiscFlags & D3D11_RESOURCE_MISC_TILED)
-     && (tiledResourcesTier < D3D11_TILED_RESOURCES_TIER_3))
+    if (desc.MiscFlags & D3D11_RESOURCE_MISC_TILED)
       return E_INVALIDARG;
 
     if (!ppTexture3D)
@@ -1964,6 +1970,10 @@ namespace dxvk {
     if (shader->flags().test(DxvkShaderFlag::ExportsViewportIndexLayerFromVertexStage)
      && (!m_dxvkDevice->features().vk12.shaderOutputViewportIndex
       || !m_dxvkDevice->features().vk12.shaderOutputLayer))
+      return E_INVALIDARG;
+
+    if (shader->flags().test(DxvkShaderFlag::UsesSparseResidency)
+     && !m_dxvkDevice->features().core.features.shaderResourceResidency)
       return E_INVALIDARG;
 
     if (shader->flags().test(DxvkShaderFlag::UsesFragmentCoverage)
