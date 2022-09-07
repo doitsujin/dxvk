@@ -628,6 +628,10 @@ namespace dxvk {
       { "d3d9.memoryTrackTest",             "True" },
       { "d3d9.maxAvailableMemory",          "2048" },
     }} },
+    /* The Ship (2004)                          */
+    { R"(\\ship\.exe$)", {{
+      { "d3d9.memoryTrackTest",             "True" },
+    }} },
   }};
 
 
