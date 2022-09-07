@@ -129,11 +129,14 @@ elif dxvk_wsi == 'sdl2'
   ]
 endif
 
-thread_dep = dependency('threads')
+dxvk_extra_deps = [ dependency('threads') ]
+if platform == 'linux'
+  dxvk_extra_deps += [ cpp.find_library('dl', required: false) ]
+endif
 
 dxvk_lib = static_library('dxvk', dxvk_src, glsl_generator.process(dxvk_shaders), dxvk_version,
   link_with           : [ util_lib, spirv_lib, wsi_lib ],
-  dependencies        : [ thread_dep, vkcommon_dep ],
+  dependencies        : [ vkcommon_dep ] + dxvk_extra_deps,
   include_directories : [ dxvk_include_path ],
 )
 
