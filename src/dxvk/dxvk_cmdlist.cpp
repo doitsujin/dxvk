@@ -197,6 +197,7 @@ namespace dxvk {
     this->reset();
 
     m_vkd->vkDestroySemaphore(m_vkd->device(), m_sdmaSemaphore, nullptr);
+    m_vkd->vkDestroyFence(m_vkd->device(), m_fence, nullptr);
   }
   
   
