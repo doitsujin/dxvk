@@ -50,9 +50,12 @@ namespace dxvk {
     }
     
     // Set the memory model. This is the same for all shaders.
+    m_module.enableCapability(
+      spv::CapabilityVulkanMemoryModel);
+
     m_module.setMemoryModel(
       spv::AddressingModelLogical,
-      spv::MemoryModelGLSL450);
+      spv::MemoryModelVulkan);
     
     // Make sure our interface registers are clear
     for (uint32_t i = 0; i < DxbcMaxInterfaceRegs; i++) {
@@ -1013,9 +1016,6 @@ namespace dxvk {
     m_module.decorateDescriptorSet(varId, 0);
     m_module.decorateBinding(varId, bindingId);
     
-    if (ins.controls.uavFlags().test(DxbcUavFlag::GloballyCoherent))
-      m_module.decorate(varId, spv::DecorationCoherent);
-    
     // Declare a specialization constant which will
     // store whether or not the resource is bound.
     if (isUav) {
@@ -1028,6 +1028,7 @@ namespace dxvk {
       uav.sampledTypeId = sampledTypeId;
       uav.imageTypeId   = imageTypeId;
       uav.structStride  = 0;
+      uav.coherence     = getUavCoherence(registerId, ins.controls.uavFlags());
       uav.isRawSsbo     = false;
       m_uavs.at(registerId) = uav;
     } else {
@@ -1168,9 +1169,6 @@ namespace dxvk {
     m_module.decorateDescriptorSet(varId, 0);
     m_module.decorateBinding(varId, bindingId);
     
-    if (ins.controls.uavFlags().test(DxbcUavFlag::GloballyCoherent))
-      m_module.decorate(varId, spv::DecorationCoherent);
-    
     if (isUav) {
       DxbcUav uav;
       uav.type          = resType;
@@ -1181,6 +1179,7 @@ namespace dxvk {
       uav.sampledTypeId = sampledTypeId;
       uav.imageTypeId   = resTypeId;
       uav.structStride  = resStride;
+      uav.coherence     = getUavCoherence(registerId, ins.controls.uavFlags());
       uav.isRawSsbo     = useRawSsbo;
       m_uavs.at(registerId) = uav;
     } else {
@@ -2323,7 +2322,7 @@ namespace dxvk {
     uint32_t semantics = 0;
     
     if (isUav) {
-      scope     = spv::ScopeDevice;
+      scope     = spv::ScopeQueueFamily;
       semantics = spv::MemorySemanticsAcquireReleaseMask;
 
       semantics |= isSsbo
@@ -2334,7 +2333,7 @@ namespace dxvk {
       semantics = spv::MemorySemanticsWorkgroupMemoryMask
                 | spv::MemorySemanticsAcquireReleaseMask;
     }
-    
+
     const uint32_t scopeId     = m_module.constu32(scope);
     const uint32_t semanticsId = m_module.constu32(semantics);
     
@@ -2506,7 +2505,7 @@ namespace dxvk {
       1, &zeroId);
     
     // Define memory scope and semantics based on the operands
-    uint32_t scope     = spv::ScopeDevice;
+    uint32_t scope     = spv::ScopeQueueFamily;
     uint32_t semantics = spv::MemorySemanticsUniformMemoryMask
                        | spv::MemorySemanticsAcquireReleaseMask;
     
@@ -2579,7 +2578,9 @@ namespace dxvk {
     if (flags.test(DxbcSyncFlag::ThreadGroupSharedMemory)) {
       memoryScope      = spv::ScopeWorkgroup;
       memorySemantics |= spv::MemorySemanticsWorkgroupMemoryMask
-                      |  spv::MemorySemanticsAcquireReleaseMask;
+                      |  spv::MemorySemanticsAcquireReleaseMask
+                      |  spv::MemorySemanticsMakeAvailableMask
+                      |  spv::MemorySemanticsMakeVisibleMask;
     }
     
     if (flags.test(DxbcSyncFlag::UavMemoryGroup)) {
@@ -2590,7 +2591,7 @@ namespace dxvk {
     }
     
     if (flags.test(DxbcSyncFlag::UavMemoryGlobal)) {
-      memoryScope      = spv::ScopeDevice;
+      memoryScope      = spv::ScopeQueueFamily;
       memorySemantics |= spv::MemorySemanticsImageMemoryMask
                       |  spv::MemorySemanticsUniformMemoryMask
                       |  spv::MemorySemanticsAcquireReleaseMask;
@@ -3774,6 +3775,12 @@ namespace dxvk {
     SpirvImageOperands imageOperands;
     imageOperands.sparse = ins.dstCount == 2;
 
+    if (uavInfo.coherence) {
+      imageOperands.flags |= spv::ImageOperandsNonPrivateTexelMask
+                          |  spv::ImageOperandsMakeTexelVisibleMask;
+      imageOperands.makeVisible = m_module.constu32(uavInfo.coherence);
+    }
+
     DxbcVectorType texelType;
     texelType.ctype = uavInfo.sampledType;
     texelType.ccount = 4;
@@ -3813,7 +3820,16 @@ namespace dxvk {
     //    (src0) The texture or buffer coordinates
     //    (src1) The value to store
     const DxbcBufferInfo uavInfo = getBufferInfo(ins.dst[0]);
-    
+
+    // Set image operands for coherent access if necessary    
+    SpirvImageOperands imageOperands;
+
+    if (uavInfo.coherence) {
+      imageOperands.flags |= spv::ImageOperandsNonPrivateTexelMask
+                          |  spv::ImageOperandsMakeTexelAvailableMask;
+      imageOperands.makeAvailable = m_module.constu32(uavInfo.coherence);
+    }
+
     // Load texture coordinates
     DxbcRegisterValue texCoord = emitLoadTexCoord(ins.src[0], uavInfo.image);
     
@@ -3826,7 +3842,7 @@ namespace dxvk {
     // Write the given value to the image
     m_module.opImageWrite(
       m_module.opLoad(uavInfo.typeId, uavInfo.varId),
-      texCoord.id, texValue.id, SpirvImageOperands());
+      texCoord.id, texValue.id, imageOperands);
   }
   
   
@@ -5170,8 +5186,22 @@ namespace dxvk {
 
     // The sparse feedback ID will be non-zero for sparse
     // instructions on input. We need to reset it to 0.
+    SpirvMemoryOperands memoryOperands;
     SpirvImageOperands imageOperands;
     imageOperands.sparse = sparseFeedbackId != 0;
+
+    if (isTgsm)
+      memoryOperands.flags = spv::MemoryAccessNonPrivatePointerMask;
+
+    if (bufferInfo.coherence) {
+      memoryOperands.flags = spv::MemoryAccessNonPrivatePointerMask
+                           | spv::MemoryAccessMakePointerVisibleMask;
+      memoryOperands.makeVisible = m_module.constu32(bufferInfo.coherence);
+
+      imageOperands.flags = spv::ImageOperandsNonPrivateTexelMask
+                          | spv::ImageOperandsMakeTexelVisibleMask;
+      imageOperands.makeVisible = m_module.constu32(bufferInfo.coherence);
+    }
 
     sparseFeedbackId = 0;
 
@@ -5192,12 +5222,14 @@ namespace dxvk {
         if (isTgsm) {
           ccomps[sindex] = m_module.opLoad(scalarTypeId,
             m_module.opAccessChain(bufferInfo.typeId,
-              bufferInfo.varId, 1, &elementIndexAdjusted));
+              bufferInfo.varId, 1, &elementIndexAdjusted),
+            memoryOperands);
         } else if (isSsbo) {
           uint32_t indices[2] = { m_module.constu32(0), elementIndexAdjusted };
           ccomps[sindex] = m_module.opLoad(scalarTypeId,
             m_module.opAccessChain(bufferInfo.typeId,
-              bufferInfo.varId, 2, indices));
+              bufferInfo.varId, 2, indices),
+            memoryOperands);
         } else {
           uint32_t resultTypeId = vectorTypeId;
           uint32_t resultId = 0;
@@ -5271,7 +5303,24 @@ namespace dxvk {
     uint32_t vectorTypeId = getVectorTypeId({ DxbcScalarType::Uint32, 4 });
     
     uint32_t srcComponentIndex = 0;
-    
+
+    // Set memory operands according to resource properties
+    SpirvMemoryOperands memoryOperands;
+    SpirvImageOperands imageOperands;
+
+    if (isTgsm)
+      memoryOperands.flags = spv::MemoryAccessNonPrivatePointerMask;
+
+    if (bufferInfo.coherence) {
+      memoryOperands.flags = spv::MemoryAccessNonPrivatePointerMask
+                           | spv::MemoryAccessMakePointerAvailableMask;
+      memoryOperands.makeAvailable = m_module.constu32(bufferInfo.coherence);
+
+      imageOperands.flags = spv::ImageOperandsNonPrivateTexelMask
+                          | spv::ImageOperandsMakeTexelAvailableMask;
+      imageOperands.makeAvailable = m_module.constu32(bufferInfo.coherence);
+    }
+
     for (uint32_t i = 0; i < 4; i++) {
       if (operand.mask[i]) {
         uint32_t srcComponentId = value.type.ccount > 1
@@ -5289,13 +5338,13 @@ namespace dxvk {
           m_module.opStore(
             m_module.opAccessChain(bufferInfo.typeId,
               bufferInfo.varId, 1, &elementIndexAdjusted),
-            srcComponentId);
+            srcComponentId, memoryOperands);
         } else if (isSsbo) {
           uint32_t indices[2] = { m_module.constu32(0), elementIndexAdjusted };
           m_module.opStore(
             m_module.opAccessChain(bufferInfo.typeId,
               bufferInfo.varId, 2, indices),
-            srcComponentId);
+            srcComponentId, memoryOperands);
         } else if (operand.type == DxbcOperandType::UnorderedAccessView) {
           const std::array<uint32_t, 4> srcVectorIds = {
             srcComponentId, srcComponentId,
@@ -5306,7 +5355,7 @@ namespace dxvk {
             bufferId, elementIndexAdjusted,
             m_module.opCompositeConstruct(vectorTypeId,
               4, srcVectorIds.data()),
-            SpirvImageOperands());
+            imageOperands);
         } else {
           throw DxvkError("DxbcCompiler: Invalid operand type for strucured/raw store");
         }
@@ -5314,15 +5363,6 @@ namespace dxvk {
         // Write next component
         srcComponentIndex += 1;
       }
-    }
-
-    // Make sure that shared memory stores are made visible in
-    // case the game does not synchronize invocations properly
-    if (isTgsm && m_moduleInfo.options.forceTgsmBarriers) {
-      m_module.opMemoryBarrier(
-        m_module.constu32(spv::ScopeWorkgroup),
-        m_module.constu32(spv::MemorySemanticsWorkgroupMemoryMask
-                        | spv::MemorySemanticsAcquireReleaseMask));
     }
   }
 
@@ -5949,6 +5989,11 @@ namespace dxvk {
   void DxbcCompiler::emitInitWorkgroupMemory() {
     bool hasTgsm = false;
 
+    SpirvMemoryOperands memoryOperands;
+    memoryOperands.flags = spv::MemoryAccessNonPrivatePointerMask
+                         | spv::MemoryAccessMakePointerAvailableMask;
+    memoryOperands.makeAvailable = m_module.constu32(spv::ScopeWorkgroup);
+
     for (uint32_t i = 0; i < m_gRegs.size(); i++) {
       if (!m_gRegs[i].varId)
         continue;
@@ -5989,7 +6034,7 @@ namespace dxvk {
         uint32_t ptrId = m_module.opAccessChain(
           ptrTypeId, m_gRegs[i].varId, 1, &ofsId);
 
-        m_module.opStore(ptrId, zeroId);
+        m_module.opStore(ptrId, zeroId, memoryOperands);
       }
 
       if (numElementsRemaining) {
@@ -6013,7 +6058,7 @@ namespace dxvk {
         uint32_t ptrId = m_module.opAccessChain(
           ptrTypeId, m_gRegs[i].varId, 1, &ofsId);
         
-        m_module.opStore(ptrId, zeroId);
+        m_module.opStore(ptrId, zeroId, memoryOperands);
 
         m_module.opBranch(cond.labelEnd);
         m_module.opLabel (cond.labelEnd);
@@ -7204,8 +7249,12 @@ namespace dxvk {
   
   void DxbcCompiler::emitHsPhaseBarrier() {
     uint32_t exeScopeId = m_module.constu32(spv::ScopeWorkgroup);
-    uint32_t memScopeId = m_module.constu32(spv::ScopeInvocation);
-    uint32_t semanticId = m_module.constu32(spv::MemorySemanticsMaskNone);
+    uint32_t memScopeId = m_module.constu32(spv::ScopeWorkgroup);
+    uint32_t semanticId = m_module.constu32(
+      spv::MemorySemanticsOutputMemoryMask |
+      spv::MemorySemanticsAcquireReleaseMask |
+      spv::MemorySemanticsMakeAvailableMask |
+      spv::MemorySemanticsMakeVisibleMask);
     
     m_module.opControlBarrier(exeScopeId, memScopeId, semanticId);
   }
@@ -7518,6 +7567,7 @@ namespace dxvk {
         result.typeId = texture.imageTypeId;
         result.varId  = texture.varId;
         result.stride = texture.structStride;
+        result.coherence = 0;
         result.isSsbo = texture.isRawSsbo;
         return result;
       } break;
@@ -7532,6 +7582,7 @@ namespace dxvk {
         result.typeId = uav.imageTypeId;
         result.varId  = uav.varId;
         result.stride = uav.structStride;
+        result.coherence = uav.coherence;
         result.isSsbo = uav.isRawSsbo;
         return result;
       } break;
@@ -7546,6 +7597,7 @@ namespace dxvk {
           spv::StorageClassWorkgroup);
         result.varId  = m_gRegs.at(registerId).varId;
         result.stride = m_gRegs.at(registerId).elementStride;
+        result.coherence = 0;
         result.isSsbo = false;
         return result;
       } break;
@@ -7731,6 +7783,27 @@ namespace dxvk {
         && m_lastOp != DxbcOpcode::Default
         && m_lastOp != DxbcOpcode::Break
         && m_lastOp != DxbcOpcode::Ret;
+  }
+
+
+  uint32_t DxbcCompiler::getUavCoherence(uint32_t registerId, DxbcUavFlags flags) const {
+    // Ignore any resources that can't both be read and written in
+    // the current shader, explicit availability/visibility operands
+    // are not useful in that case.
+    if (m_analysis->uavInfos[registerId].accessFlags != (VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT))
+      return 0;
+
+    // If the globally coherent flag is set, the resource must be
+    // coherent across multiple workgroups of the same dispatch
+    if (flags.test(DxbcUavFlag::GloballyCoherent))
+      return spv::ScopeQueueFamily;
+
+    // In compute shaders, UAVs are implicitly workgroup coherent.
+    // In all other stage, there are no coherence guarantees.
+    if (m_programInfo.type() == DxbcProgramType::ComputeShader)
+      return spv::ScopeWorkgroup;
+
+    return 0;
   }
 
 

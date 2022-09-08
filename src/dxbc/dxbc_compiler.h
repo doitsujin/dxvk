@@ -347,6 +347,7 @@ namespace dxvk {
     uint32_t typeId;
     uint32_t varId;
     uint32_t stride;
+    uint32_t coherence;
     bool isSsbo;
   };
   
@@ -1221,6 +1222,10 @@ namespace dxvk {
             DxbcRegisterValue       vectorId);
 
     bool caseBlockIsFallthrough() const;
+
+    uint32_t getUavCoherence(
+            uint32_t                registerId,
+            DxbcUavFlags            flags) const;
 
     ///////////////////////////
     // Type definition methods

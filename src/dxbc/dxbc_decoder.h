@@ -100,6 +100,7 @@ namespace dxvk {
     uint32_t          sampledTypeId = 0;
     uint32_t          imageTypeId   = 0;
     uint32_t          structStride  = 0;
+    uint32_t          coherence     = 0;
     bool              isRawSsbo     = false;
   };
   
