@@ -190,9 +190,12 @@ namespace dxvk {
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
                 | VK_BUFFER_USAGE_TRANSFER_DST_BIT
                 | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
+                | VK_PIPELINE_STAGE_HOST_BIT;
     info.access = VK_ACCESS_TRANSFER_READ_BIT
-                | VK_ACCESS_TRANSFER_WRITE_BIT;
+                | VK_ACCESS_TRANSFER_WRITE_BIT
+                | VK_ACCESS_HOST_WRITE_BIT
+                | VK_ACCESS_HOST_READ_BIT;
 
     if (m_mapping.ConversionFormatInfo.FormatType != D3D9ConversionFormat_None) {
       info.usage  |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
