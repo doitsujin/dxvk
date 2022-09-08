@@ -15,6 +15,13 @@ namespace dxvk {
     uint32_t literal       = 0;
     uint32_t labelId       = 0;
   };
+
+  struct SpirvMemoryOperands {
+    uint32_t flags         = 0;
+    uint32_t alignment     = 0;
+    uint32_t makeAvailable = 0;
+    uint32_t makeVisible   = 0;
+  };
   
   struct SpirvImageOperands {
     uint32_t flags         = 0;
@@ -1032,11 +1039,21 @@ namespace dxvk {
     uint32_t opLoad(
             uint32_t                typeId,
             uint32_t                pointerId);
-    
+
+    uint32_t opLoad(
+            uint32_t                typeId,
+            uint32_t                pointerId,
+      const SpirvMemoryOperands&    operands);
+
     void opStore(
             uint32_t                pointerId,
             uint32_t                valueId);
-    
+
+    void opStore(
+            uint32_t                pointerId,
+            uint32_t                valueId,
+      const SpirvMemoryOperands&    operands);
+
     uint32_t opInterpolateAtCentroid(
             uint32_t                resultType,
             uint32_t                interpolant);
@@ -1281,6 +1298,12 @@ namespace dxvk {
     
     void instImportGlsl450();
     
+    uint32_t getMemoryOperandWordCount(
+      const SpirvMemoryOperands&    op) const;
+
+    void putMemoryOperands(
+      const SpirvMemoryOperands&    op);
+
     uint32_t getImageOperandWordCount(
       const SpirvImageOperands&     op) const;
     

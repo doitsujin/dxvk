@@ -2994,12 +2994,22 @@ namespace dxvk {
   uint32_t SpirvModule::opLoad(
           uint32_t                typeId,
           uint32_t                pointerId) {
+    return opLoad(typeId, pointerId, SpirvMemoryOperands());
+  }
+
+
+  uint32_t SpirvModule::opLoad(
+          uint32_t                typeId,
+          uint32_t                pointerId,
+    const SpirvMemoryOperands&    operands) {
     uint32_t resultId = this->allocateId();
     
-    m_code.putIns (spv::OpLoad, 4);
+    m_code.putIns (spv::OpLoad, 4 + getMemoryOperandWordCount(operands));
     m_code.putWord(typeId);
     m_code.putWord(resultId);
     m_code.putWord(pointerId);
+
+    putMemoryOperands(operands);
     return resultId;
   }
   
@@ -3007,12 +3017,22 @@ namespace dxvk {
   void SpirvModule::opStore(
           uint32_t                pointerId,
           uint32_t                valueId) {
-    m_code.putIns (spv::OpStore, 3);
+    opStore(pointerId, valueId, SpirvMemoryOperands());
+  }
+
+
+  void SpirvModule::opStore(
+          uint32_t                pointerId,
+          uint32_t                valueId,
+    const SpirvMemoryOperands&    operands) {
+    m_code.putIns (spv::OpStore, 3 + getMemoryOperandWordCount(operands));
     m_code.putWord(pointerId);
     m_code.putWord(valueId);
+
+    putMemoryOperands(operands);
   }
-  
-  
+
+
   uint32_t SpirvModule::opInterpolateAtCentroid(
           uint32_t                resultType,
           uint32_t                interpolant) {
@@ -3753,6 +3773,34 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::getMemoryOperandWordCount(
+    const SpirvMemoryOperands&    op) const {
+    const uint32_t result
+      = ((op.flags & spv::MemoryAccessAlignedMask)              ? 1 : 0)
+      + ((op.flags & spv::MemoryAccessMakePointerAvailableMask) ? 1 : 0)
+      + ((op.flags & spv::MemoryAccessMakePointerVisibleMask)   ? 1 : 0);
+
+    return op.flags ? result + 1 : 0;
+  }
+
+
+  void SpirvModule::putMemoryOperands(
+    const SpirvMemoryOperands&    op) {
+    if (op.flags) {
+      m_code.putWord(op.flags);
+
+      if (op.flags & spv::MemoryAccessAlignedMask)
+        m_code.putWord(op.alignment);
+
+      if (op.flags & spv::MemoryAccessMakePointerAvailableMask)
+        m_code.putWord(op.makeAvailable);
+
+      if (op.flags & spv::MemoryAccessMakePointerVisibleMask)
+        m_code.putWord(op.makeVisible);
+    }
+  }
+
+
   uint32_t SpirvModule::getImageOperandWordCount(const SpirvImageOperands& op) const {
     // Each flag may add one or more operands
     const uint32_t result
