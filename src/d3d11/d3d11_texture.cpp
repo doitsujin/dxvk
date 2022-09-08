@@ -168,6 +168,14 @@ namespace dxvk {
     if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
       imageInfo.tiling        = VK_IMAGE_TILING_LINEAR;
       imageInfo.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED;
+
+      if (pDesc->Usage != D3D11_USAGE_DYNAMIC) {
+        imageInfo.stages |= VK_PIPELINE_STAGE_HOST_BIT;
+        imageInfo.access |= VK_ACCESS_HOST_READ_BIT;
+
+        if (pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)
+          imageInfo.access |= VK_ACCESS_HOST_WRITE_BIT;
+      }
     }
     
     // If necessary, create the mapped linear buffer
@@ -684,7 +692,17 @@ namespace dxvk {
                 | VK_ACCESS_TRANSFER_WRITE_BIT
                 | VK_ACCESS_SHADER_READ_BIT
                 | VK_ACCESS_SHADER_WRITE_BIT;
-    
+
+    // We may read mapped buffers even if it is
+    // marked as CPU write-only on the D3D11 side.
+    if (m_desc.Usage != D3D11_USAGE_DYNAMIC) {
+      info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
+      info.access |= VK_ACCESS_HOST_READ_BIT;
+
+      if (m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)
+        info.access |= VK_ACCESS_HOST_WRITE_BIT;
+    }
+
     VkMemoryPropertyFlags memType = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                                   | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
     

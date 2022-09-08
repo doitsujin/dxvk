@@ -73,6 +73,16 @@ namespace dxvk {
                   |  VK_BUFFER_CREATE_SPARSE_ALIASED_BIT;
     }
 
+    // Set host read bit as necessary. We may internally read staging
+    // buffer contents even if the buffer is not marked for reading.
+    if (pDesc->CPUAccessFlags && pDesc->Usage != D3D11_USAGE_DYNAMIC) {
+      info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
+      info.access |= VK_ACCESS_HOST_READ_BIT;
+
+      if (pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)
+        info.access |= VK_ACCESS_HOST_WRITE_BIT;
+    }
+
     if (!(pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL)) {
       // Create the buffer and set the entire buffer slice as mapped,
       // so that we only have to update it when invalidating the buffer
