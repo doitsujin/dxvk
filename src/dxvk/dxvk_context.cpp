@@ -6226,9 +6226,9 @@ namespace dxvk {
     this->spillRenderPass(true);
     this->flushSharedImages();
 
-    m_sdmaBarriers.recordCommands(m_cmd);
-    m_initBarriers.recordCommands(m_cmd);
-    m_execBarriers.recordCommands(m_cmd);
+    m_sdmaBarriers.finalize(m_cmd);
+    m_initBarriers.finalize(m_cmd);
+    m_execBarriers.finalize(m_cmd);
   }
 
 

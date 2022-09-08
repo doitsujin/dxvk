@@ -576,6 +576,9 @@ namespace dxvk {
       return m_allBarrierSrcStages;
     }
     
+    void finalize(
+      const Rc<DxvkCommandList>&      commandList);
+
     void recordCommands(
       const Rc<DxvkCommandList>&      commandList);
     
@@ -602,6 +605,9 @@ namespace dxvk {
     };
 
     DxvkCmdBuffer m_cmdBuffer;
+
+    VkPipelineStageFlags2 m_hostBarrierSrcStages = 0;
+    VkAccessFlags2        m_hostBarrierDstAccess = 0;
 
     VkPipelineStageFlags2 m_allBarrierSrcStages = 0;
 
