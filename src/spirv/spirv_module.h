@@ -27,6 +27,8 @@ namespace dxvk {
     uint32_t gConstOffsets = 0;
     uint32_t sSampleId     = 0;
     uint32_t sMinLod       = 0;
+    uint32_t makeAvailable = 0;
+    uint32_t makeVisible   = 0;
     bool     sparse        = false;
   };
 

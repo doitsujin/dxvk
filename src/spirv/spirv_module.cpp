@@ -3756,22 +3756,24 @@ namespace dxvk {
   uint32_t SpirvModule::getImageOperandWordCount(const SpirvImageOperands& op) const {
     // Each flag may add one or more operands
     const uint32_t result
-      = ((op.flags & spv::ImageOperandsBiasMask)        ? 1 : 0)
-      + ((op.flags & spv::ImageOperandsLodMask)         ? 1 : 0)
-      + ((op.flags & spv::ImageOperandsConstOffsetMask) ? 1 : 0)
-      + ((op.flags & spv::ImageOperandsGradMask)        ? 2 : 0)
-      + ((op.flags & spv::ImageOperandsOffsetMask)      ? 1 : 0)
-      + ((op.flags & spv::ImageOperandsConstOffsetsMask)? 1 : 0)
-      + ((op.flags & spv::ImageOperandsSampleMask)      ? 1 : 0)
-      + ((op.flags & spv::ImageOperandsMinLodMask)      ? 1 : 0);
+      = ((op.flags & spv::ImageOperandsBiasMask)                ? 1 : 0)
+      + ((op.flags & spv::ImageOperandsLodMask)                 ? 1 : 0)
+      + ((op.flags & spv::ImageOperandsConstOffsetMask)         ? 1 : 0)
+      + ((op.flags & spv::ImageOperandsGradMask)                ? 2 : 0)
+      + ((op.flags & spv::ImageOperandsOffsetMask)              ? 1 : 0)
+      + ((op.flags & spv::ImageOperandsConstOffsetsMask)        ? 1 : 0)
+      + ((op.flags & spv::ImageOperandsSampleMask)              ? 1 : 0)
+      + ((op.flags & spv::ImageOperandsMinLodMask)              ? 1 : 0)
+      + ((op.flags & spv::ImageOperandsMakeTexelAvailableMask)  ? 1 : 0)
+      + ((op.flags & spv::ImageOperandsMakeTexelVisibleMask)    ? 1 : 0);
     
     // Add a DWORD for the operand mask if it is non-zero
-    return result != 0 ? result + 1 : 0;
+    return op.flags ? result + 1 : 0;
   }
   
   
   void SpirvModule::putImageOperands(const SpirvImageOperands& op) {
-    if (op.flags != 0) {
+    if (op.flags) {
       m_code.putWord(op.flags);
       
       if (op.flags & spv::ImageOperandsBiasMask)
@@ -3799,6 +3801,12 @@ namespace dxvk {
       
       if (op.flags & spv::ImageOperandsMinLodMask)
         m_code.putWord(op.sMinLod);
+
+      if (op.flags & spv::ImageOperandsMakeTexelAvailableMask)
+        m_code.putWord(op.makeAvailable);
+
+      if (op.flags & spv::ImageOperandsMakeTexelVisibleMask)
+        m_code.putWord(op.makeVisible);
     }
   }
   
