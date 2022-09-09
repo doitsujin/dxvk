@@ -37,7 +37,7 @@ namespace dxvk {
     invariantPosition        = options.invariantPosition;
     enableRtOutputNanFixup   = options.enableRtOutputNanFixup;
     zeroInitWorkgroupMemory  = options.zeroInitWorkgroupMemory;
-    forceTgsmBarriers        = options.forceTgsmBarriers;
+    forceVolatileTgsmAccess  = options.forceVolatileTgsmAccess;
     disableMsaa              = options.disableMsaa;
 
     // Figure out float control flags to match D3D11 rules

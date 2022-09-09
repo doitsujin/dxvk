@@ -41,7 +41,7 @@ namespace dxvk {
     bool invariantPosition = false;
 
     /// Insert memory barriers after TGSM stoes
-    bool forceTgsmBarriers = false;
+    bool forceVolatileTgsmAccess = false;
 
     /// Replace ld_ms with ld
     bool disableMsaa = false;

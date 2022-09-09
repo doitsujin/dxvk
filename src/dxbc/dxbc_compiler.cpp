@@ -5190,17 +5190,23 @@ namespace dxvk {
     SpirvImageOperands imageOperands;
     imageOperands.sparse = sparseFeedbackId != 0;
 
-    if (isTgsm)
+    uint32_t coherence = bufferInfo.coherence;
+
+    if (isTgsm || coherence)
       memoryOperands.flags = spv::MemoryAccessNonPrivatePointerMask;
 
-    if (bufferInfo.coherence) {
-      memoryOperands.flags = spv::MemoryAccessNonPrivatePointerMask
-                           | spv::MemoryAccessMakePointerVisibleMask;
-      memoryOperands.makeVisible = m_module.constu32(bufferInfo.coherence);
+    if (isTgsm && m_moduleInfo.options.forceVolatileTgsmAccess) {
+      memoryOperands.flags |= spv::MemoryAccessVolatileMask;
+      coherence = spv::ScopeWorkgroup;
+    }
+
+    if (coherence) {
+      memoryOperands.flags |= spv::MemoryAccessMakePointerVisibleMask;
+      memoryOperands.makeVisible = m_module.constu32(coherence);
 
       imageOperands.flags = spv::ImageOperandsNonPrivateTexelMask
                           | spv::ImageOperandsMakeTexelVisibleMask;
-      imageOperands.makeVisible = m_module.constu32(bufferInfo.coherence);
+      imageOperands.makeVisible = m_module.constu32(coherence);
     }
 
     sparseFeedbackId = 0;
@@ -5308,17 +5314,23 @@ namespace dxvk {
     SpirvMemoryOperands memoryOperands;
     SpirvImageOperands imageOperands;
 
-    if (isTgsm)
+    uint32_t coherence = bufferInfo.coherence;
+
+    if (isTgsm || coherence)
       memoryOperands.flags = spv::MemoryAccessNonPrivatePointerMask;
 
-    if (bufferInfo.coherence) {
-      memoryOperands.flags = spv::MemoryAccessNonPrivatePointerMask
-                           | spv::MemoryAccessMakePointerAvailableMask;
-      memoryOperands.makeAvailable = m_module.constu32(bufferInfo.coherence);
+    if (isTgsm && m_moduleInfo.options.forceVolatileTgsmAccess) {
+      memoryOperands.flags |= spv::MemoryAccessVolatileMask;
+      coherence = spv::ScopeWorkgroup;
+    }
+
+    if (coherence) {
+      memoryOperands.flags |= spv::MemoryAccessMakePointerAvailableMask;
+      memoryOperands.makeAvailable = m_module.constu32(coherence);
 
       imageOperands.flags = spv::ImageOperandsNonPrivateTexelMask
                           | spv::ImageOperandsMakeTexelAvailableMask;
-      imageOperands.makeAvailable = m_module.constu32(bufferInfo.coherence);
+      imageOperands.makeAvailable = m_module.constu32(coherence);
     }
 
     for (uint32_t i = 0; i < 4; i++) {

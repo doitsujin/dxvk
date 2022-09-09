@@ -30,12 +30,12 @@ namespace dxvk {
     /// TGSM in compute shaders before reading it.
     bool zeroInitWorkgroupMemory;
 
-    /// Force thread-group shared memory barriers
+    /// Force thread-group shared memory accesses to be volatile
     ///
     /// Workaround for compute shaders that read and
     /// write from the same shared memory location
     /// without explicit synchronization.
-    bool forceTgsmBarriers;
+    bool forceVolatileTgsmAccess;
 
     /// Use relaxed memory barriers
     ///

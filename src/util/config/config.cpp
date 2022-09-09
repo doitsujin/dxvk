@@ -181,7 +181,7 @@ namespace dxvk {
     /* F1 games - do not synchronize TGSM access  *
      * in a compute shader, causing artifacts     */
     { R"(\\F1_20(1[89]|[2-9][0-9])\.exe$)", {{
-      { "d3d11.forceTgsmBarriers",          "True" },
+      { "d3d11.forceVolatileTgsmAccess",    "True" },
     }} },
     /* Darksiders Warmastered - apparently reads  *
      * from write-only mapped buffers             */
