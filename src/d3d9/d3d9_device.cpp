@@ -911,19 +911,11 @@ namespace dxvk {
       srcSubresource.mipLevel,
       srcSubresource.arrayLayer, 1 };
 
-
-    VkExtent3D texLevelExtentBlockCount = util::computeBlockCount(srcTexExtent, srcFormatInfo->blockSize);
-    VkDeviceSize pitch = align(texLevelExtentBlockCount.width * uint32_t(srcFormatInfo->elementSize), 4);
-    uint32_t pitchBlocks = uint32_t(pitch / srcFormatInfo->elementSize);
-    VkExtent2D dstExtent = VkExtent2D{ pitchBlocks,
-                                       texLevelExtentBlockCount.height * pitchBlocks };
-
     EmitCs([
       cBuffer       = dstBuffer,
       cImage        = srcImage,
       cSubresources = srcSubresourceLayers,
-      cLevelExtent  = srcTexExtent,
-      cDstExtent    = dstExtent
+      cLevelExtent  = srcTexExtent
     ] (DxvkContext* ctx) {
       ctx->copyImageToBuffer(cBuffer, 0, 4, 0,
         cImage, cSubresources, VkOffset3D { 0, 0, 0 },
