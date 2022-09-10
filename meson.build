@@ -1,4 +1,4 @@
-project('dxvk', ['c', 'cpp'], version : 'v1.10.1', meson_version : '>= 0.49', default_options : [ 'cpp_std=c++17' ])
+project('dxvk', ['c', 'cpp'], version : 'v1.10.1', meson_version : '>= 0.49', default_options : [ 'cpp_std=c++17', 'warning_level=2' ])
 
 cpu_family = target_machine.cpu_family()
 platform   = target_machine.system()
@@ -13,6 +13,10 @@ compiler_args = [
   '-msse3',
   '-mfpmath=sse',
   '-Wimplicit-fallthrough',
+  # gcc
+  '-Wno-missing-field-initializers',
+  '-Wno-unused-parameter',
+  '-Wno-cast-function-type', # Needed for GetProcAddress.
   # clang
   '-Wno-unused-private-field',
   '-Wno-microsoft-exception-spec',
