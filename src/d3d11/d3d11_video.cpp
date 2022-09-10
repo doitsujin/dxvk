@@ -1312,7 +1312,7 @@ namespace dxvk {
 
 
   void D3D11VideoContext::UnbindResources() {
-    m_ctx->EmitCs([this] (DxvkContext* ctx) {
+    m_ctx->EmitCs([] (DxvkContext* ctx) {
       ctx->bindRenderTargets(DxvkRenderTargets(), 0u);
 
       ctx->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(nullptr);
