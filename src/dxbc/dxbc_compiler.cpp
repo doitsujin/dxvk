@@ -1206,7 +1206,7 @@ namespace dxvk {
     binding.resourceBinding = bindingId;
     binding.access = isUav
       ? m_analysis->uavInfos[registerId].accessFlags
-      : VK_ACCESS_SHADER_READ_BIT;
+      : VkAccessFlags(VK_ACCESS_SHADER_READ_BIT);
 
     if (useRawSsbo || isUav) {
       if (!(binding.access & VK_ACCESS_SHADER_WRITE_BIT))
