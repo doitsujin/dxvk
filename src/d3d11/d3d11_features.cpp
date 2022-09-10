@@ -231,7 +231,11 @@ namespace dxvk {
      || m_properties.core.properties.sparseProperties.residencyAlignedMipSize)
       return D3D11_TILED_RESOURCES_TIER_1;
 
-    return D3D11_TILED_RESOURCES_TIER_2;
+    if (!m_features.core.features.sparseResidencyImage3D
+     || !m_properties.core.properties.sparseProperties.residencyStandard3DBlockShape)
+      return D3D11_TILED_RESOURCES_TIER_2;
+
+    return D3D11_TILED_RESOURCES_TIER_3;
   }
 
 

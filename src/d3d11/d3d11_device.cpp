@@ -299,7 +299,8 @@ namespace dxvk {
     if (FAILED(hr))
       return hr;
 
-    if (desc.MiscFlags & D3D11_RESOURCE_MISC_TILED)
+    if ((desc.MiscFlags & D3D11_RESOURCE_MISC_TILED)
+     && (m_deviceFeatures.GetTiledResourcesTier() < D3D11_TILED_RESOURCES_TIER_3))
       return E_INVALIDARG;
 
     if (!ppTexture3D)
