@@ -22,6 +22,7 @@ namespace dxvk {
       : x(xyzw[0]), y(xyzw[1]), z(xyzw[2]), w(xyzw[3]) { }
 
     Vector4Base(const Vector4Base<T>& other) = default;
+    Vector4Base& operator=(const Vector4Base<T>& other) = default;
 
     inline       T& operator[](size_t index)       { return data[index]; }
     inline const T& operator[](size_t index) const { return data[index]; }
