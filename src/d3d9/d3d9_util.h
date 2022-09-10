@@ -241,7 +241,7 @@ namespace dxvk {
   }
 
   inline D3DRENDERSTATETYPE ColorWriteIndex(uint32_t i) {
-    return D3DRENDERSTATETYPE(i ? D3DRS_COLORWRITEENABLE1 + i - 1 : D3DRS_COLORWRITEENABLE);
+    return D3DRENDERSTATETYPE(i ? D3DRENDERSTATETYPE(D3DRS_COLORWRITEENABLE1 + i - 1) : D3DRS_COLORWRITEENABLE);
   }
 
   inline bool AreFormatsSimilar(D3D9Format srcFormat, D3D9Format dstFormat) {
