@@ -156,7 +156,7 @@ namespace dxvk {
      * \brief Queries color attachment index of a given attachment
      * \returns The index, or -1 if the given attachment is the depth attachment
      */
-    const int32_t getColorAttachmentIndex(uint32_t id) const {
+    int32_t getColorAttachmentIndex(uint32_t id) const {
       return m_attachments[id];
     }
 
