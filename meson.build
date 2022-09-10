@@ -20,6 +20,9 @@ compiler_args = [
   # clang
   '-Wno-unused-private-field',
   '-Wno-microsoft-exception-spec',
+  '-Wno-extern-c-compat',
+  '-Wno-unused-const-variable',
+  '-Wno-missing-braces',
 ]
 
 link_args = []
