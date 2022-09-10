@@ -134,11 +134,11 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_VIDEO_PROCESSOR_INPUT_VIEW_DESC* pDesc);
 
-    const bool IsYCbCr() const {
+    bool IsYCbCr() const {
       return m_isYCbCr;
     }
 
-    const bool NeedsCopy() const {
+    bool NeedsCopy() const {
       return m_copy != nullptr;
     }
 
