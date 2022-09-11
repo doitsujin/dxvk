@@ -2147,6 +2147,20 @@ namespace dxvk {
                |  D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE
                |  D3D11_FORMAT_SUPPORT_MULTISAMPLE_LOAD;
       }
+
+      // Query whether the format is shareable
+      if ((fmtProperties->aspectMask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_PLANE_0_BIT))
+       && (m_dxvkDevice->features().khrExternalMemoryWin32)) {
+        constexpr VkExternalMemoryFeatureFlags featureMask
+          = VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT
+          | VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT;
+
+        formatQuery.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT;
+        limits = m_dxvkDevice->getFormatLimits(formatQuery);
+
+        if (limits && (limits->externalFeatures & featureMask))
+          flags2 |= D3D11_FORMAT_SUPPORT2_SHAREABLE;
+      }
     }
     
     // Format can be used for storage images or storage texel buffers
