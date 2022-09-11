@@ -187,45 +187,34 @@ namespace dxvk {
       return false;
     }
 
-    if (createInfo.flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT)
-      return false;
-
-    VkPhysicalDeviceExternalImageFormatInfo externalImageFormatInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO };
-    externalImageFormatInfo.handleType = sharingInfo.type;
-
-    VkPhysicalDeviceImageFormatInfo2 imageFormatInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2, &externalImageFormatInfo };
-    imageFormatInfo.format = createInfo.format;
-    imageFormatInfo.type = createInfo.imageType;
-    imageFormatInfo.tiling = createInfo.tiling;
-    imageFormatInfo.usage = createInfo.usage;
-    imageFormatInfo.flags = createInfo.flags;
-
-    VkExternalImageFormatProperties externalImageFormatProperties = { VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES };
-    VkImageFormatProperties2 imageFormatProperties = { VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2, &externalImageFormatProperties };
-
-    VkResult vr = m_device->adapter()->vki()->vkGetPhysicalDeviceImageFormatProperties2(
-      m_device->adapter()->handle(), &imageFormatInfo, &imageFormatProperties);
-
-    if (vr != VK_SUCCESS) {
-      Logger::err(str::format("Failed to create shared resource: getImageProperties failed:", vr));
+    if (createInfo.flags & VK_IMAGE_CREATE_SPARSE_BINDING_BIT) {
+      Logger::err("Failed to create shared resource: Sharing sparse resources not supported");
       return false;
     }
 
-    if (sharingInfo.mode == DxvkSharedHandleMode::Export) {
-      bool ret = externalImageFormatProperties.externalMemoryProperties.externalMemoryFeatures & VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT;
-      if (!ret)
-        Logger::err("Failed to create shared resource: image cannot be exported");
-      return ret;
+    DxvkFormatQuery formatQuery = { };
+    formatQuery.format = createInfo.format;
+    formatQuery.type = createInfo.imageType;
+    formatQuery.tiling = createInfo.tiling;
+    formatQuery.usage = createInfo.usage;
+    formatQuery.flags = createInfo.flags;
+    formatQuery.handleType = sharingInfo.type;
+
+    auto limits = m_device->getFormatLimits(formatQuery);
+
+    if (!limits)
+      return false;
+
+    VkExternalMemoryFeatureFlagBits requiredFeature = sharingInfo.mode == DxvkSharedHandleMode::Export
+      ? VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT
+      : VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT;
+
+    if (!(limits->externalFeatures & requiredFeature)) {
+      Logger::err("Failed to create shared resource: Image cannot be shared");
+      return false;
     }
 
-    if (sharingInfo.mode == DxvkSharedHandleMode::Import) {
-      bool ret = externalImageFormatProperties.externalMemoryProperties.externalMemoryFeatures & VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT;
-      if (!ret)
-        Logger::err("Failed to create shared resource: image cannot be imported");
-      return ret;
-    }
-
-    return false;
+    return true;
   }
 
 
