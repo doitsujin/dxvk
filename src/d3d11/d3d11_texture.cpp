@@ -472,13 +472,17 @@ namespace dxvk {
   BOOL D3D11CommonTexture::CheckImageSupport(
     const DxvkImageCreateInfo*  pImageInfo,
           VkImageTiling         Tiling) const {
-    VkImageUsageFlags usage = pImageInfo->usage;
+    DxvkFormatQuery formatQuery = { };
+    formatQuery.format = pImageInfo->format;
+    formatQuery.type = pImageInfo->type;
+    formatQuery.tiling = Tiling;
+    formatQuery.usage = pImageInfo->usage;
+    formatQuery.flags = pImageInfo->flags;
 
     if (pImageInfo->flags & VK_IMAGE_CREATE_EXTENDED_USAGE_BIT)
-      usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+      formatQuery.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
-    auto properties = m_device->GetDXVKDevice()->getFormatLimits(
-      pImageInfo->format, pImageInfo->type, Tiling, usage, pImageInfo->flags);
+    auto properties = m_device->GetDXVKDevice()->getFormatLimits(formatQuery);
     
     if (!properties)
       return FALSE;

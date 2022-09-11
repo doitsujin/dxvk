@@ -43,19 +43,15 @@ namespace dxvk {
 
 
   std::optional<DxvkFormatLimits> DxvkDevice::getFormatLimits(
-          VkFormat                  format,
-          VkImageType               type,
-          VkImageTiling             tiling,
-          VkImageUsageFlags         usage,
-          VkImageCreateFlags        flags) const {
+    const DxvkFormatQuery&          query) const {
     auto vk = m_adapter->vki();
 
     VkPhysicalDeviceImageFormatInfo2 info = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2 };
-    info.format = format;
-    info.type   = type;
-    info.tiling = tiling;
-    info.usage  = usage;
-    info.flags  = flags;
+    info.format = query.format;
+    info.type   = query.type;
+    info.tiling = query.tiling;
+    info.usage  = query.usage;
+    info.flags  = query.flags;
 
     VkImageFormatProperties2 properties = { VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2 };
 

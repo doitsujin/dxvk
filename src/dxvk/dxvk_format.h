@@ -35,6 +35,17 @@ namespace dxvk {
   };
 
   /**
+   * \brief Format query info
+   */
+  struct DxvkFormatQuery {
+    VkFormat              format;
+    VkImageType           type;
+    VkImageTiling         tiling;
+    VkImageUsageFlags     usage;
+    VkImageCreateFlags    flags;
+  };
+
+  /**
    * \brief Planar format info
    */
   struct DxvkPlaneFormatInfo {

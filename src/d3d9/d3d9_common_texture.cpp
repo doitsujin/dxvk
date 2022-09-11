@@ -397,9 +397,14 @@ namespace dxvk {
   BOOL D3D9CommonTexture::CheckImageSupport(
     const DxvkImageCreateInfo*  pImageInfo,
           VkImageTiling         Tiling) const {
-    auto properties = m_device->GetDXVKDevice()->getFormatLimits(
-      pImageInfo->format, pImageInfo->type, Tiling,
-      pImageInfo->usage, pImageInfo->flags);
+    DxvkFormatQuery formatQuery = { };
+    formatQuery.format = pImageInfo->format;
+    formatQuery.type = pImageInfo->type;
+    formatQuery.tiling = Tiling;
+    formatQuery.usage = pImageInfo->usage;
+    formatQuery.flags = pImageInfo->flags;
+
+    auto properties = m_device->GetDXVKDevice()->getFormatLimits(formatQuery);
     
     if (!properties)
       return FALSE;

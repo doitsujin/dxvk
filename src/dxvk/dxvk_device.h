@@ -186,19 +186,11 @@ namespace dxvk {
     /**
      * \brief Queries format limits
      *
-     * \param [in] format Image format to quers
-     * \param [in] type Image type
-     * \param [in] tiling Image tiling
-     * \param [in] usage Image usage flags
-     * \param [in] flags Image create flags
+     * \param [in] query Format query info
      * \returns Format limits if the given image is supported
      */
     std::optional<DxvkFormatLimits> getFormatLimits(
-            VkFormat                  format,
-            VkImageType               type,
-            VkImageTiling             tiling,
-            VkImageUsageFlags         usage,
-            VkImageCreateFlags        flags) const;
+      const DxvkFormatQuery&          query) const;
 
     /**
      * \brief Get device status

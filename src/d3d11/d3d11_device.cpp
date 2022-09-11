@@ -1554,9 +1554,15 @@ namespace dxvk {
     // Check if the device supports the given combination of format
     // and sample count. D3D exposes the opaque concept of quality
     // levels to the application, we'll just define one such level.
-    auto properties = m_dxvkDevice->getFormatLimits(format,
-      VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT, flags);
-    
+    DxvkFormatQuery formatQuery = { };
+    formatQuery.format = format;
+    formatQuery.type = VK_IMAGE_TYPE_2D;
+    formatQuery.tiling = VK_IMAGE_TILING_OPTIMAL;
+    formatQuery.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+    formatQuery.flags = flags;
+
+    auto properties = m_dxvkDevice->getFormatLimits(formatQuery);
+
     if (properties && (properties->sampleCounts & sampleCountFlag))
       *pNumQualityLevels = 1;
     return S_OK;
@@ -2128,8 +2134,13 @@ namespace dxvk {
         ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
         : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
-      auto limits = m_dxvkDevice->getFormatLimits(fmtMapping.Format,
-        VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL, usage, 0);
+      DxvkFormatQuery formatQuery = { };
+      formatQuery.format = fmtMapping.Format;
+      formatQuery.type = VK_IMAGE_TYPE_2D;
+      formatQuery.tiling = VK_IMAGE_TILING_OPTIMAL;
+      formatQuery.usage = usage;
+
+      auto limits = m_dxvkDevice->getFormatLimits(formatQuery);
 
       if (limits && limits->sampleCounts > VK_SAMPLE_COUNT_1_BIT) {
         flags1 |= D3D11_FORMAT_SUPPORT_MULTISAMPLE_RENDERTARGET
@@ -2185,14 +2196,20 @@ namespace dxvk {
   
   
   BOOL D3D11Device::GetImageTypeSupport(VkFormat Format, VkImageType Type, VkImageCreateFlags Flags) const {
-    auto properties = m_dxvkDevice->getFormatLimits(Format,
-      Type, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT, Flags);
-    
+    DxvkFormatQuery formatQuery = { };
+    formatQuery.format = Format;
+    formatQuery.type = Type;
+    formatQuery.tiling = VK_IMAGE_TILING_OPTIMAL;
+    formatQuery.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+    formatQuery.flags = Flags;
+
+    auto properties = m_dxvkDevice->getFormatLimits(formatQuery);
+
     if (!properties) {
-      properties = m_dxvkDevice->getFormatLimits(Format,
-        Type, VK_IMAGE_TILING_LINEAR, VK_IMAGE_USAGE_SAMPLED_BIT, Flags);
+      formatQuery.tiling = VK_IMAGE_TILING_LINEAR;
+      properties = m_dxvkDevice->getFormatLimits(formatQuery);
     }
-    
+
     return properties.has_value();
   }
   
