@@ -102,6 +102,7 @@ namespace dxvk {
             D3D_FEATURE_LEVEL     FeatureLevel);
 
     D3D11_SHARED_RESOURCE_TIER DetermineSharedResourceTier(
+      const Rc<DxvkAdapter>&      Adapter,
             D3D_FEATURE_LEVEL     FeatureLevel);
 
     D3D11_TILED_RESOURCES_TIER DetermineTiledResourcesTier(
@@ -110,6 +111,11 @@ namespace dxvk {
     BOOL DetermineUavExtendedTypedLoadSupport(
       const Rc<DxvkAdapter>&      Adapter,
             D3D_FEATURE_LEVEL     FeatureLevel);
+
+    BOOL CheckFormatSharingSupport(
+      const Rc<DxvkAdapter>&      Adapter,
+            VkFormat              Format,
+            VkExternalMemoryHandleTypeFlagBits HandleType);
 
     D3D_FEATURE_LEVEL GetMaxFeatureLevel() const;
 

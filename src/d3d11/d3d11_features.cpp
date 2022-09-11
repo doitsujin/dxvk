@@ -35,6 +35,8 @@ namespace dxvk {
     m_d3d10Options.ComputeShaders_Plus_RawAndStructuredBuffers_Via_Shader_4_x = TRUE;
 
     // D3D11.1 options. All of these are required for Feature Level 11_1.
+    auto sharedResourceTier = DetermineSharedResourceTier(Adapter, FeatureLevel);
+
     bool hasDoublePrecisionSupport = m_features.core.features.shaderFloat64
                                   && m_features.core.features.shaderInt64;
 
@@ -46,7 +48,7 @@ namespace dxvk {
     m_d3d11Options.ConstantBufferOffsetting               = TRUE;
     m_d3d11Options.MapNoOverwriteOnDynamicConstantBuffer  = TRUE;
     m_d3d11Options.MapNoOverwriteOnDynamicBufferSRV       = TRUE;
-    m_d3d11Options.ExtendedResourceSharing                = TRUE;
+    m_d3d11Options.ExtendedResourceSharing                = sharedResourceTier > D3D11_SHARED_RESOURCE_TIER_0;
 
     if (FeatureLevel >= D3D_FEATURE_LEVEL_10_0) {
       m_d3d11Options.OutputMergerLogicOp                  = m_features.core.features.logicOp;
@@ -91,10 +93,10 @@ namespace dxvk {
     }
 
     // D3D11.4 options
-    m_d3d11Options4.ExtendedNV12SharedTextureSupported    = TRUE;
+    m_d3d11Options4.ExtendedNV12SharedTextureSupported    = sharedResourceTier > D3D11_SHARED_RESOURCE_TIER_0;
 
     // More D3D11.4 options
-    m_d3d11Options5.SharedResourceTier                    = DetermineSharedResourceTier(FeatureLevel);
+    m_d3d11Options5.SharedResourceTier                    = sharedResourceTier;
 
     // Double-precision support
     if (FeatureLevel >= D3D_FEATURE_LEVEL_11_0)
@@ -205,10 +207,80 @@ namespace dxvk {
 
 
   D3D11_SHARED_RESOURCE_TIER D3D11DeviceFeatures::DetermineSharedResourceTier(
+    const Rc<DxvkAdapter>&      Adapter,
           D3D_FEATURE_LEVEL     FeatureLevel) {
-    // Shared resources are all sorts of wonky for obvious
-    // reasons, so don't over-promise things here for now
-    return D3D11_SHARED_RESOURCE_TIER_1;
+    static std::atomic<bool> s_errorShown = { false };
+
+    // Lie about supporting Tier 1 since that's the
+    // minimum required tier for Feature Level 11_1
+    if (!Adapter->features().khrExternalMemoryWin32) {
+      if (!s_errorShown.exchange(true))
+        Logger::warn("D3D11DeviceFeatures: External memory features not supported");
+
+      return D3D11_SHARED_RESOURCE_TIER_1;
+    }
+
+    // Check support for extended formats. Ignore multi-plane
+    // formats here since driver support varies too much.
+    std::array<VkFormat, 30> requiredFormats = {{
+      VK_FORMAT_R16G16B16A16_SFLOAT,
+      VK_FORMAT_R32G32B32A32_SFLOAT,
+      VK_FORMAT_R32G32B32A32_UINT,
+      VK_FORMAT_R32G32B32A32_SINT,
+      VK_FORMAT_R16G16B16A16_SFLOAT,
+      VK_FORMAT_R16G16B16A16_UNORM,
+      VK_FORMAT_R16G16B16A16_UINT,
+      VK_FORMAT_R16G16B16A16_SNORM,
+      VK_FORMAT_R16G16B16A16_SINT,
+      VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+      VK_FORMAT_A2B10G10R10_UINT_PACK32,
+      VK_FORMAT_R8G8B8A8_UNORM,
+      VK_FORMAT_R8G8B8A8_SRGB,
+      VK_FORMAT_R8G8B8A8_UINT,
+      VK_FORMAT_R8G8B8A8_SNORM,
+      VK_FORMAT_R8G8B8A8_SINT,
+      VK_FORMAT_B8G8R8A8_UNORM,
+      VK_FORMAT_B8G8R8A8_SRGB,
+      VK_FORMAT_R32_SFLOAT,
+      VK_FORMAT_R32_UINT,
+      VK_FORMAT_R32_SINT,
+      VK_FORMAT_R16_SFLOAT,
+      VK_FORMAT_R16_UNORM,
+      VK_FORMAT_R16_UINT,
+      VK_FORMAT_R16_SNORM,
+      VK_FORMAT_R16_SINT,
+      VK_FORMAT_R8_UNORM,
+      VK_FORMAT_R8_UINT,
+      VK_FORMAT_R8_SNORM,
+      VK_FORMAT_R8_SINT,
+    }};
+
+    bool allKmtHandlesSupported = true;
+    bool allNtHandlesSupported = true;
+
+    for (auto f : requiredFormats) {
+      allKmtHandlesSupported &= CheckFormatSharingSupport(Adapter, f, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT);
+      allNtHandlesSupported &= CheckFormatSharingSupport(Adapter, f, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT);
+    }
+
+    // Again, lie about at least tier 1 support
+    if (!allKmtHandlesSupported) {
+      if (!s_errorShown.exchange(true))
+        Logger::warn("D3D11DeviceFeatures: Some formats not supported for resource sharing");
+      return D3D11_SHARED_RESOURCE_TIER_1;
+    }
+
+    // Tier 2 requires all the above formats to be shareable
+    // with NT handles in order to support D3D12 interop
+    if (!allNtHandlesSupported)
+      return D3D11_SHARED_RESOURCE_TIER_1;
+
+    // Tier 3 additionally requires R11G11B10 to be
+    // shareable with D3D12
+    if (!CheckFormatSharingSupport(Adapter, VK_FORMAT_B10G11R11_UFLOAT_PACK32, VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT))
+      return D3D11_SHARED_RESOURCE_TIER_2;
+
+    return D3D11_SHARED_RESOURCE_TIER_3;
   }
 
 
@@ -275,6 +347,26 @@ namespace dxvk {
     }
 
     return TRUE;
+  }
+
+
+  BOOL D3D11DeviceFeatures::CheckFormatSharingSupport(
+    const Rc<DxvkAdapter>&      Adapter,
+          VkFormat              Format,
+          VkExternalMemoryHandleTypeFlagBits HandleType) {
+    DxvkFormatQuery query = { };
+    query.format = Format;
+    query.type = VK_IMAGE_TYPE_2D;
+    query.tiling = VK_IMAGE_TILING_OPTIMAL;
+    query.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+    query.handleType = HandleType;
+
+    constexpr VkExternalMemoryFeatureFlags featureMask
+      = VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT
+      | VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT;
+
+    auto limits = Adapter->getFormatLimits(query);
+    return limits && (limits->externalFeatures & featureMask);
   }
 
 
