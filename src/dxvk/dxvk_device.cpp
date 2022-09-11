@@ -46,6 +46,9 @@ namespace dxvk {
     const DxvkFormatQuery&          query) const {
     auto vk = m_adapter->vki();
 
+    VkPhysicalDeviceExternalImageFormatInfo externalInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO };
+    externalInfo.handleType = query.handleType;
+
     VkPhysicalDeviceImageFormatInfo2 info = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2 };
     info.format = query.format;
     info.type   = query.type;
@@ -53,7 +56,14 @@ namespace dxvk {
     info.usage  = query.usage;
     info.flags  = query.flags;
 
+    if (externalInfo.handleType)
+      externalInfo.pNext = std::exchange(info.pNext, &externalInfo);
+
+    VkExternalImageFormatProperties externalProperties = { VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES };
     VkImageFormatProperties2 properties = { VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2 };
+
+    if (externalInfo.handleType)
+      externalProperties.pNext = std::exchange(properties.pNext, &externalProperties);
 
     VkResult vr = vk->vkGetPhysicalDeviceImageFormatProperties2(
       m_adapter->handle(), &info, &properties);
@@ -61,12 +71,13 @@ namespace dxvk {
     if (vr != VK_SUCCESS)
       return std::nullopt;
 
-    DxvkFormatLimits result;
+    DxvkFormatLimits result = { };
     result.maxExtent        = properties.imageFormatProperties.maxExtent;
     result.maxMipLevels     = properties.imageFormatProperties.maxMipLevels;
     result.maxArrayLayers   = properties.imageFormatProperties.maxArrayLayers;
     result.sampleCounts     = properties.imageFormatProperties.sampleCounts;
     result.maxResourceSize  = properties.imageFormatProperties.maxResourceSize;
+    result.externalFeatures = externalProperties.externalMemoryProperties.externalMemoryFeatures;
     return result;
   }
 

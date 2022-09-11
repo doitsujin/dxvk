@@ -27,22 +27,24 @@ namespace dxvk {
    * \brief Format support limits for a given set of image usage flags
    */
   struct DxvkFormatLimits {
-    VkExtent3D            maxExtent;
-    uint32_t              maxMipLevels;
-    uint32_t              maxArrayLayers;
-    VkSampleCountFlags    sampleCounts;
-    VkDeviceSize          maxResourceSize;
+    VkExtent3D                  maxExtent;
+    uint32_t                    maxMipLevels;
+    uint32_t                    maxArrayLayers;
+    VkSampleCountFlags          sampleCounts;
+    VkDeviceSize                maxResourceSize;
+    VkExternalMemoryFeatureFlags externalFeatures;
   };
 
   /**
    * \brief Format query info
    */
   struct DxvkFormatQuery {
-    VkFormat              format;
-    VkImageType           type;
-    VkImageTiling         tiling;
-    VkImageUsageFlags     usage;
-    VkImageCreateFlags    flags;
+    VkFormat                    format;
+    VkImageType                 type;
+    VkImageTiling               tiling;
+    VkImageUsageFlags           usage;
+    VkImageCreateFlags          flags;
+    VkExternalMemoryHandleTypeFlagBits handleType;
   };
 
   /**
