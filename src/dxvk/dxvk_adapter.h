@@ -1,5 +1,7 @@
 #pragma once
 
+#include <optional>
+
 #include "dxvk_device_info.h"
 #include "dxvk_extensions.h"
 #include "dxvk_include.h"
@@ -145,6 +147,15 @@ namespace dxvk {
      */
     DxvkFormatFeatures getFormatFeatures(
             VkFormat                  format) const;
+
+    /**
+     * \brief Queries format limits
+     *
+     * \param [in] query Format query info
+     * \returns Format limits if the given image is supported
+     */
+    std::optional<DxvkFormatLimits> getFormatLimits(
+      const DxvkFormatQuery&          query) const;
 
     /**
      * \brief Retrieves queue family indices

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <optional>
-
 #include "dxvk_adapter.h"
 #include "dxvk_buffer.h"
 #include "dxvk_compute.h"
@@ -190,7 +188,9 @@ namespace dxvk {
      * \returns Format limits if the given image is supported
      */
     std::optional<DxvkFormatLimits> getFormatLimits(
-      const DxvkFormatQuery&          query) const;
+      const DxvkFormatQuery&          query) const {
+      return m_adapter->getFormatLimits(query);
+    }
 
     /**
      * \brief Get device status
