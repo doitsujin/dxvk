@@ -92,8 +92,6 @@ namespace dxvk {
 
     Rc<vk::DeviceFn>      m_vkd;
 
-    VkSampler             m_sampler;
-
     VkDescriptorSetLayout m_dsetLayoutPack;
     VkDescriptorSetLayout m_dsetLayoutUnpack;
 
@@ -109,8 +107,6 @@ namespace dxvk {
     VkPipeline            m_pipeUnpackD24S8AsD32S8;
     VkPipeline            m_pipeUnpackD24S8;
     VkPipeline            m_pipeUnpackD32S8;
-
-    VkSampler createSampler();
 
     VkDescriptorSetLayout createPackDescriptorSetLayout();
 
