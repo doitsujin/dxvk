@@ -1,6 +1,7 @@
 #version 450
 
 #extension GL_ARB_shader_stencil_export : enable
+#extension GL_EXT_samplerless_texture_functions : enable
 
 #define VK_RESOLVE_MODE_NONE            (0)
 #define VK_RESOLVE_MODE_SAMPLE_ZERO_BIT (1 << 0)
@@ -12,8 +13,8 @@ layout(constant_id = 0) const int c_samples = 1;
 layout(constant_id = 1) const int c_mode_d  = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
 layout(constant_id = 2) const int c_mode_s  = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
 
-layout(binding = 0) uniform  sampler2DMSArray s_depth;
-layout(binding = 1) uniform usampler2DMSArray s_stencil;
+layout(binding = 0) uniform  texture2DMSArray s_depth;
+layout(binding = 1) uniform utexture2DMSArray s_stencil;
 
 layout(push_constant)
 uniform u_info_t {

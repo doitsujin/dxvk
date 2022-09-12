@@ -4281,7 +4281,7 @@ namespace dxvk {
       descriptorWrites[i].dstSet = descriptorSet;
       descriptorWrites[i].dstBinding = i;
       descriptorWrites[i].descriptorCount = 1;
-      descriptorWrites[i].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      descriptorWrites[i].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
       descriptorWrites[i].pImageInfo = &descriptorImages[i];
     }
     

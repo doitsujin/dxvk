@@ -54,7 +54,6 @@ namespace dxvk {
 
   DxvkMetaResolveObjects::DxvkMetaResolveObjects(const DxvkDevice* device)
   : m_vkd         (device->vkd()),
-    m_sampler     (createSampler()),
     m_shaderFragF (device->features().amdShaderFragmentMask
       ? createShaderModule(dxvk_resolve_frag_f_amd)
       : createShaderModule(dxvk_resolve_frag_f)),
@@ -87,8 +86,6 @@ namespace dxvk {
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderFragU, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderGeom, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_shaderVert, nullptr);
-
-    m_vkd->vkDestroySampler(m_vkd->device(), m_sampler, nullptr);
   }
 
 
@@ -114,23 +111,6 @@ namespace dxvk {
     return pipeline;
   }
   
-  
-  VkSampler DxvkMetaResolveObjects::createSampler() const {
-    VkSamplerCreateInfo info = { VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO };
-    info.magFilter              = VK_FILTER_NEAREST;
-    info.minFilter              = VK_FILTER_NEAREST;
-    info.mipmapMode             = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    info.addressModeU           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.addressModeV           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.addressModeW           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.borderColor            = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-    
-    VkSampler result = VK_NULL_HANDLE;
-    if (m_vkd->vkCreateSampler(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
-      throw DxvkError("DxvkMetaResolveObjects: Failed to create sampler");
-    return result;
-  }
-
   
   VkShaderModule DxvkMetaResolveObjects::createShaderModule(
     const SpirvCodeBuffer&       code) const {
@@ -158,8 +138,8 @@ namespace dxvk {
   VkDescriptorSetLayout DxvkMetaResolveObjects::createDescriptorSetLayout(
     const DxvkMetaResolvePipelineKey& key) {
     std::array<VkDescriptorSetLayoutBinding, 2> bindings = {{
-      { 0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, &m_sampler },
-      { 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, &m_sampler },
+      { 0, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
+      { 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr },
     }};
     
     VkDescriptorSetLayoutCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };

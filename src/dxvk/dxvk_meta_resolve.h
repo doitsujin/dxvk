@@ -112,8 +112,6 @@ namespace dxvk {
 
     Rc<vk::DeviceFn> m_vkd;
 
-    VkSampler m_sampler;
-
     VkShaderModule m_shaderVert  = VK_NULL_HANDLE;
     VkShaderModule m_shaderGeom  = VK_NULL_HANDLE;
     VkShaderModule m_shaderFragF = VK_NULL_HANDLE;
@@ -128,8 +126,6 @@ namespace dxvk {
       DxvkMetaResolvePipelineKey,
       DxvkMetaResolvePipeline,
       DxvkHash, DxvkEq> m_pipelines;
-    
-    VkSampler createSampler() const;
     
     VkShaderModule createShaderModule(
       const SpirvCodeBuffer&          code) const;

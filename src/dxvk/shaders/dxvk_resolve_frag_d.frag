@@ -1,5 +1,7 @@
 #version 450
 
+#extension GL_EXT_samplerless_texture_functions : enable
+
 #define VK_RESOLVE_MODE_NONE            (0)
 #define VK_RESOLVE_MODE_SAMPLE_ZERO_BIT (1 << 0)
 #define VK_RESOLVE_MODE_AVERAGE_BIT     (1 << 1)
@@ -9,7 +11,7 @@
 layout(constant_id = 0) const int c_samples = 1;
 layout(constant_id = 1) const int c_mode_d  = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
 
-layout(binding = 0) uniform sampler2DMSArray s_depth;
+layout(binding = 0) uniform texture2DMSArray s_depth;
 
 layout(push_constant)
 uniform u_info_t {
