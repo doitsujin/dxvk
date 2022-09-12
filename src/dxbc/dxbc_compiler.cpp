@@ -6012,9 +6012,7 @@ namespace dxvk {
     bool hasTgsm = false;
 
     SpirvMemoryOperands memoryOperands;
-    memoryOperands.flags = spv::MemoryAccessNonPrivatePointerMask
-                         | spv::MemoryAccessMakePointerAvailableMask;
-    memoryOperands.makeAvailable = m_module.constu32(spv::ScopeWorkgroup);
+    memoryOperands.flags = spv::MemoryAccessNonPrivatePointerMask;
 
     for (uint32_t i = 0; i < m_gRegs.size(); i++) {
       if (!m_gRegs[i].varId)
@@ -6045,13 +6043,12 @@ namespace dxvk {
       uint32_t threadId = m_module.opLoad(
         intTypeId, m_cs.builtinLocalInvocationIndex);
       
-      uint32_t strideId = m_module.constu32(numElementsPerThread);
+      uint32_t strideId = m_module.constu32(numThreads);
       uint32_t zeroId   = m_module.constu32(0);
 
       for (uint32_t e = 0; e < numElementsPerThread; e++) {
-        uint32_t ofsId = m_module.opIAdd(intTypeId,
-          m_module.opIMul(intTypeId, strideId, threadId),
-          m_module.constu32(e));
+        uint32_t ofsId = m_module.opIAdd(intTypeId, threadId,
+          m_module.opIMul(intTypeId, strideId, m_module.constu32(e)));
         
         uint32_t ptrId = m_module.opAccessChain(
           ptrTypeId, m_gRegs[i].varId, 1, &ofsId);
@@ -6094,7 +6091,9 @@ namespace dxvk {
         m_module.constu32(spv::ScopeWorkgroup),
         m_module.constu32(spv::ScopeWorkgroup),
         m_module.constu32(spv::MemorySemanticsWorkgroupMemoryMask
-                        | spv::MemorySemanticsAcquireReleaseMask));
+                        | spv::MemorySemanticsAcquireReleaseMask
+                        | spv::MemorySemanticsMakeAvailableMask
+                        | spv::MemorySemanticsMakeVisibleMask));
     }
   }
 
