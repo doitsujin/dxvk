@@ -638,6 +638,10 @@ namespace dxvk {
     { R"(\\ship\.exe$)", {{
       { "d3d9.memoryTrackTest",             "True" },
     }} },
+    /* SiN Episodes Emergence                   */
+    { R"(\\SinEpisodes\.exe$)", {{
+      { "d3d9.memoryTrackTest",             "True" },
+    }} },
   }};
 
 
