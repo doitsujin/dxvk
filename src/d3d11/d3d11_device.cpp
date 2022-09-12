@@ -591,7 +591,10 @@ namespace dxvk {
           ID3D11InputLayout**         ppInputLayout) {
     InitReturnPtr(ppInputLayout);
 
-    if (pInputElementDescs == nullptr)
+    // This check is somehow even correct, passing null with zero
+    // size will always fail but passing non-null with zero size
+    // works, provided the shader does not have any actual inputs
+    if (!pInputElementDescs)
       return E_INVALIDARG;
     
     try {
@@ -603,6 +606,7 @@ namespace dxvk {
 
       uint32_t attrMask = 0;
       uint32_t bindMask = 0;
+      uint32_t locationMask = 0;
       
       std::array<DxvkVertexAttribute, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> attrList;
       std::array<DxvkVertexBinding,   D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> bindList;
@@ -683,7 +687,17 @@ namespace dxvk {
         if (entry != nullptr) {
           attrMask |= 1u << i;
           bindMask |= 1u << binding.binding;
+          locationMask |= 1u << attrib.location;
         }
+      }
+
+      // Ensure that all inputs used by the shader are defined
+      for (auto i = inputSignature->begin(); i != inputSignature->end(); i++) {
+        bool isBuiltIn = DxbcIsgn::compareSemanticNames(i->semanticName, "sv_instanceid")
+                      || DxbcIsgn::compareSemanticNames(i->semanticName, "sv_vertexid");
+
+        if (!isBuiltIn && !(locationMask & (1u << i->registerId)))
+          return E_INVALIDARG;
       }
 
       // Compact the attribute and binding lists to filter
