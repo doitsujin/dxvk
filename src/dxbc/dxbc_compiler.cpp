@@ -2587,14 +2587,18 @@ namespace dxvk {
       memoryScope      = spv::ScopeWorkgroup;
       memorySemantics |= spv::MemorySemanticsImageMemoryMask
                       |  spv::MemorySemanticsUniformMemoryMask
-                      |  spv::MemorySemanticsAcquireReleaseMask;
+                      |  spv::MemorySemanticsAcquireReleaseMask
+                      |  spv::MemorySemanticsMakeAvailableMask
+                      |  spv::MemorySemanticsMakeVisibleMask;
     }
     
     if (flags.test(DxbcSyncFlag::UavMemoryGlobal)) {
-      memoryScope      = spv::ScopeQueueFamily;
+      memoryScope      = m_hasGloballyCoherentUav ? spv::ScopeQueueFamily : spv::ScopeWorkgroup;
       memorySemantics |= spv::MemorySemanticsImageMemoryMask
                       |  spv::MemorySemanticsUniformMemoryMask
-                      |  spv::MemorySemanticsAcquireReleaseMask;
+                      |  spv::MemorySemanticsAcquireReleaseMask
+                      |  spv::MemorySemanticsMakeAvailableMask
+                      |  spv::MemorySemanticsMakeVisibleMask;
     }
     
     if (executionScope != spv::ScopeInvocation) {
@@ -5192,21 +5196,22 @@ namespace dxvk {
 
     uint32_t coherence = bufferInfo.coherence;
 
-    if (isTgsm || coherence)
-      memoryOperands.flags = spv::MemoryAccessNonPrivatePointerMask;
-
     if (isTgsm && m_moduleInfo.options.forceVolatileTgsmAccess) {
       memoryOperands.flags |= spv::MemoryAccessVolatileMask;
       coherence = spv::ScopeWorkgroup;
     }
 
     if (coherence) {
-      memoryOperands.flags |= spv::MemoryAccessMakePointerVisibleMask;
-      memoryOperands.makeVisible = m_module.constu32(coherence);
+      memoryOperands.flags |= spv::MemoryAccessNonPrivatePointerMask;
 
-      imageOperands.flags = spv::ImageOperandsNonPrivateTexelMask
-                          | spv::ImageOperandsMakeTexelVisibleMask;
-      imageOperands.makeVisible = m_module.constu32(coherence);
+      if (coherence != spv::ScopeInvocation) {
+        memoryOperands.flags |= spv::MemoryAccessMakePointerVisibleMask;
+        memoryOperands.makeVisible = m_module.constu32(coherence);
+
+        imageOperands.flags = spv::ImageOperandsNonPrivateTexelMask
+                            | spv::ImageOperandsMakeTexelVisibleMask;
+        imageOperands.makeVisible = m_module.constu32(coherence);
+      }
     }
 
     sparseFeedbackId = 0;
@@ -5316,21 +5321,22 @@ namespace dxvk {
 
     uint32_t coherence = bufferInfo.coherence;
 
-    if (isTgsm || coherence)
-      memoryOperands.flags = spv::MemoryAccessNonPrivatePointerMask;
-
     if (isTgsm && m_moduleInfo.options.forceVolatileTgsmAccess) {
       memoryOperands.flags |= spv::MemoryAccessVolatileMask;
       coherence = spv::ScopeWorkgroup;
     }
 
     if (coherence) {
-      memoryOperands.flags |= spv::MemoryAccessMakePointerAvailableMask;
-      memoryOperands.makeAvailable = m_module.constu32(coherence);
+      memoryOperands.flags = spv::MemoryAccessNonPrivatePointerMask;
 
-      imageOperands.flags = spv::ImageOperandsNonPrivateTexelMask
-                          | spv::ImageOperandsMakeTexelAvailableMask;
-      imageOperands.makeAvailable = m_module.constu32(coherence);
+      if (coherence != spv::ScopeInvocation) {
+        memoryOperands.flags |= spv::MemoryAccessMakePointerAvailableMask;
+        memoryOperands.makeAvailable = m_module.constu32(coherence);
+
+        imageOperands.flags = spv::ImageOperandsNonPrivateTexelMask
+                            | spv::ImageOperandsMakeTexelAvailableMask;
+        imageOperands.makeAvailable = m_module.constu32(coherence);
+      }
     }
 
     for (uint32_t i = 0; i < 4; i++) {
@@ -7609,7 +7615,7 @@ namespace dxvk {
           spv::StorageClassWorkgroup);
         result.varId  = m_gRegs.at(registerId).varId;
         result.stride = m_gRegs.at(registerId).elementStride;
-        result.coherence = 0;
+        result.coherence = spv::ScopeInvocation;
         result.isSsbo = false;
         return result;
       } break;
@@ -7798,7 +7804,7 @@ namespace dxvk {
   }
 
 
-  uint32_t DxbcCompiler::getUavCoherence(uint32_t registerId, DxbcUavFlags flags) const {
+  uint32_t DxbcCompiler::getUavCoherence(uint32_t registerId, DxbcUavFlags flags) {
     // Ignore any resources that can't both be read and written in
     // the current shader, explicit availability/visibility operands
     // are not useful in that case.
@@ -7807,13 +7813,16 @@ namespace dxvk {
 
     // If the globally coherent flag is set, the resource must be
     // coherent across multiple workgroups of the same dispatch
-    if (flags.test(DxbcUavFlag::GloballyCoherent))
+    if (flags.test(DxbcUavFlag::GloballyCoherent)) {
+      m_hasGloballyCoherentUav = true;
       return spv::ScopeQueueFamily;
+    }
 
-    // In compute shaders, UAVs are implicitly workgroup coherent.
-    // In all other stage, there are no coherence guarantees.
+    // In compute shaders, UAVs are implicitly workgroup coherent,
+    // but we can rely on memory barrier instructions to make any
+    // access available and visible to the entire workgroup.
     if (m_programInfo.type() == DxbcProgramType::ComputeShader)
-      return spv::ScopeWorkgroup;
+      return spv::ScopeInvocation;
 
     return 0;
   }

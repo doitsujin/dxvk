@@ -450,7 +450,9 @@ namespace dxvk {
     std::array<DxbcSampler,         16> m_samplers;
     std::array<DxbcShaderResource, 128> m_textures;
     std::array<DxbcUav,             64> m_uavs;
-    
+
+    bool m_hasGloballyCoherentUav = false;
+
     ///////////////////////////////////////////////
     // Control flow information. Stores labels for
     // currently active if-else blocks and loops.
@@ -1225,7 +1227,7 @@ namespace dxvk {
 
     uint32_t getUavCoherence(
             uint32_t                registerId,
-            DxbcUavFlags            flags) const;
+            DxbcUavFlags            flags);
 
     ///////////////////////////
     // Type definition methods
