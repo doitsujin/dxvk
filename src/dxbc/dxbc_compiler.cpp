@@ -2593,7 +2593,11 @@ namespace dxvk {
     }
     
     if (flags.test(DxbcSyncFlag::UavMemoryGlobal)) {
-      memoryScope      = m_hasGloballyCoherentUav ? spv::ScopeQueueFamily : spv::ScopeWorkgroup;
+      memoryScope      = spv::ScopeQueueFamily;
+
+      if (m_programInfo.type() == DxbcProgramType::ComputeShader && !m_hasGloballyCoherentUav)
+        memoryScope    = spv::ScopeWorkgroup;
+
       memorySemantics |= spv::MemorySemanticsImageMemoryMask
                       |  spv::MemorySemanticsUniformMemoryMask
                       |  spv::MemorySemanticsAcquireReleaseMask
