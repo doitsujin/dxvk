@@ -1252,8 +1252,6 @@ namespace dxvk {
     
     void opReturn();
     
-    void opKill();
-
     void opDemoteToHelperInvocation();
     
     void opEmitVertex(

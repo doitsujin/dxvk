@@ -3666,12 +3666,6 @@ namespace dxvk {
   }
   
   
-  void SpirvModule::opKill() {
-    m_code.putIns (spv::OpKill, 1);
-    m_blockId = 0;
-  }
-  
-  
   void SpirvModule::opDemoteToHelperInvocation() {
     m_code.putIns (spv::OpDemoteToHelperInvocation, 1);
   }
