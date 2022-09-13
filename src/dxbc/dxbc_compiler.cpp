@@ -5331,7 +5331,7 @@ namespace dxvk {
     }
 
     if (coherence) {
-      memoryOperands.flags = spv::MemoryAccessNonPrivatePointerMask;
+      memoryOperands.flags |= spv::MemoryAccessNonPrivatePointerMask;
 
       if (coherence != spv::ScopeInvocation) {
         memoryOperands.flags |= spv::MemoryAccessMakePointerAvailableMask;
