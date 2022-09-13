@@ -1508,14 +1508,11 @@ namespace dxvk {
     if (m_moduleInfo.options.d3d9FloatEmulation != D3D9FloatEmulation::Strict)
       return {x.type, m_module.opFMix(typeId, x.id, y.id, a.id)};
 
-    uint32_t oneId = m_module.constfReplicant(1.0f, a.type.ccount);
+    DxsoRegisterValue ySubx;
+    ySubx.type = x.type;
+    ySubx.id   = m_module.opFSub(typeId, y.id, x.id);
 
-    DxsoRegisterValue revA;
-    revA.type = a.type;
-    revA.id   = m_module.opFSub(typeId, oneId, a.id);
-
-    DxsoRegisterValue xRevA = emitMul(x, revA);
-    return emitFma(a, y, xRevA);
+    return emitFma(a, ySubx, x);
   }
 
 
