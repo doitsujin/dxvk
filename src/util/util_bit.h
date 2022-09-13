@@ -353,7 +353,7 @@ namespace dxvk::bit {
       }
 
       uint32_t operator * () const {
-#if (defined(__GNUC__) || defined(__clang__)) && !defined(__BMI__)
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(__BMI__) && defined(DXVK_ARCH_X86)
         uint32_t res;
         asm ("tzcnt %1,%0"
         : "=r" (res)
