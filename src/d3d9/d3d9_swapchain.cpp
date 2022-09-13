@@ -958,7 +958,6 @@ namespace dxvk {
       presenterDesc);
 
     m_presenter->setFrameRateLimit(m_parent->GetOptions()->maxFrameRate);
-    m_presenter->setFrameRateLimiterRefreshRate(m_displayRefreshRate);
 
     CreateRenderTargetViews();
   }
@@ -1182,9 +1181,6 @@ namespace dxvk {
   void D3D9SwapChainEx::NotifyDisplayRefreshRate(
           double                  RefreshRate) {
     m_displayRefreshRate = RefreshRate;
-
-    if (m_presenter != nullptr)
-      m_presenter->setFrameRateLimiterRefreshRate(RefreshRate);
   }
 
 

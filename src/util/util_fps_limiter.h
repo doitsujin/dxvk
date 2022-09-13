@@ -29,16 +29,6 @@ namespace dxvk {
     void setTargetFrameRate(double frameRate);
 
     /**
-     * \brief Sets display refresh rate
-     *
-     * This information is used to decide whether or not
-     * the limiter should be active in the first place in
-     * case vertical synchronization is enabled.
-     * \param [in] refreshRate Current refresh rate
-     */
-    void setDisplayRefreshRate(double refreshRate);
-
-    /**
      * \brief Stalls calling thread as necessary
      *
      * Blocks the calling thread if the limiter is enabled
@@ -68,7 +58,6 @@ namespace dxvk {
     dxvk::mutex     m_mutex;
 
     NtTimerDuration m_targetInterval  = NtTimerDuration::zero();
-    NtTimerDuration m_refreshInterval = NtTimerDuration::zero();
     NtTimerDuration m_deviation       = NtTimerDuration::zero();
     TimePoint       m_lastFrame;
 
