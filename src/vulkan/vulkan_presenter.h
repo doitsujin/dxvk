@@ -162,16 +162,6 @@ namespace dxvk::vk {
     void setFrameRateLimit(double frameRate);
 
     /**
-     * \brief Notifies frame rate limiter about the display refresh rate
-     *
-     * Used to dynamically disable the frame rate limiter in case
-     * vertical synchronization is used and the target frame rate
-     * roughly equals the display's refresh rate.
-     * \param [in] refresnRate Current refresh rate
-     */
-    void setFrameRateLimiterRefreshRate(double refreshRate);
-
-    /**
      * \brief Checks whether a Vulkan swap chain exists
      *
      * On Windows, there are situations where we cannot create

@@ -116,17 +116,9 @@ namespace dxvk {
   
   VkDescriptorSetLayout DxvkMetaClearObjects::createDescriptorSetLayout(
           VkDescriptorType        descriptorType) {
-    VkDescriptorSetLayoutBinding bindInfo;
-    bindInfo.binding            = 0;
-    bindInfo.descriptorType     = descriptorType;
-    bindInfo.descriptorCount    = 1;
-    bindInfo.stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
-    bindInfo.pImmutableSamplers = nullptr;
+    VkDescriptorSetLayoutBinding bindInfo = { 0, descriptorType, 1, VK_SHADER_STAGE_COMPUTE_BIT };
     
-    VkDescriptorSetLayoutCreateInfo dsetInfo;
-    dsetInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    dsetInfo.pNext              = nullptr;
-    dsetInfo.flags              = 0;
+    VkDescriptorSetLayoutCreateInfo dsetInfo = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
     dsetInfo.bindingCount       = 1;
     dsetInfo.pBindings          = &bindInfo;
     
@@ -140,17 +132,11 @@ namespace dxvk {
   
   VkPipelineLayout DxvkMetaClearObjects::createPipelineLayout(
           VkDescriptorSetLayout   dsetLayout) {
-    VkPushConstantRange pushInfo;
-    pushInfo.stageFlags         = VK_SHADER_STAGE_COMPUTE_BIT;
-    pushInfo.offset             = 0;
-    pushInfo.size               = sizeof(DxvkMetaClearArgs);
+    VkPushConstantRange pushInfo = { VK_SHADER_STAGE_COMPUTE_BIT, 0, uint32_t(sizeof(DxvkMetaClearArgs)) };
     
-    VkPipelineLayoutCreateInfo pipeInfo;
-    pipeInfo.sType              = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipeInfo.pNext              = nullptr;
-    pipeInfo.flags              = 0;
-    pipeInfo.setLayoutCount     = 1;
-    pipeInfo.pSetLayouts        = &dsetLayout;
+    VkPipelineLayoutCreateInfo pipeInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+    pipeInfo.setLayoutCount         = 1;
+    pipeInfo.pSetLayouts            = &dsetLayout;
     pipeInfo.pushConstantRangeCount = 1;
     pipeInfo.pPushConstantRanges    = &pushInfo;
     
@@ -165,10 +151,7 @@ namespace dxvk {
   VkPipeline DxvkMetaClearObjects::createPipeline(
     const SpirvCodeBuffer&        spirvCode,
           VkPipelineLayout        pipeLayout) {
-    VkShaderModuleCreateInfo shaderInfo;
-    shaderInfo.sType              = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    shaderInfo.pNext              = nullptr;
-    shaderInfo.flags              = 0;
+    VkShaderModuleCreateInfo shaderInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
     shaderInfo.codeSize           = spirvCode.size();
     shaderInfo.pCode              = spirvCode.data();
     
@@ -177,22 +160,15 @@ namespace dxvk {
           &shaderInfo, nullptr, &shaderModule) != VK_SUCCESS)
       throw DxvkError("Dxvk: Failed to create meta clear shader module");
     
-    VkPipelineShaderStageCreateInfo stageInfo;
-    stageInfo.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    stageInfo.pNext               = nullptr;
-    stageInfo.flags               = 0;
+    VkPipelineShaderStageCreateInfo stageInfo = { VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO };
     stageInfo.stage               = VK_SHADER_STAGE_COMPUTE_BIT;
     stageInfo.module              = shaderModule;
     stageInfo.pName               = "main";
     stageInfo.pSpecializationInfo = nullptr;
     
-    VkComputePipelineCreateInfo pipeInfo;
-    pipeInfo.sType                = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    pipeInfo.pNext                = nullptr;
-    pipeInfo.flags                = 0;
+    VkComputePipelineCreateInfo pipeInfo = { VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO };
     pipeInfo.stage                = stageInfo;
     pipeInfo.layout               = pipeLayout;
-    pipeInfo.basePipelineHandle   = VK_NULL_HANDLE;
     pipeInfo.basePipelineIndex    = -1;
     
     VkPipeline result = VK_NULL_HANDLE;

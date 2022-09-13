@@ -62,6 +62,15 @@ namespace dxvk {
   
   
   /**
+   * \brief Region
+   */
+  struct D3D11_COMMON_TEXTURE_REGION {
+    VkOffset3D      Offset;
+    VkExtent3D      Extent;
+  };
+  
+  
+  /**
    * \brief D3D11 common texture object
    * 
    * This class implements common texture methods and
@@ -256,7 +265,7 @@ namespace dxvk {
       // For buffer-mapped images we only need to track copies to
       // and from that buffer, so we can safely ignore bind flags
       if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)
-        return true;
+        return m_desc.Usage != D3D11_USAGE_DEFAULT;
 
       // Otherwise we can only do accurate tracking if the
       // image cannot be used in the rendering pipeline.
@@ -290,6 +299,72 @@ namespace dxvk {
       } else {
         return DxvkCsThread::SynchronizeAll;
       }
+    }
+
+    /**
+     * \brief Adds a dirty region
+     *
+     * This region will be updated on Unmap.
+     * \param [in] Subresource Subresource index
+     * \param [in] Offset Region offset
+     * \param [in] Extent Region extent
+     */
+    void AddDirtyRegion(UINT Subresource, VkOffset3D Offset, VkExtent3D Extent) {
+      D3D11_COMMON_TEXTURE_REGION region;
+      region.Offset = Offset;
+      region.Extent = Extent;
+
+      if (Subresource < m_buffers.size())
+        m_buffers[Subresource].dirtyRegions.push_back(region);
+    }
+
+    /**
+     * \brief Clears dirty regions
+     *
+     * Removes all dirty regions from the given subresource.
+     * \param [in] Subresource Subresource index
+     */
+    void ClearDirtyRegions(UINT Subresource) {
+      if (Subresource < m_buffers.size())
+        m_buffers[Subresource].dirtyRegions.clear();
+    }
+
+    /**
+     * \brief Counts dirty regions
+     *
+     * \param [in] Subresource Subresource index
+     * \returns Dirty region count
+     */
+    UINT GetDirtyRegionCount(UINT Subresource) {
+      return (Subresource < m_buffers.size())
+        ? UINT(m_buffers[Subresource].dirtyRegions.size())
+        : UINT(0);
+    }
+
+    /**
+     * \brief Queries a dirty regions
+     *
+     * \param [in] Subresource Subresource index
+     * \param [in] Region Region index
+     * \returns Dirty region
+     */
+    D3D11_COMMON_TEXTURE_REGION GetDirtyRegion(UINT Subresource, UINT Region) {
+      return m_buffers[Subresource].dirtyRegions[Region];
+    }
+
+    /**
+     * \brief Checks whether or not to track dirty regions
+     *
+     * If this returns true, then any functions that update the
+     * mapped staging buffer must also track dirty regions while
+     * the image is mapped. Otherwise, the entire image is dirty.
+     * \returns \c true if dirty regions must be tracked
+     */
+    bool NeedsDirtyRegionTracking() const {
+      // Only set this for images where Map can't return a pointer
+      return m_mapMode            == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER
+          && m_desc.Usage         == D3D11_USAGE_DEFAULT
+          && m_desc.TextureLayout == D3D11_TEXTURE_LAYOUT_UNDEFINED;
     }
 
     /**
@@ -377,6 +452,8 @@ namespace dxvk {
     struct MappedBuffer {
       Rc<DxvkBuffer>        buffer;
       DxvkBufferSliceHandle slice;
+
+      std::vector<D3D11_COMMON_TEXTURE_REGION> dirtyRegions;
     };
 
     struct MappedInfo {
@@ -405,7 +482,7 @@ namespace dxvk {
     
     BOOL CheckFormatFeatureSupport(
             VkFormat              Format,
-            VkFormatFeatureFlags  Features) const;
+            VkFormatFeatureFlags2 Features) const;
     
     VkImageUsageFlags EnableMetaCopyUsage(
             VkFormat              Format,

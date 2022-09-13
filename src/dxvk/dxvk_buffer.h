@@ -8,6 +8,7 @@
 #include "dxvk_hash.h"
 #include "dxvk_memory.h"
 #include "dxvk_resource.h"
+#include "dxvk_sparse.h"
 
 namespace dxvk {
 
@@ -18,6 +19,9 @@ namespace dxvk {
    * passed to \ref DxvkDevice::createBuffer
    */
   struct DxvkBufferCreateInfo {
+    /// Buffer create flags
+    VkBufferCreateFlags flags = 0;
+
     /// Size of the buffer, in bytes
     VkDeviceSize size;
     
@@ -99,7 +103,7 @@ namespace dxvk {
    * unformatted data. Can be accessed by the host
    * if allocated on an appropriate memory type.
    */
-  class DxvkBuffer : public DxvkResource {
+  class DxvkBuffer : public DxvkPagedResource {
     friend class DxvkBufferView;
   public:
     
@@ -141,6 +145,16 @@ namespace dxvk {
      */
     void* mapPtr(VkDeviceSize offset) const {
       return reinterpret_cast<char*>(m_physSlice.mapPtr) + offset;
+    }
+
+    /**
+     * \brief Queries shader stages that can access this buffer
+     *
+     * Derived from the pipeline stage mask passed in during creation.
+     * \returns Shader stages that may access this buffer
+     */
+    VkShaderStageFlags getShaderStages() const {
+      return m_shaderStages;
     }
     
     /**
@@ -279,13 +293,14 @@ namespace dxvk {
       std::unique_lock<sync::Spinlock> swapLock(m_swapMutex);
       m_nextSlices.push_back(slice);
     }
-    
+
   private:
 
-    DxvkDevice*             m_device;
+    Rc<vk::DeviceFn>        m_vkd;
     DxvkBufferCreateInfo    m_info;
     DxvkMemoryAllocator*    m_memAlloc;
     VkMemoryPropertyFlags   m_memFlags;
+    VkShaderStageFlags      m_shaderStages;
     
     DxvkBufferHandle        m_buffer;
     DxvkBufferSliceHandle   m_physSlice;
@@ -320,7 +335,10 @@ namespace dxvk {
             VkDeviceSize          sliceCount,
             bool                  clear) const;
 
-    VkDeviceSize computeSliceAlignment() const;
+    DxvkBufferHandle createSparseBuffer() const;
+
+    VkDeviceSize computeSliceAlignment(
+            DxvkDevice*           device) const;
     
   };
   
@@ -507,7 +525,18 @@ namespace dxvk {
       return this->m_offset == other.m_offset
           && this->m_length == other.m_length;
     }
-    
+
+    /**
+     * \brief Sets buffer range
+     *
+     * \param [in] offset New offset
+     * \param [in] length New length
+     */
+    void setRange(VkDeviceSize offset, VkDeviceSize length) {
+      m_offset = offset;
+      m_length = length;
+    }
+
   private:
     
     Rc<DxvkBuffer> m_buffer = nullptr;
@@ -552,7 +581,7 @@ namespace dxvk {
      * \returns Element count
      */
     VkDeviceSize elementCount() const {
-      auto format = imageFormatInfo(m_info.format);
+      auto format = lookupFormatInfo(m_info.format);
       return m_info.rangeLength / format->elementSize;
     }
     
@@ -585,7 +614,7 @@ namespace dxvk {
      * \returns View format info
      */
     const DxvkFormatInfo* formatInfo() const {
-      return imageFormatInfo(m_info.format);
+      return lookupFormatInfo(m_info.format);
     }
 
     /**

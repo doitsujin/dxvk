@@ -183,13 +183,9 @@ namespace dxvk {
 
   
   void DxvkGpuQueryAllocator::createQueryPool() {
-    VkQueryPoolCreateInfo info;
-    info.sType      = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-    info.pNext      = nullptr;
-    info.flags      = 0;
+    VkQueryPoolCreateInfo info = { VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO };
     info.queryType  = m_queryType;
     info.queryCount = m_queryPoolSize;
-    info.pipelineStatistics = 0;
 
     if (m_queryType == VK_QUERY_TYPE_PIPELINE_STATISTICS) {
       info.pipelineStatistics

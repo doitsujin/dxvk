@@ -43,8 +43,10 @@ namespace dxvk {
       return m_shader;
     }
 
-    Rc<DxvkBuffer> GetIcb() const {
-      return m_buffer;
+    DxvkBufferSlice GetIcb() const {
+      return m_buffer != nullptr
+        ? DxvkBufferSlice(m_buffer)
+        : DxvkBufferSlice();
     }
     
     std::string GetName() const {
@@ -57,8 +59,41 @@ namespace dxvk {
     Rc<DxvkBuffer> m_buffer;
     
   };
-  
-  
+
+
+  /**
+   * \brief Extended shader interface
+   */
+  class D3D11ExtShader : public ID3D11VkExtShader {
+
+  public:
+
+    D3D11ExtShader(
+            ID3D11DeviceChild*      pParent,
+            D3D11CommonShader*      pShader);
+
+    ~D3D11ExtShader();
+
+    ULONG STDMETHODCALLTYPE AddRef();
+
+    ULONG STDMETHODCALLTYPE Release();
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                  riid,
+            void**                  ppvObject);
+
+    HRESULT STDMETHODCALLTYPE GetSpirvCode(
+            SIZE_T*                 pCodeSize,
+            void*                   pCode);
+
+  private:
+
+    ID3D11DeviceChild*  m_parent;
+    D3D11CommonShader*  m_shader;
+
+  };
+
+
   /**
    * \brief Common shader interface
    * 
@@ -73,7 +108,7 @@ namespace dxvk {
     
     D3D11Shader(D3D11Device* device, const D3D11CommonShader& shader)
     : D3D11DeviceChild<D3D11Interface>(device),
-      m_shader(shader), m_d3d10(this) { }
+      m_shader(shader), m_d3d10(this), m_shaderExt(this, &m_shader) { }
     
     ~D3D11Shader() { }
     
@@ -93,7 +128,12 @@ namespace dxvk {
         *ppvObject = ref(&m_d3d10);
         return S_OK;
       }
-      
+
+      if (riid == __uuidof(ID3D11VkExtShader)) {
+        *ppvObject = ref(&m_shaderExt);
+        return S_OK;
+      }
+
       Logger::warn("D3D11Shader::QueryInterface: Unknown interface query");
       return E_NOINTERFACE;
     }
@@ -110,6 +150,7 @@ namespace dxvk {
     
     D3D11CommonShader m_shader;
     D3D10ShaderClass  m_d3d10;
+    D3D11ExtShader    m_shaderExt;
     
   };
   

@@ -104,13 +104,13 @@ namespace dxvk::hud {
     if (m_mode != Mode::RenderText) {
       m_mode = Mode::RenderText;
 
-      m_context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,   m_textShaders.vert);
-      m_context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_textShaders.frag);
+      m_context->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(Rc<DxvkShader>(m_textShaders.vert));
+      m_context->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(Rc<DxvkShader>(m_textShaders.frag));
       
-      m_context->bindResourceBuffer (0, DxvkBufferSlice(m_fontBuffer));
-      m_context->bindResourceView   (1, nullptr, m_dataView);
-      m_context->bindResourceSampler(2, m_fontSampler);
-      m_context->bindResourceView   (2, m_fontView, nullptr);
+      m_context->bindResourceBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0, DxvkBufferSlice(m_fontBuffer));
+      m_context->bindResourceBufferView(VK_SHADER_STAGE_VERTEX_BIT, 1, Rc<DxvkBufferView>(m_dataView));
+      m_context->bindResourceSampler(VK_SHADER_STAGE_FRAGMENT_BIT, 2, Rc<DxvkSampler>(m_fontSampler));
+      m_context->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, 2, Rc<DxvkImageView>(m_fontView));
       
       static const DxvkInputAssemblyState iaState = {
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
@@ -126,10 +126,10 @@ namespace dxvk::hud {
     if (m_mode != Mode::RenderGraph) {
       m_mode = Mode::RenderGraph;
 
-      m_context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,   m_graphShaders.vert);
-      m_context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_graphShaders.frag);
+      m_context->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(Rc<DxvkShader>(m_graphShaders.vert));
+      m_context->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(Rc<DxvkShader>(m_graphShaders.frag));
       
-      m_context->bindResourceBuffer(0, DxvkBufferSlice(m_dataBuffer));
+      m_context->bindResourceBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 0, DxvkBufferSlice(m_dataBuffer));
 
       static const DxvkInputAssemblyState iaState = {
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
@@ -159,27 +159,27 @@ namespace dxvk::hud {
     SpirvCodeBuffer vsCode(hud_text_vert);
     SpirvCodeBuffer fsCode(hud_text_frag);
     
-    const std::array<DxvkResourceSlot, 3> vsResources = {{
-      { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       VK_IMAGE_VIEW_TYPE_MAX_ENUM },
-      { 1, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, VK_IMAGE_VIEW_TYPE_MAX_ENUM },
+    const std::array<DxvkBindingInfo, 2> vsBindings = {{
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,       0, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_SHADER_STAGE_VERTEX_BIT, VK_ACCESS_SHADER_READ_BIT },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, 1, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_SHADER_STAGE_VERTEX_BIT, VK_ACCESS_SHADER_READ_BIT },
     }};
-    
-    const std::array<DxvkResourceSlot, 1> fsResources = {{
-      { 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_IMAGE_VIEW_TYPE_2D },
+
+    const std::array<DxvkBindingInfo, 1> fsBindings = {{
+      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
     }};
-    
+
     DxvkShaderCreateInfo vsInfo;
     vsInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vsInfo.resourceSlotCount = vsResources.size();
-    vsInfo.resourceSlots = vsResources.data();
+    vsInfo.bindingCount = vsBindings.size();
+    vsInfo.bindings = vsBindings.data();
     vsInfo.outputMask = 0x3;
     vsInfo.pushConstSize = sizeof(HudTextPushConstants);
     result.vert = new DxvkShader(vsInfo, std::move(vsCode));
 
     DxvkShaderCreateInfo fsInfo;
     fsInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fsInfo.resourceSlotCount = fsResources.size();
-    fsInfo.resourceSlots = fsResources.data();
+    fsInfo.bindingCount = fsBindings.size();
+    fsInfo.bindings = fsBindings.data();
     fsInfo.inputMask = 0x3;
     fsInfo.outputMask = 0x1;
     result.frag = new DxvkShader(fsInfo, std::move(fsCode));
@@ -194,8 +194,8 @@ namespace dxvk::hud {
     SpirvCodeBuffer vsCode(hud_graph_vert);
     SpirvCodeBuffer fsCode(hud_graph_frag);
     
-    const std::array<DxvkResourceSlot, 1> fsResources = {{
-      { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_IMAGE_VIEW_TYPE_MAX_ENUM },
+    const std::array<DxvkBindingInfo, 1> fsBindings = {{
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
     }};
 
     DxvkShaderCreateInfo vsInfo;
@@ -206,8 +206,8 @@ namespace dxvk::hud {
     
     DxvkShaderCreateInfo fsInfo;
     fsInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fsInfo.resourceSlotCount = fsResources.size();
-    fsInfo.resourceSlots = fsResources.data();
+    fsInfo.bindingCount = fsBindings.size();
+    fsInfo.bindings = fsBindings.data();
     fsInfo.inputMask = 0x1;
     fsInfo.outputMask = 0x1;
     fsInfo.pushConstSize = sizeof(HudGraphPushConstants);
@@ -309,8 +309,10 @@ namespace dxvk::hud {
     info.addressModeW   = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     info.compareToDepth = VK_FALSE;
     info.compareOp      = VK_COMPARE_OP_NEVER;
+    info.reductionMode  = VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
     info.borderColor    = VkClearColorValue();
     info.usePixelCoord  = VK_TRUE;
+    info.nonSeamless    = VK_FALSE;
     
     return m_device->createSampler(info);
   }

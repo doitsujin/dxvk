@@ -1,5 +1,8 @@
 #pragma once
 
+#include <spirv/unified1/spirv.hpp>
+#include <spirv/unified1/GLSL.std.450.h>
+
 #include "../util/log/log.h"
 #include "../util/log/log_debug.h"
 

@@ -1,19 +1,30 @@
 #pragma once
 
+#include <type_traits>
+
 #include "d3d11_include.h"
+
 #include "../dxvk/dxvk_annotation.h"
+#include "../dxvk/dxvk_device.h"
 
 namespace dxvk {
 
-  class D3D11DeviceContext;
+  class D3D11DeferredContext;
+  class D3D11ImmediateContext;
 
+  template<typename ContextType>
   class D3D11UserDefinedAnnotation final : public IDXVKUserDefinedAnnotation {
-
+    constexpr static bool IsDeferred = std::is_same_v<ContextType, D3D11DeferredContext>;
   public:
 
-    D3D11UserDefinedAnnotation(D3D11DeviceContext* ctx);
-    D3D11UserDefinedAnnotation(const D3D11UserDefinedAnnotation&);
+    D3D11UserDefinedAnnotation(
+            ContextType*          container,
+      const Rc<DxvkDevice>&       dxvkDevice);
+
     ~D3D11UserDefinedAnnotation();
+
+    D3D11UserDefinedAnnotation             (const D3D11UserDefinedAnnotation&) = delete;
+    D3D11UserDefinedAnnotation& operator = (const D3D11UserDefinedAnnotation&) = delete;
 
     ULONG STDMETHODCALLTYPE AddRef();
     
@@ -37,10 +48,9 @@ namespace dxvk {
 
   private:
 
-    D3D11DeviceContext*  m_container;
-
-    // Stack depth for non-finalized BeginEvent calls
-    int32_t m_eventDepth;
+    ContextType*  m_container;
+    int32_t       m_eventDepth;
+    bool          m_annotationsEnabled;
   };
 
 }

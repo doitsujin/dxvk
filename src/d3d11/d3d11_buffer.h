@@ -12,7 +12,6 @@
 namespace dxvk {
   
   class D3D11Device;
-  class D3D11DeviceContext;
 
 
   /**
@@ -67,12 +66,20 @@ namespace dxvk {
       return &m_desc;
     }
 
+    BOOL IsTilePool() const {
+      return bool(m_desc.MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL);
+    }
+
     D3D11_COMMON_BUFFER_MAP_MODE GetMapMode() const {
       return m_mapMode;
     }
 
     Rc<DxvkBuffer> GetBuffer() const {
       return m_buffer;
+    }
+
+    Rc<DxvkSparsePageAllocator> GetSparseAllocator() const {
+      return m_sparseAllocator;
     }
     
     DxvkBufferSlice GetBufferSlice() const {
@@ -81,18 +88,20 @@ namespace dxvk {
     
     DxvkBufferSlice GetBufferSlice(VkDeviceSize offset) const {
       VkDeviceSize size = m_desc.ByteWidth;
-
-      return likely(offset < size)
-        ? DxvkBufferSlice(m_buffer, offset, size - offset)
-        : DxvkBufferSlice();
+      offset = std::min(offset, size);
+      return DxvkBufferSlice(m_buffer, offset, size - offset);
     }
     
     DxvkBufferSlice GetBufferSlice(VkDeviceSize offset, VkDeviceSize length) const {
       VkDeviceSize size = m_desc.ByteWidth;
+      offset = std::min(offset, size);
+      return DxvkBufferSlice(m_buffer, offset, std::min(length, size - offset));
+    }
 
-      return likely(offset < size)
-        ? DxvkBufferSlice(m_buffer, offset, std::min(length, size - offset))
-        : DxvkBufferSlice();
+    VkDeviceSize GetRemainingSize(VkDeviceSize offset) const {
+      VkDeviceSize size = m_desc.ByteWidth;
+      offset = std::min(offset, size);
+      return size - offset;
     }
 
     DxvkBufferSlice GetSOCounter() {
@@ -149,6 +158,7 @@ namespace dxvk {
     
     Rc<DxvkBuffer>                m_buffer;
     Rc<DxvkBuffer>                m_soCounter;
+    Rc<DxvkSparsePageAllocator>   m_sparseAllocator;
     DxvkBufferSliceHandle         m_mapped;
     uint64_t                      m_seq = 0ull;
 
@@ -157,7 +167,7 @@ namespace dxvk {
 
     BOOL CheckFormatFeatureSupport(
             VkFormat              Format,
-            VkFormatFeatureFlags  Features) const;
+            VkFormatFeatureFlags2 Features) const;
     
     VkMemoryPropertyFlags GetMemoryFlags() const;
 

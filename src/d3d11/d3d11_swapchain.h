@@ -109,6 +109,8 @@ namespace dxvk {
     HANDLE                  m_frameLatencyEvent = nullptr;
     Rc<sync::CallbackFence> m_frameLatencySignal;
 
+    HANDLE                  m_processHandle = nullptr;
+
     bool                    m_dirty = true;
     bool                    m_vsync = true;
 

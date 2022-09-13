@@ -59,35 +59,39 @@ extern "C" {
       D3D_FEATURE_LEVEL_9_2,  D3D_FEATURE_LEVEL_9_1,
     };
     
-    if (pFeatureLevels == nullptr || FeatureLevels == 0) {
+    if (!pFeatureLevels || !FeatureLevels) {
       pFeatureLevels = defaultFeatureLevels.data();
       FeatureLevels  = defaultFeatureLevels.size();
     }
     
     // Find the highest feature level supported by the device.
     // This works because the feature level array is ordered.
-    UINT flId;
+    D3D_FEATURE_LEVEL maxFeatureLevel = D3D11Device::GetMaxFeatureLevel(dxvkInstance, dxvkAdapter);
+    D3D_FEATURE_LEVEL minFeatureLevel = D3D_FEATURE_LEVEL();
+    D3D_FEATURE_LEVEL devFeatureLevel = D3D_FEATURE_LEVEL();
 
-    for (flId = 0 ; flId < FeatureLevels; flId++) {
-      Logger::info(str::format("D3D11CoreCreateDevice: Probing ", pFeatureLevels[flId]));
-      
-      if (D3D11Device::CheckFeatureLevelSupport(dxvkInstance, dxvkAdapter, pFeatureLevels[flId]))
+    Logger::info(str::format("D3D11CoreCreateDevice: Maximum supported feature level: ", maxFeatureLevel));
+
+    for (uint32_t flId = 0 ; flId < FeatureLevels; flId++) {
+      minFeatureLevel = pFeatureLevels[flId];
+
+      if (minFeatureLevel <= maxFeatureLevel) {
+        devFeatureLevel = minFeatureLevel;
         break;
+      }
     }
-    
-    if (flId == FeatureLevels) {
-      Logger::err("D3D11CoreCreateDevice: Requested feature level not supported");
+
+    if (!devFeatureLevel) {
+      Logger::err(str::format("D3D11CoreCreateDevice: Minimum required feature level ", minFeatureLevel, " not supported"));
       return E_INVALIDARG;
     }
-    
-    // Try to create the device with the given parameters.
-    const D3D_FEATURE_LEVEL fl = pFeatureLevels[flId];
-    
+
     try {
-      Logger::info(str::format("D3D11CoreCreateDevice: Using feature level ", fl));
+      Logger::info(str::format("D3D11CoreCreateDevice: Using feature level ", devFeatureLevel));
+
       Com<D3D11DXGIDevice> device = new D3D11DXGIDevice(
-        pAdapter, dxvkInstance, dxvkAdapter, fl, Flags);
-      
+        pAdapter, dxvkInstance, dxvkAdapter, devFeatureLevel, Flags);
+
       return device->QueryInterface(
         __uuidof(ID3D11Device),
         reinterpret_cast<void**>(ppDevice));

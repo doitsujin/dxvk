@@ -57,6 +57,8 @@ namespace dxvk {
       
       for (size_t i = m_size; i < n; i++)
         new (ptr(i)) T();
+
+      m_size = n;
     }
 
     void push_back(const T& object) {

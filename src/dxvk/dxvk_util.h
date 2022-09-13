@@ -10,9 +10,24 @@ namespace dxvk::util {
    * \param [in] shaderStages Shader stage flags
    * \returns Corresponding pipeline stage flags
    */
-  VkPipelineStageFlags pipelineStages(
-          VkShaderStageFlags shaderStages);
+  inline VkPipelineStageFlags pipelineStages(
+          VkShaderStageFlags shaderStages) {
+    return (shaderStages & VK_SHADER_STAGE_ALL_GRAPHICS) << 3
+         | (shaderStages & VK_SHADER_STAGE_COMPUTE_BIT) << 6;
+  }
   
+  /**
+   * \brief Gets shader stage flags included in pipeline stages
+   *
+   * \param [in] pipelineStages Pipeline stage flags
+   * \returns Corresponding shader stage flags, if any
+   */
+  inline VkShaderStageFlags shaderStages(
+          VkPipelineStageFlags pipelineStages) {
+    return ((pipelineStages >> 3) & VK_SHADER_STAGE_ALL_GRAPHICS)
+         | ((pipelineStages >> 6) & VK_SHADER_STAGE_COMPUTE_BIT);
+  }
+
   /**
    * \brief Computes number of mip levels for an image
    * 
@@ -159,7 +174,7 @@ namespace dxvk::util {
    */
   inline VkExtent3D computeMipLevelExtent(VkExtent3D size, uint32_t level, VkFormat format, VkImageAspectFlags aspect) {
     if (unlikely(!(aspect & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)))) {
-      auto plane = &imageFormatInfo(format)->planes[vk::getPlaneIndex(aspect)];
+      auto plane = &lookupFormatInfo(format)->planes[vk::getPlaneIndex(aspect)];
       size.width  /= plane->blockSize.width;
       size.height /= plane->blockSize.height;
     }
@@ -284,6 +299,19 @@ namespace dxvk::util {
   VkDeviceSize computeImageDataSize(VkFormat format, VkExtent3D extent);
 
   /**
+   * \brief Computes image data size, in bytes
+   *
+   * Convenience method that can be used to compute the number
+   * of bytes required to store image data in a given format
+   * for the given aspects.
+   * \param [in] format The image format
+   * \param [in] extent Image size, in pixels
+   * \param [in] aspects Aspect mask
+   * \returns Data size, in bytes
+   */
+  VkDeviceSize computeImageDataSize(VkFormat format, VkExtent3D extent, VkImageAspectFlags aspects);
+
+  /**
    * \brief Applies a component mapping to a component mask
    * 
    * For each component, the component specified in the mapping
@@ -324,7 +352,17 @@ namespace dxvk::util {
   VkComponentMapping resolveSrcComponentMapping(
           VkComponentMapping          dstMapping,
           VkComponentMapping          srcMapping);
-  
+
+  /**
+   * \brief Remaps alpha blend factor to a color one
+   *
+   * Needed when rendering to alpha-only render targets
+   * which we only support through single-channel formats.
+   * \param [in] factor Alpha blend factor
+   * \returns Corresponding color blend factor
+   */
+  VkBlendFactor remapAlphaToColorBlendFactor(VkBlendFactor factor);
+
   bool isIdentityMapping(
           VkComponentMapping          mapping);
 

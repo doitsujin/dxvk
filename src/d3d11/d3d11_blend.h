@@ -33,7 +33,7 @@ namespace dxvk {
             D3D11_BLEND_DESC1* pDesc) final;
     
     void BindToContext(
-      const Rc<DxvkContext>&  ctx,
+            DxvkContext*      ctx,
             UINT              sampleMask) const;
     
     D3D10BlendState* GetD3D10Iface() {

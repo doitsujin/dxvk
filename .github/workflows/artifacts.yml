@@ -19,7 +19,7 @@ jobs:
 
     - name: Build release
       id: build-release
-      uses: Joshua-Ashton/arch-mingw-github-action@v7
+      uses: Joshua-Ashton/arch-mingw-github-action@v8
       with:
         command: |
           export VERSION_NAME="${GITHUB_REF##*/}-${GITHUB_SHA##*/}"

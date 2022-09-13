@@ -64,7 +64,10 @@ namespace dxvk {
     void InitHostVisibleTexture(
             D3D11CommonTexture*         pTexture,
       const D3D11_SUBRESOURCE_DATA*     pInitialData);
-    
+
+    void InitTiledTexture(
+            D3D11CommonTexture*         pTexture);
+
     void FlushImplicit();
     void FlushInternal();
 

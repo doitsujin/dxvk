@@ -87,7 +87,7 @@ namespace dxvk {
   
   
   void D3D11BlendState::BindToContext(
-    const Rc<DxvkContext>&  ctx,
+          DxvkContext*      ctx,
           uint32_t          sampleMask) const {
     // We handled Independent Blend during object creation
     // already, so if it is disabled, all elements in the

@@ -6,7 +6,6 @@
 
 #include "dxvk_bind_mask.h"
 #include "dxvk_graphics_state.h"
-#include "dxvk_pipecache.h"
 #include "dxvk_pipelayout.h"
 #include "dxvk_resource.h"
 #include "dxvk_shader.h"
@@ -15,8 +14,11 @@
 namespace dxvk {
   
   class DxvkDevice;
+  class DxvkStateCache;
   class DxvkPipelineManager;
-  
+  struct DxvkPipelineStats;
+
+
   /**
    * \brief Shaders used in compute pipelines
    */
@@ -36,44 +38,15 @@ namespace dxvk {
   /**
    * \brief Compute pipeline instance
    */
-  class DxvkComputePipelineInstance {
-
-  public:
-
-    DxvkComputePipelineInstance()
-    : m_stateVector (),
-      m_pipeline    (VK_NULL_HANDLE) { }
-
+  struct DxvkComputePipelineInstance {
+    DxvkComputePipelineInstance() { }
     DxvkComputePipelineInstance(
-      const DxvkComputePipelineStateInfo& state,
-            VkPipeline                    pipe)
-    : m_stateVector (state),
-      m_pipeline    (pipe) { }
+      const DxvkComputePipelineStateInfo& state_,
+            VkPipeline                    handle_)
+    : state(state_), handle(handle_) { }
 
-    /**
-     * \brief Checks for matching pipeline state
-     * 
-     * \param [in] stateVector Graphics pipeline state
-     * \param [in] renderPass Render pass handle
-     * \returns \c true if the specialization is compatible
-     */
-    bool isCompatible(const DxvkComputePipelineStateInfo& state) const {
-      return m_stateVector == state;
-    }
-
-    /**
-     * \brief Retrieves pipeline
-     * \returns The pipeline handle
-     */
-    VkPipeline pipeline() const {
-      return m_pipeline;
-    }
-
-  private:
-
-    DxvkComputePipelineStateInfo m_stateVector;
-    VkPipeline                   m_pipeline;
-
+    DxvkComputePipelineStateInfo state;
+    VkPipeline                   handle = VK_NULL_HANDLE;
   };
   
   
@@ -90,8 +63,11 @@ namespace dxvk {
   public:
     
     DxvkComputePipeline(
+            DxvkDevice*                 device,
             DxvkPipelineManager*        pipeMgr,
-            DxvkComputePipelineShaders  shaders);
+            DxvkComputePipelineShaders  shaders,
+            DxvkBindingLayoutObjects*   layout,
+            DxvkShaderPipelineLibrary*  library);
 
     ~DxvkComputePipeline();
     
@@ -107,12 +83,23 @@ namespace dxvk {
      * \brief Pipeline layout
      * 
      * Stores the pipeline layout and the descriptor set
-     * layout, as well as information on the resource
+     * layouts, as well as information on the resource
      * slots used by the pipeline.
      * \returns Pipeline layout
      */
-    DxvkPipelineLayout* layout() const {
-      return m_layout.ptr();
+    DxvkBindingLayoutObjects* getBindings() const {
+      return m_bindings;
+    }
+
+    /**
+     * \brief Queries spec constant mask
+     *
+     * This only includes user spec constants.
+     * \returns Bit mask of used spec constants
+     */
+    uint32_t getSpecConstantMask() const {
+      constexpr uint32_t globalMask = (1u << MaxNumSpecConstants) - 1;
+      return m_shaders.cs->getSpecConstantMask() & globalMask;
     }
     
     /**
@@ -136,13 +123,15 @@ namespace dxvk {
     
   private:
     
-    Rc<vk::DeviceFn>            m_vkd;
-    DxvkPipelineManager*        m_pipeMgr;
+    DxvkDevice*                 m_device;    
+    DxvkStateCache*             m_stateCache;
+    DxvkPipelineStats*          m_stats;
+
+    DxvkShaderPipelineLibrary*  m_library;
+    VkPipeline                  m_libraryHandle;
 
     DxvkComputePipelineShaders  m_shaders;
-    DxvkDescriptorSlotMapping   m_slotMapping;
-    
-    Rc<DxvkPipelineLayout>      m_layout;
+    DxvkBindingLayoutObjects*   m_bindings;
     
     alignas(CACHE_LINE_SIZE)
     dxvk::mutex                             m_mutex;
@@ -162,7 +151,11 @@ namespace dxvk {
 
     void writePipelineStateToCache(
       const DxvkComputePipelineStateInfo& state) const;
-    
+
+    void logPipelineState(
+            LogLevel                      level,
+      const DxvkComputePipelineStateInfo& state) const;
+
   };
   
 }

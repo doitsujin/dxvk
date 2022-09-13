@@ -4,6 +4,7 @@
 #include "dxvk_format.h"
 #include "dxvk_memory.h"
 #include "dxvk_resource.h"
+#include "dxvk_sparse.h"
 #include "dxvk_util.h"
 
 namespace dxvk {
@@ -121,13 +122,13 @@ namespace dxvk {
    * Can be accessed by the host if allocated on a suitable
    * memory type and if created with the linear tiling option.
    */
-  class DxvkImage : public DxvkResource {
+  class DxvkImage : public DxvkPagedResource {
     friend class DxvkContext;
     friend class DxvkImageView;
   public:
     
     DxvkImage(
-      const DxvkDevice*           device,
+            DxvkDevice*           device,
       const DxvkImageCreateInfo&  createInfo,
             DxvkMemoryAllocator&  memAlloc,
             VkMemoryPropertyFlags memFlags);
@@ -141,7 +142,7 @@ namespace dxvk {
      * otherwise some image operations may fail.
      */
     DxvkImage(
-      const DxvkDevice*           device,
+            DxvkDevice*           device,
       const DxvkImageCreateInfo&  info,
             VkImage               image);
     
@@ -162,7 +163,7 @@ namespace dxvk {
     VkImage handle() const {
       return m_image.image;
     }
-    
+
     /**
      * \brief Image properties
      * 
@@ -202,7 +203,7 @@ namespace dxvk {
      * \returns Image format info
      */
     const DxvkFormatInfo* formatInfo() const {
-      return imageFormatInfo(m_info.format);
+      return lookupFormatInfo(m_info.format);
     }
     
     /**
@@ -251,6 +252,13 @@ namespace dxvk {
      * \returns A compatible image layout
      */
     VkImageLayout pickLayout(VkImageLayout layout) const {
+      if (unlikely(m_info.layout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT)) {
+        if (layout != VK_IMAGE_LAYOUT_GENERAL
+         && layout != VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+         && layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+          return VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT;
+      }
+
       return m_info.layout == VK_IMAGE_LAYOUT_GENERAL
         ? VK_IMAGE_LAYOUT_GENERAL : layout;
     }
@@ -294,12 +302,11 @@ namespace dxvk {
     }
 
     /**
-     * \brief Memory size
-     * 
-     * \returns The memory size of the image
+     * \brief Memory object
+     * \returns Backing memory
      */
-    VkDeviceSize memSize() const {
-      return m_image.memory.length();
+    const DxvkMemory& memory() const {
+      return m_image.memory;
     }
 
     /**
@@ -330,6 +337,7 @@ namespace dxvk {
     DxvkImageCreateInfo   m_info;
     VkMemoryPropertyFlags m_memFlags;
     DxvkPhysicalImage     m_image;
+
     bool m_shared = false;
 
     small_vector<VkFormat, 4> m_viewFormats;
@@ -428,21 +436,9 @@ namespace dxvk {
      * \returns View format info
      */
     const DxvkFormatInfo* formatInfo() const {
-      return imageFormatInfo(m_info.format);
+      return lookupFormatInfo(m_info.format);
     }
     
-    /**
-     * \brief Unique object identifier
-     *
-     * Can be used to identify an object even when
-     * the lifetime of the object is unknown, and
-     * without referencing the actual object.
-     * \returns Unique identifier
-     */
-    uint64_t cookie() const {
-      return m_cookie;
-    }
-
     /**
      * \brief Mip level size
      * 
@@ -559,10 +555,6 @@ namespace dxvk {
     
     DxvkImageViewCreateInfo m_info;
     VkImageView             m_views[ViewCount];
-
-    uint64_t          m_cookie;
-
-    static std::atomic<uint64_t> s_cookie;
 
     void createView(VkImageViewType type, uint32_t numLayers);
     

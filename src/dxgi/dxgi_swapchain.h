@@ -13,6 +13,9 @@
 
 #include "../util/util_time.h"
 
+#include "../wsi/wsi_window.h"
+#include "../wsi/wsi_monitor.h"
+
 namespace dxvk {
   
   class DxgiDevice;
@@ -169,12 +172,6 @@ namespace dxvk {
     
   private:
     
-    struct WindowState {
-      LONG style   = 0;
-      LONG exstyle = 0;
-      RECT rect    = { 0, 0, 0, 0 };
-    };
-    
     dxvk::recursive_mutex           m_lockWindow;
     dxvk::mutex                     m_lockBuffer;
 
@@ -191,7 +188,7 @@ namespace dxvk {
     Com<IDXGIVkSwapChain>           m_presenter;
     
     HMONITOR                        m_monitor;
-    WindowState                     m_windowState;
+    wsi::DxvkWindowState            m_windowState;
     
     HRESULT EnterFullscreenMode(
             IDXGIOutput             *pTarget);

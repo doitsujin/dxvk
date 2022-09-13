@@ -11,6 +11,9 @@
 #include "dxgi_output.h"
 
 #include "../util/util_luid.h"
+#include "../util/util_win32_compat.h"
+
+#include "../wsi/wsi_monitor.h"
 
 namespace dxvk {
 
@@ -143,18 +146,12 @@ namespace dxvk {
     if (ppOutput == nullptr)
       return E_INVALIDARG;
     
-    MonitorEnumInfo info;
-    info.iMonitorId = Output;
-    info.oMonitor   = nullptr;
+    HMONITOR monitor = wsi::enumMonitors(Output);
     
-    ::EnumDisplayMonitors(
-      nullptr, nullptr, &MonitorEnumProc,
-      reinterpret_cast<LPARAM>(&info));
-    
-    if (info.oMonitor == nullptr)
+    if (monitor == nullptr)
       return DXGI_ERROR_NOT_FOUND;
     
-    *ppOutput = ref(new DxgiOutput(m_factory, this, info.oMonitor));
+    *ppOutput = ref(new DxgiOutput(m_factory, this, monitor));
     return S_OK;
   }
   
@@ -244,7 +241,7 @@ namespace dxvk {
     
     auto deviceProp = m_adapter->deviceProperties();
     auto memoryProp = m_adapter->memoryProperties();
-    auto deviceId   = m_adapter->devicePropertiesExt().coreDeviceId;
+    auto vk11       = m_adapter->devicePropertiesExt().vk11;
     
     // Custom Vendor / Device ID
     if (options->customVendorId >= 0)
@@ -252,11 +249,10 @@ namespace dxvk {
     
     if (options->customDeviceId >= 0)
       deviceProp.deviceID = options->customDeviceId;
-    
-    const char* description = deviceProp.deviceName;
-    // Custom device description
-    if (!options->customDeviceDesc.empty())
-      description = options->customDeviceDesc.c_str();
+
+    std::string description = options->customDeviceDesc.empty()
+      ? std::string(deviceProp.deviceName)
+      : options->customDeviceDesc;
     
     // XXX nvapi workaround for a lot of Unreal Engine 4 games
     if (options->customVendorId < 0 && options->customDeviceId < 0
@@ -268,7 +264,10 @@ namespace dxvk {
     
     // Convert device name
     std::memset(pDesc->Description, 0, sizeof(pDesc->Description));
-    str::tows(description, pDesc->Description);
+
+    str::transcodeString(pDesc->Description,
+      sizeof(pDesc->Description) / sizeof(pDesc->Description[0]) - 1,
+      description.c_str(), description.size());
     
     // Get amount of video memory
     // based on the Vulkan heaps
@@ -322,8 +321,8 @@ namespace dxvk {
     pDesc->GraphicsPreemptionGranularity  = DXGI_GRAPHICS_PREEMPTION_DMA_BUFFER_BOUNDARY;
     pDesc->ComputePreemptionGranularity   = DXGI_COMPUTE_PREEMPTION_DMA_BUFFER_BOUNDARY;
 
-    if (deviceId.deviceLUIDValid)
-      std::memcpy(&pDesc->AdapterLuid, deviceId.deviceLUID, VK_LUID_SIZE);
+    if (vk11.deviceLUIDValid)
+      std::memcpy(&pDesc->AdapterLuid, vk11.deviceLUID, VK_LUID_SIZE);
     else
       pDesc->AdapterLuid = GetAdapterLUID(m_index);
 
@@ -404,7 +403,7 @@ namespace dxvk {
           HANDLE                        hEvent,
           DWORD*                        pdwCookie) {
     if (!hEvent || !pdwCookie)
-      return E_INVALIDARG;
+      return DXGI_ERROR_INVALID_CALL;
 
     std::unique_lock<dxvk::mutex> lock(m_mutex);
     DWORD cookie = ++m_eventCookie;
@@ -474,21 +473,6 @@ namespace dxvk {
           SetEvent(pair.second);
       }
     }
-  }
-  
-  
-  BOOL CALLBACK DxgiAdapter::MonitorEnumProc(
-          HMONITOR                  hmon,
-          HDC                       hdc,
-          LPRECT                    rect,
-          LPARAM                    lp) {
-    auto data = reinterpret_cast<MonitorEnumInfo*>(lp);
-    
-    if (data->iMonitorId--)
-      return TRUE; /* continue */
-    
-    data->oMonitor = hmon;
-    return FALSE; /* stop */
   }
   
 }

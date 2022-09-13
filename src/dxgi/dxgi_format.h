@@ -2,7 +2,7 @@
 
 #include "dxgi_include.h"
 
-#include "../dxvk/dxvk_adapter.h"
+#include "../dxvk/dxvk_device.h"
 #include "../dxvk/dxvk_format.h"
 
 namespace dxvk {
@@ -100,7 +100,7 @@ namespace dxvk {
   public:
     
     DXGIVkFormatTable(
-      const Rc<DxvkAdapter>& adapter);
+      const Rc<DxvkDevice>& device);
     ~DXGIVkFormatTable();
     
     /**
@@ -155,9 +155,9 @@ namespace dxvk {
             DXGI_FORMAT           Format) const;
 
     bool CheckImageFormatSupport(
-      const Rc<DxvkAdapter>&      Adapter,
+      const Rc<DxvkDevice>&       Device,
             VkFormat              Format,
-            VkFormatFeatureFlags  Features) const;
+            VkFormatFeatureFlags2 Features) const;
     
     void RemapDepthFormat(
             DXGI_FORMAT           Format,

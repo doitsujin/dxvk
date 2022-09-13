@@ -7,20 +7,32 @@ namespace dxvk {
   : m_device(device),
     m_submitThread([this] () { submitCmdLists(); }),
     m_finishThread([this] () { finishCmdLists(); }) {
+    auto vk = m_device->vkd();
 
+    VkSemaphoreTypeCreateInfo typeInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO };
+    typeInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+
+    VkSemaphoreCreateInfo info = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, &typeInfo };
+
+    if (vk->vkCreateSemaphore(vk->device(), &info, nullptr, &m_semaphore))
+      throw DxvkError("Failed to create global timeline semaphore");
   }
   
   
   DxvkSubmissionQueue::~DxvkSubmissionQueue() {
+    auto vk = m_device->vkd();
+
     { std::unique_lock<dxvk::mutex> lock(m_mutex);
       m_stopped.store(true);
     }
-    
+
     m_appendCond.notify_all();
     m_submitCond.notify_all();
 
     m_submitThread.join();
     m_finishThread.join();
+
+    vk->vkDestroySemaphore(vk->device(), m_semaphore, nullptr);
   }
   
   
@@ -103,13 +115,10 @@ namespace dxvk {
       if (m_lastError != VK_ERROR_DEVICE_LOST) {
         std::lock_guard<dxvk::mutex> lock(m_mutexQueue);
 
-        if (entry.submit.cmdList != nullptr) {
-          status = entry.submit.cmdList->submit(
-            entry.submit.waitSync,
-            entry.submit.wakeSync);
-        } else if (entry.present.presenter != nullptr) {
+        if (entry.submit.cmdList != nullptr)
+          status = entry.submit.cmdList->submit(m_semaphore, m_semaphoreValue);
+        else if (entry.present.presenter != nullptr)
           status = entry.present.presenter->presentImage();
-        }
       } else {
         // Don't submit anything after device loss
         // so that drivers get a chance to recover
@@ -163,10 +172,9 @@ namespace dxvk {
       VkResult status = m_lastError.load();
       
       if (status != VK_ERROR_DEVICE_LOST)
-        status = entry.submit.cmdList->synchronize();
+        status = entry.submit.cmdList->synchronizeFence();
       
       if (status != VK_SUCCESS) {
-        Logger::err(str::format("DxvkSubmissionQueue: Failed to sync fence: ", status));
         m_lastError = status;
         m_device->waitForIdle();
       }

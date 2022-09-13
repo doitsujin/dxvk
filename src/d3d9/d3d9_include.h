@@ -11,7 +11,7 @@
 #include <d3d9.h>
 
 //for some reason we need to specify __declspec(dllexport) for MinGW
-#if defined(__WINE__)
+#if defined(__WINE__) || !defined(_WIN32)
 #define DLLEXPORT __attribute__((visibility("default")))
 #else
 #define DLLEXPORT
@@ -36,7 +36,6 @@
 #include "../util/util_flags.h"
 #include "../util/util_likely.h"
 #include "../util/util_math.h"
-#include "../util/util_monitor.h"
 #include "../util/util_string.h"
 
 // Missed definitions in Wine/MinGW.

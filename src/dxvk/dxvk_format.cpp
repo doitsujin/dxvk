@@ -7,7 +7,7 @@ namespace dxvk {
   constexpr VkColorComponentFlags RG   = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT;
   constexpr VkColorComponentFlags R    = VK_COLOR_COMPONENT_R_BIT;
 
-  const std::array<DxvkFormatInfo, 152> g_formatInfos = {{
+  const std::array<DxvkFormatInfo, DxvkFormatCount> g_formatInfos = {{
     // VK_FORMAT_UNDEFINED
     { },
     
@@ -550,10 +550,10 @@ namespace dxvk {
       DxvkFormatFlag::BlockCompressed,
       VkExtent3D { 2, 1, 1 } },
 
-    // VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT
+    // VK_FORMAT_A4R4G4B4_UNORM_PACK16
     { 2, RGBA, VK_IMAGE_ASPECT_COLOR_BIT },
 
-    // VK_FORMAT_A4B4G4R4_UNORM_PACK16_EXT
+    // VK_FORMAT_A4B4G4R4_UNORM_PACK16
     { 2, RGBA, VK_IMAGE_ASPECT_COLOR_BIT },
 
     // VK_FORMAT_G8_B8R8_2PLANE_420_UNORM
@@ -567,12 +567,12 @@ namespace dxvk {
   const std::array<std::pair<VkFormat, VkFormat>, 4> g_formatGroups = {{
     { VK_FORMAT_UNDEFINED,                  VK_FORMAT_BC7_SRGB_BLOCK            },
     { VK_FORMAT_G8B8G8R8_422_UNORM_KHR,     VK_FORMAT_B8G8R8G8_422_UNORM_KHR    },
-    { VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT,  VK_FORMAT_A4B4G4R4_UNORM_PACK16_EXT },
+    { VK_FORMAT_A4R4G4B4_UNORM_PACK16,      VK_FORMAT_A4B4G4R4_UNORM_PACK16     },
     { VK_FORMAT_G8_B8R8_2PLANE_420_UNORM,   VK_FORMAT_G8_B8R8_2PLANE_420_UNORM  },
   }};
   
   
-  const DxvkFormatInfo* imageFormatInfo(VkFormat format) {
+  const DxvkFormatInfo* lookupFormatInfoSlow(VkFormat format) {
     uint32_t indexOffset = 0;
     
     for (const auto& group : g_formatGroups) {

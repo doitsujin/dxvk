@@ -13,10 +13,10 @@ namespace dxvk {
   class D3D11Buffer;
   class D3D11CommonTexture;
   
-  class D3D11ImmediateContext : public D3D11DeviceContext {
+  class D3D11ImmediateContext : public D3D11CommonContext<D3D11ImmediateContext> {
+    friend class D3D11CommonContext<D3D11ImmediateContext>;
     friend class D3D11SwapChain;
     friend class D3D11VideoContext;
-    friend class D3D11DeviceContext;
   public:
     
     D3D11ImmediateContext(
@@ -28,10 +28,6 @@ namespace dxvk {
             REFIID  riid,
             void**  ppvObject);
 
-    D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE GetType();
-    
-    UINT STDMETHODCALLTYPE GetContextFlags();
-    
     HRESULT STDMETHODCALLTYPE GetData(
             ID3D11Asynchronous*         pAsync,
             void*                       pData,
@@ -77,44 +73,17 @@ namespace dxvk {
             ID3D11Resource*             pResource,
             UINT                        Subresource);
             
-    void STDMETHODCALLTYPE UpdateSubresource(
-            ID3D11Resource*                   pDstResource,
-            UINT                              DstSubresource,
-      const D3D11_BOX*                        pDstBox,
-      const void*                             pSrcData,
-            UINT                              SrcRowPitch,
-            UINT                              SrcDepthPitch);
-    
-    void STDMETHODCALLTYPE UpdateSubresource1(
-            ID3D11Resource*                   pDstResource,
-            UINT                              DstSubresource,
-      const D3D11_BOX*                        pDstBox,
-      const void*                             pSrcData,
-            UINT                              SrcRowPitch,
-            UINT                              SrcDepthPitch,
-            UINT                              CopyFlags);
-
-    void STDMETHODCALLTYPE OMSetRenderTargets(
-            UINT                              NumViews,
-            ID3D11RenderTargetView* const*    ppRenderTargetViews,
-            ID3D11DepthStencilView*           pDepthStencilView);
-    
-    void STDMETHODCALLTYPE OMSetRenderTargetsAndUnorderedAccessViews(
-            UINT                              NumRTVs,
-            ID3D11RenderTargetView* const*    ppRenderTargetViews,
-            ID3D11DepthStencilView*           pDepthStencilView,
-            UINT                              UAVStartSlot,
-            UINT                              NumUAVs,
-            ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
-      const UINT*                             pUAVInitialCounts);
-    
     void STDMETHODCALLTYPE SwapDeviceContextState(
             ID3DDeviceContextState*           pState,
             ID3DDeviceContextState**          ppPreviousState);
 
     void SynchronizeCsThread(
             uint64_t                          SequenceNumber);
-    
+
+    D3D10DeviceLock LockContext() {
+      return m_multithread.AcquireLock();
+    }
+
   private:
     
     DxvkCsThread            m_csThread;
@@ -130,6 +99,7 @@ namespace dxvk {
     dxvk::high_resolution_clock::time_point m_lastFlush
       = dxvk::high_resolution_clock::now();
     
+    D3D10Multithread             m_multithread;
     D3D11VideoContext            m_videoContext;
     Com<D3D11DeviceContextState> m_stateObject;
     
@@ -150,6 +120,15 @@ namespace dxvk {
             D3D11CommonTexture*         pResource,
             UINT                        Subresource);
     
+    void ReadbackImageBuffer(
+            D3D11CommonTexture*         pResource,
+            UINT                        Subresource);
+
+    void UpdateDirtyImageRegion(
+            D3D11CommonTexture*         pResource,
+            UINT                        Subresource,
+      const D3D11_COMMON_TEXTURE_REGION* pRegion);
+
     void UpdateMappedBuffer(
             D3D11Buffer*                  pDstBuffer,
             UINT                          Offset,
@@ -158,6 +137,8 @@ namespace dxvk {
             UINT                          CopyFlags);
 
     void SynchronizeDevice();
+
+    void EndFrame();
     
     bool WaitForResource(
       const Rc<DxvkResource>&                 Resource,

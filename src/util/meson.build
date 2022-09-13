@@ -5,7 +5,6 @@ util_src = files([
   'util_gdi.cpp',
   'util_luid.cpp',
   'util_matrix.cpp',
-  'util_monitor.cpp',
   'util_shared_res.cpp',
 
   'thread.cpp',

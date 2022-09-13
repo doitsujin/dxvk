@@ -1,7 +1,10 @@
 #include "d3d11_cmdlist.h"
 #include "d3d11_context_imm.h"
 #include "d3d11_device.h"
+#include "d3d11_fence.h"
 #include "d3d11_texture.h"
+
+#include "../util/util_win32_compat.h"
 
 constexpr static uint32_t MinFlushIntervalUs = 750;
 constexpr static uint32_t IncFlushIntervalUs = 250;
@@ -12,9 +15,10 @@ namespace dxvk {
   D3D11ImmediateContext::D3D11ImmediateContext(
           D3D11Device*    pParent,
     const Rc<DxvkDevice>& Device)
-  : D3D11DeviceContext(pParent, Device, DxvkCsChunkFlag::SingleUse),
-    m_csThread(Device, Device->createContext()),
+  : D3D11CommonContext<D3D11ImmediateContext>(pParent, Device, 0, DxvkCsChunkFlag::SingleUse),
+    m_csThread(Device, Device->createContext(DxvkContextType::Primary)),
     m_maxImplicitDiscardSize(pParent->GetOptions()->maxImplicitDiscardSize),
+    m_multithread(this, false, pParent->GetOptions()->enableContextLock),
     m_videoContext(this, Device) {
     EmitCs([
       cDevice                 = m_device,
@@ -39,6 +43,11 @@ namespace dxvk {
   
   
   D3D11ImmediateContext::~D3D11ImmediateContext() {
+    // Avoids hanging when in this state, see comment
+    // in DxvkDevice::~DxvkDevice.
+    if (this_thread::isInModuleDetachment())
+      return;
+
     Flush();
     SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
     SynchronizeDevice();
@@ -46,25 +55,20 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::QueryInterface(REFIID riid, void** ppvObject) {
+    if (riid == __uuidof(ID3D10Multithread)) {
+      *ppvObject = ref(&m_multithread);
+      return S_OK;
+    }
+
     if (riid == __uuidof(ID3D11VideoContext)) {
       *ppvObject = ref(&m_videoContext);
       return S_OK;
     }
 
-    return D3D11DeviceContext::QueryInterface(riid, ppvObject);
+    return D3D11CommonContext<D3D11ImmediateContext>::QueryInterface(riid, ppvObject);
   }
 
 
-  D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE D3D11ImmediateContext::GetType() {
-    return D3D11_DEVICE_CONTEXT_IMMEDIATE;
-  }
-  
-  
-  UINT STDMETHODCALLTYPE D3D11ImmediateContext::GetContextFlags() {
-    return 0;
-  }
-  
-  
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::GetData(
           ID3D11Asynchronous*               pAsync,
           void*                             pData,
@@ -185,16 +189,41 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::Signal(
           ID3D11Fence*                pFence,
           UINT64                      Value) {
-    Logger::err("D3D11ImmediateContext::Signal: Not implemented");
-    return E_NOTIMPL;
+    auto fence = static_cast<D3D11Fence*>(pFence);
+
+    if (!fence)
+      return E_INVALIDARG;
+
+    EmitCs([
+      cFence = fence->GetFence(),
+      cValue = Value
+    ] (DxvkContext* ctx) {
+      ctx->signalFence(cFence, cValue);
+    });
+
+    Flush();
+    return S_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::Wait(
           ID3D11Fence*                pFence,
           UINT64                      Value) {
-    Logger::err("D3D11ImmediateContext::Wait: Not implemented");
-    return E_NOTIMPL;
+    auto fence = static_cast<D3D11Fence*>(pFence);
+
+    if (!fence)
+      return E_INVALIDARG;
+
+    Flush();
+
+    EmitCs([
+      cFence = fence->GetFence(),
+      cValue = Value
+    ] (DxvkContext* ctx) {
+      ctx->waitFence(cFence, cValue);
+    });
+
+    return S_OK;
   }
 
 
@@ -205,6 +234,12 @@ namespace dxvk {
 
     auto commandList = static_cast<D3D11CommandList*>(pCommandList);
     
+    // Clear state so that the command list can't observe any
+    // current context state. The command list itself will clean
+    // up after execution to ensure that no state changes done
+    // by the command list are visible to the immediate context.
+    ResetCommandListState();
+
     // Flush any outstanding commands so that
     // we don't mess up the execution order
     FlushCsChunk();
@@ -219,9 +254,9 @@ namespace dxvk {
     m_csSeqNum = std::max(m_csSeqNum, csSeqNum);
     
     if (RestoreContextState)
-      RestoreState();
+      RestoreCommandListState();
     else
-      ClearState();
+      ResetContextState();
     
     // Mark CS thread as busy so that subsequent
     // flush operations get executed correctly.
@@ -290,59 +325,7 @@ namespace dxvk {
     }
   }
 
-  void STDMETHODCALLTYPE D3D11ImmediateContext::UpdateSubresource(
-          ID3D11Resource*                   pDstResource,
-          UINT                              DstSubresource,
-    const D3D11_BOX*                        pDstBox,
-    const void*                             pSrcData,
-          UINT                              SrcRowPitch,
-          UINT                              SrcDepthPitch) {
-    UpdateResource<D3D11ImmediateContext>(this, pDstResource,
-      DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, 0);
-  }
 
-  
-  void STDMETHODCALLTYPE D3D11ImmediateContext::UpdateSubresource1(
-          ID3D11Resource*                   pDstResource,
-          UINT                              DstSubresource,
-    const D3D11_BOX*                        pDstBox,
-    const void*                             pSrcData,
-          UINT                              SrcRowPitch,
-          UINT                              SrcDepthPitch,
-          UINT                              CopyFlags) {
-    UpdateResource<D3D11ImmediateContext>(this, pDstResource,
-      DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, CopyFlags);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11ImmediateContext::OMSetRenderTargets(
-          UINT                              NumViews,
-          ID3D11RenderTargetView* const*    ppRenderTargetViews,
-          ID3D11DepthStencilView*           pDepthStencilView) {
-    FlushImplicit(TRUE);
-    
-    D3D11DeviceContext::OMSetRenderTargets(
-      NumViews, ppRenderTargetViews, pDepthStencilView);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11ImmediateContext::OMSetRenderTargetsAndUnorderedAccessViews(
-          UINT                              NumRTVs,
-          ID3D11RenderTargetView* const*    ppRenderTargetViews,
-          ID3D11DepthStencilView*           pDepthStencilView,
-          UINT                              UAVStartSlot,
-          UINT                              NumUAVs,
-          ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
-    const UINT*                             pUAVInitialCounts) {
-    FlushImplicit(TRUE);
-
-    D3D11DeviceContext::OMSetRenderTargetsAndUnorderedAccessViews(
-      NumRTVs, ppRenderTargetViews, pDepthStencilView,
-      UAVStartSlot, NumUAVs, ppUnorderedAccessViews,
-      pUAVInitialCounts);
-  }
-  
-  
   HRESULT D3D11ImmediateContext::MapBuffer(
           D3D11Buffer*                pResource,
           D3D11_MAP                   MapType,
@@ -472,7 +455,7 @@ namespace dxvk {
     
     uint64_t sequenceNumber = pResource->GetSequenceNumber(Subresource);
 
-    auto formatInfo = imageFormatInfo(packedFormat);
+    auto formatInfo = lookupFormatInfo(packedFormat);
     void* mapPtr;
 
     if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
@@ -494,6 +477,20 @@ namespace dxvk {
       constexpr uint32_t DoPreserve   = (1u << 1);
       constexpr uint32_t DoWait       = (1u << 2);
       uint32_t doFlags;
+
+      if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER) {
+        // If the image can be written by the GPU, we need to update the
+        // mapped staging buffer to reflect the current image contents.
+        if (pResource->Desc()->Usage == D3D11_USAGE_DEFAULT) {
+          bool needsReadback = !pResource->NeedsDirtyRegionTracking();
+
+          needsReadback |= MapType == D3D11_MAP_READ
+                        || MapType == D3D11_MAP_READ_WRITE;
+
+          if (needsReadback)
+            ReadbackImageBuffer(pResource, Subresource);
+        }
+      }
 
       if (MapType == D3D11_MAP_READ) {
         // Reads will not change the image content, so we only need
@@ -600,20 +597,116 @@ namespace dxvk {
     // the given subresource is actually mapped right now
     m_mappedImageCount -= 1;
 
-    if ((mapType != D3D11_MAP_READ) &&
-        (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)) {
-      // Now that data has been written into the buffer,
-      // we need to copy its contents into the image
-      VkImageAspectFlags aspectMask = imageFormatInfo(pResource->GetPackedFormat())->aspectMask;
-      VkImageSubresource subresource = pResource->GetSubresourceFromIndex(aspectMask, Subresource);
+    if ((mapType != D3D11_MAP_READ) && (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)) {
+      if (pResource->NeedsDirtyRegionTracking()) {
+        for (uint32_t i = 0; i < pResource->GetDirtyRegionCount(Subresource); i++) {
+          D3D11_COMMON_TEXTURE_REGION region = pResource->GetDirtyRegion(Subresource, i);
+          UpdateDirtyImageRegion(pResource, Subresource, &region);
+        }
 
-      UpdateImage(pResource, &subresource, VkOffset3D { 0, 0, 0 },
-        pResource->MipLevelExtent(subresource.mipLevel),
-        DxvkBufferSlice(pResource->GetMappedBuffer(Subresource)));
+        pResource->ClearDirtyRegions(Subresource);
+      } else {
+        UpdateDirtyImageRegion(pResource, Subresource, nullptr);
+      }
     }
   }
   
   
+  void D3D11ImmediateContext::ReadbackImageBuffer(
+          D3D11CommonTexture*         pResource,
+          UINT                        Subresource) {
+    VkImageAspectFlags aspectMask = lookupFormatInfo(pResource->GetPackedFormat())->aspectMask;
+    VkImageSubresource subresource = pResource->GetSubresourceFromIndex(aspectMask, Subresource);
+
+    EmitCs([
+      cSrcImage           = pResource->GetImage(),
+      cSrcSubresource     = vk::makeSubresourceLayers(subresource),
+      cDstBuffer          = pResource->GetMappedBuffer(Subresource),
+      cPackedFormat       = pResource->GetPackedFormat()
+    ] (DxvkContext* ctx) {
+      VkOffset3D offset = { 0, 0, 0 };
+      VkExtent3D extent = cSrcImage->mipLevelExtent(cSrcSubresource.mipLevel);
+
+      if (cSrcSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+        ctx->copyImageToBuffer(cDstBuffer, 0, 0, 0,
+          cSrcImage, cSrcSubresource, offset, extent);
+      } else {
+        ctx->copyDepthStencilImageToPackedBuffer(cDstBuffer, 0,
+          VkOffset2D { 0, 0 },
+          VkExtent2D { extent.width, extent.height },
+          cSrcImage, cSrcSubresource,
+          VkOffset2D { 0, 0 },
+          VkExtent2D { extent.width, extent.height },
+          cPackedFormat);
+      }
+    });
+
+    if (pResource->HasSequenceNumber())
+      TrackTextureSequenceNumber(pResource, Subresource);
+  }
+
+
+  void D3D11ImmediateContext::UpdateDirtyImageRegion(
+          D3D11CommonTexture*         pResource,
+          UINT                        Subresource,
+    const D3D11_COMMON_TEXTURE_REGION* pRegion) {
+    auto formatInfo = lookupFormatInfo(pResource->GetPackedFormat());
+    auto subresource = vk::makeSubresourceLayers(
+      pResource->GetSubresourceFromIndex(formatInfo->aspectMask, Subresource));
+
+    // Update the entire image if no dirty region was specified
+    D3D11_COMMON_TEXTURE_REGION region;
+
+    if (pRegion) {
+      region = *pRegion;
+    } else {
+      region.Offset = VkOffset3D { 0, 0, 0 };
+      region.Extent = pResource->MipLevelExtent(subresource.mipLevel);
+    }
+
+    auto subresourceLayout = pResource->GetSubresourceLayout(formatInfo->aspectMask, Subresource);
+
+    // Update dirty region one aspect at a time, due to
+    // how the data is laid out in the staging buffer.
+    for (uint32_t i = 0; i < pResource->GetPlaneCount(); i++) {
+      subresource.aspectMask = formatInfo->aspectMask;
+
+      if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane))
+        subresource.aspectMask = vk::getPlaneAspect(i);
+
+      EmitCs([
+        cDstImage       = pResource->GetImage(),
+        cDstSubresource = subresource,
+        cDstOffset      = region.Offset,
+        cDstExtent      = region.Extent,
+        cSrcBuffer      = pResource->GetMappedBuffer(Subresource),
+        cSrcOffset      = pResource->ComputeMappedOffset(Subresource, i, region.Offset),
+        cSrcRowPitch    = subresourceLayout.RowPitch,
+        cSrcDepthPitch  = subresourceLayout.DepthPitch,
+        cPackedFormat   = pResource->GetPackedFormat()
+      ] (DxvkContext* ctx) {
+        if (cDstSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+          ctx->copyBufferToImage(
+            cDstImage, cDstSubresource, cDstOffset, cDstExtent,
+            cSrcBuffer, cSrcOffset, cSrcRowPitch, cSrcDepthPitch);
+        } else {
+          ctx->copyPackedBufferToDepthStencilImage(
+            cDstImage, cDstSubresource,
+            VkOffset2D { cDstOffset.x, cDstOffset.y },
+            VkExtent2D { cDstExtent.width, cDstExtent.height },
+            cSrcBuffer, 0,
+            VkOffset2D { cDstOffset.x, cDstOffset.y },
+            VkExtent2D { cDstExtent.width, cDstExtent.height },
+            cPackedFormat);
+        }
+      });
+    }
+
+    if (pResource->HasSequenceNumber())
+      TrackTextureSequenceNumber(pResource, Subresource);
+  }
+
+
   void D3D11ImmediateContext::UpdateMappedBuffer(
           D3D11Buffer*                  pDstBuffer,
           UINT                          Offset,
@@ -646,7 +739,10 @@ namespace dxvk {
 
     if (!pState)
       return;
-    
+
+    // Reset all state affected by the current context state
+    ResetCommandListState();
+
     Com<D3D11DeviceContextState> oldState = std::move(m_stateObject);
     Com<D3D11DeviceContextState> newState = static_cast<D3D11DeviceContextState*>(pState);
 
@@ -661,7 +757,8 @@ namespace dxvk {
     oldState->SetState(m_state);
     newState->GetState(m_state);
 
-    RestoreState();
+    // Restore all state affected by the new context state
+    RestoreCommandListState();
   }
 
 
@@ -682,6 +779,15 @@ namespace dxvk {
   }
   
   
+  void D3D11ImmediateContext::EndFrame() {
+    D3D10DeviceLock lock = LockContext();
+
+    EmitCs([] (DxvkContext* ctx) {
+      ctx->endFrame();
+    });
+  }
+
+
   bool D3D11ImmediateContext::WaitForResource(
     const Rc<DxvkResource>&                 Resource,
           uint64_t                          SequenceNumber,

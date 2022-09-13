@@ -45,8 +45,11 @@ namespace dxvk {
      && info.minorVersion() == 4) {
       switch (opcode) {
         case DxsoOpcode::TexCoord:
-        case DxsoOpcode::Tex: length += 1;
-        default: break;
+        case DxsoOpcode::Tex:
+          length += 1;
+          break;
+        default:
+          break;
       }
     }
 

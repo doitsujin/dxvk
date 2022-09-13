@@ -1,6 +1,7 @@
 #pragma once
 
-#include "dxvk_pipemanager.h"
+#include "dxvk_compute.h"
+#include "dxvk_graphics.h"
 #include "dxvk_renderpass.h"
 
 namespace dxvk {
@@ -38,7 +39,6 @@ namespace dxvk {
     DxvkStateCacheKey             shaders;
     DxvkGraphicsPipelineStateInfo gpState;
     DxvkComputePipelineStateInfo  cpState;
-    DxvkRenderPassFormat          format;
     Sha1Hash                      hash;
   };
 
@@ -52,25 +52,14 @@ namespace dxvk {
    */
   struct DxvkStateCacheHeader {
     char     magic[4]   = { 'D', 'X', 'V', 'K' };
-    uint32_t version    = 10;
+    uint32_t version    = 15;
     uint32_t entrySize  = 0; /* no longer meaningful */
   };
 
   static_assert(sizeof(DxvkStateCacheHeader) == 12);
 
-
-  class DxvkBindingMaskV8 : DxvkBindingSet<128> {
-
-  public:
-
-    DxvkBindingMask convert() const {
-      DxvkBindingMask result = { };
-      for (uint32_t i = 0; i < 128; i++)
-        result.set(i, test(i));
-      return result;
-    }
-
-  };
+  using DxvkBindingMaskV10 = DxvkBindingSet<384>;
+  using DxvkBindingMaskV8 = DxvkBindingSet<128>;
 
   class DxvkIlBindingV9 {
 
@@ -90,144 +79,90 @@ namespace dxvk {
   };
 
   /**
-   * \brief Version 4 graphics pipeline state
+   * \brief Old attachment format struct
    */
-  struct DxvkGraphicsPipelineStateInfoV4 {
-    DxvkBindingMaskV8                   bsBindingMask;
-    
-    VkPrimitiveTopology                 iaPrimitiveTopology;
-    VkBool32                            iaPrimitiveRestart;
-    uint32_t                            iaPatchVertexCount;
-    
-    uint32_t                            ilAttributeCount;
-    uint32_t                            ilBindingCount;
-    VkVertexInputAttributeDescription   ilAttributes[32];
-    VkVertexInputBindingDescription     ilBindings[32];
-    uint32_t                            ilDivisors[32];
-    
-    VkBool32                            rsDepthClipEnable;
-    VkBool32                            rsDepthBiasEnable;
-    VkPolygonMode                       rsPolygonMode;
-    VkCullModeFlags                     rsCullMode;
-    VkFrontFace                         rsFrontFace;
-    uint32_t                            rsViewportCount;
-    VkSampleCountFlags                  rsSampleCount;
-    
-    VkSampleCountFlags                  msSampleCount;
-    uint32_t                            msSampleMask;
-    VkBool32                            msEnableAlphaToCoverage;
-    
-    VkCompareOp                         xsAlphaCompareOp;
-    
-    VkBool32                            dsEnableDepthTest;
-    VkBool32                            dsEnableDepthWrite;
-    VkBool32                            dsEnableStencilTest;
-    VkCompareOp                         dsDepthCompareOp;
-    VkStencilOpState                    dsStencilOpFront;
-    VkStencilOpState                    dsStencilOpBack;
-    
-    VkBool32                            omEnableLogicOp;
-    VkLogicOp                           omLogicOp;
-    VkPipelineColorBlendAttachmentState omBlendAttachments[8];
-    VkComponentMapping                  omComponentMapping[8];
+  struct DxvkAttachmentFormatV11 {
+    VkFormat      format = VK_FORMAT_UNDEFINED;
+    VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
+  };
+  
+  
+  /**
+   * \brief Old render pass format struct
+   */
+  struct DxvkRenderPassFormatV11 {
+    VkSampleCountFlagBits sampleCount;
+    DxvkAttachmentFormatV11 depth;
+    DxvkAttachmentFormatV11 color[MaxNumRenderTargets];
+
+    DxvkRtInfo convert() const {
+      VkImageAspectFlags readOnlyAspects = 0;
+      auto depthFormatInfo = lookupFormatInfo(depth.format);
+
+      if (depth.format && depthFormatInfo) {
+        readOnlyAspects = depthFormatInfo->aspectMask
+          & ~vk::getWritableAspectsForLayout(depth.layout);
+      }
+
+      std::array<VkFormat, MaxNumRenderTargets> colorFormats;
+      for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
+        colorFormats[i] = color[i].format;
+
+      return DxvkRtInfo(MaxNumRenderTargets, colorFormats.data(),
+        depth.format, readOnlyAspects);
+    }
+  };
+
+  class DxvkRsInfoV12 {
+
+  public:
+
+    uint32_t m_depthClipEnable        : 1;
+    uint32_t m_depthBiasEnable        : 1;
+    uint32_t m_polygonMode            : 2;
+    uint32_t m_cullMode               : 2;
+    uint32_t m_frontFace              : 1;
+    uint32_t m_viewportCount          : 5;
+    uint32_t m_sampleCount            : 5;
+    uint32_t m_conservativeMode       : 2;
+    uint32_t m_reserved               : 13;
+
+    DxvkRsInfo convert() const {
+      return DxvkRsInfo(
+        VkBool32(m_depthClipEnable),
+        VkBool32(m_depthBiasEnable),
+        VkPolygonMode(m_polygonMode),
+        VkSampleCountFlags(m_sampleCount),
+        VkConservativeRasterizationModeEXT(m_conservativeMode),
+        VK_FALSE);
+    }
+
   };
 
 
-  /**
-   * \brief Version 6 graphics pipeline state
-   */
-  struct DxvkGraphicsPipelineStateInfoV6 {
-    DxvkBindingMaskV8                   bsBindingMask;
-    
-    VkPrimitiveTopology                 iaPrimitiveTopology;
-    VkBool32                            iaPrimitiveRestart;
-    uint32_t                            iaPatchVertexCount;
-    
-    uint32_t                            ilAttributeCount;
-    uint32_t                            ilBindingCount;
-    VkVertexInputAttributeDescription   ilAttributes[32];
-    VkVertexInputBindingDescription     ilBindings[32];
-    uint32_t                            ilDivisors[32];
-    
-    VkBool32                            rsDepthClipEnable;
-    VkBool32                            rsDepthBiasEnable;
-    VkPolygonMode                       rsPolygonMode;
-    VkCullModeFlags                     rsCullMode;
-    VkFrontFace                         rsFrontFace;
-    uint32_t                            rsViewportCount;
-    VkSampleCountFlags                  rsSampleCount;
-    
-    VkSampleCountFlags                  msSampleCount;
-    uint32_t                            msSampleMask;
-    VkBool32                            msEnableAlphaToCoverage;
-    
-    VkBool32                            dsEnableDepthTest;
-    VkBool32                            dsEnableDepthWrite;
-    VkBool32                            dsEnableDepthBoundsTest;
-    VkBool32                            dsEnableStencilTest;
-    VkCompareOp                         dsDepthCompareOp;
-    VkStencilOpState                    dsStencilOpFront;
-    VkStencilOpState                    dsStencilOpBack;
-    
-    VkBool32                            omEnableLogicOp;
-    VkLogicOp                           omLogicOp;
-    VkPipelineColorBlendAttachmentState omBlendAttachments[8];
-    VkComponentMapping                  omComponentMapping[8];
+  class DxvkRsInfoV13 {
 
-    uint32_t                            scSpecConstants[8];
-  };
+  public:
 
+    uint16_t m_depthClipEnable        : 1;
+    uint16_t m_depthBiasEnable        : 1;
+    uint16_t m_polygonMode            : 2;
+    uint16_t m_cullMode               : 2;
+    uint16_t m_frontFace              : 1;
+    uint16_t m_sampleCount            : 5;
+    uint16_t m_conservativeMode       : 2;
+    uint16_t m_reserved               : 2;
 
-  /**
-   * \brief Version 5 compute pipeline state
-   */
-  struct DxvkComputePipelineStateInfoV5 {
-    DxvkBindingMaskV8                   bsBindingMask;
-  };
+    DxvkRsInfo convert() const {
+      return DxvkRsInfo(
+        VkBool32(m_depthClipEnable),
+        VkBool32(m_depthBiasEnable),
+        VkPolygonMode(m_polygonMode),
+        VkSampleCountFlags(m_sampleCount),
+        VkConservativeRasterizationModeEXT(m_conservativeMode),
+        VK_FALSE);
+    }
 
-
-  /**
-   * \brief Version 6 compute pipeline state
-   */
-  struct DxvkComputePipelineStateInfoV6 {
-    DxvkBindingMaskV8                   bsBindingMask;
-    uint32_t                            scSpecConstants[8];
-  };
-
-
-  /**
-   * \brief Version 4 state cache entry
-   */
-  struct DxvkStateCacheEntryV4 {
-    DxvkStateCacheKey               shaders;
-    DxvkGraphicsPipelineStateInfoV4 gpState;
-    DxvkComputePipelineStateInfoV5  cpState;
-    DxvkRenderPassFormat            format;
-    Sha1Hash                        hash;
-  };
-
-
-  /**
-   * \brief Version 5 state cache entry
-   */
-  struct DxvkStateCacheEntryV5 {
-    DxvkStateCacheKey               shaders;
-    DxvkGraphicsPipelineStateInfoV6 gpState;
-    DxvkComputePipelineStateInfoV5  cpState;
-    DxvkRenderPassFormat            format;
-    Sha1Hash                        hash;
-  };
-
-
-  /**
-   * \brief Version 6 state cache entry
-   */
-  struct DxvkStateCacheEntryV6 {
-    DxvkStateCacheKey               shaders;
-    DxvkGraphicsPipelineStateInfoV6 gpState;
-    DxvkComputePipelineStateInfoV6  cpState;
-    DxvkRenderPassFormat            format;
-    Sha1Hash                        hash;
   };
 
 }

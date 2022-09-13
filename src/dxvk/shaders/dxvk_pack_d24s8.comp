@@ -1,5 +1,7 @@
 #version 450
 
+#extension GL_EXT_samplerless_texture_functions : require
+
 layout(
   local_size_x = 8,
   local_size_y = 8,
@@ -10,8 +12,8 @@ writeonly buffer s_buffer_t {
   uint data[];
 } s_buffer;
 
-layout(binding = 1) uniform  sampler2DArray u_depth;
-layout(binding = 2) uniform usampler2DArray u_stencil;
+layout(binding = 1) uniform  texture2DArray u_depth;
+layout(binding = 2) uniform utexture2DArray u_stencil;
 
 layout(push_constant)
 uniform u_info_t {

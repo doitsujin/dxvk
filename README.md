@@ -45,10 +45,17 @@ export WINEPREFIX=/path/to/.wine-prefix
 
 ## Build instructions
 
+In order to pull in all submodules that are needed for building, clone the repository using the following command:
+```
+git clone --recursive https://github.com/doitsujin/dxvk.git
+```
+
+
+
 ### Requirements:
 - [wine 3.10](https://www.winehq.org/) or newer
-- [Meson](https://mesonbuild.com/) build system (at least version 0.46)
-- [Mingw-w64](https://www.mingw-w64.org) compiler and headers (at least version 8.0)
+- [Meson](https://mesonbuild.com/) build system (at least version 0.49)
+- [Mingw-w64](https://www.mingw-w64.org) compiler and headers (at least version 10.0)
 - [glslang](https://github.com/KhronosGroup/glslang) compiler
 
 ### Building DLLs
@@ -93,6 +100,7 @@ The `DXVK_HUD` environment variable controls a HUD which can display the framera
 - `submissions`: Shows the number of command buffers submitted per frame.
 - `drawcalls`: Shows the number of draw calls and render passes per frame.
 - `pipelines`: Shows the total number of graphics and compute pipelines.
+- `descriptors`: Shows the number of descriptor pools and descriptor sets.
 - `memory`: Shows the amount of device memory allocated and used.
 - `gpuload`: Shows estimated GPU load. May be inaccurate.
 - `version`: Shows DXVK version.
@@ -117,7 +125,9 @@ Some applications do not provide a method to select a different GPU. In that cas
 DXVK caches pipeline state by default, so that shaders can be recompiled ahead of time on subsequent runs of an application, even if the driver's own shader cache got invalidated in the meantime. This cache is enabled by default, and generally reduces stuttering.
 
 The following environment variables can be used to control the cache:
-- `DXVK_STATE_CACHE=0` Disables the state cache.
+- `DXVK_STATE_CACHE`: Controls the state cache. The following values are supported:
+  - `disable`: Disables the cache entirely.
+  - `reset`: Clears the cache file.
 - `DXVK_STATE_CACHE_PATH=/some/directory` Specifies a directory where to put the cache files. Defaults to the current working directory of the application.
 
 ### Debugging
@@ -126,7 +136,7 @@ The following environment variables can be used for **debugging** purposes.
 - `DXVK_LOG_LEVEL=none|error|warn|info|debug` Controls message logging.
 - `DXVK_LOG_PATH=/some/directory` Changes path where log files are stored. Set to `none` to disable log file creation entirely, without disabling logging.
 - `DXVK_CONFIG_FILE=/xxx/dxvk.conf` Sets path to the configuration file.
-- `DXVK_PERF_EVENTS=1` Enables use of the VK_EXT_debug_utils extension for translating performance event markers.
+- `DXVK_DEBUG=markers|validation` Enables use of the `VK_EXT_debug_utils` extension for translating performance event markers, or to enable Vulkan validation, respecticely.
 
 ## Troubleshooting
 DXVK requires threading support from your mingw-w64 build environment. If you

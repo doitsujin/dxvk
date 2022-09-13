@@ -16,6 +16,7 @@
 
 #include "d3d11_cmdlist.h"
 #include "d3d11_cuda.h"
+#include "d3d11_features.h"
 #include "d3d11_initializer.h"
 #include "d3d11_interfaces.h"
 #include "d3d11_interop.h"
@@ -31,7 +32,6 @@ namespace dxvk {
   class D3D11CommonShader;
   class D3D11CommonTexture;
   class D3D11Counter;
-  class D3D11DeviceContext;
   class D3D11DXGIDevice;
   class D3D11ImmediateContext;
   class D3D11Predicate;
@@ -260,7 +260,7 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE CreateFence(
             UINT64                      InitialValue,
             D3D11_FENCE_FLAG            Flags,
-            REFIID                      ReturnedInterface,
+            REFIID                      riid,
             void**                      ppFence);
 
     void STDMETHODCALLTYPE ReadFromSubresource(
@@ -421,14 +421,12 @@ namespace dxvk {
       return m_d3d10Device;
     }
     
-    static bool CheckFeatureLevelSupport(
-      const Rc<DxvkInstance>& instance,
-      const Rc<DxvkAdapter>&  adapter,
-            D3D_FEATURE_LEVEL featureLevel);
+    static D3D_FEATURE_LEVEL GetMaxFeatureLevel(
+      const Rc<DxvkInstance>& Instance,
+      const Rc<DxvkAdapter>&  Adapter);
     
     static DxvkDeviceFeatures GetDeviceFeatures(
-      const Rc<DxvkAdapter>&  adapter,
-            D3D_FEATURE_LEVEL featureLevel);
+      const Rc<DxvkAdapter>&  Adapter);
     
   private:
     
@@ -455,7 +453,10 @@ namespace dxvk {
     D3D11StateObjectSet<D3D11RasterizerState>   m_rsStateObjects;
     D3D11StateObjectSet<D3D11SamplerState>      m_samplerObjects;
     D3D11ShaderModuleSet                        m_shaderModules;
-    
+
+    D3D_FEATURE_LEVEL               m_maxFeatureLevel;
+    D3D11DeviceFeatures             m_deviceFeatures;
+
     HRESULT CreateShaderModule(
             D3D11CommonShader*      pShaderModule,
             DxvkShaderKey           ShaderKey,
@@ -465,13 +466,14 @@ namespace dxvk {
       const DxbcModuleInfo*         pModuleInfo);
     
     HRESULT GetFormatSupportFlags(
-            DXGI_FORMAT Format,
-            UINT*       pFlags1,
-            UINT*       pFlags2) const;
+            DXGI_FORMAT             Format,
+            UINT*                   pFlags1,
+            UINT*                   pFlags2) const;
     
     BOOL GetImageTypeSupport(
-            VkFormat    Format,
-            VkImageType Type) const;
+            VkFormat                Format,
+            VkImageType             Type,
+            VkImageCreateFlags      Flags) const;
 
     template<bool IsKmtHandle>
     HRESULT OpenSharedResourceGeneric(
@@ -488,12 +490,9 @@ namespace dxvk {
             Void*                       pData,
             UINT                        RowPitch,
             UINT                        DepthPitch,
-            ID3D11Resource*             pResource,
+            D3D11CommonTexture*         pTexture,
             UINT                        Subresource,
       const D3D11_BOX*                  pBox);
-    
-    static D3D_FEATURE_LEVEL GetMaxFeatureLevel(
-      const Rc<DxvkInstance>&           pInstance);
     
   };
   

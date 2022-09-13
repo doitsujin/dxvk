@@ -64,6 +64,19 @@ namespace dxvk {
   }
   
   
+  VkSamplerReductionMode DecodeReductionMode(
+          UINT                      Filter) {
+    switch (Filter & 0x180) {
+      default:
+        return VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
+      case 0x100:
+        return VK_SAMPLER_REDUCTION_MODE_MIN;
+      case 0x180:
+        return VK_SAMPLER_REDUCTION_MODE_MAX;
+    }
+  }
+
+
   VkConservativeRasterizationModeEXT DecodeConservativeRasterizationMode(
           D3D11_CONSERVATIVE_RASTERIZATION_MODE Mode) {
     switch (Mode) {
@@ -78,42 +91,29 @@ namespace dxvk {
   }
 
 
-  VkShaderStageFlagBits GetShaderStage(DxbcProgramType ProgramType) {
-    switch (ProgramType) {
-      case DxbcProgramType::VertexShader:   return VK_SHADER_STAGE_VERTEX_BIT;
-      case DxbcProgramType::HullShader:     return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-      case DxbcProgramType::DomainShader:   return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-      case DxbcProgramType::GeometryShader: return VK_SHADER_STAGE_GEOMETRY_BIT;
-      case DxbcProgramType::PixelShader:    return VK_SHADER_STAGE_FRAGMENT_BIT;
-      case DxbcProgramType::ComputeShader:  return VK_SHADER_STAGE_COMPUTE_BIT;
-      default:                              return VkShaderStageFlagBits(0);
-    }
-  }
-  
-
-  VkFormatFeatureFlags GetBufferFormatFeatures(UINT BindFlags) {
-    VkFormatFeatureFlags features = 0;
+  VkFormatFeatureFlags2 GetBufferFormatFeatures(UINT BindFlags) {
+    VkFormatFeatureFlags2 features = 0;
 
     if (BindFlags & D3D11_BIND_SHADER_RESOURCE)
-      features |= VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
+      features |= VK_FORMAT_FEATURE_2_UNIFORM_TEXEL_BUFFER_BIT;
     if (BindFlags & D3D11_BIND_UNORDERED_ACCESS)
-      features |= VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT;
+      features |= VK_FORMAT_FEATURE_2_STORAGE_TEXEL_BUFFER_BIT;
     
     return features;
   }
 
 
-  VkFormatFeatureFlags GetImageFormatFeatures(UINT BindFlags) {
-    VkFormatFeatureFlags features = 0;
+  VkFormatFeatureFlags2 GetImageFormatFeatures(UINT BindFlags) {
+    VkFormatFeatureFlags2 features = 0;
 
     if (BindFlags & D3D11_BIND_DEPTH_STENCIL)
-      features |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+      features |= VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT;
     if (BindFlags & D3D11_BIND_RENDER_TARGET)
-      features |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+      features |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT;
     if (BindFlags & D3D11_BIND_SHADER_RESOURCE)
-      features |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+      features |= VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
     if (BindFlags & D3D11_BIND_UNORDERED_ACCESS)
-      features |= VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
+      features |= VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT;
     
     return features;
   }
@@ -136,6 +136,11 @@ namespace dxvk {
       default:
         return VK_FORMAT_UNDEFINED;
     }
+  }
+
+
+  BOOL IsMinMaxFilter(D3D11_FILTER Filter) {
+    return DecodeReductionMode(uint32_t(Filter)) != VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
   }
 
 }

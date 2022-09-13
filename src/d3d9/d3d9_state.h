@@ -36,7 +36,7 @@ namespace dxvk {
     float fogEnd     = 1.0f;
     float fogDensity = 1.0f;
 
-    float alphaRef   = 0.0f;
+    uint32_t alphaRef = 0u;
 
     float pointSize    = 1.0f;
     float pointSizeMin = 1.0f;

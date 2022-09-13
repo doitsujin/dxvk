@@ -20,6 +20,7 @@ d3d9_src = [
   'd3d9_swapchain.cpp',
   'd3d9_format.cpp',
   'd3d9_common_texture.cpp',
+  'd3d9_constant_buffer.cpp',
   'd3d9_texture.cpp',
   'd3d9_surface.cpp',
   'd3d9_volume.cpp',
@@ -39,7 +40,9 @@ d3d9_src = [
   'd3d9_swvp_emu.cpp',
   'd3d9_format_helpers.cpp',
   'd3d9_hud.cpp',
-  'd3d9_annotation.cpp'
+  'd3d9_annotation.cpp',
+  'd3d9_mem.cpp',
+  'd3d9_window.cpp'
 ]
 
 d3d9_dll = shared_library('d3d9'+dll_ext, d3d9_src, glsl_generator.process(d3d9_shaders), d3d9_res,

@@ -31,10 +31,10 @@ namespace dxvk {
     Rc<T> retrieveObject() {
       std::lock_guard<dxvk::mutex> lock(m_mutex);
       
-      if (m_objectId == 0)
+      if (m_get == m_put)
         return nullptr;
       
-      return m_objects.at(--m_objectId);
+      return std::exchange(m_objects[(m_get++) % N], Rc<T>());
     }
     
     /**
@@ -48,15 +48,17 @@ namespace dxvk {
     void returnObject(const Rc<T>& object) {
       std::lock_guard<dxvk::mutex> lock(m_mutex);
       
-      if (m_objectId < N)
-        m_objects.at(m_objectId++) = object;
+      if (m_put - m_get < N)
+        m_objects[(m_put++) % N] = object;
     }
     
   private:
     
-    dxvk::mutex          m_mutex;
-    std::array<Rc<T>, N> m_objects;
-    size_t               m_objectId = 0;
+    dxvk::mutex           m_mutex;
+    std::array<Rc<T>, N>  m_objects;
+
+    uint64_t              m_get = 0;
+    uint64_t              m_put = 0;
     
   };
   

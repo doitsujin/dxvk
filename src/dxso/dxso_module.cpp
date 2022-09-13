@@ -21,7 +21,7 @@ namespace dxvk {
     return info;
   }
 
-  DxsoPermutations DxsoModule::compile(
+  Rc<DxvkShader> DxsoModule::compile(
     const DxsoModuleInfo&     moduleInfo,
     const std::string&        fileName,
     const DxsoAnalysisInfo&   analysis,

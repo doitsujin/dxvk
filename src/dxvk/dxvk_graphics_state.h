@@ -221,19 +221,15 @@ namespace dxvk {
             VkBool32              depthClipEnable,
             VkBool32              depthBiasEnable,
             VkPolygonMode         polygonMode,
-            VkCullModeFlags       cullMode,
-            VkFrontFace           frontFace,
-            uint32_t              viewportCount,
             VkSampleCountFlags    sampleCount,
-            VkConservativeRasterizationModeEXT conservativeMode)
-    : m_depthClipEnable (uint32_t(depthClipEnable)),
-      m_depthBiasEnable (uint32_t(depthBiasEnable)),
-      m_polygonMode     (uint32_t(polygonMode)),
-      m_cullMode        (uint32_t(cullMode)),
-      m_frontFace       (uint32_t(frontFace)),
-      m_viewportCount   (uint32_t(viewportCount)),
-      m_sampleCount     (uint32_t(sampleCount)),
-      m_conservativeMode(uint32_t(conservativeMode)),
+            VkConservativeRasterizationModeEXT conservativeMode,
+            VkBool32              flatShading)
+    : m_depthClipEnable (uint16_t(depthClipEnable)),
+      m_depthBiasEnable (uint16_t(depthBiasEnable)),
+      m_polygonMode     (uint16_t(polygonMode)),
+      m_sampleCount     (uint16_t(sampleCount)),
+      m_conservativeMode(uint16_t(conservativeMode)),
+      m_flatShading     (uint16_t(flatShading)),
       m_reserved        (0) { }
     
     VkBool32 depthClipEnable() const {
@@ -248,18 +244,6 @@ namespace dxvk {
       return VkPolygonMode(m_polygonMode);
     }
 
-    VkCullModeFlags cullMode() const {
-      return VkCullModeFlags(m_cullMode);
-    }
-
-    VkFrontFace frontFace() const {
-      return VkFrontFace(m_frontFace);
-    }
-
-    uint32_t viewportCount() const {
-      return m_viewportCount;
-    }
-
     VkSampleCountFlags sampleCount() const {
       return VkSampleCountFlags(m_sampleCount);
     }
@@ -268,21 +252,23 @@ namespace dxvk {
       return VkConservativeRasterizationModeEXT(m_conservativeMode);
     }
 
-    void setViewportCount(uint32_t viewportCount) {
-      m_viewportCount = viewportCount;
+    VkBool32 flatShading() const {
+      return VkBool32(m_flatShading);
+    }
+
+    bool eq(const DxvkRsInfo& other) const {
+      return !std::memcmp(this, &other, sizeof(*this));
     }
 
   private:
 
-    uint32_t m_depthClipEnable        : 1;
-    uint32_t m_depthBiasEnable        : 1;
-    uint32_t m_polygonMode            : 2;
-    uint32_t m_cullMode               : 2;
-    uint32_t m_frontFace              : 1;
-    uint32_t m_viewportCount          : 5;
-    uint32_t m_sampleCount            : 5;
-    uint32_t m_conservativeMode       : 2;
-    uint32_t m_reserved               : 13;
+    uint16_t m_depthClipEnable        : 1;
+    uint16_t m_depthBiasEnable        : 1;
+    uint16_t m_polygonMode            : 2;
+    uint16_t m_sampleCount            : 5;
+    uint16_t m_conservativeMode       : 2;
+    uint16_t m_flatShading            : 1;
+    uint16_t m_reserved               : 4;
   
   };
 
@@ -416,14 +402,14 @@ namespace dxvk {
       m_compareMask (uint32_t(state.compareMask)),
       m_writeMask   (uint32_t(state.writeMask)) { }
     
-    VkStencilOpState state() const {
+    VkStencilOpState state(bool write) const {
       VkStencilOpState result;
       result.failOp      = VkStencilOp(m_failOp);
       result.passOp      = VkStencilOp(m_passOp);
       result.depthFailOp = VkStencilOp(m_depthFailOp);
       result.compareOp   = VkCompareOp(m_compareOp);
       result.compareMask = m_compareMask;
-      result.writeMask   = m_writeMask;
+      result.writeMask   = write ? m_writeMask : 0;
       result.reference   = 0;
       return result;
     }
@@ -454,10 +440,12 @@ namespace dxvk {
     DxvkOmInfo() = default;
 
     DxvkOmInfo(
-            VkBool32          enableLogicOp,
-            VkLogicOp         logicOp)
+            VkBool32           enableLogicOp,
+            VkLogicOp          logicOp,
+            VkImageAspectFlags feedbackLoop)
     : m_enableLogicOp (uint16_t(enableLogicOp)),
       m_logicOp       (uint16_t(logicOp)),
+      m_feedbackLoop  (uint16_t(feedbackLoop)),
       m_reserved      (0) { }
     
     VkBool32 enableLogicOp() const {
@@ -468,11 +456,111 @@ namespace dxvk {
       return VkLogicOp(m_logicOp);
     }
 
+    VkImageAspectFlags feedbackLoop() const {
+      return VkImageAspectFlags(m_feedbackLoop);
+    }
+
+    void setFeedbackLoop(VkImageAspectFlags feedbackLoop) {
+      m_feedbackLoop = uint16_t(feedbackLoop);
+    }
+
   private:
 
     uint16_t m_enableLogicOp          : 1;
     uint16_t m_logicOp                : 4;
-    uint16_t m_reserved               : 11;
+    uint16_t m_feedbackLoop           : 2;
+    uint16_t m_reserved               : 9;
+
+  };
+
+
+  /**
+   * \brief Packed render target formats
+   *
+   * Compact representation of depth-stencil and color attachments,
+   * as well as the read-only mask for the depth-stencil attachment,
+   * which needs to be known at pipeline compile time.
+   */
+  class DxvkRtInfo {
+
+  public:
+
+    DxvkRtInfo() = default;
+
+    DxvkRtInfo(
+            uint32_t            colorFormatCount,
+      const VkFormat*           colorFormats,
+            VkFormat            depthStencilFormat,
+            VkImageAspectFlags  depthStencilReadOnlyAspects)
+    : m_packedData(0ull) {
+      m_packedData |= encodeDepthStencilFormat(depthStencilFormat);
+      m_packedData |= encodeDepthStencilAspects(depthStencilReadOnlyAspects);
+
+      for (uint32_t i = 0; i < colorFormatCount; i++)
+        m_packedData |= encodeColorFormat(colorFormats[i], i);
+    }
+
+    VkFormat getColorFormat(uint32_t index) const {
+      return decodeColorFormat(m_packedData, index);
+    }
+
+    VkFormat getDepthStencilFormat() const {
+      return decodeDepthStencilFormat(m_packedData);
+    }
+
+    VkImageAspectFlags getDepthStencilReadOnlyAspects() const {
+      return decodeDepthStencilAspects(m_packedData);
+    }
+
+  private:
+
+    uint64_t m_packedData;
+
+    static uint64_t encodeDepthStencilAspects(VkImageAspectFlags aspects) {
+      return uint64_t(aspects) << 61;
+    }
+
+    static uint64_t encodeDepthStencilFormat(VkFormat format) {
+      return format
+        ? (uint64_t(format) - uint64_t(VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)) << 56
+        : (uint64_t(0));
+    }
+
+    static uint64_t encodeColorFormat(VkFormat format, uint32_t index) {
+      uint64_t value = uint64_t(format);
+
+      if (value >= uint64_t(VK_FORMAT_A4R4G4B4_UNORM_PACK16)) {
+        value -= uint64_t(VK_FORMAT_A4R4G4B4_UNORM_PACK16);
+        value += uint64_t(VK_FORMAT_E5B9G9R9_UFLOAT_PACK32) + 1;
+      } else if (value > uint64_t(VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)) {
+        value = 0;
+      }
+
+      return value << (7 * index);
+    }
+
+    static VkImageAspectFlags decodeDepthStencilAspects(uint64_t value) {
+      return VkImageAspectFlags((value >> 61) & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT));
+    }
+
+    static VkFormat decodeDepthStencilFormat(uint64_t value) {
+      value = (value >> 56) & 0x1F;
+
+      return value
+        ? VkFormat(value + uint64_t(VK_FORMAT_E5B9G9R9_UFLOAT_PACK32))
+        : VkFormat(VK_FORMAT_UNDEFINED);
+    }
+
+    static VkFormat decodeColorFormat(uint64_t value, uint32_t index) {
+      value = (value >> (7 * index)) & 0x7F;
+
+      if (value > uint64_t(VK_FORMAT_E5B9G9R9_UFLOAT_PACK32)) {
+        value -= uint64_t(VK_FORMAT_E5B9G9R9_UFLOAT_PACK32) + 1ull;
+        value += uint64_t(VK_FORMAT_A4R4G4B4_UNORM_PACK16);
+      }
+
+      return VkFormat(value);
+    }
 
   };
 
@@ -665,11 +753,23 @@ namespace dxvk {
       return ds.enableDepthBoundsTest();
     }
 
+    bool useDynamicVertexStrides() const {
+      if (!il.bindingCount())
+        return false;
+
+      bool result = true;
+
+      for (uint32_t i = 0; i < il.bindingCount() && result; i++)
+        result = !ilBindings[i].stride();
+
+      return result;
+    }
+
     bool useDynamicBlendConstants() const {
       bool result = false;
       
       for (uint32_t i = 0; i < MaxNumRenderTargets && !result; i++) {
-        result |= omBlend[i].blendEnable()
+        result |= rt.getColorFormat(i) && omBlend[i].blendEnable()
          && (util::isBlendConstantBlendFactor(omBlend[i].srcColorBlendFactor())
           || util::isBlendConstantBlendFactor(omBlend[i].dstColorBlendFactor())
           || util::isBlendConstantBlendFactor(omBlend[i].srcAlphaBlendFactor())
@@ -678,14 +778,32 @@ namespace dxvk {
 
       return result;
     }
-    
-    DxvkBindingMask         bsBindingMask;
+
+    bool useDualSourceBlending() const {
+      return omBlend[0].blendEnable() && (
+        util::isDualSourceBlendFactor(omBlend[0].srcColorBlendFactor()) ||
+        util::isDualSourceBlendFactor(omBlend[0].dstColorBlendFactor()) ||
+        util::isDualSourceBlendFactor(omBlend[0].srcAlphaBlendFactor()) ||
+        util::isDualSourceBlendFactor(omBlend[0].dstAlphaBlendFactor()));
+    }
+
+    bool writesRenderTarget(
+            uint32_t                        target) const {
+      if (!omBlend[target].colorWriteMask())
+        return false;
+
+      VkFormat rtFormat = rt.getColorFormat(target);
+      return rtFormat != VK_FORMAT_UNDEFINED;
+    }
+
+
     DxvkIaInfo              ia;
     DxvkIlInfo              il;
     DxvkRsInfo              rs;
     DxvkMsInfo              ms;
     DxvkDsInfo              ds;
     DxvkOmInfo              om;
+    DxvkRtInfo              rt;
     DxvkScInfo              sc;
     DxvkDsStencilOp         dsFront;
     DxvkDsStencilOp         dsBack;
@@ -721,7 +839,6 @@ namespace dxvk {
       return !bit::bcmpeq(this, &other);
     }
     
-    DxvkBindingMask         bsBindingMask;
     DxvkScInfo              sc;
   };
 

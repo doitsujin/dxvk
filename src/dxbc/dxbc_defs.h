@@ -47,6 +47,7 @@ namespace dxvk {
     HullShaderInstCnt,  ///< Hull shader phase instance count
     Interpolate,        ///< Input attribute interpolation
     NoOperation,        ///< The most useful instruction class
+    SparseCheckAccess,  ///< Verifies sparse resource access
     TextureQuery,       ///< Texture query instruction
     TextureQueryLod,    ///< Texture LOD query instruction
     TextureQueryMs,     ///< Multisample texture query

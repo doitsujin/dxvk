@@ -7,20 +7,9 @@ namespace dxvk {
           D3D11Device*    pParent,
     const Rc<DxvkDevice>& Device,
           UINT            ContextFlags)
-  : D3D11DeviceContext(pParent, Device, GetCsChunkFlags(pParent)),
-    m_contextFlags(ContextFlags),
+  : D3D11CommonContext<D3D11DeferredContext>(pParent, Device, ContextFlags, GetCsChunkFlags(pParent)),
     m_commandList (CreateCommandList()) {
-    ClearState();
-  }
-  
-  
-  D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE D3D11DeferredContext::GetType() {
-    return D3D11_DEVICE_CONTEXT_DEFERRED;
-  }
-  
-  
-  UINT STDMETHODCALLTYPE D3D11DeferredContext::GetContextFlags() {
-    return m_contextFlags;
+    ResetContextState();
   }
   
   
@@ -146,14 +135,25 @@ namespace dxvk {
           BOOL                RestoreContextState) {
     D3D10DeviceLock lock = LockContext();
 
+    // Clear state so that the command list can't observe any
+    // current context state. The command list itself will clean
+    // up after execution to ensure that no state changes done
+    // by the command list are visible to the immediate context.
+    ResetCommandListState();
+
+    // Flush any outstanding commands so that
+    // we don't mess up the execution order
     FlushCsChunk();
     
-    static_cast<D3D11CommandList*>(pCommandList)->EmitToCommandList(m_commandList.ptr());
+    // Record any chunks from the given command list into the
+    // current command list and deal with context state
+    auto commandList = static_cast<D3D11CommandList*>(pCommandList);
+    commandList->EmitToCommandList(m_commandList.ptr());
     
     if (RestoreContextState)
-      RestoreState();
+      RestoreCommandListState();
     else
-      ClearState();
+      ResetContextState();
   }
   
   
@@ -162,17 +162,29 @@ namespace dxvk {
           ID3D11CommandList   **ppCommandList) {
     D3D10DeviceLock lock = LockContext();
 
+    // End all queries that were left active by the app
     FinalizeQueries();
+
+    // Clean up command list state so that the any state changed
+    // by this command list does not affect the calling context
+    ResetCommandListState();
+
+    // Make sure all commands are visible to the command list
     FlushCsChunk();
     
-    if (ppCommandList != nullptr)
+    if (ppCommandList)
       *ppCommandList = m_commandList.ref();
+
+    // Create a clean command list, and if requested, restore all
+    // previously set context state. Otherwise, reset the context.
+    // Any use of ExecuteCommandList will reset command list state
+    // before the command list is actually executed.
     m_commandList = CreateCommandList();
     
     if (RestoreDeferredContextState)
-      RestoreState();
+      RestoreCommandListState();
     else
-      ClearState();
+      ResetContextState();
     
     m_mappedResources.clear();
     ResetStagingBuffer();
@@ -236,31 +248,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeferredContext::UpdateSubresource(
-          ID3D11Resource*                   pDstResource,
-          UINT                              DstSubresource,
-    const D3D11_BOX*                        pDstBox,
-    const void*                             pSrcData,
-          UINT                              SrcRowPitch,
-          UINT                              SrcDepthPitch) {
-    UpdateResource<D3D11DeferredContext>(this, pDstResource,
-      DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, 0);
-  }
-
-
-  void STDMETHODCALLTYPE D3D11DeferredContext::UpdateSubresource1(
-          ID3D11Resource*                   pDstResource,
-          UINT                              DstSubresource,
-    const D3D11_BOX*                        pDstBox,
-    const void*                             pSrcData,
-          UINT                              SrcRowPitch,
-          UINT                              SrcDepthPitch,
-          UINT                              CopyFlags) {
-    UpdateResource<D3D11DeferredContext>(this, pDstResource,
-      DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, CopyFlags);
-  }
-
-
   void STDMETHODCALLTYPE D3D11DeferredContext::SwapDeviceContextState(
           ID3DDeviceContextState*           pState,
           ID3DDeviceContextState**          ppPreviousState) {
@@ -333,7 +320,7 @@ namespace dxvk {
     
     VkFormat packedFormat = pTexture->GetPackedFormat();
     
-    auto formatInfo = imageFormatInfo(packedFormat);
+    auto formatInfo = lookupFormatInfo(packedFormat);
     auto subresource = pTexture->GetSubresourceFromIndex(
         formatInfo->aspectMask, Subresource);
     
@@ -396,7 +383,7 @@ namespace dxvk {
 
 
   Com<D3D11CommandList> D3D11DeferredContext::CreateCommandList() {
-    return new D3D11CommandList(m_parent, m_contextFlags);
+    return new D3D11CommandList(m_parent, m_flags);
   }
   
   

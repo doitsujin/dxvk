@@ -19,7 +19,7 @@ namespace dxvk {
 
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.format = pDevice->LookupFormat(pDesc->Format, DXGI_VK_FORMAT_MODE_DEPTH).Format;
-    viewInfo.aspect = imageFormatInfo(viewInfo.format)->aspectMask;
+    viewInfo.aspect = lookupFormatInfo(viewInfo.format)->aspectMask;
     viewInfo.usage  = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     
     switch (pDesc->ViewDimension) {

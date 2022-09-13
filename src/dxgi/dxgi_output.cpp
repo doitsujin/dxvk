@@ -122,19 +122,10 @@ namespace dxvk {
     if ((pModeToMatch->Width == 0) ^ (pModeToMatch->Height == 0))
       return DXGI_ERROR_INVALID_CALL;
 
-    DEVMODEW devMode;
-    devMode.dmSize = sizeof(devMode);
+    wsi::WsiMode activeWsiMode = { };
+    wsi::getCurrentDisplayMode(m_monitor, &activeWsiMode);
 
-    if (!GetMonitorDisplayMode(m_monitor, ENUM_CURRENT_SETTINGS, &devMode))
-      return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
-
-    DXGI_MODE_DESC activeMode = { };
-    activeMode.Width            = devMode.dmPelsWidth;
-    activeMode.Height           = devMode.dmPelsHeight;
-    activeMode.RefreshRate      = { devMode.dmDisplayFrequency, 1 };
-    activeMode.Format           = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB; // FIXME
-    activeMode.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
-    activeMode.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
+    DXGI_MODE_DESC1 activeMode = ConvertDisplayMode(activeWsiMode);
 
     DXGI_MODE_DESC1 defaultMode;
     defaultMode.Width            = 0;
@@ -222,17 +213,16 @@ namespace dxvk {
     if (pDesc == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    ::MONITORINFOEXW monInfo;
-    monInfo.cbSize = sizeof(monInfo);
-
-    if (!::GetMonitorInfoW(m_monitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
-      Logger::err("DXGI: Failed to query monitor info");
+    if (!wsi::getDesktopCoordinates(m_monitor, &pDesc->DesktopCoordinates)) {
+      Logger::err("DXGI: Failed to query monitor coords");
       return E_FAIL;
     }
     
-    std::memcpy(pDesc->DeviceName, monInfo.szDevice, std::size(pDesc->DeviceName));
-    
-    pDesc->DesktopCoordinates = monInfo.rcMonitor;
+    if (!wsi::getDisplayName(m_monitor, pDesc->DeviceName)) {
+      Logger::err("DXGI: Failed to query monitor name");
+      return E_FAIL;
+    }
+
     pDesc->AttachedToDesktop  = 1;
     pDesc->Rotation           = DXGI_MODE_ROTATION_UNSPECIFIED;
     pDesc->Monitor            = m_monitor;
@@ -300,32 +290,27 @@ namespace dxvk {
 
     // Walk over all modes that the display supports and
     // return those that match the requested format etc.
-    DEVMODEW devMode = { };
-    devMode.dmSize = sizeof(DEVMODEW);
+    wsi::WsiMode devMode = { };
     
     uint32_t srcModeId = 0;
     uint32_t dstModeId = 0;
     
     std::vector<DXGI_MODE_DESC1> modeList;
     
-    while (GetMonitorDisplayMode(m_monitor, srcModeId++, &devMode)) {
-      // Skip interlaced modes altogether
-      if (devMode.dmDisplayFlags & DM_INTERLACED)
+    while (wsi::getDisplayMode(m_monitor, srcModeId++, &devMode)) {
+      // Only enumerate interlaced modes if requested.
+      if (devMode.interlaced && !(Flags & DXGI_ENUM_MODES_INTERLACED))
         continue;
       
       // Skip modes with incompatible formats
-      if (devMode.dmBitsPerPel != GetMonitorFormatBpp(EnumFormat))
+      if (devMode.bitsPerPixel != GetMonitorFormatBpp(EnumFormat))
         continue;
       
       if (pDesc != nullptr) {
-        DXGI_MODE_DESC1 mode;
-        mode.Width            = devMode.dmPelsWidth;
-        mode.Height           = devMode.dmPelsHeight;
-        mode.RefreshRate      = { devMode.dmDisplayFrequency * 1000, 1000 };
-        mode.Format           = EnumFormat;
-        mode.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
-        mode.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
-        mode.Stereo           = FALSE;
+        DXGI_MODE_DESC1 mode = ConvertDisplayMode(devMode);
+        // Fix up the DXGI_FORMAT to match what we were enumerating.
+        mode.Format = EnumFormat;
+
         modeList.push_back(mode);
       }
       

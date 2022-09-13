@@ -58,10 +58,7 @@ namespace dxvk {
     }
 
     if (!event) {
-      VkEventCreateInfo info;
-      info.sType = VK_STRUCTURE_TYPE_EVENT_CREATE_INFO;
-      info.pNext = nullptr;
-      info.flags = 0;
+      VkEventCreateInfo info = { VK_STRUCTURE_TYPE_EVENT_CREATE_INFO };
 
       VkResult status = m_vkd->vkCreateEvent(
         m_vkd->device(), &info, nullptr, &event);

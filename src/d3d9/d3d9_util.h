@@ -95,13 +95,14 @@ namespace dxvk {
           ID3DBlob** ppDisassembly);
 
   HRESULT DecodeMultiSampleType(
-        D3DMULTISAMPLE_TYPE       MultiSample,
-        DWORD                     MultisampleQuality,
-        VkSampleCountFlagBits*    pCount);
+    const Rc<DxvkDevice>&           pDevice,
+          D3DMULTISAMPLE_TYPE       MultiSample,
+          DWORD                     MultisampleQuality,
+          VkSampleCountFlagBits*    pSampleCount);
 
   VkFormat GetPackedDepthStencilFormat(D3D9Format Format);
 
-  VkFormatFeatureFlags GetImageFormatFeatures(DWORD Usage);
+  VkFormatFeatureFlags2 GetImageFormatFeatures(DWORD Usage);
 
   VkImageUsageFlags GetImageUsageFlags(DWORD Usage);
 
@@ -109,7 +110,7 @@ namespace dxvk {
     return srgb ? srgbFormat : format;
   }
 
-  inline VkShaderStageFlagBits GetShaderStage(DxsoProgramType ProgramType) {
+  constexpr VkShaderStageFlagBits GetShaderStage(DxsoProgramType ProgramType) {
     switch (ProgramType) {
       case DxsoProgramTypes::VertexShader:  return VK_SHADER_STAGE_VERTEX_BIT;
       case DxsoProgramTypes::PixelShader:   return VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -240,7 +241,7 @@ namespace dxvk {
   }
 
   inline D3DRENDERSTATETYPE ColorWriteIndex(uint32_t i) {
-    return D3DRENDERSTATETYPE(i ? D3DRS_COLORWRITEENABLE1 + i - 1 : D3DRS_COLORWRITEENABLE);
+    return D3DRENDERSTATETYPE(i ? D3DRENDERSTATETYPE(D3DRS_COLORWRITEENABLE1 + i - 1) : D3DRS_COLORWRITEENABLE);
   }
 
   inline bool AreFormatsSimilar(D3D9Format srcFormat, D3D9Format dstFormat) {

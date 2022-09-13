@@ -6,6 +6,7 @@
 #include "dxvk_constant_state.h"
 #include "dxvk_context.h"
 #include "dxvk_extensions.h"
+#include "dxvk_fence.h"
 #include "dxvk_framebuffer.h"
 #include "dxvk_image.h"
 #include "dxvk_instance.h"
@@ -13,15 +14,16 @@
 #include "dxvk_meta_clear.h"
 #include "dxvk_objects.h"
 #include "dxvk_options.h"
-#include "dxvk_pipecache.h"
 #include "dxvk_pipemanager.h"
 #include "dxvk_queue.h"
 #include "dxvk_recycler.h"
 #include "dxvk_renderpass.h"
 #include "dxvk_sampler.h"
 #include "dxvk_shader.h"
+#include "dxvk_sparse.h"
 #include "dxvk_stats.h"
 #include "dxvk_unbound.h"
+#include "dxvk_marker.h"
 
 #include "../vulkan/vulkan_presenter.h"
 
@@ -63,6 +65,7 @@ namespace dxvk {
   struct DxvkDeviceQueueSet {
     DxvkDeviceQueue graphics;
     DxvkDeviceQueue transfer;
+    DxvkDeviceQueue sparse;
   };
   
   /**
@@ -83,7 +86,6 @@ namespace dxvk {
       const Rc<DxvkInstance>&         instance,
       const Rc<DxvkAdapter>&          adapter,
       const Rc<vk::DeviceFn>&         vkd,
-      const DxvkDeviceExtensions&     extensions,
       const DxvkDeviceFeatures&       features);
       
     ~DxvkDevice();
@@ -154,14 +156,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Enabled device extensions
-     * \returns Enabled device extensions
-     */
-    const DxvkDeviceExtensions& extensions() const {
-      return m_extensions;
-    }
-    
-    /**
      * \brief Enabled device features
      * \returns Enabled features
      */
@@ -175,6 +169,27 @@ namespace dxvk {
      */
     const DxvkDeviceInfo& properties() const {
       return m_properties;
+    }
+
+    /**
+     * \brief Queries format feature support
+     *
+     * \param [in] format Format to query
+     * \returns Format feature bits
+     */
+    DxvkFormatFeatures getFormatFeatures(VkFormat format) const {
+      return m_adapter->getFormatFeatures(format);
+    }
+
+    /**
+     * \brief Queries format limits
+     *
+     * \param [in] query Format query info
+     * \returns Format limits if the given image is supported
+     */
+    std::optional<DxvkFormatLimits> getFormatLimits(
+      const DxvkFormatQuery&          query) const {
+      return m_adapter->getFormatLimits(query);
     }
 
     /**
@@ -196,6 +211,24 @@ namespace dxvk {
      * \returns \c true if the system has unified memory.
      */
     bool isUnifiedMemoryArchitecture() const;
+
+    /**
+     * \brief Checks whether graphics pipeline libraries can be used
+     * \returns \c true if all required features are supported.
+     */
+    bool canUseGraphicsPipelineLibrary() const;
+
+    /**
+     * \brief Checks whether pipeline creation cache control can be used
+     * \returns \c true if all required features are supported.
+     */
+    bool canUsePipelineCacheControl() const;
+
+    /**
+     * \brief Checks whether pipelines should be tracked
+     * \returns \c true if pipelines need to be tracked
+     */
+    bool mustTrackPipelineLifetime() const;
 
     /**
      * \brief Queries default framebuffer size
@@ -230,23 +263,14 @@ namespace dxvk {
     Rc<DxvkCommandList> createCommandList();
     
     /**
-     * \brief Creates a descriptor pool
-     * 
-     * Returns a previously recycled pool, or creates
-     * a new one if necessary. The context should take
-     * ownership of the returned pool.
-     * \returns Descriptor pool
-     */
-    Rc<DxvkDescriptorPool> createDescriptorPool();
-    
-    /**
      * \brief Creates a context
      * 
      * Creates a context object that can
      * be used to record command buffers.
+     * \param [in] type Context type
      * \returns The context object
      */
-    Rc<DxvkContext> createContext();
+    Rc<DxvkContext> createContext(DxvkContextType type);
 
     /**
      * \brief Creates a GPU event
@@ -268,13 +292,13 @@ namespace dxvk {
             uint32_t              index);
     
     /**
-     * \brief Creates framebuffer for a set of render targets
-     * 
-     * \param [in] info Framebuffer info
-     * \returns The framebuffer object
+     * \brief Creates new fence
+     *
+     * \param [in] info Fence create info
+     * \returns The fence
      */
-    Rc<DxvkFramebuffer> createFramebuffer(
-      const DxvkFramebufferInfo&  info);
+    Rc<DxvkFence> createFence(
+      const DxvkFenceCreateInfo& fenceInfo);
     
     /**
      * \brief Creates a buffer object
@@ -339,7 +363,13 @@ namespace dxvk {
      */
     Rc<DxvkSampler> createSampler(
       const DxvkSamplerCreateInfo&  createInfo);
-    
+
+    /**
+     * \brief Creates a sparse page allocator
+     * \returns Sparse page allocator
+     */
+    Rc<DxvkSparsePageAllocator> createSparsePageAllocator();
+
     /**
      * \brief Retrieves stat counters
      * 
@@ -364,21 +394,19 @@ namespace dxvk {
     uint32_t getCurrentFrameId() const;
     
     /**
-     * \brief Initializes dummy resources
-     * 
-     * Should be called after creating the device in
-     * case the device initialization was successful
-     * and the device is usable.
-     */
-    void initResources();
-    
-    /**
      * \brief Registers a shader
      * \param [in] shader Newly compiled shader
      */
     void registerShader(
       const Rc<DxvkShader>&         shader);
     
+    /**
+     * \brief Prioritizes compilation of a given shader
+     * \param [in] shader Shader to start compiling
+     */
+    void requestCompileShader(
+      const Rc<DxvkShader>&         shader);
+
     /**
      * \brief Presents a swap chain image
      * 
@@ -398,13 +426,9 @@ namespace dxvk {
      * Submits the given command list to the device using
      * the given set of optional synchronization primitives.
      * \param [in] commandList The command list to submit
-     * \param [in] waitSync (Optional) Semaphore to wait on
-     * \param [in] wakeSync (Optional) Semaphore to notify
      */
     void submitCommandList(
-      const Rc<DxvkCommandList>&      commandList,
-            VkSemaphore               waitSync,
-            VkSemaphore               wakeSync);
+      const Rc<DxvkCommandList>&      commandList);
 
     /**
      * \brief Locks submission queue
@@ -483,7 +507,6 @@ namespace dxvk {
     Rc<DxvkInstance>            m_instance;
     Rc<DxvkAdapter>             m_adapter;
     Rc<vk::DeviceFn>            m_vkd;
-    DxvkDeviceExtensions        m_extensions;
 
     DxvkDeviceFeatures          m_features;
     DxvkDeviceInfo              m_properties;
@@ -496,8 +519,7 @@ namespace dxvk {
     
     DxvkDeviceQueueSet          m_queues;
     
-    DxvkRecycler<DxvkCommandList,    16> m_recycledCommandLists;
-    DxvkRecycler<DxvkDescriptorPool, 16> m_recycledDescriptorPools;
+    DxvkRecycler<DxvkCommandList, 16> m_recycledCommandLists;
     
     DxvkSubmissionQueue m_submissionQueue;
 
@@ -505,9 +527,6 @@ namespace dxvk {
     
     void recycleCommandList(
       const Rc<DxvkCommandList>& cmdList);
-    
-    void recycleDescriptorPool(
-      const Rc<DxvkDescriptorPool>& pool);
     
     DxvkDeviceQueue getQueue(
             uint32_t                family,

@@ -125,6 +125,10 @@ namespace dxvk {
     
     static bool parseOptionValue(
       const std::string&  value,
+            float&        result);
+
+    static bool parseOptionValue(
+      const std::string&  value,
             Tristate&     result);
 
     template<typename I, typename V>

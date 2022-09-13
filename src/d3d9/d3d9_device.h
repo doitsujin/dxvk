@@ -2,13 +2,16 @@
 
 #include "../dxvk/dxvk_device.h"
 #include "../dxvk/dxvk_cs.h"
+#include "../dxvk/dxvk_staging.h"
 
 #include "d3d9_include.h"
 #include "d3d9_cursor.h"
 #include "d3d9_format.h"
 #include "d3d9_multithread.h"
 #include "d3d9_adapter.h"
+#include "d3d9_constant_buffer.h"
 #include "d3d9_constant_set.h"
+#include "d3d9_mem.h"
 
 #include "d3d9_state.h"
 
@@ -23,11 +26,14 @@
 #include "d3d9_fixed_function.h"
 #include "d3d9_swvp_emu.h"
 
-#include "d3d9_shader_permutations.h"
+#include "d3d9_spec_constants.h"
 
+#include <unordered_set>
 #include <vector>
 #include <type_traits>
 #include <unordered_map>
+
+#include "../util/util_lru.h"
 
 namespace dxvk {
 
@@ -74,6 +80,8 @@ namespace dxvk {
     DirtyPointScale,
 
     InScene,
+
+    DirtySpecializationEntries,
   };
 
   using D3D9DeviceFlags = Flags<D3D9DeviceFlag>;
@@ -88,6 +96,13 @@ namespace dxvk {
     void*           mapPtr = nullptr;
   };
 
+  struct D3D9StagingBufferMarkerPayload {
+    uint64_t        sequenceNumber;
+    VkDeviceSize    allocated;
+  };
+
+  using D3D9StagingBufferMarker = DxvkMarker<D3D9StagingBufferMarkerPayload>;
+
   class D3D9DeviceEx final : public ComObjectClamp<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
     constexpr static uint32_t MaxFrameLatency     = 20;
@@ -98,7 +113,10 @@ namespace dxvk {
 
     constexpr static uint32_t NullStreamIdx = caps::MaxStreams;
 
+    constexpr static VkDeviceSize StagingBufferSize = 4ull << 20;
+
     friend class D3D9SwapChainEx;
+    friend class D3D9ConstantBuffer;
     friend class D3D9UserDefinedAnnotation;
   public:
 
@@ -735,17 +753,13 @@ namespace dxvk {
 
     int64_t DetermineInitialTextureMemory();
 
-    Rc<DxvkBuffer> CreateConstantBuffer(
-            bool                SSBO,
-            VkDeviceSize        Size,
-            DxsoProgramType     ShaderStage,
-            DxsoConstantBuffers BufferType);
-
     void CreateConstantBuffers();
 
     void SynchronizeCsThread(uint64_t SequenceNumber);
 
     void Flush();
+
+    void EndFrame();
 
     void UpdateBoundRTs(uint32_t index);
 
@@ -759,6 +773,8 @@ namespace dxvk {
 
     void MarkRenderHazards();
 
+    void UpdateActiveFetch4(uint32_t stateSampler);
+
     void UploadManagedTexture(D3D9CommonTexture* pResource);
 
     void UploadManagedTextures(uint32_t mask);
@@ -771,8 +787,7 @@ namespace dxvk {
 
     void MarkTextureUploaded(D3D9CommonTexture* pResource);
 
-    template <bool Points>
-    void UpdatePointMode();
+    void UpdatePointMode(bool pointList);
 
     void UpdateFog();
 
@@ -821,11 +836,9 @@ namespace dxvk {
 
     void BindDepthBias();
 
-    void BindAlphaTestState();
-
     inline void UploadSoftwareConstantSet(const D3D9ShaderConstantsVSSoftware& Src, const D3D9ConstantLayout& Layout);
 
-    inline DxvkBufferSliceHandle CopySoftwareConstants(DxsoConstantBuffers cBufferTarget, Rc<DxvkBuffer>& dstBuffer, const void* src, uint32_t copySize, bool useSSBO);
+    inline void* CopySoftwareConstants(D3D9ConstantBuffer& dstBuffer, const void* src, uint32_t size);
 
     template <DxsoProgramType ShaderStage, typename HardwareLayoutType, typename SoftwareLayoutType, typename ShaderType>
     inline void UploadConstantSet(const SoftwareLayoutType& Src, const D3D9ConstantLayout& Layout, const ShaderType& Shader);
@@ -864,8 +877,7 @@ namespace dxvk {
 
     template <DxsoProgramType ShaderStage>
     void BindShader(
-      const D3D9CommonShader*                 pShaderModule,
-            D3D9ShaderPermutation             Permutation);
+      const D3D9CommonShader*                 pShaderModule);
 
     void BindInputLayout();
 
@@ -928,6 +940,14 @@ namespace dxvk {
       return m_samplerCount.load();
     }
 
+    D3D9MemoryAllocator* GetAllocator() {
+      return &m_memoryAllocator;
+    }
+
+    void* MapTexture(D3D9CommonTexture* pTexture, UINT Subresource);
+    void TouchMappedTexture(D3D9CommonTexture* pTexture);
+    void RemoveMappedTexture(D3D9CommonTexture* pTexture);
+
   private:
 
     DxvkCsChunkRef AllocCsChunk() {
@@ -958,26 +978,21 @@ namespace dxvk {
       return m_behaviorFlags & (D3DCREATE_MIXED_VERTEXPROCESSING | D3DCREATE_SOFTWARE_VERTEXPROCESSING);
     }
 
-    inline constexpr D3D9ShaderPermutation GetVertexShaderPermutation() {
-      return D3D9ShaderPermutations::None;
-    }
-
-    inline D3D9ShaderPermutation GetPixelShaderPermutation() {
-      if (unlikely(m_state.renderStates[D3DRS_SHADEMODE] == D3DSHADE_FLAT))
-        return D3D9ShaderPermutations::FlatShade;
-
-      return D3D9ShaderPermutations::None;
-    }
-
     void DetermineConstantLayouts(bool canSWVP);
 
-    template<bool UpBuffer>
-    D3D9BufferSlice AllocTempBuffer(VkDeviceSize size);
+    D3D9BufferSlice AllocUPBuffer(VkDeviceSize size);
+
+    D3D9BufferSlice AllocStagingBuffer(VkDeviceSize size);
+
+    void EmitStagingBufferMarker();
+
+    void WaitStagingBuffer();
 
     bool ShouldRecord();
 
     HRESULT               CreateShaderModule(
             D3D9CommonShader*     pShaderModule,
+            uint32_t*             pLength,
             VkShaderStageFlagBits ShaderStage,
       const DWORD*                pShaderBytecode,
       const DxsoModuleInfo*       pModuleInfo);
@@ -1120,17 +1135,19 @@ namespace dxvk {
 
     bool UseProgrammablePS();
 
-    void UpdateBoolSpecConstantVertex(uint32_t value);
+    uint32_t GetAlphaTestPrecision();
 
-    void UpdateBoolSpecConstantPixel(uint32_t value);
+    void BindAlphaTestState();
 
-    void UpdateSamplerSpecConsant(uint32_t value);
+    void UpdateAlphaTestSpec(VkCompareOp alphaOp, uint32_t precision);
+    void UpdateVertexBoolSpec(uint32_t value);
+    void UpdatePixelBoolSpec(uint32_t value);
+    void UpdatePixelShaderSamplerSpec(uint32_t types, uint32_t projections, uint32_t fetch4);
+    void UpdateCommonSamplerSpec(uint32_t boundMask, uint32_t depthMask);
+    void UpdatePointModeSpec(uint32_t mode);
+    void UpdateFogModeSpec(bool fogEnabled, D3DFOGMODE vertexFogMode, D3DFOGMODE pixelFogMode);
 
-    void UpdateProjectionSpecConstant(uint32_t value);
-
-    void UpdateFetch4SpecConstant(uint32_t value);
-
-    void UpdateSamplerDepthModeSpecConstant(uint32_t value);
+    void BindSpecConstants();
 
     void TrackBufferMappingBufferSequenceNumber(
       D3D9CommonBuffer* pResource);
@@ -1138,6 +1155,8 @@ namespace dxvk {
     void TrackTextureMappingBufferSequenceNumber(
       D3D9CommonTexture* pResource,
       UINT Subresource);
+
+    void UnmapTextures();
 
     uint64_t GetCurrentSequenceNumber();
 
@@ -1149,6 +1168,13 @@ namespace dxvk {
 
     D3D9Adapter*                    m_adapter;
     Rc<DxvkDevice>                  m_dxvkDevice;
+
+    D3D9MemoryAllocator             m_memoryAllocator;
+
+    // Second memory allocator used for D3D9 shader bytecode.
+    // Most games never access the stored bytecode, so putting that
+    // into the same chunks as texture memory would waste address space.
+    D3D9MemoryAllocator             m_shaderAllocator;
 
     uint32_t                        m_frameLatency = DefaultFrameLatency;
 
@@ -1162,15 +1188,23 @@ namespace dxvk {
 
     Rc<D3D9ShaderModuleSet>         m_shaderModules;
 
-    Rc<DxvkBuffer>                  m_vsClipPlanes;
+    D3D9ConstantBuffer              m_vsClipPlanes;
 
-    Rc<DxvkBuffer>                  m_vsFixedFunction;
-    Rc<DxvkBuffer>                  m_vsVertexBlend;
-    Rc<DxvkBuffer>                  m_psFixedFunction;
-    Rc<DxvkBuffer>                  m_psShared;
+    D3D9ConstantBuffer              m_vsFixedFunction;
+    D3D9ConstantBuffer              m_vsVertexBlend;
+    D3D9ConstantBuffer              m_psFixedFunction;
+    D3D9ConstantBuffer              m_psShared;
+    D3D9ConstantBuffer              m_specBuffer;
 
-    D3D9BufferSlice                 m_upBuffer;
-    D3D9BufferSlice                 m_managedUploadBuffer;
+    Rc<DxvkBuffer>                  m_upBuffer;
+    VkDeviceSize                    m_upBufferOffset  = 0ull;
+    void*                           m_upBufferMapPtr  = nullptr;
+
+    DxvkStagingBuffer               m_stagingBuffer;
+    VkDeviceSize                    m_stagingBufferAllocated      = 0ull;
+    VkDeviceSize                    m_stagingBufferLastAllocated  = 0ull;
+    VkDeviceSize                    m_stagingBufferLastSignaled   = 0ull;
+    std::queue<Rc<D3D9StagingBufferMarker>> m_stagingBufferMarkers;
 
     D3D9Cursor                      m_cursor;
 
@@ -1201,6 +1235,7 @@ namespace dxvk {
     uint32_t                        m_instancedData = 0;
 
     uint32_t                        m_depthTextures = 0;
+    uint32_t                        m_cubeTextures = 0;
     uint32_t                        m_textureTypes = 0;
     uint32_t                        m_projectionBitfield  = 0;
 
@@ -1219,18 +1254,20 @@ namespace dxvk {
     uint32_t                        m_activeTexturesToUpload = 0;
     uint32_t                        m_activeTexturesToGen    = 0;
 
+    // m_fetch4Enabled is whether fetch4 is currently enabled
+    // from the application.
+    //
+    // m_fetch4 is whether it should be enabled in the shader
+    // ie. are we in a correct state to use it
+    // (enabled + texture supports it + point sampled)
     uint32_t                        m_fetch4Enabled = 0;
     uint32_t                        m_fetch4        = 0;
 
-    uint32_t                        m_lastBoolSpecConstantVertex = 0;
-    uint32_t                        m_lastBoolSpecConstantPixel  = 0;
-    uint32_t                        m_lastSamplerDepthMode = 0;
-    uint32_t                        m_lastProjectionBitfield = 0;
-    uint32_t                        m_lastSamplerTypes = 0;
-    uint32_t                        m_lastPointMode = 0;
-    uint32_t                        m_lastFetch4    = 0;
     uint32_t                        m_lastHazardsDS = 0;
+    uint32_t                        m_lastHazardsRT = 0;
     uint32_t                        m_lastSamplerTypesFF = 0;
+
+    D3D9SpecializationInfo          m_specInfo = D3D9SpecializationInfo();
 
     D3D9ShaderMasks                 m_vsShaderMasks = D3D9ShaderMasks();
     D3D9ShaderMasks                 m_psShaderMasks = FixedFunctionMask;
@@ -1239,6 +1276,10 @@ namespace dxvk {
     bool                            m_amdATOC         = false;
     bool                            m_nvATOC          = false;
     bool                            m_ffZTest         = false;
+    
+    VkImageLayout                   m_hazardLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+    bool                            m_usingGraphicsPipelines = false;
 
     float                           m_depthBiasScale  = 0.0f;
 
@@ -1273,6 +1314,9 @@ namespace dxvk {
 
     Direct3DState9                  m_state;
 
+#ifdef D3D9_ALLOW_UNMAPPING
+    lru_list<D3D9CommonTexture*>    m_mappedTextures;
+#endif
   };
 
 }

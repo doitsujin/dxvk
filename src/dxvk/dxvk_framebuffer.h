@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dxvk_image.h"
+#include "dxvk_graphics_state.h"
 #include "dxvk_renderpass.h"
 
 namespace dxvk {
@@ -93,8 +94,7 @@ namespace dxvk {
 
     DxvkFramebufferInfo(
       const DxvkRenderTargets&      renderTargets,
-      const DxvkFramebufferSize&    defaultSize,
-            DxvkRenderPass*         renderPass);
+      const DxvkFramebufferSize&    defaultSize);
 
     ~DxvkFramebufferInfo();
 
@@ -112,14 +112,6 @@ namespace dxvk {
      */
     DxvkFramebufferSize size() const {
       return m_renderSize;
-    }
-
-    /**
-     * \brief Render pass
-     * \returns Render pass
-     */
-    DxvkRenderPass* renderPass() const {
-      return m_renderPass;
     }
 
     /**
@@ -164,7 +156,7 @@ namespace dxvk {
      * \brief Queries color attachment index of a given attachment
      * \returns The index, or -1 if the given attachment is the depth attachment
      */
-    const int32_t getColorAttachmentIndex(uint32_t id) const {
+    int32_t getColorAttachmentIndex(uint32_t id) const {
       return m_attachments[id];
     }
 
@@ -220,28 +212,16 @@ namespace dxvk {
     bool isWritable(uint32_t attachmentIndex, VkImageAspectFlags aspects) const;
 
     /**
-     * \brief Generates framebuffer key
-     * \returns Framebuffer key
+     * \brief Generates render target state
+     * \returns Render target state info
      */
-    DxvkFramebufferKey key() const;
-
-    /**
-     * \brief Generatess render pass format
-     *
-     * This render pass format can be used to
-     * look up a compatible render pass.
-     * \param [in] renderTargets Render targets
-     * \returns The render pass format
-     */
-    static DxvkRenderPassFormat getRenderPassFormat(
-      const DxvkRenderTargets&  renderTargets);
+    DxvkRtInfo getRtInfo() const;
 
   private:
 
     DxvkRenderTargets   m_renderTargets;
     DxvkFramebufferSize m_renderSize  = { 0u, 0u, 0u };
     VkSampleCountFlags  m_sampleCount = 0;
-    DxvkRenderPass*     m_renderPass;
 
     uint32_t                                     m_attachmentCount = 0;
     std::array<int32_t, MaxNumRenderTargets + 1> m_attachments;
@@ -252,48 +232,6 @@ namespace dxvk {
     DxvkFramebufferSize computeRenderTargetSize(
       const Rc<DxvkImageView>& renderTarget) const;
 
-  };
-
-
-
-  /**
-   * \brief Framebuffer
-   * 
-   * A framebuffer either stores a set of image views
-   * that will be used as render targets, or in case
-   * no render targets are attached, fixed dimensions.
-   */
-  class DxvkFramebuffer : public DxvkResource {
-    
-  public:
-    
-    DxvkFramebuffer(
-      const Rc<vk::DeviceFn>&       vkd,
-      const DxvkFramebufferInfo&    info);
-    
-    ~DxvkFramebuffer();
-    
-    /**
-     * \brief Framebuffer handle
-     * \returns Framebuffer handle
-     */
-    VkFramebuffer handle() const {
-      return m_handle;
-    }
-
-    /**
-     * \brief Framebuffer key
-     */
-    const DxvkFramebufferKey& key() const {
-      return m_key;
-    }
-    
-  private:
-    
-    Rc<vk::DeviceFn>    m_vkd;
-    VkFramebuffer       m_handle;
-    DxvkFramebufferKey  m_key;
-    
   };
   
 }

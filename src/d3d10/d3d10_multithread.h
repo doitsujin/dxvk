@@ -64,7 +64,8 @@ namespace dxvk {
 
     D3D10Multithread(
             IUnknown*             pParent,
-            BOOL                  Protected);
+            BOOL                  Protected,
+            BOOL                  Force);
     
     ~D3D10Multithread();
 
@@ -95,6 +96,8 @@ namespace dxvk {
 
     IUnknown* m_parent;
     BOOL      m_protected;
+    BOOL      m_enabled;
+    BOOL      m_forced;
 
     sync::RecursiveSpinlock m_mutex;
 

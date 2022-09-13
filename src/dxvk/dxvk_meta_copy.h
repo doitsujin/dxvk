@@ -32,7 +32,6 @@ namespace dxvk {
    * that is used for fragment shader copies.
    */
   struct DxvkMetaCopyPipeline {
-    VkRenderPass          renderPass;
     VkDescriptorSetLayout dsetLayout;
     VkPipelineLayout      pipeLayout;
     VkPipeline            pipeHandle;
@@ -63,46 +62,44 @@ namespace dxvk {
   };
 
   /**
-   * \brief Copy framebuffer and render pass
+   * \brief Copy view objects
    * 
-   * Creates a framebuffer and render
-   * pass object for an image view.
+   * Creates and manages views used in a
+   * framebuffer-based copy operations.
    */
-  class DxvkMetaCopyRenderPass : public DxvkResource {
+  class DxvkMetaCopyViews : public DxvkResource {
 
   public:
 
-    DxvkMetaCopyRenderPass(
-      const Rc<vk::DeviceFn>&   vkd,
-      const Rc<DxvkImageView>&  dstImageView,
-      const Rc<DxvkImageView>&  srcImageView,
-      const Rc<DxvkImageView>&  srcStencilView,
-            bool                discardDst);
+    DxvkMetaCopyViews(
+      const Rc<vk::DeviceFn>&         vkd,
+      const Rc<DxvkImage>&            dstImage,
+      const VkImageSubresourceLayers& dstSubresources,
+            VkFormat                  dstFormat,
+      const Rc<DxvkImage>&            srcImage,
+      const VkImageSubresourceLayers& srcSubresources,
+            VkFormat                  srcFormat);
     
-    ~DxvkMetaCopyRenderPass();
+    ~DxvkMetaCopyViews();
 
-    VkRenderPass renderPass() const {
-      return m_renderPass;
-    }
+    VkImageView getDstView() const { return m_dstImageView; }
+    VkImageView getSrcView() const { return m_srcImageView; }
+    VkImageView getSrcStencilView() const { return m_srcStencilView; }
 
-    VkFramebuffer framebuffer() const {
-      return m_framebuffer;
+    VkImageViewType getSrcViewType() const {
+      return m_srcViewType;
     }
 
   private:
 
     Rc<vk::DeviceFn>  m_vkd;
 
-    Rc<DxvkImageView> m_dstImageView;
-    Rc<DxvkImageView> m_srcImageView;
-    Rc<DxvkImageView> m_srcStencilView;
-    
-    VkRenderPass  m_renderPass  = VK_NULL_HANDLE;
-    VkFramebuffer m_framebuffer = VK_NULL_HANDLE;
+    VkImageViewType   m_srcViewType     = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    VkImageViewType   m_dstViewType     = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
 
-    VkRenderPass createRenderPass(bool discard) const;
-
-    VkFramebuffer createFramebuffer() const;
+    VkImageView       m_dstImageView    = VK_NULL_HANDLE;
+    VkImageView       m_srcImageView    = VK_NULL_HANDLE;
+    VkImageView       m_srcStencilView  = VK_NULL_HANDLE;
 
   };
 
@@ -162,8 +159,6 @@ namespace dxvk {
 
     Rc<vk::DeviceFn> m_vkd;
 
-    VkSampler m_sampler;
-
     VkShaderModule m_shaderVert = VK_NULL_HANDLE;
     VkShaderModule m_shaderGeom = VK_NULL_HANDLE;
 
@@ -180,8 +175,6 @@ namespace dxvk {
 
     DxvkMetaCopyPipeline m_copyBufferImagePipeline = { };
 
-    VkSampler createSampler() const;
-    
     VkShaderModule createShaderModule(
       const SpirvCodeBuffer&          code) const;
     
@@ -190,9 +183,6 @@ namespace dxvk {
     DxvkMetaCopyPipeline createPipeline(
       const DxvkMetaCopyPipelineKey&  key);
 
-    VkRenderPass createRenderPass(
-      const DxvkMetaCopyPipelineKey&  key) const;
-    
     VkDescriptorSetLayout createDescriptorSetLayout(
       const DxvkMetaCopyPipelineKey&  key) const;
     
@@ -201,8 +191,7 @@ namespace dxvk {
     
     VkPipeline createPipelineObject(
       const DxvkMetaCopyPipelineKey&  key,
-            VkPipelineLayout          pipelineLayout,
-            VkRenderPass              renderPass);
+            VkPipelineLayout          pipelineLayout);
     
   };
   

@@ -130,15 +130,15 @@ namespace dxvk {
       m_module.decorateDescriptorSet(buffer, 0);
       m_module.decorateBinding(buffer, bufferSlot);
 
-      m_bufferResource.slot   = bufferSlot;
-      m_bufferResource.type   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-      m_bufferResource.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-      m_bufferResource.access = VK_ACCESS_SHADER_WRITE_BIT;
+      m_bufferBinding.descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+      m_bufferBinding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+      m_bufferBinding.resourceBinding = bufferSlot;
+      m_bufferBinding.stage           = VK_SHADER_STAGE_GEOMETRY_BIT;
+      m_bufferBinding.access          = VK_ACCESS_SHADER_WRITE_BIT;
 
       // Load our builtins
       uint32_t primitiveIdPtr = m_module.newVar(m_module.defPointerType(uint_t, spv::StorageClassInput), spv::StorageClassInput);
       m_module.decorateBuiltIn(primitiveIdPtr, spv::BuiltInPrimitiveId);
-      m_entryPointInterfaces.push_back(primitiveIdPtr);
 
       uint32_t primitiveId = m_module.opLoad(uint_t, primitiveIdPtr);
 
@@ -172,8 +172,6 @@ namespace dxvk {
         uint32_t zero = m_module.constu32(0);
         elementVar = m_module.opAccessChain(m_module.defPointerType(vec4_t, spv::StorageClassInput), elementPtr, 1, &zero);
         elementVar = m_module.opLoad(vec4_t, elementVar);
-
-        m_entryPointInterfaces.push_back(elementPtr);
 
         // The offset of this element from the beginning of any given vertex
         uint32_t perVertexElementOffset = m_module.constu32(element.Offset / sizeof(uint32_t));
@@ -276,15 +274,13 @@ namespace dxvk {
       m_module.functionEnd();
 
       m_module.addEntryPoint(m_entryPointId,
-        spv::ExecutionModelGeometry, "main",
-        m_entryPointInterfaces.size(),
-        m_entryPointInterfaces.data());
+        spv::ExecutionModelGeometry, "main");
       m_module.setDebugName(m_entryPointId, "main");
 
       DxvkShaderCreateInfo info;
       info.stage = VK_SHADER_STAGE_GEOMETRY_BIT;
-      info.resourceSlotCount = 1;
-      info.resourceSlots = &m_bufferResource;
+      info.bindingCount = 1;
+      info.bindings = &m_bufferBinding;
       info.inputMask = m_inputMask;
 
       return new DxvkShader(info, m_module.compile());
@@ -294,10 +290,9 @@ namespace dxvk {
 
     SpirvModule m_module;
 
-    std::vector<uint32_t> m_entryPointInterfaces;
     uint32_t              m_entryPointId = 0;
     uint32_t              m_inputMask = 0u;
-    DxvkResourceSlot      m_bufferResource;
+    DxvkBindingInfo       m_bufferBinding;
 
   };
 

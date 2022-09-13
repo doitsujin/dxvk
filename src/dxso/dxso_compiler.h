@@ -7,7 +7,7 @@
 #include "dxso_util.h"
 
 #include "../d3d9/d3d9_constant_layout.h"
-#include "../d3d9/d3d9_shader_permutations.h"
+#include "../d3d9/d3d9_spec_constants.h"
 #include "../spirv/spirv_module.h"
 
 namespace dxvk {
@@ -129,8 +129,6 @@ namespace dxvk {
     DxsoSamplerInfo color[SamplerTypeCount];
     DxsoSamplerInfo depth[SamplerTypeCount];
 
-    uint32_t boundConst;
-
     DxsoTextureType type;
   };
 
@@ -157,9 +155,6 @@ namespace dxvk {
    */
   struct DxsoCompilerPsPart {
     uint32_t functionId         = 0;
-    uint32_t samplerTypeSpec    = 0;
-    uint32_t projectionSpec     = 0;
-    uint32_t fetch4Spec         = 0;
 
     //////////////
     // Misc Types
@@ -178,11 +173,7 @@ namespace dxvk {
     // Shared State
     uint32_t sharedState        = 0;
 
-    uint32_t killState          = 0;
-    uint32_t builtinLaneId      = 0;
-
-    uint32_t diffuseColorIn  = 0;
-    uint32_t specularColorIn = 0;
+    uint32_t flatShadingMask    = 0;
   };
 
   struct DxsoCfgBlockIf {
@@ -247,7 +238,7 @@ namespace dxvk {
      * \brief Compiles the shader
      * \returns The final shader objects
      */
-    DxsoPermutations compile();
+    Rc<DxvkShader> compile();
 
     const DxsoIsgn& isgn() { return m_isgn; }
     const DxsoIsgn& osgn() { return m_osgn; }
@@ -271,13 +262,12 @@ namespace dxvk {
 
     SpirvModule                m_module;
 
-    uint32_t                   m_boolSpecConstant;
-    uint32_t                   m_depthSpecConstant;
+    D3D9ShaderSpecConstantManager m_spec;
 
     ///////////////////////////////////////////////////////
     // Resource slot description for the shader. This will
     // be used to map D3D9 bindings to DXVK bindings.
-    std::vector<DxvkResourceSlot> m_resourceSlots;
+    std::vector<DxvkBindingInfo>  m_bindings;
 
     ////////////////////////////////////////////////
     // Temporary r# vector registers with immediate
@@ -349,7 +339,6 @@ namespace dxvk {
     ///////////////////////////////////////////////////
     // Entry point description - we'll need to declare
     // the function ID and all input/output variables.
-    std::vector<uint32_t> m_entryPointInterfaces;
     uint32_t m_entryPointId = 0;
 
     ////////////////////////////////////////////
@@ -372,6 +361,8 @@ namespace dxvk {
     // and render targets for hazard tracking
     uint32_t m_usedSamplers;
     uint32_t m_usedRTs;
+
+    uint32_t m_specUbo = 0;
 
     uint32_t m_rsBlock = 0;
     uint32_t m_mainFuncLabel = 0;
@@ -629,8 +620,6 @@ namespace dxvk {
 
       return this->emitRegisterLoad(lookup, writeMask);
     }
-
-    Rc<DxvkShader> compileShader();
 
     ///////////////////////////////
     // Handle shader ops

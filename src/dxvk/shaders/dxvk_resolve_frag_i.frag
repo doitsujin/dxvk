@@ -1,6 +1,8 @@
 #version 450
 
-layout(binding = 0) uniform isampler2DMSArray s_image;
+#extension GL_EXT_samplerless_texture_functions : enable
+
+layout(binding = 0) uniform itexture2DMSArray s_image;
 
 layout(location = 0) out ivec4 o_color;
 

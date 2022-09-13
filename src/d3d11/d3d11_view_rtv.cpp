@@ -24,7 +24,7 @@ namespace dxvk {
 
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.format  = formatInfo.Format;
-    viewInfo.aspect  = imageFormatInfo(viewInfo.format)->aspectMask;
+    viewInfo.aspect  = lookupFormatInfo(viewInfo.format)->aspectMask;
     viewInfo.swizzle = formatInfo.Swizzle;
     viewInfo.usage   = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     

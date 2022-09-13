@@ -2,6 +2,8 @@
 
 #include "../dxvk/dxvk_format.h"
 
+#include "../wsi/wsi_window.h"
+
 namespace dxvk::vk {
 
   Presenter::Presenter(
@@ -11,14 +13,6 @@ namespace dxvk::vk {
           PresenterDevice device,
     const PresenterDesc&  desc)
   : m_vki(vki), m_vkd(vkd), m_device(device), m_window(window) {
-    // As of Wine 5.9, winevulkan provides this extension, but does
-    // not filter the pNext chain for VkSwapchainCreateInfoKHR properly
-    // before passing it to the Linux sude, which breaks RenderDoc.
-    if (m_device.features.fullScreenExclusive && ::GetModuleHandle("winevulkan.dll")) {
-      Logger::warn("winevulkan detected, disabling exclusive fullscreen support");
-      m_device.features.fullScreenExclusive = false;
-    }
-
     if (createSurface() != VK_SUCCESS)
       throw DxvkError("Failed to create surface");
 
@@ -64,15 +58,12 @@ namespace dxvk::vk {
   VkResult Presenter::presentImage() {
     PresenterSync sync = m_semaphores.at(m_frameIndex);
 
-    VkPresentInfoKHR info;
-    info.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    info.pNext              = nullptr;
+    VkPresentInfoKHR info = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
     info.waitSemaphoreCount = 1;
     info.pWaitSemaphores    = &sync.present;
     info.swapchainCount     = 1;
     info.pSwapchains        = &m_swapchain;
     info.pImageIndices      = &m_imageIndex;
-    info.pResults           = nullptr;
 
     VkResult status = m_vkd->vkQueuePresentKHR(m_device.queue, &info);
 
@@ -144,15 +135,10 @@ namespace dxvk::vk {
       return VK_SUCCESS;
     }
 
-    VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo;
-    fullScreenInfo.sType            = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
-    fullScreenInfo.pNext            = nullptr;
+    VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
     fullScreenInfo.fullScreenExclusive = desc.fullScreenExclusive;
 
-    VkSwapchainCreateInfoKHR swapInfo;
-    swapInfo.sType                  = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    swapInfo.pNext                  = nullptr;
-    swapInfo.flags                  = 0;
+    VkSwapchainCreateInfoKHR swapInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
     swapInfo.surface                = m_surface;
     swapInfo.minImageCount          = m_info.imageCount;
     swapInfo.imageFormat            = m_info.format.format;
@@ -162,8 +148,6 @@ namespace dxvk::vk {
     swapInfo.imageUsage             = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
                                     | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     swapInfo.imageSharingMode       = VK_SHARING_MODE_EXCLUSIVE;
-    swapInfo.queueFamilyIndexCount  = 0;
-    swapInfo.pQueueFamilyIndices    = nullptr;
     swapInfo.preTransform           = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
     swapInfo.compositeAlpha         = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     swapInfo.presentMode            = m_info.presentMode;
@@ -198,10 +182,7 @@ namespace dxvk::vk {
     for (uint32_t i = 0; i < m_info.imageCount; i++) {
       m_images[i].image = images[i];
 
-      VkImageViewCreateInfo viewInfo;
-      viewInfo.sType    = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-      viewInfo.pNext    = nullptr;
-      viewInfo.flags    = 0;
+      VkImageViewCreateInfo viewInfo = { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
       viewInfo.image    = images[i];
       viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
       viewInfo.format   = m_info.format.format;
@@ -221,10 +202,7 @@ namespace dxvk::vk {
     m_semaphores.resize(m_info.imageCount);
 
     for (uint32_t i = 0; i < m_semaphores.size(); i++) {
-      VkSemaphoreCreateInfo semInfo;
-      semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-      semInfo.pNext = nullptr;
-      semInfo.flags = 0;
+      VkSemaphoreCreateInfo semInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 
       if ((status = m_vkd->vkCreateSemaphore(m_vkd->device(),
           &semInfo, nullptr, &m_semaphores[i].acquire)) != VK_SUCCESS)
@@ -248,22 +226,13 @@ namespace dxvk::vk {
   }
 
 
-  void Presenter::setFrameRateLimiterRefreshRate(double refreshRate) {
-    m_fpsLimiter.setDisplayRefreshRate(refreshRate);
-  }
-
-
   VkResult Presenter::getSupportedFormats(std::vector<VkSurfaceFormatKHR>& formats, const PresenterDesc& desc) {
     uint32_t numFormats = 0;
 
-    VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo;
-    fullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
-    fullScreenInfo.pNext = nullptr;
+    VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
     fullScreenInfo.fullScreenExclusive = desc.fullScreenExclusive;
 
-    VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo;
-    surfaceInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR;
-    surfaceInfo.pNext = &fullScreenInfo;
+    VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR, &fullScreenInfo };
     surfaceInfo.surface = m_surface;
 
     VkResult status;
@@ -302,14 +271,10 @@ namespace dxvk::vk {
   VkResult Presenter::getSupportedPresentModes(std::vector<VkPresentModeKHR>& modes, const PresenterDesc& desc) {
     uint32_t numModes = 0;
 
-    VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo;
-    fullScreenInfo.sType = VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT;
-    fullScreenInfo.pNext = nullptr;
+    VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
     fullScreenInfo.fullScreenExclusive = desc.fullScreenExclusive;
 
-    VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo;
-    surfaceInfo.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR;
-    surfaceInfo.pNext = &fullScreenInfo;
+    VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR, &fullScreenInfo };
     surfaceInfo.surface = m_surface;
 
     VkResult status;
@@ -378,10 +343,10 @@ namespace dxvk::vk {
 
       // If that didn't work, we'll fall back to a format
       // which has similar properties to the preferred one
-      DxvkFormatFlags prefFlags = imageFormatInfo(pDesired[0].format)->flags;
+      DxvkFormatFlags prefFlags = lookupFormatInfo(pDesired[0].format)->flags;
 
       for (uint32_t j = 0; j < numSupported; j++) {
-        auto currFlags = imageFormatInfo(pSupported[j].format)->flags;
+        auto currFlags = lookupFormatInfo(pSupported[j].format)->flags;
 
         if ((currFlags & DxvkFormatFlag::ColorSpaceSrgb)
          == (prefFlags & DxvkFormatFlag::ColorSpaceSrgb))
@@ -445,19 +410,8 @@ namespace dxvk::vk {
 
 
   VkResult Presenter::createSurface() {
-    HINSTANCE instance = reinterpret_cast<HINSTANCE>(
-      GetWindowLongPtr(m_window, GWLP_HINSTANCE));
-    
-    VkWin32SurfaceCreateInfoKHR info;
-    info.sType      = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-    info.pNext      = nullptr;
-    info.flags      = 0;
-    info.hinstance  = instance;
-    info.hwnd       = m_window;
-    
-    VkResult status = m_vki->vkCreateWin32SurfaceKHR(
-      m_vki->instance(), &info, nullptr, &m_surface);
-    
+    VkResult status = wsi::createSurface(m_window, m_vki, &m_surface);
+
     if (status != VK_SUCCESS)
       return status;
     

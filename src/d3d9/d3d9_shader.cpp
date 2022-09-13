@@ -17,8 +17,6 @@ namespace dxvk {
       const DxsoAnalysisInfo&     AnalysisInfo,
             DxsoModule*           pModule) {
     const uint32_t bytecodeLength = AnalysisInfo.bytecodeByteLength;
-    m_bytecode.resize(bytecodeLength);
-    std::memcpy(m_bytecode.data(), pShaderBytecode, bytecodeLength);
 
     const std::string name = Key.toString();
     Logger::debug(str::format("Compiling shader ", name));
@@ -31,7 +29,7 @@ namespace dxvk {
       DxsoReader reader(
         reinterpret_cast<const char*>(pShaderBytecode));
 
-      reader.store(std::ofstream(str::tows(str::format(dumpPath, "/", name, ".dxso").c_str()).c_str(),
+      reader.store(std::ofstream(str::topath(str::format(dumpPath, "/", name, ".dxso").c_str()).c_str(),
         std::ios_base::binary | std::ios_base::trunc), bytecodeLength);
 
       char comment[2048];
@@ -43,7 +41,7 @@ namespace dxvk {
         &blob);
       
       if (SUCCEEDED(hr)) {
-        std::ofstream disassembledOut(str::tows(str::format(dumpPath, "/", name, ".dxso.dis").c_str()).c_str(), std::ios_base::binary | std::ios_base::trunc);
+        std::ofstream disassembledOut(str::topath(str::format(dumpPath, "/", name, ".dxso.dis").c_str()).c_str(), std::ios_base::binary | std::ios_base::trunc);
         disassembledOut.write(
           reinterpret_cast<const char*>(blob->GetBufferPointer()),
           blob->GetBufferSize());
@@ -56,7 +54,7 @@ namespace dxvk {
     const D3D9ConstantLayout& constantLayout = ShaderStage == VK_SHADER_STAGE_VERTEX_BIT
       ? pDevice->GetVertexConstantLayout()
       : pDevice->GetPixelConstantLayout();
-    m_shaders      = pModule->compile(*pDxsoModuleInfo, name, AnalysisInfo, constantLayout);
+    m_shader       = pModule->compile(*pDxsoModuleInfo, name, AnalysisInfo, constantLayout);
     m_isgn         = pModule->isgn();
     m_usedSamplers = pModule->usedSamplers();
 
@@ -73,31 +71,24 @@ namespace dxvk {
     m_constants = pModule->constants();
     m_maxDefinedConst = pModule->maxDefinedConstant();
 
-    m_shaders[0]->setShaderKey(Key);
+    m_shader->setShaderKey(Key);
 
-    if (m_shaders[1] != nullptr) {
-      // Lets lie about the shader key type for the state cache.
-      m_shaders[1]->setShaderKey({ VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, Key.sha1() });
-    }
-    
     if (dumpPath.size() != 0) {
       std::ofstream dumpStream(
-        str::tows(str::format(dumpPath, "/", name, ".spv").c_str()).c_str(),
+        str::topath(str::format(dumpPath, "/", name, ".spv").c_str()).c_str(),
         std::ios_base::binary | std::ios_base::trunc);
       
-      m_shaders[0]->dump(dumpStream);
+      m_shader->dump(dumpStream);
     }
 
-    pDevice->GetDXVKDevice()->registerShader(m_shaders[0]);
-
-    if (m_shaders[1] != nullptr)
-      pDevice->GetDXVKDevice()->registerShader(m_shaders[1]);
+    pDevice->GetDXVKDevice()->registerShader(m_shader);
   }
 
 
   void D3D9ShaderModuleSet::GetShaderModule(
             D3D9DeviceEx*         pDevice,
             D3D9CommonShader*     pShaderModule,
+            uint32_t*             pLength,
             VkShaderStageFlagBits ShaderStage,
       const DxsoModuleInfo*       pDxbcModuleInfo,
       const void*                 pShaderBytecode) {
@@ -113,6 +104,7 @@ namespace dxvk {
       throw DxvkError("GetShaderModule: Bytecode does not match shader stage");
 
     DxsoAnalysisInfo info = module.analyze();
+    *pLength = info.bytecodeByteLength;
 
     DxvkShaderKey lookupKey = DxvkShaderKey(
       ShaderStage,

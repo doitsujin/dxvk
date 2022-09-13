@@ -10,7 +10,7 @@
 namespace dxvk {
 
   D3D9FormatHelper::D3D9FormatHelper(const Rc<DxvkDevice>& device)
-    : m_device(device), m_context(m_device->createContext()) {
+    : m_device(device), m_context(m_device->createContext(DxvkContextType::Supplementary)) {
     m_context->beginRecording(
       m_device->createCommandList());
 
@@ -93,22 +93,16 @@ namespace dxvk {
     bufferViewInfo.rangeLength = srcSlice.length();
     auto tmpBufferView = m_device->createBufferView(srcSlice.buffer(), bufferViewInfo);
 
-    if (specConstantValue)
-      m_context->setSpecConstant(VK_PIPELINE_BIND_POINT_COMPUTE, 0, specConstantValue);
-
-    m_context->bindResourceView(BindingIds::Image,  tmpImageView, nullptr);
-    m_context->bindResourceView(BindingIds::Buffer, nullptr,     tmpBufferView);
-    m_context->bindShader(VK_SHADER_STAGE_COMPUTE_BIT, m_shaders[videoFormat.FormatType]);
+    m_context->setSpecConstant(VK_PIPELINE_BIND_POINT_COMPUTE, 0, specConstantValue);
+    m_context->bindResourceImageView(VK_SHADER_STAGE_COMPUTE_BIT, BindingIds::Image, std::move(tmpImageView));
+    m_context->bindResourceBufferView(VK_SHADER_STAGE_COMPUTE_BIT, BindingIds::Buffer, std::move(tmpBufferView));
+    m_context->bindShader<VK_SHADER_STAGE_COMPUTE_BIT>(Rc<DxvkShader>(m_shaders[videoFormat.FormatType]));
     m_context->pushConstants(0, sizeof(VkExtent2D), &imageExtent);
     m_context->dispatch(
       (imageExtent.width  / 8) + (imageExtent.width  % 8),
       (imageExtent.height / 8) + (imageExtent.height % 8),
       1);
 
-    // Reset the spec constants used...
-    if (specConstantValue)
-      m_context->setSpecConstant(VK_PIPELINE_BIND_POINT_COMPUTE, 0, 0);
-    
     m_transferCommands += 1;
   }
 
@@ -125,15 +119,15 @@ namespace dxvk {
 
 
   Rc<DxvkShader> D3D9FormatHelper::InitShader(SpirvCodeBuffer code) {
-    const std::array<DxvkResourceSlot, 2> resourceSlots = { {
-      { BindingIds::Image,  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,        VK_IMAGE_VIEW_TYPE_2D },
-      { BindingIds::Buffer, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, VK_IMAGE_VIEW_TYPE_1D },
+    const std::array<DxvkBindingInfo, 2> bindings = { {
+      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,        BindingIds::Image,  VK_IMAGE_VIEW_TYPE_2D, VK_SHADER_STAGE_COMPUTE_BIT, VK_ACCESS_SHADER_WRITE_BIT },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, BindingIds::Buffer, VK_IMAGE_VIEW_TYPE_1D, VK_SHADER_STAGE_COMPUTE_BIT, VK_ACCESS_SHADER_READ_BIT  },
     } };
 
     DxvkShaderCreateInfo info;
     info.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-    info.resourceSlotCount = resourceSlots.size();
-    info.resourceSlots = resourceSlots.data();
+    info.bindingCount = bindings.size();
+    info.bindings = bindings.data();
     info.pushConstOffset = 0;
     info.pushConstSize = sizeof(VkExtent2D);
 

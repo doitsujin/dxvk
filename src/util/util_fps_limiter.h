@@ -29,16 +29,6 @@ namespace dxvk {
     void setTargetFrameRate(double frameRate);
 
     /**
-     * \brief Sets display refresh rate
-     *
-     * This information is used to decide whether or not
-     * the limiter should be active in the first place in
-     * case vertical synchronization is enabled.
-     * \param [in] refreshRate Current refresh rate
-     */
-    void setDisplayRefreshRate(double refreshRate);
-
-    /**
      * \brief Stalls calling thread as necessary
      *
      * Blocks the calling thread if the limiter is enabled
@@ -53,36 +43,44 @@ namespace dxvk {
      * \returns \c true if the target frame rate is non-zero.
      */
     bool isEnabled() const {
-      return m_targetInterval != NtTimerDuration::zero();
+      return m_targetInterval != TimerDuration::zero();
     }
 
   private:
 
     using TimePoint = dxvk::high_resolution_clock::time_point;
 
-    using NtTimerDuration = std::chrono::duration<int64_t, std::ratio<1, 10000000>>;
+#ifdef _WIN32
+    // On Windows, we use NtDelayExecution which has units of 100ns.
+    using TimerDuration = std::chrono::duration<int64_t, std::ratio<1, 10000000>>;
     using NtQueryTimerResolutionProc = UINT (WINAPI *) (ULONG*, ULONG*, ULONG*);
     using NtSetTimerResolutionProc = UINT (WINAPI *) (ULONG, BOOL, ULONG*);
     using NtDelayExecutionProc = UINT (WINAPI *) (BOOL, LARGE_INTEGER*);
+    NtDelayExecutionProc NtDelayExecution = nullptr;
+#else
+    // On other platforms, we use the std library, which calls through to nanosleep -- which is ns.
+    using TimerDuration = std::chrono::nanoseconds;
+#endif
 
     dxvk::mutex     m_mutex;
 
-    NtTimerDuration m_targetInterval  = NtTimerDuration::zero();
-    NtTimerDuration m_refreshInterval = NtTimerDuration::zero();
-    NtTimerDuration m_deviation       = NtTimerDuration::zero();
+    TimerDuration   m_targetInterval  = TimerDuration::zero();
+    TimerDuration   m_deviation       = TimerDuration::zero();
     TimePoint       m_lastFrame;
 
     bool            m_initialized     = false;
     bool            m_envOverride     = false;
 
-    NtTimerDuration m_sleepGranularity = NtTimerDuration::zero();
-    NtTimerDuration m_sleepThreshold   = NtTimerDuration::zero();
+    TimerDuration   m_sleepGranularity = TimerDuration::zero();
+    TimerDuration   m_sleepThreshold   = TimerDuration::zero();
 
-    NtDelayExecutionProc NtDelayExecution = nullptr;
-
-    TimePoint sleep(TimePoint t0, NtTimerDuration duration);
+    TimePoint sleep(TimePoint t0, TimerDuration duration);
 
     void initialize();
+
+    void updateSleepGranularity();
+
+    void performSleep(TimerDuration sleepDuration);
 
   };
 

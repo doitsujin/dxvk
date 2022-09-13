@@ -15,11 +15,11 @@ namespace dxvk {
     };
     
     if (primitive >= DxbcPrimitive::Patch1) {
-      return static_cast<uint32_t>(primitive)
-           - static_cast<uint32_t>(DxbcPrimitive::Patch1);
+      return uint32_t(primitive)
+           - uint32_t(DxbcPrimitive::Patch1)
+           + 1u;
     } else {
-      return s_vertexCounts.at(
-        static_cast<uint32_t>(primitive));
+      return s_vertexCounts.at(uint32_t(primitive));
     }
   }
   

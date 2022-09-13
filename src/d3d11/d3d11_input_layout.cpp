@@ -52,7 +52,7 @@ namespace dxvk {
   }
   
   
-  void D3D11InputLayout::BindToContext(const Rc<DxvkContext>& ctx) {
+  void D3D11InputLayout::BindToContext(DxvkContext* ctx) {
     ctx->setInputLayout(
       m_attributes.size(),
       m_attributes.data(),

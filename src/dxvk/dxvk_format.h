@@ -13,7 +13,40 @@ namespace dxvk {
   };
   
   using DxvkFormatFlags = Flags<DxvkFormatFlag>;
-  
+
+  /**
+   * \brief Format support info
+   */
+  struct DxvkFormatFeatures {
+    VkFormatFeatureFlags2 optimal;
+    VkFormatFeatureFlags2 linear;
+    VkFormatFeatureFlags2 buffer;
+  };
+
+  /**
+   * \brief Format support limits for a given set of image usage flags
+   */
+  struct DxvkFormatLimits {
+    VkExtent3D                  maxExtent;
+    uint32_t                    maxMipLevels;
+    uint32_t                    maxArrayLayers;
+    VkSampleCountFlags          sampleCounts;
+    VkDeviceSize                maxResourceSize;
+    VkExternalMemoryFeatureFlags externalFeatures;
+  };
+
+  /**
+   * \brief Format query info
+   */
+  struct DxvkFormatQuery {
+    VkFormat                    format;
+    VkImageType                 type;
+    VkImageTiling               tiling;
+    VkImageUsageFlags           usage;
+    VkImageCreateFlags          flags;
+    VkExternalMemoryHandleTypeFlagBits handleType;
+  };
+
   /**
    * \brief Planar format info
    */
@@ -52,9 +85,33 @@ namespace dxvk {
     /// Plane info for multi-planar formats
     std::array<DxvkPlaneFormatInfo, 3> planes;
   };
-  
-  
-  
-  const DxvkFormatInfo* imageFormatInfo(VkFormat format);
-  
+
+  /// Number of formats defined in lookup table  
+  constexpr size_t DxvkFormatCount = 152;
+
+  /// Format lookup table
+  extern const std::array<DxvkFormatInfo, DxvkFormatCount> g_formatInfos;
+
+  /**
+   * \brief Looks up format info
+   *
+   * \param [in] format Format to look up
+   * \returns Info for the given format
+   */
+  const DxvkFormatInfo* lookupFormatInfoSlow(VkFormat format);
+
+  /**
+   * \brief Queries image format info
+   *
+   * Provides a fast path for the most common base formats.
+   * \param [in] format Format to look up
+   * \returns Info for the given format
+   */
+  inline const DxvkFormatInfo* lookupFormatInfo(VkFormat format) {
+    if (likely(format <= VK_FORMAT_BC7_SRGB_BLOCK))
+      return &g_formatInfos[uint32_t(format)];
+    else
+      return lookupFormatInfoSlow(format);
+  }
+
 }

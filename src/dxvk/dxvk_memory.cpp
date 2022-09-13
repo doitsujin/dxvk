@@ -179,9 +179,8 @@ namespace dxvk {
   }
 
 
-  DxvkMemoryAllocator::DxvkMemoryAllocator(const DxvkDevice* device)
-  : m_vkd             (device->vkd()),
-    m_device          (device),
+  DxvkMemoryAllocator::DxvkMemoryAllocator(DxvkDevice* device)
+  : m_device          (device),
     m_devProps        (device->adapter()->deviceProperties()),
     m_memProps        (device->adapter()->memoryProperties()) {
     for (uint32_t i = 0; i < m_memProps.memoryHeapCount; i++) {
@@ -203,35 +202,8 @@ namespace dxvk {
       m_memTypes[i].memTypeId  = i;
     }
 
-    /* Check what kind of heap the HVV memory type is on, if any. If the
-     * HVV memory type is on the largest device-local heap, we either have
-     * an UMA system or an RBAR-enabled system. Otherwise, there will likely
-     * be a separate, smaller heap for it. */
-    VkDeviceSize largestDeviceLocalHeap = 0;
-
-    for (uint32_t i = 0; i < m_memProps.memoryTypeCount; i++) {
-      if (m_memTypes[i].memType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-        largestDeviceLocalHeap = std::max(largestDeviceLocalHeap, m_memTypes[i].heap->properties.size);
-    }
-
-    /* Work around an issue on Nvidia drivers where using the entire
-     * device_local | host_visible heap can cause crashes or slowdowns */
-    if (m_device->properties().core.properties.vendorID == uint16_t(DxvkGpuVendor::Nvidia)) {
-      bool shrinkNvidiaHvvHeap = device->adapter()->matchesDriver(DxvkGpuVendor::Nvidia,
-        VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, VK_MAKE_VERSION(465, 0, 0));
-
-      applyTristate(shrinkNvidiaHvvHeap, device->config().shrinkNvidiaHvvHeap);
-
-      if (shrinkNvidiaHvvHeap) {
-        for (uint32_t i = 0; i < m_memProps.memoryTypeCount; i++) {
-          VkMemoryPropertyFlags hvvFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
-
-          if ((m_memTypes[i].memType.propertyFlags & hvvFlags) == hvvFlags
-           && (m_memTypes[i].heap->properties.size < largestDeviceLocalHeap))
-            m_memTypes[i].heap->budget = 32 << 20;
-        }
-      }
-    }
+    if (device->features().core.features.sparseBinding)
+      m_sparseMemoryTypes = determineSparseMemoryTypes(device);
   }
   
   
@@ -241,69 +213,72 @@ namespace dxvk {
   
   
   DxvkMemory DxvkMemoryAllocator::alloc(
-    const VkMemoryRequirements*             req,
-    const VkMemoryDedicatedRequirements&    dedAllocReq,
-    const VkMemoryDedicatedAllocateInfo&    dedAllocInfo,
-          VkMemoryPropertyFlags             flags,
+    const DxvkMemoryRequirements&           req,
+          DxvkMemoryProperties              info,
           DxvkMemoryFlags                   hints) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     // Keep small allocations together to avoid fragmenting
     // chunks for larger resources with lots of small gaps,
     // as well as resources with potentially weird lifetimes
-    if (req->size <= SmallAllocationThreshold) {
+    if (req.core.memoryRequirements.size <= SmallAllocationThreshold) {
       hints.set(DxvkMemoryFlag::Small);
       hints.clr(DxvkMemoryFlag::GpuWritable, DxvkMemoryFlag::GpuReadable);
     }
 
     // Ignore most hints for host-visible allocations since they
     // usually don't make much sense for those resources
-    if (flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+    if (info.flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
       hints = hints & DxvkMemoryFlag::Transient;
 
     // Try to allocate from a memory type which supports the given flags exactly
-    auto dedAllocPtr = dedAllocReq.prefersDedicatedAllocation ? &dedAllocInfo : nullptr;
-    DxvkMemory result = this->tryAlloc(req, dedAllocPtr, flags, hints);
+    DxvkMemory result = this->tryAlloc(req, info, hints);
 
-    // If the first attempt failed, try ignoring the dedicated allocation
-    if (!result && dedAllocPtr && !dedAllocReq.requiresDedicatedAllocation) {
-      result = this->tryAlloc(req, nullptr, flags, hints);
-      dedAllocPtr = nullptr;
+    if (!result && !req.dedicated.requiresDedicatedAllocation) {
+      // If that failed, try without a dedicated allocation
+      if (info.dedicated.image || info.dedicated.buffer) {
+        info.dedicated.image = VK_NULL_HANDLE;
+        info.dedicated.buffer = VK_NULL_HANDLE;
+
+        result = this->tryAlloc(req, info, hints);
+      }
     }
 
-    // Retry without the hint constraints
     if (!result) {
+      // Retry without the hint constraints
       hints.set(DxvkMemoryFlag::IgnoreConstraints);
-      result = this->tryAlloc(req, nullptr, flags, hints);
+      result = this->tryAlloc(req, info, hints);
     }
 
-    // If that still didn't work, probe slower memory types as well
-    VkMemoryPropertyFlags optFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-                                   | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-    VkMemoryPropertyFlags remFlags = 0;
-    
-    while (!result && (flags & optFlags)) {
-      remFlags |= optFlags & -optFlags;
-      optFlags &= ~remFlags;
+    if (!result) {
+      // If that still didn't work, probe slower memory types as well
+      VkMemoryPropertyFlags optFlags = info.flags & (
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+        VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
 
-      result = this->tryAlloc(req, dedAllocPtr, flags & ~remFlags, hints);
+      while (!result && optFlags) {
+        VkMemoryPropertyFlags bit = optFlags & -optFlags;
+        optFlags &= ~bit;
+
+        info.flags &= ~bit;
+        result = this->tryAlloc(req, info, hints);
+      }
     }
-    
+
     if (!result) {
       DxvkAdapterMemoryInfo memHeapInfo = m_device->adapter()->getMemoryHeapInfo();
 
       Logger::err(str::format(
         "DxvkMemoryAllocator: Memory allocation failed",
-        "\n  Size:      ", req->size,
-        "\n  Alignment: ", req->alignment,
-        "\n  Mem flags: ", "0x", std::hex, flags,
-        "\n  Mem types: ", "0x", std::hex, req->memoryTypeBits));
+        "\n  Size:      ", req.core.memoryRequirements.size,
+        "\n  Alignment: ", req.core.memoryRequirements.alignment,
+        "\n  Mem types: ", "0x", std::hex, req.core.memoryRequirements.memoryTypeBits));
 
       for (uint32_t i = 0; i < m_memProps.memoryHeapCount; i++) {
         Logger::err(str::format("Heap ", i, ": ",
           (m_memHeaps[i].stats.memoryAllocated >> 20), " MB allocated, ",
           (m_memHeaps[i].stats.memoryUsed      >> 20), " MB used, ",
-          m_device->extensions().extMemoryBudget
+          m_device->features().extMemoryBudget
             ? str::format(
                 (memHeapInfo.heaps[i].memoryAllocated >> 20), " MB allocated (driver), ",
                 (memHeapInfo.heaps[i].memoryBudget    >> 20), " MB budget (driver), ",
@@ -320,19 +295,20 @@ namespace dxvk {
   
   
   DxvkMemory DxvkMemoryAllocator::tryAlloc(
-    const VkMemoryRequirements*             req,
-    const VkMemoryDedicatedAllocateInfo*    dedAllocInfo,
-          VkMemoryPropertyFlags             flags,
+    const DxvkMemoryRequirements&           req,
+    const DxvkMemoryProperties&             info,
           DxvkMemoryFlags                   hints) {
     DxvkMemory result;
 
     for (uint32_t i = 0; i < m_memProps.memoryTypeCount && !result; i++) {
-      const bool supported = (req->memoryTypeBits & (1u << i)) != 0;
-      const bool adequate  = (m_memTypes[i].memType.propertyFlags & flags) == flags;
+      const bool supported = (req.core.memoryRequirements.memoryTypeBits & (1u << i)) != 0;
+      const bool adequate  = (m_memTypes[i].memType.propertyFlags & info.flags) == info.flags;
       
       if (supported && adequate) {
         result = this->tryAllocFromType(&m_memTypes[i],
-          flags, req->size, req->alignment, hints, dedAllocInfo);
+          req.core.memoryRequirements.size,
+          req.core.memoryRequirements.alignment,
+          info, hints);
       }
     }
     
@@ -342,27 +318,25 @@ namespace dxvk {
   
   DxvkMemory DxvkMemoryAllocator::tryAllocFromType(
           DxvkMemoryType*                   type,
-          VkMemoryPropertyFlags             flags,
           VkDeviceSize                      size,
           VkDeviceSize                      align,
-          DxvkMemoryFlags                   hints,
-    const VkMemoryDedicatedAllocateInfo*    dedAllocInfo) {
+    const DxvkMemoryProperties&             info,
+          DxvkMemoryFlags                   hints) {
     VkDeviceSize chunkSize = pickChunkSize(type->memTypeId, hints);
 
     DxvkMemory memory;
 
-    if (size >= chunkSize || dedAllocInfo) {
+    if (size >= chunkSize || info.dedicated.buffer || info.dedicated.image) {
       if (this->shouldFreeEmptyChunks(type->heap, size))
         this->freeEmptyChunks(type->heap);
 
-      DxvkDeviceMemory devMem = this->tryAllocDeviceMemory(
-        type, flags, size, hints, dedAllocInfo);
+      DxvkDeviceMemory devMem = this->tryAllocDeviceMemory(type, size, info, hints);
 
       if (devMem.memHandle != VK_NULL_HANDLE)
         memory = DxvkMemory(this, nullptr, type, devMem.memHandle, 0, size, devMem.memPointer);
     } else {
       for (uint32_t i = 0; i < type->chunks.size() && !memory; i++)
-        memory = type->chunks[i]->alloc(flags, size, align, hints);
+        memory = type->chunks[i]->alloc(info.flags, size, align, hints);
       
       if (!memory) {
         DxvkDeviceMemory devMem;
@@ -371,11 +345,11 @@ namespace dxvk {
           this->freeEmptyChunks(type->heap);
 
         for (uint32_t i = 0; i < 6 && (chunkSize >> i) >= size && !devMem.memHandle; i++)
-          devMem = tryAllocDeviceMemory(type, flags, chunkSize >> i, hints, nullptr);
+          devMem = tryAllocDeviceMemory(type, chunkSize >> i, info, hints);
 
         if (devMem.memHandle) {
           Rc<DxvkMemoryChunk> chunk = new DxvkMemoryChunk(this, type, devMem, hints);
-          memory = chunk->alloc(flags, size, align, hints);
+          memory = chunk->alloc(info.flags, size, align, hints);
 
           type->chunks.push_back(std::move(chunk));
         }
@@ -391,11 +365,12 @@ namespace dxvk {
   
   DxvkDeviceMemory DxvkMemoryAllocator::tryAllocDeviceMemory(
           DxvkMemoryType*                   type,
-          VkMemoryPropertyFlags             flags,
           VkDeviceSize                      size,
-          DxvkMemoryFlags                   hints,
-    const VkMemoryDedicatedAllocateInfo*    dedAllocInfo) {
-    bool useMemoryPriority = (flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+          DxvkMemoryProperties              info,
+          DxvkMemoryFlags                   hints) {
+    auto vk = m_device->vkd();
+
+    bool useMemoryPriority = (info.flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                           && (m_device->features().extMemoryPriority.memoryPriority);
     
     if (type->heap->budget && type->heap->stats.memoryAllocated + size > type->heap->budget)
@@ -410,29 +385,37 @@ namespace dxvk {
 
     DxvkDeviceMemory result;
     result.memSize  = size;
-    result.memFlags = flags;
+    result.memFlags = info.flags;
     result.priority = priority;
 
-    VkMemoryPriorityAllocateInfoEXT prio;
-    prio.sType            = VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT;
-    prio.pNext            = dedAllocInfo;
-    prio.priority         = priority;
+    VkMemoryPriorityAllocateInfoEXT priorityInfo = { VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT };
+    priorityInfo.priority       = priority;
 
-    VkMemoryAllocateInfo info;
-    info.sType            = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    info.pNext            = useMemoryPriority ? &prio : prio.pNext;
-    info.allocationSize   = size;
-    info.memoryTypeIndex  = type->memTypeId;
+    VkMemoryAllocateInfo memoryInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+    memoryInfo.allocationSize   = size;
+    memoryInfo.memoryTypeIndex  = type->memTypeId;
 
-    if (m_vkd->vkAllocateMemory(m_vkd->device(), &info, nullptr, &result.memHandle) != VK_SUCCESS)
+    if (info.sharedExport.handleTypes)
+      info.sharedExport.pNext = std::exchange(memoryInfo.pNext, &info.sharedExport);
+
+    if (info.sharedImportWin32.handleType)
+      info.sharedImportWin32.pNext = std::exchange(memoryInfo.pNext, &info.sharedImportWin32);
+
+    if (info.dedicated.buffer || info.dedicated.image)
+      info.dedicated.pNext = std::exchange(memoryInfo.pNext, &info.dedicated);
+
+    if (useMemoryPriority)
+      priorityInfo.pNext = std::exchange(memoryInfo.pNext, &priorityInfo);
+
+    if (vk->vkAllocateMemory(vk->device(), &memoryInfo, nullptr, &result.memHandle))
       return DxvkDeviceMemory();
     
-    if (flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
-      VkResult status = m_vkd->vkMapMemory(m_vkd->device(), result.memHandle, 0, VK_WHOLE_SIZE, 0, &result.memPointer);
+    if (info.flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+      VkResult status = vk->vkMapMemory(vk->device(), result.memHandle, 0, VK_WHOLE_SIZE, 0, &result.memPointer);
 
-      if (status != VK_SUCCESS) {
+      if (status) {
         Logger::err(str::format("DxvkMemoryAllocator: Mapping memory failed with ", status));
-        m_vkd->vkFreeMemory(m_vkd->device(), result.memHandle, nullptr);
+        vk->vkFreeMemory(vk->device(), result.memHandle, nullptr);
         return DxvkDeviceMemory();
       }
     }
@@ -488,7 +471,9 @@ namespace dxvk {
   void DxvkMemoryAllocator::freeDeviceMemory(
           DxvkMemoryType*       type,
           DxvkDeviceMemory      memory) {
-    m_vkd->vkFreeMemory(m_vkd->device(), memory.memHandle, nullptr);
+    auto vk = m_device->vkd();
+    vk->vkFreeMemory(vk->device(), memory.memHandle, nullptr);
+
     type->heap->stats.memoryAllocated -= memory.memSize;
     m_device->adapter()->notifyHeapMemoryFree(type->heapId, memory.memSize);
   }
@@ -561,6 +546,77 @@ namespace dxvk {
           [] (const Rc<DxvkMemoryChunk>& chunk) { return chunk->isEmpty(); }),
         type->chunks.end());
     }
+  }
+
+
+  uint32_t DxvkMemoryAllocator::determineSparseMemoryTypes(
+          DxvkDevice*           device) const {
+    auto vk = device->vkd();
+
+    VkMemoryRequirements requirements = { };
+    uint32_t typeMask = ~0u;
+
+    // Create sparse dummy buffer to find available memory types
+    VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    bufferInfo.flags        = VK_BUFFER_CREATE_SPARSE_BINDING_BIT
+                            | VK_BUFFER_CREATE_SPARSE_ALIASED_BIT
+                            | VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT;
+    bufferInfo.size         = 65536;
+    bufferInfo.usage        = VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT
+                            | VK_BUFFER_USAGE_INDEX_BUFFER_BIT
+                            | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+                            | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                            | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                            | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT
+                            | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
+                            | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                            | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    bufferInfo.sharingMode  = VK_SHARING_MODE_EXCLUSIVE;
+
+    VkBuffer buffer = VK_NULL_HANDLE;
+
+    if (vk->vkCreateBuffer(vk->device(), &bufferInfo, nullptr, &buffer)) {
+      Logger::err("Failed to create dummy buffer to query sparse memory types");
+      return 0;
+    }
+
+    vk->vkGetBufferMemoryRequirements(vk->device(), buffer, &requirements);
+    vk->vkDestroyBuffer(vk->device(), buffer, nullptr);
+    typeMask &= requirements.memoryTypeBits;
+
+    // Create sparse dummy image to find available memory types
+    VkImageCreateInfo imageInfo = { VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO };
+    imageInfo.flags         = VK_IMAGE_CREATE_SPARSE_BINDING_BIT
+                            | VK_IMAGE_CREATE_SPARSE_ALIASED_BIT
+                            | VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT;
+    imageInfo.imageType     = VK_IMAGE_TYPE_2D;
+    imageInfo.format        = VK_FORMAT_R8G8B8A8_UNORM;
+    imageInfo.extent        = { 256, 256, 1 };
+    imageInfo.mipLevels     = 1;
+    imageInfo.arrayLayers   = 1;
+    imageInfo.samples       = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                            | VK_IMAGE_USAGE_SAMPLED_BIT
+                            | VK_IMAGE_USAGE_STORAGE_BIT
+                            | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+                            | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    imageInfo.sharingMode   = VK_SHARING_MODE_EXCLUSIVE;
+
+    VkImage image = VK_NULL_HANDLE;
+
+    if (vk->vkCreateImage(vk->device(), &imageInfo, nullptr, &image)) {
+      Logger::err("Failed to create dummy image to query sparse memory types");
+      return 0;
+    }
+
+    vk->vkGetImageMemoryRequirements(vk->device(), image, &requirements);
+    vk->vkDestroyImage(vk->device(), image, nullptr);
+    typeMask &= requirements.memoryTypeBits;
+
+    Logger::log(typeMask ? LogLevel::Info : LogLevel::Error,
+      str::format("Memory type mask for sparse resources: 0x", std::hex, typeMask));
+    return typeMask;
   }
 
 }

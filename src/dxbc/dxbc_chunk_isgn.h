@@ -56,13 +56,13 @@ namespace dxvk {
 
     void printEntries() const;
     
+    static bool compareSemanticNames(
+      const std::string& a,
+      const std::string& b);
+
   private:
     
     std::vector<DxbcSgnEntry> m_entries;
-    
-    bool compareSemanticNames(
-      const std::string& a,
-      const std::string& b) const;
     
   };
   

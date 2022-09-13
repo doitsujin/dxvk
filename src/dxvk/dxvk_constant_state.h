@@ -105,6 +105,7 @@ namespace dxvk {
     VkBool32            depthBiasEnable;
     VkConservativeRasterizationModeEXT conservativeMode;
     VkSampleCountFlags  sampleCount;
+    VkBool32            flatShading;
   };
   
   
@@ -188,6 +189,7 @@ namespace dxvk {
     uint32_t          binding;
     uint32_t          fetchRate;
     VkVertexInputRate inputRate;
+    uint32_t          extent;
   };
   
   

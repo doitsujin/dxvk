@@ -156,11 +156,6 @@ namespace dxvk {
     inline D3D9Range& DirtyRange()  { return m_dirtyRange; }
 
     /**
-     * \brief The range of the buffer that might currently be read by the GPU
-     */
-    inline D3D9Range& GPUReadingRange() { return m_gpuReadingRange; }
-
-    /**
     * \brief Whether or not the buffer was written to by the GPU (in IDirect3DDevice9::ProcessVertices)
     */
     inline bool NeedsReadback() const     { return m_needsReadback; }
@@ -183,15 +178,6 @@ namespace dxvk {
      * \brief Whether or not the staging buffer needs to be copied to the actual buffer
      */
     inline bool NeedsUpload() { return m_desc.Pool != D3DPOOL_DEFAULT && !m_dirtyRange.IsDegenerate(); }
-
-    inline bool DoesStagingBufferUploads() const { return m_uploadUsingStaging; }
-
-    inline void EnableStagingBufferUploads() {
-      if (GetMapMode() != D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
-        return;
-
-      m_uploadUsingStaging = true;
-    }
 
     void PreLoad();
 
@@ -252,7 +238,6 @@ namespace dxvk {
     DxvkBufferSliceHandle       m_sliceHandle;
 
     D3D9Range                   m_dirtyRange;
-    D3D9Range                   m_gpuReadingRange;
 
     uint32_t                    m_lockCount = 0;
 

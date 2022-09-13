@@ -4,6 +4,8 @@
 
 #include "d3d9_device.h"
 
+#include "../util/util_win32_compat.h"
+
 namespace dxvk {
 
   D3D9Surface::D3D9Surface(

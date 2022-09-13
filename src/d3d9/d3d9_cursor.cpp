@@ -5,6 +5,7 @@
 
 namespace dxvk {
 
+#ifdef _WIN32
   void D3D9Cursor::UpdateCursor(int X, int Y) {
     POINT currentPos = { };
     if (::GetCursorPos(&currentPos) && currentPos == POINT{ X, Y })
@@ -43,5 +44,23 @@ namespace dxvk {
 
     return D3D_OK;
   }
+#else
+  void D3D9Cursor::UpdateCursor(int X, int Y) {
+    Logger::warn("D3D9Cursor::UpdateCursor: Not supported on current platform.");
+  }
+
+
+  BOOL D3D9Cursor::ShowCursor(BOOL bShow) {
+    Logger::warn("D3D9Cursor::ShowCursor: Not supported on current platform.");
+    return std::exchange(m_visible, bShow);
+  }
+
+
+  HRESULT D3D9Cursor::SetHardwareCursor(UINT XHotSpot, UINT YHotSpot, const CursorBitmap& bitmap) {
+    Logger::warn("D3D9Cursor::SetHardwareCursor: Not supported on current platform.");
+
+    return D3D_OK;
+  }
+#endif
 
 }

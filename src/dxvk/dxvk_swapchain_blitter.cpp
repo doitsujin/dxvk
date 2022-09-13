@@ -54,10 +54,10 @@ namespace dxvk {
       this->draw(ctx, m_fsResolve,
         dstView, dstRect, srcView, srcRect);
     } else {
-        if (m_resolveImage == nullptr
-         || m_resolveImage->info().extent != srcView->imageInfo().extent
-         || m_resolveImage->info().format != srcView->imageInfo().format)
-          this->createResolveImage(srcView->imageInfo());
+      if (m_resolveImage == nullptr
+       || m_resolveImage->info().extent != srcView->imageInfo().extent
+       || m_resolveImage->info().format != srcView->imageInfo().format)
+        this->createResolveImage(srcView->imageInfo());
 
       this->resolve(ctx, m_resolveView, srcView);
       this->draw(ctx, m_fsBlit, dstView, dstRect, m_resolveView, srcRect);
@@ -124,6 +124,7 @@ namespace dxvk {
     rsState.depthBiasEnable    = VK_FALSE;
     rsState.conservativeMode   = VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
     rsState.sampleCount        = VK_SAMPLE_COUNT_1_BIT;
+    rsState.flatShading        = VK_FALSE;
     ctx->setRasterizerState(rsState);
     
     DxvkMultisampleState msState;
@@ -180,7 +181,7 @@ namespace dxvk {
     renderTargets.color[0].view   = dstView;
     renderTargets.color[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-    ctx->bindRenderTargets(renderTargets);
+    ctx->bindRenderTargets(std::move(renderTargets), 0u);
 
     VkExtent2D dstExtent = {
       dstView->imageInfo().extent.width,
@@ -191,14 +192,14 @@ namespace dxvk {
     else
       ctx->clearRenderTarget(dstView, VK_IMAGE_ASPECT_COLOR_BIT, VkClearValue());
 
-    ctx->bindResourceSampler(BindingIds::Image, m_samplerPresent);
-    ctx->bindResourceSampler(BindingIds::Gamma, m_samplerGamma);
+    ctx->bindResourceSampler(VK_SHADER_STAGE_FRAGMENT_BIT, BindingIds::Image, Rc<DxvkSampler>(m_samplerPresent));
+    ctx->bindResourceSampler(VK_SHADER_STAGE_FRAGMENT_BIT, BindingIds::Gamma, Rc<DxvkSampler>(m_samplerGamma));
 
-    ctx->bindResourceView(BindingIds::Image, srcView, nullptr);
-    ctx->bindResourceView(BindingIds::Gamma, m_gammaView, nullptr);
+    ctx->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, BindingIds::Image, Rc<DxvkImageView>(srcView));
+    ctx->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, BindingIds::Gamma, Rc<DxvkImageView>(m_gammaView));
 
-    ctx->bindShader(VK_SHADER_STAGE_VERTEX_BIT, m_vs);
-    ctx->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, fs);
+    ctx->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(Rc<DxvkShader>(m_vs));
+    ctx->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(Rc<DxvkShader>(fs));
 
     PresenterArgs args;
     args.srcOffset = srcRect.offset;
@@ -211,8 +212,8 @@ namespace dxvk {
     ctx->pushConstants(0, sizeof(args), &args);
 
     ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, 0, srcView->imageInfo().sampleCount);
+    ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, 1, m_gammaView != nullptr);
     ctx->draw(3, 1, 0, 0);
-    ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, 0, 0);
   }
 
   void DxvkSwapchainBlitter::resolve(
@@ -300,8 +301,10 @@ namespace dxvk {
     samplerInfo.addressModeW    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
     samplerInfo.compareToDepth  = VK_FALSE;
     samplerInfo.compareOp       = VK_COMPARE_OP_ALWAYS;
+    samplerInfo.reductionMode   = VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
     samplerInfo.borderColor     = VkClearColorValue();
     samplerInfo.usePixelCoord   = VK_TRUE;
+    samplerInfo.nonSeamless     = VK_FALSE;
     m_samplerPresent = m_device->createSampler(samplerInfo);
 
     samplerInfo.addressModeU    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
@@ -317,10 +320,10 @@ namespace dxvk {
     SpirvCodeBuffer fsCodeCopy(dxvk_present_frag);
     SpirvCodeBuffer fsCodeResolve(dxvk_present_frag_ms);
     SpirvCodeBuffer fsCodeResolveAmd(dxvk_present_frag_ms_amd);
-    
-    const std::array<DxvkResourceSlot, 2> fsResourceSlots = {{
-      { BindingIds::Image, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_IMAGE_VIEW_TYPE_2D },
-      { BindingIds::Gamma, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_IMAGE_VIEW_TYPE_1D },
+
+    const std::array<DxvkBindingInfo, 2> fsBindings = {{
+      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, BindingIds::Image, VK_IMAGE_VIEW_TYPE_2D, VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
+      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, BindingIds::Gamma, VK_IMAGE_VIEW_TYPE_1D, VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
     }};
 
     DxvkShaderCreateInfo vsInfo;
@@ -330,8 +333,8 @@ namespace dxvk {
     
     DxvkShaderCreateInfo fsInfo;
     fsInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fsInfo.resourceSlotCount = fsResourceSlots.size();
-    fsInfo.resourceSlots = fsResourceSlots.data();
+    fsInfo.bindingCount = fsBindings.size();
+    fsInfo.bindings = fsBindings.data();
     fsInfo.pushConstSize = sizeof(PresenterArgs);
     fsInfo.inputMask = 0x1;
     fsInfo.outputMask = 0x1;
@@ -339,7 +342,7 @@ namespace dxvk {
     
     fsInfo.inputMask = 0;
     m_fsCopy = new DxvkShader(fsInfo, std::move(fsCodeCopy));
-    m_fsResolve = new DxvkShader(fsInfo, m_device->extensions().amdShaderFragmentMask
+    m_fsResolve = new DxvkShader(fsInfo, m_device->features().amdShaderFragmentMask
       ? std::move(fsCodeResolveAmd)
       : std::move(fsCodeResolve));
   }

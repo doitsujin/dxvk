@@ -27,25 +27,28 @@ namespace dxvk {
     GpDirtyFramebuffer,         ///< Framebuffer binding is out of date
     GpDirtyPipeline,            ///< Graphics pipeline binding is out of date
     GpDirtyPipelineState,       ///< Graphics pipeline needs to be recompiled
-    GpDirtyResources,           ///< Graphics pipeline resource bindings are out of date
-    GpDirtyDescriptorBinding,   ///< Graphics descriptor set needs to be rebound
     GpDirtyVertexBuffers,       ///< Vertex buffer bindings are out of date
     GpDirtyIndexBuffer,         ///< Index buffer binding are out of date
     GpDirtyXfbBuffers,          ///< Transform feedback buffer bindings are out of date
     GpDirtyBlendConstants,      ///< Blend constants have changed
+    GpDirtyDepthStencilState,   ///< Depth-stencil state has changed
     GpDirtyDepthBias,           ///< Depth bias has changed
     GpDirtyDepthBounds,         ///< Depth bounds have changed
     GpDirtyStencilRef,          ///< Stencil reference has changed
+    GpDirtyRasterizerState,     ///< Cull mode and front face have changed
     GpDirtyViewport,            ///< Viewport state has changed
+    GpDirtySpecConstants,       ///< Graphics spec constants are out of date
     GpDynamicBlendConstants,    ///< Blend constants are dynamic
+    GpDynamicDepthStencilState, ///< Depth-stencil state is dynamic
     GpDynamicDepthBias,         ///< Depth bias is dynamic
     GpDynamicDepthBounds,       ///< Depth bounds are dynamic
     GpDynamicStencilRef,        ///< Stencil reference is dynamic
+    GpDynamicRasterizerState,   ///< Cull mode and front face are dynamic
+    GpDynamicVertexStrides,     ///< Vertex buffer strides are dynamic
+    GpIndependentSets,          ///< Graphics pipeline layout was created with independent sets
     
-    CpDirtyPipeline,            ///< Compute pipeline binding are out of date
-    CpDirtyPipelineState,       ///< Compute pipeline needs to be recompiled
-    CpDirtyResources,           ///< Compute pipeline resource bindings are out of date
-    CpDirtyDescriptorBinding,   ///< Compute descriptor set needs to be rebound
+    CpDirtyPipelineState,       ///< Compute pipeline is out of date
+    CpDirtySpecConstants,       ///< Compute spec constants are out of date
     
     DirtyDrawBuffer,            ///< Indirect argument buffer is dirty
     DirtyPushConstants,         ///< Push constant data has changed
@@ -57,9 +60,10 @@ namespace dxvk {
   /**
    * \brief Context feature bits
    */
-  enum class DxvkContextFeature {
-    NullDescriptors,
-    ExtendedDynamicState,
+  enum class DxvkContextFeature : uint32_t {
+    TrackGraphicsPipeline,
+    VariableMultisampleRate,
+    FeatureCount
   };
 
   using DxvkContextFeatures = Flags<DxvkContextFeature>;
@@ -91,18 +95,18 @@ namespace dxvk {
     
     std::array<DxvkBufferSlice, DxvkLimits::MaxNumVertexBindings> vertexBuffers = { };
     std::array<uint32_t,        DxvkLimits::MaxNumVertexBindings> vertexStrides = { };
+    std::array<uint32_t,        DxvkLimits::MaxNumVertexBindings> vertexExtents = { };
   };
   
   
   struct DxvkViewportState {
+    uint32_t viewportCount = 0;
     std::array<VkViewport, DxvkLimits::MaxNumViewports> viewports    = { };
     std::array<VkRect2D,   DxvkLimits::MaxNumViewports> scissorRects = { };
   };
 
 
   struct DxvkOutputMergerState {
-    std::array<VkClearValue, MaxNumRenderTargets + 1> clearValues = { };
-    
     DxvkRenderTargets   renderTargets;
     DxvkRenderPassOps   renderPassOps;
     DxvkFramebufferInfo framebufferInfo;
@@ -120,11 +124,18 @@ namespace dxvk {
   };
   
   
+  struct DxvkSpecConstantState {
+    uint32_t                                  mask = 0;
+    std::array<uint32_t, MaxNumSpecConstants> data = { };
+  };
+  
+  
   struct DxvkGraphicsPipelineState {
     DxvkGraphicsPipelineShaders   shaders;
     DxvkGraphicsPipelineStateInfo state;
     DxvkGraphicsPipelineFlags     flags;
     DxvkGraphicsPipeline*         pipeline = nullptr;
+    DxvkSpecConstantState         constants;
   };
   
   
@@ -132,6 +143,7 @@ namespace dxvk {
     DxvkComputePipelineShaders    shaders;
     DxvkComputePipelineStateInfo  state;
     DxvkComputePipeline*          pipeline = nullptr;
+    DxvkSpecConstantState         constants;
   };
 
 
@@ -140,6 +152,8 @@ namespace dxvk {
     DxvkDepthBias       depthBias         = { 0.0f, 0.0f, 0.0f };
     DxvkDepthBounds     depthBounds       = { false, 0.0f, 1.0f };
     uint32_t            stencilReference  = 0;
+    VkCullModeFlags     cullMode          = VK_CULL_MODE_BACK_BIT;
+    VkFrontFace         frontFace         = VK_FRONT_FACE_CLOCKWISE;
   };
 
 

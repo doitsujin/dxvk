@@ -1,9 +1,7 @@
 #pragma once
 
-#include "d3d11_buffer.h"
 #include "d3d11_cmdlist.h"
 #include "d3d11_context.h"
-#include "d3d11_texture.h"
 
 #include <vector>
 
@@ -23,18 +21,14 @@ namespace dxvk {
     D3D11_MAPPED_SUBRESOURCE  MapInfo;
   };
   
-  class D3D11DeferredContext : public D3D11DeviceContext {
-    friend class D3D11DeviceContext;
+  class D3D11DeferredContext : public D3D11CommonContext<D3D11DeferredContext> {
+    friend class D3D11CommonContext<D3D11DeferredContext>;
   public:
     
     D3D11DeferredContext(
             D3D11Device*    pParent,
       const Rc<DxvkDevice>& Device,
             UINT            ContextFlags);
-    
-    D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE GetType();
-    
-    UINT STDMETHODCALLTYPE GetContextFlags();
     
     HRESULT STDMETHODCALLTYPE GetData(
             ID3D11Asynchronous*         pAsync,
@@ -81,30 +75,15 @@ namespace dxvk {
             ID3D11Resource*             pResource,
             UINT                        Subresource);
     
-    void STDMETHODCALLTYPE UpdateSubresource(
-            ID3D11Resource*                   pDstResource,
-            UINT                              DstSubresource,
-      const D3D11_BOX*                        pDstBox,
-      const void*                             pSrcData,
-            UINT                              SrcRowPitch,
-            UINT                              SrcDepthPitch);
-
-    void STDMETHODCALLTYPE UpdateSubresource1(
-            ID3D11Resource*                   pDstResource,
-            UINT                              DstSubresource,
-      const D3D11_BOX*                        pDstBox,
-      const void*                             pSrcData,
-            UINT                              SrcRowPitch,
-            UINT                              SrcDepthPitch,
-            UINT                              CopyFlags);
-
     void STDMETHODCALLTYPE SwapDeviceContextState(
            ID3DDeviceContextState*           pState,
            ID3DDeviceContextState**          ppPreviousState);
 
+    D3D10DeviceLock LockContext() {
+      return D3D10DeviceLock();
+    }
+
   private:
-    
-    const UINT m_contextFlags;
     
     // Command list that we're recording
     Com<D3D11CommandList> m_commandList;

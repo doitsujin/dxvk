@@ -1,6 +1,6 @@
 #version 450
 
-layout(constant_id = 1225) const bool srgbSwapchain = false;
+layout(constant_id = 0) const bool srgbSwapchain = false;
 
 layout(location = 0) in  vec2 v_coord;
 layout(location = 0) out vec4 o_color;

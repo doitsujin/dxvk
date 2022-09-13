@@ -1,5 +1,7 @@
 #include "d3d9_util.h"
 
+#include "../util/util_win32_compat.h"
+
 namespace dxvk {
 
   typedef HRESULT (STDMETHODCALLTYPE *D3DXDisassembleShader) (
@@ -37,9 +39,10 @@ namespace dxvk {
 
 
   HRESULT DecodeMultiSampleType(
+    const Rc<DxvkDevice>&           pDevice,
           D3DMULTISAMPLE_TYPE       MultiSample,
           DWORD                     MultisampleQuality,
-          VkSampleCountFlagBits*    pCount) {
+          VkSampleCountFlagBits*    pSampleCount) {
     uint32_t sampleCount = std::max<uint32_t>(MultiSample, 1u);
 
     // Check if this is a power of two...
@@ -49,8 +52,14 @@ namespace dxvk {
     if (MultiSample == D3DMULTISAMPLE_NONMASKABLE)
       sampleCount = 1u << MultisampleQuality;
 
-    if (pCount != nullptr)
-      *pCount = VkSampleCountFlagBits(sampleCount);
+    const auto& limits = pDevice->properties().core.properties.limits;
+    VkSampleCountFlags supportedSampleCounts = limits.framebufferColorSampleCounts & limits.framebufferDepthSampleCounts;
+
+    while (sampleCount > supportedSampleCounts)
+      sampleCount >>= 1;
+
+    if (pSampleCount)
+      *pSampleCount = VkSampleCountFlagBits(sampleCount);
 
     return D3D_OK;
   }
@@ -90,14 +99,14 @@ namespace dxvk {
   }
 
 
-  VkFormatFeatureFlags GetImageFormatFeatures(DWORD Usage) {
-    VkFormatFeatureFlags features = VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+  VkFormatFeatureFlags2 GetImageFormatFeatures(DWORD Usage) {
+    VkFormatFeatureFlags2 features = VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT;
 
     if (Usage & D3DUSAGE_DEPTHSTENCIL)
-      features |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+      features |= VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT;
 
     if (Usage & D3DUSAGE_RENDERTARGET)
-      features |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+      features |= VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT;
 
     return features;
   }
