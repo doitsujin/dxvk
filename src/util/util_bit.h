@@ -1,5 +1,16 @@
 #pragma once
 
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+  #define DXVK_ARCH_X86
+  #if defined(__x86_64__) || defined(_M_X64)
+    #define DXVK_ARCH_X86_64
+  #endif
+#elif defined(__aarch64__) || defined(_M_ARM64)
+  #define DXVK_ARCH_ARM64
+#else
+#error "Unknown CPU Architecture"
+#endif
+
 #ifndef _MSC_VER
 #if defined(__WINE__) && defined(__clang__)
 #pragma push_macro("_WIN32")
