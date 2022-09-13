@@ -42,26 +42,10 @@ namespace dxvk {
   }
 
 
-  void FpsLimiter::setDisplayRefreshRate(double refreshRate) {
-    std::lock_guard<dxvk::mutex> lock(m_mutex);
-
-    m_refreshInterval = refreshRate > 0.0
-      ? NtTimerDuration(int64_t(double(NtTimerDuration::period::den) / refreshRate))
-      : NtTimerDuration::zero();
-  }
-
-
   void FpsLimiter::delay(bool vsyncEnabled) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     if (!isEnabled())
-      return;
-
-    // If the swap chain is known to have vsync enabled and the
-    // refresh rate is similar to the target frame rate, disable
-    // the limiter so it does not screw up frame times
-    if (vsyncEnabled && !m_envOverride
-     && m_refreshInterval * 100 > m_targetInterval * 97)
       return;
 
     auto t0 = m_lastFrame;

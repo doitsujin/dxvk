@@ -252,9 +252,6 @@ namespace dxvk {
       DXGI_RATIONAL rate = pDisplayMode->RefreshRate;
       m_displayRefreshRate = double(rate.Numerator) / double(rate.Denominator);
     }
-
-    if (m_presenter != nullptr)
-      m_presenter->setFrameRateLimiterRefreshRate(m_displayRefreshRate);
   }
 
 
@@ -406,7 +403,6 @@ namespace dxvk {
       presenterDesc);
     
     m_presenter->setFrameRateLimit(m_parent->GetOptions()->maxFrameRate);
-    m_presenter->setFrameRateLimiterRefreshRate(m_displayRefreshRate);
 
     CreateRenderTargetViews();
   }
