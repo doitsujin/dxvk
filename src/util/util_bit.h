@@ -177,7 +177,7 @@ namespace dxvk::bit {
   template<typename T>
   bool bcmpeq(const T* a, const T* b) {
     static_assert(alignof(T) >= 16);
-    #if defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
+    #if defined(DXVK_ARCH_X86) && (defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER))
     auto ai = reinterpret_cast<const __m128i*>(a);
     auto bi = reinterpret_cast<const __m128i*>(b);
 
