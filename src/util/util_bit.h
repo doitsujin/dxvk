@@ -68,7 +68,7 @@ namespace dxvk::bit {
     return _tzcnt_u32(n);
     #elif defined(__BMI__)
     return __tzcnt_u32(n);
-    #elif defined(__GNUC__) || defined(__clang__)
+    #elif defined(DXVK_ARCH_X86) && (defined(__GNUC__) || defined(__clang__))
     // tzcnt is encoded as rep bsf, so we can use it on all
     // processors, but the behaviour of zero inputs differs:
     // - bsf:   zf = 1, cf = ?, result = ?
@@ -85,6 +85,8 @@ namespace dxvk::bit {
       : "r" (n)
       : "cc");
     return res;
+    #elif defined(__GNUC__) || defined(__clang__)
+    return n != 0 ? __builtin_ctz(n) : 32;
     #else
     uint32_t r = 31;
     n &= -n;
@@ -98,11 +100,11 @@ namespace dxvk::bit {
   }
 
   inline uint32_t tzcnt(uint64_t n) {
-    #if defined(_M_X64) && defined(_MSC_VER) && !defined(__clang__)
+    #if defined(DXVK_ARCH_X86_64) && defined(_MSC_VER) && !defined(__clang__)
     return _tzcnt_u64(n);
-    #elif defined(__x86_64__) && defined(__BMI__)
+    #elif defined(DXVK_ARCH_X86_64) && defined(__BMI__)
     return __tzcnt_u64(n);
-    #elif defined(__x86_64__) && defined(__GNUC__) || defined(__clang__)
+    #elif defined(DXVK_ARCH_X86_64) && defined(__GNUC__) || defined(__clang__)
     uint64_t res;
     uint64_t tmp;
     asm (
@@ -114,6 +116,8 @@ namespace dxvk::bit {
       : "r" (n)
       : "cc");
     return res;
+    #elif defined(__GNUC__) || defined(__clang__)
+    return n != 0 ? __builtin_ctzll(n) : 64;
     #else
     uint32_t lo = uint32_t(n);
     if (lo) {
