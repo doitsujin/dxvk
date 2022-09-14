@@ -616,7 +616,7 @@ namespace dxvk {
     if (!wsi::isWindow(m_window))
       return S_OK;
     
-    if (!wsi::leaveFullscreenMode(m_window, &m_windowState)) {
+    if (!wsi::leaveFullscreenMode(m_window, &m_windowState, true)) {
       Logger::err("DXGI: LeaveFullscreenMode: Failed to exit fullscreen mode");
       return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
     }

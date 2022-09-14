@@ -198,7 +198,8 @@ namespace dxvk::wsi {
 
   bool leaveFullscreenMode(
           HWND             hWindow,
-          DxvkWindowState* pState) {
+          DxvkWindowState* pState,
+          bool             restoreCoordinates) {
     // Only restore the window style if the application hasn't
     // changed them. This is in line with what native DXGI does.
     LONG curStyle   = ::GetWindowLongW(hWindow, GWL_STYLE)   & ~WS_VISIBLE;
@@ -211,11 +212,14 @@ namespace dxvk::wsi {
     }
 
     // Restore window position and apply the style
+    UINT flags = SWP_FRAMECHANGED | SWP_NOACTIVATE;
     const RECT rect = pState->rect;
+
+    if (!restoreCoordinates)
+      flags |= SWP_NOSIZE | SWP_NOMOVE;
     
     ::SetWindowPos(hWindow, (pState->exstyle & WS_EX_TOPMOST) ? HWND_TOPMOST : HWND_NOTOPMOST,
-      rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
-      SWP_FRAMECHANGED | SWP_NOACTIVATE);
+      rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, flags);
 
     return true;
   }

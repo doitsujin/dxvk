@@ -1055,7 +1055,7 @@ namespace dxvk {
 
     ResetWindowProc(m_window);
     
-    if (!wsi::leaveFullscreenMode(m_window, &m_windowState)) {
+    if (!wsi::leaveFullscreenMode(m_window, &m_windowState, false)) {
       Logger::err("D3D9: LeaveFullscreenMode: Failed to exit fullscreen mode");
       return D3DERR_NOTAVAILABLE;
     }
