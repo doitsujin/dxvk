@@ -101,7 +101,8 @@ namespace dxvk::wsi {
 
   bool leaveFullscreenMode(
           HWND             hWindow,
-          DxvkWindowState* pState) {
+          DxvkWindowState* pState,
+          bool             restoreCoordinates) {
     SDL_Window* window = fromHwnd(hWindow);
 
     if (SDL_SetWindowFullscreen(window, 0) != 0) {

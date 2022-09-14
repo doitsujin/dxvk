@@ -73,7 +73,8 @@ namespace dxvk::wsi {
     */
   bool leaveFullscreenMode(
           HWND             hWindow,
-          DxvkWindowState* pState);
+          DxvkWindowState* pState,
+          bool             restoreCoordinates);
 
   /**
     * \brief Restores the display mode if necessary
