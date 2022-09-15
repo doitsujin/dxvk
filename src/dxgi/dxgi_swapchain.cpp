@@ -18,7 +18,7 @@ namespace dxvk {
     m_descFs    (*pFullscreenDesc),
     m_presentCount(0u),
     m_presenter (pPresenter),
-    m_monitor   (nullptr) {
+    m_monitor   (wsi::getWindowMonitor(m_window)) {
     if (FAILED(m_presenter->GetAdapter(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&m_adapter))))
       throw DxvkError("DXGI: Failed to get adapter for present device");
     
@@ -32,7 +32,8 @@ namespace dxvk {
   
   
   DxgiSwapChain::~DxgiSwapChain() {
-    RestoreDisplayMode(m_monitor);
+    if (!m_descFs.Windowed)
+      RestoreDisplayMode(m_monitor);
 
     // Decouple swap chain from monitor if necessary
     DXGI_VK_MONITOR_DATA* monitorInfo = nullptr;
@@ -174,14 +175,36 @@ namespace dxvk {
     static bool s_errorShown = false;
 
     if (!std::exchange(s_errorShown, true))
-      Logger::warn("DxgiSwapChain::GetFrameStatistics: Semi-stub");
+      Logger::warn("DxgiSwapChain::GetFrameStatistics: Frame statistics may be inaccurate");
 
-    // TODO deal with the refresh counts at some point
-    pStats->PresentCount = m_presentCount;
-    pStats->PresentRefreshCount = 0;
-    pStats->SyncRefreshCount = 0;
-    pStats->SyncQPCTime.QuadPart = dxvk::high_resolution_clock::get_counter();
-    pStats->SyncGPUTime.QuadPart = 0;
+    // If possible, use the monitor's frame statistics
+    DXGI_VK_MONITOR_DATA* monitorData = nullptr;
+
+    if (SUCCEEDED(AcquireMonitorData(m_monitor, &monitorData))) {
+      auto refreshPeriod = computeRefreshPeriod(
+        monitorData->LastMode.RefreshRate.Numerator,
+        monitorData->LastMode.RefreshRate.Denominator);
+
+      auto t1Counter = dxvk::high_resolution_clock::get_counter();
+
+      auto t0 = dxvk::high_resolution_clock::get_time_from_counter(monitorData->FrameStats.SyncQPCTime.QuadPart);
+      auto t1 = dxvk::high_resolution_clock::get_time_from_counter(t1Counter);
+
+      pStats->PresentCount          = monitorData->FrameStats.PresentCount;
+      pStats->PresentRefreshCount   = monitorData->FrameStats.PresentRefreshCount;
+      pStats->SyncRefreshCount      = monitorData->FrameStats.SyncRefreshCount + computeRefreshCount(t0, t1, refreshPeriod);
+      pStats->SyncQPCTime.QuadPart  = t1Counter;
+      pStats->SyncGPUTime.QuadPart  = 0;
+
+      ReleaseMonitorData();
+    } else {
+      pStats->PresentCount          = m_presentCount;
+      pStats->PresentRefreshCount   = 0;
+      pStats->SyncRefreshCount      = 0;
+      pStats->SyncQPCTime.QuadPart  = dxvk::high_resolution_clock::get_counter();
+      pStats->SyncGPUTime.QuadPart  = 0;
+    }
+
     return S_OK;
   }
   
@@ -268,13 +291,33 @@ namespace dxvk {
 
     try {
       HRESULT hr = m_presenter->Present(SyncInterval, PresentFlags, nullptr);
-      if (hr == S_OK && !(PresentFlags & DXGI_PRESENT_TEST))
-        m_presentCount++;
-      return hr;
+
+      if (hr != S_OK || (PresentFlags & DXGI_PRESENT_TEST))
+        return hr;
     } catch (const DxvkError& err) {
       Logger::err(err.message());
       return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
     }
+
+    // Update frame statistics
+    DXGI_VK_MONITOR_DATA* monitorData;
+
+    if (SUCCEEDED(AcquireMonitorData(m_monitor, &monitorData))) {
+      auto refreshPeriod = computeRefreshPeriod(
+        monitorData->LastMode.RefreshRate.Numerator,
+        monitorData->LastMode.RefreshRate.Denominator);
+
+      auto t0 = dxvk::high_resolution_clock::get_time_from_counter(monitorData->FrameStats.SyncQPCTime.QuadPart);
+      auto t1 = dxvk::high_resolution_clock::now();
+
+      monitorData->FrameStats.PresentCount += 1;
+      monitorData->FrameStats.PresentRefreshCount = monitorData->FrameStats.SyncRefreshCount + computeRefreshCount(t0, t1, refreshPeriod);
+      ReleaseMonitorData();
+    } else {
+      m_presentCount += 1;
+    }
+
+    return S_OK;
   }
   
   
@@ -633,8 +676,8 @@ namespace dxvk {
     HMONITOR monitor = m_monitor;
 
     m_descFs.Windowed = TRUE;
-    m_monitor = nullptr;
     m_target  = nullptr;
+    m_monitor = wsi::getWindowMonitor(m_window);
     
     if (!wsi::isWindow(m_window))
       return S_OK;
