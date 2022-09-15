@@ -14,6 +14,10 @@
 
 #include "../dxvk/dxvk_format.h"
 
+#include "../util/util_misc.h"
+#include "../util/util_sleep.h"
+#include "../util/util_time.h"
+
 namespace dxvk {
   
   DxgiOutput::DxgiOutput(
@@ -23,12 +27,16 @@ namespace dxvk {
   : m_monitorInfo(factory->GetMonitorInfo()),
     m_adapter(adapter),
     m_monitor(monitor) {
+    // Query current display mode
+    wsi::WsiMode activeWsiMode = { };
+    wsi::getCurrentDisplayMode(m_monitor, &activeWsiMode);
+
     // Init monitor info if necessary
-    DXGI_VK_MONITOR_DATA monitorData;
-    monitorData.pSwapChain = nullptr;
-    monitorData.FrameStats = DXGI_FRAME_STATISTICS();
+    DXGI_VK_MONITOR_DATA monitorData = { };
+    monitorData.FrameStats.SyncQPCTime.QuadPart = dxvk::high_resolution_clock::get_counter();
     monitorData.GammaCurve.Scale  = { 1.0f, 1.0f, 1.0f };
     monitorData.GammaCurve.Offset = { 0.0f, 0.0f, 0.0f };
+    monitorData.LastMode = ConvertDisplayMode(activeWsiMode);
     
     for (uint32_t i = 0; i < DXGI_VK_GAMMA_CP_COUNT; i++) {
       const float value = GammaControlPointLocation(i);
@@ -443,7 +451,31 @@ namespace dxvk {
     static bool s_errorShown = false;
 
     if (!std::exchange(s_errorShown, true))
-      Logger::warn("DxgiOutput::WaitForVBlank: Stub");
+      Logger::warn("DxgiOutput::WaitForVBlank: Inaccurate");
+
+    // Get monitor data to compute the sleep duration
+    DXGI_VK_MONITOR_DATA* monitorInfo = nullptr;
+    HRESULT hr = m_monitorInfo->AcquireMonitorData(m_monitor, &monitorInfo);
+
+    if (FAILED(hr))
+      return hr;
+
+    // Estimate number of vblanks since last mode
+    // change, then wait for one more refresh period
+    auto refreshPeriod = computeRefreshPeriod(
+      monitorInfo->LastMode.RefreshRate.Numerator,
+      monitorInfo->LastMode.RefreshRate.Denominator);
+
+    auto t0 = dxvk::high_resolution_clock::get_time_from_counter(monitorInfo->FrameStats.SyncQPCTime.QuadPart);
+    auto t1 = dxvk::high_resolution_clock::now();
+
+    uint64_t vblankCount = computeRefreshCount(t0, t1, refreshPeriod);
+    auto t2 = t0 + (vblankCount + 1) * refreshPeriod;
+
+    m_monitorInfo->ReleaseMonitorData();
+
+    // Sleep until the given time point
+    Sleep::sleepUntil(t1, t2);
     return S_OK;
   }
   

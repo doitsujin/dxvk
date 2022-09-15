@@ -2,6 +2,8 @@
 
 #include "../dxvk/dxvk_include.h"
 
+#include "../util/util_time.h"
+
 #include "dxgi_format.h"
 #include "dxgi_include.h"
 
@@ -24,6 +26,7 @@ struct DXGI_VK_MONITOR_DATA {
   dxvk::DxgiSwapChain*  pSwapChain;
   DXGI_FRAME_STATISTICS FrameStats;
   DXGI_GAMMA_CONTROL    GammaCurve;
+  DXGI_MODE_DESC1       LastMode;
 };
 
 
