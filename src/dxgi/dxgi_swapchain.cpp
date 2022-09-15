@@ -94,12 +94,19 @@ namespace dxvk {
     if (!wsi::isWindow(m_window))
       return DXGI_ERROR_INVALID_CALL;
     
-    if (m_target != nullptr) {
-      *ppOutput = m_target.ref();
-      return S_OK;
+    Com<IDXGIOutput1> output;
+
+    if (m_target == nullptr) {
+      HRESULT hr = GetOutputFromMonitor(wsi::getWindowMonitor(m_window), &output);
+
+      if (FAILED(hr))
+        return hr;
+    } else {
+      output = m_target;
     }
 
-    return GetOutputFromMonitor(wsi::getWindowMonitor(m_window), ppOutput);
+    *ppOutput = output.ref();
+    return S_OK;
   }
   
   
@@ -322,26 +329,35 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::ResizeTarget(const DXGI_MODE_DESC* pNewTargetParameters) {
     std::lock_guard<dxvk::recursive_mutex> lock(m_lockWindow);
 
-    if (pNewTargetParameters == nullptr)
+    if (!pNewTargetParameters)
       return DXGI_ERROR_INVALID_CALL;
     
     if (!wsi::isWindow(m_window))
       return DXGI_ERROR_INVALID_CALL;
 
+    // Promote display mode
+    DXGI_MODE_DESC1 newDisplayMode = { };
+    newDisplayMode.Width = pNewTargetParameters->Width;
+    newDisplayMode.Height = pNewTargetParameters->Height;
+    newDisplayMode.RefreshRate = pNewTargetParameters->RefreshRate;
+    newDisplayMode.Format = pNewTargetParameters->Format;
+    newDisplayMode.ScanlineOrdering = pNewTargetParameters->ScanlineOrdering;
+    newDisplayMode.Scaling = pNewTargetParameters->Scaling;
+
     // Update the swap chain description
-    if (pNewTargetParameters->RefreshRate.Numerator != 0)
-      m_descFs.RefreshRate = pNewTargetParameters->RefreshRate;
+    if (newDisplayMode.RefreshRate.Numerator != 0)
+      m_descFs.RefreshRate = newDisplayMode.RefreshRate;
     
-    m_descFs.ScanlineOrdering = pNewTargetParameters->ScanlineOrdering;
-    m_descFs.Scaling          = pNewTargetParameters->Scaling;
+    m_descFs.ScanlineOrdering = newDisplayMode.ScanlineOrdering;
+    m_descFs.Scaling          = newDisplayMode.Scaling;
     
     if (m_descFs.Windowed) {
       wsi::resizeWindow(
         m_window, &m_windowState,
-        pNewTargetParameters->Width,
-        pNewTargetParameters->Height);
+        newDisplayMode.Width,
+        newDisplayMode.Height);
     } else {
-      Com<IDXGIOutput> output;
+      Com<IDXGIOutput1> output;
       
       if (FAILED(GetOutputFromMonitor(m_monitor, &output))) {
         Logger::err("DXGI: ResizeTarget: Failed to query containing output");
@@ -350,7 +366,7 @@ namespace dxvk {
       
       // If the swap chain allows it, change the display mode
       if (m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH) {
-        ChangeDisplayMode(output.ptr(), pNewTargetParameters);
+        ChangeDisplayMode(output.ptr(), &newDisplayMode);
         NotifyModeChange(m_monitor, FALSE);
       }
 
@@ -369,8 +385,13 @@ namespace dxvk {
     if (!Fullscreen && pTarget)
       return DXGI_ERROR_INVALID_CALL;
 
+    Com<IDXGIOutput1> target;
+
+    if (pTarget)
+      pTarget->QueryInterface(IID_PPV_ARGS(&target));
+
     if (m_descFs.Windowed && Fullscreen)
-      return this->EnterFullscreenMode(pTarget);
+      return this->EnterFullscreenMode(target.ptr());
     else if (!m_descFs.Windowed && !Fullscreen)
       return this->LeaveFullscreenMode();
     
@@ -528,14 +549,14 @@ namespace dxvk {
   }
 
 
-  HRESULT DxgiSwapChain::EnterFullscreenMode(IDXGIOutput* pTarget) {
-    Com<IDXGIOutput> output = pTarget;
+  HRESULT DxgiSwapChain::EnterFullscreenMode(IDXGIOutput1* pTarget) {
+    Com<IDXGIOutput1> output = pTarget;
 
     if (!wsi::isWindow(m_window))
       return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
     
     if (output == nullptr) {
-      if (FAILED(GetContainingOutput(&output))) {
+      if (FAILED(GetOutputFromMonitor(wsi::getWindowMonitor(m_window), &output))) {
         Logger::err("DXGI: EnterFullscreenMode: Cannot query containing output");
         return E_FAIL;
       }
@@ -544,7 +565,7 @@ namespace dxvk {
     const bool modeSwitch = m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
     
     if (modeSwitch) {
-      DXGI_MODE_DESC displayMode;
+      DXGI_MODE_DESC1 displayMode = { };
       displayMode.Width            = m_desc.Width;
       displayMode.Height           = m_desc.Height;
       displayMode.RefreshRate      = m_descFs.RefreshRate;
@@ -627,8 +648,8 @@ namespace dxvk {
   
   
   HRESULT DxgiSwapChain::ChangeDisplayMode(
-          IDXGIOutput*            pOutput,
-    const DXGI_MODE_DESC*         pDisplayMode) {
+          IDXGIOutput1*           pOutput,
+    const DXGI_MODE_DESC1*        pDisplayMode) {
     if (!pOutput)
       return DXGI_ERROR_INVALID_CALL;
     
@@ -636,13 +657,13 @@ namespace dxvk {
     DXGI_OUTPUT_DESC outputDesc;
     pOutput->GetDesc(&outputDesc);
     
-    DXGI_MODE_DESC preferredMode = *pDisplayMode;
-    DXGI_MODE_DESC selectedMode;
+    DXGI_MODE_DESC1 preferredMode = *pDisplayMode;
+    DXGI_MODE_DESC1 selectedMode;
 
     if (preferredMode.Format == DXGI_FORMAT_UNKNOWN)
       preferredMode.Format = m_desc.Format;
     
-    HRESULT hr = pOutput->FindClosestMatchingMode(
+    HRESULT hr = pOutput->FindClosestMatchingMode1(
       &preferredMode, &selectedMode, nullptr);
     
     if (FAILED(hr)) {
@@ -654,16 +675,7 @@ namespace dxvk {
       return hr;
     }
 
-    DXGI_MODE_DESC1 selectedMode1;
-    selectedMode1.Width            = selectedMode.Width;
-    selectedMode1.Height           = selectedMode.Height;
-    selectedMode1.RefreshRate      = selectedMode.RefreshRate;
-    selectedMode1.Format           = selectedMode.Format;
-    selectedMode1.ScanlineOrdering = selectedMode.ScanlineOrdering;
-    selectedMode1.Scaling          = selectedMode.Scaling;
-    selectedMode1.Stereo           = false;
-
-    if (!wsi::setWindowMode(outputDesc.Monitor, m_window, ConvertDisplayMode(selectedMode1)))
+    if (!wsi::setWindowMode(outputDesc.Monitor, m_window, ConvertDisplayMode(selectedMode)))
       return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
 
     return S_OK;
@@ -696,19 +708,20 @@ namespace dxvk {
 
   HRESULT DxgiSwapChain::GetOutputFromMonitor(
           HMONITOR                  Monitor,
-          IDXGIOutput**             ppOutput) {
+          IDXGIOutput1**            ppOutput) {
     if (!ppOutput)
       return DXGI_ERROR_INVALID_CALL;
-    
-    for (uint32_t i = 0; SUCCEEDED(m_adapter->EnumOutputs(i, ppOutput)); i++) {
+
+    Com<IDXGIOutput> output;
+
+    for (uint32_t i = 0; SUCCEEDED(m_adapter->EnumOutputs(i, &output)); i++) {
       DXGI_OUTPUT_DESC outputDesc;
-      (*ppOutput)->GetDesc(&outputDesc);
+      output->GetDesc(&outputDesc);
       
       if (outputDesc.Monitor == Monitor)
-        return S_OK;
+        return output->QueryInterface(IID_PPV_ARGS(ppOutput));
       
-      (*ppOutput)->Release();
-      (*ppOutput) = nullptr;
+      output = nullptr;
     }
     
     return DXGI_ERROR_NOT_FOUND;
