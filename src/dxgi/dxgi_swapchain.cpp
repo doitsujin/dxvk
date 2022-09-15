@@ -2,6 +2,8 @@
 #include "dxgi_output.h"
 #include "dxgi_swapchain.h"
 
+#include "../util/util_misc.h"
+
 namespace dxvk {
   
   DxgiSwapChain::DxgiSwapChain(
@@ -677,6 +679,24 @@ namespace dxvk {
 
     if (!wsi::setWindowMode(outputDesc.Monitor, m_window, ConvertDisplayMode(selectedMode)))
       return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
+
+    DXGI_VK_MONITOR_DATA* monitorData = nullptr;
+
+    if (SUCCEEDED(AcquireMonitorData(outputDesc.Monitor, &monitorData))) {
+      auto refreshPeriod = computeRefreshPeriod(
+        monitorData->LastMode.RefreshRate.Numerator,
+        monitorData->LastMode.RefreshRate.Denominator);
+
+      auto t1Counter = dxvk::high_resolution_clock::get_counter();
+
+      auto t0 = dxvk::high_resolution_clock::get_time_from_counter(monitorData->FrameStats.SyncQPCTime.QuadPart);
+      auto t1 = dxvk::high_resolution_clock::get_time_from_counter(t1Counter);
+
+      monitorData->FrameStats.SyncRefreshCount += computeRefreshCount(t0, t1, refreshPeriod);
+      monitorData->FrameStats.SyncQPCTime.QuadPart = t1Counter;
+      monitorData->LastMode = selectedMode;
+      ReleaseMonitorData();
+    }
 
     return S_OK;
   }
