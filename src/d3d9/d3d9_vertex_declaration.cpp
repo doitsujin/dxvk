@@ -23,7 +23,7 @@ namespace dxvk {
     , m_elements        ( DeclCount )
     , m_fvf             ( 0 ) {
     std::copy(pVertexElements, pVertexElements + DeclCount, m_elements.begin());
-    this->MapD3D9VertexElementsToFvf();
+    m_fvf = this->MapD3D9VertexElementsToFvf();
     this->Classify();
   }
 
@@ -211,102 +211,116 @@ namespace dxvk {
           DWORD fvf,
           DWORD& texCountPostUpdate) {
 
-  // Mapping between a Direct3D Declaration and FVF Codes (Direct3D 9)
-  // This table maps members of a D3DVERTEXELEMENT9 declaration to a FVF code.
-  //
-  // Data type              Usage                       Usage index     FVF
-  // ----------------------------------------------------------------------------------------
-  // D3DDECLTYPE_FLOAT3     D3DDECLUSAGE_POSITION       0               D3DFVF_XYZ
-  // D3DDECLTYPE_FLOAT4     D3DDECLUSAGE_POSITIONT      0               D3DFVF_XYZRHW
-  // D3DDECLTYPE_FLOATn     D3DDECLUSAGE_BLENDWEIGHT    0               D3DFVF_XYZBn
-  // D3DDECLTYPE_UBYTE4     D3DDECLUSAGE_BLENDINDICES   0               D3DFVF_XYZB(nWeights + 1)
-  // D3DDECLTYPE_FLOAT3     D3DDECLUSAGE_NORMAL         0               D3DFVF_NORMAL
-  // D3DDECLTYPE_FLOAT1     D3DDECLUSAGE_PSIZE          0               D3DFVF_PSIZE
-  // D3DDECLTYPE_D3DCOLOR   D3DDECLUSAGE_COLOR          0               D3DFVF_DIFFUSE
-  // D3DDECLTYPE_D3DCOLOR   D3DDECLUSAGE_COLOR          1               D3DFVF_SPECULAR
-  // D3DDECLTYPE_FLOATm     D3DDECLUSAGE_TEXCOORD       n               D3DFVF_TEXCOORDSIZEm(n)
-  // D3DDECLTYPE_FLOAT3     D3DDECLUSAGE_POSITION       1               N / A
-  // D3DDECLTYPE_FLOAT3     D3DDECLUSAGE_NORMAL         1               N / A
+    // Mapping between a Direct3D Declaration and FVF Codes (Direct3D 9)
+    // This table maps members of a D3DVERTEXELEMENT9 declaration to a FVF code.
+    //
+    // Data type              Usage                       Usage index     FVF
+    // ----------------------------------------------------------------------------------------
+    // D3DDECLTYPE_FLOAT3     D3DDECLUSAGE_POSITION       0               D3DFVF_XYZ
+    // D3DDECLTYPE_FLOAT4     D3DDECLUSAGE_POSITIONT      0               D3DFVF_XYZRHW
+    // D3DDECLTYPE_FLOATn     D3DDECLUSAGE_BLENDWEIGHT    0               D3DFVF_XYZBn
+    // D3DDECLTYPE_UBYTE4     D3DDECLUSAGE_BLENDINDICES   0               D3DFVF_XYZB(nWeights + 1)
+    // D3DDECLTYPE_FLOAT3     D3DDECLUSAGE_NORMAL         0               D3DFVF_NORMAL
+    // D3DDECLTYPE_FLOAT1     D3DDECLUSAGE_PSIZE          0               D3DFVF_PSIZE
+    // D3DDECLTYPE_D3DCOLOR   D3DDECLUSAGE_COLOR          0               D3DFVF_DIFFUSE
+    // D3DDECLTYPE_D3DCOLOR   D3DDECLUSAGE_COLOR          1               D3DFVF_SPECULAR
+    // D3DDECLTYPE_FLOATm     D3DDECLUSAGE_TEXCOORD       n               D3DFVF_TEXCOORDSIZEm(n)
+    // D3DDECLTYPE_FLOAT3     D3DDECLUSAGE_POSITION       1               N / A
+    // D3DDECLTYPE_FLOAT3     D3DDECLUSAGE_NORMAL         1               N / A
 
-  if (element.Usage == D3DDECLUSAGE_POSITION && element.Type == D3DDECLTYPE_FLOAT3 && element.UsageIndex == 0)
-    return D3DFVF_XYZ;
-  else if (element.Usage == D3DDECLUSAGE_POSITIONT && element.Type == D3DDECLTYPE_FLOAT4 && element.UsageIndex == 0)
-    return D3DFVF_XYZRHW;
-  else if (element.Usage == D3DDECLUSAGE_BLENDWEIGHT && element.UsageIndex == 0) {
-    switch (element.Type)
-    {
-    case D3DDECLTYPE_FLOAT1:
+    DWORD fvfRet = 0;
+
+    if (element.Usage == D3DDECLUSAGE_POSITION && element.Type == D3DDECLTYPE_FLOAT3 && element.UsageIndex == 0)
+      return D3DFVF_XYZ;
+    else if (element.Usage == D3DDECLUSAGE_POSITIONT && element.Type == D3DDECLTYPE_FLOAT4 && element.UsageIndex == 0)
+      return D3DFVF_XYZRHW;
+    else if (element.Usage == D3DDECLUSAGE_BLENDWEIGHT
+          && element.UsageIndex == 0
+          && (fvfRet = MapD3DDeclTypeFloatToFvfXYZBn(element.Type)) != 0)
+      return fvfRet;
+    else if (element.Usage == D3DDECLUSAGE_BLENDINDICES && element.Type == D3DDECLTYPE_UBYTE4 && element.UsageIndex == 0)
       return D3DFVF_XYZB1;
-    case D3DDECLTYPE_FLOAT2:
-      return D3DFVF_XYZB2;
-    case D3DDECLTYPE_FLOAT3:
-      return D3DFVF_XYZB3;
-    case D3DDECLTYPE_FLOAT4:
-      return D3DFVF_XYZB4;
-    default:;
+    else if (element.Usage == D3DDECLUSAGE_NORMAL && element.Type == D3DDECLTYPE_FLOAT3 && element.UsageIndex == 0)
+      return D3DFVF_NORMAL;
+    else if (element.Usage == D3DDECLUSAGE_PSIZE && element.Type == D3DDECLTYPE_FLOAT1 && element.UsageIndex == 0)
+      return D3DFVF_PSIZE;
+    else if (element.Usage == D3DDECLUSAGE_COLOR && element.Type == D3DDECLTYPE_D3DCOLOR) {
+      switch (element.UsageIndex)
+      {
+      case 0:
+        return D3DFVF_DIFFUSE;
+      case 1:
+        return D3DFVF_SPECULAR;
+      default:;
+      }
     }
-  }
-  else if (element.Usage == D3DDECLUSAGE_BLENDINDICES && element.Type == D3DDECLTYPE_UBYTE4 && element.UsageIndex == 0)
-    return D3DFVF_XYZB1;
-  else if (element.Usage == D3DDECLUSAGE_NORMAL && element.Type == D3DDECLTYPE_FLOAT3 && element.UsageIndex == 0)
-    return D3DFVF_NORMAL;
-  else if (element.Usage == D3DDECLUSAGE_PSIZE && element.Type == D3DDECLTYPE_FLOAT1 && element.UsageIndex == 0)
-    return D3DFVF_PSIZE;
-  else if (element.Usage == D3DDECLUSAGE_COLOR && element.Type == D3DDECLTYPE_D3DCOLOR) {
-    switch (element.UsageIndex)
-    {
-    case 0:
-      return D3DFVF_DIFFUSE;
-    case 1:
-      return D3DFVF_SPECULAR;
-    default:;
-    }
-  }
-  else if (element.Usage == D3DDECLUSAGE_TEXCOORD && element.UsageIndex < 8) {
-      DWORD localFvf = 0;
-      do {
-        // Check if bits of format for current UsageIndex are free in the fvf
-        // It is necessary to skip multiple initializations of the bitfield because
-        // returned value is bitwise or-ed to final fvf DWORD.
-        if (D3DFVF_TEXCOORDSIZE1(element.UsageIndex) & fvf != 0)
-          break;
-  
-        // Update max texture's index in fvf
-        DWORD lastMaxTexCount = (fvf >> 8) & 0x7;
-        DWORD currentTexCount = element.UsageIndex + 1;
-        if (lastMaxTexCount < currentTexCount) {
-          texCountPostUpdate = currentTexCount << 8;
-        }
-  
-        if (element.Type == D3DDECLTYPE_FLOAT1)
-          localFvf = D3DFVF_TEXCOORDSIZE1(element.UsageIndex);
-        else if (element.Type == D3DDECLTYPE_FLOAT2)
-          localFvf = D3DFVF_TEXCOORDSIZE2(element.UsageIndex);
-        else if (element.Type == D3DDECLTYPE_FLOAT3)
-          localFvf = D3DFVF_TEXCOORDSIZE3(element.UsageIndex);
-        else if (element.Type == D3DDECLTYPE_FLOAT4)
-          localFvf = D3DFVF_TEXCOORDSIZE4(element.UsageIndex);
-        else
-          break;
-  
-        return localFvf;
-      } while (1);
-    }
+    else if (element.Usage == D3DDECLUSAGE_TEXCOORD
+          && element.UsageIndex < 8
+          && (fvfRet = MapD3DDeclUsageTexCoordToFvfTexCoordSize(element, fvf, texCountPostUpdate)) != 0)
+      return fvfRet;
+
     Logger::warn("D3D9VertexDecl::MapD3DDeclToFvf: Unsupported set of D3DDECLUSAGE_* / D3DDECLTYPE_* / UsageIndex");
     return 0;
   }
 
-  void D3D9VertexDecl::MapD3D9VertexElementsToFvf() {
-    if (!m_fvf) {
-      DWORD texCountPostUpdate = 0;
-      for (const auto& element : m_elements)
-        m_fvf |= MapD3DDeclToFvf(element, m_fvf, texCountPostUpdate);
+  DWORD D3D9VertexDecl::MapD3DDeclTypeFloatToFvfXYZBn(BYTE type) {
 
-      if (texCountPostUpdate)
-        m_fvf |= texCountPostUpdate;
+    switch (type)
+    {
+    default:;
+        return 0;
+    case D3DDECLTYPE_FLOAT1:
+        return D3DFVF_XYZB1;
+    case D3DDECLTYPE_FLOAT2:
+        return D3DFVF_XYZB2;
+    case D3DDECLTYPE_FLOAT3:
+        return D3DFVF_XYZB3;
+    case D3DDECLTYPE_FLOAT4:
+        return D3DFVF_XYZB4;
     }
   }
 
+  DWORD D3D9VertexDecl::MapD3DDeclUsageTexCoordToFvfTexCoordSize(
+      const D3DVERTEXELEMENT9& element,
+      DWORD fvf,
+      DWORD& texCountPostUpdate) {
+
+    // Check if bits of format for current UsageIndex are free in the fvf
+    // It is necessary to skip multiple initializations of the bitfield because
+    // returned value is bitwise or-ed to final fvf DWORD.
+    if (D3DFVF_TEXCOORDSIZE1(element.UsageIndex) & fvf != 0)
+        return 0;
+
+    // Update max texture's index in fvf
+    DWORD lastMaxTexCount = (fvf >> 8) & 0x7;
+    DWORD currentTexCount = element.UsageIndex + 1;
+
+    if (lastMaxTexCount < currentTexCount)
+        texCountPostUpdate = currentTexCount << 8;
+
+    if (element.Type == D3DDECLTYPE_FLOAT1)
+        return D3DFVF_TEXCOORDSIZE1(element.UsageIndex);
+    else if (element.Type == D3DDECLTYPE_FLOAT2)
+        return D3DFVF_TEXCOORDSIZE2(element.UsageIndex);
+    else if (element.Type == D3DDECLTYPE_FLOAT3)
+        return D3DFVF_TEXCOORDSIZE3(element.UsageIndex);
+    else if (element.Type == D3DDECLTYPE_FLOAT4)
+        return D3DFVF_TEXCOORDSIZE4(element.UsageIndex);
+
+    return 0;
+  }
+
+  DWORD D3D9VertexDecl::MapD3D9VertexElementsToFvf() {
+    DWORD fvf = 0;
+    DWORD texCountPostUpdate = 0;
+
+    for (const auto& element : m_elements)
+      fvf |= MapD3DDeclToFvf(element, fvf, texCountPostUpdate);
+
+    fvf |= texCountPostUpdate;
+
+    return fvf;
+  }
   void D3D9VertexDecl::Classify() {
     for (const auto& element : m_elements) {
       if (element.Stream == 0 && element.Type != D3DDECLTYPE_UNUSED)
