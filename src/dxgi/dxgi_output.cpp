@@ -370,9 +370,26 @@ namespace dxvk {
     static bool s_errorShown = false;
 
     if (!std::exchange(s_errorShown, true))
-      Logger::warn("DxgiOutput::GetFrameStatistics: Stub");
+      Logger::warn("DxgiOutput::GetFrameStatistics: Frame statistics may be inaccurate");
 
-    *pStats = monitorInfo->FrameStats;
+    // Estimate vblank count based on last known display mode. Querying
+    // the display mode on every call would be prohibitively expensive.
+    auto refreshPeriod = computeRefreshPeriod(
+      monitorInfo->LastMode.RefreshRate.Numerator,
+      monitorInfo->LastMode.RefreshRate.Denominator);
+
+    // We don't really have a way to query time since boot
+    auto t1Counter = dxvk::high_resolution_clock::get_counter();
+
+    auto t0 = dxvk::high_resolution_clock::get_time_from_counter(monitorInfo->FrameStats.SyncQPCTime.QuadPart);
+    auto t1 = dxvk::high_resolution_clock::get_time_from_counter(t1Counter);
+
+    pStats->PresentCount = monitorInfo->FrameStats.PresentCount;
+    pStats->PresentRefreshCount = monitorInfo->FrameStats.PresentRefreshCount;
+    pStats->SyncRefreshCount = monitorInfo->FrameStats.SyncRefreshCount + computeRefreshCount(t0, t1, refreshPeriod);
+    pStats->SyncQPCTime.QuadPart = t1Counter;
+    pStats->SyncGPUTime.QuadPart = 0;
+
     m_monitorInfo->ReleaseMonitorData();
     return S_OK;
   }
