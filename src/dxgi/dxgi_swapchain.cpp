@@ -663,7 +663,10 @@ namespace dxvk {
     selectedMode1.Scaling          = selectedMode.Scaling;
     selectedMode1.Stereo           = false;
 
-    return wsi::setWindowMode(outputDesc.Monitor, m_window, ConvertDisplayMode(selectedMode1));
+    if (!wsi::setWindowMode(outputDesc.Monitor, m_window, ConvertDisplayMode(selectedMode1)))
+      return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
+
+    return S_OK;
   }
   
   
@@ -671,9 +674,10 @@ namespace dxvk {
     if (!hMonitor)
       return DXGI_ERROR_INVALID_CALL;
     
-    return wsi::restoreDisplayMode()
-      ? S_OK
-      : DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
+    if (!wsi::restoreDisplayMode())
+      return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
+
+    return S_OK;
   }
   
   
