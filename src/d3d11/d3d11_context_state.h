@@ -275,8 +275,8 @@ namespace dxvk {
    * Stores stream output buffers with offset.
    */
   struct D3D11ContextSoTarget {
-    Com<D3D11Buffer> buffer = nullptr;
-    UINT             offset = 0;
+    Com<D3D11Buffer, false> buffer = nullptr;
+    UINT                    offset = 0;
   };
 
   struct D3D11ContextStateSO {
