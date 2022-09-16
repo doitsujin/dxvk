@@ -5,10 +5,6 @@ namespace dxvk {
   constexpr uint32_t Icb_BindingSlotId   = 14;
   constexpr uint32_t Icb_MaxBakedDwords  = 16;
   
-  constexpr uint32_t PerVertex_Position  = 0;
-  constexpr uint32_t PerVertex_CullDist  = 1;
-  constexpr uint32_t PerVertex_ClipDist  = 2;
-  
   DxbcCompiler::DxbcCompiler(
     const std::string&        fileName,
     const DxbcModuleInfo&     moduleInfo,
@@ -1279,7 +1275,6 @@ namespace dxvk {
       = primitiveVertexCount(m_gs.inputPrimitive);
     
     emitDclInputArray(vertexCount);
-    emitDclInputPerVertex(vertexCount, "gs_vertex_in");
   }
   
   
@@ -2275,7 +2270,7 @@ namespace dxvk {
     bool doCut = ins.op != DxbcOpcode::Emit && ins.op != DxbcOpcode::EmitStream;
 
     if (doEmit) {
-      if (m_perVertexOut)
+      if (m_gs.needsOutputSetup)
         emitOutputSetup();
       emitClipCullStore(DxbcSystemValue::ClipDistance, m_clipDistances);
       emitClipCullStore(DxbcSystemValue::CullDistance, m_cullDistances);
@@ -6171,25 +6166,24 @@ namespace dxvk {
           uint32_t                vertexId) {
     switch (sv) {
       case DxbcSystemValue::Position: {
-        const std::array<uint32_t, 2> indices = {
-          m_module.consti32(vertexId),
-          m_module.consti32(PerVertex_Position),
-        };
-        
+        uint32_t arrayIndex = m_module.consti32(vertexId);
+
+        if (!m_positionIn) {
+          m_positionIn = emitNewBuiltinVariable({
+            { DxbcScalarType::Float32, 4, primitiveVertexCount(m_gs.inputPrimitive) },
+            spv::StorageClassInput },
+            spv::BuiltInPosition,
+            "in_position");
+        }
+
         DxbcRegisterPointer ptrIn;
         ptrIn.type.ctype  = DxbcScalarType::Float32;
         ptrIn.type.ccount = 4;
-        
         ptrIn.id = m_module.opAccessChain(
-          m_module.defPointerType(
-            getVectorTypeId(ptrIn.type),
-            spv::StorageClassInput),
-          m_perVertexIn,
-          indices.size(),
-          indices.data());
+          m_module.defPointerType(getVectorTypeId(ptrIn.type), spv::StorageClassInput),
+          m_positionIn, 1, &arrayIndex);
         
-        return emitRegisterExtract(
-          emitValueLoad(ptrIn), mask);
+        return emitRegisterExtract(emitValueLoad(ptrIn), mask);
       } break;
       
       default:
@@ -6344,17 +6338,18 @@ namespace dxvk {
     const DxbcRegisterValue&      value) {
     switch (sv) {
       case DxbcSystemValue::Position: {
-        const uint32_t memberId = m_module.consti32(PerVertex_Position);
-        
+        if (!m_positionOut) {
+          m_positionOut = emitNewBuiltinVariable({
+            { DxbcScalarType::Float32, 4, 0 },
+            spv::StorageClassOutput },
+            spv::BuiltInPosition,
+            "out_position");
+        }
+
         DxbcRegisterPointer ptr;
         ptr.type.ctype  = DxbcScalarType::Float32;
         ptr.type.ccount = 4;
-        
-        ptr.id = m_module.opAccessChain(
-          m_module.defPointerType(
-            getVectorTypeId(ptr.type),
-            spv::StorageClassOutput),
-          m_perVertexOut, 1, &memberId);
+        ptr.id = m_positionOut;
         
         emitValueStore(ptr, value, mask);
       } break;
@@ -6701,16 +6696,6 @@ namespace dxvk {
     m_module.enableCapability(spv::CapabilityCullDistance);
     m_module.enableCapability(spv::CapabilityDrawParameters);
     
-    // Declare the per-vertex output block. This is where
-    // the vertex shader will write the vertex position.
-    const uint32_t perVertexStruct = this->getPerVertexBlockId();
-    const uint32_t perVertexPointer = m_module.defPointerType(
-      perVertexStruct, spv::StorageClassOutput);
-    
-    m_perVertexOut = m_module.newVar(
-      perVertexPointer, spv::StorageClassOutput);
-    m_module.setDebugName(m_perVertexOut, "vs_vertex_out");
-    
     // Standard input array
     emitDclInputArray(0);
     
@@ -6763,11 +6748,6 @@ namespace dxvk {
     m_ds.builtinTessLevelOuter = emitBuiltinTessLevelOuter(spv::StorageClassInput);
     m_ds.builtinTessLevelInner = emitBuiltinTessLevelInner(spv::StorageClassInput);
     
-    // Declare the per-vertex output block
-    const uint32_t perVertexStruct = this->getPerVertexBlockId();
-    const uint32_t perVertexPointer = m_module.defPointerType(
-      perVertexStruct, spv::StorageClassOutput);
-    
     // Cull/clip distances as outputs
     m_clipDistances = emitDclClipCullDistanceArray(
       m_analysis->clipCullOut.numClipPlanes,
@@ -6778,10 +6758,6 @@ namespace dxvk {
       m_analysis->clipCullOut.numCullPlanes,
       spv::BuiltInCullDistance,
       spv::StorageClassOutput);
-    
-    m_perVertexOut = m_module.newVar(
-      perVertexPointer, spv::StorageClassOutput);
-    m_module.setDebugName(m_perVertexOut, "ds_vertex_out");
     
     // Main function of the domain shader
     m_ds.functionId = m_module.allocateId();
@@ -6802,25 +6778,16 @@ namespace dxvk {
     m_module.enableCapability(spv::CapabilityCullDistance);
 
     // Enable capabilities for xfb mode if necessary
-    if (m_moduleInfo.xfb != nullptr) {
+    if (m_moduleInfo.xfb) {
       m_module.enableCapability(spv::CapabilityGeometryStreams);
       m_module.enableCapability(spv::CapabilityTransformFeedback);
       
       m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeXfb);
     }
-    
-    // Declare the per-vertex output block. Outputs are not
-    // declared as arrays, instead they will be flushed when
-    // calling EmitVertex.
-    if (!m_moduleInfo.xfb || m_moduleInfo.xfb->rasterizedStream >= 0) {
-      const uint32_t perVertexStruct = this->getPerVertexBlockId();
-      const uint32_t perVertexPointer = m_module.defPointerType(
-        perVertexStruct, spv::StorageClassOutput);
-      
-      m_perVertexOut = m_module.newVar(
-        perVertexPointer, spv::StorageClassOutput);
-      m_module.setDebugName(m_perVertexOut, "gs_vertex_out");
-    }
+
+    // We only need outputs if rasterization is enabled
+    m_gs.needsOutputSetup = !m_moduleInfo.xfb
+      || m_moduleInfo.xfb->rasterizedStream >= 0;
     
     // Cull/clip distances as outputs
     m_clipDistances = emitDclClipCullDistanceArray(
@@ -6834,7 +6801,7 @@ namespace dxvk {
       spv::StorageClassOutput);
     
     // Emit Xfb variables if necessary
-    if (m_moduleInfo.xfb != nullptr)
+    if (m_moduleInfo.xfb)
       emitXfbOutputDeclarations();
 
     // Main function of the vertex shader
@@ -7129,25 +7096,6 @@ namespace dxvk {
     
     m_module.setDebugName(varId, "shader_in");
     m_vArray = varId;
-  }
-  
-  
-  void DxbcCompiler::emitDclInputPerVertex(
-          uint32_t          vertexCount,
-    const char*             varName) {
-    uint32_t typeId = getPerVertexBlockId();
-    
-    if (vertexCount != 0) {
-      typeId = m_module.defArrayType(typeId,
-        m_module.constu32(vertexCount));
-    }
-    
-    const uint32_t ptrTypeId = m_module.defPointerType(
-      typeId, spv::StorageClassInput);
-    
-    m_perVertexIn = m_module.newVar(
-      ptrTypeId, spv::StorageClassInput);
-    m_module.setDebugName(m_perVertexIn, varName);
   }
   
   
@@ -7894,32 +7842,6 @@ namespace dxvk {
   }
 
 
-  uint32_t DxbcCompiler::getPerVertexBlockId() {
-    uint32_t t_f32    = m_module.defFloatType(32);
-    uint32_t t_f32_v4 = m_module.defVectorType(t_f32, 4);
-//     uint32_t t_f32_a4 = m_module.defArrayType(t_f32, m_module.constu32(4));
-    
-    std::array<uint32_t, 1> members;
-    members[PerVertex_Position] = t_f32_v4;
-//     members[PerVertex_CullDist] = t_f32_a4;
-//     members[PerVertex_ClipDist] = t_f32_a4;
-    
-    uint32_t typeId = m_module.defStructTypeUnique(
-      members.size(), members.data());
-    
-    m_module.memberDecorateBuiltIn(typeId, PerVertex_Position, spv::BuiltInPosition);
-//     m_module.memberDecorateBuiltIn(typeId, PerVertex_CullDist, spv::BuiltInCullDistance);
-//     m_module.memberDecorateBuiltIn(typeId, PerVertex_ClipDist, spv::BuiltInClipDistance);
-    m_module.decorateBlock(typeId);
-    
-    m_module.setDebugName(typeId, "s_per_vertex");
-    m_module.setDebugMemberName(typeId, PerVertex_Position, "position");
-//     m_module.setDebugMemberName(typeId, PerVertex_CullDist, "cull_dist");
-//     m_module.setDebugMemberName(typeId, PerVertex_ClipDist, "clip_dist");
-    return typeId;
-  }
-  
-  
   uint32_t DxbcCompiler::getFunctionId(
           uint32_t          functionNr) {
     auto entry = m_subroutines.find(functionNr);
