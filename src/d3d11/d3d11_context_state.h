@@ -307,12 +307,12 @@ namespace dxvk {
    * \brief Context state
    */
   struct D3D11ContextState {
-    Com<D3D11VertexShader>    vs;
-    Com<D3D11HullShader>      hs;
-    Com<D3D11DomainShader>    ds;
-    Com<D3D11GeometryShader>  gs;
-    Com<D3D11PixelShader>     ps;
-    Com<D3D11ComputeShader>   cs;
+    Com<D3D11VertexShader, false>    vs;
+    Com<D3D11HullShader, false>      hs;
+    Com<D3D11DomainShader, false>    ds;
+    Com<D3D11GeometryShader, false>  gs;
+    Com<D3D11PixelShader, false>     ps;
+    Com<D3D11ComputeShader, false>   cs;
 
     D3D11ContextStateID id;
     D3D11ContextStateIA ia;
