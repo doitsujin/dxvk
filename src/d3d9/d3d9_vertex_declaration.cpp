@@ -263,6 +263,7 @@ namespace dxvk {
     return 0;
   }
 
+
   DWORD D3D9VertexDecl::MapD3DDeclTypeFloatToFvfXYZBn(BYTE type) {
 
     switch (type)
@@ -279,6 +280,7 @@ namespace dxvk {
         return D3DFVF_XYZB4;
     }
   }
+
 
   DWORD D3D9VertexDecl::MapD3DDeclUsageTexCoordToFvfTexCoordSize(
       const D3DVERTEXELEMENT9& element,
@@ -310,6 +312,7 @@ namespace dxvk {
     return 0;
   }
 
+
   DWORD D3D9VertexDecl::MapD3D9VertexElementsToFvf() {
     DWORD fvf = 0;
     DWORD texCountPostUpdate = 0;
@@ -321,6 +324,8 @@ namespace dxvk {
 
     return fvf;
   }
+
+
   void D3D9VertexDecl::Classify() {
     for (const auto& element : m_elements) {
       if (element.Stream == 0 && element.Type != D3DDECLTYPE_UNUSED)
