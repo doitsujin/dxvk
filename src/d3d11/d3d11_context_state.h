@@ -232,8 +232,8 @@ namespace dxvk {
    * argument and draw count buffer.
    */
   struct D3D11ContextStateID {
-    Com<D3D11Buffer> argBuffer = nullptr;
-    Com<D3D11Buffer> cntBuffer = nullptr;
+    Com<D3D11Buffer, false> argBuffer = nullptr;
+    Com<D3D11Buffer, false> cntBuffer = nullptr;
 
     void reset() {
       argBuffer = nullptr;
