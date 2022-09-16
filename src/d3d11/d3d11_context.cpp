@@ -3229,7 +3229,7 @@ namespace dxvk {
     if (unlikely(!m_state.om.sampleCount)) {
       pc.rasterizerSampleCount = m_state.rs.state->Desc()->ForcedSampleCount;
 
-      if (!m_state.om.sampleCount)
+      if (!pc.rasterizerSampleCount)
         pc.rasterizerSampleCount = 1;
     }
 
