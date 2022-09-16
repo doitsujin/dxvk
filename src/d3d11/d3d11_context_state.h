@@ -145,15 +145,15 @@ namespace dxvk {
    * input layout, and the dynamic primitive topology.
    */
   struct D3D11VertexBufferBinding {
-    Com<D3D11Buffer> buffer = nullptr;
-    UINT             offset = 0;
-    UINT             stride = 0;
+    Com<D3D11Buffer, false> buffer = nullptr;
+    UINT                    offset = 0;
+    UINT                    stride = 0;
   };
   
   struct D3D11IndexBufferBinding {
-    Com<D3D11Buffer> buffer = nullptr;
-    UINT             offset = 0;
-    DXGI_FORMAT      format = DXGI_FORMAT_UNKNOWN;
+    Com<D3D11Buffer, false> buffer = nullptr;
+    UINT                    offset = 0;
+    DXGI_FORMAT             format = DXGI_FORMAT_UNKNOWN;
   };
 
   struct D3D11ContextStateIA {
