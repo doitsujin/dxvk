@@ -79,7 +79,7 @@ namespace dxvk {
    * set of views that are potentially hazardous.
    */
   struct D3D11ShaderStageSrvBinding {
-    std::array<Com<D3D11ShaderResourceView>, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT> views     = { };
+    std::array<Com<D3D11ShaderResourceView, false>, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT> views     = { };
     DxvkBindingSet<D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT>                           hazardous = { };
 
     uint32_t maxCount = 0;
@@ -121,7 +121,7 @@ namespace dxvk {
    * Stores bound UAVs. For compute shader UAVs,
    * we also store a bit mask of bound UAVs.
    */
-  using D3D11ShaderStageUavBinding = std::array<Com<D3D11UnorderedAccessView>, D3D11_1_UAV_SLOT_COUNT>;
+  using D3D11ShaderStageUavBinding = std::array<Com<D3D11UnorderedAccessView, false>, D3D11_1_UAV_SLOT_COUNT>;
   
   struct D3D11UavBindings {
     D3D11ShaderStageUavBinding              views = { };
