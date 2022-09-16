@@ -101,7 +101,8 @@ namespace dxvk {
     
     D3D10Multithread             m_multithread;
     D3D11VideoContext            m_videoContext;
-    Com<D3D11DeviceContextState> m_stateObject;
+
+    Com<D3D11DeviceContextState, false> m_stateObject;
     
     HRESULT MapBuffer(
             D3D11Buffer*                pResource,
