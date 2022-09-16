@@ -258,10 +258,13 @@ namespace dxvk {
       case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:   logLevel = LogLevel::Error; break;
     }
 
-    static const std::array<uint32_t, 5> ignoredIds = {
+    static const std::array<uint32_t, 8> ignoredIds = {
       // Ignore image format features for depth-compare instructions.
       // These errors are expected in D3D9 and some D3D11 apps.
+      0x23259a0d,
       0x4b9d1597,
+      0x534c50ad,
+      0x9750b479,
       // Ignore vkCmdBindPipeline errors related to dynamic rendering.
       // Validation layers are buggy here and will complain about any
       // command buffer with more than one render pass.
