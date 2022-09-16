@@ -228,16 +228,19 @@ namespace dxvk {
     // D3DDECLTYPE_FLOAT3     D3DDECLUSAGE_POSITION       1               N / A
     // D3DDECLTYPE_FLOAT3     D3DDECLUSAGE_NORMAL         1               N / A
 
-    DWORD fvfRet = 0;
-
     if (element.Usage == D3DDECLUSAGE_POSITION && element.Type == D3DDECLTYPE_FLOAT3 && element.UsageIndex == 0)
       return D3DFVF_XYZ;
     else if (element.Usage == D3DDECLUSAGE_POSITIONT && element.Type == D3DDECLTYPE_FLOAT4 && element.UsageIndex == 0)
       return D3DFVF_XYZRHW;
-    else if (element.Usage == D3DDECLUSAGE_BLENDWEIGHT
-          && element.UsageIndex == 0
-          && (fvfRet = MapD3DDeclTypeFloatToFvfXYZBn(element.Type)) != 0)
-      return fvfRet;
+    else if (element.Usage == D3DDECLUSAGE_BLENDWEIGHT && element.UsageIndex == 0) {
+      DWORD fvfRet = MapD3DDeclTypeFloatToFvfXYZBn(element.Type);
+      if (likely(fvfRet != 0))
+        return fvfRet;
+      else {
+        Logger::warn("D3D9VertexDecl::MapD3DDeclToFvf: Unsupported set of D3DDECLUSAGE_BLENDWEIGHT / D3DDECLTYPE_*  / UsageIndex");
+        return 0;
+      }
+    }
     else if (element.Usage == D3DDECLUSAGE_BLENDINDICES && element.Type == D3DDECLTYPE_UBYTE4 && element.UsageIndex == 0)
       return D3DFVF_XYZB1;
     else if (element.Usage == D3DDECLUSAGE_NORMAL && element.Type == D3DDECLTYPE_FLOAT3 && element.UsageIndex == 0)
@@ -252,12 +255,19 @@ namespace dxvk {
       case 1:
         return D3DFVF_SPECULAR;
       default:;
+        Logger::warn("D3D9VertexDecl::MapD3DDeclToFvf: Unsupported set of D3DDECLUSAGE_COLOR / D3DDECLTYPE_D3DCOLOR / UsageIndex");
+        return 0;
       }
     }
-    else if (element.Usage == D3DDECLUSAGE_TEXCOORD
-          && element.UsageIndex < 8
-          && (fvfRet = MapD3DDeclUsageTexCoordToFvfTexCoordSize(element, fvf, texCountPostUpdate)) != 0)
-      return fvfRet;
+    else if (element.Usage == D3DDECLUSAGE_TEXCOORD && element.UsageIndex < 8) {
+      DWORD fvfRet = MapD3DDeclUsageTexCoordToFvfTexCoordSize(element, fvf, texCountPostUpdate);
+      if (likely(fvfRet != 0))
+        return fvfRet;
+      else {
+        Logger::warn("D3D9VertexDecl::MapD3DDeclToFvf: Unsupported set of D3DDECLUSAGE_TEXCOORD / D3DDECLTYPE_* / UsageIndex");
+        return 0;
+      }
+    }
 
     Logger::warn("D3D9VertexDecl::MapD3DDeclToFvf: Unsupported set of D3DDECLUSAGE_* / D3DDECLTYPE_* / UsageIndex");
     return 0;
@@ -269,15 +279,15 @@ namespace dxvk {
     switch (type)
     {
     default:;
-        return 0;
+      return 0;
     case D3DDECLTYPE_FLOAT1:
-        return D3DFVF_XYZB1;
+      return D3DFVF_XYZB1;
     case D3DDECLTYPE_FLOAT2:
-        return D3DFVF_XYZB2;
+      return D3DFVF_XYZB2;
     case D3DDECLTYPE_FLOAT3:
-        return D3DFVF_XYZB3;
+      return D3DFVF_XYZB3;
     case D3DDECLTYPE_FLOAT4:
-        return D3DFVF_XYZB4;
+      return D3DFVF_XYZB4;
     }
   }
 
@@ -290,24 +300,24 @@ namespace dxvk {
     // Check if bits of format for current UsageIndex are free in the fvf
     // It is necessary to skip multiple initializations of the bitfield because
     // returned value is bitwise or-ed to final fvf DWORD.
-    if (D3DFVF_TEXCOORDSIZE1(element.UsageIndex) & fvf != 0)
-        return 0;
+    if ((D3DFVF_TEXCOORDSIZE1(element.UsageIndex) & fvf) != 0)
+      return 0;
 
     // Update max texture's index in fvf
     DWORD lastMaxTexCount = (fvf >> 8) & 0x7;
     DWORD currentTexCount = element.UsageIndex + 1;
 
     if (lastMaxTexCount < currentTexCount)
-        texCountPostUpdate = currentTexCount << 8;
+      texCountPostUpdate = currentTexCount << 8;
 
     if (element.Type == D3DDECLTYPE_FLOAT1)
-        return D3DFVF_TEXCOORDSIZE1(element.UsageIndex);
+      return D3DFVF_TEXCOORDSIZE1(element.UsageIndex);
     else if (element.Type == D3DDECLTYPE_FLOAT2)
-        return D3DFVF_TEXCOORDSIZE2(element.UsageIndex);
+      return D3DFVF_TEXCOORDSIZE2(element.UsageIndex);
     else if (element.Type == D3DDECLTYPE_FLOAT3)
-        return D3DFVF_TEXCOORDSIZE3(element.UsageIndex);
+      return D3DFVF_TEXCOORDSIZE3(element.UsageIndex);
     else if (element.Type == D3DDECLTYPE_FLOAT4)
-        return D3DFVF_TEXCOORDSIZE4(element.UsageIndex);
+      return D3DFVF_TEXCOORDSIZE4(element.UsageIndex);
 
     return 0;
   }
