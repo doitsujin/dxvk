@@ -439,7 +439,6 @@ namespace dxvk {
     /* Warhammer: Online                         */
     { R"(\\WAR(-64)?\.exe$)", {{
       { "d3d9.customVendorId",              "1002" },
-      { "d3d9.maxFrameRate",                "100" },
     }} },
     /* Dragon Nest                               */
     { R"(\\DragonNest_x64\.exe$)", {{
