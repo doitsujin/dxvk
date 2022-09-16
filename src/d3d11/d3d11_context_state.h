@@ -294,8 +294,8 @@ namespace dxvk {
    * Stores predication info.
    */
   struct D3D11ContextStatePR {
-    Com<D3D11Query> predicateObject = nullptr;
-    BOOL            predicateValue  = false;
+    Com<D3D11Query, false> predicateObject = nullptr;
+    BOOL                   predicateValue  = false;
 
     void reset() {
       predicateObject = nullptr;
