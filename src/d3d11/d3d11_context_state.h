@@ -51,7 +51,7 @@ namespace dxvk {
    * as well as the range that is actually bound to the context.
    */
   struct D3D11ConstantBufferBinding {
-    Com<D3D11Buffer> buffer         = nullptr;
+    Com<D3D11Buffer, false> buffer  = nullptr;
     UINT             constantOffset = 0;
     UINT             constantCount  = 0;
     UINT             constantBound  = 0;
