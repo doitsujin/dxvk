@@ -808,8 +808,8 @@ namespace dxvk {
     if (!m_vsKey.Data.Contents.HasPositionT) {
       if (m_vsKey.Data.Contents.VertexBlendMode == D3D9FF_VertexBlendMode_Normal) {
         uint32_t blendWeightRemaining = m_module.constf32(1);
-        uint32_t vtxSum               = m_module.constvec4f32(0, 0, 0, 0);
-        uint32_t nrmSum               = m_module.constvec3f32(0, 0, 0);
+        uint32_t vtxSum               = 0;
+        uint32_t nrmSum               = 0;
 
         for (uint32_t i = 0; i <= m_vsKey.Data.Contents.VertexBlendCount; i++) {
           std::array<uint32_t, 2> arrayIndices;
@@ -836,7 +836,7 @@ namespace dxvk {
           }
           nrmMtx = m_module.opCompositeConstruct(m_mat3Type, mtxIndices.size(), mtxIndices.data());
 
-          uint32_t vtxResult = m_module.opVectorTimesMatrix(m_vec4Type, vtx, worldview);
+          uint32_t vtxResult = emitVectorTimesMatrix(4, 4, vtx, worldview);
           uint32_t nrmResult = m_module.opVectorTimesMatrix(m_vec3Type, normal, nrmMtx);
 
           uint32_t weight;
@@ -847,18 +847,26 @@ namespace dxvk {
           else
             weight = blendWeightRemaining;
 
-          vtxResult = m_module.opVectorTimesScalar(m_vec4Type, vtxResult, weight);
-          nrmResult = m_module.opVectorTimesScalar(m_vec3Type, nrmResult, weight);
+          std::array<uint32_t, 4> weightIds = { weight, weight, weight, weight };
+          uint32_t weightVec4 = m_module.opCompositeConstruct(m_vec4Type, 4, weightIds.data());
+          uint32_t weightVec3 = m_module.opCompositeConstruct(m_vec3Type, 3, weightIds.data());
 
-          vtxSum = m_module.opFAdd(m_vec4Type, vtxSum, vtxResult);
-          nrmSum = m_module.opFAdd(m_vec3Type, nrmSum, nrmResult);
+          vtxSum = vtxSum
+            ? m_module.opFFma(m_vec4Type, vtxResult, weightVec4, vtxSum)
+            : m_module.opFMul(m_vec4Type, vtxResult, weightVec4);
+
+          nrmSum = nrmSum
+            ? m_module.opFFma(m_vec3Type, nrmResult, weightVec3, nrmSum)
+            : m_module.opFMul(m_vec3Type, nrmResult, weightVec3);
+
+          m_module.decorate(vtxSum, spv::DecorationNoContraction);
         }
 
         vtx    = vtxSum;
         normal = nrmSum;
       }
       else {
-        vtx = m_module.opVectorTimesMatrix(m_vec4Type, vtx, m_vs.constants.worldview);
+        vtx = emitVectorTimesMatrix(4, 4, vtx, m_vs.constants.worldview);
 
         uint32_t nrmMtx = m_vs.constants.normal;
 
@@ -886,7 +894,7 @@ namespace dxvk {
         normal = m_module.opSelect(m_vec3Type, isZeroNormal3, m_module.constvec3f32(0.0f, 0.0f, 0.0f), normal);
       }
       
-      gl_Position = m_module.opVectorTimesMatrix(m_vec4Type, vtx, m_vs.constants.proj);
+      gl_Position = emitVectorTimesMatrix(4, 4, vtx, m_vs.constants.proj);
     } else {
       gl_Position = m_module.opFMul(m_vec4Type, gl_Position, m_vs.constants.invExtent);
       gl_Position = m_module.opFAdd(m_vec4Type, gl_Position, m_vs.constants.invOffset);
@@ -2140,7 +2148,7 @@ namespace dxvk {
 
 
   void D3D9FFShaderCompiler::emitVsClipping(uint32_t vtx) {
-    uint32_t worldPos = m_module.opMatrixTimesVector(m_vec4Type, m_vs.constants.inverseView, vtx);
+    uint32_t worldPos = emitMatrixTimesVector(4, 4, m_vs.constants.inverseView, vtx);
 
     uint32_t clipPlaneCountId = m_module.constu32(caps::MaxClipPlanes);
     
