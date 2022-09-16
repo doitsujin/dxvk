@@ -157,8 +157,8 @@ namespace dxvk {
   };
 
   struct D3D11ContextStateIA {
-    Com<D3D11InputLayout>    inputLayout       = nullptr;
-    D3D11_PRIMITIVE_TOPOLOGY primitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
+    Com<D3D11InputLayout, false> inputLayout       = nullptr;
+    D3D11_PRIMITIVE_TOPOLOGY     primitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
     
     std::array<D3D11VertexBufferBinding, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> vertexBuffers = { };
     D3D11IndexBufferBinding                                                         indexBuffer   = { };
