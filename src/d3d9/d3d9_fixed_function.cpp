@@ -596,6 +596,9 @@ namespace dxvk {
 
     void alphaTestPS();
 
+    uint32_t emitMatrixTimesVector(uint32_t rowCount, uint32_t colCount, uint32_t matrix, uint32_t vector);
+    uint32_t emitVectorTimesMatrix(uint32_t rowCount, uint32_t colCount, uint32_t vector, uint32_t matrix);
+
     bool isVS() { return m_programType == DxsoProgramType::VertexShader; }
     bool isPS() { return !isVS(); }
 
@@ -2305,6 +2308,38 @@ namespace dxvk {
 
     // end if (alpha_test)
     m_module.opLabel(atestSkipLabel);
+  }
+
+
+  uint32_t D3D9FFShaderCompiler::emitMatrixTimesVector(uint32_t rowCount, uint32_t colCount, uint32_t matrix, uint32_t vector) {
+    uint32_t f32Type = m_module.defFloatType(32);
+    uint32_t vecType = m_module.defVectorType(f32Type, rowCount);
+    uint32_t accum = 0;
+
+    for (uint32_t i = 0; i < colCount; i++) {
+      std::array<uint32_t, 4> indices = { i, i, i, i };
+
+      uint32_t a = m_module.opVectorShuffle(vecType, vector, vector, rowCount, indices.data());
+      uint32_t b = m_module.opCompositeExtract(vecType, matrix, 1, &i);
+
+      accum = accum
+        ? m_module.opFFma(vecType, a, b, accum)
+        : m_module.opFMul(vecType, a, b);
+
+      m_module.decorate(accum, spv::DecorationNoContraction);
+    }
+
+    return accum;
+  }
+
+
+  uint32_t D3D9FFShaderCompiler::emitVectorTimesMatrix(uint32_t rowCount, uint32_t colCount, uint32_t vector, uint32_t matrix) {
+    uint32_t f32Type = m_module.defFloatType(32);
+    uint32_t vecType = m_module.defVectorType(f32Type, colCount);
+    uint32_t matType = m_module.defMatrixType(vecType, rowCount);
+
+    matrix = m_module.opTranspose(matType, matrix);
+    return emitMatrixTimesVector(colCount, rowCount, matrix, vector);
   }
 
 
