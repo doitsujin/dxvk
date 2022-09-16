@@ -6634,6 +6634,19 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitPointSizeStore() {
+    if (!m_pointSizeOut) {
+      m_pointSizeOut = emitNewBuiltinVariable(DxbcRegisterInfo {
+        { DxbcScalarType::Float32, 1, 0 },
+        spv::StorageClassOutput },
+        spv::BuiltInPointSize,
+        "point_size");
+    }
+
+    m_module.opStore(m_pointSizeOut, m_module.constf32(1.0f));
+  }
+
+
   void DxbcCompiler::emitInit() {
     // Set up common capabilities for all shaders
     m_module.enableCapability(spv::CapabilityShader);
@@ -6873,6 +6886,7 @@ namespace dxvk {
     this->emitOutputSetup();
     this->emitClipCullStore(DxbcSystemValue::ClipDistance, m_clipDistances);
     this->emitClipCullStore(DxbcSystemValue::CullDistance, m_cullDistances);
+    this->emitPointSizeStore();
     this->emitFunctionEnd();
   }
   
