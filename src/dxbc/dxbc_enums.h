@@ -609,6 +609,7 @@ namespace dxvk {
    */
   enum class DxbcUavFlag : uint32_t {
     GloballyCoherent = 0,
+    RasterizerOrdered = 1,
   };
   
   using DxbcUavFlags = Flags<DxbcUavFlag>;

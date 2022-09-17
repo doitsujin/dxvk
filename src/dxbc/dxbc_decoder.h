@@ -329,7 +329,7 @@ namespace dxvk {
     }
     
     DxbcUavFlags uavFlags() const {
-      return DxbcUavFlags(bit::extract(m_bits, 16, 16));
+      return DxbcUavFlags(bit::extract(m_bits, 16, 17));
     }
 
     DxbcConstantBufferAccessType accessType() const {
