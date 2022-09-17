@@ -177,7 +177,16 @@ namespace dxvk {
     if (!std::exchange(s_errorShown, true))
       Logger::warn("DxgiSwapChain::GetFrameStatistics: Frame statistics may be inaccurate");
 
-    // If possible, use the monitor's frame statistics
+    // Populate frame statistics with local present count and current time
+    auto t1Counter = dxvk::high_resolution_clock::get_counter();
+
+    pStats->PresentCount          = m_presentCount;
+    pStats->PresentRefreshCount   = 0;
+    pStats->SyncRefreshCount      = 0;
+    pStats->SyncQPCTime.QuadPart  = t1Counter;
+    pStats->SyncGPUTime.QuadPart  = 0;
+
+    // If possible, use the monitor's frame statistics for vblank stats
     DXGI_VK_MONITOR_DATA* monitorData = nullptr;
 
     if (SUCCEEDED(AcquireMonitorData(m_monitor, &monitorData))) {
@@ -185,24 +194,13 @@ namespace dxvk {
         monitorData->LastMode.RefreshRate.Numerator,
         monitorData->LastMode.RefreshRate.Denominator);
 
-      auto t1Counter = dxvk::high_resolution_clock::get_counter();
-
       auto t0 = dxvk::high_resolution_clock::get_time_from_counter(monitorData->FrameStats.SyncQPCTime.QuadPart);
       auto t1 = dxvk::high_resolution_clock::get_time_from_counter(t1Counter);
 
-      pStats->PresentCount          = monitorData->FrameStats.PresentCount;
       pStats->PresentRefreshCount   = monitorData->FrameStats.PresentRefreshCount;
       pStats->SyncRefreshCount      = monitorData->FrameStats.SyncRefreshCount + computeRefreshCount(t0, t1, refreshPeriod);
-      pStats->SyncQPCTime.QuadPart  = t1Counter;
-      pStats->SyncGPUTime.QuadPart  = 0;
 
       ReleaseMonitorData();
-    } else {
-      pStats->PresentCount          = m_presentCount;
-      pStats->PresentRefreshCount   = 0;
-      pStats->SyncRefreshCount      = 0;
-      pStats->SyncQPCTime.QuadPart  = dxvk::high_resolution_clock::get_counter();
-      pStats->SyncGPUTime.QuadPart  = 0;
     }
 
     return S_OK;
@@ -300,7 +298,7 @@ namespace dxvk {
     }
 
     // Update frame statistics
-    DXGI_VK_MONITOR_DATA* monitorData;
+    DXGI_VK_MONITOR_DATA* monitorData = nullptr;
 
     if (SUCCEEDED(AcquireMonitorData(m_monitor, &monitorData))) {
       auto refreshPeriod = computeRefreshPeriod(
@@ -313,10 +311,9 @@ namespace dxvk {
       monitorData->FrameStats.PresentCount += 1;
       monitorData->FrameStats.PresentRefreshCount = monitorData->FrameStats.SyncRefreshCount + computeRefreshCount(t0, t1, refreshPeriod);
       ReleaseMonitorData();
-    } else {
-      m_presentCount += 1;
     }
 
+    m_presentCount += 1;
     return S_OK;
   }
   
