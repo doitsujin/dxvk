@@ -39,6 +39,7 @@ namespace dxvk {
     zeroInitWorkgroupMemory  = options.zeroInitWorkgroupMemory;
     forceVolatileTgsmAccess  = options.forceVolatileTgsmAccess;
     disableMsaa              = options.disableMsaa;
+    enableSampleShadingInterlock = device->features().extFragmentShaderInterlock.fragmentShaderSampleInterlock;
 
     // Figure out float control flags to match D3D11 rules
     if (options.floatControls) {

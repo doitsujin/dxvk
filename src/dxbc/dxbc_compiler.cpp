@@ -6950,10 +6950,30 @@ namespace dxvk {
     this->emitInputSetup();
     this->emitClipCullLoad(DxbcSystemValue::ClipDistance, m_clipDistances);
     this->emitClipCullLoad(DxbcSystemValue::CullDistance, m_cullDistances);
-    
+
+    if (m_hasRasterizerOrderedUav) {
+      // For simplicity, just lock the entire fragment shader
+      // if there are any rasterizer ordered views.
+      m_module.enableExtension("SPV_EXT_fragment_shader_interlock");
+
+      if (m_module.hasCapability(spv::CapabilitySampleRateShading)
+       && m_moduleInfo.options.enableSampleShadingInterlock) {
+        m_module.enableCapability(spv::CapabilityFragmentShaderSampleInterlockEXT);
+        m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeSampleInterlockOrderedEXT);
+      } else {
+        m_module.enableCapability(spv::CapabilityFragmentShaderPixelInterlockEXT);
+        m_module.setExecutionMode(m_entryPointId, spv::ExecutionModePixelInterlockOrderedEXT);
+      }
+
+      m_module.opBeginInvocationInterlock();
+    }
+
     m_module.opFunctionCall(
       m_module.defVoidType(),
       m_ps.functionId, 0, nullptr);
+
+    if (m_hasRasterizerOrderedUav)
+      m_module.opEndInvocationInterlock();
 
     this->emitOutputSetup();
 
@@ -7768,6 +7788,15 @@ namespace dxvk {
 
 
   uint32_t DxbcCompiler::getUavCoherence(uint32_t registerId, DxbcUavFlags flags) {
+    // For any ROV with write access, we must ensure that
+    // availability operations happen within the locked scope.
+    if (flags.test(DxbcUavFlag::RasterizerOrdered)
+     && (m_analysis->uavInfos[registerId].accessFlags & VK_ACCESS_SHADER_WRITE_BIT)) {
+      m_hasGloballyCoherentUav = true;
+      m_hasRasterizerOrderedUav = true;
+      return spv::ScopeQueueFamily;
+    }
+
     // Ignore any resources that can't both be read and written in
     // the current shader, explicit availability/visibility operands
     // are not useful in that case.

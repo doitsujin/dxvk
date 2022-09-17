@@ -46,6 +46,9 @@ namespace dxvk {
     /// Replace ld_ms with ld
     bool disableMsaa = false;
 
+    // Enable per-sample interlock if supported
+    bool enableSampleShadingInterlock = false;
+
     /// Float control flags
     DxbcFloatControlFlags floatControl;
 

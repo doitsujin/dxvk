@@ -454,6 +454,7 @@ namespace dxvk {
     std::array<DxbcUav,             64> m_uavs;
 
     bool m_hasGloballyCoherentUav = false;
+    bool m_hasRasterizerOrderedUav = false;
 
     ///////////////////////////////////////////////
     // Control flow information. Stores labels for
