@@ -446,10 +446,14 @@ namespace dxvk {
     }} },
     /* GTA IV (NVAPI)                             */
     /* Also thinks we're always on Intel          *
-     * and will report/use bad amounts of VRAM.   */
+     * and will report/use bad amounts of VRAM.
+     * Disabling support for DF texture formats
+     * makes the game use a better looking render
+     * path for mirrors                           */
     { R"(\\GTAIV\.exe$)", {{
       { "d3d9.customVendorId",              "1002" },
       { "dxgi.emulateUMA",                  "True" },
+      { "d3d9.supportDFFormats",            "False" },
     }} },
     /* Battlefield 2 (bad z-pass)                 */
     { R"(\\BF2\.exe$)", {{
