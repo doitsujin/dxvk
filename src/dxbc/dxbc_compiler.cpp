@@ -7427,8 +7427,6 @@ namespace dxvk {
     const uint32_t width32 = 32;
     const uint32_t width64 = 64;
 
-    m_module.enableExtension("SPV_KHR_float_controls");
-
     if (flags.test(DxbcFloatControlFlag::DenormFlushToZero32)) {
       m_module.enableCapability(spv::CapabilityDenormFlushToZero);
       m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeDenormFlushToZero, 1, &width32);
