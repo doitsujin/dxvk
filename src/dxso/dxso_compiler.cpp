@@ -702,7 +702,7 @@ namespace dxvk {
     const bool pixel  = m_programInfo.type() == DxsoProgramTypes::PixelShader;
     const bool vertex = !pixel;
 
-    if (pixel && input && semantic.usage == DxsoUsage::Color && m_programInfo.majorVersion() < 3)
+    if (pixel && input && semantic.usage == DxsoUsage::Color)
       centroid = true;
 
     uint32_t slot = 0;
