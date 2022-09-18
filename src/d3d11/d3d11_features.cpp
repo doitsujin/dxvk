@@ -81,7 +81,7 @@ namespace dxvk {
       m_d3d11Options2.MapOnDefaultTextures                = TRUE;
 
     if (FeatureLevel >= D3D_FEATURE_LEVEL_11_1) {
-      m_d3d11Options2.ROVsSupported                       = FALSE;
+      m_d3d11Options2.ROVsSupported                       = m_features.extFragmentShaderInterlock.fragmentShaderPixelInterlock;
       m_d3d11Options2.PSSpecifiedStencilRefSupported      = m_features.extShaderStencilExport;
     }
 

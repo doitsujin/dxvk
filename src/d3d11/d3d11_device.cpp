@@ -1940,6 +1940,10 @@ namespace dxvk {
     enabled.core.features.shaderResourceMinLod                    = supported.core.features.shaderResourceMinLod;
     enabled.vk12.samplerFilterMinmax                              = supported.vk12.samplerFilterMinmax;
 
+    // Required for Feature Level 12_1
+    enabled.extFragmentShaderInterlock.fragmentShaderSampleInterlock = supported.extFragmentShaderInterlock.fragmentShaderSampleInterlock;
+    enabled.extFragmentShaderInterlock.fragmentShaderPixelInterlock  = supported.extFragmentShaderInterlock.fragmentShaderPixelInterlock;
+
     // Optional in any feature level
     enabled.core.features.depthBounds                             = supported.core.features.depthBounds;
     enabled.core.features.shaderFloat64                           = supported.core.features.shaderFloat64;
