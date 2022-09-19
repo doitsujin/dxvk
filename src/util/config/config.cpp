@@ -242,6 +242,11 @@ namespace dxvk {
     { R"(\\ffxiv_dx11\.exe$)", {{
       { "d3d11.cachedDynamicResources",     "vi"   },
     }} },
+    /* Final Fantasy XV: VXAO does thousands of   *
+     * draw calls with the same UAV bound         */
+    { R"(\\ffxv_s\.exe$)", {{
+      { "d3d11.ignoreGraphicsBarriers",     "True" },
+    }} },
     /* God of War - relies on NVAPI/AMDAGS for    *
      * barrier stuff, needs nvapi for DLSS        */
     { R"(\\GoW\.exe$)", {{
