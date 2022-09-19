@@ -260,9 +260,9 @@ namespace dxvk {
       }
     }
     else if (element.Usage == D3DDECLUSAGE_TEXCOORD && element.UsageIndex < 8) {
-      DWORD fvfRet = MapD3DDeclUsageTexCoordToFvfTexCoordSize(element, fvf, texCountPostUpdate);
-      if (likely(fvfRet != 0))
-        return fvfRet;
+      DWORD retFvf = 0;
+      if (likely(MapD3DDeclUsageTexCoordToFvfTexCoordSize(element, fvf, retFvf, texCountPostUpdate)))
+        return retFvf;
       else {
         Logger::warn("D3D9VertexDecl::MapD3DDeclToFvf: Unsupported set of D3DDECLUSAGE_TEXCOORD / D3DDECLTYPE_* / UsageIndex");
         return 0;
@@ -292,34 +292,38 @@ namespace dxvk {
   }
 
 
-  DWORD D3D9VertexDecl::MapD3DDeclUsageTexCoordToFvfTexCoordSize(
+  bool D3D9VertexDecl::MapD3DDeclUsageTexCoordToFvfTexCoordSize(
       const D3DVERTEXELEMENT9& element,
       DWORD fvf,
+      DWORD& outFvf,
       DWORD& texCountPostUpdate) {
 
     // Check if bits of format for current UsageIndex are free in the fvf
     // It is necessary to skip multiple initializations of the bitfield because
     // returned value is bitwise or-ed to final fvf DWORD.
+    // The D3DFVF_TEXCOORDSIZE1 is used below because it covers all formats bits.
     if ((D3DFVF_TEXCOORDSIZE1(element.UsageIndex) & fvf) != 0)
-      return 0;
+      return false;
 
     // Update max texture's index in fvf
-    DWORD lastMaxTexCount = (fvf >> 8) & 0x7;
     DWORD currentTexCount = element.UsageIndex + 1;
+    bool retStatus = true;
 
-    if (lastMaxTexCount < currentTexCount)
-      texCountPostUpdate = currentTexCount << 8;
+    if (texCountPostUpdate < currentTexCount)
+      texCountPostUpdate = currentTexCount;
 
     if (element.Type == D3DDECLTYPE_FLOAT1)
-      return D3DFVF_TEXCOORDSIZE1(element.UsageIndex);
+      outFvf = D3DFVF_TEXCOORDSIZE1(element.UsageIndex);
     else if (element.Type == D3DDECLTYPE_FLOAT2)
-      return D3DFVF_TEXCOORDSIZE2(element.UsageIndex);
+      outFvf = D3DFVF_TEXCOORDSIZE2(element.UsageIndex);
     else if (element.Type == D3DDECLTYPE_FLOAT3)
-      return D3DFVF_TEXCOORDSIZE3(element.UsageIndex);
+      outFvf = D3DFVF_TEXCOORDSIZE3(element.UsageIndex);
     else if (element.Type == D3DDECLTYPE_FLOAT4)
-      return D3DFVF_TEXCOORDSIZE4(element.UsageIndex);
+      outFvf = D3DFVF_TEXCOORDSIZE4(element.UsageIndex);
+    else
+      retStatus = false;
 
-    return 0;
+    return retStatus;
   }
 
 
@@ -330,7 +334,7 @@ namespace dxvk {
     for (const auto& element : m_elements)
       fvf |= MapD3DDeclToFvf(element, fvf, texCountPostUpdate);
 
-    fvf |= texCountPostUpdate;
+    fvf |= (texCountPostUpdate << 8);
 
     return fvf;
   }

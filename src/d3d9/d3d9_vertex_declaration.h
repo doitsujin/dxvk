@@ -77,9 +77,10 @@ namespace dxvk {
 
     DWORD MapD3DDeclTypeFloatToFvfXYZBn(BYTE type);
 
-    DWORD MapD3DDeclUsageTexCoordToFvfTexCoordSize(
+    bool MapD3DDeclUsageTexCoordToFvfTexCoordSize(
       const D3DVERTEXELEMENT9& element,
             DWORD fvf,
+            DWORD& outFvf,
             DWORD& texCountPostUpdate);
 
     void Classify();
