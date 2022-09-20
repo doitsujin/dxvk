@@ -492,9 +492,7 @@ namespace dxvk {
     if (changeFullscreen)
       SetGammaRamp(0, &m_ramp);
 
-    CreateBackBuffers(m_presentParams.BackBufferCount);
-
-    return D3D_OK;
+    return CreateBackBuffers(m_presentParams.BackBufferCount);
   }
 
 
@@ -644,6 +642,8 @@ namespace dxvk {
   void D3D9SwapChainEx::PresentImage(UINT SyncInterval) {
     m_parent->EndFrame();
     m_parent->Flush();
+
+    ValidateBackBuffersPtrs();
 
     // Retrieve the image and image view to present
     auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
@@ -836,14 +836,16 @@ namespace dxvk {
 
 
   void D3D9SwapChainEx::DestroyBackBuffers() {
-    for (auto& backBuffer : m_backBuffers)
-      backBuffer->ClearContainer();
+    for (uint32_t i = 0; i < m_backBuffers.size(); i++) {
+      if (GetBackBuffer(i))
+        m_backBuffers[i]->ClearContainer();
+    }
 
     m_backBuffers.clear();
   }
 
 
-  void D3D9SwapChainEx::CreateBackBuffers(uint32_t NumBackBuffers) {
+  HRESULT D3D9SwapChainEx::CreateBackBuffers(uint32_t NumBackBuffers) {
     // Explicitly destroy current swap image before
     // creating a new one to free up resources
     DestroyBackBuffers();
@@ -867,8 +869,14 @@ namespace dxvk {
     desc.IsBackBuffer       = TRUE;
     desc.IsAttachmentOnly   = FALSE;
 
-    for (uint32_t i = 0; i < m_backBuffers.size(); i++)
-      m_backBuffers[i] = new D3D9Surface(m_parent, &desc, this, nullptr);
+    try {
+      for (uint32_t i = 0; i < m_backBuffers.size(); i++)
+        m_backBuffers[i] = new D3D9Surface(m_parent, &desc, this, nullptr);
+    }
+    catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return D3DERR_OUTOFVIDEOMEMORY;
+    }
 
     auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
 
@@ -892,6 +900,8 @@ namespace dxvk {
 
     m_device->submitCommandList(
       m_context->endRecording());
+
+    return D3D_OK;
   }
 
 
@@ -1158,6 +1168,15 @@ namespace dxvk {
 
   std::string D3D9SwapChainEx::GetApiName() {
     return this->GetParent()->IsExtended() ? "D3D9Ex" : "D3D9";
+  }
+
+  void D3D9SwapChainEx::ValidateBackBuffersPtrs() {
+    for (uint32_t i = 0; i < m_backBuffers.size(); i++) {
+      if (!GetBackBuffer(i))
+      {
+        throw DxvkError("D3D9SwapChainEx: Back buffer pointer is invalid - nullptr");
+      }
+    }
   }
 
 }

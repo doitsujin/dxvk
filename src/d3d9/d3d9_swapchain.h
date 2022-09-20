@@ -141,7 +141,7 @@ namespace dxvk {
 
     void DestroyBackBuffers();
 
-    void CreateBackBuffers(
+    HRESULT CreateBackBuffers(
             uint32_t            NumBackBuffers);
 
     void CreateBlitter();
@@ -188,6 +188,7 @@ namespace dxvk {
 
     std::string GetApiName();
 
+    void ValidateBackBuffersPtrs();
   };
 
 }
