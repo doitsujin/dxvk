@@ -84,7 +84,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11DXGIResource::GetSharedHandle(
           HANDLE*                 pSharedHandle) {
     auto texture = GetCommonTexture(m_resource);
-    if (texture == nullptr || pSharedHandle == nullptr || !(texture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_SHARED))
+    if (texture == nullptr || pSharedHandle == nullptr)
       return E_INVALIDARG;
 
     HANDLE sharedHandle = texture->GetImage()->sharedHandle();
