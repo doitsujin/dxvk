@@ -681,6 +681,7 @@ namespace dxvk {
     void emitFog();
     void emitPsProcessing();
     void emitOutputDepthClamp();
+    void emitEmulatedDepthBias();
 
     void emitLinkerOutputSetup();
 

@@ -38,6 +38,8 @@ namespace dxvk {
 
     uint32_t alphaRef = 0u;
 
+    float constantDepthBias = 0.0f;
+
     float pointSize    = 1.0f;
     float pointSizeMin = 1.0f;
     float pointSizeMax = 64.0f;
@@ -52,6 +54,7 @@ namespace dxvk {
     FogEnd,
     FogDensity,
     AlphaRef,
+    ConstantDepthBias,
 
     PointSize,
     PointSizeMin,

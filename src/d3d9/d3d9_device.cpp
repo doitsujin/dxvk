@@ -1372,14 +1372,6 @@ namespace dxvk {
     FlushImplicit(FALSE);
     m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
-    if (ds != nullptr) {
-      float rValue = GetDepthBufferRValue(ds->GetCommonTexture()->GetFormatMapping().FormatColor);
-      if (m_depthBiasScale != rValue) {
-        m_depthBiasScale = rValue;
-        m_flags.set(D3D9DeviceFlag::DirtyDepthBias);
-      }
-    }
-
     m_state.depthStencil = ds;
 
     UpdateActiveHazardsDS(UINT32_MAX);
@@ -2005,6 +1997,9 @@ namespace dxvk {
           break;
 
         case D3DRS_DEPTHBIAS:
+          UpdatePushConstant<D3D9RenderStateItem::ConstantDepthBias>();
+          break;
+
         case D3DRS_SLOPESCALEDEPTHBIAS: {
           const bool depthBiasEnabled = IsDepthBiasEnabled();
 
@@ -5183,6 +5178,11 @@ namespace dxvk {
 
       UpdatePushConstant<offsetof(D3D9RenderStateInfo, pointScaleC), sizeof(float)>(&scale);
     }
+    else if constexpr (Item == D3D9RenderStateItem::ConstantDepthBias) {
+      float depthBias = bit::cast<float>(rs[D3DRS_DEPTHBIAS]);
+
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, constantDepthBias), sizeof(float)>(&depthBias);
+    }
     else
       Logger::warn("D3D9: Invalid push constant set to update.");
   }
@@ -5847,11 +5847,10 @@ namespace dxvk {
 
     auto& rs = m_state.renderStates;
 
-    float depthBias            = bit::cast<float>(rs[D3DRS_DEPTHBIAS]) * m_depthBiasScale;
     float slopeScaledDepthBias = bit::cast<float>(rs[D3DRS_SLOPESCALEDEPTHBIAS]);
 
     DxvkDepthBias biases;
-    biases.depthBiasConstant = depthBias;
+    biases.depthBiasConstant = 0.0f; // we emulate this in the shader
     biases.depthBiasSlope    = slopeScaledDepthBias;
     biases.depthBiasClamp    = 0.0f;
 

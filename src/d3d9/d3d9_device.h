@@ -804,10 +804,9 @@ namespace dxvk {
     inline bool IsDepthBiasEnabled() {
       const auto& rs = m_state.renderStates;
 
-      float depthBias            = bit::cast<float>(rs[D3DRS_DEPTHBIAS]);
       float slopeScaledDepthBias = bit::cast<float>(rs[D3DRS_SLOPESCALEDEPTHBIAS]);
 
-      return depthBias != 0.0f || slopeScaledDepthBias != 0.0f;
+      return slopeScaledDepthBias != 0.0f;
     }
 
     inline bool IsAlphaTestEnabled() {

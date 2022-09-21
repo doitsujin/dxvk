@@ -340,13 +340,15 @@ namespace dxvk {
     uint32_t uintType  = spvModule.defIntType(32, 0);
     uint32_t vec3Type  = spvModule.defVectorType(floatType, 3);
 
-    std::array<uint32_t, 11> rsMembers = {{
+    std::array<uint32_t, 12> rsMembers = {{
       vec3Type,
       floatType,
       floatType,
       floatType,
 
       uintType,
+
+      floatType,
 
       floatType,
       floatType,
@@ -376,17 +378,18 @@ namespace dxvk {
       memberIdx++;
     };
 
-    SetMemberName("fog_color",      offsetof(D3D9RenderStateInfo, fogColor));
-    SetMemberName("fog_scale",      offsetof(D3D9RenderStateInfo, fogScale));
-    SetMemberName("fog_end",        offsetof(D3D9RenderStateInfo, fogEnd));
-    SetMemberName("fog_density",    offsetof(D3D9RenderStateInfo, fogDensity));
-    SetMemberName("alpha_ref",      offsetof(D3D9RenderStateInfo, alphaRef));
-    SetMemberName("point_size",     offsetof(D3D9RenderStateInfo, pointSize));
-    SetMemberName("point_size_min", offsetof(D3D9RenderStateInfo, pointSizeMin));
-    SetMemberName("point_size_max", offsetof(D3D9RenderStateInfo, pointSizeMax));
-    SetMemberName("point_scale_a",  offsetof(D3D9RenderStateInfo, pointScaleA));
-    SetMemberName("point_scale_b",  offsetof(D3D9RenderStateInfo, pointScaleB));
-    SetMemberName("point_scale_c",  offsetof(D3D9RenderStateInfo, pointScaleC));
+    SetMemberName("fog_color",           offsetof(D3D9RenderStateInfo, fogColor));
+    SetMemberName("fog_scale",           offsetof(D3D9RenderStateInfo, fogScale));
+    SetMemberName("fog_end",             offsetof(D3D9RenderStateInfo, fogEnd));
+    SetMemberName("fog_density",         offsetof(D3D9RenderStateInfo, fogDensity));
+    SetMemberName("alpha_ref",           offsetof(D3D9RenderStateInfo, alphaRef));
+    SetMemberName("constant_depth_bias", offsetof(D3D9RenderStateInfo, constantDepthBias));
+    SetMemberName("point_size",          offsetof(D3D9RenderStateInfo, pointSize));
+    SetMemberName("point_size_min",      offsetof(D3D9RenderStateInfo, pointSizeMin));
+    SetMemberName("point_size_max",      offsetof(D3D9RenderStateInfo, pointSizeMax));
+    SetMemberName("point_scale_a",       offsetof(D3D9RenderStateInfo, pointScaleA));
+    SetMemberName("point_scale_b",       offsetof(D3D9RenderStateInfo, pointScaleB));
+    SetMemberName("point_scale_c",       offsetof(D3D9RenderStateInfo, pointScaleC));
 
     return rsBlock;
   }
@@ -766,6 +769,8 @@ namespace dxvk {
 
     uint32_t emitMatrixTimesVector(uint32_t rowCount, uint32_t colCount, uint32_t matrix, uint32_t vector);
     uint32_t emitVectorTimesMatrix(uint32_t rowCount, uint32_t colCount, uint32_t vector, uint32_t matrix);
+
+    void emitEmulatedDepthBias();
 
     bool isVS() { return m_programType == DxsoProgramType::VertexShader; }
     bool isPS() { return !isVS(); }
@@ -1370,12 +1375,12 @@ namespace dxvk {
     if (m_programType == DxsoProgramType::PixelShader) {
       m_pushConstOffset = 0;
       m_pushConstSize   = offsetof(D3D9RenderStateInfo, pointSize);
-      count = 5;
+      count = 6;
     }
     else {
       m_pushConstOffset = offsetof(D3D9RenderStateInfo, pointSize);
       m_pushConstSize   = sizeof(float) * 6;
-      count = 11;
+      count = 12;
     }
 
     m_rsBlock = SetupRenderStateBlock(m_module, count);
@@ -2430,6 +2435,35 @@ namespace dxvk {
 
     matrix = m_module.opTranspose(matType, matrix);
     return emitMatrixTimesVector(colCount, rowCount, matrix, vector);
+  }
+
+  void D3D9FFShaderCompiler::emitEmulatedDepthBias() {
+    const uint32_t floatType = m_module.defFloatType(32);
+    const uint32_t vec4Type = m_module.defVectorType(floatType, 4);
+
+    uint32_t pointerType = m_module.defPointerType(vec4Type, spv::StorageClassInput);
+    uint32_t fragCoordPtrId = m_module.newVar(pointerType, spv::StorageClassInput);
+    m_module.setDebugName(fragCoordPtrId, "ps_depth_bias_frag_coord");
+    m_module.decorateBuiltIn(fragCoordPtrId, spv::BuiltInFragCoord);
+
+    uint32_t fragCoordId = m_module.opLoad(vec4Type, fragCoordPtrId);
+    uint32_t index = 2;
+    uint32_t originalDepthId = m_module.opCompositeExtract(floatType, fragCoordId, 1, &index);
+
+    uint32_t constantDepthBiasMember =  m_module.constu32(uint32_t(D3D9RenderStateItem::ConstantDepthBias));
+    uint32_t constantDepthBiasId = m_module.opLoad(floatType, m_module.opAccessChain(floatType,  m_rsBlock, 1, &constantDepthBiasMember));
+
+    uint32_t resultId = m_module.opFAdd(floatType, originalDepthId, constantDepthBiasId);
+
+    uint32_t depthOutPointerType = m_module.defPointerType(floatType, spv::StorageClassInput);
+    uint32_t depthOutPtrId = m_module.newVar(depthOutPointerType, spv::StorageClassOutput);
+    m_module.setDebugName(depthOutPtrId, "ps_depth_bias_out");
+    m_module.decorateBuiltIn(depthOutPtrId, spv::BuiltInFragDepth);
+    m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeDepthReplacing);
+
+    DxsoRegister fragDepthReg;
+    fragDepthReg.id.type = DxsoRegisterType::DepthOut;
+    m_module.opStore(depthOutPtrId, resultId);
   }
 
 
