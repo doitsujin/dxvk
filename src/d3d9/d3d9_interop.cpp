@@ -1,6 +1,9 @@
 #include "d3d9_interop.h"
 #include "d3d9_interface.h"
 #include "d3d9_common_texture.h"
+#include "d3d9_device.h"
+#include "d3d9_texture.h"
+#include "d3d9_buffer.h"
 
 namespace dxvk {
 
@@ -111,6 +114,129 @@ namespace dxvk {
     }
     
     return S_OK;
+  }
+
+  ////////////////////////////////
+  // Device Interop
+  ///////////////////////////////
+
+  D3D9VkInteropDevice::D3D9VkInteropDevice(
+          D3D9DeviceEx*         pInterface)
+    : m_device(pInterface) {
+
+  }
+
+  D3D9VkInteropDevice::~D3D9VkInteropDevice() {
+
+  }
+
+  ULONG STDMETHODCALLTYPE D3D9VkInteropDevice::AddRef() {
+    return m_device->AddRef();
+  }
+  
+  ULONG STDMETHODCALLTYPE D3D9VkInteropDevice::Release() {
+    return m_device->Release();
+  }
+  
+  HRESULT STDMETHODCALLTYPE D3D9VkInteropDevice::QueryInterface(
+          REFIID                riid,
+          void**                ppvObject) {
+    return m_device->QueryInterface(riid, ppvObject);
+  }
+
+  void STDMETHODCALLTYPE D3D9VkInteropDevice::GetVulkanHandles(
+          VkInstance*           pInstance,
+          VkPhysicalDevice*     pPhysDev,
+          VkDevice*             pDevice) {
+    auto device   = m_device->GetDXVKDevice();
+    auto adapter  = device->adapter();
+    auto instance = device->instance();
+    
+    if (pDevice != nullptr)
+      *pDevice = device->handle();
+    
+    if (pPhysDev != nullptr)
+      *pPhysDev = adapter->handle();
+    
+    if (pInstance != nullptr)
+      *pInstance = instance->handle();
+  }
+
+  void STDMETHODCALLTYPE D3D9VkInteropDevice::GetSubmissionQueue(
+          VkQueue*              pQueue,
+          uint32_t*             pQueueIndex,
+          uint32_t*             pQueueFamilyIndex) {
+    auto device = m_device->GetDXVKDevice();
+    DxvkDeviceQueue queue = device->queues().graphics;
+    
+    if (pQueue != nullptr)
+      *pQueue = queue.queueHandle;
+    
+    if (pQueueIndex != nullptr)
+      *pQueueIndex = queue.queueIndex;
+    
+    if (pQueueFamilyIndex != nullptr)
+      *pQueueFamilyIndex = queue.queueFamily;
+  }
+
+  void STDMETHODCALLTYPE D3D9VkInteropDevice::TransitionTextureLayout(
+          ID3D9VkInteropTexture*    pTexture,
+    const VkImageSubresourceRange*  pSubresources,
+          VkImageLayout             OldLayout,
+          VkImageLayout             NewLayout) {
+    auto texture = static_cast<D3D9VkInteropTexture *>(pTexture)->GetCommonTexture();
+
+    m_device->EmitCs([
+      cImage        = texture->GetImage(),
+      cSubresources = *pSubresources,
+      cOldLayout    = OldLayout,
+      cNewLayout    = NewLayout
+    ] (DxvkContext* ctx) {
+      ctx->transformImage(
+        cImage, cSubresources,
+        cOldLayout, cNewLayout);
+    });
+  }
+
+  void STDMETHODCALLTYPE D3D9VkInteropDevice::FlushRenderingCommands() {
+    m_device->Flush();
+    m_device->SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
+  }
+
+  void STDMETHODCALLTYPE D3D9VkInteropDevice::LockSubmissionQueue() {
+    m_device->GetDXVKDevice()->lockSubmission();
+  }
+
+  void STDMETHODCALLTYPE D3D9VkInteropDevice::ReleaseSubmissionQueue() {
+    m_device->GetDXVKDevice()->unlockSubmission();
+  }
+
+  void STDMETHODCALLTYPE D3D9VkInteropDevice::LockDevice() {
+    m_lock = m_device->LockDevice();
+  }
+  
+  void STDMETHODCALLTYPE D3D9VkInteropDevice::UnlockDevice() {
+    m_lock = D3D9DeviceLock();
+  }
+
+  static Rc<DxvkResource> GetDxvkResource(IDirect3DResource9 *pResource) {
+    switch (pResource->GetType()) {
+      case D3DRTYPE_SURFACE:       return static_cast<D3D9Surface*>     (pResource)->GetCommonTexture()->GetImage();
+      // Does not inherit from IDirect3DResource9... lol.
+      //case D3DRTYPE_VOLUME:        return static_cast<D3D9Volume*>      (pResource)->GetCommonTexture()->GetImage();
+      case D3DRTYPE_TEXTURE:       return static_cast<D3D9Texture2D*>   (pResource)->GetCommonTexture()->GetImage();
+      case D3DRTYPE_VOLUMETEXTURE: return static_cast<D3D9Texture3D*>   (pResource)->GetCommonTexture()->GetImage();
+      case D3DRTYPE_CUBETEXTURE:   return static_cast<D3D9TextureCube*> (pResource)->GetCommonTexture()->GetImage();
+      case D3DRTYPE_VERTEXBUFFER:  return static_cast<D3D9VertexBuffer*>(pResource)->GetCommonBuffer()->GetBuffer<D3D9_COMMON_BUFFER_TYPE_REAL>();
+      case D3DRTYPE_INDEXBUFFER:   return static_cast<D3D9IndexBuffer*> (pResource)->GetCommonBuffer()->GetBuffer<D3D9_COMMON_BUFFER_TYPE_REAL>();
+      default:                     return nullptr;
+    }
+  }
+
+  bool STDMETHODCALLTYPE D3D9VkInteropDevice::WaitForResource(
+          IDirect3DResource9*  pResource,
+          DWORD                MapFlags) {
+    return m_device->WaitForResource(GetDxvkResource(pResource), DxvkCsThread::SynchronizeAll, MapFlags);
   }
 
 }
