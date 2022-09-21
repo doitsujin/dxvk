@@ -46,15 +46,11 @@ namespace dxvk {
     if (hSharedHandle == nullptr)
       hSharedHandle = INVALID_HANDLE_VALUE;
 
-    if (m_desc.MiscFlags & (D3D11_RESOURCE_MISC_SHARED|D3D11_RESOURCE_MISC_SHARED_NTHANDLE)) {
-      if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX)
-        Logger::warn("D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX: not supported.");
+    if (m_desc.MiscFlags & (D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_NTHANDLE | D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX)) {
 
       imageInfo.shared = true;
       imageInfo.sharing.mode = hSharedHandle == INVALID_HANDLE_VALUE ? DxvkSharedHandleMode::Export : DxvkSharedHandleMode::Import;
-      imageInfo.sharing.type = (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED)
-        ? VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT
-        : VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+      imageInfo.sharing.type = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
       imageInfo.sharing.handle = hSharedHandle;
     }
 
@@ -638,12 +634,7 @@ namespace dxvk {
   
   
   void D3D11CommonTexture::ExportImageInfo() {
-    HANDLE hSharedHandle;
-
-    if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED)
-      hSharedHandle = openKmtHandle( m_image->sharedHandle() );
-    else
-      hSharedHandle = m_image->sharedHandle();
+    HANDLE hSharedHandle = m_image->sharedHandle();
 
     DxvkSharedTextureMetadata metadata;
 
@@ -663,8 +654,7 @@ namespace dxvk {
       Logger::warn("D3D11: Failed to write shared resource info for a texture");
     }
 
-    if ((m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED) && hSharedHandle != INVALID_HANDLE_VALUE)
-      CloseHandle(hSharedHandle);
+    ::CloseHandle(hSharedHandle);
   }
   
   

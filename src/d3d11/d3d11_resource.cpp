@@ -87,7 +87,14 @@ namespace dxvk {
     if (texture == nullptr || pSharedHandle == nullptr || !(texture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_SHARED))
       return E_INVALIDARG;
 
-    HANDLE kmtHandle = texture->GetImage()->sharedHandle();
+    HANDLE sharedHandle = texture->GetImage()->sharedHandle();
+
+    if (sharedHandle == INVALID_HANDLE_VALUE)
+      return E_INVALIDARG;
+
+    HANDLE kmtHandle = getKmtHandle(sharedHandle);
+
+    ::CloseHandle(sharedHandle);
 
     if (kmtHandle == INVALID_HANDLE_VALUE)
       return E_INVALIDARG;
@@ -154,9 +161,6 @@ namespace dxvk {
 
     if (handle == INVALID_HANDLE_VALUE)
       return E_INVALIDARG;
-
-    if (texture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_SHARED)
-      handle = openKmtHandle( handle );
 
     *pHandle = handle;
     return S_OK;

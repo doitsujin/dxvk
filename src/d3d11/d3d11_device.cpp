@@ -2279,9 +2279,6 @@ namespace dxvk {
     DxvkSharedTextureMetadata metadata;
     bool ret = getSharedMetadata(ntHandle, &metadata, sizeof(metadata), NULL);
 
-    if (IsKmtHandle)
-      ::CloseHandle(ntHandle);
-
     if (!ret) {
       Logger::warn("D3D11Device::OpenSharedResourceGeneric: Failed to get shared resource info for a texture");
       return E_INVALIDARG;
@@ -2303,11 +2300,15 @@ namespace dxvk {
 
     // Only 2D textures may be shared
     try {
-      const Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &d3d11Desc, hResource);
+      const Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &d3d11Desc, ntHandle);
+      if (IsKmtHandle)
+        ::CloseHandle(ntHandle);
       texture->QueryInterface(ReturnedInterface, ppResource);
       return S_OK;
     }
     catch (const DxvkError& e) {
+      if (IsKmtHandle)
+        ::CloseHandle(ntHandle);
       Logger::err(e.message());
       return E_INVALIDARG;
     }

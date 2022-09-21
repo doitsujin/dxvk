@@ -9,6 +9,7 @@
 namespace dxvk {
 
     HANDLE openKmtHandle(HANDLE kmt_handle);
+    HANDLE getKmtHandle(HANDLE handle);
 
     bool setSharedMetadata(HANDLE handle, void *buf, uint32_t bufSize);
     bool getSharedMetadata(HANDLE handle, void *buf, uint32_t bufSize, uint32_t *metadataSize);

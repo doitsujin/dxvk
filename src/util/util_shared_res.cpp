@@ -30,6 +30,19 @@ namespace dxvk {
     return handle; 
   }
 
+  #define IOCTL_SHARED_GPU_RESOURCE_GETKMT           CTL_CODE(FILE_DEVICE_VIDEO, 2, METHOD_BUFFERED, FILE_READ_ACCESS)
+
+  HANDLE getKmtHandle(HANDLE handle)
+  {
+      unsigned int kmtHandle;
+      DWORD retSize;
+
+      if (!(::DeviceIoControl(handle, IOCTL_SHARED_GPU_RESOURCE_GETKMT, NULL, 0, &kmtHandle, sizeof(kmtHandle), &retSize, NULL)))
+          return INVALID_HANDLE_VALUE;
+
+      return reinterpret_cast<HANDLE>(kmtHandle);
+  }
+
   #define IOCTL_SHARED_GPU_RESOURCE_SET_METADATA           CTL_CODE(FILE_DEVICE_VIDEO, 4, METHOD_BUFFERED, FILE_WRITE_ACCESS)
 
   bool setSharedMetadata(HANDLE handle, void *buf, uint32_t bufSize) {
