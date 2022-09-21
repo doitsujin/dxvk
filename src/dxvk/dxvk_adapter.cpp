@@ -335,7 +335,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 23> devExtensionList = {{
+    std::array<DxvkExt*, 24> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.extAttachmentFeedbackLoopLayout,
@@ -357,6 +357,7 @@ namespace dxvk {
       &devExtensions.khrExternalSemaphoreWin32,
       &devExtensions.khrPipelineLibrary,
       &devExtensions.khrSwapchain,
+      &devExtensions.khrWin32KeyedMutex,
       &devExtensions.nvxBinaryImport,
       &devExtensions.nvxImageViewHandle,
     }};
@@ -537,6 +538,9 @@ namespace dxvk {
 
     if (devExtensions.khrExternalSemaphoreWin32)
       enabledFeatures.khrExternalSemaphoreWin32 = VK_TRUE;
+
+    if (devExtensions.khrWin32KeyedMutex)
+      enabledFeatures.khrWin32KeyedMutex = VK_TRUE;
 
     if (devExtensions.nvxBinaryImport)
       enabledFeatures.nvxBinaryImport = VK_TRUE;
@@ -1007,6 +1011,8 @@ namespace dxvk {
       "\n  extension supported                    : ", features.khrExternalMemoryWin32 ? "1" : "0",
       "\n", VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,
       "\n  extension supported                    : ", features.khrExternalSemaphoreWin32 ? "1" : "0",
+      "\n", VK_KHR_WIN32_KEYED_MUTEX_EXTENSION_NAME,
+      "\n  extension supported                    : ", features.khrWin32KeyedMutex ? "1" : "0",
       "\n", VK_NVX_BINARY_IMPORT_EXTENSION_NAME,
       "\n  extension supported                    : ", features.nvxBinaryImport ? "1" : "0",
       "\n", VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME,
