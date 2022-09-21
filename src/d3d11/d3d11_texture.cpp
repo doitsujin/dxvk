@@ -1,4 +1,5 @@
 #include "d3d11_device.h"
+#include "d3d11_context_imm.h"
 #include "d3d11_gdi.h"
 #include "d3d11_texture.h"
 
@@ -50,7 +51,9 @@ namespace dxvk {
 
       imageInfo.shared = true;
       imageInfo.sharing.mode = hSharedHandle == INVALID_HANDLE_VALUE ? DxvkSharedHandleMode::Export : DxvkSharedHandleMode::Import;
-      imageInfo.sharing.type = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+      imageInfo.sharing.type = (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX)
+        ? VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT
+        : VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
       imageInfo.sharing.handle = hSharedHandle;
     }
 
@@ -1014,6 +1017,159 @@ namespace dxvk {
   }
   
   
+  D3D11DXGIKeyedMutex::D3D11DXGIKeyedMutex(
+          ID3D11Resource* pResource,
+          D3D11Device*    pDevice)
+  : m_resource(pResource),
+    m_device(pDevice) {
+
+  }
+
+
+  D3D11DXGIKeyedMutex::~D3D11DXGIKeyedMutex() {
+
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11DXGIKeyedMutex::AddRef() {
+    return m_resource->AddRef();
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11DXGIKeyedMutex::Release() {
+    return m_resource->Release();
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    return m_resource->QueryInterface(riid, ppvObject);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::GetPrivateData(
+          REFGUID                 Name,
+          UINT*                   pDataSize,
+          void*                   pData) {
+    return m_resource->GetPrivateData(Name, pDataSize, pData);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::SetPrivateData(
+          REFGUID                 Name,
+          UINT                    DataSize,
+    const void*                   pData) {
+    return m_resource->SetPrivateData(Name, DataSize, pData);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::SetPrivateDataInterface(
+          REFGUID                 Name,
+    const IUnknown*               pUnknown) {
+    return m_resource->SetPrivateDataInterface(Name, pUnknown);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::GetParent(
+          REFIID                  riid,
+          void**                  ppParent) {
+    return GetDevice(riid, ppParent);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::GetDevice(
+          REFIID                  riid,
+          void**                  ppDevice) {
+    Com<ID3D11Device> device;
+    m_resource->GetDevice(&device);
+    return device->QueryInterface(riid, ppDevice);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::AcquireSync(
+          UINT64                  Key,
+          DWORD                   dwMilliseconds) {
+    auto device = m_device->GetDXVKDevice();
+
+    Com<ID3D11DeviceContext> deviceContext;
+    m_device->GetImmediateContext(&deviceContext);
+    auto immediateContext = static_cast<D3D11ImmediateContext*>(deviceContext.ptr());
+
+    auto texture = GetCommonTexture(m_resource);
+    auto sharedMem = texture->GetImage()->getSharedDeviceMemory();
+
+    const auto& graphicsQueue = device->queues().graphics;
+
+    VkWin32KeyedMutexAcquireReleaseInfoKHR keyedMutexSubmit = { VK_STRUCTURE_TYPE_WIN32_KEYED_MUTEX_ACQUIRE_RELEASE_INFO_KHR };
+
+    keyedMutexSubmit.acquireCount = 1;
+    keyedMutexSubmit.pAcquireSyncs = &sharedMem;
+    keyedMutexSubmit.pAcquireKeys = &Key;
+    uint32_t timeout = dwMilliseconds;
+    keyedMutexSubmit.pAcquireTimeouts = &timeout;
+
+    VkSubmitInfo2 submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO_2, &keyedMutexSubmit };
+
+    immediateContext->Flush();
+    immediateContext->SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
+
+    device->lockSubmission();
+    VkResult vr = device->vkd()->vkQueueSubmit2(graphicsQueue.queueHandle, 1, &submitInfo, VK_NULL_HANDLE);
+    device->unlockSubmission();
+
+    if (vr == VK_SUCCESS)
+      return S_OK;
+    else if (vr == VK_TIMEOUT)
+      return WAIT_TIMEOUT;
+    else
+      return E_FAIL;
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::ReleaseSync(
+          UINT64                  Key) {
+    auto device = m_device->GetDXVKDevice();
+
+    Com<ID3D11DeviceContext> deviceContext;
+    m_device->GetImmediateContext(&deviceContext);
+    auto immediateContext = static_cast<D3D11ImmediateContext*>(deviceContext.ptr());
+
+    auto texture = GetCommonTexture(m_resource);
+    auto sharedMem = texture->GetImage()->getSharedDeviceMemory();
+
+    const auto& graphicsQueue = device->queues().graphics;
+
+    VkWin32KeyedMutexAcquireReleaseInfoKHR keyedMutexSubmit = { VK_STRUCTURE_TYPE_WIN32_KEYED_MUTEX_ACQUIRE_RELEASE_INFO_KHR };
+
+    keyedMutexSubmit.releaseCount = 1;
+    keyedMutexSubmit.pReleaseSyncs = &sharedMem;
+    keyedMutexSubmit.pReleaseKeys = &Key;
+
+    VkSubmitInfo2 submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO_2, &keyedMutexSubmit };
+
+    immediateContext->Flush();
+    immediateContext->SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
+
+    device->lockSubmission();
+    VkResult vr = device->vkd()->vkQueueSubmit2(graphicsQueue.queueHandle, 1, &submitInfo, VK_NULL_HANDLE);
+    device->unlockSubmission();
+
+    if (vr == VK_SUCCESS)
+      return S_OK;
+    else
+      return E_FAIL;
+  }
+
+
+  bool D3D11DXGIKeyedMutex::isSupported() const {
+    auto texture = GetCommonTexture(m_resource);
+
+    return texture->GetImage()->getSharedDeviceMemory() != VK_NULL_HANDLE
+     && texture->GetImage()->info().sharing.type & VK_EXTERNAL_MEMORY_HANDLE_TYPE_D3D11_TEXTURE_BIT
+     && m_device->GetDXVKDevice()->features().khrWin32KeyedMutex;
+  }
+
+
   ///////////////////////////////////////////
   //      D 3 D 1 1 T E X T U R E 1 D
   D3D11Texture1D::D3D11Texture1D(
@@ -1124,7 +1280,8 @@ namespace dxvk {
     m_surface   (this, &m_texture),
     m_resource  (this),
     m_d3d10     (this),
-    m_swapChain (nullptr) {
+    m_swapChain (nullptr),
+    m_keyedMutex (this, pDevice) {
   }
 
 
@@ -1139,8 +1296,9 @@ namespace dxvk {
     m_surface   (this, &m_texture),
     m_resource  (this),
     m_d3d10     (this),
-    m_swapChain (nullptr) {
-    
+    m_swapChain (nullptr),
+    m_keyedMutex (this, pDevice) {
+
   }
 
 
@@ -1155,8 +1313,9 @@ namespace dxvk {
     m_surface   (this, &m_texture),
     m_resource  (this),
     m_d3d10     (this),
-    m_swapChain (pSwapChain) {
-    
+    m_swapChain (pSwapChain),
+    m_keyedMutex (this, pDevice) {
+
   }
   
   
@@ -1229,6 +1388,11 @@ namespace dxvk {
      || riid == __uuidof(IDXGIResource1)) {
        *ppvObject = ref(&m_resource);
        return S_OK;
+    }
+
+    if (riid == __uuidof(IDXGIKeyedMutex) && m_keyedMutex.isSupported()) {
+      *ppvObject = ref(&m_keyedMutex);
+      return S_OK;
     }
     
     if (riid == __uuidof(IDXGIVkInteropSurface)) {

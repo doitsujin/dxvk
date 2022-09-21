@@ -628,6 +628,62 @@ namespace dxvk {
   };
   
   
+  class D3D11DXGIKeyedMutex : public IDXGIKeyedMutex {
+
+  public:
+
+    D3D11DXGIKeyedMutex(
+      ID3D11Resource* pResource,
+      D3D11Device*    pDevice);
+
+    ~D3D11DXGIKeyedMutex();
+
+    ULONG STDMETHODCALLTYPE AddRef();
+
+    ULONG STDMETHODCALLTYPE Release();
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                  riid,
+            void**                  ppvObject);
+
+    HRESULT STDMETHODCALLTYPE GetPrivateData(
+            REFGUID                 Name,
+            UINT*                   pDataSize,
+            void*                   pData);
+
+    HRESULT STDMETHODCALLTYPE SetPrivateData(
+            REFGUID                 Name,
+            UINT                    DataSize,
+      const void*                   pData);
+
+    HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
+            REFGUID                 Name,
+      const IUnknown*               pUnknown);
+
+    HRESULT STDMETHODCALLTYPE GetParent(
+            REFIID                  riid,
+            void**                  ppParent);
+
+    HRESULT STDMETHODCALLTYPE GetDevice(
+            REFIID                  riid,
+            void**                  ppDevice);
+
+    HRESULT STDMETHODCALLTYPE AcquireSync(
+            UINT64                  Key,
+            DWORD                   dwMilliseconds);
+
+    HRESULT STDMETHODCALLTYPE ReleaseSync(
+            UINT64                  Key);
+
+    bool isSupported() const;
+
+  private:
+
+    ID3D11Resource* m_resource;
+    D3D11Device*    m_device;
+  };
+
+
   ///////////////////////////////////////////
   //      D 3 D 1 1 T E X T U R E 1 D
   class D3D11Texture1D : public D3D11DeviceChild<ID3D11Texture1D> {
@@ -735,6 +791,7 @@ namespace dxvk {
     D3D11DXGIResource     m_resource;
     D3D10Texture2D        m_d3d10;
     IUnknown*             m_swapChain;
+    D3D11DXGIKeyedMutex   m_keyedMutex;
     
   };
   
