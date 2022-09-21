@@ -2024,7 +2024,10 @@ namespace dxvk {
             indices[index++] = m_module.opCompositeExtract(m_module.defFloatType(32), crossValue.id, 1, &i);
         }
 
-        result.id = m_module.opCompositeConstruct(getVectorTypeId(result.type), result.type.ccount, indices.data());
+        if (result.type.ccount == 1)
+          result.id = indices[0];
+        else
+          result.id = m_module.opCompositeConstruct(typeId, result.type.ccount, indices.data());
 
         break;
       }
