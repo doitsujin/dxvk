@@ -11,7 +11,8 @@ namespace dxvk {
   D3D9InterfaceEx::D3D9InterfaceEx(bool bExtended)
     : m_instance    ( new DxvkInstance() )
     , m_extended    ( bExtended ) 
-    , m_d3d9Options ( nullptr, m_instance->config() ) {
+    , m_d3d9Options ( nullptr, m_instance->config() )
+    , m_d3d9Interop ( this ) {
     // D3D9 doesn't enumerate adapters like physical adapters...
     // only as connected displays.
 
@@ -73,6 +74,11 @@ namespace dxvk {
      || riid == __uuidof(IDirect3D9)
      || (m_extended && riid == __uuidof(IDirect3D9Ex))) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3D9VkInteropInterface)) {
+      *ppvObject = ref(&m_d3d9Interop);
       return S_OK;
     }
 
