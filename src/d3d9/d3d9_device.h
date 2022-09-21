@@ -670,7 +670,7 @@ namespace dxvk {
 
     HWND GetWindow();
 
-    Rc<DxvkDevice> GetDXVKDevice() {
+    const Rc<DxvkDevice>& GetDXVKDevice() {
       return m_dxvkDevice;
     }
 
