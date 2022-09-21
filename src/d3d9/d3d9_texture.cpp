@@ -27,6 +27,11 @@ namespace dxvk {
       return S_OK;
     }
 
+    if (riid == __uuidof(ID3D9VkInteropTexture)) {
+      *ppvObject = ref(m_texture.GetVkInterop());
+      return S_OK;
+    }
+
     Logger::warn("D3D9Texture2D::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
@@ -118,6 +123,11 @@ namespace dxvk {
       return S_OK;
     }
 
+    if (riid == __uuidof(ID3D9VkInteropTexture)) {
+      *ppvObject = ref(m_texture.GetVkInterop());
+      return S_OK;
+    }
+
     Logger::warn("D3D9Texture3D::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
@@ -200,6 +210,11 @@ namespace dxvk {
      || riid == __uuidof(IDirect3DBaseTexture9)
      || riid == __uuidof(IDirect3DCubeTexture9)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3D9VkInteropTexture)) {
+      *ppvObject = ref(m_texture.GetVkInterop());
       return S_OK;
     }
 

@@ -15,7 +15,7 @@ namespace dxvk {
           HANDLE*                   pSharedHandle)
     : D3D9SurfaceBase(
         pDevice,
-        new D3D9CommonTexture( pDevice, pDesc, D3DRTYPE_SURFACE, pSharedHandle),
+        new D3D9CommonTexture( pDevice, this, pDesc, D3DRTYPE_SURFACE, pSharedHandle),
         0, 0,
         nullptr,
         pContainer) { }

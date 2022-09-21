@@ -4,6 +4,7 @@
 #include "d3d9_util.h"
 #include "d3d9_caps.h"
 #include "d3d9_mem.h"
+#include "d3d9_interop.h"
 
 #include "../dxvk/dxvk_device.h"
 
@@ -72,6 +73,7 @@ namespace dxvk {
 
     D3D9CommonTexture(
             D3D9DeviceEx*             pDevice,
+            IUnknown*                 pInterface,
       const D3D9_COMMON_TEXTURE_DESC* pDesc,
             D3DRESOURCETYPE           ResourceType,
             HANDLE*                   pSharedHandle);
@@ -474,6 +476,8 @@ namespace dxvk {
      */
     void CreateBufferSubresource(UINT Subresource, bool Initialize);
 
+    ID3D9VkInteropTexture* GetVkInterop() { return &m_d3d9Interop; }
+
   private:
 
     D3D9DeviceEx*                 m_device;
@@ -522,6 +526,8 @@ namespace dxvk {
     D3DTEXTUREFILTERTYPE          m_mipFilter = D3DTEXF_LINEAR;
 
     std::array<D3DBOX, 6>         m_dirtyBoxes;
+
+    D3D9VkInteropTexture          m_d3d9Interop;
 
     Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType, bool TryOffscreenRT, HANDLE* pSharedHandle) const;
 
