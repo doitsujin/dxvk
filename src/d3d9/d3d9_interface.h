@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3d9_adapter.h"
+#include "d3d9_interop.h"
 
 #include "../dxvk/dxvk_instance.h"
 
@@ -142,6 +143,8 @@ namespace dxvk {
     D3D9Options                   m_d3d9Options;
 
     std::vector<D3D9Adapter>      m_adapters;
+
+    D3D9VkInteropInterface        m_d3d9Interop;
 
   };
 
