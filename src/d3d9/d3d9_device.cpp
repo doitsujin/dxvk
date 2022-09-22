@@ -1997,6 +1997,10 @@ namespace dxvk {
           break;
 
         case D3DRS_DEPTHBIAS:
+          if (old == 0.0f || Value == 0.0f) {
+            m_flags.set(D3D9DeviceFlag::DirtyRasterizerState);
+          }
+
           UpdatePushConstant<D3D9RenderStateItem::ConstantDepthBias>();
           break;
 
@@ -5833,7 +5837,7 @@ namespace dxvk {
     state.frontFace       = VK_FRONT_FACE_CLOCKWISE;
     state.polygonMode     = DecodeFillMode(D3DFILLMODE(rs[D3DRS_FILLMODE]));
     state.flatShading     = m_state.renderStates[D3DRS_SHADEMODE] == D3DSHADE_FLAT;
-    state.depthReplacing  = VK_FALSE;
+    state.depthReplacing  = m_state.renderStates[D3DRS_DEPTHBIAS] != 0.0f;
 
     EmitCs([
       cState  = state

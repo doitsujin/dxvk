@@ -3673,7 +3673,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       uint32_t depthOutPtrId = m_module.newVar(depthOutPointerType, spv::StorageClassOutput);
       m_module.setDebugName(depthOutPtrId, "ps_depth_bias_out");
       m_module.decorateBuiltIn(depthOutPtrId, spv::BuiltInFragDepth);
-      m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeDepthReplacing);
+      m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeDepthUnchanged);
       m_module.opStore(depthOutPtrId, resultId);
     } else {
       m_module.opStore(m_ps.oDepth.id, resultId);

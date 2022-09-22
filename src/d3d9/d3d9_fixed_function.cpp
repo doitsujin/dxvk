@@ -2459,7 +2459,7 @@ namespace dxvk {
     uint32_t depthOutPtrId = m_module.newVar(depthOutPointerType, spv::StorageClassOutput);
     m_module.setDebugName(depthOutPtrId, "ps_depth_bias_out");
     m_module.decorateBuiltIn(depthOutPtrId, spv::BuiltInFragDepth);
-    m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeDepthReplacing);
+    m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeDepthUnchanged);
 
     DxsoRegister fragDepthReg;
     fragDepthReg.id.type = DxsoRegisterType::DepthOut;
