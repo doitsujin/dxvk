@@ -483,8 +483,8 @@ namespace dxvk {
     VkMemoryType type = m_memProps.memoryTypes[memTypeId];
     VkMemoryHeap heap = m_memProps.memoryHeaps[type.heapIndex];
 
-    // Default to a chunk size of 128 MiB
-    VkDeviceSize chunkSize = 128 << 20;
+    // Default to a chunk size of 256 MiB
+    VkDeviceSize chunkSize = 256 << 20;
 
     if (hints.test(DxvkMemoryFlag::Small))
       chunkSize = 16 << 20;
