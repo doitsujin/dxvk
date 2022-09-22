@@ -20,10 +20,8 @@ namespace dxvk {
     const D3DVERTEXELEMENT9* pVertexElements,
           uint32_t           DeclCount)
     : D3D9VertexDeclBase( pDevice )
-    , m_elements        ( DeclCount )
-    , m_fvf             ( 0 ) {
-    std::copy(pVertexElements, pVertexElements + DeclCount, m_elements.begin());
-    m_fvf = this->MapD3D9VertexElementsToFvf();
+    , m_elements        ( pVertexElements, pVertexElements + DeclCount )
+    , m_fvf             ( this->MapD3D9VertexElementsToFvf() ) {
     this->Classify();
   }
 
@@ -248,15 +246,12 @@ namespace dxvk {
     else if (element.Usage == D3DDECLUSAGE_PSIZE && element.Type == D3DDECLTYPE_FLOAT1 && element.UsageIndex == 0)
       return D3DFVF_PSIZE;
     else if (element.Usage == D3DDECLUSAGE_COLOR && element.Type == D3DDECLTYPE_D3DCOLOR) {
-      switch (element.UsageIndex)
-      {
-      case 0:
-        return D3DFVF_DIFFUSE;
-      case 1:
-        return D3DFVF_SPECULAR;
-      default:;
-        Logger::warn("D3D9VertexDecl::MapD3DDeclToFvf: Unsupported set of D3DDECLUSAGE_COLOR / D3DDECLTYPE_D3DCOLOR / UsageIndex");
-        return 0;
+      switch (element.UsageIndex) {
+        case 0: return D3DFVF_DIFFUSE;
+        case 1: return D3DFVF_SPECULAR;
+        default:
+          Logger::warn("D3D9VertexDecl::MapD3DDeclToFvf: Unsupported set of D3DDECLUSAGE_COLOR / D3DDECLTYPE_D3DCOLOR / UsageIndex");
+          return 0;
       }
     }
     else if (element.Usage == D3DDECLUSAGE_TEXCOORD && element.UsageIndex < 8) {
@@ -276,18 +271,12 @@ namespace dxvk {
 
   DWORD D3D9VertexDecl::MapD3DDeclTypeFloatToFvfXYZBn(BYTE type) {
 
-    switch (type)
-    {
-    default:;
-      return 0;
-    case D3DDECLTYPE_FLOAT1:
-      return D3DFVF_XYZB1;
-    case D3DDECLTYPE_FLOAT2:
-      return D3DFVF_XYZB2;
-    case D3DDECLTYPE_FLOAT3:
-      return D3DFVF_XYZB3;
-    case D3DDECLTYPE_FLOAT4:
-      return D3DFVF_XYZB4;
+    switch (type) {
+      case D3DDECLTYPE_FLOAT1: return D3DFVF_XYZB1;
+      case D3DDECLTYPE_FLOAT2: return D3DFVF_XYZB2;
+      case D3DDECLTYPE_FLOAT3: return D3DFVF_XYZB3;
+      case D3DDECLTYPE_FLOAT4: return D3DFVF_XYZB4;
+      default:                 return 0;
     }
   }
 
