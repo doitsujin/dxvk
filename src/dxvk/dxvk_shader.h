@@ -67,9 +67,10 @@ namespace dxvk {
    * \brief Shader module create info
    */
   struct DxvkShaderModuleCreateInfo {
-    bool      fsDualSrcBlend  = false;
-    bool      fsFlatShading   = false;
-    uint32_t  undefinedInputs = 0;
+    bool      fsDualSrcBlend   = false;
+    bool      fsFlatShading    = false;
+    uint32_t  undefinedInputs  = 0;
+    bool      fsDepthReplacing = false;
 
     std::array<VkComponentMapping, MaxNumRenderTargets> rtSwizzles = { };
 
@@ -275,6 +276,9 @@ namespace dxvk {
     static void emitFlatShadingDeclarations(
             SpirvCodeBuffer&          code,
             uint32_t                  inputMask);
+
+    static void replaceDepthExecutionMode(
+            SpirvCodeBuffer&          code);
 
   };
   

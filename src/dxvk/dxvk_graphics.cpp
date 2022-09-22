@@ -721,6 +721,7 @@ namespace dxvk {
     if (shaderInfo.stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
       info.fsDualSrcBlend = state.useDualSourceBlending();
       info.fsFlatShading = state.rs.flatShading() && shader->info().flatShadingInputs;
+      info.fsDepthReplacing = state.rs.depthReplacing();
 
       for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
         if ((shaderInfo.outputMask & (1u << i)) && state.writesRenderTarget(i))
@@ -1093,6 +1094,9 @@ namespace dxvk {
 
       // Flat shading requires patching the fragment shader
       if (state.rs.flatShading() && m_shaders.fs->info().flatShadingInputs)
+        return false;
+
+      if (state.rs.depthReplacing())
         return false;
 
       // Multisample state must match in this case, and the

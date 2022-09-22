@@ -38,6 +38,7 @@ namespace dxvk {
     m_state.conservativeMode  = DecodeConservativeRasterizationMode(desc.ConservativeRaster);
     m_state.sampleCount       = VkSampleCountFlags(desc.ForcedSampleCount);
     m_state.flatShading       = VK_FALSE;
+    m_state.depthReplacing    = VK_FALSE;
 
     m_depthBias.depthBiasConstant = float(desc.DepthBias);
     m_depthBias.depthBiasSlope    = desc.SlopeScaledDepthBias;

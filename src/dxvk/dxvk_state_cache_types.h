@@ -134,6 +134,7 @@ namespace dxvk {
         VkPolygonMode(m_polygonMode),
         VkSampleCountFlags(m_sampleCount),
         VkConservativeRasterizationModeEXT(m_conservativeMode),
+        VK_FALSE,
         VK_FALSE);
     }
 
@@ -160,6 +161,7 @@ namespace dxvk {
         VkPolygonMode(m_polygonMode),
         VkSampleCountFlags(m_sampleCount),
         VkConservativeRasterizationModeEXT(m_conservativeMode),
+        VK_FALSE,
         VK_FALSE);
     }
 

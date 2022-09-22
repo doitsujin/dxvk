@@ -205,6 +205,9 @@ namespace dxvk {
     if (m_info.stage == VK_SHADER_STAGE_FRAGMENT_BIT && state.fsFlatShading)
       emitFlatShadingDeclarations(spirvCode, m_info.flatShadingInputs);
 
+    if (m_info.stage == VK_SHADER_STAGE_FRAGMENT_BIT && state.fsDepthReplacing)
+      replaceDepthExecutionMode(spirvCode);
+
     return spirvCode;
   }
 
@@ -802,6 +805,16 @@ namespace dxvk {
     }
 
     code.endInsertion();
+  }
+
+  void DxvkShader::replaceDepthExecutionMode(
+          SpirvCodeBuffer&          code) {
+    for (auto ins : code) {
+      if (ins.opCode() == spv::OpExecutionMode && ins.arg(2) == spv::ExecutionModeDepthUnchanged) {
+        ins.setArg(2, spv::ExecutionModeDepthReplacing);
+        break;
+      }
+    }
   }
 
 
