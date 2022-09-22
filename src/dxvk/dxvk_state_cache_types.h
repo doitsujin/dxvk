@@ -52,7 +52,7 @@ namespace dxvk {
    */
   struct DxvkStateCacheHeader {
     char     magic[4]   = { 'D', 'X', 'V', 'K' };
-    uint32_t version    = 15;
+    uint32_t version    = 16;
     uint32_t entrySize  = 0; /* no longer meaningful */
   };
 
@@ -162,6 +162,32 @@ namespace dxvk {
         VkSampleCountFlags(m_sampleCount),
         VkConservativeRasterizationModeEXT(m_conservativeMode),
         VK_FALSE,
+        VK_FALSE);
+    }
+
+  };
+
+
+  class DxvkRsInfoV15 {
+
+  public:
+
+    uint16_t m_depthClipEnable        : 1;
+    uint16_t m_depthBiasEnable        : 1;
+    uint16_t m_polygonMode            : 2;
+    uint16_t m_sampleCount            : 5;
+    uint16_t m_conservativeMode       : 2;
+    uint16_t m_flatShading            : 1;
+    uint16_t m_reserved               : 4;
+
+    DxvkRsInfo convert() const {
+      return DxvkRsInfo(
+        VkBool32(m_depthClipEnable),
+        VkBool32(m_depthBiasEnable),
+        VkPolygonMode(m_polygonMode),
+        VkSampleCountFlags(m_sampleCount),
+        VkConservativeRasterizationModeEXT(m_conservativeMode),
+        VkBool32(m_flatShading),
         VK_FALSE);
     }
 
