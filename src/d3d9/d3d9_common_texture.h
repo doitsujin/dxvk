@@ -204,6 +204,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Dref Clamp
+     * \returns Whether the texture emulates an UNORM format with D32f
+     */
+    bool IsUpgradedToD32f() const {
+      return m_upgradedToD32f;
+    }
+
+    /**
      * \brief FETCH4 compatibility
      * \returns Whether the format of the texture supports the FETCH4 hack
      */
@@ -499,6 +507,7 @@ namespace dxvk {
     D3D9_VK_FORMAT_MAPPING        m_mapping;
 
     bool                          m_shadow; //< Depth Compare-ness
+    bool                          m_upgradedToD32f; // Dref Clamp
     bool                          m_supportsFetch4;
 
     int64_t                       m_size = 0;

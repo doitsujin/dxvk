@@ -40,6 +40,8 @@ namespace dxvk {
 
     m_mapMode        = DetermineMapMode();
     m_shadow         = DetermineShadowState();
+    m_upgradedToD32f = ConvertFormatUnfixed(m_desc.Format).FormatColor != VK_FORMAT_D32_SFLOAT_S8_UINT &&
+                       m_mapping.FormatColor == VK_FORMAT_D32_SFLOAT_S8_UINT;
     m_supportsFetch4 = DetermineFetch4Compatibility();
 
     const bool createImage = m_desc.Pool != D3DPOOL_SYSTEMMEM && m_desc.Pool != D3DPOOL_SCRATCH && m_desc.Format != D3D9Format::NULL_FORMAT;
