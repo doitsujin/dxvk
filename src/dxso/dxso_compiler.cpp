@@ -2862,19 +2862,24 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         texcoordVar.id = DoProjection(texcoordVar, true);
       }
 
-      uint32_t reference = 0;
+      uint32_t bool_t = m_module.defBoolType();
 
+      uint32_t reference = 0;
       if (depth) {
+        uint32_t fType = m_module.defFloatType(32);
         uint32_t component = sampler.dimensions;
         reference = m_module.opCompositeExtract(
-          m_module.defFloatType(32), texcoordVar.id, 1, &component);
+          fType, texcoordVar.id, 1, &component);
+        uint32_t clampDref = m_spec.get(m_module, m_specUbo, SpecDrefClamp, samplerIdx, 1);
+        clampDref = m_module.opINotEqual(bool_t, clampDref, m_module.constu32(0));
+        uint32_t clampedDref = m_module.opFClamp(fType, reference, m_module.constf32(0.0f), m_module.constf32(1.0f));
+        reference = m_module.opSelect(fType, clampDref, clampedDref, reference);
       }
 
       uint32_t fetch4 = 0;
       if (m_programInfo.type() == DxsoProgramType::PixelShader && samplerType != SamplerTypeTexture3D) {
         fetch4 = m_spec.get(m_module, m_specUbo, SpecFetch4, samplerIdx, 1);
 
-        uint32_t bool_t = m_module.defBoolType();
         fetch4 = m_module.opINotEqual(bool_t, fetch4, m_module.constu32(0));
 
         uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
