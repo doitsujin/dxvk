@@ -3791,6 +3791,9 @@ namespace dxvk {
         m_dirtySamplerStates |= 1u << StateSampler;
       }
 
+      m_drefClamp &= ~(1u << StateSampler);
+      m_drefClamp |= uint32_t(newTexture->IsUpgradedToD32f()) << StateSampler;
+
       const bool oldCube = m_cubeTextures & (1u << StateSampler);
       const bool newCube = newTexture->GetType() == D3DRTYPE_CUBETEXTURE;
       if (oldCube != newCube) {
@@ -6249,7 +6252,8 @@ namespace dxvk {
 
     const uint32_t nullTextureMask = usedSamplerMask & ~usedTextureMask;
     const uint32_t depthTextureMask = m_depthTextures & usedTextureMask;
-    UpdateCommonSamplerSpec(nullTextureMask, depthTextureMask);
+    const uint32_t drefClampMask = m_drefClamp & depthTextureMask;
+    UpdateCommonSamplerSpec(nullTextureMask, depthTextureMask, drefClampMask);
 
     if (m_flags.test(D3D9DeviceFlag::DirtySharedPixelShaderData)) {
       m_flags.clr(D3D9DeviceFlag::DirtySharedPixelShaderData);
@@ -7249,7 +7253,7 @@ namespace dxvk {
     UpdatePixelShaderSamplerSpec(0u, 0u, 0u);
     UpdateVertexBoolSpec(0u);
     UpdatePixelBoolSpec(0u);
-    UpdateCommonSamplerSpec(0u, 0u);
+    UpdateCommonSamplerSpec(0u, 0u, 0u);
 
     return D3D_OK;
   }
@@ -7443,9 +7447,10 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::UpdateCommonSamplerSpec(uint32_t nullMask, uint32_t depthMask) {
+  void D3D9DeviceEx::UpdateCommonSamplerSpec(uint32_t nullMask, uint32_t depthMask, uint32_t drefMask) {
     bool dirty  = m_specInfo.set<SpecSamplerDepthMode>(depthMask);
          dirty |= m_specInfo.set<SpecSamplerNull>(nullMask);
+         dirty |= m_specInfo.set<SpecDrefClamp>(drefMask);
 
     if (dirty)
       m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
