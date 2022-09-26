@@ -172,7 +172,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     D3D9CommonTexture* dstTexInfo = dst->GetCommonTexture();
-    D3D9CommonTexture* srcTexInfo = m_backBuffers.back()->GetCommonTexture();
+    D3D9CommonTexture* srcTexInfo = m_frontBuffer->GetCommonTexture();
 
     if (unlikely(dstTexInfo->Desc()->Pool != D3DPOOL_SYSTEMMEM && dstTexInfo->Desc()->Pool != D3DPOOL_SCRATCH))
       return D3DERR_INVALIDCALL;
@@ -673,6 +673,24 @@ namespace dxvk {
       m_context->beginRecording(
         m_device->createCommandList());
 
+      if (m_presentParams.SwapEffect != D3DSWAPEFFECT_DISCARD)
+      {
+        VkOffset3D srcOffset = { int32_t(m_srcRect.left), int32_t(m_srcRect.top), 0 };
+        VkOffset3D dstOffset = { int32_t(m_dstRect.left), int32_t(m_dstRect.top), 0 };
+        VkImageSubresourceLayers singleLayerSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+        VkExtent3D copyExtent =
+          { uint32_t(m_dstRect.right - m_dstRect.left), uint32_t(m_dstRect.bottom - m_dstRect.top), 0 };
+
+        m_context->copyImage(
+          m_frontBuffer->GetCommonTexture()->GetImage(),
+          singleLayerSubresource,
+          srcOffset,
+          swapImage,
+          singleLayerSubresource,
+          dstOffset,
+          copyExtent);
+      }
+
       VkRect2D srcRect = {
         {  int32_t(m_srcRect.left),                    int32_t(m_srcRect.top)                    },
         { uint32_t(m_srcRect.right - m_srcRect.left), uint32_t(m_srcRect.bottom - m_srcRect.top) } };
@@ -700,6 +718,11 @@ namespace dxvk {
     // buffer at index 0 becomes the front buffer.
     for (uint32_t i = 1; i < m_backBuffers.size(); i++)
       m_backBuffers[i]->Swap(m_backBuffers[i - 1].ptr());
+
+    // For swap discard do not copy the content to the front buffer
+    // but replace the front buffer reference with the last back buffer.
+    if (m_presentParams.SwapEffect == D3DSWAPEFFECT_DISCARD)
+      m_backBuffers.back()->Swap(m_frontBuffer.ptr());
 
     m_parent->m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
   }
@@ -840,6 +863,9 @@ namespace dxvk {
       backBuffer->ClearContainer();
 
     m_backBuffers.clear();
+
+    if (m_frontBuffer != nullptr)
+      m_frontBuffer->ClearContainer();
   }
 
 
@@ -848,8 +874,7 @@ namespace dxvk {
     // creating a new one to free up resources
     DestroyBackBuffers();
 
-    int NumFrontBuffer = m_parent->GetOptions()->noExplicitFrontBuffer ? 0 : 1;
-    m_backBuffers.resize(NumBackBuffers + NumFrontBuffer);
+    m_backBuffers.resize(NumBackBuffers);
 
     // Create new back buffer
     D3D9_COMMON_TEXTURE_DESC desc;
@@ -867,8 +892,17 @@ namespace dxvk {
     desc.IsBackBuffer       = TRUE;
     desc.IsAttachmentOnly   = FALSE;
 
-    for (uint32_t i = 0; i < m_backBuffers.size(); i++)
-      m_backBuffers[i] = new D3D9Surface(m_parent, &desc, this, nullptr);
+    try {
+      for (uint32_t i = 0; i < m_backBuffers.size(); i++)
+        m_backBuffers[i] = new D3D9Surface(m_parent, &desc, this, nullptr);
+
+      // Create an additional hidden front buffer.
+      m_frontBuffer = new D3D9Surface(m_parent, &desc, this, nullptr);
+    }
+    catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return D3DERR_OUTOFVIDEOMEMORY;
+    }
 
     auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
 
@@ -889,6 +923,10 @@ namespace dxvk {
         m_backBuffers[i]->GetCommonTexture()->GetImage(),
         subresources, VK_IMAGE_LAYOUT_UNDEFINED);
     }
+
+    m_context->initImage(
+        m_frontBuffer->GetCommonTexture()->GetImage(),
+        subresources, VK_IMAGE_LAYOUT_UNDEFINED);
 
     m_device->submitCommandList(
       m_context->endRecording());

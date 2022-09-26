@@ -100,7 +100,8 @@ namespace dxvk {
     Rc<hud::Hud>              m_hud;
 
     std::vector<Com<D3D9Surface, false>> m_backBuffers;
-    
+    Com<D3D9Surface, false>   m_frontBuffer;
+
     RECT                      m_srcRect;
     RECT                      m_dstRect;
 

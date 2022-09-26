@@ -404,10 +404,6 @@ namespace dxvk {
     { R"(\\ToEE\.exe$)", {{
       { "d3d9.allowDiscard",                "False" },
     }} },
-    /* ZUSI 3 - Aerosoft Edition                  */
-    { R"(\\ZusiSim\.exe$)", {{
-      { "d3d9.noExplicitFrontBuffer",       "True" },
-    }} },
     /* GTA IV (NVAPI)                             */
     /* Also thinks we're always on Intel          *
      * and will report/use bad amounts of VRAM.
@@ -481,10 +477,6 @@ namespace dxvk {
     /* Sine Mora EX */
     { R"(\\SineMoraEX\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
-    }} },
-    /* Fantasy Grounds                           */
-    { R"(\\FantasyGrounds\.exe$)", {{
-      { "d3d9.noExplicitFrontBuffer",       "True" },
     }} },
     /* Red Orchestra 2                           */
     { R"(\\ROGame\.exe$)", {{
