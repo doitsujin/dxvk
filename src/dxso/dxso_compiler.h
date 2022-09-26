@@ -664,7 +664,6 @@ namespace dxvk {
     void emitTextureDepth(const DxsoInstructionContext& ctx);
 
     uint32_t emitSample(
-            bool                    projected,
             uint32_t                resultType,
             DxsoSamplerInfo&        samplerInfo,
             DxsoRegisterValue       coordinates,
