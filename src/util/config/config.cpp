@@ -356,6 +356,7 @@ namespace dxvk {
     /* Sonic Adventure 2                          */
     { R"(\\Sonic Adventure 2\\(launcher|sonic2app)\.exe$)", {{
       { "d3d9.floatEmulation",              "Strict" },
+      { "d3d9.maxFrameRate",                "60" },
     }} },
     /* The Sims 2,
        Body Shop,
