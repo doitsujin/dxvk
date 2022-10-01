@@ -582,9 +582,11 @@ namespace dxvk {
       { "d3d9.enableDialogMode",          "True" },
     }} },
     /* Beyond Good And Evil                     *
-     * UI breaks at high fps                     */
+     * UI breaks at high fps                    *
+     * allowDiscard causes graphical glitches   */
     { R"(\\BGE\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
+      { "d3d9.allowDiscard",                "False" },
     }} },
     /* King Of Fighters XIII                     *
      * In-game speed increases on high FPS       */
