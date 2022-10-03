@@ -538,6 +538,11 @@ namespace dxvk {
     { R"(\\spv3\.exe$)", {{
       { "d3d9.shaderModel",                 "1" },
     }} },
+    /* Escape from Tarkov launcher
+       Same issue as Warhammer: RoR above       */
+    { R"(\\BsgLauncher\.exe$)", {{
+      { "d3d9.shaderModel",                 "1" },
+    }} },
     /* Star Wars The Force Unleashed 2          *
      * Black particles because it tries to bind *
      * a 2D texture for a shader that           *
