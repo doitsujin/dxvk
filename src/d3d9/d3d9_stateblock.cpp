@@ -467,17 +467,27 @@ namespace dxvk {
 
 
   void D3D9StateBlock::CaptureVertexShaderStates() {
+    auto CaptureHelper = [&](auto& constants, uint32_t bits) {
+      uint32_t dwords = align(bits, 32) / 32;
+      uint32_t offset = bits % 32;
+      if (offset == 0) {
+        for (size_t i = 0; i < dwords; i++)
+          constants.dword(i) = std::numeric_limits<uint32_t>::max();
+      }
+      else {
+        for (size_t i = 0; i < dwords - 1; i++)
+          constants.dword(i) = std::numeric_limits<uint32_t>::max();
+
+        constants.dword(dwords-1) = (1u << offset) - 1;
+      }
+    };
+
     m_captures.flags.set(D3D9CapturedStateFlag::VertexShader);
     m_captures.flags.set(D3D9CapturedStateFlag::VsConstants);
 
-    for (uint32_t i = 0; i < m_parent->GetVertexConstantLayout().floatCount / 32; i++)
-      m_captures.vsConsts.fConsts.dword(i) = std::numeric_limits<uint32_t>::max();
-
-    for (uint32_t i = 0; i < m_parent->GetVertexConstantLayout().intCount / 32; i++)
-      m_captures.vsConsts.iConsts.dword(i) = std::numeric_limits<uint32_t>::max();
-
-    for (uint32_t i = 0; i < m_parent->GetVertexConstantLayout().bitmaskCount; i++)
-      m_captures.vsConsts.bConsts.dword(i) = std::numeric_limits<uint32_t>::max();
+    CaptureHelper(m_captures.vsConsts.fConsts, m_parent->GetVertexConstantLayout().floatCount);
+    CaptureHelper(m_captures.vsConsts.iConsts, m_parent->GetVertexConstantLayout().intCount);
+    CaptureHelper(m_captures.vsConsts.bConsts, m_parent->GetVertexConstantLayout().boolCount);
   }
 
 
