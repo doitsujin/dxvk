@@ -673,8 +673,7 @@ namespace dxvk {
       m_context->beginRecording(
         m_device->createCommandList());
 
-      if (m_presentParams.SwapEffect != D3DSWAPEFFECT_DISCARD)
-      {
+      if (m_presentParams.SwapEffect != D3DSWAPEFFECT_DISCARD) {
         VkOffset3D srcOffset = { int32_t(m_srcRect.left), int32_t(m_srcRect.top), 0 };
         VkOffset3D dstOffset = { int32_t(m_dstRect.left), int32_t(m_dstRect.top), 0 };
         VkImageSubresourceLayers singleLayerSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
