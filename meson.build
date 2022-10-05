@@ -97,6 +97,7 @@ if platform == 'windows'
   endif
 
   dxvk_wsi = 'win32'
+  dxvk_name_prefix = ''
   compiler_args += ['-DDXVK_WSI_WIN32']
 else
   lib_sdl2   = cpp.find_library('SDL2')
@@ -111,6 +112,7 @@ else
   ]
 
   dxvk_wsi = 'sdl2'
+  dxvk_name_prefix = 'libdxvk_'
   compiler_args += ['-DDXVK_WSI_SDL2']
 endif
 
