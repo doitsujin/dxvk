@@ -104,7 +104,7 @@ namespace dxvk::bit {
     return _tzcnt_u64(n);
     #elif defined(DXVK_ARCH_X86_64) && defined(__BMI__)
     return __tzcnt_u64(n);
-    #elif defined(DXVK_ARCH_X86_64) && defined(__GNUC__) || defined(__clang__)
+    #elif defined(DXVK_ARCH_X86_64) && (defined(__GNUC__) || defined(__clang__))
     uint64_t res;
     uint64_t tmp;
     asm (
