@@ -13,7 +13,7 @@ dxgi_src = [
 ]
 
 dxgi_dll = shared_library('dxgi'+dll_ext, dxgi_src, dxgi_res,
-  name_prefix         : '',
+  name_prefix         : dxvk_name_prefix,
   dependencies        : [ dxvk_dep ],
   include_directories : dxvk_include_path,
   install             : true,
