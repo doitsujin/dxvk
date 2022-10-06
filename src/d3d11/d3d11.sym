@@ -1,0 +1,10 @@
+{
+  global:
+    D3D11CoreCreateDevice;
+    D3D11CreateDevice;
+    D3D11CreateDeviceAndSwapChain;
+    D3D11On12CreateDevice;
+
+  local:
+    *;
+};
