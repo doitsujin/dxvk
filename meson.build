@@ -114,6 +114,11 @@ else
   dxvk_wsi = 'sdl2'
   dxvk_name_prefix = 'libdxvk_'
   compiler_args += ['-DDXVK_WSI_SDL2']
+
+  link_args += [
+    '-static-libgcc',
+    '-static-libstdc++',
+  ]
 endif
 
 dxvk_include_path = include_directories(dxvk_include_dirs)
