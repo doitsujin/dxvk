@@ -407,10 +407,8 @@ namespace dxvk {
       }
       
       // If the swap chain allows it, change the display mode
-      if (m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH) {
+      if (m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH)
         ChangeDisplayMode(output.ptr(), &newDisplayMode);
-        NotifyModeChange(m_monitor, FALSE);
-      }
 
       wsi::updateFullscreenWindow(m_monitor, m_window, false);
     }
@@ -649,7 +647,6 @@ namespace dxvk {
       ReleaseMonitorData();
     }
 
-    NotifyModeChange(m_monitor, FALSE);
     return S_OK;
   }
   
@@ -670,8 +667,6 @@ namespace dxvk {
     }
     
     // Restore internal state
-    HMONITOR monitor = m_monitor;
-
     m_descFs.Windowed = TRUE;
     m_target  = nullptr;
     m_monitor = wsi::getWindowMonitor(m_window);
@@ -684,7 +679,6 @@ namespace dxvk {
       return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
     }
     
-    NotifyModeChange(monitor, TRUE);
     return S_OK;
   }
   
@@ -802,25 +796,4 @@ namespace dxvk {
       m_monitorInfo->ReleaseMonitorData();
   }
 
-
-  void DxgiSwapChain::NotifyModeChange(
-          HMONITOR                hMonitor,
-          BOOL                    Windowed) {
-    wsi::WsiMode mode = { };
-
-    if (wsi::getCurrentDisplayMode(hMonitor, &mode)) {
-      DXGI_MODE_DESC displayMode = { };
-      displayMode.Width            = mode.width;
-      displayMode.Height           = mode.height;
-      displayMode.RefreshRate      = { mode.refreshRate.numerator, mode.refreshRate.denominator };
-      displayMode.Format           = m_desc.Format;
-      displayMode.ScanlineOrdering = m_descFs.ScanlineOrdering;
-      displayMode.Scaling          = m_descFs.Scaling;
-      m_presenter->NotifyModeChange(Windowed, &displayMode);
-    } else {
-      Logger::warn("Failed to query current display mode");
-      m_presenter->NotifyModeChange(Windowed, nullptr);
-    }
-  }
-  
 }

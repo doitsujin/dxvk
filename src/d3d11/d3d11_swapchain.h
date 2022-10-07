@@ -69,10 +69,6 @@ namespace dxvk {
             UINT                      PresentFlags,
       const DXGI_PRESENT_PARAMETERS*  pPresentParameters);
 
-    void STDMETHODCALLTYPE NotifyModeChange(
-            BOOL                      Windowed,
-      const DXGI_MODE_DESC*           pDisplayMode);
-
   private:
 
     enum BindingIds : uint32_t {
@@ -113,8 +109,6 @@ namespace dxvk {
 
     bool                    m_dirty = true;
     bool                    m_vsync = true;
-
-    double                  m_displayRefreshRate = 0.0;
 
     HRESULT PresentImage(UINT SyncInterval);
 

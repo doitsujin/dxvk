@@ -216,10 +216,6 @@ namespace dxvk {
     
     void ReleaseMonitorData();
 
-    void NotifyModeChange(
-            HMONITOR                hMonitor,
-            BOOL                    Windowed);
-    
   };
   
 }

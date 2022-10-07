@@ -255,19 +255,6 @@ namespace dxvk {
   }
 
 
-  void STDMETHODCALLTYPE D3D11SwapChain::NotifyModeChange(
-          BOOL                      Windowed,
-    const DXGI_MODE_DESC*           pDisplayMode) {
-    if (Windowed || !pDisplayMode) {
-      // Display modes aren't meaningful in windowed mode
-      m_displayRefreshRate = 0.0;
-    } else {
-      DXGI_RATIONAL rate = pDisplayMode->RefreshRate;
-      m_displayRefreshRate = double(rate.Numerator) / double(rate.Denominator);
-    }
-  }
-
-
   HRESULT D3D11SwapChain::PresentImage(UINT SyncInterval) {
     Com<ID3D11DeviceContext> deviceContext = nullptr;
     m_parent->GetImmediateContext(&deviceContext);
