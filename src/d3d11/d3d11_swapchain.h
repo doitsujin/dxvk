@@ -52,7 +52,9 @@ namespace dxvk {
     HANDLE STDMETHODCALLTYPE GetFrameLatencyEvent();
 
     HRESULT STDMETHODCALLTYPE ChangeProperties(
-      const DXGI_SWAP_CHAIN_DESC1*    pDesc);
+      const DXGI_SWAP_CHAIN_DESC1*    pDesc,
+      const UINT*                     pNodeMasks,
+            IUnknown* const*          ppPresentQueues);
 
     HRESULT STDMETHODCALLTYPE SetPresentRegion(
       const RECT*                     pRegion);
@@ -68,6 +70,15 @@ namespace dxvk {
             UINT                      SyncInterval,
             UINT                      PresentFlags,
       const DXGI_PRESENT_PARAMETERS*  pPresentParameters);
+
+    UINT STDMETHODCALLTYPE CheckColorSpaceSupport(
+            DXGI_COLOR_SPACE_TYPE     ColorSpace);
+
+    HRESULT STDMETHODCALLTYPE SetColorSpace(
+            DXGI_COLOR_SPACE_TYPE     ColorSpace);
+
+    HRESULT STDMETHODCALLTYPE SetHDRMetaData(
+      const DXGI_VK_HDR_METADATA*     pMetaData);
 
   private:
 

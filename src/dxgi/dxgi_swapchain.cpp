@@ -319,11 +319,24 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::ResizeBuffers(
-          UINT        BufferCount,
-          UINT        Width,
-          UINT        Height,
-          DXGI_FORMAT NewFormat,
-          UINT        SwapChainFlags) {
+          UINT                      BufferCount,
+          UINT                      Width,
+          UINT                      Height,
+          DXGI_FORMAT               NewFormat,
+          UINT                      SwapChainFlags) {
+    return ResizeBuffers1(BufferCount, Width, Height,
+      NewFormat, SwapChainFlags, nullptr, nullptr);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::ResizeBuffers1(
+          UINT                      BufferCount,
+          UINT                      Width,
+          UINT                      Height,
+          DXGI_FORMAT               Format,
+          UINT                      SwapChainFlags,
+    const UINT*                     pCreationNodeMask,
+          IUnknown* const*          ppPresentQueue) {
     if (!wsi::isWindow(m_window))
       return DXGI_ERROR_INVALID_CALL;
 
@@ -343,28 +356,10 @@ namespace dxvk {
     if (BufferCount != 0)
       m_desc.BufferCount = BufferCount;
     
-    if (NewFormat != DXGI_FORMAT_UNKNOWN)
-      m_desc.Format = NewFormat;
+    if (Format != DXGI_FORMAT_UNKNOWN)
+      m_desc.Format = Format;
     
-    return m_presenter->ChangeProperties(&m_desc);
-  }
-  
-  
-  HRESULT STDMETHODCALLTYPE DxgiSwapChain::ResizeBuffers1(
-          UINT                      BufferCount,
-          UINT                      Width,
-          UINT                      Height,
-          DXGI_FORMAT               Format,
-          UINT                      SwapChainFlags,
-    const UINT*                     pCreationNodeMask,
-          IUnknown* const*          ppPresentQueue) {
-    static bool s_errorShown = false;
-
-    if (!std::exchange(s_errorShown, true))
-      Logger::warn("DxgiSwapChain::ResizeBuffers1: Stub");
-
-    return ResizeBuffers(BufferCount,
-      Width, Height, Format, SwapChainFlags);
+    return m_presenter->ChangeProperties(&m_desc, pCreationNodeMask, ppPresentQueue);
   }
 
 
@@ -515,11 +510,9 @@ namespace dxvk {
      || Height == 0 || Height > m_desc.Height)
       return E_INVALIDARG;
 
-    RECT region;
-    region.left   = 0;
-    region.top    = 0;
-    region.right  = Width;
-    region.bottom = Height;
+    std::lock_guard<dxvk::mutex> lock(m_lockBuffer);
+
+    RECT region = { 0, 0, LONG(Width), LONG(Height) };
     return m_presenter->SetPresentRegion(&region);
   }
   
@@ -529,29 +522,19 @@ namespace dxvk {
           UINT*                           pColorSpaceSupport) {
     if (!pColorSpaceSupport)
       return E_INVALIDARG;
-    
-    UINT supportFlags = 0;
 
-    if (ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709)
-      supportFlags |= DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT;
-
-    *pColorSpaceSupport = supportFlags;
-    return S_OK;
+    return m_presenter->CheckColorSpaceSupport(ColorSpace);
   }
 
 
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::SetColorSpace1(DXGI_COLOR_SPACE_TYPE ColorSpace) {
-    UINT support = 0;
-
-    HRESULT hr = CheckColorSpaceSupport(ColorSpace, &support);
-
-    if (FAILED(hr))
-      return hr;
+    UINT support = m_presenter->CheckColorSpaceSupport(ColorSpace);
 
     if (!support)
       return E_INVALIDARG;
 
-    return S_OK;
+    std::lock_guard<dxvk::mutex> lock(m_lockBuffer);
+    return m_presenter->SetColorSpace(ColorSpace);
   }
 
   
@@ -562,22 +545,26 @@ namespace dxvk {
     if (Size && !pMetaData)
       return E_INVALIDARG;
 
+    DXGI_VK_HDR_METADATA metadata = { Type };
+
     switch (Type) {
       case DXGI_HDR_METADATA_TYPE_NONE:
-        return S_OK;
+        break;
 
       case DXGI_HDR_METADATA_TYPE_HDR10:
         if (Size != sizeof(DXGI_HDR_METADATA_HDR10))
           return E_INVALIDARG;
 
-        // For some reason this always seems to succeed on Windows
-        Logger::warn("DXGI: HDR not supported");
-        return S_OK;
+        metadata.HDR10 = *static_cast<const DXGI_HDR_METADATA_HDR10*>(pMetaData);
+        break;
 
       default:
-        Logger::err(str::format("DXGI: Invalid HDR metadata type: ", Type));
+        Logger::err(str::format("DXGI: Unsupported HDR metadata type: ", Type));
         return E_INVALIDARG;
     }
+
+    std::lock_guard<dxvk::mutex> lock(m_lockBuffer);
+    return m_presenter->SetHDRMetaData(&metadata);
   }
   
   

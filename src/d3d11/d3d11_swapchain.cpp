@@ -131,8 +131,9 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D11SwapChain::ChangeProperties(
-    const DXGI_SWAP_CHAIN_DESC1*  pDesc) {
-
+    const DXGI_SWAP_CHAIN_DESC1*    pDesc,
+    const UINT*                     pNodeMasks,
+          IUnknown* const*          ppPresentQueues) {
     m_dirty |= m_desc.Format      != pDesc->Format
             || m_desc.Width       != pDesc->Width
             || m_desc.Height      != pDesc->Height
@@ -252,6 +253,34 @@ namespace dxvk {
     }
 
     return hr;
+  }
+
+
+  UINT STDMETHODCALLTYPE D3D11SwapChain::CheckColorSpaceSupport(
+          DXGI_COLOR_SPACE_TYPE     ColorSpace) {
+    UINT supportFlags = 0;
+
+    if (ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709)
+      supportFlags |= DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT;
+
+    return supportFlags;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11SwapChain::SetColorSpace(
+          DXGI_COLOR_SPACE_TYPE     ColorSpace) {
+    // Ignore, will only ever be sRGB
+    return S_OK;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11SwapChain::SetHDRMetaData(
+    const DXGI_VK_HDR_METADATA*     pMetaData) {
+    // For some reason this call always seems to succeed on Windows
+    if (pMetaData->Type == DXGI_HDR_METADATA_TYPE_HDR10)
+      Logger::warn("D3D11: HDR10 metadata not supported");
+
+    return S_OK;
   }
 
 
