@@ -228,9 +228,11 @@ namespace dxvk {
 
     if (element.Usage == D3DDECLUSAGE_POSITION && element.Type == D3DDECLTYPE_FLOAT3 && element.UsageIndex == 0)
       return D3DFVF_XYZ;
-    else if (element.Usage == D3DDECLUSAGE_POSITIONT && element.Type == D3DDECLTYPE_FLOAT4 && element.UsageIndex == 0)
+
+    if (element.Usage == D3DDECLUSAGE_POSITIONT && element.Type == D3DDECLTYPE_FLOAT4 && element.UsageIndex == 0)
       return D3DFVF_XYZRHW;
-    else if (element.Usage == D3DDECLUSAGE_BLENDWEIGHT && element.UsageIndex == 0) {
+
+    if (element.Usage == D3DDECLUSAGE_BLENDWEIGHT && element.UsageIndex == 0) {
       DWORD fvfRet = MapD3DDeclTypeFloatToFvfXYZBn(element.Type);
       if (likely(fvfRet != 0))
         return fvfRet;
@@ -239,13 +241,17 @@ namespace dxvk {
         return 0;
       }
     }
-    else if (element.Usage == D3DDECLUSAGE_BLENDINDICES && element.Type == D3DDECLTYPE_UBYTE4 && element.UsageIndex == 0)
+
+    if (element.Usage == D3DDECLUSAGE_BLENDINDICES && element.Type == D3DDECLTYPE_UBYTE4 && element.UsageIndex == 0)
       return D3DFVF_XYZB1;
-    else if (element.Usage == D3DDECLUSAGE_NORMAL && element.Type == D3DDECLTYPE_FLOAT3 && element.UsageIndex == 0)
+
+    if (element.Usage == D3DDECLUSAGE_NORMAL && element.Type == D3DDECLTYPE_FLOAT3 && element.UsageIndex == 0)
       return D3DFVF_NORMAL;
-    else if (element.Usage == D3DDECLUSAGE_PSIZE && element.Type == D3DDECLTYPE_FLOAT1 && element.UsageIndex == 0)
+
+    if (element.Usage == D3DDECLUSAGE_PSIZE && element.Type == D3DDECLTYPE_FLOAT1 && element.UsageIndex == 0)
       return D3DFVF_PSIZE;
-    else if (element.Usage == D3DDECLUSAGE_COLOR && element.Type == D3DDECLTYPE_D3DCOLOR) {
+
+    if (element.Usage == D3DDECLUSAGE_COLOR && element.Type == D3DDECLTYPE_D3DCOLOR) {
       switch (element.UsageIndex) {
         case 0: return D3DFVF_DIFFUSE;
         case 1: return D3DFVF_SPECULAR;
@@ -254,7 +260,8 @@ namespace dxvk {
           return 0;
       }
     }
-    else if (element.Usage == D3DDECLUSAGE_TEXCOORD && element.UsageIndex < 8) {
+
+    if (element.Usage == D3DDECLUSAGE_TEXCOORD && element.UsageIndex < 8) {
       DWORD retFvf = 0;
       if (likely(MapD3DDeclUsageTexCoordToFvfTexCoordSize(element, fvf, retFvf, texCountPostUpdate)))
         return retFvf;
