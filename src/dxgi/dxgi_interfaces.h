@@ -82,6 +82,18 @@ IDXGIVkSwapChain : public IUnknown {
 
 
 /**
+ * \brief Private DXGI presenter factory
+ */
+MIDL_INTERFACE("e7d6c3ca-23a0-4e08-9f2f-ea5231df6633")
+IDXGIVkSwapChainFactory : public IUnknown {
+  virtual HRESULT STDMETHODCALLTYPE CreateSwapChain(
+          HWND                      hWnd,
+    const DXGI_SWAP_CHAIN_DESC1*    pDesc,
+          IDXGIVkSwapChain**        ppSwapChain) = 0;
+};
+
+
+/**
  * \brief Private DXGI adapter interface
  * 
  * The implementation of \c IDXGIAdapter holds a
@@ -363,6 +375,7 @@ struct __declspec(uuid("e2ef5fa5-dc21-4af7-90c4-f67ef6a09323")) IDXGIVkInteropDe
 struct __declspec(uuid("e2ef5fa5-dc21-4af7-90c4-f67ef6a09324")) IDXGIVkInteropDevice1;
 struct __declspec(uuid("5546cf8c-77e7-4341-b05d-8d4d5000e77d")) IDXGIVkInteropSurface;
 struct __declspec(uuid("104001a6-7f36-4957-b932-86ade9567d91")) IDXGIVkSwapChain;
+struct __declspec(uuid("e7d6c3ca-23a0-4e08-9f2f-ea5231df6633")) IDXGIVkSwapChainFactory;
 struct __declspec(uuid("53cb4ff0-c25a-4164-a891-0e83db0a7aac")) IWineDXGISwapChainFactory;
 #else
 __CRT_UUID_DECL(IDXGIDXVKAdapter,          0x907bf281,0xea3c,0x43b4,0xa8,0xe4,0x9f,0x23,0x11,0x07,0xb4,0xff);
@@ -373,5 +386,6 @@ __CRT_UUID_DECL(IDXGIVkInteropDevice,      0xe2ef5fa5,0xdc21,0x4af7,0x90,0xc4,0x
 __CRT_UUID_DECL(IDXGIVkInteropDevice1,     0xe2ef5fa5,0xdc21,0x4af7,0x90,0xc4,0xf6,0x7e,0xf6,0xa0,0x93,0x24);
 __CRT_UUID_DECL(IDXGIVkInteropSurface,     0x5546cf8c,0x77e7,0x4341,0xb0,0x5d,0x8d,0x4d,0x50,0x00,0xe7,0x7d);
 __CRT_UUID_DECL(IDXGIVkSwapChain,          0x104001a6,0x7f36,0x4957,0xb9,0x32,0x86,0xad,0xe9,0x56,0x7d,0x91);
+__CRT_UUID_DECL(IDXGIVkSwapChainFactory,   0xe7d6c3ca,0x23a0,0x4e08,0x9f,0x2f,0xea,0x52,0x31,0xdf,0x66,0x33);
 __CRT_UUID_DECL(IWineDXGISwapChainFactory, 0x53cb4ff0,0xc25a,0x4164,0xa8,0x91,0x0e,0x83,0xdb,0x0a,0x7a,0xac);
 #endif
