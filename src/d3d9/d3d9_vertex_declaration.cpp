@@ -204,9 +204,10 @@ namespace dxvk {
     std::copy(elements.begin(), elements.begin() + elemCount, m_elements.data());
   }
 
-  DWORD D3D9VertexDecl::MapD3DDeclToFvf(
+  bool D3D9VertexDecl::MapD3DDeclToFvf(
     const D3DVERTEXELEMENT9& element,
           DWORD fvf,
+          DWORD& outFvf,
           DWORD& texCountPostUpdate) {
 
     // Mapping between a Direct3D Declaration and FVF Codes (Direct3D 9)
@@ -226,49 +227,60 @@ namespace dxvk {
     // D3DDECLTYPE_FLOAT3     D3DDECLUSAGE_POSITION       1               N / A
     // D3DDECLTYPE_FLOAT3     D3DDECLUSAGE_NORMAL         1               N / A
 
-    if (element.Usage == D3DDECLUSAGE_POSITION && element.Type == D3DDECLTYPE_FLOAT3 && element.UsageIndex == 0)
-      return D3DFVF_XYZ;
 
-    if (element.Usage == D3DDECLUSAGE_POSITIONT && element.Type == D3DDECLTYPE_FLOAT4 && element.UsageIndex == 0)
-      return D3DFVF_XYZRHW;
+    if (element.Usage == D3DDECLUSAGE_POSITION && element.Type == D3DDECLTYPE_FLOAT3 && element.UsageIndex == 0) {
+      outFvf = D3DFVF_XYZ;
+      return true;
+    }
+
+    if (element.Usage == D3DDECLUSAGE_POSITIONT && element.Type == D3DDECLTYPE_FLOAT4 && element.UsageIndex == 0) {
+      outFvf = D3DFVF_XYZRHW;
+      return true;
+    }
 
     if (element.Usage == D3DDECLUSAGE_BLENDWEIGHT && element.UsageIndex == 0) {
       DWORD fvfRet = MapD3DDeclTypeFloatToFvfXYZBn(element.Type);
-      if (likely(fvfRet != 0))
-        return fvfRet;
-      else {
-        return 0;
+      if (likely(fvfRet != 0)) {
+        outFvf = fvfRet;
+        return true;
+      } else {
+        return false;
       }
     }
 
-    if (element.Usage == D3DDECLUSAGE_BLENDINDICES && element.Type == D3DDECLTYPE_UBYTE4 && element.UsageIndex == 0)
-      return D3DFVF_XYZB1;
+    if (element.Usage == D3DDECLUSAGE_BLENDINDICES && element.Type == D3DDECLTYPE_UBYTE4 && element.UsageIndex == 0) {
+      outFvf = D3DFVF_XYZB1;
+      return true;
+    }
 
-    if (element.Usage == D3DDECLUSAGE_NORMAL && element.Type == D3DDECLTYPE_FLOAT3 && element.UsageIndex == 0)
-      return D3DFVF_NORMAL;
+    if (element.Usage == D3DDECLUSAGE_NORMAL && element.Type == D3DDECLTYPE_FLOAT3 && element.UsageIndex == 0) {
+      outFvf = D3DFVF_NORMAL;
+      return true;
+    }
 
-    if (element.Usage == D3DDECLUSAGE_PSIZE && element.Type == D3DDECLTYPE_FLOAT1 && element.UsageIndex == 0)
-      return D3DFVF_PSIZE;
+    if (element.Usage == D3DDECLUSAGE_PSIZE && element.Type == D3DDECLTYPE_FLOAT1 && element.UsageIndex == 0) {
+      outFvf = D3DFVF_PSIZE;
+      return true;
+    }
 
     if (element.Usage == D3DDECLUSAGE_COLOR && element.Type == D3DDECLTYPE_D3DCOLOR) {
       switch (element.UsageIndex) {
-        case 0: return D3DFVF_DIFFUSE;
-        case 1: return D3DFVF_SPECULAR;
+        case 0:
+          outFvf = D3DFVF_DIFFUSE;
+          return true;
+        case 1:
+          outFvf = D3DFVF_SPECULAR;
+          return true;
         default:
-          return 0;
+          return false;
       }
     }
 
     if (element.Usage == D3DDECLUSAGE_TEXCOORD && element.UsageIndex < 8) {
-      DWORD retFvf = 0;
-      if (likely(MapD3DDeclUsageTexCoordToFvfTexCoordSize(element, fvf, retFvf, texCountPostUpdate)))
-        return retFvf;
-      else {
-        return 0;
-      }
+      return MapD3DDeclUsageTexCoordToFvfTexCoordSize(element, fvf, outFvf, texCountPostUpdate);
     }
 
-    return 0;
+    return false;
   }
 
 
@@ -323,8 +335,13 @@ namespace dxvk {
     DWORD fvf = 0;
     DWORD texCountPostUpdate = 0;
 
-    for (const auto& element : m_elements)
-      fvf |= MapD3DDeclToFvf(element, fvf, texCountPostUpdate);
+    for (const auto& element : m_elements) {
+      DWORD elementFvf = 0;
+      if (!MapD3DDeclToFvf(element, fvf, elementFvf, texCountPostUpdate)) {
+        return 0;
+      }
+      fvf |= elementFvf;
+    }
 
     fvf |= (texCountPostUpdate << 8);
 

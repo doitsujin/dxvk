@@ -68,9 +68,10 @@ namespace dxvk {
 
   private:
 
-    DWORD MapD3DDeclToFvf(
+    bool MapD3DDeclToFvf(
       const D3DVERTEXELEMENT9& element,
             DWORD fvf,
+            DWORD& outFvf,
             DWORD& texCountPostUpdate);
 
     DWORD MapD3D9VertexElementsToFvf();
