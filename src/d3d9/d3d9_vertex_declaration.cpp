@@ -237,7 +237,6 @@ namespace dxvk {
       if (likely(fvfRet != 0))
         return fvfRet;
       else {
-        Logger::warn("D3D9VertexDecl::MapD3DDeclToFvf: Unsupported set of D3DDECLUSAGE_BLENDWEIGHT / D3DDECLTYPE_*  / UsageIndex");
         return 0;
       }
     }
@@ -256,7 +255,6 @@ namespace dxvk {
         case 0: return D3DFVF_DIFFUSE;
         case 1: return D3DFVF_SPECULAR;
         default:
-          Logger::warn("D3D9VertexDecl::MapD3DDeclToFvf: Unsupported set of D3DDECLUSAGE_COLOR / D3DDECLTYPE_D3DCOLOR / UsageIndex");
           return 0;
       }
     }
@@ -266,12 +264,10 @@ namespace dxvk {
       if (likely(MapD3DDeclUsageTexCoordToFvfTexCoordSize(element, fvf, retFvf, texCountPostUpdate)))
         return retFvf;
       else {
-        Logger::warn("D3D9VertexDecl::MapD3DDeclToFvf: Unsupported set of D3DDECLUSAGE_TEXCOORD / D3DDECLTYPE_* / UsageIndex");
         return 0;
       }
     }
 
-    Logger::warn("D3D9VertexDecl::MapD3DDeclToFvf: Unsupported set of D3DDECLUSAGE_* / D3DDECLTYPE_* / UsageIndex");
     return 0;
   }
 
