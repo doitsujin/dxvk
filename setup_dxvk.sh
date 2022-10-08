@@ -25,7 +25,7 @@ esac
 shift
 
 with_dxgi=true
-file_cmd="cp -v"
+file_cmd="cp -v --reflink=auto"
 
 while (($# > 0)); do
   case "$1" in
