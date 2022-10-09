@@ -72,6 +72,10 @@ namespace dxvk {
             IDirect3DSurface8* pDestinationSurface,
             CONST POINT* pDestPointsArray) {
 
+      if (pSourceSurface == NULL || pDestinationSurface == NULL) {
+        return D3DERR_INVALIDCALL;
+      }
+
       Com<D3D8Surface> src = static_cast<D3D8Surface*>(pSourceSurface);
       Com<D3D8Surface> dst = static_cast<D3D8Surface*>(pDestinationSurface);
 
@@ -343,13 +347,28 @@ namespace dxvk {
 
     }
 
-    HRESULT STDMETHODCALLTYPE CreateRenderTarget D3D8_DEVICE_STUB(
+    HRESULT STDMETHODCALLTYPE CreateRenderTarget(
             UINT                Width,
             UINT                Height,
             D3DFORMAT           Format,
             D3DMULTISAMPLE_TYPE MultiSample,
             BOOL                Lockable,
-            IDirect3DSurface8** ppSurface);
+            IDirect3DSurface8** ppSurface) {
+      Com<d3d9::IDirect3DSurface9> pSurf9 = nullptr;
+      HRESULT res = GetD3D9()->CreateRenderTarget(
+        Width,
+        Height,
+        d3d9::D3DFORMAT(Format),
+        d3d9::D3DMULTISAMPLE_TYPE(MultiSample),
+        0,    // TODO: CreateRenderTarget MultisampleQuality
+        Lockable,
+        &pSurf9,
+        NULL);
+
+      *ppSurface = ref(new D3D8Surface(this, std::move(pSurf9)));
+
+      return res;
+    }
 
     HRESULT STDMETHODCALLTYPE CreateDepthStencilSurface(
             UINT                Width,
