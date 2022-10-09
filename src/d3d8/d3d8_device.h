@@ -404,7 +404,7 @@ namespace dxvk {
         Com<D3D8Surface> surf = static_cast<D3D8Surface*>(pRenderTarget);
         m_renderTarget = surf.ref();
 
-        res = GetD3D9()->SetRenderTarget(0, surf != nullptr ? surf->GetD3D9() : nullptr); // use RT index 0
+        res = GetD3D9()->SetRenderTarget(0, surf->GetD3D9Nullable()); // use RT index 0
 
         if (res != D3D_OK) return res;
       }
@@ -412,7 +412,7 @@ namespace dxvk {
       // SetDepthStencilSurface is a separate call
       Com<D3D8Surface> zStencil = static_cast<D3D8Surface*>(pNewZStencil);
       m_depthStencil = zStencil.ref();
-      res = GetD3D9()->SetDepthStencilSurface(zStencil != nullptr ? zStencil->GetD3D9() : nullptr);
+      res = GetD3D9()->SetDepthStencilSurface(zStencil->GetD3D9Nullable());
 
       return res;
     }
@@ -607,7 +607,7 @@ namespace dxvk {
 
       m_textures[Stage] = tex;
 
-      return GetD3D9()->SetTexture(Stage, tex != nullptr ? tex->GetD3D9() : nullptr);
+      return GetD3D9()->SetTexture(Stage, tex->GetD3D9Nullable());
     }
 
     HRESULT STDMETHODCALLTYPE GetTextureStageState(

@@ -17,6 +17,14 @@ namespace dxvk {
       return m_d3d9.ptr();
     }
 
+    // For cases where the object may be null.
+    D3D9* GetD3D9Nullable() {
+      if (unlikely(this == NULL)) {
+        return NULL;
+      }
+      return m_d3d9.ptr();
+    }
+
   private:
 
     Com<D3D9> m_d3d9;
