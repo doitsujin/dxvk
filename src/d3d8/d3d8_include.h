@@ -97,7 +97,6 @@ namespace d3d9 {
 #include "../util/util_flags.h"
 #include "../util/util_likely.h"
 #include "../util/util_math.h"
-#include "../util/util_monitor.h"
 #include "../util/util_misc.h"
 #include "../util/util_string.h"
 
