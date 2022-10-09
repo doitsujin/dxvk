@@ -80,6 +80,13 @@ namespace dxvk {
     , m_window(hFocusWindow)
     , m_behaviorFlags(BehaviorFlags) {
 
+    // Get the bridge interface to D3D9.
+    if (FAILED(GetD3D9()->QueryInterface(__uuidof(IDxvkD3D8Bridge), (void**)&m_bridge))) {
+      throw DxvkError("D3D8DeviceEx: ERROR! Failed to get D3D9 Bridge. d3d9.dll might not be DXVK!");
+    }
+
+    m_bridge->SetAPIName("D3D8");
+
     m_textures.fill(nullptr);
 
   }

@@ -9,7 +9,7 @@ d3d8_src = [
 
 d3d8_dll = shared_library('d3d8'+dll_ext, d3d8_src, d3d8_res,
   name_prefix         : '',
-  dependencies        : [ d3d9_dep, util_dep ],
+  dependencies        : [ d3d9_dep, d3d9_lib_dep, util_dep, dxso_dep, dxvk_dep ],
   include_directories : dxvk_include_path,
   install             : true,
   objects             : not dxvk_is_msvc ? 'd3d8'+def_spec_ext : [],
