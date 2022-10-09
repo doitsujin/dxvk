@@ -70,6 +70,11 @@ __CRT_UUID_DECL(IDxvkD3D8Bridge, 0xD3D9D3D8, 0x42A9, 0x4C1E, 0xAA, 0x97, 0xBE, 0
 __CRT_UUID_DECL(IDxvkD3D8InterfaceBridge, 0xD3D9D3D8, 0xA407, 0x773E, 0x18, 0xE9, 0xCA, 0xFE, 0xBE, 0xEF, 0x30, 0x00);
 #endif
 
+/**
+ * The D3D9 bridge allows D3D8 to access DXVK internals.
+ * For Vulkan interop without needing DXVK internals, see d3d9_interop.h.
+ */
+
 namespace dxvk {
 
   class D3D9DeviceEx;
