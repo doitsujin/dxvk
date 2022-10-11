@@ -320,6 +320,21 @@ namespace dxvk::bit {
       return get(idx);
     }
 
+    constexpr void setN(uint32_t bits) {
+      uint32_t dwords = align(bits, 32) / 32;
+      uint32_t offset = bits % 32;
+      if (offset == 0) {
+        for (size_t i = 0; i < dwords; i++)
+          m_dwords[i] = std::numeric_limits<uint32_t>::max();
+      }
+      else {
+        for (size_t i = 0; i < dwords - 1; i++)
+          m_dwords[i] = std::numeric_limits<uint32_t>::max();
+
+        m_dwords[dwords - 1] = (1u << offset) - 1;
+      }
+    }
+
   private:
 
     uint32_t m_dwords[Dwords];
