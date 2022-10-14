@@ -9,13 +9,13 @@ jobs:
     steps:
     - name: Checkout code
       id: checkout-code
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         submodules: recursive
         fetch-depth: 0
 
     - name: Setup problem matcher
-      uses: Joshua-Ashton/gcc-problem-matcher@v1
+      uses: Joshua-Ashton/gcc-problem-matcher@v2
 
     - name: Build release
       id: build-release
@@ -28,7 +28,7 @@ jobs:
 
     - name: Upload artifacts
       id: upload-artifacts
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: dxvk-${{ env.VERSION_NAME }}
         path: build/dxvk-${{ env.VERSION_NAME }}
