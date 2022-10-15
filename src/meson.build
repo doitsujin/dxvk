@@ -20,14 +20,10 @@ if get_option('enable_d3d11')
 endif
 
 if get_option('enable_d3d10')
-  if platform == 'windows'
-    if not get_option('enable_d3d11')
-      error('D3D11 is required for D3D10.')
-    endif
-    subdir('d3d10')
-  else
-    warning('Building D3D10 is not supported on non-Windows platforms')
+  if not get_option('enable_d3d11')
+    error('D3D11 is required for D3D10.')
   endif
+  subdir('d3d10')
 endif
 
 if get_option('enable_d3d9')
