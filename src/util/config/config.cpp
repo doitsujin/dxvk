@@ -630,6 +630,10 @@ namespace dxvk {
     { R"(\\SinEpisodes\.exe$)", {{
       { "d3d9.memoryTrackTest",             "True" },
     }} },
+    /* Hammer World Editor                      */
+    { R"(\\(hammer(plusplus)?|mallet|wc)\.exe$)", {{
+      { "d3d9.apitraceMode",                "True" },
+    }} },
   }};
 
 
