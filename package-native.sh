@@ -61,13 +61,13 @@ function build_arch {
         --bindir "$2"                 \
         --libdir "$2"                 \
         -Dbuild_id=$opt_buildid       \
-        "$DXVK_BUILD_DIR/build"
+        "$DXVK_BUILD_DIR/build.$1"
 
-  cd "$DXVK_BUILD_DIR/build"
+  cd "$DXVK_BUILD_DIR/build.$1"
   ninja install
 
   if [ $opt_devbuild -eq 0 ]; then
-    rm -r "$DXVK_BUILD_DIR/build"
+    rm -r "$DXVK_BUILD_DIR/build.$1"
   fi
 }
 
