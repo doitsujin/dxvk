@@ -55,12 +55,13 @@ function build_arch {
     opt_strip=--strip
   fi
 
-  CC="$CC -m$1" CXX="$CXX -m$1" meson \
-        --buildtype "release"         \
-        --prefix "$DXVK_BUILD_DIR/usr"    \
-        --bindir "$2"                 \
-        --libdir "$2"                 \
-        -Dbuild_id=$opt_buildid       \
+  CC="$CC -m$1" CXX="$CXX -m$1" meson   \
+        --buildtype "release"           \
+        --prefix "$DXVK_BUILD_DIR/usr"  \
+        $opt_strip                      \
+        --bindir "$2"                   \
+        --libdir "$2"                   \
+        -Dbuild_id=$opt_buildid         \
         "$DXVK_BUILD_DIR/build.$1"
 
   cd "$DXVK_BUILD_DIR/build.$1"
