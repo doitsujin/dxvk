@@ -1130,9 +1130,9 @@ namespace dxvk {
     VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
 
     if (vr && !(flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT))
-      throw DxvkError(str::format("DxvkShaderPipelineLibrary: Failed to create vertex shader pipeline: ", vr));
+      Logger::err(str::format("DxvkShaderPipelineLibrary: Failed to create vertex shader pipeline: ", vr));
 
-    return pipeline;
+    return vr ? VK_NULL_HANDLE : pipeline;
   }
 
 
@@ -1201,9 +1201,9 @@ namespace dxvk {
     VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
 
     if (vr && !(flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT))
-      throw DxvkError(str::format("DxvkShaderPipelineLibrary: Failed to create fragment shader pipeline: ", vr));
+      Logger::err(str::format("DxvkShaderPipelineLibrary: Failed to create fragment shader pipeline: ", vr));
 
-    return pipeline;
+    return vr ? VK_NULL_HANDLE : pipeline;
   }
 
 
@@ -1223,9 +1223,9 @@ namespace dxvk {
     VkResult vr = vk->vkCreateComputePipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
 
     if (vr && !(flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT))
-      throw DxvkError(str::format("DxvkShaderPipelineLibrary: Failed to create compute shader pipeline: ", vr));
+      Logger::err(str::format("DxvkShaderPipelineLibrary: Failed to create compute shader pipeline: ", vr));
 
-    return pipeline;
+    return vr ? VK_NULL_HANDLE : pipeline;
   }
 
 
