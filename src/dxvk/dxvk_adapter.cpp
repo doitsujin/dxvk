@@ -434,6 +434,11 @@ namespace dxvk {
     enabledFeatures.extDepthClipEnable.depthClipEnable =
       m_deviceFeatures.extDepthClipEnable.depthClipEnable;
 
+    // Used to make pipeline library stuff less clunky
+    enabledFeatures.extExtendedDynamicState3.extendedDynamicState3DepthClipEnable =
+      m_deviceFeatures.extExtendedDynamicState3.extendedDynamicState3DepthClipEnable &&
+      m_deviceFeatures.extDepthClipEnable.depthClipEnable;
+
     // Used for both pNext shader module info, and fast-linking pipelines provided
     // that graphicsPipelineLibraryIndependentInterpolationDecoration is supported
     enabledFeatures.extGraphicsPipelineLibrary.graphicsPipelineLibrary =

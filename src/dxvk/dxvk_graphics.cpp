@@ -1124,7 +1124,9 @@ namespace dxvk {
     DxvkGraphicsPipelineBaseInstanceKey key;
     key.viLibrary = m_manager->createVertexInputLibrary(viState);
     key.foLibrary = m_manager->createFragmentOutputLibrary(foState);
-    key.args.depthClipEnable = state.rs.depthClipEnable();
+
+    if (!m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable)
+      key.args.depthClipEnable = state.rs.depthClipEnable();
 
     auto entry = m_basePipelines.find(key);
     if (entry != m_basePipelines.end())

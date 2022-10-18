@@ -1077,17 +1077,21 @@ namespace dxvk {
 
     // Set up dynamic state. We do not know any pipeline state
     // at this time, so make as much state dynamic as we can.
-    std::array<VkDynamicState, 6> dynamicStates = {{
-      VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT,
-      VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT,
-      VK_DYNAMIC_STATE_DEPTH_BIAS,
-      VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE,
-      VK_DYNAMIC_STATE_CULL_MODE,
-      VK_DYNAMIC_STATE_FRONT_FACE,
-    }};
+    uint32_t dynamicStateCount = 0;
+    std::array<VkDynamicState, 7> dynamicStates;
+
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BIAS;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_CULL_MODE;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_FRONT_FACE;
+
+    if (m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable)
+      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_CLIP_ENABLE_EXT;
 
     VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
-    dyInfo.dynamicStateCount  = dynamicStates.size();
+    dyInfo.dynamicStateCount  = dynamicStateCount;
     dyInfo.pDynamicStates     = dynamicStates.data();
 
     // All viewport state is dynamic, so we do not need to initialize this.
@@ -1104,8 +1108,11 @@ namespace dxvk {
     rsInfo.lineWidth          = 1.0f;
 
     if (m_device->features().extDepthClipEnable.depthClipEnable) {
-      rsDepthClipInfo.pNext   = std::exchange(rsInfo.pNext, &rsDepthClipInfo);
-      rsDepthClipInfo.depthClipEnable = args.depthClipEnable;
+      // Only use the fixed depth clip state if we can't make it dynamic
+      if (!m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable) {
+        rsDepthClipInfo.pNext = std::exchange(rsInfo.pNext, &rsDepthClipInfo);
+        rsDepthClipInfo.depthClipEnable = args.depthClipEnable;
+      }
     } else {
       rsInfo.depthClampEnable = !args.depthClipEnable;
     }

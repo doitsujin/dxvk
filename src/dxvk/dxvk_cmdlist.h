@@ -811,6 +811,12 @@ namespace dxvk {
     }
 
 
+    void cmdSetDepthClipState(
+            VkBool32                depthClipEnable) {
+      m_vkd->vkCmdSetDepthClipEnableEXT(m_cmd.execBuffer, depthClipEnable);
+    }
+
+
     void cmdSetDepthBias(
             float                   depthBiasConstantFactor,
             float                   depthBiasClamp,
