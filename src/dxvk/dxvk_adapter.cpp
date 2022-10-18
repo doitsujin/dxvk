@@ -429,6 +429,10 @@ namespace dxvk {
     enabledFeatures.vk13.synchronization2 = VK_TRUE;
     enabledFeatures.vk13.dynamicRendering = VK_TRUE;
 
+    // We expose depth clip rather than depth clamp to client APIs
+    enabledFeatures.extDepthClipEnable.depthClipEnable =
+      m_deviceFeatures.extDepthClipEnable.depthClipEnable;
+
     // Used for both pNext shader module info, and fast-linking pipelines provided
     // that graphicsPipelineLibraryIndependentInterpolationDecoration is supported
     enabledFeatures.extGraphicsPipelineLibrary.graphicsPipelineLibrary =

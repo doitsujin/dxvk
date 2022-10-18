@@ -1908,8 +1908,6 @@ namespace dxvk {
     enabled.extCustomBorderColor.customBorderColors               = supported.extCustomBorderColor.customBorderColorWithoutFormat;
     enabled.extCustomBorderColor.customBorderColorWithoutFormat   = supported.extCustomBorderColor.customBorderColorWithoutFormat;
 
-    enabled.extDepthClipEnable.depthClipEnable                    = supported.extDepthClipEnable.depthClipEnable;
-
     enabled.extTransformFeedback.transformFeedback                = VK_TRUE;
     enabled.extTransformFeedback.geometryStreams                  = VK_TRUE;
 

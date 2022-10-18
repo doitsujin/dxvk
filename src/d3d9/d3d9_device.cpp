@@ -3951,8 +3951,6 @@ namespace dxvk {
     // Ensure we support real BC formats and unofficial vendor ones.
     enabled.core.features.textureCompressionBC = VK_TRUE;
 
-    enabled.extDepthClipEnable.depthClipEnable = supported.extDepthClipEnable.depthClipEnable;
-
     // SM2 level hardware
     enabled.core.features.occlusionQueryPrecise = VK_TRUE;
 
