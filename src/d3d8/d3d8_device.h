@@ -5,6 +5,7 @@
 #include "d3d8_include.h"
 #include "d3d8_texture.h"
 #include "d3d8_buffer.h"
+#include "d3d8_swapchain.h"
 #include "d3d8_state_block.h"
 #include "d3d8_d3d9_util.h"
 #include "d3d8_caps.h"
@@ -211,10 +212,21 @@ namespace dxvk {
 
     BOOL    STDMETHODCALLTYPE ShowCursor(BOOL bShow) { return GetD3D9()->ShowCursor(bShow); }
 
-    // TODO: CreateAdditionalSwapChain
-    HRESULT STDMETHODCALLTYPE CreateAdditionalSwapChain D3D8_DEVICE_STUB(
-      D3DPRESENT_PARAMETERS* pPresentationParameters,
-      IDirect3DSwapChain8** ppSwapChain);
+    HRESULT STDMETHODCALLTYPE CreateAdditionalSwapChain(
+        D3DPRESENT_PARAMETERS* pPresentationParameters,
+        IDirect3DSwapChain8** ppSwapChain) {
+      
+      Com<d3d9::IDirect3DSwapChain9> pSwapChain9;
+      d3d9::D3DPRESENT_PARAMETERS params = ConvertPresentParameters9(pPresentationParameters);
+      HRESULT res = GetD3D9()->CreateAdditionalSwapChain(
+        &params,
+        &pSwapChain9
+      );
+      
+      *ppSwapChain = ref(new D3D8SwapChain(this, std::move(pSwapChain9)));
+
+      return res;
+    }
 
 
     HRESULT STDMETHODCALLTYPE Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) {
