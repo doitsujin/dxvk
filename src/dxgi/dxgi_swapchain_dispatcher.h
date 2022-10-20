@@ -8,8 +8,9 @@ namespace dxvk {
 
   public:
 
-    DxgiSwapChainDispatcher(IDXGISwapChain4* dispatch)
-      : m_dispatch(dispatch) {
+    DxgiSwapChainDispatcher(IDXGISwapChain4* dispatch, IUnknown* device)
+      : m_device(device),
+        m_dispatch(dispatch) {
     }
 
     virtual ~DxgiSwapChainDispatcher() {
@@ -295,6 +296,10 @@ namespace dxvk {
     }
 
   private:
+
+    // m_device is not used or reference counted, provided for compatibility with mod engines
+    // which expect to find device pointer in the memory after swapchain interface.
+    IUnknown* m_device;
 
     IDXGISwapChain4* m_dispatch;
 
