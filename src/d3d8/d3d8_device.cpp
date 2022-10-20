@@ -63,8 +63,8 @@ namespace dxvk {
 
   struct D3D8VertexShaderInfo {
     // Vertex Shader
-    d3d9::IDirect3DVertexDeclaration9*  pVertexDecl;
-    d3d9::IDirect3DVertexShader9*       pVertexShader;
+    d3d9::IDirect3DVertexDeclaration9*  pVertexDecl = nullptr;
+    d3d9::IDirect3DVertexShader9*       pVertexShader = nullptr;
   };
 
   D3D8DeviceEx::D3D8DeviceEx(
@@ -258,42 +258,53 @@ namespace dxvk {
     } while (token != D3DVSD_END());
     Logger::debug(dbg.str());
 
-    // copy first token
-    // TODO: ensure first token is always only one dword
-    tokens.push_back(pFunction[0]);
-
-    // insert dcl instructions 
-
-    for ( int vn = 0; vn < D3D8_NUM_VERTEX_INPUT_REGISTERS; vn++ ) {
-
-      // if bit N is set then we need to dcl register vN
-      if ( ( shaderInputRegisters & ( 1 << vn ) ) != 0 ) {
-
-        Logger::debug(str::format("\tShader Input Regsiter: v", vn));
-
-        DWORD usage = D3D8_VERTEX_INPUT_REGISTERS[vn][0];
-        DWORD index = D3D8_VERTEX_INPUT_REGISTERS[vn][1];
-
-        DWORD dclUsage  = (usage << D3DSP_DCL_USAGE_SHIFT) & D3DSP_DCL_USAGE_MASK;           // usage
-        dclUsage       |= (index << D3DSP_DCL_USAGEINDEX_SHIFT) & D3DSP_DCL_USAGEINDEX_MASK; // usage index
-
-        tokens.push_back(d3d9::D3DSIO_DCL);   // dcl opcode
-        tokens.push_back(0x80000000 | dclUsage); // usage token
-        tokens.push_back(0x900F0000 | vn);    // register num
-      }
+    // Create vertex declaration
+    HRESULT res = GetD3D9()->CreateVertexDeclaration(vertexElements, &(info.pVertexDecl));
+    if (FAILED(res)) {
+      return res;
     }
 
-    // copy shader tokens from input
+    if (pFunction != nullptr) {
+      // copy first token
+      // TODO: ensure first token is always only one dword
+      tokens.push_back(pFunction[0]);
 
-    i = 1; // skip first token (we already copied it)
-    do {
-      token = pFunction[i++];
-      tokens.push_back(token);
-      //Logger::debug(str::format(std::hex, token));
-    } while ( token != D3DVS_END() );
+      // insert dcl instructions 
 
-    GetD3D9()->CreateVertexDeclaration(vertexElements, &(info.pVertexDecl));
-    HRESULT res = GetD3D9()->CreateVertexShader(tokens.data(), &(info.pVertexShader));
+      for ( int vn = 0; vn < D3D8_NUM_VERTEX_INPUT_REGISTERS; vn++ ) {
+
+        // if bit N is set then we need to dcl register vN
+        if ( ( shaderInputRegisters & ( 1 << vn ) ) != 0 ) {
+
+          Logger::debug(str::format("\tShader Input Regsiter: v", vn));
+
+          DWORD usage = D3D8_VERTEX_INPUT_REGISTERS[vn][0];
+          DWORD index = D3D8_VERTEX_INPUT_REGISTERS[vn][1];
+
+          DWORD dclUsage  = (usage << D3DSP_DCL_USAGE_SHIFT) & D3DSP_DCL_USAGE_MASK;           // usage
+          dclUsage       |= (index << D3DSP_DCL_USAGEINDEX_SHIFT) & D3DSP_DCL_USAGEINDEX_MASK; // usage index
+
+          tokens.push_back(d3d9::D3DSIO_DCL);   // dcl opcode
+          tokens.push_back(0x80000000 | dclUsage); // usage token
+          tokens.push_back(0x900F0000 | vn);    // register num
+        }
+      }
+
+      // copy shader tokens from input
+
+      i = 1; // skip first token (we already copied it)
+      do {
+        token = pFunction[i++];
+        tokens.push_back(token);
+        //Logger::debug(str::format(std::hex, token));
+      } while ( token != D3DVS_END() );
+
+
+      res = GetD3D9()->CreateVertexShader(tokens.data(), &(info.pVertexShader));
+    } else {
+      // pFunction is NULL: fixed function pipeline
+      info.pVertexShader = nullptr;
+    }
 
     // Set bit to indicate this is not a fixed function FVF
     *pHandle = DWORD(m_vertexShaders.size() - 1) | DXVK_D3D8_SHADER_BIT;
