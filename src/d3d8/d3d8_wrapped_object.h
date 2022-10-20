@@ -18,11 +18,16 @@ namespace dxvk {
     }
 
     // For cases where the object may be null.
-    D3D9* GetD3D9Nullable() {
-      if (unlikely(this == NULL)) {
+    static D3D9* GetD3D9Nullable(D3D8WrappedObject* self) {
+      if (unlikely(self == NULL)) {
         return NULL;
       }
-      return m_d3d9.ptr();
+      return self->m_d3d9.ptr();
+    }
+
+    template <typename T>
+    static D3D9* GetD3D9Nullable(Com<T>& self) {
+      return GetD3D9Nullable(self.ptr());
     }
 
   private:

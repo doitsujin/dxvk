@@ -201,7 +201,7 @@ namespace dxvk {
       IDirect3DSurface8* pCursorBitmap) {
 
       D3D8Surface* surf = static_cast<D3D8Surface*>(pCursorBitmap);
-      return GetD3D9()->SetCursorProperties(XHotSpot, YHotSpot, surf->GetD3D9Nullable());
+      return GetD3D9()->SetCursorProperties(XHotSpot, YHotSpot, D3D8Surface::GetD3D9Nullable(surf));
     }
 
     void    STDMETHODCALLTYPE SetCursorPosition(UINT XScreenSpace, UINT YScreenSpace, DWORD Flags) {
@@ -426,7 +426,7 @@ namespace dxvk {
         Com<D3D8Surface> surf = static_cast<D3D8Surface*>(pRenderTarget);
         m_renderTarget = surf.ref();
 
-        res = GetD3D9()->SetRenderTarget(0, surf->GetD3D9Nullable()); // use RT index 0
+        res = GetD3D9()->SetRenderTarget(0, D3D8Surface::GetD3D9Nullable(surf)); // use RT index 0
 
         if (res != D3D_OK) return res;
       }
@@ -434,7 +434,7 @@ namespace dxvk {
       // SetDepthStencilSurface is a separate call
       Com<D3D8Surface> zStencil = static_cast<D3D8Surface*>(pNewZStencil);
       m_depthStencil = zStencil.ref();
-      res = GetD3D9()->SetDepthStencilSurface(zStencil->GetD3D9Nullable());
+      res = GetD3D9()->SetDepthStencilSurface(D3D8Surface::GetD3D9Nullable(zStencil));
 
       return res;
     }
@@ -629,7 +629,7 @@ namespace dxvk {
 
       m_textures[Stage] = tex;
 
-      return GetD3D9()->SetTexture(Stage, tex->GetD3D9Nullable());
+      return GetD3D9()->SetTexture(Stage, D3D8Texture2D::GetD3D9Nullable(tex));
     }
 
     HRESULT STDMETHODCALLTYPE GetTextureStageState(
@@ -768,7 +768,7 @@ namespace dxvk {
             UINT                    Stride) {
       D3D8VertexBuffer* buffer = static_cast<D3D8VertexBuffer*>(pStreamData);
 
-      return GetD3D9()->SetStreamSource(StreamNumber, buffer->GetD3D9Nullable(), 0, Stride);
+      return GetD3D9()->SetStreamSource(StreamNumber, D3D8VertexBuffer::GetD3D9Nullable(buffer), 0, Stride);
     }
 
     HRESULT STDMETHODCALLTYPE GetStreamSource D3D8_DEVICE_STUB(
@@ -788,7 +788,7 @@ namespace dxvk {
 
       m_indices = buffer;
 
-      return GetD3D9()->SetIndices(buffer->GetD3D9Nullable());
+      return GetD3D9()->SetIndices(D3D8IndexBuffer::GetD3D9Nullable(buffer));
     }
 
     HRESULT STDMETHODCALLTYPE GetIndices(
