@@ -177,7 +177,7 @@ namespace dxvk {
     }
     
     // Wrap object in swap chain dispatcher
-    *ppSwapChain = new DxgiSwapChainDispatcher(frontendSwapChain.ref());
+    *ppSwapChain = new DxgiSwapChainDispatcher(frontendSwapChain.ref(), pDevice);
     return S_OK;
   }
   
