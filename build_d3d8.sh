@@ -5,7 +5,10 @@ set -e
 shopt -s extglob
 
 if [ -z "$1" ] || [ -z "$2" ]; then
-  echo "Usage: $0 <version> <destdir> [--build-id]"
+  echo "Usage: $0 <version> <destdir> [--no-package] [--dev-build]"
+  echo "Builds only d3d8.dll and d3d9.dll for 32-bit."
+  echo ""
+  echo "Ex: $0 main build --dev-build"
   exit 1
 fi
 
@@ -21,14 +24,21 @@ fi
 
 shift 2
 
-opt_nopackage=1
-opt_devbuild=1
+opt_nopackage=0
+opt_devbuild=0
 opt_buildid=false
 
 crossfile="build-win"
 
 while [ $# -gt 0 ]; do
   case "$1" in
+  "--no-package")
+    opt_nopackage=1
+    ;;
+  "--dev-build")
+    opt_nopackage=1
+    opt_devbuild=1
+    ;;
   "--build-id")
     opt_buildid=true
     ;;
@@ -51,12 +61,18 @@ function build_arch {
   fi
 
   meson --cross-file "$DXVK_SRC_DIR/$crossfile$1.txt" \
-        --buildtype "debug"                         \
+        --buildtype "release"                         \
         --prefix "$DXVK_BUILD_DIR"                    \
+        $opt_strip                                    \
         --bindir "x$1"                                \
         --libdir "x$1"                                \
+        -Denable_d3d10=false                          \
+        -Denable_d3d11=false                          \
+        -Denable_dxgi=false                           \
         -Dbuild_id=$opt_buildid                       \
         "$DXVK_BUILD_DIR/build.$1"
+
+  echo "*" > "$DXVK_BUILD_DIR/../.gitignore"
 
   cd "$DXVK_BUILD_DIR/build.$1"
   ninja install
@@ -69,8 +85,8 @@ function build_arch {
 }
 
 function build_script {
-  cp "$DXVK_SRC_DIR/setup_dxvk.sh" "$DXVK_BUILD_DIR/setup_dxvk.sh"
-  chmod +x "$DXVK_BUILD_DIR/setup_dxvk.sh"
+  cp "$DXVK_SRC_DIR/setup_d3d8.sh" "$DXVK_BUILD_DIR/setup_d3d8.sh"
+  chmod +x "$DXVK_BUILD_DIR/setup_d3d8.sh"
 }
 
 function package {
@@ -79,7 +95,8 @@ function package {
   rm -R "dxvk-$DXVK_VERSION"
 }
 
-build_arch 64
+# No x64 for d3d8 by default
+#build_arch 64
 build_arch 32
 build_script
 
