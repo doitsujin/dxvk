@@ -137,11 +137,14 @@ glsl_args = [
   '--quiet',
   '--target-env', 'vulkan1.2',
   '--vn', '@BASENAME@',
+  '--depfile', '@DEPFILE@',
   '@INPUT@',
   '-o', '@OUTPUT@',
 ]
-glsl_generator = generator(glsl_compiler,
+glsl_generator = generator(
+  glsl_compiler,
   output    : [ '@BASENAME@.h' ],
+  depfile   : '@BASENAME@.h.d',
   arguments : glsl_args,
 )
 
