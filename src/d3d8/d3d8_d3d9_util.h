@@ -15,6 +15,10 @@ namespace dxvk {
     // should be aligned
     std::memcpy(pCaps8, &caps9, sizeof(D3DCAPS8));
 
+    // Max supported shader model is 1.4
+    pCaps8->VertexShaderVersion = D3DVS_VERSION(1, 4);
+    pCaps8->PixelShaderVersion  = D3DPS_VERSION(1, 4);
+
     // This was removed by D3D9. We can probably render windowed.
     pCaps8->Caps2 |= D3DCAPS2_CANRENDERWINDOWED;
   }
