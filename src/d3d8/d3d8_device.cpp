@@ -88,6 +88,7 @@ namespace dxvk {
     m_bridge->SetAPIName("D3D8");
 
     m_textures.fill(nullptr);
+    m_streams.fill(D3D8VBO());
 
   }
 

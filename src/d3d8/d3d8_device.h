@@ -778,15 +778,38 @@ namespace dxvk {
             UINT                    StreamNumber,
             IDirect3DVertexBuffer8* pStreamData,
             UINT                    Stride) {
+      if (unlikely(StreamNumber >= d8caps::MAX_STREAMS))
+        return D3DERR_INVALIDCALL;
+
       D3D8VertexBuffer* buffer = static_cast<D3D8VertexBuffer*>(pStreamData);
+
+      m_streams[StreamNumber] = D3D8VBO {buffer, Stride};
 
       return GetD3D9()->SetStreamSource(StreamNumber, D3D8VertexBuffer::GetD3D9Nullable(buffer), 0, Stride);
     }
 
-    HRESULT STDMETHODCALLTYPE GetStreamSource D3D8_DEVICE_STUB(
+    HRESULT STDMETHODCALLTYPE GetStreamSource(
             UINT                     StreamNumber,
             IDirect3DVertexBuffer8** ppStreamData,
-            UINT*                    pStride);
+            UINT*                    pStride) {
+      InitReturnPtr(ppStreamData);
+
+      if (likely(pStride != nullptr))
+        *pStride = 0;
+
+      if (unlikely(ppStreamData == nullptr || pStride == nullptr))
+        return D3DERR_INVALIDCALL;
+
+      if (unlikely(StreamNumber >= d8caps::MAX_STREAMS))
+        return D3DERR_INVALIDCALL;
+      
+      const D3D8VBO& vbo = m_streams[StreamNumber];
+
+      *ppStreamData = vbo.buffer.ref();
+      *pStride      = vbo.stride;
+      
+      return D3D_OK;
+    }
 
     HRESULT STDMETHODCALLTYPE SetIndices(IDirect3DIndexBuffer8* pIndexData, UINT BaseVertexIndex) {
 
@@ -861,7 +884,14 @@ namespace dxvk {
 
     D3D8StateBlock* m_recorder = nullptr;
 
-    std::array<IDirect3DBaseTexture8*, d8caps::MAX_TEXTURE_STAGES>  m_textures;
+    struct D3D8VBO {
+      Com<D3D8VertexBuffer>   buffer = nullptr;
+      UINT                    stride = 0;
+    };
+    
+    // Remember to fill() these in the constructor!
+    std::array<IDirect3DBaseTexture8*,  d8caps::MAX_TEXTURE_STAGES> m_textures;
+    std::array<D3D8VBO, d8caps::MAX_STREAMS>                        m_streams;
 
     Com<D3D8IndexBuffer>        m_indices;
     INT                         m_baseVertexIndex = 0;
