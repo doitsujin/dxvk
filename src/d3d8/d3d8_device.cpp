@@ -135,6 +135,9 @@ namespace dxvk {
 
 #define VSD_SHIFT_MASK(token, field) ( (token & field ## MASK) >> field ## SHIFT )
 
+// Magic number from D3DVSD_REG()
+#define VSD_SKIP_FLAG 0x10000000
+
   HRESULT STDMETHODCALLTYPE D3D8DeviceEx::CreateVertexShader(
         const DWORD* pDeclaration,
         const DWORD* pFunction,
@@ -184,7 +187,7 @@ namespace dxvk {
           DWORD streamNum = VSD_SHIFT_MASK(token, D3DVSD_STREAMNUMBER);
 
           currentStream = streamNum;
-          currentOffset = 0; // reset offset
+          currentOffset = 0; // reset offset  
 
           dbg << streamNum;
           break;
@@ -193,6 +196,15 @@ namespace dxvk {
 
           dbg << "STREAMDATA ";
 
+          // D3DVSD_SKIP
+          if (token & VSD_SKIP_FLAG) {
+            auto skipCount = VSD_SHIFT_MASK(token, D3DVSD_SKIPCOUNT);
+            dbg << "SKIP " << " count=" << skipCount;
+            currentOffset += skipCount * sizeof(DWORD);
+            break;
+          }
+
+          // D3DVSD_REG
           DWORD dataLoadType = VSD_SHIFT_MASK(token, D3DVSD_DATALOADTYPE);
 
           if ( dataLoadType == 0 ) { // vertex
