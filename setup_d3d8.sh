@@ -260,7 +260,7 @@ uninstall() {
 $action d3d9
 $action d3d8
 
-if [ "$action" == "install" ]; then
+if [ "$action" == "install" ] && ! [ -z "$PROTON" ]; then
   # Install d3d8 and d3d9 to Proton
   installFile "$PROTON/$proton_dxvk" "$dxvk_lib32" "d3d9" "d3d9.dll -> \$PROTON/files/lib/wine/dxvk/d3d9.dll"
   installNewFile "$PROTON/$proton_dxvk" "$dxvk_lib32" "d3d8" "d3d8.dll -> \$PROTON/files/lib/wine/dxvk/d3d8.dll"
@@ -271,7 +271,7 @@ if [ "$action" == "install" ]; then
   # Update ./proton to install d8vk
   echo "Patching proton executable..."
   sed -i 's/dxvkfiles = \["d3d11", "d3d10core", "d3d9"\]/dxvkfiles = \["d3d11", "d3d10core", "d3d9", "d3d8"\]/' "$PROTON/proton"
-else
+elif  ! [ -z "$PROTON" ]; then
   # Uninstall d3d8/d3d9 from Proton
   uninstallFile "$PROTON/$proton_dxvk" "$dxvk_lib32" "d3d9" "d3d9.dll.old -> \$PROTON/files/lib/wine/dxvk/d3d9.dll"
   uninstallNewFile "$PROTON/$proton_dxvk" "$dxvk_lib32" "d3d8" "Removing \$PROTON/files/lib/wine/dxvk/d3d8.dll"
