@@ -138,6 +138,42 @@ namespace dxvk {
 // Magic number from D3DVSD_REG()
 #define VSD_SKIP_FLAG 0x10000000
 
+  // TODO: Consider adapting DXSO code for this stuff
+
+  // https://learn.microsoft.com/en-us/windows-hardware/drivers/display/instruction-token
+  constexpr DWORD VSInstrToken(d3d9::D3DSHADER_INSTRUCTION_OPCODE_TYPE opcode) {
+    DWORD token = 0;
+    token |= opcode & 0xFFFF; // bits 0:15
+    return token;
+  }
+
+  // https://learn.microsoft.com/en-us/windows-hardware/drivers/display/destination-parameter-token
+  constexpr DWORD VSDestParamToken(d3d9::D3DSHADER_PARAM_REGISTER_TYPE type, UINT reg) {
+    DWORD token = 0;
+    DWORD typeBits012 = type & 0x7;
+    DWORD typeBits34 = (type & 0x18) >> 3;
+    token |= reg & 0x7FF;       // bits 0:10
+    token |= typeBits34 << 11;  // bits 11:12
+    // UINT addrMode : 1;       // bit  13
+    // UINT reserved : 2;       // bits 14:15
+    token |= 0b1111 << 16;      // bits 16:19 (write mask RGBA)
+    // UINT resultModifier : 3; // bits 20:23
+    // UINT resultShift : 3;    // bits 24:27
+    token |= typeBits012 << 28; // bits 28:30
+    token |= 1 << 31;           // bit 31 is always 1
+    return token;
+  }
+  
+  // 2nd token in DCL
+  // https://learn.microsoft.com/en-us/windows-hardware/drivers/display/dcl-instruction
+  constexpr DWORD VSDestUsageToken(d3d9::D3DDECLUSAGE usage) {
+    DWORD token = 0;
+    token |= usage & 0x1F;  // bits 0:4
+    token |= 0 << 16;       // bits 16:19 - usage index (TODO: does this change?)
+    token |= 1 << 31;       // bit 31 is always 1
+    return token;
+  }
+
   HRESULT STDMETHODCALLTYPE D3D8DeviceEx::CreateVertexShader(
         const DWORD* pDeclaration,
         const DWORD* pFunction,
@@ -149,7 +185,8 @@ namespace dxvk {
 
     D3D8VertexShaderInfo& info = m_vertexShaders.emplace_back();
 
-    std::vector<DWORD> tokens;
+    std::vector<DWORD> tokens;  // Final vs code
+    std::vector<DWORD> defs;    // Constant definitions
 
     // shaderInputRegisters:
     // set bit N to enable input register vN
@@ -244,10 +281,28 @@ namespace dxvk {
           dbg << "TESSELLATOR " << std::hex << token;
           // TODO: D3DVSD_TOKEN_TESSELLATOR
           break;
-        case D3DVSD_TOKEN_CONSTMEM:
-          dbg << "CONSTMEM";
-          // TODO: D3DVSD_TOKEN_CONSTMEM
+        case D3DVSD_TOKEN_CONSTMEM: {
+          dbg << "CONSTMEM ";
+          DWORD count     = VSD_SHIFT_MASK(token, D3DVSD_CONSTCOUNT);
+          DWORD regCount  = count * 4;
+          DWORD addr      = VSD_SHIFT_MASK(token, D3DVSD_CONSTADDRESS);
+          DWORD rs        = VSD_SHIFT_MASK(token, D3DVSD_CONSTRS);
+
+          dbg << "count=" << count << ", addr=" << addr << ", rs=" << rs;
+
+          // Add a DEF instruction for each constant
+          for (DWORD j = 0; j < regCount; j += 4) {
+            defs.push_back(VSInstrToken(d3d9::D3DSIO_DEF));
+            defs.push_back(VSDestParamToken(d3d9::D3DSPR_CONST2, addr));
+            defs.push_back(pDeclaration[i+j+0]);
+            defs.push_back(pDeclaration[i+j+1]);
+            defs.push_back(pDeclaration[i+j+2]);
+            defs.push_back(pDeclaration[i+j+3]);
+            addr++;
+          }
+          i += regCount;
           break;
+        }
         case D3DVSD_TOKEN_EXT: {
           dbg << "EXT " << std::hex << token << " ";
           DWORD extInfo = VSD_SHIFT_MASK(token, D3DVSD_EXTINFO);
@@ -304,10 +359,15 @@ namespace dxvk {
           DWORD dclUsage  = (usage << D3DSP_DCL_USAGE_SHIFT) & D3DSP_DCL_USAGE_MASK;           // usage
           dclUsage       |= (index << D3DSP_DCL_USAGEINDEX_SHIFT) & D3DSP_DCL_USAGEINDEX_MASK; // usage index
 
-          tokens.push_back(d3d9::D3DSIO_DCL);   // dcl opcode
-          tokens.push_back(0x80000000 | dclUsage); // usage token
-          tokens.push_back(0x900F0000 | vn);    // register num
+          tokens.push_back(VSInstrToken(d3d9::D3DSIO_DCL));                 // dcl opcode
+          tokens.push_back(VSDestUsageToken(d3d9::D3DDECLUSAGE(dclUsage))); // usage token
+          tokens.push_back(VSDestParamToken(d3d9::D3DSPR_INPUT, vn));       // dest register num
         }
+      }
+
+      // copy constant defs
+      for (DWORD def : defs) {
+        tokens.push_back(def);
       }
 
       // copy shader tokens from input
