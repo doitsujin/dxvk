@@ -4,6 +4,7 @@
 
 #include "d3d8_resource.h"
 #include "d3d8_surface.h"
+#include "d3d8_volume.h"
 
 #include "d3d8_d3d9_util.h"
 
@@ -132,32 +133,59 @@ namespace dxvk {
 
   };
 
-/*
-  using D3D8Texture3DBase = D3D8BaseTexture<D3D8Volume, IDirect3DVolumeTexture8>;
+  // Implements IDirect3DVolumeTexture8 //
+
+  using D3D8Texture3DBase = D3D8BaseTexture<D3D8Volume, d3d9::IDirect3DVolumeTexture9, IDirect3DVolumeTexture8>;
   class D3D8Texture3D final : public D3D8Texture3DBase {
 
   public:
 
     D3D8Texture3D(
-            D3D8DeviceEx*             pDevice,
-      const D3D8_COMMON_TEXTURE_DESC* pDesc);
+          D3D8DeviceEx*                         pDevice,
+          Com<d3d9::IDirect3DVolumeTexture9>&&  pVolumeTexture)
+      : D3D8Texture3DBase(pDevice, std::move(pVolumeTexture), D3DRTYPE_VOLUMETEXTURE) {}
 
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
+    // TODO: IDirect3DVolumeTexture8 QueryInterface
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) {
+      return D3D_OK;
+    }
 
-    D3DRESOURCETYPE STDMETHODCALLTYPE GetType();
+    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() { return D3DRTYPE_VOLUMETEXTURE; }
 
-    HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DVOLUME_DESC *pDesc);
+    HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DVOLUME_DESC *pDesc) {
+      d3d9::D3DVOLUME_DESC vol;
+      HRESULT res = GetD3D9()->GetLevelDesc(Level, &vol);
+      ConvertVolumeDesc8(&vol, pDesc);
+      return res;
+    }
 
-    HRESULT STDMETHODCALLTYPE GetVolumeLevel(UINT Level, IDirect3DVolume8** ppSurfaceLevel);
+    HRESULT STDMETHODCALLTYPE GetVolumeLevel(UINT Level, IDirect3DVolume8** ppVolumeLevel) {
+      // TODO: cache this
+      Com<d3d9::IDirect3DVolume9> volume = nullptr;
+      HRESULT res = GetD3D9()->GetVolumeLevel(Level, &volume);
+      *ppVolumeLevel = ref(new D3D8Volume(m_parent, std::move(volume)));
+      return res;
+    }
 
-    HRESULT STDMETHODCALLTYPE LockBox(UINT Level, D3DLOCKED_BOX* pLockedBox, CONST D3DBOX* pBox, DWORD Flags);
+    HRESULT STDMETHODCALLTYPE LockBox(UINT Level, D3DLOCKED_BOX* pLockedBox, CONST D3DBOX* pBox, DWORD Flags) {
+      return GetD3D9()->LockBox(
+        Level,
+        reinterpret_cast<d3d9::D3DLOCKED_BOX*>(pLockedBox),
+        reinterpret_cast<const d3d9::D3DBOX*>(pBox),
+        Flags
+      );
+    }
 
-    HRESULT STDMETHODCALLTYPE UnlockBox(UINT Level);
+    HRESULT STDMETHODCALLTYPE UnlockBox(UINT Level) {
+      return GetD3D9()->UnlockBox(Level);
+    }
 
-    HRESULT STDMETHODCALLTYPE AddDirtyBox(CONST D3DBOX* pDirtyBox);
+    HRESULT STDMETHODCALLTYPE AddDirtyBox(CONST D3DBOX* pDirtyBox) {
+      return GetD3D9()->AddDirtyBox(reinterpret_cast<const d3d9::D3DBOX*>(pDirtyBox));
+    }
 
   };
-*/
+
 
   // Implements IDirect3DCubeTexture8 //
 

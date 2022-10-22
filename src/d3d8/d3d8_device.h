@@ -31,13 +31,6 @@
   return D3DERR_INVALIDCALL;\
 }
 
-
-#define D3D8_DEVICE_STUB_VOID(...) \
-(__VA_ARGS__) { \
-  Logger::warn("D3D8DeviceEx: STUB (" #__VA_ARGS__ ") -> void"); \
-  return;\
-}
-
 namespace dxvk {
 
   class D3D8InterfaceEx;
@@ -305,7 +298,7 @@ namespace dxvk {
       return res;
     }
 
-    HRESULT STDMETHODCALLTYPE CreateVolumeTexture D3D8_DEVICE_STUB(
+    HRESULT STDMETHODCALLTYPE CreateVolumeTexture(
             UINT                      Width,
             UINT                      Height,
             UINT                      Depth,
@@ -313,7 +306,21 @@ namespace dxvk {
             DWORD                     Usage,
             D3DFORMAT                 Format,
             D3DPOOL                   Pool,
-            IDirect3DVolumeTexture8** ppVolumeTexture);
+            IDirect3DVolumeTexture8** ppVolumeTexture) {
+      Com<d3d9::IDirect3DVolumeTexture9> pVolume9 = nullptr;
+      HRESULT res = GetD3D9()->CreateVolumeTexture(
+        Width, Height, Depth, Levels,
+        Usage,
+        d3d9::D3DFORMAT(Format),
+        d3d9::D3DPOOL(Pool),
+        &pVolume9,
+        NULL);
+
+      *ppVolumeTexture = ref(new D3D8Texture3D(this, std::move(pVolume9)));
+
+      return res;
+
+    }
 
     HRESULT STDMETHODCALLTYPE CreateCubeTexture(
           UINT                      EdgeLength,
