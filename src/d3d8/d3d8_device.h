@@ -117,7 +117,7 @@ namespace dxvk {
         if (srcDesc.Pool == d3d9::D3DPOOL_MANAGED || dstDesc.Pool != d3d9::D3DPOOL_DEFAULT) {
           // copying from managed or to non-default dest
 
-          if (m_renderTarget == src && dstDesc.Pool == d3d9::D3DPOOL_SYSTEMMEM) {
+          if ((srcDesc.Usage & D3DUSAGE_RENDERTARGET || m_renderTarget == src) && dstDesc.Pool == d3d9::D3DPOOL_SYSTEMMEM) {
 
             // rt -> system mem: use GetRenderTargetData
             res = GetD3D9()->GetRenderTargetData(src->GetD3D9(), dst->GetD3D9());
@@ -125,7 +125,8 @@ namespace dxvk {
           } else {
 
             // TODO: CopyRect all other cases
-
+            Logger::debug(str::format("CopyRects: Hit unhandled case from src pool ", srcDesc.Pool, " to dst pool ", dstDesc.Pool));
+            res = D3DERR_INVALIDCALL;
           }
 
         } else if (srcDesc.Pool == d3d9::D3DPOOL_DEFAULT) {
