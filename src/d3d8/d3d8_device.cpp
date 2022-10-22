@@ -182,14 +182,17 @@ namespace dxvk {
         case D3DVSD_TOKEN_STREAM: {
           dbg << "STREAM ";
 
-          // TODO: D3DVSD_STREAMTESSS
+          // TODO: D3DVSD_STREAM_TESS
+          if (token & D3DVSD_STREAMTESSMASK) {
+            dbg << "TESS";
+          }
 
           DWORD streamNum = VSD_SHIFT_MASK(token, D3DVSD_STREAMNUMBER);
 
           currentStream = streamNum;
           currentOffset = 0; // reset offset  
 
-          dbg << streamNum;
+          dbg << ", num=" << streamNum;
           break;
         }
         case D3DVSD_TOKEN_STREAMDATA: {
@@ -238,17 +241,21 @@ namespace dxvk {
           break;
         }
         case D3DVSD_TOKEN_TESSELLATOR:
-          dbg << "TESSELLATOR";
+          dbg << "TESSELLATOR " << std::hex << token;
           // TODO: D3DVSD_TOKEN_TESSELLATOR
           break;
         case D3DVSD_TOKEN_CONSTMEM:
           dbg << "CONSTMEM";
           // TODO: D3DVSD_TOKEN_CONSTMEM
           break;
-        case D3DVSD_TOKEN_EXT:
-          dbg << "EXT";
+        case D3DVSD_TOKEN_EXT: {
+          dbg << "EXT " << std::hex << token << " ";
+          DWORD extInfo = VSD_SHIFT_MASK(token, D3DVSD_EXTINFO);
+          DWORD extCount = VSD_SHIFT_MASK(token, D3DVSD_EXTCOUNT);
+          dbg << "info=" << extInfo << ", count=" << extCount;
           // TODO: D3DVSD_TOKEN_EXT
           break;
+        }
         case D3DVSD_TOKEN_END: {
           using d3d9::D3DDECLTYPE_UNUSED;
 
