@@ -85,15 +85,15 @@ namespace dxvk {
       dst->GetD3D9()->GetDesc(&dstDesc);
 
       // If pSourceRectsArray is NULL, then the entire surface is copied
+      RECT rect;
+      POINT point = { 0, 0 };
       if (pSourceRectsArray == NULL) {
         cRects = 1;
-        RECT rect;
         rect.top    = rect.left = 0;
         rect.right  = srcDesc.Width;
         rect.bottom = srcDesc.Height;
         pSourceRectsArray = &rect;
 
-        POINT point = { 0, 0 };
         pDestPointsArray = &point;
       }
 
