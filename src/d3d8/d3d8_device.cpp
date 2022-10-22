@@ -138,6 +138,8 @@ namespace dxvk {
 // Magic number from D3DVSD_REG()
 #define VSD_SKIP_FLAG 0x10000000
 
+#define VS_BIT_PARAM 0x80000000
+
   // TODO: Consider adapting DXSO code for this stuff
 
   // https://learn.microsoft.com/en-us/windows-hardware/drivers/display/instruction-token
@@ -375,7 +377,21 @@ namespace dxvk {
       i = 1; // skip first token (we already copied it)
       do {
         token = pFunction[i++];
+
+        DWORD opcode = token & D3DSI_OPCODE_MASK;
+
+        // Instructions
+        if ((token & VS_BIT_PARAM) == 0) {
+          // RSQ uses the w component in D3D8
+          if (opcode == D3DSIO_RSQ) {
+            tokens.push_back(token);                  // instr
+            tokens.push_back(token = pFunction[i++]); // dest
+            token = pFunction[i++];                   // src0
+            token |= 0b1111 << D3DVS_SWIZZLE_SHIFT;   // swizzle: .wwww
+          }
+        }
         tokens.push_back(token);
+
         //Logger::debug(str::format(std::hex, token));
       } while ( token != D3DVS_END() );
 
