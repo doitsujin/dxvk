@@ -11,8 +11,9 @@ namespace dxvk {
   public:
 
     D3D8Volume(
-      D3D8DeviceEx* pDevice,
-      Com<d3d9::IDirect3DVolume9>&& pVolume);
+          D3D8DeviceEx* pDevice,
+          Com<d3d9::IDirect3DVolume9>&& pVolume)
+      : D3D8VolumeBase(pDevice, std::move(pVolume)) {}
 
     // TODO: QueryInterface
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) {
