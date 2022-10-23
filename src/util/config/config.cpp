@@ -402,7 +402,7 @@ namespace dxvk {
       { "d3d9.forceAspectRatio",            "16:9" },
     }} },
     /* D&D - The Temple Of Elemental Evil          */
-    { R"(\\ToEE\.exe$)", {{
+    { R"(\\ToEE(a)?\.exe$)", {{
       { "d3d9.allowDiscard",                "False" },
     }} },
     /* ZUSI 3 - Aerosoft Edition                  */
