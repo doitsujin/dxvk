@@ -17,14 +17,6 @@
 #include <type_traits>
 #include <unordered_map>
 
-// so we dont have to write 100 stubs in development
-// TODO: eliminate use of this by implementing stubs
-#define D3D8_DEVICE_STUB(...) \
-(__VA_ARGS__) { \
-  Logger::warn("D3D8DeviceEx: STUB (" #__VA_ARGS__ ") -> HRESULT"); \
-  return D3DERR_INVALIDCALL;\
-}
-
 namespace dxvk {
 
   class D3D8InterfaceEx;
