@@ -209,9 +209,15 @@ namespace dxvk {
       
     }
     
-    STDMETHOD(GetPixelShaderConstant) D3D8_DEVICE_STUB(THIS_ DWORD Register, void* pConstantData, DWORD ConstantCount);
+    HRESULT STDMETHODCALLTYPE GetPixelShaderConstant (DWORD Register, void* pConstantData, DWORD ConstantCount) {
+      return GetD3D9()->GetPixelShaderConstantF(Register, (float*)pConstantData, ConstantCount);
+    }
+
     STDMETHOD(GetPixelShaderFunction) D3D8_DEVICE_STUB(THIS_ DWORD Handle, void* pData, DWORD* pSizeOfData);
-    STDMETHOD(GetVertexShaderConstant) D3D8_DEVICE_STUB(THIS_ DWORD Register, void* pConstantData, DWORD ConstantCount);
+    HRESULT STDMETHODCALLTYPE GetVertexShaderConstant(DWORD Register, void* pConstantData, DWORD ConstantCount) {
+      return GetD3D9()->GetVertexShaderConstantF(Register, (float*)pConstantData, ConstantCount);
+    }
+    
     STDMETHOD(GetVertexShaderDeclaration) D3D8_DEVICE_STUB(THIS_ DWORD Handle, void* pData, DWORD* pSizeOfData);
     STDMETHOD(GetVertexShaderFunction) D3D8_DEVICE_STUB(THIS_ DWORD Handle, void* pData, DWORD* pSizeOfData);
 
