@@ -4239,6 +4239,15 @@ namespace dxvk {
 
     auto& desc = *(pResource->Desc());
 
+    // MSDN:
+    // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
+    // unless they are dynamic textures or they are private, FOURCC, driver formats.
+    // Also note that - unlike textures - swap chain back buffers, render targets [..] can be locked
+    if (unlikely(desc.Pool == D3DPOOL_DEFAULT
+      && !(desc.Usage & (D3DUSAGE_DYNAMIC | D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL))
+      && !IsFourCCFormat(desc.Format)))
+      return D3DERR_INVALIDCALL;
+
     auto& formatMapping = pResource->GetFormatMapping();
 
     const DxvkFormatInfo* formatInfo = formatMapping.IsValid()

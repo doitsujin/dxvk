@@ -219,4 +219,9 @@ namespace dxvk {
     bool m_d32supportFinal;
   };
 
+  inline bool IsFourCCFormat(D3D9Format format) {
+    // BINARYBUFFER is the largest non-fourcc format
+    return format > D3D9Format::BINARYBUFFER;
+  }
+
 }
