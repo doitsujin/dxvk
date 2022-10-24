@@ -25,12 +25,6 @@
   return D3DERR_INVALIDCALL;\
 }
 
-#define D3D8_DEVICE_STUB_(Name, ...) \
-(__VA_ARGS__) { \
-  Logger::warn("D3D8DeviceEx::" #Name " STUB (" #__VA_ARGS__ ") -> HRESULT"); \
-  return D3DERR_INVALIDCALL;\
-}
-
 namespace dxvk {
 
   class D3D8InterfaceEx;
@@ -475,9 +469,14 @@ namespace dxvk {
       return res;
     }
 
-    HRESULT STDMETHODCALLTYPE UpdateTexture D3D8_DEVICE_STUB_(UpdateTexture,
+    HRESULT STDMETHODCALLTYPE UpdateTexture(
             IDirect3DBaseTexture8* pSourceTexture,
-            IDirect3DBaseTexture8* pDestinationTexture);
+            IDirect3DBaseTexture8* pDestinationTexture) {
+      D3D8Texture2D* src = static_cast<D3D8Texture2D*>(pSourceTexture);
+      D3D8Texture2D* dst = static_cast<D3D8Texture2D*>(pDestinationTexture);
+
+      return GetD3D9()->UpdateTexture(D3D8Texture2D::GetD3D9Nullable(src), D3D8Texture2D::GetD3D9Nullable(dst));
+    }
 
     HRESULT STDMETHODCALLTYPE GetFrontBuffer D3D8_DEVICE_STUB(IDirect3DSurface8* pDestSurface);
 
