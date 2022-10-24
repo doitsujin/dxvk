@@ -213,13 +213,13 @@ namespace dxvk {
       return GetD3D9()->GetPixelShaderConstantF(Register, (float*)pConstantData, ConstantCount);
     }
 
-    STDMETHOD(GetPixelShaderFunction) D3D8_DEVICE_STUB(THIS_ DWORD Handle, void* pData, DWORD* pSizeOfData);
     HRESULT STDMETHODCALLTYPE GetVertexShaderConstant(DWORD Register, void* pConstantData, DWORD ConstantCount) {
       return GetD3D9()->GetVertexShaderConstantF(Register, (float*)pConstantData, ConstantCount);
     }
     
-    STDMETHOD(GetVertexShaderDeclaration) D3D8_DEVICE_STUB(THIS_ DWORD Handle, void* pData, DWORD* pSizeOfData);
-    STDMETHOD(GetVertexShaderFunction) D3D8_DEVICE_STUB(THIS_ DWORD Handle, void* pData, DWORD* pSizeOfData);
+    HRESULT STDMETHODCALLTYPE GetPixelShaderFunction(DWORD Handle, void* pData, DWORD* pSizeOfData);
+    HRESULT STDMETHODCALLTYPE GetVertexShaderDeclaration(DWORD Handle, void* pData, DWORD* pSizeOfData);
+    HRESULT STDMETHODCALLTYPE GetVertexShaderFunction(DWORD Handle, void* pData, DWORD* pSizeOfData);
 
     STDMETHOD(GetInfo) D3D8_DEVICE_STUB(THIS_ DWORD DevInfoID, void* pDevInfoStruct, DWORD DevInfoStructSize);
 
@@ -959,6 +959,9 @@ namespace dxvk {
       m_renderTarget = nullptr;
       m_depthStencil = nullptr;
     }
+
+    friend d3d9::IDirect3DPixelShader9* getPixelShaderPtr(D3D8DeviceEx* device, DWORD Handle);
+    friend D3D8VertexShaderInfo*        getVertexShaderInfo(D3D8DeviceEx* device, DWORD Handle);
 
   private:
 
