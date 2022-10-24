@@ -137,7 +137,11 @@ namespace dxvk
       return res;
     }
 
-    *ppReturnedDeviceInterface = ref(new D3D8DeviceEx(this, std::move(pDevice9), DeviceType, hFocusWindow, BehaviorFlags));
+    *ppReturnedDeviceInterface = ref(new D3D8DeviceEx(
+      this, std::move(pDevice9),
+      DeviceType, hFocusWindow, BehaviorFlags,
+      pPresentationParameters
+    ));
 
     return res;
   }

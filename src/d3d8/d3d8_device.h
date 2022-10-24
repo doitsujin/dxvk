@@ -51,7 +51,8 @@ namespace dxvk {
       //D3D8Adapter*                    pAdapter,
       D3DDEVTYPE                    DeviceType,
       HWND                          hFocusWindow,
-      DWORD                         BehaviorFlags);
+      DWORD                         BehaviorFlags,
+      D3DPRESENT_PARAMETERS*        pParams);
 
     ~D3D8DeviceEx();
 
@@ -283,6 +284,7 @@ namespace dxvk {
 
 
     HRESULT STDMETHODCALLTYPE Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) {
+      m_presentParams = *pPresentationParameters;
       // Purge cache
       m_backBuffer = nullptr;
       m_frontBuffer = nullptr;
@@ -948,6 +950,8 @@ namespace dxvk {
     IDxvkD3D8Bridge*      m_bridge;
 
     Com<D3D8InterfaceEx>  m_parent;
+
+    D3DPRESENT_PARAMETERS m_presentParams;
 
     D3D8StateBlock* m_recorder = nullptr;
 
