@@ -71,6 +71,68 @@ namespace dxvk {
     return E_NOINTERFACE;
   }
 
+  HRESULT STDMETHODCALLTYPE D3D8DeviceEx::GetInfo(DWORD DevInfoID, void* pDevInfoStruct, DWORD DevInfoStructSize) {
+    Logger::debug(str::format("D3D8DeviceEx::GetInfo: ", DevInfoID));
+
+    if (unlikely(pDevInfoStruct == nullptr || DevInfoStructSize == 0))
+      return D3DERR_INVALIDCALL;
+
+    HRESULT res;
+    d3d9::IDirect3DQuery9* pQuery = nullptr;
+    
+    switch (DevInfoID) {
+      // pre-DX8 queries
+      case 0:
+      case D3DDEVINFOID_TEXTUREMANAGER:
+      case D3DDEVINFOID_D3DTEXTUREMANAGER:
+      case D3DDEVINFOID_TEXTURING:
+        return E_FAIL;
+      
+      case D3DDEVINFOID_VCACHE:
+        // Docs say response should be S_FALSE, but we'll let D9VK
+        // decide based on the value of supportVCache. D3D8Ex calls this.
+        res = GetD3D9()->CreateQuery(d3d9::D3DQUERYTYPE_VCACHE, &pQuery);
+        break;
+      case D3DDEVINFOID_RESOURCEMANAGER:
+        // May not be implemented by D9VK.
+        res = GetD3D9()->CreateQuery(d3d9::D3DQUERYTYPE_RESOURCEMANAGER, &pQuery);
+        break;
+      case D3DDEVINFOID_VERTEXSTATS:
+        res = GetD3D9()->CreateQuery(d3d9::D3DQUERYTYPE_VERTEXSTATS, &pQuery);
+        break;
+
+      default:
+        Logger::warn(str::format("D3D8DeviceEx::GetInfo: Unsupported device info ID: ", DevInfoID));
+        return E_FAIL;
+    }
+
+    if (unlikely(FAILED(res)))
+      goto done;
+    
+    // Immediately issue the query.
+    // D3D9 will begin it automatically before ending.
+    res = pQuery->Issue(D3DISSUE_END);
+    if (unlikely(FAILED(res))) {
+      goto done;
+    }
+
+    // TODO: Will immediately issuing the query without doing any API calls
+    // actually yield meaingful results? And should we flush or let it mellow?
+    res = pQuery->GetData(pDevInfoStruct, DevInfoStructSize, D3DGETDATA_FLUSH);
+
+  done:
+    if (pQuery != nullptr)
+      pQuery->Release();
+    
+    if (unlikely(FAILED(res))) {
+      if (res == D3DERR_NOTAVAILABLE) // unsupported
+        return E_FAIL;
+      else // any unknown error
+        return S_FALSE;
+    }
+    return res;
+  }
+
 
   HRESULT STDMETHODCALLTYPE D3D8DeviceEx::TestCooperativeLevel() {
     // Equivelant of D3D11/DXGI present tests. We can always present.

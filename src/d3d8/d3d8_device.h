@@ -221,8 +221,7 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetVertexShaderDeclaration(DWORD Handle, void* pData, DWORD* pSizeOfData);
     HRESULT STDMETHODCALLTYPE GetVertexShaderFunction(DWORD Handle, void* pData, DWORD* pSizeOfData);
 
-    STDMETHOD(GetInfo) D3D8_DEVICE_STUB(THIS_ DWORD DevInfoID, void* pDevInfoStruct, DWORD DevInfoStructSize);
-
+    HRESULT STDMETHODCALLTYPE GetInfo(DWORD DevInfoID, void* pDevInfoStruct, DWORD DevInfoStructSize);
 
     HRESULT STDMETHODCALLTYPE TestCooperativeLevel();
 

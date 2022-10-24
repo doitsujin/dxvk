@@ -141,12 +141,37 @@ namespace d3d9 {
 #define D3DPRESENT_FORCEIMMEDIATE              0x00000100L
 #endif
 
+// From d3dtypes.h
+
+#ifndef D3DDEVINFOID_TEXTUREMANAGER
+#define D3DDEVINFOID_TEXTUREMANAGER    1
+#endif
+
+#ifndef D3DDEVINFOID_D3DTEXTUREMANAGER
+#define D3DDEVINFOID_D3DTEXTUREMANAGER 2
+#endif
+
+#ifndef D3DDEVINFOID_TEXTURING
+#define D3DDEVINFOID_TEXTURING         3
+#endif
+
+// From d3dhal.h
+
+#ifndef D3DDEVINFOID_VCACHE
+#define D3DDEVINFOID_VCACHE            4
+#endif
+
 // MinGW headers are broken. Who'dve guessed?
 #ifndef _MSC_VER
-typedef struct _D3DDEVINFO_RESOURCEMANAGER
-{
-  char dummy;
-} D3DDEVINFO_RESOURCEMANAGER, * LPD3DDEVINFO_RESOURCEMANAGER;
+
+// Missing from d3d8types.h
+#ifndef D3DDEVINFOID_RESOURCEMANAGER
+#define D3DDEVINFOID_RESOURCEMANAGER    5
+#endif
+
+#ifndef D3DDEVINFOID_VERTEXSTATS
+#define D3DDEVINFOID_VERTEXSTATS        6			// Aka D3DDEVINFOID_D3DVERTEXSTATS
+#endif
 
 #ifndef __WINE__
 extern "C" WINUSERAPI WINBOOL WINAPI SetProcessDPIAware(VOID);
