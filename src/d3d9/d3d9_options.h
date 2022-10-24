@@ -152,6 +152,9 @@ namespace dxvk {
 
     /// How much virtual memory will be used for textures (in MB).
     int32_t textureMemory;
+
+    /// Shader dump path
+    std::string shaderDumpPath;
   };
 
 }

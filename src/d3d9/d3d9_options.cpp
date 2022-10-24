@@ -86,6 +86,8 @@ namespace dxvk {
                   && adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV, 0, 0);
       d3d9FloatEmulation = hasMulz ? D3D9FloatEmulation::Strict : D3D9FloatEmulation::Enabled;
     }
+
+    this->shaderDumpPath = env::getEnvVar("DXVK_SHADER_DUMP_PATH");
   }
 
 }

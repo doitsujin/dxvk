@@ -217,7 +217,7 @@ namespace dxvk {
       const D3D9FFShaderKeyFS&    Key);
 
     template <typename T>
-    void Dump(const T& Key, const std::string& Name);
+    void Dump(D3D9DeviceEx* pDevice, const T& Key, const std::string& Name);
 
     Rc<DxvkShader> GetShader() const {
       return m_shader;

@@ -2449,7 +2449,7 @@ namespace dxvk {
     m_shader = compiler.compile();
     m_isgn   = compiler.isgn();
 
-    Dump(Key, name);
+    Dump(pDevice, Key, name);
 
     m_shader->setShaderKey(shaderKey);
     pDevice->GetDXVKDevice()->registerShader(m_shader);
@@ -2472,15 +2472,15 @@ namespace dxvk {
     m_shader = compiler.compile();
     m_isgn   = compiler.isgn();
 
-    Dump(Key, name);
+    Dump(pDevice, Key, name);
 
     m_shader->setShaderKey(shaderKey);
     pDevice->GetDXVKDevice()->registerShader(m_shader);
   }
 
   template <typename T>
-  void D3D9FFShader::Dump(const T& Key, const std::string& Name) {
-    const std::string dumpPath = env::getEnvVar("DXVK_SHADER_DUMP_PATH");
+  void D3D9FFShader::Dump(D3D9DeviceEx* pDevice, const T& Key, const std::string& Name) {
+    const std::string& dumpPath = pDevice->GetOptions()->shaderDumpPath;
 
     if (dumpPath.size() != 0) {
       std::ofstream dumpStream(
