@@ -67,6 +67,9 @@ namespace dxvk {
         }
       }
     }
+
+    // Shader dump path is only available via an environment variable
+    this->shaderDumpPath = env::getEnvVar("DXVK_SHADER_DUMP_PATH");
   }
   
 }

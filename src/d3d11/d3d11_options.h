@@ -116,6 +116,9 @@ namespace dxvk {
     /// useful for debugging purposes or when applications have
     /// race conditions.
     bool enableContextLock;
+
+    /// Shader dump path
+    std::string shaderDumpPath;
   };
   
 }
