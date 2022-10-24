@@ -5,7 +5,7 @@ dxvk_lib32=${dxvk_lib32:-"x32"}
 dxvk_lib64=${dxvk_lib64:-"x64"}
 
 # figure out where we are
-basedir=$(dirname "$(readlink -f $0)")
+basedir="$(dirname "$(readlink -f "$0")")"
 
 # figure out which action to perform
 action="$1"
