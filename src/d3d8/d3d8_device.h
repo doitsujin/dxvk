@@ -285,11 +285,7 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) {
       m_presentParams = *pPresentationParameters;
-      // Purge cache
-      m_backBuffer = nullptr;
-      m_frontBuffer = nullptr;
-      m_renderTarget = nullptr;
-      m_depthStencil = nullptr;
+      ResetState();
 
       d3d9::D3DPRESENT_PARAMETERS params = ConvertPresentParameters9(pPresentationParameters);
       return GetD3D9()->Reset(&params);
@@ -307,17 +303,20 @@ namespace dxvk {
             UINT iBackBuffer,
             D3DBACKBUFFER_TYPE Type,
             IDirect3DSurface8** ppBackBuffer) {
-
-      if (unlikely(m_backBuffer == nullptr)) {
+      
+      if (iBackBuffer < m_backBuffers.size() || m_backBuffers[iBackBuffer] == nullptr) {
         Com<d3d9::IDirect3DSurface9> pSurface9;
         HRESULT res = GetD3D9()->GetBackBuffer(0, iBackBuffer, (d3d9::D3DBACKBUFFER_TYPE)Type, &pSurface9);
 
-        m_backBuffer = new D3D8Surface(this, std::move(pSurface9));
-        *ppBackBuffer = m_backBuffer.ref();
+        if (FAILED(res)) return res;
+        
+        m_backBuffers[iBackBuffer] = new D3D8Surface(this, std::move(pSurface9));
+        *ppBackBuffer = m_backBuffers[iBackBuffer].ref();
+
         return res;
       }
 
-      *ppBackBuffer = m_backBuffer.ref();
+      *ppBackBuffer = m_backBuffers[iBackBuffer].ref();
       return D3D_OK;
     }
 
@@ -945,6 +944,17 @@ namespace dxvk {
 
     inline bool ShouldRecord() { return m_recorder != nullptr; }
 
+    inline void ResetState() {
+      // Purge cached objects
+      m_backBuffers.clear();
+      for (UINT i = 0; i < m_presentParams.BackBufferCount; i++) {
+        m_backBuffers.push_back(nullptr);
+      }
+      m_frontBuffer = nullptr;
+      m_renderTarget = nullptr;
+      m_depthStencil = nullptr;
+    }
+
   private:
 
     IDxvkD3D8Bridge*      m_bridge;
@@ -967,7 +977,7 @@ namespace dxvk {
     Com<D3D8IndexBuffer>        m_indices;
     INT                         m_baseVertexIndex = 0;
 
-    Com<D3D8Surface>            m_backBuffer;
+    std::vector<Com<D3D8Surface, false>> m_backBuffers;
     Com<D3D8Surface>            m_frontBuffer;
 
     Com<D3D8Surface>            m_renderTarget;
