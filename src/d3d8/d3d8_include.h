@@ -67,6 +67,9 @@ namespace d3d9 {
 #include <d3d9.h>
 }
 
+// Indicates d3d9:: namespace is in-use.
+#define DXVK_D3D9_NAMESPACE
+
 #ifdef __MINGW32__
 #pragma pop_macro("__CRT_UUID_DECL")
 #endif // __MINGW32__
