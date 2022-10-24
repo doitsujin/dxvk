@@ -490,7 +490,7 @@ namespace dxvk {
         Height,
         d3d9::D3DFORMAT(Format),
         // FIXME: D3DPOOL_SCRATCH is said to be dx8 compatible, but currently won't work with CopyRects
-        d3d9::D3DPOOL_SYSTEMMEM,
+        d3d9::D3DPOOL_DEFAULT,
         &pSurf,
         NULL);
 
