@@ -229,7 +229,6 @@ namespace dxvk {
     const D3D9_BUFFER_DESC      m_desc;
     DWORD                       m_mapFlags;
     bool                        m_needsReadback = false;
-    bool                        m_uploadUsingStaging = false;
     D3D9_COMMON_BUFFER_MAP_MODE m_mapMode;
 
     Rc<DxvkBuffer>              m_buffer;
