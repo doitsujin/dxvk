@@ -484,7 +484,13 @@ namespace dxvk {
       return GetD3D9()->UpdateTexture(D3D8Texture2D::GetD3D9Nullable(src), D3D8Texture2D::GetD3D9Nullable(dst));
     }
 
-    HRESULT STDMETHODCALLTYPE GetFrontBuffer D3D8_DEVICE_STUB(IDirect3DSurface8* pDestSurface);
+    HRESULT STDMETHODCALLTYPE GetFrontBuffer(IDirect3DSurface8* pDestSurface) {
+      if (unlikely(pDestSurface == nullptr))
+        return D3DERR_INVALIDCALL;
+      Com<D3D8Surface> surf = static_cast<D3D8Surface*>(pDestSurface);
+      // This actually gets a copy of the front buffer and writes it to pDestSurface
+      return GetD3D9()->GetFrontBufferData(0, D3D8Surface::GetD3D9Nullable(surf));
+    }
 
     // CreateImageSurface -> CreateOffscreenPlainSurface
     HRESULT STDMETHODCALLTYPE CreateImageSurface(UINT Width, UINT Height, D3DFORMAT Format, IDirect3DSurface8** ppSurface) {
