@@ -512,8 +512,6 @@ namespace dxvk {
 
     int64_t                       m_size = 0;
 
-    bool                          m_systemmemModified = false;
-
     bool                          m_hazardous = false;
 
     D3D9ColorView                 m_sampleView;
@@ -525,8 +523,6 @@ namespace dxvk {
     D3D9SubresourceBitset         m_needsReadback = { };
 
     D3D9SubresourceBitset         m_needsUpload = { };
-
-    D3D9SubresourceBitset         m_uploadUsingStaging = { };
 
     DWORD                         m_exposedMipLevels = 0;
 
