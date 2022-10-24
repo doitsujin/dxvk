@@ -824,12 +824,24 @@ namespace dxvk {
         VertexStreamZeroStride);
     }
 
-    HRESULT STDMETHODCALLTYPE ProcessVertices D3D8_DEVICE_STUB(
-            UINT                         SrcStartIndex,
-            UINT                         DestIndex,
-            UINT                         VertexCount,
-            IDirect3DVertexBuffer8*      pDestBuffer,
-            DWORD                        Flags);
+    HRESULT STDMETHODCALLTYPE ProcessVertices(
+        UINT                         SrcStartIndex,
+        UINT                         DestIndex,
+        UINT                         VertexCount,
+        IDirect3DVertexBuffer8*      pDestBuffer,
+        DWORD                        Flags) {
+      if (unlikely(!pDestBuffer))
+        return D3DERR_INVALIDCALL;
+      D3D8VertexBuffer* buffer = static_cast<D3D8VertexBuffer*>(pDestBuffer);
+      return GetD3D9()->ProcessVertices(
+        SrcStartIndex,
+        DestIndex,
+        VertexCount,
+        buffer->GetD3D9(),
+        nullptr,
+        Flags
+      );
+    }
 
 
     HRESULT STDMETHODCALLTYPE CreateVertexShader(
