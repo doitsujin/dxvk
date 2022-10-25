@@ -1008,6 +1008,11 @@ namespace dxvk {
       { "d3d9.maxFrameRate",                "60"   },
       { "d3d8.forceD16",                    "True" },
     }} },
+    /* Indiana Jones and the Emperor's Tomb      *
+     * Fixes intro window being stuck on screen  */
+    { R"(\\indy\.exe$)", {{
+      { "d3d9.enableDialogMode",            "True" },
+    }} },
   }};
 
 
