@@ -146,7 +146,7 @@ namespace dxvk {
             switch (srcDesc.Pool) {
               case  D3DPOOL_DEFAULT: {
                 // TODO: (copy on GPU)
-                goto done;
+                goto unhandled;
               }
               case D3DPOOL_MANAGED:
               case D3DPOOL_SYSTEMMEM: {
