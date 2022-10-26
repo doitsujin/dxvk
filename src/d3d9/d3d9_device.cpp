@@ -5643,7 +5643,11 @@ namespace dxvk {
     // Originally we did this only for powers of two
     // resolutions but since NEAREST filtering fixed to
     // truncate, we need to do this all the time now.
-    constexpr float cf = 0.5f - (1.0f / 128.0f);
+    // constexpr float cf = 0.5f - (1.0f / 128.0f);
+
+    // If add Correctness Factor, it will make DX9 WHQL basicrst.exe
+    // fail. We may not add Correctness Factor all the time.
+    constexpr float cf = 0.5f;
 
     // How much to bias MinZ by to avoid a depth
     // degenerate viewport.
