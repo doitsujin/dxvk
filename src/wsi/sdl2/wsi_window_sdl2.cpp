@@ -143,12 +143,13 @@ namespace dxvk::wsi {
 
 
   VkResult createSurface(
-          HWND                hWindow,
-    const Rc<vk::InstanceFn>& vki,
-          VkSurfaceKHR*       pSurface) {
+          HWND                      hWindow,
+          PFN_vkGetInstanceProcAddr pfnVkGetInstanceProcAddr,
+          VkInstance                instance,
+          VkSurfaceKHR*             pSurface) {
     SDL_Window* window = fromHwnd(hWindow);
 
-    return SDL_Vulkan_CreateSurface(window, vki->instance(), pSurface)
+    return SDL_Vulkan_CreateSurface(window, instance, pSurface)
          ? VK_SUCCESS
          : VK_ERROR_OUT_OF_HOST_MEMORY;
   }

@@ -276,17 +276,23 @@ namespace dxvk::wsi {
 
   VkResult createSurface(
           HWND                hWindow,
-    const Rc<vk::InstanceFn>& vki,
+          PFN_vkGetInstanceProcAddr pfnVkGetInstanceProcAddr,
+          VkInstance          instance,
           VkSurfaceKHR*       pSurface) {
     HINSTANCE hInstance = reinterpret_cast<HINSTANCE>(
       GetWindowLongPtr(hWindow, GWLP_HINSTANCE));
+
+    auto pfnVkCreateWin32SurfaceKHR = reinterpret_cast<PFN_vkCreateWin32SurfaceKHR>(
+      pfnVkGetInstanceProcAddr(instance, "vkCreateWin32SurfaceKHR"));
+
+    if (!pfnVkCreateWin32SurfaceKHR)
+      return VK_ERROR_FEATURE_NOT_PRESENT;
 
     VkWin32SurfaceCreateInfoKHR info = { VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR };
     info.hinstance  = hInstance;
     info.hwnd       = hWindow;
     
-    return vki->vkCreateWin32SurfaceKHR(
-      vki->instance(), &info, nullptr, pSurface);
+    return (*pfnVkCreateWin32SurfaceKHR)(instance, &info, nullptr, pSurface);
   }
 
 }

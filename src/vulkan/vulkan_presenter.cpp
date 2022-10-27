@@ -410,7 +410,8 @@ namespace dxvk::vk {
 
 
   VkResult Presenter::createSurface() {
-    VkResult status = wsi::createSurface(m_window, m_vki, &m_surface);
+    /* TODO fix */
+    VkResult status = wsi::createSurface(m_window, nullptr, m_vki->instance(), &m_surface);
 
     if (status != VK_SUCCESS)
       return status;
