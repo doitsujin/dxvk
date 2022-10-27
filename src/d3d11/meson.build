@@ -3,6 +3,7 @@ d3d11_res = wrc_generator.process('version.rc')
 dxgi_common_src = [
   '../dxgi/dxgi_format.cpp',
   '../dxgi/dxgi_monitor.cpp',
+  '../dxgi/dxgi_surface.cpp',
   '../dxgi/dxgi_swapchain.cpp',
 ]
 

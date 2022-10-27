@@ -9,6 +9,7 @@ dxgi_src = [
   'dxgi_monitor.cpp',
   'dxgi_options.cpp',
   'dxgi_output.cpp',
+  'dxgi_surface.cpp',
   'dxgi_swapchain.cpp',
 ]
 
