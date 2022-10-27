@@ -42,6 +42,18 @@ struct DXGI_VK_HDR_METADATA {
 
 
 /**
+ * \brief Private DXGI surface factory
+ */
+MIDL_INTERFACE("1e7895a1-1bc3-4f9c-a670-290a4bc9581a")
+IDXGIVkSurfaceFactory : public IUnknown {
+  virtual VkResult STDMETHODCALLTYPE CreateSurface(
+          VkInstance                Instance,
+          VkPhysicalDevice          Adapter,
+          VkSurfaceKHR*             pSurface) = 0;
+};
+
+
+/**
  * \brief Private DXGI presenter
  * 
  * Presenter interface that allows the DXGI swap
@@ -396,6 +408,7 @@ struct __declspec(uuid("3a6d8f2c-b0e8-4ab4-b4dc-4fd24891bfa5")) IDXGIVkInteropAd
 struct __declspec(uuid("e2ef5fa5-dc21-4af7-90c4-f67ef6a09323")) IDXGIVkInteropDevice;
 struct __declspec(uuid("e2ef5fa5-dc21-4af7-90c4-f67ef6a09324")) IDXGIVkInteropDevice1;
 struct __declspec(uuid("5546cf8c-77e7-4341-b05d-8d4d5000e77d")) IDXGIVkInteropSurface;
+struct __declspec(uuid("1e7895a1-1bc3-4f9c-a670-290a4bc9581a")) IDXGIVkSurfaceFactory;
 struct __declspec(uuid("e4a9059e-b569-46ab-8de7-501bd2bc7f7a")) IDXGIVkSwapChain;
 struct __declspec(uuid("e7d6c3ca-23a0-4e08-9f2f-ea5231df6633")) IDXGIVkSwapChainFactory;
 struct __declspec(uuid("53cb4ff0-c25a-4164-a891-0e83db0a7aac")) IWineDXGISwapChainFactory;
@@ -407,6 +420,7 @@ __CRT_UUID_DECL(IDXGIVkInteropAdapter,     0x3a6d8f2c,0xb0e8,0x4ab4,0xb4,0xdc,0x
 __CRT_UUID_DECL(IDXGIVkInteropDevice,      0xe2ef5fa5,0xdc21,0x4af7,0x90,0xc4,0xf6,0x7e,0xf6,0xa0,0x93,0x23);
 __CRT_UUID_DECL(IDXGIVkInteropDevice1,     0xe2ef5fa5,0xdc21,0x4af7,0x90,0xc4,0xf6,0x7e,0xf6,0xa0,0x93,0x24);
 __CRT_UUID_DECL(IDXGIVkInteropSurface,     0x5546cf8c,0x77e7,0x4341,0xb0,0x5d,0x8d,0x4d,0x50,0x00,0xe7,0x7d);
+__CRT_UUID_DECL(IDXGIVkSurfaceFactory,     0x1e7895a1,0x1bc3,0x4f9c,0xa6,0x70,0x29,0x0a,0x4b,0xc9,0x58,0x1a);
 __CRT_UUID_DECL(IDXGIVkSwapChain,          0xe4a9059e,0xb569,0x46ab,0x8d,0xe7,0x50,0x1b,0xd2,0xbc,0x7f,0x7a);
 __CRT_UUID_DECL(IDXGIVkSwapChainFactory,   0xe7d6c3ca,0x23a0,0x4e08,0x9f,0x2f,0xea,0x52,0x31,0xdf,0x66,0x33);
 __CRT_UUID_DECL(IWineDXGISwapChainFactory, 0x53cb4ff0,0xc25a,0x4164,0xa8,0x91,0x0e,0x83,0xdb,0x0a,0x7a,0xac);
