@@ -103,19 +103,8 @@ namespace dxvk::vk {
     VkResult status;
     
     if ((status = m_vki->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-        m_device.adapter, m_surface, &caps)) != VK_SUCCESS) {
-      if (status == VK_ERROR_SURFACE_LOST_KHR) {
-        // Recreate the surface and try again.
-        if (m_surface)
-          destroySurface();
-        if ((status = createSurface()) != VK_SUCCESS)
-          return status;
-        status = m_vki->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-            m_device.adapter, m_surface, &caps);
-      }
-      if (status != VK_SUCCESS)
-        return status;
-    }
+        m_device.adapter, m_surface, &caps)) != VK_SUCCESS)
+      return status;
 
     if ((status = getSupportedFormats(formats, desc)) != VK_SUCCESS)
       return status;
