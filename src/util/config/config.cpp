@@ -634,6 +634,21 @@ namespace dxvk {
     { R"(\\(hammer(plusplus)?|mallet|wc)\.exe$)", {{
       { "d3d9.apitraceMode",                "True" },
     }} },
+    /* theHunter - Primal                       *
+     * Temporary crash workaround               */
+    { R"(\\theHunterPrimal\.exe$)", {{
+      { "d3d9.textureMemory",                "0" },
+    }} },
+    /* Cryostasis                               *
+     * Same as above                            */
+    { R"(\\cryostasis\.exe$)", {{
+      { "d3d9.textureMemory",                "0" },
+    }} },
+    /* Warlock - Master of the Arcane           *
+     * Same as above                            */
+    { R"(\\Warlock - Master of the Arcane\Game\.exe$)", {{
+      { "d3d9.textureMemory",                "0" },
+    }} },
   }};
 
 
