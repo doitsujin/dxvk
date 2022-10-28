@@ -2,6 +2,7 @@
 #include <cstring>
 
 #include "../dxgi/dxgi_monitor.h"
+#include "../dxgi/dxgi_surface.h"
 #include "../dxgi/dxgi_swapchain.h"
 
 #include "../dxvk/dxvk_adapter.h"
@@ -3002,8 +3003,12 @@ namespace dxvk {
     InitReturnPtr(ppSwapChain);
 
     try {
+      auto vki = m_device->GetDXVKDevice()->adapter()->vki();
+
+      Com<IDXGIVkSurfaceFactory> surfaceFactory = new DxgiSurfaceFactory(vki->getLoaderProc(), hWnd);
+
       Com<D3D11SwapChain> presenter = new D3D11SwapChain(
-        m_container, m_device, hWnd, pDesc);
+        m_container, m_device, surfaceFactory.ptr(), pDesc);
       
       *ppSwapChain = presenter.ref();
       return S_OK;
@@ -3074,9 +3079,14 @@ namespace dxvk {
     }
     
     try {
+      auto vki = m_device->GetDXVKDevice()->adapter()->vki();
+
+      // Create surface factory for the window
+      Com<IDXGIVkSurfaceFactory> surfaceFactory = new DxgiSurfaceFactory(vki->getLoaderProc(), hWnd);
+
       // Create presenter for the device
       Com<D3D11SwapChain> presenter = new D3D11SwapChain(
-        m_container, m_device, hWnd, &desc);
+        m_container, m_device, surfaceFactory.ptr(), &desc);
       
       // Create the actual swap chain
       *ppSwapChain = ref(new DxgiSwapChain(

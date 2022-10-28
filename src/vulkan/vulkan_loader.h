@@ -23,6 +23,7 @@ namespace dxvk::vk {
     ~LibraryLoader();
     PFN_vkVoidFunction sym(VkInstance instance, const char* name) const;
     PFN_vkVoidFunction sym(const char* name) const;
+    PFN_vkGetInstanceProcAddr getLoaderProc() const { return m_getInstanceProcAddr; }
     bool               valid() const;
   protected:
     const HMODULE                   m_library;
@@ -39,6 +40,7 @@ namespace dxvk::vk {
   struct InstanceLoader : public RcObject {
     InstanceLoader(const Rc<LibraryLoader>& library, bool owned, VkInstance instance);
     PFN_vkVoidFunction sym(const char* name) const;
+    PFN_vkGetInstanceProcAddr getLoaderProc() const { return m_library->getLoaderProc(); }
     VkInstance instance() const { return m_instance; }
   protected:
     Rc<LibraryLoader> m_library;

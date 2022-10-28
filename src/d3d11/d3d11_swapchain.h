@@ -20,7 +20,7 @@ namespace dxvk {
     D3D11SwapChain(
             D3D11DXGIDevice*          pContainer,
             D3D11Device*              pDevice,
-            HWND                      hWnd,
+            IDXGIVkSurfaceFactory*    pSurfaceFactory,
       const DXGI_SWAP_CHAIN_DESC1*    pDesc);
     
     ~D3D11SwapChain();
@@ -90,7 +90,7 @@ namespace dxvk {
     Com<D3D11DXGIDevice, false> m_dxgiDevice;
     
     D3D11Device*              m_parent;
-    HWND                      m_window;
+    Com<IDXGIVkSurfaceFactory> m_surfaceFactory;
 
     DXGI_SWAP_CHAIN_DESC1     m_desc;
 
@@ -136,6 +136,8 @@ namespace dxvk {
     void CreateFrameLatencyEvent();
 
     void CreatePresenter();
+
+    VkResult CreateSurface(VkSurfaceKHR* pSurface);
 
     void CreateRenderTargetViews();
 

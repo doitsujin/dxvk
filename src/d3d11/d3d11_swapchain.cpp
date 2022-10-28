@@ -16,23 +16,23 @@ namespace dxvk {
   D3D11SwapChain::D3D11SwapChain(
           D3D11DXGIDevice*        pContainer,
           D3D11Device*            pDevice,
-          HWND                    hWnd,
+          IDXGIVkSurfaceFactory*  pSurfaceFactory,
     const DXGI_SWAP_CHAIN_DESC1*  pDesc)
   : m_dxgiDevice(pContainer),
-    m_parent    (pDevice),
-    m_window    (hWnd),
-    m_desc      (*pDesc),
-    m_device    (pDevice->GetDXVKDevice()),
-    m_context   (m_device->createContext(DxvkContextType::Supplementary)),
+    m_parent(pDevice),
+    m_surfaceFactory(pSurfaceFactory),
+    m_desc(*pDesc),
+    m_device(pDevice->GetDXVKDevice()),
+    m_context(m_device->createContext(DxvkContextType::Supplementary)),
     m_frameLatencyCap(pDevice->GetOptions()->maxFrameLatency) {
     CreateFrameLatencyEvent();
-
-    if (!pDevice->GetOptions()->deferSurfaceCreation)
-      CreatePresenter();
-    
+    CreatePresenter();
     CreateBackBuffer();
     CreateBlitter();
     CreateHud();
+
+    if (!pDevice->GetOptions()->deferSurfaceCreation)
+      RecreateSwapChain(false);
   }
 
 
@@ -223,9 +223,6 @@ namespace dxvk {
       m_vsync  = vsync;
     }
 
-    if (m_presenter == nullptr)
-      CreatePresenter();
-
     HRESULT hr = S_OK;
 
     if (!m_presenter->hasSwapChain()) {
@@ -395,8 +392,21 @@ namespace dxvk {
     presenterDesc.numPresentModes = PickPresentModes(Vsync, presenterDesc.presentModes);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
-    if (m_presenter->recreateSwapChain(presenterDesc) != VK_SUCCESS)
-      throw DxvkError("D3D11SwapChain: Failed to recreate swap chain");
+    VkResult vr = m_presenter->recreateSwapChain(presenterDesc);
+
+    if (vr == VK_ERROR_SURFACE_LOST_KHR) {
+      vr = m_presenter->recreateSurface([this] (VkSurfaceKHR* surface) {
+        return CreateSurface(surface);
+      });
+
+      if (vr)
+        throw DxvkError(str::format("D3D11SwapChain: Failed to recreate surface: ", vr));
+
+      vr = m_presenter->recreateSwapChain(presenterDesc);
+    }
+
+    if (vr)
+      throw DxvkError(str::format("D3D11SwapChain: Failed to recreate swap chain: ", vr));
     
     CreateRenderTargetViews();
   }
@@ -426,15 +436,22 @@ namespace dxvk {
     presenterDesc.numPresentModes = PickPresentModes(false, presenterDesc.presentModes);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
-    m_presenter = new vk::Presenter(m_window,
+    m_presenter = new vk::Presenter(
       m_device->adapter()->vki(),
       m_device->vkd(),
       presenterDevice,
       presenterDesc);
     
     m_presenter->setFrameRateLimit(m_parent->GetOptions()->maxFrameRate);
+  }
 
-    CreateRenderTargetViews();
+
+  VkResult D3D11SwapChain::CreateSurface(VkSurfaceKHR* pSurface) {
+    Rc<DxvkAdapter> adapter = m_device->adapter();
+
+    return m_surfaceFactory->CreateSurface(
+      adapter->vki()->instance(),
+      adapter->handle(), pSurface);
   }
 
 
