@@ -16,6 +16,7 @@ namespace dxvk {
     this->maxTessFactor         = config.getOption<int32_t>("d3d11.maxTessFactor", 0);
     this->samplerAnisotropy     = config.getOption<int32_t>("d3d11.samplerAnisotropy", -1);
     this->invariantPosition     = config.getOption<bool>("d3d11.invariantPosition", true);
+    this->refactoringAllowed    = config.getOption<bool>("d3d11.refactoringAllowed", false);
     this->floatControls         = config.getOption<bool>("d3d11.floatControls", true);
     this->disableMsaa           = config.getOption<bool>("d3d11.disableMsaa", false);
     this->deferSurfaceCreation  = config.getOption<bool>("dxgi.deferSurfaceCreation", false);

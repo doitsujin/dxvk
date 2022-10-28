@@ -53,6 +53,9 @@ namespace dxvk {
 
     /// Declare vertex positions as invariant
     bool invariantPosition = false;
+    
+    /// Assume global flag RefactoringAllowed on all shaders
+    bool refactoringAllowed = false;
 
     /// Insert memory barriers after TGSM stoes
     bool forceTgsmBarriers = false;

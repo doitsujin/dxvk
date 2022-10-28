@@ -69,6 +69,11 @@ namespace dxvk {
     
     /// Declare vertex positions in shaders as invariant
     bool invariantPosition;
+    
+    /// For shaders without a global RefactoringAllowed flag (mostly
+    /// shader model 4.0), emit instructions as if there was one.
+    /// Does not affect individual instructions marked as precise.
+    bool refactoringAllowed;
 
     /// Enable float control bits
     bool floatControls;
