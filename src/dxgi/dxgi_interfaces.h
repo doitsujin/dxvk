@@ -121,7 +121,7 @@ IDXGIVkSwapChain : public IUnknown {
 MIDL_INTERFACE("e7d6c3ca-23a0-4e08-9f2f-ea5231df6633")
 IDXGIVkSwapChainFactory : public IUnknown {
   virtual HRESULT STDMETHODCALLTYPE CreateSwapChain(
-          HWND                      hWnd,
+          IDXGIVkSurfaceFactory*    pSurfaceFactory,
     const DXGI_SWAP_CHAIN_DESC1*    pDesc,
           IDXGIVkSwapChain**        ppSwapChain) = 0;
 };

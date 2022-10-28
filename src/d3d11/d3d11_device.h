@@ -710,7 +710,7 @@ namespace dxvk {
             void**                  ppvObject);
 
     HRESULT STDMETHODCALLTYPE CreateSwapChain(
-            HWND                      hWnd,
+            IDXGIVkSurfaceFactory*    pSurfaceFactory,
       const DXGI_SWAP_CHAIN_DESC1*    pDesc,
             IDXGIVkSwapChain**        ppSwapChain);
 

@@ -1,4 +1,5 @@
 #include "dxgi_factory.h"
+#include "dxgi_surface.h"
 #include "dxgi_swapchain.h"
 #include "dxgi_swapchain_dispatcher.h"
 
@@ -153,9 +154,11 @@ namespace dxvk {
     Com<IWineDXGISwapChainFactory> wineFactory;
 
     if (SUCCEEDED(pDevice->QueryInterface(IID_PPV_ARGS(&dxvkFactory)))) {
-      Com<IDXGIVkSwapChain> presenter;
+      Com<IDXGIVkSurfaceFactory> surfaceFactory = new DxgiSurfaceFactory(
+        m_instance->vki()->getLoaderProc(), hWnd);
 
-      HRESULT hr = dxvkFactory->CreateSwapChain(hWnd, &desc, &presenter);
+      Com<IDXGIVkSwapChain> presenter;
+      HRESULT hr = dxvkFactory->CreateSwapChain(surfaceFactory.ptr(), &desc, &presenter);
 
       if (FAILED(hr)) {
         Logger::err(str::format("DXGI: CreateSwapChainForHwnd: Failed to create swap chain, hr ", hr));
