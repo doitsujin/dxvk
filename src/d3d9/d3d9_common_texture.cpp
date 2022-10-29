@@ -485,8 +485,10 @@ namespace dxvk {
     
     // Filter out unnecessary flags. Transfer operations
     // are handled by the backend in a transparent manner.
+    // Feedback loops are handled by hazard tracking.
     Usage &= ~(VK_IMAGE_USAGE_TRANSFER_DST_BIT
-             | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+             | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+             | VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
     
     // Ignore sampled bit in case the image was created with
     // an image flag that only allows attachment usage
