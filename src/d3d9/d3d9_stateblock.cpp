@@ -470,14 +470,9 @@ namespace dxvk {
     m_captures.flags.set(D3D9CapturedStateFlag::VertexShader);
     m_captures.flags.set(D3D9CapturedStateFlag::VsConstants);
 
-    for (uint32_t i = 0; i < m_parent->GetVertexConstantLayout().floatCount / 32; i++)
-      m_captures.vsConsts.fConsts.dword(i) = std::numeric_limits<uint32_t>::max();
-
-    for (uint32_t i = 0; i < m_parent->GetVertexConstantLayout().intCount / 32; i++)
-      m_captures.vsConsts.iConsts.dword(i) = std::numeric_limits<uint32_t>::max();
-
-    for (uint32_t i = 0; i < m_parent->GetVertexConstantLayout().bitmaskCount; i++)
-      m_captures.vsConsts.bConsts.dword(i) = std::numeric_limits<uint32_t>::max();
+    m_captures.vsConsts.fConsts.setN(m_parent->GetVertexConstantLayout().floatCount);
+    m_captures.vsConsts.iConsts.setN(m_parent->GetVertexConstantLayout().intCount);
+    m_captures.vsConsts.bConsts.setN(m_parent->GetVertexConstantLayout().boolCount);
   }
 
 
