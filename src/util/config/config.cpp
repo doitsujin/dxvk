@@ -634,6 +634,13 @@ namespace dxvk {
     { R"(\\(hammer(plusplus)?|mallet|wc)\.exe$)", {{
       { "d3d9.apitraceMode",                "True" },
     }} },
+    /* Dragon Age Origins                       *
+     * Keeps unmapping the same 3 1MB buffers   *
+     * thousands of times when you alt-tab out  *
+     * Causing it to crash OOM                  */
+    { R"(\\DAOrigins\.exe$)" , {{
+      { "d3d9.allowDirectBufferMapping",    "False" },
+    }} },
   }};
 
 
