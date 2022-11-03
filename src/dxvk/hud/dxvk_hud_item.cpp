@@ -713,7 +713,7 @@ namespace dxvk::hud {
       renderer.drawText(16.0f,
         { position.x, renderer.surfaceSize().height / renderer.scale() - 20.0f },
         { 1.0f, 1.0f, 1.0f, 1.0f },
-        "Compiling shaders...");
+        "DXVK-macOS: Currently busy, please wait....");
     }
 
     return position;
