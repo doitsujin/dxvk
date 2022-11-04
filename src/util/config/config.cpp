@@ -128,7 +128,7 @@ namespace dxvk {
       { "dxgi.customVendorId",              "10de" },
     }} },
     /* Modern Warfare Remastered                  */
-    { R"(\\h1_[ms]p64_ship\.exe$)", {{
+    { R"(\\h1(_[ms]p64_ship|-mod)\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
     /* Crysis 3 - slower if it notices AMD card     *
