@@ -168,11 +168,49 @@ namespace dxvk {
           
           // DEST: SYSTEMMEM
           case D3DPOOL_SYSTEMMEM: {
+
+            // RT -> SYSTEMMEM
             if ((srcDesc.Usage & D3DUSAGE_RENDERTARGET || m_renderTarget == src)) {
-              // rt (always POOL_DEFAULT) -> POOL_SYSTEMMEM: use GetRenderTargetData
-              res = GetD3D9()->GetRenderTargetData(src->GetD3D9(), dst->GetD3D9());
+              // TODO: May be able to call GetRenderTargetData directly here in certain cases
+            }
+            
+            // DEFAULT -> SYSTEMEM:
+            // HACK: use StretchRects to stretch
+            // and GetRenderTargetData to write result.
+            //
+            // FIXME: This is a large bottleneck. Ideally, vkCmdCopyImageToBuffer 
+            // would work if not stretching, but it doesn't.
+            if (srcDesc.Pool == d3d9::D3DPOOL_DEFAULT) {
+              // Create a temporary on-screen surface for stretching.
+              Com<d3d9::IDirect3DSurface9> pRenderTarget = nullptr;
+              res = GetD3D9()->CreateRenderTarget(
+                dstDesc.Width, dstDesc.Height, dstDesc.Format,
+                d3d9::D3DMULTISAMPLE_NONE, 0,
+                FALSE,
+                &pRenderTarget,
+                NULL);
+              if (FAILED(res))
+                goto done;
+
+              // Stretch the source RT to the temporary surface.
+              res = GetD3D9()->StretchRect(
+                src->GetD3D9(),
+                &srcRect,
+                pRenderTarget.ptr(),
+                &dstRect,
+                d3d9::D3DTEXF_NONE);
+              if (FAILED(res)) {
+                pRenderTarget->Release();
+                goto done;
+              }
+
+              // Now sync the rendertarget data into main memory.
+              res = GetD3D9()->GetRenderTargetData(pRenderTarget.ptr(), dst->GetD3D9());
+
+              pRenderTarget->Release();
               goto done;
             }
+
             // TODO: Other cases: download from GPU or memcpy
             goto unhandled;
           }
@@ -492,7 +530,7 @@ namespace dxvk {
         Height,
         d3d9::D3DFORMAT(Format),
         // FIXME: D3DPOOL_SCRATCH is said to be dx8 compatible, but currently won't work with CopyRects
-        d3d9::D3DPOOL_DEFAULT,
+        d3d9::D3DPOOL_SYSTEMMEM,
         &pSurf,
         NULL);
 
