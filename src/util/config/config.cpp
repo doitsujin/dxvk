@@ -641,6 +641,10 @@ namespace dxvk {
     { R"(\\DAOrigins\.exe$)" , {{
       { "d3d9.allowDirectBufferMapping",    "False" },
     }} },
+    /* Fallout 3 - Doesn't like Intel Id       */
+    { R"(\\Fallout3\.exe$)", {{
+      { "d3d9.customVendorId",              "10de" },
+    }} }
   }};
 
 
