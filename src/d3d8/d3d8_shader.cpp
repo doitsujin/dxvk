@@ -61,39 +61,48 @@ namespace dxvk {
     0   // UNUSED
   };
 
-  // TODO: Consider adapting DXSO code for this stuff
-
-  // https://learn.microsoft.com/en-us/windows-hardware/drivers/display/instruction-token
-  constexpr DWORD VSInstrToken(d3d9::D3DSHADER_INSTRUCTION_OPCODE_TYPE opcode) {
-    DWORD token = 0;
-    token |= opcode & 0xFFFF; // bits 0:15
+  /**
+   * Encodes a \ref DxsoShaderInstruction
+   * 
+   * \param [in]  opcode  DxsoOpcode
+   * \cite https://learn.microsoft.com/en-us/windows-hardware/drivers/display/instruction-token
+   */
+  constexpr DWORD encodeInstruction(d3d9::D3DSHADER_INSTRUCTION_OPCODE_TYPE opcode) {
+    DWORD token   = 0;
+    token        |= opcode & 0xFFFF;  // bits 0:15
     return token;
   }
 
-  // https://learn.microsoft.com/en-us/windows-hardware/drivers/display/destination-parameter-token
-  constexpr DWORD VSDestParamToken(d3d9::D3DSHADER_PARAM_REGISTER_TYPE type, UINT reg) {
+  /**
+   * Encodes a \ref DxsoRegister
+   * 
+   * \param [in]  regType  DxsoRegisterType
+   * \cite https://learn.microsoft.com/en-us/windows-hardware/drivers/display/destination-parameter-token
+   */
+  constexpr DWORD encodeDestRegister(d3d9::D3DSHADER_PARAM_REGISTER_TYPE type, UINT reg) {
     DWORD token = 0;
-    DWORD typeBits012 = type & 0x7;
-    DWORD typeBits34 = (type & 0x18) >> 3;
-    token |= reg & 0x7FF;       // bits 0:10
-    token |= typeBits34 << 11;  // bits 11:12
-    // UINT addrMode : 1;       // bit  13
-    // UINT reserved : 2;       // bits 14:15
-    token |= 0b1111 << 16;      // bits 16:19 (write mask RGBA)
-    // UINT resultModifier : 3; // bits 20:23
-    // UINT resultShift : 3;    // bits 24:27
-    token |= typeBits012 << 28; // bits 28:30
-    token |= 1 << 31;           // bit 31 is always 1
+    token    |= reg & 0x7FF;                  // bits 0:10   num
+    token    |= ((type & 0x07) << 28);        // bits 28:30  type[0:2]
+    token    |= ((type & 0x18) >>  3) << 11;  // bits 11:12  type[3:4]
+    // UINT addrMode : 1;                     // bit  13     hasRelative
+    token    |= 0b1111 << 16;                 // bits 16:19  DxsoRegMask
+    // UINT resultModifier : 3;               // bits 20:23
+    // UINT resultShift : 3;                  // bits 24:27
+    token    |= 1 << 31;                      // bit  31     always 1
     return token;
   }
   
-  // 2nd token in DCL
-  // https://learn.microsoft.com/en-us/windows-hardware/drivers/display/dcl-instruction
-  constexpr DWORD VSDestUsageToken(d3d9::D3DDECLUSAGE usage) {
+  /**
+   * Encodes a \ref DxsoDeclaration
+   * 
+   * \param [in]  regType  DxsoRegisterType
+   * \cite https://learn.microsoft.com/en-us/windows-hardware/drivers/display/dcl-instruction
+   */
+  constexpr DWORD encodeDeclaration(d3d9::D3DDECLUSAGE usage) {
     DWORD token = 0;
-    token |= usage & 0x1F;  // bits 0:4
-    token |= 0 << 16;       // bits 16:19 - usage index (TODO: does this change?)
-    token |= 1 << 31;       // bit 31 is always 1
+    token |= usage & 0x1F;  // bits 0:4   DxsoUsage
+    token |= 0 << 16;       // bits 16:19 usageIndex (TODO: should this change?)
+    token |= 1 << 31;       // bit 31     always 1
     return token;
   }
 
@@ -128,7 +137,7 @@ namespace dxvk {
 
       D3DVSD_TOKENTYPE tokenType = D3DVSD_TOKENTYPE(VSD_SHIFT_MASK(token, D3DVSD_TOKENTYPE));
 
-      switch ( tokenType ) {
+      switch (tokenType) {
         case D3DVSD_TOKEN_NOP:
           dbg << "NOP";
           break;
@@ -208,8 +217,8 @@ namespace dxvk {
 
           // Add a DEF instruction for each constant
           for (DWORD j = 0; j < regCount; j += 4) {
-            defs.push_back(VSInstrToken(d3d9::D3DSIO_DEF));
-            defs.push_back(VSDestParamToken(d3d9::D3DSPR_CONST2, addr));
+            defs.push_back(encodeInstruction(d3d9::D3DSIO_DEF));
+            defs.push_back(encodeDestRegister(d3d9::D3DSPR_CONST2, addr));
             defs.push_back(pDeclaration[i+j+0]);
             defs.push_back(pDeclaration[i+j+1]);
             defs.push_back(pDeclaration[i+j+2]);
@@ -256,11 +265,10 @@ namespace dxvk {
       tokens.push_back(pFunction[0]);
 
       // insert dcl instructions 
-
-      for ( int vn = 0; vn < D3D8_NUM_VERTEX_INPUT_REGISTERS; vn++ ) {
+      for (int vn = 0; vn < D3D8_NUM_VERTEX_INPUT_REGISTERS; vn++) {
 
         // if bit N is set then we need to dcl register vN
-        if ( ( shaderInputRegisters & ( 1 << vn ) ) != 0 ) {
+        if ((shaderInputRegisters & (1 << vn)) != 0) {
 
           Logger::debug(str::format("\tShader Input Regsiter: v", vn));
 
@@ -270,9 +278,9 @@ namespace dxvk {
           DWORD dclUsage  = (usage << D3DSP_DCL_USAGE_SHIFT) & D3DSP_DCL_USAGE_MASK;           // usage
           dclUsage       |= (index << D3DSP_DCL_USAGEINDEX_SHIFT) & D3DSP_DCL_USAGEINDEX_MASK; // usage index
 
-          tokens.push_back(VSInstrToken(d3d9::D3DSIO_DCL));                 // dcl opcode
-          tokens.push_back(VSDestUsageToken(d3d9::D3DDECLUSAGE(dclUsage))); // usage token
-          tokens.push_back(VSDestParamToken(d3d9::D3DSPR_INPUT, vn));       // dest register num
+          tokens.push_back(encodeInstruction(d3d9::D3DSIO_DCL));              // dcl opcode
+          tokens.push_back(encodeDeclaration(d3d9::D3DDECLUSAGE(dclUsage)));  // usage token
+          tokens.push_back(encodeDestRegister(d3d9::D3DSPR_INPUT, vn));       // dest register num
         }
       }
 
@@ -281,9 +289,9 @@ namespace dxvk {
         tokens.push_back(def);
       }
 
-      // copy shader tokens from input
-
-      i = 1; // skip first token (we already copied it)
+      // copy shader tokens from input,
+      // skip first token (we already copied it)
+      i = 1;
       do {
         token = pFunction[i++];
 
@@ -302,7 +310,7 @@ namespace dxvk {
         tokens.push_back(token);
 
         //Logger::debug(str::format(std::hex, token));
-      } while ( token != D3DVS_END() );
+      } while (token != D3DVS_END());
     }
 
     return result;
