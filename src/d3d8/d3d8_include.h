@@ -25,7 +25,7 @@
 #undef D3DSP_REGNUM_MASK    // changed from 0x00000FFF to 0x000007FF in DX9
 
 
-#ifdef __MINGW32__
+#if defined(__MINGW32__) || defined(__GNUC__)
 
 // Avoid redundant definitions (add D3D*_DEFINED macros here) //
 #define D3DRECT_DEFINED
@@ -36,6 +36,8 @@
 #ifdef __CRT_UUID_DECL
 #undef __CRT_UUID_DECL
 #endif
+
+#ifdef __MINGW32__
 #define __CRT_UUID_DECL(type,l,w1,w2,b1,b2,b3,b4,b5,b6,b7,b8)         \
 }                                                                     \
     extern "C++" {                                                    \
@@ -53,7 +55,18 @@
     }                                                                 \
 namespace d3d9 {
 
-#endif // __MINGW32__
+#elif defined(__GNUC__)
+#define __CRT_UUID_DECL(type, a, b, c, d, e, f, g, h, i, j, k) \
+}                                                                                                                               \
+  extern "C++" { template <> constexpr GUID __uuidof_helper<d3d9::type>() { return GUID{a,b,c,{d,e,f,g,h,i,j,k}}; } }           \
+  extern "C++" { template <> constexpr GUID __uuidof_helper<d3d9::type*>() { return __uuidof_helper<d3d9::type>(); } }          \
+  extern "C++" { template <> constexpr GUID __uuidof_helper<const d3d9::type*>() { return __uuidof_helper<d3d9::type>(); } }    \
+  extern "C++" { template <> constexpr GUID __uuidof_helper<d3d9::type&>() { return __uuidof_helper<d3d9::type>(); } }          \
+  extern "C++" { template <> constexpr GUID __uuidof_helper<const d3d9::type&>() { return __uuidof_helper<d3d9::type>(); } }    \
+namespace d3d9 {
+#endif
+
+#endif // defined(__MINGW32__) || defined(__GNUC__)
 
 
 /**
@@ -70,9 +83,9 @@ namespace d3d9 {
 // Indicates d3d9:: namespace is in-use.
 #define DXVK_D3D9_NAMESPACE
 
-#ifdef __MINGW32__
+#if defined(__MINGW32__) || defined(__GNUC__)
 #pragma pop_macro("__CRT_UUID_DECL")
-#endif // __MINGW32__
+#endif
 
 //for some reason we need to specify __declspec(dllexport) for MinGW
 #if defined(__WINE__)
