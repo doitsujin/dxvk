@@ -266,6 +266,10 @@ namespace dxvk {
       // TODO: ensure first token is always only one dword
       tokens.push_back(pFunction[0]);
 
+      DWORD vsMajor = D3DSHADER_VERSION_MAJOR(pFunction[0]);
+      DWORD vsMinor = D3DSHADER_VERSION_MINOR(pFunction[0]);
+      Logger::debug(str::format("VS version: ", vsMajor, ".", vsMinor));
+
       // insert dcl instructions 
       for (int vn = 0; vn < D3D8_NUM_VERTEX_INPUT_REGISTERS; vn++) {
 
@@ -298,12 +302,19 @@ namespace dxvk {
 
         // Instructions
         if ((token & VS_BIT_PARAM) == 0) {
-          // RSQ uses the w component in D3D8
+          
+          // RSQ swizzle fixup
           if (opcode == D3DSIO_RSQ) {
-            tokens.push_back(token);                  // instr
-            tokens.push_back(token = pFunction[i++]); // dest
-            token = pFunction[i++];                   // src0
-            token |= 0b1111 << D3DVS_SWIZZLE_SHIFT;   // swizzle: .wwww
+            tokens.push_back(token);                            // instr
+            tokens.push_back(token = pFunction[i++]);           // dest
+            token = pFunction[i++];                             // src0
+            
+            // If no swizzling is done, then use the w-component.
+            // See d8vk#43 for more information as this may need to change in some cases.
+            if (((token & D3DVS_NOSWIZZLE) == D3DVS_NOSWIZZLE)) {
+              token &= ~D3DVS_SWIZZLE_MASK;
+              token |= (D3DVS_X_W | D3DVS_Y_W | D3DVS_Z_W | D3DVS_W_W);
+            }
           }
         }
         tokens.push_back(token);
