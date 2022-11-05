@@ -1,7 +1,9 @@
 
 #include "d3d8_shader.h"
 
-#define VSD_SHIFT_MASK(token, field) ( (token & field ## MASK) >> field ## SHIFT )
+#define VSD_SHIFT_MASK(token, field) ((token & field ## MASK) >> field ## SHIFT)
+
+#define VS_SHIFT_MASK(token, field) ((token << field ## _SHIFT) & field ## _MASK)
 
 // Magic number from D3DVSD_REG()
 #define VSD_SKIP_FLAG 0x10000000
@@ -98,11 +100,11 @@ namespace dxvk {
    * \param [in]  regType  DxsoRegisterType
    * \cite https://learn.microsoft.com/en-us/windows-hardware/drivers/display/dcl-instruction
    */
-  constexpr DWORD encodeDeclaration(d3d9::D3DDECLUSAGE usage) {
+  constexpr DWORD encodeDeclaration(d3d9::D3DDECLUSAGE usage, DWORD index) {
     DWORD token = 0;
-    token |= usage & 0x1F;  // bits 0:4   DxsoUsage
-    token |= 0 << 16;       // bits 16:19 usageIndex (TODO: should this change?)
-    token |= 1 << 31;       // bit 31     always 1
+    token |= VS_SHIFT_MASK(usage, D3DSP_DCL_USAGE);       // bits 0:4   DxsoUsage (TODO: missing MSB)
+    token |= VS_SHIFT_MASK(index, D3DSP_DCL_USAGEINDEX);  // bits 16:19 usageIndex
+    token |= 1 << 31;                                     // bit 31     always 1
     return token;
   }
 
@@ -275,12 +277,9 @@ namespace dxvk {
           DWORD usage = D3D8_VERTEX_INPUT_REGISTERS[vn][0];
           DWORD index = D3D8_VERTEX_INPUT_REGISTERS[vn][1];
 
-          DWORD dclUsage  = (usage << D3DSP_DCL_USAGE_SHIFT) & D3DSP_DCL_USAGE_MASK;           // usage
-          dclUsage       |= (index << D3DSP_DCL_USAGEINDEX_SHIFT) & D3DSP_DCL_USAGEINDEX_MASK; // usage index
-
-          tokens.push_back(encodeInstruction(d3d9::D3DSIO_DCL));              // dcl opcode
-          tokens.push_back(encodeDeclaration(d3d9::D3DDECLUSAGE(dclUsage)));  // usage token
-          tokens.push_back(encodeDestRegister(d3d9::D3DSPR_INPUT, vn));       // dest register num
+          tokens.push_back(encodeInstruction(d3d9::D3DSIO_DCL));                  // dcl opcode
+          tokens.push_back(encodeDeclaration(d3d9::D3DDECLUSAGE(usage), index));  // usage token
+          tokens.push_back(encodeDestRegister(d3d9::D3DSPR_INPUT, vn));           // dest register num
         }
       }
 
