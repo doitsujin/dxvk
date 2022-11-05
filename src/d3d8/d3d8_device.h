@@ -85,13 +85,19 @@ namespace dxvk {
 
         srcRect = pSourceRectsArray[i];
 
+        // True if the copy is asymmetric
+        bool stretch = true;
+
         if (pDestPointsArray != NULL) {
           dstRect.left    = pDestPointsArray[i].x;
           dstRect.right   = dstRect.left + (srcRect.right - srcRect.left);
           dstRect.top     = pDestPointsArray[i].y;
           dstRect.bottom  = dstRect.top + (srcRect.bottom - srcRect.top);
+          stretch = dstRect.left  != srcRect.left  || dstRect.top    != srcRect.top
+                 || dstRect.right != srcRect.right || dstRect.bottom != srcRect.bottom;
         } else {
           dstRect = srcRect;
+          stretch = false;
         }
 
         POINT dstPt = { dstRect.left, dstRect.top };
@@ -169,19 +175,28 @@ namespace dxvk {
           // DEST: SYSTEMMEM
           case D3DPOOL_SYSTEMMEM: {
 
-            // RT -> SYSTEMMEM
+            // RT (DEFAULT) -> SYSTEMMEM: Use GetRenderTargetData as fast path if possible
             if ((srcDesc.Usage & D3DUSAGE_RENDERTARGET || m_renderTarget == src)) {
-              // TODO: May be able to call GetRenderTargetData directly here in certain cases
+
+              // GetRenderTargetData works if the formats and sizes match
+              if (srcDesc.MultiSampleType == d3d9::D3DMULTISAMPLE_NONE
+                  && srcDesc.Width  == dstDesc.Width
+                  && srcDesc.Height == dstDesc.Height
+                  && srcDesc.Format == dstDesc.Format
+                  && !stretch) {
+                res = GetD3D9()->GetRenderTargetData(src->GetD3D9(), dst->GetD3D9());
+                goto done;
+              }
             }
             
             // DEFAULT -> SYSTEMEM:
             // HACK: use StretchRects to stretch
             // and GetRenderTargetData to write result.
             //
-            // FIXME: This is a large bottleneck. Ideally, vkCmdCopyImageToBuffer 
-            // would work if not stretching, but it doesn't.
+            // FIXME: This is a large bottleneck. Ideally,
+            // we should try to do this the "correct" way.
             if (srcDesc.Pool == d3d9::D3DPOOL_DEFAULT) {
-              // Create a temporary on-screen surface for stretching.
+              // Create a temporary off-screen surface for stretching.
               Com<d3d9::IDirect3DSurface9> pRenderTarget = nullptr;
               res = GetD3D9()->CreateRenderTarget(
                 dstDesc.Width, dstDesc.Height, dstDesc.Format,
