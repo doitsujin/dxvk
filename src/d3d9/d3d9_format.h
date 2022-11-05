@@ -40,6 +40,7 @@ namespace dxvk {
     X8L8V8U8 = 62,
     Q8W8V8U8 = 63,
     V16U16 = 64,
+    W11V11U10 = 65,
     A2W10V10U10 = 67,
     UYVY = MAKEFOURCC('U', 'Y', 'V', 'Y'),
     R8G8_B8G8 = MAKEFOURCC('R', 'G', 'B', 'G'),
@@ -134,6 +135,7 @@ namespace dxvk {
     D3D9ConversionFormat_L6V5U5,
     D3D9ConversionFormat_X8L8V8U8,
     D3D9ConversionFormat_A2W10V10U10,
+    D3D9ConversionFormat_W11V11U10,
     D3D9ConversionFormat_NV12,
     D3D9ConversionFormat_YV12,
     D3D9ConversionFormat_Count
