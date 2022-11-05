@@ -168,6 +168,16 @@ namespace dxvk {
         // Convert -> float (this is a mixed snorm and unorm type)
           VK_FORMAT_R16G16B16A16_SFLOAT } };
 
+      case D3D9Format::W11V11U10: return {
+        VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
+          VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_ONE },
+        { D3D9ConversionFormat_W11V11U10, 1u,
+        // can't use B10G11R11 bc this is a snorm type
+          VK_FORMAT_R16G16B16A16_SNORM } };
+
       case D3D9Format::UYVY: return {
         VK_FORMAT_B8G8R8A8_UNORM,
         VK_FORMAT_UNDEFINED,
