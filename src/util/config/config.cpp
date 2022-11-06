@@ -326,6 +326,16 @@ namespace dxvk {
     { R"(\\MgsGroundZeroes\.exe$)", {{
       { "dxgi.maxDeviceMemory",     "4095" },
     }} },
+    /* Shantae and the Pirate's Curse             *
+     * Game speeds up above 60 fps                */
+    { R"(\\ShantaeCurse\.exe$)", {{
+      { "dxgi.maxFrameRate",                 "60" },
+    }} },
+    /* Mighty Switch Force! Collection            *
+     * Games speed up above 60 fps                */
+    { R"(\\MSFC\.exe$)", {{
+      { "dxgi.maxFrameRate",                 "60" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
