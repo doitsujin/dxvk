@@ -14,7 +14,8 @@
 namespace dxvk {
 
 
-  // Implements IDirect3DBaseTexture8 (Except GetType)
+  // Implements IDirect3DBaseTexture8 (Except GetType) //
+
   template <typename SubresourceType, typename D3D9, typename D3D8>
   class D3D8BaseTexture : public D3D8Resource<D3D9, D3D8> {
 
@@ -36,21 +37,19 @@ namespace dxvk {
     ~D3D8BaseTexture() {
     }
 
-    // TODO: all these methods should probably be final
-
-    void STDMETHODCALLTYPE PreLoad() {
+    void STDMETHODCALLTYPE PreLoad() final {
       this->GetD3D9()->PreLoad();
     }
 
-    DWORD STDMETHODCALLTYPE SetLOD(DWORD LODNew) {
+    DWORD STDMETHODCALLTYPE SetLOD(DWORD LODNew) final {
       return this->GetD3D9()->SetLOD(LODNew);
     }
 
-    DWORD STDMETHODCALLTYPE GetLOD() {
+    DWORD STDMETHODCALLTYPE GetLOD() final {
       return this->GetD3D9()->GetLOD();
     }
 
-    DWORD STDMETHODCALLTYPE GetLevelCount() {
+    DWORD STDMETHODCALLTYPE GetLevelCount() final {
       return this->GetD3D9()->GetLevelCount();
     }
 
@@ -112,11 +111,11 @@ namespace dxvk {
     }
 
     // TODO: QueryInterface
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) {
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final {
       return D3D_OK;
     }
 
-    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() { return D3DRTYPE_TEXTURE; }
+    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_TEXTURE; }
 
     HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc) {
       d3d9::D3DSURFACE_DESC surf;
@@ -156,11 +155,11 @@ namespace dxvk {
       : D3D8Texture3DBase(pDevice, std::move(pVolumeTexture), pVolumeTexture->GetLevelCount()) {}
 
     // TODO: IDirect3DVolumeTexture8 QueryInterface
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) {
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final {
       return D3D_OK;
     }
 
-    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() { return D3DRTYPE_VOLUMETEXTURE; }
+    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_VOLUMETEXTURE; }
 
     HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DVOLUME_DESC *pDesc) {
       d3d9::D3DVOLUME_DESC vol;
@@ -207,11 +206,11 @@ namespace dxvk {
     }
 
     // TODO: IDirect3DCubeTexture8 QueryInterface
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) {
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final {
       return D3D_OK;
     }
 
-    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() { return D3DRTYPE_CUBETEXTURE; }
+    D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_CUBETEXTURE; }
 
     HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc) {
       d3d9::D3DSURFACE_DESC surf;
