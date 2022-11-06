@@ -4,10 +4,13 @@
 
 namespace dxvk {
 
-  template <typename D3D9, typename D3D8>
-  class D3D8WrappedObject : public ComObjectClamp<D3D8> {
+  template <typename D3D9Type, typename D3D8Type>
+  class D3D8WrappedObject : public ComObjectClamp<D3D8Type> {
 
   public:
+
+    using D3D9 = D3D9Type;
+    using D3D8 = D3D8Type;
 
     D3D8WrappedObject(Com<D3D9>&& object)
       : m_d3d9(std::move(object)) {
