@@ -15,10 +15,6 @@
 
 namespace dxvk {
 
-  struct D3D8_COMMON_TEXTURE_DESC;
-
-  using D3D8GDIDesc = D3DKMT_DESTROYDCFROMMEMORY;
-
   // TODO: all inherited methods in D3D8Surface should be final like in d9vk
 
   using D3D8SurfaceBase = D3D8Resource<d3d9::IDirect3DSurface9, IDirect3DSurface8>;
@@ -76,10 +72,5 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE ReleaseDC(HDC hDC) {
       return GetD3D9()->ReleaseDC(hDC);
     }
-
-  private:
-
-    D3D8GDIDesc m_dcDesc;
-
   };
 }

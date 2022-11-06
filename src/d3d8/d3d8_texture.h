@@ -9,31 +9,10 @@
 #include "d3d8_d3d9_util.h"
 
 #include <vector>
-#include <list>
-#include <mutex>
 #include <new>
 #include <type_traits>
 
 namespace dxvk {
-
-   /**
-   * \brief Common texture description
-   * 
-   * Contains all members that can be
-   * defined for 2D, Cube and 3D textures.
-   */
-  struct D3D8_COMMON_TEXTURE_DESC {
-    UINT                Width;
-    UINT                Height;
-    UINT                Depth;
-    UINT                ArraySize;
-    UINT                MipLevels;
-    DWORD               Usage;
-    D3DFORMAT           Format; // TODO: D3D8Format
-    D3DPOOL             Pool;
-    BOOL                Discard;
-    D3DMULTISAMPLE_TYPE MultiSample;
-  };
 
 
   // Implements IDirect3DBaseTexture8 (Except GetType)
