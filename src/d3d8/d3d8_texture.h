@@ -39,7 +39,7 @@ namespace dxvk {
     ~D3D8BaseTexture() {
       for (size_t i = 0; i < m_subresources.size(); i++)
         if (m_subresources[i] != nullptr)
-          delete m_subresources[i];
+          m_subresources[i] = nullptr;
     }
 
     void STDMETHODCALLTYPE PreLoad() final {
@@ -77,7 +77,7 @@ namespace dxvk {
         }
       }
 
-      *ppSubresource = m_subresources[Index];
+      *ppSubresource = m_subresources[Index].ref();
       return D3D_OK;
     }
 
@@ -98,7 +98,7 @@ namespace dxvk {
       return ptr;
     }
 
-    std::vector<SubresourceType*> m_subresources;
+    std::vector<Com<SubresourceType>> m_subresources;
 
   };
 
