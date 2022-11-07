@@ -70,9 +70,7 @@ namespace dxvk {
      * \brief Retrieves current semaphore value
      * \returns Current semaphore value
      */
-    uint64_t getValue() {
-      return m_lastValue.load();
-    }
+    uint64_t getValue();
 
     /**
      * \brief Enqueues semaphore wait
@@ -89,6 +87,15 @@ namespace dxvk {
      * \returns The shared handle with the type given by DxvkFenceCreateInfo::sharedType
      */
     HANDLE sharedHandle() const;
+
+    /*
+     * \brief Waits for the given value
+     *
+     * Blocks the calling thread until
+     * the fence reaches the given value.
+     * \param [in] value Value to wait for
+    */
+    void wait(uint64_t value);
 
   private:
 
@@ -113,10 +120,10 @@ namespace dxvk {
     VkSemaphore                     m_semaphore;
 
     std::priority_queue<QueueItem>  m_queue;
-    std::atomic<uint64_t>           m_lastValue = { 0ull  };
-    std::atomic<bool>               m_stop      = { false };
+    bool                            m_running    = false;
 
     dxvk::mutex                     m_mutex;
+    dxvk::condition_variable        m_condVar;
     dxvk::thread                    m_thread;
 
     void run();
