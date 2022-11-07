@@ -32,9 +32,14 @@ namespace dxvk {
             UINT                                SubresourceCount)
         : D3D8Resource<D3D9, D3D8> ( pDevice, std::move(pBaseTexture) ) {
       m_subresources.resize(SubresourceCount, nullptr);
+      for (size_t i = 0; i < m_subresources.size(); i++)
+        m_subresources[i] = nullptr;
     }
 
     ~D3D8BaseTexture() {
+      for (size_t i = 0; i < m_subresources.size(); i++)
+        if (m_subresources[i] != nullptr)
+          delete m_subresources[i];
     }
 
     void STDMETHODCALLTYPE PreLoad() final {
