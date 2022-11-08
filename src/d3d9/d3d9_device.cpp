@@ -1358,7 +1358,8 @@ namespace dxvk {
     m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
     if (ds != nullptr) {
-      float rValue = GetDepthBufferRValue(ds->GetCommonTexture()->GetFormatMapping().FormatColor);
+      const int32_t vendorId = m_dxvkDevice->adapter()->deviceProperties().vendorID;
+      float rValue = GetDepthBufferRValue(ds->GetCommonTexture()->GetFormatMapping().FormatColor, vendorId);
       if (m_depthBiasScale != rValue) {
         m_depthBiasScale = rValue;
         m_flags.set(D3D9DeviceFlag::DirtyDepthBias);
