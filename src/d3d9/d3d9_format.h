@@ -226,4 +226,17 @@ namespace dxvk {
     return format > D3D9Format::BINARYBUFFER;
   }
 
+  inline bool IsVendorFormat(D3D9Format format) {
+    return IsFourCCFormat(format)
+      && format != D3D9Format::MULTI2_ARGB8
+      && format != D3D9Format::UYVY
+      && format != D3D9Format::R8G8_B8G8
+      && format != D3D9Format::G8R8_G8B8
+      && format != D3D9Format::DXT1
+      && format != D3D9Format::DXT2
+      && format != D3D9Format::DXT3
+      && format != D3D9Format::DXT4
+      && format != D3D9Format::DXT5;
+  }
+
 }

@@ -47,6 +47,7 @@ namespace dxvk {
     bool                Discard;
     bool                IsBackBuffer;
     bool                IsAttachmentOnly;
+    bool                IsLockable;
   };
 
   struct D3D9ColorView {

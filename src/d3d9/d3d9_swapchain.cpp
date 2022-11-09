@@ -897,6 +897,8 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.IsBackBuffer       = TRUE;
     desc.IsAttachmentOnly   = FALSE;
+    // Docs: Also note that - unlike textures - swap chain back buffers, render targets [..] can be locked
+    desc.IsLockable         = TRUE;
 
     for (uint32_t i = 0; i < m_backBuffers.size(); i++)
       m_backBuffers[i] = new D3D9Surface(m_parent, &desc, this, nullptr);
