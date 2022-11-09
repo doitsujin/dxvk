@@ -482,6 +482,12 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = FALSE;
+    // Docs:
+    // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
+    // unless they are dynamic textures or they are private, FOURCC, driver formats.
+    desc.IsLockable         = Pool != D3DPOOL_DEFAULT
+                            || (Usage & D3DUSAGE_DYNAMIC)
+                            || IsVendorFormat(EnumerateFormat(Format));
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -543,6 +549,12 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = FALSE;
+    // Docs:
+    // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
+    // unless they are dynamic textures or they are private, FOURCC, driver formats.
+    desc.IsLockable         = Pool != D3DPOOL_DEFAULT
+                            || (Usage & D3DUSAGE_DYNAMIC)
+                            || IsVendorFormat(EnumerateFormat(Format));
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -591,6 +603,12 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = FALSE;
+    // Docs:
+    // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
+    // unless they are dynamic textures or they are private, FOURCC, driver formats.
+    desc.IsLockable         = Pool != D3DPOOL_DEFAULT
+                            || (Usage & D3DUSAGE_DYNAMIC)
+                            || IsVendorFormat(EnumerateFormat(Format));
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -3539,6 +3557,7 @@ namespace dxvk {
     desc.MultisampleQuality = MultisampleQuality;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = TRUE;
+    desc.IsLockable         = Lockable;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -3583,6 +3602,8 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = Pool == D3DPOOL_DEFAULT;
+    // Docs: Off-screen plain surfaces are always lockable, regardless of their pool types.
+    desc.IsLockable         = TRUE;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -3632,6 +3653,8 @@ namespace dxvk {
     desc.MultisampleQuality = MultisampleQuality;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = TRUE;
+    // Docs don't say anything, so just assume it's lockable.
+    desc.IsLockable         = TRUE;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -4243,13 +4266,7 @@ namespace dxvk {
 
     auto& desc = *(pResource->Desc());
 
-    // MSDN:
-    // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
-    // unless they are dynamic textures or they are private, FOURCC, driver formats.
-    // Also note that - unlike textures - swap chain back buffers, render targets [..] can be locked
-    if (unlikely(desc.Pool == D3DPOOL_DEFAULT
-      && !(desc.Usage & (D3DUSAGE_DYNAMIC | D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL))
-      && !IsFourCCFormat(desc.Format)))
+    if (unlikely(!desc.IsLockable))
       return D3DERR_INVALIDCALL;
 
     auto& formatMapping = pResource->GetFormatMapping();
@@ -7311,6 +7328,8 @@ namespace dxvk {
       desc.MultisampleQuality = pPresentationParameters->MultiSampleQuality;
       desc.IsBackBuffer       = FALSE;
       desc.IsAttachmentOnly   = TRUE;
+      // Docs: Also note that - unlike textures - swap chain back buffers, render targets [..] can be locked
+      desc.IsLockable         = TRUE;
 
       if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
         return D3DERR_NOTAVAILABLE;
