@@ -689,7 +689,13 @@ namespace dxvk {
     /* Fallout 3 - Doesn't like Intel Id       */
     { R"(\\Fallout3\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
-    }} }
+    }} },
+    /* Sonic & All-Stars Racing Transformed    *
+     * Helps performance when Resizable BAR    *
+     * is enabled                              */
+    { R"(\\ASN_App_PcDx9_Final\.exe$)", {{
+      { "d3d9.apitraceMode",                "True" },
+    }} },
   }};
 
 
