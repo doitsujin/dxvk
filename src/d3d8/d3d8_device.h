@@ -121,7 +121,7 @@ namespace dxvk {
                 goto done;
               }
               case D3DPOOL_MANAGED: {
-                // UpdateTextureFromBuffer
+                // MANAGED -> DEFAULT: UpdateTextureFromBuffer
                 res = m_bridge->UpdateTextureFromBuffer(
                   src->GetD3D9(),
                   dst->GetD3D9(),
