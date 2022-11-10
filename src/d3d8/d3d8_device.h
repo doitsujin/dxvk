@@ -166,9 +166,13 @@ namespace dxvk {
                 // TODO: (copy on GPU)
                 goto unhandled;
               }
-              case D3DPOOL_MANAGED:
+              case D3DPOOL_MANAGED: {
+                // TODO: MANAGED -> MANAGED
+                // Either LockRect with additional validation, or copy on GPU
+                goto unhandled;
+              }
               case D3DPOOL_SYSTEMMEM: {
-                // SYSTEMMEM -> MANAGED: LockRect
+                // SYSTEMMEM -> MANAGED: LockRect / memcpy
                 
                 if (stretch) {
                   res = D3DERR_INVALIDCALL;
@@ -224,7 +228,7 @@ namespace dxvk {
                 goto done;
               }
 
-              // SYSMEM/MANAGED -> SYSMEM: memcpy
+              // SYSMEM/MANAGED -> SYSMEM: LockRect / memcpy
               case D3DPOOL_MANAGED:
               case D3DPOOL_SYSTEMMEM: {
                 if (stretch) {
