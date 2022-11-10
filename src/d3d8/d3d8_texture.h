@@ -1,7 +1,5 @@
 #pragma once
 
-#include "d3d8_device.h"
-
 #include "d3d8_resource.h"
 #include "d3d8_surface.h"
 #include "d3d8_volume.h"
@@ -32,8 +30,6 @@ namespace dxvk {
             UINT                                SubresourceCount)
         : D3D8Resource<D3D9, D3D8> ( pDevice, std::move(pBaseTexture) ) {
       m_subresources.resize(SubresourceCount, nullptr);
-      for (size_t i = 0; i < m_subresources.size(); i++)
-        m_subresources[i] = nullptr;
     }
 
     ~D3D8BaseTexture() {

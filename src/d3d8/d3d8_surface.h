@@ -4,9 +4,7 @@
 // Implements IDirect3DSurface8
 
 #include "d3d8_include.h"
-#include "d3d8_device.h"
 #include "d3d8_resource.h"
-#include "d3d8_texture.h"
 #include "d3d8_d3d9_util.h"
 
 #include "../util/util_gdi.h"
@@ -25,15 +23,6 @@ namespace dxvk {
     D3D8Surface(
             D3D8DeviceEx*                   pDevice,
             Com<d3d9::IDirect3DSurface9>&&  pSurface)
-      : D3D8SurfaceBase (pDevice, std::move(pSurface)) {
-    }
-
-    D3D8Surface(
-            D3D8DeviceEx*                   pDevice,
-            Com<d3d9::IDirect3DSurface9>&&  pSurface,
-            UINT                            Face,
-            UINT                            MipLevel,
-            IDirect3DBaseTexture8*          pBaseTexture)
       : D3D8SurfaceBase (pDevice, std::move(pSurface)) {
     }
 
@@ -72,5 +61,29 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE ReleaseDC(HDC hDC) {
       return GetD3D9()->ReleaseDC(hDC);
     }
+
+  public:
+
+    /**
+     * \brief Allocate or reuse an image of the same size
+     * as this texture for performing blit into system mem.
+     * 
+     * TODO: Consider creating only one texture to
+     * encompass all surface levels of a texture.
+     */
+    Com<d3d9::IDirect3DSurface9> GetBlitImage() {
+      if (unlikely(m_blitImage == nullptr)) {
+        m_blitImage = CreateBlitImage();
+      }
+
+      return m_blitImage;
+    }
+
+
+  private:
+    Com<d3d9::IDirect3DSurface9> CreateBlitImage();
+
+    Com<d3d9::IDirect3DSurface9> m_blitImage = nullptr;
+
   };
 }

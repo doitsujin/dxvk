@@ -190,39 +190,28 @@ namespace dxvk {
             }
             
             // DEFAULT -> SYSTEMEM:
-            // HACK: use StretchRects to stretch
+            // Use StretchRects to stretch to a temp buffer
             // and GetRenderTargetData to write result.
             //
-            // FIXME: This is a large bottleneck. Ideally,
-            // we should try to do this the "correct" way.
+            // GetRenderTargetData can cause an (unavoidable) queue sync.
             if (srcDesc.Pool == d3d9::D3DPOOL_DEFAULT) {
-              // Create a temporary off-screen surface for stretching.
-              Com<d3d9::IDirect3DSurface9> pRenderTarget = nullptr;
-              res = GetD3D9()->CreateRenderTarget(
-                dstDesc.Width, dstDesc.Height, dstDesc.Format,
-                d3d9::D3DMULTISAMPLE_NONE, 0,
-                FALSE,
-                &pRenderTarget,
-                NULL);
-              if (FAILED(res))
-                goto done;
+              
+              // Get temporary off-screen surface for stretching.
+              Com<d3d9::IDirect3DSurface9> pBlitImage = dst->GetBlitImage();
 
               // Stretch the source RT to the temporary surface.
               res = GetD3D9()->StretchRect(
                 src->GetD3D9(),
                 &srcRect,
-                pRenderTarget.ptr(),
+                pBlitImage.ptr(),
                 &dstRect,
                 d3d9::D3DTEXF_NONE);
               if (FAILED(res)) {
-                pRenderTarget->Release();
                 goto done;
               }
 
               // Now sync the rendertarget data into main memory.
-              res = GetD3D9()->GetRenderTargetData(pRenderTarget.ptr(), dst->GetD3D9());
-
-              pRenderTarget->Release();
+              res = GetD3D9()->GetRenderTargetData(pBlitImage.ptr(), dst->GetD3D9());
               goto done;
             }
 
