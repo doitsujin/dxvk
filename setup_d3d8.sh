@@ -8,7 +8,7 @@ proton_dxvk64=${proton_dxvk64:-"files/lib64/wine/dxvk"}
 dxvk_lib32=${dxvk_lib32:-"x32"}
 
 # figure out where we are
-basedir=$(dirname "$(readlink -f $0)")
+basedir="$(dirname "$(readlink -f "$0")")"
 
 # figure out which action to perform
 action="$1"
