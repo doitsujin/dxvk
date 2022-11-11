@@ -221,7 +221,7 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE GetCubeMapSurface(D3DCUBEMAP_FACES Face, UINT Level, IDirect3DSurface8** ppSurfaceLevel) {
-      return GetSubresource(Level + (Face * GetLevelCount()), ppSurfaceLevel);
+      return GetSubresource((Level * CUBE_FACES) + Face, ppSurfaceLevel);
     }
 
     HRESULT STDMETHODCALLTYPE LockRect(
