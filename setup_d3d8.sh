@@ -7,6 +7,10 @@ proton_dxvk=${proton_dxvk:-"files/lib/wine/dxvk"}
 proton_dxvk64=${proton_dxvk64:-"files/lib64/wine/dxvk"}
 dxvk_lib32=${dxvk_lib32:-"x32"}
 
+# Define our own entry in compatibility tools
+PROTON_D3D8=~/.local/share/Steam/compatibilitytools.d/Proton-D8VK
+MODIFYPROTON=1
+
 # figure out where we are
 basedir="$(dirname "$(readlink -f "$0")")"
 
@@ -20,7 +24,7 @@ uninstall)
   ;;
 *)
   echo "Unrecognized action: $action"
-  echo "Usage: $0 [install|uninstall] [--app <steamappid>] [--no-proton] [--symlink]"
+  echo "Usage: $0 [install|uninstall] [--app <steamappid>] [--no-proton] [--symlink] [--preserve]"
 echo ""
   echo "To use custom Proton installation path, set \$PROTON or \$STEAMAPPS"
   exit 1
@@ -43,6 +47,8 @@ while (($# > 0)); do
   "--symlink")
     file_cmd="ln -s"
     ;;
+  "--preserve")
+    unset MODIFYPROTON
   esac
   shift
 done
@@ -261,6 +267,33 @@ $action d3d9
 $action d3d8
 
 if [ "$action" == "install" ] && ! [ -z "$PROTON" ]; then
+  # if --preserve is used
+  if [ -z "$MODIFYPROTON" ]; then
+    # Make our copy of proton
+    rm -rf "$PROTON_D3D8" # Remove whatever's already there to refresh the installation
+    echo "Making our own copy of Proton"
+    mkdir -p $PROTON_D3D8
+    cp -r "$PROTON"/* $PROTON_D3D8/
+
+    # Make sure Steam can read our Proton
+    echo '{
+      "compat_tools"
+      {
+        "Proton-D8VK"
+        {
+          "install_path" "."
+          "display_name" "Proton-D8VK"
+          "from_oslist"  "windows"
+          "to_oslist"    "linux"
+        }
+      }
+    }' > $PROTON_D3D8/compatibilitytools.vdf
+
+
+    # Set PROTON dir to our new copy
+    PROTON="$PROTON_D3D8"
+  fi
+
   # Install d3d8 and d3d9 to Proton
   installFile "$PROTON/$proton_dxvk" "$dxvk_lib32" "d3d9" "d3d9.dll -> \$PROTON/files/lib/wine/dxvk/d3d9.dll"
   installNewFile "$PROTON/$proton_dxvk" "$dxvk_lib32" "d3d8" "d3d8.dll -> \$PROTON/files/lib/wine/dxvk/d3d8.dll"
@@ -270,14 +303,26 @@ if [ "$action" == "install" ] && ! [ -z "$PROTON" ]; then
   # Update ./proton to install d8vk
   echo "Patching proton executable..."
   sed -i 's/dxvkfiles = \["d3d11", "d3d10core", "d3d9"\]/dxvkfiles = \["d3d11", "d3d10core", "d3d9", "d3d8"\]/' "$PROTON/proton"
-elif  ! [ -z "$PROTON" ]; then
-  # Uninstall d3d8/d3d9 from Proton
-  uninstallFile "$PROTON/$proton_dxvk" "$dxvk_lib32" "d3d9" "d3d9.dll.old -> \$PROTON/files/lib/wine/dxvk/d3d9.dll"
-  uninstallNewFile "$PROTON/$proton_dxvk" "$dxvk_lib32" "d3d8" "Removing \$PROTON/files/lib/wine/dxvk/d3d8.dll"
-  uninstallFile "$PROTON/$proton_dxvk64" "$dxvk_lib32" "d3d9" "d3d9.dll.old -> \$PROTON/files/lib64/wine/dxvk/d3d9.dll"
-  uninstallNewFile "$PROTON/$proton_dxvk64" "$dxvk_lib32" "d3d8" "Removing \$PROTON/files/lib64/wine/dxvk/d3d8.dll"
 
-  # Revert ./proton to not install d8vk
-  echo "Reverting proton executable..."
-  sed -i 's/dxvkfiles = \["d3d11", "d3d10core", "d3d9", "d3d8"\]/dxvkfiles = \["d3d11", "d3d10core", "d3d9"\]/' "$PROTON/proton"
+    # if --preserve is used
+  if [ -z "$MODIFYPROTON" ]; then
+    echo "Done! If this is your first time installing with --preserve, please restart Steam and force your game to use Proton-D8VK as its compatibility tool!"
+  fi
+elif  ! [ -z "$PROTON" ]; then
+  # if --preserve is used
+  if [ -z "$MODIFYPROTON" ]; then
+    rm -rf "$PROTON_D3D8"
+    echo "Done! Make sure you restart Steam and make your game use something other than Proton-D8VK!"
+    exit 1
+  else 
+    # Uninstall d3d8/d3d9 from Proton
+    uninstallFile "$PROTON/$proton_dxvk" "$dxvk_lib32" "d3d9" "d3d9.dll.old -> \$PROTON/files/lib/wine/dxvk/d3d9.dll"
+    uninstallNewFile "$PROTON/$proton_dxvk" "$dxvk_lib32" "d3d8" "Removing \$PROTON/files/lib/wine/dxvk/d3d8.dll"
+    uninstallFile "$PROTON/$proton_dxvk64" "$dxvk_lib32" "d3d9" "d3d9.dll.old -> \$PROTON/files/lib64/wine/dxvk/d3d9.dll"
+    uninstallNewFile "$PROTON/$proton_dxvk64" "$dxvk_lib32" "d3d8" "Removing \$PROTON/files/lib64/wine/dxvk/d3d8.dll"
+
+    # Revert ./proton to not install d8vk
+    echo "Reverting proton executable..."
+    sed -i 's/dxvkfiles = \["d3d11", "d3d10core", "d3d9", "d3d8"\]/dxvkfiles = \["d3d11", "d3d10core", "d3d9"\]/' "$PROTON/proton"
+  fi
 fi
