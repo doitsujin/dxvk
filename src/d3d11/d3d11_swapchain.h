@@ -167,7 +167,7 @@ namespace dxvk {
     VkFullScreenExclusiveEXT PickFullscreenMode();
 
     std::string GetApiName() const;
-
+    std::string GetApiBuild() const;
   };
 
 }

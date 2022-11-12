@@ -3,6 +3,8 @@
 
 #include "../dxgi/dxgi_interfaces.h"
 
+#include "../../version.h"
+
 extern "C" {
   using namespace dxvk;
 
@@ -44,6 +46,7 @@ extern "C" {
     Com<IDXGIDXVKDevice> dxvkDevice;
     d3d11Device->QueryInterface(__uuidof(IDXGIDXVKDevice), reinterpret_cast<void**>(&dxvkDevice));
     dxvkDevice->SetAPIVersion(10);
+    dxvkDevice->SetAPIBuild(DXVK_VERSION_BUILD);
 
     if (FAILED(d3d11Device->QueryInterface(
         __uuidof(ID3D10Device), reinterpret_cast<void**>(ppDevice))))

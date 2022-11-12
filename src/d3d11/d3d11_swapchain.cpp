@@ -4,6 +4,8 @@
 
 #include "../util/util_win32_compat.h"
 
+#include "../../version.h"
+
 namespace dxvk {
 
   static uint16_t MapGammaControlPoint(float x) {
@@ -583,7 +585,7 @@ namespace dxvk {
     m_hud = hud::Hud::createHud(m_device);
 
     if (m_hud != nullptr)
-      m_hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
+      m_hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName(), GetApiBuild());
   }
 
 
@@ -701,6 +703,15 @@ namespace dxvk {
     uint32_t flLo = (featureLevel >> 8) & 0x7;
 
     return str::format("D3D", apiVersion, " FL", flHi, "_", flLo);
+  }
+
+  std::string D3D11SwapChain::GetApiBuild() {
+    const char* apiBuild = device->GetAPIBuild();
+    if (unlikely(apiBuild == nullptr)) {
+      return DXVK_VERSION_BUILD;
+    } else {
+      return apiBuild;
+    }
   }
 
 }

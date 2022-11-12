@@ -153,6 +153,10 @@ IDXGIDXVKDevice : public IUnknown {
 
   virtual UINT STDMETHODCALLTYPE GetAPIVersion() = 0;
 
+  virtual void STDMETHODCALLTYPE SetAPIBuild(
+        const char*                    Build) = 0;
+    
+  virtual const char* STDMETHODCALLTYPE GetAPIBuild() = 0;
 };
 
 

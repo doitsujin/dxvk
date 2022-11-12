@@ -81,6 +81,8 @@ namespace dxvk {
 
     void SyncFrameLatency();
 
+    void SetApiBuild(const char* name);
+
   private:
 
     enum BindingIds : uint32_t {
@@ -125,6 +127,8 @@ namespace dxvk {
     wsi::DxvkWindowState      m_windowState;
 
     double                    m_displayRefreshRate = 0.0;
+
+    const char*               m_apiBuild = nullptr;
 
     void PresentImage(UINT PresentInterval);
 
@@ -189,6 +193,7 @@ namespace dxvk {
     VkFullScreenExclusiveEXT PickFullscreenMode();
 
     std::string GetApiName();
+    std::string GetApiBuild();
 
   };
 

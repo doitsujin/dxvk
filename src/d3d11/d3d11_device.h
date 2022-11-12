@@ -779,10 +779,16 @@ namespace dxvk {
 
     UINT STDMETHODCALLTYPE GetAPIVersion();
 
+    void STDMETHODCALLTYPE SetAPIBuild(
+        const char*                    Build);
+    
+    const char* STDMETHODCALLTYPE GetAPIBuild();
+
   private:
 
     D3D11DXGIDevice* m_container;
     UINT             m_apiVersion;
+    const char*      m_apiBuild = nullptr;
 
   };
 

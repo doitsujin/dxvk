@@ -5,6 +5,8 @@
 #include "d3d9_hud.h"
 #include "d3d9_window.h"
 
+#include "../../version.h"
+
 namespace dxvk {
 
   static uint16_t MapGammaControlPoint(float x) {
@@ -937,7 +939,7 @@ namespace dxvk {
     m_hud = hud::Hud::createHud(m_device);
 
     if (m_hud != nullptr) {
-      m_hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
+      m_hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName(), GetApiBuild());
       m_hud->addItem<hud::HudSamplerCount>("samplers", -1, m_parent);
 
 #ifdef D3D9_ALLOW_UNMAPPING
@@ -1191,6 +1193,19 @@ namespace dxvk {
 
   std::string D3D9SwapChainEx::GetApiName() {
     return this->GetParent()->IsExtended() ? "D3D9Ex" : "D3D9";
+  }
+
+  std::string D3D9SwapChainEx::GetApiBuild() {
+    if (unlikely(m_apiBuild == nullptr)) {
+      return DXVK_VERSION_BUILD;
+    } else {
+      return m_apiBuild;
+    }
+  }
+
+  void D3D9SwapChainEx::SetApiBuild(const char* build) {
+    m_apiBuild = build;
+    CreateHud();
   }
 
 }

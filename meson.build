@@ -151,7 +151,15 @@ glsl_generator = generator(
 dxvk_version = vcs_tag(
   command: ['git', 'describe', '--dirty=+'],
   input:  'version.h.in',
+  output: 'version.h.out',
+)
+
+dirty = run_command('git', 'diff-index', '--quiet', 'HEAD', '--', check: false).returncode().to_string()
+vcs_tag(
+  command: ['echo', dirty],
+  input:  dxvk_version,
   output: 'version.h',
+  replace_string: '@DIRTY@'
 )
 
 subdir('src')

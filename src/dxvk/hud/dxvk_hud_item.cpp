@@ -98,9 +98,10 @@ namespace dxvk::hud {
   }
 
 
-  HudClientApiItem::HudClientApiItem(std::string api)
+  HudClientApiItem::HudClientApiItem(std::string api, std::string build)
   : m_api(api) {
-
+    if (!build.empty())
+      m_api += str::format(" (", build, ")");
   }
 
 

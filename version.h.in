@@ -1,3 +1,9 @@
 #pragma once
 
 #define DXVK_VERSION "@VCS_TAG@"
+
+#if @DIRTY@
+#define DXVK_VERSION_BUILD __DATE__ ", " __TIME__
+#else
+#define DXVK_VERSION_BUILD ""
+#endif

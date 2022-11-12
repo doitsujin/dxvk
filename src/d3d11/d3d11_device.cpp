@@ -3131,7 +3131,14 @@ namespace dxvk {
     return m_apiVersion;
   }
 
+  void STDMETHODCALLTYPE DXGIDXVKDevice::SetAPIBuild(
+        const char*                    Build) {
+    m_apiBuild = Build;
+  }
   
+  UINT STDMETHODCALLTYPE DXGIDXVKDevice::GetAPIBuild() {
+    return m_apiBuild;
+  }
 
 
   D3D11DXGIDevice::D3D11DXGIDevice(

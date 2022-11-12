@@ -142,7 +142,7 @@ namespace dxvk::hud {
 
   public:
 
-    HudClientApiItem(std::string api);
+    HudClientApiItem(std::string api, std::string build);
 
     ~HudClientApiItem();
 
