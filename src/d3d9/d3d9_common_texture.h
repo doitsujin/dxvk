@@ -370,7 +370,15 @@ namespace dxvk {
     D3D9SubresourceBitset& GetUploadBitmask() { return m_needsUpload; }
 
     void SetAllNeedUpload() {
-      m_needsUpload.setAll();
+      if (likely(!IsAutomaticMip())) {
+        m_needsUpload.setAll();
+      } else {
+        for (uint32_t a = 0; a < m_desc.ArraySize; a++) {
+          for (uint32_t m = 0; m < ExposedMipLevels(); m++) {
+            SetNeedsUpload(CalcSubresource(a, m), true);
+          }
+        }
+      }
     }
     void SetNeedsUpload(UINT Subresource, bool upload) { m_needsUpload.set(Subresource, upload); }
     bool NeedsUpload(UINT Subresource) const { return m_needsUpload.get(Subresource); }
@@ -380,7 +388,7 @@ namespace dxvk {
     void SetNeedsMipGen(bool value) { m_needsMipGen = value; }
     bool NeedsMipGen() const { return m_needsMipGen; }
 
-    DWORD ExposedMipLevels() { return m_exposedMipLevels; }
+    DWORD ExposedMipLevels() const { return m_exposedMipLevels; }
 
     void SetMipFilter(D3DTEXTUREFILTERTYPE filter) { m_mipFilter = filter; }
     D3DTEXTUREFILTERTYPE GetMipFilter() const { return m_mipFilter; }

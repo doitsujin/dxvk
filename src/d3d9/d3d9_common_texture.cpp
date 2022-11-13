@@ -22,15 +22,17 @@ namespace dxvk {
                     ? D3D9Format::D32
                     : D3D9Format::X8R8G8B8;
 
+    m_exposedMipLevels = m_desc.MipLevels;
+
+    if (m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP)
+      m_exposedMipLevels = 1;
+
     for (uint32_t i = 0; i < m_dirtyBoxes.size(); i++) {
       AddDirtyBox(nullptr, i);
     }
 
     if (m_desc.Pool != D3DPOOL_DEFAULT) {
-      const uint32_t subresources = CountSubresources();
-      for (uint32_t i = 0; i < subresources; i++) {
-        SetNeedsUpload(i, true);
-      }
+      SetAllNeedUpload();
       if (pSharedHandle) {
         throw DxvkError("D3D9: Incompatible pool type for texture sharing.");
       }
@@ -88,11 +90,6 @@ namespace dxvk {
       m_data = m_device->GetAllocator()->Alloc(m_totalSize);
     else if (m_mapMode != D3D9_COMMON_TEXTURE_MAP_MODE_NONE && m_desc.Pool != D3DPOOL_DEFAULT)
       CreateBuffer(false);
-
-    m_exposedMipLevels = m_desc.MipLevels;
-
-    if (m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP)
-      m_exposedMipLevels = 1;
   }
 
 
