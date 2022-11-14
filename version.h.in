@@ -2,7 +2,7 @@
 
 #define DXVK_VERSION "@VCS_TAG@"
 
-#if @DIRTY@
+#if @BUILD_DATE@
 #define DXVK_VERSION_BUILD __DATE__ ", " __TIME__
 #else
 #define DXVK_VERSION_BUILD ""

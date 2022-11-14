@@ -154,12 +154,26 @@ dxvk_version = vcs_tag(
   output: 'version.h.out',
 )
 
-dirty = run_command('git', 'diff-index', '--quiet', 'HEAD', '--', check: false).returncode().to_string()
+build_date = get_option('build_date')
+if build_date == 'true'
+  # check if working copy is dirty
+  build_date = run_command('git', 'diff-index', '--quiet', 'HEAD', '--', check: false).returncode().to_string()
+
+  if build_date == '1'
+    message('build_date is on and working tree is dirty. build may not be reproducible.')
+  endif
+elif build_date == 'always'
+  build_date = '1'
+  message('build_date is set to "always". build may not be reproducible.')
+else
+  build_date = '0'
+endif
+
 vcs_tag(
-  command: ['echo', dirty],
+  command: ['echo', build_date],
   input:  dxvk_version,
   output: 'version.h',
-  replace_string: '@DIRTY@'
+  replace_string: '@BUILD_DATE@'
 )
 
 subdir('src')
