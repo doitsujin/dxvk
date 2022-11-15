@@ -336,6 +336,11 @@ namespace dxvk {
     { R"(\\MSFC\.exe$)", {{
       { "dxgi.maxFrameRate",                 "60" },
     }} },
+    /* Cardfight!! Vanguard Dear Days:            *
+     * Submits command lists multiple times       */
+    { R"(\\VG2\.exe$)", {{
+      { "d3d11.dcSingleUseMode",             "False" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
