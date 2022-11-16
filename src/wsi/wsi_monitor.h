@@ -3,6 +3,7 @@
 #include <windows.h>
 
 #include <array>
+#include <vector>
 #include <cstdint>
 
 namespace dxvk::wsi {
@@ -123,5 +124,19 @@ namespace dxvk::wsi {
     if (pHeight)
       *pHeight = rect.bottom - rect.top;
   }
-  
+
+  using WsiEdidData = std::vector<uint8_t>;
+
+  /**
+    * \brief Get the EDID of a monitor
+    *
+    * Helper function to grab the EDID of a monitor.
+    * This is needed to get the HDR static metadata + colorimetry
+    * info of a display for exposing HDR.
+    *
+    * \param [in] hMonitor The monitor
+    * \returns \c EDID if successful, an empty vector if failure.
+    */
+  WsiEdidData getMonitorEdid(HMONITOR hMonitor);
+
 }
