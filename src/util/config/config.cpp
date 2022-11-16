@@ -701,6 +701,11 @@ namespace dxvk {
     { R"(\\ASN_App_PcDx9_Final\.exe$)", {{
       { "d3d9.apitraceMode",                "True" },
     }} },
+    /* Black Mesa                              *
+     * Artifacts & broken flashlight on Intel  */
+    { R"(\\bms\.exe$)", {{
+      { "d3d9.customVendorId",              "10de" },
+    }} },
   }};
 
 
