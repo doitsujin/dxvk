@@ -385,7 +385,8 @@ namespace dxvk::bit {
 
     };
 
-    BitMask() { }
+    BitMask()
+      : m_mask(0) { }
 
     BitMask(uint32_t n)
       : m_mask(n) { }
