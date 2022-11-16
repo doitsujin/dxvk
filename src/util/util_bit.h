@@ -101,7 +101,7 @@ namespace dxvk::bit {
 
   inline uint32_t tzcnt(uint64_t n) {
     #if defined(DXVK_ARCH_X86_64) && defined(_MSC_VER) && !defined(__clang__)
-    return _tzcnt_u64(n);
+    return (uint32_t)_tzcnt_u64(n);
     #elif defined(DXVK_ARCH_X86_64) && defined(__BMI__)
     return __tzcnt_u64(n);
     #elif defined(DXVK_ARCH_X86_64) && (defined(__GNUC__) || defined(__clang__))
