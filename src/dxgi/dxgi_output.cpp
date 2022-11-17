@@ -27,23 +27,7 @@ namespace dxvk {
   : m_monitorInfo(factory->GetMonitorInfo()),
     m_adapter(adapter),
     m_monitor(monitor) {
-    // Query current display mode
-    wsi::WsiMode activeWsiMode = { };
-    wsi::getCurrentDisplayMode(m_monitor, &activeWsiMode);
-
-    // Init monitor info if necessary
-    DXGI_VK_MONITOR_DATA monitorData = { };
-    monitorData.FrameStats.SyncQPCTime.QuadPart = dxvk::high_resolution_clock::get_counter();
-    monitorData.GammaCurve.Scale  = { 1.0f, 1.0f, 1.0f };
-    monitorData.GammaCurve.Offset = { 0.0f, 0.0f, 0.0f };
-    monitorData.LastMode = ConvertDisplayMode(activeWsiMode);
-    
-    for (uint32_t i = 0; i < DXGI_VK_GAMMA_CP_COUNT; i++) {
-      const float value = GammaControlPointLocation(i);
-      monitorData.GammaCurve.GammaCurve[i] = { value, value, value };
-    }
-    
-    m_monitorInfo->InitMonitorData(monitor, &monitorData);    
+    CacheMonitorData();
   }
   
   
@@ -635,6 +619,55 @@ namespace dxvk {
         it = skipMode ? Modes.erase(it) : ++it;
       }
     }
+  }
+
+
+  void DxgiOutput::CacheMonitorData() {
+    // Try and find an existing monitor info.
+    DXGI_VK_MONITOR_DATA* pMonitorData;
+    if (SUCCEEDED(m_monitorInfo->AcquireMonitorData(m_monitor, &pMonitorData))) {
+      m_metadata = pMonitorData->DisplayMetadata;
+      return;
+    }
+
+    // Init monitor info ourselves.
+    // 
+    // If some other thread ends up beating us to it
+    // by another InitMonitorData, it doesn't really matter.
+    // 
+    // The only thing we cache from this is the m_metadata which
+    // should be exactly the same.
+    // We don't store any pointers from the DXGI_VK_MONITOR_DATA
+    // sturcture, etc.
+    DXGI_VK_MONITOR_DATA monitorData = {};
+
+    // Query current display mode
+    wsi::WsiMode activeWsiMode = { };
+    wsi::getCurrentDisplayMode(m_monitor, &activeWsiMode);
+
+    // Get the display metadata + colorimetry
+    wsi::WsiEdidData edidData = wsi::getMonitorEdid(m_monitor);
+    std::optional<wsi::WsiDisplayMetadata> metadata = std::nullopt;
+    if (!edidData.empty())
+      metadata = wsi::parseColorimetryInfo(edidData);
+
+    if (metadata)
+      m_metadata = metadata.value();
+    else
+      Logger::err("DXGI: Failed to parse display metadata + colorimetry info, using blank.");
+
+    monitorData.FrameStats.SyncQPCTime.QuadPart = dxvk::high_resolution_clock::get_counter();
+    monitorData.GammaCurve.Scale = { 1.0f, 1.0f, 1.0f };
+    monitorData.GammaCurve.Offset = { 0.0f, 0.0f, 0.0f };
+    monitorData.LastMode = ConvertDisplayMode(activeWsiMode);
+    monitorData.DisplayMetadata = m_metadata;
+
+    for (uint32_t i = 0; i < DXGI_VK_GAMMA_CP_COUNT; i++) {
+      const float value = GammaControlPointLocation(i);
+      monitorData.GammaCurve.GammaCurve[i] = { value, value, value };
+    }
+
+    m_monitorInfo->InitMonitorData(m_monitor, &monitorData);
   }
 
 }

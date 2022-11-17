@@ -2,6 +2,8 @@
 
 #include "../dxvk/dxvk_include.h"
 
+#include "../wsi/wsi_edid.h"
+
 #include "../util/util_time.h"
 
 #include "dxgi_format.h"
@@ -27,6 +29,7 @@ struct DXGI_VK_MONITOR_DATA {
   DXGI_FRAME_STATISTICS FrameStats;
   DXGI_GAMMA_CONTROL    GammaCurve;
   DXGI_MODE_DESC1       LastMode;
+  dxvk::wsi::WsiDisplayMetadata DisplayMetadata;
 };
 
 
