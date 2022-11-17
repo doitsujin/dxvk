@@ -215,23 +215,35 @@ namespace dxvk {
       return E_FAIL;
     }
 
-    pDesc->AttachedToDesktop  = 1;
-    pDesc->Rotation           = DXGI_MODE_ROTATION_UNSPECIFIED;
-    pDesc->Monitor            = m_monitor;
-    pDesc->BitsPerColor       = 8;
-    pDesc->ColorSpace         = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
-
-    // We don't really have a way to get these
-    for (uint32_t i = 0; i < 2; i++) {
-      pDesc->RedPrimary[i]    = 0.0f;
-      pDesc->GreenPrimary[i]  = 0.0f;
-      pDesc->BluePrimary[i]   = 0.0f;
-      pDesc->WhitePoint[i]    = 0.0f;
-    }
-
-    pDesc->MinLuminance       = 0.0f;
-    pDesc->MaxLuminance       = 0.0f;
-    pDesc->MaxFullFrameLuminance = 0.0f;
+    pDesc->AttachedToDesktop     = 1;
+    pDesc->Rotation              = DXGI_MODE_ROTATION_UNSPECIFIED;
+    pDesc->Monitor               = m_monitor;
+    // TODO: When in HDR, flip this to 10 to appease apps that the
+    // transition has occured.
+    // If we support more than HDR10 in future, then we may want
+    // to visit that assumption.
+    pDesc->BitsPerColor          = 8;
+    // This should only return DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020
+    // (HDR) if the user has the HDR setting enabled in Windows.
+    // Games can still punt into HDR mode by using CheckColorSpaceSupport
+    // and SetColorSpace1.
+    // 
+    // TODO: When we have a swapchain using SetColorSpace1 to
+    // DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020, we should use our monitor
+    // info to flip this over to that.
+    // As on Windows this would automatically engage HDR mode.
+    pDesc->ColorSpace            = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+    pDesc->RedPrimary[0]         = m_metadata.redPrimary[0];
+    pDesc->RedPrimary[1]         = m_metadata.redPrimary[1];
+    pDesc->GreenPrimary[0]       = m_metadata.greenPrimary[0];
+    pDesc->GreenPrimary[1]       = m_metadata.greenPrimary[1];
+    pDesc->BluePrimary[0]        = m_metadata.bluePrimary[0];
+    pDesc->BluePrimary[1]        = m_metadata.bluePrimary[1];
+    pDesc->WhitePoint[0]         = m_metadata.whitePoint[0];
+    pDesc->WhitePoint[1]         = m_metadata.whitePoint[1];
+    pDesc->MinLuminance          = m_metadata.minLuminance;
+    pDesc->MaxLuminance          = m_metadata.maxLuminance;
+    pDesc->MaxFullFrameLuminance = m_metadata.maxFullFrameLuminance;
     return S_OK;
   }
 
