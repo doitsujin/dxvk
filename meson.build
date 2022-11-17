@@ -39,6 +39,9 @@ dxvk_include_dirs = [
   './include/spirv/include'
 ]
 
+proj_displayinfo = subproject('libdisplay-info')
+dep_displayinfo = proj_displayinfo.get_variable('di_dep')
+
 if platform == 'windows'
   compiler_args += [
     '-DNOMINMAX',
