@@ -6,6 +6,8 @@
 #include <vector>
 #include <cstdint>
 
+#include "wsi_edid.h"
+
 namespace dxvk::wsi {
 
   /**
@@ -124,8 +126,6 @@ namespace dxvk::wsi {
     if (pHeight)
       *pHeight = rect.bottom - rect.top;
   }
-
-  using WsiEdidData = std::vector<uint8_t>;
 
   /**
     * \brief Get the EDID of a monitor
