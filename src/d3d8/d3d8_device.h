@@ -166,11 +166,7 @@ namespace dxvk {
                 // TODO: (copy on GPU)
                 goto unhandled;
               }
-              case D3DPOOL_MANAGED: {
-                // TODO: MANAGED -> MANAGED
-                // Either LockRect with additional validation, or copy on GPU
-                goto unhandled;
-              }
+              case D3DPOOL_MANAGED:
               case D3DPOOL_SYSTEMMEM: {
                 // SYSTEMMEM -> MANAGED: LockRect / memcpy
                 
@@ -179,7 +175,7 @@ namespace dxvk {
                   goto done;
                 }
 
-                res = CopyTextureBuffers(src.ptr(), dst.ptr(), srcRect, dstRect);
+                res = CopyTextureBuffers(src.ptr(), dst.ptr(), srcDesc, dstDesc, srcRect, dstRect);
 
                 goto done;
               }
@@ -236,7 +232,7 @@ namespace dxvk {
                   goto done;
                 }
 
-                res = CopyTextureBuffers(src.ptr(), dst.ptr(), srcRect, dstRect);
+                res = CopyTextureBuffers(src.ptr(), dst.ptr(), srcDesc, dstDesc, srcRect, dstRect);
               }
               case D3DPOOL_SCRATCH:
               default: {
@@ -271,12 +267,32 @@ namespace dxvk {
     }
 
   private:
+    // Compute number of bytes to copy for a given locked rect
+    constexpr UINT GetCopySize(const RECT& rect, UINT textureWidth, UINT lockPitch) {
+      
+      // Assume that in D3D8 formats blocks are 4x4 pixels.
+      // This may not always be correct.
+      constexpr UINT blockWidth  = 4;
+      constexpr UINT blockHeight = 4;
+
+      // Rect dimensions in blocks
+      UINT rectWidthBlocks  = ((rect.right-rect.left) / blockWidth);
+      UINT rectHeightBlocks = ((rect.bottom-rect.top) / blockHeight);
+
+      // Compute bytes per block
+      UINT blocksPerRow  = textureWidth  / blockWidth;
+      UINT bytesPerBlock = lockPitch     / blocksPerRow;
+
+      return bytesPerBlock * (rectHeightBlocks * rectWidthBlocks);
+    }
 
     // Copies texture rect in system mem using memcpy.
     // Rects must be congruent, but need not be aligned.
     HRESULT CopyTextureBuffers(
         D3D8Surface* src,
         D3D8Surface* dst,
+        const d3d9::D3DSURFACE_DESC& srcDesc,
+        const d3d9::D3DSURFACE_DESC& dstDesc,
         const RECT& srcRect,
         const RECT& dstRect) {
       HRESULT res = D3D_OK;
@@ -292,7 +308,9 @@ namespace dxvk {
         return res;
       }
 
-      std::memcpy(dstLocked.pBits, srcLocked.pBits, (srcRect.bottom-srcRect.top) * srcLocked.Pitch);
+      auto copySize = GetCopySize(srcRect, srcDesc.Width, srcLocked.Pitch);
+
+      std::memcpy(dstLocked.pBits, srcLocked.pBits, copySize);
 
       res = dst->UnlockRect();
       res = src->UnlockRect();
