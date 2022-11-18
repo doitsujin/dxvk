@@ -628,6 +628,8 @@ namespace dxvk {
         
         if (FAILED(res))
           return res;
+
+        m_renderTarget = ref(surf);
       }
 
       // SetDepthStencilSurface is a separate call
