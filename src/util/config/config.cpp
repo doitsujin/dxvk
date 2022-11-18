@@ -341,6 +341,11 @@ namespace dxvk {
     { R"(\\VG2\.exe$)", {{
       { "d3d11.dcSingleUseMode",             "False" },
     }} },
+    /* Battlefield: Bad Company 2                 *
+     * Gets rid of black flickering               */
+    { R"(\\BFBC2Game\.exe$)", {{
+      { "d3d11.floatControls",            "False" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
