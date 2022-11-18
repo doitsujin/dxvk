@@ -280,8 +280,8 @@ namespace dxvk {
       UINT rectHeightBlocks = ((rect.bottom-rect.top) / blockHeight);
 
       // Compute bytes per block
-      UINT blocksPerRow  = textureWidth  / blockWidth;
-      UINT bytesPerBlock = lockPitch     / blocksPerRow;
+      UINT blocksPerRow  = std::max(textureWidth / blockWidth, 1u);
+      UINT bytesPerBlock = lockPitch / blocksPerRow;
 
       return bytesPerBlock * (rectHeightBlocks * rectWidthBlocks);
     }
