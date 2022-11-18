@@ -67,7 +67,7 @@ namespace dxvk {
           Com<SubresourceType9> subresource = LookupSubresource(Index);
 
           // Cache the subresource
-          m_subresources[Index] = new SubresourceType(this->m_parent, std::move(subresource));
+          m_subresources[Index] = new SubresourceType(this->m_parent, this, std::move(subresource));
         } catch (HRESULT res) {
           return res;
         }

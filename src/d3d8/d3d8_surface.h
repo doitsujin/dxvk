@@ -4,27 +4,32 @@
 // Implements IDirect3DSurface8
 
 #include "d3d8_include.h"
-#include "d3d8_resource.h"
+#include "d3d8_subresource.h"
 #include "d3d8_d3d9_util.h"
-
-#include "../util/util_gdi.h"
-
-#include <algorithm>
 
 namespace dxvk {
 
   // TODO: all inherited methods in D3D8Surface should be final like in d9vk
 
-  using D3D8SurfaceBase = D3D8Resource<d3d9::IDirect3DSurface9, IDirect3DSurface8>;
+  using D3D8SurfaceBase = D3D8Subresource<d3d9::IDirect3DSurface9, IDirect3DSurface8>;
   class D3D8Surface final : public D3D8SurfaceBase {
 
   public:
 
     D3D8Surface(
             D3D8DeviceEx*                   pDevice,
+            IDirect3DBaseTexture8*          pTexture,
             Com<d3d9::IDirect3DSurface9>&&  pSurface)
-      : D3D8SurfaceBase (pDevice, std::move(pSurface)) {
+      : D3D8SurfaceBase (pDevice, std::move(pSurface), pTexture) {
     }
+
+    // A surface does not need to be attached to a texture
+    D3D8Surface(
+            D3D8DeviceEx*                   pDevice,
+            Com<d3d9::IDirect3DSurface9>&&  pSurface)
+      : D3D8Surface (pDevice, nullptr, std::move(pSurface)) {
+    }
+
 
     // TODO: Surface::QueryInterface
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) {
@@ -33,10 +38,6 @@ namespace dxvk {
 
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() {
       return D3DRESOURCETYPE(GetD3D9()->GetType());
-    }
-
-    HRESULT STDMETHODCALLTYPE GetContainer(REFIID riid, void** ppContainer) {
-      return GetD3D9()->GetContainer(riid, ppContainer);
     }
 
     HRESULT STDMETHODCALLTYPE GetDesc(D3DSURFACE_DESC* pDesc) {
