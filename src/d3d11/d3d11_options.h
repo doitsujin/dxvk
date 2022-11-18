@@ -20,10 +20,6 @@ namespace dxvk {
     /// than once.
     bool dcSingleUseMode;
 
-    /// Enables workaround to replace NaN render target
-    /// outputs with zero
-    bool enableRtOutputNanFixup;
-
     /// Zero-initialize workgroup memory
     ///
     /// Workargound for games that don't initialize

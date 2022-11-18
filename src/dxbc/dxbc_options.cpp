@@ -35,7 +35,6 @@ namespace dxvk {
     }
     
     invariantPosition        = options.invariantPosition;
-    enableRtOutputNanFixup   = options.enableRtOutputNanFixup;
     zeroInitWorkgroupMemory  = options.zeroInitWorkgroupMemory;
     forceVolatileTgsmAccess  = options.forceVolatileTgsmAccess;
     disableMsaa              = options.disableMsaa;
@@ -55,9 +54,6 @@ namespace dxvk {
           floatControl.set(DxbcFloatControlFlag::DenormPreserve64);
       }
     }
-
-    if (!devInfo.vk12.shaderSignedZeroInfNanPreserveFloat32)
-      enableRtOutputNanFixup = true;
   }
   
 }

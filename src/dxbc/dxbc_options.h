@@ -31,9 +31,6 @@ namespace dxvk {
     /// atomic operations for append/consume buffers.
     bool useSubgroupOpsForAtomicCounters = false;
 
-    /// Enables NaN fixup for render target outputs
-    bool enableRtOutputNanFixup = false;
-
     /// Clear thread-group shared memory to zero
     bool zeroInitWorkgroupMemory = false;
 
