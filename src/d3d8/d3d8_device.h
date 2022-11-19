@@ -265,10 +265,10 @@ namespace dxvk {
     }
 
   private:
-    // Compute number of bytes to copy for a given locked rect
+    // Compute number of bytes in a compressed texture to copy for a given locked rect
     constexpr UINT GetCopySize(const RECT& rect, UINT textureWidth, UINT lockPitch) {
       
-      // Assume that in D3D8 formats blocks are 4x4 pixels.
+      // Assume that, in D3D8 formats, blocks are 4x4 pixels.
       // This may not always be correct.
       constexpr UINT blockWidth  = 4;
       constexpr UINT blockHeight = 4;
@@ -306,9 +306,44 @@ namespace dxvk {
         return res;
       }
 
-      auto copySize = GetCopySize(srcRect, srcDesc.Width, srcLocked.Pitch);
+      auto rows = srcRect.bottom  - srcRect.top;
+      auto cols = srcRect.right   - srcRect.left;
 
-      std::memcpy(dstLocked.pBits, srcLocked.pBits, copySize);
+      if (srcDesc.Format == d3d9::D3DFMT_DXT1
+       || srcDesc.Format == d3d9::D3DFMT_DXT2
+       || srcDesc.Format == d3d9::D3DFMT_DXT3
+       || srcDesc.Format == d3d9::D3DFMT_DXT4
+       || srcDesc.Format == d3d9::D3DFMT_DXT5) {
+        
+        // Copy compressed textures.
+        auto copySize = GetCopySize(srcRect, srcDesc.Width, srcLocked.Pitch);
+        std::memcpy(dstLocked.pBits, srcLocked.pBits, copySize);
+      
+      } else {
+        auto bpp  = srcLocked.Pitch / srcDesc.Width;
+
+        if (srcRect.left    == 0
+         && srcRect.right   == LONG(srcDesc.Width)
+         && srcDesc.Width   == dstDesc.Width
+         && srcLocked.Pitch == dstLocked.Pitch) {
+
+          // If copying the entire texture into a congruent destination,
+          // we can do this in one continuous copy.
+          std::memcpy(dstLocked.pBits, srcLocked.pBits, srcLocked.Pitch * rows);
+
+        } else {
+          // Copy one row at a time
+          size_t srcOffset = 0, dstOffset = 0;
+          for (auto i = 0; i < rows; i++) {
+            std::memcpy(
+              (uint8_t*)dstLocked.pBits + dstOffset,
+              (uint8_t*)srcLocked.pBits + srcOffset,
+              cols * bpp);
+            srcOffset += srcLocked.Pitch;
+            dstOffset += dstLocked.Pitch;
+          }
+        }
+      }
 
       res = dst->UnlockRect();
       res = src->UnlockRect();
