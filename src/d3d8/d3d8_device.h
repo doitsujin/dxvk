@@ -662,7 +662,9 @@ namespace dxvk {
         if (FAILED(res))
           return res;
 
-        m_renderTarget = ref(surf);
+        // FIXME: Doing this crashes a GTA Vice City trace
+        // and possibly other things too. Investigate.
+        //m_renderTarget = ref(surf);
       }
 
       // SetDepthStencilSurface is a separate call
