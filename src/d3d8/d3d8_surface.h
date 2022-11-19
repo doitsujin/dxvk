@@ -30,12 +30,6 @@ namespace dxvk {
       : D3D8Surface (pDevice, nullptr, std::move(pSurface)) {
     }
 
-
-    // TODO: Surface::QueryInterface
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) {
-      return D3DERR_INVALIDCALL;
-    }
-
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() {
       return D3DRESOURCETYPE(GetD3D9()->GetType());
     }

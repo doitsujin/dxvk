@@ -52,10 +52,6 @@ namespace dxvk {
       : D3D8VertexBufferBase(pDevice, std::move(pBuffer)) {
     }
 
-    HRESULT STDMETHODCALLTYPE QueryInterface(
-            REFIID  riid,
-            void** ppvObject) final { return D3DERR_INVALIDCALL; }
-
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_VERTEXBUFFER; }
 
     HRESULT STDMETHODCALLTYPE GetDesc(D3DVERTEXBUFFER_DESC* pDesc) final {
@@ -75,10 +71,6 @@ namespace dxvk {
         Com<d3d9::IDirect3DIndexBuffer9>&& pBuffer)
       : D3D8IndexBufferBase(pDevice, std::move(pBuffer)) {
     }
-
-    HRESULT STDMETHODCALLTYPE QueryInterface(
-            REFIID  riid,
-            void** ppvObject) final { return D3DERR_INVALIDCALL; }
 
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_INDEXBUFFER; }
 

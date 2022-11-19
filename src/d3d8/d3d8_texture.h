@@ -38,6 +38,15 @@ namespace dxvk {
           m_subresources[i] = nullptr;
     }
 
+    virtual IUnknown* GetInterface(REFIID riid) final override try {
+      return D3D8Resource<D3D9, D3D8>::GetInterface(riid);
+    } catch (HRESULT err) {
+      if (riid == __uuidof(IDirect3DBaseTexture8))
+        return this;
+      
+      throw err;
+    }
+
     void STDMETHODCALLTYPE PreLoad() final {
       this->GetD3D9()->PreLoad();
     }
@@ -111,11 +120,6 @@ namespace dxvk {
       : D3D8Texture2DBase(pDevice, std::move(pTexture), pTexture->GetLevelCount()) {
     }
 
-    // TODO: QueryInterface
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final {
-      return D3DERR_INVALIDCALL;
-    }
-
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_TEXTURE; }
 
     HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DSURFACE_DESC* pDesc) {
@@ -154,11 +158,6 @@ namespace dxvk {
           D3D8DeviceEx*                         pDevice,
           Com<d3d9::IDirect3DVolumeTexture9>&&  pVolumeTexture)
       : D3D8Texture3DBase(pDevice, std::move(pVolumeTexture), pVolumeTexture->GetLevelCount()) {}
-
-    // TODO: IDirect3DVolumeTexture8 QueryInterface
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final {
-      return D3DERR_INVALIDCALL;
-    }
 
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_VOLUMETEXTURE; }
 
@@ -204,11 +203,6 @@ namespace dxvk {
             D3D8DeviceEx*                       pDevice,
             Com<d3d9::IDirect3DCubeTexture9>&&  pTexture)
       : D3D8TextureCubeBase(pDevice, std::move(pTexture), pTexture->GetLevelCount() * CUBE_FACES) {
-    }
-
-    // TODO: IDirect3DCubeTexture8 QueryInterface
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final {
-      return D3DERR_INVALIDCALL;
     }
 
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_CUBETEXTURE; }

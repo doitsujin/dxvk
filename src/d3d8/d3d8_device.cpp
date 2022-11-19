@@ -65,25 +65,6 @@ namespace dxvk {
   D3D8DeviceEx::~D3D8DeviceEx() {
   }
 
-
-  HRESULT STDMETHODCALLTYPE D3D8DeviceEx::QueryInterface(REFIID riid, void** ppvObject) {
-
-    if (ppvObject == nullptr)
-      return E_POINTER;
-
-    *ppvObject = nullptr;
-
-    if (riid == __uuidof(IUnknown)) {
-    //  || riid == IID_IDirect3DDevice8) {
-      *ppvObject = ref(this);
-      return S_OK;
-    }
-
-    Logger::warn("D3D8DeviceEx::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
-    return E_NOINTERFACE;
-  }
-
   HRESULT STDMETHODCALLTYPE D3D8DeviceEx::GetInfo(DWORD DevInfoID, void* pDevInfoStruct, DWORD DevInfoStructSize) {
     Logger::debug(str::format("D3D8DeviceEx::GetInfo: ", DevInfoID));
 

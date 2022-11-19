@@ -33,6 +33,32 @@ namespace dxvk {
       return GetD3D9Nullable(self.ptr());
     }
 
+    virtual IUnknown* GetInterface(REFIID riid) {
+      if (riid == __uuidof(IUnknown))
+        return this;
+      if (riid == __uuidof(D3D8))
+        return this;
+      
+      throw E_NOINTERFACE;
+    }
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final {
+      if (ppvObject == nullptr)
+        return E_POINTER;
+
+      *ppvObject = nullptr;
+
+      try {
+        *ppvObject = ref(this->GetInterface(riid));
+        return S_OK;
+      } catch (HRESULT err) {
+        Logger::warn("D3D8WrappedObject::QueryInterface: Unknown interface query");
+        Logger::warn(str::format(riid));
+        return err;
+      }
+    }
+
+
   private:
 
     Com<D3D9> m_d3d9;

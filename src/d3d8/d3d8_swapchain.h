@@ -16,11 +16,6 @@ namespace dxvk {
       Com<d3d9::IDirect3DSwapChain9>&& pSwapChain)
       : D3D8SwapChainBase(pDevice, std::move(pSwapChain)) {}
 
-    // TODO: QueryInterface
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) {
-      return D3DERR_INVALIDCALL;
-    }
-
     HRESULT STDMETHODCALLTYPE Present(const RECT *src, const RECT *dst, HWND hWnd, const RGNDATA *dirtyRegion) final {
         return GetD3D9()->Present(src, dst, hWnd, dirtyRegion, 0);
     }

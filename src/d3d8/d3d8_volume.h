@@ -16,11 +16,6 @@ namespace dxvk {
           Com<d3d9::IDirect3DVolume9>&& pVolume)
       : D3D8VolumeBase(pDevice, std::move(pVolume), pTexture) {}
 
-    // TODO: QueryInterface
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) {
-      return D3DERR_INVALIDCALL;
-    }
-
     HRESULT STDMETHODCALLTYPE GetDesc(D3DVOLUME_DESC* pDesc) {
       d3d9::D3DVOLUME_DESC desc;
       HRESULT res = GetD3D9()->GetDesc(&desc);

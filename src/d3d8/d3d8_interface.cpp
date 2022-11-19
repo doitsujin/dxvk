@@ -49,8 +49,8 @@ namespace dxvk
 
     *ppvObject = nullptr;
 
-    if (riid == __uuidof(IUnknown)) {
-      //|| riid == __uuidof(IDirect3D8)) {
+    if (riid == __uuidof(IUnknown)
+     || riid == __uuidof(IDirect3D8)) {
       *ppvObject = ref(this);
       return S_OK;
     }

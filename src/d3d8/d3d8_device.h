@@ -42,8 +42,6 @@ namespace dxvk {
 
     ~D3D8DeviceEx();
 
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
-
     /* Direct3D 8 Exclusive Methods */
 
     HRESULT STDMETHODCALLTYPE CopyRects(
