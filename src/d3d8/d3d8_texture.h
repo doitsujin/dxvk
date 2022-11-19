@@ -113,7 +113,7 @@ namespace dxvk {
 
     // TODO: QueryInterface
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final {
-      return D3D_OK;
+      return D3DERR_INVALIDCALL;
     }
 
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_TEXTURE; }
@@ -157,7 +157,7 @@ namespace dxvk {
 
     // TODO: IDirect3DVolumeTexture8 QueryInterface
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final {
-      return D3D_OK;
+      return D3DERR_INVALIDCALL;
     }
 
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_VOLUMETEXTURE; }
@@ -208,7 +208,7 @@ namespace dxvk {
 
     // TODO: IDirect3DCubeTexture8 QueryInterface
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final {
-      return D3D_OK;
+      return D3DERR_INVALIDCALL;
     }
 
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_CUBETEXTURE; }

@@ -33,7 +33,7 @@ namespace dxvk {
 
     // TODO: Surface::QueryInterface
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) {
-      return D3D_OK;
+      return D3DERR_INVALIDCALL;
     }
 
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() {

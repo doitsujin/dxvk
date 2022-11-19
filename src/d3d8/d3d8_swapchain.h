@@ -18,7 +18,7 @@ namespace dxvk {
 
     // TODO: QueryInterface
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) {
-      return D3D_OK;
+      return D3DERR_INVALIDCALL;
     }
 
     HRESULT STDMETHODCALLTYPE Present(const RECT *src, const RECT *dst, HWND hWnd, const RGNDATA *dirtyRegion) final {

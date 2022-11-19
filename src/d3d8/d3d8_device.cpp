@@ -68,7 +68,6 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D8DeviceEx::QueryInterface(REFIID riid, void** ppvObject) {
 
-    return S_OK;
     if (ppvObject == nullptr)
       return E_POINTER;
 
