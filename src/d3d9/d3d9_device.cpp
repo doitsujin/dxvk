@@ -1728,7 +1728,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     if (unlikely(ShouldRecord())) {
-      Logger::warn("D3D9DeviceEx::SetLight: State block not implemented.");
+      m_recorder->SetLight(Index, pLight);
       return D3D_OK;
     }
 
@@ -1761,6 +1761,11 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::LightEnable(DWORD Index, BOOL Enable) {
     D3D9DeviceLock lock = LockDevice();
+
+    if (unlikely(ShouldRecord())) {
+      m_recorder->LightEnable(Index, Enable);
+      return D3D_OK;
+    }
 
     if (unlikely(Index >= m_state.lights.size()))
       m_state.lights.resize(Index + 1);
