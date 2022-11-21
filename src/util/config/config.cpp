@@ -346,6 +346,11 @@ namespace dxvk {
     { R"(\\BFBC2Game\.exe$)", {{
       { "d3d11.floatControls",            "False" },
     }} },
+    /* Sonic Frontiers - flickering shadows and   *
+     * vegetation when GPU-bound                  */
+    { R"(\\SonicFrontiers\.exe$)", {{
+      { "dxgi.maxFrameLatency",             "1" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
