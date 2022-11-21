@@ -639,6 +639,7 @@ namespace dxvk {
     DXGI_VK_MONITOR_DATA* pMonitorData;
     if (SUCCEEDED(m_monitorInfo->AcquireMonitorData(m_monitor, &pMonitorData))) {
       m_metadata = pMonitorData->DisplayMetadata;
+      m_monitorInfo->ReleaseMonitorData();
       return;
     }
 
