@@ -4611,18 +4611,33 @@ namespace dxvk {
         slice.mapPtr, srcData, extentBlockCount, formatInfo->elementSize,
         pitch, pitch * srcTexLevelExtentBlockCount.height);
 
+
+      VkFormat packedFormat = GetPackedDepthStencilFormat(pDestTexture->Desc()->Format);
+
       EmitCs([
         cSrcSlice       = slice.slice,
         cDstImage       = image,
         cDstLayers      = dstLayers,
         cDstLevelExtent = alignedExtent,
-        cOffset         = alignedDestOffset
+        cOffset         = alignedDestOffset,
+        cPackedFormat     = packedFormat
       ] (DxvkContext* ctx) {
-        ctx->copyBufferToImage(
-          cDstImage,  cDstLayers,
-          cOffset, cDstLevelExtent,
-          cSrcSlice.buffer(), cSrcSlice.offset(),
-          1, 1);
+        if (cDstLayers.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+          ctx->copyBufferToImage(
+            cDstImage,  cDstLayers,
+            cOffset, cDstLevelExtent,
+            cSrcSlice.buffer(), cSrcSlice.offset(),
+            1, 1);
+        } else {
+          ctx->copyPackedBufferToDepthStencilImage(
+                cDstImage, cDstLayers,
+                VkOffset2D { cOffset.x, cOffset.y },
+                VkExtent2D { cDstLevelExtent.width, cDstLevelExtent.height },
+                cSrcSlice.buffer(), cSrcSlice.offset(),
+                VkOffset2D { 0, 0 },
+                VkExtent2D { cDstLevelExtent.width, cDstLevelExtent.height },
+                cPackedFormat);
+        }
       });
 
       TrackTextureMappingBufferSequenceNumber(pSrcTexture, SrcSubresource);
