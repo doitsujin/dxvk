@@ -4537,6 +4537,9 @@ namespace dxvk {
         sliceAlignment = srcTexLevelExtentBlockCount.height * pitch;
       }
 
+
+      VkFormat packedFormat = GetPackedDepthStencilFormat(pDestTexture->Desc()->Format);
+
       EmitCs([
         cSrcSlice       = std::move(copySrcSlice),
         cDstImage       = image,
@@ -4544,13 +4547,25 @@ namespace dxvk {
         cDstLevelExtent = alignedExtent,
         cOffset         = alignedDestOffset,
         cRowAlignment   = rowAlignment,
-        cSliceAlignment = sliceAlignment
+        cSliceAlignment = sliceAlignment,
+        cPackedFormat     = packedFormat
       ] (DxvkContext* ctx) {
-        ctx->copyBufferToImage(
-          cDstImage,  cDstLayers,
-          cOffset, cDstLevelExtent,
-          cSrcSlice.buffer(), cSrcSlice.offset(),
-          cRowAlignment, cSliceAlignment);
+        if (cDstLayers.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+          ctx->copyBufferToImage(
+            cDstImage,  cDstLayers,
+            cOffset, cDstLevelExtent,
+            cSrcSlice.buffer(), cSrcSlice.offset(),
+            cRowAlignment, cSliceAlignment);
+        } else {
+          ctx->copyPackedBufferToDepthStencilImage(
+                cDstImage, cDstLayers,
+                VkOffset2D { cOffset.x, cOffset.y },
+                VkExtent2D { cDstLevelExtent.width, cDstLevelExtent.height },
+                cSrcSlice.buffer(), cSrcSlice.offset(),
+                VkOffset2D { 0, 0 },
+                VkExtent2D { cDstLevelExtent.width, cDstLevelExtent.height },
+                cPackedFormat);
+        }
       });
 
       TrackTextureMappingBufferSequenceNumber(pSrcTexture, SrcSubresource);
