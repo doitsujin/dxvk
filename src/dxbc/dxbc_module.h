@@ -35,7 +35,10 @@ namespace dxvk {
      * \brief Shader type
      * \returns Shader type
      */
-    DxbcProgramInfo programInfo() const {
+    std::optional<DxbcProgramInfo> programInfo() const {
+      if (m_shexChunk == nullptr)
+        return std::nullopt;
+
       return m_shexChunk->programInfo();
     }
     
