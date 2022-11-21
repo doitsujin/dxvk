@@ -32,9 +32,6 @@ namespace dxvk {
       if ((tag == "PCSG") || (tag == "PSG1"))
         m_psgnChunk = new DxbcIsgn(chunkReader, tag);
     }
-
-    if (m_shexChunk == nullptr)
-      throw DxvkError("DxbcModule::compile: No SHDR/SHEX chunk");
   }
   
   
@@ -46,6 +43,8 @@ namespace dxvk {
   Rc<DxvkShader> DxbcModule::compile(
     const DxbcModuleInfo& moduleInfo,
     const std::string&    fileName) const {
+    if (m_shexChunk == nullptr)
+      throw DxvkError("DxbcModule::compile: No SHDR/SHEX chunk");
     
     DxbcAnalysisInfo analysisInfo;
     
@@ -71,6 +70,9 @@ namespace dxvk {
   Rc<DxvkShader> DxbcModule::compilePassthroughShader(
     const DxbcModuleInfo& moduleInfo,
     const std::string&    fileName) const {
+    if (m_shexChunk == nullptr)
+      throw DxvkError("DxbcModule::compile: No SHDR/SHEX chunk");
+    
     DxbcAnalysisInfo analysisInfo;
 
     DxbcCompiler compiler(
