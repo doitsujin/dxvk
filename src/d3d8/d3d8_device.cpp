@@ -144,30 +144,89 @@ namespace dxvk {
 
   // Render States //
 
+  // ZBIAS can be an integer from 0 to 1 and needs to be remapped to float
   static constexpr float ZBIAS_SCALE     = -0.000005f;
   static constexpr float ZBIAS_SCALE_INV = 1 / ZBIAS_SCALE;
 
   HRESULT STDMETHODCALLTYPE D3D8DeviceEx::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) {
     d3d9::D3DRENDERSTATETYPE State9 = (d3d9::D3DRENDERSTATETYPE)State;
 
-    if (unlikely(State == D3DRS_ZBIAS)) {
-      State9 = d3d9::D3DRS_DEPTHBIAS;
-      Value  = bit::cast<DWORD>(float(Value) * ZBIAS_SCALE);
+    switch (State) {
+      // Most render states translate 1:1 to D3D9
+      default:
+        break;
+
+      // TODO: D3DRS_LINEPATTERN - vkCmdSetLineRasterizationModeEXT
+      case D3DRS_LINEPATTERN: {
+        [[maybe_unused]]
+        D3DLINEPATTERN pattern = bit::cast<D3DLINEPATTERN>(Value);
+        m_bridge->RenderStateNotSupported(D3DRS_LINEPATTERN);
+      } break;
+
+      // Not supported by D3D8.
+      case D3DRS_ZVISIBLE:
+        break;
+
+      // TODO: Not implemented by D9VK. Try anyway.
+      case D3DRS_EDGEANTIALIAS:
+        State9 = d3d9::D3DRS_ANTIALIASEDLINEENABLE;
+        break;
+
+      case D3DRS_ZBIAS:
+        State9 = d3d9::D3DRS_DEPTHBIAS;
+        Value  = bit::cast<DWORD>(float(Value) * ZBIAS_SCALE);
+        break;
+
+      case D3DRS_SOFTWAREVERTEXPROCESSING:
+        // TODO: This has to be recorded by state blocks (!)
+        return GetD3D9()->SetSoftwareVertexProcessing(Value);
+
+      // TODO: D3DRS_PATCHSEGMENTS
+      case D3DRS_PATCHSEGMENTS:
+        m_bridge->RenderStateNotSupported(D3DRS_PATCHSEGMENTS);
+        break;
+
     }
 
     return GetD3D9()->SetRenderState(State9, Value);
   }
 
   HRESULT STDMETHODCALLTYPE D3D8DeviceEx::GetRenderState(D3DRENDERSTATETYPE State, DWORD* pValue) {
+    d3d9::D3DRENDERSTATETYPE State9 = (d3d9::D3DRENDERSTATETYPE)State;
 
-    if (unlikely(State == D3DRS_ZBIAS)) {
-      float bias  = 0;
-      HRESULT res = GetD3D9()->GetRenderState(d3d9::D3DRS_DEPTHBIAS, (DWORD*)&bias);
-      *pValue     = bit::cast<DWORD>(bias * ZBIAS_SCALE_INV);
-      return res;
+    switch (State) {
+      // Most render states translate 1:1 to D3D9
+      default:
+        break;
+
+      // TODO: D3DRS_LINEPATTERN
+      case D3DRS_LINEPATTERN:
+        break;
+
+      // Not supported by D3D8.
+      case D3DRS_ZVISIBLE:
+        break;
+
+      case D3DRS_EDGEANTIALIAS:
+        State9 = d3d9::D3DRS_ANTIALIASEDLINEENABLE;
+        break;
+
+      case D3DRS_ZBIAS: {
+        float bias  = 0;
+        HRESULT res = GetD3D9()->GetRenderState(d3d9::D3DRS_DEPTHBIAS, (DWORD*)&bias);
+        *pValue     = bit::cast<DWORD>(bias * ZBIAS_SCALE_INV);
+        return res;
+      } break;
+
+      case D3DRS_SOFTWAREVERTEXPROCESSING:
+        return GetD3D9()->GetSoftwareVertexProcessing();
+
+      // TODO: D3DRS_PATCHSEGMENTS
+      case D3DRS_PATCHSEGMENTS:
+        break;
     }
 
-    return GetD3D9()->GetRenderState((d3d9::D3DRENDERSTATETYPE)State, pValue);
+    return GetD3D9()->GetRenderState(State9, pValue);
   }
 
   // Vertex Shaders //
