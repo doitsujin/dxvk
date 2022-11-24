@@ -471,14 +471,10 @@ namespace dxvk {
       return GetD3D9()->GetClipPlane(Index, pPlane);
     }
 
-    HRESULT STDMETHODCALLTYPE SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) {
-      return GetD3D9()->SetRenderState((d3d9::D3DRENDERSTATETYPE)State, Value);
-    }
+    HRESULT STDMETHODCALLTYPE SetRenderState(D3DRENDERSTATETYPE State, DWORD Value);
 
-    HRESULT STDMETHODCALLTYPE GetRenderState(D3DRENDERSTATETYPE State, DWORD* pValue) {
-      return GetD3D9()->GetRenderState((d3d9::D3DRENDERSTATETYPE)State, pValue);
-    }
-
+    HRESULT STDMETHODCALLTYPE GetRenderState(D3DRENDERSTATETYPE State, DWORD* pValue);
+    
     HRESULT STDMETHODCALLTYPE CreateStateBlock(
             D3DSTATEBLOCKTYPE     Type,
             DWORD*                pToken) {

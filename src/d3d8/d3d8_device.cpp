@@ -142,6 +142,34 @@ namespace dxvk {
     return D3D_OK;
   }
 
+  // Render States //
+
+  static constexpr float ZBIAS_SCALE     = -0.000005f;
+  static constexpr float ZBIAS_SCALE_INV = 1 / ZBIAS_SCALE;
+
+  HRESULT STDMETHODCALLTYPE D3D8DeviceEx::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) {
+    d3d9::D3DRENDERSTATETYPE State9 = (d3d9::D3DRENDERSTATETYPE)State;
+
+    if (unlikely(State == D3DRS_ZBIAS)) {
+      State9 = d3d9::D3DRS_DEPTHBIAS;
+      Value  = bit::cast<DWORD>(float(Value) * ZBIAS_SCALE);
+    }
+
+    return GetD3D9()->SetRenderState(State9, Value);
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D8DeviceEx::GetRenderState(D3DRENDERSTATETYPE State, DWORD* pValue) {
+
+    if (unlikely(State == D3DRS_ZBIAS)) {
+      float bias  = 0;
+      HRESULT res = GetD3D9()->GetRenderState(d3d9::D3DRS_DEPTHBIAS, (DWORD*)&bias);
+      *pValue     = bit::cast<DWORD>(bias * ZBIAS_SCALE_INV);
+      return res;
+    }
+
+    return GetD3D9()->GetRenderState((d3d9::D3DRENDERSTATETYPE)State, pValue);
+  }
+
   // Vertex Shaders //
 
   HRESULT STDMETHODCALLTYPE D3D8DeviceEx::CreateVertexShader(
