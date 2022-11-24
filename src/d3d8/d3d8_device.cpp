@@ -178,7 +178,10 @@ namespace dxvk {
         break;
 
       case D3DRS_SOFTWAREVERTEXPROCESSING:
-        // TODO: This has to be recorded by state blocks (!)
+        // This was a very easy footgun for D3D8 applications.
+        if (unlikely(ShouldRecord()))
+          return m_recorder->SetSoftwareVertexProcessing(Value);
+
         return GetD3D9()->SetSoftwareVertexProcessing(Value);
 
       // TODO: D3DRS_PATCHSEGMENTS

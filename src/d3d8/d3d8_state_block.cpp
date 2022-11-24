@@ -14,6 +14,9 @@ HRESULT dxvk::D3D8StateBlock::Capture() {
 
   if (m_capture.indices) m_device->GetIndices(&m_indices, &m_baseVertexIndex);
 
+  if (m_capture.swvp)
+    m_device->GetRenderState(D3DRS_SOFTWAREVERTEXPROCESSING, (DWORD*)&m_isSWVP);
+
   return m_stateBlock->Capture();
 }
 
@@ -32,6 +35,10 @@ HRESULT dxvk::D3D8StateBlock::Apply() {
       m_device->SetTexture(stage, m_textures[stage] );
 
   if (m_capture.indices) m_device->SetIndices(m_indices, m_baseVertexIndex);
+
+  // This was a very easy footgun for D3D8 applications.
+  if (m_capture.swvp)
+    m_device->SetRenderState(D3DRS_SOFTWAREVERTEXPROCESSING, m_isSWVP);
 
   return res;
 }

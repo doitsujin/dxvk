@@ -13,10 +13,15 @@ namespace dxvk {
     bool vs       : 1;
     bool ps       : 1;
     bool indices  : 1;
+    bool swvp     : 1;
 
     bit::bitset<d8caps::MAX_TEXTURE_STAGES> textures;
 
-    D3D8StateCapture() : vs(false), ps(false), indices(false) {
+    D3D8StateCapture()
+      : vs(false)
+      , ps(false)
+      , indices(false)
+      , swvp(false) {
       // Ensure all bits are initialized to false
       textures.clearAll();
     }
@@ -82,6 +87,12 @@ namespace dxvk {
       return D3D_OK;
     }
 
+    inline HRESULT SetSoftwareVertexProcessing(bool value) {
+      m_isSWVP       = value;
+      m_capture.swvp = true;
+      return D3D_OK;
+    }
+
   private:
     D3D8DeviceEx*                   m_device;
     Com<d3d9::IDirect3DStateBlock9> m_stateBlock;
@@ -98,7 +109,7 @@ namespace dxvk {
     IDirect3DIndexBuffer8*  m_indices = nullptr;  // indices
     UINT                    m_baseVertexIndex;    // indices
 
-
+    bool m_isSWVP;  // D3DRS_SOFTWAREVERTEXPROCESSING
   };
 
 
