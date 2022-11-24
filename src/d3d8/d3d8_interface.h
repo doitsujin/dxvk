@@ -87,13 +87,6 @@ namespace dxvk {
         DWORD           Usage,
         D3DRESOURCETYPE RType,
         D3DFORMAT       CheckFormat) {
-      // HACK: forceD16.
-      if (m_d3d8Options.forceD16 && (Usage & D3DUSAGE_DEPTHSTENCIL)) {
-        // Some other less common depth formats are not checked here.
-        if (CheckFormat == D3DFMT_D32 || CheckFormat == D3DFMT_D24S8)
-          return D3DERR_NOTAVAILABLE;
-      }
-
       return m_d3d9ex->CheckDeviceFormat(
         Adapter,
         (d3d9::D3DDEVTYPE)DeviceType,

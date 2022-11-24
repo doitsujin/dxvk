@@ -1001,12 +1001,9 @@ namespace dxvk {
     /* D3D8 GAMES                                 */
     /**********************************************/
 
-    /* Duke Nukem Forever (2001)                  *
-     * Hack: force D16 to reduce Z-fighting       *
-     * on shadows.                                */
+    /* Duke Nukem Forever (2001)                  */
     { R"(\\DukeForever\.exe$)", {{
       { "d3d9.maxFrameRate",                "60"   },
-      { "d3d8.forceD16",                    "True" },
     }} },
     /* Indiana Jones and the Emperor's Tomb      *
      * Fixes intro window being stuck on screen  */
