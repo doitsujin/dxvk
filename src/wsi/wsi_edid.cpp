@@ -66,6 +66,8 @@ namespace dxvk::wsi {
       colorimetry && colorimetry->bt2020_rgb &&
       hdr_static_metadata && hdr_static_metadata->eotfs && hdr_static_metadata->eotfs->pq;
 
+    di_info_destroy(info);
+
     return metadata;
   }
 
