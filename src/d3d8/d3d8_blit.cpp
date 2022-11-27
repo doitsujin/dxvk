@@ -45,6 +45,10 @@ namespace dxvk {
     HRESULT res = D3D_OK;
     D3DLOCKED_RECT srcLocked, dstLocked;
 
+    // CopyRects cannot perform format conversions.
+    if (srcDesc.Format != dstDesc.Format)
+      return D3DERR_INVALIDCALL;
+
     res = src->LockRect(&srcLocked, &srcRect, D3DLOCK_READONLY);
     if (FAILED(res))
       return res;
@@ -150,10 +154,10 @@ namespace dxvk {
         dstRect.top     = pDestPointsArray[i].y;
         dstRect.bottom  = dstRect.top + (srcRect.bottom - srcRect.top);
         asymmetric  = dstRect.left  != srcRect.left  || dstRect.top    != srcRect.top
-                    || dstRect.right != srcRect.right || dstRect.bottom != srcRect.bottom;
+                   || dstRect.right != srcRect.right || dstRect.bottom != srcRect.bottom;
         
         stretch     = (dstRect.right-dstRect.left) != (srcRect.right-srcRect.left)
-                    || (dstRect.bottom-dstRect.top) != (srcRect.bottom-srcRect.top);
+                   || (dstRect.bottom-dstRect.top) != (srcRect.bottom-srcRect.top);
         
         offset      = !stretch && asymmetric;
       } else {
