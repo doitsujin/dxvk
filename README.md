@@ -9,13 +9,30 @@ The most recent development builds can be found [here](https://github.com/doitsu
 Release builds can be found [here](https://github.com/doitsujin/dxvk/releases).
 
 ## How to use
-In order to install a DXVK package obtained from the [release](https://github.com/doitsujin/dxvk/releases) page into a given wine prefix, copy or symlink the DLLs into the following directories as follows, then open `winecfg` and manually add DLL overrides for `d3d11`, `d3d10core`, `dxgi`, and `d3d9`:
+In order to install a DXVK package obtained from the [release](https://github.com/doitsujin/dxvk/releases) page into a given wine prefix, copy or symlink the DLLs into the Wine prefix system directories as shown below and add native DLL overrides for `d3d11`, `d3d10core`, `dxgi`, and `d3d9`.
+
+For 64-bit prefix:
 ```
 WINEPREFIX=/path/to/wineprefix
 cp x64/*.dll $WINEPREFIX/drive_c/windows/system32
 cp x32/*.dll $WINEPREFIX/drive_c/windows/syswow64
-winecfg
 ```
+
+For 32-bit prefix:
+```
+WINEPREFIX=/path/to/wineprefix
+cp x32/*.dll $WINEPREFIX/drive_c/windows/system32
+```
+
+Then add native overrides manually through `winecfg`, or using the following (with WINEPREFIX still being set accordingly as above):
+
+```
+for dll in 'd3d11' 'd3d10core' 'd3d9' 'dxgi'; do wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $dll /d native /f; done
+```
+
+To avoid confusion with directory naming, note how in 64-bit prefix, 64-bit DLLs are supposed to be placed in `system32`, while 32-bit DLLs in 64-bit prefix go to `syswow64`.
+
+You can check your prefix bitness in `$WINEPREFIX/system.reg` - it will be `#arch=win64` for 64-bit or `#arch=win32` for 32-bit one.
 
 Verify that your application uses DXVK instead of wined3d by checking for the presence of the log file `d3d9.log` or `d3d11.log` in the application's directory, or by enabling the HUD (see notes below).
 
