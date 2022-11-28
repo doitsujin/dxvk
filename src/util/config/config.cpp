@@ -686,6 +686,11 @@ namespace dxvk {
     { R"(\\bms\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
     }} },
+    /* Final Fantasy XIV - Direct3D 9 mode     *
+     * Can crash with unmapping                */
+    { R"(\\ffxiv\.exe$)", {{
+      { "d3d9.textureMemory",                "0"   },
+    }} },
   }};
 
 
