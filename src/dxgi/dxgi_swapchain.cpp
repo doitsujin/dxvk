@@ -523,7 +523,9 @@ namespace dxvk {
     if (!pColorSpaceSupport)
       return E_INVALIDARG;
 
-    return m_presenter->CheckColorSpaceSupport(ColorSpace);
+    UINT support = m_presenter->CheckColorSpaceSupport(ColorSpace);
+    *pColorSpaceSupport = support;
+    return S_OK;
   }
 
 
