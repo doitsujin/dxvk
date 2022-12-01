@@ -16,8 +16,9 @@ namespace dxvk::wsi {
     WsiDisplayMetadata metadata = {};
 
     di_info* info = di_info_parse_edid(edidData.data(), edidData.size());
+
     if (!info) {
-      Logger::err(str::format("wsi: parseColorimetryInfo: Failed to get parse edid. Reason: ", di_info_get_failure_msg(info)));
+      Logger::err(str::format("wsi: parseColorimetryInfo: Failed to get parse edid."));
       return std::nullopt;
     }
 
@@ -28,15 +29,14 @@ namespace dxvk::wsi {
     const di_cta_colorimetry_block* colorimetry = nullptr;
 
     const di_edid_cta* cta = nullptr;
-    const di_edid_ext* const* exts = di_edid_get_extensions(edid);
-    for (; *exts != nullptr; exts++) {
+
+    for (auto exts = di_edid_get_extensions(edid); *exts != nullptr; exts++) {
       if ((cta = di_edid_ext_get_cta(*exts)))
         break;
     }
 
     if (cta) {
-      const di_cta_data_block* const* blocks = di_edid_cta_get_data_blocks(cta);
-      for (; *blocks != nullptr; blocks++) {
+      for (auto blocks = di_edid_cta_get_data_blocks(cta); *blocks != nullptr; blocks++) {
         if ((hdr_static_metadata = di_cta_data_block_get_hdr_static_metadata(*blocks)))
           continue;
         if ((colorimetry = di_cta_data_block_get_colorimetry(*blocks)))
@@ -61,13 +61,10 @@ namespace dxvk::wsi {
       metadata.maxLuminance          = hdr_static_metadata->desired_content_max_luminance;
     }
 
-    metadata.supportsST2084 =
-      chroma &&
-      colorimetry && colorimetry->bt2020_rgb &&
+    metadata.supportsST2084 = chroma && colorimetry && colorimetry->bt2020_rgb &&
       hdr_static_metadata && hdr_static_metadata->eotfs && hdr_static_metadata->eotfs->pq;
 
     di_info_destroy(info);
-
     return metadata;
   }
 
