@@ -127,6 +127,10 @@ elif dxvk_wsi == 'sdl2'
   dxvk_src += [
     'platform/dxvk_sdl2_exts.cpp'
   ]
+elif dxvk_wsi == 'glfw'
+  dxvk_src += [
+    'platform/dxvk_glfw_exts.cpp'
+  ]
 endif
 
 dxvk_extra_deps = [ dependency('threads') ]
