@@ -5460,7 +5460,6 @@ namespace dxvk {
 
   void D3D9DeviceEx::MarkTextureMipsDirty(D3D9CommonTexture* pResource) {
     pResource->SetNeedsMipGen(true);
-    pResource->MarkAllNeedReadback();
 
     for (uint32_t i : bit::BitMask(m_activeTextures)) {
       // Guaranteed to not be nullptr...
