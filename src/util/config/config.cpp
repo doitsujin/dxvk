@@ -351,6 +351,11 @@ namespace dxvk {
     { R"(\\SonicFrontiers\.exe$)", {{
       { "dxgi.maxFrameLatency",             "1" },
     }} },
+    /* TRAHA Global                               *
+     * Shadow issues when it sees AMD/Nvidia      */
+    { R"(\\RapaNui-Win64-Shipping\.exe$)", {{
+      { "dxgi.customVendorId",              "8086" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
