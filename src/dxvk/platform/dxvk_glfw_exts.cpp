@@ -5,53 +5,53 @@
 
 namespace dxvk {
 
-    DxvkPlatformExts DxvkPlatformExts::s_instance;
+  DxvkPlatformExts DxvkPlatformExts::s_instance;
 
-    std::string_view DxvkPlatformExts::getName() {
-        return "GLFW WSI";
-    }
+  std::string_view DxvkPlatformExts::getName() {
+    return "GLFW WSI";
+  }
 
-    DxvkNameSet DxvkPlatformExts::getInstanceExtensions() {
-        if (!glfwVulkanSupported()) 
-            throw DxvkError(str::format("GLFW WSI: Vulkan is not supported in any capacity!"));
+  DxvkNameSet DxvkPlatformExts::getInstanceExtensions() {
+    if (!glfwVulkanSupported()) 
+      throw DxvkError(str::format("GLFW WSI: Vulkan is not supported in any capacity!"));
 
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        GLFWwindow* window = glfwCreateWindow(1, 1, "Dummy Window", nullptr, nullptr);
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    GLFWwindow* window = glfwCreateWindow(1, 1, "Dummy Window", nullptr, nullptr);
         
-        if (window == nullptr)
-            throw DxvkError(str::format("GLFW WSI: Unable to create dummy window"));
+    if (window == nullptr)
+      throw DxvkError(str::format("GLFW WSI: Unable to create dummy window"));
         
-        uint32_t extensionCount = 0;
-        const char** extensionArray = glfwGetRequiredInstanceExtensions(&extensionCount);
+    uint32_t extensionCount = 0;
+    const char** extensionArray = glfwGetRequiredInstanceExtensions(&extensionCount);
 
-        if (extensionCount == 0)
-            throw DxvkError(str::format("GLFW WSI: Failed to get required instance extensions"));
+    if (extensionCount == 0)
+      throw DxvkError(str::format("GLFW WSI: Failed to get required instance extensions"));
         
-        DxvkNameSet names;
-        for (uint32_t i = 0; i < extensionCount; ++i) { 
-            names.add(extensionArray[i]);
-        }
+    DxvkNameSet names;
+    for (uint32_t i = 0; i < extensionCount; ++i) { 
+      names.add(extensionArray[i]);
+    }
 
-        glfwDestroyWindow(window);
+    glfwDestroyWindow(window);
         
-        return names;
-    }
+    return names;
+  }
 
 
-    DxvkNameSet DxvkPlatformExts::getDeviceExtensions(
-            uint32_t      adapterId) {
-        return DxvkNameSet();
-    }
+  DxvkNameSet DxvkPlatformExts::getDeviceExtensions(
+          uint32_t      adapterId) {
+    return DxvkNameSet();
+  }
 
 
-    void DxvkPlatformExts::initInstanceExtensions() {
+  void DxvkPlatformExts::initInstanceExtensions() {
+    //Nothing needs to be done here on GLFW
+  }
 
-    }
 
-
-    void DxvkPlatformExts::initDeviceExtensions(
-            const DxvkInstance* instance) {
-
-    }
+  void DxvkPlatformExts::initDeviceExtensions(
+    const DxvkInstance* instance) {
+    //Nothing needs to be done here on GLFW
+  }
 
 }
