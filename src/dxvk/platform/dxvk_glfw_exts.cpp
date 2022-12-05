@@ -1,6 +1,6 @@
 #include "../dxvk_platform_exts.h"
 
-#define GLFW_INCLUDE_VULKAN
+#include "../../vulkan/vulkan_loader.h"
 #include <GLFW/glfw3.h>
 
 namespace dxvk {

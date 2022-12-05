@@ -135,8 +135,8 @@ namespace dxvk::vk {
     #endif
     
     #ifdef VK_USE_PLATFORM_WIN32_KHR
-//    VULKAN_FN(vkCreateWin32SurfaceKHR);
-//    VULKAN_FN(vkGetPhysicalDeviceWin32PresentationSupportKHR);
+    VULKAN_FN(vkCreateWin32SurfaceKHR);
+    VULKAN_FN(vkGetPhysicalDeviceWin32PresentationSupportKHR);
     #endif
     
     VULKAN_FN(vkDestroySurfaceKHR);

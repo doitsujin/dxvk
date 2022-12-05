@@ -1,6 +1,6 @@
 #pragma once
 
-#define GLFW_INCLUDE_VULKAN
+#include "../../vulkan/vulkan_loader.h"
 #include <GLFW/glfw3.h>
 
 #include "../wsi_monitor.h"
