@@ -14,25 +14,6 @@ namespace dxvk {
           || fmt == d3d9::D3DFMT_DXT5;
   }
 
-  // Compute number of bytes in a compressed texture to copy for a given locked rect
-  static constexpr UINT getDXTCopySize(const RECT& rect, UINT textureWidth, UINT lockPitch) {
-    
-    // Assume that DXT blocks are 4x4 pixels.
-    // This may not always be correct.
-    constexpr UINT blockWidth  = 4;
-    constexpr UINT blockHeight = 4;
-
-    // Rect dimensions in blocks
-    UINT rectWidthBlocks  = ((rect.right-rect.left) / blockWidth);
-    UINT rectHeightBlocks = ((rect.bottom-rect.top) / blockHeight);
-
-    // Compute bytes per block
-    UINT blocksPerRow  = std::max(textureWidth / blockWidth, 1u);
-    UINT bytesPerBlock = lockPitch / blocksPerRow;
-
-    return bytesPerBlock * (rectHeightBlocks * rectWidthBlocks);
-  }
-
   // Copies texture rect in system mem using memcpy.
   // Rects must be congruent, but need not be aligned.
   HRESULT copyTextureBuffers(
@@ -49,6 +30,8 @@ namespace dxvk {
     if (srcDesc.Format != dstDesc.Format)
       return D3DERR_INVALIDCALL;
 
+    bool compressed = isDXT(srcDesc.Format);
+
     res = src->LockRect(&srcLocked, &srcRect, D3DLOCK_READONLY);
     if (FAILED(res))
       return res;
@@ -61,36 +44,52 @@ namespace dxvk {
 
     auto rows = srcRect.bottom  - srcRect.top;
     auto cols = srcRect.right   - srcRect.left;
+    auto bpp  = srcLocked.Pitch / srcDesc.Width;
 
-    if (isDXT(srcDesc.Format)) {
-      
-      // Copy compressed textures.
-      auto copySize = getDXTCopySize(srcRect, srcDesc.Width, srcLocked.Pitch);
-      std::memcpy(dstLocked.pBits, srcLocked.pBits, copySize);
-    
+    if (!compressed
+     && srcRect.left    == 0
+     && srcRect.right   == LONG(srcDesc.Width)
+     && srcDesc.Width   == dstDesc.Width
+     && srcLocked.Pitch == dstLocked.Pitch) {
+
+      // If copying the entire texture into a congruent destination,
+      // we can do this in one continuous copy.
+      std::memcpy(dstLocked.pBits, srcLocked.pBits, srcLocked.Pitch * rows);
+
     } else {
-      auto bpp  = srcLocked.Pitch / srcDesc.Width;
+      // Bytes per row of the rect
+      auto amplitude = cols * bpp;
 
-      if (srcRect.left    == 0
-       && srcRect.right   == LONG(srcDesc.Width)
-       && srcDesc.Width   == dstDesc.Width
-       && srcLocked.Pitch == dstLocked.Pitch) {
+      // Handle DXT compressed textures.
+      // TODO: Are rects always 4x4 aligned?
+      if (compressed) {
+        // Assume that DXT blocks are 4x4 pixels.
+        constexpr UINT blockWidth  = 4;
+        constexpr UINT blockHeight = 4;
 
-        // If copying the entire texture into a congruent destination,
-        // we can do this in one continuous copy.
-        std::memcpy(dstLocked.pBits, srcLocked.pBits, srcLocked.Pitch * rows);
+        // Compute rect dimensions in 4x4 blocks
+        UINT rectWidthBlocks  = cols / blockWidth;
+        UINT rectHeightBlocks = rows / blockHeight;
 
-      } else {
-        // Copy one row at a time
-        size_t srcOffset = 0, dstOffset = 0;
-        for (auto i = 0; i < rows; i++) {
-          std::memcpy(
-            (uint8_t*)dstLocked.pBits + dstOffset,
-            (uint8_t*)srcLocked.pBits + srcOffset,
-            cols * bpp);
-          srcOffset += srcLocked.Pitch;
-          dstOffset += dstLocked.Pitch;
-        }
+        // Compute total texture width in blocks
+        // to derive block size in bytes using the pitch.
+        UINT texWidthBlocks = std::max(srcDesc.Width / blockWidth, 1u);
+        UINT bytesPerBlock  = srcLocked.Pitch / texWidthBlocks;
+
+        // Copy H/4 rows of W/4 blocks
+        amplitude = rectWidthBlocks * bytesPerBlock;
+        rows      = rectHeightBlocks;
+      }
+
+      // Copy one row at a time
+      size_t srcOffset = 0, dstOffset = 0;
+      for (auto i = 0; i < rows; i++) {
+        std::memcpy(
+          (uint8_t*)dstLocked.pBits + dstOffset,
+          (uint8_t*)srcLocked.pBits + srcOffset,
+          amplitude);
+        srcOffset += srcLocked.Pitch;
+        dstOffset += dstLocked.Pitch;
       }
     }
 
@@ -138,7 +137,6 @@ namespace dxvk {
     for (UINT i = 0; i < cRects; i++) {
 
       RECT srcRect, dstRect;
-
       srcRect = pSourceRectsArray[i];
 
       // True if the copy is asymmetric
@@ -286,6 +284,7 @@ namespace dxvk {
               }
 
               res = copyTextureBuffers(src.ptr(), dst.ptr(), srcDesc, dstDesc, srcRect, dstRect);
+              goto done;
             }
             case D3DPOOL_SCRATCH:
             default: {
