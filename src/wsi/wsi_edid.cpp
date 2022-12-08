@@ -37,9 +37,9 @@ namespace dxvk::wsi {
 
     if (cta) {
       for (auto blocks = di_edid_cta_get_data_blocks(cta); *blocks != nullptr; blocks++) {
-        if ((hdr_static_metadata = di_cta_data_block_get_hdr_static_metadata(*blocks)))
+        if (!hdr_static_metadata && (hdr_static_metadata = di_cta_data_block_get_hdr_static_metadata(*blocks)))
           continue;
-        if ((colorimetry = di_cta_data_block_get_colorimetry(*blocks)))
+        if (!colorimetry && (colorimetry = di_cta_data_block_get_colorimetry(*blocks)))
           continue;
       }
     }
