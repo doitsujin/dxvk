@@ -5,7 +5,7 @@ set -e
 shopt -s extglob
 
 if [ -z "$1" ] || [ -z "$2" ]; then
-  echo "Usage: $0 version destdir [--no-package] [--dev-build]"
+  echo "Usage: $0 version destdir [--no-package] [--dev-build] [--modern-cpu]"
   exit 1
 fi
 
@@ -24,6 +24,7 @@ shift 2
 opt_nopackage=0
 opt_devbuild=0
 opt_buildid=false
+opt_moderncpu=false
 
 CC=${CC:="gcc"}
 CXX=${CXX:="g++"}
@@ -39,6 +40,9 @@ while [ $# -gt 0 ]; do
     ;;
   "--build-id")
     opt_buildid=true
+    ;;
+  "--modern-cpu")
+    opt_moderncpu=true
     ;;
   *)
     echo "Unrecognized option: $1" >&2
@@ -62,6 +66,7 @@ function build_arch {
         --bindir "$2"                       \
         --libdir "$2"                       \
         -Dbuild_id=$opt_buildid             \
+        -Dmodern_cpu=$opt_moderncpu         \
         "$DXVK_BUILD_DIR/build.$1"
 
   cd "$DXVK_BUILD_DIR/build.$1"

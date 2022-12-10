@@ -25,6 +25,12 @@ compiler_args = [
   '-Wno-missing-braces',
 ]
 
+if get_option('modern_cpu')
+  compiler_args += [
+    '-march=x86-64-v3',
+  ]
+endif
+
 link_args = []
 
 if get_option('build_id')
