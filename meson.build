@@ -112,7 +112,7 @@ else
     './include/native/directx'
   ]
 
-  dxvk_wsi = 'glfw'
+  dxvk_wsi = get_option('dxvk_native_wsi')
   
   if dxvk_wsi == 'sdl2'
     lib_sdl2 = cpp.find_library('SDL2')
