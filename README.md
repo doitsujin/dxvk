@@ -20,7 +20,6 @@ This will **copy** the DLLs into the `system32` and `syswow64` directories of yo
 
 The setup script optionally takes the following arguments:
 - `--symlink`: Create symbolic links to the DLL files instead of copying them. This is especially useful for development.
-- `--with-d3d10`: Install the `d3d10{_1}.dll` helper libraries.
 - `--without-dxgi`: Do not install DXVK's DXGI implementation and use the one provided by wine instead.
 
 Verify that your application uses DXVK instead of wined3d by checking for the presence of the log file `d3d9.log` or `d3d11.log` in the application's directory, or by enabling the HUD (see notes below).
