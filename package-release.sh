@@ -57,13 +57,13 @@ function build_arch {
     opt_strip=--strip
   fi
 
-  meson --cross-file "$DXVK_SRC_DIR/$crossfile$1.txt" \
-        --buildtype "release"                         \
-        --prefix "$DXVK_BUILD_DIR"                    \
-        $opt_strip                                    \
-        --bindir "x$1"                                \
-        --libdir "x$1"                                \
-        -Dbuild_id=$opt_buildid                       \
+  meson setup --cross-file "$DXVK_SRC_DIR/$crossfile$1.txt" \
+        --buildtype "release"                               \
+        --prefix "$DXVK_BUILD_DIR"                          \
+        $opt_strip                                          \
+        --bindir "x$1"                                      \
+        --libdir "x$1"                                      \
+        -Dbuild_id=$opt_buildid                             \
         "$DXVK_BUILD_DIR/build.$1"
 
   cd "$DXVK_BUILD_DIR/build.$1"
