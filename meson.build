@@ -92,6 +92,9 @@ if platform == 'windows'
   endif
 
   dxvk_include_path = include_directories('./include')
+
+  dxvk_wsi = 'win32'
+  compiler_args += ['-DDXVK_WSI_WIN32']
 endif
 
 add_project_arguments(cpp.get_supported_arguments(compiler_args), language: 'cpp')
