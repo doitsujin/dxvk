@@ -1,4 +1,3 @@
-option('enable_tests', type : 'boolean', value : false)
 option('enable_dxgi',  type : 'boolean', value : true, description: 'Build DXGI')
 option('enable_d3d9',  type : 'boolean', value : true, description: 'Build D3D9')
 option('enable_d3d10', type : 'boolean', value : true, description: 'Build D3D10')
