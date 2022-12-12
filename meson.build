@@ -58,9 +58,9 @@ if platform == 'windows'
   endif
 
   if (cpu_family == 'x86_64')
-    dxvk_library_path = meson.source_root() + '/lib'
+    dxvk_library_path = meson.current_source_dir() + '/lib'
   else
-    dxvk_library_path = meson.source_root() + '/lib32'
+    dxvk_library_path = meson.current_source_dir() + '/lib32'
   endif
 
   lib_vulkan  = cpp.find_library('vulkan-1', dirs : dxvk_library_path)
