@@ -5187,7 +5187,7 @@ namespace dxvk {
     auto& rs = m_state.renderStates;
 
     if constexpr (Item == D3D9RenderStateItem::AlphaRef) {
-      uint32_t alpha = rs[D3DRS_ALPHAREF];
+      uint32_t alpha = rs[D3DRS_ALPHAREF] & 0xFF;
       UpdatePushConstant<offsetof(D3D9RenderStateInfo, alphaRef), sizeof(uint32_t)>(&alpha);
     }
     else if constexpr (Item == D3D9RenderStateItem::FogColor) {
@@ -5460,7 +5460,6 @@ namespace dxvk {
 
   void D3D9DeviceEx::MarkTextureMipsDirty(D3D9CommonTexture* pResource) {
     pResource->SetNeedsMipGen(true);
-    pResource->MarkAllNeedReadback();
 
     for (uint32_t i : bit::BitMask(m_activeTextures)) {
       // Guaranteed to not be nullptr...

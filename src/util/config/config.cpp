@@ -324,6 +324,11 @@ namespace dxvk {
     { R"(\\SonicFrontiers\.exe$)", {{
       { "dxgi.maxFrameLatency",             "1" },
     }} },
+    /* TRAHA Global                               *
+     * Shadow issues when it sees AMD/Nvidia      */
+    { R"(\\RapaNui-Win64-Shipping\.exe$)", {{
+      { "dxgi.customVendorId",              "8086" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
@@ -681,10 +686,15 @@ namespace dxvk {
     { R"(\\bms\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
     }} },
+    /* Final Fantasy XIV - Direct3D 9 mode     *
+     * Can crash with unmapping                */
+    { R"(\\ffxiv\.exe$)", {{
+      { "d3d9.textureMemory",                "0"   },
+    }} },
     /* Secret World Legends launcher           *
      * Invisible UI                            */
     { R"(\\Secret World Legends\\ClientPatcher\.exe$)", {{
-      { "d3d9.shaderModel",                 "2" },
+      { "d3d9.shaderModel",                  "2" },
     }} },
   }};
 
