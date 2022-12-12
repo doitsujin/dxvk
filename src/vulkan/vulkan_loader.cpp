@@ -19,6 +19,10 @@ namespace dxvk::vk {
   PFN_vkVoidFunction LibraryLoader::sym(const char* name) const {
     return sym(nullptr, name);
   }
+
+  bool LibraryLoader::valid() const {
+    return m_getInstanceProcAddr != nullptr;
+  }
   
   
   InstanceLoader::InstanceLoader(const Rc<LibraryLoader>& library, bool owned, VkInstance instance)

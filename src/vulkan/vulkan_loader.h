@@ -23,6 +23,7 @@ namespace dxvk::vk {
     ~LibraryLoader();
     PFN_vkVoidFunction sym(VkInstance instance, const char* name) const;
     PFN_vkVoidFunction sym(const char* name) const;
+    bool               valid() const;
   protected:
     const HMODULE                   m_library;
     const PFN_vkGetInstanceProcAddr m_getInstanceProcAddr;
