@@ -31,6 +31,8 @@ namespace dxvk {
       provider->initInstanceExtensions();
 
     m_vkl = new vk::LibraryFn();
+    if (!m_vkl->valid())
+      throw DxvkError("Failed to load vulkan-1 library.");
     m_vki = new vk::InstanceFn(m_vkl, true, this->createInstance());
 
     m_adapters = this->queryAdapters();
