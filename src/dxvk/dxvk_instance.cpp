@@ -31,7 +31,7 @@ namespace dxvk {
       provider->initInstanceExtensions();
 
     m_vkl = new vk::LibraryFn();
-    m_vki = new vk::InstanceFn(true, this->createInstance());
+    m_vki = new vk::InstanceFn(m_vkl, true, this->createInstance());
 
     m_adapters = this->queryAdapters();
 
