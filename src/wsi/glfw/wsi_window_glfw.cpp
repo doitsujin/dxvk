@@ -14,9 +14,9 @@ namespace dxvk::wsi {
 
 	void getWindowSize(
 			HWND hWindow,
-			uint32_t *pWidth,
-			uint32_t *pHeight) {
-		GLFWwindow *window = fromHwnd(hWindow);
+			uint32_t* pWidth,
+			uint32_t* pHeight) {
+		GLFWwindow* window = fromHwnd(hWindow);
 
 		int32_t w, h;
 		glfwGetWindowSize(window, &w, &h);
@@ -31,10 +31,10 @@ namespace dxvk::wsi {
 
 	void resizeWindow(
 			HWND hWindow,
-			DxvkWindowState *pState,
+			DxvkWindowState* pState,
 			uint32_t Width,
 			uint32_t Height) {
-		GLFWwindow *window = fromHwnd(hWindow);
+		GLFWwindow* window = fromHwnd(hWindow);
 
 		glfwSetWindowSize(window, int32_t(Width), int32_t(Height));
 	}
@@ -45,14 +45,14 @@ namespace dxvk::wsi {
 			HWND hWindow,
 			const WsiMode& pMode) {
 		const int32_t displayId = fromHmonitor(hMonitor);
-		GLFWwindow *window = fromHwnd(hWindow);
+		GLFWwindow* window = fromHwnd(hWindow);
 
 		if (!isDisplayValid(displayId))
 			return false;
 
 		int32_t displayCount = 0;
-		GLFWmonitor **monitors = glfwGetMonitors(&displayCount);
-		GLFWmonitor *monitor = monitors[displayId];
+		GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
+		GLFWmonitor* monitor = monitors[displayId];
 
 		GLFWvidmode wantedMode = {};
 		wantedMode.width = pMode.width;
@@ -70,15 +70,15 @@ namespace dxvk::wsi {
 	bool enterFullscreenMode(
 			HMONITOR hMonitor,
 			HWND hWindow,
-			DxvkWindowState *pState,
+			DxvkWindowState* pState,
 			bool ModeSwitch) {
 		const int32_t displayId = fromHmonitor(hMonitor);
-		GLFWwindow *window = fromHwnd(hWindow);
+		GLFWwindow* window = fromHwnd(hWindow);
 
 		if (!isDisplayValid(displayId))
 			return false;
 
-		GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+		GLFWmonitor* monitor = glfwGetPrimaryMonitor();
 		auto videoMode = glfwGetVideoMode(monitor);
 
 		// TODO: Set this on the correct monitor.
@@ -91,11 +91,11 @@ namespace dxvk::wsi {
 
 	bool leaveFullscreenMode(
 			HWND hWindow,
-			DxvkWindowState *pState,
+			DxvkWindowState* pState,
 			bool             restoreCoordinates) {
-		GLFWwindow *window = fromHwnd(hWindow);
+		GLFWwindow* window = fromHwnd(hWindow);
 
-		GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+		GLFWmonitor* monitor = glfwGetPrimaryMonitor();
 		auto videoMode = glfwGetVideoMode(monitor);
 		glfwSetWindowMonitor(window, nullptr, 0, 0, videoMode->width, videoMode->height, videoMode->refreshRate);
 
@@ -112,7 +112,7 @@ namespace dxvk::wsi {
 	HMONITOR getWindowMonitor(HWND hWindow) {
 		// TODO: implement this with glfwGetWindowMonitor 
 		//  (or maybe not? glfwGetWindowMonitor only seems to reference *fullscreen* windows)
-		// GLFWwindow *window = fromHwnd(hWindow);
+		// GLFWwindow* window = fromHwnd(hWindow);
 		const int32_t displayId = 0;
 
 		return toHmonitor(displayId);
@@ -120,7 +120,7 @@ namespace dxvk::wsi {
 
 
 	bool isWindow(HWND hWindow) {
-		GLFWwindow *window = fromHwnd(hWindow);
+		GLFWwindow* window = fromHwnd(hWindow);
 		return window != nullptr;
 	}
 
@@ -135,8 +135,8 @@ namespace dxvk::wsi {
 			HWND hWindow,
 			PFN_vkGetInstanceProcAddr pfnVkGetInstanceProcAddr,
 			VkInstance                instance,
-			VkSurfaceKHR *pSurface) {
-		GLFWwindow *window = fromHwnd(hWindow);
+			VkSurfaceKHR* pSurface) {
+		GLFWwindow* window = fromHwnd(hWindow);
 
 		return glfwCreateWindowSurface(instance, window, nullptr, pSurface);
 	}

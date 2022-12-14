@@ -44,15 +44,15 @@ namespace dxvk::wsi {
 
 	bool getDesktopCoordinates(
 			HMONITOR hMonitor,
-			RECT *pRect) {
+			RECT* pRect) {
 		const int32_t displayId = fromHmonitor(hMonitor);
 
 		if (!isDisplayValid(displayId))
 			return false;
 
 		int32_t displayCount = 0;
-		GLFWmonitor **monitors = glfwGetMonitors(&displayCount);
-		GLFWmonitor *monitor = monitors[displayId];
+		GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
+		GLFWmonitor* monitor = monitors[displayId];
 
 		int32_t x;
 		int32_t y;
@@ -82,7 +82,7 @@ namespace dxvk::wsi {
 	}
 
 
-	static inline void convertMode(const GLFWvidmode &mode, WsiMode *pMode) {
+	static inline void convertMode(const GLFWvidmode& mode, WsiMode* pMode) {
 		pMode->width = uint32_t(mode.width);
 		pMode->height = uint32_t(mode.height);
 		pMode->refreshRate = WsiRational{uint32_t(mode.refreshRate) * 1000, 1000};
@@ -96,17 +96,17 @@ namespace dxvk::wsi {
 	bool getDisplayMode(
 			HMONITOR hMonitor,
 			uint32_t ModeNumber,
-			WsiMode *pMode) {
+			WsiMode* pMode) {
 		const int32_t displayId = fromHmonitor(hMonitor);
 		int32_t displayCount = 0;
-		GLFWmonitor **monitors = glfwGetMonitors(&displayCount);
-		GLFWmonitor *monitor = monitors[displayId];
+		GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
+		GLFWmonitor* monitor = monitors[displayId];
 
 		if (!isDisplayValid(displayId))
 			return false;
 
 		int32_t count = 0;
-		const GLFWvidmode *modes = glfwGetVideoModes(monitor, &count);
+		const GLFWvidmode* modes = glfwGetVideoModes(monitor, &count);
 
 		convertMode(modes[ModeNumber], pMode);
 
@@ -116,15 +116,15 @@ namespace dxvk::wsi {
 
 	bool getCurrentDisplayMode(
 			HMONITOR hMonitor,
-			WsiMode *pMode) {
+			WsiMode* pMode) {
 		const int32_t displayId = fromHmonitor(hMonitor);
 
 		if (!isDisplayValid(displayId))
 			return false;
 
 		int32_t displayCount = 0;
-		GLFWmonitor **monitors = glfwGetMonitors(&displayCount);
-		GLFWmonitor *monitor = monitors[displayId];
+		GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
+		GLFWmonitor* monitor = monitors[displayId];
 
 		auto mode = glfwGetVideoMode(monitor);
 
@@ -136,15 +136,15 @@ namespace dxvk::wsi {
 
 	bool getDesktopDisplayMode(
 			HMONITOR hMonitor,
-			WsiMode *pMode) {
+			WsiMode* pMode) {
 		const int32_t displayId = fromHmonitor(hMonitor);
 
 		if (!isDisplayValid(displayId))
 			return false;
 
 		int32_t displayCount = 0;
-		GLFWmonitor **monitors = glfwGetMonitors(&displayCount);
-		GLFWmonitor *monitor = monitors[displayId];
+		GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
+		GLFWmonitor* monitor = monitors[displayId];
 
 		//TODO: actually implement this properly, currently we just grab the current one
 		convertMode(*glfwGetVideoMode(monitor), pMode);
