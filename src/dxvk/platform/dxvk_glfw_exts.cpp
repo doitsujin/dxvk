@@ -15,12 +15,6 @@ namespace dxvk {
     if (!glfwVulkanSupported()) 
       throw DxvkError(str::format("GLFW WSI: Vulkan is not supported in any capacity!"));
 
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    GLFWwindow* window = glfwCreateWindow(1, 1, "Dummy Window", nullptr, nullptr);
-        
-    if (window == nullptr)
-      throw DxvkError(str::format("GLFW WSI: Unable to create dummy window"));
-        
     uint32_t extensionCount = 0;
     const char** extensionArray = glfwGetRequiredInstanceExtensions(&extensionCount);
 
@@ -32,8 +26,6 @@ namespace dxvk {
       names.add(extensionArray[i]);
     }
 
-    glfwDestroyWindow(window);
-        
     return names;
   }
 
