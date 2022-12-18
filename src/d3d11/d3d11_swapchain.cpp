@@ -12,6 +12,17 @@ namespace dxvk {
     return uint16_t(65535.0f * x);
   }
 
+  static VkColorSpaceKHR ConvertColorSpace(DXGI_COLOR_SPACE_TYPE colorspace) {
+    switch (colorspace) {
+      case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709:    return VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+      case DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020: return VK_COLOR_SPACE_HDR10_ST2084_EXT;
+      case DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709:    return VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT;
+      default:
+        Logger::warn(str::format("DXGI: ConvertColorSpace: Unknown colorspace ", colorspace));
+        return VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    }
+  }
+
 
   D3D11SwapChain::D3D11SwapChain(
           D3D11DXGIDevice*        pContainer,
@@ -257,7 +268,8 @@ namespace dxvk {
           DXGI_COLOR_SPACE_TYPE     ColorSpace) {
     UINT supportFlags = 0;
 
-    if (ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709)
+    const VkColorSpaceKHR vkColorSpace = ConvertColorSpace(ColorSpace);
+    if (m_presenter->supportsColorSpace(vkColorSpace))
       supportFlags |= DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT;
 
     return supportFlags;
@@ -266,7 +278,13 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D11SwapChain::SetColorSpace(
           DXGI_COLOR_SPACE_TYPE     ColorSpace) {
-    // Ignore, will only ever be sRGB
+    if (!(CheckColorSpaceSupport(ColorSpace) & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT))
+      return E_INVALIDARG;
+
+    const VkColorSpaceKHR vkColorSpace = ConvertColorSpace(ColorSpace);
+    m_dirty |= vkColorSpace != m_colorspace;
+    m_colorspace = vkColorSpace;
+
     return S_OK;
   }
 
@@ -633,23 +651,23 @@ namespace dxvk {
       
       case DXGI_FORMAT_R8G8B8A8_UNORM:
       case DXGI_FORMAT_B8G8R8A8_UNORM: {
-        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_UNORM, m_colorspace };
+        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_UNORM, m_colorspace };
       } break;
       
       case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
       case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB: {
-        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_SRGB, m_colorspace };
+        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_SRGB, m_colorspace };
       } break;
       
       case DXGI_FORMAT_R10G10B10A2_UNORM: {
-        pDstFormats[n++] = { VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        pDstFormats[n++] = { VK_FORMAT_A2R10G10B10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_A2B10G10R10_UNORM_PACK32, m_colorspace };
+        pDstFormats[n++] = { VK_FORMAT_A2R10G10B10_UNORM_PACK32, m_colorspace };
       } break;
       
       case DXGI_FORMAT_R16G16B16A16_FLOAT: {
-        pDstFormats[n++] = { VK_FORMAT_R16G16B16A16_SFLOAT, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_R16G16B16A16_SFLOAT, m_colorspace };
       } break;
     }
 
