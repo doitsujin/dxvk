@@ -209,11 +209,11 @@ namespace dxvk::vk {
 
     VkResult getSupportedFormats(
             std::vector<VkSurfaceFormatKHR>& formats,
-      const PresenterDesc&            desc);
+            VkFullScreenExclusiveEXT         fullScreenExclusive) const;
     
     VkResult getSupportedPresentModes(
             std::vector<VkPresentModeKHR>& modes,
-      const PresenterDesc&            desc);
+            VkFullScreenExclusiveEXT       fullScreenExclusive) const;
     
     VkResult getSwapImages(
             std::vector<VkImage>&     images);
