@@ -446,6 +446,7 @@ namespace dxvk {
     presenterDevice.queue         = graphicsQueue.queueHandle;
     presenterDevice.adapter       = m_device->adapter()->handle();
     presenterDevice.features.fullScreenExclusive = m_device->features().extFullScreenExclusive;
+    presenterDevice.features.hdrMetadata = m_device->features().extHdrMetadata;
 
     vk::PresenterDesc presenterDesc;
     presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };

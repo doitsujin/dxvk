@@ -238,6 +238,12 @@ namespace dxvk::vk {
   }
 
 
+  void Presenter::setHdrMetadata(const VkHdrMetadataEXT& hdrMetadata) {
+    if (m_device.features.hdrMetadata)
+      m_vkd->vkSetHdrMetadataEXT(m_vkd->device(), 1, &m_swapchain, &hdrMetadata);
+  }
+
+
   VkResult Presenter::getSupportedFormats(std::vector<VkSurfaceFormatKHR>& formats, VkFullScreenExclusiveEXT fullScreenExclusive) const {
     uint32_t numFormats = 0;
 
