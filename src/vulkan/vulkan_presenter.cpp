@@ -116,10 +116,10 @@ namespace dxvk::vk {
         m_device.adapter, m_surface, &caps)))
       return status;
 
-    if ((status = getSupportedFormats(formats, desc)))
+    if ((status = getSupportedFormats(formats, desc.fullScreenExclusive)))
       return status;
 
-    if ((status = getSupportedPresentModes(modes, desc)))
+    if ((status = getSupportedPresentModes(modes, desc.fullScreenExclusive)))
       return status;
 
     // Select actual swap chain properties and create swap chain
@@ -225,11 +225,11 @@ namespace dxvk::vk {
   }
 
 
-  VkResult Presenter::getSupportedFormats(std::vector<VkSurfaceFormatKHR>& formats, const PresenterDesc& desc) {
+  VkResult Presenter::getSupportedFormats(std::vector<VkSurfaceFormatKHR>& formats, VkFullScreenExclusiveEXT fullScreenExclusive) const {
     uint32_t numFormats = 0;
 
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
-    fullScreenInfo.fullScreenExclusive = desc.fullScreenExclusive;
+    fullScreenInfo.fullScreenExclusive = fullScreenExclusive;
 
     VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR, &fullScreenInfo };
     surfaceInfo.surface = m_surface;
@@ -267,11 +267,11 @@ namespace dxvk::vk {
   }
 
   
-  VkResult Presenter::getSupportedPresentModes(std::vector<VkPresentModeKHR>& modes, const PresenterDesc& desc) {
+  VkResult Presenter::getSupportedPresentModes(std::vector<VkPresentModeKHR>& modes, VkFullScreenExclusiveEXT fullScreenExclusive) const {
     uint32_t numModes = 0;
 
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
-    fullScreenInfo.fullScreenExclusive = desc.fullScreenExclusive;
+    fullScreenInfo.fullScreenExclusive = fullScreenExclusive;
 
     VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR, &fullScreenInfo };
     surfaceInfo.surface = m_surface;
