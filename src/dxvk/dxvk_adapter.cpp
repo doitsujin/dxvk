@@ -318,6 +318,8 @@ namespace dxvk {
                 || !required.extShaderStencilExport)
         && (m_deviceFeatures.extShaderStencilExport
                 || !required.extSwapchainColorSpace)
+        && (m_deviceFeatures.extHdrMetadata
+                || !required.extHdrMetadata)
         && (m_deviceFeatures.extTransformFeedback.transformFeedback
                 || !required.extTransformFeedback.transformFeedback)
         && (m_deviceFeatures.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor
@@ -337,7 +339,7 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 25> devExtensionList = {{
+    std::array<DxvkExt*, 26> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.extAttachmentFeedbackLoopLayout,
@@ -348,6 +350,7 @@ namespace dxvk {
       &devExtensions.extFragmentShaderInterlock,
       &devExtensions.extFullScreenExclusive,
       &devExtensions.extGraphicsPipelineLibrary,
+      &devExtensions.extHdrMetadata,
       &devExtensions.extMemoryBudget,
       &devExtensions.extMemoryPriority,
       &devExtensions.extNonSeamlessCubeMap,
@@ -542,6 +545,9 @@ namespace dxvk {
 
     if (devExtensions.extSwapchainColorSpace)
       enabledFeatures.extSwapchainColorSpace = VK_TRUE;
+
+    if (devExtensions.extHdrMetadata)
+      enabledFeatures.extHdrMetadata = VK_TRUE;
 
     if (devExtensions.extTransformFeedback) {
       enabledFeatures.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
@@ -884,6 +890,9 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME))
       m_deviceFeatures.extSwapchainColorSpace = VK_TRUE;
 
+    if (m_deviceExtensions.supports(VK_EXT_HDR_METADATA_EXTENSION_NAME))
+      m_deviceFeatures.extHdrMetadata = VK_TRUE;
+
     if (m_deviceExtensions.supports(VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME)) {
       m_deviceFeatures.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
       m_deviceFeatures.extTransformFeedback.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extTransformFeedback);
@@ -1035,6 +1044,8 @@ namespace dxvk {
       "\n  extension supported                    : ", features.extShaderStencilExport ? "1" : "0",
       "\n", VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME,
       "\n  extension supported                    : ", features.extSwapchainColorSpace ? "1" : "0",
+      "\n", VK_EXT_HDR_METADATA_EXTENSION_NAME,
+      "\n  extension supported                    : ", features.extHdrMetadata ? "1" : "0",
       "\n", VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME,
       "\n  transformFeedback                      : ", features.extTransformFeedback.transformFeedback ? "1" : "0",
       "\n  geometryStreams                        : ", features.extTransformFeedback.geometryStreams ? "1" : "0",

@@ -186,7 +186,8 @@
                 "VK_EXT_vertex_attribute_divisor": 1,
                 "VK_EXT_custom_border_color": 1,
                 "VK_EXT_depth_clip_enable": 1,
-                "VK_EXT_swapchain_colorspace": 1
+                "VK_EXT_swapchain_colorspace": 1,
+                "VK_EXT_hdr_metadata": 1
             },
             "features": {
                 "VkPhysicalDeviceFeatures": {
@@ -390,7 +391,7 @@
             "revision": 4,
             "date": "2022-12-18",
             "author": "Joshua Ashton",
-            "comment": "Add VK_EXT_swapchain_colorspace to d3d11_baseline_optional"
+            "comment": "Add VK_EXT_swapchain_colorspace and VK_EXT_hdr_metadata to d3d11_baseline_optional"
         },
         {
             "revision": 3,

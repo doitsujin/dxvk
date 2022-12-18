@@ -384,6 +384,10 @@ namespace dxvk::vk {
     VULKAN_FN(vkGetDeviceGroupSurfacePresentModes2EXT);
     #endif
 
+    #ifdef VK_EXT_hdr_metadata
+    VULKAN_FN(vkSetHdrMetadataEXT);
+    #endif
+
     #ifdef VK_EXT_shader_module_identifier
     VULKAN_FN(vkGetShaderModuleCreateInfoIdentifierEXT);
     VULKAN_FN(vkGetShaderModuleIdentifierEXT);
