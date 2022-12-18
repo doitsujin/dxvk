@@ -49,6 +49,7 @@ namespace dxvk::vk {
    */
   struct PresenterFeatures {
     bool                fullScreenExclusive : 1;
+    bool                hdrMetadata : 1;
   };
   
   /**
@@ -190,6 +191,13 @@ namespace dxvk::vk {
      * * \returns \c true if the presenter supports the colorspace
      */
     bool supportsColorSpace(VkColorSpaceKHR colorspace);
+
+    /**
+     * \brief Sets HDR metadata
+     *
+     * \param [in] hdrMetadata HDR Metadata
+     */
+    void setHdrMetadata(const VkHdrMetadataEXT& hdrMetadata);
 
   private:
 
