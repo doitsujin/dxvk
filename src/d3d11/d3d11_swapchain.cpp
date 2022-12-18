@@ -23,6 +23,35 @@ namespace dxvk {
     }
   }
 
+  static VkXYColorEXT ConvertXYColor(const UINT16 (&dxgiColor)[2]) {
+    return VkXYColorEXT{ float(dxgiColor[0]) / 50000.0f, float(dxgiColor[1]) / 50000.0f };
+  }
+
+  static float ConvertMaxLuminance(UINT dxgiLuminance) {
+    return float(dxgiLuminance);
+  }
+
+  static float ConvertMinLuminance(UINT dxgiLuminance) {
+    return float(dxgiLuminance) / 0.0001f;
+  }
+
+  static float ConvertLevel(UINT16 dxgiLevel) {
+    return float(dxgiLevel);
+  }
+
+  static VkHdrMetadataEXT ConvertHDRMetadata(const DXGI_HDR_METADATA_HDR10& dxgiMetadata) {
+    VkHdrMetadataEXT vkMetadata = { VK_STRUCTURE_TYPE_HDR_METADATA_EXT };
+    vkMetadata.displayPrimaryRed         = ConvertXYColor(dxgiMetadata.RedPrimary);
+    vkMetadata.displayPrimaryGreen       = ConvertXYColor(dxgiMetadata.GreenPrimary);
+    vkMetadata.displayPrimaryBlue        = ConvertXYColor(dxgiMetadata.BluePrimary);
+    vkMetadata.whitePoint                = ConvertXYColor(dxgiMetadata.WhitePoint);
+    vkMetadata.maxLuminance              = ConvertMaxLuminance(dxgiMetadata.MaxMasteringLuminance);
+    vkMetadata.minLuminance              = ConvertMinLuminance(dxgiMetadata.MinMasteringLuminance);
+    vkMetadata.maxContentLightLevel      = ConvertLevel(dxgiMetadata.MaxContentLightLevel);
+    vkMetadata.maxFrameAverageLightLevel = ConvertLevel(dxgiMetadata.MaxFrameAverageLightLevel);
+    return vkMetadata;
+  }
+
 
   D3D11SwapChain::D3D11SwapChain(
           D3D11DXGIDevice*        pContainer,
@@ -292,8 +321,10 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11SwapChain::SetHDRMetaData(
     const DXGI_VK_HDR_METADATA*     pMetaData) {
     // For some reason this call always seems to succeed on Windows
-    if (pMetaData->Type == DXGI_HDR_METADATA_TYPE_HDR10)
-      Logger::warn("D3D11: HDR10 metadata not supported");
+    if (pMetaData->Type == DXGI_HDR_METADATA_TYPE_HDR10) {
+      m_hdrMetadata = ConvertHDRMetadata(pMetaData->HDR10);
+      m_dirtyHdrMetadata = true;
+    }
 
     return S_OK;
   }
@@ -333,6 +364,11 @@ namespace dxvk {
         
         info = m_presenter->info();
         status = m_presenter->acquireNextImage(sync, imageIndex);
+      }
+
+      if (m_hdrMetadata && m_dirtyHdrMetadata) {
+        m_presenter->setHdrMetadata(*m_hdrMetadata);
+        m_dirtyHdrMetadata = false;
       }
 
       // Resolve back buffer if it is multisampled. We
@@ -402,6 +438,7 @@ namespace dxvk {
     m_device->waitForIdle();
 
     m_presentStatus.result = VK_SUCCESS;
+    m_dirtyHdrMetadata = true;
 
     vk::PresenterDesc presenterDesc;
     presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };

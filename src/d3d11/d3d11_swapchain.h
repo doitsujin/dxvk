@@ -123,6 +123,9 @@ namespace dxvk {
 
     VkColorSpaceKHR         m_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
+    std::optional<VkHdrMetadataEXT> m_hdrMetadata;
+    bool m_dirtyHdrMetadata = true;
+
     HRESULT PresentImage(UINT SyncInterval);
 
     void SubmitPresent(
