@@ -220,6 +220,19 @@ namespace dxvk::vk {
   }
 
 
+  bool Presenter::supportsColorSpace(VkColorSpaceKHR colorspace) {
+    std::vector<VkSurfaceFormatKHR> surfaceFormats;
+    getSupportedFormats(surfaceFormats, VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT);
+
+    for (const auto& surfaceFormat : surfaceFormats) {
+      if (surfaceFormat.colorSpace == colorspace)
+        return true;
+    }
+
+    return false;
+  }
+
+
   void Presenter::setFrameRateLimit(double frameRate) {
     m_fpsLimiter.setTargetFrameRate(frameRate);
   }

@@ -183,6 +183,14 @@ namespace dxvk::vk {
       return m_swapchain;
     }
 
+    /**
+     * \brief Checks if a presenter supports the colorspace
+     *
+     * \param [in] colorspace The colorspace to test
+     * * \returns \c true if the presenter supports the colorspace
+     */
+    bool supportsColorSpace(VkColorSpaceKHR colorspace);
+
   private:
 
     Rc<InstanceFn>    m_vki;
