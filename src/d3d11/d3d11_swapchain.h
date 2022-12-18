@@ -121,6 +121,8 @@ namespace dxvk {
     bool                    m_dirty = true;
     bool                    m_vsync = true;
 
+    VkColorSpaceKHR         m_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+
     HRESULT PresentImage(UINT SyncInterval);
 
     void SubmitPresent(
