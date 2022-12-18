@@ -185,7 +185,8 @@
                 "VK_EXT_memory_priority": 1,
                 "VK_EXT_vertex_attribute_divisor": 1,
                 "VK_EXT_custom_border_color": 1,
-                "VK_EXT_depth_clip_enable": 1
+                "VK_EXT_depth_clip_enable": 1,
+                "VK_EXT_swapchain_colorspace": 1
             },
             "features": {
                 "VkPhysicalDeviceFeatures": {
@@ -385,6 +386,12 @@
         }
     },
     "history": [
+        {
+            "revision": 4,
+            "date": "2022-12-18",
+            "author": "Joshua Ashton",
+            "comment": "Add VK_EXT_swapchain_colorspace to d3d11_baseline_optional"
+        },
         {
             "revision": 3,
             "date": "2022-10-13",
