@@ -59,9 +59,11 @@ namespace dxvk {
       DxvkImageViewCreateInfo viewInfo;
       viewInfo.format  = formatInfo.Format;
       viewInfo.aspect  = formatInfo.Aspect;
-      viewInfo.swizzle = formatInfo.Swizzle;
       viewInfo.usage   = VK_IMAGE_USAGE_STORAGE_BIT;
-      
+
+      if (!util::isIdentityMapping(formatInfo.Swizzle))
+        Logger::warn(str::format("UAV format ", pDesc->Format, " has non-identity swizzle, but UAV swizzles are not supported"));
+
       switch (pDesc->ViewDimension) {
         case D3D11_UAV_DIMENSION_TEXTURE1D:
           viewInfo.type      = VK_IMAGE_VIEW_TYPE_1D;
