@@ -327,12 +327,49 @@ namespace dxvk {
       depInfo.pImageMemoryBarriers = m_imgBarriers.data();
     }
 
-    if (depInfo.memoryBarrierCount + depInfo.bufferMemoryBarrierCount + depInfo.imageMemoryBarrierCount) {
-      commandList->cmdPipelineBarrier(m_cmdBuffer, &depInfo);
-      commandList->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1);
+    uint32_t totalBarrierCount = depInfo.memoryBarrierCount
+      + depInfo.bufferMemoryBarrierCount
+      + depInfo.imageMemoryBarrierCount;
 
-      this->reset();
+    if (!totalBarrierCount)
+      return;
+
+    // AMDVLK (and -PRO) will just crash if they encounter a very large structure
+    // in one vkCmdPipelineBarrier2 call, so we need to split the barrier into parts.
+    constexpr uint32_t MaxBarriersPerCall = 512;
+
+    if (unlikely(totalBarrierCount > MaxBarriersPerCall)) {
+      VkDependencyInfo splitDepInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+
+      for (uint32_t i = 0; i < depInfo.memoryBarrierCount; i += MaxBarriersPerCall) {
+        splitDepInfo.memoryBarrierCount = std::min(depInfo.memoryBarrierCount - i, MaxBarriersPerCall);
+        splitDepInfo.pMemoryBarriers = depInfo.pMemoryBarriers + i;
+        commandList->cmdPipelineBarrier(m_cmdBuffer, &splitDepInfo);
+      }
+
+      splitDepInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+
+      for (uint32_t i = 0; i < depInfo.bufferMemoryBarrierCount; i += MaxBarriersPerCall) {
+        splitDepInfo.bufferMemoryBarrierCount = std::min(depInfo.bufferMemoryBarrierCount - i, MaxBarriersPerCall);
+        splitDepInfo.pBufferMemoryBarriers = depInfo.pBufferMemoryBarriers + i;
+        commandList->cmdPipelineBarrier(m_cmdBuffer, &splitDepInfo);
+      }
+
+      splitDepInfo = { VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+
+      for (uint32_t i = 0; i < depInfo.imageMemoryBarrierCount; i += MaxBarriersPerCall) {
+        splitDepInfo.imageMemoryBarrierCount = std::min(depInfo.imageMemoryBarrierCount - i, MaxBarriersPerCall);
+        splitDepInfo.pImageMemoryBarriers = depInfo.pImageMemoryBarriers + i;
+        commandList->cmdPipelineBarrier(m_cmdBuffer, &splitDepInfo);
+      }
+    } else {
+      // Otherwise, issue the barrier as-is
+      commandList->cmdPipelineBarrier(m_cmdBuffer, &depInfo);
     }
+
+    commandList->addStatCtr(DxvkStatCounter::CmdBarrierCount, 1);
+
+    this->reset();
   }
   
   
