@@ -54,7 +54,8 @@ namespace dxvk {
     , m_multithread     ( BehaviorFlags & D3DCREATE_MULTITHREADED )
     , m_isSWVP          ( (BehaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING) ? true : false )
     , m_csThread        ( dxvkDevice, dxvkDevice->createContext(DxvkContextType::Primary) )
-    , m_csChunk         ( AllocCsChunk() ) {
+    , m_csChunk         ( AllocCsChunk() )
+    , m_d3d9Interop     ( this ) {
     // If we can SWVP, then we use an extended constant set
     // as SWVP has many more slots available than HWVP.
     bool canSWVP = CanSWVP();
@@ -188,6 +189,11 @@ namespace dxvk {
      || riid == __uuidof(IDirect3DDevice9)
      || extended) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3D9VkInteropDevice)) {
+      *ppvObject = ref(&m_d3d9Interop);
       return S_OK;
     }
 
@@ -476,6 +482,12 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = FALSE;
+    // Docs:
+    // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
+    // unless they are dynamic textures or they are private, FOURCC, driver formats.
+    desc.IsLockable         = Pool != D3DPOOL_DEFAULT
+                            || (Usage & D3DUSAGE_DYNAMIC)
+                            || IsVendorFormat(EnumerateFormat(Format));
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -537,6 +549,12 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = FALSE;
+    // Docs:
+    // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
+    // unless they are dynamic textures or they are private, FOURCC, driver formats.
+    desc.IsLockable         = Pool != D3DPOOL_DEFAULT
+                            || (Usage & D3DUSAGE_DYNAMIC)
+                            || IsVendorFormat(EnumerateFormat(Format));
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -585,6 +603,12 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = FALSE;
+    // Docs:
+    // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
+    // unless they are dynamic textures or they are private, FOURCC, driver formats.
+    desc.IsLockable         = Pool != D3DPOOL_DEFAULT
+                            || (Usage & D3DUSAGE_DYNAMIC)
+                            || IsVendorFormat(EnumerateFormat(Format));
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -746,6 +770,12 @@ namespace dxvk {
     if (unlikely(srcTextureInfo->Desc()->Format != dstTextureInfo->Desc()->Format))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(srcTextureInfo->Desc()->MultiSample != D3DMULTISAMPLE_NONE))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(dstTextureInfo->Desc()->MultiSample != D3DMULTISAMPLE_NONE))
+      return D3DERR_INVALIDCALL;
+
     const DxvkFormatInfo* formatInfo = lookupFormatInfo(dstTextureInfo->GetFormatMapping().FormatColor);
 
     VkOffset3D srcOffset = { 0u, 0u, 0u };
@@ -899,11 +929,14 @@ namespace dxvk {
     VkExtent3D dstTexExtent = dstTexInfo->GetExtentMip(dst->GetMipLevel());
     VkExtent3D srcTexExtent = srcTexInfo->GetExtentMip(src->GetMipLevel());
 
-    dstTexInfo->CreateBufferSubresource(dst->GetSubresource(), dstTexExtent.width > srcTexExtent.width || dstTexExtent.height > srcTexExtent.height);
-    Rc<DxvkBuffer> dstBuffer = dstTexInfo->GetBuffer(dst->GetSubresource());
+    const bool clearDst = dstTexInfo->Desc()->MipLevels > 1
+                       || dstTexExtent.width > srcTexExtent.width
+                       || dstTexExtent.height > srcTexExtent.height;
 
-    Rc<DxvkImage>  srcImage                 = srcTexInfo->GetImage();
-    const DxvkFormatInfo* srcFormatInfo     = lookupFormatInfo(srcImage->info().format);
+    dstTexInfo->CreateBuffer(clearDst);
+    DxvkBufferSlice dstBufferSlice      = dstTexInfo->GetBufferSlice(dst->GetSubresource());
+    Rc<DxvkImage> srcImage              = srcTexInfo->GetImage();
+    const DxvkFormatInfo* srcFormatInfo = lookupFormatInfo(srcImage->info().format);
 
     const VkImageSubresource srcSubresource = srcTexInfo->GetSubresourceFromIndex(srcFormatInfo->aspectMask, src->GetSubresource());
     VkImageSubresourceLayers srcSubresourceLayers = {
@@ -912,12 +945,12 @@ namespace dxvk {
       srcSubresource.arrayLayer, 1 };
 
     EmitCs([
-      cBuffer       = dstBuffer,
+      cBufferSlice  = std::move(dstBufferSlice),
       cImage        = srcImage,
       cSubresources = srcSubresourceLayers,
       cLevelExtent  = srcTexExtent
     ] (DxvkContext* ctx) {
-      ctx->copyImageToBuffer(cBuffer, 0, 4, 0,
+      ctx->copyImageToBuffer(cBufferSlice.buffer(), cBufferSlice.offset(), 4, 0,
         cImage, cSubresources, VkOffset3D { 0, 0, 0 },
         cLevelExtent);
     });
@@ -1367,7 +1400,8 @@ namespace dxvk {
     m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
     if (ds != nullptr) {
-      float rValue = GetDepthBufferRValue(ds->GetCommonTexture()->GetFormatMapping().FormatColor);
+      const int32_t vendorId = m_dxvkDevice->adapter()->deviceProperties().vendorID;
+      float rValue = GetDepthBufferRValue(ds->GetCommonTexture()->GetFormatMapping().FormatColor, vendorId);
       if (m_depthBiasScale != rValue) {
         m_depthBiasScale = rValue;
         m_flags.set(D3D9DeviceFlag::DirtyDepthBias);
@@ -1694,7 +1728,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     if (unlikely(ShouldRecord())) {
-      Logger::warn("D3D9DeviceEx::SetLight: State block not implemented.");
+      m_recorder->SetLight(Index, pLight);
       return D3D_OK;
     }
 
@@ -1727,6 +1761,11 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::LightEnable(DWORD Index, BOOL Enable) {
     D3D9DeviceLock lock = LockDevice();
+
+    if (unlikely(ShouldRecord())) {
+      m_recorder->LightEnable(Index, Enable);
+      return D3D_OK;
+    }
 
     if (unlikely(Index >= m_state.lights.size()))
       m_state.lights.resize(Index + 1);
@@ -2608,8 +2647,17 @@ namespace dxvk {
           DWORD                        Flags) {
     D3D9DeviceLock lock = LockDevice();
 
-    if (unlikely(pDestBuffer == nullptr || pVertexDecl == nullptr))
+    if (unlikely(pDestBuffer == nullptr))
       return D3DERR_INVALIDCALL;
+
+    // When vertex shader 3.0 or above is set as the current vertex shader,
+    // the output vertex declaration must be present.
+    if (UseProgrammableVS()) {
+      const auto& programInfo = GetCommonShader(m_state.vertexShader)->GetInfo();
+
+      if (unlikely(programInfo.majorVersion() >= 3) && (pVertexDecl == nullptr))
+        return D3DERR_INVALIDCALL;
+    }
 
     if (!SupportsSWVP()) {
       static bool s_errorShown = false;
@@ -3514,6 +3562,7 @@ namespace dxvk {
     desc.MultisampleQuality = MultisampleQuality;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = TRUE;
+    desc.IsLockable         = Lockable;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -3558,6 +3607,8 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = Pool == D3DPOOL_DEFAULT;
+    // Docs: Off-screen plain surfaces are always lockable, regardless of their pool types.
+    desc.IsLockable         = TRUE;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -3607,6 +3658,8 @@ namespace dxvk {
     desc.MultisampleQuality = MultisampleQuality;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = TRUE;
+    // Docs don't say anything, so just assume it's lockable.
+    desc.IsLockable         = TRUE;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -3779,6 +3832,9 @@ namespace dxvk {
         m_dirtySamplerStates |= 1u << StateSampler;
       }
 
+      m_drefClamp &= ~(1u << StateSampler);
+      m_drefClamp |= uint32_t(newTexture->IsUpgradedToD32f()) << StateSampler;
+
       const bool oldCube = m_cubeTextures & (1u << StateSampler);
       const bool newCube = newTexture->GetType() == D3DRTYPE_CUBETEXTURE;
       if (oldCube != newCube) {
@@ -3926,8 +3982,6 @@ namespace dxvk {
 
     // Ensure we support real BC formats and unofficial vendor ones.
     enabled.core.features.textureCompressionBC = VK_TRUE;
-
-    enabled.extDepthClipEnable.depthClipEnable = supported.extDepthClipEnable.depthClipEnable;
 
     // SM2 level hardware
     enabled.core.features.occlusionQueryPrecise = VK_TRUE;
@@ -4217,6 +4271,9 @@ namespace dxvk {
 
     auto& desc = *(pResource->Desc());
 
+    if (unlikely(!desc.IsLockable))
+      return D3DERR_INVALIDCALL;
+
     auto& formatMapping = pResource->GetFormatMapping();
 
     const DxvkFormatInfo* formatInfo = formatMapping.IsValid()
@@ -4267,107 +4324,94 @@ namespace dxvk {
     bool needsReadback = pResource->NeedsReadback(Subresource) || renderable;
     pResource->SetNeedsReadback(Subresource, false);
 
+
     if (unlikely(pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED || needsReadback)) {
       // Create mapping buffer if it doesn't exist yet. (POOL_DEFAULT)
-      pResource->CreateBufferSubresource(Subresource, !needsReadback);
+      pResource->CreateBuffer(!needsReadback);
     }
 
-    void* mapPtr;
+    // Don't use MapTexture here to keep the mapped list small while the resource is still locked.
+    void* mapPtr = pResource->GetData(Subresource);
 
-    if ((Flags & D3DLOCK_DISCARD) && needsReadback) {
-      // We do not have to preserve the contents of the
-      // buffer if the entire image gets discarded.
-      const Rc<DxvkBuffer> mappedBuffer = pResource->GetBuffer(Subresource);
-      DxvkBufferSliceHandle physSlice = pResource->DiscardMapSlice(Subresource);
-      mapPtr = physSlice.mapPtr;
+    if (needsReadback) {
+      DxvkBufferSlice mappedBufferSlice = pResource->GetBufferSlice(Subresource);
+      const Rc<DxvkBuffer> mappedBuffer = pResource->GetBuffer();
 
-      EmitCs([
-        cImageBuffer = std::move(mappedBuffer),
-        cBufferSlice = physSlice
-      ] (DxvkContext* ctx) {
-        ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
-      });
-    } else {
-      // Don't use MapTexture here to keep the mapped list small while the resource is still locked.
-      mapPtr = pResource->GetData(Subresource);
+      if (unlikely(needsReadback) && pResource->GetImage() != nullptr) {
+        Rc<DxvkImage> resourceImage = pResource->GetImage();
 
-      if (needsReadback) {
-        const Rc<DxvkBuffer> mappedBuffer = pResource->GetBuffer(Subresource);
-        if (unlikely(needsReadback) && pResource->GetImage() != nullptr) {
-          Rc<DxvkImage> resourceImage = pResource->GetImage();
+        Rc<DxvkImage> mappedImage = resourceImage->info().sampleCount != 1
+          ? pResource->GetResolveImage()
+          : std::move(resourceImage);
 
-          Rc<DxvkImage> mappedImage = resourceImage->info().sampleCount != 1
-            ? pResource->GetResolveImage()
-            : std::move(resourceImage);
+        // When using any map mode which requires the image contents
+        // to be preserved, and if the GPU has write access to the
+        // image, copy the current image contents into the buffer.
+        auto subresourceLayers = vk::makeSubresourceLayers(subresource);
 
-          // When using any map mode which requires the image contents
-          // to be preserved, and if the GPU has write access to the
-          // image, copy the current image contents into the buffer.
-          auto subresourceLayers = vk::makeSubresourceLayers(subresource);
-
-          // We need to resolve this, some games
-          // lock MSAA render targets even though
-          // that's entirely illegal and they explicitly
-          // tell us that they do NOT want to lock them...
-          if (resourceImage != nullptr) {
-            EmitCs([
-              cMainImage    = resourceImage,
-              cResolveImage = mappedImage,
-              cSubresource  = subresourceLayers
-            ] (DxvkContext* ctx) {
-              VkImageResolve region;
-              region.srcSubresource = cSubresource;
-              region.srcOffset      = VkOffset3D { 0, 0, 0 };
-              region.dstSubresource = cSubresource;
-              region.dstOffset      = VkOffset3D { 0, 0, 0 };
-              region.extent         = cMainImage->mipLevelExtent(cSubresource.mipLevel);
-
-              if (cSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-                ctx->resolveImage(
-                  cResolveImage, cMainImage, region,
-                  cMainImage->info().format);
-              }
-              else {
-                ctx->resolveDepthStencilImage(
-                  cResolveImage, cMainImage, region,
-                  VK_RESOLVE_MODE_SAMPLE_ZERO_BIT,
-                  VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
-              }
-            });
-          }
-
-          VkFormat packedFormat = GetPackedDepthStencilFormat(desc.Format);
-
+        // We need to resolve this, some games
+        // lock MSAA render targets even though
+        // that's entirely illegal and they explicitly
+        // tell us that they do NOT want to lock them...
+        if (resourceImage != nullptr) {
           EmitCs([
-            cImageBuffer  = mappedBuffer,
-            cImage        = std::move(mappedImage),
-            cSubresources = subresourceLayers,
-            cLevelExtent  = levelExtent,
-            cPackedFormat = packedFormat
+            cMainImage    = resourceImage,
+            cResolveImage = mappedImage,
+            cSubresource  = subresourceLayers
           ] (DxvkContext* ctx) {
-            if (cSubresources.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-              ctx->copyImageToBuffer(cImageBuffer, 0, 4, 0,
-                cImage, cSubresources, VkOffset3D { 0, 0, 0 },
-                cLevelExtent);
-            } else {
-              // Copying DS to a packed buffer is only supported for D24S8 and D32S8
-              // right now so the 4 byte row alignment is guaranteed by the format size
-              ctx->copyDepthStencilImageToPackedBuffer(
-                cImageBuffer, 0,
-                VkOffset2D { 0, 0 },
-                VkExtent2D { cLevelExtent.width, cLevelExtent.height },
-                cImage, cSubresources,
-                VkOffset2D { 0, 0 },
-                VkExtent2D { cLevelExtent.width, cLevelExtent.height },
-                cPackedFormat);
+            VkImageResolve region;
+            region.srcSubresource = cSubresource;
+            region.srcOffset      = VkOffset3D { 0, 0, 0 };
+            region.dstSubresource = cSubresource;
+            region.dstOffset      = VkOffset3D { 0, 0, 0 };
+            region.extent         = cMainImage->mipLevelExtent(cSubresource.mipLevel);
+
+            if (cSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+              ctx->resolveImage(
+                cResolveImage, cMainImage, region,
+                cMainImage->info().format);
+            }
+            else {
+              ctx->resolveDepthStencilImage(
+                cResolveImage, cMainImage, region,
+                VK_RESOLVE_MODE_SAMPLE_ZERO_BIT,
+                VK_RESOLVE_MODE_SAMPLE_ZERO_BIT);
             }
           });
-          TrackTextureMappingBufferSequenceNumber(pResource, Subresource);
         }
 
-        if (!WaitForResource(mappedBuffer, pResource->GetMappingBufferSequenceNumber(Subresource), Flags))
-          return D3DERR_WASSTILLDRAWING;
+        VkFormat packedFormat = GetPackedDepthStencilFormat(desc.Format);
+
+        EmitCs([
+          cImageBufferSlice = std::move(mappedBufferSlice),
+          cImage            = std::move(mappedImage),
+          cSubresources     = subresourceLayers,
+          cLevelExtent      = levelExtent,
+          cPackedFormat     = packedFormat
+        ] (DxvkContext* ctx) {
+          if (cSubresources.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+            ctx->copyImageToBuffer(cImageBufferSlice.buffer(),
+              cImageBufferSlice.offset(), 4, 0, cImage,
+              cSubresources, VkOffset3D { 0, 0, 0 },
+              cLevelExtent);
+          } else {
+            // Copying DS to a packed buffer is only supported for D24S8 and D32S8
+            // right now so the 4 byte row alignment is guaranteed by the format size
+            ctx->copyDepthStencilImageToPackedBuffer(
+              cImageBufferSlice.buffer(), cImageBufferSlice.offset(),
+              VkOffset2D { 0, 0 },
+              VkExtent2D { cLevelExtent.width, cLevelExtent.height },
+              cImage, cSubresources,
+              VkOffset2D { 0, 0 },
+              VkExtent2D { cLevelExtent.width, cLevelExtent.height },
+              cPackedFormat);
+          }
+        });
+        TrackTextureMappingBufferSequenceNumber(pResource, Subresource);
       }
+
+      if (!WaitForResource(mappedBuffer, pResource->GetMappingBufferSequenceNumber(Subresource), Flags))
+        return D3DERR_WASSTILLDRAWING;
     }
 
     const bool atiHack = desc.Format == D3D9Format::ATI1 || desc.Format == D3D9Format::ATI2;
@@ -4465,11 +4509,10 @@ namespace dxvk {
     bool shouldToss  = pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED;
          shouldToss &= !pResource->IsDynamic();
          shouldToss &= !pResource->IsManaged();
+         shouldToss &= !pResource->IsAnySubresourceLocked();
 
-    if (shouldToss) {
-      pResource->DestroyBufferSubresource(Subresource);
-      pResource->SetNeedsReadback(Subresource, true);
-    }
+    if (shouldToss)
+      pResource->DestroyBuffer();
 
     UnmapTextures();
     return D3D_OK;
@@ -4530,8 +4573,10 @@ namespace dxvk {
     auto convertFormat = pDestTexture->GetFormatMapping().ConversionFormatInfo;
 
     if (unlikely(pSrcTexture->NeedsReadback(SrcSubresource))) {
-      pSrcTexture->CreateBufferSubresource(SrcSubresource, true);
-      const Rc<DxvkBuffer>& buffer = pSrcTexture->GetBuffer(SrcSubresource);
+      // The src texutre has to be in POOL_SYSTEMEM, so it cannot use AUTOMIPGEN.
+      // That means that NeedsReadback is only true if the texture has been used with GetRTData or GetFrontbufferData before.
+      // Those functions create a buffer, so the buffer always exists here.
+      const Rc<DxvkBuffer>& buffer = pSrcTexture->GetBuffer();
       WaitForResource(buffer, pSrcTexture->GetMappingBufferSequenceNumber(SrcSubresource), 0);
       pSrcTexture->SetNeedsReadback(SrcSubresource, false);
     }
@@ -4571,18 +4616,33 @@ namespace dxvk {
         slice.mapPtr, srcData, extentBlockCount, formatInfo->elementSize,
         pitch, pitch * srcTexLevelExtentBlockCount.height);
 
+
+      VkFormat packedFormat = GetPackedDepthStencilFormat(pDestTexture->Desc()->Format);
+
       EmitCs([
         cSrcSlice       = slice.slice,
         cDstImage       = image,
         cDstLayers      = dstLayers,
         cDstLevelExtent = alignedExtent,
-        cOffset         = alignedDestOffset
+        cOffset         = alignedDestOffset,
+        cPackedFormat     = packedFormat
       ] (DxvkContext* ctx) {
-        ctx->copyBufferToImage(
-          cDstImage,  cDstLayers,
-          cOffset, cDstLevelExtent,
-          cSrcSlice.buffer(), cSrcSlice.offset(),
-          1, 1);
+        if (cDstLayers.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+          ctx->copyBufferToImage(
+            cDstImage,  cDstLayers,
+            cOffset, cDstLevelExtent,
+            cSrcSlice.buffer(), cSrcSlice.offset(),
+            1, 1);
+        } else {
+          ctx->copyPackedBufferToDepthStencilImage(
+                cDstImage, cDstLayers,
+                VkOffset2D { cOffset.x, cOffset.y },
+                VkExtent2D { cDstLevelExtent.width, cDstLevelExtent.height },
+                cSrcSlice.buffer(), cSrcSlice.offset(),
+                VkOffset2D { 0, 0 },
+                VkExtent2D { cDstLevelExtent.width, cDstLevelExtent.height },
+                cPackedFormat);
+        }
       });
 
       TrackTextureMappingBufferSequenceNumber(pSrcTexture, SrcSubresource);
@@ -5127,7 +5187,7 @@ namespace dxvk {
     auto& rs = m_state.renderStates;
 
     if constexpr (Item == D3D9RenderStateItem::AlphaRef) {
-      uint32_t alpha = rs[D3DRS_ALPHAREF];
+      uint32_t alpha = rs[D3DRS_ALPHAREF] & 0xFF;
       UpdatePushConstant<offsetof(D3D9RenderStateInfo, alphaRef), sizeof(uint32_t)>(&alpha);
     }
     else if constexpr (Item == D3D9RenderStateItem::FogColor) {
@@ -5400,7 +5460,6 @@ namespace dxvk {
 
   void D3D9DeviceEx::MarkTextureMipsDirty(D3D9CommonTexture* pResource) {
     pResource->SetNeedsMipGen(true);
-    pResource->MarkAllNeedReadback();
 
     for (uint32_t i : bit::BitMask(m_activeTextures)) {
       // Guaranteed to not be nullptr...
@@ -5612,12 +5671,17 @@ namespace dxvk {
     // Originally we did this only for powers of two
     // resolutions but since NEAREST filtering fixed to
     // truncate, we need to do this all the time now.
-    float cf = 0.5f - (1.0f / 128.0f);
+    constexpr float cf = 0.5f - (1.0f / 128.0f);
+
+    // How much to bias MinZ by to avoid a depth
+    // degenerate viewport.
+    constexpr float zBias = 0.001f;
 
     viewport = VkViewport{
       float(vp.X)     + cf,    float(vp.Height + vp.Y) + cf,
       float(vp.Width),        -float(vp.Height),
-      vp.MinZ,                 vp.MaxZ,
+      std::clamp(vp.MinZ,                            0.0f, 1.0f),
+      std::clamp(std::max(vp.MaxZ, vp.MinZ + zBias), 0.0f, 1.0f),
     };
 
     // Scissor rectangles. Vulkan does not provide an easy way
@@ -6233,7 +6297,8 @@ namespace dxvk {
 
     const uint32_t nullTextureMask = usedSamplerMask & ~usedTextureMask;
     const uint32_t depthTextureMask = m_depthTextures & usedTextureMask;
-    UpdateCommonSamplerSpec(nullTextureMask, depthTextureMask);
+    const uint32_t drefClampMask = m_drefClamp & depthTextureMask;
+    UpdateCommonSamplerSpec(nullTextureMask, depthTextureMask, drefClampMask);
 
     if (m_flags.test(D3D9DeviceFlag::DirtySharedPixelShaderData)) {
       m_flags.clr(D3D9DeviceFlag::DirtySharedPixelShaderData);
@@ -7233,7 +7298,7 @@ namespace dxvk {
     UpdatePixelShaderSamplerSpec(0u, 0u, 0u);
     UpdateVertexBoolSpec(0u);
     UpdatePixelBoolSpec(0u);
-    UpdateCommonSamplerSpec(0u, 0u);
+    UpdateCommonSamplerSpec(0u, 0u, 0u);
 
     return D3D_OK;
   }
@@ -7282,6 +7347,8 @@ namespace dxvk {
       desc.MultisampleQuality = pPresentationParameters->MultiSampleQuality;
       desc.IsBackBuffer       = FALSE;
       desc.IsAttachmentOnly   = TRUE;
+      // Docs: Also note that - unlike textures - swap chain back buffers, render targets [..] can be locked
+      desc.IsLockable         = TRUE;
 
       if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
         return D3DERR_NOTAVAILABLE;
@@ -7427,9 +7494,10 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::UpdateCommonSamplerSpec(uint32_t nullMask, uint32_t depthMask) {
+  void D3D9DeviceEx::UpdateCommonSamplerSpec(uint32_t nullMask, uint32_t depthMask, uint32_t drefMask) {
     bool dirty  = m_specInfo.set<SpecSamplerDepthMode>(depthMask);
          dirty |= m_specInfo.set<SpecSamplerNull>(nullMask);
+         dirty |= m_specInfo.set<SpecDrefClamp>(drefMask);
 
     if (dirty)
       m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);

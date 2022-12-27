@@ -1,4 +1,5 @@
 #include "dxgi_factory.h"
+#include "dxgi_surface.h"
 #include "dxgi_swapchain.h"
 #include "dxgi_swapchain_dispatcher.h"
 
@@ -126,27 +127,61 @@ namespace dxvk {
     if (!ppSwapChain || !pDesc || !hWnd || !pDevice)
       return DXGI_ERROR_INVALID_CALL;
     
-    Com<IWineDXGISwapChainFactory> wineDevice;
-    
-    if (SUCCEEDED(pDevice->QueryInterface(
-          __uuidof(IWineDXGISwapChainFactory),
-          reinterpret_cast<void**>(&wineDevice)))) {
-      IDXGISwapChain4* frontendSwapChain;
+    // Make sure the back buffer size is not zero
+    DXGI_SWAP_CHAIN_DESC1 desc = *pDesc;
 
-      HRESULT hr = wineDevice->CreateSwapChainForHwnd(
-        this, hWnd, pDesc, pFullscreenDesc,
+    wsi::getWindowSize(hWnd,
+      desc.Width  ? nullptr : &desc.Width,
+      desc.Height ? nullptr : &desc.Height);
+
+    // If necessary, set up a default set of
+    // fullscreen parameters for the swap chain
+    DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsDesc;
+
+    if (pFullscreenDesc) {
+      fsDesc = *pFullscreenDesc;
+    } else {
+      fsDesc.RefreshRate      = { 0, 0 };
+      fsDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+      fsDesc.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
+      fsDesc.Windowed         = TRUE;
+    }
+
+    // Probe various modes to create the swap chain object
+    Com<IDXGISwapChain4> frontendSwapChain;
+
+    Com<IDXGIVkSwapChainFactory> dxvkFactory;
+    Com<IWineDXGISwapChainFactory> wineFactory;
+
+    if (SUCCEEDED(pDevice->QueryInterface(IID_PPV_ARGS(&dxvkFactory)))) {
+      Com<IDXGIVkSurfaceFactory> surfaceFactory = new DxgiSurfaceFactory(
+        m_instance->vki()->getLoaderProc(), hWnd);
+
+      Com<IDXGIVkSwapChain> presenter;
+      HRESULT hr = dxvkFactory->CreateSwapChain(surfaceFactory.ptr(), &desc, &presenter);
+
+      if (FAILED(hr)) {
+        Logger::err(str::format("DXGI: CreateSwapChainForHwnd: Failed to create swap chain, hr ", hr));
+        return hr;
+      }
+
+      frontendSwapChain = new DxgiSwapChain(this, presenter.ptr(), hWnd, &desc, &fsDesc);
+    } else if (SUCCEEDED(pDevice->QueryInterface(IID_PPV_ARGS(&wineFactory)))) {
+      HRESULT hr = wineFactory->CreateSwapChainForHwnd(this, hWnd, &desc, &fsDesc,
         pRestrictToOutput, reinterpret_cast<IDXGISwapChain1**>(&frontendSwapChain));
 
-      // No ref as that's handled by the object we're wrapping
-      // which was ref'ed on creation.
-      if (SUCCEEDED(hr))
-        *ppSwapChain = new DxgiSwapChainDispatcher(frontendSwapChain);
-
-      return hr;
+      if (FAILED(hr)) {
+        Logger::err(str::format("DXGI: CreateSwapChainForHwnd: Failed to create swap chain, hr ", hr));
+        return hr;
+      }
+    } else {
+      Logger::err("DXGI: CreateSwapChainForHwnd: Unsupported device type");
+      return DXGI_ERROR_UNSUPPORTED;
     }
     
-    Logger::err("DXGI: CreateSwapChainForHwnd: Unsupported device type");
-    return DXGI_ERROR_UNSUPPORTED;
+    // Wrap object in swap chain dispatcher
+    *ppSwapChain = new DxgiSwapChainDispatcher(frontendSwapChain.ref(), pDevice);
+    return S_OK;
   }
   
   

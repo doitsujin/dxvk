@@ -144,4 +144,9 @@ namespace dxvk::wsi {
     return true;
   }
 
+  std::vector<uint8_t> getMonitorEdid(HMONITOR hMonitor) {
+    Logger::err("getMonitorEdid not implemented on this platform.");
+    return {};
+  }
+
 }

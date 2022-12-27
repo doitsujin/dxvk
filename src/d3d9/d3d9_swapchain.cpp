@@ -35,8 +35,13 @@ namespace dxvk {
     m_window = m_presentParams.hDeviceWindow;
 
     UpdatePresentRegion(nullptr, nullptr);
-    if (m_window && !pDevice->GetOptions()->deferSurfaceCreation)
+
+    if (m_window) {
       CreatePresenter();
+
+      if (!pDevice->GetOptions()->deferSurfaceCreation)
+        RecreateSwapChain(false);
+    }
 
     CreateBackBuffers(m_presentParams.BackBufferCount);
     CreateBlitter();
@@ -116,7 +121,7 @@ namespace dxvk {
 
     bool recreate = false;
     recreate   |= m_presenter == nullptr;
-    recreate   |= window != m_window;    
+    recreate   |= window != m_window;
     recreate   |= m_dialog != m_lastDialog;
 
     m_window    = window;
@@ -180,9 +185,13 @@ namespace dxvk {
     VkExtent3D dstTexExtent = dstTexInfo->GetExtentMip(dst->GetMipLevel());
     VkExtent3D srcTexExtent = srcTexInfo->GetExtentMip(0);
 
-    dstTexInfo->CreateBufferSubresource(dst->GetSubresource(), dstTexExtent.width > srcTexExtent.width || dstTexExtent.height > srcTexExtent.height);
-    Rc<DxvkBuffer> dstBuffer = dstTexInfo->GetBuffer(dst->GetSubresource());
-    Rc<DxvkImage>  srcImage  = srcTexInfo->GetImage();
+    const bool clearDst = dstTexInfo->Desc()->MipLevels > 1
+                       || dstTexExtent.width > srcTexExtent.width
+                       || dstTexExtent.height > srcTexExtent.height;
+
+    dstTexInfo->CreateBuffer(clearDst);
+    DxvkBufferSlice dstBufferSlice = dstTexInfo->GetBufferSlice(dst->GetSubresource());
+    Rc<DxvkImage>   srcImage       = srcTexInfo->GetImage();
 
     if (srcImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT) {
       DxvkImageCreateInfo resolveInfo;
@@ -316,13 +325,14 @@ namespace dxvk {
     VkExtent3D srcExtent = srcImage->mipLevelExtent(srcSubresource.mipLevel);
 
     m_parent->EmitCs([
-      cBuffer       = dstBuffer,
-      cImage        = srcImage,
+      cBufferSlice  = std::move(dstBufferSlice),
+      cImage        = std::move(srcImage),
       cSubresources = srcSubresourceLayers,
       cLevelExtent  = srcExtent
     ] (DxvkContext* ctx) {
-      ctx->copyImageToBuffer(cBuffer, 0, 4, 0,
-        cImage, cSubresources, VkOffset3D { 0, 0, 0 },
+      ctx->copyImageToBuffer(cBufferSlice.buffer(),
+        cBufferSlice.offset(), 4, 0, cImage,
+        cSubresources, VkOffset3D { 0, 0, 0 },
         cLevelExtent);
     });
 
@@ -752,8 +762,21 @@ namespace dxvk {
     presenterDesc.numPresentModes = PickPresentModes(Vsync, presenterDesc.presentModes);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
-    if (m_presenter->recreateSwapChain(presenterDesc) != VK_SUCCESS)
-      throw DxvkError("D3D9SwapChainEx: Failed to recreate swap chain");
+    VkResult vr = m_presenter->recreateSwapChain(presenterDesc);
+
+    if (vr == VK_ERROR_SURFACE_LOST_KHR) {
+      vr = m_presenter->recreateSurface([this] (VkSurfaceKHR* surface) {
+        return CreateSurface(surface);
+      });
+
+      if (vr)
+        throw DxvkError(str::format("D3D9SwapChainEx: Failed to recreate surface: ", vr));
+
+      vr = m_presenter->recreateSwapChain(presenterDesc);
+    }
+
+    if (vr)
+      throw DxvkError(str::format("D3D9SwapChainEx: Failed to recreate swap chain: ", vr));
     
     CreateRenderTargetViews();
   }
@@ -780,15 +803,23 @@ namespace dxvk {
     presenterDesc.numPresentModes = PickPresentModes(false, presenterDesc.presentModes);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
-    m_presenter = new vk::Presenter(m_window,
+    m_presenter = new vk::Presenter(
       m_device->adapter()->vki(),
       m_device->vkd(),
       presenterDevice,
       presenterDesc);
 
     m_presenter->setFrameRateLimit(m_parent->GetOptions()->maxFrameRate);
+  }
 
-    CreateRenderTargetViews();
+
+  VkResult D3D9SwapChainEx::CreateSurface(VkSurfaceKHR* pSurface) {
+    auto vki = m_device->adapter()->vki();
+
+    return wsi::createSurface(m_window,
+      vki->getLoaderProc(),
+      vki->instance(),
+      pSurface);
   }
 
 
@@ -866,6 +897,8 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.IsBackBuffer       = TRUE;
     desc.IsAttachmentOnly   = FALSE;
+    // Docs: Also note that - unlike textures - swap chain back buffers, render targets [..] can be locked
+    desc.IsLockable         = TRUE;
 
     for (uint32_t i = 0; i < m_backBuffers.size(); i++)
       m_backBuffers[i] = new D3D9Surface(m_parent, &desc, this, nullptr);
@@ -1055,7 +1088,7 @@ namespace dxvk {
 
     ResetWindowProc(m_window);
     
-    if (!wsi::leaveFullscreenMode(m_window, &m_windowState)) {
+    if (!wsi::leaveFullscreenMode(m_window, &m_windowState, false)) {
       Logger::err("D3D9: LeaveFullscreenMode: Failed to exit fullscreen mode");
       return D3DERR_NOTAVAILABLE;
     }

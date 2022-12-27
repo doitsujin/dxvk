@@ -27,6 +27,11 @@ namespace dxvk {
       return S_OK;
     }
 
+    if (riid == __uuidof(ID3D9VkInteropTexture)) {
+      *ppvObject = ref(m_texture.GetVkInterop());
+      return S_OK;
+    }
+
     Logger::warn("D3D9Texture2D::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
@@ -118,6 +123,11 @@ namespace dxvk {
       return S_OK;
     }
 
+    if (riid == __uuidof(ID3D9VkInteropTexture)) {
+      *ppvObject = ref(m_texture.GetVkInterop());
+      return S_OK;
+    }
+
     Logger::warn("D3D9Texture3D::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
@@ -203,6 +213,11 @@ namespace dxvk {
       return S_OK;
     }
 
+    if (riid == __uuidof(ID3D9VkInteropTexture)) {
+      *ppvObject = ref(m_texture.GetVkInterop());
+      return S_OK;
+    }
+
     Logger::warn("D3D9TextureCube::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
@@ -264,7 +279,7 @@ namespace dxvk {
     // and purely rely on AddDirtyRect to notify D3D9 that contents have changed.
     // We have no way of knowing which mip levels were actually changed.
     if (m_texture.IsManaged()) {
-      for (uint32_t m = 0; m < m_texture.Desc()->MipLevels; m++) {
+      for (uint32_t m = 0; m < m_texture.ExposedMipLevels(); m++) {
         m_texture.SetNeedsUpload(m_texture.CalcSubresource(Face, m), true);
       }
     }

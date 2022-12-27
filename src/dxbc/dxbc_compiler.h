@@ -162,6 +162,8 @@ namespace dxvk {
     uint32_t builtinViewportId    = 0;
     uint32_t builtinInvocationId  = 0;
     uint32_t invocationCount      = 0;
+
+    bool needsOutputSetup = false;
   };
   
   
@@ -452,6 +454,7 @@ namespace dxvk {
     std::array<DxbcUav,             64> m_uavs;
 
     bool m_hasGloballyCoherentUav = false;
+    bool m_hasRasterizerOrderedUav = false;
 
     ///////////////////////////////////////////////
     // Control flow information. Stores labels for
@@ -474,15 +477,17 @@ namespace dxvk {
     ////////////////////////////////////////////////////
     // Per-vertex input and output blocks. Depending on
     // the shader stage, these may be declared as arrays.
-    uint32_t m_perVertexIn  = 0;
-    uint32_t m_perVertexOut = 0;
-    
-    uint32_t m_clipDistances = 0;
-    uint32_t m_cullDistances = 0;
+    uint32_t m_positionIn     = 0;
+    uint32_t m_positionOut    = 0;
+
+    uint32_t m_clipDistances  = 0;
+    uint32_t m_cullDistances  = 0;
     
     uint32_t m_primitiveIdIn  = 0;
     uint32_t m_primitiveIdOut = 0;
-    
+
+    uint32_t m_pointSizeOut   = 0;
+
     //////////////////////////////////////////////////
     // Immediate constant buffer. If defined, this is
     // an array of four-component uint32 vectors.
@@ -1075,7 +1080,9 @@ namespace dxvk {
     void emitClipCullLoad(
             DxbcSystemValue         sv,
             uint32_t                srcArray);
-    
+
+    void emitPointSizeStore();
+
     //////////////////////////////////////
     // Common function definition methods
     void emitInit();
@@ -1145,10 +1152,6 @@ namespace dxvk {
     // Misc stuff
     void emitDclInputArray(
             uint32_t          vertexCount);
-    
-    void emitDclInputPerVertex(
-            uint32_t          vertexCount,
-      const char*             varName);
     
     uint32_t emitDclClipCullDistanceArray(
             uint32_t          length,
@@ -1245,8 +1248,6 @@ namespace dxvk {
 
     uint32_t getSparseResultTypeId(
             uint32_t baseType);
-
-    uint32_t getPerVertexBlockId();
 
     uint32_t getFunctionId(
             uint32_t          functionNr);

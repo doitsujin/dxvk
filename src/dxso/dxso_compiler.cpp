@@ -629,7 +629,7 @@ namespace dxvk {
     const bool pixel  = m_programInfo.type() == DxsoProgramTypes::PixelShader;
     const bool vertex = !pixel;
 
-    if (pixel && input && semantic.usage == DxsoUsage::Color && m_programInfo.majorVersion() < 3)
+    if (pixel && input && semantic.usage == DxsoUsage::Color)
       centroid = true;
 
     uint32_t slot = 0;
@@ -1429,14 +1429,11 @@ namespace dxvk {
     if (m_moduleInfo.options.d3d9FloatEmulation != D3D9FloatEmulation::Strict)
       return {x.type, m_module.opFMix(typeId, x.id, y.id, a.id)};
 
-    uint32_t oneId = m_module.constfReplicant(1.0f, a.type.ccount);
+    DxsoRegisterValue ySubx;
+    ySubx.type = x.type;
+    ySubx.id   = m_module.opFSub(typeId, y.id, x.id);
 
-    DxsoRegisterValue revA;
-    revA.type = a.type;
-    revA.id   = m_module.opFSub(typeId, oneId, a.id);
-
-    DxsoRegisterValue xRevA = emitMul(x, revA);
-    return emitFma(a, y, xRevA);
+    return emitFma(a, ySubx, x);
   }
 
 
@@ -2027,7 +2024,10 @@ namespace dxvk {
             indices[index++] = m_module.opCompositeExtract(m_module.defFloatType(32), crossValue.id, 1, &i);
         }
 
-        result.id = m_module.opCompositeConstruct(getVectorTypeId(result.type), result.type.ccount, indices.data());
+        if (result.type.ccount == 1)
+          result.id = indices[0];
+        else
+          result.id = m_module.opCompositeConstruct(typeId, result.type.ccount, indices.data());
 
         break;
       }
@@ -2648,10 +2648,30 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     DxsoRegMask vec3Mask(true, true, true,  false);
     DxsoRegMask srcMask (true, true, true,  true);
 
-    auto GetProjectionValue = [&]() {
+    auto DoProjection = [&](DxsoRegisterValue coord, bool switchProjRes) {
+      uint32_t bool_t = m_module.defBoolType();
+      uint32_t texcoord_t = getVectorTypeId(coord.type);
+
       uint32_t w = 3;
-      return m_module.opCompositeExtract(
-        m_module.defFloatType(32), texcoordVar.id, 1, &w);
+
+      uint32_t projScalar = m_module.opCompositeExtract(
+        m_module.defFloatType(32), coord.id, 1, &w);
+
+      projScalar = m_module.opFDiv(m_module.defFloatType(32), m_module.constf32(1.0), projScalar);
+      uint32_t projResult = m_module.opVectorTimesScalar(texcoord_t, coord.id, projScalar);
+
+      if (switchProjRes) {
+        uint32_t shouldProj = m_spec.get(m_module, m_specUbo, SpecProjectionType, samplerIdx, 1);
+        shouldProj = m_module.opINotEqual(bool_t, shouldProj, m_module.constu32(0));
+
+        uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
+        std::array<uint32_t, 4> indices = { shouldProj, shouldProj, shouldProj, shouldProj };
+        shouldProj = m_module.opCompositeConstruct(bvec4_t, indices.size(), indices.data());
+
+        return m_module.opSelect(texcoord_t, shouldProj, projResult, coord.id);
+      } else {
+        return projResult;
+      }
     };
 
     if (opcode == DxsoOpcode::TexM3x2Tex || opcode == DxsoOpcode::TexM3x3Tex || opcode == DxsoOpcode::TexM3x3Spec || opcode == DxsoOpcode::TexM3x3VSpec) {
@@ -2711,23 +2731,9 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       texcoordVar = m;
       samplerIdx = ctx.dst.id.num;
 
-      uint32_t texcoord_t = getVectorTypeId(texcoordVar.type);
-
       // The projection (/.w) happens before this...
       // Of course it does...
-      uint32_t bool_t = m_module.defBoolType();
-
-      uint32_t shouldProj = m_spec.get(m_module, m_specUbo, SpecProjectionType, samplerIdx, 1);
-      shouldProj = m_module.opINotEqual(bool_t, shouldProj, m_module.constu32(0));
-
-      uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
-      std::array<uint32_t, 4> indices = { shouldProj, shouldProj, shouldProj, shouldProj };
-      shouldProj = m_module.opCompositeConstruct(bvec4_t, indices.size(), indices.data());
-
-      uint32_t projScalar = m_module.opFDiv(m_module.defFloatType(32), m_module.constf32(1.0), GetProjectionValue());
-      uint32_t projResult = m_module.opVectorTimesScalar(texcoord_t, texcoordVar.id, projScalar);
-
-      texcoordVar.id = m_module.opSelect(texcoord_t, shouldProj, projResult, texcoordVar.id);
+      texcoordVar.id = DoProjection(texcoordVar, true);
 
       // u' = tc(m).x + [bm00(m) * t(n).x + bm10(m) * t(n).y]
       // v' = tc(m).y + [bm01(m) * t(n).x + bm11(m) * t(n).y]
@@ -2811,7 +2817,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     DxsoSampler sampler = m_samplers.at(samplerIdx);
 
-    auto SampleImage = [this, opcode, dst, ctx, samplerIdx, GetProjectionValue](DxsoRegisterValue texcoordVar, DxsoSamplerInfo& sampler, bool depth, DxsoSamplerType samplerType, uint32_t isNull) {
+    auto SampleImage = [this, opcode, dst, ctx, samplerIdx, DoProjection](DxsoRegisterValue texcoordVar, DxsoSamplerInfo& sampler, bool depth, DxsoSamplerType samplerType, uint32_t isNull) {
       DxsoRegisterValue result;
       result.type.ctype  = dst.type.ctype;
       result.type.ccount = depth ? 1 : 4;
@@ -2838,12 +2844,10 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         imageOperands.sGradY = emitRegisterLoad(ctx.src[3], gradMask).id;
       }
 
-      uint32_t projDivider = 0;
-
       if (opcode == DxsoOpcode::Tex
         && m_programInfo.majorVersion() >= 2) {
         if (ctx.instruction.specificData.texld == DxsoTexLdMode::Project) {
-          projDivider = GetProjectionValue();
+          texcoordVar.id = DoProjection(texcoordVar, false);
         }
         else if (ctx.instruction.specificData.texld == DxsoTexLdMode::Bias) {
           uint32_t w = 3;
@@ -2853,37 +2857,29 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         }
       }
 
-      bool switchProjResult = m_programInfo.majorVersion() < 2 && samplerType != SamplerTypeTextureCube;
-
-      if (switchProjResult)
-        projDivider = GetProjectionValue();
-
-      // We already handled this...
-      if (opcode == DxsoOpcode::TexBem) {
-        switchProjResult = false;
-        projDivider = 0;
+      // We already handled this for TexBem(L)
+      if (m_programInfo.majorVersion() < 2 && samplerType != SamplerTypeTextureCube && opcode != DxsoOpcode::TexBem && opcode != DxsoOpcode::TexBemL) {
+        texcoordVar.id = DoProjection(texcoordVar, true);
       }
+
+      uint32_t bool_t = m_module.defBoolType();
 
       uint32_t reference = 0;
-
       if (depth) {
+        uint32_t fType = m_module.defFloatType(32);
         uint32_t component = sampler.dimensions;
         reference = m_module.opCompositeExtract(
-          m_module.defFloatType(32), texcoordVar.id, 1, &component);
-      }
-
-      if (projDivider != 0) {
-        for (uint32_t i = sampler.dimensions; i < 4; i++) {
-          texcoordVar.id = m_module.opCompositeInsert(getVectorTypeId(texcoordVar.type),
-            projDivider, texcoordVar.id, 1, &i);
-        }
+          fType, texcoordVar.id, 1, &component);
+        uint32_t clampDref = m_spec.get(m_module, m_specUbo, SpecDrefClamp, samplerIdx, 1);
+        clampDref = m_module.opINotEqual(bool_t, clampDref, m_module.constu32(0));
+        uint32_t clampedDref = m_module.opFClamp(fType, reference, m_module.constf32(0.0f), m_module.constf32(1.0f));
+        reference = m_module.opSelect(fType, clampDref, clampedDref, reference);
       }
 
       uint32_t fetch4 = 0;
       if (m_programInfo.type() == DxsoProgramType::PixelShader && samplerType != SamplerTypeTexture3D) {
         fetch4 = m_spec.get(m_module, m_specUbo, SpecFetch4, samplerIdx, 1);
 
-        uint32_t bool_t = m_module.defBoolType();
         fetch4 = m_module.opINotEqual(bool_t, fetch4, m_module.constu32(0));
 
         uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
@@ -2892,40 +2888,12 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       }
 
       result.id = this->emitSample(
-        projDivider != 0,
         typeId,
         sampler,
         texcoordVar,
         reference,
         fetch4,
         imageOperands);
-
-      if (switchProjResult) {
-        uint32_t bool_t = m_module.defBoolType();
-
-        uint32_t nonProjResult = this->emitSample(
-          0,
-          typeId,
-          sampler,
-          texcoordVar,
-          reference,
-          fetch4,
-          imageOperands);
-
-        uint32_t shouldProj = m_spec.get(m_module, m_specUbo, SpecProjectionType, samplerIdx, 1);
-        shouldProj = m_module.opINotEqual(m_module.defBoolType(), shouldProj, m_module.constu32(0));
-
-        // Depth  -> .x
-        // Colour -> .xyzw
-        // Need to replicate the bool for the opSelect.
-        if (!depth) {
-          uint32_t bvec4_t = m_module.defVectorType(bool_t, 4);
-          std::array<uint32_t, 4> indices = { shouldProj, shouldProj, shouldProj, shouldProj };
-          shouldProj = m_module.opCompositeConstruct(bvec4_t, indices.size(), indices.data());
-        }
-
-        result.id = m_module.opSelect(typeId, shouldProj, result.id, nonProjResult);
-      }
 
       // If we are sampling depth we've already specc'ed this!
       // This path is always size 4 because it only hits on color.
@@ -3118,7 +3086,6 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
 
   uint32_t DxsoCompiler::emitSample(
-          bool                    projected,
           uint32_t                resultType,
           DxsoSamplerInfo&        samplerInfo,
           DxsoRegisterValue       coordinates,
@@ -3134,35 +3101,20 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     uint32_t val;
 
-    // No Fetch 4
-    if (projected) {
-      if (depthCompare) {
-        if (explicitLod)
-          val = m_module.opImageSampleProjDrefExplicitLod(resultType, sampledImage, coordinates.id, reference, operands);
-        else
-          val = m_module.opImageSampleProjDrefImplicitLod(resultType, sampledImage, coordinates.id, reference, operands);
-      }
-      else {
-        if (explicitLod)
-          val = m_module.opImageSampleProjExplicitLod(resultType, sampledImage, coordinates.id, operands);
-        else
-          val = m_module.opImageSampleProjImplicitLod(resultType, sampledImage, coordinates.id, operands);
-      }
+
+    if (depthCompare) {
+      if (explicitLod)
+        val = m_module.opImageSampleDrefExplicitLod(resultType, sampledImage, coordinates.id, reference, operands);
+      else
+        val = m_module.opImageSampleDrefImplicitLod(resultType, sampledImage, coordinates.id, reference, operands);
     }
     else {
-      if (depthCompare) {
-        if (explicitLod)
-          val = m_module.opImageSampleDrefExplicitLod(resultType, sampledImage, coordinates.id, reference, operands);
-        else
-          val = m_module.opImageSampleDrefImplicitLod(resultType, sampledImage, coordinates.id, reference, operands);
-      }
-      else {
-        if (explicitLod)
-          val = m_module.opImageSampleExplicitLod(resultType, sampledImage, coordinates.id, operands);
-        else
-          val = m_module.opImageSampleImplicitLod(resultType, sampledImage, coordinates.id, operands);
-      }
+      if (explicitLod)
+        val = m_module.opImageSampleExplicitLod(resultType, sampledImage, coordinates.id, operands);
+      else
+        val = m_module.opImageSampleImplicitLod(resultType, sampledImage, coordinates.id, operands);
     }
+
 
 
     if (fetch4 && !depthCompare) {

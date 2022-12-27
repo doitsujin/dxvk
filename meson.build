@@ -1,4 +1,4 @@
-project('dxvk', ['c', 'cpp'], version : 'v1.10.1', meson_version : '>= 0.49', default_options : [ 'cpp_std=c++17', 'warning_level=2' ])
+project('dxvk', ['c', 'cpp'], version : 'v2.0', meson_version : '>= 0.49', default_options : [ 'cpp_std=c++17', 'warning_level=2' ])
 
 cpu_family = target_machine.cpu_family()
 platform   = target_machine.system()
@@ -38,6 +38,9 @@ dxvk_include_dirs = [
   './include/vulkan/include',
   './include/spirv/include'
 ]
+
+proj_displayinfo = subproject('libdisplay-info')
+dep_displayinfo = proj_displayinfo.get_variable('di_dep')
 
 if platform == 'windows'
   compiler_args += [
@@ -97,6 +100,7 @@ if platform == 'windows'
   endif
 
   dxvk_wsi = 'win32'
+  dxvk_name_prefix = ''
   compiler_args += ['-DDXVK_WSI_WIN32']
 else
   lib_sdl2   = cpp.find_library('SDL2')
@@ -111,7 +115,13 @@ else
   ]
 
   dxvk_wsi = 'sdl2'
+  dxvk_name_prefix = 'libdxvk_'
   compiler_args += ['-DDXVK_WSI_SDL2']
+
+  link_args += [
+    '-static-libgcc',
+    '-static-libstdc++',
+  ]
 endif
 
 dxvk_include_path = include_directories(dxvk_include_dirs)
@@ -126,12 +136,18 @@ dll_ext = ''
 def_spec_ext = '.def'
 
 glsl_compiler = find_program('glslangValidator')
-glsl_args = [ '--target-env', 'vulkan1.2', '--vn', '@BASENAME@', '@INPUT@', '-o', '@OUTPUT@' ]
-if run_command(glsl_compiler, [ '--quiet', '--version' ], check : false).returncode() == 0
-    glsl_args += [ '--quiet' ]
-endif
-glsl_generator = generator(glsl_compiler,
+glsl_args = [
+  '--quiet',
+  '--target-env', 'vulkan1.2',
+  '--vn', '@BASENAME@',
+  '--depfile', '@DEPFILE@',
+  '@INPUT@',
+  '-o', '@OUTPUT@',
+]
+glsl_generator = generator(
+  glsl_compiler,
   output    : [ '@BASENAME@.h' ],
+  depfile   : '@BASENAME@.h.d',
   arguments : glsl_args,
 )
 

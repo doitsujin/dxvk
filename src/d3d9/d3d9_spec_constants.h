@@ -27,6 +27,7 @@ namespace dxvk {
     SpecVertexShaderBools,  // 16 bools                       | Bits: 16
     SpecPixelShaderBools,   // 16 bools                       | Bits: 16
 
+    SpecDrefClamp,          // 1 bit for 16 PS samplers       | Bits: 16
     SpecFetch4,             // 1 bit for 16 PS samplers       | Bits: 16
 
     SpecConstantCount,
@@ -62,7 +63,8 @@ namespace dxvk {
       { 3, 0,  16 }, // VertexShaderBools
       { 3, 16, 16 }, // PixelShaderBools
 
-      { 4, 0,  16 }, // Fetch4
+      { 4, 0,  16 }, // DrefClamp
+      { 4, 16, 16 }, // Fetch4
     }};
 
     template <D3D9SpecConstantId Id, typename T>

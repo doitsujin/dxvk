@@ -31,9 +31,6 @@ namespace dxvk {
     /// atomic operations for append/consume buffers.
     bool useSubgroupOpsForAtomicCounters = false;
 
-    /// Enables NaN fixup for render target outputs
-    bool enableRtOutputNanFixup = false;
-
     /// Clear thread-group shared memory to zero
     bool zeroInitWorkgroupMemory = false;
 
@@ -45,6 +42,9 @@ namespace dxvk {
 
     /// Replace ld_ms with ld
     bool disableMsaa = false;
+
+    // Enable per-sample interlock if supported
+    bool enableSampleShadingInterlock = false;
 
     /// Float control flags
     DxbcFloatControlFlags floatControl;

@@ -5609,6 +5609,11 @@ namespace dxvk {
 
       m_cmd->cmdSetDepthBiasState(
         m_state.gp.state.rs.depthBiasEnable());
+
+      if (m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable) {
+        m_cmd->cmdSetDepthClipState(
+          m_state.gp.state.rs.depthClipEnable());
+      }
     }
 
     if (unlikely(m_flags.all(DxvkContextFlag::GpDirtyBlendConstants,

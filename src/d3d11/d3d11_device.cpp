@@ -2,6 +2,7 @@
 #include <cstring>
 
 #include "../dxgi/dxgi_monitor.h"
+#include "../dxgi/dxgi_surface.h"
 #include "../dxgi/dxgi_swapchain.h"
 
 #include "../dxvk/dxvk_adapter.h"
@@ -1908,8 +1909,6 @@ namespace dxvk {
     enabled.extCustomBorderColor.customBorderColors               = supported.extCustomBorderColor.customBorderColorWithoutFormat;
     enabled.extCustomBorderColor.customBorderColorWithoutFormat   = supported.extCustomBorderColor.customBorderColorWithoutFormat;
 
-    enabled.extDepthClipEnable.depthClipEnable                    = supported.extDepthClipEnable.depthClipEnable;
-
     enabled.extTransformFeedback.transformFeedback                = VK_TRUE;
     enabled.extTransformFeedback.geometryStreams                  = VK_TRUE;
 
@@ -1939,6 +1938,10 @@ namespace dxvk {
     enabled.core.features.shaderResourceResidency                 = supported.core.features.shaderResourceResidency;
     enabled.core.features.shaderResourceMinLod                    = supported.core.features.shaderResourceMinLod;
     enabled.vk12.samplerFilterMinmax                              = supported.vk12.samplerFilterMinmax;
+
+    // Required for Feature Level 12_1
+    enabled.extFragmentShaderInterlock.fragmentShaderSampleInterlock = supported.extFragmentShaderInterlock.fragmentShaderSampleInterlock;
+    enabled.extFragmentShaderInterlock.fragmentShaderPixelInterlock  = supported.extFragmentShaderInterlock.fragmentShaderPixelInterlock;
 
     // Optional in any feature level
     enabled.core.features.depthBounds                             = supported.core.features.depthBounds;
@@ -2968,6 +2971,54 @@ namespace dxvk {
 
 
 
+  DXGIVkSwapChainFactory::DXGIVkSwapChainFactory(
+          D3D11DXGIDevice*        pContainer,
+          D3D11Device*            pDevice)
+  : m_container(pContainer), m_device(pDevice) {
+    
+  }
+
+
+  ULONG STDMETHODCALLTYPE DXGIVkSwapChainFactory::AddRef() {
+    return m_device->AddRef();
+  }
+
+
+  ULONG STDMETHODCALLTYPE DXGIVkSwapChainFactory::Release() {
+    return m_device->Release();
+  }
+
+
+  HRESULT STDMETHODCALLTYPE DXGIVkSwapChainFactory::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    return m_device->QueryInterface(riid, ppvObject);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE DXGIVkSwapChainFactory::CreateSwapChain(
+          IDXGIVkSurfaceFactory*    pSurfaceFactory,
+    const DXGI_SWAP_CHAIN_DESC1*    pDesc,
+          IDXGIVkSwapChain**        ppSwapChain) {
+    InitReturnPtr(ppSwapChain);
+
+    try {
+      auto vki = m_device->GetDXVKDevice()->adapter()->vki();
+
+      Com<D3D11SwapChain> presenter = new D3D11SwapChain(
+        m_container, m_device, pSurfaceFactory, pDesc);
+      
+      *ppSwapChain = presenter.ref();
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_FAIL;
+    }
+  }
+
+
+
+
   WineDXGISwapChainFactory::WineDXGISwapChainFactory(
           D3D11DXGIDevice*        pContainer,
           D3D11Device*            pDevice)
@@ -3026,9 +3077,14 @@ namespace dxvk {
     }
     
     try {
+      auto vki = m_device->GetDXVKDevice()->adapter()->vki();
+
+      // Create surface factory for the window
+      Com<IDXGIVkSurfaceFactory> surfaceFactory = new DxgiSurfaceFactory(vki->getLoaderProc(), hWnd);
+
       // Create presenter for the device
       Com<D3D11SwapChain> presenter = new D3D11SwapChain(
-        m_container, m_device, hWnd, &desc);
+        m_container, m_device, surfaceFactory.ptr(), &desc);
       
       // Create the actual swap chain
       *ppSwapChain = ref(new DxgiSwapChain(
@@ -3093,6 +3149,7 @@ namespace dxvk {
     m_d3d11Interop  (this, &m_d3d11Device),
     m_d3d11Video    (this, &m_d3d11Device),
     m_metaDevice    (this),
+    m_dxvkFactory   (this, &m_d3d11Device),
     m_wineFactory   (this, &m_d3d11Device) {
 
   }
@@ -3150,6 +3207,11 @@ namespace dxvk {
     
     if (riid == __uuidof(IDXGIDXVKDevice)) {
       *ppvObject = ref(&m_metaDevice);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(IDXGIVkSwapChainFactory)) {
+      *ppvObject = ref(&m_dxvkFactory);
       return S_OK;
     }
 

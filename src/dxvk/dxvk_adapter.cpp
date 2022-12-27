@@ -316,6 +316,10 @@ namespace dxvk {
                 || !required.extShaderModuleIdentifier.shaderModuleIdentifier)
         && (m_deviceFeatures.extShaderStencilExport
                 || !required.extShaderStencilExport)
+        && (m_deviceFeatures.extShaderStencilExport
+                || !required.extSwapchainColorSpace)
+        && (m_deviceFeatures.extHdrMetadata
+                || !required.extHdrMetadata)
         && (m_deviceFeatures.extTransformFeedback.transformFeedback
                 || !required.extTransformFeedback.transformFeedback)
         && (m_deviceFeatures.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor
@@ -335,21 +339,25 @@ namespace dxvk {
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 22> devExtensionList = {{
+    std::array<DxvkExt*, 26> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.extAttachmentFeedbackLoopLayout,
       &devExtensions.extConservativeRasterization,
       &devExtensions.extCustomBorderColor,
       &devExtensions.extDepthClipEnable,
+      &devExtensions.extExtendedDynamicState3,
+      &devExtensions.extFragmentShaderInterlock,
       &devExtensions.extFullScreenExclusive,
       &devExtensions.extGraphicsPipelineLibrary,
+      &devExtensions.extHdrMetadata,
       &devExtensions.extMemoryBudget,
       &devExtensions.extMemoryPriority,
       &devExtensions.extNonSeamlessCubeMap,
       &devExtensions.extRobustness2,
       &devExtensions.extShaderModuleIdentifier,
       &devExtensions.extShaderStencilExport,
+      &devExtensions.extSwapchainColorSpace,
       &devExtensions.extTransformFeedback,
       &devExtensions.extVertexAttributeDivisor,
       &devExtensions.khrExternalMemoryWin32,
@@ -428,6 +436,15 @@ namespace dxvk {
     enabledFeatures.vk13.synchronization2 = VK_TRUE;
     enabledFeatures.vk13.dynamicRendering = VK_TRUE;
 
+    // We expose depth clip rather than depth clamp to client APIs
+    enabledFeatures.extDepthClipEnable.depthClipEnable =
+      m_deviceFeatures.extDepthClipEnable.depthClipEnable;
+
+    // Used to make pipeline library stuff less clunky
+    enabledFeatures.extExtendedDynamicState3.extendedDynamicState3DepthClipEnable =
+      m_deviceFeatures.extExtendedDynamicState3.extendedDynamicState3DepthClipEnable &&
+      m_deviceFeatures.extDepthClipEnable.depthClipEnable;
+
     // Used for both pNext shader module info, and fast-linking pipelines provided
     // that graphicsPipelineLibraryIndependentInterpolationDecoration is supported
     enabledFeatures.extGraphicsPipelineLibrary.graphicsPipelineLibrary =
@@ -482,6 +499,16 @@ namespace dxvk {
       enabledFeatures.extDepthClipEnable.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extDepthClipEnable);
     }
 
+    if (devExtensions.extExtendedDynamicState3) {
+      enabledFeatures.extExtendedDynamicState3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
+      enabledFeatures.extExtendedDynamicState3.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extExtendedDynamicState3);
+    }
+
+    if (devExtensions.extFragmentShaderInterlock) {
+      enabledFeatures.extFragmentShaderInterlock.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
+      enabledFeatures.extFragmentShaderInterlock.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extFragmentShaderInterlock);
+    }
+
     if (devExtensions.extFullScreenExclusive)
       enabledFeatures.extFullScreenExclusive = VK_TRUE;
 
@@ -515,6 +542,12 @@ namespace dxvk {
 
     if (devExtensions.extShaderStencilExport)
       enabledFeatures.extShaderStencilExport = VK_TRUE;
+
+    if (devExtensions.extSwapchainColorSpace)
+      enabledFeatures.extSwapchainColorSpace = VK_TRUE;
+
+    if (devExtensions.extHdrMetadata)
+      enabledFeatures.extHdrMetadata = VK_TRUE;
 
     if (devExtensions.extTransformFeedback) {
       enabledFeatures.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
@@ -727,6 +760,11 @@ namespace dxvk {
       m_deviceInfo.extCustomBorderColor.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extCustomBorderColor);
     }
 
+    if (m_deviceExtensions.supports(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)) {
+      m_deviceInfo.extExtendedDynamicState3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_PROPERTIES_EXT;
+      m_deviceInfo.extExtendedDynamicState3.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extExtendedDynamicState3);
+    }
+
     if (m_deviceExtensions.supports(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME)) {
       m_deviceInfo.extGraphicsPipelineLibrary.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_PROPERTIES_EXT;
       m_deviceInfo.extGraphicsPipelineLibrary.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extGraphicsPipelineLibrary);
@@ -805,6 +843,16 @@ namespace dxvk {
       m_deviceFeatures.extDepthClipEnable.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extDepthClipEnable);
     }
 
+    if (m_deviceExtensions.supports(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)) {
+      m_deviceFeatures.extExtendedDynamicState3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
+      m_deviceFeatures.extExtendedDynamicState3.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extExtendedDynamicState3);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME)) {
+      m_deviceFeatures.extFragmentShaderInterlock.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
+      m_deviceFeatures.extFragmentShaderInterlock.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extFragmentShaderInterlock);
+    }
+
     if (m_deviceExtensions.supports(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME))
       m_deviceFeatures.extFullScreenExclusive = VK_TRUE;
 
@@ -838,6 +886,12 @@ namespace dxvk {
 
     if (m_deviceExtensions.supports(VK_EXT_SHADER_STENCIL_EXPORT_EXTENSION_NAME))
       m_deviceFeatures.extShaderStencilExport = VK_TRUE;
+
+    if (m_deviceExtensions.supports(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME))
+      m_deviceFeatures.extSwapchainColorSpace = VK_TRUE;
+
+    if (m_deviceExtensions.supports(VK_EXT_HDR_METADATA_EXTENSION_NAME))
+      m_deviceFeatures.extHdrMetadata = VK_TRUE;
 
     if (m_deviceExtensions.supports(VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME)) {
       m_deviceFeatures.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
@@ -965,6 +1019,11 @@ namespace dxvk {
       "\n  customBorderColorWithoutFormat         : ", features.extCustomBorderColor.customBorderColorWithoutFormat ? "1" : "0",
       "\n", VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME,
       "\n  depthClipEnable                        : ", features.extDepthClipEnable.depthClipEnable ? "1" : "0",
+      "\n", VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
+      "\n  extendedDynamicState3DepthClipEnable   : ", features.extExtendedDynamicState3.extendedDynamicState3DepthClipEnable ? "1" : "0",
+      "\n", VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME,
+      "\n  fragmentShaderSampleInterlock          : ", features.extFragmentShaderInterlock.fragmentShaderSampleInterlock ? "1" : "0",
+      "\n  fragmentShaderPixelInterlock           : ", features.extFragmentShaderInterlock.fragmentShaderPixelInterlock ? "1" : "0",
       "\n", VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME,
       "\n  extension supported                    : ", features.extFullScreenExclusive ? "1" : "0",
       "\n", VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME,
@@ -983,6 +1042,10 @@ namespace dxvk {
       "\n  shaderModuleIdentifier                 : ", features.extShaderModuleIdentifier.shaderModuleIdentifier ? "1" : "0",
       "\n", VK_EXT_SHADER_STENCIL_EXPORT_EXTENSION_NAME,
       "\n  extension supported                    : ", features.extShaderStencilExport ? "1" : "0",
+      "\n", VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME,
+      "\n  extension supported                    : ", features.extSwapchainColorSpace ? "1" : "0",
+      "\n", VK_EXT_HDR_METADATA_EXTENSION_NAME,
+      "\n  extension supported                    : ", features.extHdrMetadata ? "1" : "0",
       "\n", VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME,
       "\n  transformFeedback                      : ", features.extTransformFeedback.transformFeedback ? "1" : "0",
       "\n  geometryStreams                        : ", features.extTransformFeedback.geometryStreams ? "1" : "0",

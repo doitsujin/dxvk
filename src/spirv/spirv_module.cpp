@@ -3693,6 +3693,16 @@ namespace dxvk {
   }
   
   
+  void SpirvModule::opBeginInvocationInterlock() {
+    m_code.putIns(spv::OpBeginInvocationInterlockEXT, 1);
+  }
+
+
+  void SpirvModule::opEndInvocationInterlock() {
+    m_code.putIns(spv::OpEndInvocationInterlockEXT, 1);
+  }
+
+
   uint32_t SpirvModule::defType(
           spv::Op                 op, 
           uint32_t                argCount,

@@ -81,13 +81,13 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Fence::SetEventOnCompletion(
           UINT64              Value,
           HANDLE              hEvent) {
-    // TODO in case of rewinds, the stored value may be higher.
-    // For shared fences, calling vkWaitSemaphores here could alleviate the issue.
-
-    m_fence->enqueueWait(Value, [hEvent] {
-      SetEvent(hEvent);
-    });
-
+    if (hEvent) {
+      m_fence->enqueueWait(Value, [hEvent] {
+        SetEvent(hEvent);
+      });
+    } else {
+      m_fence->wait(Value);
+    }
     return S_OK;
   }
 

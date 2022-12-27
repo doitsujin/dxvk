@@ -40,6 +40,7 @@ namespace dxvk {
     X8L8V8U8 = 62,
     Q8W8V8U8 = 63,
     V16U16 = 64,
+    W11V11U10 = 65,
     A2W10V10U10 = 67,
     UYVY = MAKEFOURCC('U', 'Y', 'V', 'Y'),
     R8G8_B8G8 = MAKEFOURCC('R', 'G', 'B', 'G'),
@@ -134,6 +135,7 @@ namespace dxvk {
     D3D9ConversionFormat_L6V5U5,
     D3D9ConversionFormat_X8L8V8U8,
     D3D9ConversionFormat_A2W10V10U10,
+    D3D9ConversionFormat_W11V11U10,
     D3D9ConversionFormat_NV12,
     D3D9ConversionFormat_YV12,
     D3D9ConversionFormat_Count
@@ -218,5 +220,23 @@ namespace dxvk {
     bool m_x4r4g4b4Support;
     bool m_d32supportFinal;
   };
+
+  inline bool IsFourCCFormat(D3D9Format format) {
+    // BINARYBUFFER is the largest non-fourcc format
+    return format > D3D9Format::BINARYBUFFER;
+  }
+
+  inline bool IsVendorFormat(D3D9Format format) {
+    return IsFourCCFormat(format)
+      && format != D3D9Format::MULTI2_ARGB8
+      && format != D3D9Format::UYVY
+      && format != D3D9Format::R8G8_B8G8
+      && format != D3D9Format::G8R8_G8B8
+      && format != D3D9Format::DXT1
+      && format != D3D9Format::DXT2
+      && format != D3D9Format::DXT3
+      && format != D3D9Format::DXT4
+      && format != D3D9Format::DXT5;
+  }
 
 }

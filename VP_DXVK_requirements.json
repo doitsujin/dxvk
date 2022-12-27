@@ -1,5 +1,5 @@
 {
-    "$schema": "https://schema.khronos.org/vulkan/profiles-0.8.0-224.json#",
+    "$schema": "https://schema.khronos.org/vulkan/profiles-0.8.1-224.json#",
     "capabilities": {
         "vulkan10requirements": {
             "features": {
@@ -185,7 +185,9 @@
                 "VK_EXT_memory_priority": 1,
                 "VK_EXT_vertex_attribute_divisor": 1,
                 "VK_EXT_custom_border_color": 1,
-                "VK_EXT_depth_clip_enable": 1
+                "VK_EXT_depth_clip_enable": 1,
+                "VK_EXT_swapchain_colorspace": 1,
+                "VK_EXT_hdr_metadata": 1
             },
             "features": {
                 "VkPhysicalDeviceFeatures": {
@@ -267,31 +269,6 @@
             "api-version": "1.3.204",
             "label": "DXVK D3D9 Baseline profile",
             "description": "DXVK for D3D9 minimum requirements",
-            "contributors": {
-                "Philip Rebohle": {
-                    "company": "Valve"
-                },
-                "Joshua Ashton": {
-                    "company": "Valve"
-                },
-                "Pierre-Loup A. Griffais": {
-                    "company": "Valve"
-                },
-                "Georg Lehmann": {
-                    "company": "DXVK"
-                },
-                "Christophe Riccio": {
-                    "company": "LunarG"
-                }
-            },
-            "history": [
-                {
-                    "revision": 1,
-                    "date": "2022-08-22",
-                    "author": "Christophe Riccio",
-                    "comment": "Initial revision"
-                }
-            ],
             "capabilities": [
                 "vulkan10requirements",
                 "vulkan11requirements",
@@ -305,31 +282,6 @@
             "api-version": "1.3.224",
             "label": "DXVK D3D9 Optimal profile",
             "description": "DXVK for D3D9 including optional capabilities",
-            "contributors": {
-                "Philip Rebohle": {
-                    "company": "Valve"
-                },
-                "Joshua Ashton": {
-                    "company": "Valve"
-                },
-                "Pierre-Loup A. Griffais": {
-                    "company": "Valve"
-                },
-                "Georg Lehmann": {
-                    "company": "DXVK"
-                },
-                "Christophe Riccio": {
-                    "company": "LunarG"
-                }
-            },
-            "history": [
-                {
-                    "revision": 1,
-                    "date": "2022-08-22",
-                    "author": "Christophe Riccio",
-                    "comment": "Initial revision"
-                }
-            ],
             "capabilities": [
                 "vulkan10requirements",
                 "vulkan11requirements",
@@ -344,31 +296,6 @@
             "api-version": "1.3.204",
             "label": "DXVK D3D10 Level 10.1 Baseline profile",
             "description": "DXVK for D3D10 Feature Level 10.1 minimum requirements",
-            "contributors": {
-                "Philip Rebohle": {
-                    "company": "Valve"
-                },
-                "Joshua Ashton": {
-                    "company": "Valve"
-                },
-                "Pierre-Loup A. Griffais": {
-                    "company": "Valve"
-                },
-                "Georg Lehmann": {
-                    "company": "DXVK"
-                },
-                "Christophe Riccio": {
-                    "company": "LunarG"
-                }
-            },
-            "history": [
-                {
-                    "revision": 1,
-                    "date": "2022-08-22",
-                    "author": "Christophe Riccio",
-                    "comment": "Initial revision"
-                }
-            ],
             "capabilities": [
                 "vulkan10requirements",
                 "vulkan11requirements",
@@ -382,31 +309,6 @@
             "api-version": "1.3.204",
             "label": "DXVK D3D11 Level 11.0 Baseline profile",
             "description": "DXVK for D3D11 Feature Level 11.0 minimum requirements",
-            "contributors": {
-                "Philip Rebohle": {
-                    "company": "Valve"
-                },
-                "Joshua Ashton": {
-                    "company": "Valve"
-                },
-                "Pierre-Loup A. Griffais": {
-                    "company": "Valve"
-                },
-                "Georg Lehmann": {
-                    "company": "DXVK"
-                },
-                "Christophe Riccio": {
-                    "company": "LunarG"
-                }
-            },
-            "history": [
-                {
-                    "revision": 1,
-                    "date": "2022-08-22",
-                    "author": "Christophe Riccio",
-                    "comment": "Initial revision"
-                }
-            ],
             "capabilities": [
                 "vulkan10requirements",
                 "vulkan11requirements",
@@ -421,31 +323,6 @@
             "api-version": "1.3.204",
             "label": "DXVK D3D11 Level 11.1 Baseline profile",
             "description": "DXVK for D3D11 Feature Level 11.1 minimum requirements",
-            "contributors": {
-                "Philip Rebohle": {
-                    "company": "Valve"
-                },
-                "Joshua Ashton": {
-                    "company": "Valve"
-                },
-                "Pierre-Loup A. Griffais": {
-                    "company": "Valve"
-                },
-                "Georg Lehmann": {
-                    "company": "DXVK"
-                },
-                "Christophe Riccio": {
-                    "company": "LunarG"
-                }
-            },
-            "history": [
-                {
-                    "revision": 1,
-                    "date": "2022-08-22",
-                    "author": "Christophe Riccio",
-                    "comment": "Initial revision"
-                }
-            ],
             "capabilities": [
                 "vulkan10requirements",
                 "vulkan11requirements",
@@ -461,31 +338,6 @@
             "api-version": "1.3.204",
             "label": "DXVK D3D11 Level 11.1 Optimal profile",
             "description": "DXVK for D3D11 Feature Level 11.1 including optional capabilities",
-            "contributors": {
-                "Philip Rebohle": {
-                    "company": "Valve"
-                },
-                "Joshua Ashton": {
-                    "company": "Valve"
-                },
-                "Pierre-Loup A. Griffais": {
-                    "company": "Valve"
-                },
-                "Georg Lehmann": {
-                    "company": "DXVK"
-                },
-                "Christophe Riccio": {
-                    "company": "LunarG"
-                }
-            },
-            "history": [
-                {
-                    "revision": 1,
-                    "date": "2022-08-22",
-                    "author": "Christophe Riccio",
-                    "comment": "Initial revision"
-                }
-            ],
             "capabilities": [
                 "vulkan10requirements",
                 "vulkan11requirements",
@@ -503,31 +355,6 @@
             "api-version": "1.3.204",
             "label": "DXVK D3D11 Level 12.0 Optimal profile",
             "description": "DXVK for D3D11 Feature Level 12.0 including optional capabilities",
-            "contributors": {
-                "Philip Rebohle": {
-                    "company": "Valve"
-                },
-                "Joshua Ashton": {
-                    "company": "Valve"
-                },
-                "Pierre-Loup A. Griffais": {
-                    "company": "Valve"
-                },
-                "Georg Lehmann": {
-                    "company": "DXVK"
-                },
-                "Christophe Riccio": {
-                    "company": "LunarG"
-                }
-            },
-            "history": [
-                {
-                    "revision": 1,
-                    "date": "2022-08-30",
-                    "author": "Philip Rebohle",
-                    "comment": "Initial revision"
-                }
-            ],
             "capabilities": [
                 "vulkan10requirements",
                 "vulkan11requirements",
@@ -541,5 +368,48 @@
                 "d3d11_level12_0"
             ]
         }
-    }
+    },
+    "contributors": {
+        "Philip Rebohle": {
+            "company": "Valve"
+        },
+        "Joshua Ashton": {
+            "company": "Valve"
+        },
+        "Pierre-Loup A. Griffais": {
+            "company": "Valve"
+        },
+        "Georg Lehmann": {
+            "company": "DXVK"
+        },
+        "Christophe Riccio": {
+            "company": "LunarG"
+        }
+    },
+    "history": [
+        {
+            "revision": 4,
+            "date": "2022-12-18",
+            "author": "Joshua Ashton",
+            "comment": "Add VK_EXT_swapchain_colorspace and VK_EXT_hdr_metadata to d3d11_baseline_optional"
+        },
+        {
+            "revision": 3,
+            "date": "2022-10-13",
+            "author": "Christophe Riccio",
+            "comment": "Factorize history and contributors sections using schema 0.8.1"
+        },
+        {
+            "revision": 2,
+            "date": "2022-08-30",
+            "author": "Philip Rebohle",
+            "comment": "Add VP_DXVK_d3d11_level_12_0_optimal profile"
+        },
+        {
+            "revision": 1,
+            "date": "2022-08-22",
+            "author": "Christophe Riccio",
+            "comment": "Initial revision"
+        }
+    ]
 }

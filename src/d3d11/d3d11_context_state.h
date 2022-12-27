@@ -51,7 +51,7 @@ namespace dxvk {
    * as well as the range that is actually bound to the context.
    */
   struct D3D11ConstantBufferBinding {
-    Com<D3D11Buffer> buffer         = nullptr;
+    Com<D3D11Buffer, false> buffer  = nullptr;
     UINT             constantOffset = 0;
     UINT             constantCount  = 0;
     UINT             constantBound  = 0;
@@ -79,7 +79,7 @@ namespace dxvk {
    * set of views that are potentially hazardous.
    */
   struct D3D11ShaderStageSrvBinding {
-    std::array<Com<D3D11ShaderResourceView>, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT> views     = { };
+    std::array<Com<D3D11ShaderResourceView, false>, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT> views     = { };
     DxvkBindingSet<D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT>                           hazardous = { };
 
     uint32_t maxCount = 0;
@@ -121,7 +121,7 @@ namespace dxvk {
    * Stores bound UAVs. For compute shader UAVs,
    * we also store a bit mask of bound UAVs.
    */
-  using D3D11ShaderStageUavBinding = std::array<Com<D3D11UnorderedAccessView>, D3D11_1_UAV_SLOT_COUNT>;
+  using D3D11ShaderStageUavBinding = std::array<Com<D3D11UnorderedAccessView, false>, D3D11_1_UAV_SLOT_COUNT>;
   
   struct D3D11UavBindings {
     D3D11ShaderStageUavBinding              views = { };
@@ -145,20 +145,20 @@ namespace dxvk {
    * input layout, and the dynamic primitive topology.
    */
   struct D3D11VertexBufferBinding {
-    Com<D3D11Buffer> buffer = nullptr;
-    UINT             offset = 0;
-    UINT             stride = 0;
+    Com<D3D11Buffer, false> buffer = nullptr;
+    UINT                    offset = 0;
+    UINT                    stride = 0;
   };
   
   struct D3D11IndexBufferBinding {
-    Com<D3D11Buffer> buffer = nullptr;
-    UINT             offset = 0;
-    DXGI_FORMAT      format = DXGI_FORMAT_UNKNOWN;
+    Com<D3D11Buffer, false> buffer = nullptr;
+    UINT                    offset = 0;
+    DXGI_FORMAT             format = DXGI_FORMAT_UNKNOWN;
   };
 
   struct D3D11ContextStateIA {
-    Com<D3D11InputLayout>    inputLayout       = nullptr;
-    D3D11_PRIMITIVE_TOPOLOGY primitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
+    Com<D3D11InputLayout, false> inputLayout       = nullptr;
+    D3D11_PRIMITIVE_TOPOLOGY     primitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
     
     std::array<D3D11VertexBufferBinding, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> vertexBuffers = { };
     D3D11IndexBufferBinding                                                         indexBuffer   = { };
@@ -232,8 +232,8 @@ namespace dxvk {
    * argument and draw count buffer.
    */
   struct D3D11ContextStateID {
-    Com<D3D11Buffer> argBuffer = nullptr;
-    Com<D3D11Buffer> cntBuffer = nullptr;
+    Com<D3D11Buffer, false> argBuffer = nullptr;
+    Com<D3D11Buffer, false> cntBuffer = nullptr;
 
     void reset() {
       argBuffer = nullptr;
@@ -275,8 +275,8 @@ namespace dxvk {
    * Stores stream output buffers with offset.
    */
   struct D3D11ContextSoTarget {
-    Com<D3D11Buffer> buffer = nullptr;
-    UINT             offset = 0;
+    Com<D3D11Buffer, false> buffer = nullptr;
+    UINT                    offset = 0;
   };
 
   struct D3D11ContextStateSO {
@@ -294,8 +294,8 @@ namespace dxvk {
    * Stores predication info.
    */
   struct D3D11ContextStatePR {
-    Com<D3D11Query> predicateObject = nullptr;
-    BOOL            predicateValue  = false;
+    Com<D3D11Query, false> predicateObject = nullptr;
+    BOOL                   predicateValue  = false;
 
     void reset() {
       predicateObject = nullptr;
@@ -307,12 +307,12 @@ namespace dxvk {
    * \brief Context state
    */
   struct D3D11ContextState {
-    Com<D3D11VertexShader>    vs;
-    Com<D3D11HullShader>      hs;
-    Com<D3D11DomainShader>    ds;
-    Com<D3D11GeometryShader>  gs;
-    Com<D3D11PixelShader>     ps;
-    Com<D3D11ComputeShader>   cs;
+    Com<D3D11VertexShader, false>    vs;
+    Com<D3D11HullShader, false>      hs;
+    Com<D3D11DomainShader, false>    ds;
+    Com<D3D11GeometryShader, false>  gs;
+    Com<D3D11PixelShader, false>     ps;
+    Com<D3D11ComputeShader, false>   cs;
 
     D3D11ContextStateID id;
     D3D11ContextStateIA ia;

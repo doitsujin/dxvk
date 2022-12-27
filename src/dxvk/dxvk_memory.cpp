@@ -187,12 +187,6 @@ namespace dxvk {
       m_memHeaps[i].properties = m_memProps.memoryHeaps[i];
       m_memHeaps[i].stats      = DxvkMemoryStats { 0, 0 };
       m_memHeaps[i].budget     = 0;
-
-      /* Target 80% of a heap on systems where we want
-       * to avoid oversubscribing memory heaps */
-      if ((m_memProps.memoryHeaps[i].flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
-       && (m_device->isUnifiedMemoryArchitecture()))
-        m_memHeaps[i].budget = (8 * m_memProps.memoryHeaps[i].size) / 10;
     }
     
     for (uint32_t i = 0; i < m_memProps.memoryTypeCount; i++) {
@@ -326,19 +320,25 @@ namespace dxvk {
 
     DxvkMemory memory;
 
-    if (size >= chunkSize || info.dedicated.buffer || info.dedicated.image) {
-      if (this->shouldFreeEmptyChunks(type->heap, size))
-        this->freeEmptyChunks(type->heap);
+    // Require dedicated allocations for resources that use the Vulkan dedicated
+    // allocation bits, or are too large to fit into a single full-sized chunk
+    bool needsDedicatedAlocation = size >= chunkSize || info.dedicated.buffer || info.dedicated.image;
 
-      DxvkDeviceMemory devMem = this->tryAllocDeviceMemory(type, size, info, hints);
+    // Prefer a dedicated allocation for very large resources in order to
+    // reduce fragmentation if a large number of those resources are in use
+    bool wantsDedicatedAllocation = 3 * size >= chunkSize;
 
-      if (devMem.memHandle != VK_NULL_HANDLE)
-        memory = DxvkMemory(this, nullptr, type, devMem.memHandle, 0, size, devMem.memPointer);
-    } else {
+    // Try to reuse existing memory as much as possible in case the heap is nearly full
+    bool heapBudgedExceeded = 5 * type->heap->stats.memoryUsed + size > 4 * type->heap->properties.size;
+
+    if (!needsDedicatedAlocation && (!wantsDedicatedAllocation || heapBudgedExceeded)) {
+      // Attempt to suballocate from existing chunks first
       for (uint32_t i = 0; i < type->chunks.size() && !memory; i++)
         memory = type->chunks[i]->alloc(info.flags, size, align, hints);
       
-      if (!memory) {
+      // If no existing chunk can accomodate the allocation, and if a dedicated
+      // allocation is not preferred, create a new chunk and suballocate from it
+      if (!memory && !wantsDedicatedAllocation) {
         DxvkDeviceMemory devMem;
         
         if (this->shouldFreeEmptyChunks(type->heap, chunkSize))
@@ -354,6 +354,18 @@ namespace dxvk {
           type->chunks.push_back(std::move(chunk));
         }
       }
+    }
+
+    // If a dedicated allocation is required or preferred and we haven't managed
+    // to suballocate any memory before, try to create a dedicated allocation
+    if (!memory && (needsDedicatedAlocation || wantsDedicatedAllocation)) {
+      if (this->shouldFreeEmptyChunks(type->heap, size))
+        this->freeEmptyChunks(type->heap);
+
+      DxvkDeviceMemory devMem = this->tryAllocDeviceMemory(type, size, info, hints);
+
+      if (devMem.memHandle != VK_NULL_HANDLE)
+        memory = DxvkMemory(this, nullptr, type, devMem.memHandle, 0, size, devMem.memPointer);
     }
 
     if (memory)
@@ -483,8 +495,8 @@ namespace dxvk {
     VkMemoryType type = m_memProps.memoryTypes[memTypeId];
     VkMemoryHeap heap = m_memProps.memoryHeaps[type.heapIndex];
 
-    // Default to a chunk size of 128 MiB
-    VkDeviceSize chunkSize = 128 << 20;
+    // Default to a chunk size of 256 MiB
+    VkDeviceSize chunkSize = 256 << 20;
 
     if (hints.test(DxvkMemoryFlag::Small))
       chunkSize = 16 << 20;

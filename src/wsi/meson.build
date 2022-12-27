@@ -1,3 +1,7 @@
+wsi_common_src = [
+  'wsi_edid.cpp',
+]
+
 wsi_win32_src = [
   'win32/wsi_monitor_win32.cpp',
   'win32/wsi_window_win32.cpp',
@@ -9,11 +13,11 @@ wsi_sdl2_src = [
 ]
 
 if dxvk_wsi == 'win32'
-  wsi_src  = wsi_win32_src
-  wsi_deps = []
+  wsi_src  = wsi_common_src + wsi_win32_src
+  wsi_deps = [ dep_displayinfo ]
 elif dxvk_wsi == 'sdl2'
-  wsi_src  = wsi_sdl2_src
-  wsi_deps = [ lib_sdl2 ]
+  wsi_src  = wsi_common_src + wsi_sdl2_src
+  wsi_deps = [ dep_displayinfo, lib_sdl2 ]
 else
   error('Unknown wsi')
 endif

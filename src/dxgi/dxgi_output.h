@@ -133,10 +133,14 @@ namespace dxvk {
     Com<DxgiAdapter> m_adapter = nullptr;
     HMONITOR         m_monitor = nullptr;
 
+    wsi::WsiDisplayMetadata m_metadata = {};
+
     static void FilterModesByDesc(
             std::vector<DXGI_MODE_DESC1>& Modes,
       const DXGI_MODE_DESC1&              TargetMode);
     
+    void CacheMonitorData();
+
   };
 
 }

@@ -691,6 +691,38 @@ namespace dxvk {
 
 
   /**
+   * \brief DXVK swap chain factory
+   */
+  class DXGIVkSwapChainFactory : public IDXGIVkSwapChainFactory {
+
+  public:
+
+    DXGIVkSwapChainFactory(
+            D3D11DXGIDevice*        pContainer,
+            D3D11Device*            pDevice);
+
+    ULONG STDMETHODCALLTYPE AddRef();
+
+    ULONG STDMETHODCALLTYPE Release();
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                  riid,
+            void**                  ppvObject);
+
+    HRESULT STDMETHODCALLTYPE CreateSwapChain(
+            IDXGIVkSurfaceFactory*    pSurfaceFactory,
+      const DXGI_SWAP_CHAIN_DESC1*    pDesc,
+            IDXGIVkSwapChain**        ppSwapChain);
+
+  private:
+
+    D3D11DXGIDevice* m_container;
+    D3D11Device*     m_device;
+
+  };
+
+
+  /**
    * \brief DXGI swap chain factory
    */
   class WineDXGISwapChainFactory : public IWineDXGISwapChainFactory {
@@ -851,6 +883,7 @@ namespace dxvk {
     D3D11VideoDevice    m_d3d11Video;
     DXGIDXVKDevice      m_metaDevice;
     
+    DXGIVkSwapChainFactory   m_dxvkFactory;
     WineDXGISwapChainFactory m_wineFactory;
     
     uint32_t m_frameLatency = DefaultFrameLatency;

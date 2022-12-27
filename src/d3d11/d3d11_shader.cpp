@@ -20,24 +20,29 @@ namespace dxvk {
       reinterpret_cast<const char*>(pShaderBytecode),
       BytecodeLength);
     
-    DxbcModule module(reader);
-    
     // If requested by the user, dump both the raw DXBC
     // shader and the compiled SPIR-V module to a file.
-    const std::string dumpPath = env::getEnvVar("DXVK_SHADER_DUMP_PATH");
+    const std::string& dumpPath = pDevice->GetOptions()->shaderDumpPath;
     
     if (dumpPath.size() != 0) {
       reader.store(std::ofstream(str::topath(str::format(dumpPath, "/", name, ".dxbc").c_str()).c_str(),
         std::ios_base::binary | std::ios_base::trunc));
     }
-    
+
+    // Error out if the shader is invalid
+    DxbcModule module(reader);
+    auto programInfo = module.programInfo();
+
+    if (!programInfo)
+      throw DxvkError("Invalid shader binary.");
+
     // Decide whether we need to create a pass-through
     // geometry shader for vertex shader stream output
     bool passthroughShader = pDxbcModuleInfo->xfb != nullptr
-      && (module.programInfo().type() == DxbcProgramType::VertexShader
-       || module.programInfo().type() == DxbcProgramType::DomainShader);
+      && (programInfo->type() == DxbcProgramType::VertexShader
+       || programInfo->type() == DxbcProgramType::DomainShader);
 
-    if (module.programInfo().shaderStage() != pShaderKey->type() && !passthroughShader)
+    if (programInfo->shaderStage() != pShaderKey->type() && !passthroughShader)
       throw DxvkError("Mismatching shader type.");
 
     m_shader = passthroughShader

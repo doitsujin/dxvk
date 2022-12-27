@@ -2,6 +2,10 @@
 
 #include "../dxvk/dxvk_include.h"
 
+#include "../wsi/wsi_edid.h"
+
+#include "../util/util_time.h"
+
 #include "dxgi_format.h"
 #include "dxgi_include.h"
 
@@ -24,6 +28,31 @@ struct DXGI_VK_MONITOR_DATA {
   dxvk::DxgiSwapChain*  pSwapChain;
   DXGI_FRAME_STATISTICS FrameStats;
   DXGI_GAMMA_CONTROL    GammaCurve;
+  DXGI_MODE_DESC1       LastMode;
+  dxvk::wsi::WsiDisplayMetadata DisplayMetadata;
+};
+
+
+/**
+ * \brief HDR metadata struct
+ */
+struct DXGI_VK_HDR_METADATA {
+  DXGI_HDR_METADATA_TYPE    Type;
+  union {
+    DXGI_HDR_METADATA_HDR10 HDR10;
+  };
+};
+
+
+/**
+ * \brief Private DXGI surface factory
+ */
+MIDL_INTERFACE("1e7895a1-1bc3-4f9c-a670-290a4bc9581a")
+IDXGIVkSurfaceFactory : public IUnknown {
+  virtual VkResult STDMETHODCALLTYPE CreateSurface(
+          VkInstance                Instance,
+          VkPhysicalDevice          Adapter,
+          VkSurfaceKHR*             pSurface) = 0;
 };
 
 
@@ -34,7 +63,7 @@ struct DXGI_VK_MONITOR_DATA {
  * chain implementation to remain API-agnostic,
  * so that common code can stay in one class.
  */
-MIDL_INTERFACE("104001a6-7f36-4957-b932-86ade9567d91")
+MIDL_INTERFACE("e4a9059e-b569-46ab-8de7-501bd2bc7f7a")
 IDXGIVkSwapChain : public IUnknown {
   virtual HRESULT STDMETHODCALLTYPE GetDesc(
           DXGI_SWAP_CHAIN_DESC1*    pDesc) = 0;
@@ -59,7 +88,9 @@ IDXGIVkSwapChain : public IUnknown {
   virtual HANDLE STDMETHODCALLTYPE GetFrameLatencyEvent() = 0;
 
   virtual HRESULT STDMETHODCALLTYPE ChangeProperties(
-    const DXGI_SWAP_CHAIN_DESC1*    pDesc) = 0;
+    const DXGI_SWAP_CHAIN_DESC1*    pDesc,
+    const UINT*                     pNodeMasks,
+          IUnknown* const*          ppPresentQueues) = 0;
 
   virtual HRESULT STDMETHODCALLTYPE SetPresentRegion(
     const RECT*                     pRegion) = 0;
@@ -76,9 +107,26 @@ IDXGIVkSwapChain : public IUnknown {
           UINT                      PresentFlags,
     const DXGI_PRESENT_PARAMETERS*  pPresentParameters) = 0;
 
-  virtual void STDMETHODCALLTYPE NotifyModeChange(
-          BOOL                      Windowed,
-    const DXGI_MODE_DESC*           pDisplayMode) = 0;
+  virtual UINT STDMETHODCALLTYPE CheckColorSpaceSupport(
+          DXGI_COLOR_SPACE_TYPE     ColorSpace) = 0;
+
+  virtual HRESULT STDMETHODCALLTYPE SetColorSpace(
+          DXGI_COLOR_SPACE_TYPE     ColorSpace) = 0;
+
+  virtual HRESULT STDMETHODCALLTYPE SetHDRMetaData(
+    const DXGI_VK_HDR_METADATA*     pMetaData) = 0;
+};
+
+
+/**
+ * \brief Private DXGI presenter factory
+ */
+MIDL_INTERFACE("e7d6c3ca-23a0-4e08-9f2f-ea5231df6633")
+IDXGIVkSwapChainFactory : public IUnknown {
+  virtual HRESULT STDMETHODCALLTYPE CreateSwapChain(
+          IDXGIVkSurfaceFactory*    pSurfaceFactory,
+    const DXGI_SWAP_CHAIN_DESC1*    pDesc,
+          IDXGIVkSwapChain**        ppSwapChain) = 0;
 };
 
 
@@ -363,7 +411,9 @@ struct __declspec(uuid("3a6d8f2c-b0e8-4ab4-b4dc-4fd24891bfa5")) IDXGIVkInteropAd
 struct __declspec(uuid("e2ef5fa5-dc21-4af7-90c4-f67ef6a09323")) IDXGIVkInteropDevice;
 struct __declspec(uuid("e2ef5fa5-dc21-4af7-90c4-f67ef6a09324")) IDXGIVkInteropDevice1;
 struct __declspec(uuid("5546cf8c-77e7-4341-b05d-8d4d5000e77d")) IDXGIVkInteropSurface;
-struct __declspec(uuid("104001a6-7f36-4957-b932-86ade9567d91")) IDXGIVkSwapChain;
+struct __declspec(uuid("1e7895a1-1bc3-4f9c-a670-290a4bc9581a")) IDXGIVkSurfaceFactory;
+struct __declspec(uuid("e4a9059e-b569-46ab-8de7-501bd2bc7f7a")) IDXGIVkSwapChain;
+struct __declspec(uuid("e7d6c3ca-23a0-4e08-9f2f-ea5231df6633")) IDXGIVkSwapChainFactory;
 struct __declspec(uuid("53cb4ff0-c25a-4164-a891-0e83db0a7aac")) IWineDXGISwapChainFactory;
 #else
 __CRT_UUID_DECL(IDXGIDXVKAdapter,          0x907bf281,0xea3c,0x43b4,0xa8,0xe4,0x9f,0x23,0x11,0x07,0xb4,0xff);
@@ -373,6 +423,8 @@ __CRT_UUID_DECL(IDXGIVkInteropAdapter,     0x3a6d8f2c,0xb0e8,0x4ab4,0xb4,0xdc,0x
 __CRT_UUID_DECL(IDXGIVkInteropDevice,      0xe2ef5fa5,0xdc21,0x4af7,0x90,0xc4,0xf6,0x7e,0xf6,0xa0,0x93,0x23);
 __CRT_UUID_DECL(IDXGIVkInteropDevice1,     0xe2ef5fa5,0xdc21,0x4af7,0x90,0xc4,0xf6,0x7e,0xf6,0xa0,0x93,0x24);
 __CRT_UUID_DECL(IDXGIVkInteropSurface,     0x5546cf8c,0x77e7,0x4341,0xb0,0x5d,0x8d,0x4d,0x50,0x00,0xe7,0x7d);
-__CRT_UUID_DECL(IDXGIVkSwapChain,          0x104001a6,0x7f36,0x4957,0xb9,0x32,0x86,0xad,0xe9,0x56,0x7d,0x91);
+__CRT_UUID_DECL(IDXGIVkSurfaceFactory,     0x1e7895a1,0x1bc3,0x4f9c,0xa6,0x70,0x29,0x0a,0x4b,0xc9,0x58,0x1a);
+__CRT_UUID_DECL(IDXGIVkSwapChain,          0xe4a9059e,0xb569,0x46ab,0x8d,0xe7,0x50,0x1b,0xd2,0xbc,0x7f,0x7a);
+__CRT_UUID_DECL(IDXGIVkSwapChainFactory,   0xe7d6c3ca,0x23a0,0x4e08,0x9f,0x2f,0xea,0x52,0x31,0xdf,0x66,0x33);
 __CRT_UUID_DECL(IWineDXGISwapChainFactory, 0x53cb4ff0,0xc25a,0x4164,0xa8,0x91,0x0e,0x83,0xdb,0x0a,0x7a,0xac);
 #endif

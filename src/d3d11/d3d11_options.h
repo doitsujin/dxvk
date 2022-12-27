@@ -20,10 +20,6 @@ namespace dxvk {
     /// than once.
     bool dcSingleUseMode;
 
-    /// Enables workaround to replace NaN render target
-    /// outputs with zero
-    bool enableRtOutputNanFixup;
-
     /// Zero-initialize workgroup memory
     ///
     /// Workargound for games that don't initialize
@@ -116,6 +112,9 @@ namespace dxvk {
     /// useful for debugging purposes or when applications have
     /// race conditions.
     bool enableContextLock;
+
+    /// Shader dump path
+    std::string shaderDumpPath;
   };
   
 }

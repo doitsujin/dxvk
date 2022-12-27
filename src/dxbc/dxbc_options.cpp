@@ -35,10 +35,10 @@ namespace dxvk {
     }
     
     invariantPosition        = options.invariantPosition;
-    enableRtOutputNanFixup   = options.enableRtOutputNanFixup;
     zeroInitWorkgroupMemory  = options.zeroInitWorkgroupMemory;
     forceVolatileTgsmAccess  = options.forceVolatileTgsmAccess;
     disableMsaa              = options.disableMsaa;
+    enableSampleShadingInterlock = device->features().extFragmentShaderInterlock.fragmentShaderSampleInterlock;
 
     // Figure out float control flags to match D3D11 rules
     if (options.floatControls) {
@@ -54,9 +54,6 @@ namespace dxvk {
           floatControl.set(DxbcFloatControlFlag::DenormPreserve64);
       }
     }
-
-    if (!devInfo.vk12.shaderSignedZeroInfNanPreserveFloat32)
-      enableRtOutputNanFixup = true;
   }
   
 }

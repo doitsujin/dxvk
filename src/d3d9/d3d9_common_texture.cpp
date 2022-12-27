@@ -12,24 +12,27 @@ namespace dxvk {
 
   D3D9CommonTexture::D3D9CommonTexture(
           D3D9DeviceEx*             pDevice,
+          IUnknown*                 pInterface,
     const D3D9_COMMON_TEXTURE_DESC* pDesc,
           D3DRESOURCETYPE           ResourceType,
           HANDLE*                   pSharedHandle)
-    : m_device(pDevice), m_desc(*pDesc), m_type(ResourceType) {
+    : m_device(pDevice), m_desc(*pDesc), m_type(ResourceType), m_d3d9Interop(pInterface, this) {
     if (m_desc.Format == D3D9Format::Unknown)
       m_desc.Format = (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL)
                     ? D3D9Format::D32
                     : D3D9Format::X8R8G8B8;
+
+    m_exposedMipLevels = m_desc.MipLevels;
+
+    if (m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP)
+      m_exposedMipLevels = 1;
 
     for (uint32_t i = 0; i < m_dirtyBoxes.size(); i++) {
       AddDirtyBox(nullptr, i);
     }
 
     if (m_desc.Pool != D3DPOOL_DEFAULT) {
-      const uint32_t subresources = CountSubresources();
-      for (uint32_t i = 0; i < subresources; i++) {
-        SetNeedsUpload(i, true);
-      }
+      SetAllNeedUpload();
       if (pSharedHandle) {
         throw DxvkError("D3D9: Incompatible pool type for texture sharing.");
       }
@@ -39,6 +42,8 @@ namespace dxvk {
 
     m_mapMode        = DetermineMapMode();
     m_shadow         = DetermineShadowState();
+    m_upgradedToD32f = ConvertFormatUnfixed(m_desc.Format).FormatColor != m_mapping.FormatColor &&
+                       (m_mapping.FormatColor == VK_FORMAT_D32_SFLOAT_S8_UINT || m_mapping.FormatColor == VK_FORMAT_D32_SFLOAT);
     m_supportsFetch4 = DetermineFetch4Compatibility();
 
     const bool createImage = m_desc.Pool != D3DPOOL_SYSTEMMEM && m_desc.Pool != D3DPOOL_SCRATCH && m_desc.Format != D3D9Format::NULL_FORMAT;
@@ -75,15 +80,16 @@ namespace dxvk {
       }
     }
 
+    for (uint32_t i = 0; i < CountSubresources(); i++) {
+      m_memoryOffset[i] = m_totalSize;
+      m_totalSize += GetMipSize(i);
+    }
+
+    // Initialization is handled by D3D9Initializer
     if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE)
-      AllocData();
+      m_data = m_device->GetAllocator()->Alloc(m_totalSize);
     else if (m_mapMode != D3D9_COMMON_TEXTURE_MAP_MODE_NONE && m_desc.Pool != D3DPOOL_DEFAULT)
-      CreateBuffers();
-
-    m_exposedMipLevels = m_desc.MipLevels;
-
-    if (m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP)
-      m_exposedMipLevels = 1;
+      CreateBuffer(false);
   }
 
 
@@ -171,22 +177,24 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  void* D3D9CommonTexture::GetData(UINT Subresource) {
-    if (unlikely(m_mappedSlices[Subresource].mapPtr != nullptr || m_mapMode != D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE))
-      return m_mappedSlices[Subresource].mapPtr;
 
-    D3D9Memory& memory = m_data[Subresource];
-    memory.Map();
-    return memory.Ptr();
+  void* D3D9CommonTexture::GetData(UINT Subresource) {
+    if (unlikely(m_buffer != nullptr))
+      return m_buffer->mapPtr(m_memoryOffset[Subresource]);
+
+    m_data.Map();
+    uint8_t* ptr = reinterpret_cast<uint8_t*>(m_data.Ptr());
+    ptr += m_memoryOffset[Subresource];
+    return ptr;
   }
 
-  void D3D9CommonTexture::CreateBufferSubresource(UINT Subresource, bool Initialize) {
-    if (likely(m_buffers[Subresource] != nullptr)) {
+
+  void D3D9CommonTexture::CreateBuffer(bool Initialize) {
+    if (likely(m_buffer != nullptr))
       return;
-    }
 
     DxvkBufferCreateInfo info;
-    info.size   = GetMipSize(Subresource);
+    info.size   = m_totalSize;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
                 | VK_BUFFER_USAGE_TRANSFER_DST_BIT
                 | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
@@ -206,18 +214,17 @@ namespace dxvk {
                                   | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
                                   | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
 
-    m_buffers[Subresource] = m_device->GetDXVKDevice()->createBuffer(info, memType);
-    m_mappedSlices[Subresource] = m_buffers[Subresource]->getSliceHandle();
+    m_buffer = m_device->GetDXVKDevice()->createBuffer(info, memType);
 
     if (Initialize) {
-      if (m_data[Subresource]) {
-        m_data[Subresource].Map();
-        memcpy(m_mappedSlices[Subresource].mapPtr, m_data[Subresource].Ptr(), info.size);
+      if (m_data) {
+        m_data.Map();
+        std::memcpy(m_buffer->mapPtr(0), m_data.Ptr(), m_totalSize);
       } else {
-        memset(m_mappedSlices[Subresource].mapPtr, 0, info.size);
+        std::memset(m_buffer->mapPtr(0), 0, m_totalSize);
       }
     }
-    m_data[Subresource] = {};
+    m_data = {};
   }
 
 
@@ -230,7 +237,7 @@ namespace dxvk {
 
     const VkExtent3D mipExtent = util::computeMipLevelExtent(
       GetExtent(), MipLevel);
-    
+
     const VkExtent3D blockCount = util::computeBlockCount(
       mipExtent, formatInfo->blockSize);
 
@@ -482,8 +489,10 @@ namespace dxvk {
     
     // Filter out unnecessary flags. Transfer operations
     // are handled by the backend in a transparent manner.
+    // Feedback loops are handled by hazard tracking.
     Usage &= ~(VK_IMAGE_USAGE_TRANSFER_DST_BIT
-             | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+             | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+             | VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
     
     // Ignore sampled bit in case the image was created with
     // an image flag that only allows attachment usage
@@ -656,16 +665,14 @@ namespace dxvk {
       m_sampleView.Srgb = CreateView(AllLayers, Lod, VK_IMAGE_USAGE_SAMPLED_BIT, true);
   }
 
-  void D3D9CommonTexture::AllocData() {
-    // D3D9Initializer will handle clearing the data
-    const uint32_t count = CountSubresources();
-    for (uint32_t i = 0; i < count; i++) {
-      m_data[i] = m_device->GetAllocator()->Alloc(GetMipSize(i));
-    }
+
+  const Rc<DxvkBuffer>& D3D9CommonTexture::GetBuffer() {
+    return m_buffer;
   }
 
-  const Rc<DxvkBuffer>&  D3D9CommonTexture::GetBuffer(UINT Subresource) {
-    return m_buffers[Subresource];
+
+  DxvkBufferSlice D3D9CommonTexture::GetBufferSlice(UINT Subresource) {
+    return DxvkBufferSlice(GetBuffer(), m_memoryOffset[Subresource], GetMipSize(Subresource));
   }
 
 }

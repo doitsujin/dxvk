@@ -23,6 +23,7 @@ namespace dxvk::vk {
     ~LibraryLoader();
     PFN_vkVoidFunction sym(VkInstance instance, const char* name) const;
     PFN_vkVoidFunction sym(const char* name) const;
+    PFN_vkGetInstanceProcAddr getLoaderProc() const { return m_getInstanceProcAddr; }
     bool               valid() const;
   protected:
     const HMODULE                   m_library;
@@ -39,6 +40,7 @@ namespace dxvk::vk {
   struct InstanceLoader : public RcObject {
     InstanceLoader(const Rc<LibraryLoader>& library, bool owned, VkInstance instance);
     PFN_vkVoidFunction sym(const char* name) const;
+    PFN_vkGetInstanceProcAddr getLoaderProc() const { return m_library->getLoaderProc(); }
     VkInstance instance() const { return m_instance; }
   protected:
     Rc<LibraryLoader> m_library;
@@ -358,10 +360,32 @@ namespace dxvk::vk {
     VULKAN_FN(vkSetDebugUtilsObjectTagEXT);
     #endif
 
+    #ifdef VK_EXT_extended_dynamic_state3
+    VULKAN_FN(vkCmdSetTessellationDomainOriginEXT);
+    VULKAN_FN(vkCmdSetDepthClampEnableEXT);
+    VULKAN_FN(vkCmdSetPolygonModeEXT);
+    VULKAN_FN(vkCmdSetRasterizationSamplesEXT);
+    VULKAN_FN(vkCmdSetSampleMaskEXT);
+    VULKAN_FN(vkCmdSetAlphaToCoverageEnableEXT);
+    VULKAN_FN(vkCmdSetAlphaToOneEnableEXT);
+    VULKAN_FN(vkCmdSetLogicOpEnableEXT);
+    VULKAN_FN(vkCmdSetColorBlendEnableEXT);
+    VULKAN_FN(vkCmdSetColorBlendEquationEXT);
+    VULKAN_FN(vkCmdSetColorWriteMaskEXT);
+    VULKAN_FN(vkCmdSetRasterizationStreamEXT);
+    VULKAN_FN(vkCmdSetConservativeRasterizationModeEXT);
+    VULKAN_FN(vkCmdSetExtraPrimitiveOverestimationSizeEXT);
+    VULKAN_FN(vkCmdSetDepthClipEnableEXT);
+    #endif
+
     #ifdef VK_EXT_full_screen_exclusive
     VULKAN_FN(vkAcquireFullScreenExclusiveModeEXT);
     VULKAN_FN(vkReleaseFullScreenExclusiveModeEXT);
     VULKAN_FN(vkGetDeviceGroupSurfacePresentModes2EXT);
+    #endif
+
+    #ifdef VK_EXT_hdr_metadata
+    VULKAN_FN(vkSetHdrMetadataEXT);
     #endif
 
     #ifdef VK_EXT_shader_module_identifier

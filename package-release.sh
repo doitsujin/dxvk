@@ -10,7 +10,8 @@ if [ -z "$1" ] || [ -z "$2" ]; then
 fi
 
 DXVK_VERSION="$1"
-DXVK_SRC_DIR=`dirname $(readlink -f $0)`
+DXVK_SRC_DIR=$(readlink -f "$0")
+DXVK_SRC_DIR=$(dirname "$DXVK_SRC_DIR")
 DXVK_BUILD_DIR=$(realpath "$2")"/dxvk-$DXVK_VERSION"
 DXVK_ARCHIVE_PATH=$(realpath "$2")"/dxvk-$DXVK_VERSION.tar.gz"
 
@@ -57,13 +58,13 @@ function build_arch {
     opt_strip=--strip
   fi
 
-  meson --cross-file "$DXVK_SRC_DIR/$crossfile$1.txt" \
-        --buildtype "release"                         \
-        --prefix "$DXVK_BUILD_DIR"                    \
-        $opt_strip                                    \
-        --bindir "x$1"                                \
-        --libdir "x$1"                                \
-        -Dbuild_id=$opt_buildid                       \
+  meson setup --cross-file "$DXVK_SRC_DIR/$crossfile$1.txt" \
+        --buildtype "release"                               \
+        --prefix "$DXVK_BUILD_DIR"                          \
+        $opt_strip                                          \
+        --bindir "x$1"                                      \
+        --libdir "x$1"                                      \
+        -Dbuild_id=$opt_buildid                             \
         "$DXVK_BUILD_DIR/build.$1"
 
   cd "$DXVK_BUILD_DIR/build.$1"
@@ -76,11 +77,6 @@ function build_arch {
   fi
 }
 
-function build_script {
-  cp "$DXVK_SRC_DIR/setup_dxvk.sh" "$DXVK_BUILD_DIR/setup_dxvk.sh"
-  chmod +x "$DXVK_BUILD_DIR/setup_dxvk.sh"
-}
-
 function package {
   cd "$DXVK_BUILD_DIR/.."
   tar -czf "$DXVK_ARCHIVE_PATH" "dxvk-$DXVK_VERSION"
@@ -89,7 +85,6 @@ function package {
 
 build_arch 64
 build_arch 32
-build_script
 
 if [ $opt_nopackage -eq 0 ]; then
   package

@@ -73,7 +73,8 @@ namespace dxvk::wsi {
     */
   bool leaveFullscreenMode(
           HWND             hWindow,
-          DxvkWindowState* pState);
+          DxvkWindowState* pState,
+          bool             restoreCoordinates);
 
   /**
     * \brief Restores the display mode if necessary
@@ -114,12 +115,14 @@ namespace dxvk::wsi {
     * \brief Create a surface for a window
     * 
     * \param [in] hWindow The window
-    * \param [in] vki The instance
+    * \param [in] pfnVkGetInstanceProcAddr \c vkGetInstanceProcAddr pointer
+    * \param [in] instance Vulkan instance
     * \param [out] pSurface The surface
     */
   VkResult createSurface(
           HWND                hWindow,
-    const Rc<vk::InstanceFn>& vki,
+          PFN_vkGetInstanceProcAddr pfnVkGetInstanceProcAddr,
+          VkInstance          instance,
           VkSurfaceKHR*       pSurface);
 
 }

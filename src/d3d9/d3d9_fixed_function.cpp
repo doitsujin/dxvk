@@ -764,6 +764,9 @@ namespace dxvk {
 
     void alphaTestPS();
 
+    uint32_t emitMatrixTimesVector(uint32_t rowCount, uint32_t colCount, uint32_t matrix, uint32_t vector);
+    uint32_t emitVectorTimesMatrix(uint32_t rowCount, uint32_t colCount, uint32_t vector, uint32_t matrix);
+
     bool isVS() { return m_programType == DxsoProgramType::VertexShader; }
     bool isPS() { return !isVS(); }
 
@@ -973,8 +976,8 @@ namespace dxvk {
     if (!m_vsKey.Data.Contents.HasPositionT) {
       if (m_vsKey.Data.Contents.VertexBlendMode == D3D9FF_VertexBlendMode_Normal) {
         uint32_t blendWeightRemaining = m_module.constf32(1);
-        uint32_t vtxSum               = m_module.constvec4f32(0, 0, 0, 0);
-        uint32_t nrmSum               = m_module.constvec3f32(0, 0, 0);
+        uint32_t vtxSum               = 0;
+        uint32_t nrmSum               = 0;
 
         for (uint32_t i = 0; i <= m_vsKey.Data.Contents.VertexBlendCount; i++) {
           std::array<uint32_t, 2> arrayIndices;
@@ -1001,7 +1004,7 @@ namespace dxvk {
           }
           nrmMtx = m_module.opCompositeConstruct(m_mat3Type, mtxIndices.size(), mtxIndices.data());
 
-          uint32_t vtxResult = m_module.opVectorTimesMatrix(m_vec4Type, vtx, worldview);
+          uint32_t vtxResult = emitVectorTimesMatrix(4, 4, vtx, worldview);
           uint32_t nrmResult = m_module.opVectorTimesMatrix(m_vec3Type, normal, nrmMtx);
 
           uint32_t weight;
@@ -1012,18 +1015,26 @@ namespace dxvk {
           else
             weight = blendWeightRemaining;
 
-          vtxResult = m_module.opVectorTimesScalar(m_vec4Type, vtxResult, weight);
-          nrmResult = m_module.opVectorTimesScalar(m_vec3Type, nrmResult, weight);
+          std::array<uint32_t, 4> weightIds = { weight, weight, weight, weight };
+          uint32_t weightVec4 = m_module.opCompositeConstruct(m_vec4Type, 4, weightIds.data());
+          uint32_t weightVec3 = m_module.opCompositeConstruct(m_vec3Type, 3, weightIds.data());
 
-          vtxSum = m_module.opFAdd(m_vec4Type, vtxSum, vtxResult);
-          nrmSum = m_module.opFAdd(m_vec3Type, nrmSum, nrmResult);
+          vtxSum = vtxSum
+            ? m_module.opFFma(m_vec4Type, vtxResult, weightVec4, vtxSum)
+            : m_module.opFMul(m_vec4Type, vtxResult, weightVec4);
+
+          nrmSum = nrmSum
+            ? m_module.opFFma(m_vec3Type, nrmResult, weightVec3, nrmSum)
+            : m_module.opFMul(m_vec3Type, nrmResult, weightVec3);
+
+          m_module.decorate(vtxSum, spv::DecorationNoContraction);
         }
 
         vtx    = vtxSum;
         normal = nrmSum;
       }
       else {
-        vtx = m_module.opVectorTimesMatrix(m_vec4Type, vtx, m_vs.constants.worldview);
+        vtx = emitVectorTimesMatrix(4, 4, vtx, m_vs.constants.worldview);
 
         uint32_t nrmMtx = m_vs.constants.normal;
 
@@ -1051,7 +1062,7 @@ namespace dxvk {
         normal = m_module.opSelect(m_vec3Type, isZeroNormal3, m_module.constvec3f32(0.0f, 0.0f, 0.0f), normal);
       }
       
-      gl_Position = m_module.opVectorTimesMatrix(m_vec4Type, vtx, m_vs.constants.proj);
+      gl_Position = emitVectorTimesMatrix(4, 4, vtx, m_vs.constants.proj);
     } else {
       gl_Position = m_module.opFMul(m_vec4Type, gl_Position, m_vs.constants.invExtent);
       gl_Position = m_module.opFAdd(m_vec4Type, gl_Position, m_vs.constants.invOffset);
@@ -2301,7 +2312,7 @@ namespace dxvk {
 
 
   void D3D9FFShaderCompiler::emitVsClipping(uint32_t vtx) {
-    uint32_t worldPos = m_module.opMatrixTimesVector(m_vec4Type, m_vs.constants.inverseView, vtx);
+    uint32_t worldPos = emitMatrixTimesVector(4, 4, m_vs.constants.inverseView, vtx);
 
     uint32_t clipPlaneCountId = m_module.constu32(caps::MaxClipPlanes);
     
@@ -2390,6 +2401,38 @@ namespace dxvk {
   }
 
 
+  uint32_t D3D9FFShaderCompiler::emitMatrixTimesVector(uint32_t rowCount, uint32_t colCount, uint32_t matrix, uint32_t vector) {
+    uint32_t f32Type = m_module.defFloatType(32);
+    uint32_t vecType = m_module.defVectorType(f32Type, rowCount);
+    uint32_t accum = 0;
+
+    for (uint32_t i = 0; i < colCount; i++) {
+      std::array<uint32_t, 4> indices = { i, i, i, i };
+
+      uint32_t a = m_module.opVectorShuffle(vecType, vector, vector, rowCount, indices.data());
+      uint32_t b = m_module.opCompositeExtract(vecType, matrix, 1, &i);
+
+      accum = accum
+        ? m_module.opFFma(vecType, a, b, accum)
+        : m_module.opFMul(vecType, a, b);
+
+      m_module.decorate(accum, spv::DecorationNoContraction);
+    }
+
+    return accum;
+  }
+
+
+  uint32_t D3D9FFShaderCompiler::emitVectorTimesMatrix(uint32_t rowCount, uint32_t colCount, uint32_t vector, uint32_t matrix) {
+    uint32_t f32Type = m_module.defFloatType(32);
+    uint32_t vecType = m_module.defVectorType(f32Type, colCount);
+    uint32_t matType = m_module.defMatrixType(vecType, rowCount);
+
+    matrix = m_module.opTranspose(matType, matrix);
+    return emitMatrixTimesVector(colCount, rowCount, matrix, vector);
+  }
+
+
   D3D9FFShader::D3D9FFShader(
           D3D9DeviceEx*         pDevice,
     const D3D9FFShaderKeyVS&    Key) {
@@ -2406,7 +2449,7 @@ namespace dxvk {
     m_shader = compiler.compile();
     m_isgn   = compiler.isgn();
 
-    Dump(Key, name);
+    Dump(pDevice, Key, name);
 
     m_shader->setShaderKey(shaderKey);
     pDevice->GetDXVKDevice()->registerShader(m_shader);
@@ -2429,15 +2472,15 @@ namespace dxvk {
     m_shader = compiler.compile();
     m_isgn   = compiler.isgn();
 
-    Dump(Key, name);
+    Dump(pDevice, Key, name);
 
     m_shader->setShaderKey(shaderKey);
     pDevice->GetDXVKDevice()->registerShader(m_shader);
   }
 
   template <typename T>
-  void D3D9FFShader::Dump(const T& Key, const std::string& Name) {
-    const std::string dumpPath = env::getEnvVar("DXVK_SHADER_DUMP_PATH");
+  void D3D9FFShader::Dump(D3D9DeviceEx* pDevice, const T& Key, const std::string& Name) {
+    const std::string& dumpPath = pDevice->GetOptions()->shaderDumpPath;
 
     if (dumpPath.size() != 0) {
       std::ofstream dumpStream(

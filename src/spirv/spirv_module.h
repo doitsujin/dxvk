@@ -1259,7 +1259,11 @@ namespace dxvk {
     
     void opEndPrimitive(
             uint32_t                streamId);
-    
+
+    void opBeginInvocationInterlock();
+
+    void opEndInvocationInterlock();
+
   private:
     
     uint32_t m_version;

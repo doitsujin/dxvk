@@ -26,7 +26,7 @@ namespace dxvk {
             D3DRESOURCETYPE           ResourceType,
             HANDLE*                   pSharedHandle)
       : D3D9Resource<Base...> ( pDevice )
-      , m_texture             ( pDevice, pDesc, ResourceType, pSharedHandle )
+      , m_texture             ( pDevice, this, pDesc, ResourceType, pSharedHandle )
       , m_lod                 ( 0 ) {
       const uint32_t arraySlices = m_texture.Desc()->ArraySize;
       const uint32_t mipLevels   = m_texture.Desc()->MipLevels;

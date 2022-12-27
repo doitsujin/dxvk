@@ -12,27 +12,67 @@ namespace dxvk {
     return uint16_t(65535.0f * x);
   }
 
+  static VkColorSpaceKHR ConvertColorSpace(DXGI_COLOR_SPACE_TYPE colorspace) {
+    switch (colorspace) {
+      case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709:    return VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+      case DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020: return VK_COLOR_SPACE_HDR10_ST2084_EXT;
+      case DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709:    return VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT;
+      default:
+        Logger::warn(str::format("DXGI: ConvertColorSpace: Unknown colorspace ", colorspace));
+        return VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    }
+  }
+
+  static VkXYColorEXT ConvertXYColor(const UINT16 (&dxgiColor)[2]) {
+    return VkXYColorEXT{ float(dxgiColor[0]) / 50000.0f, float(dxgiColor[1]) / 50000.0f };
+  }
+
+  static float ConvertMaxLuminance(UINT dxgiLuminance) {
+    return float(dxgiLuminance);
+  }
+
+  static float ConvertMinLuminance(UINT dxgiLuminance) {
+    return float(dxgiLuminance) / 0.0001f;
+  }
+
+  static float ConvertLevel(UINT16 dxgiLevel) {
+    return float(dxgiLevel);
+  }
+
+  static VkHdrMetadataEXT ConvertHDRMetadata(const DXGI_HDR_METADATA_HDR10& dxgiMetadata) {
+    VkHdrMetadataEXT vkMetadata = { VK_STRUCTURE_TYPE_HDR_METADATA_EXT };
+    vkMetadata.displayPrimaryRed         = ConvertXYColor(dxgiMetadata.RedPrimary);
+    vkMetadata.displayPrimaryGreen       = ConvertXYColor(dxgiMetadata.GreenPrimary);
+    vkMetadata.displayPrimaryBlue        = ConvertXYColor(dxgiMetadata.BluePrimary);
+    vkMetadata.whitePoint                = ConvertXYColor(dxgiMetadata.WhitePoint);
+    vkMetadata.maxLuminance              = ConvertMaxLuminance(dxgiMetadata.MaxMasteringLuminance);
+    vkMetadata.minLuminance              = ConvertMinLuminance(dxgiMetadata.MinMasteringLuminance);
+    vkMetadata.maxContentLightLevel      = ConvertLevel(dxgiMetadata.MaxContentLightLevel);
+    vkMetadata.maxFrameAverageLightLevel = ConvertLevel(dxgiMetadata.MaxFrameAverageLightLevel);
+    return vkMetadata;
+  }
+
 
   D3D11SwapChain::D3D11SwapChain(
           D3D11DXGIDevice*        pContainer,
           D3D11Device*            pDevice,
-          HWND                    hWnd,
+          IDXGIVkSurfaceFactory*  pSurfaceFactory,
     const DXGI_SWAP_CHAIN_DESC1*  pDesc)
   : m_dxgiDevice(pContainer),
-    m_parent    (pDevice),
-    m_window    (hWnd),
-    m_desc      (*pDesc),
-    m_device    (pDevice->GetDXVKDevice()),
-    m_context   (m_device->createContext(DxvkContextType::Supplementary)),
+    m_parent(pDevice),
+    m_surfaceFactory(pSurfaceFactory),
+    m_desc(*pDesc),
+    m_device(pDevice->GetDXVKDevice()),
+    m_context(m_device->createContext(DxvkContextType::Supplementary)),
     m_frameLatencyCap(pDevice->GetOptions()->maxFrameLatency) {
     CreateFrameLatencyEvent();
-
-    if (!pDevice->GetOptions()->deferSurfaceCreation)
-      CreatePresenter();
-    
+    CreatePresenter();
     CreateBackBuffer();
     CreateBlitter();
     CreateHud();
+
+    if (!pDevice->GetOptions()->deferSurfaceCreation)
+      RecreateSwapChain(false);
   }
 
 
@@ -131,8 +171,9 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D11SwapChain::ChangeProperties(
-    const DXGI_SWAP_CHAIN_DESC1*  pDesc) {
-
+    const DXGI_SWAP_CHAIN_DESC1*    pDesc,
+    const UINT*                     pNodeMasks,
+          IUnknown* const*          ppPresentQueues) {
     m_dirty |= m_desc.Format      != pDesc->Format
             || m_desc.Width       != pDesc->Width
             || m_desc.Height      != pDesc->Height
@@ -222,9 +263,6 @@ namespace dxvk {
       m_vsync  = vsync;
     }
 
-    if (m_presenter == nullptr)
-      CreatePresenter();
-
     HRESULT hr = S_OK;
 
     if (!m_presenter->hasSwapChain()) {
@@ -255,16 +293,40 @@ namespace dxvk {
   }
 
 
-  void STDMETHODCALLTYPE D3D11SwapChain::NotifyModeChange(
-          BOOL                      Windowed,
-    const DXGI_MODE_DESC*           pDisplayMode) {
-    if (Windowed || !pDisplayMode) {
-      // Display modes aren't meaningful in windowed mode
-      m_displayRefreshRate = 0.0;
-    } else {
-      DXGI_RATIONAL rate = pDisplayMode->RefreshRate;
-      m_displayRefreshRate = double(rate.Numerator) / double(rate.Denominator);
+  UINT STDMETHODCALLTYPE D3D11SwapChain::CheckColorSpaceSupport(
+          DXGI_COLOR_SPACE_TYPE     ColorSpace) {
+    UINT supportFlags = 0;
+
+    const VkColorSpaceKHR vkColorSpace = ConvertColorSpace(ColorSpace);
+    if (m_presenter->supportsColorSpace(vkColorSpace))
+      supportFlags |= DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT;
+
+    return supportFlags;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11SwapChain::SetColorSpace(
+          DXGI_COLOR_SPACE_TYPE     ColorSpace) {
+    if (!(CheckColorSpaceSupport(ColorSpace) & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT))
+      return E_INVALIDARG;
+
+    const VkColorSpaceKHR vkColorSpace = ConvertColorSpace(ColorSpace);
+    m_dirty |= vkColorSpace != m_colorspace;
+    m_colorspace = vkColorSpace;
+
+    return S_OK;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11SwapChain::SetHDRMetaData(
+    const DXGI_VK_HDR_METADATA*     pMetaData) {
+    // For some reason this call always seems to succeed on Windows
+    if (pMetaData->Type == DXGI_HDR_METADATA_TYPE_HDR10) {
+      m_hdrMetadata = ConvertHDRMetadata(pMetaData->HDR10);
+      m_dirtyHdrMetadata = true;
     }
+
+    return S_OK;
   }
 
 
@@ -302,6 +364,11 @@ namespace dxvk {
         
         info = m_presenter->info();
         status = m_presenter->acquireNextImage(sync, imageIndex);
+      }
+
+      if (m_hdrMetadata && m_dirtyHdrMetadata) {
+        m_presenter->setHdrMetadata(*m_hdrMetadata);
+        m_dirtyHdrMetadata = false;
       }
 
       // Resolve back buffer if it is multisampled. We
@@ -371,6 +438,7 @@ namespace dxvk {
     m_device->waitForIdle();
 
     m_presentStatus.result = VK_SUCCESS;
+    m_dirtyHdrMetadata = true;
 
     vk::PresenterDesc presenterDesc;
     presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };
@@ -379,8 +447,21 @@ namespace dxvk {
     presenterDesc.numPresentModes = PickPresentModes(Vsync, presenterDesc.presentModes);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
-    if (m_presenter->recreateSwapChain(presenterDesc) != VK_SUCCESS)
-      throw DxvkError("D3D11SwapChain: Failed to recreate swap chain");
+    VkResult vr = m_presenter->recreateSwapChain(presenterDesc);
+
+    if (vr == VK_ERROR_SURFACE_LOST_KHR) {
+      vr = m_presenter->recreateSurface([this] (VkSurfaceKHR* surface) {
+        return CreateSurface(surface);
+      });
+
+      if (vr)
+        throw DxvkError(str::format("D3D11SwapChain: Failed to recreate surface: ", vr));
+
+      vr = m_presenter->recreateSwapChain(presenterDesc);
+    }
+
+    if (vr)
+      throw DxvkError(str::format("D3D11SwapChain: Failed to recreate swap chain: ", vr));
     
     CreateRenderTargetViews();
   }
@@ -402,6 +483,7 @@ namespace dxvk {
     presenterDevice.queue         = graphicsQueue.queueHandle;
     presenterDevice.adapter       = m_device->adapter()->handle();
     presenterDevice.features.fullScreenExclusive = m_device->features().extFullScreenExclusive;
+    presenterDevice.features.hdrMetadata = m_device->features().extHdrMetadata;
 
     vk::PresenterDesc presenterDesc;
     presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };
@@ -410,15 +492,22 @@ namespace dxvk {
     presenterDesc.numPresentModes = PickPresentModes(false, presenterDesc.presentModes);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
-    m_presenter = new vk::Presenter(m_window,
+    m_presenter = new vk::Presenter(
       m_device->adapter()->vki(),
       m_device->vkd(),
       presenterDevice,
       presenterDesc);
     
     m_presenter->setFrameRateLimit(m_parent->GetOptions()->maxFrameRate);
+  }
 
-    CreateRenderTargetViews();
+
+  VkResult D3D11SwapChain::CreateSurface(VkSurfaceKHR* pSurface) {
+    Rc<DxvkAdapter> adapter = m_device->adapter();
+
+    return m_surfaceFactory->CreateSurface(
+      adapter->vki()->instance(),
+      adapter->handle(), pSurface);
   }
 
 
@@ -600,23 +689,23 @@ namespace dxvk {
       
       case DXGI_FORMAT_R8G8B8A8_UNORM:
       case DXGI_FORMAT_B8G8R8A8_UNORM: {
-        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_UNORM, m_colorspace };
+        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_UNORM, m_colorspace };
       } break;
       
       case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
       case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB: {
-        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_SRGB, m_colorspace };
+        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_SRGB, m_colorspace };
       } break;
       
       case DXGI_FORMAT_R10G10B10A2_UNORM: {
-        pDstFormats[n++] = { VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        pDstFormats[n++] = { VK_FORMAT_A2R10G10B10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_A2B10G10R10_UNORM_PACK32, m_colorspace };
+        pDstFormats[n++] = { VK_FORMAT_A2R10G10B10_UNORM_PACK32, m_colorspace };
       } break;
       
       case DXGI_FORMAT_R16G16B16A16_FLOAT: {
-        pDstFormats[n++] = { VK_FORMAT_R16G16B16A16_SFLOAT, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_R16G16B16A16_SFLOAT, m_colorspace };
       } break;
     }
 

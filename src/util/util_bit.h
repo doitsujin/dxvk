@@ -1,16 +1,29 @@
 #pragma once
 
-#ifndef _MSC_VER
-#if defined(__WINE__) && defined(__clang__)
-#pragma push_macro("_WIN32")
-#undef _WIN32
-#endif
-#include <x86intrin.h>
-#if defined(__WINE__) && defined(__clang__)
-#pragma pop_macro("_WIN32")
-#endif
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+  #define DXVK_ARCH_X86
+  #if defined(__x86_64__) || defined(_M_X64)
+    #define DXVK_ARCH_X86_64
+  #endif
+#elif defined(__aarch64__) || defined(_M_ARM64)
+  #define DXVK_ARCH_ARM64
 #else
-#include <intrin.h>
+#error "Unknown CPU Architecture"
+#endif
+
+#ifdef DXVK_ARCH_X86
+  #ifndef _MSC_VER
+    #if defined(__WINE__) && defined(__clang__)
+      #pragma push_macro("_WIN32")
+      #undef _WIN32
+    #endif
+    #include <x86intrin.h>
+    #if defined(__WINE__) && defined(__clang__)
+      #pragma pop_macro("_WIN32")
+    #endif
+  #else
+    #include <intrin.h>
+  #endif
 #endif
 
 #include "util_likely.h"
@@ -19,6 +32,7 @@
 #include <cstring>
 #include <iterator>
 #include <type_traits>
+#include <vector>
 
 namespace dxvk::bit {
 
@@ -55,7 +69,7 @@ namespace dxvk::bit {
     return _tzcnt_u32(n);
     #elif defined(__BMI__)
     return __tzcnt_u32(n);
-    #elif defined(__GNUC__) || defined(__clang__)
+    #elif defined(DXVK_ARCH_X86) && (defined(__GNUC__) || defined(__clang__))
     // tzcnt is encoded as rep bsf, so we can use it on all
     // processors, but the behaviour of zero inputs differs:
     // - bsf:   zf = 1, cf = ?, result = ?
@@ -72,6 +86,8 @@ namespace dxvk::bit {
       : "r" (n)
       : "cc");
     return res;
+    #elif defined(__GNUC__) || defined(__clang__)
+    return n != 0 ? __builtin_ctz(n) : 32;
     #else
     uint32_t r = 31;
     n &= -n;
@@ -85,11 +101,11 @@ namespace dxvk::bit {
   }
 
   inline uint32_t tzcnt(uint64_t n) {
-    #if defined(_M_X64) && defined(_MSC_VER) && !defined(__clang__)
-    return _tzcnt_u64(n);
-    #elif defined(__x86_64__) && defined(__BMI__)
+    #if defined(DXVK_ARCH_X86_64) && defined(_MSC_VER) && !defined(__clang__)
+    return (uint32_t)_tzcnt_u64(n);
+    #elif defined(DXVK_ARCH_X86_64) && defined(__BMI__)
     return __tzcnt_u64(n);
-    #elif defined(__x86_64__) && defined(__GNUC__) || defined(__clang__)
+    #elif defined(DXVK_ARCH_X86_64) && (defined(__GNUC__) || defined(__clang__))
     uint64_t res;
     uint64_t tmp;
     asm (
@@ -101,6 +117,8 @@ namespace dxvk::bit {
       : "r" (n)
       : "cc");
     return res;
+    #elif defined(__GNUC__) || defined(__clang__)
+    return n != 0 ? __builtin_ctzll(n) : 64;
     #else
     uint32_t lo = uint32_t(n);
     if (lo) {
@@ -160,7 +178,7 @@ namespace dxvk::bit {
   template<typename T>
   bool bcmpeq(const T* a, const T* b) {
     static_assert(alignof(T) >= 16);
-    #if defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
+    #if defined(DXVK_ARCH_X86) && (defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER))
     auto ai = reinterpret_cast<const __m128i*>(a);
     auto bi = reinterpret_cast<const __m128i*>(b);
 
@@ -303,9 +321,130 @@ namespace dxvk::bit {
       return get(idx);
     }
 
+    constexpr void setN(uint32_t bits) {
+      uint32_t fullDwords = bits / 32;
+      uint32_t offset = bits % 32;
+
+      for (size_t i = 0; i < fullDwords; i++)
+        m_dwords[i] = std::numeric_limits<uint32_t>::max();
+     
+      if (offset > 0)
+        m_dwords[fullDwords] = (1u << offset) - 1;
+    }
+
   private:
 
     uint32_t m_dwords[Dwords];
+
+  };
+
+  class bitvector {
+  public:
+
+    bool get(uint32_t idx) const {
+      uint32_t dword = idx / 32;
+      uint32_t bit   = idx % 32;
+
+      return m_dwords[dword] & (1u << bit);
+    }
+
+    void ensureSize(uint32_t bitCount) {
+      uint32_t dword = bitCount / 32;
+      if (unlikely(dword >= m_dwords.size())) {
+        m_dwords.resize(dword + 1);
+      }
+      m_bitCount = std::max(m_bitCount, bitCount);
+    }
+
+    void set(uint32_t idx, bool value) {
+      ensureSize(idx + 1);
+
+      uint32_t dword = 0;
+      uint32_t bit   = idx;
+
+      if (value)
+        m_dwords[dword] |= 1u << bit;
+      else
+        m_dwords[dword] &= ~(1u << bit);
+    }
+
+    bool exchange(uint32_t idx, bool value) {
+      ensureSize(idx + 1);
+
+      bool oldValue = get(idx);
+      set(idx, value);
+      return oldValue;
+    }
+
+    void flip(uint32_t idx) {
+      ensureSize(idx + 1);
+
+      uint32_t dword = idx / 32;
+      uint32_t bit   = idx % 32;
+
+      m_dwords[dword] ^= 1u << bit;
+    }
+
+    void setAll() {
+      if (m_bitCount % 32 == 0) {
+        for (size_t i = 0; i < m_dwords.size(); i++)
+          m_dwords[i] = std::numeric_limits<uint32_t>::max();
+      }
+      else {
+        for (size_t i = 0; i < m_dwords.size() - 1; i++)
+          m_dwords[i] = std::numeric_limits<uint32_t>::max();
+
+        m_dwords[m_dwords.size() - 1] = (1u << (m_bitCount % 32)) - 1;
+      }
+    }
+
+    void clearAll() {
+      for (size_t i = 0; i < m_dwords.size(); i++)
+        m_dwords[i] = 0;
+    }
+
+    bool any() const {
+      for (size_t i = 0; i < m_dwords.size(); i++) {
+        if (m_dwords[i] != 0)
+          return true;
+      }
+
+      return false;
+    }
+
+    uint32_t& dword(uint32_t idx) {
+      return m_dwords[idx];
+    }
+
+    size_t bitCount() const {
+      return m_bitCount;
+    }
+
+    size_t dwordCount() const {
+      return m_dwords.size();
+    }
+
+    bool operator [] (uint32_t idx) const {
+      return get(idx);
+    }
+
+    void setN(uint32_t bits) {
+      ensureSize(bits);
+
+      uint32_t fullDwords = bits / 32;
+      uint32_t offset = bits % 32;
+
+      for (size_t i = 0; i < fullDwords; i++)
+        m_dwords[i] = std::numeric_limits<uint32_t>::max();
+
+      if (offset > 0)
+        m_dwords[fullDwords] = (1u << offset) - 1;
+    }
+
+  private:
+
+    std::vector<uint32_t> m_dwords;
+    uint32_t              m_bitCount = 0;
 
   };
 
@@ -336,7 +475,7 @@ namespace dxvk::bit {
       }
 
       uint32_t operator * () const {
-#if (defined(__GNUC__) || defined(__clang__)) && !defined(__BMI__)
+#if (defined(__GNUC__) || defined(__clang__)) && !defined(__BMI__) && defined(DXVK_ARCH_X86)
         uint32_t res;
         asm ("tzcnt %1,%0"
         : "=r" (res)
@@ -357,7 +496,8 @@ namespace dxvk::bit {
 
     };
 
-    BitMask() { }
+    BitMask()
+      : m_mask(0) { }
 
     BitMask(uint32_t n)
       : m_mask(n) { }

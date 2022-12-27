@@ -14,6 +14,10 @@
 
 #include "../dxvk/dxvk_format.h"
 
+#include "../util/util_misc.h"
+#include "../util/util_sleep.h"
+#include "../util/util_time.h"
+
 namespace dxvk {
   
   DxgiOutput::DxgiOutput(
@@ -23,19 +27,7 @@ namespace dxvk {
   : m_monitorInfo(factory->GetMonitorInfo()),
     m_adapter(adapter),
     m_monitor(monitor) {
-    // Init monitor info if necessary
-    DXGI_VK_MONITOR_DATA monitorData;
-    monitorData.pSwapChain = nullptr;
-    monitorData.FrameStats = DXGI_FRAME_STATISTICS();
-    monitorData.GammaCurve.Scale  = { 1.0f, 1.0f, 1.0f };
-    monitorData.GammaCurve.Offset = { 0.0f, 0.0f, 0.0f };
-    
-    for (uint32_t i = 0; i < DXGI_VK_GAMMA_CP_COUNT; i++) {
-      const float value = GammaControlPointLocation(i);
-      monitorData.GammaCurve.GammaCurve[i] = { value, value, value };
-    }
-    
-    m_monitorInfo->InitMonitorData(monitor, &monitorData);    
+    CacheMonitorData();
   }
   
   
@@ -223,23 +215,35 @@ namespace dxvk {
       return E_FAIL;
     }
 
-    pDesc->AttachedToDesktop  = 1;
-    pDesc->Rotation           = DXGI_MODE_ROTATION_UNSPECIFIED;
-    pDesc->Monitor            = m_monitor;
-    pDesc->BitsPerColor       = 8;
-    pDesc->ColorSpace         = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
-
-    // We don't really have a way to get these
-    for (uint32_t i = 0; i < 2; i++) {
-      pDesc->RedPrimary[i]    = 0.0f;
-      pDesc->GreenPrimary[i]  = 0.0f;
-      pDesc->BluePrimary[i]   = 0.0f;
-      pDesc->WhitePoint[i]    = 0.0f;
-    }
-
-    pDesc->MinLuminance       = 0.0f;
-    pDesc->MaxLuminance       = 0.0f;
-    pDesc->MaxFullFrameLuminance = 0.0f;
+    pDesc->AttachedToDesktop     = 1;
+    pDesc->Rotation              = DXGI_MODE_ROTATION_UNSPECIFIED;
+    pDesc->Monitor               = m_monitor;
+    // TODO: When in HDR, flip this to 10 to appease apps that the
+    // transition has occured.
+    // If we support more than HDR10 in future, then we may want
+    // to visit that assumption.
+    pDesc->BitsPerColor          = 8;
+    // This should only return DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020
+    // (HDR) if the user has the HDR setting enabled in Windows.
+    // Games can still punt into HDR mode by using CheckColorSpaceSupport
+    // and SetColorSpace1.
+    // 
+    // TODO: When we have a swapchain using SetColorSpace1 to
+    // DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020, we should use our monitor
+    // info to flip this over to that.
+    // As on Windows this would automatically engage HDR mode.
+    pDesc->ColorSpace            = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+    pDesc->RedPrimary[0]         = m_metadata.redPrimary[0];
+    pDesc->RedPrimary[1]         = m_metadata.redPrimary[1];
+    pDesc->GreenPrimary[0]       = m_metadata.greenPrimary[0];
+    pDesc->GreenPrimary[1]       = m_metadata.greenPrimary[1];
+    pDesc->BluePrimary[0]        = m_metadata.bluePrimary[0];
+    pDesc->BluePrimary[1]        = m_metadata.bluePrimary[1];
+    pDesc->WhitePoint[0]         = m_metadata.whitePoint[0];
+    pDesc->WhitePoint[1]         = m_metadata.whitePoint[1];
+    pDesc->MinLuminance          = m_metadata.minLuminance;
+    pDesc->MaxLuminance          = m_metadata.maxLuminance;
+    pDesc->MaxFullFrameLuminance = m_metadata.maxFullFrameLuminance;
     return S_OK;
   }
 
@@ -362,9 +366,26 @@ namespace dxvk {
     static bool s_errorShown = false;
 
     if (!std::exchange(s_errorShown, true))
-      Logger::warn("DxgiOutput::GetFrameStatistics: Stub");
+      Logger::warn("DxgiOutput::GetFrameStatistics: Frame statistics may be inaccurate");
 
-    *pStats = monitorInfo->FrameStats;
+    // Estimate vblank count based on last known display mode. Querying
+    // the display mode on every call would be prohibitively expensive.
+    auto refreshPeriod = computeRefreshPeriod(
+      monitorInfo->LastMode.RefreshRate.Numerator,
+      monitorInfo->LastMode.RefreshRate.Denominator);
+
+    // We don't really have a way to query time since boot
+    auto t1Counter = dxvk::high_resolution_clock::get_counter();
+
+    auto t0 = dxvk::high_resolution_clock::get_time_from_counter(monitorInfo->FrameStats.SyncQPCTime.QuadPart);
+    auto t1 = dxvk::high_resolution_clock::get_time_from_counter(t1Counter);
+
+    pStats->PresentCount = monitorInfo->FrameStats.PresentCount;
+    pStats->PresentRefreshCount = monitorInfo->FrameStats.PresentRefreshCount;
+    pStats->SyncRefreshCount = monitorInfo->FrameStats.SyncRefreshCount + computeRefreshCount(t0, t1, refreshPeriod);
+    pStats->SyncQPCTime.QuadPart = t1Counter;
+    pStats->SyncGPUTime.QuadPart = 0;
+
     m_monitorInfo->ReleaseMonitorData();
     return S_OK;
   }
@@ -443,7 +464,31 @@ namespace dxvk {
     static bool s_errorShown = false;
 
     if (!std::exchange(s_errorShown, true))
-      Logger::warn("DxgiOutput::WaitForVBlank: Stub");
+      Logger::warn("DxgiOutput::WaitForVBlank: Inaccurate");
+
+    // Get monitor data to compute the sleep duration
+    DXGI_VK_MONITOR_DATA* monitorInfo = nullptr;
+    HRESULT hr = m_monitorInfo->AcquireMonitorData(m_monitor, &monitorInfo);
+
+    if (FAILED(hr))
+      return hr;
+
+    // Estimate number of vblanks since last mode
+    // change, then wait for one more refresh period
+    auto refreshPeriod = computeRefreshPeriod(
+      monitorInfo->LastMode.RefreshRate.Numerator,
+      monitorInfo->LastMode.RefreshRate.Denominator);
+
+    auto t0 = dxvk::high_resolution_clock::get_time_from_counter(monitorInfo->FrameStats.SyncQPCTime.QuadPart);
+    auto t1 = dxvk::high_resolution_clock::now();
+
+    uint64_t vblankCount = computeRefreshCount(t0, t1, refreshPeriod);
+    auto t2 = t0 + (vblankCount + 1) * refreshPeriod;
+
+    m_monitorInfo->ReleaseMonitorData();
+
+    // Sleep until the given time point
+    Sleep::sleepUntil(t1, t2);
     return S_OK;
   }
   
@@ -586,6 +631,56 @@ namespace dxvk {
         it = skipMode ? Modes.erase(it) : ++it;
       }
     }
+  }
+
+
+  void DxgiOutput::CacheMonitorData() {
+    // Try and find an existing monitor info.
+    DXGI_VK_MONITOR_DATA* pMonitorData;
+    if (SUCCEEDED(m_monitorInfo->AcquireMonitorData(m_monitor, &pMonitorData))) {
+      m_metadata = pMonitorData->DisplayMetadata;
+      m_monitorInfo->ReleaseMonitorData();
+      return;
+    }
+
+    // Init monitor info ourselves.
+    // 
+    // If some other thread ends up beating us to it
+    // by another InitMonitorData, it doesn't really matter.
+    // 
+    // The only thing we cache from this is the m_metadata which
+    // should be exactly the same.
+    // We don't store any pointers from the DXGI_VK_MONITOR_DATA
+    // sturcture, etc.
+    DXGI_VK_MONITOR_DATA monitorData = {};
+
+    // Query current display mode
+    wsi::WsiMode activeWsiMode = { };
+    wsi::getCurrentDisplayMode(m_monitor, &activeWsiMode);
+
+    // Get the display metadata + colorimetry
+    wsi::WsiEdidData edidData = wsi::getMonitorEdid(m_monitor);
+    std::optional<wsi::WsiDisplayMetadata> metadata = std::nullopt;
+    if (!edidData.empty())
+      metadata = wsi::parseColorimetryInfo(edidData);
+
+    if (metadata)
+      m_metadata = metadata.value();
+    else
+      Logger::err("DXGI: Failed to parse display metadata + colorimetry info, using blank.");
+
+    monitorData.FrameStats.SyncQPCTime.QuadPart = dxvk::high_resolution_clock::get_counter();
+    monitorData.GammaCurve.Scale = { 1.0f, 1.0f, 1.0f };
+    monitorData.GammaCurve.Offset = { 0.0f, 0.0f, 0.0f };
+    monitorData.LastMode = ConvertDisplayMode(activeWsiMode);
+    monitorData.DisplayMetadata = m_metadata;
+
+    for (uint32_t i = 0; i < DXGI_VK_GAMMA_CP_COUNT; i++) {
+      const float value = GammaControlPointLocation(i);
+      monitorData.GammaCurve.GammaCurve[i] = { value, value, value };
+    }
+
+    m_monitorInfo->InitMonitorData(m_monitor, &monitorData);
   }
 
 }

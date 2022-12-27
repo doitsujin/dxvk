@@ -4,6 +4,7 @@
 #include "d3d9_util.h"
 #include "d3d9_caps.h"
 #include "d3d9_mem.h"
+#include "d3d9_interop.h"
 
 #include "../dxvk/dxvk_device.h"
 
@@ -46,6 +47,7 @@ namespace dxvk {
     bool                Discard;
     bool                IsBackBuffer;
     bool                IsAttachmentOnly;
+    bool                IsLockable;
   };
 
   struct D3D9ColorView {
@@ -72,6 +74,7 @@ namespace dxvk {
 
     D3D9CommonTexture(
             D3D9DeviceEx*             pDevice,
+            IUnknown*                 pInterface,
       const D3D9_COMMON_TEXTURE_DESC* pDesc,
             D3DRESOURCETYPE           ResourceType,
             HANDLE*                   pSharedHandle);
@@ -153,19 +156,9 @@ namespace dxvk {
      */
     void* GetData(UINT Subresource);
 
-    const Rc<DxvkBuffer>& GetBuffer(UINT Subresource);
+    const Rc<DxvkBuffer>& GetBuffer();
 
-
-    DxvkBufferSliceHandle GetMappedSlice(UINT Subresource) {
-      return m_mappedSlices[Subresource];
-    }
-
-
-    DxvkBufferSliceHandle DiscardMapSlice(UINT Subresource) {
-      DxvkBufferSliceHandle handle = m_buffers[Subresource]->allocSlice();
-      m_mappedSlices[Subresource] = handle;
-      return handle;
-    }
+    DxvkBufferSlice GetBufferSlice(UINT Subresource);
 
     /**
      * \brief Computes subresource from the subresource index
@@ -202,6 +195,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Dref Clamp
+     * \returns Whether the texture emulates an UNORM format with D32f
+     */
+    bool IsUpgradedToD32f() const {
+      return m_upgradedToD32f;
+    }
+
+    /**
      * \brief FETCH4 compatibility
      * \returns Whether the format of the texture supports the FETCH4 hack
      */
@@ -225,24 +226,17 @@ namespace dxvk {
       return Face * m_desc.MipLevels + MipLevel;
     }
 
-    void UnmapData(UINT Subresource) {
-      m_data[Subresource].Unmap();
-    }
-
     void UnmapData() {
-      const uint32_t subresources = CountSubresources();
-      for (uint32_t i = 0; i < subresources; i++) {
-        m_data[i].Unmap();
-      }
+      m_data.Unmap();
     }
 
     /**
      * \brief Destroys a buffer
      * Destroys mapping and staging buffers for a given subresource
      */
-    void DestroyBufferSubresource(UINT Subresource) {
-      m_buffers[Subresource] = nullptr;
-      SetNeedsReadback(Subresource, true);
+    void DestroyBuffer() {
+      m_buffer = nullptr;
+      MarkAllNeedReadback();
     }
 
     bool IsDynamic() const {
@@ -376,7 +370,15 @@ namespace dxvk {
     D3D9SubresourceBitset& GetUploadBitmask() { return m_needsUpload; }
 
     void SetAllNeedUpload() {
-      m_needsUpload.setAll();
+      if (likely(!IsAutomaticMip())) {
+        m_needsUpload.setAll();
+      } else {
+        for (uint32_t a = 0; a < m_desc.ArraySize; a++) {
+          for (uint32_t m = 0; m < ExposedMipLevels(); m++) {
+            SetNeedsUpload(CalcSubresource(a, m), true);
+          }
+        }
+      }
     }
     void SetNeedsUpload(UINT Subresource, bool upload) { m_needsUpload.set(Subresource, upload); }
     bool NeedsUpload(UINT Subresource) const { return m_needsUpload.get(Subresource); }
@@ -386,7 +388,7 @@ namespace dxvk {
     void SetNeedsMipGen(bool value) { m_needsMipGen = value; }
     bool NeedsMipGen() const { return m_needsMipGen; }
 
-    DWORD ExposedMipLevels() { return m_exposedMipLevels; }
+    DWORD ExposedMipLevels() const { return m_exposedMipLevels; }
 
     void SetMipFilter(D3DTEXTUREFILTERTYPE filter) { m_mipFilter = filter; }
     D3DTEXTUREFILTERTYPE GetMipFilter() const { return m_mipFilter; }
@@ -466,13 +468,19 @@ namespace dxvk {
      */
     VkDeviceSize GetMipSize(UINT Subresource) const;
 
+    uint32_t GetTotalSize() const {
+      return m_totalSize;
+    }
+
     /**
      * \brief Creates a buffer
-     * Creates mapping and staging buffers for a given subresource
-     * allocates new buffers if necessary
+     * Creates the mapping buffer if necessary
+     * \param [in] Initialize Whether to copy over existing data (or clear if there is no data)
      * \returns Whether an allocation happened
      */
-    void CreateBufferSubresource(UINT Subresource, bool Initialize);
+    void CreateBuffer(bool Initialize);
+
+    ID3D9VkInteropTexture* GetVkInterop() { return &m_d3d9Interop; }
 
   private:
 
@@ -483,23 +491,24 @@ namespace dxvk {
 
     Rc<DxvkImage>                 m_image;
     Rc<DxvkImage>                 m_resolveImage;
-    D3D9SubresourceArray<
-      Rc<DxvkBuffer>>             m_buffers;
-    D3D9SubresourceArray<
-      DxvkBufferSliceHandle>      m_mappedSlices = { };
-    D3D9SubresourceArray<
-      D3D9Memory>                 m_data = { };
+    Rc<DxvkBuffer>                m_buffer;
+    D3D9Memory                    m_data = { };
+
     D3D9SubresourceArray<
       uint64_t>                   m_seqs = { };
+
+    D3D9SubresourceArray<
+      uint32_t>                   m_memoryOffset = { };
+    
+    uint32_t                      m_totalSize = 0;
 
     D3D9_VK_FORMAT_MAPPING        m_mapping;
 
     bool                          m_shadow; //< Depth Compare-ness
+    bool                          m_upgradedToD32f; // Dref Clamp
     bool                          m_supportsFetch4;
 
     int64_t                       m_size = 0;
-
-    bool                          m_systemmemModified = false;
 
     bool                          m_hazardous = false;
 
@@ -513,8 +522,6 @@ namespace dxvk {
 
     D3D9SubresourceBitset         m_needsUpload = { };
 
-    D3D9SubresourceBitset         m_uploadUsingStaging = { };
-
     DWORD                         m_exposedMipLevels = 0;
 
     bool                          m_needsMipGen = false;
@@ -522,6 +529,8 @@ namespace dxvk {
     D3DTEXTUREFILTERTYPE          m_mipFilter = D3DTEXF_LINEAR;
 
     std::array<D3DBOX, 6>         m_dirtyBoxes;
+
+    D3D9VkInteropTexture          m_d3d9Interop;
 
     Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType, bool TryOffscreenRT, HANDLE* pSharedHandle) const;
 
@@ -549,20 +558,6 @@ namespace dxvk {
     static VkImageViewType GetImageViewTypeFromResourceType(
             D3DRESOURCETYPE  Dimension,
             UINT             Layer);
-
-    /**
-     * \brief Creates buffers
-     * Creates mapping and staging buffers for all subresources
-     * allocates new buffers if necessary
-     */
-    void CreateBuffers() {
-      // D3D9Initializer will handle clearing the buffers
-      const uint32_t count = CountSubresources();
-      for (uint32_t i = 0; i < count; i++)
-        CreateBufferSubresource(i, false);
-    }
-
-    void AllocData();
 
     static constexpr UINT AllLayers = UINT32_MAX;
 

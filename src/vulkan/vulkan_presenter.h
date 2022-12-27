@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <vector>
 
 #include "../util/log/log.h"
@@ -48,6 +49,7 @@ namespace dxvk::vk {
    */
   struct PresenterFeatures {
     bool                fullScreenExclusive : 1;
+    bool                hdrMetadata : 1;
   };
   
   /**
@@ -93,7 +95,6 @@ namespace dxvk::vk {
   public:
 
     Presenter(
-            HWND            window,
       const Rc<InstanceFn>& vki,
       const Rc<DeviceFn>&   vkd,
             PresenterDevice device,
@@ -141,7 +142,16 @@ namespace dxvk::vk {
      * \returns Status of the operation
      */
     VkResult presentImage();
-    
+
+    /**
+     * \brief Changes and takes ownership of surface
+     *
+     * The presenter will destroy the surface as necessary.
+     * \param [in] fn Surface create function
+     */
+    VkResult recreateSurface(
+      const std::function<VkResult (VkSurfaceKHR*)>& fn);
+
     /**
      * \brief Changes presenter properties
      * 
@@ -149,6 +159,7 @@ namespace dxvk::vk {
      * no swap chain resources must be in use by the
      * GPU at the time this is called.
      * \param [in] desc Swap chain description
+     * \param [in] surface New Vulkan surface
      */
     VkResult recreateSwapChain(
       const PresenterDesc&  desc);
@@ -173,6 +184,21 @@ namespace dxvk::vk {
       return m_swapchain;
     }
 
+    /**
+     * \brief Checks if a presenter supports the colorspace
+     *
+     * \param [in] colorspace The colorspace to test
+     * * \returns \c true if the presenter supports the colorspace
+     */
+    bool supportsColorSpace(VkColorSpaceKHR colorspace);
+
+    /**
+     * \brief Sets HDR metadata
+     *
+     * \param [in] hdrMetadata HDR Metadata
+     */
+    void setHdrMetadata(const VkHdrMetadataEXT& hdrMetadata);
+
   private:
 
     Rc<InstanceFn>    m_vki;
@@ -181,7 +207,6 @@ namespace dxvk::vk {
     PresenterDevice   m_device;
     PresenterInfo     m_info;
 
-    HWND              m_window      = nullptr;
     VkSurfaceKHR      m_surface     = VK_NULL_HANDLE;
     VkSwapchainKHR    m_swapchain   = VK_NULL_HANDLE;
 
@@ -195,13 +220,16 @@ namespace dxvk::vk {
 
     FpsLimiter m_fpsLimiter;
 
+    VkResult recreateSwapChainInternal(
+      const PresenterDesc&  desc);
+
     VkResult getSupportedFormats(
             std::vector<VkSurfaceFormatKHR>& formats,
-      const PresenterDesc&            desc);
+            VkFullScreenExclusiveEXT         fullScreenExclusive) const;
     
     VkResult getSupportedPresentModes(
             std::vector<VkPresentModeKHR>& modes,
-      const PresenterDesc&            desc);
+            VkFullScreenExclusiveEXT       fullScreenExclusive) const;
     
     VkResult getSwapImages(
             std::vector<VkImage>&     images);

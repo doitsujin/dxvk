@@ -20,7 +20,7 @@ namespace dxvk {
     D3D11SwapChain(
             D3D11DXGIDevice*          pContainer,
             D3D11Device*              pDevice,
-            HWND                      hWnd,
+            IDXGIVkSurfaceFactory*    pSurfaceFactory,
       const DXGI_SWAP_CHAIN_DESC1*    pDesc);
     
     ~D3D11SwapChain();
@@ -52,7 +52,9 @@ namespace dxvk {
     HANDLE STDMETHODCALLTYPE GetFrameLatencyEvent();
 
     HRESULT STDMETHODCALLTYPE ChangeProperties(
-      const DXGI_SWAP_CHAIN_DESC1*    pDesc);
+      const DXGI_SWAP_CHAIN_DESC1*    pDesc,
+      const UINT*                     pNodeMasks,
+            IUnknown* const*          ppPresentQueues);
 
     HRESULT STDMETHODCALLTYPE SetPresentRegion(
       const RECT*                     pRegion);
@@ -69,9 +71,14 @@ namespace dxvk {
             UINT                      PresentFlags,
       const DXGI_PRESENT_PARAMETERS*  pPresentParameters);
 
-    void STDMETHODCALLTYPE NotifyModeChange(
-            BOOL                      Windowed,
-      const DXGI_MODE_DESC*           pDisplayMode);
+    UINT STDMETHODCALLTYPE CheckColorSpaceSupport(
+            DXGI_COLOR_SPACE_TYPE     ColorSpace);
+
+    HRESULT STDMETHODCALLTYPE SetColorSpace(
+            DXGI_COLOR_SPACE_TYPE     ColorSpace);
+
+    HRESULT STDMETHODCALLTYPE SetHDRMetaData(
+      const DXGI_VK_HDR_METADATA*     pMetaData);
 
   private:
 
@@ -83,7 +90,7 @@ namespace dxvk {
     Com<D3D11DXGIDevice, false> m_dxgiDevice;
     
     D3D11Device*              m_parent;
-    HWND                      m_window;
+    Com<IDXGIVkSurfaceFactory> m_surfaceFactory;
 
     DXGI_SWAP_CHAIN_DESC1     m_desc;
 
@@ -114,7 +121,10 @@ namespace dxvk {
     bool                    m_dirty = true;
     bool                    m_vsync = true;
 
-    double                  m_displayRefreshRate = 0.0;
+    VkColorSpaceKHR         m_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+
+    std::optional<VkHdrMetadataEXT> m_hdrMetadata;
+    bool m_dirtyHdrMetadata = true;
 
     HRESULT PresentImage(UINT SyncInterval);
 
@@ -131,6 +141,8 @@ namespace dxvk {
     void CreateFrameLatencyEvent();
 
     void CreatePresenter();
+
+    VkResult CreateSurface(VkSurfaceKHR* pSurface);
 
     void CreateRenderTargetViews();
 

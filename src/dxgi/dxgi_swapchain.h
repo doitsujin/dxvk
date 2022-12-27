@@ -177,7 +177,7 @@ namespace dxvk {
 
     Com<IDXGIFactory>               m_factory;
     Com<IDXGIAdapter>               m_adapter;
-    Com<IDXGIOutput>                m_target;
+    Com<IDXGIOutput1>               m_target;
     Com<IDXGIVkMonitorInfo>         m_monitorInfo;
     
     HWND                            m_window;
@@ -191,13 +191,13 @@ namespace dxvk {
     wsi::DxvkWindowState            m_windowState;
     
     HRESULT EnterFullscreenMode(
-            IDXGIOutput             *pTarget);
+            IDXGIOutput1            *pTarget);
     
     HRESULT LeaveFullscreenMode();
     
     HRESULT ChangeDisplayMode(
-            IDXGIOutput*            pOutput,
-      const DXGI_MODE_DESC*         pDisplayMode);
+            IDXGIOutput1*           pOutput,
+      const DXGI_MODE_DESC1*        pDisplayMode);
     
     HRESULT RestoreDisplayMode(
             HMONITOR                hMonitor);
@@ -208,7 +208,7 @@ namespace dxvk {
     
     HRESULT GetOutputFromMonitor(
             HMONITOR                Monitor,
-            IDXGIOutput**           ppOutput);
+            IDXGIOutput1**          ppOutput);
     
     HRESULT AcquireMonitorData(
             HMONITOR                hMonitor,
@@ -216,10 +216,6 @@ namespace dxvk {
     
     void ReleaseMonitorData();
 
-    void NotifyModeChange(
-            HMONITOR                hMonitor,
-            BOOL                    Windowed);
-    
   };
   
 }

@@ -128,7 +128,7 @@ namespace dxvk {
       { "dxgi.customVendorId",              "10de" },
     }} },
     /* Modern Warfare Remastered                  */
-    { R"(\\h1_[ms]p64_ship\.exe$)", {{
+    { R"(\\h1(_[ms]p64_ship|-mod)\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
     /* Crysis 3 - slower if it notices AMD card     *
@@ -242,6 +242,11 @@ namespace dxvk {
     { R"(\\ffxiv_dx11\.exe$)", {{
       { "d3d11.cachedDynamicResources",     "vi"   },
     }} },
+    /* Final Fantasy XV: VXAO does thousands of   *
+     * draw calls with the same UAV bound         */
+    { R"(\\ffxv_s\.exe$)", {{
+      { "d3d11.ignoreGraphicsBarriers",     "True" },
+    }} },
     /* God of War - relies on NVAPI/AMDAGS for    *
      * barrier stuff, needs nvapi for DLSS        */
     { R"(\\GoW\.exe$)", {{
@@ -294,6 +299,36 @@ namespace dxvk {
     { R"(\\MgsGroundZeroes\.exe$)", {{
       { "dxgi.maxDeviceMemory",     "4095" },
     }} },
+    /* Shantae and the Pirate's Curse             *
+     * Game speeds up above 60 fps                */
+    { R"(\\ShantaeCurse\.exe$)", {{
+      { "dxgi.maxFrameRate",                 "60" },
+    }} },
+    /* Mighty Switch Force! Collection            *
+     * Games speed up above 60 fps                */
+    { R"(\\MSFC\.exe$)", {{
+      { "dxgi.maxFrameRate",                 "60" },
+    }} },
+    /* Cardfight!! Vanguard Dear Days:            *
+     * Submits command lists multiple times       */
+    { R"(\\VG2\.exe$)", {{
+      { "d3d11.dcSingleUseMode",             "False" },
+    }} },
+    /* Battlefield: Bad Company 2                 *
+     * Gets rid of black flickering               */
+    { R"(\\BFBC2Game\.exe$)", {{
+      { "d3d11.floatControls",            "False" },
+    }} },
+    /* Sonic Frontiers - flickering shadows and   *
+     * vegetation when GPU-bound                  */
+    { R"(\\SonicFrontiers\.exe$)", {{
+      { "dxgi.maxFrameLatency",             "1" },
+    }} },
+    /* TRAHA Global                               *
+     * Shadow issues when it sees AMD/Nvidia      */
+    { R"(\\RapaNui-Win64-Shipping\.exe$)", {{
+      { "dxgi.customVendorId",              "8086" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
@@ -324,6 +359,7 @@ namespace dxvk {
     /* Sonic Adventure 2                          */
     { R"(\\Sonic Adventure 2\\(launcher|sonic2app)\.exe$)", {{
       { "d3d9.floatEmulation",              "Strict" },
+      { "d3d9.maxFrameRate",                "60" },
     }} },
     /* The Sims 2,
        Body Shop,
@@ -396,7 +432,7 @@ namespace dxvk {
       { "d3d9.forceAspectRatio",            "16:9" },
     }} },
     /* D&D - The Temple Of Elemental Evil          */
-    { R"(\\ToEE\.exe$)", {{
+    { R"(\\ToEE(a)?\.exe$)", {{
       { "d3d9.allowDiscard",                "False" },
     }} },
     /* ZUSI 3 - Aerosoft Edition                  */
@@ -405,10 +441,14 @@ namespace dxvk {
     }} },
     /* GTA IV (NVAPI)                             */
     /* Also thinks we're always on Intel          *
-     * and will report/use bad amounts of VRAM.   */
-    { R"(\\GTAIV\.exe$)", {{
+     * and will report/use bad amounts of VRAM.
+     * Disabling support for DF texture formats
+     * makes the game use a better looking render
+     * path for mirrors                           */
+    { R"(\\(GTAIV|EFLC)\.exe$)", {{
       { "d3d9.customVendorId",              "1002" },
       { "dxgi.emulateUMA",                  "True" },
+      { "d3d9.supportDFFormats",            "False" },
     }} },
     /* Battlefield 2 (bad z-pass)                 */
     { R"(\\BF2\.exe$)", {{
@@ -439,7 +479,6 @@ namespace dxvk {
     /* Warhammer: Online                         */
     { R"(\\WAR(-64)?\.exe$)", {{
       { "d3d9.customVendorId",              "1002" },
-      { "d3d9.maxFrameRate",                "100" },
     }} },
     /* Dragon Nest                               */
     { R"(\\DragonNest_x64\.exe$)", {{
@@ -529,6 +568,11 @@ namespace dxvk {
     { R"(\\spv3\.exe$)", {{
       { "d3d9.shaderModel",                 "1" },
     }} },
+    /* Escape from Tarkov launcher
+       Same issue as Warhammer: RoR above       */
+    { R"(\\BsgLauncher\.exe$)", {{
+      { "d3d9.shaderModel",                 "1" },
+    }} },
     /* Star Wars The Force Unleashed 2          *
      * Black particles because it tries to bind *
      * a 2D texture for a shader that           *
@@ -615,6 +659,37 @@ namespace dxvk {
     /* SiN Episodes Emergence                   */
     { R"(\\SinEpisodes\.exe$)", {{
       { "d3d9.memoryTrackTest",             "True" },
+    }} },
+    /* Hammer World Editor                      */
+    { R"(\\(hammer(plusplus)?|mallet|wc)\.exe$)", {{
+      { "d3d9.apitraceMode",                "True" },
+    }} },
+    /* Dragon Age Origins                       *
+     * Keeps unmapping the same 3 1MB buffers   *
+     * thousands of times when you alt-tab out  *
+     * Causing it to crash OOM                  */
+    { R"(\\DAOrigins\.exe$)" , {{
+      { "d3d9.allowDirectBufferMapping",    "False" },
+    }} },
+    /* Fallout 3 - Doesn't like Intel Id       */
+    { R"(\\Fallout3\.exe$)", {{
+      { "d3d9.customVendorId",              "10de" },
+    }} },
+    /* Sonic & All-Stars Racing Transformed    *
+     * Helps performance when Resizable BAR    *
+     * is enabled                              */
+    { R"(\\ASN_App_PcDx9_Final\.exe$)", {{
+      { "d3d9.apitraceMode",                "True" },
+    }} },
+    /* Black Mesa                              *
+     * Artifacts & broken flashlight on Intel  */
+    { R"(\\bms\.exe$)", {{
+      { "d3d9.customVendorId",              "10de" },
+    }} },
+    /* Final Fantasy XIV - Direct3D 9 mode     *
+     * Can crash with unmapping                */
+    { R"(\\ffxiv\.exe$)", {{
+      { "d3d9.textureMemory",                "0"   },
     }} },
   }};
 

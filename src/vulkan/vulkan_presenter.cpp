@@ -7,17 +7,12 @@
 namespace dxvk::vk {
 
   Presenter::Presenter(
-          HWND            window,
     const Rc<InstanceFn>& vki,
     const Rc<DeviceFn>&   vkd,
           PresenterDevice device,
     const PresenterDesc&  desc)
-  : m_vki(vki), m_vkd(vkd), m_device(device), m_window(window) {
-    if (createSurface() != VK_SUCCESS)
-      throw DxvkError("Failed to create surface");
+  : m_vki(vki), m_vkd(vkd), m_device(device) {
 
-    if (recreateSwapChain(desc) != VK_SUCCESS)
-      throw DxvkError("Failed to create swap chain");
   }
 
   
@@ -46,7 +41,7 @@ namespace dxvk::vk {
         m_swapchain, std::numeric_limits<uint64_t>::max(),
         sync.acquire, VK_NULL_HANDLE, &m_imageIndex);
     }
-    
+
     if (m_acquireStatus != VK_SUCCESS && m_acquireStatus != VK_SUBOPTIMAL_KHR)
       return m_acquireStatus;
     
@@ -88,10 +83,25 @@ namespace dxvk::vk {
     return status;
   }
 
-  
+
+  VkResult Presenter::recreateSurface(
+    const std::function<VkResult (VkSurfaceKHR*)>& fn) {
+    if (m_swapchain)
+      destroySwapchain();
+
+    if (m_surface)
+      destroySurface();
+
+    return fn(&m_surface);
+  }
+
+
   VkResult Presenter::recreateSwapChain(const PresenterDesc& desc) {
     if (m_swapchain)
       destroySwapchain();
+
+    if (!m_surface)
+      return VK_ERROR_SURFACE_LOST_KHR;
 
     // Query surface capabilities. Some properties might
     // have changed, including the size limits and supported
@@ -103,24 +113,13 @@ namespace dxvk::vk {
     VkResult status;
     
     if ((status = m_vki->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-        m_device.adapter, m_surface, &caps)) != VK_SUCCESS) {
-      if (status == VK_ERROR_SURFACE_LOST_KHR) {
-        // Recreate the surface and try again.
-        if (m_surface)
-          destroySurface();
-        if ((status = createSurface()) != VK_SUCCESS)
-          return status;
-        status = m_vki->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-            m_device.adapter, m_surface, &caps);
-      }
-      if (status != VK_SUCCESS)
-        return status;
-    }
-
-    if ((status = getSupportedFormats(formats, desc)) != VK_SUCCESS)
+        m_device.adapter, m_surface, &caps)))
       return status;
 
-    if ((status = getSupportedPresentModes(modes, desc)) != VK_SUCCESS)
+    if ((status = getSupportedFormats(formats, desc.fullScreenExclusive)))
+      return status;
+
+    if ((status = getSupportedPresentModes(modes, desc.fullScreenExclusive)))
       return status;
 
     // Select actual swap chain properties and create swap chain
@@ -166,13 +165,13 @@ namespace dxvk::vk {
       "\n  Exclusive FS: ", desc.fullScreenExclusive));
     
     if ((status = m_vkd->vkCreateSwapchainKHR(m_vkd->device(),
-        &swapInfo, nullptr, &m_swapchain)) != VK_SUCCESS)
+        &swapInfo, nullptr, &m_swapchain)))
       return status;
     
     // Acquire images and create views
     std::vector<VkImage> images;
 
-    if ((status = getSwapImages(images)) != VK_SUCCESS)
+    if ((status = getSwapImages(images)))
       return status;
     
     // Update actual image count
@@ -194,7 +193,7 @@ namespace dxvk::vk {
         0, 1, 0, 1 };
       
       if ((status = m_vkd->vkCreateImageView(m_vkd->device(),
-          &viewInfo, nullptr, &m_images[i].view)) != VK_SUCCESS)
+          &viewInfo, nullptr, &m_images[i].view)))
         return status;
     }
 
@@ -205,11 +204,11 @@ namespace dxvk::vk {
       VkSemaphoreCreateInfo semInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 
       if ((status = m_vkd->vkCreateSemaphore(m_vkd->device(),
-          &semInfo, nullptr, &m_semaphores[i].acquire)) != VK_SUCCESS)
+          &semInfo, nullptr, &m_semaphores[i].acquire)))
         return status;
 
       if ((status = m_vkd->vkCreateSemaphore(m_vkd->device(),
-          &semInfo, nullptr, &m_semaphores[i].present)) != VK_SUCCESS)
+          &semInfo, nullptr, &m_semaphores[i].present)))
         return status;
     }
     
@@ -221,16 +220,35 @@ namespace dxvk::vk {
   }
 
 
+  bool Presenter::supportsColorSpace(VkColorSpaceKHR colorspace) {
+    std::vector<VkSurfaceFormatKHR> surfaceFormats;
+    getSupportedFormats(surfaceFormats, VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT);
+
+    for (const auto& surfaceFormat : surfaceFormats) {
+      if (surfaceFormat.colorSpace == colorspace)
+        return true;
+    }
+
+    return false;
+  }
+
+
   void Presenter::setFrameRateLimit(double frameRate) {
     m_fpsLimiter.setTargetFrameRate(frameRate);
   }
 
 
-  VkResult Presenter::getSupportedFormats(std::vector<VkSurfaceFormatKHR>& formats, const PresenterDesc& desc) {
+  void Presenter::setHdrMetadata(const VkHdrMetadataEXT& hdrMetadata) {
+    if (m_device.features.hdrMetadata)
+      m_vkd->vkSetHdrMetadataEXT(m_vkd->device(), 1, &m_swapchain, &hdrMetadata);
+  }
+
+
+  VkResult Presenter::getSupportedFormats(std::vector<VkSurfaceFormatKHR>& formats, VkFullScreenExclusiveEXT fullScreenExclusive) const {
     uint32_t numFormats = 0;
 
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
-    fullScreenInfo.fullScreenExclusive = desc.fullScreenExclusive;
+    fullScreenInfo.fullScreenExclusive = fullScreenExclusive;
 
     VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR, &fullScreenInfo };
     surfaceInfo.surface = m_surface;
@@ -268,11 +286,11 @@ namespace dxvk::vk {
   }
 
   
-  VkResult Presenter::getSupportedPresentModes(std::vector<VkPresentModeKHR>& modes, const PresenterDesc& desc) {
+  VkResult Presenter::getSupportedPresentModes(std::vector<VkPresentModeKHR>& modes, VkFullScreenExclusiveEXT fullScreenExclusive) const {
     uint32_t numModes = 0;
 
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
-    fullScreenInfo.fullScreenExclusive = desc.fullScreenExclusive;
+    fullScreenInfo.fullScreenExclusive = fullScreenExclusive;
 
     VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR, &fullScreenInfo };
     surfaceInfo.surface = m_surface;
@@ -409,27 +427,6 @@ namespace dxvk::vk {
   }
 
 
-  VkResult Presenter::createSurface() {
-    VkResult status = wsi::createSurface(m_window, m_vki, &m_surface);
-
-    if (status != VK_SUCCESS)
-      return status;
-    
-    VkBool32 supportStatus = VK_FALSE;
-
-    if ((status = m_vki->vkGetPhysicalDeviceSurfaceSupportKHR(m_device.adapter,
-        m_device.queueFamily, m_surface, &supportStatus)) != VK_SUCCESS)
-      return status;
-    
-    if (!supportStatus) {
-      m_vki->vkDestroySurfaceKHR(m_vki->instance(), m_surface, nullptr);
-      return VK_ERROR_OUT_OF_HOST_MEMORY; // just abuse this
-    }
-
-    return VK_SUCCESS;
-  }
-
-
   void Presenter::destroySwapchain() {
     for (const auto& img : m_images)
       m_vkd->vkDestroyImageView(m_vkd->device(), img.view, nullptr);
@@ -450,6 +447,8 @@ namespace dxvk::vk {
 
   void Presenter::destroySurface() {
     m_vki->vkDestroySurfaceKHR(m_vki->instance(), m_surface, nullptr);
+
+    m_surface = VK_NULL_HANDLE;
   }
 
 }

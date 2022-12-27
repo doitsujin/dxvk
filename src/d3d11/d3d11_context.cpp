@@ -2261,6 +2261,10 @@ namespace dxvk {
       ApplyDepthStencilState();
     }
 
+    // The D3D11 runtime only appears to store the low 8 bits,
+    // and some games rely on this behaviour. Do the same here.
+    StencilRef &= 0xFF;
+
     if (m_state.om.stencilRef != StencilRef) {
       m_state.om.stencilRef = StencilRef;
       ApplyStencilRef();
@@ -3227,9 +3231,11 @@ namespace dxvk {
     pc.rasterizerSampleCount = m_state.om.sampleCount;
 
     if (unlikely(!m_state.om.sampleCount)) {
-      pc.rasterizerSampleCount = m_state.rs.state->Desc()->ForcedSampleCount;
+      pc.rasterizerSampleCount = m_state.rs.state
+        ? m_state.rs.state->Desc()->ForcedSampleCount
+        : 0;
 
-      if (!m_state.om.sampleCount)
+      if (!pc.rasterizerSampleCount)
         pc.rasterizerSampleCount = 1;
     }
 
