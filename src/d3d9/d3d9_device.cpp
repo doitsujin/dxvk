@@ -2536,10 +2536,10 @@ namespace dxvk {
 
     PrepareDraw(PrimitiveType);
 
-    auto drawInfo = GenerateDrawInfo(PrimitiveType, PrimitiveCount, 0);
+    uint32_t vertexCount = GetVertexCount(PrimitiveType, PrimitiveCount);
 
-    const uint32_t dataSize = GetUPDataSize(drawInfo.vertexCount, VertexStreamZeroStride);
-    const uint32_t bufferSize = GetUPBufferSize(drawInfo.vertexCount, VertexStreamZeroStride);
+    const uint32_t dataSize = GetUPDataSize(vertexCount, VertexStreamZeroStride);
+    const uint32_t bufferSize = GetUPBufferSize(vertexCount, VertexStreamZeroStride);
 
     auto upSlice = AllocUPBuffer(bufferSize);
     FillUPVertexBuffer(upSlice.mapPtr, pVertexStreamZeroData, dataSize, bufferSize);
@@ -2589,13 +2589,13 @@ namespace dxvk {
 
     PrepareDraw(PrimitiveType);
 
-    auto drawInfo = GenerateDrawInfo(PrimitiveType, PrimitiveCount, 0);
+    uint32_t vertexCount = GetVertexCount(PrimitiveType, PrimitiveCount);
 
     const uint32_t vertexDataSize = GetUPDataSize(MinVertexIndex + NumVertices, VertexStreamZeroStride);
     const uint32_t vertexBufferSize = GetUPBufferSize(MinVertexIndex + NumVertices, VertexStreamZeroStride);
 
     const uint32_t indexSize = IndexDataFormat == D3DFMT_INDEX16 ? 2 : 4;
-    const uint32_t indicesSize = drawInfo.vertexCount * indexSize;
+    const uint32_t indicesSize = vertexCount * indexSize;
 
     const uint32_t upSize = vertexBufferSize + indicesSize;
 
