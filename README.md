@@ -9,7 +9,10 @@ This fork contains the following changes:
 
 I am not submitting my stuff to the main repo because I am not exactly a graphics guru and I doubt anyone needs my hacks there (at least no one expressed interest).  That said, if this is useful to anyone, I would greatly appreciate hints and suggestions, especially on how to minimize GPU idle time in VR and applying sample shading AA smarter.  Also, any ideas for further DX9 gMotor specific tweaks are welcome.
 
-Main branch is: vr-dx9-release2
+
+## Branches:
+Latest:  vr-dx9-rel-010123
+Vulkan 1.2: vr-dx9-rel-042322
 
 # DXVK
 
