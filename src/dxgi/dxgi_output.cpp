@@ -218,21 +218,17 @@ namespace dxvk {
     pDesc->AttachedToDesktop     = 1;
     pDesc->Rotation              = DXGI_MODE_ROTATION_UNSPECIFIED;
     pDesc->Monitor               = m_monitor;
-    // TODO: When in HDR, flip this to 10 to appease apps that the
-    // transition has occured.
-    // If we support more than HDR10 in future, then we may want
-    // to visit that assumption.
     pDesc->BitsPerColor          = 8;
     // This should only return DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020
     // (HDR) if the user has the HDR setting enabled in Windows.
     // Games can still punt into HDR mode by using CheckColorSpaceSupport
     // and SetColorSpace1.
-    // 
-    // TODO: When we have a swapchain using SetColorSpace1 to
-    // DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020, we should use our monitor
-    // info to flip this over to that.
-    // As on Windows this would automatically engage HDR mode.
-    pDesc->ColorSpace            = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+    //
+    // We have no way of checking the actual Windows colorspace as the
+    // only public method for this *is* DXGI which we are re-implementing.
+    // So we just pick our color space based on the DXVK_HDR env var
+    // and the punting from SetColorSpace1.
+    pDesc->ColorSpace            = m_monitorInfo->CurrentColorSpace();
     pDesc->RedPrimary[0]         = m_metadata.redPrimary[0];
     pDesc->RedPrimary[1]         = m_metadata.redPrimary[1];
     pDesc->GreenPrimary[0]       = m_metadata.greenPrimary[0];

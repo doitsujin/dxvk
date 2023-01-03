@@ -536,7 +536,13 @@ namespace dxvk {
       return E_INVALIDARG;
 
     std::lock_guard<dxvk::mutex> lock(m_lockBuffer);
-    return m_presenter->SetColorSpace(ColorSpace);
+    HRESULT hr = m_presenter->SetColorSpace(ColorSpace);
+    if (SUCCEEDED(hr)) {
+      // If this was a colorspace other than our current one,
+      // punt us into that one on the DXGI output.
+      m_monitorInfo->PuntColorSpace(ColorSpace);
+    }
+    return hr;
   }
 
   
