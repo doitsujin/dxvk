@@ -812,6 +812,9 @@ namespace dxvk {
     inline void ResetState() {
       // Purge cached objects
       m_backBuffers.clear();
+      m_textures.fill(nullptr);
+      m_streams.fill(D3D8VBO());
+      m_indices = nullptr;
       for (UINT i = 0; i < m_presentParams.BackBufferCount; i++) {
         m_backBuffers.push_back(nullptr);
       }
