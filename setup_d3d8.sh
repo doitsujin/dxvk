@@ -276,18 +276,19 @@ if [ "$action" == "install" ] && ! [ -z "$PROTON" ]; then
     cp -r "$PROTON"/* $PROTON_D3D8/
 
     # Make sure Steam can read our Proton
-    echo '{
-      "compat_tools"
-      {
-        "Proton-D8VK"
-        {
-          "install_path" "."
-          "display_name" "Proton-D8VK"
-          "from_oslist"  "windows"
-          "to_oslist"    "linux"
-        }
-      }
-    }' > $PROTON_D3D8/compatibilitytools.vdf
+    echo '"compatibilitytools"
+{
+  "compat_tools"
+  {
+    "proton_d8vk"
+    {
+      "install_path" "."
+      "display_name" "Proton (D8VK)"
+      "from_oslist"  "windows"
+      "to_oslist"    "linux"
+    }
+  }
+}' > $PROTON_D3D8/compatibilitytool.vdf
 
 
     # Set PROTON dir to our new copy
@@ -306,7 +307,7 @@ if [ "$action" == "install" ] && ! [ -z "$PROTON" ]; then
 
     # if --preserve is used
   if [ -z "$MODIFYPROTON" ]; then
-    echo "Done! If this is your first time installing with --preserve, please restart Steam and force your game to use Proton-D8VK as its compatibility tool!"
+    echo "Done! If this is your first time installing with --preserve, please restart Steam and force your game to use 'Proton (D8VK)' as its compatibility tool!"
   fi
 elif  ! [ -z "$PROTON" ]; then
   # if --preserve is used
