@@ -151,7 +151,7 @@ namespace dxvk {
 
         if (FAILED(res)) return res;
         
-        m_backBuffers[iBackBuffer] = new D3D8Surface(this, std::move(pSurface9));
+        m_backBuffers[iBackBuffer] = ref(new D3D8Surface(this, std::move(pSurface9)));
         *ppBackBuffer = m_backBuffers[iBackBuffer].ref();
 
         return res;
