@@ -175,7 +175,7 @@ namespace dxvk {
       GetD3D9()->GetGammaRamp(0, reinterpret_cast<d3d9::D3DGAMMARAMP*>(pRamp));
     }
 
-    HRESULT STDMETHODCALLTYPE CreateTexture (
+    HRESULT STDMETHODCALLTYPE CreateTexture(
             UINT                Width,
             UINT                Height,
             UINT                Levels,
@@ -183,6 +183,8 @@ namespace dxvk {
             D3DFORMAT           Format,
             D3DPOOL             Pool,
             IDirect3DTexture8** ppTexture) {
+      InitReturnPtr(ppTexture);
+
       Com<d3d9::IDirect3DTexture9> pTex9 = nullptr;
       HRESULT res = GetD3D9()->CreateTexture(
         Width,
@@ -193,6 +195,9 @@ namespace dxvk {
         d3d9::D3DPOOL(Pool),
         &pTex9,
         NULL);
+
+      if (FAILED(res))
+        return res;
 
       *ppTexture = ref(new D3D8Texture2D(this, std::move(pTex9)));
 
