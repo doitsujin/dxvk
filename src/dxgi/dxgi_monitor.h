@@ -37,12 +37,20 @@ namespace dxvk {
 
     void STDMETHODCALLTYPE ReleaseMonitorData();
 
+    void STDMETHODCALLTYPE PuntColorSpace(DXGI_COLOR_SPACE_TYPE ColorSpace);
+
+    DXGI_COLOR_SPACE_TYPE STDMETHODCALLTYPE CurrentColorSpace() const;
+
+    static DXGI_COLOR_SPACE_TYPE DefaultColorSpace();
+
   private:
 
     IUnknown* m_parent;
 
     dxvk::mutex                                        m_monitorMutex;
     std::unordered_map<HMONITOR, DXGI_VK_MONITOR_DATA> m_monitorData;
+
+    std::atomic<DXGI_COLOR_SPACE_TYPE> m_globalColorSpace;
 
   };
 
