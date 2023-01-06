@@ -146,8 +146,8 @@ namespace dxvk {
   private:
     
     Rc<DxvkInstance> m_instance;
-    DxgiMonitorInfo  m_monitorInfo;
     DxgiOptions      m_options;
+    DxgiMonitorInfo  m_monitorInfo;
     UINT             m_flags;
     
     HWND m_associatedWindow = nullptr;
