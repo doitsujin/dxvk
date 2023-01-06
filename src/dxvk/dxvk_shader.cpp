@@ -1151,7 +1151,7 @@ namespace dxvk {
     // Set up dynamic state. We do not know any pipeline state
     // at this time, so make as much state dynamic as we can.
     uint32_t dynamicStateCount = 0;
-    std::array<VkDynamicState, 10> dynamicStates;
+    std::array<VkDynamicState, 13> dynamicStates;
 
     dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE;
     dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE;
@@ -1167,6 +1167,19 @@ namespace dxvk {
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS;
     }
 
+    bool hasSampleRateShading = m_shader && m_shader->flags().test(DxvkShaderFlag::HasSampleRateShading);
+    bool hasDynamicMultisampleState = hasSampleRateShading
+      && m_device->features().extExtendedDynamicState3.extendedDynamicState3RasterizationSamples
+      && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleMask;
+
+    if (hasDynamicMultisampleState) {
+      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT;
+      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_SAMPLE_MASK_EXT;
+
+      if (m_device->features().extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable)
+        dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT;
+    }
+
     VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
     dyInfo.dynamicStateCount  = dynamicStateCount;
     dyInfo.pDynamicStates     = dynamicStates.data();
@@ -1174,13 +1187,16 @@ namespace dxvk {
     // Set up multisample state. If sample shading is enabled, assume that
     // we only have one sample enabled, with a non-zero sample mask and no
     // alpha-to-coverage.
-    uint32_t msSampleMask = 0x1;
+    VkSampleMask msSampleMask = 0x1;
 
     VkPipelineMultisampleStateCreateInfo msInfo = { VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO };
-    msInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    msInfo.pSampleMask          = &msSampleMask;
     msInfo.sampleShadingEnable  = VK_TRUE;
     msInfo.minSampleShading     = 1.0f;
+
+    if (!hasDynamicMultisampleState) {
+      msInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+      msInfo.pSampleMask          = &msSampleMask;
+    }
 
     // All depth-stencil state is dynamic, so no need to initialize this.
     // Depth bounds testing is disabled on devices which don't support it.
@@ -1201,7 +1217,7 @@ namespace dxvk {
     info.layout               = m_layout->getPipelineLayout(true);
     info.basePipelineIndex    = -1;
 
-    if (m_shader && m_shader->flags().test(DxvkShaderFlag::HasSampleRateShading))
+    if (hasSampleRateShading)
       info.pMultisampleState  = &msInfo;
 
     VkPipeline pipeline = VK_NULL_HANDLE;

@@ -798,7 +798,13 @@ namespace dxvk {
       m_vkd->vkCmdUpdateBuffer(getCmdBuffer(cmdBuffer),
         dstBuffer, dstOffset, dataSize, pData);
     }
-    
+
+
+    void cmdSetAlphaToCoverageState(
+            VkBool32                alphaToCoverageEnable) {
+      m_vkd->vkCmdSetAlphaToCoverageEnableEXT(m_cmd.execBuffer, alphaToCoverageEnable);
+    }
+
     
     void cmdSetBlendConstants(const float blendConstants[4]) {
       m_vkd->vkCmdSetBlendConstants(m_cmd.execBuffer, blendConstants);
@@ -865,6 +871,14 @@ namespace dxvk {
       m_cmd.usedFlags.set(DxvkCmdBuffer::ExecBuffer);
 
       m_vkd->vkCmdSetEvent2(m_cmd.execBuffer, event, dependencyInfo);
+    }
+
+
+    void cmdSetMultisampleState(
+            VkSampleCountFlagBits   sampleCount,
+            VkSampleMask            sampleMask) {
+      m_vkd->vkCmdSetRasterizationSamplesEXT(m_cmd.execBuffer, sampleCount);
+      m_vkd->vkCmdSetSampleMaskEXT(m_cmd.execBuffer, sampleCount, &sampleMask);
     }
 
 
