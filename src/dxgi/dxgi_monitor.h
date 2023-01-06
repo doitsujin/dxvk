@@ -4,6 +4,7 @@
 #include <unordered_map>
 
 #include "dxgi_interfaces.h"
+#include "dxgi_options.h"
 
 #include "../wsi/wsi_monitor.h"
 
@@ -15,7 +16,7 @@ namespace dxvk {
 
   public:
 
-    DxgiMonitorInfo(IUnknown* pParent);
+    DxgiMonitorInfo(IUnknown* pParent, const DxgiOptions& options);
 
     ~DxgiMonitorInfo();
 
@@ -41,11 +42,12 @@ namespace dxvk {
 
     DXGI_COLOR_SPACE_TYPE STDMETHODCALLTYPE CurrentColorSpace() const;
 
-    static DXGI_COLOR_SPACE_TYPE DefaultColorSpace();
+    DXGI_COLOR_SPACE_TYPE DefaultColorSpace() const;
 
   private:
 
     IUnknown* m_parent;
+    const DxgiOptions& m_options;
 
     dxvk::mutex                                        m_monitorMutex;
     std::unordered_map<HMONITOR, DXGI_VK_MONITOR_DATA> m_monitorData;

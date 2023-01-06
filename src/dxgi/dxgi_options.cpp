@@ -45,6 +45,8 @@ namespace dxvk {
       this->nvapiHack = false;
     else
       this->nvapiHack = config.getOption<bool>("dxgi.nvapiHack", true);
+
+    this->enableHDR = config.getOption<bool>("dxgi.enableHDR", env::getEnvVar("DXVK_HDR") == "1");
   }
   
 }

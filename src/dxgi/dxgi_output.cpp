@@ -20,7 +20,7 @@
 
 namespace dxvk {
 
-  static void NormalizeDisplayMetadata(wsi::WsiDisplayMetadata& metadata) {
+  static void NormalizeDisplayMetadata(const DxgiMonitorInfo *pMonitorInfo, wsi::WsiDisplayMetadata& metadata) {
     // Use some dummy info when we have no hdr static metadata for the
     // display or we were unable to obtain an EDID.
     //
@@ -49,7 +49,7 @@ namespace dxvk {
      && metadata.greenPrimary[0] == 0.0f && metadata.greenPrimary[1] == 0.0f
      && metadata.bluePrimary[0]  == 0.0f && metadata.bluePrimary[1]  == 0.0f
      && metadata.whitePoint[0]   == 0.0f && metadata.whitePoint[1]   == 0.0f) {
-      if (DxgiMonitorInfo::DefaultColorSpace() == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709) {
+      if (pMonitorInfo->DefaultColorSpace() == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709) {
         // sRGB ColorSpace -> Rec.709 Primaries
         metadata.redPrimary[0]   = 0.640f;
         metadata.redPrimary[1]   = 0.330f;
@@ -722,7 +722,7 @@ namespace dxvk {
 
     // Normalize either the display metadata we got back, or our
     // blank one to get something sane here.
-    NormalizeDisplayMetadata(m_metadata);
+    NormalizeDisplayMetadata(m_monitorInfo, m_metadata);
 
     monitorData.FrameStats.SyncQPCTime.QuadPart = dxvk::high_resolution_clock::get_counter();
     monitorData.GammaCurve.Scale = { 1.0f, 1.0f, 1.0f };
