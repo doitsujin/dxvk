@@ -2,8 +2,9 @@
 
 namespace dxvk {
 
-  DxgiMonitorInfo::DxgiMonitorInfo(IUnknown* pParent)
+  DxgiMonitorInfo::DxgiMonitorInfo(IUnknown* pParent, const DxgiOptions& options)
   : m_parent(pParent)
+  , m_options(options)
   , m_globalColorSpace(DefaultColorSpace()) {
 
   }
@@ -80,8 +81,8 @@ namespace dxvk {
   }
 
 
-  DXGI_COLOR_SPACE_TYPE DxgiMonitorInfo::DefaultColorSpace() {
-    return env::getEnvVar("DXVK_HDR") == "1"
+  DXGI_COLOR_SPACE_TYPE DxgiMonitorInfo::DefaultColorSpace() const {
+    return m_options.enableHDR
       ? DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020
       : DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
   }

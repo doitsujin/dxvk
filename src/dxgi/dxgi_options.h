@@ -35,6 +35,9 @@ namespace dxvk {
 
     /// Enables nvapi workaround
     bool nvapiHack;
+
+    /// Enable HDR
+    bool enableHDR;
   };
   
 }
