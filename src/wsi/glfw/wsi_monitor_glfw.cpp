@@ -108,6 +108,9 @@ namespace dxvk::wsi {
     int32_t count = 0;
     const GLFWvidmode* modes = glfwGetVideoModes(monitor, &count);
 
+    if(ModeNumber >= uint32_t(count))
+      return false;
+
     convertMode(modes[ModeNumber], pMode);
 
     return true;
@@ -126,7 +129,7 @@ namespace dxvk::wsi {
     GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
     GLFWmonitor* monitor = monitors[displayId];
 
-    auto mode = glfwGetVideoMode(monitor);
+    const GLFWvidmode *mode = glfwGetVideoMode(monitor);
 
     convertMode(*mode, pMode);
 
