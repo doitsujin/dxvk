@@ -99,6 +99,11 @@ namespace dxvk {
     /// for a single window that may interfere with each other.
     bool deferSurfaceCreation;
 
+    /// Enables sample rate shading by interpolating fragment shader
+    /// inputs at the sample location rather than pixel center,
+    /// unless otherwise specified by the application.
+    bool forceSampleRateShading;
+
     /// Forces the sample count of all textures to be 1, and
     /// performs the required shader and resolve fixups.
     bool disableMsaa;
