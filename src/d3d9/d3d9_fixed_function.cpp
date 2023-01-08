@@ -14,6 +14,7 @@ namespace dxvk {
 
   D3D9FixedFunctionOptions::D3D9FixedFunctionOptions(const D3D9Options* options) {
     invariantPosition = options->invariantPosition;
+    forceSampleRateShading = options->forceSampleRateShading;
   }
 
   uint32_t DoFixedFunctionFog(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, const D3D9FogContext& fogCtx) {
@@ -933,10 +934,16 @@ namespace dxvk {
 
     uint32_t ptr = m_module.newVar(ptrType, storageClass);
 
-    if (builtin == spv::BuiltInMax)
+    if (builtin == spv::BuiltInMax) {
       m_module.decorateLocation(ptr, slot);
-    else
+
+      if (isPS() && input && m_options.forceSampleRateShading) {
+        m_module.enableCapability(spv::CapabilitySampleRateShading);
+        m_module.decorate(ptr, spv::DecorationSample);
+      }
+    } else {
       m_module.decorateBuiltIn(ptr, builtin);
+    }
 
     bool diffuseOrSpec = semantic == DxsoSemantic{ DxsoUsage::Color, 0 }
                       || semantic == DxsoSemantic{ DxsoUsage::Color, 1 };

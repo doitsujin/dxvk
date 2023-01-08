@@ -3192,6 +3192,12 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       m_module.decorateLocation(inputPtr.id, slot);
 
+      if (m_programInfo.type() == DxsoProgramType::PixelShader
+       && m_moduleInfo.options.forceSampleRateShading) {
+        m_module.enableCapability(spv::CapabilitySampleRateShading);
+        m_module.decorate(inputPtr.id, spv::DecorationSample);
+      }
+
       std::string name =
         str::format("in_", elem.semantic.usage, elem.semantic.usageIndex);
       m_module.setDebugName(inputPtr.id, name.c_str());
