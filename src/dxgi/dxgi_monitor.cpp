@@ -2,8 +2,10 @@
 
 namespace dxvk {
 
-  DxgiMonitorInfo::DxgiMonitorInfo(IUnknown* pParent)
-  : m_parent(pParent) {
+  DxgiMonitorInfo::DxgiMonitorInfo(IUnknown* pParent, const DxgiOptions& options)
+  : m_parent(pParent)
+  , m_options(options)
+  , m_globalColorSpace(DefaultColorSpace()) {
 
   }
 
@@ -66,6 +68,23 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE DxgiMonitorInfo::ReleaseMonitorData() {
     m_monitorMutex.unlock();
+  }
+
+
+  void STDMETHODCALLTYPE DxgiMonitorInfo::PuntColorSpace(DXGI_COLOR_SPACE_TYPE ColorSpace) {
+    m_globalColorSpace = ColorSpace;
+  }
+
+
+  DXGI_COLOR_SPACE_TYPE STDMETHODCALLTYPE DxgiMonitorInfo::CurrentColorSpace() const {
+    return m_globalColorSpace;
+  }
+
+
+  DXGI_COLOR_SPACE_TYPE DxgiMonitorInfo::DefaultColorSpace() const {
+    return m_options.enableHDR
+      ? DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020
+      : DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
   }
 
 

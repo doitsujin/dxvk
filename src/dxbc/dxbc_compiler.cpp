@@ -72,6 +72,17 @@ namespace dxvk {
     m_lastOp = m_currOp;
     m_currOp = ins.op;
 
+    if (!m_insideFunction
+     && ins.opClass != DxbcInstClass::CustomData
+     && ins.opClass != DxbcInstClass::Declaration
+     && ins.opClass != DxbcInstClass::HullShaderPhase
+     && ins.opClass != DxbcInstClass::NoOperation
+     && ins.op != DxbcOpcode::Label) {
+      if (!std::exchange(m_hasDeadCode, true))
+        Logger::warn("DxbcCompiler: Dead code detected");
+      return;
+    }
+
     switch (ins.opClass) {
       case DxbcInstClass::Declaration:
         return this->emitDcl(ins);

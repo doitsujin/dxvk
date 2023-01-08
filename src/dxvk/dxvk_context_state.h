@@ -35,6 +35,7 @@ namespace dxvk {
     GpDirtyDepthBias,           ///< Depth bias has changed
     GpDirtyDepthBounds,         ///< Depth bounds have changed
     GpDirtyStencilRef,          ///< Stencil reference has changed
+    GpDirtyMultisampleState,    ///< Multisample state has changed
     GpDirtyRasterizerState,     ///< Cull mode and front face have changed
     GpDirtyViewport,            ///< Viewport state has changed
     GpDirtySpecConstants,       ///< Graphics spec constants are out of date
@@ -43,6 +44,7 @@ namespace dxvk {
     GpDynamicDepthBias,         ///< Depth bias is dynamic
     GpDynamicDepthBounds,       ///< Depth bounds are dynamic
     GpDynamicStencilRef,        ///< Stencil reference is dynamic
+    GpDynamicMultisampleState,  ///< Multisample state is dynamic
     GpDynamicRasterizerState,   ///< Cull mode and front face are dynamic
     GpDynamicVertexStrides,     ///< Vertex buffer strides are dynamic
     GpIndependentSets,          ///< Graphics pipeline layout was created with independent sets

@@ -19,6 +19,61 @@
 #include "../util/util_time.h"
 
 namespace dxvk {
+
+  static void NormalizeDisplayMetadata(const DxgiMonitorInfo *pMonitorInfo, wsi::WsiDisplayMetadata& metadata) {
+    // Use some dummy info when we have no hdr static metadata for the
+    // display or we were unable to obtain an EDID.
+    //
+    // These dummy values are the same as what Windows DXGI will output
+    // for panels with broken EDIDs such as LG OLEDs displays which
+    // have an entirely zeroed out luminance section in the hdr static
+    // metadata block.
+    //
+    // (Spec has 0 as 'undefined', which isn't really useful for an app
+    // to tonemap against.)
+    if (metadata.minLuminance == 0.0f)
+      metadata.minLuminance = 0.01f;
+
+    if (metadata.maxLuminance == 0.0f)
+      metadata.maxLuminance = 1499.0f;
+
+    if (metadata.maxFullFrameLuminance == 0.0f)
+      metadata.maxFullFrameLuminance = 799.0f;
+
+    // If we have no RedPrimary/GreenPrimary/BluePrimary/WhitePoint due to
+    // the lack of a monitor exposing the chroma block or the lack of an EDID,
+    // simply just fall back to Rec.709 or Rec.2020 values depending on the default
+    // ColorSpace we started in.
+    // (Don't change based on punting, as this should be static for a display.)
+    if (metadata.redPrimary[0]   == 0.0f && metadata.redPrimary[1]   == 0.0f
+     && metadata.greenPrimary[0] == 0.0f && metadata.greenPrimary[1] == 0.0f
+     && metadata.bluePrimary[0]  == 0.0f && metadata.bluePrimary[1]  == 0.0f
+     && metadata.whitePoint[0]   == 0.0f && metadata.whitePoint[1]   == 0.0f) {
+      if (pMonitorInfo->DefaultColorSpace() == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709) {
+        // sRGB ColorSpace -> Rec.709 Primaries
+        metadata.redPrimary[0]   = 0.640f;
+        metadata.redPrimary[1]   = 0.330f;
+        metadata.greenPrimary[0] = 0.300f;
+        metadata.greenPrimary[1] = 0.600f;
+        metadata.bluePrimary[0]  = 0.150f;
+        metadata.bluePrimary[1]  = 0.060f;
+        metadata.whitePoint[0]   = 0.3127f;
+        metadata.whitePoint[1]   = 0.3290f;
+      } else {
+        // HDR10 ColorSpace -> Rec.2020 Primaries
+        // (Notably much bigger than any display is actually going to expose.)
+        metadata.redPrimary[0]   = 0.708f;
+        metadata.redPrimary[1]   = 0.292f;
+        metadata.greenPrimary[0] = 0.170f;
+        metadata.greenPrimary[1] = 0.797f;
+        metadata.bluePrimary[0]  = 0.131f;
+        metadata.bluePrimary[1]  = 0.046f;
+        metadata.whitePoint[0]   = 0.3127f;
+        metadata.whitePoint[1]   = 0.3290f;
+      }
+    }
+  }
+
   
   DxgiOutput::DxgiOutput(
     const Com<DxgiFactory>& factory,
@@ -218,21 +273,17 @@ namespace dxvk {
     pDesc->AttachedToDesktop     = 1;
     pDesc->Rotation              = DXGI_MODE_ROTATION_UNSPECIFIED;
     pDesc->Monitor               = m_monitor;
-    // TODO: When in HDR, flip this to 10 to appease apps that the
-    // transition has occured.
-    // If we support more than HDR10 in future, then we may want
-    // to visit that assumption.
     pDesc->BitsPerColor          = 8;
     // This should only return DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020
     // (HDR) if the user has the HDR setting enabled in Windows.
     // Games can still punt into HDR mode by using CheckColorSpaceSupport
     // and SetColorSpace1.
-    // 
-    // TODO: When we have a swapchain using SetColorSpace1 to
-    // DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020, we should use our monitor
-    // info to flip this over to that.
-    // As on Windows this would automatically engage HDR mode.
-    pDesc->ColorSpace            = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+    //
+    // We have no way of checking the actual Windows colorspace as the
+    // only public method for this *is* DXGI which we are re-implementing.
+    // So we just pick our color space based on the DXVK_HDR env var
+    // and the punting from SetColorSpace1.
+    pDesc->ColorSpace            = m_monitorInfo->CurrentColorSpace();
     pDesc->RedPrimary[0]         = m_metadata.redPrimary[0];
     pDesc->RedPrimary[1]         = m_metadata.redPrimary[1];
     pDesc->GreenPrimary[0]       = m_metadata.greenPrimary[0];
@@ -668,6 +719,10 @@ namespace dxvk {
       m_metadata = metadata.value();
     else
       Logger::err("DXGI: Failed to parse display metadata + colorimetry info, using blank.");
+
+    // Normalize either the display metadata we got back, or our
+    // blank one to get something sane here.
+    NormalizeDisplayMetadata(m_monitorInfo, m_metadata);
 
     monitorData.FrameStats.SyncQPCTime.QuadPart = dxvk::high_resolution_clock::get_counter();
     monitorData.GammaCurve.Scale = { 1.0f, 1.0f, 1.0f };

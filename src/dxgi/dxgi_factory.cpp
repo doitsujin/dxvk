@@ -7,8 +7,8 @@ namespace dxvk {
 
   DxgiFactory::DxgiFactory(UINT Flags)
   : m_instance    (new DxvkInstance()),
-    m_monitorInfo (this),
     m_options     (m_instance->config()),
+    m_monitorInfo (this, m_options),
     m_flags       (Flags) {
     for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; i++)
       m_instance->enumAdapters(i)->logAdapterInfo();

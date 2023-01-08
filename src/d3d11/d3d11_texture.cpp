@@ -1176,27 +1176,24 @@ namespace dxvk {
   
   
   ULONG STDMETHODCALLTYPE D3D11Texture2D::AddRef() {
-    uint32_t refCount = m_refCount++;
+    uint32_t refCount = D3D11DeviceChild<ID3D11Texture2D1>::AddRef();
 
-    if (unlikely(!refCount)) {
-      if (m_swapChain)
+    if (unlikely(m_swapChain != nullptr)) {
+      if (refCount == 1)
         m_swapChain->AddRef();
-
-      AddRefPrivate();
     }
 
-    return refCount + 1;
+    return refCount;
   }
   
 
   ULONG STDMETHODCALLTYPE D3D11Texture2D::Release() {
-    uint32_t refCount = --m_refCount;
+    IUnknown* swapChain = m_swapChain;
+    uint32_t refCount = D3D11DeviceChild<ID3D11Texture2D1>::Release();
 
-    if (unlikely(!refCount)) {
-      if (m_swapChain)
-        m_swapChain->Release();
-
-      ReleasePrivate();
+    if (unlikely(swapChain != nullptr)) {
+      if (refCount == 0)
+        swapChain->Release();
     }
 
     return refCount;

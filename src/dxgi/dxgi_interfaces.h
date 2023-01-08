@@ -200,6 +200,30 @@ IDXGIVkMonitorInfo : public IUnknown {
    */
   virtual void STDMETHODCALLTYPE ReleaseMonitorData() = 0;
 
+  /**
+   * \brief Punt global colorspace
+   *
+   * This exists to satiate a requirement for
+   * IDXGISwapChain::SetColorSpace1 punting Windows into
+   * the global "HDR mode".
+   *
+   * This operation is atomic and does not require
+   * owning any monitor data.
+   *
+   * \param [in] ColorSpace The colorspace
+   */
+  virtual void STDMETHODCALLTYPE PuntColorSpace(DXGI_COLOR_SPACE_TYPE ColorSpace) = 0;
+
+  /**
+   * \brief Get current global colorspace
+   *
+   * This operation is atomic and does not require
+   * owning any monitor data.
+   *
+   * \returns Current global colorspace
+   */
+  virtual DXGI_COLOR_SPACE_TYPE STDMETHODCALLTYPE CurrentColorSpace() const = 0;
+
 };
 
 

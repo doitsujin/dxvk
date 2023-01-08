@@ -288,12 +288,13 @@ namespace dxvk {
 
     // Set up multisample state based on shader info as well
     // as rasterization state and render target sample counts.
-    if (state.ms.sampleCount())
-      msInfo.rasterizationSamples = VkSampleCountFlagBits(state.ms.sampleCount());
-    else if (state.rs.sampleCount())
-      msInfo.rasterizationSamples = VkSampleCountFlagBits(state.rs.sampleCount());
-    else
-      msInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    msInfo.rasterizationSamples = VkSampleCountFlagBits(state.ms.sampleCount());
+
+    if (!msInfo.rasterizationSamples) {
+      msInfo.rasterizationSamples = state.rs.sampleCount()
+        ? VkSampleCountFlagBits(state.rs.sampleCount())
+        : VK_SAMPLE_COUNT_1_BIT;
+    }
 
     if (fs && fs->flags().test(DxvkShaderFlag::HasSampleRateShading)) {
       msInfo.sampleShadingEnable  = VK_TRUE;
@@ -392,12 +393,26 @@ namespace dxvk {
   : m_device(device) {
     auto vk = m_device->vkd();
 
-    VkDynamicState dynamicState = VK_DYNAMIC_STATE_BLEND_CONSTANTS;
+    uint32_t dynamicStateCount = 0;
+    std::array<VkDynamicState, 4> dynamicStates = { };
+
+    if (m_device->features().extExtendedDynamicState3.extendedDynamicState3RasterizationSamples
+     && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleMask) {
+      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT;
+      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_SAMPLE_MASK_EXT;
+
+      if (device->features().extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable)
+        dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT;
+    }
+
+    if (state.cbUseDynamicBlendConstants)
+      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_BLEND_CONSTANTS;
+
     VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
 
-    if (state.cbUseDynamicBlendConstants) {
-      dyInfo.dynamicStateCount  = 1;
-      dyInfo.pDynamicStates     = &dynamicState;
+    if (dynamicStateCount) {
+      dyInfo.dynamicStateCount  = dynamicStateCount;
+      dyInfo.pDynamicStates     = dynamicStates.data();
     }
 
     VkPipelineCreateFlags flags = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
@@ -1095,12 +1110,23 @@ namespace dxvk {
       if (state.rs.flatShading() && m_shaders.fs->info().flatShadingInputs)
         return false;
 
-      // Multisample state must match in this case, and the
-      // library assumes that MSAA is disabled in this case.
+      // If dynamic multisample state is not supported and sample shading
+      // is enabled, the library is compiled with a sample count of 1.
       if (m_shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading)) {
-        if (state.ms.sampleCount() != VK_SAMPLE_COUNT_1_BIT
-         || state.ms.sampleMask() == 0
-         || state.ms.enableAlphaToCoverage())
+        bool canUseDynamicMultisampleState =
+          m_device->features().extExtendedDynamicState3.extendedDynamicState3RasterizationSamples &&
+          m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleMask;
+
+        bool canUseDynamicAlphaToCoverage = canUseDynamicMultisampleState &&
+          m_device->features().extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable;
+
+        if (!canUseDynamicMultisampleState
+         && (state.ms.sampleCount() != VK_SAMPLE_COUNT_1_BIT
+          || state.ms.sampleMask() == 0))
+          return false;
+
+        if (!canUseDynamicAlphaToCoverage
+         && (state.ms.enableAlphaToCoverage()))
           return false;
       }
     }

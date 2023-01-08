@@ -531,6 +531,7 @@ namespace dxvk {
     //////////////////////
     // Global state stuff
     bool m_precise = true;
+    bool m_hasDeadCode = false;
 
     DxbcOpcode m_lastOp = DxbcOpcode::Nop;
     DxbcOpcode m_currOp = DxbcOpcode::Nop;

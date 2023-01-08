@@ -441,9 +441,15 @@ namespace dxvk {
       m_deviceFeatures.extDepthClipEnable.depthClipEnable;
 
     // Used to make pipeline library stuff less clunky
+    enabledFeatures.extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable =
+      m_deviceFeatures.extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable;
     enabledFeatures.extExtendedDynamicState3.extendedDynamicState3DepthClipEnable =
       m_deviceFeatures.extExtendedDynamicState3.extendedDynamicState3DepthClipEnable &&
       m_deviceFeatures.extDepthClipEnable.depthClipEnable;
+    enabledFeatures.extExtendedDynamicState3.extendedDynamicState3RasterizationSamples =
+      m_deviceFeatures.extExtendedDynamicState3.extendedDynamicState3RasterizationSamples;
+    enabledFeatures.extExtendedDynamicState3.extendedDynamicState3SampleMask =
+      m_deviceFeatures.extExtendedDynamicState3.extendedDynamicState3SampleMask;
 
     // Used for both pNext shader module info, and fast-linking pipelines provided
     // that graphicsPipelineLibraryIndependentInterpolationDecoration is supported
@@ -1020,7 +1026,10 @@ namespace dxvk {
       "\n", VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME,
       "\n  depthClipEnable                        : ", features.extDepthClipEnable.depthClipEnable ? "1" : "0",
       "\n", VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
-      "\n  extendedDynamicState3DepthClipEnable   : ", features.extExtendedDynamicState3.extendedDynamicState3DepthClipEnable ? "1" : "0",
+      "\n  extDynamicState3AlphaToCoverageEnable  : ", features.extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable ? "1" : "0",
+      "\n  extDynamicState3DepthClipEnable        : ", features.extExtendedDynamicState3.extendedDynamicState3DepthClipEnable ? "1" : "0",
+      "\n  extDynamicState3RasterizationSamples   : ", features.extExtendedDynamicState3.extendedDynamicState3RasterizationSamples ? "1" : "0",
+      "\n  extDynamicState3SampleMask             : ", features.extExtendedDynamicState3.extendedDynamicState3SampleMask ? "1" : "0",
       "\n", VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME,
       "\n  fragmentShaderSampleInterlock          : ", features.extFragmentShaderInterlock.fragmentShaderSampleInterlock ? "1" : "0",
       "\n  fragmentShaderPixelInterlock           : ", features.extFragmentShaderInterlock.fragmentShaderPixelInterlock ? "1" : "0",
