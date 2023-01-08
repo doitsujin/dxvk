@@ -123,6 +123,9 @@ namespace dxvk {
     /// Forces an MSAA level on the swapchain
     int32_t forceSwapchainMSAA;
 
+    /// Forces sample rate shading
+    bool forceSampleRateShading;
+
     /// Allow D3DLOCK_DISCARD
     bool allowDiscard;
 

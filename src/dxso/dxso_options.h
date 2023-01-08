@@ -36,6 +36,9 @@ namespace dxvk {
     /// Works around a game bug in Halo CE where it gives cube textures to 2d/volume samplers
     bool forceSamplerTypeSpecConstants;
 
+    /// Interpolate pixel shader inputs at the sample location rather than pixel center
+    bool forceSampleRateShading;
+
     /// Should the SWVP float constant buffer be a SSBO (because of the size on NV)
     bool vertexFloatConstantBufferAsSSBO;
 
