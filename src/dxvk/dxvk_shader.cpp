@@ -161,7 +161,7 @@ namespace dxvk {
 
     // Don't set pipeline library flag if the shader
     // doesn't actually support pipeline libraries
-    m_needsLibraryCompile = canUsePipelineLibrary();
+    m_needsLibraryCompile = canUsePipelineLibrary(true);
   }
 
 
@@ -209,19 +209,30 @@ namespace dxvk {
   }
 
 
-  bool DxvkShader::canUsePipelineLibrary() const {
-    // Pipeline libraries are unsupported for geometry and
-    // tessellation stages since we'd need to compile them
-    // all into one library
-    if (m_info.stage != VK_SHADER_STAGE_VERTEX_BIT
-     && m_info.stage != VK_SHADER_STAGE_FRAGMENT_BIT
-     && m_info.stage != VK_SHADER_STAGE_COMPUTE_BIT)
-      return false;
+  bool DxvkShader::canUsePipelineLibrary(bool standalone) const {
+    if (standalone) {
+      // Standalone pipeline libraries are unsupported for geometry
+      // and tessellation stages since we'd need to compile them
+      // all into one library
+      if (m_info.stage != VK_SHADER_STAGE_VERTEX_BIT
+       && m_info.stage != VK_SHADER_STAGE_FRAGMENT_BIT
+       && m_info.stage != VK_SHADER_STAGE_COMPUTE_BIT)
+        return false;
 
-    // Standalone vertex shaders must export vertex position
-    if (m_info.stage == VK_SHADER_STAGE_VERTEX_BIT
-     && !m_flags.test(DxvkShaderFlag::ExportsPosition))
-      return false;
+      // Standalone vertex shaders must export vertex position
+      if (m_info.stage == VK_SHADER_STAGE_VERTEX_BIT
+       && !m_flags.test(DxvkShaderFlag::ExportsPosition))
+        return false;
+    } else {
+      // Tessellation control shaders must define a valid vertex count
+      if (m_info.stage == VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT
+       && (m_info.patchVertexCount < 1 || m_info.patchVertexCount > 32))
+        return false;
+
+      // We don't support GPL with transform feedback right now
+      if (m_flags.test(DxvkShaderFlag::HasTransformFeedback))
+        return false;
+    }
 
     // Spec constant selectors are only supported in graphics
     if (m_specConstantMask & (1u << MaxNumSpecConstants))
