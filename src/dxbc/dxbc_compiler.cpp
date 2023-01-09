@@ -258,6 +258,9 @@ namespace dxvk {
     info.uniformSize = m_immConstData.size();
     info.uniformData = m_immConstData.data();
 
+    if (m_programInfo.type() == DxbcProgramType::HullShader)
+      info.patchVertexCount = m_hs.vertexCountIn;
+
     if (m_programInfo.type() == DxbcProgramType::PixelShader && m_ps.pushConstantId)
       info.pushConstSize = sizeof(DxbcPushConstants);
 
