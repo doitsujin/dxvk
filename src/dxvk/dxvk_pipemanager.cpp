@@ -466,7 +466,7 @@ namespace dxvk {
 
   bool DxvkPipelineManager::canPrecompileShader(
     const Rc<DxvkShader>&     shader) const {
-    if (!shader->canUsePipelineLibrary())
+    if (!shader->canUsePipelineLibrary(true))
       return false;
 
     if (shader->info().stage == VK_SHADER_STAGE_COMPUTE_BIT)

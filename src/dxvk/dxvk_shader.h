@@ -178,9 +178,12 @@ namespace dxvk {
      *
      * This is true for any vertex, fragment, or compute shader that does not
      * require additional pipeline state to be compiled into something useful.
+     * \param [in] standalone Set to \c true to evaluate this in the context
+     *    of a single-shader pipeline library, or \c false for a pre-raster
+     *    shader library consisting of multiple shader stages.
      * \returns \c true if this shader can be used with pipeline libraries
      */
-    bool canUsePipelineLibrary() const;
+    bool canUsePipelineLibrary(bool standalone) const;
 
     /**
      * \brief Dumps SPIR-V shader
