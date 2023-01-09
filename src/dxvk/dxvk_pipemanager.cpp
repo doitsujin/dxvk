@@ -304,8 +304,17 @@ namespace dxvk {
       if (shaders.gs != nullptr)
         vsKey.addShader(shaders.gs);
 
-      if (vsKey.canUsePipelineLibrary())
+      if (vsKey.canUsePipelineLibrary()) {
         vsLibrary = findPipelineLibraryLocked(vsKey);
+
+        if (!vsLibrary) {
+          // If multiple shader stages are participating, create a
+          // pipeline library so that it can potentially be reused.
+          // Don't dispatch the pipeline library to a worker thread
+          // since it should be compiled on demand anyway.
+          vsLibrary = createPipelineLibraryLocked(vsKey);
+        }
+      }
 
       if (vsLibrary) {
         DxvkShaderPipelineLibraryKey fsKey;
