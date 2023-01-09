@@ -1094,10 +1094,15 @@ namespace dxvk {
       return false;
 
     if (m_shaders.fs != nullptr) {
-      // If the fragment shader has inputs not produced by the
-      // vertex shader, we need to patch the fragment shader
-      uint32_t vsIoMask = m_shaders.vs->info().outputMask;
+      // If the fragment shader has inputs not produced by the last
+      // pre-rasterization stage, we need to patch the fragment shader
       uint32_t fsIoMask = m_shaders.fs->info().inputMask;
+      uint32_t vsIoMask = m_shaders.vs->info().outputMask;
+
+      if (m_shaders.gs != nullptr)
+        vsIoMask = m_shaders.gs->info().outputMask;
+      else if (m_shaders.tes != nullptr)
+        vsIoMask = m_shaders.tes->info().outputMask;
 
       if ((vsIoMask & fsIoMask) != fsIoMask)
         return false;
@@ -1226,10 +1231,16 @@ namespace dxvk {
     DxvkShaderStageInfo stageInfo(m_device);
 
     if (flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT) {
-      stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, m_vsLibrary->getModuleIdentifier(), &key.scState.scInfo);
+      stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, m_vsLibrary->getModuleIdentifier(VK_SHADER_STAGE_VERTEX_BIT), &key.scState.scInfo);
 
+      if (m_shaders.tcs != nullptr)
+        stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, m_vsLibrary->getModuleIdentifier(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT), &key.scState.scInfo);
+      if (m_shaders.tes != nullptr)
+        stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, m_vsLibrary->getModuleIdentifier(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT), &key.scState.scInfo);
+      if (m_shaders.gs != nullptr)
+        stageInfo.addStage(VK_SHADER_STAGE_GEOMETRY_BIT, m_vsLibrary->getModuleIdentifier(VK_SHADER_STAGE_GEOMETRY_BIT), &key.scState.scInfo);
       if (m_shaders.fs != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, m_fsLibrary->getModuleIdentifier(), &key.scState.scInfo);
+        stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, m_fsLibrary->getModuleIdentifier(VK_SHADER_STAGE_FRAGMENT_BIT), &key.scState.scInfo);
     } else {
       stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, getShaderCode(m_shaders.vs, key.shState.vsInfo), &key.scState.scInfo);
 

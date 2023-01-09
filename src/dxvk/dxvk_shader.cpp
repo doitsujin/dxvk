@@ -893,9 +893,21 @@ namespace dxvk {
     const DxvkBindingLayoutObjects* layout)
   : m_device      (device),
     m_stats       (&manager->m_stats),
-    m_shader      (shader),
     m_layout      (layout) {
-
+    if (shader) {
+      switch (shader->info().stage) {
+        case VK_SHADER_STAGE_VERTEX_BIT:
+          m_shaders.vs = shader;
+          break;
+        case VK_SHADER_STAGE_FRAGMENT_BIT:
+          m_shaders.fs = shader;
+          break;
+        case VK_SHADER_STAGE_COMPUTE_BIT:
+          m_shaders.cs = shader;
+          break;
+        default: ;
+      }
+    }
   }
 
 
@@ -904,17 +916,19 @@ namespace dxvk {
   }
 
 
-  VkShaderModuleIdentifierEXT DxvkShaderPipelineLibrary::getModuleIdentifier() {
+  VkShaderModuleIdentifierEXT DxvkShaderPipelineLibrary::getModuleIdentifier(
+          VkShaderStageFlagBits                 stage) {
     std::lock_guard lock(m_identifierMutex);
+    auto identifier = getShaderIdentifier(stage);
 
-    if (!m_identifier.identifierSize) {
+    if (!identifier->identifierSize) {
       // Unfortunate, but we'll have to decode the
       // shader code here to retrieve the identifier
-      SpirvCodeBuffer spirvCode = this->getShaderCode();
-      this->generateModuleIdentifierLocked(spirvCode);
+      SpirvCodeBuffer spirvCode = this->getShaderCode(stage);
+      this->generateModuleIdentifierLocked(identifier, spirvCode);
     }
 
-    return m_identifier;
+    return *identifier;
   }
 
 
@@ -925,9 +939,7 @@ namespace dxvk {
     if (m_device->mustTrackPipelineLifetime())
       m_useCount += 1;
 
-    VkShaderStageFlagBits stage = getShaderStage();
-
-    VkPipeline& pipeline = (stage == VK_SHADER_STAGE_VERTEX_BIT && !args.depthClipEnable)
+    VkPipeline& pipeline = (m_shaders.vs && !args.depthClipEnable)
       ? m_pipelineNoDepthClip
       : m_pipeline;
 
@@ -988,22 +1000,20 @@ namespace dxvk {
 
   VkPipeline DxvkShaderPipelineLibrary::compileShaderPipelineLocked(
     const DxvkShaderPipelineLibraryCompileArgs& args) {
-    VkShaderStageFlagBits stage = getShaderStage();
-    VkPipeline pipeline = VK_NULL_HANDLE;
-
-    if (m_shader)
-      m_shader->notifyLibraryCompile();
+    this->notifyLibraryCompile();
 
     // If this is not the first time we're compiling the pipeline,
     // try to get a cache hit using the shader module identifier
     // so that we don't have to decompress our SPIR-V shader again.
+    VkPipeline pipeline = VK_NULL_HANDLE;
+
     if (m_compiledOnce && canUsePipelineCacheControl()) {
-      pipeline = this->compileShaderPipeline(args, stage,
+      pipeline = this->compileShaderPipeline(args,
         VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT);
     }
 
     if (!pipeline)
-      pipeline = this->compileShaderPipeline(args, stage, 0);
+      pipeline = this->compileShaderPipeline(args, 0);
 
     // Well that didn't work
     if (!pipeline)
@@ -1012,7 +1022,7 @@ namespace dxvk {
     // Increment stat counter the first time this
     // shader pipeline gets compiled successfully
     if (!m_compiledOnce) {
-      if (stage == VK_SHADER_STAGE_COMPUTE_BIT)
+      if (m_shaders.cs)
         m_stats->numComputePipelines += 1;
       else
         m_stats->numGraphicsLibraries += 1;
@@ -1026,46 +1036,49 @@ namespace dxvk {
 
   VkPipeline DxvkShaderPipelineLibrary::compileShaderPipeline(
     const DxvkShaderPipelineLibraryCompileArgs& args,
-          VkShaderStageFlagBits                 stage,
           VkPipelineCreateFlags                 flags) {
     DxvkShaderStageInfo stageInfo(m_device);
+    VkShaderStageFlags stageMask = getShaderStages();
 
     { std::lock_guard lock(m_identifierMutex);
+      VkShaderStageFlags stages = stageMask;
 
-      if (flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT) {
-        // Fail if we have no idenfitier for whatever reason, caller
-        // should fall back to the slow path if this happens
-        if (!m_identifier.identifierSize)
-          return VK_NULL_HANDLE;
+      while (stages) {
+        auto stage = VkShaderStageFlagBits(stages & -stages);
+        auto identifier = getShaderIdentifier(stage);
 
-        stageInfo.addStage(stage, m_identifier, nullptr);
-      } else {
-        // Decompress code and generate identifier as needed
-        SpirvCodeBuffer spirvCode = this->getShaderCode();
+        if (flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT) {
+          // Fail if we have no idenfitier for whatever reason, caller
+          // should fall back to the slow path if this happens
+          if (!identifier->identifierSize)
+            return VK_NULL_HANDLE;
 
-        if (!m_identifier.identifierSize)
-          this->generateModuleIdentifierLocked(spirvCode);
+          stageInfo.addStage(stage, *identifier, nullptr);
+        } else {
+          // Decompress code and generate identifier as needed
+          SpirvCodeBuffer spirvCode = this->getShaderCode(stage);
 
-        stageInfo.addStage(stage, std::move(spirvCode), nullptr);
+          if (!identifier->identifierSize)
+            this->generateModuleIdentifierLocked(identifier, spirvCode);
+
+          stageInfo.addStage(stage, std::move(spirvCode), nullptr);
+        }
+
+        stages &= stages - 1;
       }
     }
 
-    switch (stage) {
-      case VK_SHADER_STAGE_VERTEX_BIT:
-        return compileVertexShaderPipeline(args, stageInfo, flags);
-        break;
+    if (stageMask & VK_SHADER_STAGE_VERTEX_BIT)
+      return compileVertexShaderPipeline(args, stageInfo, flags);
 
-      case VK_SHADER_STAGE_FRAGMENT_BIT:
-        return compileFragmentShaderPipeline(stageInfo, flags);
-        break;
+    if (stageMask & VK_SHADER_STAGE_FRAGMENT_BIT)
+      return compileFragmentShaderPipeline(stageInfo, flags);
 
-      case VK_SHADER_STAGE_COMPUTE_BIT:
-        return compileComputeShaderPipeline(stageInfo, flags);
+    if (stageMask & VK_SHADER_STAGE_COMPUTE_BIT)
+      return compileComputeShaderPipeline(stageInfo, flags);
 
-      default:
-        // Should be unreachable
-        return VK_NULL_HANDLE;
-    }
+    // Should be unreachable
+    return VK_NULL_HANDLE;
   }
 
 
@@ -1167,7 +1180,7 @@ namespace dxvk {
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS;
     }
 
-    bool hasSampleRateShading = m_shader && m_shader->flags().test(DxvkShaderFlag::HasSampleRateShading);
+    bool hasSampleRateShading = m_shaders.fs && m_shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading);
     bool hasDynamicMultisampleState = hasSampleRateShading
       && m_device->features().extExtendedDynamicState3.extendedDynamicState3RasterizationSamples
       && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleMask;
@@ -1252,20 +1265,23 @@ namespace dxvk {
   }
 
 
-  SpirvCodeBuffer DxvkShaderPipelineLibrary::getShaderCode() const {
+  SpirvCodeBuffer DxvkShaderPipelineLibrary::getShaderCode(VkShaderStageFlagBits stage) const {
     // As a special case, it is possible that we have to deal with
     // a null shader, but the pipeline library extension requires
     // us to always specify a fragment shader for fragment stages,
     // so we need to return a dummy shader in that case.
-    if (!m_shader)
+    DxvkShader* shader = getShader(stage);
+
+    if (!shader)
       return SpirvCodeBuffer(dxvk_dummy_frag);
 
-    return m_shader->getCode(m_layout, DxvkShaderModuleCreateInfo());
+    return shader->getCode(m_layout, DxvkShaderModuleCreateInfo());
   }
 
 
   void DxvkShaderPipelineLibrary::generateModuleIdentifierLocked(
-    const SpirvCodeBuffer& spirvCode) {
+          VkShaderModuleIdentifierEXT*  identifier,
+    const SpirvCodeBuffer&              spirvCode) {
     auto vk = m_device->vkd();
 
     if (!canUsePipelineCacheControl())
@@ -1276,17 +1292,101 @@ namespace dxvk {
     info.pCode = spirvCode.data();
 
     vk->vkGetShaderModuleCreateInfoIdentifierEXT(
-      vk->device(), &info, &m_identifier);
+      vk->device(), &info, identifier);
   }
 
 
-  VkShaderStageFlagBits DxvkShaderPipelineLibrary::getShaderStage() const {
-    VkShaderStageFlagBits stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+  VkShaderStageFlags DxvkShaderPipelineLibrary::getShaderStages() const {
+    if (m_shaders.vs) {
+      VkShaderStageFlags result = VK_SHADER_STAGE_VERTEX_BIT;
 
-    if (m_shader != nullptr)
-      stage = m_shader->info().stage;
+      if (m_shaders.tcs)
+        result |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
 
-    return stage;
+      if (m_shaders.tes)
+        result |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+
+      if (m_shaders.gs)
+        result |= VK_SHADER_STAGE_GEOMETRY_BIT;
+
+      return result;
+    }
+
+    if (m_shaders.cs)
+      return VK_SHADER_STAGE_COMPUTE_BIT;
+
+    // Must be a fragment shader even if fs is null
+    return VK_SHADER_STAGE_FRAGMENT_BIT;
+  }
+
+
+  DxvkShader* DxvkShaderPipelineLibrary::getShader(
+          VkShaderStageFlagBits         stage) const {
+    switch (stage) {
+      case VK_SHADER_STAGE_VERTEX_BIT:
+        return m_shaders.vs;
+
+      case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+        return m_shaders.tcs;
+
+      case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+        return m_shaders.tes;
+
+      case VK_SHADER_STAGE_GEOMETRY_BIT:
+        return m_shaders.gs;
+
+      case VK_SHADER_STAGE_FRAGMENT_BIT:
+        return m_shaders.fs;
+
+      case VK_SHADER_STAGE_COMPUTE_BIT:
+        return m_shaders.cs;
+
+      default:
+        return nullptr;
+    }
+  }
+
+
+  VkShaderModuleIdentifierEXT* DxvkShaderPipelineLibrary::getShaderIdentifier(
+          VkShaderStageFlagBits         stage) {
+    switch (stage) {
+      case VK_SHADER_STAGE_VERTEX_BIT:
+        return &m_identifiers.vs;
+
+      case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+        return &m_identifiers.tcs;
+
+      case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+        return &m_identifiers.tes;
+
+      case VK_SHADER_STAGE_GEOMETRY_BIT:
+        return &m_identifiers.gs;
+
+      case VK_SHADER_STAGE_FRAGMENT_BIT:
+        return &m_identifiers.fs;
+
+      case VK_SHADER_STAGE_COMPUTE_BIT:
+        return &m_identifiers.cs;
+
+      default:
+        return nullptr;
+    }
+  }
+
+
+  void DxvkShaderPipelineLibrary::notifyLibraryCompile() const {
+    if (m_shaders.vs) {
+      // Only notify the shader itself if we're actually
+      // building the shader's standalone pipeline library
+      if (!m_shaders.tcs && !m_shaders.tes && !m_shaders.gs)
+        m_shaders.vs->notifyLibraryCompile();
+    }
+
+    if (m_shaders.fs)
+      m_shaders.fs->notifyLibraryCompile();
+
+    if (m_shaders.cs)
+      m_shaders.cs->notifyLibraryCompile();
   }
 
 
