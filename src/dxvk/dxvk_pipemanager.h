@@ -186,6 +186,16 @@ namespace dxvk {
       const DxvkGraphicsPipelineShaders& shaders);
 
     /**
+     * \brief Creates a pipeline library with a given set of shaders
+     *
+     * If a pipeline library already exists, it will be returned.
+     * Otherwise, a new pipeline library will be created.
+     * \param [in] key Shader set
+     */
+    DxvkShaderPipelineLibrary* createShaderPipelineLibrary(
+      const DxvkShaderPipelineLibraryKey& key);
+
+    /**
      * \brief Retrieves a vertex input pipeline library
      *
      * \param [in] state Vertex input state
@@ -293,9 +303,6 @@ namespace dxvk {
 
     DxvkBindingLayoutObjects* createPipelineLayout(
       const DxvkBindingLayout& layout);
-
-    DxvkShaderPipelineLibrary* createPipelineLibrary(
-      const DxvkShaderPipelineLibraryKey& key);
 
     DxvkShaderPipelineLibrary* createPipelineLibraryLocked(
       const DxvkShaderPipelineLibraryKey& key);
