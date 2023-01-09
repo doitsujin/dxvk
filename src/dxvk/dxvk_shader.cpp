@@ -1107,6 +1107,12 @@ namespace dxvk {
     dyInfo.dynamicStateCount  = dynamicStateCount;
     dyInfo.pDynamicStates     = dynamicStates.data();
 
+    // If a tessellation control shader is present, grab the patch vertex count
+    VkPipelineTessellationStateCreateInfo tsInfo = { VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO };
+
+    if (m_shaders.tcs)
+      tsInfo.patchControlPoints = m_shaders.tcs->info().patchVertexCount;
+
     // All viewport state is dynamic, so we do not need to initialize this.
     VkPipelineViewportStateCreateInfo vpInfo = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
 
@@ -1140,6 +1146,7 @@ namespace dxvk {
     info.flags                = VK_PIPELINE_CREATE_LIBRARY_BIT_KHR | flags;
     info.stageCount           = stageInfo.getStageCount();
     info.pStages              = stageInfo.getStageInfos();
+    info.pTessellationState   = m_shaders.tcs ? &tsInfo : nullptr;
     info.pViewportState       = &vpInfo;
     info.pRasterizationState  = &rsInfo;
     info.pDynamicState        = &dyInfo;

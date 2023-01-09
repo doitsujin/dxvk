@@ -1093,6 +1093,13 @@ namespace dxvk {
      || state.rs.conservativeMode() != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT)
       return false;
 
+    if (m_shaders.tcs != nullptr) {
+      // If tessellation shaders are present, the input patch
+      // vertex count must match the shader's definition.
+      if (m_shaders.tcs->info().patchVertexCount != state.ia.patchVertexCount())
+        return false;
+    }
+
     if (m_shaders.fs != nullptr) {
       // If the fragment shader has inputs not produced by the last
       // pre-rasterization stage, we need to patch the fragment shader
