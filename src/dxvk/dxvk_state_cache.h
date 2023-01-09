@@ -160,7 +160,12 @@ namespace dxvk {
     void createWriter();
 
     str::path_string getCacheFileName() const;
-    
+
+    std::ifstream openCacheFileForRead() const;
+
+    std::ofstream openCacheFileForWrite(
+            bool                      recreate) const;
+
     std::string getCacheDir() const;
 
   };

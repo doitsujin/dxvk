@@ -242,26 +242,7 @@ namespace dxvk {
     bool newFile = (useStateCache == "reset") || (!readCacheFile());
 
     if (newFile) {
-      Logger::warn("DXVK: Creating new state cache file");
-
-      // Start with an empty file
-      std::ofstream file(getCacheFileName().c_str(),
-        std::ios_base::binary |
-        std::ios_base::trunc);
-
-      if (!file && env::createDirectory(getCacheDir())) {
-        file = std::ofstream(getCacheFileName().c_str(),
-          std::ios_base::binary |
-          std::ios_base::trunc);
-      }
-
-      // Write header with the current version number
-      DxvkStateCacheHeader header;
-
-      auto data = reinterpret_cast<const char*>(&header);
-      auto size = sizeof(header);
-
-      file.write(data, size);
+      auto file = openCacheFileForWrite(true);
 
       // Write all valid entries to the cache file in
       // case we're recovering a corrupted cache file
@@ -454,12 +435,13 @@ namespace dxvk {
 
 
   bool DxvkStateCache::readCacheFile() {
-    // Open state file and just fail if it doesn't exist
-    std::ifstream ifile(getCacheFileName().c_str(), std::ios_base::binary);
+    // Return success if the file was not found.
+    // This way we will only create it on demand.
+    std::ifstream ifile = openCacheFileForRead();
 
     if (!ifile) {
       Logger::warn("DXVK: No state cache file found");
-      return false;
+      return true;
     }
 
     // The header stores the state cache version,
@@ -771,11 +753,8 @@ namespace dxvk {
         m_writerQueue.pop();
       }
 
-      if (!file.is_open()) {
-        file.open(getCacheFileName().c_str(),
-          std::ios_base::binary |
-          std::ios_base::app);
-      }
+      if (!file.is_open())
+        file = openCacheFileForWrite(false);
 
       writeCacheEntry(file, entry);
     }
@@ -803,6 +782,55 @@ namespace dxvk {
     std::string exeName = env::getExeBaseName();
     path += exeName + ".dxvk-cache";
     return str::topath(path.c_str());
+  }
+
+
+  std::ifstream DxvkStateCache::openCacheFileForRead() const {
+    return std::ifstream(getCacheFileName().c_str(), std::ios_base::binary);
+  }
+
+
+  std::ofstream DxvkStateCache::openCacheFileForWrite(bool recreate) const {
+    std::ofstream file;
+
+    if (!recreate) {
+      // Apparently there's no other way to check whether
+      // the file is empty after creating an ofstream
+      recreate = !openCacheFileForRead();
+    }
+
+    if (recreate) {
+      file = std::ofstream(getCacheFileName().c_str(),
+        std::ios_base::binary |
+        std::ios_base::trunc);
+
+      if (!file && env::createDirectory(getCacheDir())) {
+        file = std::ofstream(getCacheFileName().c_str(),
+          std::ios_base::binary |
+          std::ios_base::trunc);
+      }
+    } else {
+      file = std::ofstream(getCacheFileName().c_str(),
+        std::ios_base::binary |
+        std::ios_base::app);
+    }
+
+    if (!file)
+      return file;
+
+    if (recreate) {
+      Logger::warn("DXVK: Creating new state cache file");
+
+      // Write header with the current version number
+      DxvkStateCacheHeader header;
+
+      auto data = reinterpret_cast<const char*>(&header);
+      auto size = sizeof(header);
+
+      file.write(data, size);
+    }
+
+    return file;
   }
 
 
