@@ -433,8 +433,8 @@ namespace dxvk {
 
   DxvkShaderPipelineLibrary* DxvkPipelineManager::createNullFsPipelineLibrary() {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
-    auto layout = createPipelineLayout(DxvkBindingLayout(
-      VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT));
+    DxvkBindingLayout bindings(VK_SHADER_STAGE_FRAGMENT_BIT);
+    auto layout = createPipelineLayout(bindings);
 
     auto iter = m_shaderLibraries.emplace(
       std::piecewise_construct,
