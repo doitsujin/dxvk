@@ -37,29 +37,26 @@ namespace dxvk {
     ~DxvkStateCache();
 
     /**
-     * Adds a graphics pipeline to the cache
+     * \brief Adds pipeline library to the cache
+     *
+     * If the pipeline is not already cached, this
+     * will write a new pipeline to the cache file.
+     * \param [in] shaders Shader keys
+     */
+    void addPipelineLibrary(
+      const DxvkStateCacheKey&              shaders);
+
+    /**
+     * \brief Adds a graphics pipeline to the cache
      * 
      * If the pipeline is not already cached, this
      * will write a new pipeline to the cache file.
      * \param [in] shaders Shader keys
      * \param [in] state Graphics pipeline state
-     * \param [in] format Render pass format
      */
     void addGraphicsPipeline(
       const DxvkStateCacheKey&              shaders,
       const DxvkGraphicsPipelineStateInfo&  state);
-
-    /**
-     * Adds a compute pipeline to the cache
-     * 
-     * If the pipeline is not already cached, this
-     * will write a new pipeline to the cache file.
-     * \param [in] shaders Shader keys
-     * \param [in] state Compute pipeline state
-     */
-    void addComputePipeline(
-      const DxvkStateCacheKey&              shaders,
-      const DxvkComputePipelineStateInfo&   state);
 
     /**
      * \brief Registers a newly compiled shader
@@ -83,7 +80,6 @@ namespace dxvk {
 
     struct WorkerItem {
       DxvkGraphicsPipelineShaders gp;
-      DxvkComputePipelineShaders  cp;
     };
 
     DxvkDevice*                       m_device;

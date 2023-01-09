@@ -12,6 +12,16 @@ namespace dxvk {
    * \brief Packed entry header
    */
   struct DxvkStateCacheEntryHeader {
+    uint32_t entryType : 1;
+    uint32_t stageMask : 5;
+    uint32_t entrySize : 26;
+  };
+
+
+  /**
+   * \brief Version 8 entry header
+   */
+  struct DxvkStateCacheEntryHeaderV8 {
     uint32_t stageMask : 8;
     uint32_t entrySize : 24;
   };
@@ -42,6 +52,28 @@ namespace dxvk {
     template<typename T>
     bool read(T& data, uint32_t version) {
       return read(data);
+    }
+
+    bool read(DxvkStateCacheKey& shaders, uint32_t version, VkShaderStageFlags stageFlags) {
+      DxvkShaderKey dummyKey;
+
+      std::array<std::pair<VkShaderStageFlagBits, DxvkShaderKey*>, 6> stages = {{
+        { VK_SHADER_STAGE_VERTEX_BIT,                   &shaders.vs },
+        { VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,     &shaders.tcs },
+        { VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,  &shaders.tes },
+        { VK_SHADER_STAGE_GEOMETRY_BIT,                 &shaders.gs },
+        { VK_SHADER_STAGE_FRAGMENT_BIT,                 &shaders.fs },
+        { VK_SHADER_STAGE_COMPUTE_BIT,                  &dummyKey },
+      }};
+
+      for (uint32_t i = 0; i < stages.size(); i++) {
+        if (stageFlags & stages[i].first) {
+          if (!read(*stages[i].second, version))
+            return false;
+        }
+      }
+
+      return true;
     }
 
     bool read(DxvkBindingMaskV10& data, uint32_t version) {
@@ -208,8 +240,7 @@ namespace dxvk {
         && this->tcs.eq(key.tcs)
         && this->tes.eq(key.tes)
         && this->gs.eq(key.gs)
-        && this->fs.eq(key.fs)
-        && this->cs.eq(key.cs);
+        && this->fs.eq(key.fs);
   }
 
 
@@ -220,7 +251,6 @@ namespace dxvk {
     hash.add(this->tes.hash());
     hash.add(this->gs.hash());
     hash.add(this->fs.hash());
-    hash.add(this->cs.hash());
     return hash;
   }
 
@@ -257,52 +287,52 @@ namespace dxvk {
   }
 
 
-  void DxvkStateCache::addGraphicsPipeline(
-    const DxvkStateCacheKey&              shaders,
-    const DxvkGraphicsPipelineStateInfo&  state) {
+  void DxvkStateCache::addPipelineLibrary(
+    const DxvkStateCacheKey&              shaders) {
     if (!m_enable || shaders.vs.eq(g_nullShaderKey))
       return;
-    
+
     // Do not add an entry that is already in the cache
     auto entries = m_entryMap.equal_range(shaders);
 
     for (auto e = entries.first; e != entries.second; e++) {
-      const DxvkStateCacheEntry& entry = m_entries[e->second];
-
-      if (entry.gpState == state)
+      if (m_entries[e->second].type == DxvkStateCacheEntryType::PipelineLibrary)
         return;
     }
 
     // Queue a job to write this pipeline to the cache
     std::unique_lock<dxvk::mutex> lock(m_writerLock);
 
-    m_writerQueue.push({ shaders, state,
-      DxvkComputePipelineStateInfo(), g_nullHash });
+    m_writerQueue.push({
+      DxvkStateCacheEntryType::PipelineLibrary, shaders,
+      DxvkGraphicsPipelineStateInfo(), g_nullHash });
     m_writerCond.notify_one();
 
     createWriter();
   }
 
 
-  void DxvkStateCache::addComputePipeline(
+  void DxvkStateCache::addGraphicsPipeline(
     const DxvkStateCacheKey&              shaders,
-    const DxvkComputePipelineStateInfo&   state) {
-    if (!m_enable || shaders.cs.eq(g_nullShaderKey))
+    const DxvkGraphicsPipelineStateInfo&  state) {
+    if (!m_enable || shaders.vs.eq(g_nullShaderKey))
       return;
 
     // Do not add an entry that is already in the cache
     auto entries = m_entryMap.equal_range(shaders);
 
     for (auto e = entries.first; e != entries.second; e++) {
-      if (m_entries[e->second].cpState == state)
+      if (m_entries[e->second].type == DxvkStateCacheEntryType::MonolithicPipeline
+       && m_entries[e->second].gpState == state)
         return;
     }
 
     // Queue a job to write this pipeline to the cache
     std::unique_lock<dxvk::mutex> lock(m_writerLock);
 
-    m_writerQueue.push({ shaders,
-      DxvkGraphicsPipelineStateInfo(), state, g_nullHash });
+    m_writerQueue.push({
+      DxvkStateCacheEntryType::MonolithicPipeline,
+      shaders, state, g_nullHash });
     m_writerCond.notify_one();
 
     createWriter();
@@ -334,8 +364,7 @@ namespace dxvk {
        || !getShaderByKey(p->second.tcs, item.gp.tcs)
        || !getShaderByKey(p->second.tes, item.gp.tes)
        || !getShaderByKey(p->second.gs,  item.gp.gs)
-       || !getShaderByKey(p->second.fs,  item.gp.fs)
-       || !getShaderByKey(p->second.cs,  item.cp.cs))
+       || !getShaderByKey(p->second.fs,  item.gp.fs))
         continue;
       
       if (!workerLock)
@@ -412,23 +441,35 @@ namespace dxvk {
     key.tes = getShaderKey(item.gp.tes);
     key.gs  = getShaderKey(item.gp.gs);
     key.fs  = getShaderKey(item.gp.fs);
-    key.cs  = getShaderKey(item.cp.cs);
 
-    if (item.cp.cs == nullptr) {
-      auto pipeline = m_pipeManager->createGraphicsPipeline(item.gp);
-      auto entries = m_entryMap.equal_range(key);
+    DxvkGraphicsPipeline* pipeline = nullptr;
+    auto entries = m_entryMap.equal_range(key);
 
-      for (auto e = entries.first; e != entries.second; e++) {
-        const auto& entry = m_entries[e->second];
-        m_pipeWorkers->compileGraphicsPipeline(pipeline, entry.gpState);
-      }
-    } else {
-      auto pipeline = m_pipeManager->createComputePipeline(item.cp);
-      auto entries = m_entryMap.equal_range(key);
+    for (auto e = entries.first; e != entries.second; e++) {
+      const auto& entry = m_entries[e->second];
 
-      for (auto e = entries.first; e != entries.second; e++) {
-        const auto& entry = m_entries[e->second];
-        m_pipeWorkers->compileComputePipeline(pipeline, entry.cpState);
+      switch (entry.type) {
+        case DxvkStateCacheEntryType::MonolithicPipeline: {
+          if (!pipeline)
+            pipeline = m_pipeManager->createGraphicsPipeline(item.gp);
+
+          m_pipeWorkers->compileGraphicsPipeline(pipeline, entry.gpState);
+        } break;
+
+        case DxvkStateCacheEntryType::PipelineLibrary: {
+          if (!m_device->canUseGraphicsPipelineLibrary() || item.gp.vs == nullptr)
+            break;
+
+          DxvkShaderPipelineLibraryKey libraryKey;
+          libraryKey.addShader(item.gp.vs);
+
+          if (item.gp.tcs != nullptr) libraryKey.addShader(item.gp.tcs);
+          if (item.gp.tes != nullptr) libraryKey.addShader(item.gp.tes);
+          if (item.gp.gs  != nullptr) libraryKey.addShader(item.gp.gs);
+
+          auto pipelineLibrary = m_pipeManager->createShaderPipelineLibrary(libraryKey);
+          m_pipeWorkers->compilePipelineLibrary(pipelineLibrary, DxvkPipelinePriority::Normal);
+        } break;
       }
     }
   }
@@ -483,7 +524,6 @@ namespace dxvk {
         mapShaderToPipeline(entry.shaders.tes, entry.shaders);
         mapShaderToPipeline(entry.shaders.gs,  entry.shaders);
         mapShaderToPipeline(entry.shaders.fs,  entry.shaders);
-        mapShaderToPipeline(entry.shaders.cs,  entry.shaders);
       } else if (ifile) {
         numInvalidEntries += 1;
       }
@@ -531,11 +571,28 @@ namespace dxvk {
           DxvkStateCacheEntry&      entry) const {
     // Read entry metadata and actual data
     DxvkStateCacheEntryHeader header;
+    DxvkStateCacheEntryHeaderV8 headerV8;
     DxvkStateCacheEntryData data;
+    VkShaderStageFlags stageMask;
     Sha1Hash hash;
-  
-    if (!stream.read(reinterpret_cast<char*>(&header), sizeof(header))
-     || !stream.read(reinterpret_cast<char*>(&hash), sizeof(hash))
+
+    if (version >= 16) {
+      if (!stream.read(reinterpret_cast<char*>(&header), sizeof(header)))
+        return false;
+
+      stageMask = VkShaderStageFlags(header.stageMask);
+    } else {
+      if (!stream.read(reinterpret_cast<char*>(&headerV8), sizeof(headerV8)))
+        return false;
+
+      header.entryType = uint32_t(DxvkStateCacheEntryType::MonolithicPipeline);
+      header.stageMask = headerV8.stageMask & VK_SHADER_STAGE_ALL_GRAPHICS;
+      header.entrySize = headerV8.entrySize;
+
+      stageMask = VkShaderStageFlags(headerV8.stageMask);
+    }
+
+    if (!stream.read(reinterpret_cast<char*>(&hash), sizeof(hash))
      || !data.readFromStream(stream, header.entrySize))
       return false;
 
@@ -543,16 +600,15 @@ namespace dxvk {
     if (hash != data.computeHash())
       return false;
 
-    // Read shader hashes
-    VkShaderStageFlags stageMask = VkShaderStageFlags(header.stageMask);
-    auto keys = &entry.shaders.vs;
+    // Set up entry metadata
+    entry.type = DxvkStateCacheEntryType(header.entryType);
 
-    for (uint32_t i = 0; i < 6; i++) {
-      if (stageMask & VkShaderStageFlagBits(1 << i))
-        data.read(keys[i], version);
-      else
-        keys[i] = g_nullShaderKey;
-    }
+    // Read shader hashes
+    auto entryType = DxvkStateCacheEntryType(header.entryType);
+    data.read(entry.shaders, version, stageMask);
+
+    if (entryType == DxvkStateCacheEntryType::PipelineLibrary)
+      return true;
 
     DxvkBindingMaskV10 dummyBindingMask = { };
 
@@ -610,10 +666,6 @@ namespace dxvk {
     }
 
     // Read non-zero spec constants
-    auto& sc = (stageMask & VK_SHADER_STAGE_COMPUTE_BIT)
-      ? entry.cpState.sc
-      : entry.gpState.sc;
-
     uint32_t specConstantMask = 0;
 
     if (!data.read(specConstantMask, version))
@@ -621,10 +673,14 @@ namespace dxvk {
 
     for (uint32_t i = 0; i < MaxNumSpecConstants; i++) {
       if (specConstantMask & (1 << i)) {
-        if (!data.read(sc.specConstants[i], version))
+        if (!data.read(entry.gpState.sc.specConstants[i], version))
           return false;
       }
     }
+
+    // Compute shaders are no longer supported
+    if (stageMask & VK_SHADER_STAGE_COMPUTE_BIT)
+      return false;
 
     return true;
   }
@@ -646,7 +702,7 @@ namespace dxvk {
       }
     }
 
-    if (!(stageMask & VK_SHADER_STAGE_COMPUTE_BIT)) {
+    if (entry.type != DxvkStateCacheEntryType::PipelineLibrary) {
       // Write out common pipeline state
       data.write(entry.gpState.ia);
       data.write(entry.gpState.il);
@@ -671,28 +727,25 @@ namespace dxvk {
 
       for (uint32_t i = 0; i < entry.gpState.il.bindingCount(); i++)
         data.write(entry.gpState.ilBindings[i]);
-    }
 
-    // Write out all non-zero spec constants
-    auto& sc = (stageMask & VK_SHADER_STAGE_COMPUTE_BIT)
-      ? entry.cpState.sc
-      : entry.gpState.sc;
+      // Write out all non-zero spec constants
+      uint32_t specConstantMask = 0;
 
-    uint32_t specConstantMask = 0;
+      for (uint32_t i = 0; i < MaxNumSpecConstants; i++)
+        specConstantMask |= entry.gpState.sc.specConstants[i] ? (1 << i) : 0;
 
-    for (uint32_t i = 0; i < MaxNumSpecConstants; i++)
-      specConstantMask |= sc.specConstants[i] ? (1 << i) : 0;
+      data.write(specConstantMask);
 
-    data.write(specConstantMask);
-
-    for (uint32_t i = 0; i < MaxNumSpecConstants; i++) {
-      if (specConstantMask & (1 << i))
-        data.write(sc.specConstants[i]);
+      for (uint32_t i = 0; i < MaxNumSpecConstants; i++) {
+        if (specConstantMask & (1 << i))
+          data.write(entry.gpState.sc.specConstants[i]);
+      }
     }
 
     // General layout: header -> hash -> data
     DxvkStateCacheEntryHeader header;
-    header.stageMask = uint8_t(stageMask);
+    header.entryType = uint32_t(entry.type);
+    header.stageMask = uint32_t(stageMask);
     header.entrySize = data.size();
 
     Sha1Hash hash = data.computeHash();

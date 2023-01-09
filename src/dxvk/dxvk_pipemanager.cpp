@@ -297,12 +297,9 @@ namespace dxvk {
       DxvkShaderPipelineLibraryKey vsKey;
       vsKey.addShader(shaders.vs);
 
-      if (shaders.tcs != nullptr)
-        vsKey.addShader(shaders.tcs);
-      if (shaders.tes != nullptr)
-        vsKey.addShader(shaders.tes);
-      if (shaders.gs != nullptr)
-        vsKey.addShader(shaders.gs);
+      if (shaders.tcs != nullptr) vsKey.addShader(shaders.tcs);
+      if (shaders.tes != nullptr) vsKey.addShader(shaders.tes);
+      if (shaders.gs  != nullptr) vsKey.addShader(shaders.gs);
 
       if (vsKey.canUsePipelineLibrary()) {
         vsLibrary = findPipelineLibraryLocked(vsKey);
@@ -313,6 +310,17 @@ namespace dxvk {
           // Don't dispatch the pipeline library to a worker thread
           // since it should be compiled on demand anyway.
           vsLibrary = createPipelineLibraryLocked(vsKey);
+
+          // Register the pipeline library with the state cache
+          // so that subsequent runs can still compile it early
+          DxvkStateCacheKey shaderKeys;
+          shaderKeys.vs = shaders.vs->getShaderKey();
+
+          if (shaders.tcs != nullptr) shaderKeys.tcs = shaders.tcs->getShaderKey();
+          if (shaders.tes != nullptr) shaderKeys.tes = shaders.tes->getShaderKey();
+          if (shaders.gs  != nullptr) shaderKeys.gs  = shaders.gs->getShaderKey();
+
+          m_stateCache.addPipelineLibrary(shaderKeys);
         }
       }
 
@@ -335,6 +343,13 @@ namespace dxvk {
   }
 
   
+  DxvkShaderPipelineLibrary* DxvkPipelineManager::createShaderPipelineLibrary(
+    const DxvkShaderPipelineLibraryKey& key) {
+    std::lock_guard<dxvk::mutex> lock(m_mutex);
+    return createPipelineLibraryLocked(key);
+  }
+
+
   DxvkGraphicsPipelineVertexInputLibrary* DxvkPipelineManager::createVertexInputLibrary(
     const DxvkGraphicsPipelineVertexInputState& state) {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
@@ -373,7 +388,7 @@ namespace dxvk {
       DxvkShaderPipelineLibraryKey key;
       key.addShader(shader);
 
-      auto library = createPipelineLibrary(key);
+      auto library = createShaderPipelineLibrary(key);
       m_workers.compilePipelineLibrary(library, DxvkPipelinePriority::Normal);
     }
 
@@ -449,13 +464,6 @@ namespace dxvk {
       std::tuple(layout),
       std::tuple(m_device, layout, setLayouts.data()));
     return &iter.first->second;
-  }
-
-
-  DxvkShaderPipelineLibrary* DxvkPipelineManager::createPipelineLibrary(
-    const DxvkShaderPipelineLibraryKey& key) {
-    std::lock_guard<dxvk::mutex> lock(m_mutex);
-    return createPipelineLibraryLocked(key);
   }
 
 
