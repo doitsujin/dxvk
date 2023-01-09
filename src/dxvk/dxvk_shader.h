@@ -58,6 +58,8 @@ namespace dxvk {
     const char* uniformData = nullptr;
     /// Rasterized stream, or -1
     int32_t xfbRasterizedStream = 0;
+    /// Tess control patch vertex count
+    uint32_t patchVertexCount = 0;
     /// Transform feedback vertex strides
     uint32_t xfbStrides[MaxNumXfbBuffers] = { };
   };
