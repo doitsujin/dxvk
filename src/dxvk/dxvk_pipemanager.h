@@ -295,18 +295,21 @@ namespace dxvk {
       const DxvkBindingLayout& layout);
 
     DxvkShaderPipelineLibrary* createPipelineLibrary(
-      const Rc<DxvkShader>&     shader);
+      const DxvkShaderPipelineLibraryKey& key);
+
+    DxvkShaderPipelineLibrary* createPipelineLibraryLocked(
+      const DxvkShaderPipelineLibraryKey& key);
 
     DxvkShaderPipelineLibrary* createNullFsPipelineLibrary();
 
     DxvkShaderPipelineLibrary* findPipelineLibrary(
-      const Rc<DxvkShader>&     shader);
+      const DxvkShaderPipelineLibraryKey& key);
 
     DxvkShaderPipelineLibrary* findPipelineLibraryLocked(
-      const Rc<DxvkShader>&     shader);
+      const DxvkShaderPipelineLibraryKey& key);
 
     bool canPrecompileShader(
-      const Rc<DxvkShader>&     shader) const;
+      const Rc<DxvkShader>& shader) const;
 
   };
   
