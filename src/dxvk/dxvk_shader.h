@@ -397,6 +397,38 @@ namespace dxvk {
 
 
   /**
+   * \brief Shader set
+   *
+   * Stores a set of shader pointers
+   * for use in a pipeline library.
+   */
+  struct DxvkShaderSet {
+    DxvkShader* vs = nullptr;
+    DxvkShader* tcs = nullptr;
+    DxvkShader* tes = nullptr;
+    DxvkShader* gs = nullptr;
+    DxvkShader* fs = nullptr;
+    DxvkShader* cs = nullptr;
+  };
+
+
+  /**
+   * \brief Shader identifer set
+   *
+   * Stores a set of shader module identifiers
+   * for use in a pipeline library.
+   */
+  struct DxvkShaderIdentifierSet {
+    VkShaderModuleIdentifierEXT vs = { VK_STRUCTURE_TYPE_SHADER_MODULE_IDENTIFIER_EXT };
+    VkShaderModuleIdentifierEXT tcs = { VK_STRUCTURE_TYPE_SHADER_MODULE_IDENTIFIER_EXT };
+    VkShaderModuleIdentifierEXT tes = { VK_STRUCTURE_TYPE_SHADER_MODULE_IDENTIFIER_EXT };
+    VkShaderModuleIdentifierEXT gs = { VK_STRUCTURE_TYPE_SHADER_MODULE_IDENTIFIER_EXT };
+    VkShaderModuleIdentifierEXT fs = { VK_STRUCTURE_TYPE_SHADER_MODULE_IDENTIFIER_EXT };
+    VkShaderModuleIdentifierEXT cs = { VK_STRUCTURE_TYPE_SHADER_MODULE_IDENTIFIER_EXT };
+  };
+
+
+  /**
    * \brief Shader pipeline library
    *
    * Stores a pipeline object for either a complete compute
@@ -423,9 +455,11 @@ namespace dxvk {
      * Can be used to compile an optimized pipeline using the same
      * shader code, but without having to wait for the pipeline
      * library for this shader shader to compile first.
+     * \param [in] stage Shader stage to query
      * \returns Shader module identifier
      */
-    VkShaderModuleIdentifierEXT getModuleIdentifier();
+    VkShaderModuleIdentifierEXT getModuleIdentifier(
+            VkShaderStageFlagBits                 stage);
 
     /**
      * \brief Acquires pipeline handle for the given set of arguments
@@ -461,7 +495,7 @@ namespace dxvk {
 
     const DxvkDevice*               m_device;
           DxvkPipelineStats*        m_stats;
-          DxvkShader*               m_shader;
+          DxvkShaderSet             m_shaders;
     const DxvkBindingLayoutObjects* m_layout;
 
     dxvk::mutex     m_mutex;
@@ -471,7 +505,7 @@ namespace dxvk {
     bool            m_compiledOnce         = false;
 
     dxvk::mutex                 m_identifierMutex;
-    VkShaderModuleIdentifierEXT m_identifier = { VK_STRUCTURE_TYPE_SHADER_MODULE_IDENTIFIER_EXT };
+    DxvkShaderIdentifierSet     m_identifiers;
 
     void destroyShaderPipelinesLocked();
 
@@ -480,7 +514,6 @@ namespace dxvk {
 
     VkPipeline compileShaderPipeline(
       const DxvkShaderPipelineLibraryCompileArgs& args,
-            VkShaderStageFlagBits                 stage,
             VkPipelineCreateFlags                 flags);
 
     VkPipeline compileVertexShaderPipeline(
@@ -496,12 +529,22 @@ namespace dxvk {
       const DxvkShaderStageInfo&          stageInfo,
             VkPipelineCreateFlags         flags);
 
-    SpirvCodeBuffer getShaderCode() const;
+    SpirvCodeBuffer getShaderCode(
+            VkShaderStageFlagBits         stage) const;
 
     void generateModuleIdentifierLocked(
-      const SpirvCodeBuffer& spirvCode);
+            VkShaderModuleIdentifierEXT*  identifier,
+      const SpirvCodeBuffer&              spirvCode);
 
-    VkShaderStageFlagBits getShaderStage() const;
+    VkShaderStageFlags getShaderStages() const;
+
+    DxvkShader* getShader(
+            VkShaderStageFlagBits         stage) const;
+
+    VkShaderModuleIdentifierEXT* getShaderIdentifier(
+            VkShaderStageFlagBits         stage);
+
+    void notifyLibraryCompile() const;
 
     bool canUsePipelineCacheControl() const;
 
