@@ -897,28 +897,108 @@ namespace dxvk {
   }
 
 
-  DxvkShaderPipelineLibrary::DxvkShaderPipelineLibrary(
-    const DxvkDevice*               device,
-          DxvkPipelineManager*      manager,
-          DxvkShader*               shader,
-    const DxvkBindingLayoutObjects* layout)
-  : m_device      (device),
-    m_stats       (&manager->m_stats),
-    m_layout      (layout) {
-    if (shader) {
+  DxvkShaderPipelineLibraryKey::DxvkShaderPipelineLibraryKey() {
+
+  }
+
+
+  DxvkShaderPipelineLibraryKey::~DxvkShaderPipelineLibraryKey() {
+
+  }
+
+
+  DxvkShaderSet DxvkShaderPipelineLibraryKey::getShaderSet() const {
+    DxvkShaderSet result;
+
+    for (uint32_t i = 0; i < m_shaderCount; i++) {
+      auto shader = m_shaders[i].ptr();
+
       switch (shader->info().stage) {
-        case VK_SHADER_STAGE_VERTEX_BIT:
-          m_shaders.vs = shader;
-          break;
-        case VK_SHADER_STAGE_FRAGMENT_BIT:
-          m_shaders.fs = shader;
-          break;
-        case VK_SHADER_STAGE_COMPUTE_BIT:
-          m_shaders.cs = shader;
-          break;
+        case VK_SHADER_STAGE_VERTEX_BIT:                  result.vs = shader; break;
+        case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:    result.tcs = shader; break;
+        case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT: result.tes = shader; break;
+        case VK_SHADER_STAGE_GEOMETRY_BIT:                result.gs = shader; break;
+        case VK_SHADER_STAGE_FRAGMENT_BIT:                result.fs = shader; break;
+        case VK_SHADER_STAGE_COMPUTE_BIT:                 result.cs = shader; break;
         default: ;
       }
     }
+
+    return result;
+  }
+
+
+  DxvkBindingLayout DxvkShaderPipelineLibraryKey::getBindings() const {
+    DxvkBindingLayout mergedLayout(m_shaderStages);
+
+    for (uint32_t i = 0; i < m_shaderCount; i++)
+      mergedLayout.merge(m_shaders[i]->getBindings());
+
+    return mergedLayout;
+  }
+
+
+  void DxvkShaderPipelineLibraryKey::addShader(
+    const Rc<DxvkShader>&               shader) {
+    m_shaderStages |= shader->info().stage;
+    m_shaders[m_shaderCount++] = shader;
+  }
+
+
+  bool DxvkShaderPipelineLibraryKey::canUsePipelineLibrary() const {
+    // Ensure that each individual shader can be used in a library
+    bool standalone = m_shaderCount <= 1;
+
+    for (uint32_t i = 0; i < m_shaderCount; i++) {
+      if (!m_shaders[i]->canUsePipelineLibrary(standalone))
+        return false;
+    }
+
+    // Ensure that stage I/O is compatible between stages
+    for (uint32_t i = 0; i + 1 < m_shaderCount; i++) {
+      uint32_t currStageIoMask = m_shaders[i]->info().outputMask;
+      uint32_t nextStageIoMask = m_shaders[i + 1]->info().inputMask;
+
+      if ((currStageIoMask & nextStageIoMask) != nextStageIoMask)
+        return false;
+    }
+
+    return true;
+  }
+
+
+  bool DxvkShaderPipelineLibraryKey::eq(
+    const DxvkShaderPipelineLibraryKey& other) const {
+    bool eq = m_shaderStages == other.m_shaderStages;
+
+    for (uint32_t i = 0; i < m_shaderCount && eq; i++)
+      eq = m_shaders[i] == other.m_shaders[i];
+
+    return eq;
+  }
+
+
+  size_t DxvkShaderPipelineLibraryKey::hash() const {
+    DxvkHashState hash;
+    hash.add(uint32_t(m_shaderStages));
+
+    for (uint32_t i = 0; i < m_shaderCount; i++)
+      hash.add(m_shaders[i]->getHash());
+
+    return hash;
+  }
+
+
+  DxvkShaderPipelineLibrary::DxvkShaderPipelineLibrary(
+    const DxvkDevice*               device,
+          DxvkPipelineManager*      manager,
+    const DxvkShaderPipelineLibraryKey& key,
+    const DxvkBindingLayoutObjects* layout)
+  : m_device      (device),
+    m_stats       (&manager->m_stats),
+    m_shaders     (key.getShaderSet()),
+    m_layout      (layout) {
+
   }
 
 

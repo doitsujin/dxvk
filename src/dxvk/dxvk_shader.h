@@ -386,22 +386,6 @@ namespace dxvk {
 
 
   /**
-   * \brief Shader pipeline library key
-   */
-  struct DxvkShaderPipelineLibraryKey {
-    Rc<DxvkShader> shader;
-
-    bool eq(const DxvkShaderPipelineLibraryKey& other) const {
-      return shader == other.shader;
-    }
-
-    size_t hash() const {
-      return DxvkShader::getHash(shader);
-    }
-  };
-
-
-  /**
    * \brief Shader set
    *
    * Stores a set of shader pointers
@@ -434,6 +418,68 @@ namespace dxvk {
 
 
   /**
+   * \brief Shader pipeline library key
+   */
+  class DxvkShaderPipelineLibraryKey {
+
+  public:
+
+    DxvkShaderPipelineLibraryKey();
+
+    ~DxvkShaderPipelineLibraryKey();
+
+    /**
+     * \brief Creates shader set from key
+     * \returns Shader set
+     */
+    DxvkShaderSet getShaderSet() const;
+
+    /**
+     * \brief Generates merged binding layout
+     * \returns Binding layout
+     */
+    DxvkBindingLayout getBindings() const;
+
+    /**
+     * \brief Adds a shader to the key
+     *
+     * Shaders must be added in stage order.
+     * \param [in] shader Shader to add
+     */
+    void addShader(
+      const Rc<DxvkShader>&               shader);
+
+    /**
+     * \brief Checks wether a pipeline library can be created
+     * \returns \c true if all added shaders are compatible
+     */
+    bool canUsePipelineLibrary() const;
+
+    /**
+     * \brief Checks for equality
+     *
+     * \param [in] other Key to compare to
+     * \returns \c true if the keys are equal
+     */
+    bool eq(
+      const DxvkShaderPipelineLibraryKey& other) const;
+
+    /**
+     * \brief Computes key hash
+     * \returns Key hash
+     */
+    size_t hash() const;
+
+  private:
+
+    uint32_t                      m_shaderCount   = 0;
+    VkShaderStageFlags            m_shaderStages  = 0;
+    std::array<Rc<DxvkShader>, 4> m_shaders;
+
+  };
+
+
+  /**
    * \brief Shader pipeline library
    *
    * Stores a pipeline object for either a complete compute
@@ -449,7 +495,7 @@ namespace dxvk {
     DxvkShaderPipelineLibrary(
       const DxvkDevice*               device,
             DxvkPipelineManager*      manager,
-            DxvkShader*               shader,
+      const DxvkShaderPipelineLibraryKey& key,
       const DxvkBindingLayoutObjects* layout);
 
     ~DxvkShaderPipelineLibrary();
