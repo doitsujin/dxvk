@@ -522,14 +522,23 @@ namespace dxvk {
     if (this->shouldFreeEmptyChunks(type->heap, 0))
       return true;
 
-    // Even if we have enough memory to spare, only keep
-    // one chunk of each type around to save memory.
+    // Only keep a small number of chunks of each type around to save memory.
+    uint32_t numEmptyChunks = 0;
+
     for (const auto& c : type->chunks) {
       if (c != chunk && c->isEmpty() && c->isCompatible(chunk))
-        return true;
+        numEmptyChunks += 1;
     }
 
-    return false;
+    // Be a bit more lenient on system memory since data uploads may otherwise
+    // lead to a large number of allocations and deallocations at runtime.
+    uint32_t maxEmptyChunks = env::is32BitHostPlatform() ? 2 : 4;
+
+    if ((type->memType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+     || !(type->memType.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))
+      maxEmptyChunks = 1;
+
+    return numEmptyChunks >= maxEmptyChunks;
   }
 
 
