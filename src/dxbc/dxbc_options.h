@@ -43,6 +43,10 @@ namespace dxvk {
     /// Replace ld_ms with ld
     bool disableMsaa = false;
 
+    /// Force sample rate shading by using sample
+    /// interpolation for fragment shader inputs
+    bool forceSampleRateShading = false;
+
     // Enable per-sample interlock if supported
     bool enableSampleShadingInterlock = false;
 

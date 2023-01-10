@@ -726,6 +726,14 @@ namespace dxvk {
         m_module.decorate(varId, spv::DecorationSample);
       }
 
+      if (m_moduleInfo.options.forceSampleRateShading) {
+        if (im == DxbcInterpolationMode::Linear
+         || im == DxbcInterpolationMode::LinearNoPerspective) {
+          m_module.enableCapability(spv::CapabilitySampleRateShading);
+          m_module.decorate(varId, spv::DecorationSample);
+        }
+      }
+
       // Declare the input slot as defined
       m_inputMask |= 1u << regIdx;
       m_vArrayLength = std::max(m_vArrayLength, regIdx + 1);
