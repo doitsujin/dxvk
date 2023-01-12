@@ -34,11 +34,12 @@ namespace dxvk {
 
 
   bool DxvkBindingInfo::eq(const DxvkBindingInfo& other) const {
-    return descriptorType    == other.descriptorType
-        && resourceBinding   == other.resourceBinding
-        && viewType          == other.viewType
-        && stage             == other.stage
-        && access            == other.access;
+    return descriptorType  == other.descriptorType
+        && resourceBinding == other.resourceBinding
+        && viewType        == other.viewType
+        && stage           == other.stage
+        && access          == other.access
+        && uboSet          == other.uboSet;
   }
 
 
@@ -49,6 +50,7 @@ namespace dxvk {
     hash.add(uint32_t(viewType));
     hash.add(uint32_t(stage));
     hash.add(access);
+    hash.add(uint32_t(uboSet));
     return hash;
   }
 

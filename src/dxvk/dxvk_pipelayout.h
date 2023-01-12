@@ -36,6 +36,7 @@ namespace dxvk {
     VkImageViewType       viewType;         ///< Image view type
     VkShaderStageFlagBits stage;            ///< Shader stage
     VkAccessFlags         access;           ///< Access mask for the resource
+    VkBool32              uboSet;           ///< Whether to include this in the UBO set
 
     /**
      * \brief Computes descriptor set index for the given binding
