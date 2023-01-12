@@ -862,6 +862,7 @@ namespace dxvk {
     binding.viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     binding.access = VK_ACCESS_UNIFORM_READ_BIT;
     binding.resourceBinding = bindingId;
+    binding.uboSet = VK_TRUE;
     m_bindings.push_back(binding);
   }
 

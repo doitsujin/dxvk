@@ -307,6 +307,7 @@ namespace dxvk {
     binding.resourceBinding = bindingId;
     binding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     binding.access          = VK_ACCESS_UNIFORM_READ_BIT;
+    binding.uboSet          = VK_TRUE;
     m_bindings.push_back(binding);
   }
 
@@ -398,6 +399,7 @@ namespace dxvk {
     binding.access          = asSsbo
       ? VK_ACCESS_SHADER_READ_BIT
       : VK_ACCESS_UNIFORM_READ_BIT;
+    binding.uboSet          = VK_TRUE;
     m_bindings.push_back(binding);
 
     return constantBufferId;
@@ -483,6 +485,7 @@ namespace dxvk {
     binding.resourceBinding = bindingId;
     binding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     binding.access          = VK_ACCESS_UNIFORM_READ_BIT;
+    binding.uboSet          = VK_TRUE;
     m_bindings.push_back(binding);
   }
 
@@ -3457,6 +3460,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     binding.resourceBinding = bindingId;
     binding.viewType        = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     binding.access          = VK_ACCESS_UNIFORM_READ_BIT;
+    binding.uboSet          = VK_TRUE;
     m_bindings.push_back(binding);
 
     // Declare output array for clip distances
