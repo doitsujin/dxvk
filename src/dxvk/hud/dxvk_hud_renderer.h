@@ -156,6 +156,7 @@ namespace dxvk::hud {
     VkDeviceSize        m_dataOffset;
 
     Rc<DxvkBuffer>      m_fontBuffer;
+    Rc<DxvkBufferView>  m_fontBufferView;
     Rc<DxvkImage>       m_fontImage;
     Rc<DxvkImageView>   m_fontView;
     Rc<DxvkSampler>     m_fontSampler;
@@ -175,6 +176,7 @@ namespace dxvk::hud {
     Rc<DxvkBufferView> createDataView();
 
     Rc<DxvkBuffer> createFontBuffer();
+    Rc<DxvkBufferView> createFontBufferView();
     Rc<DxvkImage> createFontImage();
     Rc<DxvkImageView> createFontView();
     Rc<DxvkSampler> createFontSampler();
