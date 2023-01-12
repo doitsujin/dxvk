@@ -44,7 +44,7 @@ namespace dxvk {
       }
       
       if (pDesc->Buffer.Flags & (D3D11_BUFFER_UAV_FLAG_APPEND | D3D11_BUFFER_UAV_FLAG_COUNTER))
-        m_counterBuffer = CreateCounterBuffer();
+        m_counterView = CreateCounterBufferView();
       
       // Populate view info struct
       m_info.Buffer.Offset = viewInfo.rangeOffset;
@@ -429,7 +429,7 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkBuffer> D3D11UnorderedAccessView::CreateCounterBuffer() {
+  Rc<DxvkBufferView> D3D11UnorderedAccessView::CreateCounterBufferView() {
     Rc<DxvkDevice> device = m_parent->GetDXVKDevice();
 
     DxvkBufferCreateInfo info;
@@ -443,7 +443,15 @@ namespace dxvk {
                 | VK_ACCESS_TRANSFER_READ_BIT
                 | VK_ACCESS_SHADER_WRITE_BIT
                 | VK_ACCESS_SHADER_READ_BIT;
-    return device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    Rc<DxvkBuffer> buffer = device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    DxvkBufferViewCreateInfo viewInfo;
+    viewInfo.format = VK_FORMAT_UNDEFINED;
+    viewInfo.rangeOffset = 0;
+    viewInfo.rangeLength = sizeof(uint32_t);
+
+    return device->createBufferView(buffer, viewInfo);
   }
   
 }

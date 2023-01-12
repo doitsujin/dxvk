@@ -329,13 +329,14 @@ namespace dxvk {
     if (!buf || !uav)
       return;
 
-    auto counterSlice = uav->GetCounterSlice();
-    if (!counterSlice.defined())
+    auto counterView = uav->GetCounterView();
+
+    if (counterView == nullptr)
       return;
 
     EmitCs([
       cDstSlice = buf->GetBufferSlice(DstAlignedByteOffset),
-      cSrcSlice = std::move(counterSlice)
+      cSrcSlice = counterView->slice()
     ] (DxvkContext* ctx) {
       ctx->copyBuffer(
         cDstSlice.buffer(),
@@ -3702,25 +3703,27 @@ namespace dxvk {
           cUavSlotId    = UavSlot,
           cCtrSlotId    = CtrSlot,
           cBufferView   = pUav->GetBufferView(),
-          cCounterSlice = pUav->GetCounterSlice(),
+          cCounterView  = pUav->GetCounterView(),
           cCounterValue = Counter
         ] (DxvkContext* ctx) mutable {
           VkShaderStageFlags stages = ShaderStage == DxbcProgramType::ComputeShader
             ? VK_SHADER_STAGE_COMPUTE_BIT
             : VK_SHADER_STAGE_ALL_GRAPHICS;
 
-          if (cCounterSlice.defined() && cCounterValue != ~0u) {
+          if (cCounterView != nullptr && cCounterValue != ~0u) {
+            auto counterSlice = cCounterView->slice();
+
             ctx->updateBuffer(
-              cCounterSlice.buffer(),
-              cCounterSlice.offset(),
+              counterSlice.buffer(),
+              counterSlice.offset(),
               sizeof(uint32_t),
               &cCounterValue);
           }
 
           ctx->bindResourceBufferView(stages, cUavSlotId,
             Forwarder::move(cBufferView));
-          ctx->bindResourceBuffer(stages, cCtrSlotId,
-            Forwarder::move(cCounterSlice));
+          ctx->bindResourceBufferView(stages, cCtrSlotId,
+            Forwarder::move(cCounterView));
         });
       } else {
         EmitCs([
@@ -3734,7 +3737,7 @@ namespace dxvk {
 
           ctx->bindResourceImageView(stages, cUavSlotId,
             Forwarder::move(cImageView));
-          ctx->bindResourceBuffer(stages, cCtrSlotId, DxvkBufferSlice());
+          ctx->bindResourceBufferView(stages, cCtrSlotId, nullptr);
         });
       }
     } else {
@@ -3747,7 +3750,7 @@ namespace dxvk {
           : VK_SHADER_STAGE_ALL_GRAPHICS;
 
         ctx->bindResourceImageView(stages, cUavSlotId, nullptr);
-        ctx->bindResourceBuffer(stages, cCtrSlotId, DxvkBufferSlice());
+        ctx->bindResourceBufferView(stages, cCtrSlotId, nullptr);
       });
     }
   }
@@ -4416,7 +4419,7 @@ namespace dxvk {
 
           for (uint32_t j = 0; j < cUsedBindings.stages[i].uavCount; j++) {
             ctx->bindResourceImageView(stages, uavSlotId, nullptr);
-            ctx->bindResourceBuffer(stages, ctrSlotId, DxvkBufferSlice());
+            ctx->bindResourceBufferView(stages, ctrSlotId, nullptr);
           }
         }
       }
