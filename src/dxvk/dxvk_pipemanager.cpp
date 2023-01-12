@@ -40,23 +40,6 @@ namespace dxvk {
   }
 
 
-  void DxvkPipelineWorkers::compileComputePipeline(
-          DxvkComputePipeline*            pipeline,
-    const DxvkComputePipelineStateInfo&   state) {
-    std::unique_lock lock(m_queueLock);
-    this->startWorkers();
-
-    m_pendingTasks += 1;
-
-    PipelineEntry e = { };
-    e.computePipeline = pipeline;
-    e.computeState = state;
-
-    m_queuedPipelines.push(e);
-    m_queueCond.notify_one();
-  }
-
-
   void DxvkPipelineWorkers::compileGraphicsPipeline(
           DxvkGraphicsPipeline*           pipeline,
     const DxvkGraphicsPipelineStateInfo&  state) {
@@ -176,9 +159,7 @@ namespace dxvk {
       }
 
       if (p) {
-        if (p->computePipeline) {
-          p->computePipeline->compilePipeline(p->computeState);
-        } else if (p->graphicsPipeline) {
+        if (p->graphicsPipeline) {
           p->graphicsPipeline->compilePipeline(p->graphicsState);
           p->graphicsPipeline->releasePipeline();
         }

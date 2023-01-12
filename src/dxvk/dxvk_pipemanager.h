@@ -71,16 +71,6 @@ namespace dxvk {
             DxvkPipelinePriority            priority);
 
     /**
-     * \brief Compiles an optimized compute pipeline
-     *
-     * \param [in] pipeline Compute pipeline
-     * \param [in] state Pipeline state
-     */
-    void compileComputePipeline(
-            DxvkComputePipeline*            pipeline,
-      const DxvkComputePipelineStateInfo&   state);
-
-    /**
      * \brief Compiles an optimized graphics pipeline
      *
      * \param [in] pipeline Compute pipeline
@@ -107,9 +97,7 @@ namespace dxvk {
   private:
 
     struct PipelineEntry {
-      DxvkComputePipeline*          computePipeline;
       DxvkGraphicsPipeline*         graphicsPipeline;
-      DxvkComputePipelineStateInfo  computeState;
       DxvkGraphicsPipelineStateInfo graphicsState;
     };
 
