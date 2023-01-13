@@ -1792,14 +1792,16 @@ namespace dxvk {
       ~(VK_BUFFER_USAGE_TRANSFER_DST_BIT |
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
-    if (usage & (VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))
+    // Fast early-out for plain uniform buffers, very common
+    if (likely(usage == VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)) {
+      m_descriptorState.dirtyBuffers(buffer->getShaderStages());
+      return;
+    }
+
+    if (usage & (VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT))
       m_descriptorState.dirtyBuffers(buffer->getShaderStages());
 
-    // Fast early-out for plain buffers, very common
-    if (likely(!(usage & ~(VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT))))
-      return;
-    
-    if (usage & (VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT))
+    if (usage & (VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT))
       m_descriptorState.dirtyViews(buffer->getShaderStages());
 
     if (usage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT)

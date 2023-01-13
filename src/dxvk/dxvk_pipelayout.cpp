@@ -14,11 +14,9 @@ namespace dxvk {
       return DxvkDescriptorSets::CsAll;
     } else if (stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
       // For fragment shaders, create a separate set for UBOs
-      if (descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-       || descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
-        return DxvkDescriptorSets::FsBuffers;
-
-      return DxvkDescriptorSets::FsViews;
+      return uboSet
+        ? DxvkDescriptorSets::FsBuffers
+        : DxvkDescriptorSets::FsViews;
     } else {
       // Put all vertex shader resources into the last set.
       // Vertex shader UBOs are usually updated every draw,

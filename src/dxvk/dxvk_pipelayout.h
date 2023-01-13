@@ -552,7 +552,7 @@ namespace dxvk {
       if (m_dirtyBuffers & VK_SHADER_STAGE_FRAGMENT_BIT)
         result |= (1u << DxvkDescriptorSets::FsBuffers);
       if (m_dirtyViews & VK_SHADER_STAGE_FRAGMENT_BIT)
-        result |= (1u << DxvkDescriptorSets::FsViews) | (1u << DxvkDescriptorSets::FsBuffers);
+        result |= (1u << DxvkDescriptorSets::FsViews);
       if ((m_dirtyBuffers | m_dirtyViews) & (VK_SHADER_STAGE_ALL_GRAPHICS & ~VK_SHADER_STAGE_FRAGMENT_BIT))
         result |= (1u << DxvkDescriptorSets::VsAll);
       return result;
