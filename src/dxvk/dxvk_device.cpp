@@ -188,12 +188,14 @@ namespace dxvk {
 
   DxvkStatCounters DxvkDevice::getStatCounters() {
     DxvkPipelineCount pipe = m_objects.pipelineManager().getPipelineCount();
+    DxvkPipelineWorkerStats workers = m_objects.pipelineManager().getWorkerStats();
     
     DxvkStatCounters result;
     result.setCtr(DxvkStatCounter::PipeCountGraphics, pipe.numGraphicsPipelines);
     result.setCtr(DxvkStatCounter::PipeCountLibrary,  pipe.numGraphicsLibraries);
     result.setCtr(DxvkStatCounter::PipeCountCompute,  pipe.numComputePipelines);
-    result.setCtr(DxvkStatCounter::PipeCompilerBusy,  m_objects.pipelineManager().isCompilingShaders());
+    result.setCtr(DxvkStatCounter::PipeTasksDone,     workers.tasksCompleted);
+    result.setCtr(DxvkStatCounter::PipeTasksTotal,    workers.tasksTotal);
     result.setCtr(DxvkStatCounter::GpuIdleTicks,      m_submissionQueue.gpuIdleTicks());
 
     std::lock_guard<sync::Spinlock> lock(m_statLock);

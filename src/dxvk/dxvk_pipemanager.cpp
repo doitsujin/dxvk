@@ -24,7 +24,7 @@ namespace dxvk {
     std::unique_lock lock(m_lock);
     this->startWorkers();
 
-    m_pendingTasks += 1;
+    m_tasksTotal += 1;
 
     m_buckets[uint32_t(priority)].queue.emplace(library);
     notifyWorkers(priority);
@@ -39,15 +39,10 @@ namespace dxvk {
     this->startWorkers();
 
     pipeline->acquirePipeline();
-    m_pendingTasks += 1;
+    m_tasksTotal += 1;
 
     m_buckets[uint32_t(priority)].queue.emplace(pipeline, state);
     notifyWorkers(priority);
-  }
-
-
-  bool DxvkPipelineWorkers::isBusy() const {
-    return m_pendingTasks.load() != 0ull;
   }
 
 
@@ -164,12 +159,12 @@ namespace dxvk {
 
       if (entry.pipelineLibrary) {
         entry.pipelineLibrary->compilePipeline();
-        m_pendingTasks -= 1;
       } else if (entry.graphicsPipeline) {
         entry.graphicsPipeline->compilePipeline(entry.graphicsState);
         entry.graphicsPipeline->releasePipeline();
-        m_pendingTasks -= 1;
       }
+
+      m_tasksCompleted += 1;
     }
   }
 

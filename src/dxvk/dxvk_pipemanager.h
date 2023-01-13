@@ -34,6 +34,11 @@ namespace dxvk {
     std::atomic<uint32_t> numComputePipelines   = { 0u };
   };
 
+  struct DxvkPipelineWorkerStats {
+    uint64_t tasksCompleted;
+    uint64_t tasksTotal;
+  };
+
   /**
    * \brief Pipeline priority
    */
@@ -59,6 +64,19 @@ namespace dxvk {
     ~DxvkPipelineWorkers();
 
     /**
+     * \brief Queries worker statistics
+     *
+     * The returned result may be immediately out of date.
+     * \returns Worker statistics
+     */
+    DxvkPipelineWorkerStats getStats() const {
+      DxvkPipelineWorkerStats result;
+      result.tasksCompleted = m_tasksCompleted.load(std::memory_order_acquire);
+      result.tasksTotal = m_tasksTotal.load(std::memory_order_relaxed);
+      return result;
+    }
+
+    /**
      * \brief Compiles a pipeline library
      *
      * Asynchronously compiles a basic variant of
@@ -81,12 +99,6 @@ namespace dxvk {
             DxvkGraphicsPipeline*           pipeline,
       const DxvkGraphicsPipelineStateInfo&  state,
             DxvkPipelinePriority            priority);
-
-    /**
-     * \brief Checks whether workers are busy
-     * \returns \c true if there is unfinished work
-     */
-    bool isBusy() const;
 
     /**
      * \brief Stops all worker threads
@@ -121,7 +133,8 @@ namespace dxvk {
 
     DxvkDevice*                       m_device;
 
-    std::atomic<uint64_t>             m_pendingTasks = { 0ull };
+    std::atomic<uint64_t>             m_tasksTotal     = { 0ull };
+    std::atomic<uint64_t>             m_tasksCompleted = { 0ull };
 
     dxvk::mutex                       m_lock;
     std::array<PipelineBucket, 3>     m_buckets;
@@ -242,8 +255,8 @@ namespace dxvk {
      * \brief Checks whether async compiler is busy
      * \returns \c true if shaders are being compiled
      */
-    bool isCompilingShaders() const {
-      return m_workers.isBusy();
+    DxvkPipelineWorkerStats getWorkerStats() const {
+      return m_workers.getStats();
     }
 
     /**
