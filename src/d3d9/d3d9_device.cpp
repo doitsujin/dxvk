@@ -5021,6 +5021,7 @@ namespace dxvk {
 
     if (m_usingGraphicsPipelines) {
       m_specBuffer = D3D9ConstantBuffer(this,
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         getSpecConstantBufferSlot(),
         sizeof(D3D9SpecializationInfo));
