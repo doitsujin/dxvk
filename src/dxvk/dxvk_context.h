@@ -169,14 +169,16 @@ namespace dxvk {
     }
 
     /**
-     * \brief Binds buffer as a shader resource
+     * \brief Binds buffer to the UBO set
      * 
-     * Can be used for uniform and storage buffers.
+     * Can be used for uniform and storage buffers bound that
+     * are used within the UBO descriptor set. Storage buffers
+     * within the view set must be bound via a view.
      * \param [in] stages Shader stages that access the binding
      * \param [in] slot Resource binding slot
      * \param [in] buffer Buffer to bind
      */
-    void bindResourceBuffer(
+    void bindUniformBuffer(
             VkShaderStageFlags    stages,
             uint32_t              slot,
             DxvkBufferSlice&&     buffer) {
@@ -191,12 +193,12 @@ namespace dxvk {
     }
 
     /**
-     * \brief Changes bound range of a resource buffer
+     * \brief Changes bound range of a uniform buffer
      * 
      * Can be used to quickly bind a new sub-range of
      * a buffer rather than re-binding the entire buffer.
      */
-    void bindResourceBufferRange(
+    void bindUniformBufferRange(
             VkShaderStageFlags    stages,
             uint32_t              slot,
             VkDeviceSize          offset,
