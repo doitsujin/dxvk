@@ -938,7 +938,7 @@ namespace dxvk {
 
         // If necessary, compile an optimized pipeline variant
         if (!instance->fastHandle.load())
-          m_workers->compileGraphicsPipeline(this, state);
+          m_workers->compileGraphicsPipeline(this, state, DxvkPipelinePriority::Low);
 
         // Only store pipelines in the state cache that cannot benefit
         // from pipeline libraries, or if that feature is disabled.

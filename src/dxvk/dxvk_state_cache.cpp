@@ -453,7 +453,7 @@ namespace dxvk {
           if (!pipeline)
             pipeline = m_pipeManager->createGraphicsPipeline(item.gp);
 
-          m_pipeWorkers->compileGraphicsPipeline(pipeline, entry.gpState);
+          m_pipeWorkers->compileGraphicsPipeline(pipeline, entry.gpState, DxvkPipelinePriority::Normal);
         } break;
 
         case DxvkStateCacheEntryType::PipelineLibrary: {

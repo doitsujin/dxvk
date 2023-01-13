@@ -38,8 +38,9 @@ namespace dxvk {
    * \brief Pipeline priority
    */
   enum class DxvkPipelinePriority : uint32_t {
-    Normal  = 0,
-    High    = 1,
+    High    = 0,
+    Normal  = 1,
+    Low     = 2,
   };
 
   /**
@@ -78,7 +79,8 @@ namespace dxvk {
      */
     void compileGraphicsPipeline(
             DxvkGraphicsPipeline*           pipeline,
-      const DxvkGraphicsPipelineStateInfo&  state);
+      const DxvkGraphicsPipelineStateInfo&  state,
+            DxvkPipelinePriority            priority);
 
     /**
      * \brief Checks whether workers are busy
@@ -97,34 +99,41 @@ namespace dxvk {
   private:
 
     struct PipelineEntry {
+      PipelineEntry()
+      : pipelineLibrary(nullptr), graphicsPipeline(nullptr) { }
+
+      PipelineEntry(DxvkShaderPipelineLibrary* l)
+      : pipelineLibrary(l), graphicsPipeline(nullptr) { }
+
+      PipelineEntry(DxvkGraphicsPipeline* p, const DxvkGraphicsPipelineStateInfo& s)
+      : pipelineLibrary(nullptr), graphicsPipeline(p), graphicsState(s) { }
+
+      DxvkShaderPipelineLibrary*    pipelineLibrary;
       DxvkGraphicsPipeline*         graphicsPipeline;
       DxvkGraphicsPipelineStateInfo graphicsState;
     };
 
-    struct PipelineLibraryEntry {
-      DxvkShaderPipelineLibrary*    pipelineLibrary;
+    struct PipelineBucket {
+      dxvk::condition_variable  cond;
+      std::queue<PipelineEntry> queue;
+      uint32_t                  idleWorkers = 0;
     };
 
     DxvkDevice*                       m_device;
 
     std::atomic<uint64_t>             m_pendingTasks = { 0ull };
 
-    dxvk::mutex                       m_queueLock;
-    dxvk::condition_variable          m_queueCond;
-    dxvk::condition_variable          m_queueCondPrioritized;
-
-    std::queue<PipelineLibraryEntry>  m_queuedLibrariesPrioritized;
-    std::queue<PipelineLibraryEntry>  m_queuedLibraries;
-    std::queue<PipelineEntry>         m_queuedPipelines;
+    dxvk::mutex                       m_lock;
+    std::array<PipelineBucket, 3>     m_buckets;
 
     bool                              m_workersRunning = false;
     std::vector<dxvk::thread>         m_workers;
 
+    void notifyWorkers(DxvkPipelinePriority priority);
+
     void startWorkers();
 
-    void runWorker();
-
-    void runWorkerPrioritized();
+    void runWorker(DxvkPipelinePriority maxPriority);
 
   };
 
