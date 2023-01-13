@@ -65,7 +65,7 @@ namespace dxvk {
       cOffset   = m_offset,
       cLength   = size
     ] (DxvkContext* ctx) {
-      ctx->bindResourceBufferRange(cStages, cBinding, cOffset, cLength);
+      ctx->bindUniformBufferRange(cStages, cBinding, cOffset, cLength);
     });
 
     void* mapPtr = reinterpret_cast<char*>(m_slice.mapPtr) + m_offset;
@@ -118,7 +118,7 @@ namespace dxvk {
       cBinding  = m_binding,
       cSlice    = DxvkBufferSlice(m_buffer)
     ] (DxvkContext* ctx) mutable {
-      ctx->bindResourceBuffer(cStages, cBinding, std::move(cSlice));
+      ctx->bindUniformBuffer(cStages, cBinding, std::move(cSlice));
     });
   }
 

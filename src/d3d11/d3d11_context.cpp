@@ -3363,7 +3363,7 @@ namespace dxvk {
 
         ctx->bindShader<stage>(
           Forwarder::move(cShader));
-        ctx->bindResourceBuffer(stage, slotId,
+        ctx->bindUniformBuffer(stage, slotId,
           Forwarder::move(cBuffer));
       });
     } else {
@@ -3374,7 +3374,7 @@ namespace dxvk {
           D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT);
 
         ctx->bindShader<stage>(nullptr);
-        ctx->bindResourceBuffer(stage, slotId, DxvkBufferSlice());
+        ctx->bindUniformBuffer(stage, slotId, DxvkBufferSlice());
       });
     }
   }
@@ -3586,7 +3586,7 @@ namespace dxvk {
         cBufferSlice = pBuffer->GetBufferSlice(16 * Offset, 16 * Length)
       ] (DxvkContext* ctx) mutable {
         VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
-        ctx->bindResourceBuffer(stage, cSlotId,
+        ctx->bindUniformBuffer(stage, cSlotId,
           Forwarder::move(cBufferSlice));
       });
     } else {
@@ -3594,7 +3594,7 @@ namespace dxvk {
         cSlotId      = Slot
       ] (DxvkContext* ctx) {
         VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
-        ctx->bindResourceBuffer(stage, cSlotId, DxvkBufferSlice());
+        ctx->bindUniformBuffer(stage, cSlotId, DxvkBufferSlice());
       });
     }
   }
@@ -3612,7 +3612,7 @@ namespace dxvk {
       cLength       = 16 * Length
     ] (DxvkContext* ctx) {
       VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
-      ctx->bindResourceBufferRange(stage, cSlotId, cOffset, cLength);
+      ctx->bindUniformBufferRange(stage, cSlotId, cOffset, cLength);
     });
   }
 
@@ -4378,10 +4378,10 @@ namespace dxvk {
 
         // Unbind constant buffers, including the shader's ICB
         auto cbSlotId = computeConstantBufferBinding(programType, 0);
-        ctx->bindResourceBuffer(stage, cbSlotId + D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, DxvkBufferSlice());
+        ctx->bindUniformBuffer(stage, cbSlotId + D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, DxvkBufferSlice());
 
         for (uint32_t j = 0; j < cUsedBindings.stages[i].cbvCount; j++)
-          ctx->bindResourceBuffer(stage, cbSlotId + j, DxvkBufferSlice());
+          ctx->bindUniformBuffer(stage, cbSlotId + j, DxvkBufferSlice());
 
         // Unbind shader resource views
         auto srvSlotId = computeSrvBinding(programType, 0);
