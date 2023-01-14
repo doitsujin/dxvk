@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <iomanip>
+#include <sstream>
 
 #include "dxvk_device.h"
 #include "dxvk_memory.h"
@@ -276,26 +278,8 @@ namespace dxvk {
     }
 
     // We weren't able to allocate memory for this resource form any type
-    DxvkAdapterMemoryInfo memHeapInfo = m_device->adapter()->getMemoryHeapInfo();
-
-    Logger::err(str::format(
-      "DxvkMemoryAllocator: Memory allocation failed",
-      "\n  Size:      ", req.core.memoryRequirements.size,
-      "\n  Alignment: ", req.core.memoryRequirements.alignment,
-      "\n  Mem types: ", "0x", std::hex, req.core.memoryRequirements.memoryTypeBits));
-
-    for (uint32_t i = 0; i < m_memProps.memoryHeapCount; i++) {
-      Logger::err(str::format("Heap ", i, ": ",
-        (m_memHeaps[i].stats.memoryAllocated >> 20), " MB allocated, ",
-        (m_memHeaps[i].stats.memoryUsed      >> 20), " MB used, ",
-        m_device->features().extMemoryBudget
-          ? str::format(
-              (memHeapInfo.heaps[i].memoryAllocated >> 20), " MB allocated (driver), ",
-              (memHeapInfo.heaps[i].memoryBudget    >> 20), " MB budget (driver), ",
-              (m_memHeaps[i].properties.size        >> 20), " MB total")
-          : str::format(
-              (m_memHeaps[i].properties.size        >> 20), " MB total")));
-    }
+    this->logMemoryError(req.core.memoryRequirements);
+    this->logMemoryStats();
 
     throw DxvkError("DxvkMemoryAllocator: Memory allocation failed");
   }
@@ -651,6 +635,53 @@ namespace dxvk {
     Logger::log(typeMask ? LogLevel::Info : LogLevel::Error,
       str::format("Memory type mask for sparse resources: 0x", std::hex, typeMask));
     return typeMask;
+  }
+
+
+  void DxvkMemoryAllocator::logMemoryError(const VkMemoryRequirements& req) const {
+    std::stringstream sstr;
+    sstr << "DxvkMemoryAllocator: Memory allocation failed" << std::endl
+         << "  Size:      " << req.size << std::endl
+         << "  Alignment: " << req.alignment << std::endl
+         << "  Mem types: ";
+
+    uint32_t memTypes = req.memoryTypeBits;
+
+    while (memTypes) {
+      uint32_t index = bit::tzcnt(memTypes);
+      sstr << index;
+
+      if ((memTypes &= memTypes - 1))
+        sstr << ",";
+      else
+        sstr << std::endl;
+    }
+
+    Logger::err(sstr.str());
+  }
+
+
+  void DxvkMemoryAllocator::logMemoryStats() const {
+    DxvkAdapterMemoryInfo memHeapInfo = m_device->adapter()->getMemoryHeapInfo();
+
+    std::stringstream sstr;
+    sstr << "Heap  Size (MiB)  Allocated   Used        Reserved    Budget" << std::endl;
+
+    for (uint32_t i = 0; i < m_memProps.memoryHeapCount; i++) {
+      sstr << std::setw(2) << i << ":   "
+           << std::setw(6) << (m_memHeaps[i].properties.size >> 20) << "      "
+           << std::setw(6) << (m_memHeaps[i].stats.memoryAllocated >> 20) << "      "
+           << std::setw(6) << (m_memHeaps[i].stats.memoryUsed >> 20) << "      ";
+
+      if (m_device->features().extMemoryBudget) {
+        sstr << std::setw(6) << (memHeapInfo.heaps[i].memoryAllocated >> 20) << "      "
+             << std::setw(6) << (memHeapInfo.heaps[i].memoryBudget >> 20) << "      " << std::endl;
+      } else {
+        sstr << " n/a         n/a" << std::endl;
+      }
+    }
+
+    Logger::err(sstr.str());
   }
 
 }

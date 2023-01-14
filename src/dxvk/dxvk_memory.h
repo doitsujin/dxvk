@@ -403,6 +403,11 @@ namespace dxvk {
     uint32_t determineSparseMemoryTypes(
             DxvkDevice*           device) const;
 
+    void logMemoryError(
+      const VkMemoryRequirements& req) const;
+
+    void logMemoryStats() const;
+
   };
   
 }
