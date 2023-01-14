@@ -2632,6 +2632,8 @@ namespace dxvk {
           ID3D11Buffer*                     pBuffer,
           UINT64                            BufferStartOffsetInBytes,
           UINT                              Flags) {
+    D3D10DeviceLock lock = LockContext();
+
     if (!pTiledResource || !pBuffer)
       return;
 
@@ -2662,6 +2664,8 @@ namespace dxvk {
     const D3D11_TILED_RESOURCE_COORDINATE*  pSourceRegionCoordinate,
     const D3D11_TILE_REGION_SIZE*           pTileRegionSize,
           UINT                              Flags) {
+    D3D10DeviceLock lock = LockContext();
+
     if (!pDestTiledResource || !pSourceTiledResource)
       return E_INVALIDARG;
 
@@ -2740,6 +2744,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11CommonContext<ContextType>::ResizeTilePool(
           ID3D11Buffer*                     pTilePool,
           UINT64                            NewSizeInBytes) {
+    D3D10DeviceLock lock = LockContext();
+
     if (NewSizeInBytes % SparseMemoryPageSize)
       return E_INVALIDARG;
 
@@ -2765,6 +2771,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::TiledResourceBarrier(
           ID3D11DeviceChild*                pTiledResourceOrViewAccessBeforeBarrier,
           ID3D11DeviceChild*                pTiledResourceOrViewAccessAfterBarrier) {
+    D3D10DeviceLock lock = LockContext();
+
     DxvkGlobalPipelineBarrier srcBarrier = GetTiledResourceDependency(pTiledResourceOrViewAccessBeforeBarrier);
     DxvkGlobalPipelineBarrier dstBarrier = GetTiledResourceDependency(pTiledResourceOrViewAccessAfterBarrier);
 
@@ -2793,6 +2801,8 @@ namespace dxvk {
     const UINT*                             pRangeTileOffsets,
     const UINT*                             pRangeTileCounts,
           UINT                              Flags) {
+    D3D10DeviceLock lock = LockContext();
+
     if (!pTiledResource || !NumRegions || !NumRanges)
       return E_INVALIDARG;
 
@@ -2946,6 +2956,8 @@ namespace dxvk {
     const D3D11_TILE_REGION_SIZE*           pDestTileRegionSize,
     const void*                             pSourceTileData,
           UINT                              Flags) {
+    D3D10DeviceLock lock = LockContext();
+
     if (!pDestTiledResource || !pSourceTileData)
       return;
 
