@@ -120,6 +120,7 @@ namespace dxvk {
 
   Rc<DxvkSparsePage> DxvkSparsePageAllocator::allocPage() {
     DxvkMemoryRequirements memoryRequirements = { };
+    memoryRequirements.tiling = VK_IMAGE_TILING_LINEAR;
     memoryRequirements.core = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
 
     // We don't know what kind of resource the memory6

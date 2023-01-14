@@ -88,6 +88,7 @@ namespace dxvk {
 
     // Query memory requirements and whether to use a dedicated allocation
     DxvkMemoryRequirements memoryRequirements = { };
+    memoryRequirements.tiling = VK_IMAGE_TILING_LINEAR;
     memoryRequirements.dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS };
     memoryRequirements.core = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2, &memoryRequirements.dedicated };
 

@@ -65,6 +65,7 @@ namespace dxvk {
       // Get memory requirements for the image and ask driver
       // whether we need to use a dedicated allocation.
       DxvkMemoryRequirements memoryRequirements = { };
+      memoryRequirements.tiling = info.tiling;
       memoryRequirements.dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS };
       memoryRequirements.core = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2, &memoryRequirements.dedicated };
 
@@ -96,17 +97,6 @@ namespace dxvk {
         memoryProperties.dedicated.image = m_image.image;
       }
 
-      // If there's a chance we won't create the image with a dedicated
-      // allocation, enforce strict alignment for tiled images to not
-      // violate the bufferImageGranularity requirement on some GPUs.
-      if (info.tiling != VK_IMAGE_TILING_LINEAR && !memoryRequirements.dedicated.requiresDedicatedAllocation) {
-        VkDeviceSize granularity = memAlloc.bufferImageGranularity();
-
-        auto& core = memoryRequirements.core.memoryRequirements;
-        core.size      = align(core.size,       granularity);
-        core.alignment = align(core.alignment,  granularity);
-      }
-
       // Use high memory priority for GPU-writable resources
       bool isGpuWritable = (m_info.access & (
         VK_ACCESS_SHADER_WRITE_BIT                  |
@@ -136,6 +126,7 @@ namespace dxvk {
 
       if (properties.metadataPageCount) {
         DxvkMemoryRequirements memoryRequirements = { };
+        memoryRequirements.tiling = VK_IMAGE_TILING_OPTIMAL;
         memoryRequirements.core = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2 };
 
         m_vkd->vkGetImageMemoryRequirements2(m_vkd->device(),
