@@ -88,13 +88,15 @@ namespace dxvk {
     
     DxvkCsThread            m_csThread;
     uint64_t                m_csSeqNum = 0ull;
-    bool                    m_csIsBusy = false;
 
     Rc<sync::CallbackFence> m_eventSignal;
     uint64_t                m_eventCount = 0ull;
     uint32_t                m_mappedImageCount = 0u;
 
     VkDeviceSize            m_maxImplicitDiscardSize = 0ull;
+
+    uint64_t                m_flushSeqNum = 0ull;
+
 
     dxvk::high_resolution_clock::time_point m_lastFlush
       = dxvk::high_resolution_clock::now();
@@ -157,6 +159,8 @@ namespace dxvk {
             D3D11Buffer*                pResource);
 
     uint64_t GetCurrentSequenceNumber();
+
+    uint64_t GetPendingCsChunks();
 
     void FlushImplicit(BOOL StrongHint);
 

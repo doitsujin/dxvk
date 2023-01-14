@@ -170,7 +170,7 @@ namespace dxvk {
     
     D3D10DeviceLock lock = LockContext();
     
-    if (m_csIsBusy || !m_csChunk->empty()) {
+    if (GetPendingCsChunks()) {
       // Add commands to flush the threaded
       // context, then flush the command list
       EmitCs([] (DxvkContext* ctx) {
@@ -181,7 +181,7 @@ namespace dxvk {
       
       // Reset flush timer used for implicit flushes
       m_lastFlush = dxvk::high_resolution_clock::now();
-      m_csIsBusy  = false;
+      m_flushSeqNum = m_csSeqNum;
     }
   }
   
@@ -257,10 +257,6 @@ namespace dxvk {
       RestoreCommandListState();
     else
       ResetContextState();
-    
-    // Mark CS thread as busy so that subsequent
-    // flush operations get executed correctly.
-    m_csIsBusy = true;
   }
   
   
@@ -833,7 +829,6 @@ namespace dxvk {
   
   void D3D11ImmediateContext::EmitCsChunk(DxvkCsChunkRef&& chunk) {
     m_csSeqNum = m_csThread.dispatchChunk(std::move(chunk));
-    m_csIsBusy = true;
   }
 
 
@@ -861,6 +856,11 @@ namespace dxvk {
     // immediately after a flush, we need to use the sequence number
     // of the previously submitted chunk to prevent deadlocks.
     return m_csChunk->empty() ? m_csSeqNum : m_csSeqNum + 1;
+  }
+
+
+  uint64_t D3D11ImmediateContext::GetPendingCsChunks() {
+    return GetCurrentSequenceNumber() - m_flushSeqNum;
   }
 
 
