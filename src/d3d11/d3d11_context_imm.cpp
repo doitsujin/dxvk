@@ -18,6 +18,7 @@ namespace dxvk {
   : D3D11CommonContext<D3D11ImmediateContext>(pParent, Device, 0, DxvkCsChunkFlag::SingleUse),
     m_csThread(Device, Device->createContext(DxvkContextType::Primary)),
     m_maxImplicitDiscardSize(pParent->GetOptions()->maxImplicitDiscardSize),
+    m_submissionFence(new sync::CallbackFence()),
     m_multithread(this, false, pParent->GetOptions()->enableContextLock),
     m_videoContext(this, Device) {
     EmitCs([
@@ -48,7 +49,7 @@ namespace dxvk {
     if (this_thread::isInModuleDetachment())
       return;
 
-    Flush();
+    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr);
     SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
     SynchronizeDevice();
   }
@@ -99,7 +100,8 @@ namespace dxvk {
 
       // Ignore the DONOTFLUSH flag here as some games will spin
       // on queries without ever flushing the context otherwise.
-      FlushImplicit(FALSE);
+      D3D10DeviceLock lock = LockContext();
+      ConsiderFlush(GpuFlushType::ImplicitSynchronization);
     }
     
     return hr;
@@ -148,47 +150,33 @@ namespace dxvk {
       query->NotifyEnd();
 
       if (query->IsStalling())
-        Flush();
+        ExecuteFlush(GpuFlushType::ImplicitSynchronization, nullptr);
       else if (query->IsEvent())
-        FlushImplicit(TRUE);
+        ConsiderFlush(GpuFlushType::ImplicitStrongHint);
     }
   }
 
 
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush() {
-    Flush1(D3D11_CONTEXT_TYPE_ALL, nullptr);
+    D3D10DeviceLock lock = LockContext();
+
+    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr);
   }
 
 
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush1(
           D3D11_CONTEXT_TYPE          ContextType,
           HANDLE                      hEvent) {
-    m_parent->FlushInitContext();
-
-    if (hEvent)
-      SignalEvent(hEvent);
-    
     D3D10DeviceLock lock = LockContext();
-    
-    if (GetPendingCsChunks()) {
-      // Add commands to flush the threaded
-      // context, then flush the command list
-      EmitCs([] (DxvkContext* ctx) {
-        ctx->flushCommandList();
-      });
-      
-      FlushCsChunk();
-      
-      // Reset flush timer used for implicit flushes
-      m_lastFlush = dxvk::high_resolution_clock::now();
-      m_flushSeqNum = m_csSeqNum;
-    }
+
+    ExecuteFlush(GpuFlushType::ExplicitFlush, hEvent);
   }
   
   
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::Signal(
           ID3D11Fence*                pFence,
           UINT64                      Value) {
+    D3D10DeviceLock lock = LockContext();
     auto fence = static_cast<D3D11Fence*>(pFence);
 
     if (!fence)
@@ -201,7 +189,7 @@ namespace dxvk {
       ctx->signalFence(cFence, cValue);
     });
 
-    Flush();
+    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr);
     return S_OK;
   }
 
@@ -209,12 +197,13 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::Wait(
           ID3D11Fence*                pFence,
           UINT64                      Value) {
+    D3D10DeviceLock lock = LockContext();
     auto fence = static_cast<D3D11Fence*>(pFence);
 
     if (!fence)
       return E_INVALIDARG;
 
-    Flush();
+    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr);
 
     EmitCs([
       cFence = fence->GetFence(),
@@ -246,7 +235,7 @@ namespace dxvk {
     
     // As an optimization, flush everything if the
     // number of pending draw calls is high enough.
-    FlushImplicit(FALSE);
+    ConsiderFlush(GpuFlushType::ImplicitWeakHint);
     
     // Dispatch command list to the CS thread and
     // restore the immediate context's state
@@ -257,6 +246,9 @@ namespace dxvk {
       RestoreCommandListState();
     else
       ResetContextState();
+
+    // Flush after if the command list was sufficiently long
+    ConsiderFlush(GpuFlushType::ImplicitWeakHint);
   }
   
   
@@ -386,7 +378,7 @@ namespace dxvk {
       }
 
       if (doInvalidatePreserve) {
-        FlushImplicit(TRUE);
+        ConsiderFlush(GpuFlushType::ImplicitWeakHint);
 
         auto prevSlice = pResource->GetMappedSlice();
         auto physSlice = pResource->DiscardSlice();
@@ -533,7 +525,7 @@ namespace dxvk {
       }
 
       if (doFlags & DoInvalidate) {
-        FlushImplicit(TRUE);
+        ConsiderFlush(GpuFlushType::ImplicitWeakHint);
 
         DxvkBufferSliceHandle prevSlice = pResource->GetMappedSlice(Subresource);
         DxvkBufferSliceHandle physSlice = pResource->DiscardSlice(Subresource);
@@ -809,14 +801,14 @@ namespace dxvk {
         // We don't have to wait, but misbehaving games may
         // still try to spin on `Map` until the resource is
         // idle, so we should flush pending commands
-        FlushImplicit(FALSE);
+        ConsiderFlush(GpuFlushType::ImplicitSynchronization);
         return false;
       }
     } else {
       if (isInUse) {
         // Make sure pending commands using the resource get
         // executed on the the GPU if we have to wait for it
-        Flush();
+        ExecuteFlush(GpuFlushType::ImplicitSynchronization, nullptr);
         SynchronizeCsThread(SequenceNumber);
 
         m_device->waitForResource(Resource, access);
@@ -838,7 +830,7 @@ namespace dxvk {
     uint64_t sequenceNumber = GetCurrentSequenceNumber();
     pResource->TrackSequenceNumber(Subresource, sequenceNumber);
 
-    FlushImplicit(TRUE);
+    ConsiderFlush(GpuFlushType::ImplicitStrongHint);
   }
 
 
@@ -847,7 +839,7 @@ namespace dxvk {
     uint64_t sequenceNumber = GetCurrentSequenceNumber();
     pResource->TrackSequenceNumber(sequenceNumber);
 
-    FlushImplicit(TRUE);
+    ConsiderFlush(GpuFlushType::ImplicitStrongHint);
   }
 
 
@@ -864,40 +856,50 @@ namespace dxvk {
   }
 
 
-  void D3D11ImmediateContext::FlushImplicit(BOOL StrongHint) {
-    // Flush only if the GPU is about to go idle, in
-    // order to keep the number of submissions low.
-    uint32_t pending = m_device->pendingSubmissions();
+  void D3D11ImmediateContext::ConsiderFlush(
+          GpuFlushType                FlushType) {
+    uint64_t chunkId = GetCurrentSequenceNumber();
+    uint64_t submissionId = m_submissionFence->value();
 
-    if (StrongHint || pending <= MaxPendingSubmits) {
-      auto now = dxvk::high_resolution_clock::now();
-
-      uint32_t delay = MinFlushIntervalUs
-                     + IncFlushIntervalUs * pending;
-
-      // Prevent flushing too often in short intervals.
-      if (now - m_lastFlush >= std::chrono::microseconds(delay))
-        Flush();
-    }
+    if (m_flushTracker.considerFlush(FlushType, chunkId, submissionId))
+      ExecuteFlush(FlushType, nullptr);
   }
 
 
-  void D3D11ImmediateContext::SignalEvent(HANDLE hEvent) {
-    uint64_t value = ++m_eventCount;
+  void D3D11ImmediateContext::ExecuteFlush(
+          GpuFlushType                FlushType,
+          HANDLE                      hEvent) {
+    // Flush init context so that new resources are fully initialized
+    // before the app can access them in any way. This has to happen
+    // unconditionally since we may otherwise deadlock on Map.
+    m_parent->FlushInitContext();
 
-    if (m_eventSignal == nullptr)
-      m_eventSignal = new sync::CallbackFence();
+    // Exit early if there's nothing to do
+    if (!GetPendingCsChunks() && !hEvent)
+      return;
 
-    m_eventSignal->setCallback(value, [hEvent] {
-      SetEvent(hEvent);
-    });
+    // Signal the submission fence and flush the command list
+    uint64_t submissionId = ++m_submissionId;
+
+    if (hEvent) {
+      m_submissionFence->setCallback(submissionId, [hEvent] {
+        SetEvent(hEvent);
+      });
+    }
 
     EmitCs([
-      cSignal = m_eventSignal,
-      cValue  = value
+      cSubmissionFence  = m_submissionFence,
+      cSubmissionId     = submissionId
     ] (DxvkContext* ctx) {
-      ctx->signal(cSignal, cValue);
+      ctx->signal(cSubmissionFence, cSubmissionId);
+      ctx->flushCommandList();
     });
+
+    FlushCsChunk();
+
+    // Notify flush tracker about the flush
+    m_flushSeqNum = m_csSeqNum;
+    m_flushTracker.notifyFlush(m_flushSeqNum, submissionId);
   }
   
 }

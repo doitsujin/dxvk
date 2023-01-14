@@ -2194,9 +2194,6 @@ namespace dxvk {
           ID3D11DepthStencilView*           pDepthStencilView) {
     D3D10DeviceLock lock = LockContext();
 
-    if constexpr (!IsDeferred)
-      GetTypedContext()->FlushImplicit(true);
-
     SetRenderTargetsAndUnorderedAccessViews(
       NumViews, ppRenderTargetViews, pDepthStencilView,
       NumViews, 0, nullptr, nullptr);
@@ -2213,9 +2210,6 @@ namespace dxvk {
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
     const UINT*                             pUAVInitialCounts) {
     D3D10DeviceLock lock = LockContext();
-
-    if constexpr (!IsDeferred)
-      GetTypedContext()->FlushImplicit(true);
 
     SetRenderTargetsAndUnorderedAccessViews(
       NumRTVs, ppRenderTargetViews, pDepthStencilView,
@@ -2671,7 +2665,7 @@ namespace dxvk {
       return E_INVALIDARG;
 
     if constexpr (!IsDeferred)
-      GetTypedContext()->FlushImplicit(false);
+      GetTypedContext()->ConsiderFlush(GpuFlushType::ImplicitWeakHint);
 
     DxvkSparseBindInfo bindInfo;
     bindInfo.dstResource = GetPagedResource(pDestTiledResource);
@@ -2808,7 +2802,7 @@ namespace dxvk {
       return E_INVALIDARG;
 
     if constexpr (!IsDeferred)
-      GetTypedContext()->FlushImplicit(false);
+      GetTypedContext()->ConsiderFlush(GpuFlushType::ImplicitWeakHint);
 
     // Find sparse allocator if the tile pool is defined
     DxvkSparseBindInfo bindInfo;
@@ -4921,8 +4915,12 @@ namespace dxvk {
       }
     }
 
-    if (needsUpdate)
+    if (needsUpdate) {
       BindFramebuffer();
+
+      if constexpr (!IsDeferred)
+        GetTypedContext()->ConsiderFlush(GpuFlushType::ImplicitWeakHint);
+    }
   }
 
 
