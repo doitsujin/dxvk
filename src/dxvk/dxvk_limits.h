@@ -12,7 +12,7 @@ namespace dxvk {
     MaxNumXfbStreams            =     4,
     MaxNumViewports             =    16,
     MaxNumResourceSlots         =  1216,
-    MaxNumQueuedCommandBuffers  =    18,
+    MaxNumQueuedCommandBuffers  =    32,
     MaxNumQueryCountPerPool     =   128,
     MaxNumSpecConstants         =    12,
     MaxUniformBufferSize        = 65536,
