@@ -236,7 +236,7 @@ namespace dxvk {
     // As an optimization, flush everything if the
     // number of pending draw calls is high enough.
     ConsiderFlush(GpuFlushType::ImplicitWeakHint);
-    
+
     // Dispatch command list to the CS thread and
     // restore the immediate context's state
     uint64_t csSeqNum = commandList->EmitToCsThread(&m_csThread);
@@ -247,7 +247,7 @@ namespace dxvk {
     else
       ResetContextState();
 
-    // Flush after if the command list was sufficiently long
+    // Flush again if the command list was sufficiently long
     ConsiderFlush(GpuFlushType::ImplicitWeakHint);
   }
   
@@ -378,8 +378,6 @@ namespace dxvk {
       }
 
       if (doInvalidatePreserve) {
-        ConsiderFlush(GpuFlushType::ImplicitWeakHint);
-
         auto prevSlice = pResource->GetMappedSlice();
         auto physSlice = pResource->DiscardSlice();
 
@@ -525,8 +523,6 @@ namespace dxvk {
       }
 
       if (doFlags & DoInvalidate) {
-        ConsiderFlush(GpuFlushType::ImplicitWeakHint);
-
         DxvkBufferSliceHandle prevSlice = pResource->GetMappedSlice(Subresource);
         DxvkBufferSliceHandle physSlice = pResource->DiscardSlice(Subresource);
 
@@ -770,7 +766,7 @@ namespace dxvk {
   void D3D11ImmediateContext::EndFrame() {
     D3D10DeviceLock lock = LockContext();
 
-    EmitCs([] (DxvkContext* ctx) {
+    EmitCs<false>([] (DxvkContext* ctx) {
       ctx->endFrame();
     });
   }
@@ -887,7 +883,7 @@ namespace dxvk {
       });
     }
 
-    EmitCs([
+    EmitCs<false>([
       cSubmissionFence  = m_submissionFence,
       cSubmissionId     = submissionId
     ] (DxvkContext* ctx) {

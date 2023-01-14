@@ -4918,8 +4918,10 @@ namespace dxvk {
     if (needsUpdate) {
       BindFramebuffer();
 
-      if constexpr (!IsDeferred)
+      if constexpr (!IsDeferred) {
+        // Doing this makes it less likely to flush during render passes
         GetTypedContext()->ConsiderFlush(GpuFlushType::ImplicitWeakHint);
+      }
     }
   }
 

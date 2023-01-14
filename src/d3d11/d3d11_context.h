@@ -10,6 +10,8 @@
 
 #include "../d3d10/d3d10_multithread.h"
 
+#include "../util/util_flush.h"
+
 #include "d3d11_annotation.h"
 #include "d3d11_buffer.h"
 #include "d3d11_cmd.h"
@@ -1064,27 +1066,35 @@ namespace dxvk {
             DxvkMultisampleState*             pMsState,
             UINT                              SampleMask);
 
-    template<typename Cmd>
+    template<bool AllowFlush = !IsDeferred, typename Cmd>
     void EmitCs(Cmd&& command) {
       m_cmdData = nullptr;
 
       if (unlikely(!m_csChunk->push(command))) {
         GetTypedContext()->EmitCsChunk(std::move(m_csChunk));
-        
         m_csChunk = AllocCsChunk();
+
+        if constexpr (AllowFlush)
+          GetTypedContext()->ConsiderFlush(GpuFlushType::ImplicitWeakHint);
+
         m_csChunk->push(command);
       }
     }
 
-    template<typename M, typename Cmd, typename... Args>
+    template<typename M, bool AllowFlush = !IsDeferred, typename Cmd, typename... Args>
     M* EmitCsCmd(Cmd&& command, Args&&... args) {
       M* data = m_csChunk->pushCmd<M, Cmd, Args...>(
         command, std::forward<Args>(args)...);
 
       if (unlikely(!data)) {
         GetTypedContext()->EmitCsChunk(std::move(m_csChunk));
-        
         m_csChunk = AllocCsChunk();
+
+        if constexpr (AllowFlush)
+          GetTypedContext()->ConsiderFlush(GpuFlushType::ImplicitWeakHint);
+
+        // We must record this command after the potential
+        // flush since the caller may still access the data
         data = m_csChunk->pushCmd<M, Cmd, Args...>(
           command, std::forward<Args>(args)...);
       }
