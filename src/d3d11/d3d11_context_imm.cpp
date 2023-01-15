@@ -237,18 +237,29 @@ namespace dxvk {
     // number of pending draw calls is high enough.
     ConsiderFlush(GpuFlushType::ImplicitWeakHint);
 
-    // Dispatch command list to the CS thread and
-    // restore the immediate context's state
-    uint64_t csSeqNum = commandList->EmitToCsThread(&m_csThread);
-    m_csSeqNum = std::max(m_csSeqNum, csSeqNum);
-    
+    // Dispatch command list to the CS thread
+    commandList->EmitToCsThread([this] (DxvkCsChunkRef&& chunk) {
+      EmitCsChunk(std::move(chunk));
+
+      // Return the sequence number from before the flush since
+      // that is actually going to be needed for resource tracking
+      uint64_t csSeqNum = m_csSeqNum;
+
+      // Consider a flush after every chunk in case the app
+      // submits a very large command list or the GPU is idle
+      ConsiderFlush(GpuFlushType::ImplicitWeakHint);
+      return csSeqNum;
+    });
+
+    // If any resource tracking took place, flush with a strong hint
+    if (commandList->HasTrackedResources())
+      ConsiderFlush(GpuFlushType::ImplicitStrongHint);
+
+    // Restore the immediate context's state
     if (RestoreContextState)
       RestoreCommandListState();
     else
       ResetContextState();
-
-    // Flush again if the command list was sufficiently long
-    ConsiderFlush(GpuFlushType::ImplicitWeakHint);
   }
   
   
