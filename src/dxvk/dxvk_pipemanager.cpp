@@ -112,9 +112,11 @@ namespace dxvk {
             priority = DxvkPipelinePriority::Low;
         }
 
-        m_workers.emplace_back([this, priority] {
+        auto& worker = m_workers.emplace_back([this, priority] {
           runWorker(priority);
         });
+        
+        worker.set_priority(ThreadPriority::Lowest);
       }
 
       Logger::info(str::format("DXVK: Using ", workerCount, " compiler threads"));
