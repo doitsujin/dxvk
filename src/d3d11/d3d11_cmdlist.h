@@ -1,9 +1,13 @@
 #pragma once
 
+#include <functional>
+
 #include "d3d11_context.h"
 
 namespace dxvk {
   
+  using D3D11ChunkDispatchProc = std::function<uint64_t (DxvkCsChunkRef&&)>;
+
   class D3D11CommandList : public D3D11DeviceChild<ID3D11CommandList> {
     
   public:
@@ -29,13 +33,17 @@ namespace dxvk {
     void EmitToCommandList(
             ID3D11CommandList*  pCommandList);
     
-    uint64_t EmitToCsThread(
-            DxvkCsThread*       CsThread);
+    void EmitToCsThread(
+      const D3D11ChunkDispatchProc& DispatchProc);
 
     void TrackResourceUsage(
             ID3D11Resource*     pResource,
             D3D11_RESOURCE_DIMENSION ResourceType,
             UINT                Subresource);
+
+    bool HasTrackedResources() const {
+      return !m_resources.empty();
+    }
 
   private:
 
