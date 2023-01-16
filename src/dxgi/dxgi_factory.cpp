@@ -151,7 +151,6 @@ namespace dxvk {
     Com<IDXGISwapChain4> frontendSwapChain;
 
     Com<IDXGIVkSwapChainFactory> dxvkFactory;
-    Com<IWineDXGISwapChainFactory> wineFactory;
 
     if (SUCCEEDED(pDevice->QueryInterface(IID_PPV_ARGS(&dxvkFactory)))) {
       Com<IDXGIVkSurfaceFactory> surfaceFactory = new DxgiSurfaceFactory(
@@ -166,14 +165,6 @@ namespace dxvk {
       }
 
       frontendSwapChain = new DxgiSwapChain(this, presenter.ptr(), hWnd, &desc, &fsDesc);
-    } else if (SUCCEEDED(pDevice->QueryInterface(IID_PPV_ARGS(&wineFactory)))) {
-      HRESULT hr = wineFactory->CreateSwapChainForHwnd(this, hWnd, &desc, &fsDesc,
-        pRestrictToOutput, reinterpret_cast<IDXGISwapChain1**>(&frontendSwapChain));
-
-      if (FAILED(hr)) {
-        Logger::err(str::format("DXGI: CreateSwapChainForHwnd: Failed to create swap chain, hr ", hr));
-        return hr;
-      }
     } else {
       Logger::err("DXGI: CreateSwapChainForHwnd: Unsupported device type");
       return DXGI_ERROR_UNSUPPORTED;

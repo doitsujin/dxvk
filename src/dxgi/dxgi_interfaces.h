@@ -409,24 +409,6 @@ IDXGIVkInteropAdapter : public IUnknown {
 };
 
 
-/**
- * \brief IWineDXGISwapChainFactory device interface
- *
- * Allows a swap chain to be created from a device.
- * See include/wine/winedxgi.idl for definition.
- */
-MIDL_INTERFACE("53cb4ff0-c25a-4164-a891-0e83db0a7aac")
-IWineDXGISwapChainFactory : public IUnknown {
-    virtual HRESULT STDMETHODCALLTYPE CreateSwapChainForHwnd(
-            IDXGIFactory*           pFactory,
-            HWND                    hWnd,
-      const DXGI_SWAP_CHAIN_DESC1*  pDesc,
-      const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc,
-            IDXGIOutput*            pRestrictToOutput,
-            IDXGISwapChain1**       ppSwapChain) = 0;
-};
-
-
 #ifdef _MSC_VER
 struct __declspec(uuid("907bf281-ea3c-43b4-a8e4-9f231107b4ff")) IDXGIDXVKAdapter;
 struct __declspec(uuid("92a5d77b-b6e1-420a-b260-fdd701272827")) IDXGIDXVKDevice;
@@ -438,7 +420,6 @@ struct __declspec(uuid("5546cf8c-77e7-4341-b05d-8d4d5000e77d")) IDXGIVkInteropSu
 struct __declspec(uuid("1e7895a1-1bc3-4f9c-a670-290a4bc9581a")) IDXGIVkSurfaceFactory;
 struct __declspec(uuid("e4a9059e-b569-46ab-8de7-501bd2bc7f7a")) IDXGIVkSwapChain;
 struct __declspec(uuid("e7d6c3ca-23a0-4e08-9f2f-ea5231df6633")) IDXGIVkSwapChainFactory;
-struct __declspec(uuid("53cb4ff0-c25a-4164-a891-0e83db0a7aac")) IWineDXGISwapChainFactory;
 #else
 __CRT_UUID_DECL(IDXGIDXVKAdapter,          0x907bf281,0xea3c,0x43b4,0xa8,0xe4,0x9f,0x23,0x11,0x07,0xb4,0xff);
 __CRT_UUID_DECL(IDXGIDXVKDevice,           0x92a5d77b,0xb6e1,0x420a,0xb2,0x60,0xfd,0xf7,0x01,0x27,0x28,0x27);
@@ -450,5 +431,4 @@ __CRT_UUID_DECL(IDXGIVkInteropSurface,     0x5546cf8c,0x77e7,0x4341,0xb0,0x5d,0x
 __CRT_UUID_DECL(IDXGIVkSurfaceFactory,     0x1e7895a1,0x1bc3,0x4f9c,0xa6,0x70,0x29,0x0a,0x4b,0xc9,0x58,0x1a);
 __CRT_UUID_DECL(IDXGIVkSwapChain,          0xe4a9059e,0xb569,0x46ab,0x8d,0xe7,0x50,0x1b,0xd2,0xbc,0x7f,0x7a);
 __CRT_UUID_DECL(IDXGIVkSwapChainFactory,   0xe7d6c3ca,0x23a0,0x4e08,0x9f,0x2f,0xea,0x52,0x31,0xdf,0x66,0x33);
-__CRT_UUID_DECL(IWineDXGISwapChainFactory, 0x53cb4ff0,0xc25a,0x4164,0xa8,0x91,0x0e,0x83,0xdb,0x0a,0x7a,0xac);
 #endif
