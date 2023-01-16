@@ -269,6 +269,13 @@ namespace dxvk {
         m_commandSubmission.waitSemaphore(m_sdmaSemaphore, 0, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
       }
 
+      // We promise to never do weird stuff to WSI images on
+      // the transfer queue, so blocking graphics is sufficient
+      if (isFirst && m_wsiSemaphores.acquire) {
+        m_commandSubmission.waitSemaphore(m_wsiSemaphores.acquire,
+          0, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
+      }
+
       // Submit graphics commands
       if (cmd.usedFlags.test(DxvkCmdBuffer::InitBuffer))
         m_commandSubmission.executeCommandBuffer(cmd.initBuffer);

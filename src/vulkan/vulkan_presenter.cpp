@@ -12,15 +12,13 @@ namespace dxvk::vk {
           PresenterDevice device,
     const PresenterDesc&  desc)
   : m_vki(vki), m_vkd(vkd), m_device(device) {
-    if (createFence() != VK_SUCCESS)
-      throw DxvkError("Failed to create presenter fence.");
+
   }
 
   
   Presenter::~Presenter() {
     destroySwapchain();
     destroySurface();
-    destroyFence();
   }
 
 
@@ -41,19 +39,12 @@ namespace dxvk::vk {
     if (m_acquireStatus == VK_NOT_READY) {
       m_acquireStatus = m_vkd->vkAcquireNextImageKHR(m_vkd->device(),
         m_swapchain, std::numeric_limits<uint64_t>::max(),
-        VK_NULL_HANDLE, m_acquireFence, &m_imageIndex);
+        sync.acquire, VK_NULL_HANDLE, &m_imageIndex);
     }
 
     if (m_acquireStatus != VK_SUCCESS && m_acquireStatus != VK_SUBOPTIMAL_KHR)
       return m_acquireStatus;
-
-    VkResult vr = waitForAcquireFence();
-
-    if (vr  != VK_SUCCESS) {
-      Logger::err(str::format("Failed to wait for presenter fence: ", vr));
-      return vr;
-    }
-
+    
     index = m_imageIndex;
     return m_acquireStatus;
   }
@@ -83,7 +74,7 @@ namespace dxvk::vk {
 
     m_acquireStatus = m_vkd->vkAcquireNextImageKHR(m_vkd->device(),
       m_swapchain, std::numeric_limits<uint64_t>::max(),
-      VK_NULL_HANDLE, m_acquireFence, &m_imageIndex);
+      sync.acquire, VK_NULL_HANDLE, &m_imageIndex);
 
     bool vsync = m_info.presentMode == VK_PRESENT_MODE_FIFO_KHR
               || m_info.presentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
@@ -212,6 +203,10 @@ namespace dxvk::vk {
 
     for (uint32_t i = 0; i < m_semaphores.size(); i++) {
       VkSemaphoreCreateInfo semInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
+
+      if ((status = m_vkd->vkCreateSemaphore(m_vkd->device(),
+          &semInfo, nullptr, &m_semaphores[i].acquire)))
+        return status;
 
       if ((status = m_vkd->vkCreateSemaphore(m_vkd->device(),
           &semInfo, nullptr, &m_semaphores[i].present)))
@@ -433,19 +428,14 @@ namespace dxvk::vk {
   }
 
 
-  VkResult Presenter::createFence() {
-    VkFenceCreateInfo fenceInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-
-    return m_vkd->vkCreateFence(m_vkd->device(), &fenceInfo, nullptr, &m_acquireFence);
-  }
-
-
   void Presenter::destroySwapchain() {
     for (const auto& img : m_images)
       m_vkd->vkDestroyImageView(m_vkd->device(), img.view, nullptr);
     
-    for (const auto& sem : m_semaphores)
+    for (const auto& sem : m_semaphores) {
+      m_vkd->vkDestroySemaphore(m_vkd->device(), sem.acquire, nullptr);
       m_vkd->vkDestroySemaphore(m_vkd->device(), sem.present, nullptr);
+    }
 
     m_vkd->vkDestroySwapchainKHR(m_vkd->device(), m_swapchain, nullptr);
 
@@ -460,24 +450,6 @@ namespace dxvk::vk {
     m_vki->vkDestroySurfaceKHR(m_vki->instance(), m_surface, nullptr);
 
     m_surface = VK_NULL_HANDLE;
-  }
-
-
-  void Presenter::destroyFence() {
-    m_vkd->vkWaitForFences(m_vkd->device(), 1, &m_acquireFence,
-      VK_TRUE, std::numeric_limits<uint64_t>::max());
-    m_vkd->vkDestroyFence(m_vkd->device(), m_acquireFence, nullptr);
-  }
-
-
-  VkResult Presenter::waitForAcquireFence() {
-    VkResult vr = m_vkd->vkWaitForFences(m_vkd->device(), 1,
-      &m_acquireFence, VK_TRUE, std::numeric_limits<uint64_t>::max());
-
-    if (vr == VK_SUCCESS)
-      vr = m_vkd->vkResetFences(m_vkd->device(), 1, &m_acquireFence);
-
-    return vr;
   }
 
 }
