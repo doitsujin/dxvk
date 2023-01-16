@@ -27,7 +27,7 @@ namespace dxvk {
   public:
     
     DxgiSwapChain(
-            IDXGIFactory*               pFactory,
+            DxgiFactory*                pFactory,
             IDXGIVkSwapChain*           pPresenter,
             HWND                        hWnd,
       const DXGI_SWAP_CHAIN_DESC1*      pDesc,
@@ -175,7 +175,7 @@ namespace dxvk {
     dxvk::recursive_mutex           m_lockWindow;
     dxvk::mutex                     m_lockBuffer;
 
-    Com<IDXGIFactory>               m_factory;
+    Com<DxgiFactory>                m_factory;
     Com<IDXGIAdapter>               m_adapter;
     Com<IDXGIOutput1>               m_target;
     Com<IDXGIVkMonitorInfo>         m_monitorInfo;
