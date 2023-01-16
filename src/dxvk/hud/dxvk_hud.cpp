@@ -79,7 +79,10 @@ namespace dxvk::hud {
     const Rc<DxvkContext>&  ctx,
           VkSurfaceFormatKHR surfaceFormat,
           VkExtent2D        surfaceSize) {
-    bool isSrgb = lookupFormatInfo(surfaceFormat.format)->flags.test(DxvkFormatFlag::ColorSpaceSrgb);
+    VkColorSpaceKHR colorSpace = surfaceFormat.colorSpace;
+
+    if (lookupFormatInfo(surfaceFormat.format)->flags.test(DxvkFormatFlag::ColorSpaceSrgb))
+      colorSpace = VK_COLOR_SPACE_PASS_THROUGH_EXT;
 
     VkViewport viewport;
     viewport.x = 0.0f;
@@ -97,7 +100,7 @@ namespace dxvk::hud {
     ctx->setRasterizerState(m_rsState);
     ctx->setBlendMode(0, m_blendMode);
 
-    ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, 0, isSrgb);
+    ctx->setSpecConstant(VK_PIPELINE_BIND_POINT_GRAPHICS, 0, colorSpace);
     m_renderer.beginFrame(ctx, surfaceSize, m_scale);
   }
 
