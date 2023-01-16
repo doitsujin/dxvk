@@ -79,7 +79,6 @@ namespace dxvk::vk {
    * image acquisition.
    */
   struct PresenterSync {
-    VkSemaphore acquire;
     VkSemaphore present;
   };
 
@@ -207,8 +206,10 @@ namespace dxvk::vk {
     PresenterDevice   m_device;
     PresenterInfo     m_info;
 
-    VkSurfaceKHR      m_surface     = VK_NULL_HANDLE;
-    VkSwapchainKHR    m_swapchain   = VK_NULL_HANDLE;
+    VkFence           m_acquireFence  = VK_NULL_HANDLE;
+
+    VkSurfaceKHR      m_surface       = VK_NULL_HANDLE;
+    VkSwapchainKHR    m_swapchain     = VK_NULL_HANDLE;
 
     std::vector<PresenterImage> m_images;
     std::vector<PresenterSync>  m_semaphores;
@@ -257,9 +258,15 @@ namespace dxvk::vk {
 
     VkResult createSurface();
 
+    VkResult createFence();
+
     void destroySwapchain();
 
     void destroySurface();
+
+    void destroyFence();
+
+    VkResult waitForAcquireFence();
 
   };
 
