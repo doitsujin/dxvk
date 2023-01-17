@@ -96,6 +96,9 @@ namespace dxvk {
     // Begun and ended queries, will also be stored in command list
     std::vector<Com<D3D11Query, false>> m_queriesBegun;
 
+    // Chunk ID within the current command list
+    uint64_t m_chunkId = 0ull;
+
     HRESULT MapBuffer(
             ID3D11Resource*               pResource,
             D3D11_MAPPED_SUBRESOURCE*     pMappedResource);
@@ -117,6 +120,8 @@ namespace dxvk {
     Com<D3D11CommandList> CreateCommandList();
     
     void EmitCsChunk(DxvkCsChunkRef&& chunk);
+
+    uint64_t GetCurrentChunkId() const;
 
     void TrackTextureSequenceNumber(
             D3D11CommonTexture*           pResource,

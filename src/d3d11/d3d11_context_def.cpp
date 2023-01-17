@@ -148,8 +148,9 @@ namespace dxvk {
     // Record any chunks from the given command list into the
     // current command list and deal with context state
     auto commandList = static_cast<D3D11CommandList*>(pCommandList);
-    commandList->EmitToCommandList(m_commandList.ptr());
+    m_chunkId = m_commandList->AddCommandList(commandList);
     
+    // Restore deferred context state
     if (RestoreContextState)
       RestoreCommandListState();
     else
@@ -166,7 +167,8 @@ namespace dxvk {
     FinalizeQueries();
 
     // Clean up command list state so that the any state changed
-    // by this command list does not affect the calling context
+    // by this command list does not affect the calling context.
+    // This also ensures that the command list is never empty.
     ResetCommandListState();
 
     // Make sure all commands are visible to the command list
@@ -180,6 +182,7 @@ namespace dxvk {
     // Any use of ExecuteCommandList will reset command list state
     // before the command list is actually executed.
     m_commandList = CreateCommandList();
+    m_chunkId = 0;
     
     if (RestoreDeferredContextState)
       RestoreCommandListState();
@@ -388,7 +391,12 @@ namespace dxvk {
   
   
   void D3D11DeferredContext::EmitCsChunk(DxvkCsChunkRef&& chunk) {
-    m_commandList->AddChunk(std::move(chunk));
+    m_chunkId = m_commandList->AddChunk(std::move(chunk));
+  }
+
+
+  uint64_t D3D11DeferredContext::GetCurrentChunkId() const {
+    return m_csChunk->empty() ? m_chunkId : m_chunkId + 1;
   }
 
 
@@ -398,14 +406,15 @@ namespace dxvk {
     m_commandList->TrackResourceUsage(
       pResource->GetInterface(),
       pResource->GetDimension(),
-      Subresource);
+      Subresource, GetCurrentChunkId());
   }
 
 
   void D3D11DeferredContext::TrackBufferSequenceNumber(
           D3D11Buffer*                pResource) {
-    m_commandList->TrackResourceUsage(
-      pResource, D3D11_RESOURCE_DIMENSION_BUFFER, 0);
+    m_commandList->TrackResourceUsage(pResource,
+      D3D11_RESOURCE_DIMENSION_BUFFER, 0,
+      GetCurrentChunkId());
   }
 
 
