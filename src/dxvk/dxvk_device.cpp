@@ -68,9 +68,25 @@ namespace dxvk {
 
 
   bool DxvkDevice::mustTrackPipelineLifetime() const {
-    bool result = env::is32BitHostPlatform();
-    applyTristate(result, m_options.trackPipelineLifetime);
-    return result && canUseGraphicsPipelineLibrary();
+    switch (m_options.trackPipelineLifetime) {
+      case Tristate::True:
+        return canUseGraphicsPipelineLibrary();
+
+      case Tristate::False:
+        return false;
+
+      default:
+      case Tristate::Auto:
+        if (!env::is32BitHostPlatform() || !canUseGraphicsPipelineLibrary())
+          return false;
+
+        // Disable lifetime tracking for drivers that do not have any
+        // significant issues with 32-bit address space to begin with
+        if (m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV_KHR, 0, 0))
+          return false;
+
+        return true;
+    }
   }
 
 
