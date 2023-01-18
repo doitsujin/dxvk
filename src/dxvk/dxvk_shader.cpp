@@ -832,14 +832,13 @@ namespace dxvk {
     // For graphics pipelines, as long as graphics pipeline libraries are
     // enabled, we do not need to create a shader module object and can
     // instead chain the create info to the shader stage info struct.
-    // For compute pipelines, this doesn't work and we still need a module.
     auto& moduleInfo = m_moduleInfos[m_stageCount].moduleInfo;
     moduleInfo = { VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO };
     moduleInfo.codeSize = codeBuffer.size();
     moduleInfo.pCode = codeBuffer.data();
 
     VkShaderModule shaderModule = VK_NULL_HANDLE;
-    if (!m_device->features().extGraphicsPipelineLibrary.graphicsPipelineLibrary || stage == VK_SHADER_STAGE_COMPUTE_BIT) {
+    if (!m_device->features().extGraphicsPipelineLibrary.graphicsPipelineLibrary) {
       auto vk = m_device->vkd();
 
       if (vk->vkCreateShaderModule(vk->device(), &moduleInfo, nullptr, &shaderModule))
