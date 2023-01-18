@@ -676,6 +676,10 @@ namespace dxvk {
     { R"(\\(hammer(plusplus)?|mallet|wc)\.exe$)", {{
       { "d3d9.apitraceMode",                "True" },
     }} },
+    /* Fallout 3 - Doesn't like Intel Id       */
+    { R"(\\Fallout3\.exe$)", {{
+      { "d3d9.customVendorId",              "10de" },
+    }} }
   }};
 
 
