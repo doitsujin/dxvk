@@ -721,6 +721,11 @@ namespace dxvk {
     { R"(\\bms\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
     }} },
+    /* Secret World Legends launcher           *
+     * Invisible UI                            */
+    { R"(\\Secret World Legends\\ClientPatcher\.exe$)", {{
+      { "d3d9.shaderModel",                 "2" },
+    }} },
   }};
 
 
