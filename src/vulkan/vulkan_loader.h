@@ -26,8 +26,8 @@ namespace dxvk::vk {
     PFN_vkGetInstanceProcAddr getLoaderProc() const { return m_getInstanceProcAddr; }
     bool               valid() const;
   protected:
-    const HMODULE                   m_library;
-    const PFN_vkGetInstanceProcAddr m_getInstanceProcAddr;
+    HMODULE                   m_library             = nullptr;
+    PFN_vkGetInstanceProcAddr m_getInstanceProcAddr = nullptr;
   };
   
   

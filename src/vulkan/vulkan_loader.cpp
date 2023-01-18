@@ -1,24 +1,48 @@
+#include <tuple>
+
 #include "vulkan_loader.h"
 
+#include "../util/log/log.h"
+
+#include "../util/util_string.h"
 #include "../util/util_win32_compat.h"
 
 namespace dxvk::vk {
 
-  static HMODULE loadVulkanLibrary() {
+  static std::pair<HMODULE, PFN_vkGetInstanceProcAddr> loadVulkanLibrary() {
+    static const std::array<const char*, 2> dllNames = {{
 #ifdef _WIN32
-    return LoadLibraryA("vulkan-1.dll");
+      "winevulkan.dll",
+      "vulkan-1.dll",
 #else
-    HMODULE library = LoadLibraryA("libvulkan.so");
-    if (!library)
-      library = LoadLibraryA("libvulkan.so.1");
-    return library;
+      "libvulkan.so",
+      "libvulkan.so.1",
 #endif
+    }};
+
+    for (auto dllName : dllNames) {
+      HMODULE library = LoadLibraryA(dllName);
+
+      if (!library)
+        continue;
+
+      auto proc = GetProcAddress(library, "vkGetInstanceProcAddr");
+
+      if (!proc) {
+        FreeLibrary(library);
+        continue;
+      }
+
+      Logger::info(str::format("Vulkan: Found vkGetInstanceProcAddr in ", dllName, " @ 0x", std::hex, reinterpret_cast<uintptr_t>(proc)));
+      return std::make_pair(library, reinterpret_cast<PFN_vkGetInstanceProcAddr>(proc));
+    }
+
+    Logger::err("Vulkan: vkGetInstanceProcAddr not found");
+    return { };
   }
 
-  LibraryLoader::LibraryLoader()
-  : m_library(loadVulkanLibrary())
-  , m_getInstanceProcAddr(reinterpret_cast<PFN_vkGetInstanceProcAddr>(
-        GetProcAddress(m_library, "vkGetInstanceProcAddr"))) {
+  LibraryLoader::LibraryLoader() {
+    std::tie(m_library, m_getInstanceProcAddr) = loadVulkanLibrary();
   }
 
   LibraryLoader::~LibraryLoader() {
