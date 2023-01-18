@@ -672,6 +672,10 @@ namespace dxvk {
     { R"(\\witcher\.exe$)", {{
       { "d3d9.apitraceMode",              "True" },
     }} },
+    /* Hammer World Editor                      */
+    { R"(\\(hammer(plusplus)?|mallet|wc)\.exe$)", {{
+      { "d3d9.apitraceMode",                "True" },
+    }} },
   }};
 
 
