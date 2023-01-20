@@ -288,18 +288,26 @@ namespace dxvk {
         return m_vkPools[--m_vkPoolCount];
     }
 
+    // Deliberately pick a very high number of descriptor sets so that
+    // we will typically end up using all available pool memory before
+    // the descriptor set limit becomes the limiting factor.
     uint32_t maxSets = m_contextType == DxvkContextType::Primary
-      ? 8192 : 256;
+      ? (env::is32BitHostPlatform() ? 24576u : 49152u)
+      : (512u);
 
+    // Samplers and uniform buffers may be special on some implementations
+    // so we should allocate space for a reasonable number of both, but
+    // assume that all other descriptor types share pool memory.
     std::array<VkDescriptorPoolSize, 8> pools = {{
-      { VK_DESCRIPTOR_TYPE_SAMPLER,                maxSets * 2  },
-      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          maxSets * 2  },
+      { VK_DESCRIPTOR_TYPE_SAMPLER,                maxSets * 1  },
+      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxSets / 4  },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          maxSets / 2  },
       { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          maxSets / 64 },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         maxSets * 4  },
-      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         maxSets * 1  },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   maxSets * 1  },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   maxSets / 2  },
       { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   maxSets / 64 },
-      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxSets * 1  } }};
+      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         maxSets * 2  },
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         maxSets / 2  },
+    }};
     
     VkDescriptorPoolCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
     info.maxSets       = maxSets;
