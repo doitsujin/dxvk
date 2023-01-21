@@ -496,7 +496,8 @@ namespace dxvk {
     }
 
     // Discard caches of unsupported versions
-    if (curHeader.version < 8 || curHeader.version > newHeader.version) {
+    if (curHeader.version < 8 || curHeader.version == 16
+     || curHeader.version > newHeader.version) {
       Logger::warn("DXVK: State cache version not supported");
       return false;
     }
