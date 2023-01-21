@@ -9,26 +9,17 @@ The most recent development builds can be found [here](https://github.com/doitsu
 Release builds can be found [here](https://github.com/doitsujin/dxvk/releases).
 
 ## How to use
-In order to install a DXVK package obtained from the [release](https://github.com/doitsujin/dxvk/releases) page into a given wine prefix, run the following commands from within the DXVK directory:
-
+In order to install a DXVK package obtained from the [release](https://github.com/doitsujin/dxvk/releases) page into a given wine prefix, copy or symlink the DLLs into the following directories as follows, then open `winecfg` and manually add DLL overrides for `d3d11`, `d3d10core`, `dxgi`, and `d3d9`:
 ```
-export WINEPREFIX=/path/to/.wine-prefix
-./setup_dxvk.sh install
+WINEPREFIX=/path/to/wineprefix
+cp x64/*.dll $WINEPREFIX/drive_c/system32
+cp x32/*.dll $WINEPREFIX/drive_c/syswow64
+winecfg
 ```
-
-This will **copy** the DLLs into the `system32` and `syswow64` directories of your wine prefix and set up the required DLL overrides. Pure 32-bit prefixes are also supported.
-
-The setup script optionally takes the following arguments:
-- `--symlink`: Create symbolic links to the DLL files instead of copying them. This is especially useful for development.
-- `--without-dxgi`: Do not install DXVK's DXGI implementation and use the one provided by wine instead.
 
 Verify that your application uses DXVK instead of wined3d by checking for the presence of the log file `d3d9.log` or `d3d11.log` in the application's directory, or by enabling the HUD (see notes below).
 
-In order to remove DXVK from a prefix, run the following command:
-```
-export WINEPREFIX=/path/to/.wine-prefix
-./setup_dxvk.sh uninstall
-```
+In order to remove DXVK from a prefix, remove the DLLs and DLL overrides, and run `wineboot -u` to restore the original DLL files.
 
 ## Build instructions
 
