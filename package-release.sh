@@ -10,9 +10,9 @@ if [ -z "$1" ] || [ -z "$2" ]; then
 fi
 
 DXVK_VERSION="$1"
-DXVK_SRC_DIR=`dirname $(readlink -f $0)`
-DXVK_BUILD_DIR=$(realpath "$2")"/dxvk-$DXVK_VERSION"
-DXVK_ARCHIVE_PATH=$(realpath "$2")"/dxvk-$DXVK_VERSION.tar.gz"
+DXVK_SRC_DIR="$(cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd -P)"
+DXVK_BUILD_DIR=${2}"/dxvk-macOS-$DXVK_VERSION"
+DXVK_ARCHIVE_PATH=${2}"/dxvk-macOS-$DXVK_VERSION.tar.gz"
 
 if [ -e "$DXVK_BUILD_DIR" ]; then
   echo "Build directory $DXVK_BUILD_DIR already exists"
@@ -78,8 +78,8 @@ function build_arch {
 
 function package {
   cd "$DXVK_BUILD_DIR/.."
-  tar -czf "$DXVK_ARCHIVE_PATH" "dxvk-$DXVK_VERSION"
-  rm -R "dxvk-$DXVK_VERSION"
+  tar -czf "$DXVK_ARCHIVE_PATH" "dxvk-macOS-$DXVK_VERSION"
+  rm -R "dxvk-macOS-$DXVK_VERSION"
 }
 
 build_arch 64
