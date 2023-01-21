@@ -7,15 +7,7 @@ namespace dxvk {
   : m_device(device),
     m_submitThread([this] () { submitCmdLists(); }),
     m_finishThread([this] () { finishCmdLists(); }) {
-    auto vk = m_device->vkd();
 
-    VkSemaphoreTypeCreateInfo typeInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO };
-    typeInfo.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
-
-    VkSemaphoreCreateInfo info = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, &typeInfo };
-
-    if (vk->vkCreateSemaphore(vk->device(), &info, nullptr, &m_semaphore))
-      throw DxvkError("Failed to create global timeline semaphore");
   }
   
   
@@ -31,8 +23,6 @@ namespace dxvk {
 
     m_submitThread.join();
     m_finishThread.join();
-
-    vk->vkDestroySemaphore(vk->device(), m_semaphore, nullptr);
   }
   
   
@@ -116,7 +106,7 @@ namespace dxvk {
         std::lock_guard<dxvk::mutex> lock(m_mutexQueue);
 
         if (entry.submit.cmdList != nullptr)
-          status = entry.submit.cmdList->submit(m_semaphore, m_semaphoreValue);
+          status = entry.submit.cmdList->submit();
         else if (entry.present.presenter != nullptr)
           status = entry.present.presenter->presentImage();
       } else {

@@ -176,7 +176,9 @@ namespace dxvk {
 
     VkSemaphoreCreateInfo semaphoreInfo = { VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
 
-    if (m_vkd->vkCreateSemaphore(m_vkd->device(), &semaphoreInfo, nullptr, &m_sdmaSemaphore))
+    if (m_vkd->vkCreateSemaphore(m_vkd->device(), &semaphoreInfo, nullptr, &m_bindSemaphore)
+     || m_vkd->vkCreateSemaphore(m_vkd->device(), &semaphoreInfo, nullptr, &m_postSemaphore)
+     || m_vkd->vkCreateSemaphore(m_vkd->device(), &semaphoreInfo, nullptr, &m_sdmaSemaphore))
       throw DxvkError("DxvkCommandList: Failed to create semaphore");
 
     VkFenceCreateInfo fenceInfo = { VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
@@ -196,14 +198,15 @@ namespace dxvk {
   DxvkCommandList::~DxvkCommandList() {
     this->reset();
 
+    m_vkd->vkDestroySemaphore(m_vkd->device(), m_bindSemaphore, nullptr);
+    m_vkd->vkDestroySemaphore(m_vkd->device(), m_postSemaphore, nullptr);
     m_vkd->vkDestroySemaphore(m_vkd->device(), m_sdmaSemaphore, nullptr);
+
     m_vkd->vkDestroyFence(m_vkd->device(), m_fence, nullptr);
   }
   
   
-  VkResult DxvkCommandList::submit(
-          VkSemaphore       semaphore,
-          uint64_t&         semaphoreValue) {
+  VkResult DxvkCommandList::submit() {
     VkResult status = VK_SUCCESS;
 
     const auto& graphics = m_device->queues().graphics;
@@ -222,44 +225,37 @@ namespace dxvk {
         ? &m_cmdSparseBinds[cmd.sparseCmd]
         : nullptr;
 
-      if (sparseBind) {
-        // Sparse bindig needs to serialize command execution, so wait
-        // for any prior submissions, then block any subsequent ones
-        sparseBind->waitSemaphore(semaphore, semaphoreValue);
-        sparseBind->signalSemaphore(semaphore, ++semaphoreValue);
-
-        m_commandSubmission.waitSemaphore(semaphore, semaphoreValue,
-          VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
-      }
-
       if (isFirst) {
         // Wait for per-command list semaphores on first submission
         for (const auto& entry : m_waitSemaphores) {
-          if (sparseBind) {
-            sparseBind->waitSemaphore(
-              entry.fence->handle(),
-              entry.value);
-          } else {
-            m_commandSubmission.waitSemaphore(
-              entry.fence->handle(),
-              entry.value, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
-          }
+          m_commandSubmission.waitSemaphore(entry.fence->handle(),
+            entry.value, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
         }
       }
 
-      // Execute sparse bind
       if (sparseBind) {
+        // Sparse binding needs to serialize command execution, so wait
+        // for any prior submissions, then block any subsequent ones
+        m_commandSubmission.signalSemaphore(m_bindSemaphore, 0, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
+
+        if ((status = m_commandSubmission.submit(m_device, graphics.queueHandle)))
+          return status;
+
+        sparseBind->waitSemaphore(m_bindSemaphore, 0);
+        sparseBind->signalSemaphore(m_postSemaphore, 0);
+
         if ((status = sparseBind->submit(m_device, sparse.queueHandle)))
           return status;
+
+        m_commandSubmission.waitSemaphore(m_postSemaphore, 0, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
       }
 
       // Submit transfer commands as necessary
       if (cmd.usedFlags.test(DxvkCmdBuffer::SdmaBuffer))
         m_commandSubmission.executeCommandBuffer(cmd.sdmaBuffer);
 
-      // If we had either a transfer command or a semaphore wait,
-      // submit to the transfer queue so that all subsequent commands
-      // get stalled appropriately.
+      // If we had either a transfer command or a semaphore wait, submit to the
+      // transfer queue so that all subsequent commands get stalled as necessary.
       if (m_device->hasDedicatedTransferQueue() && !m_commandSubmission.isEmpty()) {
         m_commandSubmission.signalSemaphore(m_sdmaSemaphore, 0, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
 
@@ -283,15 +279,10 @@ namespace dxvk {
       if (cmd.usedFlags.test(DxvkCmdBuffer::ExecBuffer))
         m_commandSubmission.executeCommandBuffer(cmd.execBuffer);
 
-      // Signal global timeline semaphore at the end of every submission
-      m_commandSubmission.signalSemaphore(semaphore,
-        ++semaphoreValue, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
-
       if (isLast) {
         // Signal per-command list semaphores on the final submission
         for (const auto& entry : m_signalSemaphores) {
-          m_commandSubmission.signalSemaphore(
-            entry.fence->handle(),
+          m_commandSubmission.signalSemaphore(entry.fence->handle(),
             entry.value, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
         }
 

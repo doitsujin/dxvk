@@ -198,18 +198,9 @@ namespace dxvk {
     
     /**
      * \brief Submits command list
-     * 
-     * \param [in] semaphore Global timeline semaphore
-     * \param [in,out] semaphoreValue Semaphore value. On input,
-     *    this is the last signaled value of the semaphore so that
-     *    synchronization can take place as needed. On ouput, this
-     *    will contain the new value the semaphore gets signaled
-     *    to by this submission.
      * \returns Submission status
      */
-    VkResult submit(
-            VkSemaphore       semaphore,
-            uint64_t&         semaphoreValue);
+    VkResult submit();
     
     /**
      * \brief Stat counters
@@ -1029,6 +1020,8 @@ namespace dxvk {
     Rc<DxvkCommandPool>       m_graphicsPool;
     Rc<DxvkCommandPool>       m_transferPool;
 
+    VkSemaphore               m_bindSemaphore = VK_NULL_HANDLE;
+    VkSemaphore               m_postSemaphore = VK_NULL_HANDLE;
     VkSemaphore               m_sdmaSemaphore = VK_NULL_HANDLE;
     VkFence                   m_fence         = VK_NULL_HANDLE;
 
