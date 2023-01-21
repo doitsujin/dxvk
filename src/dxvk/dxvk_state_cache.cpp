@@ -571,7 +571,6 @@ namespace dxvk {
           DxvkStateCacheEntry&      entry) const {
     // Read entry metadata and actual data
     DxvkStateCacheEntryHeader header;
-    DxvkStateCacheEntryHeaderV8 headerV8;
     DxvkStateCacheEntryData data;
     VkShaderStageFlags stageMask;
     Sha1Hash hash;
@@ -582,6 +581,8 @@ namespace dxvk {
 
       stageMask = VkShaderStageFlags(header.stageMask);
     } else {
+      DxvkStateCacheEntryHeaderV8 headerV8;
+
       if (!stream.read(reinterpret_cast<char*>(&headerV8), sizeof(headerV8)))
         return false;
 
@@ -693,12 +694,18 @@ namespace dxvk {
     VkShaderStageFlags stageMask = 0;
 
     // Write shader hashes
-    auto keys = &entry.shaders.vs;
+    std::array<std::pair<VkShaderStageFlagBits, const DxvkShaderKey*>, 5> stages = {{
+      { VK_SHADER_STAGE_VERTEX_BIT,                   &entry.shaders.vs },
+      { VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,     &entry.shaders.tcs },
+      { VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,  &entry.shaders.tes },
+      { VK_SHADER_STAGE_GEOMETRY_BIT,                 &entry.shaders.gs },
+      { VK_SHADER_STAGE_FRAGMENT_BIT,                 &entry.shaders.fs },
+    }};
 
-    for (uint32_t i = 0; i < 6; i++) {
-      if (!keys[i].eq(g_nullShaderKey)) {
-        stageMask |= VkShaderStageFlagBits(1 << i);
-        data.write(keys[i]);
+    for (uint32_t i = 0; i < stages.size(); i++) {
+      if (!stages[i].second->eq(g_nullShaderKey)) {
+        stageMask |= stages[i].first;
+        data.write(*stages[i].second);
       }
     }
 
