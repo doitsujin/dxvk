@@ -5,8 +5,47 @@
 
 namespace dxvk {
 
+  DxgiVkFactory::DxgiVkFactory(DxgiFactory* pFactory)
+  : m_factory(pFactory) {
+
+  }
+
+
+  ULONG STDMETHODCALLTYPE DxgiVkFactory::AddRef() {
+    return m_factory->AddRef();
+  }
+
+
+  ULONG STDMETHODCALLTYPE DxgiVkFactory::Release() {
+    return m_factory->Release();
+  }
+
+
+  HRESULT STDMETHODCALLTYPE DxgiVkFactory::QueryInterface(
+          REFIID                    riid,
+          void**                    ppvObject) {
+    return m_factory->QueryInterface(riid, ppvObject);
+  }
+
+
+  void STDMETHODCALLTYPE DxgiVkFactory::GetVulkanInstance(
+          VkInstance*               pInstance,
+          PFN_vkGetInstanceProcAddr* ppfnVkGetInstanceProcAddr) {
+    auto instance = m_factory->GetDXVKInstance();
+
+    if (pInstance)
+      *pInstance = instance->handle();
+
+    if (ppfnVkGetInstanceProcAddr)
+      *ppfnVkGetInstanceProcAddr = instance->vki()->getLoaderProc();
+  }
+
+
+
+
   DxgiFactory::DxgiFactory(UINT Flags)
   : m_instance    (new DxvkInstance()),
+    m_interop     (this),
     m_options     (m_instance->config()),
     m_monitorInfo (this, m_options),
     m_flags       (Flags) {
@@ -37,6 +76,11 @@ namespace dxvk {
      || riid == __uuidof(IDXGIFactory6)
      || riid == __uuidof(IDXGIFactory7)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(IDXGIVkInteropFactory)) {
+      *ppvObject = ref(&m_interop);
       return S_OK;
     }
 
