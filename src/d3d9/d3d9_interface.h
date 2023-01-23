@@ -20,6 +20,8 @@ namespace dxvk {
 
     D3D9InterfaceEx(bool bExtended);
 
+    ~D3D9InterfaceEx();
+
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 
     HRESULT STDMETHODCALLTYPE RegisterSoftwareDevice(void* pInitializeFunction);

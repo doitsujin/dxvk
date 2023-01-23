@@ -4,12 +4,16 @@
 #include "d3d9_caps.h"
 #include "d3d9_device.h"
 
+#include "../util/util_singleton.h"
+
 #include <algorithm>
 
 namespace dxvk {
 
+  Singleton<DxvkInstance> g_dxvkInstance;
+
   D3D9InterfaceEx::D3D9InterfaceEx(bool bExtended)
-    : m_instance    ( new DxvkInstance() )
+    : m_instance    ( g_dxvkInstance.acquire() )
     , m_extended    ( bExtended ) 
     , m_d3d9Options ( nullptr, m_instance->config() )
     , m_d3d9Interop ( this ) {
@@ -61,6 +65,11 @@ namespace dxvk {
       SetProcessDPIAware();
     }
 #endif
+  }
+
+
+  D3D9InterfaceEx::~D3D9InterfaceEx() {
+    g_dxvkInstance.release();
   }
 
 

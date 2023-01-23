@@ -3,7 +3,11 @@
 #include "dxgi_swapchain.h"
 #include "dxgi_swapchain_dispatcher.h"
 
+#include "../util/util_singleton.h"
+
 namespace dxvk {
+
+  Singleton<DxvkInstance> g_dxvkInstance;
 
   DxgiVkFactory::DxgiVkFactory(DxgiFactory* pFactory)
   : m_factory(pFactory) {
@@ -44,7 +48,7 @@ namespace dxvk {
 
 
   DxgiFactory::DxgiFactory(UINT Flags)
-  : m_instance    (new DxvkInstance()),
+  : m_instance    (g_dxvkInstance.acquire()),
     m_interop     (this),
     m_options     (m_instance->config()),
     m_monitorInfo (this, m_options),
@@ -55,7 +59,7 @@ namespace dxvk {
   
   
   DxgiFactory::~DxgiFactory() {
-    
+    g_dxvkInstance.release();
   }
   
   
