@@ -729,6 +729,11 @@ namespace dxvk {
     { R"(\\WILD HEARTS(_Trial)?\.exe$)", {{
       { "dxvk.maxChunkSize",                 "4" },
     }} },
+    /* Codename Panzers Phase One/Two          *
+     * Main menu won't render after intros     */
+    { R"(\\(PANZERS|PANZERS_Phase_2)\.exe$)", {{
+      { "d3d9.enableDialogMode",         "True"   },
+    }} },
   }};
 
 
