@@ -175,8 +175,8 @@ namespace dxvk::hud {
   private:
 
     std::string m_deviceName;
+    std::string m_driverName;
     std::string m_driverVer;
-    std::string m_vulkanVer;
 
   };
 
@@ -482,10 +482,17 @@ namespace dxvk::hud {
 
     Rc<DxvkDevice> m_device;
 
-    bool m_show = false;
+    bool m_show           = false;
+    bool m_showPercentage = false;
 
-    dxvk::high_resolution_clock::time_point m_timeShown
-      = dxvk::high_resolution_clock::now();
+    uint64_t m_tasksDone    = 0ull;
+    uint64_t m_tasksTotal   = 0ull;
+    uint64_t m_offset       = 0ull;
+
+    dxvk::high_resolution_clock::time_point m_timeShown = dxvk::high_resolution_clock::now();
+    dxvk::high_resolution_clock::time_point m_timeDone = dxvk::high_resolution_clock::now();
+
+    uint32_t computePercentage() const;
 
   };
 

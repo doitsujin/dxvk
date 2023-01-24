@@ -329,13 +329,14 @@ namespace dxvk {
     if (!buf || !uav)
       return;
 
-    auto counterSlice = uav->GetCounterSlice();
-    if (!counterSlice.defined())
+    auto counterView = uav->GetCounterView();
+
+    if (counterView == nullptr)
       return;
 
     EmitCs([
       cDstSlice = buf->GetBufferSlice(DstAlignedByteOffset),
-      cSrcSlice = std::move(counterSlice)
+      cSrcSlice = counterView->slice()
     ] (DxvkContext* ctx) {
       ctx->copyBuffer(
         cDstSlice.buffer(),
@@ -2193,9 +2194,6 @@ namespace dxvk {
           ID3D11DepthStencilView*           pDepthStencilView) {
     D3D10DeviceLock lock = LockContext();
 
-    if constexpr (!IsDeferred)
-      GetTypedContext()->FlushImplicit(true);
-
     SetRenderTargetsAndUnorderedAccessViews(
       NumViews, ppRenderTargetViews, pDepthStencilView,
       NumViews, 0, nullptr, nullptr);
@@ -2212,9 +2210,6 @@ namespace dxvk {
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
     const UINT*                             pUAVInitialCounts) {
     D3D10DeviceLock lock = LockContext();
-
-    if constexpr (!IsDeferred)
-      GetTypedContext()->FlushImplicit(true);
 
     SetRenderTargetsAndUnorderedAccessViews(
       NumRTVs, ppRenderTargetViews, pDepthStencilView,
@@ -2632,6 +2627,8 @@ namespace dxvk {
           ID3D11Buffer*                     pBuffer,
           UINT64                            BufferStartOffsetInBytes,
           UINT                              Flags) {
+    D3D10DeviceLock lock = LockContext();
+
     if (!pTiledResource || !pBuffer)
       return;
 
@@ -2662,11 +2659,13 @@ namespace dxvk {
     const D3D11_TILED_RESOURCE_COORDINATE*  pSourceRegionCoordinate,
     const D3D11_TILE_REGION_SIZE*           pTileRegionSize,
           UINT                              Flags) {
+    D3D10DeviceLock lock = LockContext();
+
     if (!pDestTiledResource || !pSourceTiledResource)
       return E_INVALIDARG;
 
     if constexpr (!IsDeferred)
-      GetTypedContext()->FlushImplicit(false);
+      GetTypedContext()->ConsiderFlush(GpuFlushType::ImplicitWeakHint);
 
     DxvkSparseBindInfo bindInfo;
     bindInfo.dstResource = GetPagedResource(pDestTiledResource);
@@ -2740,6 +2739,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11CommonContext<ContextType>::ResizeTilePool(
           ID3D11Buffer*                     pTilePool,
           UINT64                            NewSizeInBytes) {
+    D3D10DeviceLock lock = LockContext();
+
     if (NewSizeInBytes % SparseMemoryPageSize)
       return E_INVALIDARG;
 
@@ -2765,6 +2766,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11CommonContext<ContextType>::TiledResourceBarrier(
           ID3D11DeviceChild*                pTiledResourceOrViewAccessBeforeBarrier,
           ID3D11DeviceChild*                pTiledResourceOrViewAccessAfterBarrier) {
+    D3D10DeviceLock lock = LockContext();
+
     DxvkGlobalPipelineBarrier srcBarrier = GetTiledResourceDependency(pTiledResourceOrViewAccessBeforeBarrier);
     DxvkGlobalPipelineBarrier dstBarrier = GetTiledResourceDependency(pTiledResourceOrViewAccessAfterBarrier);
 
@@ -2793,11 +2796,13 @@ namespace dxvk {
     const UINT*                             pRangeTileOffsets,
     const UINT*                             pRangeTileCounts,
           UINT                              Flags) {
+    D3D10DeviceLock lock = LockContext();
+
     if (!pTiledResource || !NumRegions || !NumRanges)
       return E_INVALIDARG;
 
     if constexpr (!IsDeferred)
-      GetTypedContext()->FlushImplicit(false);
+      GetTypedContext()->ConsiderFlush(GpuFlushType::ImplicitWeakHint);
 
     // Find sparse allocator if the tile pool is defined
     DxvkSparseBindInfo bindInfo;
@@ -2946,6 +2951,8 @@ namespace dxvk {
     const D3D11_TILE_REGION_SIZE*           pDestTileRegionSize,
     const void*                             pSourceTileData,
           UINT                              Flags) {
+    D3D10DeviceLock lock = LockContext();
+
     if (!pDestTiledResource || !pSourceTileData)
       return;
 
@@ -3362,7 +3369,7 @@ namespace dxvk {
 
         ctx->bindShader<stage>(
           Forwarder::move(cShader));
-        ctx->bindResourceBuffer(stage, slotId,
+        ctx->bindUniformBuffer(stage, slotId,
           Forwarder::move(cBuffer));
       });
     } else {
@@ -3373,7 +3380,7 @@ namespace dxvk {
           D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT);
 
         ctx->bindShader<stage>(nullptr);
-        ctx->bindResourceBuffer(stage, slotId, DxvkBufferSlice());
+        ctx->bindUniformBuffer(stage, slotId, DxvkBufferSlice());
       });
     }
   }
@@ -3585,7 +3592,7 @@ namespace dxvk {
         cBufferSlice = pBuffer->GetBufferSlice(16 * Offset, 16 * Length)
       ] (DxvkContext* ctx) mutable {
         VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
-        ctx->bindResourceBuffer(stage, cSlotId,
+        ctx->bindUniformBuffer(stage, cSlotId,
           Forwarder::move(cBufferSlice));
       });
     } else {
@@ -3593,7 +3600,7 @@ namespace dxvk {
         cSlotId      = Slot
       ] (DxvkContext* ctx) {
         VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
-        ctx->bindResourceBuffer(stage, cSlotId, DxvkBufferSlice());
+        ctx->bindUniformBuffer(stage, cSlotId, DxvkBufferSlice());
       });
     }
   }
@@ -3611,7 +3618,7 @@ namespace dxvk {
       cLength       = 16 * Length
     ] (DxvkContext* ctx) {
       VkShaderStageFlagBits stage = GetShaderStage(ShaderStage);
-      ctx->bindResourceBufferRange(stage, cSlotId, cOffset, cLength);
+      ctx->bindUniformBufferRange(stage, cSlotId, cOffset, cLength);
     });
   }
 
@@ -3690,25 +3697,27 @@ namespace dxvk {
           cUavSlotId    = UavSlot,
           cCtrSlotId    = CtrSlot,
           cBufferView   = pUav->GetBufferView(),
-          cCounterSlice = pUav->GetCounterSlice(),
+          cCounterView  = pUav->GetCounterView(),
           cCounterValue = Counter
         ] (DxvkContext* ctx) mutable {
           VkShaderStageFlags stages = ShaderStage == DxbcProgramType::ComputeShader
             ? VK_SHADER_STAGE_COMPUTE_BIT
             : VK_SHADER_STAGE_ALL_GRAPHICS;
 
-          if (cCounterSlice.defined() && cCounterValue != ~0u) {
+          if (cCounterView != nullptr && cCounterValue != ~0u) {
+            auto counterSlice = cCounterView->slice();
+
             ctx->updateBuffer(
-              cCounterSlice.buffer(),
-              cCounterSlice.offset(),
+              counterSlice.buffer(),
+              counterSlice.offset(),
               sizeof(uint32_t),
               &cCounterValue);
           }
 
           ctx->bindResourceBufferView(stages, cUavSlotId,
             Forwarder::move(cBufferView));
-          ctx->bindResourceBuffer(stages, cCtrSlotId,
-            Forwarder::move(cCounterSlice));
+          ctx->bindResourceBufferView(stages, cCtrSlotId,
+            Forwarder::move(cCounterView));
         });
       } else {
         EmitCs([
@@ -3722,7 +3731,7 @@ namespace dxvk {
 
           ctx->bindResourceImageView(stages, cUavSlotId,
             Forwarder::move(cImageView));
-          ctx->bindResourceBuffer(stages, cCtrSlotId, DxvkBufferSlice());
+          ctx->bindResourceBufferView(stages, cCtrSlotId, nullptr);
         });
       }
     } else {
@@ -3735,7 +3744,7 @@ namespace dxvk {
           : VK_SHADER_STAGE_ALL_GRAPHICS;
 
         ctx->bindResourceImageView(stages, cUavSlotId, nullptr);
-        ctx->bindResourceBuffer(stages, cCtrSlotId, DxvkBufferSlice());
+        ctx->bindResourceBufferView(stages, cCtrSlotId, nullptr);
       });
     }
   }
@@ -4375,10 +4384,10 @@ namespace dxvk {
 
         // Unbind constant buffers, including the shader's ICB
         auto cbSlotId = computeConstantBufferBinding(programType, 0);
-        ctx->bindResourceBuffer(stage, cbSlotId + D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, DxvkBufferSlice());
+        ctx->bindUniformBuffer(stage, cbSlotId + D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, DxvkBufferSlice());
 
         for (uint32_t j = 0; j < cUsedBindings.stages[i].cbvCount; j++)
-          ctx->bindResourceBuffer(stage, cbSlotId + j, DxvkBufferSlice());
+          ctx->bindUniformBuffer(stage, cbSlotId + j, DxvkBufferSlice());
 
         // Unbind shader resource views
         auto srvSlotId = computeSrvBinding(programType, 0);
@@ -4404,7 +4413,7 @@ namespace dxvk {
 
           for (uint32_t j = 0; j < cUsedBindings.stages[i].uavCount; j++) {
             ctx->bindResourceImageView(stages, uavSlotId, nullptr);
-            ctx->bindResourceBuffer(stages, ctrSlotId, DxvkBufferSlice());
+            ctx->bindResourceBufferView(stages, ctrSlotId, nullptr);
           }
         }
       }
@@ -4906,8 +4915,14 @@ namespace dxvk {
       }
     }
 
-    if (needsUpdate)
+    if (needsUpdate) {
       BindFramebuffer();
+
+      if constexpr (!IsDeferred) {
+        // Doing this makes it less likely to flush during render passes
+        GetTypedContext()->ConsiderFlush(GpuFlushType::ImplicitWeakHint);
+      }
+    }
   }
 
 

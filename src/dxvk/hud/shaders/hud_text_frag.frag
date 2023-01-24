@@ -1,6 +1,8 @@
 #version 450
 
-layout(constant_id = 0) const bool srgbSwapchain = false;
+#extension GL_GOOGLE_include_directive : require
+
+#include "hud_frag_common.glsl"
 
 layout(binding = 2) uniform sampler2D s_font;
 
@@ -8,14 +10,6 @@ layout(location = 0) in vec2 v_texcoord;
 layout(location = 1) in vec4 v_color;
 
 layout(location = 0) out vec4 o_color;
-
-vec3 linearToSrgb(vec3 color) {
-  bvec3 isLo = lessThanEqual(color, vec3(0.0031308f));
-
-  vec3 loPart = color * 12.92f;
-  vec3 hiPart = pow(color, vec3(5.0f / 12.0f)) * 1.055f - 0.055f;
-  return mix(hiPart, loPart, isLo);
-}
 
 float sampleAlpha(float alpha_bias, float dist_range) {
   float value = textureLod(s_font, v_texcoord, 0).r + alpha_bias - 0.5f;
@@ -34,6 +28,5 @@ void main() {
   o_color.a = r_alpha_shadow * v_color.a;
   o_color.rgb *= o_color.a;
 
-  if (!srgbSwapchain)
-    o_color.rgb = linearToSrgb(o_color.rgb);
+  o_color.rgb = encodeOutput(o_color.rgb);
 }

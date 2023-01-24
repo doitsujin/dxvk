@@ -135,6 +135,7 @@ namespace dxvk {
       m_bufferBinding.resourceBinding = bufferSlot;
       m_bufferBinding.stage           = VK_SHADER_STAGE_GEOMETRY_BIT;
       m_bufferBinding.access          = VK_ACCESS_SHADER_WRITE_BIT;
+      m_bufferBinding.uboSet          = VK_TRUE;
 
       // Load our builtins
       uint32_t primitiveIdPtr = m_module.newVar(m_module.defPointerType(uint_t, spv::StorageClassInput), spv::StorageClassInput);

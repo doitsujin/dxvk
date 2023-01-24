@@ -34,12 +34,18 @@ namespace dxvk {
     std::atomic<uint32_t> numComputePipelines   = { 0u };
   };
 
+  struct DxvkPipelineWorkerStats {
+    uint64_t tasksCompleted;
+    uint64_t tasksTotal;
+  };
+
   /**
    * \brief Pipeline priority
    */
   enum class DxvkPipelinePriority : uint32_t {
-    Normal  = 0,
-    High    = 1,
+    High    = 0,
+    Normal  = 1,
+    Low     = 2,
   };
 
   /**
@@ -58,6 +64,19 @@ namespace dxvk {
     ~DxvkPipelineWorkers();
 
     /**
+     * \brief Queries worker statistics
+     *
+     * The returned result may be immediately out of date.
+     * \returns Worker statistics
+     */
+    DxvkPipelineWorkerStats getStats() const {
+      DxvkPipelineWorkerStats result;
+      result.tasksCompleted = m_tasksCompleted.load(std::memory_order_acquire);
+      result.tasksTotal = m_tasksTotal.load(std::memory_order_relaxed);
+      return result;
+    }
+
+    /**
      * \brief Compiles a pipeline library
      *
      * Asynchronously compiles a basic variant of
@@ -71,16 +90,6 @@ namespace dxvk {
             DxvkPipelinePriority            priority);
 
     /**
-     * \brief Compiles an optimized compute pipeline
-     *
-     * \param [in] pipeline Compute pipeline
-     * \param [in] state Pipeline state
-     */
-    void compileComputePipeline(
-            DxvkComputePipeline*            pipeline,
-      const DxvkComputePipelineStateInfo&   state);
-
-    /**
      * \brief Compiles an optimized graphics pipeline
      *
      * \param [in] pipeline Compute pipeline
@@ -88,13 +97,8 @@ namespace dxvk {
      */
     void compileGraphicsPipeline(
             DxvkGraphicsPipeline*           pipeline,
-      const DxvkGraphicsPipelineStateInfo&  state);
-
-    /**
-     * \brief Checks whether workers are busy
-     * \returns \c true if there is unfinished work
-     */
-    bool isBusy() const;
+      const DxvkGraphicsPipelineStateInfo&  state,
+            DxvkPipelinePriority            priority);
 
     /**
      * \brief Stops all worker threads
@@ -107,36 +111,42 @@ namespace dxvk {
   private:
 
     struct PipelineEntry {
-      DxvkComputePipeline*          computePipeline;
+      PipelineEntry()
+      : pipelineLibrary(nullptr), graphicsPipeline(nullptr) { }
+
+      PipelineEntry(DxvkShaderPipelineLibrary* l)
+      : pipelineLibrary(l), graphicsPipeline(nullptr) { }
+
+      PipelineEntry(DxvkGraphicsPipeline* p, const DxvkGraphicsPipelineStateInfo& s)
+      : pipelineLibrary(nullptr), graphicsPipeline(p), graphicsState(s) { }
+
+      DxvkShaderPipelineLibrary*    pipelineLibrary;
       DxvkGraphicsPipeline*         graphicsPipeline;
-      DxvkComputePipelineStateInfo  computeState;
       DxvkGraphicsPipelineStateInfo graphicsState;
     };
 
-    struct PipelineLibraryEntry {
-      DxvkShaderPipelineLibrary*    pipelineLibrary;
+    struct PipelineBucket {
+      dxvk::condition_variable  cond;
+      std::queue<PipelineEntry> queue;
+      uint32_t                  idleWorkers = 0;
     };
 
     DxvkDevice*                       m_device;
 
-    std::atomic<uint64_t>             m_pendingTasks = { 0ull };
+    std::atomic<uint64_t>             m_tasksTotal     = { 0ull };
+    std::atomic<uint64_t>             m_tasksCompleted = { 0ull };
 
-    dxvk::mutex                       m_queueLock;
-    dxvk::condition_variable          m_queueCond;
-    dxvk::condition_variable          m_queueCondPrioritized;
-
-    std::queue<PipelineLibraryEntry>  m_queuedLibrariesPrioritized;
-    std::queue<PipelineLibraryEntry>  m_queuedLibraries;
-    std::queue<PipelineEntry>         m_queuedPipelines;
+    dxvk::mutex                       m_lock;
+    std::array<PipelineBucket, 3>     m_buckets;
 
     bool                              m_workersRunning = false;
     std::vector<dxvk::thread>         m_workers;
 
+    void notifyWorkers(DxvkPipelinePriority priority);
+
     void startWorkers();
 
-    void runWorker();
-
-    void runWorkerPrioritized();
+    void runWorker(DxvkPipelinePriority maxPriority);
 
   };
 
@@ -184,6 +194,16 @@ namespace dxvk {
      */
     DxvkGraphicsPipeline* createGraphicsPipeline(
       const DxvkGraphicsPipelineShaders& shaders);
+
+    /**
+     * \brief Creates a pipeline library with a given set of shaders
+     *
+     * If a pipeline library already exists, it will be returned.
+     * Otherwise, a new pipeline library will be created.
+     * \param [in] key Shader set
+     */
+    DxvkShaderPipelineLibrary* createShaderPipelineLibrary(
+      const DxvkShaderPipelineLibraryKey& key);
 
     /**
      * \brief Retrieves a vertex input pipeline library
@@ -235,8 +255,8 @@ namespace dxvk {
      * \brief Checks whether async compiler is busy
      * \returns \c true if shaders are being compiled
      */
-    bool isCompilingShaders() const {
-      return m_workers.isBusy();
+    DxvkPipelineWorkerStats getWorkerStats() const {
+      return m_workers.getStats();
     }
 
     /**
@@ -294,19 +314,19 @@ namespace dxvk {
     DxvkBindingLayoutObjects* createPipelineLayout(
       const DxvkBindingLayout& layout);
 
-    DxvkShaderPipelineLibrary* createPipelineLibrary(
-      const Rc<DxvkShader>&     shader);
+    DxvkShaderPipelineLibrary* createPipelineLibraryLocked(
+      const DxvkShaderPipelineLibraryKey& key);
 
     DxvkShaderPipelineLibrary* createNullFsPipelineLibrary();
 
     DxvkShaderPipelineLibrary* findPipelineLibrary(
-      const Rc<DxvkShader>&     shader);
+      const DxvkShaderPipelineLibraryKey& key);
 
     DxvkShaderPipelineLibrary* findPipelineLibraryLocked(
-      const Rc<DxvkShader>&     shader);
+      const DxvkShaderPipelineLibraryKey& key);
 
     bool canPrecompileShader(
-      const Rc<DxvkShader>&     shader) const;
+      const Rc<DxvkShader>& shader) const;
 
   };
   

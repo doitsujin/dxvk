@@ -606,12 +606,10 @@ namespace dxvk {
       const DxvkGraphicsPipelineBaseInstanceKey& key) const;
     
     VkPipeline getOptimizedPipeline(
-      const DxvkGraphicsPipelineStateInfo& state,
-            VkPipelineCreateFlags          flags);
+      const DxvkGraphicsPipelineStateInfo& state);
 
     VkPipeline createOptimizedPipeline(
-      const DxvkGraphicsPipelineFastInstanceKey& key,
-            VkPipelineCreateFlags          flags) const;
+      const DxvkGraphicsPipelineFastInstanceKey& key) const;
 
     void destroyBasePipelines();
 

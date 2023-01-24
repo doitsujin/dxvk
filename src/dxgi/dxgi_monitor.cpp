@@ -72,6 +72,13 @@ namespace dxvk {
 
 
   void STDMETHODCALLTYPE DxgiMonitorInfo::PuntColorSpace(DXGI_COLOR_SPACE_TYPE ColorSpace) {
+    // Only allow punting if we started from sRGB.
+    // That way we can go from sRGB -> HDR10 or HDR10 -> sRGB if we started in sRGB.
+    // But if we started off by advertising HDR10 to the game, don't allow us to go back.
+    // This mirrors the behaviour of the global Windows HDR toggle more closely.
+    if (DefaultColorSpace() != DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709)
+      return;
+
     m_globalColorSpace = ColorSpace;
   }
 

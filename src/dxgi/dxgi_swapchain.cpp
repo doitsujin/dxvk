@@ -7,7 +7,7 @@
 namespace dxvk {
   
   DxgiSwapChain::DxgiSwapChain(
-          IDXGIFactory*               pFactory,
+          DxgiFactory*                pFactory,
           IDXGIVkSwapChain*           pPresenter,
           HWND                        hWnd,
     const DXGI_SWAP_CHAIN_DESC1*      pDesc,
@@ -522,6 +522,17 @@ namespace dxvk {
           UINT*                           pColorSpaceSupport) {
     if (!pColorSpaceSupport)
       return E_INVALIDARG;
+
+    // Don't expose any color spaces other than standard
+    // sRGB if the enableHDR option is not set.
+    //
+    // If we ever have a use for the non-SRGB non-HDR colorspaces
+    // some day, we may want to revisit this.
+    if (ColorSpace != DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709
+     && !m_factory->GetOptions()->enableHDR) {
+      *pColorSpaceSupport = 0;
+      return S_OK;
+    }
 
     UINT support = m_presenter->CheckColorSpaceSupport(ColorSpace);
     *pColorSpaceSupport = support;

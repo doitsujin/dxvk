@@ -29,6 +29,7 @@ namespace dxvk {
 
     D3D9ConstantBuffer(
             D3D9DeviceEx*         pDevice,
+            VkBufferUsageFlags    Usage,
             VkShaderStageFlags    Stages,
             uint32_t              ResourceSlot,
             VkDeviceSize          Size);
@@ -66,6 +67,7 @@ namespace dxvk {
     D3D9DeviceEx*         m_device  = nullptr;
 
     uint32_t              m_binding = 0u;
+    VkBufferUsageFlags    m_usage   = 0u;
     VkShaderStageFlags    m_stages  = 0u;
     VkDeviceSize          m_size    = 0ull;
     VkDeviceSize          m_align   = 0ull;
@@ -77,6 +79,11 @@ namespace dxvk {
     void createBuffer();
 
     VkDeviceSize getAlignment(const Rc<DxvkDevice>& device) const;
+
+    static VkBufferUsageFlags getBufferUsage(
+            D3D9DeviceEx*         pDevice,
+            DxsoProgramType       ShaderStage,
+            DxsoConstantBuffers   BufferType);
 
   };
 

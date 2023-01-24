@@ -13,7 +13,7 @@ namespace dxvk {
           DxsoProgramType       ShaderStage,
           DxsoConstantBuffers   BufferType,
           VkDeviceSize          Size)
-  : D3D9ConstantBuffer(pDevice, GetShaderStage(ShaderStage),
+  : D3D9ConstantBuffer(pDevice, getBufferUsage(pDevice, ShaderStage, BufferType), GetShaderStage(ShaderStage),
       computeResourceSlotId(ShaderStage, DxsoBindingType::ConstantBuffer, BufferType),
       Size) {
 
@@ -22,11 +22,13 @@ namespace dxvk {
 
   D3D9ConstantBuffer::D3D9ConstantBuffer(
           D3D9DeviceEx*         pDevice,
+          VkBufferUsageFlags    Usage,
           VkShaderStageFlags    Stages,
           uint32_t              ResourceSlot,
           VkDeviceSize          Size)
   : m_device    (pDevice)
   , m_binding   (ResourceSlot)
+  , m_usage     (Usage)
   , m_stages    (Stages)
   , m_size      (Size)
   , m_align     (getAlignment(pDevice->GetDXVKDevice())) {
@@ -65,7 +67,7 @@ namespace dxvk {
       cOffset   = m_offset,
       cLength   = size
     ] (DxvkContext* ctx) {
-      ctx->bindResourceBufferRange(cStages, cBinding, cOffset, cLength);
+      ctx->bindUniformBufferRange(cStages, cBinding, cOffset, cLength);
     });
 
     void* mapPtr = reinterpret_cast<char*>(m_slice.mapPtr) + m_offset;
@@ -98,11 +100,14 @@ namespace dxvk {
     // in the backend, so set both STORAGE and UNIFORM usage/access.
     DxvkBufferCreateInfo bufferInfo;
     bufferInfo.size   = align(m_size, m_align);
-    bufferInfo.usage  = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
-                      | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    bufferInfo.access = VK_ACCESS_UNIFORM_READ_BIT
-                      | VK_ACCESS_SHADER_READ_BIT;
+    bufferInfo.usage  = m_usage;
+    bufferInfo.access = 0;
     bufferInfo.stages = util::pipelineStages(m_stages);
+
+    if (m_usage & VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT)
+      bufferInfo.access |= VK_ACCESS_UNIFORM_READ_BIT;
+    if (m_usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
+      bufferInfo.access |= VK_ACCESS_SHADER_READ_BIT;
 
     VkMemoryPropertyFlags memoryFlags
       = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
@@ -118,7 +123,7 @@ namespace dxvk {
       cBinding  = m_binding,
       cSlice    = DxvkBufferSlice(m_buffer)
     ] (DxvkContext* ctx) mutable {
-      ctx->bindResourceBuffer(cStages, cBinding, std::move(cSlice));
+      ctx->bindUniformBuffer(cStages, cBinding, std::move(cSlice));
     });
   }
 
@@ -128,6 +133,23 @@ namespace dxvk {
       device->properties().core.properties.limits.minUniformBufferOffsetAlignment,
       device->properties().core.properties.limits.minStorageBufferOffsetAlignment),
       device->properties().extRobustness2.robustUniformBufferAccessSizeAlignment);
+  }
+
+
+  VkBufferUsageFlags D3D9ConstantBuffer::getBufferUsage(
+          D3D9DeviceEx*         pDevice,
+          DxsoProgramType       ShaderStage,
+          DxsoConstantBuffers   BufferType) {
+    VkBufferUsageFlags result = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+
+    // We won't always need this, but the only buffer that
+    // this applies to is so large that it will not matter.
+    if (pDevice->CanSWVP()
+     && ShaderStage == DxsoProgramType::VertexShader
+     && BufferType == DxsoConstantBuffers::VSConstantBuffer)
+      result |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+
+    return result;
   }
 
 }

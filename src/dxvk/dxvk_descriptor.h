@@ -192,6 +192,14 @@ namespace dxvk {
     ~DxvkDescriptorManager();
 
     /**
+     * \brief Queries maximum number of descriptor sets per pool
+     * \returns Maximum set count
+     */
+    uint32_t getMaxSetCount() const {
+      return m_maxSets;
+    }
+
+    /**
      * \brief Retrieves or creates a descriptor type
      * \returns The descriptor pool
      */
@@ -229,6 +237,7 @@ namespace dxvk {
 
     DxvkDevice*                         m_device;
     DxvkContextType                     m_contextType;
+    uint32_t                            m_maxSets = 0;
     DxvkRecycler<DxvkDescriptorPool, 8> m_pools;
 
     dxvk::mutex                         m_mutex;

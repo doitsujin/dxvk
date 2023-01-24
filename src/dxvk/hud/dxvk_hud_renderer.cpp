@@ -19,6 +19,7 @@ namespace dxvk::hud {
     m_dataView      (createDataView()),
     m_dataOffset    (0ull),
     m_fontBuffer    (createFontBuffer()),
+    m_fontBufferView(createFontBufferView()),
     m_fontImage     (createFontImage()),
     m_fontView      (createFontView()),
     m_fontSampler   (createFontSampler()) {
@@ -107,7 +108,7 @@ namespace dxvk::hud {
       m_context->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(Rc<DxvkShader>(m_textShaders.vert));
       m_context->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(Rc<DxvkShader>(m_textShaders.frag));
       
-      m_context->bindResourceBuffer(VK_SHADER_STAGE_VERTEX_BIT, 0, DxvkBufferSlice(m_fontBuffer));
+      m_context->bindResourceBufferView(VK_SHADER_STAGE_VERTEX_BIT, 0, Rc<DxvkBufferView>(m_fontBufferView));
       m_context->bindResourceBufferView(VK_SHADER_STAGE_VERTEX_BIT, 1, Rc<DxvkBufferView>(m_dataView));
       m_context->bindResourceSampler(VK_SHADER_STAGE_FRAGMENT_BIT, 2, Rc<DxvkSampler>(m_fontSampler));
       m_context->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, 2, Rc<DxvkImageView>(m_fontView));
@@ -129,7 +130,7 @@ namespace dxvk::hud {
       m_context->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(Rc<DxvkShader>(m_graphShaders.vert));
       m_context->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(Rc<DxvkShader>(m_graphShaders.frag));
       
-      m_context->bindResourceBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 0, DxvkBufferSlice(m_dataBuffer));
+      m_context->bindResourceBufferView(VK_SHADER_STAGE_FRAGMENT_BIT, 0, Rc<DxvkBufferView>(m_dataView));
 
       static const DxvkInputAssemblyState iaState = {
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
@@ -254,6 +255,16 @@ namespace dxvk::hud {
                         | VK_ACCESS_TRANSFER_WRITE_BIT;
     
     return m_device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  }
+
+
+  Rc<DxvkBufferView> HudRenderer::createFontBufferView() {
+    DxvkBufferViewCreateInfo info;
+    info.format         = VK_FORMAT_UNDEFINED;
+    info.rangeOffset    = 0;
+    info.rangeLength    = m_fontBuffer->info().size;
+
+    return m_device->createBufferView(m_fontBuffer, info);
   }
 
 

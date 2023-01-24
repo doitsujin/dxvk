@@ -88,6 +88,7 @@ namespace dxvk {
 
     // Query memory requirements and whether to use a dedicated allocation
     DxvkMemoryRequirements memoryRequirements = { };
+    memoryRequirements.tiling = VK_IMAGE_TILING_LINEAR;
     memoryRequirements.dedicated = { VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS };
     memoryRequirements.core = { VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2, &memoryRequirements.dedicated };
 
@@ -203,8 +204,9 @@ namespace dxvk {
     const DxvkBufferViewCreateInfo& info)
   : m_vkd(vkd), m_info(info), m_buffer(buffer),
     m_bufferSlice (getSliceHandle()),
-    m_bufferView  (createBufferView(m_bufferSlice)) {
-    
+    m_bufferView  (VK_NULL_HANDLE) {
+    if (m_info.format != VK_FORMAT_UNDEFINED)
+      m_bufferView = createBufferView(m_bufferSlice);
   }
   
   
@@ -246,17 +248,21 @@ namespace dxvk {
 
   void DxvkBufferView::updateBufferView(
     const DxvkBufferSliceHandle& slice) {
-    if (m_views.empty())
-      m_views.insert({ m_bufferSlice, m_bufferView });
-    
-    m_bufferSlice = slice;
-    
-    auto entry = m_views.find(slice);
-    if (entry != m_views.end()) {
-      m_bufferView = entry->second;
+    if (m_info.format != VK_FORMAT_UNDEFINED) {
+      if (m_views.empty())
+        m_views.insert({ m_bufferSlice, m_bufferView });
+
+      m_bufferSlice = slice;
+
+      auto entry = m_views.find(slice);
+      if (entry != m_views.end()) {
+        m_bufferView = entry->second;
+      } else {
+        m_bufferView = createBufferView(m_bufferSlice);
+        m_views.insert({ m_bufferSlice, m_bufferView });
+      }
     } else {
-      m_bufferView = createBufferView(m_bufferSlice);
-      m_views.insert({ m_bufferSlice, m_bufferView });
+      m_bufferSlice = slice;
     }
   }
   

@@ -14,11 +14,9 @@ namespace dxvk {
       return DxvkDescriptorSets::CsAll;
     } else if (stage == VK_SHADER_STAGE_FRAGMENT_BIT) {
       // For fragment shaders, create a separate set for UBOs
-      if (descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-       || descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)
-        return DxvkDescriptorSets::FsBuffers;
-
-      return DxvkDescriptorSets::FsViews;
+      return uboSet
+        ? DxvkDescriptorSets::FsBuffers
+        : DxvkDescriptorSets::FsViews;
     } else {
       // Put all vertex shader resources into the last set.
       // Vertex shader UBOs are usually updated every draw,
@@ -34,11 +32,12 @@ namespace dxvk {
 
 
   bool DxvkBindingInfo::eq(const DxvkBindingInfo& other) const {
-    return descriptorType    == other.descriptorType
-        && resourceBinding   == other.resourceBinding
-        && viewType          == other.viewType
-        && stage             == other.stage
-        && access            == other.access;
+    return descriptorType  == other.descriptorType
+        && resourceBinding == other.resourceBinding
+        && viewType        == other.viewType
+        && stage           == other.stage
+        && access          == other.access
+        && uboSet          == other.uboSet;
   }
 
 
@@ -49,6 +48,7 @@ namespace dxvk {
     hash.add(uint32_t(viewType));
     hash.add(uint32_t(stage));
     hash.add(access);
+    hash.add(uint32_t(uboSet));
     return hash;
   }
 

@@ -277,6 +277,7 @@ namespace dxvk {
    * \brief Memory requirement info
    */
   struct DxvkMemoryRequirements {
+    VkImageTiling                 tiling;
     VkMemoryDedicatedRequirements dedicated;
     VkMemoryRequirements2         core;
   };
@@ -310,18 +311,6 @@ namespace dxvk {
     ~DxvkMemoryAllocator();
     
     /**
-     * \brief Buffer-image granularity
-     * 
-     * The granularity between linear and non-linear
-     * resources in adjacent memory locations. See
-     * section 11.6 of the Vulkan spec for details.
-     * \returns Buffer-image granularity
-     */
-    VkDeviceSize bufferImageGranularity() const {
-      return m_devProps.limits.bufferImageGranularity;
-    }
-
-    /**
      * \brief Memory type mask for sparse resources
      * \returns Sparse resource memory types
      */
@@ -338,7 +327,7 @@ namespace dxvk {
      * \returns Allocated memory slice
      */
     DxvkMemory alloc(
-      const DxvkMemoryRequirements&           req,
+            DxvkMemoryRequirements            req,
             DxvkMemoryProperties              info,
             DxvkMemoryFlags                   hints);
     
@@ -357,7 +346,6 @@ namespace dxvk {
   private:
 
     DxvkDevice*                                     m_device;
-    VkPhysicalDeviceProperties                      m_devProps;
     VkPhysicalDeviceMemoryProperties                m_memProps;
     
     dxvk::mutex                                     m_mutex;
@@ -414,6 +402,11 @@ namespace dxvk {
 
     uint32_t determineSparseMemoryTypes(
             DxvkDevice*           device) const;
+
+    void logMemoryError(
+      const VkMemoryRequirements& req) const;
+
+    void logMemoryStats() const;
 
   };
   

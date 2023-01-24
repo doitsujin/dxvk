@@ -60,10 +60,8 @@ namespace dxvk {
         std::lock_guard<dxvk::mutex> lock(m_mutex);
         instance = this->findInstance(state);
 
-        if (!instance) {
+        if (!instance)
           instance = this->createInstance(state);
-          this->writePipelineStateToCache(state);
-        }
       }
 
       return instance->handle;
@@ -139,17 +137,6 @@ namespace dxvk {
   }
   
   
-  void DxvkComputePipeline::writePipelineStateToCache(
-    const DxvkComputePipelineStateInfo& state) const {
-    DxvkStateCacheKey key;
-
-    if (m_shaders.cs != nullptr)
-      key.cs = m_shaders.cs->getShaderKey();
-
-    m_stateCache->addComputePipeline(key, state);
-  }
-  
-
   void DxvkComputePipeline::logPipelineState(
           LogLevel                      level,
     const DxvkComputePipelineStateInfo& state) const {

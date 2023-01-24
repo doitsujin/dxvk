@@ -938,7 +938,7 @@ namespace dxvk {
 
         // If necessary, compile an optimized pipeline variant
         if (!instance->fastHandle.load())
-          m_workers->compileGraphicsPipeline(this, state);
+          m_workers->compileGraphicsPipeline(this, state, DxvkPipelinePriority::Low);
 
         // Only store pipelines in the state cache that cannot benefit
         // from pipeline libraries, or if that feature is disabled.
@@ -990,7 +990,7 @@ namespace dxvk {
      || instance->isCompiling.exchange(VK_TRUE, std::memory_order_acquire))
       return;
 
-    VkPipeline pipeline = this->getOptimizedPipeline(state, 0);
+    VkPipeline pipeline = this->getOptimizedPipeline(state);
     instance->fastHandle.store(pipeline, std::memory_order_release);
 
     // Log pipeline state on error
@@ -1044,22 +1044,10 @@ namespace dxvk {
     VkPipeline baseHandle = VK_NULL_HANDLE;
     VkPipeline fastHandle = VK_NULL_HANDLE;
 
-    if (doCreateBasePipeline) {
-      // Try to create an optimized pipeline from the cache
-      // first, since this is expected to be the fastest path.
-      if (m_device->canUsePipelineCacheControl()) {
-        fastHandle = this->getOptimizedPipeline(state,
-          VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT);
-      }
-
-      // If that didn't succeed, link a pipeline using the
-      // pre-compiled fragment and vertex shader libraries.
-      if (!fastHandle)
-        baseHandle = this->getBasePipeline(state);
-    } else {
-      // Create optimized variant right away, no choice
-      fastHandle = this->getOptimizedPipeline(state, 0);
-    }
+    if (doCreateBasePipeline)
+      baseHandle = this->getBasePipeline(state);
+    else
+      fastHandle = this->getOptimizedPipeline(state);
 
     // Log pipeline state if requested, or on failure
     if (!fastHandle && !baseHandle)
@@ -1093,11 +1081,23 @@ namespace dxvk {
      || state.rs.conservativeMode() != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT)
       return false;
 
+    if (m_shaders.tcs != nullptr) {
+      // If tessellation shaders are present, the input patch
+      // vertex count must match the shader's definition.
+      if (m_shaders.tcs->info().patchVertexCount != state.ia.patchVertexCount())
+        return false;
+    }
+
     if (m_shaders.fs != nullptr) {
-      // If the fragment shader has inputs not produced by the
-      // vertex shader, we need to patch the fragment shader
-      uint32_t vsIoMask = m_shaders.vs->info().outputMask;
+      // If the fragment shader has inputs not produced by the last
+      // pre-rasterization stage, we need to patch the fragment shader
       uint32_t fsIoMask = m_shaders.fs->info().inputMask;
+      uint32_t vsIoMask = m_shaders.vs->info().outputMask;
+
+      if (m_shaders.gs != nullptr)
+        vsIoMask = m_shaders.gs->info().outputMask;
+      else if (m_shaders.tes != nullptr)
+        vsIoMask = m_shaders.tes->info().outputMask;
 
       if ((vsIoMask & fsIoMask) != fsIoMask)
         return false;
@@ -1194,8 +1194,7 @@ namespace dxvk {
 
 
   VkPipeline DxvkGraphicsPipeline::getOptimizedPipeline(
-    const DxvkGraphicsPipelineStateInfo& state,
-          VkPipelineCreateFlags          flags) {
+    const DxvkGraphicsPipelineStateInfo& state) {
     DxvkGraphicsPipelineFastInstanceKey key(m_device,
       m_shaders, state, m_flags, m_specConstantMask);
 
@@ -1208,7 +1207,7 @@ namespace dxvk {
     // Keep pipeline locked to prevent multiple threads from compiling
     // identical Vulkan pipelines. This should be rare, but has been
     // buggy on some drivers in the past, so just don't allow it.
-    VkPipeline handle = createOptimizedPipeline(key, flags);
+    VkPipeline handle = createOptimizedPipeline(key);
 
     if (handle)
       m_fastPipelines.insert({ key, handle });
@@ -1218,39 +1217,22 @@ namespace dxvk {
 
 
   VkPipeline DxvkGraphicsPipeline::createOptimizedPipeline(
-    const DxvkGraphicsPipelineFastInstanceKey& key,
-          VkPipelineCreateFlags          flags) const {
+    const DxvkGraphicsPipelineFastInstanceKey& key) const {
     auto vk = m_device->vkd();
 
-    // Build stage infos for all provided shaders
     DxvkShaderStageInfo stageInfo(m_device);
+    stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, getShaderCode(m_shaders.vs, key.shState.vsInfo), &key.scState.scInfo);
 
-    if (flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT) {
-      stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, m_vsLibrary->getModuleIdentifier(), &key.scState.scInfo);
-
-      if (m_shaders.fs != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, m_fsLibrary->getModuleIdentifier(), &key.scState.scInfo);
-    } else {
-      stageInfo.addStage(VK_SHADER_STAGE_VERTEX_BIT, getShaderCode(m_shaders.vs, key.shState.vsInfo), &key.scState.scInfo);
-
-      if (m_shaders.tcs != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, getShaderCode(m_shaders.tcs, key.shState.tcsInfo), &key.scState.scInfo);
-      if (m_shaders.tes != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, getShaderCode(m_shaders.tes, key.shState.tesInfo), &key.scState.scInfo);
-      if (m_shaders.gs != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_GEOMETRY_BIT, getShaderCode(m_shaders.gs, key.shState.gsInfo), &key.scState.scInfo);
-      if (m_shaders.fs != nullptr)
-        stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, getShaderCode(m_shaders.fs, key.shState.fsInfo), &key.scState.scInfo);
-    }
-
-    if (key.foState.feedbackLoop & VK_IMAGE_ASPECT_COLOR_BIT)
-      flags |= VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
-
-    if (key.foState.feedbackLoop & VK_IMAGE_ASPECT_DEPTH_BIT)
-      flags |= VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
+    if (m_shaders.tcs != nullptr)
+      stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, getShaderCode(m_shaders.tcs, key.shState.tcsInfo), &key.scState.scInfo);
+    if (m_shaders.tes != nullptr)
+      stageInfo.addStage(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, getShaderCode(m_shaders.tes, key.shState.tesInfo), &key.scState.scInfo);
+    if (m_shaders.gs != nullptr)
+      stageInfo.addStage(VK_SHADER_STAGE_GEOMETRY_BIT, getShaderCode(m_shaders.gs, key.shState.gsInfo), &key.scState.scInfo);
+    if (m_shaders.fs != nullptr)
+      stageInfo.addStage(VK_SHADER_STAGE_FRAGMENT_BIT, getShaderCode(m_shaders.fs, key.shState.fsInfo), &key.scState.scInfo);
 
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &key.foState.rtInfo };
-    info.flags                    = flags;
     info.stageCount               = stageInfo.getStageCount();
     info.pStages                  = stageInfo.getStageInfos();
     info.pVertexInputState        = &key.viState.viInfo;
@@ -1268,18 +1250,20 @@ namespace dxvk {
     if (!key.prState.tsInfo.patchControlPoints)
       info.pTessellationState = nullptr;
     
+    if (key.foState.feedbackLoop & VK_IMAGE_ASPECT_COLOR_BIT)
+      info.flags |= VK_PIPELINE_CREATE_COLOR_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
+
+    if (key.foState.feedbackLoop & VK_IMAGE_ASPECT_DEPTH_BIT)
+      info.flags |= VK_PIPELINE_CREATE_DEPTH_STENCIL_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT;
+
     VkPipeline pipeline = VK_NULL_HANDLE;
     VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
 
     if (vr != VK_SUCCESS) {
-      // Ignore any error if we're trying to create a cached pipeline. If linking or
-      // compiling an optimized pipeline fail later, we'll still be printing errors.
-      if (!(flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT))
-        Logger::err(str::format("DxvkGraphicsPipeline: Failed to compile pipeline: ", vr));
-
+      Logger::err(str::format("DxvkGraphicsPipeline: Failed to compile pipeline: ", vr));
       return VK_NULL_HANDLE;
     }
-    
+
     return pipeline;
   }
   

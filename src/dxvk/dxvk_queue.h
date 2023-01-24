@@ -183,9 +183,6 @@ namespace dxvk {
     std::atomic<uint32_t>       m_pending = { 0u };
     std::atomic<uint64_t>       m_gpuIdle = { 0ull };
 
-    VkSemaphore                 m_semaphore = VK_NULL_HANDLE;
-    uint64_t                    m_semaphoreValue = 0ull;
-
     dxvk::mutex                 m_mutex;
     dxvk::mutex                 m_mutexQueue;
     

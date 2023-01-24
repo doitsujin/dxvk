@@ -2467,15 +2467,16 @@ namespace dxvk {
     EmitCs([this,
       cPrimType    = PrimitiveType,
       cPrimCount   = PrimitiveCount,
-      cStartVertex = StartVertex,
-      cInstanceCount = GetInstanceCount()
+      cStartVertex = StartVertex
     ](DxvkContext* ctx) {
-      auto drawInfo = GenerateDrawInfo(cPrimType, cPrimCount, cInstanceCount);
+      uint32_t vertexCount = GetVertexCount(cPrimType, cPrimCount);
 
       ApplyPrimitiveType(ctx, cPrimType);
 
+      // Tests on Windows show that D3D9 does not do non-indexed instanced draws.
+
       ctx->draw(
-        drawInfo.vertexCount, drawInfo.instanceCount,
+        vertexCount, 1,
         cStartVertex, 0);
     });
 
@@ -2547,17 +2548,16 @@ namespace dxvk {
     EmitCs([this,
       cBufferSlice  = std::move(upSlice.slice),
       cPrimType     = PrimitiveType,
-      cPrimCount    = PrimitiveCount,
-      cInstanceCount = GetInstanceCount(),
-      cStride       = VertexStreamZeroStride
+      cStride       = VertexStreamZeroStride,
+      cVertexCount  = vertexCount
     ](DxvkContext* ctx) mutable {
-      auto drawInfo = GenerateDrawInfo(cPrimType, cPrimCount, cInstanceCount);
-
       ApplyPrimitiveType(ctx, cPrimType);
+
+      // Tests on Windows show that D3D9 does not do non-indexed instanced draws.
 
       ctx->bindVertexBuffer(0, std::move(cBufferSlice), cStride);
       ctx->draw(
-        drawInfo.vertexCount, drawInfo.instanceCount,
+        cVertexCount, 1,
         0, 0);
       ctx->bindVertexBuffer(0, DxvkBufferSlice(), 0);
     });
@@ -2699,8 +2699,7 @@ namespace dxvk {
       cVertexCount   = VertexCount,
       cStartIndex    = SrcStartIndex,
       cInstanceCount = GetInstanceCount(),
-      cBufferSlice   = slice,
-      cIndexed       = m_state.indices != nullptr
+      cBufferSlice   = slice
     ](DxvkContext* ctx) mutable {
       Rc<DxvkShader> shader = m_swvpEmulator.GetShaderModule(this, cDecl);
 
@@ -2719,11 +2718,11 @@ namespace dxvk {
       ctx->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(nullptr);
 
       ctx->bindShader<VK_SHADER_STAGE_GEOMETRY_BIT>(std::move(shader));
-      ctx->bindResourceBuffer(VK_SHADER_STAGE_GEOMETRY_BIT, getSWVPBufferSlot(), std::move(cBufferSlice));
+      ctx->bindUniformBuffer(VK_SHADER_STAGE_GEOMETRY_BIT, getSWVPBufferSlot(), std::move(cBufferSlice));
       ctx->draw(
         drawInfo.vertexCount, drawInfo.instanceCount,
         cStartIndex, 0);
-      ctx->bindResourceBuffer(VK_SHADER_STAGE_GEOMETRY_BIT, getSWVPBufferSlot(), DxvkBufferSlice());
+      ctx->bindUniformBuffer(VK_SHADER_STAGE_GEOMETRY_BIT, getSWVPBufferSlot(), DxvkBufferSlice());
       ctx->bindShader<VK_SHADER_STAGE_GEOMETRY_BIT>(nullptr);
     });
 
@@ -5022,6 +5021,7 @@ namespace dxvk {
 
     if (m_usingGraphicsPipelines) {
       m_specBuffer = D3D9ConstantBuffer(this,
+        VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
         VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         getSpecConstantBufferSlot(),
         sizeof(D3D9SpecializationInfo));

@@ -72,17 +72,6 @@ namespace dxvk {
     m_lastOp = m_currOp;
     m_currOp = ins.op;
 
-    if (!m_insideFunction
-     && ins.opClass != DxbcInstClass::CustomData
-     && ins.opClass != DxbcInstClass::Declaration
-     && ins.opClass != DxbcInstClass::HullShaderPhase
-     && ins.opClass != DxbcInstClass::NoOperation
-     && ins.op != DxbcOpcode::Label) {
-      if (!std::exchange(m_hasDeadCode, true))
-        Logger::warn("DxbcCompiler: Dead code detected");
-      return;
-    }
-
     switch (ins.opClass) {
       case DxbcInstClass::Declaration:
         return this->emitDcl(ins);
@@ -268,6 +257,9 @@ namespace dxvk {
     info.outputMask = m_outputMask;
     info.uniformSize = m_immConstData.size();
     info.uniformData = m_immConstData.data();
+
+    if (m_programInfo.type() == DxbcProgramType::HullShader)
+      info.patchVertexCount = m_hs.vertexCountIn;
 
     if (m_programInfo.type() == DxbcProgramType::PixelShader && m_ps.pushConstantId)
       info.pushConstSize = sizeof(DxbcPushConstants);
@@ -870,6 +862,7 @@ namespace dxvk {
     binding.viewType = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     binding.access = VK_ACCESS_UNIFORM_READ_BIT;
     binding.resourceBinding = bindingId;
+    binding.uboSet = VK_TRUE;
     m_bindings.push_back(binding);
   }
 

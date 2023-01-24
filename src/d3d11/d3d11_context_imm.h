@@ -12,7 +12,7 @@ namespace dxvk {
   
   class D3D11Buffer;
   class D3D11CommonTexture;
-  
+
   class D3D11ImmediateContext : public D3D11CommonContext<D3D11ImmediateContext> {
     friend class D3D11CommonContext<D3D11ImmediateContext>;
     friend class D3D11SwapChain;
@@ -88,19 +88,19 @@ namespace dxvk {
     
     DxvkCsThread            m_csThread;
     uint64_t                m_csSeqNum = 0ull;
-    bool                    m_csIsBusy = false;
 
-    Rc<sync::CallbackFence> m_eventSignal;
-    uint64_t                m_eventCount = 0ull;
     uint32_t                m_mappedImageCount = 0u;
 
     VkDeviceSize            m_maxImplicitDiscardSize = 0ull;
 
-    dxvk::high_resolution_clock::time_point m_lastFlush
-      = dxvk::high_resolution_clock::now();
-    
-    D3D10Multithread             m_multithread;
-    D3D11VideoContext            m_videoContext;
+    Rc<sync::CallbackFence> m_submissionFence;
+    uint64_t                m_submissionId = 0ull;
+
+    uint64_t                m_flushSeqNum = 0ull;
+    GpuFlushTracker         m_flushTracker;
+
+    D3D10Multithread        m_multithread;
+    D3D11VideoContext       m_videoContext;
 
     Com<D3D11DeviceContextState, false> m_stateObject;
     
@@ -131,21 +131,21 @@ namespace dxvk {
       const D3D11_COMMON_TEXTURE_REGION* pRegion);
 
     void UpdateMappedBuffer(
-            D3D11Buffer*                  pDstBuffer,
-            UINT                          Offset,
-            UINT                          Length,
-      const void*                         pSrcData,
-            UINT                          CopyFlags);
+            D3D11Buffer*                pDstBuffer,
+            UINT                        Offset,
+            UINT                        Length,
+      const void*                       pSrcData,
+            UINT                        CopyFlags);
 
     void SynchronizeDevice();
 
     void EndFrame();
     
     bool WaitForResource(
-      const Rc<DxvkResource>&                 Resource,
-            uint64_t                          SequenceNumber,
-            D3D11_MAP                         MapType,
-            UINT                              MapFlags);
+      const Rc<DxvkResource>&           Resource,
+            uint64_t                    SequenceNumber,
+            D3D11_MAP                   MapType,
+            UINT                        MapFlags);
     
     void EmitCsChunk(DxvkCsChunkRef&& chunk);
 
@@ -158,10 +158,15 @@ namespace dxvk {
 
     uint64_t GetCurrentSequenceNumber();
 
-    void FlushImplicit(BOOL StrongHint);
+    uint64_t GetPendingCsChunks();
 
-    void SignalEvent(HANDLE hEvent);
-    
+    void ConsiderFlush(
+            GpuFlushType                FlushType);
+
+    void ExecuteFlush(
+            GpuFlushType                FlushType,
+            HANDLE                      hEvent);
+
   };
   
 }

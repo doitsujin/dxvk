@@ -106,7 +106,7 @@ namespace dxvk {
 
     size_t poolCount = m_descriptorPools.size();
 
-    if (poolCount > 1) {
+    if (poolCount > 1 || m_setsAllocated > m_manager->getMaxSetCount() / 2) {
       double factor = std::max(11.0 / 3.0 - double(poolCount) / 3.0, 1.0);
       isLowUsageFrame = double(m_setsUsed) * factor < double(m_setsAllocated);
     }
@@ -244,7 +244,12 @@ namespace dxvk {
           DxvkDevice*                 device,
           DxvkContextType             contextType)
   : m_device(device), m_contextType(contextType) {
-
+    // Deliberately pick a very high number of descriptor sets so that
+    // we will typically end up using all available pool memory before
+    // the descriptor set limit becomes the limiting factor.
+    m_maxSets = m_contextType == DxvkContextType::Primary
+      ? (env::is32BitHostPlatform() ? 24576u : 49152u)
+      : (512u);
   }
 
 
@@ -288,21 +293,22 @@ namespace dxvk {
         return m_vkPools[--m_vkPoolCount];
     }
 
-    uint32_t maxSets = m_contextType == DxvkContextType::Primary
-      ? 8192 : 256;
-
+    // Samplers and uniform buffers may be special on some implementations
+    // so we should allocate space for a reasonable number of both, but
+    // assume that all other descriptor types share pool memory.
     std::array<VkDescriptorPoolSize, 8> pools = {{
-      { VK_DESCRIPTOR_TYPE_SAMPLER,                maxSets * 2  },
-      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          maxSets * 2  },
-      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          maxSets / 64 },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         maxSets * 4  },
-      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         maxSets * 1  },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   maxSets * 1  },
-      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   maxSets / 64 },
-      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxSets * 1  } }};
+      { VK_DESCRIPTOR_TYPE_SAMPLER,                m_maxSets * 1  },
+      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, m_maxSets / 4  },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          m_maxSets / 2  },
+      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          m_maxSets / 64 },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   m_maxSets / 2  },
+      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   m_maxSets / 64 },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         m_maxSets * 2  },
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         m_maxSets / 2  },
+    }};
     
     VkDescriptorPoolCreateInfo info = { VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO };
-    info.maxSets       = maxSets;
+    info.maxSets       = m_maxSets;
     info.poolSizeCount = pools.size();
     info.pPoolSizes    = pools.data();
     

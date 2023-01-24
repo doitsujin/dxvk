@@ -3019,85 +3019,6 @@ namespace dxvk {
 
 
 
-  WineDXGISwapChainFactory::WineDXGISwapChainFactory(
-          D3D11DXGIDevice*        pContainer,
-          D3D11Device*            pDevice)
-  : m_container(pContainer), m_device(pDevice) {
-    
-  }
-  
-  
-  ULONG STDMETHODCALLTYPE WineDXGISwapChainFactory::AddRef() {
-    return m_device->AddRef();
-  }
-  
-  
-  ULONG STDMETHODCALLTYPE WineDXGISwapChainFactory::Release() {
-    return m_device->Release();
-  }
-  
-  
-  HRESULT STDMETHODCALLTYPE WineDXGISwapChainFactory::QueryInterface(
-          REFIID                  riid,
-          void**                  ppvObject) {
-    return m_device->QueryInterface(riid, ppvObject);
-  }
-  
-  
-  HRESULT STDMETHODCALLTYPE WineDXGISwapChainFactory::CreateSwapChainForHwnd(
-          IDXGIFactory*           pFactory,
-          HWND                    hWnd,
-    const DXGI_SWAP_CHAIN_DESC1*  pDesc,
-    const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc,
-          IDXGIOutput*            pRestrictToOutput,
-          IDXGISwapChain1**       ppSwapChain) {
-    InitReturnPtr(ppSwapChain);
-    
-    if (!ppSwapChain || !pDesc || !hWnd)
-      return DXGI_ERROR_INVALID_CALL;
-    
-    // Make sure the back buffer size is not zero
-    DXGI_SWAP_CHAIN_DESC1 desc = *pDesc;
-    
-    wsi::getWindowSize(hWnd,
-      desc.Width  ? nullptr : &desc.Width,
-      desc.Height ? nullptr : &desc.Height);
-    
-    // If necessary, set up a default set of
-    // fullscreen parameters for the swap chain
-    DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsDesc;
-    
-    if (pFullscreenDesc) {
-      fsDesc = *pFullscreenDesc;
-    } else {
-      fsDesc.RefreshRate      = { 0, 0 };
-      fsDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-      fsDesc.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
-      fsDesc.Windowed         = TRUE;
-    }
-    
-    try {
-      auto vki = m_device->GetDXVKDevice()->adapter()->vki();
-
-      // Create surface factory for the window
-      Com<IDXGIVkSurfaceFactory> surfaceFactory = new DxgiSurfaceFactory(vki->getLoaderProc(), hWnd);
-
-      // Create presenter for the device
-      Com<D3D11SwapChain> presenter = new D3D11SwapChain(
-        m_container, m_device, surfaceFactory.ptr(), &desc);
-      
-      // Create the actual swap chain
-      *ppSwapChain = ref(new DxgiSwapChain(
-        pFactory, presenter.ptr(), hWnd, &desc, &fsDesc));
-      return S_OK;
-    } catch (const DxvkError& e) {
-      Logger::err(e.message());
-      return E_INVALIDARG;
-    }
-  }
-  
-  
-
   DXGIDXVKDevice::DXGIDXVKDevice(D3D11DXGIDevice* pContainer)
   : m_container(pContainer), m_apiVersion(11) {
 
@@ -3149,8 +3070,7 @@ namespace dxvk {
     m_d3d11Interop  (this, &m_d3d11Device),
     m_d3d11Video    (this, &m_d3d11Device),
     m_metaDevice    (this),
-    m_dxvkFactory   (this, &m_d3d11Device),
-    m_wineFactory   (this, &m_d3d11Device) {
+    m_dxvkFactory   (this, &m_d3d11Device) {
 
   }
   
@@ -3212,11 +3132,6 @@ namespace dxvk {
 
     if (riid == __uuidof(IDXGIVkSwapChainFactory)) {
       *ppvObject = ref(&m_dxvkFactory);
-      return S_OK;
-    }
-
-    if (riid == __uuidof(IWineDXGISwapChainFactory)) {
-      *ppvObject = ref(&m_wineFactory);
       return S_OK;
     }
 

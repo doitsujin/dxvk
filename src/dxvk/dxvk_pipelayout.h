@@ -36,6 +36,7 @@ namespace dxvk {
     VkImageViewType       viewType;         ///< Image view type
     VkShaderStageFlagBits stage;            ///< Shader stage
     VkAccessFlags         access;           ///< Access mask for the resource
+    VkBool32              uboSet;           ///< Whether to include this in the UBO set
 
     /**
      * \brief Computes descriptor set index for the given binding
@@ -551,7 +552,7 @@ namespace dxvk {
       if (m_dirtyBuffers & VK_SHADER_STAGE_FRAGMENT_BIT)
         result |= (1u << DxvkDescriptorSets::FsBuffers);
       if (m_dirtyViews & VK_SHADER_STAGE_FRAGMENT_BIT)
-        result |= (1u << DxvkDescriptorSets::FsViews) | (1u << DxvkDescriptorSets::FsBuffers);
+        result |= (1u << DxvkDescriptorSets::FsViews);
       if ((m_dirtyBuffers | m_dirtyViews) & (VK_SHADER_STAGE_ALL_GRAPHICS & ~VK_SHADER_STAGE_FRAGMENT_BIT))
         result |= (1u << DxvkDescriptorSets::VsAll);
       return result;
