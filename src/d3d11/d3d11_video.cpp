@@ -48,23 +48,47 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11VideoProcessorEnumerator::CheckVideoProcessorFormat(
           DXGI_FORMAT             Format,
           UINT*                   pFlags) {
-    Logger::err("D3D11VideoProcessorEnumerator::CheckVideoProcessorFormat: Stub");
-    return E_NOTIMPL;
+    Logger::err(str::format("D3D11VideoProcessorEnumerator::CheckVideoProcessorFormat: stub, format ", Format));
+
+    if (!pFlags)
+      return E_INVALIDARG;
+
+    *pFlags = D3D11_VIDEO_PROCESSOR_FORMAT_SUPPORT_INPUT | D3D11_VIDEO_PROCESSOR_FORMAT_SUPPORT_OUTPUT;
+    return S_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D11VideoProcessorEnumerator::GetVideoProcessorCaps(
           D3D11_VIDEO_PROCESSOR_CAPS* pCaps) {
-    Logger::err("D3D11VideoProcessorEnumerator::GetVideoProcessorCaps: Stub");
-    return E_NOTIMPL;
+    Logger::err("D3D11VideoProcessorEnumerator::GetVideoProcessorCaps: semi-stub");
+
+    if (!pCaps)
+      return E_INVALIDARG;
+
+    *pCaps = {};
+    pCaps->RateConversionCapsCount = 1;
+    pCaps->MaxInputStreams = 52;
+    pCaps->MaxStreamStates = 52;
+    return S_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D11VideoProcessorEnumerator::GetVideoProcessorRateConversionCaps(
           UINT                    TypeIndex,
           D3D11_VIDEO_PROCESSOR_RATE_CONVERSION_CAPS* pCaps) {
-    Logger::err("D3D11VideoProcessorEnumerator::GetVideoProcessorRateConversionCaps: Stub");
-    return E_NOTIMPL;
+    Logger::err("D3D11VideoProcessorEnumerator::GetVideoProcessorRateConversionCaps: semi-stub");
+    if (!pCaps || TypeIndex)
+      return E_INVALIDARG;
+
+    *pCaps = {};
+    if (m_desc.InputFrameFormat == D3D11_VIDEO_FRAME_FORMAT_PROGRESSIVE) {
+      pCaps->ProcessorCaps = D3D11_VIDEO_PROCESSOR_PROCESSOR_CAPS_FRAME_RATE_CONVERSION;
+    } else {
+      pCaps->ProcessorCaps = D3D11_VIDEO_PROCESSOR_PROCESSOR_CAPS_DEINTERLACE_BOB;
+      pCaps->PastFrames = 1;
+      pCaps->FutureFrames = 1;
+    }
+    return S_OK;
   }
 
 
@@ -603,7 +627,9 @@ namespace dxvk {
           D3D11_VIDEO_PROCESSOR_OUTPUT_RATE Rate,
           BOOL                            Repeat,
     const DXGI_RATIONAL*                  CustomRate) {
-    Logger::err("D3D11VideoContext::VideoProcessorSetStreamOutputRate: Stub");
+    Logger::err(str::format("D3D11VideoContext::VideoProcessorSetStreamOutputRate: Stub, Rate ", Rate));
+    if (CustomRate)
+      Logger::err(str::format("CustomRate ", CustomRate->Numerator, "/", CustomRate->Denominator));
   }
 
 
