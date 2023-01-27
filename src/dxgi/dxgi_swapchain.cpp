@@ -713,7 +713,7 @@ namespace dxvk {
         "DXGI: Failed to query closest mode:",
         "\n  Format: ", preferredMode.Format,
         "\n  Mode:   ", preferredMode.Width, "x", preferredMode.Height,
-          "@", preferredMode.RefreshRate.Numerator / preferredMode.RefreshRate.Denominator));
+          "@", preferredMode.RefreshRate.Numerator / std::max(preferredMode.RefreshRate.Denominator, 1u)));
       return hr;
     }
 
