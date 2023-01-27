@@ -29,7 +29,7 @@ In order to remove DXVK from a prefix, remove the DLLs and DLL overrides, and ru
 On Linux there exists a wide ecosystem of programs to manage your Wine game installs. These tools can also install or even auto-update DXVK. To name a few tools with different capabilities
 [Bottles](https://github.com/bottlesdevs/Bottles), 
 [Heroic](https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher), 
-[Lutris](https://github.com/lutris/lutris) and [Winetricks](https://github.com/Winetricks/winetricks). There is also a simple [setup_script.sh](https://gist.github.com/doitsujin/1652e0e3382f0e0ff611e70142684d01) that might work for your use case. This is clearly not an exhaustive list nor a recommendation to use any of said tools. Use the method that you best see fit!
+[Lutris](https://github.com/lutris/lutris) and [Winetricks](https://github.com/Winetricks/winetricks). There is also a simple [setup_script.sh](https://gist.github.com/doitsujin/1652e0e3382f0e0ff611e70142684d01), purposed specifically to install/remove DXVK from a WINEPREFIX, that might work for your use case. This is clearly not an exhaustive list nor a recommendation to use any of said tools. Use the method that you best see fit!
 
 Here an example on how to install DXVK from the command line via Winetricks:
 
