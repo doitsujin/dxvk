@@ -14,7 +14,7 @@ Release builds can be found [here](https://github.com/doitsujin/dxvk/releases).
 In order to install a DXVK package obtained from the [release](https://github.com/doitsujin/dxvk/releases) page into a given wine prefix, copy or symlink the DLLs into the following directories as follows, then open `winecfg` and manually add DLL overrides for `d3d11`, `d3d10core`, `dxgi`, and `d3d9`:
 
 ```
-WINEPREFIX=/path/to/wineprefix
+export WINEPREFIX=/path/to/wineprefix
 cp x64/*.dll $WINEPREFIX/drive_c/windows/system32
 cp x32/*.dll $WINEPREFIX/drive_c/windows/syswow64
 winecfg
@@ -26,15 +26,15 @@ In order to remove DXVK from a prefix, remove the DLLs and DLL overrides, and ru
 
 ### External tools
 
-On Linux there exists a wide ecosystem of programs to automate setting up DXVK or even let it auto-update. To name a few tools
+On Linux there exists a wide ecosystem of programs to manage your Wine game installs. These tools can also install or even auto-update DXVK. To name a few tools with different capabilities
 [Bottles](https://github.com/bottlesdevs/Bottles), 
 [Heroic](https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher), 
-[Lutris](https://github.com/lutris/lutris) and [Winetricks](https://github.com/Winetricks/winetricks). This is clearly not an exhaustive list nor a recommendation to use any of said tools. Use the method that you best see fit!
+[Lutris](https://github.com/lutris/lutris) and [Winetricks](https://github.com/Winetricks/winetricks). There is also a simple [setup_script.sh](https://gist.github.com/doitsujin/1652e0e3382f0e0ff611e70142684d01) that might work for your use case. This is clearly not an exhaustive list nor a recommendation to use any of said tools. Use the method that you best see fit!
 
 Here an example on how to install DXVK from the command line via Winetricks:
 
 ```
-WINEPREFIX=/path/to/wineprefix
+export WINEPREFIX=/path/to/wineprefix
 winetricks dxvk
 ```
 
