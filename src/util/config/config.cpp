@@ -258,6 +258,7 @@ namespace dxvk {
     /* AoE 2 DE - runs poorly for some users      */
     { R"(\\AoE2DE_s\.exe$)", {{
       { "d3d11.cachedDynamicResources",     "a"    },
+      { "d3d11.relaxedBarriers",            "True" },
     }} },
     /* Total War: Warhammer III                   */
     { R"(\\Warhammer3\.exe$)", {{
