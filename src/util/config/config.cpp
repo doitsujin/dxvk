@@ -1020,6 +1020,11 @@ namespace dxvk {
       { "d3d9.memoryTrackTest",             "True" },
       { "d3d9.maxAvailableMemory",          "1024" },
     }} },
+    /* Red Faction                               *
+     * Fixes crashing when starting a new game   */
+    { R"(\\RF\.exe$)", {{
+      { "d3d9.allowDirectBufferMapping",   "False" },
+    }} },
   }};
 
 
