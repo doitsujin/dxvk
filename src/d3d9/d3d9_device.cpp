@@ -6617,12 +6617,21 @@ namespace dxvk {
       }
     }
 
-    UpdateStateConstants<ProgramType, ConstantType, T>(
-      &m_state,
-      StartRegister,
-      pConstantData,
-      Count,
-      m_d3d9Options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled);
+    if constexpr (ProgramType == DxsoProgramType::VertexShader) {
+      UpdateStateConstants<D3D9ShaderConstantsVSSoftware, ProgramType, ConstantType, T>(
+        m_state.vsConsts,
+        StartRegister,
+        pConstantData,
+        Count,
+        m_d3d9Options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled);
+    } else {
+      UpdateStateConstants<D3D9ShaderConstantsPS, ProgramType, ConstantType, T>(
+        m_state.psConsts,
+        StartRegister,
+        pConstantData,
+        Count,
+        m_d3d9Options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled);
+    }
 
     return D3D_OK;
   }

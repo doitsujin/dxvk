@@ -899,7 +899,7 @@ namespace dxvk {
       return &m_d3d9Options;
     }
 
-    Direct3DState9* GetRawState() {
+    D3D9DeviceState* GetRawState() {
       return &m_state;
     }
 
@@ -950,6 +950,10 @@ namespace dxvk {
     void TouchMappedTexture(D3D9CommonTexture* pTexture);
     void RemoveMappedTexture(D3D9CommonTexture* pTexture);
 
+    bool CanSWVP() {
+      return m_behaviorFlags & (D3DCREATE_MIXED_VERTEXPROCESSING | D3DCREATE_SOFTWARE_VERTEXPROCESSING);
+    }
+
   private:
 
     DxvkCsChunkRef AllocCsChunk() {
@@ -974,10 +978,6 @@ namespace dxvk {
         EmitCsChunk(std::move(m_csChunk));
         m_csChunk = AllocCsChunk();
       }
-    }
-
-    bool CanSWVP() {
-      return m_behaviorFlags & (D3DCREATE_MIXED_VERTEXPROCESSING | D3DCREATE_SOFTWARE_VERTEXPROCESSING);
     }
 
     void DetermineConstantLayouts(bool canSWVP);
@@ -1315,7 +1315,7 @@ namespace dxvk {
     std::atomic<int64_t>            m_availableMemory = { 0 };
     std::atomic<int32_t>            m_samplerCount    = { 0 };
 
-    Direct3DState9                  m_state;
+    D3D9DeviceState                 m_state;
 
 #ifdef D3D9_ALLOW_UNMAPPING
     lru_list<D3D9CommonTexture*>    m_mappedTextures;

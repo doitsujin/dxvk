@@ -11,6 +11,21 @@
 
 namespace dxvk {
 
+  D3D9CapturedState::D3D9CapturedState() {
+    for (uint32_t i = 0; i < streamFreq.size(); i++)
+      streamFreq[i] = 1;
+
+    for (uint32_t i = 0; i < enabledLightIndices.size(); i++)
+      enabledLightIndices[i] = UINT32_MAX;
+  }
+
+  D3D9CapturedState::~D3D9CapturedState() {
+    if (unlikely(textures != nullptr)) {
+      for (uint32_t i = 0; i < textures->size(); i++)
+        TextureChangePrivate((*textures)[i], nullptr);
+    }
+  }
+
   D3D9StateBlock::D3D9StateBlock(D3D9DeviceEx* pDevice, D3D9StateBlockType Type)
     : D3D9StateBlockBase(pDevice)
     , m_deviceState     (pDevice->GetRawState()) {
@@ -78,7 +93,10 @@ namespace dxvk {
 
 
   HRESULT D3D9StateBlock::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) {
-    m_state.renderStates[State] = Value;
+    if (unlikely(!m_state.renderStates))
+      m_state.renderStates = std::make_unique<D3D9CapturedState::RenderStatesArray>();
+
+    (*m_state.renderStates)[State] = Value;
 
     m_captures.flags.set(D3D9CapturedStateFlag::RenderStates);
     m_captures.renderStates.set(State, true);
@@ -90,7 +108,10 @@ namespace dxvk {
           DWORD               StateSampler,
           D3DSAMPLERSTATETYPE Type,
           DWORD               Value) {
-    m_state.samplerStates[StateSampler][Type] = Value;
+    if (unlikely(!m_state.samplerStates))
+      m_state.samplerStates = std::make_unique<D3D9CapturedState::SamplerStatesArray>();
+
+    (*m_state.samplerStates)[StateSampler][Type] = Value;
 
     m_captures.flags.set(D3D9CapturedStateFlag::SamplerStates);
     m_captures.samplers.set(StateSampler, true);
@@ -104,10 +125,13 @@ namespace dxvk {
           D3D9VertexBuffer*   pStreamData,
           UINT                OffsetInBytes,
           UINT                Stride) {
-    m_state.vertexBuffers[StreamNumber].vertexBuffer = pStreamData;
+    if (unlikely(!m_state.vertexBuffers))
+      m_state.vertexBuffers = std::make_unique<D3D9CapturedState::VertexBuffersArray>();
 
-    m_state.vertexBuffers[StreamNumber].offset = OffsetInBytes;
-    m_state.vertexBuffers[StreamNumber].stride = Stride;
+    D3D9VBO& vbo = (*m_state.vertexBuffers)[StreamNumber];
+    vbo.vertexBuffer = pStreamData;
+    vbo.offset = OffsetInBytes;
+    vbo.stride = Stride;
 
     m_captures.flags.set(D3D9CapturedStateFlag::VertexBuffers);
     m_captures.vertexBuffers.set(StreamNumber, true);
@@ -125,7 +149,10 @@ namespace dxvk {
 
 
   HRESULT D3D9StateBlock::SetStateTexture(DWORD StateSampler, IDirect3DBaseTexture9* pTexture) {
-    TextureChangePrivate(m_state.textures[StateSampler], pTexture);
+    if (unlikely(!m_state.textures))
+      m_state.textures = std::make_unique<D3D9CapturedState::TexturesArray>();
+
+    TextureChangePrivate((*m_state.textures)[StateSampler], pTexture);
 
     m_captures.flags.set(D3D9CapturedStateFlag::Textures);
     m_captures.textures.set(StateSampler, true);
@@ -150,7 +177,10 @@ namespace dxvk {
 
 
   HRESULT D3D9StateBlock::SetMaterial(const D3DMATERIAL9* pMaterial) {
-    m_state.material = *pMaterial;
+    if (!m_state.material)
+      m_state.material = std::make_unique<D3DMATERIAL9>();
+
+    *m_state.material = *pMaterial;
 
     m_captures.flags.set(D3D9CapturedStateFlag::Material);
     return D3D_OK;
@@ -198,7 +228,10 @@ namespace dxvk {
 
 
   HRESULT D3D9StateBlock::SetStateTransform(uint32_t idx, const D3DMATRIX* pMatrix) {
-    m_state.transforms[idx] = ConvertMatrix(pMatrix);
+    if (unlikely(!m_state.transforms))
+      m_state.transforms = std::make_unique<D3D9CapturedState::TransformsArray>();
+
+    (*m_state.transforms)[idx] = ConvertMatrix(pMatrix);
 
     m_captures.flags.set(D3D9CapturedStateFlag::Transforms);
     m_captures.transforms.set(idx, true);
@@ -210,7 +243,10 @@ namespace dxvk {
           DWORD                      Stage,
           D3D9TextureStageStateTypes Type,
           DWORD                      Value) {
-    m_state.textureStages[Stage][Type] = Value;
+    if (unlikely(!m_state.textureStages))
+      m_state.textureStages = std::make_unique<D3D9CapturedState::TextureStagesArray>();
+
+    (*m_state.textureStages)[Stage][Type] = Value;
 
     m_captures.flags.set(D3D9CapturedStateFlag::TextureStages);
     m_captures.textureStages.set(Stage, true);
@@ -220,7 +256,11 @@ namespace dxvk {
 
 
   HRESULT D3D9StateBlock::MultiplyStateTransform(uint32_t idx, const D3DMATRIX* pMatrix) {
-    m_state.transforms[idx] = m_state.transforms[idx] * ConvertMatrix(pMatrix);
+    if (unlikely(!m_state.textureStages))
+      m_state.textureStages = std::make_unique<D3D9CapturedState::TextureStagesArray>();
+
+    Matrix4& transform = (*m_state.transforms)[idx];
+    transform = transform * ConvertMatrix(pMatrix);
 
     m_captures.flags.set(D3D9CapturedStateFlag::Transforms);
     m_captures.transforms.set(idx, true);
@@ -333,15 +373,30 @@ namespace dxvk {
 
 
   HRESULT D3D9StateBlock::SetVertexBoolBitfield(uint32_t idx, uint32_t mask, uint32_t bits) {
-    m_state.vsConsts.bConsts[idx] &= ~mask;
-    m_state.vsConsts.bConsts[idx] |= bits & mask;
+    if (unlikely(m_parent->CanSWVP())) {
+      if (unlikely(!m_state.vsConstsSW))
+        m_state.vsConstsSW = std::make_unique<D3D9ShaderConstantsVSSoftware>();
+
+      m_state.vsConstsSW->bConsts[idx] &= ~mask;
+      m_state.vsConstsSW->bConsts[idx] |= bits & mask;
+    } else {
+      if (unlikely(!m_state.vsConsts))
+        m_state.vsConsts = std::make_unique<D3D9ShaderConstantsVSHardware>();
+
+      m_state.vsConsts->bConsts[idx] &= ~mask;
+      m_state.vsConsts->bConsts[idx] |= bits & mask;
+    }
+
     return D3D_OK;
   }
 
 
   HRESULT D3D9StateBlock::SetPixelBoolBitfield(uint32_t idx, uint32_t mask, uint32_t bits) {
-    m_state.psConsts.bConsts[idx] &= ~mask;
-    m_state.psConsts.bConsts[idx] |= bits & mask;
+    if (unlikely(!m_state.psConsts))
+      m_state.psConsts = std::make_unique<D3D9ShaderConstantsPS>();
+
+    m_state.psConsts->bConsts[idx] &= ~mask;
+    m_state.psConsts->bConsts[idx] |= bits & mask;
     return D3D_OK;
   }
 
