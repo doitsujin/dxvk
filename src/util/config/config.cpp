@@ -47,7 +47,7 @@ namespace dxvk {
      * vegetation artifacts on Intel, and set
      * apitrace mode to True to improve perf on all
      * hardware.                                  */
-    { R"(\\FarCry2\.exe$)", {{
+    { R"(\\FarCry2|farcry2game\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
       { "d3d9.apitraceMode",                "True" },
     }} },
