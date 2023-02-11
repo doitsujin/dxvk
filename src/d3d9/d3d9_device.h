@@ -1093,13 +1093,13 @@ namespace dxvk {
           return D3DERR_INVALIDCALL;
 
         if constexpr (ConstantType == D3D9ConstantType::Float) {
-          const float* source = set.fConsts[StartRegister].data;
+          const float* source = set->fConsts[StartRegister].data;
           const size_t size   = Count * sizeof(Vector4);
 
           std::memcpy(pConstantData, source, size);
         }
         else if constexpr (ConstantType == D3D9ConstantType::Int) {
-          const int*  source = set.iConsts[StartRegister].data;
+          const int*  source = set->iConsts[StartRegister].data;
           const size_t size  = Count * sizeof(Vector4i);
 
           std::memcpy(pConstantData, source, size);
@@ -1112,7 +1112,7 @@ namespace dxvk {
 
             const uint32_t bit         = (1u << bitIdx);
 
-            bool constValue = set.bConsts[arrayIdx] & bit;
+            bool constValue = set->bConsts[arrayIdx] & bit;
             pConstantData[i] = constValue ? TRUE : FALSE;
           }
         }

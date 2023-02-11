@@ -4,17 +4,25 @@
 
 namespace dxvk {
 
-  D3D9CapturableState::D3D9CapturableState() {
-    for (uint32_t i = 0; i < streamFreq.size(); i++)
-      streamFreq[i] = 1;
+    template <template <typename T> typename ItemType>
+    D3D9State<ItemType>::D3D9State() {
+      for (uint32_t i = 0; i < streamFreq.size(); i++)
+        streamFreq[i] = 1;
 
-    for (uint32_t i = 0; i < enabledLightIndices.size(); i++)
-      enabledLightIndices[i] = UINT32_MAX;
-  }
+      for (uint32_t i = 0; i < enabledLightIndices.size(); i++)
+        enabledLightIndices[i] = UINT32_MAX;
+    }
 
-  D3D9CapturableState::~D3D9CapturableState() {
-    for (uint32_t i = 0; i < textures.size(); i++)
-      TextureChangePrivate(textures[i], nullptr);
-  }
+
+    template <template <typename T> typename ItemType>
+    D3D9State<ItemType>::~D3D9State() {
+      if (textures) {
+        for (uint32_t i = 0; i < textures->size(); i++)
+          TextureChangePrivate(textures[i], nullptr);
+      }
+    }
+
+    template struct D3D9State<dynamic_item>;
+    template struct D3D9State<static_item>;
 
 }
