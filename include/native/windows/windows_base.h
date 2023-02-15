@@ -333,3 +333,6 @@ typedef struct RGNDATA {
 #define SUCCEEDED(hr) ((HRESULT)(hr) >= 0)
 
 #define DEFINE_ENUM_FLAG_OPERATORS(T)
+
+#define RtlZeroMemory(Destination,Length) memset((Destination),0,(Length))
+#define ZeroMemory RtlZeroMemory
