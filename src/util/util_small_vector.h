@@ -106,7 +106,7 @@ namespace dxvk {
 
     union {
       storage* m_ptr;
-      storage  m_data[sizeof(T) * N];
+      storage  m_data[N];
     } u;
 
     size_t pick_capacity(size_t n) {
