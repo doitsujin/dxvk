@@ -306,17 +306,17 @@ namespace dxvk {
       }
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::Lights)) {
-        for (uint32_t i = 0; i < m_state.lights.size(); i++) {
-          if (!m_state.lights[i].has_value())
+        for (uint32_t i = 0; i < src->lights.size(); i++) {
+          if (!src->lights[i].has_value())
             continue;
 
-          dst->SetLight(i, &m_state.lights[i].value());
+          dst->SetLight(i, &src->lights[i].value());
         }
         for (uint32_t i = 0; i < m_captures.lightEnabledChanges.dwordCount(); i++) {
           for (uint32_t consts : bit::BitMask(m_captures.lightEnabledChanges.dword(i))) {
             uint32_t idx = i * 32 + consts;
 
-            dst->LightEnable(idx, m_state.IsLightEnabled(idx));
+            dst->LightEnable(idx, src->IsLightEnabled(idx));
           }
         }
       }
