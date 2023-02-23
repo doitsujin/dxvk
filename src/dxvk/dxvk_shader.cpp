@@ -43,14 +43,14 @@ namespace dxvk {
   }
 
   void DxvkShader::gatherBindingOffsets(
-          const SpirvCodeBuffer &code,
-          std::vector<BindingOffsets> &offsets) {
+          SpirvCodeBuffer&             code,
+          std::vector<BindingOffsets>& offsets) {
     // Run an analysis pass over the SPIR-V code to gather some
     // info that we may need during pipeline compilation.
     std::vector<BindingOffsets> bindingOffsets;
     std::vector<uint32_t> varIds;
 
-    for (auto ins : code) {
+    for (const auto& ins : code) {
       if (ins.opCode() == spv::OpDecorate) {
         if (ins.arg(2) == spv::DecorationBinding) {
           uint32_t varId = ins.arg(1);
