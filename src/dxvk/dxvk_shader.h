@@ -92,6 +92,12 @@ namespace dxvk {
   class DxvkShader : public RcObject {
     
   public:
+
+    struct BindingOffsets {
+      uint32_t bindingId;
+      uint32_t bindingOffset;
+      uint32_t setOffset;
+    };
     
     DxvkShader(
       const DxvkShaderCreateInfo&   info,
@@ -244,12 +250,6 @@ namespace dxvk {
     
   private:
 
-    struct BindingOffsets {
-      uint32_t bindingId;
-      uint32_t bindingOffset;
-      uint32_t setOffset;
-    };
-
     DxvkShaderCreateInfo          m_info;
     SpirvCompressedBuffer         m_code;
     
@@ -277,6 +277,10 @@ namespace dxvk {
     static void emitFlatShadingDeclarations(
             SpirvCodeBuffer&          code,
             uint32_t                  inputMask);
+
+    static void gatherBindingOffsets(
+            SpirvCodeBuffer&             code,
+            std::vector<BindingOffsets>& offsets);
 
   };
   
