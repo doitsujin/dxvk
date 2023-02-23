@@ -163,8 +163,6 @@ namespace dxvk {
         break;
     }
 
-    gatherBindingOffsets(code, m_bindingOffsets);
-
     // Don't set pipeline library flag if the shader
     // doesn't actually support pipeline libraries
     m_needsLibraryCompile = canUsePipelineLibrary(true);
@@ -181,9 +179,12 @@ namespace dxvk {
     const DxvkShaderModuleCreateInfo& state) const {
     SpirvCodeBuffer spirvCode = m_code.decompress();
     uint32_t* code = spirvCode.data();
-    
+    std::vector<BindingOffsets> bindingOffsets;
+
+    gatherBindingOffsets(spirvCode, bindingOffsets);
+
     // Remap resource binding IDs
-    for (const auto& info : m_bindingOffsets) {
+    for (const auto& info : bindingOffsets) {
       auto mappedBinding = layout->lookupBinding(m_info.stage, info.bindingId);
 
       if (mappedBinding) {

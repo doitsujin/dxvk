@@ -261,7 +261,6 @@ namespace dxvk {
     std::atomic<bool>             m_needsLibraryCompile = { true };
 
     std::vector<char>             m_uniformData;
-    std::vector<BindingOffsets>   m_bindingOffsets;
 
     DxvkBindingLayout             m_bindings;
 
