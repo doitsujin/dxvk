@@ -390,7 +390,7 @@ namespace dxvk {
         Com<d3d9::IDirect3DSurface9> pRT9 = nullptr;
         HRESULT res = GetD3D9()->GetRenderTarget(0, &pRT9); // use RT index 0
 
-        m_renderTarget = new D3D8Surface(this, std::move(pRT9));
+        m_renderTarget = ref(new D3D8Surface(this, std::move(pRT9)));
 
         *ppRenderTarget = m_renderTarget.ref();
         return res;
@@ -406,7 +406,7 @@ namespace dxvk {
         Com<d3d9::IDirect3DSurface9> pStencil9 = nullptr;
         HRESULT res = GetD3D9()->GetDepthStencilSurface(&pStencil9);
 
-        m_depthStencil = new D3D8Surface(this, std::move(pStencil9));
+        m_depthStencil = ref(new D3D8Surface(this, std::move(pStencil9)));
 
         *ppZStencilSurface = m_depthStencil.ref();
         return res;
