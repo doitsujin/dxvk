@@ -257,9 +257,6 @@ namespace dxvk {
     DxvkShaderKey                 m_key;
     size_t                        m_hash = 0;
 
-    size_t                        m_o1IdxOffset = 0;
-    size_t                        m_o1LocOffset = 0;
-
     uint32_t                      m_specConstantMask = 0;
     std::atomic<bool>             m_needsLibraryCompile = { true };
 

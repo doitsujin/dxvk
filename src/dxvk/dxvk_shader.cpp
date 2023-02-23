@@ -79,7 +79,6 @@ namespace dxvk {
     std::vector<uint32_t> varIds;
 
     SpirvCodeBuffer code = std::move(spirv);
-    uint32_t o1VarId = 0;
     
     for (auto ins : code) {
       if (ins.opCode() == spv::OpDecorate) {
@@ -106,14 +105,6 @@ namespace dxvk {
           if (ins.arg(3) <= MaxNumSpecConstants)
             m_specConstantMask |= 1u << ins.arg(3);
         }
-
-        if (ins.arg(2) == spv::DecorationLocation && ins.arg(3) == 1) {
-          m_o1LocOffset = ins.offset() + 3;
-          o1VarId = ins.arg(1);
-        }
-        
-        if (ins.arg(2) == spv::DecorationIndex && ins.arg(1) == o1VarId)
-          m_o1IdxOffset = ins.offset() + 3;
       }
 
       if (ins.opCode() == spv::OpMemberDecorate) {
@@ -190,8 +181,30 @@ namespace dxvk {
 
     // For dual-source blending we need to re-map
     // location 1, index 0 to location 0, index 1
-    if (state.fsDualSrcBlend && m_o1IdxOffset && m_o1LocOffset)
-      std::swap(code[m_o1IdxOffset], code[m_o1LocOffset]);
+    if (state.fsDualSrcBlend) {
+      uint32_t o1VarId = 0;
+      uint32_t o1IdxOffset = 0;
+      uint32_t o1LocOffset = 0;
+
+      for (auto ins : spirvCode) {
+        if (ins.opCode() == spv::OpDecorate) {
+          if (ins.arg(2) == spv::DecorationLocation && ins.arg(3) == 1) {
+            o1LocOffset = ins.offset() + 3;
+            o1VarId = ins.arg(1);
+          }
+
+          if (ins.arg(2) == spv::DecorationIndex && ins.arg(1) == o1VarId)
+            o1IdxOffset = ins.offset() + 3;
+        }
+
+        // Ignore the actual shader code, there's nothing interesting for us in there.
+        if (ins.opCode() == spv::OpFunction)
+          break;
+      }
+
+      if (o1IdxOffset && o1LocOffset)
+        std::swap(code[o1IdxOffset], code[o1LocOffset]);
+    }
     
     // Replace undefined input variables with zero
     for (uint32_t u : bit::BitMask(state.undefinedInputs))
