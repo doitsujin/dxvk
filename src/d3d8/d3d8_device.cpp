@@ -280,14 +280,14 @@ namespace dxvk {
     Handle = getShaderIndex(Handle);
 
     if (unlikely(Handle >= device->m_vertexShaders.size())) {
-      Logger::err(str::format("getVertexShaderInfo: Invalid vertex shader index ", std::hex, Handle));
+      Logger::debug(str::format("getVertexShaderInfo: Invalid vertex shader index ", std::hex, Handle));
       return nullptr;
     }
 
     D3D8VertexShaderInfo& info = device->m_vertexShaders[Handle];
 
     if (unlikely(!info.pVertexDecl && !info.pVertexShader)) {
-      Logger::err(str::format("getVertexShaderInfo: Application provided deleted vertex shader ", std::hex, Handle));
+      Logger::debug(str::format("getVertexShaderInfo: Application provided deleted vertex shader ", std::hex, Handle));
       return nullptr;
     }
 
@@ -450,14 +450,14 @@ namespace dxvk {
     Handle = getShaderIndex(Handle);
 
     if (unlikely(Handle >= device->m_pixelShaders.size())) {
-      Logger::err(str::format("getPixelShaderPtr: Invalid pixel shader index ", std::hex, Handle));
+      Logger::debug(str::format("getPixelShaderPtr: Invalid pixel shader index ", std::hex, Handle));
       return nullptr;
     }
 
     d3d9::IDirect3DPixelShader9* pPixelShader = device->m_pixelShaders[Handle];
 
     if (unlikely(pPixelShader == nullptr)) {
-      Logger::err(str::format("getPixelShaderPtr: Application provided deleted pixel shader ", std::hex, Handle));
+      Logger::debug(str::format("getPixelShaderPtr: Application provided deleted pixel shader ", std::hex, Handle));
       return nullptr;
     }
 
@@ -471,6 +471,7 @@ namespace dxvk {
     }
 
     if (Handle == DWORD(NULL)) {
+      m_currentPixelShader = NULL;
       return GetD3D9()->SetPixelShader(nullptr);
     }
 
