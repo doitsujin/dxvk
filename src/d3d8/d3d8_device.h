@@ -493,7 +493,7 @@ namespace dxvk {
       Com<d3d9::IDirect3DStateBlock9> pStateBlock9;
       HRESULT res = GetD3D9()->CreateStateBlock(d3d9::D3DSTATEBLOCKTYPE(Type), &pStateBlock9);
 
-      D3D8StateBlock* pStateBlock = new D3D8StateBlock(this, pStateBlock9.ref());
+      D3D8StateBlock* pStateBlock = new D3D8StateBlock(this, Type, pStateBlock9.ref());
 
       *pToken = DWORD(reinterpret_cast<uintptr_t>(pStateBlock));
 
@@ -817,6 +817,8 @@ namespace dxvk {
 
     inline void ResetState() {
       // Purge cached objects
+      // TODO: Some functions may need to be called here (e.g. SetTexture, etc.)
+      // in case Reset can be recorded by state blocks and other things.
       m_backBuffers.clear();
       m_textures.fill(nullptr);
       m_streams.fill(D3D8VBO());

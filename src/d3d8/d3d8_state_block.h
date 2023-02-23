@@ -34,11 +34,29 @@ namespace dxvk {
 
     D3D8StateBlock(
             D3D8DeviceEx* pDevice,
+            D3DSTATEBLOCKTYPE Type,
             Com<d3d9::IDirect3DStateBlock9>&& pStateBlock)
       : m_device(pDevice)
-      , m_stateBlock(std::move(pStateBlock)) {
+      , m_stateBlock(std::move(pStateBlock))
+      , m_type(Type) {
 
-      
+      if (Type == D3DSBT_VERTEXSTATE || Type == D3DSBT_ALL) {
+        // Lights, D3DTSS_TEXCOORDINDEX and D3DTSS_TEXTURETRANSFORMFLAGS,
+        // vertex shader, VS constants, and various render states.
+        m_capture.vs = true;
+      }
+
+      if (Type == D3DSBT_PIXELSTATE || Type == D3DSBT_ALL) {
+        // Pixel shader, PS constants, and various RS/TSS states.
+        m_capture.ps = true;
+      }
+
+      if (Type == D3DSBT_ALL) {
+        m_capture.indices = true;
+        m_capture.swvp    = true;
+        m_capture.textures.setAll();
+      }
+
       m_textures.fill(nullptr);
     }
 
@@ -46,7 +64,7 @@ namespace dxvk {
 
     // Construct a state block without a D3D9 object
     D3D8StateBlock(D3D8DeviceEx* pDevice)
-      : D3D8StateBlock(pDevice, nullptr) {
+      : D3D8StateBlock(pDevice, D3DSBT_ALL, nullptr) {
     }
 
     // Attach a D3D9 object to a state block that doesn't have one yet
@@ -96,8 +114,9 @@ namespace dxvk {
   private:
     D3D8DeviceEx*                   m_device;
     Com<d3d9::IDirect3DStateBlock9> m_stateBlock;
+    D3DSTATEBLOCKTYPE               m_type;
 
-    // State Data //
+  private: // State Data //
 
     D3D8StateCapture m_capture;
 
