@@ -151,7 +151,7 @@ namespace dxvk {
             D3DBACKBUFFER_TYPE Type,
             IDirect3DSurface8** ppBackBuffer) {
       
-      if (iBackBuffer < m_backBuffers.size() || m_backBuffers[iBackBuffer] == nullptr) {
+      if (iBackBuffer >= m_backBuffers.size() || m_backBuffers[iBackBuffer] == nullptr) {
         Com<d3d9::IDirect3DSurface9> pSurface9;
         HRESULT res = GetD3D9()->GetBackBuffer(0, iBackBuffer, (d3d9::D3DBACKBUFFER_TYPE)Type, &pSurface9);
 
