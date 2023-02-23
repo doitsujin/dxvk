@@ -64,7 +64,7 @@ namespace dxvk {
 
     // Construct a state block without a D3D9 object
     D3D8StateBlock(D3D8DeviceEx* pDevice)
-      : D3D8StateBlock(pDevice, D3DSBT_ALL, nullptr) {
+      : D3D8StateBlock(pDevice, D3DSTATEBLOCKTYPE(0), nullptr) {
     }
 
     // Attach a D3D9 object to a state block that doesn't have one yet
