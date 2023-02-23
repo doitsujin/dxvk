@@ -55,7 +55,6 @@ namespace dxvk {
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_VERTEXBUFFER; }
 
     HRESULT STDMETHODCALLTYPE GetDesc(D3DVERTEXBUFFER_DESC* pDesc) final {
-      // TODO: Remove reinterpret cast.
       return GetD3D9()->GetDesc(reinterpret_cast<d3d9::D3DVERTEXBUFFER_DESC*>(pDesc));
     }
 
@@ -75,7 +74,6 @@ namespace dxvk {
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_INDEXBUFFER; }
 
     HRESULT STDMETHODCALLTYPE GetDesc(D3DINDEXBUFFER_DESC* pDesc) final {
-      // TODO: Remove reinterpret_cast.
       return GetD3D9()->GetDesc(reinterpret_cast<d3d9::D3DINDEXBUFFER_DESC*>(pDesc));
     }
 

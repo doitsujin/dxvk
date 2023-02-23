@@ -51,7 +51,7 @@ namespace dxvk {
             IDirect3DSurface8* pDestinationSurface,
             CONST POINT* pDestPointsArray);
   
-    HRESULT STDMETHODCALLTYPE GetPixelShaderConstant (DWORD Register, void* pConstantData, DWORD ConstantCount) {
+    HRESULT STDMETHODCALLTYPE GetPixelShaderConstant(DWORD Register, void* pConstantData, DWORD ConstantCount) {
       return GetD3D9()->GetPixelShaderConstantF(Register, (float*)pConstantData, ConstantCount);
     }
 
