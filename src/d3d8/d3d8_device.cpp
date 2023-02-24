@@ -181,6 +181,10 @@ namespace dxvk {
         break;
 
       case D3DRS_SOFTWAREVERTEXPROCESSING:
+        // D3D9 can return D3DERR_INVALIDCALL, but we don't care.
+        if (!(m_behaviorFlags & D3DCREATE_MIXED_VERTEXPROCESSING))
+          return D3D_OK;
+
         // This was a very easy footgun for D3D8 applications.
         if (unlikely(ShouldRecord()))
           return m_recorder->SetSoftwareVertexProcessing(Value);
