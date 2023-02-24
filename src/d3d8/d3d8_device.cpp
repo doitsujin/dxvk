@@ -471,7 +471,7 @@ namespace dxvk {
     }
 
     if (Handle == DWORD(NULL)) {
-      m_currentPixelShader = NULL;
+      m_currentPixelShader = DWORD(NULL);
       return GetD3D9()->SetPixelShader(nullptr);
     }
 
