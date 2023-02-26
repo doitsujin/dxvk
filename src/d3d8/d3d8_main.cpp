@@ -1,11 +1,6 @@
-
-// Main: the location of Direct3DCreate8 and other core exported functions
+// Main: the location of Direct3DCreate8
 
 #include "d3d8_interface.h"
-//#include "d3d9_shader_validator.h"
-
-class D3DFE_PROCESSVERTICES;
-using PSGPERRORID = UINT;
 
 namespace dxvk {
   Logger Logger::s_instance("d3d8.log");
@@ -21,12 +16,8 @@ namespace dxvk {
   }
 }
 
-extern "C" {
-
-  
+extern "C" {  
   DLLEXPORT IDirect3D8* __stdcall Direct3DCreate8(UINT nSDKVersion) {
-    //dxvk::CreateD3D9(false, &pDirect3D);
-
     dxvk::Logger::trace("Direct3DCreate8 called");
 
     IDirect3D8* pDirect3D = nullptr;
