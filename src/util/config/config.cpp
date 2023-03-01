@@ -726,7 +726,7 @@ namespace dxvk {
      * media texture creation, whereby a large *
      * chunk size only slows down media        *
      * initialization                          */
-    { R"(\\WILD HEARTS\.exe$)", {{
+    { R"(\\WILD HEARTS(_Trial)?\.exe$)", {{
       { "dxvk.maxChunkSize",                 "4" },
     }} },
   }};
