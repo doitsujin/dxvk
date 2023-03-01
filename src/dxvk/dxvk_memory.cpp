@@ -183,7 +183,8 @@ namespace dxvk {
 
   DxvkMemoryAllocator::DxvkMemoryAllocator(DxvkDevice* device)
   : m_device          (device),
-    m_memProps        (device->adapter()->memoryProperties()) {
+    m_memProps        (device->adapter()->memoryProperties()),
+    m_maxChunkSize    (determineMaxChunkSize(device)) {
     for (uint32_t i = 0; i < m_memProps.memoryHeapCount; i++) {
       m_memHeaps[i].properties = m_memProps.memoryHeaps[i];
       m_memHeaps[i].stats      = DxvkMemoryStats { 0, 0 };
@@ -493,15 +494,15 @@ namespace dxvk {
     VkMemoryHeap heap = m_memProps.memoryHeaps[type.heapIndex];
 
     // Default to a chunk size of 256 MiB
-    VkDeviceSize chunkSize = 256 << 20;
+    VkDeviceSize chunkSize = m_maxChunkSize;
 
     if (hints.test(DxvkMemoryFlag::Small))
-      chunkSize = 16 << 20;
+      chunkSize = std::min<VkDeviceSize>(chunkSize, 16 << 20);
 
     // Try to waste a bit less system memory especially in
     // 32-bit applications due to address space constraints
     if (type.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-      chunkSize = (env::is32BitHostPlatform() ? 16 : 64) << 20;
+      chunkSize = std::min<VkDeviceSize>((env::is32BitHostPlatform() ? 16 : 64) << 20, chunkSize);
 
     // Reduce the chunk size on small heaps so
     // we can at least fit in 15 allocations
@@ -635,6 +636,17 @@ namespace dxvk {
     Logger::log(typeMask ? LogLevel::Info : LogLevel::Error,
       str::format("Memory type mask for sparse resources: 0x", std::hex, typeMask));
     return typeMask;
+  }
+
+
+  VkDeviceSize DxvkMemoryAllocator::determineMaxChunkSize(
+          DxvkDevice*           device) const {
+    int32_t option = device->config().maxChunkSize;
+
+    if (option <= 0)
+      option = 256;
+
+    return VkDeviceSize(option) << 20;
   }
 
 

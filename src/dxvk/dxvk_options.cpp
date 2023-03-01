@@ -9,6 +9,7 @@ namespace dxvk {
     enableGraphicsPipelineLibrary = config.getOption<Tristate>("dxvk.enableGraphicsPipelineLibrary", Tristate::Auto);
     trackPipelineLifetime = config.getOption<Tristate>("dxvk.trackPipelineLifetime",  Tristate::Auto);
     useRawSsbo            = config.getOption<Tristate>("dxvk.useRawSsbo",             Tristate::Auto);
+    maxChunkSize          = config.getOption<int32_t> ("dxvk.maxChunkSize",           0);
     hud                   = config.getOption<std::string>("dxvk.hud", "");
   }
 

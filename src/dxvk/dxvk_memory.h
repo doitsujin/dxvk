@@ -352,6 +352,8 @@ namespace dxvk {
     std::array<DxvkMemoryHeap, VK_MAX_MEMORY_HEAPS> m_memHeaps;
     std::array<DxvkMemoryType, VK_MAX_MEMORY_TYPES> m_memTypes;
 
+    VkDeviceSize                                    m_maxChunkSize;
+
     uint32_t m_sparseMemoryTypes = 0u;
 
     DxvkMemory tryAlloc(
@@ -401,6 +403,9 @@ namespace dxvk {
       const DxvkMemoryHeap*       heap);
 
     uint32_t determineSparseMemoryTypes(
+            DxvkDevice*           device) const;
+
+    VkDeviceSize determineMaxChunkSize(
             DxvkDevice*           device) const;
 
     void logMemoryError(
