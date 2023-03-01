@@ -64,8 +64,11 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("D3D9Query::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(IDirect3DQuery9), riid)) {
+      Logger::warn("D3D9Query::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 
