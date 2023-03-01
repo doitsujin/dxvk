@@ -721,6 +721,14 @@ namespace dxvk {
     { R"(\\bf10\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
+    /* WILD HEARTS™️                            *
+     * D3D12 title using D3D11 device for      *
+     * media texture creation, whereby a large *
+     * chunk size only slows down media        *
+     * initialization                          */
+    { R"(\\WILD HEARTS(_Trial)?\.exe$)", {{
+      { "dxvk.maxChunkSize",                 "4" },
+    }} },
   }};
 
 
