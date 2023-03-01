@@ -32,8 +32,11 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("D3D11VideoProcessorEnumerator::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(ID3D11VideoProcessorEnumerator), riid)) {
+      Logger::warn("D3D11VideoProcessorEnumerator::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 
@@ -136,8 +139,11 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("D3D11VideoProcessor::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(ID3D11VideoProcessor), riid)) {
+      Logger::warn("D3D11VideoProcessor::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 
@@ -247,8 +253,11 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("D3D11VideoProcessorInputView::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(ID3D11VideoProcessorInputView), riid)) {
+      Logger::warn("D3D11VideoProcessorInputView::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 
@@ -326,8 +335,11 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("D3D11VideoProcessorOutputView::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(ID3D11VideoProcessorOutputView), riid)) {
+      Logger::warn("D3D11VideoProcessorOutputView::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 

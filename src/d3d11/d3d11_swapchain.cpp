@@ -103,7 +103,11 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("D3D11SwapChain::QueryInterface: Unknown interface query");
+    if (logQueryInterfaceError(__uuidof(IDXGIVkSwapChain), riid)) {
+      Logger::warn("D3D11SwapChain::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 
