@@ -51,7 +51,7 @@ namespace dxvk {
     std::atomic<VkSampler>  m_samplerHandle = { VK_NULL_HANDLE };
     std::atomic<VkBuffer>   m_bufferHandle  = { VK_NULL_HANDLE };
 
-    std::mutex              m_mutex;
+    dxvk::mutex             m_mutex;
     Rc<DxvkSampler>         m_sampler;
     Rc<DxvkBuffer>          m_buffer;
     
