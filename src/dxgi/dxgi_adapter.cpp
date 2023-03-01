@@ -103,8 +103,11 @@ namespace dxvk {
       return S_OK;
     }
     
-    Logger::warn("DxgiAdapter::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(IDXGIAdapter), riid)) {
+      Logger::warn("DxgiAdapter::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
   

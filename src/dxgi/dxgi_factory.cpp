@@ -93,8 +93,11 @@ namespace dxvk {
       return S_OK;
     }
     
-    Logger::warn("DxgiFactory::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(IDXGIFactory), riid)) {
+      Logger::warn("DxgiFactory::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
   
