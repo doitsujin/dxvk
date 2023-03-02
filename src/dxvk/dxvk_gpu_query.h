@@ -188,7 +188,7 @@ namespace dxvk {
      * \returns Current query status
      */
     DxvkGpuQueryStatus getData(
-            DxvkQueryData&      queryData) const;
+            DxvkQueryData&      queryData);
 
     /**
      * \brief Begins query
@@ -230,11 +230,14 @@ namespace dxvk {
     uint32_t            m_index;
     std::atomic<bool>   m_ended;
 
+    DxvkQueryData       m_queryData = { };
+
     small_vector<DxvkGpuQueryHandle, 8> m_handles;
     
-    DxvkGpuQueryStatus getDataForHandle(
-            DxvkQueryData&      queryData,
-      const DxvkGpuQueryHandle& handle) const;
+    DxvkGpuQueryStatus accumulateQueryDataForHandle(
+      const DxvkGpuQueryHandle& handle);
+
+    DxvkGpuQueryStatus accumulateQueryData();
 
   };
 
