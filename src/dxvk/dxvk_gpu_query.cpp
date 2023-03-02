@@ -18,11 +18,8 @@ namespace dxvk {
   
   
   DxvkGpuQuery::~DxvkGpuQuery() {
-    if (m_handle.queryPool)
-      m_handle.allocator->freeQuery(m_handle);
-    
-    for (DxvkGpuQueryHandle handle : m_handles)
-      handle.allocator->freeQuery(handle);
+    for (size_t i = 0; i < m_handles.size(); i++)
+      m_handles[i].allocator->freeQuery(m_handles[i]);
   }
 
 
@@ -34,15 +31,14 @@ namespace dxvk {
   DxvkGpuQueryStatus DxvkGpuQuery::getData(DxvkQueryData& queryData) const {
     queryData = DxvkQueryData();
 
-    if (!m_ended)
+    // Callers must ensure that no begin call is pending when
+    // calling this. Given that, once the query is ended, we
+    // know that no other thread will access query state.
+    if (!m_ended.load(std::memory_order_acquire))
       return DxvkGpuQueryStatus::Invalid;
-    
-    // Empty begin/end pair
-    if (!m_handle.queryPool)
-      return DxvkGpuQueryStatus::Available;
-    
+
     // Get query data from all associated handles
-    DxvkGpuQueryStatus status = getDataForHandle(queryData, m_handle);
+    DxvkGpuQueryStatus status = DxvkGpuQueryStatus::Available;
 
     for (size_t i = 0; i < m_handles.size()
         && status == DxvkGpuQueryStatus::Available; i++)
@@ -61,27 +57,25 @@ namespace dxvk {
 
 
   void DxvkGpuQuery::begin(const Rc<DxvkCommandList>& cmd) {
-    m_ended = false;
+    // Not useful to enforce a memory order here since
+    // only the false->true transition is defined.
+    m_ended.store(false, std::memory_order_relaxed);
 
-    cmd->trackGpuQuery(m_handle);
-    m_handle = DxvkGpuQueryHandle();
+    for (size_t i = 0; i < m_handles.size(); i++)
+      cmd->trackGpuQuery(m_handles[i]);
 
-    for (const auto& handle : m_handles)
-      cmd->trackGpuQuery(handle);
     m_handles.clear();
   }
 
   
   void DxvkGpuQuery::end() {
-    m_ended = true;
+    // Ensure that all prior writes are made available
+    m_ended.store(true, std::memory_order_release);
   }
 
 
   void DxvkGpuQuery::addQueryHandle(const DxvkGpuQueryHandle& handle) {
-    if (m_handle.queryPool)
-      m_handles.push_back(m_handle);
-    
-    m_handle = handle;
+    m_handles.push_back(handle);
   }
 
 

@@ -90,6 +90,17 @@ namespace dxvk {
       ptr(--m_size)->~T();
     }
 
+    void clear() {
+      for (size_t i = 0; i < m_size; i++)
+        ptr(i)->~T();
+
+      m_size = 0;
+    }
+
+    bool empty() const {
+      return m_size == 0;
+    }
+
           T& operator [] (size_t idx)       { return *ptr(idx); }
     const T& operator [] (size_t idx) const { return *ptr(idx); }
 
