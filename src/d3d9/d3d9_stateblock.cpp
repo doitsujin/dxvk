@@ -213,6 +213,9 @@ namespace dxvk {
           DWORD                      Stage,
           D3D9TextureStageStateTypes Type,
           DWORD                      Value) {
+    Stage = std::min(Stage, DWORD(caps::TextureStageCount - 1));
+    Type = std::min(Type, D3D9TextureStageStateTypes(DXVK_TSS_COUNT - 1));
+
     m_state.textureStages[Stage][Type] = Value;
 
     m_captures.flags.set(D3D9CapturedStateFlag::TextureStages);
