@@ -32,22 +32,12 @@ namespace dxvk {
 
 
   DxvkGpuQueryStatus DxvkGpuQuery::getData(DxvkQueryData& queryData) const {
-    queryData = DxvkQueryData();
-
     if (!m_ended)
       return DxvkGpuQueryStatus::Invalid;
-    
-    // Empty begin/end pair
-    if (!m_handle.queryPool)
-      return DxvkGpuQueryStatus::Available;
-    
-    // Get query data from all associated handles
-    DxvkGpuQueryStatus status = getDataForHandle(queryData, m_handle);
 
-    for (size_t i = 0; i < m_handles.size()
-        && status == DxvkGpuQueryStatus::Available; i++)
-      status = getDataForHandle(queryData, m_handles[i]);
-    
+    // Get query data from all associated handles
+    DxvkGpuQueryStatus status = flushHandles();
+
     // Treat non-precise occlusion queries as available
     // if we already know the result will be non-zero
     if ((status == DxvkGpuQueryStatus::Pending)
@@ -55,7 +45,10 @@ namespace dxvk {
      && !(m_flags & VK_QUERY_CONTROL_PRECISE_BIT)
      && (queryData.occlusion.samplesPassed))
       status = DxvkGpuQueryStatus::Available;
-    
+
+    if (status == DxvkGpuQueryStatus::Available)
+      queryData = m_queryData;
+
     return status;
   }
 
@@ -69,6 +62,8 @@ namespace dxvk {
     for (const auto& handle : m_handles)
       cmd->trackGpuQuery(handle);
     m_handles.clear();
+
+    m_queryData = DxvkQueryData();
   }
 
   
@@ -78,10 +73,41 @@ namespace dxvk {
 
 
   void DxvkGpuQuery::addQueryHandle(const DxvkGpuQueryHandle& handle) {
+    // Some apps forget to End() their queries; instead of accumulating query
+    // handles indefinitely, try to clean them up periodically.
+    if (m_handles.size() >= 256)
+      flushHandles();
+
     if (m_handle.queryPool)
       m_handles.push_back(m_handle);
     
     m_handle = handle;
+  }
+
+
+  DxvkGpuQueryStatus DxvkGpuQuery::flushHandles() const {
+    // Consume handles in FIFO order, aggregating them into m_queryData
+    while (!m_handles.empty()) {
+      DxvkGpuQueryHandle handle = m_handles.front();
+
+      DxvkGpuQueryStatus status = getDataForHandle(m_queryData, handle);
+      if (status != DxvkGpuQueryStatus::Available)
+        return status;
+
+      handle.allocator->freeQuery(handle);
+      m_handles.pop_front();
+    }
+
+    if (m_handle.queryPool) {
+      DxvkGpuQueryStatus status = getDataForHandle(m_queryData, m_handle);
+      if (status != DxvkGpuQueryStatus::Available)
+        return status;
+
+      m_handle.allocator->freeQuery(m_handle);
+      m_handle = DxvkGpuQueryHandle();
+    }
+
+    return DxvkGpuQueryStatus::Available;
   }
 
 

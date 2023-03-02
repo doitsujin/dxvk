@@ -224,10 +224,12 @@ namespace dxvk {
     uint32_t            m_index;
     bool                m_ended;
 
-    DxvkGpuQueryHandle  m_handle;
-    
-    std::vector<DxvkGpuQueryHandle> m_handles;
-    
+    mutable DxvkQueryData                  m_queryData;
+    mutable DxvkGpuQueryHandle             m_handle;
+    mutable std::deque<DxvkGpuQueryHandle> m_handles;
+
+    DxvkGpuQueryStatus flushHandles() const;
+
     DxvkGpuQueryStatus getDataForHandle(
             DxvkQueryData&      queryData,
       const DxvkGpuQueryHandle& handle) const;
