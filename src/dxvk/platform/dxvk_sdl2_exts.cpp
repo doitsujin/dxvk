@@ -13,6 +13,8 @@ namespace dxvk {
 
 
   DxvkNameSet DxvkPlatformExts::getInstanceExtensions() {
+    SDL_Vulkan_LoadLibrary(nullptr);
+
     uint32_t extensionCount = 0;
     if (!SDL_Vulkan_GetInstanceExtensions(nullptr, &extensionCount, nullptr))
       throw DxvkError(str::format("SDL2 WSI: Failed to get instance extension count. ", SDL_GetError()));
