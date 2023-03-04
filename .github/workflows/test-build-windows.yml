@@ -45,7 +45,7 @@ jobs:
         & "${Env:COMSPEC}" /s /c "`"${Env:VSDEVCMD}`" -arch=x86 -host_arch=x64 -no_logo && set" `
           | % { , ($_ -Split '=', 2) } `
           | % { [System.Environment]::SetEnvironmentVariable($_[0], $_[1]) }
-        meson --buildtype release --backend vs2022 build-msvc-x86
+        meson -Denable_d3d11=false -Denable_d3d10=false -Denable_dxgi=false -Denable_d3d9=false -buildtype release --backend vs2022 build-msvc-x86
         msbuild -m build-msvc-x86/dxvk.sln
 
     - name: Build MSVC x64
@@ -54,5 +54,5 @@ jobs:
         & "${Env:COMSPEC}" /s /c "`"${Env:VSDEVCMD}`" -arch=x64 -host_arch=x64 -no_logo && set" `
           | % { , ($_ -Split '=', 2) } `
           | % { [System.Environment]::SetEnvironmentVariable($_[0], $_[1]) }
-        meson --buildtype release --backend vs2022 build-msvc-x64
+        meson -Denable_d3d11=false -Denable_d3d10=false -Denable_dxgi=false -Denable_d3d9=false --buildtype release --backend vs2022 build-msvc-x64
         msbuild -m build-msvc-x64/dxvk.sln
