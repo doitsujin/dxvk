@@ -60,7 +60,7 @@ endif
 d3d9_dll = shared_library(dxvk_name_prefix+'d3d9', d3d9_src, glsl_generator.process(d3d9_shaders), d3d9_res,
   dependencies        : [ dxso_dep, dxvk_dep ],
   include_directories : dxvk_include_path,
-  install             : get_option('enable_d3d9'),
+  install             : true,
   vs_module_defs      : 'd3d9'+def_spec_ext,
   link_args           : d3d9_ld_args,
   link_depends        : [ d3d9_link_depends ],
