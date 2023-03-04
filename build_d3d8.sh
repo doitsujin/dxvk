@@ -66,6 +66,7 @@ function build_arch {
         $opt_strip                                    \
         --bindir "x$1"                                \
         --libdir "x$1"                                \
+        -Denable_d3d9=false                           \
         -Denable_d3d10=false                          \
         -Denable_d3d11=false                          \
         -Denable_dxgi=false                           \
