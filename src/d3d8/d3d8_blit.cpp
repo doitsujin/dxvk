@@ -1,18 +1,11 @@
 #include "d3d8_device.h"
+#include "d3d8_format.h"
 
 /**
  * Implements all cases of CopyRects
  */
 
 namespace dxvk {
-
-  static constexpr bool isDXT(d3d9::D3DFORMAT fmt) {
-      return fmt == d3d9::D3DFMT_DXT1
-          || fmt == d3d9::D3DFMT_DXT2
-          || fmt == d3d9::D3DFMT_DXT3
-          || fmt == d3d9::D3DFMT_DXT4
-          || fmt == d3d9::D3DFMT_DXT5;
-  }
 
   // Copies texture rect in system mem using memcpy.
   // Rects must be congruent, but need not be aligned.

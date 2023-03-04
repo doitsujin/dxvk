@@ -6,6 +6,7 @@
 */
 
 #include "d3d8_include.h"
+#include "d3d8_format.h"
 
 namespace dxvk {
 
@@ -81,19 +82,13 @@ namespace dxvk {
     return params;
   }
 
-  // Get bytes per pixel
-  inline UINT GetFormatStride(const D3DFORMAT fmt) {
-    // TODO: Get texture size based on format
-    return 4;
-  }
-
   // (8<-9) Convert D3DSURFACE_DESC
   inline void ConvertSurfaceDesc8(const d3d9::D3DSURFACE_DESC* pSurf9, D3DSURFACE_DESC* pSurf8) {
     pSurf8->Format  = D3DFORMAT(pSurf9->Format);
     pSurf8->Type    = D3DRESOURCETYPE(pSurf9->Type);
     pSurf8->Usage   = pSurf9->Usage;
     pSurf8->Pool    = D3DPOOL(pSurf9->Pool);
-    pSurf8->Size    = pSurf9->Width * pSurf9->Height * GetFormatStride(pSurf8->Format);
+    pSurf8->Size    = getSurfaceSize(pSurf8->Format, pSurf9->Width, pSurf9->Height);
 
     pSurf8->MultiSampleType = D3DMULTISAMPLE_TYPE(pSurf9->MultiSampleType);
     // DX8: No multisample quality
@@ -107,7 +102,7 @@ namespace dxvk {
     pVol8->Type   = D3DRESOURCETYPE(pVol9->Type);
     pVol8->Usage  = pVol9->Usage;
     pVol8->Pool   = D3DPOOL(pVol9->Pool);
-    pVol8->Size   = pVol9->Width * pVol9->Height * pVol9->Depth * GetFormatStride(pVol8->Format);
+    pVol8->Size   = getSurfaceSize(pVol8->Format, pVol9->Width, pVol9->Height) * pVol9->Depth;
     pVol8->Width  = pVol9->Width;
     pVol8->Height = pVol9->Height;
     pVol8->Depth  = pVol9->Depth;
