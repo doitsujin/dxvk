@@ -858,11 +858,12 @@ namespace dxvk {
     Com<D3D8IndexBuffer>        m_indices;
     INT                         m_baseVertexIndex = 0;
 
+    // TODO: Which of these should be a private ref
     std::vector<Com<D3D8Surface, false>> m_backBuffers;
     Com<D3D8Surface>            m_frontBuffer;
 
     Com<D3D8Surface>            m_renderTarget;
-    Com<D3D8Surface>            m_depthStencil;
+    Com<D3D8Surface, false>     m_depthStencil;
 
     std::vector<D3D8VertexShaderInfo>           m_vertexShaders;
     std::vector<d3d9::IDirect3DPixelShader9*>   m_pixelShaders;
