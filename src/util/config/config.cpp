@@ -124,12 +124,14 @@ namespace dxvk {
     /* NieR:Automata                              */
     { R"(\\NieRAutomata\.exe$)", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
+      { "dxvk.enableAsync",                 "True" },
     }} },
     /* NieR Replicant                             */
     { R"(\\NieR Replicant ver\.1\.22474487139\.exe)", {{
       { "dxgi.syncInterval",                "1"    },
       { "dxgi.maxFrameRate",                "60"   },
       { "d3d11.cachedDynamicResources",     "vi"   },
+      { "dxvk.enableAsync",                 "True" },
     }} },
     /* SteamVR performance test                   */
     { R"(\\vr\.exe$)", {{
@@ -273,6 +275,7 @@ namespace dxvk {
     { R"(\\ffxiv_dx11\.exe$)", {{
       { "dxvk.shrinkNvidiaHvvHeap",         "True" },
       { "d3d11.cachedDynamicResources",     "vi"   },
+      { "dxvk.enableAsync",                 "True" },
     }} },
     /* God of War - relies on NVAPI/AMDAGS for    *
      * barrier stuff, needs nvapi for DLSS        */
@@ -281,6 +284,7 @@ namespace dxvk {
       { "d3d11.relaxedBarriers",            "True" },
       { "dxgi.nvapiHack",                   "False" },
       { "dxgi.maxFrameLatency",             "1"    },
+      { "dxvk.enableAsync",                 "True" },
     }} },
     /* AoE 2 DE - runs poorly for some users      */
     { R"(\\AoE2DE_s\.exe$)", {{
@@ -359,6 +363,7 @@ namespace dxvk {
     /* GTA V performance issues                   */
     { R"(\\GTA5\.exe$)", {{
       { "d3d11.cachedDynamicResources",     "vi"   },
+      { "dxvk.enableAsync",                 "True" },
     }} },
 
     /**********************************************/
@@ -736,6 +741,33 @@ namespace dxvk {
       { "d3d9.customVendorId",              "10de" },
       { "d3d9.customDeviceId",              "05E0" },
       { "dxgi.nvapiHack",                   "False" },
+    }} },
+
+    /**********************************************/
+    /* ASYNC GAMES                             */
+    /**********************************************/
+
+    /* LEGO Star Wars - The Skywalker Saga     */
+    { R"(\\LEGOSTARWARSSKYWALKERSAGA_DX11\.exe$)", {{
+      { "d3d11.cachedDynamicResources",     "a"    },
+      { "d3d11.ignoreGraphicsBarriers",     "True" },
+      { "d3d11.refactoringAllowed",         "True" },
+      { "dxvk.enableAsync",                 "True" },
+    }} },
+    /* Skyrim: Special Edition                 */
+    { R"(\\SkyrimSE\.exe$)", {{
+      { "dxvk.enableAsync",                 "True" },
+    }} },
+    /* Genshin Impact                          */
+    { R"(\\(YuanShen|GenshinImpact)\.exe$)",{{
+      { "dxgi.customDeviceDesc",            "AMD Radeon Pro 5300M"},
+      { "dxvk.enableAsync",                 "True" },
+    }} },
+    /* Kerbal Space Program 2                     */
+    { R"(\\KSP_x64\.exe$)", {{
+      { "d3d11.ignoreGraphicsBarriers",     "True" },
+      { "d3d11.refactoringAllowed",         "True" },
+      { "dxvk.enableAsync",                 "True" },
     }} },
   }};
 
