@@ -127,6 +127,11 @@ namespace dxvk {
       { "dxgi.maxFrameRate",                "60"   },
       { "d3d11.cachedDynamicResources",     "vi"   },
     }} },
+    /* Tom Clancy's The Division                  */
+    { R"(\\TheDivision\.exe)", {{
+      { "dxgi.syncInterval",                "1"    },
+      { "dxgi.maxFrameRate",                "60"   },
+    }} },
     /* SteamVR performance test                   */
     { R"(\\vr\.exe$)", {{
       { "d3d11.dcSingleUseMode",            "False" },
