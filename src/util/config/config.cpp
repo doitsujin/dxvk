@@ -337,6 +337,11 @@ namespace dxvk {
     { R"(\\RapaNui-Win64-Shipping\.exe$)", {{
       { "dxgi.customVendorId",              "8086" },
     }} },
+    /* SpellForce 3 Reforced & expansions         *
+     * Greatly improves CPU bound performance     */
+    { R"(\\SF3ClientFinal\.exe$)", {{
+      { "d3d11.cachedDynamicResources",        "v" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
