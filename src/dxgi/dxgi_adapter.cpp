@@ -352,23 +352,24 @@ namespace dxvk {
     if (MemorySegmentGroup == DXGI_MEMORY_SEGMENT_GROUP_LOCAL)
       heapFlags |= VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
     
-    pVideoMemoryInfo->Budget       = 0;
+    pVideoMemoryInfo->Budget = 0;
     pVideoMemoryInfo->CurrentUsage = 0;
+    pVideoMemoryInfo->AvailableForReservation = 0;
 
     for (uint32_t i = 0; i < memInfo.heapCount; i++) {
       if ((memInfo.heaps[i].heapFlags & heapFlagMask) != heapFlags)
         continue;
       
-      pVideoMemoryInfo->Budget       += memInfo.heaps[i].memoryBudget;
+      pVideoMemoryInfo->Budget += memInfo.heaps[i].memoryBudget;
       pVideoMemoryInfo->CurrentUsage += memInfo.heaps[i].memoryAllocated;
+      pVideoMemoryInfo->AvailableForReservation += memInfo.heaps[i].heapSize / 2;
     }
 
     // We don't implement reservation, but the observable
     // behaviour should match that of Windows drivers
     uint32_t segmentId = uint32_t(MemorySegmentGroup);
 
-    pVideoMemoryInfo->AvailableForReservation = pVideoMemoryInfo->Budget / 2;
-    pVideoMemoryInfo->CurrentReservation      = m_memReservation[segmentId];
+    pVideoMemoryInfo->CurrentReservation = m_memReservation[segmentId];
     return S_OK;
   }
 
