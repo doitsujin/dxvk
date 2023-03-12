@@ -12,7 +12,6 @@ namespace dxvk {
           VkPhysicalDevice    handle)
   : m_vki           (vki),
     m_handle        (handle) {
-    this->initHeapAllocInfo();
     this->queryExtensions();
     this->queryDeviceInfo();
     this->queryDeviceFeatures();
@@ -42,11 +41,16 @@ namespace dxvk {
       info.heaps[i].heapSize = memProps.memoryProperties.memoryHeaps[i].size;
 
       if (m_hasMemoryBudget) {
+        // Handle DXVK's memory allocations separately so that
+        // freeing  resources actually is visible to applications.
+        VkDeviceSize allocated = m_memoryAllocated[i].load();
+        VkDeviceSize used = m_memoryUsed[i].load();
+
         info.heaps[i].memoryBudget    = memBudget.heapBudget[i];
-        info.heaps[i].memoryAllocated = memBudget.heapUsage[i];
+        info.heaps[i].memoryAllocated = std::max(memBudget.heapUsage[i], allocated) - allocated + used;
       } else {
         info.heaps[i].memoryBudget    = memProps.memoryProperties.memoryHeaps[i].size;
-        info.heaps[i].memoryAllocated = m_heapAlloc[i].load();
+        info.heaps[i].memoryAllocated = m_memoryUsed[i].load();
       }
     }
 
@@ -657,19 +661,19 @@ namespace dxvk {
   }
   
   
-  void DxvkAdapter::notifyHeapMemoryAlloc(
+  void DxvkAdapter::notifyMemoryAlloc(
           uint32_t            heap,
-          VkDeviceSize        bytes) {
-    if (!m_hasMemoryBudget)
-      m_heapAlloc[heap] += bytes;
+          int64_t             bytes) {
+    if (heap < m_memoryAllocated.size())
+      m_memoryAllocated[heap] += bytes;
   }
 
-  
-  void DxvkAdapter::notifyHeapMemoryFree(
+
+  void DxvkAdapter::notifyMemoryUse(
           uint32_t            heap,
-          VkDeviceSize        bytes) {
-    if (!m_hasMemoryBudget)
-      m_heapAlloc[heap] -= bytes;
+          int64_t             bytes) {
+    if (heap < m_memoryUsed.size())
+      m_memoryUsed[heap] += bytes;
   }
 
 
@@ -729,12 +733,6 @@ namespace dxvk {
   }
   
   
-  void DxvkAdapter::initHeapAllocInfo() {
-    for (uint32_t i = 0; i < m_heapAlloc.size(); i++)
-      m_heapAlloc[i] = 0;
-  }
-
-
   void DxvkAdapter::queryExtensions() {
     m_deviceExtensions = DxvkNameSet::enumDeviceExtensions(m_vki, m_handle);
   }

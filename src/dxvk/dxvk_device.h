@@ -394,6 +394,30 @@ namespace dxvk {
     uint32_t getCurrentFrameId() const;
     
     /**
+     * \brief Notifies adapter about memory allocation
+     *
+     * \param [in] heap Memory heap index
+     * \param [in] bytes Allocation size
+     */
+    void notifyMemoryAlloc(
+            uint32_t            heap,
+            int64_t             bytes) {
+      m_adapter->notifyMemoryUse(heap, bytes);
+    }
+
+    /**
+     * \brief Notifies adapter about memory suballocation
+     *
+     * \param [in] heap Memory heap index
+     * \param [in] bytes Allocation size
+     */
+    void notifyMemoryUse(
+            uint32_t            heap,
+            int64_t             bytes) {
+      m_adapter->notifyMemoryUse(heap, bytes);
+    }
+
+    /**
      * \brief Registers a shader
      * \param [in] shader Newly compiled shader
      */

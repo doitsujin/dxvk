@@ -366,8 +366,10 @@ namespace dxvk {
         memory = DxvkMemory(this, nullptr, type, devMem.memHandle, 0, size, devMem.memPointer);
     }
 
-    if (memory)
+    if (memory) {
       type->heap->stats.memoryUsed += memory.m_length;
+      m_device->notifyMemoryUse(type->heapId, memory.m_length);
+    }
 
     return memory;
   }
@@ -431,7 +433,7 @@ namespace dxvk {
     }
 
     type->heap->stats.memoryAllocated += size;
-    m_device->adapter()->notifyHeapMemoryAlloc(type->heapId, size);
+    m_device->notifyMemoryAlloc(type->heapId, size);
     return result;
   }
 
@@ -454,6 +456,8 @@ namespace dxvk {
       devMem.memSize    = memory.m_length;
       this->freeDeviceMemory(memory.m_type, devMem);
     }
+
+    m_device->notifyMemoryUse(memory.m_type->heapId, -memory.m_length);
   }
 
   
@@ -485,7 +489,7 @@ namespace dxvk {
     vk->vkFreeMemory(vk->device(), memory.memHandle, nullptr);
 
     type->heap->stats.memoryAllocated -= memory.memSize;
-    m_device->adapter()->notifyHeapMemoryFree(type->heapId, memory.memSize);
+    m_device->notifyMemoryAlloc(type->heapId, memory.memSize);
   }
 
 
