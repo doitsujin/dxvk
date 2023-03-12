@@ -197,26 +197,26 @@ namespace dxvk {
             DxvkDeviceFeatures  enabledFeatures);
     
     /**
-     * \brief Registers memory allocation
+     * \brief Registers heap memory allocation
      * 
      * Updates memory alloc info accordingly.
      * \param [in] heap Memory heap index
      * \param [in] bytes Allocation size
      */
-    void notifyHeapMemoryAlloc(
+    void notifyMemoryAlloc(
             uint32_t            heap,
-            VkDeviceSize        bytes);
+            int64_t             bytes);
     
     /**
-     * \brief Registers memory deallocation
+     * \brief Registers memory suballocation
      * 
      * Updates memory alloc info accordingly.
      * \param [in] heap Memory heap index
      * \param [in] bytes Allocation size
      */
-    void notifyHeapMemoryFree(
+    void notifyMemoryUse(
             uint32_t            heap,
-            VkDeviceSize        bytes);
+            int64_t             bytes);
     
     /**
      * \brief Tests if the driver matches certain criteria
@@ -262,9 +262,9 @@ namespace dxvk {
     
     std::vector<VkQueueFamilyProperties> m_queueFamilies;
 
-    std::array<std::atomic<VkDeviceSize>, VK_MAX_MEMORY_HEAPS> m_heapAlloc;
+    std::array<std::atomic<uint64_t>, VK_MAX_MEMORY_HEAPS> m_memoryAllocated = { };
+    std::array<std::atomic<uint64_t>, VK_MAX_MEMORY_HEAPS> m_memoryUsed = { };
 
-    void initHeapAllocInfo();
     void queryExtensions();
     void queryDeviceInfo();
     void queryDeviceFeatures();
