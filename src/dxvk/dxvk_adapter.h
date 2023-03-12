@@ -30,6 +30,7 @@ namespace dxvk {
    */
   struct DxvkAdapterMemoryHeapInfo {
     VkMemoryHeapFlags heapFlags;
+    VkDeviceSize heapSize;
     VkDeviceSize memoryBudget;
     VkDeviceSize memoryAllocated;
   };

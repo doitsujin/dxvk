@@ -39,6 +39,7 @@ namespace dxvk {
 
     for (uint32_t i = 0; i < info.heapCount; i++) {
       info.heaps[i].heapFlags = memProps.memoryProperties.memoryHeaps[i].flags;
+      info.heaps[i].heapSize = memProps.memoryProperties.memoryHeaps[i].size;
 
       if (m_hasMemoryBudget) {
         info.heaps[i].memoryBudget    = memBudget.heapBudget[i];
