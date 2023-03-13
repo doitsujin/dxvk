@@ -1,17 +1,14 @@
+#include <utility>
+
 #include "log.h"
 
 #include "../util_env.h"
 
 namespace dxvk {
   
-  Logger::Logger(const std::string& file_name)
-  : m_minLevel(getMinLogLevel()) {
-    if (m_minLevel != LogLevel::None) {
-      auto path = getFileName(file_name);
+  Logger::Logger(const std::string& fileName)
+  : m_minLevel(getMinLogLevel()), m_fileName(fileName) {
 
-      if (!path.empty())
-        m_fileStream = std::ofstream(str::topath(path.c_str()).c_str());
-    }
   }
   
   
@@ -57,19 +54,61 @@ namespace dxvk {
       
       const char* prefix = s_prefixes.at(static_cast<uint32_t>(level));
 
+      if (!std::exchange(m_initialized, true)) {
+#ifdef _WIN32
+        HMODULE ntdll = GetModuleHandleA("ntdll.dll");
+
+        if (ntdll)
+          m_wineLogOutput = reinterpret_cast<PFN_wineLogOutput>(GetProcAddress(ntdll, "__wine_dbg_output"));
+#endif
+        auto path = getFileName(m_fileName);
+
+        if (!path.empty())
+          m_fileStream = std::ofstream(str::topath(path.c_str()).c_str());
+      }
+
       std::stringstream stream(message);
-      std::string       line;
+      std::string line;
 
       while (std::getline(stream, line, '\n')) {
-        std::cerr << prefix << line << std::endl;
+        std::stringstream outstream;
+        outstream << prefix << line << std::endl;
+
+        std::string adjusted = outstream.str();
+
+        if (!adjusted.empty()) {
+          if (m_wineLogOutput)
+            m_wineLogOutput(adjusted.c_str());
+          else
+            std::cerr << adjusted;
+        }
 
         if (m_fileStream)
-          m_fileStream << prefix << line << std::endl;
+          m_fileStream << adjusted;
       }
     }
   }
   
   
+  std::string Logger::getFileName(const std::string& base) {
+    std::string path = env::getEnvVar("DXVK_LOG_PATH");
+    
+    if (path == "none")
+      return std::string();
+
+    // Don't create a log file if we're writing to wine's console output
+    if (path.empty() && m_wineLogOutput)
+      return std::string();
+
+    if (!path.empty() && *path.rbegin() != '/')
+      path += '/';
+
+    std::string exeName = env::getExeBaseName();
+    path += exeName + "_" + base;
+    return path;
+  }
+
+
   LogLevel Logger::getMinLogLevel() {
     const std::array<std::pair<const char*, LogLevel>, 6> logLevels = {{
       { "trace", LogLevel::Trace },
@@ -88,21 +127,6 @@ namespace dxvk {
     }
     
     return LogLevel::Info;
-  }
-  
-  
-  std::string Logger::getFileName(const std::string& base) {
-    std::string path = env::getEnvVar("DXVK_LOG_PATH");
-    
-    if (path == "none")
-      return "";
-
-    if (!path.empty() && *path.rbegin() != '/')
-      path += '/';
-
-    std::string exeName = env::getExeBaseName();
-    path += exeName + "_" + base;
-    return path;
   }
   
 }
