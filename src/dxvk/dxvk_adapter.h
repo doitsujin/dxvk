@@ -56,6 +56,18 @@ namespace dxvk {
   };
   
   /**
+   * \brief Device import info
+   */
+  struct DxvkDeviceImportInfo {
+    VkDevice device;
+    VkQueue queue;
+    uint32_t queueFamily;
+    uint32_t extensionCount;
+    const char** extensionNames;
+    const VkPhysicalDeviceFeatures2* features;
+  };
+
+  /**
    * \brief DXVK adapter
    * 
    * Corresponds to a physical device in Vulkan. Provides
@@ -197,6 +209,17 @@ namespace dxvk {
             DxvkDeviceFeatures  enabledFeatures);
     
     /**
+     * \brief Imports a foreign device
+     * 
+     * \param [in] instance Parent instance
+     * \param [in] args Device import info
+     * \returns Device handle
+     */
+    Rc<DxvkDevice> importDevice(
+      const Rc<DxvkInstance>&   instance,
+      const DxvkDeviceImportInfo& args);
+    
+    /**
      * \brief Registers heap memory allocation
      * 
      * Updates memory alloc info accordingly.
@@ -274,6 +297,13 @@ namespace dxvk {
             VkQueueFlags          mask,
             VkQueueFlags          flags) const;
     
+    std::vector<DxvkExt*> getExtensionList(
+            DxvkDeviceExtensions&   devExtensions);
+
+    static void initFeatureChain(
+            DxvkDeviceFeatures&   enabledFeatures,
+      const DxvkDeviceExtensions& devExtensions);
+
     static void logNameList(const DxvkNameList& names);
     static void logFeatures(const DxvkDeviceFeatures& features);
     static void logQueueFamilies(const DxvkAdapterQueueIndices& queues);

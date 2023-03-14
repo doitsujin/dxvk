@@ -355,35 +355,7 @@ namespace dxvk {
     const Rc<DxvkInstance>&   instance,
           DxvkDeviceFeatures  enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
-
-    std::array<DxvkExt*, 26> devExtensionList = {{
-      &devExtensions.amdMemoryOverallocationBehaviour,
-      &devExtensions.amdShaderFragmentMask,
-      &devExtensions.extAttachmentFeedbackLoopLayout,
-      &devExtensions.extConservativeRasterization,
-      &devExtensions.extCustomBorderColor,
-      &devExtensions.extDepthClipEnable,
-      &devExtensions.extExtendedDynamicState3,
-      &devExtensions.extFragmentShaderInterlock,
-      &devExtensions.extFullScreenExclusive,
-      &devExtensions.extGraphicsPipelineLibrary,
-      &devExtensions.extHdrMetadata,
-      &devExtensions.extMemoryBudget,
-      &devExtensions.extMemoryPriority,
-      &devExtensions.extNonSeamlessCubeMap,
-      &devExtensions.extRobustness2,
-      &devExtensions.extShaderModuleIdentifier,
-      &devExtensions.extShaderStencilExport,
-      &devExtensions.extSwapchainColorSpace,
-      &devExtensions.extTransformFeedback,
-      &devExtensions.extVertexAttributeDivisor,
-      &devExtensions.khrExternalMemoryWin32,
-      &devExtensions.khrExternalSemaphoreWin32,
-      &devExtensions.khrPipelineLibrary,
-      &devExtensions.khrSwapchain,
-      &devExtensions.nvxBinaryImport,
-      &devExtensions.nvxImageViewHandle,
-    }};
+    auto devExtensionList = getExtensionList(devExtensions);
 
     // Only enable Cuda interop extensions in 64-bit builds in
     // order to avoid potential driver or address space issues.
@@ -489,110 +461,7 @@ namespace dxvk {
       m_deviceFeatures.extShaderModuleIdentifier.shaderModuleIdentifier;
 
     // Create pNext chain for additional device features
-    enabledFeatures.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
-    enabledFeatures.core.pNext = nullptr;
-
-    enabledFeatures.vk11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
-    enabledFeatures.vk11.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.vk11);
-
-    enabledFeatures.vk12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-    enabledFeatures.vk12.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.vk12);
-
-    enabledFeatures.vk13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-    enabledFeatures.vk13.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.vk13);
-
-    if (devExtensions.amdShaderFragmentMask)
-      enabledFeatures.amdShaderFragmentMask = VK_TRUE;
-
-    if (devExtensions.extAttachmentFeedbackLoopLayout) {
-      enabledFeatures.extAttachmentFeedbackLoopLayout.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_FEATURES_EXT;
-      enabledFeatures.extAttachmentFeedbackLoopLayout.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extAttachmentFeedbackLoopLayout);
-    }
-
-    if (devExtensions.extConservativeRasterization)
-      enabledFeatures.extConservativeRasterization = VK_TRUE;
-
-    if (devExtensions.extCustomBorderColor) {
-      enabledFeatures.extCustomBorderColor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT;
-      enabledFeatures.extCustomBorderColor.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extCustomBorderColor);
-    }
-
-    if (devExtensions.extDepthClipEnable) {
-      enabledFeatures.extDepthClipEnable.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT;
-      enabledFeatures.extDepthClipEnable.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extDepthClipEnable);
-    }
-
-    if (devExtensions.extExtendedDynamicState3) {
-      enabledFeatures.extExtendedDynamicState3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
-      enabledFeatures.extExtendedDynamicState3.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extExtendedDynamicState3);
-    }
-
-    if (devExtensions.extFragmentShaderInterlock) {
-      enabledFeatures.extFragmentShaderInterlock.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
-      enabledFeatures.extFragmentShaderInterlock.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extFragmentShaderInterlock);
-    }
-
-    if (devExtensions.extFullScreenExclusive)
-      enabledFeatures.extFullScreenExclusive = VK_TRUE;
-
-    if (devExtensions.extGraphicsPipelineLibrary) {
-      enabledFeatures.extGraphicsPipelineLibrary.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT;
-      enabledFeatures.extGraphicsPipelineLibrary.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extGraphicsPipelineLibrary);
-    }
-
-    if (devExtensions.extMemoryBudget)
-      enabledFeatures.extMemoryBudget = VK_TRUE;
-
-    if (devExtensions.extMemoryPriority) {
-      enabledFeatures.extMemoryPriority.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
-      enabledFeatures.extMemoryPriority.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extMemoryPriority);
-    }
-
-    if (devExtensions.extNonSeamlessCubeMap) {
-      enabledFeatures.extNonSeamlessCubeMap.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT;
-      enabledFeatures.extNonSeamlessCubeMap.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extNonSeamlessCubeMap);
-    }
-
-    if (devExtensions.extShaderModuleIdentifier) {
-      enabledFeatures.extShaderModuleIdentifier.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_FEATURES_EXT;
-      enabledFeatures.extShaderModuleIdentifier.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extShaderModuleIdentifier);
-    }
-
-    if (devExtensions.extRobustness2) {
-      enabledFeatures.extRobustness2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
-      enabledFeatures.extRobustness2.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extRobustness2);
-    }
-
-    if (devExtensions.extShaderStencilExport)
-      enabledFeatures.extShaderStencilExport = VK_TRUE;
-
-    if (devExtensions.extSwapchainColorSpace)
-      enabledFeatures.extSwapchainColorSpace = VK_TRUE;
-
-    if (devExtensions.extHdrMetadata)
-      enabledFeatures.extHdrMetadata = VK_TRUE;
-
-    if (devExtensions.extTransformFeedback) {
-      enabledFeatures.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
-      enabledFeatures.extTransformFeedback.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extTransformFeedback);
-    }
-
-    if (devExtensions.extVertexAttributeDivisor.revision() >= 3) {
-      enabledFeatures.extVertexAttributeDivisor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
-      enabledFeatures.extVertexAttributeDivisor.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extVertexAttributeDivisor);
-    }
-
-    if (devExtensions.khrExternalMemoryWin32)
-      enabledFeatures.khrExternalMemoryWin32 = VK_TRUE;
-
-    if (devExtensions.khrExternalSemaphoreWin32)
-      enabledFeatures.khrExternalSemaphoreWin32 = VK_TRUE;
-
-    if (devExtensions.nvxBinaryImport)
-      enabledFeatures.nvxBinaryImport = VK_TRUE;
-
-    if (devExtensions.nvxImageViewHandle)
-      enabledFeatures.nvxImageViewHandle = VK_TRUE;
+    initFeatureChain(enabledFeatures, devExtensions);
 
     // Log feature support info an extension list
     Logger::info(str::format("Device properties:"
@@ -676,8 +545,120 @@ namespace dxvk {
 
     return new DxvkDevice(instance, this, vkd, enabledFeatures, queues);
   }
-  
-  
+
+
+  Rc<DxvkDevice> DxvkAdapter::importDevice(
+    const Rc<DxvkInstance>&   instance,
+    const DxvkDeviceImportInfo& args) {
+    DxvkDeviceExtensions devExtensions;
+    auto devExtensionList = getExtensionList(devExtensions);
+
+    if (!m_deviceExtensions.enableExtensions(devExtensionList.size(), devExtensionList.data(), nullptr))
+      throw DxvkError("DxvkAdapter: Failed to create device");
+    
+    DxvkNameList extensionNameList(args.extensionCount, args.extensionNames);
+
+    // Populate feature structs based on imported Vulkan device
+    DxvkDeviceFeatures enabledFeatures = { };
+
+    for (auto f = reinterpret_cast<const VkBaseOutStructure*>(args.features); f; f = f->pNext) {
+      switch (f->sType) {
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2:
+          enabledFeatures.core.features = reinterpret_cast<const VkPhysicalDeviceFeatures2*>(f)->features;
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES:
+          enabledFeatures.vk11 = *reinterpret_cast<const VkPhysicalDeviceVulkan11Features*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES:
+          enabledFeatures.vk12 = *reinterpret_cast<const VkPhysicalDeviceVulkan12Features*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES:
+          enabledFeatures.vk13 = *reinterpret_cast<const VkPhysicalDeviceVulkan13Features*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_FEATURES_EXT:
+          enabledFeatures.extAttachmentFeedbackLoopLayout = *reinterpret_cast<const VkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT:
+          enabledFeatures.extCustomBorderColor = *reinterpret_cast<const VkPhysicalDeviceCustomBorderColorFeaturesEXT*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT:
+          enabledFeatures.extDepthClipEnable = *reinterpret_cast<const VkPhysicalDeviceDepthClipEnableFeaturesEXT*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT:
+          enabledFeatures.extExtendedDynamicState3 = *reinterpret_cast<const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT:
+          enabledFeatures.extFragmentShaderInterlock = *reinterpret_cast<const VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT:
+          enabledFeatures.extGraphicsPipelineLibrary = *reinterpret_cast<const VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT:
+          enabledFeatures.extMemoryPriority = *reinterpret_cast<const VkPhysicalDeviceMemoryPriorityFeaturesEXT*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT:
+          enabledFeatures.extNonSeamlessCubeMap = *reinterpret_cast<const VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT:
+          enabledFeatures.extRobustness2 = *reinterpret_cast<const VkPhysicalDeviceRobustness2FeaturesEXT*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_FEATURES_EXT:
+          enabledFeatures.extShaderModuleIdentifier = *reinterpret_cast<const VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT:
+          enabledFeatures.extTransformFeedback = *reinterpret_cast<const VkPhysicalDeviceTransformFeedbackFeaturesEXT*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT:
+          enabledFeatures.extVertexAttributeDivisor = *reinterpret_cast<const VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*>(f);
+          break;
+
+        default:
+          // Ignore any unknown feature structs
+          break;
+      }
+    }
+
+    initFeatureChain(enabledFeatures, devExtensions);
+
+    // Log feature support info an extension list
+    Logger::info(str::format("Device properties:"
+      "\n  Device name:     : ", m_deviceInfo.core.properties.deviceName,
+      "\n  Driver version   : ",
+        VK_VERSION_MAJOR(m_deviceInfo.core.properties.driverVersion), ".",
+        VK_VERSION_MINOR(m_deviceInfo.core.properties.driverVersion), ".",
+        VK_VERSION_PATCH(m_deviceInfo.core.properties.driverVersion)));
+
+    Logger::info("Enabled device extensions:");
+    this->logNameList(extensionNameList);
+    this->logFeatures(enabledFeatures);
+
+    // Create device loader
+    Rc<vk::DeviceFn> vkd = new vk::DeviceFn(m_vki, false, args.device);
+
+    // We only support one queue when importing devices, and no sparse.
+    DxvkDeviceQueueSet queues = { };
+    queues.graphics = { args.queue, args.queueFamily };
+    queues.transfer = queues.graphics;
+
+    return new DxvkDevice(instance, this, vkd, enabledFeatures, queues);
+  }
+
+
   void DxvkAdapter::notifyMemoryAlloc(
           uint32_t            heap,
           int64_t             bytes) {
@@ -962,7 +943,150 @@ namespace dxvk {
 
     return VK_QUEUE_FAMILY_IGNORED;
   }
-  
+
+
+  std::vector<DxvkExt*> DxvkAdapter::getExtensionList(
+          DxvkDeviceExtensions&   devExtensions) {
+    return {{
+      &devExtensions.amdMemoryOverallocationBehaviour,
+      &devExtensions.amdShaderFragmentMask,
+      &devExtensions.extAttachmentFeedbackLoopLayout,
+      &devExtensions.extConservativeRasterization,
+      &devExtensions.extCustomBorderColor,
+      &devExtensions.extDepthClipEnable,
+      &devExtensions.extExtendedDynamicState3,
+      &devExtensions.extFragmentShaderInterlock,
+      &devExtensions.extFullScreenExclusive,
+      &devExtensions.extGraphicsPipelineLibrary,
+      &devExtensions.extHdrMetadata,
+      &devExtensions.extMemoryBudget,
+      &devExtensions.extMemoryPriority,
+      &devExtensions.extNonSeamlessCubeMap,
+      &devExtensions.extRobustness2,
+      &devExtensions.extShaderModuleIdentifier,
+      &devExtensions.extShaderStencilExport,
+      &devExtensions.extSwapchainColorSpace,
+      &devExtensions.extTransformFeedback,
+      &devExtensions.extVertexAttributeDivisor,
+      &devExtensions.khrExternalMemoryWin32,
+      &devExtensions.khrExternalSemaphoreWin32,
+      &devExtensions.khrPipelineLibrary,
+      &devExtensions.khrSwapchain,
+      &devExtensions.nvxBinaryImport,
+      &devExtensions.nvxImageViewHandle,
+    }};
+  }
+
+
+  void DxvkAdapter::initFeatureChain(
+          DxvkDeviceFeatures&   enabledFeatures,
+    const DxvkDeviceExtensions& devExtensions) {
+    enabledFeatures.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
+    enabledFeatures.core.pNext = nullptr;
+
+    enabledFeatures.vk11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+    enabledFeatures.vk11.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.vk11);
+
+    enabledFeatures.vk12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    enabledFeatures.vk12.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.vk12);
+
+    enabledFeatures.vk13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+    enabledFeatures.vk13.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.vk13);
+
+    if (devExtensions.amdShaderFragmentMask)
+      enabledFeatures.amdShaderFragmentMask = VK_TRUE;
+
+    if (devExtensions.extAttachmentFeedbackLoopLayout) {
+      enabledFeatures.extAttachmentFeedbackLoopLayout.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ATTACHMENT_FEEDBACK_LOOP_LAYOUT_FEATURES_EXT;
+      enabledFeatures.extAttachmentFeedbackLoopLayout.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extAttachmentFeedbackLoopLayout);
+    }
+
+    if (devExtensions.extConservativeRasterization)
+      enabledFeatures.extConservativeRasterization = VK_TRUE;
+
+    if (devExtensions.extCustomBorderColor) {
+      enabledFeatures.extCustomBorderColor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT;
+      enabledFeatures.extCustomBorderColor.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extCustomBorderColor);
+    }
+
+    if (devExtensions.extDepthClipEnable) {
+      enabledFeatures.extDepthClipEnable.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT;
+      enabledFeatures.extDepthClipEnable.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extDepthClipEnable);
+    }
+
+    if (devExtensions.extExtendedDynamicState3) {
+      enabledFeatures.extExtendedDynamicState3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
+      enabledFeatures.extExtendedDynamicState3.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extExtendedDynamicState3);
+    }
+
+    if (devExtensions.extFragmentShaderInterlock) {
+      enabledFeatures.extFragmentShaderInterlock.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
+      enabledFeatures.extFragmentShaderInterlock.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extFragmentShaderInterlock);
+    }
+
+    if (devExtensions.extFullScreenExclusive)
+      enabledFeatures.extFullScreenExclusive = VK_TRUE;
+
+    if (devExtensions.extGraphicsPipelineLibrary) {
+      enabledFeatures.extGraphicsPipelineLibrary.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT;
+      enabledFeatures.extGraphicsPipelineLibrary.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extGraphicsPipelineLibrary);
+    }
+
+    if (devExtensions.extMemoryBudget)
+      enabledFeatures.extMemoryBudget = VK_TRUE;
+
+    if (devExtensions.extMemoryPriority) {
+      enabledFeatures.extMemoryPriority.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
+      enabledFeatures.extMemoryPriority.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extMemoryPriority);
+    }
+
+    if (devExtensions.extNonSeamlessCubeMap) {
+      enabledFeatures.extNonSeamlessCubeMap.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_NON_SEAMLESS_CUBE_MAP_FEATURES_EXT;
+      enabledFeatures.extNonSeamlessCubeMap.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extNonSeamlessCubeMap);
+    }
+
+    if (devExtensions.extShaderModuleIdentifier) {
+      enabledFeatures.extShaderModuleIdentifier.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_FEATURES_EXT;
+      enabledFeatures.extShaderModuleIdentifier.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extShaderModuleIdentifier);
+    }
+
+    if (devExtensions.extRobustness2) {
+      enabledFeatures.extRobustness2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT;
+      enabledFeatures.extRobustness2.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extRobustness2);
+    }
+
+    if (devExtensions.extShaderStencilExport)
+      enabledFeatures.extShaderStencilExport = VK_TRUE;
+
+    if (devExtensions.extSwapchainColorSpace)
+      enabledFeatures.extSwapchainColorSpace = VK_TRUE;
+
+    if (devExtensions.extHdrMetadata)
+      enabledFeatures.extHdrMetadata = VK_TRUE;
+
+    if (devExtensions.extTransformFeedback) {
+      enabledFeatures.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
+      enabledFeatures.extTransformFeedback.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extTransformFeedback);
+    }
+
+    if (devExtensions.extVertexAttributeDivisor.revision() >= 3) {
+      enabledFeatures.extVertexAttributeDivisor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
+      enabledFeatures.extVertexAttributeDivisor.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extVertexAttributeDivisor);
+    }
+
+    if (devExtensions.khrExternalMemoryWin32)
+      enabledFeatures.khrExternalMemoryWin32 = VK_TRUE;
+
+    if (devExtensions.khrExternalSemaphoreWin32)
+      enabledFeatures.khrExternalSemaphoreWin32 = VK_TRUE;
+
+    if (devExtensions.nvxBinaryImport)
+      enabledFeatures.nvxBinaryImport = VK_TRUE;
+
+    if (devExtensions.nvxImageViewHandle)
+      enabledFeatures.nvxImageViewHandle = VK_TRUE;
+  }
+
   
   void DxvkAdapter::logNameList(const DxvkNameList& names) {
     for (uint32_t i = 0; i < names.count(); i++)
