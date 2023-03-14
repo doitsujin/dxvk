@@ -20,6 +20,7 @@ namespace dxvk::vk {
    */
   struct LibraryLoader : public RcObject {
     LibraryLoader();
+    LibraryLoader(PFN_vkGetInstanceProcAddr loaderProc);
     ~LibraryLoader();
     PFN_vkVoidFunction sym(VkInstance instance, const char* name) const;
     PFN_vkVoidFunction sym(const char* name) const;
@@ -75,6 +76,7 @@ namespace dxvk::vk {
    */
   struct LibraryFn : LibraryLoader {
     LibraryFn();
+    LibraryFn(PFN_vkGetInstanceProcAddr loaderProc);
     ~LibraryFn();
     
     VULKAN_FN(vkCreateInstance);
