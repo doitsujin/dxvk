@@ -27,9 +27,10 @@ namespace dxvk {
 
   bool IsSupportedAdapterFormat(
           D3D9Format Format) {
+    // D3D9Format::X1R5G5B5 is unsupported by native drivers and some apps, 
+    // such as the BGE SettingsApplication, rely on it not being exposed.
     return Format == D3D9Format::A2R10G10B10
         || Format == D3D9Format::X8R8G8B8
-        || Format == D3D9Format::X1R5G5B5
         || Format == D3D9Format::R5G6B5;
   }
 
@@ -42,8 +43,6 @@ namespace dxvk {
       return (AdapterFormat == D3D9Format::A2R10G10B10 && BackBufferFormat == D3D9Format::A2R10G10B10) ||
              (AdapterFormat == D3D9Format::X8R8G8B8    && BackBufferFormat == D3D9Format::X8R8G8B8) ||
              (AdapterFormat == D3D9Format::X8R8G8B8    && BackBufferFormat == D3D9Format::A8R8G8B8) ||
-             (AdapterFormat == D3D9Format::X1R5G5B5    && BackBufferFormat == D3D9Format::X1R5G5B5) ||
-             (AdapterFormat == D3D9Format::X1R5G5B5    && BackBufferFormat == D3D9Format::A1R5G5B5) ||
              (AdapterFormat == D3D9Format::R5G6B5      && BackBufferFormat == D3D9Format::R5G6B5);
     }
 
@@ -55,8 +54,6 @@ namespace dxvk {
     return BackBufferFormat == D3D9Format::A2R10G10B10
         || BackBufferFormat == D3D9Format::A8R8G8B8
         || BackBufferFormat == D3D9Format::X8R8G8B8
-        || BackBufferFormat == D3D9Format::A1R5G5B5
-        || BackBufferFormat == D3D9Format::X1R5G5B5
         || BackBufferFormat == D3D9Format::R5G6B5
         || BackBufferFormat == D3D9Format::Unknown;
   }
