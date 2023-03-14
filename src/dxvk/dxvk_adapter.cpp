@@ -393,7 +393,7 @@ namespace dxvk {
     if (!m_deviceExtensions.enableExtensions(
           devExtensionList.size(),
           devExtensionList.data(),
-          extensionsEnabled))
+          &extensionsEnabled))
       throw DxvkError("DxvkAdapter: Failed to create device");
     
     // Enable additional extensions if necessary
