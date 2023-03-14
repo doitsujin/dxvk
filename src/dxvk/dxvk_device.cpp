@@ -7,7 +7,8 @@ namespace dxvk {
     const Rc<DxvkInstance>&         instance,
     const Rc<DxvkAdapter>&          adapter,
     const Rc<vk::DeviceFn>&         vkd,
-    const DxvkDeviceFeatures&       features)
+    const DxvkDeviceFeatures&       features,
+    const DxvkDeviceQueueSet&       queues)
   : m_options           (instance->options()),
     m_instance          (instance),
     m_adapter           (adapter),
@@ -16,11 +17,9 @@ namespace dxvk {
     m_properties        (adapter->devicePropertiesExt()),
     m_perfHints         (getPerfHints()),
     m_objects           (this),
+    m_queues            (queues),
     m_submissionQueue   (this) {
-    auto queueFamilies = m_adapter->findQueueFamilies();
-    m_queues.graphics = getQueue(queueFamilies.graphics, 0);
-    m_queues.transfer = getQueue(queueFamilies.transfer, 0);
-    m_queues.sparse = getQueue(queueFamilies.sparse, 0);
+
   }
   
   
@@ -319,18 +318,6 @@ namespace dxvk {
 
   void DxvkDevice::recycleCommandList(const Rc<DxvkCommandList>& cmdList) {
     m_recycledCommandLists.returnObject(cmdList);
-  }
-  
-
-  DxvkDeviceQueue DxvkDevice::getQueue(
-          uint32_t                family,
-          uint32_t                index) const {
-    VkQueue queue = VK_NULL_HANDLE;
-
-    if (family != VK_QUEUE_FAMILY_IGNORED)
-      m_vkd->vkGetDeviceQueue(m_vkd->device(), family, index, &queue);
-
-    return DxvkDeviceQueue { queue, family, index };
   }
   
 }

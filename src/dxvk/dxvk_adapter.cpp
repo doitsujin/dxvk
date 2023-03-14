@@ -6,7 +6,19 @@
 #include "dxvk_instance.h"
 
 namespace dxvk {
-  
+
+  DxvkDeviceQueue getDeviceQueue(const Rc<vk::DeviceFn>& vkd, uint32_t family, uint32_t index) {
+    DxvkDeviceQueue result = { };
+    result.queueFamily = family;
+    result.queueIndex = index;
+
+    if (family != VK_QUEUE_FAMILY_IGNORED)
+      vkd->vkGetDeviceQueue(vkd->device(), family, index, &result.queueHandle);
+
+    return result;
+  }
+
+
   DxvkAdapter::DxvkAdapter(
     const Rc<vk::InstanceFn>& vki,
           VkPhysicalDevice    handle)
@@ -655,9 +667,14 @@ namespace dxvk {
     if (vr != VK_SUCCESS)
       throw DxvkError("DxvkAdapter: Failed to create device");
     
-    return new DxvkDevice(instance, this,
-      new vk::DeviceFn(m_vki, true, device),
-      enabledFeatures);
+    Rc<vk::DeviceFn> vkd = new vk::DeviceFn(m_vki, true, device);
+
+    DxvkDeviceQueueSet queues = { };
+    queues.graphics = getDeviceQueue(vkd, queueFamilies.graphics, 0);
+    queues.transfer = getDeviceQueue(vkd, queueFamilies.transfer, 0);
+    queues.sparse = getDeviceQueue(vkd, queueFamilies.sparse, 0);
+
+    return new DxvkDevice(instance, this, vkd, enabledFeatures, queues);
   }
   
   

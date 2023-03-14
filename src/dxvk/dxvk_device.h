@@ -86,7 +86,8 @@ namespace dxvk {
       const Rc<DxvkInstance>&         instance,
       const Rc<DxvkAdapter>&          adapter,
       const Rc<vk::DeviceFn>&         vkd,
-      const DxvkDeviceFeatures&       features);
+      const DxvkDeviceFeatures&       features,
+      const DxvkDeviceQueueSet&       queues);
       
     ~DxvkDevice();
     
@@ -551,11 +552,7 @@ namespace dxvk {
     
     void recycleCommandList(
       const Rc<DxvkCommandList>& cmdList);
-    
-    DxvkDeviceQueue getQueue(
-            uint32_t                family,
-            uint32_t                index) const;
-    
+
   };
   
 }
