@@ -402,7 +402,7 @@ namespace dxvk {
     void notifyMemoryAlloc(
             uint32_t            heap,
             int64_t             bytes) {
-      m_adapter->notifyMemoryUse(heap, bytes);
+      m_adapter->notifyMemoryAlloc(heap, bytes);
     }
 
     /**
