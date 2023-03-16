@@ -220,6 +220,14 @@ namespace dxvk {
   }
   
   
+  Rc<DxvkBuffer> DxvkDevice::importBuffer(
+    const DxvkBufferCreateInfo& createInfo,
+    const DxvkBufferImportInfo& importInfo,
+          VkMemoryPropertyFlags memoryType) {
+    return new DxvkBuffer(this, createInfo, importInfo, memoryType);
+  }
+
+
   DxvkMemoryStats DxvkDevice::getMemoryStats(uint32_t heap) {
     return m_objects.memoryManager().getMemoryStats(heap);
   }

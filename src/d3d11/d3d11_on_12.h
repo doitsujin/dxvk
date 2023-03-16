@@ -9,6 +9,19 @@ namespace dxvk {
   class D3D11Device;
   class D3D11DXGIDevice;
 
+  /**
+   * \brief Resource info for 11on12 resources
+   */
+  struct D3D11_ON_12_RESOURCE_INFO {
+    Com<ID3D12Resource> Resource;
+    UINT64 VulkanHandle = 0;
+    UINT64 VulkanOffset = 0;
+    BOOL IsWrappedResource = FALSE;
+    D3D12_RESOURCE_STATES InputState = D3D12_RESOURCE_STATE_COMMON;
+    D3D12_RESOURCE_STATES OutputState = D3D12_RESOURCE_STATE_COMMON;
+  };
+
+
   class D3D11on12Device : public ID3D11On12Device {
 
   public:

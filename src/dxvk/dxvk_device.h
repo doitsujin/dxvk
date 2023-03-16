@@ -373,6 +373,19 @@ namespace dxvk {
     Rc<DxvkSparsePageAllocator> createSparsePageAllocator();
 
     /**
+     * \brief Imports a buffer
+     *
+     * \param [in] createInfo Buffer create info
+     * \param [in] importInfo Buffer import info
+     * \param [in] memoryType Memory type flags
+     * \returns The buffer object
+     */
+    Rc<DxvkBuffer> importBuffer(
+      const DxvkBufferCreateInfo& createInfo,
+      const DxvkBufferImportInfo& importInfo,
+            VkMemoryPropertyFlags memoryType);
+
+    /**
      * \brief Retrieves stat counters
      * 
      * Can be used by the HUD to display some

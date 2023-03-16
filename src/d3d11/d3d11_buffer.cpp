@@ -8,7 +8,8 @@ namespace dxvk {
   
   D3D11Buffer::D3D11Buffer(
           D3D11Device*                pDevice,
-    const D3D11_BUFFER_DESC*          pDesc)
+    const D3D11_BUFFER_DESC*          pDesc,
+    const D3D11_ON_12_RESOURCE_INFO*  p11on12Info)
   : D3D11DeviceChild<ID3D11Buffer>(pDevice),
     m_desc        (*pDesc),
     m_resource    (this),
@@ -83,17 +84,27 @@ namespace dxvk {
         info.access |= VK_ACCESS_HOST_WRITE_BIT;
     }
 
-    if (!(pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL)) {
+    if (p11on12Info) {
+      m_11on12 = *p11on12Info;
+
+      DxvkBufferImportInfo importInfo;
+      importInfo.buffer = VkBuffer(m_11on12.VulkanHandle);
+      importInfo.offset = m_11on12.VulkanOffset;
+
+      if (m_desc.CPUAccessFlags)
+        m_11on12.Resource->Map(0, nullptr, &importInfo.mapPtr);
+
+      m_buffer = m_parent->GetDXVKDevice()->importBuffer(info, importInfo, GetMemoryFlags());
+      m_mapped = m_buffer->getSliceHandle();
+
+      m_mapMode = DetermineMapMode();
+    } else if (!(pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL)) {
       // Create the buffer and set the entire buffer slice as mapped,
       // so that we only have to update it when invalidating the buffer
       m_buffer = m_parent->GetDXVKDevice()->createBuffer(info, GetMemoryFlags());
       m_mapped = m_buffer->getSliceHandle();
 
       m_mapMode = DetermineMapMode();
-
-      // For Stream Output buffers we need a counter
-      if (pDesc->BindFlags & D3D11_BIND_STREAM_OUTPUT)
-        m_soCounter = CreateSoCounterBuffer();
     } else {
       m_sparseAllocator = m_parent->GetDXVKDevice()->createSparsePageAllocator();
       m_sparseAllocator->setCapacity(info.size / SparseMemoryPageSize);
@@ -101,11 +112,16 @@ namespace dxvk {
       m_mapped = DxvkBufferSliceHandle();
       m_mapMode = D3D11_COMMON_BUFFER_MAP_MODE_NONE;
     }
+
+    // For Stream Output buffers we need a counter
+    if (pDesc->BindFlags & D3D11_BIND_STREAM_OUTPUT)
+      m_soCounter = CreateSoCounterBuffer();
   }
   
   
   D3D11Buffer::~D3D11Buffer() {
-
+    if (m_desc.CPUAccessFlags && m_11on12.Resource != nullptr)
+      m_11on12.Resource->Unmap(0, nullptr);
   }
   
   
@@ -237,6 +253,36 @@ namespace dxvk {
     if (!(pDesc->MiscFlags & D3D11_RESOURCE_MISC_BUFFER_STRUCTURED))
       pDesc->StructureByteStride = 0;
     
+    return S_OK;
+  }
+
+
+  HRESULT D3D11Buffer::GetDescFromD3D12(
+          ID3D12Resource*         pResource,
+    const D3D11_RESOURCE_FLAGS*   pResourceFlags,
+          D3D11_BUFFER_DESC*      pBufferDesc) {
+    D3D12_RESOURCE_DESC desc12 = pResource->GetDesc();
+
+    pBufferDesc->ByteWidth = desc12.Width;
+    pBufferDesc->Usage = D3D11_USAGE_DEFAULT;
+    pBufferDesc->BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    pBufferDesc->MiscFlags = 0;
+    pBufferDesc->CPUAccessFlags = 0;
+    pBufferDesc->StructureByteStride = 0;
+
+    if (desc12.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
+      pBufferDesc->BindFlags |= D3D11_BIND_RENDER_TARGET;
+
+    if (desc12.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)
+      pBufferDesc->BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
+
+    if (pResourceFlags) {
+      pBufferDesc->BindFlags = pResourceFlags->BindFlags;
+      pBufferDesc->MiscFlags |= pResourceFlags->MiscFlags;
+      pBufferDesc->CPUAccessFlags = pResourceFlags->CPUAccessFlags;
+      pBufferDesc->StructureByteStride = pResourceFlags->StructureByteStride;
+    }
+
     return S_OK;
   }
 

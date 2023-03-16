@@ -100,7 +100,7 @@ namespace dxvk {
       return S_FALSE;
     
     try {
-      const Com<D3D11Buffer> buffer = new D3D11Buffer(this, &desc);
+      const Com<D3D11Buffer> buffer = new D3D11Buffer(this, &desc, nullptr);
 
       if (!(desc.MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL))
         m_initializer->InitBuffer(buffer.ptr(), pInitialData);

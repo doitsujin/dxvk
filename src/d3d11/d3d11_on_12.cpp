@@ -45,8 +45,43 @@ namespace dxvk {
           D3D12_RESOURCE_STATES   OutputState,
           REFIID                  riid,
           void**                  ppResource11) {
-    Logger::err("D3D11on12Device::CreateWrappedResource: Stub");
-    return E_NOTIMPL;
+    Com<ID3D12DXVKInteropDevice> interopDevice;
+    m_d3d12Device->QueryInterface(__uuidof(ID3D12DXVKInteropDevice), reinterpret_cast<void**>(&interopDevice));
+
+    D3D11_ON_12_RESOURCE_INFO info = { };
+    info.InputState = InputState;
+    info.OutputState = OutputState;
+    info.IsWrappedResource = TRUE;
+
+    // 11on12 technically allows importing D3D12 heaps as tile pools,
+    // but we don't support importing sparse resources at this time.
+    if (FAILED(pResource12->QueryInterface(__uuidof(ID3D12Resource), reinterpret_cast<void**>(&info.Resource)))) {
+      Logger::err("D3D11on12Device::CreateWrappedResource: Resource not a valid D3D12 resource");
+      return E_INVALIDARG;
+    }
+
+    // Query Vulkan resource handle and buffer offset
+    if (FAILED(interopDevice->GetVulkanResourceInfo(info.Resource.ptr(), &info.VulkanHandle, &info.VulkanOffset))) {
+      Logger::err("D3D11on12Device::CreateWrappedResource: Failed to retrieve Vulkan resource info");
+      return E_INVALIDARG;
+    }
+
+    Com<ID3D11Resource> resource;
+    D3D12_RESOURCE_DESC desc = info.Resource->GetDesc();
+
+    if (desc.Dimension == D3D12_RESOURCE_DIMENSION_BUFFER) {
+      D3D11_BUFFER_DESC bufferDesc;
+
+      if (FAILED(D3D11Buffer::GetDescFromD3D12(info.Resource.ptr(), pResourceFlags, &bufferDesc)))
+        return E_INVALIDARG;
+
+      resource = new D3D11Buffer(m_device, &bufferDesc, &info);
+    } else {
+      Logger::err("D3D11on12Device::CreateWrappedResource: Resource type not supported");
+      return E_NOTIMPL;
+    }
+
+    return resource->QueryInterface(riid, ppResource11);
   }
 
 
