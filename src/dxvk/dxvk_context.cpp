@@ -1607,6 +1607,44 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::emitBufferBarrier(
+    const Rc<DxvkBuffer>&           resource,
+          VkPipelineStageFlags      srcStages,
+          VkAccessFlags             srcAccess,
+          VkPipelineStageFlags      dstStages,
+          VkAccessFlags             dstAccess) {
+    this->spillRenderPass(true);
+
+    m_execBarriers.accessBuffer(resource->getSliceHandle(),
+      srcStages, srcAccess, dstStages, dstAccess);
+
+    m_cmd->trackResource<DxvkAccess::Write>(resource);
+  }
+
+
+  void DxvkContext::emitImageBarrier(
+    const Rc<DxvkImage>&            resource,
+          VkImageLayout             srcLayout,
+          VkPipelineStageFlags      srcStages,
+          VkAccessFlags             srcAccess,
+          VkImageLayout             dstLayout,
+          VkPipelineStageFlags      dstStages,
+          VkAccessFlags             dstAccess) {
+    this->spillRenderPass(true);
+    this->prepareImage(resource, resource->getAvailableSubresources());
+
+    if (m_execBarriers.isImageDirty(resource, resource->getAvailableSubresources(), DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
+
+    m_execBarriers.accessImage(
+      resource, resource->getAvailableSubresources(),
+      srcLayout, srcStages, srcAccess,
+      dstLayout, dstStages, dstAccess);
+
+    m_cmd->trackResource<DxvkAccess::Write>(resource);
+  }
+
+
   void DxvkContext::generateMipmaps(
     const Rc<DxvkImageView>&        imageView,
           VkFilter                  filter) {

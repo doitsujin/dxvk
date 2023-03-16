@@ -868,10 +868,50 @@ namespace dxvk {
      * \param [in] dstAccess Destination access
      */
     void emitGraphicsBarrier(
-          VkPipelineStageFlags      srcStages,
-          VkAccessFlags             srcAccess,
-          VkPipelineStageFlags      dstStages,
-          VkAccessFlags             dstAccess);
+            VkPipelineStageFlags      srcStages,
+            VkAccessFlags             srcAccess,
+            VkPipelineStageFlags      dstStages,
+            VkAccessFlags             dstAccess);
+
+    /**
+     * \brief Emits buffer barrier
+     *
+     * Can be used to transition foreign resources
+     * into a state that DXVK can work with.
+     * \param [in] resource Buffer resource
+     * \param [in] srcStages Source pipeline stages
+     * \param [in] srcAccess Source access
+     * \param [in] dstStages Destination pipeline stages
+     * \param [in] dstAccess Destination access
+     */
+    void emitBufferBarrier(
+      const Rc<DxvkBuffer>&           resource,
+            VkPipelineStageFlags      srcStages,
+            VkAccessFlags             srcAccess,
+            VkPipelineStageFlags      dstStages,
+            VkAccessFlags             dstAccess);
+
+    /**
+     * \brief Emits image barrier
+     *
+     * Can be used to transition foreign resources
+     * into a state that DXVK can work with.
+     * \param [in] resource Image resource
+     * \param [in] srcLayout Current image layout
+     * \param [in] srcStages Source pipeline stages
+     * \param [in] srcAccess Source access
+     * \param [in] dstLayout New image layout
+     * \param [in] dstStages Destination pipeline stages
+     * \param [in] dstAccess Destination access
+     */
+    void emitImageBarrier(
+      const Rc<DxvkImage>&            resource,
+            VkImageLayout             srcLayout,
+            VkPipelineStageFlags      srcStages,
+            VkAccessFlags             srcAccess,
+            VkImageLayout             dstLayout,
+            VkPipelineStageFlags      dstStages,
+            VkAccessFlags             dstAccess);
 
     /**
      * \brief Generates mip maps
