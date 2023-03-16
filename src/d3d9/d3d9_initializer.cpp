@@ -153,7 +153,7 @@ namespace dxvk {
 
 
   void D3D9Initializer::FlushInternal() {
-    m_context->flushCommandList();
+    m_context->flushCommandList(nullptr);
     
     m_transferCommands = 0;
     m_transferMemory   = 0;

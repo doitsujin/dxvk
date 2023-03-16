@@ -452,9 +452,11 @@ namespace dxvk {
      * Submits the given command list to the device using
      * the given set of optional synchronization primitives.
      * \param [in] commandList The command list to submit
+     * \param [out] status Submission feedback
      */
     void submitCommandList(
-      const Rc<DxvkCommandList>&      commandList);
+      const Rc<DxvkCommandList>&      commandList,
+            DxvkSubmitStatus*         status);
 
     /**
      * \brief Locks submission queue

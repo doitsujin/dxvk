@@ -5253,7 +5253,7 @@ namespace dxvk {
       // Add commands to flush the threaded
       // context, then flush the command list
       EmitCs([](DxvkContext* ctx) {
-        ctx->flushCommandList();
+        ctx->flushCommandList(nullptr);
       });
 
       FlushCsChunk();

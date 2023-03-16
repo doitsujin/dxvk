@@ -142,7 +142,7 @@ namespace dxvk {
 
 
   void D3D9FormatHelper::FlushInternal() {
-    m_context->flushCommandList();
+    m_context->flushCommandList(nullptr);
     
     m_transferCommands = 0;
   }

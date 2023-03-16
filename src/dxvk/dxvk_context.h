@@ -6,6 +6,7 @@
 #include "dxvk_context_state.h"
 #include "dxvk_data.h"
 #include "dxvk_objects.h"
+#include "dxvk_queue.h"
 #include "dxvk_resource.h"
 #include "dxvk_util.h"
 #include "dxvk_marker.h"
@@ -63,8 +64,9 @@ namespace dxvk {
      * 
      * Transparently submits the current command
      * buffer and allocates a new one.
+     * \param [out] status Submission feedback
      */
-    void flushCommandList();
+    void flushCommandList(DxvkSubmitStatus* status);
     
     /**
      * \brief Begins generating query data

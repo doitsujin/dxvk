@@ -256,10 +256,11 @@ namespace dxvk {
 
 
   void DxvkDevice::submitCommandList(
-    const Rc<DxvkCommandList>&      commandList) {
+    const Rc<DxvkCommandList>&      commandList,
+          DxvkSubmitStatus*         status) {
     DxvkSubmitInfo submitInfo = { };
     submitInfo.cmdList = commandList;
-    m_submissionQueue.submit(submitInfo);
+    m_submissionQueue.submit(submitInfo, status);
 
     std::lock_guard<sync::Spinlock> statLock(m_statLock);
     m_statCounters.merge(commandList->statCounters());

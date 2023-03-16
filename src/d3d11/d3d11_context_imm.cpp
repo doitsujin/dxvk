@@ -895,7 +895,7 @@ namespace dxvk {
       cSubmissionId     = submissionId
     ] (DxvkContext* ctx) {
       ctx->signal(cSubmissionFence, cSubmissionId);
-      ctx->flushCommandList();
+      ctx->flushCommandList(nullptr);
     });
 
     FlushCsChunk();

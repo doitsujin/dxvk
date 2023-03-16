@@ -26,7 +26,7 @@ namespace dxvk {
   }
   
   
-  void DxvkSubmissionQueue::submit(DxvkSubmitInfo submitInfo) {
+  void DxvkSubmissionQueue::submit(DxvkSubmitInfo submitInfo, DxvkSubmitStatus* status) {
     std::unique_lock<dxvk::mutex> lock(m_mutex);
 
     m_finishCond.wait(lock, [this] {
@@ -34,6 +34,7 @@ namespace dxvk {
     });
 
     DxvkSubmitEntry entry = { };
+    entry.status = status;
     entry.submit = std::move(submitInfo);
 
     m_pending += 1;
