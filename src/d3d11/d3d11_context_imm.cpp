@@ -753,6 +753,74 @@ namespace dxvk {
   }
 
 
+  void D3D11ImmediateContext::Acquire11on12Resource(
+          ID3D11Resource*             pResource,
+          VkImageLayout               SrcLayout) {
+    D3D10DeviceLock lock = LockContext();
+
+    auto texture = GetCommonTexture(pResource);
+    auto buffer = GetCommonBuffer(pResource);
+
+    if (buffer) {
+      EmitCs([
+        cBuffer   = buffer->GetBuffer()
+      ] (DxvkContext* ctx) {
+        ctx->emitBufferBarrier(cBuffer,
+          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+          VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT,
+          cBuffer->info().stages,
+          cBuffer->info().access);
+      });
+    } else if (texture) {
+      EmitCs([
+        cImage    = texture->GetImage(),
+        cLayout   = SrcLayout
+      ] (DxvkContext* ctx) {
+        ctx->emitImageBarrier(cImage, cLayout,
+          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+          VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT,
+          cImage->info().layout,
+          cImage->info().stages,
+          cImage->info().access);
+      });
+    }
+  }
+
+
+  void D3D11ImmediateContext::Release11on12Resource(
+          ID3D11Resource*             pResource,
+          VkImageLayout               DstLayout) {
+    D3D10DeviceLock lock = LockContext();
+
+    auto texture = GetCommonTexture(pResource);
+    auto buffer = GetCommonBuffer(pResource);
+
+    if (buffer) {
+      EmitCs([
+        cBuffer   = buffer->GetBuffer()
+      ] (DxvkContext* ctx) {
+        ctx->emitBufferBarrier(cBuffer,
+          cBuffer->info().stages,
+          cBuffer->info().access,
+          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+          VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT);
+      });
+    } else if (texture) {
+      EmitCs([
+        cImage    = texture->GetImage(),
+        cLayout   = DstLayout
+      ] (DxvkContext* ctx) {
+        ctx->emitImageBarrier(cImage,
+          cImage->info().layout,
+          cImage->info().stages,
+          cImage->info().access,
+          cLayout, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+          VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT);
+      });
+    }
+  }
+
+
   void D3D11ImmediateContext::SynchronizeCsThread(uint64_t SequenceNumber) {
     D3D10DeviceLock lock = LockContext();
 

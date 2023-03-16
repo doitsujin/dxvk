@@ -172,6 +172,26 @@ namespace dxvk {
   }
   
 
+  HRESULT GetResource11on12Info(
+          ID3D11Resource*             pResource,
+          D3D11_ON_12_RESOURCE_INFO*  p11on12Info) {
+    auto buffer   = GetCommonBuffer (pResource);
+    auto texture  = GetCommonTexture(pResource);
+
+    if (buffer != nullptr)
+      *p11on12Info = buffer->Get11on12Info();
+    else if (texture != nullptr)
+      *p11on12Info = texture->Get11on12Info();
+    else
+      return E_INVALIDARG;
+
+    if (p11on12Info->Resource == nullptr)
+      return E_INVALIDARG;
+
+    return S_OK;
+  }
+
+
   HRESULT GetCommonResourceDesc(
           ID3D11Resource*             pResource,
           D3D11_COMMON_RESOURCE_DESC* pDesc) {

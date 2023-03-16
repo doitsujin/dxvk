@@ -77,6 +77,14 @@ namespace dxvk {
             ID3DDeviceContextState*           pState,
             ID3DDeviceContextState**          ppPreviousState);
 
+    void Acquire11on12Resource(
+            ID3D11Resource*             pResource,
+            VkImageLayout               SrcLayout);
+
+    void Release11on12Resource(
+            ID3D11Resource*             pResource,
+            VkImageLayout               DstLayout);
+
     void SynchronizeCsThread(
             uint64_t                          SequenceNumber);
 
