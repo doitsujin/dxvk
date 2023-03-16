@@ -306,7 +306,8 @@ namespace dxvk {
 
     static void initFeatureChain(
             DxvkDeviceFeatures&   enabledFeatures,
-      const DxvkDeviceExtensions& devExtensions);
+      const DxvkDeviceExtensions& devExtensions,
+      const DxvkInstanceExtensions& insExtensions);
 
     static void logNameList(const DxvkNameList& names);
     static void logFeatures(const DxvkDeviceFeatures& features);

@@ -461,7 +461,7 @@ namespace dxvk {
       m_deviceFeatures.extShaderModuleIdentifier.shaderModuleIdentifier;
 
     // Create pNext chain for additional device features
-    initFeatureChain(enabledFeatures, devExtensions);
+    initFeatureChain(enabledFeatures, devExtensions, instance->extensions());
 
     // Log feature support info an extension list
     Logger::info(str::format("Device properties:"
@@ -633,7 +633,7 @@ namespace dxvk {
       }
     }
 
-    initFeatureChain(enabledFeatures, devExtensions);
+    initFeatureChain(enabledFeatures, devExtensions, instance->extensions());
 
     // Log feature support info an extension list
     Logger::info(str::format("Device properties:"
@@ -980,7 +980,8 @@ namespace dxvk {
 
   void DxvkAdapter::initFeatureChain(
           DxvkDeviceFeatures&   enabledFeatures,
-    const DxvkDeviceExtensions& devExtensions) {
+    const DxvkDeviceExtensions& devExtensions,
+    const DxvkInstanceExtensions& insExtensions) {
     enabledFeatures.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
     enabledFeatures.core.pNext = nullptr;
 
@@ -1024,7 +1025,7 @@ namespace dxvk {
       enabledFeatures.extFragmentShaderInterlock.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extFragmentShaderInterlock);
     }
 
-    if (devExtensions.extFullScreenExclusive)
+    if (devExtensions.extFullScreenExclusive && insExtensions.khrGetSurfaceCapabilities2)
       enabledFeatures.extFullScreenExclusive = VK_TRUE;
 
     if (devExtensions.extGraphicsPipelineLibrary) {
