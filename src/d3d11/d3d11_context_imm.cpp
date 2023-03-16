@@ -49,7 +49,7 @@ namespace dxvk {
     if (this_thread::isInModuleDetachment())
       return;
 
-    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr);
+    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
     SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
     SynchronizeDevice();
   }
@@ -150,7 +150,7 @@ namespace dxvk {
       query->NotifyEnd();
 
       if (query->IsStalling())
-        ExecuteFlush(GpuFlushType::ImplicitSynchronization, nullptr);
+        ExecuteFlush(GpuFlushType::ImplicitSynchronization, nullptr, false);
       else if (query->IsEvent())
         ConsiderFlush(GpuFlushType::ImplicitStrongHint);
     }
@@ -160,7 +160,7 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush() {
     D3D10DeviceLock lock = LockContext();
 
-    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr);
+    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
   }
 
 
@@ -169,7 +169,7 @@ namespace dxvk {
           HANDLE                      hEvent) {
     D3D10DeviceLock lock = LockContext();
 
-    ExecuteFlush(GpuFlushType::ExplicitFlush, hEvent);
+    ExecuteFlush(GpuFlushType::ExplicitFlush, hEvent, true);
   }
   
   
@@ -189,7 +189,7 @@ namespace dxvk {
       ctx->signalFence(cFence, cValue);
     });
 
-    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr);
+    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
     return S_OK;
   }
 
@@ -203,7 +203,7 @@ namespace dxvk {
     if (!fence)
       return E_INVALIDARG;
 
-    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr);
+    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
 
     EmitCs([
       cFence = fence->GetFence(),
@@ -811,7 +811,7 @@ namespace dxvk {
       if (isInUse) {
         // Make sure pending commands using the resource get
         // executed on the the GPU if we have to wait for it
-        ExecuteFlush(GpuFlushType::ImplicitSynchronization, nullptr);
+        ExecuteFlush(GpuFlushType::ImplicitSynchronization, nullptr, false);
         SynchronizeCsThread(SequenceNumber);
 
         m_device->waitForResource(Resource, access);
@@ -865,13 +865,19 @@ namespace dxvk {
     uint64_t submissionId = m_submissionFence->value();
 
     if (m_flushTracker.considerFlush(FlushType, chunkId, submissionId))
-      ExecuteFlush(FlushType, nullptr);
+      ExecuteFlush(FlushType, nullptr, false);
   }
 
 
   void D3D11ImmediateContext::ExecuteFlush(
           GpuFlushType                FlushType,
-          HANDLE                      hEvent) {
+          HANDLE                      hEvent,
+          BOOL                        Synchronize) {
+    bool synchronizeSubmission = Synchronize && m_parent->Is11on12Device();
+
+    if (synchronizeSubmission)
+      m_submitStatus.result = VK_NOT_READY;
+
     // Flush init context so that new resources are fully initialized
     // before the app can access them in any way. This has to happen
     // unconditionally since we may otherwise deadlock on Map.
@@ -892,10 +898,11 @@ namespace dxvk {
 
     EmitCs<false>([
       cSubmissionFence  = m_submissionFence,
-      cSubmissionId     = submissionId
+      cSubmissionId     = submissionId,
+      cSubmissionStatus = synchronizeSubmission ? &m_submitStatus : nullptr
     ] (DxvkContext* ctx) {
       ctx->signal(cSubmissionFence, cSubmissionId);
-      ctx->flushCommandList(nullptr);
+      ctx->flushCommandList(cSubmissionStatus);
     });
 
     FlushCsChunk();
@@ -903,6 +910,11 @@ namespace dxvk {
     // Notify flush tracker about the flush
     m_flushSeqNum = m_csSeqNum;
     m_flushTracker.notifyFlush(m_flushSeqNum, submissionId);
+
+    // If necessary, block calling thread until the
+    // Vulkan queue submission is performed.
+    if (synchronizeSubmission)
+      m_device->waitForSubmission(&m_submitStatus);
   }
   
 }
