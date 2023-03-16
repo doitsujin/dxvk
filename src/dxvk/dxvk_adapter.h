@@ -1,5 +1,6 @@
 #pragma once
 
+#include <functional>
 #include <optional>
 
 #include "dxvk_device_info.h"
@@ -11,7 +12,9 @@ namespace dxvk {
   
   class DxvkDevice;
   class DxvkInstance;
-  
+
+  using DxvkQueueCallback = std::function<void (bool)>;
+
   /**
    * \brief GPU vendors
    * Based on PCIe IDs.
@@ -65,6 +68,7 @@ namespace dxvk {
     uint32_t extensionCount;
     const char** extensionNames;
     const VkPhysicalDeviceFeatures2* features;
+    DxvkQueueCallback queueCallback;
   };
 
   /**

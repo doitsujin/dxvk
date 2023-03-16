@@ -3,8 +3,8 @@
 
 namespace dxvk {
   
-  DxvkSubmissionQueue::DxvkSubmissionQueue(DxvkDevice* device)
-  : m_device(device),
+  DxvkSubmissionQueue::DxvkSubmissionQueue(DxvkDevice* device, const DxvkQueueCallback& callback)
+  : m_device(device), m_callback(callback),
     m_submitThread([this] () { submitCmdLists(); }),
     m_finishThread([this] () { finishCmdLists(); }) {
 
@@ -75,10 +75,16 @@ namespace dxvk {
 
   void DxvkSubmissionQueue::lockDeviceQueue() {
     m_mutexQueue.lock();
+
+    if (m_callback)
+      m_callback(true);
   }
 
 
   void DxvkSubmissionQueue::unlockDeviceQueue() {
+    if (m_callback)
+      m_callback(false);
+
     m_mutexQueue.unlock();
   }
 
@@ -105,10 +111,16 @@ namespace dxvk {
       if (m_lastError != VK_ERROR_DEVICE_LOST) {
         std::lock_guard<dxvk::mutex> lock(m_mutexQueue);
 
+        if (m_callback)
+          m_callback(true);
+
         if (entry.submit.cmdList != nullptr)
           status = entry.submit.cmdList->submit();
         else if (entry.present.presenter != nullptr)
           status = entry.present.presenter->presentImage();
+
+        if (m_callback)
+          m_callback(false);
       } else {
         // Don't submit anything after device loss
         // so that drivers get a chance to recover

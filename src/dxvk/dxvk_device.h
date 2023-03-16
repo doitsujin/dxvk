@@ -87,7 +87,8 @@ namespace dxvk {
       const Rc<DxvkAdapter>&          adapter,
       const Rc<vk::DeviceFn>&         vkd,
       const DxvkDeviceFeatures&       features,
-      const DxvkDeviceQueueSet&       queues);
+      const DxvkDeviceQueueSet&       queues,
+      const DxvkQueueCallback&        queueCallback);
       
     ~DxvkDevice();
     

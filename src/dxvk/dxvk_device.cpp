@@ -8,7 +8,8 @@ namespace dxvk {
     const Rc<DxvkAdapter>&          adapter,
     const Rc<vk::DeviceFn>&         vkd,
     const DxvkDeviceFeatures&       features,
-    const DxvkDeviceQueueSet&       queues)
+    const DxvkDeviceQueueSet&       queues,
+    const DxvkQueueCallback&        queueCallback)
   : m_options           (instance->options()),
     m_instance          (instance),
     m_adapter           (adapter),
@@ -18,7 +19,7 @@ namespace dxvk {
     m_perfHints         (getPerfHints()),
     m_objects           (this),
     m_queues            (queues),
-    m_submissionQueue   (this) {
+    m_submissionQueue   (this, queueCallback) {
 
   }
   

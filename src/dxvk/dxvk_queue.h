@@ -64,7 +64,10 @@ namespace dxvk {
 
   public:
     
-    DxvkSubmissionQueue(DxvkDevice* device);
+    DxvkSubmissionQueue(
+            DxvkDevice*         device,
+      const DxvkQueueCallback&  callback);
+
     ~DxvkSubmissionQueue();
 
     /**
@@ -176,6 +179,7 @@ namespace dxvk {
   private:
 
     DxvkDevice*                 m_device;
+    DxvkQueueCallback           m_callback;
 
     std::atomic<VkResult>       m_lastError = { VK_SUCCESS };
     

@@ -543,7 +543,7 @@ namespace dxvk {
     queues.transfer = getDeviceQueue(vkd, queueFamilies.transfer, 0);
     queues.sparse = getDeviceQueue(vkd, queueFamilies.sparse, 0);
 
-    return new DxvkDevice(instance, this, vkd, enabledFeatures, queues);
+    return new DxvkDevice(instance, this, vkd, enabledFeatures, queues, DxvkQueueCallback());
   }
 
 
@@ -655,7 +655,7 @@ namespace dxvk {
     queues.graphics = { args.queue, args.queueFamily };
     queues.transfer = queues.graphics;
 
-    return new DxvkDevice(instance, this, vkd, enabledFeatures, queues);
+    return new DxvkDevice(instance, this, vkd, enabledFeatures, queues, args.queueCallback);
   }
 
 
