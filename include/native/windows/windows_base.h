@@ -40,6 +40,8 @@ typedef const void* LPCVOID;
 
 typedef size_t SIZE_T;
 
+typedef int8_t INT8;
+
 typedef uint8_t UINT8;
 typedef uint8_t BYTE;
 
@@ -48,6 +50,8 @@ typedef uint16_t USHORT;
 
 typedef int64_t LONGLONG;
 typedef uint64_t ULONGLONG;
+
+typedef intptr_t LONG_PTR;
 
 typedef float FLOAT;
 
@@ -327,3 +331,5 @@ typedef struct RGNDATA {
 
 #define FAILED(hr) ((HRESULT)(hr) < 0)
 #define SUCCEEDED(hr) ((HRESULT)(hr) >= 0)
+
+#define DEFINE_ENUM_FLAG_OPERATORS(T)
