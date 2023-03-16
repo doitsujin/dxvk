@@ -20,6 +20,7 @@
 #include "d3d11_initializer.h"
 #include "d3d11_interfaces.h"
 #include "d3d11_interop.h"
+#include "d3d11_on_12.h"
 #include "d3d11_options.h"
 #include "d3d11_shader.h"
 #include "d3d11_state.h"
@@ -421,6 +422,8 @@ namespace dxvk {
       return m_d3d10Device;
     }
     
+    bool Is11on12Device() const;
+
     static D3D_FEATURE_LEVEL GetMaxFeatureLevel(
       const Rc<DxvkInstance>& Instance,
       const Rc<DxvkAdapter>&  Adapter);
@@ -430,7 +433,7 @@ namespace dxvk {
     
   private:
     
-    IDXGIObject*                    m_container;
+    D3D11DXGIDevice*                m_container;
 
     D3D_FEATURE_LEVEL               m_featureLevel;
     UINT                            m_featureFlags;
@@ -764,8 +767,11 @@ namespace dxvk {
     
     D3D11DXGIDevice(
             IDXGIAdapter*       pAdapter,
-      const Rc<DxvkInstance>&   pDxvkInstance,
-      const Rc<DxvkAdapter>&    pDxvkAdapter,
+            ID3D12Device*       pD3D12Device,
+            ID3D12CommandQueue* pD3D12Queue,
+            Rc<DxvkInstance>    pDxvkInstance,
+            Rc<DxvkAdapter>     pDxvkAdapter,
+            Rc<DxvkDevice>      pDxvkDevice,
             D3D_FEATURE_LEVEL   FeatureLevel,
             UINT                FeatureFlags);
     
@@ -834,6 +840,10 @@ namespace dxvk {
     
     Rc<DxvkDevice> STDMETHODCALLTYPE GetDXVKDevice();
 
+    BOOL Is11on12Device() const {
+      return m_d3d11on12.Is11on12Device();
+    }
+
   private:
 
     Com<IDXGIAdapter>   m_dxgiAdapter;
@@ -846,13 +856,12 @@ namespace dxvk {
     D3D11DeviceExt      m_d3d11DeviceExt;
     D3D11VkInterop      m_d3d11Interop;
     D3D11VideoDevice    m_d3d11Video;
+    D3D11on12Device     m_d3d11on12;
     DXGIDXVKDevice      m_metaDevice;
     
     DXGIVkSwapChainFactory   m_dxvkFactory;
     
     uint32_t m_frameLatency = DefaultFrameLatency;
-
-    Rc<DxvkDevice> CreateDevice(D3D_FEATURE_LEVEL FeatureLevel);
 
   };
   

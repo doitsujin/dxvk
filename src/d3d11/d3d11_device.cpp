@@ -1832,6 +1832,11 @@ namespace dxvk {
           DXGI_VK_FORMAT_MODE   Mode) const {
     return m_d3d11Formats.GetFormatFamily(Format, Mode);
   }
+
+
+  bool D3D11Device::Is11on12Device() const {
+    return m_container->Is11on12Device();
+  }
   
   
   void D3D11Device::FlushInitContext() {
@@ -3057,18 +3062,22 @@ namespace dxvk {
 
   D3D11DXGIDevice::D3D11DXGIDevice(
           IDXGIAdapter*       pAdapter,
-    const Rc<DxvkInstance>&   pDxvkInstance,
-    const Rc<DxvkAdapter>&    pDxvkAdapter,
+          ID3D12Device*       pD3D12Device,
+          ID3D12CommandQueue* pD3D12Queue,
+          Rc<DxvkInstance>    pDxvkInstance,
+          Rc<DxvkAdapter>     pDxvkAdapter,
+          Rc<DxvkDevice>      pDxvkDevice,
           D3D_FEATURE_LEVEL   FeatureLevel,
           UINT                FeatureFlags)
   : m_dxgiAdapter   (pAdapter),
     m_dxvkInstance  (pDxvkInstance),
     m_dxvkAdapter   (pDxvkAdapter),
-    m_dxvkDevice    (CreateDevice(FeatureLevel)),
+    m_dxvkDevice    (pDxvkDevice),
     m_d3d11Device   (this, FeatureLevel, FeatureFlags),
     m_d3d11DeviceExt(this, &m_d3d11Device),
     m_d3d11Interop  (this, &m_d3d11Device),
     m_d3d11Video    (this, &m_d3d11Device),
+    m_d3d11on12     (this, &m_d3d11Device, pD3D12Device, pD3D12Queue),
     m_metaDevice    (this),
     m_dxvkFactory   (this, &m_d3d11Device) {
 
@@ -3076,7 +3085,7 @@ namespace dxvk {
   
   
   D3D11DXGIDevice::~D3D11DXGIDevice() {
-    
+
   }
   
   
@@ -3138,6 +3147,13 @@ namespace dxvk {
     if (riid == __uuidof(ID3D11VideoDevice)) {
       *ppvObject = ref(&m_d3d11Video);
       return S_OK;
+    }
+
+    if (m_d3d11on12.Is11on12Device()) {
+      if (riid == __uuidof(ID3D11On12Device)) {
+        *ppvObject = ref(&m_d3d11on12);
+        return S_OK;
+      }
     }
 
     if (riid == __uuidof(ID3D10Multithread)) {
@@ -3401,12 +3417,6 @@ namespace dxvk {
   
   Rc<DxvkDevice> STDMETHODCALLTYPE D3D11DXGIDevice::GetDXVKDevice() {
     return m_dxvkDevice;
-  }
-
-
-  Rc<DxvkDevice> D3D11DXGIDevice::CreateDevice(D3D_FEATURE_LEVEL FeatureLevel) {
-    DxvkDeviceFeatures deviceFeatures = D3D11Device::GetDeviceFeatures(m_dxvkAdapter);
-    return m_dxvkAdapter->createDevice(m_dxvkInstance, deviceFeatures);
   }
 
 }
