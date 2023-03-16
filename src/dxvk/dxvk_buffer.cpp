@@ -62,9 +62,35 @@ namespace dxvk {
   }
 
 
+  DxvkBuffer::DxvkBuffer(
+          DxvkDevice*           device,
+    const DxvkBufferCreateInfo& createInfo,
+    const DxvkBufferImportInfo& importInfo,
+          VkMemoryPropertyFlags memFlags)
+  : m_vkd           (device->vkd()),
+    m_info          (createInfo),
+    m_import        (importInfo),
+    m_memAlloc      (nullptr),
+    m_memFlags      (memFlags),
+    m_shaderStages  (util::shaderStages(createInfo.stages)) {
+    m_physSliceLength = createInfo.size;
+    m_physSliceStride = createInfo.size;
+    m_physSliceCount  = 1;
+    m_physSliceMaxCount = 1;
+
+    m_physSlice.handle = importInfo.buffer;
+    m_physSlice.offset = importInfo.offset;
+    m_physSlice.length = createInfo.size;
+    m_physSlice.mapPtr = importInfo.mapPtr;
+
+    m_lazyAlloc = false;
+  }
+
+
   DxvkBuffer::~DxvkBuffer() {
     for (const auto& buffer : m_buffers)
       m_vkd->vkDestroyBuffer(m_vkd->device(), buffer.buffer, nullptr);
+
     m_vkd->vkDestroyBuffer(m_vkd->device(), m_buffer.buffer, nullptr);
   }
   
