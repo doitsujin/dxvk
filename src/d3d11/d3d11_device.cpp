@@ -149,7 +149,7 @@ namespace dxvk {
       return S_FALSE;
     
     try {
-      const Com<D3D11Texture1D> texture = new D3D11Texture1D(this, &desc);
+      const Com<D3D11Texture1D> texture = new D3D11Texture1D(this, &desc, nullptr);
       m_initializer->InitTexture(texture->GetCommonTexture(), pInitialData);
       *ppTexture1D = texture.ref();
       return S_OK;
@@ -229,7 +229,7 @@ namespace dxvk {
       return S_FALSE;
     
     try {
-      Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &desc, nullptr);
+      Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &desc, nullptr, nullptr);
       m_initializer->InitTexture(texture->GetCommonTexture(), pInitialData);
       *ppTexture2D = texture.ref();
       return S_OK;
@@ -308,7 +308,7 @@ namespace dxvk {
       return S_FALSE;
       
     try {
-      Com<D3D11Texture3D> texture = new D3D11Texture3D(this, &desc);
+      Com<D3D11Texture3D> texture = new D3D11Texture3D(this, &desc, nullptr);
       m_initializer->InitTexture(texture->GetCommonTexture(), pInitialData);
       *ppTexture3D = texture.ref();
       return S_OK;
@@ -2307,7 +2307,7 @@ namespace dxvk {
 
     // Only 2D textures may be shared
     try {
-      const Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &d3d11Desc, hResource);
+      const Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &d3d11Desc, nullptr, hResource);
       texture->QueryInterface(ReturnedInterface, ppResource);
       return S_OK;
     }

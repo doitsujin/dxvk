@@ -336,17 +336,6 @@ namespace dxvk {
             VkMemoryPropertyFlags memoryType);
 
     /**
-     * \brief Creates an image object for an existing VkImage
-     * 
-     * \param [in] createInfo Image create info
-     * \param [in] image Vulkan image to wrap
-     * \returns The image object
-     */
-    Rc<DxvkImage> createImageFromVkImage(
-      const DxvkImageCreateInfo&  createInfo,
-            VkImage               image);
-    
-    /**
      * \brief Creates an image view
      * 
      * \param [in] image The image to create a view for
@@ -383,6 +372,19 @@ namespace dxvk {
     Rc<DxvkBuffer> importBuffer(
       const DxvkBufferCreateInfo& createInfo,
       const DxvkBufferImportInfo& importInfo,
+            VkMemoryPropertyFlags memoryType);
+
+    /**
+     * \brief Imports an image
+     *
+     * \param [in] createInfo Image create info
+     * \param [in] image Vulkan image to wrap
+     * \param [in] memoryType Memory type flags
+     * \returns The image object
+     */
+    Rc<DxvkImage> importImage(
+      const DxvkImageCreateInfo&  createInfo,
+            VkImage               image,
             VkMemoryPropertyFlags memoryType);
 
     /**

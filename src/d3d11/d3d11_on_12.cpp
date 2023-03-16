@@ -60,7 +60,7 @@ namespace dxvk {
       return E_INVALIDARG;
     }
 
-    // Query Vulkan resource handle and buffer offset
+    // Query Vulkan resource handle and buffer offset as necessary
     if (FAILED(interopDevice->GetVulkanResourceInfo(info.Resource.ptr(), &info.VulkanHandle, &info.VulkanOffset))) {
       Logger::err("D3D11on12Device::CreateWrappedResource: Failed to retrieve Vulkan resource info");
       return E_INVALIDARG;
@@ -77,8 +77,28 @@ namespace dxvk {
 
       resource = new D3D11Buffer(m_device, &bufferDesc, &info);
     } else {
-      Logger::err("D3D11on12Device::CreateWrappedResource: Resource type not supported");
-      return E_NOTIMPL;
+      D3D11_COMMON_TEXTURE_DESC textureDesc;
+
+      if (FAILED(D3D11CommonTexture::GetDescFromD3D12(info.Resource.ptr(), pResourceFlags, &textureDesc)))
+        return E_INVALIDARG;
+
+      switch (desc.Dimension) {
+        case D3D12_RESOURCE_DIMENSION_TEXTURE1D:
+          resource = new D3D11Texture1D(m_device, &textureDesc, &info);
+          break;
+
+        case D3D12_RESOURCE_DIMENSION_TEXTURE2D:
+          resource = new D3D11Texture2D(m_device, &textureDesc, &info, nullptr);
+          break;
+
+        case D3D12_RESOURCE_DIMENSION_TEXTURE3D:
+          resource = new D3D11Texture3D(m_device, &textureDesc, &info);
+          break;
+
+        default:
+          Logger::err("D3D11on12Device::CreateWrappedResource: Unhandled resource dimension");
+          return E_INVALIDARG;
+      }
     }
 
     return resource->QueryInterface(riid, ppResource11);

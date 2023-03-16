@@ -861,7 +861,8 @@ namespace dxvk {
       VkImage imageHandle = m_presenter->getImage(i).image;
       
       Rc<DxvkImage> image = new DxvkImage(
-        m_device.ptr(), imageInfo, imageHandle);
+        m_device.ptr(), imageInfo, imageHandle,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
       m_imageViews[i] = new DxvkImageView(
         m_device->vkd(), image, viewInfo);

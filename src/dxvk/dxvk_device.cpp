@@ -178,12 +178,6 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkImage> DxvkDevice::createImageFromVkImage(
-    const DxvkImageCreateInfo&  createInfo,
-          VkImage               image) {
-    return new DxvkImage(this, createInfo, image);
-  }
-  
   Rc<DxvkImageView> DxvkDevice::createImageView(
     const Rc<DxvkImage>&            image,
     const DxvkImageViewCreateInfo&  createInfo) {
@@ -225,6 +219,14 @@ namespace dxvk {
     const DxvkBufferImportInfo& importInfo,
           VkMemoryPropertyFlags memoryType) {
     return new DxvkBuffer(this, createInfo, importInfo, memoryType);
+  }
+
+
+  Rc<DxvkImage> DxvkDevice::importImage(
+    const DxvkImageCreateInfo&  createInfo,
+          VkImage               image,
+          VkMemoryPropertyFlags memoryType) {
+    return new DxvkImage(this, createInfo, image, memoryType);
   }
 
 
