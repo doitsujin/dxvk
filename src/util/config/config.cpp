@@ -739,6 +739,16 @@ namespace dxvk {
     { R"(\\(PANZERS|PANZERS_Phase_2)\.exe$)", {{
       { "d3d9.enableDialogMode",         "True"   },
     }} },
+    
+    /**********************************************/
+    /* D3D12 GAMES (vkd3d-proton with dxvk dxgi)  */
+    /**********************************************/
+    
+    /* Diablo 4 - Will complain about missing  *
+     * GPU unless dxgi Id match actual GPU Id  */
+    { R"(\\Diablo IV\.exe$)", {{
+      { "dxgi.nvapiHack",                "False"  },
+    }} },
   }};
 
 
