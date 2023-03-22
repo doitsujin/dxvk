@@ -739,6 +739,10 @@ namespace dxvk {
     { R"(\\(PANZERS|PANZERS_Phase_2)\.exe$)", {{
       { "d3d9.enableDialogMode",         "True"   },
     }} },
+    /* Need for Speed Carbon                   */
+    { R"(\\NFSC\.exe$)", {{
+      { "d3d9.floatEmulation",           "Strict" },
+    }} },
     
     /**********************************************/
     /* D3D12 GAMES (vkd3d-proton with dxvk dxgi)  */
