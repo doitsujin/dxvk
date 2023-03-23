@@ -5673,7 +5673,13 @@ namespace dxvk {
 
     // How much to bias MinZ by to avoid a depth
     // degenerate viewport.
-    constexpr float zBias = 0.001f;
+    // Tests show that the bias is only applied below minZ values of 0.5
+    float zBias;
+    if (vp.MinZ >= 0.5f) {
+      zBias = 0.0f;
+    } else {
+      zBias = 0.001f;
+    }
 
     viewport = VkViewport{
       float(vp.X)     + cf,    float(vp.Height + vp.Y) + cf,
