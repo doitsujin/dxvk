@@ -4,7 +4,7 @@ DXVK is an open-source project that provides a Vulkan-based implementation of Di
 
 DXVK translates Direct3D calls from games into Vulkan commands, which can be executed on Linux systems with better performance and efficiency than the original Direct3D implementation. By using Vulkan, DXVK can take advantage of the low-level hardware capabilities of modern GPUs, which can result in smoother and more responsive gameplay.
 
-The support for D3D9 in DXVK is particularly useful for running older games that use this version of DirectX. DXVK's implementation of D3D9 is based on Wine's. DXVK is not an official Microsoft product, but rather a third-party project developed by the open-source community. It has gained popularity in recent years among Linux users who enjoy playing Windows games on their machines.
+The support for D3D9 in DXVK is particularly useful for running older games that use this version of DirectX. DXVK is not an official Microsoft product, but rather a third-party project developed by the open-source community.
 
 For the current status of the project, please refer to the [project wiki](https://github.com/doitsujin/dxvk/wiki).
 
