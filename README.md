@@ -17,6 +17,8 @@ cp x32/*.dll $WINEPREFIX/drive_c/windows/syswow64
 winecfg
 ```
 
+Note that this is **not** an error, 64-bit DLLs are indeed supposed to go to the `system32` directory. Please refrain from opening issues or pull requests to change that, the instructions are correct as they are.
+
 Verify that your application uses DXVK instead of wined3d by by enabling the HUD (see notes below).
 
 In order to remove DXVK from a prefix, remove the DLLs and DLL overrides, and run `wineboot -u` to restore the original DLL files.
