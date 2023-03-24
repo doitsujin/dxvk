@@ -16,6 +16,7 @@
 #include "util_likely.h"
 #include "util_math.h"
 
+#include <cstdint>
 #include <cstring>
 #include <iterator>
 #include <type_traits>
