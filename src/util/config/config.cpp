@@ -342,6 +342,10 @@ namespace dxvk {
     { R"(\\SF3ClientFinal\.exe$)", {{
       { "d3d11.cachedDynamicResources",        "v" },
     }} },
+    /* Tom Clancy's Ghost Recon Breakpoint        */
+    { R"(\\GRB\.exe$)", {{
+      { "dxgi.nvapiHack",                  "False" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
