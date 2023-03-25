@@ -346,6 +346,10 @@ namespace dxvk {
     { R"(\\GRB\.exe$)", {{
       { "dxgi.nvapiHack",                  "False" },
     }} },
+    /* GTA V performance issues                   */
+    { R"(\\GTA5\.exe$)", {{
+      { "d3d11.cachedDynamicResources",     "vi"   },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
