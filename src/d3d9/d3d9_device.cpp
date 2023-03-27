@@ -211,8 +211,16 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::TestCooperativeLevel() {
+    D3D9DeviceLock lock = LockDevice();
+
     // Equivelant of D3D11/DXGI present tests. We can always present.
-    return D3D_OK;
+    if (likely(m_deviceLostState == D3D9DeviceLostState::Ok)) {
+      return D3D_OK;
+    } else if (m_deviceLostState == D3D9DeviceLostState::NotReset) {
+      return D3DERR_DEVICENOTRESET;
+    } else {
+      return D3DERR_DEVICELOST;
+    }
   }
 
 
@@ -382,13 +390,14 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) {
     D3D9DeviceLock lock = LockDevice();
 
+    Logger::info("Device reset");
+    m_deviceLostState = D3D9DeviceLostState::Ok;
+
     HRESULT hr = ResetSwapChain(pPresentationParameters, nullptr);
     if (FAILED(hr))
       return hr;
 
-    hr = ResetState(pPresentationParameters);
-    if (FAILED(hr))
-      return hr;
+    ResetState(pPresentationParameters);
 
     Flush();
     SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
@@ -910,6 +919,10 @@ namespace dxvk {
           IDirect3DSurface9* pRenderTarget,
           IDirect3DSurface9* pDestSurface) {
     D3D9DeviceLock lock = LockDevice();
+
+    if (unlikely(IsDeviceLost())) {
+      return D3DERR_DEVICELOST;
+    }
 
     D3D9Surface* src = static_cast<D3D9Surface*>(pRenderTarget);
     D3D9Surface* dst = static_cast<D3D9Surface*>(pDestSurface);
@@ -2365,10 +2378,12 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::ValidateDevice(DWORD* pNumPasses) {
+    D3D9DeviceLock lock = LockDevice();
+
     if (pNumPasses != nullptr)
       *pNumPasses = 1;
 
-    return D3D_OK;
+    return IsDeviceLost() ? D3DERR_DEVICELOST : D3D_OK;
   }
 
 
@@ -3725,6 +3740,10 @@ namespace dxvk {
     // We can't make another swapchain if we are fullscreen.
     if (!m_implicitSwapchain->GetPresentParams()->Windowed)
       return D3DERR_INVALIDCALL;
+
+    if (unlikely(IsDeviceLost())) {
+      return D3DERR_DEVICELOST;
+    }
 
     m_implicitSwapchain->Invalidate(pPresentationParameters->hDeviceWindow);
 
@@ -7094,7 +7113,7 @@ namespace dxvk {
   }
 
 
-  HRESULT D3D9DeviceEx::ResetState(D3DPRESENT_PARAMETERS* pPresentationParameters) {
+  void D3D9DeviceEx::ResetState(D3DPRESENT_PARAMETERS* pPresentationParameters) {
     if (!pPresentationParameters->EnableAutoDepthStencil)
       SetDepthStencilSurface(nullptr);
 
@@ -7335,8 +7354,6 @@ namespace dxvk {
     UpdateVertexBoolSpec(0u);
     UpdatePixelBoolSpec(0u);
     UpdateCommonSamplerSpec(0u, 0u, 0u);
-
-    return D3D_OK;
   }
 
 
@@ -7410,9 +7427,7 @@ namespace dxvk {
     if (FAILED(hr))
       return hr;
 
-    hr = ResetState(pPresentationParameters);
-    if (FAILED(hr))
-      return hr;
+    ResetState(pPresentationParameters);
 
     Flush();
     SynchronizeCsThread(DxvkCsThread::SynchronizeAll);

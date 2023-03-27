@@ -87,6 +87,12 @@ namespace dxvk {
 
   using D3D9DeviceFlags = Flags<D3D9DeviceFlag>;
 
+  enum class D3D9DeviceLostState {
+    Ok = 0,
+    Lost = 1,
+    NotReset = 2,
+  };
+
   struct D3D9DrawInfo {
     uint32_t vertexCount;
     uint32_t instanceCount;
@@ -933,7 +939,7 @@ namespace dxvk {
     const D3D9ConstantLayout& GetVertexConstantLayout() { return m_vsLayout; }
     const D3D9ConstantLayout& GetPixelConstantLayout()  { return m_psLayout; }
 
-    HRESULT ResetState(D3DPRESENT_PARAMETERS* pPresentationParameters);
+    void ResetState(D3DPRESENT_PARAMETERS* pPresentationParameters);
     HRESULT ResetSwapChain(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode);
 
     HRESULT InitialReset(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode);
@@ -949,6 +955,43 @@ namespace dxvk {
     void* MapTexture(D3D9CommonTexture* pTexture, UINT Subresource);
     void TouchMappedTexture(D3D9CommonTexture* pTexture);
     void RemoveMappedTexture(D3D9CommonTexture* pTexture);
+
+    bool IsDeviceLost() const {
+      return m_deviceLostState != D3D9DeviceLostState::Ok;
+    }
+
+    void NotifyFullscreen(HWND window, bool fullscreen) {
+      D3D9DeviceLock lock = LockDevice();
+
+      if (fullscreen) {
+        if (unlikely(window != m_fullscreenWindow && m_fullscreenWindow != NULL)) {
+          Logger::warn("Multiple fullscreen windows detected.");
+        }
+        m_fullscreenWindow = window;
+      } else {
+        if (unlikely(m_fullscreenWindow != window)) {
+          Logger::warn("Window was not fullscreen in the first place.");
+        } else {
+          m_fullscreenWindow = 0;
+        }
+      }
+    }
+
+    void NotifyWindowActivated(HWND window, bool activated) {
+      D3D9DeviceLock lock = LockDevice();
+      
+      if (likely(!m_d3d9Options.deviceLost || IsExtended()))
+        return;
+
+      if (activated && m_deviceLostState == D3D9DeviceLostState::Lost) {
+        Logger::info("Device not reset");
+        m_deviceLostState = D3D9DeviceLostState::NotReset;
+      } else if (!activated && m_deviceLostState != D3D9DeviceLostState::Lost && m_fullscreenWindow == window) {
+        Logger::info("Device lost");
+        m_deviceLostState = D3D9DeviceLostState::Lost;
+        m_fullscreenWindow = NULL;
+      }
+    }
 
   private:
 
@@ -1316,6 +1359,9 @@ namespace dxvk {
     std::atomic<int32_t>            m_samplerCount    = { 0 };
 
     Direct3DState9                  m_state;
+
+    D3D9DeviceLostState             m_deviceLostState          = D3D9DeviceLostState::Ok;
+    HWND                            m_fullscreenWindow         = NULL;
 
 #ifdef D3D9_ALLOW_UNMAPPING
     lru_list<D3D9CommonTexture*>    m_mappedTextures;
