@@ -457,7 +457,7 @@ namespace dxvk {
       { "d3d9.allowDiscard",                "False" },
     }} },
     /* ZUSI 3 - Aerosoft Edition                  */
-    { R"(\\ZusiSim\.exe$)", {{
+    { R"(\\ZusiSim(\.64)?\.exe$)", {{
       { "d3d9.noExplicitFrontBuffer",       "True" },
     }} },
     /* GTA IV (NVAPI)                             */
