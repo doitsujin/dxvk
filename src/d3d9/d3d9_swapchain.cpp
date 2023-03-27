@@ -103,6 +103,9 @@ namespace dxvk {
           DWORD    dwFlags) {
     D3D9DeviceLock lock = m_parent->LockDevice();
 
+    if (unlikely(m_parent->IsDeviceLost()))
+      return D3DERR_DEVICELOST;
+
     // If we have no backbuffers, error out.
     // This handles the case where a ::Reset failed due to OOM
     // or whatever.
@@ -237,6 +240,10 @@ namespace dxvk {
 
     if (unlikely(dstTexInfo->Desc()->Pool != D3DPOOL_SYSTEMMEM && dstTexInfo->Desc()->Pool != D3DPOOL_SCRATCH))
       return D3DERR_INVALIDCALL;
+    
+    if (unlikely(m_parent->IsDeviceLost())) {
+      return D3DERR_DEVICELOST;
+    }
 
     VkExtent3D dstTexExtent = dstTexInfo->GetExtentMip(dst->GetMipLevel());
     VkExtent3D srcTexExtent = srcTexInfo->GetExtentMip(0);
@@ -540,6 +547,8 @@ namespace dxvk {
         this->LeaveFullscreenMode();
     }
     else {
+      m_parent->NotifyFullscreen(m_window, true);
+
       if (changeFullscreen) {
         hr = this->EnterFullscreenMode(pPresentParams, pFullscreenDisplayMode);
         if (FAILED(hr))
@@ -1151,6 +1160,8 @@ namespace dxvk {
         return D3DERR_INVALIDCALL;
     }
     
+    m_parent->NotifyFullscreen(m_window, true);
+    
     return D3D_OK;
   }
   
@@ -1170,6 +1181,8 @@ namespace dxvk {
       Logger::err("D3D9: LeaveFullscreenMode: Failed to exit fullscreen mode");
       return D3DERR_NOTAVAILABLE;
     }
+
+    m_parent->NotifyFullscreen(m_window, false);
     
     return D3D_OK;
   }

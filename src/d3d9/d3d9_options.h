@@ -158,6 +158,9 @@ namespace dxvk {
 
     /// Shader dump path
     std::string shaderDumpPath;
+
+    /// Enable emulation of device loss when a fullscreen app loses focus
+    bool deviceLost;
   };
 
 }

@@ -132,6 +132,14 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9Query::GetData(void* pData, DWORD dwSize, DWORD dwGetDataFlags) {
+    D3D9DeviceLock lock = m_parent->LockDevice();
+
+    bool flush = dwGetDataFlags & D3DGETDATA_FLUSH;
+
+    if (unlikely(m_parent->IsDeviceLost())) {
+      return flush ? D3DERR_DEVICELOST : S_FALSE;
+    }
+
     if (m_state == D3D9_VK_QUERY_CACHED) {
       // Query data was already retrieved once.
       // Use cached query data to prevent having to check the VK event
@@ -147,8 +155,6 @@ namespace dxvk {
     }
 
     HRESULT hr = this->GetQueryData(pData, dwSize);
-
-    bool flush = dwGetDataFlags & D3DGETDATA_FLUSH;
 
     // If we get S_FALSE and it's not from the fact
     // they didn't call end, do some flushy stuff...

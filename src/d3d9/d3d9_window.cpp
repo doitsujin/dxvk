@@ -10,6 +10,7 @@ namespace dxvk
     bool unicode;
     bool filter;
     bool activateProcessed;
+    bool deactivateProcessed;
     WNDPROC proc;
     D3D9SwapChainEx* swapchain;
   };
@@ -53,11 +54,14 @@ namespace dxvk
         DefWindowProcW, DefWindowProcA, unicode,
           window, message, wparam, lparam);
 
+    
+    D3D9DeviceEx* device = windowData.swapchain->GetParent();
+
     if (message == WM_DESTROY)
       ResetWindowProc(window);
     else if (message == WM_ACTIVATEAPP) {
       D3DDEVICE_CREATION_PARAMETERS create_parms;
-      windowData.swapchain->GetDevice()->GetCreationParameters(&create_parms);
+      device->GetCreationParameters(&create_parms);
 
       if (!(create_parms.BehaviorFlags & D3DCREATE_NOWINDOWCHANGES)) {
         D3D9WindowMessageFilter filter(window);
@@ -70,19 +74,24 @@ namespace dxvk
           windowData.swapchain->GetPresentParameters(&params);
           SetWindowPos(window, nullptr, rect.left, rect.top, params.BackBufferWidth, params.BackBufferHeight,
                        SWP_NOACTIVATE | SWP_NOZORDER);
-          SetActivateProcessed(window, true);
         }
         else if (!wparam) {
           if (IsWindowVisible(window))
             ShowWindow(window, SW_MINIMIZE);
-          SetActivateProcessed(window, false);
         }
       }
+
+      if ((wparam && !windowData.activateProcessed)
+        || (!wparam && !windowData.deactivateProcessed)) {
+        device->NotifyWindowActivated(window, wparam);
+      }
+
+      SetActivateProcessed(window, !!wparam);
     }
     else if (message == WM_SIZE)
     {
       D3DDEVICE_CREATION_PARAMETERS create_parms;
-      windowData.swapchain->GetDevice()->GetCreationParameters(&create_parms);
+      device->GetCreationParameters(&create_parms);
 
       if (!(create_parms.BehaviorFlags & D3DCREATE_NOWINDOWCHANGES) && !IsIconic(window))
         PostMessageW(window, WM_ACTIVATEAPP, 1, GetCurrentThreadId());
@@ -137,8 +146,10 @@ namespace dxvk
   {
       std::lock_guard lock(g_windowProcMapMutex);
       auto it = g_windowProcMap.find(window);
-      if (it != g_windowProcMap.end())
+      if (it != g_windowProcMap.end()) {
         it->second.activateProcessed = processed;
+        it->second.deactivateProcessed = !processed;
+      }
   }
 #else
   D3D9WindowMessageFilter::D3D9WindowMessageFilter(HWND window, bool filter) {
