@@ -465,11 +465,11 @@ namespace dxvk {
 
     // Log feature support info an extension list
     Logger::info(str::format("Device properties:"
-      "\n  Device name:     : ", m_deviceInfo.core.properties.deviceName,
-      "\n  Driver version   : ",
-        VK_VERSION_MAJOR(m_deviceInfo.core.properties.driverVersion), ".",
-        VK_VERSION_MINOR(m_deviceInfo.core.properties.driverVersion), ".",
-        VK_VERSION_PATCH(m_deviceInfo.core.properties.driverVersion)));
+      "\n  Device : ", m_deviceInfo.core.properties.deviceName,
+      "\n  Driver : ", m_deviceInfo.vk12.driverName, " ",
+      VK_VERSION_MAJOR(m_deviceInfo.core.properties.driverVersion), ".",
+      VK_VERSION_MINOR(m_deviceInfo.core.properties.driverVersion), ".",
+      VK_VERSION_PATCH(m_deviceInfo.core.properties.driverVersion)));
 
     Logger::info("Enabled device extensions:");
     this->logNameList(extensionNameList);
@@ -637,11 +637,11 @@ namespace dxvk {
 
     // Log feature support info an extension list
     Logger::info(str::format("Device properties:"
-      "\n  Device name:     : ", m_deviceInfo.core.properties.deviceName,
-      "\n  Driver version   : ",
-        VK_VERSION_MAJOR(m_deviceInfo.core.properties.driverVersion), ".",
-        VK_VERSION_MINOR(m_deviceInfo.core.properties.driverVersion), ".",
-        VK_VERSION_PATCH(m_deviceInfo.core.properties.driverVersion)));
+      "\n  Device name: ", m_deviceInfo.core.properties.deviceName,
+      "\n  Driver:      ", m_deviceInfo.vk12.driverName, " ",
+      VK_VERSION_MAJOR(m_deviceInfo.core.properties.driverVersion), ".",
+      VK_VERSION_MINOR(m_deviceInfo.core.properties.driverVersion), ".",
+      VK_VERSION_PATCH(m_deviceInfo.core.properties.driverVersion)));
 
     Logger::info("Enabled device extensions:");
     this->logNameList(extensionNameList);
@@ -689,18 +689,14 @@ namespace dxvk {
   
   
   void DxvkAdapter::logAdapterInfo() const {
-    VkPhysicalDeviceProperties deviceInfo = this->deviceProperties();
-    VkPhysicalDeviceMemoryProperties memoryInfo = this->memoryProperties();
+    const auto deviceInfo = this->devicePropertiesExt();
+    const auto memoryInfo = this->memoryProperties();
     
-    Logger::info(str::format(deviceInfo.deviceName, ":"));
-    Logger::info(str::format("  Driver: ",
-      VK_VERSION_MAJOR(deviceInfo.driverVersion), ".",
-      VK_VERSION_MINOR(deviceInfo.driverVersion), ".",
-      VK_VERSION_PATCH(deviceInfo.driverVersion)));
-    Logger::info(str::format("  Vulkan: ",
-      VK_VERSION_MAJOR(deviceInfo.apiVersion), ".",
-      VK_VERSION_MINOR(deviceInfo.apiVersion), ".",
-      VK_VERSION_PATCH(deviceInfo.apiVersion)));
+    Logger::info(str::format(deviceInfo.core.properties.deviceName, ":",
+      "\n  Driver : ", deviceInfo.vk12.driverName, " ",
+      VK_VERSION_MAJOR(deviceInfo.core.properties.driverVersion), ".",
+      VK_VERSION_MINOR(deviceInfo.core.properties.driverVersion), ".",
+      VK_VERSION_PATCH(deviceInfo.core.properties.driverVersion)));
 
     for (uint32_t i = 0; i < memoryInfo.memoryHeapCount; i++) {
       constexpr VkDeviceSize mib = 1024 * 1024;
