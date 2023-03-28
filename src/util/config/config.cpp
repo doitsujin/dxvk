@@ -356,6 +356,10 @@ namespace dxvk {
     { R"(\\RapaNui-Win64-Shipping\.exe$)", {{
       { "dxgi.customVendorId",              "8086" },
     }} },
+    /* GTA V performance issues                   */
+    { R"(\\GTA5\.exe$)", {{
+      { "d3d11.cachedDynamicResources",     "vi"   },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
