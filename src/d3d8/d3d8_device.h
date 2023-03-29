@@ -102,13 +102,13 @@ namespace dxvk {
 
     void    STDMETHODCALLTYPE SetCursorPosition(UINT XScreenSpace, UINT YScreenSpace, DWORD Flags) {
       // TODO: do we need to convert from screenspace?
-      //GetD3D9()->SetCursorPosition(XScreenSpace, YScreenSpace, Flags);
+      GetD3D9()->SetCursorPosition(XScreenSpace, YScreenSpace, Flags);
     }
 
     // Microsoft d3d8.h in the DirectX 9 SDK uses a different function signature...
     void    STDMETHODCALLTYPE SetCursorPosition(int X, int Y, DWORD Flags) {
       // TODO: do we need to convert from screenspace?
-      //GetD3D9()->SetCursorPosition(X, Y, Flags);
+      GetD3D9()->SetCursorPosition(X, Y, Flags);
     }
 
     BOOL    STDMETHODCALLTYPE ShowCursor(BOOL bShow) { return GetD3D9()->ShowCursor(bShow); }
