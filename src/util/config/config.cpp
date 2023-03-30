@@ -759,8 +759,10 @@ namespace dxvk {
       { "dxvk.enableAsync",                 "True" },
     }} },
     /* Genshin Impact                          */
-    { R"(\\(YuanShen|GenshinImpact)\.exe$)",{{
+    { R"(\\(YuanShen|GenshinImpact)\.exe$)", {{
       { "dxgi.customDeviceDesc",            "AMD Radeon Pro 5300M"},
+      { "dxgi.customDeviceId",              "7340" },
+      { "dxgi.customVendorId",              "1002" },
       { "dxvk.enableAsync",                 "True" },
     }} },
     /* Kerbal Space Program 2                     */
