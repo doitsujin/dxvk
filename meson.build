@@ -115,10 +115,10 @@ else
   dxvk_wsi = get_option('dxvk_native_wsi')
   
   if dxvk_wsi == 'sdl2'
-    lib_sdl2 = cpp.find_library('SDL2')
+    sdl2_dep = dependency('sdl2')
     compiler_args += ['-DDXVK_WSI_SDL2']
   elif dxvk_wsi == 'glfw'
-    lib_glfw = cpp.find_library('glfw')
+    glfw_dep = dependency('glfw3')
     compiler_args += ['-DDXVK_WSI_GLFW']
   endif
 
