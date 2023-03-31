@@ -1,5 +1,6 @@
 project('dxvk', ['c', 'cpp'], version : '2.1', meson_version : '>= 0.49', default_options : [ 'cpp_std=c++17', 'warning_level=2' ])
 
+pkg = import('pkgconfig')
 cpu_family = target_machine.cpu_family()
 platform   = target_machine.system()
 
@@ -124,8 +125,10 @@ else
 
   if dxvk_wsi == 'sdl2'
     dxvk_name_prefix = 'dxvk_'
+    dxvk_pkg_prefix = 'dxvk-'
   else
     dxvk_name_prefix = 'dxvk_@0@_'.format(dxvk_wsi)
+    dxvk_pkg_prefix = 'dxvk-@0@-'.format(dxvk_wsi)
   endif
 
   link_args += [

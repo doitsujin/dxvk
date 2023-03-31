@@ -68,3 +68,10 @@ d3d9_dep = declare_dependency(
   link_with           : [ d3d9_dll ],
   include_directories : [ dxvk_include_path ],
 )
+
+if platform != 'windows'
+  pkg.generate(d3d9_dll,
+    filebase: dxvk_pkg_prefix + 'd3d9',
+    subdirs:  'dxvk',
+  )
+endif

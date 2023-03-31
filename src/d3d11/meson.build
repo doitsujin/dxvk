@@ -88,3 +88,10 @@ d3d11_dep = declare_dependency(
   link_with           : [ d3d11_dll ],
   include_directories : [ dxvk_include_path ],
 )
+
+if platform != 'windows'
+  pkg.generate(d3d11_dll,
+    filebase: dxvk_pkg_prefix + 'd3d11',
+    subdirs:  'dxvk',
+  )
+endif
