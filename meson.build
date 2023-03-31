@@ -54,7 +54,7 @@ dep_displayinfo = dependency(
 )
 
 if platform == 'windows'
-  dxvk_so_version = {}
+  dxvk_so_version = {'name_prefix': ''}
 
   compiler_args += [
     '-DNOMINMAX',
@@ -145,7 +145,7 @@ else
     error('SDL2 or GLFW are required to build dxvk-native')
   endif
   
-  dxvk_name_prefix = 'libdxvk_'
+  dxvk_name_prefix = 'dxvk_'
 
   link_args += [
     '-static-libgcc',
@@ -161,7 +161,6 @@ add_project_link_arguments(cpp.get_supported_link_arguments(link_args), language
 add_project_link_arguments(cc.get_supported_link_arguments(link_args), language: 'c')
 
 exe_ext = ''
-dll_ext = ''
 def_spec_ext = '.def'
 
 glsl_compiler = find_program('glslang', 'glslangValidator')
