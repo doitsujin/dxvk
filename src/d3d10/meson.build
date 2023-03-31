@@ -28,3 +28,10 @@ d3d10_core_dll = shared_library(dxvk_name_prefix+'d3d10core', d3d10_core_src, d3
 d3d10_core_dep = declare_dependency(
   link_with           : [ d3d10_core_dll ],
 )
+
+if platform != 'windows'
+  pkg.generate(d3d10_core_dll,
+    filebase: dxvk_pkg_prefix + 'd3d10core',
+    subdirs:  'dxvk',
+  )
+endif

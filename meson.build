@@ -1,5 +1,6 @@
 project('dxvk', ['c', 'cpp'], version : 'v2.3.1', meson_version : '>= 0.58', default_options : [ 'cpp_std=c++17', 'warning_level=2' ])
 
+pkg = import('pkgconfig')
 cpu_family = target_machine.cpu_family()
 platform   = target_machine.system()
 fs = import('fs')
@@ -146,6 +147,7 @@ else
   endif
   
   dxvk_name_prefix = 'dxvk_'
+  dxvk_pkg_prefix = 'dxvk-'
 
   link_args += [
     '-static-libgcc',

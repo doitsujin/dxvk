@@ -35,3 +35,10 @@ dxgi_dep = declare_dependency(
   link_with           : [ dxgi_dll ],
   include_directories : [ dxvk_include_path ],
 )
+
+if platform != 'windows'
+  pkg.generate(dxgi_dll,
+    filebase: dxvk_pkg_prefix + 'dxgi',
+    subdirs:  'dxvk',
+  )
+endif
