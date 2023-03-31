@@ -123,9 +123,9 @@ else
   endif
 
   if dxvk_wsi == 'sdl2'
-    dxvk_name_prefix = 'libdxvk_'
+    dxvk_name_prefix = 'dxvk_'
   else
-    dxvk_name_prefix = 'libdxvk_@0@_'.format(dxvk_wsi)
+    dxvk_name_prefix = 'dxvk_@0@_'.format(dxvk_wsi)
   endif
 
   link_args += [
@@ -142,7 +142,6 @@ add_project_link_arguments(cpp.get_supported_link_arguments(link_args), language
 add_project_link_arguments(cc.get_supported_link_arguments(link_args), language: 'c')
 
 exe_ext = ''
-dll_ext = ''
 def_spec_ext = '.def'
 
 glsl_compiler = find_program('glslangValidator')

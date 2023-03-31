@@ -74,9 +74,8 @@ if platform != 'windows'
   d3d11_link_depends += files('d3d11.sym')
 endif
 
-d3d11_dll = shared_library('d3d11'+dll_ext, dxgi_common_src + d3d11_src + d3d10_src,
+d3d11_dll = shared_library(dxvk_name_prefix+'d3d11', dxgi_common_src + d3d11_src + d3d10_src,
     glsl_generator.process(d3d11_shaders), d3d11_res,
-  name_prefix         : dxvk_name_prefix,
   dependencies        : [ dxgi_dep, dxbc_dep, dxvk_dep ],
   include_directories : dxvk_include_path,
   install             : true,
