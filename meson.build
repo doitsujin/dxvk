@@ -166,4 +166,8 @@ dxvk_version = vcs_tag(
   output: 'version.h',
 )
 
+if platform != 'windows'
+  subdir('include/native')
+endif
+
 subdir('src')
