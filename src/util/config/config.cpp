@@ -771,6 +771,10 @@ namespace dxvk {
       { "d3d11.refactoringAllowed",         "True" },
       { "dxvk.enableAsync",                 "True" },
     }} },
+    /* Overwatch                                  */
+    { R"(\\Overwatch\.exe$)", {{
+      { "dxvk.enableAsync",                 "True" },
+    }} },
   }};
 
 
