@@ -4954,7 +4954,8 @@ namespace dxvk {
       if (m_device->features().core.features.depthBounds)
         m_flags.set(DxvkContextFlag::GpDynamicDepthBounds);
 
-      if (m_device->features().extExtendedDynamicState3.extendedDynamicState3RasterizationSamples
+      if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasSampleRateShading)
+       && m_device->features().extExtendedDynamicState3.extendedDynamicState3RasterizationSamples
        && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleMask)
         m_flags.set(DxvkContextFlag::GpDynamicMultisampleState);
     } else {
