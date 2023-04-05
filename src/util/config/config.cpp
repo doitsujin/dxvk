@@ -775,6 +775,10 @@ namespace dxvk {
     { R"(\\Overwatch\.exe$)", {{
       { "dxvk.enableAsync",                 "True" },
     }} },
+    /* Star Wars Jedi: Fallen Order               */
+    { R"(\\SwGame-Win64-Shipping\.exe$)", {{
+      { "dxvk.enableAsync",                 "True" },
+    }} },
   }};
 
 
