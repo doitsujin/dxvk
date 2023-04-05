@@ -350,6 +350,11 @@ namespace dxvk {
     { R"(\\GTA5\.exe$)", {{
       { "d3d11.cachedDynamicResources",     "vi"   },
     }} },
+    /* Crash Bandicoot N. Sane Trilogy            *
+     * Work around some vsync funkiness           */
+    { R"(\\CrashBandicootNSaneTrilogy\.exe$)", {{
+      { "dxgi.syncInterval",                "1"   },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
