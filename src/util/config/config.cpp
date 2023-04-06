@@ -752,6 +752,11 @@ namespace dxvk {
     { R"(\\(PANZERS|PANZERS_Phase_2)\.exe$)", {{
       { "d3d9.enableDialogMode",         "True"   },
     }} },
+    /* Dark Romance: Vampire in Love          *
+     * Works around black screen or blinking  */
+    { R"(\\(DarkRomance_VampireInLove_CE)\.exe$)", {{
+      { "d3d9.allowDirectBufferMapping", "False"   },
+    }} },
     
     /**********************************************/
     /* D3D12 GAMES (vkd3d-proton with dxvk dxgi)  */
