@@ -3663,7 +3663,7 @@ namespace dxvk {
         VK_ACCESS_SHADER_READ_BIT);
     }
 
-    if (dstImage->info().layout != dstLayout) {
+    if (dstImage->info().layout != dstLayout || doDiscard) {
       m_execAcquires.accessImage(
         dstImage, dstSubresourceRange,
         doDiscard ? VK_IMAGE_LAYOUT_UNDEFINED
@@ -4221,7 +4221,7 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::resolveImageFb(
+  void DxvkContext::resolveImageFbDirect(
     const Rc<DxvkImage>&            dstImage,
     const Rc<DxvkImage>&            srcImage,
     const VkImageResolve&           region,
@@ -4267,7 +4267,7 @@ namespace dxvk {
         dstAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
     }
 
-    if (dstImage->info().layout != dstLayout) {
+    if (dstImage->info().layout != dstLayout || doDiscard) {
       m_execAcquires.accessImage(
         dstImage, dstSubresourceRange,
         doDiscard ? VK_IMAGE_LAYOUT_UNDEFINED
@@ -4407,6 +4407,58 @@ namespace dxvk {
     m_cmd->trackResource<DxvkAccess::Write>(dstImage);
     m_cmd->trackResource<DxvkAccess::Read>(srcImage);
     m_cmd->trackResource<DxvkAccess::None>(views);
+  }
+
+
+  void DxvkContext::resolveImageFb(
+    const Rc<DxvkImage>&            dstImage,
+    const Rc<DxvkImage>&            srcImage,
+    const VkImageResolve&           region,
+          VkFormat                  format,
+          VkResolveModeFlagBits     depthMode,
+          VkResolveModeFlagBits     stencilMode) {
+    // Usually we should be able to draw directly to the destination image,
+    // but in some cases this might not be possible, e.g. if when copying
+    // from something like D32_SFLOAT to RGBA8_UNORM. In those situations,
+    // create a temporary image to draw to, and then copy to the actual
+    // destination image using a regular Vulkan transfer function.
+    bool useDirectCopy = (dstImage->info().usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
+                      && (dstImage->isViewCompatible(format));
+
+    if (useDirectCopy) {
+      this->resolveImageFbDirect(dstImage, srcImage,
+        region, format, depthMode, stencilMode);
+    } else {
+      DxvkImageCreateInfo imageInfo;
+      imageInfo.type = dstImage->info().type;
+      imageInfo.format = format;
+      imageInfo.flags = 0;
+      imageInfo.sampleCount = VK_SAMPLE_COUNT_1_BIT;
+      imageInfo.extent = region.extent;
+      imageInfo.numLayers = region.dstSubresource.layerCount;
+      imageInfo.mipLevels = 1;
+      imageInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+      imageInfo.stages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_TRANSFER_BIT;
+      imageInfo.access = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT;
+      imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+      imageInfo.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+      Rc<DxvkImage> tmpImage = m_device->createImage(imageInfo,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+      VkImageResolve tmpRegion = region;
+      tmpRegion.dstSubresource.baseArrayLayer = 0;
+      tmpRegion.dstSubresource.mipLevel = 0;
+      tmpRegion.dstOffset = VkOffset3D { 0, 0, 0 };
+
+      this->resolveImageFbDirect(tmpImage, srcImage,
+        tmpRegion, format, depthMode, stencilMode);
+
+      this->copyImageHw(
+        dstImage, region.dstSubresource, region.dstOffset,
+        tmpImage, tmpRegion.dstSubresource, tmpRegion.dstOffset,
+        region.extent);
+    }
   }
 
 
