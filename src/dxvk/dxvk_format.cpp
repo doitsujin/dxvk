@@ -556,6 +556,13 @@ namespace dxvk {
     // VK_FORMAT_A4B4G4R4_UNORM_PACK16
     { 2, RGBA, VK_IMAGE_ASPECT_COLOR_BIT },
 
+    // VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM
+    { 8, RGB, VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT,
+      DxvkFormatFlag::MultiPlane, VkExtent3D { 1, 1, 1 },
+      { DxvkPlaneFormatInfo { 1, { 1, 1 } },
+        DxvkPlaneFormatInfo { 1, { 2, 2 } },
+        DxvkPlaneFormatInfo { 1, { 2, 2 } } } },
+
     // VK_FORMAT_G8_B8R8_2PLANE_420_UNORM
     { 6, RGB, VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT,
       DxvkFormatFlag::MultiPlane, VkExtent3D { 1, 1, 1 },
@@ -568,7 +575,7 @@ namespace dxvk {
     { VK_FORMAT_UNDEFINED,                  VK_FORMAT_BC7_SRGB_BLOCK            },
     { VK_FORMAT_G8B8G8R8_422_UNORM_KHR,     VK_FORMAT_B8G8R8G8_422_UNORM_KHR    },
     { VK_FORMAT_A4R4G4B4_UNORM_PACK16,      VK_FORMAT_A4B4G4R4_UNORM_PACK16     },
-    { VK_FORMAT_G8_B8R8_2PLANE_420_UNORM,   VK_FORMAT_G8_B8R8_2PLANE_420_UNORM  },
+    { VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM,   VK_FORMAT_G8_B8R8_2PLANE_420_UNORM  },
   }};
   
   
