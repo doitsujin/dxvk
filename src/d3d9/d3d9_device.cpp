@@ -4229,10 +4229,15 @@ namespace dxvk {
 
     if (FormatInfo != nullptr) {
       elementSize = FormatInfo->elementSize;
+      VkExtent3D blockSize = FormatInfo->blockSize;
+      if (unlikely(FormatInfo->flags.test(DxvkFormatFlag::MultiPlane))) {
+        elementSize = FormatInfo->planes[0].elementSize;
+        blockSize = { FormatInfo->planes[0].blockSize.width, FormatInfo->planes[0].blockSize.height, 1u };
+      }
 
-      offsets[0] = offsets[0] / FormatInfo->blockSize.depth;
-      offsets[1] = offsets[1] / FormatInfo->blockSize.height;
-      offsets[2] = offsets[2] / FormatInfo->blockSize.width;
+      offsets[0] = offsets[0] / blockSize.depth;
+      offsets[1] = offsets[1] / blockSize.height;
+      offsets[2] = offsets[2] / blockSize.width;
     }
 
     return offsets[0] * SlicePitch +
@@ -4419,9 +4424,15 @@ namespace dxvk {
       pLockedBox->RowPitch   = align(std::max(desc.Width >> MipLevel, 1u), 4);
       pLockedBox->SlicePitch = pLockedBox->RowPitch * std::max(desc.Height >> MipLevel, 1u);
     }
-    else {
-      // Data is tightly packed within the mapped buffer.
+    else if (likely(!formatInfo->flags.test(DxvkFormatFlag::MultiPlane))) {
       pLockedBox->RowPitch   = align(formatInfo->elementSize * blockCount.width, 4);
+      pLockedBox->SlicePitch = pLockedBox->RowPitch * blockCount.height;
+    } else {
+      auto plane = &formatInfo->planes[0];
+      uint32_t planeElementSize = plane->elementSize;
+      VkExtent3D planeBlockSize = { plane->blockSize.width, plane->blockSize.height, 1u };
+      VkExtent3D blockCount  = util::computeBlockCount(levelExtent, planeBlockSize);
+      pLockedBox->RowPitch   = align(planeElementSize * blockCount.width, 4);
       pLockedBox->SlicePitch = pLockedBox->RowPitch * blockCount.height;
     }
 
@@ -4555,7 +4566,7 @@ namespace dxvk {
     // Now that data has been written into the buffer,
     // we need to copy its contents into the image
 
-    auto formatInfo  = lookupFormatInfo(image->info().format);
+    auto formatInfo = lookupFormatInfo(pDestTexture->GetFormatMapping().FormatColor);
     auto srcSubresource = pSrcTexture->GetSubresourceFromIndex(
       formatInfo->aspectMask, SrcSubresource);
 
@@ -4565,7 +4576,6 @@ namespace dxvk {
 
     VkExtent3D dstTexLevelExtent = image->mipLevelExtent(dstSubresource.mipLevel);
     VkExtent3D srcTexLevelExtent = util::computeMipLevelExtent(pSrcTexture->GetExtent(), srcSubresource.mipLevel);
-    VkExtent3D srcTexLevelExtentBlockCount = util::computeBlockCount(srcTexLevelExtent, formatInfo->blockSize);
 
     auto convertFormat = pDestTexture->GetFormatMapping().ConversionFormatInfo;
 
@@ -4613,8 +4623,7 @@ namespace dxvk {
         slice.mapPtr, srcData, extentBlockCount, formatInfo->elementSize,
         pitch, pitch * srcTexLevelExtentBlockCount.height);
 
-
-      VkFormat packedFormat = GetPackedDepthStencilFormat(pDestTexture->Desc()->Format);
+      VkFormat packedDSFormat = GetPackedDepthStencilFormat(pDestTexture->Desc()->Format);
 
       EmitCs([
         cSrcSlice       = slice.slice,
@@ -4622,7 +4631,7 @@ namespace dxvk {
         cDstLayers      = dstLayers,
         cDstLevelExtent = alignedExtent,
         cOffset         = alignedDestOffset,
-        cPackedFormat     = packedFormat
+        cPackedDSFormat = packedDSFormat
       ] (DxvkContext* ctx) {
         if (cDstLayers.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
           ctx->copyBufferToImage(
@@ -4638,19 +4647,14 @@ namespace dxvk {
                 cSrcSlice.buffer(), cSrcSlice.offset(),
                 VkOffset2D { 0, 0 },
                 VkExtent2D { cDstLevelExtent.width, cDstLevelExtent.height },
-                cPackedFormat);
+                cPackedDSFormat);
         }
       });
 
       TrackTextureMappingBufferSequenceNumber(pSrcTexture, SrcSubresource);
     }
     else {
-      const DxvkFormatInfo* formatInfo = lookupFormatInfo(pDestTexture->GetFormatMapping().FormatColor);
       const void* mapPtr = MapTexture(pSrcTexture, SrcSubresource);
-
-      // Add more blocks for the other planes that we might have.
-      // TODO: PLEASE CLEAN ME
-      srcTexLevelExtentBlockCount.height *= std::min(convertFormat.PlaneCount, 2u);
 
       if (unlikely(SrcOffset.x != 0 || SrcOffset.y != 0 || SrcOffset.z != 0
         || DestOffset.x != 0 || DestOffset.y != 0 || DestOffset.z != 0
@@ -4663,13 +4667,22 @@ namespace dxvk {
         return;
       }
 
+      uint32_t formatElementSize = formatInfo->elementSize;
+      VkExtent3D srcBlockSize = formatInfo->blockSize;
+      if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+        formatElementSize = formatInfo->planes[0].elementSize;
+        srcBlockSize = { formatInfo->planes[0].blockSize.width, formatInfo->planes[0].blockSize.height, 1u };
+      }
+      VkExtent3D srcBlockCount = util::computeBlockCount(srcTexLevelExtent, srcBlockSize);
+      srcBlockCount.height *= std::min(pSrcTexture->GetPlaneCount(), 2u);
+
       // the converter can not handle the 4 aligned pitch so we always repack into a staging buffer
       D3D9BufferSlice slice = AllocStagingBuffer(pSrcTexture->GetMipSize(SrcSubresource));
-      VkDeviceSize pitch = align(srcTexLevelExtentBlockCount.width * formatInfo->elementSize, 4);
+      VkDeviceSize pitch = align(srcBlockCount.width * formatElementSize, 4);
 
       util::packImageData(
-        slice.mapPtr, mapPtr, srcTexLevelExtentBlockCount, formatInfo->elementSize,
-        pitch, std::min(convertFormat.PlaneCount, 2u) * pitch * srcTexLevelExtentBlockCount.height);
+        slice.mapPtr, mapPtr, srcBlockCount, formatElementSize,
+        pitch, std::min(pSrcTexture->GetPlaneCount(), 2u) * pitch * srcBlockCount.height);
 
       Flush();
       SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
