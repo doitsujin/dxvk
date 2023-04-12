@@ -21,26 +21,16 @@ namespace dxvk::hud {
     if (configStr.empty())
       configStr = device->config().hud;
 
-    std::string::size_type pos = 0;
-    std::string::size_type end = 0;
-    std::string::size_type mid = 0;
-    
-    while (pos < configStr.size()) {
-      end = configStr.find(',', pos);
-      mid = configStr.find('=', pos);
-      
-      if (end == std::string::npos)
-        end = configStr.size();
-      
-      if (mid != std::string::npos && mid < end) {
-        m_options.insert({
-          configStr.substr(pos,     mid - pos),
-          configStr.substr(mid + 1, end - mid - 1) });
-      } else {
-        m_enabled.insert(configStr.substr(pos, end - pos));
-      }
+    std::string option;
+    std::istringstream iss(configStr);
 
-      pos = end + 1;
+    while (std::getline(iss, option, ',')) {
+      size_t eq = option.find('=');
+      if (eq != std::string::npos) {
+        m_options.insert({ option.substr(0, eq), option.substr(eq + 1) });
+      } else {
+        m_enabled.insert(option);
+      }
     }
 
     if (m_enabled.find("full") != m_enabled.end())
