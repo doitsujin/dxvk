@@ -139,6 +139,12 @@ namespace dxvk {
 
     m_lastDialog = m_dialog;
 
+#ifdef _WIN32
+    const bool useGDIFallback = m_partialCopy && m_presentParams.SwapEffect == D3DSWAPEFFECT_COPY;
+    if (useGDIFallback)
+      return BlitGDI(window);
+#endif
+
     try {
       if (recreate)
         CreatePresenter();
@@ -156,10 +162,47 @@ namespace dxvk {
       return D3D_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
+#ifdef _WIN32
+      return BlitGDI(window);
+#else
       return D3DERR_DEVICEREMOVED;
+#endif
     }
   }
 
+#ifdef _WIN32
+  HRESULT D3D9SwapChainEx::BlitGDI(HWND Window) {
+    if (!std::exchange(m_warnedAboutFallback, true))
+      Logger::warn("Using GDI for swapchain presentation. This will impact performance.");
+
+    HDC hDC;
+    HRESULT result = m_backBuffers[0]->GetDC(&hDC);
+    if (result) {
+      Logger::err("D3D9SwapChainEx::BlitGDI Surface GetDC failed");
+      return D3DERR_DEVICEREMOVED;
+    }
+
+    HDC dstDC = GetDCEx(Window, 0, DCX_CACHE);
+    if (!dstDC) {
+      Logger::err("D3D9SwapChainEx::BlitGDI: GetDCEx failed");
+      m_backBuffers[0]->ReleaseDC(hDC);
+      return D3DERR_DEVICEREMOVED;
+    }
+
+    bool success = StretchBlt(dstDC, m_dstRect.left, m_dstRect.top, m_dstRect.right - m_dstRect.left,
+            m_dstRect.bottom - m_dstRect.top, hDC, m_srcRect.left, m_srcRect.top,
+            m_srcRect.right - m_srcRect.left, m_srcRect.bottom - m_srcRect.top, SRCCOPY);
+
+    if (!success) {
+      Logger::err("D3D9SwapChainEx::BlitGDI: StretchBlt failed");
+      m_backBuffers[0]->ReleaseDC(hDC);
+      return D3DERR_DEVICEREMOVED;
+    }
+
+    m_backBuffers[0]->ReleaseDC(hDC);
+    return S_OK;
+  }
+#endif
 
   HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetFrontBufferData(IDirect3DSurface9* pDestSurface) {
     D3D9DeviceLock lock = m_parent->LockDevice();
@@ -1155,19 +1198,27 @@ namespace dxvk {
     else
       m_srcRect = *pSourceRect;
 
+    
+    UINT width, height;
+    wsi::getWindowSize(m_window, &width, &height);
+
     RECT dstRect;
     if (pDestRect == nullptr) {
       // TODO: Should we hook WM_SIZE message for this?
-      UINT width, height;
-      wsi::getWindowSize(m_window, &width, &height);
-
       dstRect.top    = 0;
       dstRect.left   = 0;
       dstRect.right  = LONG(width);
       dstRect.bottom = LONG(height);
+      
     }
     else
       dstRect = *pDestRect;
+
+    m_partialCopy =
+       dstRect.left != 0
+    || dstRect.top != 0
+    || dstRect.right  - dstRect.left != LONG(width)
+    || dstRect.bottom - dstRect.top  != LONG(height);
 
     bool recreate = 
        m_dstRect.left   != dstRect.left
