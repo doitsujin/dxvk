@@ -564,7 +564,10 @@ namespace dxvk {
 
       D3D8Texture2D* tex = static_cast<D3D8Texture2D*>(pTexture);
 
-      m_textures[Stage] = ref(tex);
+      if(unlikely(m_textures[Stage].ptr() == tex))
+        return D3D_OK;
+
+      m_textures[Stage] = tex;
 
       return GetD3D9()->SetTexture(Stage, D3D8Texture2D::GetD3D9Nullable(tex));
     }
@@ -850,7 +853,7 @@ namespace dxvk {
     };
     
     // Remember to fill() these in the constructor!
-    std::array<Com<IDirect3DBaseTexture8>, d8caps::MAX_TEXTURE_STAGES> m_textures;
+    std::array<Com<D3D8Texture2D, false>, d8caps::MAX_TEXTURE_STAGES>  m_textures;
     std::array<D3D8VBO, d8caps::MAX_STREAMS>                           m_streams;
 
     Com<D3D8IndexBuffer>        m_indices;

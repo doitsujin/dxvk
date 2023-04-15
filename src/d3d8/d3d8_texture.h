@@ -103,7 +103,7 @@ namespace dxvk {
       return ptr;
     }
 
-    std::vector<Com<SubresourceType>> m_subresources;
+    std::vector<Com<SubresourceType, false>> m_subresources;
 
   };
 
