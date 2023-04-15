@@ -23,6 +23,17 @@ namespace dxvk {
             UINT   SizeToLock,
             BYTE** ppbData,
             DWORD  Flags) {
+
+      // In d3d8, any draw call from the start of the frame will
+      // invalidate a segment of the buffer, not just overwriting
+      // calls to Lock. So we disable this optimization for now
+      // so the application does not trample on in-use buffers.
+      //
+      //   TODO: Consider tracking buffer use to conditionally 
+      //   disable this for performance gains.
+      if (Flags & D3DLOCK_NOOVERWRITE)
+        Flags &= ~D3DLOCK_NOOVERWRITE;
+
       return this->GetD3D9()->Lock(
         OffsetToLock,
         SizeToLock,
