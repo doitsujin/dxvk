@@ -4323,7 +4323,7 @@ namespace dxvk {
     // then we need to copy -> buffer
     // We are also always dirty if we are a render target,
     // a depth stencil, or auto generate mipmaps.
-    bool needsReadback = pResource->NeedsReadback(Subresource) || renderable;
+    bool needsReadback = (pResource->NeedsReadback(Subresource) || renderable) && !(Flags & D3DLOCK_DISCARD);
     pResource->SetNeedsReadback(Subresource, false);
 
 
@@ -4335,11 +4335,15 @@ namespace dxvk {
     // Don't use MapTexture here to keep the mapped list small while the resource is still locked.
     void* mapPtr = pResource->GetData(Subresource);
 
-    if (needsReadback) {
+    if (unlikely(needsReadback)) {
       DxvkBufferSlice mappedBufferSlice = pResource->GetBufferSlice(Subresource);
       const Rc<DxvkBuffer> mappedBuffer = pResource->GetBuffer();
 
-      if (unlikely(needsReadback) && pResource->GetImage() != nullptr) {
+      if (unlikely(pResource->GetFormatMapping().ConversionFormatInfo.FormatType != D3D9ConversionFormat_None)) {
+        Logger::err(str::format("Reading back format", pResource->Desc()->Format, " is not supported. It is uploaded using the fomrat converter."));
+      }
+
+      if (pResource->GetImage() != nullptr) {
         Rc<DxvkImage> resourceImage = pResource->GetImage();
 
         Rc<DxvkImage> mappedImage = resourceImage->info().sampleCount != 1
@@ -4519,6 +4523,9 @@ namespace dxvk {
          shouldToss &= !pResource->IsManaged();
          shouldToss &= !pResource->IsAnySubresourceLocked();
 
+    // The texture converter cannot handle converting back. So just keep textures in memory as a workaround.
+    shouldToss &= pResource->GetFormatMapping().ConversionFormatInfo.FormatType == D3D9ConversionFormat_None;
+
     if (shouldToss)
       pResource->DestroyBuffer();
 
@@ -4680,6 +4687,9 @@ namespace dxvk {
       D3D9BufferSlice slice = AllocStagingBuffer(pSrcTexture->GetMipSize(SrcSubresource));
       VkDeviceSize pitch = align(srcBlockCount.width * formatElementSize, 4);
 
+      const DxvkFormatInfo* convertedFormatInfo = lookupFormatInfo(convertFormat.FormatColor);      
+      VkImageSubresourceLayers convertedDstLayers = { convertedFormatInfo->aspectMask, dstSubresource.mipLevel, dstSubresource.arrayLayer, 1 };
+
       util::packImageData(
         slice.mapPtr, mapPtr, srcBlockCount, formatElementSize,
         pitch, std::min(pSrcTexture->GetPlaneCount(), 2u) * pitch * srcBlockCount.height);
@@ -4689,7 +4699,7 @@ namespace dxvk {
 
       m_converter->ConvertFormat(
         convertFormat,
-        image, dstLayers,
+        image, convertedDstLayers,
         slice.slice);
     }
     UnmapTextures();
