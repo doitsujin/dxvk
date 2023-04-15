@@ -234,7 +234,7 @@ namespace dxvk {
         case D3DPOOL_SYSTEMMEM: {
 
           // RT (DEFAULT) -> SYSTEMMEM: Use GetRenderTargetData as fast path if possible
-          if ((srcDesc.Usage & D3DUSAGE_RENDERTARGET || m_renderTarget == src)) {
+          if ((srcDesc.Usage & D3DUSAGE_RENDERTARGET || m_renderTarget.ptr() == src.ptr())) {
 
             // GetRenderTargetData works if the formats and sizes match
             if (srcDesc.MultiSampleType == d3d9::D3DMULTISAMPLE_NONE
