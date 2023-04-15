@@ -9,8 +9,12 @@ HRESULT dxvk::D3D8StateBlock::Capture() {
   if (m_capture.ps) m_device->GetPixelShader(&m_pixelShader);
 
   for (DWORD stage = 0; stage < m_textures.size(); stage++)
-    if (m_capture.textures.get(stage))
+    if (m_capture.textures.get(stage)) {
       m_device->GetTexture(stage, &m_textures[stage]);
+      // we are adding a needless ref when calling GetTexture, so release it
+      if(m_textures[stage])
+        m_textures[stage]->Release();
+    }
 
   if (m_capture.indices) m_device->GetIndices(&m_indices, &m_baseVertexIndex);
 
@@ -32,7 +36,7 @@ HRESULT dxvk::D3D8StateBlock::Apply() {
 
   for (DWORD stage = 0; stage < m_textures.size(); stage++)
     if (m_capture.textures.get(stage))
-      m_device->SetTexture(stage, m_textures[stage] );
+      m_device->SetTexture(stage, m_textures[stage]);
 
   if (m_capture.indices) m_device->SetIndices(m_indices, m_baseVertexIndex);
 
