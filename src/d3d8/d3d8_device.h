@@ -148,6 +148,7 @@ namespace dxvk {
             UINT iBackBuffer,
             D3DBACKBUFFER_TYPE Type,
             IDirect3DSurface8** ppBackBuffer) {
+      InitReturnPtr(ppBackBuffer);
       
       if (iBackBuffer >= m_backBuffers.size() || m_backBuffers[iBackBuffer] == nullptr) {
         Com<d3d9::IDirect3DSurface9> pSurface9;
@@ -155,7 +156,7 @@ namespace dxvk {
 
         if (FAILED(res)) return res;
         
-        m_backBuffers[iBackBuffer] = ref(new D3D8Surface(this, std::move(pSurface9)));
+        m_backBuffers[iBackBuffer] = new D3D8Surface(this, std::move(pSurface9));
         *ppBackBuffer = m_backBuffers[iBackBuffer].ref();
 
         return res;
@@ -818,8 +819,11 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetIndices(
             IDirect3DIndexBuffer8** ppIndexData,
             UINT* pBaseVertexIndex) {
+      InitReturnPtr(ppIndexData);
+
       *ppIndexData      = m_indices.ptr();
       *pBaseVertexIndex = m_baseVertexIndex;
+
       return D3D_OK;
     }
 
@@ -878,7 +882,6 @@ namespace dxvk {
       for (UINT i = 0; i < m_presentParams.BackBufferCount; i++) {
         m_backBuffers.push_back(nullptr);
       }
-      m_frontBuffer = nullptr;
       m_renderTarget = nullptr;
       m_renderTargetPrev = nullptr;
       m_depthStencil = nullptr;
@@ -899,20 +902,19 @@ namespace dxvk {
     D3D8StateBlock* m_recorder = nullptr;
 
     struct D3D8VBO {
-      Com<D3D8VertexBuffer>   buffer = nullptr;
-      UINT                    stride = 0;
+      Com<D3D8VertexBuffer, false>   buffer = nullptr;
+      UINT                           stride = 0;
     };
     
     // Remember to fill() these in the constructor!
     std::array<Com<D3D8Texture2D, false>, d8caps::MAX_TEXTURE_STAGES>  m_textures;
     std::array<D3D8VBO, d8caps::MAX_STREAMS>                           m_streams;
 
-    Com<D3D8IndexBuffer>        m_indices;
-    INT                         m_baseVertexIndex = 0;
+    Com<D3D8IndexBuffer, false>        m_indices;
+    INT                                m_baseVertexIndex = 0;
 
     // TODO: Which of these should be a private ref
     std::vector<Com<D3D8Surface, false>> m_backBuffers;
-    Com<D3D8Surface>            m_frontBuffer;
 
     Com<D3D8Surface, false>     m_renderTarget;
     Com<D3D8Surface, false>     m_renderTargetPrev;
