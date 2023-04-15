@@ -1025,6 +1025,13 @@ namespace dxvk {
     { R"(\\RF\.exe$)", {{
       { "d3d9.allowDirectBufferMapping",   "False" },
     }} },
+    /* Commandos 3                               *
+     * The game doesn't use NOOVERWRITE properly *
+     * and reads from actively modified buffers, *
+     * which causes graphical glitches at times  */
+    { R"(\\Commandos3\.exe$)", {{
+      { "d3d9.allowDirectBufferMapping",   "False" },
+    }} },
     /* Motor City Online                         */
     { R"(\\MCity_d\.exe$)", {{
       { "d3d9.apitraceMode",                "True" },
