@@ -32,6 +32,10 @@ namespace dxvk {
     }
     
     ULONG STDMETHODCALLTYPE Release() {
+      // ignore Release calls on objects with 0 refCount
+      if(unlikely(!this->m_refCount))
+        return this->m_refCount;
+
       uint32_t refCount = --this->m_refCount;
       if (unlikely(!refCount)) {
         auto* pDevice = GetDevice();
