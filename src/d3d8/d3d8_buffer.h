@@ -14,8 +14,12 @@ namespace dxvk {
 
     D3D8Buffer(
             D3D8DeviceEx*   pDevice,
-            Com<D3D9>&&     pBuffer)
-      : D3D8Resource<D3D9, D3D8> ( pDevice, std::move(pBuffer) ) {
+            Com<D3D9>&&     pBuffer,
+            D3DPOOL         Pool,
+            DWORD           Usage)
+      : D3D8Resource<D3D9, D3D8> (pDevice, std::move(pBuffer))
+      , m_pool                   (Pool)
+      , m_usage                  (Usage) {
     }
 
     HRESULT STDMETHODCALLTYPE Lock(
@@ -38,6 +42,11 @@ namespace dxvk {
       this->GetD3D9()->PreLoad();
     }
 
+  protected:
+    // This is the D3D8 pool, not necessarily what's given to D3D9.
+    const D3DPOOL m_pool;
+    // This is the D3D8 usage, not necessarily what's given to D3D9.
+    const DWORD   m_usage;
   };
 
 
@@ -48,14 +57,21 @@ namespace dxvk {
 
     D3D8VertexBuffer(
         D3D8DeviceEx*                       pDevice,
-        Com<d3d9::IDirect3DVertexBuffer9>&& pBuffer)
-      : D3D8VertexBufferBase(pDevice, std::move(pBuffer)) {
+        Com<d3d9::IDirect3DVertexBuffer9>&& pBuffer,
+        D3DPOOL                             Pool,
+        DWORD                               Usage)
+      : D3D8VertexBufferBase(pDevice, std::move(pBuffer), Pool, Usage) {
     }
 
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_VERTEXBUFFER; }
 
     HRESULT STDMETHODCALLTYPE GetDesc(D3DVERTEXBUFFER_DESC* pDesc) final {
-      return GetD3D9()->GetDesc(reinterpret_cast<d3d9::D3DVERTEXBUFFER_DESC*>(pDesc));
+      HRESULT hr = GetD3D9()->GetDesc(reinterpret_cast<d3d9::D3DVERTEXBUFFER_DESC*>(pDesc));
+      if (!FAILED(hr)) {
+        pDesc->Pool = m_pool;
+        pDesc->Usage = m_usage;
+      }
+      return hr;
     }
 
   };
@@ -67,14 +83,21 @@ namespace dxvk {
 
     D3D8IndexBuffer(
         D3D8DeviceEx*                      pDevice,
-        Com<d3d9::IDirect3DIndexBuffer9>&& pBuffer)
-      : D3D8IndexBufferBase(pDevice, std::move(pBuffer)) {
+        Com<d3d9::IDirect3DIndexBuffer9>&& pBuffer,
+        D3DPOOL                            Pool,
+        DWORD                              Usage)
+      : D3D8IndexBufferBase(pDevice, std::move(pBuffer), Pool, Usage) {
     }
 
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_INDEXBUFFER; }
 
     HRESULT STDMETHODCALLTYPE GetDesc(D3DINDEXBUFFER_DESC* pDesc) final {
-      return GetD3D9()->GetDesc(reinterpret_cast<d3d9::D3DINDEXBUFFER_DESC*>(pDesc));
+      HRESULT hr = GetD3D9()->GetDesc(reinterpret_cast<d3d9::D3DINDEXBUFFER_DESC*>(pDesc));
+      if (!FAILED(hr)) {
+        pDesc->Pool = m_pool;
+        pDesc->Usage = m_usage;
+      }
+      return hr;
     }
 
   };
