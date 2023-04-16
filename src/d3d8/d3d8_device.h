@@ -283,7 +283,7 @@ namespace dxvk {
       Com<d3d9::IDirect3DIndexBuffer9> pIndexBuffer9 = nullptr;
       
       auto [usage, realPool] = ChooseBufferPool(Usage, Pool);
-      HRESULT res = GetD3D9()->CreateIndexBuffer(Length, Usage, d3d9::D3DFORMAT(Format), d3d9::D3DPOOL(Pool), &pIndexBuffer9, NULL);
+      HRESULT res = GetD3D9()->CreateIndexBuffer(Length, usage, d3d9::D3DFORMAT(Format), realPool, &pIndexBuffer9, NULL);
       
       if (!FAILED(res))
         *ppIndexBuffer = ref(new D3D8IndexBuffer(this, std::move(pIndexBuffer9), Pool, Usage));
