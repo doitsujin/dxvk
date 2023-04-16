@@ -85,6 +85,10 @@ namespace dxvk {
       m_totalSize += GetMipSize(i);
     }
 
+    // Blazblue Centralifiction has an off-by-one bug in how it writes texture data.
+    // So just pad the allocation a bit.
+    m_totalSize += 8;
+
     // Initialization is handled by D3D9Initializer
     if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE)
       m_data = m_device->GetAllocator()->Alloc(m_totalSize);
