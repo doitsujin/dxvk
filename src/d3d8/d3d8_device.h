@@ -701,6 +701,10 @@ namespace dxvk {
             UINT             PrimitiveCount,
       const void*            pVertexStreamZeroData,
             UINT             VertexStreamZeroStride) {
+      
+      // Stream 0 is set to null by this call
+      m_streams[0] = D3D8VBO {nullptr, 0};
+
       return GetD3D9()->DrawPrimitiveUP(d3d9::D3DPRIMITIVETYPE(PrimitiveType), PrimitiveCount, pVertexStreamZeroData, VertexStreamZeroStride);
     }
 
@@ -713,6 +717,12 @@ namespace dxvk {
             D3DFORMAT        IndexDataFormat,
       const void*            pVertexStreamZeroData,
             UINT             VertexStreamZeroStride) {
+
+      // Stream 0 and the index buffer are set to null by this call
+      m_streams[0] = D3D8VBO {nullptr, 0};
+      m_indices = nullptr;
+      m_baseVertexIndex = 0;
+      
       return GetD3D9()->DrawIndexedPrimitiveUP(
         d3d9::D3DPRIMITIVETYPE(PrimitiveType),
         MinVertexIndex,
