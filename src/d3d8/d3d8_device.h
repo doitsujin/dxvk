@@ -270,7 +270,7 @@ namespace dxvk {
       InitReturnPtr(ppVertexBuffer);
       Com<d3d9::IDirect3DVertexBuffer9> pVertexBuffer9 = nullptr;
 
-      auto [usage, realPool] = ChooseBufferPool(Usage, Pool);
+      auto [usage, realPool] = ChooseBufferPool(Usage, Pool, m_d3d8Options);
       HRESULT res = GetD3D9()->CreateVertexBuffer(Length, usage, FVF, realPool, &pVertexBuffer9, NULL);
 
       if (!FAILED(res))
@@ -288,7 +288,7 @@ namespace dxvk {
       InitReturnPtr(ppIndexBuffer);
       Com<d3d9::IDirect3DIndexBuffer9> pIndexBuffer9 = nullptr;
       
-      auto [usage, realPool] = ChooseBufferPool(Usage, Pool);
+      auto [usage, realPool] = ChooseBufferPool(Usage, Pool, m_d3d8Options);
       HRESULT res = GetD3D9()->CreateIndexBuffer(Length, usage, d3d9::D3DFORMAT(Format), realPool, &pIndexBuffer9, NULL);
       
       if (!FAILED(res))
