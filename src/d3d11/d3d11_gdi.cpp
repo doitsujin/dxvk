@@ -150,11 +150,8 @@ namespace dxvk {
   HRESULT D3D11GDISurface::CreateReadbackResource() {
     auto tex = GetCommonTexture(m_resource);
 
-    Com<ID3D11Device>         device;
-    Com<ID3D11DeviceContext>  context;
-
+    Com<ID3D11Device> device;
     m_resource->GetDevice(&device);
-    device->GetImmediateContext(&context);
 
     D3D11_RESOURCE_DIMENSION dim = { };
     m_resource->GetType(&dim);

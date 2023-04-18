@@ -421,7 +421,11 @@ namespace dxvk {
     D3D10Device* GetD3D10Interface() const {
       return m_d3d10Device;
     }
-    
+
+    D3D11ImmediateContext* GetContext() const {
+      return m_context.ptr();
+    }
+
     bool Is11on12Device() const;
 
     static D3D_FEATURE_LEVEL GetMaxFeatureLevel(
