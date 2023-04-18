@@ -70,9 +70,11 @@ typedef GUID IID;
 #ifdef __cplusplus
 #define REFIID const IID&
 #define REFGUID const GUID&
+#define REFCLSID const GUID&
 #else
 #define REFIID const IID*
 #define REFGUID const GUID*
+#define REFCLSID const GUID* const
 #endif // __cplusplus
 
 #ifdef __cplusplus
