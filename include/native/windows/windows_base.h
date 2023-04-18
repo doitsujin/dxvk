@@ -332,4 +332,20 @@ typedef struct RGNDATA {
 #define FAILED(hr) ((HRESULT)(hr) < 0)
 #define SUCCEEDED(hr) ((HRESULT)(hr) >= 0)
 
-#define DEFINE_ENUM_FLAG_OPERATORS(T)
+#ifndef DEFINE_ENUM_FLAG_OPERATORS
+#ifdef __cplusplus
+# define DEFINE_ENUM_FLAG_OPERATORS(type) \
+extern "C++" \
+{ \
+    inline type operator &(type x, type y) { return (type)((int)x & (int)y); } \
+    inline type operator &=(type &x, type y) { return (type &)((int &)x &= (int)y); } \
+    inline type operator ~(type x) { return (type)~(int)x; } \
+    inline type operator |(type x, type y) { return (type)((int)x | (int)y); } \
+    inline type operator |=(type &x, type y) { return (type &)((int &)x |= (int)y); } \
+    inline type operator ^(type x, type y) { return (type)((int)x ^ (int)y); } \
+    inline type operator ^=(type &x, type y) { return (type &)((int &)x ^= (int)y); } \
+}
+#else
+# define DEFINE_ENUM_FLAG_OPERATORS(type)
+#endif
+#endif /* DEFINE_ENUM_FLAG_OPERATORS */
