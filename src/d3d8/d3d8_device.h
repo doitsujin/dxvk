@@ -892,13 +892,17 @@ namespace dxvk {
     inline void ResetState() {
       // Resetting implicitly ends scenes started by BeginScene
       m_bridge->EndScene();
+
+      // Mirrors how D3D9 handles the BackBufferCount
+      m_presentParams.BackBufferCount = std::max(m_presentParams.BackBufferCount, 1u);
+
       // Purge cached objects
       // TODO: Some functions may need to be called here (e.g. SetTexture, etc.)
       // in case Reset can be recorded by state blocks and other things.
-      m_backBuffers.clear();
       m_textures.fill(nullptr);
       m_streams.fill(D3D8VBO());
       m_indices = nullptr;
+      m_backBuffers.clear();
       for (UINT i = 0; i < m_presentParams.BackBufferCount; i++) {
         m_backBuffers.push_back(nullptr);
       }
