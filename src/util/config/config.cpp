@@ -68,9 +68,9 @@ namespace dxvk {
       { "dxgi.deferSurfaceCreation",        "True" },
       { "d3d11.cachedDynamicResources",     "c" },
     }} },
-    /* Nioh: See Frostpunk, apparently?           */
+    /* Nioh: Apparently the same as the Atelier games  */
     { R"(\\nioh\.exe$)", {{
-      { "dxgi.deferSurfaceCreation",        "True" },
+      { "d3d9.deferSurfaceCreation",        "True" },
     }} },
     /* Quantum Break: Mever initializes shared    *
      * memory in one of its compute shaders.      *
