@@ -382,18 +382,13 @@ namespace dxvk {
 
           if (FAILED(res)) return res;
 
-          D3D8Surface* pRenderTargetSwap = nullptr;
-          bool isRTSwap = m_renderTargetPrev.ptr() == surf;
-
-          if(unlikely(isRTSwap))
-            // keep a temporary ref on the prev RT to prevent its release
-            pRenderTargetSwap = m_renderTargetPrev.ref();
-
-          m_renderTargetPrev = m_renderTarget;
-          m_renderTarget = surf;
-
-          if(unlikely(isRTSwap && pRenderTargetSwap))
-            pRenderTargetSwap->Release();
+          if(unlikely(m_renderTargetPrev.ptr() == surf)) {
+            std::swap(m_renderTarget, m_renderTargetPrev);
+          } else {
+            m_renderTargetPrev = m_renderTarget;
+            m_renderTarget = surf;
+          }
+          m_renderTarget.ref();
         }
       }
 
@@ -405,18 +400,13 @@ namespace dxvk {
 
         if (FAILED(res)) return res;
 
-        D3D8Surface* pDepthStencilSwap = nullptr;
-        bool isDSSwap = m_depthStencilPrev.ptr() == zStencil;
-
-        if(unlikely(isDSSwap))
-          // keep a temporary ref on the prev DS to prevent its release
-          pDepthStencilSwap = m_depthStencilPrev.ref();
-
-        m_depthStencilPrev = m_depthStencil;
-        m_depthStencil = zStencil;
-
-        if(unlikely(isDSSwap && pDepthStencilSwap))
-          pDepthStencilSwap->Release();
+        if(unlikely(m_depthStencilPrev.ptr() == zStencil)) {
+          std::swap(m_depthStencil, m_depthStencilPrev);
+        } else {
+          m_depthStencilPrev = m_depthStencil;
+          m_depthStencil = zStencil;
+        }
+        m_depthStencil.ref();
       }
 
       return D3D_OK;
