@@ -119,6 +119,8 @@ else
   elif dxvk_wsi == 'glfw'
     lib_glfw = cpp.find_library('glfw')
     compiler_args += ['-DDXVK_WSI_GLFW']
+  elif dxvk_wsi == 'none'
+    compiler_args += ['-DDXVK_WSI_NONE']
   endif
   
   dxvk_name_prefix = 'libdxvk_'
