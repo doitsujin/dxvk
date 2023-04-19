@@ -377,12 +377,6 @@ namespace dxvk {
       if (pRenderTarget != NULL) {
         D3D8Surface* surf = static_cast<D3D8Surface*>(pRenderTarget);
 
-        D3DSURFACE_DESC rtDesc;
-        surf->GetDesc(&rtDesc);
-
-        if (unlikely(!(rtDesc.Usage & D3DUSAGE_RENDERTARGET)))
-          return D3DERR_INVALIDCALL;
-
         if(likely(m_renderTarget.ptr() != surf)) {
           res = GetD3D9()->SetRenderTarget(0, surf->GetD3D9());
 
@@ -405,14 +399,6 @@ namespace dxvk {
 
       // SetDepthStencilSurface is a separate call
       D3D8Surface* zStencil = static_cast<D3D8Surface*>(pNewZStencil);
-
-      if(pNewZStencil != NULL) {
-        D3DSURFACE_DESC zsDesc;
-        zStencil->GetDesc(&zsDesc);
-
-        if (unlikely(!(zsDesc.Usage & D3DUSAGE_DEPTHSTENCIL)))
-          return D3DERR_INVALIDCALL;
-      }
 
       if(likely(m_depthStencil.ptr() != zStencil)) {
         res = GetD3D9()->SetDepthStencilSurface(D3D8Surface::GetD3D9Nullable(zStencil));
