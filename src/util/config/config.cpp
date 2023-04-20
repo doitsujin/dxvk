@@ -1029,6 +1029,10 @@ namespace dxvk {
     { R"(\\E5\.exe$)", {{
       { "d3d8.managedBufferPlacement",     "False" },
     }} },
+    /* Railroad Tycoon 3                         */
+    { R"(\\RT3\.exe$)", {{
+      { "d3d8.managedBufferPlacement",     "False" },
+    }} },
   }};
 
 
