@@ -809,7 +809,7 @@ namespace dxvk {
             UINT* pBaseVertexIndex) {
       InitReturnPtr(ppIndexData);
 
-      *ppIndexData      = m_indices.ptr();
+      *ppIndexData      = m_indices.ref();
       *pBaseVertexIndex = m_baseVertexIndex;
 
       return D3D_OK;
