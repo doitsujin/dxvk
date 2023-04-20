@@ -15,8 +15,6 @@
 #include <array>
 #include <vector>
 #include <type_traits>
-#include <unordered_map>
-
 namespace dxvk {
 
   class D3D8InterfaceEx;
@@ -382,19 +380,8 @@ namespace dxvk {
 
           if (FAILED(res)) return res;
 
-          if (likely(m_renderTarget != surf)) {
-            if (m_renderTarget != nullptr)
-              m_renderTarget->Release();
-            
-            if(unlikely(m_renderTargetPrev.ptr() == surf)) {
-              std::swap(m_renderTarget, m_renderTargetPrev);
-            } else {
-              m_renderTargetPrev = m_renderTarget;
-              m_renderTarget = surf;
-            }
-
-            m_renderTarget.ref();
-          }
+          if (likely(m_renderTarget != surf))
+            m_renderTarget = surf;
         }
       }
 
@@ -406,19 +393,8 @@ namespace dxvk {
 
         if (FAILED(res)) return res;
 
-        if (likely(m_depthStencil != zStencil)) {
-          if (m_depthStencil != nullptr)
-            m_depthStencil->Release();
-
-          if(unlikely(m_depthStencilPrev.ptr() == zStencil)) {
-            std::swap(m_depthStencil, m_depthStencilPrev);
-          } else {
-            m_depthStencilPrev = m_depthStencil;
+        if (likely(m_depthStencil != zStencil))
             m_depthStencil = zStencil;
-          }
-
-          m_depthStencil.ref();
-        }
       }
 
       return D3D_OK;
@@ -890,14 +866,16 @@ namespace dxvk {
       m_textures.fill(nullptr);
       m_streams.fill(D3D8VBO());
       m_indices = nullptr;
+
       m_backBuffers.clear();
+      m_backBuffers.resize(m_presentParams.BackBufferCount);
       for (UINT i = 0; i < m_presentParams.BackBufferCount; i++) {
-        m_backBuffers.push_back(nullptr);
+        GetBackBuffer(i, D3DBACKBUFFER_TYPE_MONO, (IDirect3DSurface8**)&m_backBuffers[i]);
       }
-      m_renderTarget = nullptr;
-      m_renderTargetPrev = nullptr;
-      m_depthStencil = nullptr;
-      m_depthStencilPrev = nullptr;
+      GetDepthStencilSurface((IDirect3DSurface8**)&m_autoDepthStencil);
+
+      m_renderTarget = m_backBuffers[0];
+      m_depthStencil = m_autoDepthStencil;
     }
 
     friend d3d9::IDirect3DPixelShader9* getPixelShaderPtr(D3D8DeviceEx* device, DWORD Handle);
@@ -927,11 +905,10 @@ namespace dxvk {
 
     // TODO: Which of these should be a private ref
     std::vector<Com<D3D8Surface, false>> m_backBuffers;
+    Com<D3D8Surface, false>              m_autoDepthStencil;
 
     Com<D3D8Surface, false>     m_renderTarget;
-    Com<D3D8Surface, false>     m_renderTargetPrev;
     Com<D3D8Surface, false>     m_depthStencil;
-    Com<D3D8Surface, false>     m_depthStencilPrev;
 
     std::vector<D3D8VertexShaderInfo>           m_vertexShaders;
     std::vector<d3d9::IDirect3DPixelShader9*>   m_pixelShaders;
