@@ -154,6 +154,7 @@ namespace dxvk {
     switch (State) {
       // Most render states translate 1:1 to D3D9
       default:
+        StateChange();
         break;
 
       // TODO: D3DRS_LINEPATTERN - vkCmdSetLineRasterizationModeEXT
@@ -170,11 +171,13 @@ namespace dxvk {
       // TODO: Not implemented by D9VK. Try anyway.
       case D3DRS_EDGEANTIALIAS:
         State9 = d3d9::D3DRS_ANTIALIASEDLINEENABLE;
+        StateChange();
         break;
 
       case D3DRS_ZBIAS:
         State9 = d3d9::D3DRS_DEPTHBIAS;
         Value  = bit::cast<DWORD>(float(Value) * ZBIAS_SCALE);
+        StateChange();
         break;
 
       case D3DRS_SOFTWAREVERTEXPROCESSING:
@@ -186,6 +189,7 @@ namespace dxvk {
         if (unlikely(ShouldRecord()))
           return m_recorder->SetSoftwareVertexProcessing(Value);
 
+        StateChange();
         return GetD3D9()->SetSoftwareVertexProcessing(Value);
 
       // TODO: D3DRS_PATCHSEGMENTS

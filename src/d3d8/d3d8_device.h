@@ -101,6 +101,7 @@ namespace dxvk {
 
 
     HRESULT STDMETHODCALLTYPE Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) {
+      StateChange();
       // Resetting implicitly ends scenes started by BeginScene
       GetD3D9()->EndScene();
 
@@ -121,6 +122,7 @@ namespace dxvk {
       const RECT* pDestRect,
             HWND hDestWindowOverride,
       const RGNDATA* pDirtyRegion) {
+      StateChange();
       return GetD3D9()->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
     }
 
@@ -151,6 +153,7 @@ namespace dxvk {
     }
 
     void STDMETHODCALLTYPE SetGammaRamp(DWORD Flags, const D3DGAMMARAMP* pRamp) {
+      StateChange();
       // For swap chain 0
       GetD3D9()->SetGammaRamp(0, Flags, reinterpret_cast<const d3d9::D3DGAMMARAMP*>(pRamp));
     }
@@ -346,13 +349,17 @@ namespace dxvk {
       D3D8Texture2D* src = static_cast<D3D8Texture2D*>(pSourceTexture);
       D3D8Texture2D* dst = static_cast<D3D8Texture2D*>(pDestinationTexture);
 
+      StateChange();
       return GetD3D9()->UpdateTexture(D3D8Texture2D::GetD3D9Nullable(src), D3D8Texture2D::GetD3D9Nullable(dst));
     }
 
     HRESULT STDMETHODCALLTYPE GetFrontBuffer(IDirect3DSurface8* pDestSurface) {
       if (unlikely(pDestSurface == nullptr))
         return D3DERR_INVALIDCALL;
+
       Com<D3D8Surface> surf = static_cast<D3D8Surface*>(pDestSurface);
+
+      StateChange();
       // This actually gets a copy of the front buffer and writes it to pDestSurface
       return GetD3D9()->GetFrontBufferData(0, D3D8Surface::GetD3D9Nullable(surf));
     }
@@ -364,6 +371,7 @@ namespace dxvk {
         D3D8Surface* surf = static_cast<D3D8Surface*>(pRenderTarget);
 
         if(likely(m_renderTarget.ptr() != surf)) {
+          StateChange();
           res = GetD3D9()->SetRenderTarget(0, surf->GetD3D9());
 
           if (FAILED(res)) return res;
@@ -377,6 +385,7 @@ namespace dxvk {
       D3D8Surface* zStencil = static_cast<D3D8Surface*>(pNewZStencil);
 
       if(likely(m_depthStencil.ptr() != zStencil)) {
+        StateChange();
         res = GetD3D9()->SetDepthStencilSurface(D3D8Surface::GetD3D9Nullable(zStencil));
 
         if (FAILED(res)) return res;
@@ -427,8 +436,7 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE BeginScene() { return GetD3D9()->BeginScene(); }
-
-    HRESULT STDMETHODCALLTYPE EndScene() { return GetD3D9()->EndScene(); }
+    HRESULT STDMETHODCALLTYPE EndScene() { StateChange(); return GetD3D9()->EndScene(); }
 
     HRESULT STDMETHODCALLTYPE Clear(
             DWORD    Count,
@@ -437,10 +445,12 @@ namespace dxvk {
             D3DCOLOR Color,
             float    Z,
             DWORD    Stencil) {
+      StateChange();
       return GetD3D9()->Clear(Count, pRects, Flags, Color, Z, Stencil);
     }
 
     HRESULT STDMETHODCALLTYPE SetTransform(D3DTRANSFORMSTATETYPE State, const D3DMATRIX* pMatrix) {
+      StateChange();
       return GetD3D9()->SetTransform(d3d9::D3DTRANSFORMSTATETYPE(State), pMatrix);
     }
 
@@ -449,10 +459,12 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE MultiplyTransform(D3DTRANSFORMSTATETYPE TransformState, const D3DMATRIX* pMatrix) {
+      StateChange();
       return GetD3D9()->MultiplyTransform(d3d9::D3DTRANSFORMSTATETYPE(TransformState), pMatrix);
     }
 
     HRESULT STDMETHODCALLTYPE SetViewport(const D3DVIEWPORT8* pViewport) {
+      StateChange();
       return GetD3D9()->SetViewport(reinterpret_cast<const d3d9::D3DVIEWPORT9*>(pViewport));
     }
 
@@ -461,6 +473,7 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE SetMaterial(const D3DMATERIAL8* pMaterial) {
+      StateChange();
       return GetD3D9()->SetMaterial((const d3d9::D3DMATERIAL9*)pMaterial);
     }
 
@@ -469,6 +482,7 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE SetLight(DWORD Index, const D3DLIGHT8* pLight) {
+      StateChange();
       return GetD3D9()->SetLight(Index, (const d3d9::D3DLIGHT9*)pLight);
     }
 
@@ -477,6 +491,7 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE LightEnable(DWORD Index, BOOL Enable) {
+      StateChange();
       return GetD3D9()->LightEnable(Index, Enable);
     }
 
@@ -485,6 +500,7 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE SetClipPlane(DWORD Index, const float* pPlane) {
+      StateChange();
       return GetD3D9()->SetClipPlane(Index, pPlane);
     }
 
@@ -516,6 +532,7 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE ApplyStateBlock(DWORD Token) {
+      StateChange();
       return reinterpret_cast<D3D8StateBlock*>(Token)->Apply();
     }
 
@@ -559,6 +576,7 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE SetClipStatus(const D3DCLIPSTATUS8* pClipStatus) {
+      StateChange();
       return GetD3D9()->SetClipStatus(reinterpret_cast<const d3d9::D3DCLIPSTATUS9*>(pClipStatus));
     }
 
@@ -611,9 +629,9 @@ namespace dxvk {
             DWORD                    Stage,
             D3DTEXTURESTAGESTATETYPE Type,
             DWORD                    Value) {
-
       d3d9::D3DSAMPLERSTATETYPE stateType = GetSamplerStateType9(Type);
 
+      StateChange();
       if (stateType != -1) {
         // if the type has been remapped to a sampler state type:
         return GetD3D9()->SetSamplerState(Stage, stateType, Value);
@@ -629,6 +647,7 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetInfo(DWORD DevInfoID, void* pDevInfoStruct, DWORD DevInfoStructSize);
 
     HRESULT STDMETHODCALLTYPE SetPaletteEntries(UINT PaletteNumber, const PALETTEENTRY* pEntries) {
+      StateChange();
       return GetD3D9()->SetPaletteEntries(PaletteNumber, pEntries);
     }
 
@@ -637,6 +656,7 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE SetCurrentTexturePalette(UINT PaletteNumber) {
+      StateChange();
       return GetD3D9()->SetCurrentTexturePalette(PaletteNumber);
     }
 
@@ -740,6 +760,7 @@ namespace dxvk {
             DWORD StartRegister,
       const void* pConstantData,
             DWORD ConstantCount) {
+      StateChange();
       // ConstantCount is actually the same as Vector4fCount
       return GetD3D9()->SetVertexShaderConstantF(StartRegister, reinterpret_cast<const float*>(pConstantData), ConstantCount);
     }
@@ -833,6 +854,7 @@ namespace dxvk {
             DWORD StartRegister,
       const void* pConstantData,
             DWORD ConstantCount) {
+      StateChange();
       // ConstantCount is actually the same as Vector4fCount
       return GetD3D9()->SetPixelShaderConstantF(StartRegister, reinterpret_cast<const float*>(pConstantData), ConstantCount);
     }
@@ -860,6 +882,14 @@ namespace dxvk {
   public: // Internal Methods //
 
     inline bool ShouldRecord() { return m_recorder != nullptr; }
+
+    /**
+     * Marks any state change in the device, so we can signal
+     * the batcher to emit draw calls. StateChange should be
+     * called immediately before changing any D3D9 state.
+     */
+    inline void StateChange() {
+    }
 
     inline void ResetState() {
       // Mirrors how D3D9 handles the BackBufferCount
