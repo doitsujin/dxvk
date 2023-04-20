@@ -124,6 +124,8 @@ namespace dxvk {
     src->GetD3D9()->GetDesc(&srcDesc);
     dst->GetD3D9()->GetDesc(&dstDesc);
 
+    StateChange();
+
     // If pSourceRectsArray is NULL, then the entire surface is copied
     RECT rect;
     POINT point = { 0, 0 };

@@ -313,6 +313,8 @@ namespace dxvk {
       if (!info)
         return D3DERR_INVALIDCALL;
 
+      StateChange();
+
       // Cache current shader
       m_currentVertexShader = Handle;
       
@@ -320,6 +322,7 @@ namespace dxvk {
       return GetD3D9()->SetVertexShader(info->pVertexShader);
 
     } else {
+      StateChange();
 
       // Cache current FVF
       m_currentVertexShader = Handle;
@@ -476,6 +479,7 @@ namespace dxvk {
     }
 
     if (Handle == DWORD(NULL)) {
+      StateChange();
       m_currentPixelShader = DWORD(NULL);
       return GetD3D9()->SetPixelShader(nullptr);
     }
@@ -485,6 +489,8 @@ namespace dxvk {
     if (unlikely(!pPixelShader)) {
       return D3DERR_INVALIDCALL;
     }
+
+    StateChange();
 
     // Cache current pixel shader
     m_currentPixelShader = Handle;
