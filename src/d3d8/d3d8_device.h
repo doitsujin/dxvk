@@ -382,11 +382,18 @@ namespace dxvk {
 
           if (FAILED(res)) return res;
 
-          if(unlikely(m_renderTargetPrev.ptr() == surf)) {
-            std::swap(m_renderTarget, m_renderTargetPrev);
-          } else {
-            m_renderTargetPrev = m_renderTarget;
-            m_renderTarget = surf;
+          if (likely(m_renderTarget != surf)) {
+            if (m_renderTarget != nullptr)
+              m_renderTarget->Release();
+            
+            if(unlikely(m_renderTargetPrev.ptr() == surf)) {
+              std::swap(m_renderTarget, m_renderTargetPrev);
+            } else {
+              m_renderTargetPrev = m_renderTarget;
+              m_renderTarget = surf;
+            }
+
+            m_renderTarget.ref();
           }
         }
       }
@@ -399,11 +406,18 @@ namespace dxvk {
 
         if (FAILED(res)) return res;
 
-        if(unlikely(m_depthStencilPrev.ptr() == zStencil)) {
-          std::swap(m_depthStencil, m_depthStencilPrev);
-        } else {
-          m_depthStencilPrev = m_depthStencil;
-          m_depthStencil = zStencil;
+        if (likely(m_depthStencil != zStencil)) {
+          if (m_depthStencil != nullptr)
+            m_depthStencil->Release();
+
+          if(unlikely(m_depthStencilPrev.ptr() == zStencil)) {
+            std::swap(m_depthStencil, m_depthStencilPrev);
+          } else {
+            m_depthStencilPrev = m_depthStencil;
+            m_depthStencil = zStencil;
+          }
+
+          m_depthStencil.ref();
         }
       }
 
