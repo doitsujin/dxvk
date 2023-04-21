@@ -9,6 +9,9 @@
 
 namespace dxvk {
   
+  constexpr size_t            D3DPT_COUNT   = size_t(D3DPT_TRIANGLEFAN) + 1;
+  constexpr D3DPRIMITIVETYPE  D3DPT_INVALID = D3DPRIMITIVETYPE(0);
+
   /**
    * Vertex buffer that can handle many tiny locks while
    * still maintaing the lock ordering of direct-mapped buffers.
@@ -67,10 +70,13 @@ namespace dxvk {
   class D3D8Batcher {
 
     struct Batch {
-      UINT StartVertex;
-      UINT PrimitiveCount;
-      UINT VertexCount;
-      UINT DrawCallCount = 1;
+      D3DPRIMITIVETYPE PrimitiveType = D3DPT_INVALID;
+      std::vector<uint16_t> Indices;
+      UINT Offset = 0;
+      UINT MinVertex = UINT_MAX;
+      UINT MaxVertex = 0;
+      UINT PrimitiveCount = 0;
+      UINT DrawCallCount = 0;
     };
 
   public:
@@ -79,23 +85,44 @@ namespace dxvk {
       , m_device(std::move(pDevice)) {}
 
     inline void StateChange() {
-      if (m_batches.empty())
+      if (likely(m_batches.empty()))
         return;
       for (auto& draw : m_batches) {
+
+        if (draw.PrimitiveType == D3DPT_INVALID)
+          continue;
+
+        //m_largestBatch = std::max(m_largestBatch, draw.DrawCallCount);
         m_bridge->AddBatchCalls(draw.DrawCallCount);
 
-        m_device->DrawPrimitiveUP(
-          d3d9::D3DPRIMITIVETYPE(m_primitiveType),
-          draw.PrimitiveCount,
-          m_stream->GetPtr(draw.StartVertex * m_stride),
-          m_stride);
+        for (auto& index : draw.Indices)
+          index -= draw.MinVertex;
 
+        m_device->DrawIndexedPrimitiveUP(
+          d3d9::D3DPRIMITIVETYPE(draw.PrimitiveType),
+          0,
+          draw.MaxVertex - draw.MinVertex,
+          draw.PrimitiveCount,
+          draw.Indices.data(),
+          d3d9::D3DFMT_INDEX16,
+          m_stream->GetPtr(draw.MinVertex * m_stride),
+          m_stride);
+        
+        m_device->SetStreamSource(0, D3D8VertexBuffer::GetD3D9Nullable(m_stream), 0, m_stride);
+        // TODO: SetIndices
+        
+        draw.PrimitiveType = D3DPRIMITIVETYPE(0);
+        draw.Offset = 0;
+        draw.MinVertex = UINT_MAX;
+        draw.MaxVertex = 0;
+        draw.PrimitiveCount = 0;
+        draw.DrawCallCount = 0;
       }
-      m_device->SetStreamSource(0, D3D8VertexBuffer::GetD3D9Nullable(m_stream), 0, m_stride);
-      m_batches.clear();
     }
 
     inline void EndFrame() {
+      //m_bridge->AddBatchCalls(m_largestBatch);
+      //m_largestBatch = 0;
     }
 
     inline HRESULT DrawPrimitive(
@@ -103,16 +130,74 @@ namespace dxvk {
             UINT             StartVertex,
             UINT             PrimitiveCount) {
 
-      if (m_primitiveType != PrimitiveType) {
-        StateChange();
-        m_primitiveType = PrimitiveType;
+      // None of this strip or fan malarkey
+      D3DPRIMITIVETYPE batchedPrimType = PrimitiveType;
+      switch (PrimitiveType) {
+        case D3DPT_LINESTRIP:     batchedPrimType = D3DPT_LINELIST; break;
+        case D3DPT_TRIANGLESTRIP: batchedPrimType = D3DPT_TRIANGLELIST; break;
+        case D3DPT_TRIANGLEFAN:   batchedPrimType = D3DPT_TRIANGLELIST; break;
+        default: break;
       }
 
-      m_batches.push_back({
-        StartVertex,
-        PrimitiveCount,
-        GetVertexCount8(PrimitiveType, PrimitiveCount)
-      });
+      Batch* batch = &m_batches[size_t(batchedPrimType)];
+      batch->PrimitiveType = batchedPrimType;
+
+      //UINT vertices = GetVertexCount8(PrimitiveType, PrimitiveCount);
+
+      switch (PrimitiveType) {
+        case D3DPT_POINTLIST:
+          batch->Indices.resize(batch->Offset + PrimitiveCount);
+          for (UINT i = 0; i < PrimitiveCount; i++)
+            batch->Indices[batch->Offset++] = (StartVertex + i);
+          break;
+        case D3DPT_LINELIST:
+          batch->Indices.resize(batch->Offset + PrimitiveCount * 2);
+          for (UINT i = 0; i < PrimitiveCount; i++) {
+            batch->Indices[batch->Offset++] = (StartVertex + i * 2 + 0);
+            batch->Indices[batch->Offset++] = (StartVertex + i * 2 + 1);
+          }
+          break;
+        case D3DPT_LINESTRIP:
+          batch->Indices.resize(batch->Offset + PrimitiveCount * 2);
+          for (UINT i = 0; i < PrimitiveCount; i++) {
+            batch->Indices[batch->Offset++] = (StartVertex + i + 0);
+            batch->Indices[batch->Offset++] = (StartVertex + i + 1);
+          }
+          break;
+        case D3DPT_TRIANGLELIST:
+          batch->Indices.resize(batch->Offset + PrimitiveCount * 3);
+          for (UINT i = 0; i < PrimitiveCount; i++) {
+            batch->Indices[batch->Offset++] = (StartVertex + i * 3 + 0);
+            batch->Indices[batch->Offset++] = (StartVertex + i * 3 + 1);
+            batch->Indices[batch->Offset++] = (StartVertex + i * 3 + 2);
+          }
+          break;
+        // 1 2 3 4 5 6 7 -> 1 2 3, 2 3 4, 3 4 5, 4 5 6, 5 6 7
+        case D3DPT_TRIANGLESTRIP:
+          batch->Indices.resize(batch->Offset + PrimitiveCount * 3);
+          for (UINT i = 0; i < PrimitiveCount; i++) {
+            batch->Indices[batch->Offset++] = (StartVertex + i + 0);
+            batch->Indices[batch->Offset++] = (StartVertex + i + 1);
+            batch->Indices[batch->Offset++] = (StartVertex + i + 2);
+          }
+          break;
+        // 1 2 3 4 5 6 7 -> 1 2 3, 1 3 4, 1 4 5, 1 5 6, 1 6 7
+        case D3DPT_TRIANGLEFAN:
+          batch->Indices.resize(batch->Offset + PrimitiveCount * 3);
+          for (UINT i = 0; i < PrimitiveCount; i++) {
+            batch->Indices[batch->Offset++] = (StartVertex + 0);
+            batch->Indices[batch->Offset++] = (StartVertex + i + 1);
+            batch->Indices[batch->Offset++] = (StartVertex + i + 2);
+          }
+          break;
+        default:
+          return D3DERR_INVALIDCALL;
+      }
+      batch->MinVertex = std::min(batch->MinVertex, StartVertex);
+      if (!batch->Indices.empty())
+        batch->MaxVertex = std::max(batch->MaxVertex, UINT(batch->Indices.back() + 1));
+      batch->PrimitiveCount += PrimitiveCount;
+      batch->DrawCallCount++;
       return D3D_OK;
     }
 
@@ -130,12 +215,11 @@ namespace dxvk {
     }
 
   private:
-    D3D9Bridge*                   m_bridge;
-    Com<d3d9::IDirect3DDevice9>   m_device;
+    D3D9Bridge*                     m_bridge;
+    Com<d3d9::IDirect3DDevice9>     m_device;
 
-    D3D8BatchBuffer*              m_stream = nullptr;
-    UINT                          m_stride = 0;
-    std::vector<Batch>            m_batches;
-    D3DPRIMITIVETYPE              m_primitiveType = D3DPRIMITIVETYPE(0);
+    D3D8BatchBuffer*                m_stream = nullptr;
+    UINT                            m_stride = 0;
+    std::array<Batch, D3DPT_COUNT>  m_batches;
   };
 }
