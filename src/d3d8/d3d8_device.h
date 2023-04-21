@@ -7,6 +7,7 @@
 #include "d3d8_state_block.h"
 #include "d3d8_d3d9_util.h"
 #include "d3d8_caps.h"
+#include "d3d8_batch.h"
 
 #include "../d3d9/d3d9_bridge.h"
 
@@ -122,6 +123,7 @@ namespace dxvk {
       const RECT* pDestRect,
             HWND hDestWindowOverride,
       const RGNDATA* pDirtyRegion) {
+      m_batcher->EndFrame();
       StateChange();
       return GetD3D9()->Present(pSourceRect, pDestRect, hDestWindowOverride, pDirtyRegion);
     }
@@ -250,7 +252,12 @@ namespace dxvk {
       auto [usage, realPool] = ChooseBufferPool(Usage, Pool, Length, m_d3d8Options);
       HRESULT res = GetD3D9()->CreateVertexBuffer(Length, usage, FVF, realPool, &pVertexBuffer9, NULL);
 
-      if (!FAILED(res))
+      if (FAILED(res))
+        return res;
+      
+      if (ShouldBatch())
+        *ppVertexBuffer = ref(new D3D8BatchBuffer(this, std::move(pVertexBuffer9), Pool, Usage, Length, FVF));
+      else
         *ppVertexBuffer = ref(new D3D8VertexBuffer(this, std::move(pVertexBuffer9), Pool, Usage));
     
       return res;
@@ -670,6 +677,8 @@ namespace dxvk {
             D3DPRIMITIVETYPE PrimitiveType,
             UINT             StartVertex,
             UINT             PrimitiveCount) {
+      if (ShouldBatch())
+        return m_batcher->DrawPrimitive(PrimitiveType, StartVertex, PrimitiveCount);
       return GetD3D9()->DrawPrimitive(d3d9::D3DPRIMITIVETYPE(PrimitiveType), StartVertex, PrimitiveCount);
     }
 
@@ -786,7 +795,8 @@ namespace dxvk {
 
       D3D8VertexBuffer* buffer = static_cast<D3D8VertexBuffer*>(pStreamData);
 
-      StateChange();
+      if (ShouldBatch())
+        m_batcher->SetStream(StreamNumber, buffer, Stride);
 
       m_streams[StreamNumber] = D3D8VBO {buffer, Stride};
 
@@ -892,6 +902,7 @@ namespace dxvk {
   public: // Internal Methods //
 
     inline bool ShouldRecord() { return m_recorder != nullptr; }
+    inline bool ShouldBatch()  { return m_batcher  != nullptr; }
 
     /**
      * Marks any state change in the device, so we can signal
@@ -899,6 +910,8 @@ namespace dxvk {
      * called immediately before changing any D3D9 state.
      */
     inline void StateChange() {
+      if (ShouldBatch())
+        m_batcher->StateChange();
     }
 
     inline void ResetState() {
@@ -945,6 +958,7 @@ namespace dxvk {
 
     D3D8StateBlock*                      m_recorder = nullptr;
     std::unordered_set<D3D8StateBlock*>  m_stateBlocks;
+    D3D8Batcher*                         m_batcher  = nullptr;
 
     struct D3D8VBO {
       Com<D3D8VertexBuffer, false>   buffer = nullptr;

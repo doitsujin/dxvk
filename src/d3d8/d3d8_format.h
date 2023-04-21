@@ -82,6 +82,122 @@ namespace dxvk {
     }
   }
 
+  inline constexpr uint32_t GetVertexCount8(D3DPRIMITIVETYPE type, UINT count) {
+    switch (type) {
+      default:
+      case D3DPT_TRIANGLELIST:  return count * 3;
+      case D3DPT_POINTLIST:     return count;
+      case D3DPT_LINELIST:      return count * 2;
+      case D3DPT_LINESTRIP:     return count + 1;
+      case D3DPT_TRIANGLESTRIP: return count + 2;
+      case D3DPT_TRIANGLEFAN:   return count + 2;
+    }
+  }
+
+  // Essentially the same logic as D3D9VertexDecl::SetFVF
+  inline constexpr UINT GetFVFStride(DWORD FVF) {
+    uint32_t elemCount = 0; // TODO: This is not used
+    uint32_t texCount = 0;
+
+    uint32_t betas = 0;
+    uint8_t betaIdx = 0xFF;
+
+    UINT size = 0;
+
+    switch (FVF & D3DFVF_POSITION_MASK) {
+      case D3DFVF_XYZ:
+      case D3DFVF_XYZB1:
+      case D3DFVF_XYZB2:
+      case D3DFVF_XYZB3:
+      case D3DFVF_XYZB4:
+      case D3DFVF_XYZB5:
+        size += sizeof(float) * 3;
+        elemCount++;
+
+        if ((FVF & D3DFVF_POSITION_MASK) == D3DFVF_XYZ)
+          break;
+
+        betas = (((FVF & D3DFVF_XYZB5) - D3DFVF_XYZB1) >> 1) + 1;
+        if (FVF & D3DFVF_LASTBETA_D3DCOLOR)
+          betaIdx = sizeof(D3DCOLOR);
+        else if (FVF & D3DFVF_LASTBETA_UBYTE4)
+          betaIdx = sizeof(BYTE) * 4;
+        else if ((FVF & D3DFVF_XYZB5) == D3DFVF_XYZB5)
+          betaIdx = sizeof(float);
+
+        if (betaIdx != 0xFF)
+          betas--;
+
+        if (betas > 0) {
+          if (betas <= 4)
+            size += sizeof(float) * betas;
+          elemCount++;
+        }
+
+        if (betaIdx != 0xFF) {
+          size += betaIdx;
+          elemCount++;
+        }
+        break;
+
+      case D3DFVF_XYZW:
+      case D3DFVF_XYZRHW:
+        size += sizeof(float) * 4;
+        elemCount++;
+        break;
+
+      default:
+        break;
+    }
+
+    if (FVF & D3DFVF_NORMAL) {
+      size += sizeof(float) * 3;
+      elemCount++;
+    }
+    if (FVF & D3DFVF_PSIZE) {
+      size += sizeof(float);
+      elemCount++;
+    }
+    if (FVF & D3DFVF_DIFFUSE) {
+      size += sizeof(D3DCOLOR);
+      elemCount++;
+    }
+    if (FVF & D3DFVF_SPECULAR) {
+      size += sizeof(D3DCOLOR);
+      elemCount++;
+    }
+
+    texCount = (FVF & D3DFVF_TEXCOUNT_MASK) >> D3DFVF_TEXCOUNT_SHIFT;
+    texCount = std::min(texCount, 8u);
+
+    for (uint32_t i = 0; i < texCount; i++) {
+      switch ((FVF >> (16 + i * 2)) & 0x3) {
+        case D3DFVF_TEXTUREFORMAT1:
+          size += sizeof(float);
+          break;
+
+        case D3DFVF_TEXTUREFORMAT2:
+          size += sizeof(float) * 2;
+          break;
+
+        case D3DFVF_TEXTUREFORMAT3:
+          size += sizeof(float) * 3;
+          break;
+
+        case D3DFVF_TEXTUREFORMAT4:
+          size += sizeof(float) * 4;
+          break;
+
+        default:
+          break;
+      }
+      elemCount++;
+    }
+
+    return size;
+  }
+
+
   inline constexpr UINT getSurfaceSize(D3DFORMAT Format, UINT Width, UINT Height) {
     if (isDXT(Format)) {
       Width = ((Width + 3) >> 2);

@@ -49,7 +49,7 @@ namespace dxvk {
 
 
   using D3D8VertexBufferBase = D3D8Buffer<d3d9::IDirect3DVertexBuffer9, IDirect3DVertexBuffer8>;
-  class D3D8VertexBuffer final : public D3D8VertexBufferBase {
+  class D3D8VertexBuffer : public D3D8VertexBufferBase {
 
   public:
 
