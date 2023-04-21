@@ -130,11 +130,10 @@ namespace dxvk {
             UINT             StartVertex,
             UINT             PrimitiveCount) {
 
-      // None of this strip or fan malarkey
+      // None of this linestrip or fan malarkey
       D3DPRIMITIVETYPE batchedPrimType = PrimitiveType;
       switch (PrimitiveType) {
         case D3DPT_LINESTRIP:     batchedPrimType = D3DPT_LINELIST; break;
-        case D3DPT_TRIANGLESTRIP: batchedPrimType = D3DPT_TRIANGLELIST; break;
         case D3DPT_TRIANGLEFAN:   batchedPrimType = D3DPT_TRIANGLELIST; break;
         default: break;
       }
@@ -172,13 +171,16 @@ namespace dxvk {
             batch->Indices[batch->Offset++] = (StartVertex + i * 3 + 2);
           }
           break;
-        // 1 2 3 4 5 6 7 -> 1 2 3, 2 3 4, 3 4 5, 4 5 6, 5 6 7
         case D3DPT_TRIANGLESTRIP:
-          batch->Indices.resize(batch->Offset + PrimitiveCount * 3);
+          // Join with degenerate triangle
+          // 1 2 3, 3 4, 4 5 6
+          batch->Indices.resize(batch->Offset + PrimitiveCount + 2);
+          if (batch->Offset > 0) {
+            batch->Indices[batch->Offset++] = batch->Indices[batch->Offset-2];
+            batch->Indices[batch->Offset++] = StartVertex;
+          }
           for (UINT i = 0; i < PrimitiveCount; i++) {
             batch->Indices[batch->Offset++] = (StartVertex + i + 0);
-            batch->Indices[batch->Offset++] = (StartVertex + i + 1);
-            batch->Indices[batch->Offset++] = (StartVertex + i + 2);
           }
           break;
         // 1 2 3 4 5 6 7 -> 1 2 3, 1 3 4, 1 4 5, 1 5 6, 1 6 7
