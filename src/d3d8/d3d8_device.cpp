@@ -150,11 +150,11 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D8DeviceEx::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) {
     d3d9::D3DRENDERSTATETYPE State9 = (d3d9::D3DRENDERSTATETYPE)State;
+    bool stateChange = true;
 
     switch (State) {
       // Most render states translate 1:1 to D3D9
       default:
-        StateChange();
         break;
 
       // TODO: D3DRS_LINEPATTERN - vkCmdSetLineRasterizationModeEXT
@@ -162,22 +162,22 @@ namespace dxvk {
         [[maybe_unused]]
         D3DLINEPATTERN pattern = bit::cast<D3DLINEPATTERN>(Value);
         m_bridge->RenderStateNotSupported(D3DRS_LINEPATTERN);
+        stateChange = false;
       } break;
 
       // Not supported by D3D8.
       case D3DRS_ZVISIBLE:
+        stateChange = false;
         break;
 
       // TODO: Not implemented by D9VK. Try anyway.
       case D3DRS_EDGEANTIALIAS:
         State9 = d3d9::D3DRS_ANTIALIASEDLINEENABLE;
-        StateChange();
         break;
 
       case D3DRS_ZBIAS:
         State9 = d3d9::D3DRS_DEPTHBIAS;
         Value  = bit::cast<DWORD>(float(Value) * ZBIAS_SCALE);
-        StateChange();
         break;
 
       case D3DRS_SOFTWAREVERTEXPROCESSING:
@@ -189,14 +189,20 @@ namespace dxvk {
         if (unlikely(ShouldRecord()))
           return m_recorder->SetSoftwareVertexProcessing(Value);
 
-        StateChange();
         return GetD3D9()->SetSoftwareVertexProcessing(Value);
 
       // TODO: D3DRS_PATCHSEGMENTS
       case D3DRS_PATCHSEGMENTS:
         m_bridge->RenderStateNotSupported(D3DRS_PATCHSEGMENTS);
+        stateChange = false;
         break;
+    }
 
+    if (stateChange) {
+      DWORD value;
+      GetRenderState(State, &value);
+      if (value != Value)
+        StateChange();
     }
 
     return GetD3D9()->SetRenderState(State9, Value);
@@ -321,7 +327,7 @@ namespace dxvk {
       GetD3D9()->SetVertexDeclaration(info->pVertexDecl);
       return GetD3D9()->SetVertexShader(info->pVertexShader);
 
-    } else {
+    } else if (m_currentVertexShader != Handle) {
       StateChange();
 
       // Cache current FVF
