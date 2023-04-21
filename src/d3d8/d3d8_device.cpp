@@ -341,6 +341,7 @@ namespace dxvk {
       GetD3D9()->SetVertexShader(nullptr);
       return GetD3D9()->SetFVF( Handle );
     }
+    return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE D3D8DeviceEx::GetVertexShader(DWORD* pHandle) {
