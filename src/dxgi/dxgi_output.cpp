@@ -42,7 +42,7 @@ namespace dxvk {
 
     // If we have no RedPrimary/GreenPrimary/BluePrimary/WhitePoint due to
     // the lack of a monitor exposing the chroma block or the lack of an EDID,
-    // simply just fall back to Rec.709 or Rec.2020 values depending on the default
+    // simply just fall back to Rec.709 or P3 values depending on the default
     // ColorSpace we started in.
     // (Don't change based on punting, as this should be static for a display.)
     if (metadata.redPrimary[0]   == 0.0f && metadata.redPrimary[1]   == 0.0f
@@ -60,14 +60,13 @@ namespace dxvk {
         metadata.whitePoint[0]   = 0.3127f;
         metadata.whitePoint[1]   = 0.3290f;
       } else {
-        // HDR10 ColorSpace -> Rec.2020 Primaries
-        // (Notably much bigger than any display is actually going to expose.)
-        metadata.redPrimary[0]   = 0.708f;
-        metadata.redPrimary[1]   = 0.292f;
-        metadata.greenPrimary[0] = 0.170f;
-        metadata.greenPrimary[1] = 0.797f;
-        metadata.bluePrimary[0]  = 0.131f;
-        metadata.bluePrimary[1]  = 0.046f;
+        // HDR10 ColorSpace -> P3 Primaries
+        metadata.redPrimary[0]   = 0.680f;
+        metadata.redPrimary[1]   = 0.320f;
+        metadata.greenPrimary[0] = 0.265f;
+        metadata.greenPrimary[1] = 0.690f;
+        metadata.bluePrimary[0]  = 0.150f;
+        metadata.bluePrimary[1]  = 0.060f;
         metadata.whitePoint[0]   = 0.3127f;
         metadata.whitePoint[1]   = 0.3290f;
       }
