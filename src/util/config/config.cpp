@@ -1033,6 +1033,12 @@ namespace dxvk {
     { R"(\\RT3\.exe$)", {{
       { "d3d8.managedBufferPlacement",     "False" },
     }} },
+    /* Supreme Ruler 2020: Gold                  *
+     * Only put the large main vertex buffer in  *
+     * MANAGED to fix flickering on text and UI. */
+    { R"(\\SupremeRuler2020GC\.exe$)", {{
+      { "d3d8.managedBufferPlacement",     "21600" },
+    }} },
   }};
 
 
