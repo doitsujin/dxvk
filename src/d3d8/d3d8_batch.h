@@ -109,7 +109,7 @@ namespace dxvk {
           m_stride);
         
         m_device->SetStreamSource(0, D3D8VertexBuffer::GetD3D9Nullable(m_stream), 0, m_stride);
-        // TODO: SetIndices
+        m_device->SetIndices(D3D8IndexBuffer::GetD3D9Nullable(m_indices));
         
         draw.PrimitiveType = D3DPRIMITIVETYPE(0);
         draw.Offset = 0;
@@ -216,12 +216,22 @@ namespace dxvk {
       }
     }
 
+    inline void SetIndices(D3D8IndexBuffer* indices, INT baseVertexIndex) {
+      if (m_indices != indices || m_baseVertexIndex != baseVertexIndex) {
+        StateChange();
+        m_indices = indices;
+        m_baseVertexIndex = baseVertexIndex;
+      }
+    }
+
   private:
     D3D9Bridge*                     m_bridge;
     Com<d3d9::IDirect3DDevice9>     m_device;
 
     D3D8BatchBuffer*                m_stream = nullptr;
     UINT                            m_stride = 0;
+    D3D8IndexBuffer*                m_indices = nullptr;
+    INT                             m_baseVertexIndex = 0;
     std::array<Batch, D3DPT_COUNT>  m_batches;
   };
 }
