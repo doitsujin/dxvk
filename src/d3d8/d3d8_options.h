@@ -18,7 +18,7 @@ namespace dxvk {
     D3D8Options(const Config& config) {
       useShadowBuffers        = config.getOption<bool>      ("d3d8.useShadowBuffers",       useShadowBuffers);
       int32_t minManagedSize  = config.getOption<int32_t>   ("d3d8.managedBufferPlacement", managedBufferPlacement);
-      managedBufferPlacement  = config.getOption<int32_t>   ("d3d8.managedBufferPlacement", true) ? minManagedSize : UINT32_MAX;
+      managedBufferPlacement  = config.getOption<bool>      ("d3d8.managedBufferPlacement", true) ? minManagedSize : UINT32_MAX;
     }
   };
 }
