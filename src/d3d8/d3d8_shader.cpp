@@ -108,8 +108,13 @@ namespace dxvk {
     return token;
   }
 
-  D3D9VertexShaderCode translateVertexShader8(const DWORD* pDeclaration, const DWORD* pFunction) {
+    D3D9VertexShaderCode translateVertexShader8(
+      const DWORD*        pDeclaration,
+      const DWORD*        pFunction,
+      const D3D8Options&  options) {
     using d3d9::D3DDECLTYPE;
+    using d3d9::D3DDECLTYPE_UNUSED;
+
     D3D9VertexShaderCode result;
 
     std::vector<DWORD>& tokens = result.function;
@@ -134,7 +139,7 @@ namespace dxvk {
 
     // remap d3d8 tokens to d3d9 vertex elements
     // and enable specific shaderInputRegisters for each
-    do {
+    if (options.forceVsDecl.size() == 0) do {
       token = pDeclaration[i++];
 
       D3DVSD_TOKENTYPE tokenType = D3DVSD_TOKENTYPE(VSD_SHIFT_MASK(token, D3DVSD_TOKENTYPE));
@@ -178,6 +183,7 @@ namespace dxvk {
 
             vertexElements[elementIdx].Stream = currentStream;
             vertexElements[elementIdx].Offset = currentOffset;
+            vertexElements[elementIdx].Method = d3d9::D3DDECLMETHOD_DEFAULT;
 
             // Read and set data type
             D3DDECLTYPE dataType  = D3DDECLTYPE(VSD_SHIFT_MASK(token, D3DVSD_DATATYPE));
@@ -186,12 +192,10 @@ namespace dxvk {
             // Increase stream offset
             currentOffset += D3D9_DECL_TYPE_SIZES[dataType];
 
-            vertexElements[elementIdx].Method = d3d9::D3DDECLMETHOD_DEFAULT;
-
             DWORD dataReg = VSD_SHIFT_MASK(token, D3DVSD_VERTEXREG);
 
             // Map D3DVSDE register num to Usage and UsageIndex
-            vertexElements[elementIdx].Usage = D3D8_VERTEX_INPUT_REGISTERS[dataReg][0];
+            vertexElements[elementIdx].Usage      = D3D8_VERTEX_INPUT_REGISTERS[dataReg][0];
             vertexElements[elementIdx].UsageIndex = D3D8_VERTEX_INPUT_REGISTERS[dataReg][1];
 
             // Enable register vn
@@ -201,6 +205,8 @@ namespace dxvk {
             elementIdx++;
             
             dbg << "type=" << dataType << ", register=" << dataReg;
+          } else {
+            dbg << "D3DVSD_DATALOADTYPE " << dataLoadType;
           }
           break;
         }
@@ -239,7 +245,6 @@ namespace dxvk {
           break;
         }
         case D3DVSD_TOKEN_END: {
-          using d3d9::D3DDECLTYPE_UNUSED;
 
           vertexElements[elementIdx] = D3DDECL_END();
 
@@ -260,6 +265,25 @@ namespace dxvk {
     } while (token != D3DVSD_END());
     Logger::debug(dbg.str());
 
+    if (options.forceVsDecl.size() > 0) {
+      for (auto [reg, type] : options.forceVsDecl) {
+        vertexElements[elementIdx].Stream     = currentStream;
+        vertexElements[elementIdx].Offset     = currentOffset;
+        vertexElements[elementIdx].Method     = d3d9::D3DDECLMETHOD_DEFAULT;
+        vertexElements[elementIdx].Type       = D3DDECLTYPE(type);
+        vertexElements[elementIdx].Usage      = D3D8_VERTEX_INPUT_REGISTERS[reg][0];
+        vertexElements[elementIdx].UsageIndex = D3D8_VERTEX_INPUT_REGISTERS[reg][1];
+
+        // Increase stream offset
+        currentOffset += D3D9_DECL_TYPE_SIZES[type];
+
+        // Enable register vn
+        shaderInputRegisters |= 1 << reg;
+
+        elementIdx++;
+      }
+      vertexElements[elementIdx++] = D3DDECL_END();
+    }
 
     if (pFunction != nullptr) {
       // copy first token

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3d8_include.h"
+#include "d3d8_options.h"
 
 namespace dxvk {
 
@@ -9,6 +10,9 @@ namespace dxvk {
       std::vector<DWORD> function;
     };
 
-    D3D9VertexShaderCode translateVertexShader8(const DWORD* pDeclaration, const DWORD* pFunction);
+    D3D9VertexShaderCode translateVertexShader8(
+      const DWORD*        pDeclaration,
+      const DWORD*        pFunction,
+      const D3D8Options&  overrides);
 
 }
