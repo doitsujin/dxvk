@@ -2,21 +2,24 @@
 #include "d3d8_shader.h"
 
 #define VSD_SHIFT_MASK(token, field) ((token & field ## MASK) >> field ## SHIFT)
+#define VSD_ENCODE(token, field) ((token << field ## _SHIFT) & field ## _MASK)
 
-#define VS_SHIFT_MASK(token, field) ((token << field ## _SHIFT) & field ## _MASK)
-
-// Magic number from D3DVSD_REG()
+// Magic number from D3DVSD_SKIP(...)
 #define VSD_SKIP_FLAG 0x10000000
 
+// This bit is set on all parameter (non-instruction) tokens.
 #define VS_BIT_PARAM 0x80000000
 
 namespace dxvk {
 
-  // v0-v16, used by fixed function vs
   static constexpr int D3D8_NUM_VERTEX_INPUT_REGISTERS = 17;
 
-  // standard mapping of vertx input v0-v16 to d3d9 usages and usage indices
-  // (See D3DVSDE_ values in d3d8types.h or DirectX 8 docs for vertex shader input registers vn)
+  /**
+   * Standard mapping of vertex input registers v0-v16 to D3D9 usages and usage indices
+   * (See D3DVSDE_REGISTER values in d3d8types.h or DirectX 8 docs for vertex shader input registers vN)
+   * 
+   * \cite https://learn.microsoft.com/en-us/windows/win32/direct3d9/mapping-between-a-directx-9-declaration-and-directx-8
+  */
   static const BYTE D3D8_VERTEX_INPUT_REGISTERS[D3D8_NUM_VERTEX_INPUT_REGISTERS][2] = {
     {d3d9::D3DDECLUSAGE_POSITION, 0},      // dcl_position     v0
     {d3d9::D3DDECLUSAGE_BLENDWEIGHT, 0},   // dcl_blendweight  v1
@@ -37,7 +40,7 @@ namespace dxvk {
     {d3d9::D3DDECLUSAGE_NORMAL, 1},        // dcl_normal1      v16 ; normal 2
   };
   
-  // width in bytes of each D3DDECLTYPE (dx9) or D3DVSDT (dx8)
+  /** Width in bytes of each d3d9::D3DDECLTYPE or d3d8 D3DVSDT_TYPE */
   static const BYTE D3D9_DECL_TYPE_SIZES[d3d9::MAXD3DDECLTYPE + 1] = {
     4,  // FLOAT1
     8,  // FLOAT2
@@ -97,18 +100,21 @@ namespace dxvk {
   /**
    * Encodes a \ref DxsoDeclaration
    * 
-   * \param [in]  regType  DxsoRegisterType
    * \cite https://learn.microsoft.com/en-us/windows-hardware/drivers/display/dcl-instruction
    */
   constexpr DWORD encodeDeclaration(d3d9::D3DDECLUSAGE usage, DWORD index) {
     DWORD token = 0;
-    token |= VS_SHIFT_MASK(usage, D3DSP_DCL_USAGE);       // bits 0:4   DxsoUsage (TODO: missing MSB)
-    token |= VS_SHIFT_MASK(index, D3DSP_DCL_USAGEINDEX);  // bits 16:19 usageIndex
-    token |= 1 << 31;                                     // bit 31     always 1
+    token |= VSD_ENCODE(usage, D3DSP_DCL_USAGE);       // bits 0:4   DxsoUsage (TODO: missing MSB)
+    token |= VSD_ENCODE(index, D3DSP_DCL_USAGEINDEX);  // bits 16:19 usageIndex
+    token |= 1 << 31;                                  // bit 31     always 1
     return token;
   }
 
-    D3D9VertexShaderCode translateVertexShader8(
+  /**
+   * Converts a D3D8 vertex shader + declaration
+   * to a D3D9 vertex shader + declaration.
+  */
+  D3D9VertexShaderCode TranslateVertexShader8(
       const DWORD*        pDeclaration,
       const DWORD*        pFunction,
       const D3D8Options&  options) {
@@ -127,7 +133,7 @@ namespace dxvk {
     d3d9::D3DVERTEXELEMENT9* vertexElements = result.declaration;
     unsigned int elementIdx = 0;
 
-    // these are used for pDeclaration and pFunction
+    // These are used for pDeclaration and pFunction
     int i = 0;
     DWORD token;
 
@@ -137,8 +143,26 @@ namespace dxvk {
     WORD currentStream = 0;
     WORD currentOffset = 0;
 
-    // remap d3d8 tokens to d3d9 vertex elements
-    // and enable specific shaderInputRegisters for each
+    auto addVertexElement = [&] (D3DVSDE_REGISTER reg, D3DVSDT_TYPE type) {
+      vertexElements[elementIdx].Stream     = currentStream;
+      vertexElements[elementIdx].Offset     = currentOffset;
+      vertexElements[elementIdx].Method     = d3d9::D3DDECLMETHOD_DEFAULT;
+      vertexElements[elementIdx].Type       = D3DDECLTYPE(type); // (D3DVSDT_TYPE values map directly to D3DDECLTYPE)
+      vertexElements[elementIdx].Usage      = D3D8_VERTEX_INPUT_REGISTERS[reg][0];
+      vertexElements[elementIdx].UsageIndex = D3D8_VERTEX_INPUT_REGISTERS[reg][1];
+
+      // Increase stream offset
+      currentOffset += D3D9_DECL_TYPE_SIZES[type];
+
+      // Enable register vn
+      shaderInputRegisters |= 1 << reg;
+
+      // Finished with this element
+      elementIdx++;
+    };
+
+    // Remap d3d8 decl tokens to d3d9 vertex elements,
+    // and enable bits on shaderInputRegisters for each.
     if (options.forceVsDecl.size() == 0) do {
       token = pDeclaration[i++];
 
@@ -180,32 +204,14 @@ namespace dxvk {
           DWORD dataLoadType = VSD_SHIFT_MASK(token, D3DVSD_DATALOADTYPE);
 
           if ( dataLoadType == 0 ) { // vertex
+            D3DVSDT_TYPE     type = D3DVSDT_TYPE(VSD_SHIFT_MASK(token, D3DVSD_DATATYPE));
+            D3DVSDE_REGISTER reg  = D3DVSDE_REGISTER(VSD_SHIFT_MASK(token, D3DVSD_VERTEXREG));
 
-            vertexElements[elementIdx].Stream = currentStream;
-            vertexElements[elementIdx].Offset = currentOffset;
-            vertexElements[elementIdx].Method = d3d9::D3DDECLMETHOD_DEFAULT;
-
-            // Read and set data type
-            D3DDECLTYPE dataType  = D3DDECLTYPE(VSD_SHIFT_MASK(token, D3DVSD_DATATYPE));
-            vertexElements[elementIdx].Type = dataType; // (D3DVSDT values map directly to D3DDECLTYPE)
-
-            // Increase stream offset
-            currentOffset += D3D9_DECL_TYPE_SIZES[dataType];
-
-            DWORD dataReg = VSD_SHIFT_MASK(token, D3DVSD_VERTEXREG);
-
-            // Map D3DVSDE register num to Usage and UsageIndex
-            vertexElements[elementIdx].Usage      = D3D8_VERTEX_INPUT_REGISTERS[dataReg][0];
-            vertexElements[elementIdx].UsageIndex = D3D8_VERTEX_INPUT_REGISTERS[dataReg][1];
-
-            // Enable register vn
-            shaderInputRegisters |= 1 << dataReg;
-
-            // Finished with this element
-            elementIdx++;
+            addVertexElement(reg, type);
             
-            dbg << "type=" << dataType << ", register=" << dataReg;
+            dbg << "type=" << type << ", register=" << reg;
           } else {
+            // TODO: When would this bit be 1?
             dbg << "D3DVSD_DATALOADTYPE " << dataLoadType;
           }
           break;
@@ -241,16 +247,10 @@ namespace dxvk {
           DWORD extInfo = VSD_SHIFT_MASK(token, D3DVSD_EXTINFO);
           DWORD extCount = VSD_SHIFT_MASK(token, D3DVSD_EXTCOUNT);
           dbg << "info=" << extInfo << ", count=" << extCount;
-          // TODO: D3DVSD_TOKEN_EXT
           break;
         }
         case D3DVSD_TOKEN_END: {
-
-          vertexElements[elementIdx] = D3DDECL_END();
-
-          // Finished with this element
-          elementIdx++;
-
+          vertexElements[elementIdx++] = D3DDECL_END();
           dbg << "END";
           break;
         }
@@ -259,45 +259,31 @@ namespace dxvk {
           break;
       }
       dbg << "\n\t";
-
       //dbg << std::hex << token << " ";
-
     } while (token != D3DVSD_END());
+
     Logger::debug(dbg.str());
 
+    // If forceVsDecl is set, use that decl instead.
     if (options.forceVsDecl.size() > 0) {
       for (auto [reg, type] : options.forceVsDecl) {
-        vertexElements[elementIdx].Stream     = currentStream;
-        vertexElements[elementIdx].Offset     = currentOffset;
-        vertexElements[elementIdx].Method     = d3d9::D3DDECLMETHOD_DEFAULT;
-        vertexElements[elementIdx].Type       = D3DDECLTYPE(type);
-        vertexElements[elementIdx].Usage      = D3D8_VERTEX_INPUT_REGISTERS[reg][0];
-        vertexElements[elementIdx].UsageIndex = D3D8_VERTEX_INPUT_REGISTERS[reg][1];
-
-        // Increase stream offset
-        currentOffset += D3D9_DECL_TYPE_SIZES[type];
-
-        // Enable register vn
-        shaderInputRegisters |= 1 << reg;
-
-        elementIdx++;
+        addVertexElement(reg, type);
       }
       vertexElements[elementIdx++] = D3DDECL_END();
     }
 
     if (pFunction != nullptr) {
-      // copy first token
-      // TODO: ensure first token is always only one dword
+      // Copy first token (version)
       tokens.push_back(pFunction[0]);
 
       DWORD vsMajor = D3DSHADER_VERSION_MAJOR(pFunction[0]);
       DWORD vsMinor = D3DSHADER_VERSION_MINOR(pFunction[0]);
       Logger::debug(str::format("VS version: ", vsMajor, ".", vsMinor));
 
-      // insert dcl instructions 
+      // Insert dcl instructions 
       for (int vn = 0; vn < D3D8_NUM_VERTEX_INPUT_REGISTERS; vn++) {
 
-        // if bit N is set then we need to dcl register vN
+        // If bit N is set then we need to dcl register vN
         if ((shaderInputRegisters & (1 << vn)) != 0) {
 
           Logger::debug(str::format("\tShader Input Regsiter: v", vn));
@@ -311,12 +297,12 @@ namespace dxvk {
         }
       }
 
-      // copy constant defs
+      // Copy constant defs
       for (DWORD def : defs) {
         tokens.push_back(def);
       }
 
-      // copy shader tokens from input,
+      // Copy shader tokens from input,
       // skip first token (we already copied it)
       i = 1;
       do {
@@ -342,12 +328,9 @@ namespace dxvk {
           }
         }
         tokens.push_back(token);
-
-        //Logger::debug(str::format(std::hex, token));
       } while (token != D3DVS_END());
     }
 
     return result;
   }
-
 }

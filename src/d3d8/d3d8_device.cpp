@@ -256,7 +256,7 @@ namespace dxvk {
       for (UINT i = 0; pFunction[i+1] != D3DVS_END(); i++)
         info.function.push_back(pFunction[i]);
     
-    D3D9VertexShaderCode result = translateVertexShader8(pDeclaration, pFunction, m_d3d8Options);
+    D3D9VertexShaderCode result = TranslateVertexShader8(pDeclaration, pFunction, m_d3d8Options);
 
     // Create vertex declaration
     HRESULT res = GetD3D9()->CreateVertexDeclaration(result.declaration, &(info.pVertexDecl));
