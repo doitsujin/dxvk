@@ -218,6 +218,13 @@ namespace d3d9 {
 #ifndef __WINE__
 extern "C" WINUSERAPI WINBOOL WINAPI SetProcessDPIAware(VOID);
 #endif
+
+#else // _MSC_VER
+
+// These are enum typedefs in the MinGW headers, but not defined by Microsoft
+#define D3DVSDT_TYPE     DWORD
+#define D3DVSDE_REGISTER DWORD
+
 #endif
 
 // This is the managed pool on D3D9Ex, it's just hidden!
