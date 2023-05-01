@@ -1602,6 +1602,10 @@ namespace dxvk {
     // This works around that.
     uint32_t alignment = m_d3d9Options.lenientClear ? 8 : 1;
 
+    if (extent.width == 0 || extent.height == 0) {
+      return D3D_OK;
+    }
+
     if (!Count) {
       // Clear our viewport & scissor minified region in this rendertarget.
       ClearViewRect(alignment, offset, extent);
@@ -1614,6 +1618,11 @@ namespace dxvk {
           std::max<int32_t>(pRects[i].y1, offset.y),
           0
         };
+
+        if (std::min<uint32_t>(pRects[i].x2, offset.x + extent.width) <= rectOffset.x
+          || std::min<uint32_t>(pRects[i].y2, offset.y + extent.height) <= rectOffset.y) {
+          continue;
+        }
 
         VkExtent3D rectExtent = {
           std::min<uint32_t>(pRects[i].x2, offset.x + extent.width)  - rectOffset.x,
