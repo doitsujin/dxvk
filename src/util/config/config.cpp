@@ -139,6 +139,11 @@ namespace dxvk {
     { R"(\\h1(_[ms]p64_ship|-mod)\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
+    /* Modern Warfare 2 Campaign Remastered       *
+     * AMD AGS crash same as above                */
+    { R"(\\MW2CR.exe\.exe$)", {{
+      { "dxgi.customVendorId",              "10de" },
+    }} },
     /* Crysis 3 - slower if it notices AMD card     *
      * Apitrace mode helps massively in cpu bound   *
      * game parts                                   */
