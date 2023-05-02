@@ -4423,7 +4423,7 @@ namespace dxvk {
     // create a temporary image to draw to, and then copy to the actual
     // destination image using a regular Vulkan transfer function.
     bool useDirectCopy = (dstImage->info().usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
-                      && (dstImage->isViewCompatible(format));
+                      && (!format || dstImage->isViewCompatible(format));
 
     if (useDirectCopy) {
       this->resolveImageFbDirect(dstImage, srcImage,
