@@ -5,6 +5,7 @@
 #include <functional>
 #include <mutex>
 #include <thread>
+#include <utility>
 
 #include "util_error.h"
 
@@ -24,126 +25,96 @@ namespace dxvk {
   };
 
 #ifdef _WIN32
+
+  using ThreadProc = std::function<void()>;
+
+
   /**
-   * \brief Thread helper class
-   * 
-   * This is needed mostly  for winelib builds. Wine needs to setup each thread that
-   * calls Windows APIs. It means that in winelib builds, we can't let standard C++
-   * library create threads and need to use Wine for that instead. We use a thin wrapper
-   * around Windows thread functions so that the rest of code just has to use
-   * dxvk::thread class instead of std::thread.
+   * \brief Thread object
    */
-  class ThreadFn : public RcObject {
-    using Proc = std::function<void()>;
-  public:
+  struct ThreadData {
+    ThreadData(ThreadProc&& proc_)
+    : proc(std::move(proc_)) { }
 
-    ThreadFn(Proc&& proc)
-    : m_proc(std::move(proc)) {
-      // Reference for the thread function
-      this->incRef();
-
-      m_handle = ::CreateThread(nullptr, 0x100000,
-        ThreadFn::threadProc, this, STACK_SIZE_PARAM_IS_A_RESERVATION,
-        nullptr);
-      
-      if (m_handle == nullptr)
-        throw DxvkError("Failed to create thread");
+    ~ThreadData() {
+      if (handle)
+        CloseHandle(handle);
     }
 
-    ~ThreadFn() {
-      if (this->joinable())
-        std::terminate();
+    HANDLE                handle = nullptr;
+    DWORD                 id     = 0;
+    std::atomic<uint32_t> refs   = { 2u };
+    ThreadProc            proc;
+
+    void decRef() {
+      if (refs.fetch_sub(1, std::memory_order_release) == 1)
+        delete this;
     }
-    
-    void detach() {
-      ::CloseHandle(m_handle);
-      m_handle = nullptr;
-    }
-
-    void join() {
-      if(::WaitForSingleObjectEx(m_handle, INFINITE, FALSE) == WAIT_FAILED)
-        throw DxvkError("Failed to join thread");
-      this->detach();
-    }
-
-    bool joinable() const {
-      return m_handle != nullptr;
-    }
-
-    void set_priority(ThreadPriority priority) {
-      int32_t value;
-      switch (priority) {
-        default:
-        case ThreadPriority::Normal: value = THREAD_PRIORITY_NORMAL; break;
-        case ThreadPriority::Lowest: value = THREAD_PRIORITY_LOWEST; break;
-      }
-      ::SetThreadPriority(m_handle, int32_t(value));
-    }
-
-  private:
-
-    Proc    m_proc;
-    HANDLE  m_handle;
-
-    static DWORD WINAPI threadProc(void *arg) {
-      auto thread = reinterpret_cast<ThreadFn*>(arg);
-      thread->m_proc();
-      thread->decRef();
-      return 0;
-    }
-
   };
 
 
   /**
-   * \brief RAII thread wrapper
-   * 
-   * Wrapper for \c ThreadFn that can be used
-   * as a drop-in replacement for \c std::thread.
+   * \brief Thread wrapper
+   *
+   * Drop-in replacement for std::thread
+   * using plain win32 threads.
    */
   class thread {
 
   public:
 
+    using id = uint32_t;
+    using native_handle_type = HANDLE;
+
     thread() { }
 
-    explicit thread(std::function<void()>&& func)
-    : m_thread(new ThreadFn(std::move(func))) { }
+    explicit thread(ThreadProc&& proc);
+
+    ~thread();
 
     thread(thread&& other)
-    : m_thread(std::move(other.m_thread)) { }
+    : m_data(std::exchange(other.m_data, nullptr)) { }
 
     thread& operator = (thread&& other) {
-      m_thread = std::move(other.m_thread);
+      if (m_data)
+        m_data->decRef();
+
+      m_data = std::exchange(other.m_data, nullptr);
       return *this;
     }
 
     void detach() {
-      m_thread->detach();
-    }
-
-    void join() {
-      m_thread->join();
+      m_data->decRef();
+      m_data = nullptr;
     }
 
     bool joinable() const {
-      return m_thread != nullptr
-          && m_thread->joinable();
+      return m_data != nullptr;
     }
 
-    void set_priority(ThreadPriority priority) {
-      m_thread->set_priority(priority);
+    id get_id() const {
+      return joinable() ? m_data->id : id();
     }
-    
-    static uint32_t hardware_concurrency() {
-      SYSTEM_INFO info = { };
-      ::GetSystemInfo(&info);
-      return info.dwNumberOfProcessors;
+
+    native_handle_type native_handle() const {
+      return joinable() ? m_data->handle : native_handle_type();
     }
+
+    void swap(thread& other) {
+      std::swap(m_data, other.m_data);
+    }
+
+    void join();
+
+    void set_priority(ThreadPriority priority);
+
+    static uint32_t hardware_concurrency();
 
   private:
 
-    Rc<ThreadFn> m_thread;
+    ThreadData* m_data = nullptr;
+
+    static DWORD WINAPI threadProc(void* arg);
 
   };
 
@@ -153,8 +124,8 @@ namespace dxvk {
       SwitchToThread();
     }
 
-    inline uint32_t get_id() {
-      return uint32_t(GetCurrentThreadId());
+    inline thread::id get_id() {
+      return thread::id(GetCurrentThreadId());
     }
 
     bool isInModuleDetachment();

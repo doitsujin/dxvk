@@ -238,13 +238,21 @@ namespace dxvk {
     const VkExtent3D mipExtent = util::computeMipLevelExtent(
       GetExtent(), MipLevel);
 
+    VkExtent3D blockSize = formatInfo->blockSize;
+    uint32_t elementSize = formatInfo->elementSize;
+    if (unlikely(formatInfo->flags.test(DxvkFormatFlag::MultiPlane))) {
+      // D3D9 doesn't allow specifying the plane when locking a texture.
+      // So the subsampled planes inherit the pitch of the first plane.
+      // That means the size is the size of plane 0 * plane count
+      elementSize = formatInfo->planes[0].elementSize;
+      blockSize = { formatInfo->planes[0].blockSize.width, formatInfo->planes[0].blockSize.height, 1u };
+    }
+
     const VkExtent3D blockCount = util::computeBlockCount(
-      mipExtent, formatInfo->blockSize);
+      mipExtent, blockSize);
 
-    const uint32_t planeCount = m_mapping.ConversionFormatInfo.PlaneCount;
-
-    return std::min(planeCount, 2u)
-         * align(formatInfo->elementSize * blockCount.width, 4)
+    return std::min(GetPlaneCount(), 2u)
+         * align(elementSize * blockCount.width, 4)
          * blockCount.height
          * blockCount.depth;
   }
@@ -673,6 +681,15 @@ namespace dxvk {
 
   DxvkBufferSlice D3D9CommonTexture::GetBufferSlice(UINT Subresource) {
     return DxvkBufferSlice(GetBuffer(), m_memoryOffset[Subresource], GetMipSize(Subresource));
+  }
+
+  
+  uint32_t D3D9CommonTexture::GetPlaneCount() const {
+    const DxvkFormatInfo* formatInfo = m_mapping.FormatColor != VK_FORMAT_UNDEFINED
+      ? lookupFormatInfo(m_mapping.FormatColor)
+      : m_device->UnsupportedFormatInfo(m_desc.Format);
+
+    return vk::getPlaneCount(formatInfo->aspectMask);
   }
 
 }

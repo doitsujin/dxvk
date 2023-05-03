@@ -68,9 +68,9 @@ namespace dxvk {
       { "dxgi.deferSurfaceCreation",        "True" },
       { "d3d11.cachedDynamicResources",     "c" },
     }} },
-    /* Nioh: See Frostpunk, apparently?           */
+    /* Nioh: Apparently the same as the Atelier games  */
     { R"(\\nioh\.exe$)", {{
-      { "dxgi.deferSurfaceCreation",        "True" },
+      { "d3d9.deferSurfaceCreation",        "True" },
     }} },
     /* Quantum Break: Mever initializes shared    *
      * memory in one of its compute shaders.      *
@@ -167,7 +167,7 @@ namespace dxvk {
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
     /* Just how many of these games are there?    */
-    { R"(\\Atelier_(Lulua|Lydie_and_Suelle|Ryza(_2)?|Sophie_2)\.exe$)", {{
+    { R"(\\Atelier_(Lulua|Lydie_and_Suelle|Ryza(_2|_3)?|Sophie_2)\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
     /* ...                                        */
@@ -342,6 +342,19 @@ namespace dxvk {
     { R"(\\SF3ClientFinal\.exe$)", {{
       { "d3d11.cachedDynamicResources",        "v" },
     }} },
+    /* Tom Clancy's Ghost Recon Breakpoint        */
+    { R"(\\GRB\.exe$)", {{
+      { "dxgi.nvapiHack",                  "False" },
+    }} },
+    /* GTA V performance issues                   */
+    { R"(\\GTA5\.exe$)", {{
+      { "d3d11.cachedDynamicResources",     "vi"   },
+    }} },
+    /* Crash Bandicoot N. Sane Trilogy            *
+     * Work around some vsync funkiness           */
+    { R"(\\CrashBandicootNSaneTrilogy\.exe$)", {{
+      { "dxgi.syncInterval",                "1"   },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
@@ -449,7 +462,7 @@ namespace dxvk {
       { "d3d9.allowDiscard",                "False" },
     }} },
     /* ZUSI 3 - Aerosoft Edition                  */
-    { R"(\\ZusiSim\.exe$)", {{
+    { R"(\\ZusiSim(\.64)?\.exe$)", {{
       { "d3d9.noExplicitFrontBuffer",       "True" },
     }} },
     /* GTA IV (NVAPI)                             */
@@ -738,6 +751,11 @@ namespace dxvk {
      * Main menu won't render after intros     */
     { R"(\\(PANZERS|PANZERS_Phase_2)\.exe$)", {{
       { "d3d9.enableDialogMode",         "True"   },
+    }} },
+    /* Dark Romance: Vampire in Love          *
+     * Works around black screen or blinking  */
+    { R"(\\(DarkRomance_VampireInLove_CE)\.exe$)", {{
+      { "d3d9.allowDirectBufferMapping", "False"   },
     }} },
     
     /**********************************************/

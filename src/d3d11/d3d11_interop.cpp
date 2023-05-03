@@ -75,21 +75,15 @@ namespace dxvk {
     const VkImageSubresourceRange*  pSubresources,
           VkImageLayout             OldLayout,
           VkImageLayout             NewLayout) {
-    Com<ID3D11DeviceContext> deviceContext = nullptr;
-    m_device->GetImmediateContext(&deviceContext);
-    
-    auto immediateContext = static_cast<D3D11ImmediateContext*>(deviceContext.ptr());
-    
+    auto immediateContext = m_device->GetContext();
+
     immediateContext->TransitionSurfaceLayout(
       pSurface, pSubresources, OldLayout, NewLayout);
   }
   
   
   void STDMETHODCALLTYPE D3D11VkInterop::FlushRenderingCommands() {
-    Com<ID3D11DeviceContext> deviceContext = nullptr;
-    m_device->GetImmediateContext(&deviceContext);
-    
-    auto immediateContext = static_cast<D3D11ImmediateContext*>(deviceContext.ptr());
+    auto immediateContext = m_device->GetContext();
     immediateContext->Flush();
     immediateContext->SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
   }

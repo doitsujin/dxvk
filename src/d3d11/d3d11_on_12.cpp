@@ -112,9 +112,6 @@ namespace dxvk {
     Com<ID3D12DXVKInteropDevice> interopDevice;
     m_d3d12Device->QueryInterface(__uuidof(ID3D12DXVKInteropDevice), reinterpret_cast<void**>(&interopDevice));
 
-    Com<ID3D11DeviceContext> context;
-    m_device->GetImmediateContext(&context);
-
     for (uint32_t i = 0; i < ResourceCount; i++) {
       D3D11_ON_12_RESOURCE_INFO info;
 
@@ -125,7 +122,7 @@ namespace dxvk {
 
       VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
       interopDevice->GetVulkanImageLayout(info.Resource.ptr(), info.OutputState, &layout);
-      static_cast<D3D11ImmediateContext*>(context.ptr())->Release11on12Resource(ppResources[i], layout);
+      m_device->GetContext()->Release11on12Resource(ppResources[i], layout);
     }
   }
 
@@ -135,9 +132,6 @@ namespace dxvk {
           UINT                    ResourceCount) {
     Com<ID3D12DXVKInteropDevice> interopDevice;
     m_d3d12Device->QueryInterface(__uuidof(ID3D12DXVKInteropDevice), reinterpret_cast<void**>(&interopDevice));
-
-    Com<ID3D11DeviceContext> context;
-    m_device->GetImmediateContext(&context);
 
     for (uint32_t i = 0; i < ResourceCount; i++) {
       D3D11_ON_12_RESOURCE_INFO info;
@@ -149,7 +143,7 @@ namespace dxvk {
 
       VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
       interopDevice->GetVulkanImageLayout(info.Resource.ptr(), info.InputState, &layout);
-      static_cast<D3D11ImmediateContext*>(context.ptr())->Acquire11on12Resource(ppResources[i], layout);
+      m_device->GetContext()->Acquire11on12Resource(ppResources[i], layout);
     }
   }
 

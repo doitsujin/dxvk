@@ -335,11 +335,8 @@ namespace dxvk {
 
 
   HRESULT D3D11SwapChain::PresentImage(UINT SyncInterval) {
-    Com<ID3D11DeviceContext> deviceContext = nullptr;
-    m_parent->GetImmediateContext(&deviceContext);
-
     // Flush pending rendering commands before
-    auto immediateContext = static_cast<D3D11ImmediateContext*>(deviceContext.ptr());
+    auto immediateContext = m_parent->GetContext();
     immediateContext->EndFrame();
     immediateContext->Flush();
 

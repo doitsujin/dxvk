@@ -1552,6 +1552,14 @@ namespace dxvk {
             VkResolveModeFlagBits     depthMode,
             VkResolveModeFlagBits     stencilMode);
     
+    void resolveImageFbDirect(
+      const Rc<DxvkImage>&            dstImage,
+      const Rc<DxvkImage>&            srcImage,
+      const VkImageResolve&           region,
+            VkFormat                  format,
+            VkResolveModeFlagBits     depthMode,
+            VkResolveModeFlagBits     stencilMode);
+    
     void performClear(
       const Rc<DxvkImageView>&        imageView,
             int32_t                   attachmentIndex,

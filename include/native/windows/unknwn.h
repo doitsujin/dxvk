@@ -12,6 +12,10 @@ struct IUnknown {
 public:
 
   virtual HRESULT QueryInterface(REFIID riid, void** ppvObject) = 0;
+  template<class Q>
+  HRESULT STDMETHODCALLTYPE QueryInterface(Q **pp) {
+    return QueryInterface(__uuidof(Q), (void **)pp);
+  }
 
   virtual ULONG AddRef()  = 0;
   virtual ULONG Release() = 0;

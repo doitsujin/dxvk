@@ -1,9 +1,81 @@
+#include <atomic>
+
 #include "thread.h"
 #include "util_likely.h"
 
-#include <atomic>
-
 #ifdef _WIN32
+
+namespace dxvk {
+
+  thread::thread(ThreadProc&& proc)
+  : m_data(new ThreadData(std::move(proc))) {
+    m_data->handle = ::CreateThread(nullptr, 0x100000,
+      thread::threadProc, m_data, STACK_SIZE_PARAM_IS_A_RESERVATION,
+      &m_data->id);
+
+    if (!m_data->handle) {
+      delete m_data;
+      throw std::system_error(std::make_error_code(std::errc::resource_unavailable_try_again), "Failed to create thread");
+    }
+  }
+
+
+  thread::~thread() {
+    if (joinable())
+      std::terminate();
+  }
+
+
+  void thread::join() {
+    if (!joinable())
+      throw std::system_error(std::make_error_code(std::errc::invalid_argument), "Thread not joinable");
+
+    if (get_id() == this_thread::get_id())
+      throw std::system_error(std::make_error_code(std::errc::resource_deadlock_would_occur), "Cannot join current thread");
+
+    if(::WaitForSingleObjectEx(m_data->handle, INFINITE, FALSE) == WAIT_FAILED)
+      throw std::system_error(std::make_error_code(std::errc::invalid_argument), "Joining thread failed");
+
+    detach();
+  }
+
+
+  void thread::set_priority(ThreadPriority priority) {
+    int32_t value;
+    switch (priority) {
+      default:
+      case ThreadPriority::Normal: value = THREAD_PRIORITY_NORMAL; break;
+      case ThreadPriority::Lowest: value = THREAD_PRIORITY_LOWEST; break;
+    }
+
+    if (m_data)
+      ::SetThreadPriority(m_data->handle, int32_t(value));
+  }
+
+
+  uint32_t thread::hardware_concurrency() {
+    SYSTEM_INFO info = { };
+    ::GetSystemInfo(&info);
+    return info.dwNumberOfProcessors;
+  }
+
+
+  DWORD WINAPI thread::threadProc(void* arg) {
+    auto data = reinterpret_cast<ThreadData*>(arg);
+    DWORD exitCode = 0;
+
+    try {
+      data->proc();
+    } catch (...) {
+      exitCode = 1;
+    }
+
+    data->decRef();
+    return exitCode;
+  }
+
+}
+
 
 namespace dxvk::this_thread {
 
