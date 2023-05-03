@@ -44,6 +44,10 @@
 #define D3DPRESENT_FORCEIMMEDIATE              0x00000100L
 #endif
 
+#ifndef D3DSWAPEFFECT_COPY_VSYNC
+#define D3DSWAPEFFECT_COPY_VSYNC 4
+#endif
+
 // MinGW headers are broken. Who'dve guessed?
 #ifndef _MSC_VER
 typedef struct _D3DDEVINFO_RESOURCEMANAGER
