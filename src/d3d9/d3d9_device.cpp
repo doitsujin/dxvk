@@ -1632,8 +1632,8 @@ namespace dxvk {
           0
         };
 
-        if (std::min<uint32_t>(pRects[i].x2, offset.x + extent.width) <= rectOffset.x
-          || std::min<uint32_t>(pRects[i].y2, offset.y + extent.height) <= rectOffset.y) {
+        if (std::min<int32_t>(pRects[i].x2, offset.x + extent.width) <= rectOffset.x
+          || std::min<int32_t>(pRects[i].y2, offset.y + extent.height) <= rectOffset.y) {
           continue;
         }
 
