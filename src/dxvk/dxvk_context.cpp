@@ -177,6 +177,18 @@ namespace dxvk {
 
       image->setLayout(layout);
 
+      for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+        const DxvkAttachment& rt = m_state.om.renderTargets.color[i];
+        if (rt.view != nullptr && rt.view->image() == image) {
+          m_rtLayouts.color[i] = layout;
+        }
+      }
+
+      const DxvkAttachment& ds = m_state.om.renderTargets.depth;
+      if (ds.view != nullptr && ds.view->image() == image) {
+        m_rtLayouts.depth = layout;
+      }
+
       m_cmd->trackResource<DxvkAccess::Write>(image);
     }
   }
