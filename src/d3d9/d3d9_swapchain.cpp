@@ -153,9 +153,9 @@ namespace dxvk {
     m_lastDialog = m_dialog;
 
 #ifdef _WIN32
-    const bool useGDIFallback = m_partialCopy && m_presentParams.SwapEffect == D3DSWAPEFFECT_COPY;
+    const bool useGDIFallback = m_partialCopy && !HasFrontBuffer();
     if (useGDIFallback)
-      return BlitGDI(window);
+      return PresentImageGDI(window);
 #endif
 
     try {
@@ -176,7 +176,7 @@ namespace dxvk {
     } catch (const DxvkError& e) {
       Logger::err(e.message());
 #ifdef _WIN32
-      return BlitGDI(window);
+      return PresentImageGDI(window);
 #else
       return D3DERR_DEVICEREMOVED;
 #endif
@@ -186,8 +186,11 @@ namespace dxvk {
 #ifdef _WIN32
   #define DCX_USESTYLE 0x00010000
 
-  HRESULT D3D9SwapChainEx::BlitGDI(HWND Window) {
-    if (!std::exchange(m_warnedAboutFallback, true))
+  HRESULT D3D9SwapChainEx::PresentImageGDI(HWND Window) {
+    m_parent->EndFrame();
+    m_parent->Flush();
+
+    if (!std::exchange(m_warnedGDIAboutFallback, true))
       Logger::warn("Using GDI for swapchain presentation. This will impact performance.");
 
     HDC hDC;
@@ -233,13 +236,18 @@ namespace dxvk {
     // of src onto a temp image of dst's extents,
     // then copy buffer back to dst (given dst is subresource)
 
+    // For SWAPEFFECT_COPY and windowed SWAPEFFECT_DISCARD with 1 backbuffer, we just copy the backbuffer data instead.
+    // We just copy from the backbuffer instead of the front buffer to avoid having to do another blit.
+    // This mostly impacts windowed mode and our implementation was not accurate in that case anyway as Windows D3D9
+    // takes a screenshot of the entire screen.
+
     D3D9Surface* dst = static_cast<D3D9Surface*>(pDestSurface);
 
     if (unlikely(dst == nullptr))
       return D3DERR_INVALIDCALL;
 
     D3D9CommonTexture* dstTexInfo = dst->GetCommonTexture();
-    D3D9CommonTexture* srcTexInfo = m_backBuffers.back()->GetCommonTexture();
+    D3D9CommonTexture* srcTexInfo = GetFrontBuffer()->GetCommonTexture();
 
     if (unlikely(dstTexInfo->Desc()->Pool != D3DPOOL_SYSTEMMEM && dstTexInfo->Desc()->Pool != D3DPOOL_SCRATCH))
       return D3DERR_INVALIDCALL;
@@ -730,8 +738,8 @@ namespace dxvk {
     m_parent->Flush();
 
     // Retrieve the image and image view to present
-    auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
-    auto swapImageView = m_backBuffers[0]->GetImageView(false);
+    Rc<DxvkImage> swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
+    Rc<DxvkImageView> swapImageView = m_backBuffers[0]->GetImageView(false);
 
     // Bump our frame id.
     ++m_frameId;
@@ -820,7 +828,6 @@ namespace dxvk {
     if (status != VK_SUCCESS)
       RecreateSwapChain(m_vsync);
   }
-
 
   void D3D9SwapChainEx::RecreateSwapChain(BOOL Vsync) {
     // Ensure that we can safely destroy the swap chain
@@ -954,7 +961,7 @@ namespace dxvk {
     // creating a new one to free up resources
     DestroyBackBuffers();
 
-    int NumFrontBuffer = m_parent->GetOptions()->noExplicitFrontBuffer ? 0 : 1;
+    int NumFrontBuffer = HasFrontBuffer() ? 1 : 0;
     const uint32_t NumBuffers = NumBackBuffers + NumFrontBuffer;
 
     m_backBuffers.reserve(NumBuffers);
@@ -1235,7 +1242,11 @@ namespace dxvk {
   }
 
   bool    D3D9SwapChainEx::UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect) {
-    if (pSourceRect == nullptr) {
+    const bool isWindowed = m_presentParams.Windowed;
+
+    // Tests show that present regions are ignored in fullscreen
+
+    if (pSourceRect == nullptr || !isWindowed) {
       m_srcRect.top    = 0;
       m_srcRect.left   = 0;
       m_srcRect.right  = m_presentParams.BackBufferWidth;
@@ -1249,7 +1260,7 @@ namespace dxvk {
     wsi::getWindowSize(m_window, &width, &height);
 
     RECT dstRect;
-    if (pDestRect == nullptr) {
+    if (pDestRect == nullptr || !isWindowed) {
       // TODO: Should we hook WM_SIZE message for this?
       dstRect.top    = 0;
       dstRect.left   = 0;
@@ -1266,21 +1277,18 @@ namespace dxvk {
     || dstRect.right  - dstRect.left != LONG(width)
     || dstRect.bottom - dstRect.top  != LONG(height);
 
-    bool recreate = 
-       m_dstRect.left   != dstRect.left
-    || m_dstRect.top    != dstRect.top
-    || m_dstRect.right  != dstRect.right
-    || m_dstRect.bottom != dstRect.bottom;
+    bool recreate =
+       m_swapchainExtent.width  != width
+    || m_swapchainExtent.height != height;
 
+    m_swapchainExtent = { width, height };
     m_dstRect = dstRect;
 
     return recreate;
   }
 
   VkExtent2D D3D9SwapChainEx::GetPresentExtent() {
-    return VkExtent2D {
-      std::max<uint32_t>(m_dstRect.right  - m_dstRect.left, 1u),
-      std::max<uint32_t>(m_dstRect.bottom - m_dstRect.top,  1u) };
+    return m_swapchainExtent;
   }
 
 
