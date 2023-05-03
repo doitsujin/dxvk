@@ -43,7 +43,9 @@ namespace dxvk {
         RecreateSwapChain(false);
     }
 
-    CreateBackBuffers(m_presentParams.BackBufferCount);
+    if (FAILED(CreateBackBuffers(m_presentParams.BackBufferCount)))
+      throw DxvkError("D3D9: Failed to create swapchain backbuffers");
+
     CreateBlitter();
     CreateHud();
 
@@ -100,6 +102,14 @@ namespace dxvk {
     const RGNDATA* pDirtyRegion,
           DWORD    dwFlags) {
     D3D9DeviceLock lock = m_parent->LockDevice();
+
+    // If we have no backbuffers, error out.
+    // This handles the case where a ::Reset failed due to OOM
+    // or whatever.
+    // I am not sure what the actual HRESULT returned here is
+    // or should be, but it is better than crashing... probably!
+    if (m_backBuffers.empty())
+      return D3D_OK;
 
     uint32_t presentInterval = m_presentParams.PresentationInterval;
 
@@ -472,6 +482,8 @@ namespace dxvk {
           D3DDISPLAYMODEEX*      pFullscreenDisplayMode) {
     D3D9DeviceLock lock = m_parent->LockDevice();
 
+    HRESULT hr = D3D_OK;
+
     this->SynchronizePresent();
     this->NormalizePresentParameters(pPresentParams);
 
@@ -486,15 +498,17 @@ namespace dxvk {
     }
     else {
       if (changeFullscreen) {
-        if (FAILED(this->EnterFullscreenMode(pPresentParams, pFullscreenDisplayMode)))
-          return D3DERR_INVALIDCALL;
+        hr = this->EnterFullscreenMode(pPresentParams, pFullscreenDisplayMode);
+        if (FAILED(hr))
+          return hr;
       }
 
       D3D9WindowMessageFilter filter(m_window);
 
       if (!changeFullscreen) {
-        if (FAILED(ChangeDisplayMode(pPresentParams, pFullscreenDisplayMode)))
-          return D3DERR_INVALIDCALL;
+        hr = ChangeDisplayMode(pPresentParams, pFullscreenDisplayMode);
+        if (FAILED(hr))
+          return hr;
 
         wsi::updateFullscreenWindow(m_monitor, m_window, true);
       }
@@ -505,7 +519,9 @@ namespace dxvk {
     if (changeFullscreen)
       SetGammaRamp(0, &m_ramp);
 
-    CreateBackBuffers(m_presentParams.BackBufferCount);
+    hr = CreateBackBuffers(m_presentParams.BackBufferCount);
+    if (FAILED(hr))
+      return hr;
 
     return D3D_OK;
   }
@@ -878,13 +894,15 @@ namespace dxvk {
   }
 
 
-  void D3D9SwapChainEx::CreateBackBuffers(uint32_t NumBackBuffers) {
+  HRESULT D3D9SwapChainEx::CreateBackBuffers(uint32_t NumBackBuffers) {
     // Explicitly destroy current swap image before
     // creating a new one to free up resources
     DestroyBackBuffers();
 
     int NumFrontBuffer = m_parent->GetOptions()->noExplicitFrontBuffer ? 0 : 1;
-    m_backBuffers.resize(NumBackBuffers + NumFrontBuffer);
+    const uint32_t NumBuffers = NumBackBuffers + NumFrontBuffer;
+
+    m_backBuffers.reserve(NumBuffers);
 
     // Create new back buffer
     D3D9_COMMON_TEXTURE_DESC desc;
@@ -904,8 +922,18 @@ namespace dxvk {
     // Docs: Also note that - unlike textures - swap chain back buffers, render targets [..] can be locked
     desc.IsLockable         = TRUE;
 
-    for (uint32_t i = 0; i < m_backBuffers.size(); i++)
-      m_backBuffers[i] = new D3D9Surface(m_parent, &desc, this, nullptr);
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      D3D9Surface* surface;
+      try {
+        surface = new D3D9Surface(m_parent, &desc, this, nullptr);
+      } catch (const DxvkError& e) {
+        DestroyBackBuffers();
+        Logger::err(e.message());
+        return D3DERR_OUTOFVIDEOMEMORY;
+      }
+
+      m_backBuffers.emplace_back(surface);
+    }
 
     auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
 
@@ -930,6 +958,8 @@ namespace dxvk {
     m_device->submitCommandList(
       m_context->endRecording(),
       nullptr);
+
+    return D3D_OK;
   }
 
 
