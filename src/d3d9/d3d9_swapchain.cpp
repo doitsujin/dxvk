@@ -184,6 +184,8 @@ namespace dxvk {
   }
 
 #ifdef _WIN32
+  #define DCX_USESTYLE 0x00010000
+
   HRESULT D3D9SwapChainEx::BlitGDI(HWND Window) {
     if (!std::exchange(m_warnedAboutFallback, true))
       Logger::warn("Using GDI for swapchain presentation. This will impact performance.");
@@ -195,7 +197,7 @@ namespace dxvk {
       return D3DERR_DEVICEREMOVED;
     }
 
-    HDC dstDC = GetDCEx(Window, 0, DCX_CACHE);
+    HDC dstDC = GetDCEx(Window, 0, DCX_CACHE | DCX_USESTYLE);
     if (!dstDC) {
       Logger::err("D3D9SwapChainEx::BlitGDI: GetDCEx failed");
       m_backBuffers[0]->ReleaseDC(hDC);
@@ -206,13 +208,14 @@ namespace dxvk {
             m_dstRect.bottom - m_dstRect.top, hDC, m_srcRect.left, m_srcRect.top,
             m_srcRect.right - m_srcRect.left, m_srcRect.bottom - m_srcRect.top, SRCCOPY);
 
+    m_backBuffers[0]->ReleaseDC(hDC);
+    ReleaseDC(Window, dstDC);
+
     if (!success) {
       Logger::err("D3D9SwapChainEx::BlitGDI: StretchBlt failed");
-      m_backBuffers[0]->ReleaseDC(hDC);
       return D3DERR_DEVICEREMOVED;
     }
 
-    m_backBuffers[0]->ReleaseDC(hDC);
     return S_OK;
   }
 #endif
