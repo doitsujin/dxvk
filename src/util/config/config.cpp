@@ -732,10 +732,6 @@ namespace dxvk {
     { R"(\\bionic_commando\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
-    /* Need For Speed 3 modern patch            */
-    { R"(\\nfs3\.exe$)", {{
-      { "d3d9.enableDialogMode",            "True" },
-    }} },
     /* Beyond Good And Evil                     *
      * UI breaks at high fps                     */
     { R"(\\BGE\.exe$)", {{
@@ -1058,6 +1054,23 @@ namespace dxvk {
     /* Zwei: The Ilvard Insurrection             */
     { R"(\\ZWEI2P\.exe$)", {{
       { "d3d9.noExplicitFrontBuffer",       "True" },
+    }} },
+    /* Need for Speed III: Hot Pursuit           *
+       (with the "Modern Patch")                 */
+    { R"(\\nfs3\.exe$)", {{
+      { "d3d9.enableDialogMode",            "True" },
+      { "d3d9.apitraceMode",                "True" },
+      { "d3d8.managedBufferPlacement",     "False" },
+    }} },
+    /* Need for Speed: High Stakes / Road         *
+       Challenge (with the "Modern Patch") -      *
+       Won't actually render anything in game     *
+       without a memory limit in place            */
+    { R"(\\nfs4\.exe$)", {{
+      { "d3d9.enableDialogMode",            "True" },
+      { "d3d9.memoryTrackTest",             "True" },
+      { "d3d9.maxAvailableMemory",           "256" },
+      { "d3d8.managedBufferPlacement",     "False" },
     }} },
   }};
 
