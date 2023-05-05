@@ -466,10 +466,6 @@ namespace dxvk {
     { R"(\\ToEE(a)?\.exe$)", {{
       { "d3d9.allowDiscard",                "False" },
     }} },
-    /* ZUSI 3 - Aerosoft Edition                  */
-    { R"(\\ZusiSim(\.64)?\.exe$)", {{
-      { "d3d9.noExplicitFrontBuffer",       "True" },
-    }} },
     /* GTA IV (NVAPI)                             */
     /* Also thinks we're always on Intel          *
      * and will report/use bad amounts of VRAM.
@@ -546,10 +542,6 @@ namespace dxvk {
     { R"(\\SineMoraEX\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
-    /* Fantasy Grounds                           */
-    { R"(\\FantasyGrounds\.exe$)", {{
-      { "d3d9.noExplicitFrontBuffer",       "True" },
-    }} },
     /* Red Orchestra 2                           */
     { R"(\\ROGame\.exe$)", {{
       { "d3d9.floatEmulation",              "Strict" },
@@ -589,17 +581,6 @@ namespace dxvk {
     /* Limbo                                    */
     { R"(\\limbo\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
-    }} },
-    /* Warhammer: Return of Reckoning Launcher
-       Forcing SM1 fixes a black window otherwise caused by
-       the lack of support for partial presentation */
-    { R"(\\RoRLauncher\.exe$)", {{
-      { "d3d9.shaderModel",                 "1" },
-    }} },
-    /* Halo CE SPV3 launcher
-       Same issue as Warhammer: RoR above       */
-    { R"(\\spv3\.exe$)", {{
-      { "d3d9.shaderModel",                 "1" },
     }} },
     /* Escape from Tarkov launcher
        Same issue as Warhammer: RoR above       */
