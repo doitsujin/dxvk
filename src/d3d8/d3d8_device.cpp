@@ -58,8 +58,11 @@ namespace dxvk {
     ResetState();
   }
 
-
   D3D8DeviceEx::~D3D8DeviceEx() {
+    // Delete any remaining state blocks.
+    for (D3D8StateBlock* block : m_stateBlocks) {
+      delete block;
+    }
   }
 
   HRESULT STDMETHODCALLTYPE D3D8DeviceEx::GetInfo(DWORD DevInfoID, void* pDevInfoStruct, DWORD DevInfoStructSize) {

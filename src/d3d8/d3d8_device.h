@@ -13,6 +13,7 @@
 #include <array>
 #include <vector>
 #include <type_traits>
+#include <unordered_set>
 
 namespace dxvk {
 
@@ -503,6 +504,7 @@ namespace dxvk {
       HRESULT res = GetD3D9()->CreateStateBlock(d3d9::D3DSTATEBLOCKTYPE(Type), &pStateBlock9);
 
       D3D8StateBlock* pStateBlock = new D3D8StateBlock(this, Type, pStateBlock9.ref());
+      m_stateBlocks.insert(pStateBlock);
 
       *pToken = DWORD(reinterpret_cast<uintptr_t>(pStateBlock));
 
@@ -518,7 +520,13 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE DeleteStateBlock(DWORD Token) {
-      delete reinterpret_cast<D3D8StateBlock*>(Token);
+      // "Applications cannot delete a device-state block while another is being recorded"
+      if (unlikely(ShouldRecord()))
+        return D3DERR_INVALIDCALL;
+
+      D3D8StateBlock* block = reinterpret_cast<D3D8StateBlock*>(Token);
+      m_stateBlocks.erase(block);
+
       return D3D_OK;
     }
 
@@ -528,6 +536,7 @@ namespace dxvk {
         return D3DERR_INVALIDCALL;
 
       m_recorder = new D3D8StateBlock(this);
+      m_stateBlocks.insert(m_recorder);
 
       return GetD3D9()->BeginStateBlock();
     }
@@ -893,7 +902,8 @@ namespace dxvk {
 
     D3DPRESENT_PARAMETERS m_presentParams;
 
-    D3D8StateBlock* m_recorder = nullptr;
+    D3D8StateBlock*                      m_recorder = nullptr;
+    std::unordered_set<D3D8StateBlock*>  m_stateBlocks;
 
     struct D3D8VBO {
       Com<D3D8VertexBuffer, false>   buffer = nullptr;
@@ -916,8 +926,8 @@ namespace dxvk {
 
     std::vector<D3D8VertexShaderInfo>           m_vertexShaders;
     std::vector<d3d9::IDirect3DPixelShader9*>   m_pixelShaders;
-    DWORD                       m_currentVertexShader  = 0;  // can be FVF or vs index, can have DXVK_D3D8_SHADER_BIT
-    DWORD                       m_currentPixelShader   = 0;  // will have DXVK_D3D8_SHADER_BIT
+    DWORD                                       m_currentVertexShader  = 0; // can be FVF or vs index (marked by D3DFVF_RESERVED0)
+    DWORD                                       m_currentPixelShader   = 0;
 
     D3DDEVTYPE            m_deviceType;
     HWND                  m_window;
