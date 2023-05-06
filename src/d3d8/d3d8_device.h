@@ -17,14 +17,12 @@
 namespace dxvk {
 
   class D3D8InterfaceEx;
-  class D3D8SwapChainEx;
 
   struct D3D8VertexShaderInfo;
 
   using D3D8DeviceBase = D3D8WrappedObject<d3d9::IDirect3DDevice9, IDirect3DDevice8>;
   class D3D8DeviceEx final : public D3D8DeviceBase {
 
-    friend class D3D8SwapChainEx;
     friend class D3D8StateBlock;
   public:
 
@@ -37,30 +35,7 @@ namespace dxvk {
       D3DPRESENT_PARAMETERS*        pParams);
 
     ~D3D8DeviceEx();
-
-    /* Direct3D 8 Exclusive Methods */
-
-    HRESULT STDMETHODCALLTYPE CopyRects(
-            IDirect3DSurface8* pSourceSurface,
-            CONST RECT* pSourceRectsArray,
-            UINT cRects,
-            IDirect3DSurface8* pDestinationSurface,
-            CONST POINT* pDestPointsArray);
-  
-    HRESULT STDMETHODCALLTYPE GetPixelShaderConstant(DWORD Register, void* pConstantData, DWORD ConstantCount) {
-      return GetD3D9()->GetPixelShaderConstantF(Register, (float*)pConstantData, ConstantCount);
-    }
-
-    HRESULT STDMETHODCALLTYPE GetVertexShaderConstant(DWORD Register, void* pConstantData, DWORD ConstantCount) {
-      return GetD3D9()->GetVertexShaderConstantF(Register, (float*)pConstantData, ConstantCount);
-    }
-    
-    HRESULT STDMETHODCALLTYPE GetPixelShaderFunction(DWORD Handle, void* pData, DWORD* pSizeOfData);
-    HRESULT STDMETHODCALLTYPE GetVertexShaderDeclaration(DWORD Handle, void* pData, DWORD* pSizeOfData);
-    HRESULT STDMETHODCALLTYPE GetVertexShaderFunction(DWORD Handle, void* pData, DWORD* pSizeOfData);
-
-    HRESULT STDMETHODCALLTYPE GetInfo(DWORD DevInfoID, void* pDevInfoStruct, DWORD DevInfoStructSize);
-
+      
     HRESULT STDMETHODCALLTYPE TestCooperativeLevel();
 
     UINT    STDMETHODCALLTYPE GetAvailableTextureMem() { return GetD3D9()->GetAvailableTextureMem(); }
@@ -340,24 +315,6 @@ namespace dxvk {
       return res;
     }
 
-    HRESULT STDMETHODCALLTYPE UpdateTexture(
-            IDirect3DBaseTexture8* pSourceTexture,
-            IDirect3DBaseTexture8* pDestinationTexture) {
-      D3D8Texture2D* src = static_cast<D3D8Texture2D*>(pSourceTexture);
-      D3D8Texture2D* dst = static_cast<D3D8Texture2D*>(pDestinationTexture);
-
-      return GetD3D9()->UpdateTexture(D3D8Texture2D::GetD3D9Nullable(src), D3D8Texture2D::GetD3D9Nullable(dst));
-    }
-
-    HRESULT STDMETHODCALLTYPE GetFrontBuffer(IDirect3DSurface8* pDestSurface) {
-      if (unlikely(pDestSurface == nullptr))
-        return D3DERR_INVALIDCALL;
-      Com<D3D8Surface> surf = static_cast<D3D8Surface*>(pDestSurface);
-      // This actually gets a copy of the front buffer and writes it to pDestSurface
-      return GetD3D9()->GetFrontBufferData(0, D3D8Surface::GetD3D9Nullable(surf));
-    }
-
-    // CreateImageSurface -> CreateOffscreenPlainSurface
     HRESULT STDMETHODCALLTYPE CreateImageSurface(UINT Width, UINT Height, D3DFORMAT Format, IDirect3DSurface8** ppSurface) {
 
       Com<d3d9::IDirect3DSurface9> pSurf = nullptr;
@@ -373,6 +330,30 @@ namespace dxvk {
       *ppSurface = ref(new D3D8Surface(this, std::move(pSurf)));
 
       return res;
+    }
+
+    HRESULT STDMETHODCALLTYPE CopyRects(
+            IDirect3DSurface8*  pSourceSurface,
+      const RECT*               pSourceRectsArray,
+            UINT                cRects,
+            IDirect3DSurface8*  pDestinationSurface,
+      const POINT*              pDestPointsArray);
+
+    HRESULT STDMETHODCALLTYPE UpdateTexture(
+            IDirect3DBaseTexture8* pSourceTexture,
+            IDirect3DBaseTexture8* pDestinationTexture) {
+      D3D8Texture2D* src = static_cast<D3D8Texture2D*>(pSourceTexture);
+      D3D8Texture2D* dst = static_cast<D3D8Texture2D*>(pDestinationTexture);
+
+      return GetD3D9()->UpdateTexture(D3D8Texture2D::GetD3D9Nullable(src), D3D8Texture2D::GetD3D9Nullable(dst));
+    }
+
+    HRESULT STDMETHODCALLTYPE GetFrontBuffer(IDirect3DSurface8* pDestSurface) {
+      if (unlikely(pDestSurface == nullptr))
+        return D3DERR_INVALIDCALL;
+      Com<D3D8Surface> surf = static_cast<D3D8Surface*>(pDestSurface);
+      // This actually gets a copy of the front buffer and writes it to pDestSurface
+      return GetD3D9()->GetFrontBufferData(0, D3D8Surface::GetD3D9Nullable(surf));
     }
 
     HRESULT STDMETHODCALLTYPE SetRenderTarget(IDirect3DSurface8* pRenderTarget, IDirect3DSurface8* pNewZStencil) {
@@ -636,7 +617,7 @@ namespace dxvk {
       return GetD3D9()->ValidateDevice(pNumPasses);
     }
 
-    // Palettes not supported by d9vk, but we pass the values through anyway.
+    HRESULT STDMETHODCALLTYPE GetInfo(DWORD DevInfoID, void* pDevInfoStruct, DWORD DevInfoStructSize);
 
     HRESULT STDMETHODCALLTYPE SetPaletteEntries(UINT PaletteNumber, const PALETTEENTRY* pEntries) {
       return GetD3D9()->SetPaletteEntries(PaletteNumber, pEntries);
@@ -754,6 +735,14 @@ namespace dxvk {
       return GetD3D9()->SetVertexShaderConstantF(StartRegister, reinterpret_cast<const float*>(pConstantData), ConstantCount);
     }
 
+    HRESULT STDMETHODCALLTYPE GetVertexShaderConstant(DWORD Register, void* pConstantData, DWORD ConstantCount) {
+      return GetD3D9()->GetVertexShaderConstantF(Register, (float*)pConstantData, ConstantCount);
+    }
+
+    HRESULT STDMETHODCALLTYPE GetVertexShaderDeclaration(DWORD Handle, void* pData, DWORD* pSizeOfData);
+    
+    HRESULT STDMETHODCALLTYPE GetVertexShaderFunction(DWORD Handle, void* pData, DWORD* pSizeOfData);
+
     HRESULT STDMETHODCALLTYPE SetStreamSource(
             UINT                    StreamNumber,
             IDirect3DVertexBuffer8* pStreamData,
@@ -827,6 +816,10 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE DeletePixelShader(THIS_ DWORD Handle);
 
+    HRESULT STDMETHODCALLTYPE GetPixelShaderConstant(DWORD Register, void* pConstantData, DWORD ConstantCount) {
+      return GetD3D9()->GetPixelShaderConstantF(Register, (float*)pConstantData, ConstantCount);
+    }
+
     HRESULT STDMETHODCALLTYPE SetPixelShaderConstant(
             DWORD StartRegister,
       const void* pConstantData,
@@ -835,7 +828,7 @@ namespace dxvk {
       return GetD3D9()->SetPixelShaderConstantF(StartRegister, reinterpret_cast<const float*>(pConstantData), ConstantCount);
     }
 
-    // Patches not supported by d9vk but pass the values through anyway.
+    HRESULT STDMETHODCALLTYPE GetPixelShaderFunction(DWORD Handle, void* pData, DWORD* pSizeOfData);
 
     HRESULT STDMETHODCALLTYPE DrawRectPatch(
             UINT               Handle,

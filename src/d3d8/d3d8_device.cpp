@@ -8,15 +8,15 @@
 
 namespace dxvk {
 
-  constexpr DWORD isFVF(DWORD Handle) {
+  static constexpr DWORD isFVF(DWORD Handle) {
     return (Handle & D3DFVF_RESERVED0) == 0;
   }
 
-  constexpr DWORD getShaderHandle(DWORD Index) {
+  static constexpr DWORD getShaderHandle(DWORD Index) {
     return (Index << 1) | D3DFVF_RESERVED0;
   }
 
-  constexpr DWORD getShaderIndex(DWORD Handle) {
+  static constexpr DWORD getShaderIndex(DWORD Handle) {
     if ((Handle & D3DFVF_RESERVED0) != 0) {
       return (Handle & ~(D3DFVF_RESERVED0)) >> 1;
     } else {
@@ -72,7 +72,7 @@ namespace dxvk {
     d3d9::IDirect3DQuery9* pQuery = nullptr;
     
     switch (DevInfoID) {
-      // pre-DX8 queries
+      // pre-D3D8 queries
       case 0:
       case D3DDEVINFOID_TEXTUREMANAGER:
       case D3DDEVINFOID_D3DTEXTUREMANAGER:
@@ -81,7 +81,7 @@ namespace dxvk {
       
       case D3DDEVINFOID_VCACHE:
         // Docs say response should be S_FALSE, but we'll let D9VK
-        // decide based on the value of supportVCache. D3D8Ex calls this.
+        // decide based on the value of supportVCache. D3DX8 calls this.
         res = GetD3D9()->CreateQuery(d3d9::D3DQUERYTYPE_VCACHE, &pQuery);
         break;
       case D3DDEVINFOID_RESOURCEMANAGER:
@@ -273,7 +273,7 @@ namespace dxvk {
     return res;
   }
 
-  inline D3D8VertexShaderInfo* getVertexShaderInfo(D3D8DeviceEx* device, DWORD Handle) {
+  static inline D3D8VertexShaderInfo* getVertexShaderInfo(D3D8DeviceEx* device, DWORD Handle) {
     
     Handle = getShaderIndex(Handle);
 
@@ -443,7 +443,7 @@ namespace dxvk {
     return res;
   }
 
-  inline d3d9::IDirect3DPixelShader9* getPixelShaderPtr(D3D8DeviceEx* device, DWORD Handle) {
+  static inline d3d9::IDirect3DPixelShader9* getPixelShaderPtr(D3D8DeviceEx* device, DWORD Handle) {
 
     Handle = getShaderIndex(Handle);
 
