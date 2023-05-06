@@ -27,17 +27,12 @@ namespace dxvk {
     };
 
   public:
-    D3D8InterfaceEx(UINT SDKVersion);
+    D3D8InterfaceEx();
 
-    // IUnknown methods //
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 
-    // IDirect3D8 methods //
-
-    // TODO: RegisterSoftwareDevice //
     HRESULT STDMETHODCALLTYPE RegisterSoftwareDevice(void* pInitializeFunction) {
-      dxvk::Logger::warn("D3D8InterfaceEx::RegisterSoftwareDevice: stub");
-      return D3DERR_INVALIDCALL;
+      return m_d3d9ex->RegisterSoftwareDevice(pInitializeFunction);
     }
 
     UINT STDMETHODCALLTYPE GetAdapterCount() {
@@ -157,22 +152,13 @@ namespace dxvk {
 
   private:
 
-    UINT m_adapterCount;
-    std::vector<UINT> m_adapterModeCounts;
-    std::vector<std::vector<d3d9::D3DDISPLAYMODE>> m_adapterModes;
+    UINT                                            m_adapterCount;
+    std::vector<UINT>                               m_adapterModeCounts;
+    std::vector<std::vector<d3d9::D3DDISPLAYMODE>>  m_adapterModes;
 
-    //void CacheModes(D3D9Format Format);
-
-    //static const char* GetDriverDllName(DxvkGpuVendor vendor);
-
-    d3d9::IDirect3D9Ex* m_d3d9ex;
-
-    bool m_extended;
-
-    IDxvkD3D8InterfaceBridge* m_bridge;
-    D3D8Options               m_d3d8Options;
-
-    //std::vector<D3D9Adapter> m_adapters;
+    d3d9::IDirect3D9Ex*                             m_d3d9ex;
+    IDxvkD3D8InterfaceBridge*                       m_bridge;
+    D3D8Options                                     m_d3d8Options;
   };
 
 }

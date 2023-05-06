@@ -7,8 +7,8 @@
 
 namespace dxvk
 {
-  D3D8InterfaceEx::D3D8InterfaceEx(UINT SDKVersion)
-  {
+  D3D8InterfaceEx::D3D8InterfaceEx() {
+
     d3d9::Direct3DCreate9Ex(D3D_SDK_VERSION, &m_d3d9ex);
 
     // Get the bridge interface to D3D9.
@@ -17,23 +17,19 @@ namespace dxvk
     }
 
     m_adapterCount = m_d3d9ex->GetAdapterCount();
-
     m_adapterModeCounts.resize(m_adapterCount);
     m_adapterModes.reserve(m_adapterCount);
 
     for (UINT adapter = 0; adapter < m_adapterCount; adapter++) {
-
       m_adapterModes.emplace_back();
 
       // cache adapter modes and mode counts for each d3d9 format
       for (d3d9::D3DFORMAT fmt : ADAPTER_FORMATS) {
 
         const UINT modeCount = m_d3d9ex->GetAdapterModeCount(adapter, fmt);
-
         for (UINT mode = 0; mode < modeCount; mode++) {
 
           m_adapterModes[adapter].emplace_back();
-          
           m_d3d9ex->EnumAdapterModes(adapter, fmt, mode, &(m_adapterModes[adapter].back()));
 
           // can't use modeCount as it's only for one fmt
@@ -78,13 +74,11 @@ namespace dxvk
     strncpy(pIdentifier->Driver, identifier9.Driver, MAX_DEVICE_IDENTIFIER_STRING);
     strncpy(pIdentifier->Description, identifier9.Description, MAX_DEVICE_IDENTIFIER_STRING);
 
-    pIdentifier->DriverVersion = identifier9.DriverVersion;
-    pIdentifier->VendorId = identifier9.VendorId;
-    pIdentifier->DeviceId = identifier9.DeviceId;
-    pIdentifier->SubSysId = identifier9.SubSysId;
-    pIdentifier->Revision = identifier9.Revision;
-
-    // copy
+    pIdentifier->DriverVersion    = identifier9.DriverVersion;
+    pIdentifier->VendorId         = identifier9.VendorId;
+    pIdentifier->DeviceId         = identifier9.DeviceId;
+    pIdentifier->SubSysId         = identifier9.SubSysId;
+    pIdentifier->Revision         = identifier9.Revision;
     pIdentifier->DeviceIdentifier = identifier9.DeviceIdentifier;
 
     pIdentifier->WHQLLevel = identifier9.WHQLLevel;
@@ -101,10 +95,10 @@ namespace dxvk
       return D3DERR_INVALIDCALL;
     }
 
-    pMode->Width = m_adapterModes[Adapter][Mode].Width;
-    pMode->Height = m_adapterModes[Adapter][Mode].Height;
-    pMode->RefreshRate = m_adapterModes[Adapter][Mode].RefreshRate;
-    pMode->Format = (D3DFORMAT)m_adapterModes[Adapter][Mode].Format;
+    pMode->Width        = m_adapterModes[Adapter][Mode].Width;
+    pMode->Height       = m_adapterModes[Adapter][Mode].Height;
+    pMode->RefreshRate  = m_adapterModes[Adapter][Mode].RefreshRate;
+    pMode->Format       = D3DFORMAT(m_adapterModes[Adapter][Mode].Format);
     return D3D_OK;
   }
 
@@ -139,7 +133,6 @@ namespace dxvk
 
     return res;
   }
-
 
 
 }
