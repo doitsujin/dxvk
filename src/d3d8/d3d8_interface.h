@@ -1,14 +1,10 @@
 #pragma once
 
-// Implements IDirect3D8
-
 #include "d3d8_include.h"
 #include "d3d8_d3d9_util.h"
 #include "d3d8_options.h"
 #include "d3d8_format.h"
 #include "../d3d9/d3d9_bridge.h"
-
-//#include "../dxvk/dxvk_instance.h"
 
 namespace dxvk {
 
@@ -179,4 +175,4 @@ namespace dxvk {
     //std::vector<D3D9Adapter> m_adapters;
   };
 
-} // namespace dxvk
+}

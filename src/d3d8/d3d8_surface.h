@@ -1,8 +1,5 @@
 #pragma once
 
-
-// Implements IDirect3DSurface8
-
 #include "d3d8_include.h"
 #include "d3d8_subresource.h"
 #include "d3d8_d3d9_util.h"

@@ -142,4 +142,4 @@ namespace dxvk
 
 
 
-} // namespace dxvk
+}

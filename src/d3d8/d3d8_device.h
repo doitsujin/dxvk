@@ -1,7 +1,5 @@
 #pragma once
 
-// Implements IDirect3DDevice8
-
 #include "d3d8_include.h"
 #include "d3d8_texture.h"
 #include "d3d8_buffer.h"
@@ -15,6 +13,7 @@
 #include <array>
 #include <vector>
 #include <type_traits>
+
 namespace dxvk {
 
   class D3D8InterfaceEx;
@@ -32,7 +31,6 @@ namespace dxvk {
     D3D8DeviceEx(
       D3D8InterfaceEx*              pParent,
       Com<d3d9::IDirect3DDevice9>&& pDevice,
-      //D3D8Adapter*                    pAdapter,
       D3DDEVTYPE                    DeviceType,
       HWND                          hFocusWindow,
       DWORD                         BehaviorFlags,

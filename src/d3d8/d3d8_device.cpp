@@ -1,5 +1,4 @@
 #include "d3d8_device.h"
-
 #include "d3d8_interface.h"
 #include "d3d8_shader.h"
 
@@ -26,7 +25,6 @@ namespace dxvk {
   }
 
   struct D3D8VertexShaderInfo {
-    // Vertex Shader
     d3d9::IDirect3DVertexDeclaration9*  pVertexDecl   = nullptr;
     d3d9::IDirect3DVertexShader9*       pVertexShader = nullptr;
     std::vector<DWORD>                  declaration;
@@ -36,7 +34,6 @@ namespace dxvk {
   D3D8DeviceEx::D3D8DeviceEx(
     D3D8InterfaceEx*              pParent,
     Com<d3d9::IDirect3DDevice9>&& pDevice,
-    //D3D8Adapter*                  pAdapter,
     D3DDEVTYPE                    DeviceType,
     HWND                          hFocusWindow,
     DWORD                         BehaviorFlags,
@@ -537,4 +534,4 @@ namespace dxvk {
     return pPixelShader->GetFunction(pData, &SizeOfData);
   }
 
-} // namespace dxvk
+}

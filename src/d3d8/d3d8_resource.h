@@ -5,11 +5,10 @@
 * - SetPrivateData, GetPrivateData, FreePrivateData
 * - SetPriority, GetPriority
 * 
-* - Subclasses must provide: PreLoad, GetType
+* - Subclasses provide: PreLoad, GetType
 */
 
 #include "d3d8_device_child.h"
-
 #include "../util/com/com_private_data.h"
 
 namespace dxvk {
@@ -98,4 +97,4 @@ namespace dxvk {
   };
 
 
-} // namespace dxvk
+}

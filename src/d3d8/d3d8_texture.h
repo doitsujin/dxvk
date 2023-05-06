@@ -11,9 +11,6 @@
 
 namespace dxvk {
 
-
-  // Implements IDirect3DBaseTexture8 (Except GetType) //
-
   template <typename SubresourceType, typename D3D9, typename D3D8>
   class D3D8BaseTexture : public D3D8Resource<D3D9, D3D8> {
 
@@ -107,8 +104,6 @@ namespace dxvk {
 
   };
 
-  // Implements IDirect3DTexture8 //
-
   using D3D8Texture2DBase = D3D8BaseTexture<D3D8Surface, d3d9::IDirect3DTexture9, IDirect3DTexture8>;
   class D3D8Texture2D final : public D3D8Texture2DBase {
 
@@ -146,8 +141,6 @@ namespace dxvk {
     }
 
   };
-
-  // Implements IDirect3DVolumeTexture8 //
 
   using D3D8Texture3DBase = D3D8BaseTexture<D3D8Volume, d3d9::IDirect3DVolumeTexture9, IDirect3DVolumeTexture8>;
   class D3D8Texture3D final : public D3D8Texture3DBase {
@@ -190,9 +183,6 @@ namespace dxvk {
     }
 
   };
-
-
-  // Implements IDirect3DCubeTexture8 //
 
   using D3D8TextureCubeBase = D3D8BaseTexture<D3D8Surface, d3d9::IDirect3DCubeTexture9, IDirect3DCubeTexture8>;
   class D3D8TextureCube final : public D3D8TextureCubeBase {

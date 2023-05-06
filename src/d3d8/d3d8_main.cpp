@@ -1,5 +1,3 @@
-// Main: the location of Direct3DCreate8
-
 #include "d3d8_interface.h"
 
 namespace dxvk {
