@@ -148,6 +148,10 @@ namespace dxvk {
 
     D3D9VkInteropInterface        m_d3d9Interop;
 
+#ifdef _WIN32
+    HMODULE                       m_d3d9Module;
+#endif
+
   };
 
 }

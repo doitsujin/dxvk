@@ -12,6 +12,21 @@ namespace dxvk {
 
   Singleton<DxvkInstance> g_dxvkInstance;
 
+#ifdef _WIN32
+  HMODULE GetCurrentModule() {
+    HMODULE currentModule = nullptr;
+    // Get the module for the address of this function.
+    // Increments reference count for the module,
+    // unlike GetModuleHandle.
+    GetModuleHandleEx(
+      GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
+      (LPCTSTR)GetCurrentModule,
+      &currentModule);
+
+    return currentModule;
+  }
+#endif
+
   D3D9InterfaceEx::D3D9InterfaceEx(bool bExtended)
     : m_instance    ( g_dxvkInstance.acquire() )
     , m_extended    ( bExtended ) 
@@ -64,12 +79,18 @@ namespace dxvk {
       Logger::info("Process set as DPI aware");
       SetProcessDPIAware();
     }
+
+    m_d3d9Module = GetCurrentModule();
 #endif
   }
 
 
   D3D9InterfaceEx::~D3D9InterfaceEx() {
     g_dxvkInstance.release();
+
+#ifdef _WIN32
+    FreeLibrary(m_d3d9Module);
+#endif
   }
 
 
