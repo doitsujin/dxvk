@@ -17,7 +17,7 @@ namespace dxvk {
   /**
    * Standard mapping of vertex input registers v0-v16 to D3D9 usages and usage indices
    * (See D3DVSDE_REGISTER values in d3d8types.h or DirectX 8 docs for vertex shader input registers vN)
-   * 
+   *
    * \cite https://learn.microsoft.com/en-us/windows/win32/direct3d9/mapping-between-a-directx-9-declaration-and-directx-8
   */
   static const BYTE D3D8_VERTEX_INPUT_REGISTERS[D3D8_NUM_VERTEX_INPUT_REGISTERS][2] = {
@@ -39,7 +39,7 @@ namespace dxvk {
     {d3d9::D3DDECLUSAGE_POSITION, 1},      // dcl_position1    v15 ; position 2
     {d3d9::D3DDECLUSAGE_NORMAL, 1},        // dcl_normal1      v16 ; normal 2
   };
-  
+
   /** Width in bytes of each d3d9::D3DDECLTYPE or d3d8 D3DVSDT_TYPE */
   static const BYTE D3D9_DECL_TYPE_SIZES[d3d9::MAXD3DDECLTYPE + 1] = {
     4,  // FLOAT1
@@ -68,7 +68,7 @@ namespace dxvk {
 
   /**
    * Encodes a \ref DxsoShaderInstruction
-   * 
+   *
    * \param [in]  opcode  DxsoOpcode
    * \cite https://learn.microsoft.com/en-us/windows-hardware/drivers/display/instruction-token
    */
@@ -80,7 +80,7 @@ namespace dxvk {
 
   /**
    * Encodes a \ref DxsoRegister
-   * 
+   *
    * \param [in]  regType  DxsoRegisterType
    * \cite https://learn.microsoft.com/en-us/windows-hardware/drivers/display/destination-parameter-token
    */
@@ -96,10 +96,10 @@ namespace dxvk {
     token    |= 1 << 31;                      // bit  31     always 1
     return token;
   }
-  
+
   /**
    * Encodes a \ref DxsoDeclaration
-   * 
+   *
    * \cite https://learn.microsoft.com/en-us/windows-hardware/drivers/display/dcl-instruction
    */
   constexpr DWORD encodeDeclaration(d3d9::D3DDECLUSAGE usage, DWORD index) {
@@ -129,7 +129,7 @@ namespace dxvk {
     // shaderInputRegisters:
     // set bit N to enable input register vN
     DWORD shaderInputRegisters = 0;
-    
+
     d3d9::D3DVERTEXELEMENT9* vertexElements = result.declaration;
     unsigned int elementIdx = 0;
 
@@ -182,8 +182,8 @@ namespace dxvk {
 
           DWORD streamNum = VSD_SHIFT_MASK(token, D3DVSD_STREAMNUMBER);
 
-          currentStream = streamNum;
-          currentOffset = 0; // reset offset  
+          currentStream = WORD(streamNum);
+          currentOffset = 0; // reset offset
 
           dbg << ", num=" << streamNum;
           break;
@@ -196,7 +196,7 @@ namespace dxvk {
           if (token & VSD_SKIP_FLAG) {
             auto skipCount = VSD_SHIFT_MASK(token, D3DVSD_SKIPCOUNT);
             dbg << "SKIP " << " count=" << skipCount;
-            currentOffset += skipCount * sizeof(DWORD);
+            currentOffset += WORD(skipCount) * sizeof(DWORD);
             break;
           }
 
@@ -208,7 +208,7 @@ namespace dxvk {
             D3DVSDE_REGISTER reg  = D3DVSDE_REGISTER(VSD_SHIFT_MASK(token, D3DVSD_VERTEXREG));
 
             addVertexElement(reg, type);
-            
+
             dbg << "type=" << type << ", register=" << reg;
           } else {
             // TODO: When would this bit be 1?
@@ -280,7 +280,7 @@ namespace dxvk {
       DWORD vsMinor = D3DSHADER_VERSION_MINOR(pFunction[0]);
       Logger::debug(str::format("VS version: ", vsMajor, ".", vsMinor));
 
-      // Insert dcl instructions 
+      // Insert dcl instructions
       for (int vn = 0; vn < D3D8_NUM_VERTEX_INPUT_REGISTERS; vn++) {
 
         // If bit N is set then we need to dcl register vN
@@ -312,13 +312,13 @@ namespace dxvk {
 
         // Instructions
         if ((token & VS_BIT_PARAM) == 0) {
-          
+
           // RSQ swizzle fixup
           if (opcode == D3DSIO_RSQ) {
             tokens.push_back(token);                            // instr
             tokens.push_back(token = pFunction[i++]);           // dest
             token = pFunction[i++];                             // src0
-            
+
             // If no swizzling is done, then use the w-component.
             // See d8vk#43 for more information as this may need to change in some cases.
             if (((token & D3DVS_NOSWIZZLE) == D3DVS_NOSWIZZLE)) {
