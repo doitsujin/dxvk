@@ -1,10 +1,6 @@
 #include "d3d8_device.h"
 #include "d3d8_format.h"
 
-/**
- * Implements all cases of CopyRects
- */
-
 namespace dxvk {
 
   // Copies texture rect in system mem using memcpy.
@@ -91,12 +87,28 @@ namespace dxvk {
     return res;
   }
 
+  /**
+   * \brief D3D8 CopyRects implementation
+   * 
+   * \details
+   * The following table shows the possible combinations of source
+   * and destination surface pools, and how we handle each of them.
+   * 
+   *     ┌────────────┬───────────────────────────┬───────────┬───────────────────────┬──────────┐
+   *     │ Src/Dst    │ DEFAULT                   │ MANAGED   │ SYSTEMMEM             │ SCRATCH  │
+   *     ├────────────┼───────────────────────────┼───────────┼───────────────────────┼──────────┤
+   *     │ DEFAULT    │  StretchRect              │  -        │  GetRenderTargetData  │ -        │
+   *     │ MANAGED    │  UpdateTextureFromBuffer  │  memcpy   │  memcpy               │ -        │
+   *     │ SYSTEMMEM  │  UpdateSurface            │  memcpy   │  memcpy               │ -        │
+   *     │ SCRATCH    │  -                        │  -        │  -                    │ -        │
+   *     └────────────┴───────────────────────────┴───────────┴───────────────────────┴──────────┘
+   */
   HRESULT STDMETHODCALLTYPE D3D8DeviceEx::CopyRects(
-          IDirect3DSurface8* pSourceSurface,
-          CONST RECT* pSourceRectsArray,
-          UINT cRects,
-          IDirect3DSurface8* pDestinationSurface,
-          CONST POINT* pDestPointsArray) {
+          IDirect3DSurface8*  pSourceSurface,
+    const RECT*               pSourceRectsArray,
+          UINT                cRects,
+          IDirect3DSurface8*  pDestinationSurface,
+    const POINT*              pDestPointsArray) {
 
     if (pSourceSurface == NULL || pDestinationSurface == NULL) {
       return D3DERR_INVALIDCALL;
@@ -166,7 +178,7 @@ namespace dxvk {
         case D3DPOOL_DEFAULT:
           switch (srcDesc.Pool) {
             case D3DPOOL_DEFAULT: {
-              // default -> default: use StretchRect
+              // DEFAULT -> DEFAULT: use StretchRect
               res = GetD3D9()->StretchRect(
                 src->GetD3D9(),
                 &srcRect,
@@ -187,7 +199,7 @@ namespace dxvk {
               goto done;
             }
             case D3DPOOL_SYSTEMMEM: {
-              // system mem -> default: use UpdateSurface
+              // SYSTEMMEM -> DEFAULT: use UpdateSurface
               res = GetD3D9()->UpdateSurface(
                 src->GetD3D9(),
                 &srcRect,
@@ -308,6 +320,6 @@ namespace dxvk {
     }
 
     return res;
-    
   }
+
 }
