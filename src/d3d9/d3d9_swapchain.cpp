@@ -190,7 +190,7 @@ namespace dxvk {
     m_parent->EndFrame();
     m_parent->Flush();
 
-    if (!std::exchange(m_warnedGDIAboutFallback, true))
+    if (!std::exchange(m_warnedAboutGDIFallback, true))
       Logger::warn("Using GDI for swapchain presentation. This will impact performance.");
 
     HDC hDC;
