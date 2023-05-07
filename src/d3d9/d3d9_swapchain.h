@@ -132,7 +132,7 @@ namespace dxvk {
 
     double                    m_displayRefreshRate = 0.0;
 
-    bool                      m_warnedGDIAboutFallback = false;
+    bool                      m_warnedAboutGDIFallback = false;
 
     void PresentImage(UINT PresentInterval);
 
