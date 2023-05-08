@@ -276,7 +276,7 @@ namespace dxvk {
     return res;
   }
 
-  static inline D3D8VertexShaderInfo* getVertexShaderInfo(D3D8DeviceEx* device, DWORD Handle) {
+  inline D3D8VertexShaderInfo* getVertexShaderInfo(D3D8DeviceEx* device, DWORD Handle) {
     
     Handle = getShaderIndex(Handle);
 
@@ -446,7 +446,7 @@ namespace dxvk {
     return res;
   }
 
-  static inline d3d9::IDirect3DPixelShader9* getPixelShaderPtr(D3D8DeviceEx* device, DWORD Handle) {
+  inline d3d9::IDirect3DPixelShader9* getPixelShaderPtr(D3D8DeviceEx* device, DWORD Handle) {
 
     Handle = getShaderIndex(Handle);
 
