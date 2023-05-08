@@ -1358,14 +1358,16 @@ namespace dxvk {
     std::atomic<int64_t>            m_availableMemory = { 0 };
     std::atomic<int32_t>            m_samplerCount    = { 0 };
 
-    Direct3DState9                  m_state;
-
     D3D9DeviceLostState             m_deviceLostState          = D3D9DeviceLostState::Ok;
     HWND                            m_fullscreenWindow         = NULL;
 
 #ifdef D3D9_ALLOW_UNMAPPING
     lru_list<D3D9CommonTexture*>    m_mappedTextures;
 #endif
+
+    // m_state should be declared last (i.e. freed first), because it
+    // references objects that can call back into the device when freed.
+    Direct3DState9                  m_state;
 
     D3D9VkInteropDevice             m_d3d9Interop;
   };
