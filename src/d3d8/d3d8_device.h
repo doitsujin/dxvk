@@ -896,7 +896,8 @@ namespace dxvk {
 
   private:
 
-    IDxvkD3D8Bridge*      m_bridge;
+    Com<IDxvkD3D8Bridge>  m_bridge;
+    const D3D8Options&    m_d3d8Options;
 
     Com<D3D8InterfaceEx>  m_parent;
 

@@ -16,6 +16,8 @@ namespace dxvk
       throw DxvkError("D3D8DeviceEx: ERROR! Failed to get D3D9 Bridge. d3d9.dll might not be DXVK!");
     }
 
+    m_d3d8Options = m_bridge->GetConfig();
+
     m_adapterCount = m_d3d9ex->GetAdapterCount();
     m_adapterModeCounts.resize(m_adapterCount);
     m_adapterModes.reserve(m_adapterCount);

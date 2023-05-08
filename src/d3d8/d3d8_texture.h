@@ -70,7 +70,7 @@ namespace dxvk {
       
       if (m_subresources[Index] == nullptr) {
         try {
-          Com<SubresourceType9> subresource = LookupSubresource(Index);
+          Com<SubresourceType9> subresource = std::move(LookupSubresource(Index));
 
           // Cache the subresource
           m_subresources[Index] = new SubresourceType(this->m_parent, this, std::move(subresource));
@@ -85,8 +85,8 @@ namespace dxvk {
 
   private:
 
-    SubresourceType9* LookupSubresource(UINT Index) {
-      SubresourceType9* ptr = nullptr;
+    Com<SubresourceType9> LookupSubresource(UINT Index) {
+      Com<SubresourceType9> ptr = nullptr;
       HRESULT res = D3DERR_INVALIDCALL;
       if constexpr (std::is_same_v<D3D8, IDirect3DTexture8>) {
         res = this->GetD3D9()->GetSurfaceLevel(Index, &ptr); 
