@@ -56,12 +56,14 @@ namespace dxvk {
     m_streams.fill(D3D8VBO());
 
     ResetState();
-
-    m_batcher = new D3D8Batcher(m_bridge.ptr(), this, GetD3D9());
+    
+    if (m_d3d8Options.batching)
+      m_batcher = new D3D8Batcher(m_bridge.ptr(), this, GetD3D9());
   }
 
   D3D8DeviceEx::~D3D8DeviceEx() {
-    delete m_batcher;
+    if (m_batcher)
+      delete m_batcher;
     
     // Delete any remaining state blocks.
     for (D3D8StateBlock* block : m_stateBlocks) {

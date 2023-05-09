@@ -1024,6 +1024,7 @@ namespace dxvk {
     { R"(\\MCity_d\.exe$)", {{
       { "d3d9.apitraceMode",                "True" },
       { "d3d8.managedBufferPlacement",     "False" },
+      { "d3d8.batching",                    "True" },
     }} },
     /* Brigade E5: New Jagged Union              */
     { R"(\\E5\.exe$)", {{
