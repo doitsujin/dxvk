@@ -176,8 +176,8 @@ namespace dxvk {
           // 1 2 3, 3 4, 4 5 6
           batch->Indices.resize(batch->Offset + PrimitiveCount + 2);
           if (batch->Offset > 0) {
-            batch->Indices[batch->Offset++] = batch->Indices[batch->Offset-2];
-            batch->Indices[batch->Offset++] = StartVertex;
+            batch->Indices[batch->Offset + 1] = batch->Indices[batch->Offset-2];
+            batch->Indices[batch->Offset += 2] = StartVertex;
           }
           for (UINT i = 0; i < PrimitiveCount; i++) {
             batch->Indices[batch->Offset++] = (StartVertex + i + 0);
