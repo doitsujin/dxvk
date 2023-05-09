@@ -96,7 +96,6 @@ namespace dxvk {
 
   // Essentially the same logic as D3D9VertexDecl::SetFVF
   inline constexpr UINT GetFVFStride(DWORD FVF) {
-    uint32_t elemCount = 0; // TODO: This is not used
     uint32_t texCount = 0;
 
     uint32_t betas = 0;
@@ -112,7 +111,6 @@ namespace dxvk {
       case D3DFVF_XYZB4:
       case D3DFVF_XYZB5:
         size += sizeof(float) * 3;
-        elemCount++;
 
         if ((FVF & D3DFVF_POSITION_MASK) == D3DFVF_XYZ)
           break;
@@ -131,19 +129,16 @@ namespace dxvk {
         if (betas > 0) {
           if (betas <= 4)
             size += sizeof(float) * betas;
-          elemCount++;
         }
 
         if (betaIdx != 0xFF) {
           size += betaIdx;
-          elemCount++;
         }
         break;
 
       case D3DFVF_XYZW:
       case D3DFVF_XYZRHW:
         size += sizeof(float) * 4;
-        elemCount++;
         break;
 
       default:
@@ -152,19 +147,15 @@ namespace dxvk {
 
     if (FVF & D3DFVF_NORMAL) {
       size += sizeof(float) * 3;
-      elemCount++;
     }
     if (FVF & D3DFVF_PSIZE) {
       size += sizeof(float);
-      elemCount++;
     }
     if (FVF & D3DFVF_DIFFUSE) {
       size += sizeof(D3DCOLOR);
-      elemCount++;
     }
     if (FVF & D3DFVF_SPECULAR) {
       size += sizeof(D3DCOLOR);
-      elemCount++;
     }
 
     texCount = (FVF & D3DFVF_TEXCOUNT_MASK) >> D3DFVF_TEXCOUNT_SHIFT;
@@ -191,7 +182,6 @@ namespace dxvk {
         default:
           break;
       }
-      elemCount++;
     }
 
     return size;

@@ -247,17 +247,18 @@ namespace dxvk {
             D3DPOOL                  Pool,
             IDirect3DVertexBuffer8** ppVertexBuffer) {
       InitReturnPtr(ppVertexBuffer);
+
+      if (ShouldBatch()) {
+        *ppVertexBuffer = m_batcher->CreateVertexBuffer(Length, Usage, FVF, Pool);
+        return D3D_OK;
+      }
+
       Com<d3d9::IDirect3DVertexBuffer9> pVertexBuffer9 = nullptr;
 
       auto [usage, realPool] = ChooseBufferPool(Usage, Pool, Length, m_d3d8Options);
       HRESULT res = GetD3D9()->CreateVertexBuffer(Length, usage, FVF, realPool, &pVertexBuffer9, NULL);
 
-      if (FAILED(res))
-        return res;
-      
-      if (ShouldBatch())
-        *ppVertexBuffer = ref(new D3D8BatchBuffer(this, std::move(pVertexBuffer9), Pool, Usage, Length, FVF));
-      else
+      if (!FAILED(res))
         *ppVertexBuffer = ref(new D3D8VertexBuffer(this, std::move(pVertexBuffer9), Pool, Usage));
     
       return res;

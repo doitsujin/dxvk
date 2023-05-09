@@ -57,7 +57,7 @@ namespace dxvk {
 
     ResetState();
 
-    m_batcher = new D3D8Batcher(m_bridge.ptr(), GetD3D9());
+    m_batcher = new D3D8Batcher(m_bridge.ptr(), this, GetD3D9());
   }
 
   D3D8DeviceEx::~D3D8DeviceEx() {

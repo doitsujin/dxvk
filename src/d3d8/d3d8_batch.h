@@ -8,7 +8,7 @@
 #include <vector>
 
 namespace dxvk {
-  
+
   constexpr size_t            D3DPT_COUNT   = size_t(D3DPT_TRIANGLEFAN) + 1;
   constexpr D3DPRIMITIVETYPE  D3DPT_INVALID = D3DPRIMITIVETYPE(0);
 
@@ -18,17 +18,13 @@ namespace dxvk {
    */
   class D3D8BatchBuffer final : public D3D8VertexBuffer {
   public:
-    // TODO: Don't need pBuffer, should avoid allocating it
     D3D8BatchBuffer(
         D3D8DeviceEx*                       pDevice,
-        Com<d3d9::IDirect3DVertexBuffer9>&& pBuffer,
         D3DPOOL                             Pool,
         DWORD                               Usage,
         UINT                                Length,
         DWORD                               FVF)
-      : D3D8VertexBuffer(pDevice, std::move(pBuffer), Pool, Usage)
-      , m_fvf(FVF)
-      , m_stride(GetFVFStride(m_fvf))
+      : D3D8VertexBuffer(pDevice, nullptr, Pool, Usage)
       , m_data(Length) {
     }
 
@@ -58,9 +54,6 @@ namespace dxvk {
     }
 
   private:
-    DWORD m_fvf = 0;
-    UINT  m_stride = 0;
-
     std::vector<BYTE> m_data;
   };
 
@@ -80,9 +73,15 @@ namespace dxvk {
     };
 
   public:
-    D3D8Batcher(D3D9Bridge* bridge, Com<d3d9::IDirect3DDevice9>&& pDevice)
+    D3D8Batcher(D3D9Bridge* bridge, D3D8DeviceEx* pDevice8, Com<d3d9::IDirect3DDevice9>&& pDevice9)
       : m_bridge(bridge)
-      , m_device(std::move(pDevice)) {}
+      , m_device8(pDevice8)
+      , m_device(std::move(pDevice9)) {
+    }
+
+    inline D3D8BatchBuffer* CreateVertexBuffer(UINT Length, DWORD Usage, DWORD FVF, D3DPOOL Pool) {
+      return ref(new D3D8BatchBuffer(m_device8, Pool, Usage, Length, FVF));
+    }
 
     inline void StateChange() {
       if (likely(m_batches.empty()))
@@ -210,7 +209,6 @@ namespace dxvk {
       }
       if (unlikely(m_stream != stream || m_stride != stride)) {
         StateChange();
-        // TODO: Not optimal
         m_stream = static_cast<D3D8BatchBuffer*>(stream);
         m_stride = stride;
       }
@@ -226,6 +224,7 @@ namespace dxvk {
 
   private:
     D3D9Bridge*                     m_bridge;
+    D3D8DeviceEx*                   m_device8;
     Com<d3d9::IDirect3DDevice9>     m_device;
 
     D3D8BatchBuffer*                m_stream = nullptr;
