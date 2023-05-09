@@ -162,7 +162,7 @@ namespace dxvk {
 
     auto linkedAdapter = m_adapter->linkedIGPUAdapter();
 
-    /* If either LUID is not valid enumerate all monitors. */
+    // If either LUID is not valid, enumerate all monitors.
     if (numLUIDs && linkedAdapter != nullptr) {
       const auto& deviceId = linkedAdapter->devicePropertiesExt().vk11;
 
@@ -171,6 +171,10 @@ namespace dxvk {
       else
         numLUIDs = 0;
     }
+
+    // Enumerate all monitors if the robustness fallback is active.
+    if (m_factory->UseMonitorFallback())
+      numLUIDs = 0;
 
     HMONITOR monitor = wsi::enumMonitors(adapterLUIDs.data(), numLUIDs, Output);
 

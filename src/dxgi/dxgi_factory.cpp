@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "dxgi_factory.h"
 #include "dxgi_surface.h"
 #include "dxgi_swapchain.h"
@@ -48,13 +50,55 @@ namespace dxvk {
 
 
   DxgiFactory::DxgiFactory(UINT Flags)
-  : m_instance    (g_dxvkInstance.acquire()),
-    m_interop     (this),
-    m_options     (m_instance->config()),
-    m_monitorInfo (this, m_options),
-    m_flags       (Flags) {
-    for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; i++)
-      m_instance->enumAdapters(i)->logAdapterInfo();
+  : m_instance        (g_dxvkInstance.acquire()),
+    m_interop         (this),
+    m_options         (m_instance->config()),
+    m_monitorInfo     (this, m_options),
+    m_flags           (Flags),
+    m_monitorFallback (false) {
+    // Be robust against situations where some monitors are not
+    // associated with any adapter. This can happen if device
+    // filter options are used.
+    std::vector<HMONITOR> monitors;
+
+    for (uint32_t i = 0; ; i++) {
+      HMONITOR hmon = wsi::enumMonitors(i);
+
+      if (!hmon)
+        break;
+
+      monitors.push_back(hmon);
+    }
+
+    for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; i++) {
+      auto adapter = m_instance->enumAdapters(i);
+      adapter->logAdapterInfo();
+
+      // Remove all monitors that are associated
+      // with the current adapter from the list.
+      const auto& vk11 = adapter->devicePropertiesExt().vk11;
+
+      if (vk11.deviceLUIDValid) {
+        auto luid = reinterpret_cast<const LUID*>(&vk11.deviceLUID);
+
+        for (uint32_t j = 0; ; j++) {
+          HMONITOR hmon = wsi::enumMonitors(&luid, 1, j);
+
+          if (!hmon)
+            break;
+
+          auto entry = std::find(monitors.begin(), monitors.end(), hmon);
+
+          if (entry != monitors.end())
+            monitors.erase(entry);
+        }
+      }
+    }
+
+    // If any monitors are left on the list, enable the
+    // fallback to always enumerate all monitors.
+    if ((m_monitorFallback = !monitors.empty()))
+      Logger::warn("DXGI: Found monitors not associated with any adapter, using fallback");
   }
   
   
