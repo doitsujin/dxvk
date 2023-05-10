@@ -27,7 +27,8 @@ namespace dxvk {
         UINT                                Length,
         DWORD                               FVF)
       : D3D8VertexBuffer(pDevice, nullptr, Pool, Usage)
-      , m_data(Length) {
+      , m_data(Length)
+      , m_fvf(FVF) {
     }
 
     HRESULT STDMETHODCALLTYPE Lock(
@@ -35,12 +36,21 @@ namespace dxvk {
             UINT   SizeToLock,
             BYTE** ppbData,
             DWORD  Flags) {
-
       *ppbData = m_data.data() + OffsetToLock;
       return D3D_OK;
     }
 
     HRESULT STDMETHODCALLTYPE Unlock() {
+      return D3D_OK;
+    }
+
+    HRESULT STDMETHODCALLTYPE GetDesc(D3DVERTEXBUFFER_DESC* pDesc) {
+      pDesc->Format = D3DFMT_VERTEXDATA;
+      pDesc->Type   = D3DRTYPE_VERTEXBUFFER;
+      pDesc->Usage  = m_usage;
+      pDesc->Pool   = m_pool;
+      pDesc->Size   = m_data.size();
+      pDesc->FVF    = m_fvf;
       return D3D_OK;
     }
 
@@ -57,6 +67,7 @@ namespace dxvk {
 
   private:
     std::vector<BYTE> m_data;
+    DWORD             m_fvf;
   };
 
   /**
