@@ -3,7 +3,8 @@
 An implementation of Direct3D 8 for DXVK.
 
 D8VK Documentation:
-  - [List of Supported Games](https://github.com/AlpyneDreams/d8vk/wiki)
+  - [Wiki](https://github.com/AlpyneDreams/d8vk/wiki)
+  - [Installation](https://github.com/AlpyneDreams/d8vk/wiki/Installation)
   - [List of D3D8 Samples](https://github.com/AlpyneDreams/d8vk/wiki/D3D8-Samples)
   - [Building & Debugging](https://github.com/AlpyneDreams/d8vk/wiki/Building-&-Debugging)
 
