@@ -1074,6 +1074,11 @@ namespace dxvk {
       { "d3d8.managedBufferPlacement",     "False" },
       { "d3d8.batching",                    "True" },
     }} },
+    /* Project I.G.I. 2: Covert Strike            */
+    { R"(\\igi2\.exe$)", {{
+      { "d3d9.managedBufferPlacement",     "False" },
+      { "d3d9.apitraceMode",                "True" },
+    }} },
   }};
 
 
