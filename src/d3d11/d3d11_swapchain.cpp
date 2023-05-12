@@ -32,7 +32,7 @@ namespace dxvk {
   }
 
   static float ConvertMinLuminance(UINT dxgiLuminance) {
-    return float(dxgiLuminance) / 0.0001f;
+    return float(dxgiLuminance) * 0.0001f;
   }
 
   static float ConvertLevel(UINT16 dxgiLevel) {
