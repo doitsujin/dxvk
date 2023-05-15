@@ -29,7 +29,8 @@ namespace dxvk {
     , m_context          (m_device->createContext(DxvkContextType::Supplementary))
     , m_frameLatencyCap  (pDevice->GetOptions()->maxFrameLatency)
     , m_frameLatencySignal(new sync::Fence(m_frameId))
-    , m_dialog           (pDevice->GetOptions()->enableDialogMode) {
+    , m_dialog           (pDevice->GetOptions()->enableDialogMode)
+    , m_swapchainExt     (this) {
     this->NormalizePresentParameters(pPresentParams);
     m_presentParams = *pPresentParams;
     m_window = m_presentParams.hDeviceWindow;
@@ -83,6 +84,11 @@ namespace dxvk {
      || riid == __uuidof(IDirect3DSwapChain9)
      || (GetParent()->IsExtended() && riid == __uuidof(IDirect3DSwapChain9Ex))) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3D9VkExtSwapchain)) {
+      *ppvObject = ref(&m_swapchainExt);
       return S_OK;
     }
 
@@ -762,6 +768,11 @@ namespace dxvk {
         status = m_presenter->acquireNextImage(sync, imageIndex);
       }
 
+      if (m_hdrMetadata && m_dirtyHdrMetadata) {
+        m_presenter->setHdrMetadata(*m_hdrMetadata);
+        m_dirtyHdrMetadata = false;
+      }
+
       m_context->beginRecording(
         m_device->createCommandList());
 
@@ -1086,27 +1097,36 @@ namespace dxvk {
       case D3D9Format::X8R8G8B8:
       case D3D9Format::A8B8G8R8:
       case D3D9Format::X8B8G8R8: {
-        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_UNORM, m_colorspace };
+        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_UNORM, m_colorspace };
       } break;
 
       case D3D9Format::A2R10G10B10:
       case D3D9Format::A2B10G10R10: {
-        pDstFormats[n++] = { VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        pDstFormats[n++] = { VK_FORMAT_A2R10G10B10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_A2B10G10R10_UNORM_PACK32, m_colorspace };
+        pDstFormats[n++] = { VK_FORMAT_A2R10G10B10_UNORM_PACK32, m_colorspace };
       } break;
 
       case D3D9Format::X1R5G5B5:
       case D3D9Format::A1R5G5B5: {
-        pDstFormats[n++] = { VK_FORMAT_B5G5R5A1_UNORM_PACK16, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        pDstFormats[n++] = { VK_FORMAT_R5G5B5A1_UNORM_PACK16, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        pDstFormats[n++] = { VK_FORMAT_A1R5G5B5_UNORM_PACK16, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_B5G5R5A1_UNORM_PACK16, m_colorspace };
+        pDstFormats[n++] = { VK_FORMAT_R5G5B5A1_UNORM_PACK16, m_colorspace };
+        pDstFormats[n++] = { VK_FORMAT_A1R5G5B5_UNORM_PACK16, m_colorspace };
       } break;
 
       case D3D9Format::R5G6B5: {
-        pDstFormats[n++] = { VK_FORMAT_B5G6R5_UNORM_PACK16, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        pDstFormats[n++] = { VK_FORMAT_R5G6B5_UNORM_PACK16, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_B5G6R5_UNORM_PACK16, m_colorspace };
+        pDstFormats[n++] = { VK_FORMAT_R5G6B5_UNORM_PACK16, m_colorspace };
       } break;
+
+      case D3D9Format::A16B16G16R16F: {
+        if (m_unlockAdditionalFormats) {
+          pDstFormats[n++] = { VK_FORMAT_R16G16B16A16_SFLOAT, m_colorspace };
+        } else {
+          Logger::warn(str::format("D3D9SwapChainEx: Unexpected format: ", Format));      
+        }
+        break;
+      }
     }
 
     return n;
@@ -1301,6 +1321,93 @@ namespace dxvk {
 
   std::string D3D9SwapChainEx::GetApiName() {
     return this->GetParent()->IsExtended() ? "D3D9Ex" : "D3D9";
+  }
+
+  D3D9VkExtSwapchain::D3D9VkExtSwapchain(D3D9SwapChainEx *pSwapChain)
+    : m_swapchain(pSwapChain) {
+
+  }
+  
+  ULONG STDMETHODCALLTYPE D3D9VkExtSwapchain::AddRef() {
+    return m_swapchain->AddRef();
+  }
+  
+  ULONG STDMETHODCALLTYPE D3D9VkExtSwapchain::Release() {
+    return m_swapchain->Release();
+  }
+  
+  HRESULT STDMETHODCALLTYPE D3D9VkExtSwapchain::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    return m_swapchain->QueryInterface(riid, ppvObject);
+  }
+
+  BOOL STDMETHODCALLTYPE D3D9VkExtSwapchain::CheckColorSpaceSupport(
+          VkColorSpaceKHR           ColorSpace) {
+    return m_swapchain->m_presenter->supportsColorSpace(ColorSpace);
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D9VkExtSwapchain::SetColorSpace(
+          VkColorSpaceKHR           ColorSpace) {
+    if (!CheckColorSpaceSupport(ColorSpace))
+      return D3DERR_INVALIDCALL;
+    
+    m_swapchain->m_dirty |= ColorSpace != m_swapchain->m_colorspace;
+    m_swapchain->m_colorspace = ColorSpace;
+
+    return S_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D9VkExtSwapchain::SetHDRMetaData(
+    const VkHdrMetadataEXT          *pHDRMetadata) {
+    if (!pHDRMetadata)
+      return D3DERR_INVALIDCALL;
+
+    m_swapchain->m_hdrMetadata      = *pHDRMetadata;
+    m_swapchain->m_dirtyHdrMetadata = true;
+
+    return S_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D9VkExtSwapchain::GetCurrentOutputDesc(
+          D3D9VkExtOutputMetadata   *pOutputDesc) {
+    HMONITOR monitor = m_swapchain->m_monitor;
+    if (!monitor)
+      monitor = wsi::getDefaultMonitor();
+    // ^ this should be the display we are mostly covering someday.
+
+    wsi::WsiEdidData edidData = wsi::getMonitorEdid(monitor);
+    wsi::WsiDisplayMetadata metadata = {};
+    {
+      std::optional<wsi::WsiDisplayMetadata> r_metadata = std::nullopt;
+      if (!edidData.empty())
+        r_metadata = wsi::parseColorimetryInfo(edidData);
+
+      if (r_metadata)
+        metadata = *r_metadata;
+      else
+        Logger::err("D3D9: Failed to parse display metadata + colorimetry info, using blank.");
+    }
+
+
+    NormalizeDisplayMetadata(CheckColorSpaceSupport(VK_COLOR_SPACE_HDR10_ST2084_EXT), metadata);
+
+    pOutputDesc->RedPrimary[0]         = metadata.redPrimary[0];
+    pOutputDesc->RedPrimary[1]         = metadata.redPrimary[1];
+    pOutputDesc->GreenPrimary[0]       = metadata.greenPrimary[0];
+    pOutputDesc->GreenPrimary[1]       = metadata.greenPrimary[1];
+    pOutputDesc->BluePrimary[0]        = metadata.bluePrimary[0];
+    pOutputDesc->BluePrimary[1]        = metadata.bluePrimary[1];
+    pOutputDesc->WhitePoint[0]         = metadata.whitePoint[0];
+    pOutputDesc->WhitePoint[1]         = metadata.whitePoint[1];
+    pOutputDesc->MinLuminance          = metadata.minLuminance;
+    pOutputDesc->MaxLuminance          = metadata.maxLuminance;
+    pOutputDesc->MaxFullFrameLuminance = metadata.maxFullFrameLuminance;
+    return S_OK;
+  }
+
+  void STDMETHODCALLTYPE D3D9VkExtSwapchain::UnlockAdditionalFormats() {
+    m_swapchain->m_unlockAdditionalFormats = true;
   }
 
 }

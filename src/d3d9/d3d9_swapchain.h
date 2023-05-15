@@ -18,10 +18,43 @@
 namespace dxvk {
 
   class D3D9Surface;
+  class D3D9SwapChainEx;
+
+  class D3D9VkExtSwapchain final : public ID3D9VkExtSwapchain {
+  public:
+    D3D9VkExtSwapchain(D3D9SwapChainEx *pSwapChain);
+    
+    ULONG STDMETHODCALLTYPE AddRef();
+    
+    ULONG STDMETHODCALLTYPE Release();
+    
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                  riid,
+            void**                  ppvObject);
+
+    BOOL STDMETHODCALLTYPE CheckColorSpaceSupport(
+            VkColorSpaceKHR           ColorSpace);
+
+    HRESULT STDMETHODCALLTYPE SetColorSpace(
+            VkColorSpaceKHR           ColorSpace);
+
+    HRESULT STDMETHODCALLTYPE SetHDRMetaData(
+      const VkHdrMetadataEXT          *pHDRMetadata);
+
+    HRESULT STDMETHODCALLTYPE GetCurrentOutputDesc(
+            D3D9VkExtOutputMetadata   *pOutputDesc);
+
+    void STDMETHODCALLTYPE UnlockAdditionalFormats();
+
+  private:
+    D3D9SwapChainEx *m_swapchain;
+  };
 
   using D3D9SwapChainExBase = D3D9DeviceChild<IDirect3DSwapChain9Ex>;
   class D3D9SwapChainEx final : public D3D9SwapChainExBase {
     static constexpr uint32_t NumControlPoints = 256;
+
+    friend class D3D9VkExtSwapchain;
   public:
 
     D3D9SwapChainEx(
@@ -85,6 +118,8 @@ namespace dxvk {
 
     void SyncFrameLatency();
 
+    bool HasFormatsUnlocked() const { return m_unlockAdditionalFormats; }
+
   private:
 
     enum BindingIds : uint32_t {
@@ -133,6 +168,14 @@ namespace dxvk {
     double                    m_displayRefreshRate = 0.0;
 
     bool                      m_warnedAboutGDIFallback = false;
+
+    VkColorSpaceKHR           m_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+
+    std::optional<VkHdrMetadataEXT> m_hdrMetadata;
+    bool m_dirtyHdrMetadata = true;
+    bool m_unlockAdditionalFormats = false;
+
+    D3D9VkExtSwapchain m_swapchainExt;
 
     void PresentImage(UINT PresentInterval);
 
