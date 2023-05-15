@@ -20,60 +20,6 @@
 
 namespace dxvk {
 
-  static void NormalizeDisplayMetadata(const DxgiMonitorInfo *pMonitorInfo, wsi::WsiDisplayMetadata& metadata) {
-    // Use some dummy info when we have no hdr static metadata for the
-    // display or we were unable to obtain an EDID.
-    //
-    // These dummy values are the same as what Windows DXGI will output
-    // for panels with broken EDIDs such as LG OLEDs displays which
-    // have an entirely zeroed out luminance section in the hdr static
-    // metadata block.
-    //
-    // (Spec has 0 as 'undefined', which isn't really useful for an app
-    // to tonemap against.)
-    if (metadata.minLuminance == 0.0f)
-      metadata.minLuminance = 0.01f;
-
-    if (metadata.maxLuminance == 0.0f)
-      metadata.maxLuminance = 1499.0f;
-
-    if (metadata.maxFullFrameLuminance == 0.0f)
-      metadata.maxFullFrameLuminance = 799.0f;
-
-    // If we have no RedPrimary/GreenPrimary/BluePrimary/WhitePoint due to
-    // the lack of a monitor exposing the chroma block or the lack of an EDID,
-    // simply just fall back to Rec.709 or P3 values depending on the default
-    // ColorSpace we started in.
-    // (Don't change based on punting, as this should be static for a display.)
-    if (metadata.redPrimary[0]   == 0.0f && metadata.redPrimary[1]   == 0.0f
-     && metadata.greenPrimary[0] == 0.0f && metadata.greenPrimary[1] == 0.0f
-     && metadata.bluePrimary[0]  == 0.0f && metadata.bluePrimary[1]  == 0.0f
-     && metadata.whitePoint[0]   == 0.0f && metadata.whitePoint[1]   == 0.0f) {
-      if (pMonitorInfo->DefaultColorSpace() == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709) {
-        // sRGB ColorSpace -> Rec.709 Primaries
-        metadata.redPrimary[0]   = 0.640f;
-        metadata.redPrimary[1]   = 0.330f;
-        metadata.greenPrimary[0] = 0.300f;
-        metadata.greenPrimary[1] = 0.600f;
-        metadata.bluePrimary[0]  = 0.150f;
-        metadata.bluePrimary[1]  = 0.060f;
-        metadata.whitePoint[0]   = 0.3127f;
-        metadata.whitePoint[1]   = 0.3290f;
-      } else {
-        // HDR10 ColorSpace -> P3 Primaries
-        metadata.redPrimary[0]   = 0.680f;
-        metadata.redPrimary[1]   = 0.320f;
-        metadata.greenPrimary[0] = 0.265f;
-        metadata.greenPrimary[1] = 0.690f;
-        metadata.bluePrimary[0]  = 0.150f;
-        metadata.bluePrimary[1]  = 0.060f;
-        metadata.whitePoint[0]   = 0.3127f;
-        metadata.whitePoint[1]   = 0.3290f;
-      }
-    }
-  }
-
-  
   DxgiOutput::DxgiOutput(
     const Com<DxgiFactory>& factory,
     const Com<DxgiAdapter>& adapter,
@@ -724,7 +670,7 @@ namespace dxvk {
 
     // Normalize either the display metadata we got back, or our
     // blank one to get something sane here.
-    NormalizeDisplayMetadata(m_monitorInfo, m_metadata);
+    NormalizeDisplayMetadata(m_monitorInfo->DefaultColorSpace() != DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709, m_metadata);
 
     monitorData.FrameStats.SyncQPCTime.QuadPart = dxvk::high_resolution_clock::get_counter();
     monitorData.GammaCurve.Scale = { 1.0f, 1.0f, 1.0f };
