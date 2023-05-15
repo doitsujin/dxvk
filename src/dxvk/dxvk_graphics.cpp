@@ -397,7 +397,8 @@ namespace dxvk {
     std::array<VkDynamicState, 4> dynamicStates = { };
 
     if (m_device->features().extExtendedDynamicState3.extendedDynamicState3RasterizationSamples
-     && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleMask) {
+     && m_device->features().extExtendedDynamicState3.extendedDynamicState3SampleMask
+     && state.msInfo.sampleShadingEnable) {
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT;
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_SAMPLE_MASK_EXT;
 
@@ -891,6 +892,9 @@ namespace dxvk {
     
     if (m_barrier.access & VK_ACCESS_SHADER_WRITE_BIT)
       m_flags.set(DxvkGraphicsPipelineFlag::HasStorageDescriptors);
+
+    if (m_shaders.fs != nullptr && m_shaders.fs->flags().test(DxvkShaderFlag::HasSampleRateShading))
+      m_flags.set(DxvkGraphicsPipelineFlag::HasSampleRateShading);
   }
   
   

@@ -201,15 +201,26 @@ namespace dxvk {
     if (riid == __uuidof(IDirect3DDevice9Ex))
       return E_NOINTERFACE;
 
-    Logger::warn("D3D9DeviceEx::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(IDirect3DDevice9), riid)) {
+      Logger::warn("D3D9DeviceEx::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::TestCooperativeLevel() {
+    D3D9DeviceLock lock = LockDevice();
+
     // Equivelant of D3D11/DXGI present tests. We can always present.
-    return D3D_OK;
+    if (likely(m_deviceLostState == D3D9DeviceLostState::Ok)) {
+      return D3D_OK;
+    } else if (m_deviceLostState == D3D9DeviceLostState::NotReset) {
+      return D3DERR_DEVICENOTRESET;
+    } else {
+      return D3DERR_DEVICELOST;
+    }
   }
 
 
@@ -379,13 +390,14 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) {
     D3D9DeviceLock lock = LockDevice();
 
+    Logger::info("Device reset");
+    m_deviceLostState = D3D9DeviceLostState::Ok;
+
     HRESULT hr = ResetSwapChain(pPresentationParameters, nullptr);
     if (FAILED(hr))
       return hr;
 
-    hr = ResetState(pPresentationParameters);
-    if (FAILED(hr))
-      return hr;
+    ResetState(pPresentationParameters);
 
     Flush();
     SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
@@ -907,6 +919,10 @@ namespace dxvk {
           IDirect3DSurface9* pRenderTarget,
           IDirect3DSurface9* pDestSurface) {
     D3D9DeviceLock lock = LockDevice();
+
+    if (unlikely(IsDeviceLost())) {
+      return D3DERR_DEVICELOST;
+    }
 
     D3D9Surface* src = static_cast<D3D9Surface*>(pRenderTarget);
     D3D9Surface* dst = static_cast<D3D9Surface*>(pDestSurface);
@@ -1599,6 +1615,10 @@ namespace dxvk {
     // This works around that.
     uint32_t alignment = m_d3d9Options.lenientClear ? 8 : 1;
 
+    if (extent.width == 0 || extent.height == 0) {
+      return D3D_OK;
+    }
+
     if (!Count) {
       // Clear our viewport & scissor minified region in this rendertarget.
       ClearViewRect(alignment, offset, extent);
@@ -1611,6 +1631,11 @@ namespace dxvk {
           std::max<int32_t>(pRects[i].y1, offset.y),
           0
         };
+
+        if (std::min<int32_t>(pRects[i].x2, offset.x + extent.width) <= rectOffset.x
+          || std::min<int32_t>(pRects[i].y2, offset.y + extent.height) <= rectOffset.y) {
+          continue;
+        }
 
         VkExtent3D rectExtent = {
           std::min<uint32_t>(pRects[i].x2, offset.x + extent.width)  - rectOffset.x,
@@ -2301,13 +2326,8 @@ namespace dxvk {
     if (unlikely(pValue == nullptr))
       return D3DERR_INVALIDCALL;
 
-    *pValue = 0;
-
-    if (unlikely(Stage >= caps::TextureStageCount))
-      return D3DERR_INVALIDCALL;
-
-    if (unlikely(dxvkType >= TextureStageStateCount))
-      return D3DERR_INVALIDCALL;
+    Stage = std::min(Stage, DWORD(caps::TextureStageCount - 1));
+    dxvkType = std::min(dxvkType, D3D9TextureStageStateTypes(DXVK_TSS_COUNT - 1));
 
     *pValue = m_state.textureStages[Stage][dxvkType];
 
@@ -2358,10 +2378,12 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::ValidateDevice(DWORD* pNumPasses) {
+    D3D9DeviceLock lock = LockDevice();
+
     if (pNumPasses != nullptr)
       *pNumPasses = 1;
 
-    return D3D_OK;
+    return IsDeviceLost() ? D3DERR_DEVICELOST : D3D_OK;
   }
 
 
@@ -3719,6 +3741,10 @@ namespace dxvk {
     if (!m_implicitSwapchain->GetPresentParams()->Windowed)
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(IsDeviceLost())) {
+      return D3DERR_DEVICELOST;
+    }
+
     m_implicitSwapchain->Invalidate(pPresentationParameters->hDeviceWindow);
 
     try {
@@ -3873,13 +3899,13 @@ namespace dxvk {
           DWORD                      Stage,
           D3D9TextureStageStateTypes Type,
           DWORD                      Value) {
+    
+    // Clamp values instead of checking and returning INVALID_CALL
+    // Matches tests + Dawn of Magic 2 relies on it.
+    Stage = std::min(Stage, DWORD(caps::TextureStageCount - 1));
+    Type = std::min(Type, D3D9TextureStageStateTypes(DXVK_TSS_COUNT - 1));
+
     D3D9DeviceLock lock = LockDevice();
-
-    if (unlikely(Stage >= caps::TextureStageCount))
-      return D3DERR_INVALIDCALL;
-
-    if (unlikely(Type >= TextureStageStateCount))
-      return D3DERR_INVALIDCALL;
 
     if (unlikely(ShouldRecord()))
       return m_recorder->SetStateTextureStageState(Stage, Type, Value);
@@ -4231,10 +4257,15 @@ namespace dxvk {
 
     if (FormatInfo != nullptr) {
       elementSize = FormatInfo->elementSize;
+      VkExtent3D blockSize = FormatInfo->blockSize;
+      if (unlikely(FormatInfo->flags.test(DxvkFormatFlag::MultiPlane))) {
+        elementSize = FormatInfo->planes[0].elementSize;
+        blockSize = { FormatInfo->planes[0].blockSize.width, FormatInfo->planes[0].blockSize.height, 1u };
+      }
 
-      offsets[0] = offsets[0] / FormatInfo->blockSize.depth;
-      offsets[1] = offsets[1] / FormatInfo->blockSize.height;
-      offsets[2] = offsets[2] / FormatInfo->blockSize.width;
+      offsets[0] = offsets[0] / blockSize.depth;
+      offsets[1] = offsets[1] / blockSize.height;
+      offsets[2] = offsets[2] / blockSize.width;
     }
 
     return offsets[0] * SlicePitch +
@@ -4320,7 +4351,7 @@ namespace dxvk {
     // then we need to copy -> buffer
     // We are also always dirty if we are a render target,
     // a depth stencil, or auto generate mipmaps.
-    bool needsReadback = pResource->NeedsReadback(Subresource) || renderable;
+    bool needsReadback = (pResource->NeedsReadback(Subresource) || renderable) && !(Flags & D3DLOCK_DISCARD);
     pResource->SetNeedsReadback(Subresource, false);
 
 
@@ -4332,11 +4363,15 @@ namespace dxvk {
     // Don't use MapTexture here to keep the mapped list small while the resource is still locked.
     void* mapPtr = pResource->GetData(Subresource);
 
-    if (needsReadback) {
+    if (unlikely(needsReadback)) {
       DxvkBufferSlice mappedBufferSlice = pResource->GetBufferSlice(Subresource);
       const Rc<DxvkBuffer> mappedBuffer = pResource->GetBuffer();
 
-      if (unlikely(needsReadback) && pResource->GetImage() != nullptr) {
+      if (unlikely(pResource->GetFormatMapping().ConversionFormatInfo.FormatType != D3D9ConversionFormat_None)) {
+        Logger::err(str::format("Reading back format", pResource->Desc()->Format, " is not supported. It is uploaded using the fomrat converter."));
+      }
+
+      if (pResource->GetImage() != nullptr) {
         Rc<DxvkImage> resourceImage = pResource->GetImage();
 
         Rc<DxvkImage> mappedImage = resourceImage->info().sampleCount != 1
@@ -4421,9 +4456,15 @@ namespace dxvk {
       pLockedBox->RowPitch   = align(std::max(desc.Width >> MipLevel, 1u), 4);
       pLockedBox->SlicePitch = pLockedBox->RowPitch * std::max(desc.Height >> MipLevel, 1u);
     }
-    else {
-      // Data is tightly packed within the mapped buffer.
+    else if (likely(!formatInfo->flags.test(DxvkFormatFlag::MultiPlane))) {
       pLockedBox->RowPitch   = align(formatInfo->elementSize * blockCount.width, 4);
+      pLockedBox->SlicePitch = pLockedBox->RowPitch * blockCount.height;
+    } else {
+      auto plane = &formatInfo->planes[0];
+      uint32_t planeElementSize = plane->elementSize;
+      VkExtent3D planeBlockSize = { plane->blockSize.width, plane->blockSize.height, 1u };
+      VkExtent3D blockCount  = util::computeBlockCount(levelExtent, planeBlockSize);
+      pLockedBox->RowPitch   = align(planeElementSize * blockCount.width, 4);
       pLockedBox->SlicePitch = pLockedBox->RowPitch * blockCount.height;
     }
 
@@ -4510,6 +4551,9 @@ namespace dxvk {
          shouldToss &= !pResource->IsManaged();
          shouldToss &= !pResource->IsAnySubresourceLocked();
 
+    // The texture converter cannot handle converting back. So just keep textures in memory as a workaround.
+    shouldToss &= pResource->GetFormatMapping().ConversionFormatInfo.FormatType == D3D9ConversionFormat_None;
+
     if (shouldToss)
       pResource->DestroyBuffer();
 
@@ -4557,7 +4601,7 @@ namespace dxvk {
     // Now that data has been written into the buffer,
     // we need to copy its contents into the image
 
-    auto formatInfo  = lookupFormatInfo(image->info().format);
+    auto formatInfo = lookupFormatInfo(pDestTexture->GetFormatMapping().FormatColor);
     auto srcSubresource = pSrcTexture->GetSubresourceFromIndex(
       formatInfo->aspectMask, SrcSubresource);
 
@@ -4567,7 +4611,6 @@ namespace dxvk {
 
     VkExtent3D dstTexLevelExtent = image->mipLevelExtent(dstSubresource.mipLevel);
     VkExtent3D srcTexLevelExtent = util::computeMipLevelExtent(pSrcTexture->GetExtent(), srcSubresource.mipLevel);
-    VkExtent3D srcTexLevelExtentBlockCount = util::computeBlockCount(srcTexLevelExtent, formatInfo->blockSize);
 
     auto convertFormat = pDestTexture->GetFormatMapping().ConversionFormatInfo;
 
@@ -4615,8 +4658,7 @@ namespace dxvk {
         slice.mapPtr, srcData, extentBlockCount, formatInfo->elementSize,
         pitch, pitch * srcTexLevelExtentBlockCount.height);
 
-
-      VkFormat packedFormat = GetPackedDepthStencilFormat(pDestTexture->Desc()->Format);
+      VkFormat packedDSFormat = GetPackedDepthStencilFormat(pDestTexture->Desc()->Format);
 
       EmitCs([
         cSrcSlice       = slice.slice,
@@ -4624,7 +4666,7 @@ namespace dxvk {
         cDstLayers      = dstLayers,
         cDstLevelExtent = alignedExtent,
         cOffset         = alignedDestOffset,
-        cPackedFormat     = packedFormat
+        cPackedDSFormat = packedDSFormat
       ] (DxvkContext* ctx) {
         if (cDstLayers.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
           ctx->copyBufferToImage(
@@ -4640,19 +4682,14 @@ namespace dxvk {
                 cSrcSlice.buffer(), cSrcSlice.offset(),
                 VkOffset2D { 0, 0 },
                 VkExtent2D { cDstLevelExtent.width, cDstLevelExtent.height },
-                cPackedFormat);
+                cPackedDSFormat);
         }
       });
 
       TrackTextureMappingBufferSequenceNumber(pSrcTexture, SrcSubresource);
     }
     else {
-      const DxvkFormatInfo* formatInfo = lookupFormatInfo(pDestTexture->GetFormatMapping().FormatColor);
       const void* mapPtr = MapTexture(pSrcTexture, SrcSubresource);
-
-      // Add more blocks for the other planes that we might have.
-      // TODO: PLEASE CLEAN ME
-      srcTexLevelExtentBlockCount.height *= std::min(convertFormat.PlaneCount, 2u);
 
       if (unlikely(SrcOffset.x != 0 || SrcOffset.y != 0 || SrcOffset.z != 0
         || DestOffset.x != 0 || DestOffset.y != 0 || DestOffset.z != 0
@@ -4665,20 +4702,32 @@ namespace dxvk {
         return;
       }
 
+      uint32_t formatElementSize = formatInfo->elementSize;
+      VkExtent3D srcBlockSize = formatInfo->blockSize;
+      if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane)) {
+        formatElementSize = formatInfo->planes[0].elementSize;
+        srcBlockSize = { formatInfo->planes[0].blockSize.width, formatInfo->planes[0].blockSize.height, 1u };
+      }
+      VkExtent3D srcBlockCount = util::computeBlockCount(srcTexLevelExtent, srcBlockSize);
+      srcBlockCount.height *= std::min(pSrcTexture->GetPlaneCount(), 2u);
+
       // the converter can not handle the 4 aligned pitch so we always repack into a staging buffer
       D3D9BufferSlice slice = AllocStagingBuffer(pSrcTexture->GetMipSize(SrcSubresource));
-      VkDeviceSize pitch = align(srcTexLevelExtentBlockCount.width * formatInfo->elementSize, 4);
+      VkDeviceSize pitch = align(srcBlockCount.width * formatElementSize, 4);
+
+      const DxvkFormatInfo* convertedFormatInfo = lookupFormatInfo(convertFormat.FormatColor);      
+      VkImageSubresourceLayers convertedDstLayers = { convertedFormatInfo->aspectMask, dstSubresource.mipLevel, dstSubresource.arrayLayer, 1 };
 
       util::packImageData(
-        slice.mapPtr, mapPtr, srcTexLevelExtentBlockCount, formatInfo->elementSize,
-        pitch, std::min(convertFormat.PlaneCount, 2u) * pitch * srcTexLevelExtentBlockCount.height);
+        slice.mapPtr, mapPtr, srcBlockCount, formatElementSize,
+        pitch, std::min(pSrcTexture->GetPlaneCount(), 2u) * pitch * srcBlockCount.height);
 
       Flush();
       SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
 
       m_converter->ConvertFormat(
         convertFormat,
-        image, dstLayers,
+        image, convertedDstLayers,
         slice.slice);
     }
     UnmapTextures();
@@ -5145,11 +5194,11 @@ namespace dxvk {
   void D3D9DeviceEx::UploadConstants() {
     if constexpr (ShaderStage == DxsoProgramTypes::VertexShader) {
       if (CanSWVP())
-        return UploadSoftwareConstantSet(m_state.vsConsts, m_vsLayout);
+        return UploadSoftwareConstantSet(m_state.vsConsts.get(), m_vsLayout);
       else
-        return UploadConstantSet<ShaderStage, D3D9ShaderConstantsVSHardware>(m_state.vsConsts, m_vsLayout, m_state.vertexShader);
+        return UploadConstantSet<ShaderStage, D3D9ShaderConstantsVSHardware>(m_state.vsConsts.get(), m_vsLayout, m_state.vertexShader);
     } else {
-      return UploadConstantSet<ShaderStage, D3D9ShaderConstantsPS>          (m_state.psConsts, m_psLayout, m_state.pixelShader);
+      return UploadConstantSet<ShaderStage, D3D9ShaderConstantsPS>          (m_state.psConsts.get(), m_psLayout, m_state.pixelShader);
     }
   }
 
@@ -5255,7 +5304,7 @@ namespace dxvk {
       // Add commands to flush the threaded
       // context, then flush the command list
       EmitCs([](DxvkContext* ctx) {
-        ctx->flushCommandList();
+        ctx->flushCommandList(nullptr);
       });
 
       FlushCsChunk();
@@ -5675,7 +5724,13 @@ namespace dxvk {
 
     // How much to bias MinZ by to avoid a depth
     // degenerate viewport.
-    constexpr float zBias = 0.001f;
+    // Tests show that the bias is only applied below minZ values of 0.5
+    float zBias;
+    if (vp.MinZ >= 0.5f) {
+      zBias = 0.0f;
+    } else {
+      zBias = 0.001f;
+    }
 
     viewport = VkViewport{
       float(vp.X)     + cf,    float(vp.Height + vp.Y) + cf,
@@ -6257,7 +6312,7 @@ namespace dxvk {
 
       if (likely(!CanSWVP())) {
         UpdateVertexBoolSpec(
-          m_state.vsConsts.bConsts[0] &
+          m_state.vsConsts->bConsts[0] &
           m_consts[DxsoProgramType::VertexShader].meta.boolConstantMask);
       } else
         UpdateVertexBoolSpec(0);
@@ -6285,7 +6340,7 @@ namespace dxvk {
         UpdatePixelShaderSamplerSpec(m_textureTypes, programInfo.minorVersion() >= 4 ? 0u : projected, fetch4); // For implicit samplers...
 
       UpdatePixelBoolSpec(
-        m_state.psConsts.bConsts[0] &
+        m_state.psConsts->bConsts[0] &
         m_consts[DxsoProgramType::PixelShader].meta.boolConstantMask);
     }
     else {
@@ -6526,16 +6581,16 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::SetVertexBoolBitfield(uint32_t idx, uint32_t mask, uint32_t bits) {
-    m_state.vsConsts.bConsts[idx] &= ~mask;
-    m_state.vsConsts.bConsts[idx] |= bits & mask;
+    m_state.vsConsts->bConsts[idx] &= ~mask;
+    m_state.vsConsts->bConsts[idx] |= bits & mask;
 
     m_consts[DxsoProgramTypes::VertexShader].dirty = true;
   }
 
 
   void D3D9DeviceEx::SetPixelBoolBitfield(uint32_t idx, uint32_t mask, uint32_t bits) {
-    m_state.psConsts.bConsts[idx] &= ~mask;
-    m_state.psConsts.bConsts[idx] |= bits & mask;
+    m_state.psConsts->bConsts[idx] &= ~mask;
+    m_state.psConsts->bConsts[idx] |= bits & mask;
 
     m_consts[DxsoProgramTypes::PixelShader].dirty = true;
   }
@@ -7058,7 +7113,7 @@ namespace dxvk {
   }
 
 
-  HRESULT D3D9DeviceEx::ResetState(D3DPRESENT_PARAMETERS* pPresentationParameters) {
+  void D3D9DeviceEx::ResetState(D3DPRESENT_PARAMETERS* pPresentationParameters) {
     if (!pPresentationParameters->EnableAutoDepthStencil)
       SetDepthStencilSurface(nullptr);
 
@@ -7246,11 +7301,11 @@ namespace dxvk {
     for (uint32_t i = 0; i < caps::MaxStreams; i++)
       m_state.streamFreq[i] = 1;
 
-    for (uint32_t i = 0; i < m_state.textures.size(); i++)
+    for (uint32_t i = 0; i < m_state.textures->size(); i++)
       SetStateTexture(i, nullptr);
 
     EmitCs([
-      cSize = m_state.textures.size()
+      cSize = m_state.textures->size()
     ](DxvkContext* ctx) {
       VkShaderStageFlags stage = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
@@ -7265,7 +7320,7 @@ namespace dxvk {
     m_depthTextures = 0;
     m_cubeTextures = 0;
 
-    auto& ss = m_state.samplerStates;
+    auto& ss = m_state.samplerStates.get();
     for (uint32_t i = 0; i < ss.size(); i++) {
       auto& state = ss[i];
       state[D3DSAMP_ADDRESSU]      = D3DTADDRESS_WRAP;
@@ -7299,8 +7354,6 @@ namespace dxvk {
     UpdateVertexBoolSpec(0u);
     UpdatePixelBoolSpec(0u);
     UpdateCommonSamplerSpec(0u, 0u, 0u);
-
-    return D3D_OK;
   }
 
 
@@ -7315,7 +7368,8 @@ namespace dxvk {
       "    - Format:             ", backBufferFmt, "\n"
       "    - Auto Depth Stencil: ", pPresentationParameters->EnableAutoDepthStencil ? "true" : "false", "\n",
       "                ^ Format: ", EnumerateFormat(pPresentationParameters->AutoDepthStencilFormat), "\n",
-      "    - Windowed:           ", pPresentationParameters->Windowed ? "true" : "false", "\n"));
+      "    - Windowed:           ", pPresentationParameters->Windowed ? "true" : "false", "\n",
+      "    - Swap effect:        ", pPresentationParameters->SwapEffect, "\n"));
 
     if (backBufferFmt != D3D9Format::Unknown) {
       if (!IsSupportedBackBufferFormat(backBufferFmt)) {
@@ -7326,8 +7380,9 @@ namespace dxvk {
     }
 
     if (m_implicitSwapchain != nullptr) {
-      if (FAILED(m_implicitSwapchain->Reset(pPresentationParameters, pFullscreenDisplayMode)))
-        return D3DERR_INVALIDCALL;
+      HRESULT hr = m_implicitSwapchain->Reset(pPresentationParameters, pFullscreenDisplayMode);
+      if (FAILED(hr))
+        return hr;
     }
     else
       m_implicitSwapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode);
@@ -7372,9 +7427,7 @@ namespace dxvk {
     if (FAILED(hr))
       return hr;
 
-    hr = ResetState(pPresentationParameters);
-    if (FAILED(hr))
-      return hr;
+    ResetState(pPresentationParameters);
 
     Flush();
     SynchronizeCsThread(DxvkCsThread::SynchronizeAll);

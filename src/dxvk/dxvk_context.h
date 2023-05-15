@@ -6,6 +6,7 @@
 #include "dxvk_context_state.h"
 #include "dxvk_data.h"
 #include "dxvk_objects.h"
+#include "dxvk_queue.h"
 #include "dxvk_resource.h"
 #include "dxvk_util.h"
 #include "dxvk_marker.h"
@@ -63,8 +64,9 @@ namespace dxvk {
      * 
      * Transparently submits the current command
      * buffer and allocates a new one.
+     * \param [out] status Submission feedback
      */
-    void flushCommandList();
+    void flushCommandList(DxvkSubmitStatus* status);
     
     /**
      * \brief Begins generating query data
@@ -866,10 +868,50 @@ namespace dxvk {
      * \param [in] dstAccess Destination access
      */
     void emitGraphicsBarrier(
-          VkPipelineStageFlags      srcStages,
-          VkAccessFlags             srcAccess,
-          VkPipelineStageFlags      dstStages,
-          VkAccessFlags             dstAccess);
+            VkPipelineStageFlags      srcStages,
+            VkAccessFlags             srcAccess,
+            VkPipelineStageFlags      dstStages,
+            VkAccessFlags             dstAccess);
+
+    /**
+     * \brief Emits buffer barrier
+     *
+     * Can be used to transition foreign resources
+     * into a state that DXVK can work with.
+     * \param [in] resource Buffer resource
+     * \param [in] srcStages Source pipeline stages
+     * \param [in] srcAccess Source access
+     * \param [in] dstStages Destination pipeline stages
+     * \param [in] dstAccess Destination access
+     */
+    void emitBufferBarrier(
+      const Rc<DxvkBuffer>&           resource,
+            VkPipelineStageFlags      srcStages,
+            VkAccessFlags             srcAccess,
+            VkPipelineStageFlags      dstStages,
+            VkAccessFlags             dstAccess);
+
+    /**
+     * \brief Emits image barrier
+     *
+     * Can be used to transition foreign resources
+     * into a state that DXVK can work with.
+     * \param [in] resource Image resource
+     * \param [in] srcLayout Current image layout
+     * \param [in] srcStages Source pipeline stages
+     * \param [in] srcAccess Source access
+     * \param [in] dstLayout New image layout
+     * \param [in] dstStages Destination pipeline stages
+     * \param [in] dstAccess Destination access
+     */
+    void emitImageBarrier(
+      const Rc<DxvkImage>&            resource,
+            VkImageLayout             srcLayout,
+            VkPipelineStageFlags      srcStages,
+            VkAccessFlags             srcAccess,
+            VkImageLayout             dstLayout,
+            VkPipelineStageFlags      dstStages,
+            VkAccessFlags             dstAccess);
 
     /**
      * \brief Generates mip maps
@@ -1503,6 +1545,14 @@ namespace dxvk {
             VkResolveModeFlagBits     stencilMode);
     
     void resolveImageFb(
+      const Rc<DxvkImage>&            dstImage,
+      const Rc<DxvkImage>&            srcImage,
+      const VkImageResolve&           region,
+            VkFormat                  format,
+            VkResolveModeFlagBits     depthMode,
+            VkResolveModeFlagBits     stencilMode);
+    
+    void resolveImageFbDirect(
       const Rc<DxvkImage>&            dstImage,
       const Rc<DxvkImage>&            srcImage,
       const VkImageResolve&           region,

@@ -74,8 +74,11 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("D3D9Surface::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(IDirect3DSurface9), riid)) {
+      Logger::warn("D3D9Surface::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 
@@ -162,7 +165,9 @@ namespace dxvk {
     createInfo.hBitmap     = nullptr;
     createInfo.hDc         = nullptr;
 
-    D3DKMTCreateDCFromMemory(&createInfo);
+    if (D3DKMTCreateDCFromMemory(&createInfo))
+      Logger::err("D3D9: Failed to create GDI DC");
+
     DeleteDC(createInfo.hDeviceDc);
 
     // These should now be set...

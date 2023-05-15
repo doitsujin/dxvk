@@ -117,6 +117,12 @@ namespace dxvk {
 
   public:
 
+    DxvkNameList() { }
+    DxvkNameList(uint32_t count, const char* const* names) {
+      for (uint32_t i = 0; i < count; i++)
+        add(names[i]);
+    }
+
     /**
      * \brief Adds a name
      * \param [in] pName The name
@@ -169,6 +175,11 @@ namespace dxvk {
   public:
 
     DxvkNameSet();
+
+    DxvkNameSet(
+            uint32_t          count,
+      const char* const*      names);
+
     ~DxvkNameSet();
 
     /**
@@ -186,6 +197,13 @@ namespace dxvk {
      * \param [in] names Name set to merge
      */
     void merge(
+      const DxvkNameSet&      names);
+
+    /**
+     * \brief Pulls in revisions from another name set
+     * \param [in] names Name set to pull revisions from
+     */
+    void mergeRevisions(
       const DxvkNameSet&      names);
 
     /**
@@ -212,7 +230,7 @@ namespace dxvk {
     bool enableExtensions(
             uint32_t          numExtensions,
             DxvkExt**         ppExtensions,
-            DxvkNameSet&      nameSet) const;
+            DxvkNameSet*      nameSet) const;
     
     /**
      * \brief Disables given extension

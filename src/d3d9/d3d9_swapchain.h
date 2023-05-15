@@ -40,6 +40,10 @@ namespace dxvk {
       const RGNDATA* pDirtyRegion,
             DWORD    dwFlags);
 
+#ifdef _WIN32
+    HRESULT PresentImageGDI(HWND Window);
+#endif
+
     HRESULT STDMETHODCALLTYPE GetFrontBufferData(IDirect3DSurface9* pDestSurface);
 
     HRESULT STDMETHODCALLTYPE GetBackBuffer(
@@ -103,6 +107,8 @@ namespace dxvk {
     
     RECT                      m_srcRect;
     RECT                      m_dstRect;
+    VkExtent2D                m_swapchainExtent = { 0u, 0u };
+    bool                      m_partialCopy = false;
 
     DxvkSubmitStatus          m_presentStatus;
 
@@ -126,6 +132,8 @@ namespace dxvk {
 
     double                    m_displayRefreshRate = 0.0;
 
+    bool                      m_warnedAboutGDIFallback = false;
+
     void PresentImage(UINT PresentInterval);
 
     void SubmitPresent(const vk::PresenterSync& Sync, uint32_t FrameId);
@@ -143,7 +151,7 @@ namespace dxvk {
 
     void DestroyBackBuffers();
 
-    void CreateBackBuffers(
+    HRESULT CreateBackBuffers(
             uint32_t            NumBackBuffers);
 
     void CreateBlitter();
@@ -190,6 +198,24 @@ namespace dxvk {
 
     std::string GetApiName();
 
+    const Com<D3D9Surface, false>& GetFrontBuffer() const {
+      return m_backBuffers.back();
+    }
+
+    bool HasFrontBuffer() const {
+      if (m_presentParams.SwapEffect == D3DSWAPEFFECT_COPY)
+        return false;
+
+      if (m_presentParams.SwapEffect == D3DSWAPEFFECT_COPY_VSYNC)
+        return false;
+
+      // Tests show that SWAPEEFFECT_DISCARD + 1 backbuffer in windowed mode behaves identically to SWAPEFFECT_COPY
+      // For SWAPEFFECT_COPY we don't swap buffers but do another blit to the front buffer instead.
+      if (m_presentParams.SwapEffect == D3DSWAPEFFECT_DISCARD && m_presentParams.BackBufferCount == 1 && m_presentParams.Windowed)
+        return false;
+
+      return true;
+    }
   };
 
 }

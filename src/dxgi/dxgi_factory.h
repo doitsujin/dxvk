@@ -158,6 +158,10 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE UnregisterAdaptersChangedEvent(
             DWORD                 Cookie);
 
+    BOOL UseMonitorFallback() const {
+      return m_monitorFallback;
+    }
+
     Rc<DxvkInstance> GetDXVKInstance() const {
       return m_instance;
     }
@@ -177,6 +181,7 @@ namespace dxvk {
     DxgiOptions      m_options;
     DxgiMonitorInfo  m_monitorInfo;
     UINT             m_flags;
+    BOOL             m_monitorFallback;
     
     HWND m_associatedWindow = nullptr;
     

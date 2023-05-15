@@ -48,7 +48,6 @@ namespace dxvk {
     this->strictPow                     = config.getOption<bool>        ("d3d9.strictPow",                     true);
     this->lenientClear                  = config.getOption<bool>        ("d3d9.lenientClear",                  false);
     this->numBackBuffers                = config.getOption<int32_t>     ("d3d9.numBackBuffers",                0);
-    this->noExplicitFrontBuffer         = config.getOption<bool>        ("d3d9.noExplicitFrontBuffer",         false);
     this->deferSurfaceCreation          = config.getOption<bool>        ("d3d9.deferSurfaceCreation",          false);
     this->samplerAnisotropy             = config.getOption<int32_t>     ("d3d9.samplerAnisotropy",             -1);
     this->maxAvailableMemory            = config.getOption<int32_t>     ("d3d9.maxAvailableMemory",            4096);
@@ -74,6 +73,7 @@ namespace dxvk {
     this->allowDirectBufferMapping      = config.getOption<bool>        ("d3d9.allowDirectBufferMapping",      true);
     this->seamlessCubes                 = config.getOption<bool>        ("d3d9.seamlessCubes",                 false);
     this->textureMemory                 = config.getOption<int32_t>     ("d3d9.textureMemory",                100) << 20;
+    this->deviceLost                    = config.getOption<bool>        ("d3d9.deviceLost",                    false);
 
     std::string floatEmulation = Config::toLower(config.getOption<std::string>("d3d9.floatEmulation", "auto"));
     if (floatEmulation == "strict") {

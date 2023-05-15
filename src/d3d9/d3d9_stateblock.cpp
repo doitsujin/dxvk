@@ -32,8 +32,11 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("D3D9StateBlock::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(IDirect3DStateBlock9), riid)) {
+      Logger::warn("D3D9StateBlock::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 
@@ -210,6 +213,9 @@ namespace dxvk {
           DWORD                      Stage,
           D3D9TextureStageStateTypes Type,
           DWORD                      Value) {
+    Stage = std::min(Stage, DWORD(caps::TextureStageCount - 1));
+    Type = std::min(Type, D3D9TextureStageStateTypes(DXVK_TSS_COUNT - 1));
+
     m_state.textureStages[Stage][Type] = Value;
 
     m_captures.flags.set(D3D9CapturedStateFlag::TextureStages);
@@ -333,15 +339,15 @@ namespace dxvk {
 
 
   HRESULT D3D9StateBlock::SetVertexBoolBitfield(uint32_t idx, uint32_t mask, uint32_t bits) {
-    m_state.vsConsts.bConsts[idx] &= ~mask;
-    m_state.vsConsts.bConsts[idx] |= bits & mask;
+    m_state.vsConsts->bConsts[idx] &= ~mask;
+    m_state.vsConsts->bConsts[idx] |= bits & mask;
     return D3D_OK;
   }
 
 
   HRESULT D3D9StateBlock::SetPixelBoolBitfield(uint32_t idx, uint32_t mask, uint32_t bits) {
-    m_state.psConsts.bConsts[idx] &= ~mask;
-    m_state.psConsts.bConsts[idx] |= bits & mask;
+    m_state.psConsts->bConsts[idx] &= ~mask;
+    m_state.psConsts->bConsts[idx] |= bits & mask;
     return D3D_OK;
   }
 

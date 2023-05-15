@@ -144,7 +144,8 @@ namespace dxvk {
     DxvkImage(
             DxvkDevice*           device,
       const DxvkImageCreateInfo&  info,
-            VkImage               image);
+            VkImage               image,
+            VkMemoryPropertyFlags memFlags);
     
     /**
      * \brief Destroys image

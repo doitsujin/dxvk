@@ -45,7 +45,7 @@ namespace dxvk {
 
     static Sleep s_instance;
 
-    std::mutex        m_mutex;
+    dxvk::mutex       m_mutex;
     std::atomic<bool> m_initialized = { false };
 
 #ifdef _WIN32

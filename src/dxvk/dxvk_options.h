@@ -27,6 +27,9 @@ namespace dxvk {
     /// Shader-related options
     Tristate useRawSsbo;
 
+    /// Maximum memory chunk size in MiB
+    int32_t maxChunkSize;
+
     /// HUD elements
     std::string hud;
   };

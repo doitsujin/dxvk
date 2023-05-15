@@ -100,7 +100,7 @@ namespace dxvk {
       return S_FALSE;
     
     try {
-      const Com<D3D11Buffer> buffer = new D3D11Buffer(this, &desc);
+      const Com<D3D11Buffer> buffer = new D3D11Buffer(this, &desc, nullptr);
 
       if (!(desc.MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL))
         m_initializer->InitBuffer(buffer.ptr(), pInitialData);
@@ -149,7 +149,7 @@ namespace dxvk {
       return S_FALSE;
     
     try {
-      const Com<D3D11Texture1D> texture = new D3D11Texture1D(this, &desc);
+      const Com<D3D11Texture1D> texture = new D3D11Texture1D(this, &desc, nullptr);
       m_initializer->InitTexture(texture->GetCommonTexture(), pInitialData);
       *ppTexture1D = texture.ref();
       return S_OK;
@@ -229,7 +229,7 @@ namespace dxvk {
       return S_FALSE;
     
     try {
-      Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &desc, nullptr);
+      Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &desc, nullptr, nullptr);
       m_initializer->InitTexture(texture->GetCommonTexture(), pInitialData);
       *ppTexture2D = texture.ref();
       return S_OK;
@@ -308,7 +308,7 @@ namespace dxvk {
       return S_FALSE;
       
     try {
-      Com<D3D11Texture3D> texture = new D3D11Texture3D(this, &desc);
+      Com<D3D11Texture3D> texture = new D3D11Texture3D(this, &desc, nullptr);
       m_initializer->InitTexture(texture->GetCommonTexture(), pInitialData);
       *ppTexture3D = texture.ref();
       return S_OK;
@@ -1832,6 +1832,11 @@ namespace dxvk {
           DXGI_VK_FORMAT_MODE   Mode) const {
     return m_d3d11Formats.GetFormatFamily(Format, Mode);
   }
+
+
+  bool D3D11Device::Is11on12Device() const {
+    return m_container->Is11on12Device();
+  }
   
   
   void D3D11Device::FlushInitContext() {
@@ -2302,7 +2307,7 @@ namespace dxvk {
 
     // Only 2D textures may be shared
     try {
-      const Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &d3d11Desc, hResource);
+      const Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &d3d11Desc, nullptr, hResource);
       texture->QueryInterface(ReturnedInterface, ppResource);
       return S_OK;
     }
@@ -3057,18 +3062,22 @@ namespace dxvk {
 
   D3D11DXGIDevice::D3D11DXGIDevice(
           IDXGIAdapter*       pAdapter,
-    const Rc<DxvkInstance>&   pDxvkInstance,
-    const Rc<DxvkAdapter>&    pDxvkAdapter,
+          ID3D12Device*       pD3D12Device,
+          ID3D12CommandQueue* pD3D12Queue,
+          Rc<DxvkInstance>    pDxvkInstance,
+          Rc<DxvkAdapter>     pDxvkAdapter,
+          Rc<DxvkDevice>      pDxvkDevice,
           D3D_FEATURE_LEVEL   FeatureLevel,
           UINT                FeatureFlags)
   : m_dxgiAdapter   (pAdapter),
     m_dxvkInstance  (pDxvkInstance),
     m_dxvkAdapter   (pDxvkAdapter),
-    m_dxvkDevice    (CreateDevice(FeatureLevel)),
+    m_dxvkDevice    (pDxvkDevice),
     m_d3d11Device   (this, FeatureLevel, FeatureFlags),
     m_d3d11DeviceExt(this, &m_d3d11Device),
     m_d3d11Interop  (this, &m_d3d11Device),
     m_d3d11Video    (this, &m_d3d11Device),
+    m_d3d11on12     (this, &m_d3d11Device, pD3D12Device, pD3D12Queue),
     m_metaDevice    (this),
     m_dxvkFactory   (this, &m_d3d11Device) {
 
@@ -3076,7 +3085,7 @@ namespace dxvk {
   
   
   D3D11DXGIDevice::~D3D11DXGIDevice() {
-    
+
   }
   
   
@@ -3140,6 +3149,13 @@ namespace dxvk {
       return S_OK;
     }
 
+    if (m_d3d11on12.Is11on12Device()) {
+      if (riid == __uuidof(ID3D11On12Device)) {
+        *ppvObject = ref(&m_d3d11on12);
+        return S_OK;
+      }
+    }
+
     if (riid == __uuidof(ID3D10Multithread)) {
       Com<ID3D11DeviceContext> context;
       m_d3d11Device.GetImmediateContext(&context);
@@ -3153,8 +3169,11 @@ namespace dxvk {
     if (riid == GUID{0xd56e2a4c,0x5127,0x8437,{0x65,0x8a,0x98,0xc5,0xbb,0x78,0x94,0x98}})
       return E_NOINTERFACE;
     
-    Logger::warn("D3D11DXGIDevice::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(IDXGIDXVKDevice), riid)) {
+      Logger::warn("D3D11DXGIDevice::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
   
@@ -3398,12 +3417,6 @@ namespace dxvk {
   
   Rc<DxvkDevice> STDMETHODCALLTYPE D3D11DXGIDevice::GetDXVKDevice() {
     return m_dxvkDevice;
-  }
-
-
-  Rc<DxvkDevice> D3D11DXGIDevice::CreateDevice(D3D_FEATURE_LEVEL FeatureLevel) {
-    DxvkDeviceFeatures deviceFeatures = D3D11Device::GetDeviceFeatures(m_dxvkAdapter);
-    return m_dxvkAdapter->createDevice(m_dxvkInstance, deviceFeatures);
   }
 
 }

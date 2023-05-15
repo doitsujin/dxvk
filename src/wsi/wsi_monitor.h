@@ -44,6 +44,16 @@ namespace dxvk::wsi {
   HMONITOR enumMonitors(uint32_t index);
 
   /**
+    * \brief Enumerators monitors on the system
+    * \param [in] adapterLUID array of adapters' LUIDs
+    * \param [in] numLUIDs adapterLUID array size (0 for all monitors)
+    * \param [in] index Monitor index within enumeration
+    *
+    * \returns The monitor of given index
+    */
+  HMONITOR enumMonitors(const LUID *adapterLUID[], uint32_t numLUIDs, uint32_t index);
+
+  /**
     * \brief Get the GDI name of a HMONITOR
     *
     * Get the GDI Device Name of a HMONITOR to

@@ -61,8 +61,11 @@ namespace dxvk {
         return S_OK;
       }
 
-      Logger::warn("DxgiSwapChainDispatcher::QueryInterface: Unknown interface query");
-      Logger::warn(str::format(riid));
+      if (logQueryInterfaceError(__uuidof(IDXGISwapChain), riid)) {
+        Logger::warn("DxgiSwapChainDispatcher::QueryInterface: Unknown interface query");
+        Logger::warn(str::format(riid));
+      }
+
       return m_dispatch->QueryInterface(riid, ppvObject);
     }
 

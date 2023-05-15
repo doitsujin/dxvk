@@ -94,6 +94,17 @@ namespace dxvk {
 
 
   /**
+   * \brief Queries D3D11on12 resource info
+   *
+   * \param [in] pResource The resource to query
+   * \param [out] p11on12Info 11on12 info
+   * \returns \c S_OK on success, or \c E_INVALIDARG
+   */
+  HRESULT GetResource11on12Info(
+          ID3D11Resource*             pResource,
+          D3D11_ON_12_RESOURCE_INFO*  p11on12Info);
+
+  /**
    * \brief Queries common resource description
    * 
    * \param [in] pResource The resource to query

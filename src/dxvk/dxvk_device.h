@@ -86,7 +86,9 @@ namespace dxvk {
       const Rc<DxvkInstance>&         instance,
       const Rc<DxvkAdapter>&          adapter,
       const Rc<vk::DeviceFn>&         vkd,
-      const DxvkDeviceFeatures&       features);
+      const DxvkDeviceFeatures&       features,
+      const DxvkDeviceQueueSet&       queues,
+      const DxvkQueueCallback&        queueCallback);
       
     ~DxvkDevice();
     
@@ -334,17 +336,6 @@ namespace dxvk {
             VkMemoryPropertyFlags memoryType);
 
     /**
-     * \brief Creates an image object for an existing VkImage
-     * 
-     * \param [in] createInfo Image create info
-     * \param [in] image Vulkan image to wrap
-     * \returns The image object
-     */
-    Rc<DxvkImage> createImageFromVkImage(
-      const DxvkImageCreateInfo&  createInfo,
-            VkImage               image);
-    
-    /**
      * \brief Creates an image view
      * 
      * \param [in] image The image to create a view for
@@ -371,6 +362,32 @@ namespace dxvk {
     Rc<DxvkSparsePageAllocator> createSparsePageAllocator();
 
     /**
+     * \brief Imports a buffer
+     *
+     * \param [in] createInfo Buffer create info
+     * \param [in] importInfo Buffer import info
+     * \param [in] memoryType Memory type flags
+     * \returns The buffer object
+     */
+    Rc<DxvkBuffer> importBuffer(
+      const DxvkBufferCreateInfo& createInfo,
+      const DxvkBufferImportInfo& importInfo,
+            VkMemoryPropertyFlags memoryType);
+
+    /**
+     * \brief Imports an image
+     *
+     * \param [in] createInfo Image create info
+     * \param [in] image Vulkan image to wrap
+     * \param [in] memoryType Memory type flags
+     * \returns The image object
+     */
+    Rc<DxvkImage> importImage(
+      const DxvkImageCreateInfo&  createInfo,
+            VkImage               image,
+            VkMemoryPropertyFlags memoryType);
+
+    /**
      * \brief Retrieves stat counters
      * 
      * Can be used by the HUD to display some
@@ -393,6 +410,30 @@ namespace dxvk {
      */
     uint32_t getCurrentFrameId() const;
     
+    /**
+     * \brief Notifies adapter about memory allocation
+     *
+     * \param [in] heap Memory heap index
+     * \param [in] bytes Allocation size
+     */
+    void notifyMemoryAlloc(
+            uint32_t            heap,
+            int64_t             bytes) {
+      m_adapter->notifyMemoryAlloc(heap, bytes);
+    }
+
+    /**
+     * \brief Notifies adapter about memory suballocation
+     *
+     * \param [in] heap Memory heap index
+     * \param [in] bytes Allocation size
+     */
+    void notifyMemoryUse(
+            uint32_t            heap,
+            int64_t             bytes) {
+      m_adapter->notifyMemoryUse(heap, bytes);
+    }
+
     /**
      * \brief Registers a shader
      * \param [in] shader Newly compiled shader
@@ -426,9 +467,11 @@ namespace dxvk {
      * Submits the given command list to the device using
      * the given set of optional synchronization primitives.
      * \param [in] commandList The command list to submit
+     * \param [out] status Submission feedback
      */
     void submitCommandList(
-      const Rc<DxvkCommandList>&      commandList);
+      const Rc<DxvkCommandList>&      commandList,
+            DxvkSubmitStatus*         status);
 
     /**
      * \brief Locks submission queue
@@ -527,11 +570,7 @@ namespace dxvk {
     
     void recycleCommandList(
       const Rc<DxvkCommandList>& cmdList);
-    
-    DxvkDeviceQueue getQueue(
-            uint32_t                family,
-            uint32_t                index) const;
-    
+
   };
   
 }

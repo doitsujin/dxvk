@@ -21,6 +21,8 @@ namespace dxvk {
     
     SpirvCodeBuffer();
     explicit SpirvCodeBuffer(uint32_t size);
+    SpirvCodeBuffer(const SpirvCodeBuffer &) = default;
+    SpirvCodeBuffer(SpirvCodeBuffer &&) = default;
     SpirvCodeBuffer(uint32_t size, const uint32_t* data);
     SpirvCodeBuffer(std::istream& stream);
     
@@ -29,6 +31,9 @@ namespace dxvk {
     : SpirvCodeBuffer(N, data) { }
     
     ~SpirvCodeBuffer();
+
+    SpirvCodeBuffer &operator=(const SpirvCodeBuffer &) = default;
+    SpirvCodeBuffer &operator=(SpirvCodeBuffer &&) = default;
     
     /**
      * \brief Code data

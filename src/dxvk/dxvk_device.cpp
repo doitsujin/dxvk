@@ -7,7 +7,9 @@ namespace dxvk {
     const Rc<DxvkInstance>&         instance,
     const Rc<DxvkAdapter>&          adapter,
     const Rc<vk::DeviceFn>&         vkd,
-    const DxvkDeviceFeatures&       features)
+    const DxvkDeviceFeatures&       features,
+    const DxvkDeviceQueueSet&       queues,
+    const DxvkQueueCallback&        queueCallback)
   : m_options           (instance->options()),
     m_instance          (instance),
     m_adapter           (adapter),
@@ -16,11 +18,9 @@ namespace dxvk {
     m_properties        (adapter->devicePropertiesExt()),
     m_perfHints         (getPerfHints()),
     m_objects           (this),
-    m_submissionQueue   (this) {
-    auto queueFamilies = m_adapter->findQueueFamilies();
-    m_queues.graphics = getQueue(queueFamilies.graphics, 0);
-    m_queues.transfer = getQueue(queueFamilies.transfer, 0);
-    m_queues.sparse = getQueue(queueFamilies.sparse, 0);
+    m_queues            (queues),
+    m_submissionQueue   (this, queueCallback) {
+
   }
   
   
@@ -178,12 +178,6 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkImage> DxvkDevice::createImageFromVkImage(
-    const DxvkImageCreateInfo&  createInfo,
-          VkImage               image) {
-    return new DxvkImage(this, createInfo, image);
-  }
-  
   Rc<DxvkImageView> DxvkDevice::createImageView(
     const Rc<DxvkImage>&            image,
     const DxvkImageViewCreateInfo&  createInfo) {
@@ -220,6 +214,22 @@ namespace dxvk {
   }
   
   
+  Rc<DxvkBuffer> DxvkDevice::importBuffer(
+    const DxvkBufferCreateInfo& createInfo,
+    const DxvkBufferImportInfo& importInfo,
+          VkMemoryPropertyFlags memoryType) {
+    return new DxvkBuffer(this, createInfo, importInfo, memoryType);
+  }
+
+
+  Rc<DxvkImage> DxvkDevice::importImage(
+    const DxvkImageCreateInfo&  createInfo,
+          VkImage               image,
+          VkMemoryPropertyFlags memoryType) {
+    return new DxvkImage(this, createInfo, image, memoryType);
+  }
+
+
   DxvkMemoryStats DxvkDevice::getMemoryStats(uint32_t heap) {
     return m_objects.memoryManager().getMemoryStats(heap);
   }
@@ -256,10 +266,11 @@ namespace dxvk {
 
 
   void DxvkDevice::submitCommandList(
-    const Rc<DxvkCommandList>&      commandList) {
+    const Rc<DxvkCommandList>&      commandList,
+          DxvkSubmitStatus*         status) {
     DxvkSubmitInfo submitInfo = { };
     submitInfo.cmdList = commandList;
-    m_submissionQueue.submit(submitInfo);
+    m_submissionQueue.submit(submitInfo, status);
 
     std::lock_guard<sync::Spinlock> statLock(m_statLock);
     m_statCounters.merge(commandList->statCounters());
@@ -319,18 +330,6 @@ namespace dxvk {
 
   void DxvkDevice::recycleCommandList(const Rc<DxvkCommandList>& cmdList) {
     m_recycledCommandLists.returnObject(cmdList);
-  }
-  
-
-  DxvkDeviceQueue DxvkDevice::getQueue(
-          uint32_t                family,
-          uint32_t                index) const {
-    VkQueue queue = VK_NULL_HANDLE;
-
-    if (family != VK_QUEUE_FAMILY_IGNORED)
-      m_vkd->vkGetDeviceQueue(m_vkd->device(), family, index, &queue);
-
-    return DxvkDeviceQueue { queue, family, index };
   }
   
 }

@@ -64,7 +64,10 @@ namespace dxvk {
 
   public:
     
-    DxvkSubmissionQueue(DxvkDevice* device);
+    DxvkSubmissionQueue(
+            DxvkDevice*         device,
+      const DxvkQueueCallback&  callback);
+
     ~DxvkSubmissionQueue();
 
     /**
@@ -107,10 +110,12 @@ namespace dxvk {
      * Queues a command list for submission on the
      * dedicated submission thread. Use this to take
      * the submission overhead off the calling thread.
-     * \param [in] submitInfo Submission parameters 
+     * \param [in] submitInfo Submission parameters
+     * \param [out] status Submission feedback
      */
     void submit(
-            DxvkSubmitInfo      submitInfo);
+            DxvkSubmitInfo      submitInfo,
+            DxvkSubmitStatus*   status);
     
     /**
      * \brief Presents an image synchronously
@@ -119,7 +124,7 @@ namespace dxvk {
      * and then presents the current swap chain image
      * of the presenter. May stall the calling thread.
      * \param [in] present Present parameters
-     * \returns Status of the operation
+     * \param [out] status Submission feedback
      */
     void present(
             DxvkPresentInfo     presentInfo,
@@ -176,6 +181,7 @@ namespace dxvk {
   private:
 
     DxvkDevice*                 m_device;
+    DxvkQueueCallback           m_callback;
 
     std::atomic<VkResult>       m_lastError = { VK_SUCCESS };
     

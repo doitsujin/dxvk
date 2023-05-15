@@ -32,8 +32,11 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("D3D11VideoProcessorEnumerator::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(ID3D11VideoProcessorEnumerator), riid)) {
+      Logger::warn("D3D11VideoProcessorEnumerator::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 
@@ -136,8 +139,11 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("D3D11VideoProcessor::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(ID3D11VideoProcessor), riid)) {
+      Logger::warn("D3D11VideoProcessor::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 
@@ -247,8 +253,11 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("D3D11VideoProcessorInputView::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(ID3D11VideoProcessorInputView), riid)) {
+      Logger::warn("D3D11VideoProcessorInputView::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 
@@ -326,8 +335,11 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("D3D11VideoProcessorOutputView::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(ID3D11VideoProcessorOutputView), riid)) {
+      Logger::warn("D3D11VideoProcessorOutputView::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 
@@ -348,56 +360,8 @@ namespace dxvk {
   D3D11VideoContext::D3D11VideoContext(
           D3D11ImmediateContext*  pContext,
     const Rc<DxvkDevice>&         Device)
-  : m_ctx(pContext) {
-    SpirvCodeBuffer vsCode(d3d11_video_blit_vert);
-    SpirvCodeBuffer fsCode(d3d11_video_blit_frag);
+  : m_ctx(pContext), m_device(Device) {
 
-    const std::array<DxvkBindingInfo, 4> fsBindings = {{
-      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_UNIFORM_READ_BIT, VK_TRUE },
-      { VK_DESCRIPTOR_TYPE_SAMPLER,        1, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_SHADER_STAGE_FRAGMENT_BIT, 0 },
-      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  2, VK_IMAGE_VIEW_TYPE_2D,       VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
-      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  3, VK_IMAGE_VIEW_TYPE_2D,       VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
-    }};
-
-    DxvkShaderCreateInfo vsInfo;
-    vsInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-    vsInfo.outputMask = 0x1;
-    m_vs = new DxvkShader(vsInfo, std::move(vsCode));
-
-    DxvkShaderCreateInfo fsInfo;
-    fsInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-    fsInfo.bindingCount = fsBindings.size();
-    fsInfo.bindings = fsBindings.data();
-    fsInfo.inputMask = 0x1;
-    fsInfo.outputMask = 0x1;
-    m_fs = new DxvkShader(fsInfo, std::move(fsCode));
-
-    DxvkSamplerCreateInfo samplerInfo;
-    samplerInfo.magFilter       = VK_FILTER_LINEAR;
-    samplerInfo.minFilter       = VK_FILTER_LINEAR;
-    samplerInfo.mipmapMode      = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    samplerInfo.mipmapLodBias   = 0.0f;
-    samplerInfo.mipmapLodMin    = 0.0f;
-    samplerInfo.mipmapLodMax    = 0.0f;
-    samplerInfo.useAnisotropy   = VK_FALSE;
-    samplerInfo.maxAnisotropy   = 1.0f;
-    samplerInfo.addressModeU    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeV    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeW    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.compareToDepth  = VK_FALSE;
-    samplerInfo.compareOp       = VK_COMPARE_OP_ALWAYS;
-    samplerInfo.reductionMode   = VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
-    samplerInfo.borderColor     = VkClearColorValue();
-    samplerInfo.usePixelCoord   = VK_FALSE;
-    samplerInfo.nonSeamless     = VK_FALSE;
-    m_sampler = Device->createSampler(samplerInfo);
-
-    DxvkBufferCreateInfo bufferInfo;
-    bufferInfo.size = sizeof(UboData);
-    bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-    bufferInfo.stages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    bufferInfo.access = VK_ACCESS_UNIFORM_READ_BIT;
-    m_ubo = Device->createBuffer(bufferInfo, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
 
 
@@ -1226,9 +1190,6 @@ namespace dxvk {
       rt.color[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
       ctx->bindRenderTargets(std::move(rt), 0u);
-      ctx->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(Rc<DxvkShader>(m_vs));
-      ctx->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(Rc<DxvkShader>(m_fs));
-      ctx->bindUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 0, DxvkBufferSlice(m_ubo));
 
       DxvkInputAssemblyState iaState;
       iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -1245,6 +1206,8 @@ namespace dxvk {
   void D3D11VideoContext::BlitStream(
     const D3D11VideoProcessorStreamState* pStreamState,
     const D3D11_VIDEO_PROCESSOR_STREAM*   pStream) {
+    CreateResources();
+
     if (pStream->PastFrames || pStream->FutureFrames)
       Logger::err("D3D11VideoContext: Ignoring non-zero PastFrames and FutureFrames");
 
@@ -1322,6 +1285,11 @@ namespace dxvk {
 
       ctx->invalidateBuffer(m_ubo, uboSlice);
       ctx->setViewports(1, &viewport, &scissor);
+
+      ctx->bindShader<VK_SHADER_STAGE_VERTEX_BIT>(Rc<DxvkShader>(m_vs));
+      ctx->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(Rc<DxvkShader>(m_fs));
+
+      ctx->bindUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 0, DxvkBufferSlice(m_ubo));
       ctx->bindResourceSampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1, Rc<DxvkSampler>(m_sampler));
 
       for (uint32_t i = 0; i < cViews.size(); i++)
@@ -1334,6 +1302,75 @@ namespace dxvk {
       for (uint32_t i = 0; i < cViews.size(); i++)
         ctx->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, 2 + i, nullptr);
     });
+  }
+
+
+  void D3D11VideoContext::CreateUniformBuffer() {
+    DxvkBufferCreateInfo bufferInfo;
+    bufferInfo.size = sizeof(UboData);
+    bufferInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    bufferInfo.stages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    bufferInfo.access = VK_ACCESS_UNIFORM_READ_BIT;
+    m_ubo = m_device->createBuffer(bufferInfo, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  }
+
+
+  void D3D11VideoContext::CreateSampler() {
+    DxvkSamplerCreateInfo samplerInfo;
+    samplerInfo.magFilter       = VK_FILTER_LINEAR;
+    samplerInfo.minFilter       = VK_FILTER_LINEAR;
+    samplerInfo.mipmapMode      = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    samplerInfo.mipmapLodBias   = 0.0f;
+    samplerInfo.mipmapLodMin    = 0.0f;
+    samplerInfo.mipmapLodMax    = 0.0f;
+    samplerInfo.useAnisotropy   = VK_FALSE;
+    samplerInfo.maxAnisotropy   = 1.0f;
+    samplerInfo.addressModeU    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeV    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.addressModeW    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    samplerInfo.compareToDepth  = VK_FALSE;
+    samplerInfo.compareOp       = VK_COMPARE_OP_ALWAYS;
+    samplerInfo.reductionMode   = VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
+    samplerInfo.borderColor     = VkClearColorValue();
+    samplerInfo.usePixelCoord   = VK_FALSE;
+    samplerInfo.nonSeamless     = VK_FALSE;
+    m_sampler = m_device->createSampler(samplerInfo);
+  }
+
+
+  void D3D11VideoContext::CreateShaders() {
+    SpirvCodeBuffer vsCode(d3d11_video_blit_vert);
+    SpirvCodeBuffer fsCode(d3d11_video_blit_frag);
+
+    const std::array<DxvkBindingInfo, 4> fsBindings = {{
+      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_UNIFORM_READ_BIT, VK_TRUE },
+      { VK_DESCRIPTOR_TYPE_SAMPLER,        1, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_SHADER_STAGE_FRAGMENT_BIT, 0 },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  2, VK_IMAGE_VIEW_TYPE_2D,       VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  3, VK_IMAGE_VIEW_TYPE_2D,       VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
+    }};
+
+    DxvkShaderCreateInfo vsInfo;
+    vsInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vsInfo.outputMask = 0x1;
+    m_vs = new DxvkShader(vsInfo, std::move(vsCode));
+
+    DxvkShaderCreateInfo fsInfo;
+    fsInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fsInfo.bindingCount = fsBindings.size();
+    fsInfo.bindings = fsBindings.data();
+    fsInfo.inputMask = 0x1;
+    fsInfo.outputMask = 0x1;
+    m_fs = new DxvkShader(fsInfo, std::move(fsCode));
+  }
+
+
+  void D3D11VideoContext::CreateResources() {
+    if (std::exchange(m_resourcesCreated, true))
+      return;
+
+    CreateSampler();
+    CreateUniformBuffer();
+    CreateShaders();
   }
 
 

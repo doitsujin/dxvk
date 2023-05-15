@@ -54,16 +54,6 @@ namespace dxvk {
     /// Overrides buffer count in present parameters.
     int32_t numBackBuffers;
 
-    /// Don't create an explicit front buffer in our own swapchain. The Vulkan swapchain is unaffected.
-    /// Some games don't handle front/backbuffer flipping very well because they don't always redraw
-    /// each frame completely, and rely on old pixel data from the previous frame to still be there.
-    /// When this option is set and a game only requests one backbuffer, there will be no flipping in
-    /// our own swapchain, so the game will always draw to the same buffer and can rely on old pixel
-    /// data to still be there after a Present call.
-    /// This means that D3D9SwapChainEx::GetFrontBufferData returns data from the backbuffer of the
-    /// previous frame, which is the same as the current backbuffer if only 1 backbuffer was requested.
-    bool noExplicitFrontBuffer;
-
     /// Defer surface creation
     bool deferSurfaceCreation;
 
@@ -158,6 +148,9 @@ namespace dxvk {
 
     /// Shader dump path
     std::string shaderDumpPath;
+
+    /// Enable emulation of device loss when a fullscreen app loses focus
+    bool deviceLost;
   };
 
 }

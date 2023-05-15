@@ -65,8 +65,11 @@ namespace dxvk {
       return S_OK;
     }
     
-    Logger::warn("DxgiSwapChain::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(IDXGISwapChain), riid)) {
+      Logger::warn("DxgiSwapChain::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
   
@@ -422,8 +425,18 @@ namespace dxvk {
 
     Com<IDXGIOutput1> target;
 
-    if (pTarget)
+    if (pTarget) {
+      DXGI_OUTPUT_DESC desc;
+
       pTarget->QueryInterface(IID_PPV_ARGS(&target));
+      target->GetDesc(&desc);
+
+      if (!m_descFs.Windowed && Fullscreen && m_monitor != desc.Monitor) {
+        HRESULT hr = this->LeaveFullscreenMode();
+        if (FAILED(hr))
+          return hr;
+      }
+    }
 
     if (m_descFs.Windowed && Fullscreen)
       return this->EnterFullscreenMode(target.ptr());

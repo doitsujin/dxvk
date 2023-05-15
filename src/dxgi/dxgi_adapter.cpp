@@ -103,8 +103,11 @@ namespace dxvk {
       return S_OK;
     }
     
-    Logger::warn("DxgiAdapter::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(IDXGIAdapter), riid)) {
+      Logger::warn("DxgiAdapter::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
   
@@ -145,12 +148,39 @@ namespace dxvk {
     
     if (ppOutput == nullptr)
       return E_INVALIDARG;
-    
-    HMONITOR monitor = wsi::enumMonitors(Output);
-    
+
+    const auto& deviceId = m_adapter->devicePropertiesExt().vk11;
+
+    std::array<const LUID*, 2> adapterLUIDs = { };
+    uint32_t numLUIDs = 0;
+
+    if (m_adapter->isLinkedToDGPU())
+      return DXGI_ERROR_NOT_FOUND;
+
+    if (deviceId.deviceLUIDValid)
+      adapterLUIDs[numLUIDs++] = reinterpret_cast<const LUID*>(deviceId.deviceLUID);
+
+    auto linkedAdapter = m_adapter->linkedIGPUAdapter();
+
+    // If either LUID is not valid, enumerate all monitors.
+    if (numLUIDs && linkedAdapter != nullptr) {
+      const auto& deviceId = linkedAdapter->devicePropertiesExt().vk11;
+
+      if (deviceId.deviceLUIDValid)
+        adapterLUIDs[numLUIDs++] = reinterpret_cast<const LUID*>(deviceId.deviceLUID);
+      else
+        numLUIDs = 0;
+    }
+
+    // Enumerate all monitors if the robustness fallback is active.
+    if (m_factory->UseMonitorFallback())
+      numLUIDs = 0;
+
+    HMONITOR monitor = wsi::enumMonitors(adapterLUIDs.data(), numLUIDs, Output);
+
     if (monitor == nullptr)
       return DXGI_ERROR_NOT_FOUND;
-    
+
     *ppOutput = ref(new DxgiOutput(m_factory, this, monitor));
     return S_OK;
   }
@@ -349,23 +379,24 @@ namespace dxvk {
     if (MemorySegmentGroup == DXGI_MEMORY_SEGMENT_GROUP_LOCAL)
       heapFlags |= VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
     
-    pVideoMemoryInfo->Budget       = 0;
+    pVideoMemoryInfo->Budget = 0;
     pVideoMemoryInfo->CurrentUsage = 0;
+    pVideoMemoryInfo->AvailableForReservation = 0;
 
     for (uint32_t i = 0; i < memInfo.heapCount; i++) {
       if ((memInfo.heaps[i].heapFlags & heapFlagMask) != heapFlags)
         continue;
       
-      pVideoMemoryInfo->Budget       += memInfo.heaps[i].memoryBudget;
+      pVideoMemoryInfo->Budget += memInfo.heaps[i].memoryBudget;
       pVideoMemoryInfo->CurrentUsage += memInfo.heaps[i].memoryAllocated;
+      pVideoMemoryInfo->AvailableForReservation += memInfo.heaps[i].heapSize / 2;
     }
 
     // We don't implement reservation, but the observable
     // behaviour should match that of Windows drivers
     uint32_t segmentId = uint32_t(MemorySegmentGroup);
 
-    pVideoMemoryInfo->AvailableForReservation = pVideoMemoryInfo->Budget / 2;
-    pVideoMemoryInfo->CurrentReservation      = m_memReservation[segmentId];
+    pVideoMemoryInfo->CurrentReservation = m_memReservation[segmentId];
     return S_OK;
   }
 

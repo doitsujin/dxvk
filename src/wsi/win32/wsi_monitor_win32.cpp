@@ -1,9 +1,11 @@
 #include "../wsi_monitor.h"
 
+#include "../../util/util_string.h"
 #include "../../util/log/log.h"
 #include "../../util/util_string.h"
 
 #include <cstring>
+#include <set>
 
 #include <setupapi.h>
 #include <ntddvdeo.h>
@@ -16,6 +18,7 @@ namespace dxvk::wsi {
   }
 
   struct MonitorEnumInfo {
+    const WCHAR *gdiDeviceName;
     UINT      iMonitorId;
     HMONITOR  oMonitor;
   };
@@ -27,23 +30,107 @@ namespace dxvk::wsi {
           LPARAM                    lp) {
     auto data = reinterpret_cast<MonitorEnumInfo*>(lp);
 
-    if (data->iMonitorId--)
-      return TRUE; /* continue */
+    if (data->gdiDeviceName)
+    {
+      MONITORINFOEXW monitorInfo;
 
+      monitorInfo.cbSize = sizeof(monitorInfo);
+      GetMonitorInfoW(hmon, (MONITORINFO *)&monitorInfo);
+      if (wcscmp(data->gdiDeviceName, monitorInfo.szDevice))
+        return TRUE;
+    }
+    if (data->iMonitorId--)
+      return TRUE;
     data->oMonitor = hmon;
-    return FALSE; /* stop */
+    return FALSE;
   }
 
   HMONITOR enumMonitors(uint32_t index) {
     MonitorEnumInfo info;
     info.iMonitorId = index;
     info.oMonitor   = nullptr;
+    info.gdiDeviceName = nullptr;
 
     ::EnumDisplayMonitors(
       nullptr, nullptr, &MonitorEnumProc,
       reinterpret_cast<LPARAM>(&info));
 
     return info.oMonitor;
+  }
+
+  HMONITOR enumMonitors(const LUID *adapterLUID[], uint32_t numLUIDs, uint32_t index) {
+    if (!numLUIDs)
+      return enumMonitors(index);
+
+    std::vector<DISPLAYCONFIG_PATH_INFO> paths;
+    std::vector<DISPLAYCONFIG_MODE_INFO> modes;
+    std::set<std::pair<uint32_t, uint32_t>> sources;
+    UINT32 pathCount = 0;
+    UINT32 modeCount = 0;
+    LONG result;
+
+    do {
+      if ((result = GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &pathCount, &modeCount))) {
+        Logger::err(str::format("GetDisplayConfigBufferSizes failed, result ", result));
+        return enumMonitors(index);
+      }
+
+      paths.resize(pathCount);
+      modes.resize(modeCount);
+
+      result = QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS,
+        &pathCount, paths.data(), &modeCount, modes.data(), nullptr);
+    } while (result == ERROR_INSUFFICIENT_BUFFER);
+
+    if (result) {
+      Logger::err(str::format("QueryDisplayConfig failed, result ", result));
+      return enumMonitors(index);
+    }
+
+    paths.resize(pathCount);
+    modes.resize(modeCount);
+
+    MonitorEnumInfo info;
+    info.iMonitorId = index;
+    info.oMonitor = nullptr;
+
+    for (const auto &path : paths) {
+      uint32_t i;
+
+      for (i = 0; i < numLUIDs; ++i) {
+        if (!std::memcmp(&path.sourceInfo.adapterId, adapterLUID[i], sizeof(path.sourceInfo.adapterId)))
+          break;
+      }
+
+      if (i == numLUIDs)
+        continue;
+
+      /* Mirrored displays appear as multiple paths with the same
+       * GDI device name, that comes as single dxgi output. */
+      if (!sources.insert(std::pair<uint32_t, uint32_t>(i, path.sourceInfo.id)).second)
+        continue;
+
+      DISPLAYCONFIG_SOURCE_DEVICE_NAME deviceName = { };
+      deviceName.header.adapterId = path.sourceInfo.adapterId;
+      deviceName.header.id = path.sourceInfo.id;
+      deviceName.header.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME;
+      deviceName.header.size = sizeof(deviceName);
+
+      if ((result = DisplayConfigGetDeviceInfo(&deviceName.header))) {
+        Logger::err(str::format("DisplayConfigGetDeviceInfo failed, result ", result));
+        return enumMonitors(index);
+      }
+
+      info.gdiDeviceName = deviceName.viewGdiDeviceName;
+
+      ::EnumDisplayMonitors(
+        nullptr, nullptr, &MonitorEnumProc,
+        reinterpret_cast<LPARAM>(&info));
+
+      if (info.oMonitor != nullptr)
+        return info.oMonitor;
+    }
+    return nullptr;
   }
 
 
