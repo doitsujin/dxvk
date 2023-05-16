@@ -1,17 +1,17 @@
 # About this fork:
 
 This fork contains the following changes:
-* GTR2 specific tweaks for higher framerate.  Might be helpful for other gMotor based/derived DX9 games, but GTR2 is the sole focus of this fork.  Differences vs main repo are marked with GTR2_SPECIFIC symbol.
+* GTR2 specific tweaks for higher framerate.  Might be helpful for other gMotor based/derived DX9 games, but GTR2 is the sole focus of this fork so it is not guaranteed to work on other games.  Differences vs main repo are marked with GTR2_SPECIFIC symbol.
 * additional resource unmapping.
-* allow DX9->Vulkan OpenVR (Based on Joshua Ashton's work).
-* option to force SGSSAA-like AA.  It's brute force and I suspect can be done much smarter, by appliying sample shading only to some pipelines, I am not yet sure how - suggestions welcome!
+* allow DX9->Vulkan OpenVR/OpenXR (Initially based on Joshua Ashton's work).  Note: that game side changes needed for VR to work.
+* option to force SGSSAA-like AA.  It's brute force and I suspect can be done much smarter, by appliying sample shading only to some pipelines, I am not yet sure how - suggestions welcome!  Note: main DXVK branch added this as well recently, but this for has additional experimental setting: dxvk.forceSampleRateShadingFactor
 * option to force 32bit float depth buffer.
 
 I am not submitting my stuff to the main repo because I am not exactly a graphics guru and I doubt anyone needs my hacks there (at least no one expressed interest).  That said, if this is useful to anyone, I would greatly appreciate hints and suggestions, especially on how to minimize GPU idle time in VR and applying sample shading AA smarter.  Also, any ideas for further DX9 gMotor specific tweaks are welcome.
 
 
 ## Branches:
-* Latest:  vr-dx9-rel-010123
+* Latest Vulkan 1.3: vr-dx9-rel-051523
 * Vulkan 1.2: vr-dx9-rel-042322
 
 # DXVK
