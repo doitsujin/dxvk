@@ -573,6 +573,7 @@ namespace dxvk {
     /* BlazBlue Centralfiction                  */
     { R"(\\BBCF\.exe$)", {{
       { "d3d9.floatEmulation",              "Strict" },
+      { "d3d9.textureMemory",               "0"   },
     }} },
     /* Resident Evil games using MT Framework   */
     { R"(\\(rerev|re0hd|bhd)\.exe$)", {{
@@ -716,11 +717,6 @@ namespace dxvk {
       { "d3d9.customVendorId",              "10de" },
       { "d3d9.customDeviceId",              "05E0" },
       { "dxgi.nvapiHack",                   "False" },
-    }} },
-    /* BlazBlue Centralfiction                 *
-     * Temporary crash workaround              */
-    { R"(\\BBCF\.exe$)", {{
-      { "d3d9.textureMemory",               "0"   },
     }} },
     /* Battle Fantasia Revised Edition         *
      * Speedup above 60fps                     */
