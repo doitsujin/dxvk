@@ -59,7 +59,8 @@ function build_arch {
   fi
 
   meson setup --cross-file "$DXVK_SRC_DIR/$crossfile$1.txt" \
-        --buildtype "release"                               \
+        --optimization s                                    \
+        --default-library shared                            \
         --prefix "$DXVK_BUILD_DIR"                          \
         $opt_strip                                          \
         --bindir "x$1"                                      \
@@ -79,7 +80,7 @@ function build_arch {
 
 function package {
   cd "$DXVK_BUILD_DIR/.."
-  tar -czf "$DXVK_ARCHIVE_PATH" "dxvk-$DXVK_VERSION"
+  tar -cJf "$DXVK_ARCHIVE_PATH" "dxvk-$DXVK_VERSION"
   rm -R "dxvk-$DXVK_VERSION"
 }
 
