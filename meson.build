@@ -1,4 +1,4 @@
-project('dxvk', ['c', 'cpp'], version : 'v2.2', meson_version : '>= 0.49', default_options : [ 'cpp_std=c++17', 'warning_level=2' ])
+project('dxvk', ['c', 'cpp'], version : 'v2.2', meson_version : '>= 0.49', default_options : [ 'cpp_std=gnu++20', 'warning_level=2' ])
 
 cpu_family = target_machine.cpu_family()
 platform   = target_machine.system()
@@ -144,7 +144,7 @@ def_spec_ext = '.def'
 glsl_compiler = find_program('glslangValidator')
 glsl_args = [
   '--quiet',
-  '--target-env', 'vulkan1.2',
+  '--target-env', 'vulkan1.3',
   '--vn', '@BASENAME@',
   '--depfile', '@DEPFILE@',
   '@INPUT@',
