@@ -746,6 +746,11 @@ namespace dxvk {
     { R"(\\DCGAME\.EXE$)", {{
       { "d3d9.deviceLost",              "True"   },
     }} },
+    /* Halo Online                             *
+     * Black textures                          */
+    { R"(\\eldorado\.exe$)", {{
+      { "d3d9.floatEmulation",        "Strict"   },
+    }} },
     
     /**********************************************/
     /* D3D12 GAMES (vkd3d-proton with dxvk dxgi)  */
