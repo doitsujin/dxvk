@@ -32,12 +32,17 @@ namespace dxvk::hud {
   }
   
   
-  void HudRenderer::beginFrame(const Rc<DxvkContext>& context, VkExtent2D surfaceSize, float scale) {
+  void HudRenderer::beginFrame(
+          const Rc<DxvkContext>& context, 
+          VkExtent2D surfaceSize, 
+          float scale, 
+          float opacity) {
     if (!m_initialized)
       this->initFontTexture(context);
 
     m_mode        = Mode::RenderNone;
     m_scale       = scale;
+    m_opacity     = opacity;
     m_surfaceSize = surfaceSize;
     m_context     = context;
   }
@@ -60,6 +65,10 @@ namespace dxvk::hud {
 
     VkDeviceSize offset = allocDataBuffer(textCopy.size());
     std::memcpy(m_dataBuffer->mapPtr(offset), textCopy.data(), textCopy.size());
+
+    // Enforce HUD opacity factor on alpha
+    if (m_opacity != 1.0f)
+      color.a *= m_opacity;
 
     // Fill in push constants for the next draw
     HudTextPushConstants pushData;
@@ -95,6 +104,7 @@ namespace dxvk::hud {
     pushData.size = size;
     pushData.scale.x = m_scale / std::max(float(m_surfaceSize.width),  1.0f);
     pushData.scale.y = m_scale / std::max(float(m_surfaceSize.height), 1.0f);
+    pushData.opacity = m_opacity;
 
     m_context->pushConstants(0, sizeof(pushData), &pushData);
     m_context->draw(4, 1, 0, 0);

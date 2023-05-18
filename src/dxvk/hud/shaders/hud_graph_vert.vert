@@ -9,6 +9,7 @@ uniform push_data_t {
   vec2 pos;
   vec2 size;
   vec2 scale;
+  float opacity;
 };
 
 void main() {
