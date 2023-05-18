@@ -1041,7 +1041,7 @@ namespace dxvk {
      * but somehow works on native. Let's just   *
      * change its declaration to make them work. */
     { R"(\\Pure Pinball 2.0 REDUX\.exe$)", {{
-      { "d3d8.forceVsDecl",                 "0:2,4:2,7:4,9:1,8:1" },
+      { "d3d8.forceVsDecl",  "0:2,4:2,7:4,9:1,8:1" },
     }} },
     /* Supreme Ruler 2010                        *
      * Needs the same workaround as SR2020 to    *
@@ -1078,6 +1078,11 @@ namespace dxvk {
     { R"(\\igi2\.exe$)", {{
       { "d3d9.managedBufferPlacement",     "False" },
       { "d3d9.apitraceMode",                "True" },
+    }} },
+    /* Treasure Planet: Battle at Procyon        *
+     * Declares v5 as color but shader uses v6   */
+    { R"(\\TP_Win32\.exe$)", {{
+      { "d3d8.forceVsDecl",      "0:2,3:2,6:4,7:1" },
     }} },
   }};
 
