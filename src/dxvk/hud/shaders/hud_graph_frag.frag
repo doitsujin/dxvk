@@ -24,6 +24,7 @@ uniform push_data_t {
   vec2 pos;
   vec2 size;
   vec2 scale;
+  float opacity;
 };
 
 void main() {
@@ -47,7 +48,7 @@ void main() {
   o_color = mix(
     unpackUnorm4x8(p0.color),
     unpackUnorm4x8(p1.color), fx);
-  o_color *= alpha;
+  o_color *= alpha * opacity;
 
   o_color.rgb = encodeOutput(o_color.rgb);
 }
