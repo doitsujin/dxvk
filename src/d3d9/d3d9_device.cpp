@@ -6243,7 +6243,11 @@ namespace dxvk {
       info.mipmapMode     = mipFilter.MipFilter;
       info.maxAnisotropy  = float(cKey.MaxAnisotropy);
       info.useAnisotropy  = cKey.MaxAnisotropy > 1;
+
       info.mipmapLodBias  = cKey.MipmapLodBias + m_d3d9Options.samplerLodBias;
+      if (m_d3d9Options.clampNegativeLodBias)
+        info.mipmapLodBias = std::max(info.mipmapLodBias, 0.0f);
+
       info.mipmapLodMin   = mipFilter.MipsEnabled ? float(cKey.MaxMipLevel) : 0;
       info.mipmapLodMax   = mipFilter.MipsEnabled ? FLT_MAX                 : 0;
       info.reductionMode  = VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
