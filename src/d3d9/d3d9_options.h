@@ -136,6 +136,11 @@ namespace dxvk {
     /// Don't use non seamless cube maps
     bool seamlessCubes;
 
+    /// Mipmap LOD bias
+    ///
+    /// Enforces the given LOD bias for all samplers.
+    float samplerLodBias;
+
     /// How much virtual memory will be used for textures (in MB).
     int32_t textureMemory;
 

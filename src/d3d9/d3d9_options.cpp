@@ -1,3 +1,5 @@
+#include "../util/util_math.h"
+
 #include "d3d9_options.h"
 
 #include "d3d9_caps.h"
@@ -72,6 +74,10 @@ namespace dxvk {
     this->seamlessCubes                 = config.getOption<bool>        ("d3d9.seamlessCubes",                 false);
     this->textureMemory                 = config.getOption<int32_t>     ("d3d9.textureMemory",                 100) << 20;
     this->deviceLossOnFocusLoss         = config.getOption<bool>        ("d3d9.deviceLossOnFocusLoss",         false);
+    this->samplerLodBias                = config.getOption<float>       ("d3d9.samplerLodBias",                0.0f);
+
+    // Clamp LOD bias so that people don't abuse this in unintended ways
+    this->samplerLodBias = dxvk::fclamp(this->samplerLodBias, -2.0f, 1.0f);
 
     std::string floatEmulation = Config::toLower(config.getOption<std::string>("d3d9.floatEmulation", "auto"));
     if (floatEmulation == "strict") {
