@@ -141,6 +141,9 @@ namespace dxvk {
     /// Enforces the given LOD bias for all samplers.
     float samplerLodBias;
 
+    /// Clamps negative LOD bias
+    bool clampNegativeLodBias;
+
     /// How much virtual memory will be used for textures (in MB).
     int32_t textureMemory;
 
