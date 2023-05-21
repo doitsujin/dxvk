@@ -491,8 +491,11 @@ namespace dxvk {
     { R"(\\SpellForce2.*\.exe$)", {{
       { "d3d9.forceSamplerTypeSpecConstants", "True" },
     }} },
-    /* Tomb Raider: Legend                       */
-    { R"(\\trl\.exe$)", {{
+    /* Tomb Raider: Legend, Anniversary, Underworld  *
+     * Read from a buffer created with:              *
+     * D3DPOOL_DEFAULT,                              *
+     * D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY buffer  */
+    { R"(\\(trl|tra|tru)\.exe$)", {{
       { "d3d9.apitraceMode",                "True" },
     }} },
     /* Everquest                                 */
