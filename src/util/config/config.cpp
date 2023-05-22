@@ -591,10 +591,6 @@ namespace dxvk {
       { "d3d9.floatEmulation",              "Strict" },
       { "d3d9.textureMemory",               "0"   },
     }} },
-    /* Resident Evil games using MT Framework   */
-    { R"(\\(rerev|re0hd|bhd)\.exe$)", {{
-      { "d3d9.allowDirectBufferMapping",                "False" },
-    }} },
     /* Limbo                                    */
     { R"(\\limbo\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
