@@ -748,11 +748,6 @@ namespace dxvk {
     { R"(\\(PANZERS|PANZERS_Phase_2)\.exe$)", {{
       { "d3d9.enableDialogMode",         "True"   },
     }} },
-    /* Dark Romance: Vampire in Love          *
-     * Works around black screen or blinking  */
-    { R"(\\(DarkRomance_VampireInLove_CE)\.exe$)", {{
-      { "d3d9.allowDirectBufferMapping", "False"   },
-    }} },
     /* DC Universe Online                      *
      * Freezes after alt tabbing               */
     { R"(\\DCGAME\.EXE$)", {{
