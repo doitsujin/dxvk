@@ -333,7 +333,7 @@ namespace dxvk {
                 || !required.extShaderModuleIdentifier.shaderModuleIdentifier)
         && (m_deviceFeatures.extShaderStencilExport
                 || !required.extShaderStencilExport)
-        && (m_deviceFeatures.extShaderStencilExport
+        && (m_deviceFeatures.extSwapchainColorSpace
                 || !required.extSwapchainColorSpace)
         && (m_deviceFeatures.extHdrMetadata
                 || !required.extHdrMetadata)
