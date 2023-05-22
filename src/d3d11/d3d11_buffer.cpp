@@ -339,6 +339,7 @@ namespace dxvk {
                   || (m_parent->GetOptions()->cachedDynamicResources & m_desc.BindFlags);
 
     if ((memoryFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) && useCached) {
+      memoryFlags &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
       memoryFlags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
                   |  VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
     }
