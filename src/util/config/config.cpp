@@ -497,6 +497,7 @@ namespace dxvk {
      * D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY buffer  */
     { R"(\\(trl|tra|tru)\.exe$)", {{
       { "d3d9.apitraceMode",                "True" },
+      { "d3d9.maxFrameRate",                "60" },
     }} },
     /* Everquest                                 */
     { R"(\\eqgame\.exe$)", {{
