@@ -28,6 +28,7 @@
 
 #include "d3d9_spec_constants.h"
 #include "d3d9_interop.h"
+#include "d3d9_on_12.h"
 
 #include <unordered_set>
 #include <vector>
@@ -1370,6 +1371,7 @@ namespace dxvk {
     Direct3DState9                  m_state;
 
     D3D9VkInteropDevice             m_d3d9Interop;
+    D3D9On12                        m_d3d9On12;
   };
 
 }

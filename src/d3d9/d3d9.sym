@@ -18,6 +18,8 @@
     DXVK_RegisterAnnotation;
     DXVK_UnRegisterAnnotation;
     Direct3D9ForceHybridEnumeration;
+    Direct3DCreate9On12;
+    Direct3DCreate9On12Ex;
 
   local:
     *;
