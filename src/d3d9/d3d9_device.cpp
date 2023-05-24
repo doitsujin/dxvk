@@ -154,6 +154,14 @@ namespace dxvk {
     m_flags.set(D3D9DeviceFlag::DirtyPointScale);
 
     m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
+
+    // Bitfields can't be initialized in header.
+    m_boundRTs = 0;
+    m_anyColorWrites = 0;
+    m_activeRTs = 0;
+    m_activeHazardsRT = 0;
+    m_alphaSwizzleRTs = 0;
+    m_lastHazardsRT = 0;
   }
 
 
