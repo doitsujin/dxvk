@@ -3278,21 +3278,33 @@ namespace dxvk {
 
     m_state.pixelShader = shader;
 
+    D3D9ShaderMasks newShaderMasks;
+
     if (shader != nullptr) {
       m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
 
       BindShader<DxsoProgramTypes::PixelShader>(GetCommonShader(shader));
-      m_psShaderMasks = newShader->GetShaderMask();
+      newShaderMasks = newShader->GetShaderMask();
     }
     else {
       // TODO: What fixed function textures are in use?
       // Currently we are making all 8 of them as in use here.
 
       // The RT output is always 0 for fixed function.
-      m_psShaderMasks = FixedFunctionMask;
+      newShaderMasks = FixedFunctionMask;
     }
 
-    UpdateActiveHazardsRT(UINT32_MAX);
+    // If we have any RTs we would have bound to the the FB
+    // not in the new shader mask, mark the framebuffer as dirty
+    // so we unbind them.
+    if (m_activeRTs & m_psShaderMasks.rtMask & (~newShaderMasks.rtMask))
+      m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+
+    if (m_psShaderMasks.samplerMask != newShaderMasks.samplerMask ||
+        m_psShaderMasks.rtMask != newShaderMasks.rtMask) {
+      m_psShaderMasks = newShaderMasks;
+      UpdateActiveHazardsRT(UINT32_MAX);
+    }
 
     return D3D_OK;
   }
@@ -5664,6 +5676,9 @@ namespace dxvk {
         continue;
 
       if (!m_state.renderStates[ColorWriteIndex(i)])
+        continue;
+
+      if (!(m_psShaderMasks.rtMask & (1 << i)))
         continue;
 
       attachments.color[i] = {
