@@ -1972,31 +1972,23 @@ namespace dxvk {
           break;
 
         case D3DRS_COLORWRITEENABLE:
-          if (likely(!old != !Value)) {
-            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
-            UpdateActiveRTs(0);
-          }
+          if (likely(!old != !Value))
+            UpdateAnyColorWrites(0, !!Value);
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE1:
-          if (likely(!old != !Value && (m_boundRTs & (1 << 1)))) {
-            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
-            UpdateActiveRTs(1);
-          }
+          if (likely(!old != !Value))
+            UpdateAnyColorWrites(1, !!Value);
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE2:
-          if (likely(!old != !Value && (m_boundRTs & (1 << 2)))) {
-            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
-            UpdateActiveRTs(2);
-          }
+          if (likely(!old != !Value))
+            UpdateAnyColorWrites(2, !!Value);
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE3:
-          if (likely(!old != !Value && (m_boundRTs & (1 << 3)))) {
-            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
-            UpdateActiveRTs(3);
-          }
+          if (likely(!old != !Value))
+            UpdateAnyColorWrites(3, !!Value);
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
 
@@ -3297,7 +3289,7 @@ namespace dxvk {
     // If we have any RTs we would have bound to the the FB
     // not in the new shader mask, mark the framebuffer as dirty
     // so we unbind them.
-    if (m_activeRTs & m_psShaderMasks.rtMask & (~newShaderMasks.rtMask))
+    if (m_boundRTs & m_anyColorWrites & m_psShaderMasks.rtMask & (~newShaderMasks.rtMask))
       m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
     if (m_psShaderMasks.samplerMask != newShaderMasks.samplerMask ||
@@ -5355,10 +5347,25 @@ namespace dxvk {
 
     if ((m_boundRTs & bit) != 0 &&
         m_state.renderTargets[index]->GetBaseTexture() != nullptr &&
-        m_state.renderStates[ColorWriteIndex(index)])
+        m_anyColorWrites & bit)
       m_activeRTs |= bit;
 
     UpdateActiveHazardsRT(bit);
+  }
+
+
+  inline void D3D9DeviceEx::UpdateAnyColorWrites(uint32_t index, bool has) {
+    const uint32_t bit = 1 << index;
+
+    m_anyColorWrites &= ~bit;
+
+    if (has)
+      m_anyColorWrites |= bit;
+
+    if (m_boundRTs & bit) {
+      m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+      UpdateActiveRTs(index);
+    }
   }
 
 
@@ -5675,7 +5682,7 @@ namespace dxvk {
       else if (unlikely(sampleCount != rtImageInfo.sampleCount))
         continue;
 
-      if (!m_state.renderStates[ColorWriteIndex(i)])
+      if (!(m_anyColorWrites & (1 << i)))
         continue;
 
       if (!(m_psShaderMasks.rtMask & (1 << i)))
@@ -7369,6 +7376,9 @@ namespace dxvk {
     UpdateVertexBoolSpec(0u);
     UpdatePixelBoolSpec(0u);
     UpdateCommonSamplerSpec(0u, 0u, 0u);
+
+    for (uint32_t i = 0; i < caps::MaxSimultaneousRenderTargets; i++)
+      UpdateAnyColorWrites(i, true);
   }
 
 

@@ -29,6 +29,7 @@
 #include "d3d9_spec_constants.h"
 #include "d3d9_interop.h"
 
+#include <cstdint>
 #include <unordered_set>
 #include <vector>
 #include <type_traits>
@@ -773,6 +774,8 @@ namespace dxvk {
 
     void UpdateActiveRTs(uint32_t index);
 
+    void UpdateAnyColorWrites(uint32_t index, bool has);
+
     void UpdateActiveTextures(uint32_t index, DWORD combinedUsage);
 
     void UpdateActiveHazardsRT(uint32_t rtMask);
@@ -1289,6 +1292,7 @@ namespace dxvk {
     uint32_t                        m_dirtyTextures      = 0;
 
     uint32_t                        m_boundRTs = 0;
+    uint32_t                        m_anyColorWrites = 0;
 
     uint32_t                        m_activeRTs              = 0;
     uint32_t                        m_activeRTTextures       = 0;
