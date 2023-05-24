@@ -1979,21 +1979,21 @@ namespace dxvk {
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE1:
-          if (likely(!old != !Value && m_state.renderTargets[1] != nullptr)) {
+          if (likely(!old != !Value && (m_boundRTs & (1 << 1)))) {
             m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
             UpdateActiveRTs(1);
           }
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE2:
-          if (likely(!old != !Value && m_state.renderTargets[2] != nullptr)) {
+          if (likely(!old != !Value && (m_boundRTs & (1 << 2)))) {
             m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
             UpdateActiveRTs(2);
           }
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE3:
-          if (likely(!old != !Value && m_state.renderTargets[3] != nullptr)) {
+          if (likely(!old != !Value && (m_boundRTs & (1 << 3)))) {
             m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
             UpdateActiveRTs(3);
           }
