@@ -55,7 +55,8 @@ namespace dxvk {
     , m_isSWVP          ( (BehaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING) ? true : false )
     , m_csThread        ( dxvkDevice, dxvkDevice->createContext(DxvkContextType::Primary) )
     , m_csChunk         ( AllocCsChunk() )
-    , m_d3d9Interop     ( this ) {
+    , m_d3d9Interop     ( this )
+    , m_d3d9On12        ( this ) {
     // If we can SWVP, then we use an extended constant set
     // as SWVP has many more slots available than HWVP.
     bool canSWVP = CanSWVP();
@@ -202,6 +203,11 @@ namespace dxvk {
 
     if (riid == __uuidof(ID3D9VkInteropDevice)) {
       *ppvObject = ref(&m_d3d9Interop);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(IDirect3DDevice9On12)) {
+      *ppvObject = ref(&m_d3d9On12);
       return S_OK;
     }
 

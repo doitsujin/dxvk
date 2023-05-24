@@ -101,4 +101,14 @@ extern "C" {
   DLLEXPORT void __stdcall Direct3D9ForceHybridEnumeration(UINT uHybrid) {
   }
 
+  DLLEXPORT IDirect3D9* __stdcall Direct3DCreate9On12(UINT sdk_version, D3D9ON12_ARGS* override_list, UINT override_entry_count) {
+    dxvk::Logger::warn("Direct3DCreate9On12: 9On12 functionality is unimplemented.");
+    return Direct3DCreate9(sdk_version);
+  }
+
+  DLLEXPORT HRESULT __stdcall Direct3DCreate9On12Ex(UINT sdk_version, D3D9ON12_ARGS* override_list, UINT override_entry_count, IDirect3D9Ex** output) {
+    dxvk::Logger::warn("Direct3DCreate9On12Ex: 9On12 functionality is unimplemented.");
+    return Direct3DCreate9Ex(sdk_version, output);
+  }
+
 }
