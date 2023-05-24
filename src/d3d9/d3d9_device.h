@@ -774,7 +774,8 @@ namespace dxvk {
 
     void UpdateActiveRTs(uint32_t index);
 
-    void UpdateAnyColorWrites(uint32_t index, bool has);
+    template <uint32_t Index>
+    void UpdateAnyColorWrites(bool has);
 
     void UpdateActiveTextures(uint32_t index, DWORD combinedUsage);
 

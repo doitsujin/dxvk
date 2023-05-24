@@ -1981,22 +1981,22 @@ namespace dxvk {
 
         case D3DRS_COLORWRITEENABLE:
           if (likely(!old != !Value))
-            UpdateAnyColorWrites(0, !!Value);
+            UpdateAnyColorWrites<0>(!!Value);
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE1:
           if (likely(!old != !Value))
-            UpdateAnyColorWrites(1, !!Value);
+            UpdateAnyColorWrites<1>(!!Value);
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE2:
           if (likely(!old != !Value))
-            UpdateAnyColorWrites(2, !!Value);
+            UpdateAnyColorWrites<2>(!!Value);
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE3:
           if (likely(!old != !Value))
-            UpdateAnyColorWrites(3, !!Value);
+            UpdateAnyColorWrites<3>(!!Value);
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
 
@@ -5361,18 +5361,19 @@ namespace dxvk {
     UpdateActiveHazardsRT(bit);
   }
 
-
-  inline void D3D9DeviceEx::UpdateAnyColorWrites(uint32_t index, bool has) {
-    const uint32_t bit = 1 << index;
+  template <uint32_t Index>
+  inline void D3D9DeviceEx::UpdateAnyColorWrites(bool has) {
+    const uint32_t bit = 1 << Index;
 
     m_anyColorWrites &= ~bit;
 
     if (has)
       m_anyColorWrites |= bit;
 
-    if (m_boundRTs & bit) {
+    // The 0th RT is always bound.
+    if (Index == 0 || m_boundRTs & bit) {
       m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
-      UpdateActiveRTs(index);
+      UpdateActiveRTs(Index);
     }
   }
 
@@ -7385,8 +7386,10 @@ namespace dxvk {
     UpdatePixelBoolSpec(0u);
     UpdateCommonSamplerSpec(0u, 0u, 0u);
 
-    for (uint32_t i = 0; i < caps::MaxSimultaneousRenderTargets; i++)
-      UpdateAnyColorWrites(i, true);
+    UpdateAnyColorWrites<0>(true);
+    UpdateAnyColorWrites<1>(true);
+    UpdateAnyColorWrites<2>(true);
+    UpdateAnyColorWrites<3>(true);
   }
 
 
