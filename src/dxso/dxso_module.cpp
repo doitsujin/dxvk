@@ -38,9 +38,13 @@ namespace dxvk {
     m_constants       = compiler->constants();
     m_maxDefinedConst = compiler->maxDefinedConstant();
     m_usedSamplers    = compiler->usedSamplers();
-    m_usedRTs         = compiler->usedRTs();
 
     compiler->finalize();
+
+    // SM 1 doesn't have explicit output registers and uses R0 instead.
+    // The shader compiler emits the C0 write in finalize, so we have to get the rt mask
+    // after that.
+    m_usedRTs = compiler->usedRTs();
 
     return compiler->compile();
   }
