@@ -62,7 +62,7 @@ namespace dxvk {
     if (m_desc.Pool != D3DPOOL_DEFAULT)
       return D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
 
-    if (!(m_desc.Usage & (D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY)))
+    if (!(m_desc.Usage & D3DUSAGE_DYNAMIC))
       return D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
 
     // Tests show that DISCARD does not work for pure SWVP devices.
