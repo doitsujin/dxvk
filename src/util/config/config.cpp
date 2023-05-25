@@ -759,6 +759,13 @@ namespace dxvk {
     { R"(\\eldorado\.exe$)", {{
       { "d3d9.floatEmulation",        "Strict"   },
     }} },
+    /* AquaNox 2                               *
+     * Won't start or crashes on resolution    *
+     * change if the A2R10G10B10 adapter       *
+     * format is supported                     */
+    { R"(\\AN2\.dat$)", {{
+      { "d3d9.supportAFA2R10G10B10",     "False"  },
+    }} },
     
     /**********************************************/
     /* D3D12 GAMES (vkd3d-proton with dxvk dxgi)  */

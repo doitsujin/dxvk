@@ -98,7 +98,7 @@ namespace dxvk {
           D3D9Format AdapterFormat,
           D3D9Format BackBufferFormat,
           BOOL       bWindowed) {
-    if (!IsSupportedAdapterFormat(AdapterFormat))
+    if (!IsSupportedAdapterFormat(AdapterFormat, m_parent->GetOptions()))
       return D3DERR_NOTAVAILABLE;
 
     if (!IsSupportedBackBufferFormat(AdapterFormat, BackBufferFormat, bWindowed))
@@ -114,7 +114,7 @@ namespace dxvk {
           DWORD           Usage,
           D3DRESOURCETYPE RType,
           D3D9Format      CheckFormat) {
-    if (!IsSupportedAdapterFormat(AdapterFormat))
+    if (!IsSupportedAdapterFormat(AdapterFormat, m_parent->GetOptions()))
       return D3DERR_NOTAVAILABLE;
 
     const bool dmap = Usage & D3DUSAGE_DMAP;
@@ -758,11 +758,11 @@ namespace dxvk {
     m_modes.clear();
     m_modeCacheFormat = Format;
 
-    // Skip unsupported formats
-    if (!IsSupportedAdapterFormat(Format))
-      return;
-
     auto& options = m_parent->GetOptions();
+
+    // Skip unsupported formats
+    if (!IsSupportedAdapterFormat(Format, options))
+      return;
 
     // Walk over all modes that the display supports and
     // return those that match the requested format etc.

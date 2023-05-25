@@ -26,7 +26,8 @@ namespace dxvk {
   * \returns If it is supported as a swapchain/backbuffer format.
   */
   bool IsSupportedAdapterFormat(
-          D3D9Format Format);
+          D3D9Format        Format,
+          const D3D9Options options);
 
   bool IsSupportedBackBufferFormat(
           D3D9Format AdapterFormat,

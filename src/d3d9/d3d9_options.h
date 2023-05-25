@@ -72,6 +72,9 @@ namespace dxvk {
     /// D3D9 Floating Point Emulation (anything * 0 = 0)
     D3D9FloatEmulation d3d9FloatEmulation;
 
+    /// Support the A2R10G10B10 adapter format
+    bool supportAFA2R10G10B10;
+
     /// Support the DF16 & DF24 texture format
     bool supportDFFormats;
 

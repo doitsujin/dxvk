@@ -26,10 +26,11 @@ namespace dxvk {
 
 
   bool IsSupportedAdapterFormat(
-          D3D9Format Format) {
+          D3D9Format        Format,
+          const D3D9Options options) {
     // D3D9Format::X1R5G5B5 is unsupported by native drivers and some apps, 
     // such as the BGE SettingsApplication, rely on it not being exposed.
-    return Format == D3D9Format::A2R10G10B10
+    return (Format == D3D9Format::A2R10G10B10 && options.supportAFA2R10G10B10)
         || Format == D3D9Format::X8R8G8B8
         || Format == D3D9Format::R5G6B5;
   }
