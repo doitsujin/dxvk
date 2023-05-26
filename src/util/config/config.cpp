@@ -474,10 +474,6 @@ namespace dxvk {
     { R"(\\Neptunia\.exe$)", {{
       { "d3d9.forceAspectRatio",            "16:9" },
     }} },
-    /* D&D - The Temple Of Elemental Evil          */
-    { R"(\\ToEE(a)?\.exe$)", {{
-      { "d3d9.allowDiscard",                "False" },
-    }} },
     /* GTA IV (NVAPI)                             */
     /* Also thinks we're always on Intel          *
      * and will report/use bad amounts of VRAM.
