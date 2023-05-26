@@ -116,9 +116,6 @@ namespace dxvk {
     /// Forces sample rate shading
     bool forceSampleRateShading;
 
-    /// Allow D3DLOCK_DISCARD
-    bool allowDiscard;
-
     /// Enumerate adapters by displays
     bool enumerateByDisplays;
 
