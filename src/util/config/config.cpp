@@ -769,6 +769,11 @@ namespace dxvk {
     { R"(\\Fallout76\.exe$)", {{
       { "dxgi.syncInterval",              "1" },
     }} },
+    /* Injustice: Gods Among Us                *
+     * Locks a buffer that's still in use      */
+    { R"(\\injustice\.exe$)", {{
+      { "d3d9.allowDirectBufferMapping",    "False" },
+    }} },
     
     /**********************************************/
     /* D3D12 GAMES (vkd3d-proton with dxvk dxgi)  */
