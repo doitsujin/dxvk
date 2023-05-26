@@ -125,7 +125,7 @@ namespace dxvk {
       memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     }
 
-    if (memoryFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT && m_parent->GetOptions()->apitraceMode) {
+    if ((memoryFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) && m_parent->GetOptions()->cachedDynamicBuffers) {
       memoryFlags &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
       memoryFlags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
                   |  VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
