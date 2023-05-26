@@ -124,8 +124,8 @@ namespace dxvk {
     /// don't match entirely to the regular vertex shader in this way.
     bool longMad;
 
-    /// Apitrace mode: Maps all buffers in cached memory.
-    bool apitraceMode;
+    /// Cached dynamic buffers: Maps all buffers in cached memory.
+    bool cachedDynamicBuffers;
 
     /// Use device local memory for constant buffers.
     bool deviceLocalConstantBuffers;

@@ -49,7 +49,7 @@ namespace dxvk {
      * hardware.                                  */
     { R"(\\(FarCry2|farcry2game)\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
-      { "d3d9.apitraceMode",                "True" },
+      { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
     /* Far Cry 3: Assumes clear(0.5) on an UNORM  *
      * format to result in 128 on AMD and 127 on  *
@@ -500,12 +500,12 @@ namespace dxvk {
      * D3DPOOL_DEFAULT,                              *
      * D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY buffer  */
     { R"(\\(trl|tra|tru)\.exe$)", {{
-      { "d3d9.apitraceMode",                "True" },
+      { "d3d9.cachedDynamicBuffers",        "True" },
       { "d3d9.maxFrameRate",                "60" },
     }} },
     /* Everquest                                 */
     { R"(\\eqgame\.exe$)", {{
-      { "d3d9.apitraceMode",                "True" },
+      { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
     /* Dark Messiah of Might & Magic             */
     { R"(\\mm\.exe$)", {{
@@ -660,7 +660,7 @@ namespace dxvk {
     }} },
     /* Witcher 1: Very long loading times       */
     { R"(\\witcher\.exe$)", {{
-      { "d3d9.apitraceMode",              "True" },
+      { "d3d9.cachedDynamicBuffers",         "True" },
     }} },
     /* Guitar Hero World Tour                   *
      * Very prone to address space crashes      */
@@ -685,7 +685,7 @@ namespace dxvk {
     }} },
     /* Hammer World Editor                      */
     { R"(\\(hammer(plusplus)?|mallet|wc)\.exe$)", {{
-      { "d3d9.apitraceMode",                "True" },
+      { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
     /* Dragon Age Origins                       *
      * Keeps unmapping the same 3 1MB buffers   *
@@ -702,7 +702,7 @@ namespace dxvk {
      * Helps performance when Resizable BAR    *
      * is enabled                              */
     { R"(\\ASN_App_PcDx9_Final\.exe$)", {{
-      { "d3d9.apitraceMode",                "True" },
+      { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
     /* Black Mesa                              *
      * Artifacts & broken flashlight on Intel  */
