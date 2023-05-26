@@ -4328,6 +4328,10 @@ namespace dxvk {
     if (unlikely((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)))
       Flags &= ~D3DLOCK_DISCARD;
 
+    // Tests show that D3D9 drivers ignore DISCARD when the device is lost.
+    if (unlikely(m_deviceLostState != D3D9DeviceLostState::Ok))
+      Flags &= ~D3DLOCK_DISCARD;
+
     auto& desc = *(pResource->Desc());
 
     if (unlikely(!desc.IsLockable))
@@ -4807,6 +4811,10 @@ namespace dxvk {
     // Yes... D3D9 is a good API.
     if (desc.Usage & D3DUSAGE_DYNAMIC)
       Flags &= ~D3DLOCK_DONOTWAIT;
+
+    // Tests show that D3D9 drivers ignore DISCARD when the device is lost.
+    if (unlikely(m_deviceLostState != D3D9DeviceLostState::Ok))
+      Flags &= ~D3DLOCK_DISCARD;
 
     // We only bounds check for MANAGED.
     // (TODO: Apparently this is meant to happen for DYNAMIC too but I am not sure
