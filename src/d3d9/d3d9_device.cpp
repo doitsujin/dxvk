@@ -2463,6 +2463,9 @@ namespace dxvk {
     if (bSoftware && !CanSWVP())
       return D3DERR_INVALIDCALL;
 
+    if (!bSoftware && (m_behaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING))
+      return D3DERR_INVALIDCALL;
+
     m_isSWVP = bSoftware;
 
     return D3D_OK;
