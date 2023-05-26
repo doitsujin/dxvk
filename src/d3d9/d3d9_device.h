@@ -998,6 +998,10 @@ namespace dxvk {
       }
     }
 
+    bool CanOnlySWVP() const {
+      return m_behaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING;
+    }
+
   private:
 
     DxvkCsChunkRef AllocCsChunk() {
@@ -1024,10 +1028,9 @@ namespace dxvk {
       }
     }
 
-    bool CanSWVP() {
+    bool CanSWVP() const {
       return m_behaviorFlags & (D3DCREATE_MIXED_VERTEXPROCESSING | D3DCREATE_SOFTWARE_VERTEXPROCESSING);
     }
-
     void DetermineConstantLayouts(bool canSWVP);
 
     D3D9BufferSlice AllocUPBuffer(VkDeviceSize size);
