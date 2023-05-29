@@ -155,9 +155,7 @@ namespace dxvk {
     Rc<sync::Fence>           m_frameLatencySignal;
 
     bool                      m_dirty    = true;
-    bool                      m_vsync    = true;
-
-    bool                      m_dialog;
+    bool                      m_dialog   = false;
     bool                      m_lastDialog = false;
 
     HWND                      m_window   = nullptr;
@@ -183,8 +181,7 @@ namespace dxvk {
 
     void SynchronizePresent();
 
-    void RecreateSwapChain(
-        BOOL                      Vsync);
+    void RecreateSwapChain();
 
     void CreatePresenter();
 
@@ -208,10 +205,6 @@ namespace dxvk {
     uint32_t PickFormats(
             D3D9Format                Format,
             VkSurfaceFormatKHR*       pDstFormats);
-    
-    uint32_t PickPresentModes(
-            BOOL                      Vsync,
-            VkPresentModeKHR*         pDstModes);
     
     uint32_t PickImageCount(
             UINT                      Preferred);

@@ -41,7 +41,7 @@ namespace dxvk {
       CreatePresenter();
 
       if (!pDevice->GetOptions()->deferSurfaceCreation)
-        RecreateSwapChain(false);
+        RecreateSwapChain();
     }
 
     if (FAILED(CreateBackBuffers(m_presentParams.BackBufferCount)))
@@ -135,8 +135,6 @@ namespace dxvk {
     if (options->presentInterval >= 0)
       presentInterval = options->presentInterval;
 
-    bool vsync  = presentInterval != 0;
-
     HWND window = m_presentParams.hDeviceWindow;
     if (hDestWindowOverride != nullptr)
       window    = hDestWindowOverride;
@@ -148,13 +146,13 @@ namespace dxvk {
 
     m_window    = window;
 
-    m_dirty    |= vsync != m_vsync;
+    if (m_presenter != nullptr) {
+      m_dirty  |= m_presenter->setSyncInterval(presentInterval) != VK_SUCCESS;
+      m_dirty  |= !m_presenter->hasSwapChain();
+    }
+
     m_dirty    |= UpdatePresentRegion(pSourceRect, pDestRect);
     m_dirty    |= recreate;
-    m_dirty    |= m_presenter != nullptr &&
-                 !m_presenter->hasSwapChain();
-
-    m_vsync     = vsync;
 
     m_lastDialog = m_dialog;
 
@@ -169,7 +167,7 @@ namespace dxvk {
         CreatePresenter();
 
       if (std::exchange(m_dirty, false))
-        RecreateSwapChain(vsync);
+        RecreateSwapChain();
 
       // We aren't going to device loss simply because
       // 99% of D3D9 games don't handle this properly and
@@ -762,7 +760,7 @@ namespace dxvk {
       VkResult status = m_presenter->acquireNextImage(sync, imageIndex);
 
       while (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
-        RecreateSwapChain(m_vsync);
+        RecreateSwapChain();
         
         info = m_presenter->info();
         status = m_presenter->acquireNextImage(sync, imageIndex);
@@ -817,6 +815,7 @@ namespace dxvk {
       cFrameId     = FrameId,
       cSync        = Sync,
       cHud         = m_hud,
+      cPresentMode = m_presenter->info().presentMode,
       cCommandList = m_context->endRecording()
     ] (DxvkContext* ctx) {
       cCommandList->setWsiSemaphores(cSync);
@@ -825,7 +824,7 @@ namespace dxvk {
       if (cHud != nullptr && !cFrameId)
         cHud->update();
 
-      m_device->presentImage(m_presenter, &m_presentStatus);
+      m_device->presentImage(m_presenter, cPresentMode, &m_presentStatus);
     });
 
     m_parent->FlushCsChunk();
@@ -837,10 +836,10 @@ namespace dxvk {
     VkResult status = m_device->waitForSubmission(&m_presentStatus);
 
     if (status != VK_SUCCESS)
-      RecreateSwapChain(m_vsync);
+      RecreateSwapChain();
   }
 
-  void D3D9SwapChainEx::RecreateSwapChain(BOOL Vsync) {
+  void D3D9SwapChainEx::RecreateSwapChain() {
     // Ensure that we can safely destroy the swap chain
     m_device->waitForSubmission(&m_presentStatus);
     m_device->waitForIdle();
@@ -851,7 +850,6 @@ namespace dxvk {
     presenterDesc.imageExtent     = GetPresentExtent();
     presenterDesc.imageCount      = PickImageCount(m_presentParams.BackBufferCount + 1);
     presenterDesc.numFormats      = PickFormats(EnumerateFormat(m_presentParams.BackBufferFormat), presenterDesc.formats);
-    presenterDesc.numPresentModes = PickPresentModes(Vsync, presenterDesc.presentModes);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
     VkResult vr = m_presenter->recreateSwapChain(presenterDesc);
@@ -885,7 +883,6 @@ namespace dxvk {
     presenterDesc.imageExtent     = GetPresentExtent();
     presenterDesc.imageCount      = PickImageCount(m_presentParams.BackBufferCount + 1);
     presenterDesc.numFormats      = PickFormats(EnumerateFormat(m_presentParams.BackBufferFormat), presenterDesc.formats);
-    presenterDesc.numPresentModes = PickPresentModes(false, presenterDesc.presentModes);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
     m_presenter = new Presenter(m_device, presenterDesc);
@@ -1115,25 +1112,6 @@ namespace dxvk {
         }
         break;
       }
-    }
-
-    return n;
-  }
-
-
-  uint32_t D3D9SwapChainEx::PickPresentModes(
-          BOOL                      Vsync,
-          VkPresentModeKHR*         pDstModes) {
-    uint32_t n = 0;
-
-    if (Vsync) {
-      if (m_parent->GetOptions()->tearFree == Tristate::False)
-        pDstModes[n++] = VK_PRESENT_MODE_FIFO_RELAXED_KHR;
-      pDstModes[n++] = VK_PRESENT_MODE_FIFO_KHR;
-    } else {
-      if (m_parent->GetOptions()->tearFree != Tristate::True)
-        pDstModes[n++] = VK_PRESENT_MODE_IMMEDIATE_KHR;
-      pDstModes[n++] = VK_PRESENT_MODE_MAILBOX_KHR;
     }
 
     return n;

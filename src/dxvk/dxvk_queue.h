@@ -43,6 +43,7 @@ namespace dxvk {
    */
   struct DxvkPresentInfo {
     Rc<Presenter>       presenter;
+    VkPresentModeKHR    presentMode;
   };
 
 

@@ -49,7 +49,7 @@ namespace dxvk {
   }
 
 
-  VkResult Presenter::presentImage() {
+  VkResult Presenter::presentImage(VkPresentModeKHR mode) {
     PresenterSync sync = m_semaphores.at(m_frameIndex);
 
     VkPresentInfoKHR info = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
@@ -76,8 +76,8 @@ namespace dxvk {
       m_swapchain, std::numeric_limits<uint64_t>::max(),
       sync.acquire, VK_NULL_HANDLE, &m_imageIndex);
 
-    bool vsync = m_info.presentMode == VK_PRESENT_MODE_FIFO_KHR
-              || m_info.presentMode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+    bool vsync = mode == VK_PRESENT_MODE_FIFO_KHR
+              || mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
 
     m_fpsLimiter.delay(vsync);
     return status;
@@ -124,7 +124,7 @@ namespace dxvk {
 
     // Select actual swap chain properties and create swap chain
     m_info.format       = pickFormat(formats.size(), formats.data(), desc.numFormats, desc.formats);
-    m_info.presentMode  = pickPresentMode(modes.size(), modes.data(), desc.numPresentModes, desc.presentModes);
+    m_info.presentMode  = pickPresentMode(modes.size(), modes.data(), m_info.syncInterval);
     m_info.imageExtent  = pickImageExtent(caps, desc.imageExtent);
     m_info.imageCount   = pickImageCount(caps, m_info.presentMode, desc.imageCount);
 
@@ -231,6 +231,15 @@ namespace dxvk {
     }
 
     return false;
+  }
+
+
+  VkResult Presenter::setSyncInterval(uint32_t syncInterval) {
+    if (syncInterval == m_info.syncInterval)
+      return VK_SUCCESS;
+
+    m_info.syncInterval = syncInterval;
+    return VK_ERROR_OUT_OF_DATE_KHR;
   }
 
 
@@ -381,12 +390,19 @@ namespace dxvk {
   VkPresentModeKHR Presenter::pickPresentMode(
           uint32_t                  numSupported,
     const VkPresentModeKHR*         pSupported,
-          uint32_t                  numDesired,
-    const VkPresentModeKHR*         pDesired) {
+          uint32_t                  syncInterval) {
+    std::array<VkPresentModeKHR, 2> desired = { };
+    uint32_t numDesired = 0;
+
+    if (!syncInterval) {
+      desired[numDesired++] = VK_PRESENT_MODE_IMMEDIATE_KHR;
+      desired[numDesired++] = VK_PRESENT_MODE_MAILBOX_KHR;
+    }
+
     // Just pick the first desired and supported mode
     for (uint32_t i = 0; i < numDesired; i++) {
       for (uint32_t j = 0; j < numSupported; j++) {
-        if (pSupported[j] == pDesired[i])
+        if (pSupported[j] == desired[i])
           return pSupported[j];
       }
     }

@@ -119,7 +119,6 @@ namespace dxvk {
     HANDLE                  m_processHandle = nullptr;
 
     bool                    m_dirty = true;
-    bool                    m_vsync = true;
 
     VkColorSpaceKHR         m_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
@@ -135,8 +134,7 @@ namespace dxvk {
 
     void SynchronizePresent();
 
-    void RecreateSwapChain(
-            BOOL                      Vsync);
+    void RecreateSwapChain();
 
     void CreateFrameLatencyEvent();
 
@@ -161,10 +159,6 @@ namespace dxvk {
     uint32_t PickFormats(
             DXGI_FORMAT               Format,
             VkSurfaceFormatKHR*       pDstFormats);
-    
-    uint32_t PickPresentModes(
-            BOOL                      Vsync,
-            VkPresentModeKHR*         pDstModes);
     
     uint32_t PickImageCount(
             UINT                      Preferred);

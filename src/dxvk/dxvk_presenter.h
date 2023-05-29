@@ -30,8 +30,6 @@ namespace dxvk {
     uint32_t            imageCount;
     uint32_t            numFormats;
     VkSurfaceFormatKHR  formats[4];
-    uint32_t            numPresentModes;
-    VkPresentModeKHR    presentModes[4];
     VkFullScreenExclusiveEXT fullScreenExclusive;
   };
 
@@ -46,6 +44,7 @@ namespace dxvk {
     VkPresentModeKHR    presentMode;
     VkExtent2D          imageExtent;
     uint32_t            imageCount;
+    uint32_t            syncInterval;
   };
 
   /**
@@ -123,9 +122,11 @@ namespace dxvk {
      * Presents the current image. If this returns
      * an error, the swap chain must be recreated,
      * but do not present before acquiring an image.
+     * \param [in] mode Present mode
      * \returns Status of the operation
      */
-    VkResult presentImage();
+    VkResult presentImage(
+            VkPresentModeKHR mode);
 
     /**
      * \brief Changes and takes ownership of surface
@@ -147,6 +148,15 @@ namespace dxvk {
      */
     VkResult recreateSwapChain(
       const PresenterDesc&  desc);
+
+    /**
+     * \brief Changes sync interval
+     *
+     * If this returns an error, the swap chain must
+     * be recreated.
+     * \param [in] syncInterval New sync interval
+     */
+    VkResult setSyncInterval(uint32_t syncInterval);
 
     /**
      * \brief Changes maximum frame rate
@@ -190,7 +200,7 @@ namespace dxvk {
     Rc<vk::InstanceFn> m_vki;
     Rc<vk::DeviceFn>  m_vkd;
 
-    PresenterInfo     m_info;
+    PresenterInfo     m_info        = { };
 
     VkSurfaceKHR      m_surface     = VK_NULL_HANDLE;
     VkSwapchainKHR    m_swapchain   = VK_NULL_HANDLE;
@@ -228,8 +238,7 @@ namespace dxvk {
     VkPresentModeKHR pickPresentMode(
             uint32_t                  numSupported,
       const VkPresentModeKHR*         pSupported,
-            uint32_t                  numDesired,
-      const VkPresentModeKHR*         pDesired);
+            uint32_t                  syncInterval);
 
     VkExtent2D pickImageExtent(
       const VkSurfaceCapabilitiesKHR& caps,
