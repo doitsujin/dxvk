@@ -208,6 +208,8 @@ namespace dxvk {
     std::vector<PresenterImage> m_images;
     std::vector<PresenterSync>  m_semaphores;
 
+    std::vector<VkPresentModeKHR> m_dynamicModes;
+
     uint32_t m_imageIndex = 0;
     uint32_t m_frameIndex = 0;
 
@@ -245,8 +247,8 @@ namespace dxvk {
             VkExtent2D                desired);
 
     uint32_t pickImageCount(
-      const VkSurfaceCapabilitiesKHR& caps,
-            VkPresentModeKHR          presentMode,
+            uint32_t                  minImageCount,
+            uint32_t                  maxImageCount,
             uint32_t                  desired);
 
     VkResult createSurface();

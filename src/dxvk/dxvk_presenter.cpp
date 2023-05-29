@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "dxvk_device.h"
 #include "dxvk_presenter.h"
 
@@ -52,12 +54,19 @@ namespace dxvk {
   VkResult Presenter::presentImage(VkPresentModeKHR mode) {
     PresenterSync sync = m_semaphores.at(m_frameIndex);
 
+    VkSwapchainPresentModeInfoEXT modeInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_EXT };
+    modeInfo.swapchainCount = 1;
+    modeInfo.pPresentModes  = &mode;
+
     VkPresentInfoKHR info = { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
     info.waitSemaphoreCount = 1;
     info.pWaitSemaphores    = &sync.present;
     info.swapchainCount     = 1;
     info.pSwapchains        = &m_swapchain;
     info.pImageIndices      = &m_imageIndex;
+
+    if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1)
+      info.pNext = &modeInfo;
 
     VkResult status = m_vkd->vkQueuePresentKHR(
       m_device->queues().graphics.queueHandle, &info);
@@ -103,30 +112,39 @@ namespace dxvk {
     if (!m_surface)
       return VK_ERROR_SURFACE_LOST_KHR;
 
-    // Query surface capabilities. Some properties might
-    // have changed, including the size limits and supported
-    // present modes, so we'll just query everything again.
-    VkSurfaceCapabilitiesKHR        caps;
+    VkSurfaceFullScreenExclusiveInfoEXT fullScreenExclusiveInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
+    fullScreenExclusiveInfo.fullScreenExclusive = desc.fullScreenExclusive;
+
+    VkPhysicalDeviceSurfaceInfo2KHR surfaceInfo = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SURFACE_INFO_2_KHR };
+    surfaceInfo.surface = m_surface;
+
+    if (m_device->features().extFullScreenExclusive)
+      surfaceInfo.pNext = &fullScreenExclusiveInfo;
+
+    // Query surface capabilities. Some properties might have changed,
+    // including the size limits and supported present modes, so we'll
+    // just query everything again.
+    VkSurfaceCapabilities2KHR caps = { VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_2_KHR };
+
     std::vector<VkSurfaceFormatKHR> formats;
-    std::vector<VkPresentModeKHR>   modes;
+    std::vector<VkPresentModeKHR> modes;
 
     VkResult status;
-    
-    if ((status = m_vki->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-        m_device->adapter()->handle(), m_surface, &caps)))
+
+    if (m_device->features().extFullScreenExclusive) {
+      status = m_vki->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+        m_device->adapter()->handle(), m_surface, &caps.surfaceCapabilities);
+    } else {
+      status = m_vki->vkGetPhysicalDeviceSurfaceCapabilities2KHR(
+        m_device->adapter()->handle(), &surfaceInfo, &caps);
+    }
+
+    if (status)
       return status;
 
-    if ((status = getSupportedFormats(formats, desc.fullScreenExclusive)))
-      return status;
-
-    if ((status = getSupportedPresentModes(modes, desc.fullScreenExclusive)))
-      return status;
-
-    // Select actual swap chain properties and create swap chain
-    m_info.format       = pickFormat(formats.size(), formats.data(), desc.numFormats, desc.formats);
-    m_info.presentMode  = pickPresentMode(modes.size(), modes.data(), m_info.syncInterval);
-    m_info.imageExtent  = pickImageExtent(caps, desc.imageExtent);
-    m_info.imageCount   = pickImageCount(caps, m_info.presentMode, desc.imageCount);
+    // Select image extent based on current surface capabilities, and return
+    // immediately if we cannot create an actual swap chain.
+    m_info.imageExtent = pickImageExtent(caps.surfaceCapabilities, desc.imageExtent);
 
     if (!m_info.imageExtent.width || !m_info.imageExtent.height) {
       m_info.imageCount = 0;
@@ -134,8 +152,101 @@ namespace dxvk {
       return VK_SUCCESS;
     }
 
+    // Select format based on swap chain properties
+    if ((status = getSupportedFormats(formats, desc.fullScreenExclusive)))
+      return status;
+
+    m_info.format = pickFormat(formats.size(), formats.data(), desc.numFormats, desc.formats);
+
+    // Select a present mode for the current sync interval
+    if ((status = getSupportedPresentModes(modes, desc.fullScreenExclusive)))
+      return status;
+
+    m_info.presentMode = pickPresentMode(modes.size(), modes.data(), m_info.syncInterval);
+
+    // Check whether we can change present modes dynamically. This may
+    // influence the image count as well as further swap chain creation.
+    std::vector<VkPresentModeKHR> dynamicModes = {{
+      pickPresentMode(modes.size(), modes.data(), 0),
+      pickPresentMode(modes.size(), modes.data(), 1),
+    }};
+
+    std::vector<VkPresentModeKHR> compatibleModes;
+
+    // As for the minimum image count, start with the most generic value
+    // that works with all present modes.
+    uint32_t minImageCount = caps.surfaceCapabilities.minImageCount;
+    uint32_t maxImageCount = caps.surfaceCapabilities.maxImageCount;
+
+    if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1) {
+      VkSurfacePresentModeCompatibilityEXT compatibleModeInfo = { VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_COMPATIBILITY_EXT };
+
+      VkSurfacePresentModeEXT presentModeInfo = { VK_STRUCTURE_TYPE_SURFACE_PRESENT_MODE_EXT };
+      presentModeInfo.pNext = const_cast<void*>(std::exchange(surfaceInfo.pNext, &presentModeInfo));
+      presentModeInfo.presentMode = m_info.presentMode;
+
+      caps.pNext = &compatibleModeInfo;
+
+      if ((status = m_vki->vkGetPhysicalDeviceSurfaceCapabilities2KHR(
+          m_device->adapter()->handle(), &surfaceInfo, &caps)))
+        return status;
+
+      compatibleModes.resize(compatibleModeInfo.presentModeCount);
+      compatibleModeInfo.pPresentModes = compatibleModes.data();
+
+      if ((status = m_vki->vkGetPhysicalDeviceSurfaceCapabilities2KHR(
+          m_device->adapter()->handle(), &surfaceInfo, &caps)))
+        return status;
+
+      // Remove modes we don't need for the purpose of finding the minimum
+      // image count, as well as for swap chain creation later.
+      compatibleModes.erase(std::remove_if(compatibleModes.begin(), compatibleModes.end(),
+        [&dynamicModes] (VkPresentModeKHR mode) {
+          return std::find(dynamicModes.begin(), dynamicModes.end(), mode) == dynamicModes.end();
+        }), compatibleModes.end());
+
+      minImageCount = 0;
+      caps.pNext = nullptr;
+
+      for (auto mode : compatibleModes) {
+        presentModeInfo.presentMode = mode;
+
+        if ((status = m_vki->vkGetPhysicalDeviceSurfaceCapabilities2KHR(
+            m_device->adapter()->handle(), &surfaceInfo, &caps)))
+          return status;
+
+        minImageCount = std::max(minImageCount, caps.surfaceCapabilities.minImageCount);
+
+        if (caps.surfaceCapabilities.maxImageCount) {
+          maxImageCount = maxImageCount
+            ? std::min(maxImageCount, caps.surfaceCapabilities.maxImageCount)
+            : caps.surfaceCapabilities.maxImageCount;
+        }
+      }
+
+      // If any required mode is not supported for dynamic present
+      // mode switching, clear the dynamic mode array.
+      for (auto mode : dynamicModes) {
+        if (std::find(compatibleModes.begin(), compatibleModes.end(), mode) == compatibleModes.end()) {
+          dynamicModes.clear();
+          break;
+        }
+      }
+    } else if (dynamicModes[0] != dynamicModes[1]) {
+      // If we can't switch modes dynamically, clear the
+      // array so that setSyncInterval errors out properly.
+      dynamicModes.clear();
+    }
+
+    // Compute swap chain image count based on available info
+    m_info.imageCount = pickImageCount(minImageCount, maxImageCount, desc.imageCount);
+
     VkSurfaceFullScreenExclusiveInfoEXT fullScreenInfo = { VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT };
     fullScreenInfo.fullScreenExclusive = desc.fullScreenExclusive;
+
+    VkSwapchainPresentModesCreateInfoEXT modeInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_EXT };
+    modeInfo.presentModeCount       = compatibleModes.size();
+    modeInfo.pPresentModes          = compatibleModes.data();
 
     VkSwapchainCreateInfoKHR swapInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
     swapInfo.surface                = m_surface;
@@ -151,16 +262,18 @@ namespace dxvk {
     swapInfo.compositeAlpha         = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     swapInfo.presentMode            = m_info.presentMode;
     swapInfo.clipped                = VK_TRUE;
-    swapInfo.oldSwapchain           = VK_NULL_HANDLE;
 
     if (m_device->features().extFullScreenExclusive)
-      swapInfo.pNext = &fullScreenInfo;
+      fullScreenInfo.pNext = const_cast<void*>(std::exchange(swapInfo.pNext, &fullScreenInfo));
+
+    if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1)
+      modeInfo.pNext = std::exchange(swapInfo.pNext, &modeInfo);
 
     Logger::info(str::format(
       "Presenter: Actual swap chain properties:"
       "\n  Format:       ", m_info.format.format,
       "\n  Color space:  ", m_info.format.colorSpace,
-      "\n  Present mode: ", m_info.presentMode,
+      "\n  Present mode: ", m_info.presentMode, " (dynamic: ", (dynamicModes.empty() ? "no)" : "yes)"),
       "\n  Buffer size:  ", m_info.imageExtent.width, "x", m_info.imageExtent.height,
       "\n  Image count:  ", m_info.imageCount,
       "\n  Exclusive FS: ", desc.fullScreenExclusive));
@@ -217,6 +330,8 @@ namespace dxvk {
     m_imageIndex = 0;
     m_frameIndex = 0;
     m_acquireStatus = VK_NOT_READY;
+
+    m_dynamicModes = std::move(dynamicModes);
     return VK_SUCCESS;
   }
 
@@ -235,11 +350,20 @@ namespace dxvk {
 
 
   VkResult Presenter::setSyncInterval(uint32_t syncInterval) {
+    // Normalize sync interval for present modes. We currently
+    // cannot support anything other than 1 natively anyway.
+    syncInterval = std::min(syncInterval, 1u);
+
     if (syncInterval == m_info.syncInterval)
       return VK_SUCCESS;
 
     m_info.syncInterval = syncInterval;
-    return VK_ERROR_OUT_OF_DATE_KHR;
+
+    if (syncInterval >= m_dynamicModes.size())
+      return VK_ERROR_OUT_OF_DATE_KHR;
+
+    m_info.presentMode = m_dynamicModes[syncInterval];
+    return VK_SUCCESS;
   }
 
 
@@ -426,19 +550,16 @@ namespace dxvk {
 
 
   uint32_t Presenter::pickImageCount(
-    const VkSurfaceCapabilitiesKHR& caps,
-          VkPresentModeKHR          presentMode,
+          uint32_t                  minImageCount,
+          uint32_t                  maxImageCount,
           uint32_t                  desired) {
-    uint32_t count = caps.minImageCount;
-    
-    if (presentMode != VK_PRESENT_MODE_IMMEDIATE_KHR)
-      count = caps.minImageCount + 1;
+    uint32_t count = minImageCount + 1;
     
     if (count < desired)
       count = desired;
     
-    if (count > caps.maxImageCount && caps.maxImageCount != 0)
-      count = caps.maxImageCount;
+    if (count > maxImageCount && maxImageCount != 0)
+      count = maxImageCount;
     
     return count;
   }
@@ -457,6 +578,7 @@ namespace dxvk {
 
     m_images.clear();
     m_semaphores.clear();
+    m_dynamicModes.clear();
 
     m_swapchain = VK_NULL_HANDLE;
   }
