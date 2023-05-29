@@ -134,7 +134,7 @@ namespace dxvk {
     Rc<DxvkContext>           m_context;
     Rc<DxvkSwapchainBlitter>  m_blitter;
 
-    Rc<vk::Presenter>         m_presenter;
+    Rc<Presenter>             m_presenter;
 
     Rc<hud::Hud>              m_hud;
 
@@ -179,7 +179,7 @@ namespace dxvk {
 
     void PresentImage(UINT PresentInterval);
 
-    void SubmitPresent(const vk::PresenterSync& Sync, uint32_t FrameId);
+    void SubmitPresent(const PresenterSync& Sync, uint32_t FrameId);
 
     void SynchronizePresent();
 

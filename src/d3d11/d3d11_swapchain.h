@@ -97,7 +97,7 @@ namespace dxvk {
     Rc<DxvkDevice>            m_device;
     Rc<DxvkContext>           m_context;
 
-    Rc<vk::Presenter>         m_presenter;
+    Rc<Presenter>             m_presenter;
 
     Rc<DxvkImage>             m_swapImage;
     Rc<DxvkImageView>         m_swapImageView;
@@ -130,7 +130,7 @@ namespace dxvk {
 
     void SubmitPresent(
             D3D11ImmediateContext*  pContext,
-      const vk::PresenterSync&      Sync,
+      const PresenterSync&          Sync,
             uint32_t                FrameId);
 
     void SynchronizePresent();

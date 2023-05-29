@@ -6,9 +6,8 @@
 
 #include "../util/thread.h"
 
-#include "../vulkan/vulkan_presenter.h"
-
 #include "dxvk_cmdlist.h"
+#include "dxvk_presenter.h"
 
 namespace dxvk {
   
@@ -43,7 +42,7 @@ namespace dxvk {
    * a swap chain image on the device.
    */
   struct DxvkPresentInfo {
-    Rc<vk::Presenter>   presenter;
+    Rc<Presenter>       presenter;
   };
 
 

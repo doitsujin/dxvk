@@ -10,9 +10,11 @@
 #include "../util/util_math.h"
 #include "../util/util_string.h"
 
-#include "vulkan_loader.h"
+#include "../vulkan/vulkan_loader.h"
 
-namespace dxvk::vk {
+#include "dxvk_format.h"
+
+namespace dxvk {
 
   /**
    * \brief Presenter description
@@ -95,8 +97,8 @@ namespace dxvk::vk {
   public:
 
     Presenter(
-      const Rc<InstanceFn>& vki,
-      const Rc<DeviceFn>&   vkd,
+      const Rc<vk::InstanceFn>& vki,
+      const Rc<vk::DeviceFn>&   vkd,
             PresenterDevice device,
       const PresenterDesc&  desc);
     
@@ -201,8 +203,8 @@ namespace dxvk::vk {
 
   private:
 
-    Rc<InstanceFn>    m_vki;
-    Rc<DeviceFn>      m_vkd;
+    Rc<vk::InstanceFn> m_vki;
+    Rc<vk::DeviceFn>  m_vkd;
 
     PresenterDevice   m_device;
     PresenterInfo     m_info;

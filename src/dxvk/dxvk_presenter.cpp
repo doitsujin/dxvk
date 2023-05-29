@@ -1,14 +1,12 @@
-#include "vulkan_presenter.h"
-
-#include "../dxvk/dxvk_format.h"
+#include "dxvk_presenter.h"
 
 #include "../wsi/wsi_window.h"
 
-namespace dxvk::vk {
+namespace dxvk {
 
   Presenter::Presenter(
-    const Rc<InstanceFn>& vki,
-    const Rc<DeviceFn>&   vkd,
+    const Rc<vk::InstanceFn>& vki,
+    const Rc<vk::DeviceFn>&   vkd,
           PresenterDevice device,
     const PresenterDesc&  desc)
   : m_vki(vki), m_vkd(vkd), m_device(device) {

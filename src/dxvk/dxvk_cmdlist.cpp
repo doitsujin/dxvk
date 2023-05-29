@@ -397,7 +397,7 @@ namespace dxvk {
     m_cmdSubmissions.clear();
     m_cmdSparseBinds.clear();
 
-    m_wsiSemaphores = vk::PresenterSync();
+    m_wsiSemaphores = PresenterSync();
 
     // Reset actual command buffers and pools
     m_graphicsPool->reset();

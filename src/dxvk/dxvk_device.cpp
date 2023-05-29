@@ -252,7 +252,7 @@ namespace dxvk {
 
 
   void DxvkDevice::presentImage(
-    const Rc<vk::Presenter>&        presenter,
+    const Rc<Presenter>&            presenter,
           DxvkSubmitStatus*         status) {
     status->result = VK_NOT_READY;
 

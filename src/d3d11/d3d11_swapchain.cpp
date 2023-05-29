@@ -350,8 +350,8 @@ namespace dxvk {
         return DXGI_STATUS_OCCLUDED;
 
       // Presentation semaphores and WSI swap chain image
-      vk::PresenterInfo info = m_presenter->info();
-      vk::PresenterSync sync;
+      PresenterInfo info = m_presenter->info();
+      PresenterSync sync;
 
       uint32_t imageIndex = 0;
 
@@ -397,7 +397,7 @@ namespace dxvk {
 
   void D3D11SwapChain::SubmitPresent(
           D3D11ImmediateContext*  pContext,
-    const vk::PresenterSync&      Sync,
+    const PresenterSync&          Sync,
           uint32_t                FrameId) {
     auto lock = pContext->LockContext();
 
@@ -441,7 +441,7 @@ namespace dxvk {
     m_presentStatus.result = VK_SUCCESS;
     m_dirtyHdrMetadata = true;
 
-    vk::PresenterDesc presenterDesc;
+    PresenterDesc presenterDesc;
     presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };
     presenterDesc.imageCount      = PickImageCount(m_desc.BufferCount + 1);
     presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
@@ -479,21 +479,21 @@ namespace dxvk {
   void D3D11SwapChain::CreatePresenter() {
     DxvkDeviceQueue graphicsQueue = m_device->queues().graphics;
 
-    vk::PresenterDevice presenterDevice;
+    PresenterDevice presenterDevice;
     presenterDevice.queueFamily   = graphicsQueue.queueFamily;
     presenterDevice.queue         = graphicsQueue.queueHandle;
     presenterDevice.adapter       = m_device->adapter()->handle();
     presenterDevice.features.fullScreenExclusive = m_device->features().extFullScreenExclusive;
     presenterDevice.features.hdrMetadata = m_device->features().extHdrMetadata;
 
-    vk::PresenterDesc presenterDesc;
+    PresenterDesc presenterDesc;
     presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };
     presenterDesc.imageCount      = PickImageCount(m_desc.BufferCount + 1);
     presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
     presenterDesc.numPresentModes = PickPresentModes(false, presenterDesc.presentModes);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
-    m_presenter = new vk::Presenter(
+    m_presenter = new Presenter(
       m_device->adapter()->vki(),
       m_device->vkd(),
       presenterDevice,
@@ -513,7 +513,7 @@ namespace dxvk {
 
 
   void D3D11SwapChain::CreateRenderTargetViews() {
-    vk::PresenterInfo info = m_presenter->info();
+    PresenterInfo info = m_presenter->info();
 
     m_imageViews.clear();
     m_imageViews.resize(info.imageCount);
