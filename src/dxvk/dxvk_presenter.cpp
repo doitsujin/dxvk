@@ -1,3 +1,4 @@
+#include "dxvk_device.h"
 #include "dxvk_presenter.h"
 
 #include "../wsi/wsi_window.h"
@@ -5,11 +6,11 @@
 namespace dxvk {
 
   Presenter::Presenter(
-    const Rc<vk::InstanceFn>& vki,
-    const Rc<vk::DeviceFn>&   vkd,
-          PresenterDevice device,
+    const Rc<DxvkDevice>& device,
     const PresenterDesc&  desc)
-  : m_vki(vki), m_vkd(vkd), m_device(device) {
+  : m_device(device),
+    m_vki(device->instance()->vki()),
+    m_vkd(device->vkd()) {
 
   }
 
@@ -58,7 +59,8 @@ namespace dxvk {
     info.pSwapchains        = &m_swapchain;
     info.pImageIndices      = &m_imageIndex;
 
-    VkResult status = m_vkd->vkQueuePresentKHR(m_device.queue, &info);
+    VkResult status = m_vkd->vkQueuePresentKHR(
+      m_device->queues().graphics.queueHandle, &info);
 
     if (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR)
       return status;
@@ -111,7 +113,7 @@ namespace dxvk {
     VkResult status;
     
     if ((status = m_vki->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-        m_device.adapter, m_surface, &caps)))
+        m_device->adapter()->handle(), m_surface, &caps)))
       return status;
 
     if ((status = getSupportedFormats(formats, desc.fullScreenExclusive)))
@@ -151,7 +153,7 @@ namespace dxvk {
     swapInfo.clipped                = VK_TRUE;
     swapInfo.oldSwapchain           = VK_NULL_HANDLE;
 
-    if (m_device.features.fullScreenExclusive)
+    if (m_device->features().extFullScreenExclusive)
       swapInfo.pNext = &fullScreenInfo;
 
     Logger::info(str::format(
@@ -238,7 +240,7 @@ namespace dxvk {
 
 
   void Presenter::setHdrMetadata(const VkHdrMetadataEXT& hdrMetadata) {
-    if (m_device.features.hdrMetadata)
+    if (m_device->features().extHdrMetadata)
       m_vkd->vkSetHdrMetadataEXT(m_vkd->device(), 1, &m_swapchain, &hdrMetadata);
   }
 
@@ -254,12 +256,12 @@ namespace dxvk {
 
     VkResult status;
     
-    if (m_device.features.fullScreenExclusive) {
+    if (m_device->features().extFullScreenExclusive) {
       status = m_vki->vkGetPhysicalDeviceSurfaceFormats2KHR(
-        m_device.adapter, &surfaceInfo, &numFormats, nullptr);
+        m_device->adapter()->handle(), &surfaceInfo, &numFormats, nullptr);
     } else {
       status = m_vki->vkGetPhysicalDeviceSurfaceFormatsKHR(
-        m_device.adapter, m_surface, &numFormats, nullptr);
+        m_device->adapter()->handle(), m_surface, &numFormats, nullptr);
     }
 
     if (status != VK_SUCCESS)
@@ -267,18 +269,18 @@ namespace dxvk {
     
     formats.resize(numFormats);
 
-    if (m_device.features.fullScreenExclusive) {
+    if (m_device->features().extFullScreenExclusive) {
       std::vector<VkSurfaceFormat2KHR> tmpFormats(numFormats, 
         { VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR, nullptr, VkSurfaceFormatKHR() });
 
       status = m_vki->vkGetPhysicalDeviceSurfaceFormats2KHR(
-        m_device.adapter, &surfaceInfo, &numFormats, tmpFormats.data());
+        m_device->adapter()->handle(), &surfaceInfo, &numFormats, tmpFormats.data());
 
       for (uint32_t i = 0; i < numFormats; i++)
         formats[i] = tmpFormats[i].surfaceFormat;
     } else {
       status = m_vki->vkGetPhysicalDeviceSurfaceFormatsKHR(
-        m_device.adapter, m_surface, &numFormats, formats.data());
+        m_device->adapter()->handle(), m_surface, &numFormats, formats.data());
     }
 
     return status;
@@ -296,12 +298,12 @@ namespace dxvk {
 
     VkResult status;
 
-    if (m_device.features.fullScreenExclusive) {
+    if (m_device->features().extFullScreenExclusive) {
       status = m_vki->vkGetPhysicalDeviceSurfacePresentModes2EXT(
-        m_device.adapter, &surfaceInfo, &numModes, nullptr);
+        m_device->adapter()->handle(), &surfaceInfo, &numModes, nullptr);
     } else {
       status = m_vki->vkGetPhysicalDeviceSurfacePresentModesKHR(
-        m_device.adapter, m_surface, &numModes, nullptr);
+        m_device->adapter()->handle(), m_surface, &numModes, nullptr);
     }
 
     if (status != VK_SUCCESS)
@@ -309,12 +311,12 @@ namespace dxvk {
     
     modes.resize(numModes);
 
-    if (m_device.features.fullScreenExclusive) {
+    if (m_device->features().extFullScreenExclusive) {
       status = m_vki->vkGetPhysicalDeviceSurfacePresentModes2EXT(
-        m_device.adapter, &surfaceInfo, &numModes, modes.data());
+        m_device->adapter()->handle(), &surfaceInfo, &numModes, modes.data());
     } else {
       status = m_vki->vkGetPhysicalDeviceSurfacePresentModesKHR(
-        m_device.adapter, m_surface, &numModes, modes.data());
+        m_device->adapter()->handle(), m_surface, &numModes, modes.data());
     }
 
     return status;

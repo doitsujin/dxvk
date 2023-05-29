@@ -16,6 +16,8 @@
 
 namespace dxvk {
 
+  class DxvkDevice;
+
   /**
    * \brief Presenter description
    * 
@@ -44,24 +46,6 @@ namespace dxvk {
     VkPresentModeKHR    presentMode;
     VkExtent2D          imageExtent;
     uint32_t            imageCount;
-  };
-
-  /**
-   * \brief Presenter features
-   */
-  struct PresenterFeatures {
-    bool                fullScreenExclusive : 1;
-    bool                hdrMetadata : 1;
-  };
-  
-  /**
-   * \brief Adapter and queue
-   */
-  struct PresenterDevice {
-    uint32_t            queueFamily = 0;
-    VkQueue             queue       = VK_NULL_HANDLE;
-    VkPhysicalDevice    adapter     = VK_NULL_HANDLE;
-    PresenterFeatures   features    = { };
   };
 
   /**
@@ -97,9 +81,7 @@ namespace dxvk {
   public:
 
     Presenter(
-      const Rc<vk::InstanceFn>& vki,
-      const Rc<vk::DeviceFn>&   vkd,
-            PresenterDevice device,
+      const Rc<DxvkDevice>& device,
       const PresenterDesc&  desc);
     
     ~Presenter();
@@ -203,10 +185,11 @@ namespace dxvk {
 
   private:
 
+    Rc<DxvkDevice>    m_device;
+
     Rc<vk::InstanceFn> m_vki;
     Rc<vk::DeviceFn>  m_vkd;
 
-    PresenterDevice   m_device;
     PresenterInfo     m_info;
 
     VkSurfaceKHR      m_surface     = VK_NULL_HANDLE;

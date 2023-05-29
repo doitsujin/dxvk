@@ -881,13 +881,6 @@ namespace dxvk {
 
     m_presentStatus.result = VK_SUCCESS;
 
-    DxvkDeviceQueue graphicsQueue = m_device->queues().graphics;
-
-    PresenterDevice presenterDevice;
-    presenterDevice.queueFamily   = graphicsQueue.queueFamily;
-    presenterDevice.queue         = graphicsQueue.queueHandle;
-    presenterDevice.adapter       = m_device->adapter()->handle();
-
     PresenterDesc presenterDesc;
     presenterDesc.imageExtent     = GetPresentExtent();
     presenterDesc.imageCount      = PickImageCount(m_presentParams.BackBufferCount + 1);
@@ -895,12 +888,7 @@ namespace dxvk {
     presenterDesc.numPresentModes = PickPresentModes(false, presenterDesc.presentModes);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
-    m_presenter = new Presenter(
-      m_device->adapter()->vki(),
-      m_device->vkd(),
-      presenterDevice,
-      presenterDesc);
-
+    m_presenter = new Presenter(m_device, presenterDesc);
     m_presenter->setFrameRateLimit(m_parent->GetOptions()->maxFrameRate);
   }
 

@@ -563,7 +563,7 @@ namespace dxvk {
     
     DxvkRecycler<DxvkCommandList, 16> m_recycledCommandLists;
     
-    DxvkSubmissionQueue m_submissionQueue;
+    DxvkSubmissionQueue         m_submissionQueue;
 
     DxvkDevicePerfHints getPerfHints();
     
