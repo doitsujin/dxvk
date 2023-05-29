@@ -161,6 +161,10 @@ namespace dxvk::vk {
     #ifdef VK_EXT_full_screen_exclusive
     VULKAN_FN(vkGetPhysicalDeviceSurfacePresentModes2EXT);
     #endif
+
+    #ifdef VK_EXT_swapchain_maintenance1
+    VULKAN_FN(vkReleaseSwapchainImagesEXT);
+    #endif
   };
   
   

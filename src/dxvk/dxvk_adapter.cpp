@@ -254,6 +254,7 @@ namespace dxvk {
         && CHECK_FEATURE_NEED(extShaderModuleIdentifier.shaderModuleIdentifier)
         && CHECK_FEATURE_NEED(extShaderStencilExport)
         && CHECK_FEATURE_NEED(extSwapchainColorSpace)
+        && CHECK_FEATURE_NEED(extSwapchainMaintenance1.swapchainMaintenance1)
         && CHECK_FEATURE_NEED(extHdrMetadata)
         && CHECK_FEATURE_NEED(extTransformFeedback.transformFeedback)
         && CHECK_FEATURE_NEED(extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor)
@@ -375,6 +376,11 @@ namespace dxvk {
     // We use this to avoid decompressing SPIR-V shaders in some situations
     enabledFeatures.extShaderModuleIdentifier.shaderModuleIdentifier =
       m_deviceFeatures.extShaderModuleIdentifier.shaderModuleIdentifier;
+
+    // Enable swap chain features that are transparent tot he device
+    enabledFeatures.extSwapchainMaintenance1.swapchainMaintenance1 =
+      m_deviceFeatures.extSwapchainMaintenance1.swapchainMaintenance1 &&
+      instance->extensions().extSurfaceMaintenance1;
 
     // Create pNext chain for additional device features
     initFeatureChain(enabledFeatures, devExtensions, instance->extensions());
@@ -533,6 +539,10 @@ namespace dxvk {
 
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_MODULE_IDENTIFIER_FEATURES_EXT:
           enabledFeatures.extShaderModuleIdentifier = *reinterpret_cast<const VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT:
+          enabledFeatures.extSwapchainMaintenance1 = *reinterpret_cast<const VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT*>(f);
           break;
 
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT:
@@ -805,6 +815,11 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME))
       m_deviceFeatures.extSwapchainColorSpace = VK_TRUE;
 
+    if (m_deviceExtensions.supports(VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME)) {
+      m_deviceFeatures.extSwapchainMaintenance1.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT;
+      m_deviceFeatures.extSwapchainMaintenance1.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extSwapchainMaintenance1);
+    }
+
     if (m_deviceExtensions.supports(VK_EXT_HDR_METADATA_EXTENSION_NAME))
       m_deviceFeatures.extHdrMetadata = VK_TRUE;
 
@@ -878,6 +893,7 @@ namespace dxvk {
       &devExtensions.extShaderModuleIdentifier,
       &devExtensions.extShaderStencilExport,
       &devExtensions.extSwapchainColorSpace,
+      &devExtensions.extSwapchainMaintenance1,
       &devExtensions.extTransformFeedback,
       &devExtensions.extVertexAttributeDivisor,
       &devExtensions.khrExternalMemoryWin32,
@@ -973,6 +989,11 @@ namespace dxvk {
 
     if (devExtensions.extSwapchainColorSpace)
       enabledFeatures.extSwapchainColorSpace = VK_TRUE;
+
+    if (devExtensions.extSwapchainMaintenance1) {
+      enabledFeatures.extSwapchainMaintenance1.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SWAPCHAIN_MAINTENANCE_1_FEATURES_EXT;
+      enabledFeatures.extSwapchainMaintenance1.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extSwapchainMaintenance1);
+    }
 
     if (devExtensions.extHdrMetadata)
       enabledFeatures.extHdrMetadata = VK_TRUE;
@@ -1106,6 +1127,8 @@ namespace dxvk {
       "\n  extension supported                    : ", features.extShaderStencilExport ? "1" : "0",
       "\n", VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME,
       "\n  extension supported                    : ", features.extSwapchainColorSpace ? "1" : "0",
+      "\n", VK_EXT_SWAPCHAIN_MAINTENANCE_1_EXTENSION_NAME,
+      "\n  swapchainMaintenance1                  : ", features.extSwapchainMaintenance1.swapchainMaintenance1 ? "1" : "0",
       "\n", VK_EXT_HDR_METADATA_EXTENSION_NAME,
       "\n  extension supported                    : ", features.extHdrMetadata ? "1" : "0",
       "\n", VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME,
