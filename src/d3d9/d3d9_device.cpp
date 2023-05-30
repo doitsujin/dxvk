@@ -268,7 +268,15 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetDeviceCaps(D3DCAPS9* pCaps) {
-    return m_adapter->GetDeviceCaps(m_deviceType, pCaps);
+    if (pCaps == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    m_adapter->GetDeviceCaps(m_deviceType, pCaps);
+
+    // When in SWVP mode, 256 matrices can be used for indexed vertex blending
+    pCaps->MaxVertexBlendMatrixIndex = m_isSWVP ? 255 : 8;
+
+    return D3D_OK;
   }
 
 
