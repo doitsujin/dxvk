@@ -31,7 +31,6 @@ namespace dxvk {
     this->maxFrameLatency       = config.getOption<int32_t>("dxgi.maxFrameLatency", 0);
     this->maxFrameRate          = config.getOption<int32_t>("dxgi.maxFrameRate", 0);
     this->syncInterval          = config.getOption<int32_t>("dxgi.syncInterval", -1);
-    this->tearFree              = config.getOption<Tristate>("dxgi.tearFree", Tristate::Auto);
 
     // Clamp LOD bias so that people don't abuse this in unintended ways
     this->samplerLodBias = dxvk::fclamp(this->samplerLodBias, -2.0f, 1.0f);

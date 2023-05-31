@@ -518,9 +518,15 @@ namespace dxvk {
     std::array<VkPresentModeKHR, 2> desired = { };
     uint32_t numDesired = 0;
 
+    Tristate tearFree = m_device->config().tearFree;
+
     if (!syncInterval) {
-      desired[numDesired++] = VK_PRESENT_MODE_IMMEDIATE_KHR;
+      if (tearFree != Tristate::True)
+        desired[numDesired++] = VK_PRESENT_MODE_IMMEDIATE_KHR;
       desired[numDesired++] = VK_PRESENT_MODE_MAILBOX_KHR;
+    } else {
+      if (tearFree == Tristate::False)
+        desired[numDesired++] = VK_PRESENT_MODE_FIFO_RELAXED_KHR;
     }
 
     // Just pick the first desired and supported mode

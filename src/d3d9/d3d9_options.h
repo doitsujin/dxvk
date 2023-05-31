@@ -127,10 +127,6 @@ namespace dxvk {
     /// don't match entirely to the regular vertex shader in this way.
     bool longMad;
 
-    /// Tear-free mode if vsync is disabled
-    /// Tearing mode if vsync is enabled
-    Tristate tearFree;
-
     /// Apitrace mode: Maps all buffers in cached memory.
     bool apitraceMode;
 
