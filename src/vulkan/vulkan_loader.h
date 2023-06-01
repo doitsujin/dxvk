@@ -431,6 +431,10 @@ namespace dxvk::vk {
     VULKAN_FN(vkGetSemaphoreWin32HandleKHR);
     VULKAN_FN(vkImportSemaphoreWin32HandleKHR);
     #endif
+
+    #ifdef VK_KHR_PRESENT_WAIT_EXTENSION_NAME
+    VULKAN_FN(vkWaitForPresentKHR);
+    #endif
   };
   
 }

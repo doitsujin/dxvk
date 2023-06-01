@@ -386,6 +386,19 @@ namespace dxvk {
       m_deviceFeatures.extSwapchainMaintenance1.swapchainMaintenance1 &&
       instance->extensions().extSurfaceMaintenance1;
 
+    // Enable present id and present wait together, if possible
+    enabledFeatures.khrPresentId.presentId =
+      m_deviceFeatures.khrPresentId.presentId;
+    enabledFeatures.khrPresentWait.presentWait =
+      m_deviceFeatures.khrPresentId.presentId &&
+      m_deviceFeatures.khrPresentWait.presentWait;
+
+    // Unless we're on an Nvidia driver where these extensions are known to be broken
+    if (matchesDriver(VK_DRIVER_ID_NVIDIA_PROPRIETARY, 0, VK_MAKE_VERSION(535, 0, 0))) {
+      enabledFeatures.khrPresentId.presentId = VK_FALSE;
+      enabledFeatures.khrPresentWait.presentWait = VK_FALSE;
+    }
+
     // Create pNext chain for additional device features
     initFeatureChain(enabledFeatures, devExtensions, instance->extensions());
 
@@ -559,6 +572,14 @@ namespace dxvk {
 
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT:
           enabledFeatures.extVertexAttributeDivisor = *reinterpret_cast<const VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR:
+          enabledFeatures.khrPresentId = *reinterpret_cast<const VkPhysicalDevicePresentIdFeaturesKHR*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR:
+          enabledFeatures.khrPresentWait = *reinterpret_cast<const VkPhysicalDevicePresentWaitFeaturesKHR*>(f);
           break;
 
         default:
@@ -852,6 +873,16 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME))
       m_deviceFeatures.khrExternalSemaphoreWin32 = VK_TRUE;
 
+    if (m_deviceExtensions.supports(VK_KHR_PRESENT_ID_EXTENSION_NAME)) {
+      m_deviceFeatures.khrPresentId.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
+      m_deviceFeatures.khrPresentId.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrPresentId);
+    }
+
+    if (m_deviceExtensions.supports(VK_KHR_PRESENT_WAIT_EXTENSION_NAME)) {
+      m_deviceFeatures.khrPresentWait.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR;
+      m_deviceFeatures.khrPresentWait.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrPresentWait);
+    }
+
     if (m_deviceExtensions.supports(VK_NVX_BINARY_IMPORT_EXTENSION_NAME))
       m_deviceFeatures.nvxBinaryImport = VK_TRUE;
 
@@ -913,6 +944,8 @@ namespace dxvk {
       &devExtensions.khrExternalMemoryWin32,
       &devExtensions.khrExternalSemaphoreWin32,
       &devExtensions.khrPipelineLibrary,
+      &devExtensions.khrPresentId,
+      &devExtensions.khrPresentWait,
       &devExtensions.khrSwapchain,
       &devExtensions.nvxBinaryImport,
       &devExtensions.nvxImageViewHandle,
@@ -1035,6 +1068,16 @@ namespace dxvk {
 
     if (devExtensions.nvxBinaryImport)
       enabledFeatures.nvxBinaryImport = VK_TRUE;
+
+    if (devExtensions.khrPresentId) {
+      enabledFeatures.khrPresentId.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
+      enabledFeatures.khrPresentId.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrPresentId);
+    }
+
+    if (devExtensions.khrPresentWait) {
+      enabledFeatures.khrPresentWait.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR;
+      enabledFeatures.khrPresentWait.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrPresentWait);
+    }
 
     if (devExtensions.nvxImageViewHandle)
       enabledFeatures.nvxImageViewHandle = VK_TRUE;
@@ -1165,6 +1208,10 @@ namespace dxvk {
       "\n  extension supported                    : ", features.khrExternalMemoryWin32 ? "1" : "0",
       "\n", VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,
       "\n  extension supported                    : ", features.khrExternalSemaphoreWin32 ? "1" : "0",
+      "\n", VK_KHR_PRESENT_ID_EXTENSION_NAME,
+      "\n  presentId                              : ", features.khrPresentId.presentId ? "1" : "0",
+      "\n", VK_KHR_PRESENT_WAIT_EXTENSION_NAME,
+      "\n  presentWait                            : ", features.khrPresentWait.presentWait ? "1" : "0",
       "\n", VK_NVX_BINARY_IMPORT_EXTENSION_NAME,
       "\n  extension supported                    : ", features.nvxBinaryImport ? "1" : "0",
       "\n", VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME,
