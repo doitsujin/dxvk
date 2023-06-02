@@ -3229,6 +3229,21 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       if (mask.popCount() == 0)
         mask = DxsoRegMask(true, true, true, true);
 
+      // Pixel shaders seem to load every element (or every element exported by VS)
+      // regardless of the mask in the DCL used.
+      //
+      // I imagine this is because at one point D3D9 ASM was very literal to GPUs,
+      // and the input's mask from the PS didn't correspond to anything and the
+      // physical output register was filled with the extra data from the VS not
+      // included in the mask on the PS, so it just worked(tm).
+      //
+      // Fixes a bug in Test Drive Unlimited's shadow code where it outputs o8.xyz, but the PS
+      // has a decl for v8.xy and it tries to do 2D Shadow sampling (needs 3 elements .xyz) in the PS.
+      // This likely occured because the compiler was not aware of shadow sampling when generating
+      // the writemask for the PS.
+      if (m_programInfo.type() == DxsoProgramType::PixelShader)
+        mask = DxsoRegMask(true, true, true, true);
+
       std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
       uint32_t count = 0;
       for (uint32_t i = 0; i < 4; i++) {
