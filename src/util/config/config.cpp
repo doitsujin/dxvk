@@ -364,6 +364,14 @@ namespace dxvk {
     { R"(\\SnowRunner\.exe$)", {{
       { "d3d11.dcSingleUseMode",        "False"   },
     }} },
+    /* Rockstar Games Launcher                    */
+    { R"(\\Rockstar Games\\Launcher\\Launcher\.exe$)", {{
+      { "dxvk.maxChunkSize",                "1"   },
+    }} },
+    /* Rockstar Social Club                       */
+    { R"(\\Rockstar Games\\Social Club\\SocialClubHelper\.exe$)", {{
+      { "dxvk.maxChunkSize",                "1"   },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
