@@ -288,9 +288,9 @@ namespace dxvk {
       return DXGI_ERROR_INVALID_CALL;
 
     std::lock_guard<dxvk::recursive_mutex> lockWin(m_lockWindow);
-    std::lock_guard<dxvk::mutex> lockBuf(m_lockBuffer);
 
     try {
+      std::lock_guard<dxvk::mutex> lockBuf(m_lockBuffer);
       HRESULT hr = m_presenter->Present(SyncInterval, PresentFlags, nullptr);
 
       if (hr != S_OK || (PresentFlags & DXGI_PRESENT_TEST))
