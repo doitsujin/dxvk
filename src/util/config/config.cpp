@@ -303,9 +303,11 @@ namespace dxvk {
     }} },
     /* Stray - writes to the same UAV every draw, *
      * presumably for culling, which doesn't play *
-     * nicely with D3D11 without vendor libraries */
+     * nicely with D3D11 without vendor libraries 
+     * Also, need the NVAPI hack for Intel GPUs   */
     { R"(\\Stray-Win64-Shipping\.exe$)", {{
       { "d3d11.ignoreGraphicsBarriers",     "True" },
+      { "dxgi.customVendorId",              "1002" },
     }} },
     /* Metal Gear Solid V: Ground Zeroes          *
      * Texture quality can break at high vram     */
