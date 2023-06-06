@@ -372,6 +372,21 @@ namespace dxvk {
     { R"(\\Rockstar Games\\Social Club\\SocialClubHelper\.exe$)", {{
       { "dxvk.maxChunkSize",                "1"   },
     }} },
+    /* Fallout 76
+     * Game tries to be too "smart" and changes sync
+     * interval based on performance (in fullscreen)
+     * or tries to match (or ratio below) 60fps
+     * (in windowed).
+     *
+     * Ends up getting in a loop where it will switch
+     * and start stuttering, or get stuck at targeting
+     * 30Hz in fullscreen.
+     * Windowed mode being locked to 60fps as well is
+     * pretty suboptimal...
+     */
+    { R"(\\Fallout76\.exe$)", {{
+      { "dxgi.syncInterval",              "1" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
@@ -731,14 +746,6 @@ namespace dxvk {
     { R"(\\bf10\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
-    /* WILD HEARTS™️                            *
-     * D3D12 title using D3D11 device for      *
-     * media texture creation, whereby a large *
-     * chunk size only slows down media        *
-     * initialization                          */
-    { R"(\\WILD HEARTS(_Trial)?\.exe$)", {{
-      { "dxvk.maxChunkSize",                 "4" },
-    }} },
     /* Codename Panzers Phase One/Two          *
      * Main menu won't render after intros     */
     { R"(\\(PANZERS|PANZERS_Phase_2)\.exe$)", {{
@@ -754,21 +761,6 @@ namespace dxvk {
     { R"(\\eldorado\.exe$)", {{
       { "d3d9.floatEmulation",        "Strict"   },
     }} },
-    /* Fallout 76
-     * Game tries to be too "smart" and changes sync
-     * interval based on performance (in fullscreen)
-     * or tries to match (or ratio below) 60fps
-     * (in windowed).
-     *
-     * Ends up getting in a loop where it will switch
-     * and start stuttering, or get stuck at targeting
-     * 30Hz in fullscreen.
-     * Windowed mode being locked to 60fps as well is
-     * pretty suboptimal...
-     */
-    { R"(\\Fallout76\.exe$)", {{
-      { "dxgi.syncInterval",              "1" },
-    }} },
     /* Injustice: Gods Among Us                *
      * Locks a buffer that's still in use      */
     { R"(\\injustice\.exe$)", {{
@@ -783,6 +775,14 @@ namespace dxvk {
      * GPU unless dxgi Id match actual GPU Id  */
     { R"(\\Diablo IV\.exe$)", {{
       { "dxgi.nvapiHack",                "False"  },
+    }} },
+    /* WILD HEARTS™️                            *
+     * D3D12 title using D3D11 device for      *
+     * media texture creation, whereby a large *
+     * chunk size only slows down media        *
+     * initialization                          */
+    { R"(\\WILD HEARTS(_Trial)?\.exe$)", {{
+      { "dxvk.maxChunkSize",                 "4" },
     }} },
   }};
 
