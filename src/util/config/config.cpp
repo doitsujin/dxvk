@@ -309,6 +309,11 @@ namespace dxvk {
       { "d3d11.ignoreGraphicsBarriers",     "True" },
       { "dxgi.customVendorId",              "1002" },
     }} },
+    /* System Shock (2023) - NVAPI hack for
+     * Intel GPUs                                 */
+    { R"(\\SystemReShock-Win64-Shipping\.exe$)", {{
+      { "dxgi.customVendorId",              "1002" },
+    }} },
     /* Metal Gear Solid V: Ground Zeroes          *
      * Texture quality can break at high vram     */
     { R"(\\MgsGroundZeroes\.exe$)", {{
