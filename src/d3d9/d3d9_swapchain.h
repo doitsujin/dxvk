@@ -120,6 +120,8 @@ namespace dxvk {
 
     bool HasFormatsUnlocked() const { return m_unlockAdditionalFormats; }
 
+    void DestroyBackBuffers();
+
   private:
 
     enum BindingIds : uint32_t {
@@ -188,8 +190,6 @@ namespace dxvk {
     VkResult CreateSurface(VkSurfaceKHR* pSurface);
 
     void CreateRenderTargetViews();
-
-    void DestroyBackBuffers();
 
     HRESULT CreateBackBuffers(
             uint32_t            NumBackBuffers);

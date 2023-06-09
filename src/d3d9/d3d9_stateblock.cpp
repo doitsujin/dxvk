@@ -17,6 +17,9 @@ namespace dxvk {
     CaptureType(Type);
   }
 
+  D3D9StateBlock::~D3D9StateBlock() {
+    m_parent->DecrementLosableCounter();
+  }
 
   HRESULT STDMETHODCALLTYPE D3D9StateBlock::QueryInterface(
           REFIID  riid,

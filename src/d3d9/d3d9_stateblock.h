@@ -89,6 +89,8 @@ namespace dxvk {
 
     D3D9StateBlock(D3D9DeviceEx* pDevice, D3D9StateBlockType Type);
 
+    ~D3D9StateBlock();
+
     HRESULT STDMETHODCALLTYPE QueryInterface(
         REFIID  riid,
         void** ppvObject) final;

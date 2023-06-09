@@ -98,6 +98,9 @@ namespace dxvk {
       m_device->ChangeReportedMemory(m_size);
 
     m_device->RemoveMappedTexture(this);
+
+    if (m_desc.IsLosable)
+      m_device->DecrementLosableCounter();
   }
 
 
