@@ -118,7 +118,7 @@ namespace dxvk {
         if (entry.submit.cmdList != nullptr)
           status = entry.submit.cmdList->submit();
         else if (entry.present.presenter != nullptr)
-          status = entry.present.presenter->presentImage(entry.present.presentMode);
+          status = entry.present.presenter->presentImage(entry.present.presentMode, 0);
 
         if (m_callback)
           m_callback(false);

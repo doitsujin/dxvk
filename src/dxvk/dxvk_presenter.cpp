@@ -8,18 +8,32 @@
 namespace dxvk {
 
   Presenter::Presenter(
-    const Rc<DxvkDevice>& device,
-    const PresenterDesc&  desc)
-  : m_device(device),
+    const Rc<DxvkDevice>&   device,
+    const Rc<sync::Signal>& signal,
+    const PresenterDesc&    desc)
+  : m_device(device), m_signal(signal),
     m_vki(device->instance()->vki()),
     m_vkd(device->vkd()) {
-
+    // If a frame signal was provided, launch thread that synchronizes
+    // with present operations and periodically signals the event
+    if (m_device->features().khrPresentWait.presentWait && m_signal != nullptr)
+      m_frameThread = dxvk::thread([this] { runFrameThread(); });
   }
 
   
   Presenter::~Presenter() {
     destroySwapchain();
     destroySurface();
+
+    if (m_frameThread.joinable()) {
+      { std::lock_guard<dxvk::mutex> lock(m_frameMutex);
+
+        m_frameQueue.push(PresenterFrame());
+        m_frameCond.notify_one();
+      }
+
+      m_frameThread.join();
+    }
   }
 
 
@@ -51,8 +65,14 @@ namespace dxvk {
   }
 
 
-  VkResult Presenter::presentImage(VkPresentModeKHR mode) {
+  VkResult Presenter::presentImage(
+          VkPresentModeKHR  mode,
+          uint64_t          frameId) {
     PresenterSync sync = m_semaphores.at(m_frameIndex);
+
+    VkPresentIdKHR presentId = { VK_STRUCTURE_TYPE_PRESENT_ID_KHR };
+    presentId.swapchainCount = 1;
+    presentId.pPresentIds   = &frameId;
 
     VkSwapchainPresentModeInfoEXT modeInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_EXT };
     modeInfo.swapchainCount = 1;
@@ -65,8 +85,11 @@ namespace dxvk {
     info.pSwapchains        = &m_swapchain;
     info.pImageIndices      = &m_imageIndex;
 
+    if (m_device->features().khrPresentId.presentId && frameId)
+      presentId.pNext = const_cast<void*>(std::exchange(info.pNext, &presentId));
+
     if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1)
-      info.pNext = &modeInfo;
+      modeInfo.pNext = const_cast<void*>(std::exchange(info.pNext, &modeInfo));
 
     VkResult status = m_vkd->vkQueuePresentKHR(
       m_device->queues().graphics.queueHandle, &info);
@@ -90,6 +113,29 @@ namespace dxvk {
 
     m_fpsLimiter.delay(vsync);
     return status;
+  }
+
+
+  void Presenter::signalFrame(
+          VkResult          result,
+          uint64_t          frameId) {
+    if (m_signal == nullptr || !frameId)
+      return;
+
+    if (m_device->features().khrPresentWait.presentWait) {
+      std::lock_guard<dxvk::mutex> lock(m_frameMutex);
+
+      PresenterFrame frame = { };
+      frame.result = result;
+      frame.frameId = frameId;
+
+      m_frameQueue.push(frame);
+      m_frameCond.notify_one();
+    } else {
+      m_signal->signal(frameId);
+    }
+
+    m_lastFrameId.store(frameId, std::memory_order_release);
   }
 
 
@@ -572,6 +618,9 @@ namespace dxvk {
 
 
   void Presenter::destroySwapchain() {
+    if (m_signal != nullptr)
+      m_signal->wait(m_lastFrameId.load(std::memory_order_acquire));
+
     for (const auto& img : m_images)
       m_vkd->vkDestroyImageView(m_vkd->device(), img.view, nullptr);
     
@@ -594,6 +643,41 @@ namespace dxvk {
     m_vki->vkDestroySurfaceKHR(m_vki->instance(), m_surface, nullptr);
 
     m_surface = VK_NULL_HANDLE;
+  }
+
+
+  void Presenter::runFrameThread() {
+    env::setThreadName("dxvk-frame");
+
+    while (true) {
+      std::unique_lock<dxvk::mutex> lock(m_frameMutex);
+
+      m_frameCond.wait(lock, [this] {
+        return !m_frameQueue.empty();
+      });
+
+      PresenterFrame frame = m_frameQueue.front();
+      m_frameQueue.pop();
+
+      lock.unlock();
+
+      // Use a frame ID of 0 as an exit condition
+      if (!frame.frameId)
+        return;
+
+      // If the present operation has succeeded, actually wait for it to complete.
+      if (frame.result >= 0) {
+        VkResult vr = m_vkd->vkWaitForPresentKHR(m_vkd->device(),
+          m_swapchain, frame.frameId, std::numeric_limits<uint64_t>::max());
+
+        if (vr < 0 && vr != VK_ERROR_OUT_OF_DATE_KHR && vr != VK_ERROR_SURFACE_LOST_KHR)
+          Logger::err(str::format("Presenter: vkWaitForPresentKHR failed: ", vr));
+      }
+
+      // Always signal even on error, since failures here
+      // are transparent to the front-end.
+      m_signal->signal(frame.frameId);
+    }
   }
 
 }

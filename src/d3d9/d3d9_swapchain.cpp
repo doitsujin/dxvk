@@ -894,7 +894,7 @@ namespace dxvk {
     presenterDesc.numFormats      = PickFormats(EnumerateFormat(m_presentParams.BackBufferFormat), presenterDesc.formats);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
-    m_presenter = new Presenter(m_device, presenterDesc);
+    m_presenter = new Presenter(m_device, nullptr, presenterDesc);
     m_presenter->setFrameRateLimit(m_parent->GetOptions()->maxFrameRate);
   }
 

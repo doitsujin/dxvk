@@ -10,6 +10,8 @@
 #include "../util/util_math.h"
 #include "../util/util_string.h"
 
+#include "../util/sync/sync_signal.h"
+
 #include "../vulkan/vulkan_loader.h"
 
 #include "dxvk_format.h"
@@ -69,6 +71,14 @@ namespace dxvk {
   };
 
   /**
+   * \brief Queued frame
+   */
+  struct PresenterFrame {
+    uint64_t  frameId;
+    VkResult  result;
+  };
+
+  /**
    * \brief Vulkan presenter
    * 
    * Provides abstractions for some of the
@@ -80,8 +90,9 @@ namespace dxvk {
   public:
 
     Presenter(
-      const Rc<DxvkDevice>& device,
-      const PresenterDesc&  desc);
+      const Rc<DxvkDevice>&   device,
+      const Rc<sync::Signal>& signal,
+      const PresenterDesc&    desc);
     
     ~Presenter();
 
@@ -123,10 +134,27 @@ namespace dxvk {
      * an error, the swap chain must be recreated,
      * but do not present before acquiring an image.
      * \param [in] mode Present mode
+     * \param [in] frameId Frame number.
+     *    Must increase monotonically.
      * \returns Status of the operation
      */
     VkResult presentImage(
-            VkPresentModeKHR mode);
+            VkPresentModeKHR  mode,
+            uint64_t          frameId);
+
+    /**
+     * \brief Signals a given frame
+     *
+     * Waits for the present operation to complete and then signals
+     * the presenter signal with the given frame ID. Must not be
+     * called before GPU work prior to the present submission has
+     * completed in order to maintain consistency.
+     * \param [in] result Presentation result
+     * \param [in] frameId Frame number
+     */
+    void signalFrame(
+            VkResult          result,
+            uint64_t          frameId);
 
     /**
      * \brief Changes and takes ownership of surface
@@ -196,6 +224,7 @@ namespace dxvk {
   private:
 
     Rc<DxvkDevice>    m_device;
+    Rc<sync::Signal>  m_signal;
 
     Rc<vk::InstanceFn> m_vki;
     Rc<vk::DeviceFn>  m_vkd;
@@ -210,12 +239,19 @@ namespace dxvk {
 
     std::vector<VkPresentModeKHR> m_dynamicModes;
 
-    uint32_t m_imageIndex = 0;
-    uint32_t m_frameIndex = 0;
+    uint32_t          m_imageIndex = 0;
+    uint32_t          m_frameIndex = 0;
 
-    VkResult m_acquireStatus = VK_NOT_READY;
+    VkResult          m_acquireStatus = VK_NOT_READY;
 
-    FpsLimiter m_fpsLimiter;
+    FpsLimiter        m_fpsLimiter;
+
+    dxvk::mutex                 m_frameMutex;
+    dxvk::condition_variable    m_frameCond;
+    dxvk::thread                m_frameThread;
+    std::queue<PresenterFrame>  m_frameQueue;
+
+    std::atomic<uint64_t>       m_lastFrameId = { 0ull };
 
     VkResult recreateSwapChainInternal(
       const PresenterDesc&  desc);
@@ -251,11 +287,11 @@ namespace dxvk {
             uint32_t                  maxImageCount,
             uint32_t                  desired);
 
-    VkResult createSurface();
-
     void destroySwapchain();
 
     void destroySurface();
+
+    void runFrameThread();
 
   };
 
