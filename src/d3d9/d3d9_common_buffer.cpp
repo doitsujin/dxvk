@@ -20,6 +20,11 @@ namespace dxvk {
       m_dirtyRange = D3D9Range(0, m_desc.Size);
   }
 
+  D3D9CommonBuffer::~D3D9CommonBuffer() {
+    if (m_desc.Pool == D3DPOOL_DEFAULT)
+      m_parent->DecrementLosableCounter();
+  }
+
 
   HRESULT D3D9CommonBuffer::Lock(
           UINT   OffsetToLock,

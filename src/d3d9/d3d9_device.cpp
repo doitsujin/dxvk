@@ -415,11 +415,42 @@ namespace dxvk {
     Logger::info("Device reset");
     m_deviceLostState = D3D9DeviceLostState::Ok;
 
-    HRESULT hr = ResetSwapChain(pPresentationParameters, nullptr);
-    if (FAILED(hr))
-      return hr;
+    if (!IsExtended()) {
+      // The internal references are always cleared, regardless of whether the Reset call succeeds.
+      ResetState(pPresentationParameters);
+      m_implicitSwapchain->DestroyBackBuffers();
+      m_autoDepthStencil = nullptr;
+    } else {
+      // Extended devices only reset the bound render targets
+      for (uint32_t i = 0; i < caps::MaxSimultaneousRenderTargets; i++) {
+        SetRenderTargetInternal(i, nullptr);
+      }
+      SetDepthStencilSurface(nullptr);
+    }
 
-    ResetState(pPresentationParameters);
+    /*
+      * Before calling the IDirect3DDevice9::Reset method for a device,
+      * an application should release any explicit render targets,
+      * depth stencil surfaces, additional swap chains, state blocks,
+      * and D3DPOOL_DEFAULT resources associated with the device.
+      * 
+      * We have to check after ResetState clears the references held by SetTexture, etc.
+      * This matches what Windows D3D9 does.
+    */
+    if (unlikely(m_losableResourceCounter.load() != 0 && !IsExtended())) {
+      Logger::warn(str::format("Device reset failed because device still has alive losable resources: Device not reset. Remaining resources: ", m_losableResourceCounter.load()));
+      m_deviceLostState = D3D9DeviceLostState::NotReset;
+      return D3DERR_INVALIDCALL;
+    }
+
+    HRESULT hr = ResetSwapChain(pPresentationParameters, nullptr);
+    if (FAILED(hr)) {
+      if (!IsExtended()) {
+        Logger::warn("Device reset failed: Device not reset");
+        m_deviceLostState = D3D9DeviceLostState::NotReset;
+      }
+      return hr;
+    }
 
     Flush();
     SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
@@ -516,6 +547,7 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = FALSE;
+    desc.IsLosable          = Pool == D3DPOOL_DEFAULT;
     // Docs:
     // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
     // unless they are dynamic textures or they are private, FOURCC, driver formats.
@@ -541,6 +573,9 @@ namespace dxvk {
 
       m_initializer->InitTexture(texture->GetCommonTexture(), initialData);
       *ppTexture = texture.ref();
+
+      if (desc.IsLosable)
+        m_losableResourceCounter++;
 
       return D3D_OK;
     }
@@ -583,6 +618,7 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = FALSE;
+    desc.IsLosable          = Pool == D3DPOOL_DEFAULT;
     // Docs:
     // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
     // unless they are dynamic textures or they are private, FOURCC, driver formats.
@@ -597,6 +633,9 @@ namespace dxvk {
       const Com<D3D9Texture3D> texture = new D3D9Texture3D(this, &desc);
       m_initializer->InitTexture(texture->GetCommonTexture());
       *ppVolumeTexture = texture.ref();
+      
+      if (desc.IsLosable)
+        m_losableResourceCounter++;
 
       return D3D_OK;
     }
@@ -637,6 +676,7 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = FALSE;
+    desc.IsLosable          = Pool == D3DPOOL_DEFAULT;
     // Docs:
     // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
     // unless they are dynamic textures or they are private, FOURCC, driver formats.
@@ -651,6 +691,9 @@ namespace dxvk {
       const Com<D3D9TextureCube> texture = new D3D9TextureCube(this, &desc);
       m_initializer->InitTexture(texture->GetCommonTexture());
       *ppCubeTexture = texture.ref();
+      
+      if (desc.IsLosable)
+        m_losableResourceCounter++;
 
       return D3D_OK;
     }
@@ -691,6 +734,9 @@ namespace dxvk {
       const Com<D3D9VertexBuffer> buffer = new D3D9VertexBuffer(this, &desc);
       m_initializer->InitBuffer(buffer->GetCommonBuffer());
       *ppVertexBuffer = buffer.ref();
+      if (desc.Pool == D3DPOOL_DEFAULT)
+        m_losableResourceCounter++;
+
       return D3D_OK;
     }
     catch (const DxvkError & e) {
@@ -729,6 +775,9 @@ namespace dxvk {
       const Com<D3D9IndexBuffer> buffer = new D3D9IndexBuffer(this, &desc);
       m_initializer->InitBuffer(buffer->GetCommonBuffer());
       *ppIndexBuffer = buffer.ref();
+      if (desc.Pool == D3DPOOL_DEFAULT)
+        m_losableResourceCounter++;
+
       return D3D_OK;
     }
     catch (const DxvkError & e) {
@@ -1311,14 +1360,22 @@ namespace dxvk {
       0);
   }
 
-
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetRenderTarget(
           DWORD              RenderTargetIndex,
           IDirect3DSurface9* pRenderTarget) {
     D3D9DeviceLock lock = LockDevice();
 
-    if (unlikely(RenderTargetIndex >= caps::MaxSimultaneousRenderTargets
-     || (pRenderTarget == nullptr && RenderTargetIndex == 0)))
+    if (unlikely((pRenderTarget == nullptr && RenderTargetIndex == 0)))
+      return D3DERR_INVALIDCALL;
+
+    return SetRenderTargetInternal(RenderTargetIndex, pRenderTarget);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetRenderTargetInternal(
+          DWORD              RenderTargetIndex,
+          IDirect3DSurface9* pRenderTarget) {
+    if (unlikely(RenderTargetIndex >= caps::MaxSimultaneousRenderTargets))
       return D3DERR_INVALIDCALL;
 
     D3D9Surface* rt = static_cast<D3D9Surface*>(pRenderTarget);
@@ -1330,21 +1387,28 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     if (RenderTargetIndex == 0) {
-      auto rtSize = rt->GetSurfaceExtent();
-
       D3DVIEWPORT9 viewport;
       viewport.X       = 0;
       viewport.Y       = 0;
-      viewport.Width   = rtSize.width;
-      viewport.Height  = rtSize.height;
       viewport.MinZ    = 0.0f;
       viewport.MaxZ    = 1.0f;
 
       RECT scissorRect;
       scissorRect.left    = 0;
       scissorRect.top     = 0;
-      scissorRect.right   = rtSize.width;
-      scissorRect.bottom  = rtSize.height;
+      
+      if (likely(rt != nullptr)) {
+        auto rtSize = rt->GetSurfaceExtent();
+        viewport.Width  = rtSize.width;
+        viewport.Height = rtSize.height;
+        scissorRect.right  = rtSize.width;
+        scissorRect.bottom = rtSize.height;
+      } else {
+        viewport.Width  = 0;
+        viewport.Height = 0;
+        scissorRect.right  = 0;
+        scissorRect.bottom = 0;
+      }
 
       if (m_state.viewport != viewport) {
         m_flags.set(D3D9DeviceFlag::DirtyFFViewport);
@@ -1389,13 +1453,18 @@ namespace dxvk {
       m_flags.set(D3D9DeviceFlag::DirtyBlendState);
 
     if (RenderTargetIndex == 0) {
-      bool validSampleMask = texInfo->Desc()->MultiSample > D3DMULTISAMPLE_NONMASKABLE;
+      if (likely(texInfo != nullptr)) {
+        bool validSampleMask = texInfo->Desc()->MultiSample > D3DMULTISAMPLE_NONMASKABLE;
 
-      if (validSampleMask != m_flags.test(D3D9DeviceFlag::ValidSampleMask)) {
+        if (validSampleMask != m_flags.test(D3D9DeviceFlag::ValidSampleMask)) {
+          m_flags.clr(D3D9DeviceFlag::ValidSampleMask);
+          if (validSampleMask)
+            m_flags.set(D3D9DeviceFlag::ValidSampleMask);
+
+          m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
+        }
+      } else {
         m_flags.clr(D3D9DeviceFlag::ValidSampleMask);
-        if (validSampleMask)
-          m_flags.set(D3D9DeviceFlag::ValidSampleMask);
-
         m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
       }
     }
@@ -2254,6 +2323,8 @@ namespace dxvk {
     try {
       const Com<D3D9StateBlock> sb = new D3D9StateBlock(this, ConvertStateBlockType(Type));
       *ppSB = sb.ref();
+      m_losableResourceCounter++;
+
       return D3D_OK;
     }
     catch (const DxvkError & e) {
@@ -2284,6 +2355,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     *ppSB = m_recorder.ref();
+    m_losableResourceCounter++;
     m_recorder = nullptr;
 
     return D3D_OK;
@@ -3613,6 +3685,7 @@ namespace dxvk {
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = TRUE;
     desc.IsLockable         = Lockable;
+    desc.IsLosable          = TRUE;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -3621,6 +3694,8 @@ namespace dxvk {
       const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, nullptr, pSharedHandle);
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
+      m_losableResourceCounter++;
+
       return D3D_OK;
     }
     catch (const DxvkError& e) {
@@ -3657,6 +3732,7 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = Pool == D3DPOOL_DEFAULT;
+    desc.IsLosable          = Pool == D3DPOOL_DEFAULT;
     // Docs: Off-screen plain surfaces are always lockable, regardless of their pool types.
     desc.IsLockable         = TRUE;
 
@@ -3670,6 +3746,10 @@ namespace dxvk {
       const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, nullptr, pSharedHandle);
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
+      
+      if (desc.IsLosable)
+        m_losableResourceCounter++;
+
       return D3D_OK;
     }
     catch (const DxvkError& e) {
@@ -3708,6 +3788,7 @@ namespace dxvk {
     desc.MultisampleQuality = MultisampleQuality;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = TRUE;
+    desc.IsLosable          = TRUE;
     // Docs don't say anything, so just assume it's lockable.
     desc.IsLockable         = TRUE;
 
@@ -3718,6 +3799,8 @@ namespace dxvk {
       const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, nullptr, pSharedHandle);
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
+      m_losableResourceCounter++;
+
       return D3D_OK;
     }
     catch (const DxvkError& e) {
@@ -3779,6 +3862,7 @@ namespace dxvk {
     try {
       auto* swapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode);
       *ppSwapChain = ref(swapchain);
+      m_losableResourceCounter++;
     }
     catch (const DxvkError & e) {
       Logger::err(e.message());
@@ -7171,11 +7255,10 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::ResetState(D3DPRESENT_PARAMETERS* pPresentationParameters) {
-    if (!pPresentationParameters->EnableAutoDepthStencil)
-      SetDepthStencilSurface(nullptr);
+    SetDepthStencilSurface(nullptr);
 
-    for (uint32_t i = 1; i < caps::MaxSimultaneousRenderTargets; i++)
-      SetRenderTarget(i, nullptr);
+    for (uint32_t i = 0; i < caps::MaxSimultaneousRenderTargets; i++)
+      SetRenderTargetInternal(i, nullptr);
 
     auto& rs = m_state.renderStates;
 
@@ -7358,8 +7441,9 @@ namespace dxvk {
     for (uint32_t i = 0; i < caps::MaxStreams; i++)
       m_state.streamFreq[i] = 1;
 
-    for (uint32_t i = 0; i < m_state.textures->size(); i++)
+    for (uint32_t i = 0; i < m_state.textures->size(); i++) {
       SetStateTexture(i, nullptr);
+    }
 
     EmitCs([
       cSize = m_state.textures->size()
@@ -7465,6 +7549,7 @@ namespace dxvk {
       desc.MultisampleQuality = pPresentationParameters->MultiSampleQuality;
       desc.IsBackBuffer       = FALSE;
       desc.IsAttachmentOnly   = TRUE;
+      desc.IsLosable          = TRUE;
       // Docs: Also note that - unlike textures - swap chain back buffers, render targets [..] can be locked
       desc.IsLockable         = TRUE;
 
@@ -7474,6 +7559,7 @@ namespace dxvk {
       m_autoDepthStencil = new D3D9Surface(this, &desc, nullptr, nullptr);
       m_initializer->InitTexture(m_autoDepthStencil->GetCommonTexture());
       SetDepthStencilSurface(m_autoDepthStencil.ptr());
+      m_losableResourceCounter++;
     }
 
     SetRenderTarget(0, m_implicitSwapchain->GetBackBuffer(0));
@@ -7573,6 +7659,43 @@ namespace dxvk {
       iter = m_mappedTextures.remove(iter);
     }
 #endif
+  }
+
+  ////////////////////////////////////
+  // D3D9 Device Lost
+  ////////////////////////////////////
+
+  void D3D9DeviceEx::NotifyFullscreen(HWND window, bool fullscreen) {
+    D3D9DeviceLock lock = LockDevice();
+
+    if (fullscreen) {
+      if (unlikely(window != m_fullscreenWindow && m_fullscreenWindow != NULL)) {
+        Logger::warn("Multiple fullscreen windows detected.");
+      }
+      m_fullscreenWindow = window;
+    } else {
+      if (unlikely(m_fullscreenWindow != window)) {
+        Logger::warn("Window was not fullscreen in the first place.");
+      } else {
+        m_fullscreenWindow = 0;
+      }
+    }
+  }
+
+  void D3D9DeviceEx::NotifyWindowActivated(HWND window, bool activated) {
+    D3D9DeviceLock lock = LockDevice();
+
+    if (likely(!m_d3d9Options.deviceLossOnFocusLoss || IsExtended()))
+      return;
+
+    if (activated && m_deviceLostState == D3D9DeviceLostState::Lost) {
+      Logger::info("Device not reset");
+      m_deviceLostState = D3D9DeviceLostState::NotReset;
+    } else if (!activated && m_deviceLostState != D3D9DeviceLostState::Lost && m_fullscreenWindow == window) {
+      Logger::info("Device lost");
+      m_deviceLostState = D3D9DeviceLostState::Lost;
+      m_fullscreenWindow = NULL;
+    }
   }
 
   ////////////////////////////////////

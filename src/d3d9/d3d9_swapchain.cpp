@@ -71,6 +71,8 @@ namespace dxvk {
 
     m_device->waitForSubmission(&m_presentStatus);
     m_device->waitForIdle();
+
+    m_parent->DecrementLosableCounter();
   }
 
 
@@ -434,6 +436,13 @@ namespace dxvk {
     if (unlikely(iBackBuffer >= m_presentParams.BackBufferCount)) {
       Logger::err(str::format("D3D9: GetBackBuffer: Invalid back buffer index: ", iBackBuffer));
       return D3DERR_INVALIDCALL;
+    }
+
+    if (m_backBuffers.empty()) {
+      // The backbuffers were destroyed and not recreated.
+      // This can happen when a call to Reset fails.
+      *ppBackBuffer = nullptr;
+      return D3D_OK;
     }
 
     *ppBackBuffer = ref(m_backBuffers[iBackBuffer].ptr());
@@ -977,6 +986,7 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.IsBackBuffer       = TRUE;
     desc.IsAttachmentOnly   = FALSE;
+    desc.IsLosable          = TRUE;
     // Docs: Also note that - unlike textures - swap chain back buffers, render targets [..] can be locked
     desc.IsLockable         = TRUE;
 
@@ -984,6 +994,7 @@ namespace dxvk {
       D3D9Surface* surface;
       try {
         surface = new D3D9Surface(m_parent, &desc, this, nullptr);
+        m_parent->IncrementLosableCounter();
       } catch (const DxvkError& e) {
         DestroyBackBuffers();
         Logger::err(e.message());
