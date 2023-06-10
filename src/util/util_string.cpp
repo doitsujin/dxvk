@@ -126,7 +126,7 @@ namespace dxvk::str {
       return 3;
     } else if (ch < 0x200000) {
       if (begin) {
-        if (unlikely(begin + 4 < end))
+        if (unlikely(begin + 4 > end))
           return 0;
 
         begin[0] = uint8_t(0xF0 | ((ch >> 18)));
