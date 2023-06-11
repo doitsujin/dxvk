@@ -4384,7 +4384,11 @@ namespace dxvk {
     // then we need to copy -> buffer
     // We are also always dirty if we are a render target,
     // a depth stencil, or auto generate mipmaps.
-    bool needsReadback = (pResource->NeedsReadback(Subresource) || renderable) && !(Flags & D3DLOCK_DISCARD);
+    bool needsReadback = pResource->NeedsReadback(Subresource) || renderable;
+
+    // Skip readback if we discard is specified. We can only do this for textures that have an associated Vulkan image.
+    // Any other texture might write to the Vulkan staging buffer directly. (GetBackbufferData for example)
+    needsReadback &= pResource->GetImage() != nullptr || !(Flags & D3DLOCK_DISCARD);
     pResource->SetNeedsReadback(Subresource, false);
 
 
