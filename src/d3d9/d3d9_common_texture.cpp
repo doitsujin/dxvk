@@ -99,7 +99,7 @@ namespace dxvk {
 
     m_device->RemoveMappedTexture(this);
 
-    if (m_desc.IsLosable)
+    if (m_desc.Pool == D3DPOOL_DEFAULT)
       m_device->DecrementLosableCounter();
   }
 
