@@ -661,7 +661,7 @@ namespace dxvk {
     }} },
     /* King Of Fighters XIII                     *
      * In-game speed increases on high FPS       */
-    { R"(\\kofxiii\.exe$)", {{
+    { R"(\\kof(xiii|13_win32_Release)\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
     /* YS Origin                                *
