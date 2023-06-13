@@ -318,7 +318,9 @@ namespace dxvk {
     uint32_t inputHeight = cursorTex->Desc()->Height;
 
     // Always use a hardware cursor when windowed.
-    bool hwCursor  = m_presentParams.Windowed;
+    D3DPRESENT_PARAMETERS params;
+    m_implicitSwapchain->GetPresentParameters(&params);
+    bool hwCursor  = params.Windowed;
 
     // Always use a hardware cursor w/h <= 32 px
     hwCursor |= inputWidth  <= HardwareCursorWidth
