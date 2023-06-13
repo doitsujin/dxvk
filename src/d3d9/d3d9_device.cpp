@@ -7565,11 +7565,11 @@ namespace dxvk {
 
 
   HRESULT D3D9DeviceEx::InitialReset(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode) {
+    ResetState(pPresentationParameters);
+
     HRESULT hr = ResetSwapChain(pPresentationParameters, pFullscreenDisplayMode);
     if (FAILED(hr))
       return hr;
-
-    ResetState(pPresentationParameters);
 
     Flush();
     SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
