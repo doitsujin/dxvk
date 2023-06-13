@@ -986,7 +986,6 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.IsBackBuffer       = TRUE;
     desc.IsAttachmentOnly   = FALSE;
-    desc.IsLosable          = TRUE;
     // Docs: Also note that - unlike textures - swap chain back buffers, render targets [..] can be locked
     desc.IsLockable         = TRUE;
 

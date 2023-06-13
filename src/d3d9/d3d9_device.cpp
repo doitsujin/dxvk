@@ -547,7 +547,6 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = FALSE;
-    desc.IsLosable          = Pool == D3DPOOL_DEFAULT;
     // Docs:
     // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
     // unless they are dynamic textures or they are private, FOURCC, driver formats.
@@ -574,7 +573,7 @@ namespace dxvk {
       m_initializer->InitTexture(texture->GetCommonTexture(), initialData);
       *ppTexture = texture.ref();
 
-      if (desc.IsLosable)
+      if (desc.Pool == D3DPOOL_DEFAULT)
         m_losableResourceCounter++;
 
       return D3D_OK;
@@ -618,7 +617,6 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = FALSE;
-    desc.IsLosable          = Pool == D3DPOOL_DEFAULT;
     // Docs:
     // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
     // unless they are dynamic textures or they are private, FOURCC, driver formats.
@@ -634,7 +632,7 @@ namespace dxvk {
       m_initializer->InitTexture(texture->GetCommonTexture());
       *ppVolumeTexture = texture.ref();
       
-      if (desc.IsLosable)
+      if (desc.Pool == D3DPOOL_DEFAULT)
         m_losableResourceCounter++;
 
       return D3D_OK;
@@ -676,7 +674,6 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = FALSE;
-    desc.IsLosable          = Pool == D3DPOOL_DEFAULT;
     // Docs:
     // Textures placed in the D3DPOOL_DEFAULT pool cannot be locked
     // unless they are dynamic textures or they are private, FOURCC, driver formats.
@@ -692,7 +689,7 @@ namespace dxvk {
       m_initializer->InitTexture(texture->GetCommonTexture());
       *ppCubeTexture = texture.ref();
       
-      if (desc.IsLosable)
+      if (desc.Pool == D3DPOOL_DEFAULT)
         m_losableResourceCounter++;
 
       return D3D_OK;
@@ -3685,7 +3682,6 @@ namespace dxvk {
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = TRUE;
     desc.IsLockable         = Lockable;
-    desc.IsLosable          = TRUE;
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
       return D3DERR_INVALIDCALL;
@@ -3732,7 +3728,6 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = Pool == D3DPOOL_DEFAULT;
-    desc.IsLosable          = Pool == D3DPOOL_DEFAULT;
     // Docs: Off-screen plain surfaces are always lockable, regardless of their pool types.
     desc.IsLockable         = TRUE;
 
@@ -3747,7 +3742,7 @@ namespace dxvk {
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
       
-      if (desc.IsLosable)
+      if (desc.Pool == D3DPOOL_DEFAULT)
         m_losableResourceCounter++;
 
       return D3D_OK;
@@ -3788,7 +3783,6 @@ namespace dxvk {
     desc.MultisampleQuality = MultisampleQuality;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = TRUE;
-    desc.IsLosable          = TRUE;
     // Docs don't say anything, so just assume it's lockable.
     desc.IsLockable         = TRUE;
 
@@ -7549,7 +7543,6 @@ namespace dxvk {
       desc.MultisampleQuality = pPresentationParameters->MultiSampleQuality;
       desc.IsBackBuffer       = FALSE;
       desc.IsAttachmentOnly   = TRUE;
-      desc.IsLosable          = TRUE;
       // Docs: Also note that - unlike textures - swap chain back buffers, render targets [..] can be locked
       desc.IsLockable         = TRUE;
 
