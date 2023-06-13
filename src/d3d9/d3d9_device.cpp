@@ -7496,6 +7496,11 @@ namespace dxvk {
     UpdateAnyColorWrites<1>(true);
     UpdateAnyColorWrites<2>(true);
     UpdateAnyColorWrites<3>(true);
+
+    SetIndices(nullptr);
+    for (uint32_t i = 0; i < caps::MaxStreams; i++) {
+      SetStreamSource(i, nullptr, 0, 0);
+    }
   }
 
 
