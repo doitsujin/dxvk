@@ -387,6 +387,10 @@ namespace dxvk {
     { R"(\\Fallout76\.exe$)", {{
       { "dxgi.syncInterval",              "1" },
     }} },
+    /* Blizzard Entertainment Battle.net          */
+    { R"(\\Battle.net\.exe$)", {{
+      { "dxvk.maxChunkSize",                "1"   },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
