@@ -373,7 +373,11 @@ namespace dxvk {
       { "dxvk.maxChunkSize",                "1"   },
     }} },
     /* EA Desktop App                             */
-    { R"(\\EADesktop.exe\.exe$)", {{
+    { R"(\\EADesktop\.exe$)", {{
+      { "dxvk.maxChunkSize",                "1"   },
+    }} },
+    /* GOG Galaxy                                 */
+    { R"(\\GalaxyClient\.exe$)", {{
       { "dxvk.maxChunkSize",                "1"   },
     }} },
     /* Fallout 76
