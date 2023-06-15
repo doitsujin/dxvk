@@ -372,6 +372,10 @@ namespace dxvk {
     { R"(\\Rockstar Games\\Social Club\\SocialClubHelper\.exe$)", {{
       { "dxvk.maxChunkSize",                "1"   },
     }} },
+    /* EA Desktop App                             */
+    { R"(\\EADesktop.exe\.exe$)", {{
+      { "dxvk.maxChunkSize",                "1"   },
+    }} },
     /* Fallout 76
      * Game tries to be too "smart" and changes sync
      * interval based on performance (in fullscreen)
