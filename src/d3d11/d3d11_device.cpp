@@ -1953,6 +1953,11 @@ namespace dxvk {
     enabled.core.features.shaderFloat64                           = supported.core.features.shaderFloat64;
     enabled.core.features.shaderInt64                             = supported.core.features.shaderInt64;
 
+    // Depth bias control
+    enabled.extDepthBiasControl.depthBiasControl                                = supported.extDepthBiasControl.depthBiasControl;
+    enabled.extDepthBiasControl.depthBiasExact                                  = supported.extDepthBiasControl.depthBiasExact;
+    enabled.extDepthBiasControl.leastRepresentableValueForceUnormRepresentation = supported.extDepthBiasControl.leastRepresentableValueForceUnormRepresentation;
+
     return enabled;
   }
   
