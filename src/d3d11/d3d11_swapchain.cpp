@@ -414,7 +414,7 @@ namespace dxvk {
       if (cHud != nullptr && !cFrameId)
         cHud->update();
 
-      m_device->presentImage(m_presenter, cPresentMode, &m_presentStatus);
+      m_device->presentImage(m_presenter, cPresentMode, 0, &m_presentStatus);
     });
 
     pContext->FlushCsChunk();

@@ -455,11 +455,13 @@ namespace dxvk {
      * can be retrieved with \ref waitForSubmission.
      * \param [in] presenter The presenter
      * \param [in] presenteMode Present mode
+     * \param [in] frameId Optional frame ID
      * \param [out] status Present status
      */
     void presentImage(
       const Rc<Presenter>&            presenter,
             VkPresentModeKHR          presentMode,
+            uint64_t                  frameId,
             DxvkSubmitStatus*         status);
     
     /**

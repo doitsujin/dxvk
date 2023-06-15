@@ -254,12 +254,14 @@ namespace dxvk {
   void DxvkDevice::presentImage(
     const Rc<Presenter>&            presenter,
           VkPresentModeKHR          presentMode,
+          uint64_t                  frameId,
           DxvkSubmitStatus*         status) {
     status->result = VK_NOT_READY;
 
     DxvkPresentInfo presentInfo = { };
     presentInfo.presenter = presenter;
     presentInfo.presentMode = presentMode;
+    presentInfo.frameId = frameId;
     m_submissionQueue.present(presentInfo, status);
     
     std::lock_guard<sync::Spinlock> statLock(m_statLock);
@@ -310,10 +312,13 @@ namespace dxvk {
   
   
   void DxvkDevice::waitForIdle() {
-    this->lockSubmission();
+    m_submissionQueue.waitForIdle();
+    m_submissionQueue.lockDeviceQueue();
+
     if (m_vkd->vkDeviceWaitIdle(m_vkd->device()) != VK_SUCCESS)
       Logger::err("DxvkDevice: waitForIdle: Operation failed");
-    this->unlockSubmission();
+
+    m_submissionQueue.unlockDeviceQueue();
   }
   
   

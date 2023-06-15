@@ -593,7 +593,7 @@ namespace dxvk {
           VkExtent2D                desired) {
     if (caps.currentExtent.width != std::numeric_limits<uint32_t>::max())
       return caps.currentExtent;
-    
+
     VkExtent2D actual;
     actual.width  = clamp(desired.width,  caps.minImageExtent.width,  caps.maxImageExtent.width);
     actual.height = clamp(desired.height, caps.minImageExtent.height, caps.maxImageExtent.height);
