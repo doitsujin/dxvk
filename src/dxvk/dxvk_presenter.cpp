@@ -132,11 +132,11 @@ namespace dxvk {
     VkResult status;
 
     if (m_device->features().extFullScreenExclusive) {
-      status = m_vki->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-        m_device->adapter()->handle(), m_surface, &caps.surfaceCapabilities);
-    } else {
       status = m_vki->vkGetPhysicalDeviceSurfaceCapabilities2KHR(
         m_device->adapter()->handle(), &surfaceInfo, &caps);
+    } else {
+      status = m_vki->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+        m_device->adapter()->handle(), m_surface, &caps.surfaceCapabilities);
     }
 
     if (status)
