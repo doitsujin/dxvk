@@ -150,12 +150,13 @@ namespace dxvk {
 
 
   struct DxvkDynamicState {
-    DxvkBlendConstants  blendConstants    = { 0.0f, 0.0f, 0.0f, 0.0f };
-    DxvkDepthBias       depthBias         = { 0.0f, 0.0f, 0.0f };
-    DxvkDepthBounds     depthBounds       = { false, 0.0f, 1.0f };
-    uint32_t            stencilReference  = 0;
-    VkCullModeFlags     cullMode          = VK_CULL_MODE_BACK_BIT;
-    VkFrontFace         frontFace         = VK_FRONT_FACE_CLOCKWISE;
+    DxvkBlendConstants          blendConstants          = { 0.0f, 0.0f, 0.0f, 0.0f };
+    DxvkDepthBias               depthBias               = { 0.0f, 0.0f, 0.0f };
+    DxvkDepthBiasRepresentation depthBiasRepresentation = { VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORMAT_EXT, false };
+    DxvkDepthBounds             depthBounds             = { false, 0.0f, 1.0f };
+    uint32_t                    stencilReference        = 0;
+    VkCullModeFlags             cullMode                = VK_CULL_MODE_BACK_BIT;
+    VkFrontFace                 frontFace               = VK_FRONT_FACE_CLOCKWISE;
   };
 
 

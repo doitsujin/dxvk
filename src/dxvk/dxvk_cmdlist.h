@@ -824,6 +824,12 @@ namespace dxvk {
     }
 
 
+    void cmdSetDepthBias2(
+      const VkDepthBiasInfoEXT     *depthBiasInfo) {
+      m_vkd->vkCmdSetDepthBias2EXT(m_cmd.execBuffer, depthBiasInfo);
+    }
+
+
     void cmdSetDepthBounds(
             float                   minDepthBounds,
             float                   maxDepthBounds) {
