@@ -3389,8 +3389,24 @@ namespace dxvk {
   }
 
 
+  static VkDepthBiasRepresentationEXT FormatToDepthBiasRepresentation(DXGI_FORMAT format) {
+    switch (format) {
+      default:
+      case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+      case DXGI_FORMAT_D32_FLOAT:
+        return VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORMAT_EXT;
+
+      case DXGI_FORMAT_D24_UNORM_S8_UINT:
+      case DXGI_FORMAT_D16_UNORM:
+        return VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORCE_UNORM_EXT;
+    }
+  }
+
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::BindFramebuffer() {
+    DxvkDepthBiasRepresentation depthBiasRepresentation =
+      { VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORMAT_EXT,
+        m_device->features().extDepthBiasControl.depthBiasExact };
     DxvkRenderTargets attachments;
     uint32_t sampleCount = 0;
 
@@ -3411,12 +3427,17 @@ namespace dxvk {
         m_state.om.dsv->GetImageView(),
         m_state.om.dsv->GetRenderLayout() };
       sampleCount = m_state.om.dsv->GetSampleCount();
+
+      if (m_device->features().extDepthBiasControl.leastRepresentableValueForceUnormRepresentation)
+        depthBiasRepresentation.depthBiasRepresentation = FormatToDepthBiasRepresentation(m_state.om.dsv->GetViewFormat());
     }
 
     // Create and bind the framebuffer object to the context
     EmitCs([
-      cAttachments = std::move(attachments)
+      cAttachments    = std::move(attachments),
+      cRepresentation = depthBiasRepresentation
     ] (DxvkContext* ctx) mutable {
+      ctx->setDepthBiasRepresentation(cRepresentation);
       ctx->bindRenderTargets(Forwarder::move(cAttachments), 0u);
     });
 
