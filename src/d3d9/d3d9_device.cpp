@@ -116,6 +116,25 @@ namespace dxvk {
 
     m_usingGraphicsPipelines = dxvkDevice->features().extGraphicsPipelineLibrary.graphicsPipelineLibrary;
 
+    m_depthBiasRepresentation = { VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORMAT_EXT, false };
+    if (dxvkDevice->features().extDepthBiasControl.depthBiasControl) {
+      if (dxvkDevice->features().extDepthBiasControl.depthBiasExact)
+        m_depthBiasRepresentation.depthBiasExact = true;
+      
+      if (dxvkDevice->features().extDepthBiasControl.floatRepresentation) {
+        m_depthBiasRepresentation.depthBiasRepresentation = VK_DEPTH_BIAS_REPRESENTATION_FLOAT_EXT;
+        m_depthBiasScale = 1.0f;
+      }
+      else if (dxvkDevice->features().extDepthBiasControl.leastRepresentableValueForceUnormRepresentation)
+        m_depthBiasRepresentation.depthBiasRepresentation = VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORCE_UNORM_EXT;
+    }
+
+    EmitCs([
+      cRepresentation = m_depthBiasRepresentation
+    ] (DxvkContext* ctx) {
+      ctx->setDepthBiasRepresentation(cRepresentation);
+    });
+
     CreateConstantBuffers();
 
     m_availableMemory = DetermineInitialTextureMemory();
@@ -1505,9 +1524,11 @@ namespace dxvk {
     FlushImplicit(FALSE);
     m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
-    if (ds != nullptr) {
+    if (ds != nullptr && m_depthBiasRepresentation.depthBiasRepresentation != VK_DEPTH_BIAS_REPRESENTATION_FLOAT_EXT) {
       const int32_t vendorId = m_dxvkDevice->adapter()->deviceProperties().vendorID;
-      float rValue = GetDepthBufferRValue(ds->GetCommonTexture()->GetFormatMapping().FormatColor, vendorId);
+      const bool exact = m_depthBiasRepresentation.depthBiasExact;
+      const bool forceUnorm = m_depthBiasRepresentation.depthBiasRepresentation == VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORCE_UNORM_EXT;
+      const float rValue = GetDepthBufferRValue(ds->GetCommonTexture()->GetFormatMapping().FormatColor, vendorId, exact, forceUnorm);
       if (m_depthBiasScale != rValue) {
         m_depthBiasScale = rValue;
         m_flags.set(D3D9DeviceFlag::DirtyDepthBias);
@@ -4139,6 +4160,13 @@ namespace dxvk {
       enabled.extAttachmentFeedbackLoopLayout.attachmentFeedbackLoopLayout = VK_TRUE;
 
     enabled.extNonSeamlessCubeMap.nonSeamlessCubeMap = supported.extNonSeamlessCubeMap.nonSeamlessCubeMap;
+
+    enabled.extDepthBiasControl.depthBiasControl = supported.extDepthBiasControl.depthBiasControl;
+    enabled.extDepthBiasControl.depthBiasExact = supported.extDepthBiasControl.depthBiasExact;
+    if (supported.extDepthBiasControl.floatRepresentation)
+      enabled.extDepthBiasControl.floatRepresentation = VK_TRUE;
+    else if (supported.extDepthBiasControl.leastRepresentableValueForceUnormRepresentation)
+      enabled.extDepthBiasControl.leastRepresentableValueForceUnormRepresentation = VK_TRUE;
 
     return enabled;
   }
