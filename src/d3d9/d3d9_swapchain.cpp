@@ -754,9 +754,6 @@ namespace dxvk {
     Rc<DxvkImage> swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
     Rc<DxvkImageView> swapImageView = m_backBuffers[0]->GetImageView(false);
 
-    // Bump our frame id.
-    ++m_frameId;
-
     for (uint32_t i = 0; i < SyncInterval || i < 1; i++) {
       SynchronizePresent();
 
@@ -798,9 +795,6 @@ namespace dxvk {
       if (m_hud != nullptr)
         m_hud->render(m_context, info.format, info.imageExtent);
 
-      if (i + 1 >= SyncInterval)
-        m_context->signal(m_frameLatencySignal, m_frameId);
-
       SubmitPresent(sync, i);
     }
 
@@ -815,25 +809,33 @@ namespace dxvk {
   }
 
 
-  void D3D9SwapChainEx::SubmitPresent(const PresenterSync& Sync, uint32_t FrameId) {
+  void D3D9SwapChainEx::SubmitPresent(const PresenterSync& Sync, uint32_t Repeat) {
+    // Bump frame ID
+    if (!Repeat)
+      m_frameId += 1;
+
     // Present from CS thread so that we don't
     // have to synchronize with it first.
     m_presentStatus.result = VK_NOT_READY;
 
     m_parent->EmitCs([this,
-      cFrameId     = FrameId,
+      cRepeat      = Repeat,
       cSync        = Sync,
       cHud         = m_hud,
       cPresentMode = m_presenter->info().presentMode,
+      cFrameId     = m_frameId,
       cCommandList = m_context->endRecording()
     ] (DxvkContext* ctx) {
       cCommandList->setWsiSemaphores(cSync);
       m_device->submitCommandList(cCommandList, nullptr);
 
-      if (cHud != nullptr && !cFrameId)
+      if (cHud != nullptr && !cRepeat)
         cHud->update();
 
-      m_device->presentImage(m_presenter, cPresentMode, 0, &m_presentStatus);
+      uint64_t frameId = cRepeat ? 0 : cFrameId;
+
+      m_device->presentImage(m_presenter,
+        cPresentMode, frameId, &m_presentStatus);
     });
 
     m_parent->FlushCsChunk();
@@ -894,7 +896,7 @@ namespace dxvk {
     presenterDesc.numFormats      = PickFormats(EnumerateFormat(m_presentParams.BackBufferFormat), presenterDesc.formats);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
-    m_presenter = new Presenter(m_device, nullptr, presenterDesc);
+    m_presenter = new Presenter(m_device, m_frameLatencySignal, presenterDesc);
     m_presenter->setFrameRateLimit(m_parent->GetOptions()->maxFrameRate);
   }
 

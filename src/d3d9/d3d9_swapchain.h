@@ -179,7 +179,7 @@ namespace dxvk {
 
     void PresentImage(UINT PresentInterval);
 
-    void SubmitPresent(const PresenterSync& Sync, uint32_t FrameId);
+    void SubmitPresent(const PresenterSync& Sync, uint32_t Repeat);
 
     void SynchronizePresent();
 
