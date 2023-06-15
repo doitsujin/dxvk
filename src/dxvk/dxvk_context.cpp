@@ -2442,6 +2442,15 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::setDepthBiasRepresentation(
+          DxvkDepthBiasRepresentation  depthBiasRepresentation) {
+    if (m_state.dyn.depthBiasRepresentation != depthBiasRepresentation) {
+      m_state.dyn.depthBiasRepresentation = depthBiasRepresentation;
+      m_flags.set(DxvkContextFlag::GpDirtyDepthBias);
+    }
+  }
+
+
   void DxvkContext::setDepthBounds(
           DxvkDepthBounds     depthBounds) {
     if (m_state.dyn.depthBounds != depthBounds) {
@@ -5784,10 +5793,24 @@ namespace dxvk {
                     DxvkContextFlag::GpDynamicDepthBias)) {
       m_flags.clr(DxvkContextFlag::GpDirtyDepthBias);
 
-      m_cmd->cmdSetDepthBias(
-        m_state.dyn.depthBias.depthBiasConstant,
-        m_state.dyn.depthBias.depthBiasClamp,
-        m_state.dyn.depthBias.depthBiasSlope);
+      if (m_device->features().extDepthBiasControl.depthBiasControl) {
+        VkDepthBiasRepresentationInfoEXT depthBiasRepresentation = { VK_STRUCTURE_TYPE_DEPTH_BIAS_REPRESENTATION_INFO_EXT };
+        depthBiasRepresentation.depthBiasRepresentation = m_state.dyn.depthBiasRepresentation.depthBiasRepresentation;
+        depthBiasRepresentation.depthBiasExact          = m_state.dyn.depthBiasRepresentation.depthBiasExact;
+
+        VkDepthBiasInfoEXT depthBiasInfo = { VK_STRUCTURE_TYPE_DEPTH_BIAS_INFO_EXT };
+        depthBiasInfo.pNext                   = &depthBiasRepresentation;
+        depthBiasInfo.depthBiasConstantFactor = m_state.dyn.depthBias.depthBiasConstant;
+        depthBiasInfo.depthBiasClamp          = m_state.dyn.depthBias.depthBiasClamp;
+        depthBiasInfo.depthBiasSlopeFactor    = m_state.dyn.depthBias.depthBiasSlope;
+
+        m_cmd->cmdSetDepthBias2(&depthBiasInfo);
+      } else {
+        m_cmd->cmdSetDepthBias(
+          m_state.dyn.depthBias.depthBiasConstant,
+          m_state.dyn.depthBias.depthBiasClamp,
+          m_state.dyn.depthBias.depthBiasSlope);
+      }
     }
     
     if (m_flags.all(DxvkContextFlag::GpDirtyDepthBounds,

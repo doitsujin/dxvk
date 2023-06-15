@@ -30,25 +30,46 @@ namespace dxvk {
 
 
   /**
+   * \brief Depth bias representation
+   * 
+   * Stores depth bias representation info.
+   */
+  struct DxvkDepthBiasRepresentation {
+    VkDepthBiasRepresentationEXT depthBiasRepresentation;
+    VkBool32                     depthBiasExact;
+
+    bool operator == (const DxvkDepthBiasRepresentation& other) const {
+      return depthBiasRepresentation == other.depthBiasRepresentation
+          && depthBiasExact          == other.depthBiasExact;
+    }
+
+    bool operator != (const DxvkDepthBiasRepresentation& other) const {
+      return depthBiasRepresentation != other.depthBiasRepresentation
+          || depthBiasExact          != other.depthBiasExact;
+    }
+  };
+
+
+  /**
    * \brief Depth bias
    * 
    * Stores depth bias values.
    */
   struct DxvkDepthBias {
-    float               depthBiasConstant;
-    float               depthBiasSlope;
-    float               depthBiasClamp;
+    float                        depthBiasConstant;
+    float                        depthBiasSlope;
+    float                        depthBiasClamp;
 
     bool operator == (const DxvkDepthBias& other) const {
-      return depthBiasConstant == other.depthBiasConstant
-          && depthBiasSlope    == other.depthBiasSlope
-          && depthBiasClamp    == other.depthBiasClamp;
+      return depthBiasConstant       == other.depthBiasConstant
+          && depthBiasSlope          == other.depthBiasSlope
+          && depthBiasClamp          == other.depthBiasClamp;
     }
 
     bool operator != (const DxvkDepthBias& other) const {
-      return depthBiasConstant != other.depthBiasConstant
-          || depthBiasSlope    != other.depthBiasSlope
-          || depthBiasClamp    != other.depthBiasClamp;
+      return depthBiasConstant       != other.depthBiasConstant
+          || depthBiasSlope          != other.depthBiasSlope
+          || depthBiasClamp          != other.depthBiasClamp;
     }
   };
 

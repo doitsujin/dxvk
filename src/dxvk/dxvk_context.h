@@ -1141,6 +1141,14 @@ namespace dxvk {
      */
     void setDepthBias(
             DxvkDepthBias       depthBias);
+
+    /**
+     * \brief Sets depth bias representation
+     *
+     * \param [in] depthBiasRepresentation Depth bias representation
+     */
+    void setDepthBiasRepresentation(
+            DxvkDepthBiasRepresentation  depthBiasRepresentation);
     
     /**
      * \brief Sets depth bounds
