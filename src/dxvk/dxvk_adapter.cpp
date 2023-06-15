@@ -244,6 +244,10 @@ namespace dxvk {
         && CHECK_FEATURE_NEED(extCustomBorderColor.customBorderColors)
         && CHECK_FEATURE_NEED(extCustomBorderColor.customBorderColorWithoutFormat)
         && CHECK_FEATURE_NEED(extDepthClipEnable.depthClipEnable)
+        && CHECK_FEATURE_NEED(extDepthBiasControl.depthBiasControl)
+        && CHECK_FEATURE_NEED(extDepthBiasControl.leastRepresentableValueForceUnormRepresentation)
+        && CHECK_FEATURE_NEED(extDepthBiasControl.floatRepresentation)
+        && CHECK_FEATURE_NEED(extDepthBiasControl.depthBiasExact)
         && CHECK_FEATURE_NEED(extGraphicsPipelineLibrary.graphicsPipelineLibrary)
         && CHECK_FEATURE_NEED(extMemoryBudget)
         && CHECK_FEATURE_NEED(extMemoryPriority.memoryPriority)
@@ -513,6 +517,10 @@ namespace dxvk {
           enabledFeatures.extDepthClipEnable = *reinterpret_cast<const VkPhysicalDeviceDepthClipEnableFeaturesEXT*>(f);
           break;
 
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_BIAS_CONTROL_FEATURES_EXT:
+          enabledFeatures.extDepthBiasControl = *reinterpret_cast<const VkPhysicalDeviceDepthBiasControlFeaturesEXT*>(f);
+          break;
+
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT:
           enabledFeatures.extExtendedDynamicState3 = *reinterpret_cast<const VkPhysicalDeviceExtendedDynamicState3FeaturesEXT*>(f);
           break;
@@ -768,6 +776,11 @@ namespace dxvk {
       m_deviceFeatures.extDepthClipEnable.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extDepthClipEnable);
     }
 
+    if (m_deviceExtensions.supports(VK_EXT_DEPTH_BIAS_CONTROL_EXTENSION_NAME)) {
+      m_deviceFeatures.extDepthBiasControl.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_BIAS_CONTROL_FEATURES_EXT;
+      m_deviceFeatures.extDepthBiasControl.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extDepthBiasControl);
+    }
+
     if (m_deviceExtensions.supports(VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME)) {
       m_deviceFeatures.extExtendedDynamicState3.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_3_FEATURES_EXT;
       m_deviceFeatures.extExtendedDynamicState3.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extExtendedDynamicState3);
@@ -881,6 +894,7 @@ namespace dxvk {
       &devExtensions.extConservativeRasterization,
       &devExtensions.extCustomBorderColor,
       &devExtensions.extDepthClipEnable,
+      &devExtensions.extDepthBiasControl,
       &devExtensions.extExtendedDynamicState3,
       &devExtensions.extFragmentShaderInterlock,
       &devExtensions.extFullScreenExclusive,
@@ -941,6 +955,11 @@ namespace dxvk {
     if (devExtensions.extDepthClipEnable) {
       enabledFeatures.extDepthClipEnable.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT;
       enabledFeatures.extDepthClipEnable.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extDepthClipEnable);
+    }
+
+    if (devExtensions.extDepthBiasControl) {
+      enabledFeatures.extDepthBiasControl.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_BIAS_CONTROL_FEATURES_EXT;
+      enabledFeatures.extDepthBiasControl.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extDepthBiasControl);
     }
 
     if (devExtensions.extExtendedDynamicState3) {
@@ -1099,6 +1118,11 @@ namespace dxvk {
       "\n  customBorderColorWithoutFormat         : ", features.extCustomBorderColor.customBorderColorWithoutFormat ? "1" : "0",
       "\n", VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME,
       "\n  depthClipEnable                        : ", features.extDepthClipEnable.depthClipEnable ? "1" : "0",
+      "\n", VK_EXT_DEPTH_BIAS_CONTROL_EXTENSION_NAME,
+      "\n  depthBiasControl                       : ", features.extDepthBiasControl.depthBiasControl ? "1" : "0",
+      "\n  leastRepresentableValueForceUnormRepresentation : ", features.extDepthBiasControl.leastRepresentableValueForceUnormRepresentation ? "1" : "0",
+      "\n  floatRepresentation                    : ", features.extDepthBiasControl.floatRepresentation ? "1" : "0",
+      "\n  depthBiasExact                         : ", features.extDepthBiasControl.depthBiasExact ? "1" : "0",
       "\n", VK_EXT_EXTENDED_DYNAMIC_STATE_3_EXTENSION_NAME,
       "\n  extDynamicState3AlphaToCoverageEnable  : ", features.extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable ? "1" : "0",
       "\n  extDynamicState3DepthClipEnable        : ", features.extExtendedDynamicState3.extendedDynamicState3DepthClipEnable ? "1" : "0",
