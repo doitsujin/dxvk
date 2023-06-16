@@ -276,19 +276,29 @@ namespace dxvk {
     if (m_device->getDeviceStatus() != VK_SUCCESS)
       hr = DXGI_ERROR_DEVICE_RESET;
 
-    if ((PresentFlags & DXGI_PRESENT_TEST) || hr != S_OK)
+    if (PresentFlags & DXGI_PRESENT_TEST)
       return hr;
+
+    if (hr != S_OK) {
+      SyncFrameLatency();
+      return hr;
+    }
 
     if (std::exchange(m_dirty, false))
       RecreateSwapChain();
-    
+
     try {
-      PresentImage(SyncInterval);
+      hr = PresentImage(SyncInterval);
     } catch (const DxvkError& e) {
       Logger::err(e.message());
       hr = E_FAIL;
     }
 
+    // Ensure to synchronize and release the frame latency semaphore
+    // even if presentation failed with STATUS_OCCLUDED, or otherwise
+    // applications using the semaphore may deadlock. This works because
+    // we do not increment the frame ID in those situations.
+    SyncFrameLatency();
     return hr;
   }
 
@@ -340,7 +350,7 @@ namespace dxvk {
       SynchronizePresent();
 
       if (!m_presenter->hasSwapChain())
-        return DXGI_STATUS_OCCLUDED;
+        return i ? S_OK : DXGI_STATUS_OCCLUDED;
 
       // Presentation semaphores and WSI swap chain image
       PresenterInfo info = m_presenter->info();
@@ -354,7 +364,7 @@ namespace dxvk {
         RecreateSwapChain();
 
         if (!m_presenter->hasSwapChain())
-          return DXGI_STATUS_OCCLUDED;
+          return i ? S_OK : DXGI_STATUS_OCCLUDED;
         
         info = m_presenter->info();
         status = m_presenter->acquireNextImage(sync, imageIndex);
@@ -365,8 +375,6 @@ namespace dxvk {
         m_dirtyHdrMetadata = false;
       }
 
-      // Resolve back buffer if it is multisampled. We
-      // only have to do it only for the first frame.
       m_context->beginRecording(
         m_device->createCommandList());
       
@@ -380,7 +388,6 @@ namespace dxvk {
       SubmitPresent(immediateContext, sync, i);
     }
 
-    SyncFrameLatency();
     return S_OK;
   }
 
