@@ -74,8 +74,9 @@ namespace dxvk {
    * \brief Queued frame
    */
   struct PresenterFrame {
-    uint64_t  frameId;
-    VkResult  result;
+    uint64_t          frameId;
+    VkPresentModeKHR  mode;
+    VkResult          result;
   };
 
   /**
@@ -150,10 +151,12 @@ namespace dxvk {
      * called before GPU work prior to the present submission has
      * completed in order to maintain consistency.
      * \param [in] result Presentation result
+     * \param [in] mode Present mode
      * \param [in] frameId Frame number
      */
     void signalFrame(
             VkResult          result,
+            VkPresentModeKHR  mode,
             uint64_t          frameId);
 
     /**
