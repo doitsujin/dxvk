@@ -672,7 +672,17 @@ namespace dxvk {
     // blank one to get something sane here.
     NormalizeDisplayMetadata(m_monitorInfo->DefaultColorSpace() != DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709, m_metadata);
 
+    auto refreshPeriod = computeRefreshPeriod(
+      activeWsiMode.refreshRate.numerator,
+      activeWsiMode.refreshRate.denominator);
+
     monitorData.FrameStats.SyncQPCTime.QuadPart = dxvk::high_resolution_clock::get_counter();
+    monitorData.FrameStats.SyncRefreshCount = computeRefreshCount(
+      dxvk::high_resolution_clock::time_point(),
+      dxvk::high_resolution_clock::get_time_from_counter(monitorData.FrameStats.SyncQPCTime.QuadPart),
+      refreshPeriod);
+
+    monitorData.FrameStats.PresentRefreshCount = monitorData.FrameStats.SyncRefreshCount;
     monitorData.GammaCurve.Scale = { 1.0f, 1.0f, 1.0f };
     monitorData.GammaCurve.Offset = { 0.0f, 0.0f, 0.0f };
     monitorData.LastMode = ConvertDisplayMode(activeWsiMode);
