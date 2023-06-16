@@ -13,7 +13,7 @@ namespace dxvk {
   class D3D11Device;
   class D3D11DXGIDevice;
 
-  class D3D11SwapChain : public ComObject<IDXGIVkSwapChain> {
+  class D3D11SwapChain : public ComObject<IDXGIVkSwapChain1> {
     constexpr static uint32_t DefaultFrameLatency = 1;
   public:
 
@@ -80,6 +80,12 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE SetHDRMetaData(
       const DXGI_VK_HDR_METADATA*     pMetaData);
 
+    void STDMETHODCALLTYPE GetLastPresentCount(
+            UINT64*                   pLastPresentCount);
+
+    void STDMETHODCALLTYPE GetFrameStatistics(
+            DXGI_VK_FRAME_STATISTICS* pFrameStatistics);
+
   private:
 
     enum BindingIds : uint32_t {
@@ -124,6 +130,9 @@ namespace dxvk {
 
     std::optional<VkHdrMetadataEXT> m_hdrMetadata;
     bool m_dirtyHdrMetadata = true;
+
+    dxvk::mutex               m_frameStatisticsLock;
+    DXGI_VK_FRAME_STATISTICS  m_frameStatistics = { };
 
     HRESULT PresentImage(UINT SyncInterval);
 

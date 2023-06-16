@@ -98,7 +98,8 @@ namespace dxvk {
     InitReturnPtr(ppvObject);
 
     if (riid == __uuidof(IUnknown)
-     || riid == __uuidof(IDXGIVkSwapChain)) {
+     || riid == __uuidof(IDXGIVkSwapChain)
+     || riid == __uuidof(IDXGIVkSwapChain1)) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -337,6 +338,19 @@ namespace dxvk {
     }
 
     return S_OK;
+  }
+
+
+  void STDMETHODCALLTYPE D3D11SwapChain::GetLastPresentCount(
+          UINT64*                   pLastPresentCount) {
+    *pLastPresentCount = UINT64(m_frameId - DXGI_MAX_SWAP_CHAIN_BUFFERS);
+  }
+
+
+  void STDMETHODCALLTYPE D3D11SwapChain::GetFrameStatistics(
+          DXGI_VK_FRAME_STATISTICS* pFrameStatistics) {
+    std::lock_guard<dxvk::mutex> lock(m_frameStatisticsLock);
+    *pFrameStatistics = m_frameStatistics;
   }
 
 
@@ -645,11 +659,17 @@ namespace dxvk {
     // Wait for the sync event so that we respect the maximum frame latency
     m_frameLatencySignal->wait(m_frameId - GetActualFrameLatency());
 
-    if (m_frameLatencyEvent) {
-      m_frameLatencySignal->setCallback(m_frameId, [cFrameLatencyEvent = m_frameLatencyEvent] () {
+    m_frameLatencySignal->setCallback(m_frameId, [this,
+      cFrameId           = m_frameId,
+      cFrameLatencyEvent = m_frameLatencyEvent
+    ] () {
+      if (cFrameLatencyEvent)
         ReleaseSemaphore(cFrameLatencyEvent, 1, nullptr);
-      });
-    }
+
+      std::lock_guard<dxvk::mutex> lock(m_frameStatisticsLock);
+      m_frameStatistics.PresentCount = cFrameId - DXGI_MAX_SWAP_CHAIN_BUFFERS;
+      m_frameStatistics.PresentQPCTime = dxvk::high_resolution_clock::get_counter();
+    });
   }
 
 
