@@ -45,6 +45,15 @@ struct DXGI_VK_HDR_METADATA {
 
 
 /**
+ * \brief Frame statistics
+ */
+struct DXGI_VK_FRAME_STATISTICS {
+  UINT64 PresentCount;
+  UINT64 PresentQPCTime;
+};
+
+
+/**
  * \brief Private DXGI surface factory
  */
 MIDL_INTERFACE("1e7895a1-1bc3-4f9c-a670-290a4bc9581a")
@@ -115,6 +124,16 @@ IDXGIVkSwapChain : public IUnknown {
 
   virtual HRESULT STDMETHODCALLTYPE SetHDRMetaData(
     const DXGI_VK_HDR_METADATA*     pMetaData) = 0;
+};
+
+
+MIDL_INTERFACE("785326d4-b77b-4826-ae70-8d08308ee6d1")
+IDXGIVkSwapChain1 : public IDXGIVkSwapChain {
+  virtual void STDMETHODCALLTYPE GetLastPresentCount(
+          UINT64*                   pLastPresentCount) = 0;
+
+  virtual void STDMETHODCALLTYPE GetFrameStatistics(
+          DXGI_VK_FRAME_STATISTICS* pFrameStatistics) = 0;
 };
 
 
@@ -436,6 +455,7 @@ struct __declspec(uuid("e2ef5fa5-dc21-4af7-90c4-f67ef6a09324")) IDXGIVkInteropDe
 struct __declspec(uuid("5546cf8c-77e7-4341-b05d-8d4d5000e77d")) IDXGIVkInteropSurface;
 struct __declspec(uuid("1e7895a1-1bc3-4f9c-a670-290a4bc9581a")) IDXGIVkSurfaceFactory;
 struct __declspec(uuid("e4a9059e-b569-46ab-8de7-501bd2bc7f7a")) IDXGIVkSwapChain;
+struct __declspec(uuid("785326d4-b77b-4826-ae70-8d08308ee6d1")) IDXGIVkSwapChain1;
 struct __declspec(uuid("e7d6c3ca-23a0-4e08-9f2f-ea5231df6633")) IDXGIVkSwapChainFactory;
 #else
 __CRT_UUID_DECL(IDXGIDXVKAdapter,          0x907bf281,0xea3c,0x43b4,0xa8,0xe4,0x9f,0x23,0x11,0x07,0xb4,0xff);
@@ -448,5 +468,6 @@ __CRT_UUID_DECL(IDXGIVkInteropDevice1,     0xe2ef5fa5,0xdc21,0x4af7,0x90,0xc4,0x
 __CRT_UUID_DECL(IDXGIVkInteropSurface,     0x5546cf8c,0x77e7,0x4341,0xb0,0x5d,0x8d,0x4d,0x50,0x00,0xe7,0x7d);
 __CRT_UUID_DECL(IDXGIVkSurfaceFactory,     0x1e7895a1,0x1bc3,0x4f9c,0xa6,0x70,0x29,0x0a,0x4b,0xc9,0x58,0x1a);
 __CRT_UUID_DECL(IDXGIVkSwapChain,          0xe4a9059e,0xb569,0x46ab,0x8d,0xe7,0x50,0x1b,0xd2,0xbc,0x7f,0x7a);
+__CRT_UUID_DECL(IDXGIVkSwapChain1,         0x785326d4,0xb77b,0x4826,0xae,0x70,0x8d,0x08,0x30,0x8e,0xe6,0xd1);
 __CRT_UUID_DECL(IDXGIVkSwapChainFactory,   0xe7d6c3ca,0x23a0,0x4e08,0x9f,0x2f,0xea,0x52,0x31,0xdf,0x66,0x33);
 #endif
