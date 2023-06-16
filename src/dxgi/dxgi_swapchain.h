@@ -183,11 +183,14 @@ namespace dxvk {
     HWND                            m_window;
     DXGI_SWAP_CHAIN_DESC1           m_desc;
     DXGI_SWAP_CHAIN_FULLSCREEN_DESC m_descFs;
-    UINT                            m_presentCount;
+    UINT                            m_presentId;
 
     Com<IDXGIVkSwapChain>           m_presenter;
+    Com<IDXGIVkSwapChain1>          m_presenter1;
     
     HMONITOR                        m_monitor;
+    bool                            m_monitorHasOutput = true;
+    bool                            m_frameStatisticsDisjoint = true;
     wsi::DxvkWindowState            m_windowState;
     
     HRESULT EnterFullscreenMode(

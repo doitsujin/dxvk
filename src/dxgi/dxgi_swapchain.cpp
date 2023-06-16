@@ -16,12 +16,16 @@ namespace dxvk {
     m_window    (hWnd),
     m_desc      (*pDesc),
     m_descFs    (*pFullscreenDesc),
-    m_presentCount(0u),
+    m_presentId (0u),
     m_presenter (pPresenter),
     m_monitor   (wsi::getWindowMonitor(m_window)) {
     if (FAILED(m_presenter->GetAdapter(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&m_adapter))))
       throw DxvkError("DXGI: Failed to get adapter for present device");
-    
+
+    // Query updated interface versions from presenter, this
+    // may fail e.g. with older vkd3d-proton builds.
+    m_presenter->QueryInterface(__uuidof(IDXGIVkSwapChain1), reinterpret_cast<void**>(&m_presenter1));
+
     // Query monitor info form DXVK's DXGI factory, if available
     m_factory->QueryInterface(__uuidof(IDXGIVkMonitorInfo), reinterpret_cast<void**>(&m_monitorInfo));
     
@@ -183,14 +187,23 @@ namespace dxvk {
     // Populate frame statistics with local present count and current time
     auto t1Counter = dxvk::high_resolution_clock::get_counter();
 
-    pStats->PresentCount          = m_presentCount;
+    DXGI_VK_FRAME_STATISTICS frameStatistics = { };
+    frameStatistics.PresentCount = m_presentId;
+    frameStatistics.PresentQPCTime = t1Counter;
+
+    if (m_presenter1 != nullptr)
+      m_presenter1->GetFrameStatistics(&frameStatistics);
+
+    // Fill in actual DXGI statistics, using monitor data to help compute
+    // vblank counts if possible. This is not fully accurate, especially on
+    // displays with variable refresh rates, but it's the best we can do.
+    DXGI_VK_MONITOR_DATA* monitorData = nullptr;
+
+    pStats->PresentCount          = frameStatistics.PresentCount;
     pStats->PresentRefreshCount   = 0;
     pStats->SyncRefreshCount      = 0;
     pStats->SyncQPCTime.QuadPart  = t1Counter;
     pStats->SyncGPUTime.QuadPart  = 0;
-
-    // If possible, use the monitor's frame statistics for vblank stats
-    DXGI_VK_MONITOR_DATA* monitorData = nullptr;
 
     if (SUCCEEDED(AcquireMonitorData(m_monitor, &monitorData))) {
       auto refreshPeriod = computeRefreshPeriod(
@@ -199,14 +212,24 @@ namespace dxvk {
 
       auto t0 = dxvk::high_resolution_clock::get_time_from_counter(monitorData->FrameStats.SyncQPCTime.QuadPart);
       auto t1 = dxvk::high_resolution_clock::get_time_from_counter(t1Counter);
+      auto t2 = dxvk::high_resolution_clock::get_time_from_counter(frameStatistics.PresentQPCTime);
 
-      pStats->PresentRefreshCount   = monitorData->FrameStats.PresentRefreshCount;
-      pStats->SyncRefreshCount      = monitorData->FrameStats.SyncRefreshCount + computeRefreshCount(t0, t1, refreshPeriod);
+      pStats->PresentRefreshCount = m_presenter1 != nullptr
+        ? monitorData->FrameStats.SyncRefreshCount + computeRefreshCount(t0, t2, refreshPeriod)
+        : monitorData->FrameStats.PresentRefreshCount;
+      pStats->SyncRefreshCount = monitorData->FrameStats.SyncRefreshCount + computeRefreshCount(t0, t1, refreshPeriod);
 
       ReleaseMonitorData();
     }
 
-    return S_OK;
+    // Docs say that DISJOINT is returned on the first call and around
+    // mode changes. Just make this swap chain state for now.
+    HRESULT hr = S_OK;
+
+    if (std::exchange(m_frameStatisticsDisjoint, false))
+      hr = DXGI_ERROR_FRAME_STATISTICS_DISJOINT;
+
+    return hr;
   }
   
   
@@ -258,8 +281,13 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetLastPresentCount(UINT* pLastPresentCount) {
     if (pLastPresentCount == nullptr)
       return E_INVALIDARG;
-    
-    *pLastPresentCount = m_presentCount;
+
+    UINT64 presentId = m_presentId;
+
+    if (m_presenter1 != nullptr)
+      m_presenter1->GetLastPresentCount(&presentId);
+
+    *pLastPresentCount = UINT(presentId);
     return S_OK;
   }
   
@@ -281,43 +309,44 @@ namespace dxvk {
           UINT                      PresentFlags,
     const DXGI_PRESENT_PARAMETERS*  pPresentParameters) {
 
-    if (!wsi::isWindow(m_window))
-      return S_OK;
-    
     if (SyncInterval > 4)
       return DXGI_ERROR_INVALID_CALL;
 
     std::lock_guard<dxvk::recursive_mutex> lockWin(m_lockWindow);
+    HRESULT hr = S_OK;
 
-    try {
+    if (wsi::isWindow(m_window)) {
       std::lock_guard<dxvk::mutex> lockBuf(m_lockBuffer);
-      HRESULT hr = m_presenter->Present(SyncInterval, PresentFlags, nullptr);
-
-      if (hr != S_OK || (PresentFlags & DXGI_PRESENT_TEST))
-        return hr;
-    } catch (const DxvkError& err) {
-      Logger::err(err.message());
-      return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
+      hr = m_presenter->Present(SyncInterval, PresentFlags, nullptr);
     }
 
-    // Update frame statistics
-    DXGI_VK_MONITOR_DATA* monitorData = nullptr;
+    if (PresentFlags & DXGI_PRESENT_TEST)
+      return hr;
 
-    if (SUCCEEDED(AcquireMonitorData(m_monitor, &monitorData))) {
-      auto refreshPeriod = computeRefreshPeriod(
-        monitorData->LastMode.RefreshRate.Numerator,
-        monitorData->LastMode.RefreshRate.Denominator);
+    if (hr == S_OK) {
 
-      auto t0 = dxvk::high_resolution_clock::get_time_from_counter(monitorData->FrameStats.SyncQPCTime.QuadPart);
-      auto t1 = dxvk::high_resolution_clock::now();
+      m_presentId += 1;
 
-      monitorData->FrameStats.PresentCount += 1;
-      monitorData->FrameStats.PresentRefreshCount = monitorData->FrameStats.SyncRefreshCount + computeRefreshCount(t0, t1, refreshPeriod);
-      ReleaseMonitorData();
+      // Update monitor frame statistics. This is not consistent with swap chain
+      // frame statistics at all, but we want to ensure that all presents become
+      // visible to the IDXGIOutput in case applications rely on that behaviour.
+      DXGI_VK_MONITOR_DATA* monitorData = nullptr;
+
+      if (SUCCEEDED(AcquireMonitorData(m_monitor, &monitorData))) {
+        auto refreshPeriod = computeRefreshPeriod(
+          monitorData->LastMode.RefreshRate.Numerator,
+          monitorData->LastMode.RefreshRate.Denominator);
+
+        auto t0 = dxvk::high_resolution_clock::get_time_from_counter(monitorData->FrameStats.SyncQPCTime.QuadPart);
+        auto t1 = dxvk::high_resolution_clock::now();
+
+        monitorData->FrameStats.PresentCount += 1;
+        monitorData->FrameStats.PresentRefreshCount = monitorData->FrameStats.SyncRefreshCount + computeRefreshCount(t0, t1, refreshPeriod);
+        ReleaseMonitorData();
+      }
     }
 
-    m_presentCount += 1;
-    return S_OK;
+    return hr;
   }
   
   
@@ -804,9 +833,27 @@ namespace dxvk {
   HRESULT DxgiSwapChain::AcquireMonitorData(
           HMONITOR                hMonitor,
           DXGI_VK_MONITOR_DATA**  ppData) {
-    return m_monitorInfo != nullptr
-      ? m_monitorInfo->AcquireMonitorData(hMonitor, ppData)
-      : E_NOINTERFACE;
+    if (m_monitorInfo == nullptr || !hMonitor)
+      return E_NOINTERFACE;
+
+    HRESULT hr = m_monitorInfo->AcquireMonitorData(hMonitor, ppData);
+
+    if (FAILED(hr)) {
+      // We may need to initialize a DXGI output to populate monitor data.
+      // If acquiring monitor data has failed previously, do not try again.
+      if (hMonitor == m_monitor && !m_monitorHasOutput)
+        return E_NOINTERFACE;
+
+      Com<IDXGIOutput1> output;
+
+      if (SUCCEEDED(GetOutputFromMonitor(hMonitor, &output)))
+        hr = m_monitorInfo->AcquireMonitorData(hMonitor, ppData);
+    }
+
+    if (hMonitor == m_monitor)
+      m_monitorHasOutput = SUCCEEDED(hr);
+
+    return hr;
   }
 
   
