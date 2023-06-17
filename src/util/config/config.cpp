@@ -778,6 +778,10 @@ namespace dxvk {
     { R"(\\injustice\.exe$)", {{
       { "d3d9.allowDirectBufferMapping",    "False" },
     }} },
+    /* STEINS;GATE ELITE                       */
+    { R"(\\SG_ELITE\\Game\.exe$)", {{
+      { "d3d9.maxFrameRate",                "60" },
+    }} },
     
     /**********************************************/
     /* D3D12 GAMES (vkd3d-proton with dxvk dxgi)  */
