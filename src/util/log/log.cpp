@@ -6,15 +6,54 @@
 
 namespace dxvk {
   
-  Logger::Logger(const std::string& fileName)
-  : m_minLevel(getMinLogLevel()), m_fileName(fileName) {
-
+  Logger::Logger(const std::string& file_name)
+  : m_minLevel(getMinLogLevel()) {
+    s_initialized = true;
+    if (m_minLevel != LogLevel::None) {
+      setLogFile(file_name);
+    }
   }
   
   
   Logger::~Logger() { }
   
   
+  void Logger::setLogFile(const std::string& file_name) {
+    if (s_instance.m_minLevel != LogLevel::None) {
+      auto path = s_instance.getFileName(file_name);
+      
+      static std::string s_overrideFileName = "";
+      if (!s_initialized) {
+        // logger hasn't initialized yet.
+        s_overrideFileName = path;
+        return;
+      } else if (!s_overrideFileName.empty()) {
+        // logger initializing, and we have an override.
+        path = s_overrideFileName;
+        s_overrideFileName = "";
+      }
+
+      if (path == s_instance.m_fileName)
+        return;
+
+      bool empty = s_instance.m_fileStream && s_instance.m_fileStream.tellp() <= 0;
+
+      if (!path.empty()) {
+        // pause logging while we switch files
+        std::lock_guard<dxvk::mutex> lock(s_instance.m_mutex);
+        s_instance.m_fileStream = std::ofstream(str::topath(path.c_str()).c_str());
+      } else {
+        s_instance.m_fileStream.close();
+      }
+
+      if (empty && !s_instance.m_fileName.empty()) // don't leave empty log files
+        std::remove(s_instance.m_fileName.c_str());
+
+      s_instance.m_fileName = path;
+    }
+  }
+ 
+
   void Logger::trace(const std::string& message) {
     s_instance.emitMsg(LogLevel::Trace, message);
   }

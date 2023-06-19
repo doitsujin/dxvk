@@ -32,6 +32,8 @@ namespace dxvk {
     
     Logger(const std::string& file_name);
     ~Logger();
+
+    static void setLogFile(const std::string& file_name);
     
     static void trace(const std::string& message);
     static void debug(const std::string& message);
@@ -49,11 +51,12 @@ namespace dxvk {
     static Logger     s_instance;
     
     const LogLevel    m_minLevel;
-    const std::string m_fileName;
     
-    dxvk::mutex       m_mutex;
-    std::ofstream     m_fileStream;
+    dxvk::mutex   m_mutex;
+    std::ofstream m_fileStream;
 
+    std::string   m_fileName;
+    
     bool              m_initialized = false;
     PFN_wineLogOutput m_wineLogOutput = nullptr;
 
@@ -63,6 +66,8 @@ namespace dxvk {
       const std::string& base);
 
     static LogLevel getMinLogLevel();
+
+    static inline bool s_initialized = false;
 
   };
   
