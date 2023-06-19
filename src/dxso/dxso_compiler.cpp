@@ -1856,6 +1856,45 @@ namespace dxvk {
     this->emitDstStore(dst, result, mask, ctx.dst.saturate, emitPredicateLoad(ctx), ctx.dst.shift, ctx.dst.id);
   }
 
+  std::array<uint32_t, 2> DxsoCompiler::emitBem(
+      const DxsoInstructionContext& ctx,
+      const DxsoRegisterValue& src0,
+      const DxsoRegisterValue& src1) {
+
+    // For texbem:
+    //  src0 = tc(m), src1 = t(n), dst.x = u', dst.y = v'
+
+    // dst.x = src0.x + [bm00(m) * src1.x + bm10(m) * src1.y]
+    // dst.y = src0.y + [bm01(m) * src1.x + bm11(m) * src1.y]
+
+    // But we flipped the bm indices so we can use dot here...
+
+    // dst.x = src0.x + dot(bm0, src1)
+    // dst.y = src0.y + dot(bm1, src1)
+
+    std::array<uint32_t, 2> values = { m_module.constf32(0.0f), m_module.constf32(0.0f) };
+
+    for (uint32_t i = 0; i < 2; i++) {
+      uint32_t fl_t   = getScalarTypeId(DxsoScalarType::Float32);
+      uint32_t vec2_t = getVectorTypeId({ DxsoScalarType::Float32, 2 });
+      std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
+
+      uint32_t tc_m_n = m_module.opCompositeExtract(fl_t, src0.id, 1, &i);
+
+      uint32_t offset = m_module.constu32(D3D9SharedPSStages_Count * ctx.dst.id.num + D3D9SharedPSStages_BumpEnvMat0 + i);
+      uint32_t bm     = m_module.opAccessChain(m_module.defPointerType(vec2_t, spv::StorageClassUniform),
+                                              m_ps.sharedState, 1, &offset);
+                bm    = m_module.opLoad(vec2_t, bm);
+
+      uint32_t t      = m_module.opVectorShuffle(vec2_t, src1.id, src1.id, 2, indices.data());
+
+      uint32_t dot    = m_module.opDot(fl_t, bm, t);
+
+      values[i]       = m_module.opFAdd(fl_t, tc_m_n, dot);
+    }
+    return values;
+  }
+
 
   void DxsoCompiler::emitVectorAlu(const DxsoInstructionContext& ctx) {
     const auto& src = ctx.src;
@@ -2201,35 +2240,8 @@ namespace dxvk {
         DxsoRegisterValue src0 = emitRegisterLoad(src[0], mask);
         DxsoRegisterValue src1 = emitRegisterLoad(src[1], mask);
 
-        // dst.x = src0.x + [bm00(m) * src1.x + bm10(m) * src1.y]
-        // dst.y = src0.y + [bm01(m) * src1.x + bm11(m) * src1.y]
-        
-        // But we flipped the bm indices so we can use dot here...
-
-        // dst.x = src0.x + dot(bm0, src1)
-        // dst.y = src0.y + dot(bm1, src1)
-
-        std::array<uint32_t, 2> values = { m_module.constf32(0.0f), m_module.constf32(0.0f) };
-
-        for (uint32_t i = 0; i < 2; i++) {
-          uint32_t fl_t   = getScalarTypeId(DxsoScalarType::Float32);
-          uint32_t vec2_t = getVectorTypeId({ DxsoScalarType::Float32, 2 });
-          std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
-
-          uint32_t tc_m_n = m_module.opCompositeExtract(fl_t, src0.id, 1, &i);
-
-          uint32_t offset = m_module.constu32(D3D9SharedPSStages_Count * ctx.dst.id.num + D3D9SharedPSStages_BumpEnvMat0 + i);
-          uint32_t bm     = m_module.opAccessChain(m_module.defPointerType(vec2_t, spv::StorageClassUniform),
-                                                  m_ps.sharedState, 1, &offset);
-                   bm     = m_module.opLoad(vec2_t, bm);
-
-          uint32_t t      = m_module.opVectorShuffle(vec2_t, src1.id, src1.id, 2, indices.data());
-
-          uint32_t dot    = m_module.opDot(fl_t, bm, t);
-
-          values[i]       = m_module.opFAdd(fl_t, tc_m_n, dot);
-        }
-        result.id = m_module.opCompositeConstruct(typeId, values.size(), values.data());
+        auto values = emitBem(ctx, src0, src1);
+        result.id   = m_module.opCompositeConstruct(typeId, values.size(), values.data());
         break;
       }
       case DxsoOpcode::Cnd: {
@@ -2772,35 +2784,10 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       // The projection (/.w) happens before this...
       // Of course it does...
-      texcoordVar.id = DoProjection(texcoordVar, true);
-
-      // u' = tc(m).x + [bm00(m) * t(n).x + bm10(m) * t(n).y]
-      // v' = tc(m).y + [bm01(m) * t(n).x + bm11(m) * t(n).y]
-
-      // But we flipped the bm indices so we can use dot here...
-
-      // u' = tc(m).x + dot(bm0, tn)
-      // v' = tc(m).y + dot(bm1, tn)
-
-      for (uint32_t i = 0; i < 2; i++) {
-        uint32_t fl_t   = getScalarTypeId(DxsoScalarType::Float32);
-        uint32_t vec2_t = getVectorTypeId({ DxsoScalarType::Float32, 2 });
-        std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
-
-        uint32_t tc_m_n = m_module.opCompositeExtract(fl_t, texcoordVar.id, 1, &i);
-
-        uint32_t offset = m_module.constu32(D3D9SharedPSStages_Count * ctx.dst.id.num + D3D9SharedPSStages_BumpEnvMat0 + i);
-        uint32_t bm     = m_module.opAccessChain(m_module.defPointerType(vec2_t, spv::StorageClassUniform),
-                                                 m_ps.sharedState, 1, &offset);
-                 bm     = m_module.opLoad(vec2_t, bm);
-
-        uint32_t t      = m_module.opVectorShuffle(vec2_t, n.id, n.id, 2, indices.data());
-
-        uint32_t dot    = m_module.opDot(fl_t, bm, t);
-
-        uint32_t result = m_module.opFAdd(fl_t, tc_m_n, dot);
-        texcoordVar.id  = m_module.opCompositeInsert(getVectorTypeId(texcoordVar.type), result, texcoordVar.id, 1, &i);
-      }
+      texcoordVar.id  = DoProjection(texcoordVar, true);
+      auto values     = emitBem(ctx, texcoordVar, n);
+      for (uint32_t i = 0; i < 2; i++)
+        texcoordVar.id = m_module.opCompositeInsert(getVectorTypeId(texcoordVar.type), values[i], texcoordVar.id, 1, &i);
     }
     else if (opcode == DxsoOpcode::TexReg2Ar) {
       texcoordVar = emitRegisterLoad(ctx.src[0], srcMask);

@@ -621,6 +621,12 @@ namespace dxvk {
       return this->emitRegisterLoad(lookup, writeMask);
     }
 
+    std::array<uint32_t, 2> emitBem(
+      const DxsoInstructionContext& ctx,
+      const DxsoRegisterValue& src0,
+      const DxsoRegisterValue& src1
+    );
+
     ///////////////////////////////
     // Handle shader ops
     void emitDcl(const DxsoInstructionContext& ctx);
