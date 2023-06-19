@@ -698,10 +698,6 @@ namespace dxvk {
     { R"(\\SWTFU2\.exe$)", {{
       { "d3d9.forceSamplerTypeSpecConstants",  "True" },
     }} },
-    /* Scrapland (Remastered)                   */
-    { R"(\\Scrap\.exe$)", {{
-      { "d3d9.deferSurfaceCreation",        "True" },
-    }} },
     /* Majesty 2 (Collection)                   *
      * Crashes on UMA without a memory limit,   *
      * since the game(s) will allocate all      *
@@ -1083,6 +1079,14 @@ namespace dxvk {
      * Declares v5 as color but shader uses v6   */
     { R"(\\TP_Win32\.exe$)", {{
       { "d3d8.forceVsDecl",      "0:2,3:2,6:4,7:1" },
+    }} },
+    /* D&D - The Temple Of Elemental Evil          */
+    { R"(\\ToEE(a)?\.exe$)", {{
+      { "d3d9.allowDiscard",                "False" },
+    }} },
+    /* Scrapland (Remastered)                   */
+    { R"(\\Scrap\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",        "True" },
     }} },
   }};
 
