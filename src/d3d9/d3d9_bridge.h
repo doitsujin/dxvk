@@ -24,6 +24,13 @@ IDxvkD3D8Bridge : public IUnknown {
   #endif
 
   /**
+   * \brief Changes the API name displayed on the HUD
+   * 
+   * \param [in] name The new API name 
+   */
+  virtual void SetAPIName(const char* name) = 0;
+
+  /**
    * \brief Updates a D3D9 surface from a D3D9 buffer
    * 
    * \param [in] pDestSurface Destination surface (typically in VRAM)
@@ -45,6 +52,7 @@ MIDL_INTERFACE("D3D9D3D8-A407-773E-18E9-CAFEBEEF3000")
 IDxvkD3D8InterfaceBridge : public IUnknown {
   /**
    * \brief Retrieves the DXVK configuration
+   * 
    * \returns The DXVK Config object
    */
   virtual const dxvk::Config* GetConfig() const = 0;
@@ -73,6 +81,8 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
             void** ppvObject);
+
+    void SetAPIName(const char* name);
 
     HRESULT UpdateTextureFromBuffer(
         IDirect3DSurface9*        pDestSurface,
