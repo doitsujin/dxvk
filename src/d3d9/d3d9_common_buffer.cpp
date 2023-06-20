@@ -67,7 +67,11 @@ namespace dxvk {
     if (m_desc.Pool != D3DPOOL_DEFAULT)
       return D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
 
-    if (!(m_desc.Usage & D3DUSAGE_DYNAMIC))
+    // CSGO keeps vertex buffers locked across multiple frames and writes to it. It uses them for drawing without unlocking first.
+    // Tests show that D3D9 DEFAULT + USAGE_DYNAMIC behaves like a directly mapped buffer even when unlocked.
+    // DEFAULT + WRITEONLY does not behave like a directly mapped buffer EXCEPT if its locked at the moment.
+    // That's annoying to implement so we just always directly map DEFAULT + WRITEONLY.
+    if (!(m_desc.Usage & (D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY)))
       return D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
 
     // Tests show that DISCARD does not work for pure SWVP devices.
