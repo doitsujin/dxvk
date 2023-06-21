@@ -32,6 +32,8 @@
 
 #include <cstdint>
 #include <unordered_set>
+#include "d3d9_bridge.h"
+
 #include <vector>
 #include <type_traits>
 #include <unordered_map>
@@ -127,6 +129,7 @@ namespace dxvk {
     friend class D3D9SwapChainEx;
     friend class D3D9ConstantBuffer;
     friend class D3D9UserDefinedAnnotation;
+    friend class DxvkD3D8Bridge;
     friend D3D9VkInteropDevice;
   public:
 
@@ -1364,6 +1367,7 @@ namespace dxvk {
 
     D3D9VkInteropDevice             m_d3d9Interop;
     D3D9On12                        m_d3d9On12;
+    DxvkD3D8Bridge                  m_d3d8Bridge;
   };
 
 }
