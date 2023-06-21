@@ -5592,15 +5592,39 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::MarkRenderHazards() {
-    EmitCs([](DxvkContext* ctx) {
+    EmitCs([
+      cActiveHazardsRT = m_activeHazardsRT,
+      cActiveHazardsDS = m_activeHazardsDS
+    ](DxvkContext* ctx) {
+      VkPipelineStageFlags srcStages = 0;
+      VkAccessFlags srcAccess = 0;
+
+      if (cActiveHazardsRT != 0) {
+        srcStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        srcAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+      }
+      if (cActiveHazardsDS != 0) {
+        srcStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        srcAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+      }
+
       ctx->emitGraphicsBarrier(
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        srcStages,
+        srcAccess,
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         VK_ACCESS_SHADER_READ_BIT);
     });
 
     for (uint32_t samplerIdx : bit::BitMask(m_activeHazardsRT)) {
+      // Guaranteed to not be nullptr...
+      auto tex = GetCommonTexture(m_state.textures[samplerIdx]);
+      if (unlikely(!tex->MarkHazardous())) {
+        TransitionImage(tex, m_hazardLayout);
+        m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+      }
+    }
+
+    for (uint32_t samplerIdx : bit::BitMask(m_activeHazardsDS)) {
       // Guaranteed to not be nullptr...
       auto tex = GetCommonTexture(m_state.textures[samplerIdx]);
       if (unlikely(!tex->MarkHazardous())) {
@@ -6400,7 +6424,7 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::PrepareDraw(D3DPRIMITIVETYPE PrimitiveType) {
-    if (unlikely(m_activeHazardsRT != 0))
+    if (unlikely(m_activeHazardsRT != 0 || m_activeHazardsDS != 0))
       MarkRenderHazards();
 
     if (unlikely((!m_lastHazardsDS) != (!m_activeHazardsDS))
