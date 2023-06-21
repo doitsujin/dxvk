@@ -56,7 +56,8 @@ namespace dxvk {
     , m_csThread        ( dxvkDevice, dxvkDevice->createContext(DxvkContextType::Primary) )
     , m_csChunk         ( AllocCsChunk() )
     , m_d3d9Interop     ( this )
-    , m_d3d9On12        ( this ) {
+    , m_d3d9On12        ( this )
+    , m_d3d8Bridge      ( this ) {
     // If we can SWVP, then we use an extended constant set
     // as SWVP has many more slots available than HWVP.
     bool canSWVP = CanSWVP();
@@ -217,6 +218,11 @@ namespace dxvk {
      || riid == __uuidof(IDirect3DDevice9)
      || extended) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(IDxvkD3D8Bridge)) {
+      *ppvObject = ref(&m_d3d8Bridge);
       return S_OK;
     }
 

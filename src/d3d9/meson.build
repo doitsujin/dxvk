@@ -45,7 +45,8 @@ d3d9_src = [
   'd3d9_mem.cpp',
   'd3d9_window.cpp',
   'd3d9_interop.cpp',
-  'd3d9_on_12.cpp'
+  'd3d9_on_12.cpp',
+  'd3d9_bridge.cpp'
 ]
 
 d3d9_ld_args      = []
