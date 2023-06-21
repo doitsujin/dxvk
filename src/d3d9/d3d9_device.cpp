@@ -5539,19 +5539,19 @@ namespace dxvk {
     }
 
     if (unlikely(combinedUsage & D3DUSAGE_RENDERTARGET))
-      UpdateActiveHazardsRT(UINT32_MAX);
+      UpdateActiveHazardsRT(bit);
 
     if (unlikely(combinedUsage & D3DUSAGE_DEPTHSTENCIL))
       UpdateActiveHazardsDS(bit);
   }
 
 
-  inline void D3D9DeviceEx::UpdateActiveHazardsRT(uint32_t rtMask) {
+  inline void D3D9DeviceEx::UpdateActiveHazardsRT(uint32_t texMask) {
     auto masks = m_psShaderMasks;
-    masks.rtMask      &= m_activeRTs & rtMask;
-    masks.samplerMask &= m_activeRTTextures;
+    masks.rtMask      &= m_activeRTs;
+    masks.samplerMask &= m_activeRTTextures & texMask;
 
-    m_activeHazardsRT = m_activeHazardsRT & (~rtMask);
+    m_activeHazardsRT = m_activeHazardsRT & (~texMask);
     for (uint32_t rtIdx : bit::BitMask(masks.rtMask)) {
       for (uint32_t samplerIdx : bit::BitMask(masks.samplerMask)) {
         D3D9Surface* rtSurf = m_state.renderTargets[rtIdx].ptr();
@@ -5567,7 +5567,7 @@ namespace dxvk {
         if (likely(rtSurf->GetMipLevel() != 0 || rtBase != texBase))
           continue;
 
-        m_activeHazardsRT |= 1 << rtIdx;
+        m_activeHazardsRT |= 1 << samplerIdx;
       }
     }
   }
@@ -5600,9 +5600,9 @@ namespace dxvk {
         VK_ACCESS_SHADER_READ_BIT);
     });
 
-    for (uint32_t rtIdx : bit::BitMask(m_activeHazardsRT)) {
+    for (uint32_t samplerIdx : bit::BitMask(m_activeHazardsRT)) {
       // Guaranteed to not be nullptr...
-      auto tex = m_state.renderTargets[rtIdx]->GetCommonTexture();
+      auto tex = GetCommonTexture(m_state.textures[samplerIdx]);
       if (unlikely(!tex->MarkHazardous())) {
         TransitionImage(tex, m_hazardLayout);
         m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
