@@ -108,10 +108,6 @@ namespace dxvk {
       m_swapchain, std::numeric_limits<uint64_t>::max(),
       sync.acquire, VK_NULL_HANDLE, &m_imageIndex);
 
-    bool vsync = mode == VK_PRESENT_MODE_FIFO_KHR
-              || mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
-
-    m_fpsLimiter.delay(vsync);
     return status;
   }
 
@@ -134,6 +130,7 @@ namespace dxvk {
       m_frameQueue.push(frame);
       m_frameCond.notify_one();
     } else {
+      applyFrameRateLimit(mode);
       m_signal->signal(frameId);
     }
 
@@ -648,6 +645,14 @@ namespace dxvk {
   }
 
 
+  void Presenter::applyFrameRateLimit(VkPresentModeKHR mode) {
+    bool vsync = mode == VK_PRESENT_MODE_FIFO_KHR
+              || mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+
+    m_fpsLimiter.delay(vsync);
+  }
+
+
   void Presenter::runFrameThread() {
     env::setThreadName("dxvk-frame");
 
@@ -666,6 +671,10 @@ namespace dxvk {
       // Use a frame ID of 0 as an exit condition
       if (!frame.frameId)
         return;
+
+      // Apply the FPS limiter before signaling the frame event in
+      // order to reduce latency if the app uses it for frame pacing.
+      applyFrameRateLimit(frame.mode);
 
       // If the present operation has succeeded, actually wait for it to complete.
       // Don't bother with it on MAILBOX / IMMEDIATE modes since doing so would
