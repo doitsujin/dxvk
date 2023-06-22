@@ -5624,9 +5624,9 @@ namespace dxvk {
       }
     }
 
-    for (uint32_t samplerIdx : bit::BitMask(m_activeHazardsDS)) {
+    if (m_activeHazardsDS != 0) {
       // Guaranteed to not be nullptr...
-      auto tex = GetCommonTexture(m_state.textures[samplerIdx]);
+      auto tex = m_state.depthStencil->GetCommonTexture();
       if (unlikely(!tex->MarkHazardous())) {
         TransitionImage(tex, m_hazardLayout);
         m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
