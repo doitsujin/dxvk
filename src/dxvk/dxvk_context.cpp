@@ -4958,9 +4958,16 @@ namespace dxvk {
     if (unlikely(newPipeline->getSpecConstantMask() != m_state.gp.constants.mask))
       this->resetSpecConstants<VK_PIPELINE_BIND_POINT_GRAPHICS>(newPipeline->getSpecConstantMask());
 
-    if (m_state.gp.flags != newPipeline->flags()) {
-      m_state.gp.flags = newPipeline->flags();
+    DxvkGraphicsPipelineFlags oldFlags = m_state.gp.flags;
+    DxvkGraphicsPipelineFlags newFlags = newPipeline->flags();
 
+    DxvkGraphicsPipelineFlags hazardMask(
+      DxvkGraphicsPipelineFlag::HasTransformFeedback,
+      DxvkGraphicsPipelineFlag::HasStorageDescriptors);
+
+    m_state.gp.flags = newFlags;
+
+    if (((oldFlags ^ newFlags) & hazardMask) != 0) {
       // Force-update vertex/index buffers for hazard checks
       m_flags.set(DxvkContextFlag::GpDirtyIndexBuffer,
                   DxvkContextFlag::GpDirtyVertexBuffers,
