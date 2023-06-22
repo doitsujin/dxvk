@@ -5592,18 +5592,24 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::MarkRenderHazards() {
+    struct {
+      uint8_t RT : 1;
+      uint8_t DS : 1;
+    } hazardState;
+    hazardState.RT = m_activeHazardsRT != 0;
+    hazardState.DS = m_activeHazardsDS != 0;
+
     EmitCs([
-      cActiveHazardsRT = m_activeHazardsRT,
-      cActiveHazardsDS = m_activeHazardsDS
+      cHazardState = hazardState
     ](DxvkContext* ctx) {
       VkPipelineStageFlags srcStages = 0;
       VkAccessFlags srcAccess = 0;
 
-      if (cActiveHazardsRT != 0) {
+      if (cHazardState.RT != 0) {
         srcStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         srcAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
       }
-      if (cActiveHazardsDS != 0) {
+      if (cHazardState.DS != 0) {
         srcStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
         srcAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
       }
