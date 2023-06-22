@@ -499,17 +499,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Number of pending submissions
-     * 
-     * A return value of 0 indicates
-     * that the GPU is currently idle.
-     * \returns Pending submission count
-     */
-    uint32_t pendingSubmissions() const {
-      return m_submissionQueue.pendingSubmissions();
-    }
-
-    /**
      * \brief Increments a given stat counter
      *
      * \param [in] counter Stat counter to increment

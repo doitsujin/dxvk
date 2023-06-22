@@ -37,7 +37,6 @@ namespace dxvk {
     entry.status = status;
     entry.submit = std::move(submitInfo);
 
-    m_pending += 1;
     m_submitQueue.push(std::move(entry));
     m_appendCond.notify_all();
   }
@@ -215,10 +214,6 @@ namespace dxvk {
         entry.submit.cmdList->notifyObjects();
 
       lock.lock();
-
-      if (entry.submit.cmdList != nullptr)
-        m_pending -= 1;
-
       m_finishQueue.pop();
       m_finishCond.notify_all();
       lock.unlock();
