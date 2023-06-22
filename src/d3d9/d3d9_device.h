@@ -1281,12 +1281,12 @@ namespace dxvk {
     uint32_t                        m_boundRTs        : 4;
     uint32_t                        m_anyColorWrites  : 4;
     uint32_t                        m_activeRTs       : 4;
-    uint32_t                        m_activeHazardsRT : 4;
     uint32_t                        m_alphaSwizzleRTs : 4;
     uint32_t                        m_lastHazardsRT   : 4;
 
     uint32_t                        m_activeRTTextures       = 0;
     uint32_t                        m_activeDSTextures       = 0;
+    uint32_t                        m_activeHazardsRT        = 0;
     uint32_t                        m_activeHazardsDS        = 0;
     uint32_t                        m_activeTextures         = 0;
     uint32_t                        m_activeTexturesToUpload = 0;
