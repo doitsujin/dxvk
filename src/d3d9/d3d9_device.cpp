@@ -179,7 +179,6 @@ namespace dxvk {
     m_boundRTs = 0;
     m_anyColorWrites = 0;
     m_activeRTs = 0;
-    m_activeHazardsRT = 0;
     m_alphaSwizzleRTs = 0;
     m_lastHazardsRT = 0;
   }
