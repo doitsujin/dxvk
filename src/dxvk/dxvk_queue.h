@@ -73,17 +73,6 @@ namespace dxvk {
     ~DxvkSubmissionQueue();
 
     /**
-     * \brief Number of pending submissions
-     * 
-     * A return value of 0 indicates
-     * that the GPU is currently idle.
-     * \returns Pending submission count
-     */
-    uint32_t pendingSubmissions() const {
-      return m_pending.load();
-    }
-
-    /**
      * \brief Retrieves estimated GPU idle time
      *
      * This is a monotonically increasing counter
@@ -193,7 +182,6 @@ namespace dxvk {
     std::atomic<VkResult>       m_lastError = { VK_SUCCESS };
     
     std::atomic<bool>           m_stopped = { false };
-    std::atomic<uint32_t>       m_pending = { 0u };
     std::atomic<uint64_t>       m_gpuIdle = { 0ull };
 
     dxvk::mutex                 m_mutex;
