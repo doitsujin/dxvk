@@ -160,7 +160,7 @@ namespace dxvk {
     // they didn't call end, do some flushy stuff...
     if (flush && hr == S_FALSE && m_state != D3D9_VK_QUERY_BEGUN) {
       this->NotifyStall();
-      m_parent->FlushImplicit(FALSE);
+      m_parent->ConsiderFlush(GpuFlushType::ImplicitSynchronization);
     }
 
     return hr;

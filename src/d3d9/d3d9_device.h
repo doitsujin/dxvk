@@ -38,6 +38,7 @@
 #include <type_traits>
 #include <unordered_map>
 
+#include "../util/util_flush.h"
 #include "../util/util_lru.h"
 
 namespace dxvk {
@@ -927,7 +928,7 @@ namespace dxvk {
     void SetVertexBoolBitfield(uint32_t idx, uint32_t mask, uint32_t bits);
     void SetPixelBoolBitfield (uint32_t idx, uint32_t mask, uint32_t bits);
 
-    void FlushImplicit(BOOL StrongHint);
+    void ConsiderFlush(GpuFlushType FlushType);
 
     bool ChangeReportedMemory(int64_t delta) {
       if (IsExtended())
@@ -995,12 +996,15 @@ namespace dxvk {
       return DxvkCsChunkRef(chunk, &m_csChunkPool);
     }
 
-    template<typename Cmd>
+    template<bool AllowFlush = true, typename Cmd>
     void EmitCs(Cmd&& command) {
       if (unlikely(!m_csChunk->push(command))) {
         EmitCsChunk(std::move(m_csChunk));
-
         m_csChunk = AllocCsChunk();
+
+        if constexpr (AllowFlush)
+          ConsiderFlush(GpuFlushType::ImplicitWeakHint);
+
         m_csChunk->push(command);
       }
     }
@@ -1343,12 +1347,14 @@ namespace dxvk {
     D3D9ViewportInfo                m_viewportInfo;
 
     DxvkCsChunkPool                 m_csChunkPool;
-    dxvk::high_resolution_clock::time_point m_lastFlush
-      = dxvk::high_resolution_clock::now();
     DxvkCsThread                    m_csThread;
     DxvkCsChunkRef                  m_csChunk;
     uint64_t                        m_csSeqNum = 0ull;
-    bool                            m_csIsBusy = false;
+
+    Rc<sync::Fence>                 m_submissionFence;
+    uint64_t                        m_submissionId = 0ull;
+    uint64_t                        m_flushSeqNum = 0ull;
+    GpuFlushTracker                 m_flushTracker;
 
     std::atomic<int64_t>            m_availableMemory = { 0 };
     std::atomic<int32_t>            m_samplerCount    = { 0 };
