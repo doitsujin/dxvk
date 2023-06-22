@@ -1439,8 +1439,6 @@ namespace dxvk {
         m_flags.set(D3D9DeviceFlag::DirtyViewportScissor);
         m_state.scissorRect = scissorRect;
       }
-
-      m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
     }
 
     if (m_state.renderTargets[RenderTargetIndex] == rt)
@@ -1472,6 +1470,11 @@ namespace dxvk {
 
     if (RenderTargetIndex == 0) {
       if (likely(texInfo != nullptr)) {
+        if (IsAlphaTestEnabled()) {
+          // Need to recalculate the precision.
+          m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
+        }
+
         bool validSampleMask = texInfo->Desc()->MultiSample > D3DMULTISAMPLE_NONMASKABLE;
 
         if (validSampleMask != m_flags.test(D3D9DeviceFlag::ValidSampleMask)) {
