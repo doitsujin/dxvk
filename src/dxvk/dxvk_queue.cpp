@@ -215,7 +215,9 @@ namespace dxvk {
         entry.submit.cmdList->notifyObjects();
 
       lock.lock();
-      m_pending -= 1;
+
+      if (entry.submit.cmdList != nullptr)
+        m_pending -= 1;
 
       m_finishQueue.pop();
       m_finishCond.notify_all();
