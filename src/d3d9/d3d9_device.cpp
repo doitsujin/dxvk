@@ -3411,8 +3411,8 @@ namespace dxvk {
     // If we have any RTs we would have bound to the the FB
     // not in the new shader mask, mark the framebuffer as dirty
     // so we unbind them.
-    uint32_t oldUseMask = m_activeRTs & m_psShaderMasks.rtMask;
-    uint32_t newUseMask = m_activeRTs & newShaderMasks.rtMask;
+    uint32_t oldUseMask = m_boundRTs & m_anyColorWrites & m_psShaderMasks.rtMask;
+    uint32_t newUseMask = m_boundRTs & m_anyColorWrites & newShaderMasks.rtMask;
     if (oldUseMask != newUseMask)
       m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
