@@ -3415,6 +3415,7 @@ namespace dxvk {
         m_psShaderMasks.rtMask != newShaderMasks.rtMask) {
       m_psShaderMasks = newShaderMasks;
       UpdateActiveHazardsRT(UINT32_MAX);
+      UpdateActiveHazardsDS(UINT32_MAX);
     }
 
     return D3D_OK;
