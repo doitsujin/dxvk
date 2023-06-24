@@ -5576,11 +5576,13 @@ namespace dxvk {
 
 
   inline void D3D9DeviceEx::UpdateActiveHazardsDS(uint32_t texMask) {
+    auto masks = m_psShaderMasks;
+    masks.samplerMask &= m_activeDSTextures & texMask;
+
     m_activeHazardsDS = m_activeHazardsDS & (~texMask);
     if (m_state.depthStencil != nullptr &&
         m_state.depthStencil->GetBaseTexture() != nullptr) {
-      uint32_t samplerMask = m_activeDSTextures & texMask;
-      for (uint32_t samplerIdx : bit::BitMask(samplerMask)) {
+      for (uint32_t samplerIdx : bit::BitMask(masks.samplerMask)) {
         IDirect3DBaseTexture9* dsBase  = m_state.depthStencil->GetBaseTexture();
         IDirect3DBaseTexture9* texBase = m_state.textures[samplerIdx];
 
