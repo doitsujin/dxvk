@@ -178,7 +178,7 @@ namespace dxvk {
     // Bitfields can't be initialized in header.
     m_boundRTs = 0;
     m_anyColorWrites = 0;
-    m_activeRTs = 0;
+    m_activeRTsWhichAreTextures = 0;
     m_alphaSwizzleRTs = 0;
     m_lastHazardsRT = 0;
   }
@@ -5493,12 +5493,12 @@ namespace dxvk {
   inline void D3D9DeviceEx::UpdateActiveRTs(uint32_t index) {
     const uint32_t bit = 1 << index;
 
-    m_activeRTs &= ~bit;
+    m_activeRTsWhichAreTextures &= ~bit;
 
     if ((m_boundRTs & bit) != 0 &&
         m_state.renderTargets[index]->GetBaseTexture() != nullptr &&
         m_anyColorWrites & bit)
-      m_activeRTs |= bit;
+      m_activeRTsWhichAreTextures |= bit;
 
     UpdateActiveHazardsRT(bit);
   }
@@ -5523,8 +5523,8 @@ namespace dxvk {
   inline void D3D9DeviceEx::UpdateActiveTextures(uint32_t index, DWORD combinedUsage) {
     const uint32_t bit = 1 << index;
 
-    m_activeRTTextures       &= ~bit;
-    m_activeDSTextures       &= ~bit;
+    m_activeTextureRTs       &= ~bit;
+    m_activeTextureDSs       &= ~bit;
     m_activeTextures         &= ~bit;
     m_activeTexturesToUpload &= ~bit;
     m_activeTexturesToGen    &= ~bit;
@@ -5534,10 +5534,10 @@ namespace dxvk {
       m_activeTextures |= bit;
 
       if (unlikely(tex->IsRenderTarget()))
-        m_activeRTTextures |= bit;
+        m_activeTextureRTs |= bit;
 
       if (unlikely(tex->IsDepthStencil()))
-        m_activeDSTextures |= bit;
+        m_activeTextureDSs |= bit;
 
       if (unlikely(tex->NeedsAnyUpload()))
         m_activeTexturesToUpload |= bit;
@@ -5556,8 +5556,8 @@ namespace dxvk {
 
   inline void D3D9DeviceEx::UpdateActiveHazardsRT(uint32_t texMask) {
     auto masks = m_psShaderMasks;
-    masks.rtMask      &= m_activeRTs;
-    masks.samplerMask &= m_activeRTTextures & texMask;
+    masks.rtMask      &= m_activeRTsWhichAreTextures;
+    masks.samplerMask &= m_activeTextureRTs & texMask;
 
     m_activeHazardsRT = m_activeHazardsRT & (~texMask);
     for (uint32_t rtIdx : bit::BitMask(masks.rtMask)) {
@@ -5583,7 +5583,7 @@ namespace dxvk {
 
   inline void D3D9DeviceEx::UpdateActiveHazardsDS(uint32_t texMask) {
     auto masks = m_psShaderMasks;
-    masks.samplerMask &= m_activeDSTextures & texMask;
+    masks.samplerMask &= m_activeTextureDSs & texMask;
 
     m_activeHazardsDS = m_activeHazardsDS & (~texMask);
     if (m_state.depthStencil != nullptr &&
