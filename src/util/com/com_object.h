@@ -73,7 +73,7 @@ namespace dxvk {
     }
 
     bool HasLiveReferences() const {
-      return bool(m_refCount.load() | m_refPrivate.load());
+      return bool(m_refCount.load() | (m_refPrivate.load() & 0x7FFFFFFF));
     }
 
   protected:
