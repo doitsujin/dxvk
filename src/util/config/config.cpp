@@ -141,7 +141,7 @@ namespace dxvk {
     }} },
     /* Modern Warfare 2 Campaign Remastered       *
      * AMD AGS crash same as above                */
-    { R"(\\MW2CR.exe\.exe$)", {{
+    { R"(\\MW2CR\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
     /* Crysis 3 - slower if it notices AMD card     *
