@@ -5854,7 +5854,7 @@ namespace dxvk {
     // target bindings are updated. Set up the attachments.
     VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM;
 
-    for (uint32_t i : bit::BitMask(m_boundRTs)) {
+    for (uint32_t i : bit::BitMask(m_activeRTs)) {
       const DxvkImageCreateInfo& rtImageInfo = m_state.renderTargets[i]->GetCommonTexture()->GetImage()->info();
 
       if (likely(sampleCount == VK_SAMPLE_COUNT_FLAG_BITS_MAX_ENUM))
@@ -5862,8 +5862,7 @@ namespace dxvk {
       else if (unlikely(sampleCount != rtImageInfo.sampleCount))
         continue;
 
-      if (!(m_anyColorWrites & (1 << i)))
-        continue;
+      // Any color writes are included in m_activeRTs
 
       if (!(m_psShaderMasks.rtMask & (1 << i)))
         continue;
