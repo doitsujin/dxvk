@@ -838,7 +838,7 @@ namespace dxvk {
 
     HRESULT hr = m_monitorInfo->AcquireMonitorData(hMonitor, ppData);
 
-    if (FAILED(hr)) {
+    if (FAILED(hr) && HasLiveReferences()) {
       // We may need to initialize a DXGI output to populate monitor data.
       // If acquiring monitor data has failed previously, do not try again.
       if (hMonitor == m_monitor && !m_monitorHasOutput)
