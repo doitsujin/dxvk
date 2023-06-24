@@ -2131,8 +2131,11 @@ namespace dxvk {
             m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
           break;
 
-        case D3DRS_STENCILENABLE:
         case D3DRS_ZWRITEENABLE:
+          if (likely(!old != !Value))
+            UpdateActiveHazardsDS(UINT32_MAX);
+        [[fallthrough]];
+        case D3DRS_STENCILENABLE:
         case D3DRS_ZENABLE:
           if (likely(m_state.depthStencil != nullptr))
             m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
@@ -5584,7 +5587,8 @@ namespace dxvk {
 
     m_activeHazardsDS = m_activeHazardsDS & (~texMask);
     if (m_state.depthStencil != nullptr &&
-        m_state.depthStencil->GetBaseTexture() != nullptr) {
+        m_state.depthStencil->GetBaseTexture() != nullptr &&
+        m_state.renderStates[D3DRS_ZWRITEENABLE]) {
       for (uint32_t samplerIdx : bit::BitMask(masks.samplerMask)) {
         IDirect3DBaseTexture9* dsBase  = m_state.depthStencil->GetBaseTexture();
         IDirect3DBaseTexture9* texBase = m_state.textures[samplerIdx];
