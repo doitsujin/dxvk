@@ -4,7 +4,7 @@ on: [push, pull_request, workflow_dispatch]
 
 jobs:
   artifacts-mingw-w64:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
 
     steps:
     - name: Checkout code
@@ -35,7 +35,7 @@ jobs:
         if-no-files-found: error
 
   artifacts-steamrt-sniper:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     container: registry.gitlab.steamos.cloud/steamrt/sniper/sdk:beta
 
     steps:
