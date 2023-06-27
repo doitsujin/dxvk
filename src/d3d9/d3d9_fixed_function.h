@@ -48,8 +48,9 @@ namespace dxvk {
   struct D3D9FixedFunctionOptions {
     D3D9FixedFunctionOptions(const D3D9Options* options);
 
-    bool invariantPosition;
-    bool forceSampleRateShading;
+    bool    invariantPosition;
+    bool    forceSampleRateShading;
+    int32_t drefScaling;
   };
 
   // Returns new oFog if VS

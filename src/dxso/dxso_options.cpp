@@ -31,6 +31,8 @@ namespace dxvk {
 
     longMad = options.longMad;
     robustness2Supported = devFeatures.extRobustness2.robustBufferAccess2;
+
+    drefScaling         = options.drefScaling;
   }
 
 }
