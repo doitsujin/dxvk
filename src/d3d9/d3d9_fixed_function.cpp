@@ -16,6 +16,7 @@ namespace dxvk {
     invariantPosition = options->invariantPosition;
     forceSampleRateShading = options->forceSampleRateShading;
     drefScaling = options->drefScaling;
+    shadowFilter = options->shadowFilter;
   }
 
   uint32_t DoFixedFunctionFog(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, const D3D9FogContext& fogCtx) {

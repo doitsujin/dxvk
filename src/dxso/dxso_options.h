@@ -55,6 +55,11 @@ namespace dxvk {
     /// that expect a different depth test range, which was typically a D3D8 quirk on
     /// early NVIDIA hardware.
     int32_t drefScaling = 0;
+
+    /// Whether to perform 2x2 PCF when linearly sampling certain depth texture formats,
+    /// as done by early NVIDIA GPUs. The possibility of this behavior is also implied by
+    /// the spec for GL_ARB_shadow and various NVIDIA publications. 
+    bool shadowFilter = false;
   };
 
 }

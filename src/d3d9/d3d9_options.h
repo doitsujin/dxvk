@@ -155,6 +155,9 @@ namespace dxvk {
 
     /// [D3D8] Enable depth texcoord Z (Dref) scaling for games that expect it 
     int32_t drefScaling;
+
+    /// [D3D8] Enable hardware shadow filtering emulation for games that expect it
+    bool shadowFilter;
   };
 
 }
