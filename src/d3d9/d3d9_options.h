@@ -152,6 +152,9 @@ namespace dxvk {
 
     /// Enable emulation of device loss when a fullscreen app loses focus
     bool deviceLossOnFocusLoss;
+
+    /// [D3D8] Enable depth texcoord Z (Dref) scaling for games that expect it 
+    int32_t drefScaling;
   };
 
 }
