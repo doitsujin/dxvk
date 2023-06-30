@@ -57,11 +57,10 @@ if platform == 'windows'
     '-Wl,--file-alignment=4096',
   ]
 
-  # Wine's built-in back traces only work with dwarf2 symbols
+  # Wine's built-in back traces only work with dwarf4 symbols
   if get_option('debug')
     compiler_args += [
-      '-gstrict-dwarf',
-      '-gdwarf-2',
+      '-gdwarf-4',
     ]
   endif
 
