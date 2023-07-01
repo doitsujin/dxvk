@@ -124,6 +124,12 @@ namespace dxvk {
     std::array<D3D9Light, caps::MaxEnabledLights> Lights;
     D3DMATERIAL9 Material;
     float TweenFactor;
+
+    // using 32 bit instead of the needed 24 bit
+    uint32_t TransformFlags;
+    uint32_t TexcoordFlags;
+    uint32_t TexcoordIndices;
+    uint32_t TexcoordDeclMask;
   };
 
 

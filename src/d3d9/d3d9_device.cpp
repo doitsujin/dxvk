@@ -6963,20 +6963,23 @@ namespace dxvk {
 
       key.Data.Contents.LightCount = lightCount;
 
+      // TODO: we can remove this section when we are done
+      //       also remove these variables from D3D9FFShaderKeyVSData.contents
       for (uint32_t i = 0; i < caps::MaxTextureBlendStages; i++) {
-        uint32_t transformFlags = m_state.textureStages[i][DXVK_TSS_TEXTURETRANSFORMFLAGS] & ~(D3DTTFF_PROJECTED);
-        uint32_t index          = m_state.textureStages[i][DXVK_TSS_TEXCOORDINDEX];
-        uint32_t indexFlags     = (index & TCIMask) >> TCIOffset;
+//        uint32_t transformFlags = m_state.textureStages[i][DXVK_TSS_TEXTURETRANSFORMFLAGS] & ~(D3DTTFF_PROJECTED);
+//        uint32_t index          = m_state.textureStages[i][DXVK_TSS_TEXCOORDINDEX];
+//        uint32_t indexFlags     = (index & TCIMask) >> TCIOffset;
+//
+//        transformFlags &= 0b111;
+//        index          &= 0b111;
 
-        transformFlags &= 0b111;
-        index          &= 0b111;
-
-        key.Data.Contents.TransformFlags  |= transformFlags << (i * 3);
-        key.Data.Contents.TexcoordFlags   |= indexFlags     << (i * 3);
-        key.Data.Contents.TexcoordIndices |= index          << (i * 3);
+        key.Data.Contents.TransformFlags  |= 0; // transformFlags << (i * 3);
+        key.Data.Contents.TexcoordFlags   |= 0; // indexFlags     << (i * 3);
+        key.Data.Contents.TexcoordIndices |= 0; // index          << (i * 3);
       }
 
-      key.Data.Contents.TexcoordDeclMask = m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetTexcoordMask() : 0;
+      key.Data.Contents.TexcoordDeclMask = 0; // m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetTexcoordMask() : 0;
+      // TODO: end remove-section
 
       key.Data.Contents.VertexBlendMode    = uint32_t(vertexBlendMode);
 
@@ -7027,8 +7030,10 @@ namespace dxvk {
       m_viewportInfo.inverseOffset = m_viewportInfo.inverseOffset + Vector4(-1.0f, 1.0f, 0.0f, 0.0f);
     }
 
+    // TODO: setting this flag correcly so we can re-enable this check
     // Constants...
-    if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexData)) {
+//    if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexData))
+    {
       m_flags.clr(D3D9DeviceFlag::DirtyFFVertexData);
 
       auto mapPtr = m_vsFixedFunction.AllocSlice();
@@ -7060,6 +7065,27 @@ namespace dxvk {
 
       data->Material = m_state.material;
       data->TweenFactor = bit::cast<float>(m_state.renderStates[D3DRS_TWEENFACTOR]);
+
+      // TODO: unclear if needed to clear
+      data->TransformFlags   = 0;
+      data->TexcoordFlags    = 0;
+      data->TexcoordIndices  = 0;
+      data->TexcoordDeclMask = 0;
+
+      for (uint32_t i = 0; i < caps::MaxTextureBlendStages; i++) {
+        uint32_t transformFlags = m_state.textureStages[i][DXVK_TSS_TEXTURETRANSFORMFLAGS] & ~(D3DTTFF_PROJECTED);
+        uint32_t index          = m_state.textureStages[i][DXVK_TSS_TEXCOORDINDEX];
+        uint32_t indexFlags     = (index & TCIMask) >> TCIOffset;
+
+        transformFlags &= 0b111;
+        index          &= 0b111;
+
+        data->TransformFlags  |= transformFlags << (i * 3);
+        data->TexcoordFlags   |= indexFlags     << (i * 3);
+        data->TexcoordIndices |= index          << (i * 3);
+      }
+
+      data->TexcoordDeclMask = m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetTexcoordMask() : 0;
     }
 
     if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexBlend) && vertexBlendMode == D3D9FF_VertexBlendMode_Normal) {

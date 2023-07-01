@@ -633,6 +633,11 @@ namespace dxvk {
 
     TweenFactor,
 
+    TransformFlags,
+    TexcoordFlags,
+    TexcoordIndices,
+    TexcoordDeclMask,
+
     MemberCount
   };
 
@@ -660,6 +665,11 @@ namespace dxvk {
       uint32_t materialEmissive;
       uint32_t materialPower;
       uint32_t tweenFactor;
+
+      uint32_t transformFlags;
+      uint32_t texcoordFlags;
+      uint32_t texcoordIndices;
+      uint32_t texcoordDeclMask;
     } constants;
 
     struct {
@@ -794,6 +804,7 @@ namespace dxvk {
     DxsoIsgn              m_isgn;
     DxsoIsgn              m_osgn;
 
+    uint32_t              m_boolType;
     uint32_t              m_floatType;
     uint32_t              m_uint32Type;
     uint32_t              m_vec4Type;
@@ -838,6 +849,7 @@ namespace dxvk {
 
 
   Rc<DxvkShader> D3D9FFShaderCompiler::compile() {
+    m_boolType   = m_module.defBoolType();
     m_floatType  = m_module.defFloatType(32);
     m_uint32Type = m_module.defIntType(32, 0);
     m_vec4Type   = m_module.defVectorType(m_floatType, 4);
@@ -1101,47 +1113,163 @@ namespace dxvk {
 
     m_module.opStore(m_vs.out.NORMAL, outNrm);
 
-    for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
-      uint32_t inputIndex = (m_vsKey.Data.Contents.TexcoordIndices     >> (i * 3)) & 0b111;
-      uint32_t inputFlags = (m_vsKey.Data.Contents.TexcoordFlags       >> (i * 3)) & 0b111;
-      uint32_t texcoordCount = (m_vsKey.Data.Contents.TexcoordDeclMask >> (inputIndex * 3)) & 0b111;
+    // the four 24-bit transformflags variables are now serving as input for the shader
+    // NOTE: refer to the original cpu-side implementation of these variables (dxvk 2.2 and lower)
+    //       to get a better overview to what is happening here in spir-v code
 
-      uint32_t transformed;
+    uint32_t zero  = m_module.constu32(0);
+    uint32_t three = m_module.constu32(3);
+
+    for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
+      uint32_t three_i = m_module.opIMul(m_uint32Type, three, m_module.constu32(i));
+      uint32_t bitmask_0b111 = m_module.constu32(0b111);
+      uint32_t flags = m_module.opBitwiseAnd( m_uint32Type, bitmask_0b111,
+        m_module.opShiftRightLogical(m_uint32Type, m_vs.constants.transformFlags, three_i));
+      uint32_t inputFlags = m_module.opBitwiseAnd( m_uint32Type, bitmask_0b111,
+        m_module.opShiftRightLogical(m_uint32Type, m_vs.constants.texcoordFlags, three_i));
+      uint32_t inputIndex = m_module.opBitwiseAnd( m_uint32Type, bitmask_0b111,
+        m_module.opShiftRightLogical(m_uint32Type, m_vs.constants.texcoordIndices, three_i));
+      uint32_t texcoordCount = m_module.opBitwiseAnd( m_uint32Type, bitmask_0b111,
+        m_module.opShiftRightLogical(m_uint32Type, m_vs.constants.texcoordDeclMask,
+          m_module.opIMul(m_uint32Type, inputIndex, three)));
+      uint32_t count = m_module.constu32(4);
 
       const uint32_t wIndex = 3;
 
-      uint32_t flags = (m_vsKey.Data.Contents.TransformFlags >> (i * 3)) & 0b111;
-      uint32_t count;
-      switch (inputFlags) {
-        default:
-        case (DXVK_TSS_TCI_PASSTHRU >> TCIOffset):
-          transformed = m_vs.in.TEXCOORD[inputIndex & 0xFF];
-          // flags is actually the number of elements that get passed
-          // to the rasterizer.
-          count = flags;
-          if (texcoordCount) {
-            // Clamp by the number of elements in the texcoord input.
-            if (!count || count > texcoordCount)
-              count = texcoordCount;
-          }
-          else
-            flags = D3DTTFF_DISABLE;
-          break;
+      // flags is actually the number of elements that get passed to the rasterizer.
+      //    count = flags;
+      // Clamp by the number of elements in the texcoord input
+      //    if (!count || count > texcoordCount)
+      //      count = texcoordCount;
 
-        case (DXVK_TSS_TCI_CAMERASPACENORMAL >> TCIOffset):
-          transformed = outNrm;
-          count = 4;
-          break;
+      uint32_t tssTciPassthruCountEnd = m_module.allocateId();
+      uint32_t tssTciPassthruCountTrue = m_module.allocateId();
+      uint32_t tssTciPassthruCountFalse = m_module.allocateId();
+      uint32_t tssTciPassthruCountCondition = m_module.opLogicalOr( m_boolType,
+        m_module.opIEqual(m_boolType, zero, flags),
+        m_module.opUGreaterThan(m_boolType, flags, texcoordCount)
+      );
 
-        case (DXVK_TSS_TCI_CAMERASPACEPOSITION >> TCIOffset):
-          transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1.0f), vtx, 1, &wIndex);
-          count = 4;
-          break;
+      m_module.opSelectionMerge(tssTciPassthruCountEnd, spv::SelectionControlMaskNone);
+      m_module.opBranchConditional(tssTciPassthruCountCondition, tssTciPassthruCountTrue, tssTciPassthruCountFalse);
+      m_module.opLabel(tssTciPassthruCountTrue);
+        m_module.opBranch(tssTciPassthruCountEnd);
+      m_module.opLabel(tssTciPassthruCountFalse);
+        m_module.opBranch(tssTciPassthruCountEnd);
+      m_module.opLabel(tssTciPassthruCountEnd);
 
-        case (DXVK_TSS_TCI_CAMERASPACEREFLECTIONVECTOR >> TCIOffset): {
+      std::array<SpirvPhiLabel, 2> tssTciPassthruCountLabels = {
+        SpirvPhiLabel { texcoordCount, tssTciPassthruCountTrue },
+        SpirvPhiLabel { flags, tssTciPassthruCountFalse },
+      };
+
+      uint32_t tssTciPassthruCount = m_module.opPhi(m_uint32Type,
+        tssTciPassthruCountLabels.size(),
+        tssTciPassthruCountLabels.data());
+
+      //  if (!texcoordCount)
+      //    flags = D3DTTFF_DISABLE;
+
+      uint32_t tssTciPasstrueFlags_D3DTTFF_DISABLE = m_module.constu32(D3DTTFF_DISABLE);
+      uint32_t tssTciPassthruFlagsEnd   = m_module.allocateId();
+      uint32_t tssTciPassthruFlagsTrue  = m_module.allocateId();
+      uint32_t tssTciPassthruFlagsFalse = m_module.allocateId();
+      uint32_t tssTciPassthruFlagsCondition = m_module.opIEqual(m_boolType, zero, texcoordCount);
+
+      m_module.opSelectionMerge(tssTciPassthruFlagsEnd, spv::SelectionControlMaskNone);
+      m_module.opBranchConditional(tssTciPassthruFlagsCondition, tssTciPassthruFlagsTrue, tssTciPassthruFlagsFalse);
+      m_module.opLabel(tssTciPassthruFlagsTrue);
+        m_module.opBranch(tssTciPassthruFlagsEnd);
+      m_module.opLabel(tssTciPassthruFlagsFalse);
+        m_module.opBranch(tssTciPassthruFlagsEnd);
+      m_module.opLabel(tssTciPassthruFlagsEnd);
+
+      std::array<SpirvPhiLabel, 2> tssTciPassthruFlagsLabels = {
+        SpirvPhiLabel { tssTciPasstrueFlags_D3DTTFF_DISABLE, tssTciPassthruFlagsTrue },
+        SpirvPhiLabel { flags, tssTciPassthruFlagsFalse },
+      };
+
+      uint32_t tssTciPasstrueFlags = m_module.opPhi(m_uint32Type,
+        tssTciPassthruFlagsLabels.size(),
+        tssTciPassthruFlagsLabels.data());
+
+      // TODO: simplify access by loading in texcoord as gpu-side array
+      //       transformed = m_vs.in.TEXCOORD[inputIndex];
+
+      uint32_t texcoordEnd = m_module.allocateId();
+
+      std::array<SpirvSwitchCaseLabel, 8> texcoordLabels = { {
+        { 0, m_module.allocateId() }, { 1, m_module.allocateId() },
+        { 2, m_module.allocateId() }, { 3, m_module.allocateId() },
+        { 4, m_module.allocateId() }, { 5, m_module.allocateId() },
+        { 6, m_module.allocateId() }, { 7, m_module.allocateId() },
+      } };
+
+      m_module.opSelectionMerge(texcoordEnd, spv::SelectionControlMaskNone);
+      m_module.opSwitch(inputIndex,
+        texcoordLabels[0].labelId,
+        texcoordLabels.size(),
+        texcoordLabels.data());
+        m_module.opLabel(texcoordLabels[0].labelId); m_module.opBranch(texcoordEnd);
+        m_module.opLabel(texcoordLabels[1].labelId); m_module.opBranch(texcoordEnd);
+        m_module.opLabel(texcoordLabels[2].labelId); m_module.opBranch(texcoordEnd);
+        m_module.opLabel(texcoordLabels[3].labelId); m_module.opBranch(texcoordEnd);
+        m_module.opLabel(texcoordLabels[4].labelId); m_module.opBranch(texcoordEnd);
+        m_module.opLabel(texcoordLabels[5].labelId); m_module.opBranch(texcoordEnd);
+        m_module.opLabel(texcoordLabels[6].labelId); m_module.opBranch(texcoordEnd);
+        m_module.opLabel(texcoordLabels[7].labelId); m_module.opBranch(texcoordEnd);
+      m_module.opLabel(texcoordEnd);
+
+      std::array<SpirvPhiLabel, 8> texcoordSwitchResults = { {
+        SpirvPhiLabel { m_vs.in.TEXCOORD[0], texcoordLabels[0].labelId  },
+        SpirvPhiLabel { m_vs.in.TEXCOORD[1], texcoordLabels[1].labelId  },
+        SpirvPhiLabel { m_vs.in.TEXCOORD[2], texcoordLabels[2].labelId  },
+        SpirvPhiLabel { m_vs.in.TEXCOORD[3], texcoordLabels[3].labelId  },
+        SpirvPhiLabel { m_vs.in.TEXCOORD[4], texcoordLabels[4].labelId  },
+        SpirvPhiLabel { m_vs.in.TEXCOORD[5], texcoordLabels[5].labelId  },
+        SpirvPhiLabel { m_vs.in.TEXCOORD[6], texcoordLabels[6].labelId  },
+        SpirvPhiLabel { m_vs.in.TEXCOORD[7], texcoordLabels[7].labelId  },
+      } };
+
+      uint32_t tssTciPassthruTransformed = m_module.opPhi(m_vec4Type,
+        texcoordSwitchResults.size(),
+        texcoordSwitchResults.data());
+
+      // we now have set up the variables for the passthru case and can now do
+      // the switch case for all TSS_TCI input flags
+
+      uint32_t tssTciTransformed_1, tssTciTransformed_2, tssTciTransformed_3, tssTciTransformed_4;
+      uint32_t endMergeSwitch = m_module.allocateId();
+
+      std::array<SpirvSwitchCaseLabel, 5> tssTciLabels = { {
+        { uint32_t(DXVK_TSS_TCI_PASSTHRU >> TCIOffset),                     m_module.allocateId() },
+        { uint32_t(DXVK_TSS_TCI_CAMERASPACENORMAL >> TCIOffset),            m_module.allocateId() },
+        { uint32_t(DXVK_TSS_TCI_CAMERASPACEPOSITION >> TCIOffset),          m_module.allocateId() },
+        { uint32_t(DXVK_TSS_TCI_CAMERASPACEREFLECTIONVECTOR >> TCIOffset),  m_module.allocateId() },
+        { uint32_t(DXVK_TSS_TCI_SPHEREMAP >> TCIOffset),                    m_module.allocateId() },
+      } };
+
+      m_module.opSelectionMerge(endMergeSwitch, spv::SelectionControlMaskNone);
+      m_module.opSwitch(inputFlags,
+        tssTciLabels[DXVK_TSS_TCI_PASSTHRU >> TCIOffset].labelId,
+        tssTciLabels.size(),
+        tssTciLabels.data()); {
+
+        m_module.opLabel(tssTciLabels[DXVK_TSS_TCI_PASSTHRU >> TCIOffset].labelId);
+          m_module.opBranch(endMergeSwitch);
+
+        m_module.opLabel(tssTciLabels[DXVK_TSS_TCI_CAMERASPACENORMAL >> TCIOffset].labelId);
+          tssTciTransformed_1 = outNrm;
+          m_module.opBranch(endMergeSwitch);
+
+        m_module.opLabel(tssTciLabels[DXVK_TSS_TCI_CAMERASPACEPOSITION >> TCIOffset].labelId);
+          tssTciTransformed_2 = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1.0f), vtx, 1, &wIndex);
+          m_module.opBranch(endMergeSwitch);
+
+        m_module.opLabel(tssTciLabels[DXVK_TSS_TCI_CAMERASPACEREFLECTIONVECTOR >> TCIOffset].labelId); {
           uint32_t vtx3 = m_module.opVectorShuffle(m_vec3Type, vtx, vtx, 3, indices.data());
           vtx3 = m_module.opNormalize(m_vec3Type, vtx3);
-          
+
           uint32_t reflection = m_module.opReflect(m_vec3Type, vtx3, normal);
 
           std::array<uint32_t, 4> transformIndices;
@@ -1149,12 +1277,11 @@ namespace dxvk {
             transformIndices[i] = m_module.opCompositeExtract(m_floatType, reflection, 1, &i);
           transformIndices[3] = m_module.constf32(1.0f);
 
-          transformed = m_module.opCompositeConstruct(m_vec4Type, transformIndices.size(), transformIndices.data());
-          count = 4;
-          break;
+          tssTciTransformed_3 = m_module.opCompositeConstruct(m_vec4Type, transformIndices.size(), transformIndices.data());
+          m_module.opBranch(endMergeSwitch);
         }
 
-        case (DXVK_TSS_TCI_SPHEREMAP >> TCIOffset): {
+        m_module.opLabel(tssTciLabels[DXVK_TSS_TCI_SPHEREMAP >> TCIOffset].labelId); {
           uint32_t vtx3 = m_module.opVectorShuffle(m_vec3Type, vtx, vtx, 3, indices.data());
           vtx3 = m_module.opNormalize(m_vec3Type, vtx3);
 
@@ -1173,39 +1300,262 @@ namespace dxvk {
           transformIndices[2] = m_module.constf32(0.0f);
           transformIndices[3] = m_module.constf32(1.0f);
 
-          transformed = m_module.opCompositeConstruct(m_vec4Type, transformIndices.size(), transformIndices.data());
-          count = 4;
-          break;
+          tssTciTransformed_4 = m_module.opCompositeConstruct(m_vec4Type, transformIndices.size(), transformIndices.data());
+          m_module.opBranch(endMergeSwitch);
         }
       }
+      m_module.opLabel(endMergeSwitch);
 
-      uint32_t type = flags;
-      if (type != D3DTTFF_DISABLE) {
-        if (!m_vsKey.Data.Contents.HasPositionT) {
-          for (uint32_t j = count; j < 4; j++) {
-            // If we're outside the component count of the vertex decl for this texcoord then we pad with zeroes.
-            // Otherwise, pad with ones.
+      std::array<SpirvPhiLabel, 5> tssTciSwitchResultsFlags = { {
+        SpirvPhiLabel { tssTciPasstrueFlags, tssTciLabels[DXVK_TSS_TCI_PASSTHRU >> TCIOffset].labelId  },
+        SpirvPhiLabel { flags, tssTciLabels[DXVK_TSS_TCI_CAMERASPACENORMAL >> TCIOffset].labelId },
+        SpirvPhiLabel { flags, tssTciLabels[DXVK_TSS_TCI_CAMERASPACEPOSITION >> TCIOffset].labelId },
+        SpirvPhiLabel { flags, tssTciLabels[DXVK_TSS_TCI_CAMERASPACEREFLECTIONVECTOR >> TCIOffset].labelId  },
+        SpirvPhiLabel { flags, tssTciLabels[DXVK_TSS_TCI_SPHEREMAP >> TCIOffset].labelId },
+      } };
 
-            // Very weird quirk in order to get texcoord transforms to work like they do in native.
-            // In future, maybe we could sort this out properly by chopping matrices of different sizes, but thats
-            // a project for another day.
-            uint32_t texcoordCount = (m_vsKey.Data.Contents.TexcoordDeclMask >> (3 * inputIndex)) & 0x7;
-            uint32_t value = j > texcoordCount ? m_module.constf32(0) : m_module.constf32(1);
-            transformed = m_module.opCompositeInsert(m_vec4Type, value, transformed, 1, &j);
+      std::array<SpirvPhiLabel, 5> tssTciSwitchResultsCount = { {
+        SpirvPhiLabel { tssTciPassthruCount, tssTciLabels[DXVK_TSS_TCI_PASSTHRU >> TCIOffset].labelId  },
+        SpirvPhiLabel { count, tssTciLabels[DXVK_TSS_TCI_CAMERASPACENORMAL >> TCIOffset].labelId },
+        SpirvPhiLabel { count, tssTciLabels[DXVK_TSS_TCI_CAMERASPACEPOSITION >> TCIOffset].labelId },
+        SpirvPhiLabel { count, tssTciLabels[DXVK_TSS_TCI_CAMERASPACEREFLECTIONVECTOR >> TCIOffset].labelId  },
+        SpirvPhiLabel { count, tssTciLabels[DXVK_TSS_TCI_SPHEREMAP >> TCIOffset].labelId },
+      } };
+
+      std::array<SpirvPhiLabel, 5> tssTciSwitchResultsTransform = { {
+        SpirvPhiLabel { tssTciPassthruTransformed, tssTciLabels[DXVK_TSS_TCI_PASSTHRU >> TCIOffset].labelId  },
+        SpirvPhiLabel { tssTciTransformed_1, tssTciLabels[DXVK_TSS_TCI_CAMERASPACENORMAL >> TCIOffset].labelId },
+        SpirvPhiLabel { tssTciTransformed_2, tssTciLabels[DXVK_TSS_TCI_CAMERASPACEPOSITION >> TCIOffset].labelId },
+        SpirvPhiLabel { tssTciTransformed_3, tssTciLabels[DXVK_TSS_TCI_CAMERASPACEREFLECTIONVECTOR >> TCIOffset].labelId  },
+        SpirvPhiLabel { tssTciTransformed_4, tssTciLabels[DXVK_TSS_TCI_SPHEREMAP >> TCIOffset].labelId },
+      } };
+
+      flags = m_module.opPhi(m_uint32Type,
+        tssTciSwitchResultsFlags.size(),
+        tssTciSwitchResultsFlags.data());
+
+      count = m_module.opPhi(m_uint32Type,
+        tssTciSwitchResultsCount.size(),
+        tssTciSwitchResultsCount.data());
+
+      uint32_t transformed = m_module.opPhi(m_vec4Type,
+        tssTciSwitchResultsTransform.size(),
+        tssTciSwitchResultsTransform.data());
+
+      uint32_t D3DTTFF_transformed = transformed;
+
+      // this section cares about flags != D3DTTFF_DISABLE
+      // j > texcoord section creates a vec4 which corresponds to
+      // uint32_t value = j > texcoordCount ? m_module.constf32(0) : m_module.constf32(1);
+      // with the value set for each j in [0..3] and switch-cased for texcoordCount
+      //
+      // If we're outside the component count of the vertex decl for this texcoord then we pad with zeroes.
+      // Otherwise, pad with ones.
+      //
+      // Very weird quirk in order to get texcoord transforms to work like they do in native.
+      // In future, maybe we could sort this out properly by chopping matrices of different sizes, but thats
+      // a project for another day.
+
+      if (!m_vsKey.Data.Contents.HasPositionT) {
+        uint32_t jgtcValues_0, jgtcValues_1, jgtcValues_2, jgtcValues_3;
+        uint32_t jgtcValuesEnd = m_module.allocateId();
+
+        std::array<SpirvSwitchCaseLabel, 4> jgtcValuesLabels = { {
+          { 0, m_module.allocateId() },
+          { 1, m_module.allocateId() },
+          { 2, m_module.allocateId() },
+          { 3, m_module.allocateId() },
+        } };
+
+        m_module.opSelectionMerge(jgtcValuesEnd, spv::SelectionControlMaskNone);
+        m_module.opSwitch(texcoordCount,
+          jgtcValuesLabels[3].labelId,
+          jgtcValuesLabels.size(),
+          jgtcValuesLabels.data()); {
+          m_module.opLabel(jgtcValuesLabels[0].labelId);
+            jgtcValues_0 = m_module.constvec4f32(1.0f, 0.0f, 0.0f, 0.0f);
+            m_module.opBranch(jgtcValuesEnd);
+          m_module.opLabel(jgtcValuesLabels[1].labelId);
+            jgtcValues_1 = m_module.constvec4f32(1.0f, 1.0f, 0.0f, 0.0f);
+            m_module.opBranch(jgtcValuesEnd);
+          m_module.opLabel(jgtcValuesLabels[2].labelId);
+            jgtcValues_2 = m_module.constvec4f32(1.0f, 1.0f, 1.0f, 0.0f);
+            m_module.opBranch(jgtcValuesEnd);
+          m_module.opLabel(jgtcValuesLabels[3].labelId);
+            jgtcValues_3 = m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f);
+            m_module.opBranch(jgtcValuesEnd);
+        }
+
+        m_module.opLabel(jgtcValuesEnd);
+
+        std::array<SpirvPhiLabel, 4> jgtcValuesSwitchResults = { {
+          SpirvPhiLabel { jgtcValues_0, jgtcValuesLabels[0].labelId  },
+          SpirvPhiLabel { jgtcValues_1, jgtcValuesLabels[1].labelId  },
+          SpirvPhiLabel { jgtcValues_2, jgtcValuesLabels[2].labelId  },
+          SpirvPhiLabel { jgtcValues_3, jgtcValuesLabels[3].labelId  },
+        } };
+
+        uint32_t jgtcValues = m_module.opPhi(m_vec4Type,
+          jgtcValuesSwitchResults.size(),
+          jgtcValuesSwitchResults.data());
+
+        // tranform padding
+        // we already got information about all y/texcoord combinations and now use them for padding
+
+        std::array<uint32_t, 5> tpTransforms;
+        uint32_t tpEnd = m_module.allocateId();
+
+        std::array<SpirvSwitchCaseLabel, 5> tpLabels = { {
+          { 0, m_module.allocateId() },
+          { 1, m_module.allocateId() },
+          { 2, m_module.allocateId() },
+          { 3, m_module.allocateId() },
+          { 4, m_module.allocateId() },
+        } };
+
+        m_module.opSelectionMerge(tpEnd, spv::SelectionControlMaskNone);
+        m_module.opSwitch(count,
+          tpLabels[4].labelId,
+          tpLabels.size(),
+          tpLabels.data()); {
+          m_module.opLabel(tpLabels[0].labelId);
+            m_module.opBranch(tpEnd);
+          m_module.opLabel(tpLabels[1].labelId); {
+            uint32_t extract = m_module.opCompositeExtract( m_floatType, jgtcValues, 1, &indices[1] );
+            tpTransforms[1] = m_module.opCompositeInsert( m_vec4Type, extract, transformed, 1, &indices[1] );
+            extract = m_module.opCompositeExtract( m_floatType, jgtcValues, 1, &indices[2] );
+            tpTransforms[1] = m_module.opCompositeInsert( m_vec4Type, extract, tpTransforms[1], 1, &indices[2] );
+            extract = m_module.opCompositeExtract( m_floatType, jgtcValues, 1, &indices[3] );
+            tpTransforms[1] = m_module.opCompositeInsert( m_vec4Type, extract, tpTransforms[1], 1, &indices[3] );
+            m_module.opBranch(tpEnd);
           }
+          m_module.opLabel(tpLabels[2].labelId); {
+            uint32_t extract = m_module.opCompositeExtract( m_floatType, jgtcValues, 1, &indices[2] );
+            tpTransforms[2] = m_module.opCompositeInsert( m_vec4Type, extract, transformed, 1, &indices[2] );
+            extract = m_module.opCompositeExtract( m_floatType, jgtcValues, 1, &indices[3] );
+            tpTransforms[2] = m_module.opCompositeInsert( m_vec4Type, extract, tpTransforms[2], 1, &indices[3] );
+            m_module.opBranch(tpEnd);
+          }
+          m_module.opLabel(tpLabels[3].labelId); {
+            uint32_t extract = m_module.opCompositeExtract( m_floatType, jgtcValues, 1, &indices[3] );
+            tpTransforms[3] = m_module.opCompositeInsert( m_vec4Type, extract, transformed, 1, &indices[3] );
+            m_module.opBranch(tpEnd);
+          }
+          m_module.opLabel(tpLabels[4].labelId);
+            m_module.opBranch(tpEnd);
 
-          transformed = m_module.opVectorTimesMatrix(m_vec4Type, transformed, m_vs.constants.texcoord[i]);
+          m_module.opLabel(tpEnd);
         }
 
-        // Pad the unused section of it with the value for projection.
-        uint32_t lastIdx = count - 1;
-        uint32_t projValue = m_module.opCompositeExtract(m_floatType, transformed, 1, &lastIdx);
+        std::array<SpirvPhiLabel, 5> tpResults = { {
+          SpirvPhiLabel { jgtcValues, tpLabels[0].labelId },
+          SpirvPhiLabel { tpTransforms[1], tpLabels[1].labelId },
+          SpirvPhiLabel { tpTransforms[2], tpLabels[2].labelId },
+          SpirvPhiLabel { tpTransforms[3], tpLabels[3].labelId },
+          SpirvPhiLabel { transformed, tpLabels[4].labelId },
+        } };
 
-        for (uint32_t j = count; j < 4; j++)
-          transformed = m_module.opCompositeInsert(m_vec4Type, projValue, transformed, 1, &j);
+        D3DTTFF_transformed = m_module.opPhi(m_vec4Type,
+          tpResults.size(),
+          tpResults.data());
+
+        D3DTTFF_transformed = m_module.opVectorTimesMatrix(m_vec4Type, D3DTTFF_transformed, m_vs.constants.texcoord[i]);
       }
+
+      //  Pad the unused section of it with the value for projection.
+      //  uint32_t lastIdx = count - 1;
+      //  uint32_t projValue = m_module.opCompositeExtract(m_floatType, transformed, 1, &lastIdx);
+      //
+      //  for (uint32_t j = count; j < 4; j++)
+      //      transformed = m_module.opCompositeInsert(m_vec4Type, projValue, transformed, 1, &j);
+
+      uint32_t pTransform_0, pTransform_1, pTransform_2, pTransform_3;
+      uint32_t pTransformEnd = m_module.allocateId();
+
+      std::array<SpirvSwitchCaseLabel, 5> pTransformLabels = { {
+        { 0, m_module.allocateId() },
+        { 1, m_module.allocateId() },
+        { 2, m_module.allocateId() },
+        { 3, m_module.allocateId() },
+        { 4, m_module.allocateId() },
+      } };
+
+      m_module.opSelectionMerge(pTransformEnd, spv::SelectionControlMaskNone);
+      m_module.opSwitch(count,
+        pTransformLabels[4].labelId,
+        pTransformLabels.size(),
+        pTransformLabels.data()); {
+        m_module.opLabel(pTransformLabels[0].labelId); {
+          uint32_t projValue = m_module.opCompositeExtract(m_floatType, D3DTTFF_transformed, 1, &indices[0]);
+          pTransform_0 = m_module.opCompositeInsert(m_vec4Type, projValue, D3DTTFF_transformed, 1, &indices[0]);
+          pTransform_0 = m_module.opCompositeInsert(m_vec4Type, projValue, pTransform_0, 1, &indices[1]);
+          pTransform_0 = m_module.opCompositeInsert(m_vec4Type, projValue, pTransform_0, 1, &indices[2]);
+          pTransform_0 = m_module.opCompositeInsert(m_vec4Type, projValue, pTransform_0, 1, &indices[3]);
+          m_module.opBranch(pTransformEnd);
+        }
+        m_module.opLabel(pTransformLabels[1].labelId); {
+          uint32_t projValue = m_module.opCompositeExtract(m_floatType, D3DTTFF_transformed, 1, &indices[0]);
+          pTransform_1 = m_module.opCompositeInsert(m_vec4Type, projValue, D3DTTFF_transformed, 1, &indices[1]);
+          pTransform_1 = m_module.opCompositeInsert(m_vec4Type, projValue, pTransform_1, 1, &indices[2]);
+          pTransform_1 = m_module.opCompositeInsert(m_vec4Type, projValue, pTransform_1, 1, &indices[3]);
+          m_module.opBranch(pTransformEnd);
+        }
+        m_module.opLabel(pTransformLabels[2].labelId); {
+          uint32_t projValue = m_module.opCompositeExtract(m_floatType, D3DTTFF_transformed, 1, &indices[1]);
+          pTransform_2 = m_module.opCompositeInsert(m_vec4Type, projValue, D3DTTFF_transformed, 1, &indices[2]);
+          pTransform_2 = m_module.opCompositeInsert(m_vec4Type, projValue, pTransform_2, 1, &indices[3]);
+          m_module.opBranch(pTransformEnd);
+        }
+        m_module.opLabel(pTransformLabels[3].labelId); {
+          uint32_t projValue = m_module.opCompositeExtract(m_floatType, D3DTTFF_transformed, 1, &indices[2]);
+          pTransform_3 = m_module.opCompositeInsert(m_vec4Type, projValue, D3DTTFF_transformed, 1, &indices[3]);
+          m_module.opBranch(pTransformEnd);
+        }
+        m_module.opLabel(pTransformLabels[4].labelId); {
+          m_module.opBranch(pTransformEnd);
+        }
+      }
+
+      m_module.opLabel(pTransformEnd);
+      std::array<SpirvPhiLabel, 5> pTransformSwitchResults = { {
+        SpirvPhiLabel { pTransform_0, pTransformLabels[0].labelId  },
+        SpirvPhiLabel { pTransform_1, pTransformLabels[1].labelId  },
+        SpirvPhiLabel { pTransform_2, pTransformLabels[2].labelId  },
+        SpirvPhiLabel { pTransform_3, pTransformLabels[3].labelId  },
+        SpirvPhiLabel { D3DTTFF_transformed, pTransformLabels[4].labelId  },
+      } };
+
+      D3DTTFF_transformed = m_module.opPhi(m_vec4Type,
+        pTransformSwitchResults.size(),
+        pTransformSwitchResults.data());
+
+      // now select the transform based on whether D3DTTFF_DISABLE was set or not
+
+      uint32_t D3DTTFF_DISABLE_false = m_module.allocateId();
+      uint32_t D3DTTFF_DISABLE_true  = m_module.allocateId();
+      uint32_t D3DTTFF_DISABLE_end   = m_module.allocateId();
+
+      uint32_t D3DTTFF_DISABLE_condition = m_module.opIEqual(m_boolType, m_module.constu32(D3DTTFF_DISABLE), flags);
+
+      m_module.opSelectionMerge(D3DTTFF_DISABLE_end, spv::SelectionControlMaskNone);
+      m_module.opBranchConditional(D3DTTFF_DISABLE_condition, D3DTTFF_DISABLE_true, D3DTTFF_DISABLE_false);
+      m_module.opLabel(D3DTTFF_DISABLE_false);
+      m_module.opBranch(D3DTTFF_DISABLE_end);
+      m_module.opLabel(D3DTTFF_DISABLE_true);
+      m_module.opBranch(D3DTTFF_DISABLE_end);
+      m_module.opLabel(D3DTTFF_DISABLE_end);
+
+      std::array<SpirvPhiLabel, 2> transformedLabels = {
+        SpirvPhiLabel{ D3DTTFF_transformed, D3DTTFF_DISABLE_false },
+        SpirvPhiLabel{ transformed, D3DTTFF_DISABLE_true },
+      };
+
+      transformed = m_module.opPhi(m_vec4Type,
+        transformedLabels.size(),
+        transformedLabels.data());
 
       m_module.opStore(m_vs.out.TEXCOORD[i], transformed);
+
     }
 
     if (m_vsKey.Data.Contents.UseLighting) {
@@ -1497,6 +1847,11 @@ namespace dxvk {
       m_floatType, // Material Power
 
       m_floatType, // Tween Factor
+
+      m_uint32Type, // Transform Flags
+      m_uint32Type, // Texcoord Flags
+      m_uint32Type, // Texcoord Indices
+      m_uint32Type, // Texcoord DeclMask
     };
 
     const uint32_t structType =
@@ -1533,6 +1888,15 @@ namespace dxvk {
 
     m_module.memberDecorateOffset(structType, uint32_t(D3D9FFVSMembers::TweenFactor), offset);
     offset += sizeof(float);
+
+    m_module.memberDecorateOffset(structType, uint32_t(D3D9FFVSMembers::TransformFlags), offset);
+    offset += sizeof(uint32_t);
+    m_module.memberDecorateOffset(structType, uint32_t(D3D9FFVSMembers::TexcoordFlags), offset);
+    offset += sizeof(uint32_t);
+    m_module.memberDecorateOffset(structType, uint32_t(D3D9FFVSMembers::TexcoordIndices), offset);
+    offset += sizeof(uint32_t);
+    m_module.memberDecorateOffset(structType, uint32_t(D3D9FFVSMembers::TexcoordDeclMask), offset);
+    offset += sizeof(uint32_t);
 
     m_module.setDebugName(structType, "D3D9FixedFunctionVS");
     uint32_t member = 0;
@@ -1571,6 +1935,11 @@ namespace dxvk {
     m_module.setDebugMemberName(structType, member++, "Material_Power");
 
     m_module.setDebugMemberName(structType, member++, "TweenFactor");
+
+    m_module.setDebugMemberName(structType, member++, "TransformFlags");
+    m_module.setDebugMemberName(structType, member++, "TexcoordFlags");
+    m_module.setDebugMemberName(structType, member++, "TexcoordIndices");
+    m_module.setDebugMemberName(structType, member++, "TexcoordDeclMask");
 
     m_vs.constantBuffer = m_module.newVar(
       m_module.defPointerType(structType, spv::StorageClassUniform),
@@ -1675,6 +2044,11 @@ namespace dxvk {
     m_vs.constants.materialEmissive = LoadConstant(m_vec4Type,  uint32_t(D3D9FFVSMembers::MaterialEmissive));
     m_vs.constants.materialPower    = LoadConstant(m_floatType, uint32_t(D3D9FFVSMembers::MaterialPower));
     m_vs.constants.tweenFactor      = LoadConstant(m_floatType, uint32_t(D3D9FFVSMembers::TweenFactor));
+
+    m_vs.constants.transformFlags   = LoadConstant(m_uint32Type, uint32_t(D3D9FFVSMembers::TransformFlags));
+    m_vs.constants.texcoordFlags    = LoadConstant(m_uint32Type, uint32_t(D3D9FFVSMembers::TexcoordFlags));
+    m_vs.constants.texcoordIndices  = LoadConstant(m_uint32Type, uint32_t(D3D9FFVSMembers::TexcoordIndices));
+    m_vs.constants.texcoordDeclMask = LoadConstant(m_uint32Type, uint32_t(D3D9FFVSMembers::TexcoordDeclMask));
 
     // Do IO
     m_vs.in.POSITION  = declareIO(true, DxsoSemantic{ DxsoUsage::Position, 0 });
