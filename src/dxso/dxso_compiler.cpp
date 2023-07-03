@@ -2929,6 +2929,12 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         fetch4,
         imageOperands);
 
+      // [D3D8] Emulate hardware shadow filtering for 2D depth texture lookups.
+      if (depth && m_moduleInfo.options.shadowFilter && samplerType == SamplerTypeTexture2D) {
+        const uint32_t sampledImage = m_module.opLoad(sampler.typeId, sampler.varId);
+        result.id = DoFixedFunctionShadowFilter(m_module, result.id, sampledImage, texcoordVar.id, reference, imageOperands);
+      }
+
       // If we are sampling depth we've already specc'ed this!
       // This path is always size 4 because it only hits on color.
       if (isNull != 0) {

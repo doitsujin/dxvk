@@ -337,6 +337,49 @@ namespace dxvk {
     spvModule.opLabel(atestSkipLabel);
   }
 
+  uint32_t DoFixedFunctionShadowFilter(
+      SpirvModule&            module,
+      uint32_t                inSample,
+      uint32_t                sampledImage,
+      uint32_t                coordinates,
+      uint32_t                reference,
+  const SpirvImageOperands&   operands) {
+
+    SpirvImageOperands imageOperands = operands;
+    imageOperands.flags             |= spv::ImageOperandsConstOffsetMask;
+
+    uint32_t f32  = module.defFloatType(32);
+    uint32_t vec4 = module.defVectorType(f32, 4);
+    uint32_t val  = module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
+
+    uint32_t index = 0;
+    auto Tap = [&](int du, int dv) {
+      imageOperands.sConstOffset = module.constvec4i32(du, dv, 0, 0);
+      uint32_t sample            = module.opImageSampleDrefImplicitLod(f32, sampledImage, coordinates, reference, imageOperands);
+      val                        = module.opCompositeInsert(vec4, sample, val, 1, &index);
+      
+      if (index < 3) index++; else index = 0;
+    };
+
+    Tap(0, 1);
+    Tap(-1, 0);
+    Tap(1, 0);
+    Tap(0, -1);
+
+    uint32_t denom = inSample == 0
+                   ? module.constvec4f32(0.25, 0.25, 0.25, 0.25)
+                   : module.constvec4f32(0.20, 0.20, 0.20, 0.20);
+
+    // Average the 4 samples together
+    val = module.opDot(f32, val, denom);
+
+    // Average the 4 samples with the center sample, if any
+    if (inSample != 0) {
+      val = module.opFFma(f32, inSample, module.constf32(0.20), val);
+    }
+
+    return val;
+  }
 
   uint32_t SetupRenderStateBlock(SpirvModule& spvModule, uint32_t count) {
     uint32_t floatType = spvModule.defFloatType(32);
