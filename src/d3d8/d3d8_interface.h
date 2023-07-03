@@ -148,7 +148,7 @@ namespace dxvk {
         IDirect3DDevice8** ppReturnedDeviceInterface);
 
 
-    //Rc<DxvkInstance> GetInstance() { return m_instance; }
+    const D3D8Options& GetOptions() { return m_d3d8Options; }
 
   private:
 

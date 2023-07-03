@@ -39,6 +39,7 @@ namespace dxvk {
     DWORD                         BehaviorFlags,
     D3DPRESENT_PARAMETERS*        pParams)
     : D3D8DeviceBase(std::move(pDevice))
+    , m_d3d8Options(pParent->GetOptions())
     , m_parent(pParent)
     , m_presentParams(*pParams)
     , m_deviceType(DeviceType)
