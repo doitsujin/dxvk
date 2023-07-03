@@ -168,7 +168,6 @@ namespace dxvk {
       case D3DRS_LINEPATTERN: {
         [[maybe_unused]]
         D3DLINEPATTERN pattern = bit::cast<D3DLINEPATTERN>(Value);
-        m_bridge->RenderStateNotSupported(D3DRS_LINEPATTERN);
         stateChange = false;
       } break;
 
@@ -200,7 +199,6 @@ namespace dxvk {
 
       // TODO: D3DRS_PATCHSEGMENTS
       case D3DRS_PATCHSEGMENTS:
-        m_bridge->RenderStateNotSupported(D3DRS_PATCHSEGMENTS);
         stateChange = false;
         break;
     }
