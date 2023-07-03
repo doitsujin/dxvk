@@ -54,6 +54,10 @@ namespace dxvk {
     bool    shadowFilter;
   };
 
+  constexpr float GetDrefScaleFactor(int32_t bitDepth) {
+    return 1.0f / (float(1 << bitDepth) - 1.0f);
+  }
+
   // Returns new oFog if VS
   // Returns new oColor if PS
   uint32_t DoFixedFunctionFog(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, const D3D9FogContext& fogCtx);
