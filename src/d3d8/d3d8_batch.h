@@ -3,7 +3,6 @@
 #include "d3d8_include.h"
 #include "d3d8_buffer.h"
 #include "d3d8_format.h"
-#include "../d3d9/d3d9_bridge.h"
 
 #include <vector>
 #include <cstdint>
@@ -86,9 +85,8 @@ namespace dxvk {
     };
 
   public:
-    D3D8Batcher(D3D9Bridge* bridge, D3D8DeviceEx* pDevice8, Com<d3d9::IDirect3DDevice9>&& pDevice9)
-      : m_bridge(bridge)
-      , m_device8(pDevice8)
+    D3D8Batcher(D3D8DeviceEx* pDevice8, Com<d3d9::IDirect3DDevice9>&& pDevice9)
+      : m_device8(pDevice8)
       , m_device(std::move(pDevice9)) {
     }
 
@@ -105,7 +103,7 @@ namespace dxvk {
           continue;
 
         //m_largestBatch = std::max(m_largestBatch, draw.DrawCallCount);
-        m_bridge->AddBatchCalls(draw.DrawCallCount);
+        //m_bridge->AddBatchCalls(draw.DrawCallCount);
 
         for (auto& index : draw.Indices)
           index -= draw.MinVertex;
@@ -236,7 +234,6 @@ namespace dxvk {
     }
 
   private:
-    D3D9Bridge*                     m_bridge;
     D3D8DeviceEx*                   m_device8;
     Com<d3d9::IDirect3DDevice9>     m_device;
 
