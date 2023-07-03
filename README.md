@@ -1,15 +1,3 @@
-# D8VK
-
-An implementation of Direct3D 8 for DXVK.
-
-D8VK Documentation:
-  - [Wiki](https://github.com/AlpyneDreams/d8vk/wiki)
-  - [Installation](https://github.com/AlpyneDreams/d8vk/wiki/Installation)
-  - [List of D3D8 Samples](https://github.com/AlpyneDreams/d8vk/wiki/D3D8-Samples)
-  - [Building & Debugging](https://github.com/AlpyneDreams/d8vk/wiki/Building-&-Debugging)
-
----
-
 # DXVK
 
 A Vulkan-based translation layer for Direct3D 8/9/10/11 which allows running 3D applications on Linux using Wine.
