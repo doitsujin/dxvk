@@ -177,6 +177,7 @@ namespace dxvk {
         uint32_t     Projected    : 1;
 
         uint32_t     ProjectedCount : 3;
+        uint32_t     SampleDref     : 1;
 
         uint32_t     TextureBound : 1;
 
