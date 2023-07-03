@@ -12,7 +12,7 @@ namespace dxvk
     d3d9::Direct3DCreate9Ex(D3D_SDK_VERSION, &m_d3d9ex);
 
     // Get the bridge interface to D3D9.
-    if (FAILED(GetD3D9()->QueryInterface(__uuidof(IDxvkD3D8InterfaceBridge), (void**)&m_bridge))) {
+    if (FAILED(m_d3d9ex->QueryInterface(__uuidof(IDxvkD3D8InterfaceBridge), (void**)&m_bridge))) {
       throw DxvkError("D3D8DeviceEx: ERROR! Failed to get D3D9 Bridge. d3d9.dll might not be DXVK!");
     }
 
