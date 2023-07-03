@@ -1041,15 +1041,9 @@ namespace dxvk {
     }} },
     /* Supreme Ruler 2010                        *
      * Needs the same workaround as SR2020 to    *
-     * fix flickering on text + no explicit      *
-     * front buffer to fix flickering in general */
+     * fix flickering on UI text                 */
     { R"(\\SupremeRuler\.exe$)", {{
-      { "d3d9.noExplicitFrontBuffer",       "True" },
       { "d3d8.managedBufferPlacement",     "21600" },
-    }} },
-    /* Zwei: The Ilvard Insurrection             */
-    { R"(\\ZWEI2P\.exe$)", {{
-      { "d3d9.noExplicitFrontBuffer",       "True" },
     }} },
     /* Need for Speed III: Hot Pursuit           *
        (with the "Modern Patch")                 */
