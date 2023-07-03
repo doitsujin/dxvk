@@ -1014,7 +1014,7 @@ namespace dxvk {
     }} },
     /* Motor City Online                         */
     { R"(\\MCity_d\.exe$)", {{
-      { "d3d9.apitraceMode",                "True" },
+      { "d3d9.cachedDynamicBuffers",        "True" },
       { "d3d8.managedBufferPlacement",     "False" },
       { "d3d8.batching",                    "True" },
     }} },
@@ -1055,7 +1055,7 @@ namespace dxvk {
        (with the "Modern Patch")                 */
     { R"(\\nfs3\.exe$)", {{
       { "d3d9.enableDialogMode",            "True" },
-      { "d3d9.apitraceMode",                "True" },
+      { "d3d9.cachedDynamicBuffers",        "True" },
       { "d3d8.managedBufferPlacement",     "False" },
       { "d3d8.batching",                    "True" },
     }} },
@@ -1065,6 +1065,7 @@ namespace dxvk {
        without a memory limit in place            */
     { R"(\\nfs4\.exe$)", {{
       { "d3d9.enableDialogMode",            "True" },
+      { "d3d9.cachedDynamicBuffers",        "True" },
       { "d3d9.memoryTrackTest",             "True" },
       { "d3d9.maxAvailableMemory",           "256" },
       { "d3d8.managedBufferPlacement",     "False" },
@@ -1072,8 +1073,8 @@ namespace dxvk {
     }} },
     /* Project I.G.I. 2: Covert Strike            */
     { R"(\\igi2\.exe$)", {{
-      { "d3d9.managedBufferPlacement",     "False" },
-      { "d3d9.apitraceMode",                "True" },
+      { "d3d8.managedBufferPlacement",     "False" },
+      { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
     /* Treasure Planet: Battle at Procyon        *
      * Declares v5 as color but shader uses v6   */
