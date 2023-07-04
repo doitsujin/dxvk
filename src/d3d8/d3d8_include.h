@@ -127,18 +127,8 @@ namespace d3d9 {
 #include "../util/log/log.h"
 #include "../util/log/log_debug.h"
 
-#include "../util/rc/util_rc.h"
-#include "../util/rc/util_rc_ptr.h"
-
-#include "../util/sync/sync_recursive.h"
-
-#include "../util/util_env.h"
-#include "../util/util_enum.h"
 #include "../util/util_error.h"
-#include "../util/util_flags.h"
 #include "../util/util_likely.h"
-#include "../util/util_math.h"
-#include "../util/util_misc.h"
 #include "../util/util_string.h"
 
 // Missed definitions in Wine/MinGW.
