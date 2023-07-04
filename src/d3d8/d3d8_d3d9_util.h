@@ -41,12 +41,44 @@ namespace dxvk {
     // should be aligned
     std::memcpy(pCaps8, &caps9, sizeof(D3DCAPS8));
 
-    // Max supported shader model is 1.4
-    pCaps8->VertexShaderVersion = D3DVS_VERSION(1, 4);
+    // Max supported shader model is PS 1.4 and VS 1.1
+    pCaps8->VertexShaderVersion = D3DVS_VERSION(1, 1);
     pCaps8->PixelShaderVersion  = D3DPS_VERSION(1, 4);
 
     // This was removed by D3D9. We can probably render windowed.
-    pCaps8->Caps2 |= D3DCAPS2_CANRENDERWINDOWED;
+    pCaps8->Caps2       |= D3DCAPS2_CANRENDERWINDOWED;
+
+    // Replaced by D3DPRASTERCAPS_DEPTHBIAS in D3D9
+    pCaps8->RasterCaps  |= D3DPRASTERCAPS_ZBIAS;
+
+
+    // Remove D3D9-specific caps:
+    pCaps8->Caps2             &= ~D3DCAPS2_CANAUTOGENMIPMAP;
+
+    pCaps8->Caps3             &= ~D3DCAPS3_LINEAR_TO_SRGB_PRESENTATION
+                               & ~D3DCAPS3_COPY_TO_VIDMEM
+                               & ~D3DCAPS3_COPY_TO_SYSTEMMEM;
+
+    pCaps8->PrimitiveMiscCaps &= ~D3DPMISCCAPS_INDEPENDENTWRITEMASKS
+                               & ~D3DPMISCCAPS_PERSTAGECONSTANT
+                               & ~D3DPMISCCAPS_FOGANDSPECULARALPHA
+                               & ~D3DPMISCCAPS_SEPARATEALPHABLEND
+                               & ~D3DPMISCCAPS_MRTINDEPENDENTBITDEPTHS
+                               & ~D3DPMISCCAPS_MRTPOSTPIXELSHADERBLENDING
+                               & ~D3DPMISCCAPS_FOGVERTEXCLAMPED
+                               & ~D3DPMISCCAPS_POSTBLENDSRGBCONVERT;
+
+    pCaps8->RasterCaps        &= ~D3DPRASTERCAPS_SCISSORTEST
+                               & ~D3DPRASTERCAPS_SLOPESCALEDEPTHBIAS
+                               & ~D3DPRASTERCAPS_DEPTHBIAS
+                               & ~D3DPRASTERCAPS_MULTISAMPLE_TOGGLE;
+
+    pCaps8->SrcBlendCaps      &= ~D3DPBLENDCAPS_INVSRCCOLOR2
+                               & ~D3DPBLENDCAPS_SRCCOLOR2;
+
+    pCaps8->LineCaps          &= ~D3DLINECAPS_ANTIALIAS;
+
+    pCaps8->StencilCaps       &= ~D3DSTENCILCAPS_TWOSIDED;
   }
 
   // (9<-8) D3DD3DPRESENT_PARAMETERS: Returns D3D9's params given an input for D3D8
