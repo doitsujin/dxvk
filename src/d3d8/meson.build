@@ -21,7 +21,7 @@ if platform != 'windows'
 endif
 
 d3d8_dll = shared_library('d3d8'+dll_ext, d3d8_src, d3d8_res,
-  name_prefix         : '',
+  name_prefix         : dxvk_name_prefix,
   dependencies        : [ lib_d3d9, util_dep, dxso_dep, dxvk_dep ],
   include_directories : dxvk_include_path,
   install             : true,
