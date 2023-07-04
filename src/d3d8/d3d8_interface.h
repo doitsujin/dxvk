@@ -15,7 +15,7 @@ namespace dxvk {
   * which provides the way to get adapters and create other objects such as \ref IDirect3DDevice8.
   * similar to \ref DxgiFactory but for D3D8.
   */
-  class D3D8InterfaceEx final : public ComObjectClamp<IDirect3D8> {
+  class D3D8Interface final : public ComObjectClamp<IDirect3D8> {
 
     static constexpr d3d9::D3DFORMAT ADAPTER_FORMATS[] = {
       d3d9::D3DFMT_A1R5G5B5,
@@ -27,7 +27,7 @@ namespace dxvk {
     };
 
   public:
-    D3D8InterfaceEx();
+    D3D8Interface();
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 

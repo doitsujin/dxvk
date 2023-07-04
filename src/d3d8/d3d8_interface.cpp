@@ -7,7 +7,7 @@
 
 namespace dxvk
 {
-  D3D8InterfaceEx::D3D8InterfaceEx() {
+  D3D8Interface::D3D8Interface() {
 
     d3d9::Direct3DCreate9Ex(D3D_SDK_VERSION, &m_d3d9ex);
 
@@ -41,7 +41,7 @@ namespace dxvk
     }
   }
 
-  HRESULT STDMETHODCALLTYPE D3D8InterfaceEx::QueryInterface(REFIID riid, void** ppvObject) {
+  HRESULT STDMETHODCALLTYPE D3D8Interface::QueryInterface(REFIID riid, void** ppvObject) {
     if (ppvObject == nullptr)
       return E_POINTER;
 
@@ -53,12 +53,12 @@ namespace dxvk
       return S_OK;
     }
 
-    Logger::warn("D3D8InterfaceEx::QueryInterface: Unknown interface query");
+    Logger::warn("D3D8Interface::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
 
-  HRESULT STDMETHODCALLTYPE D3D8InterfaceEx::GetAdapterIdentifier(
+  HRESULT STDMETHODCALLTYPE D3D8Interface::GetAdapterIdentifier(
           UINT Adapter,
           DWORD Flags,
           D3DADAPTER_IDENTIFIER8* pIdentifier) {
@@ -88,7 +88,7 @@ namespace dxvk
     return res;
   }
 
-  HRESULT __stdcall D3D8InterfaceEx::EnumAdapterModes(
+  HRESULT __stdcall D3D8Interface::EnumAdapterModes(
           UINT Adapter,
           UINT Mode,
           D3DDISPLAYMODE* pMode) {
@@ -104,7 +104,7 @@ namespace dxvk
     return D3D_OK;
   }
 
-  HRESULT __stdcall D3D8InterfaceEx::CreateDevice(
+  HRESULT __stdcall D3D8Interface::CreateDevice(
         UINT Adapter,
         D3DDEVTYPE DeviceType,
         HWND hFocusWindow,

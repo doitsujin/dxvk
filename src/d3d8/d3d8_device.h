@@ -18,7 +18,7 @@
 
 namespace dxvk {
 
-  class D3D8InterfaceEx;
+  class D3D8Interface;
 
   struct D3D8VertexShaderInfo;
 
@@ -29,7 +29,7 @@ namespace dxvk {
   public:
 
     D3D8DeviceEx(
-      D3D8InterfaceEx*              pParent,
+      D3D8Interface*                pParent,
       Com<d3d9::IDirect3DDevice9>&& pDevice,
       D3DDEVTYPE                    DeviceType,
       HWND                          hFocusWindow,
@@ -954,7 +954,7 @@ namespace dxvk {
     Com<IDxvkD3D8Bridge>  m_bridge;
     const D3D8Options&    m_d3d8Options;
 
-    Com<D3D8InterfaceEx>  m_parent;
+    Com<D3D8Interface>    m_parent;
 
     D3DPRESENT_PARAMETERS m_presentParams;
 

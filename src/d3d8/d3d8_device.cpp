@@ -32,7 +32,7 @@ namespace dxvk {
   };
 
   D3D8DeviceEx::D3D8DeviceEx(
-    D3D8InterfaceEx*              pParent,
+    D3D8Interface*                pParent,
     Com<d3d9::IDirect3DDevice9>&& pDevice,
     D3DDEVTYPE                    DeviceType,
     HWND                          hFocusWindow,

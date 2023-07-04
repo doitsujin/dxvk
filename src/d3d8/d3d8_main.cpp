@@ -7,7 +7,7 @@ namespace dxvk {
     if (!ppDirect3D8)
       return D3DERR_INVALIDCALL;
 
-    *ppDirect3D8 = ref(new D3D8InterfaceEx());
+    *ppDirect3D8 = ref(new D3D8Interface());
     return D3D_OK;
   }
 }
