@@ -9,16 +9,16 @@ namespace dxvk
 {
   D3D8Interface::D3D8Interface() {
 
-    d3d9::Direct3DCreate9Ex(D3D_SDK_VERSION, &m_d3d9ex);
+    m_d3d9 = d3d9::Direct3DCreate9(D3D_SDK_VERSION);
 
     // Get the bridge interface to D3D9.
-    if (FAILED(m_d3d9ex->QueryInterface(__uuidof(IDxvkD3D8InterfaceBridge), (void**)&m_bridge))) {
+    if (FAILED(m_d3d9->QueryInterface(__uuidof(IDxvkD3D8InterfaceBridge), (void**)&m_bridge))) {
       throw DxvkError("D3D8Device: ERROR! Failed to get D3D9 Bridge. d3d9.dll might not be DXVK!");
     }
 
     m_d3d8Options = D3D8Options(*m_bridge->GetConfig());
 
-    m_adapterCount = m_d3d9ex->GetAdapterCount();
+    m_adapterCount = m_d3d9->GetAdapterCount();
     m_adapterModeCounts.resize(m_adapterCount);
     m_adapterModes.reserve(m_adapterCount);
 
@@ -28,11 +28,11 @@ namespace dxvk
       // cache adapter modes and mode counts for each d3d9 format
       for (d3d9::D3DFORMAT fmt : ADAPTER_FORMATS) {
 
-        const UINT modeCount = m_d3d9ex->GetAdapterModeCount(adapter, fmt);
+        const UINT modeCount = m_d3d9->GetAdapterModeCount(adapter, fmt);
         for (UINT mode = 0; mode < modeCount; mode++) {
 
           m_adapterModes[adapter].emplace_back();
-          m_d3d9ex->EnumAdapterModes(adapter, fmt, mode, &(m_adapterModes[adapter].back()));
+          m_d3d9->EnumAdapterModes(adapter, fmt, mode, &(m_adapterModes[adapter].back()));
 
           // can't use modeCount as it's only for one fmt
           m_adapterModeCounts[adapter]++;
@@ -71,7 +71,7 @@ namespace dxvk
       Flags |= D3DENUM_WHQL_LEVEL;
 
     d3d9::D3DADAPTER_IDENTIFIER9 identifier9;
-    HRESULT res = m_d3d9ex->GetAdapterIdentifier(Adapter, Flags, &identifier9);
+    HRESULT res = m_d3d9->GetAdapterIdentifier(Adapter, Flags, &identifier9);
 
     strncpy(pIdentifier->Driver, identifier9.Driver, MAX_DEVICE_IDENTIFIER_STRING);
     strncpy(pIdentifier->Description, identifier9.Description, MAX_DEVICE_IDENTIFIER_STRING);
@@ -114,7 +114,7 @@ namespace dxvk
 
     Com<d3d9::IDirect3DDevice9> pDevice9 = nullptr;
     d3d9::D3DPRESENT_PARAMETERS params = ConvertPresentParameters9(pPresentationParameters);
-    HRESULT res = m_d3d9ex->CreateDevice(
+    HRESULT res = m_d3d9->CreateDevice(
       Adapter,
       (d3d9::D3DDEVTYPE)DeviceType,
       hFocusWindow,
