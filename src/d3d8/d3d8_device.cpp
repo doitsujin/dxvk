@@ -1073,8 +1073,6 @@ namespace dxvk {
     return GetD3D9()->ValidateDevice(pNumPasses);
   }
 
-  HRESULT STDMETHODCALLTYPE D3D8Device::GetInfo(DWORD DevInfoID, void* pDevInfoStruct, DWORD DevInfoStructSize);
-
   HRESULT STDMETHODCALLTYPE D3D8Device::SetPaletteEntries(UINT PaletteNumber, const PALETTEENTRY* pEntries) {
     StateChange();
     return GetD3D9()->SetPaletteEntries(PaletteNumber, pEntries);
