@@ -8,10 +8,6 @@
 #endif
 
 #include <stdint.h>
-
-// Used for some refcounted COM objects that need to be released.
-#define SAFE_RELEASE(p)   { if (p) { (p)->Release(); (p) = nullptr; } }
-
 #include <d3d8.h>
 
 // Declare __uuidof for D3D8 interfaces
@@ -43,20 +39,20 @@ interface DECLSPEC_UUID("3EE5B968-2ACA-4C34-8BB5-7E0C3D19B750") IDirect3DCubeTex
 interface DECLSPEC_UUID("4B8AAAFA-140F-42BA-9131-597EAFAA2EAD") IDirect3DVolumeTexture8;
 #endif
 
-// Undefine D3D8 macros //
+// Undefine D3D8 macros
 #undef DIRECT3D_VERSION
 #undef D3D_SDK_VERSION
 
-#undef D3DCS_ALL            // parentheses added in DX9
-#undef D3DFVF_POSITION_MASK // changed from 0x00E to 0x400E in DX9
+#undef D3DCS_ALL            // parentheses added in D3D9
+#undef D3DFVF_POSITION_MASK // changed from 0x00E to 0x400E in D3D9
 #undef D3DFVF_RESERVED2     // reduced from 4 to 2 in DX9
 
-#undef D3DSP_REGNUM_MASK    // changed from 0x00000FFF to 0x000007FF in DX9
+#undef D3DSP_REGNUM_MASK    // changed from 0x00000FFF to 0x000007FF in D3D9
 
 
 #if defined(__MINGW32__) || defined(__GNUC__)
 
-// Avoid redundant definitions (add D3D*_DEFINED macros here) //
+// Avoid redundant definitions (add D3D*_DEFINED macros here)
 #define D3DRECT_DEFINED
 #define D3DMATRIX_DEFINED
 
@@ -212,11 +208,7 @@ namespace d3d9 {
 #endif
 
 #ifndef D3DDEVINFOID_VERTEXSTATS
-#define D3DDEVINFOID_VERTEXSTATS        6			// Aka D3DDEVINFOID_D3DVERTEXSTATS
-#endif
-
-#ifndef __WINE__
-extern "C" WINUSERAPI WINBOOL WINAPI SetProcessDPIAware(VOID);
+#define D3DDEVINFOID_VERTEXSTATS        6   // Aka D3DDEVINFOID_D3DVERTEXSTATS
 #endif
 
 #else // _MSC_VER
@@ -226,8 +218,3 @@ extern "C" WINUSERAPI WINBOOL WINAPI SetProcessDPIAware(VOID);
 #define D3DVSDE_REGISTER DWORD
 
 #endif
-
-// This is the managed pool on D3D9Ex, it's just hidden!
-#define D3DPOOL_MANAGED_EX D3DPOOL(6)
-
-//using D3D9VertexElements = std::vector<D3DVERTEXELEMENT9>;

@@ -384,8 +384,10 @@ namespace dxvk {
       if (!info)
         return D3DERR_INVALIDCALL;
 
-      SAFE_RELEASE(info->pVertexDecl);
-      SAFE_RELEASE(info->pVertexShader);
+      if (info->pVertexDecl)
+        info->pVertexDecl->Release();
+      if (info->pVertexShader)
+        info->pVertexShader->Release();
 
       info->declaration.clear();
       info->function.clear();
@@ -525,7 +527,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
     }
 
-    SAFE_RELEASE(pPixelShader);
+    pPixelShader->Release();
 
     m_pixelShaders[getShaderIndex(Handle)] = nullptr;
 
