@@ -1036,7 +1036,7 @@ namespace dxvk {
      * This game reads from undeclared vs inputs *
      * but somehow works on native. Let's just   *
      * change its declaration to make them work. */
-    { R"(\\Pure Pinball 2.0 REDUX\.exe$)", {{
+    { R"(\\Pure Pinball 2\.0 REDUX\.exe$)", {{
       { "d3d8.forceVsDecl",  "0:2,4:2,7:4,9:1,8:1" },
     }} },
     /* Supreme Ruler 2010                        *
