@@ -70,7 +70,7 @@ namespace dxvk {
       
       if (m_subresources[Index] == nullptr) {
         try {
-          Com<SubresourceType9> subresource = std::move(LookupSubresource(Index));
+          Com<SubresourceType9> subresource = LookupSubresource(Index);
 
           // Cache the subresource
           m_subresources[Index] = new SubresourceType(this->m_parent, this, std::move(subresource));
