@@ -136,8 +136,8 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D8Device::TestCooperativeLevel() {
-    // Equivelant of D3D11/DXGI present tests. We can always present.
-    return D3D_OK;
+    // Equivalent of D3D11/DXGI present tests.
+    return GetD3D9()->TestCooperativeLevel();
   }
 
   UINT STDMETHODCALLTYPE D3D8Device::GetAvailableTextureMem() {
