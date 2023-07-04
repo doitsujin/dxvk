@@ -103,7 +103,7 @@ namespace dxvk {
    *     │ SCRATCH    │  -                        │  -        │  -                    │ -        │
    *     └────────────┴───────────────────────────┴───────────┴───────────────────────┴──────────┘
    */
-  HRESULT STDMETHODCALLTYPE D3D8DeviceEx::CopyRects(
+  HRESULT STDMETHODCALLTYPE D3D8Device::CopyRects(
           IDirect3DSurface8*  pSourceSurface,
     const RECT*               pSourceRectsArray,
           UINT                cRects,

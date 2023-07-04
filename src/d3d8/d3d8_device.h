@@ -23,12 +23,12 @@ namespace dxvk {
   struct D3D8VertexShaderInfo;
 
   using D3D8DeviceBase = D3D8WrappedObject<d3d9::IDirect3DDevice9, IDirect3DDevice8>;
-  class D3D8DeviceEx final : public D3D8DeviceBase {
+  class D3D8Device final : public D3D8DeviceBase {
 
     friend class D3D8StateBlock;
   public:
 
-    D3D8DeviceEx(
+    D3D8Device(
       D3D8Interface*                pParent,
       Com<d3d9::IDirect3DDevice9>&& pDevice,
       D3DDEVTYPE                    DeviceType,
@@ -36,7 +36,7 @@ namespace dxvk {
       DWORD                         BehaviorFlags,
       D3DPRESENT_PARAMETERS*        pParams);
 
-    ~D3D8DeviceEx();
+    ~D3D8Device();
       
     HRESULT STDMETHODCALLTYPE TestCooperativeLevel();
 
@@ -946,8 +946,8 @@ namespace dxvk {
       m_depthStencil = m_autoDepthStencil;
     }
 
-    friend d3d9::IDirect3DPixelShader9* getPixelShaderPtr(D3D8DeviceEx* device, DWORD Handle);
-    friend D3D8VertexShaderInfo*        getVertexShaderInfo(D3D8DeviceEx* device, DWORD Handle);
+    friend d3d9::IDirect3DPixelShader9* getPixelShaderPtr(D3D8Device* device, DWORD Handle);
+    friend D3D8VertexShaderInfo*        getVertexShaderInfo(D3D8Device* device, DWORD Handle);
 
   private:
 

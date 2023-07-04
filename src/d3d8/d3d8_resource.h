@@ -18,7 +18,7 @@ namespace dxvk {
 
   public:
 
-    D3D8Resource(D3D8DeviceEx* pDevice, Com<D3D9>&& Object)
+    D3D8Resource(D3D8Device* pDevice, Com<D3D9>&& Object)
       : D3D8DeviceChild<D3D9, D3D8>(pDevice, std::move(Object))
       , m_priority                 ( 0 ) { }
 

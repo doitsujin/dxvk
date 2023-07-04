@@ -20,7 +20,7 @@ namespace dxvk {
   class D3D8BatchBuffer final : public D3D8VertexBuffer {
   public:
     D3D8BatchBuffer(
-        D3D8DeviceEx*                       pDevice,
+        D3D8Device*                         pDevice,
         D3DPOOL                             Pool,
         DWORD                               Usage,
         UINT                                Length,
@@ -85,7 +85,7 @@ namespace dxvk {
     };
 
   public:
-    D3D8Batcher(D3D8DeviceEx* pDevice8, Com<d3d9::IDirect3DDevice9>&& pDevice9)
+    D3D8Batcher(D3D8Device* pDevice8, Com<d3d9::IDirect3DDevice9>&& pDevice9)
       : m_device8(pDevice8)
       , m_device(std::move(pDevice9)) {
     }
@@ -234,7 +234,7 @@ namespace dxvk {
     }
 
   private:
-    D3D8DeviceEx*                   m_device8;
+    D3D8Device*                     m_device8;
     Com<d3d9::IDirect3DDevice9>     m_device;
 
     D3D8BatchBuffer*                m_stream = nullptr;

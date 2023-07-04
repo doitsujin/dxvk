@@ -12,7 +12,7 @@ namespace dxvk {
   public:
 
     D3D8SwapChain(
-      D3D8DeviceEx* pDevice,
+      D3D8Device*                      pDevice,
       Com<d3d9::IDirect3DSwapChain9>&& pSwapChain)
       : D3D8SwapChainBase(pDevice, std::move(pSwapChain)) {}
 
@@ -21,7 +21,7 @@ namespace dxvk {
     }
     
     HRESULT STDMETHODCALLTYPE GetBackBuffer(UINT BackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface8** ppBackBuffer) final {
-      // Same logic as in D3D8DeviceEx::GetBackBuffer
+      // Same logic as in D3D8Device::GetBackBuffer
       if (unlikely(m_backBuffer == nullptr)) {
         Com<d3d9::IDirect3DSurface9> pSurface9;
         HRESULT res = GetD3D9()->GetBackBuffer(BackBuffer, (d3d9::D3DBACKBUFFER_TYPE)Type, &pSurface9);

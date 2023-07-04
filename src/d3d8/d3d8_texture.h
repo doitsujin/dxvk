@@ -22,7 +22,7 @@ namespace dxvk {
     using SubresourceType9 = typename SubresourceType::D3D9;
 
     D3D8BaseTexture(
-            D3D8DeviceEx*                       pDevice,
+            D3D8Device*                         pDevice,
             Com<D3D9>&&                         pBaseTexture,
             UINT                                SubresourceCount)
         : D3D8Resource<D3D9, D3D8> ( pDevice, std::move(pBaseTexture) ) {
@@ -110,7 +110,7 @@ namespace dxvk {
   public:
 
     D3D8Texture2D(
-            D3D8DeviceEx*                  pDevice,
+            D3D8Device*                    pDevice,
             Com<d3d9::IDirect3DTexture9>&& pTexture)
       : D3D8Texture2DBase(pDevice, std::move(pTexture), pTexture->GetLevelCount()) {
     }
@@ -148,7 +148,7 @@ namespace dxvk {
   public:
 
     D3D8Texture3D(
-          D3D8DeviceEx*                         pDevice,
+          D3D8Device*                           pDevice,
           Com<d3d9::IDirect3DVolumeTexture9>&&  pVolumeTexture)
       : D3D8Texture3DBase(pDevice, std::move(pVolumeTexture), pVolumeTexture->GetLevelCount()) {}
 
@@ -190,7 +190,7 @@ namespace dxvk {
   public:
 
     D3D8TextureCube(
-            D3D8DeviceEx*                       pDevice,
+            D3D8Device*                         pDevice,
             Com<d3d9::IDirect3DCubeTexture9>&&  pTexture)
       : D3D8TextureCubeBase(pDevice, std::move(pTexture), pTexture->GetLevelCount() * CUBE_FACES) {
     }

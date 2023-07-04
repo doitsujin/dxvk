@@ -33,8 +33,8 @@ namespace dxvk {
   public:
 
     D3D8StateBlock(
-            D3D8DeviceEx* pDevice,
-            D3DSTATEBLOCKTYPE Type,
+            D3D8Device*                       pDevice,
+            D3DSTATEBLOCKTYPE                 Type,
             Com<d3d9::IDirect3DStateBlock9>&& pStateBlock)
       : m_device(pDevice)
       , m_stateBlock(std::move(pStateBlock))
@@ -63,7 +63,7 @@ namespace dxvk {
     ~D3D8StateBlock() {}
 
     // Construct a state block without a D3D9 object
-    D3D8StateBlock(D3D8DeviceEx* pDevice)
+    D3D8StateBlock(D3D8Device* pDevice)
       : D3D8StateBlock(pDevice, D3DSTATEBLOCKTYPE(0), nullptr) {
     }
 
@@ -112,7 +112,7 @@ namespace dxvk {
     }
 
   private:
-    D3D8DeviceEx*                   m_device;
+    D3D8Device*                     m_device;
     Com<d3d9::IDirect3DStateBlock9> m_stateBlock;
     D3DSTATEBLOCKTYPE               m_type;
 

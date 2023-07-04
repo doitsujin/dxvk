@@ -11,7 +11,7 @@ namespace dxvk {
   public:
 
     D3D8Volume(
-          D3D8DeviceEx*                 pDevice,
+          D3D8Device*                   pDevice,
           IDirect3DVolumeTexture8*      pTexture,
           Com<d3d9::IDirect3DVolume9>&& pVolume)
       : D3D8VolumeBase(pDevice, std::move(pVolume), pTexture) {}

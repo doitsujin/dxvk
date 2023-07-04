@@ -13,7 +13,7 @@ namespace dxvk
 
     // Get the bridge interface to D3D9.
     if (FAILED(m_d3d9ex->QueryInterface(__uuidof(IDxvkD3D8InterfaceBridge), (void**)&m_bridge))) {
-      throw DxvkError("D3D8DeviceEx: ERROR! Failed to get D3D9 Bridge. d3d9.dll might not be DXVK!");
+      throw DxvkError("D3D8Device: ERROR! Failed to get D3D9 Bridge. d3d9.dll might not be DXVK!");
     }
 
     m_d3d8Options = D3D8Options(*m_bridge->GetConfig());
@@ -127,7 +127,7 @@ namespace dxvk
       return res;
     }
 
-    *ppReturnedDeviceInterface = ref(new D3D8DeviceEx(
+    *ppReturnedDeviceInterface = ref(new D3D8Device(
       this, std::move(pDevice9),
       DeviceType, hFocusWindow, BehaviorFlags,
       pPresentationParameters

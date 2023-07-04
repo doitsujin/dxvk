@@ -10,14 +10,14 @@
 
 namespace dxvk {
 
-  class D3D8DeviceEx;
+  class D3D8Device;
 
   template <typename D3D9, typename D3D8>
   class D3D8DeviceChild : public D3D8WrappedObject<D3D9, D3D8> {
 
   public:
 
-    D3D8DeviceChild(D3D8DeviceEx* pDevice, Com<D3D9>&& Object)
+    D3D8DeviceChild(D3D8Device* pDevice, Com<D3D9>&& Object)
       : D3D8WrappedObject<D3D9, D3D8>(std::move(Object))
       , m_parent( pDevice ) { }
 
@@ -59,13 +59,13 @@ namespace dxvk {
       return reinterpret_cast<IDirect3DDevice8*>(m_parent);
     }
 
-    D3D8DeviceEx* GetParent() {
+    D3D8Device* GetParent() {
       return m_parent;
     }
 
   protected:
 
-    D3D8DeviceEx* m_parent;
+    D3D8Device* m_parent;
 
   };
 

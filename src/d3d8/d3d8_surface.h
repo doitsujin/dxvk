@@ -14,7 +14,7 @@ namespace dxvk {
   public:
 
     D3D8Surface(
-            D3D8DeviceEx*                   pDevice,
+            D3D8Device*                     pDevice,
             IDirect3DBaseTexture8*          pTexture,
             Com<d3d9::IDirect3DSurface9>&&  pSurface)
       : D3D8SurfaceBase (pDevice, std::move(pSurface), pTexture) {
@@ -22,7 +22,7 @@ namespace dxvk {
 
     // A surface does not need to be attached to a texture
     D3D8Surface(
-            D3D8DeviceEx*                   pDevice,
+            D3D8Device*                     pDevice,
             Com<d3d9::IDirect3DSurface9>&&  pSurface)
       : D3D8Surface (pDevice, nullptr, std::move(pSurface)) {
     }

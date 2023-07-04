@@ -11,7 +11,7 @@ namespace dxvk {
   public:
 
     D3D8Buffer(
-            D3D8DeviceEx*   pDevice,
+            D3D8Device*     pDevice,
             Com<D3D9>&&     pBuffer,
             D3DPOOL         Pool,
             DWORD           Usage)
@@ -54,7 +54,7 @@ namespace dxvk {
   public:
 
     D3D8VertexBuffer(
-        D3D8DeviceEx*                       pDevice,
+        D3D8Device*                         pDevice,
         Com<d3d9::IDirect3DVertexBuffer9>&& pBuffer,
         D3DPOOL                             Pool,
         DWORD                               Usage)
@@ -80,7 +80,7 @@ namespace dxvk {
   public:
 
     D3D8IndexBuffer(
-        D3D8DeviceEx*                      pDevice,
+        D3D8Device*                        pDevice,
         Com<d3d9::IDirect3DIndexBuffer9>&& pBuffer,
         D3DPOOL                            Pool,
         DWORD                              Usage)

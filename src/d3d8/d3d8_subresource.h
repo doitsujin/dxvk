@@ -15,7 +15,7 @@ namespace dxvk {
   public:
 
     D3D8Subresource(
-            D3D8DeviceEx*           pDevice,
+            D3D8Device*             pDevice,
             Com<D3D9>&&             Object,
             IDirect3DBaseTexture8*  pBaseTexture)
     : Resource(pDevice, std::move(Object)),
