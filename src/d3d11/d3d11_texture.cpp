@@ -719,7 +719,7 @@ namespace dxvk {
       Logger::warn("D3D11: Failed to write shared resource info for a texture");
     }
 
-    if ((m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED) && hSharedHandle != INVALID_HANDLE_VALUE)
+    if (hSharedHandle != INVALID_HANDLE_VALUE)
       CloseHandle(hSharedHandle);
   }
   
