@@ -48,7 +48,16 @@ namespace dxvk {
     if (hSharedHandle == nullptr)
       hSharedHandle = INVALID_HANDLE_VALUE;
 
-    if (m_desc.MiscFlags & (D3D11_RESOURCE_MISC_SHARED|D3D11_RESOURCE_MISC_SHARED_NTHANDLE)) {
+    const auto sharingFlags = D3D11_RESOURCE_MISC_SHARED|D3D11_RESOURCE_MISC_SHARED_NTHANDLE|D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
+
+    if (m_desc.MiscFlags & sharingFlags) {
+      if (pDevice->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0 ||
+          (m_desc.MiscFlags & (D3D11_RESOURCE_MISC_SHARED|D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX)) == (D3D11_RESOURCE_MISC_SHARED|D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX) ||
+          (m_desc.MiscFlags & sharingFlags) == D3D11_RESOURCE_MISC_SHARED_NTHANDLE)
+        throw DxvkError(str::format("D3D11: Cannot create shared texture:",
+          "\n  MiscFlags:  ", m_desc.MiscFlags,
+          "\n  FeatureLevel:  ", pDevice->GetFeatureLevel()));
+
       if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX)
         Logger::warn("D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX: not supported.");
 
