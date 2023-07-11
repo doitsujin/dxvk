@@ -52,10 +52,8 @@ namespace dxvk {
 
     m_bridge->SetAPIName("D3D8");
 
-    m_textures.fill(nullptr);
-    m_streams.fill(D3D8VBO());
-
     ResetState();
+    RecreateBackBuffersAndAutoDepthStencil();
     
     if (m_d3d8Options.batching)
       m_batcher = new D3D8Batcher(this, GetD3D9());
@@ -212,14 +210,16 @@ namespace dxvk {
     // Resetting implicitly ends scenes started by BeginScene
     GetD3D9()->EndScene();
 
+    m_presentParams = *pPresentationParameters;
+    ResetState();
+
     d3d9::D3DPRESENT_PARAMETERS params = ConvertPresentParameters9(pPresentationParameters);
     HRESULT res = GetD3D9()->Reset(&params);
 
     if (FAILED(res))
       return res;
 
-    m_presentParams = *pPresentationParameters;
-    ResetState();
+    RecreateBackBuffersAndAutoDepthStencil();
 
     return res;
   }
@@ -965,6 +965,7 @@ namespace dxvk {
 
     D3D8StateBlock* block = reinterpret_cast<D3D8StateBlock*>(Token);
     m_stateBlocks.erase(block);
+    delete block;
 
     return D3D_OK;
   }

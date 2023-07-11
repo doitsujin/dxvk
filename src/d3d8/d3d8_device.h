@@ -385,13 +385,17 @@ namespace dxvk {
 
       m_backBuffers.clear();
       m_backBuffers.resize(m_presentParams.BackBufferCount);
+      
+      m_autoDepthStencil = nullptr;
+    }
+
+    inline void RecreateBackBuffersAndAutoDepthStencil() {
       for (UINT i = 0; i < m_presentParams.BackBufferCount; i++) {
         Com<d3d9::IDirect3DSurface9> pSurface9;
         GetD3D9()->GetBackBuffer(0, i, d3d9::D3DBACKBUFFER_TYPE_MONO, &pSurface9);
         m_backBuffers[i] = new D3D8Surface(this, std::move(pSurface9));
       }
-      
-      m_autoDepthStencil = nullptr;
+
       Com<d3d9::IDirect3DSurface9> pStencil9 = nullptr;
       GetD3D9()->GetDepthStencilSurface(&pStencil9);
       m_autoDepthStencil = new D3D8Surface(this, std::move(pStencil9));
