@@ -65,19 +65,9 @@ interface DECLSPEC_UUID("4B8AAAFA-140F-42BA-9131-597EAFAA2EAD") IDirect3DVolumeT
 #ifdef __MINGW32__
 #define __CRT_UUID_DECL(type,l,w1,w2,b1,b2,b3,b4,b5,b6,b7,b8)         \
 }                                                                     \
-    extern "C++" {                                                    \
-    template<> struct __mingw_uuidof_s<d3d9::type> {                  \
-        static constexpr IID __uuid_inst = {                          \
-            l,w1,w2, {b1,b2,b3,b4,b5,b6,b7,b8}                        \
-        };                                                            \
-    };                                                                \
-    template<> constexpr const GUID &__mingw_uuidof<d3d9::type>() {   \
-        return __mingw_uuidof_s<d3d9::type>::__uuid_inst;             \
-    }                                                                 \
-    template<> constexpr const GUID &__mingw_uuidof<d3d9::type*>() {  \
-        return  __mingw_uuidof_s<d3d9::type>::__uuid_inst;            \
-    }                                                                 \
-    }                                                                 \
+  extern "C++" template<> struct __mingw_uuidof_s<d3d9::type> { static constexpr IID __uuid_inst = {l,w1,w2, {b1,b2,b3,b4,b5,b6,b7,b8}}; }; \
+  extern "C++" template<> constexpr const GUID &__mingw_uuidof<d3d9::type>() { return __mingw_uuidof_s<d3d9::type>::__uuid_inst; }          \
+  extern "C++" template<> constexpr const GUID &__mingw_uuidof<d3d9::type*>() { return __mingw_uuidof_s<d3d9::type>::__uuid_inst; }         \
 namespace d3d9 {
 
 #elif defined(__GNUC__)
