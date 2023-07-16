@@ -161,12 +161,10 @@ namespace dxvk {
 
   HANDLE STDMETHODCALLTYPE D3D11SwapChain::GetFrameLatencyEvent() {
     HANDLE result = nullptr;
+    HANDLE processHandle = GetCurrentProcess();
 
-    if (!m_processHandle)
-      m_processHandle = GetCurrentProcess();
-
-    if (!DuplicateHandle(m_processHandle, m_frameLatencyEvent,
-        m_processHandle, &result, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
+    if (!DuplicateHandle(processHandle, m_frameLatencyEvent,
+        processHandle, &result, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
       Logger::err("DxgiSwapChain::GetFrameLatencyWaitableObject: DuplicateHandle failed");
       return nullptr;
     }
