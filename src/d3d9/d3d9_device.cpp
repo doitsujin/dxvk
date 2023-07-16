@@ -7145,10 +7145,7 @@ namespace dxvk {
         stage.Projected      = (ttff & D3DTTFF_PROJECTED) ? 1      : 0;
         stage.ProjectedCount = (ttff & D3DTTFF_PROJECTED) ? count  : 0;
 
-        // [D3D8] Only use Dref sampling for games that could
-        // bind depth textures to fixed function shaders.
-        if (m_dxsoOptions.drefScaling)
-          stage.SampleDref = (m_depthTextures & (1 << idx)) != 0;
+        stage.SampleDref = (m_depthTextures & (1 << idx)) != 0;
       }
 
       auto& stage0 = key.Stages[0].Contents;
