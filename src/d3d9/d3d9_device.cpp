@@ -2308,6 +2308,9 @@ namespace dxvk {
         case D3DRS_ADAPTIVETESS_W:
           if (states[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB) || oldNVDB) {
             m_flags.set(D3D9DeviceFlag::DirtyDepthBounds);
+
+            if (m_state.depthStencil != nullptr && m_state.renderStates[D3DRS_ZENABLE])
+              m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
             break;
           }
         [[fallthrough]];
@@ -5885,7 +5888,8 @@ namespace dxvk {
     if (m_state.depthStencil != nullptr &&
       (m_state.renderStates[D3DRS_ZENABLE]
         || m_state.renderStates[D3DRS_ZWRITEENABLE]
-        || m_state.renderStates[D3DRS_STENCILENABLE])) {
+        || m_state.renderStates[D3DRS_STENCILENABLE]
+        || m_state.renderStates[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB))) {
       const DxvkImageCreateInfo& dsImageInfo = m_state.depthStencil->GetCommonTexture()->GetImage()->info();
       const bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
 
