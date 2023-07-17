@@ -405,6 +405,10 @@ namespace dxvk {
     { R"(\\BLADESTORM Nightmare\\Launch_(EA|JP)\.exe$)", {{
       { "dxgi.maxFrameRate",                "60"  },
     }} },
+    /* Ghost Recon Wildlands                      */
+    { R"(\\GRW\.exe$)", {{
+      { "d3d11.dcSingleUseMode",            "False" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
