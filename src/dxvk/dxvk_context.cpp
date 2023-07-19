@@ -2540,7 +2540,8 @@ namespace dxvk {
       rs.polygonMode,
       rs.sampleCount,
       rs.conservativeMode,
-      rs.flatShading);
+      rs.flatShading,
+      rs.lineMode);
 
     if (!m_state.gp.state.rs.eq(rsInfo)) {
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);

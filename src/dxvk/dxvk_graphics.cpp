@@ -459,7 +459,9 @@ namespace dxvk {
   DxvkGraphicsPipelinePreRasterizationState::DxvkGraphicsPipelinePreRasterizationState(
     const DxvkDevice*                     device,
     const DxvkGraphicsPipelineStateInfo&  state,
-    const DxvkShader*                     gs) {
+    const DxvkShader*                     tes,
+    const DxvkShader*                     gs,
+    const DxvkShader*                     fs) {
     // Set up tessellation state
     tsInfo.patchControlPoints = state.ia.patchVertexCount();
     
@@ -495,6 +497,27 @@ namespace dxvk {
       rsConservativeInfo.conservativeRasterizationMode = state.rs.conservativeMode();
       rsConservativeInfo.extraPrimitiveOverestimationSize = 0.0f;
     }
+
+    // Set up line rasterization mode as requested by the application.
+    if (state.rs.lineMode() != VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT && isLineRendering(state, tes, gs)) {
+      rsLineInfo.pNext = std::exchange(rsInfo.pNext, &rsLineInfo);
+      rsLineInfo.lineRasterizationMode = state.rs.lineMode();
+
+      if (rsLineInfo.lineRasterizationMode == VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT) {
+        // This line width matches expected D3D behaviour, hard-code this
+        // so that we don't need to introduce an extra bit of render state.
+        rsInfo.lineWidth = 1.4f;
+      } else {
+        // Vulkan does not allow alphaToCoverage or sample rate shading
+        // in combination with smooth lines. Override the line mode to
+        // rectangular to fix this, but keep the width fixed at 1.0.
+        bool needsOverride = state.ms.enableAlphaToCoverage()
+          || (fs && fs->flags().test(DxvkShaderFlag::HasSampleRateShading));
+
+        if (needsOverride)
+          rsLineInfo.lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
+      }
+    }
   }
 
 
@@ -521,6 +544,9 @@ namespace dxvk {
         && rsConservativeInfo.extraPrimitiveOverestimationSize == other.rsConservativeInfo.extraPrimitiveOverestimationSize;
     }
 
+    if (eq)
+      eq = rsLineInfo.lineRasterizationMode == other.rsLineInfo.lineRasterizationMode;
+
     return eq;
   }
 
@@ -541,7 +567,32 @@ namespace dxvk {
 
     hash.add(rsConservativeInfo.conservativeRasterizationMode);
     hash.add(bit::cast<uint32_t>(rsConservativeInfo.extraPrimitiveOverestimationSize));
+
+    hash.add(rsLineInfo.lineRasterizationMode);
     return hash;
+  }
+
+
+  bool DxvkGraphicsPipelinePreRasterizationState::isLineRendering(
+    const DxvkGraphicsPipelineStateInfo&  state,
+    const DxvkShader*                     tes,
+    const DxvkShader*                     gs) {
+    bool isLineRendering = state.rs.polygonMode() == VK_POLYGON_MODE_LINE;
+
+    if (gs) {
+      isLineRendering |= gs->info().outputTopology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+    } else if (tes) {
+      isLineRendering |= tes->info().outputTopology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+    } else {
+      VkPrimitiveTopology topology = state.ia.primitiveTopology();
+
+      isLineRendering |= topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST
+                      || topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP
+                      || topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY
+                      || topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY;
+    }
+
+    return isLineRendering;
   }
 
 
@@ -1078,11 +1129,13 @@ namespace dxvk {
     if (!m_vsLibrary || !m_fsLibrary)
       return false;
 
-    // Certain rasterization states cannot be set dynamically,
-    // so we're assuming defaults for them, most notably the
-    // polygon mode and conservative rasterization settings
+    // We do not implement setting certain rarely used render
+    // states dynamically since they are generally not used
+    bool isLineRendering = DxvkGraphicsPipelinePreRasterizationState::isLineRendering(state, m_shaders.tes.ptr(), m_shaders.gs.ptr());
+
     if (state.rs.polygonMode() != VK_POLYGON_MODE_FILL
-     || state.rs.conservativeMode() != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT)
+     || state.rs.conservativeMode() != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT
+     || (state.rs.lineMode() != VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT && isLineRendering))
       return false;
 
     if (m_shaders.tcs != nullptr) {

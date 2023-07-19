@@ -62,6 +62,8 @@ namespace dxvk {
     uint32_t patchVertexCount = 0;
     /// Transform feedback vertex strides
     uint32_t xfbStrides[MaxNumXfbBuffers] = { };
+    /// Output primitive topology
+    VkPrimitiveTopology outputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
   };
 
 
