@@ -44,8 +44,16 @@ namespace dxvk {
     m_depthBias.depthBiasSlope    = desc.SlopeScaledDepthBias;
     m_depthBias.depthBiasClamp    = desc.DepthBiasClamp;
     
-    if (desc.AntialiasedLineEnable)
-      Logger::err("D3D11RasterizerState: Antialiased lines not supported");
+    // Set up line rasterization mode
+    const auto& features = device->GetDXVKDevice()->features();
+
+    if (desc.MultisampleEnable) {
+      if (features.extLineRasterization.rectangularLines)
+        m_state.lineMode = VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
+    } else if (desc.AntialiasedLineEnable) {
+      if (features.extLineRasterization.smoothLines)
+        m_state.lineMode = VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
+    }
   }
   
   
