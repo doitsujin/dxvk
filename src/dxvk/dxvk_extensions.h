@@ -305,6 +305,7 @@ namespace dxvk {
     DxvkExt extFullScreenExclusive            = { VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME,              DxvkExtMode::Optional };
     DxvkExt extFragmentShaderInterlock        = { VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME,          DxvkExtMode::Optional };
     DxvkExt extGraphicsPipelineLibrary        = { VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME,          DxvkExtMode::Optional };
+    DxvkExt extLineRasterization              = { VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME,                 DxvkExtMode::Passive  };
     DxvkExt extMemoryBudget                   = { VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,                      DxvkExtMode::Passive  };
     DxvkExt extMemoryPriority                 = { VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,                    DxvkExtMode::Optional };
     DxvkExt extNonSeamlessCubeMap             = { VK_EXT_NON_SEAMLESS_CUBE_MAP_EXTENSION_NAME,              DxvkExtMode::Optional };
