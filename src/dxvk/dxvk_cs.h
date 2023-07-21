@@ -425,6 +425,7 @@ namespace dxvk {
     Rc<DxvkDevice>              m_device;
     Rc<DxvkContext>             m_context;
 
+    dxvk::mutex                 m_counterMutex;
     std::atomic<uint64_t>       m_chunksDispatched = { 0ull };
     std::atomic<uint64_t>       m_chunksExecuted   = { 0ull };
     

@@ -131,15 +131,20 @@ namespace dxvk {
     // Avoid locking if we know the sync is a no-op, may
     // reduce overhead if this is being called frequently
     if (seq > m_chunksExecuted.load(std::memory_order_acquire)) {
-      std::unique_lock<dxvk::mutex> lock(m_mutex);
-
+      // We don't need to lock the queue here, if synchronization
+      // happens while another thread is submitting then there is
+      // an inherent race anyway
       if (seq == SynchronizeAll)
         seq = m_chunksDispatched.load();
 
       auto t0 = dxvk::high_resolution_clock::now();
-      m_condOnSync.wait(lock, [this, seq] {
-        return m_chunksExecuted.load() >= seq;
-      });
+
+      { std::unique_lock<dxvk::mutex> lock(m_counterMutex);
+        m_condOnSync.wait(lock, [this, seq] {
+          return m_chunksExecuted.load() >= seq;
+        });
+      }
+
       auto t1 = dxvk::high_resolution_clock::now();
       auto ticks = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0);
 
@@ -173,8 +178,13 @@ namespace dxvk {
 
           chunk->executeAll(m_context.ptr());
 
-          m_chunksExecuted += 1;
-          m_condOnSync.notify_one();
+          // Use a separate mutex for the chunk counter, this
+          // will only ever be contested if synchronization is
+          // actually necessary.
+          { std::unique_lock<dxvk::mutex> lock(m_counterMutex);
+            m_chunksExecuted += 1;
+            m_condOnSync.notify_one();
+          }
 
           // Explicitly free chunk here to release
           // references to any resources held by it
