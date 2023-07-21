@@ -202,7 +202,7 @@ namespace dxvk {
     pStats->PresentCount          = frameStatistics.PresentCount;
     pStats->PresentRefreshCount   = 0;
     pStats->SyncRefreshCount      = 0;
-    pStats->SyncQPCTime.QuadPart  = t1Counter;
+    pStats->SyncQPCTime.QuadPart  = frameStatistics.PresentQPCTime;
     pStats->SyncGPUTime.QuadPart  = 0;
 
     if (SUCCEEDED(AcquireMonitorData(m_monitor, &monitorData))) {
