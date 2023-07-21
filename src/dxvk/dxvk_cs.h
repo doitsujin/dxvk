@@ -432,7 +432,7 @@ namespace dxvk {
     dxvk::mutex                 m_mutex;
     dxvk::condition_variable    m_condOnAdd;
     dxvk::condition_variable    m_condOnSync;
-    std::queue<DxvkCsChunkRef>  m_chunksQueued;
+    std::vector<DxvkCsChunkRef> m_chunksQueued;
     dxvk::thread                m_thread;
     
     void threadFunc();

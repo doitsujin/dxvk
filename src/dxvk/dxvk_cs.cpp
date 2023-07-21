@@ -119,7 +119,7 @@ namespace dxvk {
 
     { std::unique_lock<dxvk::mutex> lock(m_mutex);
       seq = ++m_chunksDispatched;
-      m_chunksQueued.push(std::move(chunk));
+      m_chunksQueued.push_back(std::move(chunk));
     }
     
     m_condOnAdd.notify_one();
@@ -152,35 +152,36 @@ namespace dxvk {
   void DxvkCsThread::threadFunc() {
     env::setThreadName("dxvk-cs");
 
-    DxvkCsChunkRef chunk;
+    // Local chunk queue, we use two queues and swap between
+    // them in order to potentially reduce lock contention.
+    std::vector<DxvkCsChunkRef> chunks;
 
     try {
       while (!m_stopped.load()) {
         { std::unique_lock<dxvk::mutex> lock(m_mutex);
-          if (chunk) {
-            m_chunksExecuted++;
-            m_condOnSync.notify_one();
-            
-            chunk = DxvkCsChunkRef();
-          }
-          
-          if (m_chunksQueued.size() == 0) {
-            m_condOnAdd.wait(lock, [this] {
-              return (m_chunksQueued.size() != 0)
-                  || (m_stopped.load());
-            });
-          }
-          
-          if (m_chunksQueued.size() != 0) {
-            chunk = std::move(m_chunksQueued.front());
-            m_chunksQueued.pop();
-          }
+
+          m_condOnAdd.wait(lock, [this] {
+            return (!m_chunksQueued.empty())
+                || (m_stopped.load());
+          });
+
+          std::swap(chunks, m_chunksQueued);
         }
-        
-        if (chunk) {
+
+        for (auto& chunk : chunks) {
           m_context->addStatCtr(DxvkStatCounter::CsChunkCount, 1);
+
           chunk->executeAll(m_context.ptr());
+
+          m_chunksExecuted += 1;
+          m_condOnSync.notify_one();
+
+          // Explicitly free chunk here to release
+          // references to any resources held by it
+          chunk = DxvkCsChunkRef();
         }
+
+        chunks.clear();
       }
     } catch (const DxvkError& e) {
       Logger::err("Exception on CS thread!");
