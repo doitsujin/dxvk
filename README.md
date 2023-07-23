@@ -12,7 +12,7 @@ Release builds can be found [here](https://github.com/doitsujin/dxvk/releases).
 In order to install a DXVK package obtained from the [release](https://github.com/doitsujin/dxvk/releases) page into a given wine prefix, copy or symlink the DLLs into the following directories as follows, then open `winecfg` and manually add DLL overrides for `d3d11`, `d3d10core`, `dxgi`, and `d3d9`.
 
 In a default Wine prefix that would be as follows:
-```
+```sh
 export WINEPREFIX=/path/to/wineprefix
 cp x64/*.dll $WINEPREFIX/drive_c/windows/system32
 cp x32/*.dll $WINEPREFIX/drive_c/windows/syswow64
@@ -20,7 +20,7 @@ winecfg
 ```
 
 For a pure 32-bit Wine prefix (non default) the 32-bit DLLs instead go to the `system32` directory:
-```
+```sh
 export WINEPREFIX=/path/to/wineprefix
 cp x32/*.dll $WINEPREFIX/drive_c/windows/system32
 winecfg
@@ -38,7 +38,7 @@ Before reporting an issue, please check the [Wiki](https://github.com/doitsujin/
 ## Build instructions
 
 In order to pull in all submodules that are needed for building, clone the repository using the following command:
-```
+```sh
 git clone --recursive https://github.com/doitsujin/dxvk.git
 ```
 
@@ -54,21 +54,21 @@ git clone --recursive https://github.com/doitsujin/dxvk.git
 
 #### The simple way
 Inside the DXVK directory, run:
-```
+```sh
 ./package-release.sh master /your/target/directory --no-package
 ```
 
 This will create a folder `dxvk-master` in `/your/target/directory`, which contains both 32-bit and 64-bit versions of DXVK, which can be set up in the same way as the release versions as noted above.
 
 In order to preserve the build directories for development, pass `--dev-build` to the script. This option implies `--no-package`. After making changes to the source code, you can then do the following to rebuild DXVK:
-```
+```sh
 # change to build.32 for 32-bit
 cd /your/target/directory/build.64
 ninja install
 ```
 
 #### Compiling manually
-```
+```sh
 # 64-bit build. For 32-bit builds, replace
 # build-win64.txt with build-win32.txt
 meson setup --cross-file build-win64.txt --buildtype release --prefix /your/dxvk/directory build.w64
@@ -152,7 +152,7 @@ or similar threading related errors.
 On Debian and Ubuntu, this can be resolved by using the posix alternate, which
 supports threading. For example, choose the posix alternate from these
 commands:
-```
+```sh
 update-alternatives --config x86_64-w64-mingw32-gcc
 update-alternatives --config x86_64-w64-mingw32-g++
 update-alternatives --config i686-w64-mingw32-gcc
