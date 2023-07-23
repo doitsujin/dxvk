@@ -409,6 +409,10 @@ namespace dxvk {
     { R"(\\GRW\.exe$)", {{
       { "d3d11.dcSingleUseMode",            "False" },
     }} },
+    /* Vindictus d3d11 CPU bound perf             */
+    { R"(\\Vindictus(_x64)?\.exe$)", {{
+      { "d3d11.cachedDynamicResources",     "cr"   },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
