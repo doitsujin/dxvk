@@ -14,7 +14,39 @@ namespace dxvk {
   
 extern "C" {
   using namespace dxvk;
-  
+
+  //
+  // Workaround MinGW symbol name issues that prevent using DXVK in Wine with a 32-bit
+  // mod that works by proxying dxgi.dll.
+  //
+  // If a linker-dependency on DXVK's dxgi.dll were used, then it would require DXGI.dll
+  // to export "CreateDXGIFactory1@8" and Windows mod DLLs do not do this.
+  //
+  //  Mods can make themselves compatible with old versions of DXVK by adding this code:
+  // 
+  //   #ifdef _M_IX86
+  //   #pragma comment (linker, "/export:CreateDXGIFactory1@8=_CreateDXGIFactory1@8")
+  //   #endif
+  //
+  // To support unaltered 32-bit game mods, DXVK must load the DLL manually...
+  //
+  HRESULT __stdcall CreateDXGIFactory1_Import(REFIID riid, void **ppFactory) {
+#ifdef _M_IX86
+    using CreateDXGIFactory1_pfn = HRESULT (WINAPI*)(REFIID,void**);
+          CreateDXGIFactory1_pfn
+       DllCreateDxgiFactory1 =
+         (CreateDXGIFactory1_pfn)GetProcAddress(LoadLibraryA("dxgi.dll"),
+         "CreateDXGIFactory1");
+
+    if (DllCreateDxgiFactory1 != nullptr)
+      return DllCreateDxgiFactory1(riid, ppFactory);
+
+    return E_NOTIMPL;
+#else
+    return CreateDXGIFactory1(riid,ppFactory);
+#endif
+  }
+
   DLLEXPORT HRESULT __stdcall D3D11CoreCreateDevice(
           IDXGIFactory*       pFactory,
           IDXGIAdapter*       pAdapter,
@@ -143,7 +175,7 @@ extern "C" {
         Logger::warn("D3D11CreateDevice: Unsupported driver type");
       
       // We'll use the first adapter returned by a DXGI factory
-      hr = CreateDXGIFactory1(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory));
+      hr = CreateDXGIFactory1_Import(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory));
 
       if (FAILED(hr)) {
         Logger::err("D3D11CreateDevice: Failed to create a DXGI factory");
