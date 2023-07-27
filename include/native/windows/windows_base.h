@@ -31,6 +31,9 @@ typedef wchar_t WCHAR;
 typedef WCHAR *NWPSTR, *LPWSTR, *PWSTR;
 typedef unsigned char UCHAR, *PUCHAR;
 
+typedef char CHAR;
+typedef const CHAR *LPCSTR, *PCSTR;
+
 typedef INT BOOL;
 typedef BOOL WINBOOL;
 
