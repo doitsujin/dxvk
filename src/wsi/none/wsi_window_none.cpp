@@ -76,8 +76,16 @@ namespace dxvk::wsi {
           PFN_vkGetInstanceProcAddr pfnVkGetInstanceProcAddr,
           VkInstance                instance,
           VkSurfaceKHR*             pSurface) {
-    // TODO: Could use VK_EXT_headless_surface here?
-    return VK_ERROR_FEATURE_NOT_PRESENT;
+    auto pfnVkCreateHeadlessSurfaceEXT = reinterpret_cast<PFN_vkCreateHeadlessSurfaceEXT>(
+      pfnVkGetInstanceProcAddr(instance, "vkCreateHeadlessSurfaceEXT"));
+
+    if (!pfnVkCreateHeadlessSurfaceEXT)
+      return VK_ERROR_FEATURE_NOT_PRESENT;
+
+    VkHeadlessSurfaceCreateInfoEXT info = { VK_STRUCTURE_TYPE_HEADLESS_SURFACE_CREATE_INFO_EXT };
+    info.pNext = nullptr;
+    info.flags = 0;
+    return pfnVkCreateHeadlessSurfaceEXT(instance, &info, nullptr, pSurface);
   }
 
 }
