@@ -140,7 +140,7 @@ exe_ext = ''
 dll_ext = ''
 def_spec_ext = '.def'
 
-glsl_compiler = find_program('glslangValidator')
+glsl_compiler = find_program('glslang', 'glslangValidator')
 glsl_args = [
   '--quiet',
   '--target-env', 'vulkan1.2',
