@@ -1122,7 +1122,7 @@ namespace dxvk {
       // help when debugging configuration issues
       Logger::info(str::format("Found config env: ", confLine));
 
-      for(auto l : str::split(confLine, "#"))
+      for(auto l : str::split(confLine, ";"))
         parseUserConfigLine(config, ctx, std::string(l.data(), l.size()));
     }
 
