@@ -9,10 +9,14 @@ extern "C" {
   HRESULT __stdcall D3D11CoreCreateDevice(
           IDXGIFactory*       pFactory,
           IDXGIAdapter*       pAdapter,
+          D3D_DRIVER_TYPE     DriverType,
+          HMODULE             Software,
           UINT                Flags,
     const D3D_FEATURE_LEVEL*  pFeatureLevels,
           UINT                FeatureLevels,
-          ID3D11Device**      ppDevice);
+          UINT                SDKVersion,
+          ID3D11Device**      ppDevice,
+          D3D_FEATURE_LEVEL*  pFeatureLevel);
 
 
   DLLEXPORT HRESULT __stdcall D3D10CoreCreateDevice(
@@ -31,8 +35,8 @@ extern "C" {
     if (FAILED(hr))
       return hr;
 
-    hr = D3D11CoreCreateDevice(pFactory, pAdapter,
-      Flags, &FeatureLevel, 1, &d3d11Device);
+    hr = D3D11CoreCreateDevice(pFactory, pAdapter, D3D_DRIVER_TYPE_UNKNOWN,
+      nullptr, Flags, &FeatureLevel, 1, D3D11_SDK_VERSION, &d3d11Device, nullptr);
 
     if (FAILED(hr))
       return hr;
