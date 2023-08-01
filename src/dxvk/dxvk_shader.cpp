@@ -1296,8 +1296,10 @@ namespace dxvk {
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_RASTERIZATION_SAMPLES_EXT;
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_SAMPLE_MASK_EXT;
 
-      if (m_device->features().extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable)
-        dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT;
+      if (!m_shaders.fs || !m_shaders.fs->flags().test(DxvkShaderFlag::ExportsSampleMask)) {
+        if (m_device->features().extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable)
+          dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_ALPHA_TO_COVERAGE_ENABLE_EXT;
+      }
     }
 
     VkPipelineDynamicStateCreateInfo dyInfo = { VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO };
