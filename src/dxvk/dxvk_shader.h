@@ -30,6 +30,7 @@ namespace dxvk {
     ExportsPosition,
     ExportsStencilRef,
     ExportsViewportIndexLayerFromVertexStage,
+    ExportsSampleMask,
     UsesFragmentCoverage,
     UsesSparseResidency,
   };

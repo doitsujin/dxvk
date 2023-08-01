@@ -77,6 +77,7 @@ namespace dxvk {
     // info that we may need during pipeline compilation.
     std::vector<BindingOffsets> bindingOffsets;
     std::vector<uint32_t> varIds;
+    std::vector<uint32_t> sampleMaskIds;
 
     SpirvCodeBuffer code = std::move(spirv);
     uint32_t o1VarId = 0;
@@ -92,6 +93,8 @@ namespace dxvk {
         }
 
         if (ins.arg(2) == spv::DecorationBuiltIn) {
+          if (ins.arg(3) == spv::BuiltInSampleMask)
+            sampleMaskIds.push_back(ins.arg(1));
           if (ins.arg(3) == spv::BuiltInPosition)
             m_flags.set(DxvkShaderFlag::ExportsPosition);
         }
@@ -144,6 +147,13 @@ namespace dxvk {
 
         if (ins.arg(1) == spv::CapabilityFragmentFullyCoveredEXT)
           m_flags.set(DxvkShaderFlag::UsesFragmentCoverage);
+      }
+
+      if (ins.opCode() == spv::OpVariable) {
+        if (ins.arg(3) == spv::StorageClassOutput) {
+          if (std::find(sampleMaskIds.begin(), sampleMaskIds.end(), ins.arg(2)) != sampleMaskIds.end())
+            m_flags.set(DxvkShaderFlag::ExportsSampleMask);
+        }
       }
 
       // Ignore the actual shader code, there's nothing interesting for us in there.
