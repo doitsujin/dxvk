@@ -68,8 +68,8 @@ if platform == 'windows'
   if cpu_family == 'x86'
     link_args += [
       '-Wl,--enable-stdcall-fixup',
-      '-Wl,--add-stdcall-alias',
-  ]
+      '-Wl,--kill-at',
+    ]
   endif
 
   lib_d3d9    = cpp.find_library('d3d9')
