@@ -288,7 +288,8 @@ namespace dxvk {
     
     if (result.empty()) {
       Logger::warn("DXVK: No adapters found. Please check your "
-                   "device filter settings and Vulkan setup.");
+                   "device filter settings and Vulkan setup. "
+                   "A Vulkan 1.3 capable driver is required.");
     } else if (numDGPU == 1 && numIGPU == 1) {
       result[1]->linkToDGPU(result[0]);
     }

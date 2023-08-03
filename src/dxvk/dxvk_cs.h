@@ -425,6 +425,7 @@ namespace dxvk {
     Rc<DxvkDevice>              m_device;
     Rc<DxvkContext>             m_context;
 
+    dxvk::mutex                 m_counterMutex;
     std::atomic<uint64_t>       m_chunksDispatched = { 0ull };
     std::atomic<uint64_t>       m_chunksExecuted   = { 0ull };
     
@@ -432,7 +433,7 @@ namespace dxvk {
     dxvk::mutex                 m_mutex;
     dxvk::condition_variable    m_condOnAdd;
     dxvk::condition_variable    m_condOnSync;
-    std::queue<DxvkCsChunkRef>  m_chunksQueued;
+    std::vector<DxvkCsChunkRef> m_chunksQueued;
     dxvk::thread                m_thread;
     
     void threadFunc();

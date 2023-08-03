@@ -535,6 +535,8 @@ namespace dxvk {
     DxbcOpcode m_lastOp = DxbcOpcode::Nop;
     DxbcOpcode m_currOp = DxbcOpcode::Nop;
 
+    VkPrimitiveTopology m_outputTopology = VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+
     /////////////////////////////////////////////////////
     // Shader interface and metadata declaration methods
     void emitDcl(

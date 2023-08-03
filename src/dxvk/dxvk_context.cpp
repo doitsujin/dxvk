@@ -2540,7 +2540,8 @@ namespace dxvk {
       rs.polygonMode,
       rs.sampleCount,
       rs.conservativeMode,
-      rs.flatShading);
+      rs.flatShading,
+      rs.lineMode);
 
     if (!m_state.gp.state.rs.eq(rsInfo)) {
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
@@ -4960,6 +4961,7 @@ namespace dxvk {
 
     DxvkGraphicsPipelineFlags oldFlags = m_state.gp.flags;
     DxvkGraphicsPipelineFlags newFlags = newPipeline->flags();
+    DxvkGraphicsPipelineFlags diffFlags = oldFlags ^ newFlags;
 
     DxvkGraphicsPipelineFlags hazardMask(
       DxvkGraphicsPipelineFlag::HasTransformFeedback,
@@ -4967,7 +4969,7 @@ namespace dxvk {
 
     m_state.gp.flags = newFlags;
 
-    if (((oldFlags ^ newFlags) & hazardMask) != 0) {
+    if ((diffFlags & hazardMask) != 0) {
       // Force-update vertex/index buffers for hazard checks
       m_flags.set(DxvkContextFlag::GpDirtyIndexBuffer,
                   DxvkContextFlag::GpDirtyVertexBuffers,
@@ -4979,6 +4981,9 @@ namespace dxvk {
       if (!m_barrierControl.test(DxvkBarrierControl::IgnoreGraphicsBarriers))
         this->spillRenderPass(true);
     }
+
+    if (diffFlags.test(DxvkGraphicsPipelineFlag::HasSampleMaskExport))
+      m_flags.set(DxvkContextFlag::GpDirtyMultisampleState);
 
     m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
 
@@ -5768,7 +5773,8 @@ namespace dxvk {
       VkSampleMask sampleMask = m_state.gp.state.ms.sampleMask() & ((1u << sampleCount) - 1u);
       m_cmd->cmdSetMultisampleState(sampleCount, sampleMask);
 
-      if (m_device->features().extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable)
+      if (m_device->features().extExtendedDynamicState3.extendedDynamicState3AlphaToCoverageEnable
+       && !m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasSampleMaskExport))
         m_cmd->cmdSetAlphaToCoverageState(m_state.gp.state.ms.enableAlphaToCoverage());
     }
 

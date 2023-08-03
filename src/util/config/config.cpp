@@ -399,6 +399,20 @@ namespace dxvk {
     { R"(\\Battle.net\.exe$)", {{
       { "dxvk.maxChunkSize",                "1"   },
     }} },
+    /* Bladestorm Nightmare                       *
+     * Game speed increases when above 60 fps in  *
+     * the tavern area                            */
+    { R"(\\BLADESTORM Nightmare\\Launch_(EA|JP)\.exe$)", {{
+      { "dxgi.maxFrameRate",                "60"  },
+    }} },
+    /* Ghost Recon Wildlands                      */
+    { R"(\\GRW\.exe$)", {{
+      { "d3d11.dcSingleUseMode",            "False" },
+    }} },
+    /* Vindictus d3d11 CPU bound perf             */
+    { R"(\\Vindictus(_x64)?\.exe$)", {{
+      { "d3d11.cachedDynamicResources",     "cr"   },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
@@ -741,11 +755,6 @@ namespace dxvk {
     { R"(\\ffxiv\.exe$)", {{
       { "d3d9.textureMemory",                "0"   },
     }} },
-    /* Secret World Legends launcher           *
-     * Invisible UI                            */
-    { R"(\\Secret World Legends\\ClientPatcher\.exe$)", {{
-      { "d3d9.shaderModel",                 "2" },
-    }} },
     /* Alien Rage                              *
      * GTX 295 & disable Hack to fix shadows   */
     { R"(\\(ShippingPC-AFEARGame|ARageMP)\.exe$)", {{
@@ -781,6 +790,10 @@ namespace dxvk {
     /* STEINS;GATE ELITE                       */
     { R"(\\SG_ELITE\\Game\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
+    }} },
+    /* The Incredibles                         */
+    { R"(\\IncPC\.exe$)", {{
+      { "d3d9.maxFrameRate",                "59" },
     }} },
     
     /**********************************************/
@@ -1077,6 +1090,7 @@ namespace dxvk {
 
     // Load either $DXVK_CONFIG_FILE or $PWD/dxvk.conf
     std::string filePath = env::getEnvVar("DXVK_CONFIG_FILE");
+    std::string confLine = env::getEnvVar("DXVK_CONFIG");
 
     if (filePath == "")
       filePath = "dxvk.conf";
@@ -1084,23 +1098,34 @@ namespace dxvk {
     // Open the file if it exists
     std::ifstream stream(str::topath(filePath.c_str()).c_str());
 
-    if (!stream)
+    if (!stream && confLine.empty())
       return config;
-    
-    // Inform the user that we loaded a file, might
-    // help when debugging configuration issues
-    Logger::info(str::format("Found config file: ", filePath));
 
     // Initialize parser context
     ConfigContext ctx;
     ctx.active = true;
 
-    // Parse the file line by line
-    std::string line;
+    if (stream) {
+      // Inform the user that we loaded a file, might
+      // help when debugging configuration issues
+      Logger::info(str::format("Found config file: ", filePath));
 
-    while (std::getline(stream, line))
-      parseUserConfigLine(config, ctx, line);
-    
+      // Parse the file line by line
+      std::string line;
+
+      while (std::getline(stream, line))
+        parseUserConfigLine(config, ctx, line);
+    }
+
+    if (!confLine.empty()) {
+      // Inform the user that we parsing config from environment, might
+      // help when debugging configuration issues
+      Logger::info(str::format("Found config env: ", confLine));
+
+      for(auto l : str::split(confLine, ";"))
+        parseUserConfigLine(config, ctx, std::string(l.data(), l.size()));
+    }
+
     return config;
   }
 

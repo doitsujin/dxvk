@@ -5401,6 +5401,7 @@ namespace dxvk {
     pRsState->conservativeMode = VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
     pRsState->sampleCount     = 0;
     pRsState->flatShading     = VK_FALSE;
+    pRsState->lineMode        = VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT;
   }
 
 

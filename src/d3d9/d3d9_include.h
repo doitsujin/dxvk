@@ -12,9 +12,9 @@
 
 //for some reason we need to specify __declspec(dllexport) for MinGW
 #if defined(__WINE__) || !defined(_WIN32)
-#define DLLEXPORT __attribute__((visibility("default")))
+  #define DLLEXPORT __attribute__((visibility("default")))
 #else
-#define DLLEXPORT
+  #define DLLEXPORT
 #endif
 
 

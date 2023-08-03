@@ -122,8 +122,6 @@ namespace dxvk {
     HANDLE                  m_frameLatencyEvent = nullptr;
     Rc<sync::CallbackFence> m_frameLatencySignal;
 
-    HANDLE                  m_processHandle = nullptr;
-
     bool                    m_dirty = true;
 
     VkColorSpaceKHR         m_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;

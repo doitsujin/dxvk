@@ -383,6 +383,7 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdSetConservativeRasterizationModeEXT);
     VULKAN_FN(vkCmdSetExtraPrimitiveOverestimationSizeEXT);
     VULKAN_FN(vkCmdSetDepthClipEnableEXT);
+    VULKAN_FN(vkCmdSetLineRasterizationModeEXT);
     #endif
 
     #ifdef VK_EXT_full_screen_exclusive

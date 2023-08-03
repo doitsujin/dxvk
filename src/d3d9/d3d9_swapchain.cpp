@@ -28,12 +28,13 @@ namespace dxvk {
     , m_device           (pDevice->GetDXVKDevice())
     , m_context          (m_device->createContext(DxvkContextType::Supplementary))
     , m_frameLatencyCap  (pDevice->GetOptions()->maxFrameLatency)
-    , m_frameLatencySignal(new sync::Fence(m_frameId))
     , m_dialog           (pDevice->GetOptions()->enableDialogMode)
     , m_swapchainExt     (this) {
     this->NormalizePresentParameters(pPresentParams);
     m_presentParams = *pPresentParams;
     m_window = m_presentParams.hDeviceWindow;
+
+    UpdateWindowCtx();
 
     UpdatePresentRegion(nullptr, nullptr);
 
@@ -137,20 +138,19 @@ namespace dxvk {
     if (options->presentInterval >= 0)
       presentInterval = options->presentInterval;
 
-    HWND window = m_presentParams.hDeviceWindow;
+    m_window = m_presentParams.hDeviceWindow;
     if (hDestWindowOverride != nullptr)
-      window    = hDestWindowOverride;
+      m_window = hDestWindowOverride;
+
+    UpdateWindowCtx();
 
     bool recreate = false;
-    recreate   |= m_presenter == nullptr;
-    recreate   |= window != m_window;
+    recreate   |= m_wctx->presenter == nullptr;
     recreate   |= m_dialog != m_lastDialog;
 
-    m_window    = window;
-
-    if (m_presenter != nullptr) {
-      m_dirty  |= m_presenter->setSyncInterval(presentInterval) != VK_SUCCESS;
-      m_dirty  |= !m_presenter->hasSwapChain();
+    if (m_wctx->presenter != nullptr) {
+      m_dirty  |= m_wctx->presenter->setSyncInterval(presentInterval) != VK_SUCCESS;
+      m_dirty  |= !m_wctx->presenter->hasSwapChain();
     }
 
     m_dirty    |= UpdatePresentRegion(pSourceRect, pDestRect);
@@ -161,7 +161,7 @@ namespace dxvk {
 #ifdef _WIN32
     const bool useGDIFallback = m_partialCopy && !HasFrontBuffer();
     if (useGDIFallback)
-      return PresentImageGDI(window);
+      return PresentImageGDI(m_window);
 #endif
 
     try {
@@ -174,7 +174,7 @@ namespace dxvk {
       // We aren't going to device loss simply because
       // 99% of D3D9 games don't handle this properly and
       // just end up crashing (like with alt-tab loss)
-      if (!m_presenter->hasSwapChain())
+      if (!m_wctx->presenter->hasSwapChain())
         return D3D_OK;
 
       PresentImage(presentInterval);
@@ -182,7 +182,7 @@ namespace dxvk {
     } catch (const DxvkError& e) {
       Logger::err(e.message());
 #ifdef _WIN32
-      return PresentImageGDI(window);
+      return PresentImageGDI(m_window);
 #else
       return D3DERR_DEVICEREMOVED;
 #endif
@@ -684,8 +684,10 @@ namespace dxvk {
     if (hWindow == nullptr)
       hWindow = m_parent->GetWindow();
 
-    if (m_presentParams.hDeviceWindow == hWindow) {
-      m_presenter = nullptr;
+    if (m_presenters.count(hWindow)) {
+      if (m_wctx == &m_presenters[hWindow])
+        m_wctx = nullptr;
+      m_presenters.erase(hWindow);
 
       m_device->waitForSubmission(&m_presentStatus);
       m_device->waitForIdle();
@@ -758,22 +760,22 @@ namespace dxvk {
       SynchronizePresent();
 
       // Presentation semaphores and WSI swap chain image
-      PresenterInfo info = m_presenter->info();
+      PresenterInfo info = m_wctx->presenter->info();
       PresenterSync sync;
 
       uint32_t imageIndex = 0;
 
-      VkResult status = m_presenter->acquireNextImage(sync, imageIndex);
+      VkResult status = m_wctx->presenter->acquireNextImage(sync, imageIndex);
 
       while (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
         RecreateSwapChain();
         
-        info = m_presenter->info();
-        status = m_presenter->acquireNextImage(sync, imageIndex);
+        info = m_wctx->presenter->info();
+        status = m_wctx->presenter->acquireNextImage(sync, imageIndex);
       }
 
       if (m_hdrMetadata && m_dirtyHdrMetadata) {
-        m_presenter->setHdrMetadata(*m_hdrMetadata);
+        m_wctx->presenter->setHdrMetadata(*m_hdrMetadata);
         m_dirtyHdrMetadata = false;
       }
 
@@ -789,7 +791,7 @@ namespace dxvk {
         { uint32_t(m_dstRect.right - m_dstRect.left), uint32_t(m_dstRect.bottom - m_dstRect.top) } };
 
       m_blitter->presentImage(m_context.ptr(),
-        m_imageViews.at(imageIndex), dstRect,
+        m_wctx->imageViews.at(imageIndex), dstRect,
         swapImageView, srcRect);
 
       if (m_hud != nullptr)
@@ -812,7 +814,7 @@ namespace dxvk {
   void D3D9SwapChainEx::SubmitPresent(const PresenterSync& Sync, uint32_t Repeat) {
     // Bump frame ID
     if (!Repeat)
-      m_frameId += 1;
+      m_wctx->frameId += 1;
 
     // Present from CS thread so that we don't
     // have to synchronize with it first.
@@ -822,8 +824,8 @@ namespace dxvk {
       cRepeat      = Repeat,
       cSync        = Sync,
       cHud         = m_hud,
-      cPresentMode = m_presenter->info().presentMode,
-      cFrameId     = m_frameId,
+      cPresentMode = m_wctx->presenter->info().presentMode,
+      cFrameId     = m_wctx->frameId,
       cCommandList = m_context->endRecording()
     ] (DxvkContext* ctx) {
       cCommandList->setWsiSemaphores(cSync);
@@ -834,7 +836,7 @@ namespace dxvk {
 
       uint64_t frameId = cRepeat ? 0 : cFrameId;
 
-      m_device->presentImage(m_presenter,
+      m_device->presentImage(m_wctx->presenter,
         cPresentMode, frameId, &m_presentStatus);
     });
 
@@ -863,17 +865,17 @@ namespace dxvk {
     presenterDesc.numFormats      = PickFormats(EnumerateFormat(m_presentParams.BackBufferFormat), presenterDesc.formats);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
-    VkResult vr = m_presenter->recreateSwapChain(presenterDesc);
+    VkResult vr = m_wctx->presenter->recreateSwapChain(presenterDesc);
 
     if (vr == VK_ERROR_SURFACE_LOST_KHR) {
-      vr = m_presenter->recreateSurface([this] (VkSurfaceKHR* surface) {
+      vr = m_wctx->presenter->recreateSurface([this] (VkSurfaceKHR* surface) {
         return CreateSurface(surface);
       });
 
       if (vr)
         throw DxvkError(str::format("D3D9SwapChainEx: Failed to recreate surface: ", vr));
 
-      vr = m_presenter->recreateSwapChain(presenterDesc);
+      vr = m_wctx->presenter->recreateSwapChain(presenterDesc);
     }
 
     if (vr)
@@ -896,8 +898,8 @@ namespace dxvk {
     presenterDesc.numFormats      = PickFormats(EnumerateFormat(m_presentParams.BackBufferFormat), presenterDesc.formats);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
-    m_presenter = new Presenter(m_device, m_frameLatencySignal, presenterDesc);
-    m_presenter->setFrameRateLimit(m_parent->GetOptions()->maxFrameRate);
+    m_wctx->presenter = new Presenter(m_device, m_wctx->frameLatencySignal, presenterDesc);
+    m_wctx->presenter->setFrameRateLimit(m_parent->GetOptions()->maxFrameRate);
   }
 
 
@@ -912,10 +914,10 @@ namespace dxvk {
 
 
   void D3D9SwapChainEx::CreateRenderTargetViews() {
-    PresenterInfo info = m_presenter->info();
+    PresenterInfo info = m_wctx->presenter->info();
 
-    m_imageViews.clear();
-    m_imageViews.resize(info.imageCount);
+    m_wctx->imageViews.clear();
+    m_wctx->imageViews.resize(info.imageCount);
 
     DxvkImageCreateInfo imageInfo;
     imageInfo.type        = VK_IMAGE_TYPE_2D;
@@ -943,13 +945,13 @@ namespace dxvk {
     viewInfo.numLayers    = 1;
 
     for (uint32_t i = 0; i < info.imageCount; i++) {
-      VkImage imageHandle = m_presenter->getImage(i).image;
+      VkImage imageHandle = m_wctx->presenter->getImage(i).image;
       
       Rc<DxvkImage> image = new DxvkImage(
         m_device.ptr(), imageInfo, imageHandle,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-      m_imageViews[i] = new DxvkImageView(
+      m_wctx->imageViews[i] = new DxvkImageView(
         m_device->vkd(), image, viewInfo);
     }
   }
@@ -960,6 +962,20 @@ namespace dxvk {
       backBuffer->ClearContainer();
 
     m_backBuffers.clear();
+  }
+
+
+  void D3D9SwapChainEx::UpdateWindowCtx() {
+    if (!m_presenters.count(m_window)) {
+      auto res = m_presenters.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(m_window),
+        std::forward_as_tuple());
+
+      auto& wctx = res.first->second;
+      wctx.frameLatencySignal = new sync::Fence(wctx.frameId);
+    }
+    m_wctx = &m_presenters[m_window];
   }
 
 
@@ -1065,7 +1081,7 @@ namespace dxvk {
 
   void D3D9SwapChainEx::SyncFrameLatency() {
     // Wait for the sync event so that we respect the maximum frame latency
-    m_frameLatencySignal->wait(m_frameId - GetActualFrameLatency());
+    m_wctx->frameLatencySignal->wait(m_wctx->frameId - GetActualFrameLatency());
   }
 
   void D3D9SwapChainEx::SetApiName(const char* name) {
@@ -1280,8 +1296,9 @@ namespace dxvk {
     || dstRect.bottom - dstRect.top  != LONG(height);
 
     bool recreate =
-       m_swapchainExtent.width  != width
-    || m_swapchainExtent.height != height;
+       m_wctx->presenter == nullptr
+    || m_wctx->presenter->info().imageExtent.width  != width
+    || m_wctx->presenter->info().imageExtent.height != height;
 
     m_swapchainExtent = { width, height };
     m_dstRect = dstRect;
@@ -1330,7 +1347,7 @@ namespace dxvk {
 
   BOOL STDMETHODCALLTYPE D3D9VkExtSwapchain::CheckColorSpaceSupport(
           VkColorSpaceKHR           ColorSpace) {
-    return m_swapchain->m_presenter->supportsColorSpace(ColorSpace);
+    return m_swapchain->m_wctx->presenter->supportsColorSpace(ColorSpace);
   }
 
   HRESULT STDMETHODCALLTYPE D3D9VkExtSwapchain::SetColorSpace(

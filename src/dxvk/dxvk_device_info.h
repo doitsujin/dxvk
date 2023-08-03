@@ -21,6 +21,7 @@ namespace dxvk {
     VkPhysicalDeviceCustomBorderColorPropertiesEXT            extCustomBorderColor;
     VkPhysicalDeviceExtendedDynamicState3PropertiesEXT        extExtendedDynamicState3;
     VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT      extGraphicsPipelineLibrary;
+    VkPhysicalDeviceLineRasterizationPropertiesEXT            extLineRasterization;
     VkPhysicalDeviceRobustness2PropertiesEXT                  extRobustness2;
     VkPhysicalDeviceTransformFeedbackPropertiesEXT            extTransformFeedback;
     VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT       extVertexAttributeDivisor;
@@ -50,6 +51,7 @@ namespace dxvk {
     VkBool32                                                  extFullScreenExclusive;
     VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT        extGraphicsPipelineLibrary;
     VkBool32                                                  extHdrMetadata;
+    VkPhysicalDeviceLineRasterizationFeaturesEXT              extLineRasterization;
     VkBool32                                                  extMemoryBudget;
     VkPhysicalDeviceMemoryPriorityFeaturesEXT                 extMemoryPriority;
     VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT             extNonSeamlessCubeMap;

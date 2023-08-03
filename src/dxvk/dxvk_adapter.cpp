@@ -360,11 +360,23 @@ namespace dxvk {
       m_deviceFeatures.extExtendedDynamicState3.extendedDynamicState3RasterizationSamples;
     enabledFeatures.extExtendedDynamicState3.extendedDynamicState3SampleMask =
       m_deviceFeatures.extExtendedDynamicState3.extendedDynamicState3SampleMask;
+    enabledFeatures.extExtendedDynamicState3.extendedDynamicState3LineRasterizationMode =
+      m_deviceFeatures.extExtendedDynamicState3.extendedDynamicState3LineRasterizationMode;
 
     // Used for both pNext shader module info, and fast-linking pipelines provided
     // that graphicsPipelineLibraryIndependentInterpolationDecoration is supported
     enabledFeatures.extGraphicsPipelineLibrary.graphicsPipelineLibrary =
       m_deviceFeatures.extGraphicsPipelineLibrary.graphicsPipelineLibrary;
+
+    // Only enable non-default line rasterization features if at least wide lines
+    // and rectangular lines are supported. This saves us several feature checks
+    // in the actual code.
+    if (m_deviceFeatures.core.features.wideLines && m_deviceFeatures.extLineRasterization.rectangularLines) {
+      enabledFeatures.core.features.wideLines = VK_TRUE;
+      enabledFeatures.extLineRasterization.rectangularLines = VK_TRUE;
+      enabledFeatures.extLineRasterization.smoothLines =
+        m_deviceFeatures.extLineRasterization.smoothLines;
+    }
 
     // Enable memory priority if supported to improve memory management
     enabledFeatures.extMemoryPriority.memoryPriority =
@@ -546,6 +558,10 @@ namespace dxvk {
           enabledFeatures.extGraphicsPipelineLibrary = *reinterpret_cast<const VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT*>(f);
           break;
 
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT:
+          enabledFeatures.extLineRasterization = *reinterpret_cast<const VkPhysicalDeviceLineRasterizationFeaturesEXT*>(f);
+          break;
+
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT:
           enabledFeatures.extMemoryPriority = *reinterpret_cast<const VkPhysicalDeviceMemoryPriorityFeaturesEXT*>(f);
           break;
@@ -724,6 +740,11 @@ namespace dxvk {
       m_deviceInfo.extGraphicsPipelineLibrary.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extGraphicsPipelineLibrary);
     }
 
+    if (m_deviceExtensions.supports(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME)) {
+      m_deviceInfo.extLineRasterization.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT;
+      m_deviceInfo.extLineRasterization.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extLineRasterization);
+    }
+
     if (m_deviceExtensions.supports(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME)) {
       m_deviceInfo.extRobustness2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT;
       m_deviceInfo.extRobustness2.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extRobustness2);
@@ -818,6 +839,11 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME)) {
       m_deviceFeatures.extGraphicsPipelineLibrary.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT;
       m_deviceFeatures.extGraphicsPipelineLibrary.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extGraphicsPipelineLibrary);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME)) {
+      m_deviceFeatures.extLineRasterization.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT;
+      m_deviceFeatures.extLineRasterization.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extLineRasterization);
     }
 
     if (m_deviceExtensions.supports(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME))
@@ -931,6 +957,7 @@ namespace dxvk {
       &devExtensions.extFullScreenExclusive,
       &devExtensions.extGraphicsPipelineLibrary,
       &devExtensions.extHdrMetadata,
+      &devExtensions.extLineRasterization,
       &devExtensions.extMemoryBudget,
       &devExtensions.extMemoryPriority,
       &devExtensions.extNonSeamlessCubeMap,
@@ -1011,6 +1038,11 @@ namespace dxvk {
     if (devExtensions.extGraphicsPipelineLibrary) {
       enabledFeatures.extGraphicsPipelineLibrary.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT;
       enabledFeatures.extGraphicsPipelineLibrary.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extGraphicsPipelineLibrary);
+    }
+
+    if (devExtensions.extLineRasterization) {
+      enabledFeatures.extLineRasterization.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT;
+      enabledFeatures.extLineRasterization.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extLineRasterization);
     }
 
     if (devExtensions.extMemoryBudget)
@@ -1107,6 +1139,7 @@ namespace dxvk {
       "\n  depthBiasClamp                         : ", features.core.features.depthBiasClamp ? "1" : "0",
       "\n  fillModeNonSolid                       : ", features.core.features.fillModeNonSolid ? "1" : "0",
       "\n  depthBounds                            : ", features.core.features.depthBounds ? "1" : "0",
+      "\n  wideLines                              : ", features.core.features.wideLines ? "1" : "0",
       "\n  multiViewport                          : ", features.core.features.multiViewport ? "1" : "0",
       "\n  samplerAnisotropy                      : ", features.core.features.samplerAnisotropy ? "1" : "0",
       "\n  textureCompressionBC                   : ", features.core.features.textureCompressionBC ? "1" : "0",
@@ -1171,6 +1204,7 @@ namespace dxvk {
       "\n  extDynamicState3DepthClipEnable        : ", features.extExtendedDynamicState3.extendedDynamicState3DepthClipEnable ? "1" : "0",
       "\n  extDynamicState3RasterizationSamples   : ", features.extExtendedDynamicState3.extendedDynamicState3RasterizationSamples ? "1" : "0",
       "\n  extDynamicState3SampleMask             : ", features.extExtendedDynamicState3.extendedDynamicState3SampleMask ? "1" : "0",
+      "\n  extDynamicState3LineRasterizationMode  : ", features.extExtendedDynamicState3.extendedDynamicState3LineRasterizationMode ? "1" : "0",
       "\n", VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME,
       "\n  fragmentShaderSampleInterlock          : ", features.extFragmentShaderInterlock.fragmentShaderSampleInterlock ? "1" : "0",
       "\n  fragmentShaderPixelInterlock           : ", features.extFragmentShaderInterlock.fragmentShaderPixelInterlock ? "1" : "0",
@@ -1178,6 +1212,9 @@ namespace dxvk {
       "\n  extension supported                    : ", features.extFullScreenExclusive ? "1" : "0",
       "\n", VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME,
       "\n  graphicsPipelineLibrary                : ", features.extGraphicsPipelineLibrary.graphicsPipelineLibrary ? "1" : "0",
+      "\n", VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME,
+      "\n  rectangularLines                       : ", features.extLineRasterization.rectangularLines ? "1" : "0",
+      "\n  smoothLines                            : ", features.extLineRasterization.smoothLines ? "1" : "0",
       "\n", VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
       "\n  extension supported                    : ", features.extMemoryBudget ? "1" : "0",
       "\n", VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,
