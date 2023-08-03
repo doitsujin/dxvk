@@ -6,9 +6,97 @@
 
 namespace dxvk {
 
+  D3D11DXGIKeyedMutex::D3D11DXGIKeyedMutex(
+          ID3D11Resource* pResource)
+  : m_resource(pResource) {
+
+  }
+
+
+  D3D11DXGIKeyedMutex::~D3D11DXGIKeyedMutex() {
+
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11DXGIKeyedMutex::AddRef() {
+    return m_resource->AddRef();
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11DXGIKeyedMutex::Release() {
+    return m_resource->Release();
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    return m_resource->QueryInterface(riid, ppvObject);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::GetPrivateData(
+          REFGUID                 Name,
+          UINT*                   pDataSize,
+          void*                   pData) {
+    return m_resource->GetPrivateData(Name, pDataSize, pData);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::SetPrivateData(
+          REFGUID                 Name,
+          UINT                    DataSize,
+    const void*                   pData) {
+    return m_resource->SetPrivateData(Name, DataSize, pData);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::SetPrivateDataInterface(
+          REFGUID                 Name,
+    const IUnknown*               pUnknown) {
+    return m_resource->SetPrivateDataInterface(Name, pUnknown);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::GetParent(
+          REFIID                  riid,
+          void**                  ppParent) {
+    return GetDevice(riid, ppParent);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::GetDevice(
+          REFIID                  riid,
+          void**                  ppDevice) {
+    Com<ID3D11Device> device;
+    m_resource->GetDevice(&device);
+    return device->QueryInterface(riid, ppDevice);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::AcquireSync(
+          UINT64                  Key,
+          DWORD                   dwMilliseconds) {
+      if (!m_warned) {
+        m_warned = true;
+        Logger::err("D3D11DXGIKeyedMutex::AcquireSync: Stub");
+      }
+      return S_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::ReleaseSync(
+          UINT64                  Key) {
+      if (!m_warned) {
+        m_warned = true;
+        Logger::err("D3D11DXGIKeyedMutex::AcquireSync: Stub");
+      }
+      return S_OK;
+  }
+
   D3D11DXGIResource::D3D11DXGIResource(
           ID3D11Resource*         pResource)
-  : m_resource(pResource) {
+  : m_resource(pResource),
+    m_keyedMutex(pResource) {
 
   }
 
@@ -175,6 +263,16 @@ namespace dxvk {
     return E_NOTIMPL;
   }
   
+
+  HRESULT D3D11DXGIResource::GetKeyedMutex(
+          void **ppvObject) {
+    auto texture = GetCommonTexture(m_resource);
+    if (texture == nullptr || !(texture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX))
+      return E_NOINTERFACE;
+    *ppvObject = ref(&m_keyedMutex);
+    return S_OK;
+  }
+
 
   HRESULT GetResource11on12Info(
           ID3D11Resource*             pResource,

@@ -1146,7 +1146,10 @@ namespace dxvk {
        *ppvObject = ref(&m_resource);
        return S_OK;
     }
-    
+
+    if (riid == __uuidof(IDXGIKeyedMutex))
+      return m_resource.GetKeyedMutex(ppvObject);
+
     if (riid == __uuidof(IDXGIVkInteropSurface)) {
       *ppvObject = ref(&m_interop);
       return S_OK;
@@ -1307,6 +1310,9 @@ namespace dxvk {
        *ppvObject = ref(&m_resource);
        return S_OK;
     }
+
+    if (riid == __uuidof(IDXGIKeyedMutex))
+      return m_resource.GetKeyedMutex(ppvObject);
     
     if (riid == __uuidof(IDXGIVkInteropSurface)) {
       *ppvObject = ref(&m_interop);
@@ -1418,7 +1424,10 @@ namespace dxvk {
        *ppvObject = ref(&m_resource);
        return S_OK;
     }
-    
+
+    if (riid == __uuidof(IDXGIKeyedMutex))
+      return m_resource.GetKeyedMutex(ppvObject);
+
     if (riid == __uuidof(IDXGIVkInteropSurface)) {
       *ppvObject = ref(&m_interop);
       return S_OK;
