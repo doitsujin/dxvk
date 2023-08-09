@@ -795,6 +795,10 @@ namespace dxvk {
     { R"(\\IncPC\.exe$)", {{
       { "d3d9.maxFrameRate",                "59" },
     }} },
+    /* Conflict Vietnam                        */
+    { R"(\\Vietnam\.exe$)", {{
+      { "d3d9.maxFrameRate",                "60" },
+    }} },
     
     /**********************************************/
     /* D3D12 GAMES (vkd3d-proton with dxvk dxgi)  */
