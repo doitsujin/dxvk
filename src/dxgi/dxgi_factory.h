@@ -182,9 +182,7 @@ namespace dxvk {
     DxgiMonitorInfo  m_monitorInfo;
     UINT             m_flags;
     BOOL             m_monitorFallback;
-    
-    HWND m_associatedWindow = nullptr;
-    
+      
   };
   
 }
