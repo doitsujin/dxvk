@@ -58,6 +58,14 @@ namespace dxvk {
         "\n  Tiling:          ", info.tiling));
     }
 
+    if (unlikely(device->instance()->extensions().extDebugUtils && createInfo.name != nullptr)) {
+      VkDebugUtilsObjectNameInfoEXT nameInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT };
+      nameInfo.objectType = VK_OBJECT_TYPE_IMAGE;
+      nameInfo.objectHandle = (uint64_t)(m_image.image);
+      nameInfo.pObjectName = createInfo.name;
+      m_vkd->vkSetDebugUtilsObjectNameEXT(device->handle(), &nameInfo);
+    }
+
     VkImageMemoryRequirementsInfo2 memoryRequirementInfo = { VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2 };
     memoryRequirementInfo.image = m_image.image;
 

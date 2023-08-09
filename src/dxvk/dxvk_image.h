@@ -69,6 +69,9 @@ namespace dxvk {
 
     // Shared handle info
     DxvkSharedHandleInfo sharing;
+
+    // Debug name
+    const char* name = nullptr;
   };
   
   
