@@ -4536,9 +4536,12 @@ namespace dxvk {
       if (pResource->GetImage() != nullptr) {
         Rc<DxvkImage> resourceImage = pResource->GetImage();
 
-        Rc<DxvkImage> mappedImage = resourceImage->info().sampleCount != 1
-          ? pResource->GetResolveImage()
-          : std::move(resourceImage);
+        Rc<DxvkImage> mappedImage;
+        if (resourceImage->info().sampleCount != 1) {
+            mappedImage = pResource->GetResolveImage();
+        } else {
+            mappedImage = std::move(resourceImage);
+        }
 
         // When using any map mode which requires the image contents
         // to be preserved, and if the GPU has write access to the
