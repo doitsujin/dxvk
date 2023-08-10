@@ -227,6 +227,14 @@ namespace dxvk {
   }
 
 
+  VkDeviceMemory DxvkImage::getSharedDeviceMemory() const {
+    if (!m_shared)
+      return VK_NULL_HANDLE;
+
+    return m_image.memory.memory();
+  }
+
+
   DxvkImageView::DxvkImageView(
     const Rc<vk::DeviceFn>&         vkd,
     const Rc<DxvkImage>&            image,

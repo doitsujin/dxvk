@@ -33,7 +33,15 @@ namespace dxvk {
   
   constexpr uint32_t D3D11DXGIDevice::DefaultFrameLatency;
 
-
+  // Used to sync the initial clear opeartion
+  void SyncKeyedMutexInitialAccess(ID3D11Resource *pResource)
+  {
+      Com<IDXGIKeyedMutex> km;
+      if (pResource->QueryInterface(__uuidof(IDXGIKeyedMutex), reinterpret_cast<void**>(&km)) != S_OK)
+        return;
+      km->AcquireSync(0, 0);
+      km->ReleaseSync(0);
+  }
 
   D3D11Device::D3D11Device(
           D3D11DXGIDevice*    pContainer,
@@ -152,6 +160,7 @@ namespace dxvk {
       const Com<D3D11Texture1D> texture = new D3D11Texture1D(this, &desc, nullptr);
       m_initializer->InitTexture(texture->GetCommonTexture(), pInitialData);
       *ppTexture1D = texture.ref();
+      SyncKeyedMutexInitialAccess(texture.ptr());
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
@@ -232,6 +241,7 @@ namespace dxvk {
       Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &desc, nullptr, nullptr);
       m_initializer->InitTexture(texture->GetCommonTexture(), pInitialData);
       *ppTexture2D = texture.ref();
+      SyncKeyedMutexInitialAccess(texture.ptr());
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
@@ -311,6 +321,7 @@ namespace dxvk {
       Com<D3D11Texture3D> texture = new D3D11Texture3D(this, &desc, nullptr);
       m_initializer->InitTexture(texture->GetCommonTexture(), pInitialData);
       *ppTexture3D = texture.ref();
+      SyncKeyedMutexInitialAccess(texture.ptr());
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());

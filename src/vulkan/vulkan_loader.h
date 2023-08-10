@@ -9,6 +9,11 @@
 #define VULKAN_FN(name) \
   ::PFN_ ## name name = reinterpret_cast<::PFN_ ## name>(sym(#name))
 
+extern "C" {
+  typedef VkResult (VKAPI_PTR *PFN_wine_vkAcquireKeyedMutex)(VkDevice device, VkDeviceMemory memory, uint64_t key, uint32_t timeout_ms);
+  typedef VkResult (VKAPI_PTR *PFN_wine_vkReleaseKeyedMutex)(VkDevice device, VkDeviceMemory memory, uint64_t key);
+};
+
 namespace dxvk::vk {
 
   /**
@@ -436,6 +441,9 @@ namespace dxvk::vk {
     #ifdef VK_KHR_PRESENT_WAIT_EXTENSION_NAME
     VULKAN_FN(vkWaitForPresentKHR);
     #endif
+
+    VULKAN_FN(wine_vkAcquireKeyedMutex);
+    VULKAN_FN(wine_vkReleaseKeyedMutex);
   };
   
 }

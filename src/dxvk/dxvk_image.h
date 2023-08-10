@@ -330,7 +330,13 @@ namespace dxvk {
      * \returns The shared handle with the type given by DxvkSharedHandleInfo::type
      */
     HANDLE sharedHandle() const;
-    
+
+    /**
+     * \brief Get dedicated memory backing shared image
+     * \returns The dedicated memory Vulkan object
+     */
+    VkDeviceMemory getSharedDeviceMemory() const;
+
   private:
     
     Rc<vk::DeviceFn>      m_vkd;

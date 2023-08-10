@@ -68,6 +68,7 @@ namespace dxvk {
     VkPhysicalDevicePresentWaitFeaturesKHR                    khrPresentWait;
     VkBool32                                                  nvxBinaryImport;
     VkBool32                                                  nvxImageViewHandle;
+    VkBool32                                                  khrWin32KeyedMutex;
   };
 
 }

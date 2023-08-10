@@ -1,15 +1,22 @@
 #include "d3d11_buffer.h"
 #include "d3d11_texture.h"
 #include "d3d11_resource.h"
+#include "d3d11_context_imm.h"
+#include "d3d11_device.h"
 
+#include "../dxvk/dxvk_device.h"
 #include "../util/util_shared_res.h"
 
 namespace dxvk {
 
   D3D11DXGIKeyedMutex::D3D11DXGIKeyedMutex(
-          ID3D11Resource* pResource)
-  : m_resource(pResource) {
-
+          ID3D11Resource* pResource,
+          D3D11Device*    pDevice)
+  : m_resource(pResource),
+    m_device(pDevice) {
+    m_supported = m_device->GetDXVKDevice()->features().khrWin32KeyedMutex &&
+      m_device->GetDXVKDevice()->vkd()->wine_vkAcquireKeyedMutex != nullptr &&
+      m_device->GetDXVKDevice()->vkd()->wine_vkReleaseKeyedMutex != nullptr;
   }
 
 
@@ -77,26 +84,56 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::AcquireSync(
           UINT64                  Key,
           DWORD                   dwMilliseconds) {
+#ifdef _WIN32
+    if (!m_supported)
+    {
       if (!m_warned) {
         m_warned = true;
-        Logger::err("D3D11DXGIKeyedMutex::AcquireSync: Stub");
+        Logger::err("D3D11DXGIKeyedMutex::AcquireSync: not supported");
       }
       return S_OK;
+    }
+
+    auto device = m_device->GetDXVKDevice();
+    auto texture = GetCommonTexture(m_resource);
+    auto vkMemory = texture->GetImage()->getSharedDeviceMemory();
+    VkDevice vkDevice = device->handle();
+    VkResult vr = device->vkd()->wine_vkAcquireKeyedMutex(vkDevice, vkMemory, Key, dwMilliseconds);
+    switch (vr) {
+      case VK_SUCCESS: return S_OK;
+      case VK_TIMEOUT: return WAIT_TIMEOUT;
+      default:         return DXGI_ERROR_INVALID_CALL;
+    }
+#endif
+    return S_OK;
   }
 
   HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::ReleaseSync(
           UINT64                  Key) {
-      if (!m_warned) {
-        m_warned = true;
-        Logger::err("D3D11DXGIKeyedMutex::AcquireSync: Stub");
-      }
+
+#ifdef _WIN32
+    if (!m_supported)
       return S_OK;
+
+    auto device = m_device->GetDXVKDevice();
+    auto immediateContext = m_device->GetContext();
+    auto texture = GetCommonTexture(m_resource);
+    auto vkMemory = texture->GetImage()->getSharedDeviceMemory();
+    VkDevice vkDevice = device->handle();
+
+    immediateContext->WaitForResource(texture->GetImage(), DxvkCsThread::SynchronizeAll, D3D11_MAP_READ_WRITE, 0);
+
+    if (device->vkd()->wine_vkReleaseKeyedMutex(vkDevice, vkMemory, Key) != VK_SUCCESS)
+      return DXGI_ERROR_INVALID_CALL;
+#endif
+    return S_OK;
   }
 
   D3D11DXGIResource::D3D11DXGIResource(
-          ID3D11Resource*         pResource)
+          ID3D11Resource*         pResource,
+          D3D11Device*            pDevice)
   : m_resource(pResource),
-    m_keyedMutex(pResource) {
+    m_keyedMutex(pResource, pDevice) {
 
   }
 
