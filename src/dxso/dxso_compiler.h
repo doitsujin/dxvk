@@ -272,9 +272,7 @@ namespace dxvk {
     ////////////////////////////////////////////////
     // Temporary r# vector registers with immediate
     // indexing, and x# vector array registers.
-    std::array<
-      DxsoRegisterPointer,
-      DxsoMaxTempRegs> m_rRegs;
+    std::vector<DxsoRegisterPointer> m_rRegs;
 
     ////////////////////////////////////////////////
     // Predicate registers
