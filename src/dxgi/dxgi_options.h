@@ -33,8 +33,9 @@ namespace dxvk {
     /// Emulate UMA
     bool emulateUMA;
 
-    /// Enables nvapi workaround
-    bool nvapiHack;
+    /// Reports Nvidia GPUs as a different vendor (usually AMD)
+    /// in order to work around potential issues with NVAPI.
+    bool hideNvidiaGpu;
 
     /// Enable HDR
     bool enableHDR;

@@ -73,11 +73,17 @@ namespace dxvk {
     this->maxDeviceMemory = VkDeviceSize(config.getOption<int32_t>("dxgi.maxDeviceMemory", 0)) << 20;
     this->maxSharedMemory = VkDeviceSize(config.getOption<int32_t>("dxgi.maxSharedMemory", 0)) << 20;
 
-    // Force nvapiHack to be disabled if NvAPI is enabled in environment
-    if (env::getEnvVar("DXVK_ENABLE_NVAPI") == "1")
-      this->nvapiHack = false;
-    else
-      this->nvapiHack = config.getOption<bool>("dxgi.nvapiHack", true);
+    // Expose Nvidia GPUs properly if NvAPI is enabled in environment
+    this->hideNvidiaGpu = env::getEnvVar("DXVK_ENABLE_NVAPI") != "1";
+
+    Tristate hideNvidiaGpuOption = config.getOption<Tristate>("dxgi.hideNvidiaGpu", Tristate::Auto);
+
+    if (hideNvidiaGpuOption == Tristate::Auto && !config.getOption<bool>("dxgi.nvapiHack", true)) {
+      Logger::warn("dxgi.nvapiHack is deprecated, please set dxgi.hideNvidiaGpu instead.");
+      hideNvidiaGpuOption = Tristate::False;
+    }
+
+    applyTristate(this->hideNvidiaGpu, hideNvidiaGpuOption);
 
     this->enableHDR = config.getOption<bool>("dxgi.enableHDR", env::getEnvVar("DXVK_HDR") == "1");
     if (this->enableHDR && isHDRDisallowed()) {
