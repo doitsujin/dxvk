@@ -85,6 +85,12 @@ namespace dxvk {
 
     applyTristate(this->hideNvidiaGpu, hideNvidiaGpuOption);
 
+    // Expose AMD and Intel GPU by default, unless a config override is active.
+    // Implement as a tristate so that we have the option to introduce similar
+    // logic to Nvidia later, if necessary.
+    this->hideAmdGpu = config.getOption<Tristate>("dxgi.hideAmdGpu", Tristate::Auto) == Tristate::True;
+    this->hideIntelGpu = config.getOption<Tristate>("dxgi.hideIntelGpu", Tristate::Auto) == Tristate::True;
+
     this->enableHDR = config.getOption<bool>("dxgi.enableHDR", env::getEnvVar("DXVK_HDR") == "1");
     if (this->enableHDR && isHDRDisallowed()) {
       Logger::info("HDR was configured to be enabled, but has been force disabled as a UE4 DX11 game was detected.");
