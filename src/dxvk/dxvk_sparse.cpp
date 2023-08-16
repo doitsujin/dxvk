@@ -560,6 +560,58 @@ namespace dxvk {
   }
 
 
+  bool DxvkSparseBindSubmission::tryMergeImageBind(
+          std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle>& oldBind,
+    const std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle>& newBind) {
+    if (oldBind.first.image != newBind.first.image
+     || oldBind.first.subresource.aspectMask != newBind.first.subresource.aspectMask
+     || oldBind.first.subresource.mipLevel != newBind.first.subresource.mipLevel
+     || oldBind.first.subresource.arrayLayer != newBind.first.subresource.arrayLayer)
+      return false;
+
+    if (oldBind.second.memory != newBind.second.memory)
+      return false;
+
+    if (oldBind.second.memory) {
+      if (oldBind.second.offset + oldBind.second.length != newBind.second.offset)
+        return false;
+    }
+
+    bool canMerge = false;
+
+    VkOffset3D oldOffset = oldBind.first.offset;
+    VkExtent3D oldExtent = oldBind.first.extent;
+    VkOffset3D newOffset = newBind.first.offset;
+    VkExtent3D newExtent = newBind.first.extent;
+    VkExtent3D delta = { };
+
+    if (uint32_t(oldOffset.x + oldExtent.width) == uint32_t(newOffset.x)) {
+      canMerge = oldOffset.y == newOffset.y && oldExtent.height == newExtent.height
+              && oldOffset.z == newOffset.z && oldExtent.depth == newExtent.depth;
+      delta.width = newExtent.width;
+    } else if (uint32_t(oldOffset.y + oldExtent.height) == uint32_t(newOffset.y)) {
+      canMerge = oldOffset.x == newOffset.x && oldExtent.width == newExtent.width
+              && oldOffset.z == newOffset.z && oldExtent.depth == newExtent.depth;
+      delta.height = newExtent.height;
+    } else if (uint32_t(oldOffset.z + oldExtent.depth) == uint32_t(newOffset.z)) {
+      canMerge = oldOffset.x == newOffset.x && oldExtent.width == newExtent.width
+              && oldOffset.y == newOffset.y && oldExtent.height == newExtent.height;
+      delta.depth = newExtent.depth;
+    }
+
+    if (canMerge) {
+      oldBind.first.extent.width  += delta.width;
+      oldBind.first.extent.height += delta.height;
+      oldBind.first.extent.depth  += delta.depth;
+
+      if (oldBind.second.memory)
+        oldBind.second.length += newBind.second.length;
+    }
+
+    return canMerge;
+  }
+
+
   void DxvkSparseBindSubmission::processBufferBinds(
           DxvkSparseBufferBindArrays&       buffer) {
     std::vector<std::pair<VkBuffer, VkSparseMemoryBind>> ranges;
@@ -590,10 +642,29 @@ namespace dxvk {
 
   void DxvkSparseBindSubmission::processImageBinds(
           DxvkSparseImageBindArrays&        image) {
+    std::vector<std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle>> binds;
+    binds.reserve(m_imageBinds.size());
+
+    for (const auto& e : m_imageBinds) {
+      std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle> newBind = e;
+
+      while (!binds.empty()) {
+        std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle> oldBind = binds.back();
+
+        if (!tryMergeImageBind(oldBind, newBind))
+          break;
+
+        newBind = oldBind;
+        binds.pop_back();
+      }
+
+      binds.push_back(newBind);
+    }
+
     std::vector<std::pair<VkImage, VkSparseImageMemoryBind>> ranges;
     ranges.reserve(m_imageBinds.size());
 
-    for (const auto& e : m_imageBinds) {
+    for (const auto& e : binds) {
       const auto& key = e.first;
       const auto& handle = e.second;
 
