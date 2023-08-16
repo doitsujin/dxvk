@@ -110,8 +110,28 @@ namespace dxvk {
       if (!m_useCount)
         m_pages.resize(pageCount);
     } else if (pageCount > m_pageCount) {
-      while (m_pages.size() < pageCount)
-        m_pages.push_back(allocPage());
+      std::vector<Rc<DxvkSparsePage>> newPages;
+      newPages.reserve(pageCount - m_pageCount);
+
+      for (size_t i = 0; i < pageCount - m_pageCount; i++)
+        newPages.push_back(allocPage());
+
+      // Sort page by memory and offset to enable more
+      // batching opportunities during page table updates
+      std::sort(newPages.begin(), newPages.end(),
+        [] (const Rc<DxvkSparsePage>& a, const Rc<DxvkSparsePage>& b) {
+          auto aHandle = a->getHandle();
+          auto bHandle = b->getHandle();
+
+          // Ignore length here, the offsets cannot be the same anyway.
+          if (aHandle.memory < bHandle.memory) return true;
+          if (aHandle.memory > bHandle.memory) return false;
+
+          return aHandle.offset < bHandle.offset;
+        });
+
+      for (auto& page : newPages)
+        m_pages.push_back(std::move(page));
     }
 
     m_pageCount = pageCount;
