@@ -249,6 +249,10 @@ namespace dxvk {
 
     if (imageInfo.sharing.mode == DxvkSharedHandleMode::Export)
       ExportImageInfo();
+
+    // Hide some internal flags as necessary
+    if (DxgiUsage & DXGI_USAGE_BACK_BUFFER)
+      m_desc.MiscFlags &= ~D3D11_RESOURCE_MISC_TILED;
   }
   
   
