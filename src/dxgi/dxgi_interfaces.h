@@ -443,12 +443,27 @@ IDXGIVkInteropFactory : public IUnknown {
           PFN_vkGetInstanceProcAddr* ppfnVkGetInstanceProcAddr) = 0;
 };
 
+/**
+ * \brief DXGI factory interface for Vulkan interop
+ */
+MIDL_INTERFACE("2a289dbd-2d0a-4a51-89f7-f2adce465cd6")
+IDXGIVkInteropFactory1 : public IDXGIVkInteropFactory {
+  virtual HRESULT STDMETHODCALLTYPE GetGlobalHDRState(
+          DXGI_COLOR_SPACE_TYPE   *pOutColorSpace,
+          DXGI_HDR_METADATA_HDR10 *ppOutMetadata) = 0;
+
+  virtual HRESULT STDMETHODCALLTYPE SetGlobalHDRState(
+          DXGI_COLOR_SPACE_TYPE    ColorSpace,
+    const DXGI_HDR_METADATA_HDR10 *pMetadata) = 0;
+};
+
 
 #ifdef _MSC_VER
 struct __declspec(uuid("907bf281-ea3c-43b4-a8e4-9f231107b4ff")) IDXGIDXVKAdapter;
 struct __declspec(uuid("92a5d77b-b6e1-420a-b260-fdd701272827")) IDXGIDXVKDevice;
 struct __declspec(uuid("c06a236f-5be3-448a-8943-89c611c0c2c1")) IDXGIVkMonitorInfo;
 struct __declspec(uuid("4c5e1b0d-b0c8-4131-bfd8-9b2476f7f408")) IDXGIVkInteropFactory;
+struct __declspec(uuid("2a289dbd-2d0a-4a51-89f7-f2adce465cd6")) IDXGIVkInteropFactory1;
 struct __declspec(uuid("3a6d8f2c-b0e8-4ab4-b4dc-4fd24891bfa5")) IDXGIVkInteropAdapter;
 struct __declspec(uuid("e2ef5fa5-dc21-4af7-90c4-f67ef6a09323")) IDXGIVkInteropDevice;
 struct __declspec(uuid("e2ef5fa5-dc21-4af7-90c4-f67ef6a09324")) IDXGIVkInteropDevice1;
@@ -462,6 +477,7 @@ __CRT_UUID_DECL(IDXGIDXVKAdapter,          0x907bf281,0xea3c,0x43b4,0xa8,0xe4,0x
 __CRT_UUID_DECL(IDXGIDXVKDevice,           0x92a5d77b,0xb6e1,0x420a,0xb2,0x60,0xfd,0xf7,0x01,0x27,0x28,0x27);
 __CRT_UUID_DECL(IDXGIVkMonitorInfo,        0xc06a236f,0x5be3,0x448a,0x89,0x43,0x89,0xc6,0x11,0xc0,0xc2,0xc1);
 __CRT_UUID_DECL(IDXGIVkInteropFactory,     0x4c5e1b0d,0xb0c8,0x4131,0xbf,0xd8,0x9b,0x24,0x76,0xf7,0xf4,0x08);
+__CRT_UUID_DECL(IDXGIVkInteropFactory1,    0x2a289dbd,0x2d0a,0x4a51,0x89,0xf7,0xf2,0xad,0xce,0x46,0x5c,0xd6);
 __CRT_UUID_DECL(IDXGIVkInteropAdapter,     0x3a6d8f2c,0xb0e8,0x4ab4,0xb4,0xdc,0x4f,0xd2,0x48,0x91,0xbf,0xa5);
 __CRT_UUID_DECL(IDXGIVkInteropDevice,      0xe2ef5fa5,0xdc21,0x4af7,0x90,0xc4,0xf6,0x7e,0xf6,0xa0,0x93,0x23);
 __CRT_UUID_DECL(IDXGIVkInteropDevice1,     0xe2ef5fa5,0xdc21,0x4af7,0x90,0xc4,0xf6,0x7e,0xf6,0xa0,0x93,0x24);

@@ -312,6 +312,8 @@ namespace dxvk {
     if (SyncInterval > 4)
       return DXGI_ERROR_INVALID_CALL;
 
+    UpdateGlobalHDRState();
+
     std::lock_guard<dxvk::recursive_mutex> lockWin(m_lockWindow);
     HRESULT hr = S_OK;
 
@@ -860,6 +862,30 @@ namespace dxvk {
   void DxgiSwapChain::ReleaseMonitorData() {
     if (m_monitorInfo != nullptr)
       m_monitorInfo->ReleaseMonitorData();
+  }
+
+  void DxgiSwapChain::UpdateGlobalHDRState() {
+    // Update the global HDR state if called from the legacy NVAPI
+    // interfaces, etc.
+
+    auto state = m_factory->GlobalHDRState();
+    if (m_globalHDRStateSerial != state.Serial) {
+      SetColorSpace1(state.ColorSpace);
+
+      switch (state.Metadata.Type) {
+        case DXGI_HDR_METADATA_TYPE_NONE:
+          SetHDRMetaData(DXGI_HDR_METADATA_TYPE_NONE, 0, nullptr);
+          break;
+        case DXGI_HDR_METADATA_TYPE_HDR10:
+          SetHDRMetaData(DXGI_HDR_METADATA_TYPE_HDR10, sizeof(state.Metadata.HDR10), reinterpret_cast<void*>(&state.Metadata.HDR10));
+          break;
+        default:
+          Logger::err(str::format("DXGI: Unsupported HDR metadata type (global): ", state.Metadata.Type));
+          break;
+      }
+
+      m_globalHDRStateSerial = state.Serial;
+    }
   }
 
 }
