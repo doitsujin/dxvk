@@ -5595,8 +5595,7 @@ namespace dxvk {
 
     m_activeHazardsDS = m_activeHazardsDS & (~texMask);
     if (m_state.depthStencil != nullptr &&
-        m_state.depthStencil->GetBaseTexture() != nullptr &&
-        m_state.renderStates[D3DRS_ZWRITEENABLE]) {
+        m_state.depthStencil->GetBaseTexture() != nullptr) {
       for (uint32_t samplerIdx : bit::BitMask(masks.samplerMask)) {
         IDirect3DBaseTexture9* dsBase  = m_state.depthStencil->GetBaseTexture();
         IDirect3DBaseTexture9* texBase = m_state.textures[samplerIdx];
@@ -5643,16 +5642,17 @@ namespace dxvk {
     for (uint32_t samplerIdx : bit::BitMask(m_activeHazardsRT)) {
       // Guaranteed to not be nullptr...
       auto tex = GetCommonTexture(m_state.textures[samplerIdx]);
-      if (unlikely(!tex->MarkHazardous())) {
+      if (unlikely(!tex->MarkTransitionedToHazardLayout())) {
         TransitionImage(tex, m_hazardLayout);
         m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
       }
     }
 
-    if (m_activeHazardsDS != 0) {
+    bool zWriteEnabled = m_state.renderStates[D3DRS_ZWRITEENABLE];
+    if (m_activeHazardsDS != 0 && zWriteEnabled) {
       // Guaranteed to not be nullptr...
       auto tex = m_state.depthStencil->GetCommonTexture();
-      if (unlikely(!tex->MarkHazardous())) {
+      if (unlikely(!tex->MarkTransitionedToHazardLayout())) {
         TransitionImage(tex, m_hazardLayout);
         m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
       }
@@ -5904,7 +5904,7 @@ namespace dxvk {
     if (m_hazardLayout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT) {
       if (m_activeHazardsRT != 0)
         feedbackLoopAspects |= VK_IMAGE_ASPECT_COLOR_BIT;
-      if (m_activeHazardsDS != 0)
+      if (m_activeHazardsDS != 0 && attachments.depth.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
         feedbackLoopAspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
     }
 
