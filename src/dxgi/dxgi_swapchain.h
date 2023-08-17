@@ -192,6 +192,8 @@ namespace dxvk {
     bool                            m_monitorHasOutput = true;
     bool                            m_frameStatisticsDisjoint = true;
     wsi::DxvkWindowState            m_windowState;
+
+    uint32_t                        m_globalHDRStateSerial = 0;
     
     HRESULT EnterFullscreenMode(
             IDXGIOutput1            *pTarget);
@@ -218,6 +220,8 @@ namespace dxvk {
             DXGI_VK_MONITOR_DATA**  ppData);
     
     void ReleaseMonitorData();
+
+    void UpdateGlobalHDRState();
 
   };
   
