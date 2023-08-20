@@ -13,14 +13,14 @@ namespace dxvk {
   enum D3D9SpecConstantId : uint32_t {
     SpecSamplerType,        // 2 bits for 16 PS samplers      | Bits: 32
 
-    SpecSamplerDepthMode,   // 1 bit for 20 VS + PS samplers  | Bits: 20
+    SpecSamplerDepthMode,   // 1 bit for 21 VS + PS samplers  | Bits: 21
     SpecAlphaCompareOp,     // Range: 0 -> 7                  | Bits: 3
     SpecPointMode,          // Range: 0 -> 3                  | Bits: 2
     SpecVertexFogMode,      // Range: 0 -> 3                  | Bits: 2
     SpecPixelFogMode,       // Range: 0 -> 3                  | Bits: 2
     SpecFogEnabled,         // Range: 0 -> 1                  | Bits: 1
 
-    SpecSamplerNull,        // 1 bit for 20 samplers          | Bits: 20
+    SpecSamplerNull,        // 1 bit for 21 samplers          | Bits: 21
     SpecProjectionType,     // 1 bit for 6 PS 1.x samplers    | Bits: 6
     SpecAlphaPrecisionBits, // Range: 0 -> 8 or 0xF           | Bits: 4
 
@@ -49,16 +49,16 @@ namespace dxvk {
     static constexpr std::array<BitfieldPosition, SpecConstantCount> Layout{{
       { 0, 0, 32 },  // SamplerType
       
-      { 1, 0,  20 }, // SamplerDepthMode
-      { 1, 20, 3 },  // AlphaCompareOp
-      { 1, 23, 2 },  // PointMode
-      { 1, 25, 2 },  // VertexFogMode
-      { 1, 27, 2 },  // PixelFogMode
-      { 1, 29, 1 },  // FogEnabled
+      { 1, 0,  21 }, // SamplerDepthMode
+      { 1, 21, 3 },  // AlphaCompareOp
+      { 1, 24, 2 },  // PointMode
+      { 1, 26, 2 },  // VertexFogMode
+      { 1, 28, 2 },  // PixelFogMode
+      { 1, 30, 1 },  // FogEnabled
 
-      { 2, 0,  20 }, // SamplerNull
-      { 2, 20, 6 },  // ProjectionType
-      { 2, 26, 4 },  // AlphaPrecisionBits
+      { 2, 0,  21 }, // SamplerNull
+      { 2, 21, 6 },  // ProjectionType
+      { 2, 27, 4 },  // AlphaPrecisionBits
 
       { 3, 0,  16 }, // VertexShaderBools
       { 3, 16, 16 }, // PixelShaderBools
