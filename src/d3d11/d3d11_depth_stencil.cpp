@@ -37,7 +37,7 @@ namespace dxvk {
 
     if (riid == __uuidof(ID3D10DeviceChild)
      || riid == __uuidof(ID3D10DepthStencilState)) {
-      *ppvObject = ref(this);
+      *ppvObject = ref(&m_d3d10);
       return S_OK;
     }
     
