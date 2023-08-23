@@ -467,6 +467,16 @@ namespace dxvk {
     }
     
     
+    void cmdBindIndexBuffer2(
+            VkBuffer                buffer,
+            VkDeviceSize            offset,
+            VkDeviceSize            size,
+            VkIndexType             indexType) {
+      m_vkd->vkCmdBindIndexBuffer2KHR(m_cmd.execBuffer,
+        buffer, offset, size, indexType);
+    }
+
+
     void cmdBindPipeline(
             VkPipelineBindPoint     pipelineBindPoint,
             VkPipeline              pipeline) {

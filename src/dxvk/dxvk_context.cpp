@@ -61,6 +61,10 @@ namespace dxvk {
     // requested rasterizer sample count changes
     if (m_device->features().core.features.variableMultisampleRate)
       m_features.set(DxvkContextFeature::VariableMultisampleRate);
+
+    // Maintenance5 introduced a bounded BindIndexBuffer function
+    if (m_device->features().khrMaintenance5.maintenance5)
+      m_features.set(DxvkContextFeature::IndexBufferRobustness);
   }
   
   
@@ -5589,10 +5593,18 @@ namespace dxvk {
     m_flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
     auto bufferInfo = m_state.vi.indexBuffer.getDescriptor();
 
-    m_cmd->cmdBindIndexBuffer(
-      bufferInfo.buffer.buffer,
-      bufferInfo.buffer.offset,
-      m_state.vi.indexType);
+    if (m_features.test(DxvkContextFeature::IndexBufferRobustness)) {
+      m_cmd->cmdBindIndexBuffer2(
+        bufferInfo.buffer.buffer,
+        bufferInfo.buffer.offset,
+        bufferInfo.buffer.range,
+        m_state.vi.indexType);
+    } else {
+      m_cmd->cmdBindIndexBuffer(
+        bufferInfo.buffer.buffer,
+        bufferInfo.buffer.offset,
+        m_state.vi.indexType);
+    }
 
     if (m_vbTracked.set(MaxNumVertexBindings))
       m_cmd->trackResource<DxvkAccess::Read>(m_state.vi.indexBuffer.buffer());
