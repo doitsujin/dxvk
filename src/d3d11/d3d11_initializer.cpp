@@ -49,6 +49,8 @@ namespace dxvk {
       InitHostVisibleTexture(pTexture, pInitialData);
     else
       InitDeviceLocalTexture(pTexture, pInitialData);
+
+    SyncKeyedMutex(pTexture->GetInterface());
   }
 
 
@@ -282,6 +284,16 @@ namespace dxvk {
     
     m_transferCommands = 0;
     m_transferMemory   = 0;
+  }
+
+
+  void D3D11Initializer::SyncKeyedMutex(ID3D11Resource *pResource) {
+    Com<IDXGIKeyedMutex> keyedMutex;
+    if (pResource->QueryInterface(__uuidof(IDXGIKeyedMutex), reinterpret_cast<void**>(&keyedMutex)) != S_OK)
+      return;
+
+    keyedMutex->AcquireSync(0, 0);
+    keyedMutex->ReleaseSync(0);
   }
 
 }

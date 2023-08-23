@@ -74,7 +74,9 @@ namespace dxvk {
   private:
 
     ID3D11Resource* m_resource;
+    D3D11Device* m_device;
     bool m_warned = false;
+    bool m_supported = false;
   };
 
 
