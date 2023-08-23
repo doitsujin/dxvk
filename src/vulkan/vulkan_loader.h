@@ -436,7 +436,14 @@ namespace dxvk::vk {
     VULKAN_FN(vkImportSemaphoreWin32HandleKHR);
     #endif
 
-    #ifdef VK_KHR_PRESENT_WAIT_EXTENSION_NAME
+    #ifdef VK_KHR_maintenance5
+    VULKAN_FN(vkCmdBindIndexBuffer2KHR);
+    VULKAN_FN(vkGetRenderingAreaGranularityKHR);
+    VULKAN_FN(vkGetDeviceImageSubresourceLayoutKHR);
+    VULKAN_FN(vkGetImageSubresourceLayout2KHR);
+    #endif
+
+    #ifdef VK_KHR_present_wait
     VULKAN_FN(vkWaitForPresentKHR);
     #endif
 
