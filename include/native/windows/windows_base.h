@@ -211,6 +211,11 @@ typedef struct RGNDATA {
 #define TRUE 1
 #define FALSE 0
 
+#define WAIT_TIMEOUT    0x00000102
+#define WAIT_FAILED	    0xffffffff
+#define WAIT_OBJECT_0		0
+#define WAIT_ABANDONED  0x00000080
+
 #define interface struct
 #define MIDL_INTERFACE(x) struct
 
