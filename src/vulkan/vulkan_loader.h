@@ -9,6 +9,9 @@
 #define VULKAN_FN(name) \
   ::PFN_ ## name name = reinterpret_cast<::PFN_ ## name>(sym(#name))
 
+using PFN_wine_vkAcquireKeyedMutex = VkResult (VKAPI_PTR *)(VkDevice device, VkDeviceMemory memory, uint64_t key, uint32_t timeout_ms);
+using PFN_wine_vkReleaseKeyedMutex = VkResult (VKAPI_PTR *)(VkDevice device, VkDeviceMemory memory, uint64_t key);
+
 namespace dxvk::vk {
 
   /**
@@ -435,6 +438,12 @@ namespace dxvk::vk {
 
     #ifdef VK_KHR_PRESENT_WAIT_EXTENSION_NAME
     VULKAN_FN(vkWaitForPresentKHR);
+    #endif
+
+    #ifdef VK_KHR_win32_keyed_mutex
+    // Wine additions to actually use this extension.
+    VULKAN_FN(wine_vkAcquireKeyedMutex);
+    VULKAN_FN(wine_vkReleaseKeyedMutex);
     #endif
   };
   
