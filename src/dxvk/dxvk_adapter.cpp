@@ -970,6 +970,7 @@ namespace dxvk {
       &devExtensions.extVertexAttributeDivisor,
       &devExtensions.khrExternalMemoryWin32,
       &devExtensions.khrExternalSemaphoreWin32,
+      &devExtensions.khrWin32KeyedMutex,
       &devExtensions.khrPipelineLibrary,
       &devExtensions.khrPresentId,
       &devExtensions.khrPresentWait,
@@ -1113,6 +1114,9 @@ namespace dxvk {
 
     if (devExtensions.nvxImageViewHandle)
       enabledFeatures.nvxImageViewHandle = VK_TRUE;
+
+    if (devExtensions.khrWin32KeyedMutex)
+      enabledFeatures.khrWin32KeyedMutex = VK_TRUE;
   }
 
   
@@ -1252,7 +1256,9 @@ namespace dxvk {
       "\n", VK_NVX_BINARY_IMPORT_EXTENSION_NAME,
       "\n  extension supported                    : ", features.nvxBinaryImport ? "1" : "0",
       "\n", VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME,
-      "\n  extension supported                    : ", features.nvxImageViewHandle ? "1" : "0"));
+      "\n  extension supported                    : ", features.nvxImageViewHandle ? "1" : "0",
+      "\n", VK_KHR_WIN32_KEYED_MUTEX_EXTENSION_NAME,
+      "\n  extension supported                    : ", features.khrWin32KeyedMutex ? "1" : "0"));
   }
 
 
