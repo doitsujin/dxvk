@@ -27,6 +27,11 @@ namespace dxvk {
   }
 
 
+  static bool isNvapiEnabled() {
+    return env::getEnvVar("DXVK_ENABLE_NVAPI") == "1";
+  }
+
+
   static bool isHDRDisallowed() {
 #ifdef _WIN32
     // Unreal Engine 4 titles use AGS/NVAPI to try and enable
@@ -53,7 +58,7 @@ namespace dxvk {
     bool isUE4 = exeName.find("-Win64-Shipping") != std::string::npos;
     bool hasD3D12 = GetModuleHandleA("d3d12") != nullptr;
 
-    if (isUE4 && !hasD3D12)
+    if (isUE4 && !hasD3D12 && !isNvapiEnabled())
       return true;
 #endif
     return false;
@@ -74,7 +79,7 @@ namespace dxvk {
     this->maxSharedMemory = VkDeviceSize(config.getOption<int32_t>("dxgi.maxSharedMemory", 0)) << 20;
 
     // Expose Nvidia GPUs properly if NvAPI is enabled in environment
-    this->hideNvidiaGpu = env::getEnvVar("DXVK_ENABLE_NVAPI") != "1";
+    this->hideNvidiaGpu = !isNvapiEnabled();
 
     Tristate hideNvidiaGpuOption = config.getOption<Tristate>("dxgi.hideNvidiaGpu", Tristate::Auto);
 
