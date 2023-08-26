@@ -221,7 +221,7 @@ namespace dxvk {
     pDesc->AttachedToDesktop     = 1;
     pDesc->Rotation              = DXGI_MODE_ROTATION_UNSPECIFIED;
     pDesc->Monitor               = m_monitor;
-    pDesc->BitsPerColor          = 8;
+    pDesc->BitsPerColor          = 10;
     // This should only return DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020
     // (HDR) if the user has the HDR setting enabled in Windows.
     // Games can still punt into HDR mode by using CheckColorSpaceSupport
