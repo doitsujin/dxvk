@@ -803,6 +803,10 @@ namespace dxvk {
     { R"(\\Snowblind(.SP|.MP|.exe)$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
+    /* Drakensang: The Dark Eye                */
+    { R"(\\drakensang\.exe$)", {{
+      { "d3d9.deferSurfaceCreation",        "True" },
+    }} },
     
     /**********************************************/
     /* D3D12 GAMES (vkd3d-proton with dxvk dxgi)  */
