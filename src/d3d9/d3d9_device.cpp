@@ -298,6 +298,8 @@ namespace dxvk {
 
     m_adapter->GetDeviceCaps(m_deviceType, pCaps);
 
+    // Native drivers report either 255 or UINT_MAX when doing SWVP
+    pCaps->MaxActiveLights           = m_isSWVP ? caps::MaxEnabledLights : 10;
     // When in SWVP mode, 256 matrices can be used for indexed vertex blending
     pCaps->MaxVertexBlendMatrixIndex = m_isSWVP ? 255 : 8;
 
