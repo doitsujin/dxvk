@@ -95,46 +95,42 @@ namespace dxvk {
 
     Com<D3D11DXGIDevice, false> m_dxgiDevice;
     
-    D3D11Device*                m_parent;
-    Com<IDXGIVkSurfaceFactory>  m_surfaceFactory;
+    D3D11Device*              m_parent;
+    Com<IDXGIVkSurfaceFactory> m_surfaceFactory;
 
-    DXGI_SWAP_CHAIN_DESC1       m_desc;
+    DXGI_SWAP_CHAIN_DESC1     m_desc;
 
-    Rc<DxvkDevice>              m_device;
-    Rc<DxvkContext>             m_context;
+    Rc<DxvkDevice>            m_device;
+    Rc<DxvkContext>           m_context;
 
-    Rc<Presenter>               m_presenter;
+    Rc<Presenter>             m_presenter;
 
-    uint32_t                    m_sparseFrameIndex = 0u;
-    uint32_t                    m_sparsePagesPerImage = 0u;
-    Rc<DxvkSparsePageAllocator> m_sparseAllocator;
+    Rc<DxvkImage>             m_swapImage;
+    Rc<DxvkImageView>         m_swapImageView;
+    Rc<DxvkSwapchainBlitter>  m_blitter;
 
-    std::vector<Rc<DxvkImage>>  m_swapImages;
-    Rc<DxvkImageView>           m_swapImageView;
-    Rc<DxvkSwapchainBlitter>    m_blitter;
+    Rc<hud::Hud>              m_hud;
 
-    Rc<hud::Hud>                m_hud;
-
-    std::vector<Com<D3D11Texture2D, false>> m_backBuffers;
-    DxvkSubmitStatus            m_presentStatus;
+    Com<D3D11Texture2D, false> m_backBuffer;
+    DxvkSubmitStatus          m_presentStatus;
 
     std::vector<Rc<DxvkImageView>> m_imageViews;
 
-    uint64_t                    m_frameId      = DXGI_MAX_SWAP_CHAIN_BUFFERS;
-    uint32_t                    m_frameLatency = DefaultFrameLatency;
-    uint32_t                    m_frameLatencyCap = 0;
-    HANDLE                      m_frameLatencyEvent = nullptr;
-    Rc<sync::CallbackFence>     m_frameLatencySignal;
+    uint64_t                m_frameId      = DXGI_MAX_SWAP_CHAIN_BUFFERS;
+    uint32_t                m_frameLatency = DefaultFrameLatency;
+    uint32_t                m_frameLatencyCap = 0;
+    HANDLE                  m_frameLatencyEvent = nullptr;
+    Rc<sync::CallbackFence> m_frameLatencySignal;
 
-    bool                        m_dirty = true;
+    bool                    m_dirty = true;
 
-    VkColorSpaceKHR             m_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    VkColorSpaceKHR         m_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
     std::optional<VkHdrMetadataEXT> m_hdrMetadata;
-    bool                        m_dirtyHdrMetadata = true;
+    bool m_dirtyHdrMetadata = true;
 
-    dxvk::mutex                 m_frameStatisticsLock;
-    DXGI_VK_FRAME_STATISTICS    m_frameStatistics = { };
+    dxvk::mutex               m_frameStatisticsLock;
+    DXGI_VK_FRAME_STATISTICS  m_frameStatistics = { };
 
     HRESULT PresentImage(UINT SyncInterval);
 
@@ -175,12 +171,6 @@ namespace dxvk {
             UINT                      Preferred);
     
     VkFullScreenExclusiveEXT PickFullscreenMode();
-
-    void RotateBackBuffer();
-
-    bool IsSequentialSwapChain() const;
-
-    bool SupportsSparseImages() const;
 
     std::string GetApiName() const;
 

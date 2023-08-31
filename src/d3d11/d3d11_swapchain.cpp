@@ -140,12 +140,12 @@ namespace dxvk {
           void**                    ppBuffer) {
     InitReturnPtr(ppBuffer);
 
-    if (BufferId > m_backBuffers.size()) {
-      Logger::err(str::format("D3D11: Invalid buffer index: ", BufferId));
+    if (BufferId > 0) {
+      Logger::err("D3D11: GetImage: BufferId > 0 not supported");
       return DXGI_ERROR_UNSUPPORTED;
     }
 
-    return m_backBuffers[BufferId]->QueryInterface(riid, ppBuffer);
+    return m_backBuffer->QueryInterface(riid, ppBuffer);
   }
 
 
@@ -396,10 +396,7 @@ namespace dxvk {
 
       if (m_hud != nullptr)
         m_hud->render(m_context, info.format, info.imageExtent);
-
-      if (!SyncInterval || i == SyncInterval - 1)
-        RotateBackBuffer();
-
+      
       SubmitPresent(immediateContext, sync, i);
     }
 
@@ -562,25 +559,11 @@ namespace dxvk {
 
 
   void D3D11SwapChain::CreateBackBuffer() {
-    bool sequentialPresent = false;
-
-    if (IsSequentialSwapChain()) {
-      if (!(sequentialPresent = SupportsSparseImages())) {
-        Logger::warn("Sequential present mode requeted, but sparse images not supported"
-                     "by the Vulkan implementation. Falling back to Discard semantics.");
-      }
-    }
-
     // Explicitly destroy current swap image before
     // creating a new one to free up resources
-    m_swapImages.clear();
-    m_backBuffers.clear();
-    m_swapImageView = nullptr;
-
-    uint32_t bufferCount = 1u;
-
-    if (sequentialPresent)
-      bufferCount = m_desc.BufferCount;
+    m_swapImage         = nullptr;
+    m_swapImageView     = nullptr;
+    m_backBuffer        = nullptr;
 
     // Create new back buffer
     D3D11_COMMON_TEXTURE_DESC desc;
@@ -609,47 +592,27 @@ namespace dxvk {
     if (m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_GDI_COMPATIBLE)
       desc.MiscFlags |= D3D11_RESOURCE_MISC_GDI_COMPATIBLE;
     
-    if (sequentialPresent)
-      desc.MiscFlags |= D3D11_RESOURCE_MISC_TILED;
-
     DXGI_USAGE dxgiUsage = DXGI_USAGE_BACK_BUFFER;
 
     if (m_desc.SwapEffect == DXGI_SWAP_EFFECT_DISCARD
      || m_desc.SwapEffect == DXGI_SWAP_EFFECT_FLIP_DISCARD)
       dxgiUsage |= DXGI_USAGE_DISCARD_ON_PRESENT;
 
-    for (uint32_t i = 0; i < bufferCount; i++) {
-      m_backBuffers.push_back(new D3D11Texture2D(m_parent, this, &desc, dxgiUsage));
-      m_swapImages.push_back(GetCommonTexture(m_backBuffers.back().ptr())->GetImage());
-
-      dxgiUsage |= DXGI_USAGE_READ_ONLY;
-    }
-
-    // If necessary, create a sparse page allocator
-    m_sparseFrameIndex = 0;
-
-    if (sequentialPresent) {
-      m_sparsePagesPerImage = m_swapImages.front()->getSparsePageTable()->getPageCount();
-
-      m_sparseAllocator = m_device->createSparsePageAllocator();
-      m_sparseAllocator->setCapacity(m_sparsePagesPerImage * bufferCount);
-    } else {
-      m_sparsePagesPerImage = 0;
-      m_sparseAllocator = nullptr;
-    }
+    m_backBuffer = new D3D11Texture2D(m_parent, this, &desc, dxgiUsage);
+    m_swapImage = GetCommonTexture(m_backBuffer.ptr())->GetImage();
 
     // Create an image view that allows the
     // image to be bound as a shader resource.
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format     = m_swapImages.front()->info().format;
+    viewInfo.format     = m_swapImage->info().format;
     viewInfo.usage      = VK_IMAGE_USAGE_SAMPLED_BIT;
     viewInfo.aspect     = VK_IMAGE_ASPECT_COLOR_BIT;
     viewInfo.minLevel   = 0;
     viewInfo.numLevels  = 1;
     viewInfo.minLayer   = 0;
     viewInfo.numLayers  = 1;
-    m_swapImageView = m_device->createImageView(m_swapImages.front(), viewInfo);
+    m_swapImageView = m_device->createImageView(m_swapImage, viewInfo);
     
     // Initialize the image so that we can use it. Clearing
     // to black prevents garbled output for the first frame.
@@ -663,30 +626,8 @@ namespace dxvk {
     m_context->beginRecording(
       m_device->createCommandList());
     
-    for (uint32_t i = 0; i < m_swapImages.size(); i++) {
-      if (sequentialPresent) {
-        DxvkSparseBindInfo sparseBind;
-        sparseBind.dstResource = m_swapImages[i];
-        sparseBind.srcAllocator = m_sparseAllocator;
-
-        for (uint32_t j = 0; j < m_sparsePagesPerImage; j++) {
-          auto& bind = sparseBind.binds.emplace_back();
-          bind.mode = DxvkSparseBindMode::Bind;
-          bind.srcPage = j + i * m_sparsePagesPerImage;
-          bind.dstPage = j;
-        }
-
-        m_context->updatePageTable(sparseBind,
-          DxvkSparseBindFlag::SkipSynchronization);
-        m_context->initSparseImage(m_swapImages[i]);
-
-        Rc<DxvkImageView> view = m_device->createImageView(m_swapImages.front(), viewInfo);
-        m_context->clearRenderTarget(view, VK_IMAGE_ASPECT_COLOR_BIT, VkClearValue());
-      } else {
-        m_context->initImage(m_swapImages[i],
-          subresources, VK_IMAGE_LAYOUT_UNDEFINED);
-      }
-    }
+    m_context->initImage(m_swapImage,
+      subresources, VK_IMAGE_LAYOUT_UNDEFINED);
 
     m_device->submitCommandList(
       m_context->endRecording(),
@@ -794,51 +735,6 @@ namespace dxvk {
     return m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH
       ? VK_FULL_SCREEN_EXCLUSIVE_ALLOWED_EXT
       : VK_FULL_SCREEN_EXCLUSIVE_DISALLOWED_EXT;
-  }
-
-
-  void D3D11SwapChain::RotateBackBuffer() {
-    uint32_t bufferCount = m_swapImages.size();
-
-    if (bufferCount < 2)
-      return;
-
-    m_sparseFrameIndex += 1;
-    m_sparseFrameIndex %= bufferCount;
-
-    for (uint32_t i = 0; i < bufferCount; i++) {
-      uint32_t firstImage = (m_sparseFrameIndex + i) % bufferCount;
-
-      DxvkSparseBindInfo sparseBind;
-      sparseBind.dstResource = m_swapImages[i];
-      sparseBind.srcAllocator = m_sparseAllocator;
-
-      for (uint32_t j = 0; j < m_sparsePagesPerImage; j++) {
-        auto& bind = sparseBind.binds.emplace_back();
-        bind.mode = DxvkSparseBindMode::Bind;
-        bind.srcPage = j + firstImage * m_sparsePagesPerImage;
-        bind.dstPage = j;
-      }
-
-      m_context->updatePageTable(sparseBind, 0);
-    }
-  }
-
-
-  bool D3D11SwapChain::IsSequentialSwapChain() const {
-    return m_desc.SwapEffect == DXGI_SWAP_EFFECT_SEQUENTIAL
-        || m_desc.SwapEffect == DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
-  }
-
-
-  bool D3D11SwapChain::SupportsSparseImages() const {
-    const auto& properties = m_device->properties().core.properties;
-    const auto& features = m_device->features().core.features;
-
-    return features.sparseBinding
-        && features.sparseResidencyImage2D
-        && features.sparseResidencyAliased
-        && properties.sparseProperties.residencyStandard2DBlockShape;
   }
 
 
