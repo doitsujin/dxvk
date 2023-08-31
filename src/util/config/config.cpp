@@ -413,6 +413,10 @@ namespace dxvk {
     { R"(\\Vindictus(_x64)?\.exe$)", {{
       { "d3d11.cachedDynamicResources",     "cr"   },
     }} },
+    /* Riders Republic - Statically linked AMDAGS */
+    { R"(\\RidersRepublic(_BE)?\.exe$)", {{
+      { "dxgi.hideAmdGpu",                "True"   },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
