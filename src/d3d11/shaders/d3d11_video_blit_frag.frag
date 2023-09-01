@@ -1,7 +1,5 @@
 #version 450
 
-layout(constant_id = 3) const bool c_planar = true;
-
 // Can't use matrix types here since even a two-row
 // matrix will be padded to 16 bytes per column for
 // absolutely no reason
@@ -15,6 +13,7 @@ uniform ubo_t {
   vec2 coord_matrix_c3;
   float y_min;
   float y_max;
+  bool is_planar;
 };
 
 layout(location = 0) in vec2 i_texcoord;
@@ -37,7 +36,7 @@ void main() {
   // Fetch source image color
   vec4 color = vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
-  if (c_planar) {
+  if (is_planar) {
     color.g  = texture(sampler2D(s_inputY,    s_sampler), coord).r;
     color.rb = texture(sampler2D(s_inputCbCr, s_sampler), coord).gr;
     color.g  = clamp((color.g - y_min) / (y_max - y_min), 0.0f, 1.0f);

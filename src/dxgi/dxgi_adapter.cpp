@@ -11,6 +11,9 @@
 #include "dxgi_output.h"
 
 #include "../util/util_luid.h"
+#include "../util/util_win32_compat.h"
+
+#include "../wsi/wsi_monitor.h"
 
 namespace dxvk {
 
@@ -100,8 +103,11 @@ namespace dxvk {
       return S_OK;
     }
     
-    Logger::warn("DxgiAdapter::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(IDXGIAdapter), riid)) {
+      Logger::warn("DxgiAdapter::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
   
@@ -142,19 +148,40 @@ namespace dxvk {
     
     if (ppOutput == nullptr)
       return E_INVALIDARG;
-    
-    MonitorEnumInfo info;
-    info.iMonitorId = Output;
-    info.oMonitor   = nullptr;
-    
-    ::EnumDisplayMonitors(
-      nullptr, nullptr, &MonitorEnumProc,
-      reinterpret_cast<LPARAM>(&info));
-    
-    if (info.oMonitor == nullptr)
+
+    const auto& deviceId = m_adapter->devicePropertiesExt().vk11;
+
+    std::array<const LUID*, 2> adapterLUIDs = { };
+    uint32_t numLUIDs = 0;
+
+    if (m_adapter->isLinkedToDGPU())
       return DXGI_ERROR_NOT_FOUND;
-    
-    *ppOutput = ref(new DxgiOutput(m_factory, this, info.oMonitor));
+
+    if (deviceId.deviceLUIDValid)
+      adapterLUIDs[numLUIDs++] = reinterpret_cast<const LUID*>(deviceId.deviceLUID);
+
+    auto linkedAdapter = m_adapter->linkedIGPUAdapter();
+
+    // If either LUID is not valid, enumerate all monitors.
+    if (numLUIDs && linkedAdapter != nullptr) {
+      const auto& deviceId = linkedAdapter->devicePropertiesExt().vk11;
+
+      if (deviceId.deviceLUIDValid)
+        adapterLUIDs[numLUIDs++] = reinterpret_cast<const LUID*>(deviceId.deviceLUID);
+      else
+        numLUIDs = 0;
+    }
+
+    // Enumerate all monitors if the robustness fallback is active.
+    if (m_factory->UseMonitorFallback())
+      numLUIDs = 0;
+
+    HMONITOR monitor = wsi::enumMonitors(adapterLUIDs.data(), numLUIDs, Output);
+
+    if (monitor == nullptr)
+      return DXGI_ERROR_NOT_FOUND;
+
+    *ppOutput = ref(new DxgiOutput(m_factory, this, monitor));
     return S_OK;
   }
   
@@ -244,7 +271,7 @@ namespace dxvk {
     
     auto deviceProp = m_adapter->deviceProperties();
     auto memoryProp = m_adapter->memoryProperties();
-    auto deviceId   = m_adapter->devicePropertiesExt().coreDeviceId;
+    auto vk11       = m_adapter->devicePropertiesExt().vk11;
     
     // Custom Vendor / Device ID
     if (options->customVendorId >= 0)
@@ -252,23 +279,45 @@ namespace dxvk {
     
     if (options->customDeviceId >= 0)
       deviceProp.deviceID = options->customDeviceId;
-    
-    const char* description = deviceProp.deviceName;
-    // Custom device description
-    if (!options->customDeviceDesc.empty())
-      description = options->customDeviceDesc.c_str();
-    
-    // XXX nvapi workaround for a lot of Unreal Engine 4 games
-    if (options->customVendorId < 0 && options->customDeviceId < 0
-     && options->nvapiHack && deviceProp.vendorID == uint16_t(DxvkGpuVendor::Nvidia)) {
-      Logger::info("DXGI: NvAPI workaround enabled, reporting AMD GPU");
-      deviceProp.vendorID = uint16_t(DxvkGpuVendor::Amd);
-      deviceProp.deviceID = 0x67df; /* RX 480 */
+
+    std::string description = options->customDeviceDesc.empty()
+      ? std::string(deviceProp.deviceName)
+      : options->customDeviceDesc;
+
+    if (options->customVendorId < 0) {
+      uint16_t fallbackVendor = 0xdead;
+      uint16_t fallbackDevice = 0xbeef;
+
+      if (!options->hideAmdGpu) {
+        // AMD RX 6700XT
+        fallbackVendor = uint16_t(DxvkGpuVendor::Amd);
+        fallbackDevice = 0x73df;
+      } else if (!options->hideNvidiaGpu) {
+        // Nvidia RTX 3060
+        fallbackVendor = uint16_t(DxvkGpuVendor::Nvidia);
+        fallbackDevice = 0x2487;
+      }
+
+      bool hideGpu = (deviceProp.vendorID == uint16_t(DxvkGpuVendor::Nvidia) && options->hideNvidiaGpu)
+                  || (deviceProp.vendorID == uint16_t(DxvkGpuVendor::Amd) && options->hideAmdGpu)
+                  || (deviceProp.vendorID == uint16_t(DxvkGpuVendor::Intel) && options->hideIntelGpu);
+
+      if (hideGpu) {
+        deviceProp.vendorID = fallbackVendor;
+
+        if (options->customDeviceId < 0)
+          deviceProp.deviceID = fallbackDevice;
+
+        Logger::info(str::format("DXGI: Hiding actual GPU, reporting vendor ID 0x", std::hex, deviceProp.vendorID, ", device ID ", deviceProp.deviceID));
+      }
     }
     
     // Convert device name
     std::memset(pDesc->Description, 0, sizeof(pDesc->Description));
-    str::tows(description, pDesc->Description);
+
+    str::transcodeString(pDesc->Description,
+      sizeof(pDesc->Description) / sizeof(pDesc->Description[0]) - 1,
+      description.c_str(), description.size());
     
     // Get amount of video memory
     // based on the Vulkan heaps
@@ -322,8 +371,8 @@ namespace dxvk {
     pDesc->GraphicsPreemptionGranularity  = DXGI_GRAPHICS_PREEMPTION_DMA_BUFFER_BOUNDARY;
     pDesc->ComputePreemptionGranularity   = DXGI_COMPUTE_PREEMPTION_DMA_BUFFER_BOUNDARY;
 
-    if (deviceId.deviceLUIDValid)
-      std::memcpy(&pDesc->AdapterLuid, deviceId.deviceLUID, VK_LUID_SIZE);
+    if (vk11.deviceLUIDValid)
+      std::memcpy(&pDesc->AdapterLuid, vk11.deviceLUID, VK_LUID_SIZE);
     else
       pDesc->AdapterLuid = GetAdapterLUID(m_index);
 
@@ -350,23 +399,24 @@ namespace dxvk {
     if (MemorySegmentGroup == DXGI_MEMORY_SEGMENT_GROUP_LOCAL)
       heapFlags |= VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
     
-    pVideoMemoryInfo->Budget       = 0;
+    pVideoMemoryInfo->Budget = 0;
     pVideoMemoryInfo->CurrentUsage = 0;
+    pVideoMemoryInfo->AvailableForReservation = 0;
 
     for (uint32_t i = 0; i < memInfo.heapCount; i++) {
       if ((memInfo.heaps[i].heapFlags & heapFlagMask) != heapFlags)
         continue;
       
-      pVideoMemoryInfo->Budget       += memInfo.heaps[i].memoryBudget;
+      pVideoMemoryInfo->Budget += memInfo.heaps[i].memoryBudget;
       pVideoMemoryInfo->CurrentUsage += memInfo.heaps[i].memoryAllocated;
+      pVideoMemoryInfo->AvailableForReservation += memInfo.heaps[i].heapSize / 2;
     }
 
     // We don't implement reservation, but the observable
     // behaviour should match that of Windows drivers
     uint32_t segmentId = uint32_t(MemorySegmentGroup);
 
-    pVideoMemoryInfo->AvailableForReservation = pVideoMemoryInfo->Budget / 2;
-    pVideoMemoryInfo->CurrentReservation      = m_memReservation[segmentId];
+    pVideoMemoryInfo->CurrentReservation = m_memReservation[segmentId];
     return S_OK;
   }
 
@@ -404,7 +454,7 @@ namespace dxvk {
           HANDLE                        hEvent,
           DWORD*                        pdwCookie) {
     if (!hEvent || !pdwCookie)
-      return E_INVALIDARG;
+      return DXGI_ERROR_INVALID_CALL;
 
     std::unique_lock<dxvk::mutex> lock(m_mutex);
     DWORD cookie = ++m_eventCookie;
@@ -474,21 +524,6 @@ namespace dxvk {
           SetEvent(pair.second);
       }
     }
-  }
-  
-  
-  BOOL CALLBACK DxgiAdapter::MonitorEnumProc(
-          HMONITOR                  hmon,
-          HDC                       hdc,
-          LPRECT                    rect,
-          LPARAM                    lp) {
-    auto data = reinterpret_cast<MonitorEnumInfo*>(lp);
-    
-    if (data->iMonitorId--)
-      return TRUE; /* continue */
-    
-    data->oMonitor = hmon;
-    return FALSE; /* stop */
   }
   
 }

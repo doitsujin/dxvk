@@ -66,11 +66,19 @@ namespace dxvk {
       }
     }
 
+    UINT GetSampleCount() const {
+      return UINT(m_view->imageInfo().sampleCount);
+    }
+
     VkImageAspectFlags GetWritableAspectMask() const {
       VkImageAspectFlags mask = m_view->formatInfo()->aspectMask;
       if (m_desc.Flags & D3D11_DSV_READ_ONLY_DEPTH)   mask &= ~VK_IMAGE_ASPECT_DEPTH_BIT;
       if (m_desc.Flags & D3D11_DSV_READ_ONLY_STENCIL) mask &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
       return mask;
+    }
+
+    DXGI_FORMAT GetViewFormat() const {
+      return m_desc.Format;
     }
 
     D3D10DepthStencilView* GetD3D10Iface() {

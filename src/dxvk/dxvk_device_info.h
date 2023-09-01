@@ -14,16 +14,18 @@ namespace dxvk {
    */
   struct DxvkDeviceInfo {
     VkPhysicalDeviceProperties2                               core;
-    VkPhysicalDeviceIDProperties                              coreDeviceId;
-    VkPhysicalDeviceSubgroupProperties                        coreSubgroup;
+    VkPhysicalDeviceVulkan11Properties                        vk11;
+    VkPhysicalDeviceVulkan12Properties                        vk12;
+    VkPhysicalDeviceVulkan13Properties                        vk13;
     VkPhysicalDeviceConservativeRasterizationPropertiesEXT    extConservativeRasterization;
     VkPhysicalDeviceCustomBorderColorPropertiesEXT            extCustomBorderColor;
+    VkPhysicalDeviceExtendedDynamicState3PropertiesEXT        extExtendedDynamicState3;
+    VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT      extGraphicsPipelineLibrary;
+    VkPhysicalDeviceLineRasterizationPropertiesEXT            extLineRasterization;
     VkPhysicalDeviceRobustness2PropertiesEXT                  extRobustness2;
     VkPhysicalDeviceTransformFeedbackPropertiesEXT            extTransformFeedback;
     VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT       extVertexAttributeDivisor;
-    VkPhysicalDeviceDepthStencilResolvePropertiesKHR          khrDepthStencilResolve;
-    VkPhysicalDeviceDriverPropertiesKHR                       khrDeviceDriverProperties;
-    VkPhysicalDeviceFloatControlsPropertiesKHR                khrShaderFloatControls;
+    VkPhysicalDeviceMaintenance5PropertiesKHR                 khrMaintenance5;
   };
 
 
@@ -36,18 +38,39 @@ namespace dxvk {
    */
   struct DxvkDeviceFeatures {
     VkPhysicalDeviceFeatures2                                 core;
-    VkPhysicalDeviceShaderDrawParametersFeatures              shaderDrawParameters;
-    VkPhysicalDevice4444FormatsFeaturesEXT                    ext4444Formats;
+    VkPhysicalDeviceVulkan11Features                          vk11;
+    VkPhysicalDeviceVulkan12Features                          vk12;
+    VkPhysicalDeviceVulkan13Features                          vk13;
+    VkBool32                                                  amdShaderFragmentMask;
+    VkPhysicalDeviceAttachmentFeedbackLoopLayoutFeaturesEXT   extAttachmentFeedbackLoopLayout;
+    VkBool32                                                  extConservativeRasterization;
     VkPhysicalDeviceCustomBorderColorFeaturesEXT              extCustomBorderColor;
     VkPhysicalDeviceDepthClipEnableFeaturesEXT                extDepthClipEnable;
-    VkPhysicalDeviceExtendedDynamicStateFeaturesEXT           extExtendedDynamicState;
-    VkPhysicalDeviceHostQueryResetFeaturesEXT                 extHostQueryReset;
+    VkPhysicalDeviceDepthBiasControlFeaturesEXT               extDepthBiasControl;
+    VkPhysicalDeviceExtendedDynamicState3FeaturesEXT          extExtendedDynamicState3;
+    VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT        extFragmentShaderInterlock;
+    VkBool32                                                  extFullScreenExclusive;
+    VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT        extGraphicsPipelineLibrary;
+    VkBool32                                                  extHdrMetadata;
+    VkPhysicalDeviceLineRasterizationFeaturesEXT              extLineRasterization;
+    VkBool32                                                  extMemoryBudget;
     VkPhysicalDeviceMemoryPriorityFeaturesEXT                 extMemoryPriority;
+    VkPhysicalDeviceNonSeamlessCubeMapFeaturesEXT             extNonSeamlessCubeMap;
     VkPhysicalDeviceRobustness2FeaturesEXT                    extRobustness2;
-    VkPhysicalDeviceShaderDemoteToHelperInvocationFeaturesEXT extShaderDemoteToHelperInvocation;
+    VkPhysicalDeviceShaderModuleIdentifierFeaturesEXT         extShaderModuleIdentifier;
+    VkBool32                                                  extShaderStencilExport;
+    VkBool32                                                  extSwapchainColorSpace;
+    VkPhysicalDeviceSwapchainMaintenance1FeaturesEXT          extSwapchainMaintenance1;
     VkPhysicalDeviceTransformFeedbackFeaturesEXT              extTransformFeedback;
     VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT         extVertexAttributeDivisor;
-    VkPhysicalDeviceBufferDeviceAddressFeaturesKHR            khrBufferDeviceAddress;
+    VkBool32                                                  khrExternalMemoryWin32;
+    VkBool32                                                  khrExternalSemaphoreWin32;
+    VkPhysicalDeviceMaintenance5FeaturesKHR                   khrMaintenance5;
+    VkPhysicalDevicePresentIdFeaturesKHR                      khrPresentId;
+    VkPhysicalDevicePresentWaitFeaturesKHR                    khrPresentWait;
+    VkBool32                                                  nvxBinaryImport;
+    VkBool32                                                  nvxImageViewHandle;
+    VkBool32                                                  khrWin32KeyedMutex;
   };
 
 }

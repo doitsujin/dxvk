@@ -3,38 +3,44 @@
 #include <cstring>
 
 #include "d3d11_device.h"
-#include "d3d11_context.h"
+#include "d3d11_context_imm.h"
+#include "d3d11_context_def.h"
 #include "d3d11_cuda.h"
 
 #include "../util/log/log.h"
 
 namespace dxvk {
   
-  D3D11DeviceContextExt::D3D11DeviceContextExt(
-          D3D11DeviceContext*     pContext)
+  template<typename ContextType>
+  D3D11DeviceContextExt<ContextType>::D3D11DeviceContextExt(
+          ContextType*          pContext)
   : m_ctx(pContext) {
     
   }
   
   
-  ULONG STDMETHODCALLTYPE D3D11DeviceContextExt::AddRef() {
+  template<typename ContextType>
+  ULONG STDMETHODCALLTYPE D3D11DeviceContextExt<ContextType>::AddRef() {
     return m_ctx->AddRef();
   }
   
   
-  ULONG STDMETHODCALLTYPE D3D11DeviceContextExt::Release() {
+  template<typename ContextType>
+  ULONG STDMETHODCALLTYPE D3D11DeviceContextExt<ContextType>::Release() {
     return m_ctx->Release();
   }
   
   
-  HRESULT STDMETHODCALLTYPE D3D11DeviceContextExt::QueryInterface(
+  template<typename ContextType>
+  HRESULT STDMETHODCALLTYPE D3D11DeviceContextExt<ContextType>::QueryInterface(
           REFIID                  riid,
           void**                  ppvObject) {
     return m_ctx->QueryInterface(riid, ppvObject);
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContextExt::MultiDrawIndirect(
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11DeviceContextExt<ContextType>::MultiDrawIndirect(
           UINT                    DrawCount,
           ID3D11Buffer*           pBufferForArgs,
           UINT                    ByteOffsetForArgs,
@@ -52,7 +58,8 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContextExt::MultiDrawIndexedIndirect(
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11DeviceContextExt<ContextType>::MultiDrawIndexedIndirect(
           UINT                    DrawCount,
           ID3D11Buffer*           pBufferForArgs,
           UINT                    ByteOffsetForArgs,
@@ -70,7 +77,8 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContextExt::MultiDrawIndirectCount(
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11DeviceContextExt<ContextType>::MultiDrawIndirectCount(
           UINT                    MaxDrawCount,
           ID3D11Buffer*           pBufferForCount,
           UINT                    ByteOffsetForCount,
@@ -91,7 +99,8 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContextExt::MultiDrawIndexedIndirectCount(
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11DeviceContextExt<ContextType>::MultiDrawIndexedIndirectCount(
           UINT                    MaxDrawCount,
           ID3D11Buffer*           pBufferForCount,
           UINT                    ByteOffsetForCount,
@@ -112,7 +121,8 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContextExt::SetDepthBoundsTest(
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11DeviceContextExt<ContextType>::SetDepthBoundsTest(
           BOOL                    Enable,
           FLOAT                   MinDepthBounds,
           FLOAT                   MaxDepthBounds) {
@@ -129,7 +139,8 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11DeviceContextExt::SetBarrierControl(
+  template<typename ContextType>
+  void STDMETHODCALLTYPE D3D11DeviceContextExt<ContextType>::SetBarrierControl(
           UINT                    ControlFlags) {
     D3D10DeviceLock lock = m_ctx->LockContext();
     DxvkBarrierControlFlags flags;
@@ -146,7 +157,8 @@ namespace dxvk {
   }
 
 
-  bool STDMETHODCALLTYPE D3D11DeviceContextExt::LaunchCubinShaderNVX(IUnknown* hShader, uint32_t GridX, uint32_t GridY, uint32_t GridZ,
+  template<typename ContextType>
+  bool STDMETHODCALLTYPE D3D11DeviceContextExt<ContextType>::LaunchCubinShaderNVX(IUnknown* hShader, uint32_t GridX, uint32_t GridY, uint32_t GridZ,
       const void* pParams, uint32_t ParamSize, void* const* pReadResources, uint32_t NumReadResources, void* const* pWriteResources, uint32_t NumWriteResources) {
     D3D10DeviceLock lock = m_ctx->LockContext();
 
@@ -202,4 +214,9 @@ namespace dxvk {
 
     return true;
   }
+
+
+  template class D3D11DeviceContextExt<D3D11DeferredContext>;
+  template class D3D11DeviceContextExt<D3D11ImmediateContext>;
+
 }

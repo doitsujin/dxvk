@@ -13,6 +13,8 @@
 namespace dxvk {
 
   class DxvkDevice;
+  class DxvkPipelineManager;
+  class DxvkPipelineWorkers;
 
   /**
    * \brief State cache
@@ -23,42 +25,38 @@ namespace dxvk {
    * of time instead of compiling them on the first
    * draw.
    */
-  class DxvkStateCache : public RcObject {
+  class DxvkStateCache {
 
   public:
 
     DxvkStateCache(
-      const DxvkDevice*           device,
+            DxvkDevice*           device,
             DxvkPipelineManager*  pipeManager,
-            DxvkRenderPassPool*   passManager);
-    
+            DxvkPipelineWorkers*  pipeWorkers);
+
     ~DxvkStateCache();
 
     /**
-     * Adds a graphics pipeline to the cache
+     * \brief Adds pipeline library to the cache
+     *
+     * If the pipeline is not already cached, this
+     * will write a new pipeline to the cache file.
+     * \param [in] shaders Shader keys
+     */
+    void addPipelineLibrary(
+      const DxvkStateCacheKey&              shaders);
+
+    /**
+     * \brief Adds a graphics pipeline to the cache
      * 
      * If the pipeline is not already cached, this
      * will write a new pipeline to the cache file.
      * \param [in] shaders Shader keys
      * \param [in] state Graphics pipeline state
-     * \param [in] format Render pass format
      */
     void addGraphicsPipeline(
       const DxvkStateCacheKey&              shaders,
-      const DxvkGraphicsPipelineStateInfo&  state,
-      const DxvkRenderPassFormat&           format);
-
-    /**
-     * Adds a compute pipeline to the cache
-     * 
-     * If the pipeline is not already cached, this
-     * will write a new pipeline to the cache file.
-     * \param [in] shaders Shader keys
-     * \param [in] state Compute pipeline state
-     */
-    void addComputePipeline(
-      const DxvkStateCacheKey&              shaders,
-      const DxvkComputePipelineStateInfo&   state);
+      const DxvkGraphicsPipelineStateInfo&  state);
 
     /**
      * \brief Registers a newly compiled shader
@@ -74,15 +72,7 @@ namespace dxvk {
     /**
      * \brief Explicitly stops worker threads
      */
-    void stopWorkerThreads();
-
-    /**
-     * \brief Checks whether compiler threads are busy
-     * \returns \c true if we're compiling shaders
-     */
-    bool isCompilingShaders() {
-      return m_workerBusy.load() > 0;
-    }
+    void stopWorkers();
 
   private:
 
@@ -90,11 +80,12 @@ namespace dxvk {
 
     struct WorkerItem {
       DxvkGraphicsPipelineShaders gp;
-      DxvkComputePipelineShaders  cp;
     };
 
+    DxvkDevice*                       m_device;
     DxvkPipelineManager*              m_pipeManager;
-    DxvkRenderPassPool*               m_passManager;
+    DxvkPipelineWorkers*              m_pipeWorkers;
+    bool                              m_enable = false;
 
     std::vector<DxvkStateCacheEntry>  m_entries;
     std::atomic<bool>                 m_stopThreads = { false };
@@ -116,8 +107,7 @@ namespace dxvk {
     dxvk::mutex                       m_workerLock;
     dxvk::condition_variable          m_workerCond;
     std::queue<WorkerItem>            m_workerQueue;
-    std::atomic<uint32_t>             m_workerBusy;
-    std::vector<dxvk::thread>         m_workerThreads;
+    dxvk::thread                      m_workerThread;
 
     dxvk::mutex                       m_writerLock;
     dxvk::condition_variable          m_writerCond;
@@ -148,11 +138,6 @@ namespace dxvk {
             std::istream&             stream,
             DxvkStateCacheHeader&     header) const;
 
-    bool readCacheEntryV7(
-            uint32_t                  version,
-            std::istream&             stream, 
-            DxvkStateCacheEntry&      entry) const;
-    
     bool readCacheEntry(
             uint32_t                  version,
             std::istream&             stream, 
@@ -162,37 +147,22 @@ namespace dxvk {
             std::ostream&             stream, 
             DxvkStateCacheEntry&      entry) const;
     
-    bool convertEntryV2(
-            DxvkStateCacheEntryV4&    entry) const;
-    
-    bool convertEntryV4(
-      const DxvkStateCacheEntryV4&    in,
-            DxvkStateCacheEntryV6&    out) const;
-    
-    bool convertEntryV5(
-      const DxvkStateCacheEntryV5&    in,
-            DxvkStateCacheEntryV6&    out) const;
-    
-    bool convertEntryV6(
-      const DxvkStateCacheEntryV6&    in,
-            DxvkStateCacheEntry&      out) const;
-    
     void workerFunc();
 
     void writerFunc();
 
-    std::wstring getCacheFileName() const;
-    
+    void createWorker();
+
+    void createWriter();
+
+    str::path_string getCacheFileName() const;
+
+    std::ifstream openCacheFileForRead() const;
+
+    std::ofstream openCacheFileForWrite(
+            bool                      recreate) const;
+
     std::string getCacheDir() const;
-
-    static uint8_t packImageLayout(
-            VkImageLayout             layout);
-
-    static VkImageLayout unpackImageLayout(
-            uint8_t                   layout);
-
-    static bool validateRenderPassFormat(
-      const DxvkRenderPassFormat&     format);
 
   };
 

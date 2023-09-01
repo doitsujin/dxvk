@@ -93,13 +93,17 @@ namespace dxvk::env {
 #ifdef _WIN32
     using SetThreadDescriptionProc = HRESULT (WINAPI *) (HANDLE, PCWSTR);
 
-    static auto proc = reinterpret_cast<SetThreadDescriptionProc>(
+    static auto SetThreadDescription = reinterpret_cast<SetThreadDescriptionProc>(
       ::GetProcAddress(::GetModuleHandleW(L"kernel32.dll"), "SetThreadDescription"));
 
-    if (proc != nullptr) {
-      auto wideName = std::vector<WCHAR>(name.length() + 1);
-      str::tows(name.c_str(), wideName.data(), wideName.size());
-      (*proc)(::GetCurrentThread(), wideName.data());
+    if (SetThreadDescription) {
+      std::array<wchar_t, 16> wideName = { };
+
+      str::transcodeString(
+        wideName.data(), wideName.size() - 1,
+        name.data(), name.size());
+
+      SetThreadDescription(::GetCurrentThread(), wideName.data());
     }
 #else
     std::array<char, 16> posixName = {};
@@ -111,9 +115,14 @@ namespace dxvk::env {
 
   bool createDirectory(const std::string& path) {
 #ifdef _WIN32
-    WCHAR widePath[MAX_PATH];
-    str::tows(path.c_str(), widePath);
-    return !!CreateDirectoryW(widePath, nullptr);
+    std::array<WCHAR, MAX_PATH + 1> widePath;
+
+    size_t length = str::transcodeString(
+      widePath.data(), widePath.size() - 1,
+      path.data(), path.size());
+
+    widePath[length] = L'\0';
+    return !!CreateDirectoryW(widePath.data(), nullptr);
 #else
     return std::filesystem::create_directories(path);
 #endif

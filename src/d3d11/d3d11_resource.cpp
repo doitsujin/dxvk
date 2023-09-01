@@ -1,14 +1,128 @@
 #include "d3d11_buffer.h"
 #include "d3d11_texture.h"
 #include "d3d11_resource.h"
+#include "d3d11_context_imm.h"
+#include "d3d11_device.h"
 
 #include "../util/util_shared_res.h"
 
 namespace dxvk {
 
+  D3D11DXGIKeyedMutex::D3D11DXGIKeyedMutex(
+          ID3D11Resource* pResource)
+  : m_resource(pResource) {
+    Com<ID3D11Device> device;
+    m_resource->GetDevice(&device);
+    m_device = static_cast<D3D11Device*>(device.ptr());
+
+    m_supported = m_device->GetDXVKDevice()->features().khrWin32KeyedMutex
+               && m_device->GetDXVKDevice()->vkd()->wine_vkAcquireKeyedMutex != nullptr
+               && m_device->GetDXVKDevice()->vkd()->wine_vkReleaseKeyedMutex != nullptr;
+  }
+
+
+  D3D11DXGIKeyedMutex::~D3D11DXGIKeyedMutex() {
+
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11DXGIKeyedMutex::AddRef() {
+    return m_resource->AddRef();
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11DXGIKeyedMutex::Release() {
+    return m_resource->Release();
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    return m_resource->QueryInterface(riid, ppvObject);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::GetPrivateData(
+          REFGUID                 Name,
+          UINT*                   pDataSize,
+          void*                   pData) {
+    return m_resource->GetPrivateData(Name, pDataSize, pData);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::SetPrivateData(
+          REFGUID                 Name,
+          UINT                    DataSize,
+    const void*                   pData) {
+    return m_resource->SetPrivateData(Name, DataSize, pData);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::SetPrivateDataInterface(
+          REFGUID                 Name,
+    const IUnknown*               pUnknown) {
+    return m_resource->SetPrivateDataInterface(Name, pUnknown);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::GetParent(
+          REFIID                  riid,
+          void**                  ppParent) {
+    return GetDevice(riid, ppParent);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::GetDevice(
+          REFIID                  riid,
+          void**                  ppDevice) {
+    Com<ID3D11Device> device;
+    m_resource->GetDevice(&device);
+    return device->QueryInterface(riid, ppDevice);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::AcquireSync(
+          UINT64                  Key,
+          DWORD                   dwMilliseconds) {
+    if (!m_supported) {
+      if (!m_warned) {
+        m_warned = true;
+        Logger::err("D3D11DXGIKeyedMutex::AcquireSync: Not supported");
+      }
+      return S_OK;
+    }
+
+    D3D11CommonTexture* texture = GetCommonTexture(m_resource);
+    Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
+
+    VkResult vr = dxvkDevice->vkd()->wine_vkAcquireKeyedMutex(dxvkDevice->handle(), texture->GetImage()->memory().memory(), Key, dwMilliseconds);
+    switch (vr) {
+      case VK_SUCCESS: return S_OK;
+      case VK_TIMEOUT: return WAIT_TIMEOUT;
+      default:         return DXGI_ERROR_INVALID_CALL;
+    }
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIKeyedMutex::ReleaseSync(
+          UINT64                  Key) {
+    if (!m_supported)
+      return S_OK;
+
+    D3D11CommonTexture* texture = GetCommonTexture(m_resource);
+    Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
+
+    m_device->GetContext()->WaitForResource(texture->GetImage(), DxvkCsThread::SynchronizeAll, D3D11_MAP_READ_WRITE, 0);
+
+    return dxvkDevice->vkd()->wine_vkReleaseKeyedMutex(dxvkDevice->handle(), texture->GetImage()->memory().memory(), Key) == VK_SUCCESS
+      ? S_OK
+      : DXGI_ERROR_INVALID_CALL;
+  }
+
   D3D11DXGIResource::D3D11DXGIResource(
           ID3D11Resource*         pResource)
-  : m_resource(pResource) {
+  : m_resource(pResource),
+    m_keyedMutex(pResource) {
 
   }
 
@@ -84,8 +198,14 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11DXGIResource::GetSharedHandle(
           HANDLE*                 pSharedHandle) {
     auto texture = GetCommonTexture(m_resource);
-    if (texture == nullptr || pSharedHandle == nullptr || !(texture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_SHARED))
+    if (texture == nullptr || pSharedHandle == nullptr ||
+        (texture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE))
       return E_INVALIDARG;
+
+    if (!(texture->Desc()->MiscFlags & (D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX))) {
+      *pSharedHandle = NULL;
+      return S_OK;
+    }
 
     HANDLE kmtHandle = texture->GetImage()->sharedHandle();
 
@@ -143,8 +263,9 @@ namespace dxvk {
           LPCWSTR                 lpName,
           HANDLE*                 pHandle) {
     auto texture = GetCommonTexture(m_resource);
+    if (pHandle) *pHandle = nullptr;
     if (texture == nullptr || pHandle == nullptr ||
-        !(texture->Desc()->MiscFlags & (D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX | D3D11_RESOURCE_MISC_SHARED_NTHANDLE)))
+        !(texture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE))
       return E_INVALIDARG;
 
     if (lpName)
@@ -154,9 +275,6 @@ namespace dxvk {
 
     if (handle == INVALID_HANDLE_VALUE)
       return E_INVALIDARG;
-
-    if (texture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_SHARED)
-      handle = openKmtHandle( handle );
 
     *pHandle = handle;
     return S_OK;
@@ -171,6 +289,36 @@ namespace dxvk {
     return E_NOTIMPL;
   }
   
+
+  HRESULT D3D11DXGIResource::GetKeyedMutex(
+          void **ppvObject) {
+    auto texture = GetCommonTexture(m_resource);
+    if (texture == nullptr || !(texture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX))
+      return E_NOINTERFACE;
+    *ppvObject = ref(&m_keyedMutex);
+    return S_OK;
+  }
+
+
+  HRESULT GetResource11on12Info(
+          ID3D11Resource*             pResource,
+          D3D11_ON_12_RESOURCE_INFO*  p11on12Info) {
+    auto buffer   = GetCommonBuffer (pResource);
+    auto texture  = GetCommonTexture(pResource);
+
+    if (buffer != nullptr)
+      *p11on12Info = buffer->Get11on12Info();
+    else if (texture != nullptr)
+      *p11on12Info = texture->Get11on12Info();
+    else
+      return E_INVALIDARG;
+
+    if (p11on12Info->Resource == nullptr)
+      return E_INVALIDARG;
+
+    return S_OK;
+  }
+
 
   HRESULT GetCommonResourceDesc(
           ID3D11Resource*             pResource,
@@ -206,6 +354,17 @@ namespace dxvk {
       pDesc->DxgiUsage      = 0;
       return E_INVALIDARG;
     }
+  }
+
+
+  Rc<DxvkPagedResource> GetPagedResource(
+          ID3D11Resource*             pResource) {
+    auto texture = GetCommonTexture(pResource);
+
+    if (texture)
+      return texture->GetImage();
+
+    return static_cast<D3D11Buffer*>(pResource)->GetBuffer();
   }
 
 

@@ -6,9 +6,12 @@ namespace dxvk {
 
   D3D10Multithread::D3D10Multithread(
           IUnknown*             pParent,
-          BOOL                  Protected)
+          BOOL                  Protected,
+          BOOL                  Force)
   : m_parent    (pParent),
-    m_protected (Protected) {
+    m_protected (Protected || Force),
+    m_enabled   (Protected),
+    m_forced    (Force) {
     
   }
 
@@ -49,12 +52,18 @@ namespace dxvk {
 
   BOOL STDMETHODCALLTYPE D3D10Multithread::SetMultithreadProtected(
           BOOL                  bMTProtect) {
-    return std::exchange(m_protected, bMTProtect);
+    BOOL result = m_enabled;
+    m_enabled = bMTProtect;
+
+    if (!m_forced)
+      m_protected = m_enabled;
+
+    return result;
   }
 
 
   BOOL STDMETHODCALLTYPE D3D10Multithread::GetMultithreadProtected() {
-    return m_protected;
+    return m_enabled;
   }
 
 }

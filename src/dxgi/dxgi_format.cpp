@@ -318,12 +318,10 @@ namespace dxvk {
       VK_FORMAT_R8_UINT,
       VK_IMAGE_ASPECT_COLOR_BIT },
     // DXGI_FORMAT_A8_UNORM
-    { VK_FORMAT_R8_UNORM,
+    { VK_FORMAT_A8_UNORM_KHR,
       VK_FORMAT_UNDEFINED,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT, 0,
-      { VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ZERO,
-        VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_R }},
+      VK_FORMAT_R8_UINT,
+      VK_IMAGE_ASPECT_COLOR_BIT, 0 },
     // DXGI_FORMAT_R1_UNORM
     { }, // Unsupported
     // DXGI_FORMAT_R9G9B9E5_SHAREDEXP
@@ -529,7 +527,7 @@ namespace dxvk {
     // DXGI_FORMAT_A8P8
     { }, // Unsupported
     // DXGI_FORMAT_B4G4R4A4_UNORM
-    { VK_FORMAT_A4R4G4B4_UNORM_PACK16_EXT,
+    { VK_FORMAT_A4R4G4B4_UNORM_PACK16,
       VK_FORMAT_UNDEFINED,
       VK_FORMAT_UNDEFINED,
       VK_IMAGE_ASPECT_COLOR_BIT },
@@ -847,13 +845,13 @@ namespace dxvk {
   }};
   
   
-  DXGIVkFormatTable::DXGIVkFormatTable(const Rc<DxvkAdapter>& adapter)
+  DXGIVkFormatTable::DXGIVkFormatTable(const Rc<DxvkDevice>& device)
   : m_dxgiFormats (g_dxgiFormats), m_dxgiFamilies(g_dxgiFamilies) {
     // AMD do not support 24-bit depth buffers on Vulkan,
     // so we have to fall back to a 32-bit depth format.
-    if (!CheckImageFormatSupport(adapter, VK_FORMAT_D24_UNORM_S8_UINT,
-          VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
-          VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
+    if (!CheckImageFormatSupport(device, VK_FORMAT_D24_UNORM_S8_UINT,
+          VK_FORMAT_FEATURE_2_DEPTH_STENCIL_ATTACHMENT_BIT |
+          VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT)) {
       Logger::info("DXGI: VK_FORMAT_D24_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT");
       RemapDepthFormat(DXGI_FORMAT_R24G8_TYPELESS,        VK_FORMAT_D32_SFLOAT_S8_UINT);
       RemapDepthFormat(DXGI_FORMAT_R24_UNORM_X8_TYPELESS, VK_FORMAT_D32_SFLOAT_S8_UINT);
@@ -861,10 +859,14 @@ namespace dxvk {
       RemapDepthFormat(DXGI_FORMAT_D24_UNORM_S8_UINT,     VK_FORMAT_D32_SFLOAT_S8_UINT);
     }
 
-    if (!adapter->features().ext4444Formats.formatA4R4G4B4) {
-      RemapColorFormat(DXGI_FORMAT_B4G4R4A4_UNORM, VK_FORMAT_B4G4R4A4_UNORM_PACK16,
-        { VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R,
-          VK_COMPONENT_SWIZZLE_A, VK_COMPONENT_SWIZZLE_B });
+    // Map A8_UNORM to R8_UNORM with appropriate swizzles if necessary
+    if (!CheckImageFormatSupport(device, VK_FORMAT_A8_UNORM_KHR,
+          VK_FORMAT_FEATURE_2_SAMPLED_IMAGE_BIT |
+          VK_FORMAT_FEATURE_2_COLOR_ATTACHMENT_BIT |
+          VK_FORMAT_FEATURE_2_STORAGE_IMAGE_BIT)) {
+      RemapColorFormat(DXGI_FORMAT_A8_UNORM, VK_FORMAT_R8_UNORM,
+        { VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ZERO,
+          VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_R });
     }
   }
   
@@ -949,13 +951,13 @@ namespace dxvk {
   
 
   bool DXGIVkFormatTable::CheckImageFormatSupport(
-    const Rc<DxvkAdapter>&      Adapter,
+    const Rc<DxvkDevice>&       Device,
           VkFormat              Format,
-          VkFormatFeatureFlags  Features) const {
-    VkFormatProperties supported = Adapter->formatProperties(Format);
+          VkFormatFeatureFlags2 Features) const {
+    DxvkFormatFeatures supported = Device->getFormatFeatures(Format);
     
-    return (supported.linearTilingFeatures  & Features) == Features
-        || (supported.optimalTilingFeatures & Features) == Features;
+    return (supported.linear  & Features) == Features
+        || (supported.optimal & Features) == Features;
   }
   
   

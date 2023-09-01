@@ -57,10 +57,8 @@ namespace dxvk {
       return m_imageView;
     }
     
-    DxvkBufferSlice GetCounterSlice() const {
-      return m_counterBuffer != nullptr
-        ? DxvkBufferSlice(m_counterBuffer)
-        : DxvkBufferSlice();
+    Rc<DxvkBufferView> GetCounterView() const {
+      return m_counterView;
     }
     
     static HRESULT GetDescFromResource(
@@ -85,9 +83,9 @@ namespace dxvk {
     D3D11_VK_VIEW_INFO                m_info;
     Rc<DxvkBufferView>                m_bufferView;
     Rc<DxvkImageView>                 m_imageView;
-    Rc<DxvkBuffer>                    m_counterBuffer;
+    Rc<DxvkBufferView>                m_counterView;
 
-    Rc<DxvkBuffer> CreateCounterBuffer();
+    Rc<DxvkBufferView> CreateCounterBufferView();
     
   };
   

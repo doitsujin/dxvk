@@ -1,7 +1,10 @@
 #include "d3d11_cmdlist.h"
 #include "d3d11_context_imm.h"
 #include "d3d11_device.h"
+#include "d3d11_fence.h"
 #include "d3d11_texture.h"
+
+#include "../util/util_win32_compat.h"
 
 constexpr static uint32_t MinFlushIntervalUs = 750;
 constexpr static uint32_t IncFlushIntervalUs = 250;
@@ -12,9 +15,11 @@ namespace dxvk {
   D3D11ImmediateContext::D3D11ImmediateContext(
           D3D11Device*    pParent,
     const Rc<DxvkDevice>& Device)
-  : D3D11DeviceContext(pParent, Device, DxvkCsChunkFlag::SingleUse),
-    m_csThread(Device, Device->createContext()),
+  : D3D11CommonContext<D3D11ImmediateContext>(pParent, Device, 0, DxvkCsChunkFlag::SingleUse),
+    m_csThread(Device, Device->createContext(DxvkContextType::Primary)),
     m_maxImplicitDiscardSize(pParent->GetOptions()->maxImplicitDiscardSize),
+    m_submissionFence(new sync::CallbackFence()),
+    m_multithread(this, false, pParent->GetOptions()->enableContextLock),
     m_videoContext(this, Device) {
     EmitCs([
       cDevice                 = m_device,
@@ -39,32 +44,32 @@ namespace dxvk {
   
   
   D3D11ImmediateContext::~D3D11ImmediateContext() {
-    Flush();
+    // Avoids hanging when in this state, see comment
+    // in DxvkDevice::~DxvkDevice.
+    if (this_thread::isInModuleDetachment())
+      return;
+
+    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
     SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
     SynchronizeDevice();
   }
   
   
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::QueryInterface(REFIID riid, void** ppvObject) {
+    if (riid == __uuidof(ID3D10Multithread)) {
+      *ppvObject = ref(&m_multithread);
+      return S_OK;
+    }
+
     if (riid == __uuidof(ID3D11VideoContext)) {
       *ppvObject = ref(&m_videoContext);
       return S_OK;
     }
 
-    return D3D11DeviceContext::QueryInterface(riid, ppvObject);
+    return D3D11CommonContext<D3D11ImmediateContext>::QueryInterface(riid, ppvObject);
   }
 
 
-  D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE D3D11ImmediateContext::GetType() {
-    return D3D11_DEVICE_CONTEXT_IMMEDIATE;
-  }
-  
-  
-  UINT STDMETHODCALLTYPE D3D11ImmediateContext::GetContextFlags() {
-    return 0;
-  }
-  
-  
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::GetData(
           ID3D11Asynchronous*               pAsync,
           void*                             pData,
@@ -95,7 +100,8 @@ namespace dxvk {
 
       // Ignore the DONOTFLUSH flag here as some games will spin
       // on queries without ever flushing the context otherwise.
-      FlushImplicit(FALSE);
+      D3D10DeviceLock lock = LockContext();
+      ConsiderFlush(GpuFlushType::ImplicitSynchronization);
     }
     
     return hr;
@@ -144,57 +150,69 @@ namespace dxvk {
       query->NotifyEnd();
 
       if (query->IsStalling())
-        Flush();
+        ExecuteFlush(GpuFlushType::ImplicitSynchronization, nullptr, false);
       else if (query->IsEvent())
-        FlushImplicit(TRUE);
+        ConsiderFlush(GpuFlushType::ImplicitStrongHint);
     }
   }
 
 
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush() {
-    Flush1(D3D11_CONTEXT_TYPE_ALL, nullptr);
+    D3D10DeviceLock lock = LockContext();
+
+    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
   }
 
 
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush1(
           D3D11_CONTEXT_TYPE          ContextType,
           HANDLE                      hEvent) {
-    m_parent->FlushInitContext();
-
-    if (hEvent)
-      SignalEvent(hEvent);
-    
     D3D10DeviceLock lock = LockContext();
-    
-    if (m_csIsBusy || !m_csChunk->empty()) {
-      // Add commands to flush the threaded
-      // context, then flush the command list
-      EmitCs([] (DxvkContext* ctx) {
-        ctx->flushCommandList();
-      });
-      
-      FlushCsChunk();
-      
-      // Reset flush timer used for implicit flushes
-      m_lastFlush = dxvk::high_resolution_clock::now();
-      m_csIsBusy  = false;
-    }
+
+    ExecuteFlush(GpuFlushType::ExplicitFlush, hEvent, true);
   }
   
   
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::Signal(
           ID3D11Fence*                pFence,
           UINT64                      Value) {
-    Logger::err("D3D11ImmediateContext::Signal: Not implemented");
-    return E_NOTIMPL;
+    D3D10DeviceLock lock = LockContext();
+    auto fence = static_cast<D3D11Fence*>(pFence);
+
+    if (!fence)
+      return E_INVALIDARG;
+
+    EmitCs([
+      cFence = fence->GetFence(),
+      cValue = Value
+    ] (DxvkContext* ctx) {
+      ctx->signalFence(cFence, cValue);
+    });
+
+    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
+    return S_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::Wait(
           ID3D11Fence*                pFence,
           UINT64                      Value) {
-    Logger::err("D3D11ImmediateContext::Wait: Not implemented");
-    return E_NOTIMPL;
+    D3D10DeviceLock lock = LockContext();
+    auto fence = static_cast<D3D11Fence*>(pFence);
+
+    if (!fence)
+      return E_INVALIDARG;
+
+    ExecuteFlush(GpuFlushType::ExplicitFlush, nullptr, true);
+
+    EmitCs([
+      cFence = fence->GetFence(),
+      cValue = Value
+    ] (DxvkContext* ctx) {
+      ctx->waitFence(cFence, cValue);
+    });
+
+    return S_OK;
   }
 
 
@@ -205,27 +223,39 @@ namespace dxvk {
 
     auto commandList = static_cast<D3D11CommandList*>(pCommandList);
     
+    // Clear state so that the command list can't observe any
+    // current context state. The command list itself will clean
+    // up after execution to ensure that no state changes done
+    // by the command list are visible to the immediate context.
+    ResetCommandListState();
+
     // Flush any outstanding commands so that
     // we don't mess up the execution order
     FlushCsChunk();
     
     // As an optimization, flush everything if the
     // number of pending draw calls is high enough.
-    FlushImplicit(FALSE);
-    
-    // Dispatch command list to the CS thread and
-    // restore the immediate context's state
-    uint64_t csSeqNum = commandList->EmitToCsThread(&m_csThread);
-    m_csSeqNum = std::max(m_csSeqNum, csSeqNum);
-    
+    ConsiderFlush(GpuFlushType::ImplicitWeakHint);
+
+    // Dispatch command list to the CS thread
+    commandList->EmitToCsThread([this] (DxvkCsChunkRef&& chunk, GpuFlushType flushType) {
+      EmitCsChunk(std::move(chunk));
+
+      // Return the sequence number from before the flush since
+      // that is actually going to be needed for resource tracking
+      uint64_t csSeqNum = m_csSeqNum;
+
+      // Consider a flush after every chunk in case the app
+      // submits a very large command list or the GPU is idle
+      ConsiderFlush(flushType);
+      return csSeqNum;
+    });
+
+    // Restore the immediate context's state
     if (RestoreContextState)
-      RestoreState();
+      RestoreCommandListState();
     else
-      ClearState();
-    
-    // Mark CS thread as busy so that subsequent
-    // flush operations get executed correctly.
-    m_csIsBusy = true;
+      ResetContextState();
   }
   
   
@@ -290,59 +320,7 @@ namespace dxvk {
     }
   }
 
-  void STDMETHODCALLTYPE D3D11ImmediateContext::UpdateSubresource(
-          ID3D11Resource*                   pDstResource,
-          UINT                              DstSubresource,
-    const D3D11_BOX*                        pDstBox,
-    const void*                             pSrcData,
-          UINT                              SrcRowPitch,
-          UINT                              SrcDepthPitch) {
-    UpdateResource<D3D11ImmediateContext>(this, pDstResource,
-      DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, 0);
-  }
 
-  
-  void STDMETHODCALLTYPE D3D11ImmediateContext::UpdateSubresource1(
-          ID3D11Resource*                   pDstResource,
-          UINT                              DstSubresource,
-    const D3D11_BOX*                        pDstBox,
-    const void*                             pSrcData,
-          UINT                              SrcRowPitch,
-          UINT                              SrcDepthPitch,
-          UINT                              CopyFlags) {
-    UpdateResource<D3D11ImmediateContext>(this, pDstResource,
-      DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch, CopyFlags);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11ImmediateContext::OMSetRenderTargets(
-          UINT                              NumViews,
-          ID3D11RenderTargetView* const*    ppRenderTargetViews,
-          ID3D11DepthStencilView*           pDepthStencilView) {
-    FlushImplicit(TRUE);
-    
-    D3D11DeviceContext::OMSetRenderTargets(
-      NumViews, ppRenderTargetViews, pDepthStencilView);
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11ImmediateContext::OMSetRenderTargetsAndUnorderedAccessViews(
-          UINT                              NumRTVs,
-          ID3D11RenderTargetView* const*    ppRenderTargetViews,
-          ID3D11DepthStencilView*           pDepthStencilView,
-          UINT                              UAVStartSlot,
-          UINT                              NumUAVs,
-          ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
-    const UINT*                             pUAVInitialCounts) {
-    FlushImplicit(TRUE);
-
-    D3D11DeviceContext::OMSetRenderTargetsAndUnorderedAccessViews(
-      NumRTVs, ppRenderTargetViews, pDepthStencilView,
-      UAVStartSlot, NumUAVs, ppUnorderedAccessViews,
-      pUAVInitialCounts);
-  }
-  
-  
   HRESULT D3D11ImmediateContext::MapBuffer(
           D3D11Buffer*                pResource,
           D3D11_MAP                   MapType,
@@ -407,8 +385,6 @@ namespace dxvk {
       }
 
       if (doInvalidatePreserve) {
-        FlushImplicit(TRUE);
-
         auto prevSlice = pResource->GetMappedSlice();
         auto physSlice = pResource->DiscardSlice();
 
@@ -472,7 +448,7 @@ namespace dxvk {
     
     uint64_t sequenceNumber = pResource->GetSequenceNumber(Subresource);
 
-    auto formatInfo = imageFormatInfo(packedFormat);
+    auto formatInfo = lookupFormatInfo(packedFormat);
     void* mapPtr;
 
     if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
@@ -494,6 +470,20 @@ namespace dxvk {
       constexpr uint32_t DoPreserve   = (1u << 1);
       constexpr uint32_t DoWait       = (1u << 2);
       uint32_t doFlags;
+
+      if (mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER) {
+        // If the image can be written by the GPU, we need to update the
+        // mapped staging buffer to reflect the current image contents.
+        if (pResource->Desc()->Usage == D3D11_USAGE_DEFAULT) {
+          bool needsReadback = !pResource->NeedsDirtyRegionTracking();
+
+          needsReadback |= MapType == D3D11_MAP_READ
+                        || MapType == D3D11_MAP_READ_WRITE;
+
+          if (needsReadback)
+            ReadbackImageBuffer(pResource, Subresource);
+        }
+      }
 
       if (MapType == D3D11_MAP_READ) {
         // Reads will not change the image content, so we only need
@@ -540,8 +530,6 @@ namespace dxvk {
       }
 
       if (doFlags & DoInvalidate) {
-        FlushImplicit(TRUE);
-
         DxvkBufferSliceHandle prevSlice = pResource->GetMappedSlice(Subresource);
         DxvkBufferSliceHandle physSlice = pResource->DiscardSlice(Subresource);
 
@@ -600,20 +588,116 @@ namespace dxvk {
     // the given subresource is actually mapped right now
     m_mappedImageCount -= 1;
 
-    if ((mapType != D3D11_MAP_READ) &&
-        (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)) {
-      // Now that data has been written into the buffer,
-      // we need to copy its contents into the image
-      VkImageAspectFlags aspectMask = imageFormatInfo(pResource->GetPackedFormat())->aspectMask;
-      VkImageSubresource subresource = pResource->GetSubresourceFromIndex(aspectMask, Subresource);
+    if ((mapType != D3D11_MAP_READ) && (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)) {
+      if (pResource->NeedsDirtyRegionTracking()) {
+        for (uint32_t i = 0; i < pResource->GetDirtyRegionCount(Subresource); i++) {
+          D3D11_COMMON_TEXTURE_REGION region = pResource->GetDirtyRegion(Subresource, i);
+          UpdateDirtyImageRegion(pResource, Subresource, &region);
+        }
 
-      UpdateImage(pResource, &subresource, VkOffset3D { 0, 0, 0 },
-        pResource->MipLevelExtent(subresource.mipLevel),
-        DxvkBufferSlice(pResource->GetMappedBuffer(Subresource)));
+        pResource->ClearDirtyRegions(Subresource);
+      } else {
+        UpdateDirtyImageRegion(pResource, Subresource, nullptr);
+      }
     }
   }
   
   
+  void D3D11ImmediateContext::ReadbackImageBuffer(
+          D3D11CommonTexture*         pResource,
+          UINT                        Subresource) {
+    VkImageAspectFlags aspectMask = lookupFormatInfo(pResource->GetPackedFormat())->aspectMask;
+    VkImageSubresource subresource = pResource->GetSubresourceFromIndex(aspectMask, Subresource);
+
+    EmitCs([
+      cSrcImage           = pResource->GetImage(),
+      cSrcSubresource     = vk::makeSubresourceLayers(subresource),
+      cDstBuffer          = pResource->GetMappedBuffer(Subresource),
+      cPackedFormat       = pResource->GetPackedFormat()
+    ] (DxvkContext* ctx) {
+      VkOffset3D offset = { 0, 0, 0 };
+      VkExtent3D extent = cSrcImage->mipLevelExtent(cSrcSubresource.mipLevel);
+
+      if (cSrcSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+        ctx->copyImageToBuffer(cDstBuffer, 0, 0, 0,
+          cSrcImage, cSrcSubresource, offset, extent);
+      } else {
+        ctx->copyDepthStencilImageToPackedBuffer(cDstBuffer, 0,
+          VkOffset2D { 0, 0 },
+          VkExtent2D { extent.width, extent.height },
+          cSrcImage, cSrcSubresource,
+          VkOffset2D { 0, 0 },
+          VkExtent2D { extent.width, extent.height },
+          cPackedFormat);
+      }
+    });
+
+    if (pResource->HasSequenceNumber())
+      TrackTextureSequenceNumber(pResource, Subresource);
+  }
+
+
+  void D3D11ImmediateContext::UpdateDirtyImageRegion(
+          D3D11CommonTexture*         pResource,
+          UINT                        Subresource,
+    const D3D11_COMMON_TEXTURE_REGION* pRegion) {
+    auto formatInfo = lookupFormatInfo(pResource->GetPackedFormat());
+    auto subresource = vk::makeSubresourceLayers(
+      pResource->GetSubresourceFromIndex(formatInfo->aspectMask, Subresource));
+
+    // Update the entire image if no dirty region was specified
+    D3D11_COMMON_TEXTURE_REGION region;
+
+    if (pRegion) {
+      region = *pRegion;
+    } else {
+      region.Offset = VkOffset3D { 0, 0, 0 };
+      region.Extent = pResource->MipLevelExtent(subresource.mipLevel);
+    }
+
+    auto subresourceLayout = pResource->GetSubresourceLayout(formatInfo->aspectMask, Subresource);
+
+    // Update dirty region one aspect at a time, due to
+    // how the data is laid out in the staging buffer.
+    for (uint32_t i = 0; i < pResource->GetPlaneCount(); i++) {
+      subresource.aspectMask = formatInfo->aspectMask;
+
+      if (formatInfo->flags.test(DxvkFormatFlag::MultiPlane))
+        subresource.aspectMask = vk::getPlaneAspect(i);
+
+      EmitCs([
+        cDstImage       = pResource->GetImage(),
+        cDstSubresource = subresource,
+        cDstOffset      = region.Offset,
+        cDstExtent      = region.Extent,
+        cSrcBuffer      = pResource->GetMappedBuffer(Subresource),
+        cSrcOffset      = pResource->ComputeMappedOffset(Subresource, i, region.Offset),
+        cSrcRowPitch    = subresourceLayout.RowPitch,
+        cSrcDepthPitch  = subresourceLayout.DepthPitch,
+        cPackedFormat   = pResource->GetPackedFormat()
+      ] (DxvkContext* ctx) {
+        if (cDstSubresource.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+          ctx->copyBufferToImage(
+            cDstImage, cDstSubresource, cDstOffset, cDstExtent,
+            cSrcBuffer, cSrcOffset, cSrcRowPitch, cSrcDepthPitch);
+        } else {
+          ctx->copyPackedBufferToDepthStencilImage(
+            cDstImage, cDstSubresource,
+            VkOffset2D { cDstOffset.x, cDstOffset.y },
+            VkExtent2D { cDstExtent.width, cDstExtent.height },
+            cSrcBuffer, 0,
+            VkOffset2D { cDstOffset.x, cDstOffset.y },
+            VkExtent2D { cDstExtent.width, cDstExtent.height },
+            cPackedFormat);
+        }
+      });
+    }
+
+    if (pResource->HasSequenceNumber())
+      TrackTextureSequenceNumber(pResource, Subresource);
+  }
+
+
   void D3D11ImmediateContext::UpdateMappedBuffer(
           D3D11Buffer*                  pDstBuffer,
           UINT                          Offset,
@@ -646,9 +730,12 @@ namespace dxvk {
 
     if (!pState)
       return;
-    
-    Com<D3D11DeviceContextState> oldState = std::move(m_stateObject);
-    Com<D3D11DeviceContextState> newState = static_cast<D3D11DeviceContextState*>(pState);
+
+    // Reset all state affected by the current context state
+    ResetCommandListState();
+
+    Com<D3D11DeviceContextState, false> oldState = std::move(m_stateObject);
+    Com<D3D11DeviceContextState, false> newState = static_cast<D3D11DeviceContextState*>(pState);
 
     if (oldState == nullptr)
       oldState = new D3D11DeviceContextState(m_parent);
@@ -661,7 +748,76 @@ namespace dxvk {
     oldState->SetState(m_state);
     newState->GetState(m_state);
 
-    RestoreState();
+    // Restore all state affected by the new context state
+    RestoreCommandListState();
+  }
+
+
+  void D3D11ImmediateContext::Acquire11on12Resource(
+          ID3D11Resource*             pResource,
+          VkImageLayout               SrcLayout) {
+    D3D10DeviceLock lock = LockContext();
+
+    auto texture = GetCommonTexture(pResource);
+    auto buffer = GetCommonBuffer(pResource);
+
+    if (buffer) {
+      EmitCs([
+        cBuffer   = buffer->GetBuffer()
+      ] (DxvkContext* ctx) {
+        ctx->emitBufferBarrier(cBuffer,
+          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+          VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT,
+          cBuffer->info().stages,
+          cBuffer->info().access);
+      });
+    } else if (texture) {
+      EmitCs([
+        cImage    = texture->GetImage(),
+        cLayout   = SrcLayout
+      ] (DxvkContext* ctx) {
+        ctx->emitImageBarrier(cImage, cLayout,
+          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+          VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT,
+          cImage->info().layout,
+          cImage->info().stages,
+          cImage->info().access);
+      });
+    }
+  }
+
+
+  void D3D11ImmediateContext::Release11on12Resource(
+          ID3D11Resource*             pResource,
+          VkImageLayout               DstLayout) {
+    D3D10DeviceLock lock = LockContext();
+
+    auto texture = GetCommonTexture(pResource);
+    auto buffer = GetCommonBuffer(pResource);
+
+    if (buffer) {
+      EmitCs([
+        cBuffer   = buffer->GetBuffer()
+      ] (DxvkContext* ctx) {
+        ctx->emitBufferBarrier(cBuffer,
+          cBuffer->info().stages,
+          cBuffer->info().access,
+          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+          VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT);
+      });
+    } else if (texture) {
+      EmitCs([
+        cImage    = texture->GetImage(),
+        cLayout   = DstLayout
+      ] (DxvkContext* ctx) {
+        ctx->emitImageBarrier(cImage,
+          cImage->info().layout,
+          cImage->info().stages,
+          cImage->info().access,
+          cLayout, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+          VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT);
+      });
+    }
   }
 
 
@@ -682,6 +838,15 @@ namespace dxvk {
   }
   
   
+  void D3D11ImmediateContext::EndFrame() {
+    D3D10DeviceLock lock = LockContext();
+
+    EmitCs<false>([] (DxvkContext* ctx) {
+      ctx->endFrame();
+    });
+  }
+
+
   bool D3D11ImmediateContext::WaitForResource(
     const Rc<DxvkResource>&                 Resource,
           uint64_t                          SequenceNumber,
@@ -707,14 +872,14 @@ namespace dxvk {
         // We don't have to wait, but misbehaving games may
         // still try to spin on `Map` until the resource is
         // idle, so we should flush pending commands
-        FlushImplicit(FALSE);
+        ConsiderFlush(GpuFlushType::ImplicitSynchronization);
         return false;
       }
     } else {
       if (isInUse) {
         // Make sure pending commands using the resource get
         // executed on the the GPU if we have to wait for it
-        Flush();
+        ExecuteFlush(GpuFlushType::ImplicitSynchronization, nullptr, false);
         SynchronizeCsThread(SequenceNumber);
 
         m_device->waitForResource(Resource, access);
@@ -727,7 +892,6 @@ namespace dxvk {
   
   void D3D11ImmediateContext::EmitCsChunk(DxvkCsChunkRef&& chunk) {
     m_csSeqNum = m_csThread.dispatchChunk(std::move(chunk));
-    m_csIsBusy = true;
   }
 
 
@@ -737,7 +901,7 @@ namespace dxvk {
     uint64_t sequenceNumber = GetCurrentSequenceNumber();
     pResource->TrackSequenceNumber(Subresource, sequenceNumber);
 
-    FlushImplicit(TRUE);
+    ConsiderFlush(GpuFlushType::ImplicitStrongHint);
   }
 
 
@@ -746,7 +910,7 @@ namespace dxvk {
     uint64_t sequenceNumber = GetCurrentSequenceNumber();
     pResource->TrackSequenceNumber(sequenceNumber);
 
-    FlushImplicit(TRUE);
+    ConsiderFlush(GpuFlushType::ImplicitStrongHint);
   }
 
 
@@ -758,40 +922,67 @@ namespace dxvk {
   }
 
 
-  void D3D11ImmediateContext::FlushImplicit(BOOL StrongHint) {
-    // Flush only if the GPU is about to go idle, in
-    // order to keep the number of submissions low.
-    uint32_t pending = m_device->pendingSubmissions();
-
-    if (StrongHint || pending <= MaxPendingSubmits) {
-      auto now = dxvk::high_resolution_clock::now();
-
-      uint32_t delay = MinFlushIntervalUs
-                     + IncFlushIntervalUs * pending;
-
-      // Prevent flushing too often in short intervals.
-      if (now - m_lastFlush >= std::chrono::microseconds(delay))
-        Flush();
-    }
+  uint64_t D3D11ImmediateContext::GetPendingCsChunks() {
+    return GetCurrentSequenceNumber() - m_flushSeqNum;
   }
 
 
-  void D3D11ImmediateContext::SignalEvent(HANDLE hEvent) {
-    uint64_t value = ++m_eventCount;
+  void D3D11ImmediateContext::ConsiderFlush(
+          GpuFlushType                FlushType) {
+    uint64_t chunkId = GetCurrentSequenceNumber();
+    uint64_t submissionId = m_submissionFence->value();
 
-    if (m_eventSignal == nullptr)
-      m_eventSignal = new sync::CallbackFence();
+    if (m_flushTracker.considerFlush(FlushType, chunkId, submissionId))
+      ExecuteFlush(FlushType, nullptr, false);
+  }
 
-    m_eventSignal->setCallback(value, [hEvent] {
-      SetEvent(hEvent);
-    });
 
-    EmitCs([
-      cSignal = m_eventSignal,
-      cValue  = value
+  void D3D11ImmediateContext::ExecuteFlush(
+          GpuFlushType                FlushType,
+          HANDLE                      hEvent,
+          BOOL                        Synchronize) {
+    bool synchronizeSubmission = Synchronize && m_parent->Is11on12Device();
+
+    if (synchronizeSubmission)
+      m_submitStatus.result = VK_NOT_READY;
+
+    // Flush init context so that new resources are fully initialized
+    // before the app can access them in any way. This has to happen
+    // unconditionally since we may otherwise deadlock on Map.
+    m_parent->FlushInitContext();
+
+    // Exit early if there's nothing to do
+    if (!GetPendingCsChunks() && !hEvent)
+      return;
+
+    // Signal the submission fence and flush the command list
+    uint64_t submissionId = ++m_submissionId;
+
+    if (hEvent) {
+      m_submissionFence->setCallback(submissionId, [hEvent] {
+        SetEvent(hEvent);
+      });
+    }
+
+    EmitCs<false>([
+      cSubmissionFence  = m_submissionFence,
+      cSubmissionId     = submissionId,
+      cSubmissionStatus = synchronizeSubmission ? &m_submitStatus : nullptr
     ] (DxvkContext* ctx) {
-      ctx->signal(cSignal, cValue);
+      ctx->signal(cSubmissionFence, cSubmissionId);
+      ctx->flushCommandList(cSubmissionStatus);
     });
+
+    FlushCsChunk();
+
+    // Notify flush tracker about the flush
+    m_flushSeqNum = m_csSeqNum;
+    m_flushTracker.notifyFlush(m_flushSeqNum, submissionId);
+
+    // If necessary, block calling thread until the
+    // Vulkan queue submission is performed.
+    if (synchronizeSubmission)
+      m_device->waitForSubmission(&m_submitStatus);
   }
   
 }

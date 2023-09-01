@@ -7,25 +7,31 @@ namespace dxvk {
     const Rc<DxvkInstance>&         instance,
     const Rc<DxvkAdapter>&          adapter,
     const Rc<vk::DeviceFn>&         vkd,
-    const DxvkDeviceExtensions&     extensions,
-    const DxvkDeviceFeatures&       features)
+    const DxvkDeviceFeatures&       features,
+    const DxvkDeviceQueueSet&       queues,
+    const DxvkQueueCallback&        queueCallback)
   : m_options           (instance->options()),
     m_instance          (instance),
     m_adapter           (adapter),
     m_vkd               (vkd),
-    m_extensions        (extensions),
     m_features          (features),
     m_properties        (adapter->devicePropertiesExt()),
     m_perfHints         (getPerfHints()),
     m_objects           (this),
-    m_submissionQueue   (this) {
-    auto queueFamilies = m_adapter->findQueueFamilies();
-    m_queues.graphics = getQueue(queueFamilies.graphics, 0);
-    m_queues.transfer = getQueue(queueFamilies.transfer, 0);
+    m_queues            (queues),
+    m_submissionQueue   (this, queueCallback) {
+
   }
   
   
   DxvkDevice::~DxvkDevice() {
+    // If we are being destroyed during/after DLL process detachment
+    // from TerminateProcess, etc, our CS threads are already destroyed
+    // and we cannot synchronize against them.
+    // The best we can do is just wait for the Vulkan device to be idle.
+    if (this_thread::isInModuleDetachment())
+      return;
+
     // Wait for all pending Vulkan commands to be
     // executed before we destroy any resources.
     this->waitForIdle();
@@ -38,6 +44,49 @@ namespace dxvk {
 
   bool DxvkDevice::isUnifiedMemoryArchitecture() const {
     return m_adapter->isUnifiedMemoryArchitecture();
+  }
+
+
+  bool DxvkDevice::canUseGraphicsPipelineLibrary() const {
+    // Without graphicsPipelineLibraryIndependentInterpolationDecoration, we
+    // cannot use this effectively in many games since no client API provides
+    // interpoation qualifiers in vertex shaders.
+    return m_features.extGraphicsPipelineLibrary.graphicsPipelineLibrary
+        && m_properties.extGraphicsPipelineLibrary.graphicsPipelineLibraryIndependentInterpolationDecoration
+        && m_options.enableGraphicsPipelineLibrary != Tristate::False;
+  }
+
+
+  bool DxvkDevice::canUsePipelineCacheControl() const {
+    // Don't bother with this unless the device also supports shader module
+    // identifiers, since decoding and hashing the shaders is slow otherwise
+    // and likely provides no benefit over linking pipeline libraries.
+    return m_features.vk13.pipelineCreationCacheControl
+        && m_features.extShaderModuleIdentifier.shaderModuleIdentifier
+        && m_options.enableGraphicsPipelineLibrary != Tristate::True;
+  }
+
+
+  bool DxvkDevice::mustTrackPipelineLifetime() const {
+    switch (m_options.trackPipelineLifetime) {
+      case Tristate::True:
+        return canUseGraphicsPipelineLibrary();
+
+      case Tristate::False:
+        return false;
+
+      default:
+      case Tristate::Auto:
+        if (!env::is32BitHostPlatform() || !canUseGraphicsPipelineLibrary())
+          return false;
+
+        // Disable lifetime tracking for drivers that do not have any
+        // significant issues with 32-bit address space to begin with
+        if (m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV_KHR, 0, 0))
+          return false;
+
+        return true;
+    }
   }
 
 
@@ -84,18 +133,8 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkDescriptorPool> DxvkDevice::createDescriptorPool() {
-    Rc<DxvkDescriptorPool> pool = m_recycledDescriptorPools.retrieveObject();
-
-    if (pool == nullptr)
-      pool = new DxvkDescriptorPool(m_vkd);
-    
-    return pool;
-  }
-  
-  
-  Rc<DxvkContext> DxvkDevice::createContext() {
-    return new DxvkContext(this);
+  Rc<DxvkContext> DxvkDevice::createContext(DxvkContextType type) {
+    return new DxvkContext(this, type);
   }
 
 
@@ -110,14 +149,14 @@ namespace dxvk {
           uint32_t              index) {
     return new DxvkGpuQuery(m_vkd, type, flags, index);
   }
-  
-  
-  Rc<DxvkFramebuffer> DxvkDevice::createFramebuffer(
-    const DxvkFramebufferInfo&  info) {
-    return new DxvkFramebuffer(m_vkd, info);
+
+
+  Rc<DxvkFence> DxvkDevice::createFence(
+    const DxvkFenceCreateInfo& fenceInfo) {
+    return new DxvkFence(this, fenceInfo);
   }
-  
-  
+
+
   Rc<DxvkBuffer> DxvkDevice::createBuffer(
     const DxvkBufferCreateInfo& createInfo,
           VkMemoryPropertyFlags memoryType) {
@@ -139,12 +178,6 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkImage> DxvkDevice::createImageFromVkImage(
-    const DxvkImageCreateInfo&  createInfo,
-          VkImage               image) {
-    return new DxvkImage(this, createInfo, image);
-  }
-  
   Rc<DxvkImageView> DxvkDevice::createImageView(
     const Rc<DxvkImage>&            image,
     const DxvkImageViewCreateInfo&  createInfo) {
@@ -158,13 +191,21 @@ namespace dxvk {
   }
   
   
+  Rc<DxvkSparsePageAllocator> DxvkDevice::createSparsePageAllocator() {
+    return new DxvkSparsePageAllocator(m_objects.memoryManager());
+  }
+
+
   DxvkStatCounters DxvkDevice::getStatCounters() {
     DxvkPipelineCount pipe = m_objects.pipelineManager().getPipelineCount();
+    DxvkPipelineWorkerStats workers = m_objects.pipelineManager().getWorkerStats();
     
     DxvkStatCounters result;
     result.setCtr(DxvkStatCounter::PipeCountGraphics, pipe.numGraphicsPipelines);
+    result.setCtr(DxvkStatCounter::PipeCountLibrary,  pipe.numGraphicsLibraries);
     result.setCtr(DxvkStatCounter::PipeCountCompute,  pipe.numComputePipelines);
-    result.setCtr(DxvkStatCounter::PipeCompilerBusy,  m_objects.pipelineManager().isCompilingShaders());
+    result.setCtr(DxvkStatCounter::PipeTasksDone,     workers.tasksCompleted);
+    result.setCtr(DxvkStatCounter::PipeTasksTotal,    workers.tasksTotal);
     result.setCtr(DxvkStatCounter::GpuIdleTicks,      m_submissionQueue.gpuIdleTicks());
 
     std::lock_guard<sync::Spinlock> lock(m_statLock);
@@ -173,6 +214,22 @@ namespace dxvk {
   }
   
   
+  Rc<DxvkBuffer> DxvkDevice::importBuffer(
+    const DxvkBufferCreateInfo& createInfo,
+    const DxvkBufferImportInfo& importInfo,
+          VkMemoryPropertyFlags memoryType) {
+    return new DxvkBuffer(this, createInfo, importInfo, memoryType);
+  }
+
+
+  Rc<DxvkImage> DxvkDevice::importImage(
+    const DxvkImageCreateInfo&  createInfo,
+          VkImage               image,
+          VkMemoryPropertyFlags memoryType) {
+    return new DxvkImage(this, createInfo, image, memoryType);
+  }
+
+
   DxvkMemoryStats DxvkDevice::getMemoryStats(uint32_t heap) {
     return m_objects.memoryManager().getMemoryStats(heap);
   }
@@ -183,23 +240,28 @@ namespace dxvk {
   }
   
   
-  void DxvkDevice::initResources() {
-    m_objects.dummyResources().clearResources(this);
-  }
-
-
   void DxvkDevice::registerShader(const Rc<DxvkShader>& shader) {
     m_objects.pipelineManager().registerShader(shader);
   }
   
   
+  void DxvkDevice::requestCompileShader(
+    const Rc<DxvkShader>&           shader) {
+    m_objects.pipelineManager().requestCompileShader(shader);
+  }
+
+
   void DxvkDevice::presentImage(
-    const Rc<vk::Presenter>&        presenter,
+    const Rc<Presenter>&            presenter,
+          VkPresentModeKHR          presentMode,
+          uint64_t                  frameId,
           DxvkSubmitStatus*         status) {
     status->result = VK_NOT_READY;
 
-    DxvkPresentInfo presentInfo;
+    DxvkPresentInfo presentInfo = { };
     presentInfo.presenter = presenter;
+    presentInfo.presentMode = presentMode;
+    presentInfo.frameId = frameId;
     m_submissionQueue.present(presentInfo, status);
     
     std::lock_guard<sync::Spinlock> statLock(m_statLock);
@@ -209,17 +271,13 @@ namespace dxvk {
 
   void DxvkDevice::submitCommandList(
     const Rc<DxvkCommandList>&      commandList,
-          VkSemaphore               waitSync,
-          VkSemaphore               wakeSync) {
-    DxvkSubmitInfo submitInfo;
-    submitInfo.cmdList  = commandList;
-    submitInfo.waitSync = waitSync;
-    submitInfo.wakeSync = wakeSync;
-    m_submissionQueue.submit(submitInfo);
+          DxvkSubmitStatus*         status) {
+    DxvkSubmitInfo submitInfo = { };
+    submitInfo.cmdList = commandList;
+    m_submissionQueue.submit(submitInfo, status);
 
     std::lock_guard<sync::Spinlock> statLock(m_statLock);
     m_statCounters.merge(commandList->statCounters());
-    m_statCounters.addCtr(DxvkStatCounter::QueueSubmitCount, 1);
   }
   
   
@@ -254,42 +312,31 @@ namespace dxvk {
   
   
   void DxvkDevice::waitForIdle() {
-    this->lockSubmission();
+    m_submissionQueue.waitForIdle();
+    m_submissionQueue.lockDeviceQueue();
+
     if (m_vkd->vkDeviceWaitIdle(m_vkd->device()) != VK_SUCCESS)
       Logger::err("DxvkDevice: waitForIdle: Operation failed");
-    this->unlockSubmission();
+
+    m_submissionQueue.unlockDeviceQueue();
   }
   
   
   DxvkDevicePerfHints DxvkDevice::getPerfHints() {
     DxvkDevicePerfHints hints;
-    hints.preferFbDepthStencilCopy = m_extensions.extShaderStencilExport
-      && (m_adapter->matchesDriver(DxvkGpuVendor::Amd, VK_DRIVER_ID_MESA_RADV_KHR, 0, 0)
-       || m_adapter->matchesDriver(DxvkGpuVendor::Amd, VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR, 0, 0)
-       || m_adapter->matchesDriver(DxvkGpuVendor::Amd, VK_DRIVER_ID_AMD_PROPRIETARY_KHR, 0, 0));
-    hints.preferFbResolve = m_extensions.amdShaderFragmentMask
-      && (m_adapter->matchesDriver(DxvkGpuVendor::Amd, VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR, 0, 0)
-       || m_adapter->matchesDriver(DxvkGpuVendor::Amd, VK_DRIVER_ID_AMD_PROPRIETARY_KHR, 0, 0));
+    hints.preferFbDepthStencilCopy = m_features.extShaderStencilExport
+      && (m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV_KHR, 0, 0)
+       || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR, 0, 0)
+       || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY_KHR, 0, 0));
+    hints.preferFbResolve = m_features.amdShaderFragmentMask
+      && (m_adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR, 0, 0)
+       || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY_KHR, 0, 0));
     return hints;
   }
 
 
   void DxvkDevice::recycleCommandList(const Rc<DxvkCommandList>& cmdList) {
     m_recycledCommandLists.returnObject(cmdList);
-  }
-  
-
-  void DxvkDevice::recycleDescriptorPool(const Rc<DxvkDescriptorPool>& pool) {
-    m_recycledDescriptorPools.returnObject(pool);
-  }
-
-
-  DxvkDeviceQueue DxvkDevice::getQueue(
-          uint32_t                family,
-          uint32_t                index) const {
-    VkQueue queue = VK_NULL_HANDLE;
-    m_vkd->vkGetDeviceQueue(m_vkd->device(), family, index, &queue);
-    return DxvkDeviceQueue { queue, family, index };
   }
   
 }

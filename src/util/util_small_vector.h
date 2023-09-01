@@ -9,6 +9,8 @@ namespace dxvk {
     using storage = std::aligned_storage_t<sizeof(T), alignof(T)>;
   public:
 
+    constexpr static size_t MinCapacity = N;
+
     small_vector() { }
 
     small_vector             (const small_vector&) = delete;
@@ -57,6 +59,8 @@ namespace dxvk {
       
       for (size_t i = m_size; i < n; i++)
         new (ptr(i)) T();
+
+      m_size = n;
     }
 
     void push_back(const T& object) {
@@ -88,6 +92,17 @@ namespace dxvk {
       ptr(--m_size)->~T();
     }
 
+    void clear() {
+      for (size_t i = 0; i < m_size; i++)
+        ptr(i)->~T();
+
+      m_size = 0;
+    }
+
+    bool empty() const {
+      return m_size == 0;
+    }
+
           T& operator [] (size_t idx)       { return *ptr(idx); }
     const T& operator [] (size_t idx) const { return *ptr(idx); }
 
@@ -104,7 +119,7 @@ namespace dxvk {
 
     union {
       storage* m_ptr;
-      storage  m_data[sizeof(T) * N];
+      storage  m_data[N];
     } u;
 
     size_t pick_capacity(size_t n) {

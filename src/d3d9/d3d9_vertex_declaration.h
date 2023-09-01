@@ -68,6 +68,22 @@ namespace dxvk {
 
   private:
 
+    bool MapD3DDeclToFvf(
+      const D3DVERTEXELEMENT9& element,
+            DWORD fvf,
+            DWORD& outFvf,
+            DWORD& texCountPostUpdate);
+
+    DWORD MapD3D9VertexElementsToFvf();
+
+    DWORD MapD3DDeclTypeFloatToFvfXYZBn(BYTE type);
+
+    bool MapD3DDeclUsageTexCoordToFvfTexCoordSize(
+      const D3DVERTEXELEMENT9& element,
+            DWORD fvf,
+            DWORD& outFvf,
+            DWORD& texCountPostUpdate);
+
     void Classify();
 
     D3D9VertexDeclFlags            m_flags;

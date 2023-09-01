@@ -38,13 +38,13 @@ namespace dxvk {
       } else {
         viewInfo.format = pDevice->LookupFormat(pDesc->Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
         
-        const DxvkFormatInfo* formatInfo = imageFormatInfo(viewInfo.format);
+        const DxvkFormatInfo* formatInfo = lookupFormatInfo(viewInfo.format);
         viewInfo.rangeOffset = formatInfo->elementSize * pDesc->Buffer.FirstElement;
         viewInfo.rangeLength = formatInfo->elementSize * pDesc->Buffer.NumElements;
       }
       
       if (pDesc->Buffer.Flags & (D3D11_BUFFER_UAV_FLAG_APPEND | D3D11_BUFFER_UAV_FLAG_COUNTER))
-        m_counterBuffer = CreateCounterBuffer();
+        m_counterView = CreateCounterBufferView();
       
       // Populate view info struct
       m_info.Buffer.Offset = viewInfo.rangeOffset;
@@ -59,9 +59,11 @@ namespace dxvk {
       DxvkImageViewCreateInfo viewInfo;
       viewInfo.format  = formatInfo.Format;
       viewInfo.aspect  = formatInfo.Aspect;
-      viewInfo.swizzle = formatInfo.Swizzle;
       viewInfo.usage   = VK_IMAGE_USAGE_STORAGE_BIT;
-      
+
+      if (!util::isIdentityMapping(formatInfo.Swizzle))
+        Logger::warn(str::format("UAV format ", pDesc->Format, " has non-identity swizzle, but UAV swizzles are not supported"));
+
       switch (pDesc->ViewDimension) {
         case D3D11_UAV_DIMENSION_TEXTURE1D:
           viewInfo.type      = VK_IMAGE_VIEW_TYPE_1D;
@@ -145,8 +147,11 @@ namespace dxvk {
       return S_OK;
     }
     
-    Logger::warn("D3D11UnorderedAccessView::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(ID3D11UnorderedAccessView), riid)) {
+      Logger::warn("D3D11UnorderedAccessView::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
   
@@ -427,7 +432,7 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkBuffer> D3D11UnorderedAccessView::CreateCounterBuffer() {
+  Rc<DxvkBufferView> D3D11UnorderedAccessView::CreateCounterBufferView() {
     Rc<DxvkDevice> device = m_parent->GetDXVKDevice();
 
     DxvkBufferCreateInfo info;
@@ -441,7 +446,15 @@ namespace dxvk {
                 | VK_ACCESS_TRANSFER_READ_BIT
                 | VK_ACCESS_SHADER_WRITE_BIT
                 | VK_ACCESS_SHADER_READ_BIT;
-    return device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    Rc<DxvkBuffer> buffer = device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    DxvkBufferViewCreateInfo viewInfo;
+    viewInfo.format = VK_FORMAT_UNDEFINED;
+    viewInfo.rangeOffset = 0;
+    viewInfo.rangeLength = sizeof(uint32_t);
+
+    return device->createBufferView(buffer, viewInfo);
   }
   
 }

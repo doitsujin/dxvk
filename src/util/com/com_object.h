@@ -68,10 +68,14 @@ namespace dxvk {
       }
     }
 
-    ULONG GetPrivateRefCount() {
+    ULONG GetPrivateRefCount() const {
       return m_refPrivate.load();
     }
-    
+
+    bool HasLiveReferences() const {
+      return bool(m_refCount.load() | (m_refPrivate.load() & 0x7FFFFFFF));
+    }
+
   protected:
     
     std::atomic<uint32_t> m_refCount   = { 0ul };

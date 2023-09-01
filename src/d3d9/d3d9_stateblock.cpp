@@ -17,6 +17,9 @@ namespace dxvk {
     CaptureType(Type);
   }
 
+  D3D9StateBlock::~D3D9StateBlock() {
+    m_parent->DecrementLosableCounter();
+  }
 
   HRESULT STDMETHODCALLTYPE D3D9StateBlock::QueryInterface(
           REFIID  riid,
@@ -32,8 +35,11 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("D3D9StateBlock::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(IDirect3DStateBlock9), riid)) {
+      Logger::warn("D3D9StateBlock::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 
@@ -157,6 +163,46 @@ namespace dxvk {
   }
 
 
+  HRESULT D3D9StateBlock::SetLight(DWORD Index, const D3DLIGHT9* pLight) {
+    if (Index >= m_state.lights.size())
+      m_state.lights.resize(Index + 1);
+
+    m_state.lights[Index] = *pLight;
+
+    m_captures.flags.set(D3D9CapturedStateFlag::Lights);
+    return D3D_OK;
+  }
+
+
+  HRESULT D3D9StateBlock::LightEnable(DWORD Index, BOOL Enable) {
+    if (unlikely(Index >= m_state.lights.size()))
+      m_state.lights.resize(Index + 1);
+
+    if (unlikely(!m_state.lights[Index]))
+      m_state.lights[Index] = DefaultLight;
+
+    if (m_state.IsLightEnabled(Index) == !!Enable)
+      return D3D_OK;
+
+    uint32_t searchIndex = UINT32_MAX;
+    uint32_t setIndex    = Index;
+
+    if (!Enable)
+      std::swap(searchIndex, setIndex);
+
+    for (auto& idx : m_state.enabledLightIndices) {
+      if (idx == searchIndex) {
+        idx = setIndex;
+        break;
+      }
+    }
+
+    m_captures.lightEnabledChanges.set(Index, true);
+    m_captures.flags.set(D3D9CapturedStateFlag::Lights);
+    return D3D_OK;
+  }
+
+
   HRESULT D3D9StateBlock::SetStateTransform(uint32_t idx, const D3DMATRIX* pMatrix) {
     m_state.transforms[idx] = ConvertMatrix(pMatrix);
 
@@ -170,6 +216,9 @@ namespace dxvk {
           DWORD                      Stage,
           D3D9TextureStageStateTypes Type,
           DWORD                      Value) {
+    Stage = std::min(Stage, DWORD(caps::TextureStageCount - 1));
+    Type = std::min(Type, D3D9TextureStageStateTypes(DXVK_TSS_COUNT - 1));
+
     m_state.textureStages[Stage][Type] = Value;
 
     m_captures.flags.set(D3D9CapturedStateFlag::TextureStages);
@@ -293,15 +342,15 @@ namespace dxvk {
 
 
   HRESULT D3D9StateBlock::SetVertexBoolBitfield(uint32_t idx, uint32_t mask, uint32_t bits) {
-    m_state.vsConsts.bConsts[idx] &= ~mask;
-    m_state.vsConsts.bConsts[idx] |= bits & mask;
+    m_state.vsConsts->bConsts[idx] &= ~mask;
+    m_state.vsConsts->bConsts[idx] |= bits & mask;
     return D3D_OK;
   }
 
 
   HRESULT D3D9StateBlock::SetPixelBoolBitfield(uint32_t idx, uint32_t mask, uint32_t bits) {
-    m_state.psConsts.bConsts[idx] &= ~mask;
-    m_state.psConsts.bConsts[idx] |= bits & mask;
+    m_state.psConsts->bConsts[idx] &= ~mask;
+    m_state.psConsts->bConsts[idx] |= bits & mask;
     return D3D_OK;
   }
 
@@ -470,14 +519,9 @@ namespace dxvk {
     m_captures.flags.set(D3D9CapturedStateFlag::VertexShader);
     m_captures.flags.set(D3D9CapturedStateFlag::VsConstants);
 
-    for (uint32_t i = 0; i < m_parent->GetVertexConstantLayout().floatCount / 32; i++)
-      m_captures.vsConsts.fConsts.dword(i) = std::numeric_limits<uint32_t>::max();
-
-    for (uint32_t i = 0; i < m_parent->GetVertexConstantLayout().intCount / 32; i++)
-      m_captures.vsConsts.iConsts.dword(i) = std::numeric_limits<uint32_t>::max();
-
-    for (uint32_t i = 0; i < m_parent->GetVertexConstantLayout().bitmaskCount; i++)
-      m_captures.vsConsts.bConsts.dword(i) = std::numeric_limits<uint32_t>::max();
+    m_captures.vsConsts.fConsts.setN(m_parent->GetVertexConstantLayout().floatCount);
+    m_captures.vsConsts.iConsts.setN(m_parent->GetVertexConstantLayout().intCount);
+    m_captures.vsConsts.bConsts.setN(m_parent->GetVertexConstantLayout().boolCount);
   }
 
 
@@ -500,6 +544,8 @@ namespace dxvk {
 
       m_captures.flags.set(D3D9CapturedStateFlag::VertexDecl);
       m_captures.flags.set(D3D9CapturedStateFlag::StreamFreq);
+      m_captures.flags.set(D3D9CapturedStateFlag::Lights);
+      m_captures.lightEnabledChanges.setN(m_deviceState->lights.size());
 
       for (uint32_t i = 0; i < caps::MaxStreams; i++)
         m_captures.streamFreq.set(i, true);

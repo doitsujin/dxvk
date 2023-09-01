@@ -20,9 +20,8 @@ namespace dxvk {
     const D3DVERTEXELEMENT9* pVertexElements,
           uint32_t           DeclCount)
     : D3D9VertexDeclBase( pDevice )
-    , m_elements        ( DeclCount )
-    , m_fvf             ( 0 ) {
-    std::copy(pVertexElements, pVertexElements + DeclCount, m_elements.begin());
+    , m_elements        ( pVertexElements, pVertexElements + DeclCount )
+    , m_fvf             ( this->MapD3D9VertexElementsToFvf() ) {
     this->Classify();
   }
 
@@ -41,8 +40,11 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("D3D9VertexDecl::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(IDirect3DVertexDeclaration9), riid)) {
+      Logger::warn("D3D9VertexDecl::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 
@@ -194,7 +196,7 @@ namespace dxvk {
 
     for (uint32_t i = 0; i < elemCount; i++) {
       elements[i].Stream = 0;
-      elements[i].Offset = (i == 0) 
+      elements[i].Offset = (i == 0)
         ? 0
         : (elements[i - 1].Offset + GetDecltypeSize(D3DDECLTYPE(elements[i - 1].Type)));
 
@@ -203,6 +205,150 @@ namespace dxvk {
 
     m_elements.resize(elemCount);
     std::copy(elements.begin(), elements.begin() + elemCount, m_elements.data());
+  }
+
+  bool D3D9VertexDecl::MapD3DDeclToFvf(
+    const D3DVERTEXELEMENT9& element,
+          DWORD fvf,
+          DWORD& outFvf,
+          DWORD& texCountPostUpdate) {
+
+    // Mapping between a Direct3D Declaration and FVF Codes (Direct3D 9)
+    // This table maps members of a D3DVERTEXELEMENT9 declaration to a FVF code.
+    //
+    // Data type              Usage                       Usage index     FVF
+    // ----------------------------------------------------------------------------------------
+    // D3DDECLTYPE_FLOAT3     D3DDECLUSAGE_POSITION       0               D3DFVF_XYZ
+    // D3DDECLTYPE_FLOAT4     D3DDECLUSAGE_POSITIONT      0               D3DFVF_XYZRHW
+    // D3DDECLTYPE_FLOATn     D3DDECLUSAGE_BLENDWEIGHT    0               D3DFVF_XYZBn
+    // D3DDECLTYPE_UBYTE4     D3DDECLUSAGE_BLENDINDICES   0               D3DFVF_XYZB(nWeights + 1)
+    // D3DDECLTYPE_FLOAT3     D3DDECLUSAGE_NORMAL         0               D3DFVF_NORMAL
+    // D3DDECLTYPE_FLOAT1     D3DDECLUSAGE_PSIZE          0               D3DFVF_PSIZE
+    // D3DDECLTYPE_D3DCOLOR   D3DDECLUSAGE_COLOR          0               D3DFVF_DIFFUSE
+    // D3DDECLTYPE_D3DCOLOR   D3DDECLUSAGE_COLOR          1               D3DFVF_SPECULAR
+    // D3DDECLTYPE_FLOATm     D3DDECLUSAGE_TEXCOORD       n               D3DFVF_TEXCOORDSIZEm(n)
+    // D3DDECLTYPE_FLOAT3     D3DDECLUSAGE_POSITION       1               N / A
+    // D3DDECLTYPE_FLOAT3     D3DDECLUSAGE_NORMAL         1               N / A
+
+
+    if (element.Usage == D3DDECLUSAGE_POSITION && element.Type == D3DDECLTYPE_FLOAT3 && element.UsageIndex == 0) {
+      outFvf = D3DFVF_XYZ;
+      return true;
+    }
+
+    if (element.Usage == D3DDECLUSAGE_POSITIONT && element.Type == D3DDECLTYPE_FLOAT4 && element.UsageIndex == 0) {
+      outFvf = D3DFVF_XYZRHW;
+      return true;
+    }
+
+    if (element.Usage == D3DDECLUSAGE_BLENDWEIGHT && element.UsageIndex == 0) {
+      DWORD fvfRet = MapD3DDeclTypeFloatToFvfXYZBn(element.Type);
+      if (likely(fvfRet != 0)) {
+        outFvf = fvfRet;
+        return true;
+      } else {
+        return false;
+      }
+    }
+
+    if (element.Usage == D3DDECLUSAGE_BLENDINDICES && element.Type == D3DDECLTYPE_UBYTE4 && element.UsageIndex == 0) {
+      outFvf = D3DFVF_XYZB1;
+      return true;
+    }
+
+    if (element.Usage == D3DDECLUSAGE_NORMAL && element.Type == D3DDECLTYPE_FLOAT3 && element.UsageIndex == 0) {
+      outFvf = D3DFVF_NORMAL;
+      return true;
+    }
+
+    if (element.Usage == D3DDECLUSAGE_PSIZE && element.Type == D3DDECLTYPE_FLOAT1 && element.UsageIndex == 0) {
+      outFvf = D3DFVF_PSIZE;
+      return true;
+    }
+
+    if (element.Usage == D3DDECLUSAGE_COLOR && element.Type == D3DDECLTYPE_D3DCOLOR) {
+      switch (element.UsageIndex) {
+        case 0:
+          outFvf = D3DFVF_DIFFUSE;
+          return true;
+        case 1:
+          outFvf = D3DFVF_SPECULAR;
+          return true;
+        default:
+          return false;
+      }
+    }
+
+    if (element.Usage == D3DDECLUSAGE_TEXCOORD && element.UsageIndex < 8) {
+      return MapD3DDeclUsageTexCoordToFvfTexCoordSize(element, fvf, outFvf, texCountPostUpdate);
+    }
+
+    return false;
+  }
+
+
+  DWORD D3D9VertexDecl::MapD3DDeclTypeFloatToFvfXYZBn(BYTE type) {
+
+    switch (type) {
+      case D3DDECLTYPE_FLOAT1: return D3DFVF_XYZB1;
+      case D3DDECLTYPE_FLOAT2: return D3DFVF_XYZB2;
+      case D3DDECLTYPE_FLOAT3: return D3DFVF_XYZB3;
+      case D3DDECLTYPE_FLOAT4: return D3DFVF_XYZB4;
+      default:                 return 0;
+    }
+  }
+
+
+  bool D3D9VertexDecl::MapD3DDeclUsageTexCoordToFvfTexCoordSize(
+      const D3DVERTEXELEMENT9& element,
+      DWORD fvf,
+      DWORD& outFvf,
+      DWORD& texCountPostUpdate) {
+
+    // Check if bits of format for current UsageIndex are free in the fvf
+    // It is necessary to skip multiple initializations of the bitfield because
+    // returned value is bitwise or-ed to final fvf DWORD.
+    // The D3DFVF_TEXCOORDSIZE1 is used below because it covers all formats bits.
+    if ((D3DFVF_TEXCOORDSIZE1(element.UsageIndex) & fvf) != 0)
+      return false;
+
+    // Update max texture's index in fvf
+    DWORD currentTexCount = element.UsageIndex + 1;
+    bool retStatus = true;
+
+    if (texCountPostUpdate < currentTexCount)
+      texCountPostUpdate = currentTexCount;
+
+    if (element.Type == D3DDECLTYPE_FLOAT1)
+      outFvf = D3DFVF_TEXCOORDSIZE1(element.UsageIndex);
+    else if (element.Type == D3DDECLTYPE_FLOAT2)
+      outFvf = D3DFVF_TEXCOORDSIZE2(element.UsageIndex);
+    else if (element.Type == D3DDECLTYPE_FLOAT3)
+      outFvf = D3DFVF_TEXCOORDSIZE3(element.UsageIndex);
+    else if (element.Type == D3DDECLTYPE_FLOAT4)
+      outFvf = D3DFVF_TEXCOORDSIZE4(element.UsageIndex);
+    else
+      retStatus = false;
+
+    return retStatus;
+  }
+
+
+  DWORD D3D9VertexDecl::MapD3D9VertexElementsToFvf() {
+    DWORD fvf = 0;
+    DWORD texCountPostUpdate = 0;
+
+    for (const auto& element : m_elements) {
+      DWORD elementFvf = 0;
+      if (!MapD3DDeclToFvf(element, fvf, elementFvf, texCountPostUpdate)) {
+        return 0;
+      }
+      fvf |= elementFvf;
+    }
+
+    fvf |= (texCountPostUpdate << 8);
+
+    return fvf;
   }
 
 

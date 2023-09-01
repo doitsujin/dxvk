@@ -3,6 +3,8 @@
 #include "d3d9_format.h"
 #include "d3d9_util.h"
 #include "d3d9_caps.h"
+#include "d3d9_mem.h"
+#include "d3d9_interop.h"
 
 #include "../dxvk/dxvk_device.h"
 
@@ -22,6 +24,7 @@ namespace dxvk {
     D3D9_COMMON_TEXTURE_MAP_MODE_NONE,      ///< No mapping available
     D3D9_COMMON_TEXTURE_MAP_MODE_BACKED,    ///< Mapped image through buffer
     D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM, ///< Only a buffer - no image
+    D3D9_COMMON_TEXTURE_MAP_MODE_UNMAPPABLE,   ///< Non-Vulkan memory that can be unmapped
   };
   
   /**
@@ -44,6 +47,7 @@ namespace dxvk {
     bool                Discard;
     bool                IsBackBuffer;
     bool                IsAttachmentOnly;
+    bool                IsLockable;
   };
 
   struct D3D9ColorView {
@@ -70,6 +74,7 @@ namespace dxvk {
 
     D3D9CommonTexture(
             D3D9DeviceEx*             pDevice,
+            IUnknown*                 pInterface,
       const D3D9_COMMON_TEXTURE_DESC* pDesc,
             D3DRESOURCETYPE           ResourceType,
             HANDLE*                   pSharedHandle);
@@ -141,21 +146,19 @@ namespace dxvk {
       return m_resolveImage;
     }
 
-    const Rc<DxvkBuffer>& GetBuffer(UINT Subresource) {
-      return m_buffers[Subresource];
-    }
+    /**
+     * \brief Returns a pointer to the internal data used for LockRect/LockBox
+     *
+     * This works regardless of the map mode used by this texture
+     * and will map the memory if necessary.
+     * \param [in] Subresource Subresource index
+     * @return Pointer to locking data
+     */
+    void* GetData(UINT Subresource);
 
+    const Rc<DxvkBuffer>& GetBuffer();
 
-    DxvkBufferSliceHandle GetMappedSlice(UINT Subresource) {
-      return m_mappedSlices[Subresource];
-    }
-
-
-    DxvkBufferSliceHandle DiscardMapSlice(UINT Subresource) {
-      DxvkBufferSliceHandle handle = m_buffers[Subresource]->allocSlice();
-      m_mappedSlices[Subresource] = handle;
-      return handle;
-    }
+    DxvkBufferSlice GetBufferSlice(UINT Subresource);
 
     /**
      * \brief Computes subresource from the subresource index
@@ -192,6 +195,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Dref Clamp
+     * \returns Whether the texture emulates an UNORM format with D32f
+     */
+    bool IsUpgradedToD32f() const {
+      return m_upgradedToD32f;
+    }
+
+    /**
      * \brief FETCH4 compatibility
      * \returns Whether the format of the texture supports the FETCH4 hack
      */
@@ -215,32 +226,17 @@ namespace dxvk {
       return Face * m_desc.MipLevels + MipLevel;
     }
 
-    /**
-     * \brief Creates buffers
-     * Creates mapping and staging buffers for all subresources
-     * allocates new buffers if necessary
-     */
-    void CreateBuffers() {
-      const uint32_t count = CountSubresources();
-      for (uint32_t i = 0; i < count; i++)
-        CreateBufferSubresource(i);
+    void UnmapData() {
+      m_data.Unmap();
     }
-
-    /**
-     * \brief Creates a buffer
-     * Creates mapping and staging buffers for a given subresource
-     * allocates new buffers if necessary
-     * \returns Whether an allocation happened
-     */
-    bool CreateBufferSubresource(UINT Subresource);
 
     /**
      * \brief Destroys a buffer
      * Destroys mapping and staging buffers for a given subresource
      */
-    void DestroyBufferSubresource(UINT Subresource) {
-      m_buffers[Subresource] = nullptr;
-      SetNeedsReadback(Subresource, true);
+    void DestroyBuffer() {
+      m_buffer = nullptr;
+      MarkAllNeedReadback();
     }
 
     bool IsDynamic() const {
@@ -311,13 +307,15 @@ namespace dxvk {
       return util::computeMipLevelExtent(GetExtent(), MipLevel);
     }
 
-    bool MarkHazardous() {
-      return std::exchange(m_hazardous, true);
+    bool MarkTransitionedToHazardLayout() {
+      return std::exchange(m_transitionedToHazardLayout, true);
     }
 
     D3DRESOURCETYPE GetType() {
       return m_type;
     }
+
+    uint32_t GetPlaneCount() const;
 
     const D3D9_VK_FORMAT_MAPPING& GetMapping() { return m_mapping; }
 
@@ -329,7 +327,7 @@ namespace dxvk {
 
     void SetNeedsReadback(UINT Subresource, bool value) { m_needsReadback.set(Subresource, value); }
 
-    bool NeedsReachback(UINT Subresource) const { return m_needsReadback.get(Subresource); }
+    bool NeedsReadback(UINT Subresource) const { return m_needsReadback.get(Subresource); }
 
     void MarkAllNeedReadback() { m_needsReadback.setAll(); }
 
@@ -341,27 +339,27 @@ namespace dxvk {
       return m_sampleView.Pick(srgb && IsSrgbCompatible());
     }
 
-    VkImageLayout DetermineRenderTargetLayout() const {
+    VkImageLayout DetermineRenderTargetLayout(VkImageLayout hazardLayout) const {
+      if (unlikely(m_transitionedToHazardLayout))
+        return hazardLayout;
+
       return m_image != nullptr &&
-             m_image->info().tiling == VK_IMAGE_TILING_OPTIMAL &&
-            !m_hazardous
+             m_image->info().tiling == VK_IMAGE_TILING_OPTIMAL
         ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
         : VK_IMAGE_LAYOUT_GENERAL;
     }
 
-    VkImageLayout DetermineDepthStencilLayout(bool write, bool hazardous) const {
-      VkImageLayout layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-      if (unlikely(hazardous)) {
-        layout = write
-          ? VK_IMAGE_LAYOUT_GENERAL
-          : VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
-      }
+    VkImageLayout DetermineDepthStencilLayout(bool write, bool hazardous, VkImageLayout hazardLayout) const {
+      if (unlikely(m_transitionedToHazardLayout))
+        return hazardLayout;
 
       if (unlikely(m_image->info().tiling != VK_IMAGE_TILING_OPTIMAL))
-        layout = VK_IMAGE_LAYOUT_GENERAL;
+        return VK_IMAGE_LAYOUT_GENERAL;
 
-      return layout;
+      if (unlikely(hazardous && !write))
+        return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
+
+      return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     }
 
     Rc<DxvkImageView> CreateView(
@@ -372,22 +370,25 @@ namespace dxvk {
     D3D9SubresourceBitset& GetUploadBitmask() { return m_needsUpload; }
 
     void SetAllNeedUpload() {
-      m_needsUpload.setAll();
+      if (likely(!IsAutomaticMip())) {
+        m_needsUpload.setAll();
+      } else {
+        for (uint32_t a = 0; a < m_desc.ArraySize; a++) {
+          for (uint32_t m = 0; m < ExposedMipLevels(); m++) {
+            SetNeedsUpload(CalcSubresource(a, m), true);
+          }
+        }
+      }
     }
     void SetNeedsUpload(UINT Subresource, bool upload) { m_needsUpload.set(Subresource, upload); }
     bool NeedsUpload(UINT Subresource) const { return m_needsUpload.get(Subresource); }
     bool NeedsAnyUpload() { return m_needsUpload.any(); }
     void ClearNeedsUpload() { return m_needsUpload.clearAll();  }
-    bool DoesStagingBufferUploads(UINT Subresource) const { return m_uploadUsingStaging.get(Subresource); }
-
-    void EnableStagingBufferUploads(UINT Subresource) {
-      m_uploadUsingStaging.set(Subresource, true);
-    }
 
     void SetNeedsMipGen(bool value) { m_needsMipGen = value; }
     bool NeedsMipGen() const { return m_needsMipGen; }
 
-    DWORD ExposedMipLevels() { return m_exposedMipLevels; }
+    DWORD ExposedMipLevels() const { return m_exposedMipLevels; }
 
     void SetMipFilter(D3DTEXTUREFILTERTYPE filter) { m_mipFilter = filter; }
     D3DTEXTUREFILTERTYPE GetMipFilter() const { return m_mipFilter; }
@@ -461,6 +462,26 @@ namespace dxvk {
         : 0ull;
     }
 
+    /**
+     * \brief Mip level
+     * \returns Size of packed mip level in bytes
+     */
+    VkDeviceSize GetMipSize(UINT Subresource) const;
+
+    uint32_t GetTotalSize() const {
+      return m_totalSize;
+    }
+
+    /**
+     * \brief Creates a buffer
+     * Creates the mapping buffer if necessary
+     * \param [in] Initialize Whether to copy over existing data (or clear if there is no data)
+     * \returns Whether an allocation happened
+     */
+    void CreateBuffer(bool Initialize);
+
+    ID3D9VkInteropTexture* GetVkInterop() { return &m_d3d9Interop; }
+
   private:
 
     D3D9DeviceEx*                 m_device;
@@ -470,23 +491,26 @@ namespace dxvk {
 
     Rc<DxvkImage>                 m_image;
     Rc<DxvkImage>                 m_resolveImage;
-    D3D9SubresourceArray<
-      Rc<DxvkBuffer>>             m_buffers;
-    D3D9SubresourceArray<
-      DxvkBufferSliceHandle>      m_mappedSlices;
+    Rc<DxvkBuffer>                m_buffer;
+    D3D9Memory                    m_data = { };
+
     D3D9SubresourceArray<
       uint64_t>                   m_seqs = { };
+
+    D3D9SubresourceArray<
+      uint32_t>                   m_memoryOffset = { };
+    
+    uint32_t                      m_totalSize = 0;
 
     D3D9_VK_FORMAT_MAPPING        m_mapping;
 
     bool                          m_shadow; //< Depth Compare-ness
+    bool                          m_upgradedToD32f; // Dref Clamp
     bool                          m_supportsFetch4;
 
     int64_t                       m_size = 0;
 
-    bool                          m_systemmemModified = false;
-
-    bool                          m_hazardous = false;
+    bool                          m_transitionedToHazardLayout = false;
 
     D3D9ColorView                 m_sampleView;
 
@@ -498,8 +522,6 @@ namespace dxvk {
 
     D3D9SubresourceBitset         m_needsUpload = { };
 
-    D3D9SubresourceBitset         m_uploadUsingStaging = { };
-
     DWORD                         m_exposedMipLevels = 0;
 
     bool                          m_needsMipGen = false;
@@ -508,11 +530,7 @@ namespace dxvk {
 
     std::array<D3DBOX, 6>         m_dirtyBoxes;
 
-    /**
-     * \brief Mip level
-     * \returns Size of packed mip level in bytes
-     */
-    VkDeviceSize GetMipSize(UINT Subresource) const;
+    D3D9VkInteropTexture          m_d3d9Interop;
 
     Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType, bool TryOffscreenRT, HANDLE* pSharedHandle) const;
 
@@ -530,15 +548,7 @@ namespace dxvk {
             VkFormat              Format,
             VkImageTiling         Tiling) const;
 
-    D3D9_COMMON_TEXTURE_MAP_MODE DetermineMapMode() const {
-      if (m_desc.Format == D3D9Format::NULL_FORMAT)
-        return D3D9_COMMON_TEXTURE_MAP_MODE_NONE;
-
-      if (m_desc.Pool == D3DPOOL_SYSTEMMEM || m_desc.Pool == D3DPOOL_SCRATCH)
-        return D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM;
-
-      return D3D9_COMMON_TEXTURE_MAP_MODE_BACKED;
-    }
+    D3D9_COMMON_TEXTURE_MAP_MODE DetermineMapMode() const;
 
     VkImageLayout OptimizeLayout(
             VkImageUsageFlags         Usage) const;

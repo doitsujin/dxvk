@@ -43,6 +43,7 @@ namespace dxvk {
     }
 
     Matrix4(const Matrix4& other) = default;
+    Matrix4& operator=(const Matrix4& other) = default;
 
     Vector4& operator[](size_t index);
     const Vector4& operator[](size_t index) const;

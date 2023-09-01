@@ -28,7 +28,7 @@ typedef struct _SHA1_CTX {
 
 void SHA1Init(SHA1_CTX *);
 void SHA1Pad(SHA1_CTX *);
-void SHA1Transform(uint32_t [5], const uint8_t [SHA1_BLOCK_LENGTH]);
+void SHA1Transform(uint32_t [5], const uint8_t*);
 void SHA1Update(SHA1_CTX *, const uint8_t *, size_t);
 void SHA1Final(uint8_t [SHA1_DIGEST_LENGTH], SHA1_CTX *);
 

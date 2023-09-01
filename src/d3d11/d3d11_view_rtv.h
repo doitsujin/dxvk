@@ -57,6 +57,10 @@ namespace dxvk {
         : VK_IMAGE_LAYOUT_GENERAL;
     }
 
+    UINT GetSampleCount() const {
+      return UINT(m_view->imageInfo().sampleCount);
+    }
+
     D3D10RenderTargetView* GetD3D10Iface() {
       return &m_d3d10;
     }

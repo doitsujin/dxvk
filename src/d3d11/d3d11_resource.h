@@ -23,6 +23,64 @@ namespace dxvk {
   
 
   /**
+   * \brief IDXGIKeyedMutex implementation
+   */
+  class D3D11DXGIKeyedMutex : public IDXGIKeyedMutex {
+
+  public:
+
+    D3D11DXGIKeyedMutex(
+            ID3D11Resource*         pResource);
+
+    ~D3D11DXGIKeyedMutex();
+
+    ULONG STDMETHODCALLTYPE AddRef();
+
+    ULONG STDMETHODCALLTYPE Release();
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                  riid,
+            void**                  ppvObject);
+
+    HRESULT STDMETHODCALLTYPE GetPrivateData(
+            REFGUID                 Name,
+            UINT*                   pDataSize,
+            void*                   pData);
+
+    HRESULT STDMETHODCALLTYPE SetPrivateData(
+            REFGUID                 Name,
+            UINT                    DataSize,
+      const void*                   pData);
+
+    HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
+            REFGUID                 Name,
+      const IUnknown*               pUnknown);
+
+    HRESULT STDMETHODCALLTYPE GetParent(
+            REFIID                  riid,
+            void**                  ppParent);
+
+    HRESULT STDMETHODCALLTYPE GetDevice(
+            REFIID                  riid,
+            void**                  ppDevice);
+
+    HRESULT STDMETHODCALLTYPE AcquireSync(
+            UINT64                  Key,
+            DWORD                   dwMilliseconds);
+
+    HRESULT STDMETHODCALLTYPE ReleaseSync(
+            UINT64                  Key);
+
+  private:
+
+    ID3D11Resource* m_resource;
+    D3D11Device* m_device;
+    bool m_warned = false;
+    bool m_supported = false;
+  };
+
+
+  /**
    * \brief IDXGIResource implementation for D3D11 resources
    */
   class D3D11DXGIResource : public IDXGIResource1 {
@@ -86,12 +144,26 @@ namespace dxvk {
             UINT                    index,
             IDXGISurface2**         ppSurface);
 
+    HRESULT GetKeyedMutex(void **ppvObject);
+
   private:
 
     ID3D11Resource* m_resource;
+    D3D11DXGIKeyedMutex m_keyedMutex;
 
   };
 
+
+  /**
+   * \brief Queries D3D11on12 resource info
+   *
+   * \param [in] pResource The resource to query
+   * \param [out] p11on12Info 11on12 info
+   * \returns \c S_OK on success, or \c E_INVALIDARG
+   */
+  HRESULT GetResource11on12Info(
+          ID3D11Resource*             pResource,
+          D3D11_ON_12_RESOURCE_INFO*  p11on12Info);
 
   /**
    * \brief Queries common resource description
@@ -103,7 +175,7 @@ namespace dxvk {
   HRESULT GetCommonResourceDesc(
           ID3D11Resource*             pResource,
           D3D11_COMMON_RESOURCE_DESC* pDesc);
-  
+
   /**
    * \brief Checks whether a format can be used to view a resource
    * 
@@ -121,7 +193,16 @@ namespace dxvk {
           UINT                        BindFlags,
           DXGI_FORMAT                 Format,
           UINT                        Plane);
-  
+
+  /**
+   * \brief Queries paged resource from resource pointer
+   *
+   * \param [in] resource The resource
+   * \returns Paged resource object
+   */
+  Rc<DxvkPagedResource> GetPagedResource(
+          ID3D11Resource*             pResource);
+
   /**
    * \brief Increments private reference count of a resource
    * 

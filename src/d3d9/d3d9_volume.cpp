@@ -10,7 +10,7 @@ namespace dxvk {
     const D3D9_COMMON_TEXTURE_DESC* pDesc)
     : D3D9VolumeBase(
         pDevice,
-        new D3D9CommonTexture( pDevice, pDesc, D3DRTYPE_VOLUMETEXTURE, nullptr ),
+        new D3D9CommonTexture( pDevice, this, pDesc, D3DRTYPE_VOLUMETEXTURE, nullptr ),
         0, 0,
         nullptr,
         nullptr) { }
@@ -65,8 +65,11 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("D3D9Volume::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(IDirect3DVolume9), riid)) {
+      Logger::warn("D3D9Volume::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 

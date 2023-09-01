@@ -3,7 +3,7 @@
 
 #include "d3d9_convert_common.h"
 
-layout(constant_id = 1225) const bool s_is_uyvy = false;
+layout(constant_id = 0) const bool s_is_uyvy = false;
 
 layout(
   local_size_x = 8,

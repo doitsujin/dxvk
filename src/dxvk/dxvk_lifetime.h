@@ -7,7 +7,81 @@
 namespace dxvk {
   
   /**
-   * \brief DXVK lifetime tracker
+   * \brief Resource pointer
+   *
+   * Keeps a resource alive and stores access information.
+   */
+  class DxvkLifetime {
+
+  public:
+
+    DxvkLifetime()
+    : m_resource(nullptr), m_access(DxvkAccess::None) { }
+
+    DxvkLifetime(
+            DxvkResource*           resource,
+            DxvkAccess              access)
+    : m_resource(resource), m_access(access) {
+      acquire();
+    }
+
+    DxvkLifetime(DxvkLifetime&& other)
+    : m_resource(other.m_resource), m_access(other.m_access) {
+      other.m_resource = nullptr;
+      other.m_access = DxvkAccess::None;
+    }
+
+    DxvkLifetime(const DxvkLifetime& other)
+    : m_resource(other.m_resource), m_access(other.m_access) {
+      acquire();
+    }
+
+    DxvkLifetime& operator = (DxvkLifetime&& other) {
+      release();
+
+      m_resource = other.m_resource;
+      m_access = other.m_access;
+
+      other.m_resource = nullptr;
+      other.m_access = DxvkAccess::None;
+      return *this;
+    }
+
+    DxvkLifetime& operator = (const DxvkLifetime& other) {
+      other.acquire();
+      release();
+
+      m_resource  = other.m_resource;
+      m_access = other.m_access;
+      return *this;
+    }
+
+    ~DxvkLifetime() {
+      release();
+    }
+
+  private:
+
+    DxvkResource*   m_resource;
+    DxvkAccess      m_access;
+
+    void acquire() const {
+      if (m_resource)
+        m_resource->acquire(m_access);
+    }
+
+    void release() const {
+      if (m_resource) {
+        if (!m_resource->release(m_access))
+          delete m_resource;
+      }
+    }
+
+  };
+
+
+  /**
+   * \brief Lifetime tracker
    * 
    * Maintains references to a set of resources. This is
    * used to guarantee that resources are not destroyed
@@ -26,9 +100,8 @@ namespace dxvk {
      * \param [in] rc The resource to track
      */
     template<DxvkAccess Access>
-    void trackResource(Rc<DxvkResource>&& rc) {
-      rc->acquire(Access);
-      m_resources.emplace_back(std::move(rc), Access);
+    void trackResource(DxvkResource* rc) {
+      m_resources.emplace_back(rc, Access);
     }
 
     /**
@@ -48,8 +121,7 @@ namespace dxvk {
     
   private:
     
-    std::vector<std::pair<Rc<DxvkResource>, DxvkAccess>> m_resources;
-    bool m_notified = false;
+    std::vector<DxvkLifetime> m_resources;
     
   };
   

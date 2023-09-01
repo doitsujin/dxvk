@@ -23,30 +23,13 @@ namespace dxvk {
     // clip device feature is not supported
     bool useDepthClipWorkaround = false;
 
-    /// Use the ShaderImageReadWithoutFormat capability.
-    bool useStorageImageReadWithoutFormat = false;
+    /// Determines whether format qualifiers
+    /// on typed UAV loads are required
+    bool supportsTypedUavLoadR32 = false;
 
     /// Use subgroup operations to reduce the number of
     /// atomic operations for append/consume buffers.
     bool useSubgroupOpsForAtomicCounters = false;
-
-    /// Use a SPIR-V extension to implement D3D-style discards
-    bool useDemoteToHelperInvocation = false;
-
-    /// Use subgroup operations to discard fragment
-    /// shader invocations if derivatives remain valid.
-    bool useSubgroupOpsForEarlyDiscard = false;
-
-    /// Use SDiv instead of SHR to converte byte offsets to
-    /// dword offsets. Fixes RE2 and DMC5 on Nvidia drivers.
-    bool useSdivForBufferIndex = false;
-
-    /// Enables NaN fixup for render target outputs
-    bool enableRtOutputNanFixup = false;
-
-    /// Implement dynamically indexed uniform buffers
-    /// with storage buffers for tight bounds checking
-    bool dynamicIndexedConstantBufferAsSsbo = false;
 
     /// Clear thread-group shared memory to zero
     bool zeroInitWorkgroupMemory = false;
@@ -55,10 +38,17 @@ namespace dxvk {
     bool invariantPosition = false;
 
     /// Insert memory barriers after TGSM stoes
-    bool forceTgsmBarriers = false;
+    bool forceVolatileTgsmAccess = false;
 
     /// Replace ld_ms with ld
     bool disableMsaa = false;
+
+    /// Force sample rate shading by using sample
+    /// interpolation for fragment shader inputs
+    bool forceSampleRateShading = false;
+
+    // Enable per-sample interlock if supported
+    bool enableSampleShadingInterlock = false;
 
     /// Float control flags
     DxbcFloatControlFlags floatControl;

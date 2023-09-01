@@ -22,6 +22,7 @@ namespace dxvk {
       : x(xyzw[0]), y(xyzw[1]), z(xyzw[2]), w(xyzw[3]) { }
 
     Vector4Base(const Vector4Base<T>& other) = default;
+    Vector4Base& operator=(const Vector4Base<T>& other) = default;
 
     inline       T& operator[](size_t index)       { return data[index]; }
     inline const T& operator[](size_t index) const { return data[index]; }
@@ -150,12 +151,18 @@ namespace dxvk {
   static_assert(sizeof(Vector4i) == sizeof(int)   * 4);
 
   inline Vector4 replaceNaN(Vector4 a) {
-    Vector4 result;
-    __m128 value = _mm_load_ps(a.data);
+    #ifdef DXVK_ARCH_X86
+    alignas(16) Vector4 result;
+    __m128 value = _mm_loadu_ps(a.data);
     __m128 mask  = _mm_cmpeq_ps(value, value);
            value = _mm_and_ps(value, mask);
     _mm_store_ps(result.data, value);
     return result;
+    #else
+    for (int i = 0; i < 4; i++)
+      a[i] = std::isnan(a[i]) ? 0.0f : a[i];
+    return a;
+    #endif
   }
 
 }

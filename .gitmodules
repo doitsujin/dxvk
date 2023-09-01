@@ -1,0 +1,13 @@
+[submodule "include/native/directx"]
+	path = include/native/directx
+	url = https://github.com/Joshua-Ashton/mingw-directx-headers
+[submodule "include/vulkan"]
+	path = include/vulkan
+	url = https://github.com/KhronosGroup/Vulkan-Headers
+[submodule "include/spirv"]
+	path = include/spirv
+	url = https://github.com/KhronosGroup/SPIRV-Headers.git
+[submodule "subprojects/libdisplay-info"]
+	path = subprojects/libdisplay-info
+	url = https://gitlab.freedesktop.org/JoshuaAshton/libdisplay-info.git
+	branch = windows

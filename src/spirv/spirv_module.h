@@ -15,6 +15,13 @@ namespace dxvk {
     uint32_t literal       = 0;
     uint32_t labelId       = 0;
   };
+
+  struct SpirvMemoryOperands {
+    uint32_t flags         = 0;
+    uint32_t alignment     = 0;
+    uint32_t makeAvailable = 0;
+    uint32_t makeVisible   = 0;
+  };
   
   struct SpirvImageOperands {
     uint32_t flags         = 0;
@@ -27,6 +34,9 @@ namespace dxvk {
     uint32_t gConstOffsets = 0;
     uint32_t sSampleId     = 0;
     uint32_t sMinLod       = 0;
+    uint32_t makeAvailable = 0;
+    uint32_t makeVisible   = 0;
+    bool     sparse        = false;
   };
 
   constexpr uint32_t spvVersion(uint32_t major, uint32_t minor) {
@@ -50,7 +60,7 @@ namespace dxvk {
     ~SpirvModule();
     
     SpirvCodeBuffer compile() const;
-    
+
     size_t getInsertionPtr() {
       return m_code.getInsertionPtr();
     }
@@ -63,6 +73,10 @@ namespace dxvk {
       m_code.endInsertion();
     }
     
+    uint32_t getBlockId() const {
+      return m_blockId;
+    }
+
     uint32_t allocateId();
     
     bool hasCapability(
@@ -77,9 +91,7 @@ namespace dxvk {
     void addEntryPoint(
             uint32_t                entryPointId,
             spv::ExecutionModel     executionModel,
-      const char*                   name,
-            uint32_t                interfaceCount,
-      const uint32_t*               interfaceIds);
+      const char*                   name);
     
     void setMemoryModel(
             spv::AddressingModel    addressModel,
@@ -1027,11 +1039,21 @@ namespace dxvk {
     uint32_t opLoad(
             uint32_t                typeId,
             uint32_t                pointerId);
-    
+
+    uint32_t opLoad(
+            uint32_t                typeId,
+            uint32_t                pointerId,
+      const SpirvMemoryOperands&    operands);
+
     void opStore(
             uint32_t                pointerId,
             uint32_t                valueId);
-    
+
+    void opStore(
+            uint32_t                pointerId,
+            uint32_t                valueId,
+      const SpirvMemoryOperands&    operands);
+
     uint32_t opInterpolateAtCentroid(
             uint32_t                resultType,
             uint32_t                interpolant);
@@ -1061,7 +1083,11 @@ namespace dxvk {
             uint32_t                coordinates,
             uint32_t                texel,
       const SpirvImageOperands&     operands);
-    
+
+    uint32_t opImageSparseTexelsResident(
+            uint32_t                resultType,
+            uint32_t                residentCode);
+
     uint32_t opImageTexelPointer(
             uint32_t                resultType,
             uint32_t                image,
@@ -1226,8 +1252,6 @@ namespace dxvk {
     
     void opReturn();
     
-    void opKill();
-
     void opDemoteToHelperInvocation();
     
     void opEmitVertex(
@@ -1235,12 +1259,17 @@ namespace dxvk {
     
     void opEndPrimitive(
             uint32_t                streamId);
-    
+
+    void opBeginInvocationInterlock();
+
+    void opEndInvocationInterlock();
+
   private:
     
     uint32_t m_version;
     uint32_t m_id             = 1;
     uint32_t m_instExtGlsl450 = 0;
+    uint32_t m_blockId        = 0;
     
     SpirvCodeBuffer m_capabilities;
     SpirvCodeBuffer m_extensions;
@@ -1255,7 +1284,9 @@ namespace dxvk {
     SpirvCodeBuffer m_code;
 
     std::unordered_set<uint32_t> m_lateConsts;
-    
+
+    std::vector<uint32_t> m_interfaceVars;
+
     uint32_t defType(
             spv::Op                 op, 
             uint32_t                argCount,
@@ -1269,12 +1300,21 @@ namespace dxvk {
     
     void instImportGlsl450();
     
+    uint32_t getMemoryOperandWordCount(
+      const SpirvMemoryOperands&    op) const;
+
+    void putMemoryOperands(
+      const SpirvMemoryOperands&    op);
+
     uint32_t getImageOperandWordCount(
       const SpirvImageOperands&     op) const;
     
     void putImageOperands(
       const SpirvImageOperands&     op);
-    
+
+    bool isInterfaceVar(
+            spv::StorageClass       sclass) const;
+
   };
   
 }

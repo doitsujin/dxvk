@@ -1,8 +1,5 @@
 #pragma once
 
-#include <spirv/spirv.hpp>
-#include <spirv/GLSL.std.450.hpp>
-
 #include "spirv_include.h"
 
 namespace dxvk {
@@ -109,13 +106,19 @@ namespace dxvk {
     : m_code  (length != 0 ? code   : nullptr),
       m_offset(length != 0 ? offset : 0),
       m_length(length) {
-      if ((length >= 5) && (m_code[0] == spv::MagicNumber))
+      if ((length >= 5) && (offset == 0) && (m_code[0] == spv::MagicNumber))
         this->advance(5);
     }
     
     SpirvInstructionIterator& operator ++ () {
       this->advance(SpirvInstruction(m_code, m_offset, m_length).length());
       return *this;
+    }
+    
+    SpirvInstructionIterator operator ++ (int) {
+      SpirvInstructionIterator result = *this;
+      this->advance(SpirvInstruction(m_code, m_offset, m_length).length());
+      return result;
     }
     
     SpirvInstruction operator * () const {

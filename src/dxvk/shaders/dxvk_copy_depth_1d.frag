@@ -1,7 +1,9 @@
 #version 450
 
+#extension GL_EXT_samplerless_texture_functions : require
+
 layout(set = 0, binding = 0)
-uniform sampler1DArray s_image;
+uniform texture1DArray s_image;
 
 layout(push_constant)
 uniform u_info_t {

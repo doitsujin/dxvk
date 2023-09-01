@@ -58,8 +58,11 @@ namespace dxvk {
       return S_OK;
     }
     
-    Logger::warn("D3D11BlendState::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(ID3D11BlendState), riid)) {
+      Logger::warn("D3D11BlendState::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
   
@@ -87,7 +90,7 @@ namespace dxvk {
   
   
   void D3D11BlendState::BindToContext(
-    const Rc<DxvkContext>&  ctx,
+          DxvkContext*      ctx,
           uint32_t          sampleMask) const {
     // We handled Independent Blend during object creation
     // already, so if it is disabled, all elements in the

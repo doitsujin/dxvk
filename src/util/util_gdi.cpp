@@ -3,7 +3,8 @@
 
 namespace dxvk {
 
-  HMODULE GetGDIModule() {
+#ifdef _WIN32
+  static HMODULE GetGDIModule() {
     static HMODULE module = LoadLibraryA("gdi32.dll");
     return module;
   }
@@ -29,5 +30,16 @@ namespace dxvk {
     Logger::warn("D3DKMTDestroyDCFromMemory: Unable to query proc address.");
     return -1;
   }
+#else
+  NTSTATUS D3DKMTCreateDCFromMemory(D3DKMT_CREATEDCFROMMEMORY* Arg1) {
+    Logger::warn("D3DKMTCreateDCFromMemory: Not available on this platform.");
+    return -1;
+  }
+
+  NTSTATUS D3DKMTDestroyDCFromMemory(D3DKMT_DESTROYDCFROMMEMORY* Arg1) {
+    Logger::warn("D3DKMTDestroyDCFromMemory: Not available on this platform.");
+    return -1;
+  }
+#endif
 
 }

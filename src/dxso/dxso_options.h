@@ -12,13 +12,6 @@ namespace dxvk {
     DxsoOptions();
     DxsoOptions(D3D9DeviceEx* pDevice, const D3D9Options& options);
 
-    /// Use a SPIR-V extension to implement D3D-style discards
-    bool useDemoteToHelperInvocation = false;
-
-    /// Use subgroup operations to discard fragment
-    /// shader invocations if derivatives remain valid.
-    bool useSubgroupOpsForEarlyDiscard = false;
-
     /// True:  Copy our constant set into UBO if we are relative indexing ever.
     /// False: Copy our constant set into UBO if we are relative indexing at the start of a defined constant
     /// Why?:  In theory, FXC should never generate code where this would be an issue.
@@ -43,6 +36,9 @@ namespace dxvk {
     /// Works around a game bug in Halo CE where it gives cube textures to 2d/volume samplers
     bool forceSamplerTypeSpecConstants;
 
+    /// Interpolate pixel shader inputs at the sample location rather than pixel center
+    bool forceSampleRateShading;
+
     /// Should the SWVP float constant buffer be a SSBO (because of the size on NV)
     bool vertexFloatConstantBufferAsSSBO;
 
@@ -50,10 +46,6 @@ namespace dxvk {
     /// This solves some rendering bugs in games that have z-pass shaders which
     /// don't match entirely to the regular vertex shader in this way.
     bool longMad;
-
-    /// Workaround for games using alpha test == 1.0, etc due to wonky interpolation or
-    /// misc. imprecision on some vendors
-    bool alphaTestWiggleRoom;
 
     /// Whether or not we can rely on robustness2 to handle oob constant access
     bool robustness2Supported;

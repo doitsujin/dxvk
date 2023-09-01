@@ -4,6 +4,8 @@
 
 #include "d3d9_device.h"
 
+#include "../util/util_win32_compat.h"
+
 namespace dxvk {
 
   D3D9Surface::D3D9Surface(
@@ -13,7 +15,7 @@ namespace dxvk {
           HANDLE*                   pSharedHandle)
     : D3D9SurfaceBase(
         pDevice,
-        new D3D9CommonTexture( pDevice, pDesc, D3DRTYPE_SURFACE, pSharedHandle),
+        new D3D9CommonTexture( pDevice, this, pDesc, D3DRTYPE_SURFACE, pSharedHandle),
         0, 0,
         nullptr,
         pContainer) { }
@@ -72,8 +74,11 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("D3D9Surface::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(IDirect3DSurface9), riid)) {
+      Logger::warn("D3D9Surface::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 
@@ -160,7 +165,9 @@ namespace dxvk {
     createInfo.hBitmap     = nullptr;
     createInfo.hDc         = nullptr;
 
-    D3DKMTCreateDCFromMemory(&createInfo);
+    if (D3DKMTCreateDCFromMemory(&createInfo))
+      Logger::err("D3D9: Failed to create GDI DC");
+
     DeleteDC(createInfo.hDeviceDc);
 
     // These should now be set...

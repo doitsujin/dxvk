@@ -7,6 +7,7 @@
 
 #include "d3d11_device_child.h"
 #include "d3d11_interfaces.h"
+#include "d3d11_on_12.h"
 #include "d3d11_resource.h"
 
 namespace dxvk {
@@ -62,6 +63,15 @@ namespace dxvk {
   
   
   /**
+   * \brief Region
+   */
+  struct D3D11_COMMON_TEXTURE_REGION {
+    VkOffset3D      Offset;
+    VkExtent3D      Extent;
+  };
+  
+  
+  /**
    * \brief D3D11 common texture object
    * 
    * This class implements common texture methods and
@@ -76,6 +86,7 @@ namespace dxvk {
             ID3D11Resource*             pInterface,
             D3D11Device*                pDevice,
       const D3D11_COMMON_TEXTURE_DESC*  pDesc,
+      const D3D11_ON_12_RESOURCE_INFO*  p11on12Info,
             D3D11_RESOURCE_DIMENSION    Dimension,
             DXGI_USAGE                  DxgiUsage,
             VkImage                     vkImage,
@@ -256,7 +267,7 @@ namespace dxvk {
       // For buffer-mapped images we only need to track copies to
       // and from that buffer, so we can safely ignore bind flags
       if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)
-        return true;
+        return m_desc.Usage != D3D11_USAGE_DEFAULT;
 
       // Otherwise we can only do accurate tracking if the
       // image cannot be used in the rendering pipeline.
@@ -290,6 +301,72 @@ namespace dxvk {
       } else {
         return DxvkCsThread::SynchronizeAll;
       }
+    }
+
+    /**
+     * \brief Adds a dirty region
+     *
+     * This region will be updated on Unmap.
+     * \param [in] Subresource Subresource index
+     * \param [in] Offset Region offset
+     * \param [in] Extent Region extent
+     */
+    void AddDirtyRegion(UINT Subresource, VkOffset3D Offset, VkExtent3D Extent) {
+      D3D11_COMMON_TEXTURE_REGION region;
+      region.Offset = Offset;
+      region.Extent = Extent;
+
+      if (Subresource < m_buffers.size())
+        m_buffers[Subresource].dirtyRegions.push_back(region);
+    }
+
+    /**
+     * \brief Clears dirty regions
+     *
+     * Removes all dirty regions from the given subresource.
+     * \param [in] Subresource Subresource index
+     */
+    void ClearDirtyRegions(UINT Subresource) {
+      if (Subresource < m_buffers.size())
+        m_buffers[Subresource].dirtyRegions.clear();
+    }
+
+    /**
+     * \brief Counts dirty regions
+     *
+     * \param [in] Subresource Subresource index
+     * \returns Dirty region count
+     */
+    UINT GetDirtyRegionCount(UINT Subresource) {
+      return (Subresource < m_buffers.size())
+        ? UINT(m_buffers[Subresource].dirtyRegions.size())
+        : UINT(0);
+    }
+
+    /**
+     * \brief Queries a dirty regions
+     *
+     * \param [in] Subresource Subresource index
+     * \param [in] Region Region index
+     * \returns Dirty region
+     */
+    D3D11_COMMON_TEXTURE_REGION GetDirtyRegion(UINT Subresource, UINT Region) {
+      return m_buffers[Subresource].dirtyRegions[Region];
+    }
+
+    /**
+     * \brief Checks whether or not to track dirty regions
+     *
+     * If this returns true, then any functions that update the
+     * mapped staging buffer must also track dirty regions while
+     * the image is mapped. Otherwise, the entire image is dirty.
+     * \returns \c true if dirty regions must be tracked
+     */
+    bool NeedsDirtyRegionTracking() const {
+      // Only set this for images where Map can't return a pointer
+      return m_mapMode            == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER
+          && m_desc.Usage         == D3D11_USAGE_DEFAULT
+          && m_desc.TextureLayout == D3D11_TEXTURE_LAYOUT_UNDEFINED;
     }
 
     /**
@@ -361,6 +438,14 @@ namespace dxvk {
             UINT                Plane) const;
     
     /**
+     * \brief Retrieves D3D11on12 resource info
+     * \returns 11on12 resource info
+     */
+    D3D11_ON_12_RESOURCE_INFO Get11on12Info() const {
+      return m_11on12;
+    }
+
+    /**
      * \brief Normalizes and validates texture description
      * 
      * Fills in undefined values and validates the texture
@@ -372,11 +457,26 @@ namespace dxvk {
     static HRESULT NormalizeTextureProperties(
             D3D11_COMMON_TEXTURE_DESC* pDesc);
     
+    /**
+     * \brief Initializes D3D11 texture description from D3D12
+     *
+     * \param [in] pResource D3D12 resource
+     * \param [in] pResourceFlags D3D11 flag overrides
+     * \param [out] pTextureDesc D3D11 buffer description
+     * \returns \c S_OK if the parameters are valid
+     */
+    static HRESULT GetDescFromD3D12(
+            ID3D12Resource*         pResource,
+      const D3D11_RESOURCE_FLAGS*   pResourceFlags,
+            D3D11_COMMON_TEXTURE_DESC* pTextureDesc);
+
   private:
     
     struct MappedBuffer {
       Rc<DxvkBuffer>        buffer;
       DxvkBufferSliceHandle slice;
+
+      std::vector<D3D11_COMMON_TEXTURE_REGION> dirtyRegions;
     };
 
     struct MappedInfo {
@@ -388,6 +488,7 @@ namespace dxvk {
     D3D11Device*                  m_device;
     D3D11_RESOURCE_DIMENSION      m_dimension;
     D3D11_COMMON_TEXTURE_DESC     m_desc;
+    D3D11_ON_12_RESOURCE_INFO     m_11on12;
     D3D11_COMMON_TEXTURE_MAP_MODE m_mapMode;
     DXGI_USAGE                    m_dxgiUsage;
     VkFormat                      m_packedFormat;
@@ -405,7 +506,7 @@ namespace dxvk {
     
     BOOL CheckFormatFeatureSupport(
             VkFormat              Format,
-            VkFormatFeatureFlags  Features) const;
+            VkFormatFeatureFlags2 Features) const;
     
     VkImageUsageFlags EnableMetaCopyUsage(
             VkFormat              Format,
@@ -559,7 +660,8 @@ namespace dxvk {
     
     D3D11Texture1D(
             D3D11Device*                pDevice,
-      const D3D11_COMMON_TEXTURE_DESC*  pDesc);
+      const D3D11_COMMON_TEXTURE_DESC*  pDesc,
+      const D3D11_ON_12_RESOURCE_INFO*  p11on12Info);
     
     ~D3D11Texture1D();
     
@@ -605,6 +707,7 @@ namespace dxvk {
     D3D11Texture2D(
             D3D11Device*                pDevice,
       const D3D11_COMMON_TEXTURE_DESC*  pDesc,
+      const D3D11_ON_12_RESOURCE_INFO*  p11on12Info,
             HANDLE                      hSharedHandle);
 
     D3D11Texture2D(
@@ -670,7 +773,8 @@ namespace dxvk {
     
     D3D11Texture3D(
             D3D11Device*                pDevice,
-      const D3D11_COMMON_TEXTURE_DESC*  pDesc);
+      const D3D11_COMMON_TEXTURE_DESC*  pDesc,
+      const D3D11_ON_12_RESOURCE_INFO*  p11on12Info);
     
     ~D3D11Texture3D();
     

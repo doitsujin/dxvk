@@ -58,7 +58,7 @@ namespace dxvk {
       } else {
         viewInfo.format = pDevice->LookupFormat(pDesc->Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
         
-        const DxvkFormatInfo* formatInfo = imageFormatInfo(viewInfo.format);
+        const DxvkFormatInfo* formatInfo = lookupFormatInfo(viewInfo.format);
         viewInfo.rangeOffset = formatInfo->elementSize * bufInfo.FirstElement;
         viewInfo.rangeLength = formatInfo->elementSize * bufInfo.NumElements;
       }
@@ -205,12 +205,15 @@ namespace dxvk {
      || riid == __uuidof(ID3D10View)
      || riid == __uuidof(ID3D10ShaderResourceView)
      || riid == __uuidof(ID3D10ShaderResourceView1)) {
-      *ppvObject = ref(this);
+      *ppvObject = ref(&m_d3d10);
       return S_OK;
     }
     
-    Logger::warn("D3D11ShaderResourceView::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(ID3D11ShaderResourceView), riid)) {
+      Logger::warn("D3D11ShaderResourceView::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
   

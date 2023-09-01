@@ -5,6 +5,7 @@ d3d9_shaders = files([
   'shaders/d3d9_convert_l6v5u5.comp',
   'shaders/d3d9_convert_x8l8v8u8.comp',
   'shaders/d3d9_convert_a2w10v10u10.comp',
+  'shaders/d3d9_convert_w11v11u10.comp',
   'shaders/d3d9_convert_nv12.comp',
   'shaders/d3d9_convert_yv12.comp'
 ])
@@ -20,6 +21,7 @@ d3d9_src = [
   'd3d9_swapchain.cpp',
   'd3d9_format.cpp',
   'd3d9_common_texture.cpp',
+  'd3d9_constant_buffer.cpp',
   'd3d9_texture.cpp',
   'd3d9_surface.cpp',
   'd3d9_volume.cpp',
@@ -39,15 +41,30 @@ d3d9_src = [
   'd3d9_swvp_emu.cpp',
   'd3d9_format_helpers.cpp',
   'd3d9_hud.cpp',
-  'd3d9_annotation.cpp'
+  'd3d9_annotation.cpp',
+  'd3d9_mem.cpp',
+  'd3d9_window.cpp',
+  'd3d9_interop.cpp',
+  'd3d9_on_12.cpp',
+  'd3d9_bridge.cpp'
 ]
 
+d3d9_ld_args      = []
+d3d9_link_depends = []
+
+if platform != 'windows'
+  d3d9_ld_args      += [ '-Wl,--version-script', join_paths(meson.current_source_dir(), 'd3d9.sym') ]
+  d3d9_link_depends += files('d3d9.sym')
+endif
+
 d3d9_dll = shared_library('d3d9'+dll_ext, d3d9_src, glsl_generator.process(d3d9_shaders), d3d9_res,
-  name_prefix         : '',
+  name_prefix         : dxvk_name_prefix,
   dependencies        : [ dxso_dep, dxvk_dep ],
   include_directories : dxvk_include_path,
   install             : true,
   vs_module_defs      : 'd3d9'+def_spec_ext,
+  link_args           : d3d9_ld_args,
+  link_depends        : [ d3d9_link_depends ],
 )
 
 d3d9_dep = declare_dependency(

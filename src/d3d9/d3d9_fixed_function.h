@@ -17,6 +17,7 @@ namespace dxvk {
   class SpirvModule;
 
   struct D3D9Options;
+  class D3D9ShaderSpecConstantManager;
 
   struct D3D9FogContext {
     // General inputs...
@@ -34,17 +35,28 @@ namespace dxvk {
     bool     IsPositionT;
     bool     HasSpecular;
     uint32_t Specular;
+    uint32_t SpecUBO;
+  };
+
+  struct D3D9AlphaTestContext {
+    uint32_t alphaId;
+    uint32_t alphaPrecisionId;
+    uint32_t alphaFuncId;
+    uint32_t alphaRefId;
   };
 
   struct D3D9FixedFunctionOptions {
     D3D9FixedFunctionOptions(const D3D9Options* options);
 
     bool invariantPosition;
+    bool forceSampleRateShading;
   };
 
   // Returns new oFog if VS
   // Returns new oColor if PS
-  uint32_t DoFixedFunctionFog(SpirvModule& spvModule, const D3D9FogContext& fogCtx);
+  uint32_t DoFixedFunctionFog(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, const D3D9FogContext& fogCtx);
+
+  void DoFixedFunctionAlphaTest(SpirvModule& spvModule, const D3D9AlphaTestContext& ctx);
 
   // Returns a render state block
   uint32_t SetupRenderStateBlock(SpirvModule& spvModule, uint32_t count);
@@ -56,17 +68,19 @@ namespace dxvk {
   };
 
   // Default point size and point scale magic!
-  D3D9PointSizeInfoVS GetPointSizeInfoVS(SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t perVertPointSize, uint32_t rsBlock, bool isFixedFunction);
+  D3D9PointSizeInfoVS GetPointSizeInfoVS(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, uint32_t vPos, uint32_t vtx, uint32_t perVertPointSize, uint32_t rsBlock, uint32_t specUbo, bool isFixedFunction);
 
   struct D3D9PointSizeInfoPS {
     uint32_t isSprite;
   };
 
-  D3D9PointSizeInfoPS GetPointSizeInfoPS(SpirvModule& spvModule, uint32_t rsBlock);
+  D3D9PointSizeInfoPS GetPointSizeInfoPS(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, uint32_t rsBlock, uint32_t specUbo);
 
-  uint32_t GetPointCoord(SpirvModule& spvModule, std::vector<uint32_t>& entryPointInterfaces);
+  uint32_t GetPointCoord(SpirvModule& spvModule);
 
   uint32_t GetSharedConstants(SpirvModule& spvModule);
+
+  uint32_t SetupSpecUBO(SpirvModule& spvModule, std::vector<DxvkBindingInfo>& bindings);
 
   constexpr uint32_t TCIOffset = 16;
   constexpr uint32_t TCIMask   = 0b111 << TCIOffset;
@@ -150,10 +164,11 @@ namespace dxvk {
 
         uint32_t     ProjectedCount : 3;
 
+        uint32_t     TextureBound : 1;
+
         // Included in here, read from Stage 0 for packing reasons
         // Affects all stages.
         uint32_t     GlobalSpecularEnable : 1;
-        uint32_t     GlobalFlatShade      : 1;
       } Contents;
 
       uint32_t Primitive[2];
@@ -203,7 +218,7 @@ namespace dxvk {
       const D3D9FFShaderKeyFS&    Key);
 
     template <typename T>
-    void Dump(const T& Key, const std::string& Name);
+    void Dump(D3D9DeviceEx* pDevice, const T& Key, const std::string& Name);
 
     Rc<DxvkShader> GetShader() const {
       return m_shader;

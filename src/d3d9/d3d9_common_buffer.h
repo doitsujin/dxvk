@@ -78,6 +78,8 @@ namespace dxvk {
             D3D9DeviceEx*      pDevice,
       const D3D9_BUFFER_DESC*  pDesc);
 
+    ~D3D9CommonBuffer();
+
     HRESULT Lock(
             UINT   OffsetToLock,
             UINT   SizeToLock,
@@ -89,11 +91,7 @@ namespace dxvk {
     /**
     * \brief Determine the mapping mode of the buffer, (ie. direct mapping or backed)
     */
-    inline D3D9_COMMON_BUFFER_MAP_MODE DetermineMapMode(const D3D9Options* options) const {
-      return (m_desc.Pool == D3DPOOL_DEFAULT && (m_desc.Usage & (D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY)) && options->allowDirectBufferMapping)
-        ? D3D9_COMMON_BUFFER_MAP_MODE_DIRECT
-        : D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
-    }
+    D3D9_COMMON_BUFFER_MAP_MODE DetermineMapMode(const D3D9Options* options) const;
 
     /**
     * \brief Get the mapping mode of the buffer, (ie. direct mapping or backed)
@@ -156,11 +154,6 @@ namespace dxvk {
     inline D3D9Range& DirtyRange()  { return m_dirtyRange; }
 
     /**
-     * \brief The range of the buffer that might currently be read by the GPU
-     */
-    inline D3D9Range& GPUReadingRange() { return m_gpuReadingRange; }
-
-    /**
     * \brief Whether or not the buffer was written to by the GPU (in IDirect3DDevice9::ProcessVertices)
     */
     inline bool NeedsReadback() const     { return m_needsReadback; }
@@ -183,15 +176,6 @@ namespace dxvk {
      * \brief Whether or not the staging buffer needs to be copied to the actual buffer
      */
     inline bool NeedsUpload() { return m_desc.Pool != D3DPOOL_DEFAULT && !m_dirtyRange.IsDegenerate(); }
-
-    inline bool DoesStagingBufferUploads() const { return m_uploadUsingStaging; }
-
-    inline void EnableStagingBufferUploads() {
-      if (GetMapMode() != D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
-        return;
-
-      m_uploadUsingStaging = true;
-    }
 
     void PreLoad();
 
@@ -241,9 +225,8 @@ namespace dxvk {
 
     D3D9DeviceEx*               m_parent;
     const D3D9_BUFFER_DESC      m_desc;
-    DWORD                       m_mapFlags;
+    DWORD                       m_mapFlags = 0;
     bool                        m_needsReadback = false;
-    bool                        m_uploadUsingStaging = false;
     D3D9_COMMON_BUFFER_MAP_MODE m_mapMode;
 
     Rc<DxvkBuffer>              m_buffer;
@@ -252,7 +235,6 @@ namespace dxvk {
     DxvkBufferSliceHandle       m_sliceHandle;
 
     D3D9Range                   m_dirtyRange;
-    D3D9Range                   m_gpuReadingRange;
 
     uint32_t                    m_lockCount = 0;
 

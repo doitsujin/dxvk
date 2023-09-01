@@ -1,8 +1,10 @@
 #version 450
 
+#extension GL_EXT_samplerless_texture_functions : enable
+
 layout(constant_id = 0) const int c_samples = 1;
 
-layout(binding = 0) uniform sampler2DMSArray s_image;
+layout(binding = 0) uniform texture2DMSArray s_image;
 
 layout(location = 0) out vec4 o_color;
 

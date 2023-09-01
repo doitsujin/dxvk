@@ -2,6 +2,8 @@
 #include "d3d11_device.h"
 #include "d3d11_swapchain.h"
 
+#include "../util/util_win32_compat.h"
+
 namespace dxvk {
 
   static uint16_t MapGammaControlPoint(float x) {
@@ -10,31 +12,76 @@ namespace dxvk {
     return uint16_t(65535.0f * x);
   }
 
+  static VkColorSpaceKHR ConvertColorSpace(DXGI_COLOR_SPACE_TYPE colorspace) {
+    switch (colorspace) {
+      case DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709:    return VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+      case DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020: return VK_COLOR_SPACE_HDR10_ST2084_EXT;
+      case DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709:    return VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT;
+      default:
+        Logger::warn(str::format("DXGI: ConvertColorSpace: Unknown colorspace ", colorspace));
+        return VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    }
+  }
+
+  static VkXYColorEXT ConvertXYColor(const UINT16 (&dxgiColor)[2]) {
+    return VkXYColorEXT{ float(dxgiColor[0]) / 50000.0f, float(dxgiColor[1]) / 50000.0f };
+  }
+
+  static float ConvertMaxLuminance(UINT dxgiLuminance) {
+    return float(dxgiLuminance);
+  }
+
+  static float ConvertMinLuminance(UINT dxgiLuminance) {
+    return float(dxgiLuminance) * 0.0001f;
+  }
+
+  static float ConvertLevel(UINT16 dxgiLevel) {
+    return float(dxgiLevel);
+  }
+
+  static VkHdrMetadataEXT ConvertHDRMetadata(const DXGI_HDR_METADATA_HDR10& dxgiMetadata) {
+    VkHdrMetadataEXT vkMetadata = { VK_STRUCTURE_TYPE_HDR_METADATA_EXT };
+    vkMetadata.displayPrimaryRed         = ConvertXYColor(dxgiMetadata.RedPrimary);
+    vkMetadata.displayPrimaryGreen       = ConvertXYColor(dxgiMetadata.GreenPrimary);
+    vkMetadata.displayPrimaryBlue        = ConvertXYColor(dxgiMetadata.BluePrimary);
+    vkMetadata.whitePoint                = ConvertXYColor(dxgiMetadata.WhitePoint);
+    vkMetadata.maxLuminance              = ConvertMaxLuminance(dxgiMetadata.MaxMasteringLuminance);
+    vkMetadata.minLuminance              = ConvertMinLuminance(dxgiMetadata.MinMasteringLuminance);
+    vkMetadata.maxContentLightLevel      = ConvertLevel(dxgiMetadata.MaxContentLightLevel);
+    vkMetadata.maxFrameAverageLightLevel = ConvertLevel(dxgiMetadata.MaxFrameAverageLightLevel);
+    return vkMetadata;
+  }
+
 
   D3D11SwapChain::D3D11SwapChain(
           D3D11DXGIDevice*        pContainer,
           D3D11Device*            pDevice,
-          HWND                    hWnd,
+          IDXGIVkSurfaceFactory*  pSurfaceFactory,
     const DXGI_SWAP_CHAIN_DESC1*  pDesc)
   : m_dxgiDevice(pContainer),
-    m_parent    (pDevice),
-    m_window    (hWnd),
-    m_desc      (*pDesc),
-    m_device    (pDevice->GetDXVKDevice()),
-    m_context   (m_device->createContext()),
+    m_parent(pDevice),
+    m_surfaceFactory(pSurfaceFactory),
+    m_desc(*pDesc),
+    m_device(pDevice->GetDXVKDevice()),
+    m_context(m_device->createContext(DxvkContextType::Supplementary)),
     m_frameLatencyCap(pDevice->GetOptions()->maxFrameLatency) {
     CreateFrameLatencyEvent();
-
-    if (!pDevice->GetOptions()->deferSurfaceCreation)
-      CreatePresenter();
-    
+    CreatePresenter();
     CreateBackBuffer();
     CreateBlitter();
     CreateHud();
+
+    if (!pDevice->GetOptions()->deferSurfaceCreation)
+      RecreateSwapChain();
   }
 
 
   D3D11SwapChain::~D3D11SwapChain() {
+    // Avoids hanging when in this state, see comment
+    // in DxvkDevice::~DxvkDevice.
+    if (this_thread::isInModuleDetachment())
+      return;
+
     m_device->waitForSubmission(&m_presentStatus);
     m_device->waitForIdle();
     
@@ -51,12 +98,17 @@ namespace dxvk {
     InitReturnPtr(ppvObject);
 
     if (riid == __uuidof(IUnknown)
-     || riid == __uuidof(IDXGIVkSwapChain)) {
+     || riid == __uuidof(IDXGIVkSwapChain)
+     || riid == __uuidof(IDXGIVkSwapChain1)) {
       *ppvObject = ref(this);
       return S_OK;
     }
 
-    Logger::warn("D3D11SwapChain::QueryInterface: Unknown interface query");
+    if (logQueryInterfaceError(__uuidof(IDXGIVkSwapChain), riid)) {
+      Logger::warn("D3D11SwapChain::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 
@@ -108,13 +160,23 @@ namespace dxvk {
 
 
   HANDLE STDMETHODCALLTYPE D3D11SwapChain::GetFrameLatencyEvent() {
-    return m_frameLatencyEvent;
+    HANDLE result = nullptr;
+    HANDLE processHandle = GetCurrentProcess();
+
+    if (!DuplicateHandle(processHandle, m_frameLatencyEvent,
+        processHandle, &result, 0, FALSE, DUPLICATE_SAME_ACCESS)) {
+      Logger::err("DxgiSwapChain::GetFrameLatencyWaitableObject: DuplicateHandle failed");
+      return nullptr;
+    }
+
+    return result;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D11SwapChain::ChangeProperties(
-    const DXGI_SWAP_CHAIN_DESC1*  pDesc) {
-
+    const DXGI_SWAP_CHAIN_DESC1*    pDesc,
+    const UINT*                     pNodeMasks,
+          IUnknown* const*          ppPresentQueues) {
     m_dirty |= m_desc.Format      != pDesc->Format
             || m_desc.Width       != pDesc->Width
             || m_desc.Height      != pDesc->Height
@@ -197,20 +259,13 @@ namespace dxvk {
     if (options->syncInterval >= 0)
       SyncInterval = options->syncInterval;
 
-    if (!(PresentFlags & DXGI_PRESENT_TEST)) {
-      bool vsync = SyncInterval != 0;
-
-      m_dirty |= vsync != m_vsync;
-      m_vsync  = vsync;
-    }
-
-    if (m_presenter == nullptr)
-      CreatePresenter();
+    if (!(PresentFlags & DXGI_PRESENT_TEST))
+      m_dirty |= m_presenter->setSyncInterval(SyncInterval) != VK_SUCCESS;
 
     HRESULT hr = S_OK;
 
     if (!m_presenter->hasSwapChain()) {
-      RecreateSwapChain(m_vsync);
+      RecreateSwapChain();
       m_dirty = false;
     }
 
@@ -220,76 +275,118 @@ namespace dxvk {
     if (m_device->getDeviceStatus() != VK_SUCCESS)
       hr = DXGI_ERROR_DEVICE_RESET;
 
-    if ((PresentFlags & DXGI_PRESENT_TEST) || hr != S_OK)
+    if (PresentFlags & DXGI_PRESENT_TEST)
       return hr;
 
+    if (hr != S_OK) {
+      SyncFrameLatency();
+      return hr;
+    }
+
     if (std::exchange(m_dirty, false))
-      RecreateSwapChain(m_vsync);
-    
+      RecreateSwapChain();
+
     try {
-      PresentImage(SyncInterval);
+      hr = PresentImage(SyncInterval);
     } catch (const DxvkError& e) {
       Logger::err(e.message());
       hr = E_FAIL;
     }
 
+    // Ensure to synchronize and release the frame latency semaphore
+    // even if presentation failed with STATUS_OCCLUDED, or otherwise
+    // applications using the semaphore may deadlock. This works because
+    // we do not increment the frame ID in those situations.
+    SyncFrameLatency();
     return hr;
   }
 
 
-  void STDMETHODCALLTYPE D3D11SwapChain::NotifyModeChange(
-          BOOL                      Windowed,
-    const DXGI_MODE_DESC*           pDisplayMode) {
-    if (Windowed || !pDisplayMode) {
-      // Display modes aren't meaningful in windowed mode
-      m_displayRefreshRate = 0.0;
-    } else {
-      DXGI_RATIONAL rate = pDisplayMode->RefreshRate;
-      m_displayRefreshRate = double(rate.Numerator) / double(rate.Denominator);
+  UINT STDMETHODCALLTYPE D3D11SwapChain::CheckColorSpaceSupport(
+          DXGI_COLOR_SPACE_TYPE     ColorSpace) {
+    UINT supportFlags = 0;
+
+    const VkColorSpaceKHR vkColorSpace = ConvertColorSpace(ColorSpace);
+    if (m_presenter->supportsColorSpace(vkColorSpace))
+      supportFlags |= DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT;
+
+    return supportFlags;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11SwapChain::SetColorSpace(
+          DXGI_COLOR_SPACE_TYPE     ColorSpace) {
+    if (!(CheckColorSpaceSupport(ColorSpace) & DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT))
+      return E_INVALIDARG;
+
+    const VkColorSpaceKHR vkColorSpace = ConvertColorSpace(ColorSpace);
+    m_dirty |= vkColorSpace != m_colorspace;
+    m_colorspace = vkColorSpace;
+
+    return S_OK;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11SwapChain::SetHDRMetaData(
+    const DXGI_VK_HDR_METADATA*     pMetaData) {
+    // For some reason this call always seems to succeed on Windows
+    if (pMetaData->Type == DXGI_HDR_METADATA_TYPE_HDR10) {
+      m_hdrMetadata = ConvertHDRMetadata(pMetaData->HDR10);
+      m_dirtyHdrMetadata = true;
     }
 
-    if (m_presenter != nullptr)
-      m_presenter->setFrameRateLimiterRefreshRate(m_displayRefreshRate);
+    return S_OK;
+  }
+
+
+  void STDMETHODCALLTYPE D3D11SwapChain::GetLastPresentCount(
+          UINT64*                   pLastPresentCount) {
+    *pLastPresentCount = UINT64(m_frameId - DXGI_MAX_SWAP_CHAIN_BUFFERS);
+  }
+
+
+  void STDMETHODCALLTYPE D3D11SwapChain::GetFrameStatistics(
+          DXGI_VK_FRAME_STATISTICS* pFrameStatistics) {
+    std::lock_guard<dxvk::mutex> lock(m_frameStatisticsLock);
+    *pFrameStatistics = m_frameStatistics;
   }
 
 
   HRESULT D3D11SwapChain::PresentImage(UINT SyncInterval) {
-    Com<ID3D11DeviceContext> deviceContext = nullptr;
-    m_parent->GetImmediateContext(&deviceContext);
-
     // Flush pending rendering commands before
-    auto immediateContext = static_cast<D3D11ImmediateContext*>(deviceContext.ptr());
+    auto immediateContext = m_parent->GetContext();
+    immediateContext->EndFrame();
     immediateContext->Flush();
 
-    // Bump our frame id.
-    ++m_frameId;
-    
     for (uint32_t i = 0; i < SyncInterval || i < 1; i++) {
       SynchronizePresent();
 
       if (!m_presenter->hasSwapChain())
-        return DXGI_STATUS_OCCLUDED;
+        return i ? S_OK : DXGI_STATUS_OCCLUDED;
 
       // Presentation semaphores and WSI swap chain image
-      vk::PresenterInfo info = m_presenter->info();
-      vk::PresenterSync sync;
+      PresenterInfo info = m_presenter->info();
+      PresenterSync sync;
 
       uint32_t imageIndex = 0;
 
       VkResult status = m_presenter->acquireNextImage(sync, imageIndex);
 
       while (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
-        RecreateSwapChain(m_vsync);
+        RecreateSwapChain();
 
         if (!m_presenter->hasSwapChain())
-          return DXGI_STATUS_OCCLUDED;
+          return i ? S_OK : DXGI_STATUS_OCCLUDED;
         
         info = m_presenter->info();
         status = m_presenter->acquireNextImage(sync, imageIndex);
       }
 
-      // Resolve back buffer if it is multisampled. We
-      // only have to do it only for the first frame.
+      if (m_hdrMetadata && m_dirtyHdrMetadata) {
+        m_presenter->setHdrMetadata(*m_hdrMetadata);
+        m_dirtyHdrMetadata = false;
+      }
+
       m_context->beginRecording(
         m_device->createCommandList());
       
@@ -300,40 +397,45 @@ namespace dxvk {
       if (m_hud != nullptr)
         m_hud->render(m_context, info.format, info.imageExtent);
       
-      if (i + 1 >= SyncInterval)
-        m_context->signal(m_frameLatencySignal, m_frameId);
-
       SubmitPresent(immediateContext, sync, i);
     }
 
-    SyncFrameLatency();
     return S_OK;
   }
 
 
   void D3D11SwapChain::SubmitPresent(
           D3D11ImmediateContext*  pContext,
-    const vk::PresenterSync&      Sync,
-          uint32_t                FrameId) {
+    const PresenterSync&          Sync,
+          uint32_t                Repeat) {
     auto lock = pContext->LockContext();
+
+    // Bump frame ID as necessary
+    if (!Repeat)
+      m_frameId += 1;
 
     // Present from CS thread so that we don't
     // have to synchronize with it first.
     m_presentStatus.result = VK_NOT_READY;
 
     pContext->EmitCs([this,
-      cFrameId     = FrameId,
+      cRepeat      = Repeat,
       cSync        = Sync,
       cHud         = m_hud,
+      cPresentMode = m_presenter->info().presentMode,
+      cFrameId     = m_frameId,
       cCommandList = m_context->endRecording()
     ] (DxvkContext* ctx) {
-      m_device->submitCommandList(cCommandList,
-        cSync.acquire, cSync.present);
+      cCommandList->setWsiSemaphores(cSync);
+      m_device->submitCommandList(cCommandList, nullptr);
 
-      if (cHud != nullptr && !cFrameId)
+      if (cHud != nullptr && !cRepeat)
         cHud->update();
 
-      m_device->presentImage(m_presenter, &m_presentStatus);
+      uint64_t frameId = cRepeat ? 0 : cFrameId;
+
+      m_device->presentImage(m_presenter,
+        cPresentMode, frameId, &m_presentStatus);
     });
 
     pContext->FlushCsChunk();
@@ -345,26 +447,39 @@ namespace dxvk {
     VkResult status = m_device->waitForSubmission(&m_presentStatus);
     
     if (status != VK_SUCCESS)
-      RecreateSwapChain(m_vsync);
+      RecreateSwapChain();
   }
 
 
-  void D3D11SwapChain::RecreateSwapChain(BOOL Vsync) {
+  void D3D11SwapChain::RecreateSwapChain() {
     // Ensure that we can safely destroy the swap chain
     m_device->waitForSubmission(&m_presentStatus);
     m_device->waitForIdle();
 
     m_presentStatus.result = VK_SUCCESS;
+    m_dirtyHdrMetadata = true;
 
-    vk::PresenterDesc presenterDesc;
+    PresenterDesc presenterDesc;
     presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };
     presenterDesc.imageCount      = PickImageCount(m_desc.BufferCount + 1);
     presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
-    presenterDesc.numPresentModes = PickPresentModes(Vsync, presenterDesc.presentModes);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
-    if (m_presenter->recreateSwapChain(presenterDesc) != VK_SUCCESS)
-      throw DxvkError("D3D11SwapChain: Failed to recreate swap chain");
+    VkResult vr = m_presenter->recreateSwapChain(presenterDesc);
+
+    if (vr == VK_ERROR_SURFACE_LOST_KHR) {
+      vr = m_presenter->recreateSurface([this] (VkSurfaceKHR* surface) {
+        return CreateSurface(surface);
+      });
+
+      if (vr)
+        throw DxvkError(str::format("D3D11SwapChain: Failed to recreate surface: ", vr));
+
+      vr = m_presenter->recreateSwapChain(presenterDesc);
+    }
+
+    if (vr)
+      throw DxvkError(str::format("D3D11SwapChain: Failed to recreate swap chain: ", vr));
     
     CreateRenderTargetViews();
   }
@@ -379,36 +494,28 @@ namespace dxvk {
 
 
   void D3D11SwapChain::CreatePresenter() {
-    DxvkDeviceQueue graphicsQueue = m_device->queues().graphics;
-
-    vk::PresenterDevice presenterDevice;
-    presenterDevice.queueFamily   = graphicsQueue.queueFamily;
-    presenterDevice.queue         = graphicsQueue.queueHandle;
-    presenterDevice.adapter       = m_device->adapter()->handle();
-    presenterDevice.features.fullScreenExclusive = m_device->extensions().extFullScreenExclusive;
-
-    vk::PresenterDesc presenterDesc;
+    PresenterDesc presenterDesc;
     presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };
     presenterDesc.imageCount      = PickImageCount(m_desc.BufferCount + 1);
     presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
-    presenterDesc.numPresentModes = PickPresentModes(false, presenterDesc.presentModes);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
-    m_presenter = new vk::Presenter(m_window,
-      m_device->adapter()->vki(),
-      m_device->vkd(),
-      presenterDevice,
-      presenterDesc);
-    
+    m_presenter = new Presenter(m_device, m_frameLatencySignal, presenterDesc);
     m_presenter->setFrameRateLimit(m_parent->GetOptions()->maxFrameRate);
-    m_presenter->setFrameRateLimiterRefreshRate(m_displayRefreshRate);
+  }
 
-    CreateRenderTargetViews();
+
+  VkResult D3D11SwapChain::CreateSurface(VkSurfaceKHR* pSurface) {
+    Rc<DxvkAdapter> adapter = m_device->adapter();
+
+    return m_surfaceFactory->CreateSurface(
+      adapter->vki()->instance(),
+      adapter->handle(), pSurface);
   }
 
 
   void D3D11SwapChain::CreateRenderTargetViews() {
-    vk::PresenterInfo info = m_presenter->info();
+    PresenterInfo info = m_presenter->info();
 
     m_imageViews.clear();
     m_imageViews.resize(info.imageCount);
@@ -442,7 +549,8 @@ namespace dxvk {
       VkImage imageHandle = m_presenter->getImage(i).image;
       
       Rc<DxvkImage> image = new DxvkImage(
-        m_device.ptr(), imageInfo, imageHandle);
+        m_device.ptr(), imageInfo, imageHandle,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
       m_imageViews[i] = new DxvkImageView(
         m_device->vkd(), image, viewInfo);
@@ -523,8 +631,7 @@ namespace dxvk {
 
     m_device->submitCommandList(
       m_context->endRecording(),
-      VK_NULL_HANDLE,
-      VK_NULL_HANDLE);
+      nullptr);
   }
 
 
@@ -550,16 +657,25 @@ namespace dxvk {
     // Wait for the sync event so that we respect the maximum frame latency
     m_frameLatencySignal->wait(m_frameId - GetActualFrameLatency());
 
-    if (m_frameLatencyEvent) {
-      m_frameLatencySignal->setCallback(m_frameId, [cFrameLatencyEvent = m_frameLatencyEvent] () {
+    m_frameLatencySignal->setCallback(m_frameId, [this,
+      cFrameId           = m_frameId,
+      cFrameLatencyEvent = m_frameLatencyEvent
+    ] () {
+      if (cFrameLatencyEvent)
         ReleaseSemaphore(cFrameLatencyEvent, 1, nullptr);
-      });
-    }
+
+      std::lock_guard<dxvk::mutex> lock(m_frameStatisticsLock);
+      m_frameStatistics.PresentCount = cFrameId - DXGI_MAX_SWAP_CHAIN_BUFFERS;
+      m_frameStatistics.PresentQPCTime = dxvk::high_resolution_clock::get_counter();
+    });
   }
 
 
   uint32_t D3D11SwapChain::GetActualFrameLatency() {
-    uint32_t maxFrameLatency = m_frameLatency;
+    // DXGI does not seem to implicitly synchronize waitable swap chains,
+    // so in that case we should just respect the user config. For regular
+    // swap chains, pick the latency from the DXGI device.
+    uint32_t maxFrameLatency = DXGI_MAX_SWAP_CHAIN_BUFFERS;
 
     if (!(m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT))
       m_dxgiDevice->GetMaximumFrameLatency(&maxFrameLatency);
@@ -567,7 +683,7 @@ namespace dxvk {
     if (m_frameLatencyCap)
       maxFrameLatency = std::min(maxFrameLatency, m_frameLatencyCap);
 
-    maxFrameLatency = std::min(maxFrameLatency, m_desc.BufferCount + 1);
+    maxFrameLatency = std::min(maxFrameLatency, m_desc.BufferCount);
     return maxFrameLatency;
   }
 
@@ -584,43 +700,24 @@ namespace dxvk {
       
       case DXGI_FORMAT_R8G8B8A8_UNORM:
       case DXGI_FORMAT_B8G8R8A8_UNORM: {
-        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_UNORM, m_colorspace };
+        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_UNORM, m_colorspace };
       } break;
       
       case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
       case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB: {
-        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_SRGB, m_colorspace };
+        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_SRGB, m_colorspace };
       } break;
       
       case DXGI_FORMAT_R10G10B10A2_UNORM: {
-        pDstFormats[n++] = { VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        pDstFormats[n++] = { VK_FORMAT_A2R10G10B10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_A2B10G10R10_UNORM_PACK32, m_colorspace };
+        pDstFormats[n++] = { VK_FORMAT_A2R10G10B10_UNORM_PACK32, m_colorspace };
       } break;
       
       case DXGI_FORMAT_R16G16B16A16_FLOAT: {
-        pDstFormats[n++] = { VK_FORMAT_R16G16B16A16_SFLOAT, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_R16G16B16A16_SFLOAT, m_colorspace };
       } break;
-    }
-
-    return n;
-  }
-
-
-  uint32_t D3D11SwapChain::PickPresentModes(
-          BOOL                      Vsync,
-          VkPresentModeKHR*         pDstModes) {
-    uint32_t n = 0;
-
-    if (Vsync) {
-      if (m_parent->GetOptions()->tearFree == Tristate::False)
-        pDstModes[n++] = VK_PRESENT_MODE_FIFO_RELAXED_KHR;
-      pDstModes[n++] = VK_PRESENT_MODE_FIFO_KHR;
-    } else {
-      if (m_parent->GetOptions()->tearFree != Tristate::True)
-        pDstModes[n++] = VK_PRESENT_MODE_IMMEDIATE_KHR;
-      pDstModes[n++] = VK_PRESENT_MODE_MAILBOX_KHR;
     }
 
     return n;

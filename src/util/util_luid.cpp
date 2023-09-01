@@ -5,8 +5,19 @@
 
 #include <mutex>
 #include <vector>
+#include <atomic>
 
 namespace dxvk {
+
+#ifndef _WIN32
+  static BOOL AllocateLocallyUniqueId(LUID* luid) {
+    static std::atomic<uint32_t> counter = { 0u };
+    // Unsigned bottom part is actually the first
+    // member of the struct.
+    *luid = LUID{ ++counter, 0 };
+    return TRUE;
+  }
+#endif
 
   LUID GetAdapterLUID(UINT Adapter) {
     static dxvk::mutex       s_mutex;
@@ -18,7 +29,7 @@ namespace dxvk {
     while (s_luids.size() < newLuidCount) {
       LUID luid = { 0, 0 };
 
-      if (!::AllocateLocallyUniqueId(&luid))
+      if (!AllocateLocallyUniqueId(&luid))
         Logger::err("Failed to allocate LUID");
       
         

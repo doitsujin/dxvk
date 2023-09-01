@@ -6,9 +6,8 @@
 
 #include "../util/thread.h"
 
-#include "../vulkan/vulkan_presenter.h"
-
 #include "dxvk_cmdlist.h"
+#include "dxvk_presenter.h"
 
 namespace dxvk {
   
@@ -33,8 +32,6 @@ namespace dxvk {
    */
   struct DxvkSubmitInfo {
     Rc<DxvkCommandList> cmdList;
-    VkSemaphore         waitSync;
-    VkSemaphore         wakeSync;
   };
   
   
@@ -45,7 +42,9 @@ namespace dxvk {
    * a swap chain image on the device.
    */
   struct DxvkPresentInfo {
-    Rc<vk::Presenter>   presenter;
+    Rc<Presenter>       presenter;
+    VkPresentModeKHR    presentMode;
+    uint64_t            frameId;
   };
 
 
@@ -53,6 +52,7 @@ namespace dxvk {
    * \brief Submission queue entry
    */
   struct DxvkSubmitEntry {
+    VkResult            result;
     DxvkSubmitStatus*   status;
     DxvkSubmitInfo      submit;
     DxvkPresentInfo     present;
@@ -66,19 +66,11 @@ namespace dxvk {
 
   public:
     
-    DxvkSubmissionQueue(DxvkDevice* device);
-    ~DxvkSubmissionQueue();
+    DxvkSubmissionQueue(
+            DxvkDevice*         device,
+      const DxvkQueueCallback&  callback);
 
-    /**
-     * \brief Number of pending submissions
-     * 
-     * A return value of 0 indicates
-     * that the GPU is currently idle.
-     * \returns Pending submission count
-     */
-    uint32_t pendingSubmissions() const {
-      return m_pending.load();
-    }
+    ~DxvkSubmissionQueue();
 
     /**
      * \brief Retrieves estimated GPU idle time
@@ -109,10 +101,12 @@ namespace dxvk {
      * Queues a command list for submission on the
      * dedicated submission thread. Use this to take
      * the submission overhead off the calling thread.
-     * \param [in] submitInfo Submission parameters 
+     * \param [in] submitInfo Submission parameters
+     * \param [out] status Submission feedback
      */
     void submit(
-            DxvkSubmitInfo      submitInfo);
+            DxvkSubmitInfo      submitInfo,
+            DxvkSubmitStatus*   status);
     
     /**
      * \brief Presents an image synchronously
@@ -121,7 +115,7 @@ namespace dxvk {
      * and then presents the current swap chain image
      * of the presenter. May stall the calling thread.
      * \param [in] present Present parameters
-     * \returns Status of the operation
+     * \param [out] status Submission feedback
      */
     void present(
             DxvkPresentInfo     presentInfo,
@@ -158,6 +152,11 @@ namespace dxvk {
     }
 
     /**
+     * \brief Waits for all submissions to complete
+     */
+    void waitForIdle();
+
+    /**
      * \brief Locks device queue
      *
      * Locks the mutex that protects the Vulkan queue
@@ -177,13 +176,13 @@ namespace dxvk {
     
   private:
 
-    DxvkDevice*             m_device;
+    DxvkDevice*                 m_device;
+    DxvkQueueCallback           m_callback;
 
-    std::atomic<VkResult>   m_lastError = { VK_SUCCESS };
+    std::atomic<VkResult>       m_lastError = { VK_SUCCESS };
     
-    std::atomic<bool>       m_stopped = { false };
-    std::atomic<uint32_t>   m_pending = { 0u };
-    std::atomic<uint64_t>   m_gpuIdle = { 0ull };
+    std::atomic<bool>           m_stopped = { false };
+    std::atomic<uint64_t>       m_gpuIdle = { 0ull };
 
     dxvk::mutex                 m_mutex;
     dxvk::mutex                 m_mutexQueue;
@@ -197,9 +196,6 @@ namespace dxvk {
 
     dxvk::thread                m_submitThread;
     dxvk::thread                m_finishThread;
-
-    VkResult submitToQueue(
-      const DxvkSubmitInfo& submission);
 
     void submitCmdLists();
 

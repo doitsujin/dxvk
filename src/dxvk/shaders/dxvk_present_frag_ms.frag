@@ -1,7 +1,7 @@
 #version 450
 
-layout(constant_id = 1) const bool s_gamma_bound = true;
-layout(constant_id = 1225) const uint c_samples = 0;
+layout(constant_id = 0) const uint c_samples = 0;
+layout(constant_id = 1) const bool s_gamma_bound = false;
 
 layout(binding = 0) uniform sampler2DMS s_image;
 layout(binding = 1) uniform sampler1D s_gamma;

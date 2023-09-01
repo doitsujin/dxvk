@@ -2,8 +2,22 @@
 
 namespace dxvk {
   
-  DxvkNameSet::DxvkNameSet() { }
-  DxvkNameSet::~DxvkNameSet() { }
+  DxvkNameSet::DxvkNameSet() {
+
+  }
+
+
+  DxvkNameSet::DxvkNameSet(
+          uint32_t          count,
+    const char* const*      names) {
+    for (uint32_t i = 0; i < count; i++)
+      add(names[i]);
+  }
+
+
+  DxvkNameSet::~DxvkNameSet() {
+
+  }
 
 
   void DxvkNameSet::add(const char* pName) {
@@ -14,6 +28,13 @@ namespace dxvk {
   void DxvkNameSet::merge(const DxvkNameSet& names) {
     for (const auto& pair : names.m_names)
       m_names.insert(pair);
+  }
+
+
+  void DxvkNameSet::mergeRevisions(
+    const DxvkNameSet&      names) {
+    for (auto& pair : m_names)
+      pair.second = names.supports(pair.first.c_str());
   }
 
 
@@ -32,7 +53,7 @@ namespace dxvk {
   bool DxvkNameSet::enableExtensions(
           uint32_t          numExtensions,
           DxvkExt**         ppExtensions,
-          DxvkNameSet&       nameSet) const {
+          DxvkNameSet*       nameSet) const {
     bool allRequiredEnabled = true;
 
     for (uint32_t i = 0; i < numExtensions; i++) {
@@ -44,8 +65,8 @@ namespace dxvk {
       uint32_t revision = supports(ext->name());
 
       if (revision) {
-        if (ext->mode() != DxvkExtMode::Passive)
-          nameSet.add(ext->name());
+        if (nameSet && ext->mode() != DxvkExtMode::Passive)
+          nameSet->add(ext->name());
 
         ext->enable(revision);
       } else if (ext->mode() == DxvkExtMode::Required) {
@@ -68,8 +89,10 @@ namespace dxvk {
 
   DxvkNameList DxvkNameSet::toNameList() const {
     DxvkNameList nameList;
-    for (const auto& pair : m_names)
-      nameList.add(pair.first.c_str());
+    for (const auto& pair : m_names) {
+      if (pair.second)
+        nameList.add(pair.first.c_str());
+    }
     return nameList;
   }
 

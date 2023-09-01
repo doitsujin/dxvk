@@ -3,15 +3,22 @@
 #include "d3d9_monitor.h"
 #include "d3d9_caps.h"
 #include "d3d9_device.h"
+#include "d3d9_bridge.h"
+
+#include "../util/util_singleton.h"
 
 #include <algorithm>
 
 namespace dxvk {
 
+  Singleton<DxvkInstance> g_dxvkInstance;
+
   D3D9InterfaceEx::D3D9InterfaceEx(bool bExtended)
-    : m_instance    ( new DxvkInstance() )
+    : m_instance    ( g_dxvkInstance.acquire() )
+    , m_d3d8Bridge  ( this )
     , m_extended    ( bExtended ) 
-    , m_d3d9Options ( nullptr, m_instance->config() ) {
+    , m_d3d9Options ( nullptr, m_instance->config() )
+    , m_d3d9Interop ( this ) {
     // D3D9 doesn't enumerate adapters like physical adapters...
     // only as connected displays.
 
@@ -20,6 +27,7 @@ namespace dxvk {
     // If we run out of adapters, then we'll just make repeats of the first one.
     // We can't match up by names on Linux/Wine as they don't match at all
     // like on Windows, so this is our best option.
+#ifdef _WIN32
     if (m_d3d9Options.enumerateByDisplays) {
       DISPLAY_DEVICEA device = { };
       device.cb = sizeof(device);
@@ -44,6 +52,7 @@ namespace dxvk {
       }
     }
     else
+#endif
     {
       const uint32_t adapterCount = m_instance->adapterCount();
       m_adapters.reserve(adapterCount);
@@ -52,10 +61,17 @@ namespace dxvk {
         m_adapters.emplace_back(this, m_instance->enumAdapters(i), i, 0);
     }
 
+#ifdef _WIN32
     if (m_d3d9Options.dpiAware) {
       Logger::info("Process set as DPI aware");
       SetProcessDPIAware();
     }
+#endif
+  }
+
+
+  D3D9InterfaceEx::~D3D9InterfaceEx() {
+    g_dxvkInstance.release();
   }
 
 
@@ -72,8 +88,21 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("D3D9InterfaceEx::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (riid == __uuidof(IDxvkD3D8InterfaceBridge)) {
+      *ppvObject = ref(&m_d3d8Bridge);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3D9VkInteropInterface)) {
+      *ppvObject = ref(&m_d3d9Interop);
+      return S_OK;
+    }
+
+    if (logQueryInterfaceError(__uuidof(IDirect3D9), riid)) {
+      Logger::warn("D3D9InterfaceEx::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 

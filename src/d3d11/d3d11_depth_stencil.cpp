@@ -37,12 +37,15 @@ namespace dxvk {
 
     if (riid == __uuidof(ID3D10DeviceChild)
      || riid == __uuidof(ID3D10DepthStencilState)) {
-      *ppvObject = ref(this);
+      *ppvObject = ref(&m_d3d10);
       return S_OK;
     }
     
-    Logger::warn("D3D11DepthStencilState::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(ID3D11DepthStencilState), riid)) {
+      Logger::warn("D3D11DepthStencilState::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
   
@@ -52,7 +55,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DepthStencilState::BindToContext(const Rc<DxvkContext>& ctx) {
+  void D3D11DepthStencilState::BindToContext(DxvkContext* ctx) {
     ctx->setDepthStencilState(m_state);
   }
   

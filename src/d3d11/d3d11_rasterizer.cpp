@@ -37,13 +37,23 @@ namespace dxvk {
     m_state.depthClipEnable   = desc.DepthClipEnable;
     m_state.conservativeMode  = DecodeConservativeRasterizationMode(desc.ConservativeRaster);
     m_state.sampleCount       = VkSampleCountFlags(desc.ForcedSampleCount);
+    m_state.flatShading       = VK_FALSE;
+    m_state.lineMode          = VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT;
 
     m_depthBias.depthBiasConstant = float(desc.DepthBias);
     m_depthBias.depthBiasSlope    = desc.SlopeScaledDepthBias;
     m_depthBias.depthBiasClamp    = desc.DepthBiasClamp;
     
-    if (desc.AntialiasedLineEnable)
-      Logger::err("D3D11RasterizerState: Antialiased lines not supported");
+    // Set up line rasterization mode
+    const auto& features = device->GetDXVKDevice()->features();
+
+    if (desc.MultisampleEnable) {
+      if (features.extLineRasterization.rectangularLines)
+        m_state.lineMode = VK_LINE_RASTERIZATION_MODE_RECTANGULAR_EXT;
+    } else if (desc.AntialiasedLineEnable) {
+      if (features.extLineRasterization.smoothLines)
+        m_state.lineMode = VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT;
+    }
   }
   
   
@@ -73,8 +83,11 @@ namespace dxvk {
       return S_OK;
     }
     
-    Logger::warn("D3D11RasterizerState::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(ID3D11RasterizerState), riid)) {
+      Logger::warn("D3D11RasterizerState::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
   
@@ -113,7 +126,7 @@ namespace dxvk {
   }
 
   
-  void D3D11RasterizerState::BindToContext(const Rc<DxvkContext>& ctx) {
+  void D3D11RasterizerState::BindToContext(DxvkContext* ctx) {
     ctx->setRasterizerState(m_state);
     
     if (m_state.depthBiasEnable)

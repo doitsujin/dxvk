@@ -1,12 +1,13 @@
 #version 450
 
 #extension GL_ARB_shader_stencil_export : enable
+#extension GL_EXT_samplerless_texture_functions : require
 
 layout(set = 0, binding = 0)
-uniform sampler2DMSArray s_depth;
+uniform texture2DMSArray s_depth;
 
 layout(set = 0, binding = 1)
-uniform usampler2DMSArray s_stencil;
+uniform utexture2DMSArray s_stencil;
 
 layout(push_constant)
 uniform u_info_t {

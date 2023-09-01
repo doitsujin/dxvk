@@ -2,7 +2,10 @@
 
 #include "d3d9_device.h"
 #include "d3d9_include.h"
+
 #include "../dxvk/dxvk_annotation.h"
+
+#include "../util/thread.h"
 
 #include <atomic>
 #include <mutex>
@@ -43,7 +46,7 @@ namespace dxvk {
 
     std::atomic<bool> m_shouldAnnotate;
 
-    std::mutex m_mutex;
+    dxvk::mutex m_mutex;
     std::vector<IDXVKUserDefinedAnnotation*> m_annotations;
 
     // Provide our own event depth as we

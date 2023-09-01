@@ -25,7 +25,8 @@ namespace dxvk {
     StreamFreq,
     Transforms,
     TextureStages,
-    Material
+    Material,
+    Lights
   };
 
   using D3D9CapturedStateFlags = Flags<D3D9CapturedStateFlag>;
@@ -61,6 +62,8 @@ namespace dxvk {
       bit::bitset<caps::MaxOtherConstants>              iConsts;
       bit::bitset<caps::MaxOtherConstants>              bConsts;
     } psConsts;
+
+    bit::bitvector                                      lightEnabledChanges;
   };
 
   enum class D3D9StateBlockType :uint32_t {
@@ -85,6 +88,8 @@ namespace dxvk {
   public:
 
     D3D9StateBlock(D3D9DeviceEx* pDevice, D3D9StateBlockType Type);
+
+    ~D3D9StateBlock();
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
         REFIID  riid,
@@ -119,6 +124,10 @@ namespace dxvk {
     HRESULT SetPixelShader(D3D9PixelShader* pShader);
 
     HRESULT SetMaterial(const D3DMATERIAL9* pMaterial);
+
+    HRESULT SetLight(DWORD Index, const D3DLIGHT9* pLight);
+
+    HRESULT LightEnable(DWORD Index, BOOL Enable);
 
     HRESULT SetStateTransform(uint32_t idx, const D3DMATRIX* pMatrix);
 
@@ -257,7 +266,7 @@ namespace dxvk {
           for (uint32_t consts : bit::BitMask(m_captures.vsConsts.fConsts.dword(i))) {
             uint32_t idx = i * 32 + consts;
 
-            dst->SetVertexShaderConstantF(idx, (float*)&src->vsConsts.fConsts[idx], 1);
+            dst->SetVertexShaderConstantF(idx, (float*)&src->vsConsts->fConsts[idx], 1);
           }
         }
 
@@ -265,13 +274,13 @@ namespace dxvk {
           for (uint32_t consts : bit::BitMask(m_captures.vsConsts.iConsts.dword(i))) {
             uint32_t idx = i * 32 + consts;
 
-            dst->SetVertexShaderConstantI(idx, (int*)&src->vsConsts.iConsts[idx], 1);
+            dst->SetVertexShaderConstantI(idx, (int*)&src->vsConsts->iConsts[idx], 1);
           }
         }
 
         if (m_captures.vsConsts.bConsts.any()) {
           for (uint32_t i = 0; i < m_captures.vsConsts.bConsts.dwordCount(); i++)
-            dst->SetVertexBoolBitfield(i, m_captures.vsConsts.bConsts.dword(i), src->vsConsts.bConsts[i]);
+            dst->SetVertexBoolBitfield(i, m_captures.vsConsts.bConsts.dword(i), src->vsConsts->bConsts[i]);
         }
       }
 
@@ -280,7 +289,7 @@ namespace dxvk {
           for (uint32_t consts : bit::BitMask(m_captures.psConsts.fConsts.dword(i))) {
             uint32_t idx = i * 32 + consts;
 
-            dst->SetPixelShaderConstantF(idx, (float*)&src->psConsts.fConsts[idx], 1);
+            dst->SetPixelShaderConstantF(idx, (float*)&src->psConsts->fConsts[idx], 1);
           }
         }
 
@@ -288,13 +297,29 @@ namespace dxvk {
           for (uint32_t consts : bit::BitMask(m_captures.psConsts.iConsts.dword(i))) {
             uint32_t idx = i * 32 + consts;
 
-            dst->SetPixelShaderConstantI(idx, (int*)&src->psConsts.iConsts[idx], 1);
+            dst->SetPixelShaderConstantI(idx, (int*)&src->psConsts->iConsts[idx], 1);
           }
         }
 
         if (m_captures.psConsts.bConsts.any()) {
           for (uint32_t i = 0; i < m_captures.psConsts.bConsts.dwordCount(); i++)
-            dst->SetPixelBoolBitfield(i, m_captures.psConsts.bConsts.dword(i), src->psConsts.bConsts[i]);
+            dst->SetPixelBoolBitfield(i, m_captures.psConsts.bConsts.dword(i), src->psConsts->bConsts[i]);
+        }
+      }
+
+      if (m_captures.flags.test(D3D9CapturedStateFlag::Lights)) {
+        for (uint32_t i = 0; i < src->lights.size(); i++) {
+          if (!src->lights[i].has_value())
+            continue;
+
+          dst->SetLight(i, &src->lights[i].value());
+        }
+        for (uint32_t i = 0; i < m_captures.lightEnabledChanges.dwordCount(); i++) {
+          for (uint32_t consts : bit::BitMask(m_captures.lightEnabledChanges.dword(i))) {
+            uint32_t idx = i * 32 + consts;
+
+            dst->LightEnable(idx, src->IsLightEnabled(idx));
+          }
         }
       }
     }
@@ -371,7 +396,7 @@ namespace dxvk {
     D3D9CapturableState  m_state;
     D3D9StateCaptures    m_captures;
 
-    D3D9CapturableState* m_deviceState;
+    D3D9DeviceState* m_deviceState;
 
     bool                 m_applying = false;
 

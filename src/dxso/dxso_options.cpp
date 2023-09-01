@@ -14,18 +14,6 @@ namespace dxvk {
     const DxvkDeviceFeatures& devFeatures = device->features();
     const DxvkDeviceInfo& devInfo = adapter->devicePropertiesExt();
 
-    useDemoteToHelperInvocation
-      = (devFeatures.extShaderDemoteToHelperInvocation.shaderDemoteToHelperInvocation);
-
-    useSubgroupOpsForEarlyDiscard
-       = (devInfo.coreSubgroup.subgroupSize >= 4)
-      && (devInfo.coreSubgroup.supportedStages & VK_SHADER_STAGE_FRAGMENT_BIT)
-      && (devInfo.coreSubgroup.supportedOperations & VK_SUBGROUP_FEATURE_BALLOT_BIT);
-
-    // Disable early discard on Nvidia because it may hurt performance
-    if (adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0))
-      useSubgroupOpsForEarlyDiscard = false;
-    
     // Apply shader-related options
     strictConstantCopies = options.strictConstantCopies;
 
@@ -37,13 +25,11 @@ namespace dxvk {
     invariantPosition    = options.invariantPosition;
 
     forceSamplerTypeSpecConstants = options.forceSamplerTypeSpecConstants;
+    forceSampleRateShading = options.forceSampleRateShading;
 
     vertexFloatConstantBufferAsSSBO = pDevice->GetVertexConstantLayout().floatSize() > devInfo.core.properties.limits.maxUniformBufferRange;
 
     longMad = options.longMad;
-
-    alphaTestWiggleRoom = options.alphaTestWiggleRoom;
-
     robustness2Supported = devFeatures.extRobustness2.robustBufferAccess2;
   }
 

@@ -6,7 +6,7 @@ namespace dxvk {
 
   D3D9Initializer::D3D9Initializer(
     const Rc<DxvkDevice>&             Device)
-  : m_device(Device), m_context(m_device->createContext()) {
+  : m_device(Device), m_context(m_device->createContext(DxvkContextType::Supplementary)) {
     m_context->beginRecording(
       m_device->createCommandList());
   }
@@ -40,13 +40,15 @@ namespace dxvk {
 
   void D3D9Initializer::InitTexture(
           D3D9CommonTexture* pTexture,
-          void*              pInitialData) {    
+          void*              pInitialData) {
     if (pTexture->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_NONE)
       return;
 
-    (pTexture->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED)
-      ? InitDeviceLocalTexture(pTexture)
-      : InitHostVisibleTexture(pTexture, pInitialData);
+    if (pTexture->GetImage() != nullptr)
+      InitDeviceLocalTexture(pTexture);
+
+    if (pTexture->Desc()->Pool != D3DPOOL_DEFAULT)
+      InitHostVisibleTexture(pTexture, pInitialData);
   }
 
 
@@ -82,7 +84,7 @@ namespace dxvk {
       if (image == nullptr)
         return;
 
-      auto formatInfo = imageFormatInfo(image->info().format);
+      auto formatInfo = lookupFormatInfo(image->info().format);
 
       m_transferCommands += 1;
       
@@ -111,38 +113,35 @@ namespace dxvk {
     // If the buffer is mapped, we can write data directly
     // to the mapped memory region instead of doing it on
     // the GPU. Same goes for zero-initialization.
-    const D3D9_COMMON_TEXTURE_DESC* desc = pTexture->Desc();
-    for (uint32_t a = 0; a < desc->ArraySize; a++) {
-      for (uint32_t m = 0; m < desc->MipLevels; m++) {
-        uint32_t subresource = pTexture->CalcSubresource(a, m);
-        DxvkBufferSliceHandle mapSlice  = pTexture->GetBuffer(subresource)->getSliceHandle();
+    void* mapPtr = pTexture->GetData(0);
+    if (pInitialData) {
+      // Initial data is only supported for textures with 1 subresource
+      VkExtent3D mipExtent = pTexture->GetExtentMip(0);
+      const DxvkFormatInfo* formatInfo = lookupFormatInfo(pTexture->GetFormatMapping().FormatColor);
+      VkExtent3D blockCount = util::computeBlockCount(mipExtent, formatInfo->blockSize);
+      uint32_t pitch = blockCount.width * formatInfo->elementSize;
+      uint32_t alignedPitch = align(pitch, 4);
 
-        if (pInitialData != nullptr) {
-          VkExtent3D mipExtent = pTexture->GetExtentMip(m);
-          const DxvkFormatInfo* formatInfo = imageFormatInfo(pTexture->GetFormatMapping().FormatColor);
-          VkExtent3D blockCount = util::computeBlockCount(mipExtent, formatInfo->blockSize);
-          uint32_t pitch = blockCount.width * formatInfo->elementSize;
-          uint32_t alignedPitch = align(pitch, 4);
-
-          util::packImageData(
-            mapSlice.mapPtr,
-            pInitialData,
-            pitch,
-            pitch * blockCount.height,
-            alignedPitch,
-            alignedPitch * blockCount.height,
-            D3D9CommonTexture::GetImageTypeFromResourceType(pTexture->GetType()),
-            mipExtent,
-            pTexture->Desc()->ArraySize,
-            formatInfo,
-            VK_IMAGE_ASPECT_COLOR_BIT);
-        } else {
-          std::memset(
-            mapSlice.mapPtr, 0,
-            mapSlice.length);
-        }
-      }
+      util::packImageData(
+        mapPtr,
+        pInitialData,
+        pitch,
+        pitch * blockCount.height,
+        alignedPitch,
+        alignedPitch * blockCount.height,
+        D3D9CommonTexture::GetImageTypeFromResourceType(pTexture->GetType()),
+        mipExtent,
+        pTexture->Desc()->ArraySize,
+        formatInfo,
+        VK_IMAGE_ASPECT_COLOR_BIT);
+    } else {
+      // All subresources are allocated in one chunk of memory.
+      // So we can just get the pointer for subresource 0 and memset all of them at once.
+      std::memset(
+        mapPtr, 0,
+        pTexture->GetTotalSize());
     }
+    pTexture->UnmapData();
   }
 
 
@@ -154,7 +153,7 @@ namespace dxvk {
 
 
   void D3D9Initializer::FlushInternal() {
-    m_context->flushCommandList();
+    m_context->flushCommandList(nullptr);
     
     m_transferCommands = 0;
     m_transferMemory   = 0;

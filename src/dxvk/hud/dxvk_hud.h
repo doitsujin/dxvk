@@ -84,14 +84,12 @@ namespace dxvk::hud {
     HudItemSet            m_hudItems;
 
     float                 m_scale;
+    float                 m_opacity;
 
     void setupRendererState(
       const Rc<DxvkContext>&  ctx,
             VkSurfaceFormatKHR surfaceFormat,
             VkExtent2D        surfaceSize);
-
-    void resetRendererState(
-      const Rc<DxvkContext>&  ctx);
 
     void renderHudElements(
       const Rc<DxvkContext>&  ctx);

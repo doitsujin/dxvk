@@ -8,12 +8,14 @@ namespace dxvk {
   
   D3D11Buffer::D3D11Buffer(
           D3D11Device*                pDevice,
-    const D3D11_BUFFER_DESC*          pDesc)
+    const D3D11_BUFFER_DESC*          pDesc,
+    const D3D11_ON_12_RESOURCE_INFO*  p11on12Info)
   : D3D11DeviceChild<ID3D11Buffer>(pDevice),
     m_desc        (*pDesc),
     m_resource    (this),
     m_d3d10       (this) {
-    DxvkBufferCreateInfo  info;
+    DxvkBufferCreateInfo info;
+    info.flags  = 0;
     info.size   = pDesc->ByteWidth;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
                 | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
@@ -37,9 +39,6 @@ namespace dxvk {
       info.usage  |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
       info.stages |= m_parent->GetEnabledShaderStages();
       info.access |= VK_ACCESS_UNIFORM_READ_BIT;
-
-      if (m_parent->GetOptions()->constantBufferRangeCheck)
-        info.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     }
     
     if (pDesc->BindFlags & D3D11_BIND_SHADER_RESOURCE) {
@@ -69,12 +68,50 @@ namespace dxvk {
       info.access |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
     }
 
-    // Create the buffer and set the entire buffer slice as mapped,
-    // so that we only have to update it when invalidating th buffer
-    m_buffer = m_parent->GetDXVKDevice()->createBuffer(info, GetMemoryFlags());
-    m_mapped = m_buffer->getSliceHandle();
+    if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILED) {
+      info.flags  |= VK_BUFFER_CREATE_SPARSE_BINDING_BIT
+                  |  VK_BUFFER_CREATE_SPARSE_RESIDENCY_BIT
+                  |  VK_BUFFER_CREATE_SPARSE_ALIASED_BIT;
+    }
 
-    m_mapMode = DetermineMapMode();
+    // Set host read bit as necessary. We may internally read staging
+    // buffer contents even if the buffer is not marked for reading.
+    if (pDesc->CPUAccessFlags && pDesc->Usage != D3D11_USAGE_DYNAMIC) {
+      info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
+      info.access |= VK_ACCESS_HOST_READ_BIT;
+
+      if (pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)
+        info.access |= VK_ACCESS_HOST_WRITE_BIT;
+    }
+
+    if (p11on12Info) {
+      m_11on12 = *p11on12Info;
+
+      DxvkBufferImportInfo importInfo;
+      importInfo.buffer = VkBuffer(m_11on12.VulkanHandle);
+      importInfo.offset = m_11on12.VulkanOffset;
+
+      if (m_desc.CPUAccessFlags)
+        m_11on12.Resource->Map(0, nullptr, &importInfo.mapPtr);
+
+      m_buffer = m_parent->GetDXVKDevice()->importBuffer(info, importInfo, GetMemoryFlags());
+      m_mapped = m_buffer->getSliceHandle();
+
+      m_mapMode = DetermineMapMode();
+    } else if (!(pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL)) {
+      // Create the buffer and set the entire buffer slice as mapped,
+      // so that we only have to update it when invalidating the buffer
+      m_buffer = m_parent->GetDXVKDevice()->createBuffer(info, GetMemoryFlags());
+      m_mapped = m_buffer->getSliceHandle();
+
+      m_mapMode = DetermineMapMode();
+    } else {
+      m_sparseAllocator = m_parent->GetDXVKDevice()->createSparsePageAllocator();
+      m_sparseAllocator->setCapacity(info.size / SparseMemoryPageSize);
+
+      m_mapped = DxvkBufferSliceHandle();
+      m_mapMode = D3D11_COMMON_BUFFER_MAP_MODE_NONE;
+    }
 
     // For Stream Output buffers we need a counter
     if (pDesc->BindFlags & D3D11_BIND_STREAM_OUTPUT)
@@ -83,7 +120,8 @@ namespace dxvk {
   
   
   D3D11Buffer::~D3D11Buffer() {
-
+    if (m_desc.CPUAccessFlags && m_11on12.Resource != nullptr)
+      m_11on12.Resource->Unmap(0, nullptr);
   }
   
   
@@ -116,8 +154,11 @@ namespace dxvk {
        return S_OK;
     }
     
-    Logger::warn("D3D11Buffer::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (logQueryInterfaceError(__uuidof(ID3D11Buffer), riid)) {
+      Logger::warn("D3D11Buffer::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
   
@@ -159,7 +200,7 @@ namespace dxvk {
     // Check whether the given combination of buffer view
     // type and view format is supported by the device
     DXGI_VK_FORMAT_INFO viewFormat = m_parent->LookupFormat(Format, DXGI_VK_FORMAT_MODE_ANY);
-    VkFormatFeatureFlags features = GetBufferFormatFeatures(BindFlags);
+    VkFormatFeatureFlags2 features = GetBufferFormatFeatures(BindFlags);
 
     return CheckFormatFeatureSupport(viewFormat.Format, features);
   }
@@ -167,13 +208,9 @@ namespace dxvk {
 
   HRESULT D3D11Buffer::NormalizeBufferProperties(D3D11_BUFFER_DESC* pDesc) {
     // Zero-sized buffers are illegal
-    if (!pDesc->ByteWidth)
+    if (!pDesc->ByteWidth && !(pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL))
       return E_INVALIDARG;
 
-    // We don't support tiled resources
-    if (pDesc->MiscFlags & (D3D11_RESOURCE_MISC_TILE_POOL | D3D11_RESOURCE_MISC_TILED))
-      return E_INVALIDARG;
-    
     // Constant buffer size must be a multiple of 16
     if ((pDesc->BindFlags & D3D11_BIND_CONSTANT_BUFFER)
      && (pDesc->ByteWidth & 0xF))
@@ -194,7 +231,25 @@ namespace dxvk {
     // Mip generation obviously doesn't work for buffers
     if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_GENERATE_MIPS)
       return E_INVALIDARG;
-    
+
+    // Basic validation for tiled buffers
+    if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILED) {
+      if ((pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL)
+       || (pDesc->Usage != D3D11_USAGE_DEFAULT)
+       || (pDesc->CPUAccessFlags))
+        return E_INVALIDARG;
+    }
+
+    // Basic validation for tile pools
+    if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_TILE_POOL) {
+      if ((pDesc->MiscFlags & ~D3D11_RESOURCE_MISC_TILE_POOL)
+       || (pDesc->ByteWidth % SparseMemoryPageSize)
+       || (pDesc->Usage != D3D11_USAGE_DEFAULT)
+       || (pDesc->BindFlags)
+       || (pDesc->CPUAccessFlags))
+        return E_INVALIDARG;
+    }
+
     if (!(pDesc->MiscFlags & D3D11_RESOURCE_MISC_BUFFER_STRUCTURED))
       pDesc->StructureByteStride = 0;
     
@@ -202,17 +257,50 @@ namespace dxvk {
   }
 
 
+  HRESULT D3D11Buffer::GetDescFromD3D12(
+          ID3D12Resource*         pResource,
+    const D3D11_RESOURCE_FLAGS*   pResourceFlags,
+          D3D11_BUFFER_DESC*      pBufferDesc) {
+    D3D12_RESOURCE_DESC desc12 = pResource->GetDesc();
+
+    pBufferDesc->ByteWidth = desc12.Width;
+    pBufferDesc->Usage = D3D11_USAGE_DEFAULT;
+    pBufferDesc->BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    pBufferDesc->MiscFlags = 0;
+    pBufferDesc->CPUAccessFlags = 0;
+    pBufferDesc->StructureByteStride = 0;
+
+    if (desc12.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
+      pBufferDesc->BindFlags |= D3D11_BIND_RENDER_TARGET;
+
+    if (desc12.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS)
+      pBufferDesc->BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
+
+    if (pResourceFlags) {
+      pBufferDesc->BindFlags = pResourceFlags->BindFlags;
+      pBufferDesc->MiscFlags |= pResourceFlags->MiscFlags;
+      pBufferDesc->CPUAccessFlags = pResourceFlags->CPUAccessFlags;
+      pBufferDesc->StructureByteStride = pResourceFlags->StructureByteStride;
+    }
+
+    return S_OK;
+  }
+
+
   BOOL D3D11Buffer::CheckFormatFeatureSupport(
           VkFormat              Format,
-          VkFormatFeatureFlags  Features) const {
-    VkFormatProperties properties = m_parent->GetDXVKDevice()->adapter()->formatProperties(Format);
-    return (properties.bufferFeatures & Features) == Features;
+          VkFormatFeatureFlags2 Features) const {
+    DxvkFormatFeatures support = m_parent->GetDXVKDevice()->getFormatFeatures(Format);
+    return (support.buffer & Features) == Features;
   }
 
 
   VkMemoryPropertyFlags D3D11Buffer::GetMemoryFlags() const {
     VkMemoryPropertyFlags memoryFlags = 0;
-    
+
+    if (m_desc.MiscFlags & (D3D11_RESOURCE_MISC_TILE_POOL | D3D11_RESOURCE_MISC_TILED))
+      return VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
     switch (m_desc.Usage) {
       case D3D11_USAGE_IMMUTABLE:
         memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -251,6 +339,7 @@ namespace dxvk {
                   || (m_parent->GetOptions()->cachedDynamicResources & m_desc.BindFlags);
 
     if ((memoryFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) && useCached) {
+      memoryFlags &= ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
       memoryFlags |= VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
                   |  VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
     }

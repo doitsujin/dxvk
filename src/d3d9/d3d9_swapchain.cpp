@@ -3,173 +3,9 @@
 #include "d3d9_monitor.h"
 
 #include "d3d9_hud.h"
+#include "d3d9_window.h"
 
 namespace dxvk {
-
-
-  struct D3D9WindowData {
-    bool unicode;
-    bool filter;
-    bool activateProcessed;
-    WNDPROC proc;
-    D3D9SwapChainEx* swapchain;
-  };
-
-
-  static dxvk::recursive_mutex g_windowProcMapMutex;
-  static std::unordered_map<HWND, D3D9WindowData> g_windowProcMap;
-
-  static void SetActivateProcessed(HWND window, bool processed)
-  {
-      std::lock_guard lock(g_windowProcMapMutex);
-      auto it = g_windowProcMap.find(window);
-      if (it != g_windowProcMap.end())
-        it->second.activateProcessed = processed;
-  }
-
-  template <typename T, typename J, typename ... Args>
-  auto CallCharsetFunction(T unicode, J ascii, bool isUnicode, Args... args) {
-    return isUnicode
-      ? unicode(args...)
-      : ascii  (args...);
-  }
-
-
-  class D3D9WindowMessageFilter {
-
-  public:
-
-    D3D9WindowMessageFilter(HWND window, bool filter = true)
-      : m_window(window) {
-      std::lock_guard lock(g_windowProcMapMutex);
-      auto it = g_windowProcMap.find(m_window);
-      m_filter = std::exchange(it->second.filter, filter);
-    }
-
-    ~D3D9WindowMessageFilter() {
-      std::lock_guard lock(g_windowProcMapMutex);
-      auto it = g_windowProcMap.find(m_window);
-      it->second.filter = m_filter;
-    }
-
-    D3D9WindowMessageFilter             (const D3D9WindowMessageFilter&) = delete;
-    D3D9WindowMessageFilter& operator = (const D3D9WindowMessageFilter&) = delete;
-
-  private:
-
-    HWND m_window;
-    bool m_filter;
-
-  };
-
-
-  LRESULT CALLBACK D3D9WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam);
-
-
-  void ResetWindowProc(HWND window) {
-    std::lock_guard lock(g_windowProcMapMutex);
-
-    auto it = g_windowProcMap.find(window);
-    if (it == g_windowProcMap.end())
-      return;
-
-    auto proc = reinterpret_cast<WNDPROC>(
-      CallCharsetFunction(
-      GetWindowLongPtrW, GetWindowLongPtrA, it->second.unicode,
-        window, GWLP_WNDPROC));
-
-
-    if (proc == D3D9WindowProc)
-      CallCharsetFunction(
-        SetWindowLongPtrW, SetWindowLongPtrA, it->second.unicode,
-          window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(it->second.proc));
-
-    g_windowProcMap.erase(window);
-  }
-
-
-  void HookWindowProc(HWND window, D3D9SwapChainEx* swapchain) {
-    std::lock_guard lock(g_windowProcMapMutex);
-
-    ResetWindowProc(window);
-
-    D3D9WindowData windowData;
-    windowData.unicode = IsWindowUnicode(window);
-    windowData.filter  = false;
-    windowData.activateProcessed = false;
-    windowData.proc = reinterpret_cast<WNDPROC>(
-      CallCharsetFunction(
-      SetWindowLongPtrW, SetWindowLongPtrA, windowData.unicode,
-        window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(D3D9WindowProc)));
-    windowData.swapchain = swapchain;
-
-    g_windowProcMap[window] = std::move(windowData);
-  }
-
-
-  LRESULT CALLBACK D3D9WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
-    if (message == WM_NCCALCSIZE && wparam == TRUE)
-      return 0;
-
-    D3D9WindowData windowData = {};
-
-    {
-      std::lock_guard lock(g_windowProcMapMutex);
-
-      auto it = g_windowProcMap.find(window);
-      if (it != g_windowProcMap.end())
-        windowData = it->second;
-    }
-
-    bool unicode = windowData.proc
-      ? windowData.unicode
-      : IsWindowUnicode(window);
-
-    if (!windowData.proc || windowData.filter)
-      return CallCharsetFunction(
-        DefWindowProcW, DefWindowProcA, unicode,
-          window, message, wparam, lparam);
-
-    if (message == WM_DESTROY)
-      ResetWindowProc(window);
-    else if (message == WM_ACTIVATEAPP) {
-      D3DDEVICE_CREATION_PARAMETERS create_parms;
-      windowData.swapchain->GetDevice()->GetCreationParameters(&create_parms);
-
-      if (!(create_parms.BehaviorFlags & D3DCREATE_NOWINDOWCHANGES)) {
-        D3D9WindowMessageFilter filter(window);
-        if (wparam && !windowData.activateProcessed) {
-          // Heroes of Might and Magic V needs this to resume drawing after a focus loss
-          D3DPRESENT_PARAMETERS params;
-          RECT rect;
-
-          GetMonitorRect(GetDefaultMonitor(), &rect);
-          windowData.swapchain->GetPresentParameters(&params);
-          SetWindowPos(window, nullptr, rect.left, rect.top, params.BackBufferWidth, params.BackBufferHeight,
-                       SWP_NOACTIVATE | SWP_NOZORDER);
-          SetActivateProcessed(window, true);
-        }
-        else if (!wparam) {
-          if (IsWindowVisible(window))
-            ShowWindow(window, SW_MINIMIZE);
-          SetActivateProcessed(window, false);
-        }
-      }
-    }
-    else if (message == WM_SIZE)
-    {
-      D3DDEVICE_CREATION_PARAMETERS create_parms;
-      windowData.swapchain->GetDevice()->GetCreationParameters(&create_parms);
-
-      if (!(create_parms.BehaviorFlags & D3DCREATE_NOWINDOWCHANGES) && !IsIconic(window))
-        PostMessageW(window, WM_ACTIVATEAPP, 1, GetCurrentThreadId());
-    }
-
-    return CallCharsetFunction(
-      CallWindowProcW, CallWindowProcA, unicode,
-        windowData.proc, window, message, wparam, lparam);
-  }
-
 
   static uint16_t MapGammaControlPoint(float x) {
     if (x < 0.0f) x = 0.0f;
@@ -190,19 +26,28 @@ namespace dxvk {
     const D3DDISPLAYMODEEX*      pFullscreenDisplayMode)
     : D3D9SwapChainExBase(pDevice)
     , m_device           (pDevice->GetDXVKDevice())
-    , m_context          (m_device->createContext())
+    , m_context          (m_device->createContext(DxvkContextType::Supplementary))
     , m_frameLatencyCap  (pDevice->GetOptions()->maxFrameLatency)
-    , m_frameLatencySignal(new sync::Fence(m_frameId))
-    , m_dialog           (pDevice->GetOptions()->enableDialogMode) {
+    , m_dialog           (pDevice->GetOptions()->enableDialogMode)
+    , m_swapchainExt     (this) {
     this->NormalizePresentParameters(pPresentParams);
     m_presentParams = *pPresentParams;
     m_window = m_presentParams.hDeviceWindow;
 
+    UpdateWindowCtx();
+
     UpdatePresentRegion(nullptr, nullptr);
-    if (!pDevice->GetOptions()->deferSurfaceCreation)
+
+    if (m_window) {
       CreatePresenter();
 
-    CreateBackBuffers(m_presentParams.BackBufferCount);
+      if (!pDevice->GetOptions()->deferSurfaceCreation)
+        RecreateSwapChain();
+    }
+
+    if (FAILED(CreateBackBuffers(m_presentParams.BackBufferCount)))
+      throw DxvkError("D3D9: Failed to create swapchain backbuffers");
+
     CreateBlitter();
     CreateHud();
 
@@ -215,6 +60,11 @@ namespace dxvk {
 
 
   D3D9SwapChainEx::~D3D9SwapChainEx() {
+    // Avoids hanging when in this state, see comment
+    // in DxvkDevice::~DxvkDevice.
+    if (this_thread::isInModuleDetachment())
+      return;
+
     DestroyBackBuffers();
 
     ResetWindowProc(m_window);
@@ -222,6 +72,8 @@ namespace dxvk {
 
     m_device->waitForSubmission(&m_presentStatus);
     m_device->waitForIdle();
+
+    m_parent->DecrementLosableCounter();
   }
 
 
@@ -238,8 +90,16 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("D3D9SwapChainEx::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
+    if (riid == __uuidof(ID3D9VkExtSwapchain)) {
+      *ppvObject = ref(&m_swapchainExt);
+      return S_OK;
+    }
+
+    if (logQueryInterfaceError(__uuidof(IDirect3DSwapChain9), riid)) {
+      Logger::warn("D3D9SwapChainEx::QueryInterface: Unknown interface query");
+      Logger::warn(str::format(riid));
+    }
+
     return E_NOINTERFACE;
   }
 
@@ -251,6 +111,17 @@ namespace dxvk {
     const RGNDATA* pDirtyRegion,
           DWORD    dwFlags) {
     D3D9DeviceLock lock = m_parent->LockDevice();
+
+    if (unlikely(m_parent->IsDeviceLost()))
+      return D3DERR_DEVICELOST;
+
+    // If we have no backbuffers, error out.
+    // This handles the case where a ::Reset failed due to OOM
+    // or whatever.
+    // I am not sure what the actual HRESULT returned here is
+    // or should be, but it is better than crashing... probably!
+    if (m_backBuffers.empty())
+      return D3D_OK;
 
     uint32_t presentInterval = m_presentParams.PresentationInterval;
 
@@ -267,50 +138,96 @@ namespace dxvk {
     if (options->presentInterval >= 0)
       presentInterval = options->presentInterval;
 
-    bool vsync  = presentInterval != 0;
-
-    HWND window = m_presentParams.hDeviceWindow;
+    m_window = m_presentParams.hDeviceWindow;
     if (hDestWindowOverride != nullptr)
-      window    = hDestWindowOverride;
+      m_window = hDestWindowOverride;
+
+    UpdateWindowCtx();
 
     bool recreate = false;
-    recreate   |= m_presenter == nullptr;
-    recreate   |= window != m_window;    
+    recreate   |= m_wctx->presenter == nullptr;
     recreate   |= m_dialog != m_lastDialog;
 
-    m_window    = window;
+    if (m_wctx->presenter != nullptr) {
+      m_dirty  |= m_wctx->presenter->setSyncInterval(presentInterval) != VK_SUCCESS;
+      m_dirty  |= !m_wctx->presenter->hasSwapChain();
+    }
 
-    m_dirty    |= vsync != m_vsync;
     m_dirty    |= UpdatePresentRegion(pSourceRect, pDestRect);
     m_dirty    |= recreate;
-    m_dirty    |= m_presenter != nullptr &&
-                 !m_presenter->hasSwapChain();
-
-    m_vsync     = vsync;
 
     m_lastDialog = m_dialog;
+
+#ifdef _WIN32
+    const bool useGDIFallback = m_partialCopy && !HasFrontBuffer();
+    if (useGDIFallback)
+      return PresentImageGDI(m_window);
+#endif
 
     try {
       if (recreate)
         CreatePresenter();
 
       if (std::exchange(m_dirty, false))
-        RecreateSwapChain(vsync);
+        RecreateSwapChain();
 
       // We aren't going to device loss simply because
       // 99% of D3D9 games don't handle this properly and
       // just end up crashing (like with alt-tab loss)
-      if (!m_presenter->hasSwapChain())
+      if (!m_wctx->presenter->hasSwapChain())
         return D3D_OK;
 
       PresentImage(presentInterval);
       return D3D_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
+#ifdef _WIN32
+      return PresentImageGDI(m_window);
+#else
       return D3DERR_DEVICEREMOVED;
+#endif
     }
   }
 
+#ifdef _WIN32
+  #define DCX_USESTYLE 0x00010000
+
+  HRESULT D3D9SwapChainEx::PresentImageGDI(HWND Window) {
+    m_parent->EndFrame();
+    m_parent->Flush();
+
+    if (!std::exchange(m_warnedAboutGDIFallback, true))
+      Logger::warn("Using GDI for swapchain presentation. This will impact performance.");
+
+    HDC hDC;
+    HRESULT result = m_backBuffers[0]->GetDC(&hDC);
+    if (result) {
+      Logger::err("D3D9SwapChainEx::BlitGDI Surface GetDC failed");
+      return D3DERR_DEVICEREMOVED;
+    }
+
+    HDC dstDC = GetDCEx(Window, 0, DCX_CACHE | DCX_USESTYLE);
+    if (!dstDC) {
+      Logger::err("D3D9SwapChainEx::BlitGDI: GetDCEx failed");
+      m_backBuffers[0]->ReleaseDC(hDC);
+      return D3DERR_DEVICEREMOVED;
+    }
+
+    bool success = StretchBlt(dstDC, m_dstRect.left, m_dstRect.top, m_dstRect.right - m_dstRect.left,
+            m_dstRect.bottom - m_dstRect.top, hDC, m_srcRect.left, m_srcRect.top,
+            m_srcRect.right - m_srcRect.left, m_srcRect.bottom - m_srcRect.top, SRCCOPY);
+
+    m_backBuffers[0]->ReleaseDC(hDC);
+    ReleaseDC(Window, dstDC);
+
+    if (!success) {
+      Logger::err("D3D9SwapChainEx::BlitGDI: StretchBlt failed");
+      return D3DERR_DEVICEREMOVED;
+    }
+
+    return S_OK;
+  }
+#endif
 
   HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetFrontBufferData(IDirect3DSurface9* pDestSurface) {
     D3D9DeviceLock lock = m_parent->LockDevice();
@@ -325,19 +242,36 @@ namespace dxvk {
     // of src onto a temp image of dst's extents,
     // then copy buffer back to dst (given dst is subresource)
 
+    // For SWAPEFFECT_COPY and windowed SWAPEFFECT_DISCARD with 1 backbuffer, we just copy the backbuffer data instead.
+    // We just copy from the backbuffer instead of the front buffer to avoid having to do another blit.
+    // This mostly impacts windowed mode and our implementation was not accurate in that case anyway as Windows D3D9
+    // takes a screenshot of the entire screen.
+
     D3D9Surface* dst = static_cast<D3D9Surface*>(pDestSurface);
 
     if (unlikely(dst == nullptr))
       return D3DERR_INVALIDCALL;
 
     D3D9CommonTexture* dstTexInfo = dst->GetCommonTexture();
-    D3D9CommonTexture* srcTexInfo = m_backBuffers.back()->GetCommonTexture();
+    D3D9CommonTexture* srcTexInfo = GetFrontBuffer()->GetCommonTexture();
 
-    if (unlikely(dstTexInfo->Desc()->Pool != D3DPOOL_SYSTEMMEM))
+    if (unlikely(dstTexInfo->Desc()->Pool != D3DPOOL_SYSTEMMEM && dstTexInfo->Desc()->Pool != D3DPOOL_SCRATCH))
       return D3DERR_INVALIDCALL;
+    
+    if (unlikely(m_parent->IsDeviceLost())) {
+      return D3DERR_DEVICELOST;
+    }
 
-    Rc<DxvkBuffer> dstBuffer = dstTexInfo->GetBuffer(dst->GetSubresource());
-    Rc<DxvkImage>  srcImage  = srcTexInfo->GetImage();
+    VkExtent3D dstTexExtent = dstTexInfo->GetExtentMip(dst->GetMipLevel());
+    VkExtent3D srcTexExtent = srcTexInfo->GetExtentMip(0);
+
+    const bool clearDst = dstTexInfo->Desc()->MipLevels > 1
+                       || dstTexExtent.width > srcTexExtent.width
+                       || dstTexExtent.height > srcTexExtent.height;
+
+    dstTexInfo->CreateBuffer(clearDst);
+    DxvkBufferSlice dstBufferSlice = dstTexInfo->GetBufferSlice(dst->GetSubresource());
+    Rc<DxvkImage>   srcImage       = srcTexInfo->GetImage();
 
     if (srcImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT) {
       DxvkImageCreateInfo resolveInfo;
@@ -419,8 +353,8 @@ namespace dxvk {
       Rc<DxvkImage> blittedSrc = m_device->createImage(
         blitCreateInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-      const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(blittedSrc->info().format);
-      const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
+      const DxvkFormatInfo* dstFormatInfo = lookupFormatInfo(blittedSrc->info().format);
+      const DxvkFormatInfo* srcFormatInfo = lookupFormatInfo(srcImage->info().format);
 
       const VkImageSubresource dstSubresource = dstTexInfo->GetSubresourceFromIndex(dstFormatInfo->aspectMask, 0);
       const VkImageSubresource srcSubresource = srcTexInfo->GetSubresourceFromIndex(srcFormatInfo->aspectMask, 0);
@@ -462,7 +396,7 @@ namespace dxvk {
       srcImage = std::move(blittedSrc);
     }
 
-    const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
+    const DxvkFormatInfo* srcFormatInfo = lookupFormatInfo(srcImage->info().format);
     const VkImageSubresource srcSubresource = srcTexInfo->GetSubresourceFromIndex(srcFormatInfo->aspectMask, 0);
     VkImageSubresourceLayers srcSubresourceLayers = {
       srcSubresource.aspectMask,
@@ -471,13 +405,14 @@ namespace dxvk {
     VkExtent3D srcExtent = srcImage->mipLevelExtent(srcSubresource.mipLevel);
 
     m_parent->EmitCs([
-      cBuffer       = dstBuffer,
-      cImage        = srcImage,
+      cBufferSlice  = std::move(dstBufferSlice),
+      cImage        = std::move(srcImage),
       cSubresources = srcSubresourceLayers,
       cLevelExtent  = srcExtent
     ] (DxvkContext* ctx) {
-      ctx->copyImageToBuffer(cBuffer, 0, 4, 0,
-        cImage, cSubresources, VkOffset3D { 0, 0, 0 },
+      ctx->copyImageToBuffer(cBufferSlice.buffer(),
+        cBufferSlice.offset(), 4, 0, cImage,
+        cSubresources, VkOffset3D { 0, 0, 0 },
         cLevelExtent);
     });
 
@@ -501,6 +436,13 @@ namespace dxvk {
     if (unlikely(iBackBuffer >= m_presentParams.BackBufferCount)) {
       Logger::err(str::format("D3D9: GetBackBuffer: Invalid back buffer index: ", iBackBuffer));
       return D3DERR_INVALIDCALL;
+    }
+
+    if (m_backBuffers.empty()) {
+      // The backbuffers were destroyed and not recreated.
+      // This can happen when a call to Reset fails.
+      *ppBackBuffer = nullptr;
+      return D3D_OK;
     }
 
     *ppBackBuffer = ref(m_backBuffers[iBackBuffer].ptr());
@@ -595,20 +537,14 @@ namespace dxvk {
       *pRotation = D3DDISPLAYROTATION_IDENTITY;
 
     if (pMode != nullptr) {
-      DEVMODEW devMode = DEVMODEW();
-      devMode.dmSize = sizeof(devMode);
+      wsi::WsiMode devMode = { };
 
-      if (!GetMonitorDisplayMode(GetDefaultMonitor(), ENUM_CURRENT_SETTINGS, &devMode)) {
+      if (!wsi::getCurrentDisplayMode(wsi::getDefaultMonitor(), &devMode)) {
         Logger::err("D3D9SwapChainEx::GetDisplayModeEx: Failed to enum display settings");
         return D3DERR_INVALIDCALL;
       }
 
-      pMode->Size             = sizeof(D3DDISPLAYMODEEX);
-      pMode->Width            = devMode.dmPelsWidth;
-      pMode->Height           = devMode.dmPelsHeight;
-      pMode->RefreshRate      = devMode.dmDisplayFrequency;
-      pMode->Format           = D3DFMT_X8R8G8B8;
-      pMode->ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
+      *pMode = ConvertDisplayMode(devMode);
     }
 
     return D3D_OK;
@@ -619,6 +555,8 @@ namespace dxvk {
           D3DPRESENT_PARAMETERS* pPresentParams,
           D3DDISPLAYMODEEX*      pFullscreenDisplayMode) {
     D3D9DeviceLock lock = m_parent->LockDevice();
+
+    HRESULT hr = D3D_OK;
 
     this->SynchronizePresent();
     this->NormalizePresentParameters(pPresentParams);
@@ -631,42 +569,25 @@ namespace dxvk {
     if (pPresentParams->Windowed) {
       if (changeFullscreen)
         this->LeaveFullscreenMode();
-
-      // Adjust window position and size
-      RECT newRect = { 0, 0, 0, 0 };
-      RECT oldRect = { 0, 0, 0, 0 };
-      
-      ::GetWindowRect(m_window, &oldRect);
-      ::MapWindowPoints(HWND_DESKTOP, ::GetParent(m_window), reinterpret_cast<POINT*>(&oldRect), 1);
-      ::SetRect(&newRect, 0, 0, pPresentParams->BackBufferWidth, pPresentParams->BackBufferHeight);
-      ::AdjustWindowRectEx(&newRect,
-        ::GetWindowLongW(m_window, GWL_STYLE), FALSE,
-        ::GetWindowLongW(m_window, GWL_EXSTYLE));
-      ::SetRect(&newRect, 0, 0, newRect.right - newRect.left, newRect.bottom - newRect.top);
-      ::OffsetRect(&newRect, oldRect.left, oldRect.top);    
-      ::MoveWindow(m_window, newRect.left, newRect.top,
-        newRect.right - newRect.left, newRect.bottom - newRect.top, TRUE);
     }
     else {
+      m_parent->NotifyFullscreen(m_window, true);
+
       if (changeFullscreen) {
-        if (FAILED(this->EnterFullscreenMode(pPresentParams, pFullscreenDisplayMode)))
-          return D3DERR_INVALIDCALL;
+        hr = this->EnterFullscreenMode(pPresentParams, pFullscreenDisplayMode);
+        if (FAILED(hr))
+          return hr;
       }
 
       D3D9WindowMessageFilter filter(m_window);
 
       if (!changeFullscreen) {
-        if (FAILED(ChangeDisplayMode(pPresentParams, pFullscreenDisplayMode)))
-          return D3DERR_INVALIDCALL;
-      }
+        hr = ChangeDisplayMode(pPresentParams, pFullscreenDisplayMode);
+        if (FAILED(hr))
+          return hr;
 
-      // Move the window so that it covers the entire output    
-      RECT rect;
-      GetMonitorRect(GetDefaultMonitor(), &rect);
-    
-      ::SetWindowPos(m_window, HWND_TOPMOST,
-        rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
-        SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
+        wsi::updateFullscreenWindow(m_monitor, m_window, true);
+      }
     }
 
     m_presentParams = *pPresentParams;
@@ -674,7 +595,9 @@ namespace dxvk {
     if (changeFullscreen)
       SetGammaRamp(0, &m_ramp);
 
-    CreateBackBuffers(m_presentParams.BackBufferCount);
+    hr = CreateBackBuffers(m_presentParams.BackBufferCount);
+    if (FAILED(hr))
+      return hr;
 
     return D3D_OK;
   }
@@ -761,8 +684,10 @@ namespace dxvk {
     if (hWindow == nullptr)
       hWindow = m_parent->GetWindow();
 
-    if (m_presentParams.hDeviceWindow == hWindow) {
-      m_presenter = nullptr;
+    if (m_presenters.count(hWindow)) {
+      if (m_wctx == &m_presenters[hWindow])
+        m_wctx = nullptr;
+      m_presenters.erase(hWindow);
 
       m_device->waitForSubmission(&m_presentStatus);
       m_device->waitForIdle();
@@ -805,12 +730,12 @@ namespace dxvk {
     }
 
     if (pPresentParams->Windowed) {
-      GetWindowClientSize(pPresentParams->hDeviceWindow,
+      wsi::getWindowSize(pPresentParams->hDeviceWindow,
         pPresentParams->BackBufferWidth  ? nullptr : &pPresentParams->BackBufferWidth,
         pPresentParams->BackBufferHeight ? nullptr : &pPresentParams->BackBufferHeight);
     }
     else {
-      GetMonitorClientSize(GetDefaultMonitor(),
+      wsi::getMonitorClientSize(wsi::getDefaultMonitor(),
         pPresentParams->BackBufferWidth  ? nullptr : &pPresentParams->BackBufferWidth,
         pPresentParams->BackBufferHeight ? nullptr : &pPresentParams->BackBufferHeight);
     }
@@ -824,31 +749,34 @@ namespace dxvk {
 
 
   void D3D9SwapChainEx::PresentImage(UINT SyncInterval) {
+    m_parent->EndFrame();
     m_parent->Flush();
 
     // Retrieve the image and image view to present
-    auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
-    auto swapImageView = m_backBuffers[0]->GetImageView(false);
-
-    // Bump our frame id.
-    ++m_frameId;
+    Rc<DxvkImage> swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
+    Rc<DxvkImageView> swapImageView = m_backBuffers[0]->GetImageView(false);
 
     for (uint32_t i = 0; i < SyncInterval || i < 1; i++) {
       SynchronizePresent();
 
       // Presentation semaphores and WSI swap chain image
-      vk::PresenterInfo info = m_presenter->info();
-      vk::PresenterSync sync;
+      PresenterInfo info = m_wctx->presenter->info();
+      PresenterSync sync;
 
       uint32_t imageIndex = 0;
 
-      VkResult status = m_presenter->acquireNextImage(sync, imageIndex);
+      VkResult status = m_wctx->presenter->acquireNextImage(sync, imageIndex);
 
       while (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
-        RecreateSwapChain(m_vsync);
+        RecreateSwapChain();
         
-        info = m_presenter->info();
-        status = m_presenter->acquireNextImage(sync, imageIndex);
+        info = m_wctx->presenter->info();
+        status = m_wctx->presenter->acquireNextImage(sync, imageIndex);
+      }
+
+      if (m_hdrMetadata && m_dirtyHdrMetadata) {
+        m_wctx->presenter->setHdrMetadata(*m_hdrMetadata);
+        m_dirtyHdrMetadata = false;
       }
 
       m_context->beginRecording(
@@ -863,14 +791,11 @@ namespace dxvk {
         { uint32_t(m_dstRect.right - m_dstRect.left), uint32_t(m_dstRect.bottom - m_dstRect.top) } };
 
       m_blitter->presentImage(m_context.ptr(),
-        m_imageViews.at(imageIndex), dstRect,
+        m_wctx->imageViews.at(imageIndex), dstRect,
         swapImageView, srcRect);
 
       if (m_hud != nullptr)
         m_hud->render(m_context, info.format, info.imageExtent);
-
-      if (i + 1 >= SyncInterval)
-        m_context->signal(m_frameLatencySignal, m_frameId);
 
       SubmitPresent(sync, i);
     }
@@ -886,24 +811,33 @@ namespace dxvk {
   }
 
 
-  void D3D9SwapChainEx::SubmitPresent(const vk::PresenterSync& Sync, uint32_t FrameId) {
+  void D3D9SwapChainEx::SubmitPresent(const PresenterSync& Sync, uint32_t Repeat) {
+    // Bump frame ID
+    if (!Repeat)
+      m_wctx->frameId += 1;
+
     // Present from CS thread so that we don't
     // have to synchronize with it first.
     m_presentStatus.result = VK_NOT_READY;
 
     m_parent->EmitCs([this,
-      cFrameId     = FrameId,
+      cRepeat      = Repeat,
       cSync        = Sync,
       cHud         = m_hud,
+      cPresentMode = m_wctx->presenter->info().presentMode,
+      cFrameId     = m_wctx->frameId,
       cCommandList = m_context->endRecording()
     ] (DxvkContext* ctx) {
-      m_device->submitCommandList(cCommandList,
-        cSync.acquire, cSync.present);
+      cCommandList->setWsiSemaphores(cSync);
+      m_device->submitCommandList(cCommandList, nullptr);
 
-      if (cHud != nullptr && !cFrameId)
+      if (cHud != nullptr && !cRepeat)
         cHud->update();
 
-      m_device->presentImage(m_presenter, &m_presentStatus);
+      uint64_t frameId = cRepeat ? 0 : cFrameId;
+
+      m_device->presentImage(m_wctx->presenter,
+        cPresentMode, frameId, &m_presentStatus);
     });
 
     m_parent->FlushCsChunk();
@@ -915,26 +849,37 @@ namespace dxvk {
     VkResult status = m_device->waitForSubmission(&m_presentStatus);
 
     if (status != VK_SUCCESS)
-      RecreateSwapChain(m_vsync);
+      RecreateSwapChain();
   }
 
-
-  void D3D9SwapChainEx::RecreateSwapChain(BOOL Vsync) {
+  void D3D9SwapChainEx::RecreateSwapChain() {
     // Ensure that we can safely destroy the swap chain
     m_device->waitForSubmission(&m_presentStatus);
     m_device->waitForIdle();
 
     m_presentStatus.result = VK_SUCCESS;
 
-    vk::PresenterDesc presenterDesc;
+    PresenterDesc presenterDesc;
     presenterDesc.imageExtent     = GetPresentExtent();
     presenterDesc.imageCount      = PickImageCount(m_presentParams.BackBufferCount + 1);
     presenterDesc.numFormats      = PickFormats(EnumerateFormat(m_presentParams.BackBufferFormat), presenterDesc.formats);
-    presenterDesc.numPresentModes = PickPresentModes(Vsync, presenterDesc.presentModes);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
-    if (m_presenter->recreateSwapChain(presenterDesc) != VK_SUCCESS)
-      throw DxvkError("D3D9SwapChainEx: Failed to recreate swap chain");
+    VkResult vr = m_wctx->presenter->recreateSwapChain(presenterDesc);
+
+    if (vr == VK_ERROR_SURFACE_LOST_KHR) {
+      vr = m_wctx->presenter->recreateSurface([this] (VkSurfaceKHR* surface) {
+        return CreateSurface(surface);
+      });
+
+      if (vr)
+        throw DxvkError(str::format("D3D9SwapChainEx: Failed to recreate surface: ", vr));
+
+      vr = m_wctx->presenter->recreateSwapChain(presenterDesc);
+    }
+
+    if (vr)
+      throw DxvkError(str::format("D3D9SwapChainEx: Failed to recreate swap chain: ", vr));
     
     CreateRenderTargetViews();
   }
@@ -947,38 +892,32 @@ namespace dxvk {
 
     m_presentStatus.result = VK_SUCCESS;
 
-    DxvkDeviceQueue graphicsQueue = m_device->queues().graphics;
-
-    vk::PresenterDevice presenterDevice;
-    presenterDevice.queueFamily   = graphicsQueue.queueFamily;
-    presenterDevice.queue         = graphicsQueue.queueHandle;
-    presenterDevice.adapter       = m_device->adapter()->handle();
-
-    vk::PresenterDesc presenterDesc;
+    PresenterDesc presenterDesc;
     presenterDesc.imageExtent     = GetPresentExtent();
     presenterDesc.imageCount      = PickImageCount(m_presentParams.BackBufferCount + 1);
     presenterDesc.numFormats      = PickFormats(EnumerateFormat(m_presentParams.BackBufferFormat), presenterDesc.formats);
-    presenterDesc.numPresentModes = PickPresentModes(false, presenterDesc.presentModes);
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
-    m_presenter = new vk::Presenter(m_window,
-      m_device->adapter()->vki(),
-      m_device->vkd(),
-      presenterDevice,
-      presenterDesc);
+    m_wctx->presenter = new Presenter(m_device, m_wctx->frameLatencySignal, presenterDesc);
+    m_wctx->presenter->setFrameRateLimit(m_parent->GetOptions()->maxFrameRate);
+  }
 
-    m_presenter->setFrameRateLimit(m_parent->GetOptions()->maxFrameRate);
-    m_presenter->setFrameRateLimiterRefreshRate(m_displayRefreshRate);
 
-    CreateRenderTargetViews();
+  VkResult D3D9SwapChainEx::CreateSurface(VkSurfaceKHR* pSurface) {
+    auto vki = m_device->adapter()->vki();
+
+    return wsi::createSurface(m_window,
+      vki->getLoaderProc(),
+      vki->instance(),
+      pSurface);
   }
 
 
   void D3D9SwapChainEx::CreateRenderTargetViews() {
-    vk::PresenterInfo info = m_presenter->info();
+    PresenterInfo info = m_wctx->presenter->info();
 
-    m_imageViews.clear();
-    m_imageViews.resize(info.imageCount);
+    m_wctx->imageViews.clear();
+    m_wctx->imageViews.resize(info.imageCount);
 
     DxvkImageCreateInfo imageInfo;
     imageInfo.type        = VK_IMAGE_TYPE_2D;
@@ -1006,12 +945,13 @@ namespace dxvk {
     viewInfo.numLayers    = 1;
 
     for (uint32_t i = 0; i < info.imageCount; i++) {
-      VkImage imageHandle = m_presenter->getImage(i).image;
+      VkImage imageHandle = m_wctx->presenter->getImage(i).image;
       
       Rc<DxvkImage> image = new DxvkImage(
-        m_device.ptr(), imageInfo, imageHandle);
+        m_device.ptr(), imageInfo, imageHandle,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-      m_imageViews[i] = new DxvkImageView(
+      m_wctx->imageViews[i] = new DxvkImageView(
         m_device->vkd(), image, viewInfo);
     }
   }
@@ -1025,13 +965,29 @@ namespace dxvk {
   }
 
 
-  void D3D9SwapChainEx::CreateBackBuffers(uint32_t NumBackBuffers) {
+  void D3D9SwapChainEx::UpdateWindowCtx() {
+    if (!m_presenters.count(m_window)) {
+      auto res = m_presenters.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(m_window),
+        std::forward_as_tuple());
+
+      auto& wctx = res.first->second;
+      wctx.frameLatencySignal = new sync::Fence(wctx.frameId);
+    }
+    m_wctx = &m_presenters[m_window];
+  }
+
+
+  HRESULT D3D9SwapChainEx::CreateBackBuffers(uint32_t NumBackBuffers) {
     // Explicitly destroy current swap image before
     // creating a new one to free up resources
     DestroyBackBuffers();
 
-    int NumFrontBuffer = m_parent->GetOptions()->noExplicitFrontBuffer ? 0 : 1;
-    m_backBuffers.resize(NumBackBuffers + NumFrontBuffer);
+    int NumFrontBuffer = HasFrontBuffer() ? 1 : 0;
+    const uint32_t NumBuffers = NumBackBuffers + NumFrontBuffer;
+
+    m_backBuffers.reserve(NumBuffers);
 
     // Create new back buffer
     D3D9_COMMON_TEXTURE_DESC desc;
@@ -1048,9 +1004,22 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.IsBackBuffer       = TRUE;
     desc.IsAttachmentOnly   = FALSE;
+    // Docs: Also note that - unlike textures - swap chain back buffers, render targets [..] can be locked
+    desc.IsLockable         = TRUE;
 
-    for (uint32_t i = 0; i < m_backBuffers.size(); i++)
-      m_backBuffers[i] = new D3D9Surface(m_parent, &desc, this, nullptr);
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      D3D9Surface* surface;
+      try {
+        surface = new D3D9Surface(m_parent, &desc, this, nullptr);
+        m_parent->IncrementLosableCounter();
+      } catch (const DxvkError& e) {
+        DestroyBackBuffers();
+        Logger::err(e.message());
+        return D3DERR_OUTOFVIDEOMEMORY;
+      }
+
+      m_backBuffers.emplace_back(surface);
+    }
 
     auto swapImage = m_backBuffers[0]->GetCommonTexture()->GetImage();
 
@@ -1074,8 +1043,9 @@ namespace dxvk {
 
     m_device->submitCommandList(
       m_context->endRecording(),
-      VK_NULL_HANDLE,
-      VK_NULL_HANDLE);
+      nullptr);
+
+    return D3D_OK;
   }
 
 
@@ -1090,6 +1060,10 @@ namespace dxvk {
     if (m_hud != nullptr) {
       m_hud->addItem<hud::HudClientApiItem>("api", 1, GetApiName());
       m_hud->addItem<hud::HudSamplerCount>("samplers", -1, m_parent);
+
+#ifdef D3D9_ALLOW_UNMAPPING
+      m_hud->addItem<hud::HudTextureMemory>("memory", -1, m_parent);
+#endif
     }
   }
 
@@ -1107,9 +1081,13 @@ namespace dxvk {
 
   void D3D9SwapChainEx::SyncFrameLatency() {
     // Wait for the sync event so that we respect the maximum frame latency
-    m_frameLatencySignal->wait(m_frameId - GetActualFrameLatency());
+    m_wctx->frameLatencySignal->wait(m_wctx->frameId - GetActualFrameLatency());
   }
 
+  void D3D9SwapChainEx::SetApiName(const char* name) {
+    m_apiName = name;
+    CreateHud();
+  }
 
   uint32_t D3D9SwapChainEx::GetActualFrameLatency() {
     uint32_t maxFrameLatency = m_parent->GetFrameLatency();
@@ -1136,46 +1114,36 @@ namespace dxvk {
       case D3D9Format::X8R8G8B8:
       case D3D9Format::A8B8G8R8:
       case D3D9Format::X8B8G8R8: {
-        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_UNORM, m_colorspace };
+        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_UNORM, m_colorspace };
       } break;
 
       case D3D9Format::A2R10G10B10:
       case D3D9Format::A2B10G10R10: {
-        pDstFormats[n++] = { VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        pDstFormats[n++] = { VK_FORMAT_A2R10G10B10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_A2B10G10R10_UNORM_PACK32, m_colorspace };
+        pDstFormats[n++] = { VK_FORMAT_A2R10G10B10_UNORM_PACK32, m_colorspace };
       } break;
 
       case D3D9Format::X1R5G5B5:
       case D3D9Format::A1R5G5B5: {
-        pDstFormats[n++] = { VK_FORMAT_B5G5R5A1_UNORM_PACK16, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        pDstFormats[n++] = { VK_FORMAT_R5G5B5A1_UNORM_PACK16, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        pDstFormats[n++] = { VK_FORMAT_A1R5G5B5_UNORM_PACK16, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_B5G5R5A1_UNORM_PACK16, m_colorspace };
+        pDstFormats[n++] = { VK_FORMAT_R5G5B5A1_UNORM_PACK16, m_colorspace };
+        pDstFormats[n++] = { VK_FORMAT_A1R5G5B5_UNORM_PACK16, m_colorspace };
       } break;
 
       case D3D9Format::R5G6B5: {
-        pDstFormats[n++] = { VK_FORMAT_B5G6R5_UNORM_PACK16, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        pDstFormats[n++] = { VK_FORMAT_R5G6B5_UNORM_PACK16, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_B5G6R5_UNORM_PACK16, m_colorspace };
+        pDstFormats[n++] = { VK_FORMAT_R5G6B5_UNORM_PACK16, m_colorspace };
       } break;
-    }
 
-    return n;
-  }
-
-
-  uint32_t D3D9SwapChainEx::PickPresentModes(
-          BOOL                      Vsync,
-          VkPresentModeKHR*         pDstModes) {
-    uint32_t n = 0;
-
-    if (Vsync) {
-      if (m_parent->GetOptions()->tearFree == Tristate::False)
-        pDstModes[n++] = VK_PRESENT_MODE_FIFO_RELAXED_KHR;
-      pDstModes[n++] = VK_PRESENT_MODE_FIFO_KHR;
-    } else {
-      if (m_parent->GetOptions()->tearFree != Tristate::True)
-        pDstModes[n++] = VK_PRESENT_MODE_IMMEDIATE_KHR;
-      pDstModes[n++] = VK_PRESENT_MODE_MAILBOX_KHR;
+      case D3D9Format::A16B16G16R16F: {
+        if (m_unlockAdditionalFormats) {
+          pDstFormats[n++] = { VK_FORMAT_R16G16B16A16_SFLOAT, m_colorspace };
+        } else {
+          Logger::warn(str::format("D3D9SwapChainEx: Unexpected format: ", Format));      
+        }
+        break;
+      }
     }
 
     return n;
@@ -1192,18 +1160,12 @@ namespace dxvk {
   void D3D9SwapChainEx::NotifyDisplayRefreshRate(
           double                  RefreshRate) {
     m_displayRefreshRate = RefreshRate;
-
-    if (m_presenter != nullptr)
-      m_presenter->setFrameRateLimiterRefreshRate(RefreshRate);
   }
 
 
   HRESULT D3D9SwapChainEx::EnterFullscreenMode(
           D3DPRESENT_PARAMETERS* pPresentParams,
     const D3DDISPLAYMODEEX*      pFullscreenDisplayMode) {    
-    // Find a display mode that matches what we need
-    ::GetWindowRect(m_window, &m_windowState.rect);
-      
     if (FAILED(ChangeDisplayMode(pPresentParams, pFullscreenDisplayMode))) {
       Logger::err("D3D9: EnterFullscreenMode: Failed to change display mode");
       return D3DERR_INVALIDCALL;
@@ -1219,34 +1181,21 @@ namespace dxvk {
 
     D3D9WindowMessageFilter filter(m_window);
     
-    // Change the window flags to remove the decoration etc.
-    LONG style   = ::GetWindowLongW(m_window, GWL_STYLE);
-    LONG exstyle = ::GetWindowLongW(m_window, GWL_EXSTYLE);
+    m_monitor = wsi::getDefaultMonitor();
+
+    if (!wsi::enterFullscreenMode(m_monitor, m_window, &m_windowState, true)) {
+        Logger::err("D3D9: EnterFullscreenMode: Failed to enter fullscreen mode");
+        return D3DERR_INVALIDCALL;
+    }
     
-    m_windowState.style = style;
-    m_windowState.exstyle = exstyle;
+    m_parent->NotifyFullscreen(m_window, true);
     
-    style   &= ~WS_OVERLAPPEDWINDOW;
-    exstyle &= ~WS_EX_OVERLAPPEDWINDOW;
-    
-    ::SetWindowLongW(m_window, GWL_STYLE, style);
-    ::SetWindowLongW(m_window, GWL_EXSTYLE, exstyle);
-    
-    // Move the window so that it covers the entire output    
-    RECT rect;
-    GetMonitorRect(GetDefaultMonitor(), &rect);
-    
-    ::SetWindowPos(m_window, HWND_TOPMOST,
-      rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
-      SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
-    
-    m_monitor = GetDefaultMonitor();
     return D3D_OK;
   }
   
   
   HRESULT D3D9SwapChainEx::LeaveFullscreenMode() {
-    if (!IsWindow(m_window))
+    if (!wsi::isWindow(m_window))
       return D3DERR_INVALIDCALL;
     
     if (FAILED(RestoreDisplayMode(m_monitor)))
@@ -1256,23 +1205,12 @@ namespace dxvk {
 
     ResetWindowProc(m_window);
     
-    // Only restore the window style if the application hasn't
-    // changed them. This is in line with what native D3D9 does.
-    LONG curStyle   = ::GetWindowLongW(m_window, GWL_STYLE) & ~WS_VISIBLE;
-    LONG curExstyle = ::GetWindowLongW(m_window, GWL_EXSTYLE) & ~WS_EX_TOPMOST;
-    
-    if (curStyle == (m_windowState.style & ~(WS_VISIBLE | WS_OVERLAPPEDWINDOW))
-     && curExstyle == (m_windowState.exstyle & ~(WS_EX_TOPMOST | WS_EX_OVERLAPPEDWINDOW))) {
-      ::SetWindowLongW(m_window, GWL_STYLE,   m_windowState.style);
-      ::SetWindowLongW(m_window, GWL_EXSTYLE, m_windowState.exstyle);
+    if (!wsi::leaveFullscreenMode(m_window, &m_windowState, false)) {
+      Logger::err("D3D9: LeaveFullscreenMode: Failed to exit fullscreen mode");
+      return D3DERR_NOTAVAILABLE;
     }
-    
-    // Restore window position and apply the style
-    const RECT rect = m_windowState.rect;
-    
-    ::SetWindowPos(m_window, 0,
-      rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
-      SWP_FRAMECHANGED | SWP_NOZORDER | SWP_NOACTIVATE);
+
+    m_parent->NotifyFullscreen(m_window, false);
     
     return D3D_OK;
   }
@@ -1294,27 +1232,15 @@ namespace dxvk {
       mode.Size             = sizeof(D3DDISPLAYMODEEX);
     }
 
-    DEVMODEW devMode = { };
-    devMode.dmSize       = sizeof(devMode);
-    devMode.dmFields     = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL;
-    devMode.dmPelsWidth  = mode.Width;
-    devMode.dmPelsHeight = mode.Height;
-    devMode.dmBitsPerPel = GetMonitorFormatBpp(EnumerateFormat(mode.Format));
+    wsi::WsiMode wsiMode = ConvertDisplayMode(mode);
     
-    if (mode.RefreshRate != 0)  {
-      devMode.dmFields |= DM_DISPLAYFREQUENCY;
-      devMode.dmDisplayFrequency = mode.RefreshRate;
-    }
-    
-    HMONITOR monitor = GetDefaultMonitor();
+    HMONITOR monitor = wsi::getDefaultMonitor();
 
-    if (!SetMonitorDisplayMode(monitor, &devMode))
+    if (!wsi::setWindowMode(monitor, m_window, wsiMode))
       return D3DERR_NOTAVAILABLE;
-
-    devMode.dmFields = DM_DISPLAYFREQUENCY;
     
-    if (GetMonitorDisplayMode(monitor, ENUM_CURRENT_SETTINGS, &devMode))
-      NotifyDisplayRefreshRate(double(devMode.dmDisplayFrequency));
+    if (wsi::getCurrentDisplayMode(monitor, &wsiMode))
+      NotifyDisplayRefreshRate(double(wsiMode.refreshRate.numerator) / double(wsiMode.refreshRate.denominator));
     else
       NotifyDisplayRefreshRate(0.0);
 
@@ -1326,7 +1252,7 @@ namespace dxvk {
     if (hMonitor == nullptr)
       return D3DERR_INVALIDCALL;
     
-    if (!RestoreMonitorDisplayMode())
+    if (!wsi::restoreDisplayMode())
       return D3DERR_NOTAVAILABLE;
 
     NotifyDisplayRefreshRate(0.0);
@@ -1334,7 +1260,11 @@ namespace dxvk {
   }
 
   bool    D3D9SwapChainEx::UpdatePresentRegion(const RECT* pSourceRect, const RECT* pDestRect) {
-    if (pSourceRect == nullptr) {
+    const bool isWindowed = m_presentParams.Windowed;
+
+    // Tests show that present regions are ignored in fullscreen
+
+    if (pSourceRect == nullptr || !isWindowed) {
       m_srcRect.top    = 0;
       m_srcRect.left   = 0;
       m_srcRect.right  = m_presentParams.BackBufferWidth;
@@ -1343,35 +1273,41 @@ namespace dxvk {
     else
       m_srcRect = *pSourceRect;
 
-    RECT dstRect;
-    if (pDestRect == nullptr) {
-      // TODO: Should we hook WM_SIZE message for this?
-      UINT width, height;
-      GetWindowClientSize(m_window, &width, &height);
+    
+    UINT width, height;
+    wsi::getWindowSize(m_window, &width, &height);
 
+    RECT dstRect;
+    if (pDestRect == nullptr || !isWindowed) {
+      // TODO: Should we hook WM_SIZE message for this?
       dstRect.top    = 0;
       dstRect.left   = 0;
       dstRect.right  = LONG(width);
       dstRect.bottom = LONG(height);
+      
     }
     else
       dstRect = *pDestRect;
 
-    bool recreate = 
-       m_dstRect.left   != dstRect.left
-    || m_dstRect.top    != dstRect.top
-    || m_dstRect.right  != dstRect.right
-    || m_dstRect.bottom != dstRect.bottom;
+    m_partialCopy =
+       dstRect.left != 0
+    || dstRect.top != 0
+    || dstRect.right  - dstRect.left != LONG(width)
+    || dstRect.bottom - dstRect.top  != LONG(height);
 
+    bool recreate =
+       m_wctx->presenter == nullptr
+    || m_wctx->presenter->info().imageExtent.width  != width
+    || m_wctx->presenter->info().imageExtent.height != height;
+
+    m_swapchainExtent = { width, height };
     m_dstRect = dstRect;
 
     return recreate;
   }
 
   VkExtent2D D3D9SwapChainEx::GetPresentExtent() {
-    return VkExtent2D {
-      std::max<uint32_t>(m_dstRect.right  - m_dstRect.left, 1u),
-      std::max<uint32_t>(m_dstRect.bottom - m_dstRect.top,  1u) };
+    return m_swapchainExtent;
   }
 
 
@@ -1383,7 +1319,98 @@ namespace dxvk {
 
 
   std::string D3D9SwapChainEx::GetApiName() {
-    return this->GetParent()->IsExtended() ? "D3D9Ex" : "D3D9";
+    if (m_apiName == nullptr) {
+      return this->GetParent()->IsExtended() ? "D3D9Ex" : "D3D9";
+    } else {
+      return m_apiName;
+    }
+  }
+
+  D3D9VkExtSwapchain::D3D9VkExtSwapchain(D3D9SwapChainEx *pSwapChain)
+    : m_swapchain(pSwapChain) {
+
+  }
+  
+  ULONG STDMETHODCALLTYPE D3D9VkExtSwapchain::AddRef() {
+    return m_swapchain->AddRef();
+  }
+  
+  ULONG STDMETHODCALLTYPE D3D9VkExtSwapchain::Release() {
+    return m_swapchain->Release();
+  }
+  
+  HRESULT STDMETHODCALLTYPE D3D9VkExtSwapchain::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    return m_swapchain->QueryInterface(riid, ppvObject);
+  }
+
+  BOOL STDMETHODCALLTYPE D3D9VkExtSwapchain::CheckColorSpaceSupport(
+          VkColorSpaceKHR           ColorSpace) {
+    return m_swapchain->m_wctx->presenter->supportsColorSpace(ColorSpace);
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D9VkExtSwapchain::SetColorSpace(
+          VkColorSpaceKHR           ColorSpace) {
+    if (!CheckColorSpaceSupport(ColorSpace))
+      return D3DERR_INVALIDCALL;
+    
+    m_swapchain->m_dirty |= ColorSpace != m_swapchain->m_colorspace;
+    m_swapchain->m_colorspace = ColorSpace;
+
+    return S_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D9VkExtSwapchain::SetHDRMetaData(
+    const VkHdrMetadataEXT          *pHDRMetadata) {
+    if (!pHDRMetadata)
+      return D3DERR_INVALIDCALL;
+
+    m_swapchain->m_hdrMetadata      = *pHDRMetadata;
+    m_swapchain->m_dirtyHdrMetadata = true;
+
+    return S_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D9VkExtSwapchain::GetCurrentOutputDesc(
+          D3D9VkExtOutputMetadata   *pOutputDesc) {
+    HMONITOR monitor = m_swapchain->m_monitor;
+    if (!monitor)
+      monitor = wsi::getDefaultMonitor();
+    // ^ this should be the display we are mostly covering someday.
+
+    wsi::WsiEdidData edidData = wsi::getMonitorEdid(monitor);
+    wsi::WsiDisplayMetadata metadata = {};
+    {
+      std::optional<wsi::WsiDisplayMetadata> r_metadata = std::nullopt;
+      if (!edidData.empty())
+        r_metadata = wsi::parseColorimetryInfo(edidData);
+
+      if (r_metadata)
+        metadata = *r_metadata;
+      else
+        Logger::err("D3D9: Failed to parse display metadata + colorimetry info, using blank.");
+    }
+
+
+    NormalizeDisplayMetadata(CheckColorSpaceSupport(VK_COLOR_SPACE_HDR10_ST2084_EXT), metadata);
+
+    pOutputDesc->RedPrimary[0]         = metadata.redPrimary[0];
+    pOutputDesc->RedPrimary[1]         = metadata.redPrimary[1];
+    pOutputDesc->GreenPrimary[0]       = metadata.greenPrimary[0];
+    pOutputDesc->GreenPrimary[1]       = metadata.greenPrimary[1];
+    pOutputDesc->BluePrimary[0]        = metadata.bluePrimary[0];
+    pOutputDesc->BluePrimary[1]        = metadata.bluePrimary[1];
+    pOutputDesc->WhitePoint[0]         = metadata.whitePoint[0];
+    pOutputDesc->WhitePoint[1]         = metadata.whitePoint[1];
+    pOutputDesc->MinLuminance          = metadata.minLuminance;
+    pOutputDesc->MaxLuminance          = metadata.maxLuminance;
+    pOutputDesc->MaxFullFrameLuminance = metadata.maxFullFrameLuminance;
+    return S_OK;
+  }
+
+  void STDMETHODCALLTYPE D3D9VkExtSwapchain::UnlockAdditionalFormats() {
+    m_swapchain->m_unlockAdditionalFormats = true;
   }
 
 }

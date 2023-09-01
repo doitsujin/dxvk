@@ -1,8 +1,7 @@
 #pragma once
 
-#include <spirv/spirv.hpp>
-
 #include <iostream>
+#include <utility>
 #include <vector>
 
 #include "spirv_instruction.h"
@@ -22,6 +21,8 @@ namespace dxvk {
     
     SpirvCodeBuffer();
     explicit SpirvCodeBuffer(uint32_t size);
+    SpirvCodeBuffer(const SpirvCodeBuffer &) = default;
+    SpirvCodeBuffer(SpirvCodeBuffer &&) = default;
     SpirvCodeBuffer(uint32_t size, const uint32_t* data);
     SpirvCodeBuffer(std::istream& stream);
     
@@ -30,6 +31,9 @@ namespace dxvk {
     : SpirvCodeBuffer(N, data) { }
     
     ~SpirvCodeBuffer();
+
+    SpirvCodeBuffer &operator=(const SpirvCodeBuffer &) = default;
+    SpirvCodeBuffer &operator=(SpirvCodeBuffer &&) = default;
     
     /**
      * \brief Code data
@@ -208,9 +212,10 @@ namespace dxvk {
      * After this call, new instructions will be
      * appended to the stream. In other words,
      * this will restore default behaviour.
+     * \returns Previous instruction pointer
      */
-    void endInsertion() {
-      m_ptr = m_code.size();
+    size_t endInsertion() {
+      return std::exchange(m_ptr, m_code.size());
     }
     
   private:

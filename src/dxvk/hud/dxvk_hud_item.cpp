@@ -125,17 +125,20 @@ namespace dxvk::hud {
 
 
   HudDeviceInfoItem::HudDeviceInfoItem(const Rc<DxvkDevice>& device) {
-    VkPhysicalDeviceProperties props = device->adapter()->deviceProperties();
+    const auto& props = device->properties();
 
-    m_deviceName = props.deviceName;
-    m_driverVer = str::format("Driver: ",
-      VK_VERSION_MAJOR(props.driverVersion), ".",
-      VK_VERSION_MINOR(props.driverVersion), ".",
-      VK_VERSION_PATCH(props.driverVersion));
-    m_vulkanVer = str::format("Vulkan: ",
-      VK_VERSION_MAJOR(props.apiVersion), ".",
-      VK_VERSION_MINOR(props.apiVersion), ".",
-      VK_VERSION_PATCH(props.apiVersion));
+    std::string driverInfo = props.vk12.driverInfo;
+
+    if (driverInfo.empty()) {
+      driverInfo = str::format(
+        VK_VERSION_MAJOR(props.core.properties.driverVersion), ".",
+        VK_VERSION_MINOR(props.core.properties.driverVersion), ".",
+        VK_VERSION_PATCH(props.core.properties.driverVersion));
+    }
+
+    m_deviceName = props.core.properties.deviceName;
+    m_driverName = str::format("Driver:  ", props.vk12.driverName);
+    m_driverVer = str::format("Version: ", driverInfo);
   }
 
 
@@ -157,13 +160,13 @@ namespace dxvk::hud {
     renderer.drawText(16.0f,
       { position.x, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
-      m_driverVer);
+      m_driverName);
     
     position.y += 20.0f;
     renderer.drawText(16.0f,
       { position.x, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
-      m_vulkanVer);
+      m_driverVer);
 
     position.y += 8.0f;
     return position;
@@ -466,6 +469,7 @@ namespace dxvk::hud {
     DxvkStatCounters counters = m_device->getStatCounters();
 
     m_graphicsPipelines = counters.getCtr(DxvkStatCounter::PipeCountGraphics);
+    m_graphicsLibraries = counters.getCtr(DxvkStatCounter::PipeCountLibrary);
     m_computePipelines  = counters.getCtr(DxvkStatCounter::PipeCountCompute);
   }
 
@@ -483,7 +487,20 @@ namespace dxvk::hud {
       { position.x + 240.0f, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       str::format(m_graphicsPipelines));
-    
+
+    if (m_graphicsLibraries) {
+      position.y += 20.0f;
+      renderer.drawText(16.0f,
+        { position.x, position.y },
+        { 1.0f, 0.25f, 1.0f, 1.0f },
+        "Graphics shaders:");
+
+      renderer.drawText(16.0f,
+        { position.x + 240.0f, position.y },
+        { 1.0f, 1.0f, 1.0f, 1.0f },
+        str::format(m_graphicsLibraries));
+    }
+
     position.y += 20.0f;
     renderer.drawText(16.0f,
       { position.x, position.y },
@@ -494,6 +511,55 @@ namespace dxvk::hud {
       { position.x + 240.0f, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
       str::format(m_computePipelines));
+
+    position.y += 8.0f;
+    return position;
+  }
+
+
+  HudDescriptorStatsItem::HudDescriptorStatsItem(const Rc<DxvkDevice>& device)
+  : m_device(device) {
+
+  }
+
+
+  HudDescriptorStatsItem::~HudDescriptorStatsItem() {
+
+  }
+
+
+  void HudDescriptorStatsItem::update(dxvk::high_resolution_clock::time_point time) {
+    DxvkStatCounters counters = m_device->getStatCounters();
+
+    m_descriptorPoolCount = counters.getCtr(DxvkStatCounter::DescriptorPoolCount);
+    m_descriptorSetCount  = counters.getCtr(DxvkStatCounter::DescriptorSetCount);
+  }
+
+
+  HudPos HudDescriptorStatsItem::render(
+          HudRenderer&      renderer,
+          HudPos            position) {
+    position.y += 16.0f;
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 1.0f, 0.25f, 0.5f, 1.0f },
+      "Descriptor pools:");
+    
+    renderer.drawText(16.0f,
+      { position.x + 216.0f, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      str::format(m_descriptorPoolCount));
+    
+    position.y += 20.0f;
+    renderer.drawText(16.0f,
+      { position.x, position.y },
+      { 1.0f, 0.25f, 0.5f, 1.0f },
+      "Descriptor sets:");
+
+    renderer.drawText(16.0f,
+      { position.x + 216.0f, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      str::format(m_descriptorSetCount));
 
     position.y += 8.0f;
     return position;
@@ -692,15 +758,36 @@ namespace dxvk::hud {
 
   void HudCompilerActivityItem::update(dxvk::high_resolution_clock::time_point time) {
     DxvkStatCounters counters = m_device->getStatCounters();
-    bool doShow = counters.getCtr(DxvkStatCounter::PipeCompilerBusy);
 
-    if (!doShow) {
-      auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(time - m_timeShown);
-      doShow = elapsed.count() <= MinShowDuration;
-    }
+    m_tasksDone = counters.getCtr(DxvkStatCounter::PipeTasksDone);
+    m_tasksTotal = counters.getCtr(DxvkStatCounter::PipeTasksTotal);
 
-    if (doShow && !m_show)
+    bool doShow = m_tasksDone < m_tasksTotal;
+
+    if (!doShow)
+      m_timeDone = time;
+
+    if (!m_show) {
       m_timeShown = time;
+      m_showPercentage = false;
+    } else {
+      auto durationShown = std::chrono::duration_cast<std::chrono::milliseconds>(time - m_timeShown);
+      auto durationWorking = std::chrono::duration_cast<std::chrono::milliseconds>(time - m_timeDone);
+
+      if (!doShow) {
+        m_offset = m_tasksTotal;
+
+        // Ensure the item stays up long enough to be legible
+        doShow = durationShown.count() <= MinShowDuration;
+      }
+
+      if (!m_showPercentage) {
+        // Don't show percentage if it's just going to be stuck at 99%
+        // because the workers are not being fed tasks fast enough
+        m_showPercentage = durationWorking.count() >= (MinShowDuration / 5)
+                        && (computePercentage() < 50);
+      }
+    }
 
     m_show = doShow;
   }
@@ -710,13 +797,27 @@ namespace dxvk::hud {
           HudRenderer&      renderer,
           HudPos            position) {
     if (m_show) {
+      std::string string = "Compiling shaders...";
+
+      if (m_showPercentage)
+        string = str::format(string, " (", computePercentage(), "%)");
+
       renderer.drawText(16.0f,
         { position.x, renderer.surfaceSize().height / renderer.scale() - 20.0f },
         { 1.0f, 1.0f, 1.0f, 1.0f },
-        "Compiling shaders...");
+        string);
     }
 
     return position;
+  }
+
+
+  uint32_t HudCompilerActivityItem::computePercentage() const {
+    if (m_offset == m_tasksTotal)
+      return 100;
+
+    return (uint32_t(m_tasksDone - m_offset) * 100)
+         / (uint32_t(m_tasksTotal - m_offset));
   }
 
 }

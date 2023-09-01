@@ -6,10 +6,17 @@
 #include "dxvk_platform_exts.h"
 
 #include <algorithm>
+#include <sstream>
 
 namespace dxvk {
   
-  DxvkInstance::DxvkInstance() {
+  DxvkInstance::DxvkInstance()
+  : DxvkInstance(DxvkInstanceImportInfo()) {
+
+  }
+
+
+  DxvkInstance::DxvkInstance(const DxvkInstanceImportInfo& args) {
     Logger::info(str::format("Game: ", env::getExeName()));
     Logger::info(str::format("DXVK: ", DXVK_VERSION));
 
@@ -19,9 +26,18 @@ namespace dxvk {
 
     m_options = DxvkOptions(m_config);
 
+    // Load Vulkan library
+    createLibraryLoader(args);
+
+    if (!m_vkl->valid())
+      throw DxvkError("Failed to load vulkan-1 library.");
+
+    // Initialize extension providers
     m_extProviders.push_back(&DxvkPlatformExts::s_instance);
+#ifdef _WIN32
     m_extProviders.push_back(&VrInstance::s_instance);
     m_extProviders.push_back(&DxvkXrProvider::s_instance);
+#endif
 
     Logger::info("Built-in extension providers:");
     for (const auto& provider : m_extProviders)
@@ -30,9 +46,7 @@ namespace dxvk {
     for (const auto& provider : m_extProviders)
       provider->initInstanceExtensions();
 
-    m_vkl = new vk::LibraryFn();
-    m_vki = new vk::InstanceFn(true, this->createInstance());
-
+    createInstanceLoader(args);
     m_adapters = this->queryAdapters();
 
     for (const auto& provider : m_extProviders)
@@ -48,7 +62,8 @@ namespace dxvk {
   
   
   DxvkInstance::~DxvkInstance() {
-    
+    if (m_messenger)
+      m_vki->vkDestroyDebugUtilsMessengerEXT(m_vki->instance(), m_messenger, nullptr);
   }
   
   
@@ -61,9 +76,9 @@ namespace dxvk {
 
   Rc<DxvkAdapter> DxvkInstance::findAdapterByLuid(const void* luid) const {
     for (const auto& adapter : m_adapters) {
-      const auto& props = adapter->devicePropertiesExt().coreDeviceId;
+      const auto& vk11 = adapter->devicePropertiesExt().vk11;
 
-      if (props.deviceLUIDValid && !std::memcmp(luid, props.deviceLUID, VK_LUID_SIZE))
+      if (vk11.deviceLUIDValid && !std::memcmp(luid, vk11.deviceLUID, VK_LUID_SIZE))
         return adapter;
     }
 
@@ -84,73 +99,138 @@ namespace dxvk {
   }
   
   
-  VkInstance DxvkInstance::createInstance() {
-    DxvkInstanceExtensions insExtensions;
+  void DxvkInstance::createLibraryLoader(const DxvkInstanceImportInfo& args) {
+    m_vkl = args.loaderProc
+      ? new vk::LibraryFn(args.loaderProc)
+      : new vk::LibraryFn();
+  }
 
-    std::vector<DxvkExt*> insExtensionList = {{
-      &insExtensions.khrGetSurfaceCapabilities2,
-      &insExtensions.khrSurface,
-    }};
 
-    // Hide VK_EXT_debug_utils behind an environment variable. This extension
-    // adds additional overhead to winevulkan
-    if ((env::getEnvVar("DXVK_PERF_EVENTS") == "1") || 
-      (m_options.enableDebugUtils)) {
-        insExtensionList.push_back(&insExtensions.extDebugUtils);
-        Logger::warn("DXVK: Debug Utils are enabled, perf events are ON. May affect performance!");
+  void DxvkInstance::createInstanceLoader(const DxvkInstanceImportInfo& args) {
+    DxvkNameList layerList;
+    DxvkNameList extensionList;
+    DxvkNameSet extensionSet;
+
+    bool enablePerfEvents = false;
+    bool enableValidation = false;
+
+    if (args.instance) {
+      extensionList = DxvkNameList(args.extensionCount, args.extensionNames);
+      extensionSet = getExtensionSet(extensionList);
+
+      auto extensionInfos = getExtensionList(m_extensions, true);
+
+      if (!extensionSet.enableExtensions(extensionInfos.size(), extensionInfos.data(), nullptr))
+        throw DxvkError("DxvkInstance: Required instance extensions not enabled");
+    } else {
+      // Hide VK_EXT_debug_utils behind an environment variable.
+      // This extension adds additional overhead to winevulkan.
+      std::string debugEnv = env::getEnvVar("DXVK_DEBUG");
+
+      enablePerfEvents = debugEnv == "markers";
+      enableValidation = debugEnv == "validation";
+
+      bool enableDebug = enablePerfEvents || enableValidation || m_options.enableDebugUtils;
+
+      if (enableDebug) {
+        Logger::warn("Debug Utils are enabled. May affect performance.");
+
+        if (enableValidation) {
+          const char* layerName = "VK_LAYER_KHRONOS_validation";
+          DxvkNameSet layers = DxvkNameSet::enumInstanceLayers(m_vkl);
+
+          if (layers.supports(layerName)) {
+            layerList.add(layerName);
+            Logger::warn(str::format("Enabled instance layer ", layerName));
+          } else {
+            // This can happen on winevulkan since it does not support layers
+            Logger::warn(str::format("Validation layers not found, set VK_INSTANCE_LAYERS=", layerName));
+          }
+        }
+      }
+
+      // Get set of extensions to enable based on available
+      // extensions and extension providers.
+      auto extensionInfos = getExtensionList(m_extensions, enableDebug);
+      DxvkNameSet extensionsAvailable = DxvkNameSet::enumInstanceExtensions(m_vkl);
+
+      if (!extensionsAvailable.enableExtensions(extensionInfos.size(), extensionInfos.data(), &extensionSet))
+        throw DxvkError("DxvkInstance: Required instance extensions not supported");
+
+      for (const auto& provider : m_extProviders)
+        extensionSet.merge(provider->getInstanceExtensions());
+
+      // Generate list of extensions to enable
+      extensionList = extensionSet.toNameList();
     }
 
-    DxvkNameSet extensionsEnabled;
-    DxvkNameSet extensionsAvailable = DxvkNameSet::enumInstanceExtensions(m_vkl);
-    
-    if (!extensionsAvailable.enableExtensions(
-          insExtensionList.size(),
-          insExtensionList.data(),
-          extensionsEnabled))
-      throw DxvkError("DxvkInstance: Failed to create instance");
-
-    m_extensions = insExtensions;
-
-    // Enable additional extensions if necessary
-    for (const auto& provider : m_extProviders)
-      extensionsEnabled.merge(provider->getInstanceExtensions());
-
-    DxvkNameList extensionNameList = extensionsEnabled.toNameList();
-    
     Logger::info("Enabled instance extensions:");
-    this->logNameList(extensionNameList);
+    this->logNameList(extensionList);
 
-    std::string appName = env::getExeName();
-    
-    VkApplicationInfo appInfo;
-    appInfo.sType                 = VK_STRUCTURE_TYPE_APPLICATION_INFO;
-    appInfo.pNext                 = nullptr;
-    appInfo.pApplicationName      = appName.c_str();
-    appInfo.applicationVersion    = 0;
-    appInfo.pEngineName           = "DXVK";
-    appInfo.engineVersion         = VK_MAKE_VERSION(1, 10, 1);
-    appInfo.apiVersion            = VK_MAKE_VERSION(1, 1, 0);
-    
-    VkInstanceCreateInfo info;
-    info.sType                    = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
-    info.pNext                    = nullptr;
-    info.flags                    = 0;
-    info.pApplicationInfo         = &appInfo;
-    info.enabledLayerCount        = 0;
-    info.ppEnabledLayerNames      = nullptr;
-    info.enabledExtensionCount    = extensionNameList.count();
-    info.ppEnabledExtensionNames  = extensionNameList.names();
-    
-    VkInstance result = VK_NULL_HANDLE;
-    VkResult status = m_vkl->vkCreateInstance(&info, nullptr, &result);
+    // If necessary, create a new Vulkan instance
+    VkInstance instance = args.instance;
 
-    if (status != VK_SUCCESS)
-      throw DxvkError("DxvkInstance::createInstance: Failed to create Vulkan 1.1 instance");
-    
+    if (!instance) {
+      std::string appName = env::getExeName();
+
+      VkApplicationInfo appInfo = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
+      appInfo.pApplicationName      = appName.c_str();
+      appInfo.pEngineName           = "DXVK";
+      appInfo.engineVersion         = VK_MAKE_VERSION(2, 2, 0);
+      appInfo.apiVersion            = VK_MAKE_VERSION(1, 3, 0);
+
+      VkInstanceCreateInfo info = { VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO };
+      info.pApplicationInfo         = &appInfo;
+      info.enabledLayerCount        = layerList.count();
+      info.ppEnabledLayerNames      = layerList.names();
+      info.enabledExtensionCount    = extensionList.count();
+      info.ppEnabledExtensionNames  = extensionList.names();
+
+      VkResult status = m_vkl->vkCreateInstance(&info, nullptr, &instance);
+
+      if (status != VK_SUCCESS)
+        throw DxvkError("DxvkInstance::createInstance: Failed to create Vulkan 1.1 instance");
+    }
+
+    // Create the Vulkan instance loader
+    m_vki = new vk::InstanceFn(m_vkl, !args.instance, instance);
+
+    if (enableValidation) {
+      VkDebugUtilsMessengerCreateInfoEXT messengerInfo = { VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT };
+      messengerInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
+                                    | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
+                                    | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+      messengerInfo.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
+                                    | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+      messengerInfo.pfnUserCallback = &debugCallback;
+
+      if (m_vki->vkCreateDebugUtilsMessengerEXT(m_vki->instance(), &messengerInfo, nullptr, &m_messenger))
+        Logger::err("DxvkInstance::createInstance: Failed to create debug messenger, proceeding without.");
+    }
+  }
+
+
+  std::vector<DxvkExt*> DxvkInstance::getExtensionList(DxvkInstanceExtensions& ext, bool withDebug) {
+    std::vector<DxvkExt*> result = {{
+      &ext.extSurfaceMaintenance1,
+      &ext.khrGetSurfaceCapabilities2,
+      &ext.khrSurface,
+    }};
+
+    if (withDebug)
+      result.push_back(&ext.extDebugUtils);
+
     return result;
   }
-  
-  
+
+
+  DxvkNameSet DxvkInstance::getExtensionSet(const DxvkNameList& extensions) {
+    DxvkNameSet enabledSet(extensions.count(), extensions.names());
+    enabledSet.mergeRevisions(DxvkNameSet::enumInstanceLayers(m_vkl));
+    return enabledSet;
+  }
+
+
   std::vector<Rc<DxvkAdapter>> DxvkInstance::queryAdapters() {
     uint32_t numAdapters = 0;
     if (m_vki->vkEnumeratePhysicalDevices(m_vki->instance(), &numAdapters, nullptr) != VK_SUCCESS)
@@ -173,11 +253,20 @@ namespace dxvk {
     DxvkDeviceFilter filter(filterFlags);
     std::vector<Rc<DxvkAdapter>> result;
 
+    uint32_t numDGPU = 0;
+    uint32_t numIGPU = 0;
+
     for (uint32_t i = 0; i < numAdapters; i++) {
       if (filter.testAdapter(deviceProperties[i]))
         result.push_back(new DxvkAdapter(m_vki, adapters[i]));
-      if(!filter.testCreatedAdapter(result.back()->devicePropertiesExt()))
+      if (!filter.testCreatedAdapter(result.back()->devicePropertiesExt())) {
         result.pop_back();
+      } else {
+        if (deviceProperties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+          numDGPU += 1;
+        else if (deviceProperties[i].deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)
+          numIGPU += 1;
+      }
     }
     
     std::stable_sort(result.begin(), result.end(),
@@ -199,9 +288,12 @@ namespace dxvk {
         return aRank < bRank;
       });
     
-    if (result.size() == 0) {
+    if (result.empty()) {
       Logger::warn("DXVK: No adapters found. Please check your "
-                   "device filter settings and Vulkan setup.");
+                   "device filter settings and Vulkan setup. "
+                   "A Vulkan 1.3 capable driver is required.");
+    } else if (numDGPU == 1 && numIGPU == 1) {
+      result[1]->linkToDGPU(result[0]);
     }
     
     return result;
@@ -213,4 +305,52 @@ namespace dxvk {
       Logger::info(str::format("  ", names.name(i)));
   }
   
+
+  VkBool32 VKAPI_CALL DxvkInstance::debugCallback(
+          VkDebugUtilsMessageSeverityFlagBitsEXT  messageSeverity,
+          VkDebugUtilsMessageTypeFlagsEXT         messageTypes,
+    const VkDebugUtilsMessengerCallbackDataEXT*   pCallbackData,
+          void*                                   pUserData) {
+    LogLevel logLevel;
+
+    switch (messageSeverity) {
+      default:
+      case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:    logLevel = LogLevel::Info;  break;
+      case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT: logLevel = LogLevel::Debug; break;
+      case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: logLevel = LogLevel::Warn;  break;
+      case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:   logLevel = LogLevel::Error; break;
+    }
+
+    static const std::array<uint32_t, 8> ignoredIds = {
+      // Ignore image format features for depth-compare instructions.
+      // These errors are expected in D3D9 and some D3D11 apps.
+      0x23259a0d,
+      0x4b9d1597,
+      0x534c50ad,
+      0x9750b479,
+      // Ignore vkCmdBindPipeline errors related to dynamic rendering.
+      // Validation layers are buggy here and will complain about any
+      // command buffer with more than one render pass.
+      0x11b37e31,
+      0x151f5e5a,
+      0x6c16bfb4,
+      0xd6d77e1e,
+    };
+
+    for (auto id : ignoredIds) {
+      if (uint32_t(pCallbackData->messageIdNumber) == id)
+        return VK_FALSE;
+    }
+
+    std::stringstream str;
+
+    if (pCallbackData->pMessageIdName)
+      str << pCallbackData->pMessageIdName << ": " << std::endl;
+
+    str << pCallbackData->pMessage;
+
+    Logger::log(logLevel, str.str());
+    return VK_FALSE;
+  }
+
 }

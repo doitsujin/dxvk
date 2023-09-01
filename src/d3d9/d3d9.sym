@@ -1,0 +1,26 @@
+{
+  global:
+    Direct3DCreate9;
+    Direct3DCreate9Ex;
+    D3DPERF_BeginEvent;
+    D3DPERF_EndEvent;
+    D3DPERF_SetMarker;
+    D3DPERF_SetRegion;
+    D3DPERF_QueryRepeatFrame;
+    D3DPERF_SetOptions;
+    D3DPERF_GetStatus;
+    DebugSetMute;
+    DebugSetLevel;
+    PSGPError;
+    PSGPSampleTexture;
+    Direct3DShaderValidatorCreate9;
+    Direct3D9EnableMaximizedWindowedModeShim;
+    DXVK_RegisterAnnotation;
+    DXVK_UnRegisterAnnotation;
+    Direct3D9ForceHybridEnumeration;
+    Direct3DCreate9On12;
+    Direct3DCreate9On12Ex;
+
+  local:
+    *;
+};

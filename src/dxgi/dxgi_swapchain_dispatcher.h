@@ -8,8 +8,9 @@ namespace dxvk {
 
   public:
 
-    DxgiSwapChainDispatcher(IDXGISwapChain4* dispatch)
-      : m_dispatch(dispatch) {
+    DxgiSwapChainDispatcher(IDXGISwapChain4* dispatch, IUnknown* device)
+      : m_device(device),
+        m_dispatch(dispatch) {
     }
 
     virtual ~DxgiSwapChainDispatcher() {
@@ -60,8 +61,11 @@ namespace dxvk {
         return S_OK;
       }
 
-      Logger::warn("DxgiSwapChainDispatcher::QueryInterface: Unknown interface query");
-      Logger::warn(str::format(riid));
+      if (logQueryInterfaceError(__uuidof(IDXGISwapChain), riid)) {
+        Logger::warn("DxgiSwapChainDispatcher::QueryInterface: Unknown interface query");
+        Logger::warn(str::format(riid));
+      }
+
       return m_dispatch->QueryInterface(riid, ppvObject);
     }
 
@@ -224,7 +228,9 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE SetFullscreenState(
             BOOL                      Fullscreen,
             IDXGIOutput*              pTarget) final {
-      return m_dispatch->SetFullscreenState(Fullscreen, pTarget);
+      if (likely(m_dispatch != nullptr))
+        return m_dispatch->SetFullscreenState(Fullscreen, pTarget);
+      return S_OK;
     }
 
 
@@ -293,6 +299,10 @@ namespace dxvk {
     }
 
   private:
+
+    // m_device is not used or reference counted, provided for compatibility with mod engines
+    // which expect to find device pointer in the memory after swapchain interface.
+    IUnknown* m_device;
 
     IDXGISwapChain4* m_dispatch;
 

@@ -1,7 +1,10 @@
 #pragma once
 
+#include <atomic>
 #include <mutex>
 #include <vector>
+
+#include "../util/util_small_vector.h"
 
 #include "dxvk_resource.h"
 
@@ -149,7 +152,10 @@ namespace dxvk {
      * \returns Current query handle
      */
     DxvkGpuQueryHandle handle() const {
-      return m_handle;
+      if (m_handles.empty())
+        return DxvkGpuQueryHandle();
+
+      return m_handles.back();
     }
 
     /**
@@ -182,7 +188,7 @@ namespace dxvk {
      * \returns Current query status
      */
     DxvkGpuQueryStatus getData(
-            DxvkQueryData&      queryData) const;
+            DxvkQueryData&      queryData);
 
     /**
      * \brief Begins query
@@ -222,15 +228,16 @@ namespace dxvk {
     VkQueryType         m_type;
     VkQueryControlFlags m_flags;
     uint32_t            m_index;
-    bool                m_ended;
+    std::atomic<bool>   m_ended;
 
-    DxvkGpuQueryHandle  m_handle;
+    DxvkQueryData       m_queryData = { };
+
+    small_vector<DxvkGpuQueryHandle, 8> m_handles;
     
-    std::vector<DxvkGpuQueryHandle> m_handles;
-    
-    DxvkGpuQueryStatus getDataForHandle(
-            DxvkQueryData&      queryData,
-      const DxvkGpuQueryHandle& handle) const;
+    DxvkGpuQueryStatus accumulateQueryDataForHandle(
+      const DxvkGpuQueryHandle& handle);
+
+    DxvkGpuQueryStatus accumulateQueryData();
 
   };
 

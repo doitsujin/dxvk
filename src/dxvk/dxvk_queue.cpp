@@ -3,8 +3,8 @@
 
 namespace dxvk {
   
-  DxvkSubmissionQueue::DxvkSubmissionQueue(DxvkDevice* device)
-  : m_device(device),
+  DxvkSubmissionQueue::DxvkSubmissionQueue(DxvkDevice* device, const DxvkQueueCallback& callback)
+  : m_device(device), m_callback(callback),
     m_submitThread([this] () { submitCmdLists(); }),
     m_finishThread([this] () { finishCmdLists(); }) {
 
@@ -12,10 +12,12 @@ namespace dxvk {
   
   
   DxvkSubmissionQueue::~DxvkSubmissionQueue() {
+    auto vk = m_device->vkd();
+
     { std::unique_lock<dxvk::mutex> lock(m_mutex);
       m_stopped.store(true);
     }
-    
+
     m_appendCond.notify_all();
     m_submitCond.notify_all();
 
@@ -24,7 +26,7 @@ namespace dxvk {
   }
   
   
-  void DxvkSubmissionQueue::submit(DxvkSubmitInfo submitInfo) {
+  void DxvkSubmissionQueue::submit(DxvkSubmitInfo submitInfo, DxvkSubmitStatus* status) {
     std::unique_lock<dxvk::mutex> lock(m_mutex);
 
     m_finishCond.wait(lock, [this] {
@@ -32,9 +34,9 @@ namespace dxvk {
     });
 
     DxvkSubmitEntry entry = { };
+    entry.status = status;
     entry.submit = std::move(submitInfo);
 
-    m_pending += 1;
     m_submitQueue.push(std::move(entry));
     m_appendCond.notify_all();
   }
@@ -71,12 +73,31 @@ namespace dxvk {
   }
 
 
+  void DxvkSubmissionQueue::waitForIdle() {
+    std::unique_lock<dxvk::mutex> lock(m_mutex);
+
+    m_submitCond.wait(lock, [this] {
+      return m_submitQueue.empty();
+    });
+
+    m_finishCond.wait(lock, [this] {
+      return m_finishQueue.empty();
+    });
+  }
+
+
   void DxvkSubmissionQueue::lockDeviceQueue() {
     m_mutexQueue.lock();
+
+    if (m_callback)
+      m_callback(true);
   }
 
 
   void DxvkSubmissionQueue::unlockDeviceQueue() {
+    if (m_callback)
+      m_callback(false);
+
     m_mutexQueue.unlock();
   }
 
@@ -98,37 +119,42 @@ namespace dxvk {
       lock.unlock();
 
       // Submit command buffer to device
-      VkResult status = VK_NOT_READY;
-
       if (m_lastError != VK_ERROR_DEVICE_LOST) {
         std::lock_guard<dxvk::mutex> lock(m_mutexQueue);
 
-        if (entry.submit.cmdList != nullptr) {
-          status = entry.submit.cmdList->submit(
-            entry.submit.waitSync,
-            entry.submit.wakeSync);
-        } else if (entry.present.presenter != nullptr) {
-          status = entry.present.presenter->presentImage();
-        }
+        if (m_callback)
+          m_callback(true);
+
+        if (entry.submit.cmdList != nullptr)
+          entry.result = entry.submit.cmdList->submit();
+        else if (entry.present.presenter != nullptr)
+          entry.result = entry.present.presenter->presentImage(entry.present.presentMode, entry.present.frameId);
+
+        if (m_callback)
+          m_callback(false);
       } else {
         // Don't submit anything after device loss
         // so that drivers get a chance to recover
-        status = VK_ERROR_DEVICE_LOST;
+        entry.result = VK_ERROR_DEVICE_LOST;
       }
 
       if (entry.status)
-        entry.status->result = status;
+        entry.status->result = entry.result;
       
       // On success, pass it on to the queue thread
       lock = std::unique_lock<dxvk::mutex>(m_mutex);
 
-      if (status == VK_SUCCESS) {
-        if (entry.submit.cmdList != nullptr)
-          m_finishQueue.push(std::move(entry));
-      } else if (status == VK_ERROR_DEVICE_LOST || entry.submit.cmdList != nullptr) {
-        Logger::err(str::format("DxvkSubmissionQueue: Command submission failed: ", status));
-        m_lastError = status;
-        m_device->waitForIdle();
+      bool doForward = (entry.result == VK_SUCCESS) ||
+        (entry.present.presenter != nullptr && entry.result != VK_ERROR_DEVICE_LOST);
+
+      if (doForward) {
+        m_finishQueue.push(std::move(entry));
+      } else {
+        Logger::err(str::format("DxvkSubmissionQueue: Command submission failed: ", entry.result));
+        m_lastError = entry.result;
+
+        if (m_lastError != VK_ERROR_DEVICE_LOST)
+          m_device->waitForIdle();
       }
 
       m_submitQueue.pop();
@@ -160,32 +186,43 @@ namespace dxvk {
       DxvkSubmitEntry entry = std::move(m_finishQueue.front());
       lock.unlock();
       
-      VkResult status = m_lastError.load();
-      
-      if (status != VK_ERROR_DEVICE_LOST)
-        status = entry.submit.cmdList->synchronize();
-      
-      if (status != VK_SUCCESS) {
-        Logger::err(str::format("DxvkSubmissionQueue: Failed to sync fence: ", status));
-        m_lastError = status;
-        m_device->waitForIdle();
+      if (entry.submit.cmdList != nullptr) {
+        VkResult status = m_lastError.load();
+        
+        if (status != VK_ERROR_DEVICE_LOST)
+          status = entry.submit.cmdList->synchronizeFence();
+        
+        if (status != VK_SUCCESS) {
+          m_lastError = status;
+
+          if (status != VK_ERROR_DEVICE_LOST)
+            m_device->waitForIdle();
+        }
+      } else if (entry.present.presenter != nullptr) {
+        // Signal the frame and then immediately destroy the reference.
+        // This is necessary since the front-end may want to explicitly
+        // destroy the presenter object. 
+        entry.present.presenter->signalFrame(entry.result,
+          entry.present.presentMode, entry.present.frameId);
+        entry.present.presenter = nullptr;
       }
 
       // Release resources and signal events, then immediately wake
       // up any thread that's currently waiting on a resource in
       // order to reduce delays as much as possible.
-      entry.submit.cmdList->notifyObjects();
+      if (entry.submit.cmdList != nullptr)
+        entry.submit.cmdList->notifyObjects();
 
       lock.lock();
-      m_pending -= 1;
-
       m_finishQueue.pop();
       m_finishCond.notify_all();
       lock.unlock();
 
       // Free the command list and associated objects now
-      entry.submit.cmdList->reset();
-      m_device->recycleCommandList(entry.submit.cmdList);
+      if (entry.submit.cmdList != nullptr) {
+        entry.submit.cmdList->reset();
+        m_device->recycleCommandList(entry.submit.cmdList);
+      }
     }
   }
   

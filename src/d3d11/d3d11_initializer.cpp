@@ -9,7 +9,7 @@ namespace dxvk {
           D3D11Device*                pParent)
   : m_parent(pParent),
     m_device(pParent->GetDXVKDevice()),
-    m_context(m_device->createContext()) {
+    m_context(m_device->createContext(DxvkContextType::Supplementary)) {
     m_context->beginRecording(
       m_device->createCommandList());
   }
@@ -30,37 +30,47 @@ namespace dxvk {
   void D3D11Initializer::InitBuffer(
           D3D11Buffer*                pBuffer,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
-    VkMemoryPropertyFlags memFlags = pBuffer->GetBuffer()->memFlags();
+    if (!(pBuffer->Desc()->MiscFlags & D3D11_RESOURCE_MISC_TILED)) {
+      VkMemoryPropertyFlags memFlags = pBuffer->GetBuffer()->memFlags();
 
-    (memFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-      ? InitHostVisibleBuffer(pBuffer, pInitialData)
-      : InitDeviceLocalBuffer(pBuffer, pInitialData);
+      (memFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+        ? InitHostVisibleBuffer(pBuffer, pInitialData)
+        : InitDeviceLocalBuffer(pBuffer, pInitialData);
+    }
   }
   
 
   void D3D11Initializer::InitTexture(
           D3D11CommonTexture*         pTexture,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
-    (pTexture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT)
-      ? InitHostVisibleTexture(pTexture, pInitialData)
-      : InitDeviceLocalTexture(pTexture, pInitialData);
+    if (pTexture->Desc()->MiscFlags & D3D11_RESOURCE_MISC_TILED)
+      InitTiledTexture(pTexture);
+    else if (pTexture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT)
+      InitHostVisibleTexture(pTexture, pInitialData);
+    else
+      InitDeviceLocalTexture(pTexture, pInitialData);
+
+    SyncKeyedMutex(pTexture->GetInterface());
   }
 
 
   void D3D11Initializer::InitUavCounter(
           D3D11UnorderedAccessView*   pUav) {
-    auto counterBuffer = pUav->GetCounterSlice();
+    auto counterView = pUav->GetCounterView();
 
-    if (!counterBuffer.defined())
+    if (counterView == nullptr)
       return;
+
+    auto counterSlice = counterView->slice();
 
     std::lock_guard<dxvk::mutex> lock(m_mutex);
     m_transferCommands += 1;
 
     const uint32_t zero = 0;
     m_context->updateBuffer(
-      counterBuffer.buffer(),
-      0, sizeof(zero), &zero);
+      counterSlice.buffer(),
+      counterSlice.offset(),
+      sizeof(zero), &zero);
 
     FlushImplicit();
   }
@@ -123,7 +133,7 @@ namespace dxvk {
     auto desc = pTexture->Desc();
 
     VkFormat packedFormat = m_parent->LookupPackedFormat(desc->Format, pTexture->GetFormatMode()).Format;
-    auto formatInfo = imageFormatInfo(packedFormat);
+    auto formatInfo = lookupFormatInfo(packedFormat);
 
     if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {
       // pInitialData is an array that stores an entry for
@@ -253,6 +263,15 @@ namespace dxvk {
   }
 
 
+  void D3D11Initializer::InitTiledTexture(
+          D3D11CommonTexture*         pTexture) {
+    m_context->initSparseImage(pTexture->GetImage());
+
+    m_transferCommands += 1;
+    FlushImplicit();
+  }
+
+
   void D3D11Initializer::FlushImplicit() {
     if (m_transferCommands > MaxTransferCommands
      || m_transferMemory   > MaxTransferMemory)
@@ -261,10 +280,20 @@ namespace dxvk {
 
 
   void D3D11Initializer::FlushInternal() {
-    m_context->flushCommandList();
+    m_context->flushCommandList(nullptr);
     
     m_transferCommands = 0;
     m_transferMemory   = 0;
+  }
+
+
+  void D3D11Initializer::SyncKeyedMutex(ID3D11Resource *pResource) {
+    Com<IDXGIKeyedMutex> keyedMutex;
+    if (pResource->QueryInterface(__uuidof(IDXGIKeyedMutex), reinterpret_cast<void**>(&keyedMutex)) != S_OK)
+      return;
+
+    keyedMutex->AcquireSync(0, 0);
+    keyedMutex->ReleaseSync(0);
   }
 
 }

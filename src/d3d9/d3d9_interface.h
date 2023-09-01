@@ -1,6 +1,8 @@
 #pragma once
 
 #include "d3d9_adapter.h"
+#include "d3d9_bridge.h"
+#include "d3d9_interop.h"
 
 #include "../dxvk/dxvk_instance.h"
 
@@ -18,6 +20,8 @@ namespace dxvk {
   public:
 
     D3D9InterfaceEx(bool bExtended);
+
+    ~D3D9InterfaceEx();
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 
@@ -137,11 +141,15 @@ namespace dxvk {
 
     Rc<DxvkInstance>              m_instance;
 
+    DxvkD3D8InterfaceBridge       m_d3d8Bridge;
+
     bool                          m_extended;
 
     D3D9Options                   m_d3d9Options;
 
     std::vector<D3D9Adapter>      m_adapters;
+
+    D3D9VkInteropInterface        m_d3d9Interop;
 
   };
 

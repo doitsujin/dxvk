@@ -52,10 +52,15 @@ namespace dxvk {
       
       case DxbcInstClass::BufferLoad: {
         uint32_t operandId = ins.op == DxbcOpcode::LdStructured ? 2 : 1;
+        bool sparseFeedback = ins.dstCount == 2;
 
         if (ins.src[operandId].type == DxbcOperandType::UnorderedAccessView) {
           const uint32_t registerId = ins.src[operandId].idx[0].offset;
           m_analysis->uavInfos[registerId].accessFlags |= VK_ACCESS_SHADER_READ_BIT;
+          m_analysis->uavInfos[registerId].sparseFeedback |= sparseFeedback;
+        } else if (ins.src[operandId].type == DxbcOperandType::Resource) {
+          const uint32_t registerId = ins.src[operandId].idx[0].offset;
+          m_analysis->srvInfos[registerId].sparseFeedback |= sparseFeedback;
         }
       } break;
         

@@ -175,8 +175,8 @@ namespace dxvk::hud {
   private:
 
     std::string m_deviceName;
+    std::string m_driverName;
     std::string m_driverVer;
-    std::string m_vulkanVer;
 
   };
 
@@ -330,8 +330,36 @@ namespace dxvk::hud {
 
     Rc<DxvkDevice> m_device;
 
-    uint64_t m_graphicsPipelines = 0;
-    uint64_t m_computePipelines = 0;
+    uint64_t m_graphicsPipelines  = 0;
+    uint64_t m_graphicsLibraries  = 0;
+    uint64_t m_computePipelines   = 0;
+
+  };
+
+
+  /**
+   * \brief HUD item to display descriptor stats
+   */
+  class HudDescriptorStatsItem : public HudItem {
+
+  public:
+
+    HudDescriptorStatsItem(const Rc<DxvkDevice>& device);
+
+    ~HudDescriptorStatsItem();
+
+    void update(dxvk::high_resolution_clock::time_point time);
+
+    HudPos render(
+            HudRenderer&      renderer,
+            HudPos            position);
+
+  private:
+
+    Rc<DxvkDevice> m_device;
+
+    uint64_t m_descriptorPoolCount = 0;
+    uint64_t m_descriptorSetCount  = 0;
 
   };
 
@@ -454,10 +482,17 @@ namespace dxvk::hud {
 
     Rc<DxvkDevice> m_device;
 
-    bool m_show = false;
+    bool m_show           = false;
+    bool m_showPercentage = false;
 
-    dxvk::high_resolution_clock::time_point m_timeShown
-      = dxvk::high_resolution_clock::now();
+    uint64_t m_tasksDone    = 0ull;
+    uint64_t m_tasksTotal   = 0ull;
+    uint64_t m_offset       = 0ull;
+
+    dxvk::high_resolution_clock::time_point m_timeShown = dxvk::high_resolution_clock::now();
+    dxvk::high_resolution_clock::time_point m_timeDone = dxvk::high_resolution_clock::now();
+
+    uint32_t computePercentage() const;
 
   };
 

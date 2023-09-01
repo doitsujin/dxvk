@@ -80,7 +80,7 @@ namespace dxvk {
     uint32_t          colorTypeId   = 0;
     uint32_t          depthTypeId   = 0;
     uint32_t          structStride  = 0;
-    uint32_t          structAlign   = 0;
+    bool              isRawSsbo     = false;
   };
   
   
@@ -100,7 +100,8 @@ namespace dxvk {
     uint32_t          sampledTypeId = 0;
     uint32_t          imageTypeId   = 0;
     uint32_t          structStride  = 0;
-    uint32_t          structAlign   = 0;
+    uint32_t          coherence     = 0;
+    bool              isRawSsbo     = false;
   };
   
   
@@ -328,7 +329,7 @@ namespace dxvk {
     }
     
     DxbcUavFlags uavFlags() const {
-      return DxbcUavFlags(bit::extract(m_bits, 16, 16));
+      return DxbcUavFlags(bit::extract(m_bits, 16, 17));
     }
 
     DxbcConstantBufferAccessType accessType() const {

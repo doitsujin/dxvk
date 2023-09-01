@@ -6,6 +6,14 @@
 namespace dxvk {
 
   /**
+   * \brief Push constant struct
+   */
+  struct DxbcPushConstants {
+    uint32_t rasterizerSampleCount;
+  };
+
+
+  /**
    * \brief Binding numbers and properties
    */
   enum DxbcBindingProperties : uint32_t {
