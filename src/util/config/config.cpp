@@ -37,7 +37,7 @@ namespace dxvk {
     { R"(\\evelauncher\.exe$)", {{
       { "d3d11.maxFeatureLevel",            "12_1" },
     }} },
-    /* The Evil Within: Submits command lists     * 
+    /* The Evil Within: Submits command lists     *
      * multiple times                             */
     { R"(\\EvilWithin(Demo)?\.exe$)", {{
       { "d3d11.dcSingleUseMode",            "False" },
@@ -464,7 +464,7 @@ namespace dxvk {
       { "d3d9.memoryTrackTest",             "True" },
     }} },
     /* Dead Space uses the a NULL render target instead
-       of a 1x1 one if DF24 is NOT supported     
+       of a 1x1 one if DF24 is NOT supported
        Mouse and physics issues above 60 FPS
        Built-in Vsync Locks the game to 30 FPS    */
     { R"(\\Dead Space\.exe$)", {{
@@ -660,7 +660,7 @@ namespace dxvk {
       { "d3d9.memoryTrackTest",             "True" },
       { "d3d9.maxAvailableMemory",          "2048" },
     }} },
-    /* Myst V End of Ages                             
+    /* Myst V End of Ages
        Game has white textures on amd radv.
        Expects Nvidia, Intel or ATI VendorId.
        "Radeon" in gpu description also works   */
@@ -675,7 +675,7 @@ namespace dxvk {
     { R"(\\swtor\.exe$)", {{
       { "d3d9.forceSamplerTypeSpecConstants", "True" },
     }} },
-    /* Bionic Commando                          
+    /* Bionic Commando
        Physics break at high fps               */
     { R"(\\bionic_commando\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
@@ -811,11 +811,11 @@ namespace dxvk {
     { R"(\\drakensang\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
-    
+
     /**********************************************/
     /* D3D12 GAMES (vkd3d-proton with dxvk dxgi)  */
     /**********************************************/
-    
+
     /* Diablo 4 - Will complain about missing  *
      * GPU unless dxgi Id match actual GPU Id  */
     { R"(\\Diablo IV\.exe$)", {{
@@ -841,7 +841,7 @@ namespace dxvk {
     return ch == ' ' || ch == '\x9' || ch == '\r';
   }
 
-  
+
   static bool isValidKeyChar(char ch) {
     return (ch >= '0' && ch <= '9')
         || (ch >= 'A' && ch <= 'Z')
@@ -878,12 +878,12 @@ namespace dxvk {
 
       while (n < e)
         key << line[n++];
-      
+
       ctx.active = key.str() == env::getExeName();
     } else {
       while (n < line.size() && isValidKeyChar(line[n]))
         key << line[n++];
-      
+
       // Check whether the next char is a '='
       n = skipWhitespace(line, n);
       if (n >= line.size() || line[n] != '=')
@@ -903,7 +903,7 @@ namespace dxvk {
         } else
           value << line[n++];
       }
-      
+
       if (ctx.active)
         config.setOption(key.str(), value.str());
     }
@@ -963,7 +963,7 @@ namespace dxvk {
           int32_t&      result) {
     if (value.size() == 0)
       return false;
-    
+
     // Parse sign, don't allow '+'
     int32_t sign = 1;
     size_t start = 0;
@@ -979,7 +979,7 @@ namespace dxvk {
     for (size_t i = start; i < value.size(); i++) {
       if (value[i] < '0' || value[i] > '9')
         return false;
-      
+
       intval *= 10;
       intval += value[i] - '0';
     }
@@ -988,8 +988,8 @@ namespace dxvk {
     result = sign * intval;
     return true;
   }
-  
-  
+
+
   bool Config::parseOptionValue(
     const std::string&  value,
           float&        result) {
@@ -1091,7 +1091,7 @@ namespace dxvk {
         std::regex expr(pair.first, std::regex::extended | std::regex::icase);
         return std::regex_search(appName, expr);
       });
-    
+
     if (appConfig != g_appDefaults.end()) {
       // Inform the user that we loaded a default config
       Logger::info(str::format("Found built-in config:"));
@@ -1115,7 +1115,7 @@ namespace dxvk {
 
     if (filePath == "")
       filePath = "dxvk.conf";
-    
+
     // Open the file if it exists
     std::ifstream stream(str::topath(filePath.c_str()).c_str());
 
