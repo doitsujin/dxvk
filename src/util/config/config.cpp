@@ -294,7 +294,7 @@ namespace dxvk {
     }} },
     /* Garden Warfare 2
        Won't start on amd Id without atiadlxx     */
-    { R"(\\GW2.Main_Win64_Retail\.exe$)", {{
+    { R"(\\GW2\.Main_Win64_Retail\.exe$)", {{
       { "dxgi.customVendorId",              "10de"   },
     }} },
     /* DayZ */
@@ -396,7 +396,7 @@ namespace dxvk {
       { "dxgi.syncInterval",                "1" },
     }} },
     /* Blizzard Entertainment Battle.net          */
-    { R"(\\Battle.net\.exe$)", {{
+    { R"(\\Battle\.net\.exe$)", {{
       { "dxvk.maxChunkSize",                "1" },
     }} },
     /* Bladestorm Nightmare                       *
@@ -804,7 +804,7 @@ namespace dxvk {
       { "d3d9.maxFrameRate",                "60" },
     }} },
     /* Project: Snowblind                      */
-    { R"(\\Snowblind(.SP|.MP|.exe)$)", {{
+    { R"(\\Snowblind\.(SP|MP|exe)$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
     /* Drakensang: The Dark Eye                */
