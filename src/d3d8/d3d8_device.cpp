@@ -541,14 +541,14 @@ namespace dxvk {
    * The following table shows the possible combinations of source
    * and destination surface pools, and how we handle each of them.
    * 
-   *     ┌────────────┬───────────────────────────┬───────────┬───────────────────────┬──────────┐
-   *     │ Src/Dst    │ DEFAULT                   │ MANAGED   │ SYSTEMMEM             │ SCRATCH  │
-   *     ├────────────┼───────────────────────────┼───────────┼───────────────────────┼──────────┤
-   *     │ DEFAULT    │  StretchRect              │  -        │  GetRenderTargetData  │ -        │
-   *     │ MANAGED    │  UpdateTextureFromBuffer  │  memcpy   │  memcpy               │ -        │
-   *     │ SYSTEMMEM  │  UpdateSurface            │  memcpy   │  memcpy               │ -        │
-   *     │ SCRATCH    │  -                        │  -        │  -                    │ -        │
-   *     └────────────┴───────────────────────────┴───────────┴───────────────────────┴──────────┘
+   *     ┌────────────┬───────────────────────────┬───────────────────────┬───────────────────────┬──────────┐
+   *     │ Src/Dst    │ DEFAULT                   │ MANAGED               │ SYSTEMMEM             │ SCRATCH  │
+   *     ├────────────┼───────────────────────────┼───────────────────────┼───────────────────────┼──────────┤
+   *     │ DEFAULT    │  StretchRect              │  GetRenderTargetData  │  GetRenderTargetData  │ -        │
+   *     │ MANAGED    │  UpdateTextureFromBuffer  │  memcpy               │  memcpy               │ -        │
+   *     │ SYSTEMMEM  │  UpdateSurface            │  memcpy               │  memcpy               │ -        │
+   *     │ SCRATCH    │  -                        │  -                    │  -                    │ -        │
+   *     └────────────┴───────────────────────────┴───────────────────────┴───────────────────────┴──────────┘
    */
   HRESULT STDMETHODCALLTYPE D3D8Device::CopyRects(
           IDirect3DSurface8*  pSourceSurface,
@@ -667,8 +667,25 @@ namespace dxvk {
         case D3DPOOL_MANAGED:
           switch (srcDesc.Pool) {
             case  D3DPOOL_DEFAULT: {
-              // TODO: (copy on GPU)
-              goto unhandled;
+              // TODO: Copy on GPU (handle MANAGED similarly to SYSTEMMEM for now)
+              
+              // Get temporary off-screen surface for stretching.
+              Com<d3d9::IDirect3DSurface9> pBlitImage = dst->GetBlitImage();
+
+              // Stretch the source RT to the temporary surface.
+              res = GetD3D9()->StretchRect(
+                src->GetD3D9(),
+                &srcRect,
+                pBlitImage.ptr(),
+                &dstRect,
+                d3d9::D3DTEXF_NONE);
+              if (FAILED(res)) {
+                goto done;
+              }
+
+              // Now sync the rendertarget data into main memory.
+              res = GetD3D9()->GetRenderTargetData(pBlitImage.ptr(), dst->GetD3D9());
+              goto done;
             }
             case D3DPOOL_MANAGED:
             case D3DPOOL_SYSTEMMEM: {
