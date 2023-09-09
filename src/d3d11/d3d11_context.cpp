@@ -406,12 +406,19 @@ namespace dxvk {
 
     VkClearValue clearValue;
 
-    // R11G11B10 is a special case since there's no corresponding
-    // integer format with the same bit layout. Use R32 instead.
-    if (uavFormat == VK_FORMAT_B10G11R11_UFLOAT_PACK32) {
+    if (uavDesc.Format == DXGI_FORMAT_R11G11B10_FLOAT) {
+      // R11G11B10 is a special case since there's no corresponding
+      // integer format with the same bit layout. Use R32 instead.
       clearValue.color.uint32[0] = ((Values[0] & 0x7FF) <<  0)
                                  | ((Values[1] & 0x7FF) << 11)
                                  | ((Values[2] & 0x3FF) << 22);
+      clearValue.color.uint32[1] = 0;
+      clearValue.color.uint32[2] = 0;
+      clearValue.color.uint32[3] = 0;
+    } else if (uavDesc.Format == DXGI_FORMAT_A8_UNORM) {
+      // We need to use R8_UINT to clear A8_UNORM images,
+      // so remap the alpha component to the red channel.
+      clearValue.color.uint32[0] = Values[3];
       clearValue.color.uint32[1] = 0;
       clearValue.color.uint32[2] = 0;
       clearValue.color.uint32[3] = 0;
@@ -3389,8 +3396,24 @@ namespace dxvk {
   }
 
 
+  static VkDepthBiasRepresentationEXT FormatToDepthBiasRepresentation(DXGI_FORMAT format) {
+    switch (format) {
+      default:
+      case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+      case DXGI_FORMAT_D32_FLOAT:
+        return VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORMAT_EXT;
+
+      case DXGI_FORMAT_D24_UNORM_S8_UINT:
+      case DXGI_FORMAT_D16_UNORM:
+        return VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORCE_UNORM_EXT;
+    }
+  }
+
   template<typename ContextType>
   void D3D11CommonContext<ContextType>::BindFramebuffer() {
+    DxvkDepthBiasRepresentation depthBiasRepresentation =
+      { VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORMAT_EXT,
+        m_device->features().extDepthBiasControl.depthBiasExact };
     DxvkRenderTargets attachments;
     uint32_t sampleCount = 0;
 
@@ -3411,12 +3434,17 @@ namespace dxvk {
         m_state.om.dsv->GetImageView(),
         m_state.om.dsv->GetRenderLayout() };
       sampleCount = m_state.om.dsv->GetSampleCount();
+
+      if (m_device->features().extDepthBiasControl.leastRepresentableValueForceUnormRepresentation)
+        depthBiasRepresentation.depthBiasRepresentation = FormatToDepthBiasRepresentation(m_state.om.dsv->GetViewFormat());
     }
 
     // Create and bind the framebuffer object to the context
     EmitCs([
-      cAttachments = std::move(attachments)
+      cAttachments    = std::move(attachments),
+      cRepresentation = depthBiasRepresentation
     ] (DxvkContext* ctx) mutable {
+      ctx->setDepthBiasRepresentation(cRepresentation);
       ctx->bindRenderTargets(Forwarder::move(cAttachments), 0u);
     });
 
@@ -5380,6 +5408,7 @@ namespace dxvk {
     pRsState->conservativeMode = VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
     pRsState->sampleCount     = 0;
     pRsState->flatShading     = VK_FALSE;
+    pRsState->lineMode        = VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT;
   }
 
 

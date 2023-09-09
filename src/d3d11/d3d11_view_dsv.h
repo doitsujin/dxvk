@@ -77,6 +77,10 @@ namespace dxvk {
       return mask;
     }
 
+    DXGI_FORMAT GetViewFormat() const {
+      return m_desc.Format;
+    }
+
     D3D10DepthStencilView* GetD3D10Iface() {
       return &m_d3d10;
     }

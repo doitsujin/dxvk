@@ -9,6 +9,9 @@
 #define VULKAN_FN(name) \
   ::PFN_ ## name name = reinterpret_cast<::PFN_ ## name>(sym(#name))
 
+using PFN_wine_vkAcquireKeyedMutex = VkResult (VKAPI_PTR *)(VkDevice device, VkDeviceMemory memory, uint64_t key, uint32_t timeout_ms);
+using PFN_wine_vkReleaseKeyedMutex = VkResult (VKAPI_PTR *)(VkDevice device, VkDeviceMemory memory, uint64_t key);
+
 namespace dxvk::vk {
 
   /**
@@ -161,6 +164,10 @@ namespace dxvk::vk {
     #ifdef VK_EXT_full_screen_exclusive
     VULKAN_FN(vkGetPhysicalDeviceSurfacePresentModes2EXT);
     #endif
+
+    #ifdef VK_EXT_swapchain_maintenance1
+    VULKAN_FN(vkReleaseSwapchainImagesEXT);
+    #endif
   };
   
   
@@ -268,6 +275,7 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdSetScissor);
     VULKAN_FN(vkCmdSetLineWidth);
     VULKAN_FN(vkCmdSetDepthBias);
+    VULKAN_FN(vkCmdSetDepthBias2EXT);
     VULKAN_FN(vkCmdSetBlendConstants);
     VULKAN_FN(vkCmdSetDepthBounds);
     VULKAN_FN(vkCmdSetStencilCompareMask);
@@ -378,6 +386,7 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdSetConservativeRasterizationModeEXT);
     VULKAN_FN(vkCmdSetExtraPrimitiveOverestimationSizeEXT);
     VULKAN_FN(vkCmdSetDepthClipEnableEXT);
+    VULKAN_FN(vkCmdSetLineRasterizationModeEXT);
     #endif
 
     #ifdef VK_EXT_full_screen_exclusive
@@ -425,6 +434,23 @@ namespace dxvk::vk {
     #ifdef VK_KHR_external_semaphore_win32
     VULKAN_FN(vkGetSemaphoreWin32HandleKHR);
     VULKAN_FN(vkImportSemaphoreWin32HandleKHR);
+    #endif
+
+    #ifdef VK_KHR_maintenance5
+    VULKAN_FN(vkCmdBindIndexBuffer2KHR);
+    VULKAN_FN(vkGetRenderingAreaGranularityKHR);
+    VULKAN_FN(vkGetDeviceImageSubresourceLayoutKHR);
+    VULKAN_FN(vkGetImageSubresourceLayout2KHR);
+    #endif
+
+    #ifdef VK_KHR_present_wait
+    VULKAN_FN(vkWaitForPresentKHR);
+    #endif
+
+    #ifdef VK_KHR_win32_keyed_mutex
+    // Wine additions to actually use this extension.
+    VULKAN_FN(wine_vkAcquireKeyedMutex);
+    VULKAN_FN(wine_vkReleaseKeyedMutex);
     #endif
   };
   

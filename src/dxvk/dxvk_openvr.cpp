@@ -305,11 +305,14 @@ namespace dxvk {
 
 
   HMODULE VrInstance::loadLibrary() {
-    HMODULE handle = nullptr;
-    if (!(handle = ::GetModuleHandle("openvr_api.dll"))) {
+    HMODULE handle;
+
+    // Use openvr_api.dll only if already loaded in the process (and reference it which GetModuleHandleEx does without
+    // GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT flag).
+    if (!::GetModuleHandleEx(0, "openvr_api.dll", &handle))
       handle = ::LoadLibrary("openvr_api_dxvk.dll");
-      m_loadedOvrApi = handle != nullptr;
-    }
+
+    m_loadedOvrApi = handle != nullptr;
     return handle;
   }
 

@@ -1104,7 +1104,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       uint32_t inputIndex = (m_vsKey.Data.Contents.TexcoordIndices     >> (i * 3)) & 0b111;
       uint32_t inputFlags = (m_vsKey.Data.Contents.TexcoordFlags       >> (i * 3)) & 0b111;
-      uint32_t texcoordCount = (m_vsKey.Data.Contents.TexcoordDeclMask >> (i * 3)) & 0b111;
+      uint32_t texcoordCount = (m_vsKey.Data.Contents.TexcoordDeclMask >> (inputIndex * 3)) & 0b111;
 
       uint32_t transformed;
 
@@ -1809,8 +1809,9 @@ namespace dxvk {
             texcoord, texcoord, texcoordCnt, indices.data());
 
           uint32_t projIdx = m_fsKey.Stages[i].Contents.ProjectedCount;
-          if (projIdx == 0 || projIdx > texcoordCnt)
-            projIdx = texcoordCnt;
+          if (projIdx == 0 || projIdx > texcoordCnt) {
+            projIdx = 4; // Always use w if ProjectedCount is 0.
+          }
           --projIdx;
 
           uint32_t projValue = 0;

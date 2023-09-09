@@ -2,8 +2,6 @@
 
 #include <limits>
 
-#include "../vulkan/vulkan_presenter.h"
-
 #include "dxvk_bind_mask.h"
 #include "dxvk_buffer.h"
 #include "dxvk_descriptor.h"
@@ -14,6 +12,7 @@
 #include "dxvk_lifetime.h"
 #include "dxvk_limits.h"
 #include "dxvk_pipelayout.h"
+#include "dxvk_presenter.h"
 #include "dxvk_signal.h"
 #include "dxvk_sparse.h"
 #include "dxvk_staging.h"
@@ -354,7 +353,7 @@ namespace dxvk {
      * The given semaphores must be binary semaphores.
      * \param [in] wsiSemaphores Pair of WSI semaphores
      */
-    void setWsiSemaphores(const vk::PresenterSync& wsiSemaphores) {
+    void setWsiSemaphores(const PresenterSync& wsiSemaphores) {
       m_wsiSemaphores = wsiSemaphores;
     }
 
@@ -468,6 +467,16 @@ namespace dxvk {
     }
     
     
+    void cmdBindIndexBuffer2(
+            VkBuffer                buffer,
+            VkDeviceSize            offset,
+            VkDeviceSize            size,
+            VkIndexType             indexType) {
+      m_vkd->vkCmdBindIndexBuffer2KHR(m_cmd.execBuffer,
+        buffer, offset, size, indexType);
+    }
+
+
     void cmdBindPipeline(
             VkPipelineBindPoint     pipelineBindPoint,
             VkPipeline              pipeline) {
@@ -825,6 +834,12 @@ namespace dxvk {
     }
 
 
+    void cmdSetDepthBias2(
+      const VkDepthBiasInfoEXT     *depthBiasInfo) {
+      m_vkd->vkCmdSetDepthBias2EXT(m_cmd.execBuffer, depthBiasInfo);
+    }
+
+
     void cmdSetDepthBounds(
             float                   minDepthBounds,
             float                   maxDepthBounds) {
@@ -1027,7 +1042,7 @@ namespace dxvk {
 
     DxvkCommandSubmissionInfo m_cmd;
 
-    vk::PresenterSync         m_wsiSemaphores = { };
+    PresenterSync             m_wsiSemaphores = { };
 
     DxvkLifetimeTracker       m_resources;
     DxvkSignalTracker         m_signalTracker;

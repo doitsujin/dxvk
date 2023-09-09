@@ -529,7 +529,7 @@ namespace dxvk {
     // Max Vertex Blend Matrices
     pCaps->MaxVertexBlendMatrices    = 4;
     // Max Vertex Blend Matrix Index
-    pCaps->MaxVertexBlendMatrixIndex = 8;
+    pCaps->MaxVertexBlendMatrixIndex = 0;
     // Max Point Size
     pCaps->MaxPointSize              = 256.0f;
     // Max Primitive Count

@@ -78,6 +78,8 @@ namespace dxvk {
             D3D9DeviceEx*      pDevice,
       const D3D9_BUFFER_DESC*  pDesc);
 
+    ~D3D9CommonBuffer();
+
     HRESULT Lock(
             UINT   OffsetToLock,
             UINT   SizeToLock,
@@ -89,11 +91,7 @@ namespace dxvk {
     /**
     * \brief Determine the mapping mode of the buffer, (ie. direct mapping or backed)
     */
-    inline D3D9_COMMON_BUFFER_MAP_MODE DetermineMapMode(const D3D9Options* options) const {
-      return (m_desc.Pool == D3DPOOL_DEFAULT && (m_desc.Usage & (D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY)) && options->allowDirectBufferMapping)
-        ? D3D9_COMMON_BUFFER_MAP_MODE_DIRECT
-        : D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
-    }
+    D3D9_COMMON_BUFFER_MAP_MODE DetermineMapMode(const D3D9Options* options) const;
 
     /**
     * \brief Get the mapping mode of the buffer, (ie. direct mapping or backed)
@@ -227,7 +225,7 @@ namespace dxvk {
 
     D3D9DeviceEx*               m_parent;
     const D3D9_BUFFER_DESC      m_desc;
-    DWORD                       m_mapFlags;
+    DWORD                       m_mapFlags = 0;
     bool                        m_needsReadback = false;
     D3D9_COMMON_BUFFER_MAP_MODE m_mapMode;
 

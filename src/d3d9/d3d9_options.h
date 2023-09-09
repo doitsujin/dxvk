@@ -116,9 +116,6 @@ namespace dxvk {
     /// Forces sample rate shading
     bool forceSampleRateShading;
 
-    /// Allow D3DLOCK_DISCARD
-    bool allowDiscard;
-
     /// Enumerate adapters by displays
     bool enumerateByDisplays;
 
@@ -127,12 +124,8 @@ namespace dxvk {
     /// don't match entirely to the regular vertex shader in this way.
     bool longMad;
 
-    /// Tear-free mode if vsync is disabled
-    /// Tearing mode if vsync is enabled
-    Tristate tearFree;
-
-    /// Apitrace mode: Maps all buffers in cached memory.
-    bool apitraceMode;
+    /// Cached dynamic buffers: Maps all buffers in cached memory.
+    bool cachedDynamicBuffers;
 
     /// Use device local memory for constant buffers.
     bool deviceLocalConstantBuffers;
@@ -143,6 +136,14 @@ namespace dxvk {
     /// Don't use non seamless cube maps
     bool seamlessCubes;
 
+    /// Mipmap LOD bias
+    ///
+    /// Enforces the given LOD bias for all samplers.
+    float samplerLodBias;
+
+    /// Clamps negative LOD bias
+    bool clampNegativeLodBias;
+
     /// How much virtual memory will be used for textures (in MB).
     int32_t textureMemory;
 
@@ -150,7 +151,7 @@ namespace dxvk {
     std::string shaderDumpPath;
 
     /// Enable emulation of device loss when a fullscreen app loses focus
-    bool deviceLost;
+    bool deviceLossOnFocusLoss;
   };
 
 }

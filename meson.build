@@ -1,4 +1,4 @@
-project('dxvk', ['c', 'cpp'], version : 'v2.2', meson_version : '>= 0.49', default_options : [ 'cpp_std=c++17', 'warning_level=2' ])
+project('dxvk', ['c', 'cpp'], version : 'v2.3', meson_version : '>= 0.49', default_options : [ 'cpp_std=c++17', 'warning_level=2' ])
 
 cpu_family = target_machine.cpu_family()
 platform   = target_machine.system()
@@ -57,11 +57,10 @@ if platform == 'windows'
     '-Wl,--file-alignment=4096',
   ]
 
-  # Wine's built-in back traces only work with dwarf2 symbols
+  # Wine's built-in back traces only work with dwarf4 symbols
   if get_option('debug')
     compiler_args += [
-      '-gstrict-dwarf',
-      '-gdwarf-2',
+      '-gdwarf-4',
     ]
   endif
 
@@ -69,8 +68,8 @@ if platform == 'windows'
   if cpu_family == 'x86'
     link_args += [
       '-Wl,--enable-stdcall-fixup',
-      '-Wl,--add-stdcall-alias',
-  ]
+      '-Wl,--kill-at',
+    ]
   endif
 
   lib_d3d9    = cpp.find_library('d3d9')
@@ -141,7 +140,7 @@ exe_ext = ''
 dll_ext = ''
 def_spec_ext = '.def'
 
-glsl_compiler = find_program('glslangValidator')
+glsl_compiler = find_program('glslang', 'glslangValidator')
 glsl_args = [
   '--quiet',
   '--target-env', 'vulkan1.2',

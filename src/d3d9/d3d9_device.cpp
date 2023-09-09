@@ -55,7 +55,10 @@ namespace dxvk {
     , m_isSWVP          ( (BehaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING) ? true : false )
     , m_csThread        ( dxvkDevice, dxvkDevice->createContext(DxvkContextType::Primary) )
     , m_csChunk         ( AllocCsChunk() )
-    , m_d3d9Interop     ( this ) {
+    , m_submissionFence (new sync::Fence())
+    , m_d3d9Interop     ( this )
+    , m_d3d9On12        ( this )
+    , m_d3d8Bridge      ( this ) {
     // If we can SWVP, then we use an extended constant set
     // as SWVP has many more slots available than HWVP.
     bool canSWVP = CanSWVP();
@@ -115,6 +118,25 @@ namespace dxvk {
 
     m_usingGraphicsPipelines = dxvkDevice->features().extGraphicsPipelineLibrary.graphicsPipelineLibrary;
 
+    m_depthBiasRepresentation = { VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORMAT_EXT, false };
+    if (dxvkDevice->features().extDepthBiasControl.depthBiasControl) {
+      if (dxvkDevice->features().extDepthBiasControl.depthBiasExact)
+        m_depthBiasRepresentation.depthBiasExact = true;
+      
+      if (dxvkDevice->features().extDepthBiasControl.floatRepresentation) {
+        m_depthBiasRepresentation.depthBiasRepresentation = VK_DEPTH_BIAS_REPRESENTATION_FLOAT_EXT;
+        m_depthBiasScale = 1.0f;
+      }
+      else if (dxvkDevice->features().extDepthBiasControl.leastRepresentableValueForceUnormRepresentation)
+        m_depthBiasRepresentation.depthBiasRepresentation = VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORCE_UNORM_EXT;
+    }
+
+    EmitCs([
+      cRepresentation = m_depthBiasRepresentation
+    ] (DxvkContext* ctx) {
+      ctx->setDepthBiasRepresentation(cRepresentation);
+    });
+
     CreateConstantBuffers();
 
     m_availableMemory = DetermineInitialTextureMemory();
@@ -154,6 +176,13 @@ namespace dxvk {
     m_flags.set(D3D9DeviceFlag::DirtyPointScale);
 
     m_flags.set(D3D9DeviceFlag::DirtySpecializationEntries);
+
+    // Bitfields can't be initialized in header.
+    m_boundRTs = 0;
+    m_anyColorWrites = 0;
+    m_activeRTsWhichAreTextures = 0;
+    m_alphaSwizzleRTs = 0;
+    m_lastHazardsRT = 0;
   }
 
 
@@ -191,9 +220,19 @@ namespace dxvk {
       *ppvObject = ref(this);
       return S_OK;
     }
+    
+    if (riid == __uuidof(IDxvkD3D8Bridge)) {
+      *ppvObject = ref(&m_d3d8Bridge);
+      return S_OK;
+    }
 
     if (riid == __uuidof(ID3D9VkInteropDevice)) {
       *ppvObject = ref(&m_d3d9Interop);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(IDirect3DDevice9On12)) {
+      *ppvObject = ref(&m_d3d9On12);
       return S_OK;
     }
 
@@ -254,7 +293,15 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetDeviceCaps(D3DCAPS9* pCaps) {
-    return m_adapter->GetDeviceCaps(m_deviceType, pCaps);
+    if (pCaps == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    m_adapter->GetDeviceCaps(m_deviceType, pCaps);
+
+    // When in SWVP mode, 256 matrices can be used for indexed vertex blending
+    pCaps->MaxVertexBlendMatrixIndex = m_isSWVP ? 255 : 8;
+
+    return D3D_OK;
   }
 
 
@@ -296,7 +343,9 @@ namespace dxvk {
     uint32_t inputHeight = cursorTex->Desc()->Height;
 
     // Always use a hardware cursor when windowed.
-    bool hwCursor  = m_presentParams.Windowed;
+    D3DPRESENT_PARAMETERS params;
+    m_implicitSwapchain->GetPresentParameters(&params);
+    bool hwCursor  = params.Windowed;
 
     // Always use a hardware cursor w/h <= 32 px
     hwCursor |= inputWidth  <= HardwareCursorWidth
@@ -393,11 +442,42 @@ namespace dxvk {
     Logger::info("Device reset");
     m_deviceLostState = D3D9DeviceLostState::Ok;
 
-    HRESULT hr = ResetSwapChain(pPresentationParameters, nullptr);
-    if (FAILED(hr))
-      return hr;
+    if (!IsExtended()) {
+      // The internal references are always cleared, regardless of whether the Reset call succeeds.
+      ResetState(pPresentationParameters);
+      m_implicitSwapchain->DestroyBackBuffers();
+      m_autoDepthStencil = nullptr;
+    } else {
+      // Extended devices only reset the bound render targets
+      for (uint32_t i = 0; i < caps::MaxSimultaneousRenderTargets; i++) {
+        SetRenderTargetInternal(i, nullptr);
+      }
+      SetDepthStencilSurface(nullptr);
+    }
 
-    ResetState(pPresentationParameters);
+    /*
+      * Before calling the IDirect3DDevice9::Reset method for a device,
+      * an application should release any explicit render targets,
+      * depth stencil surfaces, additional swap chains, state blocks,
+      * and D3DPOOL_DEFAULT resources associated with the device.
+      * 
+      * We have to check after ResetState clears the references held by SetTexture, etc.
+      * This matches what Windows D3D9 does.
+    */
+    if (unlikely(m_losableResourceCounter.load() != 0 && !IsExtended())) {
+      Logger::warn(str::format("Device reset failed because device still has alive losable resources: Device not reset. Remaining resources: ", m_losableResourceCounter.load()));
+      m_deviceLostState = D3D9DeviceLostState::NotReset;
+      return D3DERR_INVALIDCALL;
+    }
+
+    HRESULT hr = ResetSwapChain(pPresentationParameters, nullptr);
+    if (FAILED(hr)) {
+      if (!IsExtended()) {
+        Logger::warn("Device reset failed: Device not reset");
+        m_deviceLostState = D3D9DeviceLostState::NotReset;
+      }
+      return hr;
+    }
 
     Flush();
     SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
@@ -520,6 +600,9 @@ namespace dxvk {
       m_initializer->InitTexture(texture->GetCommonTexture(), initialData);
       *ppTexture = texture.ref();
 
+      if (desc.Pool == D3DPOOL_DEFAULT)
+        m_losableResourceCounter++;
+
       return D3D_OK;
     }
     catch (const DxvkError& e) {
@@ -575,6 +658,9 @@ namespace dxvk {
       const Com<D3D9Texture3D> texture = new D3D9Texture3D(this, &desc);
       m_initializer->InitTexture(texture->GetCommonTexture());
       *ppVolumeTexture = texture.ref();
+      
+      if (desc.Pool == D3DPOOL_DEFAULT)
+        m_losableResourceCounter++;
 
       return D3D_OK;
     }
@@ -629,6 +715,9 @@ namespace dxvk {
       const Com<D3D9TextureCube> texture = new D3D9TextureCube(this, &desc);
       m_initializer->InitTexture(texture->GetCommonTexture());
       *ppCubeTexture = texture.ref();
+      
+      if (desc.Pool == D3DPOOL_DEFAULT)
+        m_losableResourceCounter++;
 
       return D3D_OK;
     }
@@ -669,6 +758,9 @@ namespace dxvk {
       const Com<D3D9VertexBuffer> buffer = new D3D9VertexBuffer(this, &desc);
       m_initializer->InitBuffer(buffer->GetCommonBuffer());
       *ppVertexBuffer = buffer.ref();
+      if (desc.Pool == D3DPOOL_DEFAULT)
+        m_losableResourceCounter++;
+
       return D3D_OK;
     }
     catch (const DxvkError & e) {
@@ -707,6 +799,9 @@ namespace dxvk {
       const Com<D3D9IndexBuffer> buffer = new D3D9IndexBuffer(this, &desc);
       m_initializer->InitBuffer(buffer->GetCommonBuffer());
       *ppIndexBuffer = buffer.ref();
+      if (desc.Pool == D3DPOOL_DEFAULT)
+        m_losableResourceCounter++;
+
       return D3D_OK;
     }
     catch (const DxvkError & e) {
@@ -909,7 +1004,7 @@ namespace dxvk {
     if (dstTexInfo->IsAutomaticMip() && mipLevels != dstTexInfo->Desc()->MipLevels)
       MarkTextureMipsDirty(dstTexInfo);
 
-    FlushImplicit(false);
+    ConsiderFlush(GpuFlushType::ImplicitWeakHint);
 
     return D3D_OK;
   }
@@ -1289,14 +1384,22 @@ namespace dxvk {
       0);
   }
 
-
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetRenderTarget(
           DWORD              RenderTargetIndex,
           IDirect3DSurface9* pRenderTarget) {
     D3D9DeviceLock lock = LockDevice();
 
-    if (unlikely(RenderTargetIndex >= caps::MaxSimultaneousRenderTargets
-     || (pRenderTarget == nullptr && RenderTargetIndex == 0)))
+    if (unlikely((pRenderTarget == nullptr && RenderTargetIndex == 0)))
+      return D3DERR_INVALIDCALL;
+
+    return SetRenderTargetInternal(RenderTargetIndex, pRenderTarget);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetRenderTargetInternal(
+          DWORD              RenderTargetIndex,
+          IDirect3DSurface9* pRenderTarget) {
+    if (unlikely(RenderTargetIndex >= caps::MaxSimultaneousRenderTargets))
       return D3DERR_INVALIDCALL;
 
     D3D9Surface* rt = static_cast<D3D9Surface*>(pRenderTarget);
@@ -1308,21 +1411,28 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     if (RenderTargetIndex == 0) {
-      auto rtSize = rt->GetSurfaceExtent();
-
       D3DVIEWPORT9 viewport;
       viewport.X       = 0;
       viewport.Y       = 0;
-      viewport.Width   = rtSize.width;
-      viewport.Height  = rtSize.height;
       viewport.MinZ    = 0.0f;
       viewport.MaxZ    = 1.0f;
 
       RECT scissorRect;
       scissorRect.left    = 0;
       scissorRect.top     = 0;
-      scissorRect.right   = rtSize.width;
-      scissorRect.bottom  = rtSize.height;
+      
+      if (likely(rt != nullptr)) {
+        auto rtSize = rt->GetSurfaceExtent();
+        viewport.Width  = rtSize.width;
+        viewport.Height = rtSize.height;
+        scissorRect.right  = rtSize.width;
+        scissorRect.bottom = rtSize.height;
+      } else {
+        viewport.Width  = 0;
+        viewport.Height = 0;
+        scissorRect.right  = 0;
+        scissorRect.bottom = 0;
+      }
 
       if (m_state.viewport != viewport) {
         m_flags.set(D3D9DeviceFlag::DirtyFFViewport);
@@ -1335,15 +1445,15 @@ namespace dxvk {
         m_flags.set(D3D9DeviceFlag::DirtyViewportScissor);
         m_state.scissorRect = scissorRect;
       }
-
-      m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
     }
 
     if (m_state.renderTargets[RenderTargetIndex] == rt)
       return D3D_OK;
 
     // Do a strong flush if the first render target is changed.
-    FlushImplicit(RenderTargetIndex == 0 ? TRUE : FALSE);
+    ConsiderFlush(RenderTargetIndex == 0 
+      ? GpuFlushType::ImplicitStrongHint
+      : GpuFlushType::ImplicitWeakHint);
     m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
     m_state.renderTargets[RenderTargetIndex] = rt;
@@ -1367,13 +1477,23 @@ namespace dxvk {
       m_flags.set(D3D9DeviceFlag::DirtyBlendState);
 
     if (RenderTargetIndex == 0) {
-      bool validSampleMask = texInfo->Desc()->MultiSample > D3DMULTISAMPLE_NONMASKABLE;
+      if (likely(texInfo != nullptr)) {
+        if (IsAlphaTestEnabled()) {
+          // Need to recalculate the precision.
+          m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
+        }
 
-      if (validSampleMask != m_flags.test(D3D9DeviceFlag::ValidSampleMask)) {
+        bool validSampleMask = texInfo->Desc()->MultiSample > D3DMULTISAMPLE_NONMASKABLE;
+
+        if (validSampleMask != m_flags.test(D3D9DeviceFlag::ValidSampleMask)) {
+          m_flags.clr(D3D9DeviceFlag::ValidSampleMask);
+          if (validSampleMask)
+            m_flags.set(D3D9DeviceFlag::ValidSampleMask);
+
+          m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
+        }
+      } else {
         m_flags.clr(D3D9DeviceFlag::ValidSampleMask);
-        if (validSampleMask)
-          m_flags.set(D3D9DeviceFlag::ValidSampleMask);
-
         m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
       }
     }
@@ -1412,12 +1532,14 @@ namespace dxvk {
     if (m_state.depthStencil == ds)
       return D3D_OK;
 
-    FlushImplicit(FALSE);
+    ConsiderFlush(GpuFlushType::ImplicitWeakHint);
     m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
-    if (ds != nullptr) {
+    if (ds != nullptr && m_depthBiasRepresentation.depthBiasRepresentation != VK_DEPTH_BIAS_REPRESENTATION_FLOAT_EXT) {
       const int32_t vendorId = m_dxvkDevice->adapter()->deviceProperties().vendorID;
-      float rValue = GetDepthBufferRValue(ds->GetCommonTexture()->GetFormatMapping().FormatColor, vendorId);
+      const bool exact = m_depthBiasRepresentation.depthBiasExact;
+      const bool forceUnorm = m_depthBiasRepresentation.depthBiasRepresentation == VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORCE_UNORM_EXT;
+      const float rValue = GetDepthBufferRValue(ds->GetCommonTexture()->GetFormatMapping().FormatColor, vendorId, exact, forceUnorm);
       if (m_depthBiasScale != rValue) {
         m_depthBiasScale = rValue;
         m_flags.set(D3D9DeviceFlag::DirtyDepthBias);
@@ -1469,7 +1591,7 @@ namespace dxvk {
     if (unlikely(!m_flags.test(D3D9DeviceFlag::InScene)))
       return D3DERR_INVALIDCALL;
 
-    FlushImplicit(true);
+    ConsiderFlush(GpuFlushType::ImplicitStrongHint);
 
     m_flags.clr(D3D9DeviceFlag::InScene);
 
@@ -1972,31 +2094,23 @@ namespace dxvk {
           break;
 
         case D3DRS_COLORWRITEENABLE:
-          if (likely(!old != !Value)) {
-            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
-            UpdateActiveRTs(0);
-          }
+          if (likely(!old != !Value))
+            UpdateAnyColorWrites<0>(!!Value);
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE1:
-          if (likely(!old != !Value && m_state.renderTargets[1] != nullptr)) {
-            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
-            UpdateActiveRTs(1);
-          }
+          if (likely(!old != !Value))
+            UpdateAnyColorWrites<1>(!!Value);
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE2:
-          if (likely(!old != !Value && m_state.renderTargets[2] != nullptr)) {
-            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
-            UpdateActiveRTs(2);
-          }
+          if (likely(!old != !Value))
+            UpdateAnyColorWrites<2>(!!Value);
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         case D3DRS_COLORWRITEENABLE3:
-          if (likely(!old != !Value && m_state.renderTargets[3] != nullptr)) {
-            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
-            UpdateActiveRTs(3);
-          }
+          if (likely(!old != !Value))
+            UpdateAnyColorWrites<3>(!!Value);
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
 
@@ -2026,8 +2140,11 @@ namespace dxvk {
             m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
           break;
 
-        case D3DRS_STENCILENABLE:
         case D3DRS_ZWRITEENABLE:
+          if (likely(!old != !Value))
+            UpdateActiveHazardsDS(UINT32_MAX);
+        [[fallthrough]];
+        case D3DRS_STENCILENABLE:
         case D3DRS_ZENABLE:
           if (likely(m_state.depthStencil != nullptr))
             m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
@@ -2191,6 +2308,9 @@ namespace dxvk {
         case D3DRS_ADAPTIVETESS_W:
           if (states[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB) || oldNVDB) {
             m_flags.set(D3D9DeviceFlag::DirtyDepthBounds);
+
+            if (m_state.depthStencil != nullptr && m_state.renderStates[D3DRS_ZENABLE])
+              m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
             break;
           }
         [[fallthrough]];
@@ -2240,6 +2360,8 @@ namespace dxvk {
     try {
       const Com<D3D9StateBlock> sb = new D3D9StateBlock(this, ConvertStateBlockType(Type));
       *ppSB = sb.ref();
+      m_losableResourceCounter++;
+
       return D3D_OK;
     }
     catch (const DxvkError & e) {
@@ -2270,6 +2392,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     *ppSB = m_recorder.ref();
+    m_losableResourceCounter++;
     m_recorder = nullptr;
 
     return D3D_OK;
@@ -2447,6 +2570,9 @@ namespace dxvk {
     auto lock = LockDevice();
 
     if (bSoftware && !CanSWVP())
+      return D3DERR_INVALIDCALL;
+
+    if (!bSoftware && (m_behaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING))
       return D3DERR_INVALIDCALL;
 
     m_isSWVP = bSoftware;
@@ -3278,21 +3404,36 @@ namespace dxvk {
 
     m_state.pixelShader = shader;
 
+    D3D9ShaderMasks newShaderMasks;
+
     if (shader != nullptr) {
       m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
 
-      BindShader<DxsoProgramTypes::PixelShader>(GetCommonShader(shader));
-      m_psShaderMasks = newShader->GetShaderMask();
+      BindShader<DxsoProgramTypes::PixelShader>(newShader);
+      newShaderMasks = newShader->GetShaderMask();
     }
     else {
       // TODO: What fixed function textures are in use?
       // Currently we are making all 8 of them as in use here.
 
       // The RT output is always 0 for fixed function.
-      m_psShaderMasks = FixedFunctionMask;
+      newShaderMasks = FixedFunctionMask;
     }
 
-    UpdateActiveHazardsRT(UINT32_MAX);
+    // If we have any RTs we would have bound to the the FB
+    // not in the new shader mask, mark the framebuffer as dirty
+    // so we unbind them.
+    uint32_t oldUseMask = m_boundRTs & m_anyColorWrites & m_psShaderMasks.rtMask;
+    uint32_t newUseMask = m_boundRTs & m_anyColorWrites & newShaderMasks.rtMask;
+    if (oldUseMask != newUseMask)
+      m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+
+    if (m_psShaderMasks.samplerMask != newShaderMasks.samplerMask ||
+        m_psShaderMasks.rtMask != newShaderMasks.rtMask) {
+      m_psShaderMasks = newShaderMasks;
+      UpdateActiveHazardsRT(UINT32_MAX);
+      UpdateActiveHazardsDS(UINT32_MAX);
+    }
 
     return D3D_OK;
   }
@@ -3592,6 +3733,8 @@ namespace dxvk {
       const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, nullptr, pSharedHandle);
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
+      m_losableResourceCounter++;
+
       return D3D_OK;
     }
     catch (const DxvkError& e) {
@@ -3641,6 +3784,10 @@ namespace dxvk {
       const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, nullptr, pSharedHandle);
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
+      
+      if (desc.Pool == D3DPOOL_DEFAULT)
+        m_losableResourceCounter++;
+
       return D3D_OK;
     }
     catch (const DxvkError& e) {
@@ -3689,6 +3836,8 @@ namespace dxvk {
       const Com<D3D9Surface> surface = new D3D9Surface(this, &desc, nullptr, pSharedHandle);
       m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
+      m_losableResourceCounter++;
+
       return D3D_OK;
     }
     catch (const DxvkError& e) {
@@ -3750,6 +3899,7 @@ namespace dxvk {
     try {
       auto* swapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode);
       *ppSwapChain = ref(swapchain);
+      m_losableResourceCounter++;
     }
     catch (const DxvkError & e) {
       Logger::err(e.message());
@@ -4031,6 +4181,13 @@ namespace dxvk {
 
     enabled.extNonSeamlessCubeMap.nonSeamlessCubeMap = supported.extNonSeamlessCubeMap.nonSeamlessCubeMap;
 
+    enabled.extDepthBiasControl.depthBiasControl = supported.extDepthBiasControl.depthBiasControl;
+    enabled.extDepthBiasControl.depthBiasExact = supported.extDepthBiasControl.depthBiasExact;
+    if (supported.extDepthBiasControl.floatRepresentation)
+      enabled.extDepthBiasControl.floatRepresentation = VK_TRUE;
+    else if (supported.extDepthBiasControl.leastRepresentableValueForceUnormRepresentation)
+      enabled.extDepthBiasControl.leastRepresentableValueForceUnormRepresentation = VK_TRUE;
+
     return enabled;
   }
 
@@ -4226,7 +4383,7 @@ namespace dxvk {
         // We don't have to wait, but misbehaving games may
         // still try to spin on `Map` until the resource is
         // idle, so we should flush pending commands
-        FlushImplicit(FALSE);
+        ConsiderFlush(GpuFlushType::ImplicitWeakHint);
         return false;
       }
       else {
@@ -4299,6 +4456,10 @@ namespace dxvk {
     if (unlikely((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)))
       Flags &= ~D3DLOCK_DISCARD;
 
+    // Tests show that D3D9 drivers ignore DISCARD when the device is lost.
+    if (unlikely(m_deviceLostState != D3D9DeviceLostState::Ok))
+      Flags &= ~D3DLOCK_DISCARD;
+
     auto& desc = *(pResource->Desc());
 
     if (unlikely(!desc.IsLockable))
@@ -4351,7 +4512,11 @@ namespace dxvk {
     // then we need to copy -> buffer
     // We are also always dirty if we are a render target,
     // a depth stencil, or auto generate mipmaps.
-    bool needsReadback = (pResource->NeedsReadback(Subresource) || renderable) && !(Flags & D3DLOCK_DISCARD);
+    bool needsReadback = pResource->NeedsReadback(Subresource) || renderable;
+
+    // Skip readback if we discard is specified. We can only do this for textures that have an associated Vulkan image.
+    // Any other texture might write to the Vulkan staging buffer directly. (GetBackbufferData for example)
+    needsReadback &= pResource->GetImage() != nullptr || !(Flags & D3DLOCK_DISCARD);
     pResource->SetNeedsReadback(Subresource, false);
 
 
@@ -4374,9 +4539,12 @@ namespace dxvk {
       if (pResource->GetImage() != nullptr) {
         Rc<DxvkImage> resourceImage = pResource->GetImage();
 
-        Rc<DxvkImage> mappedImage = resourceImage->info().sampleCount != 1
-          ? pResource->GetResolveImage()
-          : std::move(resourceImage);
+        Rc<DxvkImage> mappedImage;
+        if (resourceImage->info().sampleCount != 1) {
+            mappedImage = pResource->GetResolveImage();
+        } else {
+            mappedImage = std::move(resourceImage);
+        }
 
         // When using any map mode which requires the image contents
         // to be preserved, and if the GPU has write access to the
@@ -4731,7 +4899,7 @@ namespace dxvk {
         slice.slice);
     }
     UnmapTextures();
-    FlushImplicit(false);
+    ConsiderFlush(GpuFlushType::ImplicitWeakHint);
   }
 
   void D3D9DeviceEx::EmitGenerateMips(
@@ -4759,9 +4927,6 @@ namespace dxvk {
     if (unlikely(ppbData == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (!m_d3d9Options.allowDiscard)
-      Flags &= ~D3DLOCK_DISCARD;
-
     auto& desc = *pResource->Desc();
 
     // Ignore DISCARD if NOOVERWRITE is set
@@ -4778,6 +4943,10 @@ namespace dxvk {
     // Yes... D3D9 is a good API.
     if (desc.Usage & D3DUSAGE_DYNAMIC)
       Flags &= ~D3DLOCK_DONOTWAIT;
+
+    // Tests show that D3D9 drivers ignore DISCARD when the device is lost.
+    if (unlikely(m_deviceLostState != D3D9DeviceLostState::Ok))
+      Flags &= ~D3DLOCK_DISCARD;
 
     // We only bounds check for MANAGED.
     // (TODO: Apparently this is meant to happen for DYNAMIC too but I am not sure
@@ -4889,7 +5058,7 @@ namespace dxvk {
     TrackBufferMappingBufferSequenceNumber(pResource);
 
     UnmapTextures();
-    FlushImplicit(false);
+    ConsiderFlush(GpuFlushType::ImplicitWeakHint);
     return D3D_OK;
   }
 
@@ -4920,25 +5089,15 @@ namespace dxvk {
 
   void D3D9DeviceEx::EmitCsChunk(DxvkCsChunkRef&& chunk) {
     m_csSeqNum = m_csThread.dispatchChunk(std::move(chunk));
-    m_csIsBusy = true;
   }
 
 
-  void D3D9DeviceEx::FlushImplicit(BOOL StrongHint) {
-    // Flush only if the GPU is about to go idle, in
-    // order to keep the number of submissions low.
-    uint32_t pending = m_dxvkDevice->pendingSubmissions();
+  void D3D9DeviceEx::ConsiderFlush(GpuFlushType FlushType) {
+    uint64_t chunkId = GetCurrentSequenceNumber();
+    uint64_t submissionId = m_submissionFence->value();
 
-    if (StrongHint || pending <= MaxPendingSubmits) {
-      auto now = dxvk::high_resolution_clock::now();
-
-      uint32_t delay = MinFlushIntervalUs
-                     + IncFlushIntervalUs * pending;
-
-      // Prevent flushing too often in short intervals.
-      if (now - m_lastFlush >= std::chrono::microseconds(delay))
-        Flush();
-    }
+    if (m_flushTracker.considerFlush(FlushType, chunkId, submissionId))
+      Flush();
   }
 
 
@@ -5298,28 +5457,31 @@ namespace dxvk {
     m_initializer->Flush();
     m_converter->Flush();
 
-    if (m_csIsBusy || !m_csChunk->empty()) {
-      EmitStagingBufferMarker();
+    EmitStagingBufferMarker();
 
-      // Add commands to flush the threaded
-      // context, then flush the command list
-      EmitCs([](DxvkContext* ctx) {
-        ctx->flushCommandList(nullptr);
-      });
+    // Add commands to flush the threaded
+    // context, then flush the command list
+    uint64_t submissionId = ++m_submissionId;
 
-      FlushCsChunk();
+    EmitCs<false>([
+      cSubmissionFence  = m_submissionFence,
+      cSubmissionId     = submissionId
+    ] (DxvkContext* ctx) {
+      ctx->signal(cSubmissionFence, cSubmissionId);
+      ctx->flushCommandList(nullptr);
+    });
 
-      // Reset flush timer used for implicit flushes
-      m_lastFlush = dxvk::high_resolution_clock::now();
-      m_csIsBusy = false;
-    }
+    FlushCsChunk();
+
+    m_flushSeqNum = m_csSeqNum;
+    m_flushTracker.notifyFlush(m_flushSeqNum, submissionId);
   }
 
 
   void D3D9DeviceEx::EndFrame() {
     D3D9DeviceLock lock = LockDevice();
 
-    EmitCs([] (DxvkContext* ctx) {
+    EmitCs<false>([] (DxvkContext* ctx) {
       ctx->endFrame();
     });
   }
@@ -5339,22 +5501,38 @@ namespace dxvk {
   inline void D3D9DeviceEx::UpdateActiveRTs(uint32_t index) {
     const uint32_t bit = 1 << index;
 
-    m_activeRTs &= ~bit;
+    m_activeRTsWhichAreTextures &= ~bit;
 
     if ((m_boundRTs & bit) != 0 &&
         m_state.renderTargets[index]->GetBaseTexture() != nullptr &&
-        m_state.renderStates[ColorWriteIndex(index)])
-      m_activeRTs |= bit;
+        m_anyColorWrites & bit)
+      m_activeRTsWhichAreTextures |= bit;
 
     UpdateActiveHazardsRT(bit);
+  }
+
+  template <uint32_t Index>
+  inline void D3D9DeviceEx::UpdateAnyColorWrites(bool has) {
+    const uint32_t bit = 1 << Index;
+
+    m_anyColorWrites &= ~bit;
+
+    if (has)
+      m_anyColorWrites |= bit;
+
+    // The 0th RT is always bound.
+    if (Index == 0 || m_boundRTs & bit) {
+      m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+      UpdateActiveRTs(Index);
+    }
   }
 
 
   inline void D3D9DeviceEx::UpdateActiveTextures(uint32_t index, DWORD combinedUsage) {
     const uint32_t bit = 1 << index;
 
-    m_activeRTTextures       &= ~bit;
-    m_activeDSTextures       &= ~bit;
+    m_activeTextureRTs       &= ~bit;
+    m_activeTextureDSs       &= ~bit;
     m_activeTextures         &= ~bit;
     m_activeTexturesToUpload &= ~bit;
     m_activeTexturesToGen    &= ~bit;
@@ -5364,10 +5542,10 @@ namespace dxvk {
       m_activeTextures |= bit;
 
       if (unlikely(tex->IsRenderTarget()))
-        m_activeRTTextures |= bit;
+        m_activeTextureRTs |= bit;
 
       if (unlikely(tex->IsDepthStencil()))
-        m_activeDSTextures |= bit;
+        m_activeTextureDSs |= bit;
 
       if (unlikely(tex->NeedsAnyUpload()))
         m_activeTexturesToUpload |= bit;
@@ -5377,19 +5555,19 @@ namespace dxvk {
     }
 
     if (unlikely(combinedUsage & D3DUSAGE_RENDERTARGET))
-      UpdateActiveHazardsRT(UINT32_MAX);
+      UpdateActiveHazardsRT(bit);
 
     if (unlikely(combinedUsage & D3DUSAGE_DEPTHSTENCIL))
       UpdateActiveHazardsDS(bit);
   }
 
 
-  inline void D3D9DeviceEx::UpdateActiveHazardsRT(uint32_t rtMask) {
+  inline void D3D9DeviceEx::UpdateActiveHazardsRT(uint32_t texMask) {
     auto masks = m_psShaderMasks;
-    masks.rtMask      &= m_activeRTs & rtMask;
-    masks.samplerMask &= m_activeRTTextures;
+    masks.rtMask      &= m_activeRTsWhichAreTextures;
+    masks.samplerMask &= m_activeTextureRTs & texMask;
 
-    m_activeHazardsRT = m_activeHazardsRT & (~rtMask);
+    m_activeHazardsRT = m_activeHazardsRT & (~texMask);
     for (uint32_t rtIdx : bit::BitMask(masks.rtMask)) {
       for (uint32_t samplerIdx : bit::BitMask(masks.samplerMask)) {
         D3D9Surface* rtSurf = m_state.renderTargets[rtIdx].ptr();
@@ -5405,18 +5583,20 @@ namespace dxvk {
         if (likely(rtSurf->GetMipLevel() != 0 || rtBase != texBase))
           continue;
 
-        m_activeHazardsRT |= 1 << rtIdx;
+        m_activeHazardsRT |= 1 << samplerIdx;
       }
     }
   }
 
 
   inline void D3D9DeviceEx::UpdateActiveHazardsDS(uint32_t texMask) {
+    auto masks = m_psShaderMasks;
+    masks.samplerMask &= m_activeTextureDSs & texMask;
+
     m_activeHazardsDS = m_activeHazardsDS & (~texMask);
     if (m_state.depthStencil != nullptr &&
         m_state.depthStencil->GetBaseTexture() != nullptr) {
-      uint32_t samplerMask = m_activeDSTextures & texMask;
-      for (uint32_t samplerIdx : bit::BitMask(samplerMask)) {
+      for (uint32_t samplerIdx : bit::BitMask(masks.samplerMask)) {
         IDirect3DBaseTexture9* dsBase  = m_state.depthStencil->GetBaseTexture();
         IDirect3DBaseTexture9* texBase = m_state.textures[samplerIdx];
 
@@ -5430,18 +5610,49 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::MarkRenderHazards() {
-    EmitCs([](DxvkContext* ctx) {
+    struct {
+      uint8_t RT : 1;
+      uint8_t DS : 1;
+    } hazardState;
+    hazardState.RT = m_activeHazardsRT != 0;
+    hazardState.DS = m_activeHazardsDS != 0;
+
+    EmitCs([
+      cHazardState = hazardState
+    ](DxvkContext* ctx) {
+      VkPipelineStageFlags srcStages = 0;
+      VkAccessFlags srcAccess = 0;
+
+      if (cHazardState.RT != 0) {
+        srcStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        srcAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+      }
+      if (cHazardState.DS != 0) {
+        srcStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        srcAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+      }
+
       ctx->emitGraphicsBarrier(
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        srcStages,
+        srcAccess,
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         VK_ACCESS_SHADER_READ_BIT);
     });
 
-    for (uint32_t rtIdx : bit::BitMask(m_activeHazardsRT)) {
+    for (uint32_t samplerIdx : bit::BitMask(m_activeHazardsRT)) {
       // Guaranteed to not be nullptr...
-      auto tex = m_state.renderTargets[rtIdx]->GetCommonTexture();
-      if (unlikely(!tex->MarkHazardous())) {
+      auto tex = GetCommonTexture(m_state.textures[samplerIdx]);
+      if (unlikely(!tex->MarkTransitionedToHazardLayout())) {
+        TransitionImage(tex, m_hazardLayout);
+        m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+      }
+    }
+
+    bool zWriteEnabled = m_state.renderStates[D3DRS_ZWRITEENABLE];
+    if (m_activeHazardsDS != 0 && zWriteEnabled) {
+      // Guaranteed to not be nullptr...
+      auto tex = m_state.depthStencil->GetCommonTexture();
+      if (unlikely(!tex->MarkTransitionedToHazardLayout())) {
         TransitionImage(tex, m_hazardLayout);
         m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
       }
@@ -5663,7 +5874,10 @@ namespace dxvk {
       else if (unlikely(sampleCount != rtImageInfo.sampleCount))
         continue;
 
-      if (!m_state.renderStates[ColorWriteIndex(i)])
+      if (!(m_anyColorWrites & (1 << i)))
+        continue;
+
+      if (!(m_psShaderMasks.rtMask & (1 << i)))
         continue;
 
       attachments.color[i] = {
@@ -5674,7 +5888,8 @@ namespace dxvk {
     if (m_state.depthStencil != nullptr &&
       (m_state.renderStates[D3DRS_ZENABLE]
         || m_state.renderStates[D3DRS_ZWRITEENABLE]
-        || m_state.renderStates[D3DRS_STENCILENABLE])) {
+        || m_state.renderStates[D3DRS_STENCILENABLE]
+        || m_state.renderStates[D3DRS_ADAPTIVETESS_X] == uint32_t(D3D9Format::NVDB))) {
       const DxvkImageCreateInfo& dsImageInfo = m_state.depthStencil->GetCommonTexture()->GetImage()->info();
       const bool depthWrite = m_state.renderStates[D3DRS_ZWRITEENABLE];
 
@@ -5689,7 +5904,7 @@ namespace dxvk {
     if (m_hazardLayout == VK_IMAGE_LAYOUT_ATTACHMENT_FEEDBACK_LOOP_OPTIMAL_EXT) {
       if (m_activeHazardsRT != 0)
         feedbackLoopAspects |= VK_IMAGE_ASPECT_COLOR_BIT;
-      if (m_activeHazardsDS != 0)
+      if (m_activeHazardsDS != 0 && attachments.depth.layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
         feedbackLoopAspects |= VK_IMAGE_ASPECT_DEPTH_BIT;
     }
 
@@ -6106,7 +6321,11 @@ namespace dxvk {
       info.mipmapMode     = mipFilter.MipFilter;
       info.maxAnisotropy  = float(cKey.MaxAnisotropy);
       info.useAnisotropy  = cKey.MaxAnisotropy > 1;
-      info.mipmapLodBias  = cKey.MipmapLodBias;
+
+      info.mipmapLodBias  = cKey.MipmapLodBias + m_d3d9Options.samplerLodBias;
+      if (m_d3d9Options.clampNegativeLodBias)
+        info.mipmapLodBias = std::max(info.mipmapLodBias, 0.0f);
+
       info.mipmapLodMin   = mipFilter.MipsEnabled ? float(cKey.MaxMipLevel) : 0;
       info.mipmapLodMax   = mipFilter.MipsEnabled ? FLT_MAX                 : 0;
       info.reductionMode  = VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
@@ -6231,7 +6450,7 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::PrepareDraw(D3DPRIMITIVETYPE PrimitiveType) {
-    if (unlikely(m_activeHazardsRT != 0))
+    if (unlikely(m_activeHazardsRT != 0 || m_activeHazardsDS != 0))
       MarkRenderHazards();
 
     if (unlikely((!m_lastHazardsDS) != (!m_activeHazardsDS))
@@ -6573,9 +6792,9 @@ namespace dxvk {
     if (unlikely(pQuery->IsEvent())) {
       pQuery->IsStalling()
         ? Flush()
-        : FlushImplicit(TRUE);
+        : ConsiderFlush(GpuFlushType::ImplicitStrongHint);
     } else if (pQuery->IsStalling()) {
-      FlushImplicit(FALSE);
+      ConsiderFlush(GpuFlushType::ImplicitWeakHint);
     }
   }
 
@@ -7114,11 +7333,10 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::ResetState(D3DPRESENT_PARAMETERS* pPresentationParameters) {
-    if (!pPresentationParameters->EnableAutoDepthStencil)
-      SetDepthStencilSurface(nullptr);
+    SetDepthStencilSurface(nullptr);
 
-    for (uint32_t i = 1; i < caps::MaxSimultaneousRenderTargets; i++)
-      SetRenderTarget(i, nullptr);
+    for (uint32_t i = 0; i < caps::MaxSimultaneousRenderTargets; i++)
+      SetRenderTargetInternal(i, nullptr);
 
     auto& rs = m_state.renderStates;
 
@@ -7301,8 +7519,9 @@ namespace dxvk {
     for (uint32_t i = 0; i < caps::MaxStreams; i++)
       m_state.streamFreq[i] = 1;
 
-    for (uint32_t i = 0; i < m_state.textures->size(); i++)
+    for (uint32_t i = 0; i < m_state.textures->size(); i++) {
       SetStateTexture(i, nullptr);
+    }
 
     EmitCs([
       cSize = m_state.textures->size()
@@ -7354,11 +7573,22 @@ namespace dxvk {
     UpdateVertexBoolSpec(0u);
     UpdatePixelBoolSpec(0u);
     UpdateCommonSamplerSpec(0u, 0u, 0u);
+
+    UpdateAnyColorWrites<0>(true);
+    UpdateAnyColorWrites<1>(true);
+    UpdateAnyColorWrites<2>(true);
+    UpdateAnyColorWrites<3>(true);
+
+    SetIndices(nullptr);
+    for (uint32_t i = 0; i < caps::MaxStreams; i++) {
+      SetStreamSource(i, nullptr, 0, 0);
+    }
   }
 
 
   HRESULT D3D9DeviceEx::ResetSwapChain(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode) {
     D3D9Format backBufferFmt = EnumerateFormat(pPresentationParameters->BackBufferFormat);
+    bool unlockedFormats = m_implicitSwapchain != nullptr && m_implicitSwapchain->HasFormatsUnlocked();
 
     Logger::info(str::format(
       "D3D9DeviceEx::ResetSwapChain:\n",
@@ -7371,7 +7601,7 @@ namespace dxvk {
       "    - Windowed:           ", pPresentationParameters->Windowed ? "true" : "false", "\n",
       "    - Swap effect:        ", pPresentationParameters->SwapEffect, "\n"));
 
-    if (backBufferFmt != D3D9Format::Unknown) {
+    if (backBufferFmt != D3D9Format::Unknown && !unlockedFormats) {
       if (!IsSupportedBackBufferFormat(backBufferFmt)) {
         Logger::err(str::format("D3D9DeviceEx::ResetSwapChain: Unsupported backbuffer format: ",
           EnumerateFormat(pPresentationParameters->BackBufferFormat)));
@@ -7411,6 +7641,7 @@ namespace dxvk {
       m_autoDepthStencil = new D3D9Surface(this, &desc, nullptr, nullptr);
       m_initializer->InitTexture(m_autoDepthStencil->GetCommonTexture());
       SetDepthStencilSurface(m_autoDepthStencil.ptr());
+      m_losableResourceCounter++;
     }
 
     SetRenderTarget(0, m_implicitSwapchain->GetBackBuffer(0));
@@ -7423,11 +7654,11 @@ namespace dxvk {
 
 
   HRESULT D3D9DeviceEx::InitialReset(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode) {
+    ResetState(pPresentationParameters);
+
     HRESULT hr = ResetSwapChain(pPresentationParameters, pFullscreenDisplayMode);
     if (FAILED(hr))
       return hr;
-
-    ResetState(pPresentationParameters);
 
     Flush();
     SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
@@ -7510,6 +7741,43 @@ namespace dxvk {
       iter = m_mappedTextures.remove(iter);
     }
 #endif
+  }
+
+  ////////////////////////////////////
+  // D3D9 Device Lost
+  ////////////////////////////////////
+
+  void D3D9DeviceEx::NotifyFullscreen(HWND window, bool fullscreen) {
+    D3D9DeviceLock lock = LockDevice();
+
+    if (fullscreen) {
+      if (unlikely(window != m_fullscreenWindow && m_fullscreenWindow != NULL)) {
+        Logger::warn("Multiple fullscreen windows detected.");
+      }
+      m_fullscreenWindow = window;
+    } else {
+      if (unlikely(m_fullscreenWindow != window)) {
+        Logger::warn("Window was not fullscreen in the first place.");
+      } else {
+        m_fullscreenWindow = 0;
+      }
+    }
+  }
+
+  void D3D9DeviceEx::NotifyWindowActivated(HWND window, bool activated) {
+    D3D9DeviceLock lock = LockDevice();
+
+    if (likely(!m_d3d9Options.deviceLossOnFocusLoss || IsExtended()))
+      return;
+
+    if (activated && m_deviceLostState == D3D9DeviceLostState::Lost) {
+      Logger::info("Device not reset");
+      m_deviceLostState = D3D9DeviceLostState::NotReset;
+    } else if (!activated && m_deviceLostState != D3D9DeviceLostState::Lost && m_fullscreenWindow == window) {
+      Logger::info("Device lost");
+      m_deviceLostState = D3D9DeviceLostState::Lost;
+      m_fullscreenWindow = NULL;
+    }
   }
 
   ////////////////////////////////////

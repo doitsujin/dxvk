@@ -27,6 +27,11 @@ namespace dxvk {
   }
 
 
+  static bool isNvapiEnabled() {
+    return env::getEnvVar("DXVK_ENABLE_NVAPI") == "1";
+  }
+
+
   static bool isHDRDisallowed() {
 #ifdef _WIN32
     // Unreal Engine 4 titles use AGS/NVAPI to try and enable
@@ -53,7 +58,7 @@ namespace dxvk {
     bool isUE4 = exeName.find("-Win64-Shipping") != std::string::npos;
     bool hasD3D12 = GetModuleHandleA("d3d12") != nullptr;
 
-    if (isUE4 && !hasD3D12)
+    if (isUE4 && !hasD3D12 && !isNvapiEnabled())
       return true;
 #endif
     return false;
@@ -73,11 +78,23 @@ namespace dxvk {
     this->maxDeviceMemory = VkDeviceSize(config.getOption<int32_t>("dxgi.maxDeviceMemory", 0)) << 20;
     this->maxSharedMemory = VkDeviceSize(config.getOption<int32_t>("dxgi.maxSharedMemory", 0)) << 20;
 
-    // Force nvapiHack to be disabled if NvAPI is enabled in environment
-    if (env::getEnvVar("DXVK_ENABLE_NVAPI") == "1")
-      this->nvapiHack = false;
-    else
-      this->nvapiHack = config.getOption<bool>("dxgi.nvapiHack", true);
+    // Expose Nvidia GPUs properly if NvAPI is enabled in environment
+    this->hideNvidiaGpu = !isNvapiEnabled();
+
+    Tristate hideNvidiaGpuOption = config.getOption<Tristate>("dxgi.hideNvidiaGpu", Tristate::Auto);
+
+    if (hideNvidiaGpuOption == Tristate::Auto && !config.getOption<bool>("dxgi.nvapiHack", true)) {
+      Logger::warn("dxgi.nvapiHack is deprecated, please set dxgi.hideNvidiaGpu instead.");
+      hideNvidiaGpuOption = Tristate::False;
+    }
+
+    applyTristate(this->hideNvidiaGpu, hideNvidiaGpuOption);
+
+    // Expose AMD and Intel GPU by default, unless a config override is active.
+    // Implement as a tristate so that we have the option to introduce similar
+    // logic to Nvidia later, if necessary.
+    this->hideAmdGpu = config.getOption<Tristate>("dxgi.hideAmdGpu", Tristate::Auto) == Tristate::True;
+    this->hideIntelGpu = config.getOption<Tristate>("dxgi.hideIntelGpu", Tristate::Auto) == Tristate::True;
 
     this->enableHDR = config.getOption<bool>("dxgi.enableHDR", env::getEnvVar("DXVK_HDR") == "1");
     if (this->enableHDR && isHDRDisallowed()) {

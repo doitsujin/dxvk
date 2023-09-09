@@ -36,6 +36,9 @@ namespace dxvk {
    */
   template<typename TimePoint, typename Duration>
   uint64_t computeRefreshCount(TimePoint t0, TimePoint t1, Duration refreshPeriod) {
+    if (t1 < t0)
+      return 0;
+
     auto duration = std::chrono::duration_cast<Duration>(t1 - t0);
     return duration.count() / refreshPeriod.count();
   }

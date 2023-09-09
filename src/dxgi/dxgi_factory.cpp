@@ -11,6 +11,9 @@ namespace dxvk {
 
   Singleton<DxvkInstance> g_dxvkInstance;
 
+  std::mutex s_globalHDRStateMutex;
+  DXVK_VK_GLOBAL_HDR_STATE s_globalHDRState{};
+
   DxgiVkFactory::DxgiVkFactory(DxgiFactory* pFactory)
   : m_factory(pFactory) {
 
@@ -47,6 +50,32 @@ namespace dxvk {
   }
 
 
+  HRESULT STDMETHODCALLTYPE DxgiVkFactory::GetGlobalHDRState(
+          DXGI_COLOR_SPACE_TYPE   *pOutColorSpace,
+          DXGI_HDR_METADATA_HDR10 *pOutMetadata) {
+    std::unique_lock lock(s_globalHDRStateMutex);
+    if (!s_globalHDRState.Serial)
+      return S_FALSE;
+
+    *pOutColorSpace = s_globalHDRState.ColorSpace;
+    *pOutMetadata   = s_globalHDRState.Metadata.HDR10;
+    return S_OK;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE DxgiVkFactory::SetGlobalHDRState(
+          DXGI_COLOR_SPACE_TYPE    ColorSpace,
+    const DXGI_HDR_METADATA_HDR10 *pMetadata) {
+    std::unique_lock lock(s_globalHDRStateMutex);
+    static uint32_t s_GlobalHDRStateSerial = 0;
+
+    s_globalHDRState.Serial     = ++s_GlobalHDRStateSerial;
+    s_globalHDRState.ColorSpace = ColorSpace;
+    s_globalHDRState.Metadata.Type  = DXGI_HDR_METADATA_TYPE_HDR10;
+    s_globalHDRState.Metadata.HDR10 = *pMetadata;
+
+    return S_OK;
+  }
 
 
   DxgiFactory::DxgiFactory(UINT Flags)
@@ -127,7 +156,8 @@ namespace dxvk {
       return S_OK;
     }
 
-    if (riid == __uuidof(IDXGIVkInteropFactory)) {
+    if (riid == __uuidof(IDXGIVkInteropFactory)
+     || riid == __uuidof(IDXGIVkInteropFactory1)) {
       *ppvObject = ref(&m_interop);
       return S_OK;
     }
@@ -407,7 +437,8 @@ namespace dxvk {
     if (pWindowHandle == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    *pWindowHandle = m_associatedWindow;
+    // Wine tests show that this is always null for whatever reason
+    *pWindowHandle = nullptr;
     return S_OK;
   }
   
@@ -422,7 +453,6 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiFactory::MakeWindowAssociation(HWND WindowHandle, UINT Flags) {
     Logger::warn("DXGI: MakeWindowAssociation: Ignoring flags");
-    m_associatedWindow = WindowHandle;
     return S_OK;
   }
   
@@ -518,5 +548,10 @@ namespace dxvk {
     return E_NOTIMPL;
   }
 
+
+  DXVK_VK_GLOBAL_HDR_STATE DxgiFactory::GlobalHDRState() {
+    std::unique_lock lock(s_globalHDRStateMutex);
+    return s_globalHDRState;
+  }
 
 }

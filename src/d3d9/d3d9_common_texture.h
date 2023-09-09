@@ -307,8 +307,8 @@ namespace dxvk {
       return util::computeMipLevelExtent(GetExtent(), MipLevel);
     }
 
-    bool MarkHazardous() {
-      return std::exchange(m_hazardous, true);
+    bool MarkTransitionedToHazardLayout() {
+      return std::exchange(m_transitionedToHazardLayout, true);
     }
 
     D3DRESOURCETYPE GetType() {
@@ -340,7 +340,7 @@ namespace dxvk {
     }
 
     VkImageLayout DetermineRenderTargetLayout(VkImageLayout hazardLayout) const {
-      if (unlikely(m_hazardous))
+      if (unlikely(m_transitionedToHazardLayout))
         return hazardLayout;
 
       return m_image != nullptr &&
@@ -350,18 +350,16 @@ namespace dxvk {
     }
 
     VkImageLayout DetermineDepthStencilLayout(bool write, bool hazardous, VkImageLayout hazardLayout) const {
-      VkImageLayout layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-      if (unlikely(hazardous)) {
-        layout = write
-          ? hazardLayout
-          : VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
-      }
+      if (unlikely(m_transitionedToHazardLayout))
+        return hazardLayout;
 
       if (unlikely(m_image->info().tiling != VK_IMAGE_TILING_OPTIMAL))
-        layout = VK_IMAGE_LAYOUT_GENERAL;
+        return VK_IMAGE_LAYOUT_GENERAL;
 
-      return layout;
+      if (unlikely(hazardous && !write))
+        return VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
+
+      return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     }
 
     Rc<DxvkImageView> CreateView(
@@ -512,7 +510,7 @@ namespace dxvk {
 
     int64_t                       m_size = 0;
 
-    bool                          m_hazardous = false;
+    bool                          m_transitionedToHazardLayout = false;
 
     D3D9ColorView                 m_sampleView;
 

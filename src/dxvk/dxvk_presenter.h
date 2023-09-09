@@ -10,9 +10,15 @@
 #include "../util/util_math.h"
 #include "../util/util_string.h"
 
-#include "vulkan_loader.h"
+#include "../util/sync/sync_signal.h"
 
-namespace dxvk::vk {
+#include "../vulkan/vulkan_loader.h"
+
+#include "dxvk_format.h"
+
+namespace dxvk {
+
+  class DxvkDevice;
 
   /**
    * \brief Presenter description
@@ -26,8 +32,6 @@ namespace dxvk::vk {
     uint32_t            imageCount;
     uint32_t            numFormats;
     VkSurfaceFormatKHR  formats[4];
-    uint32_t            numPresentModes;
-    VkPresentModeKHR    presentModes[4];
     VkFullScreenExclusiveEXT fullScreenExclusive;
   };
 
@@ -42,24 +46,7 @@ namespace dxvk::vk {
     VkPresentModeKHR    presentMode;
     VkExtent2D          imageExtent;
     uint32_t            imageCount;
-  };
-
-  /**
-   * \brief Presenter features
-   */
-  struct PresenterFeatures {
-    bool                fullScreenExclusive : 1;
-    bool                hdrMetadata : 1;
-  };
-  
-  /**
-   * \brief Adapter and queue
-   */
-  struct PresenterDevice {
-    uint32_t            queueFamily = 0;
-    VkQueue             queue       = VK_NULL_HANDLE;
-    VkPhysicalDevice    adapter     = VK_NULL_HANDLE;
-    PresenterFeatures   features    = { };
+    uint32_t            syncInterval;
   };
 
   /**
@@ -84,6 +71,15 @@ namespace dxvk::vk {
   };
 
   /**
+   * \brief Queued frame
+   */
+  struct PresenterFrame {
+    uint64_t          frameId;
+    VkPresentModeKHR  mode;
+    VkResult          result;
+  };
+
+  /**
    * \brief Vulkan presenter
    * 
    * Provides abstractions for some of the
@@ -95,10 +91,9 @@ namespace dxvk::vk {
   public:
 
     Presenter(
-      const Rc<InstanceFn>& vki,
-      const Rc<DeviceFn>&   vkd,
-            PresenterDevice device,
-      const PresenterDesc&  desc);
+      const Rc<DxvkDevice>&   device,
+      const Rc<sync::Signal>& signal,
+      const PresenterDesc&    desc);
     
     ~Presenter();
 
@@ -139,9 +134,30 @@ namespace dxvk::vk {
      * Presents the current image. If this returns
      * an error, the swap chain must be recreated,
      * but do not present before acquiring an image.
+     * \param [in] mode Present mode
+     * \param [in] frameId Frame number.
+     *    Must increase monotonically.
      * \returns Status of the operation
      */
-    VkResult presentImage();
+    VkResult presentImage(
+            VkPresentModeKHR  mode,
+            uint64_t          frameId);
+
+    /**
+     * \brief Signals a given frame
+     *
+     * Waits for the present operation to complete and then signals
+     * the presenter signal with the given frame ID. Must not be
+     * called before GPU work prior to the present submission has
+     * completed in order to maintain consistency.
+     * \param [in] result Presentation result
+     * \param [in] mode Present mode
+     * \param [in] frameId Frame number
+     */
+    void signalFrame(
+            VkResult          result,
+            VkPresentModeKHR  mode,
+            uint64_t          frameId);
 
     /**
      * \brief Changes and takes ownership of surface
@@ -163,6 +179,15 @@ namespace dxvk::vk {
      */
     VkResult recreateSwapChain(
       const PresenterDesc&  desc);
+
+    /**
+     * \brief Changes sync interval
+     *
+     * If this returns an error, the swap chain must
+     * be recreated.
+     * \param [in] syncInterval New sync interval
+     */
+    VkResult setSyncInterval(uint32_t syncInterval);
 
     /**
      * \brief Changes maximum frame rate
@@ -201,11 +226,13 @@ namespace dxvk::vk {
 
   private:
 
-    Rc<InstanceFn>    m_vki;
-    Rc<DeviceFn>      m_vkd;
+    Rc<DxvkDevice>    m_device;
+    Rc<sync::Signal>  m_signal;
 
-    PresenterDevice   m_device;
-    PresenterInfo     m_info;
+    Rc<vk::InstanceFn> m_vki;
+    Rc<vk::DeviceFn>  m_vkd;
+
+    PresenterInfo     m_info        = { };
 
     VkSurfaceKHR      m_surface     = VK_NULL_HANDLE;
     VkSwapchainKHR    m_swapchain   = VK_NULL_HANDLE;
@@ -213,12 +240,21 @@ namespace dxvk::vk {
     std::vector<PresenterImage> m_images;
     std::vector<PresenterSync>  m_semaphores;
 
-    uint32_t m_imageIndex = 0;
-    uint32_t m_frameIndex = 0;
+    std::vector<VkPresentModeKHR> m_dynamicModes;
 
-    VkResult m_acquireStatus = VK_NOT_READY;
+    uint32_t          m_imageIndex = 0;
+    uint32_t          m_frameIndex = 0;
 
-    FpsLimiter m_fpsLimiter;
+    VkResult          m_acquireStatus = VK_NOT_READY;
+
+    FpsLimiter        m_fpsLimiter;
+
+    dxvk::mutex                 m_frameMutex;
+    dxvk::condition_variable    m_frameCond;
+    dxvk::thread                m_frameThread;
+    std::queue<PresenterFrame>  m_frameQueue;
+
+    std::atomic<uint64_t>       m_lastFrameId = { 0ull };
 
     VkResult recreateSwapChainInternal(
       const PresenterDesc&  desc);
@@ -243,23 +279,25 @@ namespace dxvk::vk {
     VkPresentModeKHR pickPresentMode(
             uint32_t                  numSupported,
       const VkPresentModeKHR*         pSupported,
-            uint32_t                  numDesired,
-      const VkPresentModeKHR*         pDesired);
+            uint32_t                  syncInterval);
 
     VkExtent2D pickImageExtent(
       const VkSurfaceCapabilitiesKHR& caps,
             VkExtent2D                desired);
 
     uint32_t pickImageCount(
-      const VkSurfaceCapabilitiesKHR& caps,
-            VkPresentModeKHR          presentMode,
+            uint32_t                  minImageCount,
+            uint32_t                  maxImageCount,
             uint32_t                  desired);
-
-    VkResult createSurface();
 
     void destroySwapchain();
 
     void destroySurface();
+
+    void applyFrameRateLimit(
+            VkPresentModeKHR          mode);
+
+    void runFrameThread();
 
   };
 

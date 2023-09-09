@@ -16,7 +16,11 @@ namespace dxvk {
 
 
   BOOL D3D9Cursor::ShowCursor(BOOL bShow) {
-    ::SetCursor(bShow ? m_hCursor : nullptr);
+    if (likely(m_hCursor != nullptr))
+      ::SetCursor(bShow ? m_hCursor : nullptr);
+    else
+      Logger::debug("D3D9Cursor::ShowCursor: Software cursor not implemented.");
+    
     return std::exchange(m_visible, bShow);
   }
 

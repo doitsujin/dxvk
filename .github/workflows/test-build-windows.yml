@@ -16,9 +16,8 @@ jobs:
     - name: Setup glslangValidator
       shell: pwsh
       run: |
-        choco install vulkan-sdk -y
-        Write-Output "$([System.Environment]::GetEnvironmentVariable('VULKAN_SDK', 'Machine'))\Bin" `
-          | Out-File -FilePath "${Env:GITHUB_PATH}" -Append
+        Invoke-WebRequest -Uri "https://raw.githubusercontent.com/HansKristian-Work/vkd3d-proton-ci/main/glslangValidator.exe" -OutFile "glslangValidator.exe"
+        Write-Output "$pwd" | Out-File -FilePath "${Env:GITHUB_PATH}" -Append
 
     - name: Setup Meson
       shell: pwsh

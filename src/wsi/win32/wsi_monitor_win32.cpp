@@ -18,7 +18,7 @@ namespace dxvk::wsi {
   }
 
   struct MonitorEnumInfo {
-    const WCHAR *gdiDeviceName;
+    std::set<std::wstring> *gdiDeviceNames;
     UINT      iMonitorId;
     HMONITOR  oMonitor;
   };
@@ -30,13 +30,13 @@ namespace dxvk::wsi {
           LPARAM                    lp) {
     auto data = reinterpret_cast<MonitorEnumInfo*>(lp);
 
-    if (data->gdiDeviceName)
+    if (data->gdiDeviceNames)
     {
       MONITORINFOEXW monitorInfo;
 
       monitorInfo.cbSize = sizeof(monitorInfo);
       GetMonitorInfoW(hmon, (MONITORINFO *)&monitorInfo);
-      if (wcscmp(data->gdiDeviceName, monitorInfo.szDevice))
+      if (data->gdiDeviceNames->find(monitorInfo.szDevice) == data->gdiDeviceNames->end())
         return TRUE;
     }
     if (data->iMonitorId--)
@@ -49,7 +49,7 @@ namespace dxvk::wsi {
     MonitorEnumInfo info;
     info.iMonitorId = index;
     info.oMonitor   = nullptr;
-    info.gdiDeviceName = nullptr;
+    info.gdiDeviceNames = nullptr;
 
     ::EnumDisplayMonitors(
       nullptr, nullptr, &MonitorEnumProc,
@@ -65,6 +65,7 @@ namespace dxvk::wsi {
     std::vector<DISPLAYCONFIG_PATH_INFO> paths;
     std::vector<DISPLAYCONFIG_MODE_INFO> modes;
     std::set<std::pair<uint32_t, uint32_t>> sources;
+    std::set<std::wstring> gdiDeviceNames;
     UINT32 pathCount = 0;
     UINT32 modeCount = 0;
     LONG result;
@@ -93,6 +94,7 @@ namespace dxvk::wsi {
     MonitorEnumInfo info;
     info.iMonitorId = index;
     info.oMonitor = nullptr;
+    info.gdiDeviceNames = &gdiDeviceNames;
 
     for (const auto &path : paths) {
       uint32_t i;
@@ -121,16 +123,12 @@ namespace dxvk::wsi {
         return enumMonitors(index);
       }
 
-      info.gdiDeviceName = deviceName.viewGdiDeviceName;
-
-      ::EnumDisplayMonitors(
-        nullptr, nullptr, &MonitorEnumProc,
-        reinterpret_cast<LPARAM>(&info));
-
-      if (info.oMonitor != nullptr)
-        return info.oMonitor;
+      gdiDeviceNames.insert(deviceName.viewGdiDeviceName);
     }
-    return nullptr;
+    ::EnumDisplayMonitors(
+      nullptr, nullptr, &MonitorEnumProc,
+      reinterpret_cast<LPARAM>(&info));
+    return info.oMonitor;
   }
 
 

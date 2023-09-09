@@ -1953,6 +1953,11 @@ namespace dxvk {
     enabled.core.features.shaderFloat64                           = supported.core.features.shaderFloat64;
     enabled.core.features.shaderInt64                             = supported.core.features.shaderInt64;
 
+    // Depth bias control
+    enabled.extDepthBiasControl.depthBiasControl                                = supported.extDepthBiasControl.depthBiasControl;
+    enabled.extDepthBiasControl.depthBiasExact                                  = supported.extDepthBiasControl.depthBiasExact;
+    enabled.extDepthBiasControl.leastRepresentableValueForceUnormRepresentation = supported.extDepthBiasControl.leastRepresentableValueForceUnormRepresentation;
+
     return enabled;
   }
   
@@ -2304,6 +2309,10 @@ namespace dxvk {
     d3d11Desc.CPUAccessFlags = metadata.CPUAccessFlags;
     d3d11Desc.MiscFlags      = metadata.MiscFlags;
     d3d11Desc.TextureLayout  = metadata.TextureLayout;
+    if ((d3d11Desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE) && !(d3d11Desc.MiscFlags & (D3D11_RESOURCE_MISC_SHARED | D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX))) {
+      Logger::warn("Fixing up wrong MiscFlags");
+      d3d11Desc.MiscFlags |= D3D11_RESOURCE_MISC_SHARED;
+    }
 
     // Only 2D textures may be shared
     try {

@@ -20,60 +20,6 @@
 
 namespace dxvk {
 
-  static void NormalizeDisplayMetadata(const DxgiMonitorInfo *pMonitorInfo, wsi::WsiDisplayMetadata& metadata) {
-    // Use some dummy info when we have no hdr static metadata for the
-    // display or we were unable to obtain an EDID.
-    //
-    // These dummy values are the same as what Windows DXGI will output
-    // for panels with broken EDIDs such as LG OLEDs displays which
-    // have an entirely zeroed out luminance section in the hdr static
-    // metadata block.
-    //
-    // (Spec has 0 as 'undefined', which isn't really useful for an app
-    // to tonemap against.)
-    if (metadata.minLuminance == 0.0f)
-      metadata.minLuminance = 0.01f;
-
-    if (metadata.maxLuminance == 0.0f)
-      metadata.maxLuminance = 1499.0f;
-
-    if (metadata.maxFullFrameLuminance == 0.0f)
-      metadata.maxFullFrameLuminance = 799.0f;
-
-    // If we have no RedPrimary/GreenPrimary/BluePrimary/WhitePoint due to
-    // the lack of a monitor exposing the chroma block or the lack of an EDID,
-    // simply just fall back to Rec.709 or P3 values depending on the default
-    // ColorSpace we started in.
-    // (Don't change based on punting, as this should be static for a display.)
-    if (metadata.redPrimary[0]   == 0.0f && metadata.redPrimary[1]   == 0.0f
-     && metadata.greenPrimary[0] == 0.0f && metadata.greenPrimary[1] == 0.0f
-     && metadata.bluePrimary[0]  == 0.0f && metadata.bluePrimary[1]  == 0.0f
-     && metadata.whitePoint[0]   == 0.0f && metadata.whitePoint[1]   == 0.0f) {
-      if (pMonitorInfo->DefaultColorSpace() == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709) {
-        // sRGB ColorSpace -> Rec.709 Primaries
-        metadata.redPrimary[0]   = 0.640f;
-        metadata.redPrimary[1]   = 0.330f;
-        metadata.greenPrimary[0] = 0.300f;
-        metadata.greenPrimary[1] = 0.600f;
-        metadata.bluePrimary[0]  = 0.150f;
-        metadata.bluePrimary[1]  = 0.060f;
-        metadata.whitePoint[0]   = 0.3127f;
-        metadata.whitePoint[1]   = 0.3290f;
-      } else {
-        // HDR10 ColorSpace -> P3 Primaries
-        metadata.redPrimary[0]   = 0.680f;
-        metadata.redPrimary[1]   = 0.320f;
-        metadata.greenPrimary[0] = 0.265f;
-        metadata.greenPrimary[1] = 0.690f;
-        metadata.bluePrimary[0]  = 0.150f;
-        metadata.bluePrimary[1]  = 0.060f;
-        metadata.whitePoint[0]   = 0.3127f;
-        metadata.whitePoint[1]   = 0.3290f;
-      }
-    }
-  }
-
-  
   DxgiOutput::DxgiOutput(
     const Com<DxgiFactory>& factory,
     const Com<DxgiAdapter>& adapter,
@@ -275,7 +221,7 @@ namespace dxvk {
     pDesc->AttachedToDesktop     = 1;
     pDesc->Rotation              = DXGI_MODE_ROTATION_UNSPECIFIED;
     pDesc->Monitor               = m_monitor;
-    pDesc->BitsPerColor          = 8;
+    pDesc->BitsPerColor          = 10;
     // This should only return DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020
     // (HDR) if the user has the HDR setting enabled in Windows.
     // Games can still punt into HDR mode by using CheckColorSpaceSupport
@@ -416,31 +362,18 @@ namespace dxvk {
     if (FAILED(hr))
       return hr;
 
-    static bool s_errorShown = false;
-
-    if (!std::exchange(s_errorShown, true))
-      Logger::warn("DxgiOutput::GetFrameStatistics: Frame statistics may be inaccurate");
-
-    // Estimate vblank count based on last known display mode. Querying
-    // the display mode on every call would be prohibitively expensive.
-    auto refreshPeriod = computeRefreshPeriod(
-      monitorInfo->LastMode.RefreshRate.Numerator,
-      monitorInfo->LastMode.RefreshRate.Denominator);
-
-    // We don't really have a way to query time since boot
-    auto t1Counter = dxvk::high_resolution_clock::get_counter();
-
-    auto t0 = dxvk::high_resolution_clock::get_time_from_counter(monitorInfo->FrameStats.SyncQPCTime.QuadPart);
-    auto t1 = dxvk::high_resolution_clock::get_time_from_counter(t1Counter);
-
-    pStats->PresentCount = monitorInfo->FrameStats.PresentCount;
-    pStats->PresentRefreshCount = monitorInfo->FrameStats.PresentRefreshCount;
-    pStats->SyncRefreshCount = monitorInfo->FrameStats.SyncRefreshCount + computeRefreshCount(t0, t1, refreshPeriod);
-    pStats->SyncQPCTime.QuadPart = t1Counter;
-    pStats->SyncGPUTime.QuadPart = 0;
-
+    // Need to acquire swap chain and unlock monitor data, since querying
+    // frame statistics from the swap chain will also access monitor data.
+    Com<IDXGISwapChain> swapChain = monitorInfo->pSwapChain;
     m_monitorInfo->ReleaseMonitorData();
-    return S_OK;
+
+    // This API only works if there is a full-screen swap chain active.
+    if (swapChain == nullptr) {
+      *pStats = DXGI_FRAME_STATISTICS();
+      return S_OK;
+    }
+
+    return swapChain->GetFrameStatistics(pStats);
   }
   
   
@@ -724,9 +657,19 @@ namespace dxvk {
 
     // Normalize either the display metadata we got back, or our
     // blank one to get something sane here.
-    NormalizeDisplayMetadata(m_monitorInfo, m_metadata);
+    NormalizeDisplayMetadata(m_monitorInfo->DefaultColorSpace() != DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709, m_metadata);
+
+    auto refreshPeriod = computeRefreshPeriod(
+      activeWsiMode.refreshRate.numerator,
+      activeWsiMode.refreshRate.denominator);
 
     monitorData.FrameStats.SyncQPCTime.QuadPart = dxvk::high_resolution_clock::get_counter();
+    monitorData.FrameStats.SyncRefreshCount = computeRefreshCount(
+      dxvk::high_resolution_clock::time_point(),
+      dxvk::high_resolution_clock::get_time_from_counter(monitorData.FrameStats.SyncQPCTime.QuadPart),
+      refreshPeriod);
+
+    monitorData.FrameStats.PresentRefreshCount = monitorData.FrameStats.SyncRefreshCount;
     monitorData.GammaCurve.Scale = { 1.0f, 1.0f, 1.0f };
     monitorData.GammaCurve.Offset = { 0.0f, 0.0f, 0.0f };
     monitorData.LastMode = ConvertDisplayMode(activeWsiMode);

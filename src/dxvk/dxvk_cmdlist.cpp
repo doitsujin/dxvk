@@ -335,7 +335,7 @@ namespace dxvk {
 
 
   void DxvkCommandList::next() {
-    if (m_cmd.usedFlags != 0)
+    if (m_cmd.usedFlags != 0 || m_cmd.sparseBind)
       m_cmdSubmissions.push_back(m_cmd);
 
     // Only replace used command buffer to save resources
@@ -397,7 +397,7 @@ namespace dxvk {
     m_cmdSubmissions.clear();
     m_cmdSparseBinds.clear();
 
-    m_wsiSemaphores = vk::PresenterSync();
+    m_wsiSemaphores = PresenterSync();
 
     // Reset actual command buffers and pools
     m_graphicsPool->reset();

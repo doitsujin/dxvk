@@ -272,9 +272,7 @@ namespace dxvk {
     ////////////////////////////////////////////////
     // Temporary r# vector registers with immediate
     // indexing, and x# vector array registers.
-    std::array<
-      DxsoRegisterPointer,
-      DxsoMaxTempRegs> m_rRegs;
+    std::vector<DxsoRegisterPointer> m_rRegs;
 
     ////////////////////////////////////////////////
     // Predicate registers
@@ -620,6 +618,12 @@ namespace dxvk {
 
       return this->emitRegisterLoad(lookup, writeMask);
     }
+
+    std::array<uint32_t, 2> emitBem(
+      const DxsoInstructionContext& ctx,
+      const DxsoRegisterValue& src0,
+      const DxsoRegisterValue& src1
+    );
 
     ///////////////////////////////
     // Handle shader ops

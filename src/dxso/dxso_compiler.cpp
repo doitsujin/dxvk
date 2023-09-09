@@ -41,6 +41,7 @@ namespace dxvk {
 
     m_usedSamplers = 0;
     m_usedRTs      = 0;
+    m_rRegs.reserve(DxsoMaxTempRegs);
 
     for (uint32_t i = 0; i < m_rRegs.size(); i++)
       m_rRegs.at(i)  = DxsoRegisterPointer{ };
@@ -128,6 +129,7 @@ namespace dxvk {
     case DxsoOpcode::Lrp:
     case DxsoOpcode::Frc:
     case DxsoOpcode::Cmp:
+    case DxsoOpcode::Bem:
     case DxsoOpcode::Cnd:
     case DxsoOpcode::Dp2Add:
     case DxsoOpcode::DsX:
@@ -1042,6 +1044,8 @@ namespace dxvk {
       const DxsoBaseRegister* relative) {
     switch (reg.id.type) {
       case DxsoRegisterType::Temp: {
+        if (reg.id.num >= m_rRegs.size())
+          m_rRegs.resize( reg.id.num + 1, DxsoRegisterPointer { } );
         DxsoRegisterPointer& ptr = m_rRegs.at(reg.id.num);
         if (ptr.id == 0) {
           std::string name = str::format("r", reg.id.num);
@@ -1855,6 +1859,45 @@ namespace dxvk {
     this->emitDstStore(dst, result, mask, ctx.dst.saturate, emitPredicateLoad(ctx), ctx.dst.shift, ctx.dst.id);
   }
 
+  std::array<uint32_t, 2> DxsoCompiler::emitBem(
+      const DxsoInstructionContext& ctx,
+      const DxsoRegisterValue& src0,
+      const DxsoRegisterValue& src1) {
+
+    // For texbem:
+    //  src0 = tc(m), src1 = t(n), dst.x = u', dst.y = v'
+
+    // dst.x = src0.x + [bm00(m) * src1.x + bm10(m) * src1.y]
+    // dst.y = src0.y + [bm01(m) * src1.x + bm11(m) * src1.y]
+
+    // But we flipped the bm indices so we can use dot here...
+
+    // dst.x = src0.x + dot(bm0, src1)
+    // dst.y = src0.y + dot(bm1, src1)
+
+    std::array<uint32_t, 2> values = { m_module.constf32(0.0f), m_module.constf32(0.0f) };
+
+    for (uint32_t i = 0; i < 2; i++) {
+      uint32_t fl_t   = getScalarTypeId(DxsoScalarType::Float32);
+      uint32_t vec2_t = getVectorTypeId({ DxsoScalarType::Float32, 2 });
+      std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
+
+      uint32_t tc_m_n = m_module.opCompositeExtract(fl_t, src0.id, 1, &i);
+
+      uint32_t offset = m_module.constu32(D3D9SharedPSStages_Count * ctx.dst.id.num + D3D9SharedPSStages_BumpEnvMat0 + i);
+      uint32_t bm     = m_module.opAccessChain(m_module.defPointerType(vec2_t, spv::StorageClassUniform),
+                                              m_ps.sharedState, 1, &offset);
+                bm    = m_module.opLoad(vec2_t, bm);
+
+      uint32_t t      = m_module.opVectorShuffle(vec2_t, src1.id, src1.id, 2, indices.data());
+
+      uint32_t dot    = m_module.opDot(fl_t, bm, t);
+
+      values[i]       = m_module.opFAdd(fl_t, tc_m_n, dot);
+    }
+    return values;
+  }
+
 
   void DxsoCompiler::emitVectorAlu(const DxsoInstructionContext& ctx) {
     const auto& src = ctx.src;
@@ -2194,6 +2237,14 @@ namespace dxvk {
           typeId, cmp,
           emitRegisterLoad(src[1], mask).id,
           emitRegisterLoad(src[2], mask).id);
+        break;
+      }
+      case DxsoOpcode::Bem: {
+        DxsoRegisterValue src0 = emitRegisterLoad(src[0], mask);
+        DxsoRegisterValue src1 = emitRegisterLoad(src[1], mask);
+
+        auto values = emitBem(ctx, src0, src1);
+        result.id   = m_module.opCompositeConstruct(typeId, values.size(), values.data());
         break;
       }
       case DxsoOpcode::Cnd: {
@@ -2736,35 +2787,10 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       // The projection (/.w) happens before this...
       // Of course it does...
-      texcoordVar.id = DoProjection(texcoordVar, true);
-
-      // u' = tc(m).x + [bm00(m) * t(n).x + bm10(m) * t(n).y]
-      // v' = tc(m).y + [bm01(m) * t(n).x + bm11(m) * t(n).y]
-
-      // But we flipped the bm indices so we can use dot here...
-
-      // u' = tc(m).x + dot(bm0, tn)
-      // v' = tc(m).y + dot(bm1, tn)
-
-      for (uint32_t i = 0; i < 2; i++) {
-        uint32_t fl_t   = getScalarTypeId(DxsoScalarType::Float32);
-        uint32_t vec2_t = getVectorTypeId({ DxsoScalarType::Float32, 2 });
-        std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
-
-        uint32_t tc_m_n = m_module.opCompositeExtract(fl_t, texcoordVar.id, 1, &i);
-
-        uint32_t offset = m_module.constu32(D3D9SharedPSStages_Count * ctx.dst.id.num + D3D9SharedPSStages_BumpEnvMat0 + i);
-        uint32_t bm     = m_module.opAccessChain(m_module.defPointerType(vec2_t, spv::StorageClassUniform),
-                                                 m_ps.sharedState, 1, &offset);
-                 bm     = m_module.opLoad(vec2_t, bm);
-
-        uint32_t t      = m_module.opVectorShuffle(vec2_t, n.id, n.id, 2, indices.data());
-
-        uint32_t dot    = m_module.opDot(fl_t, bm, t);
-
-        uint32_t result = m_module.opFAdd(fl_t, tc_m_n, dot);
-        texcoordVar.id  = m_module.opCompositeInsert(getVectorTypeId(texcoordVar.type), result, texcoordVar.id, 1, &i);
-      }
+      texcoordVar.id  = DoProjection(texcoordVar, true);
+      auto values     = emitBem(ctx, texcoordVar, n);
+      for (uint32_t i = 0; i < 2; i++)
+        texcoordVar.id = m_module.opCompositeInsert(getVectorTypeId(texcoordVar.type), values[i], texcoordVar.id, 1, &i);
     }
     else if (opcode == DxsoOpcode::TexReg2Ar) {
       texcoordVar = emitRegisterLoad(ctx.src[0], srcMask);
@@ -2941,7 +2967,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     auto SampleType = [&](DxsoSamplerType samplerType) {
       uint32_t bitOffset = m_programInfo.type() == DxsoProgramTypes::VertexShader
-        ? samplerIdx + caps::MaxTexturesPS
+        ? samplerIdx + caps::MaxTexturesPS + 1
         : samplerIdx;
 
       uint32_t isNull = m_spec.get(m_module, m_specUbo, SpecSamplerNull, bitOffset, 1);
@@ -3227,6 +3253,21 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       DxsoRegMask mask = elem.mask;
       if (mask.popCount() == 0)
+        mask = DxsoRegMask(true, true, true, true);
+
+      // Pixel shaders seem to load every element (or every element exported by VS)
+      // regardless of the mask in the DCL used.
+      //
+      // I imagine this is because at one point D3D9 ASM was very literal to GPUs,
+      // and the input's mask from the PS didn't correspond to anything and the
+      // physical output register was filled with the extra data from the VS not
+      // included in the mask on the PS, so it just worked(tm).
+      //
+      // Fixes a bug in Test Drive Unlimited's shadow code where it outputs o8.xyz, but the PS
+      // has a decl for v8.xy and it tries to do 2D Shadow sampling (needs 3 elements .xyz) in the PS.
+      // This likely occured because the compiler was not aware of shadow sampling when generating
+      // the writemask for the PS.
+      if (m_programInfo.type() == DxsoProgramType::PixelShader)
         mask = DxsoRegMask(true, true, true, true);
 
       std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };

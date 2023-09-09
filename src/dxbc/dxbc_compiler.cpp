@@ -257,6 +257,7 @@ namespace dxvk {
     info.outputMask = m_outputMask;
     info.uniformSize = m_immConstData.size();
     info.uniformData = m_immConstData.data();
+    info.outputTopology = m_outputTopology;
 
     if (m_programInfo.type() == DxbcProgramType::HullShader)
       info.patchVertexCount = m_hs.vertexCountIn;
@@ -1294,16 +1295,17 @@ namespace dxvk {
     // The input primitive topology is stored within in the
     // control bits of the opcode token. In SPIR-V, we have
     // to define an execution mode.
-    const spv::ExecutionMode mode = [&] {
+    auto mode = [&] {
       switch (ins.controls.primitiveTopology()) {
-        case DxbcPrimitiveTopology::PointList:     return spv::ExecutionModeOutputPoints;
-        case DxbcPrimitiveTopology::LineStrip:     return spv::ExecutionModeOutputLineStrip;
-        case DxbcPrimitiveTopology::TriangleStrip: return spv::ExecutionModeOutputTriangleStrip;
+        case DxbcPrimitiveTopology::PointList:     return std::make_pair(VK_PRIMITIVE_TOPOLOGY_POINT_LIST,    spv::ExecutionModeOutputPoints);
+        case DxbcPrimitiveTopology::LineStrip:     return std::make_pair(VK_PRIMITIVE_TOPOLOGY_LINE_LIST,     spv::ExecutionModeOutputLineStrip);
+        case DxbcPrimitiveTopology::TriangleStrip: return std::make_pair(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, spv::ExecutionModeOutputTriangleStrip);
         default: throw DxvkError("DxbcCompiler: Unsupported primitive topology");
       }
     }();
     
-    m_module.setExecutionMode(m_entryPointId, mode);
+    m_outputTopology = mode.first;
+    m_module.setExecutionMode(m_entryPointId, mode.second);
   }
   
   
@@ -1350,16 +1352,17 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitDclTessDomain(const DxbcShaderInstruction& ins) {
-    const spv::ExecutionMode executionMode = [&] {
+    auto mode = [&] {
       switch (ins.controls.tessDomain()) {
-        case DxbcTessDomain::Isolines:  return spv::ExecutionModeIsolines;
-        case DxbcTessDomain::Triangles: return spv::ExecutionModeTriangles;
-        case DxbcTessDomain::Quads:     return spv::ExecutionModeQuads;
+        case DxbcTessDomain::Isolines:  return std::make_pair(VK_PRIMITIVE_TOPOLOGY_LINE_LIST,     spv::ExecutionModeIsolines);
+        case DxbcTessDomain::Triangles: return std::make_pair(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, spv::ExecutionModeTriangles);
+        case DxbcTessDomain::Quads:     return std::make_pair(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, spv::ExecutionModeQuads);
         default: throw DxvkError("Dxbc: Invalid tess domain");
       }
     }();
     
-    m_module.setExecutionMode(m_entryPointId, executionMode);
+    m_outputTopology = mode.first;
+    m_module.setExecutionMode(m_entryPointId, mode.second);
   }
   
   
@@ -3380,9 +3383,13 @@ namespace dxvk {
       };
       
       imageOperands.flags |= spv::ImageOperandsConstOffsetMask;
-      imageOperands.sConstOffset = m_module.constComposite(
-        getVectorTypeId({ DxbcScalarType::Sint32, imageLayerDim }),
-        imageLayerDim, offsetIds.data());
+      imageOperands.sConstOffset = offsetIds[0];
+
+      if (imageLayerDim > 1) {
+        imageOperands.sConstOffset = m_module.constComposite(
+          getVectorTypeId({ DxbcScalarType::Sint32, imageLayerDim }),
+          imageLayerDim, offsetIds.data());
+      }
     }
     
     // The LOD is not present when reading from
@@ -3516,9 +3523,13 @@ namespace dxvk {
       };
       
       imageOperands.flags |= spv::ImageOperandsConstOffsetMask;
-      imageOperands.sConstOffset = m_module.constComposite(
-        getVectorTypeId({ DxbcScalarType::Sint32, imageLayerDim }),
-        imageLayerDim, offsetIds.data());
+      imageOperands.sConstOffset = offsetIds[0];
+
+      if (imageLayerDim > 1) {
+        imageOperands.sConstOffset = m_module.constComposite(
+          getVectorTypeId({ DxbcScalarType::Sint32, imageLayerDim }),
+          imageLayerDim, offsetIds.data());
+      }
     }
 
     // Gathering texels always returns a four-component
@@ -3658,9 +3669,13 @@ namespace dxvk {
       };
       
       imageOperands.flags |= spv::ImageOperandsConstOffsetMask;
-      imageOperands.sConstOffset = m_module.constComposite(
-        getVectorTypeId({ DxbcScalarType::Sint32, imageLayerDim }),
-        imageLayerDim, offsetIds.data());
+      imageOperands.sConstOffset = offsetIds[0];
+
+      if (imageLayerDim > 1) {
+        imageOperands.sConstOffset = m_module.constComposite(
+          getVectorTypeId({ DxbcScalarType::Sint32, imageLayerDim }),
+          imageLayerDim, offsetIds.data());
+      }
     }
 
     if (hasMinLod) {

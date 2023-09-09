@@ -731,6 +731,10 @@ namespace dxvk {
             VkSparseMemoryBind&               oldBind,
       const VkSparseMemoryBind&               newBind);
 
+    static bool tryMergeImageBind(
+            std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle>& oldBind,
+      const std::pair<DxvkSparseImageBindKey, DxvkSparsePageHandle>& newBind);
+
     void processBufferBinds(
             DxvkSparseBufferBindArrays&       buffer);
 

@@ -63,6 +63,9 @@ namespace dxvk {
     /// Enforces the given LOD bias for all samplers.
     float samplerLodBias;
 
+    /// Clamps negative LOD bias
+    bool clampNegativeLodBias;
+
     /// Declare vertex positions in shaders as invariant
     bool invariantPosition;
 
@@ -76,10 +79,6 @@ namespace dxvk {
     /// Sync interval. Overrides the value
     /// passed to IDXGISwapChain::Present.
     int32_t syncInterval;
-
-    /// Tear-free mode if vsync is disabled
-    /// Tearing mode if vsync is enabled
-    Tristate tearFree;
 
     /// Override maximum frame latency if the app specifies
     /// a higher value. May help with frame timing issues.

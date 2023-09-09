@@ -98,6 +98,9 @@ namespace dxvk {
       m_device->ChangeReportedMemory(m_size);
 
     m_device->RemoveMappedTexture(this);
+
+    if (m_desc.Pool == D3DPOOL_DEFAULT)
+      m_device->DecrementLosableCounter();
   }
 
 
@@ -364,7 +367,7 @@ namespace dxvk {
     if (!CheckImageSupport(&imageInfo, imageInfo.tiling)) {
       throw DxvkError(str::format(
         "D3D9: Cannot create texture:",
-        "\n  Type:    ", std::hex, ResourceType,
+        "\n  Type:    0x", std::hex, ResourceType, std::dec,
         "\n  Format:  ", m_desc.Format,
         "\n  Extent:  ", m_desc.Width,
                     "x", m_desc.Height,
@@ -372,8 +375,8 @@ namespace dxvk {
         "\n  Samples: ", m_desc.MultiSample,
         "\n  Layers:  ", m_desc.ArraySize,
         "\n  Levels:  ", m_desc.MipLevels,
-        "\n  Usage:   ", std::hex, m_desc.Usage,
-        "\n  Pool:    ", std::hex, m_desc.Pool));
+        "\n  Usage:   0x", std::hex, m_desc.Usage, std::dec,
+        "\n  Pool:    0x", std::hex, m_desc.Pool, std::dec));
     }
 
     return m_device->GetDXVKDevice()->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);

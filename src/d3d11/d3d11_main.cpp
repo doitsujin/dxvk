@@ -15,7 +15,7 @@ namespace dxvk {
 extern "C" {
   using namespace dxvk;
   
-  DLLEXPORT HRESULT __stdcall D3D11CoreCreateDevice(
+  HRESULT D3D11InternalCreateDevice(
           IDXGIFactory*       pFactory,
           IDXGIAdapter*       pAdapter,
           UINT                Flags,
@@ -34,7 +34,7 @@ extern "C" {
       dxvkAdapter  = dxgiVkAdapter->GetDXVKAdapter();
       dxvkInstance = dxgiVkAdapter->GetDXVKInstance();
     } else {
-      Logger::warn("D3D11CoreCreateDevice: Adapter is not a DXVK adapter");
+      Logger::warn("D3D11InternalCreateDevice: Adapter is not a DXVK adapter");
       DXGI_ADAPTER_DESC desc;
       pAdapter->GetDesc(&desc);
 
@@ -70,7 +70,7 @@ extern "C" {
     D3D_FEATURE_LEVEL minFeatureLevel = D3D_FEATURE_LEVEL();
     D3D_FEATURE_LEVEL devFeatureLevel = D3D_FEATURE_LEVEL();
 
-    Logger::info(str::format("D3D11CoreCreateDevice: Maximum supported feature level: ", maxFeatureLevel));
+    Logger::info(str::format("D3D11InternalCreateDevice: Maximum supported feature level: ", maxFeatureLevel));
 
     for (uint32_t flId = 0 ; flId < FeatureLevels; flId++) {
       minFeatureLevel = pFeatureLevels[flId];
@@ -82,12 +82,12 @@ extern "C" {
     }
 
     if (!devFeatureLevel) {
-      Logger::err(str::format("D3D11CoreCreateDevice: Minimum required feature level ", minFeatureLevel, " not supported"));
+      Logger::err(str::format("D3D11InternalCreateDevice: Minimum required feature level ", minFeatureLevel, " not supported"));
       return E_INVALIDARG;
     }
 
     try {
-      Logger::info(str::format("D3D11CoreCreateDevice: Using feature level ", devFeatureLevel));
+      Logger::info(str::format("D3D11InternalCreateDevice: Using feature level ", devFeatureLevel));
 
       DxvkDeviceFeatures deviceFeatures = D3D11Device::GetDeviceFeatures(dxvkAdapter);
       Rc<DxvkDevice> dxvkDevice = dxvkAdapter->createDevice(dxvkInstance, deviceFeatures);
@@ -101,7 +101,7 @@ extern "C" {
         __uuidof(ID3D11Device),
         reinterpret_cast<void**>(ppDevice));
     } catch (const DxvkError& e) {
-      Logger::err("D3D11CoreCreateDevice: Failed to create D3D11 device");
+      Logger::err("D3D11InternalCreateDevice: Failed to create D3D11 device");
       return E_FAIL;
     }
   }
@@ -173,7 +173,7 @@ extern "C" {
     }
     
     // Create the actual device
-    hr = D3D11CoreCreateDevice(
+    hr = D3D11InternalCreateDevice(
       dxgiFactory.ptr(), dxgiAdapter.ptr(),
       Flags, pFeatureLevels, FeatureLevels,
       &device);
@@ -211,6 +211,25 @@ extern "C" {
     return S_OK;
   }
   
+
+    DLLEXPORT HRESULT __stdcall D3D11CoreCreateDevice(
+            IDXGIFactory*       pFactory,
+            IDXGIAdapter*       pAdapter,
+            D3D_DRIVER_TYPE     DriverType,
+            HMODULE             Software,
+            UINT                Flags,
+      const D3D_FEATURE_LEVEL*  pFeatureLevels,
+            UINT                FeatureLevels,
+            UINT                SDKVersion,
+            ID3D11Device**      ppDevice,
+            D3D_FEATURE_LEVEL*  pFeatureLevel) {
+    return D3D11InternalCreateDeviceAndSwapChain(
+      pAdapter, DriverType, Software, Flags,
+      pFeatureLevels, FeatureLevels, SDKVersion,
+      nullptr, nullptr,
+      ppDevice, pFeatureLevel, nullptr);
+  }
+
 
   DLLEXPORT HRESULT __stdcall D3D11CreateDevice(
           IDXGIAdapter*         pAdapter,

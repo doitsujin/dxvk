@@ -13,7 +13,7 @@ namespace dxvk {
   class D3D11Device;
   class D3D11DXGIDevice;
 
-  class D3D11SwapChain : public ComObject<IDXGIVkSwapChain> {
+  class D3D11SwapChain : public ComObject<IDXGIVkSwapChain1> {
     constexpr static uint32_t DefaultFrameLatency = 1;
   public:
 
@@ -80,6 +80,12 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE SetHDRMetaData(
       const DXGI_VK_HDR_METADATA*     pMetaData);
 
+    void STDMETHODCALLTYPE GetLastPresentCount(
+            UINT64*                   pLastPresentCount);
+
+    void STDMETHODCALLTYPE GetFrameStatistics(
+            DXGI_VK_FRAME_STATISTICS* pFrameStatistics);
+
   private:
 
     enum BindingIds : uint32_t {
@@ -97,7 +103,7 @@ namespace dxvk {
     Rc<DxvkDevice>            m_device;
     Rc<DxvkContext>           m_context;
 
-    Rc<vk::Presenter>         m_presenter;
+    Rc<Presenter>             m_presenter;
 
     Rc<DxvkImage>             m_swapImage;
     Rc<DxvkImageView>         m_swapImageView;
@@ -116,27 +122,26 @@ namespace dxvk {
     HANDLE                  m_frameLatencyEvent = nullptr;
     Rc<sync::CallbackFence> m_frameLatencySignal;
 
-    HANDLE                  m_processHandle = nullptr;
-
     bool                    m_dirty = true;
-    bool                    m_vsync = true;
 
     VkColorSpaceKHR         m_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
     std::optional<VkHdrMetadataEXT> m_hdrMetadata;
     bool m_dirtyHdrMetadata = true;
 
+    dxvk::mutex               m_frameStatisticsLock;
+    DXGI_VK_FRAME_STATISTICS  m_frameStatistics = { };
+
     HRESULT PresentImage(UINT SyncInterval);
 
     void SubmitPresent(
             D3D11ImmediateContext*  pContext,
-      const vk::PresenterSync&      Sync,
-            uint32_t                FrameId);
+      const PresenterSync&          Sync,
+            uint32_t                Repeat);
 
     void SynchronizePresent();
 
-    void RecreateSwapChain(
-            BOOL                      Vsync);
+    void RecreateSwapChain();
 
     void CreateFrameLatencyEvent();
 
@@ -161,10 +166,6 @@ namespace dxvk {
     uint32_t PickFormats(
             DXGI_FORMAT               Format,
             VkSurfaceFormatKHR*       pDstFormats);
-    
-    uint32_t PickPresentModes(
-            BOOL                      Vsync,
-            VkPresentModeKHR*         pDstModes);
     
     uint32_t PickImageCount(
             UINT                      Preferred);
