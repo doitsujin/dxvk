@@ -12,7 +12,7 @@ namespace dxvk {
     const D3D11_ON_12_RESOURCE_INFO*  p11on12Info)
   : D3D11DeviceChild<ID3D11Buffer>(pDevice),
     m_desc        (*pDesc),
-    m_resource    (this),
+    m_resource    (this, pDevice),
     m_d3d10       (this) {
     DxvkBufferCreateInfo info;
     info.flags  = 0;

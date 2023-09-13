@@ -9,11 +9,10 @@
 namespace dxvk {
 
   D3D11DXGIKeyedMutex::D3D11DXGIKeyedMutex(
-          ID3D11Resource* pResource)
-  : m_resource(pResource) {
-    Com<ID3D11Device> device;
-    m_resource->GetDevice(&device);
-    m_device = static_cast<D3D11Device*>(device.ptr());
+          ID3D11Resource* pResource,
+          D3D11Device*    pDevice)
+  : m_resource(pResource),
+    m_device(pDevice) {
 
     m_supported = m_device->GetDXVKDevice()->features().khrWin32KeyedMutex
                && m_device->GetDXVKDevice()->vkd()->wine_vkAcquireKeyedMutex != nullptr
@@ -120,9 +119,10 @@ namespace dxvk {
   }
 
   D3D11DXGIResource::D3D11DXGIResource(
-          ID3D11Resource*         pResource)
+          ID3D11Resource*         pResource,
+          D3D11Device*            pDevice)
   : m_resource(pResource),
-    m_keyedMutex(pResource) {
+    m_keyedMutex(pResource, pDevice) {
 
   }
 
