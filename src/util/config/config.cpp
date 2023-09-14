@@ -807,13 +807,17 @@ namespace dxvk {
     { R"(\\Snowblind\.(SP|MP|exe)$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
-    /* Project: Snowblind                      */
+    /* Aviary Attorney                         */
     { R"(\\Aviary Attorney\\nw\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
     /* Drakensang: The Dark Eye                */
     { R"(\\drakensang\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
+    }} },
+    /* Age of Empires 2 - janky frame timing   */
+    { R"(\\AoK HD\.exe$)", {{
+      { "d3d9.maxFrameLatency",             "1" },
     }} },
 
     /**********************************************/
