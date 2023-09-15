@@ -4735,6 +4735,10 @@ namespace dxvk {
         UINT                    Subresource) {
 
     const Rc<DxvkImage> image = pResource->GetImage();
+
+    if (image == nullptr)
+      return D3D_OK;
+
     auto formatInfo  = lookupFormatInfo(image->info().format);
     auto subresource = pResource->GetSubresourceFromIndex(
       formatInfo->aspectMask, Subresource);
