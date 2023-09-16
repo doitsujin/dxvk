@@ -1111,6 +1111,13 @@ namespace dxvk {
     { R"(\\(nations|patriots)\.exe$)", {{
       { "d3d8.managedBufferPlacement",     "False" },
     }} },
+    /* V-Rally 3                                  */
+    { R"(\\VRally3Demo\.exe$)", {{
+      { "d3d9.maxFrameRate",                  "60" },
+    }} },
+    { R"(\\VRally3\.exe$)", {{
+      { "d3d9.maxFrameRate",                  "60" },
+    }} },
   }};
 
 
