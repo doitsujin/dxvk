@@ -482,6 +482,9 @@ namespace dxvk {
     Flush();
     SynchronizeCsThread(DxvkCsThread::SynchronizeAll);
 
+    if (m_d3d9Options.deferSurfaceCreation)
+      m_deviceHasBeenReset = true;
+
     return D3D_OK;
   }
 

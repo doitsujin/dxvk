@@ -1033,6 +1033,12 @@ namespace dxvk {
     bool CanSWVP() const {
       return m_behaviorFlags & (D3DCREATE_MIXED_VERTEXPROCESSING | D3DCREATE_SOFTWARE_VERTEXPROCESSING);
     }
+
+    // Device Reset detection for D3D9SwapChainEx::Present
+    bool IsDeviceReset() {
+      return std::exchange(m_deviceHasBeenReset, false);
+    }
+
     void DetermineConstantLayouts(bool canSWVP);
 
     D3D9BufferSlice AllocUPBuffer(VkDeviceSize size);
@@ -1337,6 +1343,7 @@ namespace dxvk {
     VkImageLayout                   m_hazardLayout = VK_IMAGE_LAYOUT_GENERAL;
 
     bool                            m_usingGraphicsPipelines = false;
+    bool                            m_deviceHasBeenReset = false;
 
     DxvkDepthBiasRepresentation     m_depthBiasRepresentation = { VK_DEPTH_BIAS_REPRESENTATION_LEAST_REPRESENTABLE_VALUE_FORMAT_EXT, false };
     float                           m_depthBiasScale  = 0.0f;

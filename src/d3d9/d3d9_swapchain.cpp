@@ -147,6 +147,8 @@ namespace dxvk {
     bool recreate = false;
     recreate   |= m_wctx->presenter == nullptr;
     recreate   |= m_dialog != m_lastDialog;
+    if (options->deferSurfaceCreation)
+      recreate |= m_parent->IsDeviceReset();
 
     if (m_wctx->presenter != nullptr) {
       m_dirty  |= m_wctx->presenter->setSyncInterval(presentInterval) != VK_SUCCESS;
