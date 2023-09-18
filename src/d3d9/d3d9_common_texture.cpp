@@ -31,11 +31,12 @@ namespace dxvk {
       AddDirtyBox(nullptr, i);
     }
 
-    if (m_desc.Pool != D3DPOOL_DEFAULT) {
+    if (m_desc.Pool != D3DPOOL_DEFAULT && pSharedHandle) {
+      throw DxvkError("D3D9: Incompatible pool type for texture sharing.");
+    }
+
+    if (IsPoolManaged(m_desc.Pool)) {
       SetAllNeedUpload();
-      if (pSharedHandle) {
-        throw DxvkError("D3D9: Incompatible pool type for texture sharing.");
-      }
     }
 
     m_mapping = pDevice->LookupFormat(m_desc.Format);
