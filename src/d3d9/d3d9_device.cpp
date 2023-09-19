@@ -2360,7 +2360,8 @@ namespace dxvk {
     try {
       const Com<D3D9StateBlock> sb = new D3D9StateBlock(this, ConvertStateBlockType(Type));
       *ppSB = sb.ref();
-      m_losableResourceCounter++;
+      if (!m_isD3D8Compatible)
+        m_losableResourceCounter++;
 
       return D3D_OK;
     }
@@ -2392,7 +2393,8 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     *ppSB = m_recorder.ref();
-    m_losableResourceCounter++;
+    if (!m_isD3D8Compatible)
+      m_losableResourceCounter++;
     m_recorder = nullptr;
 
     return D3D_OK;
