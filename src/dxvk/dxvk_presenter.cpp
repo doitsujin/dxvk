@@ -604,7 +604,7 @@ namespace dxvk {
           uint32_t                  minImageCount,
           uint32_t                  maxImageCount,
           uint32_t                  desired) {
-    uint32_t count = minImageCount + 1;
+    uint32_t count = minImageCount;
     
     if (count < desired)
       count = desired;
