@@ -101,6 +101,10 @@ namespace dxvk {
       Logger::info("HDR was configured to be enabled, but has been force disabled as a UE4 DX11 game was detected.");
       this->enableHDR = false;
     }
+
+    this->useMonitorFallback = config.getOption<bool>("dxgi.useMonitorFallback", env::getEnvVar("DXVK_MONITOR_FALLBACK") == "1");
+    if (this->useMonitorFallback)
+      Logger::info("Enabled useMonitorFallback option");
   }
   
 }
