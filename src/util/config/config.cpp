@@ -846,6 +846,13 @@ namespace dxvk {
     { R"(\\RiftApart\.exe$)", {{
       { "dxgi.hideNvidiaGpu",               "False" },
     }} },
+    /* CP2077 enumerates display outputs each frame.
+     * Avoid using QueryDisplayConfig to avoid
+     * performance degradation until the
+     * optimization of that function is in Proton. */
+    { R"(\\Cyberpunk2077\.exe$)", {{
+      { "dxgi.useMonitorFallback",          "True" },
+    }} },
   }};
 
 

@@ -124,10 +124,13 @@ namespace dxvk {
       }
     }
 
+
     // If any monitors are left on the list, enable the
     // fallback to always enumerate all monitors.
     if ((m_monitorFallback = !monitors.empty()))
       Logger::warn("DXGI: Found monitors not associated with any adapter, using fallback");
+    else
+      m_monitorFallback = m_options.useMonitorFallback;
   }
   
   

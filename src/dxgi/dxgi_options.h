@@ -44,6 +44,9 @@ namespace dxvk {
 
     /// Enable HDR
     bool enableHDR;
+
+    /// Use monitor fallback to enumerating all monitors per output
+    bool useMonitorFallback;
   };
   
 }
