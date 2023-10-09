@@ -66,7 +66,16 @@ namespace dxvk {
     DxvkDeviceQueue transfer;
     DxvkDeviceQueue sparse;
   };
-  
+
+  /**
+   * \brief Latency marker frame ids
+   */
+  struct DxvkDeviceLowLatencyMarkers {
+    uint64_t simulation;
+    uint64_t render;
+    uint64_t present;
+  };
+
   /**
    * \brief DXVK device
    * 
@@ -471,10 +480,12 @@ namespace dxvk {
      * the given set of optional synchronization primitives.
      * \param [in] commandList The command list to submit
      * \param [out] status Submission feedback
+     * \param [in] enableFrameId Submission should include the frame id
      */
     void submitCommandList(
       const Rc<DxvkCommandList>&      commandList,
-            DxvkSubmitStatus*         status);
+            DxvkSubmitStatus*         status,
+            bool                      enableFrameId = true);
 
     /**
      * \brief Locks submission queue
@@ -534,6 +545,44 @@ namespace dxvk {
      * used by the GPU can be safely destroyed.
      */
     void waitForIdle();
+
+    /**
+     * \brief Updates the frame id for the given frame marker
+     * 
+     * \param [in] marker The marker to set the frame ID for
+     * \param [in] id The frame ID to set
+     */
+    void setLatencyMarker(VkLatencyMarkerNV marker, uint64_t id) {
+      switch (marker) {
+        case VK_LATENCY_MARKER_SIMULATION_START_NV:
+          m_latencyMarkers.simulation = id;
+          break;
+        case VK_LATENCY_MARKER_RENDERSUBMIT_START_NV:
+          m_latencyMarkers.render = id;
+          break;
+        case VK_LATENCY_MARKER_PRESENT_START_NV:
+          m_latencyMarkers.present = id;
+          break;
+        default:
+          break;
+      }
+    }
+
+    /**
+     * \brief Resets the latency markers back to zero
+     */
+    void resetLatencyMarkers() {
+      m_latencyMarkers = {};
+    }
+
+    /**
+     * \brief Returns the current set of latency marker frame IDs
+     * 
+     * \returns The current set of frame marker IDs
+     */
+    DxvkDeviceLowLatencyMarkers getLatencyMarkers() {
+      return m_latencyMarkers;
+    }
     
   private:
     
@@ -548,6 +597,8 @@ namespace dxvk {
     
     DxvkDevicePerfHints         m_perfHints;
     DxvkObjects                 m_objects;
+
+    DxvkDeviceLowLatencyMarkers m_latencyMarkers;
 
     sync::Spinlock              m_statLock;
     DxvkStatCounters            m_statCounters;

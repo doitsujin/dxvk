@@ -105,9 +105,9 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::flushCommandList(DxvkSubmitStatus* status) {
+  void DxvkContext::flushCommandList(DxvkSubmitStatus* status, bool enableFrameId) {
     m_device->submitCommandList(
-      this->endRecording(), status);
+      this->endRecording(), status, enableFrameId);
     
     this->beginRecording(
       m_device->createCommandList());

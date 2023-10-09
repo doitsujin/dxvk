@@ -65,8 +65,9 @@ namespace dxvk {
      * Transparently submits the current command
      * buffer and allocates a new one.
      * \param [out] status Submission feedback
+     * \param [in] enableFrameId Submission should include the frame id
      */
-    void flushCommandList(DxvkSubmitStatus* status);
+    void flushCommandList(DxvkSubmitStatus* status, bool enableFrameId = true);
     
     /**
      * \brief Begins generating query data

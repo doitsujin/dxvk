@@ -15,6 +15,7 @@
 #include "../vulkan/vulkan_loader.h"
 
 #include "dxvk_format.h"
+#include "dxvk_fence.h"
 
 namespace dxvk {
 
@@ -224,6 +225,42 @@ namespace dxvk {
      */
     void setHdrMetadata(const VkHdrMetadataEXT& hdrMetadata);
 
+    /**
+     * \brief Set the latency mode of the swapchain
+     *
+     * \param [in] enableLowLatency Determines if the low latency
+     * mode should be enabled of disabled
+     */
+    void setLatencySleepMode(bool lowLatencyMode, bool lowLatencyBoost, uint32_t minimumIntervalUs);
+
+    /**
+     * \brief Delay rendering work for lower latency
+     */
+    void latencySleep();
+
+    /**
+     * \brief Set a latency marker for the given stage
+     *
+     * \param [in] marker The stage this marker is for
+     * \param [in] presentId The presentId this marker is for
+     */
+    void setLatencyMarker(VkLatencyMarkerNV marker, uint64_t presentId);
+
+    /**
+     * \brief Get the low latency timing info
+     *
+     * \param [out] latencyInfo The structure to place
+     * the latency timings into
+     */
+    void getLatencyTimings(std::vector<VkLatencyTimingsFrameReportNV>& frameReports);
+
+    /**
+     * \brief Returns the low latency enabled state
+     */
+    bool lowLatencyEnabled() {
+      return m_lowLatencyEnabled && m_presentSupportsLowLatency;
+    }
+
   private:
 
     Rc<DxvkDevice>    m_device;
@@ -237,10 +274,17 @@ namespace dxvk {
     VkSurfaceKHR      m_surface     = VK_NULL_HANDLE;
     VkSwapchainKHR    m_swapchain   = VK_NULL_HANDLE;
 
+    DxvkFenceValuePair m_lowLatencyFence   = {};
+    bool               m_lowLatencyEnabled = false;
+    bool               m_lowLatencyBoost   = false; 
+    uint32_t           m_minimumIntervalUs = 0;
+    bool               m_presentSupportsLowLatency = false;
+
     std::vector<PresenterImage> m_images;
     std::vector<PresenterSync>  m_semaphores;
 
     std::vector<VkPresentModeKHR> m_dynamicModes;
+    std::vector<VkPresentModeKHR> m_lowLatencyModes;
 
     uint32_t          m_imageIndex = 0;
     uint32_t          m_frameIndex = 0;
@@ -250,6 +294,7 @@ namespace dxvk {
     FpsLimiter        m_fpsLimiter;
 
     dxvk::mutex                 m_frameMutex;
+    dxvk::mutex                 m_lowLatencyMutex;
     dxvk::condition_variable    m_frameCond;
     dxvk::thread                m_frameThread;
     std::queue<PresenterFrame>  m_frameQueue;

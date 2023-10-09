@@ -126,7 +126,7 @@ namespace dxvk {
           m_callback(true);
 
         if (entry.submit.cmdList != nullptr)
-          entry.result = entry.submit.cmdList->submit();
+          entry.result = entry.submit.cmdList->submit(entry.submit.frameId);
         else if (entry.present.presenter != nullptr)
           entry.result = entry.present.presenter->presentImage(entry.present.presentMode, entry.present.frameId);
 

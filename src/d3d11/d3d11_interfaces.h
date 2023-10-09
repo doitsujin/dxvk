@@ -16,6 +16,7 @@ enum D3D11_VK_EXTENSION : uint32_t {
   D3D11_VK_EXT_BARRIER_CONTROL            = 3,
   D3D11_VK_NVX_BINARY_IMPORT              = 4,
   D3D11_VK_NVX_IMAGE_VIEW_HANDLE          = 5,
+  D3D11_VK_NV_LOW_LATENCY_2               = 6
 };
 
 
@@ -27,6 +28,33 @@ enum D3D11_VK_BARRIER_CONTROL : uint32_t {
   D3D11_VK_BARRIER_CONTROL_IGNORE_GRAPHICS_UAV        = 1 << 1,
 };
 
+/**
+ * \brief Frame Report Info
+ */
+typedef struct D3D11_LATENCY_RESULTS
+{
+    UINT32 version;
+    struct D3D11_FRAME_REPORT {
+        UINT64 frameID;
+        UINT64 inputSampleTime;
+        UINT64 simStartTime;
+        UINT64 simEndTime;
+        UINT64 renderSubmitStartTime;
+        UINT64 renderSubmitEndTime;
+        UINT64 presentStartTime;
+        UINT64 presentEndTime;
+        UINT64 driverStartTime;
+        UINT64 driverEndTime;
+        UINT64 osRenderQueueStartTime;
+        UINT64 osRenderQueueEndTime;
+        UINT64 gpuRenderStartTime;
+        UINT64 gpuRenderEndTime;
+        UINT32 gpuActiveRenderTimeUs;
+        UINT32 gpuFrameTimeUs;
+        UINT8 rsvd[120];
+    } frame_reports[64];
+    UINT8 rsvd[32];
+} D3D11_LATENCY_RESULTS;
 
 /**
  * \brief Extended shader interface
@@ -114,6 +142,33 @@ ID3D11VkExtDevice1 : public ID3D11VkExtDevice {
           uint32_t*               pCudaTextureHandle) = 0;
 };
 
+/**
+ * \brief Extended extended D3D11 device
+ * 
+ * Introduces methods to get virtual addresses and driver
+ * handles for resources, and create and destroy objects
+ * for D3D11-Cuda interop.
+ */
+MIDL_INTERFACE("f3112584-41f9-348d-a59b-00b7e1d285d6")
+ID3DLowLatencyDevice : public IUnknown {
+    static const GUID guid;
+
+    virtual BOOL STDMETHODCALLTYPE SupportsLowLatency() = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE LatencySleep() = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE SetLatencySleepMode(
+        BOOL     lowLatencyMode,
+        BOOL     lowLatencyBoost,
+        uint32_t minimumIntervalUs) = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE SetLatencyMarker(
+        uint64_t frameID,
+        uint32_t markerType) = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE GetLatencyInfo(
+        D3D11_LATENCY_RESULTS* latencyResults) = 0;
+};
 
 /**
  * \brief Extended D3D11 context
@@ -189,4 +244,5 @@ __CRT_UUID_DECL(ID3D11VkExtDevice,         0x8a6e3c42,0xf74c,0x45b7,0x82,0x65,0x
 __CRT_UUID_DECL(ID3D11VkExtDevice1,        0xcfcf64ef,0x9586,0x46d0,0xbc,0xa4,0x97,0xcf,0x2c,0xa6,0x1b,0x06);
 __CRT_UUID_DECL(ID3D11VkExtContext,        0xfd0bca13,0x5cb6,0x4c3a,0x98,0x7e,0x47,0x50,0xde,0x2c,0xa7,0x91);
 __CRT_UUID_DECL(ID3D11VkExtContext1,       0x874b09b2,0xae0b,0x41d8,0x84,0x76,0x5f,0x3b,0x7a,0x0e,0x87,0x9d);
+__CRT_UUID_DECL(ID3DLowLatencyDevice,      0xf3112584,0x41f9,0x348d,0xa5,0x9b,0x00,0xb7,0xe1,0xd2,0x85,0xd6);
 #endif

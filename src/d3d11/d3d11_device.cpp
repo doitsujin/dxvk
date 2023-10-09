@@ -15,6 +15,7 @@
 #include "d3d11_device.h"
 #include "d3d11_fence.h"
 #include "d3d11_input_layout.h"
+#include "d3d11_interfaces.h"
 #include "d3d11_interop.h"
 #include "d3d11_query.h"
 #include "d3d11_resource.h"
@@ -2469,12 +2470,14 @@ namespace dxvk {
         return deviceFeatures.nvxBinaryImport
             && deviceFeatures.vk12.bufferDeviceAddress;
 
+      case D3D11_VK_NV_LOW_LATENCY_2:
+        return deviceFeatures.nvLowLatency2;
+
       default:
         return false;
     }
   }
-  
-  
+
   bool STDMETHODCALLTYPE D3D11DeviceExt::GetCudaTextureObjectNVX(uint32_t srvDriverHandle, uint32_t samplerDriverHandle, uint32_t* pCudaTextureHandle) {
     ID3D11ShaderResourceView* srv = HandleToSrvNVX(srvDriverHandle);
 
@@ -2783,8 +2786,132 @@ namespace dxvk {
 
 
 
-  
-  
+
+  D3D11LowLatencyDevice::D3D11LowLatencyDevice(
+          D3D11DXGIDevice*        pContainer,
+          D3D11Device*            pDevice)
+  : m_container(pContainer), m_device(pDevice) {
+    
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11LowLatencyDevice::AddRef() {
+    return m_container->AddRef();
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11LowLatencyDevice::Release() {
+    return m_container->Release();
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11LowLatencyDevice::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    return m_container->QueryInterface(riid, ppvObject);
+  }
+
+
+  BOOL STDMETHODCALLTYPE D3D11LowLatencyDevice::SupportsLowLatency() {
+    return m_device->GetDXVKDevice()->features().nvLowLatency2;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11LowLatencyDevice::LatencySleep() {
+    if (!m_device->GetDXVKDevice()->features().nvLowLatency2) {
+      return E_NOINTERFACE;
+    }
+
+    D3D11SwapChain* pSwapChain = m_device->GetLowLatencySwapChain();
+    if (pSwapChain && pSwapChain->LowLatencyEnabled()) {
+      pSwapChain->LatencySleep();
+    }
+
+    return S_OK;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11LowLatencyDevice::SetLatencySleepMode(BOOL lowLatencyMode, BOOL lowLatencyBoost, uint32_t minimumIntervalUs) {
+    if (!m_device->GetDXVKDevice()->features().nvLowLatency2) {
+      return E_NOINTERFACE;
+    }
+    
+    D3D11SwapChain* pSwapChain = m_device->GetLowLatencySwapChain();
+    if (pSwapChain) {
+      pSwapChain->SetLatencySleepMode(lowLatencyMode, lowLatencyBoost, minimumIntervalUs);
+    }
+
+    return S_OK;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11LowLatencyDevice::SetLatencyMarker(uint64_t frameID, uint32_t markerType) {
+    if (!m_device->GetDXVKDevice()->features().nvLowLatency2) {
+      return E_NOINTERFACE;
+    }
+
+    D3D11SwapChain* pSwapChain = m_device->GetLowLatencySwapChain();
+    VkLatencyMarkerNV marker = static_cast<VkLatencyMarkerNV>(markerType);
+    uint64_t internalFrameId = frameID + DXGI_MAX_SWAP_CHAIN_BUFFERS;
+
+    m_device->GetDXVKDevice()->setLatencyMarker(marker, internalFrameId);
+
+    if (pSwapChain && pSwapChain->LowLatencyEnabled()) {
+      pSwapChain->SetLatencyMarker(marker, internalFrameId);
+    }
+
+    return S_OK;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11LowLatencyDevice::GetLatencyInfo(D3D11_LATENCY_RESULTS* latencyResults)
+  {
+    if (!m_device->GetDXVKDevice()->features().nvLowLatency2) {
+      return E_NOINTERFACE;
+    }
+
+    constexpr uint32_t frameReportSize = 64; 
+    D3D11SwapChain* pSwapChain = m_device->GetLowLatencySwapChain();
+
+    if (pSwapChain && pSwapChain->LowLatencyEnabled()) {
+      std::vector<VkLatencyTimingsFrameReportNV> frameReports;
+      pSwapChain->GetLatencyTimings(frameReports);
+
+      if (frameReports.size() >= frameReportSize) {
+        for (uint32_t i = 0; i < frameReportSize; i++) {
+          VkLatencyTimingsFrameReportNV& frameReport = frameReports[i];
+          latencyResults->frame_reports[i].frameID = frameReport.presentID - DXGI_MAX_SWAP_CHAIN_BUFFERS;
+          latencyResults->frame_reports[i].inputSampleTime = frameReport.inputSampleTimeUs;
+          latencyResults->frame_reports[i].simStartTime = frameReport.simStartTimeUs;
+          latencyResults->frame_reports[i].simEndTime = frameReport.simEndTimeUs;
+          latencyResults->frame_reports[i].renderSubmitStartTime = frameReport.renderSubmitStartTimeUs;
+          latencyResults->frame_reports[i].renderSubmitEndTime = frameReport.renderSubmitEndTimeUs;
+          latencyResults->frame_reports[i].presentStartTime = frameReport.presentStartTimeUs;
+          latencyResults->frame_reports[i].presentEndTime = frameReport.presentEndTimeUs;
+          latencyResults->frame_reports[i].driverStartTime = frameReport.driverStartTimeUs;
+          latencyResults->frame_reports[i].driverEndTime = frameReport.driverEndTimeUs;
+          latencyResults->frame_reports[i].osRenderQueueStartTime = frameReport.osRenderQueueStartTimeUs;
+          latencyResults->frame_reports[i].osRenderQueueEndTime = frameReport.osRenderQueueEndTimeUs;
+          latencyResults->frame_reports[i].gpuRenderStartTime = frameReport.gpuRenderStartTimeUs;
+          latencyResults->frame_reports[i].gpuRenderEndTime = frameReport.gpuRenderEndTimeUs;
+          latencyResults->frame_reports[i].gpuActiveRenderTimeUs =
+            frameReport.gpuRenderEndTimeUs - frameReport.gpuRenderStartTimeUs;
+          latencyResults->frame_reports[i].gpuFrameTimeUs = 0;
+
+          if (i) {
+            latencyResults->frame_reports[i].gpuFrameTimeUs =
+              frameReports[i].gpuRenderEndTimeUs - frameReports[i - 1].gpuRenderEndTimeUs;
+          }
+        }
+      }
+    }
+
+    return S_OK;
+  }
+
+
+
+
   D3D11VideoDevice::D3D11VideoDevice(
           D3D11DXGIDevice*        pContainer,
           D3D11Device*            pDevice)
@@ -3021,7 +3148,11 @@ namespace dxvk {
 
       Com<D3D11SwapChain> presenter = new D3D11SwapChain(
         m_container, m_device, pSurfaceFactory, pDesc);
-      
+
+      if (m_device->GetDXVKDevice()->features().nvLowLatency2) {
+        m_device->AddSwapchain(presenter.ref());
+      }
+
       *ppSwapChain = presenter.ref();
       return S_OK;
     } catch (const DxvkError& e) {
@@ -3078,17 +3209,18 @@ namespace dxvk {
           Rc<DxvkDevice>      pDxvkDevice,
           D3D_FEATURE_LEVEL   FeatureLevel,
           UINT                FeatureFlags)
-  : m_dxgiAdapter   (pAdapter),
-    m_dxvkInstance  (pDxvkInstance),
-    m_dxvkAdapter   (pDxvkAdapter),
-    m_dxvkDevice    (pDxvkDevice),
-    m_d3d11Device   (this, FeatureLevel, FeatureFlags),
-    m_d3d11DeviceExt(this, &m_d3d11Device),
-    m_d3d11Interop  (this, &m_d3d11Device),
-    m_d3d11Video    (this, &m_d3d11Device),
-    m_d3d11on12     (this, &m_d3d11Device, pD3D12Device, pD3D12Queue),
-    m_metaDevice    (this),
-    m_dxvkFactory   (this, &m_d3d11Device) {
+  : m_dxgiAdapter         (pAdapter),
+    m_dxvkInstance        (pDxvkInstance),
+    m_dxvkAdapter         (pDxvkAdapter),
+    m_dxvkDevice          (pDxvkDevice),
+    m_d3d11Device         (this, FeatureLevel, FeatureFlags),
+    m_d3d11DeviceExt      (this, &m_d3d11Device),
+    m_d3d11Interop        (this, &m_d3d11Device),
+    m_d3dLowLatencyDevice (this, &m_d3d11Device),
+    m_d3d11Video          (this, &m_d3d11Device),
+    m_d3d11on12           (this, &m_d3d11Device, pD3D12Device, pD3D12Queue),
+    m_metaDevice          (this),
+    m_dxvkFactory         (this, &m_d3d11Device) {
 
   }
   
@@ -3142,7 +3274,12 @@ namespace dxvk {
       *ppvObject = ref(&m_d3d11DeviceExt);
       return S_OK;
     }
-    
+  
+    if (riid == __uuidof(ID3DLowLatencyDevice)) {
+      *ppvObject = ref(&m_d3dLowLatencyDevice);
+      return S_OK;
+    }
+
     if (riid == __uuidof(IDXGIDXVKDevice)) {
       *ppvObject = ref(&m_metaDevice);
       return S_OK;

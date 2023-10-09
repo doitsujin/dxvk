@@ -24,6 +24,7 @@
 #include "d3d11_options.h"
 #include "d3d11_shader.h"
 #include "d3d11_state.h"
+#include "d3d11_swapchain.h"
 #include "d3d11_util.h"
 
 namespace dxvk {
@@ -428,6 +429,18 @@ namespace dxvk {
 
     bool Is11on12Device() const;
 
+    void AddSwapchain(D3D11SwapChain* swapchain) {
+      m_swapchains.push_back(swapchain);
+    }
+
+    void RemoveSwapchain(D3D11SwapChain* swapchain) {
+      m_swapchains.erase(std::remove(m_swapchains.begin(), m_swapchains.end(), swapchain));
+    }
+
+    D3D11SwapChain* GetLowLatencySwapChain() {
+      return (m_swapchains.size() == 1) ? m_swapchains[0] : nullptr;
+    }
+
     static D3D_FEATURE_LEVEL GetMaxFeatureLevel(
       const Rc<DxvkInstance>& Instance,
       const Rc<DxvkAdapter>&  Adapter);
@@ -463,6 +476,8 @@ namespace dxvk {
 
     D3D_FEATURE_LEVEL               m_maxFeatureLevel;
     D3D11DeviceFeatures             m_deviceFeatures;
+
+    std::vector<D3D11SwapChain*>    m_swapchains;
 
     HRESULT CreateShaderModule(
             D3D11CommonShader*      pShaderModule,
@@ -545,28 +560,28 @@ namespace dxvk {
             uint64_t*               gpuVAStart,
             uint64_t*               gpuVASize);
 
-     bool STDMETHODCALLTYPE CreateUnorderedAccessViewAndGetDriverHandleNVX(
+    bool STDMETHODCALLTYPE CreateUnorderedAccessViewAndGetDriverHandleNVX(
             ID3D11Resource*                         pResource,
             const D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc,
             ID3D11UnorderedAccessView**             ppUAV,
             uint32_t*                               pDriverHandle);
 
-     bool STDMETHODCALLTYPE CreateShaderResourceViewAndGetDriverHandleNVX(
+    bool STDMETHODCALLTYPE CreateShaderResourceViewAndGetDriverHandleNVX(
             ID3D11Resource*                        pResource,
             const D3D11_SHADER_RESOURCE_VIEW_DESC* pDesc,
             ID3D11ShaderResourceView**             ppSRV,
             uint32_t*                              pDriverHandle);
 
-     bool STDMETHODCALLTYPE CreateSamplerStateAndGetDriverHandleNVX(
+    bool STDMETHODCALLTYPE CreateSamplerStateAndGetDriverHandleNVX(
             const D3D11_SAMPLER_DESC* pSamplerDesc,
             ID3D11SamplerState**      ppSamplerState,
             uint32_t*                 pDriverHandle);
-    
+
   private:
     
     D3D11DXGIDevice* m_container;
     D3D11Device*     m_device;
-    
+
     void AddSamplerAndHandleNVX(
             ID3D11SamplerState*       pSampler,
             uint32_t                  Handle);
@@ -586,6 +601,46 @@ namespace dxvk {
     std::unordered_map<uint32_t, ID3D11ShaderResourceView*> m_srvHandleToPtr;
   };
 
+  /**
+   * \brief Extended D3D11 device
+   */
+  class D3D11LowLatencyDevice : public ID3DLowLatencyDevice {
+    
+  public:
+    
+    D3D11LowLatencyDevice(
+            D3D11DXGIDevice*        pContainer,
+            D3D11Device*            pDevice);
+    
+    ULONG STDMETHODCALLTYPE AddRef();
+    
+    ULONG STDMETHODCALLTYPE Release();
+    
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                  riid,
+            void**                  ppvObject);
+
+    BOOL STDMETHODCALLTYPE SupportsLowLatency();
+
+    HRESULT STDMETHODCALLTYPE LatencySleep();
+
+    HRESULT STDMETHODCALLTYPE SetLatencySleepMode(
+            BOOL     lowLatencyMode,
+            BOOL     lowLatencyBoost,
+            uint32_t minimumIntervalUs);
+
+    HRESULT STDMETHODCALLTYPE SetLatencyMarker(
+            uint64_t frameID,
+            uint32_t markerType);
+
+    HRESULT STDMETHODCALLTYPE GetLatencyInfo(
+            D3D11_LATENCY_RESULTS* latencyResults);
+
+  private:
+    
+    D3D11DXGIDevice* m_container;
+    D3D11Device*     m_device;
+  };
 
   /**
    * \brief D3D11 video device
@@ -856,12 +911,13 @@ namespace dxvk {
     Rc<DxvkAdapter>     m_dxvkAdapter;
     Rc<DxvkDevice>      m_dxvkDevice;
 
-    D3D11Device         m_d3d11Device;
-    D3D11DeviceExt      m_d3d11DeviceExt;
-    D3D11VkInterop      m_d3d11Interop;
-    D3D11VideoDevice    m_d3d11Video;
-    D3D11on12Device     m_d3d11on12;
-    DXGIDXVKDevice      m_metaDevice;
+    D3D11Device           m_d3d11Device;
+    D3D11DeviceExt        m_d3d11DeviceExt;
+    D3D11VkInterop        m_d3d11Interop;
+    D3D11LowLatencyDevice m_d3dLowLatencyDevice;
+    D3D11VideoDevice      m_d3d11Video;
+    D3D11on12Device       m_d3d11on12;
+    DXGIDXVKDevice        m_metaDevice;
     
     DXGIVkSwapChainFactory   m_dxvkFactory;
     

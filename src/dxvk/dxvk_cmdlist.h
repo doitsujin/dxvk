@@ -94,7 +94,8 @@ namespace dxvk {
      */
     VkResult submit(
             DxvkDevice*           device,
-            VkQueue               queue);
+            VkQueue               queue,
+            uint64_t              frameId);
 
     /**
      * \brief Resets object
@@ -199,7 +200,7 @@ namespace dxvk {
      * \brief Submits command list
      * \returns Submission status
      */
-    VkResult submit();
+    VkResult submit(uint64_t frameId);
     
     /**
      * \brief Stat counters

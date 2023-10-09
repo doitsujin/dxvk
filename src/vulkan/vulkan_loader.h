@@ -452,6 +452,14 @@ namespace dxvk::vk {
     VULKAN_FN(wine_vkAcquireKeyedMutex);
     VULKAN_FN(wine_vkReleaseKeyedMutex);
     #endif
+
+    #ifdef VK_NV_LOW_LATENCY_2_EXTENSION_NAME
+    VULKAN_FN(vkSetLatencySleepModeNV);
+    VULKAN_FN(vkLatencySleepNV);
+    VULKAN_FN(vkSetLatencyMarkerNV);
+    VULKAN_FN(vkGetLatencyTimingsNV);
+    VULKAN_FN(vkQueueNotifyOutOfBandNV);
+    #endif
   };
   
 }

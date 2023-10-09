@@ -927,6 +927,9 @@ namespace dxvk {
       m_deviceFeatures.khrPresentWait.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrPresentWait);
     }
 
+    if (m_deviceExtensions.supports(VK_NV_LOW_LATENCY_2_EXTENSION_NAME))
+      m_deviceFeatures.nvLowLatency2 = VK_TRUE;
+
     if (m_deviceExtensions.supports(VK_NVX_BINARY_IMPORT_EXTENSION_NAME))
       m_deviceFeatures.nvxBinaryImport = VK_TRUE;
 
@@ -994,6 +997,7 @@ namespace dxvk {
       &devExtensions.khrPresentWait,
       &devExtensions.khrSwapchain,
       &devExtensions.khrWin32KeyedMutex,
+      &devExtensions.nvLowLatency2,
       &devExtensions.nvxBinaryImport,
       &devExtensions.nvxImageViewHandle,
     }};
@@ -1133,8 +1137,13 @@ namespace dxvk {
       enabledFeatures.khrPresentWait.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrPresentWait);
     }
 
-    if (devExtensions.nvxBinaryImport)
+    if (devExtensions.nvxBinaryImport) {
       enabledFeatures.nvxBinaryImport = VK_TRUE;
+    }
+
+    if (devExtensions.nvLowLatency2) {
+      enabledFeatures.nvLowLatency2 = VK_TRUE;
+    }
 
     if (devExtensions.nvxImageViewHandle)
       enabledFeatures.nvxImageViewHandle = VK_TRUE;
@@ -1279,6 +1288,8 @@ namespace dxvk {
       "\n  presentId                              : ", features.khrPresentId.presentId ? "1" : "0",
       "\n", VK_KHR_PRESENT_WAIT_EXTENSION_NAME,
       "\n  presentWait                            : ", features.khrPresentWait.presentWait ? "1" : "0",
+      "\n", VK_NV_LOW_LATENCY_2_EXTENSION_NAME,
+      "\n  extension supported                    : ", features.nvLowLatency2 ? "1" : "0",
       "\n", VK_NVX_BINARY_IMPORT_EXTENSION_NAME,
       "\n  extension supported                    : ", features.nvxBinaryImport ? "1" : "0",
       "\n", VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME,

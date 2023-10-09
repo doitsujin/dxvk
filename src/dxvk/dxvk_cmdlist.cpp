@@ -56,10 +56,12 @@ namespace dxvk {
 
   VkResult DxvkCommandSubmission::submit(
           DxvkDevice*           device,
-          VkQueue               queue) {
+          VkQueue               queue,
+          uint64_t              frameId) {
     auto vk = device->vkd();
 
     VkSubmitInfo2 submitInfo = { VK_STRUCTURE_TYPE_SUBMIT_INFO_2 };
+    VkLatencySubmissionPresentIdNV latencySubmitInfo = { VK_STRUCTURE_TYPE_LATENCY_SUBMISSION_PRESENT_ID_NV };
 
     if (!m_semaphoreWaits.empty()) {
       submitInfo.waitSemaphoreInfoCount = m_semaphoreWaits.size();
@@ -74,6 +76,11 @@ namespace dxvk {
     if (!m_semaphoreSignals.empty()) {
       submitInfo.signalSemaphoreInfoCount = m_semaphoreSignals.size();
       submitInfo.pSignalSemaphoreInfos = m_semaphoreSignals.data();
+    }
+
+    if (device->features().nvLowLatency2 && frameId && !m_commandBuffers.empty()) {
+      latencySubmitInfo.presentID = frameId;
+      latencySubmitInfo.pNext = std::exchange(submitInfo.pNext, &latencySubmitInfo);
     }
 
     VkResult vr = VK_SUCCESS;
@@ -206,7 +213,7 @@ namespace dxvk {
   }
   
   
-  VkResult DxvkCommandList::submit() {
+  VkResult DxvkCommandList::submit(uint64_t frameId) {
     VkResult status = VK_SUCCESS;
 
     const auto& graphics = m_device->queues().graphics;
@@ -238,7 +245,7 @@ namespace dxvk {
         // for any prior submissions, then block any subsequent ones
         m_commandSubmission.signalSemaphore(m_bindSemaphore, 0, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
 
-        if ((status = m_commandSubmission.submit(m_device, graphics.queueHandle)))
+        if ((status = m_commandSubmission.submit(m_device, graphics.queueHandle, frameId)))
           return status;
 
         sparseBind->waitSemaphore(m_bindSemaphore, 0);
@@ -259,7 +266,7 @@ namespace dxvk {
       if (m_device->hasDedicatedTransferQueue() && !m_commandSubmission.isEmpty()) {
         m_commandSubmission.signalSemaphore(m_sdmaSemaphore, 0, VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT);
 
-        if ((status = m_commandSubmission.submit(m_device, transfer.queueHandle)))
+        if ((status = m_commandSubmission.submit(m_device, transfer.queueHandle, frameId)))
           return status;
 
         m_commandSubmission.waitSemaphore(m_sdmaSemaphore, 0, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT);
@@ -297,7 +304,7 @@ namespace dxvk {
       }
 
       // Finally, submit all graphics commands of the current submission
-      if ((status = m_commandSubmission.submit(m_device, graphics.queueHandle)))
+      if ((status = m_commandSubmission.submit(m_device, graphics.queueHandle, frameId)))
         return status;
     }
 

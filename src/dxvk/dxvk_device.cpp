@@ -18,6 +18,7 @@ namespace dxvk {
     m_properties        (adapter->devicePropertiesExt()),
     m_perfHints         (getPerfHints()),
     m_objects           (this),
+    m_latencyMarkers    ({}),
     m_queues            (queues),
     m_submissionQueue   (this, queueCallback) {
 
@@ -271,9 +272,12 @@ namespace dxvk {
 
   void DxvkDevice::submitCommandList(
     const Rc<DxvkCommandList>&      commandList,
-          DxvkSubmitStatus*         status) {
+          DxvkSubmitStatus*         status,
+          bool                      enableFrameId) {
     DxvkSubmitInfo submitInfo = { };
     submitInfo.cmdList = commandList;
+    submitInfo.frameId = enableFrameId ?
+      m_latencyMarkers.render : 0;
     m_submissionQueue.submit(submitInfo, status);
 
     std::lock_guard<sync::Spinlock> statLock(m_statLock);

@@ -32,6 +32,7 @@ namespace dxvk {
    */
   struct DxvkSubmitInfo {
     Rc<DxvkCommandList> cmdList;
+    uint64_t frameId;
   };
   
   

@@ -18,6 +18,15 @@ namespace dxvk {
     // with present operations and periodically signals the event
     if (m_device->features().khrPresentWait.presentWait && m_signal != nullptr)
       m_frameThread = dxvk::thread([this] { runFrameThread(); });
+
+    // If nvLowLatency2 is supported create the fence
+    if (m_device->features().nvLowLatency2) {
+      DxvkFenceCreateInfo info = {};
+      info.initialValue = 0;
+      info.sharedType   = VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_FLAG_BITS_MAX_ENUM;
+
+      m_lowLatencyFence = DxvkFenceValuePair(m_device->createFence(info), 0u);
+    }
   }
 
   
@@ -72,7 +81,7 @@ namespace dxvk {
 
     VkPresentIdKHR presentId = { VK_STRUCTURE_TYPE_PRESENT_ID_KHR };
     presentId.swapchainCount = 1;
-    presentId.pPresentIds   = &frameId;
+    presentId.pPresentIds    = &frameId;
 
     VkSwapchainPresentModeInfoEXT modeInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODE_INFO_EXT };
     modeInfo.swapchainCount = 1;
@@ -88,8 +97,11 @@ namespace dxvk {
     if (m_device->features().khrPresentId.presentId && frameId)
       presentId.pNext = const_cast<void*>(std::exchange(info.pNext, &presentId));
 
-    if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1)
+    if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1) {
+      if (m_device->features().nvLowLatency2)
+        m_presentSupportsLowLatency = std::find(m_lowLatencyModes.begin(), m_lowLatencyModes.end(), mode) != m_lowLatencyModes.end();
       modeInfo.pNext = const_cast<void*>(std::exchange(info.pNext, &modeInfo));
+    }
 
     VkResult status = m_vkd->vkQueuePresentKHR(
       m_device->queues().graphics.queueHandle, &info);
@@ -173,6 +185,7 @@ namespace dxvk {
 
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> modes;
+    std::vector<VkPresentModeKHR> lowLatencyModes;
 
     VkResult status;
 
@@ -283,6 +296,23 @@ namespace dxvk {
       dynamicModes.clear();
     }
 
+    if (m_device->features().nvLowLatency2) {
+      VkLatencySurfaceCapabilitiesNV latencySurfaceCaps { VK_STRUCTURE_TYPE_LATENCY_SURFACE_CAPABILITIES_NV };
+
+      caps.pNext = &latencySurfaceCaps;
+
+      if((status = m_vki->vkGetPhysicalDeviceSurfaceCapabilities2KHR(m_device->adapter()->handle(), &surfaceInfo, &caps)))
+        return status;
+
+      lowLatencyModes.resize(latencySurfaceCaps.presentModeCount);
+      latencySurfaceCaps.pPresentModes = lowLatencyModes.data();
+
+      if ((status = m_vki->vkGetPhysicalDeviceSurfaceCapabilities2KHR(m_device->adapter()->handle(), &surfaceInfo, &caps)))
+        return status;
+
+      caps.pNext = nullptr;
+    }
+
     // Compute swap chain image count based on available info
     m_info.imageCount = pickImageCount(minImageCount, maxImageCount, desc.imageCount);
 
@@ -292,6 +322,9 @@ namespace dxvk {
     VkSwapchainPresentModesCreateInfoEXT modeInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_MODES_CREATE_INFO_EXT };
     modeInfo.presentModeCount       = compatibleModes.size();
     modeInfo.pPresentModes          = compatibleModes.data();
+
+    VkSwapchainLatencyCreateInfoNV lowLatencyInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_LATENCY_CREATE_INFO_NV };
+    lowLatencyInfo.latencyModeEnable = VK_TRUE;
 
     VkSwapchainCreateInfoKHR swapInfo = { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
     swapInfo.surface                = m_surface;
@@ -314,6 +347,9 @@ namespace dxvk {
     if (m_device->features().extSwapchainMaintenance1.swapchainMaintenance1)
       modeInfo.pNext = std::exchange(swapInfo.pNext, &modeInfo);
 
+    if (m_device->features().nvLowLatency2)
+      lowLatencyInfo.pNext = std::exchange(swapInfo.pNext, &lowLatencyInfo);
+
     Logger::info(str::format(
       "Presenter: Actual swap chain properties:"
       "\n  Format:       ", m_info.format.format,
@@ -322,11 +358,29 @@ namespace dxvk {
       "\n  Buffer size:  ", m_info.imageExtent.width, "x", m_info.imageExtent.height,
       "\n  Image count:  ", m_info.imageCount,
       "\n  Exclusive FS: ", desc.fullScreenExclusive));
-    
+
     if ((status = m_vkd->vkCreateSwapchainKHR(m_vkd->device(),
         &swapInfo, nullptr, &m_swapchain)))
       return status;
-    
+
+    if (m_device->features().nvLowLatency2) {
+      std::lock_guard<dxvk::mutex> lock(m_lowLatencyMutex);
+
+      if (!m_lowLatencyEnabled)
+        m_device->resetLatencyMarkers();
+
+      VkLatencySleepModeInfoNV sleepModeInfo = { VK_STRUCTURE_TYPE_LATENCY_SLEEP_MODE_INFO_NV };
+      sleepModeInfo.lowLatencyMode  = m_lowLatencyEnabled;
+      sleepModeInfo.lowLatencyBoost = m_lowLatencyBoost;
+      sleepModeInfo.minimumIntervalUs = m_minimumIntervalUs;
+
+      if ((status = m_vkd->vkSetLatencySleepModeNV(m_vkd->device(), m_swapchain, &sleepModeInfo)))
+        return status;
+
+      m_presentSupportsLowLatency = std::find(
+        lowLatencyModes.begin(), lowLatencyModes.end(), m_info.presentMode) != lowLatencyModes.end();
+    }
+
     // Acquire images and create views
     std::vector<VkImage> images;
 
@@ -377,6 +431,7 @@ namespace dxvk {
     m_acquireStatus = VK_NOT_READY;
 
     m_dynamicModes = std::move(dynamicModes);
+    m_lowLatencyModes = std::move(lowLatencyModes);
     return VK_SUCCESS;
   }
 
@@ -420,6 +475,73 @@ namespace dxvk {
   void Presenter::setHdrMetadata(const VkHdrMetadataEXT& hdrMetadata) {
     if (m_device->features().extHdrMetadata)
       m_vkd->vkSetHdrMetadataEXT(m_vkd->device(), 1, &m_swapchain, &hdrMetadata);
+  }
+
+
+  void Presenter::setLatencySleepMode(bool lowLatencyMode, bool lowLatencyBoost, uint32_t minimumIntervalUs) {
+    if (lowLatencyMode == m_lowLatencyEnabled
+     && lowLatencyBoost == m_lowLatencyBoost
+     && minimumIntervalUs == m_minimumIntervalUs) {
+      return;
+    }
+
+    std::lock_guard<dxvk::mutex> lock(m_lowLatencyMutex);
+
+    m_lowLatencyEnabled = lowLatencyMode;
+    m_lowLatencyBoost = lowLatencyBoost;
+    m_minimumIntervalUs = minimumIntervalUs;
+  }
+
+
+  void Presenter::latencySleep() {
+    VkSemaphore sem = m_lowLatencyFence.fence->handle();
+    uint64_t waitValue = m_lowLatencyFence.value + 1;
+    m_lowLatencyFence.value++;
+
+    VkLatencySleepInfoNV sleepInfo = { VK_STRUCTURE_TYPE_LATENCY_SLEEP_INFO_NV };
+    sleepInfo.signalSemaphore = sem;
+    sleepInfo.value = waitValue;
+
+    bool shouldSleep = false;
+
+    {
+      std::lock_guard<dxvk::mutex> lock(m_lowLatencyMutex);
+      if (m_swapchain) {
+        shouldSleep = true;
+        m_vkd->vkLatencySleepNV(m_vkd->device(), m_swapchain, &sleepInfo);
+      }
+    }
+
+    if (shouldSleep)
+      m_lowLatencyFence.fence->wait(waitValue);
+  }
+
+
+  void Presenter::setLatencyMarker(VkLatencyMarkerNV marker, uint64_t presentId) {
+    VkSetLatencyMarkerInfoNV markerInfo = { VK_STRUCTURE_TYPE_SET_LATENCY_MARKER_INFO_NV };
+    markerInfo.presentID = presentId;
+    markerInfo.marker = marker;
+
+    std::lock_guard<dxvk::mutex> lock(m_lowLatencyMutex);
+    if (m_swapchain)
+      m_vkd->vkSetLatencyMarkerNV(m_vkd->device(), m_swapchain, &markerInfo);
+  }
+
+
+  void Presenter::getLatencyTimings(std::vector<VkLatencyTimingsFrameReportNV>& frameReports) {
+    std::lock_guard<dxvk::mutex> lock(m_lowLatencyMutex);
+    
+    if (m_swapchain) {
+      VkGetLatencyMarkerInfoNV markerInfo = { VK_STRUCTURE_TYPE_GET_LATENCY_MARKER_INFO_NV };
+      m_vkd->vkGetLatencyTimingsNV(m_vkd->device(), m_swapchain, &markerInfo);
+
+      if (markerInfo.timingCount != 0) {
+        frameReports.resize(markerInfo.timingCount, { VK_STRUCTURE_TYPE_LATENCY_TIMINGS_FRAME_REPORT_NV });
+        markerInfo.pTimings = frameReports.data();
+
+        m_vkd->vkGetLatencyTimingsNV(m_vkd->device(), m_swapchain, &markerInfo);
+      }
+    }
   }
 
 
@@ -617,6 +739,8 @@ namespace dxvk {
 
 
   void Presenter::destroySwapchain() {
+    std::lock_guard<dxvk::mutex> lock(m_lowLatencyMutex);
+
     if (m_signal != nullptr)
       m_signal->wait(m_lastFrameId.load(std::memory_order_acquire));
 

@@ -84,7 +84,11 @@ namespace dxvk {
 
     m_device->waitForSubmission(&m_presentStatus);
     m_device->waitForIdle();
-    
+
+    if (m_device->features().nvLowLatency2) {
+      m_parent->RemoveSwapchain(this);
+    }
+
     DestroyFrameLatencyEvent();
   }
 
@@ -352,6 +356,43 @@ namespace dxvk {
   }
 
 
+  void D3D11SwapChain::SetLatencySleepMode(
+          bool lowLatencyMode,
+          bool lowLatencyBoost,
+          uint32_t minimumIntervalUs) {
+    m_presenter->setLatencySleepMode(lowLatencyMode, lowLatencyBoost, minimumIntervalUs);
+
+    // The swapchain will have its low latency state updated
+    // when it gets recreated. The swapchain needs to be recreated
+    // to ensure we can use the frameId provided by the application
+    // as a presentId as presentation time.
+    m_dirty = true;
+  }
+
+
+  void D3D11SwapChain::LatencySleep() {
+    m_presenter->latencySleep();
+  }
+
+
+  void D3D11SwapChain::SetLatencyMarker(
+          VkLatencyMarkerNV marker,
+          uint64_t presentId) {
+    m_presenter->setLatencyMarker(marker, presentId);
+  }
+
+
+  void D3D11SwapChain::GetLatencyTimings(
+          std::vector<VkLatencyTimingsFrameReportNV>& frameReports) {
+    m_presenter->getLatencyTimings(frameReports);
+  }
+
+
+  bool D3D11SwapChain::LowLatencyEnabled() {
+    return m_presenter->lowLatencyEnabled();
+  }
+
+
   HRESULT D3D11SwapChain::PresentImage(UINT SyncInterval) {
     // Flush pending rendering commands before
     auto immediateContext = m_parent->GetContext();
@@ -410,9 +451,11 @@ namespace dxvk {
           uint32_t                Repeat) {
     auto lock = pContext->LockContext();
 
-    // Bump frame ID as necessary
-    if (!Repeat)
-      m_frameId += 1;
+    if (!Repeat) {
+      m_frameId = (m_presenter->lowLatencyEnabled() && m_device->getLatencyMarkers().present) ?
+        m_device->getLatencyMarkers().present :
+        m_frameId + 1;
+    }
 
     // Present from CS thread so that we don't
     // have to synchronize with it first.
