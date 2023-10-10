@@ -417,6 +417,11 @@ namespace dxvk {
     { R"(\\RidersRepublic(_BE)?\.exe$)", {{
       { "dxgi.hideAmdGpu",                "True"   },
     }} },
+    /* HoloCure - Save the Fans!
+       Same as Cyberpunk 2077                     */
+    { R"(\\HoloCure\.exe$)", {{
+      { "dxgi.useMonitorFallback",          "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
