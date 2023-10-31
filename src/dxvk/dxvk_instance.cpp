@@ -10,13 +10,13 @@
 
 namespace dxvk {
   
-  DxvkInstance::DxvkInstance()
-  : DxvkInstance(DxvkInstanceImportInfo()) {
+  DxvkInstance::DxvkInstance(DxvkInstanceFlags flags)
+  : DxvkInstance(DxvkInstanceImportInfo(), flags) {
 
   }
 
 
-  DxvkInstance::DxvkInstance(const DxvkInstanceImportInfo& args) {
+  DxvkInstance::DxvkInstance(const DxvkInstanceImportInfo& args, DxvkInstanceFlags flags) {
     Logger::info(str::format("Game: ", env::getExeName()));
     Logger::info(str::format("DXVK: ", DXVK_VERSION));
 
@@ -46,7 +46,7 @@ namespace dxvk {
     for (const auto& provider : m_extProviders)
       provider->initInstanceExtensions();
 
-    createInstanceLoader(args);
+    createInstanceLoader(args, flags);
     m_adapters = this->queryAdapters();
 
     for (const auto& provider : m_extProviders)
@@ -106,7 +106,7 @@ namespace dxvk {
   }
 
 
-  void DxvkInstance::createInstanceLoader(const DxvkInstanceImportInfo& args) {
+  void DxvkInstance::createInstanceLoader(const DxvkInstanceImportInfo& args, DxvkInstanceFlags flags) {
     DxvkNameList layerList;
     DxvkNameList extensionList;
     DxvkNameSet extensionSet;
@@ -175,6 +175,7 @@ namespace dxvk {
 
       VkApplicationInfo appInfo = { VK_STRUCTURE_TYPE_APPLICATION_INFO };
       appInfo.pApplicationName      = appName.c_str();
+      appInfo.applicationVersion    = flags.raw();
       appInfo.pEngineName           = "DXVK";
       appInfo.engineVersion         = VK_MAKE_VERSION(2, 3, 0);
       appInfo.apiVersion            = VK_MAKE_VERSION(1, 3, 0);
