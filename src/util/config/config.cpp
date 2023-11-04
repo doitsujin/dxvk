@@ -833,6 +833,14 @@ namespace dxvk {
     { R"(\\SkyDrift\.exe$)" , {{
       { "d3d9.allowDirectBufferMapping",    "False" },
     }} },
+    /* C&C Generals                             *
+     * solve loading saved and replay missions  *
+     * crash due to limited memory              */
+    { R"(\\generals\.exe$)" , {{
+      { "d3d9.maxAvailableMemory",          "6144" },
+      { "d3d9.memoryTrackTest",             "True" },
+      { "d3d9.textureMemory",               "2048" },
+    }} },
 
     /**********************************************/
     /* D3D12 GAMES (vkd3d-proton with dxvk dxgi)  */
