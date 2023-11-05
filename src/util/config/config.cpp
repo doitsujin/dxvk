@@ -837,7 +837,6 @@ namespace dxvk {
      * solve loading saved and replay missions  *
      * crash due to limited memory              */
     { R"(\\generals\.exe$)" , {{
-      { "d3d9.maxAvailableMemory",          "6144" },
       { "d3d9.memoryTrackTest",             "True" },
       { "d3d9.textureMemory",               "2048" },
     }} },
