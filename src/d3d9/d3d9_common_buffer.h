@@ -125,7 +125,12 @@ namespace dxvk {
 
     template <D3D9_COMMON_BUFFER_TYPE Type>
     inline DxvkBufferSlice GetBufferSlice(VkDeviceSize offset, VkDeviceSize length) const {
-      return DxvkBufferSlice(GetBuffer<Type>(), offset, length);
+     if (likely(length && offset < m_desc.Size)) {
+        return DxvkBufferSlice(GetBuffer<Type>(), offset,
+          std::min<VkDeviceSize>(m_desc.Size - offset, length));
+     }
+
+      return DxvkBufferSlice();
     }
 
     inline DxvkBufferSliceHandle AllocMapSlice() {
