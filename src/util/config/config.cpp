@@ -833,6 +833,11 @@ namespace dxvk {
     { R"(\\SkyDrift\.exe$)" , {{
       { "d3d9.allowDirectBufferMapping",    "False" },
     }} },
+    /* Crossout                                 *
+     * Works around shader compilation crash    */
+    { R"(\\Crossout\.exe$)" , {{
+      { "dxvk.numCompilerThreads",          "1"},
+    }} },
 
     /**********************************************/
     /* D3D12 GAMES (vkd3d-proton with dxvk dxgi)  */
