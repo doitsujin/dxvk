@@ -89,6 +89,10 @@ namespace dxvk {
     void SynchronizeCsThread(
             uint64_t                          SequenceNumber);
 
+    D3D10Multithread& GetMultithread() {
+        return m_multithread;
+    }
+
     D3D10DeviceLock LockContext() {
       return m_multithread.AcquireLock();
     }

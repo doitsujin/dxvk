@@ -111,7 +111,17 @@ namespace dxvk {
     D3D11CommonTexture* texture = GetCommonTexture(m_resource);
     Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
 
-    m_device->GetContext()->WaitForResource(texture->GetImage(), DxvkCsThread::SynchronizeAll, D3D11_MAP_READ_WRITE, 0);
+    {
+      D3D11ImmediateContext* context = m_device->GetContext();
+      D3D10Multithread& multithread = context->GetMultithread();
+      static bool s_errorShown = false;
+
+      if (!multithread.GetMultithreadProtected() && !std::exchange(s_errorShown, true))
+        Logger::warn("D3D11DXGIKeyedMutex::ReleaseSync: Called without context locking enabled.");
+
+      D3D10DeviceLock lock = context->LockContext();
+      context->WaitForResource(texture->GetImage(), DxvkCsThread::SynchronizeAll, D3D11_MAP_READ_WRITE, 0);
+    }
 
     return dxvkDevice->vkd()->wine_vkReleaseKeyedMutex(dxvkDevice->handle(), texture->GetImage()->memory().memory(), Key) == VK_SUCCESS
       ? S_OK
