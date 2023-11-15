@@ -872,6 +872,7 @@ namespace dxvk {
         // We don't have to wait, but misbehaving games may
         // still try to spin on `Map` until the resource is
         // idle, so we should flush pending commands
+        D3D10DeviceLock lock = LockContext();
         ConsiderFlush(GpuFlushType::ImplicitSynchronization);
         return false;
       }
@@ -879,7 +880,10 @@ namespace dxvk {
       if (isInUse) {
         // Make sure pending commands using the resource get
         // executed on the the GPU if we have to wait for it
-        ExecuteFlush(GpuFlushType::ImplicitSynchronization, nullptr, false);
+        {
+          D3D10DeviceLock lock = LockContext();
+          ExecuteFlush(GpuFlushType::ImplicitSynchronization, nullptr, false);
+        }
         SynchronizeCsThread(SequenceNumber);
 
         m_device->waitForResource(Resource, access);
