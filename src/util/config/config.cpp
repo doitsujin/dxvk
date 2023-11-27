@@ -867,6 +867,12 @@ namespace dxvk {
     { R"(\\HITMAN3\.exe$)", {{
       { "dxgi.hideNvidiaGpu",              "False" },
     }} },
+    /* Metro Exodus Enhanced Edition picks GPU adapters
+     * by available VRAM, which causes issues on some
+     * systems with integrated graphics. */
+    { R"(\\Metro Exodus Enhanced Edition\\MetroExodus\.exe$)", {{
+      { "dxvk.hideIntegratedGraphics",      "True" },
+    }} },
   }};
 
 
