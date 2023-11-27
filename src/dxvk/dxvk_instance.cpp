@@ -286,7 +286,12 @@ namespace dxvk {
 
         return aRank < bRank;
       });
-    
+
+    if (m_options.hideIntegratedGraphics && numDGPU > 0 && numIGPU > 0) {
+      result.resize(numDGPU);
+      numIGPU = 0;
+    }
+
     if (result.empty()) {
       Logger::warn("DXVK: No adapters found. Please check your "
                    "device filter settings and Vulkan setup. "
