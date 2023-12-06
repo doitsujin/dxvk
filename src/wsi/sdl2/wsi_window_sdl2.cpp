@@ -7,7 +7,6 @@
 #include "../../util/log/log.h"
 
 #include <windows.h>
-#include <SDL2/SDL_vulkan.h>
 
 namespace dxvk::wsi {
 
@@ -18,7 +17,7 @@ namespace dxvk::wsi {
     SDL_Window* window = fromHwnd(hWindow);
 
     int32_t w, h;
-    SDL_GetWindowSize(window, &w, &h);
+    WsiLibrary::get()->SDL_GetWindowSize(window, &w, &h);
 
     if (pWidth)
       *pWidth = uint32_t(w);
@@ -35,7 +34,7 @@ namespace dxvk::wsi {
           uint32_t         Height) {
     SDL_Window* window = fromHwnd(hWindow);
 
-    SDL_SetWindowSize(window, int32_t(Width), int32_t(Height));
+    WsiLibrary::get()->SDL_SetWindowSize(window, int32_t(Width), int32_t(Height));
   }
 
 
@@ -58,13 +57,13 @@ namespace dxvk::wsi {
     // TODO: Implement lookup format for bitsPerPixel here.
 
     SDL_DisplayMode mode = { };
-    if (SDL_GetClosestDisplayMode(displayId, &wantedMode, &mode) == nullptr) {
-      Logger::err(str::format("SDL2 WSI: setWindowMode: SDL_GetClosestDisplayMode: ", SDL_GetError()));
+    if (WsiLibrary::get()->SDL_GetClosestDisplayMode(displayId, &wantedMode, &mode) == nullptr) {
+      Logger::err(str::format("SDL2 WSI: setWindowMode: SDL_GetClosestDisplayMode: ", WsiLibrary::get()->SDL_GetError()));
       return false;
     }
 
-    if (SDL_SetWindowDisplayMode(window, &mode) != 0) {
-      Logger::err(str::format("SDL2 WSI: setWindowMode: SDL_SetWindowDisplayMode: ", SDL_GetError()));
+    if (WsiLibrary::get()->SDL_SetWindowDisplayMode(window, &mode) != 0) {
+      Logger::err(str::format("SDL2 WSI: setWindowMode: SDL_SetWindowDisplayMode: ", WsiLibrary::get()->SDL_GetError()));
       return false;
     }
 
@@ -90,8 +89,8 @@ namespace dxvk::wsi {
     
     // TODO: Set this on the correct monitor.
     // Docs aren't clear on this...
-    if (SDL_SetWindowFullscreen(window, flags) != 0) {
-      Logger::err(str::format("SDL2 WSI: enterFullscreenMode: SDL_SetWindowFullscreen: ", SDL_GetError()));
+    if (WsiLibrary::get()->SDL_SetWindowFullscreen(window, flags) != 0) {
+      Logger::err(str::format("SDL2 WSI: enterFullscreenMode: SDL_SetWindowFullscreen: ", WsiLibrary::get()->SDL_GetError()));
       return false;
     }
 
@@ -105,8 +104,8 @@ namespace dxvk::wsi {
           bool             restoreCoordinates) {
     SDL_Window* window = fromHwnd(hWindow);
 
-    if (SDL_SetWindowFullscreen(window, 0) != 0) {
-      Logger::err(str::format("SDL2 WSI: leaveFullscreenMode: SDL_SetWindowFullscreen: ", SDL_GetError()));
+    if (WsiLibrary::get()->SDL_SetWindowFullscreen(window, 0) != 0) {
+      Logger::err(str::format("SDL2 WSI: leaveFullscreenMode: SDL_SetWindowFullscreen: ", WsiLibrary::get()->SDL_GetError()));
       return false;
     }
 
@@ -122,7 +121,7 @@ namespace dxvk::wsi {
 
   HMONITOR getWindowMonitor(HWND hWindow) {
     SDL_Window* window      = fromHwnd(hWindow);
-    const int32_t displayId = SDL_GetWindowDisplayIndex(window);
+    const int32_t displayId = WsiLibrary::get()->SDL_GetWindowDisplayIndex(window);
 
     return toHmonitor(displayId);
   }
@@ -149,22 +148,22 @@ namespace dxvk::wsi {
           VkSurfaceKHR*             pSurface) {
     SDL_Window* window = fromHwnd(hWindow);
 
-    return SDL_Vulkan_CreateSurface(window, instance, pSurface)
+    return WsiLibrary::get()->SDL_Vulkan_CreateSurface(window, instance, pSurface)
          ? VK_SUCCESS
          : VK_ERROR_OUT_OF_HOST_MEMORY;
   }
 
 
   std::vector<const char *> getInstanceExtensions() {
-    SDL_Vulkan_LoadLibrary(nullptr);
+    WsiLibrary::get()->SDL_Vulkan_LoadLibrary(nullptr);
 
     uint32_t extensionCount = 0;
-    if (!SDL_Vulkan_GetInstanceExtensions(nullptr, &extensionCount, nullptr))
-      throw DxvkError(str::format("SDL2 WSI: Failed to get instance extension count. ", SDL_GetError()));
+    if (!WsiLibrary::get()->SDL_Vulkan_GetInstanceExtensions(nullptr, &extensionCount, nullptr))
+      throw DxvkError(str::format("SDL2 WSI: Failed to get instance extension count. ", WsiLibrary::get()->SDL_GetError()));
 
     auto extensionNames = std::vector<const char *>(extensionCount);
-    if (!SDL_Vulkan_GetInstanceExtensions(nullptr, &extensionCount, extensionNames.data()))
-      throw DxvkError(str::format("SDL2 WSI: Failed to get instance extensions. ", SDL_GetError()));
+    if (!WsiLibrary::get()->SDL_Vulkan_GetInstanceExtensions(nullptr, &extensionCount, extensionNames.data()))
+      throw DxvkError(str::format("SDL2 WSI: Failed to get instance extensions. ", WsiLibrary::get()->SDL_GetError()));
 
     return extensionNames;
   }

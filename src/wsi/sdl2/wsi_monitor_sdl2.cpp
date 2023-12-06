@@ -56,7 +56,7 @@ namespace dxvk::wsi {
       return false;
 
     SDL_Rect rect = { };
-    SDL_GetDisplayBounds(displayId, &rect);
+    WsiLibrary::get()->SDL_GetDisplayBounds(displayId, &rect);
 
     pRect->left   = rect.x;
     pRect->top    = rect.y;
@@ -100,7 +100,7 @@ namespace dxvk::wsi {
       return false;
 
     SDL_DisplayMode mode = { };
-    if (SDL_GetDisplayMode(displayId, ModeNumber, &mode) != 0)
+    if (WsiLibrary::get()->SDL_GetDisplayMode(displayId, ModeNumber, &mode) != 0)
       return false;
 
     convertMode(mode, pMode);
@@ -118,8 +118,8 @@ namespace dxvk::wsi {
       return false;
 
     SDL_DisplayMode mode = { };
-    if (SDL_GetCurrentDisplayMode(displayId, &mode) != 0) {
-      Logger::err(str::format("SDL_GetCurrentDisplayMode: ", SDL_GetError()));
+    if (WsiLibrary::get()->SDL_GetCurrentDisplayMode(displayId, &mode) != 0) {
+      Logger::err(str::format("SDL_GetCurrentDisplayMode: ", WsiLibrary::get()->SDL_GetError()));
       return false;
     }
 
@@ -138,8 +138,8 @@ namespace dxvk::wsi {
       return false;
 
     SDL_DisplayMode mode = { };
-    if (SDL_GetDesktopDisplayMode(displayId, &mode) != 0) {
-      Logger::err(str::format("SDL_GetCurrentDisplayMode: ", SDL_GetError()));
+    if (WsiLibrary::get()->SDL_GetDesktopDisplayMode(displayId, &mode) != 0) {
+      Logger::err(str::format("SDL_GetCurrentDisplayMode: ", WsiLibrary::get()->SDL_GetError()));
       return false;
     }
 
