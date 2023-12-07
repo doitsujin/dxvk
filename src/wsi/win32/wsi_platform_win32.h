@@ -13,4 +13,7 @@ namespace dxvk::wsi {
     RECT rect    = { 0, 0, 0, 0 };
   };
 
+  inline void init() { }
+  inline void quit() { }
+
 }

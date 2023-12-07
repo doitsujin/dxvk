@@ -13,20 +13,22 @@ namespace dxvk::wsi {
   struct DxvkWindowState {
   };
 
-  struct WsiLibrary {
-  private:
-    static WsiLibrary *s_instance;
+  #define SDL_PROC(ret, name, params) \
+    typedef ret (SDLCALL *pfn_##name) params;
+  #include "wsi_platform_sdl2_funcs.h"
 
+  struct WsiLibrary {
+    WsiLibrary(HMODULE dll);
+    static WsiLibrary *get();
     HMODULE libsdl;
 
-  public:
-    static WsiLibrary *get();
-
     #define SDL_PROC(ret, name, params) \
-      typedef ret (SDLCALL *pfn_##name) params; \
       pfn_##name name;
     #include "wsi_platform_sdl2_funcs.h"
   };
+
+  void init();
+  void quit();
 
   inline bool isDisplayValid(int32_t displayId) {
     const int32_t displayCount = WsiLibrary::get()->SDL_GetNumVideoDisplays();

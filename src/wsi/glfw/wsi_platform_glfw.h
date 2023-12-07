@@ -13,20 +13,22 @@ namespace dxvk::wsi {
   struct DxvkWindowState {
   };
 
-  struct WsiLibrary {
-  private:
-    static WsiLibrary *s_instance;
+  #define GLFW_PROC(ret, name, params) \
+    typedef ret (*pfn_##name) params;
+  #include "wsi_platform_glfw_funcs.h"
 
+  struct WsiLibrary {
+    WsiLibrary(HMODULE dll);
+    static WsiLibrary *get();
     HMODULE libglfw;
 
-  public:
-    static WsiLibrary *get();
-
     #define GLFW_PROC(ret, name, params) \
-      typedef ret (*pfn_##name) params; \
       pfn_##name name;
     #include "wsi_platform_glfw_funcs.h"
   };
+
+  void init();
+  void quit();
   
   inline bool isDisplayValid(int32_t displayId) {
     int32_t displayCount = 0;
