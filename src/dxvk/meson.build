@@ -92,6 +92,7 @@ dxvk_src = [
   'dxvk_options.cpp',
   'dxvk_pipelayout.cpp',
   'dxvk_pipemanager.cpp',
+  'dxvk_platform_exts.cpp',
   'dxvk_presenter.cpp',
   'dxvk_queue.cpp',
   'dxvk_resource.cpp',
@@ -117,20 +118,6 @@ if platform == 'windows'
   dxvk_src += [
     'dxvk_openvr.cpp',
     'dxvk_openxr.cpp',
-  ]
-endif
-
-if dxvk_wsi == 'win32'
-  dxvk_src += [
-    'platform/dxvk_win32_exts.cpp'
-  ]
-elif dxvk_wsi == 'sdl2'
-  dxvk_src += [
-    'platform/dxvk_sdl2_exts.cpp'
-  ]
-elif dxvk_wsi == 'glfw'
-  dxvk_src += [
-    'platform/dxvk_glfw_exts.cpp'
   ]
 endif
 

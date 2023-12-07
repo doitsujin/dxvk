@@ -295,4 +295,9 @@ namespace dxvk::wsi {
     return (*pfnVkCreateWin32SurfaceKHR)(instance, &info, nullptr, pSurface);
   }
 
+
+  std::vector<const char *> getInstanceExtensions() {
+    return { VK_KHR_WIN32_SURFACE_EXTENSION_NAME };
+  }
+
 }

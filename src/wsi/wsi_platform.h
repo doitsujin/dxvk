@@ -7,3 +7,9 @@
 #elif defined(DXVK_WSI_GLFW)
 #include "glfw/wsi_platform_glfw.h"
 #endif
+
+namespace dxvk::wsi {
+
+  std::vector<const char *> getInstanceExtensions();
+
+}
