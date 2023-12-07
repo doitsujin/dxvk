@@ -19,7 +19,7 @@ namespace dxvk::wsi {
     GLFWwindow* window = fromHwnd(hWindow);
 
     int32_t w, h;
-    glfwGetWindowSize(window, &w, &h);
+    WsiLibrary::get()->glfwGetWindowSize(window, &w, &h);
 
     if (pWidth)
       *pWidth = uint32_t(w);
@@ -36,7 +36,7 @@ namespace dxvk::wsi {
       uint32_t Height) {
     GLFWwindow* window = fromHwnd(hWindow);
 
-    glfwSetWindowSize(window, int32_t(Width), int32_t(Height));
+    WsiLibrary::get()->glfwSetWindowSize(window, int32_t(Width), int32_t(Height));
   }
 
 
@@ -51,7 +51,7 @@ namespace dxvk::wsi {
       return false;
 
     int32_t displayCount = 0;
-    GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
+    GLFWmonitor** monitors = WsiLibrary::get()->glfwGetMonitors(&displayCount);
     GLFWmonitor* monitor = monitors[displayId];
 
     GLFWvidmode wantedMode = {};
@@ -62,7 +62,7 @@ namespace dxvk::wsi {
                  : 0;
     // TODO: Implement lookup format for bitsPerPixel here.
 
-    glfwSetWindowMonitor(window, monitor, 0, 0, wantedMode.width, wantedMode.width, wantedMode.refreshRate);
+    WsiLibrary::get()->glfwSetWindowMonitor(window, monitor, 0, 0, wantedMode.width, wantedMode.width, wantedMode.refreshRate);
 
     return true;
   }
@@ -78,12 +78,12 @@ namespace dxvk::wsi {
     if (!isDisplayValid(displayId))
       return false;
 
-    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-    auto videoMode = glfwGetVideoMode(monitor);
+    GLFWmonitor* monitor = WsiLibrary::get()->glfwGetPrimaryMonitor();
+    auto videoMode = WsiLibrary::get()->glfwGetVideoMode(monitor);
 
     // TODO: Set this on the correct monitor.
     // Docs aren't clear on this...
-    glfwSetWindowMonitor(window, monitor, 0, 0, videoMode->width, videoMode->height, videoMode->refreshRate);
+    WsiLibrary::get()->glfwSetWindowMonitor(window, monitor, 0, 0, videoMode->width, videoMode->height, videoMode->refreshRate);
 
     return true;
   }
@@ -95,9 +95,9 @@ namespace dxvk::wsi {
       bool             restoreCoordinates) {
     GLFWwindow* window = fromHwnd(hWindow);
 
-    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-    auto videoMode = glfwGetVideoMode(monitor);
-    glfwSetWindowMonitor(window, nullptr, 0, 0, videoMode->width, videoMode->height, videoMode->refreshRate);
+    GLFWmonitor* monitor = WsiLibrary::get()->glfwGetPrimaryMonitor();
+    auto videoMode = WsiLibrary::get()->glfwGetVideoMode(monitor);
+    WsiLibrary::get()->glfwSetWindowMonitor(window, nullptr, 0, 0, videoMode->width, videoMode->height, videoMode->refreshRate);
 
     return true;
   }
@@ -138,16 +138,16 @@ namespace dxvk::wsi {
       VkSurfaceKHR* pSurface) {
     GLFWwindow* window = fromHwnd(hWindow);
 
-    return glfwCreateWindowSurface(instance, window, nullptr, pSurface);
+    return WsiLibrary::get()->glfwCreateWindowSurface(instance, window, nullptr, pSurface);
   }
 
 
   std::vector<const char *> getInstanceExtensions() {
-    if (!glfwVulkanSupported())
+    if (!WsiLibrary::get()->glfwVulkanSupported())
       throw DxvkError(str::format("GLFW WSI: Vulkan is not supported in any capacity!"));
 
     uint32_t extensionCount = 0;
-    const char** extensionArray = glfwGetRequiredInstanceExtensions(&extensionCount);
+    const char** extensionArray = WsiLibrary::get()->glfwGetRequiredInstanceExtensions(&extensionCount);
 
     if (extensionCount == 0)
       throw DxvkError(str::format("GLFW WSI: Failed to get required instance extensions"));

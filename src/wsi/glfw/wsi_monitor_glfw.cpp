@@ -55,14 +55,14 @@ namespace dxvk::wsi {
       return false;
 
     int32_t displayCount = 0;
-    GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
+    GLFWmonitor** monitors = WsiLibrary::get()->glfwGetMonitors(&displayCount);
     GLFWmonitor* monitor = monitors[displayId];
 
     int32_t x;
     int32_t y;
     int32_t w;
     int32_t h;
-    glfwGetMonitorWorkarea(monitor, &x, &y, &w, &h);
+    WsiLibrary::get()->glfwGetMonitorWorkarea(monitor, &x, &y, &w, &h);
 
     pRect->left = x;
     pRect->top = y;
@@ -103,14 +103,14 @@ namespace dxvk::wsi {
       WsiMode* pMode) {
     const int32_t displayId = fromHmonitor(hMonitor);
     int32_t displayCount = 0;
-    GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
+    GLFWmonitor** monitors = WsiLibrary::get()->glfwGetMonitors(&displayCount);
     GLFWmonitor* monitor = monitors[displayId];
 
     if (!isDisplayValid(displayId))
       return false;
 
     int32_t count = 0;
-    const GLFWvidmode* modes = glfwGetVideoModes(monitor, &count);
+    const GLFWvidmode* modes = WsiLibrary::get()->glfwGetVideoModes(monitor, &count);
 
     if(ModeNumber >= uint32_t(count))
       return false;
@@ -130,10 +130,10 @@ namespace dxvk::wsi {
       return false;
 
     int32_t displayCount = 0;
-    GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
+    GLFWmonitor** monitors = WsiLibrary::get()->glfwGetMonitors(&displayCount);
     GLFWmonitor* monitor = monitors[displayId];
 
-    const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+    const GLFWvidmode* mode = WsiLibrary::get()->glfwGetVideoMode(monitor);
 
     convertMode(*mode, pMode);
 
@@ -150,11 +150,11 @@ namespace dxvk::wsi {
       return false;
 
     int32_t displayCount = 0;
-    GLFWmonitor** monitors = glfwGetMonitors(&displayCount);
+    GLFWmonitor** monitors = WsiLibrary::get()->glfwGetMonitors(&displayCount);
     GLFWmonitor* monitor = monitors[displayId];
 
     //TODO: actually implement this properly, currently we just grab the current one
-    convertMode(*glfwGetVideoMode(monitor), pMode);
+    convertMode(*WsiLibrary::get()->glfwGetVideoMode(monitor), pMode);
 
     return true;
   }
