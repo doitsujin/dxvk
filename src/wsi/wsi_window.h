@@ -12,10 +12,18 @@ namespace dxvk::wsi {
     * \brief Impl-dependent state
     */
   struct DxvkWindowState {
-#ifdef DXVK_WSI_WIN32
-    LONG style   = 0;
-    LONG exstyle = 0;
-    RECT rect    = { 0, 0, 0, 0 };
+#if defined(DXVK_WSI_WIN32)
+    struct {
+      LONG style   = 0;
+      LONG exstyle = 0;
+      RECT rect    = { 0, 0, 0, 0 };
+    } win;
+#endif
+#if defined(DXVK_WSI_SDL2)
+    // Nothing to store
+#endif
+#if defined(DXVK_WSI_GLFW)
+    // Nothing to store
 #endif
   };
 

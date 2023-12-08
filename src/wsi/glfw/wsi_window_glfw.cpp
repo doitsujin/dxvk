@@ -1,6 +1,8 @@
+#if defined(DXVK_WSI_GLFW)
+
 #include "../wsi_window.h"
 
-#include "native/wsi/native_wsi.h"
+#include "native/wsi/native_glfw.h"
 #include "wsi_platform_glfw.h"
 
 #include "../../util/util_string.h"
@@ -142,3 +144,5 @@ namespace dxvk::wsi {
   }
 
 }
+
+#endif

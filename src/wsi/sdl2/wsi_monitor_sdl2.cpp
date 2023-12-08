@@ -1,3 +1,5 @@
+#if defined(DXVK_WSI_SDL2)
+
 #include "../wsi_monitor.h"
 
 #include "wsi/native_wsi.h"
@@ -154,3 +156,5 @@ namespace dxvk::wsi {
   }
 
 }
+
+#endif
