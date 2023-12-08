@@ -12,7 +12,7 @@
 
 namespace dxvk::wsi {
 
-  void getWindowSize(
+  void GlfwWsiDriver::getWindowSize(
       HWND hWindow,
       uint32_t* pWidth,
       uint32_t* pHeight) {
@@ -29,7 +29,7 @@ namespace dxvk::wsi {
   }
 
 
-  void resizeWindow(
+  void GlfwWsiDriver::resizeWindow(
       HWND hWindow,
       DxvkWindowState* pState,
       uint32_t Width,
@@ -40,7 +40,7 @@ namespace dxvk::wsi {
   }
 
 
-  bool setWindowMode(
+  bool GlfwWsiDriver::setWindowMode(
       HMONITOR hMonitor,
       HWND hWindow,
       const WsiMode& pMode) {
@@ -67,7 +67,7 @@ namespace dxvk::wsi {
     return true;
   }
 
-  bool enterFullscreenMode(
+  bool GlfwWsiDriver::enterFullscreenMode(
       HMONITOR hMonitor,
       HWND hWindow,
       DxvkWindowState* pState,
@@ -89,7 +89,7 @@ namespace dxvk::wsi {
   }
 
 
-  bool leaveFullscreenMode(
+  bool GlfwWsiDriver::leaveFullscreenMode(
       HWND hWindow,
       DxvkWindowState* pState,
       bool             restoreCoordinates) {
@@ -103,13 +103,13 @@ namespace dxvk::wsi {
   }
 
 
-  bool restoreDisplayMode() {
+  bool GlfwWsiDriver::restoreDisplayMode() {
     // Don't need to do anything with GLFW here.
     return true;
   }
 
 
-  HMONITOR getWindowMonitor(HWND hWindow) {
+  HMONITOR GlfwWsiDriver::getWindowMonitor(HWND hWindow) {
     // TODO: implement this with glfwGetWindowMonitor 
     //  (or maybe not? glfwGetWindowMonitor only seems to reference *fullscreen* windows)
     // GLFWwindow* window = fromHwnd(hWindow);
@@ -119,19 +119,19 @@ namespace dxvk::wsi {
   }
 
 
-  bool isWindow(HWND hWindow) {
+  bool GlfwWsiDriver::isWindow(HWND hWindow) {
     GLFWwindow* window = fromHwnd(hWindow);
     return window != nullptr;
   }
 
-  void updateFullscreenWindow(
+  void GlfwWsiDriver::updateFullscreenWindow(
       HMONITOR hMonitor,
       HWND     hWindow,
       bool     forceTopmost) {
     // Don't need to do anything with GLFW here.
   }
 
-  VkResult createSurface(
+  VkResult GlfwWsiDriver::createSurface(
       HWND hWindow,
       PFN_vkGetInstanceProcAddr pfnVkGetInstanceProcAddr,
       VkInstance                instance,

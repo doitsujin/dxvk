@@ -1,5 +1,4 @@
-#include "../wsi_window.h"
-#include "../wsi_monitor.h"
+#include "wsi_platform_win32.h"
 
 #include "../../util/util_string.h"
 #include "../../util/log/log.h"
@@ -94,7 +93,7 @@ namespace dxvk::wsi {
   }
 
 
-  void getWindowSize(
+  void Win32WsiDriver::getWindowSize(
         HWND      hWindow,
         uint32_t* pWidth,
         uint32_t* pHeight) {
@@ -109,7 +108,7 @@ namespace dxvk::wsi {
   }
 
 
-  void resizeWindow(
+  void Win32WsiDriver::resizeWindow(
           HWND             hWindow,
           DxvkWindowState* pState,
           uint32_t         width,
@@ -130,7 +129,7 @@ namespace dxvk::wsi {
   }
 
 
-  bool setWindowMode(
+  bool Win32WsiDriver::setWindowMode(
           HMONITOR                hMonitor,
           HWND                    hWindow,
     const WsiMode&                mode) {
@@ -163,7 +162,7 @@ namespace dxvk::wsi {
   }
 
 
-  bool enterFullscreenMode(
+  bool Win32WsiDriver::enterFullscreenMode(
           HMONITOR         hMonitor,
           HWND             hWindow,
           DxvkWindowState* pState,
@@ -196,7 +195,7 @@ namespace dxvk::wsi {
   }
 
 
-  bool leaveFullscreenMode(
+  bool Win32WsiDriver::leaveFullscreenMode(
           HWND             hWindow,
           DxvkWindowState* pState,
           bool             restoreCoordinates) {
@@ -225,7 +224,7 @@ namespace dxvk::wsi {
   }
 
 
-  bool restoreDisplayMode() {
+  bool Win32WsiDriver::restoreDisplayMode() {
     bool success = true;
     bool result = ::EnumDisplayMonitors(nullptr, nullptr,
       &restoreDisplayModeCallback,
@@ -235,7 +234,7 @@ namespace dxvk::wsi {
   }
 
 
-  HMONITOR getWindowMonitor(HWND hWindow) {
+  HMONITOR Win32WsiDriver::getWindowMonitor(HWND hWindow) {
     RECT windowRect = { 0, 0, 0, 0 };
     ::GetWindowRect(hWindow, &windowRect);
     
@@ -248,12 +247,12 @@ namespace dxvk::wsi {
   }
 
 
-  bool isWindow(HWND hWindow) {
+  bool Win32WsiDriver::isWindow(HWND hWindow) {
     return ::IsWindow(hWindow);
   }
 
 
-  void updateFullscreenWindow(
+  void Win32WsiDriver::updateFullscreenWindow(
           HMONITOR hMonitor,
           HWND     hWindow,
           bool     forceTopmost) {
@@ -274,7 +273,7 @@ namespace dxvk::wsi {
   }
 
 
-  VkResult createSurface(
+  VkResult Win32WsiDriver::createSurface(
           HWND                hWindow,
           PFN_vkGetInstanceProcAddr pfnVkGetInstanceProcAddr,
           VkInstance          instance,

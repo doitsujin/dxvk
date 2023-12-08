@@ -1,11 +1,146 @@
 #include "wsi_platform.h"
+#include "wsi_monitor.h"
+#include "wsi_window.h"
+#include "../util/util_error.h"
 
 namespace dxvk::wsi {
+  static WsiDriver* s_driver = nullptr;
+  static int s_refcount = 0;
 
   void init() {
+    if (s_refcount++ > 0)
+      return;
+
+    s_driver = platformCreateWsiDriver();
+    if (s_driver == nullptr)
+      throw DxvkError("Failed to initialize WSI.");
   }
 
   void quit() {
+    if (s_refcount == 0)
+      return;
+
+    s_refcount--;
+    if (s_refcount == 0) {
+      delete s_driver;
+      s_driver = nullptr;
+    }
+  }
+
+  std::vector<const char *> getInstanceExtensions() {
+    return s_driver->getInstanceExtensions();
+  }
+
+  void getWindowSize(
+          HWND      hWindow,
+          uint32_t* pWidth,
+          uint32_t* pHeight) {
+    s_driver->getWindowSize(hWindow, pWidth, pHeight);
+  }
+
+  void resizeWindow(
+          HWND             hWindow,
+          DxvkWindowState* pState,
+          uint32_t         width,
+          uint32_t         height) {
+    s_driver->resizeWindow(hWindow, pState, width, height);
+  }
+
+  bool setWindowMode(
+          HMONITOR         hMonitor,
+          HWND             hWindow,
+    const WsiMode&         mode) {
+    return s_driver->setWindowMode(hMonitor, hWindow, mode);
+  }
+
+  bool enterFullscreenMode(
+          HMONITOR         hMonitor,
+          HWND             hWindow,
+          DxvkWindowState* pState,
+          [[maybe_unused]]
+          bool             modeSwitch) {
+    return s_driver->enterFullscreenMode(hMonitor, hWindow, pState, modeSwitch);
+  }
+
+  bool leaveFullscreenMode(
+          HWND             hWindow,
+          DxvkWindowState* pState,
+          bool             restoreCoordinates) {
+    return s_driver->leaveFullscreenMode(hWindow, pState, restoreCoordinates);
+  }
+
+  bool restoreDisplayMode() {
+    return s_driver->restoreDisplayMode();
+  }
+
+  HMONITOR getWindowMonitor(HWND hWindow) {
+    return s_driver->getWindowMonitor(hWindow);
+  }
+
+  bool isWindow(HWND hWindow) {
+    return s_driver->isWindow(hWindow);
+  }
+
+  void updateFullscreenWindow(
+          HMONITOR hMonitor,
+          HWND     hWindow,
+          bool     forceTopmost) {
+    s_driver->updateFullscreenWindow(hMonitor, hWindow, forceTopmost);
+  }
+
+  VkResult createSurface(
+          HWND                hWindow,
+          PFN_vkGetInstanceProcAddr pfnVkGetInstanceProcAddr,
+          VkInstance          instance,
+          VkSurfaceKHR*       pSurface) {
+    return s_driver->createSurface(hWindow, pfnVkGetInstanceProcAddr, instance, pSurface);
+  }
+
+  HMONITOR getDefaultMonitor() {
+    return s_driver->getDefaultMonitor();
+  }
+
+  HMONITOR enumMonitors(uint32_t index) {
+    return s_driver->enumMonitors(index);
+  }
+
+  HMONITOR enumMonitors(const LUID *adapterLUID[], uint32_t numLUIDs, uint32_t index) {
+    return s_driver->enumMonitors(adapterLUID, numLUIDs, index);
+  }
+
+  bool getDisplayName(
+          HMONITOR         hMonitor,
+          WCHAR            (&Name)[32]) {
+    return s_driver->getDisplayName(hMonitor, Name);
+  }
+
+  bool getDesktopCoordinates(
+          HMONITOR         hMonitor,
+          RECT*            pRect) {
+    return s_driver->getDesktopCoordinates(hMonitor, pRect);
+  }
+
+  bool getDisplayMode(
+          HMONITOR         hMonitor,
+          uint32_t         modeNumber,
+          WsiMode*         pMode) {
+    return s_driver->getDisplayMode(hMonitor, modeNumber, pMode);
+  }
+
+  bool getCurrentDisplayMode(
+          HMONITOR         hMonitor,
+          WsiMode*         pMode) {
+    return s_driver->getCurrentDisplayMode(hMonitor, pMode);
+  }
+
+  bool getDesktopDisplayMode(
+          HMONITOR         hMonitor,
+          WsiMode*         pMode) {
+    return s_driver->getDesktopDisplayMode(hMonitor, pMode);
+  }
+
+  WsiEdidData getMonitorEdid(HMONITOR hMonitor) {
+    return s_driver->getMonitorEdid(hMonitor);
   }
 
 }
