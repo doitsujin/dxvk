@@ -1,3 +1,5 @@
+#if defined(DXVK_WSI_WIN32)
+
 #include "wsi_platform_win32.h"
 
 #include "../../util/util_string.h"
@@ -370,3 +372,5 @@ namespace dxvk::wsi {
   }
 
 }
+
+#endif

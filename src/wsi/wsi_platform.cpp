@@ -1,18 +1,41 @@
 #include "wsi_platform.h"
 #include "wsi_monitor.h"
 #include "wsi_window.h"
+#include "../util/util_env.h"
 #include "../util/util_error.h"
 
 namespace dxvk::wsi {
   static WsiDriver* s_driver = nullptr;
   static int s_refcount = 0;
 
+  static const WsiBootstrap *wsiBootstrap[] = {
+#if defined(DXVK_WSI_WIN32)
+    &Win32WSI,
+#endif
+#if defined(DXVK_WSI_SDL2)
+    &Sdl2WSI,
+#endif
+#if defined(DXVK_WSI_GLFW)
+    &GlfwWSI,
+#endif
+  };
+
   void init() {
     if (s_refcount++ > 0)
       return;
 
-    s_driver = platformCreateWsiDriver();
-    if (s_driver == nullptr)
+    bool success = false;
+    const std::string hint = dxvk::env::getEnvVar("DXVK_WSIDRIVER");
+    for (const WsiBootstrap *b : wsiBootstrap) {
+      if ((hint != "") && (hint != b->name))
+          continue;
+      if (b->createDriver(&s_driver)) {
+        success = true;
+        break;
+      }
+    }
+
+    if (!success)
       throw DxvkError("Failed to initialize WSI.");
   }
 
