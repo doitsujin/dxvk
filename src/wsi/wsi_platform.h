@@ -8,9 +8,12 @@
 #include "glfw/wsi_platform_glfw.h"
 #endif
 
+#include <vector>
+
 namespace dxvk::wsi {
 
   void init();
   void quit();
+  std::vector<const char *> getInstanceExtensions();
 
 }
