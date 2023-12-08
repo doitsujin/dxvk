@@ -4,7 +4,7 @@
 
 namespace dxvk::wsi {
 
-  std::vector<const char *> getInstanceExtensions() {
+  std::vector<const char *> GlfwWsiDriver::getInstanceExtensions() {
     if (!glfwVulkanSupported())
       throw DxvkError(str::format("GLFW WSI: Vulkan is not supported in any capacity!"));
 
@@ -20,6 +20,10 @@ namespace dxvk::wsi {
     }
 
     return names;
+  }
+
+  WsiDriver* platformCreateWsiDriver() {
+    return new GlfwWsiDriver();
   }
 
 }
