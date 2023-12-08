@@ -4,6 +4,7 @@
 #include "dxvk_openvr.h"
 #include "dxvk_openxr.h"
 #include "dxvk_platform_exts.h"
+#include "../wsi/wsi_platform.h"
 
 #include <algorithm>
 #include <sstream>
@@ -19,6 +20,8 @@ namespace dxvk {
   DxvkInstance::DxvkInstance(const DxvkInstanceImportInfo& args, DxvkInstanceFlags flags) {
     Logger::info(str::format("Game: ", env::getExeName()));
     Logger::info(str::format("DXVK: ", DXVK_VERSION));
+
+    wsi::init();
 
     m_config = Config::getUserConfig();
     m_config.merge(Config::getAppConfig(env::getExePath()));
@@ -64,6 +67,8 @@ namespace dxvk {
   DxvkInstance::~DxvkInstance() {
     if (m_messenger)
       m_vki->vkDestroyDebugUtilsMessengerEXT(m_vki->instance(), m_messenger, nullptr);
+
+    wsi::quit();
   }
   
   
