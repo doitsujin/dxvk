@@ -6,7 +6,7 @@
 
 namespace dxvk::wsi {
 
-  std::vector<const char *> getInstanceExtensions() {
+  std::vector<const char *> Sdl2WsiDriver::getInstanceExtensions() {
     SDL_Vulkan_LoadLibrary(nullptr);
 
     uint32_t extensionCount = 0;
@@ -18,6 +18,10 @@ namespace dxvk::wsi {
       throw DxvkError(str::format("SDL2 WSI: Failed to get instance extensions. ", SDL_GetError()));
 
     return extensionNames;
+  }
+
+  WsiDriver* platformCreateWsiDriver() {
+    return new Sdl2WsiDriver();
   }
 
 }
