@@ -7,7 +7,23 @@
 namespace dxvk::wsi {
 
   class Sdl2WsiDriver : public WsiDriver {
+  private:
+    HMODULE libsdl;
+    #define SDL_PROC(ret, name, params) \
+      typedef ret (SDLCALL *pfn_##name) params; \
+      pfn_##name name;
+    #include "wsi_platform_sdl2_funcs.h"
+
+    inline bool isDisplayValid(int32_t displayId) {
+      const int32_t displayCount = SDL_GetNumVideoDisplays();
+
+      return displayId < displayCount && displayId >= 0;
+    }
+
   public:
+    Sdl2WsiDriver();
+    ~Sdl2WsiDriver();
+
     // Platform
     virtual std::vector<const char *> getInstanceExtensions();
 
@@ -88,11 +104,5 @@ namespace dxvk::wsi {
             VkInstance          instance,
             VkSurfaceKHR*       pSurface);
   };
-
-  inline bool isDisplayValid(int32_t displayId) {
-    const int32_t displayCount = SDL_GetNumVideoDisplays();
-
-    return displayId < displayCount && displayId >= 0;
-  }
   
 }

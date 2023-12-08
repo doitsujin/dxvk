@@ -1,8 +1,36 @@
 #include "wsi_platform_glfw.h"
 #include "../../util/util_error.h"
 #include "../../util/util_string.h"
+#include "../../util/util_win32_compat.h"
 
 namespace dxvk::wsi {
+
+  GlfwWsiDriver::GlfwWsiDriver() {
+    libglfw = LoadLibraryA( // FIXME: Get soname as string from meson
+#if defined(_WIN32)
+        "glfw.dll"
+#elif defined(__APPLE__)
+        "libglfw.3.dylib"
+#else
+        "libglfw.so.3"
+#endif
+      );
+    if (libglfw == nullptr)
+      throw DxvkError("GLFW WSI: Failed to load GLFW DLL.");
+
+    #define GLFW_PROC(ret, name, params) \
+      name = reinterpret_cast<pfn_##name>(GetProcAddress(libglfw, #name)); \
+      if (name == nullptr) { \
+        FreeLibrary(libglfw); \
+        libglfw = nullptr; \
+        throw DxvkError("GLFW WSI: Failed to load " #name "."); \
+      }
+    #include "wsi_platform_glfw_funcs.h"
+  }
+
+  GlfwWsiDriver::~GlfwWsiDriver() {
+    FreeLibrary(libglfw);
+  }
 
   std::vector<const char *> GlfwWsiDriver::getInstanceExtensions() {
     if (!glfwVulkanSupported())
