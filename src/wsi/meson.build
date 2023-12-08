@@ -1,5 +1,6 @@
 wsi_common_src = [
   'wsi_edid.cpp',
+  'wsi_platform.cpp',
 ]
 
 wsi_win32_src = [
