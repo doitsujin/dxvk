@@ -8,7 +8,24 @@
 namespace dxvk::wsi {
 
   class GlfwWsiDriver : public WsiDriver {
+  private:
+    HMODULE libglfw;
+    #define GLFW_PROC(ret, name, params) \
+      typedef ret (*pfn_##name) params; \
+      pfn_##name name;
+    #include "wsi_platform_glfw_funcs.h"
+
+    inline bool isDisplayValid(int32_t displayId) {
+      int32_t displayCount = 0;
+      glfwGetMonitors(&displayCount);
+
+      return displayId < displayCount && displayId >= 0;
+    }
+
   public:
+    GlfwWsiDriver();
+    ~GlfwWsiDriver();
+
     // Platform
     virtual std::vector<const char *> getInstanceExtensions();
 
@@ -89,12 +106,5 @@ namespace dxvk::wsi {
             VkInstance          instance,
             VkSurfaceKHR*       pSurface);
   };
-  
-  inline bool isDisplayValid(int32_t displayId) {
-    int32_t displayCount = 0;
-    glfwGetMonitors(&displayCount);
-
-    return displayId < displayCount && displayId >= 0;
-  }
 
 }
