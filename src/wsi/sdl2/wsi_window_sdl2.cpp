@@ -1,6 +1,8 @@
+#if defined(DXVK_WSI_SDL2)
+
 #include "../wsi_window.h"
 
-#include "native/wsi/native_wsi.h"
+#include "native/wsi/native_sdl2.h"
 #include "wsi_platform_sdl2.h"
 
 #include "../../util/util_string.h"
@@ -155,3 +157,5 @@ namespace dxvk::wsi {
   }
 
 }
+
+#endif

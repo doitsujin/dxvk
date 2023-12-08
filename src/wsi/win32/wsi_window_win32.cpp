@@ -1,3 +1,5 @@
+#if defined(DXVK_WSI_WIN32)
+
 #include "wsi_platform_win32.h"
 
 #include "../../util/util_string.h"
@@ -169,14 +171,14 @@ namespace dxvk::wsi {
           [[maybe_unused]]
           bool             modeSwitch) {
     // Find a display mode that matches what we need
-    ::GetWindowRect(hWindow, &pState->rect);
+    ::GetWindowRect(hWindow, &pState->win.rect);
 
     // Change the window flags to remove the decoration etc.
     LONG style   = ::GetWindowLongW(hWindow, GWL_STYLE);
     LONG exstyle = ::GetWindowLongW(hWindow, GWL_EXSTYLE);
     
-    pState->style = style;
-    pState->exstyle = exstyle;
+    pState->win.style = style;
+    pState->win.exstyle = exstyle;
     
     style   &= ~WS_OVERLAPPEDWINDOW;
     exstyle &= ~WS_EX_OVERLAPPEDWINDOW;
@@ -204,20 +206,20 @@ namespace dxvk::wsi {
     LONG curStyle   = ::GetWindowLongW(hWindow, GWL_STYLE)   & ~WS_VISIBLE;
     LONG curExstyle = ::GetWindowLongW(hWindow, GWL_EXSTYLE) & ~WS_EX_TOPMOST;
 
-    if (curStyle   == (pState->style   & ~(WS_VISIBLE    | WS_OVERLAPPEDWINDOW))
-     && curExstyle == (pState->exstyle & ~(WS_EX_TOPMOST | WS_EX_OVERLAPPEDWINDOW))) {
-      ::SetWindowLongW(hWindow, GWL_STYLE,   pState->style);
-      ::SetWindowLongW(hWindow, GWL_EXSTYLE, pState->exstyle);
+    if (curStyle   == (pState->win.style   & ~(WS_VISIBLE    | WS_OVERLAPPEDWINDOW))
+     && curExstyle == (pState->win.exstyle & ~(WS_EX_TOPMOST | WS_EX_OVERLAPPEDWINDOW))) {
+      ::SetWindowLongW(hWindow, GWL_STYLE,   pState->win.style);
+      ::SetWindowLongW(hWindow, GWL_EXSTYLE, pState->win.exstyle);
     }
 
     // Restore window position and apply the style
     UINT flags = SWP_FRAMECHANGED | SWP_NOACTIVATE;
-    const RECT rect = pState->rect;
+    const RECT rect = pState->win.rect;
 
     if (!restoreCoordinates)
       flags |= SWP_NOSIZE | SWP_NOMOVE;
     
-    ::SetWindowPos(hWindow, (pState->exstyle & WS_EX_TOPMOST) ? HWND_TOPMOST : HWND_NOTOPMOST,
+    ::SetWindowPos(hWindow, (pState->win.exstyle & WS_EX_TOPMOST) ? HWND_TOPMOST : HWND_NOTOPMOST,
       rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, flags);
 
     return true;
@@ -295,3 +297,5 @@ namespace dxvk::wsi {
   }
 
 }
+
+#endif

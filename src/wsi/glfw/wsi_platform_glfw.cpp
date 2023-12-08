@@ -1,3 +1,5 @@
+#if defined(DXVK_WSI_GLFW)
+
 #include "wsi_platform_glfw.h"
 #include "../../util/util_error.h"
 #include "../../util/util_string.h"
@@ -50,8 +52,20 @@ namespace dxvk::wsi {
     return names;
   }
 
-  WsiDriver* platformCreateWsiDriver() {
-    return new GlfwWsiDriver();
+  static bool createGlfwWsiDriver(WsiDriver **driver) {
+    try {
+      *driver = new GlfwWsiDriver();
+    } catch (const DxvkError& e) {
+      return false;
+    }
+    return true;
   }
 
+  WsiBootstrap GlfwWSI = {
+    "GLFW",
+    createGlfwWsiDriver
+  };
+
 }
+
+#endif

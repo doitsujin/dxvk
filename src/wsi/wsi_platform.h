@@ -92,9 +92,23 @@ namespace dxvk::wsi {
             VkSurfaceKHR*       pSurface) = 0;
   };
 
+  struct WsiBootstrap {
+    const std::string name;
+    bool (*createDriver)(WsiDriver **driver);
+  };
+
+#if defined(DXVK_WSI_WIN32)
+  extern WsiBootstrap Win32WSI;
+#endif
+#if defined(DXVK_WSI_SDL2)
+  extern WsiBootstrap Sdl2WSI;
+#endif
+#if defined(DXVK_WSI_GLFW)
+  extern WsiBootstrap GlfwWSI;
+#endif
+
   void init();
   void quit();
   std::vector<const char *> getInstanceExtensions();
-  WsiDriver* platformCreateWsiDriver();
 
 }

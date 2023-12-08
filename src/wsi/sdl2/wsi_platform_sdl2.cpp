@@ -1,3 +1,5 @@
+#if defined(DXVK_WSI_SDL2)
+
 #include "wsi_platform_sdl2.h"
 #include "../../util/util_error.h"
 #include "../../util/util_string.h"
@@ -48,8 +50,20 @@ namespace dxvk::wsi {
     return extensionNames;
   }
 
-  WsiDriver* platformCreateWsiDriver() {
-    return new Sdl2WsiDriver();
+  static bool createSdl2WsiDriver(WsiDriver **driver) {
+    try {
+      *driver = new Sdl2WsiDriver();
+    } catch (const DxvkError& e) {
+      return false;
+    }
+    return true;
   }
 
+  WsiBootstrap Sdl2WSI = {
+    "SDL2",
+    createSdl2WsiDriver
+  };
+
 }
+
+#endif
