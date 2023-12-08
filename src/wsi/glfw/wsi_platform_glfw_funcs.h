@@ -1,0 +1,12 @@
+GLFW_PROC(VkResult, glfwCreateWindowSurface, (VkInstance, GLFWwindow*, const VkAllocationCallbacks*, VkSurfaceKHR*))
+GLFW_PROC(GLFWmonitor**, glfwGetMonitors, (int*))
+GLFW_PROC(void, glfwGetMonitorWorkarea, (GLFWmonitor*, int*, int*, int*, int*))
+GLFW_PROC(GLFWmonitor*, glfwGetPrimaryMonitor, (void))
+GLFW_PROC(const char**, glfwGetRequiredInstanceExtensions, (uint32_t*))
+GLFW_PROC(const GLFWvidmode*, glfwGetVideoMode, (GLFWmonitor*))
+GLFW_PROC(const GLFWvidmode*, glfwGetVideoModes, (GLFWmonitor*, int*))
+GLFW_PROC(void, glfwGetWindowSize, (GLFWwindow*, int*, int*))
+GLFW_PROC(void, glfwSetWindowMonitor, (GLFWwindow*, GLFWmonitor*, int, int, int, int, int))
+GLFW_PROC(void, glfwSetWindowSize, (GLFWwindow*, int, int))
+GLFW_PROC(int, glfwVulkanSupported, (void))
+#undef GLFW_PROC
