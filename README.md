@@ -11,7 +11,7 @@ I am not submitting my stuff to the main repo because I am not exactly a graphic
 
 
 ## Branches:
-* Latest Vulkan 1.3: vr-dx9-rel-090923
+* Latest Vulkan 1.3: vr-dx9-rel-110423
 * Vulkan 1.2: vr-dx9-rel-042322
 
 # DXVK
