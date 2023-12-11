@@ -13,7 +13,7 @@ Follow updates to this fork here: https://thecrewchief.org/showthread.php?2012-C
 
 ## Branches:
 * Latest Vulkan 1.3: vr-dx9-rel-110423
-* Vulkan 1.2: vr-dx9-rel-042322
+* Vulkan 1.2: vr-dx9-rel-042322 - Please do not report issues on this version.
 
 # DXVK
 
