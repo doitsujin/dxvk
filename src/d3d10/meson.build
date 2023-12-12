@@ -23,6 +23,7 @@ d3d10_core_dll = shared_library('d3d10core'+dll_ext, d3d10_core_src, d3d10_core_
   vs_module_defs      : 'd3d10core'+def_spec_ext,
   link_args           : d3d10_core_ld_args,
   link_depends        : [ d3d10_core_link_depends ],
+  kwargs              : dxvk_so_version,
 )
 
 d3d10_core_dep = declare_dependency(
