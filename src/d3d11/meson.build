@@ -86,6 +86,7 @@ d3d11_dll = shared_library('d3d11'+dll_ext, dxgi_common_src + d3d11_src + d3d10_
   vs_module_defs      : 'd3d11'+def_spec_ext,
   link_args           : d3d11_ld_args,
   link_depends        : [ d3d11_link_depends ],
+  kwargs              : dxvk_so_version,
 )
 
 d3d11_dep = declare_dependency(
