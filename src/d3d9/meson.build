@@ -65,6 +65,7 @@ d3d9_dll = shared_library('d3d9'+dll_ext, d3d9_src, glsl_generator.process(d3d9_
   vs_module_defs      : 'd3d9'+def_spec_ext,
   link_args           : d3d9_ld_args,
   link_depends        : [ d3d9_link_depends ],
+  kwargs              : dxvk_so_version,
 )
 
 d3d9_dep = declare_dependency(
