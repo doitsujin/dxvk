@@ -54,7 +54,7 @@ jobs:
       shell: bash
       run: |
         export VERSION_NAME="${GITHUB_REF##*/}-${GITHUB_SHA##*/}"
-        ./package-native.sh ${VERSION_NAME} build --no-package
+        ./package-native.sh ${VERSION_NAME} build
         echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_ENV
 
     - name: Upload artifacts
@@ -62,5 +62,5 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: dxvk-${{ env.VERSION_NAME }}
-        path: build/dxvk-native-${{ env.VERSION_NAME }}
+        path: build/dxvk-native-${{ env.VERSION_NAME }}.tar.gz
         if-no-files-found: error
