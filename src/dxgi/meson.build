@@ -29,6 +29,7 @@ dxgi_dll = shared_library('dxgi'+dll_ext, dxgi_src, dxgi_res,
   vs_module_defs      : 'dxgi'+def_spec_ext,
   link_args           : dxgi_ld_args,
   link_depends        : [ dxgi_link_depends ],
+  kwargs              : dxvk_so_version,
 )
 
 dxgi_dep = declare_dependency(

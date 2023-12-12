@@ -54,6 +54,8 @@ dep_displayinfo = dependency(
 )
 
 if platform == 'windows'
+  dxvk_so_version = {}
+
   compiler_args += [
     '-DNOMINMAX',
     '-D_WIN32_WINNT=0xa00',
@@ -118,6 +120,10 @@ if platform == 'windows'
   dxvk_name_prefix = ''
   compiler_args += ['-DDXVK_WSI_WIN32']
 else
+  dxvk_abi_version = '0'
+  dxvk_version = meson.project_version().strip('v').split('.')
+  dxvk_so_version = {'version': dxvk_abi_version + '.' + dxvk_version[0] + dxvk_version[1] + dxvk_version[2]}
+
   wrc           = find_program('touch')
   wrc_generator = generator(wrc, output : [ '@BASENAME@_ignored.h' ], arguments : [ '@OUTPUT@' ] )
 
