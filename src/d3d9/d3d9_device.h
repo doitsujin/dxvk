@@ -66,6 +66,8 @@ namespace dxvk {
     DirtyInputLayout,
     DirtyViewportScissor,
     DirtyMultiSampleState,
+    DirtyVertexBuffers,
+    DirtyIndexBuffer,
 
     DirtyFogState,
     DirtyFogColor,
@@ -764,6 +766,24 @@ namespace dxvk {
     HRESULT UnlockBuffer(
             D3D9CommonBuffer*       pResource);
 
+    /**
+     * @brief Uploads data from D3DPOOL_SYSMEM + D3DUSAGE_DYNAMIC buffers and binds the temporary buffers.
+     * 
+     * @param FirstVertexIndex The first vertex
+     * @param NumVertices The number of vertices that are accessed. If this is 0, the vertex buffer binding will not be modified.
+     * @param FirstIndex The first index
+     * @param NumIndices The number of indices that will be drawn. If this is 0, the index buffer binding will not be modified.
+     */
+    void UploadDynamicSysmemBuffers(
+            UINT&                   FirstVertexIndex,
+            UINT                    NumVertices,
+            UINT&                   FirstIndex,
+            UINT                    NumIndices,
+            INT&                    BaseVertexIndex,
+            bool*                   pDynamicVBOs,
+            bool*                   pDynamicIBO);
+    
+
     void SetupFPU();
 
     int64_t DetermineInitialTextureMemory();
@@ -895,7 +915,7 @@ namespace dxvk {
     
     uint32_t GetInstanceCount() const;
 
-    void PrepareDraw(D3DPRIMITIVETYPE PrimitiveType, bool UploadBuffers);
+    void PrepareDraw(D3DPRIMITIVETYPE PrimitiveType, bool UploadVBOs, bool UploadIBOs);
 
     template <DxsoProgramType ShaderStage>
     void BindShader(
@@ -1063,7 +1083,7 @@ namespace dxvk {
     }
 
     inline uint32_t GetUPBufferSize(uint32_t vertexCount, uint32_t stride) {
-      return (vertexCount - 1) * stride + std::max(m_state.vertexDecl->GetSize(), stride);
+      return (vertexCount - 1) * stride + std::max(m_state.vertexDecl->GetSize(0), stride);
     }
 
     inline void FillUPVertexBuffer(void* buffer, const void* userData, uint32_t dataSize, uint32_t bufferSize) {
