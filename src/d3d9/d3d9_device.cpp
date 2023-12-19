@@ -2615,7 +2615,7 @@ namespace dxvk {
     if (unlikely(!PrimitiveCount))
       return S_OK;
 
-    PrepareDraw(PrimitiveType);
+    PrepareDraw(PrimitiveType, true);
 
     EmitCs([this,
       cPrimType    = PrimitiveType,
@@ -2652,7 +2652,7 @@ namespace dxvk {
     if (unlikely(!PrimitiveCount))
       return S_OK;
 
-    PrepareDraw(PrimitiveType);
+    PrepareDraw(PrimitiveType, true);
 
     EmitCs([this,
       cPrimType        = PrimitiveType,
@@ -2688,7 +2688,7 @@ namespace dxvk {
     if (unlikely(!PrimitiveCount))
       return S_OK;
 
-    PrepareDraw(PrimitiveType);
+    PrepareDraw(PrimitiveType, false);
 
     uint32_t vertexCount = GetVertexCount(PrimitiveType, PrimitiveCount);
 
@@ -2740,7 +2740,7 @@ namespace dxvk {
     if (unlikely(!PrimitiveCount))
       return S_OK;
 
-    PrepareDraw(PrimitiveType);
+    PrepareDraw(PrimitiveType, false);
 
     uint32_t vertexCount = GetVertexCount(PrimitiveType, PrimitiveCount);
 
@@ -2827,7 +2827,7 @@ namespace dxvk {
     D3D9CommonBuffer* dst  = static_cast<D3D9VertexBuffer*>(pDestBuffer)->GetCommonBuffer();
     D3D9VertexDecl*   decl = static_cast<D3D9VertexDecl*>  (pVertexDecl);
 
-    PrepareDraw(D3DPT_FORCE_DWORD);
+    PrepareDraw(D3DPT_FORCE_DWORD, true);
 
     if (decl == nullptr) {
       DWORD FVF = dst->Desc()->FVF;
@@ -6454,7 +6454,7 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::PrepareDraw(D3DPRIMITIVETYPE PrimitiveType) {
+  void D3D9DeviceEx::PrepareDraw(D3DPRIMITIVETYPE PrimitiveType, bool UploadBuffers) {
     if (unlikely(m_activeHazardsRT != 0 || m_activeHazardsDS != 0))
       MarkRenderHazards();
 
@@ -6467,7 +6467,7 @@ namespace dxvk {
 
     for (uint32_t i = 0; i < caps::MaxStreams; i++) {
       auto* vbo = GetCommonBuffer(m_state.vertexBuffers[i].vertexBuffer);
-      if (vbo != nullptr && vbo->NeedsUpload())
+      if (vbo != nullptr && vbo->NeedsUpload() && UploadBuffers)
         FlushBuffer(vbo);
     }
 
@@ -6483,7 +6483,7 @@ namespace dxvk {
       GenerateTextureMips(texturesToGen);
 
     auto* ibo = GetCommonBuffer(m_state.indices);
-    if (ibo != nullptr && ibo->NeedsUpload())
+    if (ibo != nullptr && ibo->NeedsUpload() && UploadBuffers)
       FlushBuffer(ibo);
 
     UpdateFog();
