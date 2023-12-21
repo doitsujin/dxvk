@@ -28,7 +28,7 @@ jobs:
 
     - name: Upload artifacts
       id: upload-artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dxvk-${{ env.VERSION_NAME }}
         path: build/dxvk-${{ env.VERSION_NAME }}
@@ -59,7 +59,7 @@ jobs:
 
     - name: Upload artifacts
       id: upload-artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: dxvk-${{ env.VERSION_NAME }}
         path: build/dxvk-native-${{ env.VERSION_NAME }}
