@@ -5260,7 +5260,7 @@ namespace dxvk {
     uint32_t floatCount = m_vsFloatConstsCount;
     if (constSet.meta.needsConstantCopies) {
       auto shader = GetCommonShader(m_state.vertexShader);
-      floatCount = std::max(floatCount, shader->GetMaxDefinedConstant());
+      floatCount = std::max(floatCount, shader->GetMaxDefinedConstant() + 1);
     }
     floatCount = std::min(floatCount, constSet.meta.maxConstIndexF);
 
@@ -5322,7 +5322,7 @@ namespace dxvk {
     uint32_t floatCount = ShaderStage == DxsoProgramType::VertexShader ? m_vsFloatConstsCount : m_psFloatConstsCount;
     if (constSet.meta.needsConstantCopies) {
       auto shader = GetCommonShader(Shader);
-      floatCount = std::max(floatCount, shader->GetMaxDefinedConstant());
+      floatCount = std::max(floatCount, shader->GetMaxDefinedConstant() + 1);
     }
     floatCount = std::min(constSet.meta.maxConstIndexF, floatCount);
 
