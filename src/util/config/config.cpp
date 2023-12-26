@@ -538,7 +538,7 @@ namespace dxvk {
       { "d3d9.customVendorId",              "1002" },
       { "dxgi.emulateUMA",                  "True" },
       { "d3d9.supportDFFormats",            "False" },
-      { "d3d9.deviceLostOnFocusLoss",       "True" },
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
     /* Battlefield 2 (bad z-pass)                 */
     { R"(\\BF2\.exe$)", {{
@@ -787,7 +787,7 @@ namespace dxvk {
     /* DC Universe Online                      *
      * Freezes after alt tabbing               */
     { R"(\\DCGAME\.EXE$)", {{
-      { "d3d9.deviceLostOnFocusLoss",       "True" },
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
     /* Halo Online                             *
      * Black textures                          */
