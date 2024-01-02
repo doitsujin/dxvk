@@ -1076,10 +1076,6 @@ namespace dxvk {
     { R"(\\TP_Win32\.exe$)", {{
       { "d3d8.forceVsDecl",      "0:2,3:2,6:4,7:1" },
     }} },
-    /* D&D - The Temple Of Elemental Evil          */
-    { R"(\\ToEE(a)?\.exe$)", {{
-      { "d3d9.allowDiscard",                "False" },
-    }} },
     /* Scrapland (Remastered)                   */
     { R"(\\Scrap\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
