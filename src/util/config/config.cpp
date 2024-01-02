@@ -1012,6 +1012,18 @@ namespace dxvk {
       { "d3d9.memoryTrackTest",             "True" },
       { "d3d9.maxAvailableMemory",          "1024" },
     }} },
+    /* Red Faction                               *
+     * Fixes crashing when starting a new game   */
+    { R"(\\RF\.exe$)", {{
+      { "d3d9.allowDirectBufferMapping",   "False" },
+    }} },
+    /* Commandos 3                               *
+     * The game doesn't use NOOVERWRITE properly *
+     * and reads from actively modified buffers, *
+     * which causes graphical glitches at times  */
+    { R"(\\Commandos3\.exe$)", {{
+      { "d3d9.allowDirectBufferMapping",   "False" },
+    }} },
     /* Motor City Online                         */
     { R"(\\MCity_d\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
@@ -1078,6 +1090,12 @@ namespace dxvk {
     /* Alexander                                  */
     { R"(\\Alexander\\Data\\engine\.exe$)", {{
       { "d3d9.maxFrameRate",                  "60" },
+    }} },
+    /* 3DMark2001 (SE)                            *
+     * Fixes a drastic performance drop in the    *
+     * "Car Chase - High Detail" benchmark        */
+    { R"(\\3DMark2001(SE)?\.exe$)", {{
+      { "d3d9.allowDirectBufferMapping",   "False" },
     }} },
   }};
 
