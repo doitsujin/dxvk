@@ -1015,23 +1015,11 @@ namespace dxvk {
     /* Motor City Online                         */
     { R"(\\MCity_d\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
-      { "d3d8.managedBufferPlacement",     "False" },
       { "d3d8.batching",                    "True" },
-    }} },
-    /* Brigade E5: New Jagged Union              */
-    { R"(\\E5\.exe$)", {{
-      { "d3d8.managedBufferPlacement",     "False" },
     }} },
     /* Railroad Tycoon 3                         */
     { R"(\\RT3\.exe$)", {{
       { "d3d9.maxFrameRate",                  "60" },
-      { "d3d8.managedBufferPlacement",     "False" },
-    }} },
-    /* Supreme Ruler 2020: Gold                  *
-     * Only put the large main vertex buffer in  *
-     * MANAGED to fix flickering on text and UI. */
-    { R"(\\SupremeRuler2020GC\.exe$)", {{
-      { "d3d8.managedBufferPlacement",     "21600" },
     }} },
     /* Pure Pinball 2.0 REDUX                    *
      * This game reads from undeclared vs inputs *
@@ -1040,18 +1028,11 @@ namespace dxvk {
     { R"(\\Pure Pinball 2\.0 REDUX\.exe$)", {{
       { "d3d8.forceVsDecl",  "0:2,4:2,7:4,9:1,8:1" },
     }} },
-    /* Supreme Ruler 2010                        *
-     * Needs the same workaround as SR2020 to    *
-     * fix flickering on UI text                 */
-    { R"(\\SupremeRuler\.exe$)", {{
-      { "d3d8.managedBufferPlacement",     "21600" },
-    }} },
     /* Need for Speed III: Hot Pursuit           *
        (with the "Modern Patch")                 */
     { R"(\\nfs3\.exe$)", {{
       { "d3d9.enableDialogMode",            "True" },
       { "d3d9.cachedDynamicBuffers",        "True" },
-      { "d3d8.managedBufferPlacement",     "False" },
       { "d3d8.batching",                    "True" },
     }} },
     /* Need for Speed: High Stakes / Road         *
@@ -1063,12 +1044,10 @@ namespace dxvk {
       { "d3d9.cachedDynamicBuffers",        "True" },
       { "d3d9.memoryTrackTest",             "True" },
       { "d3d9.maxAvailableMemory",           "256" },
-      { "d3d8.managedBufferPlacement",     "False" },
       { "d3d8.batching",                    "True" },
     }} },
     /* Project I.G.I. 2: Covert Strike            */
     { R"(\\igi2\.exe$)", {{
-      { "d3d8.managedBufferPlacement",     "False" },
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
     /* Treasure Planet: Battle at Procyon        *
@@ -1079,33 +1058,6 @@ namespace dxvk {
     /* Scrapland (Remastered)                   */
     { R"(\\Scrap\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
-    }} },
-    /* Port Royale 2                              *
-     * UI rendering issues with managed buffers   */
-    { R"(\\PR2\.exe$)", {{
-      { "d3d8.managedBufferPlacement",     "False" },
-    }} },
-    /* Sherlock Holmes: The Secret of the Silver  *
-     * Earring                                    */
-    { R"(\\Sherlock Holmes.*(SSE|Silver Earring)\\game\.exe$)", {{
-      { "d3d8.managedBufferPlacement",     "False" },
-    }} },
-    /* The Guild Gold Edition (Europa 1400)       *
-     * UI rendering issues with managed buffers   */
-    { R"(\\Europa1400Gold_TL\.exe$)", {{
-      { "d3d8.managedBufferPlacement",     "False" },
-    }} },
-    /* Icoming Forces                             */
-    { R"(\\forces\.exe$)", {{
-      { "d3d8.managedBufferPlacement",     "False" },
-    }} },
-    /* Chaser                                     */
-    { R"(\\Chaser\.exe$)", {{
-      { "d3d8.managedBufferPlacement",     "False" },
-    }} },
-    /* Rise of Nations Gold                       */
-    { R"(\\(nations|patriots)\.exe$)", {{
-      { "d3d8.managedBufferPlacement",     "False" },
     }} },
     /* V-Rally 3                                  */
     { R"(\\VRally3(Demo)?\.exe$)", {{
