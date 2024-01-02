@@ -11,28 +11,6 @@
 
 namespace dxvk {
 
-
-  // Remap certain vertex and index buffers to different pools.
-  inline std::pair<DWORD, d3d9::D3DPOOL> ChooseBufferPool(DWORD Usage, D3DPOOL Pool8, UINT Length, const D3D8Options& options) {
-
-    d3d9::D3DPOOL Pool = d3d9::D3DPOOL(Pool8);
-
-    // TODO: Optimize carefully which buffers go in which pools.
-    // - WRITEONLY DYNAMIC buffers might get performance gains in DEFAULT if not misused
-
-    // Remap DEFAULT pool vertex buffers to MANAGED.
-    // - This avoids direct buffer mapping which can cause apps to misbehave
-    //   due to differences in the behavior of NOOVERWRITE that will
-    //   make apps write over in-use buffers that they expect to wait for.
-    // - D3D9DeviceEx::LockBuffer will ignored DISCARD and NOOVERWRITE for us
-    if (Pool8 == D3DPOOL_DEFAULT && Length >= options.managedBufferPlacement) {
-      Pool = d3d9::D3DPOOL_MANAGED;
-      Usage &= ~D3DUSAGE_DYNAMIC;
-    }
-
-    return {Usage, Pool};
-  }
-
   // (8<-9) D3DCAPSX: Writes to D3DCAPS8 from D3DCAPS9
   inline void ConvertCaps8(const d3d9::D3DCAPS9& caps9, D3DCAPS8* pCaps8) {
 

@@ -362,8 +362,7 @@ namespace dxvk {
 
     Com<d3d9::IDirect3DVertexBuffer9> pVertexBuffer9 = nullptr;
 
-    auto [usage, realPool] = ChooseBufferPool(Usage, Pool, Length, m_d3d8Options);
-    HRESULT res = GetD3D9()->CreateVertexBuffer(Length, usage, FVF, realPool, &pVertexBuffer9, NULL);
+    HRESULT res = GetD3D9()->CreateVertexBuffer(Length, Usage, FVF, d3d9::D3DPOOL(Pool), &pVertexBuffer9, NULL);
 
     if (!FAILED(res))
       *ppVertexBuffer = ref(new D3D8VertexBuffer(this, std::move(pVertexBuffer9), Pool, Usage));
@@ -380,13 +379,12 @@ namespace dxvk {
     InitReturnPtr(ppIndexBuffer);
     Com<d3d9::IDirect3DIndexBuffer9> pIndexBuffer9 = nullptr;
     
-    auto [usage, realPool] = ChooseBufferPool(Usage, Pool, Length, m_d3d8Options);
-    HRESULT res = GetD3D9()->CreateIndexBuffer(Length, usage, d3d9::D3DFORMAT(Format), realPool, &pIndexBuffer9, NULL);
+    HRESULT res = GetD3D9()->CreateIndexBuffer(Length, Usage, d3d9::D3DFORMAT(Format), d3d9::D3DPOOL(Pool), &pIndexBuffer9, NULL);
     
     if (!FAILED(res))
       *ppIndexBuffer = ref(new D3D8IndexBuffer(this, std::move(pIndexBuffer9), Pool, Usage));
+    
     return res;
-
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::CreateRenderTarget(
