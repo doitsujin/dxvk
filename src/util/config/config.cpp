@@ -1058,6 +1058,10 @@ namespace dxvk {
       { "d3d9.maxAvailableMemory",           "256" },
       { "d3d8.batching",                    "True" },
     }} },
+    /* Need for Speed: Hot Pursuit 2              */
+    { R"(\\NFSHP2\.exe$)", {{
+      { "d3d9.cachedDynamicBuffers",        "True" },
+    }} },
     /* Project I.G.I. 2: Covert Strike            */
     { R"(\\igi2\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
@@ -1096,6 +1100,14 @@ namespace dxvk {
      * "Car Chase - High Detail" benchmark        */
     { R"(\\3DMark2001(SE)?\.exe$)", {{
       { "d3d9.allowDirectBufferMapping",   "False" },
+    }} },
+    /* Delta Force: Black Hawk Down               */
+    { R"(\\dfbhd\.exe$)", {{
+      { "d3d9.cachedDynamicBuffers",        "True" },
+    }} },
+    /* X2: The Threat                             */
+    { R"(\\X2\.exe$)", {{
+      { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
   }};
 
