@@ -841,6 +841,11 @@ namespace dxvk {
     { R"(\\SkyDrift\.exe$)" , {{
       { "d3d9.allowDirectBufferMapping",    "False" },
     }} },
+     /* Assassin's Creed 2                      *
+     *  Helps alt tab crash on Linux            */
+    { R"(\\AssassinsCreedIIGame\.exe$)" , {{
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
+    }} },
     /* Sonic CD                                */
     { R"(\\soniccd\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
