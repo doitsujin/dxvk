@@ -137,14 +137,22 @@ namespace dxvk::sync {
 
     template<typename Fn>
     void setCallback(uint64_t value, Fn&& proc) {
+      if (value <= this->value()) {
+        proc();
+        return;
+      }
+
       std::unique_lock<dxvk::mutex> lock(m_mutex);
 
+      // Verify value is still in the future upon lock.
       if (value > this->value())
         m_callbacks.emplace_back(std::piecewise_construct,
           std::make_tuple(value),
           std::make_tuple(proc));
-      else
+      else {
+        lock.unlock();
         proc();
+      }
     }
 
   private:
