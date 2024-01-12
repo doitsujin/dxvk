@@ -1,8 +1,8 @@
 #pragma once
 
-#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86) || defined(__e2k__)
   #define DXVK_ARCH_X86
-  #if defined(__x86_64__) || defined(_M_X64)
+  #if defined(__x86_64__) || defined(_M_X64) || defined(__e2k__)
     #define DXVK_ARCH_X86_64
   #endif
 #elif defined(__aarch64__) || defined(_M_ARM64)
