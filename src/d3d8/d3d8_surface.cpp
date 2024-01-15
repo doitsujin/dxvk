@@ -8,6 +8,8 @@ namespace dxvk {
       d3d9::D3DSURFACE_DESC desc;
       GetD3D9()->GetDesc(&desc);
 
+      // NOTE: This adds a D3DPOOL_DEFAULT resource to the
+      // device, which counts as losable during device reset
       Com<d3d9::IDirect3DSurface9> image = nullptr;
       HRESULT res = GetParent()->GetD3D9()->CreateRenderTarget(
         desc.Width, desc.Height, desc.Format,
@@ -19,7 +21,6 @@ namespace dxvk {
       if (FAILED(res))
         throw new DxvkError("D3D8: Failed to create blit image");
       
-      image.ref();
       return image;
     }
 }
