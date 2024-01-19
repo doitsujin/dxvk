@@ -72,6 +72,10 @@ if platform == 'windows'
         '-Wl,--kill-at',
       ]
     endif
+  else
+    link_args += [
+      '/FILEALIGN:4096',
+    ]
   endif
 
   lib_d3d9    = cpp.find_library('d3d9')
