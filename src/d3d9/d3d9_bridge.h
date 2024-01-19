@@ -65,10 +65,7 @@ IDxvkD3D8InterfaceBridge : public IUnknown {
   virtual const dxvk::Config* GetConfig() const = 0;
 };
 
-#if defined(_MSC_VER)
-struct DECLSPEC_UUID("D3D9D3D8-42A9-4C1E-AA97-BEEFCAFE2000") IDxvkD3D8Bridge;
-struct DECLSPEC_UUID("D3D9D3D8-A407-773E-18E9-CAFEBEEF3000") IDxvkD3D8InterfaceBridge;
-#else
+#ifndef _MSC_VER
 __CRT_UUID_DECL(IDxvkD3D8Bridge, 0xD3D9D3D8, 0x42A9, 0x4C1E, 0xAA, 0x97, 0xBE, 0xEF, 0xCA, 0xFE, 0x20, 0x00);
 __CRT_UUID_DECL(IDxvkD3D8InterfaceBridge, 0xD3D9D3D8, 0xA407, 0x773E, 0x18, 0xE9, 0xCA, 0xFE, 0xBE, 0xEF, 0x30, 0x00);
 #endif
