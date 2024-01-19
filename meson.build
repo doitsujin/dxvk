@@ -5,7 +5,7 @@ platform   = target_machine.system()
 
 cpp = meson.get_compiler('cpp')
 cc = meson.get_compiler('c')
-dxvk_is_msvc = cpp.get_id() == 'msvc'
+dxvk_is_msvc = cpp.get_argument_syntax() == 'msvc'
 
 compiler_args = [
   '-msse',
