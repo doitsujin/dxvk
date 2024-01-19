@@ -48,28 +48,30 @@ if platform == 'windows'
     '-D_WIN32_WINNT=0xa00',
   ]
 
-  link_args += [
-    '-static',
-    '-static-libgcc',
-    '-static-libstdc++',
-    # We need to set the section alignment for debug symbols to
-    # work properly as well as avoiding a memcpy from the Wine loader.
-    '-Wl,--file-alignment=4096',
-  ]
-
-  # Wine's built-in back traces only work with dwarf4 symbols
-  if get_option('debug')
-    compiler_args += [
-      '-gdwarf-4',
-    ]
-  endif
-
-  # Enable stdcall fixup on 32-bit
-  if cpu_family == 'x86'
+  if not dxvk_is_msvc
     link_args += [
-      '-Wl,--enable-stdcall-fixup',
-      '-Wl,--kill-at',
+      '-static',
+      '-static-libgcc',
+      '-static-libstdc++',
+      # We need to set the section alignment for debug symbols to
+      # work properly as well as avoiding a memcpy from the Wine loader.
+      '-Wl,--file-alignment=4096',
     ]
+
+    # Wine's built-in back traces only work with dwarf4 symbols
+    if get_option('debug')
+      compiler_args += [
+        '-gdwarf-4',
+      ]
+    endif
+
+    # Enable stdcall fixup on 32-bit
+    if cpu_family == 'x86'
+      link_args += [
+        '-Wl,--enable-stdcall-fixup',
+        '-Wl,--kill-at',
+      ]
+    endif
   endif
 
   lib_d3d9    = cpp.find_library('d3d9')
