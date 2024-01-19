@@ -392,9 +392,7 @@ namespace dxvk {
     Com<ID3D11UnorderedAccessView> qiUav;
 
     if (FAILED(pUnorderedAccessView->QueryInterface(IID_PPV_ARGS(&qiUav))))
-    {
       return;
-    }
 
     auto uav = static_cast<D3D11UnorderedAccessView*>(qiUav.ptr());
 
