@@ -791,9 +791,11 @@ namespace dxvk {
       { "d3d9.maxFrameRate",                "60" },
     }} },
     /* Codename Panzers Phase One/Two          *
-     * Main menu won't render after intros     */
+     * Main menu won't render after intros     *
+     * and CPU bound performance               */
     { R"(\\(PANZERS|PANZERS_Phase_2)\.exe$)", {{
       { "d3d9.enableDialogMode",            "True"   },
+      { "d3d9.cachedDynamicBuffers",        "True"   },
     }} },
     /* DC Universe Online                      *
      * Freezes after alt tabbing               */
