@@ -386,10 +386,15 @@ namespace dxvk {
     const UINT                              Values[4]) {
     D3D10DeviceLock lock = LockContext();
 
-    auto uav = static_cast<D3D11UnorderedAccessView*>(pUnorderedAccessView);
-
-    if (!uav)
+    if (!pUnorderedAccessView)
       return;
+
+    Com<ID3D11UnorderedAccessView> qiUav;
+
+    if (FAILED(pUnorderedAccessView->QueryInterface(IID_PPV_ARGS(&qiUav))))
+      return;
+
+    auto uav = static_cast<D3D11UnorderedAccessView*>(qiUav.ptr());
 
     // Gather UAV format info. We'll use this to determine
     // whether we need to create a temporary view or not.
