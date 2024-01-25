@@ -152,6 +152,9 @@ namespace dxvk {
 
     /// Enable emulation of device loss when a fullscreen app loses focus
     bool deviceLossOnFocusLoss;
+
+    /// Disable counting losable resources and rejecting calls to Reset() if any are still alive
+    bool countLosableResources;
   };
 
 }
