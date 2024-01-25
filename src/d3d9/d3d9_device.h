@@ -816,7 +816,7 @@ namespace dxvk {
     inline bool IsAlphaToCoverageEnabled() {
       const bool alphaTest = m_state.renderStates[D3DRS_ALPHATESTENABLE] != 0;
 
-      return m_amdATOC || (m_nvATOC && alphaTest);
+      return (m_amdATOC || (m_nvATOC && alphaTest)) && m_flags.test(D3D9DeviceFlag::ValidSampleMask);
     }
 
     inline bool IsDepthBiasEnabled() {
