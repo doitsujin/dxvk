@@ -107,7 +107,7 @@ namespace dxvk {
     m_gpuVirtualAddress.MaxGPUVirtualAddressBitsPerProcess = 40;
 
     // Marker support only depends on the debug utils extension
-    m_marker.Profile = Instance->extensions().extDebugUtils;
+    m_marker.Profile = static_cast<bool>(Instance->extensions().extDebugUtils);
 
     // DXVK will keep all shaders in memory once created, and all Vulkan
     // drivers that we know of that can run DXVK have an on-disk cache.
