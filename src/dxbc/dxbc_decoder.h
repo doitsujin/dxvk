@@ -196,7 +196,7 @@ namespace dxvk {
       return out;
     }
 
-    operator bool () const {
+    explicit operator bool () const {
       return m_mask != 0;
     }
     
