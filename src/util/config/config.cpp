@@ -862,10 +862,10 @@ namespace dxvk {
     { R"(\\UK Truck Simulator\\bin\\win_x86\\game\.exe$)", {{
       { "d3d9.floatEmulation",              "Strict" },
     }} },
-    /* Supreme Ruler Ultimate                    *
+    /* d3d9 Supreme Ruler games              *
      * Leaks a StateBlock leading                *
      * to Reset calls failing                    */
-    { R"(\\SupremeRulerUltimate\.exe$)", {{
+    { R"(\\SupremeRuler(Ultimate|GreatWar|1936|CW)\.exe$)", {{
       { "d3d9.countLosableResources",       "False" },
     }} },
     
