@@ -410,7 +410,7 @@ namespace dxvk {
           DxvkCommandList*        cmd,
           uint32_t                page,
           DxvkSparseMapping&&     mapping) {
-    if (m_mappings[page] != page) {
+    if (m_mappings[page] != mapping) {
       if (m_mappings[page])
         cmd->trackResource<DxvkAccess::None>(m_mappings[page].m_page);
 
