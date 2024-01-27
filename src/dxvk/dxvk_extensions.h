@@ -61,7 +61,7 @@ namespace dxvk {
      * provided by the extension can be used.
      * \returns \c true if the extension is enabled
      */
-    operator bool () const {
+    explicit operator bool () const {
       return m_revision != 0;
     }
 

@@ -195,7 +195,7 @@ namespace dxvk {
     const T* operator & () const { ensure(); return m_data.get(); }
           T* operator & ()       { ensure(); return m_data.get(); }
 
-    operator bool() { return m_data != nullptr; }
+    explicit operator bool() const { return m_data != nullptr; }
     operator T() { ensure(); return *m_data; }
 
     void ensure() const { if (!m_data) m_data = std::make_unique<T>(); }
@@ -213,7 +213,7 @@ namespace dxvk {
 
     T& operator=(const T& x) { m_data = x; return m_data; }
 
-    operator bool() { return true; }
+    explicit operator bool() const { return true; }
     operator T() { return m_data; }
 
     const T* operator -> () const { return &m_data; }

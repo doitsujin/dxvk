@@ -158,7 +158,7 @@ namespace dxvk {
      * \returns \c true if this slice points to actual device
      *          memory, and \c false if it is undefined.
      */
-    operator bool () const {
+    explicit operator bool () const {
       return m_memory != VK_NULL_HANDLE;
     }
     
