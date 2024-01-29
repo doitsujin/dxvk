@@ -39,8 +39,12 @@ dxvk_include_dirs = [
   './include/spirv/include'
 ]
 
-proj_displayinfo = subproject('libdisplay-info')
-dep_displayinfo = proj_displayinfo.get_variable('di_dep')
+dep_displayinfo = dependency(
+  'libdisplay-info',
+  version: ['>= 0.0.0', '< 0.2.0'],
+  fallback: ['libdisplay-info', 'di_dep'],
+  default_options: ['default_library=static'],
+)
 
 if platform == 'windows'
   compiler_args += [
