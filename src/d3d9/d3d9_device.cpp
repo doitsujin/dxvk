@@ -347,7 +347,7 @@ namespace dxvk {
     m_implicitSwapchain->GetPresentParameters(&params);
     bool hwCursor  = params.Windowed;
 
-    // Always use a hardware cursor w/h <= 32 px
+    // Always use a hardware cursor w/h <= 128 px
     hwCursor |= inputWidth  <= HardwareCursorWidth
              || inputHeight <= HardwareCursorHeight;
 

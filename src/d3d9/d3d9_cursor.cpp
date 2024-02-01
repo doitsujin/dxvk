@@ -26,7 +26,7 @@ namespace dxvk {
 
 
   HRESULT D3D9Cursor::SetHardwareCursor(UINT XHotSpot, UINT YHotSpot, const CursorBitmap& bitmap) {
-    DWORD mask[32];
+    DWORD mask[128];
     std::memset(mask, ~0, sizeof(mask));
 
     ICONINFO info;
