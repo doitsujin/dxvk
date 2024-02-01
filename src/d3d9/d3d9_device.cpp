@@ -370,8 +370,33 @@ namespace dxvk {
         HardwareCursorHeight,
         inputHeight);
 
-      for (uint32_t h = 0; h < copyHeight; h++)
-        std::memcpy(&bitmap[h * HardwareCursorPitch], &data[h * lockedBox.RowPitch], copyPitch);
+      size_t copyWidth = std::min<size_t>(
+        HardwareCursorWidth,
+        inputWidth);
+
+      if (m_d3d9Options.enlargeHardwareCursor &&
+          copyHeight * 2 <= HardwareCursorHeight &&
+          copyWidth * 2 <= HardwareCursorWidth) {
+
+        // Adjust hot spot to larger cursor
+        // According to doc(https://learn.microsoft.com/en-us/windows/win32/api/d3d9/nf-d3d9-idirect3ddevice9-setcursorproperties)
+        // if the hardware only supprt 32x32, Windows would scale HotSpot back
+        XHotSpot *= 2;
+        YHotSpot *= 2;
+
+        // Enlarge cursor into 2X size using Nearest-neighbor
+        for (uint32_t h = 0; h < copyHeight; h++) {
+          for (uint32_t w = 0; w < copyWidth; ++w) {
+            std::memcpy(&bitmap[(h * 2) *     HardwareCursorPitch + (w * 2) *     HardwareCursorFormatSize], &data[h * lockedBox.RowPitch + w * HardwareCursorFormatSize], HardwareCursorFormatSize);
+            std::memcpy(&bitmap[(h * 2) *     HardwareCursorPitch + (w * 2 + 1) * HardwareCursorFormatSize], &data[h * lockedBox.RowPitch + w * HardwareCursorFormatSize], HardwareCursorFormatSize);
+            std::memcpy(&bitmap[(h * 2 + 1) * HardwareCursorPitch + (w * 2) *     HardwareCursorFormatSize], &data[h * lockedBox.RowPitch + w * HardwareCursorFormatSize], HardwareCursorFormatSize);
+            std::memcpy(&bitmap[(h * 2 + 1) * HardwareCursorPitch + (w * 2 + 1) * HardwareCursorFormatSize], &data[h * lockedBox.RowPitch + w * HardwareCursorFormatSize], HardwareCursorFormatSize);
+          }
+        }
+      } else {
+        for (uint32_t h = 0; h < copyHeight; h++)
+          std::memcpy(&bitmap[h * HardwareCursorPitch], &data[h * lockedBox.RowPitch], copyPitch);
+      }
 
       UnlockImage(cursorTex, 0, 0);
 
