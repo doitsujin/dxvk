@@ -364,7 +364,7 @@ namespace dxvk {
       CursorBitmap bitmap = { 0 };
       size_t copyPitch = std::min<size_t>(
         HardwareCursorPitch,
-        inputWidth * inputHeight * HardwareCursorFormatSize);
+        inputWidth * HardwareCursorFormatSize);
 
       for (uint32_t h = 0; h < HardwareCursorHeight; h++)
         std::memcpy(&bitmap[h * HardwareCursorPitch], &data[h * lockedBox.RowPitch], copyPitch);
