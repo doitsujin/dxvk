@@ -155,6 +155,9 @@ namespace dxvk {
 
     /// Disable counting losable resources and rejecting calls to Reset() if any are still alive
     bool countLosableResources;
+
+    /// Enlarge hardware cursor into 2x for HiDPI display
+    bool enlargeHardwareCursor;
   };
 
 }
