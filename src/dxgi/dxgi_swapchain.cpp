@@ -312,6 +312,11 @@ namespace dxvk {
     if (SyncInterval > 4)
       return DXGI_ERROR_INVALID_CALL;
 
+    auto options = m_factory->GetOptions();
+
+    if (options->syncInterval >= 0)
+      SyncInterval = options->syncInterval;
+
     UpdateGlobalHDRState();
 
     std::lock_guard<dxvk::recursive_mutex> lockWin(m_lockWindow);

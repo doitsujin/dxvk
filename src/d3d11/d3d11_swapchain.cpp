@@ -254,11 +254,6 @@ namespace dxvk {
           UINT                      SyncInterval,
           UINT                      PresentFlags,
     const DXGI_PRESENT_PARAMETERS*  pPresentParameters) {
-    auto options = m_parent->GetOptions();
-
-    if (options->syncInterval >= 0)
-      SyncInterval = options->syncInterval;
-
     if (!(PresentFlags & DXGI_PRESENT_TEST))
       m_dirty |= m_presenter->setSyncInterval(SyncInterval) != VK_SUCCESS;
 

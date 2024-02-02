@@ -76,10 +76,6 @@ namespace dxvk {
     /// Overrides DXGI_SWAP_CHAIN_DESC::BufferCount.
     int32_t numBackBuffers;
 
-    /// Sync interval. Overrides the value
-    /// passed to IDXGISwapChain::Present.
-    int32_t syncInterval;
-
     /// Override maximum frame latency if the app specifies
     /// a higher value. May help with frame timing issues.
     int32_t maxFrameLatency;

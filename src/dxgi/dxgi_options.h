@@ -47,6 +47,10 @@ namespace dxvk {
 
     /// Use monitor fallback to enumerating all monitors per output
     bool useMonitorFallback;
+
+    /// Sync interval. Overrides the value
+    /// passed to IDXGISwapChain::Present.
+    int32_t syncInterval;
   };
   
 }
