@@ -144,6 +144,9 @@ namespace dxvk {
     /// Clamps negative LOD bias
     bool clampNegativeLodBias;
 
+    /// Emulate a software cursor using a hardware cursor
+    bool softwareCursorEmulation;
+
     /// How much virtual memory will be used for textures (in MB).
     int32_t textureMemory;
 
