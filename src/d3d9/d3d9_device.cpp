@@ -1037,6 +1037,9 @@ namespace dxvk {
     if (srcTexInfo->Desc()->Format != dstTexInfo->Desc()->Format)
       return D3DERR_INVALIDCALL;
 
+    if (src->GetSurfaceExtent() != dst->GetSurfaceExtent())
+      return D3DERR_INVALIDCALL;
+
     if (dstTexInfo->Desc()->Pool == D3DPOOL_DEFAULT)
       return this->StretchRect(pRenderTarget, nullptr, pDestSurface, nullptr, D3DTEXF_NONE);
 
