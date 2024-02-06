@@ -382,6 +382,20 @@ namespace dxvk {
       blitInfo.srcOffsets[0] = VkOffset3D{ 0, 0, 0 };
       blitInfo.srcOffsets[1] = VkOffset3D{ int32_t(srcExtent.width),  int32_t(srcExtent.height),  1 };
 
+#ifdef _WIN32
+      if (m_presentParams.Windowed) {
+        // In windowed mode, GetFrontBufferData takes a screenshot of the entire screen.
+        // So place the copy of the front buffer at the position of the window.
+        POINT point = { 0, 0 };
+        if (ClientToScreen(m_window, &point) != 0) {
+          blitInfo.dstOffsets[0].x = point.x;
+          blitInfo.dstOffsets[0].y = point.y;
+          blitInfo.dstOffsets[1].x += point.x;
+          blitInfo.dstOffsets[1].y += point.y;
+        }
+      }
+#endif
+
       m_parent->EmitCs([
         cDstImage = blittedSrc,
         cDstMap   = dstTexInfo->GetMapping().Swizzle,
