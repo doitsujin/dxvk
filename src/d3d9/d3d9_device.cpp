@@ -1083,7 +1083,12 @@ namespace dxvk {
     if (unlikely(iSwapChain != 0))
       return D3DERR_INVALIDCALL;
 
-    return m_implicitSwapchain->GetFrontBufferData(pDestSurface);
+    D3D9DeviceLock lock = LockDevice();
+
+    // In windowed mode, GetFrontBufferData takes a screenshot of the entire screen.
+    // We use the last used swapchain as a workaround.
+    // Total War: Medieval 2 relies on this.
+    return m_mostRecentlyUsedSwapchain->GetFrontBufferData(pDestSurface);
   }
 
 
@@ -7813,6 +7818,7 @@ namespace dxvk {
     }
     else
       m_implicitSwapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode);
+      m_mostRecentlyUsedSwapchain = m_implicitSwapchain.ptr();
 
     if (pPresentationParameters->EnableAutoDepthStencil) {
       D3D9_COMMON_TEXTURE_DESC desc;
