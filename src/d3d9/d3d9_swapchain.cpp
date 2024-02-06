@@ -65,6 +65,16 @@ namespace dxvk {
     if (this_thread::isInModuleDetachment())
       return;
 
+    {
+      // Locking here and in Device::GetFrontBufferData
+      // ensures that other threads don't accidentally access a stale pointer.
+      D3D9DeviceLock lock = m_parent->LockDevice();
+
+      if (m_parent->GetMostRecentlyUsedSwapchain() == this) {
+        m_parent->ResetMostRecentlyUsedSwapchain();
+      }
+    }
+
     DestroyBackBuffers();
 
     ResetWindowProc(m_window);
@@ -111,6 +121,8 @@ namespace dxvk {
     const RGNDATA* pDirtyRegion,
           DWORD    dwFlags) {
     D3D9DeviceLock lock = m_parent->LockDevice();
+
+    m_parent->SetMostRecentlyUsedSwapchain(this);
 
     if (unlikely(m_parent->IsDeviceLost()))
       return D3DERR_DEVICELOST;

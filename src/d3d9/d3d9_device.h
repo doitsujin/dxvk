@@ -1241,6 +1241,34 @@ namespace dxvk {
 
     uint64_t GetCurrentSequenceNumber();
 
+    /**
+     * @brief Get the swapchain that was used the most recently for presenting
+     * Has to be externally synchronized.
+     * 
+     * @return D3D9SwapChainEx* Swapchain
+     */
+    D3D9SwapChainEx* GetMostRecentlyUsedSwapchain() {
+      return m_mostRecentlyUsedSwapchain;
+    }
+
+    /**
+     * @brief Set the swapchain that was used the most recently for presenting
+     * Has to be externally synchronized.
+     * 
+     * @param swapchain Swapchain
+     */
+    void SetMostRecentlyUsedSwapchain(D3D9SwapChainEx* swapchain) {
+      m_mostRecentlyUsedSwapchain = swapchain;
+    }
+
+    /**
+     * @brief Reset the most recently swapchain back to the implicit one
+     * Has to be externally synchronized.
+     */
+    void ResetMostRecentlyUsedSwapchain() {
+      m_mostRecentlyUsedSwapchain = m_implicitSwapchain.ptr();
+    }
+
     Com<D3D9InterfaceEx>            m_parent;
     D3DDEVTYPE                      m_deviceType;
     HWND                            m_window;
@@ -1402,6 +1430,8 @@ namespace dxvk {
     D3D9DeviceLostState             m_deviceLostState          = D3D9DeviceLostState::Ok;
     HWND                            m_fullscreenWindow         = NULL;
     std::atomic<uint32_t>           m_losableResourceCounter   = { 0 };
+
+    D3D9SwapChainEx*                m_mostRecentlyUsedSwapchain = nullptr;
 
 #ifdef D3D9_ALLOW_UNMAPPING
     lru_list<D3D9CommonTexture*>    m_mappedTextures;
