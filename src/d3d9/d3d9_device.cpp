@@ -5176,7 +5176,6 @@ namespace dxvk {
       auto* ibo = GetCommonBuffer(m_state.indices);
       if (likely(ibo != nullptr)) {
         uint32_t indexStride = ibo->Desc()->Format == D3D9Format::INDEX16 ? 2 : 4;
-        VkIndexType indexType = DecodeIndexType(ibo->Desc()->Format);
         uint32_t offset = indexStride * FirstIndex;
         uint32_t indexBufferSize = ibo->Desc()->Size;
         if (offset < indexBufferSize) {
