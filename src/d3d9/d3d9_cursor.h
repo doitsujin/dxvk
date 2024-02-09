@@ -13,6 +13,13 @@ namespace dxvk {
 
   public:
 
+#ifdef _WIN32
+    ~D3D9Cursor() {
+      if (m_hCursor != nullptr)
+        ::DestroyCursor(m_hCursor);
+    }
+#endif
+
     void UpdateCursor(int X, int Y);
 
     BOOL ShowCursor(BOOL bShow);
