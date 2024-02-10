@@ -127,8 +127,8 @@ else
     './include/native/directx'
   ]
 
-  lib_sdl2 = cpp.find_library('SDL2', required: false)
-  lib_glfw = cpp.find_library('glfw', required: false)
+  lib_sdl2 = dependency('SDL2', required: false)
+  lib_glfw = dependency('glfw', required: false)
   if lib_sdl2.found()
     compiler_args += ['-DDXVK_WSI_SDL2']
   endif

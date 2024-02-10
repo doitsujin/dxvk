@@ -14,6 +14,13 @@ wsi_src = [
 
 wsi_deps = [ dep_displayinfo ]
 
+if platform != 'windows'
+  wsi_deps += [
+    lib_sdl2.partial_dependency(compile_args: true, includes: true),
+    lib_glfw.partial_dependency(compile_args: true, includes: true),
+  ]
+endif
+
 wsi_lib = static_library('wsi', wsi_src,
   dependencies        : wsi_deps,
   include_directories : [ dxvk_include_path ])

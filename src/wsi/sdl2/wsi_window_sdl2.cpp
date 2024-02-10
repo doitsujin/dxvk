@@ -9,7 +9,7 @@
 #include "../../util/log/log.h"
 
 #include <windows.h>
-#include <SDL2/SDL_vulkan.h>
+#include <SDL_vulkan.h>
 
 namespace dxvk::wsi {
 
