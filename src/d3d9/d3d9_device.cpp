@@ -455,6 +455,8 @@ namespace dxvk {
       SetDepthStencilSurface(nullptr);
     }
 
+    m_flags.clr(D3D9DeviceFlag::InScene);
+
     /*
       * Before calling the IDirect3DDevice9::Reset method for a device,
       * an application should release any explicit render targets,
