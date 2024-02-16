@@ -512,6 +512,7 @@ namespace dxvk {
     // Entry point description - we'll need to declare
     // the function ID and all input/output variables.
     uint32_t              m_entryPointId = 0;
+    bool                  m_hasRawAccessChains = false;
     
     ////////////////////////////////////////////
     // Inter-stage shader interface slots. Also
