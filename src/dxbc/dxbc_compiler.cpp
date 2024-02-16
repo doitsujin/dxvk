@@ -1230,6 +1230,14 @@ namespace dxvk {
     }
 
     m_bindings.push_back(binding);
+
+    // If supported, we'll be using raw access chains to access this
+    if (!m_hasRawAccessChains && m_moduleInfo.options.supportsRawAccessChains) {
+      m_module.enableExtension("SPV_NV_raw_access_chains");
+      m_module.enableCapability(spv::CapabilityRawAccessChainsNV);
+
+      m_hasRawAccessChains = true;
+    }
   }
   
   
