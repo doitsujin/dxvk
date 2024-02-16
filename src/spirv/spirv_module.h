@@ -951,6 +951,14 @@ namespace dxvk {
             uint32_t                resultType,
             uint32_t                operand);
 
+    uint32_t opRawAccessChain(
+            uint32_t                resultType,
+            uint32_t                base,
+            uint32_t                stride,
+            uint32_t                index,
+            uint32_t                offset,
+            uint32_t                operand);
+
     uint32_t opReflect(
             uint32_t                resultType,
             uint32_t                incident,
