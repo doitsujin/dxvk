@@ -945,19 +945,6 @@ namespace dxvk {
       const DxbcRegister&           operand,
       const DxbcRegister&           address);
     
-    ///////////////////////////////
-    // Resource load/store methods
-    DxbcRegisterValue emitRawBufferLoad(
-      const DxbcRegister&           operand,
-            DxbcRegisterValue       elementIndex,
-            DxbcRegMask             writeMask,
-            uint32_t&               sparseFeedbackId);
-    
-    void emitRawBufferStore(
-      const DxbcRegister&           operand,
-            DxbcRegisterValue       elementIndex,
-            DxbcRegisterValue       value);
-    
     //////////////////////////
     // Resource query methods
     DxbcRegisterValue emitQueryBufferSize(
