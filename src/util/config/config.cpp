@@ -878,6 +878,12 @@ namespace dxvk {
     { R"(\\RedRiver\.exe$)", {{
       { "d3d9.floatEmulation",              "Strict" },
     }} },
+    /* Vindictus                                 *
+     * Necessary for correct rendering of ice    */
+    { R"(\\Vindictus\.exe$)", {{
+      { "d3d9.forceSamplerTypeSpecConstants", "True" },
+    }} },
+
 
 
     /**********************************************/
