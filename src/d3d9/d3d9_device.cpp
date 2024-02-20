@@ -2667,7 +2667,7 @@ namespace dxvk {
 
     if (unlikely(!PrimitiveCount))
       return S_OK;
-      
+
     bool dynamicSysmemVBOs;
     bool dynamicSysmemIBO;
     uint32_t indexCount = GetVertexCount(PrimitiveType, PrimitiveCount);
@@ -5137,7 +5137,7 @@ namespace dxvk {
       dynamicSysmemVBOs &= vbo == nullptr || vbo->IsSysmemDynamic();
     }
     D3D9CommonBuffer* ibo = GetCommonBuffer(m_state.indices);
-    bool dynamicSysmemIBO = NumIndices != 0 && ibo->IsSysmemDynamic();
+    bool dynamicSysmemIBO = NumIndices != 0 && ibo != nullptr && ibo->IsSysmemDynamic();
 
     *pDynamicVBOs = dynamicSysmemVBOs;
 
