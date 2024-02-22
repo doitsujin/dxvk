@@ -431,9 +431,12 @@ namespace dxvk {
       { "d3d11.cachedDynamicResources",     "v"    },
     }} },
     /* Granblue Relink: Spams pixel shader UAVs   *
-     * like crazy, much like God of War           */
+     * and assumes that AMD GPUs do not expose    *
+     * native command lists for AGS usage         */
     { R"(\\granblue_fantasy_relink\.exe$)", {{
-      { "d3d11.ignoreGraphicsBarriers",     "True" },
+      { "d3d11.ignoreGraphicsBarriers",     "True"  },
+      { "d3d11.exposeDriverCommandLists",   "False" },
+      { "dxgi.hideNvidiaGpu",               "False" },
     }} },
 
     /**********************************************/
