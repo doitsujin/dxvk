@@ -928,6 +928,34 @@ namespace dxvk {
     const void*                             pSrcData,
           UINT                              SrcRowPitch,
           UINT                              SrcDepthPitch) {
+    if (IsDeferred && unlikely(pDstBox != nullptr) && unlikely(!m_parent->GetOptions()->exposeDriverCommandLists)) {
+      // If called from a deferred context and native command list support is not
+      // exposed, we need to apply the destination box to the source pointer. This
+      // only applies to UpdateSubresource, not to UpdateSubresource1. See MSDN:
+      // https://msdn.microsoft.com/en-us/library/windows/desktop/ff476486(v=vs.85).aspx)
+      size_t srcOffset = pDstBox->left;
+
+      // For textures, the offset logic needs to take the format into account.
+      // Ignore that multi-planar images exist, this is hairy enough already.
+      D3D11CommonTexture* dstTexture = GetCommonTexture(pDstResource);
+
+      if (dstTexture) {
+        auto dstFormat = dstTexture->GetPackedFormat();
+        auto dstFormatInfo = lookupFormatInfo(dstFormat);
+
+        size_t blockSize = dstFormatInfo->elementSize;
+
+        VkOffset3D offset;
+        offset.x = pDstBox->left / dstFormatInfo->blockSize.width;
+        offset.y = pDstBox->top / dstFormatInfo->blockSize.height;
+        offset.z = pDstBox->front / dstFormatInfo->blockSize.depth;
+
+        srcOffset = offset.x * blockSize + offset.y * SrcRowPitch + offset.z * SrcDepthPitch;
+      }
+
+      pSrcData = reinterpret_cast<const char*>(pSrcData) + srcOffset;
+    }
+
     UpdateResource(pDstResource, DstSubresource, pDstBox,
       pSrcData, SrcRowPitch, SrcDepthPitch, 0);
   }
