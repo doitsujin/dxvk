@@ -12,7 +12,7 @@ namespace dxvk {
 #endif
   }
 
-  D3D11Options::D3D11Options(const Config& config, const Rc<DxvkDevice>& device) {
+  D3D11Options::D3D11Options(const Config& config) {
     this->dcSingleUseMode       = config.getOption<bool>("d3d11.dcSingleUseMode", true);
     this->zeroInitWorkgroupMemory  = config.getOption<bool>("d3d11.zeroInitWorkgroupMemory", false);
     this->forceVolatileTgsmAccess = config.getOption<bool>("d3d11.forceVolatileTgsmAccess", false);
@@ -31,6 +31,7 @@ namespace dxvk {
     this->numBackBuffers        = config.getOption<int32_t>("dxgi.numBackBuffers", 0);
     this->maxFrameLatency       = config.getOption<int32_t>("dxgi.maxFrameLatency", 0);
     this->maxFrameRate          = config.getOption<int32_t>("dxgi.maxFrameRate", 0);
+    this->exposeDriverCommandLists = config.getOption<bool>("d3d11.exposeDriverCommandLists", true);
 
     // Clamp LOD bias so that people don't abuse this in unintended ways
     this->samplerLodBias = dxvk::fclamp(this->samplerLodBias, -2.0f, 1.0f);

@@ -12,6 +12,7 @@ namespace dxvk {
   D3D11DeviceFeatures::D3D11DeviceFeatures(
     const Rc<DxvkInstance>&     Instance,
     const Rc<DxvkAdapter>&      Adapter,
+    const D3D11Options&         Options,
           D3D_FEATURE_LEVEL     FeatureLevel)
   : m_features    (Adapter->features()),
     m_properties  (Adapter->devicePropertiesExt()) {
@@ -118,11 +119,11 @@ namespace dxvk {
     m_shaderMinPrecision.PixelShaderMinPrecision          = 0;
     m_shaderMinPrecision.AllOtherShaderStagesMinPrecision = 0;
 
-    // Report native support for command lists here so that we do not actually have
-    // to re-implement the UpdateSubresource bug from the D3D11 runtime, see MSDN:
-    // https://msdn.microsoft.com/en-us/library/windows/desktop/ff476486(v=vs.85).aspx)
+    // Report native support for command lists by default. Deferred context
+    // usage can be beneficial for us as ExecuteCommandList has low overhead,
+    // and we avoid having to deal with known UpdateSubresource bugs this way.
     m_threading.DriverConcurrentCreates                   = TRUE;
-    m_threading.DriverCommandLists                        = TRUE;
+    m_threading.DriverCommandLists                        = Options.exposeDriverCommandLists;
   }
 
 
@@ -182,7 +183,8 @@ namespace dxvk {
   D3D_FEATURE_LEVEL D3D11DeviceFeatures::GetMaxFeatureLevel(
     const Rc<DxvkInstance>&     Instance,
     const Rc<DxvkAdapter>&      Adapter) {
-    D3D11DeviceFeatures features(Instance, Adapter, D3D_FEATURE_LEVEL_12_1);
+    D3D11Options options(Instance->config());
+    D3D11DeviceFeatures features(Instance, Adapter, options, D3D_FEATURE_LEVEL_12_1);
     return features.GetMaxFeatureLevel();
   }
 

@@ -11,7 +11,7 @@
 namespace dxvk {
 
   struct D3D11Options {
-    D3D11Options(const Config& config, const Rc<DxvkDevice>& device);
+    D3D11Options(const Config& config);
 
     /// Enables speed hack for mapping on deferred contexts
     ///
@@ -112,6 +112,11 @@ namespace dxvk {
     /// useful for debugging purposes or when applications have
     /// race conditions.
     bool enableContextLock;
+
+    /// Whether to expose the driver command list feature. Enabled by
+    /// default and generally beneficial, but some games may assume that
+    /// this is not supported when running on an AMD GPU.
+    bool exposeDriverCommandLists;
 
     /// Shader dump path
     std::string shaderDumpPath;
