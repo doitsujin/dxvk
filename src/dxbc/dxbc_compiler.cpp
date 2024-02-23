@@ -809,8 +809,13 @@ namespace dxvk {
     // dcl_constant_buffer has one operand with two indices:
     //    (0) Constant buffer register ID (cb#)
     //    (1) Number of constants in the buffer
-    const uint32_t bufferId     = ins.dst[0].idx[0].offset;
-    const uint32_t elementCount = ins.dst[0].idx[1].offset;
+    uint32_t bufferId     = ins.dst[0].idx[0].offset;
+    uint32_t elementCount = ins.dst[0].idx[1].offset;
+
+    // With dynamic indexing, games will often index constant buffers
+    // out of bounds. Declare an upper bound to stay within spec.
+    if (ins.controls.accessType() == DxbcConstantBufferAccessType::DynamicallyIndexed)
+      elementCount = 4096;
 
     this->emitDclConstantBufferVar(bufferId, elementCount,
       str::format("cb", bufferId).c_str());
