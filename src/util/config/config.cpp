@@ -927,6 +927,11 @@ namespace dxvk {
     { R"(\\P3R\.exe$)", {{
       { "dxgi.syncInterval",                "1" },
     }} },
+    /* The Finals - Prevents a crash on Nvidia    *
+     * when XeSS is selected in the graphics menu */
+    { R"(\\Discovery\.exe$)", {{
+      { "dxgi.hideNvidiaGpu",              "False" },
+    }} },
   }};
 
 
