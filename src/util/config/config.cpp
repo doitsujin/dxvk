@@ -27,10 +27,6 @@ namespace dxvk {
     { R"(\\EliteDangerous64\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
-    /* The Vanishing of Ethan Carter Redux        */
-    { R"(\\EthanCarter-Win64-Shipping\.exe$)", {{
-      { "dxgi.customVendorId",              "10de" },
-    }} },
      /* EVE Online: Needs this to expose D3D12     *
      * otherwise D3D12 option on launcher is      *
      * greyed out                                 */
@@ -233,11 +229,6 @@ namespace dxvk {
     /* Nioh 2                                     */
     { R"(\\nioh2\.exe$)", {{
       { "dxgi.deferSurfaceCreation",        "True" },
-    }} },
-    /* DIRT 5 - uses amd_ags_x64.dll when it      *
-     * detects an AMD GPU                         */
-    { R"(\\DIRT5\.exe$)", {{
-      { "dxgi.customVendorId",              "10de" },
     }} },
     /* Crazy Machines 3 - crashes on long device  *
      * descriptions                               */
@@ -911,10 +902,6 @@ namespace dxvk {
      * optimization of that function is in Proton. */
     { R"(\\Cyberpunk2077\.exe$)", {{
       { "dxgi.useMonitorFallback",          "True" },
-    }} },
-    /* Hitman 3 - Ray Tracing                      */
-    { R"(\\HITMAN3\.exe$)", {{
-      { "dxgi.hideNvidiaGpu",              "False" },
     }} },
     /* Metro Exodus Enhanced Edition picks GPU adapters
      * by available VRAM, which causes issues on some
