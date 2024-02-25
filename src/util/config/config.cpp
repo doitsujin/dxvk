@@ -1118,6 +1118,15 @@ namespace dxvk {
       { "d3d9.memoryTrackTest",             "True" },
       { "d3d9.maxAvailableMemory",          "512"  },
     }} },
+    /* Cossacks II: Napoleonic Wars &             *
+     * Battle for Europe                          */
+    { R"(\\Cossacks II.*\\engine\.exe$)", {{
+      { "d3d9.maxFrameRate",                  "60" },
+    }} },
+    /* Alexander                                  */
+    { R"(\\Alexander\\Data\\engine\.exe$)", {{
+      { "d3d9.maxFrameRate",                  "60" },
+    }} },
   }};
 
 
