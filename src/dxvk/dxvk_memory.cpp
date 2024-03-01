@@ -188,7 +188,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < m_memProps.memoryHeapCount; i++) {
       m_memHeaps[i].properties = m_memProps.memoryHeaps[i];
       m_memHeaps[i].stats      = DxvkMemoryStats { 0, 0 };
-      m_memHeaps[i].budget     = 0;
+      m_memHeaps[i].budget     = m_memHeaps[i].properties.size;
     }
     
     for (uint32_t i = 0; i < m_memProps.memoryTypeCount; i++) {
@@ -547,12 +547,8 @@ namespace dxvk {
   bool DxvkMemoryAllocator::shouldFreeEmptyChunks(
     const DxvkMemoryHeap*       heap,
           VkDeviceSize          allocationSize) const {
-    VkDeviceSize budget = heap->budget;
 
-    if (!budget)
-      budget = (heap->properties.size * 4) / 5;
-
-    return heap->stats.memoryAllocated + allocationSize > budget;
+    return heap->stats.memoryAllocated + allocationSize > heap->budget * 4 / 5;
   }
 
 
