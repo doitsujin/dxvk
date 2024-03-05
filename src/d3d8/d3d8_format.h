@@ -15,6 +15,17 @@ namespace dxvk {
     return isDXT(D3DFORMAT(fmt));
   }
 
+  constexpr bool isUnsupportedSurfaceFormat(D3DFORMAT fmt) {
+    // mirror what dxvk doesn't support in terms of d3d9 surface formats
+    return fmt == D3DFMT_R8G8B8
+        || fmt == D3DFMT_R3G3B2
+        || fmt == D3DFMT_A8R3G3B2
+        || fmt == D3DFMT_A8P8
+        || fmt == D3DFMT_P8;
+        // not included in the d3d8 spec
+        //|| fmt == D3DFMT_CXV8U8;
+  }
+
   constexpr bool isSupportedDepthStencilFormat(D3DFORMAT fmt) {
     // native d3d8 doesn't support D3DFMT_D32, D3DFMT_D15S1 or D3DFMT_D24X4S4
     return fmt == D3DFMT_D16_LOCKABLE

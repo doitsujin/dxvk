@@ -434,14 +434,20 @@ namespace dxvk {
     return res;
   }
 
-  HRESULT STDMETHODCALLTYPE D3D8Device::CreateImageSurface(UINT Width, UINT Height, D3DFORMAT Format, IDirect3DSurface8** ppSurface) {
+  HRESULT STDMETHODCALLTYPE D3D8Device::CreateImageSurface(
+          UINT                Width,
+          UINT                Height,
+          D3DFORMAT           Format,
+          IDirect3DSurface8** ppSurface) {
+    // FIXME: Handle D3DPOOL_SCRATCH in CopyRects
+    D3DPOOL pool = isUnsupportedSurfaceFormat(Format) ? D3DPOOL_SCRATCH : D3DPOOL_SYSTEMMEM;
+
     Com<d3d9::IDirect3DSurface9> pSurf = nullptr;
     HRESULT res = GetD3D9()->CreateOffscreenPlainSurface(
       Width,
       Height,
       d3d9::D3DFORMAT(Format),
-      // FIXME: D3DPOOL_SCRATCH is said to be dx8 compatible, but currently won't work with CopyRects
-      d3d9::D3DPOOL_SYSTEMMEM,
+      d3d9::D3DPOOL(pool),
       &pSurf,
       NULL);
 
