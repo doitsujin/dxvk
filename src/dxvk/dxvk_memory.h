@@ -66,7 +66,6 @@ namespace dxvk {
   struct DxvkMemoryHeap {
     VkMemoryHeap      properties;
     DxvkMemoryStats   stats;
-    VkDeviceSize      budget;
   };
 
 
