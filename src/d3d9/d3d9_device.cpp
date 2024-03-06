@@ -1143,6 +1143,9 @@ namespace dxvk {
     if (unlikely((srcSubresource.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) && m_flags.test(D3D9DeviceFlag::InScene)))
       return D3DERR_INVALIDCALL;
 
+    if (unlikely(Filter != D3DTEXF_NONE && Filter != D3DTEXF_LINEAR && Filter != D3DTEXF_POINT))
+      return D3DERR_INVALIDCALL;
+
     VkExtent3D srcExtent = srcImage->mipLevelExtent(srcSubresource.mipLevel);
     VkExtent3D dstExtent = dstImage->mipLevelExtent(dstSubresource.mipLevel);
 
@@ -1221,8 +1224,41 @@ namespace dxvk {
       uint32_t(blitInfo.dstOffsets[1].y - blitInfo.dstOffsets[0].y),
       uint32_t(blitInfo.dstOffsets[1].z - blitInfo.dstOffsets[0].z) };
 
+    bool srcIsDepth = IsDepthFormat(srcFormat);
+    bool dstIsDepth = IsDepthFormat(dstFormat);
+    if (unlikely(srcIsDepth || dstIsDepth)) {
+      if (unlikely(!srcIsDepth || !dstIsDepth))
+        return D3DERR_INVALIDCALL;
+
+      if (unlikely(srcTextureInfo->Desc()->Discard || dstTextureInfo->Desc()->Discard))
+        return D3DERR_INVALIDCALL;
+
+      if (unlikely(srcCopyExtent.width != srcExtent.width || srcCopyExtent.height != srcExtent.height))
+        return D3DERR_INVALIDCALL;
+
+      if (unlikely(m_flags.test(D3D9DeviceFlag::InScene)))
+        return D3DERR_INVALIDCALL;
+    }
+
     // Copies would only work if the extents match. (ie. no stretching)
     bool stretch = srcCopyExtent != dstCopyExtent;
+
+    bool dstHasRTUsage = (dstTextureInfo->Desc()->Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)) != 0;
+    if (stretch) {
+      if (unlikely(pSourceSurface == pDestSurface))
+        return D3DERR_INVALIDCALL;
+
+      if (unlikely(dstIsDepth))
+        return D3DERR_INVALIDCALL;
+
+      if (unlikely(!dstHasRTUsage))
+        return D3DERR_INVALIDCALL;
+    } else {
+      bool srcHasRTUsage = (srcTextureInfo->Desc()->Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)) != 0;
+      if (unlikely(!dstHasRTUsage && (dstTextureInfo->GetType() != D3DRTYPE_SURFACE || srcTextureInfo->GetType() != D3DRTYPE_SURFACE || srcHasRTUsage)))
+        return D3DERR_INVALIDCALL;
+    }
+
     fastPath &= !stretch;
 
     if (!fastPath || needsResolve) {
