@@ -84,13 +84,10 @@ namespace dxvk {
     this->hideNvidiaGpu = !isNvapiEnabled();
 
     Tristate hideNvidiaGpuOption = config.getOption<Tristate>("dxgi.hideNvidiaGpu", Tristate::Auto);
-
-    if (hideNvidiaGpuOption == Tristate::Auto && !config.getOption<bool>("dxgi.nvapiHack", true)) {
-      Logger::warn("dxgi.nvapiHack is deprecated, please set dxgi.hideNvidiaGpu instead.");
-      hideNvidiaGpuOption = Tristate::False;
-    }
-
     applyTristate(this->hideNvidiaGpu, hideNvidiaGpuOption);
+
+    // Always hide NVK devices by default since some NVAPI functionality may not work
+    this->hideNvkGpu = config.getOption<Tristate>("dxgi.hideNvkGpu", Tristate::Auto) == Tristate::True;
 
     // Expose AMD and Intel GPU by default, unless a config override is active.
     // Implement as a tristate so that we have the option to introduce similar
