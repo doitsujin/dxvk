@@ -5246,7 +5246,7 @@ namespace dxvk {
         auto* vbo = GetCommonBuffer(m_state.vertexBuffers[i].vertexBuffer);
 
         const uint32_t vertexStride = m_state.vertexDecl->GetSize(i);
-        uint32_t offset = (BaseVertexIndex + FirstVertexIndex) * vertexStride;
+        uint32_t offset = (BaseVertexIndex + FirstVertexIndex) * vertexStride + m_state.vertexBuffers[i].offset;
 
         uint8_t* data = reinterpret_cast<uint8_t*>(upSlice.mapPtr) + vboUPBufferOffsets[i];
         uint8_t* src = reinterpret_cast<uint8_t*>(vbo->GetMappedSlice().mapPtr) + offset;
