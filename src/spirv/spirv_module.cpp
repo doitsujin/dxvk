@@ -470,6 +470,13 @@ namespace dxvk {
   }
 
 
+  uint32_t SpirvModule::constNull(
+          uint32_t                typeId) {
+    return this->defConst(spv::OpConstantNull,
+      typeId, 0, nullptr);
+  }
+
+
   uint32_t SpirvModule::lateConst32(
           uint32_t                typeId) {
     uint32_t resultId = this->allocateId();

@@ -217,6 +217,9 @@ namespace dxvk {
     uint32_t constUndef(
             uint32_t                typeId);
     
+    uint32_t constNull(
+            uint32_t                typeId);
+    
     uint32_t lateConst32(
             uint32_t                typeId);
 
