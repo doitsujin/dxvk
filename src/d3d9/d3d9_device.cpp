@@ -1625,7 +1625,7 @@ namespace dxvk {
       });
     }
     
-    for (uint32_t i = 0; i < DxvkLimits::MaxNumVertexBindings; i++) {
+    for (uint32_t i = 0; i < caps::MaxStreams; i++) {
       if (m_state.vertexBuffers[i].vertexBuffer == nullptr) {
         EmitCs([cIndex = i](DxvkContext* ctx) {
           ctx->bindVertexBuffer(cIndex, DxvkBufferSlice(), 0);
