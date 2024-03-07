@@ -3881,33 +3881,38 @@ namespace dxvk {
     if (imageOperands.sparse)
       resultTypeId = getSparseResultTypeId(texelTypeId);
 
-    switch (ins.op) {
-      // Simple image gather operation
-      case DxbcOpcode::Gather4:
-      case DxbcOpcode::Gather4S:
-      case DxbcOpcode::Gather4Po:
-      case DxbcOpcode::Gather4PoS: {
-        resultId = m_module.opImageGather(
-          resultTypeId, sampledImageId, coord.id,
-          m_module.consti32(samplerReg.swizzle[0]),
-          imageOperands);
-      } break;
-      
-      // Depth-compare operation
-      case DxbcOpcode::Gather4C:
-      case DxbcOpcode::Gather4CS:
-      case DxbcOpcode::Gather4PoC:
-      case DxbcOpcode::Gather4PoCS: {
-        resultId = m_module.opImageDrefGather(
-          resultTypeId, sampledImageId, coord.id,
-          referenceValue.id, imageOperands);
-      } break;
-      
-      default:
-        Logger::warn(str::format(
-          "DxbcCompiler: Unhandled instruction: ",
-          ins.op));
-        return;
+    if (sampledImageId) {
+      switch (ins.op) {
+        // Simple image gather operation
+        case DxbcOpcode::Gather4:
+        case DxbcOpcode::Gather4S:
+        case DxbcOpcode::Gather4Po:
+        case DxbcOpcode::Gather4PoS: {
+          resultId = m_module.opImageGather(
+            resultTypeId, sampledImageId, coord.id,
+            m_module.consti32(samplerReg.swizzle[0]),
+            imageOperands);
+        } break;
+
+        // Depth-compare operation
+        case DxbcOpcode::Gather4C:
+        case DxbcOpcode::Gather4CS:
+        case DxbcOpcode::Gather4PoC:
+        case DxbcOpcode::Gather4PoCS: {
+          resultId = m_module.opImageDrefGather(
+            resultTypeId, sampledImageId, coord.id,
+            referenceValue.id, imageOperands);
+        } break;
+
+        default:
+          Logger::warn(str::format(
+            "DxbcCompiler: Unhandled instruction: ",
+            ins.op));
+          return;
+      }
+    } else {
+      Logger::warn(str::format("DxbcCompiler: ", ins.op, ": Unsupported image type"));
+      resultId = m_module.constNull(resultTypeId);
     }
 
     // If necessary, deal with the sparse result
@@ -4035,73 +4040,78 @@ namespace dxvk {
     if (imageOperands.sparse)
       resultTypeId = getSparseResultTypeId(texelTypeId);
 
-    switch (ins.op) {
-      // Simple image sample operation
-      case DxbcOpcode::Sample:
-      case DxbcOpcode::SampleClampS: {
-        resultId = m_module.opImageSampleImplicitLod(
-          resultTypeId, sampledImageId, coord.id,
-          imageOperands);
-      } break;
-      
-      // Depth-compare operation
-      case DxbcOpcode::SampleC:
-      case DxbcOpcode::SampleCClampS: {
-        resultId = m_module.opImageSampleDrefImplicitLod(
-          resultTypeId, sampledImageId, coord.id,
-          referenceValue.id, imageOperands);
-      } break;
-      
-      // Depth-compare operation on mip level zero
-      case DxbcOpcode::SampleClz:
-      case DxbcOpcode::SampleClzS: {
-        imageOperands.flags |= spv::ImageOperandsLodMask;
-        imageOperands.sLod = m_module.constf32(0.0f);
-        
-        resultId = m_module.opImageSampleDrefExplicitLod(
-          resultTypeId, sampledImageId, coord.id,
-          referenceValue.id, imageOperands);
-      } break;
-      
-      // Sample operation with explicit gradients
-      case DxbcOpcode::SampleD:
-      case DxbcOpcode::SampleDClampS: {
-        imageOperands.flags |= spv::ImageOperandsGradMask;
-        imageOperands.sGradX = explicitGradientX.id;
-        imageOperands.sGradY = explicitGradientY.id;
-        
-        resultId = m_module.opImageSampleExplicitLod(
-          resultTypeId, sampledImageId, coord.id,
-          imageOperands);
-      } break;
-      
-      // Sample operation with explicit LOD
-      case DxbcOpcode::SampleL:
-      case DxbcOpcode::SampleLS: {
-        imageOperands.flags |= spv::ImageOperandsLodMask;
-        imageOperands.sLod = lod.id;
-        
-        resultId = m_module.opImageSampleExplicitLod(
-          resultTypeId, sampledImageId, coord.id,
-          imageOperands);
-      } break;
-      
-      // Sample operation with LOD bias
-      case DxbcOpcode::SampleB:
-      case DxbcOpcode::SampleBClampS: {
-        imageOperands.flags |= spv::ImageOperandsBiasMask;
-        imageOperands.sLodBias = lod.id;
-        
-        resultId = m_module.opImageSampleImplicitLod(
-          resultTypeId, sampledImageId, coord.id,
-          imageOperands);
-      } break;
-      
-      default:
-        Logger::warn(str::format(
-          "DxbcCompiler: Unhandled instruction: ",
-          ins.op));
-        return;
+    if (sampledImageId) {
+      switch (ins.op) {
+        // Simple image sample operation
+        case DxbcOpcode::Sample:
+        case DxbcOpcode::SampleClampS: {
+          resultId = m_module.opImageSampleImplicitLod(
+            resultTypeId, sampledImageId, coord.id,
+            imageOperands);
+        } break;
+
+        // Depth-compare operation
+        case DxbcOpcode::SampleC:
+        case DxbcOpcode::SampleCClampS: {
+          resultId = m_module.opImageSampleDrefImplicitLod(
+            resultTypeId, sampledImageId, coord.id,
+            referenceValue.id, imageOperands);
+        } break;
+
+        // Depth-compare operation on mip level zero
+        case DxbcOpcode::SampleClz:
+        case DxbcOpcode::SampleClzS: {
+          imageOperands.flags |= spv::ImageOperandsLodMask;
+          imageOperands.sLod = m_module.constf32(0.0f);
+
+          resultId = m_module.opImageSampleDrefExplicitLod(
+            resultTypeId, sampledImageId, coord.id,
+            referenceValue.id, imageOperands);
+        } break;
+
+        // Sample operation with explicit gradients
+        case DxbcOpcode::SampleD:
+        case DxbcOpcode::SampleDClampS: {
+          imageOperands.flags |= spv::ImageOperandsGradMask;
+          imageOperands.sGradX = explicitGradientX.id;
+          imageOperands.sGradY = explicitGradientY.id;
+
+          resultId = m_module.opImageSampleExplicitLod(
+            resultTypeId, sampledImageId, coord.id,
+            imageOperands);
+        } break;
+
+        // Sample operation with explicit LOD
+        case DxbcOpcode::SampleL:
+        case DxbcOpcode::SampleLS: {
+          imageOperands.flags |= spv::ImageOperandsLodMask;
+          imageOperands.sLod = lod.id;
+
+          resultId = m_module.opImageSampleExplicitLod(
+            resultTypeId, sampledImageId, coord.id,
+            imageOperands);
+        } break;
+
+        // Sample operation with LOD bias
+        case DxbcOpcode::SampleB:
+        case DxbcOpcode::SampleBClampS: {
+          imageOperands.flags |= spv::ImageOperandsBiasMask;
+          imageOperands.sLodBias = lod.id;
+
+          resultId = m_module.opImageSampleImplicitLod(
+            resultTypeId, sampledImageId, coord.id,
+            imageOperands);
+        } break;
+
+        default:
+          Logger::warn(str::format(
+            "DxbcCompiler: Unhandled instruction: ",
+            ins.op));
+          return;
+      }
+    } else {
+      Logger::warn(str::format("DxbcCompiler: ", ins.op, ": Unsupported image type"));
+      resultId = m_module.constNull(resultTypeId);
     }
     
     DxbcRegisterValue result;
@@ -5147,10 +5157,15 @@ namespace dxvk {
     const DxbcShaderResource&     textureResource,
     const DxbcSampler&            samplerResource,
           bool                    isDepthCompare) {
-    const uint32_t sampledImageType = isDepthCompare
-      ? m_module.defSampledImageType(textureResource.depthTypeId)
-      : m_module.defSampledImageType(textureResource.colorTypeId);
-    
+    uint32_t baseId = isDepthCompare
+      ? textureResource.depthTypeId
+      : textureResource.colorTypeId;
+
+    if (!baseId)
+      return 0;
+
+    uint32_t sampledImageType = m_module.defSampledImageType(baseId);
+
     return m_module.opSampledImage(sampledImageType,
       m_module.opLoad(textureResource.imageTypeId, textureResource.varId),
       m_module.opLoad(samplerResource.typeId,      samplerResource.varId));
