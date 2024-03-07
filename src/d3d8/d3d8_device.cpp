@@ -592,6 +592,13 @@ namespace dxvk {
     src->GetD3D9()->GetDesc(&srcDesc);
     dst->GetD3D9()->GetDesc(&dstDesc);
 
+    // This method cannot be applied to surfaces whose formats
+    // are classified as depth stencil formats.
+    if (unlikely(isDepthStencilFormat(D3DFORMAT(srcDesc.Format)) ||
+                 isDepthStencilFormat(D3DFORMAT(dstDesc.Format)))) {
+      return D3DERR_INVALIDCALL;
+    }
+
     StateChange();
 
     // If pSourceRectsArray is NULL, then the entire surface is copied

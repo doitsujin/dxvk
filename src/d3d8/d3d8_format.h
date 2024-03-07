@@ -37,6 +37,16 @@ namespace dxvk {
         || fmt == D3DFMT_D24X8;
   }
 
+  constexpr bool isDepthStencilFormat(D3DFORMAT fmt) {
+    return fmt == D3DFMT_D16_LOCKABLE
+        || fmt == D3DFMT_D16
+        || fmt == D3DFMT_D32
+        || fmt == D3DFMT_D15S1
+        || fmt == D3DFMT_D24X4S4
+        || fmt == D3DFMT_D24S8
+        || fmt == D3DFMT_D24X8;
+  }
+
   // Get bytes per pixel (or 4x4 block for DXT)
   constexpr UINT getFormatStride(D3DFORMAT fmt) {
     switch (fmt) {
