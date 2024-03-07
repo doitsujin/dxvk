@@ -109,7 +109,7 @@ namespace dxvk {
       m_module.opLabel(m_module.allocateId());
     }
 
-    void compile(const D3D9VertexDecl* pDecl) {
+    void compile(const D3D9VertexElements& elements) {
       uint32_t uint_t     = m_module.defIntType(32, false);
       uint32_t float_t    = m_module.defFloatType(32);
       uint32_t vec4_t     = m_module.defVectorType(float_t, 4);
@@ -142,15 +142,22 @@ namespace dxvk {
       m_module.decorateBuiltIn(primitiveIdPtr, spv::BuiltInPrimitiveId);
 
       uint32_t primitiveId = m_module.opLoad(uint_t, primitiveIdPtr);
-
+      
       // The size of any given vertex
-      uint32_t vertexSize       = m_module.constu32(pDecl->GetSize(0) / sizeof(uint32_t));
+      uint32_t size = 0;      
+      for (const auto& element : elements) {
+        if (element.Stream == 0 && element.Type != D3DDECLTYPE_UNUSED) {
+          size = std::max(size, element.Offset + GetDecltypeSize(D3DDECLTYPE(element.Type)));
+        }
+      }
+
+      uint32_t vertexSize       = m_module.constu32(size / sizeof(uint32_t));
 
       //The offset of this vertex from the beginning of the buffer
       uint32_t thisVertexOffset = m_module.opIMul(uint_t, vertexSize, primitiveId);
 
 
-      for (auto& element : pDecl->GetElements()) {
+      for (auto& element : elements) {
         // Load the slot associated with this element
         DxsoSemantic semantic = { DxsoUsage(element.Usage), element.UsageIndex };
 
@@ -297,9 +304,7 @@ namespace dxvk {
 
   };
 
-  Rc<DxvkShader> D3D9SWVPEmulator::GetShaderModule(D3D9DeviceEx* pDevice, const D3D9VertexDecl* pDecl) {
-    auto& elements = pDecl->GetElements();
-
+  Rc<DxvkShader> D3D9SWVPEmulator::GetShaderModule(D3D9DeviceEx* pDevice, const D3D9VertexElements& elements) {
     // Use the shader's unique key for the lookup
     { std::unique_lock<dxvk::mutex> lock(m_mutex);
       
@@ -317,7 +322,7 @@ namespace dxvk {
     // This shader has not been compiled yet, so we have to create a
     // new module. This takes a while, so we won't lock the structure.
     D3D9SWVPEmulatorGenerator generator(name);
-    generator.compile(pDecl);
+    generator.compile(elements);
     Rc<DxvkShader> shader = generator.finalize();
 
     shader->setShaderKey(key);

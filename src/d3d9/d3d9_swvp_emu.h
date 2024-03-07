@@ -23,7 +23,7 @@ namespace dxvk {
 
   public:
 
-    Rc<DxvkShader> GetShaderModule(D3D9DeviceEx* pDevice, const D3D9VertexDecl* pDecl);
+    Rc<DxvkShader> GetShaderModule(D3D9DeviceEx* pDevice,  const D3D9VertexElements& elements);
 
   private:
 
