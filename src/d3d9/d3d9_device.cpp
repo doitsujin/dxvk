@@ -2954,13 +2954,13 @@ namespace dxvk {
          slice = slice.subSlice(offset, slice.length() - offset);
 
     EmitCs([this,
-      cDecl          = ref(decl),
-      cVertexCount   = VertexCount,
-      cStartIndex    = SrcStartIndex,
-      cInstanceCount = GetInstanceCount(),
-      cBufferSlice   = slice
+      cVertexElements = decl->GetElements(),
+      cVertexCount    = VertexCount,
+      cStartIndex     = SrcStartIndex,
+      cInstanceCount  = GetInstanceCount(),
+      cBufferSlice    = slice
     ](DxvkContext* ctx) mutable {
-      Rc<DxvkShader> shader = m_swvpEmulator.GetShaderModule(this, cDecl);
+      Rc<DxvkShader> shader = m_swvpEmulator.GetShaderModule(this, cVertexElements);
 
       auto drawInfo = GenerateDrawInfo(D3DPT_POINTLIST, cVertexCount, cInstanceCount);
 
