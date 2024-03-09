@@ -5355,7 +5355,7 @@ namespace dxvk {
 
     // Round to nearest
     _controlfp(_RC_NEAR, _MCW_RC);
-#elif (defined(__GNUC__) || defined(__MINGW32__)) && (defined(__i386__) || defined(__x86_64__) || defined(__ia64))
+#elif (defined(__GNUC__) || defined(__MINGW32__)) && (defined(__i386__) || (defined(__x86_64__) && !defined(__arm64ec__)) || defined(__ia64))
     // For GCC/MinGW we can use inline asm to set it.
     // This only works for x86 and x64 processors however.
 
