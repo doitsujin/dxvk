@@ -484,7 +484,7 @@ namespace dxvk {
     // Unbind all buffers that were still bound to the backend to avoid leaks.
     EmitCs([](DxvkContext* ctx) {
       ctx->bindIndexBuffer(DxvkBufferSlice(), VK_INDEX_TYPE_UINT32);
-      for (uint32_t i = 0; i < DxvkLimits::MaxNumVertexBindings; i++) {
+      for (uint32_t i = 0; i < caps::MaxStreams; i++) {
         ctx->bindVertexBuffer(i, DxvkBufferSlice(), 0);
       }
     });
