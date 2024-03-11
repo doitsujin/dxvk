@@ -431,6 +431,11 @@ namespace dxvk {
       { "d3d11.exposeDriverCommandLists",   "False" },
       { "dxgi.hideNvidiaGpu",               "False" },
     }} },
+    /* Guild Wars 2                                   *
+     * Helps CPU bound performance on some setups     */
+    { R"(\\Gw2-64\.exe$)", {{
+      { "d3d11.cachedDynamicResources",     "vc" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
