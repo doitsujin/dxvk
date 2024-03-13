@@ -9,13 +9,14 @@ namespace dxvk {
 
   // Doesn't compare everything, only what we use in SWVP.
 
-  size_t D3D9VertexDeclHash::operator () (const D3D9VertexElements& key) const {
+  size_t D3D9VertexDeclHash::operator () (const D3D9CompactVertexElements& key) const {
     DxvkHashState hash;
 
     std::hash<BYTE> bytehash;
     std::hash<WORD> wordhash;
 
-    for (auto& element : key) {
+    for (uint32_t i = 0; i < key.size(); i++) {
+      const auto& element = key[i];
       hash.add(wordhash(element.Stream));
       hash.add(wordhash(element.Offset));
       hash.add(bytehash(element.Type));
@@ -27,7 +28,7 @@ namespace dxvk {
     return hash;
   }
 
-  bool D3D9VertexDeclEq::operator () (const D3D9VertexElements& a, const D3D9VertexElements& b) const {
+  bool D3D9VertexDeclEq::operator () (const D3D9CompactVertexElements& a, const D3D9CompactVertexElements& b) const {
     if (a.size() != b.size())
       return false;
 
@@ -109,7 +110,7 @@ namespace dxvk {
       m_module.opLabel(m_module.allocateId());
     }
 
-    void compile(const D3D9VertexElements& elements) {
+    void compile(const D3D9CompactVertexElements& elements) {
       uint32_t uint_t     = m_module.defIntType(32, false);
       uint32_t float_t    = m_module.defFloatType(32);
       uint32_t vec4_t     = m_module.defVectorType(float_t, 4);
@@ -144,8 +145,9 @@ namespace dxvk {
       uint32_t primitiveId = m_module.opLoad(uint_t, primitiveIdPtr);
       
       // The size of any given vertex
-      uint32_t size = 0;      
-      for (const auto& element : elements) {
+      uint32_t size = 0;
+      for (uint32_t i = 0; i < elements.size(); i++) {
+        const auto& element = elements[i];
         if (element.Stream == 0 && element.Type != D3DDECLTYPE_UNUSED) {
           size = std::max(size, element.Offset + GetDecltypeSize(D3DDECLTYPE(element.Type)));
         }
@@ -157,7 +159,8 @@ namespace dxvk {
       uint32_t thisVertexOffset = m_module.opIMul(uint_t, vertexSize, primitiveId);
 
 
-      for (auto& element : elements) {
+      for (uint32_t i = 0; i < elements.size(); i++) {
+        const auto& element = elements[i];
         // Load the slot associated with this element
         DxsoSemantic semantic = { DxsoUsage(element.Usage), element.UsageIndex };
 
@@ -304,7 +307,7 @@ namespace dxvk {
 
   };
 
-  Rc<DxvkShader> D3D9SWVPEmulator::GetShaderModule(D3D9DeviceEx* pDevice, const D3D9VertexElements& elements) {
+  Rc<DxvkShader> D3D9SWVPEmulator::GetShaderModule(D3D9DeviceEx* pDevice, D3D9CompactVertexElements&& elements) {
     // Use the shader's unique key for the lookup
     { std::unique_lock<dxvk::mutex> lock(m_mutex);
       
@@ -343,7 +346,8 @@ namespace dxvk {
     // that object instead and discard the newly created module.
     { std::unique_lock<dxvk::mutex> lock(m_mutex);
       
-      auto status = m_modules.insert({ elements, shader });
+      std::pair<D3D9CompactVertexElements, Rc<DxvkShader>> pair = { std::move(elements), shader };
+      auto status = m_modules.insert(std::move(pair));
       if (!status.second)
         return status.first->second;
     }
