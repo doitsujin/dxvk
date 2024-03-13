@@ -271,6 +271,8 @@ namespace dxvk {
 
     auto& options = m_parent->GetOptions();
 
+    const VkPhysicalDeviceLimits& limits = m_adapter->deviceProperties().limits;
+
     // TODO: Actually care about what the adapter supports here.
     // ^ For Intel and older cards most likely here.
 
@@ -531,7 +533,7 @@ namespace dxvk {
     // Max Vertex Blend Matrix Index
     pCaps->MaxVertexBlendMatrixIndex = 0;
     // Max Point Size
-    pCaps->MaxPointSize              = 256.0f;
+    pCaps->MaxPointSize              = limits.pointSizeRange[1];
     // Max Primitive Count
     pCaps->MaxPrimitiveCount         = 0x00555555;
     // Max Vertex Index
