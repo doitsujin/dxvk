@@ -2953,14 +2953,19 @@ namespace dxvk {
     auto slice = dst->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>();
          slice = slice.subSlice(offset, slice.length() - offset);
 
+    D3D9CompactVertexElements elements;
+    for (const D3DVERTEXELEMENT9& element : decl->GetElements()) {
+      elements.emplace_back(element);
+    }
+
     EmitCs([this,
-      cVertexElements = decl->GetElements(),
+      cVertexElements = std::move(elements),
       cVertexCount    = VertexCount,
       cStartIndex     = SrcStartIndex,
       cInstanceCount  = GetInstanceCount(),
       cBufferSlice    = slice
     ](DxvkContext* ctx) mutable {
-      Rc<DxvkShader> shader = m_swvpEmulator.GetShaderModule(this, cVertexElements);
+      Rc<DxvkShader> shader = m_swvpEmulator.GetShaderModule(this, std::move(cVertexElements));
 
       auto drawInfo = GenerateDrawInfo(D3DPT_POINTLIST, cVertexCount, cInstanceCount);
 
