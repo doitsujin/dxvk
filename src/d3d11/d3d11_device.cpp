@@ -3411,8 +3411,9 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D11DXGIDevice::EnqueueSetEvent(HANDLE hEvent) {
-    Logger::err("D3D11DXGIDevice::EnqueueSetEvent: Not implemented");
-    return DXGI_ERROR_UNSUPPORTED;           
+    auto immediateContext = m_d3d11Device.GetContext();
+    immediateContext->Flush1(D3D11_CONTEXT_TYPE_ALL, hEvent);
+    return S_OK;            
   }
 
 
