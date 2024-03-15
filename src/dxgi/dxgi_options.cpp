@@ -82,12 +82,12 @@ namespace dxvk {
 
     // Expose Nvidia GPUs properly if NvAPI is enabled in environment
     this->hideNvidiaGpu = !isNvapiEnabled();
+    applyTristate(this->hideNvidiaGpu, config.getOption<Tristate>("dxgi.hideNvidiaGpu", Tristate::Auto));
 
-    Tristate hideNvidiaGpuOption = config.getOption<Tristate>("dxgi.hideNvidiaGpu", Tristate::Auto);
-    applyTristate(this->hideNvidiaGpu, hideNvidiaGpuOption);
-
-    // Always hide NVK devices by default since some NVAPI functionality may not work
-    this->hideNvkGpu = config.getOption<Tristate>("dxgi.hideNvkGpu", Tristate::Auto) == Tristate::True;
+    // Treat NVK adapters the same as Nvidia cards on the proprietary by
+    // default, but provide an override in case something isn't working.
+    this->hideNvkGpu = this->hideNvidiaGpu;
+    applyTristate(this->hideNvkGpu, config.getOption<Tristate>("dxgi.hideNvkGpu", Tristate::Auto));
 
     // Expose AMD and Intel GPU by default, unless a config override is active.
     // Implement as a tristate so that we have the option to introduce similar
