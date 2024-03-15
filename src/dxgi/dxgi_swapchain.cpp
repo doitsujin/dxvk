@@ -32,6 +32,9 @@ namespace dxvk {
     // Apply initial window mode and fullscreen state
     if (!m_descFs.Windowed && FAILED(EnterFullscreenMode(nullptr)))
       throw DxvkError("DXGI: Failed to set initial fullscreen state");
+
+    // Ensure that RGBA16 swap chains are scRGB if supported
+    UpdateColorSpace(m_desc.Format, m_colorSpace);
   }
   
   
@@ -398,7 +401,13 @@ namespace dxvk {
     if (Format != DXGI_FORMAT_UNKNOWN)
       m_desc.Format = Format;
     
-    return m_presenter->ChangeProperties(&m_desc, pCreationNodeMask, ppPresentQueue);
+    HRESULT hr = m_presenter->ChangeProperties(&m_desc, pCreationNodeMask, ppPresentQueue);
+
+    if (FAILED(hr))
+      return hr;
+
+    UpdateColorSpace(m_desc.Format, m_colorSpace);
+    return hr;
   }
 
 
@@ -572,36 +581,31 @@ namespace dxvk {
     if (!pColorSpaceSupport)
       return E_INVALIDARG;
 
-    // Don't expose any color spaces other than standard
-    // sRGB if the enableHDR option is not set.
-    //
-    // If we ever have a use for the non-SRGB non-HDR colorspaces
-    // some day, we may want to revisit this.
-    if (ColorSpace != DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709
-     && !m_factory->GetOptions()->enableHDR) {
-      *pColorSpaceSupport = 0;
-      return S_OK;
-    }
+    std::lock_guard<dxvk::mutex> lock(m_lockBuffer);
 
-    UINT support = m_presenter->CheckColorSpaceSupport(ColorSpace);
-    *pColorSpaceSupport = support;
+    if (ValidateColorSpaceSupport(m_desc.Format, ColorSpace))
+      *pColorSpaceSupport = DXGI_SWAP_CHAIN_COLOR_SPACE_SUPPORT_FLAG_PRESENT;
+    else
+      *pColorSpaceSupport = 0;
+
     return S_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::SetColorSpace1(DXGI_COLOR_SPACE_TYPE ColorSpace) {
-    UINT support = m_presenter->CheckColorSpaceSupport(ColorSpace);
+    std::lock_guard<dxvk::mutex> lock(m_lockBuffer);
 
-    if (!support)
+    if (!ValidateColorSpaceSupport(m_desc.Format, ColorSpace))
       return E_INVALIDARG;
 
-    std::lock_guard<dxvk::mutex> lock(m_lockBuffer);
-    HRESULT hr = m_presenter->SetColorSpace(ColorSpace);
-    if (SUCCEEDED(hr)) {
-      // If this was a colorspace other than our current one,
-      // punt us into that one on the DXGI output.
-      m_monitorInfo->PuntColorSpace(ColorSpace);
-    }
+    // Write back color space if setting it up succeeded. This way, we preserve
+    // the current color space even if the swap chain temporarily switches to a
+    // back buffer format which does not support it.
+    HRESULT hr = UpdateColorSpace(m_desc.Format, ColorSpace);
+
+    if (SUCCEEDED(hr))
+      m_colorSpace = ColorSpace;
+
     return hr;
   }
 
@@ -869,6 +873,7 @@ namespace dxvk {
       m_monitorInfo->ReleaseMonitorData();
   }
 
+
   void DxgiSwapChain::UpdateGlobalHDRState() {
     // Update the global HDR state if called from the legacy NVAPI
     // interfaces, etc.
@@ -891,6 +896,53 @@ namespace dxvk {
 
       m_globalHDRStateSerial = state.Serial;
     }
+  }
+
+
+  bool DxgiSwapChain::ValidateColorSpaceSupport(
+          DXGI_FORMAT             Format,
+          DXGI_COLOR_SPACE_TYPE   ColorSpace) {
+    // RGBA16 swap chains are treated as scRGB even on SDR displays,
+    // and regular sRGB is not exposed when this format is used.
+    if (Format == DXGI_FORMAT_R16G16B16A16_FLOAT)
+      return ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709;
+
+    // For everything else, we will always expose plain sRGB
+    if (ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709)
+      return true;
+
+    // Only expose HDR10 color space if HDR option is enabled
+    if (ColorSpace == DXGI_COLOR_SPACE_RGB_FULL_G2084_NONE_P2020)
+      return m_factory->GetOptions()->enableHDR && m_presenter->CheckColorSpaceSupport(ColorSpace);
+
+    return false;
+  }
+
+
+  HRESULT DxgiSwapChain::UpdateColorSpace(
+          DXGI_FORMAT             Format,
+          DXGI_COLOR_SPACE_TYPE   ColorSpace) {
+    // Don't do anything if the explicitly sepected color space
+    // is compatible with the back buffer format already
+    if (!ValidateColorSpaceSupport(Format, ColorSpace)) {
+      ColorSpace = Format == DXGI_FORMAT_R16G16B16A16_FLOAT
+        ? DXGI_COLOR_SPACE_RGB_FULL_G10_NONE_P709
+        : DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+    }
+
+    // Ensure that we pick a supported color space. This is relevant for
+    // mapping scRGB to sRGB on SDR setups, matching Windows behaviour.
+    if (!m_presenter->CheckColorSpaceSupport(ColorSpace))
+      ColorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+
+    HRESULT hr = m_presenter->SetColorSpace(ColorSpace);
+
+    // If this was a colorspace other than our current one,
+    // punt us into that one on the DXGI output.
+    if (SUCCEEDED(hr))
+      m_monitorInfo->PuntColorSpace(ColorSpace);
+
+    return hr;
   }
 
 }

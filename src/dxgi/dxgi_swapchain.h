@@ -193,6 +193,8 @@ namespace dxvk {
     bool                            m_frameStatisticsDisjoint = true;
     wsi::DxvkWindowState            m_windowState;
 
+    DXGI_COLOR_SPACE_TYPE           m_colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
+
     uint32_t                        m_globalHDRStateSerial = 0;
     
     HRESULT EnterFullscreenMode(
@@ -222,6 +224,14 @@ namespace dxvk {
     void ReleaseMonitorData();
 
     void UpdateGlobalHDRState();
+
+    bool ValidateColorSpaceSupport(
+            DXGI_FORMAT             Format,
+            DXGI_COLOR_SPACE_TYPE   ColorSpace);
+
+    HRESULT UpdateColorSpace(
+            DXGI_FORMAT             Format,
+            DXGI_COLOR_SPACE_TYPE   ColorSpace);
 
   };
   
