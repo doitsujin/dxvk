@@ -793,6 +793,7 @@ namespace dxvk {
     void SynchronizeCsThread(uint64_t SequenceNumber);
 
     void Flush();
+    void FlushAndSync9On12();
 
     void EndFrame();
 
@@ -1058,6 +1059,9 @@ namespace dxvk {
     bool IsDeviceReset() {
       return std::exchange(m_deviceHasBeenReset, false);
     }
+
+    template <bool Synchronize9On12>
+    void ExecuteFlush();
 
     void DetermineConstantLayouts(bool canSWVP);
 
@@ -1421,6 +1425,8 @@ namespace dxvk {
 
     Rc<sync::Fence>                 m_submissionFence;
     uint64_t                        m_submissionId = 0ull;
+    DxvkSubmitStatus                m_submitStatus;
+
     uint64_t                        m_flushSeqNum = 0ull;
     GpuFlushTracker                 m_flushTracker;
 

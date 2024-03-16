@@ -33,7 +33,7 @@ namespace dxvk {
     if (num_sync)
       Logger::err("D3D9On12::GetD3D12Device: ReturnUnderlyingResource: Stub");
 
-    m_device->Flush();
+    m_device->FlushAndSync9On12();
     return S_OK;
   }
 

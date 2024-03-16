@@ -5672,9 +5672,12 @@ namespace dxvk {
   }
 
 
-
-  void D3D9DeviceEx::Flush() {
+  template <bool Synchronize9On12>
+  void D3D9DeviceEx::ExecuteFlush() {
     D3D9DeviceLock lock = LockDevice();
+
+    if constexpr (Synchronize9On12)
+      m_submitStatus.result = VK_NOT_READY;
 
     m_initializer->Flush();
     m_converter->Flush();
@@ -5687,16 +5690,32 @@ namespace dxvk {
 
     EmitCs<false>([
       cSubmissionFence  = m_submissionFence,
-      cSubmissionId     = submissionId
+      cSubmissionId     = submissionId,
+      cSubmissionStatus = Synchronize9On12 ? &m_submitStatus : nullptr
     ] (DxvkContext* ctx) {
       ctx->signal(cSubmissionFence, cSubmissionId);
-      ctx->flushCommandList(nullptr);
+      ctx->flushCommandList(cSubmissionStatus);
     });
 
     FlushCsChunk();
 
     m_flushSeqNum = m_csSeqNum;
     m_flushTracker.notifyFlush(m_flushSeqNum, submissionId);
+
+    // If necessary, block calling thread until the
+    // Vulkan queue submission is performed.
+    if constexpr (Synchronize9On12)
+      m_dxvkDevice->waitForSubmission(&m_submitStatus);
+  }
+
+
+  void D3D9DeviceEx::Flush() {
+    ExecuteFlush<false>();
+  }
+
+
+  void D3D9DeviceEx::FlushAndSync9On12() {
+    ExecuteFlush<true>();
   }
 
 
