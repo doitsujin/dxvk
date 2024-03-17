@@ -873,6 +873,10 @@ namespace dxvk {
     { R"(\\RedRiver\.exe$)", {{
       { "d3d9.floatEmulation",              "Strict" },
     }} },
+    /* Dark Void - Crashes above 60fps in places */
+    { R"(\\ShippingPC-SkyGame\.exe$)", {{
+      { "d3d9.maxFrameRate",                "60" },
+    }} },
 
 
     /**********************************************/
