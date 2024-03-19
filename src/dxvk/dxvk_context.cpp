@@ -3563,69 +3563,90 @@ namespace dxvk {
           VkImageSubresourceLayers srcSubresource,
           VkOffset3D            srcOffset,
           VkExtent3D            extent) {
-    VkFormat viewFormat = m_common->metaCopy().getCopyDestinationFormat(
-      dstSubresource.aspectMask,
-      srcSubresource.aspectMask,
-      srcImage->info().format);
+    DxvkMetaCopyFormats viewFormats = m_common->metaCopy().getFormats(
+      dstImage->info().format, dstSubresource.aspectMask,
+      srcImage->info().format, srcSubresource.aspectMask);
     
-    if (!viewFormat) {
-      Logger::err("DxvkContext: copyImageFb: Unsupported format");
-      return;
-    }
-
     // Usually we should be able to draw directly to the destination image,
     // but in some cases this might not be possible, e.g. if when copying
     // from something like D32_SFLOAT to RGBA8_UNORM. In those situations,
     // create a temporary image to draw to, and then copy to the actual
     // destination image using a regular Vulkan transfer function.
-    bool useDirectCopy = (dstImage->info().usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
-                      && (dstImage->isViewCompatible(viewFormat));
+    bool dstIsCompatible = (dstImage->info().usage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
+                        && (dstImage->isViewCompatible(viewFormats.dstFormat));
+    bool srcIsCompatible = (srcImage->info().usage & (VK_IMAGE_USAGE_SAMPLED_BIT))
+                        && (srcImage->isViewCompatible(viewFormats.srcFormat));
 
-    if (useDirectCopy) {
+    if (dstIsCompatible && srcIsCompatible) {
       this->copyImageFbDirect(
-        dstImage, dstSubresource, dstOffset, viewFormat,
-        srcImage, srcSubresource, srcOffset, extent);
-    } else {
+        dstImage, dstSubresource, dstOffset, viewFormats.dstFormat,
+        srcImage, srcSubresource, srcOffset, viewFormats.srcFormat, extent);
+    } else if (dstIsCompatible || srcIsCompatible) {
       DxvkImageCreateInfo imageInfo = dstImage->info();
-      imageInfo.format = viewFormat;
       imageInfo.flags = 0;
-      imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
       imageInfo.extent = extent;
-      imageInfo.numLayers = dstSubresource.layerCount;
       imageInfo.mipLevels = 1;
       imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-      imageInfo.layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-      imageInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
-      imageInfo.access = VK_ACCESS_TRANSFER_READ_BIT;
       imageInfo.viewFormatCount = 0;
 
-      if (dstImage->formatInfo()->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
-        imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-        imageInfo.stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        imageInfo.access |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-      } else {
-        imageInfo.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-        imageInfo.stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-                         |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        imageInfo.access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+      if (!dstIsCompatible) {
+        imageInfo.format = viewFormats.dstFormat;
+        imageInfo.numLayers = dstSubresource.layerCount;
+        imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        imageInfo.layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        imageInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        imageInfo.access = VK_ACCESS_TRANSFER_READ_BIT;
+
+        if (dstImage->formatInfo()->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
+          imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+          imageInfo.stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+          imageInfo.access |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        } else {
+          imageInfo.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+          imageInfo.stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                           |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+          imageInfo.access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+        }
+      } else /* if (!srcIsCompatible) */ {
+        imageInfo.format = viewFormats.srcFormat;
+        imageInfo.numLayers = srcSubresource.layerCount;
+        imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+        imageInfo.layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        imageInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        imageInfo.access = VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
       }
 
-      Rc<DxvkImage> tmpImage = m_device->createImage(imageInfo,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      Rc<DxvkImage> tmpImage = m_device->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-      VkImageSubresourceLayers tmpSubresource = dstSubresource;
+      VkImageSubresourceLayers tmpSubresource = { };
+      tmpSubresource.aspectMask = tmpImage->formatInfo()->aspectMask;
       tmpSubresource.mipLevel = 0;
       tmpSubresource.baseArrayLayer = 0;
+      tmpSubresource.layerCount = imageInfo.numLayers;
 
       VkOffset3D tmpOffset = { 0, 0, 0 };
 
-      this->copyImageFbDirect(
-        tmpImage, tmpSubresource, tmpOffset, viewFormat,
-        srcImage, srcSubresource, srcOffset, extent);
+      if (!dstIsCompatible) {
+        this->copyImageFbDirect(
+          tmpImage, tmpSubresource, tmpOffset, viewFormats.dstFormat,
+          srcImage, srcSubresource, srcOffset, viewFormats.srcFormat, extent);
 
-      this->copyImageHw(
-        dstImage, dstSubresource, dstOffset,
-        tmpImage, tmpSubresource, tmpOffset, extent);
+        this->copyImageHw(
+          dstImage, dstSubresource, dstOffset,
+          tmpImage, tmpSubresource, tmpOffset, extent);
+      } else /* if (!srcIsCompatible) */ {
+        this->copyImageHw(
+          tmpImage, tmpSubresource, tmpOffset,
+          srcImage, srcSubresource, srcOffset, extent);
+
+        this->copyImageFbDirect(
+          dstImage, dstSubresource, dstOffset, viewFormats.dstFormat,
+          tmpImage, tmpSubresource, tmpOffset, viewFormats.srcFormat, extent);
+      }
+    } else {
+      Logger::err(str::format("DxvkContext: copyImageFb: Unsupported operation:\n"
+        "  srcFormat = ", srcImage->info().format, " (aspect ", srcSubresource.aspectMask, ")\n",
+        "  dstFormat = ", dstImage->info().format, " (aspect ", dstSubresource.aspectMask, ")"));
     }
   }
 
@@ -3638,6 +3659,7 @@ namespace dxvk {
     const Rc<DxvkImage>&        srcImage,
           VkImageSubresourceLayers srcSubresource,
           VkOffset3D            srcOffset,
+          VkFormat              srcFormat,
           VkExtent3D            extent) {
     this->invalidateState();
 
@@ -3701,8 +3723,6 @@ namespace dxvk {
     m_execAcquires.recordCommands(m_cmd);
 
     // Create source and destination image views
-    VkFormat srcFormat = srcImage->info().format;
-
     Rc<DxvkMetaCopyViews> views = new DxvkMetaCopyViews(m_device->vkd(),
       dstImage, dstSubresource, dstFormat,
       srcImage, srcSubresource, srcFormat);

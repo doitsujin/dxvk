@@ -120,32 +120,29 @@ namespace dxvk {
   }
 
 
-  VkFormat DxvkMetaCopyObjects::getCopyDestinationFormat(
+  DxvkMetaCopyFormats DxvkMetaCopyObjects::getFormats(
+          VkFormat              dstFormat,
           VkImageAspectFlags    dstAspect,
-          VkImageAspectFlags    srcAspect,
-          VkFormat              srcFormat) const {
-    if (srcAspect == dstAspect)
-      return srcFormat;
-    
-    if (dstAspect == VK_IMAGE_ASPECT_COLOR_BIT
-     && srcAspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
+          VkFormat              srcFormat,
+          VkImageAspectFlags    srcAspect) const {
+    if (dstAspect == srcAspect)
+      return { dstFormat, srcFormat };
+
+    if (dstAspect == VK_IMAGE_ASPECT_COLOR_BIT && srcAspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
       switch (srcFormat) {
-        case VK_FORMAT_D16_UNORM:  return VK_FORMAT_R16_UNORM;
-        case VK_FORMAT_D32_SFLOAT: return VK_FORMAT_R32_SFLOAT;
-        default:                   return VK_FORMAT_UNDEFINED;
+        case VK_FORMAT_D16_UNORM:  return { VK_FORMAT_R16_UNORM,  VK_FORMAT_D16_UNORM  };
+        case VK_FORMAT_D32_SFLOAT: return { VK_FORMAT_R32_SFLOAT, VK_FORMAT_D32_SFLOAT };
+        default:                   return { VK_FORMAT_UNDEFINED,  VK_FORMAT_UNDEFINED  };
+      }
+    } else if (dstAspect == VK_IMAGE_ASPECT_DEPTH_BIT && srcAspect == VK_IMAGE_ASPECT_COLOR_BIT) {
+      switch (dstFormat) {
+        case VK_FORMAT_D16_UNORM:  return { VK_FORMAT_D16_UNORM,  VK_FORMAT_R16_UNORM  };
+        case VK_FORMAT_D32_SFLOAT: return { VK_FORMAT_D32_SFLOAT, VK_FORMAT_R32_SFLOAT };
+        default:                   return { VK_FORMAT_UNDEFINED,  VK_FORMAT_UNDEFINED  };
       }
     }
 
-    if (dstAspect == VK_IMAGE_ASPECT_DEPTH_BIT
-     && srcAspect == VK_IMAGE_ASPECT_COLOR_BIT) {
-      switch (srcFormat) {
-        case VK_FORMAT_R16_UNORM:  return VK_FORMAT_D16_UNORM;
-        case VK_FORMAT_R32_SFLOAT: return VK_FORMAT_D32_SFLOAT;
-        default:                   return VK_FORMAT_UNDEFINED;
-      }
-    }
-
-    return VK_FORMAT_UNDEFINED;
+    return { VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED };
   }
 
 
