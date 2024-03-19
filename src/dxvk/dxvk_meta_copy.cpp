@@ -9,9 +9,6 @@
 #include <dxvk_copy_color_1d.h>
 #include <dxvk_copy_color_2d.h>
 #include <dxvk_copy_color_ms.h>
-#include <dxvk_copy_depth_1d.h>
-#include <dxvk_copy_depth_2d.h>
-#include <dxvk_copy_depth_ms.h>
 #include <dxvk_copy_depth_stencil_1d.h>
 #include <dxvk_copy_depth_stencil_2d.h>
 #include <dxvk_copy_depth_stencil_ms.h>
@@ -84,11 +81,7 @@ namespace dxvk {
     m_color {
       createShaderModule(dxvk_copy_color_1d),
       createShaderModule(dxvk_copy_color_2d),
-      createShaderModule(dxvk_copy_color_ms) },
-    m_depth {
-      createShaderModule(dxvk_copy_depth_1d),
-      createShaderModule(dxvk_copy_depth_2d),
-      createShaderModule(dxvk_copy_depth_ms) } {
+      createShaderModule(dxvk_copy_color_ms) } {
     if (device->features().vk12.shaderOutputLayer) {
       m_shaderVert = createShaderModule(dxvk_fullscreen_layer_vert);
     } else {
@@ -119,9 +112,6 @@ namespace dxvk {
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_depthStencil.fragMs, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_depthStencil.frag2D, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_depthStencil.frag1D, nullptr);
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_depth.fragMs, nullptr);
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_depth.frag2D, nullptr);
-    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_depth.frag1D, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_color.fragMs, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_color.frag2D, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_color.frag1D, nullptr);
@@ -313,7 +303,7 @@ namespace dxvk {
     
     std::array<std::pair<const FragShaders*, VkImageAspectFlags>, 3> shaderSets = {{
       { &m_color,        VK_IMAGE_ASPECT_COLOR_BIT },
-      { &m_depth,        VK_IMAGE_ASPECT_DEPTH_BIT },
+      { &m_color,        VK_IMAGE_ASPECT_DEPTH_BIT },
       { &m_depthStencil, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT },
     }};
 
