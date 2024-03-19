@@ -5594,11 +5594,13 @@ namespace dxvk {
     auto bufferInfo = m_state.vi.indexBuffer.getDescriptor();
 
     if (m_features.test(DxvkContextFeature::IndexBufferRobustness)) {
+      VkDeviceSize align = m_state.vi.indexType == VK_INDEX_TYPE_UINT16 ? 2 : 4;
+      VkDeviceSize range = bufferInfo.buffer.range & ~(align - 1);
+
       m_cmd->cmdBindIndexBuffer2(
         bufferInfo.buffer.buffer,
         bufferInfo.buffer.offset,
-        bufferInfo.buffer.range,
-        m_state.vi.indexType);
+        range, m_state.vi.indexType);
     } else {
       m_cmd->cmdBindIndexBuffer(
         bufferInfo.buffer.buffer,
