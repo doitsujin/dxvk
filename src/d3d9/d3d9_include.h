@@ -101,9 +101,7 @@ IDirect3DDevice9On12 : public IUnknown {
   virtual HRESULT STDMETHODCALLTYPE ReturnUnderlyingResource(IDirect3DResource9* resource, UINT num_sync, UINT64* signal_values, ID3D12Fence** fences) = 0;
 };
 
-#ifdef _MSC_VER
-struct __declspec(uuid("e7fda234-b589-4049-940d-8878977531c8")) IDirect3DDevice9On12;
-#else
+#ifndef _MSC_VER
 __CRT_UUID_DECL(IDirect3DDevice9On12,      0xe7fda234,0xb589,0x4049,0x94,0x0d,0x88,0x78,0x97,0x75,0x31,0xc8);
 #endif
 

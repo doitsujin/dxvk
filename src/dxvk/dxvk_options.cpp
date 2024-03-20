@@ -12,6 +12,7 @@ namespace dxvk {
     maxChunkSize          = config.getOption<int32_t> ("dxvk.maxChunkSize",           0);
     hud                   = config.getOption<std::string>("dxvk.hud", "");
     tearFree              = config.getOption<Tristate>("dxvk.tearFree",               Tristate::Auto);
+    hideIntegratedGraphics = config.getOption<bool>   ("dxvk.hideIntegratedGraphics", false);
   }
 
 }

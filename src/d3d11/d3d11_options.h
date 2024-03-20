@@ -11,7 +11,7 @@
 namespace dxvk {
 
   struct D3D11Options {
-    D3D11Options(const Config& config, const Rc<DxvkDevice>& device);
+    D3D11Options(const Config& config);
 
     /// Enables speed hack for mapping on deferred contexts
     ///
@@ -76,10 +76,6 @@ namespace dxvk {
     /// Overrides DXGI_SWAP_CHAIN_DESC::BufferCount.
     int32_t numBackBuffers;
 
-    /// Sync interval. Overrides the value
-    /// passed to IDXGISwapChain::Present.
-    int32_t syncInterval;
-
     /// Override maximum frame latency if the app specifies
     /// a higher value. May help with frame timing issues.
     int32_t maxFrameLatency;
@@ -116,6 +112,11 @@ namespace dxvk {
     /// useful for debugging purposes or when applications have
     /// race conditions.
     bool enableContextLock;
+
+    /// Whether to expose the driver command list feature. Enabled by
+    /// default and generally beneficial, but some games may assume that
+    /// this is not supported when running on an AMD GPU.
+    bool exposeDriverCommandLists;
 
     /// Shader dump path
     std::string shaderDumpPath;

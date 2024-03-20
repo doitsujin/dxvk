@@ -788,7 +788,8 @@ namespace dxvk {
       // Fix up the D3DFORMAT to match what we are enumerating
       mode.Format = static_cast<D3DFORMAT>(Format);
 
-      m_modes.push_back(mode);
+      if (std::count(m_modes.begin(), m_modes.end(), mode) == 0)
+        m_modes.push_back(mode);
     }
 
     // Sort display modes by width, height and refresh rate,

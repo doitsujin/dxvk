@@ -32,6 +32,10 @@ namespace dxvk {
     m_device->m_implicitSwapchain->SetApiName(name);
   }
 
+  void DxvkD3D8Bridge::SetD3D8CompatibilityMode(const bool compatMode) {
+    m_device->SetD3D8CompatibilityMode(compatMode);
+  }
+
   HRESULT DxvkD3D8Bridge::UpdateTextureFromBuffer(
         IDirect3DSurface9*  pDestSurface,
         IDirect3DSurface9*  pSrcSurface,

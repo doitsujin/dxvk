@@ -1,11 +1,12 @@
-project('dxvk', ['c', 'cpp'], version : 'v2.3', meson_version : '>= 0.49', default_options : [ 'cpp_std=c++17', 'warning_level=2' ])
+project('dxvk', ['c', 'cpp'], version : 'v2.3.1', meson_version : '>= 0.58', default_options : [ 'cpp_std=c++17', 'warning_level=2' ])
 
 cpu_family = target_machine.cpu_family()
 platform   = target_machine.system()
+fs = import('fs')
 
 cpp = meson.get_compiler('cpp')
 cc = meson.get_compiler('c')
-dxvk_is_msvc = cpp.get_id() == 'msvc'
+dxvk_is_msvc = cpp.get_argument_syntax() == 'msvc'
 
 compiler_args = [
   '-msse',
@@ -33,14 +34,24 @@ if get_option('build_id')
   ]
 endif
 
-dxvk_include_dirs = [
-  './include',
-  './include/vulkan/include',
-  './include/spirv/include'
-]
+dxvk_include_dirs = ['./include']
+if fs.is_dir('./include/vulkan/include')
+  dxvk_include_dirs += ['./include/vulkan/include']
+elif not cpp.check_header('vulkan/vulkan.h')
+  error('Missing Vulkan-Headers')
+endif
+if fs.is_dir('./include/spirv/include')
+  dxvk_include_dirs += ['./include/spirv/include']
+elif not cpp.check_header('spirv/unified1/spirv.hpp')
+  error('Missing SPIRV-Headers')
+endif
 
-proj_displayinfo = subproject('libdisplay-info')
-dep_displayinfo = proj_displayinfo.get_variable('di_dep')
+dep_displayinfo = dependency(
+  'libdisplay-info',
+  version: ['>= 0.0.0', '< 0.2.0'],
+  fallback: ['libdisplay-info', 'di_dep'],
+  default_options: ['default_library=static'],
+)
 
 if platform == 'windows'
   compiler_args += [
@@ -48,27 +59,33 @@ if platform == 'windows'
     '-D_WIN32_WINNT=0xa00',
   ]
 
-  link_args += [
-    '-static',
-    '-static-libgcc',
-    '-static-libstdc++',
-    # We need to set the section alignment for debug symbols to
-    # work properly as well as avoiding a memcpy from the Wine loader.
-    '-Wl,--file-alignment=4096',
-  ]
-
-  # Wine's built-in back traces only work with dwarf4 symbols
-  if get_option('debug')
-    compiler_args += [
-      '-gdwarf-4',
-    ]
-  endif
-
-  # Enable stdcall fixup on 32-bit
-  if cpu_family == 'x86'
+  if not dxvk_is_msvc
     link_args += [
-      '-Wl,--enable-stdcall-fixup',
-      '-Wl,--kill-at',
+      '-static',
+      '-static-libgcc',
+      '-static-libstdc++',
+      # We need to set the section alignment for debug symbols to
+      # work properly as well as avoiding a memcpy from the Wine loader.
+      '-Wl,--file-alignment=4096',
+    ]
+
+    # Wine's built-in back traces only work with dwarf4 symbols
+    if get_option('debug')
+      compiler_args += [
+        '-gdwarf-4',
+      ]
+    endif
+
+    # Enable stdcall fixup on 32-bit
+    if cpu_family == 'x86'
+      link_args += [
+        '-Wl,--enable-stdcall-fixup',
+        '-Wl,--kill-at',
+      ]
+    endif
+  else
+    link_args += [
+      '/FILEALIGN:4096',
     ]
   endif
 

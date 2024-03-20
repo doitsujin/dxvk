@@ -27,6 +27,7 @@ namespace dxvk {
       & device->getFormatFeatures(VK_FORMAT_R32_SINT).optimal;
 
     supportsTypedUavLoadR32 = (r32Features & VK_FORMAT_FEATURE_2_STORAGE_READ_WITHOUT_FORMAT_BIT);
+    supportsRawAccessChains = device->features().nvRawAccessChains.shaderRawAccessChains;
 
     switch (device->config().useRawSsbo) {
       case Tristate::Auto:  minSsboAlignment = devInfo.core.properties.limits.minStorageBufferOffsetAlignment; break;

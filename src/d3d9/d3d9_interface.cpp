@@ -14,7 +14,7 @@ namespace dxvk {
   Singleton<DxvkInstance> g_dxvkInstance;
 
   D3D9InterfaceEx::D3D9InterfaceEx(bool bExtended)
-    : m_instance    ( g_dxvkInstance.acquire() )
+    : m_instance    ( g_dxvkInstance.acquire(DxvkInstanceFlag::ClientApiIsD3D9) )
     , m_d3d8Bridge  ( this )
     , m_extended    ( bExtended ) 
     , m_d3d9Options ( nullptr, m_instance->config() )

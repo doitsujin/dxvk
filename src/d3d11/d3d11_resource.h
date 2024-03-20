@@ -30,7 +30,8 @@ namespace dxvk {
   public:
 
     D3D11DXGIKeyedMutex(
-            ID3D11Resource*         pResource);
+            ID3D11Resource*         pResource,
+            D3D11Device*            pDevice);
 
     ~D3D11DXGIKeyedMutex();
 
@@ -88,7 +89,8 @@ namespace dxvk {
   public:
     
     D3D11DXGIResource(
-            ID3D11Resource*         pResource);
+            ID3D11Resource*         pResource,
+            D3D11Device*            pDevice);
 
     ~D3D11DXGIResource();
 

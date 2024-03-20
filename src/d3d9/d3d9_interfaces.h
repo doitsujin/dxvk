@@ -229,12 +229,7 @@ ID3D9VkExtSwapchain : public IUnknown {
   virtual void STDMETHODCALLTYPE UnlockAdditionalFormats() = 0;
 };
 
-#ifdef _MSC_VER
-struct __declspec(uuid("3461a81b-ce41-485b-b6b5-fcf08ba6a6bd")) ID3D9VkInteropInterface;
-struct __declspec(uuid("d56344f5-8d35-46fd-806d-94c351b472c1")) ID3D9VkInteropTexture;
-struct __declspec(uuid("2eaa4b89-0107-4bdb-87f7-0f541c493ce0")) ID3D9VkInteropDevice;
-struct __declspec(uuid("13776e93-4aa9-430a-a4ec-fe9e281181d5")) ID3D9VkExtSwapchain;
-#else
+#ifndef _MSC_VER
 __CRT_UUID_DECL(ID3D9VkInteropInterface,   0x3461a81b,0xce41,0x485b,0xb6,0xb5,0xfc,0xf0,0x8b,0xa6,0xa6,0xbd);
 __CRT_UUID_DECL(ID3D9VkInteropTexture,     0xd56344f5,0x8d35,0x46fd,0x80,0x6d,0x94,0xc3,0x51,0xb4,0x72,0xc1);
 __CRT_UUID_DECL(ID3D9VkInteropDevice,      0x2eaa4b89,0x0107,0x4bdb,0x87,0xf7,0x0f,0x54,0x1c,0x49,0x3c,0xe0);

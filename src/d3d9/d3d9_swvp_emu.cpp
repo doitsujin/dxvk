@@ -144,7 +144,7 @@ namespace dxvk {
       uint32_t primitiveId = m_module.opLoad(uint_t, primitiveIdPtr);
 
       // The size of any given vertex
-      uint32_t vertexSize       = m_module.constu32(pDecl->GetSize() / sizeof(uint32_t));
+      uint32_t vertexSize       = m_module.constu32(pDecl->GetSize(0) / sizeof(uint32_t));
 
       //The offset of this vertex from the beginning of the buffer
       uint32_t thisVertexOffset = m_module.opIMul(uint_t, vertexSize, primitiveId);

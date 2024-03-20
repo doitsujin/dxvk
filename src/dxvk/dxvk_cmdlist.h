@@ -671,7 +671,7 @@ namespace dxvk {
             uint32_t                indexCount,
             uint32_t                instanceCount,
             uint32_t                firstIndex,
-            uint32_t                vertexOffset,
+            int32_t                 vertexOffset,
             uint32_t                firstInstance) {
       m_vkd->vkCmdDrawIndexed(m_cmd.execBuffer,
         indexCount, instanceCount,

@@ -30,8 +30,11 @@ namespace dxvk {
     return E_NOINTERFACE;
   }
   HRESULT STDMETHODCALLTYPE D3D9On12::ReturnUnderlyingResource(IDirect3DResource9* resource, UINT num_sync, UINT64* signal_values, ID3D12Fence** fences) {
-    Logger::err("D3D9On12::GetD3D12Device: ReturnUnderlyingResource: Stub");
-    return E_NOINTERFACE;
+    if (num_sync)
+      Logger::err("D3D9On12::GetD3D12Device: ReturnUnderlyingResource: Stub");
+
+    m_device->FlushAndSync9On12();
+    return S_OK;
   }
 
 }

@@ -298,7 +298,7 @@ namespace dxvk {
         D3D11_BUFFER_DESC bufferDesc;
         static_cast<D3D11Buffer*>(pResource)->GetDesc(&bufferDesc);
         
-        if (bufferDesc.MiscFlags == D3D11_RESOURCE_MISC_BUFFER_STRUCTURED) {
+        if (bufferDesc.MiscFlags & D3D11_RESOURCE_MISC_BUFFER_STRUCTURED) {
           pDesc->Format              = DXGI_FORMAT_UNKNOWN;
           pDesc->ViewDimension       = D3D11_SRV_DIMENSION_BUFFER;
           pDesc->Buffer.FirstElement = 0;

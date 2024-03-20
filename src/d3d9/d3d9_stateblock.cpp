@@ -18,7 +18,8 @@ namespace dxvk {
   }
 
   D3D9StateBlock::~D3D9StateBlock() {
-    m_parent->DecrementLosableCounter();
+    if (!m_parent->IsD3D8Compatible())
+      m_parent->DecrementLosableCounter();
   }
 
   HRESULT STDMETHODCALLTYPE D3D9StateBlock::QueryInterface(

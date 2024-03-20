@@ -79,7 +79,7 @@ namespace dxvk {
 
 
   DxgiFactory::DxgiFactory(UINT Flags)
-  : m_instance        (g_dxvkInstance.acquire()),
+  : m_instance        (g_dxvkInstance.acquire(0)),
     m_interop         (this),
     m_options         (m_instance->config()),
     m_monitorInfo     (this, m_options),
@@ -124,10 +124,13 @@ namespace dxvk {
       }
     }
 
+
     // If any monitors are left on the list, enable the
     // fallback to always enumerate all monitors.
     if ((m_monitorFallback = !monitors.empty()))
       Logger::warn("DXGI: Found monitors not associated with any adapter, using fallback");
+    else
+      m_monitorFallback = m_options.useMonitorFallback;
   }
   
   

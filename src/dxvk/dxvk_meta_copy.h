@@ -26,6 +26,14 @@ namespace dxvk {
   };
 
   /**
+   * \brief Pair of view formats for copy operation
+   */
+  struct DxvkMetaCopyFormats {
+    VkFormat dstFormat;
+    VkFormat srcFormat;
+  };
+
+  /**
    * \brief Copy pipeline
    * 
    * Stores the objects for a single pipeline
@@ -122,13 +130,17 @@ namespace dxvk {
      * Returns the color format that we need to use
      * as the destination image view format in case
      * of depth to color image copies.
-     * \param [in] format Depth format
+     * \param [in] dstFormat Destination image format
+     * \param [in] dstAspect Destination aspect mask
+     * \param [in] srcFormat Source image format
+     * \param [in] srcAspect Source aspect mask
      * \returns Corresponding color format
      */
-    VkFormat getCopyDestinationFormat(
+    DxvkMetaCopyFormats getFormats(
+            VkFormat              dstFormat,
             VkImageAspectFlags    dstAspect,
-            VkImageAspectFlags    srcAspect,
-            VkFormat              srcFormat) const;
+            VkFormat              srcFormat,
+            VkImageAspectFlags    srcAspect) const;
 
     /**
      * \brief Creates pipeline for meta copy operation

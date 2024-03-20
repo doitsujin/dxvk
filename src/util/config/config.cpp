@@ -27,10 +27,6 @@ namespace dxvk {
     { R"(\\EliteDangerous64\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
-    /* The Vanishing of Ethan Carter Redux        */
-    { R"(\\EthanCarter-Win64-Shipping\.exe$)", {{
-      { "dxgi.customVendorId",              "10de" },
-    }} },
      /* EVE Online: Needs this to expose D3D12     *
      * otherwise D3D12 option on launcher is      *
      * greyed out                                 */
@@ -54,13 +50,16 @@ namespace dxvk {
     /* Far Cry 3: Assumes clear(0.5) on an UNORM  *
      * format to result in 128 on AMD and 127 on  *
      * Nvidia. We assume that the Vulkan drivers  *
-     * match the clear behaviour of D3D11.        */
+     * match the clear behaviour of D3D11.        *
+     * Intel needs to match the AMD result        */
     { R"(\\(farcry3|fc3_blooddragon)_d3d11\.exe$)", {{
       { "dxgi.hideNvidiaGpu",               "False" },
+      { "dxgi.hideIntelGpu",                "True" },
     }} },
-    /* Far Cry 4: Same as Far Cry 3               */
-    { R"(\\FarCry4\.exe$)", {{
+    /* Far Cry 4 and Primal: Same as Far Cry 3    */
+    { R"(\\(FarCry4|FCPrimal)\.exe$)", {{
       { "dxgi.hideNvidiaGpu",               "False" },
+      { "dxgi.hideIntelGpu",                "True" },
     }} },
     /* Frostpunk: Renders one frame with D3D9     *
      * after creating the DXGI swap chain         */
@@ -131,8 +130,8 @@ namespace dxvk {
     { R"(\\vr\.exe$)", {{
       { "d3d11.dcSingleUseMode",            "False" },
     }} },
-    /* Hitman 2 and 3 - requires AGS library      */
-    { R"(\\HITMAN(2|3)\.exe$)", {{
+    /* Hitman 2 - requires AGS library      */
+    { R"(\\HITMAN2\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
     /* Modern Warfare Remastered                  */
@@ -230,11 +229,6 @@ namespace dxvk {
     /* Nioh 2                                     */
     { R"(\\nioh2\.exe$)", {{
       { "dxgi.deferSurfaceCreation",        "True" },
-    }} },
-    /* DIRT 5 - uses amd_ags_x64.dll when it      *
-     * detects an AMD GPU                         */
-    { R"(\\DIRT5\.exe$)", {{
-      { "dxgi.customVendorId",              "10de" },
     }} },
     /* Crazy Machines 3 - crashes on long device  *
      * descriptions                               */
@@ -417,6 +411,24 @@ namespace dxvk {
     { R"(\\RidersRepublic(_BE)?\.exe$)", {{
       { "dxgi.hideAmdGpu",                "True"   },
     }} },
+    /* HoloCure - Save the Fans!
+       Same as Cyberpunk 2077                     */
+    { R"(\\HoloCure\.exe$)", {{
+      { "dxgi.useMonitorFallback",          "True" },
+    }} },
+    /* Kenshi                                     *
+     * Helps CPU bound performance                */
+    { R"(\\kenshi_x64\.exe$)", {{
+      { "d3d11.cachedDynamicResources",     "v"    },
+    }} },
+    /* Granblue Relink: Spams pixel shader UAVs   *
+     * and assumes that AMD GPUs do not expose    *
+     * native command lists for AGS usage         */
+    { R"(\\granblue_fantasy_relink\.exe$)", {{
+      { "d3d11.ignoreGraphicsBarriers",     "True"  },
+      { "d3d11.exposeDriverCommandLists",   "False" },
+      { "dxgi.hideNvidiaGpu",               "False" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
@@ -530,11 +542,17 @@ namespace dxvk {
       { "d3d9.customVendorId",              "1002" },
       { "dxgi.emulateUMA",                  "True" },
       { "d3d9.supportDFFormats",            "False" },
-      { "d3d9.deviceLostOnFocusLoss",       "True" },
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
-    /* Battlefield 2 (bad z-pass)                 */
+    /* Battlefield 2                              *
+     * Bad z-pass and ingame GUI loss on alt tab  */
     { R"(\\BF2\.exe$)", {{
-      { "d3d9.longMad",                     "True" },
+      { "d3d9.longMad",                     "True" },  
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
+    }} },
+    /* Battlefield 2142 - Same GUI issue as BF2   */
+    { R"(\\BF2142\.exe$)", {{ 
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
     /* SpellForce 2 Series                        */
     { R"(\\SpellForce2.*\.exe$)", {{
@@ -563,7 +581,7 @@ namespace dxvk {
       { "d3d9.customDeviceId",              "0402" },
     }} },
     /* Warhammer: Online                         */
-    { R"(\\WAR(-64)?\.exe$)", {{
+    { R"(\\(WAR(-64)?|WARTEST(-64)?)\.exe$)", {{
       { "d3d9.customVendorId",              "1002" },
     }} },
     /* Dragon Nest                               */
@@ -772,19 +790,22 @@ namespace dxvk {
       { "d3d9.maxFrameRate",                "60" },
     }} },
     /* Codename Panzers Phase One/Two          *
-     * Main menu won't render after intros     */
+     * Main menu won't render after intros     *
+     * and CPU bound performance               */
     { R"(\\(PANZERS|PANZERS_Phase_2)\.exe$)", {{
       { "d3d9.enableDialogMode",            "True"   },
+      { "d3d9.cachedDynamicBuffers",        "True"   },
     }} },
     /* DC Universe Online                      *
      * Freezes after alt tabbing               */
     { R"(\\DCGAME\.EXE$)", {{
-      { "d3d9.deviceLostOnFocusLoss",       "True" },
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
     /* Halo Online                             *
      * Black textures                          */
     { R"(\\eldorado\.exe$)", {{
       { "d3d9.floatEmulation",              "Strict"   },
+      { "d3d9.allowDirectBufferMapping",    "False" },
     }} },
     /* Injustice: Gods Among Us                *
      * Locks a buffer that's still in use      */
@@ -807,7 +828,7 @@ namespace dxvk {
     { R"(\\Snowblind\.(SP|MP|exe)$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
-    /* Project: Snowblind                      */
+    /* Aviary Attorney                         */
     { R"(\\Aviary Attorney\\nw\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
@@ -815,6 +836,48 @@ namespace dxvk {
     { R"(\\drakensang\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
+    /* Age of Empires 2 - janky frame timing   */
+    { R"(\\AoK HD\.exe$)", {{
+      { "d3d9.maxFrameLatency",             "1" },
+    }} },
+    /* Battlestations Midway                   */
+    { R"(\\Battlestationsmidway\.exe$)", {{
+      { "d3d9.cachedDynamicBuffers",     "True" },
+    }} },
+    /* SkyDrift                                 *
+     * Works around alt tab OOM crash           */
+    { R"(\\SkyDrift\.exe$)" , {{
+      { "d3d9.allowDirectBufferMapping",    "False" },
+    }} },
+     /* Assassin's Creed 2                      *
+     *  Helps alt tab crash on Linux            */
+    { R"(\\AssassinsCreedIIGame\.exe$)" , {{
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
+    }} },
+    /* Sonic CD                                */
+    { R"(\\soniccd\.exe$)", {{
+      { "d3d9.maxFrameRate",                "60" },
+    }} },
+    /* UK Truck Simulator 1                    */
+    { R"(\\UK Truck Simulator\\bin\\win_x86\\game\.exe$)", {{
+      { "d3d9.floatEmulation",              "Strict" },
+    }} },
+    /* d3d9 Supreme Ruler games              *
+     * Leaks a StateBlock leading                *
+     * to Reset calls failing                    */
+    { R"(\\SupremeRuler(Ultimate|GreatWar|1936|CW)\.exe$)", {{
+      { "d3d9.countLosableResources",       "False" },
+    }} },
+    /* Operation Flashpoint: Red River           *
+     * Flickering issues                         */
+    { R"(\\RedRiver\.exe$)", {{
+      { "d3d9.floatEmulation",              "Strict" },
+    }} },
+    /* Dark Void - Crashes above 60fps in places */
+    { R"(\\ShippingPC-SkyGame\.exe$)", {{
+      { "d3d9.maxFrameRate",                "60" },
+    }} },
+
 
     /**********************************************/
     /* D3D12 GAMES (vkd3d-proton with dxvk dxgi)  */
@@ -837,6 +900,24 @@ namespace dxvk {
      * enabling ray tracing if it sees an AMD GPU. */
     { R"(\\RiftApart\.exe$)", {{
       { "dxgi.hideNvidiaGpu",               "False" },
+    }} },
+    /* CP2077 enumerates display outputs each frame.
+     * Avoid using QueryDisplayConfig to avoid
+     * performance degradation until the
+     * optimization of that function is in Proton. */
+    { R"(\\Cyberpunk2077\.exe$)", {{
+      { "dxgi.useMonitorFallback",          "True" },
+    }} },
+    /* Metro Exodus Enhanced Edition picks GPU adapters
+     * by available VRAM, which causes issues on some
+     * systems with integrated graphics. */
+    { R"(\\Metro Exodus Enhanced Edition\\MetroExodus\.exe$)", {{
+      { "dxvk.hideIntegratedGraphics",      "True" },
+    }} },
+    /* Persona 3 Reload - disables vsync by default and
+     * runs into severe frame latency issues on Deck. */
+    { R"(\\P3R\.exe$)", {{
+      { "dxgi.syncInterval",                "1" },
     }} },
   }};
 

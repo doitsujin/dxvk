@@ -78,17 +78,16 @@ namespace dxvk {
     this->maxDeviceMemory = VkDeviceSize(config.getOption<int32_t>("dxgi.maxDeviceMemory", 0)) << 20;
     this->maxSharedMemory = VkDeviceSize(config.getOption<int32_t>("dxgi.maxSharedMemory", 0)) << 20;
 
+    this->syncInterval = config.getOption<int32_t>("dxgi.syncInterval", -1);
+
     // Expose Nvidia GPUs properly if NvAPI is enabled in environment
     this->hideNvidiaGpu = !isNvapiEnabled();
+    applyTristate(this->hideNvidiaGpu, config.getOption<Tristate>("dxgi.hideNvidiaGpu", Tristate::Auto));
 
-    Tristate hideNvidiaGpuOption = config.getOption<Tristate>("dxgi.hideNvidiaGpu", Tristate::Auto);
-
-    if (hideNvidiaGpuOption == Tristate::Auto && !config.getOption<bool>("dxgi.nvapiHack", true)) {
-      Logger::warn("dxgi.nvapiHack is deprecated, please set dxgi.hideNvidiaGpu instead.");
-      hideNvidiaGpuOption = Tristate::False;
-    }
-
-    applyTristate(this->hideNvidiaGpu, hideNvidiaGpuOption);
+    // Treat NVK adapters the same as Nvidia cards on the proprietary by
+    // default, but provide an override in case something isn't working.
+    this->hideNvkGpu = this->hideNvidiaGpu;
+    applyTristate(this->hideNvkGpu, config.getOption<Tristate>("dxgi.hideNvkGpu", Tristate::Auto));
 
     // Expose AMD and Intel GPU by default, unless a config override is active.
     // Implement as a tristate so that we have the option to introduce similar
@@ -101,6 +100,10 @@ namespace dxvk {
       Logger::info("HDR was configured to be enabled, but has been force disabled as a UE4 DX11 game was detected.");
       this->enableHDR = false;
     }
+
+    this->useMonitorFallback = config.getOption<bool>("dxgi.useMonitorFallback", env::getEnvVar("DXVK_MONITOR_FALLBACK") == "1");
+    if (this->useMonitorFallback)
+      Logger::info("Enabled useMonitorFallback option");
   }
   
 }

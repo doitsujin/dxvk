@@ -107,7 +107,11 @@ namespace dxvk {
         return 32;
       
       case DXGI_FORMAT_R16G16B16A16_FLOAT:
-        return 64;
+        // Floating point output doesn't really make sense.
+        // This seemingly works on Windows, and based on FindClosestMode etc documentaton,
+        // this seems required to work for any format that scanout it supported for.
+        // Treat as 10-bit -> 32.
+        return 32;
       
       default:
         Logger::warn(str::format(

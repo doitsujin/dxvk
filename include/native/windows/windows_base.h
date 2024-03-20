@@ -333,12 +333,21 @@ typedef struct RGNDATA {
 #define DECLARE_INTERFACE(x)     struct x
 #define DECLARE_INTERFACE_(x, y) struct x : public y
 #else
+#ifdef CONST_VTABLE
 #define DECLARE_INTERFACE(x) \
     typedef interface x { \
         const struct x##Vtbl *lpVtbl; \
     } x; \
     typedef const struct x##Vtbl x##Vtbl; \
     const struct x##Vtbl
+#else
+#define DECLARE_INTERFACE(x) \
+    typedef interface x { \
+        struct x##Vtbl *lpVtbl; \
+    } x; \
+    typedef struct x##Vtbl x##Vtbl; \
+    struct x##Vtbl
+#endif // CONST_VTABLE
 #define DECLARE_INTERFACE_(x, y) DECLARE_INTERFACE(x)
 #endif // __cplusplus
 

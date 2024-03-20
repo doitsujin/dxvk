@@ -809,8 +809,13 @@ namespace dxvk {
     // dcl_constant_buffer has one operand with two indices:
     //    (0) Constant buffer register ID (cb#)
     //    (1) Number of constants in the buffer
-    const uint32_t bufferId     = ins.dst[0].idx[0].offset;
-    const uint32_t elementCount = ins.dst[0].idx[1].offset;
+    uint32_t bufferId     = ins.dst[0].idx[0].offset;
+    uint32_t elementCount = ins.dst[0].idx[1].offset;
+
+    // With dynamic indexing, games will often index constant buffers
+    // out of bounds. Declare an upper bound to stay within spec.
+    if (ins.controls.accessType() == DxbcConstantBufferAccessType::DynamicallyIndexed)
+      elementCount = 4096;
 
     this->emitDclConstantBufferVar(bufferId, elementCount,
       str::format("cb", bufferId).c_str());
@@ -1054,7 +1059,9 @@ namespace dxvk {
       res.isRawSsbo     = false;
       
       if ((sampledType == DxbcScalarType::Float32)
-       && (resourceType == DxbcResourceDim::Texture2D
+       && (resourceType == DxbcResourceDim::Texture1D
+        || resourceType == DxbcResourceDim::Texture1DArr
+        || resourceType == DxbcResourceDim::Texture2D
         || resourceType == DxbcResourceDim::Texture2DArr
         || resourceType == DxbcResourceDim::TextureCube
         || resourceType == DxbcResourceDim::TextureCubeArr)) {
@@ -1225,6 +1232,14 @@ namespace dxvk {
     }
 
     m_bindings.push_back(binding);
+
+    // If supported, we'll be using raw access chains to access this
+    if (!m_hasRawAccessChains && m_moduleInfo.options.supportsRawAccessChains) {
+      m_module.enableExtension("SPV_NV_raw_access_chains");
+      m_module.enableCapability(spv::CapabilityRawAccessChainsNV);
+
+      m_hasRawAccessChains = true;
+    }
   }
   
   
@@ -2811,23 +2826,202 @@ namespace dxvk {
     // the data depends on the register type.
     const DxbcRegister& dstReg = ins.dst[0];
     const DxbcRegister& srcReg = isStructured ? ins.src[2] : ins.src[1];
-    
+
     // Retrieve common info about the buffer
     const DxbcBufferInfo bufferInfo = getBufferInfo(srcReg);
-    
-    // Compute element index
-    const DxbcRegisterValue elementIndex = isStructured
-      ? emitCalcBufferIndexStructured(
-          emitRegisterLoad(ins.src[0], DxbcRegMask(true, false, false, false)),
-          emitRegisterLoad(ins.src[1], DxbcRegMask(true, false, false, false)),
-          bufferInfo.stride)
-      : emitCalcBufferIndexRaw(
-          emitRegisterLoad(ins.src[0], DxbcRegMask(true, false, false, false)));
 
-    uint32_t sparseFeedbackId = uint32_t(ins.dstCount == 2);
+    // Shared memory is the only type of buffer that
+    // is not accessed through a texel buffer view
+    bool isTgsm = srcReg.type == DxbcOperandType::ThreadGroupSharedMemory;
+    bool isSsbo = bufferInfo.isSsbo;
 
-    emitRegisterStore(dstReg, emitRawBufferLoad(srcReg,
-      elementIndex, dstReg.mask, sparseFeedbackId));
+    // Common types and IDs used while loading the data
+    uint32_t bufferId = isTgsm || isSsbo ? 0 : m_module.opLoad(bufferInfo.typeId, bufferInfo.varId);
+
+    uint32_t vectorTypeId = getVectorTypeId({ DxbcScalarType::Uint32, 4 });
+    uint32_t scalarTypeId = getVectorTypeId({ DxbcScalarType::Uint32, 1 });
+
+    // Since all data is represented as a sequence of 32-bit
+    // integers, we have to load each component individually.
+    std::array<uint32_t, 4> ccomps = { 0, 0, 0, 0 };
+    std::array<uint32_t, 4> scomps = { 0, 0, 0, 0 };
+    uint32_t                scount = 0;
+
+    // The sparse feedback ID will be non-zero for sparse
+    // instructions on input. We need to reset it to 0.
+    SpirvMemoryOperands memoryOperands;
+    SpirvImageOperands imageOperands;
+    imageOperands.sparse = ins.dstCount == 2;
+
+    uint32_t coherence = bufferInfo.coherence;
+
+    if (isTgsm && m_moduleInfo.options.forceVolatileTgsmAccess) {
+      memoryOperands.flags |= spv::MemoryAccessVolatileMask;
+      coherence = spv::ScopeWorkgroup;
+    }
+
+    if (coherence) {
+      memoryOperands.flags |= spv::MemoryAccessNonPrivatePointerMask;
+
+      if (coherence != spv::ScopeInvocation) {
+        memoryOperands.flags |= spv::MemoryAccessMakePointerVisibleMask;
+        memoryOperands.makeVisible = m_module.constu32(coherence);
+
+        imageOperands.flags = spv::ImageOperandsNonPrivateTexelMask
+                            | spv::ImageOperandsMakeTexelVisibleMask;
+        imageOperands.makeVisible = m_module.constu32(coherence);
+      }
+    }
+
+    uint32_t sparseFeedbackId = 0;
+
+    bool useRawAccessChains = m_hasRawAccessChains && isSsbo && !imageOperands.sparse;
+
+    DxbcRegisterValue index = emitRegisterLoad(ins.src[0], DxbcRegMask(true, false, false, false));
+    DxbcRegisterValue offset = index;
+
+    if (isStructured)
+      offset = emitRegisterLoad(ins.src[1], DxbcRegMask(true, false, false, false));
+
+    DxbcRegisterValue elementIndex = { };
+
+    uint32_t baseAlignment = sizeof(uint32_t);
+
+    if (useRawAccessChains) {
+      memoryOperands.flags |= spv::MemoryAccessAlignedMask;
+
+      if (isStructured && ins.src[1].type == DxbcOperandType::Imm32) {
+        baseAlignment = bufferInfo.stride | ins.src[1].imm.u32_1;
+        baseAlignment = baseAlignment & -baseAlignment;
+        baseAlignment = std::min(baseAlignment, uint32_t(m_moduleInfo.options.minSsboAlignment));
+      }
+    } else {
+      elementIndex = isStructured
+        ? emitCalcBufferIndexStructured(index, offset, bufferInfo.stride)
+        : emitCalcBufferIndexRaw(offset);
+    }
+
+    uint32_t readMask = 0u;
+
+    for (uint32_t i = 0; i < 4; i++) {
+      if (dstReg.mask[i])
+        readMask |= 1u << srcReg.swizzle[i];
+    }
+
+    while (readMask) {
+      uint32_t sindex = bit::tzcnt(readMask);
+      uint32_t scount = bit::tzcnt(~(readMask >> sindex));
+      uint32_t zero = 0;
+
+      if (useRawAccessChains) {
+        uint32_t alignment = baseAlignment;
+        uint32_t offsetId = offset.id;
+
+        if (sindex) {
+          offsetId = m_module.opIAdd(scalarTypeId,
+            offsetId, m_module.constu32(sizeof(uint32_t) * sindex));
+          alignment |= sizeof(uint32_t) * sindex;
+        }
+
+        DxbcRegisterInfo storeInfo;
+        storeInfo.type.ctype = DxbcScalarType::Uint32;
+        storeInfo.type.ccount = scount;
+        storeInfo.type.alength = 0;
+        storeInfo.sclass = spv::StorageClassStorageBuffer;
+
+        uint32_t loadTypeId = getArrayTypeId(storeInfo.type);
+        uint32_t ptrTypeId = getPointerTypeId(storeInfo);
+
+        uint32_t accessChain = isStructured
+          ? m_module.opRawAccessChain(ptrTypeId, bufferInfo.varId,
+              m_module.constu32(bufferInfo.stride), index.id, offsetId,
+              spv::RawAccessChainOperandsRobustnessPerElementNVMask)
+          : m_module.opRawAccessChain(ptrTypeId, bufferInfo.varId,
+              m_module.constu32(0), m_module.constu32(0), offsetId,
+              spv::RawAccessChainOperandsRobustnessPerComponentNVMask);
+
+        memoryOperands.alignment = alignment & -alignment;
+
+        uint32_t vectorId = m_module.opLoad(loadTypeId, accessChain, memoryOperands);
+
+        for (uint32_t i = 0; i < scount; i++) {
+          ccomps[sindex + i] = vectorId;
+
+          if (scount > 1) {
+            ccomps[sindex + i] = m_module.opCompositeExtract(
+              scalarTypeId, vectorId, 1, &i);
+          }
+        }
+
+        readMask &= ~(((1u << scount) - 1u) << sindex);
+      } else {
+        uint32_t elementIndexAdjusted = m_module.opIAdd(
+          getVectorTypeId(elementIndex.type), elementIndex.id,
+          m_module.consti32(sindex));
+
+        if (isTgsm) {
+          ccomps[sindex] = m_module.opLoad(scalarTypeId,
+            m_module.opAccessChain(bufferInfo.typeId,
+              bufferInfo.varId, 1, &elementIndexAdjusted),
+            memoryOperands);
+        } else if (isSsbo) {
+          uint32_t indices[2] = { m_module.constu32(0), elementIndexAdjusted };
+          ccomps[sindex] = m_module.opLoad(scalarTypeId,
+            m_module.opAccessChain(bufferInfo.typeId,
+              bufferInfo.varId, 2, indices),
+            memoryOperands);
+        } else {
+          uint32_t resultTypeId = vectorTypeId;
+          uint32_t resultId = 0;
+
+          if (imageOperands.sparse)
+            resultTypeId = getSparseResultTypeId(vectorTypeId);
+
+          if (srcReg.type == DxbcOperandType::Resource) {
+            resultId = m_module.opImageFetch(resultTypeId,
+              bufferId, elementIndexAdjusted, imageOperands);
+          } else if (srcReg.type == DxbcOperandType::UnorderedAccessView) {
+            resultId = m_module.opImageRead(resultTypeId,
+              bufferId, elementIndexAdjusted, imageOperands);
+          } else {
+            throw DxvkError("DxbcCompiler: Invalid operand type for strucured/raw load");
+          }
+
+          // Only read sparse feedback once. This may be somewhat inaccurate
+          // for reads that straddle pages, but we can't easily emulate this.
+          if (imageOperands.sparse) {
+            imageOperands.sparse = false;
+            sparseFeedbackId = resultId;
+
+            resultId = emitExtractSparseTexel(vectorTypeId, resultId);
+          }
+
+          ccomps[sindex] = m_module.opCompositeExtract(scalarTypeId, resultId, 1, &zero);
+        }
+
+        readMask &= readMask - 1;
+      }
+    }
+
+    for (uint32_t i = 0; i < 4; i++) {
+      uint32_t sindex = srcReg.swizzle[i];
+
+      if (dstReg.mask[i])
+        scomps[scount++] = ccomps[sindex];
+    }
+
+    DxbcRegisterValue result =  { };
+    result.type.ctype  = DxbcScalarType::Uint32;
+    result.type.ccount = scount;
+    result.id = scomps[0];
+
+    if (scount > 1) {
+      result.id = m_module.opCompositeConstruct(
+        getVectorTypeId(result.type),
+        scount, scomps.data());
+    }
+
+    emitRegisterStore(dstReg, result);
 
     if (sparseFeedbackId)
       emitStoreSparseFeedback(ins.dst[1], sparseFeedbackId);
@@ -2850,21 +3044,161 @@ namespace dxvk {
     // the data depends on the register type.
     const DxbcRegister& dstReg = ins.dst[0];
     const DxbcRegister& srcReg = isStructured ? ins.src[2] : ins.src[1];
-    
+
+    DxbcRegisterValue value = emitRegisterLoad(srcReg, dstReg.mask);
+    value = emitRegisterBitcast(value, DxbcScalarType::Uint32);
+
     // Retrieve common info about the buffer
     const DxbcBufferInfo bufferInfo = getBufferInfo(dstReg);
-    
-    // Compute element index
-    const DxbcRegisterValue elementIndex = isStructured
-      ? emitCalcBufferIndexStructured(
-          emitRegisterLoad(ins.src[0], DxbcRegMask(true, false, false, false)),
-          emitRegisterLoad(ins.src[1], DxbcRegMask(true, false, false, false)),
-          bufferInfo.stride)
-      : emitCalcBufferIndexRaw(
-          emitRegisterLoad(ins.src[0], DxbcRegMask(true, false, false, false)));
-    
-    emitRawBufferStore(dstReg, elementIndex,
-      emitRegisterLoad(srcReg, dstReg.mask));
+
+    // Thread Group Shared Memory is not accessed through a texel buffer view
+    bool isTgsm = dstReg.type == DxbcOperandType::ThreadGroupSharedMemory;
+    bool isSsbo = bufferInfo.isSsbo;
+
+    uint32_t bufferId = isTgsm || isSsbo ? 0 : m_module.opLoad(bufferInfo.typeId, bufferInfo.varId);
+
+    uint32_t scalarTypeId = getVectorTypeId({ DxbcScalarType::Uint32, 1 });
+    uint32_t vectorTypeId = getVectorTypeId({ DxbcScalarType::Uint32, 4 });
+
+    // Set memory operands according to resource properties
+    SpirvMemoryOperands memoryOperands;
+    SpirvImageOperands imageOperands;
+
+    uint32_t coherence = bufferInfo.coherence;
+
+    if (isTgsm && m_moduleInfo.options.forceVolatileTgsmAccess) {
+      memoryOperands.flags |= spv::MemoryAccessVolatileMask;
+      coherence = spv::ScopeWorkgroup;
+    }
+
+    if (coherence) {
+      memoryOperands.flags |= spv::MemoryAccessNonPrivatePointerMask;
+
+      if (coherence != spv::ScopeInvocation) {
+        memoryOperands.flags |= spv::MemoryAccessMakePointerAvailableMask;
+        memoryOperands.makeAvailable = m_module.constu32(coherence);
+
+        imageOperands.flags = spv::ImageOperandsNonPrivateTexelMask
+                            | spv::ImageOperandsMakeTexelAvailableMask;
+        imageOperands.makeAvailable = m_module.constu32(coherence);
+      }
+    }
+
+    // Compute flat element index as necessary
+    bool useRawAccessChains = isSsbo && m_hasRawAccessChains;
+
+    DxbcRegisterValue index = emitRegisterLoad(ins.src[0], DxbcRegMask(true, false, false, false));
+    DxbcRegisterValue offset = index;
+
+    if (isStructured)
+      offset = emitRegisterLoad(ins.src[1], DxbcRegMask(true, false, false, false));
+
+    DxbcRegisterValue elementIndex = { };
+
+    uint32_t baseAlignment = sizeof(uint32_t);
+
+    if (useRawAccessChains) {
+      memoryOperands.flags |= spv::MemoryAccessAlignedMask;
+
+      if (isStructured && ins.src[1].type == DxbcOperandType::Imm32) {
+        baseAlignment = bufferInfo.stride | ins.src[1].imm.u32_1;
+        baseAlignment = baseAlignment & -baseAlignment;
+        baseAlignment = std::min(baseAlignment, uint32_t(m_moduleInfo.options.minSsboAlignment));
+      }
+    } else {
+      elementIndex = isStructured
+        ? emitCalcBufferIndexStructured(index, offset, bufferInfo.stride)
+        : emitCalcBufferIndexRaw(offset);
+    }
+
+    uint32_t writeMask = dstReg.mask.raw();
+
+    while (writeMask) {
+      uint32_t sindex = bit::tzcnt(writeMask);
+      uint32_t scount = bit::tzcnt(~(writeMask >> sindex));
+
+      if (useRawAccessChains) {
+        uint32_t alignment = baseAlignment;
+        uint32_t offsetId = offset.id;
+
+        if (sindex) {
+          offsetId = m_module.opIAdd(scalarTypeId,
+            offsetId, m_module.constu32(sizeof(uint32_t) * sindex));
+          alignment = alignment | (sizeof(uint32_t) * sindex);
+        }
+
+        DxbcRegisterInfo storeInfo;
+        storeInfo.type.ctype = DxbcScalarType::Uint32;
+        storeInfo.type.ccount = scount;
+        storeInfo.type.alength = 0;
+        storeInfo.sclass = spv::StorageClassStorageBuffer;
+
+        uint32_t storeTypeId = getArrayTypeId(storeInfo.type);
+        uint32_t ptrTypeId = getPointerTypeId(storeInfo);
+
+        uint32_t accessChain = isStructured
+          ? m_module.opRawAccessChain(ptrTypeId, bufferInfo.varId,
+              m_module.constu32(bufferInfo.stride), index.id, offsetId,
+              spv::RawAccessChainOperandsRobustnessPerElementNVMask)
+          : m_module.opRawAccessChain(ptrTypeId, bufferInfo.varId,
+              m_module.constu32(0), m_module.constu32(0), offsetId,
+              spv::RawAccessChainOperandsRobustnessPerComponentNVMask);
+
+        uint32_t valueId = value.id;
+
+        if (scount < value.type.ccount) {
+          if (scount == 1) {
+            valueId = m_module.opCompositeExtract(storeTypeId, value.id, 1, &sindex);
+          } else {
+            std::array<uint32_t, 4> indices = { sindex, sindex + 1u, sindex + 2u, sindex + 3u };
+            valueId = m_module.opVectorShuffle(storeTypeId, value.id, value.id, scount, indices.data());
+          }
+        }
+
+        memoryOperands.alignment = alignment & -alignment;
+        m_module.opStore(accessChain, valueId, memoryOperands);
+
+        writeMask &= ~(((1u << scount) - 1u) << sindex);
+      } else {
+        uint32_t srcComponentId = value.type.ccount > 1
+          ? m_module.opCompositeExtract(scalarTypeId,
+              value.id, 1, &sindex)
+          : value.id;
+
+        uint32_t elementIndexAdjusted = sindex != 0
+          ? m_module.opIAdd(getVectorTypeId(elementIndex.type),
+              elementIndex.id, m_module.consti32(sindex))
+          : elementIndex.id;
+
+        if (isTgsm) {
+          m_module.opStore(
+            m_module.opAccessChain(bufferInfo.typeId,
+              bufferInfo.varId, 1, &elementIndexAdjusted),
+            srcComponentId, memoryOperands);
+        } else if (isSsbo) {
+          uint32_t indices[2] = { m_module.constu32(0), elementIndexAdjusted };
+          m_module.opStore(
+            m_module.opAccessChain(bufferInfo.typeId,
+              bufferInfo.varId, 2, indices),
+            srcComponentId, memoryOperands);
+        } else if (dstReg.type == DxbcOperandType::UnorderedAccessView) {
+          const std::array<uint32_t, 4> srcVectorIds = {
+            srcComponentId, srcComponentId,
+            srcComponentId, srcComponentId,
+          };
+
+          m_module.opImageWrite(
+            bufferId, elementIndexAdjusted,
+            m_module.opCompositeConstruct(vectorTypeId,
+              4, srcVectorIds.data()),
+            imageOperands);
+        } else {
+          throw DxvkError("DxbcCompiler: Invalid operand type for strucured/raw store");
+        }
+
+        writeMask &= writeMask - 1u;
+      }
+    }
   }
   
   
@@ -3547,33 +3881,38 @@ namespace dxvk {
     if (imageOperands.sparse)
       resultTypeId = getSparseResultTypeId(texelTypeId);
 
-    switch (ins.op) {
-      // Simple image gather operation
-      case DxbcOpcode::Gather4:
-      case DxbcOpcode::Gather4S:
-      case DxbcOpcode::Gather4Po:
-      case DxbcOpcode::Gather4PoS: {
-        resultId = m_module.opImageGather(
-          resultTypeId, sampledImageId, coord.id,
-          m_module.consti32(samplerReg.swizzle[0]),
-          imageOperands);
-      } break;
-      
-      // Depth-compare operation
-      case DxbcOpcode::Gather4C:
-      case DxbcOpcode::Gather4CS:
-      case DxbcOpcode::Gather4PoC:
-      case DxbcOpcode::Gather4PoCS: {
-        resultId = m_module.opImageDrefGather(
-          resultTypeId, sampledImageId, coord.id,
-          referenceValue.id, imageOperands);
-      } break;
-      
-      default:
-        Logger::warn(str::format(
-          "DxbcCompiler: Unhandled instruction: ",
-          ins.op));
-        return;
+    if (sampledImageId) {
+      switch (ins.op) {
+        // Simple image gather operation
+        case DxbcOpcode::Gather4:
+        case DxbcOpcode::Gather4S:
+        case DxbcOpcode::Gather4Po:
+        case DxbcOpcode::Gather4PoS: {
+          resultId = m_module.opImageGather(
+            resultTypeId, sampledImageId, coord.id,
+            m_module.consti32(samplerReg.swizzle[0]),
+            imageOperands);
+        } break;
+
+        // Depth-compare operation
+        case DxbcOpcode::Gather4C:
+        case DxbcOpcode::Gather4CS:
+        case DxbcOpcode::Gather4PoC:
+        case DxbcOpcode::Gather4PoCS: {
+          resultId = m_module.opImageDrefGather(
+            resultTypeId, sampledImageId, coord.id,
+            referenceValue.id, imageOperands);
+        } break;
+
+        default:
+          Logger::warn(str::format(
+            "DxbcCompiler: Unhandled instruction: ",
+            ins.op));
+          return;
+      }
+    } else {
+      Logger::warn(str::format("DxbcCompiler: ", ins.op, ": Unsupported image type"));
+      resultId = m_module.constNull(resultTypeId);
     }
 
     // If necessary, deal with the sparse result
@@ -3701,73 +4040,78 @@ namespace dxvk {
     if (imageOperands.sparse)
       resultTypeId = getSparseResultTypeId(texelTypeId);
 
-    switch (ins.op) {
-      // Simple image sample operation
-      case DxbcOpcode::Sample:
-      case DxbcOpcode::SampleClampS: {
-        resultId = m_module.opImageSampleImplicitLod(
-          resultTypeId, sampledImageId, coord.id,
-          imageOperands);
-      } break;
-      
-      // Depth-compare operation
-      case DxbcOpcode::SampleC:
-      case DxbcOpcode::SampleCClampS: {
-        resultId = m_module.opImageSampleDrefImplicitLod(
-          resultTypeId, sampledImageId, coord.id,
-          referenceValue.id, imageOperands);
-      } break;
-      
-      // Depth-compare operation on mip level zero
-      case DxbcOpcode::SampleClz:
-      case DxbcOpcode::SampleClzS: {
-        imageOperands.flags |= spv::ImageOperandsLodMask;
-        imageOperands.sLod = m_module.constf32(0.0f);
-        
-        resultId = m_module.opImageSampleDrefExplicitLod(
-          resultTypeId, sampledImageId, coord.id,
-          referenceValue.id, imageOperands);
-      } break;
-      
-      // Sample operation with explicit gradients
-      case DxbcOpcode::SampleD:
-      case DxbcOpcode::SampleDClampS: {
-        imageOperands.flags |= spv::ImageOperandsGradMask;
-        imageOperands.sGradX = explicitGradientX.id;
-        imageOperands.sGradY = explicitGradientY.id;
-        
-        resultId = m_module.opImageSampleExplicitLod(
-          resultTypeId, sampledImageId, coord.id,
-          imageOperands);
-      } break;
-      
-      // Sample operation with explicit LOD
-      case DxbcOpcode::SampleL:
-      case DxbcOpcode::SampleLS: {
-        imageOperands.flags |= spv::ImageOperandsLodMask;
-        imageOperands.sLod = lod.id;
-        
-        resultId = m_module.opImageSampleExplicitLod(
-          resultTypeId, sampledImageId, coord.id,
-          imageOperands);
-      } break;
-      
-      // Sample operation with LOD bias
-      case DxbcOpcode::SampleB:
-      case DxbcOpcode::SampleBClampS: {
-        imageOperands.flags |= spv::ImageOperandsBiasMask;
-        imageOperands.sLodBias = lod.id;
-        
-        resultId = m_module.opImageSampleImplicitLod(
-          resultTypeId, sampledImageId, coord.id,
-          imageOperands);
-      } break;
-      
-      default:
-        Logger::warn(str::format(
-          "DxbcCompiler: Unhandled instruction: ",
-          ins.op));
-        return;
+    if (sampledImageId) {
+      switch (ins.op) {
+        // Simple image sample operation
+        case DxbcOpcode::Sample:
+        case DxbcOpcode::SampleClampS: {
+          resultId = m_module.opImageSampleImplicitLod(
+            resultTypeId, sampledImageId, coord.id,
+            imageOperands);
+        } break;
+
+        // Depth-compare operation
+        case DxbcOpcode::SampleC:
+        case DxbcOpcode::SampleCClampS: {
+          resultId = m_module.opImageSampleDrefImplicitLod(
+            resultTypeId, sampledImageId, coord.id,
+            referenceValue.id, imageOperands);
+        } break;
+
+        // Depth-compare operation on mip level zero
+        case DxbcOpcode::SampleClz:
+        case DxbcOpcode::SampleClzS: {
+          imageOperands.flags |= spv::ImageOperandsLodMask;
+          imageOperands.sLod = m_module.constf32(0.0f);
+
+          resultId = m_module.opImageSampleDrefExplicitLod(
+            resultTypeId, sampledImageId, coord.id,
+            referenceValue.id, imageOperands);
+        } break;
+
+        // Sample operation with explicit gradients
+        case DxbcOpcode::SampleD:
+        case DxbcOpcode::SampleDClampS: {
+          imageOperands.flags |= spv::ImageOperandsGradMask;
+          imageOperands.sGradX = explicitGradientX.id;
+          imageOperands.sGradY = explicitGradientY.id;
+
+          resultId = m_module.opImageSampleExplicitLod(
+            resultTypeId, sampledImageId, coord.id,
+            imageOperands);
+        } break;
+
+        // Sample operation with explicit LOD
+        case DxbcOpcode::SampleL:
+        case DxbcOpcode::SampleLS: {
+          imageOperands.flags |= spv::ImageOperandsLodMask;
+          imageOperands.sLod = lod.id;
+
+          resultId = m_module.opImageSampleExplicitLod(
+            resultTypeId, sampledImageId, coord.id,
+            imageOperands);
+        } break;
+
+        // Sample operation with LOD bias
+        case DxbcOpcode::SampleB:
+        case DxbcOpcode::SampleBClampS: {
+          imageOperands.flags |= spv::ImageOperandsBiasMask;
+          imageOperands.sLodBias = lod.id;
+
+          resultId = m_module.opImageSampleImplicitLod(
+            resultTypeId, sampledImageId, coord.id,
+            imageOperands);
+        } break;
+
+        default:
+          Logger::warn(str::format(
+            "DxbcCompiler: Unhandled instruction: ",
+            ins.op));
+          return;
+      }
+    } else {
+      Logger::warn(str::format("DxbcCompiler: ", ins.op, ": Unsupported image type"));
+      resultId = m_module.constNull(resultTypeId);
     }
     
     DxbcRegisterValue result;
@@ -4813,10 +5157,15 @@ namespace dxvk {
     const DxbcShaderResource&     textureResource,
     const DxbcSampler&            samplerResource,
           bool                    isDepthCompare) {
-    const uint32_t sampledImageType = isDepthCompare
-      ? m_module.defSampledImageType(textureResource.depthTypeId)
-      : m_module.defSampledImageType(textureResource.colorTypeId);
-    
+    uint32_t baseId = isDepthCompare
+      ? textureResource.depthTypeId
+      : textureResource.colorTypeId;
+
+    if (!baseId)
+      return 0;
+
+    uint32_t sampledImageType = m_module.defSampledImageType(baseId);
+
     return m_module.opSampledImage(sampledImageType,
       m_module.opLoad(textureResource.imageTypeId, textureResource.varId),
       m_module.opLoad(samplerResource.typeId,      samplerResource.varId));
@@ -5192,227 +5541,6 @@ namespace dxvk {
   }
   
   
-  DxbcRegisterValue DxbcCompiler::emitRawBufferLoad(
-    const DxbcRegister&           operand,
-          DxbcRegisterValue       elementIndex,
-          DxbcRegMask             writeMask,
-          uint32_t&               sparseFeedbackId) {
-    const DxbcBufferInfo bufferInfo = getBufferInfo(operand);
-    
-    // Shared memory is the only type of buffer that
-    // is not accessed through a texel buffer view
-    bool isTgsm = operand.type == DxbcOperandType::ThreadGroupSharedMemory;
-    bool isSsbo = bufferInfo.isSsbo;
-    
-    // Common types and IDs used while loading the data
-    uint32_t bufferId = isTgsm || isSsbo ? 0 : m_module.opLoad(bufferInfo.typeId, bufferInfo.varId);
-    
-    uint32_t vectorTypeId = getVectorTypeId({ DxbcScalarType::Uint32, 4 });
-    uint32_t scalarTypeId = getVectorTypeId({ DxbcScalarType::Uint32, 1 });
-    
-    // Since all data is represented as a sequence of 32-bit
-    // integers, we have to load each component individually.
-    std::array<uint32_t, 4> ccomps = { 0, 0, 0, 0 };
-    std::array<uint32_t, 4> scomps = { 0, 0, 0, 0 };
-    uint32_t                scount = 0;
-
-    // The sparse feedback ID will be non-zero for sparse
-    // instructions on input. We need to reset it to 0.
-    SpirvMemoryOperands memoryOperands;
-    SpirvImageOperands imageOperands;
-    imageOperands.sparse = sparseFeedbackId != 0;
-
-    uint32_t coherence = bufferInfo.coherence;
-
-    if (isTgsm && m_moduleInfo.options.forceVolatileTgsmAccess) {
-      memoryOperands.flags |= spv::MemoryAccessVolatileMask;
-      coherence = spv::ScopeWorkgroup;
-    }
-
-    if (coherence) {
-      memoryOperands.flags |= spv::MemoryAccessNonPrivatePointerMask;
-
-      if (coherence != spv::ScopeInvocation) {
-        memoryOperands.flags |= spv::MemoryAccessMakePointerVisibleMask;
-        memoryOperands.makeVisible = m_module.constu32(coherence);
-
-        imageOperands.flags = spv::ImageOperandsNonPrivateTexelMask
-                            | spv::ImageOperandsMakeTexelVisibleMask;
-        imageOperands.makeVisible = m_module.constu32(coherence);
-      }
-    }
-
-    sparseFeedbackId = 0;
-
-    for (uint32_t i = 0; i < 4; i++) {
-      uint32_t sindex = operand.swizzle[i];
-
-      if (!writeMask[i])
-        continue;
-      
-      if (ccomps[sindex] == 0) {
-        uint32_t elementIndexAdjusted = m_module.opIAdd(
-          getVectorTypeId(elementIndex.type), elementIndex.id,
-          m_module.consti32(sindex));
-        
-        // Load requested component from the buffer
-        uint32_t zero = 0;
-
-        if (isTgsm) {
-          ccomps[sindex] = m_module.opLoad(scalarTypeId,
-            m_module.opAccessChain(bufferInfo.typeId,
-              bufferInfo.varId, 1, &elementIndexAdjusted),
-            memoryOperands);
-        } else if (isSsbo) {
-          uint32_t indices[2] = { m_module.constu32(0), elementIndexAdjusted };
-          ccomps[sindex] = m_module.opLoad(scalarTypeId,
-            m_module.opAccessChain(bufferInfo.typeId,
-              bufferInfo.varId, 2, indices),
-            memoryOperands);
-        } else {
-          uint32_t resultTypeId = vectorTypeId;
-          uint32_t resultId = 0;
-
-          if (imageOperands.sparse)
-            resultTypeId = getSparseResultTypeId(vectorTypeId);
-
-          if (operand.type == DxbcOperandType::Resource) {
-            resultId = m_module.opImageFetch(resultTypeId,
-              bufferId, elementIndexAdjusted, imageOperands);
-          } else if (operand.type == DxbcOperandType::UnorderedAccessView) {
-            resultId = m_module.opImageRead(resultTypeId,
-              bufferId, elementIndexAdjusted, imageOperands);
-          } else {
-            throw DxvkError("DxbcCompiler: Invalid operand type for strucured/raw load");
-          }
-
-          // Only read sparse feedback once. This may be somewhat inaccurate
-          // for reads that straddle pages, but we can't easily emulate this.
-          if (imageOperands.sparse) {
-            imageOperands.sparse = false;
-            sparseFeedbackId = resultId;
-
-            resultId = emitExtractSparseTexel(vectorTypeId, resultId);
-          }
-
-          ccomps[sindex] = m_module.opCompositeExtract(scalarTypeId, resultId, 1, &zero);
-        }
-      }
-    }
-
-    for (uint32_t i = 0; i < 4; i++) {
-      uint32_t sindex = operand.swizzle[i];
-      
-      if (writeMask[i])
-        scomps[scount++] = ccomps[sindex];
-    }
-    
-    DxbcRegisterValue result;
-    result.type.ctype  = DxbcScalarType::Uint32;
-    result.type.ccount = scount;
-    result.id = scomps[0];
-    
-    if (scount > 1) {
-      result.id = m_module.opCompositeConstruct(
-        getVectorTypeId(result.type),
-        scount, scomps.data());
-    }
-
-    return result;
-  }
-  
-  
-  void DxbcCompiler::emitRawBufferStore(
-    const DxbcRegister&           operand,
-          DxbcRegisterValue       elementIndex,
-          DxbcRegisterValue       value) {
-    const DxbcBufferInfo bufferInfo = getBufferInfo(operand);
-    
-    // Cast source value to the expected data type
-    value = emitRegisterBitcast(value, DxbcScalarType::Uint32);
-    
-    // Thread Group Shared Memory is not accessed through a texel buffer view
-    bool isTgsm = operand.type == DxbcOperandType::ThreadGroupSharedMemory;
-    bool isSsbo = bufferInfo.isSsbo;
-    
-    // Perform the actual write operation
-    uint32_t bufferId = isTgsm || isSsbo ? 0 : m_module.opLoad(bufferInfo.typeId, bufferInfo.varId);
-    
-    uint32_t scalarTypeId = getVectorTypeId({ DxbcScalarType::Uint32, 1 });
-    uint32_t vectorTypeId = getVectorTypeId({ DxbcScalarType::Uint32, 4 });
-    
-    uint32_t srcComponentIndex = 0;
-
-    // Set memory operands according to resource properties
-    SpirvMemoryOperands memoryOperands;
-    SpirvImageOperands imageOperands;
-
-    uint32_t coherence = bufferInfo.coherence;
-
-    if (isTgsm && m_moduleInfo.options.forceVolatileTgsmAccess) {
-      memoryOperands.flags |= spv::MemoryAccessVolatileMask;
-      coherence = spv::ScopeWorkgroup;
-    }
-
-    if (coherence) {
-      memoryOperands.flags |= spv::MemoryAccessNonPrivatePointerMask;
-
-      if (coherence != spv::ScopeInvocation) {
-        memoryOperands.flags |= spv::MemoryAccessMakePointerAvailableMask;
-        memoryOperands.makeAvailable = m_module.constu32(coherence);
-
-        imageOperands.flags = spv::ImageOperandsNonPrivateTexelMask
-                            | spv::ImageOperandsMakeTexelAvailableMask;
-        imageOperands.makeAvailable = m_module.constu32(coherence);
-      }
-    }
-
-    for (uint32_t i = 0; i < 4; i++) {
-      if (operand.mask[i]) {
-        uint32_t srcComponentId = value.type.ccount > 1
-          ? m_module.opCompositeExtract(scalarTypeId,
-              value.id, 1, &srcComponentIndex)
-          : value.id;
-        
-        // Add the component offset to the element index
-        uint32_t elementIndexAdjusted = i != 0
-          ? m_module.opIAdd(getVectorTypeId(elementIndex.type),
-              elementIndex.id, m_module.consti32(i))
-          : elementIndex.id;
-        
-        if (isTgsm) {
-          m_module.opStore(
-            m_module.opAccessChain(bufferInfo.typeId,
-              bufferInfo.varId, 1, &elementIndexAdjusted),
-            srcComponentId, memoryOperands);
-        } else if (isSsbo) {
-          uint32_t indices[2] = { m_module.constu32(0), elementIndexAdjusted };
-          m_module.opStore(
-            m_module.opAccessChain(bufferInfo.typeId,
-              bufferInfo.varId, 2, indices),
-            srcComponentId, memoryOperands);
-        } else if (operand.type == DxbcOperandType::UnorderedAccessView) {
-          const std::array<uint32_t, 4> srcVectorIds = {
-            srcComponentId, srcComponentId,
-            srcComponentId, srcComponentId,
-          };
-      
-          m_module.opImageWrite(
-            bufferId, elementIndexAdjusted,
-            m_module.opCompositeConstruct(vectorTypeId,
-              4, srcVectorIds.data()),
-            imageOperands);
-        } else {
-          throw DxvkError("DxbcCompiler: Invalid operand type for strucured/raw store");
-        }
-        
-        // Write next component
-        srcComponentIndex += 1;
-      }
-    }
-  }
-
-
   DxbcRegisterValue DxbcCompiler::emitQueryBufferSize(
     const DxbcRegister&           resource) {
     const DxbcBufferInfo bufferInfo = getBufferInfo(resource);
