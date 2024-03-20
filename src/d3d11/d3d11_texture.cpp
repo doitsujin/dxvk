@@ -214,9 +214,12 @@ namespace dxvk {
     // For some formats, we need to enable sampled and/or
     // render target capabilities if available, but these
     // should in no way affect the default image layout
-    imageInfo.usage |= EnableMetaCopyUsage(imageInfo.format, imageInfo.tiling);
     imageInfo.usage |= EnableMetaPackUsage(imageInfo.format, m_desc.CPUAccessFlags);
-    
+    imageInfo.usage |= EnableMetaCopyUsage(imageInfo.format, imageInfo.tiling);
+
+    for (uint32_t i = 0; i < imageInfo.viewFormatCount; i++)
+      imageInfo.usage |= EnableMetaCopyUsage(imageInfo.viewFormats[i], imageInfo.tiling);
+
     // Check if we can actually create the image
     if (!CheckImageSupport(&imageInfo, imageInfo.tiling)) {
       throw DxvkError(str::format(
