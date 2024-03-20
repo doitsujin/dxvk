@@ -411,11 +411,6 @@ namespace dxvk {
     { R"(\\RidersRepublic(_BE)?\.exe$)", {{
       { "dxgi.hideAmdGpu",                "True"   },
     }} },
-    /* HoloCure - Save the Fans!
-       Same as Cyberpunk 2077                     */
-    { R"(\\HoloCure\.exe$)", {{
-      { "dxgi.useMonitorFallback",          "True" },
-    }} },
     /* Kenshi                                     *
      * Helps CPU bound performance                */
     { R"(\\kenshi_x64\.exe$)", {{
@@ -900,13 +895,6 @@ namespace dxvk {
      * enabling ray tracing if it sees an AMD GPU. */
     { R"(\\RiftApart\.exe$)", {{
       { "dxgi.hideNvidiaGpu",               "False" },
-    }} },
-    /* CP2077 enumerates display outputs each frame.
-     * Avoid using QueryDisplayConfig to avoid
-     * performance degradation until the
-     * optimization of that function is in Proton. */
-    { R"(\\Cyberpunk2077\.exe$)", {{
-      { "dxgi.useMonitorFallback",          "True" },
     }} },
     /* Metro Exodus Enhanced Edition picks GPU adapters
      * by available VRAM, which causes issues on some
