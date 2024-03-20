@@ -889,7 +889,10 @@ namespace dxvk {
       { "d3d9.deviceLossOnFocusLoss",       "True" },
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
-
+    /* Dungeon Siege II                        */
+    { R"(\\DungeonSiege2\.exe$)", {{
+      { "d3d9.softwareCursorEmulation",     "True" },
+    }} },
 
     /**********************************************/
     /* D3D12 GAMES (vkd3d-proton with dxvk dxgi)  */
