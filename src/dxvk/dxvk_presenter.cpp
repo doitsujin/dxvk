@@ -382,6 +382,9 @@ namespace dxvk {
 
 
   bool Presenter::supportsColorSpace(VkColorSpaceKHR colorspace) {
+    if (!m_surface)
+      return false;
+
     std::vector<VkSurfaceFormatKHR> surfaceFormats;
     getSupportedFormats(surfaceFormats, VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT);
 
