@@ -129,6 +129,10 @@ elif dxvk_wsi == 'glfw'
   dxvk_src += [
     'platform/dxvk_glfw_exts.cpp'
   ]
+elif dxvk_wsi == 'none'
+  dxvk_src += [
+    'platform/dxvk_none_exts.cpp'
+  ]
 endif
 
 dxvk_extra_deps = [ dependency('threads') ]
