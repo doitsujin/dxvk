@@ -137,8 +137,12 @@ else
     lib_glfw = cpp.find_library('glfw')
     compiler_args += ['-DDXVK_WSI_GLFW']
   endif
-  
-  dxvk_name_prefix = 'libdxvk_'
+
+  if dxvk_wsi == 'sdl2'
+    dxvk_name_prefix = 'libdxvk_'
+  else
+    dxvk_name_prefix = 'libdxvk_@0@_'.format(dxvk_wsi)
+  endif
 
   link_args += [
     '-static-libgcc',
