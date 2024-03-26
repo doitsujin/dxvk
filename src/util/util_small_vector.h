@@ -16,6 +16,19 @@ namespace dxvk {
     small_vector             (const small_vector&) = delete;
     small_vector& operator = (const small_vector&) = delete;
 
+    small_vector(small_vector&& other) {
+      if (other.m_capacity == N) {
+        for (size_t i = 0; i < other.m_size; i++) {
+          u.m_data[i] = std::move(other.u.m_data[i]);
+        }
+      } else {
+        u.m_ptr = other.u.m_ptr;
+        other.m_capacity = N;
+      }
+      m_size = other.m_size;
+      other.m_size = 0;
+    }
+
     ~small_vector() {
       for (size_t i = 0; i < m_size; i++)
         ptr(i)->~T();
