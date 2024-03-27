@@ -13,7 +13,8 @@ namespace dxvk {
    */
   enum class DxvkDeviceFilterFlag {
     MatchDeviceName   = 0,
-    SkipCpuDevices    = 1,
+    MatchDeviceUUID   = 1,
+    SkipCpuDevices    = 2,
   };
   
   using DxvkDeviceFilterFlags = Flags<DxvkDeviceFilterFlag>;
@@ -42,12 +43,22 @@ namespace dxvk {
      */
     bool testAdapter(
       const VkPhysicalDeviceProperties& properties) const;
+
+    /**
+     * \brief Tests a created adapter
+     *
+     * \param [in] properties Adapter properties
+     * \returns \c true if the test passes
+     */
+    bool testCreatedAdapter(
+      const DxvkDeviceInfo& deviceInfo) const;
     
   private:
     
     DxvkDeviceFilterFlags m_flags;
     
     std::string m_matchDeviceName;
+    std::string m_matchDeviceUUID;
     
   };
   
