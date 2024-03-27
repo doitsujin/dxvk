@@ -303,7 +303,8 @@ namespace dxvk {
         }
         else {
           for (UINT i = 0; i < Count; i++)
-            set->fConsts[StartRegister + i] = replaceNaN(pConstantData + (i * 4));
+            // The (float*) cast is a workaround for a bug in the EDG compiler frontend
+            set->fConsts[StartRegister + i] = replaceNaN((float*)pConstantData + (i * 4));
         }
       }
       else if constexpr (ConstantType == D3D9ConstantType::Int) {
