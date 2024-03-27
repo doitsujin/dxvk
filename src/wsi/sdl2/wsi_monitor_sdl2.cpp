@@ -1,3 +1,5 @@
+#if defined(DXVK_WSI_SDL2)
+
 #include "../wsi_monitor.h"
 
 #include "wsi/native_wsi.h"
@@ -12,22 +14,22 @@
 
 namespace dxvk::wsi {
 
-  HMONITOR getDefaultMonitor() {
+  HMONITOR Sdl2WsiDriver::getDefaultMonitor() {
     return enumMonitors(0);
   }
 
 
-  HMONITOR enumMonitors(uint32_t index) {
+  HMONITOR Sdl2WsiDriver::enumMonitors(uint32_t index) {
     return isDisplayValid(int32_t(index))
       ? toHmonitor(index)
       : nullptr;
   }
 
-  HMONITOR enumMonitors(const LUID *adapterLUID[], uint32_t numLUIDs, uint32_t index) {
+  HMONITOR Sdl2WsiDriver::enumMonitors(const LUID *adapterLUID[], uint32_t numLUIDs, uint32_t index) {
     return enumMonitors(index);
   }
 
-  bool getDisplayName(
+  bool Sdl2WsiDriver::getDisplayName(
           HMONITOR         hMonitor,
           WCHAR            (&Name)[32]) {
     const int32_t displayId    = fromHmonitor(hMonitor);
@@ -47,7 +49,7 @@ namespace dxvk::wsi {
   }
 
 
-  bool getDesktopCoordinates(
+  bool Sdl2WsiDriver::getDesktopCoordinates(
           HMONITOR         hMonitor,
           RECT*            pRect) {
     const int32_t displayId    = fromHmonitor(hMonitor);
@@ -90,7 +92,7 @@ namespace dxvk::wsi {
   }
 
 
-  bool getDisplayMode(
+  bool Sdl2WsiDriver::getDisplayMode(
           HMONITOR         hMonitor,
           uint32_t         ModeNumber,
           WsiMode*         pMode) {
@@ -109,7 +111,7 @@ namespace dxvk::wsi {
   }
 
 
-  bool getCurrentDisplayMode(
+  bool Sdl2WsiDriver::getCurrentDisplayMode(
           HMONITOR         hMonitor,
           WsiMode*         pMode) {
     const int32_t displayId    = fromHmonitor(hMonitor);
@@ -129,7 +131,7 @@ namespace dxvk::wsi {
   }
 
 
-  bool getDesktopDisplayMode(
+  bool Sdl2WsiDriver::getDesktopDisplayMode(
           HMONITOR         hMonitor,
           WsiMode*         pMode) {
     const int32_t displayId    = fromHmonitor(hMonitor);
@@ -148,9 +150,11 @@ namespace dxvk::wsi {
     return true;
   }
 
-  std::vector<uint8_t> getMonitorEdid(HMONITOR hMonitor) {
+  std::vector<uint8_t> Sdl2WsiDriver::getMonitorEdid(HMONITOR hMonitor) {
     Logger::err("getMonitorEdid not implemented on this platform.");
     return {};
   }
 
 }
+
+#endif

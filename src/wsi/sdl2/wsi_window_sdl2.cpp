@@ -1,17 +1,19 @@
+#if defined(DXVK_WSI_SDL2)
+
 #include "../wsi_window.h"
 
-#include "native/wsi/native_wsi.h"
+#include "native/wsi/native_sdl2.h"
 #include "wsi_platform_sdl2.h"
 
 #include "../../util/util_string.h"
 #include "../../util/log/log.h"
 
 #include <windows.h>
-#include <SDL2/SDL_vulkan.h>
+#include <SDL_vulkan.h>
 
 namespace dxvk::wsi {
 
-  void getWindowSize(
+  void Sdl2WsiDriver::getWindowSize(
         HWND      hWindow,
         uint32_t* pWidth,
         uint32_t* pHeight) {
@@ -28,7 +30,7 @@ namespace dxvk::wsi {
   }
 
 
-  void resizeWindow(
+  void Sdl2WsiDriver::resizeWindow(
           HWND             hWindow,
           DxvkWindowState* pState,
           uint32_t         Width,
@@ -39,7 +41,7 @@ namespace dxvk::wsi {
   }
 
 
-  bool setWindowMode(
+  bool Sdl2WsiDriver::setWindowMode(
           HMONITOR         hMonitor,
           HWND             hWindow,
     const WsiMode&         pMode) {
@@ -73,7 +75,7 @@ namespace dxvk::wsi {
 
 
 
-  bool enterFullscreenMode(
+  bool Sdl2WsiDriver::enterFullscreenMode(
           HMONITOR         hMonitor,
           HWND             hWindow,
           DxvkWindowState* pState,
@@ -99,7 +101,7 @@ namespace dxvk::wsi {
   }
 
 
-  bool leaveFullscreenMode(
+  bool Sdl2WsiDriver::leaveFullscreenMode(
           HWND             hWindow,
           DxvkWindowState* pState,
           bool             restoreCoordinates) {
@@ -114,13 +116,13 @@ namespace dxvk::wsi {
   }
 
 
-  bool restoreDisplayMode() {
+  bool Sdl2WsiDriver::restoreDisplayMode() {
     // Don't need to do anything with SDL2 here.
     return true;
   }
 
 
-  HMONITOR getWindowMonitor(HWND hWindow) {
+  HMONITOR Sdl2WsiDriver::getWindowMonitor(HWND hWindow) {
     SDL_Window* window      = fromHwnd(hWindow);
     const int32_t displayId = SDL_GetWindowDisplayIndex(window);
 
@@ -128,13 +130,13 @@ namespace dxvk::wsi {
   }
 
 
-  bool isWindow(HWND hWindow) {
+  bool Sdl2WsiDriver::isWindow(HWND hWindow) {
     SDL_Window* window = fromHwnd(hWindow);
     return window != nullptr;
   }
 
 
-  void updateFullscreenWindow(
+  void Sdl2WsiDriver::updateFullscreenWindow(
           HMONITOR hMonitor,
           HWND     hWindow,
           bool     forceTopmost) {
@@ -142,7 +144,7 @@ namespace dxvk::wsi {
   }
 
 
-  VkResult createSurface(
+  VkResult Sdl2WsiDriver::createSurface(
           HWND                      hWindow,
           PFN_vkGetInstanceProcAddr pfnVkGetInstanceProcAddr,
           VkInstance                instance,
@@ -155,3 +157,5 @@ namespace dxvk::wsi {
   }
 
 }
+
+#endif

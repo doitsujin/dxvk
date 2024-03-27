@@ -115,7 +115,6 @@ if platform == 'windows'
     )
   endif
 
-  dxvk_wsi = 'win32'
   dxvk_name_prefix = ''
   compiler_args += ['-DDXVK_WSI_WIN32']
 else
@@ -128,14 +127,16 @@ else
     './include/native/directx'
   ]
 
-  dxvk_wsi = get_option('dxvk_native_wsi')
-  
-  if dxvk_wsi == 'sdl2'
-    lib_sdl2 = cpp.find_library('SDL2')
+  lib_sdl2 = dependency('SDL2', required: false)
+  lib_glfw = dependency('glfw', required: false)
+  if lib_sdl2.found()
     compiler_args += ['-DDXVK_WSI_SDL2']
-  elif dxvk_wsi == 'glfw'
-    lib_glfw = cpp.find_library('glfw')
+  endif
+  if lib_glfw.found()
     compiler_args += ['-DDXVK_WSI_GLFW']
+  endif
+  if (not lib_sdl2.found() and not lib_glfw.found())
+    error('SDL2 or GLFW are required to build dxvk-native')
   endif
   
   dxvk_name_prefix = 'libdxvk_'
