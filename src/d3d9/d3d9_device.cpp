@@ -345,7 +345,7 @@ namespace dxvk {
     // Always use a hardware cursor when windowed.
     D3DPRESENT_PARAMETERS params;
     m_implicitSwapchain->GetPresentParameters(&params);
-    bool hwCursor  = params.Windowed;
+    bool hwCursor  = params.Windowed || m_d3d9Options.softwareCursorEmulation;
 
     // Always use a hardware cursor w/h <= 32 px
     hwCursor |= inputWidth  <= HardwareCursorWidth
@@ -359,20 +359,32 @@ namespace dxvk {
 
       const uint8_t* data  = reinterpret_cast<const uint8_t*>(lockedBox.pBits);
 
+      uint32_t emulatedCursorPitch = inputWidth * HardwareCursorFormatSize;
+      
+      uint32_t cursorHeight = m_d3d9Options.softwareCursorEmulation ? inputHeight : HardwareCursorHeight;
+      uint32_t cursorPitch = m_d3d9Options.softwareCursorEmulation ? emulatedCursorPitch : HardwareCursorPitch;
+
       // Windows works with a stride of 128, lets respect that.
       // Copy data to the bitmap...
-      CursorBitmap bitmap = { 0 };
+      // Format Size of 4 bytes (ARGB)
+      std::vector<uint8_t> bitmap(cursorHeight * cursorPitch, 0);
       size_t copyPitch = std::min<size_t>(
-        HardwareCursorPitch,
+        cursorPitch,
         inputWidth * inputHeight * HardwareCursorFormatSize);
 
-      for (uint32_t h = 0; h < HardwareCursorHeight; h++)
-        std::memcpy(&bitmap[h * HardwareCursorPitch], &data[h * lockedBox.RowPitch], copyPitch);
+      for (uint32_t h = 0; h < cursorHeight; h++)
+        std::memcpy(&bitmap[h * cursorPitch], &data[h * lockedBox.RowPitch], copyPitch);
 
       UnlockImage(cursorTex, 0, 0);
 
       // Set this as our cursor.
-      return m_cursor.SetHardwareCursor(XHotSpot, YHotSpot, bitmap);
+      return m_cursor.SetHardwareCursor(XHotSpot,
+                                        YHotSpot,
+                                        bitmap,
+                                        m_d3d9Options.softwareCursorEmulation,
+                                        inputWidth,
+                                        inputHeight,
+                                        m_window);
     }
 
     // Software Cursor...

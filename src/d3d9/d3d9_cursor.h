@@ -9,18 +9,29 @@ namespace dxvk {
   constexpr uint32_t HardwareCursorFormatSize = 4u;
   constexpr uint32_t HardwareCursorPitch      = HardwareCursorWidth * HardwareCursorFormatSize;
 
-  // Format Size of 4 bytes (ARGB)
-  using CursorBitmap = uint8_t[HardwareCursorHeight * HardwareCursorPitch];
-
   class D3D9Cursor {
 
   public:
+
+#ifdef _WIN32
+    ~D3D9Cursor() {
+      if (m_hCursor != nullptr)
+        ::DestroyCursor(m_hCursor);
+    }
+#endif
 
     void UpdateCursor(int X, int Y);
 
     BOOL ShowCursor(BOOL bShow);
 
-    HRESULT SetHardwareCursor(UINT XHotSpot, UINT YHotSpot, const CursorBitmap& bitmap);
+    HRESULT SetHardwareCursor(
+            UINT                   XHotSpot,
+            UINT                   YHotSpot,
+      const std::vector<uint8_t>&  bitmap,
+            bool                   cursorEmulation,
+            UINT                   width,
+            UINT                   height,
+            HWND                   window);
 
   private:
 

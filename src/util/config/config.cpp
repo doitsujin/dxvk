@@ -867,7 +867,10 @@ namespace dxvk {
     { R"(\\ShippingPC-SkyGame\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
     }} },
-
+    /* Dungeon Siege II                        */
+    { R"(\\DungeonSiege2\.exe$)", {{
+      { "d3d9.softwareCursorEmulation",     "True" },
+    }} },
 
     /**********************************************/
     /* D3D12 GAMES (vkd3d-proton with dxvk dxgi)  */
