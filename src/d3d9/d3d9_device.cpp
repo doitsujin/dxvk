@@ -5202,13 +5202,26 @@ namespace dxvk {
         continue;
       }
       const uint32_t vertexStride = m_state.vertexDecl->GetSize(i);
-      uint32_t offset = (FirstVertexIndex + BaseVertexIndex) * vertexStride;
+      const uint32_t vboStride = m_state.vertexBuffers[i].stride;
+      const uint32_t vboOffset = m_state.vertexBuffers[i].offset;
+      const uint32_t vertexOffset = (FirstVertexIndex + BaseVertexIndex) * vboStride;
       const uint32_t vertexBufferSize = vbo->Desc()->Size;
-      if (offset < vertexBufferSize) {
-        const uint32_t vertexDataSize = std::min(NumVertices * vertexStride, vertexBufferSize - offset);
-        vboUPBufferSizes[i] = vertexDataSize;
-        upBufferSize += vertexDataSize;
+
+      uint32_t vertexDataSize;
+      if (unlikely(vboOffset + vertexOffset > vertexBufferSize)) {
+        // All vertices are out of bounds
+        vertexDataSize = 0;
+      } else if (unlikely(vboOffset + vertexOffset + NumVertices * vboStride > vertexBufferSize)) {
+        // Some vertices are (partially) out of bounds
+        uint32_t boundVertexBufferRange = vertexBufferSize - vboOffset;
+        uint32_t vertexCount = boundVertexBufferRange / vboStride;
+        vertexDataSize = vertexCount * vertexStride + (boundVertexBufferRange % vboStride);
+      } else {
+        // No vertices are out of bounds
+        vertexDataSize = NumVertices * vertexStride;
       }
+      vboUPBufferSizes[i] = vertexDataSize;
+      upBufferSize += vertexDataSize;
     }
 
     uint32_t iboUPBufferSize = 0;
@@ -5253,11 +5266,22 @@ namespace dxvk {
         auto* vbo = GetCommonBuffer(m_state.vertexBuffers[i].vertexBuffer);
 
         const uint32_t vertexStride = m_state.vertexDecl->GetSize(i);
-        uint32_t offset = (BaseVertexIndex + FirstVertexIndex) * vertexStride + m_state.vertexBuffers[i].offset;
+        const uint32_t vboStride = m_state.vertexBuffers[i].stride;
+        uint32_t offset = (BaseVertexIndex + FirstVertexIndex) * vboStride + m_state.vertexBuffers[i].offset;
 
         uint8_t* data = reinterpret_cast<uint8_t*>(upSlice.mapPtr) + vboUPBufferOffsets[i];
         uint8_t* src = reinterpret_cast<uint8_t*>(vbo->GetMappedSlice().mapPtr) + offset;
-        std::memcpy(data, src, vboUPBufferSizes[i]);
+        if (vertexStride == vboStride) {
+          std::memcpy(data, src, vboUPBufferSizes[i]);
+        } else {
+          const uint32_t vertexBufferSize = vbo->Desc()->Size;
+          const uint32_t boundVertexBufferRange = vertexBufferSize - offset;
+          for (uint32_t j = 0; j * vertexStride < vboUPBufferSizes[i]; j += 1) {
+            // We made sure this isn't gonna go out of bounds earlier when determining the size.
+            uint32_t copySize = std::min(vertexStride, boundVertexBufferRange - j * std::max(vertexStride, vboStride));
+            std::memcpy(data + j * vertexStride, src + j * vboStride, copySize);
+          }
+        }
 
         auto vboSlice = upSlice.slice.subSlice(vboUPBufferOffsets[i], vboUPBufferSizes[i]);
         EmitCs([
