@@ -2464,58 +2464,6 @@ namespace dxvk {
     if (m_uavs.at(registerId).ctrId == 0)
       m_uavs.at(registerId).ctrId = emitDclUavCounter(registerId);
     
-    // Only use subgroup ops on compute to avoid having to
-    // deal with helper invocations or hardware limitations
-    bool useSubgroupOps = m_moduleInfo.options.useSubgroupOpsForAtomicCounters
-      && m_programInfo.type() == DxbcProgramType::ComputeShader;
-
-    // Current block ID used in a phi later on
-    uint32_t baseBlockId = m_module.getBlockId();
-
-    // In case we have subgroup ops enabled, we need to
-    // count the number of active lanes, the lane index,
-    // and we need to perform the atomic op conditionally
-    uint32_t laneCount = 0;
-    uint32_t laneIndex = 0;
-
-    DxbcConditional elect;
-
-    if (useSubgroupOps) {
-      m_module.enableCapability(spv::CapabilityGroupNonUniform);
-      m_module.enableCapability(spv::CapabilityGroupNonUniformBallot);
-
-      uint32_t ballot = m_module.opGroupNonUniformBallot(
-        getVectorTypeId({ DxbcScalarType::Uint32, 4 }),
-        m_module.constu32(spv::ScopeSubgroup),
-        m_module.constBool(true));
-      
-      laneCount = m_module.opGroupNonUniformBallotBitCount(
-        getScalarTypeId(DxbcScalarType::Uint32),
-        m_module.constu32(spv::ScopeSubgroup),
-        spv::GroupOperationReduce, ballot);
-      
-      laneIndex = m_module.opGroupNonUniformBallotBitCount(
-        getScalarTypeId(DxbcScalarType::Uint32),
-        m_module.constu32(spv::ScopeSubgroup),
-        spv::GroupOperationExclusiveScan, ballot);
-      
-      // Elect one lane to perform the atomic op
-      uint32_t election = m_module.opGroupNonUniformElect(
-        m_module.defBoolType(),
-        m_module.constu32(spv::ScopeSubgroup));
-
-      elect.labelIf  = m_module.allocateId();
-      elect.labelEnd = m_module.allocateId();
-
-      m_module.opSelectionMerge(elect.labelEnd, spv::SelectionControlMaskNone);
-      m_module.opBranchConditional(election, elect.labelIf, elect.labelEnd);
-      
-      m_module.opLabel(elect.labelIf);
-    } else {
-      // We're going to use this for the increment
-      laneCount = m_module.constu32(1);
-    }
-
     // Get a pointer to the atomic counter in question
     DxbcRegisterInfo ptrType;
     ptrType.type.ctype   = DxbcScalarType::Uint32;
@@ -2547,13 +2495,14 @@ namespace dxvk {
     switch (ins.op) {
       case DxbcOpcode::ImmAtomicAlloc:
         value.id = m_module.opAtomicIAdd(typeId, ptrId,
-          scopeId, semanticsId, laneCount);
+          scopeId, semanticsId, m_module.constu32(1));
         break;
         
       case DxbcOpcode::ImmAtomicConsume:
         value.id = m_module.opAtomicISub(typeId, ptrId,
-          scopeId, semanticsId, laneCount);
-        value.id = m_module.opISub(typeId, value.id, laneCount);
+          scopeId, semanticsId, m_module.constu32(1));
+        value.id = m_module.opISub(typeId, value.id,
+          m_module.constu32(1));
         break;
       
       default:
@@ -2563,26 +2512,6 @@ namespace dxvk {
         return;
     }
 
-    // If we're using subgroup ops, we have to broadcast
-    // the result of the atomic op and compute the index
-    if (useSubgroupOps) {
-      m_module.opBranch(elect.labelEnd);
-      m_module.opLabel (elect.labelEnd);
-
-      uint32_t undef = m_module.constUndef(typeId);
-
-      std::array<SpirvPhiLabel, 2> phiLabels = {{
-        { value.id, elect.labelIf },
-        { undef,    baseBlockId   },
-      }};
-
-      value.id = m_module.opPhi(typeId,
-        phiLabels.size(), phiLabels.data());
-      value.id = m_module.opGroupNonUniformBroadcastFirst(typeId,
-        m_module.constu32(spv::ScopeSubgroup), value.id);
-      value.id = m_module.opIAdd(typeId, value.id, laneIndex);
-    }
-    
     // Store the result
     emitRegisterStore(ins.dst[0], value);
   }
