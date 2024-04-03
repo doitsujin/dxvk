@@ -58,9 +58,6 @@ namespace dxvk {
           "\n  MiscFlags:  ", m_desc.MiscFlags,
           "\n  FeatureLevel:  ", pDevice->GetFeatureLevel()));
 
-      if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX)
-        Logger::warn("D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX: not supported.");
-
       imageInfo.shared = true;
       imageInfo.sharing.mode = hSharedHandle == INVALID_HANDLE_VALUE ? DxvkSharedHandleMode::Export : DxvkSharedHandleMode::Import;
       imageInfo.sharing.type = (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE)
