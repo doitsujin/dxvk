@@ -72,7 +72,7 @@ namespace dxvk {
     // memory bloat. This may be necessary for off-screen
     // rendering applications, or in situations where games
     // pre-render a lot of images without presenting in between.
-    return m_descriptorPools.size() >= 8;
+    return m_descriptorPools.size() > MaxDesiredPoolCount;
   }
 
 
@@ -100,29 +100,25 @@ namespace dxvk {
 
 
   void DxvkDescriptorPool::reset() {
-    // As a heuristic to save memory, check how many descriptors
-    // have actively been used in the past couple of submissions.
-    bool isLowUsageFrame = false;
-
+    // As a heuristic to save memory, check how many descriptor
+    // sets were actually being used in past submissions.
     size_t poolCount = m_descriptorPools.size();
+    bool needsReset = poolCount > MaxDesiredPoolCount;
 
     if (poolCount > 1 || m_setsAllocated > m_manager->getMaxSetCount() / 2) {
       double factor = std::max(11.0 / 3.0 - double(poolCount) / 3.0, 1.0);
-      isLowUsageFrame = double(m_setsUsed) * factor < double(m_setsAllocated);
+      needsReset = double(m_setsUsed) * factor < double(m_setsAllocated);
     }
 
-    m_lowUsageFrames = isLowUsageFrame
-      ? m_lowUsageFrames + 1
-      : 0;
     m_setsUsed = 0;
 
-    if (m_lowUsageFrames < 16) {
+    if (!needsReset) {
       for (auto& entry : m_setLists)
         entry.second.reset();
     } else {
-      // If most sets are no longer being used, reset and destroy
-      // descriptor pools and reset all lookup tables in order to
-      // accomodate more descriptors of different layouts.
+      // If most sets are no longer needed, reset and destroy
+      // descriptor pools and reset all lookup tables in order
+      // to accomodate more descriptors of different layouts.
       for (auto pool : m_descriptorPools)
         m_manager->recycleVulkanDescriptorPool(pool);
 
@@ -131,7 +127,6 @@ namespace dxvk {
       m_setMaps.clear();
 
       m_setsAllocated = 0;
-      m_lowUsageFrames = 0;
     }
 
     m_cachedEntry = { nullptr, nullptr };
