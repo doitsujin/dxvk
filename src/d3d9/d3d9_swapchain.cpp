@@ -321,7 +321,7 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetFrontBufferData(IDirect3DSurface9* pDestSurface) {
     #ifdef _WIN32
-    if (m_presentParams.Windowed || !HasFrontBuffer()) {
+    if (!m_parent->IsGamescopeWSIEnabled() && (m_presentParams.Windowed || !HasFrontBuffer())) {
       return D3D9SwapChainEx::GetFrontBufferDataGDI(pDestSurface);
     }
     #endif
