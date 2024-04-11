@@ -134,6 +134,10 @@ namespace dxvk {
 
     void UpdateWindowCtx();
 
+#ifdef _WIN32
+    static HRESULT GetFrontBufferDataGDI(IDirect3DSurface9* pDestSurface);
+#endif
+
   private:
 
     enum BindingIds : uint32_t {

@@ -241,9 +241,91 @@ namespace dxvk {
 
     return S_OK;
   }
+
+  HRESULT D3D9SwapChainEx::GetFrontBufferDataGDI(IDirect3DSurface9* pDestSurface) {
+    D3D9Surface* dst = static_cast<D3D9Surface*>(pDestSurface);
+
+    if (unlikely(dst == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    D3D9CommonTexture* dstTexInfo = dst->GetCommonTexture();
+    VkExtent3D dstTexExtent = dstTexInfo->GetExtentMip(dst->GetMipLevel());
+
+    if (unlikely(dstTexInfo->Desc()->Format != D3D9Format::A8R8G8B8)) {
+      return D3DERR_INVALIDCALL;
+    }
+
+    if (unlikely(dstTexInfo->Desc()->Pool != D3DPOOL_SYSTEMMEM && dstTexInfo->Desc()->Pool != D3DPOOL_SCRATCH))
+      return D3DERR_INVALIDCALL;
+
+    const POINT ptZero = { 0, 0 };
+    HMONITOR primaryMonitor = MonitorFromPoint(ptZero, MONITOR_DEFAULTTOPRIMARY);
+
+    MONITORINFO monitorInfo = {};
+    monitorInfo.cbSize = sizeof(MONITORINFO);
+    if (!GetMonitorInfo(primaryMonitor, &monitorInfo)) {
+      Logger::err("D3D9SwapChainEx::GetFrontBufferData: Failed to query window size.");
+      return D3DERR_INVALIDCALL;
+    }
+    VkExtent2D monitorExtent = { uint32_t(monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left), uint32_t(monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top) };
+    VkExtent2D blitRegionExtent = { std::min(monitorExtent.width, dstTexExtent.width), std::min(monitorExtent.height, dstTexExtent.height) };
+
+    HDC srcDC = GetDC(nullptr);
+    HDC dstDC = CreateCompatibleDC(nullptr);
+    HBITMAP hbitmap = CreateCompatibleBitmap(srcDC, dstTexExtent.width, dstTexExtent.height);
+
+    if (unlikely(hbitmap == nullptr)) {
+      Logger::err("D3D9SwapChainEx::GetFrontBufferData: Failed to create bitmap.");
+      return D3DERR_INVALIDCALL;
+    }
+
+    HBITMAP oldBitmap = static_cast<HBITMAP>(SelectObject(dstDC, hbitmap));
+    if (unlikely(oldBitmap == nullptr)) {
+      Logger::err("D3D9SwapChainEx::GetFrontBufferData: Failed to select bitmap for DC.");
+      return D3DERR_INVALIDCALL;
+    }
+
+    // We always want the primary monitor which conveniently always sits at 0,0.
+    if (unlikely(!BitBlt(dstDC, 0, 0, blitRegionExtent.width, blitRegionExtent.height, srcDC, 0, 0, SRCCOPY))) {
+      Logger::err("D3D9SwapChainEx::GetFrontBufferData: Failed to create blit window.");
+      return D3DERR_INVALIDCALL;
+    }
+
+    D3DLOCKED_RECT lockedRect = {};
+    if (unlikely(pDestSurface->LockRect(&lockedRect, nullptr, D3DLOCK_DISCARD) != D3D_OK)) {
+      Logger::err("D3D9SwapChainEx::GetFrontBufferData: Failed to lock dst surface.");
+      return D3DERR_INVALIDCALL;
+    }
+
+    BITMAPINFO info = {
+      sizeof(BITMAPINFOHEADER), int32_t(dstTexExtent.width), int32_t(-blitRegionExtent.height), 1, 32, BI_RGB, 0, 0, 0, 0, 0,
+      0,0,0,0
+    };
+
+    // For uncompressed RGB formats, the minimum stride is always the image width in bytes, rounded up to the nearest DWORD
+    // Our pitch is always aligned to 4 and GetFrontBufferData only supports A8R8G8B8. So we can avoid another copy to repack the data.
+
+    uint32_t lines = uint32_t(blitRegionExtent.height);
+    int scanlinesCopied = GetDIBits(dstDC, hbitmap, 0, lines, lockedRect.pBits, &info, DIB_RGB_COLORS);
+    if (unlikely(scanlinesCopied != int32_t(lines))) {
+      Logger::err("D3D9SwapChainEx::GetFrontBufferData: Failed to read hbitmap data.");
+      return D3DERR_INVALIDCALL;
+    }
+
+    pDestSurface->UnlockRect();
+
+    SelectObject(dstDC, oldBitmap);
+    return D3D_OK;
+  }
 #endif
 
   HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetFrontBufferData(IDirect3DSurface9* pDestSurface) {
+    #ifdef _WIN32
+    if (m_presentParams.Windowed || !HasFrontBuffer()) {
+      return D3D9SwapChainEx::GetFrontBufferDataGDI(pDestSurface);
+    }
+    #endif
+
     D3D9DeviceLock lock = m_parent->LockDevice();
 
     // This function can do absolutely everything!

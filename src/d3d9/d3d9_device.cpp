@@ -1093,6 +1093,10 @@ namespace dxvk {
     if (unlikely(iSwapChain != 0))
       return D3DERR_INVALIDCALL;
 
+    #ifdef _WIN32
+    return D3D9SwapChainEx::GetFrontBufferDataGDI(pDestSurface);
+    #endif
+
     D3D9DeviceLock lock = LockDevice();
 
     // In windowed mode, GetFrontBufferData takes a screenshot of the entire screen.
