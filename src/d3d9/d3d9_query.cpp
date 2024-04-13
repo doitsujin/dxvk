@@ -41,11 +41,6 @@ namespace dxvk {
       case D3DQUERYTYPE_TIMESTAMPFREQ:
         break;
 
-      case D3DQUERYTYPE_VERTEXSTATS:
-        m_query[0] = dxvkDevice->createGpuQuery(
-          VK_QUERY_TYPE_PIPELINE_STATISTICS, 0, 0);
-        break;
-
       default:
         throw DxvkError(str::format("D3D9Query: Unsupported query type ", m_queryType));
     }
@@ -246,11 +241,6 @@ namespace dxvk {
           m_dataCache.TimestampFreq = GetTimestampQueryFrequency();
           break;
 
-        case D3DQUERYTYPE_VERTEXSTATS:
-          m_dataCache.VertexStats.NumRenderedTriangles      = queryData[0].statistic.iaPrimitives;
-          m_dataCache.VertexStats.NumExtraClippingTriangles = queryData[0].statistic.clipPrimitives;
-          break;
-
         default:
           break;
       }
@@ -276,7 +266,6 @@ namespace dxvk {
   void D3D9Query::Begin(DxvkContext* ctx) {
     switch (m_queryType) {
       case D3DQUERYTYPE_OCCLUSION:
-      case D3DQUERYTYPE_VERTEXSTATS:
         ctx->beginQuery(m_query[0]);
         break;
 
@@ -296,7 +285,6 @@ namespace dxvk {
         ctx->writeTimestamp(m_query[0]);
         break;
 
-      case D3DQUERYTYPE_VERTEXSTATS:
       case D3DQUERYTYPE_OCCLUSION:
         ctx->endQuery(m_query[0]);
         break;
@@ -314,7 +302,6 @@ namespace dxvk {
 
   bool D3D9Query::QueryBeginnable(D3DQUERYTYPE QueryType) {
     return QueryType == D3DQUERYTYPE_OCCLUSION
-        || QueryType == D3DQUERYTYPE_VERTEXSTATS
         || QueryType == D3DQUERYTYPE_TIMESTAMPDISJOINT;
   }
 
@@ -338,7 +325,6 @@ namespace dxvk {
       case D3DQUERYTYPE_TIMESTAMP:
       case D3DQUERYTYPE_TIMESTAMPDISJOINT:
       case D3DQUERYTYPE_TIMESTAMPFREQ:
-      case D3DQUERYTYPE_VERTEXSTATS:
         return D3D_OK;
 
       default:
