@@ -7777,10 +7777,18 @@ namespace dxvk {
           return result;
 
         DxbcRegMask mask(0u);
+        DxbcRegMask used(0u);
 
         for (const auto& e : *m_isgn) {
-          if (e.registerId == regIdx && !ignoreInputSystemValue(e.systemValue))
+          if (e.registerId == regIdx && !ignoreInputSystemValue(e.systemValue)) {
             mask |= e.componentMask;
+            used |= e.componentUsed;
+          }
+        }
+
+        if (m_programInfo.type() == DxbcProgramType::PixelShader) {
+          if ((used.raw() & mask.raw()) == used.raw())
+            mask = used;
         }
 
         result.ccount = mask.minComponents();

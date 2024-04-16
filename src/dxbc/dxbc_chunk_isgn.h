@@ -20,6 +20,7 @@ namespace dxvk {
     uint32_t          semanticIndex;
     uint32_t          registerId;
     DxbcRegMask       componentMask;
+    DxbcRegMask       componentUsed;
     DxbcScalarType    componentType;
     DxbcSystemValue   systemValue;
     uint32_t          streamId;
