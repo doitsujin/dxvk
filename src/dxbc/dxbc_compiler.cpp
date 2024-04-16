@@ -7728,6 +7728,21 @@ namespace dxvk {
     return DxbcRegMask::firstN(getTexCoordDim(imageType));
   }
   
+
+  bool DxbcCompiler::ignoreInputSystemValue(DxbcSystemValue sv) const {
+    switch (sv) {
+      case DxbcSystemValue::Position:
+      case DxbcSystemValue::IsFrontFace:
+      case DxbcSystemValue::SampleIndex:
+      case DxbcSystemValue::PrimitiveId:
+      case DxbcSystemValue::Coverage:
+        return m_programInfo.type() == DxbcProgramType::PixelShader;
+
+      default:
+        return false;
+    }
+  }
+
   
   DxbcVectorType DxbcCompiler::getInputRegType(uint32_t regIdx) const {
     switch (m_programInfo.type()) {
@@ -7758,8 +7773,17 @@ namespace dxvk {
         result.ctype  = DxbcScalarType::Float32;
         result.ccount = 4;
 
-        if (m_isgn->findByRegister(regIdx))
-          result.ccount = m_isgn->regMask(regIdx).minComponents();
+        if (m_isgn == nullptr || !m_isgn->findByRegister(regIdx))
+          return result;
+
+        DxbcRegMask mask(0u);
+
+        for (const auto& e : *m_isgn) {
+          if (e.registerId == regIdx && !ignoreInputSystemValue(e.systemValue))
+            mask |= e.componentMask;
+        }
+
+        result.ccount = mask.minComponents();
         return result;
       }
     }

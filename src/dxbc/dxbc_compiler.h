@@ -1221,6 +1221,9 @@ namespace dxvk {
     uint32_t getUavCoherence(
             uint32_t                registerId,
             DxbcUavFlags            flags);
+    
+    bool ignoreInputSystemValue(
+            DxbcSystemValue         sv) const;
 
     ///////////////////////////
     // Type definition methods
