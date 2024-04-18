@@ -1997,7 +1997,7 @@ namespace dxvk {
     depthOp.loadOpS       = VK_ATTACHMENT_LOAD_OP_LOAD;
     depthOp.loadLayout    = imageView->imageInfo().layout;
     depthOp.storeLayout   = imageView->imageInfo().layout;
-    
+
     if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT)
       colorOp.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     else if (discardAspects & VK_IMAGE_ASPECT_COLOR_BIT)
@@ -2010,7 +2010,7 @@ namespace dxvk {
     
     if (clearAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
       depthOp.loadOpS = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    else if (discardAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
+    else if (discardAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
       depthOp.loadOpS = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
     if (attachmentIndex >= 0 && !m_state.om.framebufferInfo.isWritable(attachmentIndex, clearAspects | discardAspects)) {
