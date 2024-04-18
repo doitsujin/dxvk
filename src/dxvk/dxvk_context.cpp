@@ -2041,6 +2041,8 @@ namespace dxvk {
     }
     
     if (attachmentIndex < 0) {
+      bool hasViewFormatMismatch = imageView->info().format != imageView->imageInfo().format;
+
       if (m_execBarriers.isImageDirty(imageView->image(), imageView->imageSubresources(), DxvkAccess::Write))
         m_execBarriers.recordCommands(m_cmd);
 
@@ -2074,6 +2076,11 @@ namespace dxvk {
         clearAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
         attachmentInfo.loadOp = colorOp.loadOp;
+
+        // We can't use LOAD_OP_CLEAR if the view format does not match the
+        // underlying image format, so just discard here and use clear later.
+        if (hasViewFormatMismatch && attachmentInfo.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR)
+          attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
         renderingInfo.colorAttachmentCount = 1;
         renderingInfo.pColorAttachments = &attachmentInfo;
@@ -2110,6 +2117,20 @@ namespace dxvk {
       }
 
       m_cmd->cmdBeginRendering(&renderingInfo);
+
+      if (hasViewFormatMismatch) {
+        VkClearAttachment clearInfo = { };
+        clearInfo.aspectMask = imageView->info().aspect;
+        clearInfo.clearValue = clearValue;
+
+        VkClearRect clearRect = { };
+        clearRect.rect.extent.width = extent.width;
+        clearRect.rect.extent.height = extent.height;
+        clearRect.layerCount = imageView->info().numLayers;
+
+        m_cmd->cmdClearAttachments(1, &clearInfo, 1, &clearRect);
+      }
+
       m_cmd->cmdEndRendering();
 
       m_execBarriers.accessImage(
@@ -4741,8 +4762,10 @@ namespace dxvk {
     this->renderPassEmitPostBarriers(framebufferInfo, ops);
 
     uint32_t colorInfoCount = 0;
+    uint32_t lateClearCount = 0;
 
     std::array<VkRenderingAttachmentInfo, MaxNumRenderTargets> colorInfos;
+    std::array<VkClearAttachment, MaxNumRenderTargets> lateClears;
 
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       const auto& colorTarget = framebufferInfo.getColorTarget(i);
@@ -4754,8 +4777,20 @@ namespace dxvk {
         colorInfos[i].loadOp = ops.colorOps[i].loadOp;
         colorInfos[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-        if (ops.colorOps[i].loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR)
+        if (ops.colorOps[i].loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
           colorInfos[i].clearValue.color = ops.colorOps[i].clearValue;
+
+          // We can't use LOAD_OP_CLEAR if the view format does not match the
+          // underlying image format, so just discard here and use clear later.
+          if (colorTarget.view->info().format != colorTarget.view->imageInfo().format) {
+            colorInfos[i].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+
+            auto& clear = lateClears[lateClearCount++];
+            clear.colorAttachment = i;
+            clear.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            clear.clearValue.color = ops.colorOps[i].clearValue;
+          }
+        }
 
         colorInfoCount = i + 1;
       }
@@ -4804,6 +4839,15 @@ namespace dxvk {
 
     m_cmd->cmdBeginRendering(&renderingInfo);
     
+    if (lateClearCount) {
+      VkClearRect clearRect = { };
+      clearRect.rect.extent.width   = fbSize.width;
+      clearRect.rect.extent.height  = fbSize.height;
+      clearRect.layerCount          = fbSize.layers;
+
+      m_cmd->cmdClearAttachments(lateClearCount, lateClears.data(), 1, &clearRect);
+    }
+
     for (uint32_t i = 0; i < framebufferInfo.numAttachments(); i++) {
       m_cmd->trackResource<DxvkAccess::None> (framebufferInfo.getAttachment(i).view);
       m_cmd->trackResource<DxvkAccess::Write>(framebufferInfo.getAttachment(i).view->image());
