@@ -5513,12 +5513,12 @@ namespace dxvk {
     result.type.ctype  = DxbcScalarType::Uint32;
     result.type.ccount = 1;
     
-    if (info.image.sampled == 1) {
+    if (info.image.ms == 0 && info.image.sampled == 1) {
       result.id = m_module.opImageQueryLevels(
         getVectorTypeId(result.type),
         m_module.opLoad(info.typeId, info.varId));
     } else {
-      // Report one LOD in case of UAVs
+      // Report one LOD in case of UAVs or multisampled images
       result.id = m_module.constu32(1);
     }
 
