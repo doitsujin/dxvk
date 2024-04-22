@@ -233,6 +233,10 @@ namespace dxvk {
             DXGI_FORMAT             Format,
             DXGI_COLOR_SPACE_TYPE   ColorSpace);
 
+    HRESULT STDMETHODCALLTYPE PresentBase(
+            UINT                      SyncInterval,
+            UINT                      PresentFlags,
+      const DXGI_PRESENT_PARAMETERS*  pPresentParameters);
   };
   
 }
