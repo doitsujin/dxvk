@@ -303,11 +303,18 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::Present(UINT SyncInterval, UINT Flags) {
-    return Present1(SyncInterval, Flags, nullptr);
+    return PresentBase(SyncInterval, Flags, nullptr);
   }
-  
-  
+
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::Present1(
+          UINT                      SyncInterval,
+          UINT                      PresentFlags,
+    const DXGI_PRESENT_PARAMETERS*  pPresentParameters) {
+
+    return PresentBase(SyncInterval, PresentFlags, pPresentParameters);
+  }
+
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::PresentBase(
           UINT                      SyncInterval,
           UINT                      PresentFlags,
     const DXGI_PRESENT_PARAMETERS*  pPresentParameters) {
