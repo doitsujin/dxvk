@@ -200,6 +200,14 @@ namespace dxvk {
     UINT             m_flags;
     BOOL             m_monitorFallback;
       
+
+    HRESULT STDMETHODCALLTYPE CreateSwapChainForHwndBase(
+            IUnknown*             pDevice,
+            HWND                  hWnd,
+      const DXGI_SWAP_CHAIN_DESC1* pDesc,
+      const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc,
+            IDXGIOutput*          pRestrictToOutput,
+            IDXGISwapChain1**     ppSwapChain);
   };
   
 }
