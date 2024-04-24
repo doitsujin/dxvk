@@ -1334,7 +1334,7 @@ namespace dxvk {
 
   void D3D11VideoContext::CreateSampler() {
     DxvkSamplerCreateInfo samplerInfo;
-    samplerInfo.magFilter       = VK_FILTER_LINEAR;
+    samplerInfo.magFilter       = VK_FILTER_NEAREST;
     samplerInfo.minFilter       = VK_FILTER_LINEAR;
     samplerInfo.mipmapMode      = VK_SAMPLER_MIPMAP_MODE_NEAREST;
     samplerInfo.mipmapLodBias   = 0.0f;
