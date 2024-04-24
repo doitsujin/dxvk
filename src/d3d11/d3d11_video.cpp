@@ -1262,12 +1262,29 @@ namespace dxvk {
         viewport.height = float(cStreamState.dstRect.bottom) - viewport.y;
       }
 
+      VkExtent3D viewExtent = cViews[0]->mipLevelExtent(0);
+      VkViewport srcViewport;
+
+      if (cStreamState.srcRectEnabled) {
+        srcViewport.x      = float(cStreamState.srcRect.left);
+        srcViewport.y      = float(cStreamState.srcRect.top);
+        srcViewport.width  = float(cStreamState.srcRect.right) - srcViewport.x;
+        srcViewport.height = float(cStreamState.srcRect.bottom) - srcViewport.y;
+      } else {
+        srcViewport.x      = 0.0f;
+        srcViewport.y      = 0.0f;
+        srcViewport.width  = float(viewExtent.width);
+        srcViewport.height = float(viewExtent.height);
+      }
+
       UboData uboData = { };
       uboData.colorMatrix[0][0] = 1.0f;
       uboData.colorMatrix[1][1] = 1.0f;
       uboData.colorMatrix[2][2] = 1.0f;
-      uboData.coordMatrix[0][0] = 1.0f;
-      uboData.coordMatrix[1][1] = 1.0f;
+      uboData.coordMatrix[0][0] = srcViewport.width / float(viewExtent.width);
+      uboData.coordMatrix[1][1] = srcViewport.height / float(viewExtent.height);
+      uboData.coordMatrix[2][0] = srcViewport.x / float(viewExtent.width);
+      uboData.coordMatrix[2][1] = srcViewport.y / float(viewExtent.height);
       uboData.yMin = 0.0f;
       uboData.yMax = 1.0f;
       uboData.isPlanar = cViews[1] != nullptr;
