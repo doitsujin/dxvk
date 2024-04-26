@@ -13,7 +13,10 @@
 
 namespace dxvk {
 
-  const static std::vector<std::pair<const char*, Config>> g_appDefaults = {{
+  using ProfileList = std::vector<std::pair<const char*, Config>>;
+
+
+  const static ProfileList g_profiles = {{
     /* Assassin's Creed Syndicate: amdags issues  */
     { R"(\\ACS\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
@@ -909,6 +912,24 @@ namespace dxvk {
   }};
 
 
+  const static ProfileList g_deckProfiles = {{
+
+  }};
+
+
+  const Config* findProfile(const ProfileList& profiles, const std::string& appName) {
+    auto appConfig = std::find_if(profiles.begin(), profiles.end(),
+      [&appName] (const std::pair<const char*, Config>& pair) {
+        std::regex expr(pair.first, std::regex::extended | std::regex::icase);
+        return std::regex_search(appName, expr);
+      });
+
+    return appConfig != profiles.end()
+      ? &appConfig->second
+      : nullptr;
+  }
+
+
   static bool isWhitespace(char ch) {
     return ch == ' ' || ch == '\x9' || ch == '\r';
   }
@@ -1158,20 +1179,22 @@ namespace dxvk {
 
 
   Config Config::getAppConfig(const std::string& appName) {
-    auto appConfig = std::find_if(g_appDefaults.begin(), g_appDefaults.end(),
-      [&appName] (const std::pair<const char*, Config>& pair) {
-        std::regex expr(pair.first, std::regex::extended | std::regex::icase);
-        return std::regex_search(appName, expr);
-      });
+    const Config* config = nullptr;
 
-    if (appConfig != g_appDefaults.end()) {
+    if (env::getEnvVar("SteamDeck") == "1")
+      config = findProfile(g_deckProfiles, appName);
+
+    if (!config)
+      config = findProfile(g_profiles, appName);
+
+    if (config) {
       // Inform the user that we loaded a default config
       Logger::info(str::format("Found built-in config:"));
 
-      for (auto& pair : appConfig->second.m_options)
+      for (auto& pair : config->m_options)
         Logger::info(str::format("  ", pair.first, " = ", pair.second));
 
-      return appConfig->second;
+      return *config;
     }
 
     return Config();
