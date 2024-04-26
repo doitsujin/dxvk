@@ -913,7 +913,11 @@ namespace dxvk {
 
 
   const static ProfileList g_deckProfiles = {{
-
+    /* Fallout 4: Defaults to 45 FPS on OLED, but also breaks above 60 FPS */
+    { R"(\\Fallout4\.exe$)", {{
+      { "dxgi.syncInterval",                "1" },
+      { "dxgi.maxFrameRate",                "60" },
+    }} },
   }};
 
 
