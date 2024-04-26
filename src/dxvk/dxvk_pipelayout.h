@@ -292,8 +292,19 @@ namespace dxvk {
      * \brief Retrieves push constant range
      * \returns Push constant range
      */
-    VkPushConstantRange getPushConstantRange() const {
-      return m_pushConst;
+    VkPushConstantRange getPushConstantRange(bool independent) const {
+      VkPushConstantRange result = m_pushConst;
+
+      if (!independent) {
+        result.stageFlags &= m_pushConstStages;
+
+        if (!result.stageFlags) {
+          result.offset = 0;
+          result.size = 0;
+        }
+      }
+
+      return result;
     }
 
     /**
@@ -325,6 +336,12 @@ namespace dxvk {
     void addPushConstantRange(VkPushConstantRange range);
 
     /**
+     * \brief Adds a stage that actively uses push constants
+     * \param [in] stage Shader stage
+     */
+    void addPushConstantStage(VkShaderStageFlagBits stage);
+
+    /**
      * \brief Merges binding layouts
      *
      * Adds bindings and push constant range from another layout to
@@ -353,6 +370,7 @@ namespace dxvk {
 
     std::array<DxvkBindingList, DxvkDescriptorSets::SetCount> m_bindings;
     VkPushConstantRange                                       m_pushConst;
+    VkShaderStageFlags                                        m_pushConstStages;
     VkShaderStageFlags                                        m_stages;
 
   };

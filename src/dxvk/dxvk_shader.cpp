@@ -59,8 +59,8 @@ namespace dxvk {
 
     if (info.pushConstSize) {
       VkPushConstantRange pushConst;
-      pushConst.stageFlags = info.stage;
-      pushConst.offset = info.pushConstOffset;
+      pushConst.stageFlags = info.pushConstStages;
+      pushConst.offset = 0;
       pushConst.size = info.pushConstSize;
 
       m_bindings.addPushConstantRange(pushConst);
@@ -75,6 +75,8 @@ namespace dxvk {
 
     // Run an analysis pass over the SPIR-V code to gather some
     // info that we may need during pipeline compilation.
+    bool usesPushConstants = false;
+
     std::vector<BindingOffsets> bindingOffsets;
     std::vector<uint32_t> varIds;
     std::vector<uint32_t> sampleMaskIds;
@@ -154,6 +156,9 @@ namespace dxvk {
           if (std::find(sampleMaskIds.begin(), sampleMaskIds.end(), ins.arg(2)) != sampleMaskIds.end())
             m_flags.set(DxvkShaderFlag::ExportsSampleMask);
         }
+
+        if (ins.arg(3) == spv::StorageClassPushConstant)
+          usesPushConstants = true;
       }
 
       // Ignore the actual shader code, there's nothing interesting for us in there.
@@ -168,6 +173,11 @@ namespace dxvk {
       if (info.bindingOffset)
         m_bindingOffsets.push_back(info);
     }
+
+    // Set flag for stages that actually use push constants
+    // so that they can be trimmed for optimized pipelines.
+    if (usesPushConstants)
+      m_bindings.addPushConstantStage(info.stage);
 
     // Don't set pipeline library flag if the shader
     // doesn't actually support pipeline libraries

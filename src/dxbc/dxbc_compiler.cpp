@@ -257,13 +257,12 @@ namespace dxvk {
     info.outputMask = m_outputMask;
     info.uniformSize = m_immConstData.size();
     info.uniformData = m_immConstData.data();
+    info.pushConstStages = VK_SHADER_STAGE_FRAGMENT_BIT;
+    info.pushConstSize = sizeof(DxbcPushConstants);
     info.outputTopology = m_outputTopology;
 
     if (m_programInfo.type() == DxbcProgramType::HullShader)
       info.patchVertexCount = m_hs.vertexCountIn;
-
-    if (m_programInfo.type() == DxbcProgramType::PixelShader && m_ps.pushConstantId)
-      info.pushConstSize = sizeof(DxbcPushConstants);
 
     if (m_moduleInfo.xfb) {
       info.xfbRasterizedStream = m_moduleInfo.xfb->rasterizedStream;

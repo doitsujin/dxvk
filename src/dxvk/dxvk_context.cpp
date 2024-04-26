@@ -4984,7 +4984,7 @@ namespace dxvk {
     // Mark compute resources and push constants as dirty
     m_descriptorState.dirtyStages(VK_SHADER_STAGE_COMPUTE_BIT);
 
-    if (newPipeline->getBindings()->layout().getPushConstantRange().size)
+    if (newPipeline->getBindings()->layout().getPushConstantRange(true).size)
       m_flags.set(DxvkContextFlag::DirtyPushConstants);
 
     m_flags.clr(DxvkContextFlag::CpDirtyPipelineState);
@@ -5058,7 +5058,7 @@ namespace dxvk {
 
     m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
 
-    if (newPipeline->getBindings()->layout().getPushConstantRange().size)
+    if (newPipeline->getBindings()->layout().getPushConstantRange(true).size)
       m_flags.set(DxvkContextFlag::DirtyPushConstants);
 
     m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
@@ -5925,16 +5925,19 @@ namespace dxvk {
     auto bindings = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
       ? m_state.gp.pipeline->getBindings()
       : m_state.cp.pipeline->getBindings();
-    
-    VkPushConstantRange pushConstRange = bindings->layout().getPushConstantRange();
+
+    // Optimized pipelines may have push constants trimmed, so look up
+    // the exact layout used for the currently bound pipeline.
+    bool independentSets = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+      && m_flags.test(DxvkContextFlag::GpIndependentSets);
+
+    VkPushConstantRange pushConstRange = bindings->layout().getPushConstantRange(independentSets);
 
     if (!pushConstRange.size)
       return;
 
-    // Push constants should be compatible between complete and
-    // independent layouts, so always ask for the complete one
     m_cmd->cmdPushConstants(
-      bindings->getPipelineLayout(false),
+      bindings->getPipelineLayout(independentSets),
       pushConstRange.stageFlags,
       pushConstRange.offset,
       pushConstRange.size,

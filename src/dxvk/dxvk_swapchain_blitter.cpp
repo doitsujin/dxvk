@@ -329,6 +329,8 @@ namespace dxvk {
 
     DxvkShaderCreateInfo vsInfo;
     vsInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vsInfo.pushConstStages = VK_SHADER_STAGE_FRAGMENT_BIT;
+    vsInfo.pushConstSize = sizeof(PresenterArgs);
     vsInfo.outputMask = 0x1;
     m_vs = new DxvkShader(vsInfo, std::move(vsCode));
     
@@ -336,6 +338,7 @@ namespace dxvk {
     fsInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     fsInfo.bindingCount = fsBindings.size();
     fsInfo.bindings = fsBindings.data();
+    fsInfo.pushConstStages = VK_SHADER_STAGE_FRAGMENT_BIT;
     fsInfo.pushConstSize = sizeof(PresenterArgs);
     fsInfo.inputMask = 0x1;
     fsInfo.outputMask = 0x1;

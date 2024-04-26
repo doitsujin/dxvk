@@ -336,7 +336,7 @@ namespace dxvk {
   }
 
 
-  uint32_t SetupRenderStateBlock(SpirvModule& spvModule, uint32_t count) {
+  uint32_t SetupRenderStateBlock(SpirvModule& spvModule) {
     uint32_t floatType = spvModule.defFloatType(32);
     uint32_t uintType  = spvModule.defIntType(32, 0);
     uint32_t vec3Type  = spvModule.defVectorType(floatType, 3);
@@ -357,7 +357,7 @@ namespace dxvk {
       floatType,
     }};
 
-    uint32_t rsStruct = spvModule.defStructTypeUnique(count, rsMembers.data());
+    uint32_t rsStruct = spvModule.defStructTypeUnique(rsMembers.size(), rsMembers.data());
     uint32_t rsBlock = spvModule.newVar(
       spvModule.defPointerType(rsStruct, spv::StorageClassPushConstant),
       spv::StorageClassPushConstant);
@@ -369,9 +369,6 @@ namespace dxvk {
 
     uint32_t memberIdx = 0;
     auto SetMemberName = [&](const char* name, uint32_t offset) {
-      if (memberIdx >= count)
-        return;
-
       spvModule.setDebugMemberName   (rsStruct, memberIdx, name);
       spvModule.memberDecorateOffset (rsStruct, memberIdx, offset);
       memberIdx++;
@@ -781,8 +778,6 @@ namespace dxvk {
     uint32_t              m_inputMask = 0u;
     uint32_t              m_outputMask = 0u;
     uint32_t              m_flatShadingMask = 0u;
-    uint32_t              m_pushConstOffset = 0u;
-    uint32_t              m_pushConstSize = 0u;
 
     DxsoProgramType       m_programType;
     D3D9FFShaderKeyVS     m_vsKey;
@@ -892,8 +887,8 @@ namespace dxvk {
     info.inputMask = m_inputMask;
     info.outputMask = m_outputMask;
     info.flatShadingInputs = m_flatShadingMask;
-    info.pushConstOffset = m_pushConstOffset;
-    info.pushConstSize = m_pushConstSize;
+    info.pushConstStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    info.pushConstSize = sizeof(D3D9RenderStateInfo);
 
     return new DxvkShader(info, m_module.compile());
   }
@@ -1384,20 +1379,7 @@ namespace dxvk {
 
 
   void D3D9FFShaderCompiler::setupRenderStateInfo() {
-    uint32_t count;
-
-    if (m_programType == DxsoProgramType::PixelShader) {
-      m_pushConstOffset = 0;
-      m_pushConstSize   = offsetof(D3D9RenderStateInfo, pointSize);
-      count = 5;
-    }
-    else {
-      m_pushConstOffset = offsetof(D3D9RenderStateInfo, pointSize);
-      m_pushConstSize   = sizeof(float) * 6;
-      count = 11;
-    }
-
-    m_rsBlock = SetupRenderStateBlock(m_module, count);
+    m_rsBlock = SetupRenderStateBlock(m_module);
   }
 
 

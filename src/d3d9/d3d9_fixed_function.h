@@ -59,7 +59,7 @@ namespace dxvk {
   void DoFixedFunctionAlphaTest(SpirvModule& spvModule, const D3D9AlphaTestContext& ctx);
 
   // Returns a render state block
-  uint32_t SetupRenderStateBlock(SpirvModule& spvModule, uint32_t count);
+  uint32_t SetupRenderStateBlock(SpirvModule& spvModule);
 
   struct D3D9PointSizeInfoVS {
     uint32_t defaultValue;

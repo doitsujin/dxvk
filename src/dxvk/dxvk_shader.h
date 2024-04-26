@@ -52,7 +52,7 @@ namespace dxvk {
     /// Flat shading input mask
     uint32_t flatShadingInputs = 0;
     /// Push constant range
-    uint32_t pushConstOffset = 0;
+    VkShaderStageFlags pushConstStages = 0;
     uint32_t pushConstSize = 0;
     /// Uniform buffer data
     uint32_t uniformSize = 0;

@@ -228,8 +228,8 @@ namespace dxvk {
     info.bindings = m_bindings.data();
     info.inputMask = m_inputMask;
     info.outputMask = m_outputMask;
-    info.pushConstOffset = m_pushConstOffset;
-    info.pushConstSize = m_pushConstSize;
+    info.pushConstStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    info.pushConstSize = sizeof(D3D9RenderStateInfo);
 
     if (m_programInfo.type() == DxsoProgramTypes::PixelShader)
       info.flatShadingInputs = m_ps.flatShadingMask;
@@ -3561,30 +3561,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
 
   void DxsoCompiler::setupRenderStateInfo() {
-    uint32_t count;
-
-    // Only need alpha ref for PS 3.
-    // No FF fog component.
-    if (m_programInfo.type() == DxsoProgramType::PixelShader) {
-      if (m_programInfo.majorVersion() == 3) {
-        m_pushConstOffset = offsetof(D3D9RenderStateInfo, alphaRef);
-        m_pushConstSize   = sizeof(float);
-      }
-      else {
-        m_pushConstOffset = 0;
-        m_pushConstSize   = offsetof(D3D9RenderStateInfo, pointSize);
-      }
-
-      count = 5;
-    }
-    else {
-      m_pushConstOffset = offsetof(D3D9RenderStateInfo, pointSize);
-      // Point scale never triggers on programmable
-      m_pushConstSize   = sizeof(float) * 3;
-      count = 8;
-    }
-
-    m_rsBlock = SetupRenderStateBlock(m_module, count);
+    m_rsBlock = SetupRenderStateBlock(m_module);
   }
 
 
