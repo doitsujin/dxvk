@@ -420,6 +420,11 @@ namespace dxvk {
       { "d3d11.exposeDriverCommandLists",   "False" },
       { "dxgi.hideNvidiaGpu",               "False" },
     }} },
+    /* Red Faction Guerrilla Re-Mars-tered        *
+     * Broken skybox                              */
+    { R"(\\rfg\.exe$)", {{
+      { "d3d11.longMad",                  "True"    },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
