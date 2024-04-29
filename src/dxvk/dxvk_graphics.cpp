@@ -1112,6 +1112,7 @@ namespace dxvk {
     if (doCreateBasePipeline)
       baseHandle = this->getBasePipeline(state);
 
+    // Fast-linking may fail in some situations
     if (!baseHandle)
       fastHandle = this->getOptimizedPipeline(state);
 
@@ -1147,6 +1148,13 @@ namespace dxvk {
     if (state.rs.polygonMode() != VK_POLYGON_MODE_FILL
      || state.rs.conservativeMode() != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT
      || (state.rs.lineMode() != VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT && isLineRendering))
+      return false;
+
+    // Depth clip is assumed to be enabled. If the driver does not
+    // support dynamic depth clip, we'd have to late-compile anyway
+    // unless the pipeline is used multiple times.
+    if (!m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable
+     && !state.rs.depthClipEnable())
       return false;
 
     if (m_shaders.tcs != nullptr) {
@@ -1220,9 +1228,6 @@ namespace dxvk {
     key.viLibrary = m_manager->createVertexInputLibrary(viState);
     key.foLibrary = m_manager->createFragmentOutputLibrary(foState);
 
-    if (!m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable)
-      key.args.depthClipEnable = state.rs.depthClipEnable();
-
     auto entry = m_basePipelines.find(key);
     if (entry != m_basePipelines.end())
       return entry->second;
@@ -1237,8 +1242,8 @@ namespace dxvk {
     const DxvkGraphicsPipelineBaseInstanceKey& key) const {
     auto vk = m_device->vkd();
 
-    DxvkShaderPipelineLibraryHandle vs = m_vsLibrary->acquirePipelineHandle(key.args);
-    DxvkShaderPipelineLibraryHandle fs = m_fsLibrary->acquirePipelineHandle(key.args);
+    DxvkShaderPipelineLibraryHandle vs = m_vsLibrary->acquirePipelineHandle();
+    DxvkShaderPipelineLibraryHandle fs = m_fsLibrary->acquirePipelineHandle();
 
     std::array<VkPipeline, 4> libraries = {{
       key.viLibrary->getHandle(), vs.handle, fs.handle,

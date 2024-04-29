@@ -381,19 +381,16 @@ namespace dxvk {
   struct DxvkGraphicsPipelineBaseInstanceKey {
     const DxvkGraphicsPipelineVertexInputLibrary*     viLibrary = nullptr;
     const DxvkGraphicsPipelineFragmentOutputLibrary*  foLibrary = nullptr;
-    DxvkShaderPipelineLibraryCompileArgs              args;
 
     bool eq(const DxvkGraphicsPipelineBaseInstanceKey& other) const {
       return viLibrary == other.viLibrary
-          && foLibrary == other.foLibrary
-          && args      == other.args;
+          && foLibrary == other.foLibrary;
     }
 
     size_t hash() const {
       DxvkHashState hash;
       hash.add(size_t(viLibrary));
       hash.add(size_t(foLibrary));
-      hash.add(args.hash());
       return hash;
     }
   };
