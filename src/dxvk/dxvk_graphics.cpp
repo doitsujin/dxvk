@@ -1111,7 +1111,8 @@ namespace dxvk {
 
     if (doCreateBasePipeline)
       baseHandle = this->getBasePipeline(state);
-    else
+
+    if (!baseHandle)
       fastHandle = this->getOptimizedPipeline(state);
 
     // Log pipeline state if requested, or on failure
@@ -1236,10 +1237,11 @@ namespace dxvk {
     const DxvkGraphicsPipelineBaseInstanceKey& key) const {
     auto vk = m_device->vkd();
 
+    DxvkShaderPipelineLibraryHandle vs = m_vsLibrary->acquirePipelineHandle(key.args);
+    DxvkShaderPipelineLibraryHandle fs = m_fsLibrary->acquirePipelineHandle(key.args);
+
     std::array<VkPipeline, 4> libraries = {{
-      key.viLibrary->getHandle(),
-      m_vsLibrary->acquirePipelineHandle(key.args),
-      m_fsLibrary->acquirePipelineHandle(key.args),
+      key.viLibrary->getHandle(), vs.handle, fs.handle,
       key.foLibrary->getHandle(),
     }};
 
@@ -1248,13 +1250,14 @@ namespace dxvk {
     libInfo.pLibraries      = libraries.data();
 
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };
+    info.flags              = vs.linkFlags | fs.linkFlags;
     info.layout             = m_bindings->getPipelineLayout(true);
     info.basePipelineIndex  = -1;
 
     VkPipeline pipeline = VK_NULL_HANDLE;
     VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
 
-    if (vr != VK_SUCCESS)
+    if (vr && vr != VK_PIPELINE_COMPILE_REQUIRED_EXT)
       Logger::err(str::format("DxvkGraphicsPipeline: Failed to create base pipeline: ", vr));
 
     return pipeline;

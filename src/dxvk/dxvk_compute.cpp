@@ -49,7 +49,7 @@ namespace dxvk {
       // may wait for an ongoing compile job to finish, or
       // compile the pipeline immediately on the calling thread.
       m_libraryHandle = m_library->acquirePipelineHandle(
-        DxvkShaderPipelineLibraryCompileArgs());
+        DxvkShaderPipelineLibraryCompileArgs()).handle;
 
       return m_libraryHandle;
     } else {

@@ -483,6 +483,17 @@ namespace dxvk {
 
 
   /**
+   * \brief Pipeline library handle
+   *
+   * Stores a pipeline library handle and the necessary link flags.
+   */
+  struct DxvkShaderPipelineLibraryHandle {
+    VkPipeline            handle;
+    VkPipelineCreateFlags linkFlags;
+  };
+
+
+  /**
    * \brief Shader pipeline library
    *
    * Stores a pipeline object for either a complete compute
@@ -524,7 +535,7 @@ namespace dxvk {
      * \param [in] args Compile arguments
      * \returns Vulkan pipeline handle
      */
-    VkPipeline acquirePipelineHandle(
+    DxvkShaderPipelineLibraryHandle acquirePipelineHandle(
       const DxvkShaderPipelineLibraryCompileArgs& args);
 
     /**
@@ -552,21 +563,21 @@ namespace dxvk {
           DxvkShaderSet             m_shaders;
     const DxvkBindingLayoutObjects* m_layout;
 
-    dxvk::mutex     m_mutex;
-    VkPipeline      m_pipeline             = VK_NULL_HANDLE;
-    VkPipeline      m_pipelineNoDepthClip  = VK_NULL_HANDLE;
-    uint32_t        m_useCount             = 0u;
-    bool            m_compiledOnce         = false;
+    dxvk::mutex                     m_mutex;
+    DxvkShaderPipelineLibraryHandle m_pipeline             = { VK_NULL_HANDLE, 0 };
+    DxvkShaderPipelineLibraryHandle m_pipelineNoDepthClip  = { VK_NULL_HANDLE, 0 };
+    uint32_t                        m_useCount             = 0u;
+    bool                            m_compiledOnce         = false;
 
-    dxvk::mutex                 m_identifierMutex;
-    DxvkShaderIdentifierSet     m_identifiers;
+    dxvk::mutex                     m_identifierMutex;
+    DxvkShaderIdentifierSet         m_identifiers;
 
     void destroyShaderPipelinesLocked();
 
-    VkPipeline compileShaderPipelineLocked(
+    DxvkShaderPipelineLibraryHandle compileShaderPipelineLocked(
       const DxvkShaderPipelineLibraryCompileArgs& args);
 
-    VkPipeline compileShaderPipeline(
+    DxvkShaderPipelineLibraryHandle compileShaderPipeline(
       const DxvkShaderPipelineLibraryCompileArgs& args,
             VkPipelineCreateFlags                 flags);
 
