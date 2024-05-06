@@ -300,6 +300,10 @@ namespace dxvk {
           IDirect3DTexture8** ppTexture) {
     InitReturnPtr(ppTexture);
 
+    // Nvidia & Intel workaround for The Lord of the Rings: The Fellowship of the Ring
+    if (m_d3d8Options.placeP8InScratch && Format == D3DFMT_P8)
+      Pool = D3DPOOL_SCRATCH;
+
     Com<d3d9::IDirect3DTexture9> pTex9 = nullptr;
     HRESULT res = GetD3D9()->CreateTexture(
       Width,

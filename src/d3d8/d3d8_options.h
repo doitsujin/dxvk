@@ -21,10 +21,24 @@ namespace dxvk {
     /// May hurt performance outside of specifc games that benefit from it.
     bool batching = false;
 
+    /// The Lord of the Rings: The Fellowship of the Ring tries to create a P8 texture
+    /// in D3DPOOL_MANAGED on Nvidia and Intel, which fails, but has a separate code
+    /// path for ATI/AMD that creates it in D3DPOOL_SCRATCH instead, which works.
+    ///
+    /// The internal logic determining this path doesn't seem to be d3d-related, but
+    /// the game works universally if we mimic its own ATI/AMD workaround during P8
+    /// texture creation.
+    ///
+    /// Early Nvidia GPUs, such as the GeForce 4 generation cards, included and exposed
+    /// P8 texture support. However, it was no longer advertised with cards in the FX series
+    /// and above. Most likely ATI/AMD drivers never supported P8 in the first place.
+    bool placeP8InScratch = false;
+
     D3D8Options() {}
     D3D8Options(const Config& config) {
-      auto forceVsDeclStr     = config.getOption<std::string>("d3d8.forceVsDecl",  "");
+      auto forceVsDeclStr     = config.getOption<std::string>("d3d8.forceVsDecl",            "");
       batching                = config.getOption<bool>       ("d3d8.batching",               batching);
+      placeP8InScratch        = config.getOption<bool>       ("d3d8.placeP8InScratch",       placeP8InScratch);
 
       parseVsDecl(forceVsDeclStr);
     }

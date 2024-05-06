@@ -1109,6 +1109,12 @@ namespace dxvk {
     { R"(\\X2\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
+    /* The Lord of the Rings:                     *
+     * The Fellowship of the Ring                 */
+    { R"(\\Fellowship\.exe$)", {{
+      { "d3d9.maxFrameRate",                  "60" },
+      { "d3d8.placeP8InScratch",            "True" },
+    }} },
   }};
 
 
