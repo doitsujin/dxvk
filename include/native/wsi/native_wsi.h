@@ -6,6 +6,8 @@
 #include "wsi/native_sdl2.h"
 #elif DXVK_WSI_GLFW
 #include "wsi/native_glfw.h"
+#elif DXVK_WSI_NONE
+//empty
 #else
 #error Unknown wsi!
 #endif

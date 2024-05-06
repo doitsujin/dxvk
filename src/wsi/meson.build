@@ -17,6 +17,12 @@ wsi_glfw_src = [
   'glfw/wsi_window_glfw.cpp',
 ]
 
+wsi_none_src = [
+  'none/wsi_monitor_none.cpp',
+  'none/wsi_window_none.cpp',
+  'none/wsi_edid_none.cpp',
+]
+
 if dxvk_wsi == 'win32'
   wsi_src  = wsi_common_src + wsi_win32_src
   wsi_deps = [ dep_displayinfo ]
@@ -26,6 +32,9 @@ elif dxvk_wsi == 'sdl2'
 elif dxvk_wsi == 'glfw'
   wsi_src  = wsi_common_src + wsi_glfw_src
   wsi_deps = [ dep_displayinfo, lib_glfw ]
+elif dxvk_wsi == 'none'
+  wsi_src  = wsi_none_src
+  wsi_deps = []
 else
   error('Unknown wsi')
 endif
