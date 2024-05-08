@@ -179,11 +179,14 @@ namespace dxvk {
      * Fills in undefined values and validates the texture
      * parameters. Any error returned by this method should
      * be forwarded to the application.
+     * \param [in] pDevice D3D9 device
+     * \param [in] ResourceType Resource type
      * \param [in,out] pDesc Texture description
      * \returns \c S_OK if the parameters are valid
      */
     static HRESULT NormalizeTextureProperties(
             D3D9DeviceEx*              pDevice,
+            D3DRESOURCETYPE            ResourceType,
             D3D9_COMMON_TEXTURE_DESC*  pDesc);
 
     /**
