@@ -429,6 +429,11 @@ namespace dxvk {
     { R"(\\rfg\.exe$)", {{
       { "d3d11.longMad",                  "True"    },
     }} },
+    /* Guild Wars 2 - Fixes invisibility effect   *
+     * flicker when invariantPosition is enabled  */
+    { R"(\\Gw2-64\.exe$)", {{
+      { "d3d11.longMad",                  "True"    },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
