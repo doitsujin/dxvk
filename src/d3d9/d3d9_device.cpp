@@ -594,7 +594,7 @@ namespace dxvk {
                             || (Usage & D3DUSAGE_DYNAMIC)
                             || IsVendorFormat(EnumerateFormat(Format));
 
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_TEXTURE, &desc)))
       return D3DERR_INVALIDCALL;
 
     try {
@@ -664,7 +664,7 @@ namespace dxvk {
                             || (Usage & D3DUSAGE_DYNAMIC)
                             || IsVendorFormat(EnumerateFormat(Format));
 
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_VOLUMETEXTURE, &desc)))
       return D3DERR_INVALIDCALL;
 
     try {
@@ -721,7 +721,7 @@ namespace dxvk {
                             || (Usage & D3DUSAGE_DYNAMIC)
                             || IsVendorFormat(EnumerateFormat(Format));
 
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_CUBETEXTURE, &desc)))
       return D3DERR_INVALIDCALL;
 
     try {
@@ -3798,7 +3798,7 @@ namespace dxvk {
     desc.IsAttachmentOnly   = TRUE;
     desc.IsLockable         = Lockable;
 
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_TEXTURE, &desc)))
       return D3DERR_INVALIDCALL;
 
     try {
@@ -3846,7 +3846,7 @@ namespace dxvk {
     // Docs: Off-screen plain surfaces are always lockable, regardless of their pool types.
     desc.IsLockable         = TRUE;
 
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_TEXTURE, &desc)))
       return D3DERR_INVALIDCALL;
 
     if (pSharedHandle != nullptr && Pool != D3DPOOL_DEFAULT)
@@ -3901,7 +3901,7 @@ namespace dxvk {
     // Docs don't say anything, so just assume it's lockable.
     desc.IsLockable         = TRUE;
 
-    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
+    if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_TEXTURE, &desc)))
       return D3DERR_INVALIDCALL;
 
     try {
@@ -7891,7 +7891,7 @@ namespace dxvk {
       // Docs: Also note that - unlike textures - swap chain back buffers, render targets [..] can be locked
       desc.IsLockable         = TRUE;
 
-      if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, &desc)))
+      if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_TEXTURE, &desc)))
         return D3DERR_NOTAVAILABLE;
 
       m_autoDepthStencil = new D3D9Surface(this, &desc, nullptr, nullptr);
