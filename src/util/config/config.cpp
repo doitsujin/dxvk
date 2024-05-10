@@ -894,6 +894,10 @@ namespace dxvk {
       { "d3d9.deviceLossOnFocusLoss",       "True" },
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
+    /* The Sims 3 - Black screen on alt-tab      */
+    { R"(\\TS3(W)?\.exe$)", {{ 
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
+    }} },
 
 
     /**********************************************/
