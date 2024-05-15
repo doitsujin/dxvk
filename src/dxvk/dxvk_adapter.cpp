@@ -415,7 +415,7 @@ namespace dxvk {
       m_deviceFeatures.khrPresentWait.presentWait;
 
     // Unless we're on an Nvidia driver where these extensions are known to be broken
-    if (matchesDriver(VK_DRIVER_ID_NVIDIA_PROPRIETARY, 0, VK_MAKE_VERSION(535, 0, 0))) {
+    if (matchesDriver(VK_DRIVER_ID_NVIDIA_PROPRIETARY, 0, VK_MAKE_API_VERSION(0, 535, 0, 0))) {
       enabledFeatures.khrPresentId.presentId = VK_FALSE;
       enabledFeatures.khrPresentWait.presentWait = VK_FALSE;
     }
@@ -431,9 +431,9 @@ namespace dxvk {
     Logger::info(str::format("Device properties:"
       "\n  Device : ", m_deviceInfo.core.properties.deviceName,
       "\n  Driver : ", m_deviceInfo.vk12.driverName, " ",
-      VK_VERSION_MAJOR(m_deviceInfo.core.properties.driverVersion), ".",
-      VK_VERSION_MINOR(m_deviceInfo.core.properties.driverVersion), ".",
-      VK_VERSION_PATCH(m_deviceInfo.core.properties.driverVersion)));
+      VK_API_VERSION_MAJOR(m_deviceInfo.core.properties.driverVersion), ".",
+      VK_API_VERSION_MINOR(m_deviceInfo.core.properties.driverVersion), ".",
+      VK_API_VERSION_PATCH(m_deviceInfo.core.properties.driverVersion)));
 
     Logger::info("Enabled device extensions:");
     this->logNameList(extensionNameList);
@@ -631,9 +631,9 @@ namespace dxvk {
     Logger::info(str::format("Device properties:"
       "\n  Device name: ", m_deviceInfo.core.properties.deviceName,
       "\n  Driver:      ", m_deviceInfo.vk12.driverName, " ",
-      VK_VERSION_MAJOR(m_deviceInfo.core.properties.driverVersion), ".",
-      VK_VERSION_MINOR(m_deviceInfo.core.properties.driverVersion), ".",
-      VK_VERSION_PATCH(m_deviceInfo.core.properties.driverVersion)));
+      VK_API_VERSION_MAJOR(m_deviceInfo.core.properties.driverVersion), ".",
+      VK_API_VERSION_MINOR(m_deviceInfo.core.properties.driverVersion), ".",
+      VK_API_VERSION_PATCH(m_deviceInfo.core.properties.driverVersion)));
 
     Logger::info("Enabled device extensions:");
     this->logNameList(extensionNameList);
@@ -686,9 +686,9 @@ namespace dxvk {
     
     Logger::info(str::format(deviceInfo.core.properties.deviceName, ":",
       "\n  Driver : ", deviceInfo.vk12.driverName, " ",
-      VK_VERSION_MAJOR(deviceInfo.core.properties.driverVersion), ".",
-      VK_VERSION_MINOR(deviceInfo.core.properties.driverVersion), ".",
-      VK_VERSION_PATCH(deviceInfo.core.properties.driverVersion)));
+      VK_API_VERSION_MAJOR(deviceInfo.core.properties.driverVersion), ".",
+      VK_API_VERSION_MINOR(deviceInfo.core.properties.driverVersion), ".",
+      VK_API_VERSION_PATCH(deviceInfo.core.properties.driverVersion)));
 
     for (uint32_t i = 0; i < memoryInfo.memoryHeapCount; i++) {
       constexpr VkDeviceSize mib = 1024 * 1024;
@@ -792,14 +792,14 @@ namespace dxvk {
     // Some drivers reports the driver version in a slightly different format
     switch (m_deviceInfo.vk12.driverID) {
       case VK_DRIVER_ID_NVIDIA_PROPRIETARY:
-        m_deviceInfo.core.properties.driverVersion = VK_MAKE_VERSION(
+        m_deviceInfo.core.properties.driverVersion = VK_MAKE_API_VERSION(0,
           (m_deviceInfo.core.properties.driverVersion >> 22) & 0x3ff,
           (m_deviceInfo.core.properties.driverVersion >> 14) & 0x0ff,
           (m_deviceInfo.core.properties.driverVersion >>  6) & 0x0ff);
         break;
 
       case VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS:
-        m_deviceInfo.core.properties.driverVersion = VK_MAKE_VERSION(
+        m_deviceInfo.core.properties.driverVersion = VK_MAKE_API_VERSION(0,
           m_deviceInfo.core.properties.driverVersion >> 14,
           m_deviceInfo.core.properties.driverVersion & 0x3fff, 0);
         break;

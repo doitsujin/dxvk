@@ -131,9 +131,9 @@ namespace dxvk::hud {
 
     if (driverInfo.empty()) {
       driverInfo = str::format(
-        VK_VERSION_MAJOR(props.core.properties.driverVersion), ".",
-        VK_VERSION_MINOR(props.core.properties.driverVersion), ".",
-        VK_VERSION_PATCH(props.core.properties.driverVersion));
+        VK_API_VERSION_MAJOR(props.core.properties.driverVersion), ".",
+        VK_API_VERSION_MINOR(props.core.properties.driverVersion), ".",
+        VK_API_VERSION_PATCH(props.core.properties.driverVersion));
     }
 
     m_deviceName = props.core.properties.deviceName;
