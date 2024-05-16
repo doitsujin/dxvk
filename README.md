@@ -163,3 +163,22 @@ For non debian based distros, make sure that your mingw-w64-gcc cross compiler
 does have `--enable-threads=posix` enabled during configure. If your distro does
 ship its mingw-w64-gcc binary with `--enable-threads=win32` you might have to
 recompile locally or open a bug at your distro's bugtracker to ask for it. 
+
+# DXVK Native
+
+DXVK Native is a version of DXVK which allows it to be used natively without Wine.
+
+This is primarily useful for game and application ports to either avoid having to write another rendering backend, or to help with port bringup during development.
+
+[Release builds](https://github.com/doitsujin/dxvk/releases) are built using the Steam Runtime.
+
+### How does it work?
+
+DXVK Native replaces certain Windows-isms with a platform and framework-agnostic replacement, for example, `HWND`s can become `SDL_Window*`s, etc.
+All it takes to do that is to add another WSI backend.
+
+**Note:** DXVK Native requires a backend to be explicitly set via the `DXVK_WSI_DRIVER` environment variable. The current built-in options are `SDL2` and `GLFW`.
+
+DXVK Native comes with a slim set of Windows header definitions required for D3D9/11 and the MinGW headers for D3D9/11.
+In most cases, it will end up being plug and play with your renderer, but there may be certain teething issues such as:
+- `__uuidof(type)` is supported, but `__uuidof(variable)` is not supported. Use `__uuidof_var(variable)` instead.
