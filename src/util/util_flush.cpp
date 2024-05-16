@@ -2,6 +2,12 @@
 
 namespace dxvk {
 
+  GpuFlushTracker::GpuFlushTracker(
+          bool ensureReproducibleHeuristic)
+  : m_ensureReproducibleHeuristic(ensureReproducibleHeuristic) {
+
+  }
+
   bool GpuFlushTracker::considerFlush(
           GpuFlushType          flushType,
           uint64_t              chunkId,
@@ -15,6 +21,9 @@ namespace dxvk {
     uint32_t chunkCount = uint32_t(chunkId - m_lastFlushChunkId);
 
     if (!chunkCount)
+      return false;
+
+    if (m_ensureReproducibleHeuristic && flushType != GpuFlushType::ExplicitFlush)
       return false;
 
     // Take any earlier missed flush with a stronger hint into account, so

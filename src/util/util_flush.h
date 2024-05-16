@@ -34,6 +34,8 @@ namespace dxvk {
 
   public:
 
+    GpuFlushTracker(bool ensureReproducibleHeuristic);
+
     /**
      * \brief Checks whether a context flush should be performed
      *
@@ -60,6 +62,8 @@ namespace dxvk {
             uint64_t              submissionId);
 
   private:
+
+    bool          m_ensureReproducibleHeuristic;
 
     GpuFlushType  m_lastMissedType        = GpuFlushType::ImplicitWeakHint;
 

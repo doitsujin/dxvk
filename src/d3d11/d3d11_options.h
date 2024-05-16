@@ -123,6 +123,11 @@ namespace dxvk {
 
     /// Should we make our Mads a FFma or do it the long way with an FMul and an FAdd?
     bool longMad;
+
+    /// Ensure that for the same D3D commands the output VK commands
+    /// don't change between runs. Useful for comparative benchmarking,
+    /// can negatively affect performance.
+    bool reproducibleCommandStream;
   };
   
 }
