@@ -2,6 +2,8 @@
 
 #include "dxvk_include.h"
 
+#include "../util/util_version.h"
+
 namespace dxvk {
 
   /**
@@ -13,6 +15,7 @@ namespace dxvk {
    * so before using them, check whether they are supported.
    */
   struct DxvkDeviceInfo {
+    Version                                                   driverVersion;
     VkPhysicalDeviceProperties2                               core;
     VkPhysicalDeviceVulkan11Properties                        vk11;
     VkPhysicalDeviceVulkan12Properties                        vk12;

@@ -82,7 +82,7 @@ namespace dxvk {
 
         // Disable lifetime tracking for drivers that do not have any
         // significant issues with 32-bit address space to begin with
-        if (m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV_KHR, 0, 0))
+        if (m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV_KHR))
           return false;
 
         return true;
@@ -325,12 +325,12 @@ namespace dxvk {
   DxvkDevicePerfHints DxvkDevice::getPerfHints() {
     DxvkDevicePerfHints hints;
     hints.preferFbDepthStencilCopy = m_features.extShaderStencilExport
-      && (m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV_KHR, 0, 0)
-       || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR, 0, 0)
-       || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY_KHR, 0, 0));
+      && (m_adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV_KHR)
+       || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR)
+       || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY_KHR));
     hints.preferFbResolve = m_features.amdShaderFragmentMask
-      && (m_adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR, 0, 0)
-       || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY_KHR, 0, 0));
+      && (m_adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE_KHR)
+       || m_adapter->matchesDriver(VK_DRIVER_ID_AMD_PROPRIETARY_KHR));
     return hints;
   }
 
