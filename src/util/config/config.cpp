@@ -898,6 +898,11 @@ namespace dxvk {
     { R"(\\TS3(W)?\.exe$)", {{ 
       { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
+    /* Prototype                                 *
+     * Incorrect shadows on AMD & Intel          */
+    { R"(\\prototypef\.exe$)", {{ 
+      { "d3d9.supportDFFormats",            "False" },
+    }} },
 
 
     /**********************************************/
