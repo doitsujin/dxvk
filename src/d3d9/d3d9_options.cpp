@@ -37,8 +37,8 @@ namespace dxvk {
     this->customDeviceId        = parsePciId(config.getOption<std::string>("d3d9.customDeviceId"));
     this->customDeviceDesc      =            config.getOption<std::string>("d3d9.customDeviceDesc");
 
-    const int32_t vendorId = this->customDeviceId != -1
-      ? this->customDeviceId
+    const int32_t vendorId = this->customVendorId != -1
+      ? this->customVendorId
       : (adapter != nullptr ? adapter->deviceProperties().vendorID : 0);
 
     this->maxFrameLatency               = config.getOption<int32_t>     ("d3d9.maxFrameLatency",               0);
