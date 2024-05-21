@@ -37,7 +37,7 @@ namespace dxvk {
     this->customDeviceId        = parsePciId(config.getOption<std::string>("d3d9.customDeviceId"));
     this->customDeviceDesc      =            config.getOption<std::string>("d3d9.customDeviceDesc");
 
-    const int32_t vendorId = this->customVendorId != -1
+    const uint32_t vendorId = this->customVendorId != -1
       ? this->customVendorId
       : (adapter != nullptr ? adapter->deviceProperties().vendorID : 0);
 
@@ -53,14 +53,14 @@ namespace dxvk {
     this->deferSurfaceCreation          = config.getOption<bool>        ("d3d9.deferSurfaceCreation",          false);
     this->samplerAnisotropy             = config.getOption<int32_t>     ("d3d9.samplerAnisotropy",             -1);
     this->maxAvailableMemory            = config.getOption<int32_t>     ("d3d9.maxAvailableMemory",            4096);
-    this->supportDFFormats              = config.getOption<bool>        ("d3d9.supportDFFormats",              true);
+    this->supportDFFormats              = config.getOption<bool>        ("d3d9.supportDFFormats",              vendorId != uint32_t(DxvkGpuVendor::Nvidia));
     this->supportX4R4G4B4               = config.getOption<bool>        ("d3d9.supportX4R4G4B4",               true);
     this->supportD32                    = config.getOption<bool>        ("d3d9.supportD32",                    true);
     this->useD32forD24                  = config.getOption<bool>        ("d3d9.useD32forD24",                  false);
     this->disableA8RT                   = config.getOption<bool>        ("d3d9.disableA8RT",                   false);
     this->invariantPosition             = config.getOption<bool>        ("d3d9.invariantPosition",             true);
     this->memoryTrackTest               = config.getOption<bool>        ("d3d9.memoryTrackTest",               false);
-    this->supportVCache                 = config.getOption<bool>        ("d3d9.supportVCache",                 vendorId == 0x10de);
+    this->supportVCache                 = config.getOption<bool>        ("d3d9.supportVCache",                 vendorId == uint32_t(DxvkGpuVendor::Nvidia));
     this->enableDialogMode              = config.getOption<bool>        ("d3d9.enableDialogMode",              false);
     this->forceSamplerTypeSpecConstants = config.getOption<bool>        ("d3d9.forceSamplerTypeSpecConstants", false);
     this->forceSwapchainMSAA            = config.getOption<int32_t>     ("d3d9.forceSwapchainMSAA",            -1);

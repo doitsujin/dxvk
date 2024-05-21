@@ -438,11 +438,7 @@ namespace dxvk {
   D3D9VkFormatTable::D3D9VkFormatTable(
     const Rc<DxvkAdapter>& adapter,
     const D3D9Options&     options) {
-
-    const auto& props = adapter->deviceProperties();
-    uint32_t vendorId  = options.customVendorId == -1 ? props.vendorID : uint32_t(options.customVendorId);
-
-    m_dfSupport = options.supportDFFormats && DxvkGpuVendor(vendorId) != DxvkGpuVendor::Nvidia;
+    m_dfSupport = options.supportDFFormats;
     m_x4r4g4b4Support = options.supportX4R4G4B4;
     m_d32supportFinal = options.supportD32;
 
