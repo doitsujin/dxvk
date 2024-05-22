@@ -217,12 +217,10 @@ namespace dxvk {
 
       switch (m_queryType) {
         case D3DQUERYTYPE_VCACHE:
-          // Don't know what the hell any of this means.
-          // Nor do I care. This just makes games work.
-          m_dataCache.VCache.Pattern     = MAKEFOURCC('H', 'C', 'A', 'C');
+          m_dataCache.VCache.Pattern     = MAKEFOURCC('C', 'A', 'C', 'H');
           m_dataCache.VCache.OptMethod   = 1;
-          m_dataCache.VCache.CacheSize   = 24;
-          m_dataCache.VCache.MagicNumber = 20;
+          m_dataCache.VCache.CacheSize   = 16;
+          m_dataCache.VCache.MagicNumber = 7;
           break;
 
         case D3DQUERYTYPE_OCCLUSION:
