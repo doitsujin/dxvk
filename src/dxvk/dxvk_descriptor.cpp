@@ -306,7 +306,12 @@ namespace dxvk {
     info.maxSets       = m_maxSets;
     info.poolSizeCount = pools.size();
     info.pPoolSizes    = pools.data();
-    
+
+    if (m_device->features().nvDescriptorPoolOverallocation.descriptorPoolOverallocation) {
+      info.flags |= VK_DESCRIPTOR_POOL_CREATE_ALLOW_OVERALLOCATION_POOLS_BIT_NV
+                 |  VK_DESCRIPTOR_POOL_CREATE_ALLOW_OVERALLOCATION_SETS_BIT_NV;
+    }
+
     VkDescriptorPool pool = VK_NULL_HANDLE;
 
     if (vk->vkCreateDescriptorPool(vk->device(), &info, nullptr, &pool) != VK_SUCCESS)
