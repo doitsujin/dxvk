@@ -325,6 +325,7 @@ namespace dxvk {
     DxvkExt khrPresentWait                    = { VK_KHR_PRESENT_WAIT_EXTENSION_NAME,                       DxvkExtMode::Optional };
     DxvkExt khrSwapchain                      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME,                          DxvkExtMode::Required };
     DxvkExt khrWin32KeyedMutex                = { VK_KHR_WIN32_KEYED_MUTEX_EXTENSION_NAME,                  DxvkExtMode::Optional };
+    DxvkExt nvDescriptorPoolOverallocation    = { VK_NV_DESCRIPTOR_POOL_OVERALLOCATION_EXTENSION_NAME,      DxvkExtMode::Optional };
     DxvkExt nvRawAccessChains                 = { VK_NV_RAW_ACCESS_CHAINS_EXTENSION_NAME,                   DxvkExtMode::Optional };
     DxvkExt nvxBinaryImport                   = { VK_NVX_BINARY_IMPORT_EXTENSION_NAME,                      DxvkExtMode::Disabled };
     DxvkExt nvxImageViewHandle                = { VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME,                  DxvkExtMode::Disabled };

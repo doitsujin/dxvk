@@ -71,6 +71,7 @@ namespace dxvk {
     VkPhysicalDeviceMaintenance5FeaturesKHR                   khrMaintenance5;
     VkPhysicalDevicePresentIdFeaturesKHR                      khrPresentId;
     VkPhysicalDevicePresentWaitFeaturesKHR                    khrPresentWait;
+    VkPhysicalDeviceDescriptorPoolOverallocationFeaturesNV    nvDescriptorPoolOverallocation;
     VkPhysicalDeviceRawAccessChainsFeaturesNV                 nvRawAccessChains;
     VkBool32                                                  nvxBinaryImport;
     VkBool32                                                  nvxImageViewHandle;

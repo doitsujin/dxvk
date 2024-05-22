@@ -420,6 +420,10 @@ namespace dxvk {
       enabledFeatures.khrPresentWait.presentWait = VK_FALSE;
     }
 
+    // Enable descriptor pool overallocation if supported
+    enabledFeatures.nvDescriptorPoolOverallocation.descriptorPoolOverallocation =
+      m_deviceFeatures.nvDescriptorPoolOverallocation.descriptorPoolOverallocation;
+
     // Enable raw access chains for shader backends
     enabledFeatures.nvRawAccessChains.shaderRawAccessChains =
       m_deviceFeatures.nvRawAccessChains.shaderRawAccessChains;
@@ -610,6 +614,10 @@ namespace dxvk {
 
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR:
           enabledFeatures.khrPresentWait = *reinterpret_cast<const VkPhysicalDevicePresentWaitFeaturesKHR*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_POOL_OVERALLOCATION_FEATURES_NV:
+          enabledFeatures.nvDescriptorPoolOverallocation = *reinterpret_cast<const VkPhysicalDeviceDescriptorPoolOverallocationFeaturesNV*>(f);
           break;
 
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAW_ACCESS_CHAINS_FEATURES_NV:
@@ -924,6 +932,11 @@ namespace dxvk {
       m_deviceFeatures.khrPresentWait.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrPresentWait);
     }
 
+    if (m_deviceExtensions.supports(VK_NV_DESCRIPTOR_POOL_OVERALLOCATION_EXTENSION_NAME)) {
+      m_deviceFeatures.nvDescriptorPoolOverallocation.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_POOL_OVERALLOCATION_FEATURES_NV;
+      m_deviceFeatures.nvDescriptorPoolOverallocation.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.nvDescriptorPoolOverallocation);
+    }
+
     if (m_deviceExtensions.supports(VK_NV_RAW_ACCESS_CHAINS_EXTENSION_NAME)) {
       m_deviceFeatures.nvRawAccessChains.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAW_ACCESS_CHAINS_FEATURES_NV;
       m_deviceFeatures.nvRawAccessChains.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.nvRawAccessChains);
@@ -996,6 +1009,7 @@ namespace dxvk {
       &devExtensions.khrPresentWait,
       &devExtensions.khrSwapchain,
       &devExtensions.khrWin32KeyedMutex,
+      &devExtensions.nvDescriptorPoolOverallocation,
       &devExtensions.nvRawAccessChains,
       &devExtensions.nvxBinaryImport,
       &devExtensions.nvxImageViewHandle,
@@ -1134,6 +1148,11 @@ namespace dxvk {
     if (devExtensions.khrPresentWait) {
       enabledFeatures.khrPresentWait.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR;
       enabledFeatures.khrPresentWait.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrPresentWait);
+    }
+
+    if (devExtensions.nvDescriptorPoolOverallocation) {
+      enabledFeatures.nvDescriptorPoolOverallocation.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_POOL_OVERALLOCATION_FEATURES_NV;
+      enabledFeatures.nvDescriptorPoolOverallocation.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.nvDescriptorPoolOverallocation);
     }
 
     if (devExtensions.nvRawAccessChains) {
@@ -1287,6 +1306,8 @@ namespace dxvk {
       "\n  presentId                              : ", features.khrPresentId.presentId ? "1" : "0",
       "\n", VK_KHR_PRESENT_WAIT_EXTENSION_NAME,
       "\n  presentWait                            : ", features.khrPresentWait.presentWait ? "1" : "0",
+      "\n", VK_NV_DESCRIPTOR_POOL_OVERALLOCATION_EXTENSION_NAME,
+      "\n  descriptorPoolOverallocation           : ", features.nvDescriptorPoolOverallocation.descriptorPoolOverallocation ? "1" : "0",
       "\n", VK_NV_RAW_ACCESS_CHAINS_EXTENSION_NAME,
       "\n  shaderRawAccessChains                  : ", features.nvRawAccessChains.shaderRawAccessChains ? "1" : "0",
       "\n", VK_NVX_BINARY_IMPORT_EXTENSION_NAME,
