@@ -1139,12 +1139,12 @@ namespace dxvk {
 
         case (DXVK_TSS_TCI_CAMERASPACENORMAL >> TCIOffset):
           transformed = outNrm;
-          count = 4;
+          count = std::min(flags, 4u);
           break;
 
         case (DXVK_TSS_TCI_CAMERASPACEPOSITION >> TCIOffset):
           transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1.0f), vtx, 1, &wIndex);
-          count = 4;
+          count = std::min(flags, 4u);
           break;
 
         case (DXVK_TSS_TCI_CAMERASPACEREFLECTIONVECTOR >> TCIOffset): {
@@ -1159,7 +1159,7 @@ namespace dxvk {
           transformIndices[3] = m_module.constf32(1.0f);
 
           transformed = m_module.opCompositeConstruct(m_vec4Type, transformIndices.size(), transformIndices.data());
-          count = 4;
+          count = std::min(flags, 4u);
           break;
         }
 
@@ -1183,35 +1183,42 @@ namespace dxvk {
           transformIndices[3] = m_module.constf32(1.0f);
 
           transformed = m_module.opCompositeConstruct(m_vec4Type, transformIndices.size(), transformIndices.data());
-          count = 4;
+          count = std::min(flags, 4u);
           break;
         }
       }
 
-      if (applyTransform || (count != 4 && count != 0)) {
-        if (applyTransform && !m_vsKey.Data.Contents.HasPositionT) {
-          for (uint32_t j = count; j < 4; j++) {
-            // If we're outside the component count of the vertex decl for this texcoord then we pad with zeroes.
-            // Otherwise, pad with ones.
+      if (applyTransform && !m_vsKey.Data.Contents.HasPositionT) {
+        for (uint32_t j = count; j < 4; j++) {
+          // If we're outside the component count of the vertex decl for this texcoord then we pad with zeroes.
+          // Otherwise, pad with ones.
 
-            // Very weird quirk in order to get texcoord transforms to work like they do in native.
-            // In future, maybe we could sort this out properly by chopping matrices of different sizes, but thats
-            // a project for another day.
-            uint32_t texcoordCount = (m_vsKey.Data.Contents.TexcoordDeclMask >> (3 * inputIndex)) & 0x7;
-            uint32_t value = j > texcoordCount ? m_module.constf32(0) : m_module.constf32(1);
-            transformed = m_module.opCompositeInsert(m_vec4Type, value, transformed, 1, &j);
-          }
-
-          transformed = m_module.opVectorTimesMatrix(m_vec4Type, transformed, m_vs.constants.texcoord[i]);
+          // Very weird quirk in order to get texcoord transforms to work like they do in native.
+          // In future, maybe we could sort this out properly by chopping matrices of different sizes, but thats
+          // a project for another day.
+          uint32_t texcoordCount = (m_vsKey.Data.Contents.TexcoordDeclMask >> (3 * inputIndex)) & 0x7;
+          uint32_t value = j > texcoordCount ? m_module.constf32(0) : m_module.constf32(1);
+          transformed = m_module.opCompositeInsert(m_vec4Type, value, transformed, 1, &j);
         }
 
-        // Pad the unused section of it with the value for projection.
-        uint32_t projIdx = std::max(2u, count - 1);
-        uint32_t projValue = m_module.opCompositeExtract(m_floatType, transformed, 1, &projIdx);
-
-        for (uint32_t j = count; j < 4; j++)
-          transformed = m_module.opCompositeInsert(m_vec4Type, projValue, transformed, 1, &j);
+        transformed = m_module.opVectorTimesMatrix(m_vec4Type, transformed, m_vs.constants.texcoord[i]);
       }
+
+      // The projection idx is always based on the flags, even when the input mode is not DXVK_TSS_TCI_PASSTHRU.
+      uint32_t projValue;
+      if (count < 3) {
+        // Not enough components to do projection.
+        // Native drivers render normally or garbage with D3DFVF_TEXCOORDSIZE2 or D3DTTFF_COUNT <3
+        projValue = m_module.constf32(1.0f);
+      } else {
+        uint32_t projIdx = count - 1;
+        projValue = m_module.opCompositeExtract(m_floatType, transformed, 1, &projIdx);
+      }
+
+      // The w component is only used for projection or unused, so always insert the component that's supposed to be divided by there.
+      // The fragment shader will then decide whether to project or not.
+      uint32_t wIdx = 3;
+      transformed = m_module.opCompositeInsert(m_vec4Type, projValue, transformed, 1, &wIdx);
 
       m_module.opStore(m_vs.out.TEXCOORD[i], transformed);
     }
