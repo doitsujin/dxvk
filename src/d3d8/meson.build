@@ -30,3 +30,9 @@ d3d8_dll = shared_library(dxvk_name_prefix+'d3d8', d3d8_src, d3d8_res,
   kwargs              : dxvk_so_version,
 )
 
+if platform != 'windows'
+  pkg.generate(d3d8_dll,
+    filebase: dxvk_pkg_prefix + 'd3d8',
+    subdirs:  'dxvk',
+  )
+endif
