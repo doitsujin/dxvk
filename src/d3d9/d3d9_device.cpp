@@ -5283,7 +5283,7 @@ namespace dxvk {
         if (likely(copy.copyElementStride == copy.copyElementSize)) {
           std::memcpy(data, src, copy.copyBufferLength);
         } else {
-          for (uint32_t j = 0; j * copy.copyElementCount; j++) {
+          for (uint32_t j = 0; j < copy.copyElementCount; j++) {
             std::memcpy(data + j * copy.copyElementSize, src + j * copy.copyElementStride, copy.copyElementSize);
           }
           if (unlikely(copy.copyBufferLength > copy.copyElementCount * copy.copyElementSize)) {
