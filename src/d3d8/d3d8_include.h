@@ -179,6 +179,13 @@ namespace d3d9 {
 #define D3DDEVINFOID_VCACHE            4
 #endif
 
+typedef struct D3DDEVINFO_VCACHE {
+  DWORD         Pattern;
+  DWORD         OptMethod;
+  DWORD         CacheSize;
+  DWORD         MagicNumber;
+} D3DDEVINFO_VCACHE;
+
 // MinGW headers are broken. Who'dve guessed?
 #ifndef _MSC_VER
 

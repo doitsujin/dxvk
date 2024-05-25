@@ -88,9 +88,21 @@ namespace dxvk {
         return E_FAIL;
       
       case D3DDEVINFOID_VCACHE:
-        // Docs say response should be S_FALSE, but we'll let D9VK
-        // decide based on the value of supportVCache. D3DX8 calls this.
+        // The query will return D3D_OK on Nvidia and D3DERR_NOTAVAILABLE on AMD/Intel
+        // in D3D9, however in the case of the latter we'll need to return a
+        // zeroed out query result and S_FALSE. This behavior has been observed both
+        // on modern native AMD drivers and D3D8-era native ATI drivers.
         res = GetD3D9()->CreateQuery(d3d9::D3DQUERYTYPE_VCACHE, &pQuery);
+
+        if(FAILED(res)) {
+          if (DevInfoStructSize != sizeof(D3DDEVINFO_VCACHE))
+            return D3DERR_INVALIDCALL;
+
+          D3DDEVINFO_VCACHE vCacheDevInfo = {0};
+          memcpy(pDevInfoStruct, &vCacheDevInfo, DevInfoStructSize);
+          return S_FALSE;
+        }
+
         break;
       case D3DDEVINFOID_RESOURCEMANAGER:
         // May not be implemented by D9VK.
