@@ -7322,6 +7322,7 @@ namespace dxvk {
         key.Data.Contents.TransformFlags  |= transformFlags << (i * 3);
         key.Data.Contents.TexcoordFlags   |= indexFlags     << (i * 3);
         key.Data.Contents.TexcoordIndices |= index          << (i * 3);
+        key.Data.Contents.Projected       |= ((m_state.textureStages[i][DXVK_TSS_TEXTURETRANSFORMFLAGS] & D3DTTFF_PROJECTED) == D3DTTFF_PROJECTED) << i;
       }
 
       key.Data.Contents.TexcoordDeclMask = m_state.vertexDecl != nullptr ? m_state.vertexDecl->GetTexcoordMask() : 0;
