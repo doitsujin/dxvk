@@ -370,6 +370,10 @@ namespace dxvk {
     { R"(\\EADesktop\.exe$)", {{
       { "dxvk.maxChunkSize",                "1"   },
     }} },
+    /* Origin app (legacy EA Desktop)             */
+    { R"(\\Origin\.exe$)", {{
+      { "dxvk.maxChunkSize",                "1"   },
+    }} },
     /* GOG Galaxy                                 */
     { R"(\\GalaxyClient\.exe$)", {{
       { "dxvk.maxChunkSize",                "1"   },
