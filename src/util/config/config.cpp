@@ -438,6 +438,11 @@ namespace dxvk {
     { R"(\\Gw2-64\.exe$)", {{
       { "d3d11.longMad",                  "True"    },
     }} },
+    /* Ghostbusters: The Video Game Remastered    *
+     * Flickering on character faces              */
+    { R"(\\ghost\.exe$)", {{
+      { "d3d11.longMad",                  "True"    },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
