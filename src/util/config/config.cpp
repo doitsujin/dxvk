@@ -359,11 +359,11 @@ namespace dxvk {
       { "d3d11.dcSingleUseMode",            "False" },
     }} },
     /* Rockstar Games Launcher                    */
-    { R"(\\Rockstar Games\\Launcher\\Launcher\.exe$)", {{
+    { R"(\\Rockstar Games\\Launcher\.exe$)", {{
       { "dxvk.maxChunkSize",                "1"   },
     }} },
     /* Rockstar Social Club                       */
-    { R"(\\Rockstar Games\\Social Club\\SocialClubHelper\.exe$)", {{
+    { R"(\\Rockstar Games\\SocialClub\\SocialClubHelper\.exe$)", {{
       { "dxvk.maxChunkSize",                "1"   },
     }} },
     /* EA Desktop App                             */
@@ -371,7 +371,7 @@ namespace dxvk {
       { "dxvk.maxChunkSize",                "1"   },
     }} },
     /* Origin app (legacy EA Desktop)             */
-    { R"(\\Origin\.exe$)", {{
+    { R"(\\Origin\\OriginWebHelperService\.exe$)", {{
       { "dxvk.maxChunkSize",                "1"   },
     }} },
     /* Ubisoft Connect (UPlay)                    */
