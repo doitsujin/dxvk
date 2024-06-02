@@ -374,6 +374,10 @@ namespace dxvk {
     { R"(\\Origin\.exe$)", {{
       { "dxvk.maxChunkSize",                "1"   },
     }} },
+    /* Ubisoft Connect (UPlay)                    */
+    { R"(\\UbisoftConnect\\upc\.exe$)", {{
+      { "dxvk.maxChunkSize",                "1"   },
+    }} },
     /* GOG Galaxy                                 */
     { R"(\\GalaxyClient\.exe$)", {{
       { "dxvk.maxChunkSize",                "1"   },
