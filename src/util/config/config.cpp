@@ -371,7 +371,11 @@ namespace dxvk {
       { "dxvk.maxChunkSize",                "1"   },
     }} },
     /* Origin app (legacy EA Desktop)             */
-    { R"(\\Origin\.exe$)", {{
+    { R"(\\Origin\\(Origin|OriginWebHelperService)\.exe$)", {{
+      { "dxvk.maxChunkSize",                "1"   },
+    }} },
+    /* Ubisoft Connect (UPlay)                    */
+    { R"(\\Ubisoft\\Ubisoft Game Launcher\\(UbisoftConnect|upc)\.exe$)", {{
       { "dxvk.maxChunkSize",                "1"   },
     }} },
     /* GOG Galaxy                                 */
