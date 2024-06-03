@@ -696,12 +696,14 @@ namespace dxvk {
       { "d3d9.memoryTrackTest",             "True" },
       { "d3d9.maxAvailableMemory",          "2048" },
     }} },
-    /* Myst V End of Ages
-       Game has white textures on amd radv.
-       Expects Nvidia, Intel or ATI VendorId.
-       "Radeon" in gpu description also works   */
+    /* Myst V End of Ages                       *
+     * White textures unless it sees Nvidia,    *
+     * Intel or ATI VendorId.                   *
+     * "Radeon" in gpu description also works.  *
+     * countLosable for resolution change crash.*/
     { R"(\\eoa\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
+      { "d3d9.countLosableResources",       "False" },
     }} },
     /* Supreme Commander & Forged Alliance Forever */
     { R"(\\(SupremeCommander|ForgedAlliance)\.exe$)", {{
