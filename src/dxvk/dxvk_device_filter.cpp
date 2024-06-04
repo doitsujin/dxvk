@@ -2,11 +2,16 @@
 
 namespace dxvk {
   
-  DxvkDeviceFilter::DxvkDeviceFilter(DxvkDeviceFilterFlags flags)
+  DxvkDeviceFilter::DxvkDeviceFilter(
+          DxvkDeviceFilterFlags flags,
+    const DxvkOptions&          options)
   : m_flags(flags) {
     m_matchDeviceName = env::getEnvVar("DXVK_FILTER_DEVICE_NAME");
-    
-    if (m_matchDeviceName.size() != 0)
+
+    if (m_matchDeviceName.empty())
+      m_matchDeviceName = options.deviceFilter;
+
+    if (!m_matchDeviceName.empty())
       m_flags.set(DxvkDeviceFilterFlag::MatchDeviceName);
   }
   

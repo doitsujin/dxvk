@@ -256,7 +256,7 @@ namespace dxvk {
         filterFlags.set(DxvkDeviceFilterFlag::SkipCpuDevices);
     }
 
-    DxvkDeviceFilter filter(filterFlags);
+    DxvkDeviceFilter filter(filterFlags, m_options);
     std::vector<Rc<DxvkAdapter>> result;
 
     uint32_t numDGPU = 0;
