@@ -447,6 +447,10 @@ namespace dxvk {
     { R"(\\ghost\.exe$)", {{
       { "d3d11.longMad",                  "True"    },
     }} },
+    /* Watch_Dogs - Some objects flicker without  */
+    { R"(\\watch_dogs\.exe$)", {{
+      { "d3d11.longMad",                  "True"    },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
