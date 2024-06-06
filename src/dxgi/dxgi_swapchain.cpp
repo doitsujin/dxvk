@@ -25,6 +25,9 @@ namespace dxvk {
     // Query updated interface versions from presenter, this
     // may fail e.g. with older vkd3d-proton builds.
     m_presenter->QueryInterface(__uuidof(IDXGIVkSwapChain1), reinterpret_cast<void**>(&m_presenter1));
+    m_presenter->QueryInterface(__uuidof(IDXGIVkSwapChain2), reinterpret_cast<void**>(&m_presenter2));
+
+    m_frameRateOption = m_factory->GetOptions()->maxFrameRate;
 
     // Query monitor info form DXVK's DXGI factory, if available
     m_factory->QueryInterface(__uuidof(IDXGIVkMonitorInfo), reinterpret_cast<void**>(&m_monitorInfo));
@@ -328,6 +331,7 @@ namespace dxvk {
       SyncInterval = options->syncInterval;
 
     UpdateGlobalHDRState();
+    UpdateTargetFrameRate(SyncInterval);
 
     std::lock_guard<dxvk::recursive_mutex> lockWin(m_lockWindow);
     HRESULT hr = S_OK;
@@ -767,7 +771,7 @@ namespace dxvk {
     
     HRESULT hr = pOutput->FindClosestMatchingMode1(
       &preferredMode, &selectedMode, nullptr);
-    
+
     if (FAILED(hr)) {
       Logger::err(str::format(
         "DXGI: Failed to query closest mode:",
@@ -776,6 +780,9 @@ namespace dxvk {
           "@", preferredMode.RefreshRate.Numerator / std::max(preferredMode.RefreshRate.Denominator, 1u)));
       return hr;
     }
+
+    if (!selectedMode.RefreshRate.Denominator)
+      selectedMode.RefreshRate.Denominator = 1;
 
     if (!wsi::setWindowMode(outputDesc.Monitor, m_window, ConvertDisplayMode(selectedMode)))
       return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
@@ -798,6 +805,8 @@ namespace dxvk {
       ReleaseMonitorData();
     }
 
+    m_frameRateRefresh = double(selectedMode.RefreshRate.Numerator)
+                       / double(selectedMode.RefreshRate.Denominator);
     return S_OK;
   }
   
@@ -809,6 +818,7 @@ namespace dxvk {
     if (!wsi::restoreDisplayMode())
       return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
 
+    m_frameRateRefresh = 0.0;
     return S_OK;
   }
   
@@ -950,6 +960,25 @@ namespace dxvk {
       m_monitorInfo->PuntColorSpace(ColorSpace);
 
     return hr;
+  }
+
+
+  void DxgiSwapChain::UpdateTargetFrameRate(
+          UINT                    SyncInterval) {
+    if (m_presenter2 == nullptr)
+      return;
+
+    // Use a negative number to indicate that the limiter should only
+    // be engaged if the target frame rate is actually exceeded
+    double frameRate = std::max(m_frameRateOption, 0.0);
+
+    if (SyncInterval && m_frameRateOption == 0.0)
+      frameRate = -m_frameRateRefresh / double(SyncInterval);
+
+    if (m_frameRateLimit != frameRate) {
+      m_frameRateLimit = frameRate;
+      m_presenter2->SetTargetFrameRate(frameRate);
+    }
   }
 
 }

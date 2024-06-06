@@ -13,7 +13,7 @@ namespace dxvk {
   class D3D11Device;
   class D3D11DXGIDevice;
 
-  class D3D11SwapChain : public ComObject<IDXGIVkSwapChain1> {
+  class D3D11SwapChain : public ComObject<IDXGIVkSwapChain2> {
     constexpr static uint32_t DefaultFrameLatency = 1;
   public:
 
@@ -86,6 +86,9 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetFrameStatistics(
             DXGI_VK_FRAME_STATISTICS* pFrameStatistics);
 
+    void STDMETHODCALLTYPE SetTargetFrameRate(
+            double                    FrameRate);
+
   private:
 
     enum BindingIds : uint32_t {
@@ -116,18 +119,20 @@ namespace dxvk {
 
     std::vector<Rc<DxvkImageView>> m_imageViews;
 
-    uint64_t                m_frameId      = DXGI_MAX_SWAP_CHAIN_BUFFERS;
-    uint32_t                m_frameLatency = DefaultFrameLatency;
-    uint32_t                m_frameLatencyCap = 0;
-    HANDLE                  m_frameLatencyEvent = nullptr;
-    Rc<sync::CallbackFence> m_frameLatencySignal;
+    uint64_t                  m_frameId      = DXGI_MAX_SWAP_CHAIN_BUFFERS;
+    uint32_t                  m_frameLatency = DefaultFrameLatency;
+    uint32_t                  m_frameLatencyCap = 0;
+    HANDLE                    m_frameLatencyEvent = nullptr;
+    Rc<sync::CallbackFence>   m_frameLatencySignal;
 
-    bool                    m_dirty = true;
+    bool                      m_dirty = true;
 
-    VkColorSpaceKHR         m_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    VkColorSpaceKHR           m_colorspace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
 
     std::optional<VkHdrMetadataEXT> m_hdrMetadata;
-    bool m_dirtyHdrMetadata = true;
+    bool                      m_dirtyHdrMetadata = true;
+
+    double                    m_targetFrameRate = 0.0;
 
     dxvk::mutex               m_frameStatisticsLock;
     DXGI_VK_FRAME_STATISTICS  m_frameStatistics = { };

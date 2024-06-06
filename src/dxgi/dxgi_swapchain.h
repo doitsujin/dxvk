@@ -187,11 +187,16 @@ namespace dxvk {
 
     Com<IDXGIVkSwapChain>           m_presenter;
     Com<IDXGIVkSwapChain1>          m_presenter1;
+    Com<IDXGIVkSwapChain2>          m_presenter2;
     
     HMONITOR                        m_monitor;
     bool                            m_monitorHasOutput = true;
     bool                            m_frameStatisticsDisjoint = true;
     wsi::DxvkWindowState            m_windowState;
+
+    double                          m_frameRateOption = 0.0;
+    double                          m_frameRateRefresh = 0.0;
+    double                          m_frameRateLimit = 0.0;
 
     DXGI_COLOR_SPACE_TYPE           m_colorSpace = DXGI_COLOR_SPACE_RGB_FULL_G22_NONE_P709;
 
@@ -232,6 +237,9 @@ namespace dxvk {
     HRESULT UpdateColorSpace(
             DXGI_FORMAT             Format,
             DXGI_COLOR_SPACE_TYPE   ColorSpace);
+
+    void UpdateTargetFrameRate(
+            UINT                    SyncInterval);
 
     HRESULT STDMETHODCALLTYPE PresentBase(
             UINT                      SyncInterval,
