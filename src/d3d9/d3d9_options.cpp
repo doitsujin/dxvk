@@ -42,7 +42,7 @@ namespace dxvk {
       : (adapter != nullptr ? adapter->deviceProperties().vendorID : 0);
 
     this->maxFrameLatency               = config.getOption<int32_t>     ("d3d9.maxFrameLatency",               0);
-    this->maxFrameRate                  = config.getOption<int32_t>     ("d3d9.maxFrameRate",                  0);
+    this->maxFrameRate                  = config.getOption<int32_t>     ("dxvk.maxFrameRate",                  0);
     this->presentInterval               = config.getOption<int32_t>     ("d3d9.presentInterval",               -1);
     this->shaderModel                   = config.getOption<int32_t>     ("d3d9.shaderModel",                   3);
     this->dpiAware                      = config.getOption<bool>        ("d3d9.dpiAware",                      true);
