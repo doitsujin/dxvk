@@ -130,7 +130,7 @@ namespace dxvk {
       m_frameQueue.push(frame);
       m_frameCond.notify_one();
     } else {
-      applyFrameRateLimit(mode);
+      m_fpsLimiter.delay();
       m_signal->signal(frameId);
     }
 
@@ -648,14 +648,6 @@ namespace dxvk {
   }
 
 
-  void Presenter::applyFrameRateLimit(VkPresentModeKHR mode) {
-    bool vsync = mode == VK_PRESENT_MODE_FIFO_KHR
-              || mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
-
-    m_fpsLimiter.delay(vsync);
-  }
-
-
   void Presenter::runFrameThread() {
     env::setThreadName("dxvk-frame");
 
@@ -677,7 +669,7 @@ namespace dxvk {
 
       // Apply the FPS limiter before signaling the frame event in
       // order to reduce latency if the app uses it for frame pacing.
-      applyFrameRateLimit(frame.mode);
+      m_fpsLimiter.delay();
 
       // If the present operation has succeeded, actually wait for it to complete.
       // Don't bother with it on MAILBOX / IMMEDIATE modes since doing so would
