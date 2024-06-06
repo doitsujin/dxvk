@@ -80,9 +80,6 @@ namespace dxvk {
     /// a higher value. May help with frame timing issues.
     int32_t maxFrameLatency;
 
-    /// Limit frame rate
-    int32_t maxFrameRate;
-
     /// Limit discardable resource size
     VkDeviceSize maxImplicitDiscardSize;
 
