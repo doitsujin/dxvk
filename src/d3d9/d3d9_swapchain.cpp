@@ -191,6 +191,7 @@ namespace dxvk {
       if (!m_wctx->presenter->hasSwapChain())
         return D3D_OK;
 
+      UpdateTargetFrameRate(presentInterval);
       PresentImage(presentInterval);
       return D3D_OK;
     } catch (const DxvkError& e) {
@@ -927,7 +928,6 @@ namespace dxvk {
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
     m_wctx->presenter = new Presenter(m_device, m_wctx->frameLatencySignal, presenterDesc);
-    m_wctx->presenter->setFrameRateLimit(m_parent->GetOptions()->maxFrameRate);
   }
 
 
@@ -1104,6 +1104,17 @@ namespace dxvk {
       m_ramp.green[i] = identity;
       m_ramp.blue[i]  = identity;
     }
+  }
+
+
+  void D3D9SwapChainEx::UpdateTargetFrameRate(uint32_t SyncInterval) {
+    double frameRateOption = double(m_parent->GetOptions()->maxFrameRate);
+    double frameRate = std::max(frameRateOption, 0.0);
+
+    if (SyncInterval && frameRateOption == 0.0)
+      frameRate = -m_displayRefreshRate / double(SyncInterval);
+
+    m_wctx->presenter->setFrameRateLimit(frameRate);
   }
 
 
