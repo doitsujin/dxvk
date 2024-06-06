@@ -44,7 +44,7 @@ namespace dxvk::wsi {
     if (extensionCount == 0)
       throw DxvkError(str::format("GLFW WSI: Failed to get required instance extensions"));
 
-    std::vector<const char *> names(extensionCount);
+    std::vector<const char *> names;
     for (uint32_t i = 0; i < extensionCount; ++i) {
       names.push_back(extensionArray[i]);
     }
