@@ -35,7 +35,7 @@ namespace dxvk {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     if (!m_envOverride) {
-      m_targetInterval = frameRate > 0.0
+      m_targetInterval = frameRate != 0.0
         ? TimerDuration(int64_t(double(TimerDuration::period::den) / frameRate))
         : TimerDuration::zero();
 
@@ -45,7 +45,7 @@ namespace dxvk {
   }
 
 
-  void FpsLimiter::delay(bool vsyncEnabled) {
+  void FpsLimiter::delay() {
     std::lock_guard<dxvk::mutex> lock(m_mutex);
 
     if (!isEnabled())

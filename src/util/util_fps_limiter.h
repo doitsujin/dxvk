@@ -34,9 +34,8 @@ namespace dxvk {
      * Blocks the calling thread if the limiter is enabled
      * and the time since the last call to \ref delay is
      * shorter than the target interval.
-     * \param [in] vsyncEnabled \c true if vsync is enabled
      */
-    void delay(bool vsyncEnabled);
+    void delay();
 
     /**
      * \brief Checks whether the frame rate limiter is enabled
