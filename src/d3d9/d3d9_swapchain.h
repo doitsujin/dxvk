@@ -213,6 +213,8 @@ namespace dxvk {
 
     void InitRamp();
 
+    void UpdateTargetFrameRate(uint32_t SyncInterval);
+
     uint32_t GetActualFrameLatency();
 
     uint32_t PickFormats(
