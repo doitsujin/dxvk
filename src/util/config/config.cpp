@@ -451,6 +451,11 @@ namespace dxvk {
     { R"(\\watch_dogs\.exe$)", {{
       { "d3d11.longMad",                  "True"    },
     }} },
+    /* Crysis 1/Warhead - Game bug in d3d10 makes *
+     * it select lowest supported refresh rate    */
+    { R"(\\Crysis(64)?\.exe$)", {{
+      { "dxvk.maxFrameRate",              "-1"      },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
