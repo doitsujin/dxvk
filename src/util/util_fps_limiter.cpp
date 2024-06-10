@@ -44,9 +44,6 @@ namespace dxvk {
 
         m_heuristicFrameCount = 0;
         m_heuristicEnable = false;
-
-        if (m_targetInterval != TimerDuration::zero() && !m_initialized)
-          initialize();
       }
     }
   }
@@ -56,10 +53,11 @@ namespace dxvk {
     std::unique_lock<dxvk::mutex> lock(m_mutex);
     auto interval = m_targetInterval;
 
-    if (interval == TimerDuration::zero())
+    if (interval == TimerDuration::zero()) {
+      m_nextFrame = TimePoint();
       return;
+    }
 
-    auto t0 = m_lastFrame;
     auto t1 = dxvk::high_resolution_clock::now();
 
     if (interval < TimerDuration::zero()) {
@@ -73,27 +71,12 @@ namespace dxvk {
     // that can be written by setTargetFrameRate
     lock.unlock();
 
-    auto frameTime = std::chrono::duration_cast<TimerDuration>(t1 - t0);
+    if (t1 < m_nextFrame)
+      Sleep::sleepUntil(t1, m_nextFrame);
 
-    if (frameTime * 100 > interval * 103 - m_deviation * 100) {
-      // If we have a slow frame, reset the deviation since we
-      // do not want to compensate for low performance later on
-      m_deviation = TimerDuration::zero();
-    } else {
-      // Don't call sleep if the amount of time to sleep is shorter
-      // than the time the function calls are likely going to take
-      TimerDuration sleepDuration = interval - m_deviation - frameTime;
-      t1 = Sleep::sleepFor(t1, sleepDuration);
-
-      // Compensate for any sleep inaccuracies in the next frame, and
-      // limit cumulative deviation in order to avoid stutter in case we
-      // have a number of slow frames immediately followed by a fast one.
-      frameTime = std::chrono::duration_cast<TimerDuration>(t1 - t0);
-      m_deviation += frameTime - interval;
-      m_deviation = std::min(m_deviation, interval / 16);
-    }
-
-    m_lastFrame = t1;
+    m_nextFrame = (t1 < m_nextFrame + interval)
+      ? m_nextFrame + interval
+      : t1 + interval;
   }
 
 
@@ -129,12 +112,6 @@ namespace dxvk {
     }
 
     return m_heuristicEnable;
-  }
-
-
-  void FpsLimiter::initialize() {
-    m_lastFrame = dxvk::high_resolution_clock::now();
-    m_initialized = true;
   }
 
 }

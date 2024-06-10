@@ -667,10 +667,6 @@ namespace dxvk {
       if (!frame.frameId)
         return;
 
-      // Apply the FPS limiter before signaling the frame event in
-      // order to reduce latency if the app uses it for frame pacing.
-      m_fpsLimiter.delay();
-
       // If the present operation has succeeded, actually wait for it to complete.
       // Don't bother with it on MAILBOX / IMMEDIATE modes since doing so would
       // restrict us to the display refresh rate on some platforms (XWayland).
@@ -685,6 +681,9 @@ namespace dxvk {
       // Always signal even on error, since failures here
       // are transparent to the front-end.
       m_signal->signal(frame.frameId);
+
+      // Apply FPS limtier here to align it as closely with scanout as we can.
+      m_fpsLimiter.delay();
     }
   }
 

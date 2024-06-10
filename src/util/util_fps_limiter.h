@@ -47,10 +47,8 @@ namespace dxvk {
     dxvk::mutex     m_mutex;
 
     TimerDuration   m_targetInterval  = TimerDuration::zero();
-    TimerDuration   m_deviation       = TimerDuration::zero();
-    TimePoint       m_lastFrame       = TimePoint();
+    TimePoint       m_nextFrame       = TimePoint();
 
-    bool            m_initialized     = false;
     bool            m_envOverride     = false;
 
     uint32_t                  m_heuristicFrameCount = 0;
@@ -58,8 +56,6 @@ namespace dxvk {
     bool                      m_heuristicEnable = false;
 
     bool testRefreshHeuristic(TimerDuration interval, TimePoint now);
-
-    void initialize();
 
   };
 
