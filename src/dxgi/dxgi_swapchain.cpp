@@ -460,9 +460,7 @@ namespace dxvk {
         return E_FAIL;
       }
       
-      // If the swap chain allows it, change the display mode
-      if (m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH)
-        ChangeDisplayMode(output.ptr(), &newDisplayMode);
+      ChangeDisplayMode(output.ptr(), &newDisplayMode);
 
       wsi::updateFullscreenWindow(m_monitor, m_window, false);
     }
@@ -672,35 +670,33 @@ namespace dxvk {
       }
     }
 
-    const bool modeSwitch = m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+    DXGI_MODE_DESC1 displayMode = { };
+    displayMode.Width            = m_desc.Width;
+    displayMode.Height           = m_desc.Height;
+    displayMode.RefreshRate      = m_descFs.RefreshRate;
+    displayMode.Format           = m_desc.Format;
+    // Ignore these two, games usually use them wrong and we don't
+    // support any scaling modes except UNSPECIFIED anyway.
+    displayMode.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+    displayMode.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
     
-    if (modeSwitch) {
-      DXGI_MODE_DESC1 displayMode = { };
-      displayMode.Width            = m_desc.Width;
-      displayMode.Height           = m_desc.Height;
-      displayMode.RefreshRate      = m_descFs.RefreshRate;
-      displayMode.Format           = m_desc.Format;
-      // Ignore these two, games usually use them wrong and we don't
-      // support any scaling modes except UNSPECIFIED anyway.
-      displayMode.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-      displayMode.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
-      
-      if (FAILED(ChangeDisplayMode(output.ptr(), &displayMode))) {
-        Logger::err("DXGI: EnterFullscreenMode: Failed to change display mode");
-        return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
-      }
+    if (FAILED(ChangeDisplayMode(output.ptr(), &displayMode))) {
+      Logger::err("DXGI: EnterFullscreenMode: Failed to change display mode");
+      return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
     }
     
     // Update swap chain description
     m_descFs.Windowed = FALSE;
     
     // Move the window so that it covers the entire output
+    bool modeSwitch = (m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH) != 0u;
+
     DXGI_OUTPUT_DESC desc;
     output->GetDesc(&desc);
 
     if (!wsi::enterFullscreenMode(desc.Monitor, m_window, &m_windowState, modeSwitch)) {
-        Logger::err("DXGI: EnterFullscreenMode: Failed to enter fullscreen mode");
-        return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
+      Logger::err("DXGI: EnterFullscreenMode: Failed to enter fullscreen mode");
+      return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
     }
     
     m_monitor = desc.Monitor;
@@ -764,7 +760,12 @@ namespace dxvk {
     pOutput->GetDesc(&outputDesc);
     
     DXGI_MODE_DESC1 preferredMode = *pDisplayMode;
-    DXGI_MODE_DESC1 selectedMode;
+    DXGI_MODE_DESC1 selectedMode = { };
+
+    if (!(m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH)) {
+      preferredMode.Width = 0;
+      preferredMode.Height = 0;
+    }
 
     if (preferredMode.Format == DXGI_FORMAT_UNKNOWN)
       preferredMode.Format = m_desc.Format;
