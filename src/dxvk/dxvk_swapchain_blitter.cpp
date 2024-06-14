@@ -125,6 +125,7 @@ namespace dxvk {
     rsState.conservativeMode   = VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
     rsState.sampleCount        = VK_SAMPLE_COUNT_1_BIT;
     rsState.flatShading        = VK_FALSE;
+    rsState.lineMode           = VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT;
     ctx->setRasterizerState(rsState);
     
     DxvkMultisampleState msState;
@@ -328,6 +329,8 @@ namespace dxvk {
 
     DxvkShaderCreateInfo vsInfo;
     vsInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vsInfo.pushConstStages = VK_SHADER_STAGE_FRAGMENT_BIT;
+    vsInfo.pushConstSize = sizeof(PresenterArgs);
     vsInfo.outputMask = 0x1;
     m_vs = new DxvkShader(vsInfo, std::move(vsCode));
     
@@ -335,6 +338,7 @@ namespace dxvk {
     fsInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
     fsInfo.bindingCount = fsBindings.size();
     fsInfo.bindings = fsBindings.data();
+    fsInfo.pushConstStages = VK_SHADER_STAGE_FRAGMENT_BIT;
     fsInfo.pushConstSize = sizeof(PresenterArgs);
     fsInfo.inputMask = 0x1;
     fsInfo.outputMask = 0x1;

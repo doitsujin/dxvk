@@ -23,7 +23,11 @@ namespace dxvk {
       entry.systemValue     = static_cast<DxbcSystemValue>(reader.readu32());
       entry.componentType   = componentTypes.at(reader.readu32());
       entry.registerId      = reader.readu32();
-      entry.componentMask   = bit::extract(reader.readu32(), 0, 3);
+
+      uint32_t mask = reader.readu32();
+
+      entry.componentMask   = bit::extract(mask, 0, 3);
+      entry.componentUsed   = bit::extract(mask, 8, 11);
 
       if (hasPrecision)
         reader.readu32();

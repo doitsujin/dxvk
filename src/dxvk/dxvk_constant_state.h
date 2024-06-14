@@ -127,6 +127,7 @@ namespace dxvk {
     VkConservativeRasterizationModeEXT conservativeMode;
     VkSampleCountFlags  sampleCount;
     VkBool32            flatShading;
+    VkLineRasterizationModeEXT lineMode;
   };
   
   

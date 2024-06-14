@@ -61,7 +61,7 @@ namespace dxvk {
      * provided by the extension can be used.
      * \returns \c true if the extension is enabled
      */
-    operator bool () const {
+    explicit operator bool () const {
       return m_revision != 0;
     }
 
@@ -305,6 +305,7 @@ namespace dxvk {
     DxvkExt extFullScreenExclusive            = { VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME,              DxvkExtMode::Optional };
     DxvkExt extFragmentShaderInterlock        = { VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME,          DxvkExtMode::Optional };
     DxvkExt extGraphicsPipelineLibrary        = { VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME,          DxvkExtMode::Optional };
+    DxvkExt extLineRasterization              = { VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME,                 DxvkExtMode::Passive  };
     DxvkExt extMemoryBudget                   = { VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,                      DxvkExtMode::Passive  };
     DxvkExt extMemoryPriority                 = { VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,                    DxvkExtMode::Optional };
     DxvkExt extNonSeamlessCubeMap             = { VK_EXT_NON_SEAMLESS_CUBE_MAP_EXTENSION_NAME,              DxvkExtMode::Optional };
@@ -318,10 +319,14 @@ namespace dxvk {
     DxvkExt extVertexAttributeDivisor         = { VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME,           DxvkExtMode::Optional };
     DxvkExt khrExternalMemoryWin32            = { VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,              DxvkExtMode::Optional };
     DxvkExt khrExternalSemaphoreWin32         = { VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,           DxvkExtMode::Optional };
+    DxvkExt khrMaintenance5                   = { VK_KHR_MAINTENANCE_5_EXTENSION_NAME,                      DxvkExtMode::Optional };
     DxvkExt khrPipelineLibrary                = { VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,                   DxvkExtMode::Optional };
     DxvkExt khrPresentId                      = { VK_KHR_PRESENT_ID_EXTENSION_NAME,                         DxvkExtMode::Optional };
     DxvkExt khrPresentWait                    = { VK_KHR_PRESENT_WAIT_EXTENSION_NAME,                       DxvkExtMode::Optional };
     DxvkExt khrSwapchain                      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME,                          DxvkExtMode::Required };
+    DxvkExt khrWin32KeyedMutex                = { VK_KHR_WIN32_KEYED_MUTEX_EXTENSION_NAME,                  DxvkExtMode::Optional };
+    DxvkExt nvDescriptorPoolOverallocation    = { VK_NV_DESCRIPTOR_POOL_OVERALLOCATION_EXTENSION_NAME,      DxvkExtMode::Optional };
+    DxvkExt nvRawAccessChains                 = { VK_NV_RAW_ACCESS_CHAINS_EXTENSION_NAME,                   DxvkExtMode::Optional };
     DxvkExt nvxBinaryImport                   = { VK_NVX_BINARY_IMPORT_EXTENSION_NAME,                      DxvkExtMode::Disabled };
     DxvkExt nvxImageViewHandle                = { VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME,                  DxvkExtMode::Disabled };
   };

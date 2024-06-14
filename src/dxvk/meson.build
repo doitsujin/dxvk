@@ -20,9 +20,6 @@ dxvk_shaders = files([
   'shaders/dxvk_copy_color_1d.frag',
   'shaders/dxvk_copy_color_2d.frag',
   'shaders/dxvk_copy_color_ms.frag',
-  'shaders/dxvk_copy_depth_1d.frag',
-  'shaders/dxvk_copy_depth_2d.frag',
-  'shaders/dxvk_copy_depth_ms.frag',
   'shaders/dxvk_copy_depth_stencil_1d.frag',
   'shaders/dxvk_copy_depth_stencil_2d.frag',
   'shaders/dxvk_copy_depth_stencil_ms.frag',
@@ -92,6 +89,7 @@ dxvk_src = [
   'dxvk_options.cpp',
   'dxvk_pipelayout.cpp',
   'dxvk_pipemanager.cpp',
+  'dxvk_platform_exts.cpp',
   'dxvk_presenter.cpp',
   'dxvk_queue.cpp',
   'dxvk_resource.cpp',
@@ -117,20 +115,6 @@ if platform == 'windows'
   dxvk_src += [
     'dxvk_openvr.cpp',
     'dxvk_openxr.cpp',
-  ]
-endif
-
-if dxvk_wsi == 'win32'
-  dxvk_src += [
-    'platform/dxvk_win32_exts.cpp'
-  ]
-elif dxvk_wsi == 'sdl2'
-  dxvk_src += [
-    'platform/dxvk_sdl2_exts.cpp'
-  ]
-elif dxvk_wsi == 'glfw'
-  dxvk_src += [
-    'platform/dxvk_glfw_exts.cpp'
   ]
 endif
 

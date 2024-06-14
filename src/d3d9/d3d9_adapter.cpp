@@ -162,6 +162,9 @@ namespace dxvk {
     if (mapping.FormatSrgb  == VK_FORMAT_UNDEFINED && srgb)
       return D3DERR_NOTAVAILABLE;
 
+    if (RType == D3DRTYPE_CUBETEXTURE && mapping.Aspect != VK_IMAGE_ASPECT_COLOR_BIT)
+      return D3DERR_NOTAVAILABLE;
+
     if (RType == D3DRTYPE_VERTEXBUFFER || RType == D3DRTYPE_INDEXBUFFER)
       return D3D_OK;
 
@@ -224,11 +227,15 @@ namespace dxvk {
     if (!IsDepthFormat(DepthStencilFormat))
       return D3DERR_NOTAVAILABLE;
 
+    auto dsfMapping = ConvertFormatUnfixed(DepthStencilFormat);
+    if (dsfMapping.FormatColor == VK_FORMAT_UNDEFINED)
+      return D3DERR_NOTAVAILABLE;
+
     if (RenderTargetFormat == dxvk::D3D9Format::NULL_FORMAT)
       return D3D_OK;
 
-    auto mapping = ConvertFormatUnfixed(RenderTargetFormat);
-    if (mapping.FormatColor == VK_FORMAT_UNDEFINED)
+    auto rtfMapping = ConvertFormatUnfixed(RenderTargetFormat);
+    if (rtfMapping.FormatColor == VK_FORMAT_UNDEFINED)
       return D3DERR_NOTAVAILABLE;
 
     return D3D_OK;
@@ -788,7 +795,8 @@ namespace dxvk {
       // Fix up the D3DFORMAT to match what we are enumerating
       mode.Format = static_cast<D3DFORMAT>(Format);
 
-      m_modes.push_back(mode);
+      if (std::count(m_modes.begin(), m_modes.end(), mode) == 0)
+        m_modes.push_back(mode);
     }
 
     // Sort display modes by width, height and refresh rate,

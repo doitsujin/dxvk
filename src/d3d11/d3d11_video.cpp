@@ -1262,12 +1262,28 @@ namespace dxvk {
         viewport.height = float(cStreamState.dstRect.bottom) - viewport.y;
       }
 
+      VkExtent3D viewExtent = cViews[0]->mipLevelExtent(0);
+
+      VkRect2D srcRect;
+      srcRect.offset = { 0, 0 };
+      srcRect.extent = { viewExtent.width, viewExtent.height };
+
+      if (cStreamState.srcRectEnabled) {
+        srcRect.offset.x      = cStreamState.srcRect.left;
+        srcRect.offset.y      = cStreamState.srcRect.top;
+        srcRect.extent.width  = cStreamState.srcRect.right - srcRect.offset.x;
+        srcRect.extent.height = cStreamState.srcRect.bottom - srcRect.offset.y;
+      }
+
       UboData uboData = { };
       uboData.colorMatrix[0][0] = 1.0f;
       uboData.colorMatrix[1][1] = 1.0f;
       uboData.colorMatrix[2][2] = 1.0f;
-      uboData.coordMatrix[0][0] = 1.0f;
-      uboData.coordMatrix[1][1] = 1.0f;
+      uboData.coordMatrix[0][0] = float(srcRect.extent.width) / float(viewExtent.width);
+      uboData.coordMatrix[1][1] = float(srcRect.extent.height) / float(viewExtent.height);
+      uboData.coordMatrix[2][0] = float(srcRect.offset.x) / float(viewExtent.width);
+      uboData.coordMatrix[2][1] = float(srcRect.offset.y) / float(viewExtent.height);
+      uboData.srcRect = srcRect;
       uboData.yMin = 0.0f;
       uboData.yMax = 1.0f;
       uboData.isPlanar = cViews[1] != nullptr;
@@ -1290,17 +1306,14 @@ namespace dxvk {
       ctx->bindShader<VK_SHADER_STAGE_FRAGMENT_BIT>(Rc<DxvkShader>(m_fs));
 
       ctx->bindUniformBuffer(VK_SHADER_STAGE_FRAGMENT_BIT, 0, DxvkBufferSlice(m_ubo));
-      ctx->bindResourceSampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1, Rc<DxvkSampler>(m_sampler));
 
       for (uint32_t i = 0; i < cViews.size(); i++)
-        ctx->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, 2 + i, Rc<DxvkImageView>(cViews[i]));
+        ctx->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, 1 + i, Rc<DxvkImageView>(cViews[i]));
 
       ctx->draw(3, 1, 0, 0);
 
-      ctx->bindResourceSampler(VK_SHADER_STAGE_FRAGMENT_BIT, 1, nullptr);
-
       for (uint32_t i = 0; i < cViews.size(); i++)
-        ctx->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, 2 + i, nullptr);
+        ctx->bindResourceImageView(VK_SHADER_STAGE_FRAGMENT_BIT, 1 + i, nullptr);
     });
   }
 
@@ -1315,38 +1328,14 @@ namespace dxvk {
   }
 
 
-  void D3D11VideoContext::CreateSampler() {
-    DxvkSamplerCreateInfo samplerInfo;
-    samplerInfo.magFilter       = VK_FILTER_LINEAR;
-    samplerInfo.minFilter       = VK_FILTER_LINEAR;
-    samplerInfo.mipmapMode      = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    samplerInfo.mipmapLodBias   = 0.0f;
-    samplerInfo.mipmapLodMin    = 0.0f;
-    samplerInfo.mipmapLodMax    = 0.0f;
-    samplerInfo.useAnisotropy   = VK_FALSE;
-    samplerInfo.maxAnisotropy   = 1.0f;
-    samplerInfo.addressModeU    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeV    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.addressModeW    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    samplerInfo.compareToDepth  = VK_FALSE;
-    samplerInfo.compareOp       = VK_COMPARE_OP_ALWAYS;
-    samplerInfo.reductionMode   = VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
-    samplerInfo.borderColor     = VkClearColorValue();
-    samplerInfo.usePixelCoord   = VK_FALSE;
-    samplerInfo.nonSeamless     = VK_FALSE;
-    m_sampler = m_device->createSampler(samplerInfo);
-  }
-
-
   void D3D11VideoContext::CreateShaders() {
     SpirvCodeBuffer vsCode(d3d11_video_blit_vert);
     SpirvCodeBuffer fsCode(d3d11_video_blit_frag);
 
-    const std::array<DxvkBindingInfo, 4> fsBindings = {{
+    const std::array<DxvkBindingInfo, 3> fsBindings = {{
       { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_UNIFORM_READ_BIT, VK_TRUE },
-      { VK_DESCRIPTOR_TYPE_SAMPLER,        1, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_SHADER_STAGE_FRAGMENT_BIT, 0 },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  1, VK_IMAGE_VIEW_TYPE_2D,       VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
       { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  2, VK_IMAGE_VIEW_TYPE_2D,       VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
-      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  3, VK_IMAGE_VIEW_TYPE_2D,       VK_SHADER_STAGE_FRAGMENT_BIT, VK_ACCESS_SHADER_READ_BIT },
     }};
 
     DxvkShaderCreateInfo vsInfo;
@@ -1368,7 +1357,6 @@ namespace dxvk {
     if (std::exchange(m_resourcesCreated, true))
       return;
 
-    CreateSampler();
     CreateUniformBuffer();
     CreateShaders();
   }

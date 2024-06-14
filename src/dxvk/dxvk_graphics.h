@@ -31,6 +31,7 @@ namespace dxvk {
     HasTransformFeedback,
     HasStorageDescriptors,
     HasSampleRateShading,
+    HasSampleMaskExport,
   };
 
   using DxvkGraphicsPipelineFlags = Flags<DxvkGraphicsPipelineFlag>;
@@ -116,6 +117,7 @@ namespace dxvk {
 
     VkSampleMask                                    msSampleMask               = 0u;
     VkBool32                                        cbUseDynamicBlendConstants = VK_FALSE;
+    VkBool32                                        cbUseDynamicAlphaToCoverage = VK_FALSE;
 
     std::array<VkPipelineColorBlendAttachmentState, MaxNumRenderTargets> cbAttachments  = { };
     std::array<VkFormat,                            MaxNumRenderTargets> rtColorFormats = { };
@@ -168,7 +170,9 @@ namespace dxvk {
     DxvkGraphicsPipelinePreRasterizationState(
       const DxvkDevice*                     device,
       const DxvkGraphicsPipelineStateInfo&  state,
-      const DxvkShader*                     gs);
+      const DxvkShader*                     tes,
+      const DxvkShader*                     gs,
+      const DxvkShader*                     fs);
 
     VkPipelineViewportStateCreateInfo                     vpInfo              = { VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO };
     VkPipelineTessellationStateCreateInfo                 tsInfo              = { VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO };
@@ -176,10 +180,17 @@ namespace dxvk {
     VkPipelineRasterizationDepthClipStateCreateInfoEXT    rsDepthClipInfo     = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT };
     VkPipelineRasterizationStateStreamCreateInfoEXT       rsXfbStreamInfo     = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT };
     VkPipelineRasterizationConservativeStateCreateInfoEXT rsConservativeInfo  = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT };
+    VkPipelineRasterizationLineStateCreateInfoEXT         rsLineInfo          = { VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT };
 
     bool eq(const DxvkGraphicsPipelinePreRasterizationState& other) const;
 
     size_t hash() const;
+
+    static bool isLineRendering(
+      const DxvkGraphicsPipelineStateInfo&  state,
+      const DxvkShader*                     tes,
+      const DxvkShader*                     gs);
+
   };
 
 
@@ -370,19 +381,16 @@ namespace dxvk {
   struct DxvkGraphicsPipelineBaseInstanceKey {
     const DxvkGraphicsPipelineVertexInputLibrary*     viLibrary = nullptr;
     const DxvkGraphicsPipelineFragmentOutputLibrary*  foLibrary = nullptr;
-    DxvkShaderPipelineLibraryCompileArgs              args;
 
     bool eq(const DxvkGraphicsPipelineBaseInstanceKey& other) const {
       return viLibrary == other.viLibrary
-          && foLibrary == other.foLibrary
-          && args      == other.args;
+          && foLibrary == other.foLibrary;
     }
 
     size_t hash() const {
       DxvkHashState hash;
       hash.add(size_t(viLibrary));
       hash.add(size_t(foLibrary));
-      hash.add(args.hash());
       return hash;
     }
   };
@@ -406,7 +414,7 @@ namespace dxvk {
     : shState(shaders, state),
       dyState(device, state, flags),
       viState(device, state, shaders.vs.ptr()),
-      prState(device, state, shaders.gs.ptr()),
+      prState(device, state, shaders.tes.ptr(), shaders.gs.ptr(), shaders.fs.ptr()),
       fsState(device, state),
       foState(device, state, shaders.fs.ptr()),
       scState(specConstantMask, state.sc) { }

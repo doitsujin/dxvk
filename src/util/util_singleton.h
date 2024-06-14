@@ -16,11 +16,12 @@ class Singleton {
 
 public:
 
-  Rc<T> acquire() {
+  template<typename... Args>
+  Rc<T> acquire(Args... constantArgs) {
     std::lock_guard lock(m_mutex);
 
     if (!(m_useCount++))
-      m_object = new T();
+      m_object = new T(constantArgs...);
 
     return m_object;
   }

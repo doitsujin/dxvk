@@ -9,6 +9,9 @@
 #define VULKAN_FN(name) \
   ::PFN_ ## name name = reinterpret_cast<::PFN_ ## name>(sym(#name))
 
+using PFN_wine_vkAcquireKeyedMutex = VkResult (VKAPI_PTR *)(VkDevice device, VkDeviceMemory memory, uint64_t key, uint32_t timeout_ms);
+using PFN_wine_vkReleaseKeyedMutex = VkResult (VKAPI_PTR *)(VkDevice device, VkDeviceMemory memory, uint64_t key);
+
 namespace dxvk::vk {
 
   /**
@@ -383,6 +386,7 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdSetConservativeRasterizationModeEXT);
     VULKAN_FN(vkCmdSetExtraPrimitiveOverestimationSizeEXT);
     VULKAN_FN(vkCmdSetDepthClipEnableEXT);
+    VULKAN_FN(vkCmdSetLineRasterizationModeEXT);
     #endif
 
     #ifdef VK_EXT_full_screen_exclusive
@@ -432,8 +436,21 @@ namespace dxvk::vk {
     VULKAN_FN(vkImportSemaphoreWin32HandleKHR);
     #endif
 
-    #ifdef VK_KHR_PRESENT_WAIT_EXTENSION_NAME
+    #ifdef VK_KHR_maintenance5
+    VULKAN_FN(vkCmdBindIndexBuffer2KHR);
+    VULKAN_FN(vkGetRenderingAreaGranularityKHR);
+    VULKAN_FN(vkGetDeviceImageSubresourceLayoutKHR);
+    VULKAN_FN(vkGetImageSubresourceLayout2KHR);
+    #endif
+
+    #ifdef VK_KHR_present_wait
     VULKAN_FN(vkWaitForPresentKHR);
+    #endif
+
+    #ifdef VK_KHR_win32_keyed_mutex
+    // Wine additions to actually use this extension.
+    VULKAN_FN(wine_vkAcquireKeyedMutex);
+    VULKAN_FN(wine_vkReleaseKeyedMutex);
     #endif
   };
   

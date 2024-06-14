@@ -217,6 +217,9 @@ namespace dxvk {
     uint32_t constUndef(
             uint32_t                typeId);
     
+    uint32_t constNull(
+            uint32_t                typeId);
+    
     uint32_t lateConst32(
             uint32_t                typeId);
 
@@ -949,6 +952,14 @@ namespace dxvk {
 
     uint32_t opNormalize(
             uint32_t                resultType,
+            uint32_t                operand);
+
+    uint32_t opRawAccessChain(
+            uint32_t                resultType,
+            uint32_t                base,
+            uint32_t                stride,
+            uint32_t                index,
+            uint32_t                offset,
             uint32_t                operand);
 
     uint32_t opReflect(

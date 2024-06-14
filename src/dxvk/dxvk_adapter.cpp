@@ -346,6 +346,11 @@ namespace dxvk {
     enabledFeatures.vk13.synchronization2 = VK_TRUE;
     enabledFeatures.vk13.dynamicRendering = VK_TRUE;
 
+    // Maintenance4 may cause performance problems on amdvlk in some cases
+    if (m_deviceInfo.vk12.driverID != VK_DRIVER_ID_AMD_OPEN_SOURCE
+     && m_deviceInfo.vk12.driverID != VK_DRIVER_ID_AMD_PROPRIETARY)
+      enabledFeatures.vk13.maintenance4 = VK_TRUE;
+
     // We expose depth clip rather than depth clamp to client APIs
     enabledFeatures.extDepthClipEnable.depthClipEnable =
       m_deviceFeatures.extDepthClipEnable.depthClipEnable;
@@ -360,11 +365,23 @@ namespace dxvk {
       m_deviceFeatures.extExtendedDynamicState3.extendedDynamicState3RasterizationSamples;
     enabledFeatures.extExtendedDynamicState3.extendedDynamicState3SampleMask =
       m_deviceFeatures.extExtendedDynamicState3.extendedDynamicState3SampleMask;
+    enabledFeatures.extExtendedDynamicState3.extendedDynamicState3LineRasterizationMode =
+      m_deviceFeatures.extExtendedDynamicState3.extendedDynamicState3LineRasterizationMode;
 
     // Used for both pNext shader module info, and fast-linking pipelines provided
     // that graphicsPipelineLibraryIndependentInterpolationDecoration is supported
     enabledFeatures.extGraphicsPipelineLibrary.graphicsPipelineLibrary =
       m_deviceFeatures.extGraphicsPipelineLibrary.graphicsPipelineLibrary;
+
+    // Only enable non-default line rasterization features if at least wide lines
+    // and rectangular lines are supported. This saves us several feature checks
+    // in the actual code.
+    if (m_deviceFeatures.core.features.wideLines && m_deviceFeatures.extLineRasterization.rectangularLines) {
+      enabledFeatures.core.features.wideLines = VK_TRUE;
+      enabledFeatures.extLineRasterization.rectangularLines = VK_TRUE;
+      enabledFeatures.extLineRasterization.smoothLines =
+        m_deviceFeatures.extLineRasterization.smoothLines;
+    }
 
     // Enable memory priority if supported to improve memory management
     enabledFeatures.extMemoryPriority.memoryPriority =
@@ -386,6 +403,10 @@ namespace dxvk {
       m_deviceFeatures.extSwapchainMaintenance1.swapchainMaintenance1 &&
       instance->extensions().extSurfaceMaintenance1;
 
+    // Enable maintenance5 if supported
+    enabledFeatures.khrMaintenance5.maintenance5 =
+      m_deviceFeatures.khrMaintenance5.maintenance5;
+
     // Enable present id and present wait together, if possible
     enabledFeatures.khrPresentId.presentId =
       m_deviceFeatures.khrPresentId.presentId;
@@ -394,10 +415,18 @@ namespace dxvk {
       m_deviceFeatures.khrPresentWait.presentWait;
 
     // Unless we're on an Nvidia driver where these extensions are known to be broken
-    if (matchesDriver(VK_DRIVER_ID_NVIDIA_PROPRIETARY, 0, VK_MAKE_VERSION(535, 0, 0))) {
+    if (matchesDriver(VK_DRIVER_ID_NVIDIA_PROPRIETARY, Version(), Version(535, 0, 0))) {
       enabledFeatures.khrPresentId.presentId = VK_FALSE;
       enabledFeatures.khrPresentWait.presentWait = VK_FALSE;
     }
+
+    // Enable descriptor pool overallocation if supported
+    enabledFeatures.nvDescriptorPoolOverallocation.descriptorPoolOverallocation =
+      m_deviceFeatures.nvDescriptorPoolOverallocation.descriptorPoolOverallocation;
+
+    // Enable raw access chains for shader backends
+    enabledFeatures.nvRawAccessChains.shaderRawAccessChains =
+      m_deviceFeatures.nvRawAccessChains.shaderRawAccessChains;
 
     // Create pNext chain for additional device features
     initFeatureChain(enabledFeatures, devExtensions, instance->extensions());
@@ -405,10 +434,7 @@ namespace dxvk {
     // Log feature support info an extension list
     Logger::info(str::format("Device properties:"
       "\n  Device : ", m_deviceInfo.core.properties.deviceName,
-      "\n  Driver : ", m_deviceInfo.vk12.driverName, " ",
-      VK_VERSION_MAJOR(m_deviceInfo.core.properties.driverVersion), ".",
-      VK_VERSION_MINOR(m_deviceInfo.core.properties.driverVersion), ".",
-      VK_VERSION_PATCH(m_deviceInfo.core.properties.driverVersion)));
+      "\n  Driver : ", m_deviceInfo.vk12.driverName, " ", m_deviceInfo.driverVersion.toString()));
 
     Logger::info("Enabled device extensions:");
     this->logNameList(extensionNameList);
@@ -546,6 +572,10 @@ namespace dxvk {
           enabledFeatures.extGraphicsPipelineLibrary = *reinterpret_cast<const VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT*>(f);
           break;
 
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT:
+          enabledFeatures.extLineRasterization = *reinterpret_cast<const VkPhysicalDeviceLineRasterizationFeaturesEXT*>(f);
+          break;
+
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT:
           enabledFeatures.extMemoryPriority = *reinterpret_cast<const VkPhysicalDeviceMemoryPriorityFeaturesEXT*>(f);
           break;
@@ -574,12 +604,24 @@ namespace dxvk {
           enabledFeatures.extVertexAttributeDivisor = *reinterpret_cast<const VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*>(f);
           break;
 
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR:
+          enabledFeatures.khrMaintenance5 = *reinterpret_cast<const VkPhysicalDeviceMaintenance5FeaturesKHR*>(f);
+          break;
+
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR:
           enabledFeatures.khrPresentId = *reinterpret_cast<const VkPhysicalDevicePresentIdFeaturesKHR*>(f);
           break;
 
         case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR:
           enabledFeatures.khrPresentWait = *reinterpret_cast<const VkPhysicalDevicePresentWaitFeaturesKHR*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_POOL_OVERALLOCATION_FEATURES_NV:
+          enabledFeatures.nvDescriptorPoolOverallocation = *reinterpret_cast<const VkPhysicalDeviceDescriptorPoolOverallocationFeaturesNV*>(f);
+          break;
+
+        case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAW_ACCESS_CHAINS_FEATURES_NV:
+          enabledFeatures.nvRawAccessChains = *reinterpret_cast<const VkPhysicalDeviceRawAccessChainsFeaturesNV*>(f);
           break;
 
         default:
@@ -594,9 +636,7 @@ namespace dxvk {
     Logger::info(str::format("Device properties:"
       "\n  Device name: ", m_deviceInfo.core.properties.deviceName,
       "\n  Driver:      ", m_deviceInfo.vk12.driverName, " ",
-      VK_VERSION_MAJOR(m_deviceInfo.core.properties.driverVersion), ".",
-      VK_VERSION_MINOR(m_deviceInfo.core.properties.driverVersion), ".",
-      VK_VERSION_PATCH(m_deviceInfo.core.properties.driverVersion)));
+      m_deviceInfo.driverVersion.toString()));
 
     Logger::info("Enabled device extensions:");
     this->logNameList(extensionNameList);
@@ -632,14 +672,20 @@ namespace dxvk {
 
   bool DxvkAdapter::matchesDriver(
           VkDriverIdKHR       driver,
-          uint32_t            minVer,
-          uint32_t            maxVer) const {
+          Version             minVer,
+          Version             maxVer) const {
     bool driverMatches = driver == m_deviceInfo.vk12.driverID;
 
-    if (minVer) driverMatches &= m_deviceInfo.core.properties.driverVersion >= minVer;
-    if (maxVer) driverMatches &= m_deviceInfo.core.properties.driverVersion <  maxVer;
+    if (minVer) driverMatches &= m_deviceInfo.driverVersion >= minVer;
+    if (maxVer) driverMatches &= m_deviceInfo.driverVersion <  maxVer;
 
     return driverMatches;
+  }
+  
+  
+  bool DxvkAdapter::matchesDriver(
+          VkDriverIdKHR       driver) const {
+    return driver == m_deviceInfo.vk12.driverID;
   }
   
   
@@ -648,10 +694,7 @@ namespace dxvk {
     const auto memoryInfo = this->memoryProperties();
     
     Logger::info(str::format(deviceInfo.core.properties.deviceName, ":",
-      "\n  Driver : ", deviceInfo.vk12.driverName, " ",
-      VK_VERSION_MAJOR(deviceInfo.core.properties.driverVersion), ".",
-      VK_VERSION_MINOR(deviceInfo.core.properties.driverVersion), ".",
-      VK_VERSION_PATCH(deviceInfo.core.properties.driverVersion)));
+      "\n  Driver : ", deviceInfo.vk12.driverName, " ", deviceInfo.driverVersion.toString()));
 
     for (uint32_t i = 0; i < memoryInfo.memoryHeapCount; i++) {
       constexpr VkDeviceSize mib = 1024 * 1024;
@@ -724,6 +767,11 @@ namespace dxvk {
       m_deviceInfo.extGraphicsPipelineLibrary.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extGraphicsPipelineLibrary);
     }
 
+    if (m_deviceExtensions.supports(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME)) {
+      m_deviceInfo.extLineRasterization.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_PROPERTIES_EXT;
+      m_deviceInfo.extLineRasterization.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extLineRasterization);
+    }
+
     if (m_deviceExtensions.supports(VK_EXT_ROBUSTNESS_2_EXTENSION_NAME)) {
       m_deviceInfo.extRobustness2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT;
       m_deviceInfo.extRobustness2.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extRobustness2);
@@ -739,26 +787,17 @@ namespace dxvk {
       m_deviceInfo.extVertexAttributeDivisor.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extVertexAttributeDivisor);
     }
 
+    if (m_deviceExtensions.supports(VK_KHR_MAINTENANCE_5_EXTENSION_NAME)) {
+      m_deviceInfo.khrMaintenance5.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_PROPERTIES_KHR;
+      m_deviceInfo.khrMaintenance5.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.khrMaintenance5);
+    }
+
     // Query full device properties for all enabled extensions
     m_vki->vkGetPhysicalDeviceProperties2(m_handle, &m_deviceInfo.core);
     
     // Some drivers reports the driver version in a slightly different format
-    switch (m_deviceInfo.vk12.driverID) {
-      case VK_DRIVER_ID_NVIDIA_PROPRIETARY:
-        m_deviceInfo.core.properties.driverVersion = VK_MAKE_VERSION(
-          (m_deviceInfo.core.properties.driverVersion >> 22) & 0x3ff,
-          (m_deviceInfo.core.properties.driverVersion >> 14) & 0x0ff,
-          (m_deviceInfo.core.properties.driverVersion >>  6) & 0x0ff);
-        break;
-
-      case VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS:
-        m_deviceInfo.core.properties.driverVersion = VK_MAKE_VERSION(
-          m_deviceInfo.core.properties.driverVersion >> 14,
-          m_deviceInfo.core.properties.driverVersion & 0x3fff, 0);
-        break;
-
-      default:;
-    }
+    m_deviceInfo.driverVersion = decodeDriverVersion(
+      m_deviceInfo.vk12.driverID, m_deviceInfo.core.properties.driverVersion);
   }
 
 
@@ -820,6 +859,11 @@ namespace dxvk {
       m_deviceFeatures.extGraphicsPipelineLibrary.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extGraphicsPipelineLibrary);
     }
 
+    if (m_deviceExtensions.supports(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME)) {
+      m_deviceFeatures.extLineRasterization.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT;
+      m_deviceFeatures.extLineRasterization.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extLineRasterization);
+    }
+
     if (m_deviceExtensions.supports(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME))
       m_deviceFeatures.extMemoryBudget = VK_TRUE;
 
@@ -873,6 +917,11 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME))
       m_deviceFeatures.khrExternalSemaphoreWin32 = VK_TRUE;
 
+    if (m_deviceExtensions.supports(VK_KHR_MAINTENANCE_5_EXTENSION_NAME)) {
+      m_deviceFeatures.khrMaintenance5.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR;
+      m_deviceFeatures.khrMaintenance5.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrMaintenance5);
+    }
+
     if (m_deviceExtensions.supports(VK_KHR_PRESENT_ID_EXTENSION_NAME)) {
       m_deviceFeatures.khrPresentId.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
       m_deviceFeatures.khrPresentId.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrPresentId);
@@ -881,6 +930,16 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_KHR_PRESENT_WAIT_EXTENSION_NAME)) {
       m_deviceFeatures.khrPresentWait.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_WAIT_FEATURES_KHR;
       m_deviceFeatures.khrPresentWait.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.khrPresentWait);
+    }
+
+    if (m_deviceExtensions.supports(VK_NV_DESCRIPTOR_POOL_OVERALLOCATION_EXTENSION_NAME)) {
+      m_deviceFeatures.nvDescriptorPoolOverallocation.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_POOL_OVERALLOCATION_FEATURES_NV;
+      m_deviceFeatures.nvDescriptorPoolOverallocation.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.nvDescriptorPoolOverallocation);
+    }
+
+    if (m_deviceExtensions.supports(VK_NV_RAW_ACCESS_CHAINS_EXTENSION_NAME)) {
+      m_deviceFeatures.nvRawAccessChains.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAW_ACCESS_CHAINS_FEATURES_NV;
+      m_deviceFeatures.nvRawAccessChains.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.nvRawAccessChains);
     }
 
     if (m_deviceExtensions.supports(VK_NVX_BINARY_IMPORT_EXTENSION_NAME))
@@ -931,6 +990,7 @@ namespace dxvk {
       &devExtensions.extFullScreenExclusive,
       &devExtensions.extGraphicsPipelineLibrary,
       &devExtensions.extHdrMetadata,
+      &devExtensions.extLineRasterization,
       &devExtensions.extMemoryBudget,
       &devExtensions.extMemoryPriority,
       &devExtensions.extNonSeamlessCubeMap,
@@ -943,10 +1003,14 @@ namespace dxvk {
       &devExtensions.extVertexAttributeDivisor,
       &devExtensions.khrExternalMemoryWin32,
       &devExtensions.khrExternalSemaphoreWin32,
+      &devExtensions.khrMaintenance5,
       &devExtensions.khrPipelineLibrary,
       &devExtensions.khrPresentId,
       &devExtensions.khrPresentWait,
       &devExtensions.khrSwapchain,
+      &devExtensions.khrWin32KeyedMutex,
+      &devExtensions.nvDescriptorPoolOverallocation,
+      &devExtensions.nvRawAccessChains,
       &devExtensions.nvxBinaryImport,
       &devExtensions.nvxImageViewHandle,
     }};
@@ -1013,6 +1077,11 @@ namespace dxvk {
       enabledFeatures.extGraphicsPipelineLibrary.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extGraphicsPipelineLibrary);
     }
 
+    if (devExtensions.extLineRasterization) {
+      enabledFeatures.extLineRasterization.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT;
+      enabledFeatures.extLineRasterization.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.extLineRasterization);
+    }
+
     if (devExtensions.extMemoryBudget)
       enabledFeatures.extMemoryBudget = VK_TRUE;
 
@@ -1066,8 +1135,10 @@ namespace dxvk {
     if (devExtensions.khrExternalSemaphoreWin32)
       enabledFeatures.khrExternalSemaphoreWin32 = VK_TRUE;
 
-    if (devExtensions.nvxBinaryImport)
-      enabledFeatures.nvxBinaryImport = VK_TRUE;
+    if (devExtensions.khrMaintenance5) {
+      enabledFeatures.khrMaintenance5.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_5_FEATURES_KHR;
+      enabledFeatures.khrMaintenance5.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrMaintenance5);
+    }
 
     if (devExtensions.khrPresentId) {
       enabledFeatures.khrPresentId.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENT_ID_FEATURES_KHR;
@@ -1079,8 +1150,24 @@ namespace dxvk {
       enabledFeatures.khrPresentWait.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.khrPresentWait);
     }
 
+    if (devExtensions.nvDescriptorPoolOverallocation) {
+      enabledFeatures.nvDescriptorPoolOverallocation.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_POOL_OVERALLOCATION_FEATURES_NV;
+      enabledFeatures.nvDescriptorPoolOverallocation.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.nvDescriptorPoolOverallocation);
+    }
+
+    if (devExtensions.nvRawAccessChains) {
+      enabledFeatures.nvRawAccessChains.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAW_ACCESS_CHAINS_FEATURES_NV;
+      enabledFeatures.nvRawAccessChains.pNext = std::exchange(enabledFeatures.core.pNext, &enabledFeatures.nvRawAccessChains);
+    }
+
+    if (devExtensions.nvxBinaryImport)
+      enabledFeatures.nvxBinaryImport = VK_TRUE;
+
     if (devExtensions.nvxImageViewHandle)
       enabledFeatures.nvxImageViewHandle = VK_TRUE;
+
+    if (devExtensions.khrWin32KeyedMutex)
+      enabledFeatures.khrWin32KeyedMutex = VK_TRUE;
   }
 
   
@@ -1107,6 +1194,7 @@ namespace dxvk {
       "\n  depthBiasClamp                         : ", features.core.features.depthBiasClamp ? "1" : "0",
       "\n  fillModeNonSolid                       : ", features.core.features.fillModeNonSolid ? "1" : "0",
       "\n  depthBounds                            : ", features.core.features.depthBounds ? "1" : "0",
+      "\n  wideLines                              : ", features.core.features.wideLines ? "1" : "0",
       "\n  multiViewport                          : ", features.core.features.multiViewport ? "1" : "0",
       "\n  samplerAnisotropy                      : ", features.core.features.samplerAnisotropy ? "1" : "0",
       "\n  textureCompressionBC                   : ", features.core.features.textureCompressionBC ? "1" : "0",
@@ -1171,6 +1259,7 @@ namespace dxvk {
       "\n  extDynamicState3DepthClipEnable        : ", features.extExtendedDynamicState3.extendedDynamicState3DepthClipEnable ? "1" : "0",
       "\n  extDynamicState3RasterizationSamples   : ", features.extExtendedDynamicState3.extendedDynamicState3RasterizationSamples ? "1" : "0",
       "\n  extDynamicState3SampleMask             : ", features.extExtendedDynamicState3.extendedDynamicState3SampleMask ? "1" : "0",
+      "\n  extDynamicState3LineRasterizationMode  : ", features.extExtendedDynamicState3.extendedDynamicState3LineRasterizationMode ? "1" : "0",
       "\n", VK_EXT_FRAGMENT_SHADER_INTERLOCK_EXTENSION_NAME,
       "\n  fragmentShaderSampleInterlock          : ", features.extFragmentShaderInterlock.fragmentShaderSampleInterlock ? "1" : "0",
       "\n  fragmentShaderPixelInterlock           : ", features.extFragmentShaderInterlock.fragmentShaderPixelInterlock ? "1" : "0",
@@ -1178,6 +1267,9 @@ namespace dxvk {
       "\n  extension supported                    : ", features.extFullScreenExclusive ? "1" : "0",
       "\n", VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME,
       "\n  graphicsPipelineLibrary                : ", features.extGraphicsPipelineLibrary.graphicsPipelineLibrary ? "1" : "0",
+      "\n", VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME,
+      "\n  rectangularLines                       : ", features.extLineRasterization.rectangularLines ? "1" : "0",
+      "\n  smoothLines                            : ", features.extLineRasterization.smoothLines ? "1" : "0",
       "\n", VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
       "\n  extension supported                    : ", features.extMemoryBudget ? "1" : "0",
       "\n", VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,
@@ -1208,14 +1300,22 @@ namespace dxvk {
       "\n  extension supported                    : ", features.khrExternalMemoryWin32 ? "1" : "0",
       "\n", VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,
       "\n  extension supported                    : ", features.khrExternalSemaphoreWin32 ? "1" : "0",
+      "\n", VK_KHR_MAINTENANCE_5_EXTENSION_NAME,
+      "\n  maintenance5                           : ", features.khrMaintenance5.maintenance5 ? "1" : "0",
       "\n", VK_KHR_PRESENT_ID_EXTENSION_NAME,
       "\n  presentId                              : ", features.khrPresentId.presentId ? "1" : "0",
       "\n", VK_KHR_PRESENT_WAIT_EXTENSION_NAME,
       "\n  presentWait                            : ", features.khrPresentWait.presentWait ? "1" : "0",
+      "\n", VK_NV_DESCRIPTOR_POOL_OVERALLOCATION_EXTENSION_NAME,
+      "\n  descriptorPoolOverallocation           : ", features.nvDescriptorPoolOverallocation.descriptorPoolOverallocation ? "1" : "0",
+      "\n", VK_NV_RAW_ACCESS_CHAINS_EXTENSION_NAME,
+      "\n  shaderRawAccessChains                  : ", features.nvRawAccessChains.shaderRawAccessChains ? "1" : "0",
       "\n", VK_NVX_BINARY_IMPORT_EXTENSION_NAME,
       "\n  extension supported                    : ", features.nvxBinaryImport ? "1" : "0",
       "\n", VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME,
-      "\n  extension supported                    : ", features.nvxImageViewHandle ? "1" : "0"));
+      "\n  extension supported                    : ", features.nvxImageViewHandle ? "1" : "0",
+      "\n", VK_KHR_WIN32_KEYED_MUTEX_EXTENSION_NAME,
+      "\n  extension supported                    : ", features.khrWin32KeyedMutex ? "1" : "0"));
   }
 
 
@@ -1226,4 +1326,25 @@ namespace dxvk {
       "\n  Sparse   : ", queues.sparse != VK_QUEUE_FAMILY_IGNORED ? str::format(queues.sparse) : "n/a"));
   }
   
+
+  Version DxvkAdapter::decodeDriverVersion(VkDriverId driverId, uint32_t version) {
+    switch (driverId) {
+      case VK_DRIVER_ID_NVIDIA_PROPRIETARY:
+        return Version(
+          (version >> 22) & 0x3ff,
+          (version >> 14) & 0x0ff,
+          (version >>  6) & 0x0ff);
+        break;
+
+      case VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS:
+        return Version(version >> 14, version & 0x3fff, 0);
+
+      default:
+        return Version(
+          VK_API_VERSION_MAJOR(version),
+          VK_API_VERSION_MINOR(version),
+          VK_API_VERSION_PATCH(version));
+    }
+  }
+
 }

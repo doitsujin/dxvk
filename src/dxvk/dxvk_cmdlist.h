@@ -467,6 +467,16 @@ namespace dxvk {
     }
     
     
+    void cmdBindIndexBuffer2(
+            VkBuffer                buffer,
+            VkDeviceSize            offset,
+            VkDeviceSize            size,
+            VkIndexType             indexType) {
+      m_vkd->vkCmdBindIndexBuffer2KHR(m_cmd.execBuffer,
+        buffer, offset, size, indexType);
+    }
+
+
     void cmdBindPipeline(
             VkPipelineBindPoint     pipelineBindPoint,
             VkPipeline              pipeline) {
@@ -661,7 +671,7 @@ namespace dxvk {
             uint32_t                indexCount,
             uint32_t                instanceCount,
             uint32_t                firstIndex,
-            uint32_t                vertexOffset,
+            int32_t                 vertexOffset,
             uint32_t                firstInstance) {
       m_vkd->vkCmdDrawIndexed(m_cmd.execBuffer,
         indexCount, instanceCount,

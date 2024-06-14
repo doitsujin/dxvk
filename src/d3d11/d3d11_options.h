@@ -11,7 +11,7 @@
 namespace dxvk {
 
   struct D3D11Options {
-    D3D11Options(const Config& config, const Rc<DxvkDevice>& device);
+    D3D11Options(const Config& config);
 
     /// Enables speed hack for mapping on deferred contexts
     ///
@@ -76,16 +76,9 @@ namespace dxvk {
     /// Overrides DXGI_SWAP_CHAIN_DESC::BufferCount.
     int32_t numBackBuffers;
 
-    /// Sync interval. Overrides the value
-    /// passed to IDXGISwapChain::Present.
-    int32_t syncInterval;
-
     /// Override maximum frame latency if the app specifies
     /// a higher value. May help with frame timing issues.
     int32_t maxFrameLatency;
-
-    /// Limit frame rate
-    int32_t maxFrameRate;
 
     /// Limit discardable resource size
     VkDeviceSize maxImplicitDiscardSize;
@@ -117,8 +110,21 @@ namespace dxvk {
     /// race conditions.
     bool enableContextLock;
 
+    /// Whether to expose the driver command list feature. Enabled by
+    /// default and generally beneficial, but some games may assume that
+    /// this is not supported when running on an AMD GPU.
+    bool exposeDriverCommandLists;
+
     /// Shader dump path
     std::string shaderDumpPath;
+
+    /// Should we make our Mads a FFma or do it the long way with an FMul and an FAdd?
+    bool longMad;
+
+    /// Ensure that for the same D3D commands the output VK commands
+    /// don't change between runs. Useful for comparative benchmarking,
+    /// can negatively affect performance.
+    bool reproducibleCommandStream;
   };
   
 }

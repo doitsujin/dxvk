@@ -28,8 +28,6 @@ public:
 
 };
 
-#ifdef _MSC_VER
-struct __declspec(uuid("7f2c2f72-1cc8-4979-8d9c-7e3faeddecde")) IDXVKUserDefinedAnnotation;
-#else
+#ifndef _MSC_VER
 __CRT_UUID_DECL(IDXVKUserDefinedAnnotation, 0x7f2c2f72,0x1cc8,0x4979,0x8d,0x9c,0x7e,0x3f,0xae,0xdd,0xec,0xde);
 #endif

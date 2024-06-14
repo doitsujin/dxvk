@@ -41,6 +41,7 @@ namespace dxvk {
 
     m_usedSamplers = 0;
     m_usedRTs      = 0;
+    m_rRegs.reserve(DxsoMaxTempRegs);
 
     for (uint32_t i = 0; i < m_rRegs.size(); i++)
       m_rRegs.at(i)  = DxsoRegisterPointer{ };
@@ -227,8 +228,8 @@ namespace dxvk {
     info.bindings = m_bindings.data();
     info.inputMask = m_inputMask;
     info.outputMask = m_outputMask;
-    info.pushConstOffset = m_pushConstOffset;
-    info.pushConstSize = m_pushConstSize;
+    info.pushConstStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    info.pushConstSize = sizeof(D3D9RenderStateInfo);
 
     if (m_programInfo.type() == DxsoProgramTypes::PixelShader)
       info.flatShadingInputs = m_ps.flatShadingMask;
@@ -1043,6 +1044,8 @@ namespace dxvk {
       const DxsoBaseRegister* relative) {
     switch (reg.id.type) {
       case DxsoRegisterType::Temp: {
+        if (reg.id.num >= m_rRegs.size())
+          m_rRegs.resize( reg.id.num + 1, DxsoRegisterPointer { } );
         DxsoRegisterPointer& ptr = m_rRegs.at(reg.id.num);
         if (ptr.id == 0) {
           std::string name = str::format("r", reg.id.num);
@@ -2026,12 +2029,22 @@ namespace dxvk {
             result.id = resultIndices[0];
           else
             result.id = m_module.opCompositeConstruct(typeId, result.type.ccount, resultIndices.data());
+
+        if (m_moduleInfo.options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled) {
+          result.id = m_module.opNMin(typeId, result.id,
+            m_module.constfReplicant(FLT_MAX, result.type.ccount));
+        }
           break;
         }
         [[fallthrough]];
       case DxsoOpcode::Exp:
         result.id = m_module.opExp2(typeId,
           emitRegisterLoad(src[0], mask).id);
+
+        if (m_moduleInfo.options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled) {
+          result.id = m_module.opNMin(typeId, result.id,
+            m_module.constfReplicant(FLT_MAX, result.type.ccount));
+        }
         break;
       case DxsoOpcode::Pow: {
         uint32_t base = emitRegisterLoad(src[0], mask).id;
@@ -2972,7 +2985,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     auto SampleType = [&](DxsoSamplerType samplerType) {
       uint32_t bitOffset = m_programInfo.type() == DxsoProgramTypes::VertexShader
-        ? samplerIdx + caps::MaxTexturesPS
+        ? samplerIdx + caps::MaxTexturesPS + 1
         : samplerIdx;
 
       uint32_t isNull = m_spec.get(m_module, m_specUbo, SpecSamplerNull, bitOffset, 1);
@@ -3556,30 +3569,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
 
   void DxsoCompiler::setupRenderStateInfo() {
-    uint32_t count;
-
-    // Only need alpha ref for PS 3.
-    // No FF fog component.
-    if (m_programInfo.type() == DxsoProgramType::PixelShader) {
-      if (m_programInfo.majorVersion() == 3) {
-        m_pushConstOffset = offsetof(D3D9RenderStateInfo, alphaRef);
-        m_pushConstSize   = sizeof(float);
-      }
-      else {
-        m_pushConstOffset = 0;
-        m_pushConstSize   = offsetof(D3D9RenderStateInfo, pointSize);
-      }
-
-      count = 5;
-    }
-    else {
-      m_pushConstOffset = offsetof(D3D9RenderStateInfo, pointSize);
-      // Point scale never triggers on programmable
-      m_pushConstSize   = sizeof(float) * 3;
-      count = 8;
-    }
-
-    m_rsBlock = SetupRenderStateBlock(m_module, count);
+    m_rsBlock = SetupRenderStateBlock(m_module);
   }
 
 

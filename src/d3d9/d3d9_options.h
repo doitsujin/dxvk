@@ -153,7 +153,15 @@ namespace dxvk {
     /// Enable emulation of device loss when a fullscreen app loses focus
     bool deviceLossOnFocusLoss;
 
-    /// [D3D8] Enable depth texcoord Z (Dref) scaling for games that expect it 
+    /// Disable counting losable resources and rejecting calls to Reset() if any are still alive
+    bool countLosableResources;
+
+    /// Ensure that for the same D3D commands the output VK commands
+    /// don't change between runs. Useful for comparative benchmarking,
+    /// can negatively affect performance.
+    bool reproducibleCommandStream;
+
+    /// Enable depth texcoord Z (Dref) scaling (D3D8 quirk)
     int32_t drefScaling;
   };
 

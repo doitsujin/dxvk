@@ -48,15 +48,21 @@ namespace dxvk {
     if (hSharedHandle == nullptr)
       hSharedHandle = INVALID_HANDLE_VALUE;
 
-    if (m_desc.MiscFlags & (D3D11_RESOURCE_MISC_SHARED|D3D11_RESOURCE_MISC_SHARED_NTHANDLE)) {
-      if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX)
-        Logger::warn("D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX: not supported.");
+    const auto sharingFlags = D3D11_RESOURCE_MISC_SHARED|D3D11_RESOURCE_MISC_SHARED_NTHANDLE|D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
+
+    if (m_desc.MiscFlags & sharingFlags) {
+      if (pDevice->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0 ||
+          (m_desc.MiscFlags & (D3D11_RESOURCE_MISC_SHARED|D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX)) == (D3D11_RESOURCE_MISC_SHARED|D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX) ||
+          (m_desc.MiscFlags & sharingFlags) == D3D11_RESOURCE_MISC_SHARED_NTHANDLE)
+        throw DxvkError(str::format("D3D11: Cannot create shared texture:",
+          "\n  MiscFlags:  ", m_desc.MiscFlags,
+          "\n  FeatureLevel:  ", pDevice->GetFeatureLevel()));
 
       imageInfo.shared = true;
       imageInfo.sharing.mode = hSharedHandle == INVALID_HANDLE_VALUE ? DxvkSharedHandleMode::Export : DxvkSharedHandleMode::Import;
-      imageInfo.sharing.type = (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED)
-        ? VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT
-        : VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT;
+      imageInfo.sharing.type = (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE)
+        ? VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_BIT
+        : VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_WIN32_KMT_BIT;
       imageInfo.sharing.handle = hSharedHandle;
     }
 
@@ -205,9 +211,12 @@ namespace dxvk {
     // For some formats, we need to enable sampled and/or
     // render target capabilities if available, but these
     // should in no way affect the default image layout
-    imageInfo.usage |= EnableMetaCopyUsage(imageInfo.format, imageInfo.tiling);
     imageInfo.usage |= EnableMetaPackUsage(imageInfo.format, m_desc.CPUAccessFlags);
-    
+    imageInfo.usage |= EnableMetaCopyUsage(imageInfo.format, imageInfo.tiling);
+
+    for (uint32_t i = 0; i < imageInfo.viewFormatCount; i++)
+      imageInfo.usage |= EnableMetaCopyUsage(imageInfo.viewFormats[i], imageInfo.tiling);
+
     // Check if we can actually create the image
     if (!CheckImageSupport(&imageInfo, imageInfo.tiling)) {
       throw DxvkError(str::format(
@@ -696,10 +705,10 @@ namespace dxvk {
   void D3D11CommonTexture::ExportImageInfo() {
     HANDLE hSharedHandle;
 
-    if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED)
-      hSharedHandle = openKmtHandle( m_image->sharedHandle() );
-    else
+    if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE)
       hSharedHandle = m_image->sharedHandle();
+    else
+      hSharedHandle = openKmtHandle( m_image->sharedHandle() );
 
     DxvkSharedTextureMetadata metadata;
 
@@ -719,7 +728,7 @@ namespace dxvk {
       Logger::warn("D3D11: Failed to write shared resource info for a texture");
     }
 
-    if ((m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED) && hSharedHandle != INVALID_HANDLE_VALUE)
+    if (hSharedHandle != INVALID_HANDLE_VALUE)
       CloseHandle(hSharedHandle);
   }
   
@@ -1090,7 +1099,7 @@ namespace dxvk {
     m_texture (this, pDevice, pDesc, p11on12Info, D3D11_RESOURCE_DIMENSION_TEXTURE1D, 0, VK_NULL_HANDLE, nullptr),
     m_interop (this, &m_texture),
     m_surface (this, &m_texture),
-    m_resource(this),
+    m_resource(this, pDevice),
     m_d3d10   (this) {
     
   }
@@ -1137,7 +1146,10 @@ namespace dxvk {
        *ppvObject = ref(&m_resource);
        return S_OK;
     }
-    
+
+    if (riid == __uuidof(IDXGIKeyedMutex))
+      return m_resource.GetKeyedMutex(ppvObject);
+
     if (riid == __uuidof(IDXGIVkInteropSurface)) {
       *ppvObject = ref(&m_interop);
       return S_OK;
@@ -1193,7 +1205,7 @@ namespace dxvk {
     m_texture   (this, pDevice, pDesc, p11on12Info, D3D11_RESOURCE_DIMENSION_TEXTURE2D, 0, VK_NULL_HANDLE, hSharedHandle),
     m_interop   (this, &m_texture),
     m_surface   (this, &m_texture),
-    m_resource  (this),
+    m_resource  (this, pDevice),
     m_d3d10     (this),
     m_swapChain (nullptr) {
   }
@@ -1208,7 +1220,7 @@ namespace dxvk {
     m_texture   (this, pDevice, pDesc, nullptr, D3D11_RESOURCE_DIMENSION_TEXTURE2D, DxgiUsage, vkImage, nullptr),
     m_interop   (this, &m_texture),
     m_surface   (this, &m_texture),
-    m_resource  (this),
+    m_resource  (this, pDevice),
     m_d3d10     (this),
     m_swapChain (nullptr) {
     
@@ -1224,7 +1236,7 @@ namespace dxvk {
     m_texture   (this, pDevice, pDesc, nullptr, D3D11_RESOURCE_DIMENSION_TEXTURE2D, DxgiUsage, VK_NULL_HANDLE, nullptr),
     m_interop   (this, &m_texture),
     m_surface   (this, &m_texture),
-    m_resource  (this),
+    m_resource  (this, pDevice),
     m_d3d10     (this),
     m_swapChain (pSwapChain) {
     
@@ -1298,6 +1310,9 @@ namespace dxvk {
        *ppvObject = ref(&m_resource);
        return S_OK;
     }
+
+    if (riid == __uuidof(IDXGIKeyedMutex))
+      return m_resource.GetKeyedMutex(ppvObject);
     
     if (riid == __uuidof(IDXGIVkInteropSurface)) {
       *ppvObject = ref(&m_interop);
@@ -1369,7 +1384,7 @@ namespace dxvk {
   : D3D11DeviceChild<ID3D11Texture3D1>(pDevice),
     m_texture (this, pDevice, pDesc, p11on12Info, D3D11_RESOURCE_DIMENSION_TEXTURE3D, 0, VK_NULL_HANDLE, nullptr),
     m_interop (this, &m_texture),
-    m_resource(this),
+    m_resource(this, pDevice),
     m_d3d10   (this) {
     
   }
@@ -1409,7 +1424,10 @@ namespace dxvk {
        *ppvObject = ref(&m_resource);
        return S_OK;
     }
-    
+
+    if (riid == __uuidof(IDXGIKeyedMutex))
+      return m_resource.GetKeyedMutex(ppvObject);
+
     if (riid == __uuidof(IDXGIVkInteropSurface)) {
       *ppvObject = ref(&m_interop);
       return S_OK;

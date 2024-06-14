@@ -386,10 +386,15 @@ namespace dxvk {
     const UINT                              Values[4]) {
     D3D10DeviceLock lock = LockContext();
 
-    auto uav = static_cast<D3D11UnorderedAccessView*>(pUnorderedAccessView);
-
-    if (!uav)
+    if (!pUnorderedAccessView)
       return;
+
+    Com<ID3D11UnorderedAccessView> qiUav;
+
+    if (FAILED(pUnorderedAccessView->QueryInterface(IID_PPV_ARGS(&qiUav))))
+      return;
+
+    auto uav = static_cast<D3D11UnorderedAccessView*>(qiUav.ptr());
 
     // Gather UAV format info. We'll use this to determine
     // whether we need to create a temporary view or not.
@@ -406,12 +411,19 @@ namespace dxvk {
 
     VkClearValue clearValue;
 
-    // R11G11B10 is a special case since there's no corresponding
-    // integer format with the same bit layout. Use R32 instead.
-    if (uavFormat == VK_FORMAT_B10G11R11_UFLOAT_PACK32) {
+    if (uavDesc.Format == DXGI_FORMAT_R11G11B10_FLOAT) {
+      // R11G11B10 is a special case since there's no corresponding
+      // integer format with the same bit layout. Use R32 instead.
       clearValue.color.uint32[0] = ((Values[0] & 0x7FF) <<  0)
                                  | ((Values[1] & 0x7FF) << 11)
                                  | ((Values[2] & 0x3FF) << 22);
+      clearValue.color.uint32[1] = 0;
+      clearValue.color.uint32[2] = 0;
+      clearValue.color.uint32[3] = 0;
+    } else if (uavDesc.Format == DXGI_FORMAT_A8_UNORM) {
+      // We need to use R8_UINT to clear A8_UNORM images,
+      // so remap the alpha component to the red channel.
+      clearValue.color.uint32[0] = Values[3];
       clearValue.color.uint32[1] = 0;
       clearValue.color.uint32[2] = 0;
       clearValue.color.uint32[3] = 0;
@@ -916,6 +928,34 @@ namespace dxvk {
     const void*                             pSrcData,
           UINT                              SrcRowPitch,
           UINT                              SrcDepthPitch) {
+    if (IsDeferred && unlikely(pDstBox != nullptr) && unlikely(!m_parent->GetOptions()->exposeDriverCommandLists)) {
+      // If called from a deferred context and native command list support is not
+      // exposed, we need to apply the destination box to the source pointer. This
+      // only applies to UpdateSubresource, not to UpdateSubresource1. See MSDN:
+      // https://msdn.microsoft.com/en-us/library/windows/desktop/ff476486(v=vs.85).aspx)
+      size_t srcOffset = pDstBox->left;
+
+      // For textures, the offset logic needs to take the format into account.
+      // Ignore that multi-planar images exist, this is hairy enough already.
+      D3D11CommonTexture* dstTexture = GetCommonTexture(pDstResource);
+
+      if (dstTexture) {
+        auto dstFormat = dstTexture->GetPackedFormat();
+        auto dstFormatInfo = lookupFormatInfo(dstFormat);
+
+        size_t blockSize = dstFormatInfo->elementSize;
+
+        VkOffset3D offset;
+        offset.x = pDstBox->left / dstFormatInfo->blockSize.width;
+        offset.y = pDstBox->top / dstFormatInfo->blockSize.height;
+        offset.z = pDstBox->front / dstFormatInfo->blockSize.depth;
+
+        srcOffset = offset.x * blockSize + offset.y * SrcRowPitch + offset.z * SrcDepthPitch;
+      }
+
+      pSrcData = reinterpret_cast<const char*>(pSrcData) + srcOffset;
+    }
+
     UpdateResource(pDstResource, DstSubresource, pDstBox,
       pSrcData, SrcRowPitch, SrcDepthPitch, 0);
   }
@@ -5401,6 +5441,7 @@ namespace dxvk {
     pRsState->conservativeMode = VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
     pRsState->sampleCount     = 0;
     pRsState->flatShading     = VK_FALSE;
+    pRsState->lineMode        = VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT;
   }
 
 

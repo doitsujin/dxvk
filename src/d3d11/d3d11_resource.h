@@ -23,6 +23,65 @@ namespace dxvk {
   
 
   /**
+   * \brief IDXGIKeyedMutex implementation
+   */
+  class D3D11DXGIKeyedMutex : public IDXGIKeyedMutex {
+
+  public:
+
+    D3D11DXGIKeyedMutex(
+            ID3D11Resource*         pResource,
+            D3D11Device*            pDevice);
+
+    ~D3D11DXGIKeyedMutex();
+
+    ULONG STDMETHODCALLTYPE AddRef();
+
+    ULONG STDMETHODCALLTYPE Release();
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                  riid,
+            void**                  ppvObject);
+
+    HRESULT STDMETHODCALLTYPE GetPrivateData(
+            REFGUID                 Name,
+            UINT*                   pDataSize,
+            void*                   pData);
+
+    HRESULT STDMETHODCALLTYPE SetPrivateData(
+            REFGUID                 Name,
+            UINT                    DataSize,
+      const void*                   pData);
+
+    HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
+            REFGUID                 Name,
+      const IUnknown*               pUnknown);
+
+    HRESULT STDMETHODCALLTYPE GetParent(
+            REFIID                  riid,
+            void**                  ppParent);
+
+    HRESULT STDMETHODCALLTYPE GetDevice(
+            REFIID                  riid,
+            void**                  ppDevice);
+
+    HRESULT STDMETHODCALLTYPE AcquireSync(
+            UINT64                  Key,
+            DWORD                   dwMilliseconds);
+
+    HRESULT STDMETHODCALLTYPE ReleaseSync(
+            UINT64                  Key);
+
+  private:
+
+    ID3D11Resource* m_resource;
+    D3D11Device* m_device;
+    bool m_warned = false;
+    bool m_supported = false;
+  };
+
+
+  /**
    * \brief IDXGIResource implementation for D3D11 resources
    */
   class D3D11DXGIResource : public IDXGIResource1 {
@@ -30,7 +89,8 @@ namespace dxvk {
   public:
     
     D3D11DXGIResource(
-            ID3D11Resource*         pResource);
+            ID3D11Resource*         pResource,
+            D3D11Device*            pDevice);
 
     ~D3D11DXGIResource();
 
@@ -86,9 +146,12 @@ namespace dxvk {
             UINT                    index,
             IDXGISurface2**         ppSurface);
 
+    HRESULT GetKeyedMutex(void **ppvObject);
+
   private:
 
     ID3D11Resource* m_resource;
+    D3D11DXGIKeyedMutex m_keyedMutex;
 
   };
 

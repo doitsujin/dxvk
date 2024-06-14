@@ -47,13 +47,13 @@ namespace dxvk::wsi {
     // (Spec has 0 as 'undefined', which isn't really useful for an app
     // to tonemap against.)
     if (metadata.minLuminance == 0.0f)
-      metadata.minLuminance = 0.01f;
+      metadata.minLuminance = isHDR ? 0.01f : 0.5f;
 
     if (metadata.maxLuminance == 0.0f)
-      metadata.maxLuminance = 1499.0f;
+      metadata.maxLuminance = isHDR ? 1499.0f : 270.0f;
 
     if (metadata.maxFullFrameLuminance == 0.0f)
-      metadata.maxFullFrameLuminance = 799.0f;
+      metadata.maxFullFrameLuminance = isHDR ? 799.0f : 270.0f;
 
     // If we have no RedPrimary/GreenPrimary/BluePrimary/WhitePoint due to
     // the lack of a monitor exposing the chroma block or the lack of an EDID,

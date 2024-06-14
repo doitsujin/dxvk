@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3d11_include.h"
+#include "d3d11_options.h"
 
 #include "../dxvk/dxvk_adapter.h"
 #include "../dxvk/dxvk_instance.h"
@@ -21,6 +22,7 @@ namespace dxvk {
     D3D11DeviceFeatures(
       const Rc<DxvkInstance>&     Instance,
       const Rc<DxvkAdapter>&      Adapter,
+      const D3D11Options&         Options,
             D3D_FEATURE_LEVEL     FeatureLevel);
 
     ~D3D11DeviceFeatures();

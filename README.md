@@ -26,11 +26,14 @@ cp x32/*.dll $WINEPREFIX/drive_c/windows/system32
 winecfg
 ```
 
-Verify that your application uses DXVK instead of wined3d by by enabling the HUD (see notes below).
+Verify that your application uses DXVK instead of wined3d by enabling the HUD (see notes below).
 
 In order to remove DXVK from a prefix, remove the DLLs and DLL overrides, and run `wineboot -u` to restore the original DLL files.
 
 Tools such as Steam Play, Lutris, Bottles, Heroic Launcher, etc will automatically handle setup of dxvk on their own when enabled.
+
+### Notes on Vulkan drivers
+Before reporting an issue, please check the [Wiki](https://github.com/doitsujin/dxvk/wiki/Driver-support) page on the current driver status and make sure you run a recent enough driver version for your hardware.
 
 ## Build instructions
 
@@ -75,9 +78,6 @@ ninja install
 
 The D3D9, D3D10, D3D11 and DXGI DLLs will be located in `/your/dxvk/directory/bin`. Setup has to be done manually in this case.
 
-### Notes on Vulkan drivers
-Before reporting an issue, please check the [Wiki](https://github.com/doitsujin/dxvk/wiki/Driver-support) page on the current driver status and make sure you run a recent enough driver version for your hardware.
-
 ### Online multi-player games
 Manipulation of Direct3D libraries in multi-player games may be considered cheating and can get your account **banned**. This may also apply to single-player games with an embedded or dedicated multiplayer portion. **Use at your own risk.**
 
@@ -116,6 +116,15 @@ Some applications do not provide a method to select a different GPU. In that cas
 
 **Note:** If the device filter is configured incorrectly, it may filter out all devices and applications will be unable to create a D3D device.
 
+### Graphics Pipeline Library
+On drivers which support `VK_EXT_graphics_pipeline_library` Vulkan shaders will be compiled at the time the game loads its D3D shaders, rather than at draw time. This reduces or eliminates shader compile stutter in many games when compared to the previous system.
+
+In games that load their shaders during loading screens or in the menu, this can lead to prolonged periods of very high CPU utilization, especially on weaker CPUs. For affected games it is recommended to wait for shader compilation to finish before starting the game to avoid stutter and low performance. Shader compiler activity can be monitored with `DXVK_HUD=compiler`.
+
+This feature largely replaces the state cache.
+
+**Note:** Games which only load their D3D shaders at draw time (e.g. most Unreal Engine games) will still exhibit some stutter, although it should still be less severe than without this feature.
+
 ### State cache
 DXVK caches pipeline state by default, so that shaders can be recompiled ahead of time on subsequent runs of an application, even if the driver's own shader cache got invalidated in the meantime. This cache is enabled by default, and generally reduces stuttering.
 
@@ -125,13 +134,16 @@ The following environment variables can be used to control the cache:
   - `reset`: Clears the cache file.
 - `DXVK_STATE_CACHE_PATH=/some/directory` Specifies a directory where to put the cache files. Defaults to the current working directory of the application.
 
+This feature is mostly only relevant on systems without support for `VK_EXT_graphics_pipeline_library`
+
 ### Debugging
 The following environment variables can be used for **debugging** purposes.
 - `VK_INSTANCE_LAYERS=VK_LAYER_KHRONOS_validation` Enables Vulkan debug layers. Highly recommended for troubleshooting rendering issues and driver crashes. Requires the Vulkan SDK to be installed on the host system.
 - `DXVK_LOG_LEVEL=none|error|warn|info|debug` Controls message logging.
 - `DXVK_LOG_PATH=/some/directory` Changes path where log files are stored. Set to `none` to disable log file creation entirely, without disabling logging.
-- `DXVK_CONFIG_FILE=/xxx/dxvk.conf` Sets path to the configuration file.
 - `DXVK_DEBUG=markers|validation` Enables use of the `VK_EXT_debug_utils` extension for translating performance event markers, or to enable Vulkan validation, respecticely.
+- `DXVK_CONFIG_FILE=/xxx/dxvk.conf` Sets path to the configuration file.
+- `DXVK_CONFIG="dxgi.hideAmdGpu = True; dxgi.syncInterval = 0"` Can be used to set config variables through the environment instead of a configuration file using the same syntax. `;` is used as a seperator.
 
 ## Troubleshooting
 DXVK requires threading support from your mingw-w64 build environment. If you
@@ -151,3 +163,22 @@ For non debian based distros, make sure that your mingw-w64-gcc cross compiler
 does have `--enable-threads=posix` enabled during configure. If your distro does
 ship its mingw-w64-gcc binary with `--enable-threads=win32` you might have to
 recompile locally or open a bug at your distro's bugtracker to ask for it. 
+
+# DXVK Native
+
+DXVK Native is a version of DXVK which allows it to be used natively without Wine.
+
+This is primarily useful for game and application ports to either avoid having to write another rendering backend, or to help with port bringup during development.
+
+[Release builds](https://github.com/doitsujin/dxvk/releases) are built using the Steam Runtime.
+
+### How does it work?
+
+DXVK Native replaces certain Windows-isms with a platform and framework-agnostic replacement, for example, `HWND`s can become `SDL_Window*`s, etc.
+All it takes to do that is to add another WSI backend.
+
+**Note:** DXVK Native requires a backend to be explicitly set via the `DXVK_WSI_DRIVER` environment variable. The current built-in options are `SDL2` and `GLFW`.
+
+DXVK Native comes with a slim set of Windows header definitions required for D3D9/11 and the MinGW headers for D3D9/11.
+In most cases, it will end up being plug and play with your renderer, but there may be certain teething issues such as:
+- `__uuidof(type)` is supported, but `__uuidof(variable)` is not supported. Use `__uuidof_var(variable)` instead.

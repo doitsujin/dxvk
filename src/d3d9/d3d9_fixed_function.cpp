@@ -337,7 +337,7 @@ namespace dxvk {
   }
 
 
-  uint32_t SetupRenderStateBlock(SpirvModule& spvModule, uint32_t count) {
+  uint32_t SetupRenderStateBlock(SpirvModule& spvModule) {
     uint32_t floatType = spvModule.defFloatType(32);
     uint32_t uintType  = spvModule.defIntType(32, 0);
     uint32_t vec3Type  = spvModule.defVectorType(floatType, 3);
@@ -358,7 +358,7 @@ namespace dxvk {
       floatType,
     }};
 
-    uint32_t rsStruct = spvModule.defStructTypeUnique(count, rsMembers.data());
+    uint32_t rsStruct = spvModule.defStructTypeUnique(rsMembers.size(), rsMembers.data());
     uint32_t rsBlock = spvModule.newVar(
       spvModule.defPointerType(rsStruct, spv::StorageClassPushConstant),
       spv::StorageClassPushConstant);
@@ -370,9 +370,6 @@ namespace dxvk {
 
     uint32_t memberIdx = 0;
     auto SetMemberName = [&](const char* name, uint32_t offset) {
-      if (memberIdx >= count)
-        return;
-
       spvModule.setDebugMemberName   (rsStruct, memberIdx, name);
       spvModule.memberDecorateOffset (rsStruct, memberIdx, offset);
       memberIdx++;
@@ -782,8 +779,6 @@ namespace dxvk {
     uint32_t              m_inputMask = 0u;
     uint32_t              m_outputMask = 0u;
     uint32_t              m_flatShadingMask = 0u;
-    uint32_t              m_pushConstOffset = 0u;
-    uint32_t              m_pushConstSize = 0u;
 
     DxsoProgramType       m_programType;
     D3D9FFShaderKeyVS     m_vsKey;
@@ -893,8 +888,8 @@ namespace dxvk {
     info.inputMask = m_inputMask;
     info.outputMask = m_outputMask;
     info.flatShadingInputs = m_flatShadingMask;
-    info.pushConstOffset = m_pushConstOffset;
-    info.pushConstSize = m_pushConstSize;
+    info.pushConstStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    info.pushConstSize = sizeof(D3D9RenderStateInfo);
 
     return new DxvkShader(info, m_module.compile());
   }
@@ -1112,6 +1107,17 @@ namespace dxvk {
       const uint32_t wIndex = 3;
 
       uint32_t flags = (m_vsKey.Data.Contents.TransformFlags >> (i * 3)) & 0b111;
+
+      if (flags == D3DTTFF_COUNT1) {
+        // D3DTTFF_COUNT1 behaves like D3DTTFF_DISABLE on NV and like D3DTTFF_COUNT2 on AMD.
+        // The Nvidia behavior is easier to implement.
+        flags = D3DTTFF_DISABLE;
+      }
+
+      // Passing 0xffffffff results in it getting clamped to the dimensions of the texture coords and getting treated as PROJECTED
+      // but D3D9 does not apply the transformation matrix.
+      bool applyTransform = flags >= D3DTTFF_COUNT1 && flags <= D3DTTFF_COUNT4;
+
       uint32_t count;
       switch (inputFlags) {
         default:
@@ -1122,27 +1128,30 @@ namespace dxvk {
           count = flags;
           if (texcoordCount) {
             // Clamp by the number of elements in the texcoord input.
-            if (!count || count > texcoordCount)
+            if (!count || count > texcoordCount) {
               count = texcoordCount;
-          }
-          else
+            }
+          } else {
+            count = 0;
             flags = D3DTTFF_DISABLE;
+            applyTransform = false;
+          }
           break;
 
         case (DXVK_TSS_TCI_CAMERASPACENORMAL >> TCIOffset):
           transformed = outNrm;
-          count = 4;
+          count = std::min(flags, 4u);
           break;
 
         case (DXVK_TSS_TCI_CAMERASPACEPOSITION >> TCIOffset):
           transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1.0f), vtx, 1, &wIndex);
-          count = 4;
+          count = std::min(flags, 4u);
           break;
 
         case (DXVK_TSS_TCI_CAMERASPACEREFLECTIONVECTOR >> TCIOffset): {
           uint32_t vtx3 = m_module.opVectorShuffle(m_vec3Type, vtx, vtx, 3, indices.data());
           vtx3 = m_module.opNormalize(m_vec3Type, vtx3);
-          
+
           uint32_t reflection = m_module.opReflect(m_vec3Type, vtx3, normal);
 
           std::array<uint32_t, 4> transformIndices;
@@ -1151,7 +1160,7 @@ namespace dxvk {
           transformIndices[3] = m_module.constf32(1.0f);
 
           transformed = m_module.opCompositeConstruct(m_vec4Type, transformIndices.size(), transformIndices.data());
-          count = 4;
+          count = std::min(flags, 4u);
           break;
         }
 
@@ -1175,36 +1184,42 @@ namespace dxvk {
           transformIndices[3] = m_module.constf32(1.0f);
 
           transformed = m_module.opCompositeConstruct(m_vec4Type, transformIndices.size(), transformIndices.data());
-          count = 4;
+          count = std::min(flags, 4u);
           break;
         }
       }
 
-      uint32_t type = flags;
-      if (type != D3DTTFF_DISABLE) {
-        if (!m_vsKey.Data.Contents.HasPositionT) {
-          for (uint32_t j = count; j < 4; j++) {
-            // If we're outside the component count of the vertex decl for this texcoord then we pad with zeroes.
-            // Otherwise, pad with ones.
+      if (applyTransform && !m_vsKey.Data.Contents.HasPositionT) {
+        for (uint32_t j = count; j < 4; j++) {
+          // If we're outside the component count of the vertex decl for this texcoord then we pad with zeroes.
+          // Otherwise, pad with ones.
 
-            // Very weird quirk in order to get texcoord transforms to work like they do in native.
-            // In future, maybe we could sort this out properly by chopping matrices of different sizes, but thats
-            // a project for another day.
-            uint32_t texcoordCount = (m_vsKey.Data.Contents.TexcoordDeclMask >> (3 * inputIndex)) & 0x7;
-            uint32_t value = j > texcoordCount ? m_module.constf32(0) : m_module.constf32(1);
-            transformed = m_module.opCompositeInsert(m_vec4Type, value, transformed, 1, &j);
-          }
-
-          transformed = m_module.opVectorTimesMatrix(m_vec4Type, transformed, m_vs.constants.texcoord[i]);
+          // Very weird quirk in order to get texcoord transforms to work like they do in native.
+          // In future, maybe we could sort this out properly by chopping matrices of different sizes, but thats
+          // a project for another day.
+          uint32_t texcoordCount = (m_vsKey.Data.Contents.TexcoordDeclMask >> (3 * inputIndex)) & 0x7;
+          uint32_t value = j > texcoordCount ? m_module.constf32(0) : m_module.constf32(1);
+          transformed = m_module.opCompositeInsert(m_vec4Type, value, transformed, 1, &j);
         }
 
-        // Pad the unused section of it with the value for projection.
-        uint32_t lastIdx = count - 1;
-        uint32_t projValue = m_module.opCompositeExtract(m_floatType, transformed, 1, &lastIdx);
-
-        for (uint32_t j = count; j < 4; j++)
-          transformed = m_module.opCompositeInsert(m_vec4Type, projValue, transformed, 1, &j);
+        transformed = m_module.opVectorTimesMatrix(m_vec4Type, transformed, m_vs.constants.texcoord[i]);
       }
+
+      // The projection idx is always based on the flags, even when the input mode is not DXVK_TSS_TCI_PASSTHRU.
+      uint32_t projValue;
+      if (count < 3) {
+        // Not enough components to do projection.
+        // Native drivers render normally or garbage with D3DFVF_TEXCOORDSIZE2 or D3DTTFF_COUNT <3
+        projValue = m_module.constf32(1.0f);
+      } else {
+        uint32_t projIdx = count - 1;
+        projValue = m_module.opCompositeExtract(m_floatType, transformed, 1, &projIdx);
+      }
+
+      // The w component is only used for projection or unused, so always insert the component that's supposed to be divided by there.
+      // The fragment shader will then decide whether to project or not.
+      uint32_t wIdx = 3;
+      transformed = m_module.opCompositeInsert(m_vec4Type, projValue, transformed, 1, &wIdx);
 
       m_module.opStore(m_vs.out.TEXCOORD[i], transformed);
     }
@@ -1385,20 +1400,7 @@ namespace dxvk {
 
 
   void D3D9FFShaderCompiler::setupRenderStateInfo() {
-    uint32_t count;
-
-    if (m_programType == DxsoProgramType::PixelShader) {
-      m_pushConstOffset = 0;
-      m_pushConstSize   = offsetof(D3D9RenderStateInfo, pointSize);
-      count = 5;
-    }
-    else {
-      m_pushConstOffset = offsetof(D3D9RenderStateInfo, pointSize);
-      m_pushConstSize   = sizeof(float) * 6;
-      count = 11;
-    }
-
-    m_rsBlock = SetupRenderStateBlock(m_module, count);
+    m_rsBlock = SetupRenderStateBlock(m_module);
   }
 
 
@@ -1814,20 +1816,16 @@ namespace dxvk {
           texcoord = m_module.opVectorShuffle(texcoord_t,
             texcoord, texcoord, texcoordCnt, indices.data());
 
-          uint32_t projIdx = m_fsKey.Stages[i].Contents.ProjectedCount;
-          if (projIdx == 0 || projIdx > texcoordCnt)
-            projIdx = texcoordCnt;
-          --projIdx;
-
+          bool shouldProject = m_fsKey.Stages[i].Contents.Projected;
           uint32_t projValue = 0;
 
-          if (m_fsKey.Stages[i].Contents.Projected) {
+          if (shouldProject) {
+            // Always use w, the vertex shader puts the correct value there.
+            const uint32_t projIdx = 3;
             projValue = m_module.opCompositeExtract(m_floatType, m_ps.in.TEXCOORD[i], 1, &projIdx);
             uint32_t insertIdx = texcoordCnt - 1;
             texcoord = m_module.opCompositeInsert(texcoord_t, projValue, texcoord, 1, &insertIdx);
           }
-
-          bool shouldProject = m_fsKey.Stages[i].Contents.Projected;
 
           if (i != 0 && (
             m_fsKey.Stages[i - 1].Contents.ColorOp == D3DTOP_BUMPENVMAP ||

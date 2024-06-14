@@ -19,6 +19,7 @@ namespace dxvk {
     m_csThread(Device, Device->createContext(DxvkContextType::Primary)),
     m_maxImplicitDiscardSize(pParent->GetOptions()->maxImplicitDiscardSize),
     m_submissionFence(new sync::CallbackFence()),
+    m_flushTracker(pParent->GetOptions()->reproducibleCommandStream),
     m_multithread(this, false, pParent->GetOptions()->enableContextLock),
     m_videoContext(this, Device) {
     EmitCs([

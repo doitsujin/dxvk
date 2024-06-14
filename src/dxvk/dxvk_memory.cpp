@@ -188,7 +188,6 @@ namespace dxvk {
     for (uint32_t i = 0; i < m_memProps.memoryHeapCount; i++) {
       m_memHeaps[i].properties = m_memProps.memoryHeaps[i];
       m_memHeaps[i].stats      = DxvkMemoryStats { 0, 0 };
-      m_memHeaps[i].budget     = 0;
     }
     
     for (uint32_t i = 0; i < m_memProps.memoryTypeCount; i++) {
@@ -385,9 +384,6 @@ namespace dxvk {
     bool useMemoryPriority = (info.flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
                           && (m_device->features().extMemoryPriority.memoryPriority);
     
-    if (type->heap->budget && type->heap->stats.memoryAllocated + size > type->heap->budget)
-      return DxvkDeviceMemory();
-
     float priority = 0.0f;
 
     if (hints.test(DxvkMemoryFlag::GpuReadable))
@@ -547,11 +543,7 @@ namespace dxvk {
   bool DxvkMemoryAllocator::shouldFreeEmptyChunks(
     const DxvkMemoryHeap*       heap,
           VkDeviceSize          allocationSize) const {
-    VkDeviceSize budget = heap->budget;
-
-    if (!budget)
-      budget = (heap->properties.size * 4) / 5;
-
+    VkDeviceSize budget = (heap->properties.size * 4) / 5;
     return heap->stats.memoryAllocated + allocationSize > budget;
   }
 

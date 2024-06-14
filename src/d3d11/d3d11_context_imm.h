@@ -17,6 +17,7 @@ namespace dxvk {
     friend class D3D11CommonContext<D3D11ImmediateContext>;
     friend class D3D11SwapChain;
     friend class D3D11VideoContext;
+    friend class D3D11DXGIKeyedMutex;
   public:
     
     D3D11ImmediateContext(
@@ -87,6 +88,10 @@ namespace dxvk {
 
     void SynchronizeCsThread(
             uint64_t                          SequenceNumber);
+
+    D3D10Multithread& GetMultithread() {
+        return m_multithread;
+    }
 
     D3D10DeviceLock LockContext() {
       return m_multithread.AcquireLock();

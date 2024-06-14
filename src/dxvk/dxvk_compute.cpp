@@ -48,9 +48,7 @@ namespace dxvk {
       // Retrieve actual pipeline handle on first use. This
       // may wait for an ongoing compile job to finish, or
       // compile the pipeline immediately on the calling thread.
-      m_libraryHandle = m_library->acquirePipelineHandle(
-        DxvkShaderPipelineLibraryCompileArgs());
-
+      m_libraryHandle = m_library->acquirePipelineHandle().handle;
       return m_libraryHandle;
     } else {
       // Slow path for compute shaders that do use spec constants

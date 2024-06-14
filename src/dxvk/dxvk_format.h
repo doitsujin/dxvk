@@ -87,7 +87,7 @@ namespace dxvk {
   };
 
   /// Number of formats defined in lookup table  
-  constexpr size_t DxvkFormatCount = 153;
+  constexpr size_t DxvkFormatCount = 155;
 
   /// Format lookup table
   extern const std::array<DxvkFormatInfo, DxvkFormatCount> g_formatInfos;
