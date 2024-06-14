@@ -160,6 +160,9 @@ namespace dxvk {
     /// don't change between runs. Useful for comparative benchmarking,
     /// can negatively affect performance.
     bool reproducibleCommandStream;
+
+    /// Enable depth texcoord Z (Dref) scaling (D3D8 quirk)
+    int32_t drefScaling;
   };
 
 }

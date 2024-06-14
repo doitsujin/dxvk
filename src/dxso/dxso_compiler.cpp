@@ -2909,6 +2909,14 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         uint32_t component = sampler.dimensions;
         reference = m_module.opCompositeExtract(
           fType, texcoordVar.id, 1, &component);
+
+        // [D3D8] Scale Dref from [0..(2^N - 1)] for D24S8 and D16 if Dref scaling is enabled
+        if (m_moduleInfo.options.drefScaling) {
+          uint32_t drefScale       = m_module.constf32(GetDrefScaleFactor(m_moduleInfo.options.drefScaling));
+          reference                = m_module.opFMul(fType, reference, drefScale);
+        }
+
+        // Clamp Dref to [0..1] for D32F emulating UNORM textures 
         uint32_t clampDref = m_spec.get(m_module, m_specUbo, SpecDrefClamp, samplerIdx, 1);
         clampDref = m_module.opINotEqual(bool_t, clampDref, m_module.constu32(0));
         uint32_t clampedDref = m_module.opFClamp(fType, reference, m_module.constf32(0.0f), m_module.constf32(1.0f));
