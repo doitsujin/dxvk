@@ -933,6 +933,11 @@ namespace dxvk {
     { R"(\\prototypef\.exe$)", {{ 
       { "d3d9.supportDFFormats",            "False" },
     }} },
+    /* STAR WARS: The Force Unleashed            *
+     * Prevents black screen on each alt-tab     */
+    { R"(\\SWTFU\.exe$)", {{ 
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
+    }} },
 
 
     /**********************************************/
