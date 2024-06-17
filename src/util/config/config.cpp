@@ -938,6 +938,11 @@ namespace dxvk {
     { R"(\\SWTFU\.exe$)", {{ 
       { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
+    /* Fallout New Vegas - Various visual issues *
+     * with mods such as New Vegas Reloaded      */
+    { R"(\\FalloutNV\.exe$)", {{ 
+      { "d3d9.floatEmulation",              "Strict" },
+    }} },
 
 
     /**********************************************/
