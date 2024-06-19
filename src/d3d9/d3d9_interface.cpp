@@ -354,6 +354,12 @@ namespace dxvk {
     || pPresentationParameters    == nullptr)
       return D3DERR_INVALIDCALL;
 
+    // creating a device with D3DCREATE_PUREDEVICE only works in conjunction
+    // with D3DCREATE_HARDWARE_VERTEXPROCESSING on native drivers
+    if (BehaviorFlags & D3DCREATE_PUREDEVICE &&
+    !(BehaviorFlags & D3DCREATE_HARDWARE_VERTEXPROCESSING))
+      return D3DERR_INVALIDCALL;
+
     auto* adapter = GetAdapter(Adapter);
 
     if (adapter == nullptr)
