@@ -948,6 +948,11 @@ namespace dxvk {
     { R"(\\Dragonshard\.exe$)", {{ 
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
+    /* Guild Wars 1 - Alt-tab black screen when  *
+     * fullscreen with non native resolution     */
+    { R"(\\Gw\.exe$)", {{ 
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
+    }} },
 
 
     /**********************************************/
