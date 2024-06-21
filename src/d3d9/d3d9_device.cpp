@@ -5307,11 +5307,13 @@ namespace dxvk {
       m_flags.set(D3D9DeviceFlag::DirtyVertexBuffers);
     }
 
-    // Change the draw call parameters to reflect the changed vertex buffers
-    if (NumIndices != 0) {
-      BaseVertexIndex = -FirstVertexIndex;
-    } else {
-      FirstVertexIndex = 0;
+    if (dynamicSysmemVBOs) {
+      // Change the draw call parameters to reflect the changed vertex buffers
+      if (NumIndices != 0) {
+        BaseVertexIndex = -FirstVertexIndex;
+      } else {
+        FirstVertexIndex = 0;
+      }
     }
 
     if (dynamicSysmemIBO) {
