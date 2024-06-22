@@ -953,6 +953,11 @@ namespace dxvk {
     { R"(\\Gw\.exe$)", {{ 
       { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
+    /* Battle for Middle-earth 2 and expansion   *
+     * Slowdowns in certain scenarios            */
+    { R"(\\(The Battle for Middle-earth (\(tm\))? II( Demo)?|The Lord of the Rings, The Rise of the Witch-king)\\game\.dat$)", {{
+      { "d3d9.cachedDynamicBuffers",        "True" },
+    }} },
 
 
     /**********************************************/
