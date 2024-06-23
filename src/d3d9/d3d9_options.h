@@ -78,6 +78,9 @@ namespace dxvk {
     /// Support X4R4G4B4
     bool supportX4R4G4B4;
 
+    /// Support D16_LOCKABLE
+    bool supportD16Lockable;
+
     /// Use D32f for D24
     bool useD32forD24;
 

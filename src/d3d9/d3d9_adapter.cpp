@@ -227,14 +227,14 @@ namespace dxvk {
     if (!IsDepthFormat(DepthStencilFormat))
       return D3DERR_NOTAVAILABLE;
 
-    auto dsfMapping = ConvertFormatUnfixed(DepthStencilFormat);
+    auto dsfMapping = GetFormatMapping(DepthStencilFormat);
     if (dsfMapping.FormatColor == VK_FORMAT_UNDEFINED)
       return D3DERR_NOTAVAILABLE;
 
     if (RenderTargetFormat == dxvk::D3D9Format::NULL_FORMAT)
       return D3D_OK;
 
-    auto rtfMapping = ConvertFormatUnfixed(RenderTargetFormat);
+    auto rtfMapping = GetFormatMapping(RenderTargetFormat);
     if (rtfMapping.FormatColor == VK_FORMAT_UNDEFINED)
       return D3DERR_NOTAVAILABLE;
 
