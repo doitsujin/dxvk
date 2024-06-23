@@ -554,10 +554,6 @@ namespace dxvk {
     { R"(\\SKShinoviVersus\.exe$)", {{
       { "d3d9.forceAspectRatio",            "16:9" },
     }} },
-    /* Metal Slug X                               */
-    { R"(\\mslugx\.exe$)", {{
-      { "d3d9.supportD32",                  "False" },
-    }} },
     /* Skyrim (NVAPI)                             */
     { R"(\\TESV\.exe$)", {{
       { "d3d9.customVendorId",              "1002" },
