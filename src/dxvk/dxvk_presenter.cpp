@@ -678,12 +678,14 @@ namespace dxvk {
           Logger::err(str::format("Presenter: vkWaitForPresentKHR failed: ", vr));
       }
 
+      // Apply FPS limtier here to align it as closely with scanout as we can,
+      // and delay signaling the frame latency event to emulate behaviour of a
+      // low refresh rate display as closely as we can.
+      m_fpsLimiter.delay();
+
       // Always signal even on error, since failures here
       // are transparent to the front-end.
       m_signal->signal(frame.frameId);
-
-      // Apply FPS limtier here to align it as closely with scanout as we can.
-      m_fpsLimiter.delay();
     }
   }
 
