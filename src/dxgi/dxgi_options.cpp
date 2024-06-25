@@ -93,7 +93,7 @@ namespace dxvk {
     this->maxDeviceMemory = VkDeviceSize(config.getOption<int32_t>("dxgi.maxDeviceMemory", 0)) << 20;
     this->maxSharedMemory = VkDeviceSize(config.getOption<int32_t>("dxgi.maxSharedMemory", 0)) << 20;
 
-    this->maxFrameRate = config.getOption<int32_t>("dxvk.maxFrameRate", 0);
+    this->maxFrameRate = config.getOption<int32_t>("dxgi.maxFrameRate", 0);
     this->syncInterval = config.getOption<int32_t>("dxgi.syncInterval", -1);
 
     // Expose Nvidia GPUs properly if NvAPI is enabled in environment
