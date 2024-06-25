@@ -1108,44 +1108,62 @@ namespace dxvk {
 
       uint32_t flags = (m_vsKey.Data.Contents.TransformFlags >> (i * 3)) & 0b111;
 
-      if (flags == D3DTTFF_COUNT1) {
-        // D3DTTFF_COUNT1 behaves like D3DTTFF_DISABLE on NV and like D3DTTFF_COUNT2 on AMD.
-        // The Nvidia behavior is easier to implement.
-        flags = D3DTTFF_DISABLE;
-      }
-
       // Passing 0xffffffff results in it getting clamped to the dimensions of the texture coords and getting treated as PROJECTED
       // but D3D9 does not apply the transformation matrix.
-      bool applyTransform = flags >= D3DTTFF_COUNT1 && flags <= D3DTTFF_COUNT4;
+      bool applyTransform = flags > D3DTTFF_COUNT1 && flags <= D3DTTFF_COUNT4;
 
-      uint32_t count;
+      uint32_t count = std::min(flags, 4u);
+
+      // A projection component index of 4 means we won't do projection
+      uint32_t projIndex = count != 0 ? count - 1 : 4;
+
       switch (inputFlags) {
         default:
         case (DXVK_TSS_TCI_PASSTHRU >> TCIOffset):
           transformed = m_vs.in.TEXCOORD[inputIndex & 0xFF];
-          // flags is actually the number of elements that get passed
-          // to the rasterizer.
-          count = flags;
-          if (texcoordCount) {
-            // Clamp by the number of elements in the texcoord input.
-            if (!count || count > texcoordCount) {
-              count = texcoordCount;
-            }
-          } else {
-            count = 0;
-            flags = D3DTTFF_DISABLE;
-            applyTransform = false;
+
+          if (texcoordCount < 4) {
+            // Vulkan sets the w component to 1.0 if that's not provided by the vertex buffer, D3D9 expects 0 here
+            transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(0), transformed, 1, &wIndex);
           }
+
+          if (applyTransform && !m_vsKey.Data.Contents.HasPositionT) {
+            /*This doesn't happen every time and I cannot figure out the difference between when it does and doesn't.
+            Keep it disabled for now, it's more likely that games rely on the zero texcoord than the weird 1 here.
+            if (texcoordCount <= 1) {
+              // y gets padded to 1 for some reason
+              uint32_t idx = 1;
+              transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1), transformed, 1, &idx);
+            }*/
+
+            if (texcoordCount >= 1 && texcoordCount < 4) {
+              // The first component after the last one thats backed by a vertex buffer gets padded to 1 for some reason.
+              uint32_t idx = texcoordCount;
+              transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1), transformed, 1, &idx);
+            }
+          } else if (texcoordCount != 0 && !applyTransform) {
+            // COUNT0, COUNT1, COUNT > 4 => take count from vertex decl if that's not zero
+            count = texcoordCount;
+          }
+
+          projIndex = count != 0 ? count - 1 : 4;
           break;
 
         case (DXVK_TSS_TCI_CAMERASPACENORMAL >> TCIOffset):
           transformed = outNrm;
-          count = std::min(flags, 4u);
+          if (!applyTransform) {
+            count = 3;
+            projIndex = 4;
+          }
           break;
 
         case (DXVK_TSS_TCI_CAMERASPACEPOSITION >> TCIOffset):
-          transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1.0f), vtx, 1, &wIndex);
-          count = std::min(flags, 4u);
+          transformed = vtx;
+          if (!applyTransform) {
+            Logger::warn(str::format("!applyTransform flags: ", flags, " projidx: ", projIndex));
+            count = 3;
+            projIndex = 4;
+          }
           break;
 
         case (DXVK_TSS_TCI_CAMERASPACEREFLECTIONVECTOR >> TCIOffset): {
@@ -1160,7 +1178,10 @@ namespace dxvk {
           transformIndices[3] = m_module.constf32(1.0f);
 
           transformed = m_module.opCompositeConstruct(m_vec4Type, transformIndices.size(), transformIndices.data());
-          count = std::min(flags, 4u);
+          if (!applyTransform) {
+            count = 3;
+            projIndex = 4;
+          }
           break;
         }
 
@@ -1184,42 +1205,28 @@ namespace dxvk {
           transformIndices[3] = m_module.constf32(1.0f);
 
           transformed = m_module.opCompositeConstruct(m_vec4Type, transformIndices.size(), transformIndices.data());
-          count = std::min(flags, 4u);
           break;
         }
       }
 
       if (applyTransform && !m_vsKey.Data.Contents.HasPositionT) {
-        for (uint32_t j = count; j < 4; j++) {
-          // If we're outside the component count of the vertex decl for this texcoord then we pad with zeroes.
-          // Otherwise, pad with ones.
-
-          // Very weird quirk in order to get texcoord transforms to work like they do in native.
-          // In future, maybe we could sort this out properly by chopping matrices of different sizes, but thats
-          // a project for another day.
-          uint32_t texcoordCount = (m_vsKey.Data.Contents.TexcoordDeclMask >> (3 * inputIndex)) & 0x7;
-          uint32_t value = j > texcoordCount ? m_module.constf32(0) : m_module.constf32(1);
-          transformed = m_module.opCompositeInsert(m_vec4Type, value, transformed, 1, &j);
-        }
-
         transformed = m_module.opVectorTimesMatrix(m_vec4Type, transformed, m_vs.constants.texcoord[i]);
       }
 
-      // The projection idx is always based on the flags, even when the input mode is not DXVK_TSS_TCI_PASSTHRU.
-      uint32_t projValue;
-      if (count < 3) {
-        // Not enough components to do projection.
-        // Native drivers render normally or garbage with D3DFVF_TEXCOORDSIZE2 or D3DTTFF_COUNT <3
-        projValue = m_module.constf32(1.0f);
-      } else {
-        uint32_t projIdx = count - 1;
-        projValue = m_module.opCompositeExtract(m_floatType, transformed, 1, &projIdx);
+      if (m_vsKey.Data.Contents.Projected && projIndex < 4) {
+        // The projection idx is always based on the flags, even when the input mode is not DXVK_TSS_TCI_PASSTHRU.
+        uint32_t projValue = m_module.opCompositeExtract(m_floatType, transformed, 1, &projIndex);
+
+        // The w component is only used for projection or unused, so always insert the component that's supposed to be divided by there.
+        // The fragment shader will then decide whether to project or not.
+        transformed = m_module.opCompositeInsert(m_vec4Type, projValue, transformed, 1, &wIndex);
       }
 
-      // The w component is only used for projection or unused, so always insert the component that's supposed to be divided by there.
-      // The fragment shader will then decide whether to project or not.
-      uint32_t wIdx = 3;
-      transformed = m_module.opCompositeInsert(m_vec4Type, projValue, transformed, 1, &wIdx);
+      uint32_t totalComponents = (m_vsKey.Data.Contents.Projected && projIndex < 4) ? 3 : 4;
+      for (uint32_t i = count; i < totalComponents; i++) {
+        // Discard the components that exceed the specified D3DTTFF_COUNT
+        transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(0), transformed, 1, &i);
+      }
 
       m_module.opStore(m_vs.out.TEXCOORD[i], transformed);
     }

@@ -133,9 +133,11 @@ namespace dxvk {
         uint32_t VertexBlendCount   : 3;
 
         uint32_t VertexClipping     : 1;
+
+        uint32_t Projected : 8;
       } Contents;
 
-      uint32_t Primitive[4];
+      uint32_t Primitive[5];
     };
   };
 
