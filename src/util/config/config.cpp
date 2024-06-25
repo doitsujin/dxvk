@@ -739,7 +739,7 @@ namespace dxvk {
     }} },
     /* Beyond Good And Evil                     *
      * UI breaks at high fps                     */
-    { R"(\\BGE\.exe$)", {{
+    { R"(\\Beyond Good and Evil\\BGE\.exe$)", {{
       { "dxvk.maxFrameRate",                "60" },
     }} },
     /* King Of Fighters XIII                     *
