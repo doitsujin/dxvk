@@ -454,7 +454,8 @@ namespace dxvk {
     /* Crysis 1/Warhead - Game bug in d3d10 makes *
      * it select lowest supported refresh rate    */
     { R"(\\Crysis(64)?\.exe$)", {{
-      { "dxvk.maxFrameRate",              "-1"      },
+      { "d3d9.maxFrameRate",              "-1"      },
+      { "dxgi.maxFrameRate",              "-1"      },
     }} },
 
     /**********************************************/
@@ -516,7 +517,7 @@ namespace dxvk {
        Built-in Vsync Locks the game to 30 FPS
     */
     { R"(\\deadspace2\.exe$)", {{
-      { "dxvk.maxFrameRate",                     "60" },
+      { "d3d9.maxFrameRate",                     "60" },
       { "d3d9.presentInterval",                  "1" },
     }} },
     /* Halo CE/HaloPC                             */
