@@ -778,6 +778,14 @@ namespace dxvk {
     uint32_t modeIndex = 0;
 
     const auto forcedRatio = Ratio<DWORD>(options.forceAspectRatio);
+        
+    if (!options.modeHeightFilter.empty() && m_forcedHeights.empty()) {
+      uint32_t forcedHeight;
+      for (auto height : str::split(options.modeHeightFilter, ",")) {
+        std::from_chars(height.data(), height.data() + height.size(), forcedHeight);
+        m_forcedHeights.emplace_back(forcedHeight);
+      }
+    }
 
     while (wsi::getDisplayMode(wsi::getDefaultMonitor(), modeIndex++, &devMode)) {
       // Skip interlaced modes altogether
@@ -789,6 +797,10 @@ namespace dxvk {
         continue;
 
       if (!forcedRatio.undefined() && Ratio<DWORD>(devMode.width, devMode.height) != forcedRatio)
+        continue;
+
+      if (!m_forcedHeights.empty() && 
+           std::find(m_forcedHeights.begin(), m_forcedHeights.end(), devMode.height) == m_forcedHeights.end())
         continue;
 
       D3DDISPLAYMODEEX mode = ConvertDisplayMode(devMode);
