@@ -1,6 +1,6 @@
 #pragma once
 
-#if defined(__linux__)
+#if defined(__unix__)
 
 #include <windows.h>
 #include <dlfcn.h>
