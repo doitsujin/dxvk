@@ -172,6 +172,9 @@ namespace dxvk {
 
     m_lastDialog = m_dialog;
 
+    if (m_window == nullptr)
+      return D3D_OK;
+
 #ifdef _WIN32
     const bool useGDIFallback = m_partialCopy && !HasFrontBuffer();
     if (useGDIFallback)
@@ -994,6 +997,9 @@ namespace dxvk {
 
 
   void D3D9SwapChainEx::UpdateWindowCtx() {
+    if (m_window == nullptr)
+      return;
+
     if (!m_presenters.count(m_window)) {
       auto res = m_presenters.emplace(
         std::piecewise_construct,
@@ -1334,10 +1340,10 @@ namespace dxvk {
     || dstRect.right  - dstRect.left != LONG(width)
     || dstRect.bottom - dstRect.top  != LONG(height);
 
-    bool recreate =
-       m_wctx->presenter == nullptr
-    || m_wctx->presenter->info().imageExtent.width  != width
-    || m_wctx->presenter->info().imageExtent.height != height;
+    bool recreate = m_wctx != nullptr
+      && (m_wctx->presenter == nullptr
+      || m_wctx->presenter->info().imageExtent.width  != width
+      || m_wctx->presenter->info().imageExtent.height != height);
 
     m_swapchainExtent = { width, height };
     m_dstRect = dstRect;
