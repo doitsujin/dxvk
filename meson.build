@@ -122,7 +122,15 @@ if platform == 'windows'
   compiler_args += ['-DDXVK_WSI_WIN32']
 else
   dxvk_abi_version = '0'
-  dxvk_version = meson.project_version().strip('v').split('.')
+  dxvk_version_raw = meson.project_version().strip('v').split('.')
+  dxvk_version = [ dxvk_version_raw[0] ]
+  foreach i : [ 1, 2 ]
+    padded = dxvk_version_raw[i]
+    if padded.to_int() < 10
+      padded = '0' + padded
+    endif
+    dxvk_version += [ padded ]
+  endforeach
   dxvk_so_version = {'version': dxvk_abi_version + '.' + dxvk_version[0] + dxvk_version[1] + dxvk_version[2]}
 
   wrc           = find_program('touch')
