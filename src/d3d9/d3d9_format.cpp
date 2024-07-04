@@ -442,7 +442,8 @@ namespace dxvk {
     const auto& props = adapter->deviceProperties();
     uint32_t vendorId  = options.customVendorId == -1 ? props.vendorID : uint32_t(options.customVendorId);
 
-    m_dfSupport = options.supportDFFormats;
+    // NVIDIA does not natively support any DF formats
+    m_dfSupport = vendorId == uint32_t(DxvkGpuVendor::Nvidia) ? false : options.supportDFFormats;
     m_x4r4g4b4Support = options.supportX4R4G4B4;
     // Only AMD supports D16_LOCKABLE natively
     m_d16lockableSupport = vendorId == uint32_t(DxvkGpuVendor::Amd) ? true : options.supportD16Lockable;
