@@ -447,8 +447,8 @@ namespace dxvk {
     { R"(\\ghost\.exe$)", {{
       { "d3d11.longMad",                  "True"    },
     }} },
-    /* Watch_Dogs - Some objects flicker without  */
-    { R"(\\watch_dogs\.exe$)", {{
+    /* Watch_Dogs series - Some objects flicker  */
+    { R"(\\watch(_)?dogs(2|Legion)?\.exe$)", {{
       { "d3d11.longMad",                  "True"    },
     }} },
     /* Crysis 1/Warhead - Game bug in d3d10 makes *
