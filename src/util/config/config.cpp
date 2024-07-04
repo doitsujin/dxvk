@@ -407,10 +407,6 @@ namespace dxvk {
     { R"(\\BLADESTORM Nightmare\\Launch_(EA|JP)\.exe$)", {{
       { "dxgi.maxFrameRate",                "60"  },
     }} },
-    /* WRC4 - Audio brakes above 60fps */
-    { R"(\\WRC4\.exe$)", {{
-      { "dxgi.maxFrameRate",                "60" },
-    }} },
     /* Ghost Recon Wildlands                      */
     { R"(\\GRW\.exe$)", {{
       { "d3d11.dcSingleUseMode",            "False" },
@@ -962,6 +958,10 @@ namespace dxvk {
      * Slowdowns in certain scenarios            */
     { R"(\\(The Battle for Middle-earth (\(tm\))? II( Demo)?|The Lord of the Rings, The Rise of the Witch-king)\\game\.dat$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
+    }} },
+    /* WRC4 - Audio brakes above 60fps */
+    { R"(\\WRC4\.exe$)", {{
+      { "d3d9.maxFrameRate",                "60" },
     }} },
 
 
