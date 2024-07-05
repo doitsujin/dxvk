@@ -43,12 +43,9 @@ namespace dxvk {
       { "d3d11.cachedDynamicResources",     "vi"   },
     }} },
     /* Far Cry 2: Set vendor ID to Nvidia to avoid
-     * vegetation artifacts on Intel, and set
-     * apitrace mode to True to improve perf on all
-     * hardware.                                  */
+     * vegetation artifacts on Intel.             */
     { R"(\\(FarCry2|farcry2game)\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
-      { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
     /* Far Cry 3: Assumes clear(0.5) on an UNORM  *
      * format to result in 128 on AMD and 127 on  *
@@ -590,17 +587,9 @@ namespace dxvk {
     { R"(\\SpellForce2.*\.exe$)", {{
       { "d3d9.forceSamplerTypeSpecConstants", "True" },
     }} },
-    /* Tomb Raider: Legend, Anniversary, Underworld  *
-     * Read from a buffer created with:              *
-     * D3DPOOL_DEFAULT,                              *
-     * D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY buffer  */
+    /* Tomb Raider: Legend, Anniversary, Underworld  */
     { R"(\\(trl|tra|tru)\.exe$)", {{
-      { "d3d9.cachedDynamicBuffers",        "True" },
       { "d3d9.maxFrameRate",                "60" },
-    }} },
-    /* Everquest                                 */
-    { R"(\\eqgame\.exe$)", {{
-      { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
     /* Dark Messiah of Might & Magic             */
     { R"(\\mm\.exe$)", {{
@@ -755,10 +744,6 @@ namespace dxvk {
     { R"(\\SR2_pc\.exe$)", {{
       { "d3d9.textureMemory",               "0" },
     }} },
-    /* Witcher 1: Very long loading times       */
-    { R"(\\witcher\.exe$)", {{
-      { "d3d9.cachedDynamicBuffers",        "True" },
-    }} },
     /* Guitar Hero World Tour                   *
      * Very prone to address space crashes      */
     { R"(\\(GHWT|GHWT_Definitive)\.exe$)", {{
@@ -780,10 +765,6 @@ namespace dxvk {
     { R"(\\SinEpisodes\.exe$)", {{
       { "d3d9.memoryTrackTest",             "True" },
     }} },
-    /* Hammer World Editor                      */
-    { R"(\\(hammer(plusplus)?|mallet|wc)\.exe$)", {{
-      { "d3d9.cachedDynamicBuffers",        "True" },
-    }} },
     /* Dragon Age Origins                       *
      * Keeps unmapping the same 3 1MB buffers   *
      * thousands of times when you alt-tab out  *
@@ -794,12 +775,6 @@ namespace dxvk {
     /* Fallout 3 - Doesn't like Intel Id       */
     { R"(\\Fallout3\.exe$)", {{
       { "d3d9.customVendorId",              "10de" },
-    }} },
-    /* Sonic & All-Stars Racing Transformed    *
-     * Helps performance when Resizable BAR    *
-     * is enabled                              */
-    { R"(\\ASN_App_PcDx9_Final\.exe$)", {{
-      { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
     /* Black Mesa                              *
      * Artifacts & broken flashlight on Intel  */
@@ -824,11 +799,9 @@ namespace dxvk {
       { "d3d9.maxFrameRate",                "60" },
     }} },
     /* Codename Panzers Phase One/Two          *
-     * Main menu won't render after intros     *
-     * and CPU bound performance               */
+     * Main menu won't render after intros     */
     { R"(\\(PANZERS|PANZERS_Phase_2)\.exe$)", {{
       { "d3d9.enableDialogMode",            "True"   },
-      { "d3d9.cachedDynamicBuffers",        "True"   },
     }} },
     /* DC Universe Online                      *
      * Freezes after alt tabbing               */
@@ -874,10 +847,6 @@ namespace dxvk {
     { R"(\\AoK HD\.exe$)", {{
       { "d3d9.maxFrameLatency",             "1" },
     }} },
-    /* Battlestations Midway                   */
-    { R"(\\Battlestationsmidway\.exe$)", {{
-      { "d3d9.cachedDynamicBuffers",     "True" },
-    }} },
     /* SkyDrift                                 *
      * Works around alt tab OOM crash           */
     { R"(\\SkyDrift\.exe$)" , {{
@@ -918,10 +887,9 @@ namespace dxvk {
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
     /* Delta Force: Xtreme 1 & 2                 *
-     * Black screen on Alt-Tab and performance   */
+     * Black screen on Alt-Tab                   */
     { R"(\\(DFX|dfx2)\.exe$)", {{
       { "d3d9.deviceLossOnFocusLoss",       "True" },
-      { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
     /* The Sims 3 - Black screen on alt-tab      */
     { R"(\\TS3(W)?\.exe$)", {{ 
@@ -942,20 +910,10 @@ namespace dxvk {
     { R"(\\FalloutNV\.exe$)", {{ 
       { "d3d9.floatEmulation",              "Strict" },
     }} },
-    /* Dungeons and Dragons: Dragonshard         *
-     * Massive FPS decreases in some scenes      */
-    { R"(\\Dragonshard\.exe$)", {{ 
-      { "d3d9.cachedDynamicBuffers",        "True" },
-    }} },
     /* Guild Wars 1 - Alt-tab black screen when  *
      * fullscreen with non native resolution     */
     { R"(\\Gw\.exe$)", {{ 
       { "d3d9.deviceLossOnFocusLoss",       "True" },
-    }} },
-    /* Battle for Middle-earth 2 and expansion   *
-     * Slowdowns in certain scenarios            */
-    { R"(\\(The Battle for Middle-earth (\(tm\))? II( Demo)?|The Lord of the Rings, The Rise of the Witch-king)\\game\.dat$)", {{
-      { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
     /* WRC4 - Audio breaks above 60fps */
     { R"(\\WRC4\.exe$)", {{
