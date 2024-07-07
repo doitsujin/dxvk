@@ -593,10 +593,12 @@ namespace dxvk {
     /* Tomb Raider: Legend, Anniversary, Underworld  *
      * Read from a buffer created with:              *
      * D3DPOOL_DEFAULT,                              *
-     * D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY buffer  */
+     * D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY buffer. *
+     * Legend flickers with next gen content option. */
     { R"(\\(trl|tra|tru)\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
       { "d3d9.maxFrameRate",                "60" },
+      { "d3d9.longMad",                     "True" },
     }} },
     /* Everquest                                 */
     { R"(\\eqgame\.exe$)", {{
