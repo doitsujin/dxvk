@@ -2,7 +2,7 @@
 
 namespace dxvk::d8caps {
 
-  constexpr uint32_t MAX_TEXTURE_STAGES = 8;
-  constexpr uint32_t MAX_STREAMS = 16;
+  inline constexpr uint32_t MAX_TEXTURE_STAGES = 8;
+  inline constexpr uint32_t MAX_STREAMS = 16;
 
 }

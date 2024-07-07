@@ -10,8 +10,8 @@
 
 namespace dxvk {
 
-  constexpr size_t            D3DPT_COUNT   = size_t(D3DPT_TRIANGLEFAN) + 1;
-  constexpr D3DPRIMITIVETYPE  D3DPT_INVALID = D3DPRIMITIVETYPE(0);
+  inline constexpr size_t            D3DPT_COUNT   = size_t(D3DPT_TRIANGLEFAN) + 1;
+  inline constexpr D3DPRIMITIVETYPE  D3DPT_INVALID = D3DPRIMITIVETYPE(0);
 
   /**
    * Vertex buffer that can handle many tiny locks while
