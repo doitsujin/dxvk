@@ -13,10 +13,8 @@ namespace dxvk {
   inline constexpr size_t            D3DPT_COUNT   = size_t(D3DPT_TRIANGLEFAN) + 1;
   inline constexpr D3DPRIMITIVETYPE  D3DPT_INVALID = D3DPRIMITIVETYPE(0);
 
-  /**
-   * Vertex buffer that can handle many tiny locks while
-   * still maintaing the lock ordering of direct-mapped buffers.
-   */
+  // Vertex buffer that can handle many tiny locks while
+  // still maintaing the lock ordering of direct-mapped buffers.
   class D3D8BatchBuffer final : public D3D8VertexBuffer {
   public:
     D3D8BatchBuffer(
@@ -69,9 +67,8 @@ namespace dxvk {
     DWORD             m_fvf;
   };
 
-  /**
-   * Main handler for batching D3D8 draw calls.
-   */
+  
+  // Main handler for batching D3D8 draw calls.
   class D3D8Batcher {
 
     struct Batch {
@@ -102,9 +99,6 @@ namespace dxvk {
         if (draw.PrimitiveType == D3DPT_INVALID)
           continue;
 
-        //m_largestBatch = std::max(m_largestBatch, draw.DrawCallCount);
-        //m_bridge->AddBatchCalls(draw.DrawCallCount);
-
         for (auto& index : draw.Indices)
           index -= draw.MinVertex;
 
@@ -131,8 +125,7 @@ namespace dxvk {
     }
 
     inline void EndFrame() {
-      //m_bridge->AddBatchCalls(m_largestBatch);
-      //m_largestBatch = 0;
+      // Nothing to be done.
     }
 
     inline HRESULT DrawPrimitive(
