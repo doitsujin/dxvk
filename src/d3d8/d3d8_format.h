@@ -3,7 +3,7 @@
 #include "d3d8_include.h"
 
 namespace dxvk {
-  inline constexpr bool isDXT(D3DFORMAT fmt) {
+  constexpr bool isDXT(D3DFORMAT fmt) {
     return fmt == D3DFMT_DXT1
         || fmt == D3DFMT_DXT2
         || fmt == D3DFMT_DXT3
@@ -11,11 +11,11 @@ namespace dxvk {
         || fmt == D3DFMT_DXT5;
   }
 
-  inline constexpr bool isDXT(d3d9::D3DFORMAT fmt) {
+  constexpr bool isDXT(d3d9::D3DFORMAT fmt) {
     return isDXT(D3DFORMAT(fmt));
   }
 
-  inline constexpr bool isSupportedDepthStencilFormat(D3DFORMAT fmt) {
+  constexpr bool isSupportedDepthStencilFormat(D3DFORMAT fmt) {
     // native d3d8 doesn't support D3DFMT_D32, D3DFMT_D15S1 or D3DFMT_D24X4S4
     return fmt == D3DFMT_D16_LOCKABLE
         || fmt == D3DFMT_D16
@@ -27,7 +27,7 @@ namespace dxvk {
   }
 
   // Get bytes per pixel (or 4x4 block for DXT)
-  inline constexpr UINT getFormatStride(D3DFORMAT fmt) {
+  constexpr UINT getFormatStride(D3DFORMAT fmt) {
     switch (fmt) {
       default:
       case D3DFMT_UNKNOWN:
@@ -82,7 +82,7 @@ namespace dxvk {
     }
   }
 
-  inline constexpr uint32_t GetVertexCount8(D3DPRIMITIVETYPE type, UINT count) {
+  constexpr uint32_t GetVertexCount8(D3DPRIMITIVETYPE type, UINT count) {
     switch (type) {
       default:
       case D3DPT_TRIANGLELIST:  return count * 3;
@@ -95,7 +95,7 @@ namespace dxvk {
   }
 
   // Essentially the same logic as D3D9VertexDecl::SetFVF
-  inline constexpr UINT GetFVFStride(DWORD FVF) {
+  constexpr UINT GetFVFStride(DWORD FVF) {
     uint32_t texCount = 0;
 
     uint32_t betas = 0;
@@ -188,7 +188,7 @@ namespace dxvk {
   }
 
 
-  inline constexpr UINT getSurfaceSize(D3DFORMAT Format, UINT Width, UINT Height) {
+  constexpr UINT getSurfaceSize(D3DFORMAT Format, UINT Width, UINT Height) {
     if (isDXT(Format)) {
       Width = ((Width + 3) >> 2);
       Height = ((Height + 3) >> 2);
