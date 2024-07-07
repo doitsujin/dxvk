@@ -45,7 +45,6 @@ namespace dxvk {
     , m_deviceType(DeviceType)
     , m_window(hFocusWindow)
     , m_behaviorFlags(BehaviorFlags) {
-
     // Get the bridge interface to D3D9.
     if (FAILED(GetD3D9()->QueryInterface(__uuidof(IDxvkD3D8Bridge), (void**)&m_bridge))) {
       throw DxvkError("D3D8Device: ERROR! Failed to get D3D9 Bridge. d3d9.dll might not be DXVK!");
@@ -173,10 +172,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetCursorProperties(
-    UINT               XHotSpot,
-    UINT               YHotSpot,
-    IDirect3DSurface8* pCursorBitmap) {
-
+          UINT               XHotSpot,
+          UINT               YHotSpot,
+          IDirect3DSurface8* pCursorBitmap) {
     D3D8Surface* surf = static_cast<D3D8Surface*>(pCursorBitmap);
     return GetD3D9()->SetCursorProperties(XHotSpot, YHotSpot, D3D8Surface::GetD3D9Nullable(surf));
   }
@@ -436,7 +434,6 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::CreateImageSurface(UINT Width, UINT Height, D3DFORMAT Format, IDirect3DSurface8** ppSurface) {
-
     Com<d3d9::IDirect3DSurface9> pSurf = nullptr;
     HRESULT res = GetD3D9()->CreateOffscreenPlainSurface(
       Width,
@@ -558,7 +555,6 @@ namespace dxvk {
           UINT                cRects,
           IDirect3DSurface8*  pDestinationSurface,
     const POINT*              pDestPointsArray) {
-
     if (pSourceSurface == NULL || pDestinationSurface == NULL) {
       return D3DERR_INVALIDCALL;
     }
@@ -942,7 +938,6 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::CreateStateBlock(
           D3DSTATEBLOCKTYPE     Type,
           DWORD*                pToken) {
-
     Com<d3d9::IDirect3DStateBlock9> pStateBlock9;
     HRESULT res = GetD3D9()->CreateStateBlock(d3d9::D3DSTATEBLOCKTYPE(Type), &pStateBlock9);
 
@@ -975,7 +970,6 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::BeginStateBlock() {
-
     if (unlikely(m_recorder != nullptr))
       return D3DERR_INVALIDCALL;
 
@@ -986,7 +980,6 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::EndStateBlock(DWORD* pToken) {
-
     if (unlikely(pToken == nullptr || m_recorder == nullptr))
       return D3DERR_INVALIDCALL;
 
@@ -1020,7 +1013,6 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetTexture(DWORD Stage, IDirect3DBaseTexture8* pTexture) {
-
     if (unlikely(Stage >= d8caps::MAX_TEXTURE_STAGES))
       return D3DERR_INVALIDCALL;
 
@@ -1229,7 +1221,6 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetIndices(IDirect3DIndexBuffer8* pIndexData, UINT BaseVertexIndex) {
-
     if (unlikely(ShouldRecord()))
       return m_recorder->SetIndices(pIndexData, BaseVertexIndex);
 
@@ -1399,8 +1390,6 @@ namespace dxvk {
         const DWORD* pFunction,
               DWORD* pHandle,
               DWORD Usage ) {
-
-
     D3D8VertexShaderInfo& info = m_vertexShaders.emplace_back();
 
     // Store D3D8 bytecodes in the shader info
@@ -1452,7 +1441,6 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetVertexShader( DWORD Handle ) {
-
     if (unlikely(ShouldRecord())) {
       return m_recorder->SetVertexShader(Handle);
     }
@@ -1487,7 +1475,6 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::GetVertexShader(DWORD* pHandle) {
-
     // Return cached shader
     *pHandle = m_currentVertexShader;
 
@@ -1517,9 +1504,7 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::DeleteVertexShader(DWORD Handle) {
-
     if (!isFVF(Handle)) {
-
       D3D8VertexShaderInfo* info = getVertexShaderInfo(this, Handle);
 
       if (!info)
@@ -1595,7 +1580,6 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D8Device::CreatePixelShader(
         const DWORD* pFunction,
               DWORD* pHandle) {
-
     d3d9::IDirect3DPixelShader9* pPixelShader;
     
     HRESULT res = GetD3D9()->CreatePixelShader(pFunction, &pPixelShader);
@@ -1609,7 +1593,6 @@ namespace dxvk {
   }
 
   inline d3d9::IDirect3DPixelShader9* getPixelShaderPtr(D3D8Device* device, DWORD Handle) {
-
     Handle = getShaderIndex(Handle);
 
     if (unlikely(Handle >= device->m_pixelShaders.size())) {
@@ -1628,7 +1611,6 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::SetPixelShader(DWORD Handle) {
-
     if (unlikely(ShouldRecord())) {
       return m_recorder->SetPixelShader(Handle);
     }
@@ -1661,7 +1643,6 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::DeletePixelShader(DWORD Handle) {
-
     d3d9::IDirect3DPixelShader9* pPixelShader = getPixelShaderPtr(this, Handle);
 
     if (unlikely(!pPixelShader)) {
@@ -1676,7 +1657,6 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::GetPixelShaderFunction(DWORD Handle, void* pData, DWORD* pSizeOfData) {
-
     d3d9::IDirect3DPixelShader9* pPixelShader = getPixelShaderPtr(this, Handle);
 
     if (unlikely(!pPixelShader))

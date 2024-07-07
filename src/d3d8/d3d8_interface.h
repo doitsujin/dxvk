@@ -90,12 +90,11 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE CheckDeviceMultiSampleType(
-        UINT                Adapter,
-        D3DDEVTYPE          DeviceType,
-        D3DFORMAT           SurfaceFormat,
-        BOOL                Windowed,
-        D3DMULTISAMPLE_TYPE MultiSampleType) {
-
+            UINT                Adapter,
+            D3DDEVTYPE          DeviceType,
+            D3DFORMAT           SurfaceFormat,
+            BOOL                Windowed,
+            D3DMULTISAMPLE_TYPE MultiSampleType) {
       DWORD* pQualityLevels = nullptr;
       return m_d3d9->CheckDeviceMultiSampleType(
         Adapter,

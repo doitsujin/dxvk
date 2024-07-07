@@ -39,7 +39,6 @@ namespace dxvk {
       : m_device(pDevice)
       , m_stateBlock(std::move(pStateBlock))
       , m_type(Type) {
-
       if (Type == D3DSBT_VERTEXSTATE || Type == D3DSBT_ALL) {
         // Lights, D3DTSS_TEXCOORDINDEX and D3DTSS_TEXTURETRANSFORMFLAGS,
         // vertex shader, VS constants, and various render states.

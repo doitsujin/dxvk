@@ -8,7 +8,6 @@
 namespace dxvk
 {
   D3D8Interface::D3D8Interface() {
-
     m_d3d9 = d3d9::Direct3DCreate9(D3D_SDK_VERSION);
 
     // Get the bridge interface to D3D9.
@@ -62,7 +61,6 @@ namespace dxvk
           UINT Adapter,
           DWORD Flags,
           D3DADAPTER_IDENTIFIER8* pIdentifier) {
-
     // This flag now has the opposite effect.
     // Either way, WHQLevel will be 1 with Direct3D9Ex
     if (Flags & D3DENUM_NO_WHQL_LEVEL)
@@ -92,7 +90,6 @@ namespace dxvk
           UINT Adapter,
           UINT Mode,
           D3DDISPLAYMODE* pMode) {
-
     if (Adapter >= m_adapterCount || Mode >= m_adapterModeCounts[Adapter] || pMode == nullptr) {
       return D3DERR_INVALIDCALL;
     }
@@ -111,7 +108,6 @@ namespace dxvk
         DWORD BehaviorFlags,
         D3DPRESENT_PARAMETERS* pPresentationParameters,
         IDirect3DDevice8** ppReturnedDeviceInterface) {
-
     Com<d3d9::IDirect3DDevice9> pDevice9 = nullptr;
     d3d9::D3DPRESENT_PARAMETERS params = ConvertPresentParameters9(pPresentationParameters);
     HRESULT res = m_d3d9->CreateDevice(
