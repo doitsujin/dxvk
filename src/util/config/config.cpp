@@ -576,15 +576,15 @@ namespace dxvk {
       { "d3d9.supportDFFormats",            "False" },
       { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
-    /* Battlefield 2                              *
-     * Bad z-pass and ingame GUI loss on alt tab  */
-    { R"(\\BF2\.exe$)", {{
-      { "d3d9.longMad",                     "True" },  
+    /* Battlefield 2 & Battlefield 2142           *
+     * Bad z-pass and ingame GUI loss on alt tab  *
+     * Also hang when alt tabbing which seems     *
+     * like a game bug that d3d9 drivers work     *
+     * around.                                    */
+    { R"(\\(BF2|BF2142)\.exe$)", {{
+      { "d3d9.longMad",                     "True" },
       { "d3d9.deviceLossOnFocusLoss",       "True" },
-    }} },
-    /* Battlefield 2142 - Same GUI issue as BF2   */
-    { R"(\\BF2142\.exe$)", {{ 
-      { "d3d9.deviceLossOnFocusLoss",       "True" },
+      { "d3d9.countLosableResources",       "False"},
     }} },
     /* SpellForce 2 Series                        */
     { R"(\\SpellForce2.*\.exe$)", {{
