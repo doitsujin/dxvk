@@ -20,7 +20,7 @@ namespace dxvk {
    *
    * \cite https://learn.microsoft.com/en-us/windows/win32/direct3d9/mapping-between-a-directx-9-declaration-and-directx-8
   */
-  static const BYTE D3D8_VERTEX_INPUT_REGISTERS[D3D8_NUM_VERTEX_INPUT_REGISTERS][2] = {
+  static constexpr BYTE D3D8_VERTEX_INPUT_REGISTERS[D3D8_NUM_VERTEX_INPUT_REGISTERS][2] = {
     {d3d9::D3DDECLUSAGE_POSITION, 0},      // dcl_position     v0
     {d3d9::D3DDECLUSAGE_BLENDWEIGHT, 0},   // dcl_blendweight  v1
     {d3d9::D3DDECLUSAGE_BLENDINDICES, 0},  // dcl_blendindices v2
@@ -41,7 +41,7 @@ namespace dxvk {
   };
 
   /** Width in bytes of each d3d9::D3DDECLTYPE or d3d8 D3DVSDT_TYPE */
-  static const BYTE D3D9_DECL_TYPE_SIZES[d3d9::MAXD3DDECLTYPE + 1] = {
+  static constexpr BYTE D3D9_DECL_TYPE_SIZES[d3d9::MAXD3DDECLTYPE + 1] = {
     4,  // FLOAT1
     8,  // FLOAT2
     12, // FLOAT3
