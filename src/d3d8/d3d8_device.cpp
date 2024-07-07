@@ -94,12 +94,18 @@ namespace dxvk {
         // on modern native AMD drivers and D3D8-era native ATI drivers.
         res = GetD3D9()->CreateQuery(d3d9::D3DQUERYTYPE_VCACHE, &pQuery);
 
+        struct D3DDEVINFO_VCACHE {
+          DWORD         Pattern;
+          DWORD         OptMethod;
+          DWORD         CacheSize;
+          DWORD         MagicNumber;
+        };
+
         if(FAILED(res)) {
           if (DevInfoStructSize != sizeof(D3DDEVINFO_VCACHE))
             return D3DERR_INVALIDCALL;
 
-          D3DDEVINFO_VCACHE vCacheDevInfo = {0};
-          memcpy(pDevInfoStruct, &vCacheDevInfo, DevInfoStructSize);
+          memset(pDevInfoStruct, 0, std::min(size_t(DevInfoStructSize), sizeof(D3DDEVINFO_VCACHE)));
           return S_FALSE;
         }
 
