@@ -105,7 +105,7 @@ namespace dxvk {
           if (DevInfoStructSize != sizeof(D3DDEVINFO_VCACHE))
             return D3DERR_INVALIDCALL;
 
-          memset(pDevInfoStruct, 0, std::min(size_t(DevInfoStructSize), sizeof(D3DDEVINFO_VCACHE)));
+          memset(pDevInfoStruct, 0, sizeof(D3DDEVINFO_VCACHE));
           return S_FALSE;
         }
 
