@@ -187,7 +187,9 @@ namespace dxvk {
     GetD3D9()->SetCursorPosition(X, Y, Flags);
   }
 
-  BOOL    STDMETHODCALLTYPE D3D8Device::ShowCursor(BOOL bShow) { return GetD3D9()->ShowCursor(bShow); }
+  BOOL    STDMETHODCALLTYPE D3D8Device::ShowCursor(BOOL bShow) {
+    return GetD3D9()->ShowCursor(bShow);
+  }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::CreateAdditionalSwapChain(
       D3DPRESENT_PARAMETERS* pPresentationParameters,

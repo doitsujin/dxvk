@@ -1,9 +1,8 @@
 #pragma once
 
-/** Common methods for device-tied objects.
-* - AddRef, Release from IUnknown
-* - GetDevice from various classes including IDirect3DResource8
-*/
+// Common methods for device-tied objects.
+// - AddRef, Release from IUnknown
+// - GetDevice from various classes including IDirect3DResource8
 
 #include "d3d8_include.h"
 #include "d3d8_wrapped_object.h"

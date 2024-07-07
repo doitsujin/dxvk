@@ -1,9 +1,7 @@
 #pragma once
 
-/**
-* Utility functions for converting
-* between DirectX8 and DirectX9 types.
-*/
+// Utility functions for converting
+// between DirectX8 and DirectX9 types.
 
 #include "d3d8_include.h"
 #include "d3d8_format.h"
