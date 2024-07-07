@@ -1118,6 +1118,10 @@ namespace dxvk {
       { "d3d9.maxFrameRate",                  "60" },
       { "d3d8.placeP8InScratch",            "True" },
     }} },
+    /* Rise of Nations + Expansion - alt-tab crash*/
+    { R"(\\(nations|patriots)\.exe$)", {{
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
+    }} },
   }};
 
 
