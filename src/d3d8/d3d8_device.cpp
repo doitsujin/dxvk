@@ -620,6 +620,11 @@ namespace dxvk {
 
       res = D3DERR_INVALIDCALL;
 
+      auto unhandled = [&] {
+        Logger::debug(str::format("CopyRects: Hit unhandled case from src pool ", srcDesc.Pool, " to dst pool ", dstDesc.Pool));
+        return D3DERR_INVALIDCALL;
+      };
+
       switch (dstDesc.Pool) {
         
         // Dest: DEFAULT
@@ -659,7 +664,7 @@ namespace dxvk {
             case D3DPOOL_SCRATCH:
             default: {
               // TODO: Unhandled case.
-              goto unhandled;
+              return unhandled();
             }
           } break;
         
@@ -703,7 +708,7 @@ namespace dxvk {
             case D3DPOOL_SCRATCH:
             default: {
               // TODO: Unhandled case.
-              goto unhandled;
+              return unhandled();
             }
           } break;
         
@@ -759,7 +764,7 @@ namespace dxvk {
             case D3DPOOL_SCRATCH:
             default: {
               // TODO: Unhandled case.
-              goto unhandled;
+              return unhandled();
             }
           } break;
         }
@@ -768,13 +773,9 @@ namespace dxvk {
         case D3DPOOL_SCRATCH:
         default: {
           // TODO: Unhandled case.
-          goto unhandled;
+          return unhandled();
         }
       }
-
-    unhandled:
-      Logger::debug(str::format("CopyRects: Hit unhandled case from src pool ", srcDesc.Pool, " to dst pool ", dstDesc.Pool));
-      return D3DERR_INVALIDCALL;
     
     done:
       if (FAILED(res)) {
