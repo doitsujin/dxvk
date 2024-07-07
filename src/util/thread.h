@@ -316,7 +316,11 @@ namespace dxvk {
       switch (priority) {
         default:
         case ThreadPriority::Normal: policy = SCHED_OTHER; break;
+#ifndef __linux__
+        case ThreadPriority::Lowest: policy = SCHED_OTHER; break;
+#else
         case ThreadPriority::Lowest: policy = SCHED_IDLE;  break;
+#endif
       }
       ::pthread_setschedparam(this->native_handle(), policy, &param);
     }
