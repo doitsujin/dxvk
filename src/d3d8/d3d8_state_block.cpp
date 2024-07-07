@@ -2,7 +2,8 @@
 #include "d3d8_state_block.h"
 
 HRESULT dxvk::D3D8StateBlock::Capture() {
-  if (unlikely(m_stateBlock == nullptr)) return D3DERR_INVALIDCALL;
+  if (unlikely(m_stateBlock == nullptr))
+    return D3DERR_INVALIDCALL;
 
   if (m_capture.vs) m_device->GetVertexShader(&m_vertexShader);
   if (m_capture.ps) m_device->GetPixelShader(&m_pixelShader);
@@ -24,7 +25,8 @@ HRESULT dxvk::D3D8StateBlock::Capture() {
 }
 
 HRESULT dxvk::D3D8StateBlock::Apply() {
-  if (unlikely(m_stateBlock == nullptr)) return D3DERR_INVALIDCALL;
+  if (unlikely(m_stateBlock == nullptr))
+    return D3DERR_INVALIDCALL;
 
   HRESULT res = m_stateBlock->Apply();
 
