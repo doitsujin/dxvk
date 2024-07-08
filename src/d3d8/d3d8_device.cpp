@@ -562,11 +562,11 @@ namespace dxvk {
 
   /**
    * \brief D3D8 CopyRects implementation
-   * 
+   *
    * \details
    * The following table shows the possible combinations of source
    * and destination surface pools, and how we handle each of them.
-   * 
+   *
    *     ┌────────────┬───────────────────────────┬───────────────────────┬───────────────────────┬──────────┐
    *     │ Src/Dst    │ DEFAULT                   │ MANAGED               │ SYSTEMMEM             │ SCRATCH  │
    *     ├────────────┼───────────────────────────┼───────────────────────┼───────────────────────┼──────────┤
@@ -587,7 +587,7 @@ namespace dxvk {
     }
 
     // TODO: No format conversion, no stretching, no clipping.
-    // All src/dest rectangles must fit within the dest surface. 
+    // All src/dest rectangles must fit within the dest surface.
 
     Com<D3D8Surface> src = static_cast<D3D8Surface*>(pSourceSurface);
     Com<D3D8Surface> dst = static_cast<D3D8Surface*>(pDestinationSurface);
@@ -618,8 +618,6 @@ namespace dxvk {
       pDestPointsArray = &point;
     }
 
-    HRESULT res = D3DERR_INVALIDCALL;
-
     for (UINT i = 0; i < cRects; i++) {
 
       RECT srcRect, dstRect;
@@ -639,10 +637,10 @@ namespace dxvk {
         dstRect.bottom  = dstRect.top + (srcRect.bottom - srcRect.top);
         asymmetric  = dstRect.left  != srcRect.left  || dstRect.top    != srcRect.top
                    || dstRect.right != srcRect.right || dstRect.bottom != srcRect.bottom;
-        
+
         stretch     = (dstRect.right-dstRect.left) != (srcRect.right-srcRect.left)
                    || (dstRect.bottom-dstRect.top) != (srcRect.bottom-srcRect.top);
-        
+
         offset      = !stretch && asymmetric;
       } else {
         dstRect     = srcRect;
@@ -651,102 +649,103 @@ namespace dxvk {
 
       POINT dstPt = { dstRect.left, dstRect.top };
 
-      res = D3DERR_INVALIDCALL;
-
       auto unhandled = [&] {
-        Logger::debug(str::format("CopyRects: Hit unhandled case from src pool ", srcDesc.Pool, " to dst pool ", dstDesc.Pool));
+        Logger::warn(str::format("CopyRects: Hit unhandled case from src pool ", srcDesc.Pool, " to dst pool ", dstDesc.Pool));
         return D3DERR_INVALIDCALL;
       };
 
+      auto logError = [&] (HRESULT res) {
+        if (FAILED(res)) {
+          // Only a debug message because some games mess up CopyRects every frame in a way
+          // that fails on native too but are perfectly fine with it.
+          Logger::debug(str::format("CopyRects: FAILED to copy from src pool ", srcDesc.Pool, " to dst pool ", dstDesc.Pool));
+        }
+        return res;
+      };
+
       switch (dstDesc.Pool) {
-        
+
         // Dest: DEFAULT
-        case D3DPOOL_DEFAULT:
+        case d3d9::D3DPOOL_DEFAULT:
           switch (srcDesc.Pool) {
-            case D3DPOOL_DEFAULT: {
+            case d3d9::D3DPOOL_DEFAULT: {
               // DEFAULT -> DEFAULT: use StretchRect
-              res = GetD3D9()->StretchRect(
+              return logError(GetD3D9()->StretchRect(
                 src->GetD3D9(),
                 &srcRect,
                 dst->GetD3D9(),
                 &dstRect,
                 d3d9::D3DTEXF_NONE
-              );
-              goto done;
+              ));
             }
-            case D3DPOOL_MANAGED: {
+            case d3d9::D3DPOOL_MANAGED: {
               // MANAGED -> DEFAULT: UpdateTextureFromBuffer
-              res = m_bridge->UpdateTextureFromBuffer(
+              return logError(m_bridge->UpdateTextureFromBuffer(
                 src->GetD3D9(),
                 dst->GetD3D9(),
                 &srcRect,
                 &dstPt
-              );
-              goto done;
+              ));
             }
-            case D3DPOOL_SYSTEMMEM: {
+            case d3d9::D3DPOOL_SYSTEMMEM: {
               // SYSTEMMEM -> DEFAULT: use UpdateSurface
-              res = GetD3D9()->UpdateSurface(
+              return logError(GetD3D9()->UpdateSurface(
                 src->GetD3D9(),
                 &srcRect,
                 dst->GetD3D9(),
                 &dstPt
-              );
-              goto done;
+              ));
             }
-            case D3DPOOL_SCRATCH:
+            case d3d9::D3DPOOL_SCRATCH:
             default: {
               // TODO: Unhandled case.
               return unhandled();
             }
           } break;
-        
+
         // Dest: MANAGED
-        case D3DPOOL_MANAGED:
+        case d3d9::D3DPOOL_MANAGED:
           switch (srcDesc.Pool) {
-            case  D3DPOOL_DEFAULT: {
+            case d3d9::D3DPOOL_DEFAULT: {
               // TODO: Copy on GPU (handle MANAGED similarly to SYSTEMMEM for now)
-              
+
               // Get temporary off-screen surface for stretching.
               Com<d3d9::IDirect3DSurface9> pBlitImage = dst->GetBlitImage();
 
               // Stretch the source RT to the temporary surface.
-              res = GetD3D9()->StretchRect(
+              HRESULT res = GetD3D9()->StretchRect(
                 src->GetD3D9(),
                 &srcRect,
                 pBlitImage.ptr(),
                 &dstRect,
                 d3d9::D3DTEXF_NONE);
+
               if (FAILED(res)) {
-                goto done;
+                return logError(res);
               }
 
               // Now sync the rendertarget data into main memory.
-              res = GetD3D9()->GetRenderTargetData(pBlitImage.ptr(), dst->GetD3D9());
-              goto done;
+              return logError(GetD3D9()->GetRenderTargetData(pBlitImage.ptr(), dst->GetD3D9()));
             }
-            case D3DPOOL_MANAGED:
-            case D3DPOOL_SYSTEMMEM: {
+            case d3d9::D3DPOOL_MANAGED:
+            case d3d9::D3DPOOL_SYSTEMMEM: {
               // SYSTEMMEM -> MANAGED: LockRect / memcpy
-              
+
               if (stretch) {
-                res = D3DERR_INVALIDCALL;
-                goto done;
+                return logError(D3DERR_INVALIDCALL);
               }
 
-              res = copyTextureBuffers(src.ptr(), dst.ptr(), srcDesc, dstDesc, srcRect, dstRect);
-
-              goto done;
+              return logError(copyTextureBuffers(src.ptr(), dst.ptr(), srcDesc, dstDesc, srcRect, dstRect));
             }
-            case D3DPOOL_SCRATCH:
+            case d3d9::D3DPOOL_SCRATCH:
             default: {
               // TODO: Unhandled case.
               return unhandled();
             }
           } break;
-        
+
         // DEST: SYSTEMMEM
-        case D3DPOOL_SYSTEMMEM: {
+        case d3d9::D3DPOOL_SYSTEMMEM: {
 
           // RT (DEFAULT) -> SYSTEMMEM: Use GetRenderTargetData as fast path if possible
           if ((srcDesc.Usage & D3DUSAGE_RENDERTARGET || m_renderTarget.ptr() == src.ptr())) {
@@ -757,44 +756,40 @@ namespace dxvk {
                 && srcDesc.Height == dstDesc.Height
                 && srcDesc.Format == dstDesc.Format
                 && !asymmetric) {
-              res = GetD3D9()->GetRenderTargetData(src->GetD3D9(), dst->GetD3D9());
-              goto done;
+              return logError(GetD3D9()->GetRenderTargetData(src->GetD3D9(), dst->GetD3D9()));
             }
           }
 
           switch (srcDesc.Pool) {
-            case D3DPOOL_DEFAULT: {
+            case d3d9::D3DPOOL_DEFAULT: {
               // Get temporary off-screen surface for stretching.
               Com<d3d9::IDirect3DSurface9> pBlitImage = dst->GetBlitImage();
 
               // Stretch the source RT to the temporary surface.
-              res = GetD3D9()->StretchRect(
+              HRESULT res = GetD3D9()->StretchRect(
                 src->GetD3D9(),
                 &srcRect,
                 pBlitImage.ptr(),
                 &dstRect,
                 d3d9::D3DTEXF_NONE);
               if (FAILED(res)) {
-                goto done;
+                return logError(res);
               }
 
               // Now sync the rendertarget data into main memory.
-              res = GetD3D9()->GetRenderTargetData(pBlitImage.ptr(), dst->GetD3D9());
-              goto done;
+              return logError(GetD3D9()->GetRenderTargetData(pBlitImage.ptr(), dst->GetD3D9()));
             }
 
             // SYSMEM/MANAGED -> SYSMEM: LockRect / memcpy
-            case D3DPOOL_MANAGED:
-            case D3DPOOL_SYSTEMMEM: {
+            case d3d9::D3DPOOL_MANAGED:
+            case d3d9::D3DPOOL_SYSTEMMEM: {
               if (stretch) {
-                res = D3DERR_INVALIDCALL;
-                goto done;
+                return logError(D3DERR_INVALIDCALL);
               }
 
-              res = copyTextureBuffers(src.ptr(), dst.ptr(), srcDesc, dstDesc, srcRect, dstRect);
-              goto done;
+              return logError(copyTextureBuffers(src.ptr(), dst.ptr(), srcDesc, dstDesc, srcRect, dstRect));
             }
-            case D3DPOOL_SCRATCH:
+            case d3d9::D3DPOOL_SCRATCH:
             default: {
               // TODO: Unhandled case.
               return unhandled();
@@ -803,22 +798,15 @@ namespace dxvk {
         }
 
         // DEST: SCRATCH
-        case D3DPOOL_SCRATCH:
+        case d3d9::D3DPOOL_SCRATCH:
         default: {
           // TODO: Unhandled case.
           return unhandled();
         }
       }
-    
-    done:
-      if (FAILED(res)) {
-        Logger::debug(str::format("CopyRects: FAILED to copy from src pool ", srcDesc.Pool, " to dst pool ", dstDesc.Pool));
-        return res;
-      }
-
     }
 
-    return res;
+    return D3DERR_INVALIDCALL;
   }
 
   HRESULT STDMETHODCALLTYPE D3D8Device::UpdateTexture(
