@@ -1264,7 +1264,7 @@ namespace dxvk {
       // - both destination and source are depth stencil surfaces
       // - both destination and source are offscreen plain surfaces.
       // The only way to get a surface with resource type D3DRTYPE_SURFACE without USAGE_RT or USAGE_DS is CreateOffscreenPlainSurface.
-      if (unlikely(!dstHasRTUsage && (!dstIsSurface || !srcIsSurface || srcHasRTUsage)))
+      if (unlikely((!dstHasRTUsage && (!dstIsSurface || !srcIsSurface || srcHasRTUsage)) && !m_isD3D8Compatible))
         return D3DERR_INVALIDCALL;
     }
 
