@@ -9,7 +9,7 @@ The most recent development builds can be found [here](https://github.com/doitsu
 Release builds can be found [here](https://github.com/doitsujin/dxvk/releases).
 
 ## How to use
-In order to install a DXVK package obtained from the [release](https://github.com/doitsujin/dxvk/releases) page into a given wine prefix, copy or symlink the DLLs into the following directories as follows, then open `winecfg` and manually add DLL overrides for `d3d11`, `d3d10core`, `dxgi`, `d3d9` and `d3d8`.
+In order to install a DXVK package obtained from the [release](https://github.com/doitsujin/dxvk/releases) page into a given wine prefix, copy or symlink the DLLs into the following directories as follows, then open `winecfg` and manually add DLL overrides for `d3d11`, `d3d10core`, `dxgi`, `d3d9` and `d3d8`. To use d3d8 with dxvk you have to use both the d3d8 and d3d9 DLLs as d3d8.dll depends on d3d9.dll.
 
 In a default Wine prefix that would be as follows:
 ```
@@ -76,7 +76,7 @@ cd build.w64
 ninja install
 ```
 
-The D3D9, D3D10, D3D11 and DXGI DLLs will be located in `/your/dxvk/directory/bin`. Setup has to be done manually in this case.
+The D3D8, D3D9, D3D10, D3D11 and DXGI DLLs will be located in `/your/dxvk/directory/bin`. Setup has to be done manually in this case.
 
 ### Online multi-player games
 Manipulation of Direct3D libraries in multi-player games may be considered cheating and can get your account **banned**. This may also apply to single-player games with an embedded or dedicated multiplayer portion. **Use at your own risk.**
