@@ -44,6 +44,16 @@ namespace dxvk {
     m_modeCacheFormat (D3D9Format::Unknown),
     m_d3d9Formats     (Adapter, m_parent->GetOptions()) {
     m_adapter->logAdapterInfo();
+
+    auto& options = m_parent->GetOptions();
+
+    if (!options.forceModeHeights.empty()) {
+      uint32_t forcedHeight = 0;
+      for (auto height : str::split(options.forceModeHeights, ",")) {
+        std::from_chars(height.data(), height.data() + height.size(), forcedHeight);
+        m_forcedModeHeights.emplace_back(forcedHeight);
+      }
+    }
   }
 
   template <size_t N>
@@ -814,6 +824,12 @@ namespace dxvk {
         continue;
 
       if (!forcedRatio.undefined() && Ratio<DWORD>(devMode.width, devMode.height) != forcedRatio)
+        continue;
+
+      if (!m_forcedModeHeights.empty() &&
+           std::find(m_forcedModeHeights.begin(),
+                     m_forcedModeHeights.end(),
+                     devMode.height) == m_forcedModeHeights.end())
         continue;
 
       D3DDISPLAYMODEEX mode = ConvertDisplayMode(devMode);
