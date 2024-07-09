@@ -6,6 +6,7 @@
 #include "d3d9_format.h"
 
 #include "../dxvk/dxvk_adapter.h"
+#include "../wsi/wsi_monitor.h"
 
 namespace dxvk {
 
@@ -101,6 +102,29 @@ namespace dxvk {
     bool IsD3D8Compatible() const;
 
   private:
+
+    // used as a global filter when mode count compatibility is enabled
+    constexpr bool IsCountCompatibleMode(const wsi::WsiMode& wsiMode, uint32_t refreshRate) {
+      return (wsiMode.width == 640 && wsiMode.height == 480 &&
+              wsiMode.refreshRate.numerator / wsiMode.refreshRate.denominator == refreshRate)
+          || (wsiMode.width == 800 && wsiMode.height == 600 &&
+              wsiMode.refreshRate.numerator / wsiMode.refreshRate.denominator == refreshRate)
+          || (wsiMode.width == 1024 && wsiMode.height == 768 &&
+              wsiMode.refreshRate.numerator / wsiMode.refreshRate.denominator == refreshRate)
+          || (wsiMode.width == 1280 && wsiMode.height == 1024 &&
+              wsiMode.refreshRate.numerator / wsiMode.refreshRate.denominator == refreshRate)
+          || (wsiMode.width == 1280 && wsiMode.height == 720 &&
+              wsiMode.refreshRate.numerator / wsiMode.refreshRate.denominator == refreshRate)
+          || (wsiMode.width == 1920 && wsiMode.height == 1080 &&
+              wsiMode.refreshRate.numerator / wsiMode.refreshRate.denominator == refreshRate);
+    }
+
+    constexpr bool IsEquivalentMode(const wsi::WsiMode& wsiModeA, const wsi::WsiMode& wsiModeB) {
+        return wsiModeA.width  == wsiModeB.width  &&
+               wsiModeA.height == wsiModeB.height &&
+               (wsiModeA.refreshRate.numerator / wsiModeA.refreshRate.denominator ==
+                wsiModeB.refreshRate.numerator / wsiModeB.refreshRate.denominator);
+    }
 
     HRESULT CheckDeviceVkFormat(
           VkFormat        Format,

@@ -10,8 +10,6 @@
 #include "../util/util_ratio.h"
 #include "../util/util_string.h"
 
-#include "../wsi/wsi_monitor.h"
-
 #include <cfloat>
 
 namespace dxvk {
@@ -134,7 +132,7 @@ namespace dxvk {
     const bool volumeTexture = RType == D3DRTYPE_VOLUMETEXTURE;
 
     const bool twoDimensional = surface || texture;
-    
+
     const bool isDepthStencilFormat = IsDepthStencilFormat(CheckFormat);
     const bool isLockableDepthStencilFormat = IsLockableDepthStencilFormat(CheckFormat);
 
@@ -894,8 +892,9 @@ namespace dxvk {
 
     // If no modes are returned based on the previous filtered
     // search, then fall back to an unfiltered search.
-    if (unlikely((!options.forceAspectRatio.empty() || options.forceRefreshRate) &&
-                 !m_modes.size())) {
+    if (unlikely((!options.forceAspectRatio.empty()
+               ||  options.forceRefreshRate
+               ||  options.modeCountCompatibility) && !m_modes.size())) {
       Logger::warn("D3D9Adapter::CacheModes: No modes were found. Discarding filters.");
       FilterModesByFormat(Format, false);
     }
@@ -923,6 +922,32 @@ namespace dxvk {
 
     const auto forcedRatio = Ratio<DWORD>(options.forceAspectRatio);
 
+    wsi::WsiMode currentMode = { };
+    wsi::WsiMode currentCompatibleMode = { };
+    uint32_t currentRefreshRate = 0;
+
+    // Determine the current desktop display mode when
+    // mode count compatibility is enabled.
+    if (options.modeCountCompatibility) {
+      wsi::getDesktopDisplayMode(wsi::getDefaultMonitor(), &currentMode);
+
+      if (currentMode.width) {
+        currentRefreshRate = currentMode.refreshRate.numerator / currentMode.refreshRate.denominator;
+
+        // Skip checking the current refresh rate, if that's equal
+        // to the compatibility enforced refresh rate (of 60 Hz).
+        if (currentRefreshRate == 60) {
+          currentRefreshRate = 0;
+        } else {
+          currentCompatibleMode = currentMode;
+          currentCompatibleMode.refreshRate.numerator = 60;
+          currentCompatibleMode.refreshRate.denominator = 1;
+        }
+      } else {
+        Logger::warn("D3D9Adapter::CacheModes: Unable to determine desktop display mode.");
+      }
+    }
+
     // Walk over all modes that the display supports and
     // return those that match the requested format etc.
     wsi::WsiMode devMode = { };
@@ -938,14 +963,22 @@ namespace dxvk {
       if (devMode.bitsPerPixel != GetMonitorFormatBpp(Format))
         continue;
 
-      if (ApplyOptionsFilters &&
-          !forcedRatio.undefined() &&
+      if (!forcedRatio.undefined() &&
+          ApplyOptionsFilters &&
           Ratio<DWORD>(devMode.width, devMode.height) != forcedRatio)
         continue;
 
-      if (ApplyOptionsFilters &&
-          options.forceRefreshRate &&
+      if (options.forceRefreshRate &&
+          ApplyOptionsFilters &&
           devMode.refreshRate.numerator / devMode.refreshRate.denominator != options.forceRefreshRate)
+        continue;
+
+      if (options.modeCountCompatibility &&
+          ApplyOptionsFilters &&
+          !IsEquivalentMode(devMode, currentMode) &&
+          (!currentCompatibleMode.width || !IsEquivalentMode(devMode, currentCompatibleMode)) &&
+          !IsCountCompatibleMode(devMode, 60) &&
+          (!currentRefreshRate || !IsCountCompatibleMode(devMode, currentRefreshRate)))
         continue;
 
       D3DDISPLAYMODEEX mode = ConvertDisplayMode(devMode);
