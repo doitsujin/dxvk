@@ -7,6 +7,8 @@
 
 #include "../dxvk/dxvk_adapter.h"
 
+#include "../wsi/wsi_monitor.h"
+
 namespace dxvk {
 
   class D3D9InterfaceEx;
@@ -101,6 +103,26 @@ namespace dxvk {
     bool IsD3D8Compatible() const;
 
   private:
+
+    // used as a global filter when mode count compatibility is enabled
+    inline bool IsCountCompatibleMode(const wsi::WsiMode& wsiMode) {
+      if (wsiMode.refreshRate.numerator / wsiMode.refreshRate.denominator != 60)
+        return false;
+
+      return (wsiMode.width == 640  && wsiMode.height == 480)
+          || (wsiMode.width == 800  && wsiMode.height == 600)
+          || (wsiMode.width == 1024 && wsiMode.height == 768)
+          || (wsiMode.width == 1280 && wsiMode.height == 1024)
+          || (wsiMode.width == 1280 && wsiMode.height == 720)
+          || (wsiMode.width == 1920 && wsiMode.height == 1080);
+    }
+
+    inline bool IsEquivalentMode(const wsi::WsiMode& wsiModeA, const wsi::WsiMode& wsiModeB) {
+      return wsiModeA.width  == wsiModeB.width  &&
+             wsiModeA.height == wsiModeB.height &&
+             (wsiModeA.refreshRate.numerator / wsiModeA.refreshRate.denominator ==
+              wsiModeB.refreshRate.numerator / wsiModeB.refreshRate.denominator);
+    }
 
     HRESULT CheckDeviceVkFormat(
           VkFormat        Format,
