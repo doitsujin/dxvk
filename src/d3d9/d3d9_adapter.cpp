@@ -10,8 +10,6 @@
 #include "../util/util_ratio.h"
 #include "../util/util_string.h"
 
-#include "../wsi/wsi_monitor.h"
-
 #include <cfloat>
 
 namespace dxvk {
@@ -134,7 +132,7 @@ namespace dxvk {
     const bool volumeTexture = RType == D3DRTYPE_VOLUMETEXTURE;
 
     const bool twoDimensional = surface || texture;
-    
+
     const bool isDepthStencilFormat = IsDepthStencilFormat(CheckFormat);
     const bool isLockableDepthStencilFormat = IsLockableDepthStencilFormat(CheckFormat);
 
@@ -894,8 +892,9 @@ namespace dxvk {
 
     // If no modes are returned based on the previous filtered
     // search, then fall back to an unfiltered search.
-    if (unlikely((!options.forceAspectRatio.empty() || options.forceRefreshRate) &&
-                 !m_modes.size())) {
+    if (unlikely((!options.forceAspectRatio.empty()
+                || options.forceRefreshRate
+                || options.modeCountCompatibility) && !m_modes.size())) {
       Logger::warn("D3D9Adapter::CacheModes: No modes were found. Discarding filters.");
       FilterModesByFormat(Format, false);
     }
@@ -923,6 +922,25 @@ namespace dxvk {
 
     const auto forcedRatio = Ratio<DWORD>(options.forceAspectRatio);
 
+    wsi::WsiMode currentMode = { };
+    wsi::WsiMode currentCompatibleMode = { };
+
+    if (options.modeCountCompatibility) {
+      wsi::getDesktopDisplayMode(wsi::getDefaultMonitor(), &currentMode);
+
+      if (likely(currentMode.width)) {
+        // Skip checking the compabilitiy refresh rate (60 Hz),
+        // if that's equal to the current desktop refresh rate.
+        if (currentMode.refreshRate.numerator / currentMode.refreshRate.denominator != 60) {
+          currentCompatibleMode = currentMode;
+          currentCompatibleMode.refreshRate.numerator = 60;
+          currentCompatibleMode.refreshRate.denominator = 1;
+        }
+      } else {
+        Logger::err("D3D9Adapter::CacheModes: Failed to determine desktop display mode");
+      }
+    }
+
     // Walk over all modes that the display supports and
     // return those that match the requested format etc.
     wsi::WsiMode devMode = { };
@@ -938,14 +956,21 @@ namespace dxvk {
       if (devMode.bitsPerPixel != GetMonitorFormatBpp(Format))
         continue;
 
-      if (ApplyOptionsFilters &&
-          !forcedRatio.undefined() &&
+      if (!forcedRatio.undefined() &&
+          ApplyOptionsFilters &&
           Ratio<DWORD>(devMode.width, devMode.height) != forcedRatio)
         continue;
 
-      if (ApplyOptionsFilters &&
-          options.forceRefreshRate &&
+      if (options.forceRefreshRate &&
+          ApplyOptionsFilters &&
           devMode.refreshRate.numerator / devMode.refreshRate.denominator != options.forceRefreshRate)
+        continue;
+
+      if (options.modeCountCompatibility &&
+          ApplyOptionsFilters &&
+          !IsEquivalentMode(devMode, currentMode) &&
+          (!currentCompatibleMode.width || !IsEquivalentMode(devMode, currentCompatibleMode)) &&
+          !IsCountCompatibleMode(devMode))
         continue;
 
       D3DDISPLAYMODEEX mode = ConvertDisplayMode(devMode);
