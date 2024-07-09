@@ -976,11 +976,11 @@ namespace dxvk {
     Com<d3d9::IDirect3DStateBlock9> pStateBlock9;
     HRESULT res = GetD3D9()->CreateStateBlock(d3d9::D3DSTATEBLOCKTYPE(Type), &pStateBlock9);
 
+    m_token++;
     m_stateBlocks.emplace(std::piecewise_construct,
                           std::forward_as_tuple(m_token),
                           std::forward_as_tuple(this, Type, pStateBlock9.ref()));
     *pToken = m_token;
-    m_token++;
 
     return res;
   }
@@ -1023,6 +1023,12 @@ namespace dxvk {
 
     m_stateBlocks.erase(stateBlockIter);
 
+    // native apparently does drop the token counter in
+    // situations where the token being removed is the
+    // last allocated token, which allows some reuse
+    if (m_token == Token)
+      m_token--;
+
     return D3D_OK;
   }
 
@@ -1030,12 +1036,12 @@ namespace dxvk {
     if (unlikely(m_recorder != nullptr))
       return D3DERR_INVALIDCALL;
 
+    m_token++;
     auto stateBlockIterPair = m_stateBlocks.emplace(std::piecewise_construct,
                                                     std::forward_as_tuple(m_token),
                                                     std::forward_as_tuple(this));
     m_recorder = &stateBlockIterPair.first->second;
     m_recorderToken = m_token;
-    m_token++;
 
     return GetD3D9()->BeginStateBlock();
   }
@@ -1052,7 +1058,7 @@ namespace dxvk {
     *pToken = m_recorderToken;
 
     m_recorder = nullptr;
-    m_recorderToken = -1;
+    m_recorderToken = 0;
 
     return res;
   }
