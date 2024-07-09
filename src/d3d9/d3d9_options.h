@@ -103,6 +103,9 @@ namespace dxvk {
     /// Forced aspect ratio, disable other modes
     std::string forceAspectRatio;
 
+    /// Restrict modes based on height
+    std::string forceModeHeights;
+
     /// Enable dialog mode (ie. no exclusive fullscreen)
     bool enableDialogMode;
 
