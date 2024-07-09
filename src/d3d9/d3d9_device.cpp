@@ -1245,6 +1245,7 @@ namespace dxvk {
     bool stretch = srcCopyExtent != dstCopyExtent;
 
     bool dstHasRTUsage = (dstTextureInfo->Desc()->Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)) != 0;
+    bool dstIsSurface = dstTextureInfo->GetType() == D3DRTYPE_SURFACE;
     if (stretch) {
       if (unlikely(pSourceSurface == pDestSurface))
         return D3DERR_INVALIDCALL;
@@ -1252,12 +1253,13 @@ namespace dxvk {
       if (unlikely(dstIsDepth))
         return D3DERR_INVALIDCALL;
 
-      // Stretching is only allowed if the destination is either a render target surface or a render target texture
-      if (unlikely(!dstHasRTUsage))
+      // The docs say that stretching is only allowed if the destination is either a render target surface or a render target texture.
+      // However in practice, using an offscreen plain surface in D3DPOOL_DEFAULT as the destination works fine.
+      // Using a texture without USAGE_RENDERTARGET as destination however does not.
+      if (unlikely(!dstIsSurface && !dstHasRTUsage))
         return D3DERR_INVALIDCALL;
     } else {
       bool srcIsSurface = srcTextureInfo->GetType() == D3DRTYPE_SURFACE;
-      bool dstIsSurface = dstTextureInfo->GetType() == D3DRTYPE_SURFACE;
       bool srcHasRTUsage = (srcTextureInfo->Desc()->Usage & (D3DUSAGE_RENDERTARGET | D3DUSAGE_DEPTHSTENCIL)) != 0;
       // Non-stretching copies are only allowed if:
       // - the destination is either a render target surface or a render target texture
