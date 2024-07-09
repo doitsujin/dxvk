@@ -47,12 +47,27 @@ namespace dxvk {
     m_displayIndex    (DisplayIndex),
     m_modeCacheFormat (D3D9Format::Unknown) {
     CacheIdentifierInfo();
+
+    auto& options = m_parent->GetOptions();
+
     // D3D9VkFormatTable needs to be constructed after we've cached the
     // identifier info and determined the proper vendorID to be used.
-    m_d3d9Formats = std::make_unique<D3D9VkFormatTable>(this, Adapter, m_parent->GetOptions());
+    m_d3d9Formats = std::make_unique<D3D9VkFormatTable>(this, Adapter, options);
 
     if (p9On12Args)
       m_9On12Args = *p9On12Args;
+
+    // forced mode heights caching
+    if (unlikely(!options.forceModeHeights.empty())) {
+      uint32_t forcedHeight;
+
+      for (auto height : str::split(options.forceModeHeights, ",")) {
+        forcedHeight = 0u;
+        std::from_chars(height.data(), height.data() + height.size(), forcedHeight);
+        if (likely(forcedHeight))
+          m_forcedModeHeights.emplace_back(forcedHeight);
+      }
+    }
   }
 
 
@@ -894,8 +909,9 @@ namespace dxvk {
 
     // If no modes are returned based on the previous filtered
     // search, then fall back to an unfiltered search.
-    if (unlikely((!options.forceAspectRatio.empty() || options.forceRefreshRate) &&
-                 !m_modes.size())) {
+    if (unlikely((!options.forceAspectRatio.empty()
+               ||  options.forceRefreshRate
+               || !m_forcedModeHeights.empty()) && !m_modes.size())) {
       Logger::warn("D3D9Adapter::CacheModes: No modes were found. Discarding filters.");
       FilterModesByFormat(Format, false);
     }
@@ -938,14 +954,21 @@ namespace dxvk {
       if (devMode.bitsPerPixel != GetMonitorFormatBpp(Format))
         continue;
 
-      if (ApplyOptionsFilters &&
-          !forcedRatio.undefined() &&
+      if (!forcedRatio.undefined() &&
+          ApplyOptionsFilters &&
           Ratio<DWORD>(devMode.width, devMode.height) != forcedRatio)
         continue;
 
-      if (ApplyOptionsFilters &&
-          options.forceRefreshRate &&
+      if (options.forceRefreshRate &&
+          ApplyOptionsFilters &&
           devMode.refreshRate.numerator / devMode.refreshRate.denominator != options.forceRefreshRate)
+        continue;
+
+      if (!m_forcedModeHeights.empty() &&
+          ApplyOptionsFilters &&
+          std::find(m_forcedModeHeights.begin(),
+                    m_forcedModeHeights.end(),
+                    devMode.height) == m_forcedModeHeights.end())
         continue;
 
       D3DDISPLAYMODEEX mode = ConvertDisplayMode(devMode);
