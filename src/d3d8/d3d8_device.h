@@ -417,7 +417,7 @@ namespace dxvk {
     D3DPRESENT_PARAMETERS m_presentParams;
 
     D3D8StateBlock*                            m_recorder = nullptr;
-    DWORD                                      m_recorderToken = -1;
+    DWORD                                      m_recorderToken = 0;
     DWORD                                      m_token    = 0;
     std::unordered_map<DWORD, D3D8StateBlock>  m_stateBlocks;
     D3D8Batcher*                               m_batcher  = nullptr;
