@@ -1129,6 +1129,10 @@ namespace dxvk {
     { R"(\\Art of Murder - FBI Confidential\\game\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",       "True" },
     }} },
+    /* Max Payne 1 - Stalls waiting for an index buffer */
+    { R"(\\MaxPayne\.exe$)", {{
+      { "d3d9.allowDirectBufferMapping",    "False" },
+    }} },
   }};
 
 
