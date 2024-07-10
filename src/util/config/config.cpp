@@ -1122,6 +1122,10 @@ namespace dxvk {
     { R"(\\(nations|patriots)\.exe$)", {{
       { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
+    /* Max Payne 1 - Stalls waiting for an index buffer */
+    { R"(\\MaxPayne\.exe$)", {{
+      { "d3d9.allowDirectBufferMapping",    "False" },
+    }} },
   }};
 
 
