@@ -118,6 +118,7 @@ namespace dxvk {
 
   HRESULT D3D9CommonTexture::NormalizeTextureProperties(
           D3D9DeviceEx*             pDevice,
+          D3DRESOURCETYPE           ResourceType,
           D3D9_COMMON_TEXTURE_DESC* pDesc) {
     auto* options = pDevice->GetOptions();
 
@@ -129,6 +130,11 @@ namespace dxvk {
     if (pDesc->Format == D3D9Format::A8       &&
        (pDesc->Usage & D3DUSAGE_RENDERTARGET) &&
         options->disableA8RT)
+      return D3DERR_INVALIDCALL;
+
+    // Cube textures with depth formats are not supported on any native
+    // driver, and allowing them triggers a broken code path in Gothic 3.
+    if (ResourceType == D3DRTYPE_CUBETEXTURE && mapping.Aspect != VK_IMAGE_ASPECT_COLOR_BIT)
       return D3DERR_INVALIDCALL;
 
     // If the mapping is invalid then lets return invalid

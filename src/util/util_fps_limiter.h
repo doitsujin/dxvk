@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include "thread.h"
 #include "util_time.h"
 
@@ -34,17 +36,8 @@ namespace dxvk {
      * Blocks the calling thread if the limiter is enabled
      * and the time since the last call to \ref delay is
      * shorter than the target interval.
-     * \param [in] vsyncEnabled \c true if vsync is enabled
      */
-    void delay(bool vsyncEnabled);
-
-    /**
-     * \brief Checks whether the frame rate limiter is enabled
-     * \returns \c true if the target frame rate is non-zero.
-     */
-    bool isEnabled() const {
-      return m_targetInterval != TimerDuration::zero();
-    }
+    void delay();
 
   private:
 
@@ -54,13 +47,15 @@ namespace dxvk {
     dxvk::mutex     m_mutex;
 
     TimerDuration   m_targetInterval  = TimerDuration::zero();
-    TimerDuration   m_deviation       = TimerDuration::zero();
-    TimePoint       m_lastFrame;
+    TimePoint       m_nextFrame       = TimePoint();
 
-    bool            m_initialized     = false;
     bool            m_envOverride     = false;
 
-    void initialize();
+    uint32_t                  m_heuristicFrameCount = 0;
+    std::array<TimePoint, 16> m_heuristicFrameTimes = { };
+    bool                      m_heuristicEnable = false;
+
+    bool testRefreshHeuristic(TimerDuration interval, TimePoint now);
 
   };
 

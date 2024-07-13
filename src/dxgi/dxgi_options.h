@@ -49,8 +49,8 @@ namespace dxvk {
     /// Enable HDR
     bool enableHDR;
 
-    /// Use monitor fallback to enumerating all monitors per output
-    bool useMonitorFallback;
+    /// Limit frame rate
+    int32_t maxFrameRate;
 
     /// Sync interval. Overrides the value
     /// passed to IDXGISwapChain::Present.

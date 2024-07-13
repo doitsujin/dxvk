@@ -1,5 +1,6 @@
-project('dxvk', ['c', 'cpp'], version : 'v2.3.1', meson_version : '>= 0.58', default_options : [ 'cpp_std=c++17', 'warning_level=2' ])
+project('dxvk', ['c', 'cpp'], version : 'v2.4.0', meson_version : '>= 0.58', default_options : [ 'cpp_std=c++17', 'warning_level=2' ])
 
+pkg = import('pkgconfig')
 cpu_family = target_machine.cpu_family()
 platform   = target_machine.system()
 fs = import('fs')
@@ -54,6 +55,8 @@ dep_displayinfo = dependency(
 )
 
 if platform == 'windows'
+  dxvk_so_version = {'name_prefix': ''}
+
   compiler_args += [
     '-DNOMINMAX',
     '-D_WIN32_WINNT=0xa00',
@@ -115,10 +118,21 @@ if platform == 'windows'
     )
   endif
 
-  dxvk_wsi = 'win32'
   dxvk_name_prefix = ''
   compiler_args += ['-DDXVK_WSI_WIN32']
 else
+  dxvk_abi_version = '0'
+  dxvk_version_raw = meson.project_version().strip('v').split('.')
+  dxvk_version = [ dxvk_version_raw[0] ]
+  foreach i : [ 1, 2 ]
+    padded = dxvk_version_raw[i]
+    if padded.to_int() < 10
+      padded = '0' + padded
+    endif
+    dxvk_version += [ padded ]
+  endforeach
+  dxvk_so_version = {'version': dxvk_abi_version + '.' + dxvk_version[0] + dxvk_version[1] + dxvk_version[2]}
+
   wrc           = find_program('touch')
   wrc_generator = generator(wrc, output : [ '@BASENAME@_ignored.h' ], arguments : [ '@OUTPUT@' ] )
 
@@ -128,17 +142,20 @@ else
     './include/native/directx'
   ]
 
-  dxvk_wsi = get_option('dxvk_native_wsi')
-  
-  if dxvk_wsi == 'sdl2'
-    lib_sdl2 = cpp.find_library('SDL2')
+  lib_sdl2 = dependency('SDL2', required: false)
+  lib_glfw = dependency('glfw', required: false)
+  if lib_sdl2.found()
     compiler_args += ['-DDXVK_WSI_SDL2']
-  elif dxvk_wsi == 'glfw'
-    lib_glfw = cpp.find_library('glfw')
+  endif
+  if lib_glfw.found()
     compiler_args += ['-DDXVK_WSI_GLFW']
   endif
+  if (not lib_sdl2.found() and not lib_glfw.found())
+    error('SDL2 or GLFW are required to build dxvk-native')
+  endif
   
-  dxvk_name_prefix = 'libdxvk_'
+  dxvk_name_prefix = 'dxvk_'
+  dxvk_pkg_prefix = 'dxvk-'
 
   link_args += [
     '-static-libgcc',
@@ -154,13 +171,12 @@ add_project_link_arguments(cpp.get_supported_link_arguments(link_args), language
 add_project_link_arguments(cc.get_supported_link_arguments(link_args), language: 'c')
 
 exe_ext = ''
-dll_ext = ''
 def_spec_ext = '.def'
 
 glsl_compiler = find_program('glslang', 'glslangValidator')
 glsl_args = [
   '--quiet',
-  '--target-env', 'vulkan1.2',
+  '--target-env', 'vulkan1.3',
   '--vn', '@BASENAME@',
   '--depfile', '@DEPFILE@',
   '@INPUT@',
@@ -178,5 +194,9 @@ dxvk_version = vcs_tag(
   input:  'version.h.in',
   output: 'version.h',
 )
+
+if platform != 'windows'
+  subdir('include/native')
+endif
 
 subdir('src')

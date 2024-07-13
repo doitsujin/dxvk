@@ -124,13 +124,10 @@ namespace dxvk {
       }
     }
 
-
     // If any monitors are left on the list, enable the
     // fallback to always enumerate all monitors.
     if ((m_monitorFallback = !monitors.empty()))
       Logger::warn("DXGI: Found monitors not associated with any adapter, using fallback");
-    else
-      m_monitorFallback = m_options.useMonitorFallback;
   }
   
   
@@ -233,7 +230,7 @@ namespace dxvk {
     descFs.Windowed         = pDesc->Windowed;
     
     IDXGISwapChain1* swapChain = nullptr;
-    HRESULT hr = CreateSwapChainForHwnd(
+    HRESULT hr = CreateSwapChainForHwndBase(
       pDevice, pDesc->OutputWindow,
       &desc, &descFs, nullptr,
       &swapChain);
@@ -244,6 +241,19 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiFactory::CreateSwapChainForHwnd(
+          IUnknown*             pDevice,
+          HWND                  hWnd,
+    const DXGI_SWAP_CHAIN_DESC1* pDesc,
+    const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc,
+          IDXGIOutput*          pRestrictToOutput,
+          IDXGISwapChain1**     ppSwapChain) {
+    return CreateSwapChainForHwndBase(
+      pDevice, hWnd,
+      pDesc, pFullscreenDesc, pRestrictToOutput,
+      ppSwapChain);
+  }
+
+  HRESULT STDMETHODCALLTYPE DxgiFactory::CreateSwapChainForHwndBase(
           IUnknown*             pDevice,
           HWND                  hWnd,
     const DXGI_SWAP_CHAIN_DESC1* pDesc,

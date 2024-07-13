@@ -172,6 +172,9 @@ namespace dxvk {
 
     m_lastDialog = m_dialog;
 
+    if (m_window == nullptr)
+      return D3D_OK;
+
 #ifdef _WIN32
     const bool useGDIFallback = m_partialCopy && !HasFrontBuffer();
     if (useGDIFallback)
@@ -191,6 +194,7 @@ namespace dxvk {
       if (!m_wctx->presenter->hasSwapChain())
         return D3D_OK;
 
+      UpdateTargetFrameRate(presentInterval);
       PresentImage(presentInterval);
       return D3D_OK;
     } catch (const DxvkError& e) {
@@ -927,7 +931,6 @@ namespace dxvk {
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
     m_wctx->presenter = new Presenter(m_device, m_wctx->frameLatencySignal, presenterDesc);
-    m_wctx->presenter->setFrameRateLimit(m_parent->GetOptions()->maxFrameRate);
   }
 
 
@@ -994,6 +997,9 @@ namespace dxvk {
 
 
   void D3D9SwapChainEx::UpdateWindowCtx() {
+    if (m_window == nullptr)
+      return;
+
     if (!m_presenters.count(m_window)) {
       auto res = m_presenters.emplace(
         std::piecewise_construct,
@@ -1104,6 +1110,17 @@ namespace dxvk {
       m_ramp.green[i] = identity;
       m_ramp.blue[i]  = identity;
     }
+  }
+
+
+  void D3D9SwapChainEx::UpdateTargetFrameRate(uint32_t SyncInterval) {
+    double frameRateOption = double(m_parent->GetOptions()->maxFrameRate);
+    double frameRate = std::max(frameRateOption, 0.0);
+
+    if (SyncInterval && frameRateOption == 0.0)
+      frameRate = -m_displayRefreshRate / double(SyncInterval);
+
+    m_wctx->presenter->setFrameRateLimit(frameRate);
   }
 
 
@@ -1323,10 +1340,10 @@ namespace dxvk {
     || dstRect.right  - dstRect.left != LONG(width)
     || dstRect.bottom - dstRect.top  != LONG(height);
 
-    bool recreate =
-       m_wctx->presenter == nullptr
-    || m_wctx->presenter->info().imageExtent.width  != width
-    || m_wctx->presenter->info().imageExtent.height != height;
+    bool recreate = m_wctx != nullptr
+      && (m_wctx->presenter == nullptr
+      || m_wctx->presenter->info().imageExtent.width  != width
+      || m_wctx->presenter->info().imageExtent.height != height);
 
     m_swapchainExtent = { width, height };
     m_dstRect = dstRect;

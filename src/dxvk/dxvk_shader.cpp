@@ -59,8 +59,8 @@ namespace dxvk {
 
     if (info.pushConstSize) {
       VkPushConstantRange pushConst;
-      pushConst.stageFlags = info.stage;
-      pushConst.offset = info.pushConstOffset;
+      pushConst.stageFlags = info.pushConstStages;
+      pushConst.offset = 0;
       pushConst.size = info.pushConstSize;
 
       m_bindings.addPushConstantRange(pushConst);
@@ -75,6 +75,8 @@ namespace dxvk {
 
     // Run an analysis pass over the SPIR-V code to gather some
     // info that we may need during pipeline compilation.
+    bool usesPushConstants = false;
+
     std::vector<BindingOffsets> bindingOffsets;
     std::vector<uint32_t> varIds;
     std::vector<uint32_t> sampleMaskIds;
@@ -154,6 +156,9 @@ namespace dxvk {
           if (std::find(sampleMaskIds.begin(), sampleMaskIds.end(), ins.arg(2)) != sampleMaskIds.end())
             m_flags.set(DxvkShaderFlag::ExportsSampleMask);
         }
+
+        if (ins.arg(3) == spv::StorageClassPushConstant)
+          usesPushConstants = true;
       }
 
       // Ignore the actual shader code, there's nothing interesting for us in there.
@@ -168,6 +173,11 @@ namespace dxvk {
       if (info.bindingOffset)
         m_bindingOffsets.push_back(info);
     }
+
+    // Set flag for stages that actually use push constants
+    // so that they can be trimmed for optimized pipelines.
+    if (usesPushConstants)
+      m_bindings.addPushConstantStage(info.stage);
 
     // Don't set pipeline library flag if the shader
     // doesn't actually support pipeline libraries
@@ -1012,7 +1022,7 @@ namespace dxvk {
 
 
   DxvkShaderPipelineLibrary::~DxvkShaderPipelineLibrary() {
-    this->destroyShaderPipelinesLocked();
+    this->destroyShaderPipelineLocked();
   }
 
 
@@ -1032,22 +1042,17 @@ namespace dxvk {
   }
 
 
-  VkPipeline DxvkShaderPipelineLibrary::acquirePipelineHandle(
-    const DxvkShaderPipelineLibraryCompileArgs& args) {
+  DxvkShaderPipelineLibraryHandle DxvkShaderPipelineLibrary::acquirePipelineHandle() {
     std::lock_guard lock(m_mutex);
 
     if (m_device->mustTrackPipelineLifetime())
       m_useCount += 1;
 
-    VkPipeline& pipeline = (m_shaders.vs && !args.depthClipEnable)
-      ? m_pipelineNoDepthClip
-      : m_pipeline;
+    if (m_pipeline.handle)
+      return m_pipeline;
 
-    if (pipeline)
-      return pipeline;
-
-    pipeline = compileShaderPipelineLocked(args);
-    return pipeline;
+    m_pipeline = compileShaderPipelineLocked();
+    return m_pipeline;
   }
 
 
@@ -1056,7 +1061,7 @@ namespace dxvk {
       std::lock_guard lock(m_mutex);
 
       if (!(--m_useCount))
-        this->destroyShaderPipelinesLocked();
+        this->destroyShaderPipelineLocked();
     }
   }
 
@@ -1069,17 +1074,16 @@ namespace dxvk {
       return;
 
     // Compile the pipeline with default args
-    VkPipeline pipeline = compileShaderPipelineLocked(
-      DxvkShaderPipelineLibraryCompileArgs());
+    DxvkShaderPipelineLibraryHandle pipeline = compileShaderPipelineLocked();
 
     // On 32-bit, destroy the pipeline immediately in order to
     // save memory. We should hit the driver's disk cache once
     // we need to recreate the pipeline.
     if (m_device->mustTrackPipelineLifetime()) {
       auto vk = m_device->vkd();
-      vk->vkDestroyPipeline(vk->device(), pipeline, nullptr);
+      vk->vkDestroyPipeline(vk->device(), pipeline.handle, nullptr);
 
-      pipeline = VK_NULL_HANDLE;
+      pipeline.handle = VK_NULL_HANDLE;
     }
 
     // Write back pipeline handle for future use
@@ -1087,37 +1091,32 @@ namespace dxvk {
   }
 
 
-  void DxvkShaderPipelineLibrary::destroyShaderPipelinesLocked() {
+  void DxvkShaderPipelineLibrary::destroyShaderPipelineLocked() {
     auto vk = m_device->vkd();
 
-    vk->vkDestroyPipeline(vk->device(), m_pipeline, nullptr);
-    vk->vkDestroyPipeline(vk->device(), m_pipelineNoDepthClip, nullptr);
+    vk->vkDestroyPipeline(vk->device(), m_pipeline.handle, nullptr);
 
-    m_pipeline = VK_NULL_HANDLE;
-    m_pipelineNoDepthClip = VK_NULL_HANDLE;
+    m_pipeline.handle = VK_NULL_HANDLE;
   }
 
 
-  VkPipeline DxvkShaderPipelineLibrary::compileShaderPipelineLocked(
-    const DxvkShaderPipelineLibraryCompileArgs& args) {
+  DxvkShaderPipelineLibraryHandle DxvkShaderPipelineLibrary::compileShaderPipelineLocked() {
     this->notifyLibraryCompile();
 
     // If this is not the first time we're compiling the pipeline,
     // try to get a cache hit using the shader module identifier
     // so that we don't have to decompress our SPIR-V shader again.
-    VkPipeline pipeline = VK_NULL_HANDLE;
+    DxvkShaderPipelineLibraryHandle pipeline = { VK_NULL_HANDLE, 0 };
 
-    if (m_compiledOnce && canUsePipelineCacheControl()) {
-      pipeline = this->compileShaderPipeline(args,
-        VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT);
-    }
+    if (m_compiledOnce && canUsePipelineCacheControl())
+      pipeline = this->compileShaderPipeline(VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT);
 
-    if (!pipeline)
-      pipeline = this->compileShaderPipeline(args, 0);
+    if (!pipeline.handle)
+      pipeline = this->compileShaderPipeline(0);
 
     // Well that didn't work
-    if (!pipeline)
-      return VK_NULL_HANDLE;
+    if (!pipeline.handle)
+      return { VK_NULL_HANDLE, 0 };
 
     // Increment stat counter the first time this
     // shader pipeline gets compiled successfully
@@ -1134,8 +1133,7 @@ namespace dxvk {
   }
 
 
-  VkPipeline DxvkShaderPipelineLibrary::compileShaderPipeline(
-    const DxvkShaderPipelineLibraryCompileArgs& args,
+  DxvkShaderPipelineLibraryHandle DxvkShaderPipelineLibrary::compileShaderPipeline(
           VkPipelineCreateFlags                 flags) {
     DxvkShaderStageInfo stageInfo(m_device);
     VkShaderStageFlags stageMask = getShaderStages();
@@ -1151,7 +1149,7 @@ namespace dxvk {
           // Fail if we have no idenfitier for whatever reason, caller
           // should fall back to the slow path if this happens
           if (!identifier->identifierSize)
-            return VK_NULL_HANDLE;
+            return { VK_NULL_HANDLE, 0 };
 
           stageInfo.addStage(stage, *identifier, nullptr);
         } else {
@@ -1168,22 +1166,21 @@ namespace dxvk {
       }
     }
 
+    VkPipeline pipeline = VK_NULL_HANDLE;
+
     if (stageMask & VK_SHADER_STAGE_VERTEX_BIT)
-      return compileVertexShaderPipeline(args, stageInfo, flags);
-
-    if (stageMask & VK_SHADER_STAGE_FRAGMENT_BIT)
-      return compileFragmentShaderPipeline(stageInfo, flags);
-
-    if (stageMask & VK_SHADER_STAGE_COMPUTE_BIT)
-      return compileComputeShaderPipeline(stageInfo, flags);
+      pipeline = compileVertexShaderPipeline(stageInfo, flags);
+    else if (stageMask & VK_SHADER_STAGE_FRAGMENT_BIT)
+      pipeline = compileFragmentShaderPipeline(stageInfo, flags);
+    else if (stageMask & VK_SHADER_STAGE_COMPUTE_BIT)
+      pipeline = compileComputeShaderPipeline(stageInfo, flags);
 
     // Should be unreachable
-    return VK_NULL_HANDLE;
+    return { pipeline, flags };
   }
 
 
   VkPipeline DxvkShaderPipelineLibrary::compileVertexShaderPipeline(
-    const DxvkShaderPipelineLibraryCompileArgs& args,
     const DxvkShaderStageInfo&          stageInfo,
           VkPipelineCreateFlags         flags) {
     auto vk = m_device->vkd();
@@ -1230,10 +1227,10 @@ namespace dxvk {
       // Only use the fixed depth clip state if we can't make it dynamic
       if (!m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable) {
         rsDepthClipInfo.pNext = std::exchange(rsInfo.pNext, &rsDepthClipInfo);
-        rsDepthClipInfo.depthClipEnable = args.depthClipEnable;
+        rsDepthClipInfo.depthClipEnable = VK_TRUE;
       }
     } else {
-      rsInfo.depthClampEnable = !args.depthClipEnable;
+      rsInfo.depthClampEnable = VK_FALSE;
     }
 
     // Only the view mask is used as input, and since we do not use MultiView, it is always 0
@@ -1256,7 +1253,7 @@ namespace dxvk {
     VkPipeline pipeline = VK_NULL_HANDLE;
     VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
 
-    if (vr && !(flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT))
+    if (vr && vr != VK_PIPELINE_COMPILE_REQUIRED_EXT)
       Logger::err(str::format("DxvkShaderPipelineLibrary: Failed to create vertex shader pipeline: ", vr));
 
     return vr ? VK_NULL_HANDLE : pipeline;
@@ -1367,7 +1364,7 @@ namespace dxvk {
     VkPipeline pipeline = VK_NULL_HANDLE;
     VkResult vr = vk->vkCreateComputePipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
 
-    if (vr && !(flags & VK_PIPELINE_CREATE_FAIL_ON_PIPELINE_COMPILE_REQUIRED_BIT))
+    if (vr && vr != VK_PIPELINE_COMPILE_REQUIRED_EXT)
       Logger::err(str::format("DxvkShaderPipelineLibrary: Failed to create compute shader pipeline: ", vr));
 
     return vr ? VK_NULL_HANDLE : pipeline;

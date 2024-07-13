@@ -17,9 +17,6 @@ namespace dxvk {
 
     useDepthClipWorkaround
       = !devFeatures.extDepthClipEnable.depthClipEnable;
-    useSubgroupOpsForAtomicCounters
-      = (devInfo.vk11.subgroupSupportedStages     & VK_SHADER_STAGE_COMPUTE_BIT)
-     && (devInfo.vk11.subgroupSupportedOperations & VK_SUBGROUP_FEATURE_BALLOT_BIT);
 
     VkFormatFeatureFlags2 r32Features
       = device->getFormatFeatures(VK_FORMAT_R32_SFLOAT).optimal
@@ -41,6 +38,7 @@ namespace dxvk {
     disableMsaa              = options.disableMsaa;
     forceSampleRateShading   = options.forceSampleRateShading;
     enableSampleShadingInterlock = device->features().extFragmentShaderInterlock.fragmentShaderSampleInterlock;
+    longMad                  = options.longMad;
 
     // Figure out float control flags to match D3D11 rules
     if (options.floatControls) {

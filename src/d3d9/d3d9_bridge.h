@@ -3,8 +3,6 @@
 #include <windows.h>
 #include "../util/config/config.h"
 
-#include "../vulkan/vulkan_loader.h"
-
 /**
  * The D3D9 bridge allows D3D8 to access DXVK internals.
  * For Vulkan interop without needing DXVK internals, see d3d9_interop.h.
@@ -111,7 +109,7 @@ namespace dxvk {
             void** ppvObject);
 
     const Config* GetConfig() const;
-    
+
   protected:
     D3D9InterfaceEx* m_interface;
   };

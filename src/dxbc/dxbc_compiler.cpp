@@ -257,13 +257,12 @@ namespace dxvk {
     info.outputMask = m_outputMask;
     info.uniformSize = m_immConstData.size();
     info.uniformData = m_immConstData.data();
+    info.pushConstStages = VK_SHADER_STAGE_FRAGMENT_BIT;
+    info.pushConstSize = sizeof(DxbcPushConstants);
     info.outputTopology = m_outputTopology;
 
     if (m_programInfo.type() == DxbcProgramType::HullShader)
       info.patchVertexCount = m_hs.vertexCountIn;
-
-    if (m_programInfo.type() == DxbcProgramType::PixelShader && m_ps.pushConstantId)
-      info.pushConstSize = sizeof(DxbcPushConstants);
 
     if (m_moduleInfo.xfb) {
       info.xfbRasterizedStream = m_moduleInfo.xfb->rasterizedStream;
@@ -1624,8 +1623,13 @@ namespace dxvk {
       
       case DxbcOpcode::Mad:
       case DxbcOpcode::DFma:
-        dst.id = m_module.opFFma(typeId,
-          src.at(0).id, src.at(1).id, src.at(2).id);
+        if (likely(!m_moduleInfo.options.longMad)) {
+          dst.id = m_module.opFFma(typeId,
+            src.at(0).id, src.at(1).id, src.at(2).id);
+        } else {
+          dst.id = m_module.opFMul(typeId, src.at(0).id, src.at(1).id);
+          dst.id = m_module.opFAdd(typeId, dst.id, src.at(2).id);
+        }
         break;
       
       case DxbcOpcode::Max:
@@ -2464,58 +2468,6 @@ namespace dxvk {
     if (m_uavs.at(registerId).ctrId == 0)
       m_uavs.at(registerId).ctrId = emitDclUavCounter(registerId);
     
-    // Only use subgroup ops on compute to avoid having to
-    // deal with helper invocations or hardware limitations
-    bool useSubgroupOps = m_moduleInfo.options.useSubgroupOpsForAtomicCounters
-      && m_programInfo.type() == DxbcProgramType::ComputeShader;
-
-    // Current block ID used in a phi later on
-    uint32_t baseBlockId = m_module.getBlockId();
-
-    // In case we have subgroup ops enabled, we need to
-    // count the number of active lanes, the lane index,
-    // and we need to perform the atomic op conditionally
-    uint32_t laneCount = 0;
-    uint32_t laneIndex = 0;
-
-    DxbcConditional elect;
-
-    if (useSubgroupOps) {
-      m_module.enableCapability(spv::CapabilityGroupNonUniform);
-      m_module.enableCapability(spv::CapabilityGroupNonUniformBallot);
-
-      uint32_t ballot = m_module.opGroupNonUniformBallot(
-        getVectorTypeId({ DxbcScalarType::Uint32, 4 }),
-        m_module.constu32(spv::ScopeSubgroup),
-        m_module.constBool(true));
-      
-      laneCount = m_module.opGroupNonUniformBallotBitCount(
-        getScalarTypeId(DxbcScalarType::Uint32),
-        m_module.constu32(spv::ScopeSubgroup),
-        spv::GroupOperationReduce, ballot);
-      
-      laneIndex = m_module.opGroupNonUniformBallotBitCount(
-        getScalarTypeId(DxbcScalarType::Uint32),
-        m_module.constu32(spv::ScopeSubgroup),
-        spv::GroupOperationExclusiveScan, ballot);
-      
-      // Elect one lane to perform the atomic op
-      uint32_t election = m_module.opGroupNonUniformElect(
-        m_module.defBoolType(),
-        m_module.constu32(spv::ScopeSubgroup));
-
-      elect.labelIf  = m_module.allocateId();
-      elect.labelEnd = m_module.allocateId();
-
-      m_module.opSelectionMerge(elect.labelEnd, spv::SelectionControlMaskNone);
-      m_module.opBranchConditional(election, elect.labelIf, elect.labelEnd);
-      
-      m_module.opLabel(elect.labelIf);
-    } else {
-      // We're going to use this for the increment
-      laneCount = m_module.constu32(1);
-    }
-
     // Get a pointer to the atomic counter in question
     DxbcRegisterInfo ptrType;
     ptrType.type.ctype   = DxbcScalarType::Uint32;
@@ -2547,13 +2499,14 @@ namespace dxvk {
     switch (ins.op) {
       case DxbcOpcode::ImmAtomicAlloc:
         value.id = m_module.opAtomicIAdd(typeId, ptrId,
-          scopeId, semanticsId, laneCount);
+          scopeId, semanticsId, m_module.constu32(1));
         break;
         
       case DxbcOpcode::ImmAtomicConsume:
         value.id = m_module.opAtomicISub(typeId, ptrId,
-          scopeId, semanticsId, laneCount);
-        value.id = m_module.opISub(typeId, value.id, laneCount);
+          scopeId, semanticsId, m_module.constu32(1));
+        value.id = m_module.opISub(typeId, value.id,
+          m_module.constu32(1));
         break;
       
       default:
@@ -2563,26 +2516,6 @@ namespace dxvk {
         return;
     }
 
-    // If we're using subgroup ops, we have to broadcast
-    // the result of the atomic op and compute the index
-    if (useSubgroupOps) {
-      m_module.opBranch(elect.labelEnd);
-      m_module.opLabel (elect.labelEnd);
-
-      uint32_t undef = m_module.constUndef(typeId);
-
-      std::array<SpirvPhiLabel, 2> phiLabels = {{
-        { value.id, elect.labelIf },
-        { undef,    baseBlockId   },
-      }};
-
-      value.id = m_module.opPhi(typeId,
-        phiLabels.size(), phiLabels.data());
-      value.id = m_module.opGroupNonUniformBroadcastFirst(typeId,
-        m_module.constu32(spv::ScopeSubgroup), value.id);
-      value.id = m_module.opIAdd(typeId, value.id, laneIndex);
-    }
-    
     // Store the result
     emitRegisterStore(ins.dst[0], value);
   }
@@ -5584,12 +5517,12 @@ namespace dxvk {
     result.type.ctype  = DxbcScalarType::Uint32;
     result.type.ccount = 1;
     
-    if (info.image.sampled == 1) {
+    if (info.image.ms == 0 && info.image.sampled == 1) {
       result.id = m_module.opImageQueryLevels(
         getVectorTypeId(result.type),
         m_module.opLoad(info.typeId, info.varId));
     } else {
-      // Report one LOD in case of UAVs
+      // Report one LOD in case of UAVs or multisampled images
       result.id = m_module.constu32(1);
     }
 
@@ -7799,6 +7732,21 @@ namespace dxvk {
     return DxbcRegMask::firstN(getTexCoordDim(imageType));
   }
   
+
+  bool DxbcCompiler::ignoreInputSystemValue(DxbcSystemValue sv) const {
+    switch (sv) {
+      case DxbcSystemValue::Position:
+      case DxbcSystemValue::IsFrontFace:
+      case DxbcSystemValue::SampleIndex:
+      case DxbcSystemValue::PrimitiveId:
+      case DxbcSystemValue::Coverage:
+        return m_programInfo.type() == DxbcProgramType::PixelShader;
+
+      default:
+        return false;
+    }
+  }
+
   
   DxbcVectorType DxbcCompiler::getInputRegType(uint32_t regIdx) const {
     switch (m_programInfo.type()) {
@@ -7829,8 +7777,25 @@ namespace dxvk {
         result.ctype  = DxbcScalarType::Float32;
         result.ccount = 4;
 
-        if (m_isgn->findByRegister(regIdx))
-          result.ccount = m_isgn->regMask(regIdx).minComponents();
+        if (m_isgn == nullptr || !m_isgn->findByRegister(regIdx))
+          return result;
+
+        DxbcRegMask mask(0u);
+        DxbcRegMask used(0u);
+
+        for (const auto& e : *m_isgn) {
+          if (e.registerId == regIdx && !ignoreInputSystemValue(e.systemValue)) {
+            mask |= e.componentMask;
+            used |= e.componentUsed;
+          }
+        }
+
+        if (m_programInfo.type() == DxbcProgramType::PixelShader) {
+          if ((used.raw() & mask.raw()) == used.raw())
+            mask = used;
+        }
+
+        result.ccount = mask.minComponents();
         return result;
       }
     }

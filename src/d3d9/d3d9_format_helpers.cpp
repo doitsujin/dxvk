@@ -134,7 +134,7 @@ namespace dxvk {
     info.stage = VK_SHADER_STAGE_COMPUTE_BIT;
     info.bindingCount = bindings.size();
     info.bindings = bindings.data();
-    info.pushConstOffset = 0;
+    info.pushConstStages = VK_SHADER_STAGE_COMPUTE_BIT;
     info.pushConstSize = sizeof(VkExtent2D);
 
     return new DxvkShader(info, std::move(code));

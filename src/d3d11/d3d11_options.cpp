@@ -30,8 +30,9 @@ namespace dxvk {
     this->deferSurfaceCreation  = config.getOption<bool>("dxgi.deferSurfaceCreation", false);
     this->numBackBuffers        = config.getOption<int32_t>("dxgi.numBackBuffers", 0);
     this->maxFrameLatency       = config.getOption<int32_t>("dxgi.maxFrameLatency", 0);
-    this->maxFrameRate          = config.getOption<int32_t>("dxgi.maxFrameRate", 0);
     this->exposeDriverCommandLists = config.getOption<bool>("d3d11.exposeDriverCommandLists", true);
+    this->longMad               = config.getOption<bool>("d3d11.longMad", false);
+    this->reproducibleCommandStream = config.getOption<bool>("d3d11.reproducibleCommandStream", false);
 
     // Clamp LOD bias so that people don't abuse this in unintended ways
     this->samplerLodBias = dxvk::fclamp(this->samplerLodBias, -2.0f, 1.0f);

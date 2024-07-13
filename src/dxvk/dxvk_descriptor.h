@@ -80,7 +80,7 @@ namespace dxvk {
    * to be updated.
    */
   class DxvkDescriptorPool : public RcObject {
-
+    constexpr static uint32_t MaxDesiredPoolCount = 2;
   public:
 
     DxvkDescriptorPool(
@@ -154,8 +154,6 @@ namespace dxvk {
     uint32_t m_setsUsed       = 0;
 
     uint32_t m_prevSetsAllocated = 0;
-
-    uint32_t m_lowUsageFrames = 0;
 
     DxvkDescriptorSetMap* getSetMapCached(
       const DxvkBindingLayoutObjects*           layout);

@@ -1997,7 +1997,7 @@ namespace dxvk {
     depthOp.loadOpS       = VK_ATTACHMENT_LOAD_OP_LOAD;
     depthOp.loadLayout    = imageView->imageInfo().layout;
     depthOp.storeLayout   = imageView->imageInfo().layout;
-    
+
     if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT)
       colorOp.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
     else if (discardAspects & VK_IMAGE_ASPECT_COLOR_BIT)
@@ -2010,7 +2010,7 @@ namespace dxvk {
     
     if (clearAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
       depthOp.loadOpS = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    else if (discardAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
+    else if (discardAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
       depthOp.loadOpS = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
     if (attachmentIndex >= 0 && !m_state.om.framebufferInfo.isWritable(attachmentIndex, clearAspects | discardAspects)) {
@@ -2041,6 +2041,8 @@ namespace dxvk {
     }
     
     if (attachmentIndex < 0) {
+      bool hasViewFormatMismatch = imageView->info().format != imageView->imageInfo().format;
+
       if (m_execBarriers.isImageDirty(imageView->image(), imageView->imageSubresources(), DxvkAccess::Write))
         m_execBarriers.recordCommands(m_cmd);
 
@@ -2074,6 +2076,11 @@ namespace dxvk {
         clearAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
         attachmentInfo.loadOp = colorOp.loadOp;
+
+        // We can't use LOAD_OP_CLEAR if the view format does not match the
+        // underlying image format, so just discard here and use clear later.
+        if (hasViewFormatMismatch && attachmentInfo.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR)
+          attachmentInfo.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 
         renderingInfo.colorAttachmentCount = 1;
         renderingInfo.pColorAttachments = &attachmentInfo;
@@ -2110,6 +2117,20 @@ namespace dxvk {
       }
 
       m_cmd->cmdBeginRendering(&renderingInfo);
+
+      if (hasViewFormatMismatch) {
+        VkClearAttachment clearInfo = { };
+        clearInfo.aspectMask = imageView->info().aspect;
+        clearInfo.clearValue = clearValue;
+
+        VkClearRect clearRect = { };
+        clearRect.rect.extent.width = extent.width;
+        clearRect.rect.extent.height = extent.height;
+        clearRect.layerCount = imageView->info().numLayers;
+
+        m_cmd->cmdClearAttachments(1, &clearInfo, 1, &clearRect);
+      }
+
       m_cmd->cmdEndRendering();
 
       m_execBarriers.accessImage(
@@ -4741,8 +4762,10 @@ namespace dxvk {
     this->renderPassEmitPostBarriers(framebufferInfo, ops);
 
     uint32_t colorInfoCount = 0;
+    uint32_t lateClearCount = 0;
 
     std::array<VkRenderingAttachmentInfo, MaxNumRenderTargets> colorInfos;
+    std::array<VkClearAttachment, MaxNumRenderTargets> lateClears;
 
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       const auto& colorTarget = framebufferInfo.getColorTarget(i);
@@ -4754,8 +4777,20 @@ namespace dxvk {
         colorInfos[i].loadOp = ops.colorOps[i].loadOp;
         colorInfos[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 
-        if (ops.colorOps[i].loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR)
+        if (ops.colorOps[i].loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR) {
           colorInfos[i].clearValue.color = ops.colorOps[i].clearValue;
+
+          // We can't use LOAD_OP_CLEAR if the view format does not match the
+          // underlying image format, so just discard here and use clear later.
+          if (colorTarget.view->info().format != colorTarget.view->imageInfo().format) {
+            colorInfos[i].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+
+            auto& clear = lateClears[lateClearCount++];
+            clear.colorAttachment = i;
+            clear.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+            clear.clearValue.color = ops.colorOps[i].clearValue;
+          }
+        }
 
         colorInfoCount = i + 1;
       }
@@ -4804,6 +4839,15 @@ namespace dxvk {
 
     m_cmd->cmdBeginRendering(&renderingInfo);
     
+    if (lateClearCount) {
+      VkClearRect clearRect = { };
+      clearRect.rect.extent.width   = fbSize.width;
+      clearRect.rect.extent.height  = fbSize.height;
+      clearRect.layerCount          = fbSize.layers;
+
+      m_cmd->cmdClearAttachments(lateClearCount, lateClears.data(), 1, &clearRect);
+    }
+
     for (uint32_t i = 0; i < framebufferInfo.numAttachments(); i++) {
       m_cmd->trackResource<DxvkAccess::None> (framebufferInfo.getAttachment(i).view);
       m_cmd->trackResource<DxvkAccess::Write>(framebufferInfo.getAttachment(i).view->image());
@@ -4940,7 +4984,7 @@ namespace dxvk {
     // Mark compute resources and push constants as dirty
     m_descriptorState.dirtyStages(VK_SHADER_STAGE_COMPUTE_BIT);
 
-    if (newPipeline->getBindings()->layout().getPushConstantRange().size)
+    if (newPipeline->getBindings()->layout().getPushConstantRange(true).size)
       m_flags.set(DxvkContextFlag::DirtyPushConstants);
 
     m_flags.clr(DxvkContextFlag::CpDirtyPipelineState);
@@ -5014,7 +5058,7 @@ namespace dxvk {
 
     m_descriptorState.dirtyStages(VK_SHADER_STAGE_ALL_GRAPHICS);
 
-    if (newPipeline->getBindings()->layout().getPushConstantRange().size)
+    if (newPipeline->getBindings()->layout().getPushConstantRange(true).size)
       m_flags.set(DxvkContextFlag::DirtyPushConstants);
 
     m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
@@ -5881,16 +5925,19 @@ namespace dxvk {
     auto bindings = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
       ? m_state.gp.pipeline->getBindings()
       : m_state.cp.pipeline->getBindings();
-    
-    VkPushConstantRange pushConstRange = bindings->layout().getPushConstantRange();
+
+    // Optimized pipelines may have push constants trimmed, so look up
+    // the exact layout used for the currently bound pipeline.
+    bool independentSets = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+      && m_flags.test(DxvkContextFlag::GpIndependentSets);
+
+    VkPushConstantRange pushConstRange = bindings->layout().getPushConstantRange(independentSets);
 
     if (!pushConstRange.size)
       return;
 
-    // Push constants should be compatible between complete and
-    // independent layouts, so always ask for the complete one
     m_cmd->cmdPushConstants(
-      bindings->getPipelineLayout(false),
+      bindings->getPipelineLayout(independentSets),
       pushConstRange.stageFlags,
       pushConstRange.offset,
       pushConstRange.size,

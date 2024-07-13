@@ -13,8 +13,37 @@ namespace dxvk {
 
     small_vector() { }
 
-    small_vector             (const small_vector&) = delete;
-    small_vector& operator = (const small_vector&) = delete;
+    small_vector(const small_vector& other) {
+      reserve(other.m_size);
+      for (size_t i = 0; i < other.m_size; i++) {
+        *ptr(i) = *other.ptr(i);
+      }
+      m_size = other.m_size;
+    };
+
+    small_vector& operator = (const small_vector& other) {
+      for (size_t i = 0; i < m_size; i++)
+        ptr(i)->~T();
+
+      reserve(other.m_size);
+      for (size_t i = 0; i < other.m_size; i++) {
+        *ptr(i) = *other.ptr(i);
+      }
+      m_size = other.m_size;
+    };
+
+    small_vector(small_vector&& other) {
+      if (other.m_capacity == N) {
+        for (size_t i = 0; i < other.m_size; i++) {
+          u.m_data[i] = std::move(other.u.m_data[i]);
+        }
+      } else {
+        u.m_ptr = other.u.m_ptr;
+        other.m_capacity = N;
+      }
+      m_size = other.m_size;
+      other.m_size = 0;
+    }
 
     ~small_vector() {
       for (size_t i = 0; i < m_size; i++)
@@ -23,7 +52,7 @@ namespace dxvk {
       if (m_capacity > N)
         delete[] u.m_ptr;
     }
-    
+
     size_t size() const {
       return m_size;
     }
@@ -43,7 +72,7 @@ namespace dxvk {
 
       if (m_capacity > N)
         delete[] u.m_ptr;
-      
+
       m_capacity = n;
       u.m_ptr = data;
     }
@@ -56,7 +85,7 @@ namespace dxvk {
 
       for (size_t i = n; i < m_size; i++)
         ptr(i)->~T();
-      
+
       for (size_t i = m_size; i < n; i++)
         new (ptr(i)) T();
 

@@ -49,6 +49,12 @@ namespace dxvk {
 
     /// Whether or not we can rely on robustness2 to handle oob constant access
     bool robustness2Supported;
+
+    /// Whether runtime to apply Dref scaling for depth textures of specified bit depth
+    /// (24: D24S8, 16: D16, 0: Disabled). This allows compatability with games
+    /// that expect a different depth test range, which was typically a D3D8 quirk on
+    /// early NVIDIA hardware.
+    int32_t drefScaling = 0;
   };
 
 }

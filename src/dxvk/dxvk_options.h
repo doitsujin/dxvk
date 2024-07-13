@@ -41,6 +41,9 @@ namespace dxvk {
     // present. May be necessary for some games that
     // incorrectly assume monitor layouts.
     bool hideIntegratedGraphics;
+
+    // Device name
+    std::string deviceFilter;
   };
 
 }
