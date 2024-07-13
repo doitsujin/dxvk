@@ -1147,6 +1147,13 @@ namespace dxvk {
     { R"(\\Art of Murder - FBI Confidential\\game\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",       "True" },
     }} },
+    /* Rayman 3: Hoodlum Havoc                    *
+     * Missing geometry and textures without      *
+     * legacy DISCARD behavior                    */
+    { R"(\\Rayman3\.exe$)", {{
+      { "d3d9.allowDirectBufferMapping",   "False" },
+      { "d3d8.forceLegacyDiscard",          "True" },
+    }} },
   }};
 
 
