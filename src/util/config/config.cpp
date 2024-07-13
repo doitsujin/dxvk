@@ -1121,6 +1121,13 @@ namespace dxvk {
     { R"(\\Chrome(Single|Net)\.exe$)", {{
       { "d3d9.maxFrameRate",                  "60" },
     }} },
+    /* Rayman 3: Hoodlum Havoc                    *
+     * Missing geometry and textures without      *
+     * legacy DISCARD behavior                    */
+    { R"(\\Rayman3\.exe$)", {{
+      { "d3d9.allowDirectBufferMapping",   "False" },
+      { "d3d8.forceLegacyDiscard",          "True" },
+    }} },
   }};
 
 
