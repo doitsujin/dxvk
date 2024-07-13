@@ -357,6 +357,10 @@ namespace dxvk {
 
   public: // Internal Methods //
 
+    const D3D8Options* GetOptions() const {
+      return &m_d3d8Options;
+    }
+
     inline bool ShouldRecord() { return m_recorder != nullptr; }
     inline bool ShouldBatch()  { return m_batcher  != nullptr; }
 
