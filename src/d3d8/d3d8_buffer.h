@@ -18,6 +18,7 @@ namespace dxvk {
       : D3D8Resource<D3D9, D3D8> (pDevice, std::move(pBuffer))
       , m_pool                   (Pool)
       , m_usage                  (Usage) {
+      m_options = this->GetParent()->GetOptions();
     }
 
     HRESULT STDMETHODCALLTYPE Lock(
@@ -25,6 +26,13 @@ namespace dxvk {
             UINT   SizeToLock,
             BYTE** ppbData,
             DWORD  Flags) {
+
+      if (m_options->forceLegacyDiscard &&
+          (Flags & D3DLOCK_DISCARD) &&
+         !((m_usage & D3DUSAGE_DYNAMIC) &&
+           (m_usage & D3DUSAGE_WRITEONLY)))
+          Flags &= ~D3DLOCK_DISCARD;
+
       return this->GetD3D9()->Lock(
         OffsetToLock,
         SizeToLock,
@@ -41,10 +49,11 @@ namespace dxvk {
     }
 
   protected:
+    const D3D8Options* m_options;
     // This is the D3D8 pool, not necessarily what's given to D3D9.
-    const D3DPOOL m_pool;
+    const D3DPOOL      m_pool;
     // This is the D3D8 usage, not necessarily what's given to D3D9.
-    const DWORD   m_usage;
+    const DWORD        m_usage;
   };
 
 
