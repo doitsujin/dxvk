@@ -1131,6 +1131,11 @@ namespace dxvk {
     { R"(\\(nations|patriots)\.exe$)", {{
       { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
+    /* Inquisitor (2009)                          *
+     * Leaks a resource when alt-tabbing          */
+    { R"(\\Inquisitor\.exe$)", {{
+      { "d3d9.countLosableResources",      "False" },
+    }} },
   }};
 
 
