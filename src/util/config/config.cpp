@@ -996,9 +996,17 @@ namespace dxvk {
       R"(|The Lord of the Rings, The Rise of the Witch-king)\\game\.dat$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
     }} },
-    /* WRC4 - Audio breaks above 60fps */
+    /* WRC4 - Audio breaks above 60fps           */
     { R"(\\WRC4\.exe$)", {{
       { "d3d9.maxFrameRate",                "60" },
+    }} },
+    /* Splinter Cell Conviction - Alt-tab black  *
+     * screen and unsupported GPU complaint      */
+    { R"(\\conviction_game\.exe$)", {{
+      { "d3d9.deviceLossOnFocusLoss",       "True" },
+      { "dxgi.customVendorId",              "10de" },
+      { "dxgi.customDeviceId",              "05e0" },
+      { "dxgi.customDeviceDesc",            "GeForce GTX 295" },
     }} },
 
     /**********************************************/
