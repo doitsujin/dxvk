@@ -55,6 +55,11 @@ namespace dxvk {
     /* D3D11 GAMES                                */
     /**********************************************/
 
+    /* Batman Arkham Knight - doesn't like intel vendor id 
+      (refuses to boot if vendor isn't 0x10de or 0x1002)  */
+    { R"(\\BatmanAK\.exe$)", {{
+      { "dxgi.hideIntelGpu",                "True" },
+    }} },
     /* Assassin's Creed Syndicate: amdags issues  */
     { R"(\\ACS\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
@@ -1125,6 +1130,11 @@ namespace dxvk {
     /* Rise of Nations + Expansion - alt-tab crash*/
     { R"(\\(nations|patriots)\.exe$)", {{
       { "d3d9.deviceLossOnFocusLoss",       "True" },
+    }} },
+    /* Inquisitor (2009)                          *
+     * Leaks a resource when alt-tabbing          */
+    { R"(\\Inquisitor\.exe$)", {{
+      { "d3d9.countLosableResources",      "False" },
     }} },
   }};
 
