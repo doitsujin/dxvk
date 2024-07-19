@@ -251,7 +251,8 @@ namespace dxvk {
           D3D9Format SourceFormat,
           D3D9Format TargetFormat) {
     bool sourceSupported = SourceFormat != D3D9Format::Unknown
-                        && IsSupportedBackBufferFormat(SourceFormat);
+                        && (IsSupportedBackBufferFormat(SourceFormat)
+                        || (IsFourCCFormat(SourceFormat) && !IsVendorFormat(SourceFormat)));
     bool targetSupported = TargetFormat == D3D9Format::X1R5G5B5
                         || TargetFormat == D3D9Format::A1R5G5B5
                         || TargetFormat == D3D9Format::R5G6B5
