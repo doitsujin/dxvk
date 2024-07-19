@@ -169,7 +169,11 @@ namespace dxvk {
       return D3D_OK;
 
     // Let's actually ask Vulkan now that we got some quirks out the way!
-    return CheckDeviceVkFormat(mapping.FormatColor, Usage, RType);
+    VkFormat format = mapping.FormatColor;
+    if (unlikely(mapping.ConversionFormatInfo.FormatColor != VK_FORMAT_UNDEFINED)) {
+      format = mapping.ConversionFormatInfo.FormatColor;
+    }
+    return CheckDeviceVkFormat(format, Usage, RType);
   }
 
 
