@@ -72,7 +72,9 @@ namespace dxvk {
     // memory bloat. This may be necessary for off-screen
     // rendering applications, or in situations where games
     // pre-render a lot of images without presenting in between.
-    return m_descriptorPools.size() > MaxDesiredPoolCount;
+    return m_device->features().nvDescriptorPoolOverallocation.descriptorPoolOverallocation ?
+      m_setsAllocated > MaxDesiredPoolCount * m_manager->getMaxSetCount() :
+      m_descriptorPools.size() > MaxDesiredPoolCount;
   }
 
 
