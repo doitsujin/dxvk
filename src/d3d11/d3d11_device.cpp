@@ -45,10 +45,10 @@ namespace dxvk {
     m_dxvkDevice        (pContainer->GetDXVKDevice()),
     m_dxvkAdapter       (m_dxvkDevice->adapter()),
     m_d3d11Formats      (m_dxvkDevice),
-    m_d3d11Options      (m_dxvkDevice->instance()->config(), m_dxvkDevice),
+    m_d3d11Options      (m_dxvkDevice->instance()->config()),
     m_dxbcOptions       (m_dxvkDevice, m_d3d11Options),
     m_maxFeatureLevel   (GetMaxFeatureLevel(m_dxvkDevice->instance(), m_dxvkDevice->adapter())),
-    m_deviceFeatures    (m_dxvkDevice->instance(), m_dxvkDevice->adapter(), m_featureLevel) {
+    m_deviceFeatures    (m_dxvkDevice->instance(), m_dxvkDevice->adapter(), m_d3d11Options, m_featureLevel) {
     m_initializer = new D3D11Initializer(this);
     m_context     = new D3D11ImmediateContext(this, m_dxvkDevice);
     m_d3d10Device = new D3D10Device(this, m_context.ptr());
@@ -1348,7 +1348,7 @@ namespace dxvk {
       m_deviceFeatures = D3D11DeviceFeatures(
         m_dxvkDevice->instance(),
         m_dxvkDevice->adapter(),
-        m_featureLevel);
+        m_d3d11Options, m_featureLevel);
     }
 
     if (pChosenFeatureLevel)
@@ -3411,8 +3411,9 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D11DXGIDevice::EnqueueSetEvent(HANDLE hEvent) {
-    Logger::err("D3D11DXGIDevice::EnqueueSetEvent: Not implemented");
-    return DXGI_ERROR_UNSUPPORTED;           
+    auto immediateContext = m_d3d11Device.GetContext();
+    immediateContext->Flush1(D3D11_CONTEXT_TYPE_ALL, hEvent);
+    return S_OK;            
   }
 
 

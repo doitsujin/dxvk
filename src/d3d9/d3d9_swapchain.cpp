@@ -65,6 +65,16 @@ namespace dxvk {
     if (this_thread::isInModuleDetachment())
       return;
 
+    {
+      // Locking here and in Device::GetFrontBufferData
+      // ensures that other threads don't accidentally access a stale pointer.
+      D3D9DeviceLock lock = m_parent->LockDevice();
+
+      if (m_parent->GetMostRecentlyUsedSwapchain() == this) {
+        m_parent->ResetMostRecentlyUsedSwapchain();
+      }
+    }
+
     DestroyBackBuffers();
 
     ResetWindowProc(m_window);
@@ -112,6 +122,8 @@ namespace dxvk {
           DWORD    dwFlags) {
     D3D9DeviceLock lock = m_parent->LockDevice();
 
+    m_parent->SetMostRecentlyUsedSwapchain(this);
+
     if (unlikely(m_parent->IsDeviceLost()))
       return D3DERR_DEVICELOST;
 
@@ -147,6 +159,8 @@ namespace dxvk {
     bool recreate = false;
     recreate   |= m_wctx->presenter == nullptr;
     recreate   |= m_dialog != m_lastDialog;
+    if (options->deferSurfaceCreation)
+      recreate |= m_parent->IsDeviceReset();
 
     if (m_wctx->presenter != nullptr) {
       m_dirty  |= m_wctx->presenter->setSyncInterval(presentInterval) != VK_SUCCESS;
@@ -157,6 +171,9 @@ namespace dxvk {
     m_dirty    |= recreate;
 
     m_lastDialog = m_dialog;
+
+    if (m_window == nullptr)
+      return D3D_OK;
 
 #ifdef _WIN32
     const bool useGDIFallback = m_partialCopy && !HasFrontBuffer();
@@ -177,6 +194,7 @@ namespace dxvk {
       if (!m_wctx->presenter->hasSwapChain())
         return D3D_OK;
 
+      UpdateTargetFrameRate(presentInterval);
       PresentImage(presentInterval);
       return D3D_OK;
     } catch (const DxvkError& e) {
@@ -379,6 +397,20 @@ namespace dxvk {
       blitInfo.dstOffsets[1] = VkOffset3D{ int32_t(srcExtent.width),  int32_t(srcExtent.height),  1 };
       blitInfo.srcOffsets[0] = VkOffset3D{ 0, 0, 0 };
       blitInfo.srcOffsets[1] = VkOffset3D{ int32_t(srcExtent.width),  int32_t(srcExtent.height),  1 };
+
+#ifdef _WIN32
+      if (m_presentParams.Windowed) {
+        // In windowed mode, GetFrontBufferData takes a screenshot of the entire screen.
+        // So place the copy of the front buffer at the position of the window.
+        POINT point = { 0, 0 };
+        if (ClientToScreen(m_window, &point) != 0) {
+          blitInfo.dstOffsets[0].x = point.x;
+          blitInfo.dstOffsets[0].y = point.y;
+          blitInfo.dstOffsets[1].x += point.x;
+          blitInfo.dstOffsets[1].y += point.y;
+        }
+      }
+#endif
 
       m_parent->EmitCs([
         cDstImage = blittedSrc,
@@ -899,7 +931,6 @@ namespace dxvk {
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
     m_wctx->presenter = new Presenter(m_device, m_wctx->frameLatencySignal, presenterDesc);
-    m_wctx->presenter->setFrameRateLimit(m_parent->GetOptions()->maxFrameRate);
   }
 
 
@@ -966,6 +997,9 @@ namespace dxvk {
 
 
   void D3D9SwapChainEx::UpdateWindowCtx() {
+    if (m_window == nullptr)
+      return;
+
     if (!m_presenters.count(m_window)) {
       auto res = m_presenters.emplace(
         std::piecewise_construct,
@@ -1076,6 +1110,17 @@ namespace dxvk {
       m_ramp.green[i] = identity;
       m_ramp.blue[i]  = identity;
     }
+  }
+
+
+  void D3D9SwapChainEx::UpdateTargetFrameRate(uint32_t SyncInterval) {
+    double frameRateOption = double(m_parent->GetOptions()->maxFrameRate);
+    double frameRate = std::max(frameRateOption, 0.0);
+
+    if (SyncInterval && frameRateOption == 0.0)
+      frameRate = -m_displayRefreshRate / double(SyncInterval);
+
+    m_wctx->presenter->setFrameRateLimit(frameRate);
   }
 
 
@@ -1295,10 +1340,10 @@ namespace dxvk {
     || dstRect.right  - dstRect.left != LONG(width)
     || dstRect.bottom - dstRect.top  != LONG(height);
 
-    bool recreate =
-       m_wctx->presenter == nullptr
-    || m_wctx->presenter->info().imageExtent.width  != width
-    || m_wctx->presenter->info().imageExtent.height != height;
+    bool recreate = m_wctx != nullptr
+      && (m_wctx->presenter == nullptr
+      || m_wctx->presenter->info().imageExtent.width  != width
+      || m_wctx->presenter->info().imageExtent.height != height);
 
     m_swapchainExtent = { width, height };
     m_dstRect = dstRect;

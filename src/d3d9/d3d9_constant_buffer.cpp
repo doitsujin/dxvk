@@ -13,7 +13,7 @@ namespace dxvk {
           DxsoProgramType       ShaderStage,
           DxsoConstantBuffers   BufferType,
           VkDeviceSize          Size)
-  : D3D9ConstantBuffer(pDevice, getBufferUsage(pDevice, ShaderStage, BufferType), GetShaderStage(ShaderStage),
+  : D3D9ConstantBuffer(pDevice, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, GetShaderStage(ShaderStage),
       computeResourceSlotId(ShaderStage, DxsoBindingType::ConstantBuffer, BufferType),
       Size) {
 
@@ -133,23 +133,6 @@ namespace dxvk {
       device->properties().core.properties.limits.minUniformBufferOffsetAlignment,
       device->properties().core.properties.limits.minStorageBufferOffsetAlignment),
       device->properties().extRobustness2.robustUniformBufferAccessSizeAlignment);
-  }
-
-
-  VkBufferUsageFlags D3D9ConstantBuffer::getBufferUsage(
-          D3D9DeviceEx*         pDevice,
-          DxsoProgramType       ShaderStage,
-          DxsoConstantBuffers   BufferType) {
-    VkBufferUsageFlags result = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-
-    // We won't always need this, but the only buffer that
-    // this applies to is so large that it will not matter.
-    if (pDevice->CanSWVP()
-     && ShaderStage == DxsoProgramType::VertexShader
-     && BufferType == DxsoConstantBuffers::VSConstantBuffer)
-      result |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-
-    return result;
   }
 
 }

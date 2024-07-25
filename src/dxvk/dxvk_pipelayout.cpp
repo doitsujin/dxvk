@@ -205,7 +205,7 @@ namespace dxvk {
 
 
   DxvkBindingLayout::DxvkBindingLayout(VkShaderStageFlags stages)
-  : m_pushConst { 0, 0, 0 }, m_stages(stages) {
+  : m_pushConst { 0, 0, 0 }, m_pushConstStages(0), m_stages(stages) {
 
   }
 
@@ -249,11 +249,17 @@ namespace dxvk {
   }
 
 
+  void DxvkBindingLayout::addPushConstantStage(VkShaderStageFlagBits stage) {
+    m_pushConstStages |= stage;
+  }
+
+
   void DxvkBindingLayout::merge(const DxvkBindingLayout& layout) {
     for (uint32_t i = 0; i < layout.m_bindings.size(); i++)
       m_bindings[i].merge(layout.m_bindings[i]);
 
     addPushConstantRange(layout.m_pushConst);
+    m_pushConstStages |= layout.m_pushConstStages;
   }
 
 
@@ -265,6 +271,9 @@ namespace dxvk {
       if (!m_bindings[i].eq(other.m_bindings[i]))
         return false;
     }
+
+    if (m_pushConstStages != other.m_pushConstStages)
+      return false;
 
     if (m_pushConst.stageFlags != other.m_pushConst.stageFlags
      || m_pushConst.offset     != other.m_pushConst.offset
@@ -282,6 +291,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < m_bindings.size(); i++)
       hash.add(m_bindings[i].hash());
 
+    hash.add(m_pushConstStages);
     hash.add(m_pushConst.stageFlags);
     hash.add(m_pushConst.offset);
     hash.add(m_pushConst.size);
@@ -334,15 +344,16 @@ namespace dxvk {
     }
 
     // Create pipeline layout objects
-    VkPushConstantRange pushConst = m_layout.getPushConstantRange();
+    VkPushConstantRange pushConstComplete = m_layout.getPushConstantRange(false);
+    VkPushConstantRange pushConstIndependent = m_layout.getPushConstantRange(true);
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
     pipelineLayoutInfo.setLayoutCount = setCount;
     pipelineLayoutInfo.pSetLayouts = setLayouts.data();
 
-    if (pushConst.stageFlags && pushConst.size) {
+    if (pushConstComplete.stageFlags && pushConstComplete.size) {
       pipelineLayoutInfo.pushConstantRangeCount = 1;
-      pipelineLayoutInfo.pPushConstantRanges = &pushConst;
+      pipelineLayoutInfo.pPushConstantRanges = &pushConstComplete;
     }
 
     // If the full set is defined, create a layout without INDEPENDENT_SET_BITS
@@ -355,6 +366,11 @@ namespace dxvk {
     // bit. It will be used to create shader-based libraries and link pipelines.
     if (m_device->canUseGraphicsPipelineLibrary() && (m_layout.getStages() & VK_SHADER_STAGE_ALL_GRAPHICS)) {
       pipelineLayoutInfo.flags = VK_PIPELINE_LAYOUT_CREATE_INDEPENDENT_SETS_BIT_EXT;
+
+      if (pushConstIndependent.stageFlags && pushConstIndependent.size) {
+        pipelineLayoutInfo.pushConstantRangeCount = 1;
+        pipelineLayoutInfo.pPushConstantRanges = &pushConstIndependent;
+      }
 
       if (vk->vkCreatePipelineLayout(vk->device(), &pipelineLayoutInfo, nullptr, &m_independentLayout))
         throw DxvkError("DxvkBindingLayoutObjects: Failed to create pipeline layout");

@@ -344,8 +344,6 @@ namespace dxvk {
     // covers vertex input and fragment output.
     uint32_t m_inputMask = 0u;
     uint32_t m_outputMask = 0u;
-    uint32_t m_pushConstOffset = 0u;
-    uint32_t m_pushConstSize = 0u;
 
     ///////////////////////////////////
     // Shader-specific data structures

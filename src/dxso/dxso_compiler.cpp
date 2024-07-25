@@ -228,8 +228,8 @@ namespace dxvk {
     info.bindings = m_bindings.data();
     info.inputMask = m_inputMask;
     info.outputMask = m_outputMask;
-    info.pushConstOffset = m_pushConstOffset;
-    info.pushConstSize = m_pushConstSize;
+    info.pushConstStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    info.pushConstSize = sizeof(D3D9RenderStateInfo);
 
     if (m_programInfo.type() == DxsoProgramTypes::PixelShader)
       info.flatShadingInputs = m_ps.flatShadingMask;
@@ -2029,12 +2029,22 @@ namespace dxvk {
             result.id = resultIndices[0];
           else
             result.id = m_module.opCompositeConstruct(typeId, result.type.ccount, resultIndices.data());
+
+        if (m_moduleInfo.options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled) {
+          result.id = m_module.opNMin(typeId, result.id,
+            m_module.constfReplicant(FLT_MAX, result.type.ccount));
+        }
           break;
         }
         [[fallthrough]];
       case DxsoOpcode::Exp:
         result.id = m_module.opExp2(typeId,
           emitRegisterLoad(src[0], mask).id);
+
+        if (m_moduleInfo.options.d3d9FloatEmulation == D3D9FloatEmulation::Enabled) {
+          result.id = m_module.opNMin(typeId, result.id,
+            m_module.constfReplicant(FLT_MAX, result.type.ccount));
+        }
         break;
       case DxsoOpcode::Pow: {
         uint32_t base = emitRegisterLoad(src[0], mask).id;
@@ -2899,6 +2909,14 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         uint32_t component = sampler.dimensions;
         reference = m_module.opCompositeExtract(
           fType, texcoordVar.id, 1, &component);
+
+        // [D3D8] Scale Dref from [0..(2^N - 1)] for D24S8 and D16 if Dref scaling is enabled
+        if (m_moduleInfo.options.drefScaling) {
+          uint32_t drefScale       = m_module.constf32(GetDrefScaleFactor(m_moduleInfo.options.drefScaling));
+          reference                = m_module.opFMul(fType, reference, drefScale);
+        }
+
+        // Clamp Dref to [0..1] for D32F emulating UNORM textures 
         uint32_t clampDref = m_spec.get(m_module, m_specUbo, SpecDrefClamp, samplerIdx, 1);
         clampDref = m_module.opINotEqual(bool_t, clampDref, m_module.constu32(0));
         uint32_t clampedDref = m_module.opFClamp(fType, reference, m_module.constf32(0.0f), m_module.constf32(1.0f));
@@ -3551,30 +3569,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
 
   void DxsoCompiler::setupRenderStateInfo() {
-    uint32_t count;
-
-    // Only need alpha ref for PS 3.
-    // No FF fog component.
-    if (m_programInfo.type() == DxsoProgramType::PixelShader) {
-      if (m_programInfo.majorVersion() == 3) {
-        m_pushConstOffset = offsetof(D3D9RenderStateInfo, alphaRef);
-        m_pushConstSize   = sizeof(float);
-      }
-      else {
-        m_pushConstOffset = 0;
-        m_pushConstSize   = offsetof(D3D9RenderStateInfo, pointSize);
-      }
-
-      count = 5;
-    }
-    else {
-      m_pushConstOffset = offsetof(D3D9RenderStateInfo, pointSize);
-      // Point scale never triggers on programmable
-      m_pushConstSize   = sizeof(float) * 3;
-      count = 8;
-    }
-
-    m_rsBlock = SetupRenderStateBlock(m_module, count);
+    m_rsBlock = SetupRenderStateBlock(m_module);
   }
 
 

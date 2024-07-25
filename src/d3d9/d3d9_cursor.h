@@ -11,10 +11,19 @@ namespace dxvk {
 
   // Format Size of 4 bytes (ARGB)
   using CursorBitmap = uint8_t[HardwareCursorHeight * HardwareCursorPitch];
+  // Monochrome mask (1 bit)
+  using CursorMask = uint8_t[HardwareCursorHeight * HardwareCursorWidth / 8];
 
   class D3D9Cursor {
 
   public:
+
+#ifdef _WIN32
+    ~D3D9Cursor() {
+      if (m_hCursor != nullptr)
+        ::DestroyCursor(m_hCursor);
+    }
+#endif
 
     void UpdateCursor(int X, int Y);
 

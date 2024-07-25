@@ -294,9 +294,6 @@ namespace dxvk {
 
     void destroySurface();
 
-    void applyFrameRateLimit(
-            VkPresentModeKHR          mode);
-
     void runFrameThread();
 
   };

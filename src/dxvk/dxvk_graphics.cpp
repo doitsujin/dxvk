@@ -1111,7 +1111,9 @@ namespace dxvk {
 
     if (doCreateBasePipeline)
       baseHandle = this->getBasePipeline(state);
-    else
+
+    // Fast-linking may fail in some situations
+    if (!baseHandle)
       fastHandle = this->getOptimizedPipeline(state);
 
     // Log pipeline state if requested, or on failure
@@ -1146,6 +1148,13 @@ namespace dxvk {
     if (state.rs.polygonMode() != VK_POLYGON_MODE_FILL
      || state.rs.conservativeMode() != VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT
      || (state.rs.lineMode() != VK_LINE_RASTERIZATION_MODE_DEFAULT_EXT && isLineRendering))
+      return false;
+
+    // Depth clip is assumed to be enabled. If the driver does not
+    // support dynamic depth clip, we'd have to late-compile anyway
+    // unless the pipeline is used multiple times.
+    if (!m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable
+     && !state.rs.depthClipEnable())
       return false;
 
     if (m_shaders.tcs != nullptr) {
@@ -1219,9 +1228,6 @@ namespace dxvk {
     key.viLibrary = m_manager->createVertexInputLibrary(viState);
     key.foLibrary = m_manager->createFragmentOutputLibrary(foState);
 
-    if (!m_device->features().extExtendedDynamicState3.extendedDynamicState3DepthClipEnable)
-      key.args.depthClipEnable = state.rs.depthClipEnable();
-
     auto entry = m_basePipelines.find(key);
     if (entry != m_basePipelines.end())
       return entry->second;
@@ -1236,10 +1242,11 @@ namespace dxvk {
     const DxvkGraphicsPipelineBaseInstanceKey& key) const {
     auto vk = m_device->vkd();
 
+    DxvkShaderPipelineLibraryHandle vs = m_vsLibrary->acquirePipelineHandle();
+    DxvkShaderPipelineLibraryHandle fs = m_fsLibrary->acquirePipelineHandle();
+
     std::array<VkPipeline, 4> libraries = {{
-      key.viLibrary->getHandle(),
-      m_vsLibrary->acquirePipelineHandle(key.args),
-      m_fsLibrary->acquirePipelineHandle(key.args),
+      key.viLibrary->getHandle(), vs.handle, fs.handle,
       key.foLibrary->getHandle(),
     }};
 
@@ -1248,13 +1255,14 @@ namespace dxvk {
     libInfo.pLibraries      = libraries.data();
 
     VkGraphicsPipelineCreateInfo info = { VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO, &libInfo };
+    info.flags              = vs.linkFlags | fs.linkFlags;
     info.layout             = m_bindings->getPipelineLayout(true);
     info.basePipelineIndex  = -1;
 
     VkPipeline pipeline = VK_NULL_HANDLE;
     VkResult vr = vk->vkCreateGraphicsPipelines(vk->device(), VK_NULL_HANDLE, 1, &info, nullptr, &pipeline);
 
-    if (vr != VK_SUCCESS)
+    if (vr && vr != VK_PIPELINE_COMPILE_REQUIRED_EXT)
       Logger::err(str::format("DxvkGraphicsPipeline: Failed to create base pipeline: ", vr));
 
     return pipeline;

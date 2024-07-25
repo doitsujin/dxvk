@@ -58,9 +58,6 @@ namespace dxvk {
           "\n  MiscFlags:  ", m_desc.MiscFlags,
           "\n  FeatureLevel:  ", pDevice->GetFeatureLevel()));
 
-      if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX)
-        Logger::warn("D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX: not supported.");
-
       imageInfo.shared = true;
       imageInfo.sharing.mode = hSharedHandle == INVALID_HANDLE_VALUE ? DxvkSharedHandleMode::Export : DxvkSharedHandleMode::Import;
       imageInfo.sharing.type = (m_desc.MiscFlags & D3D11_RESOURCE_MISC_SHARED_NTHANDLE)
@@ -214,9 +211,12 @@ namespace dxvk {
     // For some formats, we need to enable sampled and/or
     // render target capabilities if available, but these
     // should in no way affect the default image layout
-    imageInfo.usage |= EnableMetaCopyUsage(imageInfo.format, imageInfo.tiling);
     imageInfo.usage |= EnableMetaPackUsage(imageInfo.format, m_desc.CPUAccessFlags);
-    
+    imageInfo.usage |= EnableMetaCopyUsage(imageInfo.format, imageInfo.tiling);
+
+    for (uint32_t i = 0; i < imageInfo.viewFormatCount; i++)
+      imageInfo.usage |= EnableMetaCopyUsage(imageInfo.viewFormats[i], imageInfo.tiling);
+
     // Check if we can actually create the image
     if (!CheckImageSupport(&imageInfo, imageInfo.tiling)) {
       throw DxvkError(str::format(
@@ -1099,7 +1099,7 @@ namespace dxvk {
     m_texture (this, pDevice, pDesc, p11on12Info, D3D11_RESOURCE_DIMENSION_TEXTURE1D, 0, VK_NULL_HANDLE, nullptr),
     m_interop (this, &m_texture),
     m_surface (this, &m_texture),
-    m_resource(this),
+    m_resource(this, pDevice),
     m_d3d10   (this) {
     
   }
@@ -1205,7 +1205,7 @@ namespace dxvk {
     m_texture   (this, pDevice, pDesc, p11on12Info, D3D11_RESOURCE_DIMENSION_TEXTURE2D, 0, VK_NULL_HANDLE, hSharedHandle),
     m_interop   (this, &m_texture),
     m_surface   (this, &m_texture),
-    m_resource  (this),
+    m_resource  (this, pDevice),
     m_d3d10     (this),
     m_swapChain (nullptr) {
   }
@@ -1220,7 +1220,7 @@ namespace dxvk {
     m_texture   (this, pDevice, pDesc, nullptr, D3D11_RESOURCE_DIMENSION_TEXTURE2D, DxgiUsage, vkImage, nullptr),
     m_interop   (this, &m_texture),
     m_surface   (this, &m_texture),
-    m_resource  (this),
+    m_resource  (this, pDevice),
     m_d3d10     (this),
     m_swapChain (nullptr) {
     
@@ -1236,7 +1236,7 @@ namespace dxvk {
     m_texture   (this, pDevice, pDesc, nullptr, D3D11_RESOURCE_DIMENSION_TEXTURE2D, DxgiUsage, VK_NULL_HANDLE, nullptr),
     m_interop   (this, &m_texture),
     m_surface   (this, &m_texture),
-    m_resource  (this),
+    m_resource  (this, pDevice),
     m_d3d10     (this),
     m_swapChain (pSwapChain) {
     
@@ -1384,7 +1384,7 @@ namespace dxvk {
   : D3D11DeviceChild<ID3D11Texture3D1>(pDevice),
     m_texture (this, pDevice, pDesc, p11on12Info, D3D11_RESOURCE_DIMENSION_TEXTURE3D, 0, VK_NULL_HANDLE, nullptr),
     m_interop (this, &m_texture),
-    m_resource(this),
+    m_resource(this, pDevice),
     m_d3d10   (this) {
     
   }

@@ -49,8 +49,6 @@ ID3D12DXVKInteropDevice : public IUnknown {
 
 };
 
-#ifdef _MSC_VER
-struct __declspec(uuid("39da4e09-bd1c-4198-9fae-86bbe3be41fd")) ID3D12DXVKInteropDevice;
-#else
+#ifndef _MSC_VER
 __CRT_UUID_DECL(ID3D12DXVKInteropDevice, 0x39da4e09, 0xbd1c, 0x4198, 0x9f,0xae, 0x86,0xbb,0xe3,0xbe,0x41,0xfd)
 #endif

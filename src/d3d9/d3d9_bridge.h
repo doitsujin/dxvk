@@ -3,8 +3,6 @@
 #include <windows.h>
 #include "../util/config/config.h"
 
-#include "../vulkan/vulkan_loader.h"
-
 /**
  * The D3D9 bridge allows D3D8 to access DXVK internals.
  * For Vulkan interop without needing DXVK internals, see d3d9_interop.h.
@@ -29,6 +27,13 @@ IDxvkD3D8Bridge : public IUnknown {
    * \param [in] name The new API name 
    */
   virtual void SetAPIName(const char* name) = 0;
+
+  /**
+   * \brief Enables or disables D3D9-specific device features and validations
+   * 
+   * \param [in] compatibility state
+   */
+  virtual void SetD3D8CompatibilityMode(const bool compatMode) = 0;
 
   /**
    * \brief Updates a D3D9 surface from a D3D9 buffer
@@ -58,10 +63,7 @@ IDxvkD3D8InterfaceBridge : public IUnknown {
   virtual const dxvk::Config* GetConfig() const = 0;
 };
 
-#if defined(_MSC_VER)
-struct DECLSPEC_UUID("D3D9D3D8-42A9-4C1E-AA97-BEEFCAFE2000") IDxvkD3D8Bridge;
-struct DECLSPEC_UUID("D3D9D3D8-A407-773E-18E9-CAFEBEEF3000") IDxvkD3D8InterfaceBridge;
-#else
+#ifndef _MSC_VER
 __CRT_UUID_DECL(IDxvkD3D8Bridge, 0xD3D9D3D8, 0x42A9, 0x4C1E, 0xAA, 0x97, 0xBE, 0xEF, 0xCA, 0xFE, 0x20, 0x00);
 __CRT_UUID_DECL(IDxvkD3D8InterfaceBridge, 0xD3D9D3D8, 0xA407, 0x773E, 0x18, 0xE9, 0xCA, 0xFE, 0xBE, 0xEF, 0x30, 0x00);
 #endif
@@ -83,6 +85,7 @@ namespace dxvk {
             void** ppvObject);
 
     void SetAPIName(const char* name);
+    void SetD3D8CompatibilityMode(const bool compatMode);
 
     HRESULT UpdateTextureFromBuffer(
         IDirect3DSurface9*        pDestSurface,
@@ -106,7 +109,7 @@ namespace dxvk {
             void** ppvObject);
 
     const Config* GetConfig() const;
-    
+
   protected:
     D3D9InterfaceEx* m_interface;
   };

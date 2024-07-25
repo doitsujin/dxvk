@@ -15,6 +15,7 @@ namespace dxvk {
   D3D9FixedFunctionOptions::D3D9FixedFunctionOptions(const D3D9Options* options) {
     invariantPosition = options->invariantPosition;
     forceSampleRateShading = options->forceSampleRateShading;
+    drefScaling = options->drefScaling;
   }
 
   uint32_t DoFixedFunctionFog(D3D9ShaderSpecConstantManager& spec, SpirvModule& spvModule, const D3D9FogContext& fogCtx) {
@@ -336,7 +337,7 @@ namespace dxvk {
   }
 
 
-  uint32_t SetupRenderStateBlock(SpirvModule& spvModule, uint32_t count) {
+  uint32_t SetupRenderStateBlock(SpirvModule& spvModule) {
     uint32_t floatType = spvModule.defFloatType(32);
     uint32_t uintType  = spvModule.defIntType(32, 0);
     uint32_t vec3Type  = spvModule.defVectorType(floatType, 3);
@@ -357,7 +358,7 @@ namespace dxvk {
       floatType,
     }};
 
-    uint32_t rsStruct = spvModule.defStructTypeUnique(count, rsMembers.data());
+    uint32_t rsStruct = spvModule.defStructTypeUnique(rsMembers.size(), rsMembers.data());
     uint32_t rsBlock = spvModule.newVar(
       spvModule.defPointerType(rsStruct, spv::StorageClassPushConstant),
       spv::StorageClassPushConstant);
@@ -369,9 +370,6 @@ namespace dxvk {
 
     uint32_t memberIdx = 0;
     auto SetMemberName = [&](const char* name, uint32_t offset) {
-      if (memberIdx >= count)
-        return;
-
       spvModule.setDebugMemberName   (rsStruct, memberIdx, name);
       spvModule.memberDecorateOffset (rsStruct, memberIdx, offset);
       memberIdx++;
@@ -781,8 +779,6 @@ namespace dxvk {
     uint32_t              m_inputMask = 0u;
     uint32_t              m_outputMask = 0u;
     uint32_t              m_flatShadingMask = 0u;
-    uint32_t              m_pushConstOffset = 0u;
-    uint32_t              m_pushConstSize = 0u;
 
     DxsoProgramType       m_programType;
     D3D9FFShaderKeyVS     m_vsKey;
@@ -892,8 +888,8 @@ namespace dxvk {
     info.inputMask = m_inputMask;
     info.outputMask = m_outputMask;
     info.flatShadingInputs = m_flatShadingMask;
-    info.pushConstOffset = m_pushConstOffset;
-    info.pushConstSize = m_pushConstSize;
+    info.pushConstStages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    info.pushConstSize = sizeof(D3D9RenderStateInfo);
 
     return new DxvkShader(info, m_module.compile());
   }
@@ -1111,37 +1107,69 @@ namespace dxvk {
       const uint32_t wIndex = 3;
 
       uint32_t flags = (m_vsKey.Data.Contents.TransformFlags >> (i * 3)) & 0b111;
-      uint32_t count;
+
+      // Passing 0xffffffff results in it getting clamped to the dimensions of the texture coords and getting treated as PROJECTED
+      // but D3D9 does not apply the transformation matrix.
+      bool applyTransform = flags > D3DTTFF_COUNT1 && flags <= D3DTTFF_COUNT4;
+
+      uint32_t count = std::min(flags, 4u);
+
+      // A projection component index of 4 means we won't do projection
+      uint32_t projIndex = count != 0 ? count - 1 : 4;
+
       switch (inputFlags) {
         default:
         case (DXVK_TSS_TCI_PASSTHRU >> TCIOffset):
           transformed = m_vs.in.TEXCOORD[inputIndex & 0xFF];
-          // flags is actually the number of elements that get passed
-          // to the rasterizer.
-          count = flags;
-          if (texcoordCount) {
-            // Clamp by the number of elements in the texcoord input.
-            if (!count || count > texcoordCount)
-              count = texcoordCount;
+
+          if (texcoordCount < 4) {
+            // Vulkan sets the w component to 1.0 if that's not provided by the vertex buffer, D3D9 expects 0 here
+            transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(0), transformed, 1, &wIndex);
           }
-          else
-            flags = D3DTTFF_DISABLE;
+
+          if (applyTransform && !m_vsKey.Data.Contents.HasPositionT) {
+            /*This doesn't happen every time and I cannot figure out the difference between when it does and doesn't.
+            Keep it disabled for now, it's more likely that games rely on the zero texcoord than the weird 1 here.
+            if (texcoordCount <= 1) {
+              // y gets padded to 1 for some reason
+              uint32_t idx = 1;
+              transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1), transformed, 1, &idx);
+            }*/
+
+            if (texcoordCount >= 1 && texcoordCount < 4) {
+              // The first component after the last one thats backed by a vertex buffer gets padded to 1 for some reason.
+              uint32_t idx = texcoordCount;
+              transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1), transformed, 1, &idx);
+            }
+          } else if (texcoordCount != 0 && !applyTransform) {
+            // COUNT0, COUNT1, COUNT > 4 => take count from vertex decl if that's not zero
+            count = texcoordCount;
+          }
+
+          projIndex = count != 0 ? count - 1 : 4;
           break;
 
         case (DXVK_TSS_TCI_CAMERASPACENORMAL >> TCIOffset):
           transformed = outNrm;
-          count = 4;
+          if (!applyTransform) {
+            count = 3;
+            projIndex = 4;
+          }
           break;
 
         case (DXVK_TSS_TCI_CAMERASPACEPOSITION >> TCIOffset):
-          transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1.0f), vtx, 1, &wIndex);
-          count = 4;
+          transformed = vtx;
+          if (!applyTransform) {
+            Logger::warn(str::format("!applyTransform flags: ", flags, " projidx: ", projIndex));
+            count = 3;
+            projIndex = 4;
+          }
           break;
 
         case (DXVK_TSS_TCI_CAMERASPACEREFLECTIONVECTOR >> TCIOffset): {
           uint32_t vtx3 = m_module.opVectorShuffle(m_vec3Type, vtx, vtx, 3, indices.data());
           vtx3 = m_module.opNormalize(m_vec3Type, vtx3);
-          
+
           uint32_t reflection = m_module.opReflect(m_vec3Type, vtx3, normal);
 
           std::array<uint32_t, 4> transformIndices;
@@ -1150,7 +1178,10 @@ namespace dxvk {
           transformIndices[3] = m_module.constf32(1.0f);
 
           transformed = m_module.opCompositeConstruct(m_vec4Type, transformIndices.size(), transformIndices.data());
-          count = 4;
+          if (!applyTransform) {
+            count = 3;
+            projIndex = 4;
+          }
           break;
         }
 
@@ -1174,35 +1205,27 @@ namespace dxvk {
           transformIndices[3] = m_module.constf32(1.0f);
 
           transformed = m_module.opCompositeConstruct(m_vec4Type, transformIndices.size(), transformIndices.data());
-          count = 4;
           break;
         }
       }
 
-      uint32_t type = flags;
-      if (type != D3DTTFF_DISABLE) {
-        if (!m_vsKey.Data.Contents.HasPositionT) {
-          for (uint32_t j = count; j < 4; j++) {
-            // If we're outside the component count of the vertex decl for this texcoord then we pad with zeroes.
-            // Otherwise, pad with ones.
+      if (applyTransform && !m_vsKey.Data.Contents.HasPositionT) {
+        transformed = m_module.opVectorTimesMatrix(m_vec4Type, transformed, m_vs.constants.texcoord[i]);
+      }
 
-            // Very weird quirk in order to get texcoord transforms to work like they do in native.
-            // In future, maybe we could sort this out properly by chopping matrices of different sizes, but thats
-            // a project for another day.
-            uint32_t texcoordCount = (m_vsKey.Data.Contents.TexcoordDeclMask >> (3 * inputIndex)) & 0x7;
-            uint32_t value = j > texcoordCount ? m_module.constf32(0) : m_module.constf32(1);
-            transformed = m_module.opCompositeInsert(m_vec4Type, value, transformed, 1, &j);
-          }
+      if (m_vsKey.Data.Contents.Projected && projIndex < 4) {
+        // The projection idx is always based on the flags, even when the input mode is not DXVK_TSS_TCI_PASSTHRU.
+        uint32_t projValue = m_module.opCompositeExtract(m_floatType, transformed, 1, &projIndex);
 
-          transformed = m_module.opVectorTimesMatrix(m_vec4Type, transformed, m_vs.constants.texcoord[i]);
-        }
+        // The w component is only used for projection or unused, so always insert the component that's supposed to be divided by there.
+        // The fragment shader will then decide whether to project or not.
+        transformed = m_module.opCompositeInsert(m_vec4Type, projValue, transformed, 1, &wIndex);
+      }
 
-        // Pad the unused section of it with the value for projection.
-        uint32_t lastIdx = count - 1;
-        uint32_t projValue = m_module.opCompositeExtract(m_floatType, transformed, 1, &lastIdx);
-
-        for (uint32_t j = count; j < 4; j++)
-          transformed = m_module.opCompositeInsert(m_vec4Type, projValue, transformed, 1, &j);
+      uint32_t totalComponents = (m_vsKey.Data.Contents.Projected && projIndex < 4) ? 3 : 4;
+      for (uint32_t i = count; i < totalComponents; i++) {
+        // Discard the components that exceed the specified D3DTTFF_COUNT
+        transformed = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(0), transformed, 1, &i);
       }
 
       m_module.opStore(m_vs.out.TEXCOORD[i], transformed);
@@ -1315,6 +1338,8 @@ namespace dxvk {
         uint32_t midDot = m_module.opDot(m_floatType, normal, mid);
                  midDot = m_module.opFClamp(m_floatType, midDot, m_module.constf32(0.0f), m_module.constf32(1.0f));
         uint32_t doSpec = m_module.opFOrdGreaterThan(bool_t, midDot, m_module.constf32(0.0f));
+                 doSpec = m_module.opLogicalAnd(bool_t, doSpec, m_module.opFOrdGreaterThan(bool_t, hitDot, m_module.constf32(0.0f)));
+
         uint32_t specularness = m_module.opPow(m_floatType, midDot, m_vs.constants.materialPower);
                  specularness = m_module.opFMul(m_floatType, specularness, atten);
                  specularness = m_module.opSelect(m_floatType, doSpec, specularness, m_module.constf32(0.0f));
@@ -1384,20 +1409,7 @@ namespace dxvk {
 
 
   void D3D9FFShaderCompiler::setupRenderStateInfo() {
-    uint32_t count;
-
-    if (m_programType == DxsoProgramType::PixelShader) {
-      m_pushConstOffset = 0;
-      m_pushConstSize   = offsetof(D3D9RenderStateInfo, pointSize);
-      count = 5;
-    }
-    else {
-      m_pushConstOffset = offsetof(D3D9RenderStateInfo, pointSize);
-      m_pushConstSize   = sizeof(float) * 6;
-      count = 11;
-    }
-
-    m_rsBlock = SetupRenderStateBlock(m_module, count);
+    m_rsBlock = SetupRenderStateBlock(m_module);
   }
 
 
@@ -1789,6 +1801,11 @@ namespace dxvk {
         return coords;
       };
 
+      auto ScalarReplicate = [&](uint32_t reg) {
+        std::array<uint32_t, 4> replicant = { reg, reg, reg, reg };
+        return m_module.opCompositeConstruct(m_vec4Type, replicant.size(), replicant.data());
+      };
+
       auto GetTexture = [&]() {
         if (!processedTexture) {
           SpirvImageOperands imageOperands;
@@ -1808,20 +1825,16 @@ namespace dxvk {
           texcoord = m_module.opVectorShuffle(texcoord_t,
             texcoord, texcoord, texcoordCnt, indices.data());
 
-          uint32_t projIdx = m_fsKey.Stages[i].Contents.ProjectedCount;
-          if (projIdx == 0 || projIdx > texcoordCnt)
-            projIdx = texcoordCnt;
-          --projIdx;
-
+          bool shouldProject = m_fsKey.Stages[i].Contents.Projected;
           uint32_t projValue = 0;
 
-          if (m_fsKey.Stages[i].Contents.Projected) {
+          if (shouldProject) {
+            // Always use w, the vertex shader puts the correct value there.
+            const uint32_t projIdx = 3;
             projValue = m_module.opCompositeExtract(m_floatType, m_ps.in.TEXCOORD[i], 1, &projIdx);
             uint32_t insertIdx = texcoordCnt - 1;
             texcoord = m_module.opCompositeInsert(texcoord_t, projValue, texcoord, 1, &insertIdx);
           }
-
-          bool shouldProject = m_fsKey.Stages[i].Contents.Projected;
 
           if (i != 0 && (
             m_fsKey.Stages[i - 1].Contents.ColorOp == D3DTOP_BUMPENVMAP ||
@@ -1836,10 +1849,23 @@ namespace dxvk {
             shouldProject = false;
           }
 
-          if (shouldProject)
+          if (unlikely(stage.SampleDref)) {
+            uint32_t component = 2;
+            uint32_t reference = m_module.opCompositeExtract(m_floatType, texcoord, 1, &component);
+
+            // [D3D8] Scale Dref to [0..(2^N - 1)] for D24S8 and D16 if Dref scaling is enabled
+            if (m_options.drefScaling) {
+              uint32_t maxDref = m_module.constf32(1.0f / (float(1 << m_options.drefScaling) - 1.0f));
+              reference        = m_module.opFMul(m_floatType, reference, maxDref);
+            }
+
+            texture = m_module.opImageSampleDrefImplicitLod(m_floatType, imageVarId, texcoord, reference, imageOperands);
+            texture = ScalarReplicate(texture);
+          } else if (shouldProject) {
             texture = m_module.opImageSampleProjImplicitLod(m_vec4Type, imageVarId, texcoord, imageOperands);
-          else
+          } else {
             texture = m_module.opImageSampleImplicitLod(m_vec4Type, imageVarId, texcoord, imageOperands);
+          }
 
           if (i != 0 && m_fsKey.Stages[i - 1].Contents.ColorOp == D3DTOP_BUMPENVMAPLUMINANCE) {
             uint32_t index = m_module.constu32(D3D9SharedPSStages_Count * (i - 1) + D3D9SharedPSStages_BumpEnvLScale);
@@ -1865,11 +1891,6 @@ namespace dxvk {
         processedTexture = true;
 
         return texture;
-      };
-
-      auto ScalarReplicate = [&](uint32_t reg) {
-        std::array<uint32_t, 4> replicant = { reg, reg, reg, reg };
-        return m_module.opCompositeConstruct(m_vec4Type, replicant.size(), replicant.data());
       };
 
       auto AlphaReplicate = [&](uint32_t reg) {
@@ -2268,6 +2289,11 @@ namespace dxvk {
           dimensionality = spv::Dim2D;
           sampler.texcoordCnt = 2;
           viewType       = VK_IMAGE_VIEW_TYPE_2D;
+
+          // Z coordinate for Dref sampling
+          if (m_fsKey.Stages[i].Contents.SampleDref)
+            sampler.texcoordCnt++;
+
           break;
         case D3DRTYPE_CUBETEXTURE:
           dimensionality = spv::DimCube;

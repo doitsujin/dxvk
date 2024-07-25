@@ -80,11 +80,6 @@ namespace dxvk {
 
     VkDeviceSize getAlignment(const Rc<DxvkDevice>& device) const;
 
-    static VkBufferUsageFlags getBufferUsage(
-            D3D9DeviceEx*         pDevice,
-            DxsoProgramType       ShaderStage,
-            DxsoConstantBuffers   BufferType);
-
   };
 
 }

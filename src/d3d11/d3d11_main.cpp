@@ -38,7 +38,7 @@ extern "C" {
       DXGI_ADAPTER_DESC desc;
       pAdapter->GetDesc(&desc);
 
-      dxvkInstance = new DxvkInstance();
+      dxvkInstance = new DxvkInstance(0);
       dxvkAdapter  = dxvkInstance->findAdapterByLuid(&desc.AdapterLuid);
 
       if (dxvkAdapter == nullptr)
@@ -376,7 +376,7 @@ extern "C" {
       instanceInfo.extensionCount = instanceExtensions.size();
       instanceInfo.extensionNames = instanceExtensions.data();
 
-      Rc<DxvkInstance> dxvkInstance = new DxvkInstance(instanceInfo);
+      Rc<DxvkInstance> dxvkInstance = new DxvkInstance(instanceInfo, 0);
 
       // Find adapter by physical device handle
       Rc<DxvkAdapter> dxvkAdapter;

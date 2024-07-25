@@ -470,6 +470,13 @@ namespace dxvk {
   }
 
 
+  uint32_t SpirvModule::constNull(
+          uint32_t                typeId) {
+    return this->defConst(spv::OpConstantNull,
+      typeId, 0, nullptr);
+  }
+
+
   uint32_t SpirvModule::lateConst32(
           uint32_t                typeId) {
     uint32_t resultId = this->allocateId();
@@ -2693,6 +2700,30 @@ namespace dxvk {
     m_code.putWord(m_instExtGlsl450);
     m_code.putWord(GLSLstd450Normalize);
     m_code.putWord(operand);
+    return resultId;
+  }
+
+
+  uint32_t SpirvModule::opRawAccessChain(
+          uint32_t                resultType,
+          uint32_t                base,
+          uint32_t                stride,
+          uint32_t                index,
+          uint32_t                offset,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+
+    m_code.putIns (spv::OpRawAccessChainNV, operand ? 8 : 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(base);
+    m_code.putWord(stride);
+    m_code.putWord(index);
+    m_code.putWord(offset);
+
+    if (operand)
+      m_code.putWord(operand);
+
     return resultId;
   }
 

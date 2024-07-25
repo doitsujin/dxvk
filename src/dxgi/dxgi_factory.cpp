@@ -79,7 +79,7 @@ namespace dxvk {
 
 
   DxgiFactory::DxgiFactory(UINT Flags)
-  : m_instance        (g_dxvkInstance.acquire()),
+  : m_instance        (g_dxvkInstance.acquire(0)),
     m_interop         (this),
     m_options         (m_instance->config()),
     m_monitorInfo     (this, m_options),
@@ -230,7 +230,7 @@ namespace dxvk {
     descFs.Windowed         = pDesc->Windowed;
     
     IDXGISwapChain1* swapChain = nullptr;
-    HRESULT hr = CreateSwapChainForHwnd(
+    HRESULT hr = CreateSwapChainForHwndBase(
       pDevice, pDesc->OutputWindow,
       &desc, &descFs, nullptr,
       &swapChain);
@@ -241,6 +241,19 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiFactory::CreateSwapChainForHwnd(
+          IUnknown*             pDevice,
+          HWND                  hWnd,
+    const DXGI_SWAP_CHAIN_DESC1* pDesc,
+    const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc,
+          IDXGIOutput*          pRestrictToOutput,
+          IDXGISwapChain1**     ppSwapChain) {
+    return CreateSwapChainForHwndBase(
+      pDevice, hWnd,
+      pDesc, pFullscreenDesc, pRestrictToOutput,
+      ppSwapChain);
+  }
+
+  HRESULT STDMETHODCALLTYPE DxgiFactory::CreateSwapChainForHwndBase(
           IUnknown*             pDevice,
           HWND                  hWnd,
     const DXGI_SWAP_CHAIN_DESC1* pDesc,

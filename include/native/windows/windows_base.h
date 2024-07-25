@@ -48,7 +48,6 @@ typedef const void* LPCVOID;
 typedef size_t SIZE_T;
 
 typedef int8_t INT8;
-
 typedef uint8_t UINT8;
 typedef uint8_t BYTE;
 
@@ -56,9 +55,13 @@ typedef int16_t SHORT;
 typedef uint16_t USHORT;
 
 typedef int64_t LONGLONG;
+typedef int64_t INT64;
+
 typedef uint64_t ULONGLONG;
+typedef uint64_t UINT64;
 
 typedef intptr_t LONG_PTR;
+typedef uintptr_t ULONG_PTR;
 
 typedef float FLOAT;
 
@@ -330,12 +333,21 @@ typedef struct RGNDATA {
 #define DECLARE_INTERFACE(x)     struct x
 #define DECLARE_INTERFACE_(x, y) struct x : public y
 #else
+#ifdef CONST_VTABLE
 #define DECLARE_INTERFACE(x) \
     typedef interface x { \
         const struct x##Vtbl *lpVtbl; \
     } x; \
     typedef const struct x##Vtbl x##Vtbl; \
     const struct x##Vtbl
+#else
+#define DECLARE_INTERFACE(x) \
+    typedef interface x { \
+        struct x##Vtbl *lpVtbl; \
+    } x; \
+    typedef struct x##Vtbl x##Vtbl; \
+    struct x##Vtbl
+#endif // CONST_VTABLE
 #define DECLARE_INTERFACE_(x, y) DECLARE_INTERFACE(x)
 #endif // __cplusplus
 

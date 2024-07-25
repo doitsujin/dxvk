@@ -130,7 +130,7 @@ namespace dxvk {
       m_frameQueue.push(frame);
       m_frameCond.notify_one();
     } else {
-      applyFrameRateLimit(mode);
+      m_fpsLimiter.delay();
       m_signal->signal(frameId);
     }
 
@@ -382,6 +382,9 @@ namespace dxvk {
 
 
   bool Presenter::supportsColorSpace(VkColorSpaceKHR colorspace) {
+    if (!m_surface)
+      return false;
+
     std::vector<VkSurfaceFormatKHR> surfaceFormats;
     getSupportedFormats(surfaceFormats, VK_FULL_SCREEN_EXCLUSIVE_DEFAULT_EXT);
 
@@ -645,14 +648,6 @@ namespace dxvk {
   }
 
 
-  void Presenter::applyFrameRateLimit(VkPresentModeKHR mode) {
-    bool vsync = mode == VK_PRESENT_MODE_FIFO_KHR
-              || mode == VK_PRESENT_MODE_FIFO_RELAXED_KHR;
-
-    m_fpsLimiter.delay(vsync);
-  }
-
-
   void Presenter::runFrameThread() {
     env::setThreadName("dxvk-frame");
 
@@ -672,10 +667,6 @@ namespace dxvk {
       if (!frame.frameId)
         return;
 
-      // Apply the FPS limiter before signaling the frame event in
-      // order to reduce latency if the app uses it for frame pacing.
-      applyFrameRateLimit(frame.mode);
-
       // If the present operation has succeeded, actually wait for it to complete.
       // Don't bother with it on MAILBOX / IMMEDIATE modes since doing so would
       // restrict us to the display refresh rate on some platforms (XWayland).
@@ -686,6 +677,11 @@ namespace dxvk {
         if (vr < 0 && vr != VK_ERROR_OUT_OF_DATE_KHR && vr != VK_ERROR_SURFACE_LOST_KHR)
           Logger::err(str::format("Presenter: vkWaitForPresentKHR failed: ", vr));
       }
+
+      // Apply FPS limtier here to align it as closely with scanout as we can,
+      // and delay signaling the frame latency event to emulate behaviour of a
+      // low refresh rate display as closely as we can.
+      m_fpsLimiter.delay();
 
       // Always signal even on error, since failures here
       // are transparent to the front-end.

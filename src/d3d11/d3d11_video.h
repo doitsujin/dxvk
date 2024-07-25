@@ -584,6 +584,7 @@ namespace dxvk {
     struct alignas(16) UboData {
       float colorMatrix[3][4];
       float coordMatrix[3][2];
+      VkRect2D srcRect;
       float yMin, yMax;
       VkBool32 isPlanar;
     };
@@ -593,7 +594,6 @@ namespace dxvk {
     Rc<DxvkDevice>          m_device;
     Rc<DxvkShader>          m_vs;
     Rc<DxvkShader>          m_fs;
-    Rc<DxvkSampler>         m_sampler;
     Rc<DxvkBuffer>          m_ubo;
 
     VkExtent2D m_dstExtent = { 0u, 0u };
@@ -612,8 +612,6 @@ namespace dxvk {
       const D3D11_VIDEO_PROCESSOR_STREAM*   pStream);
 
     void CreateUniformBuffer();
-
-    void CreateSampler();
 
     void CreateShaders();
 

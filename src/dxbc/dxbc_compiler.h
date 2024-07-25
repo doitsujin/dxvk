@@ -512,6 +512,7 @@ namespace dxvk {
     // Entry point description - we'll need to declare
     // the function ID and all input/output variables.
     uint32_t              m_entryPointId = 0;
+    bool                  m_hasRawAccessChains = false;
     
     ////////////////////////////////////////////
     // Inter-stage shader interface slots. Also
@@ -944,19 +945,6 @@ namespace dxvk {
       const DxbcRegister&           operand,
       const DxbcRegister&           address);
     
-    ///////////////////////////////
-    // Resource load/store methods
-    DxbcRegisterValue emitRawBufferLoad(
-      const DxbcRegister&           operand,
-            DxbcRegisterValue       elementIndex,
-            DxbcRegMask             writeMask,
-            uint32_t&               sparseFeedbackId);
-    
-    void emitRawBufferStore(
-      const DxbcRegister&           operand,
-            DxbcRegisterValue       elementIndex,
-            DxbcRegisterValue       value);
-    
     //////////////////////////
     // Resource query methods
     DxbcRegisterValue emitQueryBufferSize(
@@ -1233,6 +1221,9 @@ namespace dxvk {
     uint32_t getUavCoherence(
             uint32_t                registerId,
             DxbcUavFlags            flags);
+    
+    bool ignoreInputSystemValue(
+            DxbcSystemValue         sv) const;
 
     ///////////////////////////
     // Type definition methods

@@ -350,7 +350,7 @@ namespace dxvk {
       return m_chunk;
     }
     
-    operator bool () const {
+    explicit operator bool () const {
       return m_chunk != nullptr;
     }
     

@@ -137,6 +137,13 @@ IDXGIVkSwapChain1 : public IDXGIVkSwapChain {
 };
 
 
+MIDL_INTERFACE("aed91093-e02e-458c-bdef-a97da1a7e6d2")
+IDXGIVkSwapChain2 : public IDXGIVkSwapChain1 {
+  virtual void STDMETHODCALLTYPE SetTargetFrameRate(
+          double                    FrameRate) = 0;
+};
+
+
 /**
  * \brief Private DXGI presenter factory
  */
@@ -458,21 +465,7 @@ IDXGIVkInteropFactory1 : public IDXGIVkInteropFactory {
 };
 
 
-#ifdef _MSC_VER
-struct __declspec(uuid("907bf281-ea3c-43b4-a8e4-9f231107b4ff")) IDXGIDXVKAdapter;
-struct __declspec(uuid("92a5d77b-b6e1-420a-b260-fdd701272827")) IDXGIDXVKDevice;
-struct __declspec(uuid("c06a236f-5be3-448a-8943-89c611c0c2c1")) IDXGIVkMonitorInfo;
-struct __declspec(uuid("4c5e1b0d-b0c8-4131-bfd8-9b2476f7f408")) IDXGIVkInteropFactory;
-struct __declspec(uuid("2a289dbd-2d0a-4a51-89f7-f2adce465cd6")) IDXGIVkInteropFactory1;
-struct __declspec(uuid("3a6d8f2c-b0e8-4ab4-b4dc-4fd24891bfa5")) IDXGIVkInteropAdapter;
-struct __declspec(uuid("e2ef5fa5-dc21-4af7-90c4-f67ef6a09323")) IDXGIVkInteropDevice;
-struct __declspec(uuid("e2ef5fa5-dc21-4af7-90c4-f67ef6a09324")) IDXGIVkInteropDevice1;
-struct __declspec(uuid("5546cf8c-77e7-4341-b05d-8d4d5000e77d")) IDXGIVkInteropSurface;
-struct __declspec(uuid("1e7895a1-1bc3-4f9c-a670-290a4bc9581a")) IDXGIVkSurfaceFactory;
-struct __declspec(uuid("e4a9059e-b569-46ab-8de7-501bd2bc7f7a")) IDXGIVkSwapChain;
-struct __declspec(uuid("785326d4-b77b-4826-ae70-8d08308ee6d1")) IDXGIVkSwapChain1;
-struct __declspec(uuid("e7d6c3ca-23a0-4e08-9f2f-ea5231df6633")) IDXGIVkSwapChainFactory;
-#else
+#ifndef _MSC_VER
 __CRT_UUID_DECL(IDXGIDXVKAdapter,          0x907bf281,0xea3c,0x43b4,0xa8,0xe4,0x9f,0x23,0x11,0x07,0xb4,0xff);
 __CRT_UUID_DECL(IDXGIDXVKDevice,           0x92a5d77b,0xb6e1,0x420a,0xb2,0x60,0xfd,0xf7,0x01,0x27,0x28,0x27);
 __CRT_UUID_DECL(IDXGIVkMonitorInfo,        0xc06a236f,0x5be3,0x448a,0x89,0x43,0x89,0xc6,0x11,0xc0,0xc2,0xc1);
@@ -485,5 +478,6 @@ __CRT_UUID_DECL(IDXGIVkInteropSurface,     0x5546cf8c,0x77e7,0x4341,0xb0,0x5d,0x
 __CRT_UUID_DECL(IDXGIVkSurfaceFactory,     0x1e7895a1,0x1bc3,0x4f9c,0xa6,0x70,0x29,0x0a,0x4b,0xc9,0x58,0x1a);
 __CRT_UUID_DECL(IDXGIVkSwapChain,          0xe4a9059e,0xb569,0x46ab,0x8d,0xe7,0x50,0x1b,0xd2,0xbc,0x7f,0x7a);
 __CRT_UUID_DECL(IDXGIVkSwapChain1,         0x785326d4,0xb77b,0x4826,0xae,0x70,0x8d,0x08,0x30,0x8e,0xe6,0xd1);
+__CRT_UUID_DECL(IDXGIVkSwapChain2,         0xaed91093,0xe02e,0x458c,0xbd,0xef,0xa9,0x7d,0xa1,0xa7,0xe6,0xd2);
 __CRT_UUID_DECL(IDXGIVkSwapChainFactory,   0xe7d6c3ca,0x23a0,0x4e08,0x9f,0x2f,0xea,0x52,0x31,0xdf,0x66,0x33);
 #endif

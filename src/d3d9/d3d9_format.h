@@ -217,7 +217,7 @@ namespace dxvk {
 
     bool m_dfSupport;
     bool m_x4r4g4b4Support;
-    bool m_d32supportFinal;
+    bool m_d16lockableSupport;
   };
 
   inline bool IsFourCCFormat(D3D9Format format) {
@@ -230,6 +230,7 @@ namespace dxvk {
       && format != D3D9Format::MULTI2_ARGB8
       && format != D3D9Format::UYVY
       && format != D3D9Format::R8G8_B8G8
+      && format != D3D9Format::YUY2
       && format != D3D9Format::G8R8_G8B8
       && format != D3D9Format::DXT1
       && format != D3D9Format::DXT2

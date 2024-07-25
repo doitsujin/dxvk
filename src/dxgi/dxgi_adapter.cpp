@@ -130,7 +130,7 @@ namespace dxvk {
     // We can't really reconstruct the version numbers
     // returned by Windows drivers from Vulkan data
     if (SUCCEEDED(hr) && pUMDVersion)
-      pUMDVersion->QuadPart = ~0ull;
+      pUMDVersion->QuadPart = INT64_MAX;
 
     if (FAILED(hr)) {
       Logger::err("DXGI: CheckInterfaceSupport: Unsupported interface");
@@ -272,7 +272,8 @@ namespace dxvk {
     auto deviceProp = m_adapter->deviceProperties();
     auto memoryProp = m_adapter->memoryProperties();
     auto vk11       = m_adapter->devicePropertiesExt().vk11;
-    
+    auto vk12       = m_adapter->devicePropertiesExt().vk12;
+
     // Custom Vendor / Device ID
     if (options->customVendorId >= 0)
       deviceProp.vendorID = options->customVendorId;
@@ -298,7 +299,10 @@ namespace dxvk {
         fallbackDevice = 0x2487;
       }
 
-      bool hideGpu = (deviceProp.vendorID == uint16_t(DxvkGpuVendor::Nvidia) && options->hideNvidiaGpu)
+      bool hideNvidiaGpu = vk12.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY
+        ? options->hideNvidiaGpu : options->hideNvkGpu;
+
+      bool hideGpu = (deviceProp.vendorID == uint16_t(DxvkGpuVendor::Nvidia) && hideNvidiaGpu)
                   || (deviceProp.vendorID == uint16_t(DxvkGpuVendor::Amd) && options->hideAmdGpu)
                   || (deviceProp.vendorID == uint16_t(DxvkGpuVendor::Intel) && options->hideIntelGpu);
 

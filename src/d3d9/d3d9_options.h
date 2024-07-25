@@ -78,8 +78,8 @@ namespace dxvk {
     /// Support X4R4G4B4
     bool supportX4R4G4B4;
 
-    /// Support D32
-    bool supportD32;
+    /// Support D16_LOCKABLE
+    bool supportD16Lockable;
 
     /// Use D32f for D24
     bool useD32forD24;
@@ -152,6 +152,17 @@ namespace dxvk {
 
     /// Enable emulation of device loss when a fullscreen app loses focus
     bool deviceLossOnFocusLoss;
+
+    /// Disable counting losable resources and rejecting calls to Reset() if any are still alive
+    bool countLosableResources;
+
+    /// Ensure that for the same D3D commands the output VK commands
+    /// don't change between runs. Useful for comparative benchmarking,
+    /// can negatively affect performance.
+    bool reproducibleCommandStream;
+
+    /// Enable depth texcoord Z (Dref) scaling (D3D8 quirk)
+    int32_t drefScaling;
   };
 
 }
