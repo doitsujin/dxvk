@@ -38,6 +38,12 @@ jobs:
         Invoke-WebRequest -URI https://raw.githubusercontent.com/NovaRain/DXSDK_Collection/master/DXSDK_Aug2007/Include/d3d8.h -OutFile include/d3d8.h
         Invoke-WebRequest -URI https://raw.githubusercontent.com/NovaRain/DXSDK_Collection/master/DXSDK_Aug2007/Include/d3d8types.h -OutFile include/d3d8types.h
         Invoke-WebRequest -URI https://raw.githubusercontent.com/NovaRain/DXSDK_Collection/master/DXSDK_Aug2007/Include/d3d8caps.h -OutFile include/d3d8caps.h
+        
+    - name: Get version
+      id: get-version
+      shell: bash
+      run: |
+        echo "VERSION_NAME=${GITHUB_REF##*/}-${GITHUB_SHA##*/}" >> $GITHUB_ENV
 
     - name: Build MSVC x86
       shell: pwsh
@@ -49,9 +55,9 @@ jobs:
         msbuild -m build-msvc-x86/dxvk.sln
 
     - name: Upload artifacts (x86)
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: msvc_x86_output
+        name: dxvk-${{ env.VERSION_NAME }}-msvc-x86-output
         path: |
           build-msvc-x86\**\*.pdb
           build-msvc-x86\**\*.dll
@@ -66,9 +72,9 @@ jobs:
         msbuild -m build-msvc-x64/dxvk.sln
 
     - name: Upload artifacts (x64)
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
-        name: msvc_amd64_output
+        name: dxvk-${{ env.VERSION_NAME }}-msvc-amd64-output
         path: |
           build-msvc-x64\**\*.pdb
           build-msvc-x64\**\*.dll
