@@ -48,6 +48,14 @@ jobs:
         meson --buildtype release --backend vs2022 build-msvc-x86
         msbuild -m build-msvc-x86/dxvk.sln
 
+    - name: Upload artifacts (x86)
+      uses: actions/upload-artifact@v3
+      with:
+        name: msvc_x86_output
+        path: |
+          build-msvc-x86\**\*.pdb
+          build-msvc-x86\**\*.dll
+
     - name: Build MSVC x64
       shell: pwsh
       run: |
@@ -56,3 +64,11 @@ jobs:
           | % { [System.Environment]::SetEnvironmentVariable($_[0], $_[1]) }
         meson --buildtype release --backend vs2022 build-msvc-x64
         msbuild -m build-msvc-x64/dxvk.sln
+
+    - name: Upload artifacts (x64)
+      uses: actions/upload-artifact@v3
+      with:
+        name: msvc_amd64_output
+        path: |
+          build-msvc-x64\**\*.pdb
+          build-msvc-x64\**\*.dll
