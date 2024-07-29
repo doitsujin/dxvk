@@ -1008,6 +1008,10 @@ namespace dxvk {
       { "dxgi.customDeviceId",              "05e0" },
       { "dxgi.customDeviceDesc",            "GeForce GTX 295" },
     }} },
+    /* Resident Evil: Operation Raccoon City     */
+    { R"(\\RaccoonCity\.exe$)", {{
+      { "d3d9.textureMemory",               "0" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
