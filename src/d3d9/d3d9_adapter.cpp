@@ -134,7 +134,7 @@ namespace dxvk {
     if (rt && CheckFormat == D3D9Format::A8 && m_parent->GetOptions().disableA8RT)
       return D3DERR_NOTAVAILABLE;
 
-    if (ds && !IsDepthFormat(CheckFormat))
+    if (ds && !IsDepthStencilFormat(CheckFormat))
       return D3DERR_NOTAVAILABLE;
 
     if (rt && CheckFormat == D3D9Format::NULL_FORMAT && twoDimensional)
@@ -228,7 +228,7 @@ namespace dxvk {
           D3D9Format AdapterFormat,
           D3D9Format RenderTargetFormat,
           D3D9Format DepthStencilFormat) {
-    if (!IsDepthFormat(DepthStencilFormat))
+    if (!IsDepthStencilFormat(DepthStencilFormat))
       return D3DERR_NOTAVAILABLE;
 
     auto dsfMapping = GetFormatMapping(DepthStencilFormat);
