@@ -420,4 +420,15 @@ namespace dxvk {
         || Format == D3D9Format::INTZ;
   }
 
+  bool IsDepthStencilFormat(D3D9Format Format) {
+    return IsDepthFormat(Format) || Format == D3D9Format::S8_LOCKABLE;
+  }
+
+  bool IsLockableDepthStencilFormat(D3D9Format Format) {
+    return Format == D3D9Format::S8_LOCKABLE
+        || Format == D3D9Format::D16_LOCKABLE
+        || Format == D3D9Format::D32_LOCKABLE
+        || Format == D3D9Format::D32F_LOCKABLE;
+  }
+
 }

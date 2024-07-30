@@ -205,7 +205,8 @@ namespace dxvk {
     void CreateRenderTargetViews();
 
     HRESULT CreateBackBuffers(
-            uint32_t            NumBackBuffers);
+            uint32_t            NumBackBuffers,
+            DWORD               Flags);
 
     void CreateBlitter();
 

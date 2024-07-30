@@ -45,7 +45,7 @@ namespace dxvk {
         RecreateSwapChain();
     }
 
-    if (FAILED(CreateBackBuffers(m_presentParams.BackBufferCount)))
+    if (FAILED(CreateBackBuffers(m_presentParams.BackBufferCount, m_presentParams.Flags)))
       throw DxvkError("D3D9: Failed to create swapchain backbuffers");
 
     CreateBlitter();
@@ -627,7 +627,7 @@ namespace dxvk {
     if (changeFullscreen)
       SetGammaRamp(0, &m_ramp);
 
-    hr = CreateBackBuffers(m_presentParams.BackBufferCount);
+    hr = CreateBackBuffers(m_presentParams.BackBufferCount, m_presentParams.Flags);
     if (FAILED(hr))
       return hr;
 
@@ -1013,7 +1013,7 @@ namespace dxvk {
   }
 
 
-  HRESULT D3D9SwapChainEx::CreateBackBuffers(uint32_t NumBackBuffers) {
+  HRESULT D3D9SwapChainEx::CreateBackBuffers(uint32_t NumBackBuffers, DWORD Flags) {
     // Explicitly destroy current swap image before
     // creating a new one to free up resources
     DestroyBackBuffers();
@@ -1038,8 +1038,7 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.IsBackBuffer       = TRUE;
     desc.IsAttachmentOnly   = FALSE;
-    // Docs: Also note that - unlike textures - swap chain back buffers, render targets [..] can be locked
-    desc.IsLockable         = TRUE;
+    desc.IsLockable         = (Flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER) != 0;
 
     for (uint32_t i = 0; i < NumBuffers; i++) {
       D3D9Surface* surface;
