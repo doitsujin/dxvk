@@ -184,6 +184,17 @@ namespace dxvk {
     if (pDesc->MipLevels == 0 || pDesc->MipLevels > maxMipLevelCount)
       pDesc->MipLevels = maxMipLevelCount;
 
+    if (unlikely(pDesc->Discard)) {
+      if (!IsDepthStencilFormat(pDesc->Format))
+        return D3DERR_INVALIDCALL;
+
+      if (pDesc->Format == D3D9Format::D32_LOCKABLE
+        || pDesc->Format == D3D9Format::D32F_LOCKABLE
+        || pDesc->Format == D3D9Format::D16_LOCKABLE
+        || pDesc->Format == D3D9Format::S8_LOCKABLE)
+        return D3DERR_INVALIDCALL;
+    }
+
     return D3D_OK;
   }
 
