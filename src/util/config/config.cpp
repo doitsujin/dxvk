@@ -1143,6 +1143,10 @@ namespace dxvk {
     { R"(\\Inquisitor\.exe$)", {{
       { "d3d9.countLosableResources",      "False" },
     }} },
+    /* Art of Murder FBI Confidential - CPU perf  */
+    { R"(\\Art of Murder - FBI Confidential\\game\.exe$)", {{
+      { "d3d9.cachedDynamicBuffers",       "True" },
+    }} },
   }};
 
 
