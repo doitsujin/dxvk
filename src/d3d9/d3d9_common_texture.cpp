@@ -194,6 +194,8 @@ namespace dxvk {
 
     m_data.Map();
     uint8_t* ptr = reinterpret_cast<uint8_t*>(m_data.Ptr());
+    if (ptr == nullptr)
+      return nullptr;
     ptr += m_memoryOffset[Subresource];
     return ptr;
   }
