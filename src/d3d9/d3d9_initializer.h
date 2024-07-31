@@ -52,7 +52,8 @@ namespace dxvk {
 
     void InitHostVisibleTexture(
             D3D9CommonTexture* pTexture,
-            void*              pInitialData);
+            void*              pInitialData,
+            void*              mapPtr);
     
     void FlushImplicit();
     void FlushInternal();
