@@ -425,6 +425,14 @@ namespace dxvk {
     { R"(\\GalaxyClient\.exe$)", {{
       { "dxvk.maxChunkSize",                "1"   },
     }} },
+    /* Epic Games Launcher                        */
+    { R"(\\(EpicGamesLauncher|EpicWebHelper)\.exe$)", {{
+      { "dxvk.maxChunkSize",                "1"   },
+    }} },
+    /* Blizzard Entertainment Battle.net          */
+    { R"(\\Battle\.net\.exe$)", {{
+      { "dxvk.maxChunkSize",                "1" },
+    }} },
     /* Fallout 76
      * Game tries to be too "smart" and changes sync
      * interval based on performance (in fullscreen)
@@ -439,10 +447,6 @@ namespace dxvk {
      */
     { R"(\\Fallout76\.exe$)", {{
       { "dxgi.syncInterval",                "1" },
-    }} },
-    /* Blizzard Entertainment Battle.net          */
-    { R"(\\Battle\.net\.exe$)", {{
-      { "dxvk.maxChunkSize",                "1" },
     }} },
     /* Bladestorm Nightmare                       *
      * Game speed increases when above 60 fps in  *
