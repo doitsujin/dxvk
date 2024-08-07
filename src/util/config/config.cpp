@@ -45,6 +45,12 @@ namespace dxvk {
     { R"(\\Metro Exodus Enhanced Edition\\MetroExodus\.exe$)", {{
       { "dxvk.hideIntegratedGraphics",      "True" },
     }} },
+    /* The Talos Principle 2 picks GPU adapters
+     * by available VRAM, which causes issues on some
+     * systems with integrated graphics. */
+    { R"(\\Talos2(-Win64-Shipping)?\.exe$)", {{
+      { "dxvk.hideIntegratedGraphics",      "True" },
+    }} },
     /* Persona 3 Reload - disables vsync by default and
      * runs into severe frame latency issues on Deck. */
     { R"(\\P3R\.exe$)", {{
