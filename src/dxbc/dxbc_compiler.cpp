@@ -2044,15 +2044,41 @@ namespace dxvk {
     DxbcRegisterValue dst;
     dst.type.ctype  = ins.dst[0].dataType;
     dst.type.ccount = 1;
-    
-    dst.id = m_module.opDot(
-      getVectorTypeId(dst.type),
-      src.at(0).id,
-      src.at(1).id);
-    
-    if (ins.controls.precise() || m_precise)
-      m_module.decorate(dst.id, spv::DecorationNoContraction);
-    
+    dst.id = 0;
+
+    if (!m_moduleInfo.options.longDot) {
+      dst.id = m_module.opDot(
+        getVectorTypeId(dst.type),
+        src.at(0).id,
+        src.at(1).id);
+
+      if (ins.controls.precise() || m_precise)
+        m_module.decorate(dst.id, spv::DecorationNoContraction);
+    } else {
+      uint32_t componentType = getVectorTypeId(dst.type);
+      uint32_t componentCount = srcMask.popCount();
+
+      for (uint32_t i = 1; i <= componentCount; i++) {
+        uint32_t idx = componentCount - i;
+
+        if (dst.id) {
+          dst.id = m_module.opFFma(componentType,
+            m_module.opCompositeExtract(componentType, src.at(0).id, 1, &idx),
+            m_module.opCompositeExtract(componentType, src.at(1).id, 1, &idx),
+            dst.id);
+        } else {
+          dst.id = m_module.opFMul(componentType,
+            m_module.opCompositeExtract(componentType, src.at(0).id, 1, &idx),
+            m_module.opCompositeExtract(componentType, src.at(1).id, 1, &idx));
+        }
+
+        // Unconditionally mark as precise since the exact order of operation
+        // matters for some games, even if the instruction itself is not marked
+        // as precise.
+        m_module.decorate(dst.id, spv::DecorationNoContraction);
+      }
+    }
+
     dst = emitDstOperandModifiers(dst, ins.modifiers);
     emitRegisterStore(ins.dst[0], dst);
   }
