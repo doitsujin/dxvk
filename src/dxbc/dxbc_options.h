@@ -55,8 +55,11 @@ namespace dxvk {
     /// Minimum storage buffer alignment
     VkDeviceSize minSsboAlignment = 0;
 
-    /// Should we make our Mads a FFma or do it the long way with an FMul and an FAdd?
+    /// Translate Mad/Dfma to separate FMul+FAdd
     bool longMad;
+
+    /// Translate DpX to a precise FMul+FFma chain
+    bool longDot;
   };
   
 }

@@ -39,6 +39,7 @@ namespace dxvk {
     forceSampleRateShading   = options.forceSampleRateShading;
     enableSampleShadingInterlock = device->features().extFragmentShaderInterlock.fragmentShaderSampleInterlock;
     longMad                  = options.longMad;
+    longDot                  = options.longDot;
 
     // Figure out float control flags to match D3D11 rules
     if (options.floatControls) {
