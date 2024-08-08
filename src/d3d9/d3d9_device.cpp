@@ -1141,9 +1141,6 @@ namespace dxvk {
     const VkImageSubresource dstSubresource = dstTextureInfo->GetSubresourceFromIndex(dstFormatInfo->aspectMask, dst->GetSubresource());
     const VkImageSubresource srcSubresource = srcTextureInfo->GetSubresourceFromIndex(srcFormatInfo->aspectMask, src->GetSubresource());
 
-    if (unlikely((srcSubresource.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) && m_flags.test(D3D9DeviceFlag::InScene)))
-      return D3DERR_INVALIDCALL;
-
     if (unlikely(Filter != D3DTEXF_NONE && Filter != D3DTEXF_LINEAR && Filter != D3DTEXF_POINT))
       return D3DERR_INVALIDCALL;
 
@@ -1225,10 +1222,10 @@ namespace dxvk {
       uint32_t(blitInfo.dstOffsets[1].y - blitInfo.dstOffsets[0].y),
       uint32_t(blitInfo.dstOffsets[1].z - blitInfo.dstOffsets[0].z) };
 
-    bool srcIsDepth = IsDepthFormat(srcFormat);
-    bool dstIsDepth = IsDepthFormat(dstFormat);
-    if (unlikely(srcIsDepth || dstIsDepth)) {
-      if (unlikely(!srcIsDepth || !dstIsDepth))
+    bool srcIsDS = IsDepthStencilFormat(srcFormat);
+    bool dstIsDS = IsDepthStencilFormat(dstFormat);
+    if (unlikely(srcIsDS || dstIsDS)) {
+      if (unlikely(!srcIsDS || !dstIsDS))
         return D3DERR_INVALIDCALL;
 
       if (unlikely(srcTextureInfo->Desc()->Discard || dstTextureInfo->Desc()->Discard))
@@ -1250,7 +1247,7 @@ namespace dxvk {
       if (unlikely(pSourceSurface == pDestSurface))
         return D3DERR_INVALIDCALL;
 
-      if (unlikely(dstIsDepth))
+      if (unlikely(dstIsDS))
         return D3DERR_INVALIDCALL;
 
       // The docs say that stretching is only allowed if the destination is either a render target surface or a render target texture.
@@ -3894,7 +3891,7 @@ namespace dxvk {
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
     desc.IsBackBuffer       = FALSE;
-    desc.IsAttachmentOnly   = Pool == D3DPOOL_DEFAULT;
+    desc.IsAttachmentOnly   = TRUE;
     // Docs: Off-screen plain surfaces are always lockable, regardless of their pool types.
     desc.IsLockable         = TRUE;
 
@@ -3950,8 +3947,7 @@ namespace dxvk {
     desc.MultisampleQuality = MultisampleQuality;
     desc.IsBackBuffer       = FALSE;
     desc.IsAttachmentOnly   = TRUE;
-    // Docs don't say anything, so just assume it's lockable.
-    desc.IsLockable         = TRUE;
+    desc.IsLockable         = IsLockableDepthStencilFormat(desc.Format);
 
     if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_TEXTURE, &desc)))
       return D3DERR_INVALIDCALL;
@@ -7977,13 +7973,12 @@ namespace dxvk {
       desc.Usage              = D3DUSAGE_DEPTHSTENCIL;
       desc.Format             = EnumerateFormat(pPresentationParameters->AutoDepthStencilFormat);
       desc.Pool               = D3DPOOL_DEFAULT;
-      desc.Discard            = FALSE;
+      desc.Discard            = (pPresentationParameters->Flags & D3DPRESENTFLAG_DISCARD_DEPTHSTENCIL) != 0;
       desc.MultiSample        = pPresentationParameters->MultiSampleType;
       desc.MultisampleQuality = pPresentationParameters->MultiSampleQuality;
       desc.IsBackBuffer       = FALSE;
       desc.IsAttachmentOnly   = TRUE;
-      // Docs: Also note that - unlike textures - swap chain back buffers, render targets [..] can be locked
-      desc.IsLockable         = TRUE;
+      desc.IsLockable         = IsLockableDepthStencilFormat(desc.Format);
 
       if (FAILED(D3D9CommonTexture::NormalizeTextureProperties(this, D3DRTYPE_TEXTURE, &desc)))
         return D3DERR_NOTAVAILABLE;

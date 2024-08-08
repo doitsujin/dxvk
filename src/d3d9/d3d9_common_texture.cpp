@@ -184,6 +184,14 @@ namespace dxvk {
     if (pDesc->MipLevels == 0 || pDesc->MipLevels > maxMipLevelCount)
       pDesc->MipLevels = maxMipLevelCount;
 
+    if (unlikely(pDesc->Discard)) {
+      if (!IsDepthStencilFormat(pDesc->Format))
+        return D3DERR_INVALIDCALL;
+
+      if (pDesc->Format == D3D9Format::D32_LOCKABLE || pDesc->Format == D3D9Format::D32F_LOCKABLE || pDesc->Format == D3D9Format::D16_LOCKABLE)
+        return D3DERR_INVALIDCALL;
+    }
+
     return D3D_OK;
   }
 
@@ -284,8 +292,7 @@ namespace dxvk {
     imageInfo.numLayers       = m_desc.ArraySize;
     imageInfo.mipLevels       = m_desc.MipLevels;
     imageInfo.usage           = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
-                              | VK_IMAGE_USAGE_TRANSFER_DST_BIT
-                              | VK_IMAGE_USAGE_SAMPLED_BIT;
+                              | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     imageInfo.stages          = VK_PIPELINE_STAGE_TRANSFER_BIT
                               | m_device->GetEnabledShaderStages();
     imageInfo.access          = VK_ACCESS_TRANSFER_READ_BIT
@@ -312,6 +319,12 @@ namespace dxvk {
     }
 
     DecodeMultiSampleType(m_device->GetDXVKDevice(), m_desc.MultiSample, m_desc.MultisampleQuality, &imageInfo.sampleCount);
+
+    // We need SAMPLED_BIT for StretchRect.
+    // However, StretchRect does not allow stretching for DS formats,
+    // so unless we need to resolve, it should always hit code paths that only need TRANSFER_BIT.
+    if (!m_desc.IsAttachmentOnly || !IsDepthStencilFormat(m_desc.Format) || imageInfo.sampleCount != VK_SAMPLE_COUNT_1_BIT)
+      imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
     // The image must be marked as mutable if it can be reinterpreted
     // by a view with a different format. Depth-stencil formats cannot
@@ -513,11 +526,6 @@ namespace dxvk {
     Usage &= ~(VK_IMAGE_USAGE_TRANSFER_DST_BIT
              | VK_IMAGE_USAGE_TRANSFER_SRC_BIT
              | VK_IMAGE_USAGE_ATTACHMENT_FEEDBACK_LOOP_BIT_EXT);
-    
-    // Ignore sampled bit in case the image was created with
-    // an image flag that only allows attachment usage
-    if (m_desc.IsAttachmentOnly)
-      Usage &= ~VK_IMAGE_USAGE_SAMPLED_BIT;
 
     // If the image is used only as an attachment, we never
     // have to transform the image back to a different layout
