@@ -504,6 +504,10 @@ namespace dxvk {
       { "d3d9.maxFrameRate",              "-1"      },
       { "dxgi.maxFrameRate",              "-1"      },
     }} },
+    /* Kuro no Kiseki - Broken water on NV        */
+    { R"(\\(kuro|ed9)\.exe$)", {{
+      { "d3d11.longDot",                  "True"    },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
