@@ -50,6 +50,12 @@ namespace dxvk {
     { R"(\\P3R\.exe$)", {{
       { "dxgi.syncInterval",                "1" },
     }} },
+    /* Prevent The Talos Principle 2 to pick      *
+     * integrated graphics on systems with both   *
+     * integrated and discrete graphics.          */
+    { R"(\\Talos2\.exe$)", {{
+      { "dxvk.hideIntegratedGraphics",      "True" },
+    }} },
 
     /**********************************************/
     /* D3D11 GAMES                                */
