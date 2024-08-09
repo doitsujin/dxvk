@@ -34,11 +34,19 @@ namespace dxvk {
     /// and above. Most likely ATI/AMD drivers never supported P8 in the first place.
     bool placeP8InScratch = false;
 
+    /// Rayman 3 relies on D3DLOCK_DISCARD being ignored for everything except D3DUSAGE_DYNAMIC +
+    /// D3DUSAGE_WRITEONLY buffers, however this approach incurs a performance penalty.
+    ///
+    /// Some titles might abuse this early D3D8 quirk, however at some point in its history
+    /// it was brought in line with standard D3D9 behavior.
+    bool forceLegacyDiscard = false;
+
     D3D8Options() {}
     D3D8Options(const Config& config) {
       auto forceVsDeclStr     = config.getOption<std::string>("d3d8.forceVsDecl",            "");
       batching                = config.getOption<bool>       ("d3d8.batching",               batching);
       placeP8InScratch        = config.getOption<bool>       ("d3d8.placeP8InScratch",       placeP8InScratch);
+      forceLegacyDiscard      = config.getOption<bool>       ("d3d8.forceLegacyDiscard",     forceLegacyDiscard);
 
       parseVsDecl(forceVsDeclStr);
     }
