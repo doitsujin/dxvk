@@ -479,34 +479,11 @@ namespace dxvk {
       { "d3d11.exposeDriverCommandLists",   "False" },
       { "dxgi.hideNvidiaGpu",               "False" },
     }} },
-    /* Red Faction Guerrilla Re-Mars-tered        *
-     * Broken skybox                              */
-    { R"(\\rfg\.exe$)", {{
-      { "d3d11.longMad",                  "True"    },
-    }} },
-    /* Guild Wars 2 - Fixes invisibility effect   *
-     * flicker when invariantPosition is enabled  */
-    { R"(\\Gw2-64\.exe$)", {{
-      { "d3d11.longMad",                  "True"    },
-    }} },
-    /* Ghostbusters: The Video Game Remastered    *
-     * Flickering on character faces              */
-    { R"(\\ghost\.exe$)", {{
-      { "d3d11.longMad",                  "True"    },
-    }} },
-    /* Watch_Dogs series - Some objects flicker  */
-    { R"(\\watch(_)?dogs(2|Legion)?\.exe$)", {{
-      { "d3d11.longMad",                  "True"    },
-    }} },
     /* Crysis 1/Warhead - Game bug in d3d10 makes *
      * it select lowest supported refresh rate    */
     { R"(\\Crysis(64)?\.exe$)", {{
       { "d3d9.maxFrameRate",              "-1"      },
       { "dxgi.maxFrameRate",              "-1"      },
-    }} },
-    /* Kuro no Kiseki - Broken water on NV        */
-    { R"(\\(kuro|ed9)\.exe$)", {{
-      { "d3d11.longDot",                  "True"    },
     }} },
 
     /**********************************************/

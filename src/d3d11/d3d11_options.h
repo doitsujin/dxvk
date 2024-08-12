@@ -118,12 +118,6 @@ namespace dxvk {
     /// Shader dump path
     std::string shaderDumpPath;
 
-    /// Translate Mad/Dfma to separate FMul+FAdd
-    bool longMad;
-
-    /// Translate DpX to a precise FMul+FFma chain
-    bool longDot;
-
     /// Ensure that for the same D3D commands the output VK commands
     /// don't change between runs. Useful for comparative benchmarking,
     /// can negatively affect performance.
