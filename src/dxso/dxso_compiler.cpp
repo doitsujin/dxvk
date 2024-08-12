@@ -1932,21 +1932,13 @@ namespace dxvk {
           emitRegisterLoad(src[1], mask).id);
         break;
       case DxsoOpcode::Mad:
-        if (!m_moduleInfo.options.longMad) {
-          result.id = emitFma(
-            emitRegisterLoad(src[0], mask),
-            emitRegisterLoad(src[1], mask),
-            emitRegisterLoad(src[2], mask)).id;
-        }
-        else {
-          result.id = emitMul(
-            emitRegisterLoad(src[0], mask),
-            emitRegisterLoad(src[1], mask)).id;
+        result.id = emitMul(
+          emitRegisterLoad(src[0], mask),
+          emitRegisterLoad(src[1], mask)).id;
 
-          result.id = m_module.opFAdd(typeId,
-            result.id,
-            emitRegisterLoad(src[2], mask).id);
-        }
+        result.id = m_module.opFAdd(typeId,
+          result.id,
+          emitRegisterLoad(src[2], mask).id);
         break;
       case DxsoOpcode::Mul:
         result.id = emitMul(

@@ -119,11 +119,6 @@ namespace dxvk {
     /// Enumerate adapters by displays
     bool enumerateByDisplays;
 
-    /// Should we make our Mads a FFma or do it the long way with an FMul and an FAdd?
-    /// This solves some rendering bugs in games that have z-pass shaders which
-    /// don't match entirely to the regular vertex shader in this way.
-    bool longMad;
-
     /// Cached dynamic buffers: Maps all buffers in cached memory.
     bool cachedDynamicBuffers;
 
