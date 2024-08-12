@@ -54,12 +54,6 @@ namespace dxvk {
 
     /// Minimum storage buffer alignment
     VkDeviceSize minSsboAlignment = 0;
-
-    /// Translate Mad/Dfma to separate FMul+FAdd
-    bool longMad;
-
-    /// Translate DpX to a precise FMul+FFma chain
-    bool longDot;
   };
   
 }
