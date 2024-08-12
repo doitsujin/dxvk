@@ -2058,18 +2058,16 @@ namespace dxvk {
       uint32_t componentType = getVectorTypeId(dst.type);
       uint32_t componentCount = srcMask.popCount();
 
-      for (uint32_t i = 1; i <= componentCount; i++) {
-        uint32_t idx = componentCount - i;
-
+      for (uint32_t i = 0; i < componentCount; i++) {
         if (dst.id) {
           dst.id = m_module.opFFma(componentType,
-            m_module.opCompositeExtract(componentType, src.at(0).id, 1, &idx),
-            m_module.opCompositeExtract(componentType, src.at(1).id, 1, &idx),
+            m_module.opCompositeExtract(componentType, src.at(0).id, 1, &i),
+            m_module.opCompositeExtract(componentType, src.at(1).id, 1, &i),
             dst.id);
         } else {
           dst.id = m_module.opFMul(componentType,
-            m_module.opCompositeExtract(componentType, src.at(0).id, 1, &idx),
-            m_module.opCompositeExtract(componentType, src.at(1).id, 1, &idx));
+            m_module.opCompositeExtract(componentType, src.at(0).id, 1, &i),
+            m_module.opCompositeExtract(componentType, src.at(1).id, 1, &i));
         }
 
         // Unconditionally mark as precise since the exact order of operation
