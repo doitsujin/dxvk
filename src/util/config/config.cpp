@@ -611,7 +611,6 @@ namespace dxvk {
      * like a game bug that d3d9 drivers work     *
      * around.                                    */
     { R"(\\(BF2|BF2142)\.exe$)", {{
-      { "d3d9.longMad",                     "True" },
       { "d3d9.deviceLossOnFocusLoss",       "True" },
       { "d3d9.countLosableResources",       "False"},
     }} },
@@ -627,7 +626,6 @@ namespace dxvk {
     { R"(\\(trl|tra|tru)\.exe$)", {{
       { "d3d9.cachedDynamicBuffers",        "True" },
       { "d3d9.maxFrameRate",                "60" },
-      { "d3d9.longMad",                     "True" },
     }} },
     /* Everquest                                 */
     { R"(\\eqgame\.exe$)", {{
