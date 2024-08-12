@@ -15,7 +15,7 @@ namespace dxvk {
   }
   
   
-  SpirvCodeBuffer SpirvModule::compile() const {
+  SpirvCodeBuffer SpirvModule::compile() {
     SpirvCodeBuffer result;
     result.putHeader(m_version, m_id);
     result.append(m_capabilities);
@@ -28,7 +28,35 @@ namespace dxvk {
     result.append(m_annotations);
     result.append(m_typeConstDefs);
     result.append(m_variables);
-    result.append(m_code);
+
+    // Perform some crude dead code elimination. In some cases, our compilers
+    // may emit invalid code, such as an unreachable block branching to a loop's
+    // continue block, but those cases cannot be reasonably detected up-front.
+    std::unordered_set<uint32_t> reachableBlocks;
+    std::unordered_set<uint32_t> mergeBlocks;
+
+    classifyBlocks(reachableBlocks, mergeBlocks);
+
+    bool reachable = true;
+
+    for (auto ins : m_code) {
+      if (ins.opCode() == spv::OpFunctionEnd) {
+        reachable = true;
+        result.append(ins);
+      } else if (ins.opCode() == spv::OpLabel) {
+        uint32_t labelId = ins.arg(1);
+
+        if ((reachable = reachableBlocks.find(labelId) != reachableBlocks.end())) {
+          result.append(ins);
+        } else if (mergeBlocks.find(labelId) != mergeBlocks.end()) {
+          result.append(ins);
+          result.putIns(spv::OpUnreachable, 1);
+        }
+      } else if (reachable) {
+        result.append(ins);
+      }
+    }
+
     return result;
   }
   
@@ -3902,6 +3930,71 @@ namespace dxvk {
     } else {
       // All global variables need to be declared
       return sclass != spv::StorageClassFunction;
+    }
+  }
+
+
+  void SpirvModule::classifyBlocks(
+          std::unordered_set<uint32_t>& reachableBlocks,
+          std::unordered_set<uint32_t>& mergeBlocks) {
+    std::unordered_multimap<uint32_t, uint32_t> branches;
+    std::queue<uint32_t> blockQueue;
+
+    uint32_t blockId = 0;
+
+    for (auto ins : m_code) {
+      switch (ins.opCode()) {
+        case spv::OpLabel: {
+          uint32_t id = ins.arg(1);
+
+          if (!blockId)
+            branches.insert({ 0u, id });
+
+          blockId = id;
+        } break;
+
+        case spv::OpFunction: {
+          blockId = 0u;
+        } break;
+
+        case spv::OpBranch: {
+          branches.insert({ blockId, ins.arg(1) });
+        } break;
+
+        case spv::OpBranchConditional: {
+          branches.insert({ blockId, ins.arg(2) });
+          branches.insert({ blockId, ins.arg(3) });
+        } break;
+
+        case spv::OpSwitch: {
+          branches.insert({ blockId, ins.arg(2) });
+
+          for (uint32_t i = 4; i < ins.length(); i += 2)
+            branches.insert({ blockId, ins.arg(i) });
+        } break;
+
+        case spv::OpSelectionMerge:
+        case spv::OpLoopMerge: {
+          mergeBlocks.insert(ins.arg(1));
+        } break;
+
+        default:;
+      }
+    }
+
+    blockQueue.push(0);
+
+    while (!blockQueue.empty()) {
+      uint32_t id = blockQueue.front();
+
+      auto range = branches.equal_range(id);
+
+      for (auto i = range.first; i != range.second; i++) {
+        if (reachableBlocks.insert(i->second).second)
+          blockQueue.push(i->second);
+      }
+
+      blockQueue.pop();
     }
   }
 
