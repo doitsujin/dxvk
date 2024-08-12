@@ -90,6 +90,14 @@ namespace dxvk {
     uint32_t allocId();
     
     /**
+     * \brief Appends an instruction
+     *
+     * Slightly faster than individually adding words.
+     * \param [in] ins Instruction
+     */
+    void append(const SpirvInstruction& ins);
+
+    /**
      * \brief Merges two code buffers
      * 
      * This is useful to generate declarations or
