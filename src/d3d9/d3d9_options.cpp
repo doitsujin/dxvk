@@ -95,7 +95,8 @@ namespace dxvk {
     } else {
       bool hasMulz = adapter != nullptr
                   && (adapter->matchesDriver(VK_DRIVER_ID_MESA_RADV)
-                   || adapter->matchesDriver(VK_DRIVER_ID_MESA_NVK));
+                   || adapter->matchesDriver(VK_DRIVER_ID_MESA_NVK)
+                   || adapter->matchesDriver(VK_DRIVER_ID_AMD_OPEN_SOURCE, Version(2, 0, 316), Version()));
       d3d9FloatEmulation = hasMulz ? D3D9FloatEmulation::Strict : D3D9FloatEmulation::Enabled;
     }
 
