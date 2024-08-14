@@ -485,6 +485,10 @@ namespace dxvk {
       { "d3d9.maxFrameRate",              "-1"      },
       { "dxgi.maxFrameRate",              "-1"      },
     }} },
+    /* EDF6 - possible race condition?            */
+    { R"(\\EDF6\.exe$)", {{
+      { "d3d11.enableContextLock",          "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
