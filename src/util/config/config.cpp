@@ -508,6 +508,10 @@ namespace dxvk {
     { R"(\\(kuro|ed9)\.exe$)", {{
       { "d3d11.longDot",                  "True"    },
     }} },
+    /* EDF6 */
+    { R"(\\EDF6\.exe$)", {{
+      { "d3d11.enableContextLock",          "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
