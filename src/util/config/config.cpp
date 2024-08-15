@@ -483,6 +483,11 @@ namespace dxvk {
     { R"(\\EDF6\.exe$)", {{
       { "d3d11.enableContextLock",          "True" },
     }} },
+    /* Kena: Bridge of Spirits: intel water       * 
+      flickering issues                           */
+    { R"(\\Kena-Win64-Shipping\.exe$)", {{
+      { "dxgi.hideIntelGpu",                 "True" },
+    }} },
 
     /**********************************************/
     /* D3D9 GAMES                                 */
