@@ -95,10 +95,15 @@ namespace dxvk {
     
     if (path == "none")
       return std::string();
-
-    // Don't create a log file if we're writing to wine's console output
+    
+    // Don't create a log file if we're writing to wine's console output or using native
+    #ifdef _WIN32
     if (path.empty() && m_wineLogOutput)
       return std::string();
+    #else
+    if (path.empty())
+      return std::string();
+    #endif
 
     if (!path.empty() && *path.rbegin() != '/')
       path += '/';
