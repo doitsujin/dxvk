@@ -326,38 +326,47 @@ namespace dxvk {
       sizeof(pDesc->Description) / sizeof(pDesc->Description[0]) - 1,
       description.c_str(), description.size());
     
-    // Get amount of video memory
-    // based on the Vulkan heaps
+    // Get amount of video memory based on the Vulkan heaps
     VkDeviceSize deviceMemory = 0;
     VkDeviceSize sharedMemory = 0;
     
     for (uint32_t i = 0; i < memoryProp.memoryHeapCount; i++) {
       VkMemoryHeap heap = memoryProp.memoryHeaps[i];
       
-      if (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
-        deviceMemory += heap.size;
-      else
+      if (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) {
+        // In general we'll have one large device-local heap, and an additional
+        // smaller heap on dGPUs in case ReBAR is not supported. Assume that
+        // the largest available heap is the total amount of available VRAM.
+        deviceMemory = std::max(heap.size, deviceMemory);
+      } else {
+        // This is typically plain sysmem, don't care too much about limits here
         sharedMemory += heap.size;
+      }
     }
 
-    // Some games think we are on Intel given a lack of
-    // NVAPI or AGS/atiadlxx support.
-    // Report our device memory as shared memory,
-    // and some small amount for the carveout.
-    if (options->emulateUMA && !m_adapter->isUnifiedMemoryArchitecture()) {
+    // This can happen on integrated GPUs with one memory heap, over-report
+    // here since some games may be allergic to reporting no shared memory.
+    if (!sharedMemory)
       sharedMemory = deviceMemory;
-      deviceMemory = 128 * (1 << 20);
+
+    // Some games will default to the GPU with the highest amount of dedicated memory,
+    // which can be an integrated GPU on some systems. Report available memory as shared
+    // memory and a small amount as dedicated carve-out if a dedicated GPU is present,
+    // otherwise report memory normally to not unnecessarily confuse games on Deck.
+    if ((m_adapter->isLinkedToDGPU() && deviceProp.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) || options->emulateUMA) {
+      sharedMemory = std::max(sharedMemory, deviceMemory);
+      deviceMemory = 512ull << 20;
     }
-    
+
     // Some games are silly and need their memory limited
     if (options->maxDeviceMemory > 0
      && options->maxDeviceMemory < deviceMemory)
       deviceMemory = options->maxDeviceMemory;
-    
+
     if (options->maxSharedMemory > 0
      && options->maxSharedMemory < sharedMemory)
       sharedMemory = options->maxSharedMemory;
-    
+
     if (env::is32BitHostPlatform()) {
       // The value returned by DXGI is a 32-bit value
       // on 32-bit platforms, so we need to clamp it
