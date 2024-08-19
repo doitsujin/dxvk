@@ -127,10 +127,13 @@ namespace dxvk {
      || InterfaceName == __uuidof(ID3D10Device1))
       hr = S_OK;
 
-    // We can't really reconstruct the version numbers
-    // returned by Windows drivers from Vulkan data
-    if (SUCCEEDED(hr) && pUMDVersion)
-      pUMDVersion->QuadPart = INT64_MAX;
+    // Windows drivers return something along the lines of 32.0.xxxxx.yyyy,
+    // so just be conservative here and return a high number. We cannot
+    // reconstruct meaningful UMD versions from Vulkan driver versions.
+    if (SUCCEEDED(hr) && pUMDVersion) {
+      pUMDVersion->HighPart = 0x00200000u;
+      pUMDVersion->LowPart  = 0xffffffffu;
+    }
 
     if (FAILED(hr)) {
       Logger::err("DXGI: CheckInterfaceSupport: Unsupported interface");
