@@ -358,6 +358,16 @@ namespace dxvk {
       deviceMemory = 512ull << 20;
     }
 
+    // Make sure to never return exact powers of two outside the 32-bit range
+    // because some games don't understand the concept of actually having VRAM
+    constexpr VkDeviceSize adjustment = 32ull << 20;
+
+    if (deviceMemory && !(deviceMemory & 0xffffffffull))
+      deviceMemory -= adjustment;
+
+    if (sharedMemory && !(sharedMemory & 0xffffffffull))
+      sharedMemory -= adjustment;
+
     // Some games are silly and need their memory limited
     if (options->maxDeviceMemory > 0
      && options->maxDeviceMemory < deviceMemory)
