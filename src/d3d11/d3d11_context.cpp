@@ -2422,6 +2422,17 @@ namespace dxvk {
     if (unlikely(NumViewports > m_state.rs.viewports.size()))
       return;
 
+    for (uint32_t i = 0; i < NumViewports; i++) {
+      const D3D11_VIEWPORT& vp = pViewports[i];
+
+      bool valid = vp.Width >= 0.0f && vp.Height >= 0.0f
+                && vp.MinDepth >= 0.0f && vp.MaxDepth <= 1.0f
+                && vp.MinDepth <= vp.MaxDepth;
+
+      if (!valid)
+        return;
+    }
+
     bool dirty = m_state.rs.numViewports != NumViewports;
     m_state.rs.numViewports = NumViewports;
 
