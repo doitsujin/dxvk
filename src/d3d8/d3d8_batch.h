@@ -42,12 +42,16 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE GetDesc(D3DVERTEXBUFFER_DESC* pDesc) {
+      if (unlikely(pDesc == nullptr))
+        return D3DERR_INVALIDCALL;
+
       pDesc->Format = D3DFMT_VERTEXDATA;
       pDesc->Type   = D3DRTYPE_VERTEXBUFFER;
       pDesc->Usage  = m_usage;
       pDesc->Pool   = m_pool;
       pDesc->Size   = m_data.size();
       pDesc->FVF    = m_fvf;
+
       return D3D_OK;
     }
 

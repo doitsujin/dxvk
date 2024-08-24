@@ -61,6 +61,9 @@ namespace dxvk
           UINT Adapter,
           DWORD Flags,
           D3DADAPTER_IDENTIFIER8* pIdentifier) {
+    if (unlikely(pIdentifier == nullptr))
+      return D3DERR_INVALIDCALL;
+
     // This flag now has the opposite effect.
     // Either way, WHQLevel will be 1 with Direct3D9Ex
     if (Flags & D3DENUM_NO_WHQL_LEVEL)
@@ -71,17 +74,19 @@ namespace dxvk
     d3d9::D3DADAPTER_IDENTIFIER9 identifier9;
     HRESULT res = m_d3d9->GetAdapterIdentifier(Adapter, Flags, &identifier9);
 
-    strncpy(pIdentifier->Driver, identifier9.Driver, MAX_DEVICE_IDENTIFIER_STRING);
-    strncpy(pIdentifier->Description, identifier9.Description, MAX_DEVICE_IDENTIFIER_STRING);
+    if (likely(SUCCEEDED(res))) {
+      strncpy(pIdentifier->Driver, identifier9.Driver, MAX_DEVICE_IDENTIFIER_STRING);
+      strncpy(pIdentifier->Description, identifier9.Description, MAX_DEVICE_IDENTIFIER_STRING);
 
-    pIdentifier->DriverVersion    = identifier9.DriverVersion;
-    pIdentifier->VendorId         = identifier9.VendorId;
-    pIdentifier->DeviceId         = identifier9.DeviceId;
-    pIdentifier->SubSysId         = identifier9.SubSysId;
-    pIdentifier->Revision         = identifier9.Revision;
-    pIdentifier->DeviceIdentifier = identifier9.DeviceIdentifier;
+      pIdentifier->DriverVersion    = identifier9.DriverVersion;
+      pIdentifier->VendorId         = identifier9.VendorId;
+      pIdentifier->DeviceId         = identifier9.DeviceId;
+      pIdentifier->SubSysId         = identifier9.SubSysId;
+      pIdentifier->Revision         = identifier9.Revision;
+      pIdentifier->DeviceIdentifier = identifier9.DeviceIdentifier;
 
-    pIdentifier->WHQLLevel = identifier9.WHQLLevel;
+      pIdentifier->WHQLLevel = identifier9.WHQLLevel;
+    }
     
     return res;
   }
@@ -98,6 +103,7 @@ namespace dxvk
     pMode->Height       = m_adapterModes[Adapter][Mode].Height;
     pMode->RefreshRate  = m_adapterModes[Adapter][Mode].RefreshRate;
     pMode->Format       = D3DFORMAT(m_adapterModes[Adapter][Mode].Format);
+
     return D3D_OK;
   }
 
@@ -108,6 +114,12 @@ namespace dxvk
         DWORD BehaviorFlags,
         D3DPRESENT_PARAMETERS* pPresentationParameters,
         IDirect3DDevice8** ppReturnedDeviceInterface) {
+    InitReturnPtr(ppReturnedDeviceInterface);
+
+    if (unlikely(pPresentationParameters == nullptr ||
+                 ppReturnedDeviceInterface == nullptr))
+      return D3DERR_INVALIDCALL;
+
     Com<d3d9::IDirect3DDevice9> pDevice9 = nullptr;
     d3d9::D3DPRESENT_PARAMETERS params = ConvertPresentParameters9(pPresentationParameters);
     HRESULT res = m_d3d9->CreateDevice(
@@ -119,18 +131,14 @@ namespace dxvk
       &pDevice9
     );
 
-    if (FAILED(res)) {
-      return res;
-    }
-
-    *ppReturnedDeviceInterface = ref(new D3D8Device(
-      this, std::move(pDevice9),
-      DeviceType, hFocusWindow, BehaviorFlags,
-      pPresentationParameters
-    ));
+    if (likely(SUCCEEDED(res)))
+      *ppReturnedDeviceInterface = ref(new D3D8Device(
+        this, std::move(pDevice9),
+        DeviceType, hFocusWindow, BehaviorFlags,
+        pPresentationParameters
+      ));
 
     return res;
   }
-
 
 }
