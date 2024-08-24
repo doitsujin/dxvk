@@ -41,9 +41,7 @@ namespace dxvk {
     }
 
   protected:
-    // This is the D3D8 pool, not necessarily what's given to D3D9.
     const D3DPOOL m_pool;
-    // This is the D3D8 usage, not necessarily what's given to D3D9.
     const DWORD   m_usage;
   };
 
@@ -64,12 +62,7 @@ namespace dxvk {
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_VERTEXBUFFER; }
 
     HRESULT STDMETHODCALLTYPE GetDesc(D3DVERTEXBUFFER_DESC* pDesc) {
-      HRESULT hr = GetD3D9()->GetDesc(reinterpret_cast<d3d9::D3DVERTEXBUFFER_DESC*>(pDesc));
-      if (!FAILED(hr)) {
-        pDesc->Pool = m_pool;
-        pDesc->Usage = m_usage;
-      }
-      return hr;
+      return GetD3D9()->GetDesc(reinterpret_cast<d3d9::D3DVERTEXBUFFER_DESC*>(pDesc));
     }
 
   };
@@ -90,12 +83,7 @@ namespace dxvk {
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final { return D3DRTYPE_INDEXBUFFER; }
 
     HRESULT STDMETHODCALLTYPE GetDesc(D3DINDEXBUFFER_DESC* pDesc) final {
-      HRESULT hr = GetD3D9()->GetDesc(reinterpret_cast<d3d9::D3DINDEXBUFFER_DESC*>(pDesc));
-      if (!FAILED(hr)) {
-        pDesc->Pool = m_pool;
-        pDesc->Usage = m_usage;
-      }
-      return hr;
+      return GetD3D9()->GetDesc(reinterpret_cast<d3d9::D3DINDEXBUFFER_DESC*>(pDesc));
     }
 
   };

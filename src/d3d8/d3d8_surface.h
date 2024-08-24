@@ -32,9 +32,15 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE GetDesc(D3DSURFACE_DESC* pDesc) {
+      if (unlikely(pDesc == nullptr))
+        return D3DERR_INVALIDCALL;
+
       d3d9::D3DSURFACE_DESC desc;
       HRESULT res = GetD3D9()->GetDesc(&desc);
-      ConvertSurfaceDesc8(&desc, pDesc);
+
+      if (likely(SUCCEEDED(res)))
+        ConvertSurfaceDesc8(&desc, pDesc);
+
       return res;
     }
 

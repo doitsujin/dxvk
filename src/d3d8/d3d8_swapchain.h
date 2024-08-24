@@ -21,19 +21,28 @@ namespace dxvk {
     }
     
     HRESULT STDMETHODCALLTYPE GetBackBuffer(UINT BackBuffer, D3DBACKBUFFER_TYPE Type, IDirect3DSurface8** ppBackBuffer) final {
+      InitReturnPtr(ppBackBuffer);
+
+      if (unlikely(ppBackBuffer == nullptr))
+        return D3DERR_INVALIDCALL;
+
       // Same logic as in D3D8Device::GetBackBuffer
       if (unlikely(m_backBuffer == nullptr)) {
         Com<d3d9::IDirect3DSurface9> pSurface9;
         HRESULT res = GetD3D9()->GetBackBuffer(BackBuffer, (d3d9::D3DBACKBUFFER_TYPE)Type, &pSurface9);
 
-        m_backBuffer = new D3D8Surface(GetParent(), std::move(pSurface9));
-        *ppBackBuffer = m_backBuffer.ref();
+        if (likely(SUCCEEDED(res))) {
+          m_backBuffer = new D3D8Surface(GetParent(), std::move(pSurface9));
+          *ppBackBuffer = m_backBuffer.ref();
+        }
+
         return res;
       }
 
       *ppBackBuffer = m_backBuffer.ref();
       return D3D_OK;
     }
+
   private:
     Com<D3D8Surface> m_backBuffer = nullptr;
 
