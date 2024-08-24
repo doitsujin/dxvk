@@ -592,14 +592,15 @@ namespace dxvk {
     }} },
     /* GTA IV (NVAPI)                             */
     /* Also thinks we're always on Intel          *
-     * and will report/use bad amounts of VRAM.
+     * and will report/use bad amounts of VRAM
+     * if we report more than 128 MB of VRAM.
      * Disabling support for DF texture formats
      * makes the game use a better looking render
      * path for mirrors.
      * Also runs into issues after alt-tabbing.   */
     { R"(\\(GTAIV|EFLC)\.exe$)", {{
       { "d3d9.customVendorId",              "1002" },
-      { "dxgi.emulateUMA",                  "True" },
+      { "dxgi.maxDeviceMemory",             "128" },
       { "d3d9.supportDFFormats",            "False" },
       { "d3d9.deviceLossOnFocusLoss",       "True" },
     }} },
