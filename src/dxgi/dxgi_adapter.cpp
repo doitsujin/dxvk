@@ -353,7 +353,7 @@ namespace dxvk {
     // which can be an integrated GPU on some systems. Report available memory as shared
     // memory and a small amount as dedicated carve-out if a dedicated GPU is present,
     // otherwise report memory normally to not unnecessarily confuse games on Deck.
-    if ((m_adapter->isLinkedToDGPU() && deviceProp.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) || options->emulateUMA) {
+    if ((m_adapter->isLinkedToDGPU() && deviceProp.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU)) {
       sharedMemory = std::max(sharedMemory, deviceMemory);
       deviceMemory = 512ull << 20;
     }
