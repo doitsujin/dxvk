@@ -143,8 +143,9 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContextExt<ContextType>::SetBarrierControl(
           UINT                    ControlFlags) {
     D3D10DeviceLock lock = m_ctx->LockContext();
-    DxvkBarrierControlFlags flags;
-    
+    D3D11Device* parent = static_cast<D3D11Device*>(m_ctx->GetParentInterface());
+    DxvkBarrierControlFlags flags = parent->GetOptionsBarrierControlFlags();
+
     if (ControlFlags & D3D11_VK_BARRIER_CONTROL_IGNORE_WRITE_AFTER_WRITE)
       flags.set(DxvkBarrierControl::IgnoreWriteAfterWrite);
 
