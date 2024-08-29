@@ -415,8 +415,8 @@ namespace dxvk {
   }
 
 
-  void Presenter::setFrameRateLimit(double frameRate) {
-    m_fpsLimiter.setTargetFrameRate(frameRate);
+  void Presenter::setFrameRateLimit(double frameRate, uint32_t maxLatency) {
+    m_fpsLimiter.setTargetFrameRate(frameRate, maxLatency);
   }
 
 

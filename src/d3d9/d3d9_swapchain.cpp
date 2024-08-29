@@ -1120,7 +1120,7 @@ namespace dxvk {
     if (SyncInterval && frameRateOption == 0.0)
       frameRate = -m_displayRefreshRate / double(SyncInterval);
 
-    m_wctx->presenter->setFrameRateLimit(frameRate);
+    m_wctx->presenter->setFrameRateLimit(frameRate, GetActualFrameLatency());
   }
 
 
