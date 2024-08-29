@@ -353,7 +353,7 @@ namespace dxvk {
     m_targetFrameRate = FrameRate;
 
     if (m_presenter != nullptr)
-      m_presenter->setFrameRateLimit(m_targetFrameRate);
+      m_presenter->setFrameRateLimit(m_targetFrameRate, GetActualFrameLatency());
   }
 
 
@@ -506,7 +506,7 @@ namespace dxvk {
     presenterDesc.fullScreenExclusive = PickFullscreenMode();
 
     m_presenter = new Presenter(m_device, m_frameLatencySignal, presenterDesc);
-    m_presenter->setFrameRateLimit(m_targetFrameRate);
+    m_presenter->setFrameRateLimit(m_targetFrameRate, GetActualFrameLatency());
   }
 
 
