@@ -796,7 +796,7 @@ namespace dxvk {
         case d3d9::D3DPOOL_SYSTEMMEM: {
 
           // RT (DEFAULT) -> SYSTEMMEM: Use GetRenderTargetData as fast path if possible
-          if ((srcDesc.Usage & D3DUSAGE_RENDERTARGET || m_renderTarget.ptr() == src.ptr())) {
+          if ((srcDesc.Usage & D3DUSAGE_RENDERTARGET || m_renderTarget == src.ptr())) {
 
             // GetRenderTargetData works if the formats and sizes match
             if (srcDesc.MultiSampleType == d3d9::D3DMULTISAMPLE_NONE
@@ -887,28 +887,26 @@ namespace dxvk {
     if (pRenderTarget != nullptr) {
       D3D8Surface* surf = static_cast<D3D8Surface*>(pRenderTarget);
 
-      if (likely(m_renderTarget.ptr() != surf)) {
+      if (likely(m_renderTarget != surf)) {
         StateChange();
-        res = GetD3D9()->SetRenderTarget(0, surf->GetD3D9());
+        res = GetD3D9()->SetRenderTarget(0, D3D8Surface::GetD3D9Nullable(surf));
 
         if (unlikely(FAILED(res))) return res;
 
-        if (likely(m_renderTarget != surf))
-          m_renderTarget = surf;
+        m_renderTarget = surf;
       }
     }
 
     // SetDepthStencilSurface is a separate call
     D3D8Surface* zStencil = static_cast<D3D8Surface*>(pNewZStencil);
 
-    if (likely(m_depthStencil.ptr() != zStencil)) {
+    if (likely(m_depthStencil != zStencil)) {
       StateChange();
       res = GetD3D9()->SetDepthStencilSurface(D3D8Surface::GetD3D9Nullable(zStencil));
 
       if (unlikely(FAILED(res))) return res;
 
-      if (likely(m_depthStencil != zStencil))
-        m_depthStencil = zStencil;
+      m_depthStencil = zStencil;
     }
 
     return D3D_OK;
@@ -1181,7 +1179,7 @@ namespace dxvk {
 
     D3D8Texture2D* tex = static_cast<D3D8Texture2D*>(pTexture);
 
-    if (unlikely(m_textures[Stage].ptr() == tex))
+    if (unlikely(m_textures[Stage] == tex))
       return D3D_OK;
 
     StateChange();
