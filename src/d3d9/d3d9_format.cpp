@@ -429,6 +429,10 @@ namespace dxvk {
 
       case D3D9Format::RAWZ: return {}; // Unsupported
 
+      case D3D9Format::R16:  return {}; // Unsupported
+
+      case D3D9Format::AL16: return {}; // Unsupported
+
       default:
         Logger::warn(str::format("ConvertFormat: Unknown format encountered: ", Format));
         return {}; // Unsupported
