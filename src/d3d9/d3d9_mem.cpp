@@ -4,6 +4,7 @@
 #include "../util/log/log.h"
 #include "../util/util_likely.h"
 #include <utility>
+#include <algorithm>
 
 #ifdef D3D9_ALLOW_UNMAPPING
 #include <sysinfoapi.h>
