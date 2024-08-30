@@ -53,14 +53,14 @@ Manipulation of Direct3D libraries in online multi-player games may be considere
 #### Linux (Proton/Wine)
 Most of the time, if a game runs without any issues via Proton, it probably also means it's safe to use DXVK with it.
 
-If a game is Steam Deck "Verified", you can probably use DXVK without worrying.
-If a game is Steam Deck "Playable", you can use DXVK still at risk, but in a safer way.
+If a game is Steam Deck "Verified", you can probably use DXVK without worrying.  
+If a game is Steam Deck "Playable", you can use DXVK still at risk, but in a safer way.  
 If a game is Steam Deck "Unsupported", it probably does not run at all or doesn't have anti-cheat support enabled. In this case, DXVK simply won't work, since the main component, Wine, is actively being blocked.
 
 You can always check for reports on [ProtonDB](https://www.protondb.com/) to know if users are safely playing the game.
 
-Some games don't actively support Linux, but also don't block it — such as [Overwatch](https://us.forums.blizzard.com/en/overwatch/t/can-we-get-banned-for-playing-on-linux/70929/4).
-Others, however, may actively block Linux users — such as [Destiny 2](https://help.bungie.net/hc/en-us/articles/360049517431-Destiny-Account-Restrictions-and-Banning-Policies) (see "Vital Information").
+Some games don't actively support Linux, but also don't block it — such as [Overwatch](https://us.forums.blizzard.com/en/overwatch/t/can-we-get-banned-for-playing-on-linux/70929/4).  
+Others, however, may actively block Linux users — such as [Destiny 2](https://help.bungie.net/hc/en-us/articles/360049517431-Destiny-Account-Restrictions-and-Banning-Policies) (see "Vital Information").  
 There are also incidents of false-positive bans in the past that were later removed — such as [Apex Legends](https://www.gamingonlinux.com/2023/08/respawn-begin-unbanning-various-apex-legends-linux-and-steam-deck-players/).
 
 For most games, the worst scenario you can typically get is being kicked from the match due to anti-cheat support not being enabled. In those cases, it is very likely that the game is detecting and preventing Wine rather than DXVK itself.
