@@ -999,6 +999,11 @@ namespace dxvk {
     { R"(\\RaccoonCity\.exe$)", {{
       { "d3d9.textureMemory",               "0" },
     }} },
+    /* APB: Reloaded                               *
+     * Fixes frametime jumps when shooting         */
+    { R"(\\APB\.exe$)", {{
+      { "d3d9.cachedDynamicBuffers",        "True" },
+    }} },
 
     /**********************************************/
     /* D3D8 GAMES                                 */
