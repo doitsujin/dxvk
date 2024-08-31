@@ -1168,7 +1168,7 @@ namespace dxvk {
           UINT             PrimitiveCount) {
     return GetD3D9()->DrawIndexedPrimitive(
       d3d9::D3DPRIMITIVETYPE(PrimitiveType),
-      m_baseVertexIndex, // set by SetIndices
+      static_cast<INT>(std::min(m_baseVertexIndex, static_cast<UINT>(INT_MAX))), // set by SetIndices
       MinVertexIndex,
       NumVertices,
       StartIndex,
@@ -1292,8 +1292,11 @@ namespace dxvk {
     if (unlikely(ShouldRecord()))
       return m_recorder->SetIndices(pIndexData, BaseVertexIndex);
 
+    if (unlikely(BaseVertexIndex > INT_MAX))
+      Logger::warn("BaseVertexIndex exceeds INT_MAX and will be clamped on use.");
+
     // used by DrawIndexedPrimitive
-    m_baseVertexIndex = static_cast<INT>(BaseVertexIndex);
+    m_baseVertexIndex = BaseVertexIndex;
 
     D3D8IndexBuffer* buffer = static_cast<D3D8IndexBuffer*>(pIndexData);
 

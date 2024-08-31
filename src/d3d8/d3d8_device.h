@@ -432,7 +432,7 @@ namespace dxvk {
     std::array<D3D8VBO, d8caps::MAX_STREAMS>                           m_streams;
 
     Com<D3D8IndexBuffer, false>        m_indices;
-    INT                                m_baseVertexIndex = 0;
+    UINT                               m_baseVertexIndex = 0;
 
     // TODO: Which of these should be a private ref
     std::vector<Com<D3D8Surface, false>> m_backBuffers;
