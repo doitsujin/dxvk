@@ -1,8 +1,8 @@
-option('enable_dxgi',  type : 'boolean', value : true, description: 'Build DXGI')
-option('enable_d3d8',  type : 'boolean', value : true, description: 'Build D3D8')
+option('enable_dxgi',  type : 'boolean', value : false, description: 'Build DXGI')
+option('enable_d3d8',  type : 'boolean', value : false, description: 'Build D3D8')
 option('enable_d3d9',  type : 'boolean', value : true, description: 'Build D3D9')
-option('enable_d3d10', type : 'boolean', value : true, description: 'Build D3D10')
-option('enable_d3d11', type : 'boolean', value : true, description: 'Build D3D11')
+option('enable_d3d10', type : 'boolean', value : false, description: 'Build D3D10')
+option('enable_d3d11', type : 'boolean', value : false, description: 'Build D3D11')
 option('build_id',     type : 'boolean', value : false)
 
 option('dxvk_native_wsi',   type : 'string',  value : 'sdl2', description: 'WSI system to use if building natively.')
