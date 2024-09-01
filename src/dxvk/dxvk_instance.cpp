@@ -20,6 +20,7 @@ namespace dxvk {
   DxvkInstance::DxvkInstance(const DxvkInstanceImportInfo& args, DxvkInstanceFlags flags) {
     Logger::info(str::format("Game: ", env::getExeName()));
     Logger::info(str::format("DXVK: ", DXVK_VERSION));
+	Logger::info(str::format("!!!仅做了幻想全明星适配 这是梦羽的修改版本 有异常可以加群 422528959 询问"));
 
     wsi::init();
 

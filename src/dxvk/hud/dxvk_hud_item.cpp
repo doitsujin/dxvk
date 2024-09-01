@@ -91,7 +91,7 @@ namespace dxvk::hud {
     renderer.drawText(16.0f,
       { position.x, position.y },
       { 1.0f, 1.0f, 1.0f, 1.0f },
-      "DXVK FTJ20240901");
+      "DXVK " DXVK_VERSION);
 
     position.y += 8.0f;
     return position;
@@ -793,7 +793,7 @@ namespace dxvk::hud {
           HudRenderer&      renderer,
           HudPos            position) {
     if (m_show) {
-      std::string string = u8"编译着色器...";
+      std::string string = "Compiling shaders...";
 
       if (m_showPercentage)
         string = str::format(string, " (", computePercentage(), "%)");

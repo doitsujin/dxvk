@@ -83,7 +83,7 @@ function package {
   rm -R "dxvk-$DXVK_VERSION"
 }
 
-build_arch 64
+# build_arch 64
 build_arch 32
 
 if [ $opt_nopackage -eq 0 ]; then
