@@ -1,4 +1,4 @@
-project('dxvk 幻想全明星专版', ['c', 'cpp'], version : 'v2.4.1', meson_version : '>= 0.58', default_options : [ 'cpp_std=c++17', 'warning_level=2' ])
+project('dxvk', ['c', 'cpp'], version : '幻想全明星v20240901 梦羽版', meson_version : '>= 0.58', default_options : [ 'cpp_std=c++17', 'warning_level=2' ])
 
 pkg = import('pkgconfig')
 cpu_family = target_machine.cpu_family()

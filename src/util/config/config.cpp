@@ -895,6 +895,10 @@ namespace dxvk {
     { R"(\\drakensang\.exe$)", {{
       { "d3d9.deferSurfaceCreation",        "True" },
     }} },
+    /* 幻想全明星专用 修复黑屏                 */
+    { R"(\\ACClient\.exe$)", {{
+      { "d3d9.enableDialogMode",        "True" },
+    }} },
     /* Age of Empires 2 - janky frame timing   */
     { R"(\\AoK HD\.exe$)", {{
       { "d3d9.maxFrameLatency",             "1" },
