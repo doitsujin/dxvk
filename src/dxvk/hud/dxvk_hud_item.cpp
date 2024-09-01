@@ -793,7 +793,7 @@ namespace dxvk::hud {
           HudRenderer&      renderer,
           HudPos            position) {
     if (m_show) {
-      std::string string = "编译着色器...";
+      std::string string = u8"编译着色器...";
 
       if (m_showPercentage)
         string = str::format(string, " (", computePercentage(), "%)");
