@@ -20,19 +20,17 @@ namespace dxvk {
     VkResult versionResult = vkEnumerateInstanceVersion(&apiVersion);
 
     if (versionResult != VK_SUCCESS) {
-      Logger::s_instance.err("Failed to enumerate Vulkan version.");
+		dxvk::Logger::warn("检测到你的Vulkan未安装.");
       return false;
     }
 
     // 检查是否支持 Vulkan 1.3
     if (VK_VERSION_MAJOR(apiVersion) < 1 || VK_VERSION_MINOR(apiVersion) < 3) {
-      Logger::s_instance.err("Vulkan 1.3 is required, but only Vulkan " +
-        std::to_string(VK_VERSION_MAJOR(apiVersion)) + "." +
-        std::to_string(VK_VERSION_MINOR(apiVersion)) + " is available.");
+		dxvk::Logger::warn("需要Vulkan 1.3版本,你的Vulkan版本是："+std::to_string(VK_VERSION_MAJOR(apiVersion)) + "." + std::to_string(VK_VERSION_MINOR(apiVersion)));
       return false;
     }
 
-    Logger::s_instance.info("Vulkan 1.3 is supported.");
+    Logger::s_instance.info("Vulkan 1.3 支持.");
     return true;
   }
 
