@@ -11,7 +11,9 @@ using PSGPERRORID = UINT;
 namespace dxvk {
   Logger Logger::s_instance("d3d9.log");
   D3D9GlobalAnnotationList D3D9GlobalAnnotationList::s_instance;
-
+  dxvk::Logger::info("如果你的程序闪退且日志文件没后续内容,那可能是没有Vulkan 1.3 驱动 请更新显卡驱动到最新");
+  dxvk::Logger::info("常见解决方案：如果你的CPU是AMD的 有可能是核显驱动有问题 请重新打一下AMD显卡驱动即可解决!");
+  
   HRESULT CreateD3D9(
           bool           Extended,
           IDirect3D9Ex** ppDirect3D9Ex) {
