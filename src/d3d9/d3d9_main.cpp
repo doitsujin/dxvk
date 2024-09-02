@@ -15,25 +15,51 @@ namespace dxvk {
 
   // Vulkan 1.3 可用性检查函数
   bool checkVulkanSupport() {
-    // 获取 Vulkan 支持的最高 API 版本
-    uint32_t apiVersion = 0;
-    VkResult versionResult = vkEnumerateInstanceVersion(&apiVersion);
+    VkInstance instance;
 
-    if (versionResult != VK_SUCCESS) {
+    VkApplicationInfo appInfo = {};
+    appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    appInfo.pApplicationName = "Vulkan Check";
+    appInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.pEngineName = "DXVK";
+    appInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    appInfo.apiVersion = VK_API_VERSION_1_0;  // 这里可以设置为Vulkan 1.0
+
+    VkInstanceCreateInfo createInfo = {};
+    createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+    createInfo.pApplicationInfo = &appInfo;
+
+    VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
+    if (result != VK_SUCCESS) {
 		dxvk::Logger::warn("检测到你的Vulkan未安装.");
-      return false;
+		return false;
     }
 
-    // 检查是否支持 Vulkan 1.3
-    if (VK_VERSION_MAJOR(apiVersion) < 1 || VK_VERSION_MINOR(apiVersion) < 3) {
-		dxvk::Logger::warn("需要Vulkan 1.3版本,你的Vulkan版本是："+std::to_string(VK_VERSION_MAJOR(apiVersion)) + "." + std::to_string(VK_VERSION_MINOR(apiVersion)));
+    // 获取物理设备
+    uint32_t deviceCount = 0;
+    vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+
+    if (deviceCount == 0) {
+		dxvk::Logger::warn("你的GPU不支持Vulkan");
+		return false;
+    }
+
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    vkEnumeratePhysicalDevices(instance, &deviceCount, &physicalDevice);
+
+    VkPhysicalDeviceProperties deviceProperties;
+    vkGetPhysicalDeviceProperties(physicalDevice, &deviceProperties);
+
+    // 检查物理设备支持的 Vulkan 版本
+    if (deviceProperties.apiVersion < VK_API_VERSION_1_3) {
+      dxvk::Logger::warn("需要Vulkan 1.3版本,你的Vulkan版本是："+std::to_string(VK_VERSION_MAJOR(apiVersion)) + "." + std::to_string(VK_VERSION_MINOR(apiVersion)));
       return false;
     }
 
     dxvk::Logger::info("Vulkan 1.3 支持.");
     return true;
   }
-
+  
   HRESULT CreateD3D9(
           bool           Extended,
           IDirect3D9Ex** ppDirect3D9Ex) {
