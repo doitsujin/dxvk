@@ -117,7 +117,7 @@ namespace dxvk::hud {
     std::vector<Rc<HudItem>>                      m_items;
 
     static void parseOption(const std::string& str, float& value);
-
+	dxvk::high_resolution_clock::time_point m_startTime;
   };
 
 

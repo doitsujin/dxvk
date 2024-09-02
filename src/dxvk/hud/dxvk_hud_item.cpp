@@ -25,7 +25,6 @@ namespace dxvk::hud {
     std::string::size_type end = 0;
     std::string::size_type mid = 0;
 	
-    m_enabled.insert("devinfo");
     while (pos < configStr.size()) {
       end = configStr.find(',', pos);
       mid = configStr.find('=', pos);
@@ -51,6 +50,8 @@ namespace dxvk::hud {
       m_enabled.insert("devinfo");
       m_enabled.insert("fps");
     }
+	// 初始化计时器
+	m_startTime = dxvk::high_resolution_clock::now();
   }
 
 
@@ -61,6 +62,14 @@ namespace dxvk::hud {
 
   void HudItemSet::update() {
     auto time = dxvk::high_resolution_clock::now();
+	auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(time - m_startTime);
+
+	// 如果时间小于10秒，确保version在m_enabled中
+	if (elapsed.count() < 10) {
+		m_enabled.insert("version");
+	} else {
+		m_enabled.erase("version");
+	}
 
     for (const auto& item : m_items)
       item->update(time);
