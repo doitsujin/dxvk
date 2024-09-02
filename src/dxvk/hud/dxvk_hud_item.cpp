@@ -25,7 +25,7 @@ namespace dxvk::hud {
     std::string::size_type end = 0;
     std::string::size_type mid = 0;
 	
-	m_enabled.insert("version");
+	//m_enabled.insert("version");
 	
     while (pos < configStr.size()) {
       end = configStr.find(',', pos);
