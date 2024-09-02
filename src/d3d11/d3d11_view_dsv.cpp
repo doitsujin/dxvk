@@ -106,6 +106,7 @@ namespace dxvk {
   
   D3D11DepthStencilView::~D3D11DepthStencilView() {
     ResourceReleasePrivate(m_resource);
+    m_resource = nullptr;
   }
   
   

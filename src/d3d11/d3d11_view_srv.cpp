@@ -183,6 +183,7 @@ namespace dxvk {
   
   D3D11ShaderResourceView::~D3D11ShaderResourceView() {
     ResourceReleasePrivate(m_resource);
+    m_resource = nullptr;
   }
   
   
