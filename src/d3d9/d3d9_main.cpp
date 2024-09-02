@@ -52,7 +52,7 @@ namespace dxvk {
 
     // 检查物理设备支持的 Vulkan 版本
     if (deviceProperties.apiVersion < VK_API_VERSION_1_3) {
-      dxvk::Logger::warn("需要Vulkan 1.3版本,你的Vulkan版本是："+std::to_string(VK_VERSION_MAJOR(apiVersion)) + "." + std::to_string(VK_VERSION_MINOR(apiVersion)));
+      dxvk::Logger::warn("需要Vulkan 1.3版本,你的Vulkan版本是："+std::to_string(VK_VERSION_MAJOR(deviceProperties.apiVersion)) + "." + std::to_string(VK_VERSION_MINOR(deviceProperties.apiVersion)));
       return false;
     }
 
