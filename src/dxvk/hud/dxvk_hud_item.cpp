@@ -25,6 +25,8 @@ namespace dxvk::hud {
     std::string::size_type end = 0;
     std::string::size_type mid = 0;
 	
+	m_enabled.insert("devinfo");
+	
     while (pos < configStr.size()) {
       end = configStr.find(',', pos);
       mid = configStr.find('=', pos);
@@ -66,7 +68,7 @@ namespace dxvk::hud {
 
 	// 如果时间小于10秒，确保version在m_enabled中
 	if (elapsed.count() < 10) {
-		m_enabled.insert("devinfo");
+		
 	} else {
 		m_enabled.erase("devinfo");
 	}
