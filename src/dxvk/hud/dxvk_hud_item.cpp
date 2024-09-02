@@ -66,9 +66,9 @@ namespace dxvk::hud {
 
 	// 如果时间小于10秒，确保version在m_enabled中
 	if (elapsed.count() < 10) {
-		m_enabled.insert("version");
+		m_enabled.insert("devinfo");
 	} else {
-		m_enabled.erase("version");
+		m_enabled.erase("devinfo");
 	}
 
     for (const auto& item : m_items)
