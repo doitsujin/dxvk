@@ -31,7 +31,7 @@ namespace dxvk {
 
     VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
     if (result != VK_SUCCESS) {
-		dxvk::Logger::warn("检测到你的Vulkan未安装.");
+		dxvk::Logger::warn("检测到你的Vulkan驱动未安装");
 		return false;
     }
 
