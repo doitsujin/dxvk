@@ -30,7 +30,7 @@ namespace dxvk {
       return false;
     }
 
-    Logger::s_instance.info("Vulkan 1.3 支持.");
+    dxvk::Logger::info("Vulkan 1.3 支持.");
     return true;
   }
 
