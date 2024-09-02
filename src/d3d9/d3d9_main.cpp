@@ -9,20 +9,49 @@ class D3DFE_PROCESSVERTICES;
 using PSGPERRORID = UINT;
 
 namespace dxvk {
+
   Logger Logger::s_instance("d3d9.log");
   D3D9GlobalAnnotationList D3D9GlobalAnnotationList::s_instance;
+
+  // Vulkan 1.3 可用性检查函数
+  bool checkVulkanSupport() {
+    // 获取 Vulkan 支持的最高 API 版本
+    uint32_t apiVersion = 0;
+    VkResult versionResult = vkEnumerateInstanceVersion(&apiVersion);
+
+    if (versionResult != VK_SUCCESS) {
+      Logger::s_instance.err("Failed to enumerate Vulkan version.");
+      return false;
+    }
+
+    // 检查是否支持 Vulkan 1.3
+    if (VK_VERSION_MAJOR(apiVersion) < 1 || VK_VERSION_MINOR(apiVersion) < 3) {
+      Logger::s_instance.err("Vulkan 1.3 is required, but only Vulkan " +
+        std::to_string(VK_VERSION_MAJOR(apiVersion)) + "." +
+        std::to_string(VK_VERSION_MINOR(apiVersion)) + " is available.");
+      return false;
+    }
+
+    Logger::s_instance.info("Vulkan 1.3 is supported.");
+    return true;
+  }
 
   HRESULT CreateD3D9(
           bool           Extended,
           IDirect3D9Ex** ppDirect3D9Ex) {
+    
     if (!ppDirect3D9Ex)
       return D3DERR_INVALIDCALL;
 
-    *ppDirect3D9Ex = ref(new D3D9InterfaceEx( Extended ));
+    // 检查 Vulkan 1.3 可用性
+    if (!checkVulkanSupport()) {
+      return D3DERR_NOTAVAILABLE;
+    }
+
+    *ppDirect3D9Ex = ref(new D3D9InterfaceEx(Extended));
     return D3D_OK;
   }
 }
-
 
 extern "C" {
 
