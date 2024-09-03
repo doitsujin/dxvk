@@ -3973,9 +3973,18 @@ namespace dxvk {
             branches.insert({ blockId, ins.arg(i) });
         } break;
 
-        case spv::OpSelectionMerge:
+        case spv::OpSelectionMerge: {
+          mergeBlocks.insert(ins.arg(1));
+        } break;
+
         case spv::OpLoopMerge: {
           mergeBlocks.insert(ins.arg(1));
+
+          // It is possible for the continue block to be unreachable in
+          // practice, but we still need to emit it if we are not going
+          // to eliminate this loop. Since the current block dominates
+          // the loop, use it to keep the continue block intact.
+          branches.insert({ blockId, ins.arg(2) });
         } break;
 
         default:;
