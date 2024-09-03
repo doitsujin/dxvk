@@ -20,6 +20,7 @@ namespace dxvk {
     /* 幻想全明星专用 修复黑屏                 */
     { R"(\\ACClient\.exe$)", {{
       { "d3d9.enableDialogMode",        "True" },
+	  { "d3d9.maxFrameRate",        "300" },
     }} },
   }};
 
